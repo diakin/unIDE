@@ -18724,9 +18724,9 @@ begin
   begin
     S := ObjCodeSetterOf(N.Name, FObjEditName);
     if S = '' then
-      S := 'строки с ' + N.Name + '.' + FObjEditName + ' в модуле формы не ' +
-           'нашёл - значение ставится через другую переменную';
-    ShowMessage('18723:' + FObjEditName + ' у ' + N.Name + ' задаёт код: ' + S +
+      S := 'значение при работе отличается от записанного в .dfm, но ' +
+           'строку, где код его ставит, в модуле формы не нашёл';
+    ShowMessage('18729:' + FObjEditName + ' у ' + N.Name + ' задаёт код: ' + S +
                 '.'#13#10#13#10'Значение запишется в .dfm, но при работе ' +
                 'программы код поставит своё.');
   end;
@@ -27279,46 +27279,100 @@ begin
 end;
 
 // Где в модуле формы код задаёт AName.AProp: "ObjBeginEdit, строка 18660".
-// Ищется присваивание AName.AProp := (у места - и AName.SetBounds);
-// '' - такой строки нет (значение ставится через другую переменную)
+// Ищется присваивание AName.AProp := (у места - и AName.SetBounds). Код
+// часто держит компонент в другой переменной: FCompilerBox := grpCompiler,
+// а дальше FCompilerBox.Caption := ... Такие переменные (присваивание
+// "Имя := AName;") тоже ищутся - тогда в ответе "через FCompilerBox".
+// '' - строки нет ни по имени, ни по таким переменным.
 function TForm1.ObjCodeSetterOf(const AName, AProp: string): string;
 var
-  SL: TStringList;
-  I, K, P, St: Integer;
-  U, Pat, Pat2, Hdr: string;
+  SL, Vars: TStringList;
+  I, K, P, V, St: Integer;
+  U, L, R, Hdr, Via: string;
+  Ok: Boolean;
+
+  // В строке U (прописные, без комментариев) - присваивание ANm.AProp :=
+  // или, у места, вызов ANm.SetBounds(
+  function Sets(const ANm: string): Boolean;
+  var
+    Pat, Pat2: string;
+    J, Q: Integer;
+  begin
+    Result := False;
+    Pat := UpperCase(ANm + '.' + AProp);
+    J := Pos(Pat, U);
+    if (J > 0) and ((J = 1) or not (DeclIdChar(U[J - 1]) or (U[J - 1] = '.'))) then
+    begin
+      Q := J + Length(Pat);
+      DeclSkipSp(U, Q);
+      if Copy(U, Q, 2) = ':=' then
+      begin
+        Result := True;
+        Exit;
+      end;
+    end;
+    if (AProp = 'Left') or (AProp = 'Top') or (AProp = 'Width') or
+       (AProp = 'Height') then
+    begin
+      Pat2 := UpperCase(ANm + '.SetBounds(');
+      J := Pos(Pat2, StringReplace(U, ' ', '', [rfReplaceAll]));
+      Result := (J > 0);
+    end;
+  end;
+
 begin
   Result := '';
   if ObjFormUnit = '' then
     Exit;
-  Pat := UpperCase(AName + '.' + AProp);
-  Pat2 := '';
-  if (AProp = 'Left') or (AProp = 'Top') or (AProp = 'Width') or
-     (AProp = 'Height') then
-    Pat2 := UpperCase(AName + '.SetBounds(');
   SL := TStringList.Create;
+  Vars := TStringList.Create;
   try
     SL.Text := UnitTextOf(ObjFormUnit);
+
+    // Переменные, которым присваивают сам компонент: "FCompilerBox :=
+    // grpCompiler;"
     St := 0;
     for I := 0 to SL.Count - 1 do
     begin
       U := UpperCase(DeclCleanLine(SL[I], St));
-      P := Pos(Pat, U);
-      if (P > 0) and ((P = 1) or not DeclIdChar(U[P - 1])) then
-      begin
-        // Присваивание: после имени свойства - :=
-        K := P + Length(Pat);
-        DeclSkipSp(U, K);
-        if Copy(U, K, 2) <> ':=' then
-          P := 0;
-      end
-      else
-        P := 0;
-      if (P = 0) and (Pat2 <> '') then
-      begin
-        P := Pos(StringReplace(Pat2, ' ', '', [rfReplaceAll]),
-                 StringReplace(U, ' ', '', [rfReplaceAll]));
-      end;
-      if P = 0 then
+      K := Pos(':=', U);
+      if K = 0 then
+        Continue;
+      L := Trim(Copy(U, 1, K - 1));
+      R := Trim(Copy(U, K + 2, MaxInt));
+      P := Pos(';', R);
+      if P > 0 then
+        R := Trim(Copy(R, 1, P - 1));
+      if (R <> UpperCase(AName)) or (L = '') or not DeclIdStart(L[1]) then
+        Continue;
+      Ok := True;
+      for P := 1 to Length(L) do
+        if not DeclIdChar(L[P]) then
+          Ok := False;
+      if Ok and (Vars.IndexOf(L) < 0) and (L <> UpperCase(AName)) then
+        Vars.Add(L);
+    end;
+
+    St := 0;
+    for I := 0 to SL.Count - 1 do
+    begin
+      U := UpperCase(DeclCleanLine(SL[I], St));
+      Via := '';
+      Ok := Sets(AName);
+      if not Ok then
+        for V := 0 to Vars.Count - 1 do
+          if Sets(Vars[V]) then
+          begin
+            Ok := True;
+            // Имя переменной - как в тексте, а не прописными
+            P := Pos(Vars[V], UpperCase(SL[I]));
+            if P > 0 then
+              Via := Copy(SL[I], P, Length(Vars[V]))
+            else
+              Via := Vars[V];
+            Break;
+          end;
+      if not Ok then
         Continue;
       // Подпрограмма, в которой строка: ближайший заголовок выше
       Hdr := '';
@@ -27345,9 +27399,12 @@ begin
         Result := Hdr + ', строка ' + IntToStr(I + 1)
       else
         Result := 'строка ' + IntToStr(I + 1);
+      if Via <> '' then
+        Result := Result + ' (через переменную ' + Via + ')';
       Exit;
     end;
   finally
+    Vars.Free;
     SL.Free;
   end;
 end;
