@@ -4,6 +4,7 @@
 #   icons_light.bmp, icons_dark.bmp - strips 20*N x 40: row 0 normal,
 #                                     row 1 disabled; transparent = clFuchsia
 #   ..\toolbar_icons.res            - BMP_ICONS_LIGHT, BMP_ICONS_DARK
+#                                     (same as brcc32 toolbar_icons.rc)
 #   preview.png                     - both themes, real size and x4
 # Needs Python 3 + Pillow.  Run: python make_icons.py
 import colorsys, os, struct
@@ -253,23 +254,6 @@ def build_strip(theme):
     return strip
 
 
-def bmp_dib(image):
-    """24-bit bottom-up DIB without BITMAPFILEHEADER (RT_BITMAP body)."""
-    width, height = image.size
-    stride = (width * 3 + 3) & ~3
-    rows = bytearray()
-    for yy in range(height - 1, -1, -1):
-        row = bytearray()
-        for xx in range(width):
-            red, green, blue = image.getpixel((xx, yy))
-            row += bytes((blue, green, red))
-        row += b'\0' * (stride - len(row))
-        rows += row
-    header = struct.pack('<IiiHHIIiiII', 40, width, height, 1, 24, 0,
-                         len(rows), 2835, 2835, 0, 0)
-    return header + bytes(rows)
-
-
 def res_entry(res_type, name, data):
     def ident(value):
         if isinstance(value, int):
@@ -277,7 +261,7 @@ def res_entry(res_type, name, data):
         return (value + '\0').encode('utf-16-le')
     head = ident(res_type) + ident(name)
     head += b'\0' * ((4 - (8 + len(head)) % 4) % 4)
-    head += struct.pack('<IHHII', 0, 0x1030, 0x0409, 0, 0)
+    head += struct.pack('<IHHII', 0, 0x0030, 0x0409, 0, 0)
     entry = struct.pack('<II', len(data), 8 + len(head)) + head + data
     return entry + b'\0' * ((4 - len(entry) % 4) % 4)
 
@@ -285,10 +269,15 @@ def res_entry(res_type, name, data):
 def main():
     here = os.path.dirname(os.path.abspath(__file__))
     strips = {theme: build_strip(theme) for theme in THEMES}
-    res = res_entry(0, 0, b'')
+    # empty entry that marks a 32-bit .res file
+    res = struct.pack('<II', 0, 32) + struct.pack('<HHHH', 0xFFFF, 0, 0xFFFF, 0) + b'\0' * 16
     for theme, strip in strips.items():
-        strip.save(os.path.join(here, 'icons_%s.bmp' % theme))
-        res += res_entry(2, 'BMP_ICONS_' + theme.upper(), bmp_dib(strip))
+        bmp_name = os.path.join(here, 'icons_%s.bmp' % theme)
+        strip.save(bmp_name)
+        # RT_BITMAP = the .bmp file without its 14-byte BITMAPFILEHEADER,
+        # the same as a resource compiler (brcc32, rc) makes from the .rc
+        with open(bmp_name, 'rb') as fin:
+            res += res_entry(2, 'BMP_ICONS_' + theme.upper(), fin.read()[14:])
     with open(os.path.join(here, '..', 'toolbar_icons.res'), 'wb') as fout:
         fout.write(res)
 

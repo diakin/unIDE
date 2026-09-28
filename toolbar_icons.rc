@@ -1,0 +1,2 @@
+BMP_ICONS_LIGHT BITMAP "icons\\icons_light.bmp"
+BMP_ICONS_DARK  BITMAP "icons\\icons_dark.bmp"
