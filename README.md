@@ -1,2 +1,2 @@
 # SyntaxHLClaude
- IDE for Win7
+ IDE for Win7- Wrapper over Delphi7
