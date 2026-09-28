@@ -76,3 +76,6 @@ dsgprobe/
 
 # Boss dependency manager vendor folder https://github.com/HashLoad/boss
 modules/
+
+# Output folder of the IDE build: exe plus copied editor.ini, IDE.clr, schemes
+Output/

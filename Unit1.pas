@@ -1821,6 +1821,12 @@ type
                                var AWhere: string): string;
     function  DelphiTargetDpr: string;
     function  DelphiExeOf(const ADpr: string): string;
+    // Папка, куда dcc32 кладёт exe проекта ADpr (ключ -E). ARoot - папка
+    // Delphi для $(DELPHI) в ExePath настроек; '' - без подстановки.
+    function  DelphiOutputDir(const ADpr, ARoot: string): string;
+    // Сборка самого редактора: рядом с exe в папке вывода - его файлы
+    // (editor.ini, IDE.clr, schemes), чтобы запуск по Run работал
+    procedure CopyOwnRunFiles(const ADprDir, AExeDir: string);
     procedure RunTarget;
     procedure EnsureTextLimit;
     procedure EnsureNoWrap;
@@ -29870,7 +29876,6 @@ begin
       // разделитель, а StripIniComment считает её началом комментария и
       // оставляет от списка первый путь.
       LibDir := Trim(Ini.ReadString(Sect, 'LibPath', ''));
-      ExeDir := StripIniComment(Ini.ReadString(Sect, 'ExePath', ''));
       DcuDir := StripIniComment(Ini.ReadString(Sect, 'DcuPath', ''));
     finally
       Ini.Free;
@@ -29878,8 +29883,10 @@ begin
   end;
 
   LibDir := ExpandDelphiRoot(LibDir, Root);
-  ExeDir := ExpandDelphiRoot(ExeDir, Root);
   DcuDir := ExpandDelphiRoot(DcuDir, Root);
+  // Папка exe: у проекта своя (Output), см. DelphiOutputDir. По настоящему
+  // .dpr, не по копии с зондом.
+  ExeDir := DelphiOutputDir(OrigDpr, Root);
 
   if LibDir = '' then
     if DirectoryExists(Root + 'Lib') then
@@ -29950,7 +29957,8 @@ begin
   // порядке будет искать переход к ошибке
   FLastBuildDir := Dir;
   FLastUnitPath := UnitPath;
-  // Не задано - кладём рядом с проектом, как делает сама среда Delphi
+  // .dcu - как раньше: не задано - рядом с проектом, как делает сама среда
+  // Delphi. В папку exe они не идут.
   if ExeDir = '' then
     ExeDir := Dir;
   if DcuDir = '' then
@@ -29977,6 +29985,13 @@ begin
   Params := Params + ' -E"' + ExcludeTrailingPathDelimiter(ExeDir) + '"';
   Params := Params + ' -N"' + ExcludeTrailingPathDelimiter(DcuDir) + '"';
 
+  // Папки exe ещё нет (первая сборка в Output) - dcc32 сам её не создаёт
+  if not DirectoryExists(ExeDir) and not ForceDirectories(ExeDir) then
+  begin
+    LogComp('Компиляция: не удалось создать папку для exe: ' + ExeDir);
+    Exit;
+  end;
+
   LogComp('--- Компиляция: ' + ExtractFileName(Dpr) + '   [' + Sect + ']');
   // Полная командная строка. Без неё не видно, что компилятор получил на
   // самом деле, и разбирать ошибку вида "File not found" не по чему.
@@ -29997,9 +30012,16 @@ begin
   Result := Code = 0;
 
   if Code = 0 then
+  begin
     LogComp(Format('--- Готово, %d мс: %s', [GetTickCount - T0,
            IncludeTrailingPathDelimiter(ExeDir) +
-           ChangeFileExt(ExtractFileName(Dpr), '.exe')]))
+           ChangeFileExt(ExtractFileName(Dpr), '.exe')]));
+    // Собран сам редактор - его файлы рядом с новым exe
+    if not FProbeActive and
+       (CompareText(ChangeFileExt(ExtractFileName(OrigDpr), ''),
+                    ChangeFileExt(ExtractFileName(Application.ExeName), '')) = 0) then
+      CopyOwnRunFiles(Dir, ExeDir);
+  end
   else if Code > 0 then
   begin
     LogComp(Format('--- Ошибки компиляции, код %d. Двойной щелчок по строке ' +
@@ -30711,34 +30733,149 @@ begin
     Result := '';
 end;
 
-// Куда dcc32 кладёт exe этого проекта: ExePath из настроек инструмента, а
-// если он пуст - папка самого .dpr. Те же два правила, по которым ключ -E
-// передаётся компилятору, иначе Run искал бы exe не там, где он появился.
-function TForm1.DelphiExeOf(const ADpr: string): string;
+// Куда dcc32 кладёт exe проекта ADpr. По порядку:
+//   1. [Project] OutputDir в описании проекта (.prj), у которого ADpr -
+//      цель. Относительный путь - от папки .dpr; пустое значение - сама
+//      папка .dpr (как было до папки Output).
+//   2. ExePath из настроек компилятора (IDE Options -> Compilers) - общий
+//      для всех проектов, если задан.
+//   3. Папка Output рядом с .dpr.
+// Этим же пользуются сборка (ключ -E) и Run - иначе Run искал бы exe не
+// там, где он появился.
+function TForm1.DelphiOutputDir(const ADpr, ARoot: string): string;
+const
+  DefOutput = 'Output';
 var
   Ini: TIniFile;
-  Dir: string;
+  PrjFile, DprDir, OutDir: string;
+  HasKey: Boolean;
 begin
   Result := '';
   if ADpr = '' then
     Exit;
+  DprDir := ExtractFilePath(ADpr);
 
-  Dir := '';
+  // 1. Своя папка проекта
+  if (FCurrentProject <> '') and
+     (CompareText(ProjectTargetOf(FCurrentProject), ADpr) = 0) then
+  begin
+    PrjFile := ProjectFileName(FCurrentProject);
+    if FileExists(PrjFile) then
+    begin
+      Ini := TIniFile.Create(PrjFile);
+      try
+        HasKey := Ini.ValueExists('Project', 'OutputDir');
+        OutDir := Trim(StripIniComment(Ini.ReadString('Project', 'OutputDir',
+                                                      '')));
+      finally
+        Ini.Free;
+      end;
+      if HasKey then
+      begin
+        if OutDir = '' then
+          Result := DprDir
+        else if (ExtractFileDrive(OutDir) = '') and (OutDir[1] <> '\') then
+          Result := ExpandFileName(DprDir + OutDir)
+        else
+          Result := OutDir;
+        Result := IncludeTrailingPathDelimiter(Result);
+        Exit;
+      end;
+    end;
+  end;
+
+  // 2. Общая папка из настроек компилятора
   if FileExists(SettingsFileName) then
   begin
     Ini := TIniFile.Create(SettingsFileName);
     try
-      Dir := StripIniComment(Ini.ReadString(CompilerSection('Delphi'),
-                                            'ExePath', ''));
+      OutDir := StripIniComment(Ini.ReadString(CompilerSection('Delphi'),
+                                               'ExePath', ''));
     finally
       Ini.Free;
     end;
+    OutDir := ExpandDelphiRoot(Trim(OutDir), ARoot);
+    if OutDir <> '' then
+    begin
+      Result := IncludeTrailingPathDelimiter(OutDir);
+      Exit;
+    end;
   end;
-  if Dir = '' then
-    Dir := ExtractFilePath(ADpr);
 
-  Result := IncludeTrailingPathDelimiter(Dir) +
+  // 3. По умолчанию
+  Result := IncludeTrailingPathDelimiter(DprDir + DefOutput);
+end;
+
+function TForm1.DelphiExeOf(const ADpr: string): string;
+begin
+  Result := '';
+  if ADpr = '' then
+    Exit;
+  Result := DelphiOutputDir(ADpr, '') +
             ChangeFileExt(ExtractFileName(ADpr), '.exe');
+end;
+
+// Собранный редактор запускается из папки вывода и ищет свои файлы рядом с
+// собой (SettingsFileName, UiSchemaFileName, папка schemes). Копируются
+// только те, которых там ещё нет: настройки, поменянные в запущенной копии,
+// не затираются. Откуда - из папки .dpr, чего там нет - из папки
+// работающего редактора.
+procedure TForm1.CopyOwnRunFiles(const ADprDir, AExeDir: string);
+var
+  SrcDirs: array[0..1] of string;
+  DstDir: string;
+  Copied: Integer;
+
+  // Файл ARel (путь от папки) - из первой папки-источника, где он есть
+  procedure CopyIfMissing(const ARel: string);
+  var
+    DirIdx: Integer;
+  begin
+    if FileExists(DstDir + ARel) then
+      Exit;
+    for DirIdx := Low(SrcDirs) to High(SrcDirs) do
+      if FileExists(SrcDirs[DirIdx] + ARel) then
+      begin
+        ForceDirectories(ExtractFilePath(DstDir + ARel));
+        if CopyFile(PChar(SrcDirs[DirIdx] + ARel), PChar(DstDir + ARel),
+                    True) then
+          Inc(Copied);
+        Exit;
+      end;
+  end;
+
+  // Все файлы папки ARelDir (без вложенных) из всех источников
+  procedure CopyDirIfMissing(const ARelDir: string);
+  var
+    DirIdx: Integer;
+    Found: TSearchRec;
+  begin
+    for DirIdx := Low(SrcDirs) to High(SrcDirs) do
+      if FindFirst(SrcDirs[DirIdx] + ARelDir + '\*.*', faAnyFile,
+                   Found) = 0 then
+      try
+        repeat
+          if (Found.Attr and faDirectory) = 0 then
+            CopyIfMissing(ARelDir + '\' + Found.Name);
+        until FindNext(Found) <> 0;
+      finally
+        FindClose(Found);
+      end;
+  end;
+
+begin
+  SrcDirs[0] := IncludeTrailingPathDelimiter(ADprDir);
+  SrcDirs[1] := ExtractFilePath(Application.ExeName);
+  DstDir := IncludeTrailingPathDelimiter(AExeDir);
+  if CompareText(SrcDirs[0], DstDir) = 0 then
+    Exit;   // exe рядом с .dpr - файлы и так на месте
+  Copied := 0;
+  CopyIfMissing('editor.ini');
+  CopyIfMissing('IDE.clr');
+  CopyDirIfMissing('schemes');
+  if Copied > 0 then
+    LogComp(Format('Рядом с exe скопировано файлов: %d (editor.ini, IDE.clr, ' +
+                   'schemes - которых там не было)', [Copied]));
 end;
 
 // Запуск собранного exe. Ждать завершения нельзя: запущенная программа
