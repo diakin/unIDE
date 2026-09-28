@@ -284,6 +284,10 @@ type
     // BevelOuter = bvNone и т. п.), как в Delphi: иначе его края на форме
     // не видны. Только в окне конструктора, в .dfm не пишется.
     procedure MarkBorderless(ACtl: TWinControl);
+    // Такая же рамка у безоконных детей ACtl, которые сами ничего не рисуют:
+    // плоская TSpeedButton (Flat) - пока над ней нет мыши, TPaintBox,
+    // TImage без картинки. Их рисует ACtl, поэтому и рамка - здесь.
+    procedure MarkInvisibleKids(ACtl: TWinControl);
     // Компонент .dfm, у которого часть места и размера при работе задаёт
     // код. ASides - какие координаты: L (Left), T (Top), W (Width),
     // H (Height). Главное окно ставит их как в живой форме и помечает
@@ -1670,6 +1674,7 @@ begin
           FDesigner.MarkRuntime(FCtl)
         else if not IsRoot then
           FDesigner.MarkBorderless(FCtl);
+        FDesigner.MarkInvisibleKids(FCtl);
         FDesigner.MarkHidden(FCtl);
         Exit;
       end;
@@ -3244,30 +3249,90 @@ begin
   Result := HasBorderProp;
 end;
 
+// Цвет пунктирной рамки на фоне контрола AOn: на тёмном светлее, на
+// светлом темнее
+function OutlineColorOn(AOn: TWinControl): TColor;
+var
+  Back: Longint;
+begin
+  Back := ColorToRGB(clBtnFace);
+  if IsPublishedProp(AOn, 'Color') then
+    Back := ColorToRGB(TColor(GetOrdProp(AOn, 'Color')));
+  if (GetRValue(Back) * 299 + GetGValue(Back) * 587 +
+      GetBValue(Back) * 114) div 1000 < 128 then
+    Result := $00A0A0A0
+  else
+    Result := $00808080;
+end;
+
+// Безоконный контрол, который сам ничего не рисует (в работе его не видно,
+// пока нет мыши или картинки)
+function DrawsNothing(ACtl: TControl): Boolean;
+begin
+  Result := ((ACtl is TSpeedButton) and TSpeedButton(ACtl).Flat) or
+            (ACtl is TPaintBox) or
+            ((ACtl is TImage) and (TImage(ACtl).Picture.Graphic = nil));
+end;
+
+procedure TFormDesigner.MarkInvisibleKids(ACtl: TWinControl);
+var
+  DC: HDC;
+  Cnv: TCanvas;
+  KidIdx: Integer;
+  Kid: TControl;
+  KidRect: TRect;
+  Any: Boolean;
+begin
+  if not ACtl.HandleAllocated then
+    Exit;
+  Any := False;
+  for KidIdx := 0 to ACtl.ControlCount - 1 do
+    if not (ACtl.Controls[KidIdx] is TWinControl) and
+       DrawsNothing(ACtl.Controls[KidIdx]) then
+    begin
+      Any := True;
+      Break;
+    end;
+  if not Any then
+    Exit;
+  DC := GetDC(ACtl.Handle);
+  Cnv := TCanvas.Create;
+  try
+    Cnv.Handle := DC;
+    Cnv.Brush.Style := bsClear;
+    Cnv.Pen.Color := OutlineColorOn(ACtl);
+    Cnv.Pen.Style := psDot;
+    Cnv.Pen.Width := 1;
+    for KidIdx := 0 to ACtl.ControlCount - 1 do
+    begin
+      Kid := ACtl.Controls[KidIdx];
+      if (Kid is TWinControl) or not Kid.Visible or not DrawsNothing(Kid) then
+        Continue;
+      KidRect := Kid.BoundsRect;
+      Cnv.Rectangle(KidRect.Left, KidRect.Top, KidRect.Right, KidRect.Bottom);
+    end;
+  finally
+    Cnv.Handle := 0;
+    Cnv.Free;
+    ReleaseDC(ACtl.Handle, DC);
+  end;
+end;
+
 procedure TFormDesigner.MarkBorderless(ACtl: TWinControl);
 var
   DC: HDC;
   Cnv: TCanvas;
   Area: TRect;
-  Back: Longint;
 begin
   if not ACtl.HandleAllocated or not NoVisibleBorder(ACtl) then
     Exit;
-  // Цвет рамки - от фона: на тёмном светлее, на светлом темнее
-  Back := ColorToRGB(clBtnFace);
-  if IsPublishedProp(ACtl, 'Color') then
-    Back := ColorToRGB(TColor(GetOrdProp(ACtl, 'Color')));
   DC := GetDC(ACtl.Handle);
   Cnv := TCanvas.Create;
   try
     Cnv.Handle := DC;
     Area := ACtl.ClientRect;
     Cnv.Brush.Style := bsClear;
-    if (GetRValue(Back) * 299 + GetGValue(Back) * 587 +
-        GetBValue(Back) * 114) div 1000 < 128 then
-      Cnv.Pen.Color := $00A0A0A0
-    else
-      Cnv.Pen.Color := $00808080;
+    Cnv.Pen.Color := OutlineColorOn(ACtl);
     Cnv.Pen.Style := psDot;
     Cnv.Pen.Width := 1;
     Cnv.Rectangle(Area.Left, Area.Top, Area.Right, Area.Bottom);
