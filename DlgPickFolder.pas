@@ -25,6 +25,9 @@ type
     edPath: TUiEdit;
     btnOk: TUiButton;
     btnCancel: TUiButton;
+    // TDriveComboBox в Delphi 7 не умеет Align - по верху окна его держит
+    // панель, а по ширине тянут якоря
+    pnlDrive: TPanel;
     cmbDrive: TDriveComboBox;
     lstDirs: TDirectoryListBox;
     splDirs: TSplitter;

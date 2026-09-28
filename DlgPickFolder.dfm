@@ -59,13 +59,22 @@ object DlgPickFolder: TDlgPickFolder
       TabOrder = 1
     end
   end
-  object cmbDrive: TDriveComboBox
+  object pnlDrive: TPanel
     Left = 0
     Top = 0
     Width = 760
+    Height = 24
     Align = alTop
-    DirList = lstDirs
+    BevelOuter = bvNone
     TabOrder = 1
+    object cmbDrive: TDriveComboBox
+      Left = 0
+      Top = 0
+      Width = 760
+      Anchors = [akLeft, akTop, akRight]
+      DirList = lstDirs
+      TabOrder = 0
+    end
   end
   object lstDirs: TDirectoryListBox
     Left = 0
