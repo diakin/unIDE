@@ -117,7 +117,11 @@ function DfmCacheRead(const AFile, AKey: string; ANodes, ARoots: TList): Boolean
 // --- дерево: код модуля и снимок
 function BuildCodeRuntime(ADfmRoot: TDfmNode; const AText, AFormClass: string;
                           AFull: Boolean; ANodes: TList): TDfmNode;
-procedure MergeSnapNode(ATarget, ASnap: TDfmNode; AIndex: TStringList);
+// AGone - имена, которые были в .dfm собранного exe, но из .dfm вкладки
+// убраны (вырезаны, удалены, переименованы). Живая форма их ещё держит, но
+// созданными в коде они не стали: такие узлы снимка в дерево не идут.
+procedure MergeSnapNode(ATarget, ASnap: TDfmNode; AIndex: TStringList;
+                        AGone: TStrings = nil);
 procedure ResolveRuntimeNames(ARoot: TDfmNode; const AText: string);
 procedure DedupeSnapNodes(ANode: TDfmNode; AByLine: TStringList;
                           ANodes: TList);
@@ -1592,7 +1596,8 @@ end;
 // Компонент из .dfm, который код перенёс в созданную в рантайме панель,
 // внутри этой панели показывается ссылкой - без свойств, они у него на
 // своём месте.
-procedure MergeSnapNode(ATarget, ASnap: TDfmNode; AIndex: TStringList);
+procedure MergeSnapNode(ATarget, ASnap: TDfmNode; AIndex: TStringList;
+                        AGone: TStrings);
 var
   Old: TList;
   I, K: Integer;
@@ -1628,13 +1633,20 @@ begin
           C.IsLink := True;
           Tgt.Children.Add(C);
         end;
-        MergeSnapNode(D, C, AIndex);
+        MergeSnapNode(D, C, AIndex, AGone);
       end
+      else if (AGone <> nil) and (C.Name <> '') and
+              (AGone.IndexOf(C.Name) >= 0) then
+        // Был в .dfm при сборке exe, из .dfm вкладки убран: это не
+        // созданное в коде, а прежний вид формы. Вместе со всем, что в нём
+        // лежит, - в дерево не идёт (узел остаётся в общем списке узлов и
+        // освобождается с ним).
+        Continue
       else
       begin
         C.IsRuntime := True;
         Tgt.Children.Add(C);
-        MergeSnapNode(C, C, AIndex);
+        MergeSnapNode(C, C, AIndex, AGone);
       end;
     end;
   finally

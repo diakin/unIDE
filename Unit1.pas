@@ -805,6 +805,11 @@ type
     FDsgDfm: string;
     FDsgUndo: TStringList;
     FDsgUndoPas: TStringList; // .pas к тому же шагу отката, '' - не менялся
+    // Последний Cut в конструкторе: имена вырезанных компонентов (со всем
+    // вложенным) и класс формы. Вставка в ту же форму сохраняет эти имена -
+    // код модуля ссылается на них (см. DsgPaste, NameFree).
+    FDsgCutNames: TStringList;
+    FDsgCutClass: string;
     // Компоненты, которые DsgAddRuntime поставил в конструктор по узлам
     // дерева: строки "адрес компонента=место узла" (TreeNodePath), в Objects
     // - сам компонент. По ним находят друг друга безымянные компонент и
@@ -1573,7 +1578,10 @@ type
     procedure DsgPaletteTabs;
     procedure DsgLiveLook;
     function  OwnFormResText(const AClass: string): string;
+    procedure OwnFormGoneNames(const AClass, ADfmText: string;
+                               AGone: TStrings);
     procedure DsgDelete;
+    procedure DsgCut;
     procedure ObjSelectName(const AName: string);
     function  ObjSelectAnyName(const AName: string): Boolean;
     function  IdentAtCaret: string;
@@ -14610,6 +14618,7 @@ begin
   FreeAndNil(FDesigner);
   FreeAndNil(FDsgUndo);
   FreeAndNil(FDsgUndoPas);
+  FreeAndNil(FDsgCutNames);
   FreeAndNil(FDsgMade);
   if FDsgResTexts <> nil then
     for I := 0 to FDsgResTexts.Count - 1 do
@@ -16967,6 +16976,7 @@ var
   ByLine: TStringList;
   Roots: TList;
   Index: TStringList;
+  Gone: TStringList;   // убраны из .dfm вкладки после сборки exe
   DfmRoot, SnapRoot: TDfmNode;
   I: Integer;
   SnapTxt: string;
@@ -17024,6 +17034,7 @@ begin
   // сверку ключа ниже
   Roots := TList.Create;
   Index := TStringList.Create;
+  Gone := TStringList.Create;
   try
     // --- .dfm
     T0 := GetTickCount;
@@ -17079,10 +17090,17 @@ begin
         // Массивы компонентов модуля - до подписей дерева (DfmNodeCaption)
         ObjCollectArrays(UnitSrc);
         SnapTxt := ObjSnapTextFor(Cls);
+        // Своя форма: снимок - с живой формы, собранной из прежнего .dfm.
+        // Вырезанное или удалённое в конструкторе она ещё держит - без
+        // этого списка оно встало бы в дерево как созданное в коде
+        // (MergeSnapNode). Список - и в ключ кэша: дерево зависит от него.
+        if SnapTxt <> '' then
+          OwnFormGoneNames(Cls, DfmText, Gone);
         CacheFile := ObjCacheFileFor(Dfm);
         CacheKey := ObjCacheKey(DfmText, UnitFile, UnitSrc,
                                 IntToHex(Crc32Of(SnapTxt), 8) + ':' +
-                                IntToStr(Length(SnapTxt)));
+                                IntToStr(Length(SnapTxt)) + ' gone ' +
+                                IntToHex(Crc32Of(Gone.Text), 8));
 
         // Дерево в памяти построено по тем же текстам формы и модуля и по
         // тому же снимку, номера строк в нём верные - перестраивать нечего.
@@ -17145,6 +17163,8 @@ begin
             UnitSrc := UnitTextOf(UnitFile);
           ObjCollectArrays(UnitSrc);
           SnapTxt := ObjSnapTextFor(DfmRoot.ClassNm);
+          if SnapTxt <> '' then
+            OwnFormGoneNames(DfmRoot.ClassNm, DfmText, Gone);
         end;
         TA := GetTickCount;
         if UnitFile <> '' then
@@ -17170,7 +17190,7 @@ begin
         if SnapRoot <> nil then
           if (DfmRoot <> nil) and SameText(DfmRoot.ClassNm, SnapRoot.ClassNm) then
           begin
-            MergeSnapNode(DfmRoot, SnapRoot, Index);
+            MergeSnapNode(DfmRoot, SnapRoot, Index, Gone);
             TSnap := GetTickCount - TA;
             if UnitSrc <> '' then
             begin
@@ -17277,6 +17297,7 @@ begin
              '.  Щелчок здесь - убрать';
     FObjSource.Caption := Src;
   finally
+    Gone.Free;
     Index.Free;
     Roots.Free;
   end;
@@ -21417,6 +21438,73 @@ begin
   FDsgResTexts.AddObject(AClass, PT);
 end;
 
+// Имена компонентов в тексте .dfm: строки "object Имя: Класс" (и
+// inherited, inline). Без разбора в узлы - только имена.
+procedure DfmCollectNames(const AText: string; ANames: TStringList);
+var
+  Lines: TStringList;
+  LineIdx, Colon, Space: Integer;
+  Line: string;
+begin
+  Lines := TStringList.Create;
+  try
+    Lines.Text := AText;
+    for LineIdx := 0 to Lines.Count - 1 do
+    begin
+      Line := Trim(Lines[LineIdx]);
+      Space := Pos(' ', Line);
+      if Space = 0 then
+        Continue;
+      if (CompareText(Copy(Line, 1, Space - 1), 'object') <> 0) and
+         (CompareText(Copy(Line, 1, Space - 1), 'inherited') <> 0) and
+         (CompareText(Copy(Line, 1, Space - 1), 'inline') <> 0) then
+        Continue;
+      Colon := Pos(':', Line);
+      if Colon <= Space then
+        Continue;
+      Line := Trim(Copy(Line, Space + 1, Colon - Space - 1));
+      if IsValidIdent(Line) then
+        ANames.Add(Line);
+    end;
+  finally
+    Lines.Free;
+  end;
+end;
+
+// Имена, которые были в .dfm формы AClass при сборке работающего exe
+// (OwnFormResText), а в тексте ADfmText их нет: вырезаны, удалены или
+// переименованы в конструкторе. Только у своей формы с живым экземпляром -
+// у формы чужого проекта с тем же именем класса ресурс exe не её.
+procedure TForm1.OwnFormGoneNames(const AClass, ADfmText: string;
+                                  AGone: TStrings);
+var
+  BuiltNames, NowNames: TStringList;
+  NameIdx: Integer;
+begin
+  AGone.Clear;
+  if not IsOwnProject or (OwnLiveForm(AClass) = nil) then
+    Exit;
+  BuiltNames := TStringList.Create;
+  NowNames := TStringList.Create;
+  try
+    DfmCollectNames(OwnFormResText(AClass), BuiltNames);
+    NowNames.Sorted := True;
+    NowNames.Duplicates := dupIgnore;
+    NowNames.CaseSensitive := False;
+    DfmCollectNames(ADfmText, NowNames);
+    for NameIdx := 0 to BuiltNames.Count - 1 do
+      if NowNames.IndexOf(BuiltNames[NameIdx]) < 0 then
+        AGone.Add(BuiltNames[NameIdx]);
+  finally
+    NowNames.Free;
+    BuiltNames.Free;
+  end;
+  if AGone.Count > 0 then
+    Dbg('21430: ' + AClass + ': убраны из .dfm после сборки exe - ' +
+        IntToStr(AGone.Count) + ' (' + Copy(StringReplace(AGone.CommaText,
+        ',', ', ', [rfReplaceAll]), 1, 200) + ')', clGray);
+end;
+
 // Значение свойства из записи .dfm - в виде для сравнения: строки
 // расшифрованы (#1053 и буква - одно и то же), числа и цвета - числом
 // (15790320 и $00F0F0F0, clBtnFace и его код), в наборах и списках без
@@ -22523,10 +22611,7 @@ begin
   if Sender = FDsgMiUndo then
     DsgUndo
   else if Sender = FDsgMiCut then
-  begin
-    DsgCopy;
-    DsgDelete;
-  end
+    DsgCut
   else if Sender = FDsgMiCopy then
     DsgCopy
   else if Sender = FDsgMiPaste then
@@ -23404,6 +23489,40 @@ begin
     Result := C.Name;
 end;
 
+// Cut: в буфер обмена (DsgCopy) и из формы (DsgDelete). Имена вырезанного
+// запоминаются: вставка в ту же форму их сохранит (DsgPaste), как в Delphi,
+// - на них ссылается код модуля. Без этого вставка сочла бы имя занятым
+// (идентификатор есть в .pas) и дала бы Panel1, SpeedButton1...
+procedure TForm1.DsgCut;
+var
+  Sel, One: TStringList;
+  Dfm: string;
+  SelIdx: Integer;
+begin
+  if FDesigner = nil then
+    Exit;
+  Sel := TStringList.Create;
+  One := TStringList.Create;
+  try
+    DsgSelNames(Sel);
+    if Sel.Count = 0 then
+      Exit;
+    if FDsgCutNames = nil then
+      FDsgCutNames := TStringList.Create;
+    FDsgCutNames.Clear;
+    Dfm := DsgGetText;
+    FDsgCutClass := DfmRootClass(Dfm);
+    for SelIdx := 0 to Sel.Count - 1 do
+      if DfmObjectNames(Dfm, Sel[SelIdx], One) then
+        FDsgCutNames.AddStrings(One);
+  finally
+    One.Free;
+    Sel.Free;
+  end;
+  DsgCopy;
+  DsgDelete;
+end;
+
 // Вставка из буфера: блок object ... end (один или несколько вложенных).
 // Занятые имена заменяются свободными (Button1 -> Button2), ссылки внутри
 // вставленного на старые имена - на новые. События, методов которых в
@@ -23417,10 +23536,18 @@ var
   I, P, N, Ind, A, B: Integer;
   Cls: TPersistentClass;
 
+  // Имя последнего Cut в этой же форме: идентификатор в .pas - ссылки кода
+  // на вырезанный компонент, имя ему можно вернуть
+  function WasCut(const S: string): Boolean;
+  begin
+    Result := (FDsgCutNames <> nil) and (FDsgCutNames.IndexOf(S) >= 0) and
+              (CompareText(FDsgCutClass, Root) = 0);
+  end;
+
   function NameFree(const S: string): Boolean;
   begin
     Result := not DfmObjectRange(OldDfm, S, A, B) and
-              ((OldPas = '') or not PasHasIdent(OldPas, S)) and
+              ((OldPas = '') or not PasHasIdent(OldPas, S) or WasCut(S)) and
               (Names.IndexOf(S) < 0);
   end;
 
@@ -23576,11 +23703,7 @@ begin
   case AKey of
     Ord('Z'): DsgUndo;          // шаг назад по правкам конструктора
     Ord('C'): DsgCopy;          // компонент - в буфер обмена текстом .dfm
-    Ord('X'):
-      begin
-        DsgCopy;
-        DsgDelete;
-      end;
+    Ord('X'): DsgCut;           // в буфер обмена и из формы
     Ord('V'): DsgPaste;
   end;
 end;
