@@ -1,0 +1,39 @@
+• Keywords1 clBlue $00F9F9F9
+and,as,assert,async,await,break,class,continue,def,del,elif,else,except,finally,for,from,global,if,import,in,is,lambda,nonlocal,not,or,pass,raise,return,try,while,with,yield,match,case
+• Keywords1@Dark $00FFBFBF $001A1A1A
+• Keywords2 clTeal $00F9F9F9
+abs,all,any,ascii,bin,bool,bytearray,bytes,callable,chr,classmethod,compile,complex,delattr,dict,dir,divmod,enumerate,eval,exec,False,filter,float,format,frozenset,getattr,globals,hasattr,hash,help,hex,id,input,int,isinstance,issubclass,iter,len,list,locals,map,max,memoryview,min,next,None,object,oct,open,ord,pow,print,property,range,repr,reversed,round,self,set,setattr,slice,sorted,staticmethod,str,sum,super,True,tuple,type,vars,zip
+• Keywords2@Dark $0000FF80 $001A1A1A
+• Operators $00D81CDD $00F9F9F9
+()[]{}*+,-./:;<=>%&|^~@
+• LineComment clGreen $00F9F9F9
+#
+• BlockComment $00008000 $00F9F9F9
+""" """
+• BlockComment2 $00008000 $00F9F9F9
+''' '''
+• BlockComment2@Dark $00009B00 $001A1A1A
+• Strings $00008CFF $00F9F9F9
+"
+• Digits clRed $00F9F9F9
+0x exp suffix=jJ
+• CUSTOM1 $00FBB8B5 $00EBEBEB
+!
+• CUSTOM2 $00FF8000 clWhite
+!!
+• CUSTOM3 $0000A600 clWhite
+!!!
+• CUSTOM4 clYellow clRed
+!!!!
+• CUSTOM5 clWhite clMaroon
+!!!!!
+• Text clBlack $00F9F9F9
+• SubList
+def,class
+• SubSkip
+async
+• LineMark clNone $00C1FFC1
+"def ","class "
+• Strings2 $00008CFF $00F9F9F9
+'
+• Strings2@Dark $000077F9 $001A1A1A

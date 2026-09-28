@@ -1,0 +1,29 @@
+• Keywords1 clBlue clWhite
+and,begin,case,Code,Components,const,CustomMessages,Dirs,div,else,end,Files,for,function,Icons,if,INI,InstallDelete,Languages,Messages,mod,not,of,or,procedure,Registry,repeat,Run,Setup,Tasks,then,Types,UninstallDelete,UninstallRun,until,var,while
+• Keywords1@Dark $00FFBFBF $001A1A1A
+• Keywords2 clTeal clWhite
+AppId,AppMutex,AppName,AppPublisher,AppPublisherURL,AppVersion,ArchitecturesAllowed,ArchitecturesInstallIn64BitMode,Check,Components,Compression,DefaultDirName,DefaultGroupName,Description,DestDir,DestName,DisableProgramGroupPage,ExtraDiskSpaceRequired,Filename,Flags,GroupDescription,LicenseFile,MessagesFile,MinVersion,Name,OnlyBelowVersion,OutputBaseFilename,OutputDir,Parameters,PrivilegesRequired,Root,SetupIconFile,SolidCompression,Source,StatusMsg,Subkey,Tasks,UninstallDisplayIcon,ValueData,ValueName,ValueType,VersionInfoVersion,WizardStyle
+• Keywords2@Dark $0000FF80 $001A1A1A
+• Operators $00D81CDD clWhite
+()*+,-./:;<=>[]
+• LineComment clGreen clWhite
+;
+• BlockComment clGreen clWhite
+/* */
+• Strings $00008CFF clWhite
+"
+• Digits clRed clWhite
+dec
+• CUSTOM1 $00FBB8B5 $00EBEBEB
+!
+• CUSTOM2 $00FF80FF $00E6E6FF
+!!
+• CUSTOM3 $00FF80FF clWhite
+!!!
+• CUSTOM4 clYellow clRed
+!!!!
+• CUSTOM5 clWhite clMaroon
+!!!!!
+• Text $FFFFFFFF clWhite
+• LineMark clNone clYellow
+procedure,function

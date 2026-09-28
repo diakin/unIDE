@@ -1,0 +1,61 @@
+• Keywords1 clBlue $00F9F9F9
+and,as,byref,byval,call,case,const,create,declare,dim,do,each,else,elseif,end,endif,erase,exit,for,function,get,global,gosub,goto,if,implements,in,include,let,lib,loop,me,mod,new,next,not,on,option,optional,or,preserve,print,private,property,public,raiseevent,redim,rem,resume,return,select,set,shared,static,step,stop,sub,then,to,type,until,wend,while,with,xor
+• Keywords1@Dark $00FFBFBF $001A1A1A
+• Keywords2 clTeal $00F9F9F9
+asc,boolean,byte,cdbl,chr,cint,clng,cstr,currency,date,decimal,double,empty,false,format,instr,integer,join,lcase,left,len,long,ltrim,mid,nothing,null,object,replace,right,rtrim,short,single,split,str,string,trim,true,ucase,val,variant
+• Keywords2@Dark $0000FF80 $001A1A1A
+• Keywords3 $0080FFFF clBlue
+exit
+• Keywords3@Dark $00D5D500 $001A1A1A
+• Keywords4 clBlue $00F9F9F9
+
+• Keywords4@Dark $007300E6 $001A1A1A
+• Operators $00D81CDD $00F9F9F9
+&()*+,-./:;<=>[\]^
+• Operators@Dark $00FF46A3 $001A1A1A
+• LineComment clGreen $00F9F9F9
+'
+• LineComment@Dark $00009B00 $001A1A1A
+• BlockComment clBlue clAqua
+/' '/
+• BlockComment@Dark $00009B00 $001A1A1A
+• BlockComment1 clGreen clSilver
+/* */
+• BlockComment1@Dark $00009B00 $001A1A1A
+• Strings $00008CFF $00F9F9F9
+"
+• Strings@Dark $000077F9 $001A1A1A
+• Digits clRed $00F9F9F9
+&H exp suffix=!#%&
+• Digits@Dark clRed $001A1A1A
+• CUSTOM1 $00FBB8B5 $00EBEBEB
+!
+• CUSTOM1@Dark $00FBB8B5 clGray
+• CUSTOM2 $00FF8000 clWhite
+!!
+• CUSTOM2@Dark $00FFA042 $0077003C
+• CUSTOM3 $0000A600 clWhite
+!!!
+• CUSTOM3@Dark $0000A600 $00000053
+• CUSTOM4 clYellow clRed
+!!!!
+• CUSTOM5 clWhite clMaroon
+!!!!!
+• Text clBlack $00F9F9F9
+• Text@Dark clSilver $001A1A1A
+• SubList
+function,sub
+• SubEnd
+end,next,wend,loop
+• SubOpenFirst
+sub,function,type,if=then,for,while,do,with,select,create
+• FmtContinue
+_
+• FmtOutdent
+case,else,elseif,end,loop,next,wend
+• LineMark clNone $00C1FFC1
+"function ","sub "
+• LineMark@Dark clNone $00007700
+• LineMark1 clNone $00FFFFDF
+declare
+• LineMark1@Dark clNone $00666600

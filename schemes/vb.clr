@@ -1,0 +1,41 @@
+• Keywords1 clBlue $00F9F9F9
+addhandler,addressof,alias,and,andalso,as,byref,byval,call,case,catch,class,const,continue,declare,default,delegate,dim,directcast,do,each,else,elseif,end,endif,enum,erase,error,event,exit,finally,for,friend,function,get,gettype,global,gosub,goto,handles,if,implements,imports,in,inherits,interface,is,isnot,let,lib,like,loop,me,mod,module,mustinherit,mustoverride,mybase,myclass,namespace,new,next,not,nothing,notinheritable,notoverridable,on,operator,option,optional,or,orelse,overloads,overridable,overrides,paramarray,partial,private,property,protected,public,raiseevent,readonly,redim,rem,removehandler,resume,return,select,set,shadows,shared,static,step,stop,structure,sub,synclock,then,throw,to,try,trycast,typeof,until,using,when,while,with,withevents,writeonly,xor
+• Keywords1@Dark $00FFBFBF $001A1A1A
+• Keywords2 clTeal $00F9F9F9
+boolean,byte,cbool,cbyte,cchar,cdate,cdbl,cdec,char,cint,clng,cobj,csbyte,cshort,csng,cstr,ctype,cuint,culng,cushort,date,decimal,double,integer,long,object,sbyte,short,single,string,uinteger,ulong,ushort,variant
+• Keywords2@Dark $0000FF80 $001A1A1A
+• Operators $00D81CDD $00F9F9F9
+&()*+,-./:;<=>[\]^
+• LineComment clGreen $00F9F9F9
+'
+• BlockComment clGreen $00F9F9F9
+none
+• Strings $00008CFF $00F9F9F9
+"
+• Digits clRed $00F9F9F9
+&H exp suffix=!#%&
+• CUSTOM1 $00FBB8B5 $00EBEBEB
+!
+• CUSTOM2 $00FF8000 clWhite
+!!
+• CUSTOM3 $0000A600 clWhite
+!!!
+• CUSTOM4 clYellow clRed
+!!!!
+• CUSTOM5 clWhite clMaroon
+!!!!!
+• Text clBlack $00F9F9F9
+• SubList
+sub,function,property
+• SubEnd
+end,next,wend,loop
+• SubOpenFirst
+sub,function,property,type,structure,class,module,namespace,enum,interface,if=then,for,while,do,with,select,try
+• SubSkip
+public,private,protected,friend,shared,static,overridable,overrides,mustoverride,notoverridable,overloads,partial,default,readonly,writeonly,withevents
+• FmtContinue
+_
+• FmtOutdent
+case,catch,else,elseif,end,finally,loop,next,wend
+• LineMark clNone $00C1FFC1
+"function ","sub "

@@ -1,0 +1,35 @@
+• Keywords1 clBlue $00F9F9F9
+break,else,for,function,if,in,next,repeat,return,while,library,require,source,attach,detach,invisible,on_exit
+• Keywords1@Dark $00FFBFBF $001A1A1A
+• Keywords2 clTeal $00F9F9F9
+TRUE,FALSE,NULL,NA,NaN,Inf,Recall,abs,all,any,apply,array,as_integer,c,cat,cbind,character,class,colnames,complex,data,dim,double,factor,head,integer,is_na,lapply,length,levels,list,logical,matrix,max,mean,median,min,names,ncol,nrow,numeric,order,paste,print,range,rbind,rep,rev,rnorm,round,rownames,sapply,sd,seq,setdiff,sort,sqrt,sum,summary,t,table,tail,unique,vapply,vector,which
+• Keywords2@Dark $0000FF80 $001A1A1A
+• Operators $00D81CDD $00F9F9F9
++-*/^=<>!&|%~?:;,()[]{}@$
+• LineComment clGreen $00F9F9F9
+#
+• BlockComment $00008000 $00F9F9F9
+none
+• Strings $00008CFF $00F9F9F9
+"
+• Digits clRed $00F9F9F9
+exp suffix=L
+• CUSTOM1 $00FBB8B5 $00EBEBEB
+!
+• CUSTOM2 $00FF80FF $00E6E6FF
+!!
+• CUSTOM3 $00FF80FF clWhite
+!!!
+• CUSTOM4 clYellow clRed
+!!!!
+• CUSTOM5 clWhite clMaroon
+!!!!!
+• Text clBlack $00F9F9F9
+• LineMark clNone clYellow
+
+• SubOpen
+{
+• SubEnd
+}
+• FmtOutdent
+}

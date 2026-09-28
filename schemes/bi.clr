@@ -1,0 +1,44 @@
+• Keywords1 clBlue $00F9F9F9
+and,andalso,any,as,asm,base,byref,byval,call,case,cast,class,common,const,constructor,continue,declare,defbyte,defdbl,defint,deflng,defsng,defstr,destructor,dim,do,else,elseif,end,enum,exit,export,extern,for,function,goto,if,implements,import,is,let,lib,loop,namespace,new,next,not,operator,option,or,orelse,overload,override,pointer,preserve,private,property,protected,ptr,public,redim,rem,return,scope,select,shared,static,step,sub,then,this,throw,to,type,union,until,using,var,virtual,wend,while,with,xor
+• Keywords1@Dark $00FFBFBF $001A1A1A
+• Keywords2 clTeal $00F9F9F9
+boolean,byte,cbool,cbyte,cdbl,cint,clng,cptr,cshort,csng,cstr,cubyte,cuint,culng,cushort,double,integer,long,longint,short,single,string,ubyte,uinteger,ulong,ushort,wstring,zstring
+• Keywords2@Dark $0000FF80 $001A1A1A
+• Operators $00D81CDD $00F9F9F9
+&()*+,-./:;<=>[\]^
+• LineComment clGreen $00F9F9F9
+'
+• BlockComment clGreen $00F9F9F9
+/' '/
+• BlockComment2 clGreen $00F9F9F9
+/* */
+• BlockComment2@Dark $00009B00 $001A1A1A
+• Strings $00008CFF $00F9F9F9
+"
+• Digits clRed $00F9F9F9
+&H exp suffix=!#%&
+• CUSTOM1 $00FBB8B5 $00EBEBEB
+!
+• CUSTOM2 $00FF8000 clWhite
+!!
+• CUSTOM3 $0000A600 clWhite
+!!!
+• CUSTOM4 clYellow clRed
+!!!!
+• CUSTOM5 clWhite clMaroon
+!!!!!
+• Text clBlack $00F9F9F9
+• SubList
+constructor,destructor,function,property,sub
+• SubEnd
+end,next,wend,loop
+• SubOpenFirst
+sub,function,property,constructor,destructor,type!as,union,enum,class,namespace,scope,if=then,for,while,do,with,select,operator
+• SubSkip
+dim,export,extern,override,private,protected,public,shared,static,virtual
+• FmtContinue
+_
+• FmtOutdent
+case,else,elseif,end,loop,next,wend
+• LineMark clNone $00F2FFF2
+"function ","sub "

@@ -1,0 +1,26 @@
+• Keywords1 clBlue $00F9F9F9
+cls,create,declare,end,for,function,include,next,sub
+• Keywords1@Dark $00FFBFBF $001A1A1A
+• Operators $00D81CDD $00F9F9F9
+()*+,-./:;<=>@[]^{}
+• LineComment clGreen $00F9F9F9
+'
+• BlockComment clGreen $00F9F9F9
+/* */
+• Strings $00008CFF $00F9F9F9
+"
+• Digits clRed clWhite
+&H exp suffix=!#%&
+• CUSTOM1 $00FBB8B5 $00EBEBEB
+!
+• CUSTOM2 $00FF80FF $00E6E6FF
+!!
+• CUSTOM3 $00FF80FF clWhite
+!!!
+• CUSTOM4 clYellow clRed
+!!!!
+• CUSTOM5 $00C08000 clWhite
+!!!!!
+• Text clGray clWhite
+• LineMark clNone clYellow
+sub,function

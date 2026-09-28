@@ -1,0 +1,28 @@
+[Project]
+Type=Delphi
+Target=D:\308\disk_C\0diakin2_0\balan\balann\_Bal1A-2026\B1Acurr200-2026\B1Acurr200M56\BalKom1A.dpr
+[Compiler]
+CompPath=C:\
+IncPath=C:\
+LibPath=C:\
+IcoFile=C:\
+TplFile=C:\
+FBCompPath=C:\
+DelphiPath=C:\Program Files (x86)\Borland\Delphi7-1\
+[Windows]
+Index=0
+win0=1 D:\308\disk_C\0diakin2_0\balan\balann\_Bal1A-2026\B1Acurr200-2026\B1Acurr200M56\BalKom1A.dpr
+curposic0=0
+win1=2 D:\308\disk_C\0diakin2_0\balan\balann\_Bal1A-2026\B1Acurr200-2026\B1Acurr200M56\FFTFilterConst.pas
+curposic1=199
+win2=3 D:\308\disk_C\0diakin2_0\balan\balann\_Bal1A-2026\B1Acurr200-2026\B1Acurr200M56\UnitIzm2.pas
+curposic2=97021
+win3=4 D:\308\disk_C\0diakin2_0\balan\balann\_Bal1A-2026\B1Acurr200-2026\B1Acurr200M56\UnitIzm2.dfm
+curposic3=41723
+[Tabs]
+TabIndex=3
+TabCount=4
+0=0 D:\308\disk_C\0diakin2_0\balan\balann\_Bal1A-2026\B1Acurr200-2026\B1Acurr200M56\BalKom1A.dpr
+1=1 D:\308\disk_C\0diakin2_0\balan\balann\_Bal1A-2026\B1Acurr200-2026\B1Acurr200M56\FFTFilterConst.pas
+2=2 D:\308\disk_C\0diakin2_0\balan\balann\_Bal1A-2026\B1Acurr200-2026\B1Acurr200M56\UnitIzm2.pas
+3=3 D:\308\disk_C\0diakin2_0\balan\balann\_Bal1A-2026\B1Acurr200-2026\B1Acurr200M56\UnitIzm2.dfm

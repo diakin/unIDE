@@ -1,0 +1,45 @@
+• Keywords1 clBlue $00F9F9F9
+abstract,any,as,asserts,async,await,break,case,catch,class,const,constructor,continue,declare,default,delete,do,else,enum,export,extends,finally,for,from,function,get,if,implements,import,in,infer,instanceof,interface,is,keyof,let,module,namespace,new,of,override,private,protected,public,readonly,return,satisfies,set,static,super,switch,this,throw,try,type,typeof,unique,unknown,var,void,while,yield
+• Keywords1@Dark $00FFBFBF $001A1A1A
+• Keywords2 clTeal $00F9F9F9
+Array,Boolean,Date,Error,JSON,Map,Math,Number,Object,Promise,Readonly,Record,Partial,Pick,Omit,RegExp,Set,String,Symbol,bigint,boolean,never,number,object,string,symbol,undefined,console,true,false,null
+• Keywords2@Dark $0000FF80 $001A1A1A
+• Operators $00D81CDD $00F9F9F9
++-*/%=<>!&|^~?:;,.()[]{}
+• LineComment clGreen $00F9F9F9
+//
+• BlockComment $00008000 $00F9F9F9
+/* */
+• Strings $00008CFF $00F9F9F9
+"
+• Digits clRed $00F9F9F9
+0x exp suffix=n
+• CUSTOM1 $00FBB8B5 $00EBEBEB
+!
+• CUSTOM2 $00FF80FF $00E6E6FF
+!!
+• CUSTOM3 $00FF80FF clWhite
+!!!
+• CUSTOM4 clYellow clRed
+!!!!
+• CUSTOM5 clWhite clMaroon
+!!!!!
+• Text clBlack $00F9F9F9
+• SubStyle
+braces
+• LineMark clNone clYellow
+
+• SubOpen
+{
+• SubEnd
+}
+• FmtOutdent
+}
+• Strings2 $00008CFF $00F9F9F9
+'
+• Strings2@Dark $000077F9 $001A1A1A
+• Strings3 $00A06000 $00F9F9F9
+`
+• Strings3@Dark $000077F9 $001A1A1A
+• StrEscape
+\

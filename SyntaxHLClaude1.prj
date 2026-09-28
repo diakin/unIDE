@@ -1,0 +1,101 @@
+[Project]
+Type=Delphi
+Target=D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude\SyntaxHLClaude.dpr
+
+
+
+[Compiler]
+CompPath=C:\
+IncPath=C:\
+LibPath=C:\
+IcoFile=C:\
+TplFile=C:\
+FBCompPath=C:\
+DelphiPath=C:\Program Files (x86)\Borland\Delphi7-1\
+[Windows]
+Index=16
+win0=1 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude\Unit1.pas
+curposic0=502216
+win1=2 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude\SyntaxHLClaude.dpr
+curposic1=453
+win2=3 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude\Unit2.pas
+curposic2=500
+win3=4 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude\Unit2.dfm
+curposic3=0
+win4=5 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude\Unit1.dfm
+curposic4=102
+win5=6 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude\FormSnapshot.pas
+curposic5=3999
+win6=7 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude\ObjParse.pas
+curposic6=1471
+win7=8 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude\RealValue.bas
+curposic7=2115
+win8=9 D:\bas\RapidQ\RQIDE\RQdb.ini
+curposic8=0
+win9=10 D:\bas\RapidQ\RQIDE\RQdebugger853-6.bas
+curposic9=0
+win10=11 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\schemes\ini.clr
+curposic10=183
+win11=12 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\schemes\bas.clr
+curposic11=910
+win12=13 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude\editor.ini
+curposic12=86
+win13=14 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude\UiComCtrls.pas
+curposic13=6830
+win14=15 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude\DfmMove.pas
+curposic14=898
+win15=16 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude1\Unit1.dfm
+curposic15=506
+win16=17 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude5\Unit1.dfm
+curposic16=506
+win17=18 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude1\Unit1.pas
+curposic17=485053
+win18=19 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude7\Unit1.dfm
+curposic18=111
+win19=20 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude7\Unit1.pas
+curposic19=818436
+win20=21 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude5\Unit1.pas
+curposic20=816396
+win21=22 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude2\Unit1.dfm
+curposic21=365
+win22=23 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude3\Unit1.dfm
+curposic22=0
+win23=24 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude4\Unit1.dfm
+curposic23=0
+win24=25 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude3\Unit1.pas
+curposic24=492327
+win25=26 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude5\Unit2.pas
+curposic25=573
+[Tabs]
+TabIndex=5
+TabCount=9
+0=0 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude\Unit1.pas
+1=2 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude\Unit2.pas
+2=3 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude\Unit2.dfm
+3=4 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude\Unit1.dfm
+4=16 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude5\Unit1.dfm
+5=18 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude7\Unit1.dfm
+6=20 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude5\Unit1.pas
+7=19 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude7\Unit1.pas
+8=25 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude5\Unit2.pas
+[Bookmarks]
+bmarkCaption0,0=10419 // 1. СОЗДАЕМ САМУ ПАНЕЛЬ ДЛЯ КНОПОК (TOOLBAR)
+bmarkPosic0,0=333891
+bmarkCaption1,0=10426 FToolbar.Color :=clLime; // $00F0F0F0;          // Приятный нейтральный цвет фона
+bmarkPosic1,0=334305
+bmarkCaption2,0=10516 lblSearch.Caption := ' Search and replace';
+bmarkPosic2,0=337767
+bmarkCaption3,0=14790 FObjProps := MakeView(Sheet);
+bmarkPosic3,0=481378
+bmarkCaption4,0=14685 function MakeView(AParent: TWinControl): TListView;
+bmarkPosic4,0=478020
+bmarkCaption5,0=11706 procedure ConfigureButton(var ToolBarBtn: TSpeedButton; ImgIndex: Integer; const CaptionText: string);
+bmarkPosic5,0=380557
+bmarkCaption6,0=12070 // 3. СОЗДАЕМ КНОПКИ: Вместо имени ресурса просто передаем порядковый номер иконки на ленте!
+bmarkPosic6,0=394697
+bmarkCaption7,0=19325 procedure TForm1.ObjEditExit(Sender: TObject);
+bmarkPosic7,0=622001
+bmarkCaption8,0=18853 procedure TForm1.ObjApplyEdit;
+bmarkPosic8,0=609399
+bmarkCaption9,0=4134 ('Text File|.txt', 'Pascal Unit|.pas', 'BASIC File|.bas',
+bmarkPosic9,0=158987

@@ -1,0 +1,35 @@
+• Keywords1 clBlue $00F9F9F9
+begin,break,catch,class,continue,data,define,do,dynamicparam,else,elseif,end,enum,exit,filter,finally,for,foreach,from,function,hidden,if,in,inlinescript,parallel,param,process,return,sequence,static,switch,throw,trap,try,until,using,while,workflow
+• Keywords1@Dark $00FFBFBF $001A1A1A
+• Keywords2 clTeal $00F9F9F9
+true,false,null,args,input,matches,psitem,error,host,home,pwd,profile,string,int,long,bool,double,decimal,array,hashtable,pscustomobject,scriptblock,switch,void,and,or,not,eq,ne,gt,ge,lt,le,like,match,contains,in,notin,replace,split,join
+• Keywords2@Dark $0000FF80 $001A1A1A
+• Operators $00D81CDD $00F9F9F9
++-*/%=<>!&|^@$(){}[];,.:
+• LineComment clGreen $00F9F9F9
+#
+• BlockComment $00008000 $00F9F9F9
+<# #>
+• Strings $00008CFF $00F9F9F9
+"
+• Digits clRed $00F9F9F9
+0x suffix=kmgtbKMGTB
+• CUSTOM1 $00FBB8B5 $00EBEBEB
+!
+• CUSTOM2 $00FF80FF $00E6E6FF
+!!
+• CUSTOM3 $00FF80FF clWhite
+!!!
+• CUSTOM4 clYellow clRed
+!!!!
+• CUSTOM5 clWhite clMaroon
+!!!!!
+• Text clBlack $00F9F9F9
+• LineMark clNone clYellow
+
+• SubOpen
+{
+• SubEnd
+}
+• FmtOutdent
+}

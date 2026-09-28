@@ -1,0 +1,34 @@
+• Keywords1 clBlue $00F9F9F9
+a,abbr,address,area,article,aside,audio,b,base,bdi,bdo,blockquote,body,br,button,canvas,caption,cite,code,col,colgroup,data,datalist,dd,del,details,dfn,dialog,div,dl,dt,em,embed,fieldset,figcaption,figure,footer,form,h1,h2,h3,h4,h5,h6,head,header,hgroup,hr,html,i,iframe,img,input,ins,kbd,label,legend,li,link,main,map,mark,menu,meta,meter,nav,noscript,object,ol,optgroup,option,output,p,param,picture,pre,progress,q,rp,rt,ruby,s,samp,script,section,select,small,source,span,strong,style,sub,summary,sup,table,tbody,td,template,textarea,tfoot,th,thead,time,title,tr,track,u,ul,var,video,wbr
+• Keywords1@Dark $00FFBFBF $001A1A1A
+• Keywords2 clTeal $00F9F9F9
+accept,accesskey,action,align,alt,async,autocomplete,autofocus,autoplay,charset,checked,class,cols,colspan,content,contenteditable,controls,coords,data,datetime,default,defer,dir,disabled,download,draggable,enctype,for,form,headers,height,hidden,href,hreflang,id,lang,list,loop,max,maxlength,media,method,min,multiple,muted,name,novalidate,onchange,onclick,onload,open,pattern,placeholder,poster,preload,readonly,rel,required,reversed,rows,rowspan,sandbox,scope,selected,shape,size,sizes,span,spellcheck,src,srcset,start,step,style,tabindex,target,title,translate,type,usemap,value,width,wrap
+• Keywords2@Dark $0000FF80 $001A1A1A
+• Operators $00D81CDD $00F9F9F9
+!/<=>
+• LineComment clGreen $00F9F9F9
+
+• BlockComment clGreen $00FFFFEC
+<!-- -->
+• Strings $00008CFF $00F9F9F9
+"
+• Digits clRed $00F9F9F9
+dec
+• CUSTOM1 $00FBB8B5 $00EBEBEB
+!
+• CUSTOM2 $00FF80FF $00E6E6FF
+!!
+• CUSTOM3 $00FF80FF clWhite
+!!!
+• CUSTOM4 clYellow clRed
+!!!!
+• CUSTOM5 clWhite clMaroon
+!!!!!
+• Text clBlack $00F9F9F9
+• LineMark clNone clYellow
+
+• SubStyle
+tags
+• TagVoid
+area,base,br,col,embed,hr,img,input,link,meta,param,source,track,wbr
+• PairMark clNone $0080FFFF
