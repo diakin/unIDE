@@ -277,6 +277,10 @@ type
     // родителя, и писать туда новые было бы неверно.
     function Reparent(const AName, AParent: string): Boolean;
     procedure MarkRuntime(ACtl: TWinControl);
+    // Серая пунктирная рамка у контейнера без видимой границы (TPanel с
+    // BevelOuter = bvNone и т. п.), как в Delphi: иначе его края на форме
+    // не видны. Только в окне конструктора, в .dfm не пишется.
+    procedure MarkBorderless(ACtl: TWinControl);
     // Компонент .dfm, у которого часть места и размера при работе задаёт
     // код. ASides - какие координаты: L (Left), T (Top), W (Width),
     // H (Height). Главное окно ставит их как в живой форме и помечает
@@ -1660,7 +1664,9 @@ begin
       begin
         FPrev(Msg);
         if FDesigner.IsRuntime(FCtl) then
-          FDesigner.MarkRuntime(FCtl);
+          FDesigner.MarkRuntime(FCtl)
+        else if not IsRoot then
+          FDesigner.MarkBorderless(FCtl);
         FDesigner.MarkHidden(FCtl);
         Exit;
       end;
@@ -3199,6 +3205,72 @@ begin
   finally
     C.Handle := 0;
     C.Free;
+    ReleaseDC(ACtl.Handle, DC);
+  end;
+end;
+
+// Контейнер без своей видимой границы: принимает детей (csAcceptsControls),
+// и все свойства рамки, какие у него есть, выключены - BevelOuter,
+// BevelInner, BevelKind, BorderStyle. Свойства читаются по имени (RTTI):
+// так подходят и TPanel, и TScrollBox, и свои панели с теми же свойствами.
+// У кого ни одного такого свойства нет (TGroupBox, TPageControl), тот
+// рисует рамку сам.
+function NoVisibleBorder(ACtl: TWinControl): Boolean;
+var
+  HasBorderProp: Boolean;
+
+  // Свойство есть и не выключено: AOff - значение «нет рамки»
+  function PropOn(const AProp: string; AOff: Integer): Boolean;
+  begin
+    Result := False;
+    if not IsPublishedProp(ACtl, AProp) or
+       not (PropType(ACtl, AProp) in [tkEnumeration]) then
+      Exit;
+    HasBorderProp := True;
+    Result := GetOrdProp(ACtl, AProp) <> AOff;
+  end;
+
+begin
+  Result := False;
+  if (ACtl = nil) or not (csAcceptsControls in ACtl.ControlStyle) then
+    Exit;
+  HasBorderProp := False;
+  if PropOn('BevelOuter', Ord(bvNone)) or PropOn('BevelInner', Ord(bvNone)) or
+     PropOn('BevelKind', Ord(bkNone)) or PropOn('BorderStyle', Ord(bsNone)) then
+    Exit;
+  Result := HasBorderProp;
+end;
+
+procedure TFormDesigner.MarkBorderless(ACtl: TWinControl);
+var
+  DC: HDC;
+  Cnv: TCanvas;
+  Area: TRect;
+  Back: Longint;
+begin
+  if not ACtl.HandleAllocated or not NoVisibleBorder(ACtl) then
+    Exit;
+  // Цвет рамки - от фона: на тёмном светлее, на светлом темнее
+  Back := ColorToRGB(clBtnFace);
+  if IsPublishedProp(ACtl, 'Color') then
+    Back := ColorToRGB(TColor(GetOrdProp(ACtl, 'Color')));
+  DC := GetDC(ACtl.Handle);
+  Cnv := TCanvas.Create;
+  try
+    Cnv.Handle := DC;
+    Area := ACtl.ClientRect;
+    Cnv.Brush.Style := bsClear;
+    if (GetRValue(Back) * 299 + GetGValue(Back) * 587 +
+        GetBValue(Back) * 114) div 1000 < 128 then
+      Cnv.Pen.Color := $00A0A0A0
+    else
+      Cnv.Pen.Color := $00808080;
+    Cnv.Pen.Style := psDot;
+    Cnv.Pen.Width := 1;
+    Cnv.Rectangle(Area.Left, Area.Top, Area.Right, Area.Bottom);
+  finally
+    Cnv.Handle := 0;
+    Cnv.Free;
     ReleaseDC(ACtl.Handle, DC);
   end;
 end;
