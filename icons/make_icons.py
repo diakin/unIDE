@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 # Toolbar icons for SyntaxHLClaude: flat rounded tiles with a white glyph.
-# Draws every icon at 8x size, scales down to 20x20 and writes:
-#   icons_light.bmp, icons_dark.bmp - strips 20*N x 40: row 0 normal,
+# Draws every icon at 8x size, scales down to 28x28 and writes:
+#   icons_light.bmp, icons_dark.bmp - strips 28*N x 56: row 0 normal,
 #                                     row 1 disabled; transparent = clFuchsia
 #   ..\toolbar_icons.res            - BMP_ICONS_LIGHT, BMP_ICONS_DARK
 #                                     (same as brcc32 toolbar_icons.rc)
@@ -10,7 +10,8 @@
 import colorsys, os, struct
 from PIL import Image, ImageDraw
 
-SIZE = 20          # icon side, px
+SIZE = 28          # icon side, px
+GRID = 20          # glyphs are drawn on a 20x20 design grid
 SCALE = 8          # supersampling
 BIG = SIZE * SCALE
 FUCHSIA = (255, 0, 255)
@@ -36,8 +37,8 @@ ICONS = [
 
 
 def px(value):
-    """Icon pixels -> supersampled coordinates."""
-    return int(round(value * SCALE))
+    """Design-grid units (0..GRID) -> supersampled coordinates."""
+    return int(round(value * BIG / GRID))
 
 
 def box(left, top, right, bottom):
@@ -284,7 +285,7 @@ def main():
     # preview: each theme on its button face, real size and x4
     faces = {'light': (0xF0, 0xF0, 0xF0), 'dark': (0x3A, 0x3A, 0x3A)}
     count = len(ICONS)
-    zoom = 4
+    zoom = 3
     cell = SIZE * zoom + 12
     prev = Image.new('RGB', (cell * count + 12, 2 * (cell * 2 + 40) + 12),
                      (255, 255, 255))
@@ -303,7 +304,7 @@ def main():
                             data[xx, yy] = face
                 big = icon.resize((SIZE * zoom, SIZE * zoom), Image.NEAREST)
                 band.paste(big, (6 + index * cell, 6 + row * cell))
-                band.paste(icon, (6 + index * cell + SIZE * zoom // 2 - 10,
+                band.paste(icon, (6 + index * cell + SIZE * zoom // 2 - SIZE // 2,
                                   cell * 2 + 8))
         prev.paste(band, (0, top))
         top += band.height + 6
