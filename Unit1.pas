@@ -897,6 +897,10 @@ type
     FObjCodePropsKey: string;
     FObjEditIdx: Integer;
     FObjEditOld: string;    // значение как было в строке .dfm
+    // Правка при выделенной группе: FObjEditOld - значение только текущего
+    // компонента, у остальных оно может быть другим. Совпадение с ним -
+    // ещё не «ничего не изменилось» (ObjApplyEdit).
+    FObjEditGroup: Boolean;
     // Правка из инспектора записана в текст, а разбор, дерево и конструктор
     // перестраиваются потом (WM_USER + 316): щелчок, которым правку
     // закончили, сначала доходит до своей строки или компонента
@@ -18864,6 +18868,9 @@ begin
   end;
   FObjEditIdx := Idx;
   FObjEditOld := Raw;
+  FObjEditGroup := not FObjEditCode and (FDesigner <> nil) and
+                   (FDesigner.GroupCount > 1) and
+                   (CompareText(FObjDfmFile, FDsgDfm) = 0);
 
   // Значение задаёт код - сказать об этом, но править дать: в .dfm оно
   // запишется, а при работе код поставит своё
@@ -19313,7 +19320,10 @@ begin
 
   // Не изменилось - просто закрываем. Серое свойство без правки в .dfm не
   // добавляем: там было бы то же значение по умолчанию.
-  if (NewRaw = FObjEditOld) or (NewRaw = '') then
+  // У группы сравнивать не с чем: FObjEditOld - значение одного текущего
+  // компонента. Width = 32 у группы, где 32 только у текущего, должно
+  // дойти до остальных; кому менять нечего, ObjGroupApply не тронет.
+  if ((NewRaw = FObjEditOld) and not FObjEditGroup) or (NewRaw = '') then
   begin
     ObjCancelEdit;
     Exit;
