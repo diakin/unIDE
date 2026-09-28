@@ -733,6 +733,7 @@ type
     procedure LogPopupClick(Sender: TObject);
     procedure NewFileClick(Sender: TObject);
     procedure DsgMenuClick(Sender: TObject);
+    procedure DsgAlignMenuExtra;
 
   private
     OldRichEditProc: TWndMethod;
@@ -901,6 +902,10 @@ type
     // компонента, у остальных оно может быть другим. Совпадение с ним -
     // ещё не «ничего не изменилось» (ObjApplyEdit).
     FObjEditGroup: Boolean;
+    // Пункты меню Align конструктора, которых нет в .dfm: расставить группу
+    // по родителю на равных промежутках (DsgAlignMenuExtra)
+    FDsgMiSpaceH: TMenuItem;
+    FDsgMiSpaceV: TMenuItem;
     // Правка из инспектора записана в текст, а разбор, дерево и конструктор
     // перестраиваются потом (WM_USER + 316): щелчок, которым правку
     // закончили, сначала доходит до своей строки или компонента
@@ -22607,6 +22612,7 @@ begin
   FDsgMiBack.Enabled := Sel;
   // Выравнивание - у группы (Shift+щелчок), по первому выделенному
   // Группу из компонентов кода не выравнивают: их место задаёт код
+  DsgAlignMenuExtra;
   FDsgMenuGrpAlign.Enabled := (FDesigner.GroupCount > 1) and
                               not FDesigner.GroupIsRuntime;
   // Шаблоном сохраняется выделенное меню (TMainMenu, TPopupMenu)
@@ -22632,6 +22638,28 @@ begin
     FDsgJumpTimer.Enabled := False;
 
   FDsgMenu.Popup(AScreen.X, AScreen.Y);
+end;
+
+// Пункты Align, которых нет в .dfm, - в конец подменю при первом показе
+// меню: расставить группу по ширине или высоте родителя на равных
+// промежутках (TFormDesigner.SpaceGroup). Созданы в коде - в .dfm их
+// можно перенести потом, как остальные пункты этого меню.
+procedure TForm1.DsgAlignMenuExtra;
+
+  function NewItem(const ACaption: string): TMenuItem;
+  begin
+    Result := TMenuItem.Create(Self);
+    Result.Caption := ACaption;
+    Result.OnClick := DsgMenuClick;
+    FDsgMenuGrpAlign.Add(Result);
+  end;
+
+begin
+  if (FDsgMiSpaceH <> nil) or (FDsgMenuGrpAlign = nil) then
+    Exit;
+  NewItem('-');
+  FDsgMiSpaceH := NewItem('Space Equally Across Width');
+  FDsgMiSpaceV := NewItem('Space Equally Across Height');
 end;
 
 // Hide/Show form: окно конструктора - спрятать или показать как было
@@ -22695,6 +22723,10 @@ begin
     FDesigner.AlignGroup(4)
   else if Sender = FDsgMiAlignHeight then
     FDesigner.AlignGroup(5)
+  else if Sender = FDsgMiSpaceH then
+    FDesigner.AlignGroup(6)
+  else if Sender = FDsgMiSpaceV then
+    FDesigner.AlignGroup(7)
   else if Sender = FDsgMiLiveView then
   begin
     FDsgLiveView := not FDsgLiveView;

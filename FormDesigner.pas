@@ -175,6 +175,7 @@ type
     procedure ToggleGroup(AComp: TComponent);
     procedure ShowGroupMarks;
     procedure CommitGroup;
+    procedure SpaceGroup(AHorz: Boolean);
     function PlaceParent(ATarget: TComponent): TWinControl;
     procedure ApplyPropText(AObj: TPersistent; const AProp, AValue: string);
     function PrepareText(const AText: string): string;
@@ -241,7 +242,9 @@ type
     // пишут - правятся только свойства (главное окно, editor.ini).
     function GroupIsRuntime: Boolean;
     // Выравнивание группы по главному (первому выделенному):
-    // 0 - левые края, 1 - правые, 2 - верх, 3 - низ, 4 - ширина, 5 - высота
+    // 0 - левые края, 1 - правые, 2 - верх, 3 - низ, 4 - ширина, 5 - высота;
+    // 6, 7 - расставить на равных промежутках по ширине, по высоте
+    // родителя (SpaceGroup)
     procedure AlignGroup(AKind: Integer);
     // Правый щелчок по AComp: выделить и попросить главное окно показать
     // меню конструктора
@@ -3770,6 +3773,11 @@ var
 begin
   if GroupCount < 2 then
     Exit;
+  if AKind in [6, 7] then
+  begin
+    SpaceGroup(AKind = 6);
+    Exit;
+  end;
   Ref := TControl(FGroup[0]);
   if Ref.Parent = nil then
     Exit;
@@ -3805,6 +3813,121 @@ begin
     if AKind in [0..3] then
       ClampToParent(C.Parent, R, False);
     C.BoundsRect := R;
+  end;
+  ShowGroupMarks;
+  CommitGroup;
+end;
+
+type
+  // Доступ к защищённому AdjustClientRect: у рамки с подписью (TGroupBox)
+  // место для детей - ниже подписи
+  TDsgClientCrack = class(TWinControl);
+
+// Расставить группу по родителю на равных промежутках: по ширине (AHorz)
+// или по высоте. Промежутки одинаковые и между компонентами, и от краёв
+// родителя (его места для детей). Порядок - как стоят сейчас (слева
+// направо, сверху вниз), размеры не меняются, другая ось не трогается.
+// Участвуют компоненты с тем же родителем, что у главного (первого
+// выделенного), без Align и не те, чьё место по этой оси задаёт код.
+// Не помещаются - промежутки нулевые, ряд идёт от края.
+procedure TFormDesigner.SpaceGroup(AHorz: Boolean);
+var
+  Par: TWinControl;
+  Items: TList;
+  Area, R: TRect;
+  Ctl, Tmp: TControl;
+  Index, Other, Total, FreeSpace, Gap, Extra, Pos0: Integer;
+  Code: string;
+
+  function StartOf(AControl: TControl): Integer;
+  begin
+    if AHorz then
+      Result := AControl.Left
+    else
+      Result := AControl.Top;
+  end;
+
+begin
+  if (GroupCount < 2) or (TControl(FGroup[0]).Parent = nil) then
+    Exit;
+  Par := TControl(FGroup[0]).Parent;
+  Items := TList.Create;
+  try
+    for Index := 0 to FGroup.Count - 1 do
+    begin
+      Ctl := TControl(FGroup[Index]);
+      if (Ctl.Parent <> Par) or (Ctl.Align <> alNone) or IsRuntime(Ctl) or
+         (Ctl is TDsgIcon) then
+        Continue;
+      Code := CodePlacedSides(Ctl);
+      if (AHorz and (Pos('L', Code) > 0)) or
+         (not AHorz and (Pos('T', Code) > 0)) then
+        Continue;
+      Items.Add(Ctl);
+    end;
+    if Items.Count < 2 then
+    begin
+      DsgLog('3990: расстановка: подходящих компонентов меньше двух ' +
+             '(нужен общий родитель, без Align)', clGray);
+      Exit;
+    end;
+
+    // Порядок - по нынешнему месту
+    for Index := 0 to Items.Count - 2 do
+      for Other := Index + 1 to Items.Count - 1 do
+        if StartOf(TControl(Items[Other])) < StartOf(TControl(Items[Index])) then
+        begin
+          Tmp := TControl(Items[Index]);
+          Items[Index] := Items[Other];
+          Items[Other] := Tmp;
+        end;
+
+    Area := Par.ClientRect;
+    TDsgClientCrack(Par).AdjustClientRect(Area);
+    Total := 0;
+    for Index := 0 to Items.Count - 1 do
+      if AHorz then
+        Inc(Total, TControl(Items[Index]).Width)
+      else
+        Inc(Total, TControl(Items[Index]).Height);
+    if AHorz then
+      FreeSpace := (Area.Right - Area.Left) - Total
+    else
+      FreeSpace := (Area.Bottom - Area.Top) - Total;
+    if FreeSpace < 0 then
+      FreeSpace := 0;
+    // Промежутков на один больше, чем компонентов: и у краёв. Остаток от
+    // деления - по пикселю первым промежуткам.
+    Gap := FreeSpace div (Items.Count + 1);
+    Extra := FreeSpace mod (Items.Count + 1);
+
+    SetLength(FGroupFrom, FGroup.Count);
+    for Index := 0 to FGroup.Count - 1 do
+      FGroupFrom[Index] := TControl(FGroup[Index]).BoundsRect;
+
+    if AHorz then
+      Pos0 := Area.Left
+    else
+      Pos0 := Area.Top;
+    for Index := 0 to Items.Count - 1 do
+    begin
+      Inc(Pos0, Gap);
+      if Index < Extra then
+        Inc(Pos0);
+      Ctl := TControl(Items[Index]);
+      R := Ctl.BoundsRect;
+      if AHorz then
+        OffsetRect(R, Pos0 - R.Left, 0)
+      else
+        OffsetRect(R, 0, Pos0 - R.Top);
+      Ctl.BoundsRect := R;
+      if AHorz then
+        Inc(Pos0, Ctl.Width)
+      else
+        Inc(Pos0, Ctl.Height);
+    end;
+  finally
+    Items.Free;
   end;
   ShowGroupMarks;
   CommitGroup;
