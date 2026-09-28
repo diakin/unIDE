@@ -3723,6 +3723,33 @@ end;
 // clWindow, clWindowText), цвет роли в другом режиме или поставленный нами
 // раньше. Свой цвет, который элементу задал код или .dfm (жёлтое поле
 // темы, салатовая подсветка), остаётся.
+// Системные цвета, которые тема IDE считает «цветом по умолчанию» и
+// заменяет цветом роли (UiPaintColors). Любой другой цвет - свой цвет
+// элемента, тема его не трогает. Тот же список - в ObjCodeProps: разница
+// снимка и .dfm по такому цвету - от темы, а не от кода.
+const
+  UiThemeBgSys: array[0..2] of TColor = (clBtnFace, clWindow, TColor($00F0F0F0));
+  UiThemeFgSys: array[0..2] of TColor = (clWindowText, clBtnText, clBlack);
+
+// Значение цвета из .dfm (clBtnFace, $00F0F0F0, 15790320) - одно из ASys
+function UiThemeSysColor(const AValue: string;
+                         const ASys: array of TColor): Boolean;
+var
+  ColorVal: Longint;
+  SysIdx: Integer;
+begin
+  Result := False;
+  if not IdentToColor(Trim(AValue), ColorVal) and
+     not TryStrToInt(Trim(AValue), ColorVal) then
+    Exit;
+  for SysIdx := Low(ASys) to High(ASys) do
+    if TColor(ColorVal) = ASys[SysIdx] then
+    begin
+      Result := True;
+      Exit;
+    end;
+end;
+
 procedure TForm1.UiPaintColors(C: TControl);
 var
   BgKey, FgKey: string;
@@ -3770,7 +3797,7 @@ var
     NewC: TColor;
   begin
     Cur := TUiCtl(C).Font.Color;
-    if not IsOurs(Cur, AKey, [clWindowText, clBtnText, clBlack]) then
+    if not IsOurs(Cur, AKey, UiThemeFgSys) then
       Exit;
     NewC := UiColor(AKey);
     if Cur <> NewC then
@@ -3811,7 +3838,7 @@ begin
   end;
 
   if BgKey <> '' then
-    SetBg(BgKey, [clBtnFace, clWindow, TColor($00F0F0F0)]);
+    SetBg(BgKey, UiThemeBgSys);
   if FgKey <> '' then
     SetFg(FgKey);
 
@@ -27367,6 +27394,12 @@ begin
         RV := DsgNodeValue(R, Nm, Defs);
         if (SV = '') or (Copy(SV, 1, 2) = '''(') or
            (DsgNormValue(SV) = DsgNormValue(RV)) then
+          Continue;
+        // В .dfm цвет по умолчанию, а при работе его заменила тема IDE
+        // (UiPaintColors) - это не код. Свой цвет, записанный в .dfm, тема
+        // не меняет, так что правка в инспекторе при работе останется.
+        if ((Nm = 'Color') and UiThemeSysColor(RV, UiThemeBgSys)) or
+           ((Nm = 'Font.Color') and UiThemeSysColor(RV, UiThemeFgSys)) then
           Continue;
         // Место, которое следует из родителя (выравнивание, якоря), - не
         // от кода
