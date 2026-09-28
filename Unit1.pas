@@ -1777,9 +1777,6 @@ type
     procedure UpdateCompilerCaption;
     procedure btnCompileClick(Sender: TObject);
     procedure btnRunClick(Sender: TObject);
-    procedure SetToolGlyph(ABtn: TSpeedButton; AKind: Integer);
-    procedure MakeCmpButton(var ABtn: TSpeedButton; AKind: Integer;
-                            var ALeft: Integer);
     procedure AppIdle(Sender: TObject; var Done: Boolean);
     procedure UpdateToolbarState;
     procedure DsgHideForRun;
@@ -1798,8 +1795,6 @@ type
                                 var ALine: Integer): Boolean;
     function  RunCompiler(const AExe, AParams, AWorkDir: string): Integer;
     function  CompileDelphi: Boolean;
-    procedure SetRunGlyph(ABtn: TSpeedButton);
-    procedure AddDisabledGlyph(ABtn: TSpeedButton);
     procedure CheckUnitPath(const AList: string);
     // Папка UiLib рядом с программой: свои компоненты (Ui*.pas) для сборки
     // проектов пользователя. '' - модулей нет.
@@ -2029,6 +2024,10 @@ type
     // Кнопке поставили новый значок кодом - забыть прежние (исходный и
     // перевёрнутый) и применить тему к новому
     procedure UiGlyphReset(ABtn: TSpeedButton);
+    // Значок кнопки из лент BMP_ICONS_LIGHT / BMP_ICONS_DARK: светлый и
+    // тёмный рисунки, у каждого - обычный и для недоступной кнопки
+    procedure SetToolIcon(ABtn: TSpeedButton; AIconIdx: Integer;
+                          ALightStrip, ADarkStrip: TBitmap);
     procedure UiWrapListScrolls;
     procedure UiListGrid(ALV: TListView);
     procedure UiGridNote(Sender: TCustomListView; const AWhat: string);
@@ -3475,6 +3474,113 @@ begin
     if ABtn.Components[Index] is TUiGlyph then
       ABtn.Components[Index].Free;
   UiApplyGlyph(ABtn);
+end;
+
+// ---------------------------------------------------------------------------
+//  Значки кнопок тулбара и ряда Delphi
+//
+//  Две ленты в toolbar_icons.res (делает icons\make_icons.py):
+//  BMP_ICONS_LIGHT и BMP_ICONS_DARK. В ленте ToolIconSize * число значков
+//  по ширине и две строки по высоте: верхняя - обычный значок, нижняя - он
+//  же для недоступной кнопки. Прозрачный цвет - clFuchsia (левый нижний
+//  пиксель, как берёт TSpeedButton).
+//  Значок - цветная плитка со скруглёнными углами и белым рисунком. В
+//  тёмной ленте плитки чуть темнее и спокойнее, серые плитки недоступных
+//  кнопок - тёмные.
+//  Тёмный значок кладётся в TUiGlyph.Dark кнопки заранее: UiApplyGlyph
+//  ставит его, а не строит переворотом яркости.
+// ---------------------------------------------------------------------------
+
+const
+  ToolIconSize = 20;   // сторона значка в ленте, пикселей
+  // Номера значков в лентах - порядок ICONS в icons\make_icons.py
+  IconOpen      = 0;
+  IconSave      = 1;
+  IconUndo      = 2;
+  IconCut       = 3;
+  IconCopy      = 4;
+  IconPaste     = 5;
+  IconSavePrj   = 6;
+  IconRun       = 7;
+  IconViewUnit  = 8;
+  IconViewForm  = 9;
+  IconNewForm   = 10;
+  IconPause     = 11;
+  IconReset     = 12;
+  IconTraceInto = 13;
+  IconStepOver  = 14;
+
+// Лента из ресурсов программы. Нет ресурса - лента остаётся пустой, и
+// кнопки останутся без значков, но программа запустится.
+procedure LoadToolStrip(const AResName: string; AStrip: TBitmap);
+begin
+  AStrip.Width := 0;
+  AStrip.Height := 0;
+  if FindResource(HInstance, PChar(AResName), RT_BITMAP) = 0 then
+    Exit;
+  try
+    AStrip.LoadFromResourceName(HInstance, AResName);
+  except
+    AStrip.Width := 0;
+    AStrip.Height := 0;
+  end;
+end;
+
+// Значок номер AIconIdx из ленты: обычный и для недоступной кнопки рядом,
+// ширина 2 * ToolIconSize - как ждёт TSpeedButton при NumGlyphs = 2
+function CutToolIcon(AStrip: TBitmap; AIconIdx: Integer;
+                     AGlyph: TBitmap): Boolean;
+var
+  SrcLeft: Integer;
+begin
+  Result := False;
+  if (AStrip = nil) or AStrip.Empty or (AIconIdx < 0) or
+     ((AIconIdx + 1) * ToolIconSize > AStrip.Width) or
+     (AStrip.Height < ToolIconSize * 2) then
+    Exit;
+  SrcLeft := AIconIdx * ToolIconSize;
+  AGlyph.PixelFormat := pf24bit;
+  AGlyph.Width := ToolIconSize * 2;
+  AGlyph.Height := ToolIconSize;
+  AGlyph.Canvas.CopyMode := cmSrcCopy;
+  AGlyph.Canvas.CopyRect(Rect(0, 0, ToolIconSize, ToolIconSize),
+    AStrip.Canvas,
+    Rect(SrcLeft, 0, SrcLeft + ToolIconSize, ToolIconSize));
+  AGlyph.Canvas.CopyRect(Rect(ToolIconSize, 0, ToolIconSize * 2, ToolIconSize),
+    AStrip.Canvas,
+    Rect(SrcLeft, ToolIconSize, SrcLeft + ToolIconSize, ToolIconSize * 2));
+  Result := True;
+end;
+
+procedure TForm1.SetToolIcon(ABtn: TSpeedButton; AIconIdx: Integer;
+                             ALightStrip, ADarkStrip: TBitmap);
+var
+  Mark: TUiGlyph;
+  Index: Integer;
+begin
+  if ABtn = nil then
+    Exit;
+  // Прежние значки кнопки (исходный и перевёрнутый) больше не нужны
+  for Index := ABtn.ComponentCount - 1 downto 0 do
+    if ABtn.Components[Index] is TUiGlyph then
+      ABtn.Components[Index].Free;
+
+  Mark := TUiGlyph.Create(ABtn);
+  if not CutToolIcon(ALightStrip, AIconIdx, Mark.Orig) then
+  begin
+    Mark.Free;
+    // Лента короче, чем ждёт кнопка - лучше сказать об этом прямо
+    ABtn.Hint := Format('В ленте значков нет номера %d', [AIconIdx]);
+    Exit;
+  end;
+  // Нет тёмной ленты - Dark пустой, и UiApplyGlyph построит его сам
+  // переворотом яркости, как у остальных кнопок
+  if not CutToolIcon(ADarkStrip, AIconIdx, Mark.Dark) then
+    Mark.Dark.Assign(nil);
+  Mark.IsDark := False;
+  ABtn.Glyph := Mark.Orig;
+  ABtn.NumGlyphs := 2;
+  UiApplyGlyph(ABtn);   // в IDE Dark - сразу тёмный
 end;
 
 procedure TForm1.UiApplyForm(AForm: TCustomForm);
@@ -14075,26 +14181,24 @@ var
   SampleBmp: TBitmap; // временный холст для замера ширины панелей
   CurrentLeft: Integer;
   CmpLeft: Integer;      // правый край ряда Delphi - для ширины FLeftPanel
-  ImageList: TImageList; // Наш контейнер для нарезки
-  BmpStrip: TBitmap;    // Буфер для загрузки ленты
+  IconsLight: TBitmap;   // лента значков для IDE Light
+  IconsDark: TBitmap;    // лента значков для IDE Dark
 
   // Кнопка ряда pnlToolbarIn. Сама кнопка - место, размер, подсказка,
-  // обработчик - описана в .dfm. Здесь ей ставится значок из ленты
-  // ImageList по номеру ImgIndex, и CurrentLeft сдвигается на её ширину:
-  // по CurrentLeft ниже подгоняется ширина FLeftPanel.
-  procedure ConfigureButton(var ToolBarBtn: TSpeedButton; ImgIndex: Integer);
+  // обработчик - описана в .dfm, значок ставит SetToolIcon. Здесь
+  // CurrentLeft сдвигается на её ширину: по CurrentLeft ниже подгоняется
+  // ширина FLeftPanel.
+  procedure AddToolWidth(ToolBarBtn: TSpeedButton);
   const
     GapBtn  = 1;  // промежуток между соседними кнопками - кнопки рядом
   begin
-    // Если лента иконок короче, чем ждёт кнопка, GetBitmap молча вернёт
-    // пустую картинку - лучше сказать об этом прямо
-    if ImgIndex < ImageList.Count then
-      ImageList.GetBitmap(ImgIndex, ToolBarBtn.Glyph)
-    else
-      ToolBarBtn.Hint := Format('В ленте иконок нет номера %d (всего %d)',
-                         [ImgIndex, ImageList.Count]);
-
     CurrentLeft := CurrentLeft + ToolBarBtn.Width + GapBtn;
+  end;
+
+  // То же для ряда Delphi: CmpLeft - правый край ряда
+  procedure AddCmpWidth(CmpBtn: TSpeedButton);
+  begin
+    CmpLeft := CmpLeft + CmpBtn.Width + 1;
   end;
 
 begin
@@ -14208,45 +14312,53 @@ begin
   FHotTabBarWidth := 3;    // тонкая полоска; 0 или меньше = во всю ширину символа
   FHotTabPale := 50;       // наполовину подмешан фон редактора
 
-  // Значки тулбара: ImageList с картинками 20x20 из ленты BMP_STRIP
-  ImageList := TImageList.Create(Self);
-//  ImageList.Width := 16;  // Ширина ОДНОЙ иконки в ленте
-//  ImageList.Height := 16; // Высота одной иконки
-  ImageList.Width := 20;  // Ширина ОДНОЙ иконки в ленте
-  ImageList.Height := 20; // Высота одной иконки
-
-  // Загружаем длинную BMP-ленту из вшитых ресурсов EXE
-  BmpStrip := TBitmap.Create;
+  // Значки тулбара и ряда Delphi: ленты 20x20 для светлой и тёмной темы
+  // (см. SetToolIcon). У каждой кнопки остаются свои копии, ленты после
+  // этого не нужны.
+  IconsLight := TBitmap.Create;
+  IconsDark := TBitmap.Create;
   try
-    BmpStrip.LoadFromResourceName(HInstance, 'BMP_STRIP');
-    
-    // Добавляем ленту в ImageList, указывая розовый цвет (clFuchsia) как маску прозрачности.
-    // ImageList сам уберёт этот фон и разрежет ленту на картинки по 20 пикселей.
-    ImageList.AddMasked(BmpStrip, clFuchsia);
+    LoadToolStrip('BMP_ICONS_LIGHT', IconsLight);
+    LoadToolStrip('BMP_ICONS_DARK', IconsDark);
+    SetToolIcon(btnOpen, IconOpen, IconsLight, IconsDark);
+    SetToolIcon(btnSave, IconSave, IconsLight, IconsDark);
+    SetToolIcon(btnSavePrj, IconSavePrj, IconsLight, IconsDark);
+    SetToolIcon(btnUndo, IconUndo, IconsLight, IconsDark);
+    SetToolIcon(btnCut, IconCut, IconsLight, IconsDark);
+    SetToolIcon(btnCopy, IconCopy, IconsLight, IconsDark);
+    SetToolIcon(btnPaste, IconPaste, IconsLight, IconsDark);
+    SetToolIcon(btnCompileRun, IconRun, IconsLight, IconsDark);
+    SetToolIcon(btnViewUnit, IconViewUnit, IconsLight, IconsDark);
+    SetToolIcon(btnViewForm, IconViewForm, IconsLight, IconsDark);
+    SetToolIcon(btnNewForm, IconNewForm, IconsLight, IconsDark);
+    SetToolIcon(btnPause, IconPause, IconsLight, IconsDark);
+    SetToolIcon(btnProgReset, IconReset, IconsLight, IconsDark);
+    SetToolIcon(btnTraceInto, IconTraceInto, IconsLight, IconsDark);
+    SetToolIcon(btnStepOver, IconStepOver, IconsLight, IconsDark);
   finally
-    BmpStrip.Free; // Буфер больше не нужен, картинки уже в нарезанном кэше ImageList
+    IconsDark.Free;
+    IconsLight.Free;
   end;
 
   FLeftPanel.Width := 520;
 
   FCompilerBox := grpCompiler;   // заголовок меняется вместе с проектом
 
-  SetRunGlyph(btnCompileRun);
-
-  // Дальше ряд кнопок, как в Delphi. Кнопки описаны в .dfm, здесь - значки
-  // и подсчёт ширины ряда в CmpLeft. Работают View Unit, View Form и
+  // Дальше ряд кнопок, как в Delphi. Кнопки описаны в .dfm, значки
+  // поставлены выше, здесь - подсчёт ширины ряда в CmpLeft. Работают
+  // View Unit, View Form и
   // Program reset; New Form, Pause, Trace into и Step over пока только
   // сообщают, что не сделаны (NotDoneClick): отладчика в редакторе нет.
   CmpLeft := btnCompileRun.Left + btnCompileRun.Width + 10;
   // Те же списки, что в меню View: Просмотр модулей и Просмотр форм
-  MakeCmpButton(btnViewUnit, 1, CmpLeft);
-  MakeCmpButton(btnViewForm, 2, CmpLeft);
-  MakeCmpButton(btnNewForm, 3, CmpLeft);
+  AddCmpWidth(btnViewUnit);
+  AddCmpWidth(btnViewForm);
+  AddCmpWidth(btnNewForm);
   Inc(CmpLeft, 10); // разделитель перед отладкой
-  MakeCmpButton(btnPause, 4, CmpLeft);
-  MakeCmpButton(btnProgReset, 5, CmpLeft);
-  MakeCmpButton(btnTraceInto, 6, CmpLeft);
-  MakeCmpButton(btnStepOver, 7, CmpLeft);
+  AddCmpWidth(btnPause);
+  AddCmpWidth(btnProgReset);
+  AddCmpWidth(btnTraceInto);
+  AddCmpWidth(btnStepOver);
 
   // Панель лога внизу описана в форме - здесь обработчики и стартовая
   // вкладка
@@ -14272,17 +14384,16 @@ begin
   // в .dfm)
   CurrentLeft := 2;
 
-  // Значки кнопок тулбара - по номеру картинки в ленте BMP_STRIP
-  ConfigureButton(btnOpen, 0);
-  ConfigureButton(btnSave, 1);
-  ConfigureButton(btnSavePrj, 6);
+  AddToolWidth(btnOpen);
+  AddToolWidth(btnSave);
+  AddToolWidth(btnSavePrj);
 
   CurrentLeft := CurrentLeft + 10; // Разделитель между группами
 
-  ConfigureButton(btnUndo, 2);
-  ConfigureButton(btnCut, 3);
-  ConfigureButton(btnCopy, 4);
-  ConfigureButton(btnPaste, 5);
+  AddToolWidth(btnUndo);
+  AddToolWidth(btnCut);
+  AddToolWidth(btnCopy);
+  AddToolWidth(btnPaste);
 
   // Теперь известна суммарная ширина кнопок - подгоняем под неё левую
   // панель. Рядов два, панель шире того, который длиннее.
@@ -14290,23 +14401,6 @@ begin
     FLeftPanel.Width := CurrentLeft + 10
   else
     FLeftPanel.Width := CmpLeft + 6;
-
-  // Серые значки для недоступного состояния - свои (см. AddDisabledGlyph)
-  AddDisabledGlyph(btnOpen);
-  AddDisabledGlyph(btnSave);
-  AddDisabledGlyph(btnSavePrj);
-  AddDisabledGlyph(btnUndo);
-  AddDisabledGlyph(btnCut);
-  AddDisabledGlyph(btnCopy);
-  AddDisabledGlyph(btnPaste);
-  AddDisabledGlyph(btnCompileRun);
-  AddDisabledGlyph(btnViewUnit);
-  AddDisabledGlyph(btnViewForm);
-  AddDisabledGlyph(btnNewForm);
-  AddDisabledGlyph(btnPause);
-  AddDisabledGlyph(btnProgReset);
-  AddDisabledGlyph(btnTraceInto);
-  AddDisabledGlyph(btnStepOver);
 
   BuildSearchPanel; // элементы поиска на группе Search and replace
   FitSearchBox;
@@ -30357,111 +30451,6 @@ begin
   DsgShowAfterRun;
 end;
 
-// Кнопка ряда Delphi на группе Compiler. Сама кнопка описана в .dfm, здесь
-// ей ставится значок (SetToolGlyph), а ALeft сдвигается на её ширину.
-procedure TForm1.MakeCmpButton(var ABtn: TSpeedButton; AKind: Integer;
-                               var ALeft: Integer);
-begin
-  SetToolGlyph(ABtn, AKind);
-  ALeft := ALeft + ABtn.Width + 1;
-end;
-
-// Значки кнопок ряда Delphi, 16x16, рисуются в коде. Свои, не заимствованные:
-// у значков Delphi и Lazarus свои условия распространения.
-// Прозрачный цвет - clFuchsia: TSpeedButton берёт цвет левого нижнего
-// пикселя за прозрачный.
-//   1 View Unit     - лист бумаги со строками
-//   2 View Form     - окно с заголовком
-//   3 New Form      - окно с зелёным плюсом
-//   4 Pause         - две синие полосы
-//   5 Program reset - красный квадрат
-//   6 Trace into    - стрелка вниз к строке
-//   7 Step over     - стрелка дугой над точкой
-procedure TForm1.SetToolGlyph(ABtn: TSpeedButton; AKind: Integer);
-var
-  Bmp: TBitmap;
-  I: Integer;
-begin
-  if ABtn = nil then
-    Exit;
-  Bmp := TBitmap.Create;
-  try
-    Bmp.Width := 16;
-    Bmp.Height := 16;
-    with Bmp.Canvas do
-    begin
-      Brush.Color := clFuchsia;
-      FillRect(Rect(0, 0, 16, 16));
-      Pen.Color := clBlack;
-
-      case AKind of
-        1: // лист со строками
-          begin
-            Brush.Color := clWhite;
-            Rectangle(3, 1, 13, 15);
-            Pen.Color := clGray;
-            for I := 0 to 3 do
-            begin
-              MoveTo(5, 4 + I * 3);
-              LineTo(11, 4 + I * 3);
-            end;
-          end;
-        2, 3: // окно, у New Form - с плюсом
-          begin
-            Brush.Color := clBtnFace;
-            Rectangle(2, 3, 14, 14);
-            Brush.Color := clNavy;
-            Pen.Color := clNavy;
-            Rectangle(2, 3, 14, 6);
-            if AKind = 3 then
-            begin
-              Brush.Color := $0000A000;
-              Pen.Color := $0000A000;
-              Rectangle(8, 8, 15, 10);
-              Rectangle(10, 6, 12, 13);
-            end;
-          end;
-        4: // пауза
-          begin
-            Brush.Color := clNavy;
-            Pen.Color := clNavy;
-            Rectangle(3, 2, 7, 14);
-            Rectangle(9, 2, 13, 14);
-          end;
-        5: // стоп
-          begin
-            Brush.Color := clRed;
-            Pen.Color := $00000080;
-            Rectangle(3, 3, 13, 13);
-          end;
-        6: // стрелка вниз к строке
-          begin
-            Brush.Color := clNavy;
-            Pen.Color := clNavy;
-            Rectangle(7, 1, 9, 9);
-            Polygon([Point(4, 8), Point(11, 8), Point(8, 13)]);
-            Pen.Color := clGray;
-            MoveTo(2, 14);
-            LineTo(14, 14);
-          end;
-        7: // стрелка дугой над точкой
-          begin
-            Pen.Color := clNavy;
-            Arc(2, 4, 14, 16, 14, 10, 2, 10);
-            Brush.Color := clNavy;
-            Polygon([Point(11, 7), Point(15, 11), Point(11, 12)]);
-            Brush.Color := clGray;
-            Pen.Color := clGray;
-            Ellipse(6, 11, 10, 15);
-          end;
-      end;
-    end;
-    ABtn.Glyph := Bmp;
-  finally
-    Bmp.Free;
-  end;
-end;
-
 // Program reset: остановить программу, запущенную из среды
 procedure TForm1.ProgramResetClick(Sender: TObject);
 begin
@@ -30534,86 +30523,6 @@ begin
   if Sender is TSpeedButton then
     Nm := TSpeedButton(Sender).Hint;
   ShowMessage('27227:' + Nm + ': пока не сделано.');
-end;
-
-// Значок кнопки - зелёный треугольник, как у Run в Delphi. Рисуется в коде,
-// а не берётся из ресурса: один простой рисунок не стоит правки .res.
-//
-// Фон - clFuchsia: TSpeedButton берёт цвет левого нижнего пикселя за
-// прозрачный, и угол должен остаться незакрашенным.
-// Второй значок кнопки - для недоступного состояния: тот же рисунок в
-// светло-серых тонах. Свой, а не тот, что VCL строит сам: VCL делает
-// одноцветный оттиск по контуру, и у значков из ленты и нарисованных в
-// коде он получался пустым - на месте недоступной кнопки было пусто.
-// Прозрачный цвет - левый нижний пиксель, как у TSpeedButton.
-procedure TForm1.AddDisabledGlyph(ABtn: TSpeedButton);
-var
-  Src, Dst: TBitmap;
-  X, Y, W, H, L: Integer;
-  C, T: TColor;
-begin
-  if (ABtn = nil) or ABtn.Glyph.Empty or (ABtn.NumGlyphs > 1) then
-    Exit;
-  Src := TBitmap.Create;
-  Dst := TBitmap.Create;
-  try
-    Src.Assign(ABtn.Glyph);
-    W := Src.Width;
-    H := Src.Height;
-    Dst.PixelFormat := pf24bit;
-    Dst.Width := W * 2;
-    Dst.Height := H;
-    T := ColorToRGB(Src.Canvas.Pixels[0, H - 1]);
-    Dst.Canvas.Brush.Color := T;
-    Dst.Canvas.FillRect(Rect(0, 0, W * 2, H));
-    Dst.Canvas.Draw(0, 0, Src);
-    for Y := 0 to H - 1 do
-      for X := 0 to W - 1 do
-      begin
-        C := ColorToRGB(Src.Canvas.Pixels[X, Y]);
-        if C = T then
-          Continue;
-        // Яркость, поднятая к светлому: серый, но рисунок узнаётся
-        L := (GetRValue(C) * 30 + GetGValue(C) * 59 + GetBValue(C) * 11) div 100;
-        L := 120 + L div 2;
-        if L > 230 then
-          L := 230;
-        Dst.Canvas.Pixels[W + X, Y] := RGB(L, L, L);
-      end;
-    ABtn.Glyph := Dst;
-    ABtn.NumGlyphs := 2;
-  finally
-    Dst.Free;
-    Src.Free;
-  end;
-end;
-
-procedure TForm1.SetRunGlyph(ABtn: TSpeedButton);
-var
-  Bmp: TBitmap;
-  Pts: array[0..2] of TPoint;
-begin
-  if ABtn = nil then
-    Exit;
-
-  Bmp := TBitmap.Create;
-  try
-    Bmp.Width := 16;
-    Bmp.Height := 16;
-    Bmp.Canvas.Brush.Color := clFuchsia;
-    Bmp.Canvas.FillRect(Rect(0, 0, 16, 16));
-
-    Pts[0] := Point(4, 2);
-    Pts[1] := Point(13, 8);
-    Pts[2] := Point(4, 14);
-    Bmp.Canvas.Brush.Color := $0000B400;   // зелёный
-    Bmp.Canvas.Pen.Color := $00006000;     // тёмная кромка
-    Bmp.Canvas.Polygon(Pts);
-
-    ABtn.Glyph := Bmp;
-  finally
-    Bmp.Free;
-  end;
 end;
 
 // Файл .dpr, который считается целью: цель проекта, иначе открытый .dpr,
