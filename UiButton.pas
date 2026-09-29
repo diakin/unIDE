@@ -20,16 +20,21 @@ unit UiButton;
 //  подписи - TextColor (clNone - по теме).
 //
 //  TUiIconButton - кнопка-значок для панелей инструментов (вместо
-//  TSpeedButton). Квадрат 34x34 (значок 28x28) с фоном родителя; когда над ним мышь, под значком
-//  рисуется скруглённый прямоугольник цветом выделения, нажатую - значок
-//  сдвинут на пиксель. Сам значок - Glyph, как у TSpeedButton: прозрачный
+//  TSpeedButton). Квадрат 34x34 (значок 24x24) с фоном родителя. Слои снизу
+//  вверх:
+//    1. скруглённый прямоугольник во всю кнопку - цветом фона родителя, а
+//       когда над кнопкой мышь - цветом выделения (HotColor);
+//    2. подложка - такой же прямоугольник, на RingWidth меньше с каждой
+//       стороны (FaceColor): вокруг неё остаётся ободок первого слоя;
+//    3. значок по центру; нажатую - сдвинут на пиксель. Сам значок - Glyph, как у TSpeedButton: прозрачный
 //  цвет - левый нижний пиксель, при NumGlyphs = 2 правая половина - значок
 //  недоступной кнопки. 32-битный Glyph (pf32bit) - с альфа-каналом:
 //  цвета умножены на альфу, рисуется через AlphaBlend, сглаженные края
 //  ложатся на любой фон. Фокуса не берёт: щелчок не уводит его из поля ввода.
 //
 //  Фон - цвет родителя (Color): в IDE Dark это цвет роли панели.
-//  Цвет выделения - HotColor; clNone - роль темы IconButton.HotBG.
+//  Цвет выделения - HotColor; clNone - роль темы IconButton.HotBG. Цвет
+//  подложки - FaceColor; clNone - роль IconButton.BG.
 // ---------------------------------------------------------------------------
 
 interface
@@ -117,6 +122,8 @@ type
     FGlyph: TBitmap;
     FNumGlyphs: Integer;
     FHotColor: TColor;
+    FFaceColor: TColor;
+    FRingWidth: Integer;
     FCornerRadius: Integer;
     FHot: Boolean;          // мышь над кнопкой
     FPressing: Boolean;     // левая кнопка мыши нажата на ней и держится
@@ -130,6 +137,9 @@ type
     procedure SetGlyph(Value: TBitmap);
     procedure SetNumGlyphs(Value: Integer);
     procedure SetHotColor(Value: TColor);
+    procedure SetFaceColor(Value: TColor);
+    procedure SetRingWidth(Value: Integer);
+    function  ActualFaceColor: TColor;
     procedure SetCornerRadius(Value: Integer);
     procedure GlyphChanged(Sender: TObject);
     procedure BuildCells;
@@ -158,9 +168,15 @@ type
     // Цвет прямоугольника под значком, когда над кнопкой мышь; clNone -
     // роль темы IconButton.HotBG
     property HotColor: TColor read FHotColor write SetHotColor default clNone;
-    // Скругление углов этого прямоугольника, пикселей
+    // Скругление углов этого прямоугольника, пикселей (у подложки - на
+    // RingWidth меньше)
     property CornerRadius: Integer read FCornerRadius write SetCornerRadius
       default 8;
+    // Цвет подложки под значком; clNone - роль темы IconButton.BG
+    property FaceColor: TColor read FFaceColor write SetFaceColor
+      default clNone;
+    // Ширина ободка выделения вокруг подложки, пикселей; 0 - подложки нет
+    property RingWidth: Integer read FRingWidth write SetRingWidth default 2;
     property Align;
     property Anchors;
     property Constraints;
@@ -577,6 +593,8 @@ begin
   TabStop := False;
   FNumGlyphs := 1;
   FHotColor := clNone;
+  FFaceColor := clNone;
+  FRingWidth := 2;
   FCornerRadius := 8;
   FGlyph := TBitmap.Create;
   FGlyph.OnChange := GlyphChanged;
@@ -637,6 +655,35 @@ begin
     FHotColor := Value;
     Invalidate;
   end;
+end;
+
+procedure TUiIconButton.SetFaceColor(Value: TColor);
+begin
+  if FFaceColor <> Value then
+  begin
+    FFaceColor := Value;
+    Invalidate;
+  end;
+end;
+
+procedure TUiIconButton.SetRingWidth(Value: Integer);
+begin
+  if Value < 0 then
+    Value := 0;
+  if FRingWidth <> Value then
+  begin
+    FRingWidth := Value;
+    Invalidate;
+  end;
+end;
+
+function TUiIconButton.ActualFaceColor: TColor;
+begin
+  Result := FFaceColor;
+  if Result = clNone then
+    Result := UiThemeColorFor(Self, 'IconButton.BG');
+  if Result = clNone then
+    Result := clBtnFace;
 end;
 
 procedure TUiIconButton.SetCornerRadius(Value: Integer);
@@ -795,8 +842,8 @@ const
   IconSrcAlpha = $01;   // AC_SRC_ALPHA: у значка своя альфа на точку
 var
   Buf, Cell: TBitmap;
-  Area: TRect;
-  Shift, PosX, PosY: Integer;
+  Area, Inner: TRect;
+  Shift, PosX, PosY, InnerRadius: Integer;
   ShowHot: Boolean;
   Blend: TBlendFunction;
 begin
@@ -812,16 +859,33 @@ begin
     Buf.Canvas.Brush.Color := BackColor;
     Buf.Canvas.FillRect(Area);
 
-    // Выделение: мышь над кнопкой или её держат нажатой
+    // Слой 1 - прямоугольник во всю кнопку: цвет фона, а под мышью (или
+    // пока её держат нажатой) - цвет выделения
     ShowHot := Enabled and (FHot or (FPressing and FMouseIn));
     if ShowHot then
+      Buf.Canvas.Brush.Color := ActualHotColor
+    else
+      Buf.Canvas.Brush.Color := BackColor;
+    Buf.Canvas.Pen.Color := Buf.Canvas.Brush.Color;
+    Buf.Canvas.RoundRect(Area.Left, Area.Top, Area.Right, Area.Bottom,
+                         FCornerRadius * 2, FCornerRadius * 2);
+
+    // Слой 2 - подложка, на ободок меньше: ободок первого слоя остаётся
+    // вокруг неё
+    if FRingWidth > 0 then
     begin
-      Buf.Canvas.Brush.Color := ActualHotColor;
+      Inner := Area;
+      InflateRect(Inner, -FRingWidth, -FRingWidth);
+      InnerRadius := FCornerRadius - FRingWidth;
+      if InnerRadius < 0 then
+        InnerRadius := 0;
+      Buf.Canvas.Brush.Color := ActualFaceColor;
       Buf.Canvas.Pen.Color := Buf.Canvas.Brush.Color;
-      Buf.Canvas.RoundRect(Area.Left, Area.Top, Area.Right, Area.Bottom,
-                           FCornerRadius * 2, FCornerRadius * 2);
+      Buf.Canvas.RoundRect(Inner.Left, Inner.Top, Inner.Right, Inner.Bottom,
+                           InnerRadius * 2, InnerRadius * 2);
     end;
 
+    // Слой 3 - значок по центру
     BuildCells;
     if Enabled then
       Cell := FCellNormal

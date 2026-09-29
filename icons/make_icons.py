@@ -1,32 +1,37 @@
 # -*- coding: utf-8 -*-
 # Toolbar icons for SyntaxHLClaude from the Lazarus "general_purpose" set by
-# Roland Hahn (CC0 1.0, see svg/readme_RolandHahn.txt). The SVG sources are in
-# svg/ (copied from gitlab.com/freepascal.org/lazarus/resources,
-# image_sources/images/general_purpose/svg (Roland Hahn)).
+# Roland Hahn (CC0 1.0, see png/readme_general_purpose.txt).
+#   png/ - the 24x24 PNG files as they are in Lazarus (images/general_purpose)
+#   svg/ - SVG sources of the two floppies (gitlab.com/freepascal.org/lazarus/
+#          resources, image_sources/images/general_purpose/svg (Roland Hahn)):
+#          they are rendered here, with the blue body recoloured
 #
-# Renders every icon from SVG at 28x28 with alpha and writes:
-#   icons_light.bmp, icons_dark.bmp - strips 28*N x 56, 32-bit BGRA with
+# Writes:
+#   icons_light.bmp, icons_dark.bmp - strips 24*N x 48, 32-bit BGRA with
 #                                     premultiplied alpha (for AlphaBlend):
 #                                     row 0 normal, row 1 disabled
 #   ..\toolbar_icons.res            - BMP_ICONS_LIGHT, BMP_ICONS_DARK
 #                                     (same as brcc32 toolbar_icons.rc)
-#   preview.png                     - both themes, real size and x3
+#   preview.png                     - buttons as TUiIconButton draws them,
+#                                     both themes, x3 and real size
 # Needs Python 3, Pillow and cairosvg.  Run: python make_icons.py
 import io, os, struct
 import cairosvg
 from PIL import Image
 
-SIZE = 28
+SIZE = 24
 
-# Order = index in the strip (Unit1.pas, IconOpen..IconStepOver)
+# Order = index in the strip. MUST match the constants in Unit1.pas:
+# IconOpen = 0, IconSave = 1, IconUndo = 2, IconCut = 3, IconCopy = 4,
+# IconPaste = 5, IconSavePrj = 6, IconRun = 7 ... IconStepOver = 14
 ICONS = [
     ('open',      'Open_01'),
     ('save',      'Save_01'),
-    ('saveprj',   'SaveAs_01'),
     ('undo',      'Undo_01'),
     ('cut',       'Cut_01'),
     ('copy',      'Copy_01'),
     ('paste',     'Paste_01'),
+    ('saveprj',   'SaveAs_01'),
     ('run',       'Play_01'),
     ('viewunit',  'File_02'),
     ('viewform',  'Window_02'),
@@ -51,11 +56,17 @@ THEMES = {
 
 
 def render(theme, name):
+    """Lazarus PNG as is; the floppies from their SVG with the body
+    recoloured (the PNG of the same SVG differs from this render by a few
+    levels of 255 at most)."""
     here = os.path.dirname(os.path.abspath(__file__))
-    with open(os.path.join(here, 'svg', name + '_32.svg'), encoding='utf-8') as fin:
+    if name not in FLOPPY_ICONS:
+        return Image.open(os.path.join(here, 'png', '%s_%d.png' % (name, SIZE))
+                          ).convert('RGBA')
+    with open(os.path.join(here, 'svg', '%s_%d.svg' % (name, SIZE)),
+              encoding='utf-8') as fin:
         svg = fin.read()
-    if name in FLOPPY_ICONS:
-        svg = svg.replace(FLOPPY_BLUE, FLOPPY[theme])
+    svg = svg.replace(FLOPPY_BLUE, FLOPPY[theme])
     png = cairosvg.svg2png(bytestring=svg.encode('utf-8'),
                            output_width=SIZE, output_height=SIZE)
     return Image.open(io.BytesIO(png)).convert('RGBA')
@@ -128,27 +139,48 @@ def main():
     with open(os.path.join(here, '..', 'toolbar_icons.res'), 'wb') as fout:
         fout.write(res)
 
-    # preview: each theme on its face, x3 and real size
-    zoom = 3
-    cell = SIZE * zoom + 10
+    # preview: toolbar buttons as TUiIconButton draws them (34x34, ring 2,
+    # corner 8): normal, under the mouse, disabled; real size and x3
+    from PIL import ImageDraw
+    button, ring, corner = 34, 2, 8
+    looks = {  # panel, plate (IconButton.BG), hot (IconButton.HotBG), RGB
+        'light': ((0xF0, 0xF0, 0xF0), (0xFC, 0xFC, 0xFC), (0xC4, 0xDC, 0xF2)),
+        'dark':  ((0x2D, 0x2D, 0x30), (0x48, 0x48, 0x48), (0x60, 0x60, 0x60)),
+    }
     count = len(ICONS)
-    prev = Image.new('RGB', (cell * count + 10, 2 * (cell * 2 + SIZE + 20)),
-                     (255, 255, 255))
-    top = 0
+    rows = []
     for theme, strip in strips.items():
-        face = THEMES[theme][0]
-        band = Image.new('RGB', (prev.width, cell * 2 + SIZE + 20), face)
-        for index in range(count):
-            for row in range(2):
-                icon = strip.crop((index * SIZE, row * SIZE,
-                                   index * SIZE + SIZE, row * SIZE + SIZE))
-                big = icon.resize((SIZE * zoom, SIZE * zoom), Image.NEAREST)
-                band.paste(big, (5 + index * cell, 5 + row * cell), big)
-            icon = strip.crop((index * SIZE, 0, index * SIZE + SIZE, SIZE))
-            band.paste(icon, (5 + index * cell + (SIZE * zoom - SIZE) // 2,
-                              cell * 2 + 10), icon)
-        prev.paste(band, (0, top))
-        top += band.height
+        panel, plate, hot = looks[theme]
+        for state in ('normal', 'hot', 'disabled'):
+            row = Image.new('RGB', (count * (button + 1) + 1, button + 2), panel)
+            draw = ImageDraw.Draw(row)
+            for index in range(count):
+                left = 1 + index * (button + 1)
+                outer = hot if state == 'hot' else panel
+                draw.rounded_rectangle([left, 1, left + button - 1, button],
+                                       radius=corner, fill=outer)
+                draw.rounded_rectangle([left + ring, 1 + ring,
+                                        left + button - 1 - ring,
+                                        button - ring],
+                                       radius=corner - ring, fill=plate)
+                src_row = 1 if state == 'disabled' else 0
+                icon = strip.crop((index * SIZE, src_row * SIZE,
+                                   index * SIZE + SIZE, src_row * SIZE + SIZE))
+                offset = (button - SIZE) // 2
+                row.paste(icon, (left + offset, 1 + offset), icon)
+            rows.append(row)
+    width = rows[0].width
+    prev = Image.new('RGB', (width * 3, sum(r.height for r in rows) * 3 +
+                             sum(r.height for r in rows) + 8), (255, 255, 255))
+    top = 0
+    for row in rows:
+        prev.paste(row.resize((row.width * 3, row.height * 3), Image.NEAREST),
+                   (0, top))
+        top += row.height * 3
+    top += 8
+    for row in rows:
+        prev.paste(row, (0, top))
+        top += row.height
     prev.save(os.path.join(here, 'preview.png'))
 
 

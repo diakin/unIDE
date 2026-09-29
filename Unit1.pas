@@ -2819,6 +2819,8 @@ begin
   // Кнопки-значки тулбара (TUiIconButton): прямоугольник под значком, когда
   // над кнопкой мышь
   UiDefault('IconButton.HotBG', $00F2DCC4, $00606060);
+  // Подложка под значком - прямоугольник внутри, на ободок меньше
+  UiDefault('IconButton.BG', $00FCFCFC, $00484848);
   // Рамки с подписью (TUiGroupBox, UiGroupBox): подпись и линия рамки
   UiDefault('Group.Text', clWindowText, $00DCDCDC);
   UiDefault('Group.Border', clBtnShadow, $00707070);
@@ -3083,6 +3085,8 @@ begin
     Result := 'Кнопки: фон под мышью'
   else if AKey = 'IconButton.HotBG' then
     Result := 'Кнопки-значки: выделение под мышью'
+  else if AKey = 'IconButton.BG' then
+    Result := 'Кнопки-значки: подложка'
   else if AKey = 'Button.DownBG' then
     Result := 'Кнопки: фон нажатой'
   else if AKey = 'Button.Text' then
@@ -3186,7 +3190,7 @@ end;
 procedure TForm1.UiPushTheme;
 const
   // Роль темы = роль IDE
-  Map: array[0..30, 0..1] of string = (
+  Map: array[0..31, 0..1] of string = (
     ('Window.BG', 'Ide.WindowBG'), ('Window.Text', 'Ide.WindowText'),
     ('List.BG', 'Ide.ListBG'), ('List.Text', 'Ide.ListText'),
     ('Edit.BG', 'Ide.EditBG'), ('Edit.Text', 'Ide.EditText'),
@@ -3210,7 +3214,8 @@ const
     ('Menu.HotBG', 'Menu.HotBG'), ('Menu.HotText', 'Menu.HotText'),
     ('Menu.Border', 'Menu.Border'),
     // Выделение кнопки-значка - своей ролью IDE
-    ('IconButton.HotBG', 'IconButton.HotBG'));
+    ('IconButton.HotBG', 'IconButton.HotBG'),
+    ('IconButton.BG', 'IconButton.BG'));
 var
   I: Integer;
 begin
@@ -3549,15 +3554,17 @@ end;
 //  по ширине и две строки по высоте: верхняя - обычный значок, нижняя - он
 //  же для недоступной кнопки. Ленты 32-битные, с альфа-каналом (цвета
 //  умножены на альфу) - их рисует TUiIconButton через AlphaBlend.
-//  Значки - набор Lazarus general_purpose (Roland Hahn, CC0), отрисованы из
-//  SVG в 28x28 (icons\svg). В тёмной ленте корпус дискеты серый, а не
-//  чёрный, серые значки недоступных кнопок - светлее.
+//  Значки - набор Lazarus general_purpose (Roland Hahn, CC0), 24x24 как
+//  есть (icons\png); дискеты - из их SVG с чёрным корпусом (icons\svg). В
+//  тёмной ленте корпус дискеты серый, серые значки недоступных - светлее.
+//  Порядок в ленте - константы Icon* ниже (список ICONS в make_icons.py
+//  должен быть в том же порядке).
 //  Тёмный значок кладётся в TUiGlyph.Dark кнопки заранее: UiApplyGlyph
 //  ставит его, а не строит переворотом яркости.
 // ---------------------------------------------------------------------------
 
 const
-  ToolIconSize = 28;   // сторона значка в ленте, пикселей
+  ToolIconSize = 24;   // сторона значка в ленте, пикселей
   // Номера значков в лентах - порядок ICONS в icons\make_icons.py
   IconOpen      = 0;
   IconSave      = 1;
@@ -14321,26 +14328,22 @@ end;
 procedure TForm1.FormCreate(Sender: TObject);
 var
   SampleBmp: TBitmap; // временный холст для замера ширины панелей
-  CurrentLeft: Integer;
+  CurrentLeft: Integer;  // правый край ряда pnlToolbarIn - для ширины FLeftPanel
   CmpLeft: Integer;      // правый край ряда Delphi - для ширины FLeftPanel
   IconsLight: TBitmap;   // лента значков для IDE Light
   IconsDark: TBitmap;    // лента значков для IDE Dark
 
-  // Кнопка ряда pnlToolbarIn. Сама кнопка - место, размер, подсказка,
-  // обработчик - описана в .dfm, значок ставит SetToolIcon. Здесь
-  // CurrentLeft сдвигается на её ширину: по CurrentLeft ниже подгоняется
-  // ширина FLeftPanel.
-  procedure AddToolWidth(ToolBarBtn: TControl);
-  const
-    GapBtn  = 1;  // промежуток между соседними кнопками - кнопки рядом
+  // Правый край ряда - самый правый край его кнопок. Кнопки, их места и
+  // порядок - в .dfm; порядок может быть любой.
+  function RowRightEdge(const ARow: array of TControl): Integer;
+  var
+    BtnIdx: Integer;
   begin
-    CurrentLeft := CurrentLeft + ToolBarBtn.Width + GapBtn;
-  end;
-
-  // То же для ряда Delphi: CmpLeft - правый край ряда
-  procedure AddCmpWidth(CmpBtn: TControl);
-  begin
-    CmpLeft := CmpLeft + CmpBtn.Width + 1;
+    Result := 0;
+    for BtnIdx := Low(ARow) to High(ARow) do
+      if (ARow[BtnIdx] <> nil) and
+         (ARow[BtnIdx].Left + ARow[BtnIdx].Width > Result) then
+        Result := ARow[BtnIdx].Left + ARow[BtnIdx].Width;
   end;
 
 begin
@@ -14454,7 +14457,7 @@ begin
   FHotTabBarWidth := 3;    // тонкая полоска; 0 или меньше = во всю ширину символа
   FHotTabPale := 50;       // наполовину подмешан фон редактора
 
-  // Значки тулбара и ряда Delphi: ленты 28x28 для светлой и тёмной темы
+  // Значки тулбара и ряда Delphi: ленты 24x24 для светлой и тёмной темы
   // (см. SetToolIcon). У каждой кнопки остаются свои копии, ленты после
   // этого не нужны.
   IconsLight := TBitmap.Create;
@@ -14487,20 +14490,13 @@ begin
   FCompilerBox := grpCompiler;   // заголовок меняется вместе с проектом
 
   // Дальше ряд кнопок, как в Delphi. Кнопки описаны в .dfm, значки
-  // поставлены выше, здесь - подсчёт ширины ряда в CmpLeft. Работают
-  // View Unit, View Form и
-  // Program reset; New Form, Pause, Trace into и Step over пока только
-  // сообщают, что не сделаны (NotDoneClick): отладчика в редакторе нет.
-  CmpLeft := btnCompileRun.Left + btnCompileRun.Width + 10;
-  // Те же списки, что в меню View: Просмотр модулей и Просмотр форм
-  AddCmpWidth(btnViewUnit);
-  AddCmpWidth(btnViewForm);
-  AddCmpWidth(btnNewForm);
-  Inc(CmpLeft, 10); // разделитель перед отладкой
-  AddCmpWidth(btnPause);
-  AddCmpWidth(btnProgReset);
-  AddCmpWidth(btnTraceInto);
-  AddCmpWidth(btnStepOver);
+  // поставлены выше, здесь - правый край ряда в CmpLeft. Работают
+  // View Unit, View Form (те же списки, что в меню View) и Program reset;
+  // New Form, Pause, Trace into и Step over пока только сообщают, что не
+  // сделаны (NotDoneClick): отладчика в редакторе нет.
+  CmpLeft := RowRightEdge([btnCompileRun, btnViewUnit, btnViewForm,
+                           btnNewForm, btnPause, btnProgReset, btnTraceInto,
+                           btnStepOver]);
 
   // Панель лога внизу описана в форме - здесь обработчики и стартовая
   // вкладка
@@ -14522,27 +14518,15 @@ begin
   // Панель объявления - под вкладками, над редактором
   BuildDeclPanel;
 
-  // Ширина ряда кнопок считается от левого края первой (btnOpen.Left = 2
-  // в .dfm)
-  CurrentLeft := 2;
+  CurrentLeft := RowRightEdge([btnOpen, btnSave, btnSavePrj, btnUndo, btnCut,
+                               btnCopy, btnPaste]);
 
-  AddToolWidth(btnOpen);
-  AddToolWidth(btnSave);
-  AddToolWidth(btnSavePrj);
-
-  CurrentLeft := CurrentLeft + 10; // Разделитель между группами
-
-  AddToolWidth(btnUndo);
-  AddToolWidth(btnCut);
-  AddToolWidth(btnCopy);
-  AddToolWidth(btnPaste);
-
-  // Теперь известна суммарная ширина кнопок - подгоняем под неё левую
-  // панель. Рядов два, панель шире того, который длиннее.
-  if CurrentLeft + 10 > CmpLeft + 6 then
+  // Теперь известны правые края рядов - подгоняем под них левую панель.
+  // Рядов два, панель шире того, который длиннее.
+  if CurrentLeft + 10 > CmpLeft + 10 then
     FLeftPanel.Width := CurrentLeft + 10
   else
-    FLeftPanel.Width := CmpLeft + 6;
+    FLeftPanel.Width := CmpLeft + 10;
 
   BuildSearchPanel; // элементы поиска на группе Search and replace
   FitSearchBox;
