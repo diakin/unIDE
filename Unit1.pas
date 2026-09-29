@@ -29424,6 +29424,33 @@ begin
   end;
 end;
 
+// Файлы с тем же именем, что у AFile, но другим расширением - в папку
+// ADstDir. Число скопированных.
+function CopyCompanions(const AFile, ADstDir: string): Integer;
+var
+  SR: TSearchRec;
+  Dir, Base: string;
+begin
+  Result := 0;
+  Dir := ExtractFilePath(AFile);
+  Base := ChangeFileExt(ExtractFileName(AFile), '');
+  if FindFirst(Dir + Base + '.*', faAnyFile and not faDirectory, SR) <> 0 then
+    Exit;
+  try
+    repeat
+      if (CompareText(ChangeFileExt(SR.Name, ''), Base) = 0) and
+         (CompareText(SR.Name, ExtractFileName(AFile)) <> 0) and
+         CopyFile(PChar(Dir + SR.Name), PChar(ADstDir + SR.Name), False) then
+      begin
+        Form1.LogComp('  ' + SR.Name);
+        Inc(Result);
+      end;
+    until FindNext(SR) <> 0;
+  finally
+    FindClose(SR);
+  end;
+end;
+
 // Project -> Build Release
 procedure TForm1.BuildReleaseClick(Sender: TObject);
 var
@@ -29436,19 +29463,19 @@ begin
     Exit;   // уже идёт сборка или пробный запуск
   if FCurrentProject = '' then
   begin
-    ShowMessage('29439:Проект не открыт.');
+    ShowMessage('29466:Проект не открыт.');
     Exit;
   end;
   PrjType := ProjectTypeOf(FCurrentProject);
   if (PrjType <> '') and (CompareText(PrjType, 'Delphi') <> 0) then
   begin
-    ShowMessage('29445:Релиз собирается только для проектов Delphi.');
+    ShowMessage('29472:Релиз собирается только для проектов Delphi.');
     Exit;
   end;
   Dpr := ProjectTargetOf(FCurrentProject);
   if (Dpr = '') or not FileExists(Dpr) then
   begin
-    ShowMessage('29451:У проекта нет файла .dpr:'#13#10 + Dpr);
+    ShowMessage('29478:У проекта нет файла .dpr:'#13#10 + Dpr);
     Exit;
   end;
 
@@ -29458,7 +29485,7 @@ begin
   try
     if not SaveAllModified(L) then
     begin
-      ShowMessage('29461:Не сохранены файлы:'#13#10 + L.Text +
+      ShowMessage('29488:Не сохранены файлы:'#13#10 + L.Text +
                   #13#10'Релиз не собирается.');
       Exit;
     end;
@@ -29493,13 +29520,13 @@ begin
     if DirectoryExists(RelDir) then
       if not DeleteProjectFolder(RelDir) then
       begin
-        ShowMessage('29496:Не удалось убрать прежнюю папку Release:'#13#10 +
+        ShowMessage('29523:Не удалось убрать прежнюю папку Release:'#13#10 +
                     RelDir);
         Exit;
       end;
     if not ForceDirectories(ExcludeTrailingPathDelimiter(RelDir)) then
     begin
-      ShowMessage('29502:Не удалось создать папку'#13#10 + RelDir);
+      ShowMessage('29529:Не удалось создать папку'#13#10 + RelDir);
       Exit;
     end;
 
@@ -29551,6 +29578,10 @@ begin
         begin
           LogComp('  ' + Nm);
           Inc(Copied);
+          // Таблица Paradox - это несколько файлов с одним именем
+          // (.db, .px, .xg0, .yg0, .mb ...): код называет только .db
+          if CompareText(ExtractFileExt(Nm), '.db') = 0 then
+            Inc(Copied, CopyCompanions(Src, ExtractFilePath(RelDir + Nm)));
         end
         else
         begin
