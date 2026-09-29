@@ -1826,6 +1826,8 @@ type
     function  ParseCompilerLine(const S: string; var AFile: string;
                                 var ALine: Integer): Boolean;
     function  RunCompiler(const AExe, AParams, AWorkDir: string): Integer;
+    function  BuildRcFiles(const ADir, ARoot: string): Boolean;
+    function  SaveSnapshotSource(const AFile: string): Boolean;
     function  CompileDelphi: Boolean;
     procedure CheckUnitPath(const AList: string);
     // Папка UiLib рядом с программой: свои компоненты (Ui*.pas) для сборки
@@ -2169,6 +2171,7 @@ uses
   TypInfo;      // свойства классов VCL для инспектора объектов
 
 {$R *.dfm}
+{$R formsnapshot_src.res} // FormSnapshot.pas для пробного запуска - ProbeRun
 {$R toolbar_icons.res} // ЭТА СТРОЧКА ЗАСТАВИТ DELPHI ИЗ RC-ФАЙЛА СДЕЛАТЬ ВШИТЫЙ РЕСУРС!
 
 var
@@ -7291,14 +7294,14 @@ var
 begin
   if FCurrentProject = '' then
   begin
-    ShowMessage('7294:Проект не открыт.');
+    ShowMessage('7297:Проект не открыт.');
     Exit;
   end;
   OldName := FCurrentProject;
   OldPrj := ProjectFileName(OldName);
   if not FileExists(OldPrj) then
   begin
-    ShowMessage('7301:Файл проекта не найден:'#13#10 + OldPrj);
+    ShowMessage('7304:Файл проекта не найден:'#13#10 + OldPrj);
     Exit;
   end;
 
@@ -7354,7 +7357,7 @@ begin
 
     if (NewName = '') or (NewDir = '') then
     begin
-      ShowMessage('7357:Нужно указать имя и папку проекта.');
+      ShowMessage('7360:Нужно указать имя и папку проекта.');
       Exit;
     end;
     if (Pos('\', NewName) > 0) or (Pos('/', NewName) > 0) or
@@ -7363,7 +7366,7 @@ begin
        (Pos('<', NewName) > 0) or (Pos('>', NewName) > 0) or
        (Pos('|', NewName) > 0) then
     begin
-      ShowMessage('7366:В имени проекта нельзя использовать символы ' +
+      ShowMessage('7369:В имени проекта нельзя использовать символы ' +
                   '\ / : * ? " < > |');
       Exit;
     end;
@@ -7371,7 +7374,7 @@ begin
     NewDir := IncludeTrailingPathDelimiter(NewDir);
     if not DirectoryExists(NewDir) then
     begin
-      ShowMessage('7374:Папка не найдена:'#13#10 + NewDir);
+      ShowMessage('7377:Папка не найдена:'#13#10 + NewDir);
       Exit;
     end;
 
@@ -7380,14 +7383,14 @@ begin
     if (CompareText(NewName, OldName) <> 0) and
        (FProjectReg.IndexOfName(NewName) >= 0) then
     begin
-      ShowMessage('7383:Проект с именем ' + NewName + ' уже есть в списке.');
+      ShowMessage('7386:Проект с именем ' + NewName + ' уже есть в списке.');
       Exit;
     end;
 
     NewPrj := NewDir + NewName + '.prj';
     if (CompareText(NewPrj, OldPrj) <> 0) and FileExists(NewPrj) then
     begin
-      ShowMessage('7390:В этой папке уже есть описание проекта:'#13#10 +
+      ShowMessage('7393:В этой папке уже есть описание проекта:'#13#10 +
                   NewPrj);
       Exit;
     end;
@@ -7420,7 +7423,7 @@ begin
         Exit;
     end;
     if (NewTarget <> '') and not FileExists(NewTarget) then
-      if MessageDlg('7423:Главного файла проекта нет:'#13#10 + NewTarget +
+      if MessageDlg('7426:Главного файла проекта нет:'#13#10 + NewTarget +
                     #13#10#13#10'Записать свойства всё равно?',
                     mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
         Exit;
@@ -7455,7 +7458,7 @@ begin
     except
       on E: Exception do
       begin
-        ShowMessage('7458:Не удалось записать описание проекта:'#13#10 +
+        ShowMessage('7461:Не удалось записать описание проекта:'#13#10 +
                     NewPrj + #13#10 + E.Message);
         Exit;
       end;
@@ -18339,19 +18342,19 @@ begin
     ForceDirectories(FProbeDir);
     Step('папка ' + FProbeDir);
 
-    // Зонду нужен FormSnapshot.pas - он лежит рядом с редактором
-    Src := ExtractFilePath(Application.ExeName) + 'FormSnapshot.pas';
-    if not FileExists(Src) then
+    // Зонду нужен исходник FormSnapshot.pas. Он вшит в редактор ресурсом
+    // (formsnapshot_src.rc): рядом с exe его класть не нужно, и в релизе
+    // его нет
+    Src := FProbeDir + 'FormSnapshot.pas';
+    if not SaveSnapshotSource(Src) then
     begin
-      Step('нет ' + Src);
-      ShowMessage('17794:Для пробного запуска рядом с редактором нужен ' +
-                  'FormSnapshot.pas:'#13#10 + Src);
+      Step('FormSnapshot.pas из ресурса не записан: ' + Src);
+      ShowMessage('18352:Для пробного запуска нужен исходник FormSnapshot.pas, ' +
+                  'он вшит в редактор ресурсом FORMSNAPSHOT_PAS. В этой ' +
+                  'сборке его нет или записать его не удалось:'#13#10 + Src);
       Exit;
     end;
-    if not CopyFile(PChar(Src), PChar(FProbeDir + 'FormSnapshot.pas'), False) then
-      Step('FormSnapshot.pas не скопирован, код ' + IntToStr(GetLastError))
-    else
-      Step('FormSnapshot.pas скопирован');
+    Step('FormSnapshot.pas записан из ресурса');
     SL := TStringList.Create;
     try
       SL.Text := ProbeUnitText;
@@ -29198,6 +29201,103 @@ begin
     FBusyPanel.Visible := False;
 end;
 
+// Исходник FormSnapshot.pas - из ресурса FORMSNAPSHOT_PAS в файл AFile.
+// False - ресурса нет (редактор собран без formsnapshot_src.res) или файл
+// не записался.
+function TForm1.SaveSnapshotSource(const AFile: string): Boolean;
+var
+  Res: TResourceStream;
+begin
+  Result := False;
+  if FindResource(HInstance, 'FORMSNAPSHOT_PAS', RT_RCDATA) = 0 then
+    Exit;
+  try
+    Res := TResourceStream.Create(HInstance, 'FORMSNAPSHOT_PAS', RT_RCDATA);
+    try
+      Res.SaveToFile(AFile);
+      Result := True;
+    finally
+      Res.Free;
+    end;
+  except
+    // Папка занята или только для чтения - сообщает вызывающая сторона
+  end;
+end;
+
+// Ресурсы из .rc в папке проекта - как {$R x.res x.rc} в среде Delphi.
+// .rc, рядом с которым лежит одноимённый .res, пересобирается brcc32 перед
+// dcc32, если .res старше самого .rc или любого файла, который .rc
+// подключает ("icons\\icons_light.bmp", "FormSnapshot.pas"). Так вшитые
+// файлы не отстают от своих исходников. .rc без .res не трогаются: его
+// могли положить не для этой сборки. Нет brcc32 - запись в лог, берётся
+// прежний .res. False - brcc32 вернул ошибку.
+function TForm1.BuildRcFiles(const ADir, ARoot: string): Boolean;
+var
+  SR: TSearchRec;
+  Rc, Res, Brcc, Line, FN: string;
+  SL: TStringList;
+  I, Q1, Q2, Newest, ResAge, Age: Integer;
+begin
+  Result := True;
+  Brcc := ARoot + 'Bin\brcc32.exe';
+  if FindFirst(ADir + '*.rc', faAnyFile, SR) <> 0 then
+    Exit;
+  SL := TStringList.Create;
+  try
+    repeat
+      if ((SR.Attr and faDirectory) <> 0) or
+         (CompareText(ExtractFileExt(SR.Name), '.rc') <> 0) then
+        Continue;
+      Rc := ADir + SR.Name;
+      Res := ChangeFileExt(Rc, '.res');
+      if not FileExists(Res) then
+        Continue;
+
+      // Самое новое из .rc и файлов в кавычках в нём. Путь в .rc пишется
+      // с удвоенной обратной косой чертой, отсчитывается от папки .rc.
+      Newest := FileAge(Rc);
+      SL.LoadFromFile(Rc);
+      for I := 0 to SL.Count - 1 do
+      begin
+        Line := SL[I];
+        Q1 := Pos('"', Line);
+        if Q1 = 0 then
+          Continue;
+        Q2 := PosEx('"', Line, Q1 + 1);
+        if Q2 = 0 then
+          Continue;
+        FN := StringReplace(Copy(Line, Q1 + 1, Q2 - Q1 - 1), '\\', '\',
+                            [rfReplaceAll]);
+        if ExtractFileDrive(FN) = '' then
+          FN := ADir + FN;
+        Age := FileAge(FN);
+        if Age > Newest then
+          Newest := Age;
+      end;
+      ResAge := FileAge(Res);
+      if ResAge >= Newest then
+        Continue;
+
+      if not FileExists(Brcc) then
+      begin
+        LogComp('Ресурсы: ' + ExtractFileName(Res) + ' старше ' + SR.Name +
+                ' или его файлов, но brcc32 не найден (' + Brcc +
+                ') - берётся прежний ' + ExtractFileName(Res));
+        Continue;
+      end;
+      LogComp('--- Ресурсы: ' + SR.Name + ' -> ' + ExtractFileName(Res));
+      if RunCompiler(Brcc, '"' + SR.Name + '"', ADir) <> 0 then
+      begin
+        LogComp('Ресурсы: brcc32 не собрал ' + SR.Name);
+        Result := False;
+      end;
+    until FindNext(SR) <> 0;
+  finally
+    FindClose(SR);
+    SL.Free;
+  end;
+end;
+
 function TForm1.RunCompiler(const AExe, AParams, AWorkDir: string): Integer;
 var
   SecAttr: TSecurityAttributes;
@@ -30433,7 +30533,11 @@ begin
   Code := -1;
   BusyBegin('Компиляция ' + ExtractFileName(Dpr));
   try
-    Code := RunCompiler(Exe, Params, Dir);
+    // Ресурсы из .rc - до компилятора: {$R x.res} берёт готовый .res
+    if BuildRcFiles(IncludeTrailingPathDelimiter(Dir), Root) then
+      Code := RunCompiler(Exe, Params, Dir)
+    else
+      LogComp('--- Компиляция не запускалась: ошибка сборки ресурсов');
   finally
     if Code = 0 then
       BusyEnd('Компиляция: готово', True)
@@ -30993,7 +31097,7 @@ begin
     Dfm := LV.Selected.SubItems[N - 2];
     if not FileExists(Dfm) then
     begin
-      ShowMessage('30996:Файл не найден:'#13#10 + Dfm);
+      ShowMessage('31100:Файл не найден:'#13#10 + Dfm);
       Exit;
     end;
     // Модуль формы - активной вкладкой: по нему DesignFormClick находит

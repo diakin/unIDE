@@ -1,0 +1,5 @@
+// »сходник FormSnapshot.pas - внутрь редактора. ѕробный запуск
+// (TForm1.ProbeRun) пишет его р€дом со своей копией проекта: класть
+// FormSnapshot.pas р€дом с exe не нужно. .res пересобираетс€ brcc32 при
+// сборке, если FormSnapshot.pas новее (TForm1.BuildRcFiles).
+FORMSNAPSHOT_PAS RCDATA "FormSnapshot.pas"
