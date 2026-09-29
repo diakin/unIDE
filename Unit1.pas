@@ -29217,8 +29217,10 @@ end;
 //
 //  Проект собирается заново (CompileDelphi); ошибки сборки - релиза нет,
 //  чтобы в Release не попал прежний exe. Что ещё нужно программе, ищется
-//  в её исходниках (ReleaseBuild): имена файлов в строках кода и .dfm, и
-//  что код с ними делает. Найденное показывает окно DlgRelease с галками;
+//  в её исходниках (ReleaseBuild): файловые операции и имена, с которыми
+//  они работают, и, запасным списком, строки в кавычках, похожие на имена.
+//  Где что найдено - в Compilation log, по двойному щелчку - к строке.
+//  Найденное показывает окно DlgRelease с галками;
 //  выбор хранится в описании проекта, раздел [Release], и дальше релиз
 //  собирается без вопросов. Поменять выбор - Project -> Release files.
 //  Файл берётся из папки exe, нет там - из папки .dpr, и кладётся в
@@ -29276,19 +29278,33 @@ begin
   end;
 end;
 
-// Окно выбора: всё, что нашлось в исходниках, и то, что уже было выбрано.
-// Галки: выбранное раньше; выбора ещё не было - найденное на диске, что
-// программа читает (или неясно, что с ним делает). Файлы, которые она
-// только пишет, - без галки: их она создаёт сама. В строке - есть ли файл,
-// что с ним делает код и где имя встретилось первым. OK - выбор в AList и
-// в описание проекта.
+// Место в исходниках - строкой лога "Файл.pas(строка) ...": по двойному
+// щелчку редактор откроет файл на этой строке (LogEditDblClick). Путь
+// целиком, если в нём нет скобок: скобку разбор строки принял бы за начало
+// номера.
+function ReleaseLogPlace(const AFile: string; ALine: Integer): string;
+begin
+  if Pos('(', AFile) > 0 then
+    Result := ExtractFileName(AFile)
+  else
+    Result := AFile;
+  Result := Result + '(' + IntToStr(ALine) + ')';
+end;
+
+// Окно выбора. Сначала - имена, найденные по файловым операциям, потом -
+// найденные только как строки в кавычках. Галки: выбранное раньше; выбора
+// ещё не было - найденное по операции, что есть на диске и что программа
+// читает. Файлы, которые она только пишет, и имена без операции - без
+// галки. В лог (Compilation log) - где каждое имя найдено, строкой на
+// место, и операции, у которых имя вычислить не удалось.
 function TForm1.ReleaseFilesDialog(const ADpr, AExeDir: string;
                                    AList: TStrings): Boolean;
 var
-  Refs, Saved, Keys: TStringList;
+  Refs, Saved, Keys, Unres: TStringList;
   Dlg: TDlgRelease;
-  I, K: Integer;
-  DprDir, ExeDir, Nm, Key, Place, Usage, SysDir, Low_: string;
+  I, K, Pass, Ln: Integer;
+  DprDir, ExeDir, ExeName, Nm, Key, Place, Usage, SysDir, Low_,
+    Fn, Note: string;
   Ref: TRelRef;
   Found, HasSaved, Check: Boolean;
   Buf: array[0..MAX_PATH] of Char;
@@ -29296,6 +29312,7 @@ begin
   Result := False;
   DprDir := IncludeTrailingPathDelimiter(ExtractFilePath(ADpr));
   ExeDir := IncludeTrailingPathDelimiter(AExeDir);
+  ExeName := ChangeFileExt(ExtractFileName(ADpr), '.exe');
   FillChar(Buf, SizeOf(Buf), 0);
   GetSystemDirectory(Buf, MAX_PATH);
   SysDir := IncludeTrailingPathDelimiter(string(Buf));
@@ -29303,73 +29320,97 @@ begin
   Refs := TStringList.Create;
   Saved := TStringList.Create;
   Keys := TStringList.Create;
+  Unres := TStringList.Create;
   Dlg := TDlgRelease.Create(Self);
   try
-    ScanReleaseRefs(DprDir, Refs);
+    ScanReleaseRefs(DprDir, Refs, Unres);
     HasSaved := ReleaseSavedList(Saved);
     Dlg.Caption := 'Release files - ' + FCurrentProject;
 
-    for I := 0 to Refs.Count - 1 do
-    begin
-      Nm := Refs[I];
-      Ref := TRelRef(Refs.Objects[I]);
-      Low_ := LowerCase(Nm);
-      if Ref.IsDir then
+    ShowCompLog;
+    LogComp('--- Release: файлы по исходникам ' + DprDir +
+            ' (двойной щелчок - к строке)');
+
+    // Проход 1 - найденное по операциям, проход 2 - только строки
+    for Pass := 1 to 2 do
+      for I := 0 to Refs.Count - 1 do
       begin
-        // Папка - только та, что есть. Служебные папки сборки и сам
-        // Release - никогда.
-        Found := DirectoryExists(ExeDir + Nm) or DirectoryExists(DprDir + Nm);
-        if not Found or (Low_ = 'release') or (Low_ = 'dsgprobe') or
-           (Low_ = 'dsgcache') or (Low_ = '__history') or
-           (Low_ = '__recovery') or
-           (CompareText(ExcludeTrailingPathDelimiter(ExeDir),
-                        ExcludeTrailingPathDelimiter(DprDir + Nm)) = 0) then
+        Ref := TRelRef(Refs.Objects[I]);
+        if Ref.ByOp <> (Pass = 1) then
           Continue;
-        Key := Nm + '\';
-        Place := 'папка';
-      end
-      else
-      begin
-        Found := FileExists(ExeDir + Nm) or FileExists(DprDir + Nm);
-        // Нет на диске - показываем только то, что похоже на данные
-        // программы (.dll, .cfg, .db ...): значит, его не хватает
-        if not Found and not IsDataExt(ExtractFileExt(Nm)) then
-          Continue;
-        // Библиотека Windows (gdi32.dll) есть на любой машине; сам exe
-        // проекта кладётся всегда
-        if (ExtractFilePath(Nm) = '') and FileExists(SysDir + Nm) then
-          Continue;
-        if CompareText(Nm, ChangeFileExt(ExtractFileName(ADpr), '.exe')) = 0 then
-          Continue;
-        Key := Nm;
-        if FileExists(ExeDir + Nm) then
-          Place := 'есть рядом с exe'
-        else if Found then
-          Place := 'есть в папке проекта'
+        Nm := Refs[I];
+        // ChangeFileExt(Application.ExeName, '.ini') - файл по имени exe
+        if Copy(Nm, 1, 5) = '<exe>' then
+          Nm := ChangeFileExt(ExeName, Copy(Nm, 6, MaxInt));
+        Low_ := LowerCase(Nm);
+        if Ref.IsDir then
+        begin
+          // Папка - только та, что есть. Служебные папки сборки и сам
+          // Release - никогда.
+          Found := DirectoryExists(ExeDir + Nm) or
+                   DirectoryExists(DprDir + Nm);
+          if not Found or (Low_ = 'release') or (Low_ = 'dsgprobe') or
+             (Low_ = 'dsgcache') or (Low_ = '__history') or
+             (Low_ = '__recovery') or
+             (CompareText(ExcludeTrailingPathDelimiter(ExeDir),
+                          ExcludeTrailingPathDelimiter(DprDir + Nm)) = 0) then
+            Continue;
+          Key := Nm + '\';
+          Place := 'папка';
+        end
         else
-          Place := 'НЕ НАЙДЕН';
+        begin
+          Found := FileExists(ExeDir + Nm) or FileExists(DprDir + Nm);
+          // Нет на диске - показываем только найденное по операции или
+          // похожее на данные программы (.dll, .cfg, .db ...): значит, его
+          // не хватает
+          if not Found and not Ref.ByOp and
+             not IsDataExt(ExtractFileExt(Nm)) then
+            Continue;
+          // Библиотека Windows (gdi32.dll) есть на любой машине; сам exe
+          // проекта кладётся всегда
+          if (ExtractFilePath(Nm) = '') and FileExists(SysDir + Nm) then
+            Continue;
+          if CompareText(Nm, ExeName) = 0 then
+            Continue;
+          Key := Nm;
+          if FileExists(ExeDir + Nm) then
+            Place := 'есть рядом с exe'
+          else if Found then
+            Place := 'есть в папке проекта'
+          else
+            Place := 'НЕ НАЙДЕН';
+        end;
+
+        if not Ref.ByOp then
+          Usage := 'только строка в кавычках'
+        else if Ref.Uses_ = [ruRead] then
+          Usage := 'читается'
+        else if Ref.Uses_ = [ruWrite] then
+          Usage := 'только пишется'
+        else if Ref.Uses_ = [ruRead, ruWrite] then
+          Usage := 'читается и пишется'
+        else
+          Usage := 'операция без чтения и записи';
+
+        if HasSaved then
+          Check := Saved.IndexOf(Key) >= 0
+        else
+          Check := Ref.ByOp and Found and (ruRead in Ref.Uses_);
+
+        Keys.Add(Key);
+        K := Dlg.lstFiles.Items.Add(Key + '   -   ' + Place + ', ' + Usage +
+                                    '   (' + Ref.Where + ')');
+        Dlg.lstFiles.Checked[K] := Check;
+
+        // Места - в лог
+        for K := 0 to Ref.Places.Count - 1 do
+        begin
+          SplitPlace(Ref.Places[K], Fn, Ln, Note);
+          LogComp('  ' + ReleaseLogPlace(Fn, Ln) + ' ' + Key + ' - ' + Note +
+                  '  [' + Usage + ']');
+        end;
       end;
-
-      if Ref.Uses_ = [ruRead] then
-        Usage := 'читается'
-      else if Ref.Uses_ = [ruWrite] then
-        Usage := 'только пишется'
-      else if Ref.Uses_ = [ruRead, ruWrite] then
-        Usage := 'читается и пишется'
-      else
-        Usage := 'использование не ясно';
-
-      if HasSaved then
-        Check := Saved.IndexOf(Key) >= 0
-      else
-        Check := Found and (Ref.Uses_ <> [ruWrite]) and
-                 (not Ref.IsDir or (ruRead in Ref.Uses_));
-
-      Keys.Add(Key);
-      K := Dlg.lstFiles.Items.Add(Key + '   -   ' + Place + ', ' + Usage +
-                                  '   (' + Ref.Where + ')');
-      Dlg.lstFiles.Checked[K] := Check;
-    end;
 
     // Выбранное раньше, чего в исходниках больше нет, - тоже в списке
     for I := 0 to Saved.Count - 1 do
@@ -29380,6 +29421,16 @@ begin
                                     '   -   выбрано раньше, в исходниках не найдено');
         Dlg.lstFiles.Checked[K] := True;
       end;
+
+    if Unres.Count > 0 then
+    begin
+      LogComp('--- Release: файловые операции, где имя по тексту не вычислить');
+      for I := 0 to Unres.Count - 1 do
+      begin
+        SplitPlace(Unres[I], Fn, Ln, Note);
+        LogComp('  ' + ReleaseLogPlace(Fn, Ln) + ' ? ' + Note);
+      end;
+    end;
 
     if Dlg.ShowModal <> mrOk then
       Exit;
@@ -29392,6 +29443,7 @@ begin
     Result := True;
   finally
     Dlg.Free;
+    Unres.Free;
     Keys.Free;
     Saved.Free;
     FreeRelRefs(Refs);
@@ -29407,13 +29459,13 @@ var
 begin
   if FCurrentProject = '' then
   begin
-    ShowMessage('29410:Проект не открыт.');
+    ShowMessage('29462:Проект не открыт.');
     Exit;
   end;
   Dpr := ProjectTargetOf(FCurrentProject);
   if (Dpr = '') or not FileExists(Dpr) then
   begin
-    ShowMessage('29416:У проекта нет файла .dpr:'#13#10 + Dpr);
+    ShowMessage('29468:У проекта нет файла .dpr:'#13#10 + Dpr);
     Exit;
   end;
   L := TStringList.Create;
@@ -29463,19 +29515,19 @@ begin
     Exit;   // уже идёт сборка или пробный запуск
   if FCurrentProject = '' then
   begin
-    ShowMessage('29466:Проект не открыт.');
+    ShowMessage('29518:Проект не открыт.');
     Exit;
   end;
   PrjType := ProjectTypeOf(FCurrentProject);
   if (PrjType <> '') and (CompareText(PrjType, 'Delphi') <> 0) then
   begin
-    ShowMessage('29472:Релиз собирается только для проектов Delphi.');
+    ShowMessage('29524:Релиз собирается только для проектов Delphi.');
     Exit;
   end;
   Dpr := ProjectTargetOf(FCurrentProject);
   if (Dpr = '') or not FileExists(Dpr) then
   begin
-    ShowMessage('29478:У проекта нет файла .dpr:'#13#10 + Dpr);
+    ShowMessage('29530:У проекта нет файла .dpr:'#13#10 + Dpr);
     Exit;
   end;
 
@@ -29485,7 +29537,7 @@ begin
   try
     if not SaveAllModified(L) then
     begin
-      ShowMessage('29488:Не сохранены файлы:'#13#10 + L.Text +
+      ShowMessage('29540:Не сохранены файлы:'#13#10 + L.Text +
                   #13#10'Релиз не собирается.');
       Exit;
     end;
@@ -29520,13 +29572,13 @@ begin
     if DirectoryExists(RelDir) then
       if not DeleteProjectFolder(RelDir) then
       begin
-        ShowMessage('29523:Не удалось убрать прежнюю папку Release:'#13#10 +
+        ShowMessage('29575:Не удалось убрать прежнюю папку Release:'#13#10 +
                     RelDir);
         Exit;
       end;
     if not ForceDirectories(ExcludeTrailingPathDelimiter(RelDir)) then
     begin
-      ShowMessage('29529:Не удалось создать папку'#13#10 + RelDir);
+      ShowMessage('29581:Не удалось создать папку'#13#10 + RelDir);
       Exit;
     end;
 
