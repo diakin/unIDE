@@ -215,7 +215,7 @@ const
     (Name: 'Menu.HotText';    Light: clHighlightText; Dark: clWhite),
     (Name: 'Menu.Border';     Light: clBtnShadow;  Dark: $00505050),
     (Name: 'IconButton.HotBG'; Light: $00F2DCC4;   Dark: $00606060),
-    (Name: 'IconButton.BG';    Light: $00FCFCFC;   Dark: $00484848)
+    (Name: 'IconButton.BG';    Light: clBtnFace;   Dark: $00302D2D)
   );
 
 var

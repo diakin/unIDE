@@ -2819,8 +2819,10 @@ begin
   // Кнопки-значки тулбара (TUiIconButton): прямоугольник под значком, когда
   // над кнопкой мышь
   UiDefault('IconButton.HotBG', $00F2DCC4, $00606060);
-  // Подложка под значком - прямоугольник внутри, на ободок меньше
-  UiDefault('IconButton.BG', $00FCFCFC, $00484848);
+  // Подложка под значком - прямоугольник внутри, на ободок меньше. По
+  // умолчанию - цвет окон и панелей темы (как Ide.WindowBG): подложку не
+  // видно, под мышью виден только ободок выделения
+  UiDefault('IconButton.BG', clBtnFace, $00302D2D);
   // Рамки с подписью (TUiGroupBox, UiGroupBox): подпись и линия рамки
   UiDefault('Group.Text', clWindowText, $00DCDCDC);
   UiDefault('Group.Border', clBtnShadow, $00707070);
