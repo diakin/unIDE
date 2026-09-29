@@ -874,8 +874,8 @@ object Form1: TForm1
           BevelOuter = bvNone
           ParentFont = True
           object btnCompileRun: TUiIconButton
-            Left = 6
-            Top = 5
+            Left = 128
+            Top = 8
             Width = 34
             Height = 34
             Hint = 'Собрать проект dcc32 и запустить, если без ошибок'
@@ -883,8 +883,8 @@ object Form1: TForm1
             OnClick = btnCompileRunClick
           end
           object btnViewUnit: TUiIconButton
-            Left = 50
-            Top = 5
+            Left = 8
+            Top = 8
             Width = 34
             Height = 34
             Hint = 'View Unit - список модулей'
@@ -892,8 +892,8 @@ object Form1: TForm1
             OnClick = ShowModulesClick
           end
           object btnViewForm: TUiIconButton
-            Left = 85
-            Top = 5
+            Left = 48
+            Top = 8
             Width = 34
             Height = 34
             Hint = 'View Form - список форм'
@@ -901,8 +901,8 @@ object Form1: TForm1
             OnClick = ShowFormsClick
           end
           object btnNewForm: TUiIconButton
-            Left = 120
-            Top = 5
+            Left = 88
+            Top = 8
             Width = 34
             Height = 34
             Hint = 'New Form - новая форма'
@@ -911,7 +911,7 @@ object Form1: TForm1
           end
           object btnPause: TUiIconButton
             Left = 165
-            Top = 5
+            Top = 8
             Width = 34
             Height = 34
             Hint = 'Pause'
@@ -920,7 +920,7 @@ object Form1: TForm1
           end
           object btnProgReset: TUiIconButton
             Left = 200
-            Top = 5
+            Top = 8
             Width = 34
             Height = 34
             Hint = 'Program reset - остановить запущенную программу'
@@ -929,7 +929,7 @@ object Form1: TForm1
           end
           object btnTraceInto: TUiIconButton
             Left = 235
-            Top = 5
+            Top = 8
             Width = 34
             Height = 34
             Hint = 'Trace into'
@@ -938,7 +938,7 @@ object Form1: TForm1
           end
           object btnStepOver: TUiIconButton
             Left = 270
-            Top = 5
+            Top = 8
             Width = 34
             Height = 34
             Hint = 'Step over'
