@@ -18,6 +18,17 @@ unit UiButton;
 //  ролей Button.*, Focus, OffText. Цвет шрифта кнопки (Font.Color) не
 //  используется: шрифт от родителя несёт цвет текста панели. Свой цвет
 //  подписи - TextColor (clNone - по теме).
+//
+//  TUiIconButton - кнопка-значок для панелей инструментов (вместо
+//  TSpeedButton). Квадрат с фоном родителя; когда над ним мышь, под значком
+//  рисуется скруглённый прямоугольник цветом выделения, нажатую - значок
+//  сдвинут на пиксель. Сам значок - Glyph, как у TSpeedButton: прозрачный
+//  цвет - левый нижний пиксель, при NumGlyphs = 2 правая половина - значок
+//  недоступной кнопки. Фокуса не берёт: щелчок не уводит его из поля ввода.
+//
+//  Фон - ParentBackground: при включённых темах Windows рисует родитель
+//  (как у TPanel с ParentBackground), иначе - цвет родителя (Color).
+//  Цвет выделения - HotColor; clNone - роль темы IconButton.HotBG.
 // ---------------------------------------------------------------------------
 
 interface
@@ -95,6 +106,69 @@ type
     property OnKeyDown;
     property OnKeyPress;
     property OnKeyUp;
+    property OnMouseDown;
+    property OnMouseMove;
+    property OnMouseUp;
+  end;
+
+  TUiIconButton = class(TCustomControl)
+  private
+    FGlyph: TBitmap;
+    FNumGlyphs: Integer;
+    FHotColor: TColor;
+    FCornerRadius: Integer;
+    FHot: Boolean;          // мышь над кнопкой
+    FPressing: Boolean;     // левая кнопка мыши нажата на ней и держится
+    FMouseIn: Boolean;      // при этом мышь над кнопкой
+    FCellNormal: TBitmap;   // значок обычный - вырезан из Glyph
+    FCellOff: TBitmap;      // значок недоступной кнопки
+    FCellsReady: Boolean;
+    FOffForDark: Boolean;   // FCellOff построен под тёмный фон
+    procedure SetGlyph(Value: TBitmap);
+    procedure SetNumGlyphs(Value: Integer);
+    procedure SetHotColor(Value: TColor);
+    procedure SetCornerRadius(Value: Integer);
+    procedure GlyphChanged(Sender: TObject);
+    procedure BuildCells;
+    function  BackColor: TColor;
+    function  ActualHotColor: TColor;
+    procedure CMMouseEnter(var Message: TMessage); message CM_MOUSEENTER;
+    procedure CMMouseLeave(var Message: TMessage); message CM_MOUSELEAVE;
+    procedure CMEnabledChanged(var Message: TMessage); message CM_ENABLEDCHANGED;
+    procedure WMEraseBkgnd(var Message: TWMEraseBkgnd); message WM_ERASEBKGND;
+    procedure UMUiThemeChanged(var Message: TMessage); message UM_UITHEMECHANGED;
+  protected
+    procedure Paint; override;
+    procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
+                        X, Y: Integer); override;
+    procedure MouseMove(Shift: TShiftState; X, Y: Integer); override;
+    procedure MouseUp(Button: TMouseButton; Shift: TShiftState;
+                      X, Y: Integer); override;
+  public
+    constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
+    procedure Click; override;
+  published
+    // Значок; при NumGlyphs = 2 - два рядом: обычный и недоступный
+    property Glyph: TBitmap read FGlyph write SetGlyph;
+    property NumGlyphs: Integer read FNumGlyphs write SetNumGlyphs default 1;
+    // Цвет прямоугольника под значком, когда над кнопкой мышь; clNone -
+    // роль темы IconButton.HotBG
+    property HotColor: TColor read FHotColor write SetHotColor default clNone;
+    // Скругление углов этого прямоугольника, пикселей
+    property CornerRadius: Integer read FCornerRadius write SetCornerRadius
+      default 8;
+    property ParentBackground default True;
+    property Align;
+    property Anchors;
+    property Constraints;
+    property Enabled;
+    property ParentShowHint;
+    property PopupMenu;
+    property ShowHint;
+    property Visible;
+    property OnClick;
+    property OnContextPopup;
     property OnMouseDown;
     property OnMouseMove;
     property OnMouseUp;
@@ -483,10 +557,341 @@ begin
   Message.Result := 1;
 end;
 
+// ---------------------------------------------------------------------------
+//  TUiIconButton
+// ---------------------------------------------------------------------------
+
+type
+  // Доступ к защищённому Color родителя
+  TUiIconParentAcc = class(TWinControl);
+
+constructor TUiIconButton.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  // Как у TUiButton: Click - когда кнопку мыши отпустили над кнопкой
+  ControlStyle := [csCaptureMouse, csClickEvents, csOpaque];
+  Width := 30;
+  Height := 30;
+  TabStop := False;
+  ParentBackground := True;
+  FNumGlyphs := 1;
+  FHotColor := clNone;
+  FCornerRadius := 8;
+  FGlyph := TBitmap.Create;
+  FGlyph.OnChange := GlyphChanged;
+  FCellNormal := TBitmap.Create;
+  FCellOff := TBitmap.Create;
+  UiThemeAddClient(Self);
+end;
+
+destructor TUiIconButton.Destroy;
+begin
+  UiThemeRemoveClient(Self);
+  FCellOff.Free;
+  FCellNormal.Free;
+  FGlyph.Free;
+  inherited Destroy;
+end;
+
+procedure TUiIconButton.SetGlyph(Value: TBitmap);
+begin
+  FGlyph.Assign(Value);   // OnChange -> GlyphChanged
+end;
+
+// Как у TSpeedButton: ширина - целое число высот, их столько и значков
+procedure TUiIconButton.GlyphChanged(Sender: TObject);
+var
+  Count: Integer;
+begin
+  if not FGlyph.Empty and (FGlyph.Height > 0) and
+     (FGlyph.Width mod FGlyph.Height = 0) then
+  begin
+    Count := FGlyph.Width div FGlyph.Height;
+    if Count > 2 then
+      Count := 1;
+    FNumGlyphs := Count;
+  end;
+  FCellsReady := False;
+  Invalidate;
+end;
+
+procedure TUiIconButton.SetNumGlyphs(Value: Integer);
+begin
+  if Value < 1 then
+    Value := 1
+  else if Value > 2 then
+    Value := 2;
+  if FNumGlyphs <> Value then
+  begin
+    FNumGlyphs := Value;
+    FCellsReady := False;
+    Invalidate;
+  end;
+end;
+
+procedure TUiIconButton.SetHotColor(Value: TColor);
+begin
+  if FHotColor <> Value then
+  begin
+    FHotColor := Value;
+    Invalidate;
+  end;
+end;
+
+procedure TUiIconButton.SetCornerRadius(Value: Integer);
+begin
+  if Value < 0 then
+    Value := 0;
+  if FCornerRadius <> Value then
+  begin
+    FCornerRadius := Value;
+    Invalidate;
+  end;
+end;
+
+// Цвет родителя - фон кнопки без тем Windows и основа для недоступного
+// значка
+function TUiIconButton.BackColor: TColor;
+begin
+  if Parent <> nil then
+    Result := TUiIconParentAcc(Parent).Color
+  else
+    Result := clBtnFace;
+end;
+
+function TUiIconButton.ActualHotColor: TColor;
+begin
+  Result := FHotColor;
+  if Result = clNone then
+    Result := UiThemeColorFor(Self, 'IconButton.HotBG');
+  if Result = clNone then
+    Result := clHighlight;
+end;
+
+// Значки из Glyph: обычный и недоступный. Недоступного нет (NumGlyphs = 1)
+// - он строится из обычного: серый, светлее на тёмном фоне, темнее на
+// светлом, чтобы был виден, но не спорил с доступными.
+procedure TUiIconButton.BuildCells;
+var
+  Side, PosX, PosY, Lum: Integer;
+  KeyColor, PixColor: TColor;
+  DarkBack: Boolean;
+  Back: Longint;
+begin
+  Back := ColorToRGB(BackColor);
+  DarkBack := (GetRValue(Back) * 299 + GetGValue(Back) * 587 +
+               GetBValue(Back) * 114) div 1000 < 128;
+  if FCellsReady and ((FNumGlyphs = 2) or (FOffForDark = DarkBack)) then
+    Exit;
+  FCellsReady := True;
+  FOffForDark := DarkBack;
+  FCellNormal.Width := 0;
+  FCellOff.Width := 0;
+  if FGlyph.Empty then
+    Exit;
+  Side := FGlyph.Width div FNumGlyphs;
+  KeyColor := FGlyph.Canvas.Pixels[0, FGlyph.Height - 1];
+
+  FCellNormal.PixelFormat := pf24bit;
+  FCellNormal.Width := Side;
+  FCellNormal.Height := FGlyph.Height;
+  FCellNormal.Canvas.CopyRect(Rect(0, 0, Side, FGlyph.Height), FGlyph.Canvas,
+                              Rect(0, 0, Side, FGlyph.Height));
+
+  FCellOff.PixelFormat := pf24bit;
+  FCellOff.Width := Side;
+  FCellOff.Height := FGlyph.Height;
+  if FNumGlyphs = 2 then
+    FCellOff.Canvas.CopyRect(Rect(0, 0, Side, FGlyph.Height), FGlyph.Canvas,
+                             Rect(Side, 0, Side * 2, FGlyph.Height))
+  else
+  begin
+    FCellOff.Canvas.Draw(0, 0, FCellNormal);
+    for PosY := 0 to FCellOff.Height - 1 do
+      for PosX := 0 to Side - 1 do
+      begin
+        PixColor := FCellOff.Canvas.Pixels[PosX, PosY];
+        if PixColor = KeyColor then
+          Continue;
+        PixColor := ColorToRGB(PixColor);
+        Lum := (GetRValue(PixColor) * 30 + GetGValue(PixColor) * 59 +
+                GetBValue(PixColor) * 11) div 100;
+        if DarkBack then
+          Lum := 60 + Lum div 3
+        else
+          Lum := 120 + Lum div 2;
+        if Lum > 230 then
+          Lum := 230;
+        FCellOff.Canvas.Pixels[PosX, PosY] := RGB(Lum, Lum, Lum);
+      end;
+  end;
+  FCellNormal.TransparentMode := tmFixed;
+  FCellNormal.TransparentColor := KeyColor;
+  FCellNormal.Transparent := True;
+  FCellOff.TransparentMode := tmFixed;
+  FCellOff.TransparentColor := KeyColor;
+  FCellOff.Transparent := True;
+end;
+
+procedure TUiIconButton.Paint;
+var
+  Buf, Cell: TBitmap;
+  Area: TRect;
+  Shift, PosX, PosY: Integer;
+  ShowHot: Boolean;
+begin
+  Buf := TBitmap.Create;
+  try
+    Buf.Width := ClientWidth;
+    Buf.Height := ClientHeight;
+    Area := ClientRect;
+
+    // Фон - как у родителя
+    if ParentBackground and ThemeServices.ThemesEnabled and
+       (Parent <> nil) and HandleAllocated then
+      ThemeServices.DrawParentBackground(Handle, Buf.Canvas.Handle, nil, False)
+    else
+    begin
+      Buf.Canvas.Brush.Color := BackColor;
+      Buf.Canvas.FillRect(Area);
+    end;
+
+    // Выделение: мышь над кнопкой или её держат нажатой
+    ShowHot := Enabled and (FHot or (FPressing and FMouseIn));
+    if ShowHot then
+    begin
+      Buf.Canvas.Brush.Color := ActualHotColor;
+      Buf.Canvas.Pen.Color := Buf.Canvas.Brush.Color;
+      Buf.Canvas.RoundRect(Area.Left, Area.Top, Area.Right, Area.Bottom,
+                           FCornerRadius * 2, FCornerRadius * 2);
+    end;
+
+    BuildCells;
+    if Enabled then
+      Cell := FCellNormal
+    else
+      Cell := FCellOff;
+    if not Cell.Empty then
+    begin
+      Shift := 0;
+      if FPressing and FMouseIn then
+        Shift := 1;
+      PosX := (ClientWidth - Cell.Width) div 2 + Shift;
+      PosY := (ClientHeight - Cell.Height) div 2 + Shift;
+      Buf.Canvas.Draw(PosX, PosY, Cell);
+    end
+    else
+    begin
+      // Значка нет - пунктирная рамка, иначе кнопку не видно вовсе
+      Buf.Canvas.Brush.Style := bsClear;
+      Buf.Canvas.Pen.Color := clGray;
+      Buf.Canvas.Pen.Style := psDot;
+      Buf.Canvas.Rectangle(Area.Left, Area.Top, Area.Right, Area.Bottom);
+    end;
+    Canvas.Draw(0, 0, Buf);
+  finally
+    Buf.Free;
+  end;
+end;
+
+procedure TUiIconButton.MouseDown(Button: TMouseButton; Shift: TShiftState;
+                                  X, Y: Integer);
+begin
+  if (Button = mbLeft) and Enabled then
+  begin
+    FPressing := True;
+    FMouseIn := True;
+    Invalidate;
+  end;
+  inherited MouseDown(Button, Shift, X, Y);
+end;
+
+procedure TUiIconButton.MouseMove(Shift: TShiftState; X, Y: Integer);
+var
+  Inside: Boolean;
+begin
+  if FPressing then
+  begin
+    Inside := PtInRect(ClientRect, Point(X, Y));
+    if Inside <> FMouseIn then
+    begin
+      FMouseIn := Inside;
+      Invalidate;
+    end;
+  end;
+  inherited MouseMove(Shift, X, Y);
+end;
+
+procedure TUiIconButton.MouseUp(Button: TMouseButton; Shift: TShiftState;
+                                X, Y: Integer);
+begin
+  if (Button = mbLeft) and FPressing then
+  begin
+    FPressing := False;
+    Invalidate;
+  end;
+  inherited MouseUp(Button, Shift, X, Y);   // здесь TControl вызовет Click
+end;
+
+procedure TUiIconButton.Click;
+begin
+  // Обработчик может открыть окно - кнопка к этому времени уже отжата
+  FPressing := False;
+  Invalidate;
+  inherited Click;
+end;
+
+procedure TUiIconButton.CMMouseEnter(var Message: TMessage);
+begin
+  inherited;
+  if not FHot then
+  begin
+    FHot := True;
+    Invalidate;
+  end;
+end;
+
+procedure TUiIconButton.CMMouseLeave(var Message: TMessage);
+begin
+  inherited;
+  if FHot then
+  begin
+    FHot := False;
+    Invalidate;
+  end;
+end;
+
+procedure TUiIconButton.CMEnabledChanged(var Message: TMessage);
+begin
+  inherited;
+  if not Enabled then
+  begin
+    FHot := False;
+    FPressing := False;
+  end;
+  Invalidate;
+end;
+
+procedure TUiIconButton.WMEraseBkgnd(var Message: TWMEraseBkgnd);
+begin
+  // Paint закрашивает всю кнопку сам
+  Message.Result := 1;
+end;
+
+// Тема сменилась: цвет выделения и фон могут быть другими, недоступный
+// значок - под другой фон
+procedure TUiIconButton.UMUiThemeChanged(var Message: TMessage);
+begin
+  FCellsReady := False;
+  Message.Result := 0;   // UiThemeChanged перерисует через Invalidate
+end;
+
 initialization
   // Класс знает GetClass: конструктор форм и снимок строят настоящую кнопку,
   // а не заглушку
   if GetClass(TUiButton.ClassName) = nil then
     RegisterClass(TUiButton);
+  if GetClass(TUiIconButton.ClassName) = nil then
+    RegisterClass(TUiIconButton);
 
 end.

@@ -200,6 +200,7 @@ begin
      TUiLabel, TUiEdit, TUiMemo, TUiButton, TUiCheckBox, TUiRadioButton,
      TUiListBox, TUiComboBox, TUiScrollBar, TUiGroupBox, TUiRadioGroup,
      TUiPanel]);
+  RegCustom('Additional', [TUiIconButton]);
   RegCustom('Win32',
     [TUiTabControl, TUiPageControl, TUiUpDown, TUiTreeView, TUiListView,
      TUiStatusBar]);

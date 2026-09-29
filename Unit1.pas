@@ -2043,13 +2043,13 @@ type
     procedure UiActiveFormChange(Sender: TObject);
     function  UiLogIsDark(AEdit: TRichEdit): Boolean;
     function  UiLogColor(AEdit: TRichEdit; AColor: TColor): TColor;
-    procedure UiApplyGlyph(ABtn: TSpeedButton);
+    procedure UiApplyGlyph(ABtn: TControl);
     // Кнопке поставили новый значок кодом - забыть прежние (исходный и
     // перевёрнутый) и применить тему к новому
-    procedure UiGlyphReset(ABtn: TSpeedButton);
+    procedure UiGlyphReset(ABtn: TControl);
     // Значок кнопки из лент BMP_ICONS_LIGHT / BMP_ICONS_DARK: светлый и
     // тёмный рисунки, у каждого - обычный и для недоступной кнопки
-    procedure SetToolIcon(ABtn: TSpeedButton; AIconIdx: Integer;
+    procedure SetToolIcon(ABtn: TControl; AIconIdx: Integer;
                           ALightStrip, ADarkStrip: TBitmap);
     procedure UiWrapListScrolls;
     procedure UiListGrid(ALV: TListView);
@@ -2803,6 +2803,9 @@ begin
   UiDefault('Button.DownBG', clBtnShadow, $00784F26); // нажата
   UiDefault('Button.Text', clBtnText, $00F0F0F0);
   UiDefault('Button.Border', clBtnShadow, $00707070);
+  // Кнопки-значки тулбара (TUiIconButton): прямоугольник под значком, когда
+  // над кнопкой мышь
+  UiDefault('IconButton.HotBG', $00F2DCC4, $00606060);
   // Рамки с подписью (TUiGroupBox, UiGroupBox): подпись и линия рамки
   UiDefault('Group.Text', clWindowText, $00DCDCDC);
   UiDefault('Group.Border', clBtnShadow, $00707070);
@@ -3065,6 +3068,8 @@ begin
     Result := 'Кнопки: фон'
   else if AKey = 'Button.HotBG' then
     Result := 'Кнопки: фон под мышью'
+  else if AKey = 'IconButton.HotBG' then
+    Result := 'Кнопки-значки: выделение под мышью'
   else if AKey = 'Button.DownBG' then
     Result := 'Кнопки: фон нажатой'
   else if AKey = 'Button.Text' then
@@ -3168,7 +3173,7 @@ end;
 procedure TForm1.UiPushTheme;
 const
   // Роль темы = роль IDE
-  Map: array[0..29, 0..1] of string = (
+  Map: array[0..30, 0..1] of string = (
     ('Window.BG', 'Ide.WindowBG'), ('Window.Text', 'Ide.WindowText'),
     ('List.BG', 'Ide.ListBG'), ('List.Text', 'Ide.ListText'),
     ('Edit.BG', 'Ide.EditBG'), ('Edit.Text', 'Ide.EditText'),
@@ -3190,7 +3195,9 @@ const
     // Своё меню - своими ролями IDE
     ('Menu.BG', 'Menu.BG'), ('Menu.Text', 'Menu.Text'),
     ('Menu.HotBG', 'Menu.HotBG'), ('Menu.HotText', 'Menu.HotText'),
-    ('Menu.Border', 'Menu.Border'));
+    ('Menu.Border', 'Menu.Border'),
+    // Выделение кнопки-значка - своей ролью IDE
+    ('IconButton.HotBG', 'IconButton.HotBG'));
 var
   I: Integer;
 begin
@@ -3413,12 +3420,34 @@ begin
   inherited;
 end;
 
+// Значок кнопки со значком: TSpeedButton или TUiIconButton (у обеих Glyph,
+// прозрачный цвет - левый нижний пиксель, при двух значках рядом второй -
+// для недоступной). nil - у контрола значка нет.
+function BtnGlyph(ABtn: TControl): TBitmap;
+begin
+  if ABtn is TSpeedButton then
+    Result := TSpeedButton(ABtn).Glyph
+  else if ABtn is TUiIconButton then
+    Result := TUiIconButton(ABtn).Glyph
+  else
+    Result := nil;
+end;
+
+// Поставить значок: число значков в картинке кнопка определит по ширине
+procedure SetBtnGlyph(ABtn: TControl; AGlyph: TBitmap);
+begin
+  if ABtn is TSpeedButton then
+    TSpeedButton(ABtn).Glyph := AGlyph
+  else if ABtn is TUiIconButton then
+    TUiIconButton(ABtn).Glyph := AGlyph;
+end;
+
 // Диагностика значков: что UiApplyGlyph делает с каждым значком. В лог -
 // каждое новое сообщение по кнопке один раз.
 var
   UiGlyphSeen: TStringList = nil;
 
-procedure UiGlyphNote(ABtn: TSpeedButton; const AWhat: string);
+procedure UiGlyphNote(ABtn: TControl; const AWhat: string);
 var
   Key, Who: string;
 begin
@@ -3438,13 +3467,13 @@ begin
   Form1.Dbg('3089: значок: ' + Who + ' - ' + AWhat, clNavy);
 end;
 
-procedure TForm1.UiApplyGlyph(ABtn: TSpeedButton);
+procedure TForm1.UiApplyGlyph(ABtn: TControl);
 var
   Mark: TUiGlyph;
   Index: Integer;
   DarkBack: Boolean;
 begin
-  if (ABtn = nil) or ABtn.Glyph.Empty then
+  if (BtnGlyph(ABtn) = nil) or BtnGlyph(ABtn).Empty then
     Exit;
   Mark := nil;
   for Index := 0 to ABtn.ComponentCount - 1 do
@@ -3458,7 +3487,7 @@ begin
       Exit;                 // фон светлый, значок не трогали - как есть
     // Первый переворот: исходный значок - в метку
     Mark := TUiGlyph.Create(ABtn);
-    Mark.Orig.Assign(ABtn.Glyph);
+    Mark.Orig.Assign(BtnGlyph(ABtn));
     Mark.IsDark := False;
     UiGlyphNote(ABtn, 'метка создана');
   end;
@@ -3474,12 +3503,12 @@ begin
       UiInvertLightness(Mark.Dark,
                         Mark.Dark.Canvas.Pixels[0, Mark.Dark.Height - 1]);
     end;
-    ABtn.Glyph := Mark.Dark;
-    UiGlyphNote(ABtn, 'тёмный фон: поставлен перевёрнутый');
+    SetBtnGlyph(ABtn, Mark.Dark);
+    UiGlyphNote(ABtn, 'тёмный фон: поставлен тёмный значок');
   end
   else
   begin
-    ABtn.Glyph := Mark.Orig;
+    SetBtnGlyph(ABtn, Mark.Orig);
     UiGlyphNote(ABtn, 'светлый фон: поставлен исходный');
   end;
   Mark.IsDark := DarkBack;
@@ -3487,7 +3516,7 @@ end;
 
 // Код поставил кнопке новый значок после переворота: метка с прежними
 // значками больше не нужна - следующий UiApplyGlyph начнёт с нового
-procedure TForm1.UiGlyphReset(ABtn: TSpeedButton);
+procedure TForm1.UiGlyphReset(ABtn: TControl);
 var
   Index: Integer;
 begin
@@ -3575,7 +3604,7 @@ begin
   Result := True;
 end;
 
-procedure TForm1.SetToolIcon(ABtn: TSpeedButton; AIconIdx: Integer;
+procedure TForm1.SetToolIcon(ABtn: TControl; AIconIdx: Integer;
                              ALightStrip, ADarkStrip: TBitmap);
 var
   Mark: TUiGlyph;
@@ -3601,8 +3630,7 @@ begin
   if not CutToolIcon(ADarkStrip, AIconIdx, Mark.Dark) then
     Mark.Dark.Assign(nil);
   Mark.IsDark := False;
-  ABtn.Glyph := Mark.Orig;
-  ABtn.NumGlyphs := 2;
+  SetBtnGlyph(ABtn, Mark.Orig);   // два значка рядом - NumGlyphs = 2
   UiApplyGlyph(ABtn);   // в IDE Dark - сразу тёмный
 end;
 
@@ -3684,10 +3712,12 @@ begin
      (C = FBusyPanel) then
     Exit;
 
-  // Значок кнопки - под светлый фон; в IDE Dark - с перевёрнутой яркостью
-  if C is TSpeedButton then
+  // Значок кнопки - под светлый фон; в IDE Dark - тёмный значок (свой, из
+  // ленты, или с перевёрнутой яркостью). TUiIconButton фон и выделение
+  // рисует сама - по родителю и теме.
+  if (C is TSpeedButton) or (C is TUiIconButton) then
   begin
-    UiApplyGlyph(TSpeedButton(C));
+    UiApplyGlyph(TControl(C));
     Exit;
   end;
 
@@ -14236,7 +14266,7 @@ var
   // обработчик - описана в .dfm, значок ставит SetToolIcon. Здесь
   // CurrentLeft сдвигается на её ширину: по CurrentLeft ниже подгоняется
   // ширина FLeftPanel.
-  procedure AddToolWidth(ToolBarBtn: TSpeedButton);
+  procedure AddToolWidth(ToolBarBtn: TControl);
   const
     GapBtn  = 1;  // промежуток между соседними кнопками - кнопки рядом
   begin
@@ -14244,7 +14274,7 @@ var
   end;
 
   // То же для ряда Delphi: CmpLeft - правый край ряда
-  procedure AddCmpWidth(CmpBtn: TSpeedButton);
+  procedure AddCmpWidth(CmpBtn: TControl);
   begin
     CmpLeft := CmpLeft + CmpBtn.Width + 1;
   end;
@@ -21796,6 +21826,19 @@ begin
 
       // Значок - у живой кнопки (у неё он уже под тему, UiApplyGlyph).
       // И у компонентов из кода: в снимке значков нет.
+      if (DC is TUiIconButton) and
+         (TUiIconButton(DC).Glyph.Empty or
+          ((FDsgGlyphCopied <> nil) and
+           (FDsgGlyphCopied.IndexOf(DC) >= 0))) and
+         not TUiIconButton(LC).Glyph.Empty then
+      begin
+        TUiIconButton(DC).Glyph.Assign(TUiIconButton(LC).Glyph);
+        if FDsgGlyphCopied = nil then
+          FDsgGlyphCopied := TList.Create;
+        if FDsgGlyphCopied.IndexOf(DC) < 0 then
+          FDsgGlyphCopied.Add(DC);
+        Inc(Glyphs);
+      end;
       if (DC is TSpeedButton) and
          (TSpeedButton(DC).Glyph.Empty or
           ((FDsgGlyphCopied <> nil) and
@@ -30769,8 +30812,8 @@ var
   Nm: string;
 begin
   Nm := '';
-  if Sender is TSpeedButton then
-    Nm := TSpeedButton(Sender).Hint;
+  if Sender is TControl then
+    Nm := TControl(Sender).Hint;
   ShowMessage('27227:' + Nm + ': пока не сделано.');
 end;
 

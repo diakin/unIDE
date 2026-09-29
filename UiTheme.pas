@@ -46,6 +46,8 @@ unit UiTheme;
 //                              вкладок (TUiPageControl, TUiTabControl)
 //    Menu.BG, Menu.Text, Menu.HotBG, Menu.HotText, Menu.Border - своё
 //                              меню (TUiMenuBar, TUiPopupMenu)
+//    IconButton.HotBG        - выделение кнопки-значка под мышью
+//                              (TUiIconButton)
 //    Focus                   - рамка элемента в фокусе, кнопки для Enter
 //    OffText                 - подпись выключенного элемента
 // ---------------------------------------------------------------------------
@@ -180,7 +182,7 @@ type
 
 const
   // Значения по умолчанию - те же, что у ролей IDE в Unit1 (UiDefault)
-  RoleDefs: array[0..29] of TUiRoleDef = (
+  RoleDefs: array[0..30] of TUiRoleDef = (
     (Name: 'Window.BG';       Light: clBtnFace;    Dark: $00302D2D),
     (Name: 'Window.Text';     Light: clWindowText; Dark: $00DCDCDC),
     (Name: 'List.BG';         Light: clWindow;     Dark: $001E1E1E),
@@ -210,7 +212,8 @@ const
     (Name: 'Menu.Text';       Light: clMenuText;   Dark: $00DCDCDC),
     (Name: 'Menu.HotBG';      Light: clHighlight;  Dark: $00784F26),
     (Name: 'Menu.HotText';    Light: clHighlightText; Dark: clWhite),
-    (Name: 'Menu.Border';     Light: clBtnShadow;  Dark: $00505050)
+    (Name: 'Menu.Border';     Light: clBtnShadow;  Dark: $00505050),
+    (Name: 'IconButton.HotBG'; Light: $00F2DCC4;   Dark: $00606060)
   );
 
 var
