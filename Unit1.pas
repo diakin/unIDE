@@ -518,7 +518,7 @@ type
     FOwnCaretTimer: TTimer;
     DsgItem: TMenuItem;
     BtnPnl: TPanel;
-    FObjSnapBtn: TUiButton; // Show / Hide live values - снимок поверх кода
+    FObjSnapBtn: TUiButton; // снимок поверх .dfm: показать / убрать (SnapCapShow)
     FObjDsgBtn: TUiButton; // Design form - открыть конструктор
     FObjDsgShowBtn: TUiButton; // Hide/Show form - спрятать или показать его окно
     FObjMoveBtn: TUiButton; // «Перенести в .dfm»: разбор, что переносится
@@ -4375,7 +4375,6 @@ begin
   Ini := TIniFile.Create(SettingsFileName);
   try
     FUseHotTab          := Ini.ReadBool('Editor', 'HotTabHighlight', FUseHotTab);
-    FDsgLiveView        := Ini.ReadBool('Editor', 'DesignerLiveView', FDsgLiveView);
     FUseSyntaxHighlight := Ini.ReadBool('Editor', 'SyntaxHighlight', FUseSyntaxHighlight);
     RestoreFormBounds(Ini);
     FTabChars           := Ini.ReadInteger('Editor', 'TabChars', FTabChars);
@@ -4533,7 +4532,6 @@ begin
     try
       SaveFormBounds(Ini);
       Ini.WriteBool('Editor', 'HotTabHighlight', FUseHotTab);
-      Ini.WriteBool('Editor', 'DesignerLiveView', FDsgLiveView);
       Ini.WriteBool('Editor', 'SyntaxHighlight', FUseSyntaxHighlight);
       Ini.WriteInteger('Editor', 'TabChars', FTabChars);
       Ini.WriteBool('Editor', 'ShowSpaces', FShowSpaces);
@@ -14296,7 +14294,7 @@ begin
   Self.DoubleBuffered := True;
   FUseSyntaxHighlight := True; // По умолчанию подсветка работает
   FUseHotTab := False;
-  FDsgLiveView := True;
+  FDsgLiveView := True;   // живой вид конструктора - при каждом запуске
   FTabChars := 4;
   FShowSpaces := False;
   FPairA1 := -1;
@@ -16730,14 +16728,45 @@ end;
 //  Пока только просмотр.
 // ---------------------------------------------------------------------------
 
+// Подписи двух разных переключателей - по действию, которое сделает щелчок:
+//   кнопка инспектора (FObjSnapBtn, FSnapOff) - снимок живой формы поверх
+//   дерева объектов: живые значения и компоненты, которых разбор кода не
+//   нашёл;
+//   пункт меню конструктора (FDsgMiLiveView, FDsgLiveView) - вид формы в
+//   конструкторе: значения, поставленные кодом, или только из .dfm.
+// При запуске оба включены: снимок и живой вид.
+const
+  SnapCapShow = 'Show snapshot values';
+  SnapCapHide = 'Show .dfm values only';
+  DsgCapLive = 'live look';
+  DsgCapDfm = '.dfm look';
+
 procedure TForm1.BuildObjectInspector;
+var
+  Measure: TBitmap;
+  CapWidth: Integer;
 begin
   FDfmNodes := TList.Create;
 
   FObjSnapBtn.Hint := 'Созданные в коде компоненты видны и так - из ' +
                       'исходника. Снимок добавляет их текущие значения и то, ' +
-                      'чего разбор кода не раскрыл. Hide только скрывает ' +
-                      'снимок; Ctrl+щелчок по Show - новый пробный запуск';
+                      'чего разбор кода не раскрыл. ' + SnapCapHide +
+                      ' только скрывает снимок; Ctrl+щелчок по ' + SnapCapShow +
+                      ' - новый пробный запуск';
+  // Снимка ещё нет - он снимется сам, когда откроется форма (ObjAutoSnap).
+  // Ширина - под более длинную из двух подписей.
+  FObjSnapBtn.Caption := SnapCapShow;
+  Measure := TBitmap.Create;
+  try
+    Measure.Canvas.Font := FObjSnapBtn.Font;
+    CapWidth := Measure.Canvas.TextWidth(SnapCapShow);
+    if Measure.Canvas.TextWidth(SnapCapHide) > CapWidth then
+      CapWidth := Measure.Canvas.TextWidth(SnapCapHide);
+  finally
+    Measure.Free;
+  end;
+  if CapWidth + 20 > FObjSnapBtn.Width then
+    FObjSnapBtn.Width := CapWidth + 20;
 
   FObjDsgBtn.Left := FObjSnapBtn.Left + FObjSnapBtn.Width + 4;
 
@@ -17515,7 +17544,7 @@ end;
 //   - чужой проект - пробный запуск, но один раз за сеанс работы с
 //     проектом: это сборка и запуск программы, несколько секунд. Обновить
 //     снимок потом - кнопкой.
-// Если снимок убрали кнопкой (Hide live values), сам он не возвращается,
+// Если снимок убрали кнопкой (Show .dfm values only), сам он не возвращается,
 // пока его снова не включат.
 procedure TForm1.ObjAutoSnap;
 begin
@@ -17684,7 +17713,7 @@ begin
       TakeOwnSnap(AClass);
       FObjSource.Cursor := crHandPoint;
       if FObjSnapBtn <> nil then
-        FObjSnapBtn.Caption := 'Hide live values';
+        FObjSnapBtn.Caption := SnapCapHide;
     end
     else if OwnSnapStale(AClass) then
     begin
@@ -17851,7 +17880,7 @@ begin
     begin
       FObjSource.Cursor := crHandPoint;
       if FObjSnapBtn <> nil then
-        FObjSnapBtn.Caption := 'Hide live values';
+        FObjSnapBtn.Caption := SnapCapHide;
     end;
   end;
 end;
@@ -18113,7 +18142,7 @@ begin
     FRightPages.ActivePage := FTabObjects;
     RefreshObjectInspector(True);
     if FObjSnapBtn <> nil then
-      FObjSnapBtn.Caption := 'Hide live values';
+      FObjSnapBtn.Caption := SnapCapHide;
     Step('готово');
     Done := True;
   finally
@@ -18260,13 +18289,13 @@ begin
   RefreshObjectInspector(True);
   FObjSource.Cursor := crHandPoint;
   if FObjSnapBtn <> nil then
-    FObjSnapBtn.Caption := 'Hide live values';
+    FObjSnapBtn.Caption := SnapCapHide;
 end;
 
 // Щелчок по подписи внизу инспектора - убрать снимок, остаётся .dfm
 // Сброс снимков при смене проекта: свой снимок редактора и снимки
 // пробного запуска относятся к прежнему проекту. Кнопка - снова
-// "Show live values".
+// SnapCapShow.
 procedure TForm1.SnapReset;
 begin
   FProbeTried := False;   // новый проект - пробный запуск снова сам
@@ -18274,7 +18303,7 @@ begin
   if (FObjSnapText <> '') or ((FProbeSnaps <> nil) and (FProbeSnaps.Count > 0)) then
     ObjSourceClick(nil);
   if FObjSnapBtn <> nil then
-    FObjSnapBtn.Caption := 'Show live values';
+    FObjSnapBtn.Caption := SnapCapShow;
 end;
 
 procedure TForm1.ObjSourceClick(Sender: TObject);
@@ -18294,7 +18323,7 @@ begin
   FObjSource.Cursor := crDefault;
   RefreshObjectInspector(True);
   if FObjSnapBtn <> nil then
-    FObjSnapBtn.Caption := 'Show live values';
+    FObjSnapBtn.Caption := SnapCapShow;
 end;
 
 // Кнопка над деревом: снимка нет - сделать, есть - убрать.
@@ -18321,7 +18350,7 @@ begin
     FObjSource.Cursor := crDefault;
     RefreshObjectInspector(True);
     if FObjSnapBtn <> nil then
-      FObjSnapBtn.Caption := 'Show live values';
+      FObjSnapBtn.Caption := SnapCapShow;
     Exit;
   end;
 
@@ -18337,7 +18366,7 @@ begin
     RefreshObjectInspector(True);
     FObjSource.Cursor := crHandPoint;
     if FObjSnapBtn <> nil then
-      FObjSnapBtn.Caption := 'Hide live values';
+      FObjSnapBtn.Caption := SnapCapHide;
   end
   else
     ProbeRun;
@@ -21977,7 +22006,7 @@ end;
 // Custom), как её красит тема при работе (UiPaintColors): системные цвета
 // .dfm (clBtnFace, clWindow, clWindowText) и цвета ролей - в цвета ролей
 // темы; свой цвет, заданный в .dfm, остаётся. Работает и при виде по .dfm
-// (Show .dfm values): это цвета самой темы, а не значения из снимка.
+// (.dfm look): это цвета самой темы, а не значения из снимка.
 // Компоненты, которые красит не тема, а код (редактор, полоса номеров,
 // вкладки файлов), не трогаются - их цвета берёт живой вид.
 procedure TForm1.DsgThemeLook;
@@ -22626,9 +22655,9 @@ begin
   FDsgMiLiveView.Enabled := IsOwnProject and
                             (OwnLiveForm(FObjFormClass) <> nil);
   if FDsgLiveView then
-    FDsgMiLiveView.Caption := 'Show .dfm values'
+    FDsgMiLiveView.Caption := DsgCapDfm
   else
-    FDsgMiLiveView.Caption := 'Show live values';
+    FDsgMiLiveView.Caption := DsgCapLive;
 
   // Правый щелчок выделил компонент, и DsgSelect завёл таймер перехода к
   // коду. Меню - свой цикл сообщений, таймер срабатывает внутри него:
