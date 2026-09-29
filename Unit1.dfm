@@ -533,6 +533,14 @@ object Form1: TForm1
         Caption = 'Fix paths after move'
         OnClick = FixPathsAfterMoveClick
       end
+      object mPrjRelease: TMenuItem
+        Caption = 'Build Release'
+        OnClick = BuildReleaseClick
+      end
+      object mPrjReleaseFiles: TMenuItem
+        Caption = 'Release files...'
+        OnClick = ReleaseFilesClick
+      end
       object mPrjSep: TMenuItem
         Caption = '-'
       end

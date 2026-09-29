@@ -15,6 +15,8 @@ uses
   DlgDelPrj in 'DlgDelPrj.pas' {DlgDelPrj},
   DlgWinList in 'DlgWinList.pas' {DlgWinList},
   DlgNewPrj in 'DlgNewPrj.pas' {DlgNewPrj},
+  DlgRelease in 'DlgRelease.pas' {DlgRelease},
+  ReleaseBuild in 'ReleaseBuild.pas',
   ObjParse in 'ObjParse.pas',
   HangWatch in 'HangWatch.pas',
   TextMerge in 'TextMerge.pas',

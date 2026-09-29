@@ -547,6 +547,8 @@ type
     mPrjAdd: TMenuItem;
     mPrjFolder: TMenuItem;
     mProjectItem1: TMenuItem;
+    mPrjRelease: TMenuItem;
+    mPrjReleaseFiles: TMenuItem;
     mPrjSep: TMenuItem;
     Split: TSplitter;
     FObjHeader: TPanel;
@@ -711,6 +713,8 @@ type
     procedure AddToProjectClick(Sender: TObject);
     procedure OpenProjectFolderClick(Sender: TObject);
     procedure FixPathsAfterMoveClick(Sender: TObject);
+    procedure BuildReleaseClick(Sender: TObject);
+    procedure ReleaseFilesClick(Sender: TObject);
     procedure SaveAsClick(Sender: TObject);
     procedure OpenPrjFileClick(Sender: TObject);
     procedure SaveProjectClick(Sender: TObject);
@@ -1828,6 +1832,10 @@ type
     function  RunCompiler(const AExe, AParams, AWorkDir: string): Integer;
     function  BuildRcFiles(const ADir, ARoot: string): Boolean;
     function  SaveSnapshotSource(const AFile: string): Boolean;
+    function  ReleaseSavedList(AList: TStrings): Boolean;
+    procedure ReleaseSaveList(AList: TStrings);
+    function  ReleaseFilesDialog(const ADpr, AExeDir: string;
+                                 AList: TStrings): Boolean;
     function  CompileDelphi: Boolean;
     procedure CheckUnitPath(const AList: string);
     // Папка UiLib рядом с программой: свои компоненты (Ui*.pas) для сборки
@@ -2168,6 +2176,8 @@ uses
   DlgDelPrj,    // Delete Projects - DeleteProjectClick
   DlgWinList,   // Del WinList - DelWinListClick
   DlgNewPrj,    // New Project - NewProjectClick
+  DlgRelease,   // Release files - ReleaseFilesDialog
+  ReleaseBuild, // Build Release: файлы, нужные программе, по исходникам
   TypInfo;      // свойства классов VCL для инспектора объектов
 
 {$R *.dfm}
@@ -7294,14 +7304,14 @@ var
 begin
   if FCurrentProject = '' then
   begin
-    ShowMessage('7297:Проект не открыт.');
+    ShowMessage('7307:Проект не открыт.');
     Exit;
   end;
   OldName := FCurrentProject;
   OldPrj := ProjectFileName(OldName);
   if not FileExists(OldPrj) then
   begin
-    ShowMessage('7304:Файл проекта не найден:'#13#10 + OldPrj);
+    ShowMessage('7314:Файл проекта не найден:'#13#10 + OldPrj);
     Exit;
   end;
 
@@ -7357,7 +7367,7 @@ begin
 
     if (NewName = '') or (NewDir = '') then
     begin
-      ShowMessage('7360:Нужно указать имя и папку проекта.');
+      ShowMessage('7370:Нужно указать имя и папку проекта.');
       Exit;
     end;
     if (Pos('\', NewName) > 0) or (Pos('/', NewName) > 0) or
@@ -7366,7 +7376,7 @@ begin
        (Pos('<', NewName) > 0) or (Pos('>', NewName) > 0) or
        (Pos('|', NewName) > 0) then
     begin
-      ShowMessage('7369:В имени проекта нельзя использовать символы ' +
+      ShowMessage('7379:В имени проекта нельзя использовать символы ' +
                   '\ / : * ? " < > |');
       Exit;
     end;
@@ -7374,7 +7384,7 @@ begin
     NewDir := IncludeTrailingPathDelimiter(NewDir);
     if not DirectoryExists(NewDir) then
     begin
-      ShowMessage('7377:Папка не найдена:'#13#10 + NewDir);
+      ShowMessage('7387:Папка не найдена:'#13#10 + NewDir);
       Exit;
     end;
 
@@ -7383,14 +7393,14 @@ begin
     if (CompareText(NewName, OldName) <> 0) and
        (FProjectReg.IndexOfName(NewName) >= 0) then
     begin
-      ShowMessage('7386:Проект с именем ' + NewName + ' уже есть в списке.');
+      ShowMessage('7396:Проект с именем ' + NewName + ' уже есть в списке.');
       Exit;
     end;
 
     NewPrj := NewDir + NewName + '.prj';
     if (CompareText(NewPrj, OldPrj) <> 0) and FileExists(NewPrj) then
     begin
-      ShowMessage('7393:В этой папке уже есть описание проекта:'#13#10 +
+      ShowMessage('7403:В этой папке уже есть описание проекта:'#13#10 +
                   NewPrj);
       Exit;
     end;
@@ -7423,7 +7433,7 @@ begin
         Exit;
     end;
     if (NewTarget <> '') and not FileExists(NewTarget) then
-      if MessageDlg('7426:Главного файла проекта нет:'#13#10 + NewTarget +
+      if MessageDlg('7436:Главного файла проекта нет:'#13#10 + NewTarget +
                     #13#10#13#10'Записать свойства всё равно?',
                     mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
         Exit;
@@ -7458,7 +7468,7 @@ begin
     except
       on E: Exception do
       begin
-        ShowMessage('7461:Не удалось записать описание проекта:'#13#10 +
+        ShowMessage('7471:Не удалось записать описание проекта:'#13#10 +
                     NewPrj + #13#10 + E.Message);
         Exit;
       end;
@@ -18349,7 +18359,7 @@ begin
     if not SaveSnapshotSource(Src) then
     begin
       Step('FormSnapshot.pas из ресурса не записан: ' + Src);
-      ShowMessage('18352:Для пробного запуска нужен исходник FormSnapshot.pas, ' +
+      ShowMessage('18362:Для пробного запуска нужен исходник FormSnapshot.pas, ' +
                   'он вшит в редактор ресурсом FORMSNAPSHOT_PAS. В этой ' +
                   'сборке его нет или записать его не удалось:'#13#10 + Src);
       Exit;
@@ -29201,6 +29211,362 @@ begin
     FBusyPanel.Visible := False;
 end;
 
+// ---------------------------------------------------------------------------
+//  Build Release - папка Release рядом с .dpr: exe и только те файлы,
+//  которые нужны программе при работе
+//
+//  Проект собирается заново (CompileDelphi); ошибки сборки - релиза нет,
+//  чтобы в Release не попал прежний exe. Что ещё нужно программе, ищется
+//  в её исходниках (ReleaseBuild): имена файлов в строках кода и .dfm, и
+//  что код с ними делает. Найденное показывает окно DlgRelease с галками;
+//  выбор хранится в описании проекта, раздел [Release], и дальше релиз
+//  собирается без вопросов. Поменять выбор - Project -> Release files.
+//  Файл берётся из папки exe, нет там - из папки .dpr, и кладётся в
+//  Release под тем же относительным путём. Прежняя папка Release уходит
+//  в корзину.
+// ---------------------------------------------------------------------------
+
+// Выбор из описания проекта: строки - имена от папки exe, у папок в конце
+// '\'. False - выбора ещё не было (раздела нет); пустой список с True -
+// выбрано "только exe".
+function TForm1.ReleaseSavedList(AList: TStrings): Boolean;
+var
+  Ini: TIniFile;
+  I, N: Integer;
+  V: string;
+begin
+  AList.Clear;
+  Result := False;
+  if (FCurrentProject = '') or
+     not FileExists(ProjectFileName(FCurrentProject)) then
+    Exit;
+  Ini := TIniFile.Create(ProjectFileName(FCurrentProject));
+  try
+    if not Ini.ValueExists('Release', 'Count') then
+      Exit;
+    Result := True;
+    N := Ini.ReadInteger('Release', 'Count', 0);
+    for I := 1 to N do
+    begin
+      V := Trim(Ini.ReadString('Release', 'File' + IntToStr(I), ''));
+      if V <> '' then
+        AList.Add(V);
+    end;
+  finally
+    Ini.Free;
+  end;
+end;
+
+procedure TForm1.ReleaseSaveList(AList: TStrings);
+var
+  Ini: TIniFile;
+  I: Integer;
+begin
+  if (FCurrentProject = '') or
+     not FileExists(ProjectFileName(FCurrentProject)) then
+    Exit;
+  Ini := TIniFile.Create(ProjectFileName(FCurrentProject));
+  try
+    Ini.EraseSection('Release');
+    Ini.WriteInteger('Release', 'Count', AList.Count);
+    for I := 0 to AList.Count - 1 do
+      Ini.WriteString('Release', 'File' + IntToStr(I + 1), AList[I]);
+  finally
+    Ini.Free;
+  end;
+end;
+
+// Окно выбора: всё, что нашлось в исходниках, и то, что уже было выбрано.
+// Галки: выбранное раньше; выбора ещё не было - найденное на диске, что
+// программа читает (или неясно, что с ним делает). Файлы, которые она
+// только пишет, - без галки: их она создаёт сама. В строке - есть ли файл,
+// что с ним делает код и где имя встретилось первым. OK - выбор в AList и
+// в описание проекта.
+function TForm1.ReleaseFilesDialog(const ADpr, AExeDir: string;
+                                   AList: TStrings): Boolean;
+var
+  Refs, Saved, Keys: TStringList;
+  Dlg: TDlgRelease;
+  I, K: Integer;
+  DprDir, ExeDir, Nm, Key, Place, Usage, SysDir, Low_: string;
+  Ref: TRelRef;
+  Found, HasSaved, Check: Boolean;
+  Buf: array[0..MAX_PATH] of Char;
+begin
+  Result := False;
+  DprDir := IncludeTrailingPathDelimiter(ExtractFilePath(ADpr));
+  ExeDir := IncludeTrailingPathDelimiter(AExeDir);
+  FillChar(Buf, SizeOf(Buf), 0);
+  GetSystemDirectory(Buf, MAX_PATH);
+  SysDir := IncludeTrailingPathDelimiter(string(Buf));
+
+  Refs := TStringList.Create;
+  Saved := TStringList.Create;
+  Keys := TStringList.Create;
+  Dlg := TDlgRelease.Create(Self);
+  try
+    ScanReleaseRefs(DprDir, Refs);
+    HasSaved := ReleaseSavedList(Saved);
+    Dlg.Caption := 'Release files - ' + FCurrentProject;
+
+    for I := 0 to Refs.Count - 1 do
+    begin
+      Nm := Refs[I];
+      Ref := TRelRef(Refs.Objects[I]);
+      Low_ := LowerCase(Nm);
+      if Ref.IsDir then
+      begin
+        // Папка - только та, что есть. Служебные папки сборки и сам
+        // Release - никогда.
+        Found := DirectoryExists(ExeDir + Nm) or DirectoryExists(DprDir + Nm);
+        if not Found or (Low_ = 'release') or (Low_ = 'dsgprobe') or
+           (Low_ = 'dsgcache') or (Low_ = '__history') or
+           (Low_ = '__recovery') or
+           (CompareText(ExcludeTrailingPathDelimiter(ExeDir),
+                        ExcludeTrailingPathDelimiter(DprDir + Nm)) = 0) then
+          Continue;
+        Key := Nm + '\';
+        Place := 'папка';
+      end
+      else
+      begin
+        Found := FileExists(ExeDir + Nm) or FileExists(DprDir + Nm);
+        // Нет на диске - показываем только то, что похоже на данные
+        // программы (.dll, .cfg, .db ...): значит, его не хватает
+        if not Found and not IsDataExt(ExtractFileExt(Nm)) then
+          Continue;
+        // Библиотека Windows (gdi32.dll) есть на любой машине; сам exe
+        // проекта кладётся всегда
+        if (ExtractFilePath(Nm) = '') and FileExists(SysDir + Nm) then
+          Continue;
+        if CompareText(Nm, ChangeFileExt(ExtractFileName(ADpr), '.exe')) = 0 then
+          Continue;
+        Key := Nm;
+        if FileExists(ExeDir + Nm) then
+          Place := 'есть рядом с exe'
+        else if Found then
+          Place := 'есть в папке проекта'
+        else
+          Place := 'НЕ НАЙДЕН';
+      end;
+
+      if Ref.Uses_ = [ruRead] then
+        Usage := 'читается'
+      else if Ref.Uses_ = [ruWrite] then
+        Usage := 'только пишется'
+      else if Ref.Uses_ = [ruRead, ruWrite] then
+        Usage := 'читается и пишется'
+      else
+        Usage := 'использование не ясно';
+
+      if HasSaved then
+        Check := Saved.IndexOf(Key) >= 0
+      else
+        Check := Found and (Ref.Uses_ <> [ruWrite]) and
+                 (not Ref.IsDir or (ruRead in Ref.Uses_));
+
+      Keys.Add(Key);
+      K := Dlg.lstFiles.Items.Add(Key + '   -   ' + Place + ', ' + Usage +
+                                  '   (' + Ref.Where + ')');
+      Dlg.lstFiles.Checked[K] := Check;
+    end;
+
+    // Выбранное раньше, чего в исходниках больше нет, - тоже в списке
+    for I := 0 to Saved.Count - 1 do
+      if Keys.IndexOf(Saved[I]) < 0 then
+      begin
+        Keys.Add(Saved[I]);
+        K := Dlg.lstFiles.Items.Add(Saved[I] +
+                                    '   -   выбрано раньше, в исходниках не найдено');
+        Dlg.lstFiles.Checked[K] := True;
+      end;
+
+    if Dlg.ShowModal <> mrOk then
+      Exit;
+
+    AList.Clear;
+    for I := 0 to Dlg.lstFiles.Items.Count - 1 do
+      if Dlg.lstFiles.Checked[I] then
+        AList.Add(Keys[I]);
+    ReleaseSaveList(AList);
+    Result := True;
+  finally
+    Dlg.Free;
+    Keys.Free;
+    Saved.Free;
+    FreeRelRefs(Refs);
+    Refs.Free;
+  end;
+end;
+
+// Project -> Release files: поменять состав релиза без сборки
+procedure TForm1.ReleaseFilesClick(Sender: TObject);
+var
+  Dpr: string;
+  L: TStringList;
+begin
+  if FCurrentProject = '' then
+  begin
+    ShowMessage('29410:Проект не открыт.');
+    Exit;
+  end;
+  Dpr := ProjectTargetOf(FCurrentProject);
+  if (Dpr = '') or not FileExists(Dpr) then
+  begin
+    ShowMessage('29416:У проекта нет файла .dpr:'#13#10 + Dpr);
+    Exit;
+  end;
+  L := TStringList.Create;
+  try
+    ReleaseFilesDialog(Dpr, ExtractFilePath(DelphiExeOf(Dpr)), L);
+  finally
+    L.Free;
+  end;
+end;
+
+// Project -> Build Release
+procedure TForm1.BuildReleaseClick(Sender: TObject);
+var
+  Dpr, ExeFile, ExeDir, DprDir, RelDir, Nm, Src, PrjType: string;
+  L: TStringList;
+  I, Copied, Missed: Integer;
+  IsDir: Boolean;
+begin
+  if FBusyDepth > 0 then
+    Exit;   // уже идёт сборка или пробный запуск
+  if FCurrentProject = '' then
+  begin
+    ShowMessage('29439:Проект не открыт.');
+    Exit;
+  end;
+  PrjType := ProjectTypeOf(FCurrentProject);
+  if (PrjType <> '') and (CompareText(PrjType, 'Delphi') <> 0) then
+  begin
+    ShowMessage('29445:Релиз собирается только для проектов Delphi.');
+    Exit;
+  end;
+  Dpr := ProjectTargetOf(FCurrentProject);
+  if (Dpr = '') or not FileExists(Dpr) then
+  begin
+    ShowMessage('29451:У проекта нет файла .dpr:'#13#10 + Dpr);
+    Exit;
+  end;
+
+  // Сборка заново: в релиз не должен попасть прежний exe. Изменённые
+  // вкладки - на диск: dcc32 собирает файлы, а не текст редактора.
+  L := TStringList.Create;
+  try
+    if not SaveAllModified(L) then
+    begin
+      ShowMessage('29461:Не сохранены файлы:'#13#10 + L.Text +
+                  #13#10'Релиз не собирается.');
+      Exit;
+    end;
+  finally
+    L.Free;
+  end;
+  if not CompileDelphi then
+  begin
+    LogComp('--- Релиз не собран: сборка с ошибками');
+    Exit;
+  end;
+  ExeFile := DelphiExeOf(Dpr);
+  ExeDir := ExtractFilePath(ExeFile);
+  if not FileExists(ExeFile) then
+  begin
+    LogComp('--- Релиз не собран: нет ' + ExeFile);
+    Exit;
+  end;
+
+  L := TStringList.Create;
+  try
+    // Состав: выбранный раньше, иначе - окно выбора
+    if not ReleaseSavedList(L) then
+      if not ReleaseFilesDialog(Dpr, ExeDir, L) then
+      begin
+        LogComp('--- Релиз не собран: состав не выбран');
+        Exit;
+      end;
+
+    DprDir := ExtractFilePath(Dpr);
+    RelDir := DprDir + 'Release\';
+    if DirectoryExists(RelDir) then
+      if not DeleteProjectFolder(RelDir) then
+      begin
+        ShowMessage('29496:Не удалось убрать прежнюю папку Release:'#13#10 +
+                    RelDir);
+        Exit;
+      end;
+    if not ForceDirectories(ExcludeTrailingPathDelimiter(RelDir)) then
+    begin
+      ShowMessage('29502:Не удалось создать папку'#13#10 + RelDir);
+      Exit;
+    end;
+
+    LogComp('--- Релиз: ' + RelDir);
+    if not CopyFile(PChar(ExeFile),
+                    PChar(RelDir + ExtractFileName(ExeFile)), False) then
+    begin
+      LogComp('  exe не скопирован: ' + ExeFile);
+      Exit;
+    end;
+    LogComp('  ' + ExtractFileName(ExeFile));
+
+    Copied := 1;
+    Missed := 0;
+    for I := 0 to L.Count - 1 do
+    begin
+      Nm := L[I];
+      IsDir := (Nm <> '') and (Nm[Length(Nm)] = '\');
+      if IsDir then
+      begin
+        Nm := ExcludeTrailingPathDelimiter(Nm);
+        if DirectoryExists(ExeDir + Nm) then
+          Src := ExeDir + Nm
+        else
+          Src := DprDir + Nm;
+        if DirectoryExists(Src) and
+           CopyDirTree(IncludeTrailingPathDelimiter(Src),
+                       IncludeTrailingPathDelimiter(RelDir + Nm)) then
+        begin
+          LogComp('  ' + Nm + '\');
+          Inc(Copied);
+        end
+        else
+        begin
+          LogComp('  НЕТ папки ' + Nm + '\ ни рядом с exe, ни в папке проекта');
+          Inc(Missed);
+        end;
+      end
+      else
+      begin
+        if FileExists(ExeDir + Nm) then
+          Src := ExeDir + Nm
+        else
+          Src := DprDir + Nm;
+        ForceDirectories(ExcludeTrailingPathDelimiter(
+          ExtractFilePath(RelDir + Nm)));
+        if FileExists(Src) and
+           CopyFile(PChar(Src), PChar(RelDir + Nm), False) then
+        begin
+          LogComp('  ' + Nm);
+          Inc(Copied);
+        end
+        else
+        begin
+          LogComp('  НЕТ файла ' + Nm + ' ни рядом с exe, ни в папке проекта');
+          Inc(Missed);
+        end;
+      end;
+    end;
+    LogComp(Format('--- Релиз готов: %d, не найдено %d. Состав - Project -> ' +
+                   'Release files', [Copied, Missed]));
+    ShellExecute(Handle, 'open', PChar(RelDir), nil, nil, SW_SHOWNORMAL);
+  finally
+    L.Free;
+  end;
+end;
+
 // Исходник FormSnapshot.pas - из ресурса FORMSNAPSHOT_PAS в файл AFile.
 // False - ресурса нет (редактор собран без formsnapshot_src.res) или файл
 // не записался.
@@ -31097,7 +31463,7 @@ begin
     Dfm := LV.Selected.SubItems[N - 2];
     if not FileExists(Dfm) then
     begin
-      ShowMessage('31100:Файл не найден:'#13#10 + Dfm);
+      ShowMessage('31456:Файл не найден:'#13#10 + Dfm);
       Exit;
     end;
     // Модуль формы - активной вкладкой: по нему DesignFormClick находит
