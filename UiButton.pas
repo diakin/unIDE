@@ -26,8 +26,7 @@ unit UiButton;
 //  цвет - левый нижний пиксель, при NumGlyphs = 2 правая половина - значок
 //  недоступной кнопки. Фокуса не берёт: щелчок не уводит его из поля ввода.
 //
-//  Фон - ParentBackground: при включённых темах Windows рисует родитель
-//  (как у TPanel с ParentBackground), иначе - цвет родителя (Color).
+//  Фон - цвет родителя (Color): в IDE Dark это цвет роли панели.
 //  Цвет выделения - HotColor; clNone - роль темы IconButton.HotBG.
 // ---------------------------------------------------------------------------
 
@@ -158,7 +157,6 @@ type
     // Скругление углов этого прямоугольника, пикселей
     property CornerRadius: Integer read FCornerRadius write SetCornerRadius
       default 8;
-    property ParentBackground default True;
     property Align;
     property Anchors;
     property Constraints;
@@ -573,7 +571,6 @@ begin
   Width := 34;
   Height := 34;
   TabStop := False;
-  ParentBackground := True;
   FNumGlyphs := 1;
   FHotColor := clNone;
   FCornerRadius := 8;
@@ -746,15 +743,11 @@ begin
     Buf.Height := ClientHeight;
     Area := ClientRect;
 
-    // Фон - как у родителя
-    if ParentBackground and ThemeServices.ThemesEnabled and
-       (Parent <> nil) and HandleAllocated then
-      ThemeServices.DrawParentBackground(Handle, Buf.Canvas.Handle, nil, False)
-    else
-    begin
-      Buf.Canvas.Brush.Color := BackColor;
-      Buf.Canvas.FillRect(Area);
-    end;
+    // Фон - цвет родителя. Не через тему Windows (DrawParentBackground):
+    // родитель, который на WM_PRINTCLIENT ничего не рисует, оставлял бы в
+    // буфере его начальный белый цвет.
+    Buf.Canvas.Brush.Color := BackColor;
+    Buf.Canvas.FillRect(Area);
 
     // Выделение: мышь над кнопкой или её держат нажатой
     ShowHot := Enabled and (FHot or (FPressing and FMouseIn));

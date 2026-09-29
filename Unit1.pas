@@ -130,6 +130,10 @@ const
   // Насколько глубоко обходить горячие папки, когда файл ищется по ИМЕНИ.
   // Без ограничения один отмеченный корень диска подвесил бы программу.
   HotSearchDepth = 6;
+  // Сколько миллисекунд искать потерянный файл в дереве над папкой
+  // программы (RelocateFile). Горячие папки - без предела: их выбрал сам
+  // пользователь.
+  RelocateSearchMs = 3000;
 
 type
 
@@ -1248,6 +1252,15 @@ type
     // "Да для всех" в диалоге подтверждения находки. Живёт ровно один
     // прогон поиска: сбрасывается перед каждым пакетом.
     FRelocateAll: Boolean;
+    // Автопоиск потерянного файла в дереве над папкой программы
+    // (RelocateFile -> FindFileInTree) ограничен по времени: над exe может
+    // лежать весь диск. FRelocateUpEnd - до какого GetTickCount искать при
+    // загрузке проекта (общий запас на все файлы), FRelocateDeadline -
+    // предел для идущего обхода (0 - без предела), FRelocateCut - обход
+    // остановлен по времени.
+    FRelocateUpEnd: Cardinal;
+    FRelocateDeadline: Cardinal;
+    FRelocateCut: Boolean;
 
     // Контролы диалога горячих папок. Живут только пока он открыт.
     FHfTree: TTreeView;
@@ -8623,6 +8636,13 @@ begin
   Result := '';
   if (AName = '') or (Depth < 0) then
     Exit;
+  // Время на обход вышло - дальше не ищем (см. FRelocateDeadline)
+  if (FRelocateDeadline <> 0) and
+     (Longint(GetTickCount - FRelocateDeadline) > 0) then
+  begin
+    FRelocateCut := True;
+    Exit;
+  end;
 
   Base := IncludeTrailingPathDelimiter(ADir);
 
@@ -8776,7 +8796,24 @@ begin
     if Accept(Result) then
       Exit;
 
-    Result := FindFileInTree(Up, ExtractFileName(AFile), Parent, HotSearchDepth);
+    // Обход дерева - не дольше RelocateSearchMs: программу могли положить
+    // в папку, над которой лежит весь диск (hang.log: 150 с при запуске).
+    // При загрузке проекта запас общий на все потерянные файлы.
+    if FRelocateUpEnd <> 0 then
+      FRelocateDeadline := FRelocateUpEnd
+    else
+      FRelocateDeadline := GetTickCount + RelocateSearchMs;
+    FRelocateCut := False;
+    try
+      Result := FindFileInTree(Up, ExtractFileName(AFile), Parent,
+                               HotSearchDepth);
+    finally
+      FRelocateDeadline := 0;
+    end;
+    if FRelocateCut then
+      Dbg('8781: ' + ExtractFileName(AFile) + ': поиск в ' + Up +
+          ' остановлен по времени (' + IntToStr(RelocateSearchMs) +
+          ' мс) - дерево слишком большое. Не найден: ' + AFile, clRed);
     if Accept(Result) then
       Exit;
   end;
@@ -9096,6 +9133,9 @@ begin
   OldSample := '';
   NewSample := '';
   FRelocateAll := False; // спрашиваем заново при каждой загрузке проекта
+  // Автопоиск потерянных файлов над папкой программы - общий запас времени
+  // на всю загрузку (RelocateFile)
+  FRelocateUpEnd := GetTickCount + RelocateSearchMs;
 
   Ini := TIniFile.Create(ProjectFileName(AName));
   try
@@ -9206,6 +9246,7 @@ begin
     end;
   finally
     Ini.Free;
+    FRelocateUpEnd := 0;   // дальше - свой запас на каждый поиск
   end;
 
   FCurrentProject := AName;
