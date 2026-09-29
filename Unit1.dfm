@@ -795,116 +795,74 @@ object Form1: TForm1
       BevelOuter = bvNone
       object grpToolbar: TUiGroupBox
         Align = alTop
-        Height = 44
+        Height = 54
         Caption = ''
         object pnlToolbarIn: TPanel
           Align = alClient
           BevelOuter = bvNone
           ParentFont = True
-          object btnOpen: TSpeedButton
-            Flat = False
-            Top = 1
-            Height = 24
+          object btnOpen: TUiIconButton
             Left = 2
-            OnClick = ToolbarButtonClickEvent
-            ParentFont = True
-            Caption = ''
+            Top = 1
+            Width = 34
+            Height = 34
             Hint = 'Открыть файл'
             ShowHint = True
-            Layout = blGlyphLeft
-            Spacing = 4
-            Width = 28
-            Transparent = False
-          end
-          object btnSave: TSpeedButton
-            Flat = False
-            Top = 1
-            Height = 24
-            Left = 31
             OnClick = ToolbarButtonClickEvent
-            ParentFont = True
-            Caption = ''
+          end
+          object btnSave: TUiIconButton
+            Left = 37
+            Top = 1
+            Width = 34
+            Height = 34
             Hint = 'Сохранить файл'
             ShowHint = True
-            Layout = blGlyphLeft
-            Spacing = 4
-            Width = 28
-            Transparent = False
-          end
-          object btnSavePrj: TSpeedButton
-            Flat = False
-            Top = 1
-            Height = 24
-            Left = 60
             OnClick = ToolbarButtonClickEvent
-            ParentFont = True
-            Caption = ''
+          end
+          object btnSavePrj: TUiIconButton
+            Left = 72
+            Top = 1
+            Width = 34
+            Height = 34
             Hint = 'Сохранить проект'
             ShowHint = True
-            Layout = blGlyphLeft
-            Spacing = 4
-            Width = 28
-            Transparent = False
-          end
-          object btnUndo: TSpeedButton
-            Flat = False
-            Top = 1
-            Height = 24
-            Left = 99
             OnClick = ToolbarButtonClickEvent
-            ParentFont = True
-            Caption = ''
+          end
+          object btnUndo: TUiIconButton
+            Left = 117
+            Top = 1
+            Width = 34
+            Height = 34
             Hint = 'Отменить'
             ShowHint = True
-            Layout = blGlyphLeft
-            Spacing = 4
-            Width = 28
-            Transparent = False
-          end
-          object btnCut: TSpeedButton
-            Flat = False
-            Top = 1
-            Height = 24
-            Left = 128
             OnClick = ToolbarButtonClickEvent
-            ParentFont = True
-            Caption = ''
+          end
+          object btnCut: TUiIconButton
+            Left = 152
+            Top = 1
+            Width = 34
+            Height = 34
             Hint = 'Вырезать'
             ShowHint = True
-            Layout = blGlyphLeft
-            Spacing = 4
-            Width = 28
-            Transparent = False
-          end
-          object btnCopy: TSpeedButton
-            Flat = False
-            Top = 1
-            Height = 24
-            Left = 157
             OnClick = ToolbarButtonClickEvent
-            ParentFont = True
-            Caption = ''
+          end
+          object btnCopy: TUiIconButton
+            Left = 187
+            Top = 1
+            Width = 34
+            Height = 34
             Hint = 'Копировать'
             ShowHint = True
-            Layout = blGlyphLeft
-            Spacing = 4
-            Width = 28
-            Transparent = False
-          end
-          object btnPaste: TSpeedButton
-            Flat = False
-            Top = 1
-            Height = 24
-            Left = 186
             OnClick = ToolbarButtonClickEvent
-            ParentFont = True
-            Caption = ''
+          end
+          object btnPaste: TUiIconButton
+            Left = 222
+            Top = 1
+            Width = 34
+            Height = 34
             Hint = 'Вставить'
             ShowHint = True
-            Layout = blGlyphLeft
-            Spacing = 4
-            Width = 28
-            Transparent = False
+            OnClick = ToolbarButtonClickEvent
           end
         end
       end
@@ -915,101 +873,77 @@ object Form1: TForm1
           Align = alClient
           BevelOuter = bvNone
           ParentFont = True
-          object btnCompileRun: TSpeedButton
-            Caption = ''
+          object btnCompileRun: TUiIconButton
             Left = 6
             Top = 5
-            Width = 28
-            Height = 28
-            ShowHint = True
+            Width = 34
+            Height = 34
             Hint = 'Собрать проект dcc32 и запустить, если без ошибок'
+            ShowHint = True
             OnClick = btnCompileRunClick
-            Flat = False
-            Transparent = False
           end
-          object btnViewUnit: TSpeedButton
-            Caption = ''
-            Left = 44
+          object btnViewUnit: TUiIconButton
+            Left = 50
             Top = 5
-            Width = 28
-            Height = 28
-            Flat = False
-            ShowHint = True
+            Width = 34
+            Height = 34
             Hint = 'View Unit - список модулей'
+            ShowHint = True
             OnClick = ShowModulesClick
-            Transparent = False
           end
-          object btnViewForm: TSpeedButton
-            Caption = ''
-            Left = 73
+          object btnViewForm: TUiIconButton
+            Left = 85
             Top = 5
-            Width = 28
-            Height = 28
-            Flat = False
-            ShowHint = True
+            Width = 34
+            Height = 34
             Hint = 'View Form - список форм'
+            ShowHint = True
             OnClick = ShowFormsClick
-            Transparent = False
           end
-          object btnNewForm: TSpeedButton
-            Caption = ''
-            Left = 102
+          object btnNewForm: TUiIconButton
+            Left = 120
             Top = 5
-            Width = 28
-            Height = 28
-            Flat = False
-            ShowHint = True
+            Width = 34
+            Height = 34
             Hint = 'New Form - новая форма'
-            OnClick = NotDoneClick
-            Transparent = False
-          end
-          object btnPause: TSpeedButton
-            Caption = ''
-            Left = 141
-            Top = 5
-            Width = 28
-            Height = 28
-            Flat = False
             ShowHint = True
+            OnClick = NotDoneClick
+          end
+          object btnPause: TUiIconButton
+            Left = 165
+            Top = 5
+            Width = 34
+            Height = 34
             Hint = 'Pause'
-            OnClick = NotDoneClick
-            Transparent = False
-          end
-          object btnProgReset: TSpeedButton
-            Caption = ''
-            Left = 176
-            Top = 5
-            Width = 28
-            Height = 28
-            Flat = False
             ShowHint = True
+            OnClick = NotDoneClick
+          end
+          object btnProgReset: TUiIconButton
+            Left = 200
+            Top = 5
+            Width = 34
+            Height = 34
             Hint = 'Program reset - остановить запущенную программу'
+            ShowHint = True
             OnClick = ProgramResetClick
-            Transparent = False
           end
-          object btnTraceInto: TSpeedButton
-            Caption = ''
-            Left = 205
+          object btnTraceInto: TUiIconButton
+            Left = 235
             Top = 5
-            Width = 28
-            Height = 28
-            Flat = False
-            ShowHint = True
+            Width = 34
+            Height = 34
             Hint = 'Trace into'
-            OnClick = NotDoneClick
-            Transparent = False
-          end
-          object btnStepOver: TSpeedButton
-            Caption = ''
-            Left = 231
-            Top = 5
-            Width = 28
-            Height = 28
-            Flat = False
             ShowHint = True
-            Hint = 'Step over'
             OnClick = NotDoneClick
-            Transparent = False
+          end
+          object btnStepOver: TUiIconButton
+            Left = 270
+            Top = 5
+            Width = 34
+            Height = 34
+            Hint = 'Step over'
+            ShowHint = True
+            OnClick = NotDoneClick
           end
         end
       end
