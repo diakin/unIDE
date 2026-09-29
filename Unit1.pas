@@ -30945,9 +30945,10 @@ begin
   FModPath.Caption := S;
 end;
 
-// Двойной щелчок открывает файл строки: модуль (у первой строки - .dpr),
-// а щелчок по колонке формы - Форма, Размер формы, Дата формы - её .dfm.
-// Визуального просмотра формы здесь нет, только текст описания. Колонка -
+// Двойной щелчок открывает файл строки: модуль (у первой строки - .dpr).
+// Щелчок по колонке формы - Форма, Размер формы, Дата формы - как View
+// Form в Delphi: модуль формы во вкладке и сама форма в конструкторе
+// (DesignFormClick; текст .dfm он открывает во вкладке рядом). Колонка -
 // по месту щелчка, запросом LVM_SUBITEMHITTEST к списку.
 procedure TForm1.ProjectListDblClick(Sender: TObject);
 const
@@ -30969,7 +30970,7 @@ type
 var
   LV: TListView;
   Hit: TUiLVHitTest;
-  FN: string;
+  FN, Dfm, Pas: string;
   N: Integer;
 begin
   if not (Sender is TListView) then
@@ -30988,7 +30989,24 @@ begin
   SendMessage(LV.Handle, UiLVM_SUBITEMHITTEST, 0, Integer(@Hit));
   if ((Hit.SubItem = ColForm) or (Hit.SubItem = ColFormSize) or
       (Hit.SubItem = ColFormDate)) and (LV.Selected.SubItems[N - 2] <> '') then
-    FN := LV.Selected.SubItems[N - 2];
+  begin
+    Dfm := LV.Selected.SubItems[N - 2];
+    if not FileExists(Dfm) then
+    begin
+      ShowMessage('30996:Файл не найден:'#13#10 + Dfm);
+      Exit;
+    end;
+    // Модуль формы - активной вкладкой: по нему DesignFormClick находит
+    // форму. Модуля нет - активной становится сама .dfm.
+    Pas := FN;
+    if (Pas <> '') and FileExists(Pas) and
+       IsPascalExt(LowerCase(ExtractFileExt(Pas))) then
+      OpenNamedFile(Pas)
+    else
+      OpenNamedFile(Dfm);
+    DesignFormClick(Sender);
+    Exit;
+  end;
 
   if not FileExists(FN) then
   begin
