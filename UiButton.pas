@@ -24,7 +24,9 @@ unit UiButton;
 //  рисуется скруглённый прямоугольник цветом выделения, нажатую - значок
 //  сдвинут на пиксель. Сам значок - Glyph, как у TSpeedButton: прозрачный
 //  цвет - левый нижний пиксель, при NumGlyphs = 2 правая половина - значок
-//  недоступной кнопки. Фокуса не берёт: щелчок не уводит его из поля ввода.
+//  недоступной кнопки. 32-битный Glyph (pf32bit) - с альфа-каналом:
+//  цвета умножены на альфу, рисуется через AlphaBlend, сглаженные края
+//  ложатся на любой фон. Фокуса не берёт: щелчок не уводит его из поля ввода.
 //
 //  Фон - цвет родителя (Color): в IDE Dark это цвет роли панели.
 //  Цвет выделения - HotColor; clNone - роль темы IconButton.HotBG.
@@ -123,6 +125,8 @@ type
     FCellOff: TBitmap;      // значок недоступной кнопки
     FCellsReady: Boolean;
     FOffForDark: Boolean;   // FCellOff построен под тёмный фон
+    FCellAlpha: Boolean;    // значки 32-битные с альфа-каналом (AlphaBlend)
+    procedure BuildAlphaCells;
     procedure SetGlyph(Value: TBitmap);
     procedure SetNumGlyphs(Value: Integer);
     procedure SetHotColor(Value: TColor);
@@ -684,8 +688,14 @@ begin
   FOffForDark := DarkBack;
   FCellNormal.Width := 0;
   FCellOff.Width := 0;
+  FCellAlpha := False;
   if FGlyph.Empty then
     Exit;
+  if FGlyph.PixelFormat = pf32bit then
+  begin
+    BuildAlphaCells;
+    Exit;
+  end;
   Side := FGlyph.Width div FNumGlyphs;
   KeyColor := FGlyph.Canvas.Pixels[0, FGlyph.Height - 1];
 
@@ -730,12 +740,65 @@ begin
   FCellOff.Transparent := True;
 end;
 
+// 32-битный Glyph: значки копируются построчно, вместе с альфой (через
+// Canvas она не сохраняется). Недоступного нет (NumGlyphs = 1) - серый из
+// обычного, вдвое прозрачнее. Цвета в Glyph уже умножены на альфу.
+procedure TUiIconButton.BuildAlphaCells;
+type
+  TQuadRow = array[0..32767] of TRGBQuad;
+  PQuadRow = ^TQuadRow;
+var
+  Side, RowIdx, ColIdx, Lum: Integer;
+  SrcRow, DstRow: PQuadRow;
+  Src: TBitmap;
+begin
+  FCellAlpha := True;
+  Side := FGlyph.Width div FNumGlyphs;
+  // Строки - из копии: ScanLine у самого Glyph трогал бы его как
+  // изменяемый (и OnChange - перерисовку по кругу)
+  Src := TBitmap.Create;
+  try
+    Src.Assign(FGlyph);
+    Src.PixelFormat := pf32bit;
+    FCellNormal.PixelFormat := pf32bit;
+    FCellNormal.Width := Side;
+    FCellNormal.Height := FGlyph.Height;
+    FCellOff.PixelFormat := pf32bit;
+    FCellOff.Width := Side;
+    FCellOff.Height := FGlyph.Height;
+    for RowIdx := 0 to FGlyph.Height - 1 do
+    begin
+      SrcRow := Src.ScanLine[RowIdx];
+      DstRow := FCellNormal.ScanLine[RowIdx];
+      Move(SrcRow^[0], DstRow^[0], Side * SizeOf(TRGBQuad));
+      DstRow := FCellOff.ScanLine[RowIdx];
+      if FNumGlyphs = 2 then
+        Move(SrcRow^[Side], DstRow^[0], Side * SizeOf(TRGBQuad))
+      else
+        for ColIdx := 0 to Side - 1 do
+          with SrcRow^[ColIdx] do
+          begin
+            Lum := (rgbRed * 30 + rgbGreen * 59 + rgbBlue * 11) div 200;
+            DstRow^[ColIdx].rgbRed := Lum;
+            DstRow^[ColIdx].rgbGreen := Lum;
+            DstRow^[ColIdx].rgbBlue := Lum;
+            DstRow^[ColIdx].rgbReserved := rgbReserved div 2;
+          end;
+    end;
+  finally
+    Src.Free;
+  end;
+end;
+
 procedure TUiIconButton.Paint;
+const
+  IconSrcAlpha = $01;   // AC_SRC_ALPHA: у значка своя альфа на точку
 var
   Buf, Cell: TBitmap;
   Area: TRect;
   Shift, PosX, PosY: Integer;
   ShowHot: Boolean;
+  Blend: TBlendFunction;
 begin
   Buf := TBitmap.Create;
   try
@@ -771,7 +834,18 @@ begin
         Shift := 1;
       PosX := (ClientWidth - Cell.Width) div 2 + Shift;
       PosY := (ClientHeight - Cell.Height) div 2 + Shift;
-      Buf.Canvas.Draw(PosX, PosY, Cell);
+      if FCellAlpha then
+      begin
+        Blend.BlendOp := AC_SRC_OVER;
+        Blend.BlendFlags := 0;
+        Blend.SourceConstantAlpha := 255;
+        Blend.AlphaFormat := IconSrcAlpha;
+        Windows.AlphaBlend(Buf.Canvas.Handle, PosX, PosY, Cell.Width,
+                           Cell.Height, Cell.Canvas.Handle, 0, 0, Cell.Width,
+                           Cell.Height, Blend);
+      end
+      else
+        Buf.Canvas.Draw(PosX, PosY, Cell);
     end
     else
     begin

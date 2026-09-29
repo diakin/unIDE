@@ -3547,11 +3547,11 @@ end;
 //  Две ленты в toolbar_icons.res (делает icons\make_icons.py):
 //  BMP_ICONS_LIGHT и BMP_ICONS_DARK. В ленте ToolIconSize * число значков
 //  по ширине и две строки по высоте: верхняя - обычный значок, нижняя - он
-//  же для недоступной кнопки. Прозрачный цвет - clFuchsia (левый нижний
-//  пиксель, как берёт TSpeedButton).
-//  Значок - цветная плитка со скруглёнными углами и белым рисунком. В
-//  тёмной ленте плитки чуть темнее и спокойнее, серые плитки недоступных
-//  кнопок - тёмные.
+//  же для недоступной кнопки. Ленты 32-битные, с альфа-каналом (цвета
+//  умножены на альфу) - их рисует TUiIconButton через AlphaBlend.
+//  Значки - набор Lazarus general_purpose (Roland Hahn, CC0), отрисованы из
+//  SVG в 28x28 (icons\svg). В тёмной ленте корпус дискеты серый, а не
+//  чёрный, серые значки недоступных кнопок - светлее.
 //  Тёмный значок кладётся в TUiGlyph.Dark кнопки заранее: UiApplyGlyph
 //  ставит его, а не строит переворотом яркости.
 // ---------------------------------------------------------------------------
@@ -3592,11 +3592,17 @@ begin
 end;
 
 // Значок номер AIconIdx из ленты: обычный и для недоступной кнопки рядом,
-// ширина 2 * ToolIconSize - как ждёт TSpeedButton при NumGlyphs = 2
+// ширина 2 * ToolIconSize - как ждёт TSpeedButton при NumGlyphs = 2.
+// 32-битная лента (значки с альфа-каналом) копируется построчно: через
+// Canvas альфа не сохраняется.
 function CutToolIcon(AStrip: TBitmap; AIconIdx: Integer;
                      AGlyph: TBitmap): Boolean;
+type
+  TQuadRow = array[0..32767] of TRGBQuad;
+  PQuadRow = ^TQuadRow;
 var
-  SrcLeft: Integer;
+  SrcLeft, RowIdx: Integer;
+  SrcRow, DstRow: PQuadRow;
 begin
   Result := False;
   if (AStrip = nil) or AStrip.Empty or (AIconIdx < 0) or
@@ -3604,6 +3610,23 @@ begin
      (AStrip.Height < ToolIconSize * 2) then
     Exit;
   SrcLeft := AIconIdx * ToolIconSize;
+  if AStrip.PixelFormat = pf32bit then
+  begin
+    AGlyph.PixelFormat := pf32bit;
+    AGlyph.Width := ToolIconSize * 2;
+    AGlyph.Height := ToolIconSize;
+    for RowIdx := 0 to ToolIconSize - 1 do
+    begin
+      DstRow := AGlyph.ScanLine[RowIdx];
+      SrcRow := AStrip.ScanLine[RowIdx];
+      Move(SrcRow^[SrcLeft], DstRow^[0], ToolIconSize * SizeOf(TRGBQuad));
+      SrcRow := AStrip.ScanLine[RowIdx + ToolIconSize];
+      Move(SrcRow^[SrcLeft], DstRow^[ToolIconSize],
+           ToolIconSize * SizeOf(TRGBQuad));
+    end;
+    Result := True;
+    Exit;
+  end;
   AGlyph.PixelFormat := pf24bit;
   AGlyph.Width := ToolIconSize * 2;
   AGlyph.Height := ToolIconSize;
