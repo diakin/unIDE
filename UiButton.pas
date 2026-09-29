@@ -20,7 +20,7 @@ unit UiButton;
 //  подписи - TextColor (clNone - по теме).
 //
 //  TUiIconButton - кнопка-значок для панелей инструментов (вместо
-//  TSpeedButton). Квадрат с фоном родителя; когда над ним мышь, под значком
+//  TSpeedButton). Квадрат 34x34 (значок 28x28) с фоном родителя; когда над ним мышь, под значком
 //  рисуется скруглённый прямоугольник цветом выделения, нажатую - значок
 //  сдвинут на пиксель. Сам значок - Glyph, как у TSpeedButton: прозрачный
 //  цвет - левый нижний пиксель, при NumGlyphs = 2 правая половина - значок
@@ -570,8 +570,8 @@ begin
   inherited Create(AOwner);
   // Как у TUiButton: Click - когда кнопку мыши отпустили над кнопкой
   ControlStyle := [csCaptureMouse, csClickEvents, csOpaque];
-  Width := 30;
-  Height := 30;
+  Width := 34;
+  Height := 34;
   TabStop := False;
   ParentBackground := True;
   FNumGlyphs := 1;
