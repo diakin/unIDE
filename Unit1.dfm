@@ -510,6 +510,10 @@ object Form1: TForm1
         Caption = 'Close Project'
         OnClick = CloseProjectClick
       end
+      object mPrjProps: TMenuItem
+        Caption = 'Project Properties...'
+        OnClick = ProjectPropsClick
+      end
       object mPrjDelete: TMenuItem
         Caption = 'Delete Projects...'
         OnClick = DeleteProjectClick

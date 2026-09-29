@@ -541,6 +541,7 @@ type
     mPrjOpen: TMenuItem;
     mPrjReopen: TMenuItem;
     mPrjClose: TMenuItem;
+    mPrjProps: TMenuItem;
     mPrjDelete: TMenuItem;
     mProjectLine2: TMenuItem;
     mPrjAdd: TMenuItem;
@@ -705,6 +706,7 @@ type
     procedure OpenProjectClick(Sender: TObject);
     procedure ReopenProjectClick(Sender: TObject);
     procedure CloseProjectClick(Sender: TObject);
+    procedure ProjectPropsClick(Sender: TObject);
     procedure DeleteProjectClick(Sender: TObject);
     procedure AddToProjectClick(Sender: TObject);
     procedure OpenProjectFolderClick(Sender: TObject);
@@ -7213,6 +7215,271 @@ begin
     Exit;
   end;
   LoadProject(FCurrentProject);
+end;
+
+// PROJECT PROPERTIES: имя, папка и тип текущего проекта - в том же окне,
+// что New Project (DlgNewPrj), только заполненном. Файлы проекта не
+// создаются, не копируются и не переносятся - меняется только описание:
+//   - имя: файл описания <Имя>.prj переименовывается, запись в реестре -
+//     под новым именем. Главный файл (.dpr и т. п.) остаётся как был;
+//   - папка: где лежит описание. Проект перенесли в другую папку (сами
+//     файлы) - пути описания, начинающиеся со старой папки (цель сборки,
+//     окна, вкладки), переводятся на новую. Файлы там уже должны быть:
+//     главного файла нет - вопрос, записывать ли всё равно. У проекта
+//     старой раскладки (описание в общей папке projects\) переносится
+//     только описание - пути в нём указывают на чужие папки;
+//   - тип: Type=. Главный файл, который новому типу не подходит, ищется
+//     в папке проекта заново (PickExistingMain).
+// Перед правкой - вопросы о несохранённом (ConfirmSaveAll,
+// ConfirmSaveProject), после - проект загружается заново уже с новым
+// описанием.
+procedure TForm1.ProjectPropsClick(Sender: TObject);
+var
+  Dlg: TDlgNewPrj;
+  SL: TStringList;
+  Ini: TIniFile;
+  OldName, OldPrj, OldDir, OldType, OldTarget: string;
+  NewName, NewDir, NewType, NewTarget, NewPrj, Dir, Val: string;
+  I, K, P: Integer;
+  DirChanged, OldLayout: Boolean;
+
+  // Строка "Ключ=значение" в разделе ASect описания (SL). Нет строки -
+  // дописывается в конец раздела, нет раздела - в начало файла.
+  procedure SetLine(const ASect, AKey, AValue: string);
+  var
+    J, SectAt, InsAt, Eq: Integer;
+    S: string;
+  begin
+    SectAt := -1;
+    InsAt := -1;
+    for J := 0 to SL.Count - 1 do
+    begin
+      S := Trim(SL[J]);
+      if (S <> '') and (S[1] = '[') then
+      begin
+        if SectAt >= 0 then
+        begin
+          InsAt := J;   // нужный раздел кончился
+          Break;
+        end;
+        if CompareText(S, '[' + ASect + ']') = 0 then
+          SectAt := J;
+        Continue;
+      end;
+      Eq := Pos('=', S);
+      if (SectAt >= 0) and (Eq > 0) and
+         (CompareText(Trim(Copy(S, 1, Eq - 1)), AKey) = 0) then
+      begin
+        SL[J] := AKey + '=' + AValue;
+        Exit;
+      end;
+    end;
+    if SectAt < 0 then
+    begin
+      SL.Insert(0, '[' + ASect + ']');
+      SL.Insert(1, AKey + '=' + AValue);
+      Exit;
+    end;
+    if InsAt < 0 then
+      InsAt := SL.Count;
+    // Пустые строки перед следующим разделом остаются после новой строки
+    while (InsAt > SectAt + 1) and (Trim(SL[InsAt - 1]) = '') do
+      Dec(InsAt);
+    SL.Insert(InsAt, AKey + '=' + AValue);
+  end;
+
+begin
+  if FCurrentProject = '' then
+  begin
+    ShowMessage('7294:Проект не открыт.');
+    Exit;
+  end;
+  OldName := FCurrentProject;
+  OldPrj := ProjectFileName(OldName);
+  if not FileExists(OldPrj) then
+  begin
+    ShowMessage('7301:Файл проекта не найден:'#13#10 + OldPrj);
+    Exit;
+  end;
+
+  // Несохранённые тексты и состав окон - до правки: после неё проект
+  // загружается заново из описания
+  if not ConfirmSaveAll then
+    Exit;
+  if not ConfirmSaveProject then
+    Exit;
+
+  OldDir := ExtractFilePath(OldPrj);
+  OldType := ProjectTypeOf(OldName);
+  Ini := TIniFile.Create(OldPrj);
+  try
+    OldTarget := StripIniComment(Ini.ReadString('Project', 'Target', ''));
+  finally
+    Ini.Free;
+  end;
+
+  Dlg := TDlgNewPrj.Create(Self);
+  SL := TStringList.Create;
+  try
+    // То же окно, что New Project: галка "на базе существующего" здесь
+    // не нужна - проект уже есть. Подсказка папки по имени не
+    // подключается: папка проекта от его имени не зависит.
+    Dlg.Caption := 'Project Properties';
+    Dlg.chkBase.Visible := False;
+    Dlg.edName.Text := OldName;
+    Dlg.edDir.Text := OldDir;
+    K := Dlg.cbType.Items.IndexOf(OldType);
+    if K < 0 then
+      K := Dlg.cbType.Items.Add(OldType);
+    Dlg.cbType.ItemIndex := K;
+
+    // Кнопка "..." закрывает окно с mrRetry (как в New Project): папка
+    // выбирается, и окно показывается снова
+    repeat
+      if Dlg.ShowModal = mrRetry then
+      begin
+        Dir := Dlg.edDir.Text;
+        if PickFolderDialog('Папка проекта', Dir, Dir) then
+          Dlg.edDir.Text := IncludeTrailingPathDelimiter(Dir);
+        Continue;
+      end
+      else if Dlg.ModalResult <> mrOk then
+        Exit;
+      Break;
+    until False;
+
+    NewName := Trim(Dlg.edName.Text);
+    NewDir := Trim(Dlg.edDir.Text);
+    NewType := Dlg.cbType.Text;
+
+    if (NewName = '') or (NewDir = '') then
+    begin
+      ShowMessage('7357:Нужно указать имя и папку проекта.');
+      Exit;
+    end;
+    if (Pos('\', NewName) > 0) or (Pos('/', NewName) > 0) or
+       (Pos(':', NewName) > 0) or (Pos('*', NewName) > 0) or
+       (Pos('?', NewName) > 0) or (Pos('"', NewName) > 0) or
+       (Pos('<', NewName) > 0) or (Pos('>', NewName) > 0) or
+       (Pos('|', NewName) > 0) then
+    begin
+      ShowMessage('7366:В имени проекта нельзя использовать символы ' +
+                  '\ / : * ? " < > |');
+      Exit;
+    end;
+
+    NewDir := IncludeTrailingPathDelimiter(NewDir);
+    if not DirectoryExists(NewDir) then
+    begin
+      ShowMessage('7374:Папка не найдена:'#13#10 + NewDir);
+      Exit;
+    end;
+
+    if FProjectReg = nil then
+      LoadProjectReg;
+    if (CompareText(NewName, OldName) <> 0) and
+       (FProjectReg.IndexOfName(NewName) >= 0) then
+    begin
+      ShowMessage('7383:Проект с именем ' + NewName + ' уже есть в списке.');
+      Exit;
+    end;
+
+    NewPrj := NewDir + NewName + '.prj';
+    if (CompareText(NewPrj, OldPrj) <> 0) and FileExists(NewPrj) then
+    begin
+      ShowMessage('7390:В этой папке уже есть описание проекта:'#13#10 +
+                  NewPrj);
+      Exit;
+    end;
+
+    DirChanged := CompareText(NewDir, OldDir) <> 0;
+    OldLayout := CompareText(OldDir,
+                             IncludeTrailingPathDelimiter(ProjectsDir)) = 0;
+
+    // Ничего не поменялось - писать нечего
+    if (NewName = OldName) and not DirChanged and
+       (CompareText(NewType, OldType) = 0) then
+      Exit;
+
+    // Главный файл: в новой папке, если в неё перенесли проект; другой,
+    // если прежний новому типу не подходит
+    NewTarget := OldTarget;
+    if DirChanged and not OldLayout and (OldTarget <> '') and
+       AnsiStartsText(OldDir, OldTarget) then
+      NewTarget := NewDir + Copy(OldTarget, Length(OldDir) + 1, MaxInt);
+    if (CompareText(NewType, OldType) <> 0) and
+       (MainMasksFor(NewType) <> '') and
+       ((NewTarget = '') or not MatchesProjectType(NewTarget, NewType)) then
+    begin
+      if NewTarget <> '' then
+        Dir := ExtractFilePath(NewTarget)
+      else
+        Dir := NewDir;
+      // Не нашёлся или выбор отменён - сообщение уже было
+      if not PickExistingMain(Dir, NewType, NewTarget) then
+        Exit;
+    end;
+    if (NewTarget <> '') and not FileExists(NewTarget) then
+      if MessageDlg('7423:Главного файла проекта нет:'#13#10 + NewTarget +
+                    #13#10#13#10'Записать свойства всё равно?',
+                    mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+        Exit;
+
+    // Описание - текстом, как есть: разделы окон, вкладок, закладок и
+    // компилятора переносятся без разбора
+    SL.LoadFromFile(OldPrj);
+    if DirChanged and not OldLayout then
+      for I := 0 to SL.Count - 1 do
+      begin
+        K := Pos('=', SL[I]);
+        if K = 0 then
+          Continue;
+        // В [Windows] и [Tabs] значение - "<номер> <путь>": старая папка
+        // ищется внутри значения, а не только в начале
+        Val := Copy(SL[I], K + 1, MaxInt);
+        P := Pos(AnsiUpperCase(OldDir), AnsiUpperCase(Val));
+        if P > 0 then
+          SL[I] := Copy(SL[I], 1, K) + Copy(Val, 1, P - 1) + NewDir +
+                   Copy(Val, P + Length(OldDir), MaxInt);
+      end;
+    SetLine('Project', 'Type', NewType);
+    if NewTarget <> '' then
+      SetLine('Project', 'Target', NewTarget);
+
+    // Смена одного регистра букв в имени - тот же файл: переименовать,
+    // иначе удаление старого удалило бы новый
+    if (CompareText(NewPrj, OldPrj) = 0) and (NewPrj <> OldPrj) then
+      RenameFile(OldPrj, NewPrj);
+    try
+      SL.SaveToFile(NewPrj);
+    except
+      on E: Exception do
+      begin
+        ShowMessage('7458:Не удалось записать описание проекта:'#13#10 +
+                    NewPrj + #13#10 + E.Message);
+        Exit;
+      end;
+    end;
+    if CompareText(NewPrj, OldPrj) <> 0 then
+      if not DeleteFile(OldPrj) then
+        LogRaw('Project Properties: прежнее описание не удалено - ' + OldPrj);
+
+    if CompareText(NewName, OldName) <> 0 then
+      UnregisterProject(OldName);
+    RegisterProject(NewName, NewPrj);
+    LogRaw('Project Properties: ' + NewName + '  ' + #149 + '  ' + NewType +
+           '  ' + #149 + '  ' + NewPrj);
+  finally
+    SL.Free;
+    Dlg.Free;
+  end;
+
+  // Тот же проект под новым описанием: имя меняем до загрузки, иначе
+  // LoadProject сочтёт его другим проектом и сбросит снимки форм и
+  // конструктор (ProjectSwitchReset)
+  FCurrentProject := NewName;
+  RebuildProjectsMenu;
+  LoadProject(NewName);
 end;
 
 // NEW PROJECT: имя, папка, тип.
