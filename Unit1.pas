@@ -874,7 +874,9 @@ type
     FDsgOther: TFormDesigner;
     FDsgOtherMade: TStringList;   // его FDsgMade
     FDsgOtherGlyph: TList;        // его FDsgGlyphCopied
-    FDsgOtherKey: string;         // по какому тексту и дереву построен (DsgViewKey)
+    FDsgOtherKey: string;         // по какому тексту построен (DsgViewKeyOf)
+    FDsgOtherTimer: TTimer;       // перестройка спрятанного после правки формы
+    FDsgEditOldText: string;      // .dfm до правки из инспектора (ObjApplyEdit)
     // Обработчик выбранного пункта меню своей формы: к нему переходит
     // редактор после Click (WMLiveMenuJump)
     FLiveJumpMethod: string;
@@ -1640,7 +1642,15 @@ type
     procedure DsgReload;
     function  DsgNewDesigner: TFormDesigner;
     function  DsgViewKey: string;
+    function  DsgViewKeyOf(const AText: string): string;
     procedure DsgFreeOther;
+    procedure DsgSwapOther;
+    function  DsgBuildOther: Boolean;
+    procedure DsgOtherSync(const AOldText, ANewText, AName: string;
+                           AProps: TStrings);
+    procedure DsgOtherSyncProp(const AOldText, AName, AProp, ARaw: string);
+    procedure DsgOtherLater;
+    procedure DsgOtherTimerTick(Sender: TObject);
     procedure DsgSwitchView;
     procedure DsgKey(AKey: Word; ACtrl, AShift: Boolean);
     procedure DsgClose(Sender: TObject);
@@ -19784,6 +19794,12 @@ begin
   Obj := TDfmNode(FObjCurNode);
   PName := FObjEditName;
   Relined := False;
+  // Текст .dfm до правки: по нему спрятанный второй вид конструктора
+  // получит ту же правку (ObjPointUpdate -> DsgOtherSyncProp)
+  if FDsgOther <> nil then
+    FDsgEditOldText := DsgGetText
+  else
+    FDsgEditOldText := '';
 
   // Выделена группа - значение всем её компонентам
   if not FObjEditCode and not FObjEditArray and
@@ -20132,7 +20148,13 @@ begin
     if Nm = '' then
       Nm := N.VarName;
     if (Nm = '') or not FDesigner.SetPropText(Nm, AProp, ARaw) then
-      DsgReload;
+      DsgReload
+    // То же - спрятанному второму виду. Правка в коде (.pas) текст .dfm не
+    // меняет - «до правки» это нынешний текст.
+    else if ACode then
+      DsgOtherSyncProp(DsgGetText, Nm, AProp, ARaw)
+    else
+      DsgOtherSyncProp(FDsgEditOldText, Nm, AProp, ARaw);
   end;
 
   // Текст и узлы согласованы - кэш по ним
@@ -21538,42 +21560,181 @@ begin
   Result.OnGroupChange := DsgGroupChange;
 end;
 
-// По чему построена форма конструктора: текст .dfm, дерево инспектора
-// (компоненты из кода и снимок), номер снимка, режим темы IDE. Совпал у
-// спрятанного второго вида - он годится как есть.
-function TForm1.DsgViewKey: string;
-var
-  Txt: string;
+// По чему построена форма конструктора: текст .dfm, номер снимка, режим
+// темы IDE. Совпал у спрятанного второго вида - он годится как есть.
+function TForm1.DsgViewKeyOf(const AText: string): string;
 begin
-  Txt := DsgGetText;
-  Result := FDsgDfm + '|' + IntToHex(Crc32Of(Txt), 8) + ':' +
-            IntToStr(Length(Txt)) + '|' + FObjTreeKey + '|' +
-            IntToStr(FObjSnapGen) + '|' + IntToStr(FIdeMode);
+  Result := FDsgDfm + '|' + IntToHex(Crc32Of(AText), 8) + ':' +
+            IntToStr(Length(AText)) + '|' + IntToStr(FObjSnapGen) + '|' +
+            IntToStr(FIdeMode);
+end;
+
+function TForm1.DsgViewKey: string;
+begin
+  Result := DsgViewKeyOf(DsgGetText);
 end;
 
 // Спрятанный второй вид больше не нужен: другая форма, закрытие
 // конструктора, смена проекта
 procedure TForm1.DsgFreeOther;
 begin
+  if FDsgOtherTimer <> nil then
+    FDsgOtherTimer.Enabled := False;
   FreeAndNil(FDsgOther);
   FreeAndNil(FDsgOtherMade);
   FreeAndNil(FDsgOtherGlyph);
   FDsgOtherKey := '';
 end;
 
-// Переключение вида формы в конструкторе: live look <-> .dfm look.
-// Две формы: видимая и спрятанная второго вида. Спрятанная построена по
-// тому же тексту и дереву (DsgViewKey совпал) - она просто показывается на
-// месте видимой. Иначе (форма с тех пор менялась, спрятанной ещё нет) она
-// сначала строится невидимой, и только потом подменяет видимую - на экране
-// нет пустой формы и перестройки по частям. Прежняя видимая прячется и
-// становится вторым видом.
+// ---------------------------------------------------------------------------
+//  Два вида формы в конструкторе: live look и .dfm look
+//
+//  Две формы (два TFormDesigner): видимая - FDesigner, спрятанная другого
+//  вида - FDsgOther. Переключение - спрятанную показать, видимую спрятать
+//  (DsgSwitchView). Правки видимой сразу переносятся в спрятанную:
+//    - свойства (перенос и размер мышью, инспектор, группа) - тем же
+//      свойством ей (DsgOtherSync);
+//    - остальное (добавление, удаление, вставка, откат - видимая строится
+//      заново) - спрятанная строится заново невидимой, когда программа
+//      ничем не занята (DsgOtherLater, через 1,5 с после правки).
+//  FDsgOtherKey - по какому тексту .dfm построена спрятанная; не совпал с
+//  нынешним при переключении - строится заново перед показом.
+//  Вторая форма появляется при первом переключении вида.
+// ---------------------------------------------------------------------------
+
+// Видимая <-> спрятанная: вместе с формой - и её списки (компоненты из кода,
+// скопированные значки) и вид. Всё остальное работает с FDesigner.
+procedure TForm1.DsgSwapOther;
+var
+  TmpDsg: TFormDesigner;
+  TmpMade: TStringList;
+  TmpGlyph: TList;
+begin
+  TmpDsg := FDesigner;
+  FDesigner := FDsgOther;
+  FDsgOther := TmpDsg;
+  TmpMade := FDsgMade;
+  FDsgMade := FDsgOtherMade;
+  FDsgOtherMade := TmpMade;
+  TmpGlyph := FDsgGlyphCopied;
+  FDsgGlyphCopied := FDsgOtherGlyph;
+  FDsgOtherGlyph := TmpGlyph;
+  FDsgLiveView := not FDsgLiveView;
+end;
+
+// Построить спрятанную форму другого вида по нынешнему тексту - невидимой.
+// Видимая при этом не меняется.
+function TForm1.DsgBuildOther: Boolean;
+var
+  Err: string;
+  T0: Cardinal;
+begin
+  Result := False;
+  if (FDesigner = nil) or (FDesigner.Form = nil) then
+    Exit;
+  T0 := GetTickCount;
+  if FDsgOther = nil then
+    FDsgOther := DsgNewDesigner;
+  if FDsgOtherMade = nil then
+    FDsgOtherMade := TStringList.Create;
+  DsgSwapOther;               // строим как текущую: DsgAddRuntime - с FDesigner
+  try
+    Result := FDesigner.Load(DsgGetText, Err, True);
+    if Result then
+    begin
+      DsgAddRuntime;
+      FDesigner.DropOldForm;  // прежняя спрятанная - больше не нужна
+    end;
+  finally
+    DsgSwapOther;
+  end;
+  if Result then
+  begin
+    FDsgOtherKey := DsgViewKey;
+    Dbg('22991: конструктор: второй вид формы построен, ' +
+        IntToStr(GetTickCount - T0) + ' мс', clGray);
+  end
+  else
+  begin
+    FDsgOtherKey := '';
+    Dbg('22990: второй вид формы не удалось построить: ' + Err, clRed);
+  end;
+end;
+
+// Правка свойств видимой формы - та же спрятанной. Только если спрятанная
+// была по тексту до правки: тогда после неё она - по тексту после. Иначе
+// (уже отстала) - её перестроит DsgOtherLater или переключение.
+procedure TForm1.DsgOtherSync(const AOldText, ANewText, AName: string;
+                              AProps: TStrings);
+var
+  PropIdx: Integer;
+  Ok: Boolean;
+begin
+  if (FDsgOther = nil) or (FDsgOther.Form = nil) or (AProps = nil) or
+     (FDsgOtherKey <> DsgViewKeyOf(AOldText)) then
+    Exit;
+  Ok := True;
+  for PropIdx := 0 to AProps.Count - 1 do
+    if not FDsgOther.SetPropText(AName, AProps.Names[PropIdx],
+             Copy(AProps[PropIdx], Length(AProps.Names[PropIdx]) + 2, MaxInt)) then
+      Ok := False;
+  if Ok then
+    FDsgOtherKey := DsgViewKeyOf(ANewText)
+  else
+    DsgOtherLater;
+end;
+
+procedure TForm1.DsgOtherSyncProp(const AOldText, AName, AProp, ARaw: string);
+var
+  One: TStringList;
+begin
+  if FDsgOther = nil then
+    Exit;
+  One := TStringList.Create;
+  try
+    One.Add(AProp + '=' + ARaw);
+    DsgOtherSync(AOldText, DsgGetText, AName, One);
+  finally
+    One.Free;
+  end;
+end;
+
+// Спрятанная отстала (видимую построили заново) - перестроить её, когда
+// правки на время прекратятся
+procedure TForm1.DsgOtherLater;
+begin
+  if FDsgOther = nil then
+    Exit;
+  if FDsgOtherTimer = nil then
+  begin
+    FDsgOtherTimer := TTimer.Create(Self);
+    FDsgOtherTimer.Enabled := False;
+    FDsgOtherTimer.Interval := 1500;
+    FDsgOtherTimer.OnTimer := DsgOtherTimerTick;
+  end;
+  FDsgOtherTimer.Enabled := False;   // отсчёт - заново от последней правки
+  FDsgOtherTimer.Enabled := True;
+end;
+
+procedure TForm1.DsgOtherTimerTick(Sender: TObject);
+begin
+  // Идёт работа (правка в инспекторе, сборка, мышь держат) - позже
+  if FObjEditing or (FBusyDepth > 0) or (GetKeyState(VK_LBUTTON) < 0) then
+    Exit;
+  FDsgOtherTimer.Enabled := False;
+  if (FDsgOther = nil) or (FDesigner = nil) or (FDesigner.Form = nil) or
+     (FDsgOtherKey = DsgViewKey) then
+    Exit;
+  DsgBuildOther;
+end;
+
+// Переключение вида: спрятанная форма показывается на месте видимой,
+// видимая прячется. Спрятанной ещё нет или она отстала - сначала строится
+// (невидимой).
 procedure TForm1.DsgSwitchView;
 var
   OldDsg: TFormDesigner;
-  OldMade: TStringList;
-  OldGlyph: TList;
-  Key, OtherKey, SelName, Err: string;
+  SelName: string;
   WasVisible: Boolean;
   PosLeft, PosTop: Integer;
 begin
@@ -21582,55 +21743,29 @@ begin
     FDsgLiveView := not FDsgLiveView;
     Exit;
   end;
-  Key := DsgViewKey;
-  OldDsg := FDesigner;
-  OldMade := FDsgMade;
-  OldGlyph := FDsgGlyphCopied;
-  WasVisible := OldDsg.Form.Visible;
-  SelName := OldDsg.SelectedName;
-  PosLeft := OldDsg.Form.Left;
-  PosTop := OldDsg.Form.Top;
-  OtherKey := FDsgOtherKey;
-
-  // Второй вид становится текущим: DsgAddRuntime и остальные работают с
-  // FDesigner, FDsgMade, FDsgGlyphCopied
-  FDesigner := FDsgOther;
-  FDsgMade := FDsgOtherMade;
-  FDsgGlyphCopied := FDsgOtherGlyph;
-  if FDesigner = nil then
-    FDesigner := DsgNewDesigner;
-  if FDsgMade = nil then
-    FDsgMade := TStringList.Create;
-  FDsgLiveView := not FDsgLiveView;
-
-  if (FDesigner.Form = nil) or (OtherKey <> Key) then
+  if FDsgOtherTimer <> nil then
+    FDsgOtherTimer.Enabled := False;
+  if (FDsgOther = nil) or (FDsgOther.Form = nil) or
+     (FDsgOtherKey <> DsgViewKey) then
   begin
-    if not FDesigner.Load(DsgGetText, Err, True) then
+    if not DsgBuildOther then
     begin
-      ShowMessage('22990:Второй вид формы не удалось построить:'#13#10 + Err);
-      // Остаётся прежний вид
-      FDsgOther := FDesigner;
-      FDsgOtherMade := FDsgMade;
-      FDsgOtherGlyph := FDsgGlyphCopied;
-      FDsgOtherKey := '';
-      FDesigner := OldDsg;
-      FDsgMade := OldMade;
-      FDsgGlyphCopied := OldGlyph;
-      FDsgLiveView := not FDsgLiveView;
+      ShowMessage('22993:Второй вид формы не удалось построить - остаётся ' +
+                  'этот. Подробности - в HiLite log.');
       Exit;
     end;
-    DsgAddRuntime;
-    Dbg('22991: конструктор: второй вид формы построен заново', clGray);
   end
   else
     Dbg('22992: конструктор: второй вид формы - готовый', clGray);
 
-  // Прежний видимый - теперь спрятанный второй вид; построен по
-  // нынешнему тексту
-  FDsgOther := OldDsg;
-  FDsgOtherMade := OldMade;
-  FDsgOtherGlyph := OldGlyph;
-  FDsgOtherKey := Key;
+  OldDsg := FDesigner;
+  WasVisible := OldDsg.Form.Visible;
+  SelName := OldDsg.SelectedName;
+  PosLeft := OldDsg.Form.Left;
+  PosTop := OldDsg.Form.Top;
+  DsgSwapOther;
+  // Прежняя видимая построена по нынешнему тексту - это теперь спрятанная
+  FDsgOtherKey := DsgViewKey;
 
   FDesigner.Form.Left := PosLeft;
   FDesigner.Form.Top := PosTop;
@@ -22886,6 +23021,7 @@ begin
       FDsgBatchPushed := True;
     end;
     DsgSetText(New);
+    DsgOtherSync(Old, New, AName, AProps);   // то же - спрятанному виду
     Exit;
   end;
 
@@ -22908,6 +23044,7 @@ begin
   if not PosOnly then
     DsgPushUndo(Old, '');
   DsgSetText(New);
+  DsgOtherSync(Old, New, AName, AProps);     // то же - спрятанному виду
 
   // Инспектор - по новому тексту, выделение в дереве - то, что выделено
   // маркерами в конструкторе. Это не всегда AName: окно формы тянут за
@@ -23022,6 +23159,8 @@ begin
       FDesigner.ShowForm
     else
       FDesigner.DropOldForm;
+    // Спрятанный второй вид отстал - перестроится, когда правки стихнут
+    DsgOtherLater;
   end
   else
   begin
@@ -25153,6 +25292,18 @@ begin
         DsgReload;
         Break;
       end;
+    // То же - спрятанному виду: всем компонентам группы, один переход
+    // текста Old -> New
+    if (FDsgOther <> nil) and (FDsgOtherKey = DsgViewKeyOf(Old)) then
+    begin
+      for I := 0 to Names.Count - 1 do
+        if not FDsgOther.SetPropText(Names[I], AProp, ARaw) then
+          FDsgOtherKey := '';
+      if FDsgOtherKey <> '' then
+        FDsgOtherKey := DsgViewKeyOf(New)
+      else
+        DsgOtherLater;
+    end;
   finally
     L.Free;
     Names.Free;
