@@ -868,6 +868,13 @@ type
     // кнопки: после смены темы значок берётся заново (в тёмной теме он
     // перевёрнут). Очищается, когда форма конструктора строится заново.
     FDsgGlyphCopied: TList;
+    // Второй вид формы в конструкторе (live look / .dfm look): построен
+    // и спрятан. Переключение вида - смена видимой формы (DsgSwitchView);
+    // если с тех пор форма менялась, спрятанная сначала строится заново.
+    FDsgOther: TFormDesigner;
+    FDsgOtherMade: TStringList;   // его FDsgMade
+    FDsgOtherGlyph: TList;        // его FDsgGlyphCopied
+    FDsgOtherKey: string;         // по какому тексту и дереву построен (DsgViewKey)
     FRunProcess: THandle;      // запущенная программа, 0 - не следим
     // Правка значения: поле поверх ячейки, что правим и что было
     // Редакторы по типу свойства: список для перечислений, цвета и курсора,
@@ -1628,6 +1635,10 @@ type
     function  ObjGroupApplyArray(const AProp, ARaw: string): Boolean;
     function  ObjNodeByName(const AName: string): TObject;
     procedure DsgReload;
+    function  DsgNewDesigner: TFormDesigner;
+    function  DsgViewKey: string;
+    procedure DsgFreeOther;
+    procedure DsgSwitchView;
     procedure DsgKey(AKey: Word; ACtrl, AShift: Boolean);
     procedure DsgClose(Sender: TObject);
     procedure WMDsgClosed(var Msg: TMessage); message WM_USER + 312;
@@ -9980,6 +9991,7 @@ begin
     DsgPaletteReset;
     FreeAndNil(FDesigner);
   end;
+  DsgFreeOther;
   FDsgDfm := '';
   FDsgHiddenForRun := False;
   if FDsgUndo <> nil then
@@ -15020,6 +15032,7 @@ begin
   FreeAndNil(FRttiDefaults);
   FreeAndNil(FObjMissing);
   FreeAndNil(FDesigner);
+  DsgFreeOther;
   FreeAndNil(FDsgUndo);
   FreeAndNil(FDsgUndoPas);
   FreeAndNil(FDsgCutNames);
@@ -21472,19 +21485,9 @@ begin
   end;
 
   if FDesigner = nil then
-  begin
-    FDesigner := TFormDesigner.Create;
-    FDesigner.OnSelect := DsgSelect;
-    FDesigner.OnChange := DsgChange;
-    FDesigner.OnKey := DsgKey;
-    FDesigner.OnClose := DsgClose;
-    FDesigner.OnPlace := DsgPlace;
-    FDesigner.OnDblClick := DsgDblClick;
-    FDesigner.OnContext := DsgContext;
-    FDesigner.OnPageChange := DsgPageChange;
-    FDesigner.OnBatch := DsgBatch;
-    FDesigner.OnGroupChange := DsgGroupChange;
-  end;
+    FDesigner := DsgNewDesigner;
+  // Спрятанный второй вид - от прежней формы или прежнего текста
+  DsgFreeOther;
   FDsgUndo.Clear;
   FDsgUndoPas.Clear;
 
@@ -21496,6 +21499,125 @@ begin
     FreeAndNil(FDesigner);
     DsgPaletteReset;
   end;
+end;
+
+// Конструктор форм с обработчиками главного окна
+function TForm1.DsgNewDesigner: TFormDesigner;
+begin
+  Result := TFormDesigner.Create;
+  Result.OnSelect := DsgSelect;
+  Result.OnChange := DsgChange;
+  Result.OnKey := DsgKey;
+  Result.OnClose := DsgClose;
+  Result.OnPlace := DsgPlace;
+  Result.OnDblClick := DsgDblClick;
+  Result.OnContext := DsgContext;
+  Result.OnPageChange := DsgPageChange;
+  Result.OnBatch := DsgBatch;
+  Result.OnGroupChange := DsgGroupChange;
+end;
+
+// По чему построена форма конструктора: текст .dfm, дерево инспектора
+// (компоненты из кода и снимок), номер снимка, режим темы IDE. Совпал у
+// спрятанного второго вида - он годится как есть.
+function TForm1.DsgViewKey: string;
+var
+  Txt: string;
+begin
+  Txt := DsgGetText;
+  Result := FDsgDfm + '|' + IntToHex(Crc32Of(Txt), 8) + ':' +
+            IntToStr(Length(Txt)) + '|' + FObjTreeKey + '|' +
+            IntToStr(FObjSnapGen) + '|' + IntToStr(FIdeMode);
+end;
+
+// Спрятанный второй вид больше не нужен: другая форма, закрытие
+// конструктора, смена проекта
+procedure TForm1.DsgFreeOther;
+begin
+  FreeAndNil(FDsgOther);
+  FreeAndNil(FDsgOtherMade);
+  FreeAndNil(FDsgOtherGlyph);
+  FDsgOtherKey := '';
+end;
+
+// Переключение вида формы в конструкторе: live look <-> .dfm look.
+// Две формы: видимая и спрятанная второго вида. Спрятанная построена по
+// тому же тексту и дереву (DsgViewKey совпал) - она просто показывается на
+// месте видимой. Иначе (форма с тех пор менялась, спрятанной ещё нет) она
+// сначала строится невидимой, и только потом подменяет видимую - на экране
+// нет пустой формы и перестройки по частям. Прежняя видимая прячется и
+// становится вторым видом.
+procedure TForm1.DsgSwitchView;
+var
+  OldDsg: TFormDesigner;
+  OldMade: TStringList;
+  OldGlyph: TList;
+  Key, OtherKey, SelName, Err: string;
+  WasVisible: Boolean;
+  PosLeft, PosTop: Integer;
+begin
+  if (FDesigner = nil) or (FDesigner.Form = nil) then
+  begin
+    FDsgLiveView := not FDsgLiveView;
+    Exit;
+  end;
+  Key := DsgViewKey;
+  OldDsg := FDesigner;
+  OldMade := FDsgMade;
+  OldGlyph := FDsgGlyphCopied;
+  WasVisible := OldDsg.Form.Visible;
+  SelName := OldDsg.SelectedName;
+  PosLeft := OldDsg.Form.Left;
+  PosTop := OldDsg.Form.Top;
+  OtherKey := FDsgOtherKey;
+
+  // Второй вид становится текущим: DsgAddRuntime и остальные работают с
+  // FDesigner, FDsgMade, FDsgGlyphCopied
+  FDesigner := FDsgOther;
+  FDsgMade := FDsgOtherMade;
+  FDsgGlyphCopied := FDsgOtherGlyph;
+  if FDesigner = nil then
+    FDesigner := DsgNewDesigner;
+  if FDsgMade = nil then
+    FDsgMade := TStringList.Create;
+  FDsgLiveView := not FDsgLiveView;
+
+  if (FDesigner.Form = nil) or (OtherKey <> Key) then
+  begin
+    if not FDesigner.Load(DsgGetText, Err, True) then
+    begin
+      ShowMessage('22990:Второй вид формы не удалось построить:'#13#10 + Err);
+      // Остаётся прежний вид
+      FDsgOther := FDesigner;
+      FDsgOtherMade := FDsgMade;
+      FDsgOtherGlyph := FDsgGlyphCopied;
+      FDsgOtherKey := '';
+      FDesigner := OldDsg;
+      FDsgMade := OldMade;
+      FDsgGlyphCopied := OldGlyph;
+      FDsgLiveView := not FDsgLiveView;
+      Exit;
+    end;
+    DsgAddRuntime;
+    Dbg('22991: конструктор: второй вид формы построен заново', clGray);
+  end
+  else
+    Dbg('22992: конструктор: второй вид формы - готовый', clGray);
+
+  // Прежний видимый - теперь спрятанный второй вид; построен по
+  // нынешнему тексту
+  FDsgOther := OldDsg;
+  FDsgOtherMade := OldMade;
+  FDsgOtherGlyph := OldGlyph;
+  FDsgOtherKey := Key;
+
+  FDesigner.Form.Left := PosLeft;
+  FDesigner.Form.Top := PosTop;
+  FDesigner.SelectByName(SelName);
+  if WasVisible then
+    FDesigner.ShowForm;
+  OldDsg.Form.Hide;
+  DsgPaletteTabs;
 end;
 
 // Папка Bin установки Delphi для значков палитры - по реестру, как у
@@ -22366,6 +22488,8 @@ end;
 // Серия AddRuntime - раскладка и перерисовка один раз, в конце.
 procedure TForm1.DsgRetheme;
 begin
+  // Спрятанный второй вид - в прежних цветах: построится при переключении
+  DsgFreeOther;
   if (FDesigner = nil) or (FDesigner.Form = nil) then
     Exit;
   FDesigner.BeginRuntime;
@@ -22871,6 +22995,7 @@ begin
   begin
     ShowMessage('20990:Форму не удалось построить:'#13#10 + Err);
     FreeAndNil(FDesigner);
+    DsgFreeOther;
     DsgPaletteReset;
   end;
 end;
@@ -23134,10 +23259,7 @@ begin
   else if Sender = FDsgMiSpaceV then
     FDesigner.AlignGroup(7)
   else if Sender = FDsgMiLiveView then
-  begin
-    FDsgLiveView := not FDsgLiveView;
-    DsgReload;
-  end;
+    DsgSwitchView;
 end;
 
 // Имя свободно в форме конструктора: нет объекта в .dfm и слова в .pas
@@ -24642,6 +24764,7 @@ procedure TForm1.WMDsgClosed(var Msg: TMessage);
 begin
   DsgPaletteReset;
   FreeAndNil(FDesigner);
+  DsgFreeOther;
 end;
 
 // Выбрали объект - его свойства и события в сетки

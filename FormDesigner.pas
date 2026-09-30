@@ -185,14 +185,19 @@ type
                                var Address: Pointer; var Error: Boolean);
     procedure ReaderError(Reader: TReader; const Message: string;
                           var Handled: Boolean);
-    procedure AfterLoad;
+    procedure AfterLoad(AHidden: Boolean);
     procedure FlushPaint;
     procedure FormClose(Sender: TObject; var Action: TCloseAction);
     procedure Clear;
   public
     constructor Create;
     destructor Destroy; override;
-    function Load(const ADfmText: string; var AError: string): Boolean;
+    // AHidden - построить форму, но не показывать (второй вид формы
+    // строится невидимым, потом показывается ShowForm)
+    function Load(const ADfmText: string; var AError: string;
+                  AHidden: Boolean = False): Boolean;
+    // Показать построенную форму: поверх главного окна редактора, с фокусом
+    procedure ShowForm;
     function Snap(V: Integer): Integer;
     procedure Select(AComp: TComponent; ANotify: Boolean);
     // Щелчок по строке меню формы (точка в координатах экрана): меню не
@@ -2323,7 +2328,8 @@ begin
   Handled := True;
 end;
 
-function TFormDesigner.Load(const ADfmText: string; var AError: string): Boolean;
+function TFormDesigner.Load(const ADfmText: string; var AError: string;
+                            AHidden: Boolean): Boolean;
 var
   Src: TStringStream;
   Bin: TMemoryStream;
@@ -2365,13 +2371,29 @@ begin
     Src.Free;
   end;
 
-  AfterLoad;
+  AfterLoad(AHidden);
   Result := True;
   if OldSel <> '' then
     SelectByName(OldSel);
 end;
 
-procedure TFormDesigner.AfterLoad;
+procedure TFormDesigner.ShowForm;
+begin
+  if FForm = nil then
+    Exit;
+  FForm.Show;
+  // Окно конструктора - поверх главного окна редактора: его владельцем
+  // делается главное окно. Иначе щелчок по палитре или инспектору поднимает
+  // редактор, и форма уходит под него - компонент некуда поставить.
+  // Владелец, а не fsStayOnTop: форма остаётся над редактором, но не над
+  // окнами других программ, и сворачивается вместе с редактором.
+  if (Application.MainForm <> nil) and Application.MainForm.HandleAllocated then
+    SetWindowLong(FForm.Handle, GWL_HWNDPARENT,
+                  Integer(Application.MainForm.Handle));
+  Windows.SetFocus(FForm.Handle);
+end;
+
+procedure TFormDesigner.AfterLoad(AHidden: Boolean);
 var
   I: Integer;
   C: TComponent;
@@ -2454,16 +2476,9 @@ begin
   // Без этого каждая перестройка формы (Ctrl+Z, Delete) ставила окно по
   // правилу заново, например в центр экрана.
   FForm.Position := poDesigned;
-  FForm.Show;
-  // Окно конструктора - поверх главного окна редактора: его владельцем
-  // делается главное окно. Иначе щелчок по палитре или инспектору поднимает
-  // редактор, и форма уходит под него - компонент некуда поставить.
-  // Владелец, а не fsStayOnTop: форма остаётся над редактором, но не над
-  // окнами других программ, и сворачивается вместе с редактором.
-  if (Application.MainForm <> nil) and Application.MainForm.HandleAllocated then
-    SetWindowLong(FForm.Handle, GWL_HWNDPARENT,
-                  Integer(Application.MainForm.Handle));
-  Windows.SetFocus(FForm.Handle);
+  // Невидимая сборка (второй вид формы) - показывает потом ShowForm
+  if not AHidden then
+    ShowForm;
 
   // Открытые по .dfm вкладки - как если бы их выбрали: код, который
   // показывает и прячет компоненты по вкладке, применяется и к ним
