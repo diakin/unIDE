@@ -19,6 +19,7 @@ uses
   ReleaseBuild in 'ReleaseBuild.pas',
   ObjParse in 'ObjParse.pas',
   HangWatch in 'HangWatch.pas',
+  DbgEngine in 'DbgEngine.pas',
   TextMerge in 'TextMerge.pas',
   FileSearch in 'FileSearch.pas',
   DelphiProj in 'DelphiProj.pas',

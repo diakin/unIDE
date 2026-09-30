@@ -20,6 +20,7 @@ uses
   UiMenus,        // своё меню по теме: строка меню и выпадающие окна
   MenuWizard,     // мастер меню конструктора форм: готовые наборы меню
   DfmMove,        // «Перенести в .dfm»: разбор созданного кодом
+  DbgEngine,      // отладчик: точки останова, остановка, продолжение
   // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
   // InputQuery перекрывают одноимённые функции Dialogs
   UiDialogs;
@@ -384,6 +385,18 @@ type
 
 
   
+
+  // Точка останова в исходнике. Номер строки едет вместе с текстом при
+  // правке (DbgLinesPost).
+  TBreakMark = class
+  public
+    FileName: string;   // полный путь
+    Line: Integer;      // с 0
+    NoCode: Boolean;    // в .map у строки нет кода - точка не сработает
+    Offsets: TList;     // смещения кода в сеансе отладки (Cardinal)
+    constructor Create(const AFileName: string; ALine: Integer);
+    destructor Destroy; override;
+  end;
 
   TForm1 = class(TForm)
     RichEdit1: TRichEdit;
@@ -881,6 +894,16 @@ type
     // редактор после Click (WMLiveMenuJump)
     FLiveJumpMethod: string;
     FRunProcess: THandle;      // запущенная программа, 0 - не следим
+    // Отладчик (DbgEngine): точки останова всех файлов (TBreakMark),
+    // сеанс отладки и строка, где программа остановилась
+    FBreakMarks: TList;
+    FDbgSession: TDbgSession;
+    FDbgExecFile: string;      // файл строки остановки, '' - не стоим
+    FDbgExecLine: Integer;     // строка остановки, с 0
+    // Снимок до правки: номера строк точек едут вместе с текстом
+    FDbgPreValid: Boolean;
+    FDbgPreMin, FDbgPreMax, FDbgPreLen, FDbgPreLines: Integer;
+    FDbgPreLineMin, FDbgPreLineMax, FDbgPreStartMin: Integer;
     // Правка значения: поле поверх ячейки, что правим и что было
     // Редакторы по типу свойства: список для перечислений, цвета и курсора,
     // галки для наборов. Открыт всегда один - FObjActive.
@@ -1710,6 +1733,28 @@ type
     function  LiveMenuTracked(AComp: TComponent): Boolean;
     procedure LiveSelectNode(const AName: string);
     procedure WMLiveMenuJump(var Msg: TMessage); message WM_USER + 320;
+    // Отладчик: точки останова на полосе номеров, запуск под отладчиком,
+    // остановка и продолжение (DbgEngine)
+    function  DbgWanted: Boolean;
+    function  DbgMarkAt(const AFileName: string; ALine: Integer): TBreakMark;
+    function  DbgLineKind(ALine: Integer): Integer;
+    function  DbgMarksInCurrent: Boolean;
+    procedure DbgToggleBreak(ALine: Integer);
+    procedure DbgResolveMark(AMark: TBreakMark);
+    procedure DbgMarkOff(AMark: TBreakMark);
+    function  DbgStart(const AExe, ADir: string): Boolean;
+    procedure DbgStopped(Sender: TObject; AOffset: Cardinal);
+    procedure DbgLog(Sender: TObject; const AText: string);
+    procedure DbgExited(Sender: TObject; AExitCode: Cardinal);
+    procedure DbgResume;
+    procedure DbgClearExec;
+    procedure DbgRepaint;
+    function  DbgKey(AKey: Word): Boolean;
+    procedure DbgLinesPre(const Message: TMessage; AWhole: Boolean);
+    procedure DbgLinesPost;
+    procedure WMDbgDone(var Msg: TMessage); message WM_USER + 321;
+    procedure PaintBox1MouseDown(Sender: TObject; Button: TMouseButton;
+                                 Shift: TShiftState; X, Y: Integer);
     procedure DsgDefaultEvent(const AName: string);
     function  WindowOfFile(const AFile: string): Integer;
     procedure ObjBeginEdit;
@@ -2892,6 +2937,13 @@ begin
   // Текст номера строки с кареткой; clDefault - цвет цифр полосы (GutterFG
   // темы редактора), как было до этой настройки
   UiDefault('Gutter.CurText', clDefault, clDefault);
+  // Отладчик: строка с точкой останова, точка на строке без кода и
+  // строка, где программа остановилась, - в редакторе и на полосе номеров
+  UiDefault('Debug.BreakBG', clRed, $002828A0);
+  UiDefault('Debug.BreakText', clWhite, $00F0F0F0);
+  UiDefault('Debug.NoCodeBG', $00A0A0A0, $00505050);
+  UiDefault('Debug.ExecBG', clNavy, $00904818);
+  UiDefault('Debug.ExecText', clWhite, $00F0F0F0);
   // Инспектор: свойство, записанное в .dfm, и свойство, которого там нет
   // (значение по умолчанию)
   UiDefault('ObjProps.DfmText', clWindowText, $00F0F0F0);
@@ -14624,6 +14676,15 @@ procedure TForm1.AppMessage(var Msg: TMsg; var Handled: Boolean);
 var
   C: TWinControl;
 begin
+  // Клавиши отладчика, как в Delphi: F9 - Run и продолжение после
+  // остановки, Ctrl+F2 - Program reset, F5 - точка останова на строке с
+  // кареткой. Только в главном окне: у конструктора и диалогов свои клавиши.
+  if (Msg.message = WM_KEYDOWN) and (Screen.ActiveForm = Self) then
+  begin
+    if DbgKey(Word(Msg.wParam)) then
+      Handled := True;
+    Exit;
+  end;
   if Msg.message <> WM_MOUSEWHEEL then
     Exit;
   C := FindControl(Msg.hwnd);
@@ -14681,6 +14742,10 @@ begin
   // Меню своей формы: инспектор и редактор - за ним (LiveMenuPopup)
   UiMenuPopupHook := LiveMenuPopup;
   UiMenuItemHook := LiveMenuItem;
+
+  // Точки останова: щелчок по полосе номеров строк
+  FBreakMarks := TList.Create;
+  PaintBox1.OnMouseDown := PaintBox1MouseDown;
 
   HangWatchStart(Application.Handle,
                  ExtractFilePath(Application.ExeName) + 'hang.log', Handle);
@@ -15097,6 +15162,14 @@ begin
   begin
     CloseHandle(FRunProcess);
     FRunProcess := 0;
+  end;
+  // Программа под отладчиком снимается вместе со средой
+  FreeAndNil(FDbgSession);
+  if FBreakMarks <> nil then
+  begin
+    for I := 0 to FBreakMarks.Count - 1 do
+      TBreakMark(FBreakMarks[I]).Free;
+    FreeAndNil(FBreakMarks);
   end;
   SaveSettings;
   FRecentFiles.Free;
@@ -26892,6 +26965,8 @@ begin
 
   // Номера строк в узлах инспектора - по тому же снимку
   ObjLinesPre(Message, Whole);
+  // Номера строк точек останова - по своему снимку
+  DbgLinesPre(Message, Whole);
 
   if Whole then
   begin
@@ -26964,6 +27039,7 @@ var
   NewLen, D, A, B, I: Integer;
 begin
   ObjLinesPost;
+  DbgLinesPost;
   FLpwLine := -1;
   if not FCachePreValid then
   begin
@@ -31252,6 +31328,16 @@ begin
     DofLog.Free;
   end;
 
+  // Есть точки останова - отладочная сборка: номера строк в .map (-GD,
+  // -$D+ -$L+) и без оптимизации (-$O-), чтобы у строк был свой код. Ключи
+  // после ключей .dof - dcc32 берёт последний.
+  if DbgWanted then
+  begin
+    Params := Params + ' -$D+ -$L+ -$O- -$W+ -GD';
+    LogComp('Отладочная сборка (есть точки останова): -$D+ -$L+ -$O- ' +
+            '-$W+ -GD');
+  end;
+
   // Пути из настроек типа Delphi; чего нет - не передаём, dcc32 возьмёт
   // своё из <проект>.cfg
   if FileExists(SettingsFileName) then
@@ -31999,11 +32085,17 @@ procedure TForm1.btnCompileRunClick(Sender: TObject);
 begin
   if FBusyDepth > 0 then
     Exit;   // уже идёт сборка или пробный запуск
+  // Программа под отладчиком: стоит на точке - дальше (Continue)
+  if FDbgSession <> nil then
+  begin
+    DbgResume;
+    Exit;
+  end;
   DsgHideForRun;
   if CompileDelphi then
     RunTarget;
   // Сборка не прошла или программа не запустилась - форма обратно
-  if FRunProcess = 0 then
+  if (FRunProcess = 0) and (FDbgSession = nil) then
     DsgShowAfterRun;
 end;
 
@@ -32049,6 +32141,17 @@ end;
 // Program reset: остановить программу, запущенную из среды
 procedure TForm1.ProgramResetClick(Sender: TObject);
 begin
+  // Под отладчиком: процесс снимается, конец сеанса - в DbgExited
+  if FDbgSession <> nil then
+  begin
+    if not FDbgSession.Finished then
+    begin
+      FDbgSession.Kill;
+      LogComp('--- Программа остановлена (Program reset)');
+    end;
+    DbgClearExec;
+    Exit;
+  end;
   if FRunProcess = 0 then
     Exit;
   TerminateProcess(FRunProcess, 1);
@@ -32070,10 +32173,11 @@ var
 begin
   if (btnCompileRun = nil) or (csDestroying in ComponentState) then
     Exit;
-  Running := FRunProcess <> 0;
+  Running := (FRunProcess <> 0) or (FDbgSession <> nil);
 
-  // Запуск и отладка
-  btnCompileRun.Enabled := not Running;
+  // Запуск и отладка. Остановка на точке: Run - продолжить.
+  btnCompileRun.Enabled := not Running or
+                           ((FDbgSession <> nil) and FDbgSession.Paused);
   if btnProgReset <> nil then
     btnProgReset.Enabled := Running;
   if btnPause <> nil then
@@ -32328,6 +32432,12 @@ begin
   Dir := ExtractFilePath(Exe);
   Cmd := '"' + Exe + '"';
 
+  // Есть точки останова - под отладчиком. Не вышло (нет .map, нет строк в
+  // нём) - обычный запуск, причина уже в логе.
+  if DbgWanted then
+    if DbgStart(Exe, Dir) then
+      Exit;
+
   FillChar(SI, SizeOf(SI), 0);
   SI.cb := SizeOf(SI);
 
@@ -32352,10 +32462,506 @@ end;
 
 procedure TForm1.btnRunClick(Sender: TObject);
 begin
+  if FDbgSession <> nil then
+  begin
+    DbgResume;
+    Exit;
+  end;
   DsgHideForRun;
   RunTarget;
-  if FRunProcess = 0 then
+  if (FRunProcess = 0) and (FDbgSession = nil) then
     DsgShowAfterRun;
+end;
+
+// ---------------------------------------------------------------------------
+//  Отладчик (этап 1): точки останова, остановка, продолжение
+//
+//  Точка ставится и снимается щелчком по номеру строки или F5 на строке с
+//  кареткой. Пока точки есть, сборка отладочная (см. CompileDelphi), а Run
+//  запускает программу под отладчиком (DbgEngine). На точке программа
+//  стоит, строка показана в редакторе; F9 или Run - дальше, Ctrl+F2 или
+//  Program reset - снять программу.
+//
+//  Адреса строк - из .map рядом с exe. Строка без кода в .map (пустая,
+//  объявление, модуль без отладочной информации) - точка серая и не
+//  сработает.
+// ---------------------------------------------------------------------------
+
+constructor TBreakMark.Create(const AFileName: string; ALine: Integer);
+begin
+  inherited Create;
+  FileName := AFileName;
+  Line := ALine;
+  Offsets := TList.Create;
+end;
+
+destructor TBreakMark.Destroy;
+begin
+  Offsets.Free;
+  inherited;
+end;
+
+// Сборка и запуск - с отладчиком: есть хотя бы одна точка. Пробная сборка
+// конструктора форм - никогда.
+function TForm1.DbgWanted: Boolean;
+begin
+  Result := (FBreakMarks <> nil) and (FBreakMarks.Count > 0) and
+            not FProbeActive;
+end;
+
+function TForm1.DbgMarkAt(const AFileName: string;
+                          ALine: Integer): TBreakMark;
+var
+  MarkIdx: Integer;
+begin
+  Result := nil;
+  if FBreakMarks = nil then
+    Exit;
+  for MarkIdx := 0 to FBreakMarks.Count - 1 do
+    if (TBreakMark(FBreakMarks[MarkIdx]).Line = ALine) and
+       (CompareText(TBreakMark(FBreakMarks[MarkIdx]).FileName,
+                    AFileName) = 0) then
+    begin
+      Result := TBreakMark(FBreakMarks[MarkIdx]);
+      Exit;
+    end;
+end;
+
+// Что показать на строке текущего файла: 0 - ничего, 1 - точка останова,
+// 2 - точка на строке без кода, 3 - программа стоит на этой строке
+function TForm1.DbgLineKind(ALine: Integer): Integer;
+var
+  Mark: TBreakMark;
+begin
+  Result := 0;
+  if FCurrentFileName = '' then
+    Exit;
+  if (FDbgExecFile <> '') and (ALine = FDbgExecLine) and
+     (CompareText(FDbgExecFile, FCurrentFileName) = 0) then
+  begin
+    Result := 3;
+    Exit;
+  end;
+  if (FBreakMarks = nil) or (FBreakMarks.Count = 0) then
+    Exit;
+  Mark := DbgMarkAt(FCurrentFileName, ALine);
+  if Mark = nil then
+    Exit;
+  if Mark.NoCode then
+    Result := 2
+  else
+    Result := 1;
+end;
+
+// Есть ли в текущем файле что-то, чьи номера строк едут при правке
+function TForm1.DbgMarksInCurrent: Boolean;
+var
+  MarkIdx: Integer;
+begin
+  Result := False;
+  if FCurrentFileName = '' then
+    Exit;
+  if (FDbgExecFile <> '') and
+     (CompareText(FDbgExecFile, FCurrentFileName) = 0) then
+  begin
+    Result := True;
+    Exit;
+  end;
+  if FBreakMarks = nil then
+    Exit;
+  for MarkIdx := 0 to FBreakMarks.Count - 1 do
+    if CompareText(TBreakMark(FBreakMarks[MarkIdx]).FileName,
+                   FCurrentFileName) = 0 then
+    begin
+      Result := True;
+      Exit;
+    end;
+end;
+
+procedure TForm1.DbgRepaint;
+begin
+  if PaintBox1 <> nil then
+    PaintBox1.Invalidate;
+  if RichEdit1.HandleAllocated then
+    InvalidateRect(RichEdit1.Handle, nil, False);
+end;
+
+// Адреса точки в идущем сеансе, по .map сеанса
+procedure TForm1.DbgResolveMark(AMark: TBreakMark);
+begin
+  AMark.Offsets.Clear;
+  AMark.NoCode := False;
+  if FDbgSession = nil then
+    Exit;
+  FDbgSession.Map.OffsetsOfLine(ExtractFileName(AMark.FileName),
+                                AMark.Line + 1, AMark.Offsets);
+  AMark.NoCode := AMark.Offsets.Count = 0;
+  if AMark.NoCode then
+    LogComp('Точка останова: ' + ExtractFileName(AMark.FileName) +
+            ', строка ' + IntToStr(AMark.Line + 1) + ' - в .map у неё ' +
+            'нет кода (пустая строка, объявление или модуль собран без ' +
+            'отладочной информации), точка не сработает');
+end;
+
+// Снять адреса точки в идущем сеансе
+procedure TForm1.DbgMarkOff(AMark: TBreakMark);
+var
+  OfsIdx: Integer;
+begin
+  if (FDbgSession <> nil) and not FDbgSession.Finished then
+    for OfsIdx := 0 to AMark.Offsets.Count - 1 do
+      FDbgSession.SetBreakpoint(Cardinal(AMark.Offsets[OfsIdx]), False);
+  AMark.Offsets.Clear;
+end;
+
+procedure TForm1.DbgToggleBreak(ALine: Integer);
+var
+  Mark: TBreakMark;
+  OfsIdx: Integer;
+begin
+  if ALine < 0 then
+    Exit;
+  if FCurrentFileName = '' then
+  begin
+    LogComp('Точка останова: файл не сохранён на диск');
+    Exit;
+  end;
+  Mark := DbgMarkAt(FCurrentFileName, ALine);
+  if Mark <> nil then
+  begin
+    DbgMarkOff(Mark);
+    FBreakMarks.Remove(Mark);
+    Mark.Free;
+  end
+  else
+  begin
+    Mark := TBreakMark.Create(FCurrentFileName, ALine);
+    FBreakMarks.Add(Mark);
+    // Программа уже идёт - точка сразу в неё
+    if (FDbgSession <> nil) and not FDbgSession.Finished then
+    begin
+      DbgResolveMark(Mark);
+      for OfsIdx := 0 to Mark.Offsets.Count - 1 do
+        FDbgSession.SetBreakpoint(Cardinal(Mark.Offsets[OfsIdx]), True);
+    end;
+  end;
+  DbgRepaint;
+end;
+
+// Щелчок по номеру строки - точка останова на этой строке
+procedure TForm1.PaintBox1MouseDown(Sender: TObject; Button: TMouseButton;
+                                    Shift: TShiftState; X, Y: Integer);
+var
+  LineIdx, LineTotal: Integer;
+begin
+  if (Button <> mbLeft) or (LineHeight <= 0) or (Y < YOffset) or
+     not RichEdit1.HandleAllocated then
+    Exit;
+  LineIdx := FirstVisibleLine + (Y - YOffset) div LineHeight;
+  LineTotal := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+  if (LineIdx < 0) or (LineIdx >= LineTotal) then
+    Exit;
+  DbgToggleBreak(LineIdx);
+end;
+
+// Запуск под отладчиком. False - не вышло (нет .map или в нём нет номеров
+// строк): RunTarget запустит программу как обычно.
+function TForm1.DbgStart(const AExe, ADir: string): Boolean;
+var
+  MapFile: string;
+  Map: TDbgLineMap;
+  MarkIdx, OfsIdx, Armed: Integer;
+  Mark: TBreakMark;
+begin
+  Result := False;
+  MapFile := ChangeFileExt(AExe, '.map');
+  if not FileExists(MapFile) then
+  begin
+    LogComp('Отладчик: нет ' + MapFile + ' - программа запускается без ' +
+            'отладчика');
+    Exit;
+  end;
+  Map := TDbgLineMap.Create;
+  if not Map.LoadFromFile(MapFile) then
+  begin
+    Map.Free;
+    LogComp('Отладчик: в ' + ExtractFileName(MapFile) + ' нет номеров ' +
+            'строк (нужна сборка с -$D+ и -GD) - программа запускается без ' +
+            'отладчика');
+    Exit;
+  end;
+
+  FDbgSession := TDbgSession.Create(AExe, ADir, Map);
+  FDbgSession.OnStopped := DbgStopped;
+  FDbgSession.OnLog := DbgLog;
+  FDbgSession.OnExited := DbgExited;
+
+  Armed := 0;
+  for MarkIdx := 0 to FBreakMarks.Count - 1 do
+  begin
+    Mark := TBreakMark(FBreakMarks[MarkIdx]);
+    DbgResolveMark(Mark);
+    for OfsIdx := 0 to Mark.Offsets.Count - 1 do
+      FDbgSession.SetBreakpoint(Cardinal(Mark.Offsets[OfsIdx]), True);
+    if not Mark.NoCode then
+      Inc(Armed);
+  end;
+
+  FDbgSession.Start;
+  LogComp(Format('--- Запуск под отладчиком: %s, точек останова: %d из %d',
+                 [AExe, Armed, FBreakMarks.Count]));
+  DbgRepaint;
+  Result := True;
+end;
+
+// Программа встала на точке. Строка - по точке, у которой этот адрес (её
+// номер уже учёл правки), иначе по .map.
+procedure TForm1.DbgStopped(Sender: TObject; AOffset: Cardinal);
+var
+  MarkIdx: Integer;
+  Mark: TBreakMark;
+  SrcFile, MapName, Where: string;
+  SrcLine, MapLine: Integer;
+begin
+  SrcFile := '';
+  SrcLine := -1;
+  for MarkIdx := 0 to FBreakMarks.Count - 1 do
+  begin
+    Mark := TBreakMark(FBreakMarks[MarkIdx]);
+    if Mark.Offsets.IndexOf(Pointer(AOffset)) >= 0 then
+    begin
+      SrcFile := Mark.FileName;
+      SrcLine := Mark.Line;
+      Break;
+    end;
+  end;
+  if (SrcFile = '') and (FDbgSession <> nil) and
+     FDbgSession.Map.LineOfOffset(AOffset, MapName, MapLine) then
+  begin
+    SrcFile := ResolveErrorFile(MapName, Where);
+    SrcLine := MapLine - 1;
+  end;
+
+  // Окно среды - вперёд: программа стоит, работать теперь здесь
+  if IsIconic(Application.Handle) then
+    Application.Restore;
+  SetForegroundWindow(Handle);
+
+  if SrcFile = '' then
+  begin
+    LogComp(Format('--- Остановка по адресу со смещением $%.8x, строки ' +
+                   'для него в .map нет. Продолжить - Run (F9)', [AOffset]));
+    Exit;
+  end;
+
+  LogComp('--- Остановка: ' + ExtractFileName(SrcFile) + ', строка ' +
+          IntToStr(SrcLine + 1) + '. Продолжить - Run (F9), снять ' +
+          'программу - Program reset (Ctrl+F2)');
+  FDbgExecFile := SrcFile;
+  FDbgExecLine := SrcLine;
+  if CompareText(FCurrentFileName, SrcFile) <> 0 then
+    OpenNamedFile(SrcFile);
+  if CompareText(FCurrentFileName, SrcFile) = 0 then
+    GotoLine(SrcLine);
+  DbgRepaint;
+end;
+
+procedure TForm1.DbgLog(Sender: TObject; const AText: string);
+begin
+  LogComp(AText);
+end;
+
+// Программа закрылась. Сеанс освобождается позже (WMDbgDone): сейчас идёт
+// его собственный обработчик.
+procedure TForm1.DbgExited(Sender: TObject; AExitCode: Cardinal);
+begin
+  LogComp(Format('--- Программа завершилась, код %d', [Integer(AExitCode)]));
+  DbgClearExec;
+  PostMessage(Handle, WM_USER + 321, 0, 0);
+  DsgShowAfterRun;
+end;
+
+procedure TForm1.WMDbgDone(var Msg: TMessage);
+var
+  MarkIdx: Integer;
+begin
+  if (FDbgSession = nil) or not FDbgSession.Finished then
+    Exit;
+  FreeAndNil(FDbgSession);
+  // Адреса были только этого сеанса. NoCode остаётся до следующего
+  // запуска - по нему видно, какие точки не сработали.
+  for MarkIdx := 0 to FBreakMarks.Count - 1 do
+    TBreakMark(FBreakMarks[MarkIdx]).Offsets.Clear;
+  DbgRepaint;
+end;
+
+// Continue: программа идёт дальше с точки, где стояла
+procedure TForm1.DbgResume;
+begin
+  if (FDbgSession = nil) or not FDbgSession.Paused then
+    Exit;
+  DbgClearExec;
+  FDbgSession.Resume;
+end;
+
+procedure TForm1.DbgClearExec;
+begin
+  if FDbgExecFile = '' then
+    Exit;
+  FDbgExecFile := '';
+  FDbgExecLine := -1;
+  DbgRepaint;
+end;
+
+// F9, Ctrl+F2, F5 - True, если клавиша отладчика и она обработана
+function TForm1.DbgKey(AKey: Word): Boolean;
+var
+  CtrlDown: Boolean;
+begin
+  Result := False;
+  if (GetKeyState(VK_SHIFT) < 0) or (GetKeyState(VK_MENU) < 0) then
+    Exit;
+  CtrlDown := GetKeyState(VK_CONTROL) < 0;
+  if (AKey = VK_F9) and not CtrlDown then
+  begin
+    if (btnCompileRun <> nil) and btnCompileRun.Enabled then
+      btnCompileRunClick(btnCompileRun);
+    Result := True;
+  end
+  else if (AKey = VK_F2) and CtrlDown then
+  begin
+    ProgramResetClick(btnProgReset);
+    Result := True;
+  end
+  else if (AKey = VK_F5) and not CtrlDown and (ActiveControl = RichEdit1) then
+  begin
+    DbgToggleBreak(CurrentLineIndex);
+    Result := True;
+  end;
+end;
+
+// Снимок до правки - как у ObjLinesPre, но свой: точки есть в любом файле,
+// не только в модуле формы из инспектора
+procedure TForm1.DbgLinesPre(const Message: TMessage; AWhole: Boolean);
+var
+  Sel: TCharRange;
+begin
+  FDbgPreValid := False;
+  // Undo, Redo, замена текста целиком: где правка - неизвестно, номера
+  // остаются как были
+  if AWhole or not RichEdit1.HandleAllocated or not DbgMarksInCurrent then
+    Exit;
+  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
+  FDbgPreMin := Sel.cpMin;
+  FDbgPreMax := Sel.cpMax;
+  FDbgPreLen := TextLenInternal;
+  FDbgPreLines := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+  FDbgPreLineMin := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0,
+                                 Sel.cpMin);
+  FDbgPreLineMax := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0,
+                                 Sel.cpMax);
+  FDbgPreStartMin := SendMessageA(RichEdit1.Handle, EM_LINEINDEX,
+                                  FDbgPreLineMin, 0);
+  FDbgPreValid := True;
+end;
+
+// Правка сделана: номера строк точек и строки остановки за правкой
+// сдвигаются. Правило то же, что у ObjLinesPost.
+procedure TForm1.DbgLinesPost;
+var
+  NewLines, Delta, NewLen, EditStart, FirstLine, LastLine, FirstStart: Integer;
+  Removed, MarkIdx, DupIdx: Integer;
+  Sel: TCharRange;
+  Mark, Other: TBreakMark;
+
+  function MoveLine(ALine: Integer): Integer;
+  begin
+    if ALine < FirstLine then
+      Result := ALine
+    else if ALine > LastLine then
+      Result := ALine + Delta
+    else if (ALine = FirstLine) and (FirstStart < EditStart) then
+      Result := ALine             // начало строки левее правки - на месте
+    else if ALine = LastLine then
+      Result := ALine + Delta     // строка начиналась там, где правка кончилась
+    else
+      Result := FirstLine;        // строка удалена целиком
+  end;
+
+begin
+  if not FDbgPreValid then
+    Exit;
+  FDbgPreValid := False;
+  if not RichEdit1.HandleAllocated then
+    Exit;
+  NewLines := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+  Delta := NewLines - FDbgPreLines;
+  if Delta = 0 then
+    Exit;
+  NewLen := TextLenInternal;
+  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
+
+  if FDbgPreMin < FDbgPreMax then
+  begin
+    // Было выделение - оно и заменено
+    EditStart := FDbgPreMin;
+    FirstLine := FDbgPreLineMin;
+    FirstStart := FDbgPreStartMin;
+    LastLine := FDbgPreLineMax;
+  end
+  else if NewLen >= FDbgPreLen then
+  begin
+    // Вставка в точку каретки
+    EditStart := FDbgPreMin;
+    FirstLine := FDbgPreLineMin;
+    FirstStart := FDbgPreStartMin;
+    LastLine := FirstLine;
+  end
+  else
+  begin
+    // Удаление без выделения: BackSpace - левее каретки, Delete - правее
+    Removed := FDbgPreLen - NewLen;
+    if Sel.cpMin < FDbgPreMin then
+      EditStart := FDbgPreMin - Removed
+    else
+      EditStart := FDbgPreMin;
+    FirstLine := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0,
+                              EditStart);
+    FirstStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, FirstLine, 0);
+    LastLine := FirstLine - Delta;
+  end;
+
+  for MarkIdx := 0 to FBreakMarks.Count - 1 do
+  begin
+    Mark := TBreakMark(FBreakMarks[MarkIdx]);
+    if CompareText(Mark.FileName, FCurrentFileName) = 0 then
+      Mark.Line := MoveLine(Mark.Line);
+  end;
+
+  // Строки слились - две точки на одной, остаётся одна
+  for MarkIdx := FBreakMarks.Count - 1 downto 1 do
+  begin
+    Mark := TBreakMark(FBreakMarks[MarkIdx]);
+    for DupIdx := 0 to MarkIdx - 1 do
+    begin
+      Other := TBreakMark(FBreakMarks[DupIdx]);
+      if (Other.Line = Mark.Line) and
+         (CompareText(Other.FileName, Mark.FileName) = 0) then
+      begin
+        DbgMarkOff(Mark);
+        FBreakMarks.Delete(MarkIdx);
+        Mark.Free;
+        Break;
+      end;
+    end;
+  end;
+
+  if (FDbgExecFile <> '') and
+     (CompareText(FDbgExecFile, FCurrentFileName) = 0) then
+    FDbgExecLine := MoveLine(FDbgExecLine);
+
+  if PaintBox1 <> nil then
+    PaintBox1.Invalidate;
 end;
 
 // Файл с ошибкой по имени из сообщения компилятора.
@@ -33377,6 +33983,7 @@ begin
     begin
       InvalidateWidthCache;
       ObjLinesLocked(Message);
+      FDbgPreValid := False;
     end;
     OldRichEditProc(Message);
     Exit;
@@ -33750,6 +34357,7 @@ var
   BcFg, BcBg: TColor;
   BcEnd: string;
   MarkBr: HBRUSH;
+  DbgKind: Integer;       // точка останова, строка остановки - DbgLineKind
 
   // ЗАМЕР: время с прошлой отметки - в указанную статью.
   //
@@ -34899,6 +35507,28 @@ begin
         MarkBG := FScheme.MarkGroups[MarkIdx].BgColor;
       end;
 
+      // Точка останова и строка остановки - поверх отметок, своими цветами
+      DbgKind := DbgLineKind(CurrentLineIdx);
+      if DbgKind > 0 then
+      begin
+        LineMarked := True;
+        case DbgKind of
+          1:
+            begin
+              MarkBG := UiColor('Debug.BreakBG');
+              MarkFG := UiColor('Debug.BreakText');
+            end;
+          2:
+            begin
+              MarkBG := UiColor('Debug.NoCodeBG');
+              MarkFG := UiColor('Debug.BreakText');
+            end;
+        else
+          MarkBG := UiColor('Debug.ExecBG');
+          MarkFG := UiColor('Debug.ExecText');
+        end;
+      end;
+
       // Отмеченная строка - фон на всю ширину, до и после текста
       if LineMarked then
       begin
@@ -35260,6 +35890,7 @@ var
   FirstCharPos: TPoint;
   LineStartCharIdx: Integer;
   CaretLine: Integer;
+  DbgKind: Integer;     // точка останова, строка остановки - DbgLineKind
 begin
   // 1. Заливаем фон панели номеров строк
   PaintBox1.Canvas.Brush.Color := FGutterBG;
@@ -35334,6 +35965,26 @@ begin
     begin
       PaintBox1.Canvas.Font.Style := [];
       PaintBox1.Canvas.Font.Color := FGutterFG;
+    end;
+
+    // Точка останова и строка остановки: ячейка своим цветом
+    DbgKind := DbgLineKind(I);
+    if DbgKind > 0 then
+    begin
+      PaintBox1.Canvas.Brush.Style := bsSolid;
+      case DbgKind of
+        1: PaintBox1.Canvas.Brush.Color := UiColor('Debug.BreakBG');
+        2: PaintBox1.Canvas.Brush.Color := UiColor('Debug.NoCodeBG');
+      else
+        PaintBox1.Canvas.Brush.Color := UiColor('Debug.ExecBG');
+      end;
+      PaintBox1.Canvas.FillRect(R);
+      PaintBox1.Canvas.Brush.Style := bsClear;
+      PaintBox1.Canvas.Font.Style := [fsBold];
+      if DbgKind = 3 then
+        PaintBox1.Canvas.Font.Color := UiColor('Debug.ExecText')
+      else
+        PaintBox1.Canvas.Font.Color := UiColor('Debug.BreakText');
     end;
 
     R.Left := 4;
