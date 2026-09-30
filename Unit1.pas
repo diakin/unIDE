@@ -875,6 +875,9 @@ type
     FDsgOtherMade: TStringList;   // его FDsgMade
     FDsgOtherGlyph: TList;        // его FDsgGlyphCopied
     FDsgOtherKey: string;         // по какому тексту и дереву построен (DsgViewKey)
+    // Обработчик выбранного пункта меню своей формы: к нему переходит
+    // редактор после Click (WMLiveMenuJump)
+    FLiveJumpMethod: string;
     FRunProcess: THandle;      // запущенная программа, 0 - не следим
     // Правка значения: поле поверх ячейки, что правим и что было
     // Редакторы по типу свойства: список для перечислений, цвета и курсора,
@@ -1690,6 +1693,13 @@ type
     procedure DsgApply(const OldDfm, NewDfm, PasFile, OldPas, NewPas,
                        ASelect: string);
     procedure WMDsgEvent(var Msg: TMessage); message WM_USER + 314;
+    // Меню своей формы в работающем редакторе: инспектор и редактор - за
+    // ним (UiMenuPopupHook, UiMenuItemHook)
+    procedure LiveMenuPopup(AMenu: TPopupMenu);
+    procedure LiveMenuItem(AItem: TMenuItem);
+    function  LiveMenuTracked(AComp: TComponent): Boolean;
+    procedure LiveSelectNode(const AName: string);
+    procedure WMLiveMenuJump(var Msg: TMessage); message WM_USER + 320;
     procedure DsgDefaultEvent(const AName: string);
     function  WindowOfFile(const AFile: string): Integer;
     procedure ObjBeginEdit;
@@ -14651,6 +14661,10 @@ begin
   // Сторож зависаний: главный поток не выбирает сообщения 3 с (или Windows
   // считает главное окно зависшим) - снимок его стека с именами процедур
   // (по .map рядом с exe) в hang.log
+  // Меню своей формы: инспектор и редактор - за ним (LiveMenuPopup)
+  UiMenuPopupHook := LiveMenuPopup;
+  UiMenuItemHook := LiveMenuItem;
+
   HangWatchStart(Application.Handle,
                  ExtractFilePath(Application.ExeName) + 'hang.log', Handle);
 
@@ -15033,6 +15047,8 @@ begin
   FreeAndNil(FObjMissing);
   FreeAndNil(FDesigner);
   DsgFreeOther;
+  UiMenuPopupHook := nil;
+  UiMenuItemHook := nil;
   FreeAndNil(FDsgUndo);
   FreeAndNil(FDsgUndoPas);
   FreeAndNil(FDsgCutNames);
@@ -24482,6 +24498,95 @@ begin
     Exit;
   FDsgEventName := AName;
   PostMessage(Handle, WM_USER + 314, 0, 0);
+end;
+
+// ---------------------------------------------------------------------------
+//  Меню своей формы в работающем редакторе
+//
+//  Редактор показывает в конструкторе свою же форму (IsOwnProject), и её
+//  меню - настоящие, работающие. Раскрыли всплывающее меню - в дереве
+//  инспектора выделяется оно; выбрали пункт - выделяется пункт, а когда
+//  его обработчик отработал, каретка встаёт на начало этого обработчика в
+//  модуле формы. Выделение в конструкторе при этом не меняется: команды
+//  меню конструктора (Cut, Delete) работают с его выделением.
+// ---------------------------------------------------------------------------
+
+// Меню этой формы открыто в конструкторе и в инспекторе
+function TForm1.LiveMenuTracked(AComp: TComponent): Boolean;
+begin
+  Result := (AComp <> nil) and (AComp.Owner <> nil) and
+            (AComp.Name <> '') and (FDesigner <> nil) and
+            (FDesigner.Form <> nil) and (FObjTree <> nil) and IsOwnProject and
+            (CompareText(AComp.Owner.ClassName, FObjFormClass) = 0);
+end;
+
+// Узел в дереве инспектора - без выделения в конструкторе
+procedure TForm1.LiveSelectNode(const AName: string);
+begin
+  FDsgSelecting := True;   // дерево не шлёт выделение обратно в конструктор
+  try
+    if not ObjSelectAnyName(AName) then
+      ObjSelectName(AName);
+  finally
+    FDsgSelecting := False;
+  end;
+end;
+
+procedure TForm1.LiveMenuPopup(AMenu: TPopupMenu);
+begin
+  if LiveMenuTracked(AMenu) then
+    LiveSelectNode(AMenu.Name);
+end;
+
+// Пункт выбран, его Click выполнен. Обработчик - метод формы (OnClick из
+// .dfm): имя по адресу кода. Переход - после того, как всё, что сделал
+// Click, отработало (окна, перестройки), через очередь сообщений.
+procedure TForm1.LiveMenuItem(AItem: TMenuItem);
+var
+  Handler: TMethod;
+begin
+  if not LiveMenuTracked(AItem) then
+    Exit;
+  LiveSelectNode(AItem.Name);
+  FLiveJumpMethod := '';
+  if Assigned(AItem.OnClick) then
+  begin
+    Handler := TMethod(AItem.OnClick);
+    if (Handler.Data = AItem.Owner) and (Handler.Code <> nil) then
+      FLiveJumpMethod := AItem.Owner.MethodName(Handler.Code);
+  end;
+  if FLiveJumpMethod <> '' then
+    PostMessage(Handle, WM_USER + 320, 0, 0);
+end;
+
+// Каретка - на строку заголовка обработчика: procedure TForm1.Имя
+procedure TForm1.WMLiveMenuJump(var Msg: TMessage);
+var
+  Meth, PasFile, Root: string;
+  Pos0, Line: Integer;
+begin
+  Meth := FLiveJumpMethod;
+  FLiveJumpMethod := '';
+  if (Meth = '') or (FObjFormClass = '') then
+    Exit;
+  PasFile := ObjFormUnit;
+  if PasFile = '' then
+    Exit;
+  Root := FObjFormClass;
+  OpenNamedFile(PasFile);
+  Pos0 := FindTextEd('procedure ' + Root + '.' + Meth, 0,
+                     RichEdit1.GetTextLen, []);
+  if Pos0 < 0 then
+    Pos0 := FindTextEd('function ' + Root + '.' + Meth, 0,
+                       RichEdit1.GetTextLen, []);
+  if Pos0 < 0 then
+  begin
+    Dbg('24620: меню: обработчик ' + Root + '.' + Meth + ' в ' +
+        ExtractFileName(PasFile) + ' не найден', clRed);
+    Exit;
+  end;
+  Line := SendMessageA(RichEdit1.Handle, EM_LINEFROMCHAR, Pos0, 0);
+  GotoLine(Line);
 end;
 
 procedure TForm1.WMDsgEvent(var Msg: TMessage);
