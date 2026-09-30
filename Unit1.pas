@@ -757,6 +757,10 @@ type
     FModList: TForm;
     FModLV: TListView;
     FModPath: TLabel;
+    // Окно модулей открыто кнопкой или пунктом View Form: двойной щелчок по
+    // любой колонке строки с формой открывает форму в конструкторе, как в
+    // Delphi (ProjectListDblClick). View Unit - по колонкам, как было.
+    FModFormsMode: Boolean;
 
     // Пункты контекстного меню
     // Как в меню редактора RQdebugger: отладочная строка, очистка, регистр
@@ -31457,6 +31461,7 @@ end;
 // MakeListWindow добавляет скрытой колонкой сама.
 procedure TForm1.ShowModulesClick(Sender: TObject);
 begin
+  FModFormsMode := False;
   MakeListWindow(FModList, FModLV, FModPath, 'Модули и формы проекта',
                  'Модуль|130;Тип|85;Форма|120;Размер модуля|95;' +
                  'Размер формы|90;Дата модуля|130;Дата формы|130;' +
@@ -31466,10 +31471,14 @@ begin
   FModList.BringToFront;
 end;
 
-// Просмотр форм - то же окно, что и просмотр модулей
+// Просмотр форм - то же окно, что и просмотр модулей, но двойной щелчок по
+// строке с формой сразу открывает форму в конструкторе (FModFormsMode)
 procedure TForm1.ShowFormsClick(Sender: TObject);
 begin
   ShowModulesClick(Sender);
+  FModFormsMode := True;
+  FModList.Caption := 'View Form: ' + FModList.Caption +
+                      '   - двойной щелчок открывает форму в конструкторе';
 end;
 
 // Путь выбранной строки - в подпись внизу окна, как в среде Delphi. У
@@ -31499,7 +31508,8 @@ begin
 end;
 
 // Двойной щелчок открывает файл строки: модуль (у первой строки - .dpr).
-// Щелчок по колонке формы - Форма, Размер формы, Дата формы - как View
+// Щелчок по колонке формы - Форма, Размер формы, Дата формы, а в окне,
+// открытом как View Form, - по любой колонке строки с формой - как View
 // Form в Delphi: модуль формы во вкладке и сама форма в конструкторе
 // (DesignFormClick; текст .dfm он открывает во вкладке рядом). Колонка -
 // по месту щелчка, запросом LVM_SUBITEMHITTEST к списку.
@@ -31540,8 +31550,11 @@ begin
   GetCursorPos(Hit.Pt);
   Hit.Pt := LV.ScreenToClient(Hit.Pt);
   SendMessage(LV.Handle, UiLVM_SUBITEMHITTEST, 0, Integer(@Hit));
-  if ((Hit.SubItem = ColForm) or (Hit.SubItem = ColFormSize) or
-      (Hit.SubItem = ColFormDate)) and (LV.Selected.SubItems[N - 2] <> '') then
+  // Колонка формы - или окно открыто как View Form: тогда любая колонка
+  // строки с формой
+  if (FModFormsMode or (Hit.SubItem = ColForm) or
+      (Hit.SubItem = ColFormSize) or (Hit.SubItem = ColFormDate)) and
+     (LV.Selected.SubItems[N - 2] <> '') then
   begin
     Dfm := LV.Selected.SubItems[N - 2];
     if not FileExists(Dfm) then
