@@ -4485,6 +4485,13 @@ begin
   if PaintBox1 <> nil then
     PaintBox1.Invalidate;
   Dbg('3361: тема ' + FThemeName, clNavy);
+
+  // Своя форма в конструкторе в живом виде: у редактора на ней (RichEdit1 и
+  // то, что красится цветами редактора) - новые цвета, по свежему снимку.
+  // Как после смены режима IDE (ApplyIdeMode): на месте, без перестройки.
+  if (FDesigner <> nil) and (FDesigner.Form <> nil) and IsOwnProject and
+     (OwnLiveForm(FObjFormClass) <> nil) then
+    DsgRetheme;
 end;
 
 procedure TForm1.LoadSettings;
