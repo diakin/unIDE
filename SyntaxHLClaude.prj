@@ -13,9 +13,9 @@ TplFile=C:\
 FBCompPath=C:\
 DelphiPath=C:\Program Files (x86)\Borland\Delphi7-1\
 [Windows]
-Index=4
+Index=0
 win0=1 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude\Unit1.pas
-curposic0=177500
+curposic0=349555
 win1=2 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude\SyntaxHLClaude.dpr
 curposic1=500
 win2=3 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude\Unit2.pas
@@ -61,7 +61,7 @@ curposic21=668
 win22=23 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude\FormDesigner.pas
 curposic22=6040
 [Tabs]
-TabIndex=7
+TabIndex=0
 TabCount=8
 0=0 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude\Unit1.pas
 1=4 D:\_F\balan\_SyntaxHLClaude\SyntaxHLBeta\projects\SyntaxHLClaude\Unit1.dfm
@@ -94,3 +94,5 @@ bmarkCaption9,0=4061 ('Text File|.txt', 'Pascal Unit|.pas', 'BASIC File|.bas',
 bmarkPosic9,0=158987
 bmarkCaption10,0=4642 function TForm1.AskDiskChange(W: Integer; IsMod, CanMerge, Many: Boolean;
 bmarkPosic10,0=176415
+bmarkCaption11,0=9986 procedure TForm1.ProjectSwitchReset;
+bmarkPosic11,0=349569
