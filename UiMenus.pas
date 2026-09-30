@@ -101,6 +101,18 @@ type
     property Bar: TUiMenuBar read FBar;
   end;
 
+// Слежение за меню программы (IDE: инспектор и редактор идут за меню
+// своей формы). PopupHook - меню TUiPopupMenu раскрывается; ItemHook -
+// пункт выбран и его Click уже выполнен (всплывающее меню и строка меню
+// TUiMenuBar).
+type
+  TUiMenuPopupHook = procedure(AMenu: TPopupMenu) of object;
+  TUiMenuItemHook = procedure(AItem: TMenuItem) of object;
+
+var
+  UiMenuPopupHook: TUiMenuPopupHook = nil;
+  UiMenuItemHook: TUiMenuItemHook = nil;
+
 // Раскрыть меню пунктов AItems в точке X, Y (экран) и ждать выбора.
 // ABar/ABarIndex - меню раскрыто из строки меню (стрелки влево-вправо
 // переходят по её пунктам). Результат - выбранный пункт (его Click - за
@@ -1131,7 +1143,11 @@ begin
   FShowAccel := AByKeyboard;
   Chosen := UiTrackMenu(nil, 0, 0, Self, AIndex, AByKeyboard);
   if Chosen <> nil then
+  begin
     Chosen.Click;
+    if Assigned(UiMenuItemHook) then
+      UiMenuItemHook(Chosen);
+  end;
 end;
 
 procedure TUiMenuBar.WMEraseBkgnd(var Message: TWMEraseBkgnd);
@@ -1237,21 +1253,43 @@ procedure TUiPopupMenu.Popup(X, Y: Integer);
 var
   Chosen: TMenuItem;
   Probe: TControl;
+  Flags: UINT;
+  Cmd: Integer;
 begin
+  if Assigned(UiMenuPopupHook) then
+    UiMenuPopupHook(Self);
   // Тема Light при темах Windows - меню Windows. Тема - по окну, на
   // котором меню вызвали, иначе общая.
   Probe := nil;
   if PopupComponent is TControl then
     Probe := TControl(PopupComponent);
+  DoPopup(Self);
   if UiThemeNativeFor(Probe) then
   begin
-    inherited Popup(X, Y);
-    Exit;
-  end;
-  DoPopup(Self);
-  Chosen := UiTrackMenu(Items, X, Y, nil, -1, False);
+    // Меню Windows, но выбранный пункт - нам (TPM_RETURNCMD), а не через
+    // WM_COMMAND окну PopupList: так после его Click известно, какой он
+    // (UiMenuItemHook)
+    Flags := TPM_RIGHTBUTTON or TPM_RETURNCMD;
+    case Alignment of
+      paRight: Flags := Flags or TPM_RIGHTALIGN;
+      paCenter: Flags := Flags or TPM_CENTERALIGN;
+    else
+      Flags := Flags or TPM_LEFTALIGN;
+    end;
+    Cmd := Integer(TrackPopupMenu(Items.Handle, Flags, X, Y, 0,
+                                  PopupList.Window, nil));
+    Chosen := nil;
+    if Cmd <> 0 then
+      Chosen := FindItem(Cmd, fkCommand);
+  end
+  else
+    Chosen := UiTrackMenu(Items, X, Y, nil, -1, False);
   if Chosen <> nil then
+  begin
     Chosen.Click;
+    if Assigned(UiMenuItemHook) then
+      UiMenuItemHook(Chosen);
+  end;
 end;
 
 procedure TUiMainMenu.Loaded;
