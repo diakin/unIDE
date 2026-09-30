@@ -156,6 +156,13 @@ type
     // Идёт установка компонентов из кода (BeginRuntime .. FinishRuntime):
     // окно не перерисовывается, выравнивание в контейнерах отложено
     FRtBatch: Boolean;
+    // BeginRuntime выключил перерисовку (WM_SETREDRAW 0): только у видимой
+    // формы. WM_SETREDRAW 1 делает окно видимым (Windows ставит WS_VISIBLE)
+    // - у спрятанной формы второго вида это показывало её недостроенной.
+    FRedrawOff: Boolean;
+    // Прежняя форма при новой загрузке: видна, пока новая строится, и
+    // уходит, когда новую покажут (ShowForm) - без пустого места на экране
+    FOldForm: TForm;
     FAlignOff: TList;            // кому отложено выравнивание - вернуть
     // Контролы, скрытые в .dfm или в коде (Visible = False). В
     // конструкторе они показываются, но обводятся красной рамкой.
@@ -196,8 +203,11 @@ type
     // строится невидимым, потом показывается ShowForm)
     function Load(const ADfmText: string; var AError: string;
                   AHidden: Boolean = False): Boolean;
-    // Показать построенную форму: поверх главного окна редактора, с фокусом
+    // Показать построенную форму: поверх главного окна редактора, с фокусом.
+    // Прежняя форма (была видна, пока строилась новая) после этого уходит.
     procedure ShowForm;
+    // Прежняя форма больше не нужна, а новую не показывают (спрятана)
+    procedure DropOldForm;
     function Snap(V: Integer): Integer;
     procedure Select(AComp: TComponent; ANotify: Boolean);
     // Щелчок по строке меню формы (точка в координатах экрана): меню не
@@ -2160,6 +2170,7 @@ end;
 
 destructor TFormDesigner.Destroy;
 begin
+  DropOldForm;
   Clear;
   FTabMembers.Free;
   FPageRules.Free;
@@ -2339,6 +2350,15 @@ begin
   Result := False;
   AError := '';
   OldSel := SelectedName;
+  // Прежняя форма остаётся на экране, пока строится новая: уходит в
+  // ShowForm (или DropOldForm). Оставшаяся от прошлого раза - уже не нужна.
+  DropOldForm;
+  if FForm <> nil then
+  begin
+    FOldForm := FForm;
+    FOldForm.OnClose := nil;
+    FForm := nil;
+  end;
   Clear;
 
   Src := TStringStream.Create(PrepareText(ADfmText));
@@ -2377,6 +2397,11 @@ begin
     SelectByName(OldSel);
 end;
 
+procedure TFormDesigner.DropOldForm;
+begin
+  FreeAndNil(FOldForm);
+end;
+
 procedure TFormDesigner.ShowForm;
 begin
   if FForm = nil then
@@ -2391,6 +2416,8 @@ begin
     SetWindowLong(FForm.Handle, GWL_HWNDPARENT,
                   Integer(Application.MainForm.Handle));
   Windows.SetFocus(FForm.Handle);
+  // Новая форма уже на экране - прежнюю можно убрать
+  DropOldForm;
 end;
 
 procedure TFormDesigner.AfterLoad(AHidden: Boolean);
@@ -3156,7 +3183,10 @@ begin
     Exit;
   FRtBatch := True;
   FAlignOff.Clear;
-  if FForm.HandleAllocated then
+  // Только у видимой: WM_SETREDRAW 1 в FinishRuntime сделал бы спрятанную
+  // форму видимой
+  FRedrawOff := FForm.HandleAllocated and IsWindowVisible(FForm.Handle);
+  if FRedrawOff then
     SendMessage(FForm.Handle, WM_SETREDRAW, 0, 0);
   FForm.DisableAlign;
   FAlignOff.Add(FForm);
@@ -3195,9 +3225,10 @@ begin
   // Перехватчики - и внутренним контролам, которые появились после
   // загрузки: TRadioGroup строит кнопки заново, когда ему ставят Items
   HookInner(FForm, Self);
-  // Перерисовка - обратно и сразу вся форма
-  if FForm.HandleAllocated then
+  // Перерисовка - обратно и сразу вся форма (если её выключали)
+  if FRedrawOff and FForm.HandleAllocated then
   begin
+    FRedrawOff := False;
     SendMessage(FForm.Handle, WM_SETREDRAW, 1, 0);
     RedrawWindow(FForm.Handle, nil, 0, RDW_ERASE or RDW_FRAME or
                  RDW_INVALIDATE or RDW_ALLCHILDREN);

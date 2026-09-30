@@ -21491,8 +21491,13 @@ begin
   FDsgUndo.Clear;
   FDsgUndoPas.Clear;
 
-  if FDesigner.Load(Txt, Err) then
-    DsgAddRuntime
+  // Форма строится невидимой и показывается уже в цветах темы и с
+  // компонентами из кода (DsgAddRuntime): без мелькания цвета из .dfm
+  if FDesigner.Load(Txt, Err, True) then
+  begin
+    DsgAddRuntime;
+    FDesigner.ShowForm;
+  end
   else
   begin
     ShowMessage('20686:Форму не удалось построить:'#13#10 + Err);
@@ -22986,11 +22991,22 @@ end;
 procedure TForm1.DsgReload;
 var
   Err: string;
+  WasVisible: Boolean;
 begin
   if FDesigner = nil then
     Exit;
-  if FDesigner.Load(DsgGetText, Err) then
-    DsgAddRuntime
+  // Новая форма строится невидимой, прежняя остаётся на экране до её
+  // показа (TFormDesigner.ShowForm) - без мелькания. Спрятанная (Hide form,
+  // запуск программы) остаётся спрятанной.
+  WasVisible := (FDesigner.Form <> nil) and FDesigner.Form.Visible;
+  if FDesigner.Load(DsgGetText, Err, True) then
+  begin
+    DsgAddRuntime;
+    if WasVisible then
+      FDesigner.ShowForm
+    else
+      FDesigner.DropOldForm;
+  end
   else
   begin
     ShowMessage('20990:Форму не удалось построить:'#13#10 + Err);
