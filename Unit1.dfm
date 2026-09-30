@@ -2,7 +2,7 @@ object Form1: TForm1
   BorderIcons = [biSystemMenu, biMinimize, biMaximize]
   Left = 143
   Top = 276
-  Width = 1250
+  Width = 1236
   Height = 910
   Caption = 'Form1 current'
   Color = 10944511
@@ -29,7 +29,7 @@ object Form1: TForm1
     BevelInner = bvNone
     BevelOuter = bvNone
     BorderStyle = bsNone
-    Color = clAqua
+    Color = clBtnShadow
     Font.Charset = DEFAULT_CHARSET
     Font.Color = clGray
     Font.Height = -15
@@ -1288,8 +1288,8 @@ object Form1: TForm1
     OnTimer = RunTimerTick
   end
   object FOwnCaretTimer: TTimer
-    Left = 312
-    Top = 240
+    Left = 464
+    Top = 368
     Enabled = False
     OnTimer = OwnCaretTick
   end
