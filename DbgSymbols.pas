@@ -55,6 +55,8 @@ type
     DebugStart: Cardinal;   // от начала процедуры: кадр EBP уже построен
     Module: Integer;
     Parent: Integer;        // объемлющая процедура, -1 - нет
+    RecOfs: Cardinal;       // место записи в подразделе символов модуля
+    ParentOfs: Cardinal;    // pParent записи: место записи объемлющей
   end;
 
   TDbgLocalSym = record
@@ -474,11 +476,14 @@ procedure TDbgSymbols.ParseSymbols(APos, AEnd, AModule: Integer;
                                    ASkipSig: Boolean);
 var
   RecLen, RecType, Body, Depth, StackIdx, OwnerProc: Integer;
+  SubStart, FirstProc, ProcIdx, OtherIdx: Integer;
   Scope: array of Integer;
   Proc: TDbgProcSym;
   Local: TDbgLocalSym;
   Data: TDbgDataSym;
 begin
+  SubStart := APos;
+  FirstProc := FProcCount;
   if ASkipSig then
     Inc(APos, 4);
   if AEnd > Length(FBuf) then
@@ -513,6 +518,8 @@ begin
           Proc.Name := NameOf(DwordAt(Body + 36));
           Proc.Module := AModule;
           Proc.Parent := OwnerProc;
+          Proc.RecOfs := Cardinal(APos - SubStart);
+          Proc.ParentOfs := DwordAt(Body);
           AddProc(Proc);
           if Depth = Length(Scope) then
             SetLength(Scope, Depth + 64);
@@ -582,6 +589,19 @@ begin
     end;
     Inc(APos, RecLen + 2);
   end;
+
+  // Вложенная процедура Delphi в TD32 идёт не внутри области объемлющей,
+  // а отдельной записью; объемлющую указывает pParent - место её записи в
+  // этом же подразделе
+  for ProcIdx := FirstProc to FProcCount - 1 do
+    if (FProcs[ProcIdx].Parent < 0) and (FProcs[ProcIdx].ParentOfs <> 0) then
+      for OtherIdx := FirstProc to FProcCount - 1 do
+        if (OtherIdx <> ProcIdx) and
+           (FProcs[OtherIdx].RecOfs = FProcs[ProcIdx].ParentOfs) then
+        begin
+          FProcs[ProcIdx].Parent := OtherIdx;
+          Break;
+        end;
 end;
 
 // Адреса секций CODE, DATA, BSS по заголовку PE (тот же exe)
@@ -1742,7 +1762,9 @@ var
   ListLeaf, ListBody, ListEnd: Integer;
   CodeOfs, CodeBase, CurAddr, CurType, PtrValue, MemberType, Ebp: Cardinal;
   Rest, PartText, FieldNote, PropNote: string;
-  Found, ViaSelf: Boolean;
+  Found, ViaSelf, FrameOk: Boolean;
+  OuterIdx: Integer;
+  FrameEbp, NextEbp: Cardinal;
   PropLeaf, PropBody, PropEnd: Integer;
   PropType: Cardinal;
 begin
@@ -1869,17 +1891,37 @@ begin
     if not Found and (ProcIdx >= 0) then
     begin
       // Переменная объемлющей процедуры (вложенная процедура Delphi): её
-      // кадр - другой, по EBP этой не найти
-      LocalIdx := FProcs[ProcIdx].Parent;
-      while LocalIdx >= 0 do
+      // кадр - другой. Delphi передаёт вложенной процедуре EBP объемлющей
+      // скрытым параметром на стеке - [EBP+8] вложенной; по цепочке таких
+      // ссылок - кадр нужного уровня
+      OuterIdx := FProcs[ProcIdx].Parent;
+      FrameEbp := Ebp;
+      FrameOk := True;
+      while (OuterIdx >= 0) and not Found do
       begin
-        if FindLocal(LocalIdx, Parts[0]) >= 0 then
+        if FrameOk then
         begin
-          Result := '<переменная объемлющей процедуры ' +
-                    NiceProcName(FProcs[LocalIdx].Name) + ' - не читается>';
-          Exit;
+          FrameOk := ReadDword(FrameEbp + 8, NextEbp) and
+                     (NextEbp > FrameEbp) and (NextEbp - FrameEbp < $100000);
+          if FrameOk then
+            FrameEbp := NextEbp;
         end;
-        LocalIdx := FProcs[LocalIdx].Parent;
+        LocalIdx := FindLocal(OuterIdx, Parts[0]);
+        if LocalIdx >= 0 then
+        begin
+          if not FrameOk or (FLocals[LocalIdx].Kind <> DbgLocalFrame) then
+          begin
+            Result := '<переменная объемлющей процедуры ' +
+                      NiceProcName(FProcs[OuterIdx].Name) + ' - не читается>';
+            Exit;
+          end;
+          CurType := FLocals[LocalIdx].TypeId;
+          CurAddr := Cardinal(Integer(FrameEbp) + FLocals[LocalIdx].BpOffset);
+          FieldNote := ' (кадр ' + NiceProcName(FProcs[OuterIdx].Name) + ')';
+          Found := True;
+        end
+        else
+          OuterIdx := FProcs[OuterIdx].Parent;
       end;
     end;
     if not Found then
