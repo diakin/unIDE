@@ -1010,6 +1010,9 @@ type
     FObjSetAlias: TStringList;
     FObjSetKey: string;
     FObjSetFresh: Boolean;   // указатель только что сверен - не сверять снова
+    // Время частей колонки «Строка кода» последнего заполнения (мс) - для
+    // строки 17151 HiLite log
+    FObjTSetIndex, FObjTCodeProps: Cardinal;
     FObjEditIdx: Integer;
     FObjEditOld: string;    // значение как было в строке .dfm
     // Правка при выделенной группе: FObjEditOld - значение только текущего
@@ -11145,13 +11148,19 @@ begin
   if (mBookmarks = nil) or (mBmSep = nil) then
     Exit;
 
+  // Пункты списка - без владельца (Create(nil)), их освобождает сам
+  // mBookmarks. С владельцем-формой они входили в Form1.ComponentCount, а
+  // по нему считается отпечаток состава формы (OwnFormPrint): у вкладок с
+  // разным числом закладок он был разный, и при каждом переходе снимок
+  // формы снимался заново, а инспектор разбирал Unit1.dfm целиком.
+
   while mBookmarks.Count > mBmSep.MenuIndex + 1 do
     mBookmarks.Items[mBookmarks.Count - 1].Free;
 
   if (FWindowsIndex < 0) or not FWindows[FWindowsIndex].Used or
      (Length(FWindows[FWindowsIndex].Bookmarks) = 0) then
   begin
-    It := TMenuItem.Create(Self);
+    It := TMenuItem.Create(nil);
     It.Caption := '(no bookmarks)';
     It.Enabled := False;
     mBookmarks.Add(It);
@@ -11160,7 +11169,7 @@ begin
 
   for I := 0 to High(FWindows[FWindowsIndex].Bookmarks) do
   begin
-    It := TMenuItem.Create(Self);
+    It := TMenuItem.Create(nil);
     It.Caption := BookmarkCaption(FWindowsIndex, I);
     It.Hint := FWindows[FWindowsIndex].Bookmarks[I].Text; // полная строка
     It.Tag := I;
@@ -26391,7 +26400,13 @@ var
   Nm: string;
   TI: PTypeInfo;
   W: Boolean;
+  StartTick, StageTick, TList, TDefaults, TEvents, TCodeCol: Cardinal;
 begin
+  StartTick := GetTickCount;
+  TList := 0;
+  TDefaults := 0;
+  TEvents := 0;
+  TCodeCol := 0;
   // Правка, начатая у прежнего компонента, записывается, а не пропадает:
   // выбрали другой компонент в дереве или щёлкнули по нему на форме
   // конструктора. Перестроение после записи отложено (ObjScheduleRefresh):
@@ -26452,6 +26467,7 @@ begin
     else
       FObjHeader.Caption := '  ' + Obj.ClassNm;
 
+    StageTick := GetTickCount;
     for I := 0 to Obj.PropN.Count - 1 do
     begin
       It := FObjProps.Items.Add;
@@ -26459,6 +26475,9 @@ begin
       It.SubItems.Add(Obj.PropV[I]);
       It.Data := Pointer(I);   // номер свойства в узле
     end;
+    TList := GetTickCount - StageTick;
+    StageTick := GetTickCount;
+
 
     // Класс известен редактору - к записанному в .dfm добавляем остальные
     // свойства класса серым, со значениями по умолчанию, и сортируем всё по
@@ -26497,7 +26516,9 @@ begin
         FObjProps.AlphaSort;
       end;
     end;
+    TDefaults := GetTickCount - StageTick;
 
+    StageTick := GetTickCount;
     for I := 0 to Obj.EvN.Count - 1 do
     begin
       It := FObjEvents.Items.Add;
@@ -26508,8 +26529,11 @@ begin
 
     // Выделена группа в конструкторе - таблица по группе
     ObjGroupView(Obj);
+    TEvents := GetTickCount - StageTick;
     // Строка модуля, где код задаёт свойство
+    StageTick := GetTickCount;
     ObjPropsCodeColumn;
+    TCodeCol := GetTickCount - StageTick;
   finally
     FObjEvents.Items.EndUpdate;
     FObjProps.Items.EndUpdate;
@@ -26533,6 +26557,14 @@ begin
       FObjShownKey := Nm;
     end;
   end;
+  // Долгое заполнение - по частям в HiLite log (короткие не пишутся, чтобы
+  // не засорять лог на каждом щелчке по дереву)
+  if GetTickCount - StartTick >= 30 then
+    Dbg(Format('17151: свойства в инспекторе - %d мс (список %d, ' +
+               'умолчания класса %d, события %d, колонка «Строка кода» %d: ' +
+               'отличия от .dfm %d, строки модуля %d)',
+               [GetTickCount - StartTick, TList, TDefaults, TEvents, TCodeCol,
+                FObjTCodeProps, FObjTSetIndex]), clNavy);
 end;
 
 // Двойной щелчок по событию - к обработчику в .pas формы.
@@ -29628,16 +29660,26 @@ end;
 // модуле не нашлось.
 procedure TForm1.ObjPropsCodeColumn;
 var
+  StageTick: Cardinal;
   ItemIdx, LineIdx: Integer;
   Item: TListItem;
   Node: TDfmNode;
   Via, CellText: string;
 begin
+  FObjTSetIndex := 0;
+  FObjTCodeProps := 0;
   if (FObjProps = nil) or (FObjCurNode = nil) then
     Exit;
   Node := TDfmNode(FObjCurNode);
   // Текст модуля сверяется один раз на всю таблицу, а не на каждое свойство
+  StageTick := GetTickCount;
   ObjSetterIndex;
+  FObjTSetIndex := GetTickCount - StageTick;
+  // Список свойств, которые задаёт код (сравнение ресурса и снимка), - тоже
+  // до цикла, чтобы его время было видно отдельно
+  StageTick := GetTickCount;
+  ObjCodeProps;
+  FObjTCodeProps := GetTickCount - StageTick;
   FObjSetFresh := True;
   try
     for ItemIdx := 0 to FObjProps.Items.Count - 1 do
