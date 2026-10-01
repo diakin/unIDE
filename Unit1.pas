@@ -1655,6 +1655,7 @@ type
     procedure BuildBookmarksMenu;
     procedure RebuildBookmarksMenu;
     procedure BmResyncLines;
+    function  BmFindNearest(const AText: string; AOldPos: Integer): Integer;
     procedure BookmarkItemClick(Sender: TObject);
     procedure UpdatePathBar;
     procedure Status2Resize(Sender: TObject);
@@ -10904,17 +10905,16 @@ end;
 // изменился вне окна (git pull, правка в другом редакторе), номер указывает
 // на другую строку - и метка на полосе (MarksBox) встаёт не туда, и подпись
 // в меню неверна. Строку ищем так же, как JumpToBookmark: по тексту
-// закладки, начиная от прежней позиции; не нашли - закладка остаётся как
-// была.
+// закладки, ближайшую к прежней позиции (BmFindNearest); не нашли -
+// закладка остаётся как была.
 procedure TForm1.BmResyncLines;
 var
-  BmIdx, LineIdx, StartFrom, FoundPos, TextLen: Integer;
+  BmIdx, LineIdx, FoundPos: Integer;
   BmText: string;
 begin
   if (FWindowsIndex < 0) or not FWindows[FWindowsIndex].Used or
      not RichEdit1.HandleAllocated then
     Exit;
-  TextLen := RichEdit1.GetTextLen;
   for BmIdx := 0 to High(FWindows[FWindowsIndex].Bookmarks) do
   begin
     BmText := FWindows[FWindowsIndex].Bookmarks[BmIdx].Text;
@@ -10925,20 +10925,82 @@ begin
     if (LineIdx >= 0) and (LineIdx < RichEdit1.Lines.Count) and
        (Trim(RichEdit1.Lines[LineIdx]) = BmText) then
       Continue;
-    StartFrom := FWindows[FWindowsIndex].Bookmarks[BmIdx].CharPos -
-                 Length(BmText);
-    if (StartFrom < 0) or (StartFrom > TextLen) then
-      StartFrom := 0;
-    FoundPos := FindTextEd(BmText, StartFrom, TextLen - StartFrom,
-                           [stMatchCase]);
-    if (FoundPos < 0) and (StartFrom > 0) then
-      FoundPos := FindTextEd(BmText, 0, TextLen, [stMatchCase]);
+    FoundPos := BmFindNearest(BmText,
+                              FWindows[FWindowsIndex].Bookmarks[BmIdx].CharPos);
     if FoundPos < 0 then
       Continue;
     FWindows[FWindowsIndex].Bookmarks[BmIdx].CharPos := FoundPos;
     FWindows[FWindowsIndex].Bookmarks[BmIdx].LineNo :=
       SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0, FoundPos) + 1;
   end;
+end;
+
+// Строка с текстом закладки, ближайшая к прежней позиции AOldPos - и выше,
+// и ниже неё. Выше - если часть текста над закладкой удалили, ниже - если
+// вставили. Годится только строка, которая без отступов РАВНА тексту
+// закладки: вхождение внутри более длинной строки не считается.
+// Ответ - позиция текста, -1 - такой строки нет.
+function TForm1.BmFindNearest(const AText: string; AOldPos: Integer): Integer;
+var
+  TextLen, SearchPos, HitPos, BeforePos, AfterPos: Integer;
+
+  function WholeLine(APos: Integer): Boolean;
+  var
+    HitLine: Integer;
+  begin
+    HitLine := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0, APos);
+    Result := (HitLine >= 0) and (HitLine < RichEdit1.Lines.Count) and
+              (Trim(RichEdit1.Lines[HitLine]) = AText);
+  end;
+
+begin
+  Result := -1;
+  if (AText = '') or not RichEdit1.HandleAllocated then
+    Exit;
+  TextLen := RichEdit1.GetTextLen;
+  if AOldPos < 0 then
+    AOldPos := 0;
+  if AOldPos > TextLen then
+    AOldPos := TextLen;
+
+  // Первая подходящая строка от прежней позиции вниз
+  AfterPos := -1;
+  SearchPos := AOldPos;
+  while SearchPos < TextLen do
+  begin
+    HitPos := FindTextEd(AText, SearchPos, TextLen - SearchPos, [stMatchCase]);
+    if HitPos < 0 then
+      Break;
+    if WholeLine(HitPos) then
+    begin
+      AfterPos := HitPos;
+      Break;
+    end;
+    SearchPos := HitPos + 1;
+  end;
+
+  // Последняя подходящая строка выше прежней позиции
+  BeforePos := -1;
+  SearchPos := 0;
+  while SearchPos < AOldPos do
+  begin
+    HitPos := FindTextEd(AText, SearchPos,
+                         AOldPos + Length(AText) - SearchPos, [stMatchCase]);
+    if (HitPos < 0) or (HitPos >= AOldPos) then
+      Break;
+    if WholeLine(HitPos) then
+      BeforePos := HitPos;
+    SearchPos := HitPos + 1;
+  end;
+
+  if AfterPos < 0 then
+    Result := BeforePos
+  else if BeforePos < 0 then
+    Result := AfterPos
+  else if AfterPos - AOldPos <= AOldPos - BeforePos then
+    Result := AfterPos
+  else
+    Result := BeforePos;
 end;
 
 // Переход по закладке
@@ -11219,13 +11281,21 @@ begin
     // из WM_GETTEXT, где перевод строки может занимать ДВА байта, а EM_SETSEL
     // считает его одним. Смещения расходились тем сильнее, чем больше строк
     // выше. FindText возвращает позицию в тех же координатах, что SelStart.
-    StartFrom := NewPos - Length(Txt);
-    if StartFrom < 0 then
-      StartFrom := 0;
-
-    P := FindTextEd(Txt, StartFrom, RichEdit1.GetTextLen, [stMatchCase]);
+    //
+    // Сначала - строка, равная тексту закладки, ближайшая к прежнему месту
+    // выше или ниже (BmFindNearest). Такой нет (строку правили) - прежний
+    // поиск вхождения: от прежнего места вниз, потом с начала.
+    P := BmFindNearest(Txt, NewPos);
     if P < 0 then
-      P := FindTextEd(Txt, 0, RichEdit1.GetTextLen, [stMatchCase]);
+    begin
+      StartFrom := NewPos - Length(Txt);
+      if StartFrom < 0 then
+        StartFrom := 0;
+      P := FindTextEd(Txt, StartFrom, RichEdit1.GetTextLen, [stMatchCase]);
+      if P < 0 then
+        P := FindTextEd(Txt, 0, RichEdit1.GetTextLen, [stMatchCase]);
+    end;
+
 
     if P >= 0 then
       NewPos := P;
