@@ -119,6 +119,9 @@ type
                         var AOffset: Integer; var AMemberType: Cardinal): Boolean;
     function EnumName(AEnumId: Cardinal; AValue: Int64): string;
     function IsObjectRef(APtrType: Cardinal): Boolean;
+    function MemberAtOffset(AStructId: Cardinal; AOffset: Integer;
+                            var AName: string;
+                            var AMemberType: Cardinal): Boolean;
     function PropertyField(AStructId, APropType: Cardinal;
                            var AOffset: Integer; var AFieldType: Cardinal;
                            var ANote: string): Boolean;
@@ -208,7 +211,6 @@ const
   MemVtabPtr     = $040A;
 
   StructFwdRef  = $0080;   // свойства записи/класса: только объявление
-  PropReaderIsField = $0002;   // свойство: чтение - смещение поля
 
   // Простые типы Borland вне таблицы CodeView (по проверке на DbgTest)
   PrimCurrency  = $0004;   // Currency: Int64, значение * 10000
@@ -1114,39 +1116,98 @@ begin
                     TargetBody, TargetEnd) and (TargetLeaf = LeafClass);
 end;
 
+// Поле записи или класса по смещению (с предками): имя и тип. Свойства
+// (тип - запись $35) не считаются.
+function TDbgSymbols.MemberAtOffset(AStructId: Cardinal; AOffset: Integer;
+                                    var AName: string;
+                                    var AMemberType: Cardinal): Boolean;
+var
+  Leaf, Body, RecEnd, ListLeaf, ListBody, ListEnd, ItemPos, MemLeaf: Integer;
+  TypeLeaf, TypeBody, TypeEnd, Guard: Integer;
+  MemType, MemName: Cardinal;
+  NumValue: Int64;
+begin
+  Result := False;
+  AStructId := FullStruct(Underlying(AStructId));
+  if not TypeRec(AStructId, Leaf, Body, RecEnd) or
+     not ((Leaf = LeafClass) or (Leaf = LeafStruct)) then
+    Exit;
+  if not TypeRec(DwordAt(Body + 2), ListLeaf, ListBody, ListEnd) then
+    Exit;
+  ItemPos := ListBody;
+  Guard := 0;
+  while (Guard < 10000) and
+        NextMember(ItemPos, ListEnd, MemLeaf, MemType, MemName, NumValue) do
+  begin
+    Inc(Guard);
+    case MemLeaf of
+      MemData:
+        if (NumValue = AOffset) and
+           not (TypeRec(MemType, TypeLeaf, TypeBody, TypeEnd) and
+                (TypeLeaf = LeafProperty)) then
+        begin
+          AName := NameOf(MemName);
+          AMemberType := MemType;
+          Result := True;
+          Exit;
+        end;
+      MemRealBase:
+        if (AOffset >= NumValue) and
+           MemberAtOffset(MemType, AOffset - Integer(NumValue), AName,
+                          AMemberType) then
+        begin
+          Result := True;
+          Exit;
+        end;
+      MemIndex:
+        if TypeRec(MemType, ListLeaf, ListBody, ListEnd) then
+          ItemPos := ListBody;
+    end;
+  end;
+end;
+
 // Свойство (запись $35: тип, флаги, тип индекса, индекс, чтение, запись).
-// Флаг $0002 - чтение из поля: в «чтении» смещение поля в объекте. Вывод
-// по TComponent.Tag в DbgTest: как номер имени это значение давало
-// постороннее «ActiveX», а смещение FTag в TComponent Delphi 7 - 12 (VMT
-// 0, FOwner 4, FName 8). Без флага - номер имени метода чтения. Поле - его место и тип (тип поля - тип свойства); метод -
-// False и ANote словами.
+// Что лежит в «чтении», формат толком не описан (tds2pdb: флаг $0002 -
+// «слот», иначе номер имени). На DbgTest для TComponent.Tag как номер имени
+// оно дало постороннее «ActiveX», а флаг $0002 не стоял. Поэтому: если у
+// класса есть поле со смещением, равным «чтению», и тип его - тип свойства,
+// это и есть поле чтения; иначе - номер имени метода. В сообщение -
+// флаги и число, чтобы по ним уточнить формат.
 function TDbgSymbols.PropertyField(AStructId, APropType: Cardinal;
                                    var AOffset: Integer;
                                    var AFieldType: Cardinal;
                                    var ANote: string): Boolean;
 var
   Leaf, Body, RecEnd: Integer;
-  ReaderValue: Cardinal;
-  ReaderName: string;
+  ReaderValue, PropFlags, PropValueType: Cardinal;
+  FieldName, ReaderName, RawText: string;
 begin
   Result := False;
   ANote := '';
   if not TypeRec(APropType, Leaf, Body, RecEnd) or (Leaf <> LeafProperty) then
     Exit;
+  PropValueType := DwordAt(Body);
+  PropFlags := WordAt(Body + 4);
   ReaderValue := DwordAt(Body + 14);
-  if (WordAt(Body + 4) and PropReaderIsField) <> 0 then
+  RawText := ' (флаги $' + IntToHex(PropFlags, 4) + ', чтение $' +
+             IntToHex(ReaderValue, 8) + ')';
+
+  if (ReaderValue < $10000) and
+     MemberAtOffset(AStructId, Integer(ReaderValue), FieldName, AFieldType) and
+     (TypeSize(AFieldType) = TypeSize(PropValueType)) then
   begin
     AOffset := Integer(ReaderValue);
-    AFieldType := DwordAt(Body);
-    ANote := ' (поле +' + IntToStr(ReaderValue) + ')';
+    ANote := ' (поле ' + FieldName + ')';
     Result := True;
     Exit;
   end;
+
   ReaderName := NameOf(ReaderValue);
   if ReaderName = '' then
-    ANote := 'свойство без чтения'
+    ANote := 'свойство: чтение не распознано' + RawText
   else
-    ANote := 'свойство читается методом ' + ReaderName + ' - значения нет';
+    ANote := 'свойство читается методом ' + ReaderName + ' - значения нет' +
+             RawText;
 end;
 
 // ---------------------------------------------------------------------------
