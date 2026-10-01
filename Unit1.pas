@@ -1354,12 +1354,13 @@ type
 
     // Пункт LastBM в главном меню - возврат к предыдущей закладке
 
-    // История посещённых закладок: пары "окно + номер закладки".
+    // История посещённых закладок: пары "окно + номер закладки", каждая
+    // закладка в ней один раз, последняя посещённая - в конце.
     // По ней ходит LastBM, и из неё же Set BookMark узнаёт, какую закладку
     // переставлять - ту, на которую переходили последней.
     FBmHistWin: array of Integer;
     FBmHistIdx: array of Integer;
-    FBmHistPos: Integer; // куда смотрит указатель истории
+    FBmHistPos: Integer; // текущая закладка истории - FBmHistPos - 1
 
     // Имя открытого проекта ('' - работаем без проекта)
     FCurrentProject: string;
@@ -1606,6 +1607,10 @@ type
     procedure Status2Resize(Sender: TObject);
     procedure JumpToBookmark(WinIdx, BmIdx: Integer; Remember: Boolean);
     procedure PushBmHistory(WinIdx, BmIdx: Integer);
+    procedure BmHistRemoveAt(HistIdx: Integer);
+    procedure BmHistDropWindow(WinIdx: Integer);
+    procedure BmHistDeleted(WinIdx, BmIdx: Integer);
+    procedure BmHistCompact;
     function  BookmarkCaption(WinIdx, BmIdx: Integer): string;
 
     procedure LoadCustomClrSchema(const Ext: string); // Наш новый метод
@@ -6992,6 +6997,7 @@ begin
     SetLength(FWindows[I].CommentRanges, 0);
     SetLength(FWindows[I].StringRanges, 0);
     SetLength(FWindows[I].Bookmarks, 0);
+    BmHistDropWindow(I);
   end;
 
   FWindowsIndex := -1;
@@ -9615,6 +9621,7 @@ begin
 
       // Закладки этого окна: читаем подряд, пока ключи не кончатся
       SetLength(FWindows[I].Bookmarks, 0);
+      BmHistDropWindow(I);
       J := 0;
       while True do
       begin
@@ -10864,6 +10871,7 @@ begin
           FWindows[FWindowsIndex].Bookmarks[J + 1];
       SetLength(FWindows[FWindowsIndex].Bookmarks,
                 Length(FWindows[FWindowsIndex].Bookmarks) - 1);
+      BmHistDeleted(FWindowsIndex, I);
       RebuildBookmarksMenu;
       Exit;
     end;
@@ -10875,25 +10883,44 @@ end;
 // Закладок в окне единицы, поэтому обычная сортировка вставками.
 procedure TForm1.BmSortClick(Sender: TObject);
 var
-  I, J: Integer;
+  I, J, HistIdx: Integer;
   Tmp: TBookmark;
+  TmpOrig: Integer;
+  OrigIdx: array of Integer;   // прежний номер закладки на месте I
+  NewIdx: array of Integer;    // новый номер закладки с прежним номером
 begin
   if (FWindowsIndex < 0) or not FWindows[FWindowsIndex].Used then
     Exit;
 
+  SetLength(OrigIdx, Length(FWindows[FWindowsIndex].Bookmarks));
+  for I := 0 to High(OrigIdx) do
+    OrigIdx[I] := I;
+
   for I := 1 to High(FWindows[FWindowsIndex].Bookmarks) do
   begin
     Tmp := FWindows[FWindowsIndex].Bookmarks[I];
+    TmpOrig := OrigIdx[I];
     J := I - 1;
     while (J >= 0) and
           (FWindows[FWindowsIndex].Bookmarks[J].LineNo > Tmp.LineNo) do
     begin
       FWindows[FWindowsIndex].Bookmarks[J + 1] :=
         FWindows[FWindowsIndex].Bookmarks[J];
+      OrigIdx[J + 1] := OrigIdx[J];
       Dec(J);
     end;
     FWindows[FWindowsIndex].Bookmarks[J + 1] := Tmp;
+    OrigIdx[J + 1] := TmpOrig;
   end;
+
+  // История хранит номера закладок - переводим на новые
+  SetLength(NewIdx, Length(OrigIdx));
+  for I := 0 to High(OrigIdx) do
+    NewIdx[OrigIdx[I]] := I;
+  for HistIdx := 0 to High(FBmHistWin) do
+    if (FBmHistWin[HistIdx] = FWindowsIndex) and
+       (FBmHistIdx[HistIdx] >= 0) and (FBmHistIdx[HistIdx] <= High(NewIdx)) then
+      FBmHistIdx[HistIdx] := NewIdx[FBmHistIdx[HistIdx]];
 
   RebuildBookmarksMenu;
 end;
@@ -10910,6 +10937,7 @@ begin
     Exit;
 
   SetLength(FWindows[FWindowsIndex].Bookmarks, 0);
+  BmHistDropWindow(FWindowsIndex);
   RebuildBookmarksMenu;
 end;
 
@@ -10930,15 +10958,85 @@ begin
   Result := Format('%d %s', [FWindows[WinIdx].Bookmarks[BmIdx].LineNo, Result]);
 end;
 
-// Запоминает посещённую закладку. Ветка "вперёд" при этом отбрасывается -
-// история линейная, как в браузере.
+// Запоминает посещённую закладку: прежняя запись о ней убирается, новая
+// встаёт в конец. Каждая закладка в истории один раз, поэтому LastBM
+// проходит все посещённые закладки, а не одни и те же две, между которыми
+// переходили по меню.
 procedure TForm1.PushBmHistory(WinIdx, BmIdx: Integer);
+var
+  HistIdx, HistLen: Integer;
 begin
-  SetLength(FBmHistWin, FBmHistPos + 1);
-  SetLength(FBmHistIdx, FBmHistPos + 1);
-  FBmHistWin[FBmHistPos] := WinIdx;
-  FBmHistIdx[FBmHistPos] := BmIdx;
-  Inc(FBmHistPos);
+  for HistIdx := High(FBmHistWin) downto 0 do
+    if (FBmHistWin[HistIdx] = WinIdx) and (FBmHistIdx[HistIdx] = BmIdx) then
+      BmHistRemoveAt(HistIdx);
+  HistLen := Length(FBmHistWin);
+  SetLength(FBmHistWin, HistLen + 1);
+  SetLength(FBmHistIdx, HistLen + 1);
+  FBmHistWin[HistLen] := WinIdx;
+  FBmHistIdx[HistLen] := BmIdx;
+  FBmHistPos := HistLen + 1;
+end;
+
+// Убирает запись истории; указатель остаётся на той же закладке
+procedure TForm1.BmHistRemoveAt(HistIdx: Integer);
+var
+  MoveIdx: Integer;
+begin
+  if (HistIdx < 0) or (HistIdx > High(FBmHistWin)) then
+    Exit;
+  for MoveIdx := HistIdx to High(FBmHistWin) - 1 do
+  begin
+    FBmHistWin[MoveIdx] := FBmHistWin[MoveIdx + 1];
+    FBmHistIdx[MoveIdx] := FBmHistIdx[MoveIdx + 1];
+  end;
+  SetLength(FBmHistWin, Length(FBmHistWin) - 1);
+  SetLength(FBmHistIdx, Length(FBmHistIdx) - 1);
+  if HistIdx < FBmHistPos then
+    Dec(FBmHistPos);
+  if FBmHistPos > Length(FBmHistWin) then
+    FBmHistPos := Length(FBmHistWin);
+end;
+
+// Закладки окна сброшены (окно закрыто, перечитано из проекта, Clear)
+procedure TForm1.BmHistDropWindow(WinIdx: Integer);
+var
+  HistIdx: Integer;
+begin
+  for HistIdx := High(FBmHistWin) downto 0 do
+    if FBmHistWin[HistIdx] = WinIdx then
+      BmHistRemoveAt(HistIdx);
+end;
+
+// Закладка BmIdx окна удалена: её записи убираются, номера следующих
+// закладок этого окна сдвигаются на один
+procedure TForm1.BmHistDeleted(WinIdx, BmIdx: Integer);
+var
+  HistIdx: Integer;
+begin
+  for HistIdx := High(FBmHistWin) downto 0 do
+    if FBmHistWin[HistIdx] = WinIdx then
+    begin
+      if FBmHistIdx[HistIdx] = BmIdx then
+        BmHistRemoveAt(HistIdx)
+      else if FBmHistIdx[HistIdx] > BmIdx then
+        Dec(FBmHistIdx[HistIdx]);
+    end;
+end;
+
+// Записи на закладки, которых уже нет (окно не занято, номер за концом
+// списка), - убрать
+procedure TForm1.BmHistCompact;
+var
+  HistIdx, WinIdx: Integer;
+begin
+  for HistIdx := High(FBmHistWin) downto 0 do
+  begin
+    WinIdx := FBmHistWin[HistIdx];
+    if (WinIdx < 0) or (WinIdx > WindowsItemCount - 1) or
+       not FWindows[WinIdx].Used or (FBmHistIdx[HistIdx] < 0) or
+       (FBmHistIdx[HistIdx] > High(FWindows[WinIdx].Bookmarks)) then
+      BmHistRemoveAt(HistIdx);
+  end;
 end;
 
 // Переход на закладку.
@@ -11049,18 +11147,23 @@ begin
   RebuildBookmarksMenu;
 end;
 
-// LastBM: шаг назад по истории закладок. Повторные нажатия уводят всё глубже.
+// LastBM: шаг назад по истории закладок. Повторные нажатия проходят все
+// посещённые закладки от последней к самой ранней; после самой ранней -
+// снова последняя.
 procedure TForm1.LastBMClick(Sender: TObject);
 begin
-  if FBmHistPos < 2 then
+  BmHistCompact;
+  if Length(FBmHistWin) < 2 then
   begin
     ShowMessage('9657:Предыдущей закладки нет.');
     Exit;
   end;
 
   Dec(FBmHistPos);
-  // Remember = False: сам возврат в историю не пишем, иначе из неё
-  // было бы не выбраться
+  if FBmHistPos < 1 then
+    FBmHistPos := Length(FBmHistWin);
+  // Remember = False: переход по истории порядок в ней не меняет, иначе
+  // LastBM снова ходил бы между двумя последними
   JumpToBookmark(FBmHistWin[FBmHistPos - 1], FBmHistIdx[FBmHistPos - 1], False);
 
   // Здесь пересобрать список можно: Sender - это mLastBM, а не пункт списка
@@ -11795,6 +11898,7 @@ begin
   SetLength(FWindows[WinIdx].CommentRanges, 0);
   SetLength(FWindows[WinIdx].StringRanges, 0);
   SetLength(FWindows[WinIdx].Bookmarks, 0);
+  BmHistDropWindow(WinIdx);
 
   if WinIdx = FWindowsIndex then
   begin
@@ -21873,13 +21977,16 @@ begin
   // Прежняя видимая построена по нынешнему тексту - это теперь спрятанная
   FDsgOtherKey := DsgViewKey;
 
+  // Всё, что меняет вид формы (выделение и маркеры, кнопки палитры по
+  // вкладкам), - до показа: показ (ShowForm) выводит форму уже
+  // нарисованной, а прежняя прячется после этого
   FDesigner.Form.Left := PosLeft;
   FDesigner.Form.Top := PosTop;
+  DsgPaletteTabs;
   FDesigner.SelectByName(SelName);
   if WasVisible then
     FDesigner.ShowForm;
   OldDsg.Form.Hide;
-  DsgPaletteTabs;
 end;
 
 // Папка Bin установки Delphi для значков палитры - по реестру, как у

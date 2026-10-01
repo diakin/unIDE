@@ -2406,15 +2406,37 @@ procedure TFormDesigner.ShowForm;
 begin
   if FForm = nil then
     Exit;
-  FForm.Show;
-  // Окно конструктора - поверх главного окна редактора: его владельцем
-  // делается главное окно. Иначе щелчок по палитре или инспектору поднимает
-  // редактор, и форма уходит под него - компонент некуда поставить.
-  // Владелец, а не fsStayOnTop: форма остаётся над редактором, но не над
-  // окнами других программ, и сворачивается вместе с редактором.
-  if (Application.MainForm <> nil) and Application.MainForm.HandleAllocated then
-    SetWindowLong(FForm.Handle, GWL_HWNDPARENT,
-                  Integer(Application.MainForm.Handle));
+  // Форма появляется уже нарисованной. Невидимое окно WM_PAINT не
+  // получает, а после Show дочерние окна рисуются только тогда, когда
+  // очередь сообщений дойдёт до WM_PAINT: до этого на месте компонентов
+  // белый фон. Поэтому форма показывается прозрачной (layered, альфа 0):
+  // такое окно уже видимо для Windows и рисуется целиком в свой буфер,
+  // но на экране его нет. Нарисовали всё сразу (FlushPaint) - прозрачность
+  // снимается, и форма появляется готовой.
+  FForm.HandleNeeded;
+  FForm.AlphaBlendValue := 0;
+  FForm.AlphaBlend := True;
+  try
+    FForm.Show;
+    // Окно конструктора - поверх главного окна редактора: его владельцем
+    // делается главное окно. Иначе щелчок по палитре или инспектору
+    // поднимает редактор, и форма уходит под него - компонент некуда
+    // поставить. Владелец, а не fsStayOnTop: форма остаётся над
+    // редактором, но не над окнами других программ, и сворачивается
+    // вместе с редактором.
+    if (Application.MainForm <> nil) and
+       Application.MainForm.HandleAllocated then
+      SetWindowLong(FForm.Handle, GWL_HWNDPARENT,
+                    Integer(Application.MainForm.Handle));
+    RedrawWindow(FForm.Handle, nil, 0, RDW_INVALIDATE or RDW_ERASE or
+                 RDW_FRAME or RDW_ALLCHILDREN or RDW_UPDATENOW);
+  finally
+    // Снятие layered помечает окно к перерисовке (VCL, SetLayeredAttribs) -
+    // рисуем сразу, не дожидаясь очереди
+    FForm.AlphaBlend := False;
+    FForm.AlphaBlendValue := 255;
+    FlushPaint;
+  end;
   Windows.SetFocus(FForm.Handle);
   // Новая форма уже на экране - прежнюю можно убрать
   DropOldForm;
