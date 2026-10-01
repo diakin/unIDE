@@ -18206,7 +18206,20 @@ end;
 
 // Узлы - в дерево на экране. Внутрь ссылок не спускаемся: их содержимое
 // показано на своём месте.
+//
+// Дерево обходится только по ссылкам узлов (первый ребёнок, следующий
+// брат), с номером среди братьев, который считается по ходу. Items[I] и
+// TTreeNode.Index здесь не используются: Index каждый раз пересчитывает
+// братьев от первого, а ключ узла (путь с номерами) строился для каждого
+// узла по всем его предкам. Время по частям - в строке 17150 HiLite log.
 procedure TForm1.RenderObjTree(ARoots: TList);
+var
+  Expanded: TStringList;
+  SelKey, TopKey: string;
+  OldSel, OldTop, Sel, TopN: TTreeNode;
+  HadState: Boolean;
+  RootIdx: Integer;
+  StartTick, StageTick, TSave, TAdd, TRestore, TShow, TProps: Cardinal;
 
   procedure AddNode(AParent: TTreeNode; N: TDfmNode);
   var
@@ -18220,27 +18233,77 @@ procedure TForm1.RenderObjTree(ARoots: TList);
       AddNode(T, TDfmNode(N.Children[I]));
   end;
 
-// Ключ узла - путь из подписей с номером среди братьев: подписи у
-// безымянных runtime-узлов повторяются. По Data ключ не строим: к моменту
-// перестроения старые узлы TDfmNode уже освобождены, живы только подписи.
-  function NodeKey(N: TTreeNode): string;
+  // Ключ узла - путь из подписей с номером среди братьев: подписи у
+  // безымянных runtime-узлов повторяются. По Data ключ не строим: к моменту
+  // перестроения старые узлы TDfmNode уже освобождены, живы только подписи.
+  // Обход - от AFirst по братьям и вглубь; APrefix - ключ родителя.
+  procedure SaveState(AFirst: TTreeNode; const APrefix: string);
+  var
+    Node: TTreeNode;
+    SibIdx: Integer;
+    Key: string;
   begin
-    Result := '';
-    while N <> nil do
+    Node := AFirst;
+    SibIdx := 0;
+    while Node <> nil do
     begin
-      Result := N.Text + '#' + IntToStr(N.Index) + '\' + Result;
-      N := N.Parent;
+      Key := APrefix + Node.Text + '#' + IntToStr(SibIdx) + '\';
+      if Node.Expanded then
+        Expanded.Add(Key);
+      if Node = OldSel then
+        SelKey := Key;
+      if Node = OldTop then
+        TopKey := Key;
+      if Node.getFirstChild <> nil then
+        SaveState(Node.getFirstChild, Key);
+      Node := Node.getNextSibling;
+      Inc(SibIdx);
     end;
   end;
 
-var
-  I: Integer;
-  Expanded: TStringList;
-  SelKey, TopKey, K: string;
-  HadState: Boolean;
-  Sel, TopN, PN: TTreeNode;
-  N: TDfmNode;
+  // Раскрытые ветки, выделение и верх - по ключам; ветки runtime раскрыты
+  // всегда (что создано в коде, видно сразу)
+  procedure RestoreState(AFirst: TTreeNode; const APrefix: string);
+  var
+    Node, ParentNode: TTreeNode;
+    SibIdx: Integer;
+    Key: string;
+    Obj: TDfmNode;
+  begin
+    Node := AFirst;
+    SibIdx := 0;
+    while Node <> nil do
+    begin
+      Key := APrefix + Node.Text + '#' + IntToStr(SibIdx) + '\';
+      if HadState then
+      begin
+        if Expanded.IndexOf(Key) >= 0 then
+          Node.Expanded := True;
+        if Key = SelKey then
+          Sel := Node;
+        if Key = TopKey then
+          TopN := Node;
+      end;
+      Obj := TDfmNode(Node.Data);
+      if (Obj <> nil) and (Obj.IsRuntime or Obj.FromCode) then
+      begin
+        ParentNode := Node;
+        while ParentNode <> nil do
+        begin
+          if not ParentNode.Expanded then
+            ParentNode.Expanded := True;
+          ParentNode := ParentNode.Parent;
+        end;
+      end;
+      if Node.getFirstChild <> nil then
+        RestoreState(Node.getFirstChild, Key);
+      Node := Node.getNextSibling;
+      Inc(SibIdx);
+    end;
+  end;
+
 begin
+  StartTick := GetTickCount;
   // Состояние дерева до перестроения: раскрытые ветки, выделение и
   // верхняя видимая строка. Дерево перестраивается при каждой смене окна
   // и после правки - сворачивать его всякий раз значило бы терять место,
@@ -18250,65 +18313,40 @@ begin
     Expanded.Sorted := True;
     SelKey := '';
     TopKey := '';
-    HadState := FObjTree.Items.Count > 0;
+    OldSel := FObjTree.Selected;
+    OldTop := FObjTree.TopItem;
+    HadState := FObjTree.Items.GetFirstNode <> nil;
     if HadState then
-    begin
-      for I := 0 to FObjTree.Items.Count - 1 do
-        if FObjTree.Items[I].Expanded then
-          Expanded.Add(NodeKey(FObjTree.Items[I]));
-      if FObjTree.Selected <> nil then
-        SelKey := NodeKey(FObjTree.Selected);
-      if FObjTree.TopItem <> nil then
-        TopKey := NodeKey(FObjTree.TopItem);
-    end;
+      SaveState(FObjTree.Items.GetFirstNode, '');
+    TSave := GetTickCount - StartTick;
 
     // Пока дерево перестраивается, ObjTreeChange не должен трогать Data
     // старых узлов - они уже освобождены
     FObjRebuilding := True;
     FObjTree.Items.BeginUpdate;
     try
+      StageTick := GetTickCount;
       FObjTree.Items.Clear;
-      for I := 0 to ARoots.Count - 1 do
-        AddNode(nil, TDfmNode(ARoots[I]));
+      for RootIdx := 0 to ARoots.Count - 1 do
+        AddNode(nil, TDfmNode(ARoots[RootIdx]));
+      TAdd := GetTickCount - StageTick;
 
+      StageTick := GetTickCount;
       Sel := nil;
       TopN := nil;
-      if HadState then
-        for I := 0 to FObjTree.Items.Count - 1 do
-        begin
-          K := NodeKey(FObjTree.Items[I]);
-        if Expanded.IndexOf(K) >= 0 then
-          FObjTree.Items[I].Expanded := True;
-        if K = SelKey then
-          Sel := FObjTree.Items[I];
-        if K = TopKey then
-          TopN := FObjTree.Items[I];
-      end;
+      RestoreState(FObjTree.Items.GetFirstNode, '');
 
-      // Ветки runtime раскрыты всегда: что создано в коде, видно сразу
-      for I := 0 to FObjTree.Items.Count - 1 do
-      begin
-        N := TDfmNode(FObjTree.Items[I].Data);
-        if (N <> nil) and (N.IsRuntime or N.FromCode) then
-        begin
-          PN := FObjTree.Items[I];
-          while PN <> nil do
-          begin
-            PN.Expanded := True;
-            PN := PN.Parent;
-          end;
-        end;
-      end;
-
-      if FObjTree.Items.Count > 0 then
+      if FObjTree.Items.GetFirstNode <> nil then
       begin
         if not HadState then
-          FObjTree.Items[0].Expand(False);
+          FObjTree.Items.GetFirstNode.Expand(False);
         if Sel = nil then
-          Sel := FObjTree.Items[0];
+          Sel := FObjTree.Items.GetFirstNode;
         FObjTree.Selected := Sel;
       end;
+      TRestore := GetTickCount - StageTick;
     finally
+      StageTick := GetTickCount;
       FObjTree.Items.EndUpdate;
       FObjRebuilding := False;
     end;
@@ -18316,13 +18354,21 @@ begin
     // Прокрутку - после EndUpdate: до него дерево размеров не знает
     if TopN <> nil then
       FObjTree.TopItem := TopN;
+    TShow := GetTickCount - StageTick;
   finally
     Expanded.Free;
   end;
 
   // Внутри BeginUpdate дерево может не поднять OnChange - заполняем сетки
   // сами, по тому, что выбрано
+  StageTick := GetTickCount;
   ObjTreeChange(nil, FObjTree.Selected);
+  TProps := GetTickCount - StageTick;
+
+  Dbg(Format('17150: дерево инспектора - %d мс (состояние %d, узлы %d, ' +
+             'раскрытие %d, показ %d, свойства выбранного %d)',
+             [GetTickCount - StartTick, TSave, TAdd, TRestore, TShow,
+              TProps]), clNavy);
 end;
 
 // Какую форму показывать - по активному окну: открыт .dfm - разбираем текст
