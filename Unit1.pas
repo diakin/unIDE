@@ -1654,6 +1654,7 @@ type
     procedure CenterCaretLine;
     procedure BuildBookmarksMenu;
     procedure RebuildBookmarksMenu;
+    procedure BmResyncLines;
     procedure BookmarkItemClick(Sender: TObject);
     procedure UpdatePathBar;
     procedure Status2Resize(Sender: TObject);
@@ -6355,6 +6356,7 @@ begin
   UpdateLineNumbers;
   UpdateStatusBarInfo;
   RebuildWindowsMenu;
+  BmResyncLines;        // номера строк закладок - по нынешнему тексту
   RebuildBookmarksMenu; // закладки свои у каждого окна
   UpdatePathBar;
   EnsureTab(Index);     // вкладка появляется при первом показе окна
@@ -10893,6 +10895,49 @@ begin
     It.Tag := I;
     It.OnClick := BookmarkItemClick;
     mBookmarks.Add(It);
+  end;
+end;
+
+// Номера строк закладок активного окна - по тексту в редакторе.
+//
+// Номер в .prj записан на момент сохранения проекта. Если файл с тех пор
+// изменился вне окна (git pull, правка в другом редакторе), номер указывает
+// на другую строку - и метка на полосе (MarksBox) встаёт не туда, и подпись
+// в меню неверна. Строку ищем так же, как JumpToBookmark: по тексту
+// закладки, начиная от прежней позиции; не нашли - закладка остаётся как
+// была.
+procedure TForm1.BmResyncLines;
+var
+  BmIdx, LineIdx, StartFrom, FoundPos, TextLen: Integer;
+  BmText: string;
+begin
+  if (FWindowsIndex < 0) or not FWindows[FWindowsIndex].Used or
+     not RichEdit1.HandleAllocated then
+    Exit;
+  TextLen := RichEdit1.GetTextLen;
+  for BmIdx := 0 to High(FWindows[FWindowsIndex].Bookmarks) do
+  begin
+    BmText := FWindows[FWindowsIndex].Bookmarks[BmIdx].Text;
+    if BmText = '' then
+      Continue;
+    // Строка на месте - ничего не делаем
+    LineIdx := FWindows[FWindowsIndex].Bookmarks[BmIdx].LineNo - 1;
+    if (LineIdx >= 0) and (LineIdx < RichEdit1.Lines.Count) and
+       (Trim(RichEdit1.Lines[LineIdx]) = BmText) then
+      Continue;
+    StartFrom := FWindows[FWindowsIndex].Bookmarks[BmIdx].CharPos -
+                 Length(BmText);
+    if (StartFrom < 0) or (StartFrom > TextLen) then
+      StartFrom := 0;
+    FoundPos := FindTextEd(BmText, StartFrom, TextLen - StartFrom,
+                           [stMatchCase]);
+    if (FoundPos < 0) and (StartFrom > 0) then
+      FoundPos := FindTextEd(BmText, 0, TextLen, [stMatchCase]);
+    if FoundPos < 0 then
+      Continue;
+    FWindows[FWindowsIndex].Bookmarks[BmIdx].CharPos := FoundPos;
+    FWindows[FWindowsIndex].Bookmarks[BmIdx].LineNo :=
+      SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0, FoundPos) + 1;
   end;
 end;
 
