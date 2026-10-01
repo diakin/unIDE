@@ -2300,6 +2300,7 @@ type
     procedure SaveClrSchemaTo(const APath: string);
     procedure LoadSchemaFileForEdit(const APath: string);
     procedure ResetSchemaState;
+    procedure SetEditorFontColor(AColor: TColor);
     // Нужна окну настроек: с какой папки начинать выбор путей
     function  CurrentProjectDir: string;
     function  StrStartAt(const AText: string; APos: Integer;
@@ -4599,7 +4600,7 @@ begin
                                               ColorToString(FIniFontColor)));
   FIniBGColor := StringToColor(ThemeIniRead(Ini, 'Editor', 'BGColor',
                                             ColorToString(FIniBGColor)));
-  RichEdit1.Font.Color := FIniFontColor;
+  SetEditorFontColor(FIniFontColor);
   RichEdit1.Color := FIniBGColor;
   FScheme.FTextBG := FIniBGColor;
   // Зазор между номерами строк и текстом - цветом пустого места редактора
@@ -4628,7 +4629,7 @@ var
 begin
   N := FScheme.ApplyTheme;
   if FScheme.FSchemaHasText then
-    RichEdit1.Font.Color := FScheme.FTextFG;
+    SetEditorFontColor(FScheme.FTextFG);
   // Какая тема и сколько её цветов нашлось в схеме - в HiLite log
   if FScheme.FTheme = '' then
     Dbg('3324: схема: основная тема (' + BaseThemeName + ')', clNavy)
@@ -4644,6 +4645,7 @@ var
   WasMod, RedrawOff: Boolean;
   OldCursor: TCursor;
   StartTick, StageTick, TColors, TMaps, TSchema, TDesigner: Cardinal;
+  OldMarkers: string;
 begin
   FThemeName := Trim(AName);
   if FThemeName = '' then
@@ -4682,11 +4684,16 @@ begin
     // Схема активной вкладки - с цветами темы; остальные вкладки возьмут
     // её при переходе на них
     StageTick := GetTickCount;
-    InvalidateAllWindowMaps;
-    TMaps := GetTickCount - StageTick;
-    StageTick := GetTickCount;
+    OldMarkers := FScheme.MarkersSig;
     ReloadActiveClrSchema;
     TSchema := GetTickCount - StageTick;
+    // Карты других вкладок зависят только от маркеров комментариев и
+    // строк. Тема меняет цвета - карты годятся; иначе каждая вкладка
+    // разбиралась бы заново при переходе на неё.
+    StageTick := GetTickCount;
+    if FScheme.MarkersSig <> OldMarkers then
+      InvalidateAllWindowMaps;
+    TMaps := GetTickCount - StageTick;
   finally
     if RedrawOff then
     begin
@@ -38291,11 +38298,34 @@ end;
 //  шрифта, высота строки и шаг табуляции, карты окон, перерисовка.
 // ---------------------------------------------------------------------------
 
+// Цвет текста редактора - в RichEdit1.Font.Color, БЕЗ передачи контролу.
+//
+// Текст рисуем мы (PaintDoubleBuffered, родная отрисовка выключена -
+// NativePaintMode), цвет по умолчанию берём из RichEdit1.Font.Color. Сам
+// контрол на смену шрифта (CM_FONTCHANGED) переписывает оформление всего
+// текста: на Unit1.pas это около 0,5 с на каждое присваивание, а при
+// смене темы их было несколько подряд. Его собственный цвет на экране не
+// виден, поэтому уведомление на время присваивания снимается.
+procedure TForm1.SetEditorFontColor(AColor: TColor);
+var
+  SavedOnChange: TNotifyEvent;
+begin
+  if RichEdit1.Font.Color = AColor then
+    Exit;
+  SavedOnChange := RichEdit1.Font.OnChange;
+  RichEdit1.Font.OnChange := nil;
+  try
+    RichEdit1.Font.Color := AColor;
+  finally
+    RichEdit1.Font.OnChange := SavedOnChange;
+  end;
+end;
+
 // Схема - к встроенным умолчаниям; цвет текста и фон - из editor.ini
 procedure TForm1.ResetSchemaState;
 begin
   FScheme.ResetSchemaState(FIniFontColor, FIniBGColor);
-  RichEdit1.Font.Color := FScheme.FTextFG;
+  SetEditorFontColor(FScheme.FTextFG);
   RichEdit1.Color := FIniBGColor;
 end;
 
@@ -38311,7 +38341,7 @@ begin
     ShowMessage('30547:' + FScheme.FLoadError);
   if FScheme.FSchemaHasText then
   begin
-    RichEdit1.Font.Color := FScheme.FTextFG;
+    SetEditorFontColor(FScheme.FTextFG);
     with TControlCanvas.Create do
     try
       Control := RichEdit1;
@@ -39089,12 +39119,22 @@ end;
 procedure TForm1.ReloadActiveClrSchema;
 var
   Ext: string;
+  OldSuppress: Boolean;
 begin
   if (FWindowsIndex >= 0) and FWindows[FWindowsIndex].Used then
     Ext := WindowExt(FWindows[FWindowsIndex].FileName)
   else
     Ext := ExtractFileExt(FCurrentFileName);
-  LoadCustomClrSchema(Ext);
+  // Карту комментариев и строк LoadCustomClrSchema строила заново всегда -
+  // на Unit1.pas это около 0,8 с. Здесь текст тот же, и карта нужна новая
+  // только при других маркерах: это проверяет RefreshMapIfMarkersChanged.
+  OldSuppress := FSuppressMapRebuild;
+  FSuppressMapRebuild := True;
+  try
+    LoadCustomClrSchema(Ext);
+  finally
+    FSuppressMapRebuild := OldSuppress;
+  end;
   RefreshMapIfMarkersChanged;
   RichEdit1.Invalidate;
   if PaintBox1 <> nil then
@@ -39166,9 +39206,9 @@ begin
   try
     FIniFontColor := AColor;
     if FScheme.FSchemaHasText then
-      RichEdit1.Font.Color := FScheme.FSchemaTextFG
+      SetEditorFontColor(FScheme.FSchemaTextFG)
     else
-      RichEdit1.Font.Color := AColor;
+      SetEditorFontColor(AColor);
   finally
     RichEdit1.Modified := WasModified;
   end;
@@ -39190,13 +39230,13 @@ begin
     // Фон пустого места меняет только SetEditorBG.
     if AFontColor <> clNone then
     begin
-      RichEdit1.Font.Color := AFontColor;
+      SetEditorFontColor(AFontColor);
       FScheme.FSchemaHasText := True;
       FScheme.FSchemaTextFG := AFontColor;
     end
     else if (AFont <> nil) and FScheme.FSchemaHasText then
       // Шрифт пришёл целиком, вместе с цветом, - цвет схемы главнее
-      RichEdit1.Font.Color := FScheme.FSchemaTextFG;
+      SetEditorFontColor(FScheme.FSchemaTextFG);
     if ABkColor <> clNone then
       FScheme.FTextBG := ABkColor;
 
