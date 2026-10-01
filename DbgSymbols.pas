@@ -186,6 +186,7 @@ const
   LeafProcedure = $0008;
   LeafPasSet    = $0030;
   LeafSubrange  = $0031;
+  LeafPArray    = $0032;   // массив Паскаля: тип элемента, индекса, имя, размер
   LeafPString   = $0033;
   LeafClosure   = $0034;
   LeafProperty  = $0035;
@@ -206,6 +207,10 @@ const
 
   StructFwdRef  = $0080;   // свойства записи/класса: только объявление
   PropHasReaderSlot = $0002;   // свойство: чтение - номер метода, не имя
+
+  // Простые типы Borland вне таблицы CodeView (по проверке на DbgTest)
+  PrimCurrency  = $0004;   // Currency: Int64, значение * 10000
+  PrimAnsiChar  = $0061;   // Char Delphi
 
   MaxShowText   = 255;     // символов строки в окне
   MaxShowItems  = 16;      // элементов массива, полей записи
@@ -689,6 +694,13 @@ begin
     Result := Cardinal(FClassIndex.Objects[Found]);
 end;
 
+// Простой тип CodeView - символ (char, uchar, rchar)
+function IsCharPrim(ACode: Cardinal): Boolean;
+begin
+  Result := (ACode = $10) or (ACode = $20) or (ACode = $70) or
+            (ACode = PrimAnsiChar);
+end;
+
 // Размер значения типа в байтах; 0 - неизвестен
 function TDbgSymbols.TypeSize(ATypeId: Cardinal): Integer;
 const
@@ -706,6 +718,16 @@ begin
     if ((ATypeId shr 8) and 7) <> 0 then
     begin
       Result := 4;
+      Exit;
+    end;
+    if ATypeId = PrimCurrency then
+    begin
+      Result := 8;
+      Exit;
+    end;
+    if ATypeId = PrimAnsiChar then
+    begin
+      Result := 1;
       Exit;
     end;
     Kind := (ATypeId shr 4) and $F;
@@ -739,7 +761,7 @@ begin
       Result := 8;
     LeafVariant:
       Result := 16;
-    LeafArray:
+    LeafArray, LeafPArray:
       begin
         NumPos := Body + 12;
         if ReadNumeric(NumPos, NumValue) then
@@ -782,11 +804,20 @@ begin
     begin
       if (ATypeId and $FF) = $03 then
         Result := 'Pointer'
-      else if ((ATypeId and $FF) = $10) or ((ATypeId and $FF) = $20) or
-              ((ATypeId and $FF) = $70) then
+      else if IsCharPrim(ATypeId and $FF) then
         Result := 'PChar'
       else
         Result := '^' + TypeText(ATypeId and $FF);
+      Exit;
+    end;
+    if ATypeId = PrimCurrency then
+    begin
+      Result := 'Currency';
+      Exit;
+    end;
+    if ATypeId = PrimAnsiChar then
+    begin
+      Result := 'Char';
       Exit;
     end;
     Kind := (ATypeId shr 4) and $F;
@@ -795,7 +826,11 @@ begin
       0: if SizeCode = 3 then Result := 'void';
       1: Result := 'int' + IntToStr(8 shl SizeCode);
       2: Result := 'uint' + IntToStr(8 shl SizeCode);
-      3: Result := 'Boolean' + IntToStr(8 shl SizeCode);
+      3:
+        if SizeCode = 0 then
+          Result := 'Boolean'
+        else
+          Result := 'Boolean' + IntToStr(8 shl SizeCode);
       4:
         case SizeCode of
           0: Result := 'Single';
@@ -835,6 +870,10 @@ begin
         Result := TypeText(DwordAt(Body + 2))
       else if ((WordAt(Body) shr 5) and 7) = 1 then
         Result := 'var ' + TypeText(DwordAt(Body + 2))
+      else if Underlying(DwordAt(Body + 2)) = $0003 then
+        Result := 'Pointer'
+      else if IsCharPrim(Underlying(DwordAt(Body + 2))) then
+        Result := 'PChar'
       else
         Result := '^' + TypeText(DwordAt(Body + 2));
     LeafProperty:
@@ -843,8 +882,12 @@ begin
       Result := NameOf(DwordAt(Body + 20));
     LeafEnum:
       Result := NameOf(DwordAt(Body + 14));
-    LeafArray:
-      Result := 'array of ' + TypeText(DwordAt(Body));
+    LeafArray, LeafPArray:
+      begin
+        Result := NameOf(DwordAt(Body + 8));
+        if Result = '' then
+          Result := 'array of ' + TypeText(DwordAt(Body));
+      end;
     LeafPasSet:
       Result := 'set of ' + TypeText(DwordAt(Body));
     LeafSubrange:
@@ -1149,12 +1192,6 @@ begin
     Result := '';
 end;
 
-// Простой тип CodeView - символ (char, uchar, rchar)
-function IsCharPrim(ACode: Cardinal): Boolean;
-begin
-  Result := (ACode = $10) or (ACode = $20) or (ACode = $70);
-end;
-
 function CharText(ACode: Cardinal): string;
 begin
   if (ACode < 32) or (ACode > 255) then
@@ -1222,6 +1259,16 @@ begin
     Exit;
   end;
   Move(Bytes[0], Int64Value, 8);
+  if ATypeId = PrimCurrency then
+  begin
+    Result := CurrToStr(PCurrency(@Bytes[0])^);
+    Exit;
+  end;
+  if ATypeId = PrimAnsiChar then
+  begin
+    Result := CharText(Bytes[0]);
+    Exit;
+  end;
   Kind := (ATypeId shr 4) and $F;
   SizeCode := ATypeId and $F;
   if (Kind = 6) and (SizeCode = 9) then
@@ -1533,7 +1580,7 @@ begin
         Result := '(' + Result + ')';
       end;
 
-    LeafArray:
+    LeafArray, LeafPArray:
       begin
         if ADepth >= MaxDepth then
         begin
