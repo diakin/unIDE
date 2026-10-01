@@ -1013,6 +1013,12 @@ type
     // Время частей колонки «Строка кода» последнего заполнения (мс) - для
     // строки 17151 HiLite log
     FObjTSetIndex, FObjTCodeProps: Cardinal;
+    // Счётчик правок текста в редакторе: растёт на любой смене текста
+    // (EN_CHANGE, правка через наши сообщения, замена целиком). По нему
+    // указатель строк модуля (ObjSetterIndex) узнаёт, что текст активной
+    // вкладки тот же, не забирая его из контрола и не считая сумму.
+    FEditSerial: Cardinal;
+    FObjSetEdKey: string;
     FObjEditIdx: Integer;
     FObjEditOld: string;    // значение как было в строке .dfm
     // Правка при выделенной группе: FObjEditOld - значение только текущего
@@ -14678,6 +14684,7 @@ end;
 
 procedure TForm1.SetEditorText(const S: string);
 begin
+  Inc(FEditSerial);
   RichEdit1.SetTextBuf(PChar(S));
 end;
 
@@ -16019,6 +16026,7 @@ procedure TForm1.RichEdit1Change(Sender: TObject);
 var
   LineCountNow: Integer;
 begin
+  Inc(FEditSerial);
   // Карта перестраивается исключительно тогда, когда пользователь редактирует текст
   // 1. Текст изменился — полностью перестраиваем карту /* и */ с помощью PosEx
 
@@ -27867,6 +27875,9 @@ begin
      ((Message.WParam = Ord('Z')) or (Message.WParam = Ord('Y'))) then
     Whole := True;
 
+  // Undo, Redo, замена текста целиком - текст другой (см. FEditSerial)
+  if Whole then
+    Inc(FEditSerial);
   // Номера строк в узлах инспектора - по тому же снимку
   ObjLinesPre(Message, Whole);
   // Номера строк точек останова - по своему снимку
@@ -27908,6 +27919,7 @@ begin
              (Message.Msg = EM_REPLACESEL) or (Message.Msg = WM_PASTE);
   if not Changed then
     Exit;
+  Inc(FEditSerial);
 
   ApplyWidthEdit;
 
@@ -29425,6 +29437,7 @@ end;
 procedure TForm1.ObjSetterIndex;
 var
   SL: TStringList;
+  EdKey: string;
   Src, Key, LineText, Ident, PathText, PartText, LeftText, RightText: string;
   LineIdx, CharPos, ScanPos, CleanState, CharIdx: Integer;
   PlainIdents: Boolean;
@@ -29450,9 +29463,22 @@ begin
     FObjSetAlias.Clear;
     Exit;
   end;
+  // Модуль открыт в активной вкладке и с прошлого раза не правился -
+  // указатель тот же. Без этой проверки текст (на Unit1.pas - 1,3 МБ)
+  // забирался из контрола и суммировался при каждом выборе компонента.
+  if WindowOfFile(ObjFormUnit) = FWindowsIndex then
+  begin
+    EdKey := ObjFormUnit + '|' + IntToStr(FWindowsIndex) + '|' +
+             IntToStr(FEditSerial);
+    if (EdKey = FObjSetEdKey) and (FObjSetKey <> '') then
+      Exit;
+  end
+  else
+    EdKey := '';
   Src := UnitTextOf(ObjFormUnit);
   Key := ObjFormUnit + '|' + IntToStr(Length(Src)) + '|' +
          IntToHex(ObjTextHash(Src), 8);
+  FObjSetEdKey := EdKey;
   if Key = FObjSetKey then
     Exit;
   FObjSetKey := Key;
@@ -29661,6 +29687,7 @@ end;
 procedure TForm1.ObjPropsCodeColumn;
 var
   StageTick: Cardinal;
+  CodeProps: TStringList;
   ItemIdx, LineIdx: Integer;
   Item: TListItem;
   Node: TDfmNode;
@@ -29678,7 +29705,7 @@ begin
   // Список свойств, которые задаёт код (сравнение ресурса и снимка), - тоже
   // до цикла, чтобы его время было видно отдельно
   StageTick := GetTickCount;
-  ObjCodeProps;
+  CodeProps := ObjCodeProps;
   FObjTCodeProps := GetTickCount - StageTick;
   FObjSetFresh := True;
   try
@@ -29686,7 +29713,11 @@ begin
     begin
       Item := FObjProps.Items[ItemIdx];
       CellText := '';
-      if ObjIsCodeProp(Node, Item.Caption) then
+      // То же, что ObjIsCodeProp, но список взят один раз: ObjCodeProps на
+      // каждом вызове заново ищет живую форму и сверяет ключ снимка, а
+      // свойств у формы - сотни
+      if (Node.Name <> '') and not Node.FromCode and
+         (CodeProps.IndexOf(Node.Name + '.' + Item.Caption) >= 0) then
       begin
         LineIdx := ObjCodeSetterLine(Node.Name, Item.Caption, Via);
         if LineIdx >= 0 then
