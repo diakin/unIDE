@@ -1002,6 +1002,17 @@ type
     // (ObjCodeProps). FObjCodePropsKey - от какого снимка посчитано.
     FObjCodeProps: TStringList;
     FObjCodePropsKey: string;
+    // Посчитанные раньше списки для других снимков (ключ - как
+    // FObjCodePropsKey, Objects - TStringList): при возврате на форму
+    // список берётся отсюда, а не считается заново
+    FObjCodePropsStash: TStringList;
+    // Снимки других своих форм (Names - класс, Objects - TOwnSnapEntry):
+    // снимок хранится один (FObjSnapText), и переход Unit1 -> Unit2 ->
+    // Unit1 снимал Form1 заново и разбирал Unit1.dfm целиком
+    FOwnSnapStash: TStringList;
+    // Указатели строк других модулей (Strings - ключ FObjSetKey, Objects -
+    // TObjSetterEntry)
+    FObjSetStash: TStringList;
     // Где в модуле формы код задаёт свойства (ObjSetterIndex): первая
     // строка каждого "ИМЯ.ПУТЬ :=" / "ИМЯ.SETBOUNDS(" - в Objects номер
     // строки + 1; переменные, которым присвоен компонент, - "ИМЯ=ПЕРЕМЕННАЯ".
@@ -1991,6 +2002,9 @@ type
     procedure SnapReset;
     procedure ObjAutoSnap;
     procedure TakeOwnSnap(const AClass: string);
+    procedure OwnSnapStashCurrent;
+    function  OwnSnapRestore(const AClass: string): Boolean;
+    procedure OwnSnapStashClear;
     procedure PrepareOptionsForm;
     function  OwnLiveForm(const AClass: string): TCustomForm;
     function  OwnFormPrint(F: TCustomForm): string;
@@ -15933,6 +15947,16 @@ begin
   FreeAndNil(FObjCodeProps);
   FreeAndNil(FObjSetLines);
   FreeAndNil(FObjSetAlias);
+  OwnSnapStashClear;
+  FreeAndNil(FOwnSnapStash);
+  if FObjCodePropsStash <> nil then
+    for I := 0 to FObjCodePropsStash.Count - 1 do
+      FObjCodePropsStash.Objects[I].Free;
+  FreeAndNil(FObjCodePropsStash);
+  if FObjSetStash <> nil then
+    for I := 0 to FObjSetStash.Count - 1 do
+      FObjSetStash.Objects[I].Free;
+  FreeAndNil(FObjSetStash);
   FreeAndNil(FDsgGlyphCopied);
   if FRttiDefaults <> nil then
     for I := 0 to FRttiDefaults.Count - 1 do
@@ -19071,7 +19095,10 @@ begin
   if not FSnapOff and IsOwnProject then
     if OwnSnapFor(AClass) = '' then
     begin
-      TakeOwnSnap(AClass);
+      // Снимок этой формы уже снимали и отложили при переходе на другую -
+      // берём его; нет - снимаем
+      if not OwnSnapRestore(AClass) then
+        TakeOwnSnap(AClass);
     FObjSource.Cursor := crHandPoint;
     if FObjSnapBtn <> nil then
       FObjSnapBtn.Caption := SnapCapHide;
@@ -19538,6 +19565,118 @@ begin
   end;
 end;
 
+type
+  // Снимок своей формы, отложенный при переходе на другую (FOwnSnapStash)
+  TOwnSnapEntry = class
+    SnapText: string;
+    SnapPrint: string;
+    SnapTime: TDateTime;
+  end;
+
+  // Указатель строк модуля, отложенный при переходе на другой
+  // (FObjSetStash)
+  TObjSetterEntry = class
+  public
+    SetLines: TStringList;
+    SetAlias: TStringList;
+    constructor Create;
+    destructor Destroy; override;
+  end;
+
+constructor TObjSetterEntry.Create;
+begin
+  inherited Create;
+  SetLines := TStringList.Create;
+  SetLines.Sorted := True;
+  SetLines.Duplicates := dupIgnore;
+  SetAlias := TStringList.Create;
+end;
+
+destructor TObjSetterEntry.Destroy;
+begin
+  SetLines.Free;
+  SetAlias.Free;
+  inherited Destroy;
+end;
+
+const
+  // Сколько отложенных списков и указателей держать: форм в проекте
+  // обычно единицы
+  ObjStashMax = 8;
+
+// Нынешний снимок - в отложенные, под классом его формы
+procedure TForm1.OwnSnapStashCurrent;
+var
+  ClassNm: string;
+  StashIdx: Integer;
+  Entry: TOwnSnapEntry;
+begin
+  if FObjSnapText = '' then
+    Exit;
+  ClassNm := DfmRootClass(FObjSnapText);
+  if ClassNm = '' then
+    Exit;
+  if FOwnSnapStash = nil then
+    FOwnSnapStash := TStringList.Create;
+  StashIdx := FOwnSnapStash.IndexOf(ClassNm);
+  if StashIdx >= 0 then
+    Entry := TOwnSnapEntry(FOwnSnapStash.Objects[StashIdx])
+  else
+  begin
+    Entry := TOwnSnapEntry.Create;
+    FOwnSnapStash.AddObject(ClassNm, Entry);
+  end;
+  Entry.SnapText := FObjSnapText;
+  Entry.SnapPrint := FObjSnapPrint;
+  Entry.SnapTime := FObjSnapTime;
+end;
+
+// Отложенный снимок формы AClass - снова нынешний, если состав живой формы
+// с тех пор тот же (OwnFormPrint). Нынешний при этом откладывается.
+function TForm1.OwnSnapRestore(const AClass: string): Boolean;
+var
+  StashIdx: Integer;
+  Entry: TOwnSnapEntry;
+  LiveForm: TCustomForm;
+begin
+  Result := False;
+  if (FOwnSnapStash = nil) or (AClass = '') then
+    Exit;
+  StashIdx := FOwnSnapStash.IndexOf(AClass);
+  if StashIdx < 0 then
+    Exit;
+  Entry := TOwnSnapEntry(FOwnSnapStash.Objects[StashIdx]);
+  LiveForm := OwnLiveForm(AClass);
+  if (LiveForm = nil) or (OwnFormPrint(LiveForm) <> Entry.SnapPrint) then
+  begin
+    // Состав другой - отложенный снимок уже не годится
+    Entry.Free;
+    FOwnSnapStash.Delete(StashIdx);
+    Exit;
+  end;
+  OwnSnapStashCurrent;
+  // Отложенный мог сдвинуться: OwnSnapStashCurrent добавляет в конец
+  StashIdx := FOwnSnapStash.IndexOf(AClass);
+  Entry := TOwnSnapEntry(FOwnSnapStash.Objects[StashIdx]);
+  FObjSnapText := Entry.SnapText;
+  FObjSnapPrint := Entry.SnapPrint;
+  FObjSnapTime := Entry.SnapTime;
+  Entry.Free;
+  FOwnSnapStash.Delete(StashIdx);
+  Result := True;
+end;
+
+procedure TForm1.OwnSnapStashClear;
+var
+  StashIdx: Integer;
+begin
+  if FOwnSnapStash = nil then
+    Exit;
+  for StashIdx := 0 to FOwnSnapStash.Count - 1 do
+    FOwnSnapStash.Objects[StashIdx].Free;
+  FOwnSnapStash.Clear;
+end;
+
 // Свой снимок (с живого окна редактора), если он той же формы, что AClass
 function TForm1.OwnSnapFor(const AClass: string): string;
 begin
@@ -19568,6 +19707,10 @@ begin
   // запуске) - снимать нечего; чужую форму не снимаем
   if F = nil then
     Exit;
+  // Снимок другой формы не теряется - откладывается (OwnSnapRestore)
+  if (FObjSnapText <> '') and
+     (CompareText(DfmRootClass(FObjSnapText), AClass) <> 0) then
+    OwnSnapStashCurrent;
   // Во второй половине переключения вкладки часы не ставим: ход там виден
   // панелью в строке состояния (WMTabSwitched), а курсор мигал бы на
   // каждом переключении
@@ -19685,6 +19828,7 @@ begin
     DeleteFile(F);
   FProbeCacheTried := F;
   FObjSnapText := '';
+  OwnSnapStashClear;
   Inc(FObjSnapGen);
   FObjSource.Cursor := crDefault;
   RefreshObjectInspector(True);
@@ -29209,6 +29353,8 @@ end;
 
 function TForm1.ObjCodeProps: TStringList;
 var
+  StashList: TStringList;
+  StashIdx: Integer;
   LF: TCustomForm;
   ResTxt, SnapTxt, Key, Nm, SV, RV: string;
   ResNodes, SnapNodes: TList;
@@ -29233,13 +29379,35 @@ begin
   SnapTxt := '';
   if LF <> nil then
     SnapTxt := OwnSnapFor(LF.ClassName);
-  // Ключ - форма и сам текст снимка (новый снимок - новая строка)
-  Key := FObjFormClass + '|' + IntToHex(Integer(Pointer(SnapTxt)), 8) + '|' +
+  // Ключ - форма и сам текст снимка (сумма и длина: список хранится и для
+  // прежних снимков, и адрес строки мог бы достаться другой)
+  Key := FObjFormClass + '|' + IntToHex(Crc32Of(SnapTxt), 8) + '|' +
          IntToStr(Length(SnapTxt));
   if Key = FObjCodePropsKey then
     Exit;
+  // Прежний список - в отложенные; для этого снимка, если считали, - оттуда
+  if FObjCodePropsStash = nil then
+    FObjCodePropsStash := TStringList.Create;
+  if (FObjCodePropsKey <> '') and
+     (FObjCodePropsStash.IndexOf(FObjCodePropsKey) < 0) then
+  begin
+    StashList := TStringList.Create;
+    StashList.Assign(FObjCodeProps);
+    FObjCodePropsStash.AddObject(FObjCodePropsKey, StashList);
+    if FObjCodePropsStash.Count > ObjStashMax then
+    begin
+      FObjCodePropsStash.Objects[0].Free;
+      FObjCodePropsStash.Delete(0);
+    end;
+  end;
   FObjCodePropsKey := Key;
   FObjCodeProps.Clear;
+  StashIdx := FObjCodePropsStash.IndexOf(Key);
+  if StashIdx >= 0 then
+  begin
+    FObjCodeProps.AddStrings(TStringList(FObjCodePropsStash.Objects[StashIdx]));
+    Exit;
+  end;
   if (LF = nil) or (SnapTxt = '') then
     Exit;
   ResTxt := OwnFormResText(LF.ClassName);
@@ -29437,6 +29605,8 @@ end;
 procedure TForm1.ObjSetterIndex;
 var
   SL: TStringList;
+  SetEntry: TObjSetterEntry;
+  StashPos: Integer;
   EdKey: string;
   Src, Key, LineText, Ident, PathText, PartText, LeftText, RightText: string;
   LineIdx, CharPos, ScanPos, CleanState, CharIdx: Integer;
@@ -29481,9 +29651,34 @@ begin
   FObjSetEdKey := EdKey;
   if Key = FObjSetKey then
     Exit;
+  // Указатель прежнего модуля - в отложенные; для этого текста, если уже
+  // строили, - оттуда (переход между вкладками разных форм)
+  if FObjSetStash = nil then
+    FObjSetStash := TStringList.Create;
+  if (FObjSetKey <> '') and (FObjSetStash.IndexOf(FObjSetKey) < 0) then
+  begin
+    SetEntry := TObjSetterEntry.Create;
+    SetEntry.SetLines.Assign(FObjSetLines);
+    SetEntry.SetAlias.Assign(FObjSetAlias);
+    FObjSetStash.AddObject(FObjSetKey, SetEntry);
+    if FObjSetStash.Count > ObjStashMax then
+    begin
+      FObjSetStash.Objects[0].Free;
+      FObjSetStash.Delete(0);
+    end;
+  end;
   FObjSetKey := Key;
   FObjSetLines.Clear;
   FObjSetAlias.Clear;
+  StashPos := FObjSetStash.IndexOf(Key);
+  if StashPos >= 0 then
+  begin
+    SetEntry := TObjSetterEntry(FObjSetStash.Objects[StashPos]);
+    FObjSetLines.Assign(SetEntry.SetLines);
+    FObjSetAlias.Assign(SetEntry.SetAlias);
+    Exit;
+  end;
+
 
   SL := TStringList.Create;
   try
