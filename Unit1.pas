@@ -1658,6 +1658,7 @@ type
     procedure BuildBookmarksMenu;
     procedure RebuildBookmarksMenu;
     procedure BmValidateWindow(WinIdx: Integer);
+    procedure BmMenuCaptionsUpdate;
     function  BmFindNearest(const AText: string; AOldPos: Integer): Integer;
     procedure BookmarkItemClick(Sender: TObject);
     procedure UpdatePathBar;
@@ -10920,6 +10921,31 @@ end;
 //   - такой строки нет - закладка помечается Missing: пункт меню серый,
 //     метки на полосе нет. Номер остаётся прежним.
 // Вызывается при загрузке проекта для каждого окна и при показе окна.
+
+// Строка ALine без пробелов и табуляций по краям равна AText. Без Trim:
+// при поиске сравнение идёт с каждой строкой файла, а Trim на каждую
+// строку - выделение памяти.
+function BmLineIs(const ALine, AText: string): Boolean;
+var
+  FirstCol, LastCol: Integer;
+begin
+  Result := False;
+  FirstCol := 1;
+  LastCol := Length(ALine);
+  while (FirstCol <= LastCol) and (ALine[FirstCol] <= ' ') do
+    Inc(FirstCol);
+  while (LastCol >= FirstCol) and (ALine[LastCol] <= ' ') do
+    Dec(LastCol);
+  if LastCol - FirstCol + 1 <> Length(AText) then
+    Exit;
+  if Length(AText) = 0 then
+  begin
+    Result := True;
+    Exit;
+  end;
+  Result := CompareMem(@ALine[FirstCol], @AText[1], Length(AText));
+end;
+
 procedure TForm1.BmValidateWindow(WinIdx: Integer);
 var
   TextLines: TStringList;
@@ -10949,13 +10975,13 @@ begin
         Continue;
       OldIdx := FWindows[WinIdx].Bookmarks[BmIdx].LineNo - 1;
       if (OldIdx >= 0) and (OldIdx < TextLines.Count) and
-         (Trim(TextLines[OldIdx]) = BmText) then
+         BmLineIs(TextLines[OldIdx], BmText) then
         BestIdx := OldIdx
       else
       begin
         BestIdx := -1;
         for LineIdx := 0 to TextLines.Count - 1 do
-          if Trim(TextLines[LineIdx]) = BmText then
+          if BmLineIs(TextLines[LineIdx], BmText) then
             if (BestIdx < 0) or
                (Abs(LineIdx - OldIdx) < Abs(BestIdx - OldIdx)) then
               BestIdx := LineIdx;
@@ -11045,6 +11071,27 @@ begin
     Result := AfterPos
   else
     Result := BeforePos;
+end;
+
+// Номера строк в подписях пунктов закладок - без пересборки списка
+procedure TForm1.BmMenuCaptionsUpdate;
+var
+  ItemIdx, BmIdx: Integer;
+  NewCaption: string;
+begin
+  if (mBookmarks = nil) or (mBmSep = nil) or (FWindowsIndex < 0) or
+     not FWindows[FWindowsIndex].Used then
+    Exit;
+  for ItemIdx := mBmSep.MenuIndex + 1 to mBookmarks.Count - 1 do
+  begin
+    BmIdx := mBookmarks.Items[ItemIdx].Tag;
+    if (BmIdx < 0) or (BmIdx > High(FWindows[FWindowsIndex].Bookmarks)) or
+       not Assigned(mBookmarks.Items[ItemIdx].OnClick) then
+      Continue;
+    NewCaption := BookmarkCaption(FWindowsIndex, BmIdx);
+    if mBookmarks.Items[ItemIdx].Caption <> NewCaption then
+      mBookmarks.Items[ItemIdx].Caption := NewCaption;
+  end;
 end;
 
 // Переход по закладке
@@ -33775,16 +33822,17 @@ end;
 // Строка под координатой Y полосы; -1 - ниже текста
 function TForm1.MarksLineAtY(AY: Integer): Integer;
 var
-  LineStartChar, LineTotal, TopY: Integer;
+  LineStartChar, LineTotal, TopY, TopLine: Integer;
   FirstPt: TPoint;
 begin
   Result := -1;
   if not RichEdit1.HandleAllocated or (LineHeight <= 0) then
     Exit;
-  UpdateVisibleBounds;
+  // Верхняя строка - у контрола напрямую: UpdateVisibleBounds ищет ещё и
+  // нижнюю через EM_CHARFROMPOS, на большом файле это заметно
+  TopLine := SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
   TopY := 0;
-  LineStartChar := SendMessageA(RichEdit1.Handle, EM_LINEINDEX,
-                                FirstVisibleLine, 0);
+  LineStartChar := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, TopLine, 0);
   if LineStartChar >= 0 then
   begin
     SendMessageA(RichEdit1.Handle, EM_POSFROMCHAR, Integer(@FirstPt),
@@ -33793,7 +33841,7 @@ begin
   end;
   if AY < TopY then
     Exit;
-  Result := FirstVisibleLine + (AY - TopY) div LineHeight;
+  Result := TopLine + (AY - TopY) div LineHeight;
   LineTotal := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
   if (Result < 0) or (Result >= LineTotal) then
     Result := -1;
@@ -33802,7 +33850,7 @@ end;
 procedure TForm1.MarksBoxPaint(Sender: TObject);
 var
   BoxCanvas: TCanvas;
-  LineIdx, LineTotal, LineY, TopY, LineStartChar: Integer;
+  LineIdx, LineTotal, LineY, TopY, LineStartChar, TopLine: Integer;
   MarkSize, CenterX, CenterY, BmIdx, BmNum: Integer;
   FirstPt: TPoint;
   Mark: TBreakMark;
@@ -33821,10 +33869,11 @@ begin
   if not RichEdit1.HandleAllocated or (LineHeight <= 0) then
     Exit;
 
-  UpdateVisibleBounds;
+  // Верхняя строка - у контрола напрямую: UpdateVisibleBounds ищет ещё и
+  // нижнюю через EM_CHARFROMPOS, на большом файле это заметно
+  TopLine := SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
   TopY := 0;
-  LineStartChar := SendMessageA(RichEdit1.Handle, EM_LINEINDEX,
-                                FirstVisibleLine, 0);
+  LineStartChar := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, TopLine, 0);
   if LineStartChar >= 0 then
   begin
     SendMessageA(RichEdit1.Handle, EM_POSFROMCHAR, Integer(@FirstPt),
@@ -33846,11 +33895,11 @@ begin
   BoxCanvas.Font.Height := -(MarkSize - 2);
   BoxCanvas.Font.Style := [fsBold];
 
-  for LineIdx := FirstVisibleLine to LastVisibleLine + 1 do
+  for LineIdx := TopLine to MaxInt - 1 do
   begin
     if LineIdx >= LineTotal then
       Break;
-    LineY := TopY + (LineIdx - FirstVisibleLine) * LineHeight;
+    LineY := TopY + (LineIdx - TopLine) * LineHeight;
     if LineY + LineHeight < 0 then
       Continue;
     if LineY > MarksBox.Height then
@@ -34733,8 +34782,14 @@ begin
         BmMoved := True;
       end;
     end;
+    // Подписи пунктов - на месте, без пересборки меню: это каждая правка
+    // с переводом строки выше закладок
     if BmMoved then
-      RebuildBookmarksMenu;
+    begin
+      BmMenuCaptionsUpdate;
+      if MarksBox <> nil then
+        MarksBox.Invalidate;
+    end;
   end;
 
   // Правка за сеанс - для перевода строк .map в нынешние номера и обратно
