@@ -15357,14 +15357,25 @@ end;
 
 // Маркер на вкладке должен следить за флагом изменений. Перерисовываем панель
 // только в момент СМЕНЫ состояния, а не на каждое нажатие клавиши.
+//
+// Что показано сейчас, берётся с самой вкладки, а не из запомненного
+// FTabsModShown: сохранение (и другие места, где Modified сбрасывается)
+// снимало звёздочку, не трогая FTabsModShown. Он оставался True, и на
+// следующей правке Modified = FTabsModShown - звёздочка не появлялась.
 procedure TForm1.RefreshTabsModified;
+var
+  TabIdx: Integer;
+  StarShown: Boolean;
 begin
   if FTabs = nil then
     Exit;
-  if RichEdit1.Modified = FTabsModShown then
+  TabIdx := TabIndexOfWindow(FWindowsIndex);
+  if (TabIdx < 0) or (TabIdx >= FTabs.Tabs.Count) then
     Exit;
-
+  StarShown := Copy(FTabs.Tabs[TabIdx], 1, 2) = '* ';
   FTabsModShown := RichEdit1.Modified;
+  if RichEdit1.Modified = StarShown then
+    Exit;
   UpdateTabCaption(FWindowsIndex); // звёздочка появляется или исчезает
 end;
 
