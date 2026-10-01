@@ -450,7 +450,7 @@ function PasRemoveFields(const APas, AClassName: string;
 implementation
 
 uses
-  TypInfo, Buttons, Menus;
+  TypInfo, Buttons, Menus, UiScroll;
 
 const
   CaretSize = 6;
@@ -2428,6 +2428,10 @@ begin
        Application.MainForm.HandleAllocated then
       SetWindowLong(FForm.Handle, GWL_HWNDPARENT,
                     Integer(Application.MainForm.Handle));
+    // Свои полосы прокрутки элементов (UiScroll): пока форма была спрятана,
+    // их убрала сверка по таймеру. Вернуть сейчас, пока форма прозрачная, -
+    // иначе до следующей сверки видны полосы Windows.
+    UiScrollSyncAll;
     RedrawWindow(FForm.Handle, nil, 0, RDW_INVALIDATE or RDW_ERASE or
                  RDW_FRAME or RDW_ALLCHILDREN or RDW_UPDATENOW);
   finally

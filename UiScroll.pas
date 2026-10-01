@@ -161,6 +161,12 @@ type
 // Наши полосы элемента, если уже поставлены, иначе nil
 function UiScrollFind(ACtl: TWinControl): TUiListScroll;
 
+// Сверить все наши полосы элементов сейчас, не дожидаясь таймера. Нужно
+// сразу после показа окна: пока оно было спрятано, сверка по таймеру
+// убрала полосы его элементов (элемент не виден), и до следующей сверки
+// на их месте видны полосы Windows.
+procedure UiScrollSyncAll;
+
 // Служебная часть TUiListScroll (полоса или угол поверх полос элемента), а
 // не полоса, которую поставили в форму сами. Для снимка формы: таких
 // элементов нет ни в коде, ни в .dfm.
@@ -771,6 +777,12 @@ begin
   for I := List.Count - 1 downto 0 do
     if I < List.Count then
       TUiListScroll(List[I]).Sync;
+end;
+
+procedure UiScrollSyncAll;
+begin
+  if Ticker <> nil then
+    Ticker.Tick(nil);
 end;
 
 function UiScrollFind(ACtl: TWinControl): TUiListScroll;
