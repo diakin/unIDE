@@ -1657,6 +1657,7 @@ type
     procedure CenterCaretLine;
     procedure BuildBookmarksMenu;
     procedure RebuildBookmarksMenu;
+    procedure BmMenuMarks;
     procedure BmValidateWindow(WinIdx: Integer);
     procedure BmMenuCaptionsUpdate;
     function  BmFindNearest(const AText: string; AOldPos: Integer): Integer;
@@ -3057,6 +3058,8 @@ begin
   UiDefault('Gutter.BmBG', $0080FFFF, $00406060);
   UiDefault('Gutter.BmBorder', $00404040, $00A0C0C0);
   UiDefault('Gutter.BmText', clBlack, $00F0FFFF);
+  UiDefault('Gutter.BmCurBG', clRed, $002828C8);
+  UiDefault('Gutter.BmCurText', clWhite, $00F0F0F0);
   UiDefault('Gutter.ExecArrow', $00FF8000, $00FFA040);
   // Инспектор: свойство, записанное в .dfm, и свойство, которого там нет
   // (значение по умолчанию)
@@ -3341,6 +3344,10 @@ begin
     Result := 'Полоса меток: рамка закладки'
   else if AKey = 'Gutter.BmText' then
     Result := 'Полоса меток: номер закладки'
+  else if AKey = 'Gutter.BmCurBG' then
+    Result := 'Меню Bookmarks: фон номера текущей закладки (на строке с кареткой)'
+  else if AKey = 'Gutter.BmCurText' then
+    Result := 'Меню Bookmarks: номер текущей закладки'
   else if AKey = 'Gutter.ExecArrow' then
     Result := 'Полоса меток: стрелка строки остановки'
   else if AKey = 'ObjProps.DfmText' then
@@ -10951,6 +10958,9 @@ procedure TForm1.BuildBookmarksMenu;
 begin
   // Подписи содержат текст кода - ускорители в них только мешают
   mBookmarks.AutoHotkeys := maManual;
+  // При открытии меню - квадратики с номерами, текущая закладка выделена
+  mBookmarks.OnClick := mBookmarksClick;
+
 
   RebuildBookmarksMenu;
 
@@ -10992,6 +11002,74 @@ begin
     // Строки закладки в файле нет (BmValidateWindow)
     It.Enabled := not FWindows[FWindowsIndex].Bookmarks[I].Missing;
     mBookmarks.Add(It);
+  end;
+  BmMenuMarks;
+end;
+
+// Квадратики с номерами закладок у пунктов списка - такие же, как на
+// полосе меток. Закладка на строке с кареткой - текущая: квадратик
+// красный, пункт - по умолчанию (Default): строка меню UiMenus выделяет
+// его при открытии, меню Windows показывает жирным.
+procedure TForm1.BmMenuMarks;
+const
+  MarkBmpSize = 16;
+var
+  ItemIdx, BmIdx, CaretLine: Integer;
+  MenuItem: TMenuItem;
+  IsCurrent: Boolean;
+  NumText: string;
+  MarkRect: TRect;
+  MarkCanvas: TCanvas;
+begin
+  if (mBookmarks = nil) or (mBmSep = nil) or (FWindowsIndex < 0) or
+     not FWindows[FWindowsIndex].Used then
+    Exit;
+  if RichEdit1.HandleAllocated then
+    CaretLine := CurrentLineIndex
+  else
+    CaretLine := -1;
+  for ItemIdx := mBmSep.MenuIndex + 1 to mBookmarks.Count - 1 do
+  begin
+    MenuItem := mBookmarks.Items[ItemIdx];
+    BmIdx := MenuItem.Tag;
+    if not Assigned(MenuItem.OnClick) or (BmIdx < 0) or
+       (BmIdx > High(FWindows[FWindowsIndex].Bookmarks)) then
+      Continue;
+    IsCurrent := (FWindows[FWindowsIndex].Bookmarks[BmIdx].LineNo =
+                  CaretLine + 1) and
+                 not FWindows[FWindowsIndex].Bookmarks[BmIdx].Missing;
+
+    // Рамка в 1 пиксель цвета фуксии вокруг квадратика - прозрачный цвет:
+    // меню рисует значок прозрачным по левому нижнему пикселю
+    MenuItem.Bitmap.Width := MarkBmpSize;
+    MenuItem.Bitmap.Height := MarkBmpSize;
+    MarkCanvas := MenuItem.Bitmap.Canvas;
+    MarkCanvas.Brush.Style := bsSolid;
+    MarkCanvas.Brush.Color := clFuchsia;
+    MarkCanvas.FillRect(Rect(0, 0, MarkBmpSize, MarkBmpSize));
+    MarkRect := Rect(1, 1, MarkBmpSize - 1, MarkBmpSize - 1);
+    MarkCanvas.Pen.Style := psSolid;
+    MarkCanvas.Pen.Color := UiColor('Gutter.BmBorder');
+    if IsCurrent then
+      MarkCanvas.Brush.Color := UiColor('Gutter.BmCurBG')
+    else
+      MarkCanvas.Brush.Color := UiColor('Gutter.BmBG');
+    MarkCanvas.Rectangle(MarkRect.Left, MarkRect.Top, MarkRect.Right,
+                         MarkRect.Bottom);
+    MarkCanvas.Brush.Style := bsClear;
+    MarkCanvas.Font.Name := 'Tahoma';
+    MarkCanvas.Font.Height := -10;
+    MarkCanvas.Font.Style := [fsBold];
+    if IsCurrent then
+      MarkCanvas.Font.Color := UiColor('Gutter.BmCurText')
+    else
+      MarkCanvas.Font.Color := UiColor('Gutter.BmText');
+    NumText := IntToStr((BmIdx + 1) mod 100);
+    DrawTextA(MarkCanvas.Handle, PChar(NumText), Length(NumText), MarkRect,
+              DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOCLIP);
+
+    if MenuItem.Default <> IsCurrent then
+      MenuItem.Default := IsCurrent;
   end;
 end;
 
@@ -38833,10 +38911,12 @@ begin
   // Сюда можно будет добавить: Список открытых вкладок/файлов (MDI интерфейс)
 end;
 
+// Меню Bookmarks открывается (VCL и строка меню UiMenus вызывают OnClick
+// пункта перед показом подменю): квадратики с номерами - по нынешней
+// каретке
 procedure TForm1.mBookmarksClick(Sender: TObject);
 begin
-  StatusBar1.Panels[0].Text := 'Menu Bookmarks clicked.';
-  // Сюда можно будет добавить: Установить закладку (Ctrl+Shift+1), Перейти к закладке
+  BmMenuMarks;
 end;
 
 procedure TForm1.mHelpClick(Sender: TObject);

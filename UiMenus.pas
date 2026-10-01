@@ -552,7 +552,7 @@ procedure TUiMenuTracker.OpenLevel(AItems: TMenuItem; X, Y: Integer;
   AFromRight: Integer; ASelectFirst: Boolean);
 var
   Win: TUiMenuWindow;
-  W, H: Integer;
+  W, H, DefIdx: Integer;
   Work: TRect;
 begin
   // Меню, которые строятся на лету, заполняются в OnClick пункта с
@@ -590,6 +590,15 @@ begin
   Levels.Add(Win);
   if ASelectFirst then
     Win.Selected := Win.NextSelectable(-1, 1);
+  // Пункт по умолчанию (Default) выделен сразу, как бы меню ни открыли:
+  // так список показывает текущий элемент (например, закладку на строке
+  // с кареткой), и Enter выбирает его
+  for DefIdx := 0 to AItems.Count - 1 do
+    if AItems[DefIdx].Default and Win.Selectable(DefIdx) then
+    begin
+      Win.Selected := DefIdx;
+      Break;
+    end;
   Win.Invalidate;
 end;
 
