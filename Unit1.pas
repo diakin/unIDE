@@ -1941,6 +1941,8 @@ type
     // Сборка самого редактора: рядом с exe в папке вывода - его файлы
     // (editor.ini, IDE.clr, schemes), чтобы запуск по Run работал
     procedure CopyOwnRunFiles(const ADprDir, AExeDir: string);
+    function  FreeBusyExe(const AExe: string): Boolean;
+    procedure DeleteOldExes(const AExe: string);
     procedure RunTarget;
     procedure EnsureTextLimit;
     procedure EnsureNoWrap;
@@ -14749,6 +14751,10 @@ begin
 
   HangWatchStart(Application.Handle,
                  ExtractFilePath(Application.ExeName) + 'hang.log', Handle);
+
+  // Прежний exe, переименованный при сборке из работающего редактора
+  // (FreeBusyExe), - убрать, если его программа уже закрыта
+  DeleteOldExes(Application.ExeName);
 
   // Возврат в программу - проверить, не изменили ли открытые файлы снаружи.
   // И раз в две секунды, пока программа активна: файл могли поменять, не
@@ -31464,6 +31470,15 @@ begin
     Exit;
   end;
 
+  // exe занят - запущен (например, сам редактор из папки вывода): файл
+  // запущенной программы Windows перезаписать не даёт, и dcc32 отвечает
+  // "Could not create output file". Переименовать его можно - прежний уходит
+  // в <имя>.exe.old, новый собирается под своим именем.
+  if not FProbeActive then
+    if not FreeBusyExe(IncludeTrailingPathDelimiter(ExeDir) +
+                       ChangeFileExt(ExtractFileName(Dpr), '.exe')) then
+      Exit;
+
   LogComp('--- Компиляция: ' + ExtractFileName(Dpr) + '   [' + Sect + ']');
   // Полная командная строка. Без неё не видно, что компилятор получил на
   // самом деле, и разбирать ошибку вида "File not found" не по чему.
@@ -32397,6 +32412,64 @@ begin
   if Copied > 0 then
     LogComp(Format('Рядом с exe скопировано файлов: %d (editor.ini, IDE.clr, ' +
                    'schemes - которых там не было)', [Copied]));
+end;
+
+// Можно ли записать exe; занят - переименовать его в <имя>.exe.old (или
+// .old1, .old2, если прежние ещё заняты). False - занят и не переименовался.
+function TForm1.FreeBusyExe(const AExe: string): Boolean;
+var
+  Probe: THandle;
+  OldName: string;
+  OldNum: Integer;
+begin
+  Result := True;
+  if not FileExists(AExe) then
+    Exit;
+  Probe := CreateFile(PChar(AExe), GENERIC_WRITE, 0, nil, OPEN_EXISTING,
+                      FILE_ATTRIBUTE_NORMAL, 0);
+  if Probe <> INVALID_HANDLE_VALUE then
+  begin
+    CloseHandle(Probe);
+    Exit;   // свободен
+  end;
+  // .old прошлых сборок, чьи программы уже закрыты, - убрать
+  DeleteOldExes(AExe);
+  OldName := AExe + '.old';
+  OldNum := 1;
+  while FileExists(OldName) and (OldNum <= 20) do
+  begin
+    OldName := AExe + '.old' + IntToStr(OldNum);
+    Inc(OldNum);
+  end;
+  if MoveFile(PChar(AExe), PChar(OldName)) then
+  begin
+    LogComp(ExtractFileName(AExe) + ' занят (программа запущена) - ' +
+            'переименован в ' + ExtractFileName(OldName) + ', новый ' +
+            'собирается под прежним именем');
+    Exit;
+  end;
+  LogComp('Компиляция: ' + AExe + ' занят, и переименовать его не удалось (' +
+          SysErrorMessage(GetLastError) + ')');
+  Result := False;
+end;
+
+// Удалить <exe>.old* - прежние exe, переименованные при сборке. Файл, чья
+// программа ещё работает, не удалится - останется до следующего раза.
+procedure TForm1.DeleteOldExes(const AExe: string);
+var
+  Found: TSearchRec;
+  Dir: string;
+begin
+  Dir := ExtractFilePath(AExe);
+  if FindFirst(AExe + '.old*', faAnyFile, Found) = 0 then
+  try
+    repeat
+      if (Found.Attr and faDirectory) = 0 then
+        DeleteFile(Dir + Found.Name);
+    until FindNext(Found) <> 0;
+  finally
+    FindClose(Found);
+  end;
 end;
 
 // Запуск собранного exe. Ждать завершения нельзя: запущенная программа

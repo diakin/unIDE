@@ -178,17 +178,34 @@ begin
   Message.Result := MA_NOACTIVATE;
 end;
 
+// Подпись пункта. Клавиша может стоять в самой подписи после табуляции
+// ('&Undo'#9'Ctrl+Z'), как это понимает меню Windows: подпись - до
+// табуляции, клавиша рисуется своей колонкой (ItemShortCut).
 function ItemText(AItem: TMenuItem): string;
+var
+  TabPos: Integer;
 begin
   Result := AItem.Caption;
+  TabPos := Pos(#9, Result);
+  if TabPos > 0 then
+    SetLength(Result, TabPos - 1);
 end;
 
+// Клавиша пункта: из ShortCut, иначе - текст после табуляции в подписи
 function ItemShortCut(AItem: TMenuItem): string;
+var
+  TabPos: Integer;
 begin
   if AItem.ShortCut <> 0 then
     Result := ShortCutToText(AItem.ShortCut)
   else
-    Result := '';
+  begin
+    TabPos := Pos(#9, AItem.Caption);
+    if TabPos > 0 then
+      Result := Copy(AItem.Caption, TabPos + 1, MaxInt)
+    else
+      Result := '';
+  end;
 end;
 
 function IsSeparator(AItem: TMenuItem): Boolean;
