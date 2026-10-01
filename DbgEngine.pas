@@ -1,7 +1,8 @@
 unit DbgEngine;
 
 // ---------------------------------------------------------------------------
-//  Отладчик запущенной программы (этап 1): точки останова и продолжение
+//  Отладчик запущенной программы: точки останова, продолжение (этап 1),
+//  шаги по строкам и Run to cursor (этап 2)
 //
 //  Программа запускается под отладчиком Win32 (CreateProcess с
 //  DEBUG_ONLY_THIS_PROCESS). События отладки - запуск, потоки, исключения,
@@ -25,6 +26,31 @@ unit DbgEngine;
 //  запуска программы; оно пропускается. Остальные исключения программа
 //  обрабатывает сама (DBG_EXCEPTION_NOT_HANDLED), в лог уходит их код,
 //  класс и сообщение исключения Delphi и строка, где оно возникло.
+//
+//  Этап 2: шаги по строкам.
+//
+//  Trace into и Step over - поток, который стоит, идёт по одной команде
+//  (флаг трассировки) до первого адреса, который в .map записан как
+//  начало строки. После каждой команды проверяется, не была ли она
+//  CALL: ESP уменьшился на 4, а на вершине стека адрес сразу за прежней
+//  командой (CALL занимает от 2 до 7 байт). Тогда:
+//    - Step over - всегда, Trace into - если у вызванного кода нет
+//      номеров строк (RTL, VCL, DLL): на адрес возврата ставится
+//      временная точка, программа идёт свободно до неё, дальше снова по
+//      одной команде. Точка возврата срабатывает только у того же потока
+//      и только при ESP выше, чем был внутри вызова: рекурсивный вызов
+//      той же процедуры проходит её без остановки;
+//    - Trace into в код с номерами строк - остановка на его первой строке.
+//  Если шаг ушёл в код без номеров строк не через CALL (RET из
+//  обработчика обратно в VCL), программа идёт дальше свободно - так же,
+//  как в Delphi без отладочных DCU.
+//
+//  Run to cursor - временные точки на адресах строки, программа идёт
+//  свободно; остановка на любой из них в любом потоке. Любая остановка
+//  (точка, шаг, курсор) снимает все временные точки и прерывает шаг.
+//
+//  Запуск с F7/F8 - временная точка на адресе входа exe: у программы на
+//  Delphi это begin главного блока .dpr.
 // ---------------------------------------------------------------------------
 
 interface
@@ -33,6 +59,8 @@ uses
   Windows, Messages, SysUtils, Classes;
 
 type
+  TDbgOffsetArray = array of Cardinal;
+
   // Таблица номеров строк из .map
   TDbgLineMap = class
   private
@@ -46,8 +74,13 @@ type
     FModName: TStringList;
     FModStart: array of Cardinal;
     FModLen: array of Cardinal;
+    FModLines: array of Boolean;   // у модуля есть номера строк
+    // Смещения строк по возрастанию (для шагов: поиск начала строки)
+    FSortedOfs: TDbgOffsetArray;
+    FMinOfs, FMaxOfs: Cardinal;
     procedure AddLine(AOffset: Cardinal; ALine, AUnit: Integer);
     procedure AddModule(const AName: string; AStart, ALen: Cardinal);
+    procedure BuildIndex;
   public
     constructor Create;
     destructor Destroy; override;
@@ -60,6 +93,11 @@ type
     // же модуле. False - модуль без номеров строк
     function LineOfOffset(AOffset: Cardinal; var AFileName: string;
                           var ALine: Integer): Boolean;
+    // Для потока отладки (только чтение, после LoadFromFile):
+    // смещение - начало строки по .map
+    function IsLineStart(AOffset: Cardinal): Boolean;
+    // смещение - в модуле, у которого есть номера строк
+    function HasLines(AOffset: Cardinal): Boolean;
     property LineCount: Integer read FLineCount;
   end;
 
@@ -102,6 +140,11 @@ type
     FPendOfs: array of Cardinal;
     FPendOn: array of Boolean;
     FPendCount: Integer;
+    // Команда потоку на остановке: DbgCmd* и смещения для Run to cursor.
+    // До запуска - цели первого хода (Run to cursor до старта).
+    FCmdMode: Integer;
+    FCmdOfs: TDbgOffsetArray;
+    FStopAtEntry: Boolean;
     FExcLogged: Integer;      // сколько исключений ушло в лог
     FOnStopped: TDbgStopEvent;
     FOnLog: TDbgLogEvent;
@@ -111,33 +154,47 @@ type
     procedure PushNote(AKind: Integer; AAddress, AValue: Cardinal;
                        const AText: string);
     function WhereText(AAddress: Cardinal): string;
+    procedure Command(AMode: Integer; AOffsets: TList);
   public
     constructor Create(const AExeFile, AWorkDir: string; AMap: TDbgLineMap);
     destructor Destroy; override;
     procedure Start;
     // Точка по смещению от начала сегмента кода (из TDbgLineMap)
     procedure SetBreakpoint(AOffset: Cardinal; AOn: Boolean);
+    // Команды на остановке (Paused). Continue:
     procedure Resume;
+    // Trace into и Step over - до следующей строки
+    procedure StepInto;
+    procedure StepOver;
+    // Run to cursor - до одного из смещений (адреса строки). До Start -
+    // цели первого хода программы.
+    procedure RunTo(AOffsets: TList);
     procedure Kill;
     property Map: TDbgLineMap read FMap;
     property Paused: Boolean read FPaused;
     property Finished: Boolean read FFinished;
     property ExeFile: string read FExeFile;
+    // До Start: остановиться на адресе входа (begin главного блока .dpr)
+    property StopAtEntry: Boolean read FStopAtEntry write FStopAtEntry;
     property OnStopped: TDbgStopEvent read FOnStopped write FOnStopped;
     property OnLog: TDbgLogEvent read FOnLog write FOnLog;
     property OnExited: TDbgExitEvent read FOnExited write FOnExited;
   end;
 
-  // Точка в процессе программы
+  // Точка в процессе программы. Пользовательская (UserRef) и временная
+  // (TempRef: возврат из вызова при шаге, Run to cursor, вход в
+  // программу) могут совпасть по адресу - INT3 один, пока есть хоть одна.
   TDbgBreak = record
     Address: Cardinal;
     OrigByte: Byte;
     Inserted: Boolean;   // INT3 сейчас стоит в коде
-    RefCount: Integer;   // одна строка может прийти дважды
+    UserRef: Integer;    // одна строка может прийти дважды
+    TempRef: Integer;
   end;
 
-  // Поток, прошедший точку по флагу трассировки: после шага INT3 обратно
-  TDbgStep = record
+  // Поток проходит снятую на время точку одной командой (флаг
+  // трассировки): после этой команды INT3 обратно
+  TDbgRearm = record
     ThreadId: DWORD;
     Address: Cardinal;
   end;
@@ -150,14 +207,26 @@ type
   TDbgThread = class(TThread)
   private
     FOwner: TDbgSession;
+    FMap: TDbgLineMap;
     FProcess: THandle;
     FProcessId: DWORD;
     FCodeBase: Cardinal;
     FLoaderBreakSeen: Boolean;
     FBreaks: array of TDbgBreak;
-    FSteps: array of TDbgStep;
+    FRearms: array of TDbgRearm;
     FThreads: array of TDbgThreadRef;
     FGone: array of Cardinal;   // адреса снятых точек: INT3 мог сработать
+    // Потоки, у которых флаг трассировки сняли при прерванном шаге: их
+    // SINGLE_STEP мог уже стоять в очереди событий
+    FStale: array of DWORD;
+    // Шаг (Trace into / Step over): поток, режим, фаза
+    FStepThread: DWORD;
+    FStepMode: Integer;          // DbgCmdInto, DbgCmdOver
+    FStepPhase: Integer;         // DbgPhase*
+    FPrevEip, FPrevEsp: Cardinal;  // до последней команды
+    FRetAddr, FRetEsp: Cardinal;   // точка возврата из вызова и ESP в нём
+    // Адреса временных точек Run to cursor и входа в программу
+    FRunTo: array of Cardinal;
     function StartProcess: Boolean;
     function ReadCodeBase(AImageBase: Cardinal): Cardinal;
     function PokeByte(AAddress: Cardinal; AValue: Byte;
@@ -165,8 +234,9 @@ type
     function ReadDword(AAddress: Cardinal; var AValue: Cardinal): Boolean;
     function ReadAnsi(AAddress: Cardinal; ALen: Integer): string;
     procedure ApplyPending;
-    procedure AddBreak(AAddress: Cardinal);
-    procedure RemoveBreak(AAddress: Cardinal);
+    procedure BreakAdd(AAddress: Cardinal; ATemp: Boolean);
+    procedure BreakRelease(AAddress: Cardinal; ATemp: Boolean);
+    procedure BreakLift(AAddress: Cardinal);
     function FindBreak(AAddress: Cardinal): Integer;
     function IsGone(AAddress: Cardinal): Boolean;
     function ThreadHandleOf(AThreadId: DWORD): THandle;
@@ -174,9 +244,24 @@ type
     procedure RemoveThread(AThreadId: DWORD);
     function SetEip(AThreadId: DWORD; AEip: Cardinal;
                     ATrace: Boolean): Boolean;
+    function SetTrace(AThreadId: DWORD; AOn: Boolean): Boolean;
+    function GetEipEsp(AThreadId: DWORD; var AEip, AEsp: Cardinal): Boolean;
+    function InLineCode(AAddress: Cardinal): Boolean;
+    function IsLineAddress(AAddress: Cardinal): Boolean;
+    procedure AddRearm(AThreadId: DWORD; AAddress: Cardinal);
+    function TakeRearm(AThreadId: DWORD): Boolean;
+    procedure AddStale(AThreadId: DWORD);
+    function TakeStale(AThreadId: DWORD): Boolean;
+    procedure AddRunTo(AAddress: Cardinal);
+    function IsRunTo(AAddress: Cardinal): Boolean;
+    procedure ClearRunTo;
+    procedure CancelStep;
+    procedure ReadCommand(var AMode: Integer; var AOffsets: TDbgOffsetArray);
     function WaitResume: Boolean;
+    function PauseAt(AThreadId: DWORD; AAddress: Cardinal): DWORD;
     function OnBreakpoint(AThreadId: DWORD; AAddress: Cardinal): DWORD;
     function OnSingleStep(AThreadId: DWORD): DWORD;
+    function StepEvent(AThreadId: DWORD): DWORD;
     function DelphiExceptionText(const AInfo: array of DWORD): string;
   protected
     procedure Execute; override;
@@ -190,6 +275,17 @@ const
   DbgNoteException = 2;
   DbgNoteExited    = 3;
   DbgNoteCodeBase  = 4;
+
+  // Команды на остановке
+  DbgCmdGo    = 0;   // Continue
+  DbgCmdInto  = 1;   // Trace into
+  DbgCmdOver  = 2;   // Step over
+  DbgCmdRunTo = 3;   // Run to cursor
+
+  // Фазы шага
+  DbgPhaseNone   = 0;
+  DbgPhaseTrace  = 1;   // по одной команде
+  DbgPhaseReturn = 2;   // свободно до точки возврата из вызова
 
 implementation
 
@@ -395,6 +491,8 @@ begin
   FUnitFile.Clear;
   FUnitModule.Clear;
   FModName.Clear;
+  SetLength(FSortedOfs, 0);
+  SetLength(FModLines, 0);
   if not FileExists(AMapFile) then
     Exit;
   MapText := TStringList.Create;
@@ -488,10 +586,126 @@ begin
       end;
     end;
     Result := FLineCount > 0;
+    if Result then
+      BuildIndex;
   finally
     Words.Free;
     MapText.Free;
   end;
+end;
+
+procedure SortOffsets(var AValues: TDbgOffsetArray; ALow, AHigh: Integer);
+var
+  LeftIdx, RightIdx: Integer;
+  Pivot, Swap: Cardinal;
+begin
+  while ALow < AHigh do
+  begin
+    LeftIdx := ALow;
+    RightIdx := AHigh;
+    Pivot := AValues[(ALow + AHigh) shr 1];
+    repeat
+      while AValues[LeftIdx] < Pivot do
+        Inc(LeftIdx);
+      while AValues[RightIdx] > Pivot do
+        Dec(RightIdx);
+      if LeftIdx <= RightIdx then
+      begin
+        Swap := AValues[LeftIdx];
+        AValues[LeftIdx] := AValues[RightIdx];
+        AValues[RightIdx] := Swap;
+        Inc(LeftIdx);
+        Dec(RightIdx);
+      end;
+    until LeftIdx > RightIdx;
+    // Меньшая часть - рекурсией, большая - в цикле: глубина стека мала
+    if RightIdx - ALow < AHigh - LeftIdx then
+    begin
+      if ALow < RightIdx then
+        SortOffsets(AValues, ALow, RightIdx);
+      ALow := LeftIdx;
+    end
+    else
+    begin
+      if LeftIdx < AHigh then
+        SortOffsets(AValues, LeftIdx, AHigh);
+      AHigh := RightIdx;
+    end;
+  end;
+end;
+
+// Поиск для шагов: после каждой команды - есть ли такое начало строки и
+// в модуле ли с номерами строк. Перебор десятков тысяч строк на каждую
+// команду был бы медленным, поэтому смещения отсортированы.
+procedure TDbgLineMap.BuildIndex;
+var
+  LineIdx, ModIdx, UnitIdx: Integer;
+  SortedOfs: TDbgOffsetArray;
+begin
+  SetLength(SortedOfs, FLineCount);
+  for LineIdx := 0 to FLineCount - 1 do
+    SortedOfs[LineIdx] := FLineOfs[LineIdx];
+  if FLineCount > 1 then
+    SortOffsets(SortedOfs, 0, FLineCount - 1);
+  FSortedOfs := SortedOfs;
+  FMinOfs := FSortedOfs[0];
+  FMaxOfs := FSortedOfs[FLineCount - 1];
+
+  SetLength(FModLines, FModName.Count);
+  for ModIdx := 0 to FModName.Count - 1 do
+  begin
+    FModLines[ModIdx] := False;
+    for UnitIdx := 0 to FUnitModule.Count - 1 do
+      if CompareText(FUnitModule[UnitIdx], FModName[ModIdx]) = 0 then
+      begin
+        FModLines[ModIdx] := True;
+        Break;
+      end;
+  end;
+end;
+
+function TDbgLineMap.IsLineStart(AOffset: Cardinal): Boolean;
+var
+  LowIdx, HighIdx, MidIdx: Integer;
+begin
+  Result := False;
+  LowIdx := 0;
+  HighIdx := Length(FSortedOfs) - 1;
+  while LowIdx <= HighIdx do
+  begin
+    MidIdx := (LowIdx + HighIdx) shr 1;
+    if FSortedOfs[MidIdx] = AOffset then
+    begin
+      Result := True;
+      Exit;
+    end;
+    if FSortedOfs[MidIdx] < AOffset then
+      LowIdx := MidIdx + 1
+    else
+      HighIdx := MidIdx - 1;
+  end;
+end;
+
+function TDbgLineMap.HasLines(AOffset: Cardinal): Boolean;
+var
+  ModIdx: Integer;
+begin
+  Result := False;
+  if Length(FSortedOfs) = 0 then
+    Exit;
+  // Карта без раздела сегментов - хотя бы в пределах кода со строками
+  if FModName.Count = 0 then
+  begin
+    Result := (AOffset >= FMinOfs) and (AOffset <= FMaxOfs);
+    Exit;
+  end;
+  for ModIdx := 0 to FModName.Count - 1 do
+    if (AOffset >= FModStart[ModIdx]) and
+       (AOffset < FModStart[ModIdx] + FModLen[ModIdx]) then
+    begin
+      Result := FModLines[ModIdx];
+      Exit;
+    end;
 end;
 
 procedure TDbgLineMap.OffsetsOfLine(const AFileName: string; ALine: Integer;
@@ -637,12 +851,60 @@ begin
   end;
 end;
 
+// Команда потоку отладки. На остановке - выполнить её и идти; до Start -
+// запомнить цели первого хода (только Run to cursor).
+procedure TDbgSession.Command(AMode: Integer; AOffsets: TList);
+var
+  OfsIdx, OfsCount: Integer;
+begin
+  if FStarted and not FPaused then
+    Exit;
+  EnterCriticalSection(FLock);
+  try
+    FCmdMode := AMode;
+    OfsCount := 0;
+    if AOffsets <> nil then
+      OfsCount := AOffsets.Count;
+    SetLength(FCmdOfs, OfsCount);
+    for OfsIdx := 0 to OfsCount - 1 do
+      FCmdOfs[OfsIdx] := Cardinal(AOffsets[OfsIdx]);
+  finally
+    LeaveCriticalSection(FLock);
+  end;
+  if not FStarted then
+    Exit;
+  FPaused := False;
+  SetEvent(FResumeEvent);
+end;
+
 procedure TDbgSession.Resume;
 begin
   if not FPaused then
     Exit;
-  FPaused := False;
-  SetEvent(FResumeEvent);
+  Command(DbgCmdGo, nil);
+end;
+
+procedure TDbgSession.StepInto;
+begin
+  if not FPaused then
+    Exit;
+  Command(DbgCmdInto, nil);
+end;
+
+procedure TDbgSession.StepOver;
+begin
+  if not FPaused then
+    Exit;
+  Command(DbgCmdOver, nil);
+end;
+
+procedure TDbgSession.RunTo(AOffsets: TList);
+begin
+  if (AOffsets = nil) or (AOffsets.Count = 0) then
+    Exit;
+  if FStarted and not FPaused then
+    Exit;
+  Command(DbgCmdRunTo, AOffsets);
 end;
 
 procedure TDbgSession.Kill;
@@ -766,6 +1028,7 @@ constructor TDbgThread.Create(AOwner: TDbgSession);
 begin
   inherited Create(True);
   FOwner := AOwner;
+  FMap := AOwner.FMap;
   FreeOnTerminate := False;
 end;
 
@@ -915,29 +1178,35 @@ begin
     end;
 end;
 
-procedure TDbgThread.AddBreak(AAddress: Cardinal);
+// Точка по адресу: пользовательская (ATemp = False) или временная. Новый
+// адрес - INT3 сразу. У адреса, где точка уже есть, только счётчик:
+// снятый на остановке INT3 вернёт шаг через него (TDbgRearm).
+procedure TDbgThread.BreakAdd(AAddress: Cardinal; ATemp: Boolean);
 var
   BreakIdx: Integer;
   OldByte: Byte;
 begin
   BreakIdx := FindBreak(AAddress);
-  if BreakIdx >= 0 then
+  if BreakIdx < 0 then
   begin
-    Inc(FBreaks[BreakIdx].RefCount);
-    Exit;
+    BreakIdx := Length(FBreaks);
+    SetLength(FBreaks, BreakIdx + 1);
+    FBreaks[BreakIdx].Address := AAddress;
+    FBreaks[BreakIdx].UserRef := 0;
+    FBreaks[BreakIdx].TempRef := 0;
+    FBreaks[BreakIdx].Inserted := PokeByte(AAddress, DbgInt3, OldByte);
+    FBreaks[BreakIdx].OrigByte := OldByte;
+    if not FBreaks[BreakIdx].Inserted then
+      FOwner.PushNote(DbgNoteLog, 0, 0, 'Отладчик: не удалось поставить ' +
+                      'точку по адресу $' + IntToHex(AAddress, 8));
   end;
-  BreakIdx := Length(FBreaks);
-  SetLength(FBreaks, BreakIdx + 1);
-  FBreaks[BreakIdx].Address := AAddress;
-  FBreaks[BreakIdx].RefCount := 1;
-  FBreaks[BreakIdx].Inserted := PokeByte(AAddress, DbgInt3, OldByte);
-  FBreaks[BreakIdx].OrigByte := OldByte;
-  if not FBreaks[BreakIdx].Inserted then
-    FOwner.PushNote(DbgNoteLog, 0, 0, 'Отладчик: не удалось поставить ' +
-                    'точку по адресу $' + IntToHex(AAddress, 8));
+  if ATemp then
+    Inc(FBreaks[BreakIdx].TempRef)
+  else
+    Inc(FBreaks[BreakIdx].UserRef);
 end;
 
-procedure TDbgThread.RemoveBreak(AAddress: Cardinal);
+procedure TDbgThread.BreakRelease(AAddress: Cardinal; ATemp: Boolean);
 var
   BreakIdx, GoneIdx: Integer;
   OldByte: Byte;
@@ -945,8 +1214,14 @@ begin
   BreakIdx := FindBreak(AAddress);
   if BreakIdx < 0 then
     Exit;
-  Dec(FBreaks[BreakIdx].RefCount);
-  if FBreaks[BreakIdx].RefCount > 0 then
+  if ATemp then
+  begin
+    if FBreaks[BreakIdx].TempRef > 0 then
+      Dec(FBreaks[BreakIdx].TempRef);
+  end
+  else if FBreaks[BreakIdx].UserRef > 0 then
+    Dec(FBreaks[BreakIdx].UserRef);
+  if FBreaks[BreakIdx].UserRef + FBreaks[BreakIdx].TempRef > 0 then
     Exit;
   if FBreaks[BreakIdx].Inserted then
     PokeByte(AAddress, FBreaks[BreakIdx].OrigByte, OldByte);
@@ -959,6 +1234,20 @@ begin
     SetLength(FGone, GoneIdx + 1);
     FGone[GoneIdx] := AAddress;
   end;
+end;
+
+// INT3 на время убрать (точка остаётся в списке): поток стоит на этом
+// адресе или проходит его одной командой
+procedure TDbgThread.BreakLift(AAddress: Cardinal);
+var
+  BreakIdx: Integer;
+  OldByte: Byte;
+begin
+  BreakIdx := FindBreak(AAddress);
+  if (BreakIdx < 0) or not FBreaks[BreakIdx].Inserted then
+    Exit;
+  PokeByte(AAddress, FBreaks[BreakIdx].OrigByte, OldByte);
+  FBreaks[BreakIdx].Inserted := False;
 end;
 
 // Изменения точек из главного потока. Пока не известно начало кода
@@ -987,9 +1276,9 @@ begin
   end;
   for PendIdx := 0 to PendCount - 1 do
     if PendOn[PendIdx] then
-      AddBreak(FCodeBase + PendOfs[PendIdx])
+      BreakAdd(FCodeBase + PendOfs[PendIdx], False)
     else
-      RemoveBreak(FCodeBase + PendOfs[PendIdx]);
+      BreakRelease(FCodeBase + PendOfs[PendIdx], False);
 end;
 
 function TDbgThread.ThreadHandleOf(AThreadId: DWORD): THandle;
@@ -1016,11 +1305,17 @@ begin
 end;
 
 // Дескрипторы потоков закрывает система (после ContinueDebugEvent на
-// EXIT_THREAD), здесь только запись
+// EXIT_THREAD), здесь только запись. Шаг этого потока кончен.
 procedure TDbgThread.RemoveThread(AThreadId: DWORD);
 var
   RefIdx: Integer;
 begin
+  if FStepThread = AThreadId then
+    CancelStep;
+  while TakeRearm(AThreadId) do
+    ;
+  while TakeStale(AThreadId) do
+    ;
   for RefIdx := 0 to High(FThreads) do
     if FThreads[RefIdx].ThreadId = AThreadId then
     begin
@@ -1055,7 +1350,182 @@ begin
   Result := SetThreadContext(ThreadHandle, Ctx);
 end;
 
-// Остановка: ждём Continue или Program reset. Точки, включённые и
+function TDbgThread.SetTrace(AThreadId: DWORD; AOn: Boolean): Boolean;
+begin
+  Result := SetEip(AThreadId, 0, AOn);
+end;
+
+function TDbgThread.GetEipEsp(AThreadId: DWORD;
+                              var AEip, AEsp: Cardinal): Boolean;
+var
+  ThreadHandle: THandle;
+  Ctx: TContext;
+begin
+  Result := False;
+  AEip := 0;
+  AEsp := 0;
+  ThreadHandle := ThreadHandleOf(AThreadId);
+  if ThreadHandle = 0 then
+    Exit;
+  FillChar(Ctx, SizeOf(Ctx), 0);
+  Ctx.ContextFlags := CONTEXT_CONTROL;
+  if not GetThreadContext(ThreadHandle, Ctx) then
+    Exit;
+  AEip := Ctx.Eip;
+  AEsp := Ctx.Esp;
+  Result := True;
+end;
+
+// Адрес в коде модуля, у которого есть номера строк
+function TDbgThread.InLineCode(AAddress: Cardinal): Boolean;
+begin
+  Result := (FCodeBase <> 0) and (AAddress >= FCodeBase) and
+            FMap.HasLines(AAddress - FCodeBase);
+end;
+
+// Адрес - начало строки по .map
+function TDbgThread.IsLineAddress(AAddress: Cardinal): Boolean;
+begin
+  Result := (FCodeBase <> 0) and (AAddress >= FCodeBase) and
+            FMap.IsLineStart(AAddress - FCodeBase);
+end;
+
+procedure TDbgThread.AddRearm(AThreadId: DWORD; AAddress: Cardinal);
+var
+  RearmIdx: Integer;
+begin
+  RearmIdx := Length(FRearms);
+  SetLength(FRearms, RearmIdx + 1);
+  FRearms[RearmIdx].ThreadId := AThreadId;
+  FRearms[RearmIdx].Address := AAddress;
+end;
+
+// Поток прошёл одну команду: INT3 обратно на адрес, который он проходил.
+// False - для потока такой записи нет.
+function TDbgThread.TakeRearm(AThreadId: DWORD): Boolean;
+var
+  RearmIdx, BreakIdx: Integer;
+  RearmAddr: Cardinal;
+  OldByte: Byte;
+begin
+  Result := False;
+  for RearmIdx := 0 to High(FRearms) do
+    if FRearms[RearmIdx].ThreadId = AThreadId then
+    begin
+      RearmAddr := FRearms[RearmIdx].Address;
+      FRearms[RearmIdx] := FRearms[High(FRearms)];
+      SetLength(FRearms, Length(FRearms) - 1);
+      BreakIdx := FindBreak(RearmAddr);
+      if (BreakIdx >= 0) and not FBreaks[BreakIdx].Inserted then
+        FBreaks[BreakIdx].Inserted := PokeByte(RearmAddr, DbgInt3, OldByte);
+      Result := True;
+      Exit;
+    end;
+end;
+
+procedure TDbgThread.AddStale(AThreadId: DWORD);
+var
+  StaleIdx: Integer;
+begin
+  for StaleIdx := 0 to High(FStale) do
+    if FStale[StaleIdx] = AThreadId then
+      Exit;
+  StaleIdx := Length(FStale);
+  SetLength(FStale, StaleIdx + 1);
+  FStale[StaleIdx] := AThreadId;
+end;
+
+function TDbgThread.TakeStale(AThreadId: DWORD): Boolean;
+var
+  StaleIdx: Integer;
+begin
+  Result := False;
+  for StaleIdx := 0 to High(FStale) do
+    if FStale[StaleIdx] = AThreadId then
+    begin
+      FStale[StaleIdx] := FStale[High(FStale)];
+      SetLength(FStale, Length(FStale) - 1);
+      Result := True;
+      Exit;
+    end;
+end;
+
+procedure TDbgThread.AddRunTo(AAddress: Cardinal);
+var
+  RunIdx: Integer;
+begin
+  if IsRunTo(AAddress) then
+    Exit;
+  BreakAdd(AAddress, True);
+  RunIdx := Length(FRunTo);
+  SetLength(FRunTo, RunIdx + 1);
+  FRunTo[RunIdx] := AAddress;
+end;
+
+function TDbgThread.IsRunTo(AAddress: Cardinal): Boolean;
+var
+  RunIdx: Integer;
+begin
+  Result := False;
+  for RunIdx := 0 to High(FRunTo) do
+    if FRunTo[RunIdx] = AAddress then
+    begin
+      Result := True;
+      Exit;
+    end;
+end;
+
+procedure TDbgThread.ClearRunTo;
+var
+  RunIdx: Integer;
+begin
+  for RunIdx := 0 to High(FRunTo) do
+    BreakRelease(FRunTo[RunIdx], True);
+  SetLength(FRunTo, 0);
+end;
+
+// Шаг прерван (остановка в другом месте, исключение, конец потока).
+// Флаг трассировки снимается; если SINGLE_STEP потока уже в очереди,
+// его съест TakeStale.
+procedure TDbgThread.CancelStep;
+begin
+  if FStepThread = 0 then
+    Exit;
+  case FStepPhase of
+    DbgPhaseTrace:
+      begin
+        SetTrace(FStepThread, False);
+        AddStale(FStepThread);
+      end;
+    DbgPhaseReturn:
+      BreakRelease(FRetAddr, True);
+  end;
+  FStepThread := 0;
+  FStepMode := DbgCmdGo;
+  FStepPhase := DbgPhaseNone;
+  FRetAddr := 0;
+  FRetEsp := 0;
+end;
+
+procedure TDbgThread.ReadCommand(var AMode: Integer;
+                                 var AOffsets: TDbgOffsetArray);
+var
+  OfsIdx: Integer;
+begin
+  EnterCriticalSection(FOwner.FLock);
+  try
+    AMode := FOwner.FCmdMode;
+    SetLength(AOffsets, Length(FOwner.FCmdOfs));
+    for OfsIdx := 0 to High(FOwner.FCmdOfs) do
+      AOffsets[OfsIdx] := FOwner.FCmdOfs[OfsIdx];
+    FOwner.FCmdMode := DbgCmdGo;
+    SetLength(FOwner.FCmdOfs, 0);
+  finally
+    LeaveCriticalSection(FOwner.FLock);
+  end;
+end;
+
+// Остановка: ждём команду или Program reset. Точки, включённые и
 // снятые на остановке, ставятся сразу. False - программу снимают.
 function TDbgThread.WaitResume: Boolean;
 var
@@ -1068,10 +1538,70 @@ begin
   Result := not FOwner.FKillWanted;
 end;
 
+// Поток AThreadId стоит на AAddress (EIP уже там). Шаг и временные точки
+// снимаются, главный поток показывает строку, дальше - по команде.
+function TDbgThread.PauseAt(AThreadId: DWORD; AAddress: Cardinal): DWORD;
+var
+  CmdMode, OfsIdx: Integer;
+  CmdOfs: TDbgOffsetArray;
+  NeedRearm: Boolean;
+begin
+  Result := DbgContinue;
+  CancelStep;
+  ClearRunTo;
+  // Прежний байт на место: так видно настоящий код и с него же программа
+  // продолжит
+  BreakLift(AAddress);
+
+  FOwner.PushNote(DbgNoteStopped, AAddress, AThreadId, '');
+  if not WaitResume then
+    Exit;   // Program reset - программа уже снимается
+
+  ReadCommand(CmdMode, CmdOfs);
+  if CmdMode = DbgCmdRunTo then
+    for OfsIdx := 0 to High(CmdOfs) do
+      AddRunTo(FCodeBase + CmdOfs[OfsIdx]);
+
+  // Точка на этом адресе (прежняя, поставленная на остановке или Run to
+  // cursor на текущую строку) - INT3 не трогаем до конца первой команды,
+  // иначе программа сразу встала бы снова здесь же
+  BreakLift(AAddress);
+  NeedRearm := FindBreak(AAddress) >= 0;
+  if NeedRearm then
+    AddRearm(AThreadId, AAddress);
+
+  case CmdMode of
+    DbgCmdInto, DbgCmdOver:
+      begin
+        FStepThread := AThreadId;
+        FStepMode := CmdMode;
+        FStepPhase := DbgPhaseTrace;
+        if not GetEipEsp(AThreadId, FPrevEip, FPrevEsp) or
+           not SetTrace(AThreadId, True) then
+        begin
+          FStepThread := 0;
+          FStepPhase := DbgPhaseNone;
+          FOwner.PushNote(DbgNoteLog, 0, 0, 'Отладчик: шаг не начат (нет ' +
+                          'доступа к регистрам потока) - программа идёт ' +
+                          'дальше');
+          if NeedRearm then
+            SetTrace(AThreadId, True);
+        end;
+      end;
+  else
+    // Continue и Run to cursor
+    if NeedRearm and not SetTrace(AThreadId, True) then
+      FOwner.PushNote(DbgNoteLog, 0, 0, 'Отладчик: точка по адресу $' +
+                      IntToHex(AAddress, 8) + ' после остановки не ' +
+                      'восстановлена');
+  end;
+end;
+
 function TDbgThread.OnBreakpoint(AThreadId: DWORD; AAddress: Cardinal): DWORD;
 var
   BreakIdx: Integer;
-  OldByte: Byte;
+  CurEip, CurEsp: Cardinal;
+  UserHit, ReturnHit: Boolean;
 begin
   Result := DbgContinue;
   BreakIdx := FindBreak(AAddress);
@@ -1090,59 +1620,132 @@ begin
     Exit;
   end;
 
-  // Наша точка. EIP уже за INT3 - назад на начало команды, прежний байт
-  // на место: так видно настоящий код и с него же программа продолжит.
+  // Наша точка. EIP уже за INT3 - назад на начало команды.
   SetEip(AThreadId, AAddress, False);
-  if FBreaks[BreakIdx].Inserted then
+  GetEipEsp(AThreadId, CurEip, CurEsp);
+
+  UserHit := (FBreaks[BreakIdx].UserRef > 0) or IsRunTo(AAddress);
+  if UserHit then
   begin
-    PokeByte(AAddress, FBreaks[BreakIdx].OrigByte, OldByte);
-    FBreaks[BreakIdx].Inserted := False;
-  end;
-
-  FOwner.PushNote(DbgNoteStopped, AAddress, AThreadId, '');
-  if not WaitResume then
-    Exit;   // Program reset - программа уже снимается
-
-  // Точку за время остановки могли снять - тогда просто дальше. Иначе одну
-  // команду пошагово, после неё INT3 обратно (OnSingleStep).
-  BreakIdx := FindBreak(AAddress);
-  if BreakIdx < 0 then
+    Result := PauseAt(AThreadId, AAddress);
     Exit;
-  if SetEip(AThreadId, 0, True) then
-  begin
-    SetLength(FSteps, Length(FSteps) + 1);
-    FSteps[High(FSteps)].ThreadId := AThreadId;
-    FSteps[High(FSteps)].Address := AAddress;
-  end
-  else
-  begin
-    // Шаг не поставить - точка остаётся снятой до следующего запуска
-    FOwner.PushNote(DbgNoteLog, 0, 0, 'Отладчик: точка по адресу $' +
-                    IntToHex(AAddress, 8) + ' после остановки не ' +
-                    'восстановлена');
   end;
+
+  // Возврат из вызова, через который шёл шаг: тот же поток и стек выше,
+  // чем был внутри вызова (не рекурсивный вызов той же процедуры)
+  ReturnHit := (FStepPhase = DbgPhaseReturn) and
+               (AThreadId = FStepThread) and (AAddress = FRetAddr) and
+               (CurEsp > FRetEsp);
+  if ReturnHit then
+  begin
+    BreakRelease(FRetAddr, True);
+    FRetAddr := 0;
+    FRetEsp := 0;
+    if IsLineAddress(AAddress) then
+    begin
+      // Вызов был последней командой строки - следующая строка уже здесь
+      FStepThread := 0;
+      FStepPhase := DbgPhaseNone;
+      Result := PauseAt(AThreadId, AAddress);
+      Exit;
+    end;
+    FStepPhase := DbgPhaseTrace;
+    FPrevEip := AAddress;
+    FPrevEsp := CurEsp;
+    if not SetTrace(AThreadId, True) then
+      CancelStep;
+    Exit;
+  end;
+
+  // Временная точка, но не для этого потока или не этот уровень стека:
+  // поток проходит её одной командой, INT3 возвращается после неё
+  BreakLift(AAddress);
+  AddRearm(AThreadId, AAddress);
+  SetTrace(AThreadId, True);
 end;
 
 function TDbgThread.OnSingleStep(AThreadId: DWORD): DWORD;
 var
-  StepIdx, BreakIdx: Integer;
-  StepAddr: Cardinal;
-  OldByte: Byte;
+  Rearmed: Boolean;
 begin
+  Result := DbgContinue;
+  Rearmed := TakeRearm(AThreadId);
+  if (FStepThread = AThreadId) and (FStepPhase = DbgPhaseTrace) then
+  begin
+    Result := StepEvent(AThreadId);
+    Exit;
+  end;
+  if Rearmed then
+  begin
+    SetTrace(AThreadId, False);
+    Exit;
+  end;
+  // Флаг сняли при прерванном шаге, а событие уже было в очереди
+  if TakeStale(AThreadId) then
+    Exit;
+  // Не наше - программе
   Result := DbgNotHandled;
-  for StepIdx := 0 to High(FSteps) do
-    if FSteps[StepIdx].ThreadId = AThreadId then
-    begin
-      StepAddr := FSteps[StepIdx].Address;
-      FSteps[StepIdx] := FSteps[High(FSteps)];
-      SetLength(FSteps, Length(FSteps) - 1);
-      SetEip(AThreadId, 0, False);
-      BreakIdx := FindBreak(StepAddr);
-      if (BreakIdx >= 0) and not FBreaks[BreakIdx].Inserted then
-        FBreaks[BreakIdx].Inserted := PokeByte(StepAddr, DbgInt3, OldByte);
-      Result := DbgContinue;
-      Exit;
-    end;
+end;
+
+// Поток шага выполнил одну команду
+function TDbgThread.StepEvent(AThreadId: DWORD): DWORD;
+var
+  CurEip, CurEsp, RetAddr: Cardinal;
+  CallMade, InLines: Boolean;
+begin
+  Result := DbgContinue;
+  if not GetEipEsp(AThreadId, CurEip, CurEsp) then
+  begin
+    CancelStep;
+    Exit;
+  end;
+
+  // Была ли команда CALL: ESP меньше на 4, на вершине стека адрес сразу
+  // за прежней командой, а EIP ушёл за её пределы
+  CallMade := (CurEsp = FPrevEsp - 4) and ReadDword(CurEsp, RetAddr) and
+              (RetAddr > FPrevEip + 1) and (RetAddr <= FPrevEip + 7) and
+              ((CurEip < FPrevEip) or (CurEip > FPrevEip + 7));
+  InLines := InLineCode(CurEip);
+
+  if CallMade and ((FStepMode = DbgCmdOver) or not InLines) then
+  begin
+    // Вызов проходится целиком: свободно до адреса возврата
+    FRetAddr := RetAddr;
+    FRetEsp := CurEsp;
+    BreakAdd(FRetAddr, True);
+    FStepPhase := DbgPhaseReturn;
+    SetTrace(AThreadId, False);
+    Exit;
+  end;
+
+  if InLines and IsLineAddress(CurEip) then
+  begin
+    // Шаг дошёл до строки. Флаг трассировки уже снят процессором - шаг
+    // закончен без CancelStep (тот пометил бы поток как прерванный).
+    FStepThread := 0;
+    FStepPhase := DbgPhaseNone;
+    Result := PauseAt(AThreadId, CurEip);
+    Exit;
+  end;
+
+  if not InLines then
+  begin
+    // Не через CALL: возврат из процедуры в вызывающий код без номеров
+    // строк (RTL, VCL) или переход туда. Дальше программа идёт сама.
+    FStepThread := 0;
+    FStepPhase := DbgPhaseNone;
+    SetTrace(AThreadId, False);
+    FOwner.PushNote(DbgNoteLog, 0, 0, 'Отладчик: шаг вышел в код без ' +
+                    'номеров строк (адрес $' + IntToHex(CurEip, 8) +
+                    ') - программа идёт дальше до точки останова');
+    Exit;
+  end;
+
+  // Та же строка - следующая команда
+  FPrevEip := CurEip;
+  FPrevEsp := CurEsp;
+  if not SetTrace(AThreadId, True) then
+    CancelStep;
 end;
 
 // Исключение Delphi: класс и сообщение из памяти программы.
@@ -1192,6 +1795,8 @@ var
   OdsLen: Integer;
   IdleAfterExit: Integer;   // пустых ожиданий после конца процесса
   ProcExitCode: DWORD;
+  StartMode, StartIdx: Integer;
+  StartOfs: TDbgOffsetArray;
 begin
   if not StartProcess then
   begin
@@ -1239,6 +1844,15 @@ begin
             FOwner.PushNote(DbgNoteCodeBase, FCodeBase, 0, '');
             // Образ уже в памяти, код ещё не выполнялся - точки сразу
             ApplyPending;
+            // Цели первого хода: Run to cursor до запуска, остановка на
+            // входе (F7/F8 до запуска - begin главного блока .dpr)
+            ReadCommand(StartMode, StartOfs);
+            if StartMode = DbgCmdRunTo then
+              for StartIdx := 0 to High(StartOfs) do
+                AddRunTo(FCodeBase + StartOfs[StartIdx]);
+            if FOwner.FStopAtEntry and
+               (DebugEvt.CreateProcess.StartAddress <> nil) then
+              AddRunTo(Cardinal(DebugEvt.CreateProcess.StartAddress));
           end;
         end;
 
@@ -1284,6 +1898,15 @@ begin
             if (ExcCode <> DbgExcThreadName) and (ExcCode <> DbgExcPrintA) and
                (ExcCode <> DbgExcPrintW) then
             begin
+              // Шаг этого потока дальше не ведётся: управление уходит в
+              // обработчик исключения
+              if (FStepThread <> 0) and (DebugEvt.ThreadId = FStepThread) then
+              begin
+                CancelStep;
+                FOwner.PushNote(DbgNoteLog, 0, 0, 'Отладчик: шаг прерван ' +
+                                'исключением - программа идёт дальше до ' +
+                                'точки останова');
+              end;
               ExcText := '';
               if ExcCode = DbgExcDelphi then
               begin

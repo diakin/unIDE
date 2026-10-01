@@ -443,6 +443,8 @@ type
     pmuSepSearch: TMenuItem;
     pmuDebug: TMenuItem;
     pmuSepDebug: TMenuItem;
+    pmuRunToCursor: TMenuItem;
+    pmuSepRun: TMenuItem;
     pmuUndo: TMenuItem;
     pmuRedo: TMenuItem;
     pmuSep1: TMenuItem;
@@ -747,6 +749,9 @@ type
     procedure FindInFilesClick(Sender: TObject);
     procedure NotDoneClick(Sender: TObject);
     procedure ProgramResetClick(Sender: TObject);
+    procedure TraceIntoClick(Sender: TObject);
+    procedure StepOverClick(Sender: TObject);
+    procedure RunToCursorClick(Sender: TObject);
     procedure ToolbarButtonClickEvent(Sender: TObject);
     procedure BmAddClick(Sender: TObject);
     procedure BmDeleteClick(Sender: TObject);
@@ -900,6 +905,11 @@ type
     FDbgSession: TDbgSession;
     FDbgExecFile: string;      // файл строки остановки, '' - не стоим
     FDbgExecLine: Integer;     // строка остановки, с 0
+    // Запуск с F7/F8/F4, пока программа не идёт: DbgStart* и строка для
+    // Run to cursor
+    FDbgStartMode: Integer;
+    FDbgRunToFile: string;
+    FDbgRunToLine: Integer;
     // Снимок до правки: номера строк точек едут вместе с текстом
     FDbgPreValid: Boolean;
     FDbgPreMin, FDbgPreMax, FDbgPreLen, FDbgPreLines: Integer;
@@ -1747,6 +1757,11 @@ type
     procedure DbgLog(Sender: TObject; const AText: string);
     procedure DbgExited(Sender: TObject; AExitCode: Cardinal);
     procedure DbgResume;
+    function  DbgCanStep: Boolean;
+    procedure DbgLaunch(AMode: Integer);
+    procedure DbgStepInto;
+    procedure DbgStepOver;
+    procedure DbgRunToCursor;
     procedure DbgClearExec;
     procedure DbgRepaint;
     function  DbgKey(AKey: Word): Boolean;
@@ -12754,6 +12769,10 @@ begin
       pmuDebug.Caption := 'Debug (RuntimeLog)';
     pmuDebug.Enabled := (L <> '') and (DebugExpr(L) <> '');
   end;
+
+  // Run to cursor: файл на диске, программа не идёт или стоит
+  if pmuRunToCursor <> nil then
+    pmuRunToCursor.Enabled := (FCurrentFileName <> '') and DbgCanStep;
 end;
 
 // Переносит выделенный фрагмент в поле поиска. Сам поиск не запускаем -
@@ -14680,7 +14699,8 @@ var
 begin
   // Клавиши отладчика, как в Delphi: F9 - Run и продолжение после
   // остановки, Ctrl+F2 - Program reset, F5 - точка останова на строке с
-  // кареткой. Только в главном окне: у конструктора и диалогов свои клавиши.
+  // кареткой, F7 - Trace into, F8 - Step over, F4 - Run to cursor. Только
+  // в главном окне: у конструктора и диалогов свои клавиши.
   if (Msg.message = WM_KEYDOWN) and (Screen.ActiveForm = Self) then
   begin
     if DbgKey(Word(Msg.wParam)) then
@@ -14891,9 +14911,9 @@ begin
 
   // Дальше ряд кнопок, как в Delphi. Кнопки описаны в .dfm, значки
   // поставлены выше, здесь - правый край ряда в CmpLeft. Работают
-  // View Unit, View Form (те же списки, что в меню View) и Program reset;
-  // New Form, Pause, Trace into и Step over пока только сообщают, что не
-  // сделаны (NotDoneClick): отладчика в редакторе нет.
+  // View Unit, View Form (те же списки, что в меню View), Program reset,
+  // Trace into и Step over (отладчик, DbgEngine); New Form и Pause пока
+  // только сообщают, что не сделаны (NotDoneClick).
   CmpLeft := RowRightEdge([btnCompileRun, btnViewUnit, btnViewForm,
                            btnNewForm, btnPause, btnProgReset, btnTraceInto,
                            btnStepOver]);
@@ -31334,14 +31354,14 @@ begin
     DofLog.Free;
   end;
 
-  // Есть точки останова - отладочная сборка: номера строк в .map (-GD,
-  // -$D+ -$L+) и без оптимизации (-$O-), чтобы у строк был свой код. Ключи
-  // после ключей .dof - dcc32 берёт последний.
+  // Есть точки останова или запуск с F7/F8/F4 - отладочная сборка:
+  // номера строк в .map (-GD, -$D+ -$L+) и без оптимизации (-$O-), чтобы
+  // у строк был свой код. Ключи после ключей .dof - dcc32 берёт последний.
   if DbgWanted then
   begin
     Params := Params + ' -$D+ -$L+ -$O- -$W+ -GD';
-    LogComp('Отладочная сборка (есть точки останова): -$D+ -$L+ -$O- ' +
-            '-$W+ -GD');
+    LogComp('Отладочная сборка (точки останова или пошаговый запуск): ' +
+            '-$D+ -$L+ -$O- -$W+ -GD');
   end;
 
   // Пути из настроек типа Delphi; чего нет - не передаём, dcc32 возьмёт
@@ -32197,6 +32217,12 @@ begin
     btnProgReset.Enabled := Running;
   if btnPause <> nil then
     btnPause.Enabled := Running;
+  // Trace into и Step over: программа не идёт (запуск с остановкой на
+  // begin .dpr) или стоит
+  if btnTraceInto <> nil then
+    btnTraceInto.Enabled := DbgCanStep;
+  if btnStepOver <> nil then
+    btnStepOver.Enabled := DbgCanStep;
 
   // Правка текста
   if (btnUndo <> nil) and RichEdit1.HandleAllocated then
@@ -32547,7 +32573,8 @@ begin
 end;
 
 // ---------------------------------------------------------------------------
-//  Отладчик (этап 1): точки останова, остановка, продолжение
+//  Отладчик: точки останова, остановка, продолжение (этап 1), шаги по
+//  строкам и Run to cursor (этап 2)
 //
 //  Точка ставится и снимается щелчком по номеру строки или F5 на строке с
 //  кареткой. Пока точки есть, сборка отладочная (см. CompileDelphi), а Run
@@ -32555,10 +32582,21 @@ end;
 //  стоит, строка показана в редакторе; F9 или Run - дальше, Ctrl+F2 или
 //  Program reset - снять программу.
 //
+//  На остановке: F8 (Step over) - до следующей строки, вызовы проходятся
+//  целиком; F7 (Trace into) - с заходом в процедуры, у которых есть номера
+//  строк; F4 (Run to cursor) - до строки с кареткой. Пока программа не
+//  запущена, F7 и F8 собирают и запускают её с остановкой на begin
+//  главного блока .dpr, F4 - с остановкой на строке с кареткой.
+//
 //  Адреса строк - из .map рядом с exe. Строка без кода в .map (пустая,
 //  объявление, модуль без отладочной информации) - точка серая и не
 //  сработает.
 // ---------------------------------------------------------------------------
+
+const
+  DbgStartNone  = 0;   // обычный Run
+  DbgStartStep  = 1;   // F7/F8 до запуска: стоп на begin .dpr
+  DbgStartRunTo = 2;   // F4 до запуска: стоп на строке FDbgRunToLine
 
 constructor TBreakMark.Create(const AFileName: string; ALine: Integer);
 begin
@@ -32574,12 +32612,12 @@ begin
   inherited;
 end;
 
-// Сборка и запуск - с отладчиком: есть хотя бы одна точка. Пробная сборка
-// конструктора форм - никогда.
+// Сборка и запуск - с отладчиком: есть хотя бы одна точка или запуск с
+// F7/F8/F4. Пробная сборка конструктора форм - никогда.
 function TForm1.DbgWanted: Boolean;
 begin
-  Result := (FBreakMarks <> nil) and (FBreakMarks.Count > 0) and
-            not FProbeActive;
+  Result := (((FBreakMarks <> nil) and (FBreakMarks.Count > 0)) or
+             (FDbgStartMode <> DbgStartNone)) and not FProbeActive;
 end;
 
 function TForm1.DbgMarkAt(const AFileName: string;
@@ -32745,6 +32783,7 @@ var
   Map: TDbgLineMap;
   MarkIdx, OfsIdx, Armed: Integer;
   Mark: TBreakMark;
+  Targets: TList;
 begin
   Result := False;
   MapFile := ChangeFileExt(AExe, '.map');
@@ -32778,6 +32817,29 @@ begin
       FDbgSession.SetBreakpoint(Cardinal(Mark.Offsets[OfsIdx]), True);
     if not Mark.NoCode then
       Inc(Armed);
+  end;
+
+  // F7/F8 до запуска - стоп на входе (begin главного блока .dpr), F4 -
+  // на строке с кареткой
+  case FDbgStartMode of
+    DbgStartStep:
+      FDbgSession.StopAtEntry := True;
+    DbgStartRunTo:
+      begin
+        Targets := TList.Create;
+        try
+          Map.OffsetsOfLine(ExtractFileName(FDbgRunToFile), FDbgRunToLine + 1,
+                            Targets);
+          if Targets.Count > 0 then
+            FDbgSession.RunTo(Targets)
+          else
+            LogComp('Run to cursor: ' + ExtractFileName(FDbgRunToFile) +
+                    ', строка ' + IntToStr(FDbgRunToLine + 1) + ' - в .map ' +
+                    'у неё нет кода, программа идёт до точки останова');
+        finally
+          Targets.Free;
+        end;
+      end;
   end;
 
   FDbgSession.Start;
@@ -32824,12 +32886,13 @@ begin
   begin
     LogComp(Format('--- Остановка по адресу со смещением $%.8x, строки ' +
                    'для него в .map нет. Продолжить - Run (F9)', [AOffset]));
+    DbgRepaint;
     Exit;
   end;
 
   LogComp('--- Остановка: ' + ExtractFileName(SrcFile) + ', строка ' +
-          IntToStr(SrcLine + 1) + '. Продолжить - Run (F9), снять ' +
-          'программу - Program reset (Ctrl+F2)');
+          IntToStr(SrcLine + 1) + '. Дальше: F9 - Run, F8 - Step over, ' +
+          'F7 - Trace into, F4 - Run to cursor, Ctrl+F2 - Program reset');
   FDbgExecFile := SrcFile;
   FDbgExecLine := SrcLine;
   if CompareText(FCurrentFileName, SrcFile) <> 0 then
@@ -32877,6 +32940,119 @@ begin
   FDbgSession.Resume;
 end;
 
+// Шаг или Run to cursor можно: программа не запущена (будет запуск) или
+// стоит. Пока идёт свободно - нельзя, как в Delphi.
+function TForm1.DbgCanStep: Boolean;
+begin
+  if FDbgSession <> nil then
+    Result := FDbgSession.Paused
+  else
+    Result := (FRunProcess = 0) and (FBusyDepth = 0);
+end;
+
+// Сборка и запуск под отладчиком с остановкой (F7/F8 - на begin .dpr, F4 -
+// на строке FDbgRunToLine). Тот же путь, что у Compile & Run: режим
+// запуска виден DbgWanted (отладочная сборка) и DbgStart (цели).
+procedure TForm1.DbgLaunch(AMode: Integer);
+begin
+  if (FBusyDepth > 0) or (FDbgSession <> nil) or (FRunProcess <> 0) then
+    Exit;
+  FDbgStartMode := AMode;
+  try
+    btnCompileRunClick(btnCompileRun);
+  finally
+    FDbgStartMode := DbgStartNone;
+  end;
+end;
+
+// Trace into (F7): до следующей строки с заходом в процедуры, у которых
+// есть номера строк
+procedure TForm1.DbgStepInto;
+begin
+  if FDbgSession = nil then
+  begin
+    DbgLaunch(DbgStartStep);
+    Exit;
+  end;
+  if not FDbgSession.Paused then
+    Exit;
+  DbgClearExec;
+  FDbgSession.StepInto;
+end;
+
+// Step over (F8): до следующей строки, вызовы целиком
+procedure TForm1.DbgStepOver;
+begin
+  if FDbgSession = nil then
+  begin
+    DbgLaunch(DbgStartStep);
+    Exit;
+  end;
+  if not FDbgSession.Paused then
+    Exit;
+  DbgClearExec;
+  FDbgSession.StepOver;
+end;
+
+// Run to cursor (F4): до строки с кареткой. Адреса строки - по .map
+// сеанса; после правок, сдвинувших строки, номер в .map может уже не
+// совпадать с текстом.
+procedure TForm1.DbgRunToCursor;
+var
+  LineIdx: Integer;
+  Targets: TList;
+begin
+  if FCurrentFileName = '' then
+  begin
+    LogComp('Run to cursor: файл не сохранён на диск');
+    Exit;
+  end;
+  LineIdx := CurrentLineIndex;
+  if LineIdx < 0 then
+    Exit;
+  if FDbgSession = nil then
+  begin
+    FDbgRunToFile := FCurrentFileName;
+    FDbgRunToLine := LineIdx;
+    DbgLaunch(DbgStartRunTo);
+    Exit;
+  end;
+  if not FDbgSession.Paused then
+    Exit;
+  Targets := TList.Create;
+  try
+    FDbgSession.Map.OffsetsOfLine(ExtractFileName(FCurrentFileName),
+                                  LineIdx + 1, Targets);
+    if Targets.Count = 0 then
+    begin
+      LogComp('Run to cursor: ' + ExtractFileName(FCurrentFileName) +
+              ', строка ' + IntToStr(LineIdx + 1) + ' - в .map у неё нет ' +
+              'кода (пустая строка, объявление или модуль без отладочной ' +
+              'информации)');
+      Exit;
+    end;
+    DbgClearExec;
+    FDbgSession.RunTo(Targets);
+  finally
+    Targets.Free;
+  end;
+end;
+
+procedure TForm1.TraceIntoClick(Sender: TObject);
+begin
+  DbgStepInto;
+end;
+
+procedure TForm1.StepOverClick(Sender: TObject);
+begin
+  DbgStepOver;
+end;
+
+procedure TForm1.RunToCursorClick(Sender: TObject);
+begin
+  DbgRunToCursor;
+end;
+
 procedure TForm1.DbgClearExec;
 begin
   if FDbgExecFile = '' then
@@ -32886,7 +33062,8 @@ begin
   DbgRepaint;
 end;
 
-// F9, Ctrl+F2, F5 - True, если клавиша отладчика и она обработана
+// F9, Ctrl+F2, F5, F7, F8, F4 - True, если клавиша отладчика и она
+// обработана
 function TForm1.DbgKey(AKey: Word): Boolean;
 var
   CtrlDown: Boolean;
@@ -32909,6 +33086,24 @@ begin
   else if (AKey = VK_F5) and not CtrlDown and (ActiveControl = RichEdit1) then
   begin
     DbgToggleBreak(CurrentLineIndex);
+    Result := True;
+  end
+  else if (AKey = VK_F7) and not CtrlDown then
+  begin
+    if DbgCanStep then
+      DbgStepInto;
+    Result := True;
+  end
+  else if (AKey = VK_F8) and not CtrlDown then
+  begin
+    if DbgCanStep then
+      DbgStepOver;
+    Result := True;
+  end
+  else if (AKey = VK_F4) and not CtrlDown and (ActiveControl = RichEdit1) then
+  begin
+    if DbgCanStep then
+      DbgRunToCursor;
     Result := True;
   end;
 end;

@@ -693,6 +693,13 @@ object Form1: TForm1
     object pmuSepDebug: TMenuItem
       Caption = '-'
     end
+    object pmuRunToCursor: TMenuItem
+      Caption = 'Run to cursor'#9'F4'
+      OnClick = RunToCursorClick
+    end
+    object pmuSepRun: TMenuItem
+      Caption = '-'
+    end
     object pmuUndo: TMenuItem
       Caption = '&Undo'
       ShortCut = 16474
@@ -944,18 +951,18 @@ object Form1: TForm1
             Top = 8
             Width = 34
             Height = 34
-            Hint = 'Trace into'
+            Hint = 'Trace into (F7)'
             ShowHint = True
-            OnClick = NotDoneClick
+            OnClick = TraceIntoClick
           end
           object btnStepOver: TUiIconButton
             Left = 270
             Top = 8
             Width = 34
             Height = 34
-            Hint = 'Step over'
+            Hint = 'Step over (F8)'
             ShowHint = True
-            OnClick = NotDoneClick
+            OnClick = StepOverClick
           end
         end
       end
