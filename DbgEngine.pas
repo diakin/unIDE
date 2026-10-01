@@ -159,7 +159,7 @@ type
     procedure DrainNotes;
     procedure PushNote(AKind: Integer; AAddress, AValue: Cardinal;
                        const AText: string);
-    function WhereText(AAddress: Cardinal): string;
+    function WhereText(AAddress, ALineAddress: Cardinal): string;
     procedure Command(AMode: Integer; AOffsets: TList);
   public
     constructor Create(const AExeFile, AWorkDir: string; AMap: TDbgLineMap);
@@ -984,16 +984,18 @@ begin
     Msg.Result := DefWindowProc(FWnd, Msg.Msg, Msg.WParam, Msg.LParam);
 end;
 
-// Место в исходнике словами: ", Unit1.pas строка 123"; не нашлось - адрес
-function TDbgSession.WhereText(AAddress: Cardinal): string;
+// Место в исходнике словами: ", Unit1.pas строка 123"; не нашлось - адрес.
+// Строка ищется по ALineAddress (у raise Delphi адрес - возврат из вызова
+// RaiseExcept, он уже за строкой с raise; строка - по адресу на байт раньше).
+function TDbgSession.WhereText(AAddress, ALineAddress: Cardinal): string;
 var
   SrcFile: string;
   SrcLine: Integer;
 begin
   Result := ' по адресу $' + IntToHex(AAddress, 8);
-  if (FCodeBase = 0) or (AAddress < FCodeBase) then
+  if (FCodeBase = 0) or (ALineAddress < FCodeBase) then
     Exit;
-  if FMap.LineOfOffset(AAddress - FCodeBase, SrcFile, SrcLine) then
+  if FMap.LineOfOffset(ALineAddress - FCodeBase, SrcFile, SrcLine) then
     Result := Result + ', ' + SrcFile + ' строка ' + IntToStr(SrcLine);
 end;
 
@@ -1001,6 +1003,7 @@ procedure TDbgSession.DrainNotes;
 var
   Batch: array of TDbgNote;
   BatchCount, NoteIdx: Integer;
+  LineAddr: Cardinal;
 begin
   EnterCriticalSection(FLock);
   try
@@ -1032,8 +1035,15 @@ begin
           if FExcLogged <= DbgMaxExcLog then
           begin
             if Assigned(FOnLog) then
+            begin
+              // Исключение Delphi: адрес - за вызовом RaiseExcept
+              if Batch[NoteIdx].Value = DbgExcDelphi then
+                LineAddr := Batch[NoteIdx].Address - 1
+              else
+                LineAddr := Batch[NoteIdx].Address;
               FOnLog(Self, Batch[NoteIdx].Text +
-                     WhereText(Batch[NoteIdx].Address));
+                     WhereText(Batch[NoteIdx].Address, LineAddr));
+            end;
           end
           else if (FExcLogged = DbgMaxExcLog + 1) and Assigned(FOnLog) then
             FOnLog(Self, 'Отладчик: исключений больше ' +
