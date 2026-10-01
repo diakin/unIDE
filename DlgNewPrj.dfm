@@ -4,7 +4,7 @@ object DlgNewPrj: TDlgNewPrj
   BorderStyle = bsDialog
   Caption = 'New Project'
   ClientHeight = 182
-  ClientWidth = 440
+  ClientWidth = 760
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -45,11 +45,11 @@ object DlgNewPrj: TDlgNewPrj
   object edDir: TUiEdit
     Left = 110
     Top = 44
-    Width = 275
+    Width = 595
     TabOrder = 1
   end
   object btnBrowse: TUiButton
-    Left = 390
+    Left = 710
     Top = 43
     Width = 30
     Height = 23
@@ -85,7 +85,7 @@ object DlgNewPrj: TDlgNewPrj
       'WebSite')
   end
   object btnOk: TUiButton
-    Left = 254
+    Left = 574
     Top = 144
     Width = 80
     Height = 25
@@ -95,7 +95,7 @@ object DlgNewPrj: TDlgNewPrj
     TabOrder = 5
   end
   object btnCancel: TUiButton
-    Left = 340
+    Left = 660
     Top = 144
     Width = 80
     Height = 25
