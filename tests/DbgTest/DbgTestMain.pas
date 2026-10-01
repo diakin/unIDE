@@ -30,10 +30,12 @@ unit DbgTestMain;
 //  4. Кнопка «Объект и поля Self» -> ТОЧКА 5 в TCounter.Step.
 //     Watch: FCount, FName, FKind, FItems (поля Self без «Self.»),
 //     Self.FCount, ADelta. В btnObjectClick (ТОЧКА 6): Tag (свойство на
-//     поле FTag, 77), edtName (объект TEdit), Self (TFormDbgTest),
+//     поле FTag, 77, тип «Integer (поле +12)»), edtName (объект TEdit),
+//     Self (TFormDbgTest),
 //     Counter.FName.
-//     Вложенная процедура: ТОЧКА 7 в Inner - Watch InnerVar (5) читается,
-//     OuterVar - сообщение «переменная объемлющей процедуры».
+//     Вложенная процедура: ТОЧКА 7 в Inner - Watch InnerVar (5), OuterVar
+//     читается через кадр Outer: 10 до строки, 15 после F8 (тип - «Integer
+//     (кадр Outer)»).
 //
 //  5. Кнопка «Исключение» -> ТОЧКА 8, F8 через строку с raise - шаг
 //     прерывается, программа идёт дальше, в логе исключение EDbgTest.
@@ -70,7 +72,7 @@ type
     FName: string;
     FKind: TColorKind;
     FItems: TColorSet;
-  public
+    public
     constructor Create(const AName: string);
     procedure Step(ADelta: Integer);
     function Total: Integer;
@@ -94,7 +96,7 @@ type
     procedure btnLoopClick(Sender: TObject);
     procedure btnObjectClick(Sender: TObject);
     procedure btnExceptionClick(Sender: TObject);
-  private
+    private
     FRunCount: Integer;
     procedure Report(const AText: string);
   end;
@@ -105,13 +107,13 @@ var
   GlobalText: string;            // 'глобальная строка'
   GlobalCounter: TCounter;       // TCounter($...)
 
-implementation
+  implementation
 
-{$R *.dfm}
+  {$R *.dfm}
 
-// ---------------------------------------------------------------------------
-//  TCounter
-// ---------------------------------------------------------------------------
+  // ---------------------------------------------------------------------------
+  //  TCounter
+  // ---------------------------------------------------------------------------
 
 constructor TCounter.Create(const AName: string);
 begin
@@ -205,7 +207,7 @@ begin
   AForm.Report(Format('Типы: %d %s %s', [Marker, AnsiVal, ShortStr]));
   // %u: Cardinal больше MaxInt через %d вышел бы отрицательным
   AForm.Report(Format('%u %d %d %d', [CardVal, ShortVal, WordVal,
-    Int64Val]) + ' ' + CharVal + string(WideVal));
+                      Int64Val]) + ' ' + CharVal + string(WideVal));
   if BoolVal and (PtrVal <> nil) and (NilObj = nil) and (ClassVal <> nil) and
      (EnumVal in SetVal) and (RangeVal > 0) and (PCharVal <> nil) and
      (EmptyVal = '') then
@@ -243,7 +245,7 @@ var
     InnerVar: Integer;
   begin
     InnerVar := 5;
-    OuterVar := OuterVar + InnerVar;   // ТОЧКА 7: InnerVar = 5, OuterVar - сообщение
+    OuterVar := OuterVar + InnerVar;   // ТОЧКА 7: InnerVar = 5, OuterVar = 10 (15 после F8)
   end;
 
 begin
@@ -279,6 +281,39 @@ begin
   Inc(FRunCount);
   TestAllTypes(Self);
 end;
+
+//  2. Кнопка «Шаги и вызовы» -> ТОЧКА 2 в btnStepsClick.
+//     F8 на строке с Factorial - вызов проходится целиком, следующая
+//     строка. F7 на строке с WithVarParam - заход в процедуру; там в Watch
+//     AValue (var-параметр, 41), AText, AObj. F8 до конца процедуры -
+//     возврат в btnStepsClick. Рекурсия: ТОЧКА 3 в Factorial, F8 на строке
+//     с вызовом Factorial(ANum - 1) - остановка на следующей строке того же
+//     уровня, а не в глубине рекурсии.      
+       
+//  2. Кнопка «Шаги и вызовы» -> ТОЧКА 2 в btnStepsClick.
+//     F8 на строке с Factorial - вызов проходится целиком, следующая
+//     строка. F7 на строке с WithVarParam - заход в процедуру; там в Watch
+//     AValue (var-параметр, 41), AText, AObj. F8 до конца процедуры -
+//     возврат в btnStepsClick. Рекурсия: ТОЧКА 3 в Factorial, F8 на строке
+//     с вызовом Factorial(ANum - 1) - остановка на следующей строке того же
+//     уровня, а не в глубине рекурсии.
+
+//  2. Кнопка «Шаги и вызовы» -> ТОЧКА 2 в btnStepsClick.
+//     F8 на строке с Factorial - вызов проходится целиком, следующая
+//     строка. F7 на строке с WithVarParam - заход в процедуру; там в Watch
+//     AValue (var-параметр, 41), AText, AObj. F8 до конца процедуры -
+//     возврат в btnStepsClick. Рекурсия: ТОЧКА 3 в Factorial, F8 на строке
+//     с вызовом Factorial(ANum - 1) - остановка на следующей строке того же
+//     уровня, а не в глубине рекурсии.            
+
+//  2. Кнопка «Шаги и вызовы» -> ТОЧКА 2 в btnStepsClick.
+//     F8 на строке с Factorial - вызов проходится целиком, следующая
+//     строка. F7 на строке с WithVarParam - заход в процедуру; там в Watch
+//     AValue (var-параметр, 41), AText, AObj. F8 до конца процедуры -
+//     возврат в btnStepsClick. Рекурсия: ТОЧКА 3 в Factorial, F8 на строке
+//     с вызовом Factorial(ANum - 1) - остановка на следующей строке того же
+//     уровня, а не в глубине рекурсии.
+
 
 procedure TFormDbgTest.btnStepsClick(Sender: TObject);
 var
@@ -333,3 +368,4 @@ begin
 end;
 
 end.
+
