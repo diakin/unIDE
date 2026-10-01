@@ -108,7 +108,7 @@ const
   // Предел объёма текста для RichEdit1 (EM_EXLIMITTEXT), символов.
   // Раньше был 65535 * 32 = 2 097 120 - меньше больших файлов в 15 раз.
   EditorTextLimit = $7FFFFFF0;
-  GutterGap = 12;
+  GutterGap = 16;   // полоса меток (MarksBox): закладки и точки останова
 
   // Размерность массива текстовых окон
   WindowsItemCount = 48;
@@ -448,6 +448,7 @@ type
     Panel1: TPanel;
     FontDialog1: TFontDialog;
     PaintBox1: TPaintBox;
+    MarksBox: TPaintBox;   // полоса меток: закладки, точки останова
     Panel2: TPanel;
     FDiskTimer: TTimer;
     FStatusTimer: TTimer;
@@ -459,6 +460,7 @@ type
     pmuDebug: TMenuItem;
     pmuSepDebug: TMenuItem;
     pmuRunToCursor: TMenuItem;
+    pmuAddWatch: TMenuItem;
     pmuSepRun: TMenuItem;
     pmuUndo: TMenuItem;
     pmuRedo: TMenuItem;
@@ -768,6 +770,12 @@ type
     procedure TraceIntoClick(Sender: TObject);
     procedure StepOverClick(Sender: TObject);
     procedure RunToCursorClick(Sender: TObject);
+    procedure AddWatchClick(Sender: TObject);
+    procedure MarksBoxPaint(Sender: TObject);
+    procedure MarksBoxMouseDown(Sender: TObject; Button: TMouseButton;
+                                Shift: TShiftState; X, Y: Integer);
+    procedure MarksBoxClick(Sender: TObject);
+    procedure MarksBoxDblClick(Sender: TObject);
     procedure ToolbarButtonClickEvent(Sender: TObject);
     procedure BmAddClick(Sender: TObject);
     procedure BmDeleteClick(Sender: TObject);
@@ -931,6 +939,19 @@ type
     // причина, если её нет
     FWatchWnd: TDlgWatch;
     FWatchList: TStringList;
+    // Выражение для пункта Add watch меню редактора (PopupMenuPopup)
+    FPopupWatchExpr: string;
+    // Полоса меток: строка, по которой щёлкнули; одиночный щелчок
+    // (закладка) ждёт FMarkTimer - не окажется ли он началом двойного
+    // (точка останова)
+    FMarkClickLine: Integer;
+    FMarkTimer: TTimer;
+    // Значение под мышью на остановке: подсказка, таймер, что показано и
+    // где стояла мышь на прошлом тике
+    FDbgHintWnd: THintWindow;
+    FDbgHintTimer: TTimer;
+    FDbgHintExpr: string;
+    FDbgHintPt: TPoint;
     FDbgSyms: TDbgSymbols;
     FDbgSymsError: string;
     // Снимок до правки: номера строк точек едут вместе с текстом
@@ -1800,6 +1821,14 @@ type
     procedure DbgRunToCursor;
     // Окно Watch
     function  DbgExprAtCaret: string;
+    function  DbgExprAtChar(ACharPos: Integer): string;
+    function  DbgCharAtClient(const APoint: TPoint): Integer;
+    function  DbgEvalText(const AExpr: string; var AValue: string): Boolean;
+    procedure DbgHintTimerTick(Sender: TObject);
+    procedure DbgHintHide;
+    function  MarksLineAtY(AY: Integer): Integer;
+    procedure MarkTimerTick(Sender: TObject);
+    procedure BmToggleAtLine(ALineIdx: Integer);
     procedure DbgAddWatch(const AExpr: string);
     procedure DbgWatchShow;
     procedure DbgWatchRefresh;
@@ -3017,6 +3046,12 @@ begin
   UiDefault('Debug.NoCodeBG', $00A0A0A0, $00505050);
   UiDefault('Debug.ExecBG', clNavy, $00904818);
   UiDefault('Debug.ExecText', clWhite, $00F0F0F0);
+  // Полоса меток: закладка (квадратик с номером) и стрелка строки остановки
+  UiDefault('Gutter.MarksBG', clDefault, clDefault);
+  UiDefault('Gutter.BmBG', $0080FFFF, $00406060);
+  UiDefault('Gutter.BmBorder', $00404040, $00A0C0C0);
+  UiDefault('Gutter.BmText', clBlack, $00F0FFFF);
+  UiDefault('Gutter.ExecArrow', $00FF8000, $00FFA040);
   // Инспектор: свойство, записанное в .dfm, и свойство, которого там нет
   // (значение по умолчанию)
   UiDefault('ObjProps.DfmText', clWindowText, $00F0F0F0);
@@ -3292,6 +3327,16 @@ begin
     Result := 'Полоса номеров: фон текущей строки'
   else if AKey = 'Gutter.CurText' then
     Result := 'Полоса номеров: текст текущей строки (clDefault - как цифры)'
+  else if AKey = 'Gutter.MarksBG' then
+    Result := 'Полоса меток: фон (clDefault - цвет зазора Panel1)'
+  else if AKey = 'Gutter.BmBG' then
+    Result := 'Полоса меток: фон закладки'
+  else if AKey = 'Gutter.BmBorder' then
+    Result := 'Полоса меток: рамка закладки'
+  else if AKey = 'Gutter.BmText' then
+    Result := 'Полоса меток: номер закладки'
+  else if AKey = 'Gutter.ExecArrow' then
+    Result := 'Полоса меток: стрелка строки остановки'
   else if AKey = 'ObjProps.DfmText' then
     Result := 'Инспектор: свойство из .dfm'
   else if AKey = 'ObjProps.DefaultText' then
@@ -10820,6 +10865,10 @@ var
   I: Integer;
   It: TMenuItem;
 begin
+  // Список закладок изменился - и метки на полосе тоже
+  if MarksBox <> nil then
+    MarksBox.Invalidate;
+
   if (mBookmarks = nil) or (mBmSep = nil) then
     Exit;
 
@@ -12886,6 +12935,8 @@ const
 var
   S, L: string;
   I: Integer;
+  ClickPt: TPoint;
+  ClickChar: Integer;
 begin
   if pmuSearch = nil then
     Exit;
@@ -12928,6 +12979,30 @@ begin
   // Run to cursor: файл на диске, программа не идёт или стоит
   if pmuRunToCursor <> nil then
     pmuRunToCursor.Enabled := (FCurrentFileName <> '') and DbgCanStep;
+
+  // Add watch: имя там, где щёлкнули правой кнопкой; меню с клавиатуры
+  // VCL вызывает в левом верхнем углу редактора - тогда имя у каретки.
+  // Не на имени - пункт серый.
+  if pmuAddWatch <> nil then
+  begin
+    FPopupWatchExpr := '';
+    ClickPt := RichEdit1.ScreenToClient(FPopupMenu.PopupAt);
+    if ((ClickPt.X <> 0) or (ClickPt.Y <> 0)) and
+       PtInRect(RichEdit1.ClientRect, ClickPt) and
+       (WindowFromPoint(FPopupMenu.PopupAt) = RichEdit1.Handle) then
+    begin
+      ClickChar := DbgCharAtClient(ClickPt);
+      if ClickChar >= 0 then
+        FPopupWatchExpr := DbgExprAtChar(ClickChar);
+    end
+    else
+      FPopupWatchExpr := DbgExprAtCaret;
+    if FPopupWatchExpr <> '' then
+      pmuAddWatch.Caption := 'Add watch {' + FPopupWatchExpr + '}'#9'Ctrl+F5'
+    else
+      pmuAddWatch.Caption := 'Add watch'#9'Ctrl+F5';
+    pmuAddWatch.Enabled := FPopupWatchExpr <> '';
+  end;
 end;
 
 // Переносит выделенный фрагмент в поле поиска. Сам поиск не запускаем -
@@ -15510,6 +15585,10 @@ begin
     Panel1.Parent := FLeftHost;
     Panel1.Align := alLeft;
   end;
+  // Полоса меток закрашивает себя целиком: фон панели под ней не стираем,
+  // иначе метки мигают при прокрутке
+  if MarksBox <> nil then
+    MarksBox.ControlStyle := MarksBox.ControlStyle + [csOpaque];
 
   RichEdit1.Parent := FEditHost;
   RichEdit1.Left := 0;
@@ -33344,10 +33423,18 @@ begin
           FDbgExecLine := SrcLine;
           if CompareText(FCurrentFileName, SrcFile) <> 0 then
           OpenNamedFile(SrcFile);
-          if CompareText(FCurrentFileName, SrcFile) = 0 then
-          GotoLine(SrcLine);
-          DbgRepaint;
-          DbgWatchRefresh;
+  if CompareText(FCurrentFileName, SrcFile) = 0 then
+    GotoLine(SrcLine);
+  DbgRepaint;
+  DbgWatchRefresh;
+  // Значение под мышью - подсказкой, пока программа стоит
+  if FDbgHintTimer = nil then
+  begin
+    FDbgHintTimer := TTimer.Create(Self);
+    FDbgHintTimer.Interval := 400;
+    FDbgHintTimer.OnTimer := DbgHintTimerTick;
+  end;
+  FDbgHintTimer.Enabled := True;
 end;
 
 procedure TForm1.DbgLog(Sender: TObject; const AText: string);
@@ -33511,6 +33598,247 @@ begin
   DbgRunToCursor;
 end;
 
+// Add watch из меню редактора: выражение определено в PopupMenuPopup
+procedure TForm1.AddWatchClick(Sender: TObject);
+begin
+  DbgAddWatch(FPopupWatchExpr);
+end;
+
+// ---------------------------------------------------------------------------
+//  Полоса меток (MarksBox) - между номерами строк и текстом, как в Delphi.
+//  Закладка окна - квадратик с её номером в списке закладок (Bookmarks),
+//  точка останова - красный кружок, строка остановки - стрелка.
+//  Щелчок - закладка на строке (снова щелчок - снять), двойной щелчок -
+//  точка останова.
+// ---------------------------------------------------------------------------
+
+// Строка под координатой Y полосы; -1 - ниже текста
+function TForm1.MarksLineAtY(AY: Integer): Integer;
+var
+  LineStartChar, LineTotal, TopY: Integer;
+  FirstPt: TPoint;
+begin
+  Result := -1;
+  if not RichEdit1.HandleAllocated or (LineHeight <= 0) then
+    Exit;
+  UpdateVisibleBounds;
+  TopY := 0;
+  LineStartChar := SendMessageA(RichEdit1.Handle, EM_LINEINDEX,
+                                FirstVisibleLine, 0);
+  if LineStartChar >= 0 then
+  begin
+    SendMessageA(RichEdit1.Handle, EM_POSFROMCHAR, Integer(@FirstPt),
+                 LineStartChar);
+    TopY := FirstPt.Y;
+  end;
+  if AY < TopY then
+    Exit;
+  Result := FirstVisibleLine + (AY - TopY) div LineHeight;
+  LineTotal := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+  if (Result < 0) or (Result >= LineTotal) then
+    Result := -1;
+end;
+
+procedure TForm1.MarksBoxPaint(Sender: TObject);
+var
+  BoxCanvas: TCanvas;
+  LineIdx, LineTotal, LineY, TopY, LineStartChar: Integer;
+  MarkSize, CenterX, CenterY, BmIdx, BmNum: Integer;
+  FirstPt: TPoint;
+  Mark: TBreakMark;
+  MarkRect: TRect;
+  NumText: string;
+  Arrow: array[0..6] of TPoint;
+  BgColor: TColor;
+begin
+  BoxCanvas := MarksBox.Canvas;
+  BgColor := UiColor('Gutter.MarksBG');
+  if BgColor = clDefault then
+    BgColor := Panel1.Color;
+  BoxCanvas.Brush.Style := bsSolid;
+  BoxCanvas.Brush.Color := BgColor;
+  BoxCanvas.FillRect(MarksBox.ClientRect);
+  if not RichEdit1.HandleAllocated or (LineHeight <= 0) then
+    Exit;
+
+  UpdateVisibleBounds;
+  TopY := 0;
+  LineStartChar := SendMessageA(RichEdit1.Handle, EM_LINEINDEX,
+                                FirstVisibleLine, 0);
+  if LineStartChar >= 0 then
+  begin
+    SendMessageA(RichEdit1.Handle, EM_POSFROMCHAR, Integer(@FirstPt),
+                 LineStartChar);
+    TopY := FirstPt.Y;
+  end;
+  LineTotal := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+
+  MarkSize := LineHeight - 4;
+  if MarkSize > 12 then
+    MarkSize := 12;
+  if MarkSize > MarksBox.Width - 2 then
+    MarkSize := MarksBox.Width - 2;
+  if MarkSize < 6 then
+    MarkSize := 6;
+  CenterX := MarksBox.Width div 2;
+
+  BoxCanvas.Font.Name := 'Tahoma';
+  BoxCanvas.Font.Height := -(MarkSize - 2);
+  BoxCanvas.Font.Style := [fsBold];
+
+  for LineIdx := FirstVisibleLine to LastVisibleLine + 1 do
+  begin
+    if LineIdx >= LineTotal then
+      Break;
+    LineY := TopY + (LineIdx - FirstVisibleLine) * LineHeight;
+    if LineY + LineHeight < 0 then
+      Continue;
+    if LineY > MarksBox.Height then
+      Break;
+    CenterY := LineY + LineHeight div 2;
+
+    // Точка останова - кружок
+    Mark := nil;
+    if FCurrentFileName <> '' then
+      Mark := DbgMarkAt(FCurrentFileName, LineIdx);
+    if Mark <> nil then
+    begin
+      BoxCanvas.Pen.Style := psSolid;
+      if Mark.NoCode then
+      begin
+        BoxCanvas.Brush.Color := UiColor('Debug.NoCodeBG');
+        BoxCanvas.Pen.Color := UiColor('Debug.NoCodeBG');
+      end
+      else
+      begin
+        BoxCanvas.Brush.Color := UiColor('Debug.BreakBG');
+        BoxCanvas.Pen.Color := UiColor('Debug.BreakBG');
+      end;
+      BoxCanvas.Brush.Style := bsSolid;
+      BoxCanvas.Ellipse(CenterX - MarkSize div 2, CenterY - MarkSize div 2,
+                        CenterX - MarkSize div 2 + MarkSize,
+                        CenterY - MarkSize div 2 + MarkSize);
+    end;
+
+    // Строка остановки - стрелка вправо
+    if DbgLineKind(LineIdx) = 3 then
+    begin
+      Arrow[0] := Point(CenterX - MarkSize div 2, CenterY - MarkSize div 4);
+      Arrow[1] := Point(CenterX, CenterY - MarkSize div 4);
+      Arrow[2] := Point(CenterX, CenterY - MarkSize div 2);
+      Arrow[3] := Point(CenterX + MarkSize div 2, CenterY);
+      Arrow[4] := Point(CenterX, CenterY + MarkSize div 2);
+      Arrow[5] := Point(CenterX, CenterY + MarkSize div 4);
+      Arrow[6] := Point(CenterX - MarkSize div 2, CenterY + MarkSize div 4);
+      BoxCanvas.Brush.Style := bsSolid;
+      BoxCanvas.Brush.Color := UiColor('Gutter.ExecArrow');
+      BoxCanvas.Pen.Color := UiColor('Gutter.BmBorder');
+      BoxCanvas.Polygon(Arrow);
+    end;
+
+    // Закладка - квадратик с номером, поверх кружка
+    if (FWindowsIndex >= 0) and FWindows[FWindowsIndex].Used then
+      for BmIdx := 0 to High(FWindows[FWindowsIndex].Bookmarks) do
+        if FWindows[FWindowsIndex].Bookmarks[BmIdx].LineNo = LineIdx + 1 then
+        begin
+          MarkRect.Left := 1;
+          MarkRect.Top := CenterY - MarkSize div 2;
+          MarkRect.Right := MarkRect.Left + MarkSize;
+          MarkRect.Bottom := MarkRect.Top + MarkSize;
+          BoxCanvas.Brush.Style := bsSolid;
+          BoxCanvas.Brush.Color := UiColor('Gutter.BmBG');
+          BoxCanvas.Pen.Style := psSolid;
+          BoxCanvas.Pen.Color := UiColor('Gutter.BmBorder');
+          BoxCanvas.Rectangle(MarkRect.Left, MarkRect.Top, MarkRect.Right,
+                              MarkRect.Bottom);
+          BmNum := (BmIdx + 1) mod 100;
+          NumText := IntToStr(BmNum);
+          BoxCanvas.Brush.Style := bsClear;
+          BoxCanvas.Font.Color := UiColor('Gutter.BmText');
+          DrawTextA(BoxCanvas.Handle, PChar(NumText), Length(NumText),
+                    MarkRect, DT_CENTER or DT_VCENTER or DT_SINGLELINE or
+                    DT_NOCLIP);
+          Break;
+        end;
+  end;
+end;
+
+procedure TForm1.MarksBoxMouseDown(Sender: TObject; Button: TMouseButton;
+                                   Shift: TShiftState; X, Y: Integer);
+begin
+  if Button = mbLeft then
+    FMarkClickLine := MarksLineAtY(Y);
+end;
+
+// Одиночный щелчок ждёт, не станет ли он двойным: закладку ставит таймер
+procedure TForm1.MarksBoxClick(Sender: TObject);
+begin
+  if FMarkClickLine < 0 then
+    Exit;
+  if FMarkTimer = nil then
+  begin
+    FMarkTimer := TTimer.Create(Self);
+    FMarkTimer.Enabled := False;
+    FMarkTimer.OnTimer := MarkTimerTick;
+  end;
+  FMarkTimer.Enabled := False;
+  FMarkTimer.Interval := GetDoubleClickTime;
+  FMarkTimer.Enabled := True;
+end;
+
+procedure TForm1.MarkTimerTick(Sender: TObject);
+begin
+  FMarkTimer.Enabled := False;
+  BmToggleAtLine(FMarkClickLine);
+end;
+
+procedure TForm1.MarksBoxDblClick(Sender: TObject);
+begin
+  if FMarkTimer <> nil then
+    FMarkTimer.Enabled := False;
+  if FMarkClickLine >= 0 then
+    DbgToggleBreak(FMarkClickLine);
+end;
+
+// Закладка на строке ALineIdx (с 0): есть - снимается, нет - ставится в
+// конец списка закладок окна
+procedure TForm1.BmToggleAtLine(ALineIdx: Integer);
+var
+  BmIdx, MoveIdx, BmCount: Integer;
+begin
+  if (ALineIdx < 0) or (FWindowsIndex < 0) or
+     not FWindows[FWindowsIndex].Used then
+    Exit;
+
+  for BmIdx := 0 to High(FWindows[FWindowsIndex].Bookmarks) do
+    if FWindows[FWindowsIndex].Bookmarks[BmIdx].LineNo = ALineIdx + 1 then
+    begin
+      for MoveIdx := BmIdx to High(FWindows[FWindowsIndex].Bookmarks) - 1 do
+        FWindows[FWindowsIndex].Bookmarks[MoveIdx] :=
+          FWindows[FWindowsIndex].Bookmarks[MoveIdx + 1];
+      SetLength(FWindows[FWindowsIndex].Bookmarks,
+                Length(FWindows[FWindowsIndex].Bookmarks) - 1);
+      BmHistDeleted(FWindowsIndex, BmIdx);
+      RebuildBookmarksMenu;
+      MarksBox.Invalidate;
+      Exit;
+    end;
+
+  BmCount := Length(FWindows[FWindowsIndex].Bookmarks);
+  SetLength(FWindows[FWindowsIndex].Bookmarks, BmCount + 1);
+  FWindows[FWindowsIndex].Bookmarks[BmCount].LineNo := ALineIdx + 1;
+  FWindows[FWindowsIndex].Bookmarks[BmCount].CharPos :=
+    SendMessageA(RichEdit1.Handle, EM_LINEINDEX, ALineIdx, 0);
+  if ALineIdx < RichEdit1.Lines.Count then
+    FWindows[FWindowsIndex].Bookmarks[BmCount].Text :=
+      Trim(RichEdit1.Lines[ALineIdx])
+  else
+    FWindows[FWindowsIndex].Bookmarks[BmCount].Text := '';
+  RebuildBookmarksMenu;
+  MarksBox.Invalidate;
+end;
+
+
 // ---------------------------------------------------------------------------
 //  Окно Watch
 //
@@ -33526,8 +33854,7 @@ end;
 // вместе с «Объект.» слева (Edit1.Tag, Self.FCount)
 function TForm1.DbgExprAtCaret: string;
 var
-  SelText, LineText: string;
-  CaretPos, LineIdx, LineStart, StartCol: Integer;
+  SelText: string;
 begin
   Result := '';
   if not RichEdit1.HandleAllocated then
@@ -33541,37 +33868,178 @@ begin
       Exit;
     end;
   end;
-  Result := IdentAtCaret;
-  if Result = '' then
+  Result := DbgExprAtChar(RichEdit1.SelStart);
+end;
+
+// Имя у символа ACharPos (на нём или сразу за ним, как у каретки) вместе с
+// цепочкой «Объект.» слева. Число, знак, пробел - пустая строка.
+function TForm1.DbgExprAtChar(ACharPos: Integer): string;
+var
+  LineText: string;
+  LineIdx, LineStart, StartCol, EndCol, PartEnd: Integer;
+begin
+  Result := '';
+  if not RichEdit1.HandleAllocated or (ACharPos < 0) then
     Exit;
-  // Цепочка слева: ищем начало имени под кареткой и идём через точки
-  CaretPos := RichEdit1.SelStart;
-  LineIdx := SendMessage(RichEdit1.Handle, EM_LINEFROMCHAR, CaretPos, 0);
+  LineIdx := SendMessage(RichEdit1.Handle, EM_LINEFROMCHAR, ACharPos, 0);
   if (LineIdx < 0) or (LineIdx >= RichEdit1.Lines.Count) then
     Exit;
   LineStart := SendMessage(RichEdit1.Handle, EM_LINEINDEX, LineIdx, 0);
   LineText := RichEdit1.Lines[LineIdx];
-  StartCol := CaretPos - LineStart + 1;
-  // Каретка сразу за словом - слово слева, как в IdentAtCaret
-  if (StartCol > Length(LineText)) or
+  StartCol := ACharPos - LineStart + 1;
+  // Символ не буква - смотрим знак слева (позиция сразу за словом)
+  if (StartCol > Length(LineText)) or (StartCol < 1) or
      not (LineText[StartCol] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
     Dec(StartCol);
   if (StartCol < 1) or (StartCol > Length(LineText)) or
      not (LineText[StartCol] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
     Exit;
+  EndCol := StartCol;
   while (StartCol > 1) and
         (LineText[StartCol - 1] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
     Dec(StartCol);
+  while (EndCol < Length(LineText)) and
+        (LineText[EndCol + 1] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+    Inc(EndCol);
+  if LineText[StartCol] in ['0'..'9'] then
+    Exit; // число, не имя
+  // #13 и $FF - тоже не имена
+  if (StartCol > 1) and (LineText[StartCol - 1] in ['#', '$']) then
+    Exit;
+  Result := Copy(LineText, StartCol, EndCol - StartCol + 1);
+  // Цепочка слева через точки
   while (StartCol > 2) and (LineText[StartCol - 1] = '.') and
         (LineText[StartCol - 2] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
   begin
-    Dec(StartCol);
+    PartEnd := StartCol - 2;
+    StartCol := PartEnd;
     while (StartCol > 1) and
           (LineText[StartCol - 1] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
       Dec(StartCol);
-    Result := Copy(LineText, StartCol, Pos('.', Copy(LineText, StartCol,
-                                                     MaxInt)) - 1) + '.' + Result;
+    Result := Copy(LineText, StartCol, PartEnd - StartCol + 1) + '.' + Result;
   end;
+end;
+
+// Символ под точкой APoint клиентской области редактора; -1 - за концом
+// строки или ниже текста. X поправляется на наш сдвиг FScrollX: контрол
+// считает от начала текста (см. NewRichEditProc).
+function TForm1.DbgCharAtClient(const APoint: TPoint): Integer;
+var
+  TextPt: TPoint;
+  LineIdx, LineStart, LineTotal: Integer;
+begin
+  Result := -1;
+  if not RichEdit1.HandleAllocated or (APoint.X < 0) or (APoint.Y < 0) or
+     (APoint.Y >= RichEdit1.ClientHeight) then
+    Exit;
+  TextPt.X := APoint.X + FScrollX;
+  TextPt.Y := APoint.Y;
+  LineIdx := LineAtY(APoint.Y);
+  LineTotal := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+  if (LineIdx < 0) or (LineIdx >= LineTotal) then
+    Exit;
+  // Правее конца строки - пусто (контрол отдал бы последний символ)
+  if TextPt.X >= LinePixelWidth(LineIdx) then
+    Exit;
+  Result := SendMessageA(RichEdit1.Handle, EM_CHARFROMPOS, 0,
+                         Integer(@TextPt));
+  if Result < 0 then
+    Exit;
+  LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LineIdx, 0);
+  if (Result < LineStart) or
+     (SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0, Result) <>
+      LineIdx) then
+    Result := -1;
+end;
+
+// Значение выражения на остановке. False - программа не стоит, нет
+// отладочной информации или выражение не вычислилось (ответ вида <...>).
+function TForm1.DbgEvalText(const AExpr: string; var AValue: string): Boolean;
+var
+  TypeText: string;
+begin
+  Result := False;
+  AValue := '';
+  if (AExpr = '') or (FDbgSession = nil) or FDbgSession.Finished or
+     not FDbgSession.Paused or (FDbgSyms = nil) then
+    Exit;
+  AValue := FDbgSyms.Evaluate(AExpr, FDbgSession.ImageBase,
+                              FDbgSession.StopEip, FDbgSession.StopRegs,
+                              FDbgSession.ReadMemory, TypeText);
+  Result := (AValue <> '') and (AValue[1] <> '<');
+end;
+
+procedure TForm1.DbgHintHide;
+begin
+  FDbgHintExpr := '';
+  if (FDbgHintWnd <> nil) and FDbgHintWnd.HandleAllocated and
+     IsWindowVisible(FDbgHintWnd.Handle) then
+    FDbgHintWnd.ReleaseHandle;
+end;
+
+// Подсказка со значением под мышью. Таймер идёт, пока программа стоит:
+// мышь задержалась над именем на тик - показываем «Имя = значение» у
+// курсора; ушла с имени - убираем.
+procedure TForm1.DbgHintTimerTick(Sender: TObject);
+var
+  CursorPt, ClientPt: TPoint;
+  CharPos: Integer;
+  Expr, ValueText, HintText: string;
+  HintRect: TRect;
+begin
+  if (FDbgSession = nil) or FDbgSession.Finished or
+     not FDbgSession.Paused then
+  begin
+    if FDbgHintTimer <> nil then
+      FDbgHintTimer.Enabled := False;
+    DbgHintHide;
+    Exit;
+  end;
+  // Подсказку держим только над редактором активного окна IDE
+  if not Application.Active or not RichEdit1.HandleAllocated or
+     not GetCursorPos(CursorPt) or
+     (WindowFromPoint(CursorPt) <> RichEdit1.Handle) or
+     (GetKeyState(VK_LBUTTON) < 0) or (GetKeyState(VK_RBUTTON) < 0) then
+  begin
+    DbgHintHide;
+    FDbgHintPt := Point(-1, -1);
+    Exit;
+  end;
+
+  ClientPt := RichEdit1.ScreenToClient(CursorPt);
+  CharPos := DbgCharAtClient(ClientPt);
+  if CharPos >= 0 then
+    Expr := DbgExprAtChar(CharPos)
+  else
+    Expr := '';
+
+  if Expr = '' then
+  begin
+    DbgHintHide;
+    FDbgHintPt := CursorPt;
+    Exit;
+  end;
+  // Та же подсказка уже показана - мышь ходит по тому же имени
+  if (Expr = FDbgHintExpr) then
+    Exit;
+  // Ждём, пока мышь постоит на месте один тик
+  if (CursorPt.X <> FDbgHintPt.X) or (CursorPt.Y <> FDbgHintPt.Y) then
+  begin
+    DbgHintHide;
+    FDbgHintPt := CursorPt;
+    Exit;
+  end;
+
+  DbgHintHide;
+  if not DbgEvalText(Expr, ValueText) then
+    Exit;
+  HintText := Expr + ' = ' + ValueText;
+  if FDbgHintWnd = nil then
+    FDbgHintWnd := HintWindowClass.Create(Self);
+  HintRect := FDbgHintWnd.CalcHintRect(700, HintText, nil);
+  OffsetRect(HintRect, CursorPt.X + 12, CursorPt.Y + 18);
+  FDbgHintWnd.ActivateHint(HintRect, HintText);
+  FDbgHintExpr := Expr;
 end;
 
 procedure TForm1.DbgAddWatch(const AExpr: string);
@@ -33892,6 +34360,10 @@ end;
 
 procedure TForm1.DbgClearExec;
 begin
+  // Программа пошла или снята - подсказки со значением больше нет
+  if FDbgHintTimer <> nil then
+    FDbgHintTimer.Enabled := False;
+  DbgHintHide;
   if FDbgExecFile = '' then
     Exit;
   FDbgExecFile := '';
@@ -33962,8 +34434,11 @@ begin
   // остаются как были
   // Во время сеанса отладки - любой файл: остановка может прийти в него,
   // и строку из .map надо будет сдвинуть на правки (FDbgEdits)
+  // Закладки окна тоже едут с текстом - их метки на полосе (MarksBox)
   if AWhole or not RichEdit1.HandleAllocated or
      (not DbgMarksInCurrent and
+      ((FWindowsIndex < 0) or not FWindows[FWindowsIndex].Used or
+       (Length(FWindows[FWindowsIndex].Bookmarks) = 0)) and
       ((FDbgSession = nil) or FDbgSession.Finished or
        (FCurrentFileName = ''))) then
     Exit;
@@ -33987,6 +34462,8 @@ procedure TForm1.DbgLinesPost;
 var
   NewLines, Delta, NewLen, EditStart, FirstLine, LastLine, FirstStart: Integer;
   Removed, MarkIdx, DupIdx: Integer;
+  OldLineNo, NewLineNo: Integer;
+  BmMoved: Boolean;
   Sel: TCharRange;
   Mark, Other: TBreakMark;
   LineEdit: TDbgLineEdit;
@@ -34076,6 +34553,27 @@ begin
   if (FDbgExecFile <> '') and
      (CompareText(FDbgExecFile, FCurrentFileName) = 0) then
     FDbgExecLine := MoveLine(FDbgExecLine);
+
+  // Закладки окна (номера с 1): строка и позиция едут вместе с текстом,
+  // подписи в меню Bookmarks - с новыми номерами
+  if (FWindowsIndex >= 0) and FWindows[FWindowsIndex].Used then
+  begin
+    BmMoved := False;
+    for MarkIdx := 0 to High(FWindows[FWindowsIndex].Bookmarks) do
+    begin
+      OldLineNo := FWindows[FWindowsIndex].Bookmarks[MarkIdx].LineNo;
+      NewLineNo := MoveLine(OldLineNo - 1) + 1;
+      if NewLineNo <> OldLineNo then
+      begin
+        FWindows[FWindowsIndex].Bookmarks[MarkIdx].LineNo := NewLineNo;
+        FWindows[FWindowsIndex].Bookmarks[MarkIdx].CharPos :=
+          SendMessageA(RichEdit1.Handle, EM_LINEINDEX, NewLineNo - 1, 0);
+        BmMoved := True;
+      end;
+    end;
+    if BmMoved then
+      RebuildBookmarksMenu;
+  end;
 
   // Правка за сеанс - для перевода строк .map в нынешние номера и обратно
   if (FDbgSession <> nil) and not FDbgSession.Finished and
@@ -37125,6 +37623,11 @@ begin
     // Выравниваем номера строк строго по ПРАВОМУ краю
     DrawTextA(PaintBox1.Canvas.Handle, PChar(LineNumStr), Length(LineNumStr), R, DT_RIGHT or DT_SINGLELINE or DT_VCENTER);
   end;
+
+  // Полоса меток рядом - по тем же строкам: прокрутка и правка, после
+  // которых перерисована полоса номеров, двигают и метки
+  if MarksBox <> nil then
+    MarksBox.Invalidate;
 end;
 
 

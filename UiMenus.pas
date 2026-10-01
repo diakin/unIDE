@@ -87,6 +87,9 @@ type
 
   TUiPopupMenu = class(TPopupMenu)
   public
+    // Точка вызова (экранная): PopupPoint предка не заполняется - Popup
+    // переписан без inherited
+    PopupAt: TPoint;
     procedure Popup(X, Y: Integer); override;
   end;
 
@@ -1273,6 +1276,7 @@ var
   Flags: UINT;
   Cmd: Integer;
 begin
+  PopupAt := Point(X, Y);
   if Assigned(UiMenuPopupHook) then
     UiMenuPopupHook(Self);
   // Тема Light при темах Windows - меню Windows. Тема - по окну, на
