@@ -116,6 +116,10 @@ type
     function FindMember(AStructId: Cardinal; const AName: string;
                         var AOffset: Integer; var AMemberType: Cardinal): Boolean;
     function EnumName(AEnumId: Cardinal; AValue: Int64): string;
+    function IsObjectRef(APtrType: Cardinal): Boolean;
+    function PropertyField(AStructId, APropType: Cardinal;
+                           var AOffset: Integer; var AFieldType: Cardinal;
+                           var ANote: string): Boolean;
     function ReadMem(AAddress: Cardinal; ABuffer: Pointer; ASize: Integer): Boolean;
     function ReadDword(AAddress: Cardinal; var AValue: Cardinal): Boolean;
     function ReadAnsiText(AAddress: Cardinal; ALen: Integer): string;
@@ -184,6 +188,7 @@ const
   LeafSubrange  = $0031;
   LeafPString   = $0033;
   LeafClosure   = $0034;
+  LeafProperty  = $0035;
   LeafLString   = $0036;
   LeafVariant   = $0037;
   LeafClassRef  = $0038;
@@ -200,6 +205,7 @@ const
   MemVtabPtr     = $040A;
 
   StructFwdRef  = $0080;   // свойства записи/класса: только объявление
+  PropHasReaderSlot = $0002;   // свойство: чтение - номер метода, не имя
 
   MaxShowText   = 255;     // символов строки в окне
   MaxShowItems  = 16;      // элементов массива, полей записи
@@ -825,10 +831,14 @@ begin
   end;
   case Leaf of
     LeafPointer:
-      if ((WordAt(Body) shr 5) and 7) = 1 then
+      if IsObjectRef(ATypeId) then
+        Result := TypeText(DwordAt(Body + 2))
+      else if ((WordAt(Body) shr 5) and 7) = 1 then
         Result := 'var ' + TypeText(DwordAt(Body + 2))
       else
         Result := '^' + TypeText(DwordAt(Body + 2));
+    LeafProperty:
+      Result := 'property ' + TypeText(DwordAt(Body));
     LeafClass, LeafStruct:
       Result := NameOf(DwordAt(Body + 20));
     LeafEnum:
@@ -1024,6 +1034,57 @@ begin
        TypeRec(MemType, ListLeaf, ListBody, ListEnd) then
       ItemPos := ListBody;
   end;
+end;
+
+// Указатель на класс - ссылка на объект. В TD32 Delphi переменная
+// классового типа - указатель в режиме «ссылка» на запись класса; тот же
+// режим у var-параметров. Различаются тем, на что указывают.
+function TDbgSymbols.IsObjectRef(APtrType: Cardinal): Boolean;
+var
+  Leaf, Body, RecEnd, TargetLeaf, TargetBody, TargetEnd: Integer;
+begin
+  Result := False;
+  if not TypeRec(Underlying(APtrType), Leaf, Body, RecEnd) or
+     (Leaf <> LeafPointer) then
+    Exit;
+  Result := TypeRec(FullStruct(Underlying(DwordAt(Body + 2))), TargetLeaf,
+                    TargetBody, TargetEnd) and (TargetLeaf = LeafClass);
+end;
+
+// Свойство (запись $35: тип, флаги, тип индекса, индекс, чтение, запись):
+// чтение - имя поля или метода. Поле - его место и тип; метод - False и
+// ANote словами.
+function TDbgSymbols.PropertyField(AStructId, APropType: Cardinal;
+                                   var AOffset: Integer;
+                                   var AFieldType: Cardinal;
+                                   var ANote: string): Boolean;
+var
+  Leaf, Body, RecEnd, FieldLeaf, FieldBody, FieldEnd: Integer;
+  ReaderName: string;
+begin
+  Result := False;
+  ANote := '';
+  if not TypeRec(APropType, Leaf, Body, RecEnd) or (Leaf <> LeafProperty) then
+    Exit;
+  // Чтение - номер имени (поле или метод); при флаге $0002 по разбору
+  // tds2pdb там номер слота метода. Сначала - как имя поля.
+  ReaderName := NameOf(DwordAt(Body + 14));
+  if (ReaderName <> '') and
+     FindMember(AStructId, ReaderName, AOffset, AFieldType) and
+     not (TypeRec(AFieldType, FieldLeaf, FieldBody, FieldEnd) and
+          (FieldLeaf = LeafProperty)) then
+  begin
+    ANote := ' (поле ' + ReaderName + ')';
+    Result := True;
+    Exit;
+  end;
+  if (WordAt(Body + 4) and PropHasReaderSlot) <> 0 then
+    ANote := 'свойство читается методом (слот ' +
+             IntToStr(DwordAt(Body + 14)) + ') - значения нет'
+  else if ReaderName = '' then
+    ANote := 'свойство без чтения'
+  else
+    ANote := 'свойство читается методом ' + ReaderName + ' - значения нет';
 end;
 
 // ---------------------------------------------------------------------------
@@ -1228,6 +1289,7 @@ function TDbgSymbols.FormatValue(AAddress, ATypeId: Cardinal;
                                  ADepth: Integer): string;
 var
   Leaf, Body, RecEnd, ListLeaf, ListBody, ListEnd, ItemPos, MemLeaf: Integer;
+  ItemPos2, ListEnd2: Integer;
   ElemSize, ElemCount, ElemIdx, NumPos, ValueSize, BitIdx, Shown, Guard: Integer;
   PtrValue, MemberType, BaseType, NameIdx, StrLen: Cardinal;
   NumValue, LowValue, OrdValue: Int64;
@@ -1255,8 +1317,9 @@ begin
           Exit;
         end;
         MemberType := FullStruct(Underlying(DwordAt(Body + 2)));
-        // var-параметр: в кадре - адрес значения
-        if ((WordAt(Body) shr 5) and 7) = 1 then
+        // var-параметр: в кадре - адрес значения (объект - тоже «ссылка»,
+        // но показывается классом и адресом, ниже)
+        if (((WordAt(Body) shr 5) and 7) = 1) and not IsObjectRef(ATypeId) then
         begin
           if PtrValue = 0 then
             Result := '<nil>'
@@ -1455,6 +1518,11 @@ begin
           end;
           if MemLeaf <> MemData then
             Continue;
+          // Свойства в списке полей - тоже MemData с типом-свойством: не
+          // поля, пропускаются
+          if TypeRec(MemberType, ListLeaf, ItemPos2, ListEnd2) and
+             (ListLeaf = LeafProperty) then
+            Continue;
           if Result <> '' then
             Result := Result + '; ';
           Result := Result + NameOf(NameIdx) + ': ' +
@@ -1519,6 +1587,22 @@ end;
 // ---------------------------------------------------------------------------
 //  Поиск символов и вычисление
 // ---------------------------------------------------------------------------
+
+// Имя процедуры в TD32 - в виде @Класс@Метод или @Модуль@Процедура$...
+// (декорированное): для показа - Класс.Метод
+function NiceProcName(const AName: string): string;
+var
+  CharIdx: Integer;
+begin
+  Result := AName;
+  if Pos('$', Result) > 1 then
+    SetLength(Result, Pos('$', Result) - 1);
+  if (Result <> '') and (Result[1] = '@') then
+    Delete(Result, 1, 1);
+  for CharIdx := 1 to Length(Result) do
+    if Result[CharIdx] = '@' then
+      Result[CharIdx] := '.';
+end;
 
 // Самая внутренняя процедура (вложенные процедуры Delphi - внутри
 // объемлющей) с кодом по смещению ACodeOfs в сегменте кода
@@ -1611,8 +1695,10 @@ var
   PartIdx, ProcIdx, LocalIdx, DataIdx, MemberOfs, Leaf, Body, RecEnd: Integer;
   ListLeaf, ListBody, ListEnd: Integer;
   CodeOfs, CodeBase, CurAddr, CurType, PtrValue, MemberType, Ebp: Cardinal;
-  Rest, PartText, FieldNote: string;
-  Found: Boolean;
+  Rest, PartText, FieldNote, PropNote: string;
+  Found, ViaSelf: Boolean;
+  PropLeaf, PropBody, PropEnd: Integer;
+  PropType: Cardinal;
 begin
   Result := '';
   ATypeText := '';
@@ -1661,6 +1747,7 @@ begin
 
     // Первое имя: локальное процедуры, данные модуля, поле Self
     Found := False;
+    ViaSelf := False;
     CurAddr := 0;
     CurType := 0;
     LocalIdx := -1;
@@ -1727,6 +1814,7 @@ begin
       if (LocalIdx >= 0) and (FLocals[LocalIdx].Kind = DbgLocalFrame) then
       begin
         Parts.Insert(0, 'Self');
+        ViaSelf := True;
         CurType := FLocals[LocalIdx].TypeId;
         CurAddr := Cardinal(Integer(Ebp) + FLocals[LocalIdx].BpOffset);
         Found := True;
@@ -1742,7 +1830,7 @@ begin
         if FindLocal(LocalIdx, Parts[0]) >= 0 then
         begin
           Result := '<переменная объемлющей процедуры ' +
-                    FProcs[LocalIdx].Name + ' - не читается>';
+                    NiceProcName(FProcs[LocalIdx].Name) + ' - не читается>';
           Exit;
         end;
         LocalIdx := FProcs[LocalIdx].Parent;
@@ -1799,16 +1887,27 @@ begin
       FieldNote := '';
       if not FindMember(CurType, Parts[PartIdx], MemberOfs, MemberType) then
       begin
-        // Свойство на поле: Tag - FTag, Left - FLeft (так в VCL)
-        if FindMember(CurType, 'F' + Parts[PartIdx], MemberOfs, MemberType) then
-          FieldNote := ' (поле F' + Parts[PartIdx] + ')'
+        if ViaSelf and (PartIdx = 1) then
+          Result := '<не найдено: ' + Parts[PartIdx] + ' - нет ни ' +
+                    'переменной процедуры, ни данных модуля, ни поля Self>'
         else
+          Result := '<нет поля ' + Parts[PartIdx] + ' у ' +
+                    TypeText(CurType) + '>';
+        Exit;
+      end;
+      // Свойство: значение - поле, из которого оно читается
+      if TypeRec(MemberType, PropLeaf, PropBody, PropEnd) and
+         (PropLeaf = LeafProperty) then
+      begin
+        PropType := MemberType;
+        if not PropertyField(CurType, PropType, MemberOfs, MemberType,
+                             PropNote) then
         begin
-          Result := '<нет поля ' + Parts[PartIdx] + ' у ' + TypeText(CurType) +
-                    ' (свойства с методом чтения не показываются - только ' +
-                    'поля)>';
+          ATypeText := TypeText(DwordAt(PropBody));
+          Result := '<' + PropNote + '>';
           Exit;
         end;
+        FieldNote := PropNote;
       end;
       CurAddr := CurAddr + Cardinal(MemberOfs);
       CurType := MemberType;
@@ -1836,7 +1935,8 @@ begin
   ProcIdx := FindProc(AEip - CodeBase);
   if ProcIdx < 0 then
     Exit;
-  Result := FProcs[ProcIdx].Name;
+  Result := NiceProcName(FProcs[ProcIdx].Name) + ' +$' +
+            IntToHex(AEip - CodeBase - FProcs[ProcIdx].Offset, 2);
   for LocalIdx := 0 to FLocalCount - 1 do
     if (FLocals[LocalIdx].ProcIdx = ProcIdx) and
        IsIdent(FLocals[LocalIdx].Name) and
