@@ -21977,13 +21977,16 @@ begin
   // Прежняя видимая построена по нынешнему тексту - это теперь спрятанная
   FDsgOtherKey := DsgViewKey;
 
+  // Всё, что меняет вид формы (выделение и маркеры, кнопки палитры по
+  // вкладкам), - до показа: показ (ShowForm) выводит форму уже
+  // нарисованной, а прежняя прячется после этого
   FDesigner.Form.Left := PosLeft;
   FDesigner.Form.Top := PosTop;
+  DsgPaletteTabs;
   FDesigner.SelectByName(SelName);
   if WasVisible then
     FDesigner.ShowForm;
   OldDsg.Form.Hide;
-  DsgPaletteTabs;
 end;
 
 // Папка Bin установки Delphi для значков палитры - по реестру, как у
