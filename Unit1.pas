@@ -27580,6 +27580,8 @@ end;
 //    - имя после procedure, function, constructor, destructor, property
 //      (у TForm1.Name - последняя часть);
 //    - имена в параметрах заголовка (только в своей процедуре);
+//    - переменная обработчика исключения: on E: Exception do (в своей
+//      процедуре);
 //    - список имён перед ':' - var, поля, параметры на своих строках;
 //      строка, где после ':' есть ':=', - ветка case, не объявление;
 //    - имя перед '=' - type, const; а также значения перечисления
@@ -27846,6 +27848,44 @@ begin
       A := B + 1;
     end;
     Exit;
+  end;
+
+  // Переменная обработчика исключения: on E: Exception do - в том числе
+  // после except в той же строке. Её область - сам обработчик, но для
+  // панели хватает того, что строка - в своей процедуре выше щелчка.
+  K := 1;
+  while K <= Length(U) do
+  begin
+    if DeclIdStart(U[K]) and ((K = 1) or not DeclIdChar(U[K - 1])) then
+    begin
+      A := K;
+      Id := DeclReadId(U, A);
+      if Id = 'ON' then
+      begin
+        B := A;
+        DeclSkipSp(U, B);
+        S := B;
+        if (B <= Length(U)) and DeclIdStart(U[B]) then
+        begin
+          Rest := DeclReadId(U, B);
+          DeclSkipSp(U, B);
+          if (B <= Length(U)) and (U[B] = ':') and
+             ((B = Length(U)) or (U[B + 1] <> '=')) and
+             DeclHasWord(Copy(U, B + 1, MaxInt), 'DO') then
+          begin
+            if Rest = AW then
+            begin
+              ACol := S;
+              Result := True;
+            end;
+            Exit;
+          end;
+        end;
+      end;
+      K := A;
+    end
+    else
+      Inc(K);
   end;
 
   // Раздел в той же строке: var X: Integer, const C = 1, type T = ...
