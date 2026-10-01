@@ -23586,7 +23586,8 @@ begin
     FDesigner.Form.Hide    // не Close: Close закрыл бы конструктор
   else
   begin
-    FDesigner.Form.Show;
+    // ShowForm, а не Form.Show: форма появляется уже нарисованной
+    FDesigner.ShowForm;
     FDsgHiddenForRun := False; // показали вручную - запуск её уже не вернёт
   end;
   UpdateToolbarState;
@@ -32261,7 +32262,7 @@ begin
     Exit;
   FDsgHiddenForRun := False;
   if (FDesigner <> nil) and (FDesigner.Form <> nil) then
-    FDesigner.Form.Show;
+    FDesigner.ShowForm;   // уже нарисованной, как при переключении вида
 end;
 
 // Раз в полсекунды: закрылась ли программа, запущенная из среды
