@@ -1614,6 +1614,7 @@ type
     procedure SaveProjectReg;
     procedure RegisterProject(const AName, APath: string);
     function  ProjectTargetOf(const AName: string): string;
+    function  ProjectTargetFind(const AName: string): string;
     function  CompilerSection(const AType: string): string;
     procedure SetProjectTarget(const AName, ATarget: string);
     function  WriteEmptyRes(const AFileName: string): Boolean;
@@ -7284,6 +7285,86 @@ begin
 
   // Путь может быть относительным - считаем его от папки описания
   Result := PrjPathFromStore(F, Result);
+end;
+
+// Цель сборки проекта, которая есть на диске. Записанная в .prj может
+// указывать в папку другого компьютера (описание переносят через git) -
+// тогда она ищется по порядку:
+//   1. файл с тем же именем в папке .prj;
+//   2. .dpr среди открытых окон: сначала из папки .prj, иначе - если такой
+//      открыт ровно один;
+//   3. <имя проекта>.dpr в папке .prj;
+//   4. единственный .dpr в папке .prj.
+// Ничего не пишет; не нашлось - пустая строка.
+function TForm1.ProjectTargetFind(const AName: string): string;
+var
+  Stored, PrjDir, Candidate, OnlyOpen: string;
+  WinIdx, OpenCount: Integer;
+  FoundRec: TSearchRec;
+begin
+  Result := '';
+  if AName = '' then
+    Exit;
+  Stored := ProjectTargetOf(AName);
+  if (Stored <> '') and FileExists(Stored) then
+  begin
+    Result := Stored;
+    Exit;
+  end;
+  PrjDir := ExtractFilePath(ProjectFileName(AName));
+
+  // 1. То же имя - в папке описания
+  if Stored <> '' then
+  begin
+    Candidate := PrjDir + ExtractFileName(Stored);
+    if FileExists(Candidate) then
+    begin
+      Result := Candidate;
+      Exit;
+    end;
+  end;
+
+  // 2. Открытый .dpr
+  OnlyOpen := '';
+  OpenCount := 0;
+  for WinIdx := 0 to WindowsItemCount - 1 do
+    if FWindows[WinIdx].Used and
+       (CompareText(ExtractFileExt(FWindows[WinIdx].FileName), '.dpr') = 0) and
+       FileExists(FWindows[WinIdx].FileName) then
+    begin
+      if CompareText(ExtractFilePath(FWindows[WinIdx].FileName), PrjDir) = 0 then
+      begin
+        Result := FWindows[WinIdx].FileName;
+        Exit;
+      end;
+      Inc(OpenCount);
+      OnlyOpen := FWindows[WinIdx].FileName;
+    end;
+  if OpenCount = 1 then
+  begin
+    Result := OnlyOpen;
+    Exit;
+  end;
+
+  // 3. По имени проекта
+  Candidate := PrjDir + AName + '.dpr';
+  if FileExists(Candidate) then
+  begin
+    Result := Candidate;
+    Exit;
+  end;
+
+  // 4. Единственный .dpr в папке описания
+  if FindFirst(PrjDir + '*.dpr', faAnyFile and not faDirectory, FoundRec) = 0 then
+  begin
+    try
+      Candidate := PrjDir + FoundRec.Name;
+      if FindNext(FoundRec) <> 0 then
+        Result := Candidate;
+    finally
+      FindClose(FoundRec);
+    end;
+  end;
 end;
 
 procedure TForm1.SetProjectTarget(const AName, ATarget: string);
@@ -32124,7 +32205,16 @@ begin
     if CompareText(ProjectTypeOf(FCurrentProject), 'Delphi') <> 0 then
       LogComp('Внимание: тип проекта - ' + ProjectTypeOf(FCurrentProject) +
       ', а собирается он компилятором Delphi');
-              Dpr := ProjectTargetOf(FCurrentProject);
+    Dpr := ProjectTargetFind(FCurrentProject);
+    // Записанной цели на диске нет (описание с другого компьютера), а
+    // нашлась другая - она и запоминается
+    if (Dpr <> '') and
+       (CompareText(Dpr, ProjectTargetOf(FCurrentProject)) <> 0) then
+    begin
+      LogComp('Цель сборки проекта: записанной в описании нет на диске (' +
+              ProjectTargetOf(FCurrentProject) + '), взята ' + Dpr);
+      SetProjectTarget(FCurrentProject, Dpr);
+    end;
   end;
 
   // Цели нет - берём открытый .dpr и запоминаем его как цель
@@ -33148,8 +33238,8 @@ begin
 
   if FCurrentProject <> '' then
   begin
-    Result := ProjectTargetOf(FCurrentProject);
-    if (Result <> '') and FileExists(Result) then
+    Result := ProjectTargetFind(FCurrentProject);
+    if Result <> '' then
       Exit;
   end;
 
