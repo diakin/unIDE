@@ -206,7 +206,7 @@ const
   MemVtabPtr     = $040A;
 
   StructFwdRef  = $0080;   // свойства записи/класса: только объявление
-  PropHasReaderSlot = $0002;   // свойство: чтение - номер метода, не имя
+  PropReaderIsField = $0002;   // свойство: чтение - смещение поля
 
   // Простые типы Borland вне таблицы CodeView (по проверке на DbgTest)
   PrimCurrency  = $0004;   // Currency: Int64, значение * 10000
@@ -1094,37 +1094,36 @@ begin
                     TargetBody, TargetEnd) and (TargetLeaf = LeafClass);
 end;
 
-// Свойство (запись $35: тип, флаги, тип индекса, индекс, чтение, запись):
-// чтение - имя поля или метода. Поле - его место и тип; метод - False и
-// ANote словами.
+// Свойство (запись $35: тип, флаги, тип индекса, индекс, чтение, запись).
+// Флаг $0002 - чтение из поля: в «чтении» смещение поля в объекте. Вывод
+// по TComponent.Tag в DbgTest: как номер имени это значение давало
+// постороннее «ActiveX», а смещение FTag в TComponent Delphi 7 - 12 (VMT
+// 0, FOwner 4, FName 8). Без флага - номер имени метода чтения. Поле - его место и тип (тип поля - тип свойства); метод -
+// False и ANote словами.
 function TDbgSymbols.PropertyField(AStructId, APropType: Cardinal;
                                    var AOffset: Integer;
                                    var AFieldType: Cardinal;
                                    var ANote: string): Boolean;
 var
-  Leaf, Body, RecEnd, FieldLeaf, FieldBody, FieldEnd: Integer;
+  Leaf, Body, RecEnd: Integer;
+  ReaderValue: Cardinal;
   ReaderName: string;
 begin
   Result := False;
   ANote := '';
   if not TypeRec(APropType, Leaf, Body, RecEnd) or (Leaf <> LeafProperty) then
     Exit;
-  // Чтение - номер имени (поле или метод); при флаге $0002 по разбору
-  // tds2pdb там номер слота метода. Сначала - как имя поля.
-  ReaderName := NameOf(DwordAt(Body + 14));
-  if (ReaderName <> '') and
-     FindMember(AStructId, ReaderName, AOffset, AFieldType) and
-     not (TypeRec(AFieldType, FieldLeaf, FieldBody, FieldEnd) and
-          (FieldLeaf = LeafProperty)) then
+  ReaderValue := DwordAt(Body + 14);
+  if (WordAt(Body + 4) and PropReaderIsField) <> 0 then
   begin
-    ANote := ' (поле ' + ReaderName + ')';
+    AOffset := Integer(ReaderValue);
+    AFieldType := DwordAt(Body);
+    ANote := ' (поле +' + IntToStr(ReaderValue) + ')';
     Result := True;
     Exit;
   end;
-  if (WordAt(Body + 4) and PropHasReaderSlot) <> 0 then
-    ANote := 'свойство читается методом (слот ' +
-             IntToStr(DwordAt(Body + 14)) + ') - значения нет'
-  else if ReaderName = '' then
+  ReaderName := NameOf(ReaderValue);
+  if ReaderName = '' then
     ANote := 'свойство без чтения'
   else
     ANote := 'свойство читается методом ' + ReaderName + ' - значения нет';
