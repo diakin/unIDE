@@ -166,6 +166,9 @@ type
     LineNo: Integer;  // 1-базовый номер строки, он же в начале подписи
     CharPos: Integer; // позиция каретки, куда переходим по клику
     Text: string;     // текст строки
+    // Строки с таким текстом в файле нет (BmValidateWindow): пункт в меню
+    // серый, метки на полосе нет. В .prj не пишется - проверяется заново.
+    Missing: Boolean;
   end;
 
   TBookmarkArray = array of TBookmark;
@@ -1654,7 +1657,7 @@ type
     procedure CenterCaretLine;
     procedure BuildBookmarksMenu;
     procedure RebuildBookmarksMenu;
-    procedure BmResyncLines;
+    procedure BmValidateWindow(WinIdx: Integer);
     function  BmFindNearest(const AText: string; AOldPos: Integer): Integer;
     procedure BookmarkItemClick(Sender: TObject);
     procedure UpdatePathBar;
@@ -6357,7 +6360,7 @@ begin
   UpdateLineNumbers;
   UpdateStatusBarInfo;
   RebuildWindowsMenu;
-  BmResyncLines;        // номера строк закладок - по нынешнему тексту
+  BmValidateWindow(Index); // номера строк закладок - по нынешнему тексту
   RebuildBookmarksMenu; // закладки свои у каждого окна
   UpdatePathBar;
   EnsureTab(Index);     // вкладка появляется при первом показе окна
@@ -9738,6 +9741,10 @@ begin
           Ini.ReadString('Bookmarks', 'bmarkPosic' + Key, '0')), 0);
         Inc(J);
       end;
+      // Файл мог измениться после сохранения проекта - номера строк
+      // проверяются по тексту, ненайденные закладки помечаются
+      if not FWindows[I].Broken then
+        BmValidateWindow(I);
     end;
 
     // Восстанавливаем набор вкладок. Делаем это ДО ActivateWindow: та вызовет
@@ -10895,43 +10902,80 @@ begin
     It.Hint := FWindows[FWindowsIndex].Bookmarks[I].Text; // полная строка
     It.Tag := I;
     It.OnClick := BookmarkItemClick;
+    // Строки закладки в файле нет (BmValidateWindow)
+    It.Enabled := not FWindows[FWindowsIndex].Bookmarks[I].Missing;
     mBookmarks.Add(It);
   end;
 end;
 
-// Номера строк закладок активного окна - по тексту в редакторе.
+// Проверка закладок окна WinIdx по его тексту (FWindows[].Text).
 //
-// Номер в .prj записан на момент сохранения проекта. Если файл с тех пор
-// изменился вне окна (git pull, правка в другом редакторе), номер указывает
-// на другую строку - и метка на полосе (MarksBox) встаёт не туда, и подпись
-// в меню неверна. Строку ищем так же, как JumpToBookmark: по тексту
-// закладки, ближайшую к прежней позиции (BmFindNearest); не нашли -
-// закладка остаётся как была.
-procedure TForm1.BmResyncLines;
+// Номер строки в .prj записан на момент сохранения проекта. Если файл с
+// тех пор изменился вне окна (git pull, правка в другом редакторе), номер
+// указывает на другую строку. Для каждой закладки:
+//   - строка LineNo без отступов равна тексту закладки - всё на месте;
+//   - иначе по всему тексту ищутся строки, равные тексту закладки; из них
+//     берётся ближайшая к прежнему номеру (выше или ниже - смотря что
+//     удаляли или вставляли), номер и позиция исправляются;
+//   - такой строки нет - закладка помечается Missing: пункт меню серый,
+//     метки на полосе нет. Номер остаётся прежним.
+// Вызывается при загрузке проекта для каждого окна и при показе окна.
+procedure TForm1.BmValidateWindow(WinIdx: Integer);
 var
-  BmIdx, LineIdx, FoundPos: Integer;
+  TextLines: TStringList;
+  BmIdx, LineIdx, OldIdx, BestIdx, PosInLine: Integer;
+  LineStarts: array of Integer;
   BmText: string;
 begin
-  if (FWindowsIndex < 0) or not FWindows[FWindowsIndex].Used or
-     not RichEdit1.HandleAllocated then
+  if (WinIdx < 0) or (WinIdx > WindowsItemCount - 1) or
+     not FWindows[WinIdx].Used or
+     (Length(FWindows[WinIdx].Bookmarks) = 0) then
     Exit;
-  for BmIdx := 0 to High(FWindows[FWindowsIndex].Bookmarks) do
-  begin
-    BmText := FWindows[FWindowsIndex].Bookmarks[BmIdx].Text;
-    if BmText = '' then
-      Continue;
-    // Строка на месте - ничего не делаем
-    LineIdx := FWindows[FWindowsIndex].Bookmarks[BmIdx].LineNo - 1;
-    if (LineIdx >= 0) and (LineIdx < RichEdit1.Lines.Count) and
-       (Trim(RichEdit1.Lines[LineIdx]) = BmText) then
-      Continue;
-    FoundPos := BmFindNearest(BmText,
-                              FWindows[FWindowsIndex].Bookmarks[BmIdx].CharPos);
-    if FoundPos < 0 then
-      Continue;
-    FWindows[FWindowsIndex].Bookmarks[BmIdx].CharPos := FoundPos;
-    FWindows[FWindowsIndex].Bookmarks[BmIdx].LineNo :=
-      SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0, FoundPos) + 1;
+  TextLines := TStringList.Create;
+  try
+    TextLines.Text := FWindows[WinIdx].Text;
+    // Начала строк в координатах редактора: перевод строки - один символ
+    SetLength(LineStarts, TextLines.Count + 1);
+    LineStarts[0] := 0;
+    for LineIdx := 0 to TextLines.Count - 1 do
+      LineStarts[LineIdx + 1] := LineStarts[LineIdx] +
+                                 Length(TextLines[LineIdx]) + 1;
+
+    for BmIdx := 0 to High(FWindows[WinIdx].Bookmarks) do
+    begin
+      BmText := FWindows[WinIdx].Bookmarks[BmIdx].Text;
+      FWindows[WinIdx].Bookmarks[BmIdx].Missing := False;
+      if BmText = '' then
+        Continue;
+      OldIdx := FWindows[WinIdx].Bookmarks[BmIdx].LineNo - 1;
+      if (OldIdx >= 0) and (OldIdx < TextLines.Count) and
+         (Trim(TextLines[OldIdx]) = BmText) then
+        BestIdx := OldIdx
+      else
+      begin
+        BestIdx := -1;
+        for LineIdx := 0 to TextLines.Count - 1 do
+          if Trim(TextLines[LineIdx]) = BmText then
+            if (BestIdx < 0) or
+               (Abs(LineIdx - OldIdx) < Abs(BestIdx - OldIdx)) then
+              BestIdx := LineIdx;
+      end;
+      if BestIdx < 0 then
+      begin
+        FWindows[WinIdx].Bookmarks[BmIdx].Missing := True;
+        Continue;
+      end;
+      // Позиция - на первом символе текста, после отступа
+      PosInLine := 0;
+      while (PosInLine < Length(TextLines[BestIdx])) and
+            (TextLines[BestIdx][PosInLine + 1] in [' ', #9]) do
+        Inc(PosInLine);
+      FWindows[WinIdx].Bookmarks[BmIdx].LineNo := BestIdx + 1;
+      FWindows[WinIdx].Bookmarks[BmIdx].CharPos :=
+        LineStarts[BestIdx] + PosInLine;
+    end;
+  finally
+    TextLines.Free;
   end;
 end;
 
@@ -11356,6 +11400,7 @@ begin
 
   FWindows[WinIdx].Bookmarks[BmIdx].CharPos := Sel.cpMin;
   FWindows[WinIdx].Bookmarks[BmIdx].LineNo := LineIdx + 1;
+  FWindows[WinIdx].Bookmarks[BmIdx].Missing := False;
   if LineIdx < RichEdit1.Lines.Count then
     FWindows[WinIdx].Bookmarks[BmIdx].Text := Trim(RichEdit1.Lines[LineIdx]);
 
@@ -33854,7 +33899,8 @@ begin
     // Закладка - квадратик с номером, поверх кружка
     if (FWindowsIndex >= 0) and FWindows[FWindowsIndex].Used then
       for BmIdx := 0 to High(FWindows[FWindowsIndex].Bookmarks) do
-        if FWindows[FWindowsIndex].Bookmarks[BmIdx].LineNo = LineIdx + 1 then
+        if (FWindows[FWindowsIndex].Bookmarks[BmIdx].LineNo = LineIdx + 1) and
+           not FWindows[FWindowsIndex].Bookmarks[BmIdx].Missing then
         begin
           MarkRect.Left := 1;
           MarkRect.Top := CenterY - MarkSize div 2;
@@ -33926,7 +33972,8 @@ begin
     Exit;
 
   for BmIdx := 0 to High(FWindows[FWindowsIndex].Bookmarks) do
-    if FWindows[FWindowsIndex].Bookmarks[BmIdx].LineNo = ALineIdx + 1 then
+    if (FWindows[FWindowsIndex].Bookmarks[BmIdx].LineNo = ALineIdx + 1) and
+       not FWindows[FWindowsIndex].Bookmarks[BmIdx].Missing then
     begin
       for MoveIdx := BmIdx to High(FWindows[FWindowsIndex].Bookmarks) - 1 do
         FWindows[FWindowsIndex].Bookmarks[MoveIdx] :=
