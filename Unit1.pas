@@ -4641,41 +4641,81 @@ end;
 procedure TForm1.ApplyTheme(const AName: string);
 var
   Ini: TIniFile;
-  WasMod: Boolean;
+  WasMod, RedrawOff: Boolean;
+  OldCursor: TCursor;
+  StartTick, StageTick, TColors, TMaps, TSchema, TDesigner: Cardinal;
 begin
   FThemeName := Trim(AName);
   if FThemeName = '' then
     FThemeName := BaseThemeName;
   FScheme.FTheme := ThemeKey(FThemeName);
 
-  // Цвета редактора из editor.ini. Смена цвета шрифта взводит Modified -
-  // текст от этого изменённым не стал.
-  WasMod := RichEdit1.Modified;
-  if FileExists(SettingsFileName) then
-  begin
-    Ini := TIniFile.Create(SettingsFileName);
-    try
-      ReadThemeColors(Ini);
-    finally
-      Ini.Free;
+  // Часы - один раз на всю смену, а не по кускам: снимок формы для
+  // конструктора (TakeOwnSnap) ставил и снимал свои, курсор мигал.
+  // Редактор на это время не перерисовывается (WM_SETREDRAW): цвета
+  // шрифта, фона и схемы меняются по очереди, и каждая перерисовка
+  // показывала промежуточную смесь - экран моргал.
+  OldCursor := Screen.Cursor;
+  Screen.Cursor := crHourGlass;
+  RedrawOff := RichEdit1.HandleAllocated;
+  if RedrawOff then
+    SendMessage(RichEdit1.Handle, WM_SETREDRAW, 0, 0);
+  StartTick := GetTickCount;
+  TDesigner := 0;
+  try
+    // Цвета редактора из editor.ini. Смена цвета шрифта взводит Modified -
+    // текст от этого изменённым не стал.
+    StageTick := GetTickCount;
+    WasMod := RichEdit1.Modified;
+    if FileExists(SettingsFileName) then
+    begin
+      Ini := TIniFile.Create(SettingsFileName);
+      try
+        ReadThemeColors(Ini);
+      finally
+        Ini.Free;
+      end;
     end;
+    RichEdit1.Modified := WasMod;
+    TColors := GetTickCount - StageTick;
+
+    // Схема активной вкладки - с цветами темы; остальные вкладки возьмут
+    // её при переходе на них
+    StageTick := GetTickCount;
+    InvalidateAllWindowMaps;
+    TMaps := GetTickCount - StageTick;
+    StageTick := GetTickCount;
+    ReloadActiveClrSchema;
+    TSchema := GetTickCount - StageTick;
+  finally
+    if RedrawOff then
+    begin
+      SendMessage(RichEdit1.Handle, WM_SETREDRAW, 1, 0);
+      InvalidateRect(RichEdit1.Handle, nil, True);
+    end;
+    if PaintBox1 <> nil then
+      PaintBox1.Invalidate;
   end;
-  RichEdit1.Modified := WasMod;
 
-  // Схема активной вкладки - с цветами темы; остальные вкладки возьмут её
-  // при переходе на них
-  InvalidateAllWindowMaps;
-  ReloadActiveClrSchema;
-  if PaintBox1 <> nil then
-    PaintBox1.Invalidate;
-  Dbg('3361: тема ' + FThemeName, clNavy);
+  try
+    // Своя форма в конструкторе в живом виде: у редактора на ней
+    // (RichEdit1 и то, что красится цветами редактора) - новые цвета, по
+    // свежему снимку. Как после смены режима IDE (ApplyIdeMode): на месте,
+    // без перестройки.
+    StageTick := GetTickCount;
+    if (FDesigner <> nil) and (FDesigner.Form <> nil) and IsOwnProject and
+       (OwnLiveForm(FObjFormClass) <> nil) then
+      DsgRetheme;
+    TDesigner := GetTickCount - StageTick;
+  finally
+    Screen.Cursor := OldCursor;
+  end;
 
-  // Своя форма в конструкторе в живом виде: у редактора на ней (RichEdit1 и
-  // то, что красится цветами редактора) - новые цвета, по свежему снимку.
-  // Как после смены режима IDE (ApplyIdeMode): на месте, без перестройки.
-  if (FDesigner <> nil) and (FDesigner.Form <> nil) and IsOwnProject and
-     (OwnLiveForm(FObjFormClass) <> nil) then
-    DsgRetheme;
+  // Сколько заняла каждая часть - чтобы было видно, что ускорять
+  Dbg(Format('3361: тема %s - %d мс: цвета редактора %d, карты вкладок %d, ' +
+             'схема %d, конструктор %d',
+             [FThemeName, GetTickCount - StartTick, TColors, TMaps, TSchema,
+              TDesigner]), clNavy);
 end;
 
 procedure TForm1.LoadSettings;
@@ -19406,6 +19446,7 @@ end;
 procedure TForm1.TakeOwnSnap(const AClass: string);
 var
   F: TCustomForm;
+  OldCursor: TCursor;
 begin
   F := OwnLiveForm(AClass);
   // Окно настроек строит свои контролы при первом открытии (InitOptions).
@@ -19422,6 +19463,10 @@ begin
   // Во второй половине переключения вкладки часы не ставим: ход там виден
   // панелью в строке состояния (WMTabSwitched), а курсор мигал бы на
   // каждом переключении
+  // Прежний курсор возвращается, а не сбрасывается в обычный: снимок
+  // бывает частью долгой работы (смена темы, ApplyTheme), у которой свои
+  // часы, - сброс посреди неё давал мигание курсора
+  OldCursor := Screen.Cursor;
   if not FTabWork then
     Screen.Cursor := crHourGlass;
   try
@@ -19435,7 +19480,7 @@ begin
     FObjSnapPrint := OwnFormPrint(F);
   finally
     if not FTabWork then
-      Screen.Cursor := crDefault;
+      Screen.Cursor := OldCursor;
   end;
   FObjSnapTime := Now;
 end;
