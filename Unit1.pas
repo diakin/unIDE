@@ -6672,6 +6672,56 @@ begin
     Delete(Result, 1, 1);
 end;
 
+// --- Пути в описании проекта (.prj) ----------------------------------------
+//
+// Пути к файлам проекта пишутся ОТНОСИТЕЛЬНО папки .prj: проект переносят
+// с компьютера на компьютер (через git), корневые папки там разные, а
+// устройство дерева под ними одно. Абсолютные пути давали правку .prj при
+// каждом переходе.
+//
+// Относительным путь пишется, если файл на том же диске и до общей папки
+// не больше PrjRelMaxUp уровней вверх (..\..\..\). Файл дальше - скорее
+// всего, вне дерева проекта (исходники VCL, чужая папка): его путь на
+// другом компьютере всё равно другой, и он пишется как есть, полностью.
+// Читаются оба вида: старые .prj с абсолютными путями тоже.
+const
+  PrjRelMaxUp = 3;
+
+function PrjPathToStore(const APrjFile, APath: string): string;
+var
+  BaseDir, RelPath: string;
+  UpCount: Integer;
+begin
+  Result := APath;
+  if (APath = '') or (APrjFile = '') then
+    Exit;
+  BaseDir := ExtractFilePath(ExpandFileName(APrjFile));
+  if (ExtractFileDrive(APath) = '') or
+     (CompareText(ExtractFileDrive(BaseDir), ExtractFileDrive(APath)) <> 0) then
+    Exit;
+  RelPath := ExtractRelativePath(BaseDir, APath);
+  if (RelPath = '') or (ExtractFileDrive(RelPath) <> '') then
+    Exit;
+  UpCount := 0;
+  while Copy(RelPath, UpCount * 3 + 1, 3) = '..' do
+    Inc(UpCount);
+  if UpCount > PrjRelMaxUp then
+    Exit;
+  Result := RelPath;
+end;
+
+// Путь из .prj - полный: относительный считается от папки .prj
+function PrjPathFromStore(const APrjFile, APath: string): string;
+begin
+  Result := Trim(APath);
+  if (Result = '') or (APrjFile = '') then
+    Exit;
+  if (ExtractFileDrive(Result) <> '') or (Result[1] = '') then
+    Exit;
+  Result := ExpandFileName(ExtractFilePath(ExpandFileName(APrjFile)) + Result);
+end;
+
+
 function TForm1.ProjectsDir: string;
 begin
   Result := ExtractFilePath(Application.ExeName) + 'projects\';
@@ -7226,8 +7276,7 @@ begin
   end;
 
   // Путь может быть относительным - считаем его от папки описания
-  if (Result <> '') and (ExtractFilePath(Result) = '') then
-    Result := ExtractFilePath(F) + Result;
+  Result := PrjPathFromStore(F, Result);
 end;
 
 procedure TForm1.SetProjectTarget(const AName, ATarget: string);
@@ -7238,7 +7287,8 @@ begin
     Exit;
   Ini := TIniFile.Create(ProjectFileName(AName));
   try
-    Ini.WriteString('Project', 'Target', ATarget);
+    Ini.WriteString('Project', 'Target',
+                    PrjPathToStore(ProjectFileName(AName), ATarget));
   finally
     Ini.Free;
   end;
@@ -7473,6 +7523,7 @@ var
   Ini: TIniFile;
   OldName, OldPrj, OldDir, OldType, OldTarget: string;
   NewName, NewDir, NewType, NewTarget, NewPrj, Dir, Val: string;
+  CurSect, NumText, PathText: string;
   I, K, P: Integer;
   DirChanged, OldLayout: Boolean;
 
@@ -7546,7 +7597,8 @@ begin
   OldType := ProjectTypeOf(OldName);
   Ini := TIniFile.Create(OldPrj);
   try
-    OldTarget := StripIniComment(Ini.ReadString('Project', 'Target', ''));
+    OldTarget := PrjPathFromStore(OldPrj,
+      StripIniComment(Ini.ReadString('Project', 'Target', '')));
   finally
     Ini.Free;
   end;
@@ -7661,6 +7713,35 @@ begin
     // Описание - текстом, как есть: разделы окон, вкладок, закладок и
     // компилятора переносятся без разбора
     SL.LoadFromFile(OldPrj);
+    // Относительные пути окон и вкладок отсчитаны от прежнего места .prj -
+    // переводим их в полные: описание может переехать в другую папку.
+    // При следующем сохранении проекта они снова станут относительными.
+    CurSect := '';
+    for I := 0 to SL.Count - 1 do
+    begin
+      Val := Trim(SL[I]);
+      if (Val <> '') and (Val[1] = '[') then
+      begin
+        CurSect := Val;
+        Continue;
+      end;
+      if (CompareText(CurSect, '[Windows]') <> 0) and
+         (CompareText(CurSect, '[Tabs]') <> 0) then
+        Continue;
+      K := Pos('=', SL[I]);
+      if K = 0 then
+        Continue;
+      Val := Trim(Copy(SL[I], K + 1, MaxInt));
+      P := Pos(' ', Val);
+      if (P <= 1) or (StrToIntDef(Copy(Val, 1, P - 1), -1) < 0) then
+        Continue;
+      NumText := Copy(Val, 1, P - 1);
+      PathText := Trim(Copy(Val, P + 1, MaxInt));
+      if PathText = '' then
+        Continue;
+      SL[I] := Copy(SL[I], 1, K) + NumText + ' ' +
+               PrjPathFromStore(OldPrj, PathText);
+    end;
     if DirChanged and not OldLayout then
       for I := 0 to SL.Count - 1 do
       begin
@@ -7677,7 +7758,7 @@ begin
     end;
     SetLine('Project', 'Type', NewType);
     if NewTarget <> '' then
-      SetLine('Project', 'Target', NewTarget);
+      SetLine('Project', 'Target', PrjPathToStore(NewPrj, NewTarget));
 
     // Смена одного регистра букв в имени - тот же файл: переименовать,
     // иначе удаление старого удалило бы новый
@@ -9687,7 +9768,7 @@ begin
 
       // Путь из .prj мог остаться от другой машины - пробуем найти файл
       // рядом с программой по хвосту пути
-      Src := StripLeadingNumber(Raw);
+      Src := PrjPathFromStore(ProjectFileName(AName), StripLeadingNumber(Raw));
       Path := ResolveFileName(Src);
 
       if CompareText(Path, Src) <> 0 then
@@ -9929,6 +10010,7 @@ begin
       Exit; // номера в начале нет
 
     // Слот мог быть занят другим файлом - тогда индекс соврёт
+    Stored := PrjPathFromStore(FN, Stored);
     if CompareText(Stored, FWindows[FWindowsIndex].FileName) <> 0 then
       Exit;
 
@@ -9942,7 +10024,7 @@ end;
 procedure TForm1.SaveProjectTo(const AName: string);
 var
   Ini: TIniFile;
-  Dir: string;
+  Dir, PrjFile: string;
   I, J, N: Integer;
 begin
   if Trim(AName) = '' then
@@ -9950,14 +10032,15 @@ begin
 
   // Создаём только корневую папку projects. Папку самого проекта здесь не
   // трогаем: .prj лежит рядом с ней, а файлы проекта пользователь размещает
-  // где угодно - пути в описании абсолютные.
+  // где угодно. Пути в описании - от папки .prj, см. PrjPathToStore.
   Dir := ProjectsDir;
   if not DirectoryExists(Dir) then
     CreateDir(Dir);
 
   StoreCurrentWindow; // в записи окна должны лежать свежие текст и каретка
 
-  Ini := TIniFile.Create(ProjectFileName(AName));
+  PrjFile := ProjectFileName(AName);
+  Ini := TIniFile.Create(PrjFile);
   try
     // Раздел [Editor] в проекте не нужен. Стираем его на случай, если файл
     // был создан прежней версией и раздел там остался.
@@ -9973,11 +10056,12 @@ begin
       Ini.WriteString('Compiler', 'IcoFile', 'C:\');
       Ini.WriteString('Compiler', 'TplFile', 'C:\');
       Ini.WriteString('Compiler', 'FBCompPath', 'C:\');
-      // Корень Delphi 7: компилятор берётся как Bin\dcc32.exe, библиотека
-      // как Lib
-      Ini.WriteString('Compiler', 'DelphiPath',
-      'C:\Program Files (x86)\Borland\Delphi7-1\');
     end;
+    // Корень Delphi - свойство компьютера, а не проекта: он берётся из
+    // editor.ini ([Compiler.Delphi] DelphiPath, вкладка Compilers). Ключ,
+    // который писали в .prj прежние версии, нигде не читался и давал правку
+    // .prj при переходе на другой компьютер - убираем.
+    Ini.DeleteKey('Compiler', 'DelphiPath');
 
     // Раздел окон переписываем целиком, иначе остались бы ключи win<N>
     // от закрытых окон. [Compiler] и [Bookmarks] при этом не трогаются.
@@ -9990,7 +10074,8 @@ begin
       begin
         Inc(N);
       Ini.WriteString('Windows', 'win' + IntToStr(I),
-                      IntToStr(N) + ' ' + FWindows[I].FileName);
+                      IntToStr(N) + ' ' +
+                      PrjPathToStore(PrjFile, FWindows[I].FileName));
       Ini.WriteString('Windows', 'curposic' + IntToStr(I),
                       IntToStr(FWindows[I].CursorPos));
     end;
@@ -10006,7 +10091,8 @@ begin
       for I := 0 to High(FTabWin) do
         if FWindows[FTabWin[I]].Used then
           Ini.WriteString('Tabs', IntToStr(I),
-                          IntToStr(FTabWin[I]) + ' ' + FWindows[FTabWin[I]].FileName);
+                          IntToStr(FTabWin[I]) + ' ' +
+                          PrjPathToStore(PrjFile, FWindows[FTabWin[I]].FileName));
     end;
 
     // Закладки. Раздел переписываем целиком, иначе остались бы ключи
@@ -10639,7 +10725,7 @@ begin
 
     NewT := ADir + AName + ExtractFileExt(T);
     if FileExists(NewT) then
-      Ini.WriteString('Project', 'Target', NewT);
+      Ini.WriteString('Project', 'Target', PrjPathToStore(APrjFile, NewT));
   finally
     Ini.Free;
   end;
@@ -31581,7 +31667,7 @@ var
       if P <= 0 then
         Continue;
       Num := Copy(Val, 1, P - 1);
-      Path := Copy(Val, P + 1, MaxInt);
+      Path := PrjPathFromStore(PrjFile, Copy(Val, P + 1, MaxInt));
       if (Path = '') or (StrToIntDef(Num, -1) < 0) then
         Continue;
       if FileExists(Path) then
@@ -31590,7 +31676,8 @@ var
       NewPath := RemapMovedPath(Path, PrjDir);
       if NewPath <> '' then
       begin
-        Prj.WriteString(ASection, Keys[J], Num + ' ' + NewPath);
+        Prj.WriteString(ASection, Keys[J],
+                        Num + ' ' + PrjPathToStore(PrjFile, NewPath));
         Inc(Fixed);
       end
       else
@@ -31698,13 +31785,13 @@ begin
       Keys := TStringList.Create;
       Prj := TIniFile.Create(PrjFile);
       try
-        V := Prj.ReadString('Project', 'Target', '');
+        V := PrjPathFromStore(PrjFile, Prj.ReadString('Project', 'Target', ''));
         if (V <> '') and not FileExists(V) then
         begin
           NewV := RemapMovedPath(V, PrjDir);
           if NewV <> '' then
           begin
-            Prj.WriteString('Project', 'Target', NewV);
+            Prj.WriteString('Project', 'Target', PrjPathToStore(PrjFile, NewV));
             Inc(Fixed);
           end
           else
