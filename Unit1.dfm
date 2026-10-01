@@ -290,6 +290,17 @@ object Form1: TForm1
       ParentFont = False
       OnPaint = PaintBox1Paint
     end
+    object MarksBox: TPaintBox
+      Left = 45
+      Top = 0
+      Width = 12
+      Height = 457
+      Align = alClient
+      OnClick = MarksBoxClick
+      OnDblClick = MarksBoxDblClick
+      OnMouseDown = MarksBoxMouseDown
+      OnPaint = MarksBoxPaint
+    end
   end
   object OpenDialog1: TOpenDialog
     Left = 16
@@ -696,6 +707,10 @@ object Form1: TForm1
     object pmuRunToCursor: TMenuItem
       Caption = 'Run to cursor'#9'F4'
       OnClick = RunToCursorClick
+    end
+    object pmuAddWatch: TMenuItem
+      Caption = 'Add watch'#9'Ctrl+F5'
+      OnClick = AddWatchClick
     end
     object pmuSepRun: TMenuItem
       Caption = '-'
