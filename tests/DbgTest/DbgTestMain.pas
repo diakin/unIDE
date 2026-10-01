@@ -203,7 +203,8 @@ begin
 
   Marker := IntVal + ByteVal;          // ТОЧКА 1
   AForm.Report(Format('Типы: %d %s %s', [Marker, AnsiVal, ShortStr]));
-  AForm.Report(Format('%d %d %d %d', [CardVal, ShortVal, WordVal,
+  // %u: Cardinal больше MaxInt через %d вышел бы отрицательным
+  AForm.Report(Format('%u %d %d %d', [CardVal, ShortVal, WordVal,
     Int64Val]) + ' ' + CharVal + string(WideVal));
   if BoolVal and (PtrVal <> nil) and (NilObj = nil) and (ClassVal <> nil) and
      (EnumVal in SetVal) and (RangeVal > 0) and (PCharVal <> nil) and
