@@ -752,6 +752,7 @@ type
     procedure SubListDblClick(Sender: TObject);
     procedure ObjEventsDblClick(Sender: TObject);
     procedure ObjPropsDblClick(Sender: TObject);
+    procedure ObjPropsClick(Sender: TObject);
     procedure ObjPropsKeyDown(Sender: TObject; var Key: Word;
       Shift: TShiftState);
     procedure ObjEditKeyDown(Sender: TObject; var Key: Word;
@@ -977,6 +978,14 @@ type
     // (ObjCodeProps). FObjCodePropsKey - от какого снимка посчитано.
     FObjCodeProps: TStringList;
     FObjCodePropsKey: string;
+    // Где в модуле формы код задаёт свойства (ObjSetterIndex): первая
+    // строка каждого "ИМЯ.ПУТЬ :=" / "ИМЯ.SETBOUNDS(" - в Objects номер
+    // строки + 1; переменные, которым присвоен компонент, - "ИМЯ=ПЕРЕМЕННАЯ".
+    // FObjSetKey - по какому тексту модуля построено.
+    FObjSetLines: TStringList;
+    FObjSetAlias: TStringList;
+    FObjSetKey: string;
+    FObjSetFresh: Boolean;   // указатель только что сверен - не сверять снова
     FObjEditIdx: Integer;
     FObjEditOld: string;    // значение как было в строке .dfm
     // Правка при выделенной группе: FObjEditOld - значение только текущего
@@ -1828,6 +1837,10 @@ type
                                ALive: TCustomForm);
     function  ObjIsCodeProp(AObj: TObject; const AProp: string): Boolean;
     function  ObjCodeSetterOf(const AName, AProp: string): string;
+    procedure ObjSetterIndex;
+    function  ObjCodeSetterLine(const AName, AProp: string;
+                                var AVia: string): Integer;
+    procedure ObjPropsCodeColumn;
     function  ValidatePropValue(ATypeInfo: Pointer; const ARaw: string;
                                 var AMsg: string): Boolean;
     procedure ObjTreeDrawItem(Sender: TCustomTreeView; Node: TTreeNode;
@@ -15290,6 +15303,8 @@ begin
   FreeAndNil(FObjArrayNames);
   FreeAndNil(FObjArrayLines);
   FreeAndNil(FObjCodeProps);
+  FreeAndNil(FObjSetLines);
+  FreeAndNil(FObjSetAlias);
   FreeAndNil(FDsgGlyphCopied);
   if FRttiDefaults <> nil then
     for I := 0 to FRttiDefaults.Count - 1 do
@@ -25826,6 +25841,8 @@ begin
 
     // Выделена группа в конструкторе - таблица по группе
     ObjGroupView(Obj);
+    // Строка модуля, где код задаёт свойство
+    ObjPropsCodeColumn;
   finally
     FObjEvents.Items.EndUpdate;
     FObjProps.Items.EndUpdate;
@@ -28688,135 +28705,336 @@ begin
   Result := ObjCodeProps.IndexOf(TDfmNode(AObj).Name + '.' + AProp) >= 0;
 end;
 
-// Где в модуле формы код задаёт AName.AProp: "ObjBeginEdit, строка 18660".
-// Ищется присваивание AName.AProp := (у места - и AName.SetBounds). Код
-// часто держит компонент в другой переменной: FCompilerBox := grpCompiler,
-// а дальше FCompilerBox.Caption := ... Такие переменные (присваивание
-// "Имя := AName;") тоже ищутся - тогда в ответе "через FCompilerBox".
-// '' - строки нет ни по имени, ни по таким переменным.
-function TForm1.ObjCodeSetterOf(const AName, AProp: string): string;
+// Сумма для ключа текста модуля: текст из вкладки каждый раз новой
+// строкой, по адресу его не узнать
+function ObjTextHash(const AText: string): Cardinal;
 var
-  SL, Vars: TStringList;
-  I, K, P, V, St: Integer;
-  U, L, R, Hdr, Via: string;
-  Ok: Boolean;
+  CharIdx: Integer;
+begin
+  Result := 2166136261;
+  for CharIdx := 1 to Length(AText) do
+    Result := (Result xor Ord(AText[CharIdx])) * 16777619;
+end;
 
-  // В строке U (прописные, без комментариев) - присваивание ANm.AProp :=
-  // или, у места, вызов ANm.SetBounds(
-  function Sets(const ANm: string): Boolean;
-  var
-    Pat, Pat2: string;
-    J, Q: Integer;
+// Указатель строк модуля формы, где код задаёт свойства: один проход по
+// тексту на все компоненты, заново - только когда текст модуля другой.
+//   - "Имя.Путь :=" (путь - Height, Font.Color, BoundsRect) и
+//     "Имя.SetBounds(" - первая такая строка на каждое Имя.Путь;
+//   - "Переменная := Имя;" - код держит компонент в другой переменной
+//     (FCompilerBox := grpCompiler), по ней тоже ищется.
+// Комментарии и строки в кавычках пропускаются (DeclCleanLine).
+procedure TForm1.ObjSetterIndex;
+var
+  SL: TStringList;
+  Src, Key, LineText, Ident, PathText, PartText, LeftText, RightText: string;
+  LineIdx, CharPos, ScanPos, CleanState, CharIdx: Integer;
+  PlainIdents: Boolean;
+
+  procedure AddLine(const AKey: string);
   begin
-    Result := False;
-    Pat := UpperCase(ANm + '.' + AProp);
-    J := Pos(Pat, U);
-    if (J > 0) and ((J = 1) or not (DeclIdChar(U[J - 1]) or (U[J - 1] = '.'))) then
+    if FObjSetLines.IndexOf(AKey) < 0 then
+      FObjSetLines.AddObject(AKey, TObject(LineIdx + 1));
+  end;
+
+begin
+  if FObjSetLines = nil then
+  begin
+    FObjSetLines := TStringList.Create;
+    FObjSetLines.Sorted := True;
+    FObjSetLines.Duplicates := dupIgnore;
+    FObjSetAlias := TStringList.Create;
+  end;
+  if ObjFormUnit = '' then
+  begin
+    FObjSetKey := '';
+    FObjSetLines.Clear;
+    FObjSetAlias.Clear;
+    Exit;
+  end;
+  Src := UnitTextOf(ObjFormUnit);
+  Key := ObjFormUnit + '|' + IntToStr(Length(Src)) + '|' +
+         IntToHex(ObjTextHash(Src), 8);
+  if Key = FObjSetKey then
+    Exit;
+  FObjSetKey := Key;
+  FObjSetLines.Clear;
+  FObjSetAlias.Clear;
+
+  SL := TStringList.Create;
+  try
+    SL.Text := Src;
+    CleanState := 0;
+    for LineIdx := 0 to SL.Count - 1 do
     begin
-      Q := J + Length(Pat);
-      DeclSkipSp(U, Q);
-      if Copy(U, Q, 2) = ':=' then
+      LineText := UpperCase(DeclCleanLine(SL[LineIdx], CleanState));
+
+      // "Переменная := Имя;"
+      CharPos := Pos(':=', LineText);
+      if CharPos > 0 then
       begin
-        Result := True;
-        Exit;
+        LeftText := Trim(Copy(LineText, 1, CharPos - 1));
+        RightText := Trim(Copy(LineText, CharPos + 2, MaxInt));
+        if Pos(';', RightText) > 0 then
+          RightText := Trim(Copy(RightText, 1, Pos(';', RightText) - 1));
+        PlainIdents := (LeftText <> '') and (RightText <> '') and
+                       DeclIdStart(LeftText[1]) and DeclIdStart(RightText[1]) and
+                       (LeftText <> RightText);
+        for CharIdx := 1 to Length(LeftText) do
+          if not DeclIdChar(LeftText[CharIdx]) then
+            PlainIdents := False;
+        for CharIdx := 1 to Length(RightText) do
+          if not DeclIdChar(RightText[CharIdx]) then
+            PlainIdents := False;
+        if PlainIdents then
+          FObjSetAlias.Add(RightText + '=' + LeftText);
+      end;
+
+      // "Имя.Путь :=" и "Имя.SetBounds("
+      CharPos := 1;
+      while CharPos <= Length(LineText) do
+      begin
+        if not DeclIdStart(LineText[CharPos]) or
+           ((CharPos > 1) and (DeclIdChar(LineText[CharPos - 1]) or
+                               (LineText[CharPos - 1] = '.'))) then
+        begin
+          Inc(CharPos);
+          Continue;
+        end;
+        ScanPos := CharPos;
+        Ident := DeclReadId(LineText, ScanPos);
+        CharPos := ScanPos;
+        if (ScanPos > Length(LineText)) or (LineText[ScanPos] <> '.') then
+          Continue;
+        PathText := '';
+        while (ScanPos <= Length(LineText)) and (LineText[ScanPos] = '.') do
+        begin
+          Inc(ScanPos);
+          PartText := DeclReadId(LineText, ScanPos);
+          if PartText = '' then
+            Break;
+          if PathText <> '' then
+            PathText := PathText + '.';
+          PathText := PathText + PartText;
+        end;
+        CharPos := ScanPos;
+        DeclSkipSp(LineText, ScanPos);
+        if (PathText = 'SETBOUNDS') and (ScanPos <= Length(LineText)) and
+           (LineText[ScanPos] = '(') then
+          AddLine(Ident + '.SETBOUNDS')
+        else if (PathText <> '') and (Copy(LineText, ScanPos, 2) = ':=') then
+          AddLine(Ident + '.' + PathText);
       end;
     end;
-    if (AProp = 'Left') or (AProp = 'Top') or (AProp = 'Width') or
-       (AProp = 'Height') then
+  finally
+    SL.Free;
+  end;
+end;
+
+// Строка модуля формы (с 0), где код задаёт AName.AProp; -1 - не нашлась.
+// Ищется по имени компонента и по переменным, которым он присвоен (AVia -
+// такая переменная, как в тексте прописными; '' - по самому имени). Для
+// места (Left, Top, Width, Height) годятся и SetBounds, BoundsRect.
+// Из нескольких - первая по тексту.
+function TForm1.ObjCodeSetterLine(const AName, AProp: string;
+                                  var AVia: string): Integer;
+var
+  Names: TStringList;
+  NameIdx, AliasIdx: Integer;
+  IsBound: Boolean;
+
+  procedure CheckKey(const AHolder, AKey: string);
+  var
+    KeyIdx, LineNo: Integer;
+  begin
+    KeyIdx := FObjSetLines.IndexOf(AKey);
+    if KeyIdx < 0 then
+      Exit;
+    LineNo := Integer(FObjSetLines.Objects[KeyIdx]) - 1;
+    if (Result < 0) or (LineNo < Result) then
     begin
-      Pat2 := UpperCase(ANm + '.SetBounds(');
-      J := Pos(Pat2, StringReplace(U, ' ', '', [rfReplaceAll]));
-      Result := (J > 0);
+      Result := LineNo;
+      if CompareText(AHolder, AName) = 0 then
+        AVia := ''
+      else
+        AVia := AHolder;
     end;
   end;
 
 begin
-  Result := '';
-  if ObjFormUnit = '' then
+  Result := -1;
+  AVia := '';
+  if (AName = '') or (AProp = '') then
     Exit;
-  SL := TStringList.Create;
-  Vars := TStringList.Create;
+  if not FObjSetFresh or (FObjSetLines = nil) then
+    ObjSetterIndex;
+  if FObjSetLines.Count = 0 then
+    Exit;
+  IsBound := (CompareText(AProp, 'Left') = 0) or
+             (CompareText(AProp, 'Top') = 0) or
+             (CompareText(AProp, 'Width') = 0) or
+             (CompareText(AProp, 'Height') = 0);
+  Names := TStringList.Create;
   try
-    SL.Text := UnitTextOf(ObjFormUnit);
-
-    // Переменные, которым присваивают сам компонент: "FCompilerBox :=
-    // grpCompiler;"
-    St := 0;
-    for I := 0 to SL.Count - 1 do
+    Names.Add(UpperCase(AName));
+    for AliasIdx := 0 to FObjSetAlias.Count - 1 do
+      if (FObjSetAlias.Names[AliasIdx] = UpperCase(AName)) and
+         (Names.IndexOf(FObjSetAlias.ValueFromIndex[AliasIdx]) < 0) then
+        Names.Add(FObjSetAlias.ValueFromIndex[AliasIdx]);
+    for NameIdx := 0 to Names.Count - 1 do
     begin
-      U := UpperCase(DeclCleanLine(SL[I], St));
-      K := Pos(':=', U);
-      if K = 0 then
-        Continue;
-      L := Trim(Copy(U, 1, K - 1));
-      R := Trim(Copy(U, K + 2, MaxInt));
-      P := Pos(';', R);
-      if P > 0 then
-        R := Trim(Copy(R, 1, P - 1));
-      if (R <> UpperCase(AName)) or (L = '') or not DeclIdStart(L[1]) then
-        Continue;
-      Ok := True;
-      for P := 1 to Length(L) do
-        if not DeclIdChar(L[P]) then
-          Ok := False;
-      if Ok and (Vars.IndexOf(L) < 0) and (L <> UpperCase(AName)) then
-        Vars.Add(L);
-    end;
-
-    St := 0;
-    for I := 0 to SL.Count - 1 do
-    begin
-      U := UpperCase(DeclCleanLine(SL[I], St));
-      Via := '';
-      Ok := Sets(AName);
-      if not Ok then
-        for V := 0 to Vars.Count - 1 do
-          if Sets(Vars[V]) then
-          begin
-            Ok := True;
-            // Имя переменной - как в тексте, а не прописными
-            P := Pos(Vars[V], UpperCase(SL[I]));
-            if P > 0 then
-              Via := Copy(SL[I], P, Length(Vars[V]))
-            else
-              Via := Vars[V];
-            Break;
-          end;
-      if not Ok then
-        Continue;
-      // Подпрограмма, в которой строка: ближайший заголовок выше
-      Hdr := '';
-      for K := I downto 0 do
+      CheckKey(Names[NameIdx], Names[NameIdx] + '.' + UpperCase(AProp));
+      if IsBound then
       begin
-        U := TrimLeft(SL[K]);
-        if (CompareText(Copy(U, 1, 10), 'procedure ') = 0) or
-           (CompareText(Copy(U, 1, 9), 'function ') = 0) then
-        begin
-          Hdr := Trim(Copy(U, Pos(' ', U) + 1, MaxInt));
-          P := Pos('(', Hdr);
-          if P > 0 then
-            Hdr := Copy(Hdr, 1, P - 1);
-          P := Pos(';', Hdr);
-          if P > 0 then
-            Hdr := Copy(Hdr, 1, P - 1);
-          P := LastDelimiter('.', Hdr);
-          if P > 0 then
-            Hdr := Copy(Hdr, P + 1, MaxInt);
-          Break;
-        end;
+        CheckKey(Names[NameIdx], Names[NameIdx] + '.SETBOUNDS');
+        CheckKey(Names[NameIdx], Names[NameIdx] + '.BOUNDSRECT');
       end;
-      if Hdr <> '' then
-        Result := Hdr + ', строка ' + IntToStr(I + 1)
-      else
-        Result := 'строка ' + IntToStr(I + 1);
-      if Via <> '' then
-        Result := Result + ' (через переменную ' + Via + ')';
-      Exit;
     end;
   finally
-    Vars.Free;
+    Names.Free;
+  end;
+end;
+
+// Где в модуле формы код задаёт AName.AProp: "ObjBeginEdit, строка 18660".
+// Строка - по указателю ObjSetterIndex (по имени и по переменным, которым
+// компонент присвоен: FCompilerBox := grpCompiler - тогда в ответе
+// "через переменную FCompilerBox"). '' - строки нет.
+function TForm1.ObjCodeSetterOf(const AName, AProp: string): string;
+var
+  SL: TStringList;
+  LineIdx, HdrIdx, CutPos: Integer;
+  LineText, Hdr, Via, ViaText: string;
+begin
+  Result := '';
+  LineIdx := ObjCodeSetterLine(AName, AProp, Via);
+  if LineIdx < 0 then
+    Exit;
+  SL := TStringList.Create;
+  try
+    SL.Text := UnitTextOf(ObjFormUnit);
+    // Подпрограмма, в которой строка: ближайший заголовок выше
+    Hdr := '';
+    for HdrIdx := LineIdx downto 0 do
+    begin
+      if HdrIdx >= SL.Count then
+        Continue;
+      LineText := TrimLeft(SL[HdrIdx]);
+      if (CompareText(Copy(LineText, 1, 10), 'procedure ') = 0) or
+         (CompareText(Copy(LineText, 1, 9), 'function ') = 0) then
+      begin
+        Hdr := Trim(Copy(LineText, Pos(' ', LineText) + 1, MaxInt));
+        CutPos := Pos('(', Hdr);
+        if CutPos > 0 then
+          Hdr := Copy(Hdr, 1, CutPos - 1);
+        CutPos := Pos(';', Hdr);
+        if CutPos > 0 then
+          Hdr := Copy(Hdr, 1, CutPos - 1);
+        CutPos := LastDelimiter('.', Hdr);
+        if CutPos > 0 then
+          Hdr := Copy(Hdr, CutPos + 1, MaxInt);
+        Break;
+      end;
+    end;
+    if Hdr <> '' then
+      Result := Hdr + ', строка ' + IntToStr(LineIdx + 1)
+    else
+      Result := 'строка ' + IntToStr(LineIdx + 1);
+    if Via <> '' then
+    begin
+      // Имя переменной - как в тексте, а не прописными
+      ViaText := Via;
+      if LineIdx < SL.Count then
+      begin
+        CutPos := Pos(Via, UpperCase(SL[LineIdx]));
+        if CutPos > 0 then
+          ViaText := Copy(SL[LineIdx], CutPos, Length(Via));
+      end;
+      Result := Result + ' (через переменную ' + ViaText + ')';
+    end;
+  finally
     SL.Free;
   end;
+end;
+
+// Колонка «Строка кода» инспектора: у свойства, значение которого задаёт
+// код, - номер строки в модуле формы (щелчок по нему - туда, см.
+// ObjPropsClick); '?' - что задаёт код, видно по снимку, но строки в
+// модуле не нашлось.
+procedure TForm1.ObjPropsCodeColumn;
+var
+  ItemIdx, LineIdx: Integer;
+  Item: TListItem;
+  Node: TDfmNode;
+  Via, CellText: string;
+begin
+  if (FObjProps = nil) or (FObjCurNode = nil) then
+    Exit;
+  Node := TDfmNode(FObjCurNode);
+  // Текст модуля сверяется один раз на всю таблицу, а не на каждое свойство
+  ObjSetterIndex;
+  FObjSetFresh := True;
+  try
+    for ItemIdx := 0 to FObjProps.Items.Count - 1 do
+    begin
+      Item := FObjProps.Items[ItemIdx];
+      CellText := '';
+      if ObjIsCodeProp(Node, Item.Caption) then
+      begin
+        LineIdx := ObjCodeSetterLine(Node.Name, Item.Caption, Via);
+        if LineIdx >= 0 then
+          CellText := IntToStr(LineIdx + 1)
+        else
+          CellText := '?';
+      end;
+      while Item.SubItems.Count < 2 do
+        Item.SubItems.Add('');
+      if Item.SubItems[1] <> CellText then
+        Item.SubItems[1] := CellText;
+    end;
+  finally
+    FObjSetFresh := False;
+  end;
+end;
+
+// Щелчок по колонке «Строка кода» - модуль формы на этой строке
+procedure TForm1.ObjPropsClick(Sender: TObject);
+const
+  UiLVM_SUBITEMHITTEST = $1000 + 57;
+  ColCodeLine = 2;   // Свойство, Значение, Строка кода
+type
+  // LVHITTESTINFO (commctrl.h) - своё описание, как в ProjectListDblClick
+  TUiLVHitTest = packed record
+    Pt: TPoint;
+    Flags: UINT;
+    Item: Integer;
+    SubItem: Integer;
+    Group: Integer;
+  end;
+var
+  HitInfo: TUiLVHitTest;
+  LineNo: Integer;
+  UnitFile: string;
+begin
+  if not FObjProps.HandleAllocated or FObjEditing then
+    Exit;
+  FillChar(HitInfo, SizeOf(HitInfo), 0);
+  GetCursorPos(HitInfo.Pt);
+  HitInfo.Pt := FObjProps.ScreenToClient(HitInfo.Pt);
+  if SendMessage(FObjProps.Handle, UiLVM_SUBITEMHITTEST, 0,
+                 Integer(@HitInfo)) < 0 then
+    Exit;
+  if (HitInfo.Item < 0) or (HitInfo.Item >= FObjProps.Items.Count) or
+     (HitInfo.SubItem <> ColCodeLine) then
+    Exit;
+  if FObjProps.Items[HitInfo.Item].SubItems.Count < 2 then
+    Exit;
+  LineNo := StrToIntDef(FObjProps.Items[HitInfo.Item].SubItems[1], 0);
+  UnitFile := ObjFormUnit;
+  if (LineNo <= 0) or (UnitFile = '') then
+    Exit;
+  if CompareText(FCurrentFileName, UnitFile) <> 0 then
+    OpenNamedFile(UnitFile);
+  if CompareText(FCurrentFileName, UnitFile) = 0 then
+    GotoLine(LineNo - 1);
 end;
 
 // Служебные слова Паскаля: для них объявления не ищем

@@ -1197,7 +1197,12 @@ object Form1: TForm1
                 item
                   Caption = 'Значение'
                   Width = 180
+                end
+                item
+                  Caption = 'Строка кода'
+                  Width = 80
                 end>
+              OnClick = ObjPropsClick
               OnDblClick = ObjPropsDblClick
               OnKeyDown = ObjPropsKeyDown
               object FObjEdit: TUiEdit
