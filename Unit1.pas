@@ -400,6 +400,19 @@ type
     destructor Destroy; override;
   end;
 
+  // Правка исходника, сделанная во время сеанса отладки: строки .map -
+  // по тексту на момент сборки, а в редакторе уже другие номера. По списку
+  // таких правок номер строки переводится туда и обратно (DbgLineNow,
+  // DbgLineThen). Правило сдвига - то же, что у точек (DbgLinesPost).
+  TDbgLineEdit = class
+  public
+    FileName: string;
+    FirstLine: Integer;     // первая строка правки, с 0
+    LastLine: Integer;      // последняя строка правки до неё
+    Delta: Integer;         // сколько строк прибавилось (меньше 0 - убыло)
+    KeepFirst: Boolean;     // начало первой строки левее правки
+  end;
+
   TForm1 = class(TForm)
     RichEdit1: TRichEdit;
     MainMenu1: TMainMenu;
@@ -910,6 +923,7 @@ type
     // Запуск с F7/F8/F4, пока программа не идёт: DbgStart* и строка для
     // Run to cursor
     FDbgStartMode: Integer;
+    FDbgEdits: TList;          // TDbgLineEdit, правки за сеанс отладки
     FDbgRunToFile: string;
     FDbgRunToLine: Integer;
     // Окно Watch: выражения, отладочная информация exe сеанса (TD32, -V) и
@@ -1789,6 +1803,9 @@ type
     procedure WatchKeyDown(Sender: TObject; var Key: Word;
                            Shift: TShiftState);
     procedure DbgClearExec;
+    procedure DbgClearEdits;
+    function  DbgLineNow(const AFileName: string; ABuildLine: Integer): Integer;
+    function  DbgLineThen(const AFileName: string; ANowLine: Integer): Integer;
     procedure DbgRepaint;
     function  DbgKey(AKey: Word): Boolean;
     procedure DbgLinesPre(const Message: TMessage; AWhole: Boolean);
@@ -15319,6 +15336,8 @@ begin
   FreeAndNil(FDbgSession);
   FreeAndNil(FDbgSyms);
   FreeAndNil(FWatchList);
+  DbgClearEdits;
+  FreeAndNil(FDbgEdits);
   if FBreakMarks <> nil then
   begin
     for I := 0 to FBreakMarks.Count - 1 do
@@ -32833,13 +32852,19 @@ end;
 
 // Адреса точки в идущем сеансе, по .map сеанса
 procedure TForm1.DbgResolveMark(AMark: TBreakMark);
+var
+  BuildLine: Integer;
 begin
   AMark.Offsets.Clear;
   AMark.NoCode := False;
   if FDbgSession = nil then
     Exit;
-  FDbgSession.Map.OffsetsOfLine(ExtractFileName(AMark.FileName),
-                                AMark.Line + 1, AMark.Offsets);
+  // Строка точки - по нынешнему тексту, .map - по тексту сборки. Строка,
+  // вставленная после сборки, кода в exe не имеет.
+  BuildLine := DbgLineThen(AMark.FileName, AMark.Line);
+  if BuildLine >= 0 then
+    FDbgSession.Map.OffsetsOfLine(ExtractFileName(AMark.FileName),
+                                  BuildLine + 1, AMark.Offsets);
   AMark.NoCode := AMark.Offsets.Count = 0;
   if AMark.NoCode then
     LogComp('Точка останова: ' + ExtractFileName(AMark.FileName) +
@@ -32938,6 +32963,7 @@ begin
   end;
 
   FDbgSession := TDbgSession.Create(AExe, ADir, Map);
+  DbgClearEdits;   // .map только что собран - номера совпадают с текстом
   // Отладочная информация TD32 - для окна Watch. Нет её - программа
   // отлаживается так же, только значения переменных не видны.
   FreeAndNil(FDbgSyms);
@@ -33024,7 +33050,8 @@ begin
      FDbgSession.Map.LineOfOffset(AOffset, MapName, MapLine) then
   begin
     SrcFile := ResolveErrorFile(MapName, Where);
-    SrcLine := MapLine - 1;
+    // Номер в .map - по тексту на момент сборки; правки за сеанс сдвигают
+    SrcLine := DbgLineNow(SrcFile, MapLine - 1);
   end;
 
   // Окно среды - вперёд: программа стоит, работать теперь здесь
@@ -33078,6 +33105,7 @@ begin
     Exit;
   FreeAndNil(FDbgSession);
   FreeAndNil(FDbgSyms);
+  DbgClearEdits;
   DbgWatchRefresh;
   // Адреса были только этого сеанса. NoCode остаётся до следующего
   // запуска - по нему видно, какие точки не сработали.
@@ -33179,8 +33207,10 @@ begin
     Exit;
   Targets := TList.Create;
   try
-    FDbgSession.Map.OffsetsOfLine(ExtractFileName(FCurrentFileName),
-                                  LineIdx + 1, Targets);
+    if DbgLineThen(FCurrentFileName, LineIdx) >= 0 then
+      FDbgSession.Map.OffsetsOfLine(ExtractFileName(FCurrentFileName),
+                                    DbgLineThen(FCurrentFileName, LineIdx) + 1,
+                                    Targets);
     if Targets.Count = 0 then
     begin
       LogComp('Run to cursor: ' + ExtractFileName(FCurrentFileName) +
@@ -33518,6 +33548,79 @@ begin
   end;
 end;
 
+procedure TForm1.DbgClearEdits;
+var
+  EditIdx: Integer;
+begin
+  if FDbgEdits = nil then
+    Exit;
+  for EditIdx := 0 to FDbgEdits.Count - 1 do
+    TObject(FDbgEdits[EditIdx]).Free;
+  FDbgEdits.Clear;
+end;
+
+// Строка из .map (по тексту сборки, с 0) - в нынешний номер: правки файла
+// за сеанс по порядку
+function TForm1.DbgLineNow(const AFileName: string;
+                           ABuildLine: Integer): Integer;
+var
+  EditIdx: Integer;
+  LineEdit: TDbgLineEdit;
+begin
+  Result := ABuildLine;
+  if FDbgEdits = nil then
+    Exit;
+  for EditIdx := 0 to FDbgEdits.Count - 1 do
+  begin
+    LineEdit := TDbgLineEdit(FDbgEdits[EditIdx]);
+    if CompareText(LineEdit.FileName, AFileName) <> 0 then
+      Continue;
+    if Result < LineEdit.FirstLine then
+      // выше правки - на месте
+    else if Result > LineEdit.LastLine then
+      Result := Result + LineEdit.Delta
+    else if (Result = LineEdit.FirstLine) and LineEdit.KeepFirst then
+      // начало строки левее правки - на месте
+    else if Result = LineEdit.LastLine then
+      Result := Result + LineEdit.Delta
+    else
+      Result := LineEdit.FirstLine;   // строка удалена
+  end;
+end;
+
+// Обратно: нынешний номер строки - в номер по тексту сборки (для .map).
+// -1 - строка вставлена после сборки, кода в exe у неё нет.
+function TForm1.DbgLineThen(const AFileName: string;
+                            ANowLine: Integer): Integer;
+var
+  EditIdx, NewLast: Integer;
+  LineEdit: TDbgLineEdit;
+begin
+  Result := ANowLine;
+  if FDbgEdits = nil then
+    Exit;
+  for EditIdx := FDbgEdits.Count - 1 downto 0 do
+  begin
+    LineEdit := TDbgLineEdit(FDbgEdits[EditIdx]);
+    if CompareText(LineEdit.FileName, AFileName) <> 0 then
+      Continue;
+    NewLast := LineEdit.LastLine + LineEdit.Delta;
+    if Result < LineEdit.FirstLine then
+      // выше правки - на месте
+    else if Result > NewLast then
+      Result := Result - LineEdit.Delta
+    else if (Result = LineEdit.FirstLine) and LineEdit.KeepFirst then
+      // та же строка, правка правее её начала
+    else if Result = NewLast then
+      Result := LineEdit.LastLine
+    else
+    begin
+      Result := -1;
+      Exit;
+    end;
+  end;
+end;
+
 procedure TForm1.DbgClearExec;
 begin
   if FDbgExecFile = '' then
@@ -33588,7 +33691,12 @@ begin
   FDbgPreValid := False;
   // Undo, Redo, замена текста целиком: где правка - неизвестно, номера
   // остаются как были
-  if AWhole or not RichEdit1.HandleAllocated or not DbgMarksInCurrent then
+  // Во время сеанса отладки - любой файл: остановка может прийти в него,
+  // и строку из .map надо будет сдвинуть на правки (FDbgEdits)
+  if AWhole or not RichEdit1.HandleAllocated or
+     (not DbgMarksInCurrent and
+      ((FDbgSession = nil) or FDbgSession.Finished or
+       (FCurrentFileName = ''))) then
     Exit;
   SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
   FDbgPreMin := Sel.cpMin;
@@ -33612,6 +33720,7 @@ var
   Removed, MarkIdx, DupIdx: Integer;
   Sel: TCharRange;
   Mark, Other: TBreakMark;
+  LineEdit: TDbgLineEdit;
 
   function MoveLine(ALine: Integer): Integer;
   begin
@@ -33698,6 +33807,21 @@ begin
   if (FDbgExecFile <> '') and
      (CompareText(FDbgExecFile, FCurrentFileName) = 0) then
     FDbgExecLine := MoveLine(FDbgExecLine);
+
+  // Правка за сеанс - для перевода строк .map в нынешние номера и обратно
+  if (FDbgSession <> nil) and not FDbgSession.Finished and
+     (FCurrentFileName <> '') then
+  begin
+    if FDbgEdits = nil then
+      FDbgEdits := TList.Create;
+    LineEdit := TDbgLineEdit.Create;
+    LineEdit.FileName := FCurrentFileName;
+    LineEdit.FirstLine := FirstLine;
+    LineEdit.LastLine := LastLine;
+    LineEdit.Delta := Delta;
+    LineEdit.KeepFirst := FirstStart < EditStart;
+    FDbgEdits.Add(LineEdit);
+  end;
 
   if PaintBox1 <> nil then
     PaintBox1.Invalidate;
