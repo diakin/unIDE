@@ -21,6 +21,8 @@ uses
   MenuWizard,     // мастер меню конструктора форм: готовые наборы меню
   DfmMove,        // «Перенести в .dfm»: разбор созданного кодом
   DbgEngine,      // отладчик: точки останова, остановка, продолжение
+  DbgSymbols,     // отладочная информация TD32: значения переменных (Watch)
+  DlgWatch,       // окно Watch
   // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
   // InputQuery перекрывают одноимённые функции Dialogs
   UiDialogs;
@@ -910,6 +912,12 @@ type
     FDbgStartMode: Integer;
     FDbgRunToFile: string;
     FDbgRunToLine: Integer;
+    // Окно Watch: выражения, отладочная информация exe сеанса (TD32, -V) и
+    // причина, если её нет
+    FWatchWnd: TDlgWatch;
+    FWatchList: TStringList;
+    FDbgSyms: TDbgSymbols;
+    FDbgSymsError: string;
     // Снимок до правки: номера строк точек едут вместе с текстом
     FDbgPreValid: Boolean;
     FDbgPreMin, FDbgPreMax, FDbgPreLen, FDbgPreLines: Integer;
@@ -1767,6 +1775,19 @@ type
     procedure DbgStepInto;
     procedure DbgStepOver;
     procedure DbgRunToCursor;
+    // Окно Watch
+    function  DbgExprAtCaret: string;
+    procedure DbgAddWatch(const AExpr: string);
+    procedure DbgWatchShow;
+    procedure DbgWatchRefresh;
+    function  DbgWatchSelected: Integer;
+    procedure WatchAddClick(Sender: TObject);
+    procedure WatchEditClick(Sender: TObject);
+    procedure WatchDeleteClick(Sender: TObject);
+    procedure WatchDeleteAllClick(Sender: TObject);
+    procedure WatchLocalsClick(Sender: TObject);
+    procedure WatchKeyDown(Sender: TObject; var Key: Word;
+                           Shift: TShiftState);
     procedure DbgClearExec;
     procedure DbgRepaint;
     function  DbgKey(AKey: Word): Boolean;
@@ -14871,6 +14892,7 @@ begin
 
   // Точки останова: щелчок по полосе номеров строк
   FBreakMarks := TList.Create;
+  FWatchList := TStringList.Create;
   PaintBox1.OnMouseDown := PaintBox1MouseDown;
 
   HangWatchStart(Application.Handle,
@@ -15295,6 +15317,8 @@ begin
   end;
   // Программа под отладчиком снимается вместе со средой
   FreeAndNil(FDbgSession);
+  FreeAndNil(FDbgSyms);
+  FreeAndNil(FWatchList);
   if FBreakMarks <> nil then
   begin
     for I := 0 to FBreakMarks.Count - 1 do
@@ -31465,11 +31489,13 @@ begin
   // Есть точки останова или запуск с F7/F8/F4 - отладочная сборка:
   // номера строк в .map (-GD, -$D+ -$L+) и без оптимизации (-$O-), чтобы
   // у строк был свой код. Ключи после ключей .dof - dcc32 берёт последний.
+  // -V - отладочная информация TD32 в exe: по ней окно Watch находит
+  // переменные (DbgSymbols)
   if DbgWanted then
   begin
-    Params := Params + ' -$D+ -$L+ -$O- -$W+ -GD';
+    Params := Params + ' -$D+ -$L+ -$O- -$W+ -GD -V';
     LogComp('Отладочная сборка (точки останова или пошаговый запуск): ' +
-            '-$D+ -$L+ -$O- -$W+ -GD');
+            '-$D+ -$L+ -$O- -$W+ -GD -V');
   end;
 
   // Пути из настроек типа Delphi; чего нет - не передаём, dcc32 возьмёт
@@ -32912,6 +32938,22 @@ begin
   end;
 
   FDbgSession := TDbgSession.Create(AExe, ADir, Map);
+  // Отладочная информация TD32 - для окна Watch. Нет её - программа
+  // отлаживается так же, только значения переменных не видны.
+  FreeAndNil(FDbgSyms);
+  FDbgSyms := TDbgSymbols.Create;
+  if FDbgSyms.LoadFromExe(AExe, FDbgSymsError) then
+  begin
+    FDbgSymsError := '';
+    LogComp(Format('Отладчик: TD32 - процедур %d, параметров и локальных ' +
+                   '%d, данных модулей %d', [FDbgSyms.ProcCount,
+                   FDbgSyms.LocalCount, FDbgSyms.DataCount]));
+  end
+  else
+  begin
+    LogComp('Отладчик: окно Watch значений не покажет - ' + FDbgSymsError);
+    FreeAndNil(FDbgSyms);
+  end;
   FDbgSession.OnStopped := DbgStopped;
   FDbgSession.OnLog := DbgLog;
   FDbgSession.OnExited := DbgExited;
@@ -32995,6 +33037,7 @@ begin
     LogComp(Format('--- Остановка по адресу со смещением $%.8x, строки ' +
                    'для него в .map нет. Продолжить - Run (F9)', [AOffset]));
     DbgRepaint;
+    DbgWatchRefresh;
     Exit;
   end;
 
@@ -33008,6 +33051,7 @@ begin
   if CompareText(FCurrentFileName, SrcFile) = 0 then
     GotoLine(SrcLine);
   DbgRepaint;
+  DbgWatchRefresh;
 end;
 
 procedure TForm1.DbgLog(Sender: TObject; const AText: string);
@@ -33021,6 +33065,7 @@ procedure TForm1.DbgExited(Sender: TObject; AExitCode: Cardinal);
 begin
   LogComp(Format('--- Программа завершилась, код %d', [Integer(AExitCode)]));
   DbgClearExec;
+  DbgWatchRefresh;
   PostMessage(Handle, WM_USER + 321, 0, 0);
   DsgShowAfterRun;
 end;
@@ -33032,6 +33077,8 @@ begin
   if (FDbgSession = nil) or not FDbgSession.Finished then
     Exit;
   FreeAndNil(FDbgSession);
+  FreeAndNil(FDbgSyms);
+  DbgWatchRefresh;
   // Адреса были только этого сеанса. NoCode остаётся до следующего
   // запуска - по нему видно, какие точки не сработали.
   for MarkIdx := 0 to FBreakMarks.Count - 1 do
@@ -33046,6 +33093,7 @@ begin
     Exit;
   DbgClearExec;
   FDbgSession.Resume;
+  DbgWatchRefresh;
 end;
 
 // Шаг или Run to cursor можно: программа не запущена (будет запуск) или
@@ -33086,6 +33134,7 @@ begin
     Exit;
   DbgClearExec;
   FDbgSession.StepInto;
+  DbgWatchRefresh;
 end;
 
 // Step over (F8): до следующей строки, вызовы целиком
@@ -33100,6 +33149,7 @@ begin
     Exit;
   DbgClearExec;
   FDbgSession.StepOver;
+  DbgWatchRefresh;
 end;
 
 // Run to cursor (F4): до строки с кареткой. Адреса строки - по .map
@@ -33141,6 +33191,7 @@ begin
     end;
     DbgClearExec;
     FDbgSession.RunTo(Targets);
+    DbgWatchRefresh;
   finally
     Targets.Free;
   end;
@@ -33161,6 +33212,312 @@ begin
   DbgRunToCursor;
 end;
 
+// ---------------------------------------------------------------------------
+//  Окно Watch
+//
+//  Ctrl+F5 в редакторе - выражение под кареткой (выделение, иначе имя с
+//  цепочкой «Имя.Имя» слева от него) в список и окно Watch. На каждой
+//  остановке значения пересчитываются по отладочной информации TD32 exe
+//  (DbgSymbols; сборка с -V - см. CompileDelphi) и регистрам потока,
+//  который стоит. Пока программа идёт или не запущена - вместо значения
+//  состояние.
+// ---------------------------------------------------------------------------
+
+// Выражение для Watch: выделение в одну строку, иначе имя под кареткой
+// вместе с «Объект.» слева (Edit1.Tag, Self.FCount)
+function TForm1.DbgExprAtCaret: string;
+var
+  SelText, LineText: string;
+  CaretPos, LineIdx, LineStart, StartCol: Integer;
+begin
+  Result := '';
+  if not RichEdit1.HandleAllocated then
+    Exit;
+  if RichEdit1.SelLength > 0 then
+  begin
+    SelText := SelTextA(200);
+    if (Pos(#13, SelText) = 0) and (Pos(#10, SelText) = 0) then
+    begin
+      Result := Trim(SelText);
+      Exit;
+    end;
+  end;
+  Result := IdentAtCaret;
+  if Result = '' then
+    Exit;
+  // Цепочка слева: ищем начало имени под кареткой и идём через точки
+  CaretPos := RichEdit1.SelStart;
+  LineIdx := SendMessage(RichEdit1.Handle, EM_LINEFROMCHAR, CaretPos, 0);
+  if (LineIdx < 0) or (LineIdx >= RichEdit1.Lines.Count) then
+    Exit;
+  LineStart := SendMessage(RichEdit1.Handle, EM_LINEINDEX, LineIdx, 0);
+  LineText := RichEdit1.Lines[LineIdx];
+  StartCol := CaretPos - LineStart + 1;
+  // Каретка сразу за словом - слово слева, как в IdentAtCaret
+  if (StartCol > Length(LineText)) or
+     not (LineText[StartCol] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
+    Dec(StartCol);
+  if (StartCol < 1) or (StartCol > Length(LineText)) or
+     not (LineText[StartCol] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
+    Exit;
+  while (StartCol > 1) and
+        (LineText[StartCol - 1] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+    Dec(StartCol);
+  while (StartCol > 2) and (LineText[StartCol - 1] = '.') and
+        (LineText[StartCol - 2] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+  begin
+    Dec(StartCol);
+    while (StartCol > 1) and
+          (LineText[StartCol - 1] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+      Dec(StartCol);
+    Result := Copy(LineText, StartCol, Pos('.', Copy(LineText, StartCol,
+                   MaxInt)) - 1) + '.' + Result;
+  end;
+end;
+
+procedure TForm1.DbgAddWatch(const AExpr: string);
+var
+  ExprIdx: Integer;
+begin
+  DbgWatchShow;
+  if Trim(AExpr) = '' then
+  begin
+    LogComp('Watch: под кареткой нет имени - выражение можно добавить в ' +
+            'окне Watch (Ins)');
+    Exit;
+  end;
+  ExprIdx := FWatchList.IndexOf(Trim(AExpr));
+  if ExprIdx < 0 then
+    ExprIdx := FWatchList.Add(Trim(AExpr));
+  DbgWatchRefresh;
+  if (ExprIdx >= 0) and (ExprIdx < FWatchWnd.lvWatch.Items.Count) then
+  begin
+    FWatchWnd.lvWatch.Selected := FWatchWnd.lvWatch.Items[ExprIdx];
+    FWatchWnd.lvWatch.Selected.MakeVisible(False);
+  end;
+end;
+
+// Окно Watch: создаётся один раз, при первом показе встаёт у правого края
+// главного окна. Владелец окна - главное окно: остаётся над ним.
+procedure TForm1.DbgWatchShow;
+var
+  FirstShow: Boolean;
+begin
+  FirstShow := FWatchWnd = nil;
+  if FirstShow then
+  begin
+    FWatchWnd := TDlgWatch.Create(Self);
+    FWatchWnd.miWatchAdd.OnClick := WatchAddClick;
+    FWatchWnd.miWatchEdit.OnClick := WatchEditClick;
+    FWatchWnd.miWatchDelete.OnClick := WatchDeleteClick;
+    FWatchWnd.miWatchDeleteAll.OnClick := WatchDeleteAllClick;
+    FWatchWnd.miWatchLocals.OnClick := WatchLocalsClick;
+    FWatchWnd.lvWatch.OnKeyDown := WatchKeyDown;
+    FWatchWnd.lvWatch.OnDblClick := WatchEditClick;
+    FWatchWnd.Left := Left + Width - FWatchWnd.Width - 40;
+    FWatchWnd.Top := Top + Height - FWatchWnd.Height - 80;
+    if FWatchWnd.Left < Screen.WorkAreaLeft then
+      FWatchWnd.Left := Screen.WorkAreaLeft;
+    if FWatchWnd.Top < Screen.WorkAreaTop then
+      FWatchWnd.Top := Screen.WorkAreaTop;
+    UiApplyForm(FWatchWnd);
+  end;
+  if not FWatchWnd.Visible then
+  begin
+    FWatchWnd.Show;
+    SetWindowLong(FWatchWnd.Handle, GWL_HWNDPARENT, Integer(Handle));
+  end;
+  // Работа - в редакторе: фокус обратно
+  if RichEdit1.CanFocus then
+    RichEdit1.SetFocus;
+end;
+
+procedure TForm1.DbgWatchRefresh;
+var
+  ExprIdx: Integer;
+  State, ValueText, TypeText, Where: string;
+  Item: TListItem;
+  Names: TStringList;
+
+  procedure SetSub(AItem: TListItem; ASubIdx: Integer; const AText: string);
+  begin
+    while AItem.SubItems.Count <= ASubIdx do
+      AItem.SubItems.Add('');
+    if AItem.SubItems[ASubIdx] <> AText then
+      AItem.SubItems[ASubIdx] := AText;
+  end;
+
+begin
+  if (FWatchWnd = nil) or (FWatchList = nil) then
+    Exit;
+  // Состояние вместо значений
+  State := '';
+  Where := '';
+  if FDbgSession = nil then
+    State := '<программа не запущена>'
+  else if FDbgSession.Finished then
+    State := '<программа завершилась>'
+  else if not FDbgSession.Paused then
+    State := '<программа выполняется>'
+  else if FDbgSyms = nil then
+    State := '<нет отладочной информации: ' + FDbgSymsError + '>'
+  else
+  begin
+    Names := TStringList.Create;
+    try
+      Where := FDbgSyms.ProcLocals(FDbgSession.ImageBase,
+                                   FDbgSession.StopEip, Names);
+    finally
+      Names.Free;
+    end;
+    if Where = '' then
+      Where := 'Остановка вне процедур с отладочной информацией'
+    else
+      Where := 'Остановка в ' + Where;
+  end;
+  if Where = '' then
+    Where := State;
+  if FWatchWnd.lblWhere.Caption <> ' ' + Where then
+    FWatchWnd.lblWhere.Caption := ' ' + Where;
+
+  FWatchWnd.lvWatch.Items.BeginUpdate;
+  try
+    while FWatchWnd.lvWatch.Items.Count > FWatchList.Count do
+      FWatchWnd.lvWatch.Items.Delete(FWatchWnd.lvWatch.Items.Count - 1);
+    while FWatchWnd.lvWatch.Items.Count < FWatchList.Count do
+      FWatchWnd.lvWatch.Items.Add;
+    for ExprIdx := 0 to FWatchList.Count - 1 do
+    begin
+      Item := FWatchWnd.lvWatch.Items[ExprIdx];
+      if Item.Caption <> FWatchList[ExprIdx] then
+        Item.Caption := FWatchList[ExprIdx];
+      TypeText := '';
+      if State <> '' then
+        ValueText := State
+      else
+        ValueText := FDbgSyms.Evaluate(FWatchList[ExprIdx],
+                                       FDbgSession.ImageBase,
+                                       FDbgSession.StopEip,
+                                       FDbgSession.StopRegs,
+                                       FDbgSession.ReadMemory, TypeText);
+      SetSub(Item, 0, ValueText);
+      SetSub(Item, 1, TypeText);
+    end;
+  finally
+    FWatchWnd.lvWatch.Items.EndUpdate;
+  end;
+end;
+
+function TForm1.DbgWatchSelected: Integer;
+begin
+  Result := -1;
+  if (FWatchWnd <> nil) and (FWatchWnd.lvWatch.Selected <> nil) then
+    Result := FWatchWnd.lvWatch.Selected.Index;
+  if Result >= FWatchList.Count then
+    Result := -1;
+end;
+
+procedure TForm1.WatchAddClick(Sender: TObject);
+var
+  ExprText: string;
+begin
+  ExprText := '';
+  if InputQuery('Watch', 'Выражение (имя или Имя.Поле):', ExprText) and
+     (Trim(ExprText) <> '') then
+    DbgAddWatch(ExprText);
+end;
+
+procedure TForm1.WatchEditClick(Sender: TObject);
+var
+  ExprIdx: Integer;
+  ExprText: string;
+begin
+  ExprIdx := DbgWatchSelected;
+  if ExprIdx < 0 then
+  begin
+    WatchAddClick(Sender);
+    Exit;
+  end;
+  ExprText := FWatchList[ExprIdx];
+  if not InputQuery('Watch', 'Выражение (имя или Имя.Поле):', ExprText) then
+    Exit;
+  if Trim(ExprText) = '' then
+    FWatchList.Delete(ExprIdx)
+  else
+    FWatchList[ExprIdx] := Trim(ExprText);
+  DbgWatchRefresh;
+end;
+
+procedure TForm1.WatchDeleteClick(Sender: TObject);
+var
+  ExprIdx: Integer;
+begin
+  ExprIdx := DbgWatchSelected;
+  if ExprIdx < 0 then
+    Exit;
+  FWatchList.Delete(ExprIdx);
+  DbgWatchRefresh;
+  if FWatchWnd.lvWatch.Items.Count > 0 then
+  begin
+    if ExprIdx >= FWatchWnd.lvWatch.Items.Count then
+      ExprIdx := FWatchWnd.lvWatch.Items.Count - 1;
+    FWatchWnd.lvWatch.Selected := FWatchWnd.lvWatch.Items[ExprIdx];
+  end;
+end;
+
+procedure TForm1.WatchDeleteAllClick(Sender: TObject);
+begin
+  FWatchList.Clear;
+  DbgWatchRefresh;
+end;
+
+// Параметры и локальные переменные процедуры, где стоит программа, - все
+// в список
+procedure TForm1.WatchLocalsClick(Sender: TObject);
+var
+  Names: TStringList;
+  NameIdx: Integer;
+begin
+  if (FDbgSession = nil) or not FDbgSession.Paused or (FDbgSyms = nil) then
+  begin
+    ShowMessage('Watch: программа не стоит на остановке или нет ' +
+                'отладочной информации.');
+    Exit;
+  end;
+  Names := TStringList.Create;
+  try
+    FDbgSyms.ProcLocals(FDbgSession.ImageBase, FDbgSession.StopEip, Names);
+    for NameIdx := 0 to Names.Count - 1 do
+      if FWatchList.IndexOf(Names[NameIdx]) < 0 then
+        FWatchList.Add(Names[NameIdx]);
+  finally
+    Names.Free;
+  end;
+  DbgWatchRefresh;
+end;
+
+procedure TForm1.WatchKeyDown(Sender: TObject; var Key: Word;
+                              Shift: TShiftState);
+begin
+  case Key of
+    VK_INSERT:
+      begin
+        WatchAddClick(Sender);
+        Key := 0;
+      end;
+    VK_DELETE:
+      begin
+        WatchDeleteClick(Sender);
+        Key := 0;
+      end;
+    VK_RETURN:
+      begin
+        WatchEditClick(Sender);
+        Key := 0;
+      end;
+  end;
+end;
+
 procedure TForm1.DbgClearExec;
 begin
   if FDbgExecFile = '' then
@@ -33170,8 +33527,8 @@ begin
   DbgRepaint;
 end;
 
-// F9, Ctrl+F2, F5, F7, F8, F4 - True, если клавиша отладчика и она
-// обработана
+// F9, Ctrl+F2, F5, Ctrl+F5, F7, F8, F4 - True, если клавиша отладчика и
+// она обработана
 function TForm1.DbgKey(AKey: Word): Boolean;
 var
   CtrlDown: Boolean;
@@ -33194,6 +33551,12 @@ begin
   else if (AKey = VK_F5) and not CtrlDown and (ActiveControl = RichEdit1) then
   begin
     DbgToggleBreak(CurrentLineIndex);
+    Result := True;
+  end
+  else if (AKey = VK_F5) and CtrlDown and (ActiveControl = RichEdit1) then
+  begin
+    // Add Watch, как в Delphi: имя под кареткой - в окно Watch
+    DbgAddWatch(DbgExprAtCaret);
     Result := True;
   end
   else if (AKey = VK_F7) and not CtrlDown then

@@ -56,7 +56,8 @@ unit DbgEngine;
 interface
 
 uses
-  Windows, Messages, SysUtils, Classes;
+  Windows, Messages, SysUtils, Classes,
+  DbgSymbols;   // TDbgRegs - регистры потока на остановке
 
 type
   TDbgOffsetArray = array of Cardinal;
@@ -133,6 +134,11 @@ type
     FStarted: Boolean;
     FLeaked: Boolean;         // поток не закончился - память не трогаем
     FCodeBase: Cardinal;      // начало сегмента кода в процессе программы
+    FImageBase: Cardinal;     // база образа exe в процессе программы
+    // Поток на остановке: EIP и регистры (EBP - кадр процедуры для Watch).
+    // Пишет поток отладки до записи DbgNoteStopped, читает главный поток.
+    FStopEip: Cardinal;
+    FStopRegs: TDbgRegs;
     FResumeEvent: THandle;    // поток отладки ждёт его на остановке
     FProcess: THandle;        // дескриптор процесса, пока поток его держит
     FKillWanted: Boolean;
@@ -170,7 +176,14 @@ type
     // цели первого хода программы.
     procedure RunTo(AOffsets: TList);
     procedure Kill;
+    // Память программы - на остановке (Watch). False - не прочитано
+    // (адрес не отображён, процесса нет).
+    function ReadMemory(AAddress: Cardinal; ABuffer: Pointer;
+                        ASize: Integer): Boolean;
     property Map: TDbgLineMap read FMap;
+    property ImageBase: Cardinal read FImageBase;
+    property StopEip: Cardinal read FStopEip;
+    property StopRegs: TDbgRegs read FStopRegs;
     property Paused: Boolean read FPaused;
     property Finished: Boolean read FFinished;
     property ExeFile: string read FExeFile;
@@ -246,6 +259,7 @@ type
                     ATrace: Boolean): Boolean;
     function SetTrace(AThreadId: DWORD; AOn: Boolean): Boolean;
     function GetEipEsp(AThreadId: DWORD; var AEip, AEsp: Cardinal): Boolean;
+    procedure SaveStopRegs(AThreadId: DWORD; AAddress: Cardinal);
     function InLineCode(AAddress: Cardinal): Boolean;
     function IsLineAddress(AAddress: Cardinal): Boolean;
     procedure AddRearm(AThreadId: DWORD; AAddress: Cardinal);
@@ -922,6 +936,24 @@ begin
   SetEvent(FResumeEvent);
 end;
 
+function TDbgSession.ReadMemory(AAddress: Cardinal; ABuffer: Pointer;
+                                ASize: Integer): Boolean;
+var
+  Done: DWORD;
+begin
+  Result := False;
+  if (ASize <= 0) or (AAddress = 0) then
+    Exit;
+  EnterCriticalSection(FLock);
+  try
+    if FProcess <> 0 then
+      Result := DbgReadMemory(FProcess, Pointer(AAddress), ABuffer,
+                              DWORD(ASize), Done) and (Done = DWORD(ASize));
+  finally
+    LeaveCriticalSection(FLock);
+  end;
+end;
+
 procedure TDbgSession.PushNote(AKind: Integer; AAddress, AValue: Cardinal;
                                const AText: string);
 begin
@@ -987,7 +1019,10 @@ begin
   for NoteIdx := 0 to BatchCount - 1 do
     case Batch[NoteIdx].Kind of
       DbgNoteCodeBase:
-        FCodeBase := Batch[NoteIdx].Address;
+        begin
+          FCodeBase := Batch[NoteIdx].Address;
+          FImageBase := Batch[NoteIdx].Value;
+        end;
       DbgNoteLog:
         if Assigned(FOnLog) then
           FOnLog(Self, Batch[NoteIdx].Text);
@@ -1376,6 +1411,41 @@ begin
   Result := True;
 end;
 
+// Регистры потока на остановке - для Watch (кадр процедуры, переменные в
+// регистрах). Пишутся до DbgNoteStopped: главный поток читает их после.
+procedure TDbgThread.SaveStopRegs(AThreadId: DWORD; AAddress: Cardinal);
+var
+  ThreadHandle: THandle;
+  Ctx: TContext;
+  Regs: TDbgRegs;
+begin
+  FillChar(Regs, SizeOf(Regs), 0);
+  ThreadHandle := ThreadHandleOf(AThreadId);
+  if ThreadHandle <> 0 then
+  begin
+    FillChar(Ctx, SizeOf(Ctx), 0);
+    Ctx.ContextFlags := CONTEXT_CONTROL or CONTEXT_INTEGER;
+    if GetThreadContext(ThreadHandle, Ctx) then
+    begin
+      Regs[0] := Ctx.Eax;
+      Regs[1] := Ctx.Ecx;
+      Regs[2] := Ctx.Edx;
+      Regs[3] := Ctx.Ebx;
+      Regs[4] := Ctx.Esp;
+      Regs[5] := Ctx.Ebp;
+      Regs[6] := Ctx.Esi;
+      Regs[7] := Ctx.Edi;
+    end;
+  end;
+  EnterCriticalSection(FOwner.FLock);
+  try
+    FOwner.FStopEip := AAddress;
+    FOwner.FStopRegs := Regs;
+  finally
+    LeaveCriticalSection(FOwner.FLock);
+  end;
+end;
+
 // Адрес в коде модуля, у которого есть номера строк
 function TDbgThread.InLineCode(AAddress: Cardinal): Boolean;
 begin
@@ -1553,6 +1623,7 @@ begin
   // продолжит
   BreakLift(AAddress);
 
+  SaveStopRegs(AThreadId, AAddress);
   FOwner.PushNote(DbgNoteStopped, AAddress, AThreadId, '');
   if not WaitResume then
     Exit;   // Program reset - программа уже снимается
@@ -1841,7 +1912,7 @@ begin
                             'кода в заголовке exe - точки не ставятся')
           else
           begin
-            FOwner.PushNote(DbgNoteCodeBase, FCodeBase, 0, '');
+            FOwner.PushNote(DbgNoteCodeBase, FCodeBase, ImageBase, '');
             // Образ уже в памяти, код ещё не выполнялся - точки сразу
             ApplyPending;
             // Цели первого хода: Run to cursor до запуска, остановка на
