@@ -4442,7 +4442,10 @@ begin
 end;
 
 procedure TForm1.ApplyIdeMode(AMode: Integer; const ACustom: string);
+var
+  StartTick, StageTick, TFill, TApply: Cardinal;
 begin
+  StartTick := GetTickCount;
   if (AMode = IdeModeCustom) and (UiCustomSet(ACustom) = nil) then
     AMode := IdeModeDark;       // такой своей темы нет
   FIdeMode := AMode;
@@ -4456,19 +4459,29 @@ begin
   // Иначе элементы меняли цвет по очереди, по мере прохода, и окно моргало.
   UiFreezeForms(True);
   try
+    StageTick := GetTickCount;
     UiFillColors;
+    TFill := GetTickCount - StageTick;
+    StageTick := GetTickCount;
     UiApply;
+    TApply := GetTickCount - StageTick;
   finally
     UiFreezeForms(False);
   end;
   RichEdit1.Invalidate;
   if PaintBox1 <> nil then
     PaintBox1.Invalidate;
+  // Время по частям - чтобы было видно, что ускорять
   case FIdeMode of
-    IdeModeDark: Dbg('IDE Dark', clNavy);
-    IdeModeCustom: Dbg('IDE Custom: ' + FIdeCustom, clNavy);
+    IdeModeDark: Dbg(Format('IDE Dark - %d мс: цвета %d, перекраска окон %d',
+                     [GetTickCount - StartTick, TFill, TApply]), clNavy);
+    IdeModeCustom: Dbg(Format('IDE Custom: %s - %d мс: цвета %d, ' +
+                       'перекраска окон %d',
+                       [FIdeCustom, GetTickCount - StartTick, TFill, TApply]),
+                       clNavy);
   else
-    Dbg('IDE Light', clNavy);
+    Dbg(Format('IDE Light - %d мс: цвета %d, перекраска окон %d',
+               [GetTickCount - StartTick, TFill, TApply]), clNavy);
   end;
 end;
 procedure TForm1.SaveUiSchema;
@@ -6374,7 +6387,12 @@ begin
   FTabSwitching := True;
   FMapRebuilt := False;
   try
-    if FWindows[Index].MapValid then
+    // Карта в памяти годится, если построена по той же схеме: после
+    // сохранения схемы (SaveClrSchemaTo) подпись другая - разбор заново
+    if FWindows[Index].MapValid and
+       ((FWindows[Index].MapSchemeSig = '') or
+        (FWindows[Index].MapSchemeSig =
+         MapSchemeSig(WindowExt(FWindows[Index].FileName)))) then
     begin
       MapFrom := 'из памяти';
       RestoreWindowParse(Index);
@@ -9856,7 +9874,13 @@ var
   Ini: TIniFile;
   I, J, CurIdx, TabCnt, TabWin, Relocated: Integer;
   Raw, Path, Src, Key, OldSample, NewSample: string;
+  StartTick, StageTick, TClose, TFiles, TShow, FileCount: Cardinal;
 begin
+  StartTick := GetTickCount;
+  TClose := 0;
+  TFiles := 0;
+  TShow := 0;
+  FileCount := 0;
   if not FileExists(ProjectFileName(AName)) then
   begin
     ShowMessage('8095:Файл проекта не найден:'#13#10 + ProjectFileName(AName));
@@ -9875,7 +9899,10 @@ begin
     ProjectSwitchReset;
   end;
 
+  StageTick := GetTickCount;
   CloseAllWindows;
+  TClose := GetTickCount - StageTick;
+  StageTick := GetTickCount;
 
   Relocated := 0;
   OldSample := '';
@@ -9924,6 +9951,7 @@ begin
 
       if FileExists(Path) then
       begin
+        Inc(FileCount);
         FWindows[I].Text := LoadTextFile(Path);
         FWindows[I].IsUtf8 := FFileIsUtf8;
         FWindows[I].HasBom := FFileHasBom;
@@ -10002,10 +10030,12 @@ begin
     FRelocateUpEnd := 0;   // дальше - свой запас на каждый поиск
   end;
 
+  TFiles := GetTickCount - StageTick;
   FCurrentProject := AName;
   UpdateCompilerCaption;
 
   // Восстанавливаем активное окно. Если указанного в файле нет - берём первое.
+  StageTick := GetTickCount;
   if (CurIdx >= 0) and (CurIdx < WindowsItemCount) and FWindows[CurIdx].Used then
     ActivateWindow(CurIdx)
   else
@@ -10016,10 +10046,18 @@ begin
     Break;
   end;
 
+  TShow := GetTickCount - StageTick;
   RebuildProjectsMenu;
   RebuildWindowsMenu;
   Caption := AppTitle + ' - [' + AName + '] ' +
              ExtractFileName(FCurrentFileName);
+  // Время открытия проекта - в HiLite log; показ активной вкладки по
+  // частям - строка 5364 выше
+  Dbg(Format('Проект %s: открытие %d мс (закрытие прежних окон %d, ' +
+             'чтение файлов %d - %d шт., закладки, вкладки; показ вкладки %d)',
+             [AName, GetTickCount - StartTick, TClose, TFiles, FileCount,
+              TShow]), clNavy);
+
 
   // Спрашиваем В САМОМ КОНЦЕ: SaveProjectTo зовёт StoreCurrentWindow, а тот
   // должен работать по уже поднятому активному окну
@@ -38359,14 +38397,21 @@ end;
 
 // Запись схемы в .clr и всё, что после неё нужно редактору
 procedure TForm1.SaveClrSchemaTo(const APath: string);
+var
+  StartTick, TWrite: Cardinal;
 begin
+  StartTick := GetTickCount;
   // Цвет текста схемы - тот, что сейчас у шрифта редактора: его меняет и
   // окно настроек
   FScheme.FTextFG := RichEdit1.Font.Color;
   FScheme.SaveClrSchemaTo(APath);
+  TWrite := GetTickCount - StartTick;
 
-  // Маркеры могли измениться, поэтому кэш карт у ВСЕХ окон больше не годится
-  InvalidateAllWindowMaps;
+  // Карты других окон здесь НЕ сбрасываются: в каждой записана подпись
+  // схемы, по которой она построена (MapSchemeSig - маркеры, даты .clr), и
+  // ActivateWindow сверяет её с нынешней. Окна с этой схемой разберутся
+  // заново при переходе на них, окна других языков - нет. Раньше
+  // сбрасывались все, и каждая большая вкладка потом разбиралась по ~0,8 с.
 
   // ОБЯЗАТЕЛЬНО пересобираем карту комментариев и строковых литералов.
   // Цвета применяются сразу, а МАРКЕРЫ (FLineCommentMarker, FStringMarker,
@@ -38379,6 +38424,9 @@ begin
   RichEdit1.Invalidate;
   if PaintBox1 <> nil then
     PaintBox1.Invalidate;
+  Dbg(Format('Save схемы %s - %d мс: запись %d, карта активной вкладки %d',
+             [ExtractFileName(APath), GetTickCount - StartTick, TWrite,
+              GetTickCount - StartTick - TWrite]), clNavy);
 end;
 
 procedure TForm1.LoadCustomClrSchema(const Ext: string);
@@ -38636,9 +38684,26 @@ end;
 // Обработчик клика по меню Options — открывает форму настроек цветов
 // Обработчик клика по меню Options - открывает форму настроек цветов
 procedure TForm1.mOptionsClick(Sender: TObject);
+var
+  StartTick, StageTick, TPrepare: Cardinal;
+  FirstTime: Boolean;
 begin
+  StartTick := GetTickCount;
+  FirstTime := (Form2 = nil) or (Form2.Grid = nil);
+  StageTick := GetTickCount;
   PrepareOptionsForm;
+  TPrepare := GetTickCount - StageTick;
   Form2.Show;
+  // Время открытия окна настроек - в HiLite log. Первый раз окно ещё и
+  // строится (InitOptions), поэтому дольше.
+  if FirstTime then
+    Dbg(Format('Options: открытие %d мс (построение и заполнение %d, ' +
+               'показ %d) - первое', [GetTickCount - StartTick, TPrepare,
+               GetTickCount - StartTick - TPrepare]), clNavy)
+  else
+    Dbg(Format('Options: открытие %d мс (заполнение %d, показ %d)',
+               [GetTickCount - StartTick, TPrepare,
+                GetTickCount - StartTick - TPrepare]), clNavy);
 end;
 
 // Окно настроек построено и заполнено значениями редактора - всё, что
