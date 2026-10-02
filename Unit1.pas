@@ -886,6 +886,8 @@ type
     // Сторонние компоненты палитры (DsgAddForeignPages); их кнопки - не в
     // PalBtn, ими владеет сама палитра
     FDsgForeign: TDsgForeignList;
+    // Сколько тёмных значков построено (UiApplyGlyph) - для замера UiApply
+    FUiGlyphBuilt: Integer;
     // Вставка с палитры: щелчок запоминается и выполняется следом,
     // сообщением - форма конструктора перестраивается, а щелчок пришёл из
     // обработчика её же окна
@@ -1759,6 +1761,7 @@ type
     procedure DsgPaletteSelect(Sender: TObject);
     procedure BuildPaletteButtons;
     procedure DsgAddForeignPages;
+    procedure DsgPaletteGlyph(Sender: TObject);
     procedure ApplyArrayIni(const AArray, ACodeProps: string);
     function  SetPropFromText(AObj: TObject; const AProp, AValue: string): Boolean;
     procedure DsgPaletteReset;
@@ -3558,7 +3561,13 @@ end;
 procedure TForm1.UiApplyNow;
 var
   I: Integer;
+  StartTick, FormsTick, ThemeTick: Cardinal;
+  GlyphsBefore: Integer;
 begin
+  StartTick := GetTickCount;
+  GlyphsBefore := FUiGlyphBuilt;
+  FormsTick := 0;
+  ThemeTick := 0;
   UiBgNote(nil, 'UiApply, Ide.ListBG = ' + ColorToString(UiColor('Ide.ListBG')) +
   ', режим ' + IntToStr(Ord(FIdeDark)));
            if FTabs <> nil then
@@ -3577,13 +3586,17 @@ begin
 
   // Элементы всех окон программы - кроме формы в конструкторе: её красит
   // DsgRetheme в конце
+           FormsTick := GetTickCount;
            for I := 0 to Screen.FormCount - 1 do
            UiApplyForm(Screen.Forms[I]);
+           FormsTick := GetTickCount - FormsTick;
 
   // Свои элементы (кнопки, рамки, полосы прокрутки, списки) - по теме
   // UiTheme: режим IDE и цвета ролей из IDE.clr. Тема рассылает смену
   // сама: все элементы перерисовываются.
+           ThemeTick := GetTickCount;
            UiPushTheme;
+           ThemeTick := GetTickCount - ThemeTick;
 
   // Номер текущей строки на полосе номеров, текст свойств инспектора
            if PaintBox1 <> nil then
@@ -3622,6 +3635,10 @@ begin
   if (FDesigner <> nil) and (FDesigner.Form <> nil) and IsOwnProject and
      (OwnLiveForm(FObjFormClass) <> nil) then
     DsgRetheme;
+  Dbg('3091: тема: UiApply ' + IntToStr(GetTickCount - StartTick) +
+      ' мс (окна ' + IntToStr(FormsTick) + ', элементы темы ' +
+      IntToStr(ThemeTick) + '; тёмных значков построено ' +
+      IntToStr(FUiGlyphBuilt - GlyphsBefore) + ')', clGray);
 end;
 
 
@@ -3989,9 +4006,19 @@ var
 procedure UiGlyphNote(ABtn: TControl; const AWhat: string);
 var
   Key, Who: string;
+  Owner: TWinControl;
 begin
   if Form1 = nil then
     Exit;
+  // Кнопки палитры (их сотни) в лог не пишем - итог даёт замер UiApply
+  // (3091)
+  Owner := ABtn.Parent;
+  while Owner <> nil do
+  begin
+    if Owner is TDsgPalette then
+      Exit;
+    Owner := Owner.Parent;
+  end;
   if UiGlyphSeen = nil then
     UiGlyphSeen := TStringList.Create;
   Key := IntToHex(Integer(ABtn), 8) + ' ' + AWhat;
@@ -4092,6 +4119,7 @@ begin
         UiInvertLightness(Mark.Dark,
                           Mark.Dark.Canvas.Pixels[0, Mark.Dark.Height - 1]);
       Mark.DarkSig := Sig;
+      Inc(FUiGlyphBuilt);
     end;
     SetBtnGlyph(ABtn, Mark.Dark);
     UiGlyphNote(ABtn, 'тёмный фон: поставлен тёмный значок');
@@ -16227,6 +16255,7 @@ begin
   RegisterDesignClasses;
   FDsgPalette := TDsgPalette.CreatePalette(Self, pnlPaletteIn, DsgDelphiBin);
   FDsgPalette.OnSelect := DsgPaletteSelect;
+  FDsgPalette.OnGlyphLoaded := DsgPaletteGlyph;
   BuildPaletteButtons;
 
   // ВАЖНО: подменю собираем только здесь, когда все пункты главного меню уже
@@ -24493,7 +24522,7 @@ end;
 // класса у них нет (Tag = 0), выбор - строкой "Модуль.Класс".
 procedure TForm1.DsgAddForeignPages;
 var
-  StartTick: Cardinal;
+  StartTick, StageTick, ScanTick, LibsTick: Cardinal;
   CompIdx, PageIdx, LibIdx, LogIdx: Integer;
   PageMap: TStringList;
   Comp: TDsgForeignComp;
@@ -24507,6 +24536,7 @@ begin
   RootDir := '';
   if BinDir <> '' then
     RootDir := ExtractFilePath(ExcludeTrailingPathDelimiter(BinDir));
+  StageTick := GetTickCount;
   try
     FDsgForeign.Scan(RootDir);
   except
@@ -24517,8 +24547,12 @@ begin
       Exit;
     end;
   end;
+  ScanTick := GetTickCount - StageTick;
+  StageTick := GetTickCount;
   for LibIdx := 0 to FDsgForeign.IconLibs.Count - 1 do
     FDsgPalette.AddIconLib(FDsgForeign.IconLibs[LibIdx]);
+  LibsTick := GetTickCount - StageTick;
+  StageTick := GetTickCount;
 
   PageMap := TStringList.Create;
   try
@@ -24543,7 +24577,17 @@ begin
   for LogIdx := 0 to FDsgForeign.Log.Count - 1 do
     Dbg('21880: палитра, сторонние: ' + FDsgForeign.Log[LogIdx], clGray);
   Dbg('21880: палитра, сторонние: ' + IntToStr(GetTickCount - StartTick) +
-      ' мс', clGray);
+      ' мс (реестр и пакеты ' + IntToStr(ScanTick) + ', пакеты значков ' +
+      IntToStr(LibsTick) + ', кнопки ' +
+      IntToStr(GetTickCount - StageTick) + ')', clGray);
+end;
+
+// Значок кнопки стороннего компонента прочитан при показе страницы - в
+// тёмной теме перекрасить
+procedure TForm1.DsgPaletteGlyph(Sender: TObject);
+begin
+  if Sender is TControl then
+    UiApplyGlyph(TControl(Sender));
 end;
 
 // AProp есть в списке AList через запятую? Без учёта регистра.

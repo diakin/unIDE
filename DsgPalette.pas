@@ -26,7 +26,10 @@ unit DsgPalette;
 //  Сторонние компоненты (DsgForeign: из пакетов, установленных в Delphi) -
 //  на своих страницах после страниц Delphi (AddPage, PlaceForeign). Класса
 //  их в редакторе нет: в Tag кнопки 0, а выбор - строка "Модуль.Класс"
-//  (SelectedForeign). Значки - из их design-пакетов (AddIconLib).
+//  (SelectedForeign). Значки - из их design-пакетов (AddIconLib). Значок
+//  стороннего читается при первом показе его страницы (ShowPage): их
+//  больше сотни, а при запуске видна страница Standard. После загрузки
+//  значка - OnGlyphLoaded (тёмная тема перекрашивает его).
 // ---------------------------------------------------------------------------
 
 interface
@@ -53,6 +56,9 @@ type
     FSelected: TComponentClass;
     FForeign: TStringList;    // кнопки сторонних: "Модуль.Класс", в Objects - кнопка
     FSelForeign: string;      // выбран сторонний: "Модуль.Класс"
+    FGlyphPending: TList;     // кнопки сторонних, значок которых ещё не читали
+    FOnGlyphLoaded: TNotifyEvent;
+    function HasGlyphRes(const AName: string): Boolean;
     FOnSelect: TNotifyEvent;
     procedure LoadLibs(const ADelphiBin: string);
     function LoadGlyph(AClass: TClass; ABmp: TBitmap): Boolean;
@@ -96,6 +102,9 @@ type
     property SelectedClass: TComponentClass read FSelected;
     // Выбран сторонний компонент: "Модуль.Класс"; '' - нет
     property SelectedForeign: string read FSelForeign;
+    // Значок кнопки стороннего компонента прочитан (Sender - кнопка)
+    property OnGlyphLoaded: TNotifyEvent read FOnGlyphLoaded
+                                         write FOnGlyphLoaded;
     property OnSelect: TNotifyEvent read FOnSelect write FOnSelect;
   end;
 
@@ -139,6 +148,7 @@ begin
   FPageBtns := TList.Create;
   FLibs := TList.Create;
   FForeign := TStringList.Create;
+  FGlyphPending := TList.Create;
   FMeter := TBitmap.Create;
 
   Parent := AParent;
@@ -211,6 +221,7 @@ begin
     TObject(FPageBtns[I]).Free;
   FPageBtns.Free;
   FForeign.Free;
+  FGlyphPending.Free;
   FMeter.Free;
   inherited;
 end;
@@ -397,10 +408,27 @@ procedure TDsgPalette.ShowPage;
 var
   Page, I: Integer;
   List: TList;
+  GlyphClass: string;
 begin
   // Прокрутку - в начало до переключения: сдвиг прокрутки переносится на
   // все кнопки области, и у спрятанных тоже
   FBox.HorzScrollBar.Position := 0;
+  // Значки сторонних на открытой странице - при первом её показе
+  if (FGlyphPending.Count > 0) and (FTabs.TabIndex >= 0) and
+     (FTabs.TabIndex < FPageBtns.Count) then
+  begin
+    List := TList(FPageBtns[FTabs.TabIndex]);
+    for I := 0 to List.Count - 1 do
+      if FGlyphPending.IndexOf(List[I]) >= 0 then
+      begin
+        FGlyphPending.Remove(List[I]);
+        GlyphClass := ForeignOf(TControl(List[I]));
+        GlyphClass := Copy(GlyphClass, Pos('.', GlyphClass) + 1, MaxInt);
+        if LoadGlyphByName(GlyphClass, TSpeedButton(List[I]).Glyph) and
+           Assigned(FOnGlyphLoaded) then
+          FOnGlyphLoaded(TSpeedButton(List[I]));
+      end;
+  end;
   for Page := 0 to FPageBtns.Count - 1 do
   begin
     List := TList(FPageBtns[Page]);
@@ -507,7 +535,11 @@ begin
   ABtn.OnClick := CompClick;
   ABtn.Caption := '';
   BtnWidth := BtnSize;
-  if not LoadGlyphByName(AClass, ABtn.Glyph) then
+  // Значок есть - прочитается при показе страницы (ShowPage); здесь только
+  // проверка, есть ли он: от этого зависит ширина кнопки
+  if HasGlyphRes(AClass) then
+    FGlyphPending.Add(ABtn)
+  else
   begin
     // Значка нет - имя класса без T
     ABtn.Caption := Copy(AClass, 2, MaxInt);
@@ -522,6 +554,21 @@ begin
   ABtn.SetBounds(PosX, 1, BtnWidth, BtnSize);
   TList(FPageBtns[APage]).Add(ABtn);
   FForeign.AddObject(AUnit + '.' + AClass, ABtn);
+end;
+
+function TDsgPalette.HasGlyphRes(const AName: string): Boolean;
+var
+  LibIdx: Integer;
+  ResName: string;
+begin
+  Result := False;
+  ResName := UpperCase(AName);
+  for LibIdx := 0 to FLibs.Count - 1 do
+    if FindResource(HMODULE(FLibs[LibIdx]), PChar(ResName), RT_BITMAP) <> 0 then
+    begin
+      Result := True;
+      Exit;
+    end;
 end;
 
 function TDsgPalette.ForeignOf(ABtn: TControl): string;
