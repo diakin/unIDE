@@ -97,6 +97,12 @@ type
     FRegActive: Boolean;       // адрес 0 - это FRegValue
     FWantNote: Boolean;        // имя не нашлось - разбор поиска в FLastNote
     FLastNote: string;
+    // Подразделы символов (для разбора «не найдено»): вид, модуль, начало
+    // и конец записей в FBuf
+    FSymSubs: array of record
+      SubType, Module, StartPos, EndPos: Integer;
+    end;
+    FSubStats: string;         // виды подразделов каталога TD32 и их число
     function ByteAt(APos: Integer): Cardinal;
     function WordAt(APos: Integer): Cardinal;
     function DwordAt(APos: Integer): Cardinal;
@@ -180,6 +186,7 @@ const
   SubGlobalTypes = $12B;
   SubAlignSym    = $125;
   SubGlobalSym   = $129;
+  SubGlobalPub   = $12A;
 
   SymRegister = $0002;
   SymEnd      = $0006;
@@ -337,10 +344,14 @@ var
   FileLen, BasePos, DirPos, HeadSize, EntrySize, EntryCount: Integer;
   EntryIdx, EntryPos, SubType, SubModule, SubPos, SubSize: Integer;
   TailSig, TailOfs: Cardinal;
+  Stats: TStringList;
+  StatKey: string;
 begin
   Result := False;
   AError := '';
   FBuf := '';
+  SetLength(FSymSubs, 0);
+  FSubStats := '';
   try
     Stream := TFileStream.Create(AExeFile, fmOpenRead or fmShareDenyNone);
     try
@@ -399,6 +410,40 @@ begin
       ParseNames(SubPos)
     else if SubType = SubGlobalTypes then
       ParseTypes(SubPos);
+  end;
+  Stats := TStringList.Create;
+  try
+    for EntryIdx := 0 to EntryCount - 1 do
+    begin
+      EntryPos := DirPos + HeadSize + EntryIdx * EntrySize;
+      SubType := WordAt(EntryPos);
+      SubModule := SmallInt(WordAt(EntryPos + 2));
+      SubPos := BasePos + Integer(DwordAt(EntryPos + 4));
+      SubSize := Integer(DwordAt(EntryPos + 8));
+      StatKey := '$' + IntToHex(SubType, 3);
+      if Stats.IndexOfName(StatKey) < 0 then
+        Stats.Add(StatKey + '=0');
+      Stats.Values[StatKey] := IntToStr(StrToInt(Stats.Values[StatKey]) + 1);
+      if (SubType = SubAlignSym) or (SubType = SubGlobalSym) or
+         (SubType = SubGlobalPub) then
+      begin
+        SetLength(FSymSubs, Length(FSymSubs) + 1);
+        FSymSubs[High(FSymSubs)].SubType := SubType;
+        FSymSubs[High(FSymSubs)].Module := SubModule;
+        if SubType = SubAlignSym then
+          FSymSubs[High(FSymSubs)].StartPos := SubPos + 4
+        else
+          FSymSubs[High(FSymSubs)].StartPos := SubPos + 32;
+        if SubType = SubAlignSym then
+          FSymSubs[High(FSymSubs)].EndPos := SubPos + SubSize
+        else
+          FSymSubs[High(FSymSubs)].EndPos := SubPos + 32 +
+                                             Integer(DwordAt(SubPos + 4));
+      end;
+    end;
+    FSubStats := Stats.CommaText;
+  finally
+    Stats.Free;
   end;
   for EntryIdx := 0 to EntryCount - 1 do
   begin
@@ -2099,6 +2144,8 @@ var
   NumValue: Int64;
   Same, Similar, Owners, StopNote: string;
   Upper: string;
+  NameIdx: Cardinal;
+  SubIdx, RecPos, RecLen, ScanPos: Integer;
 begin
   Upper := UpperCase(AName);
   if AProcIdx >= 0 then
@@ -2176,6 +2223,72 @@ begin
     else
       Result := Result + ', описание класса не прочитано';
   end;
+
+  // Данные модуля процедуры
+  if AProcIdx >= 0 then
+  begin
+    Same := '';
+    Hits := 0;
+    for DataIdx := 0 to FDataCount - 1 do
+      if FDatas[DataIdx].Module = FProcs[AProcIdx].Module then
+      begin
+        if Hits < 15 then
+          Same := Same + ' ' + FDatas[DataIdx].Name;
+        Inc(Hits);
+      end;
+    Result := Result + '; данных модуля ' +
+              IntToStr(FProcs[AProcIdx].Module) + ': ' + IntToStr(Hits);
+    if Same <> '' then
+      Result := Result + ' (' + Trim(Same) + ')';
+  end;
+
+  // Имя в таблице имён TD32 и записи символов, где стоит его номер
+  NameIdx := 0;
+  for DataIdx := 0 to High(FNames) do
+    if CompareText(FNames[DataIdx], AName) = 0 then
+    begin
+      NameIdx := DataIdx + 1;
+      Break;
+    end;
+  if NameIdx = 0 then
+    Result := Result + '; имени ' + AName + ' в таблице имён TD32 нет'
+  else
+  begin
+    Result := Result + '; в таблице имён - номер ' + IntToStr(NameIdx);
+    Owners := '';
+    Hits := 0;
+    for SubIdx := 0 to High(FSymSubs) do
+    begin
+      RecPos := FSymSubs[SubIdx].StartPos;
+      while (RecPos + 4 <= FSymSubs[SubIdx].EndPos) and (Hits < 8) do
+      begin
+        RecLen := Integer(WordAt(RecPos));
+        if RecLen < 2 then
+          Break;
+        for ScanPos := RecPos + 4 to RecPos + 2 + RecLen - 4 do
+          if DwordAt(ScanPos) = NameIdx then
+          begin
+            Owners := Owners + ' [подраздел $' +
+                      IntToHex(FSymSubs[SubIdx].SubType, 3) + ' модуль ' +
+                      IntToStr(FSymSubs[SubIdx].Module) + ', запись $' +
+                      IntToHex(WordAt(RecPos + 2), 4) + ' длина ' +
+                      IntToStr(RecLen) + ', номер на +' +
+                      IntToStr(ScanPos - RecPos - 4) + ': ' +
+                      IntToHex(DwordAt(RecPos + 4), 8) + ' ' +
+                      IntToHex(DwordAt(RecPos + 8), 8) + ' ' +
+                      IntToHex(DwordAt(RecPos + 12), 8) + ']';
+            Inc(Hits);
+            Break;
+          end;
+        Inc(RecPos, RecLen + 2);
+      end;
+    end;
+    if Owners <> '' then
+      Result := Result + ', встречается в символах:' + Owners
+    else
+      Result := Result + ', в записях символов не встречается';
+  end;
+  Result := Result + '; подразделы TD32: ' + FSubStats;
 
   // Классы и записи, у которых такое поле есть
   Owners := '';
