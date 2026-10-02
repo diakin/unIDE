@@ -10771,19 +10771,38 @@ end;
 // Подсказки пунктов меню VCL не показывает всплывающими окнами - они приходят
 // сюда через Application.OnHint. Выводим их в статус-бар, переключая его в
 // режим одной строки: путь к файлу длинный, в отдельную панель не влезет.
-// Открывает папку проекта в проводнике. Без открытого проекта показываем
-// корневую папку projects - оттуда видно все проекты сразу.
+// Открывает в проводнике папку с исходниками текущего проекта: папку его
+// главного файла (цель сборки: .dpr, .lpr ...), и этот файл в ней
+// выделен. Цели нет на диске - папка описания проекта (.prj), его нет -
+// <projects>\<имя>. Без открытого проекта - корень projects, оттуда видно
+// все проекты сразу.
 procedure TForm1.OpenProjectFolderClick(Sender: TObject);
 var
-  Dir: string;
+  Dir, Target, PrjFile: string;
 begin
   Dir := '';
+  Target := '';
   if FCurrentProject <> '' then
-    Dir := ProjectsDir + FCurrentProject;
+  begin
+    Target := ProjectTargetFind(FCurrentProject);
+    if (Target <> '') and FileExists(Target) then
+      Dir := ExtractFilePath(Target)
+    else
+    begin
+      Target := '';
+      PrjFile := ProjectFileName(FCurrentProject);
+      if FileExists(PrjFile) then
+        Dir := ExtractFilePath(PrjFile)
+      else
+        Dir := ProjectsDir + FCurrentProject;
+    end;
+  end;
 
-  // Своей папки у проекта может и не быть - тогда показываем корень projects
   if (Dir = '') or not DirectoryExists(Dir) then
+  begin
+    Target := '';
     Dir := ProjectsDir;
+  end;
 
   if not DirectoryExists(Dir) then
   begin
@@ -10791,7 +10810,12 @@ begin
     Exit;
   end;
 
-  ShellExecute(Handle, 'open', PChar(Dir), nil, nil, SW_SHOWNORMAL);
+  if Target <> '' then
+    // Папка с выделенным главным файлом
+    ShellExecute(Handle, 'open', 'explorer.exe',
+                 PChar('/select,"' + Target + '"'), nil, SW_SHOWNORMAL)
+  else
+    ShellExecute(Handle, 'open', PChar(Dir), nil, nil, SW_SHOWNORMAL);
 end;
 
 // Показывает полный путь текущего файла в поле над статус-баром
