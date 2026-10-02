@@ -1009,6 +1009,11 @@ type
     // FObjCodePropsKey, Objects - TStringList): при возврате на форму
     // список берётся отсюда, а не считается заново
     FObjCodePropsStash: TStringList;
+    // Контрольная сумма снимка для ключа ObjCodeProps - посчитанная для
+    // этой самой строки (ссылка на неё держится здесь, поэтому её адрес не
+    // может достаться другой строке)
+    FObjCrcSnapText: string;
+    FObjCrcSnapValue: Cardinal;
     // Снимки других своих форм (Names - класс, Objects - TOwnSnapEntry):
     // снимок хранится один (FObjSnapText), и переход Unit1 -> Unit2 ->
     // Unit1 снимал Form1 заново и разбирал Unit1.dfm целиком
@@ -29624,7 +29629,16 @@ begin
     SnapTxt := OwnSnapFor(LF.ClassName);
   // Ключ - форма и сам текст снимка (сумма и длина: список хранится и для
   // прежних снимков, и адрес строки мог бы достаться другой)
-  Key := FObjFormClass + '|' + IntToHex(Crc32Of(SnapTxt), 8) + '|' +
+  // ObjCodeProps зовётся при отрисовке каждой строки и ячейки таблицы
+  // свойств (ObjPropsDrawItem) - сумма сотен килобайт снимка на каждый
+  // вызов давала 600 мс на перерисовку таблицы. Сумма считается один раз
+  // на строку снимка.
+  if Pointer(SnapTxt) <> Pointer(FObjCrcSnapText) then
+  begin
+    FObjCrcSnapText := SnapTxt;
+    FObjCrcSnapValue := Crc32Of(SnapTxt);
+  end;
+  Key := FObjFormClass + '|' + IntToHex(FObjCrcSnapValue, 8) + '|' +
          IntToStr(Length(SnapTxt));
   if Key = FObjCodePropsKey then
     Exit;
