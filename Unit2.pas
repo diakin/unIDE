@@ -78,6 +78,30 @@ FLockMemo: Boolean; // НАШ СЕМАФОР БЛОКИРОВКИ ДЛЯ TMEMO
     // вернула бы их поверх найденных - на один раз её отключаем.
     FSkipNormalize: Boolean;
     FCompSection: string;         // раздел настроек текущего типа
+    // Корень Delphi для $(DELPHI) в ExpandCompMacros вместо поля Delphi path
+    // страницы Compilers - на время нормализации полей вкладки Environment
+    FMacroRoot: string;
+
+    // ВКЛАДКА ENVIRONMENT: настройки среды по страницам, как Environment
+    // Options в Delphi. Library - пути поиска модулей Delphi: те же ключи
+    // editor.ini, что на странице Compilers - Delphi, и папка исходников
+    // своих компонентов Ui* ([UiLib] Source).
+    MainPages: TPageControl;      // вкладки окна
+    TabEnv, TabCompilers: TTabSheet;
+    EnvPages: TUiPageControl;
+    pnlEnvLib: TPanel;
+    cbEnvTool: TUiComboBox;
+    edtEnvLib, edtEnvBrowse, edtEnvUiSrc: TUiEdit;
+    btnEnvLib, btnEnvBrowse, btnEnvUiSrc: TUiButton;
+    lblEnvLib, lblEnvBrowse, lblEnvUiSrc, lblEnvTool: TLabel;
+    btnEnvImport: TUiButton;
+    lblEnvInfo: TLabel;
+    FEnvSection: string;          // раздел editor.ini выбранной Delphi
+    FEnvLoading: Boolean;         // поля заполняет код - не правка
+    // Окно списка путей (EditPathList): его элементы на время показа
+    FPathList: TUiListBox;
+    FPathEdit: TUiEdit;
+    FPathState: TLabel;
 
     grpIndent: TUiGroupBox;
     lblIndent: TLabel;
@@ -244,6 +268,30 @@ procedure CollectDelphiVars(AList: TStrings);
 function  LookupEnvVar(const AName: string): string;
 function  NormalizePathValue(const S: string; AIsFile, AIsList: Boolean;
                              ADropped: TStrings): string;
+procedure BuildEnvironmentTab(ATab: TWinControl);
+procedure LayoutEnvLibrary(Sender: TObject);
+procedure LoadEnvLibrary;
+procedure cbEnvToolChange(Sender: TObject);
+procedure EnvEditChange(Sender: TObject);
+procedure EnvEditExit(Sender: TObject);
+procedure EnvBrowseClick(Sender: TObject);
+procedure btnEnvImportClick(Sender: TObject);
+function  EnvDelphiRoot: string;
+function  FindDelphiRegKey(const ARoot, ATool: string;
+                           var AFoundRoot: string): string;
+function  ExpandDelphiRegVars(const S, ARoot, AKey: string): string;
+procedure MainPagesChange(Sender: TObject);
+function  EditPathList(const ACaption: string; var AValue: string): Boolean;
+function  PathExists(const APath: string): Boolean;
+procedure PathUpdateState;
+procedure PathListClick(Sender: TObject);
+procedure PathBrowseClick(Sender: TObject);
+procedure PathReplaceClick(Sender: TObject);
+procedure PathAddClick(Sender: TObject);
+procedure PathDeleteClick(Sender: TObject);
+procedure PathDelInvalidClick(Sender: TObject);
+procedure PathUpClick(Sender: TObject);
+procedure PathDownClick(Sender: TObject);
 procedure edtPaleChange(Sender: TObject);
 procedure SetHotTabPale(AValue: Integer);
 procedure SetTabWidthInCombo(AChars: Integer);
@@ -623,9 +671,15 @@ FLockMemo := False; // Инициализация
   TabColors.PageControl := PageControl;
   TabColors.Caption := 'IDE colors';
 
+  TabEnv := TTabSheet.Create(Self);
+  TabEnv.PageControl := PageControl;
+  TabEnv.Caption := 'Environment';
+
   TabDirs := TTabSheet.Create(Self);
   TabDirs.PageControl := PageControl;
   TabDirs.Caption := 'Compilers';
+  TabCompilers := TabDirs;
+  MainPages := PageControl;
 
   TabArduino := TTabSheet.Create(Self);
   TabArduino.PageControl := PageControl;
@@ -849,6 +903,10 @@ FLockMemo := False; // Инициализация
   LayoutIndentGroup;
   BuildUiColorsTab(TabColors);
   BuildCompilersTab(TabDirs);
+  BuildEnvironmentTab(TabEnv);
+  // Environment и Compilers правят одни и те же ключи editor.ini - при
+  // переходе на вкладку её поля читаются заново
+  PageControl.OnChange := MainPagesChange;
   LayoutEditorColors;
 
   // Панель темы - самая верхняя на вкладке Color Scheme. Окно выше на её
@@ -3007,44 +3065,8 @@ var
   // Развернуть $(DELPHI) и прочие переменные среды Delphi. Их список
   // лежит в той же ветке реестра, в Environment Variables.
   function ExpandVars(const S, ARoot, AKey: string): string;
-  var
-    Vars: TStringList;
-    J: Integer;
-    R2: TRegistry;
   begin
-    Result := S;
-    Result := StringReplace(Result, '$(DELPHI)',
-                ExcludeTrailingPathDelimiter(ARoot),
-                [rfReplaceAll, rfIgnoreCase]);
-
-    Vars := TStringList.Create;
-    R2 := TRegistry.Create;
-    try
-      R2.RootKey := HKEY_CURRENT_USER;
-      if R2.OpenKeyReadOnly(AKey + '\Environment Variables') then
-      begin
-        R2.GetValueNames(Vars);
-        for J := 0 to Vars.Count - 1 do
-          Result := StringReplace(Result, '$(' + Vars[J] + ')',
-                      R2.ReadString(Vars[J]), [rfReplaceAll, rfIgnoreCase]);
-        R2.CloseKey;
-      end;
-
-      // Осталось нераскрытое - смотрим шире: переменные от установщиков
-      // компонентов лежат в HKLM, а не в пользовательской ветке
-      if Pos('$(', Result) > 0 then
-      begin
-        Vars.Clear;
-        CollectDelphiVars(Vars);
-        for J := 0 to Vars.Count - 1 do
-          Result := StringReplace(Result, '$(' + Vars.Names[J] + ')',
-                      ExcludeTrailingPathDelimiter(Vars.Values[Vars.Names[J]]),
-                      [rfReplaceAll, rfIgnoreCase]);
-      end;
-    finally
-      R2.Free;
-      Vars.Free;
-    end;
+    Result := ExpandDelphiRegVars(S, ARoot, AKey);
   end;
 
   procedure AddFound(const AName, ARoot, AKey: string);
@@ -3542,24 +3564,19 @@ begin
         E.OnExit := CompEditExit;   // нормализация при уходе из поля
         FCompEdits[I] := E;
 
-        // Кнопка выбора не у всех полей: Library path - это СПИСОК путей,
-        // и выбором одной папки его не задать. Такие поля помечены в
-        // таблице знаком минус перед ключом.
-        if not NoBrowse then
-        begin
-          B := TUiButton.Create(Self);
-          B.Parent := pnlCompPage;
-          B.Caption := '...';
-          B.Left := E.Left + E.Width + 4;
-          B.Top := Y - 1;
-          B.Width := 30;
-          B.Height := 23;
-          B.Anchors := [akTop, akRight];
-          B.Tag := I;
-          B.OnClick := CompBrowseClick;
-        end
-        else
-          E.Width := E.Width + 34;
+        // Кнопка выбора: у папки и файла - системный диалог, у списка
+        // путей (поля со знаком минус перед ключом в таблице) - окно
+        // списка, EditPathList
+        B := TUiButton.Create(Self);
+        B.Parent := pnlCompPage;
+        B.Caption := '...';
+        B.Left := E.Left + E.Width + 4;
+        B.Top := Y - 1;
+        B.Width := 30;
+        B.Height := 23;
+        B.Anchors := [akTop, akRight];
+        B.Tag := I;
+        B.OnClick := CompBrowseClick;
 
         Inc(Y, 28);
       end;
@@ -3577,6 +3594,784 @@ begin
   // записываем обратно уже раскрытыми. Иначе строка с $(...) дожила бы до
   // сборки и обернулась ошибкой компилятора.
   NormalizeCompFields;
+end;
+
+// ---------------------------------------------------------------------------
+//  Вкладка Environment
+// ---------------------------------------------------------------------------
+
+// Развернуть $(DELPHI) и прочие переменные среды Delphi: список - в той же
+// ветке реестра (AKey), в Environment Variables; не раскрылось - шире, по
+// всем установкам (переменные от установщиков компонентов лежат в HKLM)
+function TForm2.ExpandDelphiRegVars(const S, ARoot, AKey: string): string;
+var
+  Vars: TStringList;
+  VarIdx: Integer;
+  Reg: TRegistry;
+begin
+  Result := S;
+  if ARoot <> '' then
+    Result := StringReplace(Result, '$(DELPHI)',
+                ExcludeTrailingPathDelimiter(ARoot),
+                [rfReplaceAll, rfIgnoreCase]);
+
+  Vars := TStringList.Create;
+  Reg := TRegistry.Create;
+  try
+    Reg.RootKey := HKEY_CURRENT_USER;
+    if (AKey <> '') and
+       Reg.OpenKeyReadOnly(AKey + '\Environment Variables') then
+    begin
+      Reg.GetValueNames(Vars);
+      for VarIdx := 0 to Vars.Count - 1 do
+        Result := StringReplace(Result, '$(' + Vars[VarIdx] + ')',
+                    Reg.ReadString(Vars[VarIdx]), [rfReplaceAll, rfIgnoreCase]);
+      Reg.CloseKey;
+    end;
+
+    if Pos('$(', Result) > 0 then
+    begin
+      Vars.Clear;
+      CollectDelphiVars(Vars);
+      for VarIdx := 0 to Vars.Count - 1 do
+        Result := StringReplace(Result, '$(' + Vars.Names[VarIdx] + ')',
+                    ExcludeTrailingPathDelimiter(Vars.Values[Vars.Names[VarIdx]]),
+                    [rfReplaceAll, rfIgnoreCase]);
+    end;
+  finally
+    Reg.Free;
+    Vars.Free;
+  end;
+end;
+
+// Ветка реестра установки Delphi: та, чей RootDir совпадает с ARoot; нет
+// такой - по имени инструмента (Delphi 7, BDS 22.0); нет и его - если
+// установка одна, она. '' - не нашлось. AFoundRoot - её RootDir.
+function TForm2.FindDelphiRegKey(const ARoot, ATool: string;
+                                 var AFoundRoot: string): string;
+var
+  Reg: TRegistry;
+  Keys: TStringList;
+  BranchIdx, KeyIdx, Installs: Integer;
+  Branch, RootDir, ToolName, ByName, ByNameRoot, Single, SingleRoot: string;
+begin
+  Result := '';
+  AFoundRoot := '';
+  ByName := '';
+  ByNameRoot := '';
+  Single := '';
+  SingleRoot := '';
+  Installs := 0;
+  Reg := TRegistry.Create;
+  Keys := TStringList.Create;
+  try
+    Reg.RootKey := HKEY_CURRENT_USER;
+    for BranchIdx := 0 to 1 do
+    begin
+      if BranchIdx = 0 then
+        Branch := 'Software\Borland\Delphi'
+      else
+        Branch := 'Software\Embarcadero\BDS';
+      Keys.Clear;
+      if not Reg.OpenKeyReadOnly(Branch) then
+        Continue;
+      Reg.GetKeyNames(Keys);
+      Reg.CloseKey;
+      for KeyIdx := 0 to Keys.Count - 1 do
+      begin
+        if not Reg.OpenKeyReadOnly(Branch + '\' + Keys[KeyIdx]) then
+          Continue;
+        RootDir := Reg.ReadString('RootDir');
+        Reg.CloseKey;
+        if (RootDir = '') or not DirectoryExists(RootDir) then
+          Continue;
+        Inc(Installs);
+        Single := Branch + '\' + Keys[KeyIdx];
+        SingleRoot := RootDir;
+        if (ARoot <> '') and
+           (CompareText(ExcludeTrailingPathDelimiter(ARoot),
+                        ExcludeTrailingPathDelimiter(RootDir)) = 0) then
+        begin
+          Result := Single;
+          AFoundRoot := RootDir;
+          Exit;
+        end;
+        if BranchIdx = 0 then
+          ToolName := 'Delphi ' + Copy(Keys[KeyIdx], 1,
+                                       Pos('.', Keys[KeyIdx] + '.') - 1)
+        else
+          ToolName := 'BDS ' + Keys[KeyIdx];
+        if CompareText(ToolName, ATool) = 0 then
+        begin
+          ByName := Single;
+          ByNameRoot := RootDir;
+        end;
+      end;
+    end;
+  finally
+    Keys.Free;
+    Reg.Free;
+  end;
+  if ByName <> '' then
+  begin
+    Result := ByName;
+    AFoundRoot := ByNameRoot;
+  end
+  else if Installs = 1 then
+  begin
+    Result := Single;
+    AFoundRoot := SingleRoot;
+  end;
+end;
+
+procedure TForm2.BuildEnvironmentTab(ATab: TWinControl);
+var
+  TabLib: TTabSheet;
+
+  procedure AddRow(const ACaption: string; ATag, ATop: Integer;
+                   var ALabel: TLabel; var AEdit: TUiEdit;
+                   var AButton: TUiButton);
+  begin
+    ALabel := TLabel.Create(Self);
+    ALabel.Parent := pnlEnvLib;
+    ALabel.Caption := ACaption;
+    ALabel.Left := 12;
+    ALabel.Top := ATop + 4;
+
+    AEdit := TUiEdit.Create(Self);
+    AEdit.Parent := pnlEnvLib;
+    AEdit.Left := 120;
+    AEdit.Top := ATop;
+    AEdit.Width := 300;
+    AEdit.Tag := ATag;
+    AEdit.OnChange := EnvEditChange;
+    AEdit.OnExit := EnvEditExit;
+
+    AButton := TUiButton.Create(Self);
+    AButton.Parent := pnlEnvLib;
+    AButton.Caption := '...';
+    AButton.Top := ATop - 1;
+    AButton.Width := 30;
+    AButton.Height := 23;
+    AButton.Tag := ATag;
+    AButton.OnClick := EnvBrowseClick;
+  end;
+
+begin
+  if (ATab = nil) or (EnvPages <> nil) then
+    Exit;
+
+  EnvPages := TUiPageControl.Create(Self);
+  EnvPages.Parent := ATab;
+  EnvPages.Align := alClient;
+
+  TabLib := TTabSheet.Create(Self);
+  TabLib.PageControl := EnvPages;
+  TabLib.Caption := 'Library';
+
+  // Раскладка - по размеру панели (LayoutEnvLibrary): поля тянутся по
+  // ширине вкладки
+  pnlEnvLib := TPanel.Create(Self);
+  pnlEnvLib.Parent := TabLib;
+  pnlEnvLib.Align := alClient;
+  pnlEnvLib.BevelOuter := bvNone;
+  pnlEnvLib.Caption := '';
+  pnlEnvLib.OnResize := LayoutEnvLibrary;
+
+  lblEnvTool := TLabel.Create(Self);
+  lblEnvTool.Parent := pnlEnvLib;
+  lblEnvTool.Caption := 'Delphi';
+  lblEnvTool.Left := 12;
+  lblEnvTool.Top := 14;
+
+  cbEnvTool := TUiComboBox.Create(Self);
+  cbEnvTool.Parent := pnlEnvLib;
+  cbEnvTool.Style := csDropDownList;
+  cbEnvTool.Left := 120;
+  cbEnvTool.Top := 10;
+  cbEnvTool.Width := 180;
+  cbEnvTool.OnChange := cbEnvToolChange;
+
+  btnEnvImport := TUiButton.Create(Self);
+  btnEnvImport.Parent := pnlEnvLib;
+  btnEnvImport.Caption := 'Взять из Delphi';
+  btnEnvImport.Left := 310;
+  btnEnvImport.Top := 9;
+  btnEnvImport.Width := 120;
+  btnEnvImport.Height := 23;
+  btnEnvImport.ShowHint := True;
+  btnEnvImport.Hint := 'Library path и Browsing path из Environment Options ' +
+                       'этой Delphi (реестр); свои пути остаются в конце';
+  btnEnvImport.OnClick := btnEnvImportClick;
+
+  AddRow('Library path', 0, 46, lblEnvLib, edtEnvLib, btnEnvLib);
+  AddRow('Browsing path', 1, 74, lblEnvBrowse, edtEnvBrowse, btnEnvBrowse);
+  AddRow('Ui components', 2, 102, lblEnvUiSrc, edtEnvUiSrc, btnEnvUiSrc);
+  edtEnvUiSrc.ShowHint := True;
+  edtEnvUiSrc.Hint := 'Папка исходников Ui*.pas ([UiLib] Source в editor.ini)';
+
+  lblEnvInfo := TLabel.Create(Self);
+  lblEnvInfo.Parent := pnlEnvLib;
+  lblEnvInfo.Left := 12;
+  lblEnvInfo.Top := 140;
+  lblEnvInfo.AutoSize := False;
+  lblEnvInfo.WordWrap := True;
+  lblEnvInfo.Caption :=
+    'Модули при сборке (dcc32 -U, -I, -O, -R) ищутся по порядку:' + #13#10 +
+    '  1. папка проекта;' + #13#10 +
+    '  2. Search path проекта из его .dof;' + #13#10 +
+    '  3. UiLib рядом с программой - туда копируются Ui*.pas из папки ' +
+    'Ui components; она пустая - из папки программы, папки проекта ' +
+    'редактора или папок выше программы;' + #13#10 +
+    '  4. Library path.' + #13#10 +
+    'Browsing path компилятору не передаётся, как и в самой Delphi.' +
+    #13#10#13#10 +
+    'Поля - те же, что на вкладке Compilers - Delphi: правка видна в обоих ' +
+    'местах. Папки, которых нет на диске, из списков убираются.';
+  LoadEnvLibrary;
+end;
+
+procedure TForm2.LayoutEnvLibrary(Sender: TObject);
+var
+  EditW: Integer;
+
+  procedure Place(AEdit: TUiEdit; AButton: TUiButton);
+  begin
+    if (AEdit = nil) or (AButton = nil) then
+      Exit;
+    AEdit.Width := EditW;
+    AButton.Left := AEdit.Left + EditW + 4;
+  end;
+
+begin
+  if pnlEnvLib = nil then
+    Exit;
+  EditW := pnlEnvLib.ClientWidth - 120 - 46;
+  if EditW < 100 then
+    EditW := 100;
+  Place(edtEnvLib, btnEnvLib);
+  Place(edtEnvBrowse, btnEnvBrowse);
+  Place(edtEnvUiSrc, btnEnvUiSrc);
+  if lblEnvInfo <> nil then
+  begin
+    lblEnvInfo.Width := pnlEnvLib.ClientWidth - 24;
+    lblEnvInfo.Height := pnlEnvLib.ClientHeight - lblEnvInfo.Top - 8;
+  end;
+end;
+
+// Поля - из editor.ini: Delphi по умолчанию ([Compiler.Delphi] Default),
+// её раздел, [UiLib] Source
+procedure TForm2.LoadEnvLibrary;
+var
+  Ini: TIniFile;
+  Tools, Def: string;
+  SepPos: Integer;
+begin
+  if (Form1 = nil) or (cbEnvTool = nil) then
+    Exit;
+  FEnvLoading := True;
+  Ini := TIniFile.Create(Form1.SettingsFileName);
+  try
+    Tools := Ini.ReadString('Compiler.Delphi', 'Tools', '');
+    Def := Ini.ReadString('Compiler.Delphi', 'Default', '');
+    cbEnvTool.Items.Clear;
+    while Tools <> '' do
+    begin
+      SepPos := Pos(';', Tools);
+      if SepPos = 0 then
+        SepPos := Length(Tools) + 1;
+      if Trim(Copy(Tools, 1, SepPos - 1)) <> '' then
+        cbEnvTool.Items.Add(Trim(Copy(Tools, 1, SepPos - 1)));
+      Delete(Tools, 1, SepPos);
+    end;
+    if cbEnvTool.Items.Count = 0 then
+      cbEnvTool.Items.Add('(default)');
+    cbEnvTool.ItemIndex := cbEnvTool.Items.IndexOf(Def);
+    if cbEnvTool.ItemIndex < 0 then
+      cbEnvTool.ItemIndex := 0;
+
+    if cbEnvTool.Items[cbEnvTool.ItemIndex] <> '(default)' then
+      FEnvSection := 'Compiler.Delphi.' + cbEnvTool.Items[cbEnvTool.ItemIndex]
+    else
+      FEnvSection := 'Compiler.Delphi';
+
+    edtEnvLib.Text := Ini.ReadString(FEnvSection, 'LibPath', '');
+    edtEnvBrowse.Text := Ini.ReadString(FEnvSection, 'BrowsePath', '');
+    edtEnvUiSrc.Text := Ini.ReadString('UiLib', 'Source', '');
+  finally
+    Ini.Free;
+    FEnvLoading := False;
+  end;
+  LayoutEnvLibrary(nil);
+end;
+
+// Выбранная Delphi становится основной, как на вкладке Compilers
+procedure TForm2.cbEnvToolChange(Sender: TObject);
+var
+  Ini: TIniFile;
+begin
+  if (Form1 = nil) or (cbEnvTool.ItemIndex < 0) then
+    Exit;
+  if cbEnvTool.Items[cbEnvTool.ItemIndex] <> '(default)' then
+  begin
+    Ini := TIniFile.Create(Form1.SettingsFileName);
+    try
+      Ini.WriteString('Compiler.Delphi', 'Default',
+                      cbEnvTool.Items[cbEnvTool.ItemIndex]);
+    finally
+      Ini.Free;
+    end;
+  end;
+  LoadEnvLibrary;
+end;
+
+function TForm2.EnvDelphiRoot: string;
+var
+  Ini: TIniFile;
+begin
+  Result := '';
+  if (Form1 = nil) or (FEnvSection = '') then
+    Exit;
+  Ini := TIniFile.Create(Form1.SettingsFileName);
+  try
+    Result := Trim(Ini.ReadString(FEnvSection, 'DelphiPath', ''));
+  finally
+    Ini.Free;
+  end;
+end;
+
+procedure TForm2.EnvEditChange(Sender: TObject);
+var
+  Ini: TIniFile;
+begin
+  if FEnvLoading or (Form1 = nil) or (FEnvSection = '') then
+    Exit;
+  Ini := TIniFile.Create(Form1.SettingsFileName);
+  try
+    case TUiEdit(Sender).Tag of
+      0: Ini.WriteString(FEnvSection, 'LibPath', TUiEdit(Sender).Text);
+      1: Ini.WriteString(FEnvSection, 'BrowsePath', TUiEdit(Sender).Text);
+      2: Ini.WriteString('UiLib', 'Source', TUiEdit(Sender).Text);
+    end;
+  finally
+    Ini.Free;
+  end;
+end;
+
+// Нормализация, как у полей Compilers: макросы ($(DELPHI) - корнем этой
+// Delphi), повторы, слэши; из списков - несуществующие папки
+procedure TForm2.EnvEditExit(Sender: TObject);
+var
+  Value: string;
+  Bad, Dropped: TStringList;
+begin
+  if FEnvLoading then
+    Exit;
+  Bad := TStringList.Create;
+  Dropped := TStringList.Create;
+  try
+    FMacroRoot := EnvDelphiRoot;
+    try
+      Value := NormalizePathValue(TUiEdit(Sender).Text, False,
+                                  TUiEdit(Sender).Tag <> 2, Dropped);
+    finally
+      FMacroRoot := '';
+    end;
+    if Value <> TUiEdit(Sender).Text then
+      TUiEdit(Sender).Text := Value;   // OnChange пишет в editor.ini
+    CollectUnresolved(Value, Bad);
+    WarnUnresolved(Bad, Dropped);
+  finally
+    Dropped.Free;
+    Bad.Free;
+  end;
+end;
+
+procedure TForm2.EnvBrowseClick(Sender: TObject);
+var
+  Value, ListName: string;
+  Edit: TUiEdit;
+begin
+  case TUiButton(Sender).Tag of
+    0: Edit := edtEnvLib;
+    1: Edit := edtEnvBrowse;
+  else
+    Edit := edtEnvUiSrc;
+  end;
+  Value := Edit.Text;
+  if Edit = edtEnvUiSrc then
+  begin
+    if (Value = '') and (Form1 <> nil) then
+      Value := ExtractFilePath(Application.ExeName);
+    if not SelectDirectory('Папка исходников Ui*.pas', '', Value) then
+      Exit;
+  end
+  else
+  begin
+    FMacroRoot := EnvDelphiRoot;
+    try
+      if Edit = edtEnvLib then
+        ListName := 'Library path'
+      else
+        ListName := 'Browsing path';
+      if not EditPathList(cbEnvTool.Text + ': ' + ListName, Value) then
+        Exit;
+    finally
+      FMacroRoot := '';
+    end;
+  end;
+  Edit.Text := Value;
+  EnvEditExit(Edit);
+end;
+
+// Library path и Browsing path этой Delphi из реестра (Environment Options
+// - Library). Пути Delphi - первыми, свои, которых у неё нет, - после.
+procedure TForm2.btnEnvImportClick(Sender: TObject);
+var
+  Root, FoundRoot, RegKey, RegLib, RegBrowse, Tool: string;
+  Reg: TRegistry;
+  Ini: TIniFile;
+
+  // AFirst, к нему - из ASecond, чего в AFirst нет. AKept - сколько взято
+  // из ASecond.
+  function MergeLists(const AFirst, ASecond: string;
+                      var AKept: Integer): string;
+  var
+    Seen: TStringList;
+    Rest, Item: string;
+    SepPos, PassIdx: Integer;
+  begin
+    Result := '';
+    AKept := 0;
+    Seen := TStringList.Create;
+    try
+      for PassIdx := 0 to 1 do
+      begin
+        if PassIdx = 0 then
+          Rest := AFirst
+        else
+          Rest := ASecond;
+        while Rest <> '' do
+        begin
+          SepPos := Pos(';', Rest);
+          if SepPos = 0 then
+            SepPos := Length(Rest) + 1;
+          Item := Trim(Copy(Rest, 1, SepPos - 1));
+          Delete(Rest, 1, SepPos);
+          if Length(Item) > 3 then
+            Item := ExcludeTrailingPathDelimiter(Item);
+          if (Item = '') or (Seen.IndexOf(AnsiUpperCase(Item)) >= 0) then
+            Continue;
+          Seen.Add(AnsiUpperCase(Item));
+          if Result <> '' then
+            Result := Result + ';';
+          Result := Result + Item;
+          if PassIdx = 1 then
+            Inc(AKept);
+        end;
+      end;
+    finally
+      Seen.Free;
+    end;
+  end;
+
+var
+  KeptLib, KeptBrowse: Integer;
+begin
+  if Form1 = nil then
+    Exit;
+  Root := EnvDelphiRoot;
+  Tool := cbEnvTool.Text;
+  RegKey := FindDelphiRegKey(Root, Tool, FoundRoot);
+  if RegKey = '' then
+  begin
+    ShowMessage('Установка Delphi для "' + Tool + '" в реестре не найдена' +
+                ' (сравнивается с Delphi path: ' + Root + ').');
+    Exit;
+  end;
+  // Delphi path не задан - ставим найденный
+  if Root = '' then
+  begin
+    Root := FoundRoot;
+    Ini := TIniFile.Create(Form1.SettingsFileName);
+    try
+      Ini.WriteString(FEnvSection, 'DelphiPath',
+                      IncludeTrailingPathDelimiter(Root));
+    finally
+      Ini.Free;
+    end;
+  end;
+
+  RegLib := '';
+  RegBrowse := '';
+  Reg := TRegistry.Create;
+  try
+    Reg.RootKey := HKEY_CURRENT_USER;
+    if Reg.OpenKeyReadOnly(RegKey + '\Library') then
+    begin
+      if Reg.ValueExists('Search Path') then
+        RegLib := Reg.ReadString('Search Path');
+      if Reg.ValueExists('Browsing Path') then
+        RegBrowse := Reg.ReadString('Browsing Path');
+      Reg.CloseKey;
+    end;
+  finally
+    Reg.Free;
+  end;
+  if (RegLib = '') and (RegBrowse = '') then
+  begin
+    ShowMessage('В ' + RegKey + '\Library путей нет.');
+    Exit;
+  end;
+
+  RegLib := ExpandDelphiRegVars(RegLib, Root, RegKey);
+  RegBrowse := ExpandDelphiRegVars(RegBrowse, Root, RegKey);
+  edtEnvLib.Text := MergeLists(RegLib, edtEnvLib.Text, KeptLib);
+  EnvEditExit(edtEnvLib);
+  edtEnvBrowse.Text := MergeLists(RegBrowse, edtEnvBrowse.Text, KeptBrowse);
+  EnvEditExit(edtEnvBrowse);
+  ShowMessage('Пути взяты из ' + RegKey + '\Library.' + #13#10 +
+              'Своих путей, которых у Delphi нет, оставлено: Library path - ' +
+              IntToStr(KeptLib) + ', Browsing path - ' + IntToStr(KeptBrowse) +
+              '.');
+end;
+
+// Переход на вкладку: её поля - заново из editor.ini (другая могла их
+// поменять). Поля Compilers без нормализации: она записала бы поверх
+// новые значения прежним текстом полей.
+procedure TForm2.MainPagesChange(Sender: TObject);
+begin
+  if MainPages = nil then
+    Exit;
+  if MainPages.ActivePage = TabEnv then
+    LoadEnvLibrary
+  else if MainPages.ActivePage = TabCompilers then
+  begin
+    LoadToolList(FCompType);
+    FSkipNormalize := True;
+    ShowCompilerPage(FCompType);
+  end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Окно списка путей - как Directories у Delphi: список по порядку поиска,
+//  поле пути, Replace / Add / Delete, удаление несуществующих, порядок.
+// ---------------------------------------------------------------------------
+
+function TForm2.PathExists(const APath: string): Boolean;
+begin
+  Result := DirectoryExists(ExpandCompMacros(Trim(APath)));
+end;
+
+procedure TForm2.PathUpdateState;
+var
+  ItemIdx, Missing: Integer;
+  Text: string;
+begin
+  if (FPathList = nil) or (FPathState = nil) then
+    Exit;
+  Missing := 0;
+  for ItemIdx := 0 to FPathList.Items.Count - 1 do
+    if not PathExists(FPathList.Items[ItemIdx]) then
+      Inc(Missing);
+  Text := 'Папок: ' + IntToStr(FPathList.Items.Count) + ', нет на диске: ' +
+          IntToStr(Missing);
+  if FPathList.ItemIndex >= 0 then
+  begin
+    if PathExists(FPathList.Items[FPathList.ItemIndex]) then
+      Text := Text + '.  Выбранная есть'
+    else
+      Text := Text + '.  Выбранной нет на диске';
+  end;
+  FPathState.Caption := Text;
+end;
+
+procedure TForm2.PathListClick(Sender: TObject);
+begin
+  if FPathList.ItemIndex >= 0 then
+    FPathEdit.Text := FPathList.Items[FPathList.ItemIndex];
+  PathUpdateState;
+end;
+
+procedure TForm2.PathBrowseClick(Sender: TObject);
+var
+  Dir: string;
+begin
+  Dir := ExpandCompMacros(Trim(FPathEdit.Text));
+  if SelectDirectory('Папка', '', Dir) then
+    FPathEdit.Text := ExcludeTrailingPathDelimiter(Dir);
+end;
+
+procedure TForm2.PathReplaceClick(Sender: TObject);
+var
+  ItemIdx: Integer;
+begin
+  ItemIdx := FPathList.ItemIndex;
+  if (ItemIdx < 0) or (Trim(FPathEdit.Text) = '') then
+    Exit;
+  FPathList.Items[ItemIdx] := Trim(FPathEdit.Text);
+  FPathList.ItemIndex := ItemIdx;
+  PathUpdateState;
+end;
+
+procedure TForm2.PathAddClick(Sender: TObject);
+var
+  Item: string;
+begin
+  Item := Trim(FPathEdit.Text);
+  if Item = '' then
+    Exit;
+  if FPathList.Items.IndexOf(Item) < 0 then
+    FPathList.Items.Add(Item);
+  FPathList.ItemIndex := FPathList.Items.IndexOf(Item);
+  PathUpdateState;
+end;
+
+procedure TForm2.PathDeleteClick(Sender: TObject);
+var
+  ItemIdx: Integer;
+begin
+  ItemIdx := FPathList.ItemIndex;
+  if ItemIdx < 0 then
+    Exit;
+  FPathList.Items.Delete(ItemIdx);
+  if ItemIdx >= FPathList.Items.Count then
+    ItemIdx := FPathList.Items.Count - 1;
+  FPathList.ItemIndex := ItemIdx;
+  PathUpdateState;
+end;
+
+procedure TForm2.PathDelInvalidClick(Sender: TObject);
+var
+  ItemIdx: Integer;
+begin
+  for ItemIdx := FPathList.Items.Count - 1 downto 0 do
+    if not PathExists(FPathList.Items[ItemIdx]) then
+      FPathList.Items.Delete(ItemIdx);
+  PathUpdateState;
+end;
+
+procedure TForm2.PathUpClick(Sender: TObject);
+var
+  ItemIdx: Integer;
+begin
+  ItemIdx := FPathList.ItemIndex;
+  if ItemIdx <= 0 then
+    Exit;
+  FPathList.Items.Exchange(ItemIdx, ItemIdx - 1);
+  FPathList.ItemIndex := ItemIdx - 1;
+end;
+
+procedure TForm2.PathDownClick(Sender: TObject);
+var
+  ItemIdx: Integer;
+begin
+  ItemIdx := FPathList.ItemIndex;
+  if (ItemIdx < 0) or (ItemIdx >= FPathList.Items.Count - 1) then
+    Exit;
+  FPathList.Items.Exchange(ItemIdx, ItemIdx + 1);
+  FPathList.ItemIndex := ItemIdx + 1;
+end;
+
+// Список путей AValue (через ;) - в окне; True - нажали OK, AValue - новый
+function TForm2.EditPathList(const ACaption: string;
+                             var AValue: string): Boolean;
+var
+  Dlg: TForm;
+  DlgBtn: TUiButton;
+  Rest, Item: string;
+  SepPos, ItemIdx: Integer;
+
+  function AddBtn(const ACap: string; ALeft, ATop, AWidth: Integer;
+                  AClick: TNotifyEvent): TUiButton;
+  begin
+    Result := TUiButton.Create(Dlg);
+    Result.Parent := Dlg;
+    Result.Caption := ACap;
+    Result.SetBounds(ALeft, ATop, AWidth, 25);
+    Result.OnClick := AClick;
+  end;
+
+begin
+  Result := False;
+  Dlg := TForm.CreateNew(Self);
+  try
+    Dlg.Caption := 'Пути: ' + ACaption;
+    Dlg.BorderStyle := bsDialog;
+    Dlg.Position := poOwnerFormCenter;
+    // Окно настроек - поверх всех; без этого список ушёл бы под него
+    Dlg.FormStyle := fsStayOnTop;
+    Dlg.Font := Font;
+    Dlg.Color := clBtnFace;
+    Dlg.ClientWidth := 560;
+    Dlg.ClientHeight := 356;
+
+    FPathList := TUiListBox.Create(Dlg);
+    FPathList.Parent := Dlg;
+    FPathList.SetBounds(8, 8, 544, 206);
+    FPathList.OnClick := PathListClick;
+
+    FPathState := TLabel.Create(Dlg);
+    FPathState.Parent := Dlg;
+    FPathState.AutoSize := False;
+    FPathState.SetBounds(8, 220, 544, 16);
+
+    FPathEdit := TUiEdit.Create(Dlg);
+    FPathEdit.Parent := Dlg;
+    FPathEdit.SetBounds(8, 242, 506, 22);
+    AddBtn('...', 518, 241, 34, PathBrowseClick);
+
+    AddBtn('Replace', 8, 272, 80, PathReplaceClick);
+    AddBtn('Add', 92, 272, 80, PathAddClick);
+    AddBtn('Delete', 176, 272, 80, PathDeleteClick);
+    AddBtn('Delete invalid', 260, 272, 110, PathDelInvalidClick);
+    AddBtn('Up', 412, 272, 68, PathUpClick);
+    AddBtn('Down', 484, 272, 68, PathDownClick);
+
+    DlgBtn := AddBtn('OK', 388, 318, 80, nil);
+    DlgBtn.ModalResult := mrOk;
+    DlgBtn.Default := True;
+    DlgBtn := AddBtn('Cancel', 472, 318, 80, nil);
+    DlgBtn.ModalResult := mrCancel;
+    DlgBtn.Cancel := True;
+
+    Rest := AValue;
+    while Rest <> '' do
+    begin
+      SepPos := Pos(';', Rest);
+      if SepPos = 0 then
+        SepPos := Length(Rest) + 1;
+      Item := Trim(Copy(Rest, 1, SepPos - 1));
+      Delete(Rest, 1, SepPos);
+      if Item <> '' then
+        FPathList.Items.Add(Item);
+    end;
+    if FPathList.Items.Count > 0 then
+    begin
+      FPathList.ItemIndex := 0;
+      FPathEdit.Text := FPathList.Items[0];
+    end;
+    PathUpdateState;
+
+    if Form1 <> nil then
+      Form1.UiApplyForm(Dlg);
+    if Dlg.ShowModal = mrOk then
+    begin
+      AValue := '';
+      for ItemIdx := 0 to FPathList.Items.Count - 1 do
+      begin
+        if AValue <> '' then
+          AValue := AValue + ';';
+        AValue := AValue + FPathList.Items[ItemIdx];
+      end;
+      Result := True;
+    end;
+  finally
+    FPathList := nil;
+    FPathEdit := nil;
+    FPathState := nil;
+    Dlg.Free;
+  end;
 end;
 
 procedure TForm2.lstCompTypesClick(Sender: TObject);
@@ -3610,11 +4405,12 @@ var
 begin
   Result := S;
 
-  Root := '';
-  for I := 0 to High(FCompKeys) do
-    if (CompareText(FCompKeys[I], 'DelphiPath') = 0) and
-       (FCompEdits[I] <> nil) then
-      Root := Trim(FCompEdits[I].Text);
+  Root := FMacroRoot;
+  if Root = '' then
+    for I := 0 to High(FCompKeys) do
+      if (CompareText(FCompKeys[I], 'DelphiPath') = 0) and
+         (FCompEdits[I] <> nil) then
+        Root := Trim(FCompEdits[I].Text);
 
   if Root <> '' then
   begin
@@ -4013,6 +4809,17 @@ begin
   I := TUiButton(Sender).Tag;
   if (I < 0) or (I > High(FCompEdits)) then
     Exit;
+
+  if FCompIsList[I] then
+  begin
+    Dir := FCompEdits[I].Text;
+    if EditPathList(FCompType + ': ' + FCompKeys[I], Dir) then
+    begin
+      FCompEdits[I].Text := Dir;      // OnChange пишет в editor.ini
+      CompEditExit(FCompEdits[I]);    // и нормализация, как при уходе
+    end;
+    Exit;
+  end;
 
   if IsFileKey(FCompKeys[I]) then
   begin
