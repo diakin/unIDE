@@ -137,7 +137,8 @@ type
 implementation
 
 uses
-  DsgClasses;
+  DsgClasses,
+  DsgIcons;   // сглаженные значки компонентов Delphi - скриптами
 
 const
   BtnSize = 28;
@@ -217,6 +218,9 @@ begin
   FArrow.Hint := 'Выбор (без компонента)';
   FArrow.ShowHint := True;
   DrawArrow(FArrow.Glyph);
+  // Сглаженная стрелка (DsgIcons, 'Arrow') вместо пиксельной из DrawArrow
+  SetGlyphInfo(FArrow, nil, 'Arrow', False);
+  RenderGlyph(FArrow, False, clBlack, clTeal, FBox.Color, nil, FArrow.Glyph);
   FArrow.OnClick := ArrowClick;
 
   // Раскладка страниц - пустая; кнопки придут через PlaceButton
@@ -372,10 +376,9 @@ begin
     if CompareText(AIcon, 'YinYang') = 0 then
       PaintYinYangBig(BigBmp.Canvas)
     else
-    begin
-      BigBmp.Canvas.Brush.Color := clWhite;
-      BigBmp.Canvas.FillRect(Rect(0, 0, BigBmp.Width, BigBmp.Height));
-    end;
+      // Значок класса (или 'Arrow') - по скрипту DsgIcons; нет скрипта -
+      // пустой холст
+      DsgPaintIcon(BigBmp.Canvas, DsgIconScript(AIcon));
     SetLength(BigLines, BigBmp.Height);
     for LineIdx := 0 to BigBmp.Height - 1 do
       BigLines[LineIdx] := BigBmp.ScanLine[LineIdx];
@@ -556,10 +559,11 @@ begin
   if CompareText(Copy(ClsName, 1, 3), 'TUi') <> 0 then
     Exit;
   if CompareText(ClsName, 'TUiTheme') = 0 then
-  begin
-    ASmooth := 'YinYang';
-    DsgDrawSmoothIcon(ABmp, ASmooth, clBlack, clBtnFace);
-  end
+    ASmooth := 'YinYang'
+  else if DsgIconScript(ClsName) <> '' then
+    ASmooth := ClsName;     // значок аналога (TUiButton - TButton)
+  if ASmooth <> '' then
+    DsgDrawSmoothIcon(ABmp, ASmooth, clBlack, clBtnFace)
   else if not LoadGlyphByName('T' + Copy(ClsName, 4, MaxInt), ABmp) then
     Exit;
   Result := True;
@@ -626,7 +630,15 @@ begin
   else
   begin
     Size := BtnSize;
-    HasGlyph := LoadGlyph(AClass, ABtn.Glyph);
+    // Свой сглаженный значок (DsgIcons); нет - значок из пакета Delphi
+    if DsgIconScript(AClass.ClassName) <> '' then
+    begin
+      SmoothName := AClass.ClassName;
+      DsgDrawSmoothIcon(ABtn.Glyph, SmoothName, clBlack, clBtnFace);
+      HasGlyph := True;
+    end
+    else
+      HasGlyph := LoadGlyph(AClass, ABtn.Glyph);
   end;
   // Исходный значок - для перестройки под тему; светлый вид - сейчас
   if HasGlyph then
