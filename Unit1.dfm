@@ -489,7 +489,6 @@ object Form1: TForm1
       end
       object mViewIcons: TMenuItem
         Caption = 'Palette Icons...'
-        OnClick = PaletteIconsClick
       end
     end
     object mProject: TMenuItem

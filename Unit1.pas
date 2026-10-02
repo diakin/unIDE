@@ -16343,6 +16343,9 @@ begin
   FDsgIconPopup.Items.Add(NewItem('Edit Icon...', 0, False, True,
                                   PaletteIconEditClick, 0, ''));
   FDsgPalette.ButtonPopup := FDsgIconPopup;
+  // Обработчик - здесь, а не в .dfm: из .dfm назначаются только published
+  // методы, а PaletteIconsClick объявлен в другой секции
+  mViewIcons.OnClick := PaletteIconsClick;
 
   // ВАЖНО: подменю собираем только здесь, когда все пункты главного меню уже
   // созданы. Раньше эти вызовы стояли сразу после Add(mWindows), то есть ДО
