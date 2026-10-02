@@ -983,6 +983,9 @@ type
     // "<массив>.CREATE", "<массив>.<номер>.<свойство>",
     // "<массив>.*.<свойство>", в Objects - номер строки (ArrScanLine)
     FObjArrayLines: TStringList;
+    // По какому тексту модуля собраны FObjArrayNames и FObjArrayLines
+    // (длина и контрольная сумма): тот же текст - собирать заново незачем
+    FObjArrayKey: string;
     // Правка текста не человеком, а инспектором или конструктором: на это
     // время перерисовка редактора выключается, иначе видно, как текст
     // выделяется целиком и тут же заменяется
@@ -18441,6 +18444,9 @@ var
   T0: Cardinal;
   // Замер по этапам (мс) - в строке «разобран» HiLite log
   TA, TPrep, TCode, TSnap, TNames, TDedup, TRender, TWrite: Cardinal;
+  // Подготовка по частям: тексты формы и модуля, массивы компонентов,
+  // снимок и убранные имена, ключ кэша, чтение кэша или разбор .dfm
+  TPText, TPArr, TPSnap, TPKey, TPRead: Cardinal;
 begin
   // Открытая правка в инспекторе - записать, пока FObjDfmFile и узел ещё
   // прежние: разбор ниже её выбросил бы. Сюда приходят переход к другому
@@ -18510,10 +18516,16 @@ begin
     CacheFile := '';
     CacheKey := '';
     FromCache := False;
+    TPText := 0;
+    TPArr := 0;
+    TPSnap := 0;
+    TPKey := 0;
+    TPRead := 0;
     if FObjRoots = nil then
       FObjRoots := TList.Create;
     if Dfm <> '' then
     begin
+      TA := GetTickCount;
       if FromEditor then
         Raw := GetEditorText
       else if BufIdx >= 0 then
@@ -18543,8 +18555,12 @@ begin
         UnitFile := ObjFormUnit;
         if UnitFile <> '' then
           UnitSrc := UnitTextOf(UnitFile);
+        TPText := GetTickCount - TA;
         // Массивы компонентов модуля - до подписей дерева (DfmNodeCaption)
+        TA := GetTickCount;
         ObjCollectArrays(UnitSrc);
+        TPArr := GetTickCount - TA;
+        TA := GetTickCount;
         SnapTxt := ObjSnapTextFor(Cls);
         // Своя форма: снимок - с живой формы, собранной из прежнего .dfm.
         // Вырезанное или удалённое в конструкторе она ещё держит - без
@@ -18552,11 +18568,15 @@ begin
         // (MergeSnapNode). Список - и в ключ кэша: дерево зависит от него.
         if SnapTxt <> '' then
           OwnFormGoneNames(Cls, DfmText, Gone);
+        TPSnap := GetTickCount - TA;
+        TA := GetTickCount;
         CacheFile := ObjCacheFileFor(Dfm);
         CacheKey := ObjCacheKey(DfmText, UnitFile, UnitSrc,
                                 IntToHex(Crc32Of(SnapTxt), 8) + ':' +
                                 IntToStr(Length(SnapTxt)) + ' gone ' +
                                 IntToHex(Crc32Of(Gone.Text), 8));
+        TPKey := GetTickCount - TA;
+
 
         // Дерево в памяти построено по тем же текстам формы и модуля и по
         // тому же снимку, номера строк в нём верные - перестраивать нечего.
@@ -18579,6 +18599,7 @@ begin
     ClearDfmNodes;
     FObjTreeKey := '';
 
+    TA := GetTickCount;
     if Dfm <> '' then
     begin
       if CacheKey <> '' then
@@ -18602,6 +18623,7 @@ begin
     end;
 
     // Подготовка: тексты, ключ, снимок, попытка кэша, разбор .dfm
+    TPRead := GetTickCount - TA;
     TPrep := GetTickCount - T0;
 
     if not FromCache then
@@ -18723,7 +18745,10 @@ begin
       if FromCache then
         Dbg('17134: инспектор: ' + ExtractFileName(Dfm) + ' из кэша, ' +
             IntToStr(GetTickCount - T0) + ' мс (подготовка ' +
-            IntToStr(TPrep) + ', дерево ' + IntToStr(TRender) + ')', clNavy)
+            IntToStr(TPrep) + ': тексты ' + IntToStr(TPText) + ', массивы ' +
+            IntToStr(TPArr) + ', снимок ' + IntToStr(TPSnap) + ', ключ ' +
+            IntToStr(TPKey) + ', чтение кэша ' + IntToStr(TPRead) +
+            '; дерево ' + IntToStr(TRender) + ')', clNavy)
       else
         // По этапам: подготовка - тексты, ключ, снимок своей формы, разбор
         // .dfm; код - BuildCodeRuntime; снимок - его разбор и слияние с
@@ -29152,11 +29177,20 @@ end;
 // строки, где код их задаёт, - в FObjArrayLines
 procedure TForm1.ObjCollectArrays(const ASrc: string);
 var
+  ArrKey: string;
   SL: TStringList;
   I, St, P, K, E, A: Integer;
   U, Rest, Names, Nm, TypeNm: string;
   Cls: TPersistentClass;
 begin
+  // Тот же текст модуля, что в прошлый раз, - списки те же. Проход по
+  // модулю построчно с очисткой комментариев на Unit1.pas (1,3 МБ) стоит
+  // заметно, а зовётся при каждом показе инспектора.
+  ArrKey := IntToStr(Length(ASrc)) + ':' + IntToHex(Crc32Of(ASrc), 8);
+  if (FObjArrayNames <> nil) and (FObjArrayLines <> nil) and
+     (ArrKey = FObjArrayKey) then
+    Exit;
+  FObjArrayKey := ArrKey;
   if FObjArrayNames = nil then
   begin
     FObjArrayNames := TStringList.Create;
