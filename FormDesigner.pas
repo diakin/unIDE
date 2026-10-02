@@ -463,6 +463,45 @@ function PasHasIdent(const APas, AIdent: string): Boolean;
 function PasRemoveFields(const APas, AClassName: string;
                          ANames: TStrings): string;
 
+// Переименование компонента AOld в ANew в тексте .dfm: заголовок object и
+// свойства-ссылки, значение которых - одно это имя (FocusControl = Label1,
+// PopupMenu = PopupMenu1), в том числе внутри коллекций. AHandlers - пары
+// "старый обработчик=новый": значения событий с такими именами тоже
+// меняются (у всех компонентов, которые делят обработчик). Нет объекта -
+// AText.
+function DfmRenameObject(const AText, AOld, ANew: string;
+                         AHandlers: TStrings): string;
+
+// Обработчики объекта AName с именами по образцу Delphi - имя компонента и
+// событие без On (Button1Click для OnClick): пары "Button1Click=
+// btnOkClick" для нового имени ANew - в APairs. Другие имена не трогаются.
+procedure DfmHandlerRenames(const AText, AName, ANew: string;
+                            APairs: TStrings);
+
+// Смена класса объекта AName в .dfm на ANewClass. Свои свойства объекта,
+// которых у нового класса нет, убираются, их имена - в ARemoved
+// ("Label1.Layout"). Свойство считается своим у класса по первой части
+// имени до точки (Font у Font.Name). Свойства, которые класс пишет сам
+// (Items.Strings, Lines.Strings - не published), остаются, если новый
+// класс - наследник старого; иначе убираются. Вложенные объекты остаются.
+function DfmReplaceClass(const AText, AName: string;
+                         AOldClass, ANewClass: TClass;
+                         ARemoved: TStrings): string;
+
+// Тип поля компонента AName в объявлении класса формы AClassName:
+// "Label1: TLabel;" -> "Label1: TButton;". В строке "A, B: TLabel;" имя
+// выносится отдельным полем. Нет поля - APas.
+function PasSetFieldType(const APas, AClassName, AName, AType: string): string;
+
+// Замена идентификатора AOld на ANew во всём тексте модуля - только как
+// отдельного слова, без учёта регистра, вне строк и комментариев.
+// AUnqualified: после точки имя меняется только у Self. (Self.Button1) -
+// Form2.Button1 относится к другому компоненту; так переименовываются
+// поля. Без него меняется и после точки (TForm1.Button1Click) - так
+// переименовываются методы.
+function PasRenameIdent(const APas, AOld, ANew: string;
+                        AUnqualified: Boolean): string;
+
 implementation
 
 uses
@@ -4432,6 +4471,336 @@ begin
   finally
     L.Free;
   end;
+end;
+
+function DfmRenameObject(const AText, AOld, ANew: string;
+                         AHandlers: TStrings): string;
+var
+  SL: TStringList;
+  I, P, Hdr: Integer;
+  T, KeyWord, Rest, V: string;
+begin
+  Result := AText;
+  SL := TStringList.Create;
+  try
+    SL.Text := AText;
+    Hdr := FindObjectHeader(SL, AOld);
+    if Hdr < 0 then
+      Exit;
+    T := Trim(SL[Hdr]);
+    P := Pos(' ', T);
+    KeyWord := Copy(T, 1, P);
+    Rest := TrimLeft(Copy(T, P + 1, MaxInt));
+    if CompareText(Copy(Rest, 1, Length(AOld)), AOld) <> 0 then
+      Exit;
+    SL[Hdr] := StringOfChar(' ', LeadSpaces(SL[Hdr])) + KeyWord + ANew +
+               Copy(Rest, Length(AOld) + 1, MaxInt);
+
+    // Ссылки и обработчики: значение - один идентификатор. Строки списков
+    // и двоичных данных так не выглядят: в них кавычки или нет " = ".
+    for I := 0 to SL.Count - 1 do
+    begin
+      if I = Hdr then
+        Continue;
+      T := SL[I];
+      P := Pos(' = ', T);
+      if P = 0 then
+        Continue;
+      V := Trim(Copy(T, P + 3, MaxInt));
+      if not IsIdentStr(V) then
+        Continue;
+      if CompareText(V, AOld) = 0 then
+        V := ANew
+      else if (AHandlers <> nil) and (AHandlers.IndexOfName(V) >= 0) then
+        V := AHandlers.Values[V]
+      else
+        Continue;
+      SL[I] := Copy(T, 1, P + 2) + V;
+    end;
+    Result := TextLike(SL, AText);
+  finally
+    SL.Free;
+  end;
+end;
+
+procedure DfmHandlerRenames(const AText, AName, ANew: string;
+                            APairs: TStrings);
+var
+  SL: TStringList;
+  I, P, Hdr, Ind: Integer;
+  T, Prop, Meth, Nm, Cl: string;
+begin
+  SL := TStringList.Create;
+  try
+    SL.Text := AText;
+    Hdr := FindObjectHeader(SL, AName);
+    if Hdr < 0 then
+      Exit;
+    Ind := LeadSpaces(SL[Hdr]);
+    I := Hdr + 1;
+    while I < SL.Count do
+    begin
+      T := Trim(SL[I]);
+      if (LeadSpaces(SL[I]) <= Ind) or ParseHeader(SL[I], Nm, Cl) or
+         (UpperCase(T) = 'END') then
+        Break; // свои свойства кончились
+      P := Pos(' = ', T);
+      if P > 0 then
+      begin
+        Prop := Copy(T, 1, P - 1);
+        Meth := Trim(Copy(T, P + 3, MaxInt));
+        if (CompareText(Copy(Prop, 1, 2), 'On') = 0) and
+           (CompareText(Meth, AName + Copy(Prop, 3, MaxInt)) = 0) and
+           (APairs.IndexOfName(Meth) < 0) then
+          APairs.Add(Meth + '=' + ANew + Copy(Prop, 3, MaxInt));
+      end;
+      SkipDfmValue(SL, I);
+      Inc(I);
+    end;
+  finally
+    SL.Free;
+  end;
+end;
+
+function DfmReplaceClass(const AText, AName: string;
+                         AOldClass, ANewClass: TClass;
+                         ARemoved: TStrings): string;
+var
+  SL: TStringList;
+  I, P, Hdr, Ind, First, ClsEnd: Integer;
+  T, Line, Prop, Seg, Nm, Cl: string;
+  Keep: Boolean;
+begin
+  Result := AText;
+  SL := TStringList.Create;
+  try
+    SL.Text := AText;
+    Hdr := FindObjectHeader(SL, AName);
+    if Hdr < 0 then
+      Exit;
+
+    // Заголовок: класс после двоеточия, хвост ([0] у inherited) остаётся
+    Line := SL[Hdr];
+    P := Pos(':', Line);
+    if P = 0 then
+      Exit;
+    First := P + 1;
+    while (First <= Length(Line)) and (Line[First] = ' ') do
+      Inc(First);
+    ClsEnd := First;
+    while (ClsEnd <= Length(Line)) and
+          (Line[ClsEnd] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+      Inc(ClsEnd);
+    SL[Hdr] := Copy(Line, 1, First - 1) + ANewClass.ClassName +
+               Copy(Line, ClsEnd, MaxInt);
+
+    // Свои свойства объекта - до первого вложенного объекта или end
+    Ind := LeadSpaces(SL[Hdr]);
+    I := Hdr + 1;
+    while I < SL.Count do
+    begin
+      T := Trim(SL[I]);
+      if (LeadSpaces(SL[I]) <= Ind) or ParseHeader(SL[I], Nm, Cl) or
+         (UpperCase(T) = 'END') then
+        Break;
+      P := Pos(' = ', T);
+      if P > 0 then
+        Prop := Copy(T, 1, P - 1)
+      else if Copy(T, Length(T) - 1, 2) = ' =' then
+        Prop := Copy(T, 1, Length(T) - 2)
+      else
+        Prop := '';
+      First := I;
+      SkipDfmValue(SL, I);
+      if Prop <> '' then
+      begin
+        Seg := Prop;
+        if Pos('.', Seg) > 0 then
+          Seg := Copy(Seg, 1, Pos('.', Seg) - 1);
+        Keep := GetPropInfo(ANewClass, Seg) <> nil;
+        if not Keep and (AOldClass <> nil) and
+           (GetPropInfo(AOldClass, Seg) = nil) and
+           ANewClass.InheritsFrom(AOldClass) then
+          Keep := True;
+        if not Keep then
+        begin
+          while I >= First do
+          begin
+            SL.Delete(First);
+            Dec(I);
+          end;
+          if ARemoved <> nil then
+            ARemoved.Add(AName + '.' + Prop);
+          I := First;
+          Continue;
+        end;
+      end;
+      Inc(I);
+    end;
+    Result := TextLike(SL, AText);
+  finally
+    SL.Free;
+  end;
+end;
+
+function PasSetFieldType(const APas, AClassName, AName, AType: string): string;
+var
+  SL, Ids: TStringList;
+  I, P, Start: Integer;
+  Code, Tail, Left: string;
+begin
+  Result := APas;
+  SL := TStringList.Create;
+  Ids := TStringList.Create;
+  try
+    SL.Text := APas;
+    Start := -1;
+    for I := 0 to SL.Count - 1 do
+      if IsClassDeclLine(SL[I], AClassName) then
+      begin
+        Start := I;
+        Break;
+      end;
+    if Start < 0 then
+      Exit;
+    for I := Start + 1 to SL.Count - 1 do
+    begin
+      Code := SL[I];
+      Tail := '';
+      P := Pos('//', Code);
+      if P > 0 then
+      begin
+        Tail := ' ' + Copy(Code, P, MaxInt);
+        Code := Copy(Code, 1, P - 1);
+      end;
+      if UpperCase(Trim(Code)) = 'END;' then
+        Break; // конец класса
+      P := Pos(':', Code);
+      if (P = 0) or (Pos('(', Code) > 0) then
+        Continue; // не поле: метод, свойство
+      Left := Copy(Code, 1, P - 1);
+      Ids.CommaText := StringReplace(Left, ' ', '', [rfReplaceAll]);
+      if Ids.IndexOf(AName) < 0 then
+        Continue;
+      if Ids.Count = 1 then
+      begin
+        SL[I] := StringOfChar(' ', LeadSpaces(SL[I])) + Trim(Left) + ': ' +
+                 AType + ';' + Tail;
+        Result := TextLike(SL, APas);
+      end
+      else
+      begin
+        Ids.Clear;
+        Ids.Add(AName);
+        Result := PasAddField(PasRemoveFields(APas, AClassName, Ids),
+                              AClassName, AName, AType);
+      end;
+      Exit;
+    end;
+  finally
+    Ids.Free;
+    SL.Free;
+  end;
+end;
+
+function PasRenameIdent(const APas, AOld, ANew: string;
+                        AUnqualified: Boolean): string;
+const
+  IdChars = ['A'..'Z', 'a'..'z', '0'..'9', '_'];
+var
+  Idx, Len, Copied, TokStart: Integer;
+
+  // Перед словом точка: меняем только у Self. и в диапазоне "1..Имя"
+  function QualOk(AStart: Integer): Boolean;
+  var
+    Pos0, IdEnd: Integer;
+  begin
+    Result := True;
+    if not AUnqualified then
+      Exit;
+    Pos0 := AStart - 1;
+    while (Pos0 >= 1) and (APas[Pos0] in [' ', #9, #13, #10]) do
+      Dec(Pos0);
+    if (Pos0 < 1) or (APas[Pos0] <> '.') then
+      Exit;
+    if (Pos0 > 1) and (APas[Pos0 - 1] = '.') then
+      Exit;
+    Dec(Pos0);
+    while (Pos0 >= 1) and (APas[Pos0] in [' ', #9, #13, #10]) do
+      Dec(Pos0);
+    IdEnd := Pos0;
+    while (Pos0 >= 1) and (APas[Pos0] in IdChars) do
+      Dec(Pos0);
+    Result := CompareText(Copy(APas, Pos0 + 1, IdEnd - Pos0), 'Self') = 0;
+  end;
+
+begin
+  Result := '';
+  if (AOld = '') or (CompareStr(AOld, ANew) = 0) then
+  begin
+    Result := APas;
+    Exit;
+  end;
+  Len := Length(APas);
+  Idx := 1;
+  Copied := 1;
+  while Idx <= Len do
+    case APas[Idx] of
+      '{':
+        begin
+          while (Idx <= Len) and (APas[Idx] <> '}') do
+            Inc(Idx);
+          Inc(Idx);
+        end;
+      '(':
+        if (Idx < Len) and (APas[Idx + 1] = '*') then
+        begin
+          Inc(Idx, 2);
+          while (Idx < Len) and
+                not ((APas[Idx] = '*') and (APas[Idx + 1] = ')')) do
+            Inc(Idx);
+          Inc(Idx, 2);
+        end
+        else
+          Inc(Idx);
+      '/':
+        if (Idx < Len) and (APas[Idx + 1] = '/') then
+        begin
+          while (Idx <= Len) and not (APas[Idx] in [#13, #10]) do
+            Inc(Idx);
+        end
+        else
+          Inc(Idx);
+      '''':
+        begin
+          Inc(Idx);
+          while (Idx <= Len) and (APas[Idx] <> '''') do
+            Inc(Idx);
+          Inc(Idx);
+        end;
+      '0'..'9', '$', '#':
+        begin
+          Inc(Idx);
+          while (Idx <= Len) and (APas[Idx] in IdChars) do
+            Inc(Idx);
+        end;
+      'A'..'Z', 'a'..'z', '_':
+        begin
+          TokStart := Idx;
+          while (Idx <= Len) and (APas[Idx] in IdChars) do
+            Inc(Idx);
+          if (Idx - TokStart = Length(AOld)) and
+             (CompareText(Copy(APas, TokStart, Idx - TokStart), AOld) = 0) and
+             QualOk(TokStart) then
+          begin
+            Result := Result + Copy(APas, Copied, TokStart - Copied) + ANew;
+            Copied := Idx;
+          end;
+        end;
+    else
+      Inc(Idx);
+    end;
+  Result := Result + Copy(APas, Copied, MaxInt);
 end;
 
 end.

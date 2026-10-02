@@ -1370,6 +1370,18 @@ object Form1: TForm1
         OnClick = DsgMenuClick
       end
     end
+    object FDsgMiRename: TMenuItem
+      Caption = 'Rename Component...'
+      OnClick = DsgMenuClick
+    end
+    object FDsgMiReplace: TMenuItem
+      Caption = 'Replace Components...'
+      OnClick = DsgMenuClick
+    end
+    object FDsgMiCopyNames: TMenuItem
+      Caption = 'Copy Component Names'
+      OnClick = DsgMenuClick
+    end
     object FDsgMenuGrpAlign: TMenuItem
       Caption = 'Align'
       object FDsgMiAlignLeft: TMenuItem

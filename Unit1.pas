@@ -653,6 +653,9 @@ type
     FDsgMenuGrp2: TMenuItem;
     FDsgMiFront: TMenuItem;
     FDsgMiBack: TMenuItem;
+    FDsgMiRename: TMenuItem;
+    FDsgMiReplace: TMenuItem;
+    FDsgMiCopyNames: TMenuItem;
     FDsgMenuGrp3: TMenuItem;
     FDsgMiItemIns: TMenuItem;
     FDsgMiItemDel: TMenuItem;
@@ -1853,6 +1856,10 @@ type
     procedure DsgCopy;
     procedure DsgPaste;
     procedure DsgOrder(AToFront: Boolean);
+    procedure DsgRename;
+    procedure DsgEditableNames(ANames: TStrings);
+    procedure DsgReplace;
+    procedure DsgCopyNames;
     function  DsgPasteParent(const AClass: string): string;
     procedure DsgApply(const OldDfm, NewDfm, PasFile, OldPas, NewPas,
                        ASelect: string);
@@ -25175,6 +25182,11 @@ begin
   FDsgMiDelete.Enabled := Sel;
   FDsgMiFront.Enabled := Sel;
   FDsgMiBack.Enabled := Sel;
+  // Переименование - одного компонента; замена класса - и группы
+  FDsgMiRename.Enabled := Sel and (FDesigner.GroupCount < 2);
+  FDsgMiReplace.Enabled := Sel and
+    not ((FDesigner.GroupCount > 1) and FDesigner.GroupIsRuntime);
+  FDsgMiCopyNames.Enabled := Nm <> '';
   // Выравнивание - у группы (Shift+щелчок), по первому выделенному
   // Группу из компонентов кода не выравнивают: их место задаёт код
   DsgAlignMenuExtra;
@@ -25259,6 +25271,12 @@ begin
     DsgOrder(True)
   else if Sender = FDsgMiBack then
     DsgOrder(False)
+  else if Sender = FDsgMiRename then
+    DsgRename
+  else if Sender = FDsgMiReplace then
+    DsgReplace
+  else if Sender = FDsgMiCopyNames then
+    DsgCopyNames
   else if Sender = FDsgMiMenuWizard then
     DsgMenuWizard
   else if Sender = FDsgMiMenuSave then
@@ -26326,6 +26344,255 @@ begin
   if NewDfm = OldDfm then
     Exit;
   DsgApply(OldDfm, NewDfm, '', '', '', Nm);
+end;
+
+// ---------------------------------------------------------------------------
+//  Rename Component, Replace Components, Copy Component Names - пункты
+//  меню конструктора по образцу GExperts
+// ---------------------------------------------------------------------------
+
+// Выделенные в конструкторе (группа или один) - без корня формы и без
+// компонентов из кода: их имя и класс задаёт код, а не .dfm
+procedure TForm1.DsgEditableNames(ANames: TStrings);
+var
+  Idx: Integer;
+begin
+  ANames.Clear;
+  if FDesigner = nil then
+    Exit;
+  FDesigner.GroupNames(ANames);
+  if (ANames.Count = 0) and (FDesigner.SelectedName <> '') then
+    ANames.Add(FDesigner.SelectedName);
+  for Idx := ANames.Count - 1 downto 0 do
+    if (CompareText(ANames[Idx], FDesigner.RootName) = 0) or
+       FDesigner.IsRuntime(FDesigner.Form.FindComponent(ANames[Idx])) then
+      ANames.Delete(Idx);
+end;
+
+// Новое имя выделенного компонента. В .dfm - заголовок и ссылки на него
+// (FocusControl, PopupMenu ...), в модуле формы - поле и обращения к нему
+// (Button1.Caption, Self.Button1). После другой точки имя не меняется:
+// Form2.Button1 - компонент другой формы. Обработчики с именами по образцу
+// Delphi (Button1Click) получают новое имя тоже, если оно свободно.
+// Ctrl+Z в конструкторе откатывает оба файла одним шагом.
+procedure TForm1.DsgRename;
+var
+  OldNm, NewNm, OldDfm, NewDfm, PasFile, OldPas, NewPas, OldMeth,
+  NewMeth, Renamed: string;
+  Names, Pairs: TStringList;
+  Idx, RangeFirst, RangeLast: Integer;
+  CaseOnly: Boolean;
+begin
+  if FDesigner = nil then
+    Exit;
+  Names := TStringList.Create;
+  try
+    DsgEditableNames(Names);
+    if Names.Count <> 1 then
+      Exit;
+    OldNm := Names[0];
+  finally
+    Names.Free;
+  end;
+
+  NewNm := OldNm;
+  if not InputQuery('Rename Component', 'Новое имя для ' + OldNm + ':',
+                    NewNm) then
+    Exit;
+  NewNm := Trim(NewNm);
+  if (NewNm = '') or (CompareStr(NewNm, OldNm) = 0) then
+    Exit;
+  if not IsValidIdent(NewNm) then
+  begin
+    ShowMessage('25311:' + NewNm + ' - не идентификатор: имя начинается с ' +
+                'буквы или _, дальше латинские буквы, цифры и _.');
+    Exit;
+  end;
+  // Меняется только регистр букв - имя занято им же самим
+  CaseOnly := CompareText(NewNm, OldNm) = 0;
+
+  OldDfm := DsgGetText;
+  PasFile := UnitFileFor(FDsgDfm);
+  OldPas := '';
+  if PasFile <> '' then
+    OldPas := DsgFileText(PasFile);
+  if not CaseOnly and
+     (DfmObjectRange(OldDfm, NewNm, RangeFirst, RangeLast) or
+      PasHasIdent(OldPas, NewNm)) then
+  begin
+    ShowMessage('25323:Имя ' + NewNm + ' уже встречается в форме или в ' +
+                'её модуле.');
+    Exit;
+  end;
+
+  Renamed := '';
+  Pairs := TStringList.Create;
+  try
+    DfmHandlerRenames(OldDfm, OldNm, NewNm, Pairs);
+    for Idx := Pairs.Count - 1 downto 0 do
+    begin
+      NewMeth := Pairs.ValueFromIndex[Idx];
+      if not CaseOnly and PasHasIdent(OldPas, NewMeth) then
+      begin
+        LogRaw('Rename: обработчик ' + Pairs.Names[Idx] + ' не ' +
+               'переименован - имя ' + NewMeth + ' уже занято');
+        Pairs.Delete(Idx);
+      end;
+    end;
+    NewDfm := DfmRenameObject(OldDfm, OldNm, NewNm, Pairs);
+    NewPas := '';
+    if OldPas <> '' then
+    begin
+      NewPas := PasRenameIdent(OldPas, OldNm, NewNm, True);
+      for Idx := 0 to Pairs.Count - 1 do
+      begin
+        OldMeth := Pairs.Names[Idx];
+        NewMeth := Pairs.ValueFromIndex[Idx];
+        NewPas := PasRenameIdent(NewPas, OldMeth, NewMeth, False);
+        Renamed := Renamed + ', ' + OldMeth + ' -> ' + NewMeth;
+      end;
+    end;
+  finally
+    Pairs.Free;
+  end;
+  if NewDfm = OldDfm then
+    Exit;
+
+  LogRaw('Rename: ' + OldNm + ' -> ' + NewNm + Renamed);
+  DsgApply(OldDfm, NewDfm, PasFile, OldPas, NewPas, NewNm);
+end;
+
+// Замена класса выделенных компонентов (группы) на выбранный из палитры.
+// Имя, положение, вложенные компоненты и общие свойства остаются;
+// свойства, которых у нового класса нет, убираются из .dfm - их список
+// показывается. В модуле - тип поля и модуль класса в uses. Визуальный
+// компонент на невизуальный (и наоборот) не меняется.
+procedure TForm1.DsgReplace;
+var
+  Names, Items, Removed, Skipped: TStringList;
+  Idx, PageIdx, ClsIdx, Done: Integer;
+  ClsList: TList;
+  Pick, OldDfm, NewDfm, PasFile, OldPas, NewPas, Root, OldClsNm,
+  Prompt: string;
+  NewCls, OldCls: TClass;
+begin
+  if FDesigner = nil then
+    Exit;
+  Names := TStringList.Create;
+  Items := TStringList.Create;
+  Removed := TStringList.Create;
+  Skipped := TStringList.Create;
+  try
+    DsgEditableNames(Names);
+    if Names.Count = 0 then
+      Exit;
+    OldDfm := DsgGetText;
+
+    // Классы палитры: страницы Delphi и свои (ряд Custom)
+    Items.Sorted := True;
+    Items.Duplicates := dupIgnore;
+    for PageIdx := 0 to DsgPageCount - 1 do
+    begin
+      ClsList := DsgPageClasses(PageIdx);
+      if ClsList <> nil then
+        for ClsIdx := 0 to ClsList.Count - 1 do
+          Items.Add(TClass(ClsList[ClsIdx]).ClassName);
+      ClsList := DsgPageCustomClasses(PageIdx);
+      if ClsList <> nil then
+        for ClsIdx := 0 to ClsList.Count - 1 do
+          Items.Add(TClass(ClsList[ClsIdx]).ClassName);
+    end;
+    if Names.Count = 1 then
+      Prompt := 'Заменить ' + Names[0] + ': ' +
+                DfmObjectClass(OldDfm, Names[0]) + ' на класс:'
+    else
+      Prompt := 'Заменить класс у ' + IntToStr(Names.Count) +
+                ' компонентов на:';
+    Pick := ChooseFromList('Replace Components', Prompt, Items);
+    if Pick = '' then
+      Exit;
+    NewCls := GetClass(Pick);
+    if NewCls = nil then
+      Exit;
+
+    PasFile := UnitFileFor(FDsgDfm);
+    OldPas := '';
+    if PasFile <> '' then
+      OldPas := DsgFileText(PasFile);
+    Root := DfmRootClass(OldDfm);
+    NewDfm := OldDfm;
+    NewPas := OldPas;
+    Done := 0;
+    for Idx := 0 to Names.Count - 1 do
+    begin
+      OldClsNm := DfmObjectClass(NewDfm, Names[Idx]);
+      if CompareText(OldClsNm, Pick) = 0 then
+        Continue;
+      OldCls := GetClass(OldClsNm);
+      if (OldCls <> nil) and
+         (OldCls.InheritsFrom(TControl) <> NewCls.InheritsFrom(TControl)) then
+      begin
+        Skipped.Add(Names[Idx] + ': ' + OldClsNm);
+        Continue;
+      end;
+      NewDfm := DfmReplaceClass(NewDfm, Names[Idx], OldCls, NewCls, Removed);
+      if NewPas <> '' then
+        NewPas := PasSetFieldType(NewPas, Root, Names[Idx], Pick);
+      Inc(Done);
+    end;
+    if Skipped.Count > 0 then
+      LogRaw('Replace: не заменены (визуальный и невизуальный классы ' +
+             'не взаимозаменяемы): ' + Skipped.CommaText);
+    if Done = 0 then
+    begin
+      if Skipped.Count > 0 then
+        ShowMessage('25412:' + Pick + ' и класс выделенного - один ' +
+                    'визуальный, другой нет; такую замену конструктор не ' +
+                    'делает.')
+      else
+        ShowMessage('25416:У выделенного уже класс ' + Pick + '.');
+      Exit;
+    end;
+    if NewPas <> '' then
+      NewPas := PasAddUses(NewPas,
+                           GetTypeData(PTypeInfo(NewCls.ClassInfo))^.UnitName);
+
+    LogRaw('Replace: ' + IntToStr(Done) + ' -> ' + Pick);
+    DsgApply(OldDfm, NewDfm, PasFile, OldPas, NewPas, Names[0]);
+    if Removed.Count > 0 then
+    begin
+      LogRaw('Replace: убраны свойства, которых у ' + Pick + ' нет: ' +
+             Removed.CommaText);
+      ShowMessage('25430:Свойств, которых у ' + Pick + ' нет, в .dfm ' +
+                  'больше нет:'#13#10#13#10 + Removed.Text);
+    end;
+  finally
+    Skipped.Free;
+    Removed.Free;
+    Items.Free;
+    Names.Free;
+  end;
+end;
+
+// Имена выделенных - в буфер обмена, по одному в строке
+procedure TForm1.DsgCopyNames;
+var
+  Names: TStringList;
+begin
+  if FDesigner = nil then
+    Exit;
+  Names := TStringList.Create;
+  try
+    FDesigner.GroupNames(Names);
+    if (Names.Count = 0) and (FDesigner.SelectedName <> '') then
+      Names.Add(FDesigner.SelectedName);
+    if Names.Count = 1 then
+      Clipboard.AsText := Names[0]
+    else if Names.Count > 1 then
+      Clipboard.AsText := Names.Text;
+  finally
+    Names.Free;
+  end;
 end;
 
 procedure TForm1.DsgKey(AKey: Word; ACtrl, AShift: Boolean);
