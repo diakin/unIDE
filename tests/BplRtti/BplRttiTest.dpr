@@ -82,7 +82,7 @@ var
   Reg: TRegistry;
   PkgNames, Units, Requires: TStringList;
   PkgIdx, ReqIdx: Integer;
-  PkgPath, RootDir, Descr, ReqPath: string;
+  PkgPath, RootDir, Descr, ReqPath, ReqName: string;
   DataModule: HMODULE;
 begin
   RootDir := DelphiRootDir;
@@ -131,8 +131,11 @@ begin
       end;
       for ReqIdx := 0 to Requires.Count - 1 do
       begin
-        ReqPath := FindOnPath(Requires[ReqIdx] + '.bpl',
-                              ExtractFilePath(PkgPath));
+        // Имя в PACKAGEINFO - уже с расширением (CPortLib7.bpl)
+        ReqName := Requires[ReqIdx];
+        if ExtractFileExt(ReqName) = '' then
+          ReqName := ReqName + '.bpl';
+        ReqPath := FindOnPath(ReqName, ExtractFilePath(PkgPath));
         if ReqPath = '' then
           ReqPath := '(не найден)';
         Say('  требует ' + Requires[ReqIdx] + ': ' + ReqPath);
