@@ -890,6 +890,11 @@ type
     // сообщением - форма конструктора перестраивается, а щелчок пришёл из
     // обработчика её же окна
     FDsgPlaceCls: TComponentClass;
+    // Вставка стороннего компонента: "Модуль.Класс" (класса в редакторе нет)
+    FDsgPlaceForeign: string;
+    // Сторонний класс -> класс-аналог из Delphi (DsgMapClass); nil в
+    // Objects - аналога нет, заглушка
+    FDsgAnalogs: TStringList;
     FDsgPlaceParent: string;
     FDsgPlacePt: TPoint;
     FDsgEventName: string; // двойной щелчок: компонент, обработчик которого открыть
@@ -1800,6 +1805,10 @@ type
     function  DsgNewObjectText(ACls: TComponentClass; const AName: string;
                                X, Y: Integer): string;
     procedure DsgInsert;
+    function  DsgMapClass(const AClassName: string): TComponentClass;
+    function  DsgAnalogFor(AForeign: TClass): TComponentClass;
+    function  DsgForeignObjectText(const AClass, AName: string;
+                                   X, Y: Integer; AForeign: TClass): string;
     procedure DsgDblClick(const AName: string);
     procedure DsgContext(const AScreen: TPoint);
     procedure DsgPageChange(const APageCtl: string; AIndex: Integer);
@@ -2417,6 +2426,7 @@ var
     DlgNewPrj,    // New Project - NewProjectClick
     DlgRelease,   // Release files - ReleaseFilesDialog
     ReleaseBuild, // Build Release: файлы, нужные программе, по исходникам
+    BplRtti,      // классы сторонних пакетов: предки по именам
     TypInfo;      // свойства классов VCL для инспектора объектов
 
   {$R *.dfm}
@@ -3091,6 +3101,9 @@ begin
   UiDefault('Dsg.Caret', clBlack, $000080FF);
   // Уголки компонентов группы (Shift+щелчок) в конструкторе форм
   UiDefault('Dsg.GroupMark', $00E07000, $00FF9040);
+  // Рамка стороннего компонента, показанного классом-аналогом из Delphi
+  // (TComComboBox - как TComboBox)
+  UiDefault('Dsg.Foreign', $00C08000, $00FFB060);
   // Номер строки с кареткой на полосе номеров
   UiDefault('Gutter.CurBG', $00C8E8FF, $00264912);
   // Текст номера строки с кареткой; clDefault - цвет цифр полосы (GutterFG
@@ -3388,6 +3401,9 @@ begin
     Result := 'Конструктор форм: маркеры выделения'
   else if AKey = 'Dsg.GroupMark' then
     Result := 'Конструктор форм: уголки группы (Shift+щелчок)'
+  else if AKey = 'Dsg.Foreign' then
+    Result := 'Конструктор форм: рамка стороннего компонента, показанного ' +
+              'аналогом'
   else if AKey = 'Gutter.CurBG' then
     Result := 'Полоса номеров: фон текущей строки'
   else if AKey = 'Gutter.CurText' then
@@ -16410,6 +16426,7 @@ begin
   FreeAndNil(FDfmNodes);
   FreeAndNil(FObjRoots);
   FreeAndNil(FDsgForeign);
+  FreeAndNil(FDsgAnalogs);
   FreeAndNil(FCompDfmNames);
   FreeAndNil(FObjArrayNames);
   FreeAndNil(FObjArrayLines);
@@ -23183,6 +23200,8 @@ begin
   Result.OnPageChange := DsgPageChange;
   Result.OnBatch := DsgBatch;
   Result.OnGroupChange := DsgGroupChange;
+  Result.OnMapClass := DsgMapClass;
+  Result.ForeignColor := UiColor('Dsg.Foreign');
 end;
 
 // По чему построена форма конструктора: текст .dfm, номер снимка, режим
@@ -26579,16 +26598,38 @@ end;
 // Щелчок по форме конструктора при выбранном на палитре классе
 procedure TForm1.DsgPlace(const AParent: string; X, Y, AFormX, AFormY: Integer;
                           var AHandled: Boolean);
+var
+  ForeignName, LoadError: string;
+  ForeignCls: TClass;
 begin
-  // Сторонний компонент на форму пока не ставится (этап 2)
+  // Сторонний компонент: визуальный он или нет - по предкам его класса
+  // из пакета (TControl или только TComponent)
   if (FDsgPalette <> nil) and (FDsgPalette.SelectedForeign <> '') and
-     (FDesigner <> nil) then
+     (FDesigner <> nil) and (FDsgForeign <> nil) then
   begin
     AHandled := True;
-    Dbg('21882: конструктор: ' + FDsgPalette.SelectedForeign +
-        ' - постановка сторонних компонентов на форму ещё не сделана',
-        clGray);
-    FDsgPalette.ClearSelection;
+    ForeignName := Copy(FDsgPalette.SelectedForeign,
+                        Pos('.', FDsgPalette.SelectedForeign) + 1, MaxInt);
+    ForeignCls := FDsgForeign.ForeignClass(
+                    FDsgForeign.IndexOfClass(ForeignName), LoadError);
+    if ForeignCls = nil then
+    begin
+      ShowMessage('21885:' + ForeignName + ': ' + LoadError);
+      FDsgPalette.ClearSelection;
+      Exit;
+    end;
+    FDsgPlaceForeign := FDsgPalette.SelectedForeign;
+    if BplInheritsFromName(ForeignCls, 'TControl') then
+    begin
+      FDsgPlaceParent := AParent;
+      FDsgPlacePt := Point(X, Y);
+    end
+    else
+    begin
+      FDsgPlaceParent := FDesigner.RootName;
+      FDsgPlacePt := Point(AFormX, AFormY);
+    end;
+    PostMessage(Handle, WM_USER + 313, 0, 0);
     Exit;
   end;
   if (FDsgPalette = nil) or (FDsgPalette.SelectedClass = nil) or
@@ -26690,12 +26731,37 @@ procedure TForm1.DsgInsert;
 var
   Cls: TComponentClass;
   Base, Nm, OldDfm, NewDfm, PasFile, OldPas, NewPas, Obj: string;
+  Foreign, ClsName, UnitNm, LoadError: string;
+  ForeignCls: TClass;
   N, A, B: Integer;
 begin
   Cls := FDsgPlaceCls;
   FDsgPlaceCls := nil;
-  if (Cls = nil) or (FDesigner = nil) then
+  Foreign := FDsgPlaceForeign;
+  FDsgPlaceForeign := '';
+  if ((Cls = nil) and (Foreign = '')) or (FDesigner = nil) then
     Exit;
+  // Класс и его модуль: свой - из RTTI, сторонний - из палитры
+  // ("Модуль.Класс") и его пакета
+  ForeignCls := nil;
+  if Cls <> nil then
+  begin
+    ClsName := Cls.ClassName;
+    UnitNm := GetTypeData(PTypeInfo(Cls.ClassInfo))^.UnitName;
+  end
+  else
+  begin
+    UnitNm := Copy(Foreign, 1, Pos('.', Foreign) - 1);
+    ClsName := Copy(Foreign, Pos('.', Foreign) + 1, MaxInt);
+    if FDsgForeign <> nil then
+      ForeignCls := FDsgForeign.ForeignClass(
+                      FDsgForeign.IndexOfClass(ClsName), LoadError);
+    if ForeignCls = nil then
+    begin
+      ShowMessage('21886:' + ClsName + ': ' + LoadError);
+      Exit;
+    end;
+  end;
   ReleaseCapture;
   if FObjEditing then
     ObjApplyEdit;
@@ -26707,7 +26773,7 @@ begin
     OldPas := DsgFileText(PasFile);
 
   // Имя: класс без T и первый свободный номер
-  Base := Cls.ClassName;
+  Base := ClsName;
   if (Length(Base) > 1) and (UpCase(Base[1]) = 'T') then
     Delete(Base, 1, 1);
   N := 1;
@@ -26717,7 +26783,11 @@ begin
   until not DfmObjectRange(OldDfm, Nm, A, B) and
         ((OldPas = '') or not PasHasIdent(OldPas, Nm));
 
-  Obj := DsgNewObjectText(Cls, Nm, FDsgPlacePt.X, FDsgPlacePt.Y);
+  if Cls <> nil then
+    Obj := DsgNewObjectText(Cls, Nm, FDsgPlacePt.X, FDsgPlacePt.Y)
+  else
+    Obj := DsgForeignObjectText(ClsName, Nm, FDsgPlacePt.X, FDsgPlacePt.Y,
+                                ForeignCls);
   NewDfm := DfmInsertObject(OldDfm, FDsgPlaceParent, Obj);
   if NewDfm = OldDfm then
     Exit; // родителя в тексте не нашлось
@@ -26725,14 +26795,13 @@ begin
   NewPas := '';
   if OldPas <> '' then
   begin
-    NewPas := PasAddField(OldPas, DfmRootClass(OldDfm), Nm, Cls.ClassName);
+    NewPas := PasAddField(OldPas, DfmRootClass(OldDfm), Nm, ClsName);
     if NewPas = OldPas then
       NewPas := ''
     else
-      // Модуль, где объявлен класс (ExtCtrls для TPanel), - в uses, иначе
-      // "Panel1: TPanel;" не соберётся. Имя модуля берётся из RTTI класса.
-      NewPas := PasAddUses(NewPas,
-                           GetTypeData(PTypeInfo(Cls.ClassInfo))^.UnitName);
+      // Модуль, где объявлен класс (ExtCtrls для TPanel, CPort для
+      // TComPort), - в uses, иначе "Panel1: TPanel;" не соберётся
+      NewPas := PasAddUses(NewPas, UnitNm);
   end;
 
   if NewPas <> '' then
@@ -26761,6 +26830,174 @@ begin
     FDesigner.SelectByName(Nm);
     DsgSelect(Nm);
   end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Сторонние компоненты в конструкторе
+//
+//  Класса стороннего компонента (TComComboBox) в редакторе нет. Показать
+//  его можно классом-аналогом из Delphi: первым предком, который стоит на
+//  палитре Delphi (DsgClasses), или, если предок - TCustomX, классом TX
+//  (TCustomComboBox -> TComboBox). Аналога нет (TRichViewEdit, TComLed) -
+//  заглушка: серая панель или значок. В .dfm всегда настоящий класс.
+// ---------------------------------------------------------------------------
+
+function TForm1.DsgAnalogFor(AForeign: TClass): TComponentClass;
+var
+  Cur: TClass;
+  CurName: string;
+
+  function OnPalette(const AName: string): TComponentClass;
+  var
+    PageIdx, ClsIdx: Integer;
+    PageList: TList;
+  begin
+    Result := nil;
+    for PageIdx := 0 to DsgPageCount - 1 do
+    begin
+      PageList := DsgPageClasses(PageIdx);
+      for ClsIdx := 0 to PageList.Count - 1 do
+        if CompareText(TComponentClass(PageList[ClsIdx]).ClassName,
+                       AName) = 0 then
+        begin
+          Result := TComponentClass(PageList[ClsIdx]);
+          Exit;
+        end;
+    end;
+  end;
+
+begin
+  Result := nil;
+  if AForeign = nil then
+    Exit;
+  Cur := AForeign.ClassParent;
+  while Cur <> nil do
+  begin
+    CurName := Cur.ClassName;
+    Result := OnPalette(CurName);
+    if Result <> nil then
+      Exit;
+    if CompareText(Copy(CurName, 1, 7), 'TCustom') = 0 then
+    begin
+      Result := OnPalette('T' + Copy(CurName, 8, MaxInt));
+      if Result <> nil then
+        Exit;
+    end;
+    Cur := Cur.ClassParent;
+  end;
+end;
+
+// Чем показать сторонний класс AClassName в конструкторе (OnMapClass).
+// Ответ запоминается: пакет и аналог ищутся один раз на класс.
+function TForm1.DsgMapClass(const AClassName: string): TComponentClass;
+var
+  CacheIdx, CompIdx: Integer;
+  ForeignCls: TClass;
+  LoadError: string;
+begin
+  Result := nil;
+  if FDsgForeign = nil then
+    Exit;
+  if FDsgAnalogs = nil then
+  begin
+    FDsgAnalogs := TStringList.Create;
+    FDsgAnalogs.Sorted := True;
+  end;
+  CacheIdx := FDsgAnalogs.IndexOf(AClassName);
+  if CacheIdx >= 0 then
+  begin
+    Result := TComponentClass(Pointer(FDsgAnalogs.Objects[CacheIdx]));
+    Exit;
+  end;
+  CompIdx := FDsgForeign.IndexOfClass(AClassName);
+  if CompIdx >= 0 then
+  begin
+    ForeignCls := FDsgForeign.ForeignClass(CompIdx, LoadError);
+    if ForeignCls = nil then
+      Dbg('21883: конструктор: ' + AClassName + ' - ' + LoadError, clGray)
+    else
+      Result := DsgAnalogFor(ForeignCls);
+    if Result <> nil then
+      Dbg('21884: конструктор: ' + AClassName + ' показан как ' +
+          Result.ClassName, clGray)
+    else
+      Dbg('21884: конструктор: ' + AClassName + ' - аналога нет, заглушка',
+          clGray);
+  end;
+  FDsgAnalogs.AddObject(AClassName, TObject(Pointer(Result)));
+end;
+
+// Текст object ... end нового стороннего компонента. Есть аналог - его
+// текст (DsgNewObjectText) с настоящим классом в заголовке; свойства,
+// которых нет в published настоящего класса (по RTTI из пакета), убраны:
+// иначе программа при загрузке формы остановилась бы на "Property ... does
+// not exist". Аналога нет - место и размер, у невизуального - место.
+function TForm1.DsgForeignObjectText(const AClass, AName: string;
+                                     X, Y: Integer; AForeign: TClass): string;
+var
+  Analog: TComponentClass;
+  ObjLines: TStringList;
+  LineIdx, EqPos, DotPos: Integer;
+  Line, PropName: string;
+  ForeignType: PTypeInfo;
+  SkipProp: Boolean;
+begin
+  Analog := DsgMapClass(AClass);
+  if Analog <> nil then
+  begin
+    ForeignType := nil;
+    if AForeign <> nil then
+      ForeignType := AForeign.ClassInfo;
+    ObjLines := TStringList.Create;
+    try
+      ObjLines.Text := DsgNewObjectText(Analog, AName, X, Y);
+      if ObjLines.Count > 0 then
+        ObjLines[0] := 'object ' + AName + ': ' + AClass;
+      SkipProp := False;
+      LineIdx := 1;
+      while LineIdx < ObjLines.Count do
+      begin
+        Line := ObjLines[LineIdx];
+        // Свойство верхнего уровня - два пробела и не пробел; строки его
+        // многострочного значения - с большим отступом, идут за ним
+        if (Length(Line) > 2) and (Line[1] = ' ') and (Line[2] = ' ') and
+           (Line[3] <> ' ') then
+        begin
+          EqPos := Pos(' = ', Line);
+          if EqPos > 0 then
+          begin
+            PropName := Trim(Copy(Line, 3, EqPos - 3));
+            DotPos := Pos('.', PropName);
+            if DotPos > 0 then
+              PropName := Copy(PropName, 1, DotPos - 1);
+            SkipProp := (ForeignType = nil) or
+                        (GetPropInfo(ForeignType, PropName) = nil);
+          end
+          else
+            SkipProp := False;
+        end
+        else if Trim(Line) = 'end' then
+          SkipProp := False;
+        if SkipProp then
+          ObjLines.Delete(LineIdx)
+        else
+          Inc(LineIdx);
+      end;
+      Result := ObjLines.Text;
+    finally
+      ObjLines.Free;
+    end;
+    Exit;
+  end;
+
+  Result := 'object ' + AName + ': ' + AClass + #13#10 +
+            '  Left = ' + IntToStr(X) + #13#10 +
+            '  Top = ' + IntToStr(Y) + #13#10;
+  if (AForeign <> nil) and BplInheritsFromName(AForeign, 'TWinControl') then
+    Result := Result + '  Width = 185'#13#10'  Height = 89'#13#10
+  else if (AForeign <> nil) and BplInheritsFromName(AForeign, 'TControl') then
+    Result := Result + '  Width = 65'#13#10'  Height = 65'#13#10;
+  Result := Result + 'end'#13#10;
 end;
 
 procedure TForm1.WMDsgClosed(var Msg: TMessage);

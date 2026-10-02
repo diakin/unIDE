@@ -56,6 +56,10 @@ type
   // - перед первой, False - после последней. Главное окно пишет их в .dfm
   // одним шагом отката и перестраивает инспектор один раз.
   TDsgBatchEvent = procedure(ABegin: Boolean) of object;
+  // Класс, которого в редакторе нет (сторонний: TComComboBox), - чем его
+  // показать (TComboBox). nil - нечем: заглушка.
+  TDsgMapClassEvent = function(const AClassName: string): TComponentClass
+                      of object;
   TDsgPlaceEvent = procedure(const AParent: string; X, Y, AFormX, AFormY: Integer;
                              var AHandled: Boolean) of object;
 
@@ -123,6 +127,13 @@ type
     FRootName: string;
     FClassOf: TStringList;    // имя компонента -> класс из .dfm
     FVisualUnknown: TStringList; // неизвестные классы, у которых есть Width
+    // Сторонние компоненты, показанные классом-аналогом (OnMapClass):
+    // какие классы так прочитаны и какие компоненты так созданы - у них
+    // рамка цвета ForeignColor
+    FOnMapClass: TDsgMapClassEvent;
+    FMapped: TStringList;
+    FForeign: TList;
+    FForeignColor: TColor;
     // перемещение мышью
     FDragging, FDragMoved: Boolean;
     FDragCtl: TControl;
@@ -242,6 +253,8 @@ type
     property OnBatch: TDsgBatchEvent read FOnBatch write FOnBatch;
     // Состав группы изменился (Shift+щелчок)
     property OnGroupChange: TNotifyEvent read FOnGroupChange write FOnGroupChange;
+    property OnMapClass: TDsgMapClassEvent read FOnMapClass write FOnMapClass;
+    property ForeignColor: TColor read FForeignColor write FForeignColor;
     // Сколько компонентов в группе; 0 - группы нет
     function GroupCount: Integer;
     // Имена выделенных: группы (главный первым) или одного выделенного.
@@ -314,6 +327,9 @@ type
     // Красная рамка у скрытых: у самого ACtl, если он скрыт, и у его
     // безоконных детей (TLabel и т. п.) - их рисует ACtl
     procedure MarkHidden(ACtl: TWinControl);
+    // Рамка цвета ForeignColor у стороннего компонента, показанного
+    // аналогом: у самого ACtl и у его безоконных детей
+    procedure MarkForeign(ACtl: TWinControl);
     // Компонент формы под точкой экрана: самый верхний, включая
     // отключённые. Внутренние контролы компонента (кнопки TRadioGroup)
     // заменяются им самим.
@@ -1691,6 +1707,7 @@ begin
           FDesigner.MarkBorderless(FCtl);
         FDesigner.MarkInvisibleKids(FCtl);
         FDesigner.MarkHidden(FCtl);
+        FDesigner.MarkForeign(FCtl);
         Exit;
       end;
 
@@ -2158,6 +2175,11 @@ begin
   FVisualUnknown := TStringList.Create;
   FVisualUnknown.Sorted := True;
   FVisualUnknown.Duplicates := dupIgnore;
+  FMapped := TStringList.Create;
+  FMapped.Sorted := True;
+  FMapped.Duplicates := dupIgnore;
+  FForeign := TList.Create;
+  FForeignColor := $00C08000;
   FRuntime := TList.Create;
   FCodePlaced := TStringList.Create;
   FGroup := TList.Create;
@@ -2181,6 +2203,8 @@ begin
   FGroupMarks.Free;
   FAlignOff.Free;
   FVisualUnknown.Free;
+  FMapped.Free;
+  FForeign.Free;
   FClassOf.Free;
   inherited;
 end;
@@ -2203,6 +2227,8 @@ begin
   FGroupDrag := False;
   if FHidden <> nil then
     FHidden.Clear;
+  if FForeign <> nil then
+    FForeign.Clear;
   if FPageRules <> nil then
   begin
     for I := 0 to FPageRules.Count - 1 do
@@ -2246,6 +2272,7 @@ var
 begin
   FClassOf.Clear;
   FVisualUnknown.Clear;
+  FMapped.Clear;
   FRootName := '';
 
   SL := TStringList.Create;
@@ -2310,12 +2337,24 @@ procedure TFormDesigner.ReaderFindClass(Reader: TReader; const ClassName: string
                                         var ComponentClass: TComponentClass);
 var
   C: TPersistentClass;
+  Mapped: TComponentClass;
 begin
   if ComponentClass <> nil then
     Exit;
   C := GetClass(ClassName);
+  Mapped := nil;
+  if ((C = nil) or not C.InheritsFrom(TComponent)) and
+     Assigned(FOnMapClass) then
+    Mapped := FOnMapClass(ClassName);
   if (C <> nil) and C.InheritsFrom(TComponent) then
     ComponentClass := TComponentClass(C)
+  else if Mapped <> nil then
+  begin
+    // Сторонний - классом-аналогом; свойства, которых у аналога нет,
+    // пропускает ReaderError
+    ComponentClass := Mapped;
+    FMapped.Add(ClassName);
+  end
   else if FVisualUnknown.IndexOf(ClassName) >= 0 then
     ComponentClass := TDsgStub
   else
@@ -2465,6 +2504,16 @@ begin
       TControl(C).Visible := True;
     end;
   end;
+
+  // Показанные аналогом - в список для рамки
+  if FMapped.Count > 0 then
+    for I := 0 to FForm.ComponentCount - 1 do
+    begin
+      C := FForm.Components[I];
+      if (C is TControl) and (C.Name <> '') and
+         (FMapped.IndexOf(FClassOf.Values[C.Name]) >= 0) then
+        FForeign.Add(C);
+    end;
 
   // Заглушки подписываем: имя и настоящий класс
   for I := 0 to FForm.ComponentCount - 1 do
@@ -3684,6 +3733,61 @@ begin
   finally
     C.Handle := 0;
     C.Free;
+    ReleaseDC(ACtl.Handle, DC);
+  end;
+end;
+
+procedure TFormDesigner.MarkForeign(ACtl: TWinControl);
+var
+  DC: HDC;
+  FrameCanvas: TCanvas;
+  FrameRect: TRect;
+  KidIdx: Integer;
+  Kid: TControl;
+  Any: Boolean;
+begin
+  if (FForeign = nil) or (FForeign.Count = 0) or not ACtl.HandleAllocated then
+    Exit;
+  Any := FForeign.IndexOf(ACtl) >= 0;
+  if not Any then
+    for KidIdx := 0 to ACtl.ControlCount - 1 do
+    begin
+      Kid := ACtl.Controls[KidIdx];
+      if not (Kid is TWinControl) and (FForeign.IndexOf(Kid) >= 0) then
+      begin
+        Any := True;
+        Break;
+      end;
+    end;
+  if not Any then
+    Exit;
+
+  DC := GetDC(ACtl.Handle);
+  FrameCanvas := TCanvas.Create;
+  try
+    FrameCanvas.Handle := DC;
+    FrameCanvas.Brush.Style := bsClear;
+    FrameCanvas.Pen.Color := FForeignColor;
+    FrameCanvas.Pen.Style := psSolid;
+    FrameCanvas.Pen.Width := 1;
+    if FForeign.IndexOf(ACtl) >= 0 then
+    begin
+      FrameRect := ACtl.ClientRect;
+      FrameCanvas.Rectangle(FrameRect.Left, FrameRect.Top, FrameRect.Right,
+                            FrameRect.Bottom);
+    end;
+    for KidIdx := 0 to ACtl.ControlCount - 1 do
+    begin
+      Kid := ACtl.Controls[KidIdx];
+      if (Kid is TWinControl) or (FForeign.IndexOf(Kid) < 0) then
+        Continue;
+      FrameRect := Kid.BoundsRect;
+      FrameCanvas.Rectangle(FrameRect.Left, FrameRect.Top, FrameRect.Right,
+                            FrameRect.Bottom);
+    end;
+  finally
+    FrameCanvas.Handle := 0;
+    FrameCanvas.Free;
     ReleaseDC(ACtl.Handle, DC);
   end;
 end;

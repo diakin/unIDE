@@ -17,6 +17,12 @@ unit DsgForeign;
 //      класса в редакторе нет.
 //  Значок компонента - ресурс BITMAP с именем класса в design-пакете
 //  (как у компонентов Delphi в dcl*.bpl); пакеты для значков - IconLibs.
+//
+//  Класс компонента (ForeignClass) - из runtime-пакета, загруженного без
+//  выполнения кода (BplRtti): его предки, свойства и события. Пакет
+//  загружается при первом обращении к любому его классу и остаётся в
+//  памяти до выхода. Классы чужие: проверки is с классами редактора к ним
+//  не применяются, только имена (BplInheritsFromName) и RTTI.
 // ---------------------------------------------------------------------------
 
 interface
@@ -41,6 +47,12 @@ type
     FPages: TStringList; // страницы по порядку палитры Delphi
     FIconLibs: TStringList; // design-пакеты: в них значки
     FLog: TStringList;   // что найдено и что пропущено - для лога
+    // Загруженные runtime-пакеты: путь прописными, в Objects - HMODULE
+    // (0 - не загрузился; причина - в FModErrors под тем же номером)
+    FModules: TStringList;
+    FModErrors: TStringList;
+    // Классы загруженных пакетов: имя -> TClass в Objects
+    FClassMap: TStringList;
     function GetComp(AIndex: Integer): TDsgForeignComp;
     function GetCount: Integer;
   public
@@ -50,6 +62,11 @@ type
     // Прочитать из реестра и пакетов. ADelphiRoot - папка установки Delphi
     // (без Bin), '' - взять из реестра.
     procedure Scan(const ADelphiRoot: string);
+    // Номер компонента с классом AClass; -1 - нет на палитре
+    function IndexOfClass(const AClass: string): Integer;
+    // Класс компонента из его runtime-пакета; nil - пакет не загрузился
+    // или класса в нём нет, причина - в AError
+    function ForeignClass(AIndex: Integer; var AError: string): TClass;
     property Count: Integer read GetCount;
     property Comps[AIndex: Integer]: TDsgForeignComp read GetComp; default;
     property Pages: TStringList read FPages;
@@ -155,6 +172,11 @@ begin
   FPages := TStringList.Create;
   FIconLibs := TStringList.Create;
   FLog := TStringList.Create;
+  FModules := TStringList.Create;
+  FModErrors := TStringList.Create;
+  FClassMap := TStringList.Create;
+  FClassMap.Sorted := True;
+  FClassMap.Duplicates := dupIgnore;
 end;
 
 destructor TDsgForeignList.Destroy;
@@ -164,6 +186,11 @@ begin
   FPages.Free;
   FIconLibs.Free;
   FLog.Free;
+  // Пакеты не выгружаются: их код не выполнялся, а на их классы могут
+  // ссылаться списки редактора до самого выхода
+  FModules.Free;
+  FModErrors.Free;
+  FClassMap.Free;
   inherited;
 end;
 
@@ -182,6 +209,71 @@ end;
 function TDsgForeignList.GetComp(AIndex: Integer): TDsgForeignComp;
 begin
   Result := TDsgForeignComp(FComps[AIndex]);
+end;
+
+function TDsgForeignList.IndexOfClass(const AClass: string): Integer;
+var
+  CompIdx: Integer;
+begin
+  Result := -1;
+  for CompIdx := 0 to FComps.Count - 1 do
+    if CompareText(TDsgForeignComp(FComps[CompIdx]).CompClass, AClass) = 0 then
+    begin
+      Result := CompIdx;
+      Exit;
+    end;
+end;
+
+function TDsgForeignList.ForeignClass(AIndex: Integer;
+                                      var AError: string): TClass;
+var
+  Comp: TDsgForeignComp;
+  ModKey, LoadError: string;
+  ModIdx, ClsIdx: Integer;
+  Module: HMODULE;
+  Found: TStringList;
+begin
+  Result := nil;
+  AError := '';
+  if (AIndex < 0) or (AIndex >= FComps.Count) then
+  begin
+    AError := 'компонента нет в списке палитры';
+    Exit;
+  end;
+  Comp := TDsgForeignComp(FComps[AIndex]);
+  ModKey := UpperCase(Comp.RuntimePkg);
+  ModIdx := FModules.IndexOf(ModKey);
+  if ModIdx < 0 then
+  begin
+    Module := BplLoadForRtti(Comp.RuntimePkg, LoadError);
+    ModIdx := FModules.AddObject(ModKey, TObject(Module));
+    FModErrors.Add(LoadError);
+    if Module <> 0 then
+    begin
+      Found := TStringList.Create;
+      try
+        BplListClasses(Module, Found, nil);
+        for ClsIdx := 0 to Found.Count - 1 do
+          FClassMap.AddObject(Found.Names[ClsIdx], Found.Objects[ClsIdx]);
+      finally
+        Found.Free;
+      end;
+    end;
+  end;
+  if HMODULE(FModules.Objects[ModIdx]) = 0 then
+  begin
+    AError := ExtractFileName(Comp.RuntimePkg) + ' не загрузился: ' +
+              FModErrors[ModIdx];
+    Exit;
+  end;
+  ClsIdx := FClassMap.IndexOf(Comp.CompClass);
+  if ClsIdx < 0 then
+  begin
+    AError := 'в ' + ExtractFileName(Comp.RuntimePkg) + ' нет класса ' +
+              Comp.CompClass;
+    Exit;
+  end;
+  Result := TClass(Pointer(FClassMap.Objects[ClsIdx]));
 end;
 
 function TDsgForeignList.GetCount: Integer;
