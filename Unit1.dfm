@@ -230,6 +230,16 @@ object Form1: TForm1
       ShowHint = True
       OnClick = DeclPanelClick
       OnDblClick = DeclPanelClick
+      object FBusyPanel: TPanel
+        Visible = False
+        BevelOuter = bvLowered
+        Alignment = taLeftJustify
+        ParentBackground = False
+        ParentFont = False
+        Font.Name = 'Tahoma'
+        Font.Height = -12
+        Font.Style = [fsBold]
+      end
     end
   end
   object StatusBar1: TUiStatusBar
@@ -253,16 +263,6 @@ object Form1: TForm1
       item
         Width = 50
       end>
-    object FBusyPanel: TPanel
-      Visible = False
-      BevelOuter = bvLowered
-      Alignment = taLeftJustify
-      ParentBackground = False
-      ParentFont = False
-      Font.Name = 'Tahoma'
-      Font.Height = -12
-      Font.Style = [fsBold]
-    end
   end
   object Panel1: TPanel
     Left = 0
