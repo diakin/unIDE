@@ -3114,6 +3114,14 @@ begin
   // Всплывающие подсказки: светлые - системные (clInfoBk, clInfoText)
   UiDefault('Hint.BG', clInfoBk, $00463F3F);
   UiDefault('Hint.Text', clInfoText, $00F0F0F0);
+  // Значки палитры компонентов на тёмном фоне (UiPaletteRecolor). Значки
+  // Delphi - 16 цветов: чёрные линии, белая заливка, серебристые кнопки,
+  // тёмно-синие детали, серые тени. Светлый цвет - исходный, на светлом
+  // фоне значки не перекрашиваются.
+  UiDefault('Palette.IconLine', clBlack, $00A5A5A5);
+  UiDefault('Palette.IconFill', clWhite, $001E1E1E);
+  UiDefault('Palette.IconFace', clSilver, $00464646);
+  UiDefault('Palette.IconAccent', clNavy, $0078B982);
 end;
 procedure TForm1.LoadUiSchema;
 var
@@ -3404,6 +3412,14 @@ begin
     Result := 'Подсказки: фон'
   else if AKey = 'Hint.Text' then
     Result := 'Подсказки: текст'
+  else if AKey = 'Palette.IconLine' then
+    Result := 'Палитра компонентов: линии значков (тёмный фон)'
+  else if AKey = 'Palette.IconFill' then
+    Result := 'Палитра компонентов: заливка значков (тёмный фон)'
+  else if AKey = 'Palette.IconFace' then
+    Result := 'Палитра компонентов: кнопки в значках (тёмный фон)'
+  else if AKey = 'Palette.IconAccent' then
+    Result := 'Палитра компонентов: цвет вместо синего и метка своих (тёмный фон)'
   else
     Result := AKey;
 end;
@@ -3687,6 +3703,62 @@ begin
   end;
 end;
 
+// Значок палитры компонентов для тёмного фона. Значки Delphi нарисованы
+// 16 цветами под светлый фон, и переворот яркости делал из чёрных линий
+// белые рамки, а тёмно-синий - ярко-сиреневым. Здесь основные цвета
+// заменяются по таблице (цвета IDE Palette.*), серая тень убирается -
+// становится прозрачной. Прочие цвета (красный, жёлтый, зелёный в значках
+// Win32, System) - переворотом яркости, как у остальных кнопок.
+procedure UiPaletteRecolor(Bmp: TBitmap; ATransparent, ALine, AFill, AFace,
+                           AAccent: TColor);
+type
+  TRGBLine = array[0..32767] of TRGBTriple;
+  PRGBLine = ^TRGBLine;
+var
+  PosX, PosY: Integer;
+  Line: PRGBLine;
+  KeyRGB, NewRGB: Longint;
+  SrcRGB: Longint;
+  Hue, Light, Sat: Double;
+  Red, Green, Blue: Byte;
+begin
+  Bmp.PixelFormat := pf24bit;
+  KeyRGB := ColorToRGB(ATransparent);
+  for PosY := 0 to Bmp.Height - 1 do
+  begin
+    Line := Bmp.ScanLine[PosY];
+    for PosX := 0 to Bmp.Width - 1 do
+    begin
+      SrcRGB := RGB(Line[PosX].rgbtRed, Line[PosX].rgbtGreen,
+                    Line[PosX].rgbtBlue);
+      if SrcRGB = KeyRGB then
+        Continue;
+      case SrcRGB of
+        $000000:
+          NewRGB := ColorToRGB(ALine);
+        $FFFFFF:
+          NewRGB := ColorToRGB(AFill);
+        $C0C0C0:
+          NewRGB := ColorToRGB(AFace);
+        $808080:
+          NewRGB := KeyRGB;                  // тень - убрана
+        $800000, $FF0000, $808000:           // синий, тёмно-синий, метка
+          NewRGB := ColorToRGB(AAccent);
+      else
+        begin
+          UiRGBToHLS(Line[PosX].rgbtRed, Line[PosX].rgbtGreen,
+                     Line[PosX].rgbtBlue, Hue, Light, Sat);
+          UiHLSToRGB(Hue, 1 - Light, Sat, Red, Green, Blue);
+          NewRGB := RGB(Red, Green, Blue);
+        end;
+      end;
+      Line[PosX].rgbtRed := GetRValue(NewRGB);
+      Line[PosX].rgbtGreen := GetGValue(NewRGB);
+      Line[PosX].rgbtBlue := GetBValue(NewRGB);
+    end;
+  end;
+end;
+
 type
   // Значки кнопки для тёмного фона: исходный и перевёрнутый, и какой из них
   // поставлен сейчас. Ставится при первом перевороте, принадлежит самой
@@ -3699,6 +3771,9 @@ type
     Orig: TBitmap;       // исходный значок
     Dark: TBitmap;       // с перевёрнутой яркостью; пустой - ещё не строили
     IsDark: Boolean;     // у кнопки сейчас Dark
+    // По каким цветам построен Dark (у значков палитры - цвета Palette.*);
+    // цвета сменились - Dark строится заново
+    DarkSig: string;
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
   end;
@@ -3764,11 +3839,30 @@ begin
   Form1.Dbg('3089: значок: ' + Who + ' - ' + AWhat, clNavy);
 end;
 
+// Кнопка палитры компонентов (TDsgPalette где-то среди родителей)
+function UiIsPaletteBtn(ABtn: TControl): Boolean;
+var
+  Owner: TWinControl;
+begin
+  Result := False;
+  Owner := ABtn.Parent;
+  while Owner <> nil do
+  begin
+    if Owner is TDsgPalette then
+    begin
+      Result := True;
+      Exit;
+    end;
+    Owner := Owner.Parent;
+  end;
+end;
+
 procedure TForm1.UiApplyGlyph(ABtn: TControl);
 var
   Mark: TUiGlyph;
   Index: Integer;
-  DarkBack: Boolean;
+  DarkBack, ForPalette: Boolean;
+  Sig: string;
 begin
   if (BtnGlyph(ABtn) = nil) or BtnGlyph(ABtn).Empty then
     Exit;
@@ -3789,16 +3883,38 @@ begin
     UiGlyphNote(ABtn, 'метка создана');
   end;
 
+  // Значки палитры перекрашиваются по цветам Palette.*: их набор - подпись
+  // тёмного значка
+  ForPalette := DarkBack and UiIsPaletteBtn(ABtn);
+  Sig := '';
+  if ForPalette then
+    Sig := IntToHex(UiColor('Palette.IconLine'), 8) +
+           IntToHex(UiColor('Palette.IconFill'), 8) +
+           IntToHex(UiColor('Palette.IconFace'), 8) +
+           IntToHex(UiColor('Palette.IconAccent'), 8);
+  // Цвета сменились - тёмный значок строится и ставится заново
+  if DarkBack and Mark.IsDark and (Mark.DarkSig <> Sig) then
+    Mark.IsDark := False;
+
   if DarkBack = Mark.IsDark then
     Exit;                   // у кнопки уже нужный значок
 
   if DarkBack then
   begin
-    if Mark.Dark.Empty then
+    if Mark.Dark.Empty or (Mark.DarkSig <> Sig) then
     begin
       Mark.Dark.Assign(Mark.Orig);
-      UiInvertLightness(Mark.Dark,
-                        Mark.Dark.Canvas.Pixels[0, Mark.Dark.Height - 1]);
+      if ForPalette then
+        UiPaletteRecolor(Mark.Dark,
+                         Mark.Dark.Canvas.Pixels[0, Mark.Dark.Height - 1],
+                         UiColor('Palette.IconLine'),
+                         UiColor('Palette.IconFill'),
+                         UiColor('Palette.IconFace'),
+                         UiColor('Palette.IconAccent'))
+      else
+        UiInvertLightness(Mark.Dark,
+                          Mark.Dark.Canvas.Pixels[0, Mark.Dark.Height - 1]);
+      Mark.DarkSig := Sig;
     end;
     SetBtnGlyph(ABtn, Mark.Dark);
     UiGlyphNote(ABtn, 'тёмный фон: поставлен тёмный значок');
