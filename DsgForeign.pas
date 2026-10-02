@@ -285,9 +285,11 @@ begin
   Result := FComps.Count;
 end;
 
-// Подпись установки: пакеты Known Packages (путь, описание, дата файла),
-// раскладка палитры и дата exe редактора (от неё зависит, какие классы в
-// него вкомпилированы). Совпала с записанной в кэше - список из кэша.
+// Подпись установки: пакеты Known Packages (путь, описание, дата файла) и
+// раскладка палитры. Совпала с записанной в кэше - список из кэша. Дата exe
+// в подпись не входит: редактор пересобирается часто, и кэш сбрасывался бы
+// на каждой сборке. Классы, которые в exe вкомпилированы, отбрасываются при
+// чтении кэша (LoadCache) - так же, как при чтении пакетов.
 function ScanSignature(APkgPaths, APkgDescrs, APageNames,
                        APageTexts: TStrings): string;
 var
@@ -316,7 +318,6 @@ begin
     AddText(APageNames[ItemIdx]);
     AddText(APageTexts[ItemIdx]);
   end;
-  AddText(IntToStr(FileAge(ParamStr(0))));
   Result := IntToHex(Hash, 8) + '-' + IntToStr(APkgPaths.Count) + '-' +
             IntToStr(APageNames.Count);
 end;
@@ -376,7 +377,11 @@ begin
         Comp.CompClass := CacheField(Line, 2);
         Comp.RuntimePkg := CacheField(Line, 3);
         Comp.PkgDescr := CacheField(Line, 4);
-        FComps.Add(Comp);
+        // Класс теперь вкомпилирован в редактор - не сторонний
+        if GetClass(Comp.CompClass) <> nil then
+          Comp.Free
+        else
+          FComps.Add(Comp);
       end;
     end;
     Result := True;
