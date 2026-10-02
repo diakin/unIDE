@@ -22,6 +22,7 @@ type
   TUiGroupBox = class(TCustomGroupBox)
   private
     procedure UMUiThemeChanged(var Message: TMessage); message UM_UITHEMECHANGED;
+    procedure WMEraseBkgnd(var Message: TWMEraseBkgnd); message WM_ERASEBKGND;
   protected
     procedure Paint; override;
   public
@@ -87,6 +88,20 @@ end;
 procedure TUiGroupBox.UMUiThemeChanged(var Message: TMessage);
 begin
   Message.Result := 0;
+end;
+
+// С двойной буферизацией фон стирается в буфере (WMPaint VCL шлёт
+// WM_ERASEBKGND с DC буфера в обоих параметрах). Стирание на экране, которое
+// Windows шлёт при BeginPaint, пропускается: с темами Windows и
+// ParentBackground оно рисовало на экран фон родителя без подписи, и
+// подпись мигала до прихода буфера.
+procedure TUiGroupBox.WMEraseBkgnd(var Message: TWMEraseBkgnd);
+begin
+  if DoubleBuffered and
+     (TMessage(Message).WParam <> TMessage(Message).LParam) then
+    Message.Result := 1
+  else
+    inherited;
 end;
 
 // Как у TCustomGroupBox без темы: рамка от середины строки подписи, подпись

@@ -945,6 +945,9 @@ begin
   FHot := -1;
   FOpen := -1;
   TabStop := False;
+  // Paint заливает всю полосу и потом пишет пункты; без буфера при смене
+  // ширины окна заливка была видна до текста - пункты мигали
+  DoubleBuffered := True;
   UiThemeAddClient(Self);
 end;
 

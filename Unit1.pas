@@ -16249,6 +16249,10 @@ begin
   FitSearchBox;
 
   grpPalette.DoubleBuffered := True;
+  // Splitter1 (безоконный) рисует pnlMain: без буфера при смене размера
+  // окна pnlMain сначала заливал своим цветом и полосу сплиттера, потом
+  // сплиттер рисовал себя - полоса мигала. Дети-окна буфер не задевает.
+  pnlMain.DoubleBuffered := True;
 
   pnlPaletteIn.DoubleBuffered := True;
 
