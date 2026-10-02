@@ -36,7 +36,7 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Controls, Forms, Graphics, ExtCtrls,
-  ComCtrls, Buttons,
+  ComCtrls, Buttons, Menus,
   UiComCtrls;     // вкладки палитры рисуются по теме (TUiTabControl)
 
 type
@@ -74,6 +74,8 @@ type
     FOnGlyphLoaded: TNotifyEvent;
     FOnSelect: TNotifyEvent;
     FGlyphInfo: TList;        // TDsgGlyphInfo по кнопкам со значком
+    FButtonPopup: TPopupMenu; // меню правой кнопки у кнопок компонентов
+    procedure SetButtonPopup(AValue: TPopupMenu);
     function HasGlyphRes(const AName: string): Boolean;
     procedure LoadLibs(const ADelphiBin: string);
     function LoadGlyph(AClass: TClass; ABmp: TBitmap): Boolean;
@@ -123,8 +125,16 @@ type
     function RenderGlyph(ABtn: TControl; ADark: Boolean;
                          AInk, AMarkInk, ABack: TColor;
                          ARecolor: TDsgRecolorProc; ABmp: TBitmap): Boolean;
+    // Сглаженные значки заново - их скрипты сменились (свои значки
+    // DsgIcons): светлый вид каждой такой кнопки на фоне ALightBack
+    // (clNone - фон палитры) ставится ей в Glyph, сама кнопка - в
+    // AButtons. Тёмный вид строит владелец.
+    procedure RefreshSmooth(ALightBack: TColor; AButtons: TList);
     // Снять выбор: кнопка компонента отжимается, нажата стрелка
     procedure ClearSelection;
+    // Меню правой кнопки у кнопок компонентов Delphi и своих (и стрелки);
+    // кнопка - PopupComponent меню
+    property ButtonPopup: TPopupMenu read FButtonPopup write SetButtonPopup;
     property SelectedClass: TComponentClass read FSelected;
     // Выбран сторонний компонент: "Модуль.Класс"; '' - нет
     property SelectedForeign: string read FSelForeign;
@@ -134,11 +144,21 @@ type
     property OnSelect: TNotifyEvent read FOnSelect write FOnSelect;
   end;
 
+// Значок по скрипту (формат - DsgIcons) сглаженным: AInk - цвет значка,
+// ABack - фон для краёв; пустые точки - прозрачный цвет кнопки (clOlive).
+// ABmp - 24x24.
+procedure DsgDrawSmoothScript(ABmp: TBitmap; const AScript: string;
+                              AInk, ABack: TColor);
+
 implementation
 
 uses
   DsgClasses,
   DsgIcons;   // сглаженные значки компонентов Delphi - скриптами
+
+type
+  // PopupMenu у TControl - protected
+  TPaletteBtnAcc = class(TControl);
 
 const
   BtnSize = 28;
@@ -356,8 +376,9 @@ begin
   end;
 end;
 
-procedure DsgDrawSmoothIcon(ABmp: TBitmap; const AIcon: string;
-                            AInk, ABack: TColor);
+// AIcon = 'YinYang' - инь-ян, иначе значок по скрипту AScript
+procedure DrawSmooth(ABmp: TBitmap; const AIcon, AScript: string;
+                     AInk, ABack: TColor);
 type
   TRGBLine = array[0..32767] of TRGBTriple;
   PRGBLine = ^TRGBLine;
@@ -380,9 +401,8 @@ begin
     if CompareText(AIcon, 'YinYang') = 0 then
       PaintYinYangBig(BigBmp.Canvas)
     else
-      // Значок класса (или 'Arrow') - по скрипту DsgIcons; нет скрипта -
-      // пустой холст
-      DsgPaintIcon(BigBmp.Canvas, DsgIconScript(AIcon));
+      // Значок по скрипту DsgIcons; пустой скрипт - пустой холст
+      DsgPaintIcon(BigBmp.Canvas, AScript);
     SetLength(BigLines, BigBmp.Height);
     for LineIdx := 0 to BigBmp.Height - 1 do
       BigLines[LineIdx] := BigBmp.ScanLine[LineIdx];
@@ -449,6 +469,22 @@ begin
   finally
     BigBmp.Free;
   end;
+end;
+
+// Значок класса (или 'Arrow', 'YinYang') - скрипт по имени из DsgIcons
+procedure DsgDrawSmoothIcon(ABmp: TBitmap; const AIcon: string;
+                            AInk, ABack: TColor);
+begin
+  if CompareText(AIcon, 'YinYang') = 0 then
+    DrawSmooth(ABmp, AIcon, '', AInk, ABack)
+  else
+    DrawSmooth(ABmp, '', DsgIconScript(AIcon), AInk, ABack);
+end;
+
+procedure DsgDrawSmoothScript(ABmp: TBitmap; const AScript: string;
+                              AInk, ABack: TColor);
+begin
+  DrawSmooth(ABmp, '', AScript, AInk, ABack);
 end;
 
 procedure DsgDrawSmoothMark(ABmp: TBitmap; AInk, ABack: TColor);
@@ -657,6 +693,7 @@ begin
     ABtn.Hint := AClass.ClassName;
   ABtn.ShowHint := True;
   ABtn.OnClick := CompClick;
+  TPaletteBtnAcc(ABtn).PopupMenu := FButtonPopup;
   ABtn.Caption := '';
 
   // Ширина - по значку или по надписи
@@ -837,6 +874,43 @@ begin
     FArrow.Down := True;
   if Assigned(FOnSelect) then
     FOnSelect(Self);
+end;
+
+procedure TDsgPalette.SetButtonPopup(AValue: TPopupMenu);
+var
+  PageIdx, BtnIdx: Integer;
+  List: TList;
+begin
+  FButtonPopup := AValue;
+  TPaletteBtnAcc(FArrow).PopupMenu := AValue;
+  for PageIdx := 0 to FPageBtns.Count - 1 do
+  begin
+    List := TList(FPageBtns[PageIdx]);
+    for BtnIdx := 0 to List.Count - 1 do
+      if ForeignOf(TControl(List[BtnIdx])) = '' then
+        TPaletteBtnAcc(List[BtnIdx]).PopupMenu := AValue;
+  end;
+end;
+
+procedure TDsgPalette.RefreshSmooth(ALightBack: TColor; AButtons: TList);
+var
+  InfoIdx: Integer;
+  Info: TDsgGlyphInfo;
+  Back: TColor;
+begin
+  Back := ALightBack;
+  if Back = clNone then
+    Back := FBox.Color;
+  for InfoIdx := 0 to FGlyphInfo.Count - 1 do
+  begin
+    Info := TDsgGlyphInfo(FGlyphInfo[InfoIdx]);
+    if (Info.Smooth = '') or (CompareText(Info.Smooth, 'YinYang') = 0) or
+       not (Info.Btn is TSpeedButton) then
+      Continue;
+    if RenderGlyph(Info.Btn, False, clBlack, clTeal, Back, nil,
+                   TSpeedButton(Info.Btn).Glyph) and (AButtons <> nil) then
+      AButtons.Add(Info.Btn);
+  end;
 end;
 
 procedure TDsgPalette.ClearSelection;

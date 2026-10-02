@@ -12,3 +12,14 @@ Smooth icons of the component palette are drawn in code from short scripts
   from `icons.py`.
 
 Edit `icons.py`, check the preview, run `gen.py`, rebuild the editor.
+
+## Without Python: the editor's own icon window
+
+View - Palette Icons (or right click on a palette button - Edit Icon) opens
+`DlgIconEdit`: the list of icons, the script one command per line, a live
+preview for the light and the dark theme (x4 and real size, coordinates
+under the mouse), a colour picker that inserts `@ RRGGBB`. Apply writes
+`palette_icons.txt` next to the exe (lines `Class=script`); a script there
+replaces the built-in one at start and right after Apply. "Built-in" removes
+the own script. The Python files are only needed to move icons into
+`DsgIcons.pas` for good.

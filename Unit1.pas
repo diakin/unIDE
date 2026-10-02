@@ -556,6 +556,7 @@ type
     FRunTimer: TTimer; // проверка, не закрылась ли она
     FOwnCaretTimer: TTimer;
     DsgItem: TMenuItem;
+    mViewIcons: TMenuItem;
     BtnPnl: TPanel;
     FObjSnapBtn: TUiButton; // снимок поверх .dfm: показать / убрать (SnapCapShow)
     FObjDsgBtn: TUiButton; // Design form - открыть конструктор
@@ -881,6 +882,7 @@ type
     FDsgMade: TStringList;
     FDsgSelecting: Boolean; // выделение пришло из конструктора - обратно не слать
     FDsgPalette: TDsgPalette; // палитра компонентов при конструкторе
+    FDsgIconPopup: TUiPopupMenu; // правая кнопка на кнопке палитры: Edit Icon
     // Кнопки палитры - массив, по кнопке на класс, номер сквозной по всем
     // страницам; имя каждой - PalBtn<номер>. См. BuildPaletteButtons.
     PalBtn: array[1..PalBtnMax] of TSpeedButton;
@@ -1769,6 +1771,10 @@ type
     procedure BuildPaletteButtons;
     procedure DsgAddForeignPages;
     procedure DsgPaletteGlyph(Sender: TObject);
+    procedure PaletteIconsClick(Sender: TObject);
+    procedure PaletteIconEditClick(Sender: TObject);
+    procedure PaletteIconsShow(const ASelect: string);
+    procedure PaletteIconsApplied(Sender: TObject);
     procedure ApplyArrayIni(const AArray, ACodeProps: string);
     function  SetPropFromText(AObj: TObject; const AProp, AValue: string): Boolean;
     procedure DsgPaletteReset;
@@ -2433,6 +2439,7 @@ var
     HangWatch,    // сторож зависаний главного потока - журнал hang.log
     DlgAskDisk,   // окно "Файл изменён на диске" - см. AskDiskChange
     DlgChooseList, // выбор строки из списка - ChooseFromList
+    DlgIconEdit,   // окно значков палитры (View - Palette Icons)
     DlgFifDisk,   // Find In Files на диске - FifDiskDialog
     DlgPickFolder, // выбор папки - PickFolderDialog
     DlgProgress,  // ход долгой операции - ProgressStart
@@ -16330,6 +16337,12 @@ begin
   FDsgPalette.OnSelect := DsgPaletteSelect;
   FDsgPalette.OnGlyphLoaded := DsgPaletteGlyph;
   BuildPaletteButtons;
+  // Правая кнопка на кнопке палитры - окно значков с её значком
+  FDsgIconPopup := TUiPopupMenu.Create(Self);
+  FDsgIconPopup.AutoHotkeys := maManual;
+  FDsgIconPopup.Items.Add(NewItem('Edit Icon...', 0, False, True,
+                                  PaletteIconEditClick, 0, ''));
+  FDsgPalette.ButtonPopup := FDsgIconPopup;
 
   // ВАЖНО: подменю собираем только здесь, когда все пункты главного меню уже
   // созданы. Раньше эти вызовы стояли сразу после Add(mWindows), то есть ДО
@@ -24665,6 +24678,88 @@ procedure TForm1.DsgPaletteGlyph(Sender: TObject);
 begin
   if Sender is TControl then
     UiApplyGlyph(TControl(Sender));
+end;
+
+// ---------------------------------------------------------------------------
+//  Значки палитры: окно DlgIconEdit
+//
+//  Скрипты значков (DsgIcons) правятся в окне, своё пишется в
+//  palette_icons.txt рядом с программой и заменяет встроенное. Python и
+//  пересборка для этого не нужны: icons\palette\*.py остаются для того,
+//  чтобы перенести значки во встроенные (DsgIcons.pas).
+// ---------------------------------------------------------------------------
+
+procedure TForm1.PaletteIconsClick(Sender: TObject);
+begin
+  PaletteIconsShow('');
+end;
+
+// Edit Icon на кнопке палитры: окно открывается на её значке
+procedure TForm1.PaletteIconEditClick(Sender: TObject);
+var
+  Comp: TComponent;
+  IconName: string;
+begin
+  Comp := nil;
+  if FDsgIconPopup <> nil then
+    Comp := FDsgIconPopup.PopupComponent;
+  if (Comp is TSpeedButton) and (TSpeedButton(Comp).Tag <> 0) then
+    IconName := TComponentClass(TSpeedButton(Comp).Tag).ClassName
+  else
+    IconName := 'Arrow';   // стрелка выбора: класса у неё нет
+  PaletteIconsShow(IconName);
+end;
+
+procedure TForm1.PaletteIconsShow(const ASelect: string);
+var
+  Dlg: TDlgIconEdit;
+  DarkInk, DarkBack: TColor;
+begin
+  // Превью тёмной темы - цветами палитры, если тема тёмная сейчас; иначе -
+  // цвета тёмной темы по умолчанию
+  if UiDarkBack then
+  begin
+    DarkInk := UiColor('Palette.Icon');
+    DarkBack := UiColor('Ide.WindowBG');
+  end
+  else
+  begin
+    DarkInk := $00B0B0B0;
+    DarkBack := $00302D2D;
+  end;
+  Dlg := TDlgIconEdit.Create(Self);
+  try
+    Dlg.OnApply := PaletteIconsApplied;
+    Dlg.Prepare(ASelect, clBlack, clBtnFace, DarkInk, DarkBack);
+    UiApplyForm(Dlg);
+    Dlg.ShowModal;
+  finally
+    Dlg.Free;
+  end;
+end;
+
+// Скрипты сменились: светлые значки палитры - заново, тёмные строит
+// UiApplyGlyph после сброса прежних
+procedure TForm1.PaletteIconsApplied(Sender: TObject);
+var
+  Btns: TList;
+  BtnIdx: Integer;
+  LightBack: TColor;
+begin
+  if FDsgPalette = nil then
+    Exit;
+  if UiDarkBack then
+    LightBack := clBtnFace
+  else
+    LightBack := clNone;
+  Btns := TList.Create;
+  try
+    FDsgPalette.RefreshSmooth(LightBack, Btns);
+    for BtnIdx := 0 to Btns.Count - 1 do
+      UiGlyphReset(TControl(Btns[BtnIdx]));
+  finally
+    Btns.Free;
+  end;
 end;
 
 // AProp есть в списке AList через запятую? Без учёта регистра.

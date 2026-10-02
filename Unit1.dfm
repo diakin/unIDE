@@ -487,6 +487,10 @@ object Form1: TForm1
         Caption = 'Конструктор формы'
         OnClick = DesignFormClick
       end
+      object mViewIcons: TMenuItem
+        Caption = 'Palette Icons...'
+        OnClick = PaletteIconsClick
+      end
     end
     object mProject: TMenuItem
       Caption = '&Project'

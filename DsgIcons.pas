@@ -23,8 +23,12 @@ unit DsgIcons;
 //    @ RRGGBB              - дальше рисовать этим цветом (папка, стекло
 //                            лупы, цветные квадраты); "@" без цвета -
 //                            снова чёрным, то есть цветом значка
-//  Скрипты сгенерированы из icons.py (scratchpad, превью - render.py);
-//  править можно и здесь, формат простой.
+//  Скрипты сгенерированы из icons.py (icons\palette, превью - render.py).
+//
+//  Свои значки - без пересборки: файл palette_icons.txt рядом с программой,
+//  строки "Класс=скрипт" (строка с // в начале - комментарий). Скрипт из
+//  файла заменяет встроенный, можно дать значок и классу без встроенного.
+//  Файл пишет окно значков (DlgIconEdit, View - Palette Icons).
 // ---------------------------------------------------------------------------
 
 interface
@@ -38,6 +42,26 @@ const
 // Скрипт значка класса AClass ('' - своего значка нет). Свои компоненты
 // TUiX - значок TX (TUiButton - TButton) с меткой, которую ставит палитра.
 function DsgIconScript(const AClass: string): string;
+
+// Файл своих значков: palette_icons.txt рядом с программой
+function DsgIconUserFile: string;
+
+// Встроенный скрипт значка AName (без своих), '' - нет
+function DsgIconBuiltin(const AName: string): string;
+
+// Свой скрипт значка AName из файла, '' - нет
+function DsgIconUser(const AName: string): string;
+
+// Свой скрипт значка AName. AScript = '' - свой убирается, снова
+// встроенный. В файл - DsgIconSaveUser.
+procedure DsgIconSetUser(const AName, AScript: string);
+
+// Записать свои скрипты в файл. False - не записался, причина - AError.
+function DsgIconSaveUser(var AError: string): Boolean;
+
+// Имена значков: встроенные по порядку, потом свои, у которых встроенного
+// нет
+procedure DsgIconNames(AList: TStrings);
 
 // Нарисовать значок по скрипту на холсте размера 24 * DsgIconScale:
 // холст заливается белым, значок - чёрным, части с командой @ - своим
@@ -247,7 +271,107 @@ const
     (Name: 'TUiColorDialog'; Script: 'TColorDialog'),
     (Name: 'TUiFontDialog'; Script: 'TFontDialog'));
 
-function FindScript(const AName: string): string;
+var
+  UserIcons: TStringList = nil;   // свои: "Класс=скрипт"
+
+function DsgIconUserFile: string;
+begin
+  Result := ExtractFilePath(ParamStr(0)) + 'palette_icons.txt';
+end;
+
+function DsgIconUser(const AName: string): string;
+var
+  UserIdx: Integer;
+begin
+  Result := '';
+  if UserIcons = nil then
+    Exit;
+  UserIdx := UserIcons.IndexOfName(AName);
+  if UserIdx >= 0 then
+    Result := Copy(UserIcons[UserIdx], Pos('=', UserIcons[UserIdx]) + 1,
+                   MaxInt);
+end;
+
+procedure DsgIconSetUser(const AName, AScript: string);
+var
+  UserIdx: Integer;
+begin
+  if Trim(AName) = '' then
+    Exit;
+  if UserIcons = nil then
+    UserIcons := TStringList.Create;
+  UserIdx := UserIcons.IndexOfName(AName);
+  if Trim(AScript) = '' then
+  begin
+    if UserIdx >= 0 then
+      UserIcons.Delete(UserIdx);
+  end
+  else if UserIdx >= 0 then
+    UserIcons[UserIdx] := AName + '=' + AScript
+  else
+    UserIcons.Add(AName + '=' + AScript);
+end;
+
+function DsgIconSaveUser(var AError: string): Boolean;
+var
+  Lines: TStringList;
+  UserIdx: Integer;
+begin
+  Result := False;
+  AError := '';
+  Lines := TStringList.Create;
+  try
+    Lines.Add('// Свои значки палитры компонентов: Класс=скрипт (формат - в ' +
+              'DsgIcons.pas).');
+    Lines.Add('// Заменяют встроенные. Пишет окно View - Palette Icons.');
+    if UserIcons <> nil then
+      for UserIdx := 0 to UserIcons.Count - 1 do
+        Lines.Add(UserIcons[UserIdx]);
+    try
+      Lines.SaveToFile(DsgIconUserFile);
+      Result := True;
+    except
+      on E: Exception do
+        AError := E.Message;
+    end;
+  finally
+    Lines.Free;
+  end;
+end;
+
+// Свои из файла - при запуске
+procedure LoadUserIcons;
+var
+  Lines: TStringList;
+  LineIdx, EqPos: Integer;
+  Line: string;
+begin
+  if not FileExists(DsgIconUserFile) then
+    Exit;
+  Lines := TStringList.Create;
+  try
+    try
+      Lines.LoadFromFile(DsgIconUserFile);
+    except
+      Exit;
+    end;
+    for LineIdx := 0 to Lines.Count - 1 do
+    begin
+      Line := Trim(Lines[LineIdx]);
+      if (Line = '') or (Copy(Line, 1, 2) = '//') then
+        Continue;
+      EqPos := Pos('=', Line);
+      if EqPos < 2 then
+        Continue;
+      DsgIconSetUser(Trim(Copy(Line, 1, EqPos - 1)),
+                     Trim(Copy(Line, EqPos + 1, MaxInt)));
+    end;
+  finally
+    Lines.Free;
+  end;
+end;
+
+function DsgIconBuiltin(const AName: string): string;
 var
   DefIdx: Integer;
 begin
@@ -257,6 +381,31 @@ begin
     begin
       Result := DsgIconDefs[DefIdx].Script;
       Exit;
+    end;
+end;
+
+// Свой скрипт, иначе встроенный
+function FindScript(const AName: string): string;
+begin
+  Result := DsgIconUser(AName);
+  if Result = '' then
+    Result := DsgIconBuiltin(AName);
+end;
+
+procedure DsgIconNames(AList: TStrings);
+var
+  DefIdx, UserIdx: Integer;
+  UserName: string;
+begin
+  AList.Clear;
+  for DefIdx := Low(DsgIconDefs) to High(DsgIconDefs) do
+    AList.Add(DsgIconDefs[DefIdx].Name);
+  if UserIcons <> nil then
+    for UserIdx := 0 to UserIcons.Count - 1 do
+    begin
+      UserName := UserIcons.Names[UserIdx];
+      if AList.IndexOf(UserName) < 0 then
+        AList.Add(UserName);
     end;
 end;
 
@@ -543,5 +692,11 @@ begin
     Commands.Free;
   end;
 end;
+
+initialization
+  LoadUserIcons;
+
+finalization
+  UserIcons.Free;
 
 end.
