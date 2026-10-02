@@ -30,6 +30,7 @@ object DlgIconEdit: TDlgIconEdit
     Top = 28
     Width = 214
     Height = 248
+    OnMouseDown = pbPreviewMouseDown
     OnMouseMove = pbPreviewMouseMove
     OnPaint = pbPreviewPaint
   end
@@ -49,9 +50,9 @@ object DlgIconEdit: TDlgIconEdit
   end
   object lblHelp: TLabel
     Left = 208
-    Top = 306
+    Top = 302
     Width = 544
-    Height = 112
+    Height = 124
     AutoSize = False
     WordWrap = True
   end
@@ -74,11 +75,14 @@ object DlgIconEdit: TDlgIconEdit
     Font.Height = -13
     Font.Name = 'Courier New'
     Font.Style = []
+    HideSelection = False
     ParentFont = False
     ScrollBars = ssBoth
     TabOrder = 1
     WordWrap = False
     OnChange = memScriptChange
+    OnClick = memScriptClick
+    OnKeyUp = memScriptKeyUp
   end
   object btnColor: TUiButton
     Left = 208
