@@ -40920,10 +40920,21 @@ end;
 
 
 
+// Что не пишется в снимок формы для инспектора и конструктора:
+//   - свои полосы прокрутки поверх полос списков (UiScroll) - служебные;
+//   - кнопки сторонних компонентов палитры (DsgAddForeignPages): их состав
+//     зависит от пакетов, установленных в Delphi, в форму они не входят, а
+//     в конструкторе своей формы стояли бы стопкой с красными рамками
+//     скрытых - их видимость переключает палитра, а не код формы.
+function DsgSnapSkip(C: TComponent): Boolean;
+begin
+  Result := UiScrollIsService(C);
+  if not Result and (C is TSpeedButton) and (C.Owner is TDsgPalette) then
+    Result := TDsgPalette(C.Owner).ForeignOf(TControl(C)) <> '';
+end;
+
 initialization
-// Свои полосы прокрутки поверх полос списков (UiScroll) - служебные,
-// в снимок формы для инспектора их не пишем
-  FormSnapshotSkip := UiScrollIsService;
+  FormSnapshotSkip := DsgSnapSkip;
 // Общую тему своих элементов ведёт IDE (UiPushTheme). TUiTheme на форме
 // пользователя в конструкторе форм красит только элементы этой формы.
 UiThemeHostLocked := True;
