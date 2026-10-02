@@ -627,6 +627,7 @@ type
     mBmDelete: TMenuItem;
     mBmSet: TMenuItem;
     mBmSort: TMenuItem;
+    mBmDelMissing: TMenuItem;
     mBmClear: TMenuItem;
     mBmSep: TMenuItem;
     FLogPopupItem1: TMenuItem;
@@ -790,6 +791,7 @@ type
     procedure BmSetClick(Sender: TObject);
     procedure BmSortClick(Sender: TObject);
     procedure BmClearClick(Sender: TObject);
+    procedure BmDelMissingClick(Sender: TObject);
     procedure LogPopupClick(Sender: TObject);
     procedure NewFileClick(Sender: TObject);
     procedure DsgMenuClick(Sender: TObject);
@@ -1726,6 +1728,8 @@ type
     procedure BmHistRemoveAt(HistIdx: Integer);
     procedure BmHistDropWindow(WinIdx: Integer);
     procedure BmHistDeleted(WinIdx, BmIdx: Integer);
+    procedure BmDeleteAt(WinIdx, BmIdx: Integer);
+    function  BmRefreshMissing: Integer;
     procedure BmHistCompact;
     function  BookmarkCaption(WinIdx, BmIdx: Integer): string;
 
@@ -2448,6 +2452,7 @@ var
     DlgListWnd,   // списки модулей и форм - MakeListWindow
     DlgHotFolders, // папки для поиска потерянных файлов - ShowHotFolders
     DlgDelPrj,    // Delete Projects - DeleteProjectClick
+    DlgBmClear,   // Clear List закладок - BmClearClick
     DlgWinList,   // Del WinList - DelWinListClick
     DlgNewPrj,    // New Project - NewProjectClick
     DlgRelease,   // Release files - ReleaseFilesDialog
@@ -12024,19 +12029,112 @@ begin
   RebuildBookmarksMenu;
 end;
 
+// Закладка BmIdx окна WinIdx - из списка; номера следующих сдвигаются,
+// история переходов (LastBM) - тоже
+procedure TForm1.BmDeleteAt(WinIdx, BmIdx: Integer);
+var
+  MoveIdx: Integer;
+begin
+  if (WinIdx < 0) or not FWindows[WinIdx].Used or (BmIdx < 0) or
+     (BmIdx > High(FWindows[WinIdx].Bookmarks)) then
+    Exit;
+  for MoveIdx := BmIdx to High(FWindows[WinIdx].Bookmarks) - 1 do
+    FWindows[WinIdx].Bookmarks[MoveIdx] := FWindows[WinIdx].Bookmarks[MoveIdx + 1];
+  SetLength(FWindows[WinIdx].Bookmarks, Length(FWindows[WinIdx].Bookmarks) - 1);
+  BmHistDeleted(WinIdx, BmIdx);
+end;
+
+// Закладки текущего окна - заново по его тексту в редакторе: какие строки
+// есть (номера поправляются), каких нет (Missing). Ответ - сколько нет.
+function TForm1.BmRefreshMissing: Integer;
+var
+  BmIdx: Integer;
+begin
+  Result := 0;
+  if (FWindowsIndex < 0) or not FWindows[FWindowsIndex].Used then
+    Exit;
+  StoreCurrentWindow;            // текст редактора - в FWindows[].Text
+  BmValidateWindow(FWindowsIndex);
+  for BmIdx := 0 to High(FWindows[FWindowsIndex].Bookmarks) do
+    if FWindows[FWindowsIndex].Bookmarks[BmIdx].Missing then
+      Inc(Result);
+end;
+
+// Clear List: закладки окна списком с галками, удаляются отмеченные
 procedure TForm1.BmClearClick(Sender: TObject);
+var
+  Dlg: TDlgBmClear;
+  BmIdx, Removed: Integer;
+  ItemText: string;
 begin
   if (FWindowsIndex < 0) or not FWindows[FWindowsIndex].Used then
     Exit;
   if Length(FWindows[FWindowsIndex].Bookmarks) = 0 then
     Exit;
+  BmRefreshMissing;
 
-  if MessageDlg('9508:Удалить все закладки этого окна?',
-                mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+  Dlg := TDlgBmClear.Create(Self);
+  try
+    Dlg.lblTitle.Caption := 'Закладки ' +
+      ExtractFileName(FWindows[FWindowsIndex].FileName) +
+      ': отмеченные будут удалены';
+    for BmIdx := 0 to High(FWindows[FWindowsIndex].Bookmarks) do
+    begin
+      ItemText := IntToStr(BmIdx + 1) + '.  ' +
+                  BookmarkCaption(FWindowsIndex, BmIdx);
+      if FWindows[FWindowsIndex].Bookmarks[BmIdx].Missing then
+        // Objects <> nil - признак несуществующей (DlgBmClear)
+        Dlg.lstBm.Items.AddObject(ItemText + '   [строки нет в файле]',
+                                  TObject(1))
+      else
+        Dlg.lstBm.Items.Add(ItemText);
+      Dlg.lstBm.Checked[BmIdx] := True;
+    end;
+    Dlg.UpdateCount;
+    UiApplyForm(Dlg);
+    if Dlg.ShowModal <> mrOk then
+      Exit;
+
+    // С конца: номера ещё не удалённых не сдвигаются
+    Removed := 0;
+    for BmIdx := Dlg.lstBm.Items.Count - 1 downto 0 do
+      if Dlg.lstBm.Checked[BmIdx] then
+      begin
+        BmDeleteAt(FWindowsIndex, BmIdx);
+        Inc(Removed);
+      end;
+  finally
+    Dlg.Free;
+  end;
+  if Removed > 0 then
+    RebuildBookmarksMenu;
+end;
+
+// Delete Missing: закладки, строк которых в файле больше нет (серые в
+// списке), - из списка
+procedure TForm1.BmDelMissingClick(Sender: TObject);
+var
+  BmIdx, MissingCount: Integer;
+begin
+  if (FWindowsIndex < 0) or not FWindows[FWindowsIndex].Used then
     Exit;
-
-  SetLength(FWindows[FWindowsIndex].Bookmarks, 0);
-  BmHistDropWindow(FWindowsIndex);
+  MissingCount := BmRefreshMissing;
+  if MissingCount = 0 then
+  begin
+    RebuildBookmarksMenu;        // номера строк могли поправиться
+    ShowMessage('9515:Несуществующих закладок в этом окне нет.');
+    Exit;
+  end;
+  if MessageDlg('9518:Удалить закладки, строк которых нет в файле: ' +
+                IntToStr(MissingCount) + '?',
+                mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+  begin
+    RebuildBookmarksMenu;
+    Exit;
+  end;
+  for BmIdx := High(FWindows[FWindowsIndex].Bookmarks) downto 0 do
+    if FWindows[FWindowsIndex].Bookmarks[BmIdx].Missing then
+      BmDeleteAt(FWindowsIndex, BmIdx);
   RebuildBookmarksMenu;
 end;
 

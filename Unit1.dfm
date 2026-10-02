@@ -614,9 +614,15 @@ object Form1: TForm1
         Caption = 'Sort BookMark'
         OnClick = BmSortClick
       end
+      object mBmDelMissing: TMenuItem
+        Caption = 'Delete Missing BookMarks'
+        OnClick = BmDelMissingClick
+        Hint = 'Удалить закладки, строк которых в файле больше нет'
+      end
       object mBmClear: TMenuItem
-        Caption = 'Clear List'
+        Caption = 'Clear List...'
         OnClick = BmClearClick
+        Hint = 'Список закладок с галками: удалить отмеченные'
       end
       object mBmSep: TMenuItem
         Caption = '-'
