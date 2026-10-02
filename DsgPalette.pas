@@ -58,8 +58,8 @@ type
     FSelForeign: string;      // выбран сторонний: "Модуль.Класс"
     FGlyphPending: TList;     // кнопки сторонних, значок которых ещё не читали
     FOnGlyphLoaded: TNotifyEvent;
-    function HasGlyphRes(const AName: string): Boolean;
     FOnSelect: TNotifyEvent;
+    function HasGlyphRes(const AName: string): Boolean;
     procedure LoadLibs(const ADelphiBin: string);
     function LoadGlyph(AClass: TClass; ABmp: TBitmap): Boolean;
     function LoadGlyphByName(const AName: string; ABmp: TBitmap): Boolean;
