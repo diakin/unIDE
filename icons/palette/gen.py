@@ -27,6 +27,9 @@ out.append("""unit DsgIcons;
 //    D cx cy r             - круг; K cx cy r - стереть круг
 //    P x1 y1 x2 y2 ...     - закрашенный многоугольник; Q - стереть
 //    T x y h B|N текст     - текст Arial высотой h, B - жирный
+//    @ RRGGBB              - дальше рисовать этим цветом (папка, стекло
+//                            лупы, цветные квадраты); "@" без цвета -
+//                            снова чёрным, то есть цветом значка
 //  Скрипты сгенерированы из icons.py (scratchpad, превью - render.py);
 //  править можно и здесь, формат простой.
 // ---------------------------------------------------------------------------
@@ -44,7 +47,9 @@ const
 function DsgIconScript(const AClass: string): string;
 
 // Нарисовать значок по скрипту на холсте размера 24 * DsgIconScale:
-// холст заливается белым, значок - чёрным
+// холст заливается белым, значок - чёрным, части с командой @ - своим
+// цветом. При уменьшении чёрное становится цветом значка темы, белое -
+// фоном, остальное остаётся как есть (DsgDrawSmoothIcon).
 procedure DsgPaintIcon(ACanvas: TCanvas; const AScript: string);
 
 implementation
@@ -144,6 +149,7 @@ var
   InkBrush: HBRUSH;
   FontRec: TLogFont;
   RestPos: Integer;
+  InkColor: TColor;   // текущий цвет: clBlack - цвет значка
 
   function Num(AIndex: Integer; ADefault: Double): Double;
   begin
@@ -162,8 +168,8 @@ var
     end
     else
     begin
-      ACanvas.Brush.Color := clBlack;
-      ACanvas.Pen.Color := clBlack;
+      ACanvas.Brush.Color := InkColor;
+      ACanvas.Pen.Color := InkColor;
     end;
     ACanvas.Brush.Style := bsSolid;
     ACanvas.Pen.Style := psSolid;
@@ -176,6 +182,7 @@ var
   end;
 
 begin
+  InkColor := clBlack;
   Commands := TStringList.Create;
   Words := TStringList.Create;
   try
@@ -198,6 +205,25 @@ begin
     begin
       Cmd := Commands[CmdIdx];
       Op := UpperCase(Cmd[1]);
+      if Op = '@' then
+      begin
+        // @ RRGGBB - свой цвет; чистые чёрный и белый заняты (значок и
+        // пусто), их сдвигаем на единицу
+        SplitWords(Copy(Cmd, 2, MaxInt), Words);
+        if Words.Count = 0 then
+          InkColor := clBlack
+        else
+        begin
+          InkColor := StrToIntDef('$' + Words[0], 0);
+          InkColor := RGB((InkColor shr 16) and $FF, (InkColor shr 8) and $FF,
+                          InkColor and $FF);
+          if InkColor = clBlack then
+            InkColor := RGB(1, 1, 1)
+          else if InkColor = clWhite then
+            InkColor := RGB(254, 254, 254);
+        end;
+        Continue;
+      end;
       if Op = 'T' then
       begin
         // T x y h B|N текст
@@ -219,7 +245,7 @@ begin
         FontRec.lfQuality := NONANTIALIASED_QUALITY;
         StrPCopy(FontRec.lfFaceName, 'Arial');
         ACanvas.Font.Handle := CreateFontIndirect(FontRec);
-        ACanvas.Font.Color := clBlack;
+        ACanvas.Font.Color := InkColor;
         ACanvas.Brush.Style := bsClear;
         ACanvas.TextOut(Big(ScriptNum(Words[0])), Big(ScriptNum(Words[1])),
                         TextPart);
@@ -317,7 +343,7 @@ begin
                                       2 * Big(Num(4, 0) - Width));
         end;
         CombineRgn(Outer, Outer, Inner, RGN_DIFF);
-        InkBrush := CreateSolidBrush(0);
+        InkBrush := CreateSolidBrush(ColorToRGB(InkColor));
         FillRgn(ACanvas.Handle, Outer, InkBrush);
         DeleteObject(InkBrush);
         DeleteObject(Inner);

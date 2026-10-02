@@ -48,6 +48,10 @@ FLOPPY_BLUE = '#0062f5'
 FLOPPY = {'light': '#262626', 'dark': '#707070'}
 FLOPPY_ICONS = ('Save_01', 'SaveAs_01')
 
+# Debugger buttons in their own colours instead of the Lazarus cyan (the
+# icons are one colour, edges by alpha): Pause yellow, Stop red
+TINT = {'Pause_01': (240, 180, 0), 'Stop_01': (225, 45, 45)}
+
 THEMES = {
     # face for the preview, disabled: grey level range and alpha factor
     'light': ((0xF0, 0xF0, 0xF0), (110, 200), 0.55),
@@ -61,8 +65,16 @@ def render(theme, name):
     levels of 255 at most)."""
     here = os.path.dirname(os.path.abspath(__file__))
     if name not in FLOPPY_ICONS:
-        return Image.open(os.path.join(here, 'png', '%s_%d.png' % (name, SIZE))
+        icon = Image.open(os.path.join(here, 'png', '%s_%d.png' % (name, SIZE))
                           ).convert('RGBA')
+        if name in TINT:
+            pix = icon.load()
+            for yy in range(icon.height):
+                for xx in range(icon.width):
+                    alpha = pix[xx, yy][3]
+                    if alpha:
+                        pix[xx, yy] = TINT[name] + (alpha,)
+        return icon
     with open(os.path.join(here, 'svg', '%s_%d.svg' % (name, SIZE)),
               encoding='utf-8') as fin:
         svg = fin.read()

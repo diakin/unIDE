@@ -20,6 +20,9 @@ unit DsgIcons;
 //    D cx cy r             - круг; K cx cy r - стереть круг
 //    P x1 y1 x2 y2 ...     - закрашенный многоугольник; Q - стереть
 //    T x y h B|N текст     - текст Arial высотой h, B - жирный
+//    @ RRGGBB              - дальше рисовать этим цветом (папка, стекло
+//                            лупы, цветные квадраты); "@" без цвета -
+//                            снова чёрным, то есть цветом значка
 //  Скрипты сгенерированы из icons.py (scratchpad, превью - render.py);
 //  править можно и здесь, формат простой.
 // ---------------------------------------------------------------------------
@@ -37,7 +40,9 @@ const
 function DsgIconScript(const AClass: string): string;
 
 // Нарисовать значок по скрипту на холсте размера 24 * DsgIconScale:
-// холст заливается белым, значок - чёрным
+// холст заливается белым, значок - чёрным, части с командой @ - своим
+// цветом. При уменьшении чёрное становится цветом значка темы, белое -
+// фоном, остальное остаётся как есть (DsgDrawSmoothIcon).
 procedure DsgPaintIcon(ACanvas: TCanvas; const AScript: string);
 
 implementation
@@ -83,7 +88,7 @@ const
     (Name: 'TActionList';
      Script: 'R 3 3 21 21;D 7 8 1.3;L 10 8 18 8;D 7 12 1.3;L 10 12 18 12;D 7 16 1.3;L 10 16 18 16'),
     (Name: 'TBitBtn';
-     Script: 'O 2 6 22 18 3;L 4.8 12 6.8 14 1.5;L 6.8 14 9.8 9.6 1.5;T 11.3 7.6 7.5 B OK'),
+     Script: 'O 2 6 22 18 3;@ 40B050;L 4.8 12 6.8 14 1.5;L 6.8 14 9.8 9.6 1.5;@;T 11.3 7.6 7.5 B OK'),
     (Name: 'TSpeedButton';
      Script: 'O 4 4 20 20 3;P 9.5 8 9.5 16 16 12'),
     (Name: 'TMaskEdit';
@@ -93,7 +98,7 @@ const
     (Name: 'TDrawGrid';
      Script: 'R 2 3 22 21;L 2 8 22 8 1.6;L 9 3 9 21 1.6;L 15.5 3 15.5 21;L 2 14.5 22 14.5;D 12.3 11.3 1.5;F 17.3 9.8 20.3 12.8;P 10.6 19.5 14 19.5 12.3 16.3;C 18.8 17.9 1.7 0.8'),
     (Name: 'TImage';
-     Script: 'R 2 4 22 20;P 4 18 9 11 12.5 15 15.5 12 20 18;D 16.5 8 1.8'),
+     Script: 'R 2 4 22 20;@ 40B050;P 4 18 9 11 12.5 15 15.5 12 20 18;@;@ E8B830;D 16.5 8 1.8;@'),
     (Name: 'TShape';
      Script: 'R 3 3 13.5 13.5;C 15 15 6.5 1'),
     (Name: 'TBevel';
@@ -109,39 +114,39 @@ const
     (Name: 'TControlBar';
      Script: 'R 2 3 22 21;R 4 5 20 11 0.8;R 4 13 20 19 0.8;L 6.2 6.5 6.2 9.5 0.8;L 7.6 6.5 7.6 9.5 0.8;L 6.2 14.5 6.2 17.5 0.8;L 7.6 14.5 7.6 17.5 0.8'),
     (Name: 'TApplicationEvents';
-     Script: 'P 14 2 6 13.5 11 13.5 9 22 18 9.5 13 9.5 15.5 2'),
+     Script: '@ E8B830;P 14 2 6 13.5 11 13.5 9 22 18 9.5 13 9.5 15.5 2;@'),
     (Name: 'TValueListEditor';
      Script: 'R 2 3 22 21;F 2 3 22 7.5;L 10 3 10 21;L 2 12 22 12;L 2 16.5 22 16.5'),
     (Name: 'TLabeledEdit';
      Script: 'T 3 0.5 9 B A;R 2 11 22 21;L 4.5 16 13 16'),
     (Name: 'TColorBox';
-     Script: 'R 2 7 22 17;L 16 7 16 17;P 17.5 10.5 20.5 10.5 19 13;F 4 9 13 15'),
+     Script: 'R 2 7 22 17;L 16 7 16 17;P 17.5 10.5 20.5 10.5 19 13;@ E04040;F 4 9 13 15;@'),
     (Name: 'TActionManager';
-     Script: 'R 2 2 22 22 0.8;P 13.5 4 7.5 13.5 11.5 13.5 10 20 16.5 10.5 12.5 10.5 14.5 4'),
+     Script: 'R 2 2 22 22 0.8;@ E8B830;P 13.5 4 7.5 13.5 11.5 13.5 10 20 16.5 10.5 12.5 10.5 14.5 4;@'),
     (Name: 'TActionMainMenuBar';
      Script: 'R 2 8 22 16;F 4 11 8 13;F 10 11 14 13;F 16 11 20 13'),
     (Name: 'TActionToolBar';
      Script: 'R 2 7 22 17;R 4 9 8.7 15 0.8;R 9.7 9 14.3 15 0.8;R 15.3 9 20 15 0.8'),
     (Name: 'TXPColorMap';
-     Script: 'F 3 3 11 11;R 13 3 21 11;R 3 13 11 21;F 13 13 21 21'),
+     Script: '@ 4080E0;F 3 3 11 11;@;R 13 3 21 11;R 3 13 11 21;@ E8B830;F 13 13 21 21;@'),
     (Name: 'TStandardColorMap';
-     Script: 'R 3 3 21 21;L 9 3 9 21;L 15 3 15 21;L 3 9 21 9;L 3 15 21 15;F 3 3 9 9;F 15 9 21 15;F 9 15 15 21'),
+     Script: 'R 3 3 21 21;L 9 3 9 21;L 15 3 15 21;L 3 9 21 9;L 3 15 21 15;@ E04040;F 3 3 9 9;@;@ 40B050;F 15 9 21 15;@;@ 4080E0;F 9 15 15 21;@'),
     (Name: 'TTwilightColorMap';
      Script: 'R 3 3 21 21;P 3 21 21 3 21 21'),
     (Name: 'TCustomizeDlg';
-     Script: 'R 2 3 22 21;L 2 7 22 7;L 6 13.5 9 16.5 1.6;L 9 16.5 15.5 10 1.6'),
+     Script: 'R 2 3 22 21;L 2 7 22 7;@ 40B050;L 6 13.5 9 16.5 1.6;L 9 16.5 15.5 10 1.6;@'),
     (Name: 'TTabControl';
      Script: 'R 2 8 22 21;R 2 4 9 9;R 9 5.5 15.5 8.6;E 3 7.8 8 9.3'),
     (Name: 'TPageControl';
      Script: 'R 2 8 22 21;R 2 4 9 9;R 9 5.5 15.5 8.6;E 3 7.8 8 9.3;L 5 13 18 13;L 5 17 15 17'),
     (Name: 'TImageList';
-     Script: 'R 8 2 22 15;E 4.6 5.6 19.4 19.4;R 5 5 19 18;E 1.6 8.6 16.4 22.4;R 2 8 16 21;P 3.5 19.5 6.8 15 9.5 17.8 11.5 15.8 14.5 19.5'),
+     Script: 'R 8 2 22 15;E 4.6 5.6 19.4 19.4;R 5 5 19 18;E 1.6 8.6 16.4 22.4;R 2 8 16 21;@ 40B050;P 3.5 19.5 6.8 15 9.5 17.8 11.5 15.8 14.5 19.5;@;@ E8B830;D 12 11.5 1.3;@'),
     (Name: 'TRichEdit';
-     Script: 'R 3 2 21 22;T 5 2.8 8 B A;L 11.5 6.5 18 6.5;L 6 11 18 11 1.8;L 6 15 18 15;L 6 18.7 14 18.7'),
+     Script: 'R 3 2 21 22;@ E04040;T 5 2.8 8 B A;@;L 11.5 6.5 18 6.5;L 6 11 18 11 1.8;L 6 15 18 15;L 6 18.7 14 18.7'),
     (Name: 'TTrackBar';
      Script: 'L 3 11 21 11;L 4 15 4 18;L 8 15 8 17;L 12 15 12 18;L 16 15 16 17;L 20 15 20 18;P 9.8 6 14.2 6 14.2 12 12 14.2 9.8 12'),
     (Name: 'TProgressBar';
-     Script: 'R 2 8 22 16;F 4 10 7 14;F 8 10 11 14;F 12 10 15 14'),
+     Script: 'R 2 8 22 16;@ 40B050;F 4 10 7 14;F 8 10 11 14;F 12 10 15 14;@'),
     (Name: 'TUpDown';
      Script: 'R 7 2 17 22;L 7 12 17 12;P 9.5 9 14.5 9 12 5;P 9.5 15 14.5 15 12 19'),
     (Name: 'THotKey';
@@ -151,7 +156,7 @@ const
     (Name: 'TDateTimePicker';
      Script: 'R 2 7 22 17;L 16 7 16 17;P 17.5 10.5 20.5 10.5 19 13;T 3.6 8.4 7 B 31'),
     (Name: 'TMonthCalendar';
-     Script: 'R 3 3 21 21;F 3 3 21 7.5;D 6.5 11 0.9;D 10 11 0.9;D 13.5 11 0.9;D 17 11 0.9;D 6.5 14.5 0.9;D 10 14.5 0.9;D 13.5 14.5 0.9;D 17 14.5 0.9;D 6.5 18 0.9;D 10 18 0.9;D 13.5 18 0.9'),
+     Script: 'R 3 3 21 21;@ 4080E0;F 3 3 21 7.5;@;D 6.5 11 0.9;D 10 11 0.9;D 13.5 11 0.9;D 17 11 0.9;D 6.5 14.5 0.9;D 10 14.5 0.9;D 13.5 14.5 0.9;D 17 14.5 0.9;D 6.5 18 0.9;D 10 18 0.9;D 13.5 18 0.9'),
     (Name: 'TTreeView';
      Script: 'F 3 2.5 7 6.5;L 5 6.5 5 18;L 5 12 9 12;L 5 18 9 18;F 9 10.5 12 13.5;F 9 16.5 12 19.5;L 9 4.5 20 4.5;L 14 12 20 12;L 14 18 20 18'),
     (Name: 'TListView';
@@ -173,25 +178,25 @@ const
     (Name: 'TPaintBox';
      Script: 'R 2 4 22 20 0.8;L 6 17 14.5 8.5 1.6;P 14 7.2 17.8 3.4 19.6 5.2 15.8 9'),
     (Name: 'TOpenDialog';
-     Script: 'R 2 3 22 21;L 2 7 22 7;F 5 11 19 18.5;E 6.2 12.4 17.8 17.3;F 5 9.5 9.8 11'),
+     Script: 'R 2 3 22 21;L 2 7 22 7;F 5 11 19 18.5;E 6.2 12.4 17.8 17.3;@ E8B830;F 6.2 12.4 17.8 17.3;@;F 5 9.5 9.8 11'),
     (Name: 'TSaveDialog';
-     Script: 'R 2 3 22 21;L 2 7 22 7;R 6.5 9 17.5 20;F 9 9 15 12.2;R 9 15 15 20 0.8'),
+     Script: 'R 2 3 22 21;L 2 7 22 7;R 6.5 9 17.5 20;@ 4080E0;F 7.5 10 16.5 19;@;F 9 9 15 12.2;E 9 15 15 20;R 9 15 15 20 0.8'),
     (Name: 'TOpenPictureDialog';
-     Script: 'R 2 3 22 21;L 2 7 22 7;R 5 9.5 19 19;P 6.5 17.5 9.8 13.5 12.3 16 14.5 14 17.5 17.5;D 15.5 12 1.1'),
+     Script: 'R 2 3 22 21;L 2 7 22 7;R 5 9.5 19 19;@ 40B050;P 6.5 17.5 9.8 13.5 12.3 16 14.5 14 17.5 17.5;@;@ E8B830;D 15.5 12 1.1;@'),
     (Name: 'TSavePictureDialog';
-     Script: 'R 2 3 22 21;L 2 7 22 7;R 5 9.5 15.5 19;P 6.3 17.5 8.8 14.2 11 16.4 12.3 15.2 14.2 17.5;F 16.5 14 21 19;E 17.3 16.7 20.2 19'),
+     Script: 'R 2 3 22 21;L 2 7 22 7;R 5 9.5 15.5 19;@ 40B050;P 6.3 17.5 8.8 14.2 11 16.4 12.3 15.2 14.2 17.5;@;@ 4080E0;F 16.5 14 21 19;@;E 17.3 16.7 20.2 19'),
     (Name: 'TFontDialog';
-     Script: 'R 2 3 22 21;L 2 7 22 7;T 5.5 8.2 11 B Aa'),
+     Script: 'R 2 3 22 21;L 2 7 22 7;@ E04040;T 5.5 8.2 11 B Aa;@'),
     (Name: 'TColorDialog';
-     Script: 'R 2 3 22 21;L 2 7 22 7;F 5 9.5 11 14.5;R 13 9.5 19 14.5 0.8;R 5 15.5 11 20 0.8;F 13 15.5 19 20'),
+     Script: 'R 2 3 22 21;L 2 7 22 7;@ E04040;F 5 9.5 11 14.5;@;@ 40B050;F 13 9.5 19 14.5;@;@ 4080E0;F 5 15.5 11 20;@;@ E8B830;F 13 15.5 19 20;@'),
     (Name: 'TPrintDialog';
      Script: 'R 2 3 22 21;L 2 7 22 7;R 8 9 16 13.5 0.8;R 5 13 19 18.5;L 9 16 15 16 0.8'),
     (Name: 'TPrinterSetupDialog';
-     Script: 'R 2 3 22 21;L 2 7 22 7;R 8 9 16 13.5 0.8;R 5 13 19 18.5;D 16.5 15.8 1.1'),
+     Script: 'R 2 3 22 21;L 2 7 22 7;R 8 9 16 13.5 0.8;R 5 13 19 18.5;@ 40B050;D 16.5 15.8 1.1;@'),
     (Name: 'TFindDialog';
-     Script: 'R 2 3 22 21;L 2 7 22 7;C 11 13.5 4.3 1.2;L 14 16.6 18.3 20 1.8'),
+     Script: 'R 2 3 22 21;L 2 7 22 7;@ 8CC4F0;D 11 13.5 3.3;@;C 11 13.5 4.3 1.2;L 14 16.6 18.3 20 1.8'),
     (Name: 'TReplaceDialog';
-     Script: 'R 2 3 22 21;L 2 7 22 7;C 9 12.5 3.4 1;L 11.3 15 13.8 17.5 1.5;L 13.5 10.5 18.5 10.5 0.9;P 18 8.8 18 12.2 20.3 10.5'),
+     Script: 'R 2 3 22 21;L 2 7 22 7;@ 8CC4F0;D 9 12.5 2.5;@;C 9 12.5 3.4 1;L 11.3 15 13.8 17.5 1.5;@ E04040;L 13.5 10.5 18.5 10.5 0.9;P 18 8.8 18 12.2 20.3 10.5;@'),
     (Name: 'TPageSetupDialog';
      Script: 'R 2 3 22 21;L 2 7 22 7;R 7 8.5 17 20;R 9 10.5 15 18 0.5'),
     (Name: 'TTabSet';
@@ -207,31 +212,33 @@ const
     (Name: 'TFileListBox';
      Script: 'R 2 2 22 22;R 4 4.5 7.5 8.5 0.7;L 9 6.5 19 6.5;R 4 10.5 7.5 14.5 0.7;L 9 12.5 19 12.5;R 4 16.5 7.5 20.5 0.7;L 9 18.5 19 18.5'),
     (Name: 'TDirectoryListBox';
-     Script: 'R 2 2 22 22;F 4 4 8.5 7;L 6 7 6 18 0.8;L 6 12 9 12 0.8;F 9 10.5 13 13.5;L 6 18 9 18 0.8;F 9 16.5 13 19.5;L 10 5.5 19 5.5;L 14.5 12 20 12;L 14.5 18 20 18'),
+     Script: 'R 2 2 22 22;L 6 7 6 18 0.8;L 6 12 9 12 0.8;L 6 18 9 18 0.8;L 10 5.5 19 5.5;L 14.5 12 20 12;L 14.5 18 20 18;@ E8B830;F 4 4 8.5 7;F 9 10.5 13 13.5;F 9 16.5 13 19.5;@'),
     (Name: 'TDriveComboBox';
-     Script: 'R 2 7 22 17;L 16 7 16 17;P 17.5 10.5 20.5 10.5 19 13;R 4 9.5 13 14.5 0.8;D 11 12 0.8'),
+     Script: 'R 2 7 22 17;L 16 7 16 17;P 17.5 10.5 20.5 10.5 19 13;R 4 9.5 13 14.5 0.8;@ 40B050;D 11 12 0.8;@'),
     (Name: 'TFilterComboBox';
      Script: 'R 2 7 22 17;L 16 7 16 17;P 17.5 10.5 20.5 10.5 19 13;P 4.5 9 12.5 9 9.5 12 9.5 15.5 7.5 15.5 7.5 12'),
     (Name: 'TGauge';
      Script: 'C 12 15 9 1.2;E 1 15.5 23 23;L 12 15 16.5 9.5 1.4;D 12 15 1.6;L 2.5 17 21.5 17'),
     (Name: 'TColorGrid';
-     Script: 'R 3 3 21 21;F 3 3 9 9;F 15 3 21 9;F 9 9 15 15;F 3 15 9 21;F 15 15 21 21'),
+     Script: 'R 3 3 21 21;@ E04040;F 3 3 9 9;@;@ 40B050;F 15 3 21 9;@;@ 4080E0;F 9 9 15 15;@;@ E8B830;F 3 15 9 21;@;@ C050C0;F 15 15 21 21;@'),
     (Name: 'TSpinButton';
      Script: 'R 7 3 17 12;R 7 12 17 21;P 9.5 9.5 14.5 9.5 12 5.5;P 9.5 14.5 14.5 14.5 12 18.5'),
     (Name: 'TSpinEdit';
      Script: 'R 2 6 22 18;L 16 6 16 18;L 16 12 22 12;P 17.5 10.3 20.5 10.3 19 8;P 17.5 13.7 20.5 13.7 19 16;T 3.8 7.4 8.5 B 12'),
     (Name: 'TDirectoryOutline';
-     Script: 'R 3 3 8 8 0.8;L 4.5 5.5 6.5 5.5 0.8;F 10 4 14 7;L 5.5 8 5.5 17;L 5.5 12 9 12;L 5.5 17 9 17;F 10 10.5 14 13.5;F 10 15.5 14 18.5;L 15.5 12 20 12;L 15.5 17 20 17'),
+     Script: 'R 3 3 8 8 0.8;L 4.5 5.5 6.5 5.5 0.8;L 5.5 8 5.5 17;L 5.5 12 9 12;L 5.5 17 9 17;L 15.5 12 20 12;L 15.5 17 20 17;@ E8B830;F 10 4 14 7;F 10 10.5 14 13.5;F 10 15.5 14 18.5;@'),
     (Name: 'TCalendar';
-     Script: 'R 2 3 22 21;L 2 8 22 8;L 7 8 7 21;L 12 8 12 21;L 17 8 17 21;L 2 12.5 22 12.5;L 2 17 22 17;F 8 4.6 16 6.4'),
+     Script: 'R 2 3 22 21;L 2 8 22 8;L 7 8 7 21;L 12 8 12 21;L 17 8 17 21;L 2 12.5 22 12.5;L 2 17 22 17;@ 4080E0;F 8 4.6 16 6.4;@'),
     (Name: 'TShellTreeView';
-     Script: 'R 3 3 8 6.5 0.8;L 5 6.5 5 18;L 5 12 9 12;L 5 18 9 18;R 9 10.5 14 13.8 0.8;R 9 16.5 14 19.8 0.8;F 9 9.6 11 10.5;F 9 15.6 11 16.5;L 10 4.5 20 4.5'),
+     Script: 'R 3 3 8 6.5 0.8;L 5 6.5 5 18;L 5 12 9 12;L 5 18 9 18;R 9 10.5 14 13.8 0.8;R 9 16.5 14 19.8 0.8;F 9 9.6 11 10.5;F 9 15.6 11 16.5;L 10 4.5 20 4.5;@ E8B830;F 3.8 3.8 7.2 5.7;F 9.8 11.3 13.2 13;F 9.8 17.3' +
+      ' 13.2 19;@'),
     (Name: 'TShellComboBox';
-     Script: 'R 2 7 22 17;L 16 7 16 17;P 17.5 10.5 20.5 10.5 19 13;F 4 10 12 14.5;F 4 9 7 10'),
+     Script: 'R 2 7 22 17;L 16 7 16 17;P 17.5 10.5 20.5 10.5 19 13;@ E8B830;F 4 10 12 14.5;F 4 9 7 10;@'),
     (Name: 'TShellListView';
-     Script: 'R 3 4 10 9 0.8;F 3 3 5.5 4;R 14 4 21 9 0.8;F 14 3 16.5 4;R 3 14 10 19 0.8;F 3 13 5.5 14;R 14 14 21 19 0.8;F 14 13 16.5 14;L 3 11 10 11 0.8;L 14 11 21 11 0.8;L 3 21 10 21 0.8;L 14 21 21 21 0.8'),
+     Script: 'R 3 4 10 9 0.8;F 3 3 5.5 4;R 14 4 21 9 0.8;F 14 3 16.5 4;R 3 14 10 19 0.8;F 3 13 5.5 14;R 14 14 21 19 0.8;F 14 13 16.5 14;L 3 11 10 11 0.8;L 14 11 21 11 0.8;L 3 21 10 21 0.8;L 14 21 21 21 0.8;@ E8B830' +
+      ';F 3.8 4.8 9.2 8.2;F 14.8 4.8 20.2 8.2;F 3.8 14.8 9.2 18.2;F 14.8 14.8 20.2 18.2;@'),
     (Name: 'TShellChangeNotifier';
-     Script: 'R 2 9 13 17;F 2 7.5 6.5 9;P 17 2 12.5 11.5 15.5 11.5 14 20 20.5 9 17 9 19 2'),
+     Script: 'R 2 9 13 17;@ E8B830;F 3 10 12 16;@;F 2 7.5 6.5 9;@ E8B830;P 17 2 12.5 11.5 15.5 11.5 14 20 20.5 9 17 9 19 2;@'),
     (Name: 'TUiIconButton';
      Script: 'O 3 3 21 21 5;D 12 12 4'));
 
@@ -318,6 +325,7 @@ var
   InkBrush: HBRUSH;
   FontRec: TLogFont;
   RestPos: Integer;
+  InkColor: TColor;   // текущий цвет: clBlack - цвет значка
 
   function Num(AIndex: Integer; ADefault: Double): Double;
   begin
@@ -336,8 +344,8 @@ var
     end
     else
     begin
-      ACanvas.Brush.Color := clBlack;
-      ACanvas.Pen.Color := clBlack;
+      ACanvas.Brush.Color := InkColor;
+      ACanvas.Pen.Color := InkColor;
     end;
     ACanvas.Brush.Style := bsSolid;
     ACanvas.Pen.Style := psSolid;
@@ -350,6 +358,7 @@ var
   end;
 
 begin
+  InkColor := clBlack;
   Commands := TStringList.Create;
   Words := TStringList.Create;
   try
@@ -372,6 +381,25 @@ begin
     begin
       Cmd := Commands[CmdIdx];
       Op := UpperCase(Cmd[1]);
+      if Op = '@' then
+      begin
+        // @ RRGGBB - свой цвет; чистые чёрный и белый заняты (значок и
+        // пусто), их сдвигаем на единицу
+        SplitWords(Copy(Cmd, 2, MaxInt), Words);
+        if Words.Count = 0 then
+          InkColor := clBlack
+        else
+        begin
+          InkColor := StrToIntDef('$' + Words[0], 0);
+          InkColor := RGB((InkColor shr 16) and $FF, (InkColor shr 8) and $FF,
+                          InkColor and $FF);
+          if InkColor = clBlack then
+            InkColor := RGB(1, 1, 1)
+          else if InkColor = clWhite then
+            InkColor := RGB(254, 254, 254);
+        end;
+        Continue;
+      end;
       if Op = 'T' then
       begin
         // T x y h B|N текст
@@ -393,7 +421,7 @@ begin
         FontRec.lfQuality := NONANTIALIASED_QUALITY;
         StrPCopy(FontRec.lfFaceName, 'Arial');
         ACanvas.Font.Handle := CreateFontIndirect(FontRec);
-        ACanvas.Font.Color := clBlack;
+        ACanvas.Font.Color := InkColor;
         ACanvas.Brush.Style := bsClear;
         ACanvas.TextOut(Big(ScriptNum(Words[0])), Big(ScriptNum(Words[1])),
                         TextPart);
@@ -491,7 +519,7 @@ begin
                                       2 * Big(Num(4, 0) - Width));
         end;
         CombineRgn(Outer, Outer, Inner, RGN_DIFF);
-        InkBrush := CreateSolidBrush(0);
+        InkBrush := CreateSolidBrush(ColorToRGB(InkColor));
         FillRgn(ACanvas.Handle, Outer, InkBrush);
         DeleteObject(InkBrush);
         DeleteObject(Inner);

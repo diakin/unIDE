@@ -365,9 +365,13 @@ var
   BigBmp: TBitmap;
   BigLines: array of PRGBLine;
   PosX, PosY, SubX, SubY, Cover, LineIdx: Integer;
+  SumR, SumG, SumB, InkRGB, BackRGB: Longint;
+  Sub: TRGBTriple;
   OutLine: PRGBLine;
   OutRGB: Longint;
 begin
+  InkRGB := ColorToRGB(AInk);
+  BackRGB := ColorToRGB(ABack);
   BigBmp := TBitmap.Create;
   try
     BigBmp.PixelFormat := pf24bit;
@@ -391,17 +395,52 @@ begin
       OutLine := ABmp.ScanLine[PosY];
       for PosX := 0 to SmoothSide - 1 do
       begin
-        // Покрытие: доля чёрного в квадрате SmoothScale x SmoothScale
+        // Среднее по квадрату SmoothScale x SmoothScale: белое - фон,
+        // чёрное - цвет значка AInk, остальное (части "@ цвет" скрипта) -
+        // свой цвет. Ничего не нарисовано - прозрачный цвет кнопки.
         Cover := 0;
+        SumR := 0;
+        SumG := 0;
+        SumB := 0;
         for SubY := 0 to SmoothScale - 1 do
           for SubX := 0 to SmoothScale - 1 do
-            Inc(Cover, 255 - BigLines[PosY * SmoothScale + SubY]^
-                               [PosX * SmoothScale + SubX].rgbtGreen);
-        Cover := Cover div (SmoothScale * SmoothScale);
-        if Cover <= 0 then
+          begin
+            Sub := BigLines[PosY * SmoothScale + SubY]^
+                     [PosX * SmoothScale + SubX];
+            if (Sub.rgbtRed = 255) and (Sub.rgbtGreen = 255) and
+               (Sub.rgbtBlue = 255) then
+            begin
+              Inc(SumR, GetRValue(BackRGB));
+              Inc(SumG, GetGValue(BackRGB));
+              Inc(SumB, GetBValue(BackRGB));
+            end
+            else
+            begin
+              Inc(Cover);
+              if (Sub.rgbtRed = 0) and (Sub.rgbtGreen = 0) and
+                 (Sub.rgbtBlue = 0) then
+              begin
+                Inc(SumR, GetRValue(InkRGB));
+                Inc(SumG, GetGValue(InkRGB));
+                Inc(SumB, GetBValue(InkRGB));
+              end
+              else
+              begin
+                Inc(SumR, Sub.rgbtRed);
+                Inc(SumG, Sub.rgbtGreen);
+                Inc(SumB, Sub.rgbtBlue);
+              end;
+            end;
+          end;
+        if Cover = 0 then
           OutRGB := ColorToRGB(SmoothKey)
         else
-          OutRGB := ColorToRGB(SmoothMix(AInk, ABack, Cover));
+          OutRGB := RGB(SumR div (SmoothScale * SmoothScale),
+                        SumG div (SmoothScale * SmoothScale),
+                        SumB div (SmoothScale * SmoothScale));
+        // Совпало с прозрачным цветом - сдвиг на единицу, иначе дыра
+        if OutRGB = ColorToRGB(SmoothKey) then
+          Inc(OutRGB);
         OutLine[PosX].rgbtRed := GetRValue(OutRGB);
         OutLine[PosX].rgbtGreen := GetGValue(OutRGB);
         OutLine[PosX].rgbtBlue := GetBValue(OutRGB);
