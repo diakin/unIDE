@@ -2112,6 +2112,7 @@ type
     function  RelocatePathList(const AOld, AFromReg, AOldRoot, ANewRoot,
                                ARegKey, ATitle: string): string;
     function  FilterSourceDirs(const AList, ARoot: string): string;
+    function  SkipMissingDirs(const AList, ATitle: string): string;
     procedure CheckShadowDcus(const ADir, ARoot: string);
     function  ResolveErrorFile(const AName: string;
                                var AWhere: string): string;
@@ -33556,7 +33557,8 @@ end;
 // Список путей для новой машины. Старые записи: макросы раскрываются,
 // путь внутри старой папки Delphi переводится в новую. Потом добавляются
 // записи из реестра новой Delphi (AFromReg). Файл заменяется папкой,
-// повторы и несуществующее выбрасываются - последнее уходит в лог.
+// повторы выбрасываются. Старые записи, которых нет на этом компьютере,
+// остаются (пути другого компьютера), из реестра - только существующие.
 function TForm1.RelocatePathList(const AOld, AFromReg, AOldRoot, ANewRoot,
                                  ARegKey, ATitle: string): string;
 var
@@ -33622,11 +33624,19 @@ begin
         Continue;
       Seen.Add(V);
 
+      // Своей записи нет на этом компьютере - остаётся: может быть путём
+      // с другого компьютера, сборка её пропустит. Из реестра - только
+      // существующие.
       if not DirectoryExists(V) then
       begin
-        LogComp('  ' + ATitle + ': папки нет, убрана - ' + V);
-        Inc(Dropped);
-        Continue;
+        if I < P then
+          LogComp('  ' + ATitle + ': папки нет на этом компьютере, ' +
+                  'оставлена - ' + V)
+        else
+        begin
+          Inc(Dropped);
+          Continue;
+        end;
       end;
 
       if Result = '' then
@@ -33640,8 +33650,7 @@ begin
   end;
 
   if Dropped > 0 then
-    LogComp(Format('  %s: убрано несуществующих папок %d. Если это ' +
-    'компоненты, их надо установить на этой машине.',
+    LogComp(Format('  %s: из реестра не взято несуществующих папок %d.',
                    [ATitle, Dropped]));
 end;
 
@@ -33819,6 +33828,44 @@ begin
   end;
 
   LogComp('--- Готово. Проверьте сборку: Compile & Run');
+end;
+
+// Список путей без папок, которых нет на этом компьютере. Пропущенные -
+// одной строкой в Compilation log.
+function TForm1.SkipMissingDirs(const AList, ATitle: string): string;
+var
+  Rest, Item, Skipped: string;
+  SepPos, SkipCount: Integer;
+begin
+  Result := '';
+  Skipped := '';
+  SkipCount := 0;
+  Rest := AList;
+  while Rest <> '' do
+  begin
+    SepPos := Pos(';', Rest);
+    if SepPos = 0 then
+      SepPos := Length(Rest) + 1;
+    Item := Trim(Copy(Rest, 1, SepPos - 1));
+    Delete(Rest, 1, SepPos);
+    if Item = '' then
+      Continue;
+    // Нераскрытые переменные не трогаем - о них скажет CheckUnitPath
+    if (Pos('$(', Item) = 0) and not DirectoryExists(Item) then
+    begin
+      Inc(SkipCount);
+      Skipped := Skipped + '; ' + Item;
+      Continue;
+    end;
+    if Result = '' then
+      Result := Item
+    else
+      Result := Result + ';' + Item;
+  end;
+  if SkipCount > 0 then
+    LogComp(ATitle + ': на этом компьютере нет папок - ' +
+            IntToStr(SkipCount) + ', компилятору не переданы (в настройках ' +
+            'остались):' + Copy(Skipped, 2, MaxInt));
 end;
 
 // Папки внутри <Delphi>\Source и <Delphi>\Experts из списка поиска - вон.
@@ -34205,6 +34252,9 @@ begin
 
   // Исходникам Delphi в путях поиска не место - см. FilterSourceDirs
   LibDir := FilterSourceDirs(LibDir, Root);
+  // Папки, которых нет на этом компьютере (пути с другого компьютера), -
+  // мимо компилятора, одной строкой в лог; в настройках они остаются
+  LibDir := SkipMissingDirs(LibDir, 'Library path');
 
   // .dcu модулей Delphi в папке проекта и в папке вывода .dcu перекрывают
   // библиотеку - проверяем до сборки, пока их ещё можно убрать
