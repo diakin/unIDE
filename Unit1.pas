@@ -973,6 +973,10 @@ type
     // (точка останова)
     FMarkClickLine: Integer;
     FMarkTimer: TTimer;
+    // Закладка, поставленная или снятая таймером щелчка: строка и время -
+    // если щелчок окажется двойным (точка останова), она возвращается
+    FMarkBmLine: Integer;
+    FMarkBmTick: Cardinal;
     // Значение под мышью на остановке: подсказка, таймер, что показано и
     // где стояла мышь на прошлом тике
     FDbgHintWnd: THintWindow;
@@ -36683,7 +36687,14 @@ begin
     FMarkClickLine := MarksLineAtY(Y);
 end;
 
-// Одиночный щелчок ждёт, не станет ли он двойным: закладку ставит таймер
+// Задержка закладки после щелчка по полосе меток, мс
+const
+  MarkClickDelay = 250;
+
+// Одиночный щелчок ждёт MarkClickDelay, не станет ли он двойным: закладку
+// ставит таймер. Задержка короче системного времени двойного щелчка:
+// медленный двойной щелчок успевает поставить закладку - её снимает
+// MarksBoxDblClick.
 procedure TForm1.MarksBoxClick(Sender: TObject);
 begin
   if FMarkClickLine < 0 then
@@ -36695,7 +36706,7 @@ begin
     FMarkTimer.OnTimer := MarkTimerTick;
   end;
   FMarkTimer.Enabled := False;
-  FMarkTimer.Interval := GetDoubleClickTime;
+  FMarkTimer.Interval := MarkClickDelay;
   FMarkTimer.Enabled := True;
 end;
 
@@ -36703,12 +36714,22 @@ procedure TForm1.MarkTimerTick(Sender: TObject);
 begin
   FMarkTimer.Enabled := False;
   BmToggleAtLine(FMarkClickLine);
+  FMarkBmLine := FMarkClickLine;
+  FMarkBmTick := GetTickCount;
 end;
 
 procedure TForm1.MarksBoxDblClick(Sender: TObject);
 begin
   if FMarkTimer <> nil then
+  begin
+    // Первый щелчок двойного уже переключил закладку - вернуть как было
+    if not FMarkTimer.Enabled and (FMarkClickLine >= 0) and
+       (FMarkBmLine = FMarkClickLine) and
+       (GetTickCount - FMarkBmTick <= GetDoubleClickTime) then
+      BmToggleAtLine(FMarkClickLine);
     FMarkTimer.Enabled := False;
+  end;
+  FMarkBmLine := -1;
   if FMarkClickLine >= 0 then
     DbgToggleBreak(FMarkClickLine);
 end;
