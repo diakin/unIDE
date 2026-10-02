@@ -535,6 +535,8 @@ var
   RecLen, RecType, Body, Depth, StackIdx, OwnerProc: Integer;
   SubStart, FirstProc, ProcIdx, OtherIdx: Integer;
   Scope: array of Integer;
+  ScopeEnd: array of Integer;  // pEnd области: место её записи $006, 0 - нет
+  RecOfs: Integer;
   Proc: TDbgProcSym;
   Local: TDbgLocalSym;
   Data: TDbgDataSym;
@@ -547,6 +549,7 @@ begin
     AEnd := Length(FBuf);
   Depth := 0;
   SetLength(Scope, 64);
+  SetLength(ScopeEnd, 64);
   while APos + 4 <= AEnd do
   begin
     RecLen := WordAt(APos);
@@ -554,6 +557,14 @@ begin
     Body := APos + 4;
     if RecLen < 2 then
       Break;
+
+    // Область, чей конец (pEnd) уже позади, закрыта, даже если записи
+    // $006 для неё не встретилось: иначе всё дальше - данные модуля в том
+    // числе - считалось бы локальным этой процедуры
+    RecOfs := APos - SubStart;
+    while (Depth > 0) and (ScopeEnd[Depth - 1] > 0) and
+          (RecOfs > ScopeEnd[Depth - 1]) do
+      Dec(Depth);
 
     OwnerProc := -1;
     for StackIdx := Depth - 1 downto 0 do
@@ -579,15 +590,23 @@ begin
           Proc.ParentOfs := DwordAt(Body);
           AddProc(Proc);
           if Depth = Length(Scope) then
+          begin
             SetLength(Scope, Depth + 64);
+            SetLength(ScopeEnd, Depth + 64);
+          end;
           Scope[Depth] := FProcCount - 1;
+          ScopeEnd[Depth] := Integer(DwordAt(Body + 4));
           Inc(Depth);
         end;
       SymThunk32, SymBlock32, SymWith32:
         begin
           if Depth = Length(Scope) then
+          begin
             SetLength(Scope, Depth + 64);
+            SetLength(ScopeEnd, Depth + 64);
+          end;
           Scope[Depth] := -1;
+          ScopeEnd[Depth] := Integer(DwordAt(Body + 4));
           Inc(Depth);
         end;
       SymEnd:
@@ -621,6 +640,17 @@ begin
         end;
       SymLData32, SymGData32:
         begin
+          // Глобальные данные ($202) - данные модуля, где бы ни стояла
+          // запись; внутри процедуры - ещё и её статическая переменная
+          if (RecType = SymGData32) and (OwnerProc >= 0) then
+          begin
+            Data.Offset := DwordAt(Body);
+            Data.Segment := WordAt(Body + 4);
+            Data.TypeId := DwordAt(Body + 8);
+            Data.Name := NameOf(DwordAt(Body + 12));
+            Data.Module := AModule;
+            AddData(Data);
+          end;
           if OwnerProc >= 0 then
           begin
             Local.Kind := DbgLocalData;
