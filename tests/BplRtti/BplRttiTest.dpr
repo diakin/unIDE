@@ -13,7 +13,8 @@ program BplRttiTest;
 //  Запуск:
 //    BplRttiTest
 //        - установленные в Delphi 7 design-пакеты (Known Packages) и
-//          runtime-пакеты, которые им нужны: где искать .bpl с классами
+//          runtime-пакеты, которые им нужны: где искать .bpl с классами;
+//          раскладка палитры Delphi из реестра (страницы и компоненты)
 //    BplRttiTest <путь к runtime .bpl> [часть имени класса]
 //        - классы пакета, их предки, свойства и события. Без второго
 //          параметра свойства печатаются у всех наследников TComponent.
@@ -75,6 +76,41 @@ begin
     Reg.Free;
   end;
   Result := ExcludeTrailingPathDelimiter(Result);
+end;
+
+// Раскладка палитры Delphi: HKCU\Software\Borland\Delphi\7.0\Palette -
+// страница и список её компонентов
+procedure ListPalette;
+var
+  Reg: TRegistry;
+  PageNames: TStringList;
+  PageIdx: Integer;
+  PageText: string;
+begin
+  Reg := TRegistry.Create(KEY_READ);
+  PageNames := TStringList.Create;
+  try
+    Reg.RootKey := HKEY_CURRENT_USER;
+    if not Reg.OpenKeyReadOnly('Software\Borland\Delphi\7.0\Palette') then
+    begin
+      Say('В реестре нет HKCU\Software\Borland\Delphi\7.0\Palette');
+      Exit;
+    end;
+    Reg.GetValueNames(PageNames);
+    Say('Палитра Delphi (Palette): страниц ' + IntToStr(PageNames.Count));
+    for PageIdx := 0 to PageNames.Count - 1 do
+    begin
+      try
+        PageText := Reg.ReadString(PageNames[PageIdx]);
+      except
+        PageText := '(не строка)';
+      end;
+      Say('  ' + PageNames[PageIdx] + ' = ' + PageText);
+    end;
+  finally
+    PageNames.Free;
+    Reg.Free;
+  end;
 end;
 
 procedure ListKnownPackages;
@@ -243,7 +279,11 @@ begin
   try
     try
       if ParamCount = 0 then
-        ListKnownPackages
+      begin
+        ListKnownPackages;
+        Say('');
+        ListPalette;
+      end
       else
         DumpPackage(ParamStr(1), ParamStr(2));
     except

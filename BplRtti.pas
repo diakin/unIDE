@@ -296,10 +296,15 @@ begin
       Params := Params + 'const '
     else if pfOut in Flags then
       Params := Params + 'out ';
-    Params := Params + ParamName + ': ';
-    if pfArray in Flags then
-      Params := Params + 'array of ';
-    Params := Params + TypeName;
+    Params := Params + ParamName;
+    // Нетипизированный параметр (const Buffer) - без типа
+    if TypeName <> '' then
+    begin
+      Params := Params + ': ';
+      if pfArray in Flags then
+        Params := Params + 'array of ';
+      Params := Params + TypeName;
+    end;
   end;
   if DataRec^.MethodKind = mkFunction then
     Result := 'function(' + Params + '): ' + PShortString(Cursor)^ +
