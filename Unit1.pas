@@ -23902,7 +23902,17 @@ begin
   for CompIdx := 0 to FDesigner.Form.ComponentCount - 1 do
   begin
     DsgComp := FDesigner.Form.Components[CompIdx];
-    if not (DsgComp is TWinControl) or (DsgComp.Name = '') then
+    if not (DsgComp is TWinControl) then
+      Continue;
+    // Коробка с кнопками палитры в конструкторе - копия без имени, по
+    // имени её у живой формы не найти; у живой она буферизована
+    // (TDsgPalette.CreatePalette)
+    if (DsgComp.Name = '') and (DsgComp is TScrollBox) then
+    begin
+      TWinControl(DsgComp).DoubleBuffered := True;
+      Continue;
+    end;
+    if DsgComp.Name = '' then
       Continue;
     LiveComp := LiveForm.FindComponent(DsgComp.Name);
     if (LiveComp is TWinControl) and TWinControl(LiveComp).DoubleBuffered and

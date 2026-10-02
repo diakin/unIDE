@@ -142,6 +142,15 @@ begin
   FBox.VertScrollBar.Visible := False;
   FBox.HorzScrollBar.Tracking := True;
 
+  // Двойная буферизация - всем трём окнам палитры. Кнопки компонентов -
+  // безоконные (TSpeedButton), их рисует FBox; без буфера при смене ширины
+  // окна панель, вкладки и коробка с кнопками стирались и рисовались
+  // каждая отдельно, и палитра моргала. Буфер у pnlPaletteIn (родителя)
+  // окна-детей не покрывает.
+  DoubleBuffered := True;
+  FTabs.DoubleBuffered := True;
+  FBox.DoubleBuffered := True;
+
   FArrow := TSpeedButton.Create(Self);
   FArrow.Parent := FBox;
   FArrow.SetBounds(2, 1, BtnSize, BtnSize);
