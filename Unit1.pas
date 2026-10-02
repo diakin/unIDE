@@ -1014,6 +1014,13 @@ type
     // может достаться другой строке)
     FObjCrcSnapText: string;
     FObjCrcSnapValue: Cardinal;
+    // Класс корня снимка (DfmRootClass) - на строку снимка один раз
+    FOwnSnapClassText: string;
+    FOwnSnapClassName: string;
+    // IsOwnProject: ответ на проект и дату его .prj
+    FOwnPrjName: string;
+    FOwnPrjAge: Integer;
+    FOwnPrjResult: Boolean;
     // Снимки других своих форм (Names - класс, Objects - TOwnSnapEntry):
     // снимок хранится один (FObjSnapText), и переход Unit1 -> Unit2 ->
     // Unit1 снимал Form1 заново и разбирал Unit1.dfm целиком
@@ -1901,6 +1908,7 @@ type
     procedure ObjScanCodeProps(const ASrc: string; AResIdx: TStringList;
                                ALive: TCustomForm);
     function  ObjIsCodeProp(AObj: TObject; const AProp: string): Boolean;
+    function  ObjPropsItemColor(Item: TListItem): TColor;
     function  ObjCodeSetterOf(const AName, AProp: string): string;
     procedure ObjSetterIndex;
     function  ObjCodeSetterLine(const AName, AProp: string;
@@ -4408,7 +4416,11 @@ var
   Key: string;
 begin
   if FUiGridSeen = nil then
+  begin
     FUiGridSeen := TStringList.Create;
+    // Зовётся на каждой ячейке (NM_CUSTOMDRAW) - поиск двоичный
+    FUiGridSeen.Sorted := True;
+  end;
   Key := IntToHex(Integer(Sender), 8) + ' ' + AWhat;
   if FUiGridSeen.IndexOf(Key) >= 0 then
     Exit;
@@ -19241,18 +19253,31 @@ const
 
   // Редактор открыт на собственном проекте - его форму можно снять с живого
   // окна, без пробного запуска
+// Ответ запоминается на проект и дату его .prj: без этого каждый вызов
+// читал .prj с диска (ProjectTargetOf), а зовут его и при отрисовке.
 function TForm1.IsOwnProject: Boolean;
 var
   Dpr: string;
+  PrjAge: Integer;
 begin
   Result := False;
   if FCurrentProject = '' then
     Exit;
+  PrjAge := FileAge(ProjectFileName(FCurrentProject));
+  if (PrjAge <> -1) and (PrjAge = FOwnPrjAge) and
+     (FCurrentProject = FOwnPrjName) then
+  begin
+    Result := FOwnPrjResult;
+    Exit;
+  end;
   Dpr := ProjectTargetOf(FCurrentProject);
   Result := (Dpr <> '') and
             (CompareText(ChangeFileExt(ExtractFileName(Dpr), ''),
                          ChangeFileExt(ExtractFileName(Application.ExeName),
   '')) = 0);
+  FOwnPrjName := FCurrentProject;
+  FOwnPrjAge := PrjAge;
+  FOwnPrjResult := Result;
 end;
 
 function TForm1.ProbeSnapFor(const AClass: string): string;
@@ -19879,11 +19904,20 @@ begin
 end;
 
 // Свой снимок (с живого окна редактора), если он той же формы, что AClass
+// Класс корня снимка считается один раз на строку снимка: DfmRootClass
+// делит весь текст на строки, а снимок - сотни килобайт. Ссылка на строку
+// хранится (FOwnSnapClassText), поэтому её адрес не достанется другой.
 function TForm1.OwnSnapFor(const AClass: string): string;
 begin
   Result := '';
-  if (FObjSnapText <> '') and (AClass <> '') and
-     (CompareText(DfmRootClass(FObjSnapText), AClass) = 0) then
+  if (FObjSnapText = '') or (AClass = '') then
+    Exit;
+  if Pointer(FObjSnapText) <> Pointer(FOwnSnapClassText) then
+  begin
+    FOwnSnapClassText := FObjSnapText;
+    FOwnSnapClassName := DfmRootClass(FObjSnapText);
+  end;
+  if CompareText(FOwnSnapClassName, AClass) = 0 then
     Result := FObjSnapText;
 end;
 
@@ -20455,29 +20489,34 @@ end;
 // что значение по умолчанию, а не записанное. Оба цвета - свои строки в
 // цветах IDE (ObjProps.DfmText, ObjProps.DefaultText): на тёмном фоне
 // системные clWindowText и clGray не читаются.
+// Цвет текста строки таблицы свойств. Что значение задаёт код, видно по
+// колонке «Строка кода»: ObjPropsCodeColumn заполняет её ровно у таких
+// свойств (номер строки или '?'). Раньше здесь звался ObjIsCodeProp, а
+// он на каждой ячейке читал .prj (IsOwnProject), искал живую форму и
+// разбирал заголовок снимка - перерисовка таблицы шла 120-430 мс.
+function TForm1.ObjPropsItemColor(Item: TListItem): TColor;
+begin
+  if (Item.SubItems.Count >= 2) and (Item.SubItems[1] <> '') then
+    Result := UiColor('ObjProps.CodeText')
+  else if Integer(Item.Data) < 0 then
+    Result := UiColor('ObjProps.DefaultText')
+  else
+    Result := UiColor('ObjProps.DfmText');
+end;
+
 procedure TForm1.ObjPropsDrawItem(Sender: TCustomListView; Item: TListItem;
                                   State: TCustomDrawState;
                                   var DefaultDraw: Boolean);
 begin
   // Значение задаёт код - своим цветом (ObjProps.CodeText)
-  if ObjIsCodeProp(FObjCurNode, Item.Caption) then
-    Sender.Canvas.Font.Color := UiColor('ObjProps.CodeText')
-  else if Integer(Item.Data) < 0 then
-    Sender.Canvas.Font.Color := UiColor('ObjProps.DefaultText')
-  else
-    Sender.Canvas.Font.Color := UiColor('ObjProps.DfmText');
+  Sender.Canvas.Font.Color := ObjPropsItemColor(Item);
 end;
 
 procedure TForm1.ObjPropsDrawSubItem(Sender: TCustomListView; Item: TListItem;
                                      SubItem: Integer; State: TCustomDrawState;
                                      var DefaultDraw: Boolean);
 begin
-  if ObjIsCodeProp(FObjCurNode, Item.Caption) then
-    Sender.Canvas.Font.Color := UiColor('ObjProps.CodeText')
-  else if Integer(Item.Data) < 0 then
-    Sender.Canvas.Font.Color := UiColor('ObjProps.DefaultText')
-  else
-    Sender.Canvas.Font.Color := UiColor('ObjProps.DfmText');
+  Sender.Canvas.Font.Color := ObjPropsItemColor(Item);
 end;
 
 procedure TForm1.ObjBeginEdit;
