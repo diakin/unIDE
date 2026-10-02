@@ -957,9 +957,9 @@ object Form1: TForm1
             Top = 8
             Width = 34
             Height = 34
-            Hint = 'Pause'
+            Hint = 'Program pause - остановить программу там, где она сейчас'
             ShowHint = True
-            OnClick = NotDoneClick
+            OnClick = ProgramPauseClick
           end
           object btnProgReset: TUiIconButton
             Left = 200

@@ -776,6 +776,7 @@ type
     procedure NotDoneClick(Sender: TObject);
     procedure NewFormClick(Sender: TObject);
     procedure ProgramResetClick(Sender: TObject);
+    procedure ProgramPauseClick(Sender: TObject);
     procedure TraceIntoClick(Sender: TObject);
     procedure StepOverClick(Sender: TObject);
     procedure RunToCursorClick(Sender: TObject);
@@ -16384,8 +16385,8 @@ begin
   // Дальше ряд кнопок, как в Delphi. Кнопки описаны в .dfm, значки
   // поставлены выше, здесь - правый край ряда в CmpLeft. Работают
   // View Unit, View Form (те же списки, что в меню View), New Form
-  // (NewFormClick), Program reset, Trace into и Step over (отладчик,
-  // DbgEngine); Pause пока только сообщает, что не сделан (NotDoneClick).
+  // (NewFormClick), Program pause, Program reset, Trace into и Step over
+  // (отладчик, DbgEngine).
   CmpLeft := RowRightEdge([btnCompileRun, btnViewUnit, btnViewForm,
                           btnNewForm, btnPause, btnProgReset, btnTraceInto,
                           btnStepOver]);
@@ -35176,6 +35177,25 @@ begin
   DsgShowAfterRun;
 end;
 
+// Program pause: остановить программу под отладчиком там, где она сейчас
+// (DbgEngine, TDbgSession.Pause). Остановку показывает DbgStopped, как
+// точку останова; что именно найдено - строкой "Пауза: ..." в логе.
+procedure TForm1.ProgramPauseClick(Sender: TObject);
+begin
+  if FDbgSession = nil then
+  begin
+    if FRunProcess <> 0 then
+      ShowMessage('27310:Программа запущена без отладчика - паузу сделать ' +
+                  'нельзя. Для паузы её нужно запустить под отладчиком ' +
+                  '(F7, F8 или с точкой останова).');
+    Exit;
+  end;
+  if FDbgSession.Finished or FDbgSession.Paused then
+    Exit;
+  if FDbgSession.Pause then
+    LogComp('--- Пауза: программа останавливается...');
+end;
+
 // Program reset: остановить программу, запущенную из среды
 procedure TForm1.ProgramResetClick(Sender: TObject);
 begin
@@ -35218,8 +35238,11 @@ begin
                            ((FDbgSession <> nil) and FDbgSession.Paused);
   if btnProgReset <> nil then
     btnProgReset.Enabled := Running;
+  // Пауза - у программы под отладчиком, которая идёт
   if btnPause <> nil then
-    btnPause.Enabled := Running;
+    btnPause.Enabled := Running and
+      ((FDbgSession = nil) or
+       (not FDbgSession.Paused and not FDbgSession.Finished));
   // Trace into и Step over: программа не идёт (запуск с остановкой на
   // begin .dpr) или стоит
   if btnTraceInto <> nil then

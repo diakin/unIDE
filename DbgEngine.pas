@@ -51,6 +51,15 @@ unit DbgEngine;
 //
 //  Запуск с F7/F8 - временная точка на адресе входа exe: у программы на
 //  Delphi это begin главного блока .dpr.
+//
+//  Program pause (Pause): DebugBreakProcess - система заводит в программе
+//  поток, который выполняет INT3; пока отладчик разбирает это событие,
+//  стоят все потоки. Показывается поток, который стоит в коде с номерами
+//  строк (сначала главный): программа зациклилась в своём коде - видна эта
+//  строка. Все в чужом коде (ждут сообщений в Application.Run, сидят в
+//  Sleep или в вызове DLL) - по стеку главного потока ищется ближайший
+//  адрес возврата в свой код (перед ним команда CALL), показывается строка
+//  вызова; F8 / F7 оттуда - до возврата в неё.
 // ---------------------------------------------------------------------------
 
 interface
@@ -151,6 +160,7 @@ type
     FCmdMode: Integer;
     FCmdOfs: TDbgOffsetArray;
     FStopAtEntry: Boolean;
+    FPauseWanted: Boolean;    // Pause: следующий чужой INT3 - от неё
     FExcLogged: Integer;      // сколько исключений ушло в лог
     FOnStopped: TDbgStopEvent;
     FOnLog: TDbgLogEvent;
@@ -175,6 +185,9 @@ type
     // Run to cursor - до одного из смещений (адреса строки). До Start -
     // цели первого хода программы.
     procedure RunTo(AOffsets: TList);
+    // Program pause: остановить идущую программу. False - не вышло,
+    // причина - в OnLog.
+    function Pause: Boolean;
     procedure Kill;
     // Память программы - на остановке (Watch). False - не прочитано
     // (адрес не отображён, процесса нет).
@@ -240,6 +253,11 @@ type
     FRetAddr, FRetEsp: Cardinal;   // точка возврата из вызова и ESP в нём
     // Адреса временных точек Run to cursor и входа в программу
     FRunTo: array of Cardinal;
+    FMainThreadId: DWORD;        // первый поток программы
+    // Пауза в чужом коде: адрес возврата в свой код и его место в стеке
+    // (для F8/F7 - до возврата), и что показать вместо EIP
+    FPauseRetAddr, FPauseRetSlot: Cardinal;
+    FStopShowAddr: Cardinal;
     function StartProcess: Boolean;
     function ReadCodeBase(AImageBase: Cardinal): Cardinal;
     function PokeByte(AAddress: Cardinal; AValue: Byte;
@@ -274,6 +292,10 @@ type
     function WaitResume: Boolean;
     function PauseAt(AThreadId: DWORD; AAddress: Cardinal): DWORD;
     function OnBreakpoint(AThreadId: DWORD; AAddress: Cardinal): DWORD;
+    function TakePauseWanted: Boolean;
+    function OnPause(ABreakThread: DWORD): DWORD;
+    function CallBefore(AReturn: Cardinal): Boolean;
+    function FindUserReturn(AEsp: Cardinal; var ARet, ASlot: Cardinal): Boolean;
     function OnSingleStep(AThreadId: DWORD): DWORD;
     function StepEvent(AThreadId: DWORD): DWORD;
     function DelphiExceptionText(const AInfo: array of DWORD): string;
@@ -919,6 +941,41 @@ begin
   if FStarted and not FPaused then
     Exit;
   Command(DbgCmdRunTo, AOffsets);
+end;
+
+function TDbgSession.Pause: Boolean;
+type
+  TDebugBreakProcess = function(AProcess: THandle): BOOL; stdcall;
+var
+  BreakProc: TDebugBreakProcess;
+begin
+  Result := False;
+  if not FStarted or FPaused or FFinished then
+    Exit;
+  // Windows XP и новее; берём по имени - Windows.pas Delphi 7 её не знает
+  @BreakProc := GetProcAddress(GetModuleHandle(kernel32), 'DebugBreakProcess');
+  if not Assigned(BreakProc) then
+  begin
+    if Assigned(FOnLog) then
+      FOnLog(Self, 'Отладчик: в этой Windows нет DebugBreakProcess - ' +
+             'паузу сделать нельзя');
+    Exit;
+  end;
+  EnterCriticalSection(FLock);
+  try
+    if FProcess <> 0 then
+    begin
+      FPauseWanted := True;
+      Result := BreakProc(FProcess);
+      if not Result then
+        FPauseWanted := False;
+    end;
+  finally
+    LeaveCriticalSection(FLock);
+  end;
+  if not Result and Assigned(FOnLog) then
+    FOnLog(Self, 'Отладчик: пауза не удалась (' +
+           SysErrorMessage(GetLastError) + ')');
 end;
 
 procedure TDbgSession.Kill;
@@ -1634,7 +1691,12 @@ begin
   BreakLift(AAddress);
 
   SaveStopRegs(AThreadId, AAddress);
-  FOwner.PushNote(DbgNoteStopped, AAddress, AThreadId, '');
+  // Пауза в чужом коде показывает строку вызова, а не EIP
+  if FStopShowAddr <> 0 then
+    FOwner.PushNote(DbgNoteStopped, FStopShowAddr, AThreadId, '')
+  else
+    FOwner.PushNote(DbgNoteStopped, AAddress, AThreadId, '');
+  FStopShowAddr := 0;
   if not WaitResume then
     Exit;   // Program reset - программа уже снимается
 
@@ -1653,6 +1715,18 @@ begin
 
   case CmdMode of
     DbgCmdInto, DbgCmdOver:
+      if (FPauseRetAddr <> 0) and not InLineCode(AAddress) then
+      begin
+        // Пауза в чужом коде: свободно до возврата в свой код, дальше -
+        // по строке, как после Step over вызова
+        FStepThread := AThreadId;
+        FStepMode := CmdMode;
+        FRetAddr := FPauseRetAddr;
+        FRetEsp := FPauseRetSlot;
+        BreakAdd(FRetAddr, True);
+        FStepPhase := DbgPhaseReturn;
+      end
+      else
       begin
         FStepThread := AThreadId;
         FStepMode := CmdMode;
@@ -1691,6 +1765,9 @@ begin
     if not FLoaderBreakSeen then
       // Системная точка загрузчика - программа ещё не начала работу
       FLoaderBreakSeen := True
+    else if TakePauseWanted then
+      // INT3 потока DebugBreakProcess - Program pause
+      Result := OnPause(AThreadId)
     else if IsGone(AAddress) then
       // Наша снятая точка: INT3 выполнен до того, как байт вернули на
       // место, - команду с начала
@@ -1743,6 +1820,158 @@ begin
   BreakLift(AAddress);
   AddRearm(AThreadId, AAddress);
   SetTrace(AThreadId, True);
+end;
+
+function TDbgThread.TakePauseWanted: Boolean;
+begin
+  EnterCriticalSection(FOwner.FLock);
+  try
+    Result := FOwner.FPauseWanted;
+    FOwner.FPauseWanted := False;
+  finally
+    LeaveCriticalSection(FOwner.FLock);
+  end;
+end;
+
+// Перед адресом возврата AReturn - команда CALL: E8 rel32 или FF /2
+// (call reg, [reg], [reg+disp8], [reg+disp32], [sib...])
+function TDbgThread.CallBefore(AReturn: Cardinal): Boolean;
+var
+  Bytes: array[0..6] of Byte;
+  Done: DWORD;
+
+  function IsCallModRm(AOpIdx: Integer): Boolean;
+  begin
+    Result := (Bytes[AOpIdx] = $FF) and ((Bytes[AOpIdx + 1] and $38) = $10);
+  end;
+
+begin
+  Result := False;
+  if (AReturn < 8) or
+     not DbgReadMemory(FProcess, Pointer(AReturn - 7), @Bytes, 7, Done) or
+     (Done <> 7) then
+    Exit;
+  Result := (Bytes[2] = $E8) or IsCallModRm(5) or IsCallModRm(4) or
+            IsCallModRm(1) or IsCallModRm(0);
+end;
+
+// Ближайший к вершине стека адрес возврата в код с номерами строк, перед
+// которым CALL. Стек читается кусками от AEsp вверх, не дальше 256 КБ и
+// не дальше, чем он отображён. ASlot - где этот адрес лежит в стеке.
+function TDbgThread.FindUserReturn(AEsp: Cardinal;
+                                   var ARet, ASlot: Cardinal): Boolean;
+const
+  ChunkSize = 4096;
+  MaxScan = 256 * 1024;
+var
+  Chunk: array[0..ChunkSize div 4 - 1] of Cardinal;
+  ChunkAddr, ReadLen, Done: DWORD;
+  WordIdx: Integer;
+begin
+  Result := False;
+  ARet := 0;
+  ASlot := 0;
+  ChunkAddr := AEsp and not 3;
+  while ChunkAddr < (AEsp and not 3) + MaxScan do
+  begin
+    // Куски не переходят границу страницы: за концом стека чтение куска,
+    // задевшего неотображённую страницу, не удалось бы целиком
+    ReadLen := ChunkSize - (ChunkAddr and (ChunkSize - 1));
+    if not DbgReadMemory(FProcess, Pointer(ChunkAddr), @Chunk, ReadLen,
+                         Done) or (Done < 4) then
+      Exit;
+    for WordIdx := 0 to Integer(Done div 4) - 1 do
+      if InLineCode(Chunk[WordIdx]) and CallBefore(Chunk[WordIdx]) then
+      begin
+        ARet := Chunk[WordIdx];
+        ASlot := ChunkAddr + Cardinal(WordIdx) * 4;
+        Result := True;
+        Exit;
+      end;
+    Inc(ChunkAddr, ReadLen);
+  end;
+end;
+
+// Program pause: поток ABreakThread (его завела DebugBreakProcess)
+// выполнил INT3, все потоки программы стоят
+function TDbgThread.OnPause(ABreakThread: DWORD): DWORD;
+var
+  ShowThread: DWORD;
+  RefIdx: Integer;
+  CurEip, CurEsp, RetAddr, RetSlot: Cardinal;
+  SrcFile: string;
+  SrcLine: Integer;
+begin
+  Result := DbgContinue;
+  // Поток в своём коде: сначала главный, потом остальные
+  ShowThread := 0;
+  if (FMainThreadId <> 0) and GetEipEsp(FMainThreadId, CurEip, CurEsp) and
+     InLineCode(CurEip) then
+    ShowThread := FMainThreadId
+  else
+    for RefIdx := 0 to High(FThreads) do
+      if (FThreads[RefIdx].ThreadId <> ABreakThread) and
+         GetEipEsp(FThreads[RefIdx].ThreadId, CurEip, CurEsp) and
+         InLineCode(CurEip) then
+      begin
+        ShowThread := FThreads[RefIdx].ThreadId;
+        Break;
+      end;
+  if ShowThread <> 0 then
+  begin
+    FOwner.PushNote(DbgNoteLog, 0, 0, 'Пауза: программа стояла в своём ' +
+                    'коде (поток ' + IntToStr(ShowThread) + ')');
+    Result := PauseAt(ShowThread, CurEip);
+    Exit;
+  end;
+
+  // Все - в чужом коде. Главный поток (его нет - первый не паузный):
+  // откуда в стеке вызван чужой код
+  ShowThread := FMainThreadId;
+  if ThreadHandleOf(ShowThread) = 0 then
+  begin
+    ShowThread := 0;
+    for RefIdx := 0 to High(FThreads) do
+      if FThreads[RefIdx].ThreadId <> ABreakThread then
+      begin
+        ShowThread := FThreads[RefIdx].ThreadId;
+        Break;
+      end;
+  end;
+  if (ShowThread = 0) or not GetEipEsp(ShowThread, CurEip, CurEsp) then
+  begin
+    FOwner.PushNote(DbgNoteLog, 0, 0, 'Пауза: потоки программы не ' +
+                    'прочитаны - программа идёт дальше');
+    Exit;
+  end;
+
+  if FindUserReturn(CurEsp, RetAddr, RetSlot) then
+  begin
+    FPauseRetAddr := RetAddr;
+    FPauseRetSlot := RetSlot;
+    // Строка вызова: адрес возврата уже за ней
+    FStopShowAddr := RetAddr - 1;
+    SrcFile := '';
+    SrcLine := 0;
+    FMap.LineOfOffset(RetAddr - 1 - FCodeBase, SrcFile, SrcLine);
+    FOwner.PushNote(DbgNoteLog, 0, 0, 'Пауза: главный поток в коде без ' +
+                    'номеров строк (адрес $' + IntToHex(CurEip, 8) +
+                    '), вызван из ' + SrcFile + ' строка ' +
+                    IntToStr(SrcLine) + '. F8 / F7 - до возврата в эту ' +
+                    'строку, F9 - дальше');
+  end
+  else
+    FOwner.PushNote(DbgNoteLog, 0, 0, 'Пауза: главный поток в коде без ' +
+                    'номеров строк (адрес $' + IntToHex(CurEip, 8) +
+                    '), вызова из своего кода в стеке не найдено. F9 - ' +
+                    'дальше');
+  try
+    Result := PauseAt(ShowThread, CurEip);
+  finally
+    FPauseRetAddr := 0;
+    FPauseRetSlot := 0;
+    FStopShowAddr := 0;
+  end;
 end;
 
 function TDbgThread.OnSingleStep(AThreadId: DWORD): DWORD;
@@ -1915,6 +2144,7 @@ begin
           if DebugEvt.CreateProcess.FileHandle <> 0 then
             CloseHandle(DebugEvt.CreateProcess.FileHandle);
           AddThread(DebugEvt.ThreadId, DebugEvt.CreateProcess.ThreadHandle);
+          FMainThreadId := DebugEvt.ThreadId;
           ImageBase := Cardinal(DebugEvt.CreateProcess.BaseOfImage);
           FCodeBase := ReadCodeBase(ImageBase);
           if FCodeBase = 0 then
