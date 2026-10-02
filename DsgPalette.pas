@@ -251,9 +251,52 @@ begin
   Result := LoadGlyphByName(AClass.ClassName, ABmp);
 end;
 
+// Значок TUiTheme - инь-ян (тема: светлое и тёмное). Похожего компонента
+// Delphi у него нет, значок рисуется здесь: 24x24, как значки палитры
+// Delphi, прозрачный цвет - clOlive в левом нижнем углу. Цвета - чёрный и
+// белый, как у значков Delphi: в тёмной теме их перекрашивает
+// UiPaletteRecolor.
+procedure DrawYinYang(ABmp: TBitmap);
+begin
+  ABmp.PixelFormat := pf24bit;
+  ABmp.Width := 24;
+  ABmp.Height := 24;
+  with ABmp.Canvas do
+  begin
+    Brush.Style := bsSolid;
+    Brush.Color := clOlive;
+    Pen.Color := clOlive;
+    FillRect(Rect(0, 0, 24, 24));
+    // Белый круг, правая половина чёрная
+    Brush.Color := clWhite;
+    Pen.Color := clWhite;
+    Ellipse(2, 2, 22, 22);
+    Brush.Color := clBlack;
+    Pen.Color := clBlack;
+    Pie(2, 2, 22, 22, 12, 22, 12, 2);
+    // Верхний белый и нижний чёрный полукруги - изгиб посередине
+    Brush.Color := clWhite;
+    Pen.Color := clWhite;
+    Ellipse(7, 2, 17, 12);
+    Brush.Color := clBlack;
+    Pen.Color := clBlack;
+    Ellipse(7, 12, 17, 22);
+    // Точки: чёрная в белом, белая в чёрном
+    Ellipse(10, 5, 14, 9);
+    Brush.Color := clWhite;
+    Pen.Color := clWhite;
+    Ellipse(10, 15, 14, 19);
+    // Контур
+    Brush.Style := bsClear;
+    Pen.Color := clBlack;
+    Ellipse(2, 2, 22, 22);
+    Brush.Style := bsSolid;
+  end;
+end;
+
 // Значок своего компонента: значок похожего компонента Delphi (TUiButton -
 // TButton, TUiScrollBar - TScrollBar) того же размера, с меткой в правом
-// нижнем углу - чтобы ряды отличались
+// нижнем углу - чтобы ряды отличались. У TUiTheme - свой (DrawYinYang).
 function TDsgPalette.LoadCustomGlyph(AClass: TClass; ABmp: TBitmap): Boolean;
 var
   ClsName: string;
@@ -264,7 +307,9 @@ begin
   ClsName := AClass.ClassName;
   if CompareText(Copy(ClsName, 1, 3), 'TUi') <> 0 then
     Exit;
-  if not LoadGlyphByName('T' + Copy(ClsName, 4, MaxInt), ABmp) then
+  if CompareText(ClsName, 'TUiTheme') = 0 then
+    DrawYinYang(ABmp)
+  else if not LoadGlyphByName('T' + Copy(ClsName, 4, MaxInt), ABmp) then
     Exit;
   GlyphW := ABmp.Width;
   GlyphH := ABmp.Height;
