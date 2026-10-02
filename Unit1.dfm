@@ -941,7 +941,7 @@ object Form1: TForm1
             Height = 34
             Hint = 'New Form - новая форма'
             ShowHint = True
-            OnClick = NotDoneClick
+            OnClick = NewFormClick
           end
           object btnPause: TUiIconButton
             Left = 165

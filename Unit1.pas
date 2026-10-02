@@ -770,6 +770,7 @@ type
     procedure DoReplaceAll(Sender: TObject);
     procedure FindInFilesClick(Sender: TObject);
     procedure NotDoneClick(Sender: TObject);
+    procedure NewFormClick(Sender: TObject);
     procedure ProgramResetClick(Sender: TObject);
     procedure TraceIntoClick(Sender: TObject);
     procedure StepOverClick(Sender: TObject);
@@ -16163,9 +16164,9 @@ begin
 
   // Дальше ряд кнопок, как в Delphi. Кнопки описаны в .dfm, значки
   // поставлены выше, здесь - правый край ряда в CmpLeft. Работают
-  // View Unit, View Form (те же списки, что в меню View), Program reset,
-  // Trace into и Step over (отладчик, DbgEngine); New Form и Pause пока
-  // только сообщают, что не сделаны (NotDoneClick).
+  // View Unit, View Form (те же списки, что в меню View), New Form
+  // (NewFormClick), Program reset, Trace into и Step over (отладчик,
+  // DbgEngine); Pause пока только сообщает, что не сделан (NotDoneClick).
   CmpLeft := RowRightEdge([btnCompileRun, btnViewUnit, btnViewForm,
                           btnNewForm, btnPause, btnProgReset, btnTraceInto,
                           btnStepOver]);
@@ -34268,6 +34269,199 @@ begin
     btnSave.Enabled := RichEdit1.Modified or (FCurrentFileName = '');
   if btnSavePrj <> nil then
     btnSavePrj.Enabled := FCurrentProject <> '';
+end;
+
+// Слово AWord (строчными) есть в AText (строчными) отдельным словом: по
+// краям не буква, не цифра и не подчёркивание
+function HasWordLow(const AText, AWord: string): Boolean;
+var
+  StartPos, FoundPos, AfterPos: Integer;
+  Rest: string;
+begin
+  Result := False;
+  StartPos := 1;
+  while True do
+  begin
+    Rest := Copy(AText, StartPos, MaxInt);
+    FoundPos := Pos(AWord, Rest);
+    if FoundPos = 0 then
+      Exit;
+    FoundPos := StartPos + FoundPos - 1;
+    AfterPos := FoundPos + Length(AWord);
+    if ((FoundPos = 1) or
+        not (AText[FoundPos - 1] in ['a'..'z', '0'..'9', '_'])) and
+       ((AfterPos > Length(AText)) or
+        not (AText[AfterPos] in ['a'..'z', '0'..'9', '_'])) then
+    begin
+      Result := True;
+      Exit;
+    end;
+    StartPos := FoundPos + 1;
+  end;
+end;
+
+// New Form - новый модуль с пустой формой в проекте, как File -> New ->
+// Form в Delphi 7:
+//   - UnitN.pas и UnitN.dfm - в папку .dpr. N - первый свободный номер с 2:
+//     нет файлов UnitN и в .dpr нет слов UnitN и FormN;
+//   - в uses .dpr - "UnitN in 'UnitN.pas' {FormN}", после последнего
+//     Application.CreateForm - создание новой формы (автосоздание, как в
+//     Delphi по умолчанию);
+//   - модуль открывается во вкладке, форма - в конструкторе.
+// .dpr с несохранёнными правками во вкладке не трогаем: запись на диск
+// разошлась бы с ними.
+procedure TForm1.NewFormClick(Sender: TObject);
+var
+  Dpr, DprDir, DprLow, UnitNm, FormNm, PasFile, DfmFile, Line: string;
+  DprText, NewText: TStringList;
+  Num, LineIdx, UsesEnd, CreateLast, RunLine, WinIdx: Integer;
+  DprMod: Boolean;
+begin
+  Dpr := DelphiTargetDpr;
+  if Dpr = '' then
+  begin
+    ShowMessage('27240:New Form: не найден файл проекта .dpr. Откройте ' +
+                'проект Delphi или его .dpr.');
+    Exit;
+  end;
+  WinIdx := IndexOfWindowByFile(Dpr);
+  if WinIdx >= 0 then
+  begin
+    if WinIdx = FWindowsIndex then
+      DprMod := RichEdit1.Modified
+    else
+      DprMod := FWindows[WinIdx].Modified;
+    if DprMod then
+    begin
+      ShowMessage('27252:New Form: в ' + ExtractFileName(Dpr) +
+                  ' есть несохранённые правки. Сохраните его и повторите.');
+      Exit;
+    end;
+  end;
+
+  DprDir := ExtractFilePath(Dpr);
+  DprText := TStringList.Create;
+  NewText := TStringList.Create;
+  try
+    DprText.LoadFromFile(Dpr);
+    DprLow := LowerCase(DprText.Text);
+    Num := 2;
+    while FileExists(DprDir + 'Unit' + IntToStr(Num) + '.pas') or
+          FileExists(DprDir + 'Unit' + IntToStr(Num) + '.dfm') or
+          HasWordLow(DprLow, 'unit' + IntToStr(Num)) or
+          HasWordLow(DprLow, 'form' + IntToStr(Num)) do
+      Inc(Num);
+    UnitNm := 'Unit' + IntToStr(Num);
+    FormNm := 'Form' + IntToStr(Num);
+    PasFile := DprDir + UnitNm + '.pas';
+    DfmFile := DprDir + UnitNm + '.dfm';
+
+    // Конец списка uses: первая строка после "uses", которая кончается ";"
+    UsesEnd := -1;
+    for LineIdx := 0 to DprText.Count - 1 do
+      if CompareText(Trim(DprText[LineIdx]), 'uses') = 0 then
+      begin
+        UsesEnd := LineIdx + 1;
+        while (UsesEnd < DprText.Count) and
+              (Copy(TrimRight(DprText[UsesEnd]),
+                    Length(TrimRight(DprText[UsesEnd])), 1) <> ';') do
+          Inc(UsesEnd);
+        Break;
+      end;
+    if (UsesEnd < 0) or (UsesEnd >= DprText.Count) then
+    begin
+      ShowMessage('27283:New Form: в ' + ExtractFileName(Dpr) +
+                  ' не найден список uses.');
+      Exit;
+    end;
+
+    // Модуль
+    NewText.Add('unit ' + UnitNm + ';');
+    NewText.Add('');
+    NewText.Add('interface');
+    NewText.Add('');
+    NewText.Add('uses');
+    NewText.Add('  Windows, Messages, SysUtils, Variants, Classes, Graphics,');
+    NewText.Add('  Controls, Forms, Dialogs;');
+    NewText.Add('');
+    NewText.Add('type');
+    NewText.Add('  T' + FormNm + ' = class(TForm)');
+    NewText.Add('  private');
+    NewText.Add('    { Private declarations }');
+    NewText.Add('  public');
+    NewText.Add('    { Public declarations }');
+    NewText.Add('  end;');
+    NewText.Add('');
+    NewText.Add('var');
+    NewText.Add('  ' + FormNm + ': T' + FormNm + ';');
+    NewText.Add('');
+    NewText.Add('implementation');
+    NewText.Add('');
+    NewText.Add('{$R *.dfm}');
+    NewText.Add('');
+    NewText.Add('end.');
+    NewText.SaveToFile(PasFile);
+
+    // Пустая форма, текстом - так её создаёт Delphi
+    NewText.Clear;
+    NewText.Add('object ' + FormNm + ': T' + FormNm);
+    NewText.Add('  Left = 200');
+    NewText.Add('  Top = 120');
+    NewText.Add('  Width = 640');
+    NewText.Add('  Height = 480');
+    NewText.Add('  Caption = ''' + FormNm + '''');
+    NewText.Add('  Color = clBtnFace');
+    NewText.Add('  Font.Charset = DEFAULT_CHARSET');
+    NewText.Add('  Font.Color = clWindowText');
+    NewText.Add('  Font.Height = -11');
+    NewText.Add('  Font.Name = ''MS Sans Serif''');
+    NewText.Add('  Font.Style = []');
+    NewText.Add('  OldCreateOrder = False');
+    NewText.Add('  PixelsPerInch = 96');
+    NewText.Add('  TextHeight = 13');
+    NewText.Add('end');
+    NewText.SaveToFile(DfmFile);
+
+    // .dpr: сначала создание формы (строки ниже uses), потом uses - номер
+    // строки конца uses от вставки ниже не меняется
+    CreateLast := -1;
+    RunLine := -1;
+    for LineIdx := 0 to DprText.Count - 1 do
+    begin
+      Line := LowerCase(DprText[LineIdx]);
+      if Pos('application.createform(', Line) > 0 then
+        CreateLast := LineIdx
+      else if (RunLine < 0) and (Pos('application.run', Line) > 0) then
+        RunLine := LineIdx;
+    end;
+    Line := '  Application.CreateForm(T' + FormNm + ', ' + FormNm + ');';
+    if CreateLast >= 0 then
+      DprText.Insert(CreateLast + 1, Line)
+    else if RunLine >= 0 then
+      DprText.Insert(RunLine, Line)
+    else
+      LogRaw('New Form: в ' + ExtractFileName(Dpr) + ' нет ни ' +
+             'Application.CreateForm, ни Application.Run - создание формы ' +
+             'не вписано');
+
+    Line := TrimRight(DprText[UsesEnd]);
+    SetLength(Line, Length(Line) - 1);
+    DprText[UsesEnd] := Line + ',';
+    DprText.Insert(UsesEnd + 1, '  ' + UnitNm + ' in ''' + UnitNm +
+                   '.pas'' {' + FormNm + '};');
+    DprText.SaveToFile(Dpr);
+  finally
+    NewText.Free;
+    DprText.Free;
+  end;
+
+  LogRaw('New Form: ' + UnitNm + '.pas и ' + UnitNm + '.dfm (' + FormNm +
+         ') созданы и вписаны в ' + ExtractFileName(Dpr));
+  // Открытый .dpr - сразу с новыми строками
+  if WinIdx >= 0 then
+    ReloadWindowFromDisk(WinIdx, False);
+  OpenNamedFile(PasFile);
+  DesignFormClick(Sender);
 end;
 
 // Кнопки, за которыми пока ничего нет
