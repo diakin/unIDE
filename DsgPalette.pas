@@ -40,6 +40,20 @@ uses
   UiComCtrls;     // вкладки палитры рисуются по теме (TUiTabControl)
 
 type
+  // Перекраска значка Delphi для тёмного фона (главное окно,
+  // UiPaletteRecolor): прозрачный цвет и цвет значка
+  TDsgRecolorProc = procedure(ABmp: TBitmap; ATransparent, AColor: TColor);
+
+  // Исходный значок кнопки палитры: из чего строить её значок для темы
+  TDsgGlyphInfo = class
+  public
+    Btn: TControl;
+    Base: TBitmap;      // значок Delphi без метки; у сглаженного - заготовка
+    Smooth: string;     // сглаженный значок, рисуется кодом ('YinYang')
+    Mark: Boolean;      // свой компонент: метка в правом нижнем углу
+    destructor Destroy; override;
+  end;
+
   TDsgPalette = class(TPanel)
   private
     FTabs: TTabControl;
@@ -59,11 +73,16 @@ type
     FGlyphPending: TList;     // кнопки сторонних, значок которых ещё не читали
     FOnGlyphLoaded: TNotifyEvent;
     FOnSelect: TNotifyEvent;
+    FGlyphInfo: TList;        // TDsgGlyphInfo по кнопкам со значком
     function HasGlyphRes(const AName: string): Boolean;
     procedure LoadLibs(const ADelphiBin: string);
     function LoadGlyph(AClass: TClass; ABmp: TBitmap): Boolean;
     function LoadGlyphByName(const AName: string; ABmp: TBitmap): Boolean;
-    function LoadCustomGlyph(AClass: TClass; ABmp: TBitmap): Boolean;
+    function LoadCustomGlyph(AClass: TClass; ABmp: TBitmap;
+                             var ASmooth: string): Boolean;
+    function GlyphInfoOf(ABtn: TControl): TDsgGlyphInfo;
+    procedure SetGlyphInfo(ABtn: TControl; ABase: TBitmap;
+                           const ASmooth: string; AMark: Boolean);
     function StdButtonFor(ACustom: TComponentClass; AList: TList;
                           AFirstRowCount: Integer): TSpeedButton;
     procedure TabChange(Sender: TObject);
@@ -97,6 +116,13 @@ type
                            AHint: string; APage: Integer);
     // "Модуль.Класс" кнопки стороннего компонента; '' - не сторонний
     function ForeignOf(ABtn: TControl): string;
+    // Значок кнопки ABtn для темы - в ABmp: значок Delphi (ADark - с
+    // перекраской ARecolor в цвет AInk) или сглаженный, нарисованный цветом
+    // AInk; у своих компонентов - сглаженная метка цветом AMarkInk. Края -
+    // смесью с фоном ABack. False - кнопка без значка или не из палитры.
+    function RenderGlyph(ABtn: TControl; ADark: Boolean;
+                         AInk, AMarkInk, ABack: TColor;
+                         ARecolor: TDsgRecolorProc; ABmp: TBitmap): Boolean;
     // Снять выбор: кнопка компонента отжимается, нажата стрелка
     procedure ClearSelection;
     property SelectedClass: TComponentClass read FSelected;
@@ -149,6 +175,7 @@ begin
   FLibs := TList.Create;
   FForeign := TStringList.Create;
   FGlyphPending := TList.Create;
+  FGlyphInfo := TList.Create;
   FMeter := TBitmap.Create;
 
   Parent := AParent;
@@ -222,6 +249,9 @@ begin
   FPageBtns.Free;
   FForeign.Free;
   FGlyphPending.Free;
+  for I := 0 to FGlyphInfo.Count - 1 do
+    TObject(FGlyphInfo[I]).Free;
+  FGlyphInfo.Free;
   FMeter.Free;
   inherited;
 end;
@@ -251,76 +281,287 @@ begin
   Result := LoadGlyphByName(AClass.ClassName, ABmp);
 end;
 
-// Значок TUiTheme - инь-ян (тема: светлое и тёмное). Похожего компонента
-// Delphi у него нет, значок рисуется здесь: 24x24, как значки палитры
-// Delphi, прозрачный цвет - clOlive в левом нижнем углу. Цвета - чёрный и
-// белый, как у значков Delphi: в тёмной теме их перекрашивает
-// UiPaletteRecolor.
-procedure DrawYinYang(ABmp: TBitmap);
+// ---------------------------------------------------------------------------
+//  Сглаженные значки
+//
+//  Кнопки палитры - TSpeedButton: прозрачность у них - один цвет (левый
+//  нижний пиксель), полупрозрачных точек нет. Поэтому край сглаживается
+//  смесью с фоном палитры: точка края получает цвет между цветом значка и
+//  фоном по доле, которую фигура в ней закрывает (покрытие). Покрытие
+//  считается рисованием в 4 раза крупнее (GDI, без сглаживания) и
+//  усреднением квадратов 4x4 - 16 ступеней на точку. Фон меняется с темой -
+//  значок строится заново (RenderGlyph, UiApplyGlyph).
+// ---------------------------------------------------------------------------
+
+const
+  SmoothSide = 24;           // сторона значка
+  SmoothScale = 4;           // во сколько раз крупнее считается покрытие
+  SmoothKey = clOlive;       // прозрачный цвет кнопки
+
+// Смесь цветов: AInk с долей ACover из 255, остальное - ABack
+function SmoothMix(AInk, ABack: TColor; ACover: Integer): TColor;
+var
+  InkRGB, BackRGB: Longint;
 begin
-  ABmp.PixelFormat := pf24bit;
-  ABmp.Width := 24;
-  ABmp.Height := 24;
-  with ABmp.Canvas do
+  InkRGB := ColorToRGB(AInk);
+  BackRGB := ColorToRGB(ABack);
+  Result := RGB((GetRValue(InkRGB) * ACover +
+                 GetRValue(BackRGB) * (255 - ACover)) div 255,
+                (GetGValue(InkRGB) * ACover +
+                 GetGValue(BackRGB) * (255 - ACover)) div 255,
+                (GetBValue(InkRGB) * ACover +
+                 GetBValue(BackRGB) * (255 - ACover)) div 255);
+end;
+
+// Инь-ян крупно (сторона SmoothSide * SmoothScale): чёрное - значок, белое
+// - пусто. Контур - тонкое кольцо, правая половина и нижний полукруг
+// закрашены, точки: закрашенная вверху, пустая внизу.
+procedure PaintYinYangBig(ACanvas: TCanvas);
+const
+  Big = SmoothSide * SmoothScale;   // 96
+begin
+  with ACanvas do
   begin
     Brush.Style := bsSolid;
-    Brush.Color := clOlive;
-    Pen.Color := clOlive;
-    FillRect(Rect(0, 0, 24, 24));
-    // Белый круг, правая половина чёрная
     Brush.Color := clWhite;
     Pen.Color := clWhite;
-    Ellipse(2, 2, 22, 22);
+    FillRect(Rect(0, 0, Big, Big));
+    // Кольцо: чёрный круг и белый внутри, толщина 4 = 1 точка значка
     Brush.Color := clBlack;
     Pen.Color := clBlack;
-    Pie(2, 2, 22, 22, 12, 22, 12, 2);
-    // Верхний белый и нижний чёрный полукруги - изгиб посередине
+    Ellipse(8, 8, 88, 88);
     Brush.Color := clWhite;
     Pen.Color := clWhite;
-    Ellipse(7, 2, 17, 12);
+    Ellipse(13, 13, 83, 83);
+    // Правая половина внутреннего круга
     Brush.Color := clBlack;
     Pen.Color := clBlack;
-    Ellipse(7, 12, 17, 22);
-    // Точки: чёрная в белом, белая в чёрном
-    Ellipse(10, 5, 14, 9);
+    Pie(13, 13, 83, 83, 48, 83, 48, 13);
+    // Изгиб: верхний белый и нижний чёрный полукруги
     Brush.Color := clWhite;
     Pen.Color := clWhite;
-    Ellipse(10, 15, 14, 19);
-    // Контур
-    Brush.Style := bsClear;
+    Ellipse(30, 13, 66, 48);
+    Brush.Color := clBlack;
     Pen.Color := clBlack;
-    Ellipse(2, 2, 22, 22);
-    Brush.Style := bsSolid;
+    Ellipse(30, 48, 66, 83);
+    // Точки
+    Ellipse(42, 24, 54, 36);
+    Brush.Color := clWhite;
+    Pen.Color := clWhite;
+    Ellipse(42, 60, 54, 72);
   end;
 end;
 
-// Значок своего компонента: значок похожего компонента Delphi (TUiButton -
-// TButton, TUiScrollBar - TScrollBar) того же размера, с меткой в правом
-// нижнем углу - чтобы ряды отличались. У TUiTheme - свой (DrawYinYang).
-function TDsgPalette.LoadCustomGlyph(AClass: TClass; ABmp: TBitmap): Boolean;
+procedure DsgDrawSmoothIcon(ABmp: TBitmap; const AIcon: string;
+                            AInk, ABack: TColor);
+type
+  TRGBLine = array[0..32767] of TRGBTriple;
+  PRGBLine = ^TRGBLine;
 var
-  ClsName: string;
-  GlyphW, GlyphH: Integer;
-  Back: TColor;
+  BigBmp: TBitmap;
+  BigLines: array of PRGBLine;
+  PosX, PosY, SubX, SubY, Cover, LineIdx: Integer;
+  OutLine: PRGBLine;
+  OutRGB: Longint;
+begin
+  BigBmp := TBitmap.Create;
+  try
+    BigBmp.PixelFormat := pf24bit;
+    BigBmp.Width := SmoothSide * SmoothScale;
+    BigBmp.Height := SmoothSide * SmoothScale;
+    if CompareText(AIcon, 'YinYang') = 0 then
+      PaintYinYangBig(BigBmp.Canvas)
+    else
+    begin
+      BigBmp.Canvas.Brush.Color := clWhite;
+      BigBmp.Canvas.FillRect(Rect(0, 0, BigBmp.Width, BigBmp.Height));
+    end;
+    SetLength(BigLines, BigBmp.Height);
+    for LineIdx := 0 to BigBmp.Height - 1 do
+      BigLines[LineIdx] := BigBmp.ScanLine[LineIdx];
+
+    ABmp.PixelFormat := pf24bit;
+    ABmp.Width := SmoothSide;
+    ABmp.Height := SmoothSide;
+    for PosY := 0 to SmoothSide - 1 do
+    begin
+      OutLine := ABmp.ScanLine[PosY];
+      for PosX := 0 to SmoothSide - 1 do
+      begin
+        // Покрытие: доля чёрного в квадрате SmoothScale x SmoothScale
+        Cover := 0;
+        for SubY := 0 to SmoothScale - 1 do
+          for SubX := 0 to SmoothScale - 1 do
+            Inc(Cover, 255 - BigLines[PosY * SmoothScale + SubY]^
+                               [PosX * SmoothScale + SubX].rgbtGreen);
+        Cover := Cover div (SmoothScale * SmoothScale);
+        if Cover <= 0 then
+          OutRGB := ColorToRGB(SmoothKey)
+        else
+          OutRGB := ColorToRGB(SmoothMix(AInk, ABack, Cover));
+        OutLine[PosX].rgbtRed := GetRValue(OutRGB);
+        OutLine[PosX].rgbtGreen := GetGValue(OutRGB);
+        OutLine[PosX].rgbtBlue := GetBValue(OutRGB);
+      end;
+    end;
+  finally
+    BigBmp.Free;
+  end;
+end;
+
+procedure DsgDrawSmoothMark(ABmp: TBitmap; AInk, ABack: TColor);
+type
+  TRGBLine = array[0..32767] of TRGBTriple;
+  PRGBLine = ^TRGBLine;
+const
+  MarkSide = 7;
+var
+  BmpW, BmpH, PosX, PosY, SubX, SubY, Hits: Integer;
+  SampleX, SampleY: Double;
+  KeyRGB, PixRGB, OutRGB: Longint;
+  Line: PRGBLine;
+begin
+  if ABmp.Empty then
+    Exit;
+  ABmp.PixelFormat := pf24bit;
+  BmpW := ABmp.Width;
+  BmpH := ABmp.Height;
+  KeyRGB := ColorToRGB(ABmp.Canvas.Pixels[0, BmpH - 1]);
+  for PosY := BmpH - MarkSide to BmpH - 1 do
+  begin
+    if PosY < 0 then
+      Continue;
+    Line := ABmp.ScanLine[PosY];
+    for PosX := BmpW - MarkSide to BmpW - 1 do
+    begin
+      if PosX < 0 then
+        Continue;
+      // Треугольник: прямой угол в правом нижнем углу, катеты MarkSide;
+      // покрытие - по 16 пробным точкам внутри пикселя
+      Hits := 0;
+      for SubY := 0 to SmoothScale - 1 do
+        for SubX := 0 to SmoothScale - 1 do
+        begin
+          SampleX := PosX + (SubX + 0.5) / SmoothScale;
+          SampleY := PosY + (SubY + 0.5) / SmoothScale;
+          if SampleX + SampleY >= BmpW + BmpH - MarkSide then
+            Inc(Hits);
+        end;
+      if Hits = 0 then
+        Continue;
+      PixRGB := RGB(Line[PosX].rgbtRed, Line[PosX].rgbtGreen,
+                    Line[PosX].rgbtBlue);
+      if PixRGB = KeyRGB then
+        PixRGB := ColorToRGB(ABack);
+      OutRGB := ColorToRGB(SmoothMix(AInk, PixRGB,
+                                     Hits * 255 div (SmoothScale * SmoothScale)));
+      Line[PosX].rgbtRed := GetRValue(OutRGB);
+      Line[PosX].rgbtGreen := GetGValue(OutRGB);
+      Line[PosX].rgbtBlue := GetBValue(OutRGB);
+    end;
+  end;
+end;
+
+{ TDsgGlyphInfo }
+
+destructor TDsgGlyphInfo.Destroy;
+begin
+  Base.Free;
+  inherited;
+end;
+
+function TDsgPalette.GlyphInfoOf(ABtn: TControl): TDsgGlyphInfo;
+var
+  InfoIdx: Integer;
+begin
+  Result := nil;
+  for InfoIdx := 0 to FGlyphInfo.Count - 1 do
+    if TDsgGlyphInfo(FGlyphInfo[InfoIdx]).Btn = ABtn then
+    begin
+      Result := TDsgGlyphInfo(FGlyphInfo[InfoIdx]);
+      Exit;
+    end;
+end;
+
+procedure TDsgPalette.SetGlyphInfo(ABtn: TControl; ABase: TBitmap;
+                                   const ASmooth: string; AMark: Boolean);
+var
+  Info: TDsgGlyphInfo;
+begin
+  Info := GlyphInfoOf(ABtn);
+  if Info = nil then
+  begin
+    Info := TDsgGlyphInfo.Create;
+    Info.Btn := ABtn;
+    FGlyphInfo.Add(Info);
+  end;
+  if Info.Base = nil then
+    Info.Base := TBitmap.Create;
+  if ABase <> nil then
+    Info.Base.Assign(ABase)
+  else
+    Info.Base.Assign(nil);
+  Info.Smooth := ASmooth;
+  Info.Mark := AMark;
+end;
+
+function TDsgPalette.RenderGlyph(ABtn: TControl; ADark: Boolean;
+                                 AInk, AMarkInk, ABack: TColor;
+                                 ARecolor: TDsgRecolorProc;
+                                 ABmp: TBitmap): Boolean;
+var
+  Info: TDsgGlyphInfo;
+  Work: TBitmap;
 begin
   Result := False;
+  Info := GlyphInfoOf(ABtn);
+  if Info = nil then
+    Exit;
+  if (Info.Smooth = '') and ((Info.Base = nil) or Info.Base.Empty) then
+    Exit;
+  // Строится отдельно и ставится целиком (Assign): правка через ScanLine
+  // не сообщает кнопке, что значок сменился
+  Work := TBitmap.Create;
+  try
+    if Info.Smooth <> '' then
+      DsgDrawSmoothIcon(Work, Info.Smooth, AInk, ABack)
+    else
+    begin
+      Work.Assign(Info.Base);
+      if ADark and Assigned(ARecolor) then
+        ARecolor(Work, Work.Canvas.Pixels[0, Work.Height - 1], AInk);
+    end;
+    if Info.Mark then
+      DsgDrawSmoothMark(Work, AMarkInk, ABack);
+    ABmp.Assign(Work);
+  finally
+    Work.Free;
+  end;
+  Result := True;
+end;
+
+// Значок своего компонента: значок похожего компонента Delphi (TUiButton -
+// TButton, TUiScrollBar - TScrollBar), без метки - метку (сглаженный
+// треугольник в правом нижнем углу) ставит RenderGlyph. У TUiTheme похожего
+// нет - сглаженный инь-ян (ASmooth = 'YinYang'), ABmp - заготовка нужного
+// размера.
+function TDsgPalette.LoadCustomGlyph(AClass: TClass; ABmp: TBitmap;
+                                     var ASmooth: string): Boolean;
+var
+  ClsName: string;
+begin
+  Result := False;
+  ASmooth := '';
   ClsName := AClass.ClassName;
   if CompareText(Copy(ClsName, 1, 3), 'TUi') <> 0 then
     Exit;
   if CompareText(ClsName, 'TUiTheme') = 0 then
-    DrawYinYang(ABmp)
+  begin
+    ASmooth := 'YinYang';
+    DsgDrawSmoothIcon(ABmp, ASmooth, clBlack, clBtnFace);
+  end
   else if not LoadGlyphByName('T' + Copy(ClsName, 4, MaxInt), ABmp) then
     Exit;
-  GlyphW := ABmp.Width;
-  GlyphH := ABmp.Height;
-  // Левый нижний пиксель - прозрачный цвет кнопки: метка его не трогает
-  Back := ABmp.Canvas.Pixels[0, GlyphH - 1];
-  ABmp.Canvas.Brush.Color := clTeal;
-  ABmp.Canvas.Pen.Color := clTeal;
-  ABmp.Canvas.Polygon([Point(GlyphW - 1, GlyphH - MarkSize),
-                       Point(GlyphW - 1, GlyphH - 1),
-                       Point(GlyphW - MarkSize, GlyphH - 1)]);
-  ABmp.Canvas.Pixels[0, GlyphH - 1] := Back;
   Result := True;
 end;
 
@@ -354,6 +595,7 @@ var
   Twin: TSpeedButton;
   X, Y, Size, W: Integer;
   HasGlyph: Boolean;
+  SmoothName: string;
 begin
   if (ABtn = nil) or (AClass = nil) or (APage < 0) or
      (APage >= FPageBtns.Count) then
@@ -375,15 +617,22 @@ begin
   ABtn.Caption := '';
 
   // Ширина - по значку или по надписи
+  SmoothName := '';
   if ACustom then
   begin
     Size := CustomBtnSize;
-    HasGlyph := LoadCustomGlyph(AClass, ABtn.Glyph);
+    HasGlyph := LoadCustomGlyph(AClass, ABtn.Glyph, SmoothName);
   end
   else
   begin
     Size := BtnSize;
     HasGlyph := LoadGlyph(AClass, ABtn.Glyph);
+  end;
+  // Исходный значок - для перестройки под тему; светлый вид - сейчас
+  if HasGlyph then
+  begin
+    SetGlyphInfo(ABtn, ABtn.Glyph, SmoothName, ACustom);
+    RenderGlyph(ABtn, False, clBlack, clTeal, FBox.Color, nil, ABtn.Glyph);
   end;
   W := Size;
   if not HasGlyph then
@@ -469,9 +718,13 @@ begin
         FGlyphPending.Remove(List[I]);
         GlyphClass := ForeignOf(TControl(List[I]));
         GlyphClass := Copy(GlyphClass, Pos('.', GlyphClass) + 1, MaxInt);
-        if LoadGlyphByName(GlyphClass, TSpeedButton(List[I]).Glyph) and
-           Assigned(FOnGlyphLoaded) then
-          FOnGlyphLoaded(TSpeedButton(List[I]));
+        if LoadGlyphByName(GlyphClass, TSpeedButton(List[I]).Glyph) then
+        begin
+          SetGlyphInfo(TControl(List[I]), TSpeedButton(List[I]).Glyph, '',
+                       False);
+          if Assigned(FOnGlyphLoaded) then
+            FOnGlyphLoaded(TSpeedButton(List[I]));
+        end;
       end;
   end;
   for Page := 0 to FPageBtns.Count - 1 do

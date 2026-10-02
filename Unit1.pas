@@ -4069,7 +4069,7 @@ var
   Index: Integer;
   DarkBack, ForPalette: Boolean;
   Sig: string;
-  IconColor: TColor;
+  IconColor, PalBack: TColor;
 begin
   if (BtnGlyph(ABtn) = nil) or BtnGlyph(ABtn).Empty then
     Exit;
@@ -4091,17 +4091,23 @@ begin
   end;
 
   // Значки палитры перекрашиваются цветом Palette.Icon, свои компоненты -
-  // Palette.IconCustom; цвет - подпись тёмного значка
+  // Palette.IconCustom. Сглаженные края (значок TUiTheme, метка своих)
+  // смешаны с фоном палитры. Цвет и фон - подпись тёмного значка.
   ForPalette := DarkBack and UiIsPaletteBtn(ABtn);
   Sig := '';
   IconColor := clNone;
+  PalBack := clNone;
   if ForPalette then
   begin
     if UiIsPaletteCustom(ABtn) then
       IconColor := UiColor('Palette.IconCustom')
     else
       IconColor := UiColor('Palette.Icon');
-    Sig := IntToHex(IconColor, 8);
+    if ABtn.Parent is TScrollBox then
+      PalBack := TScrollBox(ABtn.Parent).Color
+    else
+      PalBack := UiColor('Ide.WindowBG');
+    Sig := IntToHex(IconColor, 8) + IntToHex(ColorToRGB(PalBack), 8);
   end;
   // Цвета сменились - тёмный значок строится и ставится заново
   if DarkBack and Mark.IsDark and (Mark.DarkSig <> Sig) then
@@ -4116,9 +4122,17 @@ begin
     begin
       Mark.Dark.Assign(Mark.Orig);
       if ForPalette then
-        UiPaletteRecolor(Mark.Dark,
-                         Mark.Dark.Canvas.Pixels[0, Mark.Dark.Height - 1],
-                         IconColor)
+      begin
+        // Из исходного значка кнопки (без метки) - палитра знает его; не
+        // знает - перекраска того, что стоит
+        if (FDsgPalette = nil) or
+           not FDsgPalette.RenderGlyph(ABtn, True, IconColor, IconColor,
+                                       PalBack, UiPaletteRecolor,
+                                       Mark.Dark) then
+          UiPaletteRecolor(Mark.Dark,
+                           Mark.Dark.Canvas.Pixels[0, Mark.Dark.Height - 1],
+                           IconColor);
+      end
       else
         UiInvertLightness(Mark.Dark,
                           Mark.Dark.Canvas.Pixels[0, Mark.Dark.Height - 1]);
