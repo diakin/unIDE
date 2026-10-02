@@ -3118,6 +3118,8 @@ begin
   // (UiPaletteRecolor). На светлом фоне значки не перекрашиваются, светлый
   // цвет не используется.
   UiDefault('Palette.Icon', clBlack, $00B0B0B0);
+  // Свои компоненты (TUi*, нижний ряд палитры) - своим цветом
+  UiDefault('Palette.IconCustom', clBlack, $0078B982);
 end;
 procedure TForm1.LoadUiSchema;
 var
@@ -3410,6 +3412,8 @@ begin
     Result := 'Подсказки: текст'
   else if AKey = 'Palette.Icon' then
     Result := 'Палитра компонентов: цвет значков (тёмный фон)'
+  else if AKey = 'Palette.IconCustom' then
+    Result := 'Палитра компонентов: цвет значков своих компонентов (тёмный фон)'
   else
     Result := AKey;
 end;
@@ -3697,18 +3701,25 @@ end;
 // Значки Delphi нарисованы 16 цветами под светлый фон, с объёмом: рамки
 // из серой тени и белого блика. Переворот яркости делал из чёрных линий
 // белые рамки, а тёмно-синий - ярко-сиреневым.
-// Здесь каждая точка либо цвета значка (AColor), либо прозрачная:
-//   - тёмные точки (чёрные линии, серые тени, синие и другие насыщенные
-//     детали) - цвет значка;
-//   - светлые (белая заливка, серебристые кнопки, блики) - прозрачные;
-//   - кроме светлой точки на внешнем краю: она касается прозрачного фона
-//     и не касается тёмной линии. Это правая и нижняя сторона вдавленной
-//     рамки (поле ввода, флажок) - у них блик снаружи, и без этого рамка
-//     осталась бы без двух сторон. Белая половина рамки TGroupBox
-//     прилегает к серой линии - она убирается, рамка остаётся в одну линию.
-//     Угол такой рамки касается тёмной линии одной стороной, но по
-//     диагонали тёмных точек у него нет (у белой линии TGroupBox - есть) -
-//     он тоже цвета значка, иначе в углах были бы дырки.
+// Каждая точка становится либо цвета значка (AColor), либо прозрачной:
+//   1. Тёмные точки (чёрные линии, серые тени, синие и другие насыщенные
+//      детали) - цвет значка. Светлые (белая заливка, серебристые кнопки,
+//      блики) - прозрачные.
+//   2. Кроме светлой точки на внешнем краю: она касается прозрачного фона
+//      и не касается тёмной линии. Это правая и нижняя сторона вдавленной
+//      рамки (поле ввода, флажок) - у них блик снаружи, и без этого рамка
+//      осталась бы без двух сторон. Белая половина рамки TGroupBox
+//      прилегает к серой линии - она убирается, рамка остаётся в одну
+//      линию. Угол такой рамки касается тёмной линии одной стороной, но по
+//      диагонали тёмных точек у него нет (у белой линии TGroupBox - есть) -
+//      он тоже цвета значка, иначе в углах были бы дырки.
+//   3. Рамки в одну линию. У вдавленной рамки сверху и слева две линии
+//      (серая и чёрная), у кнопки снизу и справа - чёрная и серая тень.
+//      Внешняя линия - та, что касается прозрачного фона (Ring). Точка
+//      сразу за ней внутрь убирается, если там полоса ровно в две точки
+//      (дальше внутрь - не цвет значка) и такая полоса тянется вдоль края
+//      не меньше чем на ThinRun точек. Сплошные фигуры (стрелка, буква A,
+//      метка своих) и короткие детали не трогаются.
 procedure UiPaletteRecolor(Bmp: TBitmap; ATransparent, AColor: TColor);
 type
   TRGBLine = array[0..32767] of TRGBTriple;
@@ -3717,18 +3728,49 @@ const
   KindKey = 0;     // прозрачная
   KindInk = 1;     // тёмная - цвет значка
   KindLight = 2;   // светлая
+  ThinRun = 4;
+  // Четыре соседа по сторонам, затем четыре по диагонали
+  StepX: array[0..7] of Integer = (1, -1, 0, 0, 1, 1, -1, -1);
+  StepY: array[0..7] of Integer = (0, 0, 1, -1, 1, -1, 1, -1);
 var
-  PosX, PosY, StepIdx, NearX, NearY, BmpW, BmpH: Integer;
+  PosX, PosY, StepIdx, NearX, NearY, BmpW, BmpH, RunLen, RunStep: Integer;
+  SideSign, TanX, TanY: Integer;
   Line: PRGBLine;
   KeyRGB, InkRGB, SrcRGB: Longint;
   Hue, Light, Sat: Double;
   Kinds: array of Byte;
+  Ink, Ring, Keep: array of Boolean;
   NearKey: Boolean;
   InkSide, InkDiag: Integer;
-const
-  // Четыре соседа по сторонам, затем четыре по диагонали
-  StepX: array[0..7] of Integer = (1, -1, 0, 0, 1, 1, -1, -1);
-  StepY: array[0..7] of Integer = (0, 0, 1, -1, 1, -1, 1, -1);
+
+  function KindAt(AX, AY: Integer): Byte;
+  begin
+    if (AX < 0) or (AY < 0) or (AX >= BmpW) or (AY >= BmpH) then
+      Result := KindKey
+    else
+      Result := Kinds[AY * BmpW + AX];
+  end;
+
+  function InkAt(AX, AY: Integer): Boolean;
+  begin
+    Result := (AX >= 0) and (AY >= 0) and (AX < BmpW) and (AY < BmpH) and
+              Ink[AY * BmpW + AX];
+  end;
+
+  function RingAt(AX, AY: Integer): Boolean;
+  begin
+    Result := (AX >= 0) and (AY >= 0) and (AX < BmpW) and (AY < BmpH) and
+              Ring[AY * BmpW + AX];
+  end;
+
+  // Точка (AX, AY) - вторая линия полосы в две точки: снаружи (в сторону
+  // ADX, ADY) - внешняя линия, внутри - не цвет значка
+  function InnerAt(AX, AY, ADX, ADY: Integer): Boolean;
+  begin
+    Result := InkAt(AX, AY) and not RingAt(AX, AY) and
+              RingAt(AX + ADX, AY + ADY) and not InkAt(AX - ADX, AY - ADY);
+  end;
+
 begin
   Bmp.PixelFormat := pf24bit;
   BmpW := Bmp.Width;
@@ -3738,6 +3780,9 @@ begin
   KeyRGB := ColorToRGB(ATransparent);
   InkRGB := ColorToRGB(AColor);
   SetLength(Kinds, BmpW * BmpH);
+  SetLength(Ink, BmpW * BmpH);
+  SetLength(Ring, BmpW * BmpH);
+  SetLength(Keep, BmpW * BmpH);
 
   // Какая точка: прозрачная, тёмная, светлая
   for PosY := 0 to BmpH - 1 do
@@ -3761,17 +3806,14 @@ begin
     end;
   end;
 
-  // Перекраска: соседи смотрятся по исходной разметке Kinds
+  // Шаги 1 и 2: какие точки цвета значка
   for PosY := 0 to BmpH - 1 do
-  begin
-    Line := Bmp.ScanLine[PosY];
     for PosX := 0 to BmpW - 1 do
-    begin
       case Kinds[PosY * BmpW + PosX] of
         KindKey:
-          Continue;
+          Ink[PosY * BmpW + PosX] := False;
         KindInk:
-          SrcRGB := InkRGB;
+          Ink[PosY * BmpW + PosX] := True;
       else
         begin
           NearKey := False;
@@ -3781,32 +3823,80 @@ begin
           begin
             NearX := PosX + StepX[StepIdx];
             NearY := PosY + StepY[StepIdx];
-            if (NearX < 0) or (NearY < 0) or (NearX >= BmpW) or
-               (NearY >= BmpH) then
-            begin
-              if StepIdx < 4 then
-                NearKey := True;
-            end
-            else if Kinds[NearY * BmpW + NearX] = KindKey then
-            begin
-              if StepIdx < 4 then
-                NearKey := True;
-            end
-            else if Kinds[NearY * BmpW + NearX] = KindInk then
-            begin
-              if StepIdx < 4 then
-                Inc(InkSide)
-              else
-                Inc(InkDiag);
+            case KindAt(NearX, NearY) of
+              KindKey:
+                if StepIdx < 4 then
+                  NearKey := True;
+              KindInk:
+                if StepIdx < 4 then
+                  Inc(InkSide)
+                else
+                  Inc(InkDiag);
             end;
           end;
-          if NearKey and
-             ((InkSide = 0) or ((InkSide = 1) and (InkDiag = 0))) then
-            SrcRGB := InkRGB
-          else
-            SrcRGB := KeyRGB;
+          Ink[PosY * BmpW + PosX] := NearKey and
+            ((InkSide = 0) or ((InkSide = 1) and (InkDiag = 0)));
         end;
       end;
+
+  // Внешняя линия: цвет значка, касается прозрачного фона исходного значка
+  for PosY := 0 to BmpH - 1 do
+    for PosX := 0 to BmpW - 1 do
+    begin
+      Ring[PosY * BmpW + PosX] := False;
+      if not Ink[PosY * BmpW + PosX] then
+        Continue;
+      for StepIdx := 0 to 3 do
+        if KindAt(PosX + StepX[StepIdx], PosY + StepY[StepIdx]) = KindKey then
+          Ring[PosY * BmpW + PosX] := True;
+    end;
+
+  // Шаг 3: вторая линия рамки убирается
+  for PosY := 0 to BmpH - 1 do
+    for PosX := 0 to BmpW - 1 do
+    begin
+      Keep[PosY * BmpW + PosX] := Ink[PosY * BmpW + PosX];
+      if not Ink[PosY * BmpW + PosX] or Ring[PosY * BmpW + PosX] then
+        Continue;
+      for StepIdx := 0 to 3 do
+      begin
+        if not InnerAt(PosX, PosY, StepX[StepIdx], StepY[StepIdx]) then
+          Continue;
+        // Длина полосы вдоль края - в обе стороны
+        TanX := StepY[StepIdx];
+        TanY := StepX[StepIdx];
+        RunLen := 1;
+        for SideSign := 0 to 1 do
+        begin
+          RunStep := 1;
+          while InnerAt(PosX + TanX * RunStep * (1 - 2 * SideSign),
+                        PosY + TanY * RunStep * (1 - 2 * SideSign),
+                        StepX[StepIdx], StepY[StepIdx]) do
+          begin
+            Inc(RunLen);
+            Inc(RunStep);
+          end;
+        end;
+        if RunLen >= ThinRun then
+        begin
+          Keep[PosY * BmpW + PosX] := False;
+          Break;
+        end;
+      end;
+    end;
+
+  // Запись
+  for PosY := 0 to BmpH - 1 do
+  begin
+    Line := Bmp.ScanLine[PosY];
+    for PosX := 0 to BmpW - 1 do
+    begin
+      if Kinds[PosY * BmpW + PosX] = KindKey then
+        Continue;
+      if Keep[PosY * BmpW + PosX] then
+        SrcRGB := InkRGB
+      else
+        SrcRGB := KeyRGB;
       Line[PosX].rgbtRed := GetRValue(SrcRGB);
       Line[PosX].rgbtGreen := GetGValue(SrcRGB);
       Line[PosX].rgbtBlue := GetBValue(SrcRGB);
@@ -3912,12 +4002,21 @@ begin
   end;
 end;
 
+// Кнопка палитры со своим компонентом (TUi*): у кнопок палитры в Tag -
+// класс компонента (TDsgPalette.PlaceButton), у стрелки - 0
+function UiIsPaletteCustom(ABtn: TControl): Boolean;
+begin
+  Result := (ABtn.Tag <> 0) and
+            (CompareText(Copy(TClass(ABtn.Tag).ClassName, 1, 3), 'TUi') = 0);
+end;
+
 procedure TForm1.UiApplyGlyph(ABtn: TControl);
 var
   Mark: TUiGlyph;
   Index: Integer;
   DarkBack, ForPalette: Boolean;
   Sig: string;
+  IconColor: TColor;
 begin
   if (BtnGlyph(ABtn) = nil) or BtnGlyph(ABtn).Empty then
     Exit;
@@ -3938,12 +4037,19 @@ begin
     UiGlyphNote(ABtn, 'метка создана');
   end;
 
-  // Значки палитры перекрашиваются цветом Palette.Icon - он подпись
-  // тёмного значка
+  // Значки палитры перекрашиваются цветом Palette.Icon, свои компоненты -
+  // Palette.IconCustom; цвет - подпись тёмного значка
   ForPalette := DarkBack and UiIsPaletteBtn(ABtn);
   Sig := '';
+  IconColor := clNone;
   if ForPalette then
-    Sig := IntToHex(UiColor('Palette.Icon'), 8);
+  begin
+    if UiIsPaletteCustom(ABtn) then
+      IconColor := UiColor('Palette.IconCustom')
+    else
+      IconColor := UiColor('Palette.Icon');
+    Sig := IntToHex(IconColor, 8);
+  end;
   // Цвета сменились - тёмный значок строится и ставится заново
   if DarkBack and Mark.IsDark and (Mark.DarkSig <> Sig) then
     Mark.IsDark := False;
@@ -3959,7 +4065,7 @@ begin
       if ForPalette then
         UiPaletteRecolor(Mark.Dark,
                          Mark.Dark.Canvas.Pixels[0, Mark.Dark.Height - 1],
-                         UiColor('Palette.Icon'))
+                         IconColor)
       else
         UiInvertLightness(Mark.Dark,
                           Mark.Dark.Canvas.Pixels[0, Mark.Dark.Height - 1]);
