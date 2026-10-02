@@ -109,7 +109,6 @@ const
   // Предел объёма текста для RichEdit1 (EM_EXLIMITTEXT), символов.
   // Раньше был 65535 * 32 = 2 097 120 - меньше больших файлов в 15 раз.
   EditorTextLimit = $7FFFFFF0;
-  GutterGap = 16;   // полоса меток (MarksBox): закладки и точки останова
 
   // Размерность массива текстовых окон
   WindowsItemCount = 48;
@@ -2117,6 +2116,8 @@ type
     procedure EnsureNoWrap;
     procedure EnsureEventMask;
     procedure UpdateGutterWidth;
+    procedure MarksLayout(ACanvas: TCanvas; var ABmH, ABmW, ADotD,
+                          AWidth: Integer);
     procedure AppMessage(var Msg: TMsg; var Handled: Boolean);
     procedure TabsWndProc(var Message: TMessage);
     procedure TabsHostWndProc(var Message: TMessage);
@@ -3131,6 +3132,9 @@ begin
   UiDefault('Gutter.BmCurBG', clRed, $002828C8);
   UiDefault('Gutter.BmCurText', clWhite, $00F0F0F0);
   UiDefault('Gutter.ExecArrow', $00FF8000, $00FFA040);
+  // Кружок точки останова на полосе меток - ярче фона строки с точкой
+  // (Debug.BreakBG), чтобы маленький кружок был виден
+  UiDefault('Gutter.BreakDot', clRed, $004040FF);
   // Инспектор: свойство, записанное в .dfm, и свойство, которого там нет
   // (значение по умолчанию)
   UiDefault('ObjProps.DfmText', clWindowText, $00F0F0F0);
@@ -3427,6 +3431,8 @@ begin
     Result := 'Меню Bookmarks: фон номера текущей закладки (на строке с кареткой)'
   else if AKey = 'Gutter.BmCurText' then
     Result := 'Меню Bookmarks: номер текущей закладки'
+  else if AKey = 'Gutter.BreakDot' then
+    Result := 'Полоса меток: кружок точки останова'
   else if AKey = 'Gutter.ExecArrow' then
     Result := 'Полоса меток: стрелка строки остановки'
   else if AKey = 'ObjProps.DfmText' then
@@ -35701,11 +35707,43 @@ begin
     Result := -1;
 end;
 
+// Размеры полосы меток по высоте строки. Слева - квадратик закладки:
+// высота по строке, ширина - под номер из двух цифр (шрифт ставится на
+// ACanvas); справа от него - кружок точки останова диаметром ADotD и там
+// же стрелка строки остановки. AWidth - ширина всей полосы.
+procedure TForm1.MarksLayout(ACanvas: TCanvas; var ABmH, ABmW, ADotD,
+                             AWidth: Integer);
+var
+  LineH: Integer;
+begin
+  LineH := LineHeight;
+  if LineH <= 0 then
+    LineH := 16;
+  ABmH := LineH - 2;
+  if ABmH > 16 then
+    ABmH := 16;
+  if ABmH < 9 then
+    ABmH := 9;
+  ACanvas.Font.Name := 'Tahoma';
+  ACanvas.Font.Height := -(ABmH - 3);
+  ACanvas.Font.Style := [fsBold];
+  ABmW := ACanvas.TextWidth('88') + 5;
+  if ABmW < ABmH then
+    ABmW := ABmH;
+  ADotD := LineH - 7;
+  if ADotD > 8 then
+    ADotD := 8;
+  if ADotD < 5 then
+    ADotD := 5;
+  AWidth := 1 + ABmW + 3 + ADotD + 4;
+end;
+
 procedure TForm1.MarksBoxPaint(Sender: TObject);
 var
   BoxCanvas: TCanvas;
   LineIdx, LineTotal, LineY, TopY, LineStartChar, TopLine: Integer;
   MarkSize, CenterX, CenterY, BmIdx, BmNum: Integer;
+  BmH, BmW, DotD, MarksW: Integer;
   FirstPt: TPoint;
   Mark: TBreakMark;
   MarkRect: TRect;
@@ -35736,18 +35774,11 @@ begin
   end;
   LineTotal := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
 
-  MarkSize := LineHeight - 4;
-  if MarkSize > 12 then
-    MarkSize := 12;
-  if MarkSize > MarksBox.Width - 2 then
-    MarkSize := MarksBox.Width - 2;
-  if MarkSize < 6 then
-    MarkSize := 6;
-  CenterX := MarksBox.Width div 2;
-
-  BoxCanvas.Font.Name := 'Tahoma';
-  BoxCanvas.Font.Height := -(MarkSize - 2);
-  BoxCanvas.Font.Style := [fsBold];
+  // Квадратик закладки слева, кружок и стрелка - справа от него (шрифт
+  // номера закладки ставит MarksLayout)
+  MarksLayout(BoxCanvas, BmH, BmW, DotD, MarksW);
+  CenterX := 1 + BmW + 3 + DotD div 2;
+  MarkSize := DotD + 2;     // стрелка строки остановки
 
   for LineIdx := TopLine to MaxInt - 1 do
   begin
@@ -35774,13 +35805,13 @@ begin
       end
       else
       begin
-        BoxCanvas.Brush.Color := UiColor('Debug.BreakBG');
-        BoxCanvas.Pen.Color := UiColor('Debug.BreakBG');
+        BoxCanvas.Brush.Color := UiColor('Gutter.BreakDot');
+        BoxCanvas.Pen.Color := UiColor('Gutter.BreakDot');
       end;
       BoxCanvas.Brush.Style := bsSolid;
-      BoxCanvas.Ellipse(CenterX - MarkSize div 2, CenterY - MarkSize div 2,
-                        CenterX - MarkSize div 2 + MarkSize,
-                        CenterY - MarkSize div 2 + MarkSize);
+      BoxCanvas.Ellipse(CenterX - DotD div 2, CenterY - DotD div 2,
+                        CenterX - DotD div 2 + DotD,
+                        CenterY - DotD div 2 + DotD);
     end;
 
     // Строка остановки - стрелка вправо
@@ -35799,16 +35830,16 @@ begin
       BoxCanvas.Polygon(Arrow);
     end;
 
-    // Закладка - квадратик с номером, поверх кружка
+    // Закладка - квадратик с номером, слева
     if (FWindowsIndex >= 0) and FWindows[FWindowsIndex].Used then
       for BmIdx := 0 to High(FWindows[FWindowsIndex].Bookmarks) do
         if (FWindows[FWindowsIndex].Bookmarks[BmIdx].LineNo = LineIdx + 1) and
            not FWindows[FWindowsIndex].Bookmarks[BmIdx].Missing then
         begin
           MarkRect.Left := 1;
-          MarkRect.Top := CenterY - MarkSize div 2;
-          MarkRect.Right := MarkRect.Left + MarkSize;
-          MarkRect.Bottom := MarkRect.Top + MarkSize;
+          MarkRect.Top := CenterY - BmH div 2;
+          MarkRect.Right := MarkRect.Left + BmW;
+          MarkRect.Bottom := MarkRect.Top + BmH;
           BoxCanvas.Brush.Style := bsSolid;
           BoxCanvas.Brush.Color := UiColor('Gutter.BmBG');
           BoxCanvas.Pen.Style := psSolid;
@@ -39555,6 +39586,7 @@ var
   Bmp: TBitmap;
   C: Char;
   DigitW, W, NewW: Integer;
+  BmH, BmW, DotD, MarksW: Integer;
 begin
   if (PaintBox1 = nil) or (Panel1 = nil) then
     Exit;
@@ -39570,15 +39602,17 @@ begin
       if W > DigitW then
         DigitW := W;
     end;
+    // Полоса меток справа от номеров - под квадратик закладки и кружок
+    MarksLayout(Bmp.Canvas, BmH, BmW, DotD, MarksW);
   finally
     Bmp.Free;
   end;
 
   NewW := 4 + DigitW * GutterDigits + 9;
-  if PaintBox1.Width <> NewW then
+  if (PaintBox1.Width <> NewW) or (Panel1.Width <> NewW + MarksW) then
   begin
     PaintBox1.Width := NewW;
-    Panel1.Width := NewW + GutterGap;
+    Panel1.Width := NewW + MarksW;
   end;
 end;
 
