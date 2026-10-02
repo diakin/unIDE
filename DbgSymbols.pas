@@ -95,6 +95,8 @@ type
     FReadMem: TDbgReadMem;
     FRegValue: Cardinal;       // значение переменной в регистре
     FRegActive: Boolean;       // адрес 0 - это FRegValue
+    FWantNote: Boolean;        // имя не нашлось - разбор поиска в FLastNote
+    FLastNote: string;
     function ByteAt(APos: Integer): Cardinal;
     function WordAt(APos: Integer): Cardinal;
     function DwordAt(APos: Integer): Cardinal;
@@ -136,6 +138,8 @@ type
     function FindData(const AName: string; AModule: Integer): Integer;
     function SegAddress(ASeg: Integer; AOffset, AImageBase: Cardinal;
                         var AAddress: Cardinal): Boolean;
+    function NotFoundNote(const AName: string; AProcIdx: Integer;
+                          ASelfType: Cardinal): string;
   public
     constructor Create;
     destructor Destroy; override;
@@ -153,6 +157,12 @@ type
     property ProcCount: Integer read FProcCount;
     property LocalCount: Integer read FLocalCount;
     property DataCount: Integer read FDataCount;
+    // Имя первой части выражения не нашлось - где искали и что видно в
+    // TD32: процедура, данные модулей с похожими именами, класс Self и
+    // число его полей, классы, у которых такое поле есть. Считается только
+    // при WantNote (окно Watch): разбор проходит все классы exe.
+    property WantNote: Boolean read FWantNote write FWantNote;
+    property LastNote: string read FLastNote;
   end;
 
 const
@@ -1832,6 +1842,7 @@ begin
   Result := '';
   ATypeText := '';
   FieldNote := '';
+  FLastNote := '';
   FReadMem := AReadMem;
   FRegActive := False;
   if FBuf = '' then
@@ -1992,6 +2003,8 @@ begin
                   'с отладочной информацией)>'
       else
         Result := '<не найдено: ' + Parts[0] + '>';
+      if FWantNote then
+        FLastNote := NotFoundNote(Parts[0], ProcIdx, 0);
       Exit;
     end;
 
@@ -2037,8 +2050,12 @@ begin
       if not FindMember(CurType, Parts[PartIdx], MemberOfs, MemberType) then
       begin
         if ViaSelf and (PartIdx = 1) then
+        begin
           Result := '<не найдено: ' + Parts[PartIdx] + ' - нет ни ' +
-                    'переменной процедуры, ни данных модуля, ни поля Self>'
+                    'переменной процедуры, ни данных модуля, ни поля Self>';
+          if FWantNote then
+            FLastNote := NotFoundNote(Parts[PartIdx], ProcIdx, CurType);
+        end
         else
           Result := '<нет поля ' + Parts[PartIdx] + ' у ' +
                     TypeText(CurType) + '>';
@@ -2068,6 +2085,118 @@ begin
     Parts.Free;
     FRegActive := False;
   end;
+end;
+
+// Разбор неудачного поиска имени для журнала: что именно не нашлось и
+// что про это имя есть в TD32
+function TDbgSymbols.NotFoundNote(const AName: string; AProcIdx: Integer;
+                                  ASelfType: Cardinal): string;
+var
+  DataIdx, TypeIdx, Hits, FieldCount, Guard, MemberOfs: Integer;
+  Leaf, Body, RecEnd, ListLeaf, ListBody, ListEnd, ItemPos, MemLeaf: Integer;
+  SavedPos: Integer;
+  FullType, MemType, MemName, MemberType: Cardinal;
+  NumValue: Int64;
+  Same, Similar, Owners, StopNote: string;
+  Upper: string;
+begin
+  Upper := UpperCase(AName);
+  if AProcIdx >= 0 then
+  begin
+    Hits := 0;
+    for DataIdx := 0 to FLocalCount - 1 do
+      if FLocals[DataIdx].ProcIdx = AProcIdx then
+        Inc(Hits);
+    Result := AName + ': процедура ' + NiceProcName(FProcs[AProcIdx].Name) +
+              ', модуль TD32 ' + IntToStr(FProcs[AProcIdx].Module) +
+              ', её переменных и параметров ' + IntToStr(Hits);
+  end
+  else
+    Result := AName + ': процедура остановки в TD32 не найдена';
+
+  // Данные модулей: точные совпадения (с модулями) и похожие имена
+  Same := '';
+  Similar := '';
+  Hits := 0;
+  for DataIdx := 0 to FDataCount - 1 do
+    if DataNameMatches(FDatas[DataIdx].Name, AName) then
+      Same := Same + ' ' + FDatas[DataIdx].Name + '(модуль ' +
+              IntToStr(FDatas[DataIdx].Module) + ')'
+    else if (Hits < 5) and
+            (Pos(Upper, UpperCase(FDatas[DataIdx].Name)) > 0) then
+    begin
+      Similar := Similar + ' ' + FDatas[DataIdx].Name;
+      Inc(Hits);
+    end;
+  Result := Result + '; данных модулей всего ' + IntToStr(FDataCount);
+  if Same <> '' then
+    Result := Result + ', с этим именем:' + Same
+  else
+    Result := Result + ', с этим именем нет';
+  if Similar <> '' then
+    Result := Result + ', похожие:' + Similar;
+
+  // Класс Self: описание и его список полей
+  if ASelfType <> 0 then
+  begin
+    FullType := FullStruct(Underlying(ASelfType));
+    Result := Result + '; Self: ' + TypeText(ASelfType) + ' тип $' +
+              IntToHex(ASelfType, 4);
+    if FullType <> Underlying(ASelfType) then
+      Result := Result + ' -> описание $' + IntToHex(FullType, 4);
+    FieldCount := 0;
+    StopNote := '';
+    if TypeRec(FullType, Leaf, Body, RecEnd) and
+       ((Leaf = LeafClass) or (Leaf = LeafStruct)) and
+       TypeRec(DwordAt(Body + 2), ListLeaf, ListBody, ListEnd) then
+    begin
+      ItemPos := ListBody;
+      Guard := 0;
+      repeat
+        SavedPos := ItemPos;
+        if not NextMember(ItemPos, ListEnd, MemLeaf, MemType, MemName,
+                          NumValue) then
+        begin
+          if SavedPos + 2 <= ListEnd then
+            StopNote := ', список оборван на записи вида $' +
+                        IntToHex(WordAt(SavedPos), 4) + ' (' +
+                        IntToStr(ListEnd - SavedPos) + ' байт до конца)';
+          Break;
+        end;
+        Inc(Guard);
+        if MemLeaf = MemData then
+          Inc(FieldCount)
+        else if (MemLeaf = MemIndex) and
+                TypeRec(MemType, ListLeaf, ListBody, ListEnd) then
+          ItemPos := ListBody;
+      until Guard >= 100000;
+      Result := Result + ', своих полей прочитано ' + IntToStr(FieldCount) +
+                StopNote;
+    end
+    else
+      Result := Result + ', описание класса не прочитано';
+  end;
+
+  // Классы и записи, у которых такое поле есть
+  Owners := '';
+  Hits := 0;
+  for TypeIdx := 0 to High(FTypePos) do
+    if TypeRec($1000 + Cardinal(TypeIdx), Leaf, Body, RecEnd) and
+       ((Leaf = LeafClass) or (Leaf = LeafStruct)) and
+       ((WordAt(Body + 6) and StructFwdRef) = 0) and
+       (DwordAt(Body + 2) <> 0) and
+       FindMember($1000 + Cardinal(TypeIdx), AName, MemberOfs, MemberType) then
+    begin
+      Owners := Owners + ' ' + NameOf(DwordAt(Body + 20));
+      Inc(Hits);
+      if Hits >= 5 then
+        Break;
+    end;
+  if Owners <> '' then
+    Result := Result + '; поле ' + AName + ' есть у:' + Owners
+  else
+    Result := Result + '; поля ' + AName + ' нет ни у одного класса и ' +
+              'записи в TD32';
 end;
 
 function TDbgSymbols.ProcLocals(AImageBase, AEip: Cardinal;

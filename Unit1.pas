@@ -960,6 +960,7 @@ type
     // причина, если её нет
     FWatchWnd: TDlgWatch;
     FWatchList: TStringList;
+    FWatchNotes: string;      // уже записанные в лог разборы «не найдено»
     // Выражение для пункта Add watch меню редактора (PopupMenuPopup)
     FPopupWatchExpr: string;
     // Полоса меток: строка, по которой щёлкнули; одиночный щелчок
@@ -36782,11 +36783,28 @@ begin
       if State <> '' then
         ValueText := State
       else
-        ValueText := FDbgSyms.Evaluate(FWatchList[ExprIdx],
-                                       FDbgSession.ImageBase,
-                                       FDbgSession.StopEip,
-                                       FDbgSession.StopRegs,
-                                       FDbgSession.ReadMemory, TypeText);
+      begin
+        // Имя не нашлось - разбор поиска в Compilation log, один раз на
+        // каждый разный разбор
+        FDbgSyms.WantNote := True;
+        try
+          ValueText := FDbgSyms.Evaluate(FWatchList[ExprIdx],
+                                         FDbgSession.ImageBase,
+                                         FDbgSession.StopEip,
+                                         FDbgSession.StopRegs,
+                                         FDbgSession.ReadMemory, TypeText);
+        finally
+          FDbgSyms.WantNote := False;
+        end;
+        if (FDbgSyms.LastNote <> '') and
+           (Pos(#1 + FDbgSyms.LastNote + #1, FWatchNotes) = 0) then
+        begin
+          if Length(FWatchNotes) > 20000 then
+            FWatchNotes := '';
+          FWatchNotes := FWatchNotes + #1 + FDbgSyms.LastNote + #1;
+          LogComp('Watch: ' + FDbgSyms.LastNote);
+        end;
+      end;
       SetSub(Item, 0, ValueText);
       SetSub(Item, 1, TypeText);
     end;
