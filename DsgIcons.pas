@@ -309,7 +309,7 @@ end;
 procedure DsgPaintIcon(ACanvas: TCanvas; const AScript: string);
 var
   Commands, Words: TStringList;
-  CmdIdx, NumIdx, PointCount: Integer;
+  CmdIdx, NumIdx, PointIdx, WordIdx, PointCount: Integer;
   Cmd, Op, TextPart: string;
   Nums: array of Double;
   Points: array of TPoint;
@@ -379,7 +379,7 @@ begin
         if Words.Count < 5 then
           Continue;
         TextPart := Trim(Copy(Cmd, 2, MaxInt));
-        for NumIdx := 1 to 4 do
+        for WordIdx := 1 to 4 do
           TextPart := TrimLeft(Copy(TextPart, Pos(' ', TextPart) + 1, MaxInt));
         FillChar(FontRec, SizeOf(FontRec), 0);
         FontRec.lfHeight := -Big(ScriptNum(Words[2]));
@@ -504,9 +504,9 @@ begin
         if PointCount < 3 then
           Continue;
         SetLength(Points, PointCount);
-        for NumIdx := 0 to PointCount - 1 do
-          Points[NumIdx] := Point(Big(Nums[NumIdx * 2]),
-                                  Big(Nums[NumIdx * 2 + 1]));
+        for PointIdx := 0 to PointCount - 1 do
+          Points[PointIdx] := Point(Big(Nums[PointIdx * 2]),
+                                    Big(Nums[PointIdx * 2 + 1]));
         ACanvas.Polygon(Points);
       end;
     end;
