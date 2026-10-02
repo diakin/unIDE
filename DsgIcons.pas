@@ -27,7 +27,7 @@ unit DsgIcons;
 interface
 
 uses
-  Windows, SysUtils, Graphics;
+  Windows, SysUtils, Classes, Graphics;
 
 const
   DsgIconScale = 4;   // во сколько раз крупнее рисуется значок
