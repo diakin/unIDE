@@ -22,6 +22,11 @@ unit DsgPalette;
 //  только как файлы данных (LOAD_LIBRARY_AS_DATAFILE), код пакетов не
 //  выполняется. Значок палитры в пакете - ресурс BITMAP с именем класса
 //  прописными буквами (TBUTTON). Не нашёлся значок - на кнопке имя класса.
+//
+//  Сторонние компоненты (DsgForeign: из пакетов, установленных в Delphi) -
+//  на своих страницах после страниц Delphi (AddPage, PlaceForeign). Класса
+//  их в редакторе нет: в Tag кнопки 0, а выбор - строка "Модуль.Класс"
+//  (SelectedForeign). Значки - из их design-пакетов (AddIconLib).
 // ---------------------------------------------------------------------------
 
 interface
@@ -46,6 +51,8 @@ type
     FMeter: TBitmap;          // замер ширины надписи: холст окна может ещё не быть
     FLibs: TList;             // HMODULE пакетов со значками
     FSelected: TComponentClass;
+    FForeign: TStringList;    // кнопки сторонних: "Модуль.Класс", в Objects - кнопка
+    FSelForeign: string;      // выбран сторонний: "Модуль.Класс"
     FOnSelect: TNotifyEvent;
     procedure LoadLibs(const ADelphiBin: string);
     function LoadGlyph(AClass: TClass; ABmp: TBitmap): Boolean;
@@ -74,9 +81,21 @@ type
     procedure ShowPage;
     // Номер страницы (вкладки) кнопки ABtn; -1 - кнопка не из палитры
     function PageOf(ABtn: TControl): Integer;
+    // Новая страница после имеющихся; номер страницы
+    function AddPage(const AName: string): Integer;
+    // Пакет со значками - как файл данных (сторонние design-пакеты)
+    procedure AddIconLib(const APath: string);
+    // Кнопка стороннего компонента AClass из модуля AUnit - на страницу
+    // APage, в первый ряд. Значок - по имени класса.
+    procedure PlaceForeign(ABtn: TSpeedButton; const AUnit, AClass,
+                           AHint: string; APage: Integer);
+    // "Модуль.Класс" кнопки стороннего компонента; '' - не сторонний
+    function ForeignOf(ABtn: TControl): string;
     // Снять выбор: кнопка компонента отжимается, нажата стрелка
     procedure ClearSelection;
     property SelectedClass: TComponentClass read FSelected;
+    // Выбран сторонний компонент: "Модуль.Класс"; '' - нет
+    property SelectedForeign: string read FSelForeign;
     property OnSelect: TNotifyEvent read FOnSelect write FOnSelect;
   end;
 
@@ -119,6 +138,7 @@ begin
   inherited Create(AOwner);
   FPageBtns := TList.Create;
   FLibs := TList.Create;
+  FForeign := TStringList.Create;
   FMeter := TBitmap.Create;
 
   Parent := AParent;
@@ -190,6 +210,7 @@ begin
   for I := 0 to FPageBtns.Count - 1 do
     TObject(FPageBtns[I]).Free;
   FPageBtns.Free;
+  FForeign.Free;
   FMeter.Free;
   inherited;
 end;
@@ -417,15 +438,24 @@ var
   B: TSpeedButton;
 begin
   B := TSpeedButton(Sender);
-  if B.Down then
-    SetSelected(TComponentClass(B.Tag))
+  if not B.Down then
+    SetSelected(nil) // повторный щелчок по нажатой - выбор снят
+  else if B.Tag = 0 then
+  begin
+    // Сторонний: класса нет, выбор - строкой
+    FSelected := nil;
+    FSelForeign := ForeignOf(B);
+    if Assigned(FOnSelect) then
+      FOnSelect(Self);
+  end
   else
-    SetSelected(nil); // повторный щелчок по нажатой - выбор снят
+    SetSelected(TComponentClass(B.Tag));
 end;
 
 procedure TDsgPalette.SetSelected(AClass: TComponentClass);
 begin
   FSelected := AClass;
+  FSelForeign := '';
   if AClass = nil then
     FArrow.Down := True;
   if Assigned(FOnSelect) then
@@ -435,6 +465,73 @@ end;
 procedure TDsgPalette.ClearSelection;
 begin
   SetSelected(nil);
+end;
+
+function TDsgPalette.AddPage(const AName: string): Integer;
+begin
+  FTabs.Tabs.Add(AName);
+  FPageBtns.Add(TList.Create);
+  Result := FPageBtns.Count - 1;
+  SetLength(FNextX, Result + 1);
+  SetLength(FRow1Count, Result + 1);
+  SetLength(FNextFree, Result + 1);
+  FNextX[Result] := FArrow.Left + BtnSize + 6;
+  FRow1Count[Result] := 0;
+  FNextFree[Result] := FArrow.Left + BtnSize + 6;
+end;
+
+procedure TDsgPalette.AddIconLib(const APath: string);
+var
+  LibHandle: HMODULE;
+begin
+  LibHandle := LoadLibraryEx(PChar(APath), 0, AsDataFile);
+  if LibHandle <> 0 then
+    FLibs.Add(Pointer(LibHandle));
+end;
+
+procedure TDsgPalette.PlaceForeign(ABtn: TSpeedButton; const AUnit, AClass,
+                                   AHint: string; APage: Integer);
+var
+  BtnWidth, PosX: Integer;
+begin
+  if (ABtn = nil) or (APage < 0) or (APage >= FPageBtns.Count) then
+    Exit;
+  ABtn.Parent := FBox;
+  ABtn.Visible := APage = FTabs.TabIndex;
+  ABtn.Flat := True;
+  ABtn.GroupIndex := 1;
+  ABtn.AllowAllUp := True;
+  ABtn.Tag := 0;                 // класса нет - выбор по FForeign
+  ABtn.Hint := AHint;
+  ABtn.ShowHint := True;
+  ABtn.OnClick := CompClick;
+  ABtn.Caption := '';
+  BtnWidth := BtnSize;
+  if not LoadGlyphByName(AClass, ABtn.Glyph) then
+  begin
+    // Значка нет - имя класса без T
+    ABtn.Caption := Copy(AClass, 2, MaxInt);
+    FMeter.Canvas.Font := Font;
+    BtnWidth := FMeter.Canvas.TextWidth(ABtn.Caption) + 10;
+    if BtnWidth < BtnSize then
+      BtnWidth := BtnSize;
+  end;
+  PosX := FNextX[APage];
+  FNextX[APage] := PosX + BtnWidth + 1;
+  Inc(FRow1Count[APage]);
+  ABtn.SetBounds(PosX, 1, BtnWidth, BtnSize);
+  TList(FPageBtns[APage]).Add(ABtn);
+  FForeign.AddObject(AUnit + '.' + AClass, ABtn);
+end;
+
+function TDsgPalette.ForeignOf(ABtn: TControl): string;
+var
+  ForeignIdx: Integer;
+begin
+  Result := '';
+  ForeignIdx := FForeign.IndexOfObject(ABtn);
+  if ForeignIdx >= 0 then
+    Result := FForeign[ForeignIdx];
 end;
 
 end.

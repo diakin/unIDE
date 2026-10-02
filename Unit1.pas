@@ -9,6 +9,7 @@ uses
   FormDesigner,   // визуальный конструктор форм
   DsgClasses,     // классы палитры для конструктора и инспектора
   DsgPalette,     // окно палитры компонентов
+  DsgForeign,     // сторонние компоненты палитры (пакеты, установленные в Delphi)
   ClrScheme,      // цветовая схема подсветки (.clr) - TClrScheme
   UiTheme,        // темы своих элементов: Light / Dark / Custom, цвета ролей
   UiScroll,       // полоса прокрутки, которую рисует программа
@@ -881,6 +882,9 @@ type
     // страницам; имя каждой - PalBtn<номер>. См. BuildPaletteButtons.
     PalBtn: array[1..PalBtnMax] of TSpeedButton;
     PalBtnCount: Integer;
+    // Сторонние компоненты палитры (DsgAddForeignPages); их кнопки - не в
+    // PalBtn, ими владеет сама палитра
+    FDsgForeign: TDsgForeignList;
     // Вставка с палитры: щелчок запоминается и выполняется следом,
     // сообщением - форма конструктора перестраивается, а щелчок пришёл из
     // обработчика её же окна
@@ -1748,6 +1752,7 @@ type
     function  DsgDelphiBin: string;
     procedure DsgPaletteSelect(Sender: TObject);
     procedure BuildPaletteButtons;
+    procedure DsgAddForeignPages;
     procedure ApplyArrayIni(const AArray, ACodeProps: string);
     function  SetPropFromText(AObj: TObject; const AProp, AValue: string): Boolean;
     procedure DsgPaletteReset;
@@ -16403,6 +16408,7 @@ begin
   ClearDfmNodes;
   FreeAndNil(FDfmNodes);
   FreeAndNil(FObjRoots);
+  FreeAndNil(FDsgForeign);
   FreeAndNil(FCompDfmNames);
   FreeAndNil(FObjArrayNames);
   FreeAndNil(FObjArrayLines);
@@ -23427,7 +23433,11 @@ procedure TForm1.DsgPaletteSelect(Sender: TObject);
 begin
   if grpPalette = nil then
     Exit;
-  if FDsgPalette.SelectedClass = nil then
+  if FDsgPalette.SelectedForeign <> '' then
+    grpPalette.Caption := 'Components - ' +
+      Copy(FDsgPalette.SelectedForeign,
+           Pos('.', FDsgPalette.SelectedForeign) + 1, MaxInt) + ' (сторонний)'
+  else if FDsgPalette.SelectedClass = nil then
     grpPalette.Caption := 'Components'
   else
     grpPalette.Caption := 'Components - ' + FDsgPalette.SelectedClass.ClassName;
@@ -24449,10 +24459,71 @@ begin
       for I := 0 to L.Count - 1 do
         AddBtn(TComponentClass(L[I]), Page, True);
   end;
+  DsgAddForeignPages;
   FDsgPalette.ShowPage;
   ApplyArrayIni('PalBtn', PalBtnCodeProps);
   Dbg('21879: палитра: кнопок ' + IntToStr(PalBtnCount) + ', ' +
       IntToStr(GetTickCount - T0) + ' мс', clGray);
+end;
+
+// Сторонние компоненты - страницы палитры после страниц Delphi. Что и на
+// какой странице, берётся из установленной Delphi 7 (DsgForeign): пакеты из
+// Known Packages и раскладка палитры из реестра. Значки - из их
+// design-пакетов. Кнопки не входят в массив PalBtn: ими владеет палитра,
+// класса у них нет (Tag = 0), выбор - строкой "Модуль.Класс".
+procedure TForm1.DsgAddForeignPages;
+var
+  StartTick: Cardinal;
+  CompIdx, PageIdx, LibIdx, LogIdx: Integer;
+  PageMap: TStringList;
+  Comp: TDsgForeignComp;
+  ForeignBtn: TSpeedButton;
+  BinDir, RootDir: string;
+begin
+  StartTick := GetTickCount;
+  if FDsgForeign = nil then
+    FDsgForeign := TDsgForeignList.Create;
+  BinDir := DsgDelphiBin;
+  RootDir := '';
+  if BinDir <> '' then
+    RootDir := ExtractFilePath(ExcludeTrailingPathDelimiter(BinDir));
+  try
+    FDsgForeign.Scan(RootDir);
+  except
+    on E: Exception do
+    begin
+      Dbg('21881: палитра: сторонние компоненты не прочитаны - ' +
+          E.Message);
+      Exit;
+    end;
+  end;
+  for LibIdx := 0 to FDsgForeign.IconLibs.Count - 1 do
+    FDsgPalette.AddIconLib(FDsgForeign.IconLibs[LibIdx]);
+
+  PageMap := TStringList.Create;
+  try
+    for PageIdx := 0 to FDsgForeign.Pages.Count - 1 do
+      PageMap.AddObject(FDsgForeign.Pages[PageIdx],
+        TObject(FDsgPalette.AddPage(FDsgForeign.Pages[PageIdx])));
+    for CompIdx := 0 to FDsgForeign.Count - 1 do
+    begin
+      Comp := FDsgForeign[CompIdx];
+      PageIdx := PageMap.IndexOf(Comp.PageName);
+      if PageIdx < 0 then
+        Continue;
+      ForeignBtn := TSpeedButton.Create(FDsgPalette);
+      FDsgPalette.PlaceForeign(ForeignBtn, Comp.CompUnit, Comp.CompClass,
+        Comp.CompClass + ' (' + Comp.CompUnit + ', ' +
+        ExtractFileName(Comp.RuntimePkg) + ') - ' + Comp.PkgDescr,
+        Integer(PageMap.Objects[PageIdx]));
+    end;
+  finally
+    PageMap.Free;
+  end;
+  for LogIdx := 0 to FDsgForeign.Log.Count - 1 do
+    Dbg('21880: палитра, сторонние: ' + FDsgForeign.Log[LogIdx], clGray);
+  Dbg('21880: палитра, сторонние: ' + IntToStr(GetTickCount - StartTick) +
+      ' мс', clGray);
 end;
 
 // AProp есть в списке AList через запятую? Без учёта регистра.
@@ -26508,6 +26579,17 @@ end;
 procedure TForm1.DsgPlace(const AParent: string; X, Y, AFormX, AFormY: Integer;
                           var AHandled: Boolean);
 begin
+  // Сторонний компонент на форму пока не ставится (этап 2)
+  if (FDsgPalette <> nil) and (FDsgPalette.SelectedForeign <> '') and
+     (FDesigner <> nil) then
+  begin
+    AHandled := True;
+    Dbg('21882: конструктор: ' + FDsgPalette.SelectedForeign +
+        ' - постановка сторонних компонентов на форму ещё не сделана',
+        clGray);
+    FDsgPalette.ClearSelection;
+    Exit;
+  end;
   if (FDsgPalette = nil) or (FDsgPalette.SelectedClass = nil) or
      (FDesigner = nil) then
     Exit;
