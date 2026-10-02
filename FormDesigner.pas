@@ -160,6 +160,10 @@ type
     // формы. WM_SETREDRAW 1 делает окно видимым (Windows ставит WS_VISIBLE)
     // - у спрятанной формы второго вида это показывало её недостроенной.
     FRedrawOff: Boolean;
+    // Окно формы тянут за рамку или двигают: на это время у формы
+    // WS_EX_COMPOSITED (SizingStart / SizingEnd)
+    FSizing: Boolean;
+    FSizeExStyle: Longint;
     // Прежняя форма при новой загрузке: видна, пока новая строится, и
     // уходит, когда новую покажут (ShowForm) - без пустого места на экране
     FOldForm: TForm;
@@ -226,6 +230,8 @@ type
     procedure MouseUp;
     procedure KeyDown(AKey: Word);
     procedure FormMoved;
+    procedure SizingStart;
+    procedure SizingEnd;
     procedure CommitBounds(AComp: TComponent);
     property Form: TForm read FForm;
     property RootName: string read FRootName;
@@ -1827,10 +1833,19 @@ begin
         Exit;
       end;
 
+    WM_ENTERSIZEMOVE:
+      if IsRoot then
+      begin
+        FPrev(Msg);
+        FDesigner.SizingStart;
+        Exit;
+      end;
+
     WM_EXITSIZEMOVE:
       if IsRoot then
       begin
         FPrev(Msg);
+        FDesigner.SizingEnd;
         FDesigner.FormMoved;
         Exit;
       end;
@@ -4249,6 +4264,38 @@ end;
 // Окно формы подвинули или потянули за край: у формы в .dfm место и
 // клиентский размер. Width/Height и ClientWidth/ClientHeight пишутся
 // только те, что в файле уже есть: иначе в .dfm оказались бы обе пары.
+// Пока форму тянут за рамку, она перерисовывается на каждом шаге, и
+// панели, вкладки и полосы прокрутки на ней моргают: каждая стирается и
+// рисуется отдельно. WS_EX_COMPOSITED - Windows собирает кадр окна со
+// всеми детьми в памяти и показывает его целиком. Только на время
+// протяжки: рамки конструктора (MarkHidden, MarkRuntime) рисуются через
+// GetDC поверх готового, а в составном окне такое рисование не держится.
+// После протяжки стиль снимается и форма перерисовывается вся - рамки
+// встают на место.
+procedure TFormDesigner.SizingStart;
+const
+  // WS_EX_COMPOSITED - в Windows.pas Delphi 7 его нет
+  ExComposited = $02000000;
+begin
+  if (FForm = nil) or not FForm.HandleAllocated or FSizing then
+    Exit;
+  FSizing := True;
+  FSizeExStyle := GetWindowLong(FForm.Handle, GWL_EXSTYLE);
+  SetWindowLong(FForm.Handle, GWL_EXSTYLE, FSizeExStyle or ExComposited);
+end;
+
+procedure TFormDesigner.SizingEnd;
+begin
+  if not FSizing then
+    Exit;
+  FSizing := False;
+  if (FForm = nil) or not FForm.HandleAllocated then
+    Exit;
+  SetWindowLong(FForm.Handle, GWL_EXSTYLE, FSizeExStyle);
+  RedrawWindow(FForm.Handle, nil, 0, RDW_ERASE or RDW_FRAME or
+               RDW_INVALIDATE or RDW_ALLCHILDREN);
+end;
+
 procedure TFormDesigner.FormMoved;
 begin
   CommitBounds(FForm);

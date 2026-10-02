@@ -2282,6 +2282,7 @@ type
     procedure UiSetParentBgFor(C: TControl);
     procedure DsgThemeLook;
     procedure DsgRetheme;
+    procedure DsgMirrorBuffering;
     procedure UiFreezeForms(AFreeze: Boolean);
     procedure UiActiveFormChange(Sender: TObject);
     function  UiLogIsDark(AEdit: TRichEdit): Boolean;
@@ -15931,6 +15932,9 @@ begin
   Panel1.DoubleBuffered := True;
   Panel2.DoubleBuffered := True;
   FStatus2.DoubleBuffered := True;
+  // Вкладки логов внизу моргали при протяжке рамки окна конструктора
+  // (там та же форма), а значит, и здесь
+  LogTabs.DoubleBuffered := True;
 
   // Ширины панелей второго бара. Путь получает остаток, см. Status2Resize.
   SampleBmp := TBitmap.Create;
@@ -23316,6 +23320,7 @@ begin
     // перерисовки и выравнивания
     TFin := GetTickCount;
     FDesigner.FinishRuntime;
+    DsgMirrorBuffering;
     TFin := GetTickCount - TFin;
     Made.Free;
     Props.Free;
@@ -23879,6 +23884,33 @@ end;
 // месте - тема, затем живой вид по новому снимку. Форма не строится заново:
 // окно конструктора не пропадает и не появляется снова, выделение остаётся.
 // Серия AddRuntime - раскладка и перерисовка один раз, в конце.
+// Своя форма в конструкторе: двойная буферизация - тем же контролам, что у
+// живой формы. У живой она ставится в FormCreate, кодом (в .dfm её нет),
+// поэтому копии в конструкторе её не получали, и при протяжке рамки формы
+// конструктора панель палитры, тулбар и вкладки моргали.
+procedure TForm1.DsgMirrorBuffering;
+var
+  LiveForm: TCustomForm;
+  CompIdx: Integer;
+  DsgComp, LiveComp: TComponent;
+begin
+  if (FDesigner = nil) or (FDesigner.Form = nil) or not IsOwnProject then
+    Exit;
+  LiveForm := OwnLiveForm(FObjFormClass);
+  if LiveForm = nil then
+    Exit;
+  for CompIdx := 0 to FDesigner.Form.ComponentCount - 1 do
+  begin
+    DsgComp := FDesigner.Form.Components[CompIdx];
+    if not (DsgComp is TWinControl) or (DsgComp.Name = '') then
+      Continue;
+    LiveComp := LiveForm.FindComponent(DsgComp.Name);
+    if (LiveComp is TWinControl) and TWinControl(LiveComp).DoubleBuffered and
+       not TWinControl(DsgComp).DoubleBuffered then
+      TWinControl(DsgComp).DoubleBuffered := True;
+  end;
+end;
+
 procedure TForm1.DsgRetheme;
 begin
   // Спрятанный второй вид - в прежних цветах: построится при переключении
