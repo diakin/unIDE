@@ -1,8 +1,8 @@
 object Form1: TForm1
   BorderIcons = [biSystemMenu, biMinimize, biMaximize]
-  Left = 393
-  Top = 96
-  Width = 1236
+  Left = 213
+  Top = 101
+  Width = 1111
   Height = 910
   Caption = 'Form1 current'
   Color = 10944511
