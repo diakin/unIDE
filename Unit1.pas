@@ -3114,14 +3114,10 @@ begin
   // Всплывающие подсказки: светлые - системные (clInfoBk, clInfoText)
   UiDefault('Hint.BG', clInfoBk, $00463F3F);
   UiDefault('Hint.Text', clInfoText, $00F0F0F0);
-  // Значки палитры компонентов на тёмном фоне (UiPaletteRecolor). Значки
-  // Delphi - 16 цветов: чёрные линии, белая заливка, серебристые кнопки,
-  // тёмно-синие детали, серые тени. Светлый цвет - исходный, на светлом
-  // фоне значки не перекрашиваются.
-  UiDefault('Palette.IconLine', clBlack, $00A5A5A5);
-  UiDefault('Palette.IconFill', clWhite, $001E1E1E);
-  UiDefault('Palette.IconFace', clSilver, $00464646);
-  UiDefault('Palette.IconAccent', clNavy, $0078B982);
+  // Значки палитры компонентов на тёмном фоне - плоские, одним цветом
+  // (UiPaletteRecolor). На светлом фоне значки не перекрашиваются, светлый
+  // цвет не используется.
+  UiDefault('Palette.Icon', clBlack, $00B0B0B0);
 end;
 procedure TForm1.LoadUiSchema;
 var
@@ -3412,14 +3408,8 @@ begin
     Result := 'Подсказки: фон'
   else if AKey = 'Hint.Text' then
     Result := 'Подсказки: текст'
-  else if AKey = 'Palette.IconLine' then
-    Result := 'Палитра компонентов: линии значков (тёмный фон)'
-  else if AKey = 'Palette.IconFill' then
-    Result := 'Палитра компонентов: заливка значков (тёмный фон)'
-  else if AKey = 'Palette.IconFace' then
-    Result := 'Палитра компонентов: кнопки в значках (тёмный фон)'
-  else if AKey = 'Palette.IconAccent' then
-    Result := 'Палитра компонентов: цвет вместо синего и метка своих (тёмный фон)'
+  else if AKey = 'Palette.Icon' then
+    Result := 'Палитра компонентов: цвет значков (тёмный фон)'
   else
     Result := AKey;
 end;
@@ -3703,58 +3693,123 @@ begin
   end;
 end;
 
-// Значок палитры компонентов для тёмного фона. Значки Delphi нарисованы
-// 16 цветами под светлый фон, и переворот яркости делал из чёрных линий
-// белые рамки, а тёмно-синий - ярко-сиреневым. Здесь основные цвета
-// заменяются по таблице (цвета IDE Palette.*), серая тень убирается -
-// становится прозрачной. Прочие цвета (красный, жёлтый, зелёный в значках
-// Win32, System) - переворотом яркости, как у остальных кнопок.
-procedure UiPaletteRecolor(Bmp: TBitmap; ATransparent, ALine, AFill, AFace,
-                           AAccent: TColor);
+// Значок палитры компонентов для тёмного фона - плоский, одним цветом.
+// Значки Delphi нарисованы 16 цветами под светлый фон, с объёмом: рамки
+// из серой тени и белого блика. Переворот яркости делал из чёрных линий
+// белые рамки, а тёмно-синий - ярко-сиреневым.
+// Здесь каждая точка либо цвета значка (AColor), либо прозрачная:
+//   - тёмные точки (чёрные линии, серые тени, синие и другие насыщенные
+//     детали) - цвет значка;
+//   - светлые (белая заливка, серебристые кнопки, блики) - прозрачные;
+//   - кроме светлой точки на внешнем краю: она касается прозрачного фона
+//     и не касается тёмной линии. Это правая и нижняя сторона вдавленной
+//     рамки (поле ввода, флажок) - у них блик снаружи, и без этого рамка
+//     осталась бы без двух сторон. Белая половина рамки TGroupBox
+//     прилегает к серой линии - она убирается, рамка остаётся в одну линию.
+//     Угол такой рамки касается тёмной линии одной стороной, но по
+//     диагонали тёмных точек у него нет (у белой линии TGroupBox - есть) -
+//     он тоже цвета значка, иначе в углах были бы дырки.
+procedure UiPaletteRecolor(Bmp: TBitmap; ATransparent, AColor: TColor);
 type
   TRGBLine = array[0..32767] of TRGBTriple;
   PRGBLine = ^TRGBLine;
+const
+  KindKey = 0;     // прозрачная
+  KindInk = 1;     // тёмная - цвет значка
+  KindLight = 2;   // светлая
 var
-  PosX, PosY: Integer;
+  PosX, PosY, StepIdx, NearX, NearY, BmpW, BmpH: Integer;
   Line: PRGBLine;
-  KeyRGB, NewRGB: Longint;
-  SrcRGB: Longint;
+  KeyRGB, InkRGB, SrcRGB: Longint;
   Hue, Light, Sat: Double;
-  Red, Green, Blue: Byte;
+  Kinds: array of Byte;
+  NearKey: Boolean;
+  InkSide, InkDiag: Integer;
+const
+  // Четыре соседа по сторонам, затем четыре по диагонали
+  StepX: array[0..7] of Integer = (1, -1, 0, 0, 1, 1, -1, -1);
+  StepY: array[0..7] of Integer = (0, 0, 1, -1, 1, -1, 1, -1);
 begin
   Bmp.PixelFormat := pf24bit;
+  BmpW := Bmp.Width;
+  BmpH := Bmp.Height;
+  if (BmpW = 0) or (BmpH = 0) then
+    Exit;
   KeyRGB := ColorToRGB(ATransparent);
-  for PosY := 0 to Bmp.Height - 1 do
+  InkRGB := ColorToRGB(AColor);
+  SetLength(Kinds, BmpW * BmpH);
+
+  // Какая точка: прозрачная, тёмная, светлая
+  for PosY := 0 to BmpH - 1 do
   begin
     Line := Bmp.ScanLine[PosY];
-    for PosX := 0 to Bmp.Width - 1 do
+    for PosX := 0 to BmpW - 1 do
     begin
       SrcRGB := RGB(Line[PosX].rgbtRed, Line[PosX].rgbtGreen,
                     Line[PosX].rgbtBlue);
       if SrcRGB = KeyRGB then
-        Continue;
-      case SrcRGB of
-        $000000:
-          NewRGB := ColorToRGB(ALine);
-        $FFFFFF:
-          NewRGB := ColorToRGB(AFill);
-        $C0C0C0:
-          NewRGB := ColorToRGB(AFace);
-        $808080:
-          NewRGB := KeyRGB;                  // тень - убрана
-        $800000, $FF0000, $808000:           // синий, тёмно-синий, метка
-          NewRGB := ColorToRGB(AAccent);
+        Kinds[PosY * BmpW + PosX] := KindKey
+      else
+      begin
+        UiRGBToHLS(Line[PosX].rgbtRed, Line[PosX].rgbtGreen,
+                   Line[PosX].rgbtBlue, Hue, Light, Sat);
+        if Light <= 0.55 then
+          Kinds[PosY * BmpW + PosX] := KindInk
+        else
+          Kinds[PosY * BmpW + PosX] := KindLight;
+      end;
+    end;
+  end;
+
+  // Перекраска: соседи смотрятся по исходной разметке Kinds
+  for PosY := 0 to BmpH - 1 do
+  begin
+    Line := Bmp.ScanLine[PosY];
+    for PosX := 0 to BmpW - 1 do
+    begin
+      case Kinds[PosY * BmpW + PosX] of
+        KindKey:
+          Continue;
+        KindInk:
+          SrcRGB := InkRGB;
       else
         begin
-          UiRGBToHLS(Line[PosX].rgbtRed, Line[PosX].rgbtGreen,
-                     Line[PosX].rgbtBlue, Hue, Light, Sat);
-          UiHLSToRGB(Hue, 1 - Light, Sat, Red, Green, Blue);
-          NewRGB := RGB(Red, Green, Blue);
+          NearKey := False;
+          InkSide := 0;
+          InkDiag := 0;
+          for StepIdx := 0 to 7 do
+          begin
+            NearX := PosX + StepX[StepIdx];
+            NearY := PosY + StepY[StepIdx];
+            if (NearX < 0) or (NearY < 0) or (NearX >= BmpW) or
+               (NearY >= BmpH) then
+            begin
+              if StepIdx < 4 then
+                NearKey := True;
+            end
+            else if Kinds[NearY * BmpW + NearX] = KindKey then
+            begin
+              if StepIdx < 4 then
+                NearKey := True;
+            end
+            else if Kinds[NearY * BmpW + NearX] = KindInk then
+            begin
+              if StepIdx < 4 then
+                Inc(InkSide)
+              else
+                Inc(InkDiag);
+            end;
+          end;
+          if NearKey and
+             ((InkSide = 0) or ((InkSide = 1) and (InkDiag = 0))) then
+            SrcRGB := InkRGB
+          else
+            SrcRGB := KeyRGB;
         end;
       end;
-      Line[PosX].rgbtRed := GetRValue(NewRGB);
-      Line[PosX].rgbtGreen := GetGValue(NewRGB);
-      Line[PosX].rgbtBlue := GetBValue(NewRGB);
+      Line[PosX].rgbtRed := GetRValue(SrcRGB);
+      Line[PosX].rgbtGreen := GetGValue(SrcRGB);
+      Line[PosX].rgbtBlue := GetBValue(SrcRGB);
     end;
   end;
 end;
@@ -3771,7 +3826,7 @@ type
     Orig: TBitmap;       // исходный значок
     Dark: TBitmap;       // с перевёрнутой яркостью; пустой - ещё не строили
     IsDark: Boolean;     // у кнопки сейчас Dark
-    // По каким цветам построен Dark (у значков палитры - цвета Palette.*);
+    // По какому цвету построен Dark (у значков палитры - Palette.Icon);
     // цвета сменились - Dark строится заново
     DarkSig: string;
     constructor Create(AOwner: TComponent); override;
@@ -3883,15 +3938,12 @@ begin
     UiGlyphNote(ABtn, 'метка создана');
   end;
 
-  // Значки палитры перекрашиваются по цветам Palette.*: их набор - подпись
+  // Значки палитры перекрашиваются цветом Palette.Icon - он подпись
   // тёмного значка
   ForPalette := DarkBack and UiIsPaletteBtn(ABtn);
   Sig := '';
   if ForPalette then
-    Sig := IntToHex(UiColor('Palette.IconLine'), 8) +
-           IntToHex(UiColor('Palette.IconFill'), 8) +
-           IntToHex(UiColor('Palette.IconFace'), 8) +
-           IntToHex(UiColor('Palette.IconAccent'), 8);
+    Sig := IntToHex(UiColor('Palette.Icon'), 8);
   // Цвета сменились - тёмный значок строится и ставится заново
   if DarkBack and Mark.IsDark and (Mark.DarkSig <> Sig) then
     Mark.IsDark := False;
@@ -3907,10 +3959,7 @@ begin
       if ForPalette then
         UiPaletteRecolor(Mark.Dark,
                          Mark.Dark.Canvas.Pixels[0, Mark.Dark.Height - 1],
-                         UiColor('Palette.IconLine'),
-                         UiColor('Palette.IconFill'),
-                         UiColor('Palette.IconFace'),
-                         UiColor('Palette.IconAccent'))
+                         UiColor('Palette.Icon'))
       else
         UiInvertLightness(Mark.Dark,
                           Mark.Dark.Canvas.Pixels[0, Mark.Dark.Height - 1]);
