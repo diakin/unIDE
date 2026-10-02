@@ -2260,6 +2260,8 @@ type
 
     procedure UpdateVisibleBounds; // Быстрый пересчёт границ видимой области
     procedure ApplyTabStops;       // Единая установка шага табуляции в RichEdit
+    procedure ApplyTabStopsEx(AWholeText: Boolean);
+    function  TabStopsInPlace: Boolean;
 
     function  SettingsFileName: string;
     function  UiSchemaFileName: string;
@@ -6315,8 +6317,9 @@ var
   // окна (меню, вкладки, строка пути), отрисовка
   T0, TA, TLeave, TSchema, TText, TMap, TTabStops, TUi, TPaint: Cardinal;
   MapFlushed: Boolean;
-  Stages, MapFrom: string;
+  Stages, MapFrom, TabWhole: string;
 begin
+  TabWhole := '';
   if (Index < 0) or (Index > WindowsItemCount - 1) then
     Exit;
   if not FWindows[Index].Used then
@@ -6362,7 +6365,7 @@ begin
   // секунды. Замер: схема 1420-1436 мс при переходе с Unit1.pas на
   // Unit1.dfm, 219-234 мс - с Unit2.pas, 0-78 мс - с небольших файлов. На
   // пустом редакторе - почти ничего; новый текст ниже заливается уже с
-  // новым шрифтом, табуляция ставится после заливки.
+  // новым шрифтом, табуляция - тоже до заливки, на пустом тексте.
   TA := GetTickCount;
   Inc(FObjOwnWrite);
   FLockHighlight := True;
@@ -6384,6 +6387,14 @@ begin
   // чем больше текста уже в контроле
   EnsureNoWrap;
   EnsureEventMask; // до заливки: с ENM_REQUESTRESIZE текст размечается сразу
+
+  // Шаг табуляции - до заливки, на пустом тексте: так это почти даром, а
+  // залитый текст перенимает оформление абзаца (проверка после заливки -
+  // TabStopsInPlace). После заливки EM_SETPARAFORMAT на весь Unit1.pas
+  // стоил ~90 мс.
+  TA := GetTickCount;
+  ApplyTabStops;
+  TTabStops := GetTickCount - TA;
 
   // Заливка текста вкладки - не правка: номера строк узлов инспектора
   // относятся к этому же тексту
@@ -6450,9 +6461,21 @@ begin
   FMapMarkersSig := FScheme.MarkersSig;
   TMap := GetTickCount - TA;
 
+  // Шаг табуляции поставлен до заливки, на пустом тексте (см. выше), и
+  // новый текст его перенял - на весь текст не ставим. Не перенял -
+  // ставим как раньше.
   TA := GetTickCount;
-  ApplyTabStops;
-  TTabStops := GetTickCount - TA;
+  if TabStopsInPlace then
+  begin
+    ApplyTabStopsEx(False);
+    TabWhole := 'перенята';
+  end
+  else
+  begin
+    ApplyTabStops;
+    TabWhole := 'на весь текст';
+  end;
+  TTabStops := TTabStops + (GetTickCount - TA);
   TA := GetTickCount;
 
   Caption := AppTitle + ' - ' + DisplayName;
@@ -6501,7 +6524,7 @@ begin
   Dbg('5364: вкладка ' + ExtractFileName(FWindows[Index].FileName) +
   ': показ ' + IntToStr(FTabShowMs) + ' мс (' + Stages + ', схема ' +
       IntToStr(TSchema) + ', текст ' + IntToStr(TText) + ', карта ' +
-      IntToStr(TMap) + ' ' + MapFrom + ', табуляция ' + IntToStr(TTabStops) + ', окно ' +
+      IntToStr(TMap) + ' ' + MapFrom + ', табуляция ' + IntToStr(TTabStops) + ' ' + TabWhole + ', окно ' +
       IntToStr(TUi) + ', отрисовка ' + IntToStr(TPaint) + ')', clGray);
 
   // Таблица окна настроек - под схему новой вкладки. Иначе OK записал бы
@@ -14706,6 +14729,14 @@ begin
 end;
 
 procedure TForm1.ApplyTabStops;
+begin
+  ApplyTabStopsEx(True);
+end;
+
+// AWholeText = False - шаг табуляции у текста уже стоит (TabStopsInPlace):
+// пересчитать только TabStopN и шрифт полосы номеров, без EM_SETPARAFORMAT
+// на весь текст (на Unit1.pas это ~90 мс)
+procedure TForm1.ApplyTabStopsEx(AWholeText: Boolean);
 var
   PF: TParaFormat;
   DC: HDC;
@@ -14753,6 +14784,8 @@ begin
 
   // EM_SETPARAFORMAT действует на выделение, поэтому временно выделяем весь
   // текст, а затем возвращаем каретку и флаг изменений на место.
+  if AWholeText then
+  begin
   WasModified := RichEdit1.Modified;
   OldStart := RichEdit1.SelStart;
   OldLen := RichEdit1.SelLength;
@@ -14766,6 +14799,7 @@ begin
     FLockHighlight := False;
     RichEdit1.Modified := WasModified;
   end;
+  end;
 
   // Номера строк должны жить в том же шрифте, что и текст редактора
   if PaintBox1 <> nil then
@@ -14775,6 +14809,74 @@ begin
     PaintBox1.Invalidate;
   end;
   RichEdit1.Invalidate;
+end;
+
+// Шаг табуляции у текста в редакторе уже нынешний: первый и последний
+// абзацы с теми же позициями табуляции, что поставил бы ApplyTabStops.
+// Так бывает после заливки текста в окно, где шаг поставлен заранее, на
+// пустом тексте (ActivateWindow): новый текст перенимает оформление
+// абзаца. Не совпало - False, и шаг ставится на весь текст как раньше.
+function TForm1.TabStopsInPlace: Boolean;
+var
+  PF: TParaFormat;
+  DC: HDC;
+  TM: TTextMetric;
+  OldFont: HGDIOBJ;
+  PixPerInch, TabTwips, CharW, TextLen, CheckIdx: Integer;
+  OldSel, CheckSel: TCharRange;
+begin
+  Result := False;
+  if not RichEdit1.HandleAllocated then
+    Exit;
+  if FTabChars < 1 then
+    Exit;
+  CharW := 8;
+  DC := GetDC(RichEdit1.Handle);
+  try
+    PixPerInch := GetDeviceCaps(DC, LOGPIXELSX);
+    OldFont := SelectObject(DC, RichEdit1.Font.Handle);
+    if GetTextMetrics(DC, TM) then
+      CharW := TM.tmAveCharWidth;
+    SelectObject(DC, OldFont);
+  finally
+    ReleaseDC(RichEdit1.Handle, DC);
+  end;
+  if PixPerInch <= 0 then
+    PixPerInch := 96;
+  if CharW < 1 then
+    CharW := 1;
+  TabTwips := MulDiv(FTabChars * CharW, 1440, PixPerInch);
+  if TabTwips <= 0 then
+    Exit;
+
+  TextLen := RichEdit1.GetTextLen;
+  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@OldSel));
+  FLockHighlight := True;
+  try
+    Result := True;
+    for CheckIdx := 0 to 1 do
+    begin
+      if CheckIdx = 0 then
+        CheckSel.cpMin := 0
+      else
+        CheckSel.cpMin := TextLen;
+      CheckSel.cpMax := CheckSel.cpMin;
+      SendMessageA(RichEdit1.Handle, EM_EXSETSEL, 0, Integer(@CheckSel));
+      FillChar(PF, SizeOf(PF), 0);
+      PF.cbSize := SizeOf(PF);
+      SendMessageA(RichEdit1.Handle, EM_GETPARAFORMAT, 0, Integer(@PF));
+      if (PF.dwMask and PFM_TABSTOPS = 0) or
+         (PF.cTabCount <> MAX_TAB_STOPS) or
+         (PF.rgxTabs[0] <> TabTwips) or (PF.rgxTabs[1] <> 2 * TabTwips) then
+      begin
+        Result := False;
+        Break;
+      end;
+    end;
+  finally
+    SendMessageA(RichEdit1.Handle, EM_EXSETSEL, 0, Integer(@OldSel));
+    FLockHighlight := False;
+  end;
 end;
 
 procedure TForm1.UpdateVisibleBounds;
