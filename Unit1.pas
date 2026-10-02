@@ -2101,6 +2101,7 @@ type
     function  ResolveErrorFile(const AName: string;
                                var AWhere: string): string;
     function  DelphiTargetDpr: string;
+    procedure NewFormTestProject(Sender: TObject);
     function  BuildProject: string;
     function  DelphiExeOf(const ADpr: string): string;
     // Папка, куда dcc32 кладёт exe проекта ADpr (ключ -E). ARoot - папка
@@ -34678,6 +34679,28 @@ begin
                 'проект Delphi или его .dpr.');
     Exit;
   end;
+
+  // Цель - сам редактор (имя .dpr совпадает с именем exe, как в
+  // IsOwnProject). Форму можно вписать и в него, но для пробы обычно
+  // нужен отдельный проект - спрашиваем.
+  if CompareText(ChangeFileExt(ExtractFileName(Dpr), ''),
+                 ChangeFileExt(ExtractFileName(Application.ExeName), '')) = 0 then
+    case MessageDlg('27238:New Form: текущий проект - сам редактор (' +
+                    ExtractFileName(Dpr) + ').'#13#10#13#10 +
+                    'Да - создать отдельный тестовый проект с новой ' +
+                    'формой.'#13#10 +
+                    'Нет - добавить форму в ' + ExtractFileName(Dpr) + '.',
+                    mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
+      mrYes:
+        begin
+          NewFormTestProject(Sender);
+          Exit;
+        end;
+      mrNo:
+        ; // дальше - как для любого проекта
+    else
+      Exit;
+    end;
   WinIdx := IndexOfWindowByFile(Dpr);
   if WinIdx >= 0 then
   begin
@@ -34815,6 +34838,123 @@ begin
   if WinIdx >= 0 then
     ReloadWindowFromDisk(WinIdx, False);
   OpenNamedFile(PasFile);
+  DesignFormClick(Sender);
+end;
+
+// New Form, когда текущий проект - сам редактор, и выбран отдельный
+// проект: <projects>\TestFormN с программой TestFormN.dpr и одной пустой
+// формой Form1 (Unit1.pas/.dfm), как в заготовке New Project. Проект
+// регистрируется и становится текущим - сборка и Run дальше идут для него,
+// модуль открывается в конструкторе форм.
+procedure TForm1.NewFormTestProject(Sender: TObject);
+var
+  Num: Integer;
+  Nm, Dir, PrjFile: string;
+  SL: TStringList;
+begin
+  // Новый проект закроет окна текущего - сначала несохранённое
+  if not ConfirmSaveAll then
+    Exit;
+
+  if FProjectReg = nil then
+    LoadProjectReg;
+  Num := 1;
+  while DirectoryExists(ProjectsDir + 'TestForm' + IntToStr(Num)) or
+        (FProjectReg.Values['TestForm' + IntToStr(Num)] <> '') do
+    Inc(Num);
+  Nm := 'TestForm' + IntToStr(Num);
+  Dir := ProjectsDir + Nm + '\';
+  if not ForceDirectories(Dir) then
+  begin
+    ShowMessage('27239:New Form: не удалось создать папку ' + Dir);
+    Exit;
+  end;
+  PrjFile := Dir + Nm + '.prj';
+
+  SL := TStringList.Create;
+  try
+    SL.Add('program ' + Nm + ';');
+    SL.Add('');
+    SL.Add('uses');
+    SL.Add('  Forms,');
+    SL.Add('  Unit1 in ''Unit1.pas'' {Form1};');
+    SL.Add('');
+    SL.Add('{$R *.res}');
+    SL.Add('');
+    SL.Add('begin');
+    SL.Add('  Application.Initialize;');
+    SL.Add('  Application.CreateForm(TForm1, Form1);');
+    SL.Add('  Application.Run;');
+    SL.Add('end.');
+    SL.SaveToFile(Dir + Nm + '.dpr');
+
+    SL.Clear;
+    SL.Add('unit Unit1;');
+    SL.Add('');
+    SL.Add('interface');
+    SL.Add('');
+    SL.Add('uses');
+    SL.Add('  Windows, Messages, SysUtils, Variants, Classes, Graphics,');
+    SL.Add('  Controls, Forms, Dialogs;');
+    SL.Add('');
+    SL.Add('type');
+    SL.Add('  TForm1 = class(TForm)');
+    SL.Add('  private');
+    SL.Add('    { Private declarations }');
+    SL.Add('  public');
+    SL.Add('    { Public declarations }');
+    SL.Add('  end;');
+    SL.Add('');
+    SL.Add('var');
+    SL.Add('  Form1: TForm1;');
+    SL.Add('');
+    SL.Add('implementation');
+    SL.Add('');
+    SL.Add('{$R *.dfm}');
+    SL.Add('');
+    SL.Add('end.');
+    SL.SaveToFile(Dir + 'Unit1.pas');
+
+    SL.Clear;
+    SL.Add('object Form1: TForm1');
+    SL.Add('  Left = 200');
+    SL.Add('  Top = 120');
+    SL.Add('  Width = 640');
+    SL.Add('  Height = 480');
+    SL.Add('  Caption = ''Form1''');
+    SL.Add('  Color = clBtnFace');
+    SL.Add('  Font.Charset = DEFAULT_CHARSET');
+    SL.Add('  Font.Color = clWindowText');
+    SL.Add('  Font.Height = -11');
+    SL.Add('  Font.Name = ''MS Sans Serif''');
+    SL.Add('  Font.Style = []');
+    SL.Add('  OldCreateOrder = False');
+    SL.Add('  PixelsPerInch = 96');
+    SL.Add('  TextHeight = 13');
+    SL.Add('end');
+    SL.SaveToFile(Dir + 'Unit1.dfm');
+
+    // Без .res dcc32 останавливается на {$R *.res}
+    if not WriteEmptyRes(Dir + Nm + '.res') then
+      ShowMessage('27241:New Form: не удалось создать ' + Nm + '.res');
+
+    SL.Clear;
+    SL.Add('[Project]');
+    SL.Add('Type=Delphi');
+    SL.Add('Target=' + Dir + Nm + '.dpr');
+    SL.SaveToFile(PrjFile);
+  finally
+    SL.Free;
+  end;
+
+  RegisterProject(Nm, PrjFile);
+  RebuildProjectsMenu;
+  LoadProject(Nm);
+  if CompareText(FCurrentProject, Nm) <> 0 then
+    Exit; // загрузку отменили - проект остаётся в списке проектов
+  LogRaw('New Form: тестовый проект ' + Nm + ' создан в ' + Dir);
+  OpenNamedFile(Dir + 'Unit1.pas');
+  SaveProjectTo(Nm);
   DesignFormClick(Sender);
 end;
 
