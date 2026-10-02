@@ -15636,6 +15636,61 @@ begin
   FreeAndNil(FScheme);
 end;
 
+type
+  // Замер обработки сообщений окна: перерисовка, стирание фона, смена
+  // размера и места. Дольше MsgTimerLimit - строка 17160 в HiLite log с
+  // именем окна. Поставлен на окна правой панели, редактор и форму: при
+  // резком сужении окна с открытым инспектором всё замирало на 100-300
+  // мс, и по коду не видно, кто их забирает.
+  TMsgTimer = class
+  private
+    FCtl: TControl;
+    FOldProc: TWndMethod;
+    FTitle: string;
+    procedure TimedProc(var Message: TMessage);
+  public
+    constructor Create(ACtl: TControl; const ATitle: string);
+  end;
+
+const
+  MsgTimerLimit = 30;
+
+constructor TMsgTimer.Create(ACtl: TControl; const ATitle: string);
+begin
+  inherited Create;
+  FCtl := ACtl;
+  FTitle := ATitle;
+  FOldProc := ACtl.WindowProc;
+  ACtl.WindowProc := TimedProc;
+end;
+
+procedure TMsgTimer.TimedProc(var Message: TMessage);
+var
+  StartTick, Spent: Cardinal;
+  MsgName: string;
+begin
+  StartTick := GetTickCount;
+  FOldProc(Message);
+  Spent := GetTickCount - StartTick;
+  if Spent < MsgTimerLimit then
+    Exit;
+  case Message.Msg of
+    WM_PAINT: MsgName := 'WM_PAINT';
+    WM_ERASEBKGND: MsgName := 'WM_ERASEBKGND';
+    WM_SIZE: MsgName := 'WM_SIZE';
+    WM_WINDOWPOSCHANGED: MsgName := 'WM_WINDOWPOSCHANGED';
+    WM_NCPAINT: MsgName := 'WM_NCPAINT';
+    CN_NOTIFY: MsgName := 'CN_NOTIFY';
+    WM_NOTIFY: MsgName := 'WM_NOTIFY';
+  else
+    MsgName := '$' + IntToHex(Message.Msg, 4);
+  end;
+  // При закрытии программы лог уже разрушается - не пишем
+  if (Form1 <> nil) and not (csDestroying in Form1.ComponentState) then
+    Form1.Dbg(Format('17160: %s - %s %d мс', [FTitle, MsgName, Spent]),
+              clNavy);
+end;
+
 procedure TForm1.FormCreate(Sender: TObject);
 var
   SampleBmp: TBitmap; // временный холст для замера ширины панелей
@@ -16022,6 +16077,16 @@ OpenDialog1.FilterIndex := 1; // по умолчанию показываем в
   BuildScrollBars;
   BuildRightPanel;
   Self.OnResize := FormResizeEvent;
+
+  // Замер долгих сообщений (строка 17160 HiLite log). Объекты замера
+  // принадлежат форме по времени жизни: живут до выхода из программы.
+  TMsgTimer.Create(FObjTree, 'дерево инспектора');
+  TMsgTimer.Create(FObjProps, 'свойства инспектора');
+  TMsgTimer.Create(FObjEvents, 'события инспектора');
+  TMsgTimer.Create(FRightPages, 'вкладки правой панели');
+  TMsgTimer.Create(FRightPanel, 'правая панель');
+  TMsgTimer.Create(RichEdit1, 'редактор');
+  TMsgTimer.Create(Self, 'главное окно');
 end;
 
 procedure TForm1.FormDestroy(Sender: TObject);
