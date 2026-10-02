@@ -902,6 +902,7 @@ type
     FDsgPlaceParent: string;
     FDsgPlacePt: TPoint;
     FDsgEventName: string; // двойной щелчок: компонент, обработчик которого открыть
+    FDsgEventProp: string; // и его событие; '' - основное (OnClick и т.п.)
     // Текст формы и модуля на время мастера меню - по ним DsgMenuNameFree;
     // имя последнего вставленного меню - выделить после закрытия мастера
     FMenuWizDfm, FMenuWizPas, FMenuWizLast: string;
@@ -1914,7 +1915,7 @@ type
     procedure WMDbgDone(var Msg: TMessage); message WM_USER + 321;
     procedure PaintBox1MouseDown(Sender: TObject; Button: TMouseButton;
                                  Shift: TShiftState; X, Y: Integer);
-    procedure DsgDefaultEvent(const AName: string);
+    procedure DsgDefaultEvent(const AName, AEvent: string);
     function  WindowOfFile(const AFile: string): Integer;
     procedure ObjBeginEdit;
     procedure RegisterVclClasses;
@@ -18720,6 +18721,9 @@ FDsgUndo := TStringList.Create;
 
   FObjEvents.Columns[0].Caption := 'Событие';
   FObjEvents.Columns[1].Caption := 'Обработчик';
+  // События без обработчика - серым, как свойства не из .dfm
+  FObjEvents.OnCustomDrawItem := ObjPropsDrawItem;
+  FObjEvents.OnCustomDrawSubItem := ObjPropsDrawSubItem;
 end;
 
 procedure TForm1.ClearDfmNodes;
@@ -26496,6 +26500,7 @@ begin
   if AName = '' then
     Exit;
   FDsgEventName := AName;
+  FDsgEventProp := '';
   PostMessage(Handle, WM_USER + 314, 0, 0);
 end;
 
@@ -26590,12 +26595,14 @@ end;
 
 procedure TForm1.WMDsgEvent(var Msg: TMessage);
 var
-  Nm: string;
+  Nm, Ev: string;
 begin
   Nm := FDsgEventName;
+  Ev := FDsgEventProp;
   FDsgEventName := '';
+  FDsgEventProp := '';
   if (Nm <> '') and (FDesigner <> nil) then
-    DsgDefaultEvent(Nm);
+    DsgDefaultEvent(Nm, Ev);
 end;
 
 // Обработчик основного события компонента, как по двойному щелчку в Delphi.
@@ -26605,12 +26612,15 @@ end;
 // с пустыми begin/end. Метод с таким именем в модуле уже есть - он только
 // назначается. Ctrl+Z в конструкторе откатывает оба файла одним шагом.
 // Курсор - на пустую строку тела.
-procedure TForm1.DsgDefaultEvent(const AName: string);
+// AEvent - какое событие (OnEnter ...), из таблицы событий инспектора;
+// '' - основное событие класса.
+procedure TForm1.DsgDefaultEvent(const AName, AEvent: string);
 var
   Dfm, NewDfm, PasFile, Pas, NewPas, Root, ClsNm, Ev, Meth, Decl, Pat: string;
   C: TClass;
   L: TStringList;
   P, Line: Integer;
+  PI: PPropInfo;
 begin
   Dfm := DsgGetText;
   Root := DfmRootClass(Dfm);
@@ -26628,7 +26638,18 @@ begin
     end;
   end;
 
-  Ev := DsgDefaultEventOf(C);
+  if AEvent <> '' then
+  begin
+    Ev := AEvent;
+    PI := GetPropInfo(C, Ev);
+    if (PI = nil) or (PI^.PropType^^.Kind <> tkMethod) then
+    begin
+      ShowMessage('21652:У ' + C.ClassName + ' нет события ' + Ev + '.');
+      Exit;
+    end;
+  end
+  else
+    Ev := DsgDefaultEventOf(C);
   if Ev = '' then
   begin
     ShowMessage('21654:У ' + C.ClassName + ' нет событий.');
@@ -27531,6 +27552,8 @@ var
   TI: PTypeInfo;
   W: Boolean;
   StartTick, StageTick, TList, TDefaults, TEvents, TCodeCol: Cardinal;
+  EvCount: Integer;
+  EvList: PPropList;
 begin
   StartTick := GetTickCount;
   TList := 0;
@@ -27657,6 +27680,39 @@ begin
       It.Data := Pointer(Obj.EvN.Objects[I]);
     end;
 
+    // Остальные события класса - без обработчика, серым (Data = -1), как в
+    // инспекторе Delphi. Двойной щелчок по такому создаёт обработчик
+    // (ObjEventsDblClick). У созданных в коде и у снимков - только то, что
+    // назначено: обработчик пишется в .dfm.
+    if not Obj.IsSnap and not Obj.IsLink and not Obj.FromCode then
+    begin
+      Cls := RttiClassFor(Obj);
+      if Cls <> nil then
+      begin
+        EvCount := GetPropList(Cls.ClassInfo, [tkMethod], nil);
+        if EvCount > 0 then
+        begin
+          GetMem(EvList, EvCount * SizeOf(PPropInfo));
+          try
+            GetPropList(Cls.ClassInfo, [tkMethod], EvList);
+            for I := 0 to EvCount - 1 do
+            begin
+              Nm := EvList^[I]^.Name;
+              if Obj.EvN.IndexOf(Nm) >= 0 then
+                Continue;
+              It := FObjEvents.Items.Add;
+              It.Caption := Nm;
+              It.SubItems.Add('');
+              It.Data := Pointer(-1);
+            end;
+          finally
+            FreeMem(EvList);
+          end;
+          FObjEvents.AlphaSort;
+        end;
+      end;
+    end;
+
     // Выделена группа в конструкторе - таблица по группе
     ObjGroupView(Obj);
     TEvents := GetTickCount - StageTick;
@@ -27707,12 +27763,31 @@ procedure TForm1.ObjEventsDblClick(Sender: TObject);
 var
   Handler, Pas, Pat: string;
   P, Line, I: Integer;
+  Obj: TDfmNode;
 begin
   if (FObjEvents.Selected = nil) or (FObjEvents.Selected.SubItems.Count = 0) then
     Exit;
   Handler := FObjEvents.Selected.SubItems[0];
   if Handler = '' then
+  begin
+    // Обработчика нет - создаём, как двойной щелчок в конструкторе:
+    // строка в .dfm, объявление и пустое тело в .pas. Через очередь
+    // сообщений: создание перестраивает инспектор, а этот щелчок - его же.
+    Obj := TDfmNode(FObjCurNode);
+    if (Obj = nil) or (Obj.Name = '') then
+      Exit;
+    if (FDesigner = nil) or (CompareText(FObjDfmFile, FDsgDfm) <> 0) then
+    begin
+      ShowMessage('22150:Обработчик создаётся при открытом конструкторе ' +
+                  'этой формы: откройте ' + ExtractFileName(FObjDfmFile) +
+                  ' кнопкой Design form и повторите.');
+      Exit;
+    end;
+    FDsgEventName := Obj.Name;
+    FDsgEventProp := FObjEvents.Selected.Caption;
+    PostMessage(Handle, WM_USER + 314, 0, 0);
     Exit;
+  end;
 
   // Сначала модуль формы рядом с .dfm. Его нет (показан только снимок) -
   // ищем среди открытых окон тот, где есть реализация TКласс.Обработчик
@@ -33926,7 +34001,9 @@ end;
 // Откуда берутся модули (первое место, где есть UiTheme.pas):
 //   1. папка из editor.ini, [UiLib] Source=... - исходники IDE, если
 //      программа собирается не туда, где они лежат;
-//   2. папка программы.
+//   2. папка программы;
+//   3. папка .dpr зарегистрированного проекта самого редактора;
+//   4. папки выше папки программы, до трёх уровней.
 // Оттуда они копируются в UiLib рядом с программой, если там их ещё нет
 // или они старше. Не нашлось нигде - берётся то, что уже лежит в UiLib
 // (можно положить руками). Что вышло - строкой в Compilation log.
@@ -33963,6 +34040,46 @@ begin
   end;
   if (SourceDir = '') and FileExists(ExeDir + 'UiTheme.pas') then
     SourceDir := ExeDir;
+
+  // 3. Папка проекта самого редактора: зарегистрированный проект, цель
+  //    которого - .dpr с именем программы. Exe при этом собирается в
+  //    Output, и рядом с ним исходников нет.
+  if SourceDir = '' then
+  begin
+    if FProjectReg = nil then
+      LoadProjectReg;
+    for Index := 0 to FProjectReg.Count - 1 do
+    begin
+      SrcFile := ProjectTargetOf(FProjectReg.Names[Index]);
+      if (SrcFile <> '') and
+         (CompareText(ChangeFileExt(ExtractFileName(SrcFile), ''),
+                      ChangeFileExt(ExtractFileName(Application.ExeName),
+                                    '')) = 0) and
+         FileExists(ExtractFilePath(SrcFile) + 'UiTheme.pas') then
+      begin
+        SourceDir := ExtractFilePath(SrcFile);
+        Break;
+      end;
+    end;
+  end;
+
+  // 4. Папки выше программы, до трёх уровней (exe в Output\ под исходниками)
+  if SourceDir = '' then
+  begin
+    SrcFile := ExcludeTrailingPathDelimiter(ExeDir);
+    for Index := 1 to 3 do
+    begin
+      DstFile := ExtractFileDir(SrcFile);
+      if (DstFile = '') or (CompareText(DstFile, SrcFile) = 0) then
+        Break;
+      SrcFile := DstFile;
+      if FileExists(IncludeTrailingPathDelimiter(SrcFile) + 'UiTheme.pas') then
+      begin
+        SourceDir := IncludeTrailingPathDelimiter(SrcFile);
+        Break;
+      end;
+    end;
+  end;
 
   Found := 0;
   Copied := 0;
