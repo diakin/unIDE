@@ -54,14 +54,18 @@ type
     // Классы загруженных пакетов: имя -> TClass в Objects
     FClassMap: TStringList;
     function GetComp(AIndex: Integer): TDsgForeignComp;
+    function LoadCache(const ACacheFile, ASig: string): Boolean;
+    procedure SaveCache(const ACacheFile, ASig: string);
     function GetCount: Integer;
   public
     constructor Create;
     destructor Destroy; override;
     procedure Clear;
     // Прочитать из реестра и пакетов. ADelphiRoot - папка установки Delphi
-    // (без Bin), '' - взять из реестра.
-    procedure Scan(const ADelphiRoot: string);
+    // (без Bin), '' - взять из реестра. ACacheFile - файл кэша: если
+    // пакеты, их даты, раскладка палитры и exe редактора те же, список
+    // берётся из него без чтения пакетов; '' - без кэша.
+    procedure Scan(const ADelphiRoot, ACacheFile: string);
     // Номер компонента с классом AClass; -1 - нет на палитре
     function IndexOfClass(const AClass: string): Integer;
     // Класс компонента из его runtime-пакета; nil - пакет не загрузился
@@ -281,19 +285,155 @@ begin
   Result := FComps.Count;
 end;
 
-procedure TDsgForeignList.Scan(const ADelphiRoot: string);
+// Подпись установки: пакеты Known Packages (путь, описание, дата файла),
+// раскладка палитры и дата exe редактора (от неё зависит, какие классы в
+// него вкомпилированы). Совпала с записанной в кэше - список из кэша.
+function ScanSignature(APkgPaths, APkgDescrs, APageNames,
+                       APageTexts: TStrings): string;
+var
+  Hash: Cardinal;
+  ItemIdx: Integer;
+
+  procedure AddText(const AText: string);
+  var
+    CharIdx: Integer;
+  begin
+    for CharIdx := 1 to Length(AText) do
+      Hash := (Hash xor Ord(AText[CharIdx])) * 16777619;
+    Hash := (Hash xor 10) * 16777619;
+  end;
+
+begin
+  Hash := 2166136261;
+  for ItemIdx := 0 to APkgPaths.Count - 1 do
+  begin
+    AddText(APkgPaths[ItemIdx]);
+    AddText(APkgDescrs[ItemIdx]);
+    AddText(IntToStr(FileAge(APkgPaths[ItemIdx])));
+  end;
+  for ItemIdx := 0 to APageNames.Count - 1 do
+  begin
+    AddText(APageNames[ItemIdx]);
+    AddText(APageTexts[ItemIdx]);
+  end;
+  AddText(IntToStr(FileAge(ParamStr(0))));
+  Result := IntToHex(Hash, 8) + '-' + IntToStr(APkgPaths.Count) + '-' +
+            IntToStr(APageNames.Count);
+end;
+
+// Поле строки кэша "a|b|c": номер AIndex с нуля
+function CacheField(const ALine: string; AIndex: Integer): string;
+var
+  Rest: string;
+  BarPos, FieldIdx: Integer;
+begin
+  Result := '';
+  Rest := ALine;
+  for FieldIdx := 0 to AIndex do
+  begin
+    BarPos := Pos('|', Rest);
+    if BarPos = 0 then
+      BarPos := Length(Rest) + 1;
+    Result := Copy(Rest, 1, BarPos - 1);
+    Delete(Rest, 1, BarPos);
+  end;
+end;
+
+function TDsgForeignList.LoadCache(const ACacheFile, ASig: string): Boolean;
+var
+  Lines: TStringList;
+  LineIdx: Integer;
+  Line: string;
+  Comp: TDsgForeignComp;
+begin
+  Result := False;
+  if (ACacheFile = '') or not FileExists(ACacheFile) then
+    Exit;
+  Lines := TStringList.Create;
+  try
+    try
+      Lines.LoadFromFile(ACacheFile);
+    except
+      Exit;
+    end;
+    if (Lines.Count = 0) or (Lines[0] <> 'sig=' + ASig) then
+      Exit;
+    for LineIdx := 1 to Lines.Count - 1 do
+    begin
+      Line := Lines[LineIdx];
+      if Copy(Line, 1, 5) = 'page=' then
+        FPages.Add(Copy(Line, 6, MaxInt))
+      else if Copy(Line, 1, 4) = 'lib=' then
+        FIconLibs.Add(Copy(Line, 5, MaxInt))
+      else if Copy(Line, 1, 4) = 'log=' then
+        FLog.Add(Copy(Line, 5, MaxInt))
+      else if Copy(Line, 1, 5) = 'comp=' then
+      begin
+        Line := Copy(Line, 6, MaxInt);
+        Comp := TDsgForeignComp.Create;
+        Comp.PageName := CacheField(Line, 0);
+        Comp.CompUnit := CacheField(Line, 1);
+        Comp.CompClass := CacheField(Line, 2);
+        Comp.RuntimePkg := CacheField(Line, 3);
+        Comp.PkgDescr := CacheField(Line, 4);
+        FComps.Add(Comp);
+      end;
+    end;
+    Result := True;
+  finally
+    Lines.Free;
+  end;
+end;
+
+procedure TDsgForeignList.SaveCache(const ACacheFile, ASig: string);
+var
+  Lines: TStringList;
+  ItemIdx: Integer;
+  Comp: TDsgForeignComp;
+begin
+  if ACacheFile = '' then
+    Exit;
+  Lines := TStringList.Create;
+  try
+    Lines.Add('sig=' + ASig);
+    for ItemIdx := 0 to FPages.Count - 1 do
+      Lines.Add('page=' + FPages[ItemIdx]);
+    for ItemIdx := 0 to FIconLibs.Count - 1 do
+      Lines.Add('lib=' + FIconLibs[ItemIdx]);
+    for ItemIdx := 0 to FLog.Count - 1 do
+      Lines.Add('log=' + FLog[ItemIdx]);
+    for ItemIdx := 0 to FComps.Count - 1 do
+    begin
+      Comp := TDsgForeignComp(FComps[ItemIdx]);
+      Lines.Add('comp=' + Comp.PageName + '|' + Comp.CompUnit + '|' +
+                Comp.CompClass + '|' + Comp.RuntimePkg + '|' +
+                StringReplace(Comp.PkgDescr, '|', '/', [rfReplaceAll]));
+    end;
+    try
+      ForceDirectories(ExtractFilePath(ACacheFile));
+      Lines.SaveToFile(ACacheFile);
+    except
+      // кэш не записался - в следующий раз список прочитается заново
+    end;
+  finally
+    Lines.Free;
+  end;
+end;
+
+procedure TDsgForeignList.Scan(const ADelphiRoot, ACacheFile: string);
 var
   Reg: TRegistry;
-  PkgNames, PageNames, Units, Requires, Items: TStringList;
+  RegNames, PkgPaths, PkgDescrs, PageNames, PageTexts: TStringList;
+  Units, Requires, Items: TStringList;
   // модуль (прописными) -> пакет; Objects - номер описания в Descrs
   UnitPkg: TStringList;
   Descrs, Seen: TStringList;
-  RootDir, BinKey, PkgPath, ReqPath, Descr, PageText, Item: string;
-  UnitNm, ClassNm: string;
-  PkgIdx, ReqIdx, UnitIdx, PageIdx, ItemIdx, DotPos, Found, DescrIdx: Integer;
-  DataModule: HMODULE;
+  RootDir, BinKey, PkgPath, ReqPath, Item, Sig: string;
+  UnitNm, ClassNm, PageText: string;
+  PkgIdx, ReqIdx, PageIdx, ItemIdx, DotPos, Found, DescrIdx: Integer;
   Comp: TDsgForeignComp;
   PageHasComps: Boolean;
+  StartTick: Cardinal;
 
   // Модули пакета APath - в UnitPkg; False - пакет не открылся
   function AddPackageUnits(const APath: string; ADescrIdx: Integer): Boolean;
@@ -319,6 +459,7 @@ var
 
 begin
   Clear;
+  StartTick := GetTickCount;
   RootDir := ADelphiRoot;
   if RootDir = '' then
     RootDir := DsgDelphiRootDir;
@@ -326,8 +467,11 @@ begin
   BinKey := SameDirKey(RootDir + '\Bin');
 
   Reg := TRegistry.Create(KEY_READ);
-  PkgNames := TStringList.Create;
+  RegNames := TStringList.Create;
+  PkgPaths := TStringList.Create;
+  PkgDescrs := TStringList.Create;
   PageNames := TStringList.Create;
+  PageTexts := TStringList.Create;
   Units := TStringList.Create;
   Requires := TStringList.Create;
   Items := TStringList.Create;
@@ -337,36 +481,73 @@ begin
   try
     Reg.RootKey := HKEY_CURRENT_USER;
 
-    // 1. Сторонние пакеты и их модули
+    // Реестр: установленные пакеты (кроме пакетов самой Delphi) и раскладка
+    // палитры - быстро, без чтения пакетов
     if not Reg.OpenKeyReadOnly(RegDelphi + '\Known Packages') then
     begin
       FLog.Add('в реестре нет ' + RegDelphi + '\Known Packages');
       Exit;
     end;
-    Reg.GetValueNames(PkgNames);
-    for PkgIdx := 0 to PkgNames.Count - 1 do
+    Reg.GetValueNames(RegNames);
+    for PkgIdx := 0 to RegNames.Count - 1 do
     begin
-      PkgPath := StringReplace(PkgNames[PkgIdx], '$(DELPHI)', RootDir,
+      PkgPath := StringReplace(RegNames[PkgIdx], '$(DELPHI)', RootDir,
                                [rfReplaceAll, rfIgnoreCase]);
       if SameDirKey(ExtractFilePath(PkgPath)) = BinKey then
-        Continue;                         // пакет самой Delphi
-      Descr := Reg.ReadString(PkgNames[PkgIdx]);
+        Continue;
+      PkgPaths.Add(PkgPath);
+      PkgDescrs.Add(Reg.ReadString(RegNames[PkgIdx]));
+    end;
+    Reg.CloseKey;
+    if not Reg.OpenKeyReadOnly(RegDelphi + '\Palette') then
+    begin
+      FLog.Add('в реестре нет ' + RegDelphi + '\Palette');
+      Exit;
+    end;
+    Reg.GetValueNames(RegNames);
+    for PageIdx := 0 to RegNames.Count - 1 do
+    begin
+      try
+        PageText := Reg.ReadString(RegNames[PageIdx]);
+      except
+        Continue;
+      end;
+      PageNames.Add(RegNames[PageIdx]);
+      PageTexts.Add(PageText);
+    end;
+    Reg.CloseKey;
+
+    Sig := ScanSignature(PkgPaths, PkgDescrs, PageNames, PageTexts);
+    if LoadCache(ACacheFile, Sig) then
+    begin
+      FLog.Add('из кэша, ' + IntToStr(GetTickCount - StartTick) + ' мс');
+      Exit;
+    end;
+
+    // 1. Модули сторонних пакетов: design-пакет и требуемые им runtime-
+    //    пакеты не из Bin
+    for PkgIdx := 0 to PkgPaths.Count - 1 do
+    begin
+      PkgPath := PkgPaths[PkgIdx];
       if not FileExists(PkgPath) then
       begin
         FLog.Add('пакета нет на диске: ' + PkgPath);
         Continue;
       end;
-      DescrIdx := Descrs.Add(Descr);
+      DescrIdx := Descrs.Add(PkgDescrs[PkgIdx]);
       if not AddPackageUnits(PkgPath, DescrIdx) then
       begin
         FLog.Add('пакет не открылся: ' + PkgPath);
         Continue;
       end;
       FIconLibs.Add(PkgPath);
-      // Требуемые runtime-пакеты не из Bin - их модули тоже
       Items.Assign(Requires);
       for ReqIdx := 0 to Items.Count - 1 do
       begin
+        // Пакеты Delphi (rtl70, vcl70, designide70 ...) не ищем: их модули
+        // не нужны, а поиск по PATH - самое долгое здесь
+        if FileExists(RootDir + '\Bin\' + Items[ReqIdx]) then
+          Continue;
         ReqPath := FindPackage(Items[ReqIdx], ExtractFilePath(PkgPath));
         if (ReqPath = '') or
            (SameDirKey(ExtractFilePath(ReqPath)) = BinKey) then
@@ -377,23 +558,11 @@ begin
         AddPackageUnits(ReqPath, DescrIdx);
       end;
     end;
-    Reg.CloseKey;
 
     // 2. Раскладка палитры: компоненты из этих модулей
-    if not Reg.OpenKeyReadOnly(RegDelphi + '\Palette') then
-    begin
-      FLog.Add('в реестре нет ' + RegDelphi + '\Palette');
-      Exit;
-    end;
-    Reg.GetValueNames(PageNames);
     for PageIdx := 0 to PageNames.Count - 1 do
     begin
-      try
-        PageText := Reg.ReadString(PageNames[PageIdx]);
-      except
-        Continue;
-      end;
-      SplitItems(PageText, Items);
+      SplitItems(PageTexts[PageIdx], Items);
       PageHasComps := False;
       for ItemIdx := 0 to Items.Count - 1 do
       begin
@@ -423,8 +592,11 @@ begin
     FLog.Add('пакетов ' + IntToStr(Descrs.Count) + ', модулей ' +
              IntToStr(UnitPkg.Count) + ', страниц ' + IntToStr(FPages.Count) +
              ', компонентов ' + IntToStr(FComps.Count));
-    for UnitIdx := 0 to FPages.Count - 1 do
-      FLog.Add('страница ' + FPages[UnitIdx]);
+    for PageIdx := 0 to FPages.Count - 1 do
+      FLog.Add('страница ' + FPages[PageIdx]);
+    SaveCache(ACacheFile, Sig);
+    FLog.Add('прочитано из пакетов, ' + IntToStr(GetTickCount - StartTick) +
+             ' мс; записано в кэш');
   finally
     Seen.Free;
     Descrs.Free;
@@ -432,8 +604,11 @@ begin
     Items.Free;
     Requires.Free;
     Units.Free;
+    PageTexts.Free;
     PageNames.Free;
-    PkgNames.Free;
+    PkgDescrs.Free;
+    PkgPaths.Free;
+    RegNames.Free;
     Reg.Free;
   end;
 end;

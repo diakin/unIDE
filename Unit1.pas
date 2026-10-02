@@ -24538,7 +24538,8 @@ begin
     RootDir := ExtractFilePath(ExcludeTrailingPathDelimiter(BinDir));
   StageTick := GetTickCount;
   try
-    FDsgForeign.Scan(RootDir);
+    FDsgForeign.Scan(RootDir, ExtractFilePath(Application.ExeName) +
+                     'dsgcache\palette_foreign.txt');
   except
     on E: Exception do
     begin
@@ -24577,7 +24578,7 @@ begin
   for LogIdx := 0 to FDsgForeign.Log.Count - 1 do
     Dbg('21880: палитра, сторонние: ' + FDsgForeign.Log[LogIdx], clGray);
   Dbg('21880: палитра, сторонние: ' + IntToStr(GetTickCount - StartTick) +
-      ' мс (реестр и пакеты ' + IntToStr(ScanTick) + ', пакеты значков ' +
+      ' мс (список ' + IntToStr(ScanTick) + ', пакеты значков ' +
       IntToStr(LibsTick) + ', кнопки ' +
       IntToStr(GetTickCount - StageTick) + ')', clGray);
 end;
