@@ -894,6 +894,9 @@ type
     FDsgPlaceCls: TComponentClass;
     // Вставка стороннего компонента: "Модуль.Класс" (класса в редакторе нет)
     FDsgPlaceForeign: string;
+    // Описание проекта из активной вкладки для сборки (BuildProject)
+    FBuildPrjName: string;
+    FBuildPrjFile: string;
     // Сторонний класс -> класс-аналог из Delphi (DsgMapClass); nil в
     // Objects - аналога нет, заглушка
     FDsgAnalogs: TStringList;
@@ -2099,6 +2102,7 @@ type
     function  ResolveErrorFile(const AName: string;
                                var AWhere: string): string;
     function  DelphiTargetDpr: string;
+    function  BuildProject: string;
     function  DelphiExeOf(const ADpr: string): string;
     // Папка, куда dcc32 кладёт exe проекта ADpr (ключ -E). ARoot - папка
     // Delphi для $(DELPHI) в ExePath настроек; '' - без подстановки.
@@ -7560,11 +7564,46 @@ begin
   SaveProjectReg;
 end;
 
+// Проект, который собирается и запускается (сборка, Run, отладчик, New
+// Form). Активная вкладка - описание проекта (.prj): собирается он, даже
+// если текущий проект другой. Иначе - текущий проект. Описания из вкладки
+// может не быть в реестре проектов, или реестр для того же имени указывает
+// в другое место: тогда путь к нему подставляет ProjectFileName
+// (FBuildPrjName, FBuildPrjFile) - до следующего вызова.
+function TForm1.BuildProject: string;
+var
+  TabPrj, PrjName: string;
+begin
+  FBuildPrjName := '';
+  FBuildPrjFile := '';
+  Result := FCurrentProject;
+  TabPrj := FCurrentFileName;
+  if (TabPrj = '') or
+     (CompareText(ExtractFileExt(TabPrj), '.prj') <> 0) or
+     not FileExists(TabPrj) then
+    Exit;
+  PrjName := ChangeFileExt(ExtractFileName(TabPrj), '');
+  if CompareText(ExpandFileName(ProjectFileName(PrjName)),
+                 ExpandFileName(TabPrj)) <> 0 then
+  begin
+    FBuildPrjName := PrjName;
+    FBuildPrjFile := ExpandFileName(TabPrj);
+  end;
+  Result := PrjName;
+end;
+
 // Путь к файлу описания проекта. Сначала по реестру - там путь к папке
 // самого проекта; если проекта в реестре нет, берётся прежнее место,
 // projects\<Имя>.prj, чтобы старые проекты открывались как раньше.
 function TForm1.ProjectFileName(const AName: string): string;
 begin
+  // Описание проекта из активной вкладки, которого нет в реестре (или
+  // реестр для этого имени указывает в другое место) - см. BuildProject
+  if (FBuildPrjName <> '') and (CompareText(AName, FBuildPrjName) = 0) then
+  begin
+    Result := FBuildPrjFile;
+    Exit;
+  end;
   Result := '';
   if FProjectReg <> nil then
     Result := FProjectReg.Values[AName];
@@ -33477,16 +33516,19 @@ var
   T0: Cardinal;
   DofLog: TStringList;
   DL: Integer;
+  BuildPrj: string;
 begin
   Result := False;   // любой ранний выход - сборки не было
   ShowCompLog;
+  // Проект сборки: активная вкладка - описание другого проекта (.prj) - он
+  BuildPrj := BuildProject;
 
   // dcc32 собирает только Delphi. Проект другого типа - Lazarus, Go,
   // Python, Rust - он не соберёт, а в логе была бы сотня ошибок не по делу.
   // Проект без типа - старый, сделанный до появления типов: как раньше.
-  if FCurrentProject <> '' then
+  if BuildPrj <> '' then
   begin
-    PrjType := ProjectTypeOf(FCurrentProject);
+    PrjType := ProjectTypeOf(BuildPrj);
     if (PrjType <> '') and (CompareText(PrjType, 'Delphi') <> 0) then
     begin
       if CompLogEdit <> nil then
@@ -33511,6 +33553,9 @@ begin
     CompLogEdit.Lines.Clear;
   if ErrLogEdit <> nil then
     ErrLogEdit.Lines.Clear;
+  if CompareText(BuildPrj, FCurrentProject) <> 0 then
+    LogComp('Собирается проект активной вкладки: ' + BuildPrj + ' (' +
+            ProjectFileName(BuildPrj) + ')');
 
   if FCurrentFileName = '' then
   begin
@@ -33540,20 +33585,20 @@ begin
   // Цель сборки берётся у проекта. Так собирается то, что задано, а не то,
   // что случайно открыто в соседней вкладке.
   Dpr := '';
-  if FCurrentProject <> '' then
+  if BuildPrj <> '' then
   begin
-    if CompareText(ProjectTypeOf(FCurrentProject), 'Delphi') <> 0 then
-      LogComp('Внимание: тип проекта - ' + ProjectTypeOf(FCurrentProject) +
+    if CompareText(ProjectTypeOf(BuildPrj), 'Delphi') <> 0 then
+      LogComp('Внимание: тип проекта - ' + ProjectTypeOf(BuildPrj) +
       ', а собирается он компилятором Delphi');
-    Dpr := ProjectTargetFind(FCurrentProject);
+    Dpr := ProjectTargetFind(BuildPrj);
     // Записанной цели на диске нет (описание с другого компьютера), а
     // нашлась другая - она и запоминается
     if (Dpr <> '') and
-       (CompareText(Dpr, ProjectTargetOf(FCurrentProject)) <> 0) then
+       (CompareText(Dpr, ProjectTargetOf(BuildPrj)) <> 0) then
     begin
       LogComp('Цель сборки проекта: записанной в описании нет на диске (' +
-              ProjectTargetOf(FCurrentProject) + '), взята ' + Dpr);
-      SetProjectTarget(FCurrentProject, Dpr);
+              ProjectTargetOf(BuildPrj) + '), взята ' + Dpr);
+      SetProjectTarget(BuildPrj, Dpr);
     end;
   end;
 
@@ -33563,9 +33608,9 @@ begin
     if CompareText(ExtractFileExt(FCurrentFileName), '.dpr') = 0 then
     begin
       Dpr := FCurrentFileName;
-      if FCurrentProject <> '' then
+      if BuildPrj <> '' then
       begin
-        SetProjectTarget(FCurrentProject, Dpr);
+        SetProjectTarget(BuildPrj, Dpr);
         LogComp('Цель сборки проекта: ' + Dpr);
       end;
     end
@@ -33593,9 +33638,11 @@ begin
     Dpr := FProbeDprFile;
   end;
 
-  // Правится файл не из этого проекта - собираем, но предупреждаем
-  if CompareText(ExtractFilePath(FCurrentFileName),
-                 ExtractFilePath(Dpr)) <> 0 then
+  // Правится файл не из этого проекта - собираем, но предупреждаем.
+  // Активная вкладка - описание проекта: оно и выбрало, что собирать.
+  if (CompareText(ExtractFileExt(FCurrentFileName), '.prj') <> 0) and
+     (CompareText(ExtractFilePath(FCurrentFileName),
+                  ExtractFilePath(Dpr)) <> 0) then
     LogComp('Внимание: ' + ExtractFileName(FCurrentFileName) +
     ' лежит не в папке собираемого проекта');
 
@@ -34766,12 +34813,15 @@ end;
 // CompileDelphi, но без побочных действий - ни записи цели, ни сообщений:
 // функция нужна и перед сборкой, и после неё.
 function TForm1.DelphiTargetDpr: string;
+var
+  BuildPrj: string;
 begin
   Result := '';
 
-  if FCurrentProject <> '' then
+  BuildPrj := BuildProject;
+  if BuildPrj <> '' then
   begin
-    Result := ProjectTargetFind(FCurrentProject);
+    Result := ProjectTargetFind(BuildPrj);
     if Result <> '' then
       Exit;
   end;
@@ -34805,7 +34855,7 @@ const
   DefOutput = 'Output';
 var
   Ini: TIniFile;
-  PrjFile, DprDir, OutDir: string;
+  PrjFile, DprDir, OutDir, BuildPrj: string;
   HasKey: Boolean;
 begin
   Result := '';
@@ -34814,10 +34864,11 @@ begin
   DprDir := ExtractFilePath(ADpr);
 
   // 1. Своя папка проекта
-  if (FCurrentProject <> '') and
-     (CompareText(ProjectTargetOf(FCurrentProject), ADpr) = 0) then
+  BuildPrj := BuildProject;
+  if (BuildPrj <> '') and
+     (CompareText(ProjectTargetOf(BuildPrj), ADpr) = 0) then
   begin
-    PrjFile := ProjectFileName(FCurrentProject);
+    PrjFile := ProjectFileName(BuildPrj);
     if FileExists(PrjFile) then
     begin
       Ini := TIniFile.Create(PrjFile);
