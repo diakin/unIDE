@@ -38135,7 +38135,8 @@ begin
 
   if RichEdit1.SelLength > 0 then
   begin
-    SelTxt := RichEdit1.SelText;
+    // Не RichEdit1.SelText: его чтение портит память (см. SelTextA)
+    SelTxt := SelTextA(255);
     if (SelTxt <> '') and (Pos(#13, SelTxt) = 0) and (Pos(#10, SelTxt) = 0) then
     begin
       cmbFind.Text := SelTxt;
