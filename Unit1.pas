@@ -37730,8 +37730,15 @@ begin
   Count1 := FWatchArr.Hi[0] - FWatchArr.Lo[0] + 1;
   if Count1 > MaxRows then
     Count1 := MaxRows;
+  Count2 := 1;
+  if FWatchArr.DimCount = 2 then
+    Count2 := FWatchArr.Hi[1] - FWatchArr.Lo[1] + 1;
   FWatchArrLock := True;
   try
+    // Пустой динамический массив (или пустая первая строка) - таблицы нет
+    if (Count1 <= 0) or (Count2 <= 0) then
+      FWatchArrGrid.Visible := False
+    else
     case FWatchArr.DimCount of
       1:
       begin
@@ -37745,7 +37752,6 @@ begin
       end;
       2:
       begin
-        Count2 := FWatchArr.Hi[1] - FWatchArr.Lo[1] + 1;
         if Count2 > MaxRows then
           Count2 := MaxRows;
         FWatchArrGrid.ColCount := Count2 + 1;
@@ -37807,6 +37813,14 @@ begin
                             FDbgSession.ReadMemory, NewInfo, ErrText) then
   begin
     WatchArrShow(False);
+    // Тип назван массивом, а разобрать не вышло - причина в Compilation
+    // log, один раз на разную причину
+    if (Pos('ARRAY', UpperCase(NewInfo.TypeText)) > 0) and (ErrText <> '') and
+       (Pos(#1 + ErrText + #1, FWatchNotes) = 0) then
+    begin
+      FWatchNotes := FWatchNotes + #1 + ErrText + #1;
+      LogComp('Watch: ' + ExprText + ' - таблица массива: ' + ErrText);
+    end;
     Exit;
   end;
 

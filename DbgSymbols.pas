@@ -83,6 +83,7 @@ type
     Address: Cardinal;
     DimCount: Integer;
     Lo, Hi, Stride: array[0..7] of Integer;   // DbgMaxArrayDims
+    Dyn: array[0..7] of Boolean;              // динамическое измерение
     ElemType: Cardinal;
     ElemSize: Integer;
     TypeText: string;
@@ -156,6 +157,7 @@ type
                         var AAddress: Cardinal): Boolean;
     function NotFoundNote(const AName: string; AProcIdx: Integer;
                           ASelfType: Cardinal): string;
+    function DynArrayType(ATypeId: Cardinal; var AArrType: Cardinal): Boolean;
     function ResolveExpr(const AExpr: string; AImageBase, AEip: Cardinal;
                          const ARegs: TDbgRegs; var AAddr, AType: Cardinal;
                          var ATypeText, AError: string): Boolean;
@@ -173,7 +175,7 @@ type
     // Процедура, где стоит программа (имя, '' - нет в TD32), и имена её
     // параметров и локальных переменных по порядку описания
     function ProcLocals(AImageBase, AEip: Cardinal; AList: TStrings): string;
-    // Выражение - статический массив: измерения и элемент (окно Watch,
+    // Выражение - массив (статический или динамический): измерения и элемент (окно Watch,
     // таблица массива). False - не массив или не вычислено, AError - почему
     function ArrayInfo(const AExpr: string; AImageBase, AEip: Cardinal;
                        const ARegs: TDbgRegs; AReadMem: TDbgReadMem;
@@ -2197,35 +2199,83 @@ function TDbgSymbols.Evaluate(const AExpr: string;
                               const ARegs: TDbgRegs; AReadMem: TDbgReadMem;
                               var ATypeText: string): string;
 var
-  ValAddr, ValType: Cardinal;
+  ValAddr, ValType, ArrType, ElemType, DataPtr, DynLen, NestedArr: Cardinal;
   ErrText: string;
+  Leaf, Body, RecEnd, ElemSize, ElemIdx: Integer;
 begin
   FReadMem := AReadMem;
   FRegActive := False;
   try
-    if ResolveExpr(AExpr, AImageBase, AEip, ARegs, ValAddr, ValType,
-                   ATypeText, ErrText) then
-      Result := FormatValue(ValAddr, ValType, 0)
+    if not ResolveExpr(AExpr, AImageBase, AEip, ARegs, ValAddr, ValType,
+                       ATypeText, ErrText) then
+      Result := ErrText
+    else if DynArrayType(ValType, ArrType) then
+    begin
+      // Динамический массив: длина и первые элементы
+      TypeRec(ArrType, Leaf, Body, RecEnd);
+      ElemType := Underlying(DwordAt(Body));
+      if DynArrayType(ElemType, NestedArr) then
+        ElemSize := 4
+      else
+        ElemSize := TypeSize(ElemType);
+      if not ReadDword(ValAddr, DataPtr) then
+        Result := '<ошибка чтения памяти $' + IntToHex(ValAddr, 8) + '>'
+      else if DataPtr = 0 then
+        Result := '() длина 0'
+      else if not ReadDword(DataPtr - 4, DynLen) or (ElemSize <= 0) then
+        Result := '$' + IntToHex(DataPtr, 8)
+      else
+      begin
+        FRegActive := False;
+        Result := '';
+        for ElemIdx := 0 to Integer(DynLen) - 1 do
+        begin
+          if ElemIdx >= MaxShowItems then
+          begin
+            Result := Result + ', ...';
+            Break;
+          end;
+          if Result <> '' then
+            Result := Result + ', ';
+          if DynArrayType(ElemType, NestedArr) then
+            Result := Result + '(...)'
+          else
+            Result := Result + FormatValue(DataPtr + Cardinal(ElemIdx * ElemSize),
+                                           ElemType, 1);
+        end;
+        Result := '(' + Result + ') длина ' + IntToStr(DynLen);
+      end;
+    end
     else
-      Result := ErrText;
+      Result := FormatValue(ValAddr, ValType, 0);
   finally
     FRegActive := False;
   end;
 end;
 
-// Статический массив: границы по каждому измерению (array[a..b, c..d] в
-// TD32 - массив массивов), адрес, тип и размер элемента.
+// Массив: границы по каждому измерению, адрес, тип и размер элемента.
+//
+// Статический (array[a..b, c..d] - в TD32 массив массивов): границы - по
+// типу индекса. Динамический (array of X): переменная - указатель на
+// данные, длина лежит перед ними (4 байта по адресу данные - 4), индексы
+// от нуля. Как TD32 Delphi описывает динамический массив, разбирается в
+// DynArrayType: указатель на массив или массив нулевого размера. У
+// вложенного динамического (array of array of X) длина - по первой
+// строке, у остальных строк она может быть другой - её проверяет
+// ArrayElement.
 function TDbgSymbols.ArrayInfo(const AExpr: string;
                                AImageBase, AEip: Cardinal;
                                const ARegs: TDbgRegs; AReadMem: TDbgReadMem;
                                var AInfo: TDbgArrayInfo;
                                var AError: string): Boolean;
 var
-  CurType, IndexType: Cardinal;
+  CurType, IndexType, ArrType, ElemType, DataPtr, DynLen: Cardinal;
   Leaf, Body, RecEnd, IdxLeaf, IdxBody, IdxEnd, NumPos: Integer;
   ElemSize, WholeSize, DimIdx: Integer;
   LoValue, HiValue: Int64;
   TypeName: string;
+  SampleAddr: Cardinal;   // первый элемент текущего уровня, 0 - пустой
+  IsDyn: Boolean;
 begin
   Result := False;
   AInfo.DimCount := 0;
@@ -2245,83 +2295,178 @@ begin
       Exit;
     end;
     AInfo.TypeText := TypeName;
+    SampleAddr := AInfo.Address;
     CurType := Underlying(CurType);
-    while TypeRec(CurType, Leaf, Body, RecEnd) and
-          ((Leaf = LeafArray) or (Leaf = LeafPArray)) do
+    while AInfo.DimCount < DbgMaxArrayDims do
     begin
-      if AInfo.DimCount >= DbgMaxArrayDims then
-        Break;
-      ElemSize := TypeSize(DwordAt(Body));
-      WholeSize := TypeSize(CurType);
-      if (ElemSize <= 0) or (WholeSize <= 0) then
+      IsDyn := DynArrayType(CurType, ArrType);
+      if not IsDyn then
       begin
-        AError := '<размер элемента не известен>';
+        if not TypeRec(CurType, Leaf, Body, RecEnd) or
+           not ((Leaf = LeafArray) or (Leaf = LeafPArray)) then
+          Break;
+        ArrType := CurType;
+      end;
+      TypeRec(ArrType, Leaf, Body, RecEnd);
+      ElemType := Underlying(DwordAt(Body));
+      // Элемент - сам динамический массив: в памяти указатель
+      if DynArrayType(ElemType, IndexType) then
+        ElemSize := 4
+      else
+        ElemSize := TypeSize(ElemType);
+      if ElemSize <= 0 then
+      begin
+        AError := '<размер элемента не известен: ' + TypeText(ElemType) + '>';
         Exit;
       end;
-      // Границы - по типу индекса (поддиапазон); иначе от нуля по размеру
-      LoValue := 0;
-      HiValue := WholeSize div ElemSize - 1;
-      IndexType := Underlying(DwordAt(Body + 4));
-      if TypeRec(IndexType, IdxLeaf, IdxBody, IdxEnd) and
-         (IdxLeaf = LeafSubrange) then
+      DimIdx := AInfo.DimCount;
+      AInfo.Dyn[DimIdx] := IsDyn;
+      AInfo.Stride[DimIdx] := ElemSize;
+      if IsDyn then
       begin
-        NumPos := IdxBody + 8;
-        if not (ReadNumeric(NumPos, LoValue) and
-                ReadNumeric(NumPos, HiValue)) then
+        LoValue := 0;
+        HiValue := -1;
+        DataPtr := 0;
+        if (SampleAddr <> 0) and ReadDword(SampleAddr, DataPtr) and
+           (DataPtr <> 0) and ReadDword(DataPtr - 4, DynLen) then
+          HiValue := Int64(DynLen) - 1;
+        SampleAddr := DataPtr;
+      end
+      else
+      begin
+        WholeSize := TypeSize(ArrType);
+        LoValue := 0;
+        HiValue := WholeSize div ElemSize - 1;
+        IndexType := Underlying(DwordAt(Body + 4));
+        if TypeRec(IndexType, IdxLeaf, IdxBody, IdxEnd) and
+           (IdxLeaf = LeafSubrange) then
         begin
-          LoValue := 0;
-          HiValue := WholeSize div ElemSize - 1;
+          NumPos := IdxBody + 8;
+          if not (ReadNumeric(NumPos, LoValue) and
+                  ReadNumeric(NumPos, HiValue)) then
+          begin
+            LoValue := 0;
+            HiValue := WholeSize div ElemSize - 1;
+          end;
         end;
       end;
-      DimIdx := AInfo.DimCount;
       AInfo.Lo[DimIdx] := Integer(LoValue);
       AInfo.Hi[DimIdx] := Integer(HiValue);
-      AInfo.Stride[DimIdx] := ElemSize;
       Inc(AInfo.DimCount);
-      CurType := Underlying(DwordAt(Body));
+      CurType := ElemType;
     end;
     if AInfo.DimCount = 0 then
     begin
-      AError := '<не статический массив>';
+      if TypeRec(CurType, Leaf, Body, RecEnd) then
+        AError := '<не массив: ' + TypeName + ', вид типа $' +
+                  IntToHex(Leaf, 4) + '>'
+      else
+        AError := '<не массив: ' + TypeName + '>';
       Exit;
     end;
     AInfo.ElemType := CurType;
-    AInfo.ElemSize := TypeSize(CurType);
+    AInfo.ElemSize := AInfo.Stride[AInfo.DimCount - 1];
     Result := True;
   finally
     FRegActive := False;
   end;
 end;
 
-// Элемент массива по индексам (по одному на измерение из AInfo)
+// Динамический массив в TD32: указатель на запись массива или сама запись
+// массива нулевого размера (у статического размер есть всегда). AArrType -
+// запись массива: из неё берётся тип элемента.
+function TDbgSymbols.DynArrayType(ATypeId: Cardinal;
+                                  var AArrType: Cardinal): Boolean;
+var
+  Leaf, Body, RecEnd, TargetLeaf, TargetBody, TargetEnd: Integer;
+  Target: Cardinal;
+begin
+  Result := False;
+  AArrType := 0;
+  ATypeId := Underlying(ATypeId);
+  if not TypeRec(ATypeId, Leaf, Body, RecEnd) then
+    Exit;
+  if (Leaf = LeafArray) or (Leaf = LeafPArray) then
+  begin
+    if TypeSize(ATypeId) = 0 then
+    begin
+      AArrType := ATypeId;
+      Result := True;
+    end;
+    Exit;
+  end;
+  if (Leaf = LeafPointer) and not IsObjectRef(ATypeId) and
+     (((WordAt(Body) shr 5) and 7) <> 1) then        // не var-параметр
+  begin
+    Target := Underlying(DwordAt(Body + 2));
+    if TypeRec(Target, TargetLeaf, TargetBody, TargetEnd) and
+       ((TargetLeaf = LeafArray) or (TargetLeaf = LeafPArray)) then
+    begin
+      AArrType := Target;
+      Result := True;
+    end;
+  end;
+end;
+
+// Элемент массива по индексам (по одному на измерение из AInfo). У
+// динамического измерения - указатель на данные и своя длина каждой строки.
 function TDbgSymbols.ArrayElement(const AInfo: TDbgArrayInfo;
                                   const AIndex: array of Integer;
                                   AReadMem: TDbgReadMem): string;
 var
   DimIdx: Integer;
-  ElemAddr: Cardinal;
+  ElemAddr, DataPtr, DynLen: Cardinal;
 begin
+  Result := '';
   if Length(AIndex) < AInfo.DimCount then
   begin
     Result := '<мало индексов>';
     Exit;
   end;
+  FReadMem := AReadMem;
+  FRegActive := False;
   ElemAddr := AInfo.Address;
   for DimIdx := 0 to AInfo.DimCount - 1 do
   begin
-    if (AIndex[DimIdx] < AInfo.Lo[DimIdx]) or
-       (AIndex[DimIdx] > AInfo.Hi[DimIdx]) then
+    if AInfo.Dyn[DimIdx] then
     begin
-      Result := '<индекс ' + IntToStr(DimIdx + 1) + ' вне ' +
-                IntToStr(AInfo.Lo[DimIdx]) + '..' +
-                IntToStr(AInfo.Hi[DimIdx]) + '>';
-      Exit;
+      if not ReadDword(ElemAddr, DataPtr) then
+      begin
+        Result := '<ошибка чтения памяти $' + IntToHex(ElemAddr, 8) + '>';
+        Exit;
+      end;
+      if DataPtr = 0 then
+      begin
+        Result := '<пустой массив>';
+        Exit;
+      end;
+      if not ReadDword(DataPtr - 4, DynLen) then
+      begin
+        Result := '<ошибка чтения длины массива>';
+        Exit;
+      end;
+      if (AIndex[DimIdx] < 0) or (AIndex[DimIdx] >= Integer(DynLen)) then
+      begin
+        Result := '<индекс ' + IntToStr(DimIdx + 1) + ' вне 0..' +
+                  IntToStr(Integer(DynLen) - 1) + '>';
+        Exit;
+      end;
+      ElemAddr := DataPtr + Cardinal(AIndex[DimIdx] * AInfo.Stride[DimIdx]);
+    end
+    else
+    begin
+      if (AIndex[DimIdx] < AInfo.Lo[DimIdx]) or
+         (AIndex[DimIdx] > AInfo.Hi[DimIdx]) then
+      begin
+        Result := '<индекс ' + IntToStr(DimIdx + 1) + ' вне ' +
+                  IntToStr(AInfo.Lo[DimIdx]) + '..' +
+                  IntToStr(AInfo.Hi[DimIdx]) + '>';
+        Exit;
+      end;
+      ElemAddr := ElemAddr + Cardinal((AIndex[DimIdx] - AInfo.Lo[DimIdx]) *
+                                      AInfo.Stride[DimIdx]);
     end;
-    ElemAddr := ElemAddr + Cardinal((AIndex[DimIdx] - AInfo.Lo[DimIdx]) *
-                                    AInfo.Stride[DimIdx]);
   end;
-  FReadMem := AReadMem;
-  FRegActive := False;
   Result := FormatValue(ElemAddr, AInfo.ElemType, 0);
 end;
 
