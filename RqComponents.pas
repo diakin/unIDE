@@ -35,6 +35,11 @@ unit RqComponents;
 //  Свойства такого класса - свои плюс всех базовых по цепочке
 //  (RqClassChain).
 //
+//  Константы программы - CONST Имя = целое (RAPIDQ.INC: bsSizeable = 2,
+//  crHandPoint = -21) - собирает RqParseConsts. По ним RqChoiceText
+//  показывает число из снимка словом из списка вариантов свойства:
+//  BorderStyle 2 -> bsSizeable.
+//
 //  Модуль самостоятельный: загрузка, поиск класса по имени, освобождение.
 // ---------------------------------------------------------------------------
 
@@ -96,6 +101,20 @@ function RqFindClass(const AName: string): TRqClass;
 function RqParseTypes(ALines: TStrings; const AFile: string): Integer;
 procedure RqClearCustom;
 function RqCustomCount: Integer;
+// Константы: CONST Имя = целое (десятичное или &H) из текста ALines.
+// Константа, которая уже есть, не меняется. Результат - число добавленных.
+function RqParseConsts(ALines: TStrings): Integer;
+procedure RqClearConsts;
+function RqConstCount: Integer;
+function RqConstValue(const AName: string; var AValue: Integer): Boolean;
+// Значение свойства AMember словом из его вариантов: AValue - число из
+// снимка. Варианта с таким значением нет, или у свойства нет вариантов
+// перечисления - AValue как есть. Значение варианта - константа программы
+// (RqParseConsts); ни одной константы из вариантов не найдено - номер
+// варианта в списке. False|True - 0 и не 0. Среди вариантов значения нет
+// (у QSPLITTER в Align только alTop|alLeft) - константа с той же
+// приставкой из строчных букв (al) и тем же значением, если она одна.
+function RqChoiceText(AMember: TRqMember; const AValue: string): string;
 // Класс и его базовые до корня - в AChain (первый - сам класс). Цикл и
 // неизвестный базовый обрывают цепочку.
 procedure RqClassChain(const AName: string; AChain: TList);
@@ -119,6 +138,7 @@ uses
 var
   RqClasses: TStringList = nil;   // имена классов, Objects - TRqClass
   RqCustom: TStringList = nil;    // классы программы, Objects - TRqClass
+  RqConsts: TStringList = nil;    // константы, Objects - значение
 
 constructor TRqMember.Create;
 begin
@@ -773,6 +793,200 @@ begin
   Result := AddedCount;
 end;
 
+// Целое из текста: "2", "-21", "&H8000000F". False - не целое.
+function ParseBasicInt(const AText: string; var AValue: Integer): Boolean;
+var
+  Txt: string;
+  Negative: Boolean;
+  CharIdx, Digit: Integer;
+  Acc: Int64;
+begin
+  Result := False;
+  Txt := Trim(AText);
+  Negative := (Txt <> '') and (Txt[1] = '-');
+  if Negative then
+    Txt := Trim(Copy(Txt, 2, MaxInt));
+  if Txt = '' then
+    Exit;
+  Acc := 0;
+  if UpperCase(Copy(Txt, 1, 2)) = '&H' then
+  begin
+    if Length(Txt) = 2 then
+      Exit;
+    for CharIdx := 3 to Length(Txt) do
+    begin
+      case Txt[CharIdx] of
+        '0'..'9': Digit := Ord(Txt[CharIdx]) - Ord('0');
+        'A'..'F': Digit := Ord(Txt[CharIdx]) - Ord('A') + 10;
+        'a'..'f': Digit := Ord(Txt[CharIdx]) - Ord('a') + 10;
+      else
+        Exit;
+      end;
+      Acc := Acc * 16 + Digit;
+      if Acc > $FFFFFFFF then
+        Exit;
+    end;
+    // &H8000000F - 32 бита со знаком, как у LONG
+    if Acc > $7FFFFFFF then
+      Acc := Acc - $100000000;
+  end
+  else
+    for CharIdx := 1 to Length(Txt) do
+    begin
+      if not (Txt[CharIdx] in ['0'..'9']) then
+        Exit;
+      Acc := Acc * 10 + Ord(Txt[CharIdx]) - Ord('0');
+      if Acc > $7FFFFFFF then
+        Exit;
+    end;
+  if Negative then
+    Acc := -Acc;
+  AValue := Integer(Acc);
+  Result := True;
+end;
+
+function RqParseConsts(ALines: TStrings): Integer;
+var
+  LineIdx, PartIdx, EqPos, ConstValue: Integer;
+  Parts: TStringList;
+  Word, Rest, ConstName: string;
+begin
+  Result := 0;
+  if RqConsts = nil then
+  begin
+    RqConsts := TStringList.Create;
+    RqConsts.CaseSensitive := False;
+    RqConsts.Sorted := True;
+    RqConsts.Duplicates := dupIgnore;
+  end;
+  Parts := TStringList.Create;
+  try
+    for LineIdx := 0 to ALines.Count - 1 do
+    begin
+      if Pos('CONST', UpperCase(ALines[LineIdx])) = 0 then
+        Continue;
+      SplitColons(StripBasicComment(ALines[LineIdx]), Parts);
+      for PartIdx := 0 to Parts.Count - 1 do
+      begin
+        Word := FirstWordOf(Parts[PartIdx], Rest);
+        if Word <> 'CONST' then
+          Continue;
+        ConstName := LeadingName(Rest);
+        EqPos := Pos('=', Rest);
+        if (ConstName = '') or (EqPos = 0) or
+           (Trim(Copy(Rest, Length(ConstName) + 1,
+                      EqPos - Length(ConstName) - 1)) <> '') then
+          Continue;
+        if not ParseBasicInt(Copy(Rest, EqPos + 1, MaxInt), ConstValue) then
+          Continue;
+        if RqConsts.IndexOf(ConstName) >= 0 then
+          Continue;
+        RqConsts.AddObject(ConstName, TObject(ConstValue));
+        Inc(Result);
+      end;
+    end;
+  finally
+    Parts.Free;
+  end;
+end;
+
+procedure RqClearConsts;
+begin
+  if RqConsts <> nil then
+    RqConsts.Clear;
+end;
+
+function RqConstCount: Integer;
+begin
+  if RqConsts = nil then
+    Result := 0
+  else
+    Result := RqConsts.Count;
+end;
+
+function RqConstValue(const AName: string; var AValue: Integer): Boolean;
+var
+  ConstIdx: Integer;
+begin
+  Result := False;
+  if RqConsts = nil then
+    Exit;
+  ConstIdx := RqConsts.IndexOf(AName);
+  if ConstIdx < 0 then
+    Exit;
+  AValue := Integer(RqConsts.Objects[ConstIdx]);
+  Result := True;
+end;
+
+function RqChoiceText(AMember: TRqMember; const AValue: string): string;
+var
+  Number, ChoiceIdx, ChoiceValue, CharIdx: Integer;
+  AnyConst: Boolean;
+  Prefix, Found: string;
+begin
+  Result := AValue;
+  if (AMember = nil) or (AMember.Choices.Count = 0) or
+     not ParseBasicInt(AValue, Number) then
+    Exit;
+  // <default>|<choose> у цвета и подобные - не перечисление
+  for ChoiceIdx := 0 to AMember.Choices.Count - 1 do
+    if Copy(AMember.Choices[ChoiceIdx], 1, 1) = '<' then
+      Exit;
+  if (AMember.Choices.Count = 2) and
+     (CompareText(AMember.Choices[0], 'False') = 0) and
+     (CompareText(AMember.Choices[1], 'True') = 0) then
+  begin
+    if Number = 0 then
+      Result := AMember.Choices[0]
+    else
+      Result := AMember.Choices[1];
+    Exit;
+  end;
+  AnyConst := False;
+  for ChoiceIdx := 0 to AMember.Choices.Count - 1 do
+    if RqConstValue(AMember.Choices[ChoiceIdx], ChoiceValue) then
+    begin
+      AnyConst := True;
+      if ChoiceValue = Number then
+      begin
+        Result := AMember.Choices[ChoiceIdx];
+        Exit;
+      end;
+    end;
+  if not AnyConst then
+  begin
+    if (Number >= 0) and (Number < AMember.Choices.Count) then
+      Result := AMember.Choices[Number];
+    Exit;
+  end;
+
+  // Приставка вариантов - строчные буквы в начале, одна у всех
+  Prefix := '';
+  CharIdx := 1;
+  while (CharIdx <= Length(AMember.Choices[0])) and
+        (AMember.Choices[0][CharIdx] in ['a'..'z']) do
+    Inc(CharIdx);
+  Prefix := Copy(AMember.Choices[0], 1, CharIdx - 1);
+  if (Prefix = '') or (CharIdx > Length(AMember.Choices[0])) then
+    Exit;
+  for ChoiceIdx := 1 to AMember.Choices.Count - 1 do
+    if Copy(AMember.Choices[ChoiceIdx], 1, Length(Prefix)) <> Prefix then
+      Exit;
+  Found := '';
+  for ChoiceIdx := 0 to RqConsts.Count - 1 do
+    if (Copy(RqConsts[ChoiceIdx], 1, Length(Prefix)) = Prefix) and
+       (Length(RqConsts[ChoiceIdx]) > Length(Prefix)) and
+       (RqConsts[ChoiceIdx][Length(Prefix) + 1] in ['A'..'Z']) and
+       (Integer(RqConsts.Objects[ChoiceIdx]) = Number) then
+    begin
+      if Found <> '' then
+        Exit;   // двум константам одно значение - какая из них, неясно
+      Found := RqConsts[ChoiceIdx];
+    end;
+  if Found <> '' then
+    Result := Found;
+end;
+
 procedure RqClassChain(const AName: string; AChain: TList);
 const
   MaxDepth = 20;
@@ -839,5 +1053,6 @@ finalization
   RqFreeComponents;
   RqClearCustom;
   FreeAndNil(RqCustom);
+  FreeAndNil(RqConsts);
 
 end.

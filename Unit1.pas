@@ -20502,8 +20502,9 @@ begin
   end;
 end;
 
-// Классы программы (TYPE ... EXTENDS) - из текста ALines файла AFile и
-// всех файлов, которые он подключает через $INCLUDE, с вложенными. Класс
+// Классы программы (TYPE ... EXTENDS) и её константы (CONST Имя = целое,
+// для показа перечислений словами) - из текста ALines файла AFile и всех
+// файлов, которые он подключает через $INCLUDE, с вложенными. Класс
 // берётся из первого файла, где он встретился: сам текст, затем include по
 // порядку строк. Результат - число классов.
 function TForm1.RapidQLoadCustomTypes(ALines: TStrings;
@@ -20537,6 +20538,7 @@ var
           Continue;
         end;
         RqParseTypes(Nested, Full);
+        RqParseConsts(Nested);
         if ALevel < MaxDepth then
           ScanIncludes(Nested, ALevel + 1);
       finally
@@ -20547,11 +20549,13 @@ var
 
 begin
   RqClearCustom;
+  RqClearConsts;
   RapidQIncludeDirs(MainDir, IncDir);
   Visited := TStringList.Create;
   try
     Visited.Add(UpperCase(ExpandFileName(AFile)));
     RqParseTypes(ALines, AFile);
+    RqParseConsts(ALines);
     ScanIncludes(ALines, 1);
   finally
     Visited.Free;
@@ -20614,7 +20618,9 @@ begin
       LiveText := SrcText;
       if (Live <> nil) and (Live.IndexOfName(Obj.PropN[ItemIdx]) >= 0) then
       begin
-        LiveText := Live.Values[Obj.PropN[ItemIdx]];
+        // Число перечисления - словом: BorderStyle 2 -> bsSizeable
+        RqDefaultOf(Chain, Obj.PropN[ItemIdx], RqMember);
+        LiveText := RqChoiceText(RqMember, Live.Values[Obj.PropN[ItemIdx]]);
         if CompareText(Trim(LiveText), Trim(SrcText)) <> 0 then
           LiveText := LiveText + '   (код: ' + SrcText + ')';
       end;
@@ -20635,7 +20641,7 @@ begin
         Seen.Add(MemberName);
         DefText := RqDefaultOf(Chain, MemberName, RqMember);
         if (Live <> nil) and (Live.IndexOfName(MemberName) >= 0) then
-          DefText := Live.Values[MemberName];
+          DefText := RqChoiceText(RqMember, Live.Values[MemberName]);
         Item := FObjProps.Items.Add;
         Item.Caption := MemberName;
         Item.SubItems.Add(DefText);
