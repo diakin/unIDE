@@ -35060,6 +35060,8 @@ end;
 // формы, проект; дальше две скрытые - путь к форме и путь к модулю (им
 // пользуются подпись внизу окна и двойной щелчок). Форма у модуля есть,
 // если она указана в .dpr ({Form1}) или рядом с модулем лежит .dfm.
+// Тип модуля с формой - "Unit (FormIzm1)": имя формы из .dpr, а если там
+// его нет - из первой строки .dfm.
 procedure TForm1.FillModuleList;
 const
   DateFmt = 'yyyy-mm-dd hh:nn:ss';
@@ -35085,6 +35087,56 @@ var
       Result := FormatDateTime(DateFmt, FileDateToDateTime(FileAge(AFile)))
     else
       Result := 'файла нет';
+  end;
+
+  // Имя формы из начала .dfm. Текстовый: "object FormIzm1: TFormIzm1"
+  // (или inherited). Двоичный: 'TPF0', байт флагов (если старшие четыре
+  // бита заняты), затем короткие строки - класс и имя.
+  function DfmFormName(const AFile: string): string;
+  var
+    Stream: TFileStream;
+    Head: string;
+    Len, Pos0, Space, Colon: Integer;
+  begin
+    Result := '';
+    if not FileExists(AFile) then
+      Exit;
+    try
+      Stream := TFileStream.Create(AFile, fmOpenRead or fmShareDenyNone);
+      try
+        SetLength(Head, 512);
+        SetLength(Head, Stream.Read(Head[1], 512));
+      finally
+        Stream.Free;
+      end;
+    except
+      Exit;
+    end;
+
+    if Copy(Head, 1, 4) = 'TPF0' then
+    begin
+      Pos0 := 5;
+      if (Pos0 <= Length(Head)) and ((Ord(Head[Pos0]) and $F0) = $F0) then
+        Inc(Pos0);
+      if Pos0 > Length(Head) then
+        Exit;
+      Len := Ord(Head[Pos0]);          // класс
+      Pos0 := Pos0 + 1 + Len;
+      if Pos0 > Length(Head) then
+        Exit;
+      Len := Ord(Head[Pos0]);          // имя
+      Result := Copy(Head, Pos0 + 1, Len);
+      Exit;
+    end;
+
+    Head := TrimLeft(Head);
+    Pos0 := Pos(#13, Head);
+    if Pos0 > 0 then
+      Head := Copy(Head, 1, Pos0 - 1);
+    Space := Pos(' ', Head);
+    Colon := Pos(':', Head);
+    if (Space > 0) and (Colon > Space) then
+      Result := Trim(Copy(Head, Space + 1, Colon - Space - 1));
   end;
 
 begin
@@ -35138,19 +35190,24 @@ begin
         if ExtractFilePath(Full) = '' then
           Full := Dir + Full;
 
-        if FormNm = '' then
-          Tp := 'Unit'
-        else if FormCls <> '' then
-          Tp := FormCls
-        else
-          Tp := 'Unit(Form)';
-
         Dfm := ChangeFileExt(Full, '.dfm');
         HasForm := (FormNm <> '') or FileExists(Dfm);
         if HasForm then
           Inc(FormTotal)
         else
           Dfm := '';
+
+        // Unit, Unit (FormIzm1), Unit (DataModule1: TDataModule)
+        if FormNm = '' then
+          FormNm := DfmFormName(Dfm);
+        if not HasForm then
+          Tp := 'Unit'
+        else if FormNm = '' then
+          Tp := 'Unit (Form)'
+        else if FormCls <> '' then
+          Tp := 'Unit (' + FormNm + ': ' + FormCls + ')'
+        else
+          Tp := 'Unit (' + FormNm + ')';
 
         It := FModLV.Items.Add;
         It.Caption := UnitNm;
@@ -35189,7 +35246,7 @@ procedure TForm1.ShowModulesClick(Sender: TObject);
 begin
   FModFormsMode := False;
   MakeListWindow(FModList, FModLV, FModPath, 'Модули и формы проекта',
-  'Модуль|130;Тип|85;Форма|120;Размер модуля|95;' +
+  'Модуль|130;Тип|150;Форма|120;Размер модуля|95;' +
   'Размер формы|90;Дата модуля|130;Дата формы|130;' +
   'Проект|150;|0');
                  FillModuleList;
