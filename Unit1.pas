@@ -601,7 +601,7 @@ type
     FObjHeader: TPanel;
     FObjPages: TUiPageControl;
     lvSubList: TUiListView;
-    lvIncludes: TUiListView;
+    FIncTree: TUiTreeView;
     FObjPagesSheet1: TTabSheet;
     FObjPagesSheet2: TTabSheet;
     FObjEvents: TUiListView;
@@ -1142,6 +1142,7 @@ type
     // Состав своей формы при снимке (OwnFormPrint): другой - снимок устарел
     FObjSnapPrint: string;
     FObjDfmBinary: Boolean; // показанный .dfm двоичный - правка закрыта
+    FObjRapidQ: Boolean;    // в инспекторе - объекты CREATE файла RapidQ
     FObjRebuilding: Boolean; // дерево перестраивается - Data узлов недействительны
     FDfmNodes: TList;
     FObjDfmFile: string;    // какой .dfm показан
@@ -1164,6 +1165,7 @@ type
     FProbeSnaps: TStringList;
     FProbeTime: TDateTime;
     FProbeActive: Boolean;   // CompileDelphi собирает пробную копию
+    FBuildRapidQ: Boolean;   // идёт сборка RapidQ: сохранять и .bas
     FProbeTried: Boolean;    // пробный запуск для проекта уже делался сам
     FSnapOff: Boolean;       // снимок убран кнопкой - сам не возвращается
     FProbeDir: string;       // временная папка пробной сборки
@@ -1197,6 +1199,9 @@ type
     FTabWork: Boolean;
     FTabWorkShown: Boolean;
     FTabShowMs: Cardinal;
+    // Узлы вкладки Includes (RefreshIncludes): найденный файл, файл с
+    // $INCLUDE и номер строки, через табуляцию; индекс - в Data узла
+    FIncludeRows: TStringList;
     // Время файлов на диске (FileAge), каким оно было при последнем чтении
     // или записи здесь. Имя - полный путь в верхнем регистре. По нему при
     // возврате в программу видно, что файл изменили снаружи.
@@ -1706,6 +1711,7 @@ type
     procedure LoadProjectReg;
     procedure RelocateMissingProjects;
     procedure CheckIniPaths;
+    function  MergeOwnSettings(const ASrc, ADst: string): Integer;
     procedure SaveProjectReg;
     procedure RegisterProject(const AName, APath: string);
     function  ProjectTargetOf(const AName: string): string;
@@ -1804,6 +1810,7 @@ type
     procedure ObjTreeChange(Sender: TObject; Node: TTreeNode);
     procedure RightPagesChange(Sender: TObject);
     procedure RefreshCodeTree;
+    procedure RefreshRapidQInspector;
     function  DsgGetText: string;
     procedure DsgSetText(const AText: string);
     function  DsgOpenKeep(const AFile: string): Integer;
@@ -2086,6 +2093,10 @@ type
     procedure RebuildSubListBlocks(const AText: string);
     procedure FormatIndentText;
     procedure FillSubListView;
+    // Вкладка Includes правой панели (RapidQ)
+    function  IncludesApply: Boolean;
+    procedure RefreshIncludes;
+    procedure IncludesDblClick(Sender: TObject);
     function  SubAtLine(ALine: Integer): Integer;
     function  IsSubBeginLine(ALine: Integer): Boolean;
     procedure LayoutScrollBars;
@@ -2161,6 +2172,17 @@ type
     function  ReleaseFilesDialog(const ADpr, AExeDir: string;
                                  AList: TStrings): Boolean;
     function  CompileDelphi: Boolean;
+    // Сборка RapidQ Basic (rc.exe) и выбор между ней и Delphi
+    function  BuildIsRapidQ: Boolean;
+    function  CompileProject: Boolean;
+    function  RapidQTargetBas(ARemember: Boolean): string;
+    function  RapidQFindSourceLine(const AFile, AText,
+                                   ASection: string): Integer;
+    function  RapidQReportErrors(AOutput: TStrings;
+                                 const ABas, AIncDir: string;
+                                 var AFirstFile: string;
+                                 var AFirstLine: Integer): Boolean;
+    function  CompileRapidQ: Boolean;
     procedure CheckUnitPath(const AList: string);
     // Папка UiLib рядом с программой: свои компоненты (Ui*.pas) для сборки
     // проектов пользователя. '' - модулей нет.
@@ -7356,6 +7378,172 @@ begin
   Result := (I > 3) and (CompareText(Copy(AName, I - 2, 3), 'Old') = 0);
 end;
 
+// Раздел без данных: ключей нет или у всех пустые значения
+function IniSectionEmpty(AValues: TStrings): Boolean;
+var
+  Index: Integer;
+begin
+  Result := True;
+  for Index := 0 to AValues.Count - 1 do
+    if Trim(IniValueOf(AValues[Index])) <> '' then
+    begin
+      Result := False;
+      Exit;
+    end;
+end;
+
+// Текст раздела для сравнения: строки "Имя=значение" по алфавиту, чтобы
+// другой порядок ключей не считался другим содержимым
+function IniSortedText(AValues: TStrings): string;
+var
+  Sorted: TStringList;
+begin
+  Sorted := TStringList.Create;
+  try
+    Sorted.Assign(AValues);
+    Sorted.Sort;
+    Result := Sorted.Text;
+  finally
+    Sorted.Free;
+  end;
+end;
+
+// Имя раздела, копией которого является AName ("ProjectsOld2" -> "Projects")
+function IniOldBaseName(const AName: string): string;
+var
+  Pos1: Integer;
+begin
+  Pos1 := Length(AName);
+  while (Pos1 > 0) and (AName[Pos1] in ['0'..'9']) do
+    Dec(Pos1);
+  Result := Copy(AName, 1, Pos1 - 3);
+end;
+
+// editor.ini при сборке самого редактора: ASrc - из папки .dpr, ADst -
+// рядом с собранным exe, его правила запущенная копия.
+//
+// Настройки запущенной копии не затираются. Из ASrc:
+//   - раздела, которого в ADst нет, - копируется целиком;
+//   - раздел есть, но содержимое другое - ключи, которых в ADst нет и
+//     значение которых не путь (новые параметры), дописываются; сам раздел
+//     ASrc сохраняется копией [<Раздел>Old<N>], если такой же копии ещё
+//     нет. Какие пути брать - решает при запуске CheckIniPaths: в разделе
+//     путь, которого нет на диске, - берётся из копии, где он есть;
+//   - копии [<Раздел>Old<N>] из ASrc - тоже копиями, под своими номерами
+//     ADst, если такой же копии там нет;
+//   - разделы без данных не переносятся.
+// Возвращает число изменённых разделов ADst.
+function TForm1.MergeOwnSettings(const ASrc, ADst: string): Integer;
+var
+  SrcIni, DstIni: TMemIniFile;
+  SrcSects, DstSects, SrcValues, DstValues, OldValues: TStringList;
+  SectIdx, KeyIdx, OldIdx, OldNum, MaxNum, PathExist, PathTotal: Integer;
+  Sect, BaseSect, KeyName, Value, CopyName, SrcText: string;
+  HasCopy: Boolean;
+begin
+  Result := 0;
+  SrcIni := TMemIniFile.Create(ASrc);
+  DstIni := TMemIniFile.Create(ADst);
+  SrcSects := TStringList.Create;
+  DstSects := TStringList.Create;
+  SrcValues := TStringList.Create;
+  DstValues := TStringList.Create;
+  OldValues := TStringList.Create;
+  try
+    SrcIni.ReadSections(SrcSects);
+    for SectIdx := 0 to SrcSects.Count - 1 do
+    begin
+      Sect := SrcSects[SectIdx];
+      SrcIni.ReadSectionValues(Sect, SrcValues);
+      if IniSectionEmpty(SrcValues) then
+        Continue;
+      SrcText := IniSortedText(SrcValues);
+
+      if IniIsOldSection(Sect) then
+        BaseSect := IniOldBaseName(Sect)
+      else
+        BaseSect := Sect;
+
+      // Раздела в ADst нет - целиком, под тем же именем
+      if not IniIsOldSection(Sect) and not DstIni.SectionExists(Sect) then
+      begin
+        for KeyIdx := 0 to SrcValues.Count - 1 do
+          DstIni.WriteString(Sect, SrcValues.Names[KeyIdx],
+                             IniValueOf(SrcValues[KeyIdx]));
+        Inc(Result);
+        LogComp('editor.ini рядом с exe: добавлен раздел [' + Sect + ']');
+        Continue;
+      end;
+
+      // Совпадает с разделом ADst или с одной из его копий - ничего не нужно
+      DstIni.ReadSections(DstSects);
+      HasCopy := False;
+      MaxNum := 0;
+      if DstIni.SectionExists(BaseSect) then
+      begin
+        DstIni.ReadSectionValues(BaseSect, DstValues);
+        HasCopy := IniSortedText(DstValues) = SrcText;
+      end;
+      for OldIdx := 0 to DstSects.Count - 1 do
+        if IniIsOldSection(DstSects[OldIdx]) and
+           (CompareText(IniOldBaseName(DstSects[OldIdx]), BaseSect) = 0) then
+        begin
+          OldNum := StrToIntDef(Copy(DstSects[OldIdx], Length(BaseSect) + 4,
+                                     MaxInt), 0);
+          if OldNum > MaxNum then
+            MaxNum := OldNum;
+          if not HasCopy then
+          begin
+            DstIni.ReadSectionValues(DstSects[OldIdx], OldValues);
+            HasCopy := IniSortedText(OldValues) = SrcText;
+          end;
+        end;
+      if HasCopy then
+        Continue;
+
+      // Новые параметры (не пути) - в сам раздел
+      if not IniIsOldSection(Sect) then
+        for KeyIdx := 0 to SrcValues.Count - 1 do
+        begin
+          KeyName := SrcValues.Names[KeyIdx];
+          Value := IniValueOf(SrcValues[KeyIdx]);
+          if DstIni.ValueExists(Sect, KeyName) or (Trim(Value) = '') then
+            Continue;
+          IniPathCount(Value, PathExist, PathTotal);
+          if PathTotal > 0 then
+            Continue;
+          DstIni.WriteString(Sect, KeyName, Value);
+          LogComp('editor.ini рядом с exe: [' + Sect + '] добавлен ключ ' +
+                  KeyName);
+        end;
+
+      // Сам раздел из ASrc - копией
+      CopyName := BaseSect + 'Old' + IntToStr(MaxNum + 1);
+      for KeyIdx := 0 to SrcValues.Count - 1 do
+        DstIni.WriteString(CopyName, SrcValues.Names[KeyIdx],
+                           IniValueOf(SrcValues[KeyIdx]));
+      if IniIsOldSection(Sect) then
+        LogComp('editor.ini рядом с exe: копия [' + Sect + '] из папки ' +
+                'проекта перенесена как [' + CopyName + ']')
+      else
+        LogComp('editor.ini рядом с exe: [' + Sect + '] в папке проекта ' +
+                'другой - сохранён как [' + CopyName + ']');
+      Inc(Result);
+    end;
+
+    if Result > 0 then
+      DstIni.UpdateFile;
+  finally
+    OldValues.Free;
+    DstValues.Free;
+    SrcValues.Free;
+    DstSects.Free;
+    SrcSects.Free;
+    DstIni.Free;
+    SrcIni.Free;
+  end;
+end;
+
 // При запуске, до чтения настроек. Для каждого раздела editor.ini (кроме
 // сохранённых копий):
 //   1. Есть значения-пути, которых нет на диске (из списка через ";" - хотя
@@ -7369,7 +7557,8 @@ end;
 //      его пути на диске, возвращается в раздел (проект, который на другой
 //      машине убрали из списка).
 // Так при переносе между машинами настройки каждой машины хранятся в
-// копиях и возвращаются, когда программа снова запущена на ней. Что сделано
+// копиях и возвращаются, когда программа снова запущена на ней. Копии без
+// данных (все значения пустые) удаляются. Что сделано
 // - в FIniPathLog, в HiLite log при показе окна.
 // TMemIniFile, а не TIniFile: TIniFile.ReadString читает не больше 2047
 // знаков, BrowsePath к этому близок.
@@ -7396,7 +7585,17 @@ begin
     begin
       S := Sects[I];
       if IniIsOldSection(S) then
+      begin
+        // Копия без данных ничего не вернёт - убираем
+        Ini.ReadSectionValues(S, Cur);
+        if IniSectionEmpty(Cur) then
+        begin
+          Ini.EraseSection(S);
+          Changed := True;
+          FIniPathLog.Add('editor.ini [' + S + ']: копия без данных удалена');
+        end;
         Continue;
+      end;
       Ini.ReadSectionValues(S, Cur);
 
       // Копии этого раздела, от новой к старой
@@ -10807,6 +11006,29 @@ begin
   end;
 end;
 
+// Убирает из [Compiler] описания проекта заглушки C:\, которые писали
+// прежние версии. Раздел, оставшийся пустым, стирается.
+procedure RemoveCompilerStubs(AIni: TIniFile);
+const
+  StubKeys: array[0..5] of string = ('CompPath', 'IncPath', 'LibPath',
+    'IcoFile', 'TplFile', 'FBCompPath');
+var
+  Index: Integer;
+  Keys: TStringList;
+begin
+  for Index := Low(StubKeys) to High(StubKeys) do
+    if Trim(AIni.ReadString('Compiler', StubKeys[Index], '')) = 'C:\' then
+      AIni.DeleteKey('Compiler', StubKeys[Index]);
+  Keys := TStringList.Create;
+  try
+    AIni.ReadSection('Compiler', Keys);
+    if Keys.Count = 0 then
+      AIni.EraseSection('Compiler');
+  finally
+    Keys.Free;
+  end;
+end;
+
 // Записывает текущий список окон в проект AName, создавая папку при надобности
 procedure TForm1.SaveProjectTo(const AName: string);
 var
@@ -10835,22 +11057,16 @@ begin
     // был создан прежней версией и раздел там остался.
     Ini.EraseSection('Editor');
 
-    // [Compiler] заполняем заглушками только если раздела ещё нет: пути там
-    // правит пользователь, и перетирать их при каждом сохранении нельзя.
-    if StripIniComment(Ini.ReadString('Compiler', 'CompPath', '')) = '' then
-    begin
-      Ini.WriteString('Compiler', 'CompPath', 'C:\');
-      Ini.WriteString('Compiler', 'IncPath', 'C:\');
-      Ini.WriteString('Compiler', 'LibPath', 'C:\');
-      Ini.WriteString('Compiler', 'IcoFile', 'C:\');
-      Ini.WriteString('Compiler', 'TplFile', 'C:\');
-      Ini.WriteString('Compiler', 'FBCompPath', 'C:\');
-    end;
     // Корень Delphi - свойство компьютера, а не проекта: он берётся из
     // editor.ini ([Compiler.Delphi] DelphiPath, вкладка Compilers). Ключ,
     // который писали в .prj прежние версии, нигде не читался и давал правку
     // .prj при переходе на другой компьютер - убираем.
     Ini.DeleteKey('Compiler', 'DelphiPath');
+    // Пути компиляторов - свойство компьютера: они в editor.ini
+    // ([Compiler.<тип>], вкладка Compilers), а не в проекте. Прежние версии
+    // писали в [Compiler] проекта заглушки C:\ (формат RQdb.ini) - их
+    // убираем; ключи с другими значениями (перенесённые из RQIDE) остаются.
+    RemoveCompilerStubs(Ini);
 
     // Раздел окон переписываем целиком, иначе остались бы ключи win<N>
     // от закрытых окон. [Compiler] и [Bookmarks] при этом не трогаются.
@@ -10939,14 +11155,17 @@ end;
 // Подсказки пунктов меню VCL не показывает всплывающими окнами - они приходят
 // сюда через Application.OnHint. Выводим их в статус-бар, переключая его в
 // режим одной строки: путь к файлу длинный, в отдельную панель не влезет.
-// Открывает в проводнике папку с исходниками текущего проекта: папку его
-// главного файла (цель сборки: .dpr, .lpr ...), и этот файл в ней
-// выделен. Цели нет на диске - папка описания проекта (.prj), его нет -
-// <projects>\<имя>. Без открытого проекта - корень projects, оттуда видно
-// все проекты сразу.
+// Диалог открытия файла в папке с исходниками текущего проекта: папке его
+// главного файла (цель сборки: .dpr, .lpr, .bas ...), этот файл в диалоге
+// уже выбран. Выбрать можно и несколько файлов - откроются все. Цели нет на
+// диске - папка описания проекта (.prj), его нет - <projects>\<имя>. Без
+// открытого проекта - корень projects, оттуда видно все проекты сразу.
+// С нажатым Shift - как раньше, папка в проводнике.
 procedure TForm1.OpenProjectFolderClick(Sender: TObject);
 var
   Dir, Target, PrjFile: string;
+  OldOptions: TOpenOptions;
+  FileIdx: Integer;
 begin
   Dir := '';
   Target := '';
@@ -10978,12 +11197,32 @@ begin
     Exit;
   end;
 
-  if Target <> '' then
-    // Папка с выделенным главным файлом
-    ShellExecute(Handle, 'open', 'explorer.exe',
-                 PChar('/select,"' + Target + '"'), nil, SW_SHOWNORMAL)
-  else
-    ShellExecute(Handle, 'open', PChar(Dir), nil, nil, SW_SHOWNORMAL);
+  if GetKeyState(VK_SHIFT) < 0 then
+  begin
+    if Target <> '' then
+      // Папка с выделенным главным файлом
+      ShellExecute(Handle, 'open', 'explorer.exe',
+                   PChar('/select,"' + Target + '"'), nil, SW_SHOWNORMAL)
+    else
+      ShellExecute(Handle, 'open', PChar(Dir), nil, nil, SW_SHOWNORMAL);
+    Exit;
+  end;
+
+  // Диалог тот же, что у File - Open (фильтры те же), на время - с выбором
+  // нескольких файлов и с выбранным главным файлом
+  OldOptions := OpenDialog1.Options;
+  OpenDialog1.Options := OpenDialog1.Options + [ofAllowMultiSelect];
+  OpenDialog1.InitialDir := Dir;
+  OpenDialog1.FileName := ExtractFileName(Target);
+  try
+    if not OpenDialog1.Execute then
+      Exit;
+    for FileIdx := 0 to OpenDialog1.Files.Count - 1 do
+      OpenNamedFile(OpenDialog1.Files[FileIdx]);
+  finally
+    OpenDialog1.Options := OldOptions;
+    OpenDialog1.FileName := '';
+  end;
 end;
 
 // Показывает полный путь текущего файла в поле над статус-баром
@@ -12709,8 +12948,15 @@ begin
        IsUntitledName(FWindows[Index].FileName) then
       Continue;               // файл без имени к сборке не относится
     Ext := LowerCase(ExtractFileExt(FWindows[Index].FileName));
-    if (Ext <> '.pas') and (Ext <> '.dfm') and (Ext <> '.dpr') and
-       (Ext <> '.inc') then
+    // Сборка RapidQ: её исходники - .bas и include (.inc, .bi)
+    if FBuildRapidQ then
+    begin
+      if (Ext <> '.bas') and (Ext <> '.rqb') and (Ext <> '.rq') and
+         (Ext <> '.inc') and (Ext <> '.bi') then
+        Continue;
+    end
+    else if (Ext <> '.pas') and (Ext <> '.dfm') and (Ext <> '.dpr') and
+            (Ext <> '.inc') then
       Continue;
     FileLabel := ExtractFileName(FWindows[Index].FileName);
     ActivateWindow(Index);    // сохраняем через обычный путь
@@ -16899,6 +17145,7 @@ begin
       FDsgResTexts.Objects[I].Free;
   FreeAndNil(FDsgResTexts);
   FreeAndNil(FIniPathLog); // обычно уже освобождён в FormShow
+  FreeAndNil(FIncludeRows);
   Screen.OnActiveFormChange := nil;
   // Сами полосы принадлежат спискам и уходят с ними; здесь - только список
   FreeAndNil(FUiListScrolls);
@@ -17270,6 +17517,9 @@ begin
 
   // Инспектор объектов разбирает .dfm только когда его вкладку открыли
   FRightPages.OnChange := RightPagesChange;
+  // Двойной щелчок в Includes - открыть файл
+  if FIncTree <> nil then
+    FIncTree.OnDblClick := IncludesDblClick;
 
   BuildObjectInspector;
 end;
@@ -19188,6 +19438,9 @@ begin
     Result := Result + '  (runtime, значения из снимка)'
   else if N.IsRuntime then
     Result := Result + '  (runtime)';
+  // Приписка узла: у объектов RapidQ - номер строки CREATE
+  if N.Note <> '' then
+    Result := Result + '   ' + N.Note;
 end;
 
 // Узлы - в дерево на экране. Внутрь ссылок не спускаемся: их содержимое
@@ -19400,6 +19653,14 @@ begin
     Exit;
   if not AEvenHidden and (FRightPages.ActivePage <> FTabObjects) then
     Exit;
+
+  // Файл RapidQ (те же правила, что у вкладки Includes) - объекты CREATE
+  if (FCurrentFileName <> '') and IncludesApply then
+  begin
+    RefreshRapidQInspector;
+    Exit;
+  end;
+  FObjRapidQ := False;
 
   Ext := LowerCase(ExtractFileExt(FCurrentFileName));
   // Форма Delphi (.dfm) или Lazarus (.lfm) - один и тот же текстовый вид
@@ -19734,7 +19995,212 @@ begin
     ObjAutoSnap;
   end
   else if FRightPages.ActivePage = FTabCode then
-    RefreshCodeTree;
+    RefreshCodeTree
+  else if FRightPages.ActivePage = FTabIncludes then
+    RefreshIncludes;
+end;
+
+// ---------------------------------------------------------------------------
+//  Вкладка Objects для файлов RapidQ: дерево объектов, созданных через
+//  CREATE ... END CREATE (как вкладка Objects в RQdebugger, BuildObjTree).
+//  Узлы - те же TDfmNode, что у форм Delphi: имя, класс, строка CREATE,
+//  дальше в них лягут свойства и события из снимка.
+//
+//  CREATE внутри другого CREATE - его потомок. Комментарии (' и REM) не в
+//  счёт; строка делится на операторы по ":" вне кавычек, так что
+//  "CREATE ... : END CREATE" в одной строке тоже разбирается. END CREATE
+//  без CREATE и CREATE без END CREATE показываются с пометкой. Рядом с
+//  объектом - номер строки CREATE, щелчок - к ней (CodeTreeClick).
+//  Разбирается текст из редактора, с несохранёнными правками; объекты из
+//  $INCLUDE-файлов пока не показываются.
+// ---------------------------------------------------------------------------
+
+// Операторы строки RapidQ: без комментария ', разделены ":" вне кавычек
+procedure RapidQSplitStatements(const ALine: string; AParts: TStrings);
+var
+  CharIdx, StartPos: Integer;
+  InQuote: Boolean;
+
+  procedure AddPart(AEnd: Integer);
+  var
+    Stmt: string;
+  begin
+    Stmt := Trim(Copy(ALine, StartPos, AEnd - StartPos));
+    if Stmt <> '' then
+      AParts.Add(Stmt);
+  end;
+
+begin
+  AParts.Clear;
+  InQuote := False;
+  StartPos := 1;
+  for CharIdx := 1 to Length(ALine) do
+    case ALine[CharIdx] of
+      '"':
+        InQuote := not InQuote;
+      '''':
+        if not InQuote then
+        begin
+          AddPart(CharIdx);
+          Exit;
+        end;
+      ':':
+        if not InQuote then
+        begin
+          AddPart(CharIdx);
+          StartPos := CharIdx + 1;
+        end;
+    end;
+  AddPart(Length(ALine) + 1);
+end;
+
+// Первое слово оператора заглавными; ARest - то, что после него
+function RapidQFirstWord(const AStmt: string; var ARest: string): string;
+var
+  WordEnd: Integer;
+begin
+  WordEnd := 1;
+  while (WordEnd <= Length(AStmt)) and (AStmt[WordEnd] > ' ') do
+    Inc(WordEnd);
+  Result := UpperCase(Copy(AStmt, 1, WordEnd - 1));
+  ARest := Trim(Copy(AStmt, WordEnd, MaxInt));
+end;
+
+// Узлы объектов CREATE из строк ALines - в ANodes (владеет ими он), корни
+// (CREATE вне других CREATE) - в ARoots. Результат - число объектов.
+function RapidQCreateNodes(ALines: TStrings; ANodes, ARoots: TList): Integer;
+var
+  Parts: TStringList;
+  OpenNodes: TList;   // узлы CREATE, для которых ещё не было END CREATE
+  LineIdx, PartIdx, NodeIdx: Integer;
+  FirstWord, Rest, Tail, NameWord, ClassPart: string;
+  Parent, Node: TDfmNode;
+
+  function NewNode(AParent: TDfmNode; ALine: Integer): TDfmNode;
+  begin
+    Result := TDfmNode.Create;
+    ANodes.Add(Result);
+    Result.Line := ALine;
+    Result.CreateLine := ALine;
+    Result.FromCode := True;
+    Result.Note := '[' + IntToStr(ALine + 1) + ']';
+    Result.Parent := AParent;
+    if AParent <> nil then
+      AParent.Children.Add(Result)
+    else
+      ARoots.Add(Result);
+  end;
+
+begin
+  Result := 0;
+  Parts := TStringList.Create;
+  OpenNodes := TList.Create;
+  try
+    for LineIdx := 0 to ALines.Count - 1 do
+    begin
+      // Быстрый отсев: в строке нет слова CREATE ни в каком виде
+      if Pos('CREATE', UpperCase(ALines[LineIdx])) = 0 then
+        Continue;
+      RapidQSplitStatements(ALines[LineIdx], Parts);
+      for PartIdx := 0 to Parts.Count - 1 do
+      begin
+        FirstWord := RapidQFirstWord(Parts[PartIdx], Rest);
+        if FirstWord = 'REM' then
+          Break;   // дальше в строке - комментарий
+        if FirstWord = 'CREATE' then
+        begin
+          if OpenNodes.Count > 0 then
+            Parent := TDfmNode(OpenNodes[OpenNodes.Count - 1])
+          else
+            Parent := nil;
+          Node := NewNode(Parent, LineIdx);
+          // "MenuText AS QRichEdit"; другой вид - целиком в имя
+          Node.Name := Rest;
+          NameWord := RapidQFirstWord(Rest, Tail);
+          if NameWord <> '' then
+          begin
+            ClassPart := '';
+            if RapidQFirstWord(Tail, ClassPart) = 'AS' then
+            begin
+              Node.Name := Copy(Rest, 1, Length(NameWord));
+              Node.ClassNm := Trim(ClassPart);
+            end;
+          end;
+          OpenNodes.Add(Node);
+          Inc(Result);
+        end
+        else if (FirstWord = 'END') and
+                (RapidQFirstWord(Rest, Tail) = 'CREATE') then
+        begin
+          if OpenNodes.Count > 0 then
+          begin
+            TDfmNode(OpenNodes[OpenNodes.Count - 1]).EndLine := LineIdx;
+            OpenNodes.Delete(OpenNodes.Count - 1);
+          end
+          else
+          begin
+            Node := NewNode(nil, LineIdx);
+            Node.ClassNm := 'END CREATE без CREATE';
+          end;
+        end;
+      end;
+    end;
+
+    // CREATE, который так и не закрыт
+    for NodeIdx := 0 to OpenNodes.Count - 1 do
+    begin
+      Node := TDfmNode(OpenNodes[NodeIdx]);
+      Node.Note := Node.Note + '  нет END CREATE';
+    end;
+  finally
+    OpenNodes.Free;
+    Parts.Free;
+  end;
+end;
+
+// Инспектор для файла RapidQ: дерево объектов CREATE. Свойств у узлов пока
+// нет - их даст снимок программы.
+procedure TForm1.RefreshRapidQInspector;
+var
+  Lines: TStringList;
+  Roots: TList;
+  RootIdx, ObjCount: Integer;
+begin
+  ObjCancelEdit;
+  FObjCurNode := nil;
+  FObjDfmBinary := False;
+  ClearDfmNodes;
+  // Ветка Delphi после RapidQ должна строиться заново, не по старым ключам
+  FObjRapidQ := True;
+  FObjDfmKey := '';
+  FObjTreeKey := '';
+  FObjTreeDfm := '';
+  FObjDfmFile := '';
+  FObjFormClass := '';
+  FObjCacheFile := '';
+  FObjLinesUnsure := False;
+  if FObjRoots = nil then
+    FObjRoots := TList.Create;
+
+  Lines := TStringList.Create;
+  Roots := TList.Create;
+  try
+    Lines.Text := GetEditorTextCR;
+    ObjCount := RapidQCreateNodes(Lines, FDfmNodes, Roots);
+    RenderObjTree(Roots);
+    for RootIdx := 0 to Roots.Count - 1 do
+      FObjRoots.Add(Roots[RootIdx]);
+    if ObjCount = 0 then
+      FObjSource.Caption := '  ' + ExtractFileName(FCurrentFileName) +
+                            ': CREATE в файле нет'
+    else
+      FObjSource.Caption := '  ' + ExtractFileName(FCurrentFileName) +
+                            ': объектов CREATE - ' + IntToStr(ObjCount) +
+                            '. Значения свойств - из снимка, его пока нет';
+  finally
+    Roots.Free;
+    Lines.Free;
+  end;
 end;
 
 // Дерево всех компонентов, которые создаёт код открытого модуля: главная
@@ -19822,6 +20288,20 @@ var
 begin
   if FCodeTree = nil then
     Exit;
+  // Файл RapidQ (те же правила, что у вкладки Includes): его объекты
+  // CREATE - на вкладке Objects
+  if (FCurrentFileName <> '') and IncludesApply then
+  begin
+    FCodeTree.Items.BeginUpdate;
+    try
+      FCodeTree.Items.Clear;
+      FCodeTree.Items.AddObject(nil, '(RapidQ: объекты CREATE - на вкладке ' +
+                                'Objects)', Pointer(-1));
+    finally
+      FCodeTree.Items.EndUpdate;
+    end;
+    Exit;
+  end;
   Start := FDfmNodes.Count;
   Lines := TStringList.Create;
   FCodeTree.Items.BeginUpdate;
@@ -20838,6 +21318,13 @@ procedure TForm1.ObjSnapBtnClick(Sender: TObject);
 var
   Has: Boolean;
 begin
+  // Пробный запуск собирает копию проекта Delphi - к программе RapidQ он
+  // не подходит, её снимок делается иначе
+  if FObjRapidQ then
+  begin
+    ShowMessage('Снимок программы RapidQ пока не сделан.');
+    Exit;
+  end;
   Has := (OwnSnapFor(FObjFormClass) <> '') or
          (ProbeSnapFor(FObjFormClass) <> '');
 
@@ -20931,6 +21418,9 @@ var
   N: TDfmNode;
 begin
   Result := nil;
+  // Классы RapidQ (QForm, QRichEdit) - не классы VCL
+  if FObjRapidQ then
+    Exit;
   N := TDfmNode(ANode);
   if (N = nil) or (N.ClassNm = '') then
     Exit;
@@ -22684,6 +23174,13 @@ begin
       RefreshCodeTree;
       TCode := GetTickCount - T0 - TSub - TObj;
     end;
+
+    // Список include - под новый файл, если вкладка Includes открыта
+    if (FRightPages <> nil) and (FRightPages.ActivePage = FTabIncludes) then
+    begin
+      TabWorkStage('Includes');
+      RefreshIncludes;
+    end;
   finally
     FTabWork := False;
     FWindows[W].WorkMs := GetTickCount - T0;
@@ -23276,6 +23773,14 @@ begin
   if (FObjTree.Selected = nil) or (FObjTree.Selected.Data = nil) then
     Exit;
   N := TDfmNode(FObjTree.Selected.Data);
+
+  // Объект RapidQ - к его строке CREATE в открытом файле
+  if FObjRapidQ then
+  begin
+    if N.CreateLine >= 0 then
+      GotoLine(N.CreateLine);
+    Exit;
+  end;
 
   // Компонент из .dfm - к строке его заголовка object в тексте формы.
   // Номер строки и имя файла берём ДО OpenNamedFile: переключение вкладки
@@ -28298,6 +28803,31 @@ begin
       Exit;
     Obj := TDfmNode(Node.Data);
     FObjCurNode := Obj;
+
+    // Объект RapidQ: только то, что есть в узле. Конструктор форм, классы
+    // VCL и строки модуля Delphi к нему не относятся.
+    if FObjRapidQ then
+    begin
+      FObjHeader.Caption := '  ' + Obj.Name + ': ' + Obj.ClassNm;
+      if Obj.CreateLine >= 0 then
+        FObjHeader.Caption := FObjHeader.Caption + '   строка ' +
+                              IntToStr(Obj.CreateLine + 1);
+      for I := 0 to Obj.PropN.Count - 1 do
+      begin
+        It := FObjProps.Items.Add;
+        It.Caption := Obj.PropN[I];
+        It.SubItems.Add(Obj.PropV[I]);
+        It.Data := Pointer(I);
+      end;
+      for I := 0 to Obj.EvN.Count - 1 do
+      begin
+        It := FObjEvents.Items.Add;
+        It.Caption := Obj.EvN[I];
+        It.SubItems.Add(Obj.EvV[I]);
+        It.Data := Pointer(Obj.EvN.Objects[I]);
+      end;
+      Exit;
+    end;
 
     // Выбрали в дереве - выделение и в конструкторе, если он показывает
     // эту форму
@@ -34781,6 +35311,953 @@ begin
 end;
 
 
+// ---------------------------------------------------------------------------
+//  Сборка RapidQ Basic: rc.exe
+//
+//  Пути - из editor.ini, раздел [Compiler.RapidQ Basic] или раздел
+//  инструмента проекта (см. CompilerSection), вкладка Compilers:
+//    CompPath - папка rc.exe (можно и сам rc.exe), IncPath, LibPath,
+//    IcoFile.
+//  Командная строка та же, что собирал RQdebugger (RunItOnClick):
+//    rc.exe -r -I"inc/" -L"lib/" -G"default.ico" "файл.bas" "файл.exe"
+//  В -I, -L, -G косые прямые - так их готовила C_Style из Files.inc;
+//  исходник и exe - как есть.
+//
+//  Сообщения rc.exe пишет в DUMP.$$$ в текущей папке; текущая папка у него -
+//  папка .bas. Блок ошибки в нём выглядит так:
+//    Line 8251: Error in expression, missing parenthesis
+//    RQdebugger454.bas: In section HLDRAWCELL
+//    RQdebugger454.bas: fontcolor=HlColor(Row%))
+//    RQdebugger454.bas:                        ^-- error
+//    File in error: C:\BAS\RAPIDQ\RQIDE\RQdebugger454.bas
+//  Строка Line бывает и с колонкой: "Line 11, 4: Expected = but got "/"".
+//  Ошибка уходит в лог строкой "файл(строка) Error: текст" - формат dcc32:
+//  её красит LogComp, и по двойному щелчку открывается место ошибки.
+// ---------------------------------------------------------------------------
+
+// Исходник RapidQ по расширению
+function IsRapidQSource(const AFile: string): Boolean;
+var
+  Ext: string;
+begin
+  Ext := LowerCase(ExtractFileExt(AFile));
+  Result := (Ext = '.bas') or (Ext = '.rqb') or (Ext = '.rq');
+end;
+
+// Путь для ключей -I, -L, -G: обратные косые - прямыми
+function RapidQSlashPath(const APath: string): string;
+begin
+  Result := StringReplace(APath, '\', '/', [rfReplaceAll]);
+end;
+
+// Строка лога без времени в начале ("hh:nn:ss  текст")
+function StripLogTime(const S: string): string;
+var
+  Gap: Integer;
+begin
+  Result := S;
+  Gap := Pos('  ', Result);
+  if (Gap > 0) and (Gap <= 10) then
+    Result := Copy(Result, Gap + 2, Length(Result));
+end;
+
+// Сборка RapidQ или Delphi - по типу проекта. Без проекта - по открытому
+// файлу: .bas собирает rc.exe, остальное - dcc32, как раньше.
+function TForm1.BuildIsRapidQ: Boolean;
+var
+  BuildPrj: string;
+begin
+  BuildPrj := BuildProject;
+  if BuildPrj <> '' then
+    Result := CompareText(ProjectTypeOf(BuildPrj), 'RapidQ Basic') = 0
+  else
+    Result := (FCurrentFileName <> '') and IsRapidQSource(FCurrentFileName);
+end;
+
+// Кнопки Compile и Compile & Run. Остальные места (пробный запуск
+// конструктора, Build Release) по-прежнему зовут CompileDelphi: они
+// работают только с проектами Delphi.
+function TForm1.CompileProject: Boolean;
+begin
+  if BuildIsRapidQ then
+    Result := CompileRapidQ
+  else
+    Result := CompileDelphi;
+end;
+
+// Подключает ли AMain файл AFile строкой $INCLUDE "..." или $INCLUDE <...>.
+// Сравниваются имена без пути: путь в $INCLUDE бывает и относительным, и
+// от папки Include. Закомментированные строки не в счёт. Только сам AMain,
+// без вложенных include.
+function RapidQIncludes(const AMain, AFile: string): Boolean;
+const
+  IncTag = '$include';
+var
+  Source: TStringList;
+  Index, NameStart, NameEnd: Integer;
+  LowLine, IncName: string;
+begin
+  Result := False;
+  if not FileExists(AMain) then
+    Exit;
+  Source := TStringList.Create;
+  try
+    try
+      Source.LoadFromFile(AMain);
+    except
+      Exit;
+    end;
+    for Index := 0 to Source.Count - 1 do
+    begin
+      LowLine := LowerCase(TrimLeft(Source[Index]));
+      if Copy(LowLine, 1, Length(IncTag)) <> IncTag then
+        Continue;
+      NameStart := Pos('"', LowLine);
+      if NameStart > 0 then
+        NameEnd := Pos('"', Copy(LowLine, NameStart + 1, MaxInt))
+      else
+      begin
+        NameStart := Pos('<', LowLine);
+        NameEnd := Pos('>', Copy(LowLine, NameStart + 1, MaxInt));
+      end;
+      if (NameStart = 0) or (NameEnd = 0) then
+        Continue;
+      IncName := Trim(Copy(LowLine, NameStart + 1, NameEnd - 1));
+      IncName := StringReplace(IncName, '/', '\', [rfReplaceAll]);
+      if CompareText(ExtractFileName(IncName), ExtractFileName(AFile)) = 0 then
+      begin
+        Result := True;
+        Exit;
+      end;
+    end;
+  finally
+    Source.Free;
+  end;
+end;
+
+// Главный .bas сборки RapidQ. Как в RQdebugger, собирается файл активной
+// вкладки:
+//   - активная вкладка - .bas, и цель проекта не подключает его через
+//     $INCLUDE - он; ARemember - он же записывается целью проекта (новая
+//     версия главного файла заводится копией под новым именем, и прежняя
+//     цель отстаёт);
+//   - активный .bas подключён в цель через $INCLUDE - цель;
+//   - активная вкладка не .bas (.inc, .prj) - цель проекта.
+// Проект другого типа - пусто. Цель .dpr у проекта без типа не
+// перетирается.
+function TForm1.RapidQTargetBas(ARemember: Boolean): string;
+var
+  BuildPrj, Stored, Active: string;
+begin
+  Result := '';
+  Stored := '';
+  BuildPrj := BuildProject;
+  if BuildPrj <> '' then
+  begin
+    if CompareText(ProjectTypeOf(BuildPrj), 'RapidQ Basic') <> 0 then
+      Exit;
+    Stored := ProjectTargetFind(BuildPrj);
+  end;
+
+  Active := '';
+  if (FCurrentFileName <> '') and IsRapidQSource(FCurrentFileName) and
+     FileExists(FCurrentFileName) then
+    Active := FCurrentFileName;
+
+  // Цель проекта - .bas, который есть на диске
+  if (Stored <> '') and IsRapidQSource(Stored) and FileExists(Stored) then
+  begin
+    if (Active = '') or
+       (CompareText(ExpandFileName(Active), ExpandFileName(Stored)) = 0) then
+    begin
+      Result := Stored;
+      Exit;
+    end;
+    if RapidQIncludes(Stored, Active) then
+    begin
+      Result := Stored;
+      if ARemember then
+        LogComp('Собирается цель проекта ' + ExtractFileName(Stored) + ': ' +
+                ExtractFileName(Active) + ' подключён в неё через $INCLUDE');
+      Exit;
+    end;
+  end;
+
+  if Active = '' then
+    Exit;
+  Result := Active;
+
+  // Записываем целью, если прежняя цель - не чужой .dpr
+  if ARemember and (BuildPrj <> '') and
+     ((Stored = '') or IsRapidQSource(Stored)) then
+  begin
+    SetProjectTarget(BuildPrj, Result);
+    if Stored = '' then
+      LogComp('Цель сборки проекта: ' + Result)
+    else
+      LogComp('Цель сборки проекта: ' + Result + ' (была ' +
+              ExtractFileName(Stored) + ')');
+  end;
+end;
+
+// Номер строки исходника (от единицы) по тексту из сообщения rc.exe -
+// когда строки "Line N:" в блоке нет. Сначала ищется от заголовка
+// процедуры из "In section", потом по всему файлу; сначала строка целиком,
+// потом вхождение. 0 - не нашлось.
+function TForm1.RapidQFindSourceLine(const AFile, AText,
+                                     ASection: string): Integer;
+const
+  Heads: array[0..3] of string = ('sub ', 'function ', 'subi ', 'functioni ');
+var
+  Source: TStringList;
+  Target, LowLine, Name: string;
+  Start, Index, Head, Pass, NameEnd: Integer;
+begin
+  Result := 0;
+  Target := Trim(AText);
+  if (Target = '') or not FileExists(AFile) then
+    Exit;
+
+  Source := TStringList.Create;
+  try
+    try
+      Source.LoadFromFile(AFile);
+    except
+      Exit;
+    end;
+
+    // Заголовок процедуры из "In section"
+    Start := 0;
+    if ASection <> '' then
+      for Index := 0 to Source.Count - 1 do
+      begin
+        LowLine := LowerCase(TrimLeft(Source[Index]));
+        for Head := Low(Heads) to High(Heads) do
+          if Copy(LowLine, 1, Length(Heads[Head])) = Heads[Head] then
+          begin
+            Name := TrimLeft(Copy(LowLine, Length(Heads[Head]) + 1,
+                                  Length(LowLine)));
+            NameEnd := 1;
+            while (NameEnd <= Length(Name)) and
+                  not (Name[NameEnd] in [' ', '(', #9]) do
+              Inc(NameEnd);
+            if Copy(Name, 1, NameEnd - 1) = LowerCase(ASection) then
+            begin
+              Start := Index;
+              Break;
+            end;
+          end;
+        if Start > 0 then
+          Break;
+      end;
+
+    // Проход 1 - строка целиком, проход 2 - вхождение. Каждый - от
+    // процедуры, потом с начала файла.
+    for Pass := 1 to 2 do
+    begin
+      for Index := Start to Source.Count - 1 do
+        if ((Pass = 1) and (Trim(Source[Index]) = Target)) or
+           ((Pass = 2) and (Pos(Target, Source[Index]) > 0)) then
+        begin
+          Result := Index + 1;
+          Exit;
+        end;
+      if Start > 0 then
+        for Index := 0 to Start - 1 do
+          if ((Pass = 1) and (Trim(Source[Index]) = Target)) or
+             ((Pass = 2) and (Pos(Target, Source[Index]) > 0)) then
+          begin
+            Result := Index + 1;
+            Exit;
+          end;
+    end;
+  finally
+    Source.Free;
+  end;
+end;
+
+// Разбор сообщений rc.exe. Каждая ошибка - строкой "файл(строка) Error:
+// текст" в лог (и в окно ошибок). True - ошибки были. AFirstFile и
+// AFirstLine - место первой ошибки, AFirstLine = 0 - строку узнать не
+// удалось.
+function TForm1.RapidQReportErrors(AOutput: TStrings;
+                                   const ABas, AIncDir: string;
+                                   var AFirstFile: string;
+                                   var AFirstLine: Integer): Boolean;
+const
+  SectionTag = ': in section ';
+var
+  Index, ErrLine, ErrCol, Pos1, Colon: Integer;
+  Txt, LowTxt, Msg, ErrFile, SrcText, Section, LastText, NamePart: string;
+  Pending, IsWarning, Found: Boolean;
+
+  procedure ResetBlock;
+  begin
+    Pending := False;
+    IsWarning := False;
+    ErrLine := 0;
+    ErrCol := 0;
+    Msg := '';
+    ErrFile := '';
+    SrcText := '';
+    Section := '';
+    LastText := '';
+  end;
+
+  // Ошибка - красным в оба окна сама, не по разбору LogComp: в тексте
+  // ошибки rc.exe бывают скобки, и IsCompilerError мог бы её не узнать
+  procedure LogRed(const AText: string);
+  begin
+    FLastDiag := '';
+    if CompLogEdit <> nil then
+      LogTo(CompLogEdit, AText, clRed)
+    else
+      LogTo(LogEdit, AText, clRed);
+    LogErr(AText);
+  end;
+
+  // Блок закончен (File in error или конец вывода) - строка в лог
+  procedure Emit;
+  var
+    Candidate, Line, Notes: string;
+    Searched: Boolean;
+  begin
+    if ErrFile = '' then
+      ErrFile := ABas
+    else if (ExtractFilePath(ErrFile) = '') or not FileExists(ErrFile) then
+    begin
+      // Имя без пути - рядом с .bas, потом в папке Include
+      Candidate := ExtractFilePath(ABas) + ExtractFileName(ErrFile);
+      if FileExists(Candidate) then
+        ErrFile := Candidate
+      else if AIncDir <> '' then
+      begin
+        Candidate := IncludeTrailingPathDelimiter(AIncDir) +
+                     ExtractFileName(ErrFile);
+        if FileExists(Candidate) then
+          ErrFile := Candidate;
+      end;
+    end;
+
+    Searched := False;
+    if (ErrLine = 0) and (SrcText <> '') then
+    begin
+      ErrLine := RapidQFindSourceLine(ErrFile, SrcText, Section);
+      Searched := ErrLine > 0;
+    end;
+
+    if Msg = '' then
+      Msg := 'ошибка компиляции';
+    Notes := '';
+    if ErrCol > 0 then
+      Notes := Notes + ', колонка ' + IntToStr(ErrCol);
+    if Section <> '' then
+      Notes := Notes + ', процедура ' + Section;
+    if Searched then
+      Notes := Notes + ', строка найдена по тексту';
+    if Notes <> '' then
+      Notes := '  [' + Copy(Notes, 3, Length(Notes)) + ']';
+
+    if IsWarning then
+      Line := 'Warning: '
+    else
+      Line := 'Error: ';
+    if ErrLine > 0 then
+      Line := ErrFile + '(' + IntToStr(ErrLine) + ') ' + Line + Msg + Notes
+    else
+      Line := Line + Msg + ' - ' + ErrFile + Notes;
+    if IsWarning then
+      LogComp(Line)
+    else
+      LogRed(Line);
+    if (ErrLine = 0) and (SrcText <> '') then
+      LogComp('    текст строки: ' + SrcText);
+
+    if not IsWarning then
+    begin
+      if not Found then
+      begin
+        AFirstFile := ErrFile;
+        AFirstLine := ErrLine;
+      end;
+      Found := True;
+    end;
+    ResetBlock;
+  end;
+
+begin
+  Found := False;
+  AFirstFile := '';
+  AFirstLine := 0;
+  ResetBlock;
+
+  for Index := 0 to AOutput.Count - 1 do
+  begin
+    Txt := TrimRight(AOutput[Index]);
+    LowTxt := LowerCase(TrimLeft(Txt));
+    if LowTxt = '' then
+      Continue;
+
+    // "Line N: текст" и "Line N, C: текст"
+    if (Copy(LowTxt, 1, 5) = 'line ') and (Length(LowTxt) > 5) and
+       (LowTxt[6] in ['0'..'9']) then
+    begin
+      if Pending then
+        Emit;      // прежний блок остался без File in error
+      Pending := True;
+      Pos1 := 6;
+      while (Pos1 <= Length(LowTxt)) and (LowTxt[Pos1] in ['0'..'9']) do
+      begin
+        ErrLine := ErrLine * 10 + Ord(LowTxt[Pos1]) - Ord('0');
+        Inc(Pos1);
+      end;
+      if (Pos1 <= Length(LowTxt)) and (LowTxt[Pos1] = ',') then
+      begin
+        Inc(Pos1);
+        while (Pos1 <= Length(LowTxt)) and (LowTxt[Pos1] = ' ') do
+          Inc(Pos1);
+        while (Pos1 <= Length(LowTxt)) and (LowTxt[Pos1] in ['0'..'9']) do
+        begin
+          ErrCol := ErrCol * 10 + Ord(LowTxt[Pos1]) - Ord('0');
+          Inc(Pos1);
+        end;
+      end;
+      Colon := Pos(':', Txt);
+      if Colon > 0 then
+        Msg := Trim(Copy(Txt, Colon + 1, Length(Txt)))
+      else
+        Msg := Trim(Txt);
+      // "Line 1: ERROR: текст" - слово ERROR уже есть в строке лога
+      if AnsiCompareText(Copy(Msg, 1, 6), 'ERROR:') = 0 then
+        Msg := Trim(Copy(Msg, 7, Length(Msg)));
+      IsWarning := Pos('warning', LowTxt) > 0;
+      Continue;
+    end;
+
+    // "File in error: путь" - конец блока
+    if Copy(LowTxt, 1, 14) = 'file in error:' then
+    begin
+      Pending := True;
+      ErrFile := Trim(Copy(TrimLeft(Txt), 15, Length(Txt)));
+      Emit;
+      Continue;
+    end;
+
+    // exe не открывается на запись и подобное - без строки и файла
+    if Copy(LowTxt, 1, 10) = 'can''t open' then
+    begin
+      if Pending then
+        Emit;
+      LogRed('Error: ' + Trim(Txt));
+      Found := True;
+      Continue;
+    end;
+
+    // Строки вида "файл.bas: ..." - процедура, текст строки, указатель
+    Colon := Pos(': ', Txt);
+    if Colon > 1 then
+    begin
+      NamePart := Copy(Txt, 1, Colon - 1);
+      if Pos('.', ExtractFileName(NamePart)) > 0 then
+      begin
+        Pending := True;
+        if Pos(': in main section', LowTxt) > 0 then
+          Section := ''
+        else if Pos(SectionTag, LowTxt) > 0 then
+          Section := Trim(Copy(TrimLeft(Txt),
+                               Pos(SectionTag, LowTxt) + Length(SectionTag),
+                               Length(Txt)))
+        else if Pos('^-- error', LowTxt) > 0 then
+        begin
+          SrcText := Trim(LastText);
+          // Колонка - смещение ^ от начала текста после "файл.bas: "
+          if ErrCol = 0 then
+            ErrCol := Pos('^', Txt) - (Colon + 1);
+          if ErrCol < 0 then
+            ErrCol := 0;
+        end
+        else
+          LastText := Copy(Txt, Colon + 2, Length(Txt));
+      end;
+    end;
+  end;
+
+  if Pending and ((ErrLine > 0) or (SrcText <> '')) then
+    Emit;
+  Result := Found;
+end;
+
+// Сборка .bas компилятором rc.exe. True - собрано, exe на месте.
+function TForm1.CompileRapidQ: Boolean;
+var
+  Ini: TIniFile;
+  Sect, CompDir, IncDir, LibDir, IconFile: string;
+  RcExe, Bas, Exe, Dir, Params, DumpFile, BuildPrj, FirstFile: string;
+  Code, LogStart, Index, FirstLine: Integer;
+  T0: Cardinal;
+  RcLines, ConsoleLines: TStringList;
+  HasError, Built: Boolean;
+begin
+  Result := False;
+  ShowCompLog;
+  if CompLogEdit <> nil then
+    CompLogEdit.Lines.Clear;
+  if ErrLogEdit <> nil then
+    ErrLogEdit.Lines.Clear;
+
+  if not CheckDiskChanges(-1) then
+  begin
+    LogComp('Компиляция отменена: файлы на диске изменены снаружи, ' +
+            'разберитесь с ними и соберите снова');
+    Exit;
+  end;
+
+  // rc.exe читает файлы с диска: несохранённые правки он не увидит
+  if RichEdit1.Modified then
+    if not SaveCurrentFile then
+      Exit;
+  FBuildRapidQ := True;
+  try
+    if not SaveSourcesBeforeBuild then
+      Exit;
+  finally
+    FBuildRapidQ := False;
+  end;
+
+  Bas := RapidQTargetBas(True);
+  if Bas = '' then
+  begin
+    LogComp('Сборка RapidQ: главный файл не найден. Откройте главный .bas ' +
+            'проекта - он запомнится как цель сборки');
+    BuildPrj := BuildProject;
+    if (BuildPrj <> '') and (ProjectTargetOf(BuildPrj) <> '') then
+      LogComp('  Цель в описании проекта: ' + ProjectTargetOf(BuildPrj) +
+              '. Если это проект Delphi, укажите в описании ' +
+              '[Project] Type=Delphi');
+    Exit;
+  end;
+
+  // Пути компилятора. StripIniComment к путям не применяется: точка с
+  // запятой в имени папки допустима.
+  Sect := CompilerSection('RapidQ Basic');
+  CompDir := '';
+  IncDir := '';
+  LibDir := '';
+  IconFile := '';
+  if FileExists(SettingsFileName) then
+  begin
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      CompDir := Trim(Ini.ReadString(Sect, 'CompPath', ''));
+      IncDir := Trim(Ini.ReadString(Sect, 'IncPath', ''));
+      LibDir := Trim(Ini.ReadString(Sect, 'LibPath', ''));
+      IconFile := Trim(Ini.ReadString(Sect, 'IcoFile', ''));
+    finally
+      Ini.Free;
+    end;
+  end;
+
+  if CompDir = '' then
+  begin
+    LogComp('Сборка RapidQ: не задана папка компилятора [' + Sect + ']. ' +
+            'IDE Options - Compilers - RapidQ Basic, поле Compiler: ' +
+            'папка с rc.exe');
+    Exit;
+  end;
+  if FileExists(CompDir) and not DirectoryExists(CompDir) then
+    RcExe := CompDir
+  else
+    RcExe := IncludeTrailingPathDelimiter(CompDir) + 'rc.exe';
+  if not FileExists(RcExe) then
+  begin
+    LogComp('Сборка RapidQ: rc.exe не найден: ' + RcExe + '   [' + Sect + ']');
+    Exit;
+  end;
+
+  // Чего нет на диске - не передаём, но пишем об этом: иначе ошибка придёт
+  // от компилятора, без связи с настройками
+  Params := '-r';
+  if IncDir <> '' then
+  begin
+    if DirectoryExists(IncDir) then
+      Params := Params + ' -I"' +
+                RapidQSlashPath(IncludeTrailingPathDelimiter(IncDir)) + '"'
+    else
+      LogComp('Сборка RapidQ: папка Include не найдена, -I не передаётся: ' +
+              IncDir);
+  end;
+  if LibDir <> '' then
+  begin
+    if DirectoryExists(LibDir) then
+      Params := Params + ' -L"' +
+                RapidQSlashPath(IncludeTrailingPathDelimiter(LibDir)) + '"'
+    else
+      LogComp('Сборка RapidQ: папка Library не найдена, -L не передаётся: ' +
+              LibDir);
+  end;
+  if IconFile <> '' then
+  begin
+    if FileExists(IconFile) then
+      Params := Params + ' -G"' + RapidQSlashPath(IconFile) + '"'
+    else
+      LogComp('Сборка RapidQ: файл иконки не найден, -G не передаётся: ' +
+              IconFile);
+  end;
+
+  Exe := ChangeFileExt(Bas, '.exe');
+  Dir := ExtractFilePath(Bas);
+  Params := Params + ' "' + Bas + '" "' + Exe + '"';
+
+  // Запущенный exe переименовывается в .old (как у Delphi), прежний exe
+  // удаляется: по его появлению видно, что сборка прошла
+  if not FreeBusyExe(Exe) then
+    Exit;
+  if FileExists(Exe) and not DeleteFile(Exe) then
+  begin
+    LogComp('Сборка RapidQ: не удалось удалить прежний ' + Exe + ' (' +
+            SysErrorMessage(GetLastError) + ')');
+    Exit;
+  end;
+  DumpFile := Dir + 'DUMP.$$$';
+  DeleteFile(DumpFile);
+
+  LogComp('--- Компиляция: ' + ExtractFileName(Bas) + '   [' + Sect + ']');
+  LogComp('"' + RcExe + '" ' + Params);
+  WriteCompileBat(RcExe, Params, Dir, Bas);
+
+  if CompLogEdit <> nil then
+    LogStart := CompLogEdit.Lines.Count
+  else
+    LogStart := -1;
+  T0 := GetTickCount;
+  Code := -1;
+  Built := False;
+  HasError := False;
+  FirstFile := '';
+  FirstLine := 0;
+  BusyBegin('Компиляция ' + ExtractFileName(Bas));
+  try
+    Code := RunCompiler(RcExe, Params, Dir);
+    if Code = -1 then
+      Exit;   // не запустился - причина уже в логе
+
+    RcLines := TStringList.Create;
+    ConsoleLines := TStringList.Create;
+    try
+      // Что rc.exe напечатал в консоль - уже в логе
+      if LogStart >= 0 then
+        for Index := LogStart to CompLogEdit.Lines.Count - 1 do
+          if Trim(CompLogEdit.Lines[Index]) <> '' then
+            ConsoleLines.Add(Trim(StripLogTime(CompLogEdit.Lines[Index])));
+
+      // Разбирается DUMP.$$$; его строк, которых не было в консоли, в логе
+      // ещё нет - дописываем. Файла нет - разбираем вывод консоли.
+      if FileExists(DumpFile) then
+      begin
+        try
+          RcLines.LoadFromFile(DumpFile);
+        except
+          LogComp('Сборка RapidQ: не удалось прочитать ' + DumpFile);
+        end;
+        for Index := 0 to RcLines.Count - 1 do
+          if (Trim(RcLines[Index]) <> '') and
+             (ConsoleLines.IndexOf(Trim(RcLines[Index])) < 0) then
+            LogComp(RcLines[Index]);
+      end
+      else
+        RcLines.Assign(ConsoleLines);
+
+      HasError := RapidQReportErrors(RcLines, Bas, IncDir, FirstFile, FirstLine);
+    finally
+      ConsoleLines.Free;
+      RcLines.Free;
+    end;
+
+    Built := not HasError and FileExists(Exe);
+  finally
+    if Built then
+      BusyEnd('Компиляция: готово', True)
+    else
+      BusyEnd('Компиляция: ошибки', False);
+  end;
+  Result := Built;
+
+  if Built then
+  begin
+    LogComp(Format('--- Готово, %d мс: %s', [GetTickCount - T0, Exe]));
+    Exit;
+  end;
+
+  if not HasError then
+  begin
+    LogComp(Format('--- exe не появился: %s. Код завершения rc.exe %d',
+                   [Exe, Code]));
+    Exit;
+  end;
+
+  LogComp('--- Ошибки компиляции. Двойной щелчок по строке с ошибкой ' +
+          'открывает файл на нужной строке');
+  if (ErrLogEdit <> nil) and (ErrLogEdit.Lines.Count > 0) then
+    ShowErrLog;
+  // Как в RQdebugger: сразу к первой ошибке
+  if (FirstLine > 0) and (FirstFile <> '') and FileExists(FirstFile) then
+  begin
+    OpenNamedFile(FirstFile);
+    GotoLine(FirstLine - 1);
+  end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Вкладка Includes правой панели: файлы, подключённые через $INCLUDE
+//
+//  Только для RapidQ (.bas, .rqb, .rq, .bi; .inc - в проекте RapidQ).
+//  Правила - как у RQdebugger (CreateINCfilesTree):
+//    $INCLUDE "файл" и $INCLUDE <файл>, закомментированные не в счёт;
+//    файл ищется: путь полный - как есть; иначе в папке главного .bas, потом
+//    в папке Include из настроек ([Compiler.RapidQ Basic] IncPath).
+//  Дерево, как в RQdebugger: корень - сам файл, вложенные include - его
+//  ветками; у узла - полный путь и в скобках номер строки с $INCLUDE.
+//  Файл, который уже показан, второй раз не разворачивается. Не
+//  найденный - с пометкой; двойной щелчок по нему открывает строку с
+//  $INCLUDE.
+//  Список строится, когда вкладку открывают, и при переключении вкладок
+//  редактора, если она открыта.
+// ---------------------------------------------------------------------------
+
+// Имя файла из строки "$INCLUDE "файл"" или "$INCLUDE <файл>"; не
+// $INCLUDE (в том числе закомментированная) - пусто. Косые - обратные.
+function RapidQIncludeName(const ALine: string): string;
+const
+  IncTag = '$include';
+var
+  Txt: string;
+  NameStart, NameEnd: Integer;
+  CloseChar: Char;
+begin
+  Result := '';
+  Txt := TrimLeft(ALine);
+  if LowerCase(Copy(Txt, 1, Length(IncTag))) <> IncTag then
+    Exit;
+  Txt := TrimLeft(Copy(Txt, Length(IncTag) + 1, MaxInt));
+  if Txt = '' then
+    Exit;
+  if Txt[1] = '"' then
+    CloseChar := '"'
+  else if Txt[1] = '<' then
+    CloseChar := '>'
+  else
+    Exit;
+  NameStart := 2;
+  NameEnd := NameStart;
+  while (NameEnd <= Length(Txt)) and (Txt[NameEnd] <> CloseChar) do
+    Inc(NameEnd);
+  if NameEnd > Length(Txt) then
+    Exit;
+  Result := Trim(Copy(Txt, NameStart, NameEnd - NameStart));
+  Result := StringReplace(Result, '/', '\', [rfReplaceAll]);
+end;
+
+// Где лежит подключаемый файл. '' - не найден.
+function RapidQResolveInclude(const AName, AMainDir, AIncDir: string): string;
+begin
+  Result := '';
+  if AName = '' then
+    Exit;
+  if (ExtractFileDrive(AName) <> '') or (Copy(AName, 1, 2) = '\\') then
+  begin
+    if FileExists(AName) then
+      Result := AName;
+    Exit;
+  end;
+  if (AMainDir <> '') and
+     FileExists(IncludeTrailingPathDelimiter(AMainDir) + AName) then
+  begin
+    Result := ExpandFileName(IncludeTrailingPathDelimiter(AMainDir) + AName);
+    Exit;
+  end;
+  if (AIncDir <> '') and
+     FileExists(IncludeTrailingPathDelimiter(AIncDir) + AName) then
+    Result := ExpandFileName(IncludeTrailingPathDelimiter(AIncDir) + AName);
+end;
+
+// Строить ли список для открытого файла
+function TForm1.IncludesApply: Boolean;
+var
+  Ext: string;
+begin
+  Ext := LowerCase(ExtractFileExt(FCurrentFileName));
+  Result := IsRapidQSource(FCurrentFileName) or (Ext = '.bi') or
+            ((Ext = '.inc') and BuildIsRapidQ);
+end;
+
+procedure TForm1.RefreshIncludes;
+const
+  MaxDepth = 20;   // защита от зацикливания через разные имена одного файла
+var
+  MainBas, MainDir, IncDir, CurFile: string;
+  Ini: TIniFile;
+  Visited: TStringList;
+  Source: TStringList;
+  Root: TTreeNode;
+
+  // Узел дерева. AFull - найденный файл ('' - не найден), AFrom и ALine -
+  // где стоит $INCLUDE (для двойного щелчка по ненайденному).
+  function AddNode(AParent: TTreeNode; const AText, AFull, AFrom: string;
+                   ALine: Integer): TTreeNode;
+  begin
+    FIncludeRows.Add(AFull + #9 + AFrom + #9 + IntToStr(ALine));
+    Result := FIncTree.Items.AddChildObject(AParent, AText,
+                                            Pointer(FIncludeRows.Count - 1));
+  end;
+
+  // Include файла AFile (его строки - ALines) - потомками узла AParent
+  procedure AddIncludesOf(ALines: TStrings; const AFile: string;
+                          AParent: TTreeNode; ALevel: Integer);
+  var
+    LineIdx: Integer;
+    IncName, Full, LineTag: string;
+    Nested: TStringList;
+    Node: TTreeNode;
+  begin
+    for LineIdx := 0 to ALines.Count - 1 do
+    begin
+      IncName := RapidQIncludeName(ALines[LineIdx]);
+      if IncName = '' then
+        Continue;
+      // Номер строки с $INCLUDE в подключающем файле
+      LineTag := '   [' + IntToStr(LineIdx + 1) + ']';
+      Full := RapidQResolveInclude(IncName, MainDir, IncDir);
+      if Full = '' then
+      begin
+        AddNode(AParent, IncName + LineTag + '  не найден', '', AFile,
+                LineIdx + 1);
+        Continue;
+      end;
+      if Visited.IndexOf(UpperCase(Full)) >= 0 then
+      begin
+        AddNode(AParent, Full + LineTag + '  уже подключён выше', Full, AFile,
+                LineIdx + 1);
+        Continue;
+      end;
+      Visited.Add(UpperCase(Full));
+      Node := AddNode(AParent, Full + LineTag, Full, AFile, LineIdx + 1);
+      if ALevel >= MaxDepth then
+        Continue;
+      Nested := TStringList.Create;
+      try
+        try
+          Nested.LoadFromFile(Full);
+        except
+          Continue;
+        end;
+        AddIncludesOf(Nested, Full, Node, ALevel + 1);
+      finally
+        Nested.Free;
+      end;
+    end;
+  end;
+
+begin
+  if FIncTree = nil then
+    Exit;
+  if FIncludeRows = nil then
+    FIncludeRows := TStringList.Create;
+
+  FIncTree.Items.BeginUpdate;
+  try
+    FIncTree.Items.Clear;
+    FIncludeRows.Clear;
+
+    if (FCurrentFileName = '') or not IncludesApply then
+    begin
+      AddNode(nil, 'Список строится для файлов RapidQ', '', '', 0);
+      Exit;
+    end;
+
+    // Папка поиска - папка главного .bas (у вкладки .inc - цели проекта)
+    MainBas := RapidQTargetBas(False);
+    if MainBas <> '' then
+      MainDir := ExtractFilePath(MainBas)
+    else
+      MainDir := ExtractFilePath(FCurrentFileName);
+
+    IncDir := '';
+    if FileExists(SettingsFileName) then
+    begin
+      Ini := TIniFile.Create(SettingsFileName);
+      try
+        IncDir := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
+                                      'IncPath', ''));
+      finally
+        Ini.Free;
+      end;
+    end;
+
+    CurFile := FCurrentFileName;
+    Visited := TStringList.Create;
+    Source := TStringList.Create;
+    try
+      // Корень - сам файл; его текст - из редактора, с несохранёнными
+      // правками
+      Visited.Add(UpperCase(ExpandFileName(CurFile)));
+      Root := AddNode(nil, CurFile, CurFile, '', 0);
+      Source.Text := GetEditorTextCR;
+      AddIncludesOf(Source, CurFile, Root, 1);
+      if not Root.HasChildren then
+        AddNode(Root, '$INCLUDE в файле нет', '', '', 0);
+      // Раскрыто целиком, как в RQdebugger
+      FIncTree.FullExpand;
+      Root.MakeVisible;
+    finally
+      Source.Free;
+      Visited.Free;
+    end;
+  finally
+    FIncTree.Items.EndUpdate;
+  end;
+end;
+
+// Двойной щелчок: найденный файл - открыть; не найденный - строка с его
+// $INCLUDE
+procedure TForm1.IncludesDblClick(Sender: TObject);
+var
+  RowIdx, LineNum: Integer;
+  Row, Full, FromFile: string;
+  Parts: TStringList;
+begin
+  if (FIncTree = nil) or (FIncTree.Selected = nil) or
+     (FIncludeRows = nil) then
+    Exit;
+  RowIdx := Integer(FIncTree.Selected.Data);
+  if (RowIdx < 0) or (RowIdx >= FIncludeRows.Count) then
+    Exit;
+  Row := FIncludeRows[RowIdx];
+
+  Parts := TStringList.Create;
+  try
+    // Поля через табуляцию: файл, где подключён, строка
+    Parts.Text := StringReplace(Row, #9, #13#10, [rfReplaceAll]);
+    while Parts.Count < 3 do
+      Parts.Add('');
+    Full := Parts[0];
+    FromFile := Parts[1];
+    LineNum := StrToIntDef(Parts[2], 0);
+  finally
+    Parts.Free;
+  end;
+
+  if (Full <> '') and FileExists(Full) then
+  begin
+    OpenNamedFile(Full);
+    Exit;
+  end;
+  if (FromFile <> '') and FileExists(FromFile) and (LineNum > 0) then
+  begin
+    OpenNamedFile(FromFile);
+    GotoLine(LineNum - 1);
+  end;
+end;
+
 // Проверка списка -U. Несуществующая папка молча не ищется, и ошибка
 // приходит потом, из компилятора, уже без связи с настройками. Файл вместо
 // папки - то же самое: для -U он бесполезен.
@@ -35446,7 +36923,7 @@ procedure TForm1.btnCompileClick(Sender: TObject);
 begin
   if FBusyDepth > 0 then
     Exit;   // уже идёт сборка или пробный запуск
-  CompileDelphi;
+  CompileProject;
 end;
 
 // Собрать и запустить. Запуск - только после чистой сборки: иначе
@@ -35463,7 +36940,7 @@ begin
     Exit;
   end;
   DsgHideForRun;
-  if CompileDelphi then
+  if CompileProject then
     RunTarget;
   // Сборка не прошла или программа не запустилась - форма обратно
   if (FRunProcess = 0) and (FDbgSession = nil) then
@@ -36075,12 +37552,14 @@ end;
 // собой (SettingsFileName, UiSchemaFileName, папка schemes). Копируются
 // только те, которых там ещё нет: настройки, поменянные в запущенной копии,
 // не затираются. Откуда - из папки .dpr, чего там нет - из папки
-// работающего редактора.
+// работающего редактора. editor.ini, который там уже есть, дополняется:
+// новые разделы и параметры дописываются, отличающиеся разделы
+// сохраняются копиями [<Раздел>Old<N>] (MergeOwnSettings).
 procedure TForm1.CopyOwnRunFiles(const ADprDir, AExeDir: string);
 var
   SrcDirs: array[0..1] of string;
   DstDir: string;
-  Copied: Integer;
+  Copied, SrcIdx, Merged: Integer;
 
   // Файл ARel (путь от папки) - из первой папки-источника, где он есть
   procedure CopyIfMissing(const ARel: string);
@@ -36126,12 +37605,30 @@ begin
   if CompareText(SrcDirs[0], DstDir) = 0 then
     Exit;   // exe рядом с .dpr - файлы и так на месте
   Copied := 0;
-  CopyIfMissing('editor.ini');
+  Merged := 0;
+  if FileExists(DstDir + 'editor.ini') then
+  begin
+    for SrcIdx := Low(SrcDirs) to High(SrcDirs) do
+      if FileExists(SrcDirs[SrcIdx] + 'editor.ini') then
+      begin
+        if CompareText(ExpandFileName(SrcDirs[SrcIdx] + 'editor.ini'),
+                       ExpandFileName(DstDir + 'editor.ini')) <> 0 then
+          Merged := MergeOwnSettings(SrcDirs[SrcIdx] + 'editor.ini',
+                                     DstDir + 'editor.ini');
+        Break;
+      end;
+  end
+  else
+    CopyIfMissing('editor.ini');
   CopyIfMissing('IDE.clr');
   CopyDirIfMissing('schemes');
   if Copied > 0 then
     LogComp(Format('Рядом с exe скопировано файлов: %d (editor.ini, IDE.clr, ' +
     'schemes - которых там не было)', [Copied]));
+  if Merged > 0 then
+    LogComp(Format('editor.ini рядом с exe: изменено разделов: %d. Пути, ' +
+    'которых нет на диске, при запуске берутся из копий [...Old<N>]',
+    [Merged]));
 end;
 
 // Можно ли записать exe; занят - переименовать его в <имя>.exe.old (или
@@ -36204,17 +37701,33 @@ var
   Dpr, Exe, Dir, Cmd: string;
   SI: TStartupInfo;
   PI: TProcessInformation;
+  RapidQ: Boolean;
 begin
   ShowCompLog;
 
-  Dpr := DelphiTargetDpr;
-  if Dpr = '' then
+  // RapidQ: exe рядом с главным .bas, отладчика Delphi для него нет
+  RapidQ := BuildIsRapidQ;
+  if RapidQ then
   begin
-    LogComp('Запуск: цель не задана. Откройте .dpr проекта или соберите его');
-    Exit;
+    Dpr := RapidQTargetBas(False);
+    if Dpr = '' then
+    begin
+      LogComp('Запуск: главный .bas не найден. Откройте его и соберите проект');
+      Exit;
+    end;
+    Exe := ChangeFileExt(Dpr, '.exe');
+  end
+  else
+  begin
+    Dpr := DelphiTargetDpr;
+    if Dpr = '' then
+    begin
+      LogComp('Запуск: цель не задана. Откройте .dpr проекта или соберите его');
+      Exit;
+    end;
+    Exe := DelphiExeOf(Dpr);
   end;
 
-  Exe := DelphiExeOf(Dpr);
   if not FileExists(Exe) then
   begin
     LogComp('Запуск: файл не найден - ' + Exe +
@@ -36227,7 +37740,7 @@ begin
 
   // Есть точки останова - под отладчиком. Не вышло (нет .map, нет строк в
   // нём) - обычный запуск, причина уже в логе.
-  if DbgWanted then
+  if not RapidQ and DbgWanted then
     if DbgStart(Exe, Dir) then
       Exit;
 
@@ -41214,7 +42727,7 @@ begin
     Exit;                   // уже
   FUiListScrolls := TList.Create;
   Wrap(lvSubList);
-  Wrap(lvIncludes);
+  Wrap(FIncTree);
   Wrap(FCodeTree);
   Wrap(FObjTree);
   Wrap(FObjProps);
@@ -41426,6 +42939,11 @@ end;
 //  строки вида pp=pas. Файл важнее встроенных: так их можно переназначить,
 //  не пересобирая программу.
 //
+//  .inc - include и у Паскаля, и у RapidQ. В проекте типа RapidQ Basic он
+//  идёт по bas.clr, в остальных случаях - по pas.clr (встроенное inc=pas).
+//  Проект без записанного типа - RapidQ (ProjectTypeOf), как и при сборке.
+//  Своя inc.clr и строка inc= в alias.ini важнее типа проекта.
+//
 //  Копии схем не годятся: правка в окне настроек попала бы только в одну.
 // ---------------------------------------------------------------------------
 
@@ -41465,6 +42983,12 @@ begin
       Ini.Free;
     end;
   end;
+
+  // .inc в проекте RapidQ Basic - схема Basic
+  if (V = '') and (E = 'inc') and (FCurrentProject <> '') and
+     FileExists(Dir + 'bas.clr') and
+     (CompareText(ProjectTypeOf(FCurrentProject), 'RapidQ Basic') = 0) then
+    V := 'bas';
 
   if V = '' then
     for I := Low(Builtin) to High(Builtin) do
