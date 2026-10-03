@@ -1198,6 +1198,9 @@ type
     FTabWork: Boolean;
     FTabWorkShown: Boolean;
     FTabShowMs: Cardinal;
+    // Строки вкладки Includes (RefreshIncludes): найденный файл, файл с
+    // $INCLUDE и номер строки, через табуляцию; индекс - в Data строки списка
+    FIncludeRows: TStringList;
     // Время файлов на диске (FileAge), каким оно было при последнем чтении
     // или записи здесь. Имя - полный путь в верхнем регистре. По нему при
     // возврате в программу видно, что файл изменили снаружи.
@@ -2088,6 +2091,10 @@ type
     procedure RebuildSubListBlocks(const AText: string);
     procedure FormatIndentText;
     procedure FillSubListView;
+    // Вкладка Includes правой панели (RapidQ)
+    function  IncludesApply: Boolean;
+    procedure RefreshIncludes;
+    procedure IncludesDblClick(Sender: TObject);
     function  SubAtLine(ALine: Integer): Integer;
     function  IsSubBeginLine(ALine: Integer): Boolean;
     procedure LayoutScrollBars;
@@ -17136,6 +17143,7 @@ begin
       FDsgResTexts.Objects[I].Free;
   FreeAndNil(FDsgResTexts);
   FreeAndNil(FIniPathLog); // обычно уже освобождён в FormShow
+  FreeAndNil(FIncludeRows);
   Screen.OnActiveFormChange := nil;
   // Сами полосы принадлежат спискам и уходят с ними; здесь - только список
   FreeAndNil(FUiListScrolls);
@@ -17507,6 +17515,9 @@ begin
 
   // Инспектор объектов разбирает .dfm только когда его вкладку открыли
   FRightPages.OnChange := RightPagesChange;
+  // Двойной щелчок в Includes - открыть файл
+  if lvIncludes <> nil then
+    lvIncludes.OnDblClick := IncludesDblClick;
 
   BuildObjectInspector;
 end;
@@ -19971,7 +19982,9 @@ begin
     ObjAutoSnap;
   end
   else if FRightPages.ActivePage = FTabCode then
-    RefreshCodeTree;
+    RefreshCodeTree
+  else if FRightPages.ActivePage = FTabIncludes then
+    RefreshIncludes;
 end;
 
 // Дерево всех компонентов, которые создаёт код открытого модуля: главная
@@ -22920,6 +22933,13 @@ begin
       TabWorkStage('Дерево кода');
       RefreshCodeTree;
       TCode := GetTickCount - T0 - TSub - TObj;
+    end;
+
+    // Список include - под новый файл, если вкладка Includes открыта
+    if (FRightPages <> nil) and (FRightPages.ActivePage = FTabIncludes) then
+    begin
+      TabWorkStage('Includes');
+      RefreshIncludes;
     end;
   finally
     FTabWork := False;
@@ -35711,6 +35731,256 @@ begin
   begin
     OpenNamedFile(FirstFile);
     GotoLine(FirstLine - 1);
+  end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Вкладка Includes правой панели: файлы, подключённые через $INCLUDE
+//
+//  Только для RapidQ (.bas, .rqb, .rq, .bi; .inc - в проекте RapidQ).
+//  Правила - как у RQdebugger (CreateINCfilesTree):
+//    $INCLUDE "файл" и $INCLUDE <файл>, закомментированные не в счёт;
+//    файл ищется: путь полный - как есть; иначе в папке главного .bas, потом
+//    в папке Include из настроек ([Compiler.RapidQ Basic] IncPath).
+//  Вложенные include - строками ниже с отступом. Файл, который уже
+//  показан, второй раз не разворачивается. Не найденный - в списке с
+//  пометкой; двойной щелчок по нему открывает строку с $INCLUDE.
+//  Список строится, когда вкладку открывают, и при переключении вкладок
+//  редактора, если она открыта.
+// ---------------------------------------------------------------------------
+
+// Имя файла из строки "$INCLUDE "файл"" или "$INCLUDE <файл>"; не
+// $INCLUDE (в том числе закомментированная) - пусто. Косые - обратные.
+function RapidQIncludeName(const ALine: string): string;
+const
+  IncTag = '$include';
+var
+  Txt: string;
+  NameStart, NameEnd: Integer;
+  CloseChar: Char;
+begin
+  Result := '';
+  Txt := TrimLeft(ALine);
+  if LowerCase(Copy(Txt, 1, Length(IncTag))) <> IncTag then
+    Exit;
+  Txt := TrimLeft(Copy(Txt, Length(IncTag) + 1, MaxInt));
+  if Txt = '' then
+    Exit;
+  if Txt[1] = '"' then
+    CloseChar := '"'
+  else if Txt[1] = '<' then
+    CloseChar := '>'
+  else
+    Exit;
+  NameStart := 2;
+  NameEnd := NameStart;
+  while (NameEnd <= Length(Txt)) and (Txt[NameEnd] <> CloseChar) do
+    Inc(NameEnd);
+  if NameEnd > Length(Txt) then
+    Exit;
+  Result := Trim(Copy(Txt, NameStart, NameEnd - NameStart));
+  Result := StringReplace(Result, '/', '\', [rfReplaceAll]);
+end;
+
+// Где лежит подключаемый файл. '' - не найден.
+function RapidQResolveInclude(const AName, AMainDir, AIncDir: string): string;
+begin
+  Result := '';
+  if AName = '' then
+    Exit;
+  if (ExtractFileDrive(AName) <> '') or (Copy(AName, 1, 2) = '\\') then
+  begin
+    if FileExists(AName) then
+      Result := AName;
+    Exit;
+  end;
+  if (AMainDir <> '') and
+     FileExists(IncludeTrailingPathDelimiter(AMainDir) + AName) then
+  begin
+    Result := ExpandFileName(IncludeTrailingPathDelimiter(AMainDir) + AName);
+    Exit;
+  end;
+  if (AIncDir <> '') and
+     FileExists(IncludeTrailingPathDelimiter(AIncDir) + AName) then
+    Result := ExpandFileName(IncludeTrailingPathDelimiter(AIncDir) + AName);
+end;
+
+// Строить ли список для открытого файла
+function TForm1.IncludesApply: Boolean;
+var
+  Ext: string;
+begin
+  Ext := LowerCase(ExtractFileExt(FCurrentFileName));
+  Result := IsRapidQSource(FCurrentFileName) or (Ext = '.bi') or
+            ((Ext = '.inc') and BuildIsRapidQ);
+end;
+
+procedure TForm1.RefreshIncludes;
+const
+  MaxDepth = 20;   // защита от зацикливания через разные имена одного файла
+var
+  MainBas, MainDir, IncDir, CurFile: string;
+  Ini: TIniFile;
+  Visited: TStringList;
+  Source: TStringList;
+  Item: TListItem;
+
+  // Строка списка. AFull - найденный файл ('' - не найден), AFrom и ALine -
+  // где стоит $INCLUDE (для двойного щелчка по ненайденному).
+  procedure AddRow(ALevel: Integer; const ACaption, AFull, AFrom: string;
+                   ALine: Integer; const AFolder: string);
+  begin
+    Item := lvIncludes.Items.Add;
+    Item.Caption := StringOfChar(' ', ALevel * 4) + ACaption;
+    if ALine > 0 then
+      Item.SubItems.Add(IntToStr(ALine))
+    else
+      Item.SubItems.Add('');
+    Item.SubItems.Add(AFolder);
+    FIncludeRows.Add(AFull + #9 + AFrom + #9 + IntToStr(ALine));
+    Item.Data := Pointer(FIncludeRows.Count - 1);
+  end;
+
+  // Include файла AFile (его строки - ALines) уровня ALevel
+  procedure AddIncludesOf(ALines: TStrings; const AFile: string;
+                          ALevel: Integer);
+  var
+    LineIdx: Integer;
+    IncName, Full: string;
+    Nested: TStringList;
+  begin
+    for LineIdx := 0 to ALines.Count - 1 do
+    begin
+      IncName := RapidQIncludeName(ALines[LineIdx]);
+      if IncName = '' then
+        Continue;
+      Full := RapidQResolveInclude(IncName, MainDir, IncDir);
+      if Full = '' then
+      begin
+        AddRow(ALevel, IncName, '', AFile, LineIdx + 1, 'не найден');
+        Continue;
+      end;
+      if Visited.IndexOf(UpperCase(Full)) >= 0 then
+      begin
+        AddRow(ALevel, IncName, Full, AFile, LineIdx + 1,
+               'уже подключён выше');
+        Continue;
+      end;
+      Visited.Add(UpperCase(Full));
+      AddRow(ALevel, IncName, Full, AFile, LineIdx + 1, ExtractFilePath(Full));
+      if ALevel >= MaxDepth then
+        Continue;
+      Nested := TStringList.Create;
+      try
+        try
+          Nested.LoadFromFile(Full);
+        except
+          Continue;
+        end;
+        AddIncludesOf(Nested, Full, ALevel + 1);
+      finally
+        Nested.Free;
+      end;
+    end;
+  end;
+
+begin
+  if lvIncludes = nil then
+    Exit;
+  if FIncludeRows = nil then
+    FIncludeRows := TStringList.Create;
+
+  lvIncludes.Items.BeginUpdate;
+  try
+    lvIncludes.Items.Clear;
+    FIncludeRows.Clear;
+
+    if (FCurrentFileName = '') or not IncludesApply then
+    begin
+      AddRow(0, 'Список строится для файлов RapidQ', '', '', 0, '');
+      Exit;
+    end;
+
+    // Папка поиска - папка главного .bas (у вкладки .inc - цели проекта)
+    MainBas := RapidQTargetBas(False);
+    if MainBas <> '' then
+      MainDir := ExtractFilePath(MainBas)
+    else
+      MainDir := ExtractFilePath(FCurrentFileName);
+
+    IncDir := '';
+    if FileExists(SettingsFileName) then
+    begin
+      Ini := TIniFile.Create(SettingsFileName);
+      try
+        IncDir := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
+                                      'IncPath', ''));
+      finally
+        Ini.Free;
+      end;
+    end;
+
+    CurFile := FCurrentFileName;
+    Visited := TStringList.Create;
+    Source := TStringList.Create;
+    try
+      // Сам файл - первой строкой; его текст - из редактора, с несохранёнными
+      // правками
+      Visited.Add(UpperCase(ExpandFileName(CurFile)));
+      AddRow(0, ExtractFileName(CurFile), CurFile, '', 0,
+             ExtractFilePath(CurFile));
+      Source.Text := GetEditorTextCR;
+      AddIncludesOf(Source, CurFile, 1);
+      if lvIncludes.Items.Count = 1 then
+        AddRow(1, '$INCLUDE в файле нет', '', '', 0, '');
+    finally
+      Source.Free;
+      Visited.Free;
+    end;
+  finally
+    lvIncludes.Items.EndUpdate;
+  end;
+end;
+
+// Двойной щелчок: найденный файл - открыть; не найденный - строка с его
+// $INCLUDE
+procedure TForm1.IncludesDblClick(Sender: TObject);
+var
+  RowIdx, LineNum: Integer;
+  Row, Full, FromFile: string;
+  Parts: TStringList;
+begin
+  if (lvIncludes = nil) or (lvIncludes.Selected = nil) or
+     (FIncludeRows = nil) then
+    Exit;
+  RowIdx := Integer(lvIncludes.Selected.Data);
+  if (RowIdx < 0) or (RowIdx >= FIncludeRows.Count) then
+    Exit;
+  Row := FIncludeRows[RowIdx];
+
+  Parts := TStringList.Create;
+  try
+    // Поля через табуляцию: файл, где подключён, строка
+    Parts.Text := StringReplace(Row, #9, #13#10, [rfReplaceAll]);
+    while Parts.Count < 3 do
+      Parts.Add('');
+    Full := Parts[0];
+    FromFile := Parts[1];
+    LineNum := StrToIntDef(Parts[2], 0);
+  finally
+    Parts.Free;
+  end;
+
+  if (Full <> '') and FileExists(Full) then
+  begin
+    // Повторная строка - тот же файл, открываем его
+    OpenNamedFile(Full);
+    Exit;
+  end;
+  if (FromFile <> '') and FileExists(FromFile) and (LineNum > 0) then
+  begin
+    OpenNamedFile(FromFile);
+    GotoLine(LineNum - 1);
   end;
 end;
 
