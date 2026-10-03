@@ -37654,17 +37654,19 @@ begin
       LogComp('Снимок RapidQ: не прочитан ' + OutFile);
       Exit;
     end;
-    // Нулевой байт оборвал бы разбор строк (TStrings.Text) на середине
+    // Символ с кодом 0 в значении (PasswordChar у QEdit без пароля) обрывал
+    // разбор строк: TStrings.Text в Delphi 7 на нём останавливается, и
+    // снимок выглядел неполным. Заменяется текстом #0, как в .dfm.
     NulCount := 0;
     for LineIdx := 1 to Length(OutText) do
       if OutText[LineIdx] = #0 then
-      begin
-        OutText[LineIdx] := ' ';
         Inc(NulCount);
-      end;
     if NulCount > 0 then
-      LogComp(Format('Снимок RapidQ: в файле значений символов с кодом 0 - ' +
-                     '%d, заменены пробелами', [NulCount]));
+    begin
+      OutText := StringReplace(OutText, #0, '#0', [rfReplaceAll]);
+      LogComp(Format('Снимок RapidQ: в значениях символов с кодом 0 - %d, ' +
+                     'показаны как #0', [NulCount]));
+    end;
     ProbeLines.Text := OutText;
     // Только "#start": таймер создан, но не сработал
     HasStart := ProbeLines.IndexOf('#start') >= 0;
