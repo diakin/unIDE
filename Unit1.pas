@@ -42666,6 +42666,11 @@ end;
 //  строки вида pp=pas. Файл важнее встроенных: так их можно переназначить,
 //  не пересобирая программу.
 //
+//  .inc - include и у Паскаля, и у RapidQ. В проекте типа RapidQ Basic он
+//  идёт по bas.clr, в остальных случаях - по pas.clr (встроенное inc=pas).
+//  Проект без записанного типа - RapidQ (ProjectTypeOf), как и при сборке.
+//  Своя inc.clr и строка inc= в alias.ini важнее типа проекта.
+//
 //  Копии схем не годятся: правка в окне настроек попала бы только в одну.
 // ---------------------------------------------------------------------------
 
@@ -42705,6 +42710,12 @@ begin
       Ini.Free;
     end;
   end;
+
+  // .inc в проекте RapidQ Basic - схема Basic
+  if (V = '') and (E = 'inc') and (FCurrentProject <> '') and
+     FileExists(Dir + 'bas.clr') and
+     (CompareText(ProjectTypeOf(FCurrentProject), 'RapidQ Basic') = 0) then
+    V := 'bas';
 
   if V = '' then
     for I := Low(Builtin) to High(Builtin) do
