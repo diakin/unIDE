@@ -2468,6 +2468,7 @@ var
     DlgIconEdit,   // окно значков палитры (View - Palette Icons)
     DlgFifDisk,   // Find In Files на диске - FifDiskDialog
     DlgPickFolder, // выбор папки - PickFolderDialog
+    FolderDlg,    // выбор папки окном Проводника - BrowseFolderDialog
     DlgProgress,  // ход долгой операции - ProgressStart
     DlgMatchList, // Match list - EnsureMatchForm
     DlgListWnd,   // списки модулей и форм - MakeListWindow
@@ -8560,7 +8561,7 @@ begin
       if Dlg.ShowModal = mrRetry then
       begin
         Dir := edDir.Text;
-        if SelectDirectory('Папка проекта', '', Dir) then
+        if BrowseFolderDialog('Папка проекта', Dir) then
         begin
           // Выбранная папка становится той, внутри которой предлагается
           // папка проекта. Если путь до этого правили руками, берём

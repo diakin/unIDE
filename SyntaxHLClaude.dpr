@@ -8,6 +8,7 @@ uses
   DlgChooseList in 'DlgChooseList.pas' {DlgChooseList},
   DlgFifDisk in 'DlgFifDisk.pas' {DlgFifDisk},
   DlgPickFolder in 'DlgPickFolder.pas' {DlgPickFolder},
+  FolderDlg in 'FolderDlg.pas',
   DlgProgress in 'DlgProgress.pas' {DlgProgress},
   DlgMatchList in 'DlgMatchList.pas' {DlgMatchList},
   DlgListWnd in 'DlgListWnd.pas' {DlgListWnd},

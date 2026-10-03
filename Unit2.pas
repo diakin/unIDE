@@ -13,6 +13,7 @@ uses
   UiComCtrls,     // вкладки, строка состояния, дерево, таблица, счётчик
   UiMenus,        // всплывающее меню по теме (TUiPopupMenu)
   UiStdDlgs,      // диалоги цвета и шрифта по теме
+  FolderDlg,      // выбор папки окном Проводника вместо "Обзор папок"
   // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
   // InputQuery перекрывают одноимённые функции Dialogs
   UiDialogs;
@@ -3922,7 +3923,7 @@ var
   Dir: string;
 begin
   Dir := ExpandCompMacros(Trim(FPathEdit.Text));
-  if SelectDirectory('Папка', '', Dir) then
+  if BrowseFolderDialog('Папка', Dir) then
     FPathEdit.Text := ExcludeTrailingPathDelimiter(Dir);
 end;
 
@@ -4556,7 +4557,7 @@ begin
     if (Dir = '') and (Form1 <> nil) then
       Dir := Form1.CurrentProjectDir;
 
-    if SelectDirectory('Выберите папку', '', Dir) then
+    if BrowseFolderDialog('Выберите папку', Dir) then
       FCompEdits[I].Text := IncludeTrailingPathDelimiter(Dir);
   end;
 end;
