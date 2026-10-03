@@ -1,0 +1,1 @@
+print "inc dir   C:\BAS\RAPIDQ\inc\NewWindow23.inc"

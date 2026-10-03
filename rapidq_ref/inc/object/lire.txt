@@ -1,0 +1,153 @@
+====================================================
+ Composants pour RapidQ Janvier 2002 Auteur:D.GLODT
+====================================================
+Liste composants:
+QCanvasEx    
+QCdAudio
+QColorDialog
+QDrawFocus
+QDrive
+QDriveCombobox
+QDrawMenu
+QFomrEx
+QIcon
+QImageEx
+Qini
+QMidi
+QPageSetup
+QProgress
+QRun
+QVideo
+QWave
+QTextEdit
+
+============================================
+Evolution janvier 2002
+============================================
+QCanvasEx:Ajout des fonctions copier,coller
+
+QImageEx:Nouveau composant,évolution du composant QIMAGE avec ajout des fonctions copier,
+         coller et chargement de fichier bitmap.
+
+QDrawFocus:Passage de la proprieté VISIBLE en écriture.
+
+QDrive:Nouveau composant,permet de connaitre le nombre de lecteur présent,leur taille et leur type.
+
+QMidi,QWave,QCdAudio:Ajout d'une proprieté texte erreur.
+
+QVideo:Ajout d'une proprieté texte erreur et d'une proprieté sans son.
+
+QRun:Nouveau composant,permet de lancer des fichiers associés ou applications,de connaitre l'application
+     associé a un fichier.
+
+QFormEx:Ajout de fonctionnalités pour mettre l'icone de l'application dans la barre outil
+        du bureau (trayIcon)
+        Suppression de la méthode DragMessage ,tout les évenements sont gérés dans l'objet lui-meme.
+QDrawMenu:Nouveau composant,permet d'afficher des bitmaps dans des item menu.
+
+============================================
+Evolution Février 2002
+============================================
+QColorDialog:Modification par un membre du groupe,ajout d'une proprieté caption.
+
+QTextEdit:Création d'un nouveau composant,extension du composant QRichEdit avec fonctionnalités supplémentaires.
+
+QVideo:Modification du composant,ajout proprieté Parent,ImgWidth,ImgHeight,LenghtTime,Caption,BorderStyle,WindowState.
+
+============================================
+Evolution Mai 2002
+============================================
+QCanvasEx:Suppression de l'evenement OnClipBoard et ajout de la méthode CanPaste.
+          Ajout des parametres width et height a la méthode DrawIco.
+
+QImageEx:Suppression de l'evenement OnClipBoard et ajout de la méthode CanPaste.
+                                
+QIcon:Ajout d'une proprieté Associated pour obtenir l'icone associé a un fichier associé a une application.
+
+QDrawFocus:Ajout d'une proprieté ShowCursor pour mettre hors servcice le changement du curseur.
+           Suppression du parametre cursor dans la méthode Start.
+
+QPageSetup:suppression du parametre handle dans la méthode execute.
+           ajout de la proprieté caption pour le titre de la boite de dialogue.
+
+QAbout:nouveau composant,permet d'afficher une boite de dialogue A propos.
+
+============================================
+Evolution Aout 2002
+============================================
+QCanvasEx:Ajout proprietés,méthodes,redefinition méthodes existantes.
+QBitmapEx:nouveau composant,évolution du composant QBitmap.
+
+============================================
+Evolution Octobre 2002
+============================================
+QVideo:Ajout d'une proprieté volume
+QWave:Ajout d'une proprieté volume
+QMidi:Ajout d'une proprieté volume
+QIcon:Ajout méthodes SaveToFile et SaveBmpToFile
+QBitmapEx:Ajout proprietés et méthodes de dessin identiques a QCanvasEx.
+
+============================================
+Evolution Janvier 2003
+============================================
+QDrawMenu:Modification des couleurs menu pour faire correspondre au couleurs systeme,
+          Ajout des parametres Button et Backcolor dans la méthode AddBitmap.
+
+============================================
+Evolution Fevrier 2003
+============================================
+QStatusBarEx:Nouveau composant,amélioration du composant QStatusBar
+QFormMDI:Nouveau composant,gestion de l'interface multidocument.
+QAbout:évolution , ajout lien web et email.
+
+QDialogColor,QPageSetup:Modif pour avoir ces composants dans une application utilisant
+                        déja une procédure de type WindowProc.
+QDrawMenu:idem ci-dessus,la proprieté Parent a été supprimé et une méthode MenuProc a été
+          ajouté pour connection sur un événement WndProc d'un composant QFORM.
+============================================
+Evolution Mars 2003
+============================================
+QAbout:évolution , ajout proprietés AppFont,TextFont,EmailFont,WebFont.
+QPrinterInfo:nouveau composant , informations imprimante
+QBitmapEx:correction sur erreur de déclaration
+QPageSetup:correction sur erreur de dimensions page
+============================================
+Evolution Avril 2003
+============================================
+QSkin:nouveau composant pour habillage fenetre.
+QLine:nouveau composant,ligne de séparation pour barre outil.
+QSplash:nouveau composant,affichage banniere a l'exécution d'application. 
+QAnim:nouveau composant pour animation d'images.
+============================================
+Evolution mai 2003
+============================================
+QSkin:ajout méthode Resize pour changement skin.
+QFormMDI:Correction du disfonctionnement sous window 98.
+QSplash:évolution , ajout proprieté texte descriptif d'application.
+Qprogress:correction bug(instabilité) pour window 98.
+============================================
+Evolution juin 2003
+============================================
+QStringGridEx:Création d'un composant hérité de QStringGrid ayant le style rangée.
+
+============================================
+Evolution Septembre 2003
+============================================
+QSkin:ajout proprietés OffsWidth et OffsHeight pour ajuster les dimensions fenetre.
+QSkinBtn:nouveau composant pour boutons type skin.
+QTextBtn:nouveau composant pour bouton de type texte.
+QVuMeter:nouveau composant ,barre vu metre.
+QFlashLabel:nouveau composant ,label clignotant.
+============================================
+Evolution Octobre 2003
+============================================
+QFormEx:fonctionnement du style fsStayOnTop de la proprieté FormStyle
+QProcess:nouveau composant,execute un process en arriere plan.
+QCursor:nouveau composant,charge des curseur via des resources ou des fichiers.
+QFileListView:nouveau composant liste fichier avec détails.
+============================================
+Evolution Décembre 2003
+============================================
+QImageDialog:nouveau composant,boite de dialogue de selection et visualisation de fichiers graphique.
+QBitmapEx:ajout méthodes CopyToClipboard ,LoadOtherImage , SaveAsJpg.
+QImageEx:ajout méthodes LoadOtherImage.

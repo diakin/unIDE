@@ -1,0 +1,3967 @@
+21-07-2024  v 844-37
+'****************************************
+
+'!возвращаемся к программированию STM32
+//!!!!*** просмотр файлов 
+boards.txt 
+platform.txt 
+programmers.txt
+
+"C:\Users\Andrei\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.6\"
+"C:\Users\Andrei\AppData\Local\Arduino15\packages\arduino\hardware\sam\1.6.12\"
+C:\Users\sHell\AppData\Local\Arduino15\packages\Intel\hardware\i586\
+"C:\Users\sHell\AppData\Local\Arduino15\packages\Intel\hardware\i586\1.6.7+1.0\"
+
+Arrow:samd               2.1.0     2.1.0     Arrow Boards                                                            
+Intel:arc32              2.0.6     2.0.6     Intel Curie Boards                                                      
+Intel:i586               1.6.7+1.0 1.6.7+1.0 Intel i586 Boards                                                       
+Intel:i686               1.6.7+1.0 1.6.7+1.0 Intel i686 Boards                                                       
+STMicroelectronics:stm32 2.6.0     2.6.0     STM32 MCU based boards                                                  
+
+
+Добавлено поле Arduino15 Default Path = C:\Users\Andrei\AppData\Local\Arduino15\
+' А КАКОГО ТУТ C:\USERS\ANDREI\APPDATA\LOCAL\ARDUINO15\  А НЕ CLI DATA PATH D:\_F\bas\rapidq\RQIDE\Arduino15\!!!!!
+
+//!!!! надо поиском в файлах в папке \Arduino15\packages\arduino\hardware\
+искать сначала файлы platform.txt, а в них name=Arduino AVR Boards для первого меню
+затем файлы boards.txt , а в них name=  для вложенного меню
+
+"C:\Users\Andrei\AppData\Local\Arduino15\packages\первая часть "arduino:sam"    \hardware\" + _
+ вторая часть "arduino:sam" +\ номер версии \  boards.txt platform.txt programmers.txt   
+
+меню Programmer - programmers.txt
+меню в виде двухмерного массива???
+ 
+
+evar$="LOCALAPPDATA"
+rz=GetEnvironmentVariable (evar$, appdata$ , len(appdata$)) 
+appdata$=left$(appdata$,rz)
+
+19-07-2024  v 844-30
+'******************************************
++ сохранение и загрузка AdditURL из файла
+
+! как компилировать, используя сохраненный AdditURL???
+! Ard15 -  путь по умолчанию -  проверить как работает!!!
+! как осуществлять прошивку в STM32 bpgjkmpez "cube programmer"
+
+Доработать AdditURLEdit по типу DelWinList удалять\добавлять URL на дополнительные платы
+
+http://dan.drown.org/stm32duino/package_STM32duino_index.json,
+https://github.com/stm32duino/BoardManagerFiles/raw/main/package_stmicroelectronics_index.json
+
+17-07-2024  v 844-30
+'******************************************
+
+! доработка функции
+Function  GetConsoleOutPut (clicmd$, outFN$) as string
+вывод перенаправляется в файл TmpLstInst.txt
+со
+
+
+
+
+Tool arduino:dfu-util@0.11.0-arduino5 already installed
+Tool esp32:mklittlefs@3.0.0-gnu12-dc7f933 already installed
+Tool esp32:mkspiffs@0.2.3 already installed
+Downloading packages...
+
+ 0 / 328092732    0.00%
+esp32:esp-rv32@2302 0 B / 312.89 MiB    0.00%
+esp32:esp-rv32@2302 783.15 KiB / 312.89 MiB    0.24% 02m42s
+esp32:esp-rv32@2302 1.76 MiB / 312.89 MiB    0.56% 01m45s
+esp32:esp-rv32@2302 2.11 MiB / 312.89 MiB    0.67% 01m57s
+esp32:esp-rv32@2302 2.11 MiB / 312.89 MiB    0.67% 01m57s
+esp32:esp-rv32@2302 2.45 MiB / 312.89 MiB    0.78% 02m31s
+esp32:esp-rv32@2302 2.80 MiB / 312.89 MiB    0.89% 02m35s
+esp32:esp-rv32@2302 3.09 MiB / 312.89 MiB    0.99% 02m40s
+esp32:esp-rv32@2302 3.36 MiB / 312.89 MiB    1.07% 02m45s
+
+
+ESP32 WROOM
+Silicon Labs CP210x USB to UART Bridge (COM2)
+
+				CREATE BasicsMnu AS QMenuItem
+					Caption = "01.Basics"
+				END CREATE
+				CREATE DigitalMnu AS QMenuItem
+					Caption = "02.Digital"
+				END CREATE
+				CREATE AnalogMnu AS QMenuItem
+					Caption = "03.Analog"
+				END CREATE
+				CREATE CommunicationMnu AS QMenuItem
+					Caption = "04.Communication"
+				END CREATE
+				CREATE ControlMnu AS QMenuItem
+					Caption = "05.Control"
+				END CREATE
+				CREATE SensorsMnu AS QMenuItem
+					Caption = "06.Sensors"
+				END CREATE
+				CREATE DisplayMnu AS QMenuItem
+					Caption = "07.Display"
+				END CREATE
+				CREATE StringsMnu AS QMenuItem
+					Caption = "08.Strings"
+				END CREATE
+				CREATE USBMnu AS QMenuItem
+					Caption = "09.USB"
+				END CREATE
+				CREATE StarterMnu AS QMenuItem
+					Caption = "10.StarterKit_BasicKit"
+				END CREATE
+				
+				CREATE ISPMnu AS QMenuItem
+					Caption = "11.Arduino ISP"
+				END CREATE
+
+
+15-07-2024  v 844-30
+'******************************************
+
+Silicon Labs CP210x USB to UART Bridge (COM2)
+
+добавлен скрипт на vbs который определяет подключенные устройства USB как в Device Manager
+
++ если BoardName$="BOSSA!!!" то автоматически преобразует
+'! Bossa Program Port (COM19)
+в
+'! arduino:sam:arduino_due_x/COM19/Arduino Due (Native USB Port)/arduino:sam
+
+'! Bossa Program Port (COM19)
+'! FQBN/COM19/Unknown/Core
+
+
+
+05-07-2024 v 844-15
+'******************************************
+-! fixed при нажатии Select Board  в Board manager  в комбобокс текст добавляется, а не заменяется.
+
+STMicroelectronics:stm32:3dprinter/COM1/3D printer boards/STMicroelectronics:stm32/COM1/3D printer boards/STMicroelectronics:stm32
+arduino:samd:adafruit_circuitplayground_m0/COM1/Adafruit Circuit Playground Express/arduino:samd/COM1/Adafruit Circuit Playground Express/arduino:samd
+
+-! fixed 
+добавляется колическтво видимых окон при перезагрузке файла во вкладку
+Sub TabPopUpMenuReloadFile
+'call  AddClrString ("18128:SrcFileName="+(SrcFileName), clred, LogEdit)
+dec VisibleWindows ' или так или флаг, что в то же окошко!
+
+
+Bossa Program Port (COM12)
+
+
+30-06-2024 v 844-15
+'******************************************
+
+!!! Showmessage ("18868: Verify scketch  before...")
+файл UTFTRus.h, а он требует верификации исходника, а там ошибка
+
+
+если находит Bossa на COM27 - то надо писать 
+arduino:sam:arduino_due_x/COM27/Arduino Due (Native USB Port)/arduino:sam
+arduino:sam:arduino_due_x/COM15/Arduino Due (Native USB Port)/arduino:sam
+
+Sub ShowInstCoreList
+'!FQBNCmbox.clear - убрано. чтобы не очищался список
+
+
+-Fixed! при переключении вкладок не обновляется список функций
++- Fixed - удаление несуществующих ††† проектов из списка меню
+
+29-06-2024 v 844-14
+'******************************************
+-fixed 
+когда ошибка при компиляции в inc файле, то открывается окно inc без пути в режиме просмотра.
+если этот tab закрыть, то закрывается вызывающая вкладка. Надо открывать с полным путем, а если опять ошибка - 
+то перезагружать вкладку с inc
+
+Function StripPath (fullname as string) as string
+'print
+'print "1 StripPath fullname=";fullname
+fullname=replacesubstr$ (fullname, "/", "\") - 'добавлено!!!
+result = left$(fullname, rinstr(fullname, "\"))
+
+
+
+
+20-06-2024 v 844-13
+'******************************************
+мультистрочный комментарий
+если он начинается с первой строки и до конца файла, то надо проверять с первой строки и высталять
+флаг комментария.  А потом проверять конец комментария и снимать флаг.
+И так до первого конца комментария после видимого текста.
+
+Или от первой видимой строки вверх
+и если первым встретится /* - то видимый текст в диапазоне комментария.
+
+с начала  текста до конца видимого текста ищем все  /* 
+EM_GETLINECOUNT
+
+20-01-2024 v 840
+'******************************************
+https://iso.reactos.org/bootcd/latest-x64-msvc-win-dbg
+
+дату файлов берем отсюда  https://iso.reactos.org/
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">
+<!-- saved from url=(0024)https://iso.reactos.org/ -->
+<html class=" FB_FW_ext Bco"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+  <title>Index of /</title>
+ <script type="text/javascript" src="chrome-extension://epebfcehmdedogndhlcacafjaacknbcm/nmcades_plugin_api.js"></script></head>
+ <body>
+<h1>Index of /</h1>
+  <table>
+   <tbody><tr><th valign="top"><img src="./Index of __files/blank.gif" alt="[ICO]"></th><th><a href="https://iso.reactos.org/?C=N;O=D">Name</a></th><th><a href="https://iso.reactos.org/?C=M;O=A">Last modified</a></th><th><a href="https://iso.reactos.org/?C=S;O=A">Size</a></th><th><a href="https://iso.reactos.org/?C=D;O=A">Description</a></th></tr>
+   <tr><th colspan="5"><hr></th></tr>
+<tr><td valign="top"><img src="./Index of __files/folder.gif" alt="[DIR]"></td><td><a href="https://iso.reactos.org/bootcd/">bootcd/</a></td><td align="right">2024-02-11 18:29  </td><td align="right">  - </td><td>&nbsp;</td></tr>
+<tr><td valign="top"><img src="./Index of __files/folder.gif" alt="[DIR]"></td><td><a href="https://iso.reactos.org/livecd/">livecd/</a></td><td align="right">2024-02-11 18:30  </td><td align="right">  - </td><td>&nbsp;</td></tr>
+<tr><td valign="top"><img src="./Index of __files/folder.gif" alt="[DIR]"></td><td><a href="https://iso.reactos.org/scripts/">scripts/</a></td><td align="right">2018-12-05 10:01  </td><td align="right">  - </td><td>&nbsp;</td></tr>
+<tr><td valign="top"><img src="./Index of __files/folder.gif" alt="[DIR]"></td><td><a href="https://iso.reactos.org/temp/">temp/</a></td><td align="right">2020-05-27 05:40  </td><td align="right">  - </td><td>&nbsp;</td></tr>
+   <tr><th colspan="5"><hr></th></tr>
+</tbody></table>
+
+</body></html>
+
+
+14-01-2024 v 840
+'******************************************
+
+sub SrcEditOnKeyDown (Key AS WORD, Shift AS INTEGER)
+- fixed !!! глюк - стирается клипбоард
+
+	elseif KeyDowned=0 then 
+		clipboard.text=OldClipBrd$
+
+13-01-2024 v 840
+'******************************************
+---!!! частично fixed  подсветка 
+при выделении текста лежащие выше комменты при скролле за пределы экрана 
+перестают подсвечиваться если заскроллить их обратно.
+
+D:\_F\bas\rapidq\RQIDE\RosInst22.exe
+
+добавлена проверка, а то тормозило при старте
+if direxists(StartPath$+"lang\")=0 then
+	mkdir StartPath$+"lang\"
+end if
+
+08-01-2024 v 840
+"******************************************"
+При подсветке выделенного текста надо обрабатывать табуляции отдельно.
+
+SendMessageA (rhWnd,EM_POSFROMCHAR, byval @VisPoint1, byval CurPos-1)
+VisPoint1.left определяет позицию по горизонтали  куда выводить символ
+
+
+Type QPoint
+Left As Long
+Top As Long
+End Type
+
+dim VisPoint1 as QPoint
+
+06-01-2024 v 840
+"******************************************
+sub RichEditOnMouseDown
+R2Change
+SendMessage SrcEdit.handle,WM_Paint,0,0  'обновляет окно RichEdit и убирает артефакты!!!!
+
+
+04-01-2024 v 840
+"******************************************
++++ в первом приближении - просмотр в специальной вкладке 999 файлов по одиночному клику
++++ !!! сделать для ошибок в inc файлах при компиляции
+
+"Если имя файла заключено в кавычки " FileName", то файл ищется в текущей директории, и в указанных путях для include файлов. 
+"Если имя файла заключено в угловые скобки, то файл будет искаться в текущей директории, в указанных путях для include файлов, 
+"а также  в путях, указанных в окружении. (в строке Path в файле autoexec)
+
+'!таким образом, если inc файл имеется в текущей директории программы, то будет использоваться именно он. 
+
+
+!!!! Исправление подсветки выделенного текста
+
+				SetBkColor(hdc,HiLiteColors(15))
+				TextOut(hdc, byval VisPoint1.left+2, byval VisPoint1.top, byval ch, byval len(ch))
+				SetBkColor(hdc,HiLiteColors(0))
+
+если попадает в диапазон выделения, то надо инвертировать цвета
+0xFF - c.R, 0xFF - c.G, 0xFF - c.B
+
+
+01-01-2024 v 840
+"******************************************
+*** для просмотра надо загружать файл в специальное окно и в специальную строку - FNtmp$
+FNtmp$ ="" ' имя файла открытого через файл менеджер или через inc tree
+
+tab25 добавляется обычным образом
+
+!!! когда ошибка при компиляции в inc файле, то открывается окно inc без пути в режиме просмотра.
+если этот tab закрыть, то закрывается вызывающая вкладка. Надо открывать с полным путем, а если опять ошибка - 
+то перезагружать вкладку с inc
+
+---!!! fixed исправлена загрузочная часть IDE - теперь одиночный ехешник загружается.
+
+ClrSchComBox.lst
+
+Classic Windows
+Dark
+NightVision
+Classic Windows1
+
+
+cli data path - обработчик кнопки
+
+29-12-2023 v 839
+"******************************************
+-!!! глюк с директориями кириллицей в режиме $AppType console- исправлено переводом в нижний регистр
+
+SUB ChangeDirectory1 
++++ TruePath$=LCaseR$ (DirTree.Directory)
+12280:DirTree.Directory=D:\_F\Д®В®\  >>> д®в®
+
+
+!!! глюк с если ошибка в ini файле
+
+
+26-12-2023 v 836
+"******************************************
+
+'! что это за хрень????
+prjdir$=CurDir$+"\projects"
+print"35:prjdir$=";prjdir$
+PrjDirList.Directory =prjdir$' CurDir$+"\projects"  
+PrjList.Directory =prjdir$' CurDir$'+"\projects"
+print"36:CurDir$=";CurDir$
+PrjForm.Caption = prjdir$
+
+			CREATE ScanPrj AS QMenuItem
+				Caption = "Scan projects folder"
+				Hint = "Scan projects folder and add found projects to list"
+				OnClick=ScanPrjOnClick
+				visible=0
+			END CREATE
+
+
+24-12-2023 v 836
+"******************************************
+---! fixed   AllCoreList.txt
+---! fixed Sub SetAddClrLineNmb  "AddClr"+"String"  
+FIRSTVISIBLELINE= SendMessageAPI (SrcEdit.Handle,EM_GETFIRSTVISIBLELINE,0,0)
+CurPos=SrcEdit.GetLineIdx(FIRSTVISIBLELINE-1)
+
+
+18-12-2023 v 836
+"******************************************
+---! fixed не может найти путь с кеенрол в include
+добавлено Chartooem SrcFileName,SrcFileName в процедуре sub FileLoad
+
+'print" 332: GetConsoleCP=";GetConsoleCP
+'print"GetConsoleOutputCP=";GetConsoleOutputCP
+SetConsoleCP(1251)
+SetConsoleOutputCP(1251)
+
+'print"консоль GetConsoleCP=";GetConsoleCP
+'print"консоль GetConsoleOutputCP=";GetConsoleOutputCP
+
+!!! Глюк с кириллицей в QdirTree - в режиме $APPTYPE console отображаются крокозябры в имени пути
+
+
+11-12-2023 v 836
+"******************************************
+мегабаг - не добавляется массив меню
+DIM BoardPropMnu(2,2) AS QMenuItem
+DIM BoardPropMnu33 AS QMenuItem
+BoardPropMnu33.caption="BoardPropMnu33"
+	
+	BoardPropMnuP.AddItems BoardPropMnu(0,0)
+	BoardPropMnuP.AddItems BoardPropMnu33
+
+
+
+08-12-2023 v 836
+"******************************************
+*** сделать выбор как набор comboboxes ???
+*** сделать один edit для формирования второй edit filter и имя столбца в таблице
+!! число строк в таблице не меньше 2!!!
+*** сделать внизу edit с полным путем к 
+"C:\Users\Andrei\AppData\Local\Arduino15\packages\первая часть "arduino:sam"    \hardware\" + _
+ вторая часть "arduino:sam" +\ номер версии \  boards.txt platform.txt programmers.txt  
+
+
+06-12-2023 v 836
+"******************************************
+=!  Почему-то платформа в Istalled core числится установленнойЮ а в allboards - нет
+! cделать splitter в Istalled core
+! refresh таблиц после установки платформы
+! после рефреша восстанавливать положение в таблице и в edit
+
+03-12-2023 v 834
+"******************************************
++++ function GetFileAssess (fname as string) as long
+проверяет выходной файл консоли файл на запись, и если нет, то значит установка платы еще не закончена!!!
+
+28-11-2023 v 834
+"******************************************
+BoardList.txt - список подключенных к компу плат
+BoardListAllKnown.txt список всех известных плат
+'!!!BoardListInstall.txt список установленных плат - не нужен, BoardListAllKnown.txt их включает
+
+25-11-2023 v 834
+"******************************************
+//!формировать меню по списку установленных плат!
+
+*! сделать очистку закладок аналогично очистке окон
++++! не добавляет уже существующие закладки
+*! сделать сортировку закладок -  сначала сортировать номера длиной 1, затем номера длиной 2 итд
+-!!! убрано '!!!TruePath$=ConvertToTruePath(DirTree.Directory)
+глючит, заменяет Users на Пользователи, из-за этогго не работает Dirtree
+
+-!!! "Побежден наконец баг с периодическим незапуском программы!!!
+Причина оказалась в DirTree - OnChange =ChangeDirectory1 перенес в DirTreeFormShow
+'Не победилось!!!!!  ПОБЕДИЛОСЬ!!!!! НЕ ПОБЕДИЛОСЬ!!!!!
+перенес DirTree.parent=DirTreeForm и установку свойств в RQFormShow, что по таймеру 'ПОБЕДИЛОСЬ!!!!! ???
+
+
+//!!!!*** просмотр файлов 
+boards.txt 
+platform.txt 
+programmers.txt
+
+"C:\Users\Andrei\AppData\Local\Arduino15\packages\arduino\hardware\avr\1.8.6\"
+"C:\Users\Andrei\AppData\Local\Arduino15\packages\arduino\hardware\sam\1.6.12\"
+C:\Users\sHell\AppData\Local\Arduino15\packages\Intel\hardware\i586\
+"C:\Users\sHell\AppData\Local\Arduino15\packages\Intel\hardware\i586\1.6.7+1.0\"
+
+Arrow:samd               2.1.0     2.1.0     Arrow Boards                                                            
+Intel:arc32              2.0.6     2.0.6     Intel Curie Boards                                                      
+Intel:i586               1.6.7+1.0 1.6.7+1.0 Intel i586 Boards                                                       
+Intel:i686               1.6.7+1.0 1.6.7+1.0 Intel i686 Boards                                                       
+STMicroelectronics:stm32 2.6.0     2.6.0     STM32 MCU based boards                                                  
+
+
+Добавлено поле Arduino15 Default Path = C:\Users\Andrei\AppData\Local\Arduino15\
+
+//!!!! надо поиском в файлах в папке \Arduino15\packages\arduino\hardware\
+искать сначала файлы platform.txt, а в них name=Arduino AVR Boards для первого меню
+затем файлы boards.txt , а в них name=  для вложенного меню
+
+"C:\Users\Andrei\AppData\Local\Arduino15\packages\первая часть "arduino:sam"    \hardware\" + _
+ вторая часть "arduino:sam" +\ номер версии \  boards.txt platform.txt programmers.txt   
+
+меню Programmer - programmers.txt
+меню в виде двухмерного массива???
+ 
+
+evar$="LOCALAPPDATA"
+rz=GetEnvironmentVariable (evar$, appdata$ , len(appdata$)) 
+appdata$=left$(appdata$,rz)
+
+там ищем
+
+-!!  добавлены свойства  в filelistbox!   ftSystem 
+в DirTree AddDirTypes dtReadOnly,dtHidden,dtSystem,dtNormal,dtAll
+
+
+
+24-11-2023 v 833-18
+"******************************************
+-! строка FQBN для заливки скетча формируется из BoardComboBox.text.
+Теперь можно редактировать вручную и программировать если выскакивает Bossa 
++ добавлено popup menu Clear log 
+
+11-11-2023 v 833
+"******************************************
++++ Единая функцию перехвата вывода батника  в консоль 
+Function  GetConsoleOutPut (clicmd$, outFN$) as string
+
+'!! Reformat current sub не работает с function 
+
+cli не работает с директорией D:\_F\bas\rapidq\RQIDE\Arduino15\ 
+только с директорией C:\Users\Andrei\AppData\Local\Arduino15
+
+'!! FQBN для STM32
+FQBN$="
+STMicroelectronics:stm32:GenF4:
+pnum=BLACKPILL_F411CE,upload_method=swdMethod,xserial=generic,usb=CDCgen,xusb=FS,opt=osstd,dbg=none,rtlib=nano"
+
+
+
+Данные находятся в файле
+C:\Users\Andrei\AppData\Local\Arduino15\packages\STMicroelectronics\hardware\stm32\2.6.0\boards.txt 
+
+
+
+
+D:\_F\bas\rapidq\RQIDE\Arduino15\arduino-cli\arduino-cli.exe compile 
+-b STMicroelectronics:stm32:GenF4:pnum=BLACKPILL_F411CE,upload_method=swdMethod,xserial=generic,usb=CDCgen,xusb=FS,opt=osstd,dbg=none,rtlib=nano
+ 
+D:\_F\bas\rapidq\RQIDE\Arduino15\sketchbook\BalCom1A_Modified_for_STM\BalCom1A_Modified_for_STM.ino 
+>D:\_F\bas\rapidq\RQIDE\ClihelpMsg.txt
+
+10-11-2023 v 833
+"******************************************
++++ добавлено 
+выбор из нескольких подключенных плат, формирование FQBN  и названия плат
+
+09-11-2023 v 832
+"******************************************
+-+! добавлено сохранение скетча в подпапку для простого SaveFile
+!!! добавить пометки картинками для меню проектов
+
+08-11-2023 v 831
+"******************************************
++++ отображение загрузки в ArduinoHlp
+
+06-11-2023 v 830-12
+"******************************************
+! в arduino-cli.yaml загружаются директории вместо требуемых 
+directories:
+  data: C:\Users\Andrei\AppData\Local\Arduino15
+  downloads: C:\Users\Andrei\AppData\Local\Arduino15\staging
+  user: C:\Users\Andrei\Documents\Arduino
+
+https://github.com/stm32duino/BoardManagerFiles/raw/main/package_stmicroelectronics_index.json
+
++++ added Board manager
+*** Board manager
+-----------------
+Shows the list of installed platforms.
+arduino-cli core list 
+
+ID                       Installed Latest Name                                      
+STMicroelectronics:stm32 2.6.0     2.6.0  STM32 MCU based boards                    
+arduino:avr              1.8.6     1.8.6  Arduino AVR Boards                        
+arduino:renesas_uno      1.0.4     1.0.4  Arduino UNO R4 Boards                     
+arduino:sam              1.6.12    1.6.12 Arduino SAM Boards (32-bits ARM Cortex-M3)
+--------------------
+Search for a core in Boards Manager using the specified keywords- show all cores
+arduino-cli core search
+
+ID                       Version   Name                                                                    
+Arrow:samd               2.1.0     Arrow Boards                                                            
+Intel:arc32              2.0.6     Intel Curie Boards                                                      
+Intel:i586               1.6.7+1.0 Intel i586 Boards                                                       
+Intel:i686               1.6.7+1.0 Intel i686 Boards                                                       
+Microsoft:win10          1.1.2     Windows 10 Iot Core                                                     
+STMicroelectronics:stm32 2.6.0     STM32 MCU based boards                                                  
+arduino:avr              1.8.6     Arduino AVR Boards                                                      
+arduino:esp32            2.0.13    Arduino ESP32 Boards                                                    
+arduino:mbed             3.3.0     [DEPRECATED - Please install standalone packages] Arduino Mbed OS Boards
+arduino:mbed_edge        4.0.8     Arduino Mbed OS Edge Boards                                             
+arduino:mbed_giga        4.0.8     Arduino Mbed OS Giga Boards                                             
+arduino:mbed_nano        4.0.8     Arduino Mbed OS Nano Boards                                             
+arduino:mbed_nicla       4.0.8     Arduino Mbed OS Nicla Boards                                            
+arduino:mbed_opta        4.0.8     Arduino Mbed OS Opta Boards                                             
+arduino:mbed_portenta    4.0.8     Arduino Mbed OS Portenta Boards                                         
+arduino:mbed_rp2040      4.0.8     Arduino Mbed OS RP2040 Boards                                           
+arduino:megaavr          1.8.8     Arduino megaAVR Boards                                                  
+arduino:nrf52            1.0.2     Arduino nRF52 Boards                                                    
+arduino:renesas_portenta 1.0.5     Arduino Renesas Portenta Boards                                         
+arduino:renesas_uno      1.0.5     Arduino UNO R4 Boards                                                   
+arduino:sam              1.6.12    Arduino SAM Boards (32-bits ARM Cortex-M3)                              
+arduino:samd             1.8.13    Arduino SAMD Boards (32-bits ARM Cortex-M0+)                            
+atmel-avr-xminis:avr     0.6.0     Atmel AVR Xplained-minis                                                
+emoro:avr                3.2.2     EMORO 2560                                                              
+esp32:esp32              2.0.11    esp32                                                                   
+industruino:samd         1.0.1     Industruino SAMD Boards (32-bits ARM Cortex-M0+)                        
+littleBits:avr           1.0.0     littleBits Arduino AVR Modules                                          
+renesas:rl78g22_fpb      2.0.0     RL78/G22 Fast Prototyping Board                                         
+renesas:rl78g23_fpb_p64  2.0.0     RL78/G23-64p Fast Prototyping Board                                     
+---------------------------------------------------------
+Downloads one or more cores and corresponding tool dependencies.
+arduino-cli.exe core download arduino:samd
+-------------------------------------------------------------
+
+--additional-urls https://github.com/stm32duino/BoardManagerFiles/raw/main/package_stmicroelectronics_index.json
+STMicroelectronics:stm32 --additional-urls https://github.com/stm32duino/BoardManagerFiles/raw/main/package_stmicroelectronics_index.json
+
+List all boards that have the support platform installed.
+arduino-cli board listall
+
+Board Name                                 FQBN                                 Platform ID              
+3D printer boards                          STMicroelectronics:stm32:3dprinter   STMicroelectronics:stm32 
+Adafruit Circuit Playground                arduino:avr:circuitplay32u4cat       arduino:avr              
+Adafruit Circuit Playground Express                                             arduino:samd             
+Analog ADI                                                                      Arrow:samd               
+Arduino 101                                                                     Intel:arc32              
+Arduino BT                                 arduino:avr:bt                       arduino:avr              
+Arduino Due (Native USB Port)              arduino:sam:arduino_due_x            arduino:sam              
+Arduino Due (Programming Port)             arduino:sam:arduino_due_x_dbg        arduino:sam              
+Arduino Duemilanove or Diecimila           arduino:avr:diecimila                arduino:avr              
+Arduino Edge Control                                                            arduino:mbed             
+Arduino Edge Control                                                            arduino:mbed_edge        
+Arduino Esplora                            arduino:avr:esplora                  arduino:avr              
+Arduino Ethernet                           arduino:avr:ethernet                 arduino:avr              
+Arduino Finder Opta                                                             arduino:mbed_opta        
+Arduino Fio                                arduino:avr:fio                      arduino:avr              
+Arduino Gemma                              arduino:avr:gemma                    arduino:avr              
+Arduino Giga                                                                    arduino:mbed_giga        
+Arduino Industrial 101                     arduino:avr:chiwawa                  arduino:avr              
+Arduino Leonardo                           arduino:avr:leonardo                 arduino:avr              
+Arduino Leonardo ETH                       arduino:avr:leonardoeth              arduino:avr              
+Arduino M0                                                                      arduino:samd             
+Arduino M0 Pro                                                                  arduino:samd             
+Arduino MKR 1000                                                                arduino:samd             
+Arduino MKR FOX 1200                                                            arduino:samd             
+Arduino MKR GSM 1400                                                            arduino:samd             
+Arduino MKR NB 1500                                                             arduino:samd             
+Arduino MKR Vidor 4000                                                          arduino:samd             
+Arduino MKR WAN 1300                                                            arduino:samd             
+Arduino MKR WAN 1310                                                            arduino:samd             
+Arduino MKR WiFi 1010                                                           arduino:samd             
+Arduino MKR Zero                                                                arduino:samd             
+Arduino Mega ADK                           arduino:avr:megaADK                  arduino:avr              
+Arduino Mega or Mega 2560                  arduino:avr:mega                     arduino:avr              
+Arduino Micro                              arduino:avr:micro                    arduino:avr              
+Arduino Mini                               arduino:avr:mini                     arduino:avr              
+Arduino NG or older                        arduino:avr:atmegang                 arduino:avr              
+Arduino Nano                               arduino:avr:nano                     arduino:avr              
+Arduino Nano 33 BLE                                                             arduino:mbed             
+Arduino Nano 33 BLE                                                             arduino:mbed_nano        
+Arduino Nano 33 BLE Sense                                                       arduino:mbed_nano        
+Arduino Nano 33 BLE Sense                                                       arduino:mbed             
+Arduino Nano 33 IoT                                                             arduino:samd             
+Arduino Nano ESP32                                                              arduino:esp32            
+Arduino Nano Every                                                              arduino:megaavr          
+Arduino Nano RP2040 Connect                                                     arduino:mbed             
+Arduino Nano RP2040 Connect                                                     arduino:mbed_nano        
+Arduino Nicla Sense ME                                                          arduino:mbed             
+Arduino Nicla Vision                                                            arduino:mbed             
+Arduino Portenta C33                                                            arduino:renesas_portenta 
+Arduino Portenta H7                                                             arduino:mbed_portenta    
+Arduino Portenta H7                                                             arduino:mbed             
+Arduino Portenta X8                                                             arduino:mbed_portenta    
+Arduino Primo                                                                   arduino:nrf52            
+Arduino Primo Core                                                              arduino:nrf52            
+Arduino Pro or Pro Mini                    arduino:avr:pro                      arduino:avr              
+Arduino Robot Control                      arduino:avr:robotControl             arduino:avr              
+Arduino Robot Motor                        arduino:avr:robotMotor               arduino:avr              
+Arduino Tian                                                                    arduino:samd             
+Arduino UNO R4 Minima                                                           arduino:renesas_uno      
+Arduino UNO R4 WiFi                                                             arduino:renesas_uno      
+Arduino UNO WiFi Rev2                                                           arduino:megaavr          
+Arduino Uno                                arduino:avr:uno                      arduino:avr              
+Arduino Uno Mini                           arduino:avr:unomini                  arduino:avr              
+Arduino Uno WiFi                           arduino:avr:unowifi                  arduino:avr              
+Arduino YГєn                                arduino:avr:yun                      arduino:avr              
+Arduino YГєn Mini                           arduino:avr:yunmini                  arduino:avr              
+Arduino Zero                                                                    arduino:samd             
+Blues Wireless boards                      STMicroelectronics:stm32:BluesW      STMicroelectronics:stm32 
+Discovery                                  STMicroelectronics:stm32:Disco       STMicroelectronics:stm32 
+EMoRo 2560. Board based on ATmega 2560 MCU                                      emoro:avr                
+ESP32 Dev Board                                                                 esp32:esp32              
+ESP32-C3 Dev Board                                                              esp32:esp32              
+ESP32-S2 Dev Board                                                              esp32:esp32              
+ESP32-S3 Dev Board                                                              esp32:esp32              
+Edison                                                                          Intel:i686               
+Elecgator boards                           STMicroelectronics:stm32:Elecgator   STMicroelectronics:stm32 
+Electronic speed controllers               STMicroelectronics:stm32:ESC_board   STMicroelectronics:stm32 
+Eval                                       STMicroelectronics:stm32:Eval        STMicroelectronics:stm32 
+Galileo                                                                         Intel:i586               
+Garatronic-McHobby                         STMicroelectronics:stm32:Garatronic  STMicroelectronics:stm32 
+Generic Flight Controllers                 STMicroelectronics:stm32:GenFlight   STMicroelectronics:stm32 
+Generic STM32C0 series                     STMicroelectronics:stm32:GenC0       STMicroelectronics:stm32 
+Generic STM32F0 series                     STMicroelectronics:stm32:GenF0       STMicroelectronics:stm32 
+Generic STM32F1 series                     STMicroelectronics:stm32:GenF1       STMicroelectronics:stm32 
+Generic STM32F2 series                     STMicroelectronics:stm32:GenF2       STMicroelectronics:stm32 
+Generic STM32F3 series                     STMicroelectronics:stm32:GenF3       STMicroelectronics:stm32 
+Generic STM32F4 series                     STMicroelectronics:stm32:GenF4       STMicroelectronics:stm32 
+Generic STM32F7 series                     STMicroelectronics:stm32:GenF7       STMicroelectronics:stm32 
+Generic STM32G0 series                     STMicroelectronics:stm32:GenG0       STMicroelectronics:stm32 
+Generic STM32G4 series                     STMicroelectronics:stm32:GenG4       STMicroelectronics:stm32 
+Generic STM32H5 series                     STMicroelectronics:stm32:GenH5       STMicroelectronics:stm32 
+Generic STM32H7 Series                     STMicroelectronics:stm32:GenH7       STMicroelectronics:stm32 
+Generic STM32L0 series                     STMicroelectronics:stm32:GenL0       STMicroelectronics:stm32 
+Generic STM32L1 series                     STMicroelectronics:stm32:GenL1       STMicroelectronics:stm32 
+Generic STM32L4 series                     STMicroelectronics:stm32:GenL4       STMicroelectronics:stm32 
+Generic STM32L5 series                     STMicroelectronics:stm32:GenL5       STMicroelectronics:stm32 
+Generic STM32U5 series                     STMicroelectronics:stm32:GenU5       STMicroelectronics:stm32 
+Generic STM32WB series                     STMicroelectronics:stm32:GenWB       STMicroelectronics:stm32 
+Generic STM32WL series                     STMicroelectronics:stm32:GenWL       STMicroelectronics:stm32 
+Industruino D21G                                                                industruino:samd         
+LilyPad Arduino                            arduino:avr:lilypad                  arduino:avr              
+LilyPad Arduino USB                        arduino:avr:LilyPadUSB               arduino:avr              
+Linino One                                 arduino:avr:one                      arduino:avr              
+LoRa boards                                STMicroelectronics:stm32:LoRa        STMicroelectronics:stm32 
+Midatronics boards                         STMicroelectronics:stm32:Midatronics STMicroelectronics:stm32 
+Nicla Sense ME                                                                  arduino:mbed_nicla       
+Nicla Vision                                                                    arduino:mbed_nicla       
+Nicla Voice                                                                     arduino:mbed_nicla       
+Nucleo-144                                 STMicroelectronics:stm32:Nucleo_144  STMicroelectronics:stm32 
+Nucleo-32                                  STMicroelectronics:stm32:Nucleo_32   STMicroelectronics:stm32 
+Nucleo-64                                  STMicroelectronics:stm32:Nucleo_64   STMicroelectronics:stm32 
+RL78/G22 Fast Prototyping Board                                                 renesas:rl78g22_fpb      
+RL78/G23-64p Fast Prototyping Board                                             renesas:rl78g23_fpb_p64  
+Raspberry Pi Pico                                                               arduino:mbed             
+Raspberry Pi Pico                                                               arduino:mbed_rp2040      
+STM32MP1 series coprocessor                STMicroelectronics:stm32:STM32MP1    STMicroelectronics:stm32 
+SmartEverything Dragonfly                                                       Arrow:samd               
+SmartEverything Fox                                                             Arrow:samd               
+SmartEverything Fox3                                                            Arrow:samd               
+SmartEverything Lion                                                            Arrow:samd               
+SmartTutto                                                                      Arrow:samd               
+SparkFun Boards                            STMicroelectronics:stm32:SparkFun    STMicroelectronics:stm32 
+Windows 10 IoT Core                                                             Microsoft:win10          
+atmega168pb-xmini                                                               atmel-avr-xminis:avr     
+atmega328p-xmini                                                                atmel-avr-xminis:avr     
+atmega328pb-xmini                                                               atmel-avr-xminis:avr     
+littleBits w6 Arduino module                                                    littleBits:avr           
+------------------------------------------------------
+
+
+
+
+03-11-2023 v 828-7
+"******************************************
++Если проект сохраняется под тем же именем, то выдается предупреждение
+-! Всегда путь проектов берется от папки запуска программы
++- разборки с несуществующими\неправильными именами проектов
+
+
+02-11-2023 v 828-7
+"******************************************
+Пути для определения плат
+
+package_index.json
+C:\Users\Andrei\AppData\Local\Arduino15\package_index.json 
+
+https://github.com/stm32duino/BoardManagerFiles/raw/main/package_stmicroelectronics_index.json
+https://github.com/stm32duino/BoardManagerFiles/raw/main/package_stmicroelectronics_index.json
+
+STMicroelectronics:stm32 --additional-urls https://github.com/stm32duino/BoardManagerFiles/raw/main/package_stmicroelectronics_index.json
+
+C:\bas\RapidQ\RQIDE\Arduino15\arduino-cli\arduino-cli.exe core search --additional-urls https://github.com/stm32duino/BoardManagerFiles/raw/main/package_stmicroelectronics_index.json >C:\bas\RapidQ\RQIDE\ClihelpMsg.txt
+C:\bas\RapidQ\RQIDE\Arduino15\arduino-cli\arduino-cli.exe core install STMicroelectronics:stm32  --additional-urls https://github.com/stm32duino/BoardManagerFiles/raw/main/package_stmicroelectronics_index.json >C:\bas\RapidQ\RQIDE\ClihelpMsg.txt
+
+Надо ВСЕ пути отсчитывать от IdePath 
+
+C:\Users\Andrei\AppData\Local\Arduino15\package_index.json 
+
+
+const SDelim = ' <>!.,;:/\|"[]{}()+_=`~@&$%^*?#-';
+
+
+14-10-2023 v 829
+"******************************************
+-!fixed - если отсутствует dll подсветки то подсветка отключается
++! 'обработка если отсутствует RQdb.ini   !!!
++! ' предлагать имя файла как имя проекта !!!
+* несуществующие проекты пихать в подменю Unknown Projects
+-!fixed процедура удаления из меню несуществующих проектов †††
+
+13-10-2023 v 828
+"******************************************
++add +qt+clib_name$+qt  в Sub RunOnClickLibMng ' cli command execution
+
+
+12-10-2023 v 827
+"******************************************
+'!!D:\_F\bas\rapidq\RQIDE\Arduino15\arduino-cli\BuildPath\libraries\UTFT\UTFT.cpp.d
+file_cpp_d$=BuildPathEdit.text+"libraries\"+FileNameNoExt(filName$)+"\"+FileNameNoExt(filName$)+".cpp.d"
+а когда в файле .ino нет #include библиотеки, то где искать файл packages?
+надо компилировать с флагом -e, тогда файл сохраняется в папке 
+C:\bas\RapidQ\RQIDE\Arduino15\arduino-cli\BuildPath\sketch\testUTFT.ino.cpp.d 
+или
+C:\bas\RapidQ\RQIDE\Arduino15\arduino-cli\BuildPath\core\variant.cpp.d 
+
+для просмотра используемых для данной платы библиотек компилируем пустой скетч
+'!C:\bas\RapidQ\RQIDE\Arduino15\arduino-cli\BuildPath\sketch\EmtySketch.ino.cpp.d 
+
+
+24-09-2023 v 826
+"******************************************
+*-------- сканирование проектов -------------
+// не сохраняются цветовые схемы среды, список проектов!!!!! при выходе и по кнопке Save projects
+[Projects]
+Index=0
+PrjPath=D:\_F\bas\rapidq\RQIDE\projects\
+PrjName0=RQIDE2021
+PrjIni0=RQIDE2021.prj
+
+PrjPath=D:\_F\bas\rapidq\RQIDE\projects\
+
+[Compiler]
+PrjPath=D:\_F\bas\rapidq\RQIDE\projects\
+IDEPath=D:\_F\bas\rapidq\RQIDE\
+
+-'! Fixed ===========!
+Чтобы загрузить файлы из новой папки IDE при переносе IDE с проектами на другой ПК, надо заменить
+в пути к файлу папку IDE bp проекта на текущую папку.
+Для этого надо считать сохраненную папку и зщаенить на текущую.
+IDEPathPrj$ - папка IDE сохраненная в проекте
+
+
+14-09-2023 v 826
+"******************************************
+!!! подсветка для С++ - вложенные комментарии 
+
+14-09-2023 v 826
+"******************************************
+!!! RC.exe не работает если не администратор ??????????
+!! настройки среды должны загружаться из файла RQDB.ini, но они не загружаются 
+если файл проекта не найден.
+!!! пунктир вместо текства если включена подсветка синтаксиса
+потом пропадает
+
+
+
+
+11-09-2023 v 826
+"******************************************
+* везде добавить 2>&1  -> clicmd$=clicmd$+" >cli.msg  2>&1"
+
+10-09-2023 v 825
+"******************************************
++ поиск в библиотеке через фильтр
+* надо еще пострелкам вверх вниз, подсвечивать ячейку, обновлять редактор справа при изменении верхней строки таблицы
+
+01-09-2023 v 825
+"******************************************
+а некоторые библиотеки иначе не найти
+ "C:\Users\Andrei\AppData\Local\Arduino15\packages\arduino\hardware\sam\1.6.12\libraries\SPI\src\SPI.cpp \
+ "C:\Users\Andrei\AppData\Local\Arduino15\packages\arduino\hardware\sam\1.6.12\libraries\SPI\src\SPI.h \
+17418:Libfname$= 
+C:\Users\Andrei\Documents\Arduino\libraries\UTFT\tft_drivers\ili9481\initlcd.h
+
+
+! на самом деле библиотеки нало искать в файле
+D:\_F\bas\rapidq\RQIDE\Arduino15\arduino-cli\BuildPath\libraries\UTFT\UTFT.cpp.d
+там приведены ссылки на файлы библиотек, которые были реально использованы при компиляции скетча
+ C:\Users\Andrei\Documents\Arduino\libraries\UTFT\UTFT.cpp \
+ C:\Users\Andrei\Documents\Arduino\libraries\UTFT\UTFT.h \
+
+ C:\Users\Andrei\AppData\Local\Arduino15\packages\arduino\hardware\sam\1.6.12\cores\arduino/Arduino.h \
+ C:\Users\Andrei\AppData\Local\Arduino15\packages\arduino\hardware\sam\1.6.12\cores\arduino/avr/pgmspace.h \
+
+ C:\Users\Andrei\Documents\Arduino\libraries\UTFT\hardware/arm/HW_ARM_defines.h \
+ C:\Users\Andrei\Documents\Arduino\libraries\UTFT\hardware/arm/HW_ARM.h \
+ C:\Users\Andrei\Documents\Arduino\libraries\UTFT\hardware/arm/HW_SAM3X8E.h \
+ C:\Users\Andrei\Documents\Arduino\libraries\UTFT\memorysaver.h \
+ C:\Users\Andrei\Documents\Arduino\libraries\UTFT\tft_drivers/ili9481/initlcd.h \
+ C:\Users\Andrei\Documents\Arduino\libraries\UTFT\tft_drivers/cpld/initlcd.h \
+ C:\Users\Andrei\Documents\Arduino\libraries\UTFT\tft_drivers/ili9481/setxy.h \
+ C:\Users\Andrei\Documents\Arduino\libraries\UTFT\tft_drivers/cpld/setxy.h
+
+C:\Users\Andrei\Documents\Arduino\libraries\UTFT\tft_drivers\ili9481\initlcd.h
+C:\Users\Andrei\Documents\Arduino\libraries\UTFT\tft_drivers\ili9481\initlcd.h 
+call  AddClrString ("29:C:\Users\Andrei\Documents\Arduino\libraries\UTFT\tft_drivers\ili9481\initlcd.h ="+str$(C:\Users\Andrei\Documents\Arduino\libraries\UTFT\tft_drivers\ili9481\initlcd.h ), clred, LogEdit)
+
+4192:SrcFileName= C:\Users\Andrei\Documents\Arduino\libraries\UTFT\tft_drivers\ili9481\initlcd.h
+4192:SrcFileName= C:\Users\Andrei\Documents\Arduino\libraries\UTFT\tft_drivers\ili9481\initlcd.h
+
+! обработка вложенных комментариев /* isLastComponent */
+	и многострочных заодно
+	и brem 0
+	erem
+	
+	
+	При компиляции библиотеки берутся из папки указанной в ArdlibPath$
+	Там их и искать!!!
+А если не находит, то в "C:\Users\Andrei\Documents\Arduino\libraries\UTFT\UTFT.h
+А если не находит, то в "C:\Users\Andrei\Documents\Arduino\libraries\UTFT\src\UTFT.h
+	
+	
+	clicmd$=CliPathEdit.text+_
+	" compile -b "+FQBN$+_
+	" --warnings  "+ArdWarningCmb.text+" "+_
+	"--log-level "+ArdLogLevelCmb.text+" "+_
+	"--build-path "+BuildPathEdit.text+" "+_
+	"--libraries "+ ArdlibPath$+" "+_
+---------------------------
+если библиотека не найдена
+Updating index: library_index.json downloaded
+ 0 / 709895    0.00%
+Updating index: package_index.json downloaded
+ 0 / 566    0.00%
+Updating index: package_index.json.sig downloaded
+'!!!!! Error during build: platform not installed
+
+
+31-08-2023 v 825
+"******************************************------------------1111111111111111111111
+---Fixed! при удалении таба с inc файлом  в редакторе остается содержание inc файла, а не файла, на который перешла таб
+	clicmd$=CliPathEdit.text+_
+	" compile -b "+FQBN$+_
+	" --warnings  "+ArdWarningCmb.text+" "+_
+	"--log-level "+ArdLogLevelCmb.text+" "+_
+	"--build-path "+BuildPathEdit.text+" "+_
+	"--libraries "+ ArdlibPath$+" "+_
+
+30-08-2023 v 825
+"******************************************------------------
+*** копировать закладки из одного окна в другое
+! если во вкладках есть inc файл, то при переоткрытии RQIDE цвет марджин со стороками берется стандартный а не для inc файлов
+***табы как вкладки не нужны по сути. Их можно заменить на label см файл LabTab.bas
+---!!!Fixed 'при переключении с файла на вкладку с файлом inc то несохраненные изменения в последнем окне (LastW) теряются
+
+29-08-2023 v 825
+"******************************************
++directories_data$=""
+directories_downloads$=""
+directories_user$=""
+
+'directories:
+  'data: C:\Users\sHell\AppData\Local\Arduino15
+  'downloads: C:\Users\sHell\AppData\Local\Arduino15\staging
+  'user: C:\Users\sHell\Documents\Arduino
+теперь можно искать бибилиотеки в папке directories_user$+"\libraries"
+
+
+27-08-2023 v 825
+"******************************************
+! по клику на IncTree загружается inc файл
+если он уже есть в табах, то загружать его еще раз не надо
+можно запрашивать reload
+
+
+#include <DueTimer.h>
+#include <UTFT.h> // где эта библиотека???!!
+
+"D:\_F\bas\rapidq\RQIDE\Arduino15\arduino-cli\arduino-cli.exe lib list  >D:\_F\bas\rapidq\RQIDE\ClihelpMsg.txt"
+LIBRARY_LOCATION_USER
+D:\_F\bas\rapidq\RQIDE\projects\sketchbook\libraries\
+
+
+
+! надо во все команды cli вставлять флаг --config-file "+ ArdCliCfgFileEdit.text
++!? Platform not found -  в этом случае надо предлагать установить платформу Core$
+
+13078:PortName$=COM5
+13080:BoardName$=Arduino Due (Native USB Port)
+13082:FQBN$=arduino:sam:arduino_due_x
+
+
+19-08-2023 v 825
+"******************************************
+
+все работает!!!
+-------------------------
+Sub SaveIDEOptions
+
+ThemeChange
+' сохраняем настройки arduino-cli
+'!D:\_F\bas\rapidq\RQIDE\Arduino15\arduino-cli\
+saveBat01$=CliPathEdit.text+ "  config init --overwrite --dest-dir "+ ArdCliCfgFileEdit.text-"arduino-cli.yaml"
+
+'!D:\_F\bas\rapidq\RQIDE\Arduino15\arduino-cli\arduino-cli.yaml
+saveBat02$=CliPathEdit.text+ "  config init --overwrite --config-file "+ ArdCliCfgFileEdit.text
+
+saveBat1$=CliPathEdit.text+ "  config set directories.data "+ArdCliDataPathEdit.text +" --config-file "+ ArdCliCfgFileEdit.text
+saveBat2$=CliPathEdit.text+ "  config set directories.downloads "+ArdCliDOWNLPathEdit.text+" --config-file "+ ArdCliCfgFileEdit.text
+saveBat3$=CliPathEdit.text+ "  config set directories.user "+sketchbookPathEdit.text+" --config-file "+ ArdCliCfgFileEdit.text
+
+saveCliCFGBat$=saveBat01$+crlf+saveBat02$+crlf+ saveBat1$+crlf+saveBat2$+crlf+saveBat3$+crlf
+
+
+kill ("saveCliCFG.Bat")
+sleep 0.5
+zzx=SaveString(saveCliCFGBat$,StartPath$+"saveCliCFG.Bat")
+------------------------------------
+
++ очистка списка закладок
++ имя cli config файла в статусбаре 
+-! ширина высота WaitForm 
+
+17-08-2023 v 825
+"******************************************
+не получается заставить cli использовать нужный файл конфигурации
+https://forum.arduino.cc/t/wrapping-and-packaging-the-arduino-cli/608245/9 !
+надо сделать подсветку русского с и С 
+
+13-08-2023 v 825
+"******************************************
++' переделать все пути в loadJson
+'!!! сохранить пути в файл конфигурации config C:\balan\RQIDE\Arduino15\arduino-cli\arduino-cli.yaml 
+
+board_manager:
+  additional_urls: []
+daemon:
+  port: "50051"
+directories:
+  data: C:\Users\кеенроол\AppData\Local\Arduino15
+  downloads: C:\Users\кеенроол\AppData\Local\Arduino15\staging
+  user: C:\Users\кеенроол\Documents\Arduino
+library:
+  enable_unsafe_install: false
+logging:
+  file: ""
+  format: text
+  level: info
+metrics:
+  addr: :9090
+  enabled: true
+sketch:
+  always_export_binaries: false
+
++ '++ !! все относящееся к Arduino теперь лежит в папке \RQIDE\Arduino15\
+
+'! user: C:\Users\кеенроол\Documents\Arduino - здесь по умолчанию хранятся библиотеки и скетчи
+это аналог папки sketchbook из Arduino IDE
+directories:
+  "data: C:\Users\кеенроол\AppData\Local\Arduino15
+  "downloads: C:\Users\кеенроол\AppData\Local\Arduino15\staging
+  "user: C:\Users\кеенроол\Documents\Arduino
+
+
+'надо создать файл конфигурации и поменять все эти пути на RQIDE\  !!!!
+' это надо сделать в IDE options при задании путей     !!!!
+'!!!! все относящееся к Arduino лежит в папке \RQIDE\Arduino15\
+
+user C:\balan\RQIDE\Arduino15\sketchbook\  - sketch path 
+downloads C:\balan\RQIDE\Arduino15\staging\
+data C:\balan\RQIDE\Arduino15\
+config C:\balan\RQIDE\Arduino15\arduino-cli\arduino-cli.yaml 
+
+
++ добавлен функционал LibMngForm4-12 в основной файл RQDBv824
++ подправлено IDE Options Arduino tab 
+
+File name¶
+The configuration file must be named arduino-cli, with the appropriate file extension 
+for the file's format.
+
+user - the equivalent of the Arduino IDE's "sketchbook" directory. 
+"Library Manager installations are made to the libraries subdirectory of the user directory.
+
+'По умолчанию (при запуске программы) все пины сконфигурированы как входы (INPUT) !
+
+-! если файл ino не UTF8, добавлен выход из цикла и пропуск перекодировки
+
+		if instr (Window(WindowsIndex),CP1251Sample[i])>0 then
+			ShowMessage ("9504: SrcFileName="+(SrcFileName) +" Code page is not UTF8")
+			flg1251=1
+			exit for
+'!!!! очищается clipboard если переходишь в другое окно и жмешь enter (???) 
+
+11-08-2023 v 823
+"******************************************
+! баг с незапуском 
+перенес TimerOnce.Enabled = 1 в RQFormOnShow, может поможет 
+'!!! ПОМОГЛО !!!! не помогло.... но стало получше )))
+
+! баг с незапуском 
+142:curdir$=C:\balan\RQIDE
+ 158: GetConsoleCP=866
+консоль GetConsoleCP=1251
+консоль GetConsoleOutputCP=1251
+187 471552.240000000
+247:GWL_STYLE=-16
+321:OldClipBrd$=--
+343:SrcLang=3
+551:EditFlg=0
+577:LangFilePath$=language\
+615:DelPrjFlg=0
+802:TmColor(14)=14871736
+950:StrFont.Size=8
+1041:ButtonSizeH=25
+1074:LangBtnWidth=35
+107:LangVar$(119)=Found files
+213:sad$=fl.db
+343:startonceFlg=0
+462:Timer1SV.Enabled=0
+1860:Timer1SV.Enabled=1
+
+09-08-2023 v 823
+"******************************************
+'+! LibMngForm4-8.bas-работает загрузка и установка библиотек Ардуино!! 
+'+! LibMngForm4-8.bas- работает update-index Updates the libraries index.
+-! SaveDialog.Filter = "File list *.lst|*.lst|All Files*.*|*.*|" добавлена палочка в конце!!!!
+
+07-08-2023 v 823
+'!******************************************
+-! добавляет номер строки к debug print
+! dir$ выдает дату файла на один день меньше на файле 
+! баг с подсветкой при окончании строки LF (10)
+! если присутствует print, то есть $APPTYPE console, то в компоненте
+QdirTree не раскрываются папки с кириллицей (неправильные пути)
+
+"C:\balan\RQIDE\arduino-cli_0.18.1\arduino-cli.exe lib update-index  >C:\balan\RQIDE\ClihelpMsg.txt
+
+-! определение размера файла ClihelpMsg.txt
+ожидание окончательного формирования файла и загрузка его после этого в QStringList
+а потом уже в Richedit  
+'!!!! если загрузить большой файл в RQDB, то грузится процессор, видимо из-за операци по таймеру
+'!!!!  проверить !!!
+
+05-08-2023 v 822
+'!******************************************
++ '!! Запуск команд Arduino Cli из списка 
++ переделан arduino help  на два Qlistbox + ввод командной строки в Qedit
+-! когда плата ардуино не присоединена  в сомбобоксе пишется надпись not found
+
+информационные сообщения и сообщения об ошибках выводить в один и тот же файл. 
+команда > имя_файла 2>&1
+
+29-07-2023 v 820
+'!******************************************
++ переделан arduino help  на два Qlistbox
++ исправлены hint, у табов убран add
++ QComboBox Code section теперь отображается название   
+
+
+-! clicmd$=CliPathEdit.text+" " вместо авбсолютного пути
+
+'!set ARDUINO_LOCALE=en
+какое-то безумие с локалью - то переключает, то нет. cli v0.18 вроде работает
+! дурацкий баг в Arduino cli v0.33
+cli v0.33
+13075:ArdBoardList.Item(1)=COM7 serial   Serial Port (USB) Arduino Due (Native USB Port) arduino:sam:arduino_due_x arduino:sam
+
+cli v0.18
+13075:ArdBoardList.Item(1)=COM7 Serial Port (USB) Arduino Due (Native USB Port) arduino:sam:arduino_due_x arduino:sam
+13075:ArdBoardList.Item(1)=COM7 serial   Serial Port (USB) Arduino Due (Native USB Port) arduino:sam:arduino_due_x arduino:sam
+
+15278:ArdBoardList.Item(0)=Port Type              Board Name                    FQBN                      Core       
+
+Port Type              Board Name                    FQBN                      Core       
+COM7 serial   Serial Port (USB) Arduino Due (Native USB Port) arduino:sam:arduino_due_x arduino:sam
+COM7 Serial Port (USB) Arduino Due (Native USB Port) arduino:sam:arduino_due_x arduino:sam
+
+14569:PortPos=1
+14571:BrdPos=24
+14573:FQBNPos=54
+14575:CorePos=80
+
+
+
+
+
+* при запуске перенесен на строку
+15865 SrcEdit.visible=1 '!!!! <<<<<<<<<<<<<<<<
+возможно это исправит периодический незапуск среды с первого раза
+'!!!!не помогло
+если нет -  то копать в сторону
+8704 FUNCTION  RichEditWndProc
+
+-! обрабатывается галка отключить заремленные в листе поиска
+
+надо делать препроцессор, который будет обрабатывать пути ресурсов и заменять на 
+строковый литерал
+-! добавлен StartPath$ к проверки пути dll? а то не могла найти, если папку сменишь 
+'!!!!! список проектов берется из фала RQDB.ini А на самом деле в папке Projects
+'!!!!! лежит куча файлов .prj и  куча папок проектов.
+'!!!! Надо сканировать!!!
+
+21-07-2023 v 818
+'!******************************************
++ восстановление проектов при переносе IDE в другую папку
+К RQIDE прикручена RQAS
+
+11-07-2023
+'!******************************************
+'!!Доработка проектов
+'! Создание нового проекта
+- очистить список табов - иначе сбивается название окон
+- создать папку с названием проекта в директории проектов
+
+'! Удаление проекта
+'fixed не удаляет файл проекта
+что делать с папкой проекта?
+
+'! Открытие  проекта
+- при проверке пути файла искать ключевое слово RQIDE и заменять этот путь на IDEPath
+
+
+09-07-2023
+'!******************************************
++ удаление нескольких окон - добавлен listbox с окнами
+
+Modif(WindowsIndex)=1
+
+08-07-2023
+'!******************************************
+813:WindMnu(29)caption)=
+6144:filn$=
+9876: save filn$= 
+9813:WindMnu(30)caption)=
+6144:filn$=
+9876: save filn$= 
+9813:WindMnu(33)caption)=
+6144:filn$=
+9876: save filn$= 
+После удаления окон из списка окон начинаются глюки при сохраниении проекта с пучтыми названиями
+Не обновился счетчик окон?
+
+
+
+'!! Delete empty windows не работает !!!!
+
+'-! 'fixed Save as не подставляет расширение !!!!!
+
+07-07-2023
+'!******************************************
+'!!QDrawMenu.Bitmap.FillRect(DrawItem.left,DrawItem.top,DrawItem.right,DrawItem.bottom,GetSysColor(COLOR_MENU))
+'!! как поменять цвет фона bitmap
+
+Следующий код позволяет вставить изображение BitMap в меню:
+function LoadMP( BMPFileNAme as string) as long
+result =  LoadImage(0,  BMPFileNAme,0,0,0,LR_LOADFROMFILE OR LR_CREATEDIBSECTION)
+end function
+
+hBitmap1=LoadMP("resource\obj\Open.bmp")
+call  AddClrString ("195:hBitmap1="+str$(hBitmap1), cld, LogEdit)
+SetMenuItemBitmaps(CreateItem.Handle,1,MF_BYPOSITION, hBitmap1,hBitmap1)
+
+SetMenuItemBitmaps(MenuItemTest.Handle,0,MF_BYPOSITION,Bmp1.Handle,Bmp1.Handle);
+...
+Параметры:
+
+MenuItemTest — имя пункта меню /горизонтальная строка/
+0,1 … позиция пункта меню, в который надо вставить BMP
+первый из двух handl’ов — для показа невыбранного пункта меню (unchecked)
+второй — для выбранного (checked). Они могут быть разные
+
+'!******************************************
+09-06-2023 v809
+'!******************************************
+-! зависание при конвертировании UTF-8 из-за doevents
+заменено на форму с индикатором
+! обработка projects - 
+- при переносе в другую папку на флешку
+! ситуация когда файлы prj есть, а в списке проектов в RQDB.ini их нет -  надо сканировать папку проектов
+и добавлять существующие файлы prj в RQDB.ini
+! ситуация, когда папка с спроектом есть, а соответствующего файла prj нет - надо создавать файл prj
+если есть соответствующая папка
+
+
+'!****************************************** 
+15-11-2022
+'!******************************************
+-! fixed набор сиволов, которые не встречаются в UTF8
+набор сиволов, которые не встречаются в UTF8 
+05-11-2022
+'!******************************************
+v803
++ если перенесли IDE в другую папку, то меняет путь файлов-исходников в списке файлов в меню Windows на 
+путь от текущей папки IDE. Если файл все равно не найден, то стави в меню перед именем вопросик.
+23-01-2023
+'!******************************************
+Порт   Protocol Тип               Board Name                    FQBN                      Core       
+COM1   serial   Serial Port       Unknown                                                            
+COM101 serial   Serial Port (USB) Arduino Due (Native USB Port) arduino:sam:arduino_due_x arduino:sam
+
+Оно здесь в UTF-8, поэтому сбиваются позиции. Надо переводить в UTF-8 ??
+
+24-10-2022
+'!******************************************
+если Native port, то rогда сбивается на Bossa, приходится загружать через Arduino IDE
+
+
+19-10-2022
+'!******************************************
+! пути для Arduino по умолчанию
+от RQIDE  
+- Projects\sketchbook
+- arduino-cli
+и все остальные пути в RQdb.ini - если не находятся по полному пути, то пытается найти по умолчанию от папки RQIDE
+
+
+23-08-2022
+'!******************************************
+! static int pntmet[256], im = 0 , pnt  = 0;
+не находит WholeWord если в строке есть не WholeWord.
+
+
+27-07-2022
+'!******************************************
+! при загрузке ino проверять, что кодировка действительно UTF8
+! при загрузке ino по клику в панели файлов не перекодирует из UTF8 
+! 12169  страница не UTF8, хотя на самом деле UTF8
+
+18-06-2022 b795
+'!******************************************
++-! жуткий глюк с функцией ConvertCodePage(SourceString As String, inPage As long, outPage As long) As String
+перенес в отдельный цикл при загрузке окон.
+и все равно пришлось добавить строку
+				call  AddClrString ("9424: ino SrcFileName="+(SrcFileName), cldg, LogEdit)
+
+
+
+15-06-2022 b791
+'!******************************************
+! жуткий глюк с функцией ConvertCodePage(SourceString As String, inPage As long, outPage As long) As String
+не загружаются окна
+прична непонятна. 
+ввел sleep 0.3 -  вроде работает
+			if fext$=".ino" or fext$=".h" or fext$=".cpp" or fext$=".c" then ' RQFormShow !!!
+				sleep 0.1
+
+если добавит строку
+				call  AddClrString ("9424: ino SrcFileName="+(SrcFileName), cldg, LogEdit)
+то еще как-то работает
+
+
+			if fext$=".ino" or fext$=".h" or fext$=".cpp" or fext$=".c" then ' RQFormShow !!!
+				call  AddClrString ("9424: ino SrcFileName="+(SrcFileName), cldg, LogEdit)
+				'call  AddClrString ("9467:VisibleWindows="+str$(VisibleWindows), cldg, LogEdit)
+				
+				StrUtf8List.Text=Window(VisibleWindows)
+				'call  AddClrString ("9424: ino SrcFileName="+(SrcFileName), cldb, LogEdit)
+				
+				'call  AddClrString ("9450:StrUtf8List.ItemCount="+str$(StrUtf8List.ItemCount), clred, LogEdit)
+				for ik=0 to StrUtf8List.ItemCount-1
+					'call  AddClrString ("9467:ik="+str$(ik), clred, LogEdit)
+					zzz$=StrUtf8List.Item(ik)
+					zzz$=ConvertCodePage(zzz$,cp_utf8, cp_win)
+					StrUtf8List.Item(ik)=zzz$ 'ConvertCodePage(zzz$,cp_utf8, cp_win)
+					'StrUtf8List.Item(ik)=StrUtf8List.Item(ik) 'ConvertCodePage(StrUtf8List.Item(ik),cp_utf8, cp_win)
+					
+				next ik
+				Window(VisibleWindows)=StrUtf8List.text  
+				doevents
+				
+			end if
+
+
+11-06-2022 b784
+'!******************************************
+-! частично fixed процедаура по таймеру timer1.timerover прерывала загрузку окон невовремя
+много непонятного.    
+! 'при сохранении файла  Save  ino  НЕ формируется папка с его именем. !!!!
+-! fixed сброс флага SrcEdit.Modified=Modif(i) текущего исходника в при сохранении проекта 
+
+09-06-2022 b781
+'!******************************************
+-! fixed функции MultiByteToWideChar WideCharToMultiByte (см. conversion.inc) (преобразование длинных (>255) строк из UTF8 в ANSI )
+-! fixed сброс флага Modif(i)=0 после сохранения измененных исходников при сохранении проекта 
+
+04-06-2022 b781
+'!******************************************
+-! fixed подсветка цифр, комментариев, частично hottab в комментариях
+-! fixed подсветка при разных символах окончания строки crlf или cr или lf
+-! fixed StatusBar.Panel(4).caption ="EOL=CRLF(13 10)" при переключении окон\закладок
+! преобразование длинных (>255) строк из UTF8 в ANSI 
+
+15-05-2022
+==============
+-! Fixed. defstr OpenDialogInitialDir  added
+
+10-05-2022
+==============
+доработана  процедура форматирования С++ файлов
+теперь конструкции вида {"F1","F2","#","*"} не разворачиваются !!!
+'!! это не всегда хорошо, иногда надо полностью развернуть !!
+
+02-03-2022
+'!******************************************
+-! Fixed  Сохранение проекта - обработка пустого имени файла
++ при сохранении файла  Save as.. ino формируется папка с его именем.
+
+
+10-12-2021
+========================
+При смене BorderStyle у формы меняется ее handle и все дочерние компоненты теряют индекс в -11
+
+
+HKEY_LOCAL_MACHINE\SYSTEM\ControlSet001\Control\Class\{4D36E978-E325-11CE-BFC1-08002BE10318}
+
+11-11-2021 ================
+
+'!! Глюк с подсветкой синтаксиса из=за окончаний строк !!!!!!!!! 
+см файл C:\bas\RapidQ\RQIDE\CompileMsg.log
+
+time="2021-11-11T15:10:16+03:00" level=info msg="Config file not found, using default values"
+time="2021-11-11T15:10:16+03:00" level=info msg="arduino-cli.exe version 0.18.1"
+'!! ============
+
+!!! Почему-то при компиляции ino берет библиотеку из 
+C:\Users\sHell\Documents\Arduino\libraries\UTFT\
+а не указанную в строке
+C:\bas\RapidQ\RQIDE>C:\bas\RapidQ\RQIDE\arduino-cli_0.18.1\arduino-cli.exe 
+compile -b arduino:sam:arduino_due_x 
+--libraries C:\bas\RapidQ\RQIDE\Arduino\portable\sketchbook\libraries 
+--warnings  none 
+--log-level info 
+--build-path C:\bas\RapidQ\RQIDE\Arduino\build\  
+--log-file C:\bas\RapidQ\RQIDE\CompileMsg.log   
+C:\bas\RapidQ\RQIDE\Arduino\portable\sketchbook\RecontProt14-40\RecontProt14-40.ino  1>
+C:\bas\RapidQ\RQIDE\CompileMsg.txt 2>&1 
+
+
+
+08-10-2021'*****************************************
+
+QTABCONTROL не имеет свойства handle. Поэтому надо извратиться и сразу конструировать
+QTABCONTROL с привязанными к вкладкам панелями со свойством align. А уже в панелях размещать
+компоненты как в parent.
+' BoxTab(TabIndex) должен быть двухмерный массив - BoxTab(TabIndex номер контрола, tabi - номер вкладки в контроле) !
+
+
+06-10-2021'*****************************************
+
+sender.Parent=SillyForm '!!! MUST set a valid parent first!
+SetParent(sender.Handle,hWnd)   '!!! Set to required parent
+
+Если добавляемому компоненту предварительно не установить parent через sender.Parent=SillyForm, 
+то то не работает установка родителя через handle - SetParent(sender.Handle,hWnd)
+Но если добавляемому компоненту сначала установить  sender.Parent=SillyForm, а затем установить
+родителя через handle, то глючит свойство align - правый край компонента ресайзится по первому родителю,
+а левый устанавливается по второму.
+Чтобы этого избежать, надо сразу устанавливать правильного родителя через sender.Parent=
+Но для этого надо вести список установленных компонентов с из хендлами и индексами и индексами типов.
+И потом через select case выбирать нужный компонент как родителя.
+
+Родители могут быть
+"QFORM","QPANEL","QTABCONTROL","QGROUPBOX","QSCROLLBOX"
+
+handle родителя 
+ParenthWnd=WindowFromPoint(Screen.MouseX, Screen.MouseY)
+
+затем перебираем по всем установленным компонентам
+
+for ObjectIndex=0 to OblectCount-1
+	
+	if ObjectHandle(ObjectIndex)= ParenthWnd then ' нашли индекс компонента родителя
+		exit for
+		
+	end if
+	
+next ObjectIndex
+
+Select case ObjectType(ObjectIndex) ' смотрим тип родителя
+case "QFORM"
+	
+	
+case "QPANEL"
+	
+	for PanIndex=0 to PanCount-1
+		
+		if dpan(PanIndex).handle=ParenthWnd then
+			exit for ' искомый родитель dpan(PanIndex) !!!!
+			
+		end if
+		
+	next PanIndex
+	
+	
+case "QTABCONTROL"
+	
+case "QGROUPBOX"
+	
+case "QSCROLLBOX"
+	
+case else
+	
+end select
+
+
+
+
+'*****************************************
+27-09-2021
+Как все работает
+FrmIndex, FrmCount  - индекс selected form, количество открытых форм
+
+for i=0 to FrmCount-1
+	FrmIndex=i
+	Forms(FrmIndex).visible=0
+next i
+
+
+NewObjectID=-1 '!!! NewObjectID - признак добавления компонента с палитры
+Значение - тип добавляемого компонента
+SELECT CASE NewObjectID
+	0 - QForm
+CASE 1: ' AddQEDIT(hWnd)
+CASE 2: 'AddQRICHEDIT(hWnd)
+CASE 3:  AddQLABEL(hWnd)
+CASE 4: 'AddQBUTTON(hWnd)
+CASE 5: ' AddQCOOLBTN(hWnd)
+CASE 6:   'AddQOVALBTN(hWnd)
+CASE 7: reDim Check(CheckIndex+1) AS QCHECKBOX
+CASE 8: AddQRADIOBUTTON(hWnd)
+CASE 9: ' AddQPANEL(hWnd) !!! 
+CASE 10:  AddQTABCONTROL(hWnd)
+CASE 11:  AddQCOMBOBOX(hWnd)
+CASE 12:  AddQLISTBOX(hWnd)
+CASE 13:  AddQGROUPBOX(hWnd)
+CASE 14:  AddQSCROLLBOX(hWnd)
+CASE 15: AddQSCROLLBAR(hWnd)
+CASE 16: AddQSTRINGGRID(hWnd)
+CASE 17: AddQLISTVIEW(hWnd)
+CASE 18:  AddQDIRTREE(hWnd)
+CASE 19:  AddQFILELISTBOX(hWnd)
+CASE 20: AddQTREEVIEW(hWnd)
+CASE 21: AddQOUTLINE(hWnd)
+CASE 22: AddQGAUGE(hWnd)
+CASE 23: AddQTRACKBAR(hWnd)
+CASE 24: AddQHEADER(hWnd)
+CASE 25: AddQSTATUSBAR(hWnd)
+CASE 26:  AddQCANVAS(hWnd)
+CASE 27:  AddQIMAGE(hWnd)
+CASE 28:  'AddQOLECONTAINER(hWnd)
+CASE 29: ' AddQSPLITTER(hWnd)
+CASE 30 TO 55: AddNonVisible(hWnd)
+END SELECT
+
+
+
+
+Параметры всех добавляемых с палитры компоненты записываются в массивы или в структуру
+ObjectIndex - индекс текущего (selected) компонета
+ObjectCount - количество добавленных компонентов
+MAX_OBJECTS - максимальное количество добавляемых компонентов. 
+$DEFINE MAX_OBJECTS     512
+
+
+' Visible components indices (QOvalBtn done differently - see RapidFRM.inc)
+DEFINT EdIndex, RichIndex, LabelIndex, ButnIndex, CoolIndex
+DEFINT CheckIndex, RadioIndex, ComboIndex, ListBIndex, PanIndex, GrpBoxIndex
+DEFINT TabContIndex, ScrollBIndex, ScrllBarIndex, StringGIndex, ListVIndex
+DEFINT HeadIndex, SplitIndex, StatIndex, GlassIndex, GaugeIndex, TrackBIndex
+DEFINT OutLnIndex, DirTIndex, FileLIndex, TreeVIndex, OLEContIndex, QOVALIndex 
+
+Это индексы по компонентам
+
+
+'!!!!!======================================
+DEFINT NewObjectID=-1, 
+
+DEFINT ObjectIndex, ObjectCount    ' 0 TO MAX_OBJECTS- global index of added objects - added from component palette ans added from source parsing
+
+DIM ObjectType(0 TO MAX_OBJECTS) AS string       '!!! Component's type ie  QPANEL, QButton etc
+DIM ObjTypeIndex(0 TO MAX_OBJECTS) as integer  ' index of an object in the type group ie ObjTypeIndex(ObjIndex)
+DIM ObjectHandle(0 TO MAX_OBJECTS) AS long     '!!! Component's handle
+DIM ObjectName(0 TO MAX_OBJECTS) AS string     '!!! Component's name  ie Edit1, Panel1, StrinGrid3 etc
+dim ObjVisible(0 TO MAX_OBJECTS) AS integer  ' component(ObjectIndex) - visible or nonvisible
+dim ObjParentIdx(0 TO MAX_OBJECTS) AS integer  ' ObjectIndex of the parents of the component(ObjectIndex)
+
+'well.. if component(ObjectIndex) has a parent - ObjectIndex of this parent stored in ObjParentIdx(ObjectIndex),so 
+'handle of the parent of component(ObjectIndex) stored in ObjectHandle(ObjParentIdx(ObjectIndex))
+'!!!!!======================================
+
+Добавляемые компоненты  берутся из массивов компонентов нужного типа
+
+Dim BoxEdit(1) AS QPANEL
+DIM BoxRich(1) AS QPANEL
+DIM BoxLabel(1) AS QPANEL
+DIM boxBut(1) AS QPANEL                                   ' Fudge using QPANEL
+DIM BoxCool(1) AS QPANEL                                  
+DIM BoxTab(1) AS QPANEL                                ' QPanel as a container
+DIM TabCtrl(1) AS QTABCONTROL
+DIM dPan(1) AS QPANEL
+
+итд
+
+Многие компоненты имитируются через Qpanel
+ObjectCount=0
+EdIndex=0
+'!!Например добавляется QEdit
+reDim BoxEdit(EdIndex+1) AS QPANEL
+ObjectIndex=1 ' текущий объект номер 1
+ObjectCount=1 ' всего объектов добавлено 1
+ObjectType(ObjectIndex)="QEdit"
+ObjTypeIndex(ObjectIndex)=1 'EdIndex=1 добавлено объектов типа QEdit - 1
+ObjParentIdx(ObjectIndex)=0 ' индекс родителя -0. То есть была сначала форма - она имеет индекс 0.
+ObjectHandle(ObjectIndex)=XXXXXXXXX '!ну какой там получится
+ObjectCount=1 ' инкремент счетчика объектов
+EdIndex=1  ' инкремент счетчика объектов типа QEdit
+
+'!!Потом на форму добавили еще QEdit
+reDim BoxEdit(ObjectCount+1) AS QPANEL
+ObjectIndex=2 ' текущий объект номер 1
+ObjectCount=2 ' всего объектов добавлено 1
+ObjectType(ObjectIndex)="QEdit"
+ObjTypeIndex(ObjectIndex)=2 ' EdIndex=2 - добавлено объектов типа QEdit - 2
+ObjParentIdx(ObjectIndex)=0 ' индекс родителя -0. То есть была сначала форма - она имеет индекс 0.
+ObjectHandle(ObjectIndex)=XXXXXXXXX '!ну какой там получится
+ObjectCount=2 ' инкремент счетчика объектов
+EdIndex=2  ' инкремент счетчика объектов типа QEdit
+
+
+'!!Потом на форму добавили еще QPanel
+PanIndex=0
+
+reDim dPan(PanIndex+1) AS QPANEL
+ObjectIndex=2 ' текущий объект номер 1
+ObjectCount=2 ' всего объектов добавлено 1
+ObjectType(ObjectIndex)="QEdit"
+ObjTypeIndex(ObjectIndex)=2 ' добавлено объектов типа QEdit - 1
+ObjParentIdx(ObjectIndex)=0 ' индекс родителя -0. То есть была сначала форма - она имеет индекс 0.
+ObjectHandle(ObjectIndex)=XXXXXXXXX '!ну какой там получится
+
+ObjectCount=3 ' инкремент счетчика объектов - три объекта добавили на Form0
+PanIndex=1  ' инкремент счетчика объектов типа QPanel
+
+23-09-2021
+! не должно быть вкладок не присутствующих в списке окон в меню!
+
+19-09-2021
+! При изменении align в таблице свойств у панели ее ширина становится равной не ширине родителя,
+а ширине родителя родителя и ресайзится при ресайзе родителя родителя.
+При этом left и top соответствуют положению родителя
+
+'!!!-- Control Alignments
+CONST alNone = 0
+CONST alTop = 1
+CONST alBottom = 2
+CONST alLeft = 3
+CONST alRight = 4
+CONST alClient = 5           '-- Expand to fit client
+
+
+
+-fixed   при resize объекта на форме, при выходе курсора за объект, в таблицу свойств прописывались
+координаты формы, так как ObjIndex вычислялся по mouseover? а надо по клику.
+То есть ObjIndex должен быть SelectedObjIndex, то есть там где кликнули, а не там где мышка ездит.
+
+
+
+15-09-2021
+-fixed 'Forms(i).center - форма появлялась по центру, а не по left 
+
+! если компонент добавляется с палитры, то его свойства добавляются через SaveNewObjDataGrid
+SaveNewObjDataGrid (hWnd, token, ObjectIndex,tPoint.x, tPoint.y, BoxTab(TabContIndex).Width, 
+BoxTab(TabContIndex).Height,BoxTab(TabContIndex).Color) '!!! сохранение таблицы
+А если парсится, то свойства берутся из файла исходника.
+
+
+
+13-09-2021
+-fixed добавить считываение значений свойств компонентов из файла PropList.txt, в котором
+сохраняются вычисленные значения
+
+12-09-2021
+
+-fixed Обработка Qmenu
+-fixed  не обновляется иаблица свойств при переключении с компонента на другой
+после добавления компонента с палитры. Вернее смещеный индексы добавленных компонентов
+-fixed при изменении свойства в таблице компонент обновляет свойство только на 2 раз
+'!!! сделать профилирование по функциям, а то долго обрабатывается исходник при импорте
+-fixed  при закрытии формы надо очищать таблицу и combobox
+
+C:\_F\RQIDE\projects\RapidFRMv1_43\ExportObjData143Import.bas
+
+- fixed неизвестные компоненты заменяются на Qpanel, а не QForm
+- fixed  PropertyGrid заполняется полностью из DefaultPropertyGrid 
+
+-----------------------
+При клике на компонент не обновляется дефолтная таблица.
+При смене в combobox  таблица обновляется
+
+08-09-2021
+------------------------
+Импорт компонентов из исходника
+1. SUB Open_Click загружаем текст исходника в richedit с подсветкой
+2.  BuildObjTree строим дерево компонентов Create ... End Create
+3.   GetOpersList (SrcEdit,OperList) '!!! заполняем масcив операторов и их начальных и конечных позиций операторов для подсветки при перемещении по шагам.
+Перебираем по операторам в OperList и ищем операторы Create.. End Create, разбираем их и выделяем компоненты и их свойства.
+Заполняем таблицу PropertyGrid для найденного компонеота и сохраняем в файл.
+И так для всех компонентов в OperList.
+Также найденные компоненты сохраняем в cmboxObj в порядке поступления. В будущем по клику в списке cmboxObj загружаем соответствующую таблицу со свойствами из файла.
+Затем ' список окон сформирован, читаем его и формируем строки, добавляемыю в исходник перед Form.ShowModal
+PropStr$=PropStr$+"PropList.addItems ("+qt+ObjName$+".height="+qt+"+str$("+ObjName$+".height))"+crlf
+PropStr$=PropStr$+"PropList.addItems ("+qt+ObjName$+".width="+qt+"+str$("+ObjName$+".width))"+crlf
+PropStr$=PropStr$+"PropList.addItems ("+qt+ObjName$+".top="+qt+"+str$("+ObjName$+".top))"+crlf
+PropStr$=PropStr$+"PropList.addItems ("+qt+ObjName$+".left="+qt+"+str$("+ObjName$+".left))"+crlf
+
+то есть для каждого объекта перед отрисовкой формы компилятор вычисляет значение height и др. и сохраняет их в файл
+Потому что они могут быть записаны неявно через вычисление других параметров и мы не сможем отрисовать компоненты, не знач знчения их координат и размеров.
+'!!! сюда вставляем компиляцию,запуск и сохранение свойств в таблицы компонентов на !!!__форме приложения__!!!.
+ShowObjects   call  AddClrString ("5293:-------- перебираем по комбобоксу и отрисовываем компоненты", cldи, LogEdit)
+'!!! проходим по объектам линейно и потом прикручиваем паренты согласно структуре из BuildObjTree
+в этом цикле вызываем 
+cmboxObjOnChange -  при изменении загружаем DefaultPropertyGrid и PropertyGrid из файла
+вызывая каждый раз PropertyValueUpdate - there are integer value for property alias , for example bsSingle = 1 bsSingle - alias, 
+Добавляем новый объект
+SUB AddNewObject (hWnd) ' hWnd is parent handle ,ObjName as string
+
+CASE 1: ' AddQEDIT(hWnd)
+	reDim BoxEdit(EdIndex+1) AS QPANEL
+	SetAddedObjProp(hWnd AS long,BoxEdit(EdIndex), "QEDIT", @EdIndex, 100, 30, clr, 1,"")
+	ReDrawComponentByField
+	
+	SUB ReDrawComponentByField
+CASE "QEDIT"          '1
+	call  AddClrString ("2450:Q_EDIT="+str$(Q_EDIT), clm, LogEdit)
+	hWnd=BoxEdit(ObjTIdx).Handle
+	call  AddClrString ("3247:hWnd="+str$(hWnd), clp, LogEdit)
+	fld=GetPropValue ("Align"):if fld>-999 then BoxEdit(ObjTIdx).Align=fld
+	fld=GetPropValue ("BorderStyle"):if (fld>-999 and fld<3) then BoxEdit(ObjTIdx).BorderStyle=fld
+	function GetPropValue (prop as string) as integer
+	БЕРЕМ ЗНАЧЕНИЕ СВОЙСТА из таблице и присваиваем его компоненту.
+	
+	'===================  что это такое??????? =============== !!!
+	SUB SetAddedObjProp(hWnd AS long,Sender AS QPANEL, otype as string, oIdx as long,_
+	oWidth as long, oHeight as long, color as long, border as long,ChildeInPanelType as string)
+	а в ней 
+else ' берем свойства из таблицы PropertyGrid
+	call  AddClrString ("3131:SetAddedObjProp call ReDrawComponentByField=", clred, LogEdit)
+	ReDrawComponentByField
+	call  AddClrString ("3286:.Width="+str$(.Width), clred, LogEdit)
+	call  AddClrString ("3288:.Height="+str$(.Height), clred, LogEdit)
+	
+	'*****************************************
+	SUB ReDrawComponentByField '!!! это  когда отрисовываем новый компонент 
+	
+CASE "QRICHEDIT" 
+	'2 !!! то устанавливаем ему свойства
+	fld=GetPropValue ("Align"):if fld>-999 then BoxRICH(ObjTIdx).Align=fld
+	fld=GetPropValue ("Alignment"):if fld>-999 then BoxRICH(ObjTIdx).Alignment=fld
+	
+	
+	
+	07-09-2021
+	При переключении табов, если они не входят в список окон в меню - не переключается комбобокс с полным путем справа, хотя в списке комбобокса эти табы есть.
+	
+	30-08-2021=========================
+	Размер шрифта IDE
+	
+	16-06-2021 =========================
+	Построение дерева #include в ардуино 
+	#include <UTFT.h>
+	
+	Пути откуда берутся файлы #include находятся в файле
+	C:\_F\bas\rapidq\RQIDE\arduino\build\includes.cache 
+	сформированном при компиляции скетча.
+	То есть предварительнго скетч должен быть скопилирован кнопкой Verify
+	
+	формат файла includes.cache
+	{
+	"Sourcefile": "C:\\_F\\bas\\rapidq\\RQIDE\\arduino\\build\\sketch\\BalA-50-1.ino.cpp",
+	"Include": "UTFT.h",
+	"Includepath": "C:\\_F\\arduino-1.8.13\\portable\\sketchbook\\libraries\\UTFT"
+	},
+	
+	Дальше читаем файл
+	C:\\_F\\arduino-1.8.13\\portable\\sketchbook\\libraries\\UTFT\\UTFT.h
+	
+	Pre-defined Compiler Macros
+	Identification __arm__ Defined by GNU C and RealView
+	
+	
+	C:\_F\bas\rapidq\RQIDE\arduino\build\libraries\UTFT\UTFT.cpp.d 
+	
+	
+	20-05-2021 =========================
+	'!!! Управление путями. Проекты  
+	
+	1. IDE Path - каталог запуска программы IDE.
+	StartPath$ = COMMAND$(0)-Application.ExeName    
+	bmarkCaption2,0=2769 CASE Q_SCROLLBAR     '15
+	bmarkPosic2,0=98132  - номер позиции курсора в символах
+	
+	bmarkCaption2,0 - 2 номер окна, 0- номер закладки
+	2769 CASE Q_SCROLLBAR 2769 - нномер строки 
+	
+	!!! Глюк с кириллицей в QdirTree - в режиме $APPTYPE console отображаются крокозябры в имени пути
+	
+	
+	
+	
+	'!!! Работа с Ардуино =======================
+	
+	Пример командной строки: bossac.exe --port=COM3 -U false -e -w -v -b blink_led.bin -R
+	
+	
+	Apr2021==============================
+	
+	[ColorSchems]
+	SchemeCount=10
+	Scheme_0=Classic Windows
+	Scheme_1=Dark
+	Scheme_2=NightVision
+	Scheme_3=Includes
+	Scheme_4=ArduinoLight
+	Scheme_5=ArduinoDark
+	Scheme_6=Ard Classic Windows
+	Scheme_7=Include Arduino
+	Scheme_8=Classic Windows1
+	Scheme_9=Spring Chiken
+	
+	-----------
+	Цветовые схемы (Темы)
+	
+	Цветовая схема состоит из двух частей
+	- цвета редактора исходника
+	- цвета IDE подходящие к теме редактора, бывает двух типов - "IDEDark" или "IDELight"
+	
+	цвета IDE в данной версии не редактируются и зашиты в программе.
+	
+	Имеется несколько предустановленных тем, цвета которых зашиты в программе IDE
+	1. Светлая тема "Classic Windows"
+	В этой схеме
+	- цвета IDE берутся Windows по умолчанию, то есть при создании формы и компонентов их цвета не 
+	указываются и берутся по умолчанию. Перед Form.Showmodal цвета компонентов сохраняются в 
+	ini файлы.
+	
+	2. Темная тема "Dark"
+	- цвета IDE и  цвета редактора  сохраняются в RQIDE.ini в секции "Dark"
+	
+	3. Темная тема "NightVision"
+	- цвета IDE и  цвета редактора  сохраняются в RQIDE.ini в секции "NightVision"
+	
+	
+	Цвета для схем хранятся в массиве HLColor(16)
+	
+	HLColor(0)=val(.get("BackGroung",str$(&HB5E6EC)))
+	HLColor(1)=val(.get("KeyWords",str$(&HFF0000)))
+	HLColor(2)=val(.get("Operators",str$(&HFF0082)))
+	HLColor(3)=val(.get("Directives",str$(&HFF0000)))
+	HLColor(4)=val(.get("Properties",str$(&HFF0000)))
+	HLColor(5)=val(.get("Types",str$(&HFF0000)))
+	HLColor(6)=val(.get("Comments",str$(&H00BE00)))
+	HLColor(7)=val(.get("Strings",str$(&H0077F9)))
+	HLColor(8)=val(.get("Numbers",str$(&H0000FF)))
+	HLColor(9)=val(.get("Text",str$(0)))
+	HLColor(10)=val(.get("GutterBG",str$(&HF9E7FF)))
+	HLColor(11)=val(.get("GutterTxt",str$(clDBlue)))
+	HLColor(12)=val(.get("LogEditBG",str$(&HFFF2F1)))
+	HLColor(13)=val(.get("HotTab",str$(&HE2ECf8)))
+	HLColor(14)=val(.get("Custom1",str$(&HE2ECB8)))
+	HLColor(15)=val(.get("Custom2",str$(&HE2ECB8)))
+	
+	
+	
+	
+	Цветовые схемы сохраняются в файле RQdb.ini
+	Секции файла RQdb.ini
+	[Editor] -  не нужна
+	
+	[Color Schem] -  текущая цветовая схема
+	Color Schem=Classic Windows
+	
+	[Classic Windows] встроенная цветовая схема, не редактируется 
+	SyntaxHighLight=1
+	HotTabsHighLight=1
+	BackGroung=11921132
+	KeyWords=16711680
+	Operators=16711810
+	Directives=16711680
+	Properties=16711680
+	Types=16711680
+	Comments=48640
+	Strings=30713
+	Numbers=255
+	Text=0
+	GutterBG=16377855
+	GutterTxt=8388608
+	LogEditBG=16773873
+	IncEditBG=14871800
+	
+	[Dark] встроенная цветовая схема, не редактируется
+	BackGroung=1710618
+	KeyWords=16760767
+	Operators=16742844
+	Directives=2546112
+	Properties=2531008
+	Types=13485618
+	Comments=48640
+	Strings=30713
+	Numbers=255
+	Text=12632256
+	GutterBG=6381921
+	GutterTxt=14410394
+	LogEditBG=16773873
+	IncEditBG=14871800
+	FileMngEditBG=14871736
+	
+	
+	[NightVision] встроенная цветовая схема, не редактируется
+	BackGroung=3840
+	KeyWords=16747146
+	Operators=16711810
+	Directives=12338033
+	Properties=39835
+	Types=128
+	Comments=21760
+	Strings=30713
+	Numbers=255
+	Text=45144
+	GutterBG=16384
+	GutterTxt=4227200
+	LogEditBG=16773873
+	IncEditBG=14871800
+	FileMngEditBG=14871736
+	
+	Кастомные цветовые схемы - создаются и редактируются пользователем и сохраняются под своими именами.
+	Например
+	[classic1]
+	BackGroung=11921132
+	KeyWords=16711680
+	Operators=16711810
+	Directives=16711680
+	Properties=16711680
+	Types=16711680
+	Comments=48640
+	Strings=30713
+	Numbers=255
+	Text=0
+	GutterBG=16377855
+	GutterTxt=8388608
+	LogEditBG=16773873
+	IncEditBG=14871800
+	FileMngEditBG=14871736
+	
+	[IdeLight] - цвета для компонентов IDE, подходящие к светлым схемам. 
+	'Выбираются через RadioButton IdeLight/IdeDark
+	' Цвета IdeLight это цвета компонентов по умолчанию, берутся при запуске IDE и сохраняются в секцию [IdeLight]
+	
+	RQForm.color=-2147483633
+	TabPanel.color=-2147483633
+	ToolPanel.color=-2147483633
+	Toolbar.color=-2147483633
+	RunDebugBar.color=-2147483633
+	TabBAr.color=-2147483633
+	TplListBox.color=-2147483643
+	SectionListBox.color=-2147483643
+	FindGroupBox.color=-2147483633
+	SearchCBox.color=-2147483643
+	ReplaceComBox.color=-2147483643
+	WhooleWordCheckBox.color=-2147483643
+	EditPanelPar.color=-2147483633
+	EditPanel.color=-2147483633
+	RichPanel.color=-2147483633
+	LogPanel.color=-2147483633
+	FilePanel.color=-2147483633
+	FilePanelHead.color=-2147483633
+	ObjTreePanel.color=-2147483633
+	ObjTreeView.color=-2147483643
+	IncTreeView.color=-2147483643
+	FileListPanel.color=-2147483633
+	FileListPanelHead.color=-2147483633
+	DirBox.color=-2147483643
+	MaskBox.color=-2147483643
+	MaskBox.Font.color=-2147483640
+	FileListBox1.color=-2147483643
+	FileListBox1.Font.color=-2147483640
+	StatusPanel5.color=11920552
+	PrjPropert.color=-2147483633
+	PropertTab.color=-2147483633
+	PropertTab.font.color=-2147483640
+	PropPanelEditor.color=-2147483633
+	EditOptGrBox.color=-2147483633
+	SyntaxHLBox.font.color=-2147483640
+	HtHLBox.font.color=-2147483640
+	PanelClrSch.color=-2147483633
+	ClrSchLbl.color=16776960
+	
+	
+	[IdeDark] - цвета для компонентов IDE, подходящие к темным схемам. 
+	'Выбираются через RadioButton IdeLight/IdeDark
+	' Цвета IdeDark зашиты в программу, берутся при запуске IDE и сохраняются в секцию [IdeDark]
+	
+	
+	При выборе пользователем другой схемы из комбобокса
+	- сохраняется наименование выбранной схемы как текущей в RQIDE.ini в секции "Color Schem"
+	- из файла RQIDE.ini загружаются и устанавливаются  
+	цвета редактора  из соответствующей схемы
+	цвета IDE в зависимости от состояния радиокнопки из секции [IdeDark] или [IdeLight]
+	IdeColor=(.get("IdeColor","IdeLight")
+	if IdeColor="IdeLight" then
+		' устанавливаются цвета IDE IdeLight
+	elseif IdeColor="IdeDark" then
+		' устанавливаются цвета IDE IdeDark
+	else
+		' устанавливаются цвета IDE IdeLight
+	end if
+	
+	
+	При создании собственной схемы пользователя
+	Пользователь создает свои цвета для редактора исходника, задает имя схемы "New Schem" и 
+	выбирает тип схемы - "Dark" или "Light".
+	Цвета и параметры схемы сохраняются в RQIDE.ini в новой секции "New Schem"
+	
+	Параметры шрифта сохраняются в выбранных схемах
+	FontName=(.get("FontName","Courier New")
+	FontSize=val(.get("FontSize","12")
+	if FontSize<1 then FontSize=12
+	
+	
+	
+	
+	oct 2020
+	! если файл исходника не отформатирован черех hottab, то не работает поиск,  отображение функций в заголовке
+	! отображение функций не работает совсем, только процедуры
+	! если путь указанный в проекте не существует, то надо делать запрос - искать проект или удалять из спискка
+	! тоже самое для списка окон редактора - делать запрос, а не дизаблить
+	! в списказ в меню сделать метки - файлы окон найдены  или нет
+	- при SaveAs не подставляет имя файла с расширением. Надо было после execute проверять имя файла а не до него.
+	- окно list search заслоняло модальные окна SaveDialog
+	
+	Windows API 
+	
+	Type LOGFONT
+	lfHeight As Long
+	lfWidth As Long
+	lfEscapement As Long
+	lfOrientation As Long
+	lfWeight As Long
+	lfItalic As Byte
+	lfUnderline As Byte
+	lfStrikeOut As Byte
+	lfCharSet As Byte
+	lfOutPrecision As Byte
+	lfClipPrecision As Byte
+	lfQuality As Byte
+	lfPitchAndFamily As Byte
+	lfFaceName(LF_FACESIZE) As Byte
+	End Type
+	
+	
+	dim lf as LOGFONT ' создаем структуру
+	GetObject(hUrlFont,sizeof(LOGFONT),@lf)
+	' Create an underlined font
+	lf.lfUnderline=TRUE
+	
+	Dim LF   As LOGFONT
+	
+	Dim LF As LOGFONT
+	.Font.Name    = Value.Name
+	.Font.Size    = value.Size
+	.Font.CharSet = value.CharSet
+	If GetObject(Value.Handle,SizeOf(LF),LF) Then
+		If LF.lfWeight > 400 Then .Font.AddStyles fsBold
+		If LF.lfItalic       Then .Font.AddStyles fsItalic
+		If LF.lfUnderline    Then .Font.AddStyles fsUnderline
+		If LF.lfStrikeout    Then .Font.AddStyles fsStrikeout
+	End If
+	If .Handle Then SendMessage(.Handle,WM_SETFONT,.Font.Handle,1)
+	
+	
+	
+	
+	===================
+	procedure SetClearType(Form: TForm);
+	var
+	Fnt: TLogFont;
+	const
+	ANTIALIASED_QUALITY = 4;
+	CLEARTYPE_QUALITY = 5;
+	var
+	I: Integer;
+	begin
+	if not Assigned(Form) then Exit;
+	for I := 0 to Form.ControlCount - 1 do
+		with TControlCrack(Form.Controls[I]) do
+			begin
+			GetObject(Font.Handle, SizeOf(TLogFont), @Fnt);
+			Fnt.lfQuality := ANTIALIASED_QUALITY;
+			Font.Handle := CreateFontIndirect(Fnt);
+			end;
+			end;
+			==================
+			procedure TForm1.Button1Click(Sender: TObject);
+			var
+			tagLOGFONT: TLogFont;
+			begin
+			GetObject(Memo1.Font.Handle, SizeOf(TLogFont), @tagLOGFONT);
+			{
+			DEFAULT_QUALITY = 0;
+			DRAFT_QUALITY = 1;
+			PROOF_QUALITY = 2;
+			NONANTIALIASED_QUALITY = 3;
+			ANTIALIASED_QUALITY = 4;
+			}
+			tagLOGFONT.lfQuality  := NONANTIALIASED_QUALITY;
+			Memo1.Font.Handle := CreateFontIndirect(tagLOGFONT);
+			end;
+			'!!!  ============================================================
+			
+			With Createobject("MyForm")  
+				.Show(1)  
+			Endwith  
+			
+			Define Class MyForm As Form  
+			
+			lClearType = .F.  
+			
+			Add Object txtTest As TextBox With ;  
+			Top = 50,;  
+			Left = 50,;  
+			Width = 250,;  
+			Height = 30,;  
+			FontName = "Tahoma",;  
+			FontSize = 12,;  
+			Value = "Я бы съел еще чего-нибудь ",;  
+			Visible = .T.  
+			
+			Add Object btnTest As CommandButton With ;  
+			Caption = "ClearType ON/OFF",;  
+			Top = 100,;  
+			Left = 50,;  
+			Width = 250,;  
+			Height = 40,;  
+			FontName = "Tahoma",;  
+			FontSize = 12,;  
+			Visible = .T.  
+			
+			
+			Procedure Init()  
+			Declare Integer SystemParametersInfo In user32 Long, Long, Integer @, Long  
+			Thisform.lClearType = Thisform.GetClearType()  
+			
+			
+			Procedure btnTest.Click()  
+			With Thisform  
+				.LockScreen = .T.  
+				.lClearType = !.lClearType  
+				.SetClearType(.lClearType)  
+				.Refresh()  
+				.LockScreen = .F.  
+			Endwith  
+			
+			
+			Procedure GetClearType()  
+			
+			#Define SPI_GETFONTSMOOTHINGTYPE 0x200A ' получить тип сглаживания  
+			
+			nVoid = 0  
+			SystemParametersInfo(SPI_GETFONTSMOOTHINGTYPE, 0, @nVoid, 0)  
+			Return !Empty(m.nVoid)  
+			
+			
+			Procedure SetClearType()  
+			Lparameters tlSet  
+			
+			#Define FE_FONTSMOOTHINGCLEARTYPE 2 ' тип сглаживания ClearType  
+			#Define SPI_SETFONTSMOOTHING 75 ' установить сглаживание  
+			#Define SPI_SETFONTSMOOTHINGTYPE 0x200B ' установить тип сглаживания  
+			*!*#Define SPIF_SENDCHANGE 2 ' применить изменения (разослать сообщения)  
+			#Define SPIF_SENDCHANGE 0 ' можно и не рассылать ))  
+			
+			nVoid = 0  
+			
+			If m.tlSet ' Включаем сглаживание  
+			SystemParametersInfo(SPI_SETFONTSMOOTHING, 1, @nVoid, SPIF_SENDCHANGE)  
+			SystemParametersInfo(SPI_SETFONTSMOOTHINGTYPE, FE_FONTSMOOTHINGCLEARTYPE, @nVoid, SPIF_SENDCHANGE)  
+		Else ' Отключаем сглаживание  
+			SystemParametersInfo(SPI_SETFONTSMOOTHING, 0, @nVoid, SPIF_SENDCHANGE)  
+			SystemParametersInfo(SPI_SETFONTSMOOTHINGTYPE, 0, @nVoid, SPIF_SENDCHANGE)  
+		Endif  
+		
+		Enddefine
+		=====================================================
+		
+		01.09.2004 v.0.4
+		+ прикручена подсветка
+		- баг не обрабатывает табуляции при подсветке(при загрузке табуляции заменяются пробелами)
+		
+		02.09.2004 v.0.4
+		- баг правильно подсвечивает при изменении шрифта.
+		+ resizing окон редакторов при изменении разрешения, ресайзе формы
+		+ 16 окон с переключением через меню
+		+ последнее окно
+		+ закрытие окна
+		
+		03.09.2004 v.0.41
+		- баг при удалении окон последнее окно - остается пустым пока не кликнешь в меню.
+		+ изменяет sublist при переключении окна (16 sublist c привязкой к окну)
+		+ statusbar с параметрами текста ,имя файла
+		+ положение курсора при переключении окон
+		+ обновление sublist при добавлении\удалении процедуры или объекта
+		
+		04.09.2004 v.0.41
+		- мелкие баги при закрытии последнего окна
+		+ закрывать (очищать) саблист после закрытия последнего окна
+		+ сохранять файл перед компиляцией.
+		+ доработана процедура компиляции и запуска, чтобы не показывалось дос окно.
+		+ закладки в меню, как история папок - 16 штук на каждый файл, итого 16х16
+		
+		05.09.2004 v.0.42
+		- баг после изменения в окне редактора должно сохраняться в переменной Window (index).
+		- баг с сохранением файла
+		+ сохранение файла при закрытии окна через диалог сохранить как..
+		+ подправлено хранение имени файла в menu.caption - разделитель chs$(160)
+		
+		06.09.2004 v.0.43
+		+ при открытии файла через opendialog добавлять расширение файла в выпадающий список
+		+ расширение в opendialog устанавливается равным последнему
+		+ регистронезависимый поиск!
+		+ при сохранении файла под другим именем менять текущее имя файла
+		+ в выпадающем меню - поиск, верхний\нижний регистр, удалить все
+		
+		07.09.2004 v.0.47
+		* сохранение текущих окон и закладок в файле настройки
+		- баг букмарки пропадают после загрузки нового файла
+		
+		
+		08.09.2004 v.0.47
+		+ сохранение текущих окон и закладок в файле настройки
+		+ при загрузке нового окна сохранять параметры текущего как при переключении окон.
+		+ отображать табуляции 
+		
+		10.09.2004 v.0.58
+		+ при запуске - загрузка окон сохраненных в ini-файле 
+		+ при запуске - загрузка закладок  сохраненных в ini-файле 
+		v.0.59
+		+ подсветка начальных\конечных операторов как по таб вертикальными столбцами.
+		v.0.60
+		+ сохранение проекта (на данном этапе - окон и закладок)
+		+ При повторной загрузке файла запрашивать - новая копия, обновить существующую, перейти на существующую без загрузки.
+		
+		11.09.2004 v.0.65
+		- bug с поиском - не строковая переменная. И как оно работало???
+		+ Окно редактора - на всю ширину экрана
+		+ прикручен splitter между src и логом
+		
+		13.09.2004 v.0.68
+		* новый формат ini-файла 
+		
+		14.09.2004 v.0.71
+		+ новый формат ini-файла 
+		+ привязка размеров редактора к разрешению экрана. Изменение при ресайзе.
+		+ при сохранении файла как.. сохранять и закладки для него. Само получилось.
+		
+		15.09.2004 v.0.74
+		+ удаление закладок
+		+ статусбар помещен на форму, а не на панель. Теперь форму можно ресайзить за угол статусбара.
+		+ 32 закладки
+		v.0.77
+		+ сохранять позиции курсора в ini 
+		- мерцания при переключении окон и при загрузке
+		v.0.79
+		- баг - не появляются LastWindows и LastBookmark
+		v.0.80
+		+ Set BookMark Установить закладку вместо текущей
+		
+		16.09.2004 v.0.83
+		+ Sort BookMark - сортировать закладки по позициям. В ini -файле текст
+		закладок берется в кавычки, чтобы не пропадали ведущие пробелы
+		v.0.84
+		+ при минимизации окно саблиста смещается  в заданную позицию.
+		
+		17.09.2004 v.0.85
+		+ DirTree form, горячие директории сохраняются в ini-файле 
+		v.0.87
+		+ пути компилятора, проекта сохраняются в ini-файле 
+		v.0.88
+		-! не обновляется statusbar при переходе по закладке.
+		
+		18.09.2004 v.0.89
+		+ сохранять и загружать последнее окно
+		v.0.90
+		+ подстановка путей из сетапа при компиляции.
+		+ Refresh BookMarks после изменения текста (пустые строки не обрабатываются.)
+		v.0.91
+		+ добавлен StatusBarEx с картинкой.
+		
+		19.09.2004 v.0.92
+		- баги при компиляции. Новый батник, формируемый на лету перед компиляцией с путями из сетапа. Иначе невозможно.
+		+ StatusBarEx с панелью, куда можно выводить что угодно.
+		v.0.93
+		+ marginEditor для отображение номеров строк, меток и т.п.
+		
+		20.09.2004 v.0.94
+		+ номера строк
+		v.0.95
+		+ переход на строку с ошибкой при компиляции
+		
+		21.09.2004 v.0.96
+		- ! sublistview не ресайзится по форме при переключении окна
+		v.0.100
+		+ панель сообщения об ошибке в дополнительном статусбаре. При клике на эту панель - переход на строку с ошибкой.
+		+ отключение подсветки с сохранением в  ini файле
+		+ файл иконки  с сохранением в  ini файле -G[File] Icon file
+		v.0.107
+		+ компилировать только файлы с определенным расширением - bas, rqb и т.п.
+		v.0.108
+		+ выделенное в тексте имя файла подставляется в OpenDialog с разными вариантами.
+		
+		22.09.2004 v.0.109
+		* вставка по Alt-p и Alt-E отладочных строк
+		
+		23.09.2004 v.0.110
+		+ добавлены функции в RichEdit - 
+		Declare Function LINEINDEX as long ' позиция первого символа в строке
+		Declare Function LINEFROMCHAR as long  'номер строки содержащей символ в данной позиции
+		Declare Function GoToLineEnd as long  'установить курсор в конец строки
+		Declare Function GoToLineBegin as long  'установить курсор в начало строки
+		+ добавлены пункты в выпадающее меню редактора
+		EditMenuItemPop(8).Caption = "Показать значение в логе"
+		EditMenuItemPop(9).Caption = "Печатать значение"
+		EditMenuItemPop(11).Caption = "GoTo Declaration"
+		EditMenuItemPop(13).Caption = "Open file"
+		v.0.113
+		+ парсинг строки на предмет выделения переменной для последующего поиска индекса
+		* выделяем индексы <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+		
+		24.09.2004 v.0.117
+		- баги при парсинге
+		+ вставка в лог debug строки (AddClrString) с выделением индексов.
+		
+		25.09.2004 v.0.121
+		- баг не работала функция AddWatch - исправлен SubsListBox. на SubsListBox(WindowsIndex).
+		
+		26.09.2004 v.0.122
+		* процедура дебаггера
+		
+		01.10.04 v.0.127
+		* процедура дебаггера
+		+ позиции окон sublist и т.п.
+		+ размер табуляции в richedite.
+		
+		02.10.04 v.0.127
+		* процедура дебаггера
+		-! с открытием файла
+		-! с функцией GetWord
+		v.0.129
+		-! неправильно определяет строку с end sub в SubListe. Берет даже если заремлено
+		
+		05.10.04 v.0.130
+		+ добавлена  функция release dc. Посмотрим на утечку ресурсов.
+		
+		08.10.04 v.0.130
+		* процедура определения типа переменной
+		
+		09.10.04 v.0.130
+		+ процедура определения типа переменной
+		
+		10.10.04 v.0.132
+		+ формирование исходника с дебагом, его компиляция и запуск. !PreAlpha!
+		
+		11.10.04 v.0.137
+		+ WatchList и добавляемый _DebugEdit заменены на QListbox.
+		+ DelWatch и DelAllWatch
+		
+		12.10.04 v.0.138
+		- !баг. Нормально показывается величина в окне WatchList
+		
+		21.10.04 v. 0.142
+		- !баг. Правильно сохраняются данные закладок в ini файле. 
+		+ Отлавливается удержание клавиши при редактировании и не подсвечивается синтаксис в это время.
+		
+		
+		22.10.04 v. 0.144
+		- !баг. Правильно считывается индекс текущего окна из ini файла. 
+		- !баг. снова показываются номера строк в статус-баре 
+		v. 0.145
+		+ Добавлен пункт меню File-New. Создается пустое окно. При сохранении файла окну присваивается имя файла.
+		
+		26.10.04 v. 0.146
+		+ открыть стандартные файлы - inc, prj, tpl
+		
+		27.10.04 v. 0.148
+		+ добавлены компоненты в панель объектов. Взято из CodeEdit.
+		
+		28.10.04 v. 0.152
+		+ ввод шаблонов компонентов (темплейты)
+		
+		01.11.04 v. 0.157
+		* работа с проектами
+		
+		02.11.04 v. 0.157
+		+ признак модификации текста для запроса сохранения в файле.
+		
+		08.11.04 v. 0.161
+		* работа с проектами
+		+ создание нового проекта, сохранение старого, новый формат ini файла, файлы проектов.
+		
+		10.11.04 v. 0.164
+		+ работа с проектами
+		
+		20.11.04 v. 0.165
+		+ форма Find and replace
+		+ подправлена панель компонентов
+		
+		28.11.04 v. 0.165
+		+ процедура замены
+		
+		18.12.04 v.0.172
+		+ форма Search в качестве основной.
+		
+		02/01/2005 v.0.174
+		+ исправлены функции ToUpperCase и т.п.
+		v.0.175
+		+ Add Sub
+		v.0.178
+		* distrib
+		
+		06/01/2005 v.0.180
+		+ открывать файл из выделенного текста
+		
+		13\01\2005 v.0.185
+		+ "ПЕРВАЯ ВЕРСИЯ С ПОШАГОВОЙ ОТЛАДКОЙ !!!!" '==================================================
+		
+		14\01\2005 v.0.186
+		+ компиляция отладочного исходника по нажатии кнопки.
+		
+		15\01\2005 v.0.188
+		-! при формировании операторов парсить соединения строк через_ подчеркивание
+		-! при нескольких операторах в строке неправильно вставлялись дебаг-функции
+		
+		18\01\2005 v.0.191
+		- баг! при  поиске загорается флаг модификации файла
+		- баг! флаг модификации не снимается при компиляции, при Сохранить как..
+		
+		v.0.192
+		- баг! при компиляции вновь созданного файла он сохраняется под именем  предыдущего
+		- баг!при удалении пустого окна New - удаляется не оно а предыдущее текущее.
+		нумерация окон сбивается.
+		
+		v.0.193
+		- баг! если глобальная переменная, то не добавляются функции дебаггера.
+		- баг! при дебаге нескольких Sub неправильно устанавливаются позиции операторов, вернее смещение,откуда их
+		выделять. Для всех Sub отсчет идет с 0 позиции.
+		
+		19\01\2005 v.0.195
+		+ убран debugWindow.inc - оставлены только редактор и dim operators..
+		Теперь может отлаживаться сам RQDBG !
+		v.0.196
+		- баг! В редакторе ~Src tabsize  должен быть таким же как и в редакторе IDE.
+		Иначе сбиваются позиции операторов. Убраны tab из редактора подсветки.
+		
+		20\01\2005 v.0.198
+		- баг!  Если в имеется строковое с содержанием типа "c:\", то надо парсить, что : это не разделитель операторов.
+		то же относится и к комментариям.
+		Добавлена функция function GetCharNum (Oper$ as string, getC as string) as long
+		возвращает количество заданных символов в строке без учета заремленных и закавыченных
+		
+		v.0.199
+		* баг!! не показываются значения переменных в следующих после строкового. В watchEdite появляется лишняя строка.
+		Исправлена ф-ция debugWindow1.inc
+		
+		28\01\2005 v.0.199
+		- баг!! не показываются значения переменных в следующих после строкового. В watchEdite появляется лишняя строка.
+		Еще раз исправлена ф-ция debugWindow1.inc
+		
+		30\01\2005 v.0.199-2
+		- баг! Корректно обрабатываются операторы со строками типа a$="c:\qwerty". Не учитваются символы ":" в строковой
+		переменной как разделители операторов.
+		
+		31\01\2005 v.0.199-3
+		- баг! Корректно обрабатываются _ в конце строки. Подправлена sub GetOperators в conversion.inc
+		
+		05\02\2005 v.0.203
+		* Parse var function
+		
+		06\02\2005 v.0.203
+		+ Parsedim function, ParseDef function
+		
+		15\02\2005 v.0.206
+		* коррекция дебаг функций на предмет переменных, определемых после первого появления дебаг функций.
+		Смысл в том, что в дебуг функции переменную можно отслеживать только после того, как она появилась в программе.
+		-! с табуляциями в debugsrc
+		
+		16\02\2005 v.0.206
+		-! со вставкой дебаг функции в строку с несколькими операторами, разделенными ":"
+		Исправлены функции Parsedim function, ParseDef function
+		
+		23\02\2005 v.0.211
+		-! ошибка при при вставке дебаг-функции если перед : нет пробела. 
+		
+		24\02\2005 v.0.213
+		+ новая дебаг-процедура debugWindow2.inc. Окно редактора со скроллбарами, resize формы.
+		
+		26\02\2005 v.0.215
+		+ при перемещении по шагам комментарии пропускаются. Добавлена процедура ReplaceComment в  Parse.inc
+		
+		27\02\2005 v.0.219
+		-! GetWord неправильно выделяет имя функции когда без пробела SUB MouseUp(button, x, y, shift)
+		Не может выделить MouseUp. В правые сепараторы добавлено ([ в левые )]
+		--- v.0.220 ---
+		-! неправильное выделение комментариев. Исправлена ф-ция ReplaceComment, DeleteComments
+		--- v.0.221 --- 
+		-!когда добавляются строки, то число строк в гуфике остается прежним, 
+		и в конце текста нумерция слетает. При этом неправильно устанавливается указатель на 
+		строку с ошибкой.
+		--- v.0.223 --- 
+		-! не удаляются проекты. Неправильно работает сохранение - удаление проектов
+		! баги при сохранении пректа -  в конце списка меню Windows появляются пустые строки
+		
+		28\02\2005 v.0.224
+		-! неправильно ресайзится sublist
+		--- v.0.225 --- 
+		-! не обновляется sublist.
+		
+		02\03\2005 v.0.230
+		+ вместо окна поиска - панель поиска
+		--- v.0.231 --- 
+		-! IcoFileEdit вместо IcoPathEdit. Давал необъяснимую ошибку.
+		
+		06\03\2005 v.0.233
+		+ компиляция исходников FreeBasic с созданием exe и dll
+		+ панель настройки директорий для FreeBasic
+		
+		07\03\2005 v.0.234
+		-! баг при компиляции. Текущий путь устанавливается на  путь FB compiler
+		+ убраны лишние значения путей из настройки FB compiler
+		+ FBDP
+		
+		23\03\2005 v.0.235
+		+ Dll быстрой подсветки синтаксиса
+		
+		14\04\2005 v.0.236
+		-! Номера строк не отслеживали текущее положение. Восстановлен кусок оконной процедуры SrcEdita.
+		- Убраны обработчики событий сылающиеся на несуществующие процедуры.
+		-! При запуске IDE в список окон добавляется пустая строка
+		
+		21\04\2005 v.0.239
+		-! С открытием файла из выделенной строки
+		
+		22\04\2005 v.0.240
+		-! Неправильно сохранялись закладки, содержащие ht
+		
+		23\04\2005 v.0.242
+		-! Восстановлено отключение подсветки
+		-! Восстановлена компиляция с дебагом (убрана дублированная метка)
+		! не добавляются строки в гуфике при добавлении строк в src файле.
+		
+		29\04\2005 v.0.246
+		+ поддержка колесика мышки в редакторе
+		
+		03\05\2005 v.0.249
+		+ WholeWord при поиске
+		
+		08.05.05  b.256 
+		+ works now on Windows XP
+		+ set cursor to error line when FreeBasic source compiling
+		- bug with WholeWord search
+		v.0.258
+		-bug неправильно отображаются номера строк когда курсор на последней строке.
+		
+		09.05.05  b.260
+		+ параметры командной строки, сохраняемые в проекте 
+		
+		14.05.05  b.263
+		+ исправлено название нового окна на "NEwWindows.bas"
+		+ Меню Insert название файла, дата
+		
+		15.05.05  b.264
+		-bug WholeWord при поиске - добавлены знаки 
+		
+		23-05-2005
+		+ IncFiles menu item
+		
+		24-05-2005 v.270
+		* IncFiles menu item
+		+ текстовые темплейты
+		
+		27-05-2005 v 271
+		* IncFiles menu item - подправлена ф-ция TimeOver чтобы Windows.caption не затиралась
+		
+		28-05-2005 v.274
+		* toolbar
+		+ кнопка OK для загрузки текстовых темплейтов
+		+ перезагрузка текстовых темплейтов из файла
+		
+		29-05-2005 v.274
+		* ускорение формирования SubList
+		'без проверки instr 2.9
+		'с проверкой instr 2.3
+		' с gauge 4847:tt3=2.015
+		' без gauge 4847:tt3=0.985
+		Прорежено обновление gauge
+		v.275
+		- убраны сдублированные ресурсы
+		
+		30-05-2005  v.278
+		+ формирование списка строк содержащих заданный текст. - Вариант поиска - галка List
+		
+		31-05-2005 v.284
+		+ файловый менеджер - справа - панель навигации. Для быстрого просмотра и выбора файлов.
+		
+		02-06-2005 v.291
+		+ доработан тулбар. Добавлены функции на кнопки.
+		
+		02.06.05  b.296 
+		- bug with IncFiles menu item.
+		
+		04.06.05  b.297 
+		- bug with LastW menu item. Заблокирована кнопка LastW если индекс текущего окна и LastW совпадают.
+		чтобы не затирались сделанные изменения.
+		
+		05.06.05  b.299 
+		+ сохранение файлов при смене проекта или выходе.
+		- исправлены русские сообщения
+		
+		07.06.05  b.300 
+		- задизаблены или убраны неиспользуемые кнопки меню
+		+ gotoLine в панели поиска
+		b.301
+		+ Кнопки меню - Format Text 
+		"DeleteLedSpaces" 
+		"Delete HotTabs"
+		b.302
+		+ ускорено формирование subLista. Раза в 3. Вместо RichEdit исп. StringList.
+		
+		-----------------------------------------------------
+		08.06.05  b.303 
+		+ форматирование с использованием HotTabs. !!! Ну это вообще супер!!!
+		+ удаление ведущих пробелов
+		+ удаление HotTabs
+		b.305
+		- bug ! перестал отображаться список закладок пока не щелкнешь по одной. Странный. заменил i на i33 
+		+ удаление пустых строк
+		+ удаление комментариев 
+		
+		-----------------------------------------------------
+		10-06-2002 b.306
+		- bug! Невозможно ввести директорию в настройках используя кнопку вызова DirTree
+		b.307
+		- bug!  при компиляции inc файл берет из директории указанной в настройках, даже если файл присутствует в текущей
+		директории. - перед компиляцией текущая директория устанавливается на пусть исходника.
+		b.308
+		- bug! Шрифт должен  задаваться FixedSys.
+		
+		-----------------------------------------------------
+		11-06-2002 b.310
+		+ приведение шрифта к установленному в настройках (только после вставки мышкой)
+		(после вставки через клипбоард он может поменяться)
+		при реформатировнии текста. 
+		
+		-----------------------------------------------------
+		12-06-2002 b.311
+		+ перемещение по процедурам
+		+ название текущей процедуры в form caption 
+		b.313
+		+ приведение шрифта к установленному в настройках  после вставки через клипбоард
+		Изменен RichEdPopUp.inc. Добавлен RichFont
+		
+		-----------------------------------------------------
+		16.06.05  b.314 
+		- serious bug. Now again can compile with debug.
+		-----------------------------------------------------
+		17.06.05  b.315 
+		- serious bug. Now again can create sub\function list properly.
+		-----------------------------------------------------
+		19.06.05  b.317
+		+ English and Russian help files v 0.1
+		-----------------------------------------------------
+		20.06.05  b.319
+		+ HotTabs hiLight disable option (checkbox)
+		+ forbid user to setfocus on LineNumber window (richeditor) and roll the number window alone ...
+		Thanks to Jacques Philippe for his suggestions.
+		
+		-----------------------------------------------------
+		22-06-2005 b.320
+		-bug with text reformatting For...Next 
+		-----------------------------------------------------
+		
+		12-07-2005 b.330
+		- bug with project deleting
+		+ disable/enable commented lines in FindList
+		+ return to last window when FileManager closed
+		
+		12-07-2005 b.332
+		-bug with debug compiling
+		
+		15-07-2005 b.339
+		+ Inc filelist creates faster
+		
+		16-07-2005  b.347
+		+ Program loading faster. Not set InitialDir property in QDirTree. 3-4 sec delay.
+		set InitialDir перенесена в процедуру ViewFileMng
+		- баг с сохранением содержимого редактора при переключении на последнее окно, когда открыт файл-менеджер.
+		- баг с сохранением содержимого редактора при переключении на другой проект
+		
+		20-07-2005 b.353
+		-баг с сохранением (убран лишний флаг загрузки из файл-менеджера)
+		
+		21-07-2005 b.361
+		- баг с inc файлами и LastWindow. Теперь после загрузки inc файла через меню inc files можно вернуться обратно по LastWindow
+		- баг с работой с inc файлами. После сохранения он записывается с список окон вместо текущего.
+		
+		22-07-2005 b.362
+		- bug когда число окон превышает 32 не срабатывает предупреждение.
+		
+		23-07-2005 b.373
+		- bug: no warning when open windows count more than  32.
+		+ components menu instead components bar. Decrease used system resources.
+		+ memory status and sub calls count.
+		
+		31-08-2005 b.380
+		- bug with "New window" creation
+		+ drop-down list for "searh\replace" comboboxes 
+		
+		17-09-2005 b.381
+		
+		24-09-2005 b.382
+		- моргание при вставке текста с изменением шрифта. 
+		+ WaitForm - форма вывода сообщений при ожидании совершения длительных операций.
+		
+		25-09-2005 b.389
+		+ автоотступ при нажатии Enter.
+		+ улучшена процедура реформатирования.
+		+ подправлена dll  подсветки. v4
+		
+		b.393
+		+ возможность изменения размера панели файл-манагера. (добавлен сплиттер)
+		
+		26-09-2005 b.397'*****************************************
+		+ проверка пустых окон в меню Windows
+		+ удаление  пустых окон в меню Windows
+		b.398
+		+ исправлена нумерация окон в меню Windows
+		b.399
+		- баг. Открытие lastwin когда файл загружался через файл-манагер.
+		b.400
+		- баг со вставкой заголовка на новую страницу. Insertfrom clipboard
+		
+		29-09-2005 b.402'*****************************************
+		+ ObjtreeView компонентов
+		-баг добавлено изменение шрифта MarginEdit при изменении шрифта.
+		
+		01-10-2005 b414'*****************************************
+		+ inc treeView include files
+		+ доработана левая панель - кнопки закрыть, свернуть, развернуть
+		
+		03-10-2005 b421'*****************************************
+		'!!!--- выявлены -----
+		! Баг с загрузкой файлов из разных источников - пофиксен ??
+		! Баг с проверкой пустых окон - не сохраняется project - сделать проверку корректности ini файла.
+		
+		03-10-2005 b422'*****************************************
+		- Баг с загрузкой файлов по 2 клику из файл-менеджера
+		
+		04-10-2005 b430'******************************
+		- баг с процедурой дебаггера - не производилась коррекция при  nodcountonlevel (levelidx) и   NodCountOnLevel (LevelCount) - это одно и то же.
+		
+		04-10-2005 b434'******************************
+		- баг с процедурой дебаггера - Оператор "-" для строк имеет ограничение 32кб поэтом ht удалялись только из первых 32 к текста.
+		Сделано построчное удаление.
+		- баг - неправильно парсится "end sub". Теперь ищется "endsub" - все равно это целое слово.
+		
+		05-10-2005 b435'******************************
+		- баг неправильно определалась позиция оператора если в закомментаренной строчке было подчеркивание.
+		Теперь сначала удаляется комментарий, а потом определяются подчеркивания.
+		
+		b436'*****************************************
+		+ вместо RichEdita в DebugForm вставлена таблица. 
+		Дополнительные поля 
+		- InstWatch - остановка по достижении переменной заданного здесь значения.
+		- Type - тип переменной
+		Новая C:\BAS\RAPIDQ\RQIDE\debugWindow32.inc
+		и Subi RQDebug1(...)
+		
+		06-10-2005 b436'******************************
+		- новый баг с показом строки ошибки
+		
+		07-10-2005 b444'******************************
+		- баг с обработкой переноса строки "_"
+		- баг с удалением уже определенных переменных из процедуры defdbl, dim  etc
+		
+		b447'*****************************************
+		- удаление лишних подсказок из TreeView
+		thanks to MANY PIERRE <pierrotstudio@...> 
+		-! неправильно парсится при реформатировании 
+		
+		08-10-2005 b449'*******************************
+		+ debugWindow35.bas новая процедура дебаггера
+		+ RunToCursor debug option
+		+ WatchValue option
+		
+		09-10-2005 b451'*******************************
+		- bug ! не компилится FB если исходник в другой директории???
+		
+		10-10-2005 b454'*******************************
+		+ new HiLight procedure HiLightDllv5.dll
+		Thanks John Kelly for FreeBAsic dll arrays pass method
+		+ customizing HiLight colors
+		b455'*****************************************
+		-баг неправильно удалять ht - они могут быть разделителем вместо пробела
+		
+		11-10-2005 b459'*****************************************
+		-баг с удалением пустых окон
+		
+		
+		25-10-2005 b468 '*****************************************
+		+ section list
+		+ util string2 char
+		* lang manager
+		
+		26-10-2005 b470 '*****************************************
+		* lang manager
+		+ прореживание вывода данных в таблицу в процедуре дебаггера для ускорения
+		* дык эта.. помимо Run to Cursor надо BreakPoints ставить. Совсем забыл ;)
+		
+		28-10-2005 b470 '*****************************************
+		* lang manager
+		+ сортировка в StringGrid по столбцам
+		+ очистка StringGrid
+		
+		19-11-2005 b480 '*****************************************
+		* lang manager
+		-bug исправлена тект на новой странице - кавычки после .inc
+		-bug восстановление клипбоарда после вставки декларации
+		-* bug автоиндент на последней и первой строках абзаца
+		
+		20-11-2005 b484 '*****************************************
+		+ удаление дупов. Надо просто при одинаковых строковых в таблицу ставит одинаковые LangVar
+		+ вставка списка переменных и шапки a секцию '!!!--- Language ---
+		
+		02-12-2005 b485 '*****************************************
+		+ замена строковых на langvar$
+		
+		'*****************************************
+		24-12-2005 b489
+		-! если текст закладки очень короткий и много вхождений, то долго обновляются закладки.
+		
+		'*****************************************
+		09-01-2006 b491
+		+ формирование языковой информации в src файле. 
+		
+		'*****************************************
+		25-02-2006 b496
+		!!! Баг с открытием файла , когда выделен пробел.
+		Пишет -файл уже открыт и все.
+		Ну скока можно!!
+		При формировании дерева inc файлов сначала надо проверять, существует ли файл в текущей директории,
+		и если  - да, то включать именно его.
+		
+		'*****************************************
+		29-04-2006 b498
+		langmanager сканирование и создание файлов языка
+		
+		'*****************************************
+		02-05-2006 b500
+		+ исправлены пути, когда проектов нет или указанные пути не существут.
+		теперь берется относительно нахождения exe-файла.
+		+ исправлены цвета по умолчанию. 
+		* сохранение проекта при нажатии на cancel.
+		
+		'*****************************************
+		21-05-2006 b508
+		+ в файл манагере открывается директория текущего файла
+		+ в dirtree открывается директория текущего файла
+		
+		'*****************************************
+		04-07-2006 b509
+		+ форматирование фигурных скобок
+		
+		'*****************************************
+		14-07-2006 b511
+		*! улучшено формирование автоотступа при нажатии на Enter
+		+ при нажатии на del в пустой строке с ht - удаляет строку
+		
+		+$define #define $define - для включение inc файлов freebasic
+		+ добавлено $include  "C:\BAS\RAPIDQ\inc\fbscancodes.inc" - список сканкодов клавиш в RapidQ.inc
+		
+		'*****************************************
+		15-07-2006 b514
+		*! улучшено формирование автоотступа при нажатии на Enter
+		-- b515
+		+ форматирование ht в текущей процедуре
+		-- b516
+		+ при двойном клике на inc файле из дерева - загружать этот файл с список окон
+		+ верификация обработчиков событий
+		+* улучшена обработка сообщений компилятора. Файл с ошибкой не открывается из-за чудесного бага
+		не инкрементируется счетчик цикла.!!! 
+		
+		'*****************************************
+		16-07-2006 b517
+		+*  Файл с ошибкой открывается и курсор устанавливается на строку с ошибкой.
+		нет подсветки в гуфике
+		причина чудесного бага не выяснена - просто процедура вынесена из цикла 
+		-----------b519
+		-! если inc файл из дерева открывался очень быстро то по таймеру он влезал в список окон вместо текущего.
+		переставлен флаг до процедуры открытия inc файла ?????!!!
+		+ приделан gauge к процедуре верификации.
+		----b520
+		-!не работает с относительными путями при поиске inc файлов
+		-! не открывает файл если в проекте прописался относительный путь \inc\file.inc
+		-! не работает кнопка открытия dirtreefirm если строка пути пустая
+		
+		
+		'*****************************************
+		17-07-2006 b521
+		+ формирование листа поиска только с целыми словами, только с объектами
+		
+		'*****************************************
+		20-07-2006 b522
+		-! при загрузке inc файла по double-click из дерева затирался текст предыдущего окна
+		
+		b523
+		-! при загрузке inc файла с относительными путями используется путь src файла 
+		где эти inc файлы определены.
+		Поэтому с дереве inc файлов надо формировать полные пути файлов из относительных от src
+		
+		b524
+		-! при сохранении открытого через inc tree файла подставлялось  имя src
+		
+		'*****************************************
+		19-04-2008 b551
+		+ проверка выбора языка перед формированием lang файла 
+		-! при загрузке файла перевода из сохраненной таблицы надо проводить синхронизацию
+		если файл src был изменен, а  в таблице языков остались старые номера строк.
+		производится сканирование, а потом ищется перевод. 
+		* надо указывать исходный язык - английский или нет
+		
+		
+		* по умолчанию галки в таблице ставить там где заполнены ячейки английского языка и языка источника
+		b553
+		+ доработан интерфейс langmanager
+		
+		'*****************************************
+		20-04-2008  b554
+		+ использование сохраненного файла таблицы для перевода
+		+ авто простановка галок там где заполнены русская и английская ячейки
+		* использование существующего языкового файла при выпуске новой версии 
+		
+		в файл источника должен вставляться 
+		>>> '!!!--- LangIniHeader ---  
+		
+		b555
+		работает lang manager при первом запуске
+		! при втором не работает
+		*! проверить удаление дубликатов
+		* кнопки удаления строк в таблицах + hotkeys как в antispam
+		* поиск в таблицах
+		
+		
+		'*****************************************
+		20-04-2008  b557
+		* добавление hex editor
+		C:\BAS\RAPIDQ\RQSR_SRC\CurVer\HexGrid2.bas
+		
+		'*****************************************
+		04-07-2008  b558
+		+ увеличено число объектов с 32 до 48
+		
+		
+		
+		'*****************************************
+		что сделать
+		*!! процедура верификации должна искать обработчики событий также и в inc файлах.
+		Неправильно обрабатывает 
+		OnClick = AboutLabel1DblClick: 
+		берет двоеточие в конце.
+		
+		* вообще сделать поиск в inc файлах!!!
+		
+		проявилоcь при работе с проектом Boris. 
+		то работает, то не работает
+		
+		* поиск в файлах
+		* ошибки при компиляции 
+		- если запущен exe файл - и компиляция невозможна - выдавать предупреждение
+		
+		* добавить в dll функцию replacesubsrt от FB
+		* проверять галку удалять заремленное в списке найденного
+		
+		'-------- о написании путей -------------
+		RC -Ic:/rapidq/includes
+		You can use \ instead of / but there's a reason why / is preferred, consider this: 
+		RC -I"c:\rapidq long dir\includes\"
+		If you never used C (or C++) you'll not likely see what I mean. If you prefer the above command line, you have to add an extra \ to the end (or drop it entirely), like so: 
+		RC -I"c:\rapidq long dir\includes\\"
+		or
+		RC -I"c:\rapidq long dir\includes"
+		'--------------
+		пределать все пути на c:/dddd/ddd ????
+		
+		
+		
+		'!!! --- lang manager ---
+		1. вся информация о литералах после замены их на переменные и перевода хранится в языковых файлах.
+		если файл будет утерян придется переводить заново.
+		2. если надо добавить новые литералы, то уже существующий файл надо сохранять в резервную копию,
+		а к оригиналу добавлять новые литералы.
+		3. Надо сканировать существующие файлы языка и информацию вносить в таблицу langmanagera.
+		То есть сканировать не только исходник, но и существующие файлы языков.
+		
+		' а не забацать ли массив строковых перемнных для замены литералов???
+		dim LangVAr$ (128) as string
+		redim LangVAr$ (256) as string
+		
+		! todo 
+		1. Надо еще приделать навигацию по замененным переменным
+		исходя из информации в таблице languagera.
+		2. Сортировка - сделать сортировку числовую
+		Когда снимается галка sort - верхняя таблица возвращается в исходное состояние, информация о расположении строк 
+		берется из нижней таблицы.
+		3. Если в тексте исходника присутствуют строки на нескольких языках, то непонятно, как производить замену после 
+		перевода, из какого языка (колонки таблицы) брать искомое.
+		Тот же выход - брать значения из второй таблицы - там оно оригинальное.
+		Или сделать еще одну колонку - Origin text, а потом делать copy to из ячейки origin в ячейку нужного языка.
+		4. Настраиваемый список исключений литералов из обработки
+		5. со строчками таблицы cjjndtcnde.bvb уже заполненным в предыдущий раз литералами надо что-то делать, иначе
+		они остаются пустыми.
+		6. Если в файле присутствуют строки с переменными типа LangVar$(120)=Langini.get(" bytes"," bytes")
+		а языкового файла нет, то обработка этих переменных и запись их в новый файл происходить не будет.
+		Надо чтобы было.
+		7. Если эти строки из исходника стереть, то надо и очищать массив LangVar$(), а то все равно не берет.
+		!Какая-то фигня при этом с сообщением Variable already defined!
+		8. dim LangVar$ (1024) as string
+		Если переменных больше, то надо переопределять.
+		9. Если файл языка существует, а переменных нет, то старый файл все равно подгрузится.
+		10.  Сохранение таблицы как словаря с последующей загрузкой и поиском  выражений для перевода.
+		!! После внесения строк в исходник позиции строк во второй таблице тоже надо корректировать!!
+		
+		11. Откат !!!!
+		
+		12. Если в строк несколько литералов - неправильно вставляет взамен первого.
+		13. Если литералы начинаются с пробелов - вставляет названия в файл также с начальным пробелом - может не понять.
+		
+		===================================================
+		
+		4. сохранение таблицы.
+		
+		1. Выберите или добавьте язык исходника. - сохраняется в переменной CurLang$.
+		2. Сканируется исходник и заполняется таблица с найденными строковыми.
+		3. (Введите имя)  Формируется автоматически имя файла со списком языков и языком по умолчанию 
+		- StartPath$+"lang\RQdebuggerlang.ini"
+		Формируется из имени текущего файла с добавлением lang к имени и заменой расширения на ini.
+		2. 
+		
+		
+		Формируется секция Lang - или добавляется $INCLUDE "LangIniHeader.inc"
+		в составе
+		'------------------------------
+		'!!!--- LangIniHeader ---
+		dim LangList as QStringList
+		dim LangIni as QINI
+		StartPath$ = COMMAND$(0)-Application.ExeName
+		mkdir StartPath$+"lang\"
+		LangIni.FileName=StartPath$+"lang\lang.ini"
+		LangIniFileName$=LangIni.FileName
+		LangIni.Section="Language"
+		LangFileName$=Langini.get("default","english")+".lng"
+		LangIni.FileName=+"lang\"+LangFileName$
+		LangIni.Section="Language"
+		English$=Langini.get("English","English")
+		'!!!--- Add new language section ---
+		Russian$=Langini.get("Russian","Russian")"
+		'--------------------------------
+		if instr("LangIniHeader.inc" )=0 then добавить эту строку 
+		в секцию '!!!--- LangIniHeader ---
+		
+		'!!! формируем меню со списком языков -------------
+		' выделяем меню  130-150 под список языков
+		LangIni.Section="Language"
+		
+		MainMenuItem(68).Caption =Langini.get("Language","Language") 
+		MainMenuItem(68).RadioItem=1
+		
+		LangList.loadFromFile(LangIniFileName$)
+		
+		for ij=2 to LangList.ItemCount-1
+			if ij>22 then
+				ShowMessage ("Only 20 languages are supported")
+				exit for
+			end if
+			MainMenuItem(130+ij-2).Caption =field$(LangList.Item(ij),"=",1)
+			MainMenuItem(130+ij-2).OnClick=ChooseLang
+			MainMenuItem(130+ij-2).RadioItem=1
+			
+			MainMenuItem(68).addItems MainMenuItem(130+ij-2)
+		next ij
+		
+		'!!! -----------------------------------
+		* верификация $APPTYPE GUI vs print
+		
+		'!!!- ---------- hot bugs ---------------
+		Error! ELSE st missed, but END IF presents  in line 8696
+		а было без else 
+		if then
+		end if
+		
+		! если текст закладки очень короткий и много вхождений, то долго обновляются закладки.
+		
+		! не обновляется список !!! при переходе по LastWindow
+		
+		! утечка ресурсов в новой процедуре подсветки HiLightDllv5.dll
+		
+		в какой-то момент опять затерлось окно другим файлом
+		если inc файл существует в директории исходника, то он должен искаться там, а не в директории
+		запуска RQIDE - когда это происходит.
+		
+		неправильно парсится блок с меткой.
+		1005    IF ((fp = 1) OR (indx <> 0)) THEN
+		! не загружается inc файл из дерева по двойному клику
+		! не сохраняется файл, если перед этим был открыт файл менеджер или деревья. 
+		
+		Line 8251: Error in expression, missing parenthesis
+		RQdebugger454.bas: In section HLDRAWCELL
+		RQdebugger454.bas: fontcolor=HlColor(Row%))
+		RQdebugger454.bas:                        ^-- error
+		File in error: C:\BAS\RAPIDQ\RQIDE\RQdebugger454.bas
+		
+		------------------compiler message -------------- 
+		Compiling C:\BAS\RAPIDQ\RQIDE\RQdebugger468.bas to C:\BAS\RAPIDQ\RQIDE\RQdebugger468.exe
+		RQdebugger468.bas: In section SCANSRCLANG
+		RQdebugger468.bas: TMPListtext$=replaceSubString$(TMPListtext$,"_"+crlf," ")
+		RQdebugger468.bas:              ^-- error
+		File in error: C:\BAS\RAPIDQ\RQIDE\RQdebugger468.bas
+		------------------end compiler message -------------- 
+		run ExeFileName$= "C:\BAS\RAPIDQ\RQIDE\RQdebugger468.exe"
+		
+		Line 8624: Error in expression, unresolved parenthesis
+		run PID= 0
+		
+		'---------------------------------
+		Line 10082: ERROR: Identifier FILENAMES already used, try another name
+		$DbgDisplay.bas: In section FSUBDIRCOPY1
+		$DbgDisplay.bas: dim FileNames (500) as string
+		корректировка при дебагге
+		-----------------------
+		
+		------------------compiler message -------------- 
+		Compiling C:\BAS\RAPIDQ\RQIDE\WideCharToMultiByte3.bas to C:\BAS\RAPIDQ\RQIDE\WideCharToMultiByte3.exe
+		WideCharToMultiByte3.bas: In section CONVERT
+		WideCharToMultiByte3.bas: strDst = String(nLen * 2, Chr(0))
+		WideCharToMultiByte3.bas:                        ^-- error
+		------------------
+		GUI for all those settings in the property-file 
+		
+		-Comment/Uncomment of marked textblocks 
+		-Increase/Decrease indent for marked textblocks 
+		-Way to insert files at cursorposition 
+		
+		проверить процедуру CompDebugOnclick
+		Переменные Global или in sub нужны только для информации.
+		Все переменные отслеживаются только внутри процедуры.
+		Вне ее отдадочная информация не вставляется !!!
+		
+		'!!!- ---------- hot todo ---------------
+		* многострочный текст в окне debuggera
+		* breakpoints в окне debuggera
+		* формирование из куска исходника строковой переменной с переносами строки и заменой кавычек на qt.
+		* верификация - проверка несуществующих или неиспользуемых Sub
+		* верификация - проверка Redim без as 
+		* util - добавить существующие утилиты 
+		выбор цвета
+		hex калькулятор 
+		монитор сом порта
+		конверт в HTML
+		icon viewer
+		* поиск в файлах
+		
+		'----------- загрузка файла из разных источников ---------
+		есть два флага 
+		EditFlg=0 ' тип файла в редакторе
+		' 0 - файл в редакторе находится в списке окон (файл из состава проекта) 
+		' 1 - файл в редакторе не находится в списке окон (файл НЕ из состава проекта)
+		' 2 - include$ файл открыт через дерево inc файлов 
+		
+		defint FMngOpenFlg 
+		' флаг открытие файла производится из менеджера и он не
+		' должен включаться в список окон проекта
+		SrcFileName - имя текущего файла из списка окон
+		
+		Глюки с загрузкой файлов из разных источников
+		
+		'- ---------- hot bugs -----------------
+		!
+		!!???????!! Inc файлы берутся из текущей директории несмотря на то, что в опциях указан другой путь.
+		
+		!!! Проблема с утечкой памяти. Если Sub\Function вызывались в программе более 1781000 раз программа вылетает из-за ошибки с памятью.
+		Если используется оконная процедура, например для подсветки синтаксиса,
+		то число ее вызовов может быть очень велико, так как она обрабатывает все сообщения Windows.
+		Другим случаем может быть вызов рекурсивных процедур.
+		
+		!!! Если кликнуть на строчку в FidndListe и перейти на нее в редакторе, то резко увеличивается  
+		количество сообщений Windows.
+		
+		! последняя процедура не вставляется в AddWatch 
+		! при компиляции inc файл берет из директории указанной в настройках, даже если файл присутствует в текущей
+		директории. Должен сначала брать из текущей. 
+		! если директория указанная в настройках не существует - выдавать предупреждающее сообщение.
+		
+		! иногда выскакивает ObjectInspector 
+		! не срабатывает поиск целого слова если строка не оканчивается пробелом??
+		! закладки сортируются как строки, а не как числа
+		! если при компиляции ошибка происходит в inc файле, то надо показывать этот файл.
+		! ошибки при запуске откомпилированной программы не выводятся на экран
+		!ClrStr1$= Parse String (InpLine$, InpPos) - не показывает ошибку в этой строке, хотя в логе все показано
+		!при изменении разрешения экрана высота редактора остается прежней.
+		! RQDebug("~$#DeletePrjOnClick.delprjflg",delprjflg,"~$#DeletePrjOnClick.visibleprj",visibleprj,"~$#PrjChoose.delprjflg",delprjflg,"~$#PrjChoose.newideinifilename$",newideinifilename$,12):if PrjMnu(i).caption <> "" then  PrjIndex=iRQDebug("~$#DeletePrjOnClick.delprjflg",delprjflg,"~$#DeletePrjOnClick.visibleprj",visibleprj,"~$#PrjChoose.delprjflg",delprjflg,"~$#PrjChoose.newideinifilename$",newideinifilename$,13)::exit for
+		! отладка функций в inc файлах 
+		
+		'!!!- ---------- hot todo ---------------  --------
+		* полноценную форму поиска из FindList - свою панель поиска и Tab закладки для формирования нескольких FindList
+		* кнопки перемещения вперед-назад по запомненным положениям курсора
+		запоминать при перемещении по букмаркам, по таймеру, если окно не обновлялось в течении 
+		N секунд.
+		
+		* 13.1 Проверка операторов file.close
+		*- очищать список закладок
+		*- сохранять sublist для быстрой загрузки!
+		*- просмотр ini файла текущего проекта
+		*- Отслеживать обновления загруженных в окна файлов.
+		- wordwrap
+		
+		* Добавление закладок в inc файлах
+		* Можно в функции дебаггера изменять значения переменных.
+		Для этого в конце функции надо считывать значения из  окна редактора обратно в переменнные.
+		А в редакторе эти значения можно изменять.
+		* Можно в функции дебаггера останавливать выполнение программы при достижении переменной заданной величины
+		(в том числе счетчика в цикле)
+		* Можно в функции дебаггера останавливать выполнение программы при выполнении оператора на котором установлен курсор.
+		* Сейчас формируется src+debug в отдельном окне. Необходимо сформировать два стандартных окна вобщем списке окон.
+		Это debug src и карман.  
+		Имя файла debug src - $DbgDisplay.bas !!! Его и загружать по клику на debug src меню !!!
+		Отдельно форму для него не формировать.
+		*- "preprocessor" - если переменная определена, но нигде не используется, включая inc файлы - выдавать предупреждение
+		*- если файл невозможно откомпилить, потому что он уже запущен - выдавать предупреждение.
+		*- При курсоре на имени функции OnResize=DirTreeFormResize при правой кнопке - переход на указанную функцию
+		аналог alt-G в Far
+		Для этого надо в главном меню сделать такие же пункты и сделать на них shortcuts. Тогда при нажатии этого сочетания будет выполняться данная функция.
+		
+		- multiundo - файл с примером закачан в директорию RQ IDE
+		- вставка по Alt-p и Alt-E  отладочных строк
+		- при переходе на закладку сделать так, чтобы закладка была не в первой строке, а ближе к центру экрана
+		- автоотступы
+		- поиск во всех окнах
+		
+		
+		- подсказку на LastWindow - невозможно!
+		
+		Макроподстановки
+		Например для данного проекта все ресурсы хранятся в директории А. Эта директория прописана в сетапе и сохраняется в ini 
+		файле. В тексте же на нее дается ссылка типа $$Resorce$$. При нажатии на кнопку компилировать
+		все ссылки $$Resorce$$ в исходнике сначала заменяются на значения их сетапа, а затем подаются на компиляцию.
+		
+		9. * фичи как в RQSR, в CodeWarrior в выпадающем меню - 
+		перекодировка
+		открыть файл
+		поиск declare
+		поиск функции по declare
+		добавить watch
+		переход на объект, если объект
+		'- ------------------------------------------------------------------------------
+		
+		'-- ------------------ баги ----------------------------------------------
+		! поправить закладки, чтобы обновлялись
+		! не отслеживаются дупы при добавлении в WatchList
+		! при добавлении в дебуг конструкций вида Strok(ij1)-"#" надо заменять кавычки на qt.
+		! надо создавать массив операторов и в функции вытаскивать их из строки
+		!!! невозможно отделить комментарии из-за того, что текст преобразуется в одну строку
+		! при запуска из другой директории не находит keywordlist 
+		! добавить в GetOperators обработку строк с _
+		
+		Чтобы это сделать надо переделать всю процедуру вставки дебаг функций
+		pnt_
+		Old = 20_
+		: AdatOld! = 33_
+		0: LostP = 1: j=340: i0=6_
+		50
+		
+		Данная последовательность 
+		-преобразуется в одну строку
+		- в этой строке выделяются операторы, их позиции и длины
+		- позиции и длины корректируются с учетом _ и переносов строки - (длин  crlf)
+		- в позициях (начала) операторов вставляются дебаг-функции.
+		позиции операторов отсчитываются от позиции первого оператора.
+		но поскольку дебаг-функции добавляются сейчас построчно
+		DebugSrcEdit.Line(i) = INSERT$(DebugFunc$, DebugSrcEdit.Line(i), OperPoz+LenDbgF)'
+		это сделать невозможно
+		Необходимо вести расчет по глобальным позициям в тексте.
+		- при подсветке на один пиксель расширить область , а то по границам полоски остаются.
+		- гаснет ли LAstBookmark после загрузки нового окна?
+		'---  фонт подсветки должен соответсвтовать фонту текса
+		
+		'---- ----------------------------  todo ------------------------------------
+		- в меню bookmarks сделать подгруппы с разными наборами букмарок
+		39. "Карман  мульти  клипбоард"
+		38. Автозавершение слов
+		13. * форматирование текста с отступами+ проверка завершающих операторов
+		
+		- исправить табуляции в комментариях
+		- перемещение курсора за конец строки
+		
+		39. Автозакладка  - переход к последнему положению курсора и к последней закладке
+		35. Ввести тулбар под меню.
+		36. отъесть сверху от едитора строчку и разметить там закладки окон. А на листах - закладки листов.
+		36.1 по умолчанию лог-едит невидим и srcedit занимает всю высоту.(и ширину)
+		36.1 srcedit - переключение по ширине на весь экран и обратно при включении\выключении саблиста  
+		10.1 * при компиляции сохранять автоматически последние и текущие копии.
+		10. * по F5 - компилировать
+		запустить
+		сохранить окно выхода
+		37. Контекстный help
+		'-----
+		5. Темплейт файла - общая структура
+		34. Открывать файл только для чтения.
+		35. Splitter - горизонтальный между редакторами и вертикальный слева.
+		
+		11. * прочие горячие клавиши и плагины как в фаре.
+		
+		4. * подсветка с ключевыми словами, а не абы как
+		6. * сплит - использовать лог как второе окно для редактора исходника.
+		сам лог можно сохранять в переменную
+		9.1 * хранение всех объектов с их свойствами в масссиве.
+		9.1.1 * Раскрывающиеся таблицы, stringList как список объектов. 
+		9.2 * таблица адресов переменных для дебагера. И функций.
+		
+		10.2 * автоматически менять свойства указанного ярлыка исполняемого файла при переименовании
+		
+		11.1 * макросы как в фаре.
+		12.1 * форматирование блока текущего оператора при клике на начальном операторе
+		12.2 * при over начального оператора показывать подсказку со строкой конечного оператора.
+		14. * выбор кодировки, перекодировка
+		15. * сохранение исходников в HTML.
+		16. * пошаговая отладка и все, что с ней связано
+		17. * визуальное редактирование форм, в том числе втягивание существующих проектов
+		18. * разные варианты представления объектов - dim, create
+		19. * конструктор меню через массивы меню
+		20. * препроцессор, макроподстановки
+		23. * Tiny -exe.
+		25. * inline assembler 
+		26. * эмулятор процессора с пошаговой отладкой ассемблера.
+		27. * просмотр областей памяти
+		28. * disk editor.
+		29. * OLE 
+		30. * Windows API
+		31. * Custom components
+		32. * Internet.
+		'--- ---------------------------- ------------------------------------
+		
+		'-- --------------------------- формат ini-файла ---------------------
+		ini-файла - загрузка сохраненных списка окон и закладок.
+		
+		1.1 - 2. * пути к компилятору, библиотекам и т.д.
+		1. * ini - файл, его формат
+		
+		'--------------Секция Projects ====================================
+		Проекты.
+		Под проектом понимается именованый набор объектов.
+		1. Main module - основной bas файл который должен быть откомпилирован для получения программы.
+		Компиляция должна провдится из директории данного модуля, чтобы правильно были вомприняты
+		пути к ресурсам и include файлам, который нельзя задавать через переменные.
+		Можно попробовать задавать из через макро, но макро глючит на больших файлах.
+		2. Include файлы всех уровней вложенности к которым должен быть обеспечен быстрый доступ
+		3. Набор директорий к которым должен быть обеспечен быстрый доступ -HotDirs
+		4. Всякие дополнительные файлы
+		5. Набор настроек редактора.
+		
+		Соответственно для каждого проекта создаются свои наборы 
+		-окон - меню Windows - список 
+		-закладок в каждом окне - BookMarks 
+		-директорий - подменю HotDirectories в пункте Files
+		
+		Доступ к списку проектов осуществляется через меню Projects.
+		
+		Окна (файлы) 
+		-добавляются к проекту через OpenFile 
+		-убираются через close Window в меню Windows
+		
+		Директории добавляются
+		File-HotDirs-Add Current Dir (добавляется текущая директория)
+		File-HotDirs-Add Dir (открывается окно с DirTree, выбирается директори, жмется OK  )
+		
+		При сохранении проекта через SaveProject,  SaveProjectAs.. текущие настройки и наборы
+		окон и заметок сохраняются в проекте.
+		
+		Cоздание нового проекта 
+		надо ввести
+		- имя проекта ProjectsName
+		- выбрать main module filename вместе с путем
+		возможно 
+		- todo file
+		- bug-list
+		- version info
+		
+		Настройки проекта хранятся в соответствующем файле ProjectsName.prj
+		Пока имя  файла настроек будет равно имени проекта.
+		
+		При загрузке IDE считывается ini файл - RQDB.ini
+		Состав файла RQDB.ini аналогичен секции Windows
+		win0=0 C:\BAS\RAPIDQ\RQ IDE\todo!!!RQIDE.txt
+		
+		Его состав
+		[Projects]
+		Index=0
+		PrjName0=0 "RQDB"
+		PrjIni0="C:\BAS\RAPIDQ\RQ IDE\Projects\RQDB.prj"
+		PrjName1=0 "MyPrj"
+		PrjIni1="C:\BAS\RAPIDQ\RQ IDE\Projects\MyPrj.prj"
+		
+		По Index определяется последний загруженный проект и он открывается.
+		Имя файла настройки берется из PrjIni и из этого файла идет загрузка окон, закладок и т.п.
+		как и в предыдущей версии но уже из файла *.prj
+		
+		Файлы настроек проекта *.prj пока  хранятся в папке Projects.
+		
+		Состав файла ProjectsName.prj
+		[HotDirs] ' список часто используемых директорий
+		[WatchList] ' параметры окна
+		[SubList]' параметры окна
+		[ObjInspector]' параметры окна
+		[Editor]' параметры редактора - шрифт и т.п.
+		[Windows] ' список окон
+		[Bookmarks]  'список закладок
+		[Prj] 
+		path="C:\BAS\RAPIDQ\RQ IDE\"
+		' папка main модуля - компилировать надо находясь в этой папке, 
+		' чтобы правильно находил пути к ресурсам.
+		MainModul="C:\BAS\RAPIDQ\RQ IDE\RQdebugger161.bas"
+		
+		[Compiler] ' данные компилятора. В общем случае может использоваться любой компилятор.
+		CompPath="c:\"
+		IncPath="c:\"
+		LibPath="c:\"
+		
+		
+		
+		!!! include файлы неизвестно какие компилятор возьмет !!! 
+		Необходимо сохранить текущий проект.
+		Сохранить все окна, которые были изменены.
+		Надо запомнить те, которые изменялись.
+		Можно предлагать сохранять изменения 
+		-при переключении окон
+		-при переключении, создании нового проекта
+		предлагать сохранять и сохранять все файлы.
+		
+		-при выходе из программы
+		-сохранять автоматически + предыдущую копию.
+		
+		по требованию сравнивать два файла и показать отличия
+		
+		сохранение проекта
+		Save Project
+		
+		удаление проекта 
+		- Delete project в пункте projects.
+		
+		Организована также как и секция windows
+		всего 32 проекта
+		
+		Открывается в меню File-Open project- открывается папка Project секции Path
+		Там лежат файлы .prj
+		
+		Или Last Projects - 5-8 штук - хранится в файле ini 
+		
+		Пока без файлов .prj
+		Вся информация о проектах хранится в файле ini
+		
+		----------------------------------------- 
+		Editor options
+		Color scheme
+		Font
+		Path
+		Compiler
+		Debugger
+		Version info
+		'-- ----------------------------- ------------------------------------
+		[Bookmarks]
+		bmarkCaption0,0=53 + подсветка начальных\конечных операторов как по таб вертикальными столбцами.
+		bmarkPosic0,0=2075
+		bmarkCaption0,1=116 '-- ------------------ баги ----------------------------------------------
+		bmarkPosic0,1=4595
+		bmarkCaption1=
+		bmarkPosic1=
+		bmarkCaption2,0=4422 sub FileLoad '!!!'==================================================
+		bmarkPosic2,0=156413
+		bmarkCaption2,1=4699 qwq = SendMessageAPI (RichEdit1.handle,EM_EXLIMITTEXT,0,65535*1024) '65535*32)
+		bmarkPosic2,1=165809
+		
+		[Windows]
+		Index=15
+		win0=0 C:\BAS\RAPIDQ\RQ IDE\todo!!!RQIDE.txt
+		curposic0=13910
+		win1=1 C:\BAS\RAPIDQ\RQ IDE\RQdebugger154.bas
+		curposic1=52722
+		
+		[HotDirs]
+		HotDirsCount=7
+		Index=3
+		0=C:\0DIAKIN2_0\
+		1=C:\23\
+		2=C:\API_GENERATOR\
+		3=C:\0RADIO\
+		4=C:\BAS\
+		5=C:\BAS\RAPIDQ\
+		6=C:\BAS\RAPIDQ\RQ IDE\
+		---------------------------
+		Rapid-Q Compiler Beta by William Yu Copyright 1999-2000
+		Compiling C:\BAS\RAPIDQ\RQ IDE\todo!!!RQIDE.bas to C:\BAS\RAPIDQ\RQ IDE\todo!!!RQIDE.EXE
+		
+		Line 1: ERROR: 01 is not a type identifier
+		todo!!!RQIDE.bas: In main section
+		todo!!!RQIDE.bas: 01.09.2004 v.0.4
+		todo!!!RQIDE.bas:           ^-- error
+		File in error: C:\BAS\RAPIDQ\RQ IDE\todo!!!RQIDE.bas
+		--------------------------
+		Line 11, 4: Expected = but got "/"
+		RQdebugger098.bas: In main section
+		RQdebugger098.bas: bbb/
+		RQdebugger098.bas:     ^-- error
+		File in error: C:\BAS\RAPIDQ\RQ IDE\RQdebugger098.bas
+		
+		----- процедура debuging -----------------------
+		Использовать Subi для различения строковых и числовых переменных.
+		Трассировку производить в отмеченных галочкой процедурах
+		Если стоит галка StepInTo - то также и во всех вызываемых процедурах.
+		
+		
+		
+		если переменная глобальная и ее имя совпадает с локальной, то как их различить?
+		
+		'текст с $debug.inc храним в невидимом SrcDebugEdit
+		' подсветка строк SrcEdit
+		
+		'- _DebugEdit.Line(0) - вот эти переменные!
+		' a GOSUB  - это доступ к ним!
+		
+		'!!! и вообще,  нужен разбор текста процедуры, чтобл правильно все вставить
+		'вставлять оператор наблюдения надо только там, где наблюдаемые переменные 
+		' изменяются - глобальные - во всех процедурах, локальные - в их процедурах
+		' надо иметь список всех переменных
+		
+		'-- в общем сделаем так 
+		0. В WatchList вставляем выбранные для наблюдения переменные
+		процедура sub AddWatchOnClick и sub LogValue - добавление переменной в лог файл с 
+		выделением индексов
+		
+		1. Перебираем по WatchList`у и формируем массив наблюдаемых переменных для вставки
+		в исходный текст программы.
+		Используем StringList или _DebugEdit QRichEdit
+		
+		"dim _DebugList AS QStringList" - эта строка вставляется в программу
+		Значения наблюдаемых переменных будут сохраняться в _DebugList и передаваться
+		в окно WatchList через
+		strSend=_DebugList.Text
+		senddata
+		
+		сразу всем текстом.
+		
+		"_DebugList.Item(i)"=qt+VAlScope(i)+"•"+VAlName(i (индексы))+ qt+"="+VAlName(i)
+		
+		пусть число наблюдаемых переменных будет 32
+		
+		dim DebugStr(32) as string - это массив строк, по чиcлу переменных, который будут наблюдаться
+		Эти строки будут вставляться в программу
+		
+		dim VAlScope(32) as string ' Global or SubName
+		dim VAlName(32) as string ' имя  переменной
+		dim VAlType(32) as byte ' тип переменной
+		тип переменной это строка 
+		Используем процедуру типа sub LogValue - добавление переменной в лог файл с выделением индексов
+		Для каждой  i-той наблюдаемой переменной формируем строку добавления DebugStr(i)
+		типа 
+		
+		"_DebugList.Item(i)"=qt+VAlScope(i)+"•"+VAlName(i (индексы))+ qt+"="+VAlName(i)
+		
+		_DebugEdit.Line(0)="stringgr.cell(i,j)="+stringgr.cell(i,j)
+		
+		if Index$ <> "" then
+			ClipBoard.Text=crlf+ "call  AddClrString (" +qt +Lstr$+"("+qt+ "+str$("+Index$+")+"+qt+Rstr$+")=" +qt +vtp$ +ClrStr$ +"), clred, LogEdit)"
+		else
+			ClipBoard.Text=crlf+ "call  AddClrString (" +qt +ClrStr$ +"=" +qt +vtp$ +ClrStr$ +"), clred, LogEdit)"
+		end if
+		1.05-----------
+		Пересылка данных осуществляется между окнами, имеющими CAPTION="DebuggerWnd" в приложении и 
+		AppName="RQ Debugger" - в IDE.
+		Поэтому в приложение надо добавлять окно caption ="DebuggerWnd"
+		Это может быть панель, а может быть форма маленького размера. Форма лучше.
+		
+		1.1 ищем в тексте указанные переменные.
+		2. в конце добавляем оператор наблюдения gosub AddWatch:MsgHandler
+		где AddWatch - подпрограмма типа
+		AddWatch:
+		if len (stringgr.cell(i,j))>0 then 
+			_DebugEdit.Line(0)="stringgr.cell(i,j)="+stringgr.cell(i,j)
+		else
+			_DebugEdit.Line(0)="stringgr.cell(i,j)="+str$(stringgr.cell(i,j))
+		end if
+		if len (i)>0 then 
+			_DebugEdit.Line(1)="i="+i
+		else
+			_DebugEdit.Line(1)="i="+str$(i)
+		end if
+		
+		Здесь проверка длины делается для определения типа переменной - строковая или нет.
+		Если строковая, то str$() добавлять не надо.
+		
+		'---- за исклочением строк типа 
+		
+		'- if len (stringgr.cell(i,j))>0 then 
+		'- select case stringgr.cell(i,j)
+		' оператор наблюдения вставлять перед этими конструкциями
+		
+		' также надо отлавливать конструкции типа
+		'- with stringgr
+		'- .cell(i,j)=" квака"
+		
+		'- Sender.cell(i,j)=" квака", где  надо понять, что Sender - это stringgr
+		
+		'- подчерки в конце строки
+		' при наблюдении массивов индексы наблюдать автоматически
+		
+		' наблюдать конструкции типа
+		'- INSTR(UCASE$(FileEdit.Text), UCASE$(SearchStr$))
+		' через создание временных переменных
+		
+		' переменные локальные и глобальные можно различать цветом в WatchListe
+		
+		' в WatchListe наблодаемые переменные можно представлять в виде 
+		' функция\переменная  до слэша -функция ,  после - переменная
+		'- stringgridclear\MStream.Position=5
+		' если глобальная - то global\trd$
+		'по этой информации глобальные искать везде, а локальные - только в родной
+		'процедуре
+		
+		' if len (stringgr.cell(i,j))>0 then DebugEdit.Line(0)="stringgr.cell(i,j)="+(stringgr.cell(i,j)) else DebugEdit.Line(0)="stringgr.cell(i,j)="+str$(stringgr.cell(i,j))
+		
+		'"'= ========================================'"+chr$(13)+chr$(10)
+		
+		---------------- проверка типа переменной -----------------------------
+		
+		#Sub.
+		
+		1  #n1$  n1
+		2  #n2$  n2
+		3  #n3$  
+		4   n3$
+		5  #n4$  n3
+		6  #n5$  n4
+		7  #n6$  n5
+		8  #n7$  
+		9   n7$ 
+		10 #n8$  n6
+		11 #n9$  n7
+		12 #n10$ n8
+		13 #n11$ n9
+		
+		~k=0
+		~l=1
+		FOR Ij = 1 TO ParamStrCount
+			if instr(paramStr$(ij),"~$#")>0 then ' это строковый параметр - имя переменной
+				valName$=paramStr$(ij)-"~$#"
+				if Ij< ParamStrCount then 
+					if instr(paramStr$(ij+1),"~$#")=0  then ' следующий строковый - значение строковой переменной
+						~WatchDisplay.Line(ij-1)=valName$+"="+paramStr$(ij+1)
+						~k=~k+2
+						inc ~l
+						inc ij
+					else
+						~WatchDisplay.Line(ij-~l)=valName$+"="+str$(paramval(ij-~k)) '+~k
+					end  if
+				else
+					~WatchDisplay.Line(ij-~l)=valName$+"="+str$(paramval(ij-~k)) '+~k
+					
+				end if
+			else
+				showMessage "Error in Debug function. First parametr is not Var name"
+				
+			end if
+		NEXT Ij
+		
+		
+		'---------------------------------------------------------------------------------
+		-- проблема - неизвестен тип переменной WatchEdit.Line(i) !!!
+		эта проблема частично снимается проверкой на соответствие стандартным типам объектов.
+		Если присутствует .Line .text .caption и т.п.  то ясно, что это строковая переменная
+		'-- если len(WatchEdit.Line(i)) >0 then это строка 
+		
+		' не годится потому что происходит проверка типа передаваемой величины
+		Function CheckVAlType (ValDAta as long) as bool
+		if str$(ValDAta)=0 and valdata<> 0 then result=1 else result=0
+		end function
+		-- на самом деле тип передаваемой величины не проверяется
+		например можно написать такую функцию
+		
+		Function CheckVAlType (ValDAta1 as long,ValDAta2 as string,ValDAta3 as double ) as string   
+		print "ValDAta3=" ,ValDAta3
+		print "ValDAta2=" ,ValDAta2
+		print "ValDAta1=" ,ValDAta1
+		
+		if str$(ValDAta)=0 and valdata<> 0 then result="string" else result="int"
+		end function
+		astr$="qwerty"
+		astr1=100
+		astr2=99.99
+		print CheckVAlType (astr$,astr$,astr$)
+		print CheckVAlType (astr1,astr1,astr1)
+		print CheckVAlType (astr2,astr2,astr2)
+		-------------------------------------------------------
+		[WatchList] 
+		Top=
+		Left=
+		Width=
+		Height=
+		TopM=
+		LeftM=
+		Visible=
+		
+		[SubList]
+		Top=
+		Left=
+		Width=
+		Height=
+		TopM=
+		LeftM=
+		Visible=
+		
+		[ObjInspector]
+		Top=
+		Left=
+		Width=
+		Height=
+		TopM=
+		LeftM=
+		Visible=
+		
+		------------------------------------------------------------------
+		CREATE AddToProject AS QMenuItem
+			Caption = "Add To Project..."
+			Hint = "AddToProject"
+			'            OnClick=AddToProject
+		END CREATE
+		CREATE RemoveFromProject AS QMenuItem
+			Caption = "Remove From Project..."
+			Hint = "RemoveFromProject"
+			'            OnClick=RemoveFromProject
+		END CREATE
+		
+		CREATE ImportTypeLib AS QMenuItem
+			Caption = "Import Type Library..."
+			Hint = "ImportTypeLib"
+			'            OnClick=ImportTypeLib
+			Enabled=false
+		END CREATE
+		CREATE AddToRepos AS QMenuItem
+			Caption = "Add To Repository..."
+			Hint = "AddToRepos"
+			'            OnClick=AddToRepos
+			Enabled=false
+		END CREATE
+		CREATE BreakItemP1 AS QMenuItem
+			Caption = "-"
+		END CREATE
+		CREATE OptionsPrjIt AS QMenuItem
+			Caption = "Options..."
+			Hint = "Optionsof Project"
+			OnClick=OptionsPrj
+		END CREATE
+		
+		
+		======================================================
+		CREATE SearchFrm as QForm '=======================================
+			Caption = "Search"
+			''  Center
+			top=300
+			height=100
+			Width = 400   
+			FormStyle = fsStayOnTop
+			''  OnResize=DirTreeFormResize
+			OnClose=FrmMinimized
+			AutoScroll=false
+			KeyPreview = 1        'this line does the trick
+			''  OnKeyPress = CheckDir 
+			''  color=&hdEd8d5
+			create FindLbl as QLabel
+				caption="Find"
+				top =20
+				left=7
+				Width =40
+			end create
+			
+			create SearchCBox as QComboBox
+				Text = ""
+				Left = 60
+				Top = 17
+				Width = 250
+				Height = 99
+				'DropDownCount = 9
+				'Sorted = 1
+				TabOrder = 10
+				''  AddItems "c:\", "c:\temp"
+				'' OnChange=GotoHotDir
+			end create
+			
+			create ReplaceLbl as QLabel
+				caption="Replace"
+				top =50
+				left=7
+				Width =   40
+			end create
+			
+			create ReplaceComBox as QComboBox
+				Text = ""
+				Left = 60
+				Top = 47
+				Width = 250
+				Height = 99
+				'DropDownCount = 9
+				'Sorted = 1
+				TabOrder = 10
+				''  AddItems "c:\", "c:\temp"
+				'' OnChange=GotoHotDir
+			end create
+			
+			create FindBtn as QBUTTON
+				Left = 320
+				Top = 17
+				Width = 65
+				Height = 20
+				Caption="Find Next"
+				OnClick=FindText 'FindOnClick
+				tag=21
+			end create
+			
+			create ReplaceBtn as QBUTTON
+				Left = 320
+				Top = 47
+				Width = 65
+				Height = 20
+				Caption="Replace"
+			end create
+			
+		end create      '- SearchFrm
+		
+		if SrcEdit.Modified=1 then 
+			wmnu$=WindMnu(WindowsIndex).caption
+			'WindMnu(WindowsIndex).caption=replaceSubStr$( wmnu$, chr$(160),chr$(149)  )
+			WindMnu(WindowsIndex).caption=chr$(149)+str$(WindowsIndex)+ chr$(160)+SrcFileName
+			'WindMnu(WindowsIndex).caption=wmnu$
+		end if
+		
+		
+		
+		'!!!---------------
+		sub CompDebugOnClick1
+		'--- 1. просматриваем WatchList и все функции и процедуры, что там имеются, включая функции в include файлах,  копируем
+		' в DbgSrcViewEdit - jgthfnjs в нем мы будем подсвечивать при пошаговой отладке.
+		
+		'sub CompDebugOnClick1•SubName$
+		WatchLine$= "" 
+		j=0 ' номер AddWatch j к которой обращается в данной sub'
+		SubNameOld$=""
+		
+		with WatchEdit 
+			for i1=0 to .ItemCount-1 
+				WatchNames$ =lcase$(field$(.Item(i1),"•",1))
+				call  AddClrString ("WatchNames$="+(WatchNames$), clred, LogEdit)
+				SubName1$=field$(.Item(i1),"•",1)
+				SubName$=field$(SubName1$," ",2)
+				call  AddClrString ("SubName$="+(SubName$), clred, LogEdit)
+				' ищем в SubList начальную и конечную строки процедуры
+				if SubName$<> SubNameOld$ then inc j: SubNameOld$=SubName$:dob=0 else goto nexti1
+				'перебираем по процедурам
+				if SubName$="Global" then
+					ibw=0: iew=DebugSrcEdit.LineCount-1
+				else
+					for i=0 to SubsListBox(WindowsIndex).ItemCount-1
+						if GetWord (lcase$(SubsListBox(WindowsIndex).Item(I).Caption), lcase$(SubName$))>0 then ' есть такая функция
+							'if SubsListBox(WindowsIndex).Item(I).Caption=SubName$ then
+							call  AddClrString ("SubsListBox(WindowsIndex).Item("+str$(I)+".Caption)="+SubsListBox(WindowsIndex).Item(I).Caption, clDGreen, LogEdit)
+							ibw=val(SubsListBox(WindowsIndex).SubItem(I, 0))-1'+63 начальная позиция функции
+							iew=val(SubsListBox(WindowsIndex).SubItem(I, 1))'-1'+63 конечная позиция функции
+							call  AddClrString ("first Sub's LinePos="+str$(ibw), cldred, LogEdit)
+							call  AddClrString ("last Sub's LinePos="+str$(iew), cldblue, LogEdit)
+							exit for
+						end if
+					next i
+				end if
+				for i=ibw to iew
+					~SrcDisplay.AddStrings SrcEdit.Line(i)
+				next i
+				nexti1:
+			next i1 
+		end with 
+		' сформировали ~SrcDisplay с функциями, которые будут дебагиться
+		' теперь заполняем масив начальных и конечных позиций операторов для подсветки при перемещении по шагам.
+		
+		'-------- operators positions ----------------------
+		~SrcDisplayLineCount=~SrcDisplay.LineCount ' число строк
+		DobOperCnt=tally(~SrcDisplay.text,":") ' число разделителей операторов
+		
+		reDim Operators(~SrcDisplayLineCount-1+DobOperCnt) as string
+		redim OperatorsPos(~SrcDisplayLineCount-1+DobOperCnt) as integer
+		redim OperatorsLenth(~SrcDisplayLineCount-1+DobOperCnt) as integer
+		
+		opercnt=0
+		for i=0 to ~SrcDisplay.LineCount-1 ' перебираем по строкам
+			if trim$(~SrcDisplay.Line(i))="" then goto nexti3548 ' если пустая строка
+			opcnt=tally(~SrcDisplay.Line(i),":") ' количество разделителей операторов
+			call  AddClrString ("opcnt="+str$(opcnt), clblue, LogEdit)
+			
+			if opcnt>0 then ' если нет разделителей, то оператор - вся строка
+				for j1=1 to opcnt+1 '  oper1 : oper2 - два поля - один разделитель
+					SrcDisplayLine$=~SrcDisplay.Line(i) ' запихиваем строку в переменную
+					call  AddClrString ("SrcDisplayLine$="+SrcDisplayLine$, clDred, LogEdit)
+					posop$=field$(SrcDisplayLine$,":",j1) ' возможно оператор
+					if trim$(posop$)<>"" then ' если не пустой
+						Operators(opercnt)=posop$ ' то это оператор
+						call  AddClrString ("Operators("+str$(opercnt)+")="+Operators(opercnt), clred, LogEdit)
+						OperatorsPos(opercnt)=instr(SrcDisplayLine$,posop$)+~SrcDisplay.GetLINEIdx(i)
+						call  AddClrString ("OperatorsPos("+str$(opercnt)+")="+str$(OperatorsPos(opercnt)), clred, LogEdit)
+						OperatorsLenth(opercnt)=len(posop$)
+						inc opercnt ' увеличиваем счетчик операторов
+					end if
+					nextj1:
+				next j1
+			else
+				Operators(opercnt)=~SrcDisplay.Line(i)
+				call  AddClrString ("Operators("+str$(opercnt)+")="+Operators(opercnt), clred, LogEdit)
+				OperatorsPos(opercnt)=~SrcDisplay.GetLINEIdx(i)
+				call  AddClrString ("OperatorsPos("+str$(opercnt)+")="+str$(OperatorsPos(opercnt)), clred, LogEdit)
+				OperatorsLenth(opercnt)=len(~SrcDisplay.Line(i))
+				inc opercnt
+			end if
+			
+			nexti3548:
+		next i 
+		~SrcDisplay.SaveToFile("$SrcDisplay.bas")
+		'$OperatorsPos.dat $OperatorsLenth.dat
+		DIM File AS QFileStream 
+		File.Open("$OperatorsPos.dat", fmCreate) 
+		File.SaveArray(OperatorsPos(1), opercnt) 
+		File.Close
+		
+		File.Open("$OperatorsLenth.dat", fmCreate) 
+		File.SaveArray(OperatorsLenth(1), opercnt) 
+		File.Close
+		
+		
+		'~DebugForm.show
+		
+		'--- 2. Формируем полный DbgSrcEdit - исходник с добавленными функциями DebugWindow - просмотр переменных и пошаговый проход.
+		if DebugSrcForm.Visible=0 then DebugSrcForm.Visible=1'' DebugSrcForm.show: DebugSrc_visible=1
+		'копируем исходник'
+		
+		'2 '! --- вставляем процедуру дебаггера ----------'
+		'вставляем в начало'
+		DebugSrcEdit.Text="$include "+qt+"debugWindow.inc"+qt +crlf '+DebugSrcEdit.Text
+		DebugSrcEdit.AddStrings "~SrcDisplay.LoadFromFile("+qt+"$SrcDisplay.bas"+qt+") "
+		
+		redimOpers$="~SrcDisplayLineCount=~SrcDisplay.LineCount ' число строк"+crlf+_
+		"DobOperCnt=tally(~SrcDisplay.text," + qt + ":" + qt + ") ' число разделителей операторов"+crlf+_
+		"reDim Operators(~SrcDisplayLineCount-1+DobOperCnt) as string"+crlf+_
+		"redim OperatorsPos(~SrcDisplayLineCount-1+DobOperCnt) as integer"+crlf+_
+		"redim OperatorsLenth(~SrcDisplayLineCount-1+DobOperCnt) as integer"+crlf
+		
+		DebugSrcEdit.AddStrings redimOpers$
+		
+		
+		LoadOper$="DIM File AS QFileStream "+crlf+_
+		"File.Open("+qt+"$OperatorsPos.dat"+qt+", fmRead) "+ crlf+_ 
+		"File.LoadArray(OperatorsPos(1),"+str$(opercnt)+") "+ crlf+_ 
+		"File.Close"+ crlf+crlf+_ 
+		"File.Open("+qt+"$OperatorsLenth.dat"+qt+", fmRead) "+ crlf+_ 
+		"File.LoadArray(OperatorsLenth(1), "+str$(opercnt)+") "+ crlf+_ 
+		"File.Close"+ crlf
+		
+		DebugSrcEdit.AddStrings LoadOper$
+		
+		DebugSrcEdit.AddStrings "~SrcDisplay.LoadFromFile("+qt+"$SrcDisplay.bas"+qt+") "
+		
+		DebugSrcEdit.Text=DebugSrcEdit.Text+SrcEdit.Text
+		DebugSrcEdit.Text=replacesubstr$(LCase$(DebugSrcEdit.Text), "$typecheck on", "'$typecheck on")
+		
+		
+		
+		With 
+			ssd
+		end with 
+		'*****************************************
+		Как в Delphi реализовать функцию - эквивалент TwipsPerPixel из VisualBasic? 
+		
+		Ответ:
+		Функции TwipsPerPixelX и TwipsPerPixelY, приведенные в примере реализуют ту же функциональность в Delphi. 
+		
+		Пример:
+		function TwipsPerPixelX(Canvas : TCanvas) : Extended;
+		begin
+		result := 1440 / GetDeviceCaps(Canvas.Handle, LOGPIXELSX);
+		end;
+		
+		function TwipsPerPixelY(Canvas : TCanvas) : Extended;
+		begin
+		result := 1440 / GetDeviceCaps(Canvas.Handle, LOGPIXELSY);
+		end;
+		
+		procedure TForm1.Button1Click(Sender: TObject);
+		begin
+		ShowMessage(FloatToStr(TwipsPerPixelX(Form1.Canvas)));
+		ShowMessage(FloatToStr(TwipsPerPixelY(Form1.Canvas)));
+		end;
+		
+		
+		
+		
+		
