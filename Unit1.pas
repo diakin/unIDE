@@ -1955,6 +1955,7 @@ type
     function  DbgLineThen(const AFileName: string; ANowLine: Integer): Integer;
     procedure DbgRepaint;
     function  DbgKey(AKey: Word): Boolean;
+    function  FindKey(AKey: Word): Boolean;
     procedure DbgLinesPre(const Message: TMessage; AWhole: Boolean);
     procedure DbgLinesPost;
     procedure WMDbgDone(var Msg: TMessage); message WM_USER + 321;
@@ -16304,9 +16305,10 @@ begin
   // остановки, Ctrl+F2 - Program reset, F5 - точка останова на строке с
   // кареткой, F7 - Trace into, F8 - Step over, F4 - Run to cursor. Только
   // в главном окне: у конструктора и диалогов свои клавиши.
+  // F3 / Shift+F3 в редакторе - поиск, см. FindKey
   if (Msg.message = WM_KEYDOWN) and (Screen.ActiveForm = Self) then
   begin
-    if DbgKey(Word(Msg.wParam)) then
+    if DbgKey(Word(Msg.wParam)) or FindKey(Word(Msg.wParam)) then
       Handled := True;
     Exit;
   end;
@@ -37648,6 +37650,42 @@ begin
       DbgRunToCursor;
     Result := True;
   end;
+end;
+
+// F3 в редакторе - следующее вхождение, Shift+F3 - предыдущее. Выделенный
+// фрагмент (в пределах одной строки) сначала становится образцом поиска:
+// он попадает в поле Find и в историю. Без выделения ищется то, что уже
+// стоит в поле. Дальше - как по кнопкам Find-> и <-Find, вместе со
+// списком совпадений при галке List.
+function TForm1.FindKey(AKey: Word): Boolean;
+var
+  SelTxt: string;
+begin
+  Result := False;
+  if (AKey <> VK_F3) or (GetKeyState(VK_CONTROL) < 0) or
+     (GetKeyState(VK_MENU) < 0) or (ActiveControl <> RichEdit1) then
+    Exit;
+  Result := True;
+
+  if RichEdit1.SelLength > 0 then
+  begin
+    SelTxt := RichEdit1.SelText;
+    if (SelTxt <> '') and (Pos(#13, SelTxt) = 0) and (Pos(#10, SelTxt) = 0) then
+    begin
+      cmbFind.Text := SelTxt;
+      // В режиме перехода по строке образец - номер; выделенный текст
+      // ищем обычным поиском
+      if cmbMode.ItemIndex = 2 then
+        cmbMode.ItemIndex := 0;
+    end;
+  end;
+
+  if cmbFind.Text = '' then
+    Exit;
+  if GetKeyState(VK_SHIFT) < 0 then
+    DoFindPrev(nil)
+  else
+    DoFindNext(nil);
 end;
 
 // Снимок до правки - как у ObjLinesPre, но свой: точки есть в любом файле,
