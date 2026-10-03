@@ -78,26 +78,7 @@ FLockMemo: Boolean; // НАШ СЕМАФОР БЛОКИРОВКИ ДЛЯ TMEMO
     // вернула бы их поверх найденных - на один раз её отключаем.
     FSkipNormalize: Boolean;
     FCompSection: string;         // раздел настроек текущего типа
-    // Корень Delphi для $(DELPHI) в ExpandCompMacros вместо поля Delphi path
-    // страницы Compilers - на время нормализации полей вкладки Environment
-    FMacroRoot: string;
-
-    // ВКЛАДКА ENVIRONMENT: настройки среды по страницам, как Environment
-    // Options в Delphi. Library - пути поиска модулей Delphi: те же ключи
-    // editor.ini, что на странице Compilers - Delphi, и папка исходников
-    // своих компонентов Ui* ([UiLib] Source).
-    MainPages: TPageControl;      // вкладки окна
-    TabEnv, TabCompilers: TTabSheet;
-    EnvPages: TUiPageControl;
-    pnlEnvLib: TPanel;
-    cbEnvTool: TUiComboBox;
-    edtEnvLib, edtEnvBrowse, edtEnvUiSrc: TUiEdit;
-    btnEnvLib, btnEnvBrowse, btnEnvUiSrc: TUiButton;
-    lblEnvLib, lblEnvBrowse, lblEnvUiSrc, lblEnvTool: TLabel;
-    btnEnvImport: TUiButton;
-    lblEnvInfo: TLabel;
-    FEnvSection: string;          // раздел editor.ini выбранной Delphi
-    FEnvLoading: Boolean;         // поля заполняет код - не правка
+    btnDelphiImport: TUiButton;  // Compilers - Delphi: «Взять из Delphi»
     // Окно списка путей (EditPathList): его элементы на время показа
     FPathList: TUiListBox;
     FPathEdit: TUiEdit;
@@ -268,19 +249,13 @@ procedure CollectDelphiVars(AList: TStrings);
 function  LookupEnvVar(const AName: string): string;
 function  NormalizePathValue(const S: string; AIsFile, AIsList: Boolean;
                              ADropped: TStrings): string;
-procedure BuildEnvironmentTab(ATab: TWinControl);
-procedure LayoutEnvLibrary(Sender: TObject);
-procedure LoadEnvLibrary;
-procedure cbEnvToolChange(Sender: TObject);
-procedure EnvEditChange(Sender: TObject);
-procedure EnvEditExit(Sender: TObject);
-procedure EnvBrowseClick(Sender: TObject);
-procedure btnEnvImportClick(Sender: TObject);
-function  EnvDelphiRoot: string;
+procedure btnDelphiImportClick(Sender: TObject);
+function  CompFieldIdx(const AKey: string): Integer;
+function  CompIniSection(const AKey: string): string;
+function  CompIniKey(const AKey: string): string;
 function  FindDelphiRegKey(const ARoot, ATool: string;
                            var AFoundRoot: string): string;
 function  ExpandDelphiRegVars(const S, ARoot, AKey: string): string;
-procedure MainPagesChange(Sender: TObject);
 function  EditPathList(const ACaption: string; var AValue: string): Boolean;
 function  PathExists(const APath: string): Boolean;
 procedure PathUpdateState;
@@ -671,15 +646,9 @@ FLockMemo := False; // Инициализация
   TabColors.PageControl := PageControl;
   TabColors.Caption := 'IDE colors';
 
-  TabEnv := TTabSheet.Create(Self);
-  TabEnv.PageControl := PageControl;
-  TabEnv.Caption := 'Environment';
-
   TabDirs := TTabSheet.Create(Self);
   TabDirs.PageControl := PageControl;
   TabDirs.Caption := 'Compilers';
-  TabCompilers := TabDirs;
-  MainPages := PageControl;
 
   TabArduino := TTabSheet.Create(Self);
   TabArduino.PageControl := PageControl;
@@ -903,10 +872,6 @@ FLockMemo := False; // Инициализация
   LayoutIndentGroup;
   BuildUiColorsTab(TabColors);
   BuildCompilersTab(TabDirs);
-  BuildEnvironmentTab(TabEnv);
-  // Environment и Compilers правят одни и те же ключи editor.ini - при
-  // переходе на вкладку её поля читаются заново
-  PageControl.OnChange := MainPagesChange;
   LayoutEditorColors;
 
   // Панель темы - самая верхняя на вкладке Color Scheme. Окно выше на её
@@ -3377,6 +3342,15 @@ begin
   btnToolFind.Caption := 'Find installed';
   btnToolFind.OnClick := btnToolFindClick;
 
+  btnDelphiImport := TUiButton.Create(Self);
+  btnDelphiImport.Parent := ATab;
+  btnDelphiImport.Caption := 'Взять из Delphi';
+  btnDelphiImport.ShowHint := True;
+  btnDelphiImport.Hint := 'Library path и Browsing path из Environment ' +
+                          'Options этой Delphi (реестр); свои пути остаются ' +
+                          'в конце';
+  btnDelphiImport.OnClick := btnDelphiImportClick;
+
   lstCompTypes.ItemIndex := 0;
   FCompType := lstCompTypes.Items[0];
   LoadToolList(FCompType);
@@ -3448,6 +3422,8 @@ begin
       Fields.Add('-BrowsePath|Browsing path');
       Fields.Add('ExePath|Output (exe)');
       Fields.Add('DcuPath|Output (dcu)');
+      // Папка исходников Ui*.pas - [UiLib] Source (CompIniSection)
+      Fields.Add('UiSource|Ui components');
       // Library path и Browsing path - списки через точку с запятой, как в
       // самой среде; Library заполняется кнопкой Find installed, Browsing
       // задаётся вручную. Пустые Output - папка проекта.
@@ -3505,6 +3481,11 @@ begin
       btnToolFind.Width := 90;
       btnToolFind.Height := 23;
       btnToolFind.Enabled := AType = 'Delphi';
+      btnDelphiImport.Left := btnToolFind.Left + 96;
+      btnDelphiImport.Top := 7;
+      btnDelphiImport.Width := 110;
+      btnDelphiImport.Height := 23;
+      btnDelphiImport.Visible := AType = 'Delphi';
     end;
 
     T := TLabel.Create(Self);
@@ -3559,7 +3540,7 @@ begin
         E.Anchors := [akLeft, akTop, akRight];
         E.Tag := I;
         if Ini <> nil then
-          E.Text := Ini.ReadString(FCompSection, Key, '');
+          E.Text := Ini.ReadString(CompIniSection(Key), CompIniKey(Key), '');
         E.OnChange := CompEditChange;
         E.OnExit := CompEditExit;   // нормализация при уходе из поля
         FCompEdits[I] := E;
@@ -3589,6 +3570,30 @@ begin
     Fields.Free;
   end;
 
+  // Порядок поиска модулей при сборке Delphi - под полями
+  if AType = 'Delphi' then
+  begin
+    L := TLabel.Create(Self);
+    L.Parent := pnlCompPage;
+    L.Left := 12;
+    L.Top := Y + 8;
+    L.AutoSize := False;
+    L.WordWrap := True;
+    L.Width := pnlCompPage.ClientWidth - 24;
+    L.Height := 150;
+    L.Anchors := [akLeft, akTop, akRight];
+    L.Caption :=
+      'Модули при сборке (dcc32 -U, -I, -O, -R) ищутся по порядку: папка ' +
+      'проекта; Search path проекта из его .dof; UiLib рядом с программой ' +
+      '(туда копируются Ui*.pas из папки Ui components; она пустая - из ' +
+      'папки программы, папки проекта редактора или папок выше программы); ' +
+      'Library path. Browsing path компилятору не передаётся, как и в самой ' +
+      'Delphi.' + #13#10#13#10 +
+      'Папки, которых нет на этом компьютере, в списках остаются (они могут ' +
+      'быть с другого компьютера) и при сборке пропускаются; удалить их - ' +
+      'кнопка ... и Delete invalid.';
+  end;
+
   // Значения из editor.ini приводим в порядок сразу, не дожидаясь, пока
   // человек зайдёт в поле: макросы разворачиваем, файлы заменяем папками и
   // записываем обратно уже раскрытыми. Иначе строка с $(...) дожила бы до
@@ -3597,7 +3602,7 @@ begin
 end;
 
 // ---------------------------------------------------------------------------
-//  Вкладка Environment
+//  Пути Delphi из реестра (Compilers - Delphi, «Взять из Delphi»)
 // ---------------------------------------------------------------------------
 
 // Развернуть $(DELPHI) и прочие переменные среды Delphi: список - в той же
@@ -3724,315 +3729,47 @@ begin
   end;
 end;
 
-procedure TForm2.BuildEnvironmentTab(ATab: TWinControl);
+// Номер поля страницы Compilers по ключу; -1 - нет такого
+function TForm2.CompFieldIdx(const AKey: string): Integer;
 var
-  TabLib: TTabSheet;
-
-  procedure AddRow(const ACaption: string; ATag, ATop: Integer;
-                   var ALabel: TLabel; var AEdit: TUiEdit;
-                   var AButton: TUiButton);
-  begin
-    ALabel := TLabel.Create(Self);
-    ALabel.Parent := pnlEnvLib;
-    ALabel.Caption := ACaption;
-    ALabel.Left := 12;
-    ALabel.Top := ATop + 4;
-
-    AEdit := TUiEdit.Create(Self);
-    AEdit.Parent := pnlEnvLib;
-    AEdit.Left := 120;
-    AEdit.Top := ATop;
-    AEdit.Width := 300;
-    AEdit.Tag := ATag;
-    AEdit.OnChange := EnvEditChange;
-    AEdit.OnExit := EnvEditExit;
-
-    AButton := TUiButton.Create(Self);
-    AButton.Parent := pnlEnvLib;
-    AButton.Caption := '...';
-    AButton.Top := ATop - 1;
-    AButton.Width := 30;
-    AButton.Height := 23;
-    AButton.Tag := ATag;
-    AButton.OnClick := EnvBrowseClick;
-  end;
-
+  FieldIdx: Integer;
 begin
-  if (ATab = nil) or (EnvPages <> nil) then
-    Exit;
-
-  EnvPages := TUiPageControl.Create(Self);
-  EnvPages.Parent := ATab;
-  EnvPages.Align := alClient;
-
-  TabLib := TTabSheet.Create(Self);
-  TabLib.PageControl := EnvPages;
-  TabLib.Caption := 'Library';
-
-  // Раскладка - по размеру панели (LayoutEnvLibrary): поля тянутся по
-  // ширине вкладки
-  pnlEnvLib := TPanel.Create(Self);
-  pnlEnvLib.Parent := TabLib;
-  pnlEnvLib.Align := alClient;
-  pnlEnvLib.BevelOuter := bvNone;
-  pnlEnvLib.Caption := '';
-  pnlEnvLib.OnResize := LayoutEnvLibrary;
-
-  lblEnvTool := TLabel.Create(Self);
-  lblEnvTool.Parent := pnlEnvLib;
-  lblEnvTool.Caption := 'Delphi';
-  lblEnvTool.Left := 12;
-  lblEnvTool.Top := 14;
-
-  cbEnvTool := TUiComboBox.Create(Self);
-  cbEnvTool.Parent := pnlEnvLib;
-  cbEnvTool.Style := csDropDownList;
-  cbEnvTool.Left := 120;
-  cbEnvTool.Top := 10;
-  cbEnvTool.Width := 180;
-  cbEnvTool.OnChange := cbEnvToolChange;
-
-  btnEnvImport := TUiButton.Create(Self);
-  btnEnvImport.Parent := pnlEnvLib;
-  btnEnvImport.Caption := 'Взять из Delphi';
-  btnEnvImport.Left := 310;
-  btnEnvImport.Top := 9;
-  btnEnvImport.Width := 120;
-  btnEnvImport.Height := 23;
-  btnEnvImport.ShowHint := True;
-  btnEnvImport.Hint := 'Library path и Browsing path из Environment Options ' +
-                       'этой Delphi (реестр); свои пути остаются в конце';
-  btnEnvImport.OnClick := btnEnvImportClick;
-
-  AddRow('Library path', 0, 46, lblEnvLib, edtEnvLib, btnEnvLib);
-  AddRow('Browsing path', 1, 74, lblEnvBrowse, edtEnvBrowse, btnEnvBrowse);
-  AddRow('Ui components', 2, 102, lblEnvUiSrc, edtEnvUiSrc, btnEnvUiSrc);
-  edtEnvUiSrc.ShowHint := True;
-  edtEnvUiSrc.Hint := 'Папка исходников Ui*.pas ([UiLib] Source в editor.ini)';
-
-  lblEnvInfo := TLabel.Create(Self);
-  lblEnvInfo.Parent := pnlEnvLib;
-  lblEnvInfo.Left := 12;
-  lblEnvInfo.Top := 140;
-  lblEnvInfo.AutoSize := False;
-  lblEnvInfo.WordWrap := True;
-  lblEnvInfo.Caption :=
-    'Модули при сборке (dcc32 -U, -I, -O, -R) ищутся по порядку:' + #13#10 +
-    '  1. папка проекта;' + #13#10 +
-    '  2. Search path проекта из его .dof;' + #13#10 +
-    '  3. UiLib рядом с программой - туда копируются Ui*.pas из папки ' +
-    'Ui components; она пустая - из папки программы, папки проекта ' +
-    'редактора или папок выше программы;' + #13#10 +
-    '  4. Library path.' + #13#10 +
-    'Browsing path компилятору не передаётся, как и в самой Delphi.' +
-    #13#10#13#10 +
-    'Поля - те же, что на вкладке Compilers - Delphi: правка видна в обоих ' +
-    'местах. Папки, которых нет на этом компьютере, в списке остаются ' +
-    '(они могут быть с другого компьютера) и при сборке пропускаются; ' +
-    'удалить их - кнопка ... и Delete invalid.';
-  LoadEnvLibrary;
-end;
-
-procedure TForm2.LayoutEnvLibrary(Sender: TObject);
-var
-  EditW: Integer;
-
-  procedure Place(AEdit: TUiEdit; AButton: TUiButton);
-  begin
-    if (AEdit = nil) or (AButton = nil) then
-      Exit;
-    AEdit.Width := EditW;
-    AButton.Left := AEdit.Left + EditW + 4;
-  end;
-
-begin
-  if pnlEnvLib = nil then
-    Exit;
-  EditW := pnlEnvLib.ClientWidth - 120 - 46;
-  if EditW < 100 then
-    EditW := 100;
-  Place(edtEnvLib, btnEnvLib);
-  Place(edtEnvBrowse, btnEnvBrowse);
-  Place(edtEnvUiSrc, btnEnvUiSrc);
-  if lblEnvInfo <> nil then
-  begin
-    lblEnvInfo.Width := pnlEnvLib.ClientWidth - 24;
-    lblEnvInfo.Height := pnlEnvLib.ClientHeight - lblEnvInfo.Top - 8;
-  end;
-end;
-
-// Поля - из editor.ini: Delphi по умолчанию ([Compiler.Delphi] Default),
-// её раздел, [UiLib] Source
-procedure TForm2.LoadEnvLibrary;
-var
-  Ini: TIniFile;
-  Tools, Def: string;
-  SepPos: Integer;
-begin
-  if (Form1 = nil) or (cbEnvTool = nil) then
-    Exit;
-  FEnvLoading := True;
-  Ini := TIniFile.Create(Form1.SettingsFileName);
-  try
-    Tools := Ini.ReadString('Compiler.Delphi', 'Tools', '');
-    Def := Ini.ReadString('Compiler.Delphi', 'Default', '');
-    cbEnvTool.Items.Clear;
-    while Tools <> '' do
+  Result := -1;
+  for FieldIdx := 0 to High(FCompKeys) do
+    if CompareText(FCompKeys[FieldIdx], AKey) = 0 then
     begin
-      SepPos := Pos(';', Tools);
-      if SepPos = 0 then
-        SepPos := Length(Tools) + 1;
-      if Trim(Copy(Tools, 1, SepPos - 1)) <> '' then
-        cbEnvTool.Items.Add(Trim(Copy(Tools, 1, SepPos - 1)));
-      Delete(Tools, 1, SepPos);
-    end;
-    if cbEnvTool.Items.Count = 0 then
-      cbEnvTool.Items.Add('(default)');
-    cbEnvTool.ItemIndex := cbEnvTool.Items.IndexOf(Def);
-    if cbEnvTool.ItemIndex < 0 then
-      cbEnvTool.ItemIndex := 0;
-
-    if cbEnvTool.Items[cbEnvTool.ItemIndex] <> '(default)' then
-      FEnvSection := 'Compiler.Delphi.' + cbEnvTool.Items[cbEnvTool.ItemIndex]
-    else
-      FEnvSection := 'Compiler.Delphi';
-
-    edtEnvLib.Text := Ini.ReadString(FEnvSection, 'LibPath', '');
-    edtEnvBrowse.Text := Ini.ReadString(FEnvSection, 'BrowsePath', '');
-    edtEnvUiSrc.Text := Ini.ReadString('UiLib', 'Source', '');
-  finally
-    Ini.Free;
-    FEnvLoading := False;
-  end;
-  LayoutEnvLibrary(nil);
-end;
-
-// Выбранная Delphi становится основной, как на вкладке Compilers
-procedure TForm2.cbEnvToolChange(Sender: TObject);
-var
-  Ini: TIniFile;
-begin
-  if (Form1 = nil) or (cbEnvTool.ItemIndex < 0) then
-    Exit;
-  if cbEnvTool.Items[cbEnvTool.ItemIndex] <> '(default)' then
-  begin
-    Ini := TIniFile.Create(Form1.SettingsFileName);
-    try
-      Ini.WriteString('Compiler.Delphi', 'Default',
-                      cbEnvTool.Items[cbEnvTool.ItemIndex]);
-    finally
-      Ini.Free;
-    end;
-  end;
-  LoadEnvLibrary;
-end;
-
-function TForm2.EnvDelphiRoot: string;
-var
-  Ini: TIniFile;
-begin
-  Result := '';
-  if (Form1 = nil) or (FEnvSection = '') then
-    Exit;
-  Ini := TIniFile.Create(Form1.SettingsFileName);
-  try
-    Result := Trim(Ini.ReadString(FEnvSection, 'DelphiPath', ''));
-  finally
-    Ini.Free;
-  end;
-end;
-
-procedure TForm2.EnvEditChange(Sender: TObject);
-var
-  Ini: TIniFile;
-begin
-  if FEnvLoading or (Form1 = nil) or (FEnvSection = '') then
-    Exit;
-  Ini := TIniFile.Create(Form1.SettingsFileName);
-  try
-    case TUiEdit(Sender).Tag of
-      0: Ini.WriteString(FEnvSection, 'LibPath', TUiEdit(Sender).Text);
-      1: Ini.WriteString(FEnvSection, 'BrowsePath', TUiEdit(Sender).Text);
-      2: Ini.WriteString('UiLib', 'Source', TUiEdit(Sender).Text);
-    end;
-  finally
-    Ini.Free;
-  end;
-end;
-
-// Нормализация, как у полей Compilers: макросы ($(DELPHI) - корнем этой
-// Delphi), повторы, слэши; из списков - несуществующие папки
-procedure TForm2.EnvEditExit(Sender: TObject);
-var
-  Value: string;
-  Bad, Dropped: TStringList;
-begin
-  if FEnvLoading then
-    Exit;
-  Bad := TStringList.Create;
-  Dropped := TStringList.Create;
-  try
-    FMacroRoot := EnvDelphiRoot;
-    try
-      Value := NormalizePathValue(TUiEdit(Sender).Text, False,
-                                  TUiEdit(Sender).Tag <> 2, Dropped);
-    finally
-      FMacroRoot := '';
-    end;
-    if Value <> TUiEdit(Sender).Text then
-      TUiEdit(Sender).Text := Value;   // OnChange пишет в editor.ini
-    CollectUnresolved(Value, Bad);
-    WarnUnresolved(Bad, Dropped);
-  finally
-    Dropped.Free;
-    Bad.Free;
-  end;
-end;
-
-procedure TForm2.EnvBrowseClick(Sender: TObject);
-var
-  Value, ListName: string;
-  Edit: TUiEdit;
-begin
-  case TUiButton(Sender).Tag of
-    0: Edit := edtEnvLib;
-    1: Edit := edtEnvBrowse;
-  else
-    Edit := edtEnvUiSrc;
-  end;
-  Value := Edit.Text;
-  if Edit = edtEnvUiSrc then
-  begin
-    if (Value = '') and (Form1 <> nil) then
-      Value := ExtractFilePath(Application.ExeName);
-    if not SelectDirectory('Папка исходников Ui*.pas', '', Value) then
+      Result := FieldIdx;
       Exit;
-  end
-  else
-  begin
-    FMacroRoot := EnvDelphiRoot;
-    try
-      if Edit = edtEnvLib then
-        ListName := 'Library path'
-      else
-        ListName := 'Browsing path';
-      if not EditPathList(cbEnvTool.Text + ': ' + ListName, Value) then
-        Exit;
-    finally
-      FMacroRoot := '';
     end;
-  end;
-  Edit.Text := Value;
-  EnvEditExit(Edit);
 end;
 
-// Library path и Browsing path этой Delphi из реестра (Environment Options
-// - Library). Пути Delphi - первыми, свои, которых у неё нет, - после.
-procedure TForm2.btnEnvImportClick(Sender: TObject);
+// Где в editor.ini лежит поле страницы: почти все - в разделе типа и
+// инструмента (FCompSection); папка исходников своих компонентов Ui* - в
+// общем разделе [UiLib], ключ Source (её читает UiLibDir в Unit1)
+function TForm2.CompIniSection(const AKey: string): string;
+begin
+  if CompareText(AKey, 'UiSource') = 0 then
+    Result := 'UiLib'
+  else
+    Result := FCompSection;
+end;
+
+function TForm2.CompIniKey(const AKey: string): string;
+begin
+  if CompareText(AKey, 'UiSource') = 0 then
+    Result := 'Source'
+  else
+    Result := AKey;
+end;
+
+// «Взять из Delphi»: Library path и Browsing path из Environment Options
+// выбранной Delphi (реестр, ...\Library). Пути Delphi - первыми, свои, которых
+// у неё нет, - после. Delphi path пустой - ставится найденный.
+procedure TForm2.btnDelphiImportClick(Sender: TObject);
 var
   Root, FoundRoot, RegKey, RegLib, RegBrowse, Tool: string;
   Reg: TRegistry;
-  Ini: TIniFile;
+  RootIdx, LibIdx, BrowseIdx: Integer;
 
   // AFirst, к нему - из ASecond, чего в AFirst нет. AKept - сколько взято
   // из ASecond.
@@ -4080,10 +3817,15 @@ var
 var
   KeptLib, KeptBrowse: Integer;
 begin
-  if Form1 = nil then
+  if (Form1 = nil) or (FCompType <> 'Delphi') then
     Exit;
-  Root := EnvDelphiRoot;
-  Tool := cbEnvTool.Text;
+  RootIdx := CompFieldIdx('DelphiPath');
+  LibIdx := CompFieldIdx('LibPath');
+  BrowseIdx := CompFieldIdx('BrowsePath');
+  if (RootIdx < 0) or (LibIdx < 0) or (BrowseIdx < 0) then
+    Exit;
+  Root := Trim(FCompEdits[RootIdx].Text);
+  Tool := cbTool.Text;
   RegKey := FindDelphiRegKey(Root, Tool, FoundRoot);
   if RegKey = '' then
   begin
@@ -4091,17 +3833,11 @@ begin
                 ' (сравнивается с Delphi path: ' + Root + ').');
     Exit;
   end;
-  // Delphi path не задан - ставим найденный
+  // Delphi path не задан - ставим найденный (OnChange пишет в editor.ini)
   if Root = '' then
   begin
     Root := FoundRoot;
-    Ini := TIniFile.Create(Form1.SettingsFileName);
-    try
-      Ini.WriteString(FEnvSection, 'DelphiPath',
-                      IncludeTrailingPathDelimiter(Root));
-    finally
-      Ini.Free;
-    end;
+    FCompEdits[RootIdx].Text := IncludeTrailingPathDelimiter(Root);
   end;
 
   RegLib := '';
@@ -4128,31 +3864,17 @@ begin
 
   RegLib := ExpandDelphiRegVars(RegLib, Root, RegKey);
   RegBrowse := ExpandDelphiRegVars(RegBrowse, Root, RegKey);
-  edtEnvLib.Text := MergeLists(RegLib, edtEnvLib.Text, KeptLib);
-  EnvEditExit(edtEnvLib);
-  edtEnvBrowse.Text := MergeLists(RegBrowse, edtEnvBrowse.Text, KeptBrowse);
-  EnvEditExit(edtEnvBrowse);
+  FCompEdits[LibIdx].Text := MergeLists(RegLib, FCompEdits[LibIdx].Text,
+                                        KeptLib);
+  CompEditExit(FCompEdits[LibIdx]);
+  FCompEdits[BrowseIdx].Text := MergeLists(RegBrowse,
+                                           FCompEdits[BrowseIdx].Text,
+                                           KeptBrowse);
+  CompEditExit(FCompEdits[BrowseIdx]);
   ShowMessage('Пути взяты из ' + RegKey + '\Library.' + #13#10 +
               'Своих путей, которых у Delphi нет, оставлено: Library path - ' +
               IntToStr(KeptLib) + ', Browsing path - ' + IntToStr(KeptBrowse) +
               '.');
-end;
-
-// Переход на вкладку: её поля - заново из editor.ini (другая могла их
-// поменять). Поля Compilers без нормализации: она записала бы поверх
-// новые значения прежним текстом полей.
-procedure TForm2.MainPagesChange(Sender: TObject);
-begin
-  if MainPages = nil then
-    Exit;
-  if MainPages.ActivePage = TabEnv then
-    LoadEnvLibrary
-  else if MainPages.ActivePage = TabCompilers then
-  begin
-    LoadToolList(FCompType);
-    FSkipNormalize := True;
-    ShowCompilerPage(FCompType);
-  end;
 end;
 
 // ---------------------------------------------------------------------------
@@ -4407,12 +4129,11 @@ var
 begin
   Result := S;
 
-  Root := FMacroRoot;
-  if Root = '' then
-    for I := 0 to High(FCompKeys) do
-      if (CompareText(FCompKeys[I], 'DelphiPath') = 0) and
-         (FCompEdits[I] <> nil) then
-        Root := Trim(FCompEdits[I].Text);
+  Root := '';
+  for I := 0 to High(FCompKeys) do
+    if (CompareText(FCompKeys[I], 'DelphiPath') = 0) and
+       (FCompEdits[I] <> nil) then
+      Root := Trim(FCompEdits[I].Text);
 
   if Root <> '' then
   begin
@@ -4746,7 +4467,8 @@ begin
                               FCompIsList[I], Dropped);
       if V <> FCompEdits[I].Text then
         FCompEdits[I].Text := V;   // если поле ещё живо - показываем как есть
-      Ini.WriteString(FCompSection, FCompKeys[I], V);
+      Ini.WriteString(CompIniSection(FCompKeys[I]), CompIniKey(FCompKeys[I]),
+                      V);
       CollectUnresolved(V, Bad);
     end;
   finally
@@ -4854,7 +4576,8 @@ begin
 
   Ini := TIniFile.Create(Form1.SettingsFileName);
   try
-    Ini.WriteString(FCompSection, FCompKeys[I], TUiEdit(Sender).Text);
+    Ini.WriteString(CompIniSection(FCompKeys[I]), CompIniKey(FCompKeys[I]),
+                    TUiEdit(Sender).Text);
   finally
     Ini.Free;
   end;
