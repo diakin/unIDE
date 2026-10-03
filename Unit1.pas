@@ -1707,6 +1707,7 @@ type
     procedure LoadProjectReg;
     procedure RelocateMissingProjects;
     procedure CheckIniPaths;
+    function  MergeOwnSettings(const ASrc, ADst: string): Integer;
     procedure SaveProjectReg;
     procedure RegisterProject(const AName, APath: string);
     function  ProjectTargetOf(const AName: string): string;
@@ -7368,6 +7369,172 @@ begin
   Result := (I > 3) and (CompareText(Copy(AName, I - 2, 3), 'Old') = 0);
 end;
 
+// Раздел без данных: ключей нет или у всех пустые значения
+function IniSectionEmpty(AValues: TStrings): Boolean;
+var
+  Index: Integer;
+begin
+  Result := True;
+  for Index := 0 to AValues.Count - 1 do
+    if Trim(IniValueOf(AValues[Index])) <> '' then
+    begin
+      Result := False;
+      Exit;
+    end;
+end;
+
+// Текст раздела для сравнения: строки "Имя=значение" по алфавиту, чтобы
+// другой порядок ключей не считался другим содержимым
+function IniSortedText(AValues: TStrings): string;
+var
+  Sorted: TStringList;
+begin
+  Sorted := TStringList.Create;
+  try
+    Sorted.Assign(AValues);
+    Sorted.Sort;
+    Result := Sorted.Text;
+  finally
+    Sorted.Free;
+  end;
+end;
+
+// Имя раздела, копией которого является AName ("ProjectsOld2" -> "Projects")
+function IniOldBaseName(const AName: string): string;
+var
+  Pos1: Integer;
+begin
+  Pos1 := Length(AName);
+  while (Pos1 > 0) and (AName[Pos1] in ['0'..'9']) do
+    Dec(Pos1);
+  Result := Copy(AName, 1, Pos1 - 3);
+end;
+
+// editor.ini при сборке самого редактора: ASrc - из папки .dpr, ADst -
+// рядом с собранным exe, его правила запущенная копия.
+//
+// Настройки запущенной копии не затираются. Из ASrc:
+//   - раздела, которого в ADst нет, - копируется целиком;
+//   - раздел есть, но содержимое другое - ключи, которых в ADst нет и
+//     значение которых не путь (новые параметры), дописываются; сам раздел
+//     ASrc сохраняется копией [<Раздел>Old<N>], если такой же копии ещё
+//     нет. Какие пути брать - решает при запуске CheckIniPaths: в разделе
+//     путь, которого нет на диске, - берётся из копии, где он есть;
+//   - копии [<Раздел>Old<N>] из ASrc - тоже копиями, под своими номерами
+//     ADst, если такой же копии там нет;
+//   - разделы без данных не переносятся.
+// Возвращает число изменённых разделов ADst.
+function TForm1.MergeOwnSettings(const ASrc, ADst: string): Integer;
+var
+  SrcIni, DstIni: TMemIniFile;
+  SrcSects, DstSects, SrcValues, DstValues, OldValues: TStringList;
+  SectIdx, KeyIdx, OldIdx, OldNum, MaxNum, PathExist, PathTotal: Integer;
+  Sect, BaseSect, KeyName, Value, CopyName, SrcText: string;
+  HasCopy: Boolean;
+begin
+  Result := 0;
+  SrcIni := TMemIniFile.Create(ASrc);
+  DstIni := TMemIniFile.Create(ADst);
+  SrcSects := TStringList.Create;
+  DstSects := TStringList.Create;
+  SrcValues := TStringList.Create;
+  DstValues := TStringList.Create;
+  OldValues := TStringList.Create;
+  try
+    SrcIni.ReadSections(SrcSects);
+    for SectIdx := 0 to SrcSects.Count - 1 do
+    begin
+      Sect := SrcSects[SectIdx];
+      SrcIni.ReadSectionValues(Sect, SrcValues);
+      if IniSectionEmpty(SrcValues) then
+        Continue;
+      SrcText := IniSortedText(SrcValues);
+
+      if IniIsOldSection(Sect) then
+        BaseSect := IniOldBaseName(Sect)
+      else
+        BaseSect := Sect;
+
+      // Раздела в ADst нет - целиком, под тем же именем
+      if not IniIsOldSection(Sect) and not DstIni.SectionExists(Sect) then
+      begin
+        for KeyIdx := 0 to SrcValues.Count - 1 do
+          DstIni.WriteString(Sect, SrcValues.Names[KeyIdx],
+                             IniValueOf(SrcValues[KeyIdx]));
+        Inc(Result);
+        LogComp('editor.ini рядом с exe: добавлен раздел [' + Sect + ']');
+        Continue;
+      end;
+
+      // Совпадает с разделом ADst или с одной из его копий - ничего не нужно
+      DstIni.ReadSections(DstSects);
+      HasCopy := False;
+      MaxNum := 0;
+      if DstIni.SectionExists(BaseSect) then
+      begin
+        DstIni.ReadSectionValues(BaseSect, DstValues);
+        HasCopy := IniSortedText(DstValues) = SrcText;
+      end;
+      for OldIdx := 0 to DstSects.Count - 1 do
+        if IniIsOldSection(DstSects[OldIdx]) and
+           (CompareText(IniOldBaseName(DstSects[OldIdx]), BaseSect) = 0) then
+        begin
+          OldNum := StrToIntDef(Copy(DstSects[OldIdx], Length(BaseSect) + 4,
+                                     MaxInt), 0);
+          if OldNum > MaxNum then
+            MaxNum := OldNum;
+          if not HasCopy then
+          begin
+            DstIni.ReadSectionValues(DstSects[OldIdx], OldValues);
+            HasCopy := IniSortedText(OldValues) = SrcText;
+          end;
+        end;
+      if HasCopy then
+        Continue;
+
+      // Новые параметры (не пути) - в сам раздел
+      if not IniIsOldSection(Sect) then
+        for KeyIdx := 0 to SrcValues.Count - 1 do
+        begin
+          KeyName := SrcValues.Names[KeyIdx];
+          Value := IniValueOf(SrcValues[KeyIdx]);
+          if DstIni.ValueExists(Sect, KeyName) or (Trim(Value) = '') then
+            Continue;
+          IniPathCount(Value, PathExist, PathTotal);
+          if PathTotal > 0 then
+            Continue;
+          DstIni.WriteString(Sect, KeyName, Value);
+          LogComp('editor.ini рядом с exe: [' + Sect + '] добавлен ключ ' +
+                  KeyName);
+        end;
+
+      // Сам раздел из ASrc - копией
+      CopyName := BaseSect + 'Old' + IntToStr(MaxNum + 1);
+      for KeyIdx := 0 to SrcValues.Count - 1 do
+        DstIni.WriteString(CopyName, SrcValues.Names[KeyIdx],
+                           IniValueOf(SrcValues[KeyIdx]));
+      if IniIsOldSection(Sect) then
+        LogComp('editor.ini рядом с exe: копия [' + Sect + '] из папки ' +
+                'проекта перенесена как [' + CopyName + ']')
+      else
+        LogComp('editor.ini рядом с exe: [' + Sect + '] в папке проекта ' +
+                'другой - сохранён как [' + CopyName + ']');
+      Inc(Result);
+    end;
+
+    if Result > 0 then
+      DstIni.UpdateFile;
+  finally
+    OldValues.Free;
+    DstValues.Free;
+    SrcValues.Free;
+    DstSects.Free;
+    SrcSects.Free;
+    DstIni.Free;
+    SrcIni.Free;
+  end;
+end;
+
 // При запуске, до чтения настроек. Для каждого раздела editor.ini (кроме
 // сохранённых копий):
 //   1. Есть значения-пути, которых нет на диске (из списка через ";" - хотя
@@ -7381,7 +7548,8 @@ end;
 //      его пути на диске, возвращается в раздел (проект, который на другой
 //      машине убрали из списка).
 // Так при переносе между машинами настройки каждой машины хранятся в
-// копиях и возвращаются, когда программа снова запущена на ней. Что сделано
+// копиях и возвращаются, когда программа снова запущена на ней. Копии без
+// данных (все значения пустые) удаляются. Что сделано
 // - в FIniPathLog, в HiLite log при показе окна.
 // TMemIniFile, а не TIniFile: TIniFile.ReadString читает не больше 2047
 // знаков, BrowsePath к этому близок.
@@ -7408,7 +7576,17 @@ begin
     begin
       S := Sects[I];
       if IniIsOldSection(S) then
+      begin
+        // Копия без данных ничего не вернёт - убираем
+        Ini.ReadSectionValues(S, Cur);
+        if IniSectionEmpty(Cur) then
+        begin
+          Ini.EraseSection(S);
+          Changed := True;
+          FIniPathLog.Add('editor.ini [' + S + ']: копия без данных удалена');
+        end;
         Continue;
+      end;
       Ini.ReadSectionValues(S, Cur);
 
       // Копии этого раздела, от новой к старой
@@ -36727,12 +36905,14 @@ end;
 // собой (SettingsFileName, UiSchemaFileName, папка schemes). Копируются
 // только те, которых там ещё нет: настройки, поменянные в запущенной копии,
 // не затираются. Откуда - из папки .dpr, чего там нет - из папки
-// работающего редактора.
+// работающего редактора. editor.ini, который там уже есть, дополняется:
+// новые разделы и параметры дописываются, отличающиеся разделы
+// сохраняются копиями [<Раздел>Old<N>] (MergeOwnSettings).
 procedure TForm1.CopyOwnRunFiles(const ADprDir, AExeDir: string);
 var
   SrcDirs: array[0..1] of string;
   DstDir: string;
-  Copied: Integer;
+  Copied, SrcIdx, Merged: Integer;
 
   // Файл ARel (путь от папки) - из первой папки-источника, где он есть
   procedure CopyIfMissing(const ARel: string);
@@ -36778,12 +36958,30 @@ begin
   if CompareText(SrcDirs[0], DstDir) = 0 then
     Exit;   // exe рядом с .dpr - файлы и так на месте
   Copied := 0;
-  CopyIfMissing('editor.ini');
+  Merged := 0;
+  if FileExists(DstDir + 'editor.ini') then
+  begin
+    for SrcIdx := Low(SrcDirs) to High(SrcDirs) do
+      if FileExists(SrcDirs[SrcIdx] + 'editor.ini') then
+      begin
+        if CompareText(ExpandFileName(SrcDirs[SrcIdx] + 'editor.ini'),
+                       ExpandFileName(DstDir + 'editor.ini')) <> 0 then
+          Merged := MergeOwnSettings(SrcDirs[SrcIdx] + 'editor.ini',
+                                     DstDir + 'editor.ini');
+        Break;
+      end;
+  end
+  else
+    CopyIfMissing('editor.ini');
   CopyIfMissing('IDE.clr');
   CopyDirIfMissing('schemes');
   if Copied > 0 then
     LogComp(Format('Рядом с exe скопировано файлов: %d (editor.ini, IDE.clr, ' +
     'schemes - которых там не было)', [Copied]));
+  if Merged > 0 then
+    LogComp(Format('editor.ini рядом с exe: изменено разделов: %d. Пути, ' +
+    'которых нет на диске, при запуске берутся из копий [...Old<N>]',
+    [Merged]));
 end;
 
 // Можно ли записать exe; занят - переименовать его в <имя>.exe.old (или
