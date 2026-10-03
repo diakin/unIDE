@@ -1822,7 +1822,7 @@ type
     procedure RightPagesChange(Sender: TObject);
     procedure RefreshCodeTree;
     procedure RefreshRapidQInspector;
-    function  RapidQComponentsReady: Boolean;
+    function  RapidQComponentsReady(AReport: Boolean): Boolean;
     procedure RapidQIncludeDirs(var AMainDir, AIncDir: string);
     function  RapidQLoadCustomTypes(ALines: TStrings;
                                     const AFile: string): Integer;
@@ -20282,7 +20282,7 @@ begin
                             ', классов TYPE ... EXTENDS - ' +
                             IntToStr(CustomCount) +
                             '. Значения - текст из блоков CREATE, снимка пока нет';
-    if not RapidQComponentsReady then
+    if not RapidQComponentsReady(False) then
       FObjSource.Caption := FObjSource.Caption +
                             '. Component.data не найден - список свойств ' +
                             'классов не показывается';
@@ -20307,30 +20307,63 @@ begin
   end;
 end;
 
-// Описание компонентов RapidQ загружено. Папки поиска - рядом с exe, его
-// rapidq_ref и папка компилятора RapidQ из настроек ([Compiler.RapidQ
-// Basic] CompPath). В первой папке, где он есть, берётся общий
-// ComponentAll.data (собран из двух редакций); нет его - Component.data и
-// к нему Component1.data той же папки (в ней классы меню). Загружается
-// один раз за сеанс.
-function TForm1.RapidQComponentsReady: Boolean;
+// Описание компонентов RapidQ загружено. Папки поиска по порядку:
+//   рядом с exe;
+//   rapidq_ref рядом с exe (туда его кладёт пересборка, CopyOwnRunFiles);
+//   rapidq_ref в папке выше exe (exe в Output\, rapidq_ref - рядом с .dpr);
+//   папка компилятора RapidQ из настроек ([Compiler.RapidQ Basic] CompPath).
+// В первой папке, где что-то нашлось, берётся общий ComponentAll.data; нет
+// его или он пустой - Component.data и к нему Component1.data той же папки;
+// нет и его - один Component1.data. Загружается один раз за сеанс.
+// AReport - не нашлось: каждый проверенный файл и что с ним - в лог.
+function TForm1.RapidQComponentsReady(AReport: Boolean): Boolean;
 const
   AllName = 'ComponentAll.data';
   MainName = 'Component.data';
   ExtraName = 'Component1.data';
 var
-  Dirs: TStringList;
+  Dirs, Tried: TStringList;
   Ini: TIniFile;
-  CompDir, Primary, Extra: string;
-  DirIdx, Members, Added: Integer;
+  ExeDir, CompDir, Extra: string;
+  DirIdx, Members, Added, TryIdx: Integer;
+
+  procedure AddDir(const ADir: string);
+  var
+    Full: string;
+  begin
+    if ADir = '' then
+      Exit;
+    Full := IncludeTrailingPathDelimiter(ExpandFileName(ADir));
+    if Dirs.IndexOf(Full) < 0 then
+      Dirs.Add(Full);
+  end;
+
+  // Загрузить AFile; True - классы есть. Что вышло - в Tried.
+  function TryLoad(const AFile: string): Boolean;
+  begin
+    Result := False;
+    if not FileExists(AFile) then
+    begin
+      Tried.Add(AFile + ' - нет файла');
+      Exit;
+    end;
+    Result := RqLoadComponents(AFile) > 0;
+    if not Result then
+      Tried.Add(AFile + ' - есть, но классов в нём не прочитано');
+  end;
+
 begin
   Result := RqComponentFile <> '';
   if Result then
     Exit;
   Dirs := TStringList.Create;
+  Tried := TStringList.Create;
   try
-    Dirs.Add(ExtractFilePath(Application.ExeName));
-    Dirs.Add(ExtractFilePath(Application.ExeName) + 'rapidq_ref\');
+    Dirs.CaseSensitive := False;
+    ExeDir := ExtractFilePath(Application.ExeName);
+    AddDir(ExeDir);
+    AddDir(ExeDir + 'rapidq_ref');
+    AddDir(ExtractFilePath(ExcludeTrailingPathDelimiter(ExeDir)) + 'rapidq_ref');
     if FileExists(SettingsFileName) then
     begin
       Ini := TIniFile.Create(SettingsFileName);
@@ -20340,44 +20373,47 @@ begin
       finally
         Ini.Free;
       end;
-      if CompDir <> '' then
-      begin
-        // В CompPath бывает и папка, и путь к rc.exe
-        if FileExists(CompDir) then
-          CompDir := ExtractFilePath(CompDir);
-        Dirs.Add(IncludeTrailingPathDelimiter(CompDir));
-      end;
+      // В CompPath бывает и папка, и путь к rc.exe
+      if (CompDir <> '') and FileExists(CompDir) then
+        CompDir := ExtractFilePath(CompDir);
+      AddDir(CompDir);
     end;
+
     for DirIdx := 0 to Dirs.Count - 1 do
     begin
-      // Общий файл; нет его - Component.data с добавкой Component1.data;
-      // нет и его - один Component1.data
-      Primary := Dirs[DirIdx] + AllName;
       Extra := '';
-      if not FileExists(Primary) then
+      if TryLoad(Dirs[DirIdx] + AllName) then
+        Result := True
+      else if TryLoad(Dirs[DirIdx] + MainName) then
       begin
-        Primary := Dirs[DirIdx] + MainName;
+        Result := True;
         Extra := Dirs[DirIdx] + ExtraName;
-      end;
-      if not FileExists(Primary) then
-      begin
-        Primary := Extra;
-        Extra := '';
-      end;
-      if not FileExists(Primary) or (RqLoadComponents(Primary) = 0) then
+      end
+      else if TryLoad(Dirs[DirIdx] + ExtraName) then
+        Result := True;
+      if not Result then
         Continue;
-      LogComp('Описание компонентов RapidQ: ' + Primary + ', классов ' +
-              IntToStr(RqClassCount));
+      LogComp('Описание компонентов RapidQ: ' + RqComponentFile +
+              ', классов ' + IntToStr(RqClassCount));
       if (Extra <> '') and FileExists(Extra) then
       begin
         Added := RqMergeComponents(Extra, Members);
         LogComp('  из ' + Extra + ' добавлено классов ' + IntToStr(Added) +
                 ', свойств и событий у прежних классов ' + IntToStr(Members));
       end;
-      Result := True;
       Exit;
     end;
+
+    if AReport then
+    begin
+      LogComp('Описание компонентов RapidQ не найдено. Проверено:');
+      for TryIdx := 0 to Tried.Count - 1 do
+        LogComp('    ' + Tried[TryIdx]);
+      LogComp('  ComponentAll.data лежит в репозитории в rapidq_ref; его ' +
+              'можно положить в любую из этих папок');
+    end;
   finally
+    Tried.Free;
     Dirs.Free;
   end;
 end;
@@ -36962,10 +36998,10 @@ begin
             'запомнится как цель сборки');
     Exit;
   end;
-  if not RapidQComponentsReady then
+  if not RapidQComponentsReady(True) then
   begin
     LogComp('Снимок RapidQ: нет описания компонентов (ComponentAll.data) - ' +
-            'неизвестно, какие свойства читать');
+            'неизвестно, какие свойства читать. Где искали - строками выше');
     Exit;
   end;
   ShowCompLog;
