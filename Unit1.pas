@@ -977,6 +977,20 @@ type
     FWatchWnd: TDlgWatch;
     FWatchList: TStringList;
     FWatchNotes: string;      // уже записанные в лог разборы «не найдено»
+    // Массив, выбранный в окне Watch: панель справа - поля индексов (по
+    // одному на измерение), значение ячейки и таблица (1 и 2 измерения).
+    // См. WatchArrUpdate.
+    FWatchArr: TDbgArrayInfo;
+    FWatchArrExpr: string;    // выражение, чей массив показан; '' - панели нет
+    FWatchArrPanel: TPanel;
+    FWatchArrSplit: TSplitter;
+    FWatchArrTop: TPanel;
+    FWatchArrType: TLabel;
+    FWatchArrCell: TLabel;
+    FWatchArrGrid: TDrawGrid;
+    FWatchArrEdits: array of TUiEdit;
+    FWatchArrLock: Boolean;   // поля и таблица ведут друг друга
+    FWatchArrGrown: Integer;  // на сколько расширили окно под панель
     // Выражение для пункта Add watch меню редактора (PopupMenuPopup)
     FPopupWatchExpr: string;
     // Полоса меток: строка, по которой щёлкнули; одиночный щелчок
@@ -1930,6 +1944,7 @@ type
     procedure DbgRunToCursor;
     // Окно Watch
     function  DbgExprAtCaret: string;
+    function  DbgDeclNameAt(ACharPos: Integer; const AWord: string): string;
     function  DbgExprAtChar(ACharPos: Integer): string;
     function  DbgCharAtClient(const APoint: TPoint): Integer;
     function  DbgEvalText(const AExpr: string; var AValue: string): Boolean;
@@ -1949,6 +1964,20 @@ type
     procedure WatchLocalsClick(Sender: TObject);
     procedure WatchKeyDown(Sender: TObject; var Key: Word;
                            Shift: TShiftState);
+    procedure WatchSelectItem(Sender: TObject; Item: TListItem;
+                              Selected: Boolean);
+    function  WatchStateText: string;
+    procedure WatchArrBuild;
+    procedure WatchArrShow(AVisible: Boolean);
+    procedure WatchArrSetup;
+    procedure WatchArrUpdate;
+    procedure WatchArrIndices(var AIndex: array of Integer);
+    procedure WatchArrCellShow;
+    procedure WatchArrEditChange(Sender: TObject);
+    procedure WatchArrDrawCell(Sender: TObject; ACol, ARow: Integer;
+                               Rect: TRect; State: TGridDrawState);
+    procedure WatchArrSelectCell(Sender: TObject; ACol, ARow: Integer;
+                                 var CanSelect: Boolean);
     procedure DbgClearExec;
     procedure DbgClearEdits;
     function  DbgLineNow(const AFileName: string; ABuildLine: Integer): Integer;
@@ -37081,6 +37110,40 @@ begin
     end;
   end;
   Result := DbgExprAtChar(RichEdit1.SelStart);
+  if Result = '' then
+    Exit;
+  Result := DbgDeclNameAt(RichEdit1.SelStart, Result);
+end;
+
+// Каретка правее двоеточия в строке описания («T100: array[0..9] of Real»,
+// «K, L: Integer»): в Watch идёт описанная переменная (первая из списка),
+// а не слово типа под кареткой. Иначе - AWord как есть.
+function TForm1.DbgDeclNameAt(ACharPos: Integer; const AWord: string): string;
+var
+  LineIdx, LineStart, CaretCol, ColonPos, NameIdx: Integer;
+  LineText, NamePart: string;
+begin
+  Result := AWord;
+  LineIdx := SendMessage(RichEdit1.Handle, EM_LINEFROMCHAR, ACharPos, 0);
+  if (LineIdx < 0) or (LineIdx >= RichEdit1.Lines.Count) then
+    Exit;
+  LineStart := SendMessage(RichEdit1.Handle, EM_LINEINDEX, LineIdx, 0);
+  LineText := RichEdit1.Lines[LineIdx];
+  CaretCol := ACharPos - LineStart + 1;
+  ColonPos := Pos(':', LineText);
+  if (ColonPos = 0) or (CaretCol <= ColonPos) or
+     (Copy(LineText, ColonPos + 1, 1) = '=') then
+    Exit;
+  NamePart := Trim(Copy(LineText, 1, ColonPos - 1));
+  if Pos(',', NamePart) > 0 then
+    NamePart := Trim(Copy(NamePart, 1, Pos(',', NamePart) - 1));
+  // Слева от двоеточия - только имя (var-строка, поле записи)
+  if (NamePart = '') or not (NamePart[1] in ['A'..'Z', 'a'..'z', '_']) then
+    Exit;
+  for NameIdx := 2 to Length(NamePart) do
+    if not (NamePart[NameIdx] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
+      Exit;
+  Result := NamePart;
 end;
 
 // Имя у символа ACharPos (на нём или сразу за ним, как у каретки) вместе с
@@ -37293,6 +37356,8 @@ begin
     FWatchWnd.miWatchLocals.OnClick := WatchLocalsClick;
     FWatchWnd.lvWatch.OnKeyDown := WatchKeyDown;
     FWatchWnd.lvWatch.OnDblClick := WatchEditClick;
+    FWatchWnd.lvWatch.OnSelectItem := WatchSelectItem;
+    WatchArrBuild;
     FWatchWnd.Left := Left + Width - FWatchWnd.Width - 40;
     FWatchWnd.Top := Top + Height - FWatchWnd.Height - 80;
     if FWatchWnd.Left < Screen.WorkAreaLeft then
@@ -37402,6 +37467,7 @@ begin
   finally
     FWatchWnd.lvWatch.Items.EndUpdate;
   end;
+  WatchArrUpdate;
 end;
 
 function TForm1.DbgWatchSelected: Integer;
@@ -37512,6 +37578,406 @@ begin
       Key := 0;
     end;
   end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Массив в окне Watch
+//
+//  Выбранное выражение - статический массив: справа панель. Вверху тип и
+//  границы, поля индексов (по одному на измерение) и значение ячейки с
+//  этими индексами. Ниже таблица: для одномерного - индекс и значение, для
+//  двумерного - строки по первому индексу, столбцы по второму. Для трёх
+//  измерений и больше таблицы нет - только поля и ячейка.
+//
+//  Значения в таблице читаются из памяти программы при отрисовке: видимые
+//  ячейки, а не весь массив. Щелчок по ячейке - её индексы в поля; правка
+//  поля - переход таблицы к ячейке.
+// ---------------------------------------------------------------------------
+
+// Пусто - программа стоит и отладочная информация есть; иначе состояние
+function TForm1.WatchStateText: string;
+begin
+  Result := '';
+  if FDbgSession = nil then
+    Result := '<программа не запущена>'
+  else if FDbgSession.Finished then
+    Result := '<программа завершилась>'
+  else if not FDbgSession.Paused then
+    Result := '<программа выполняется>'
+  else if FDbgSyms = nil then
+    Result := '<нет отладочной информации>';
+end;
+
+procedure TForm1.WatchArrBuild;
+begin
+  FWatchArrPanel := TPanel.Create(FWatchWnd);
+  FWatchArrPanel.Parent := FWatchWnd;
+  FWatchArrPanel.BevelOuter := bvNone;
+  FWatchArrPanel.Caption := '';
+  FWatchArrPanel.Width := 380;
+  FWatchArrPanel.Align := alRight;
+  FWatchArrPanel.Visible := False;
+
+  FWatchArrSplit := TSplitter.Create(FWatchWnd);
+  FWatchArrSplit.Parent := FWatchWnd;
+  FWatchArrSplit.Align := alRight;
+  FWatchArrSplit.Width := 4;
+  FWatchArrSplit.MinSize := 120;
+  FWatchArrSplit.Visible := False;
+
+  FWatchArrTop := TPanel.Create(FWatchWnd);
+  FWatchArrTop.Parent := FWatchArrPanel;
+  FWatchArrTop.BevelOuter := bvNone;
+  FWatchArrTop.Caption := '';
+  FWatchArrTop.Height := 74;
+  FWatchArrTop.Align := alTop;
+
+  FWatchArrType := TLabel.Create(FWatchWnd);
+  FWatchArrType.Parent := FWatchArrTop;
+  FWatchArrType.Left := 6;
+  FWatchArrType.Top := 4;
+  FWatchArrType.ShowAccelChar := False;
+
+  FWatchArrCell := TLabel.Create(FWatchWnd);
+  FWatchArrCell.Parent := FWatchArrTop;
+  FWatchArrCell.Left := 6;
+  FWatchArrCell.Top := 52;
+  FWatchArrCell.ShowAccelChar := False;
+  FWatchArrCell.Font.Style := [fsBold];
+
+  FWatchArrGrid := TDrawGrid.Create(FWatchWnd);
+  FWatchArrGrid.Parent := FWatchArrPanel;
+  FWatchArrGrid.Align := alClient;
+  FWatchArrGrid.BorderStyle := bsNone;
+  FWatchArrGrid.DefaultDrawing := False;
+  FWatchArrGrid.DefaultRowHeight := 18;
+  FWatchArrGrid.Options := [goFixedVertLine, goFixedHorzLine, goVertLine,
+                            goHorzLine, goColSizing, goThumbTracking];
+  FWatchArrGrid.OnDrawCell := WatchArrDrawCell;
+  FWatchArrGrid.OnSelectCell := WatchArrSelectCell;
+end;
+
+// Панель справа: показать или убрать. Окно расширяется на её ширину, если
+// иначе списку выражений осталось бы мало места, и сужается обратно.
+procedure TForm1.WatchArrShow(AVisible: Boolean);
+begin
+  if (FWatchArrPanel = nil) or (FWatchArrPanel.Visible = AVisible) then
+    Exit;
+  if AVisible then
+  begin
+    if FWatchWnd.ClientWidth - FWatchArrPanel.Width < 400 then
+    begin
+      FWatchArrGrown := FWatchArrPanel.Width + FWatchArrSplit.Width;
+      FWatchWnd.Width := FWatchWnd.Width + FWatchArrGrown;
+    end;
+    FWatchArrPanel.Visible := True;
+    // Разделитель - левее панели: порядок alRight задаёт Left
+    FWatchArrSplit.Left := FWatchArrPanel.Left - FWatchArrSplit.Width;
+    FWatchArrSplit.Visible := True;
+  end
+  else
+  begin
+    FWatchArrSplit.Visible := False;
+    FWatchArrPanel.Visible := False;
+    if FWatchArrGrown > 0 then
+    begin
+      FWatchWnd.Width := FWatchWnd.Width - FWatchArrGrown;
+      FWatchArrGrown := 0;
+    end;
+    FWatchArrExpr := '';
+  end;
+end;
+
+// Поля индексов и таблица под измерения FWatchArr
+procedure TForm1.WatchArrSetup;
+const
+  MaxRows = 1000000;
+  EditWidth = 64;
+var
+  DimIdx, Count1, Count2: Integer;
+  DimText: string;
+  Edit: TUiEdit;
+begin
+  for DimIdx := 0 to High(FWatchArrEdits) do
+    FWatchArrEdits[DimIdx].Free;
+  SetLength(FWatchArrEdits, FWatchArr.DimCount);
+
+  DimText := '';
+  for DimIdx := 0 to FWatchArr.DimCount - 1 do
+  begin
+    if DimText <> '' then
+      DimText := DimText + ', ';
+    DimText := DimText + IntToStr(FWatchArr.Lo[DimIdx]) + '..' +
+               IntToStr(FWatchArr.Hi[DimIdx]);
+
+    Edit := TUiEdit.Create(FWatchWnd);
+    Edit.Parent := FWatchArrTop;
+    Edit.Left := 6 + DimIdx * (EditWidth + 6);
+    Edit.Top := 24;
+    Edit.Width := EditWidth;
+    Edit.Text := IntToStr(FWatchArr.Lo[DimIdx]);
+    Edit.Hint := 'Индекс ' + IntToStr(DimIdx + 1) + ': ' +
+                 IntToStr(FWatchArr.Lo[DimIdx]) + '..' +
+                 IntToStr(FWatchArr.Hi[DimIdx]);
+    Edit.ShowHint := True;
+    Edit.OnChange := WatchArrEditChange;
+    FWatchArrEdits[DimIdx] := Edit;
+  end;
+  FWatchArrType.Caption := FWatchArrExpr + ': [' + DimText + '] ' +
+                           FWatchArr.TypeText;
+  FWatchArrType.Hint := FWatchArrType.Caption;
+
+  Count1 := FWatchArr.Hi[0] - FWatchArr.Lo[0] + 1;
+  if Count1 > MaxRows then
+    Count1 := MaxRows;
+  FWatchArrLock := True;
+  try
+    case FWatchArr.DimCount of
+      1:
+      begin
+        FWatchArrGrid.ColCount := 2;
+        FWatchArrGrid.RowCount := Count1 + 1;
+        FWatchArrGrid.FixedCols := 1;
+        FWatchArrGrid.FixedRows := 1;
+        FWatchArrGrid.ColWidths[0] := 70;
+        FWatchArrGrid.ColWidths[1] := 260;
+        FWatchArrGrid.Visible := True;
+      end;
+      2:
+      begin
+        Count2 := FWatchArr.Hi[1] - FWatchArr.Lo[1] + 1;
+        if Count2 > MaxRows then
+          Count2 := MaxRows;
+        FWatchArrGrid.ColCount := Count2 + 1;
+        FWatchArrGrid.RowCount := Count1 + 1;
+        FWatchArrGrid.FixedCols := 1;
+        FWatchArrGrid.FixedRows := 1;
+        FWatchArrGrid.DefaultColWidth := 90;
+        FWatchArrGrid.ColWidths[0] := 60;
+        FWatchArrGrid.Visible := True;
+      end;
+    else
+      FWatchArrGrid.Visible := False;
+    end;
+    if FWatchArrGrid.Visible then
+    begin
+      FWatchArrGrid.Row := 1;
+      FWatchArrGrid.Col := 1;
+    end;
+  finally
+    FWatchArrLock := False;
+  end;
+  UiPaintTree(FWatchArrPanel);
+end;
+
+// Выбрано другое выражение или новая остановка: массив ли это, и какой
+procedure TForm1.WatchArrUpdate;
+var
+  ExprIdx, DimIdx: Integer;
+  ExprText, ErrText: string;
+  NewInfo: TDbgArrayInfo;
+  SameShape: Boolean;
+begin
+  if (FWatchWnd = nil) or (FWatchArrPanel = nil) then
+    Exit;
+  ExprIdx := DbgWatchSelected;
+  if ExprIdx < 0 then
+  begin
+    WatchArrShow(False);
+    Exit;
+  end;
+  ExprText := FWatchList[ExprIdx];
+
+  if WatchStateText <> '' then
+  begin
+    // Программа не стоит: размеры массива не узнать. Панель того же
+    // выражения остаётся (значения - состоянием), другого - убирается
+    if CompareText(ExprText, FWatchArrExpr) <> 0 then
+      WatchArrShow(False)
+    else
+    begin
+      FWatchArrGrid.Invalidate;
+      WatchArrCellShow;
+    end;
+    Exit;
+  end;
+
+  if not FDbgSyms.ArrayInfo(ExprText, FDbgSession.ImageBase,
+                            FDbgSession.StopEip, FDbgSession.StopRegs,
+                            FDbgSession.ReadMemory, NewInfo, ErrText) then
+  begin
+    WatchArrShow(False);
+    Exit;
+  end;
+
+  // Тот же массив - поля и таблица остаются, с прежними индексами
+  SameShape := FWatchArrPanel.Visible and
+               (CompareText(ExprText, FWatchArrExpr) = 0) and
+               (NewInfo.DimCount = FWatchArr.DimCount);
+  if SameShape then
+    for DimIdx := 0 to NewInfo.DimCount - 1 do
+      if (NewInfo.Lo[DimIdx] <> FWatchArr.Lo[DimIdx]) or
+         (NewInfo.Hi[DimIdx] <> FWatchArr.Hi[DimIdx]) then
+        SameShape := False;
+  FWatchArr := NewInfo;
+  FWatchArrExpr := ExprText;
+  WatchArrShow(True);
+  if not SameShape then
+    WatchArrSetup;
+  FWatchArrGrid.Invalidate;
+  WatchArrCellShow;
+end;
+
+// Индексы из полей; не число - нижняя граница
+procedure TForm1.WatchArrIndices(var AIndex: array of Integer);
+var
+  DimIdx: Integer;
+begin
+  for DimIdx := 0 to High(AIndex) do
+    if DimIdx <= High(FWatchArrEdits) then
+      AIndex[DimIdx] := StrToIntDef(Trim(FWatchArrEdits[DimIdx].Text),
+                                    FWatchArr.Lo[DimIdx])
+    else
+      AIndex[DimIdx] := 0;
+end;
+
+// Значение ячейки по индексам из полей
+procedure TForm1.WatchArrCellShow;
+var
+  Index: array[0..DbgMaxArrayDims - 1] of Integer;
+  DimIdx: Integer;
+  IdxText, ValueText, StateText: string;
+begin
+  if (FWatchArrCell = nil) or (FWatchArr.DimCount = 0) then
+    Exit;
+  WatchArrIndices(Index);
+  IdxText := '';
+  for DimIdx := 0 to FWatchArr.DimCount - 1 do
+  begin
+    if IdxText <> '' then
+      IdxText := IdxText + ', ';
+    IdxText := IdxText + IntToStr(Index[DimIdx]);
+  end;
+  StateText := WatchStateText;
+  if StateText <> '' then
+    ValueText := StateText
+  else
+    ValueText := FDbgSyms.ArrayElement(FWatchArr,
+                   Slice(Index, FWatchArr.DimCount), FDbgSession.ReadMemory);
+  FWatchArrCell.Caption := FWatchArrExpr + '[' + IdxText + '] = ' + ValueText;
+end;
+
+// Поле индекса изменили: значение ячейки и переход таблицы к ней
+procedure TForm1.WatchArrEditChange(Sender: TObject);
+var
+  Index: array[0..DbgMaxArrayDims - 1] of Integer;
+  NewRow, NewCol: Integer;
+begin
+  WatchArrCellShow;
+  if FWatchArrLock or not FWatchArrGrid.Visible then
+    Exit;
+  WatchArrIndices(Index);
+  NewRow := Index[0] - FWatchArr.Lo[0] + 1;
+  if FWatchArr.DimCount = 2 then
+    NewCol := Index[1] - FWatchArr.Lo[1] + 1
+  else
+    NewCol := 1;
+  if (NewRow < 1) or (NewRow >= FWatchArrGrid.RowCount) or
+     (NewCol < 1) or (NewCol >= FWatchArrGrid.ColCount) then
+    Exit;
+  FWatchArrLock := True;
+  try
+    FWatchArrGrid.Row := NewRow;
+    FWatchArrGrid.Col := NewCol;
+  finally
+    FWatchArrLock := False;
+  end;
+end;
+
+// Щелчок по ячейке таблицы - её индексы в поля
+procedure TForm1.WatchArrSelectCell(Sender: TObject; ACol, ARow: Integer;
+                                    var CanSelect: Boolean);
+begin
+  if FWatchArrLock or (ARow < 1) or (ACol < 1) or
+     (Length(FWatchArrEdits) < FWatchArr.DimCount) then
+    Exit;
+  FWatchArrLock := True;
+  try
+    FWatchArrEdits[0].Text := IntToStr(FWatchArr.Lo[0] + ARow - 1);
+    if FWatchArr.DimCount = 2 then
+      FWatchArrEdits[1].Text := IntToStr(FWatchArr.Lo[1] + ACol - 1);
+  finally
+    FWatchArrLock := False;
+  end;
+  WatchArrCellShow;
+end;
+
+// Ячейка таблицы: заголовки - индексы, значения - из памяти программы
+procedure TForm1.WatchArrDrawCell(Sender: TObject; ACol, ARow: Integer;
+                                  Rect: TRect; State: TGridDrawState);
+var
+  Grid: TDrawGrid;
+  CellText: string;
+  Index: array[0..1] of Integer;
+begin
+  Grid := TDrawGrid(Sender);
+  CellText := '';
+  if (ARow = 0) and (ACol = 0) then
+  begin
+    if FWatchArr.DimCount = 1 then
+      CellText := 'Индекс';
+  end
+  else if ARow = 0 then
+  begin
+    if FWatchArr.DimCount = 1 then
+      CellText := 'Значение'
+    else
+      CellText := IntToStr(FWatchArr.Lo[1] + ACol - 1);
+  end
+  else if ACol = 0 then
+    CellText := IntToStr(FWatchArr.Lo[0] + ARow - 1)
+  else if WatchStateText = '' then
+  begin
+    Index[0] := FWatchArr.Lo[0] + ARow - 1;
+    if FWatchArr.DimCount = 2 then
+    begin
+      Index[1] := FWatchArr.Lo[1] + ACol - 1;
+      CellText := FDbgSyms.ArrayElement(FWatchArr, Index,
+                                        FDbgSession.ReadMemory);
+    end
+    else
+      CellText := FDbgSyms.ArrayElement(FWatchArr, Slice(Index, 1),
+                                        FDbgSession.ReadMemory);
+  end;
+
+  if gdFixed in State then
+  begin
+    Grid.Canvas.Brush.Color := UiColor('Ide.WindowBG');
+    Grid.Canvas.Font.Color := UiColor('Ide.WindowText');
+  end
+  else if gdSelected in State then
+  begin
+    Grid.Canvas.Brush.Color := UiColor('ObjTree.SelBG');
+    Grid.Canvas.Font.Color := UiColor('ObjTree.SelText');
+  end
+  else
+  begin
+    Grid.Canvas.Brush.Color := UiColor('Ide.ListBG');
+    Grid.Canvas.Font.Color := UiColor('Ide.ListText');
+  end;
+  Grid.Canvas.FillRect(Rect);
+  Grid.Canvas.Brush.Style := bsClear;
+  Grid.Canvas.TextRect(Rect, Rect.Left + 4,
+    Rect.Top + (Rect.Bottom - Rect.Top - Grid.Canvas.TextHeight('0')) div 2,
+    CellText);
+  Grid.Canvas.Brush.Style := bsSolid;
+end;
+
+procedure TForm1.WatchSelectItem(Sender: TObject; Item: TListItem;
+                                 Selected: Boolean);
+begin
+  if Selected then
+    WatchArrUpdate;
 end;
 
 procedure TForm1.DbgClearEdits;

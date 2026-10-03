@@ -78,6 +78,16 @@ type
     Module: Integer;
   end;
 
+  // Измерений массива разбирается не больше этого
+  TDbgArrayInfo = record
+    Address: Cardinal;
+    DimCount: Integer;
+    Lo, Hi, Stride: array[0..7] of Integer;   // DbgMaxArrayDims
+    ElemType: Cardinal;
+    ElemSize: Integer;
+    TypeText: string;
+  end;
+
   TDbgSymbols = class
   private
     FBuf: string;              // файл exe целиком (байты)
@@ -146,6 +156,9 @@ type
                         var AAddress: Cardinal): Boolean;
     function NotFoundNote(const AName: string; AProcIdx: Integer;
                           ASelfType: Cardinal): string;
+    function ResolveExpr(const AExpr: string; AImageBase, AEip: Cardinal;
+                         const ARegs: TDbgRegs; var AAddr, AType: Cardinal;
+                         var ATypeText, AError: string): Boolean;
   public
     constructor Create;
     destructor Destroy; override;
@@ -160,6 +173,14 @@ type
     // Процедура, где стоит программа (имя, '' - нет в TD32), и имена её
     // параметров и локальных переменных по порядку описания
     function ProcLocals(AImageBase, AEip: Cardinal; AList: TStrings): string;
+    // Выражение - статический массив: измерения и элемент (окно Watch,
+    // таблица массива). False - не массив или не вычислено, AError - почему
+    function ArrayInfo(const AExpr: string; AImageBase, AEip: Cardinal;
+                       const ARegs: TDbgRegs; AReadMem: TDbgReadMem;
+                       var AInfo: TDbgArrayInfo; var AError: string): Boolean;
+    function ArrayElement(const AInfo: TDbgArrayInfo;
+                          const AIndex: array of Integer;
+                          AReadMem: TDbgReadMem): string;
     property ProcCount: Integer read FProcCount;
     property LocalCount: Integer read FLocalCount;
     property DataCount: Integer read FDataCount;
@@ -172,6 +193,7 @@ type
   end;
 
 const
+  DbgMaxArrayDims = 8;
   DbgLocalFrame = 1;   // [EBP + смещение]
   DbgLocalReg   = 2;   // в регистре
   DbgLocalData  = 3;   // статическая (типизированная константа процедуры)
@@ -1895,10 +1917,15 @@ begin
     end;
 end;
 
-function TDbgSymbols.Evaluate(const AExpr: string;
-                              AImageBase, AEip: Cardinal;
-                              const ARegs: TDbgRegs; AReadMem: TDbgReadMem;
-                              var ATypeText: string): string;
+// Адрес и тип выражения (имя или цепочка через точку) на остановке. False -
+// не вычислено: AError - причина словами в <>, '' - пустое выражение.
+// ATypeText - тип словами (и у свойства, которое не читается). Значение в
+// регистре - FRegActive и FRegValue, адрес тогда 0.
+function TDbgSymbols.ResolveExpr(const AExpr: string;
+                                 AImageBase, AEip: Cardinal;
+                                 const ARegs: TDbgRegs;
+                                 var AAddr, AType: Cardinal;
+                                 var ATypeText, AError: string): Boolean;
 const
   RegFirst = 17;   // EAX в нумерации CodeView, дальше ECX, EDX, EBX, ESP,
                    // EBP, ESI, EDI - тот же порядок, что в TDbgRegs
@@ -1914,15 +1941,16 @@ var
   PropLeaf, PropBody, PropEnd: Integer;
   PropType: Cardinal;
 begin
-  Result := '';
+  Result := False;
+  AAddr := 0;
+  AType := 0;
+  AError := '';
   ATypeText := '';
   FieldNote := '';
   FLastNote := '';
-  FReadMem := AReadMem;
-  FRegActive := False;
   if FBuf = '' then
   begin
-    Result := '<нет отладочной информации>';
+    AError := '<нет отладочной информации>';
     Exit;
   end;
 
@@ -1943,7 +1971,7 @@ begin
       end;
       if not IsIdent(PartText) then
       begin
-        Result := '<выражение не поддерживается: только имена через точку>';
+        AError := '<выражение не поддерживается: только имена через точку>';
         Exit;
       end;
       Parts.Add(PartText);
@@ -1953,7 +1981,7 @@ begin
 
     if not SegAddress(1, 0, AImageBase, CodeBase) or (AEip < CodeBase) then
     begin
-      Result := '<не найден сегмент кода>';
+      AError := '<не найден сегмент кода>';
       Exit;
     end;
     CodeOfs := AEip - CodeBase;
@@ -1976,7 +2004,7 @@ begin
           begin
             if CodeOfs < FProcs[ProcIdx].Offset + FProcs[ProcIdx].DebugStart then
             begin
-              Result := '<кадр процедуры ещё не построен - шаг дальше>';
+              AError := '<кадр процедуры ещё не построен - шаг дальше>';
               Exit;
             end;
             CurAddr := Cardinal(Integer(Ebp) + FLocals[LocalIdx].BpOffset);
@@ -1993,7 +2021,7 @@ begin
           end
           else
           begin
-            Result := '<в регистре ' + IntToStr(FLocals[LocalIdx].RegNo) +
+            AError := '<в регистре ' + IntToStr(FLocals[LocalIdx].RegNo) +
                       ', не читается>';
             Exit;
           end;
@@ -2015,7 +2043,7 @@ begin
                             AImageBase, CurAddr);
         if not Found then
         begin
-          Result := '<данные в сегменте ' + IntToStr(FDatas[DataIdx].Segment) +
+          AError := '<данные в сегменте ' + IntToStr(FDatas[DataIdx].Segment) +
                     ' (threadvar?) не читаются>';
           Exit;
         end;
@@ -2058,7 +2086,7 @@ begin
         begin
           if not FrameOk or (FLocals[LocalIdx].Kind <> DbgLocalFrame) then
           begin
-            Result := '<переменная объемлющей процедуры ' +
+            AError := '<переменная объемлющей процедуры ' +
                       NiceProcName(FProcs[OuterIdx].Name) + ' - не читается>';
             Exit;
           end;
@@ -2074,10 +2102,10 @@ begin
     if not Found then
     begin
       if ProcIdx < 0 then
-        Result := '<не найдено: ' + Parts[0] + ' (программа стоит вне кода ' +
+        AError := '<не найдено: ' + Parts[0] + ' (программа стоит вне кода ' +
                   'с отладочной информацией)>'
       else
-        Result := '<не найдено: ' + Parts[0] + '>';
+        AError := '<не найдено: ' + Parts[0] + '>';
       if FWantNote then
         FLastNote := NotFoundNote(Parts[0], ProcIdx, 0);
       Exit;
@@ -2092,13 +2120,13 @@ begin
         // Объект или var-параметр: дальше - по адресу из указателя
         if not ReadDword(CurAddr, PtrValue) then
         begin
-          Result := '<ошибка чтения памяти $' + IntToHex(CurAddr, 8) + '>';
+          AError := '<ошибка чтения памяти $' + IntToHex(CurAddr, 8) + '>';
           Exit;
         end;
         FRegActive := False;
         if PtrValue = 0 then
         begin
-          Result := '<' + Parts[PartIdx - 1] + ' = nil>';
+          AError := '<' + Parts[PartIdx - 1] + ' = nil>';
           Exit;
         end;
         CurAddr := PtrValue;
@@ -2109,7 +2137,7 @@ begin
         begin
           if not ReadDword(CurAddr, PtrValue) or (PtrValue = 0) then
           begin
-            Result := '<' + Parts[PartIdx - 1] + ' = nil>';
+            AError := '<' + Parts[PartIdx - 1] + ' = nil>';
             Exit;
           end;
           CurAddr := PtrValue;
@@ -2118,7 +2146,7 @@ begin
       end;
       if FRegActive then
       begin
-        Result := '<поле значения в регистре не читается>';
+        AError := '<поле значения в регистре не читается>';
         Exit;
       end;
       FieldNote := '';
@@ -2126,13 +2154,13 @@ begin
       begin
         if ViaSelf and (PartIdx = 1) then
         begin
-          Result := '<не найдено: ' + Parts[PartIdx] + ' - нет ни ' +
+          AError := '<не найдено: ' + Parts[PartIdx] + ' - нет ни ' +
                     'переменной процедуры, ни данных модуля, ни поля Self>';
           if FWantNote then
             FLastNote := NotFoundNote(Parts[PartIdx], ProcIdx, CurType);
         end
         else
-          Result := '<нет поля ' + Parts[PartIdx] + ' у ' +
+          AError := '<нет поля ' + Parts[PartIdx] + ' у ' +
                     TypeText(CurType) + '>';
         Exit;
       end;
@@ -2145,7 +2173,7 @@ begin
                              PropNote) then
         begin
           ATypeText := TypeText(DwordAt(PropBody));
-          Result := '<' + PropNote + '>';
+          AError := '<' + PropNote + '>';
           Exit;
         end;
         FieldNote := PropNote;
@@ -2155,11 +2183,146 @@ begin
     end;
 
     ATypeText := TypeText(CurType) + FieldNote;
-    Result := FormatValue(CurAddr, CurType, 0);
+    AAddr := CurAddr;
+    AType := CurType;
+    Result := True;
   finally
     Parts.Free;
+  end;
+end;
+
+
+function TDbgSymbols.Evaluate(const AExpr: string;
+                              AImageBase, AEip: Cardinal;
+                              const ARegs: TDbgRegs; AReadMem: TDbgReadMem;
+                              var ATypeText: string): string;
+var
+  ValAddr, ValType: Cardinal;
+  ErrText: string;
+begin
+  FReadMem := AReadMem;
+  FRegActive := False;
+  try
+    if ResolveExpr(AExpr, AImageBase, AEip, ARegs, ValAddr, ValType,
+                   ATypeText, ErrText) then
+      Result := FormatValue(ValAddr, ValType, 0)
+    else
+      Result := ErrText;
+  finally
     FRegActive := False;
   end;
+end;
+
+// Статический массив: границы по каждому измерению (array[a..b, c..d] в
+// TD32 - массив массивов), адрес, тип и размер элемента.
+function TDbgSymbols.ArrayInfo(const AExpr: string;
+                               AImageBase, AEip: Cardinal;
+                               const ARegs: TDbgRegs; AReadMem: TDbgReadMem;
+                               var AInfo: TDbgArrayInfo;
+                               var AError: string): Boolean;
+var
+  CurType, IndexType: Cardinal;
+  Leaf, Body, RecEnd, IdxLeaf, IdxBody, IdxEnd, NumPos: Integer;
+  ElemSize, WholeSize, DimIdx: Integer;
+  LoValue, HiValue: Int64;
+  TypeName: string;
+begin
+  Result := False;
+  AInfo.DimCount := 0;
+  AInfo.Address := 0;
+  AInfo.ElemType := 0;
+  AInfo.ElemSize := 0;
+  AInfo.TypeText := '';
+  FReadMem := AReadMem;
+  FRegActive := False;
+  try
+    if not ResolveExpr(AExpr, AImageBase, AEip, ARegs, AInfo.Address, CurType,
+                       TypeName, AError) then
+      Exit;
+    if FRegActive then
+    begin
+      AError := '<значение в регистре>';
+      Exit;
+    end;
+    AInfo.TypeText := TypeName;
+    CurType := Underlying(CurType);
+    while TypeRec(CurType, Leaf, Body, RecEnd) and
+          ((Leaf = LeafArray) or (Leaf = LeafPArray)) do
+    begin
+      if AInfo.DimCount >= DbgMaxArrayDims then
+        Break;
+      ElemSize := TypeSize(DwordAt(Body));
+      WholeSize := TypeSize(CurType);
+      if (ElemSize <= 0) or (WholeSize <= 0) then
+      begin
+        AError := '<размер элемента не известен>';
+        Exit;
+      end;
+      // Границы - по типу индекса (поддиапазон); иначе от нуля по размеру
+      LoValue := 0;
+      HiValue := WholeSize div ElemSize - 1;
+      IndexType := Underlying(DwordAt(Body + 4));
+      if TypeRec(IndexType, IdxLeaf, IdxBody, IdxEnd) and
+         (IdxLeaf = LeafSubrange) then
+      begin
+        NumPos := IdxBody + 8;
+        if not (ReadNumeric(NumPos, LoValue) and
+                ReadNumeric(NumPos, HiValue)) then
+        begin
+          LoValue := 0;
+          HiValue := WholeSize div ElemSize - 1;
+        end;
+      end;
+      DimIdx := AInfo.DimCount;
+      AInfo.Lo[DimIdx] := Integer(LoValue);
+      AInfo.Hi[DimIdx] := Integer(HiValue);
+      AInfo.Stride[DimIdx] := ElemSize;
+      Inc(AInfo.DimCount);
+      CurType := Underlying(DwordAt(Body));
+    end;
+    if AInfo.DimCount = 0 then
+    begin
+      AError := '<не статический массив>';
+      Exit;
+    end;
+    AInfo.ElemType := CurType;
+    AInfo.ElemSize := TypeSize(CurType);
+    Result := True;
+  finally
+    FRegActive := False;
+  end;
+end;
+
+// Элемент массива по индексам (по одному на измерение из AInfo)
+function TDbgSymbols.ArrayElement(const AInfo: TDbgArrayInfo;
+                                  const AIndex: array of Integer;
+                                  AReadMem: TDbgReadMem): string;
+var
+  DimIdx: Integer;
+  ElemAddr: Cardinal;
+begin
+  if Length(AIndex) < AInfo.DimCount then
+  begin
+    Result := '<мало индексов>';
+    Exit;
+  end;
+  ElemAddr := AInfo.Address;
+  for DimIdx := 0 to AInfo.DimCount - 1 do
+  begin
+    if (AIndex[DimIdx] < AInfo.Lo[DimIdx]) or
+       (AIndex[DimIdx] > AInfo.Hi[DimIdx]) then
+    begin
+      Result := '<индекс ' + IntToStr(DimIdx + 1) + ' вне ' +
+                IntToStr(AInfo.Lo[DimIdx]) + '..' +
+                IntToStr(AInfo.Hi[DimIdx]) + '>';
+      Exit;
+    end;
+    ElemAddr := ElemAddr + Cardinal((AIndex[DimIdx] - AInfo.Lo[DimIdx]) *
+                                    AInfo.Stride[DimIdx]);
+  end;
+  FReadMem := AReadMem;
+  FRegActive := False;
+  Result := FormatValue(ElemAddr, AInfo.ElemType, 0);
 end;
 
 // Разбор неудачного поиска имени для журнала: что именно не нашлось и
