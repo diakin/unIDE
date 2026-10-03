@@ -16669,6 +16669,10 @@ begin
     StatusBar1.Align := alBottom;
     FStatus2.Align := alBottom;
   end;
+  // Полоса пути (Panel2) - ровно по высоте своей строки состояния: лишняя
+  // высота оставалась пустой полосой между горизонтальной прокруткой
+  // редактора и путём файла
+  Panel2.Height := FStatus2.Height;
   Realign;
 
 

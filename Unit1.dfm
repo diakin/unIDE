@@ -65,9 +65,9 @@ object Form1: TForm1
     end
     object Panel2: TPanel
       Left = 0
-      Top = 294
+      Top = 305
       Width = 0
-      Height = 30
+      Height = 19
       Align = alBottom
       BevelOuter = bvNone
       ParentBackground = False
