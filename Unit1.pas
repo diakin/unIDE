@@ -12139,6 +12139,8 @@ begin
   else
     FWindows[FWindowsIndex].Bookmarks[N].Text := '';
 
+  // Новая закладка - сразу в историю посещений, а значит, и в Hot Bookmarks
+  PushBmHistory(FWindowsIndex, N);
   RebuildBookmarksMenu;
 end;
 
@@ -37040,6 +37042,8 @@ begin
       Trim(RichEdit1.Lines[ALineIdx])
   else
     FWindows[FWindowsIndex].Bookmarks[BmCount].Text := '';
+  // Новая закладка - сразу в историю посещений, а значит, и в Hot Bookmarks
+  PushBmHistory(FWindowsIndex, BmCount);
   RebuildBookmarksMenu;
   MarksBox.Invalidate;
 end;
