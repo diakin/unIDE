@@ -37111,7 +37111,7 @@ var
   Src, ProbeLines, Props, ObjClasses, SkipList: TStringList;
   DumpStart, Attempt, Excluded, LineIdx, EqPos, ErrIdx, CutCount: Integer;
   Ok, Complete: Boolean;
-  ConsoleFile, OutText, TraceFile: string;
+  ConsoleFile, OutText, TraceFile, CleanText: string;
   HasStart, HasTime: Boolean;
   RunMs: Cardinal;
   LastOutSize, NulCount: Integer;
@@ -37657,13 +37657,30 @@ begin
     // Символ с кодом 0 в значении (PasswordChar у QEdit без пароля) обрывал
     // разбор строк: TStrings.Text в Delphi 7 на нём останавливается, и
     // снимок выглядел неполным. Заменяется текстом #0, как в .dfm.
+    // Посимвольно: StringReplace в Delphi 7 ищет через AnsiPos (PChar) и
+    // на нулевом символе тоже останавливается
     NulCount := 0;
     for LineIdx := 1 to Length(OutText) do
       if OutText[LineIdx] = #0 then
         Inc(NulCount);
     if NulCount > 0 then
     begin
-      OutText := StringReplace(OutText, #0, '#0', [rfReplaceAll]);
+      CleanText := '';
+      SetLength(CleanText, Length(OutText) + NulCount);
+      EqPos := 0;
+      for LineIdx := 1 to Length(OutText) do
+        if OutText[LineIdx] = #0 then
+        begin
+          CleanText[EqPos + 1] := '#';
+          CleanText[EqPos + 2] := '0';
+          Inc(EqPos, 2);
+        end
+        else
+        begin
+          CleanText[EqPos + 1] := OutText[LineIdx];
+          Inc(EqPos);
+        end;
+      OutText := CleanText;
       LogComp(Format('Снимок RapidQ: в значениях символов с кодом 0 - %d, ' +
                      'показаны как #0', [NulCount]));
     end;
