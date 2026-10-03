@@ -39327,6 +39327,27 @@ var
     end;
   end;
 
+  // Файл ARel - из первой папки-источника, где он есть, если там он
+  // новее (описание компонентов RapidQ пересобирается, старая копия рядом
+  // с exe перекрыла бы новую)
+  procedure CopyIfNewer(const ARel: string);
+  var
+    DirIdx: Integer;
+  begin
+    for DirIdx := Low(SrcDirs) to High(SrcDirs) do
+      if FileExists(SrcDirs[DirIdx] + ARel) then
+      begin
+        if FileExists(DstDir + ARel) and
+           (FileAge(DstDir + ARel) >= FileAge(SrcDirs[DirIdx] + ARel)) then
+          Exit;
+        ForceDirectories(ExtractFilePath(DstDir + ARel));
+        if CopyFile(PChar(SrcDirs[DirIdx] + ARel), PChar(DstDir + ARel),
+                    False) then
+          Inc(Copied);
+        Exit;
+      end;
+  end;
+
 // Все файлы папки ARelDir (без вложенных) из всех источников
   procedure CopyDirIfMissing(const ARelDir: string);
   var
@@ -39371,12 +39392,13 @@ begin
   CopyIfMissing('IDE.clr');
   CopyDirIfMissing('schemes');
   // Описание компонентов RapidQ для инспектора (RapidQComponentsReady)
-  CopyIfMissing('rapidq_ref\ComponentAll.data');
+  CopyIfNewer('rapidq_ref\ComponentAll.data');
   CopyIfMissing('rapidq_ref\Component.data');
   CopyIfMissing('rapidq_ref\Component1.data');
   if Copied > 0 then
     LogComp(Format('Рядом с exe скопировано файлов: %d (editor.ini, IDE.clr, ' +
-    'schemes, rapidq_ref\Component*.data - которых там не было)', [Copied]));
+    'schemes, rapidq_ref\Component*.data - которых там не было или ' +
+    'были старее)', [Copied]));
   if Merged > 0 then
     LogComp(Format('editor.ini рядом с exe: изменено разделов: %d. Пути, ' +
     'которых нет на диске, при запуске берутся из копий [...Old<N>]',

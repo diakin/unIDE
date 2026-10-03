@@ -1,18 +1,35 @@
 unit RqComponents;
 
 // ---------------------------------------------------------------------------
-//  Описание компонентов RapidQ из файла Component.data
+//  Описание компонентов RapidQ из файла ComponentAll.data (Component.data)
 //
 //  Формат файла (текст, по строке на запись):
-//    # <номер> <КЛАСС> * Properties *  [примечание]   - начало класса
+//    # <номер> <КЛАСС> [EXTENDS <БАЗОВЫЙ>] * Properties * [примечание]
+//                                                      - начало класса
+//    '@source <файл> <строка>                          - где объявлен класс
+//                                                        TYPE ... EXTENDS
 //    Имя|ТИП|доступ|по умолчанию|вариант1|вариант2...  - свойство
 //    * Methods                                         - дальше методы:
 //    Имя|ТИП|доступ|аргументы
 //    * Events                                          - дальше события:
 //    Имя||(параметры)
+//    * Defaults                                        - дальше значения
+//    Имя=значение                                        по умолчанию из
+//                                                        CONSTRUCTOR, и для
+//                                                        свойств базового
+//    * Constants                                       - после всех классов:
+//    Имя=значение                                        константы RAPIDQ.INC
+//                                                        (alBottom=2) - для
+//                                                        перечислений, когда
+//                                                        у варианта значения
+//                                                        нет
 //  Доступ: R - только чтение, W - только запись, RW - оба. Варианты - для
-//  перечислений и логических (False|True); <default> и <choose> у цвета -
-//  "по умолчанию" и "выбрать". Строка из одного # - конец файла.
+//  перечислений и логических (False|True); вариант бывает со значением:
+//  bsSizeable=2, crHandPoint=-21 (из RAPIDQ.INC). <default> и <choose> у
+//  цвета - "по умолчанию" и "выбрать". Строка из одного # - конец файла.
+//  Строки, которые начинаются с ', - комментарии: до первого класса -
+//  комментарии файла, после записи - её, после заголовка - класса. При
+//  записи файла (RqSaveComponents) они сохраняются на своих местах.
 //
 //  Строки без | и записи, у которых имя не идентификатор (пояснения вроде
 //  "NO Properties!||R|"), пропускаются.
@@ -54,7 +71,9 @@ type
   public
     Name, TypeName, Access: string;
     DefValue: string;    // свойство: значение по умолчанию; метод: аргументы
-    Choices: TStringList;  // допустимые значения (пусто - любые)
+    Choices: TStringList;  // допустимые значения (пусто - любые); с числом -
+                           // "bsSizeable=2"
+    Comment: string;       // строки-комментарии после записи (#13#10 между)
     constructor Create;
     destructor Destroy; override;
     function CanRead: Boolean;
@@ -64,6 +83,7 @@ type
   TRqEvent = class
   public
     Name, Params: string;   // Params - "(Key AS WORD, Shift AS INTEGER)"
+    Comment: string;        // строки-комментарии после записи
   end;
 
   TRqClass = class
@@ -79,6 +99,7 @@ type
     SrcFile: string;
     SrcLine: Integer;       // строка TYPE, от нуля
     Defaults: TStringList;
+    Comments: TStringList;  // строки-комментарии после заголовка
     constructor Create;
     destructor Destroy; override;
     function PropOf(const AName: string): TRqMember;
@@ -107,6 +128,9 @@ function RqParseConsts(ALines: TStrings): Integer;
 procedure RqClearConsts;
 function RqConstCount: Integer;
 function RqConstValue(const AName: string; var AValue: Integer): Boolean;
+// Константы программы (RqParseConsts) - и в описание, раздел * Constants:
+// сборка ComponentAll.data
+procedure RqKeepConstsInData;
 // Значение свойства AMember словом из его вариантов: AValue - число из
 // снимка. Варианта с таким значением нет, или у свойства нет вариантов
 // перечисления - AValue как есть. Значение варианта - константа программы
@@ -118,6 +142,20 @@ function RqChoiceText(AMember: TRqMember; const AValue: string): string;
 // Класс и его базовые до корня - в AChain (первый - сам класс). Цикл и
 // неизвестный базовый обрывают цепочку.
 procedure RqClassChain(const AName: string; AChain: TList);
+// Имя варианта без значения: "bsSizeable=2" -> bsSizeable
+function RqChoiceName(const AChoice: string): string;
+// Записать загруженное описание в AFile в том же формате
+procedure RqSaveComponents(const AFile: string);
+// Классы программы (RqParseTypes) - вызывающему: список "имя - класс",
+// владеет им вызывающий; у модуля список становится пустым
+function RqTakeCustom: TStringList;
+// Класс - в описание (после загруженных). Класс с таким именем уже есть -
+// False, класс не берётся.
+function RqAddClass(AClass: TRqClass): Boolean;
+// Комментарии файла - строки до первого класса
+function RqHeaderComments: TStringList;
+// Убрать из описания классы TYPE ... EXTENDS (перед их новой сборкой)
+procedure RqDropCustomClasses;
 // Значение по умолчанию свойства AName по цепочке: CONSTRUCTOR ближайшего
 // класса, иначе запись описания. AMember - найденная запись (nil - нет).
 function RqDefaultOf(AChain: TList; const AName: string;
@@ -137,8 +175,10 @@ uses
 
 var
   RqClasses: TStringList = nil;   // имена классов, Objects - TRqClass
+  RqFileComments: TStringList = nil;   // комментарии до первого класса
   RqCustom: TStringList = nil;    // классы программы, Objects - TRqClass
-  RqConsts: TStringList = nil;    // константы, Objects - значение
+  RqConsts: TStringList = nil;    // константы программы, Objects - значение
+  RqDataConsts: TStringList = nil;   // константы из описания (* Constants)
 
 constructor TRqMember.Create;
 begin
@@ -169,6 +209,7 @@ begin
   Methods := TStringList.Create;
   Events := TStringList.Create;
   Defaults := TStringList.Create;
+  Comments := TStringList.Create;
   SrcLine := -1;
 end;
 
@@ -182,6 +223,7 @@ begin
     Methods.Objects[ItemIdx].Free;
   for ItemIdx := 0 to Events.Count - 1 do
     Events.Objects[ItemIdx].Free;
+  Comments.Free;
   Defaults.Free;
   Events.Free;
   Methods.Free;
@@ -221,6 +263,10 @@ begin
       RqClasses.Objects[ClassIdx].Free;
     FreeAndNil(RqClasses);
   end;
+  if RqFileComments <> nil then
+    RqFileComments.Clear;
+  if RqDataConsts <> nil then
+    RqDataConsts.Clear;
   RqComponentFile := '';
   RqMergedFiles := '';
 end;
@@ -283,8 +329,19 @@ begin
   if AClass.Name = '' then
     Exit;
   AClass.Num := StrToIntDef(NumText, -1);
-  // Примечание - всё после имени без метки "* Properties" и звёздочек
   Rest := Trim(Copy(Rest, CharIdx, MaxInt));
+  // "EXTENDS Базовый" - класс, объявленный TYPE ... EXTENDS
+  if CompareText(Copy(Rest, 1, 8), 'EXTENDS ') = 0 then
+  begin
+    Rest := Trim(Copy(Rest, 9, MaxInt));
+    CharIdx := 1;
+    while (CharIdx <= Length(Rest)) and (Rest[CharIdx] > ' ') do
+      Inc(CharIdx);
+    AClass.BaseName := Copy(Rest, 1, CharIdx - 1);
+    AClass.IsCustom := AClass.BaseName <> '';
+    Rest := Trim(Copy(Rest, CharIdx, MaxInt));
+  end;
+  // Примечание - всё после имени без метки "* Properties" и звёздочек
   while (Rest <> '') and (Rest[1] in ['*', ' ']) do
     Delete(Rest, 1, 1);
   if CompareText(Copy(Rest, 1, Length(PropMark)), PropMark) = 0 then
@@ -297,6 +354,58 @@ begin
   Result := True;
 end;
 
+// Целое из текста: "2", "-21", "&H8000000F". False - не целое.
+function ParseBasicInt(const AText: string; var AValue: Integer): Boolean;
+var
+  Txt: string;
+  Negative: Boolean;
+  CharIdx, Digit: Integer;
+  Acc: Int64;
+begin
+  Result := False;
+  Txt := Trim(AText);
+  Negative := (Txt <> '') and (Txt[1] = '-');
+  if Negative then
+    Txt := Trim(Copy(Txt, 2, MaxInt));
+  if Txt = '' then
+    Exit;
+  Acc := 0;
+  if UpperCase(Copy(Txt, 1, 2)) = '&H' then
+  begin
+    if Length(Txt) = 2 then
+      Exit;
+    for CharIdx := 3 to Length(Txt) do
+    begin
+      case Txt[CharIdx] of
+        '0'..'9': Digit := Ord(Txt[CharIdx]) - Ord('0');
+        'A'..'F': Digit := Ord(Txt[CharIdx]) - Ord('A') + 10;
+        'a'..'f': Digit := Ord(Txt[CharIdx]) - Ord('a') + 10;
+      else
+        Exit;
+      end;
+      Acc := Acc * 16 + Digit;
+      if Acc > $FFFFFFFF then
+        Exit;
+    end;
+    // &H8000000F - 32 бита со знаком, как у LONG
+    if Acc > $7FFFFFFF then
+      Acc := Acc - $100000000;
+  end
+  else
+    for CharIdx := 1 to Length(Txt) do
+    begin
+      if not (Txt[CharIdx] in ['0'..'9']) then
+        Exit;
+      Acc := Acc * 10 + Ord(Txt[CharIdx]) - Ord('0');
+      if Acc > $7FFFFFFF then
+        Exit;
+    end;
+  if Negative then
+    Acc := -Acc;
+  AValue := Integer(Acc);
+  Result := True;
+end;
+
 // Разбор файла. AMerge = False - в пустой список; True - к загруженному:
 // существующий класс дополняется недостающими членами. Результат - число
 // добавленных классов, AMembers - число членов, добавленных к прежним.
@@ -306,14 +415,17 @@ const
   SectProps = 0;
   SectMethods = 1;
   SectEvents = 2;
+  SectDefaults = 3;
+  SectConsts = 4;
+  SourceTag = '''@source ';
 var
   Lines, Fields: TStringList;
-  LineIdx, FieldIdx, Section, ClassIdx: Integer;
-  Line: string;
+  LineIdx, FieldIdx, Section, ClassIdx, SpacePos, EqPos, ConstValue: Integer;
+  Line, SrcText: string;
   CurClass, Header: TRqClass;
   OldClass: Boolean;   // CurClass был загружен раньше - члены только новые
-  Member: TRqMember;
-  Event: TRqEvent;
+  Member, LastMember: TRqMember;
+  Event, LastEvent: TRqEvent;
   Target: TStringList;
 begin
   Result := 0;
@@ -335,15 +447,59 @@ begin
     end;
     CurClass := nil;
     OldClass := False;
+    LastMember := nil;
+    LastEvent := nil;
     Section := SectProps;
+    if RqFileComments = nil then
+      RqFileComments := TStringList.Create;
     for LineIdx := 0 to Lines.Count - 1 do
     begin
       Line := Trim(Lines[LineIdx]);
       if Line = '' then
         Continue;
+      // Комментарий: до классов - файла; '@source - где объявлен класс;
+      // после записи - её; после заголовка - класса. При дополнении
+      // (AMerge) комментарии не берутся.
+      if Line[1] = '''' then
+      begin
+        if AMerge then
+          Continue;
+        if CurClass = nil then
+          RqFileComments.Add(Line)
+        else if CompareText(Copy(Line, 1, Length(SourceTag)), SourceTag) = 0 then
+        begin
+          SrcText := Trim(Copy(Line, Length(SourceTag) + 1, MaxInt));
+          SpacePos := LastDelimiter(' ', SrcText);
+          if SpacePos > 0 then
+          begin
+            CurClass.SrcFile := Trim(Copy(SrcText, 1, SpacePos - 1));
+            CurClass.SrcLine := StrToIntDef(Copy(SrcText, SpacePos + 1,
+                                                 MaxInt), 0) - 1;
+          end
+          else
+            CurClass.SrcFile := SrcText;
+        end
+        else if LastMember <> nil then
+        begin
+          if LastMember.Comment <> '' then
+            LastMember.Comment := LastMember.Comment + #13#10;
+          LastMember.Comment := LastMember.Comment + Line;
+        end
+        else if LastEvent <> nil then
+        begin
+          if LastEvent.Comment <> '' then
+            LastEvent.Comment := LastEvent.Comment + #13#10;
+          LastEvent.Comment := LastEvent.Comment + Line;
+        end
+        else
+          CurClass.Comments.Add(Line);
+        Continue;
+      end;
       if Line[1] = '#' then
       begin
         CurClass := nil;
+        LastMember := nil;
+        LastEvent := nil;
         Header := TRqClass.Create;
         if not ParseHeader(Line, Header) then
         begin
@@ -369,16 +525,63 @@ begin
         end;
         Continue;
       end;
+      if CompareText(Line, '* Constants') = 0 then
+      begin
+        Section := SectConsts;
+        CurClass := nil;
+        LastMember := nil;
+        LastEvent := nil;
+        Continue;
+      end;
+      // Константы: "alBottom=2"
+      if Section = SectConsts then
+      begin
+        EqPos := Pos('=', Line);
+        if (EqPos > 1) and ParseBasicInt(Copy(Line, EqPos + 1, MaxInt),
+                                         ConstValue) then
+        begin
+          if RqDataConsts = nil then
+          begin
+            RqDataConsts := TStringList.Create;
+            RqDataConsts.CaseSensitive := False;
+            RqDataConsts.Sorted := True;
+            RqDataConsts.Duplicates := dupIgnore;
+          end;
+          RqDataConsts.AddObject(Trim(Copy(Line, 1, EqPos - 1)),
+                                 TObject(ConstValue));
+        end;
+        Continue;
+      end;
       if CurClass = nil then
         Continue;
       if CompareText(Line, '* Methods') = 0 then
       begin
         Section := SectMethods;
+        LastMember := nil;
+        LastEvent := nil;
         Continue;
       end;
       if CompareText(Line, '* Events') = 0 then
       begin
         Section := SectEvents;
+        LastMember := nil;
+        LastEvent := nil;
+        Continue;
+      end;
+      if CompareText(Line, '* Defaults') = 0 then
+      begin
+        Section := SectDefaults;
+        LastMember := nil;
+        LastEvent := nil;
+        Continue;
+      end;
+      // Значения по умолчанию: "Height=26"
+      if Section = SectDefaults then
+      begin
+        if (Pos('=', Line) > 1) and
+           (not OldClass or (CurClass.Defaults.IndexOfName(
+              Trim(Copy(Line, 1, Pos('=', Line) - 1))) < 0)) then
+          CurClass.Defaults.Add(Line);
         Continue;
       end;
       if Pos('|', Line) = 0 then
@@ -397,6 +600,7 @@ begin
         if Fields.Count >= 3 then
           Event.Params := Fields[2];
         CurClass.Events.AddObject(Event.Name, Event);
+        LastEvent := Event;
         if OldClass then
           Inc(AMembers);
         Continue;
@@ -420,6 +624,7 @@ begin
         if Fields[FieldIdx] <> '' then
           Member.Choices.Add(Fields[FieldIdx]);
       Target.AddObject(Member.Name, Member);
+      LastMember := Member;
       if OldClass then
         Inc(AMembers);
     end;
@@ -793,58 +998,6 @@ begin
   Result := AddedCount;
 end;
 
-// Целое из текста: "2", "-21", "&H8000000F". False - не целое.
-function ParseBasicInt(const AText: string; var AValue: Integer): Boolean;
-var
-  Txt: string;
-  Negative: Boolean;
-  CharIdx, Digit: Integer;
-  Acc: Int64;
-begin
-  Result := False;
-  Txt := Trim(AText);
-  Negative := (Txt <> '') and (Txt[1] = '-');
-  if Negative then
-    Txt := Trim(Copy(Txt, 2, MaxInt));
-  if Txt = '' then
-    Exit;
-  Acc := 0;
-  if UpperCase(Copy(Txt, 1, 2)) = '&H' then
-  begin
-    if Length(Txt) = 2 then
-      Exit;
-    for CharIdx := 3 to Length(Txt) do
-    begin
-      case Txt[CharIdx] of
-        '0'..'9': Digit := Ord(Txt[CharIdx]) - Ord('0');
-        'A'..'F': Digit := Ord(Txt[CharIdx]) - Ord('A') + 10;
-        'a'..'f': Digit := Ord(Txt[CharIdx]) - Ord('a') + 10;
-      else
-        Exit;
-      end;
-      Acc := Acc * 16 + Digit;
-      if Acc > $FFFFFFFF then
-        Exit;
-    end;
-    // &H8000000F - 32 бита со знаком, как у LONG
-    if Acc > $7FFFFFFF then
-      Acc := Acc - $100000000;
-  end
-  else
-    for CharIdx := 1 to Length(Txt) do
-    begin
-      if not (Txt[CharIdx] in ['0'..'9']) then
-        Exit;
-      Acc := Acc * 10 + Ord(Txt[CharIdx]) - Ord('0');
-      if Acc > $7FFFFFFF then
-        Exit;
-    end;
-  if Negative then
-    Acc := -Acc;
-  AValue := Integer(Acc);
-  Result := True;
-end;
-
 function RqParseConsts(ALines: TStrings): Integer;
 var
   LineIdx, PartIdx, EqPos, ConstValue: Integer;
@@ -904,25 +1057,80 @@ begin
     Result := RqConsts.Count;
 end;
 
+// Сначала константы программы, потом из описания (* Constants)
 function RqConstValue(const AName: string; var AValue: Integer): Boolean;
 var
   ConstIdx: Integer;
 begin
   Result := False;
+  if RqConsts <> nil then
+  begin
+    ConstIdx := RqConsts.IndexOf(AName);
+    if ConstIdx >= 0 then
+    begin
+      AValue := Integer(RqConsts.Objects[ConstIdx]);
+      Result := True;
+      Exit;
+    end;
+  end;
+  if RqDataConsts <> nil then
+  begin
+    ConstIdx := RqDataConsts.IndexOf(AName);
+    if ConstIdx >= 0 then
+    begin
+      AValue := Integer(RqDataConsts.Objects[ConstIdx]);
+      Result := True;
+    end;
+  end;
+end;
+
+procedure RqKeepConstsInData;
+var
+  ConstIdx: Integer;
+begin
   if RqConsts = nil then
     Exit;
-  ConstIdx := RqConsts.IndexOf(AName);
-  if ConstIdx < 0 then
-    Exit;
-  AValue := Integer(RqConsts.Objects[ConstIdx]);
-  Result := True;
+  if RqDataConsts = nil then
+  begin
+    RqDataConsts := TStringList.Create;
+    RqDataConsts.CaseSensitive := False;
+    RqDataConsts.Sorted := True;
+    RqDataConsts.Duplicates := dupIgnore;
+  end;
+  for ConstIdx := 0 to RqConsts.Count - 1 do
+    RqDataConsts.AddObject(RqConsts[ConstIdx], RqConsts.Objects[ConstIdx]);
+end;
+
+function RqChoiceName(const AChoice: string): string;
+var
+  EqPos: Integer;
+begin
+  EqPos := Pos('=', AChoice);
+  if EqPos > 0 then
+    Result := Copy(AChoice, 1, EqPos - 1)
+  else
+    Result := AChoice;
+end;
+
+// Значение варианта: записанное в файле ("bsSizeable=2"), иначе константа
+// программы. False - не известно.
+function ChoiceValueOf(const AChoice: string; var AValue: Integer): Boolean;
+var
+  EqPos: Integer;
+begin
+  EqPos := Pos('=', AChoice);
+  if EqPos > 0 then
+    Result := ParseBasicInt(Copy(AChoice, EqPos + 1, MaxInt), AValue)
+  else
+    Result := RqConstValue(AChoice, AValue);
 end;
 
 function RqChoiceText(AMember: TRqMember; const AValue: string): string;
 var
-  Number, ChoiceIdx, ChoiceValue, CharIdx: Integer;
+  Number, ChoiceIdx, ChoiceValue, CharIdx, ListIdx: Integer;
+  ConstList: TStringList;
   AnyConst: Boolean;
-  Prefix, Found: string;
+  Prefix, Found, FirstName: string;
 begin
   Result := AValue;
   if (AMember = nil) or (AMember.Choices.Count = 0) or
@@ -933,56 +1141,66 @@ begin
     if Copy(AMember.Choices[ChoiceIdx], 1, 1) = '<' then
       Exit;
   if (AMember.Choices.Count = 2) and
-     (CompareText(AMember.Choices[0], 'False') = 0) and
-     (CompareText(AMember.Choices[1], 'True') = 0) then
+     (CompareText(RqChoiceName(AMember.Choices[0]), 'False') = 0) and
+     (CompareText(RqChoiceName(AMember.Choices[1]), 'True') = 0) then
   begin
     if Number = 0 then
-      Result := AMember.Choices[0]
+      Result := RqChoiceName(AMember.Choices[0])
     else
-      Result := AMember.Choices[1];
+      Result := RqChoiceName(AMember.Choices[1]);
     Exit;
   end;
   AnyConst := False;
   for ChoiceIdx := 0 to AMember.Choices.Count - 1 do
-    if RqConstValue(AMember.Choices[ChoiceIdx], ChoiceValue) then
+    if ChoiceValueOf(AMember.Choices[ChoiceIdx], ChoiceValue) then
     begin
       AnyConst := True;
       if ChoiceValue = Number then
       begin
-        Result := AMember.Choices[ChoiceIdx];
+        Result := RqChoiceName(AMember.Choices[ChoiceIdx]);
         Exit;
       end;
     end;
   if not AnyConst then
   begin
     if (Number >= 0) and (Number < AMember.Choices.Count) then
-      Result := AMember.Choices[Number];
+      Result := RqChoiceName(AMember.Choices[Number]);
     Exit;
   end;
-
   // Приставка вариантов - строчные буквы в начале, одна у всех
-  Prefix := '';
+  FirstName := RqChoiceName(AMember.Choices[0]);
   CharIdx := 1;
-  while (CharIdx <= Length(AMember.Choices[0])) and
-        (AMember.Choices[0][CharIdx] in ['a'..'z']) do
+  while (CharIdx <= Length(FirstName)) and (FirstName[CharIdx] in ['a'..'z']) do
     Inc(CharIdx);
-  Prefix := Copy(AMember.Choices[0], 1, CharIdx - 1);
-  if (Prefix = '') or (CharIdx > Length(AMember.Choices[0])) then
+  Prefix := Copy(FirstName, 1, CharIdx - 1);
+  if (Prefix = '') or (CharIdx > Length(FirstName)) then
     Exit;
   for ChoiceIdx := 1 to AMember.Choices.Count - 1 do
     if Copy(AMember.Choices[ChoiceIdx], 1, Length(Prefix)) <> Prefix then
       Exit;
+  // Константы с этой приставкой и этим значением - из программы и из
+  // описания; одно имя в обоих списках - одна константа
   Found := '';
-  for ChoiceIdx := 0 to RqConsts.Count - 1 do
-    if (Copy(RqConsts[ChoiceIdx], 1, Length(Prefix)) = Prefix) and
-       (Length(RqConsts[ChoiceIdx]) > Length(Prefix)) and
-       (RqConsts[ChoiceIdx][Length(Prefix) + 1] in ['A'..'Z']) and
-       (Integer(RqConsts.Objects[ChoiceIdx]) = Number) then
-    begin
-      if Found <> '' then
-        Exit;   // двум константам одно значение - какая из них, неясно
-      Found := RqConsts[ChoiceIdx];
-    end;
+  for ListIdx := 0 to 1 do
+  begin
+    if ListIdx = 0 then
+      ConstList := RqConsts
+    else
+      ConstList := RqDataConsts;
+    if ConstList = nil then
+      Continue;
+    for ChoiceIdx := 0 to ConstList.Count - 1 do
+      if (Copy(ConstList[ChoiceIdx], 1, Length(Prefix)) = Prefix) and
+         (Length(ConstList[ChoiceIdx]) > Length(Prefix)) and
+         (ConstList[ChoiceIdx][Length(Prefix) + 1] in ['A'..'Z']) and
+         (Integer(ConstList.Objects[ChoiceIdx]) = Number) and
+         (CompareText(ConstList[ChoiceIdx], Found) <> 0) then
+      begin
+        if Found <> '' then
+          Exit;   // двум константам одно значение - какая из них, неясно
+        Found := ConstList[ChoiceIdx];
+      end;
+  end;
   if Found <> '' then
     Result := Found;
 end;
@@ -1034,6 +1252,125 @@ begin
     Result := AMember.DefValue;
 end;
 
+function RqHeaderComments: TStringList;
+begin
+  if RqFileComments = nil then
+    RqFileComments := TStringList.Create;
+  Result := RqFileComments;
+end;
+
+function RqTakeCustom: TStringList;
+begin
+  if RqCustom = nil then
+  begin
+    RqCustom := TStringList.Create;
+    RqCustom.CaseSensitive := False;
+  end;
+  Result := RqCustom;
+  RqCustom := TStringList.Create;
+  RqCustom.CaseSensitive := False;
+end;
+
+function RqAddClass(AClass: TRqClass): Boolean;
+begin
+  if RqClasses = nil then
+  begin
+    RqClasses := TStringList.Create;
+    RqClasses.CaseSensitive := False;
+  end;
+  Result := RqClasses.IndexOf(AClass.Name) < 0;
+  if Result then
+    RqClasses.AddObject(AClass.Name, AClass);
+end;
+
+procedure RqDropCustomClasses;
+var
+  ClassIdx: Integer;
+begin
+  if RqClasses = nil then
+    Exit;
+  for ClassIdx := RqClasses.Count - 1 downto 0 do
+    if TRqClass(RqClasses.Objects[ClassIdx]).IsCustom then
+    begin
+      RqClasses.Objects[ClassIdx].Free;
+      RqClasses.Delete(ClassIdx);
+    end;
+end;
+
+procedure RqSaveComponents(const AFile: string);
+var
+  Output: TStringList;
+  ClassIdx, ItemIdx: Integer;
+  Cls: TRqClass;
+  Head, Line: string;
+
+  procedure AddMember(AMember: TRqMember; AWithChoices: Boolean);
+  var
+    ChoiceIdx: Integer;
+  begin
+    Line := AMember.Name + '|' + AMember.TypeName + '|' + AMember.Access +
+            '|' + AMember.DefValue;
+    if AWithChoices then
+      for ChoiceIdx := 0 to AMember.Choices.Count - 1 do
+        Line := Line + '|' + AMember.Choices[ChoiceIdx];
+    Output.Add(Line);
+    if AMember.Comment <> '' then
+      Output.Add(AMember.Comment);
+  end;
+
+begin
+  Output := TStringList.Create;
+  try
+    if RqFileComments <> nil then
+      Output.AddStrings(RqFileComments);
+    if RqClasses <> nil then
+      for ClassIdx := 0 to RqClasses.Count - 1 do
+      begin
+        Cls := TRqClass(RqClasses.Objects[ClassIdx]);
+        Head := '# ' + IntToStr(ClassIdx) + ' ' + Cls.Name;
+        if Cls.IsCustom then
+          Head := Head + ' EXTENDS ' + Cls.BaseName;
+        Head := Head + ' * Properties *';
+        if Cls.Note <> '' then
+          Head := Head + ' ' + Cls.Note;
+        Output.Add(Head);
+        if Cls.SrcFile <> '' then
+          Output.Add('''@source ' + Cls.SrcFile + ' ' +
+                     IntToStr(Cls.SrcLine + 1));
+        Output.AddStrings(Cls.Comments);
+        for ItemIdx := 0 to Cls.Props.Count - 1 do
+          AddMember(TRqMember(Cls.Props.Objects[ItemIdx]), True);
+        Output.Add('* Methods');
+        for ItemIdx := 0 to Cls.Methods.Count - 1 do
+          AddMember(TRqMember(Cls.Methods.Objects[ItemIdx]), False);
+        Output.Add('* Events');
+        for ItemIdx := 0 to Cls.Events.Count - 1 do
+        begin
+          Output.Add(TRqEvent(Cls.Events.Objects[ItemIdx]).Name + '||' +
+                     TRqEvent(Cls.Events.Objects[ItemIdx]).Params);
+          if TRqEvent(Cls.Events.Objects[ItemIdx]).Comment <> '' then
+            Output.Add(TRqEvent(Cls.Events.Objects[ItemIdx]).Comment);
+        end;
+        if Cls.Defaults.Count > 0 then
+        begin
+          Output.Add('* Defaults');
+          Output.AddStrings(Cls.Defaults);
+        end;
+      end;
+    if (RqDataConsts <> nil) and (RqDataConsts.Count > 0) then
+    begin
+      Output.Add('* Constants');
+      for ItemIdx := 0 to RqDataConsts.Count - 1 do
+        Output.Add(RqDataConsts[ItemIdx] + '=' +
+                   IntToStr(Integer(RqDataConsts.Objects[ItemIdx])));
+    end;
+    Output.Add('#');
+    Output.SaveToFile(AFile);
+  finally
+    Output.Free;
+  end;
+end;
+
 function RqClassCount: Integer;
 begin
   if RqClasses = nil then
@@ -1054,5 +1391,7 @@ finalization
   RqClearCustom;
   FreeAndNil(RqCustom);
   FreeAndNil(RqConsts);
+  FreeAndNil(RqFileComments);
+  FreeAndNil(RqDataConsts);
 
 end.
