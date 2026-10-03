@@ -1,0 +1,4 @@
+CREATE Image1 AS QIMAGE
+	Left = 1
+	Top = 1
+END CREATE

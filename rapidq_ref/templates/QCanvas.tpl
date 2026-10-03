@@ -1,0 +1,4 @@
+CREATE Canvas1 AS QCANVAS
+	Left = 1
+	Top = 1
+END CREATE
