@@ -1809,6 +1809,7 @@ type
     procedure ObjTreeChange(Sender: TObject; Node: TTreeNode);
     procedure RightPagesChange(Sender: TObject);
     procedure RefreshCodeTree;
+    procedure RefreshRapidQObjTree;
     function  DsgGetText: string;
     procedure DsgSetText(const AText: string);
     function  DsgOpenKeep(const AFile: string): Integer;
@@ -19987,6 +19988,143 @@ begin
     RefreshIncludes;
 end;
 
+// ---------------------------------------------------------------------------
+//  Вкладка Code для файлов RapidQ: дерево объектов, созданных через
+//  CREATE ... END CREATE (как вкладка Objects в RQdebugger, BuildObjTree).
+//
+//  CREATE внутри другого CREATE - его потомок. Комментарии (' и REM) не в
+//  счёт; строка делится на операторы по ":" вне кавычек, так что
+//  "CREATE ... : END CREATE" в одной строке тоже разбирается. END CREATE
+//  без CREATE и CREATE без END CREATE показываются с пометкой. Рядом с
+//  объектом - номер строки CREATE, щелчок - к ней (CodeTreeClick).
+//  Разбирается текст из редактора, с несохранёнными правками; объекты из
+//  $INCLUDE-файлов пока не показываются.
+// ---------------------------------------------------------------------------
+
+// Операторы строки RapidQ: без комментария ', разделены ":" вне кавычек
+procedure RapidQSplitStatements(const ALine: string; AParts: TStrings);
+var
+  CharIdx, StartPos: Integer;
+  InQuote: Boolean;
+
+  procedure AddPart(AEnd: Integer);
+  var
+    Stmt: string;
+  begin
+    Stmt := Trim(Copy(ALine, StartPos, AEnd - StartPos));
+    if Stmt <> '' then
+      AParts.Add(Stmt);
+  end;
+
+begin
+  AParts.Clear;
+  InQuote := False;
+  StartPos := 1;
+  for CharIdx := 1 to Length(ALine) do
+    case ALine[CharIdx] of
+      '"':
+        InQuote := not InQuote;
+      '''':
+        if not InQuote then
+        begin
+          AddPart(CharIdx);
+          Exit;
+        end;
+      ':':
+        if not InQuote then
+        begin
+          AddPart(CharIdx);
+          StartPos := CharIdx + 1;
+        end;
+    end;
+  AddPart(Length(ALine) + 1);
+end;
+
+// Первое слово оператора заглавными; ARest - то, что после него
+function RapidQFirstWord(const AStmt: string; var ARest: string): string;
+var
+  WordEnd: Integer;
+begin
+  WordEnd := 1;
+  while (WordEnd <= Length(AStmt)) and (AStmt[WordEnd] > ' ') do
+    Inc(WordEnd);
+  Result := UpperCase(Copy(AStmt, 1, WordEnd - 1));
+  ARest := Trim(Copy(AStmt, WordEnd, MaxInt));
+end;
+
+procedure TForm1.RefreshRapidQObjTree;
+var
+  Lines, Parts: TStringList;
+  OpenNodes: TList;   // узлы CREATE, для которых ещё не было END CREATE
+  LineIdx, PartIdx, NodeIdx, CreateCount: Integer;
+  FirstWord, Rest, Tail: string;
+  Root, Parent, Node: TTreeNode;
+begin
+  if FCodeTree = nil then
+    Exit;
+  Lines := TStringList.Create;
+  Parts := TStringList.Create;
+  OpenNodes := TList.Create;
+  FCodeTree.Items.BeginUpdate;
+  try
+    FCodeTree.Items.Clear;
+    Root := FCodeTree.Items.AddObject(nil, ExtractFileName(FCurrentFileName),
+                                      Pointer(-1));
+    CreateCount := 0;
+    Lines.Text := GetEditorTextCR;
+    for LineIdx := 0 to Lines.Count - 1 do
+    begin
+      // Быстрый отсев: в строке нет слова CREATE ни в каком виде
+      if Pos('CREATE', UpperCase(Lines[LineIdx])) = 0 then
+        Continue;
+      RapidQSplitStatements(Lines[LineIdx], Parts);
+      for PartIdx := 0 to Parts.Count - 1 do
+      begin
+        FirstWord := RapidQFirstWord(Parts[PartIdx], Rest);
+        if FirstWord = 'REM' then
+          Break;   // дальше в строке - комментарий
+        if FirstWord = 'CREATE' then
+        begin
+          if OpenNodes.Count > 0 then
+            Parent := TTreeNode(OpenNodes[OpenNodes.Count - 1])
+          else
+            Parent := Root;
+          Node := FCodeTree.Items.AddChildObject(Parent,
+            Rest + '   [' + IntToStr(LineIdx + 1) + ']', Pointer(LineIdx));
+          OpenNodes.Add(Node);
+          Inc(CreateCount);
+        end
+        else if (FirstWord = 'END') and
+                (RapidQFirstWord(Rest, Tail) = 'CREATE') then
+        begin
+          if OpenNodes.Count > 0 then
+            OpenNodes.Delete(OpenNodes.Count - 1)
+          else
+            FCodeTree.Items.AddChildObject(Root, 'END CREATE без CREATE   [' +
+              IntToStr(LineIdx + 1) + ']', Pointer(LineIdx));
+        end;
+      end;
+    end;
+
+    // CREATE, который так и не закрыт
+    for NodeIdx := 0 to OpenNodes.Count - 1 do
+    begin
+      Node := TTreeNode(OpenNodes[NodeIdx]);
+      Node.Text := Node.Text + '  нет END CREATE';
+    end;
+    if CreateCount = 0 then
+      FCodeTree.Items.AddChildObject(Root, 'CREATE в файле нет', Pointer(-1));
+
+    FCodeTree.FullExpand;
+    Root.MakeVisible;
+  finally
+    FCodeTree.Items.EndUpdate;
+    OpenNodes.Free;
+    Parts.Free;
+    Lines.Free;
+  end;
+end;
+
 // Дерево всех компонентов, которые создаёт код открытого модуля: главная
 // форма (Self) с тем, что на ней, служебные окна и диалоги
 // (Dlg := TForm.Create) со своим содержимым, меню. Строится тем же
@@ -20072,6 +20210,12 @@ var
 begin
   if FCodeTree = nil then
     Exit;
+  // Файл RapidQ (те же правила, что у вкладки Includes) - дерево CREATE
+  if (FCurrentFileName <> '') and IncludesApply then
+  begin
+    RefreshRapidQObjTree;
+    Exit;
+  end;
   Start := FDfmNodes.Count;
   Lines := TStringList.Create;
   FCodeTree.Items.BeginUpdate;
