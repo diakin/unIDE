@@ -36600,7 +36600,7 @@ end;
 //
 //  Значения вроде Width=MenuPanel.ClientWidth*2\3 без запуска не узнать.
 //  Поэтому рядом с главным .bas пишется копия _rqprobe.bas, собирается в
-//  dsgprobe\_rqprobe.exe и запускается. В копии два добавления:
+//  _rqprobe.exe там же и запускается. В копии два добавления:
 //    - перед первым CREATE главной части - таймер (DIM ... AS QTIMER,
 //      Interval = 1). Сообщение таймера Windows доставляет, только когда
 //      программа забирает сообщения из очереди: в ShowModal или DoEvents.
@@ -36617,17 +36617,22 @@ end;
 //  файле только он - программа дошла до таймера, но закончилась, не начав
 //  обрабатывать сообщения; файла нет - не дошла и до таймера.
 //  Exe копии собирается и запускается рядом с .bas, как обычный: программа
-//  берёт свою папку из пути к exe (COMMAND$(0) в RQdebugger). После запуска
-//  exe переносится в dsgprobe\. Вывод консоли программы - в
-//  dsgprobe\_rqprobe_console.txt, его хвост - в лог.
+//  берёт свою папку из пути к exe (COMMAND$(0) в RQdebugger). Там же он и
+//  остаётся: QXpTheme.INC при первом запуске пишет рядом с exe .manifest,
+//  запускает exe заново (RUN Command$(0)) и завершает первый процесс - с
+//  manifest на месте этого больше не происходит. Копия не изменилась и exe
+//  новее неё - сборки нет. Готовность - "#end" в файле значений и размер
+//  файла, переставший расти; разбирается проверенный текст. Вывод консоли
+//  программы - в dsgprobe\_rqprobe_console.txt, его хвост - в лог.
+//  Рядом с копией - _rqprobe_run.bat для запуска вручную.
 //  Свойство, которое компилятор читать не даёт ("Member X not part of
 //  class"), исключается у всех объектов того же класса: их строки
 //  закомментируются, копия собирается снова (до RqProbeMaxRetry раз).
 //  Исключённое запоминается в dsgprobe\rqprobe_skip.txt строкой
 //  "КЛАСС.СВОЙСТВО" - следующий снимок его уже не пишет. Не удался снимок -
 //  лог компиляции сохраняется в dsgprobe\_rqprobe_compile.log.
-//  Копия .bas и вывод остаются в dsgprobe\ для разбора, из папки программы
-//  удаляются.
+//  _rqprobe.bas, _rqprobe.exe и _rqprobe.txt остаются рядом с .bas; перед
+//  запуском удаляется только прежний _rqprobe.txt.
 // ---------------------------------------------------------------------------
 
 const
@@ -37072,9 +37077,11 @@ var
   Src, ProbeLines, Props, ObjClasses, SkipList: TStringList;
   DumpStart, Attempt, Excluded, LineIdx, EqPos, ErrIdx, CutCount: Integer;
   Ok, Complete: Boolean;
-  ConsoleFile: string;
+  ConsoleFile, OutText: string;
   HasStart, HasTime: Boolean;
   RunMs: Cardinal;
+  LastOutSize, NulCount: Integer;
+  OldSrc: TStringList;
 
   // Хвост вывода консоли программы - в лог
   procedure LogConsoleTail(const AFile: string);
@@ -37122,39 +37129,47 @@ var
     end;
   end;
 
-  // Exe копии - из папки программы в dsgprobe под именем AName
-  procedure MoveProbeExe(const AName: string);
-  begin
-    if not FileExists(FRqProbeExe) then
-      Exit;
-    CopyFile(PChar(FRqProbeExe), PChar(FProbeDir + AName), False);
-    DeleteFile(FRqProbeExe);
-  end;
-
-  // В файле значений есть "#end" - дамп записан целиком. Файл может быть
-  // ещё открыт программой - читается с общим доступом; не прочиталось -
-  // False.
-  function OutFileDone: Boolean;
+  // Файл значений целиком (с общим доступом: программа может держать его
+  // открытым). Нет или не прочитался - ''.
+  function ReadOutFile: string;
   var
     OutStream: TFileStream;
-    OutText: string;
   begin
-    Result := False;
+    Result := '';
     if not FileExists(OutFile) then
       Exit;
     try
       OutStream := TFileStream.Create(OutFile, fmOpenRead or fmShareDenyNone);
       try
-        SetLength(OutText, OutStream.Size);
+        SetLength(Result, OutStream.Size);
         if OutStream.Size > 0 then
-          OutStream.ReadBuffer(OutText[1], OutStream.Size);
+          OutStream.ReadBuffer(Result[1], OutStream.Size);
       finally
         OutStream.Free;
       end;
     except
+      Result := '';
+    end;
+  end;
+
+  // Файл значений записан: в нём "#end", и размер тот же, что при прошлой
+  // проверке (100 мс назад) - программа писать перестала. Тогда его текст
+  // - в OutText: разбирается ровно то, что проверено, без нового чтения.
+  function OutFileDone: Boolean;
+  var
+    FileText: string;
+  begin
+    Result := False;
+    FileText := ReadOutFile;
+    if Pos(#10'#end', FileText) = 0 then
+    begin
+      LastOutSize := Length(FileText);
       Exit;
     end;
-    Result := Pos(#10'#end', OutText) > 0;
+    Result := Length(FileText) = LastOutSize;
+    LastOutSize := Length(FileText);
+    if Result then
+      OutText := FileText;
   end;
 
   // Запуск exe копии из папки программы (текущая папка - она же, как при
@@ -37176,6 +37191,8 @@ var
     Started, ProcEnded: Boolean;
   begin
     AElapsed := 0;
+    LastOutSize := -1;
+    OutText := '';
     FillChar(StartInfo, SizeOf(StartInfo), 0);
     StartInfo.cb := SizeOf(StartInfo);
     SecAttr.nLength := SizeOf(SecAttr);
@@ -37259,8 +37276,9 @@ var
     Result := True;
   end;
 
-  // dsgprobe\_rqprobe_run.bat - запуск копии вручную из папки программы,
-  // с паузой в конце: видно окно консоли и сообщения рантайма RapidQ
+  // _rqprobe_run.bat рядом с копией - запуск её вручную из папки
+  // программы, с паузой в конце: видно окно консоли и сообщения рантайма
+  // RapidQ
   procedure WriteRunBat;
   var
     Bat: TStringList;
@@ -37270,19 +37288,21 @@ var
       Bat.Add('@echo off');
       Bat.Add('rem unIDE: run the snapshot copy by hand, from the program folder');
       Bat.Add('cd /d "' + ExcludeTrailingPathDelimiter(RunDir) + '"');
-      Bat.Add('copy /y "%~dp0_rqprobe.exe" "_rqprobe.exe" >nul');
+      Bat.Add('if exist "_rqprobe.txt" del "_rqprobe.txt"');
       Bat.Add('"_rqprobe.exe"');
       Bat.Add('echo Exit code: %errorlevel%');
+      Bat.Add('echo The program may restart itself (QXpTheme) - the values ' +
+              'file can appear a bit later');
+      Bat.Add('pause');
       Bat.Add('if exist "_rqprobe.txt" (echo Values file: %cd%\_rqprobe.txt) ' +
               'else (echo No values file)');
-      Bat.Add('del "_rqprobe.exe"');
       Bat.Add('pause');
       try
-        Bat.SaveToFile(FProbeDir + '_rqprobe_run.bat');
-        LogComp('Снимок RapidQ: запуск копии вручную - ' + FProbeDir +
+        Bat.SaveToFile(RunDir + '_rqprobe_run.bat');
+        LogComp('Снимок RapidQ: запуск копии вручную - ' + RunDir +
                 '_rqprobe_run.bat');
       except
-        LogComp('Снимок RapidQ: не записан ' + FProbeDir + '_rqprobe_run.bat');
+        LogComp('Снимок RapidQ: не записан ' + RunDir + '_rqprobe_run.bat');
       end;
     finally
       Bat.Free;
@@ -37297,6 +37317,7 @@ var
     CtrlDump: Integer;
     CtrlOk: Boolean;
     CtrlMs: Cardinal;
+    CtrlBas, MainExe: string;
   begin
     LogComp('Снимок RapidQ: контрольный запуск - та же копия без строк ' +
             'свойств (таймер, #start, #end)');
@@ -37307,39 +37328,31 @@ var
       if not RapidQProbeSource(MainBas, OutFile, CtrlSrc, CtrlClasses,
                                CtrlDump, True) then
         Exit;
-      CtrlSrc.SaveToFile(ProbeBas);
-      FRqProbeActive := True;
-      FRqProbeBas := ProbeBas;
+      // Свои имена: основная копия и её exe остаются как есть
+      CtrlBas := RunDir + '_rqprobe_ctrl.bas';
+      MainExe := FRqProbeExe;
+      CtrlSrc.SaveToFile(CtrlBas);
+      FRqProbeExe := RunDir + '_rqprobe_ctrl.exe';
       try
-        CtrlOk := CompileRapidQ;
+        FRqProbeActive := True;
+        FRqProbeBas := CtrlBas;
+        try
+          CtrlOk := CompileRapidQ;
+        finally
+          FRqProbeActive := False;
+        end;
+        if not CtrlOk then
+        begin
+          LogComp('Снимок RapidQ: контрольная копия не собралась');
+          Exit;
+        end;
+        DeleteFile(OutFile);
+        if not RunProbe(FProbeDir + '_rqprobe_ctrl_console.txt', CtrlMs) then
+          Exit;
       finally
-        FRqProbeActive := False;
+        FRqProbeExe := MainExe;
       end;
-      if FileExists(ProbeBas) then
-      begin
-        CopyFile(PChar(ProbeBas), PChar(FProbeDir + '_rqprobe_ctrl.bas'),
-                 False);
-        DeleteFile(ProbeBas);
-      end;
-      if not CtrlOk then
-      begin
-        LogComp('Снимок RapidQ: контрольная копия не собралась');
-        Exit;
-      end;
-      DeleteFile(OutFile);
-      if not RunProbe(FProbeDir + '_rqprobe_ctrl_console.txt', CtrlMs) then
-      begin
-        MoveProbeExe('_rqprobe_ctrl.exe');
-        Exit;
-      end;
-      MoveProbeExe('_rqprobe_ctrl.exe');
-      if FileExists(OutFile) then
-      try
-        CtrlLines.LoadFromFile(OutFile);
-      except
-        CtrlLines.Clear;
-      end;
-      DeleteFile(OutFile);
+      CtrlLines.Text := ReadOutFile;
       if CtrlLines.IndexOf('#end') >= 0 then
         LogComp(Format('Снимок RapidQ: контрольная копия дошла до таймера и ' +
                        'отработала (#end) за %d мс. Программу останавливают ' +
@@ -37405,7 +37418,6 @@ begin
   // по пути к exe
   FRqProbeExe := ExtractFilePath(MainBas) + '_rqprobe.exe';
   ConsoleFile := FProbeDir + '_rqprobe_console.txt';
-  DeleteFile(OutFile);
 
   Src := TStringList.Create;
   ObjClasses := TStringList.Create;
@@ -37416,6 +37428,27 @@ begin
       Exit;
     Excluded := 0;
     Attempt := 0;
+    // Копия та же, что в прошлый раз, и её exe собран после неё - сборка
+    // не нужна
+    if FileExists(ProbeBas) and FileExists(FRqProbeExe) and
+       (FileAge(FRqProbeExe) >= FileAge(ProbeBas)) then
+    begin
+      OldSrc := TStringList.Create;
+      try
+        try
+          OldSrc.LoadFromFile(ProbeBas);
+          Ok := OldSrc.Text = Src.Text;
+        except
+          Ok := False;
+        end;
+      finally
+        OldSrc.Free;
+      end;
+      if Ok then
+        LogComp('Снимок RapidQ: копия не изменилась - ' + FRqProbeExe +
+                ' без пересборки');
+    end;
+    if not Ok then
     repeat
       Src.SaveToFile(ProbeBas);
       FRqProbeActive := True;
@@ -37443,7 +37476,7 @@ begin
       begin
         LogComp('Снимок RapidQ: копия программы не собралась, ошибка не в ' +
                 'строках снимка. Проверьте обычную сборку (Compile); копия - ' +
-                FProbeDir + '_rqprobe.bas');
+                ProbeBas);
         SaveCompileLog(FProbeDir + '_rqprobe_compile.log');
         Exit;
       end;
@@ -37491,25 +37524,31 @@ begin
       Exit;
     end;
   finally
+    // Копия, её exe и файл значений остаются рядом с .bas: exe пригодится
+    // в следующий раз, а его .manifest (QXpTheme) - чтобы программа не
+    // перезапускала себя
     ObjClasses.Free;
-    // Копия - в dsgprobe для разбора, из папки программы - прочь
-    if FileExists(ProbeBas) then
-    begin
-      CopyFile(PChar(ProbeBas), PChar(FProbeDir + '_rqprobe.bas'), False);
-      DeleteFile(ProbeBas);
-    end;
     Src.Free;
+  end;
+  WriteRunBat;
+
+  // Прежний файл значений - прочь: иначе можно прочитать старые значения
+  if FileExists(OutFile) then
+    DeleteFile(OutFile);
+  if FileExists(OutFile) then
+  begin
+    LogComp('Снимок RapidQ: прежний файл значений не удаляется (открыт?): ' +
+            OutFile);
+    SaveCompileLog(FProbeDir + '_rqprobe_compile.log');
+    Exit;
   end;
 
   // Запуск
   if not RunProbe(ConsoleFile, RunMs) then
   begin
-    MoveProbeExe('_rqprobe.exe');
     SaveCompileLog(FProbeDir + '_rqprobe_compile.log');
     Exit;
   end;
-  MoveProbeExe('_rqprobe.exe');
-  WriteRunBat;
 
   if not FileExists(OutFile) then
   begin
@@ -37531,14 +37570,27 @@ begin
   RapidQProbeClear;
   ProbeLines := TStringList.Create;
   try
-    try
-      ProbeLines.LoadFromFile(OutFile);
-    except
+    // Разбирается текст, который проверил OutFileDone; "#end" так и не
+    // появился - то, что есть в файле сейчас
+    if OutText = '' then
+      OutText := ReadOutFile;
+    if OutText = '' then
+    begin
       LogComp('Снимок RapidQ: не прочитан ' + OutFile);
       Exit;
     end;
-    CopyFile(PChar(OutFile), PChar(FProbeDir + '_rqprobe.txt'), False);
-    DeleteFile(OutFile);
+    // Нулевой байт оборвал бы разбор строк (TStrings.Text) на середине
+    NulCount := 0;
+    for LineIdx := 1 to Length(OutText) do
+      if OutText[LineIdx] = #0 then
+      begin
+        OutText[LineIdx] := ' ';
+        Inc(NulCount);
+      end;
+    if NulCount > 0 then
+      LogComp(Format('Снимок RapidQ: в файле значений символов с кодом 0 - ' +
+                     '%d, заменены пробелами', [NulCount]));
+    ProbeLines.Text := OutText;
     // Только "#start": таймер создан, но не сработал
     HasStart := ProbeLines.IndexOf('#start') >= 0;
     HasTime := False;
