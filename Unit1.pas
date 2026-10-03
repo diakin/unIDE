@@ -601,7 +601,7 @@ type
     FObjHeader: TPanel;
     FObjPages: TUiPageControl;
     lvSubList: TUiListView;
-    lvIncludes: TUiListView;
+    FIncTree: TUiTreeView;
     FObjPagesSheet1: TTabSheet;
     FObjPagesSheet2: TTabSheet;
     FObjEvents: TUiListView;
@@ -1198,8 +1198,8 @@ type
     FTabWork: Boolean;
     FTabWorkShown: Boolean;
     FTabShowMs: Cardinal;
-    // Строки вкладки Includes (RefreshIncludes): найденный файл, файл с
-    // $INCLUDE и номер строки, через табуляцию; индекс - в Data строки списка
+    // Узлы вкладки Includes (RefreshIncludes): найденный файл, файл с
+    // $INCLUDE и номер строки, через табуляцию; индекс - в Data узла
     FIncludeRows: TStringList;
     // Время файлов на диске (FileAge), каким оно было при последнем чтении
     // или записи здесь. Имя - полный путь в верхнем регистре. По нему при
@@ -17516,8 +17516,8 @@ begin
   // Инспектор объектов разбирает .dfm только когда его вкладку открыли
   FRightPages.OnChange := RightPagesChange;
   // Двойной щелчок в Includes - открыть файл
-  if lvIncludes <> nil then
-    lvIncludes.OnDblClick := IncludesDblClick;
+  if FIncTree <> nil then
+    FIncTree.OnDblClick := IncludesDblClick;
 
   BuildObjectInspector;
 end;
@@ -35742,9 +35742,11 @@ end;
 //    $INCLUDE "файл" и $INCLUDE <файл>, закомментированные не в счёт;
 //    файл ищется: путь полный - как есть; иначе в папке главного .bas, потом
 //    в папке Include из настроек ([Compiler.RapidQ Basic] IncPath).
-//  Вложенные include - строками ниже с отступом. Файл, который уже
-//  показан, второй раз не разворачивается. Не найденный - в списке с
-//  пометкой; двойной щелчок по нему открывает строку с $INCLUDE.
+//  Дерево, как в RQdebugger: корень - сам файл, вложенные include - его
+//  ветками; у узла - полный путь и в скобках номер строки с $INCLUDE.
+//  Файл, который уже показан, второй раз не разворачивается. Не
+//  найденный - с пометкой; двойной щелчок по нему открывает строку с
+//  $INCLUDE.
 //  Список строится, когда вкладку открывают, и при переключении вкладок
 //  редактора, если она открыта.
 // ---------------------------------------------------------------------------
@@ -35823,51 +35825,49 @@ var
   Ini: TIniFile;
   Visited: TStringList;
   Source: TStringList;
-  Item: TListItem;
+  Root: TTreeNode;
 
-  // Строка списка. AFull - найденный файл ('' - не найден), AFrom и ALine -
+  // Узел дерева. AFull - найденный файл ('' - не найден), AFrom и ALine -
   // где стоит $INCLUDE (для двойного щелчка по ненайденному).
-  procedure AddRow(ALevel: Integer; const ACaption, AFull, AFrom: string;
-                   ALine: Integer; const AFolder: string);
+  function AddNode(AParent: TTreeNode; const AText, AFull, AFrom: string;
+                   ALine: Integer): TTreeNode;
   begin
-    Item := lvIncludes.Items.Add;
-    Item.Caption := StringOfChar(' ', ALevel * 4) + ACaption;
-    if ALine > 0 then
-      Item.SubItems.Add(IntToStr(ALine))
-    else
-      Item.SubItems.Add('');
-    Item.SubItems.Add(AFolder);
     FIncludeRows.Add(AFull + #9 + AFrom + #9 + IntToStr(ALine));
-    Item.Data := Pointer(FIncludeRows.Count - 1);
+    Result := FIncTree.Items.AddChildObject(AParent, AText,
+                                            Pointer(FIncludeRows.Count - 1));
   end;
 
-  // Include файла AFile (его строки - ALines) уровня ALevel
+  // Include файла AFile (его строки - ALines) - потомками узла AParent
   procedure AddIncludesOf(ALines: TStrings; const AFile: string;
-                          ALevel: Integer);
+                          AParent: TTreeNode; ALevel: Integer);
   var
     LineIdx: Integer;
-    IncName, Full: string;
+    IncName, Full, LineTag: string;
     Nested: TStringList;
+    Node: TTreeNode;
   begin
     for LineIdx := 0 to ALines.Count - 1 do
     begin
       IncName := RapidQIncludeName(ALines[LineIdx]);
       if IncName = '' then
         Continue;
+      // Номер строки с $INCLUDE в подключающем файле
+      LineTag := '   [' + IntToStr(LineIdx + 1) + ']';
       Full := RapidQResolveInclude(IncName, MainDir, IncDir);
       if Full = '' then
       begin
-        AddRow(ALevel, IncName, '', AFile, LineIdx + 1, 'не найден');
+        AddNode(AParent, IncName + LineTag + '  не найден', '', AFile,
+                LineIdx + 1);
         Continue;
       end;
       if Visited.IndexOf(UpperCase(Full)) >= 0 then
       begin
-        AddRow(ALevel, IncName, Full, AFile, LineIdx + 1,
-               'уже подключён выше');
+        AddNode(AParent, Full + LineTag + '  уже подключён выше', Full, AFile,
+                LineIdx + 1);
         Continue;
       end;
       Visited.Add(UpperCase(Full));
-      AddRow(ALevel, IncName, Full, AFile, LineIdx + 1, ExtractFilePath(Full));
+      Node := AddNode(AParent, Full + LineTag, Full, AFile, LineIdx + 1);
       if ALevel >= MaxDepth then
         Continue;
       Nested := TStringList.Create;
@@ -35877,7 +35877,7 @@ var
         except
           Continue;
         end;
-        AddIncludesOf(Nested, Full, ALevel + 1);
+        AddIncludesOf(Nested, Full, Node, ALevel + 1);
       finally
         Nested.Free;
       end;
@@ -35885,19 +35885,19 @@ var
   end;
 
 begin
-  if lvIncludes = nil then
+  if FIncTree = nil then
     Exit;
   if FIncludeRows = nil then
     FIncludeRows := TStringList.Create;
 
-  lvIncludes.Items.BeginUpdate;
+  FIncTree.Items.BeginUpdate;
   try
-    lvIncludes.Items.Clear;
+    FIncTree.Items.Clear;
     FIncludeRows.Clear;
 
     if (FCurrentFileName = '') or not IncludesApply then
     begin
-      AddRow(0, 'Список строится для файлов RapidQ', '', '', 0, '');
+      AddNode(nil, 'Список строится для файлов RapidQ', '', '', 0);
       Exit;
     end;
 
@@ -35924,21 +35924,23 @@ begin
     Visited := TStringList.Create;
     Source := TStringList.Create;
     try
-      // Сам файл - первой строкой; его текст - из редактора, с несохранёнными
+      // Корень - сам файл; его текст - из редактора, с несохранёнными
       // правками
       Visited.Add(UpperCase(ExpandFileName(CurFile)));
-      AddRow(0, ExtractFileName(CurFile), CurFile, '', 0,
-             ExtractFilePath(CurFile));
+      Root := AddNode(nil, CurFile, CurFile, '', 0);
       Source.Text := GetEditorTextCR;
-      AddIncludesOf(Source, CurFile, 1);
-      if lvIncludes.Items.Count = 1 then
-        AddRow(1, '$INCLUDE в файле нет', '', '', 0, '');
+      AddIncludesOf(Source, CurFile, Root, 1);
+      if not Root.HasChildren then
+        AddNode(Root, '$INCLUDE в файле нет', '', '', 0);
+      // Раскрыто целиком, как в RQdebugger
+      FIncTree.FullExpand;
+      Root.MakeVisible;
     finally
       Source.Free;
       Visited.Free;
     end;
   finally
-    lvIncludes.Items.EndUpdate;
+    FIncTree.Items.EndUpdate;
   end;
 end;
 
@@ -35950,10 +35952,10 @@ var
   Row, Full, FromFile: string;
   Parts: TStringList;
 begin
-  if (lvIncludes = nil) or (lvIncludes.Selected = nil) or
+  if (FIncTree = nil) or (FIncTree.Selected = nil) or
      (FIncludeRows = nil) then
     Exit;
-  RowIdx := Integer(lvIncludes.Selected.Data);
+  RowIdx := Integer(FIncTree.Selected.Data);
   if (RowIdx < 0) or (RowIdx >= FIncludeRows.Count) then
     Exit;
   Row := FIncludeRows[RowIdx];
@@ -35973,7 +35975,6 @@ begin
 
   if (Full <> '') and FileExists(Full) then
   begin
-    // Повторная строка - тот же файл, открываем его
     OpenNamedFile(Full);
     Exit;
   end;
@@ -42453,7 +42454,7 @@ begin
     Exit;                   // уже
   FUiListScrolls := TList.Create;
   Wrap(lvSubList);
-  Wrap(lvIncludes);
+  Wrap(FIncTree);
   Wrap(FCodeTree);
   Wrap(FObjTree);
   Wrap(FObjProps);

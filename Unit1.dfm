@@ -1289,25 +1289,10 @@ object Form1: TForm1
       end
       object FTabIncludes: TTabSheet
         Caption = 'Includes'
-        object lvIncludes: TUiListView
+        object FIncTree: TUiTreeView
           Align = alClient
-          ViewStyle = vsReport
           ReadOnly = True
-          RowSelect = True
           HideSelection = False
-          Columns = <
-            item
-              Caption = 'File'
-              Width = 180
-            end
-            item
-              Caption = 'Line'
-              Width = 50
-            end
-            item
-              Caption = 'Folder'
-              Width = 260
-            end>
         end
       end
     end
