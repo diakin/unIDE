@@ -20307,11 +20307,16 @@ begin
   end;
 end;
 
-// Описание компонентов RapidQ загружено. Папки поиска по порядку:
+// Описание компонентов RapidQ загружено. Сначала - файл из настроек
+// ([Compiler.RapidQ Basic] CompDataFile, IDE Options - Compilers - поле
+// Components); задан другой, чем загружен, - загружается заново. Не задан
+// или его нет - папки поиска по порядку:
 //   рядом с exe;
 //   rapidq_ref рядом с exe (туда его кладёт пересборка, CopyOwnRunFiles);
 //   rapidq_ref в папке выше exe (exe в Output\, rapidq_ref - рядом с .dpr);
-//   папка компилятора RapidQ из настроек ([Compiler.RapidQ Basic] CompPath).
+//   папка компилятора RapidQ из настроек ([Compiler.RapidQ Basic] CompPath);
+//   rapidq_ref каждого проекта в папке projects у exe
+//   (projects\SyntaxHLClaude\rapidq_ref - исходники самого редактора).
 // В первой папке, где что-то нашлось, берётся общий ComponentAll.data; нет
 // его или он пустой - Component.data и к нему Component1.data той же папки;
 // нет и его - один Component1.data. Загружается один раз за сеанс.
@@ -20324,8 +20329,9 @@ const
 var
   Dirs, Tried: TStringList;
   Ini: TIniFile;
-  ExeDir, CompDir, Extra: string;
+  ExeDir, CompDir, Extra, SetFile: string;
   DirIdx, Members, Added, TryIdx: Integer;
+  Found: TSearchRec;
 
   procedure AddDir(const ADir: string);
   var
@@ -20353,30 +20359,75 @@ var
   end;
 
 begin
-  Result := RqComponentFile <> '';
+  CompDir := '';
+  SetFile := '';
+  if FileExists(SettingsFileName) then
+  begin
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      CompDir := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
+                                     'CompPath', ''));
+      SetFile := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
+                                     'CompDataFile', ''));
+    finally
+      Ini.Free;
+    end;
+  end;
+
+  // Загружен тот, что задан; не задан никакой или заданного нет на диске
+  // (тогда загружен найденный в папках) - готово
+  Result := (RqComponentFile <> '') and
+            ((SetFile = '') or not FileExists(SetFile) or
+             (CompareText(ExpandFileName(SetFile), RqComponentFile) = 0));
   if Result then
     Exit;
+
   Dirs := TStringList.Create;
   Tried := TStringList.Create;
   try
+    // Файл из настроек. Component.data - с добавкой Component1.data рядом.
+    if SetFile <> '' then
+    begin
+      if TryLoad(ExpandFileName(SetFile)) then
+      begin
+        Result := True;
+        LogComp('Описание компонентов RapidQ (из настроек): ' +
+                RqComponentFile + ', классов ' + IntToStr(RqClassCount));
+        Extra := ExtractFilePath(RqComponentFile) + ExtraName;
+        if (CompareText(ExtractFileName(RqComponentFile), MainName) = 0) and
+           FileExists(Extra) then
+        begin
+          Added := RqMergeComponents(Extra, Members);
+          LogComp('  из ' + Extra + ' добавлено классов ' + IntToStr(Added) +
+                  ', свойств и событий у прежних классов ' +
+                  IntToStr(Members));
+        end;
+        Exit;
+      end;
+      Tried[Tried.Count - 1] := Tried[Tried.Count - 1] +
+                                '   (IDE Options - Compilers - Components)';
+    end;
+
     Dirs.CaseSensitive := False;
     ExeDir := ExtractFilePath(Application.ExeName);
     AddDir(ExeDir);
     AddDir(ExeDir + 'rapidq_ref');
     AddDir(ExtractFilePath(ExcludeTrailingPathDelimiter(ExeDir)) + 'rapidq_ref');
-    if FileExists(SettingsFileName) then
-    begin
-      Ini := TIniFile.Create(SettingsFileName);
-      try
-        CompDir := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
-                                       'CompPath', ''));
-      finally
-        Ini.Free;
-      end;
-      // В CompPath бывает и папка, и путь к rc.exe
-      if (CompDir <> '') and FileExists(CompDir) then
-        CompDir := ExtractFilePath(CompDir);
-      AddDir(CompDir);
+    // В CompPath бывает и папка, и путь к rc.exe
+    if (CompDir <> '') and FileExists(CompDir) then
+      CompDir := ExtractFilePath(CompDir);
+    AddDir(CompDir);
+    // Проекты в папке projects: у исходников редактора rapidq_ref свой
+    if FindFirst(ProjectsDir + '*', faDirectory, Found) = 0 then
+    try
+      repeat
+        if ((Found.Attr and faDirectory) <> 0) and (Found.Name <> '.') and
+           (Found.Name <> '..') and
+           DirectoryExists(ProjectsDir + Found.Name + '\rapidq_ref') then
+          AddDir(ProjectsDir + Found.Name + '\rapidq_ref');
+      until FindNext(Found) <> 0;
+    finally
+      FindClose(Found);
     end;
 
     for DirIdx := 0 to Dirs.Count - 1 do
@@ -20409,8 +20460,9 @@ begin
       LogComp('Описание компонентов RapidQ не найдено. Проверено:');
       for TryIdx := 0 to Tried.Count - 1 do
         LogComp('    ' + Tried[TryIdx]);
-      LogComp('  ComponentAll.data лежит в репозитории в rapidq_ref; его ' +
-              'можно положить в любую из этих папок');
+      LogComp('  ComponentAll.data лежит в репозитории в rapidq_ref. Укажите ' +
+              'его в IDE Options - Compilers - RapidQ Basic - Components ' +
+              'или положите в одну из этих папок');
     end;
   finally
     Tried.Free;

@@ -3415,6 +3415,9 @@ begin
       Fields.Add('PrjPath|Projects');
       Fields.Add('TplPath|Templates');
       Fields.Add('IcoFile|App icon');
+      // Описание компонентов для инспектора и снимка: ComponentAll.data
+      // (RapidQComponentsReady в Unit1)
+      Fields.Add('CompDataFile|Components');
     end
     else if AType = 'Delphi' then
     begin
