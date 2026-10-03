@@ -1207,6 +1207,9 @@ type
     // идентификатору в редакторе - в панели строка, где он объявлен.
     // Щелчок по панели - переход к объявлению, второй щелчок - обратно.
     // См. DeclPanelUpdate.
+    // Справа на той же панели - подпрограмма, в которой стоит каретка.
+    // Непрозрачная, цвета панели: длинная подпись объявления уходит под неё
+    FSubLabel: TLabel;
     FDeclMode: Integer;     // 0 - пусто, 1 - не найдено, 2 - найдено,
     // 3 - стоим на объявлении, щелчок вернёт назад
     FDeclWord: string;      // идентификатор, как записан в тексте
@@ -2110,6 +2113,7 @@ type
     procedure LogEditDblClick(Sender: TObject);
     function  LogPopupEdit: TRichEdit;
     procedure BuildDeclPanel;
+    procedure SubLabelShow(const AName: string);
     procedure DeclPanelUpdate;
     procedure DeclPanelShow;
     function  DeclUnitFile(const AUnit, ADir: string; ADprUnits: TStrings;
@@ -4429,7 +4433,7 @@ begin
 
   // Редактор и то, что красится цветами редактора или само
   if (C = RichEdit1) or (C = Panel1) or (C = FTabs) or (C = FDeclPanel) or
-     (C = FBusyPanel) then
+     (C = FBusyPanel) or ((C = FSubLabel) and (FSubLabel <> nil)) then
     Exit;
 
   // Значок кнопки - под светлый фон; в IDE Dark - тёмный значок (свой, из
@@ -16210,14 +16214,14 @@ CurrentChar := CharAt(CursorPos);
 
   // 7. ЗАМЕР: наш код / контрол / отрисовка, миллисекунды на одно нажатие.
   // Плюс длительность последнего полного разбора карты.
-  // 8. Подпрограмма, внутри которой каретка
-  if StatusBar1.Panels.Count > 7 then
+  // Подпрограмма, внутри которой каретка, - справа на панели объявления
+  if FSubLabel <> nil then
   begin
     SubIdx := SubAtLine(CurrentLine - 1);
     if SubIdx >= 0 then
-      StatusBar1.Panels[7].Text := FSubs[SubIdx].Name
+      SubLabelShow(FSubs[SubIdx].Name)
     else
-      StatusBar1.Panels[7].Text := '';
+      SubLabelShow('');
   end;
 
   if StatusBar1.Panels.Count > 6 then
@@ -16728,7 +16732,7 @@ begin
 
   // Шестая панель статус-бара - кодировка открытого файла. Создаём кодом,
   // чтобы не зависеть от того, сколько панелей описано в DFM.
-  while StatusBar1.Panels.Count < 8 do
+  while StatusBar1.Panels.Count < 7 do
     StatusBar1.Panels.Add;
   StatusBar1.Panels[5].Text := 'ANSI';
 
@@ -16740,8 +16744,6 @@ begin
     SampleBmp.Canvas.Font.Assign(StatusBar1.Font);
     StatusBar1.Panels[0].Width := SampleBmp.Canvas.TextWidth('Строк: 9999999') + 16;
     StatusBar1.Panels[1].Width := SampleBmp.Canvas.TextWidth('Стр: 9999999') + 16;
-    // Подпрограмма под кареткой - последняя панель, ей остаток ширины
-    StatusBar1.Panels[7].Width := 400;
     StatusBar1.Panels[2].Width :=
       SampleBmp.Canvas.TextWidth('Поз в строке: 99999/99999') + 16;
     StatusBar1.Panels[3].Width :=
@@ -32267,7 +32269,44 @@ begin
     FDeclPanel.Top := 0;
   FDeclMode := 0;
   FDeclLine := -1;
+
+  // Подпрограмма под кареткой - справа. Своего щелчка у подписи нет, и
+  // щелчок по ней не уходит панели: переход к объявлению - только слева
+  FSubLabel := TLabel.Create(Self);
+  FSubLabel.Parent := FDeclPanel;
+  FSubLabel.Align := alRight;
+  FSubLabel.AutoSize := True;
+  FSubLabel.Layout := tlCenter;
+  FSubLabel.Transparent := False;
+  FSubLabel.ParentColor := True;
+  FSubLabel.ParentFont := True;
+  FSubLabel.ShowAccelChar := False;
+  FSubLabel.Cursor := crDefault;
+  FSubLabel.ShowHint := True;
+  FSubLabel.Visible := False;
+
   DeclPanelShow;
+end;
+
+// Подпись подпрограммы справа на панели объявления. Пусто - подпись
+// скрыта, панель целиком под объявление.
+procedure TForm1.SubLabelShow(const AName: string);
+var
+  Txt: string;
+begin
+  if FSubLabel = nil then
+    Exit;
+  if AName = '' then
+    Txt := ''
+  else
+    Txt := '   ' + AName + '   ';
+  if FSubLabel.Caption <> Txt then
+  begin
+    FSubLabel.Caption := Txt;
+    FSubLabel.Hint := AName;
+  end;
+  if FSubLabel.Visible <> (Txt <> '') then
+    FSubLabel.Visible := Txt <> '';
 end;
 
 // Подпись и цвет панели по FDeclMode
