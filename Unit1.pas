@@ -1828,7 +1828,7 @@ type
                                     const AFile: string): Integer;
     procedure RapidQFillObjTables(AObj: TObject);
     function  RapidQProbeSource(const AMainBas, AOutFile: string;
-                                AOut: TStringList;
+                                AOut, AObjClasses: TStringList;
                                 var ADumpStart: Integer): Boolean;
     procedure RapidQProbeRun;
     procedure RapidQProbeClear;
@@ -2176,6 +2176,8 @@ type
     procedure DsgHideForRun;
     procedure DsgShowAfterRun;
     procedure LogEditDblClick(Sender: TObject);
+    procedure LogEditClick(Sender: TObject);
+    procedure SaveCompileLog(const AFile: string);
     function  LogPopupEdit: TRichEdit;
     procedure BuildDeclPanel;
     procedure SubLabelShow(const AName: string);
@@ -19298,6 +19300,9 @@ const
   SnapCapHide = 'Show .dfm values only';
   // Та же кнопка у файла RapidQ (снимок - RapidQProbeRun)
   RqSnapCapShow = 'Show snapshot values';
+  // Начало строки лога с путём сохранённого лога компиляции
+  // (SaveCompileLog, LogEditClick)
+  LogSavedTag = 'Лог сохранён: ';
   RqSnapCapHide = 'Show source values only';
   DsgCapLive = 'live look';
   DsgCapDfm = '.dfm look';
@@ -31095,6 +31100,9 @@ begin
     CompLogEdit.OnDblClick := LogEditDblClick;
   if ErrLogEdit <> nil then
     ErrLogEdit.OnDblClick := LogEditDblClick;
+  // Щелчок по строке "Лог сохранён: путь" - путь в буфер обмена
+  if CompLogEdit <> nil then
+    CompLogEdit.OnClick := LogEditClick;
 
   if CompLogEdit <> nil then
     CompLogEdit.PopupMenu := FLogPopup;
@@ -35769,6 +35777,11 @@ begin
   begin
     LogComp(Format('--- Ошибки компиляции, код %d. Двойной щелчок по строке ' +
     'с ошибкой открывает файл на нужной строке', [Code]));
+    // Лог с ошибками - рядом с .dpr; у пробной сборки - в папку зонда
+    if FProbeActive then
+      SaveCompileLog(FProbeDir + '_dsgprobe_compile.log')
+    else
+      SaveCompileLog(ChangeFileExt(OrigDpr, '') + '_compile.log');
     // Строки с Error и Fatal уже отобраны в своё окно - показываем его
                    if (ErrLogEdit <> nil) and (ErrLogEdit.Lines.Count > 0) then
                    ShowErrLog;
@@ -36468,11 +36481,17 @@ begin
   begin
     LogComp(Format('--- exe не появился: %s. Код завершения rc.exe %d',
                    [Exe, Code]));
+    if not FRqProbeActive then
+      SaveCompileLog(ChangeFileExt(Bas, '') + '_compile.log');
     Exit;
   end;
 
   LogComp('--- Ошибки компиляции. Двойной щелчок по строке с ошибкой ' +
           'открывает файл на нужной строке');
+  // Лог с ошибками - рядом с .bas. У копии для снимка лог сохраняет
+  // RapidQProbeRun, когда снимок не удался.
+  if not FRqProbeActive then
+    SaveCompileLog(ChangeFileExt(Bas, '') + '_compile.log');
   if (ErrLogEdit <> nil) and (ErrLogEdit.Lines.Count > 0) then
     ShowErrLog;
   // Копия для снимка: строки ошибок - её, а не исходника; что делать с
@@ -36506,14 +36525,19 @@ end;
 //  Строки - в _rqprobe.txt рядом с .bas; "#obj Имя" перед каждым объектом,
 //  "#end" в конце: нет его - программа остановилась раньше, на последнем
 //  "#obj" видно, где.
-//  Свойство, которое компилятор читать не даёт, исключается: строка
-//  закомментируется, копия собирается снова (до RqProbeMaxRetry раз).
+//  Свойство, которое компилятор читать не даёт ("Member X not part of
+//  class"), исключается у всех объектов того же класса: их строки
+//  закомментируются, копия собирается снова (до RqProbeMaxRetry раз).
+//  Исключённое запоминается в dsgprobe\rqprobe_skip.txt строкой
+//  "КЛАСС.СВОЙСТВО" - следующий снимок его уже не пишет. Не удался снимок -
+//  лог компиляции сохраняется в dsgprobe\_rqprobe_compile.log.
 //  Копия .bas и вывод остаются в dsgprobe\ для разбора, из папки программы
 //  удаляются.
 // ---------------------------------------------------------------------------
 
 const
-  RqProbeMaxRetry = 30;     // исключённых свойств за один снимок
+  RqProbeMaxRetry = 60;     // пересборок за один снимок
+  RqProbeSkipName = 'rqprobe_skip.txt';   // исключённые КЛАСС.СВОЙСТВО
   RqProbePartLines = 400;   // строк в одной SUB дампа: компилятору не
                             // даём одну SUB на тысячи строк
   RqProbeWaitMs = 15000;    // сколько ждать программу
@@ -36612,20 +36636,62 @@ begin
     Result := '  RqProbeFile.WriteLine("' + Ref + '=" + STR$(' + Ref + '))';
 end;
 
+// Объект и свойство из строки дампа
+// '  RqProbeFile.WriteLine("Obj.Font.Name=" + ...)': AObj = Obj,
+// AProp = Font.Name. False - не строка свойства.
+function RapidQDumpLineParts(const ALine: string;
+                             var AObj, AProp: string): Boolean;
+const
+  LineHead = 'RqProbeFile.WriteLine("';
+var
+  HeadPos, EqPos, DotPos: Integer;
+  Ref: string;
+begin
+  Result := False;
+  HeadPos := Pos(LineHead, ALine);
+  if HeadPos = 0 then
+    Exit;
+  Ref := Copy(ALine, HeadPos + Length(LineHead), MaxInt);
+  EqPos := Pos('=', Ref);
+  if (EqPos = 0) or (Copy(Ref, 1, 1) = '#') then
+    Exit;
+  Ref := Copy(Ref, 1, EqPos - 1);
+  DotPos := Pos('.', Ref);
+  if DotPos = 0 then
+    Exit;
+  AObj := Copy(Ref, 1, DotPos - 1);
+  AProp := Copy(Ref, DotPos + 1, MaxInt);
+  Result := (AObj <> '') and (AProp <> '');
+end;
+
+// Первая часть пути свойства: Font.Name -> Font. По ней исключается
+// свойство целиком - со всеми полями шрифта.
+function RapidQPropHead(const AProp: string): string;
+var
+  DotPos: Integer;
+begin
+  DotPos := Pos('.', AProp);
+  if DotPos > 0 then
+    Result := Copy(AProp, 1, DotPos - 1)
+  else
+    Result := AProp;
+end;
+
 // Текст копии главного .bas с таймером и SUB RqProbeDump - в AOut.
+// AObjClasses - "Объект=Класс" для объектов дампа.
 // ADumpStart - номер строки (от нуля), с которой начинается добавленное в
 // конце: ошибки компилятора ниже неё - в строках дампа. False - причина в
 // логе.
 function TForm1.RapidQProbeSource(const AMainBas, AOutFile: string;
-                                  AOut: TStringList;
+                                  AOut, AObjClasses: TStringList;
                                   var ADumpStart: Integer): Boolean;
 var
-  Lines, Parts, Seen, Done, Body: TStringList;
+  Lines, Parts, Seen, Done, Body, Skip: TStringList;
   Nodes, Roots, Chain: TList;
   Mask: TBits;
   InsLine, LineIdx, PartIdx, NodeIdx, ChainIdx, PropIdx, FontIdx,
-    Kind, ObjCount, PropCount, PartCount, BodyIdx: Integer;
-  FirstWord, Rest, PropName: string;
+    Kind, ObjCount, PropCount, PartCount, BodyIdx, SkipCount: Integer;
+  FirstWord, Rest, PropName, ClassKey: string;
   Node: TDfmNode;
   ChainCls, FontCls: TRqClass;
   Member, FontMember: TRqMember;
@@ -36633,11 +36699,13 @@ begin
   Result := False;
   ADumpStart := -1;
   AOut.Clear;
+  AObjClasses.Clear;
   Lines := TStringList.Create;
   Parts := TStringList.Create;
   Seen := TStringList.Create;
   Done := TStringList.Create;
   Body := TStringList.Create;
+  Skip := TStringList.Create;
   Nodes := TList.Create;
   Roots := TList.Create;
   Chain := TList.Create;
@@ -36706,6 +36774,18 @@ begin
     AOut.Add('END FUNCTION');
     AOut.Add('');
 
+    // Свойства, которые компилятор уже не принял в прошлых снимках
+    Skip.Sorted := True;
+    Skip.Duplicates := dupIgnore;
+    Skip.CaseSensitive := False;
+    if FileExists(FProbeDir + RqProbeSkipName) then
+    try
+      Skip.LoadFromFile(FProbeDir + RqProbeSkipName);
+    except
+      Skip.Clear;
+    end;
+    SkipCount := 0;
+
     ObjCount := 0;
     PropCount := 0;
     Done.Sorted := True;
@@ -36725,6 +36805,8 @@ begin
       if Chain.Count = 0 then
         Continue;
       Done.Add(Node.Name);
+      AObjClasses.Add(Node.Name + '=' + Node.ClassNm);
+      ClassKey := UpperCase(Node.ClassNm) + '.';
       Inc(ObjCount);
       Body.Add('  RqProbeFile.WriteLine("#obj ' + Node.Name + '")');
       Seen.Clear;
@@ -36739,6 +36821,11 @@ begin
              (Pos('.', PropName) > 0) then
             Continue;
           Seen.Add(PropName);
+          if Skip.IndexOf(ClassKey + UpperCase(PropName)) >= 0 then
+          begin
+            Inc(SkipCount);
+            Continue;
+          end;
           Kind := RapidQSimpleType(Member.TypeName);
           if Kind > 0 then
           begin
@@ -36795,6 +36882,10 @@ begin
     LogComp(Format('Снимок RapidQ: объектов %d, свойств %d; таймер - перед ' +
                    'строкой %d (%s)', [ObjCount, PropCount, InsLine + 1,
                                        Trim(Lines[InsLine])]));
+    if SkipCount > 0 then
+      LogComp(Format('Снимок RapidQ: не пишется %d свойств из списка ' +
+                     'исключённых: %s', [SkipCount,
+                                         FProbeDir + RqProbeSkipName]));
     Result := ObjCount > 0;
     if not Result then
       LogComp('Снимок RapidQ: ни у одного объекта главной части нет ' +
@@ -36806,6 +36897,7 @@ begin
     Chain.Free;
     Roots.Free;
     Nodes.Free;
+    Skip.Free;
     Body.Free;
     Done.Free;
     Seen.Free;
@@ -36851,9 +36943,10 @@ end;
 
 procedure TForm1.RapidQProbeRun;
 var
-  MainBas, ProbeBas, OutFile, RunDir, ErrText, LastObj: string;
-  Src, ProbeLines, Props: TStringList;
-  DumpStart, Attempt, Excluded, LineIdx, EqPos, ErrIdx: Integer;
+  MainBas, ProbeBas, OutFile, RunDir, LastObj, ErrObj, ErrProp, ErrClass,
+    ErrHead, LineObj, LineProp: string;
+  Src, ProbeLines, Props, ObjClasses, SkipList: TStringList;
+  DumpStart, Attempt, Excluded, LineIdx, EqPos, ErrIdx, CutCount: Integer;
   Ok, Complete: Boolean;
   StartInfo: TStartupInfo;
   ProcInfo: TProcessInformation;
@@ -36899,9 +36992,11 @@ begin
   DeleteFile(OutFile);
 
   Src := TStringList.Create;
+  ObjClasses := TStringList.Create;
   Ok := False;
   try
-    if not RapidQProbeSource(MainBas, OutFile, Src, DumpStart) then
+    if not RapidQProbeSource(MainBas, OutFile, Src, ObjClasses,
+                             DumpStart) then
       Exit;
     Excluded := 0;
     Attempt := 0;
@@ -36918,36 +37013,69 @@ begin
       end;
       if Ok then
         Break;
-      // Ошибка в строке дампа - свойство не читается: строку - в
-      // комментарий и собрать снова. Иначе ошибка в самой программе или в
+      // Ошибка в строке дампа - свойство не читается. Компилятор не
+      // принимает его у класса, значит, и у всех объектов этого класса:
+      // их строки - в комментарий, свойство - в список исключённых, копия
+      // собирается снова. Ошибка не в дампе - в самой программе или в
       // таймере - дальше не идём.
       ErrIdx := FRqProbeErrLine - 1;
       if (FRqProbeErrFile = '') or
          (CompareText(ExpandFileName(FRqProbeErrFile),
                       ExpandFileName(ProbeBas)) <> 0) or
          (ErrIdx <= DumpStart) or (ErrIdx >= Src.Count) or
-         (Pos('RqProbeFile.WriteLine("', Src[ErrIdx]) = 0) or
-         (Pos('#obj ', Src[ErrIdx]) > 0) then
+         not RapidQDumpLineParts(Src[ErrIdx], ErrObj, ErrProp) then
       begin
         LogComp('Снимок RapidQ: копия программы не собралась, ошибка не в ' +
                 'строках снимка. Проверьте обычную сборку (Compile); копия - ' +
                 FProbeDir + '_rqprobe.bas');
+        SaveCompileLog(FProbeDir + '_rqprobe_compile.log');
         Exit;
       end;
-      ErrText := Trim(Src[ErrIdx]);
-      Src[ErrIdx] := '  '' unIDE, не читается: ' + ErrText;
+      ErrClass := ObjClasses.Values[ErrObj];
+      ErrHead := RapidQPropHead(ErrProp);
+      CutCount := 0;
+      for LineIdx := DumpStart + 1 to Src.Count - 1 do
+        if RapidQDumpLineParts(Src[LineIdx], LineObj, LineProp) and
+           (CompareText(RapidQPropHead(LineProp), ErrHead) = 0) and
+           ((CompareText(LineObj, ErrObj) = 0) or
+            ((ErrClass <> '') and
+             (CompareText(ObjClasses.Values[LineObj], ErrClass) = 0))) then
+        begin
+          Src[LineIdx] := '  '' unIDE, не читается: ' + Trim(Src[LineIdx]);
+          Inc(CutCount);
+        end;
       Inc(Excluded);
       Inc(Attempt);
-      LogComp('Снимок RapidQ: исключено (строка ' + IntToStr(ErrIdx + 1) +
-              ' копии): ' + ErrText);
+      LogComp(Format('Снимок RapidQ: класс %s, свойство %s не читается - ' +
+                     'исключено у всех объектов класса (строк %d)',
+                     [ErrClass, ErrHead, CutCount]));
+      if ErrClass <> '' then
+      begin
+        SkipList := TStringList.Create;
+        try
+          if FileExists(FProbeDir + RqProbeSkipName) then
+            SkipList.LoadFromFile(FProbeDir + RqProbeSkipName);
+          if SkipList.IndexOf(UpperCase(ErrClass + '.' + ErrHead)) < 0 then
+          begin
+            SkipList.Add(UpperCase(ErrClass + '.' + ErrHead));
+            SkipList.SaveToFile(FProbeDir + RqProbeSkipName);
+          end;
+        except
+          LogComp('Снимок RapidQ: список исключённых не записан: ' +
+                  FProbeDir + RqProbeSkipName);
+        end;
+        SkipList.Free;
+      end;
     until Attempt >= RqProbeMaxRetry;
     if not Ok then
     begin
       LogComp(Format('Снимок RapidQ: исключено %d свойств, копия всё ещё не ' +
                      'собирается - остановлено', [Excluded]));
+      SaveCompileLog(FProbeDir + '_rqprobe_compile.log');
       Exit;
     end;
   finally
+    ObjClasses.Free;
     // Копия - в dsgprobe для разбора, из папки программы - прочь
     if FileExists(ProbeBas) then
     begin
@@ -37001,6 +37129,7 @@ begin
   begin
     LogComp('Снимок RapidQ: файла значений нет - таймер не сработал или ' +
             'программа упала раньше: ' + OutFile);
+    SaveCompileLog(FProbeDir + '_rqprobe_compile.log');
     Exit;
   end;
 
@@ -37057,8 +37186,11 @@ begin
   if Complete then
     LogComp(Format('Снимок RapidQ: значения %d объектов', [FRqProbeObjs.Count]))
   else
+  begin
     LogComp(Format('Снимок RapidQ: неполный - %d объектов, программа ' +
                    'остановилась на объекте %s', [FRqProbeObjs.Count, LastObj]));
+    SaveCompileLog(FProbeDir + '_rqprobe_compile.log');
+  end;
   FRightPages.ActivePage := FTabObjects;
   RefreshObjectInspector(True);
 end;
@@ -41007,6 +41139,63 @@ end;
 // Двойной щелчок по строке лога: если это сообщение компилятора - открываем
 // файл и встаём на нужную строку. Файл ищется рядом с компилируемым: dcc32
 // пишет только имя, без пути.
+// Лог компиляции - в файл AFile (перезаписывается), строкой в лог - путь
+// к нему. Щелчок по этой строке копирует путь (LogEditClick).
+// Текст - целиком через Text (WM_GETTEXT) и простым текстом: Lines.SaveToFile
+// у TRichEdit без PlainText пишет RTF.
+procedure TForm1.SaveCompileLog(const AFile: string);
+var
+  LogLines: TStringList;
+begin
+  if (CompLogEdit = nil) or (AFile = '') then
+    Exit;
+  LogLines := TStringList.Create;
+  try
+    try
+      LogLines.Text := CompLogEdit.Text;
+      ForceDirectories(ExtractFilePath(AFile));
+      LogLines.SaveToFile(AFile);
+    except
+      on E: Exception do
+      begin
+        LogComp('Лог компиляции не сохранён: ' + AFile + ' (' + E.Message +
+                ')');
+        Exit;
+      end;
+    end;
+  finally
+    LogLines.Free;
+  end;
+  LogComp(LogSavedTag + AFile);
+end;
+
+// Щелчок по строке "Лог сохранён: путь" - путь в буфер обмена
+procedure TForm1.LogEditClick(Sender: TObject);
+var
+  LineIdx, TextStart: Integer;
+  LineText, FilePath: string;
+  LogBox: TRichEdit;
+begin
+  if not (Sender is TRichEdit) then
+    Exit;
+  LogBox := TRichEdit(Sender);
+  LineIdx := SendMessageA(LogBox.Handle, EM_LINEFROMCHAR, LogBox.SelStart, 0);
+  if (LineIdx < 0) or (LineIdx >= LogBox.Lines.Count) then
+    Exit;
+  LineText := LogBox.Lines[LineIdx];
+  // Время в начале строки - отрезаем, как в LogEditDblClick
+  TextStart := Pos('  ', LineText);
+  if (TextStart > 0) and (TextStart <= 10) then
+    LineText := Copy(LineText, TextStart + 2, Length(LineText));
+  if Copy(LineText, 1, Length(LogSavedTag)) <> LogSavedTag then
+    Exit;
+  FilePath := Trim(Copy(LineText, Length(LogSavedTag) + 1, MaxInt));
+  if FilePath = '' then
+    Exit;
+  Clipboard.AsText := FilePath;
+  LogComp('Путь скопирован в буфер обмена: ' + FilePath);
+end;
+
 procedure TForm1.LogEditDblClick(Sender: TObject);
 var
   LineIdx, Start: Integer;
