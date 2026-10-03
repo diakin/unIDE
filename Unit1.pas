@@ -326,6 +326,12 @@ type
   TBlockState = record
     Depth: Integer;
     Hang: Integer;
+    // Hang, с которым открыт блок глубины N (HangBase[N]): begin под
+    // then/do без своего begin у if - его тело правее на этот перенос, и
+    // конец оператора (;) внутри блока возвращает Hang к нему, а не к нулю.
+    // Иначе первая же ; внутри begin..end цикла, стоящего под if ... then,
+    // сбрасывала перенос if, и следующие строки и end съезжали влево.
+    HangBase: TIntArray;
     Paren: Integer;      // незакрытых круглых скобок
     InSection: Boolean;  // идём под var, type или const
     Top: Integer;        // вершина стека подпрограмм, -1 - пусто
@@ -17283,6 +17289,16 @@ begin
   Result := Copy(S, J + 1, E - J);
 end;
 
+// Перенос, с которым открыт блок глубины ADepth (TBlockState.HangBase);
+// 0 - блока нет или он открыт без переноса
+function BlockHangBase(const B: TBlockState; ADepth: Integer): Integer;
+begin
+  if (ADepth >= 0) and (ADepth < Length(B.HangBase)) then
+    Result := B.HangBase[ADepth]
+  else
+    Result := 0;
+end;
+
 // Разметка строки [ALineStart .. ALineEnd] - см. TLineScan. Состояние B
 // нужно только для одного: внутри объявительного блока (class, record в
 // разделе type) слово procedure - это объявление метода, а не заголовок.
@@ -17417,7 +17433,7 @@ begin
   // У Free Pascal вместо else бывает otherwise - то же самое
   L.CaseElse := ((L.IsHang and (CompareText(L.First, 'else') = 0)) or
                  (CompareText(L.First, 'otherwise') = 0)) and
-                (B.Hang = 0) and (B.Depth > 0) and
+                (B.Hang = BlockHangBase(B, B.Depth)) and (B.Depth > 0) and
                 (B.Depth <= Length(B.CaseBlock)) and B.CaseBlock[B.Depth - 1];
   if L.CaseElse then
   begin
@@ -17531,6 +17547,7 @@ begin
   AddChars(FScheme.FSubEndWords);
   AddChars(FScheme.FSubNoBodyWords);
   AddChars(FScheme.FFmtClass);
+  SetLength(B.HangBase, 0);
   SetLength(B.StartDepth, 0);
   SetLength(B.Tags, 0);
   SetLength(B.Opened, 0);
@@ -17558,9 +17575,12 @@ begin
     B.InSection := False;
 
   // Оператор без begin: begin под then и слово else возвращаются на уровень
-  // своего if
-  if L.IsOutdent or L.IsHeader or L.IsSect then
+  // своего if. Строка, начатая end (until, finally), встаёт вровень со
+  // своим begin: перенос - тот, с которым блок открыт.
+  if L.IsHeader or L.IsSect then
     B.Hang := 0
+  else if L.IsOutdent then
+    B.Hang := BlockHangBase(B, B.Depth)
   else if L.IsOpen or L.IsHang then
     if B.Hang > 0 then
       Dec(B.Hang);
@@ -18098,6 +18118,10 @@ begin
           (L.Code[Length(L.Code)] <> ';')) then
       begin
         Inc(B.Depth);
+        // Перенос, с которым открыт блок: его тело и end - от него
+        if Length(B.HangBase) <= B.Depth then
+          SetLength(B.HangBase, B.Depth + 1);
+        B.HangBase[B.Depth] := B.Hang;
         if Length(B.DeclBlock) < B.Depth then
           SetLength(B.DeclBlock, B.Depth);
         if Length(B.CaseBlock) < B.Depth then
@@ -18150,7 +18174,8 @@ begin
        not L.CaseElse then
       Inc(B.Hang)
     else if L.Code[Length(L.Code)] = ';' then
-      B.Hang := 0;
+      // Оператор закончен - перенос того блока, в котором он стоит
+      B.Hang := BlockHangBase(B, B.Depth);
 
     if L.IsSect then
       B.InSection := True;
