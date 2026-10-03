@@ -36624,7 +36624,10 @@ end;
 //  новее неё - сборки нет. Готовность - "#end" в файле значений и размер
 //  файла, переставший расти; разбирается проверенный текст. Вывод консоли
 //  программы - в dsgprobe\_rqprobe_console.txt, его хвост - в лог.
-//  Рядом с копией - _rqprobe_run.bat для запуска вручную.
+//  Рядом с копией - _rqprobe_run.bat для запуска вручную. Журнал копии -
+//  _rqprobe.trace: строка с временем и номером процесса на "start" (после
+//  таймера), "dump start", "dump end"; повторный вызов дампа в том же
+//  процессе пропускается (RqProbeDone). Журнал выводится в лог.
 //  Свойство, которое компилятор читать не даёт ("Member X not part of
 //  class"), исключается у всех объектов того же класса: их строки
 //  закомментируются, копия собирается снова (до RqProbeMaxRetry раз).
@@ -36800,7 +36803,7 @@ var
   Mask: TBits;
   InsLine, LineIdx, PartIdx, NodeIdx, ChainIdx, PropIdx, FontIdx,
     Kind, ObjCount, PropCount, PartCount, BodyIdx, SkipCount: Integer;
-  FirstWord, Rest, PropName, ClassKey: string;
+  FirstWord, Rest, PropName, ClassKey, TracePath: string;
   Node: TDfmNode;
   ChainCls, FontCls: TRqClass;
   Member, FontMember: TRqMember;
@@ -36861,6 +36864,10 @@ begin
       AOut.Add(Lines[LineIdx]);
     AOut.Add('DIM RqProbeTimer AS QTIMER   '' unIDE: снимок значений');
     AOut.Add('DIM RqProbeFile AS QFILESTREAM');
+    AOut.Add('DIM RqProbeDone AS INTEGER');
+    AOut.Add('DECLARE FUNCTION RqProbePid LIB "kernel32" ALIAS ' +
+             '"GetCurrentProcessId" () AS LONG');
+    AOut.Add('DECLARE SUB RqProbeTrace (TraceText AS STRING)');
     AOut.Add('DECLARE SUB RqProbeDump');
     AOut.Add('RqProbeTimer.Interval = 1');
     AOut.Add('RqProbeTimer.OnTimer = RqProbeDump');
@@ -36869,6 +36876,7 @@ begin
              IntToStr(RqProbeFmCreate) + ')');
     AOut.Add('RqProbeFile.WriteLine("#start")');
     AOut.Add('RqProbeFile.Close');
+    AOut.Add('RqProbeTrace("start")');
     for LineIdx := InsLine to Lines.Count - 1 do
       AOut.Add(Lines[LineIdx]);
 
@@ -36992,17 +37000,43 @@ begin
       AOut.Add('END SUB');
       AOut.Add('');
     end;
+    // Журнал копии: кто (процесс) и когда начинал и кончал дамп - строка
+    // на событие, файл дописывается. По нему видно, если дамп идёт дважды.
+    TracePath := RapidQSlashPath(ChangeFileExt(AOutFile, '.trace'));
+    AOut.Add('SUB RqProbeTrace (TraceText AS STRING)');
+    AOut.Add('  DIM TraceFile AS QFILESTREAM');
+    AOut.Add('  IF FILEEXISTS("' + TracePath + '") THEN');
+    AOut.Add('    TraceFile.Open("' + TracePath + '", 2)');
+    AOut.Add('    TraceFile.Position = TraceFile.Size');
+    AOut.Add('  ELSE');
+    AOut.Add('    TraceFile.Open("' + TracePath + '", ' +
+             IntToStr(RqProbeFmCreate) + ')');
+    AOut.Add('  END IF');
+    AOut.Add('  TraceFile.WriteLine(TIME$ + " pid" + STR$(RqProbePid) + " " + ' +
+             'TraceText)');
+    AOut.Add('  TraceFile.Close');
+    AOut.Add('END SUB');
+    AOut.Add('');
     AOut.Add('SUB RqProbeDump');
     AOut.Add('  RqProbeTimer.Enabled = 0');
+    // Второй вызов в том же процессе файл не переписывает
+    AOut.Add('  IF RqProbeDone THEN');
+    AOut.Add('    RqProbeTrace("dump called again - skipped")');
+    AOut.Add('    EXIT SUB');
+    AOut.Add('  END IF');
+    AOut.Add('  RqProbeDone = 1');
+    AOut.Add('  RqProbeTrace("dump start")');
     // Путь целиком и с прямыми косыми: программа могла сменить текущую
     // папку, а обратная косая при $ESCAPECHARS ON - начало escape
     AOut.Add('  RqProbeFile.Open("' + RapidQSlashPath(AOutFile) + '", ' +
              IntToStr(RqProbeFmCreate) + ')');
-    AOut.Add('  RqProbeFile.WriteLine("#time " + TIME$)');
+    AOut.Add('  RqProbeFile.WriteLine("#time " + TIME$ + " pid" + ' +
+             'STR$(RqProbePid))');
     for BodyIdx := 1 to PartCount do
       AOut.Add('  RqProbePart' + IntToStr(BodyIdx));
     AOut.Add('  RqProbeFile.WriteLine("#end")');
     AOut.Add('  RqProbeFile.Close');
+    AOut.Add('  RqProbeTrace("dump end")');
     AOut.Add('  END');
     AOut.Add('END SUB');
 
@@ -37077,7 +37111,7 @@ var
   Src, ProbeLines, Props, ObjClasses, SkipList: TStringList;
   DumpStart, Attempt, Excluded, LineIdx, EqPos, ErrIdx, CutCount: Integer;
   Ok, Complete: Boolean;
-  ConsoleFile, OutText: string;
+  ConsoleFile, OutText, TraceFile: string;
   HasStart, HasTime: Boolean;
   RunMs: Cardinal;
   LastOutSize, NulCount: Integer;
@@ -37274,6 +37308,42 @@ var
       BusyEnd('Снимок RapidQ', FileExists(OutFile));
     end;
     Result := True;
+  end;
+
+  // Журнал копии (_rqprobe.trace) - в лог: какой процесс когда начинал и
+  // кончал дамп. Две строки "dump start" - файл значений писали дважды.
+  procedure LogTrace;
+  var
+    TraceLines: TStringList;
+    TraceIdx, StartCount: Integer;
+  begin
+    if not FileExists(TraceFile) then
+    begin
+      LogComp('Снимок RapidQ: журнала копии нет: ' + TraceFile);
+      Exit;
+    end;
+    TraceLines := TStringList.Create;
+    try
+      try
+        TraceLines.LoadFromFile(TraceFile);
+      except
+        LogComp('Снимок RapidQ: журнал копии не прочитан: ' + TraceFile);
+        Exit;
+      end;
+      LogComp('Снимок RapidQ: журнал копии (' + TraceFile + '):');
+      StartCount := 0;
+      for TraceIdx := 0 to TraceLines.Count - 1 do
+      begin
+        LogComp('    ' + TraceLines[TraceIdx]);
+        if Pos('dump start', TraceLines[TraceIdx]) > 0 then
+          Inc(StartCount);
+      end;
+      if StartCount > 1 then
+        LogComp(Format('Снимок RapidQ: дамп начинался %d раз - файл ' +
+                       'значений переписывался', [StartCount]));
+    finally
+      TraceLines.Free;
+    end;
   end;
 
   // _rqprobe_run.bat рядом с копией - запуск её вручную из папки
@@ -37532,7 +37602,11 @@ begin
   end;
   WriteRunBat;
 
-  // Прежний файл значений - прочь: иначе можно прочитать старые значения
+  // Прежний файл значений - прочь: иначе можно прочитать старые значения.
+  // Журнал копии - тоже: он дописывается.
+  TraceFile := ChangeFileExt(OutFile, '.trace');
+  if FileExists(TraceFile) then
+    DeleteFile(TraceFile);
   if FileExists(OutFile) then
     DeleteFile(OutFile);
   if FileExists(OutFile) then
@@ -37549,6 +37623,7 @@ begin
     SaveCompileLog(FProbeDir + '_rqprobe_compile.log');
     Exit;
   end;
+  LogTrace;
 
   if not FileExists(OutFile) then
   begin
