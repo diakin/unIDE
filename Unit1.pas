@@ -1519,6 +1519,9 @@ type
     FPickEdit: TUiEdit;
     FPickDir: TDirectoryListBox;
     FPickDrive: TDriveComboBox;
+    // Список файлов окна. В выборе готового проекта (PickProjectDialog)
+    // в нём только главные файлы типа, и выбранный становится главным
+    FPickFiles: TFileListBox;
     FPickLock: Boolean;
     // Главный файл выбранного готового проекта (.dpr, .lpr, .ino ...) -
     // цель сборки нового описания
@@ -1668,6 +1671,7 @@ type
     procedure RefreshTabsModified;
     procedure InvalidateAllWindowMaps;
     procedure CloseAllWindows;
+    procedure ProjectClosedReset;
     function  ConfirmSaveCurrent: Boolean;
     function  ConfirmSaveOthers: Boolean;
     function  ConfirmSaveAll: Boolean;
@@ -1695,11 +1699,15 @@ type
     procedure NewPrjNameChange(Sender: TObject);
     function  PickFolderDialog(const ACaption, AStart: string;
                                var ADir: string): Boolean;
+    function  PickProjectDialog(const ACaption, AStart, AMask: string;
+                                var ADir, AFile: string): Boolean;
+    procedure PickFileDblClick(Sender: TObject);
     procedure PickDirChange(Sender: TObject);
     procedure PickEditChange(Sender: TObject);
     procedure PickOkClick(Sender: TObject);
     procedure NewPrjDirChange(Sender: TObject);
     procedure NewPrjOnBaseClick(Sender: TObject);
+    function  NewPrjNameFor(const ADir, AType, AMain: string): string;
     function  MainMasksFor(const AType: string): string;
     function  MatchesProjectType(const AFile, AType: string): Boolean;
     function  MainFilesIn(const ADir, AType: string; AList: TStrings): Integer;
@@ -8619,8 +8627,12 @@ begin
       if (FNewPrjMain = '') or not FileExists(FNewPrjMain) or
          (CompareText(ExtractFilePath(FNewPrjMain), Dir) <> 0) or
          not MatchesProjectType(FNewPrjMain, Tp) then
+      begin
         if not PickExistingMain(Dir, Tp, FNewPrjMain) then
           Exit;
+        // Главный файл другой - и имя по нему
+        Nm := NewPrjNameFor(Dir, Tp, FNewPrjMain);
+      end;
     end
     else if not DirectoryExists(Dir) then
       if not ForceDirectories(Dir) then
@@ -9031,10 +9043,23 @@ end;
 function TForm1.PickFolderDialog(const ACaption, AStart: string;
                                  var ADir: string): Boolean;
 var
+  Dummy: string;
+begin
+  Result := PickProjectDialog(ACaption, AStart, '', ADir, Dummy);
+end;
+
+// То же окно для готового проекта. AMask - маски главного файла типа
+// (MainMasksFor): список файлов показывает только их, и выбранный в нём
+// файл возвращается в AFile (двойной щелчок по нему - то же, что OK).
+// Ничего не выбрано или AMask пустая - AFile = ''.
+function TForm1.PickProjectDialog(const ACaption, AStart, AMask: string;
+                                  var ADir, AFile: string): Boolean;
+var
   Dlg: TDlgPickFolder;
   Start: string;
 begin
   Result := False;
+  AFile := '';
 
   Start := ExcludeTrailingPathDelimiter(Trim(AStart));
   if (Start = '') or not DirectoryExists(Start) then
@@ -9051,9 +9076,18 @@ begin
     FPickEdit := Dlg.edPath;
     FPickDir := Dlg.lstDirs;
     FPickDrive := Dlg.cmbDrive;
+    FPickFiles := Dlg.lstFiles;
     FPickEdit.OnChange := PickEditChange;
     FPickDir.OnChange := PickDirChange;
     Dlg.btnOk.OnClick := PickOkClick;
+    if AMask <> '' then
+    begin
+      // Маски вида src\main.rs список файлов не понимает - для них
+      // показываем всё, а главный файл найдёт PickExistingMain
+      if Pos('\', AMask) = 0 then
+        FPickFiles.Mask := AMask;
+      FPickFiles.OnDblClick := PickFileDblClick;
+    end;
 
     FPickLock := False;
     try
@@ -9070,11 +9104,17 @@ begin
     begin
       ADir := IncludeTrailingPathDelimiter(Trim(FPickEdit.Text));
       Result := True;
+      // Файл берётся, только если его выбрали в списке этой же папки
+      if (AMask <> '') and (FPickFiles.ItemIndex >= 0) and
+         (CompareText(IncludeTrailingPathDelimiter(FPickFiles.Directory),
+                      ADir) = 0) then
+        AFile := ADir + FPickFiles.Items[FPickFiles.ItemIndex];
     end;
   finally
     FPickEdit := nil;
     FPickDir := nil;
     FPickDrive := nil;
+    FPickFiles := nil;
     Dlg.Free;
   end;
 end;
@@ -9083,6 +9123,10 @@ end;
 // перевести дерево: иначе они гоняли бы значение друг другу.
 procedure TForm1.PickDirChange(Sender: TObject);
 begin
+  // Папка сменилась - выбор файла снимаем: главный файл выбирают щелчком,
+  // а не берут первым в списке
+  if FPickFiles <> nil then
+    FPickFiles.ItemIndex := -1;
   if (FPickDir = nil) or (FPickEdit = nil) or FPickLock then
     Exit;
   FPickLock := True;
@@ -9115,6 +9159,8 @@ begin
       // Путь мог уйти на другой диск - список дисков за ним, после папки
       if FPickDrive <> nil then
         FPickDrive.Drive := FPickDir.Drive;
+      if FPickFiles <> nil then
+        FPickFiles.ItemIndex := -1;
     except
       // Нет доступа - дерево остаётся где было
     end;
@@ -9137,6 +9183,15 @@ begin
     Exit;
   end;
   (TUiButton(Sender).Owner as TForm).ModalResult := mrOk;
+end;
+
+// Двойной щелчок по главному файлу в списке - выбор этого файла, как OK
+procedure TForm1.PickFileDblClick(Sender: TObject);
+begin
+  if (FPickFiles = nil) or (FPickFiles.ItemIndex < 0) then
+    Exit;
+  if FPickFiles.Owner is TForm then
+    TForm(FPickFiles.Owner).ModalResult := mrOk;
 end;
 
 // Главный файл проекта по типу - маски через точку с запятой. Пусто - у
@@ -9335,31 +9390,43 @@ begin
   if FNewPrjType <> nil then
     Tp := FNewPrjType.Text;
 
-  Dir := FNewPrjDir.Text;
-  if not PickFolderDialog('Папка существующего проекта', Dir, Dir) then
+  // Старт - папка из поля. Пока подсказка по имени включена, в поле
+  // <выбранная папка>\<Имя>, а такой подпапки обычно нет - тогда берём
+  // саму выбранную папку
+  Dir := Trim(FNewPrjDir.Text);
+  if (Dir = '') or not DirectoryExists(Dir) then
+    Dir := FNewPrjBase;
+  if not PickProjectDialog('Папка существующего проекта', Dir,
+                           MainMasksFor(Tp), Dir, Main) then
   begin
     // Снятие галки поднимет этот же обработчик и вернёт остальное
     FNewPrjOnBase.Checked := False;
     Exit;
   end;
 
-  if not PickExistingMain(Dir, Tp, Main) then
-  begin
-    FNewPrjOnBase.Checked := False;
-    Exit;
-  end;
+  // Файл не выбран в списке - ищем по папке (один, по имени папки или
+  // список на выбор)
+  if (Main = '') or not MatchesProjectType(Main, Tp) then
+    if not PickExistingMain(Dir, Tp, Main) then
+    begin
+      FNewPrjOnBase.Checked := False;
+      Exit;
+    end;
 
   FNewPrjMain := Main;
   FNewPrjAutoDir := False;
   FNewPrjDir.Text := IncludeTrailingPathDelimiter(Dir);
+  FNewPrjName.Text := NewPrjNameFor(Dir, Tp, Main);
+end;
 
-  // Имя - по главному файлу, если своё ещё не введено. У сайта главный
-  // файл - index.html, и имя лучше взять по папке
-  if Trim(FNewPrjName.Text) = '' then
-    if CompareText(Tp, 'WebSite') = 0 then
-      FNewPrjName.Text := ExtractFileName(ExcludeTrailingPathDelimiter(Dir))
-    else
-      FNewPrjName.Text := ChangeFileExt(ExtractFileName(Main), '');
+// Имя готового проекта - по главному файлу (Balanset4A.dpr -> Balanset4A).
+// У сайта главный файл - index.html, у Rust - main.rs: имя по папке.
+function TForm1.NewPrjNameFor(const ADir, AType, AMain: string): string;
+begin
+  if (CompareText(AType, 'WebSite') = 0) or (CompareText(AType, 'Rust') = 0) then
+    Result := ExtractFileName(ExcludeTrailingPathDelimiter(ADir))
+  else
+    Result := ChangeFileExt(ExtractFileName(AMain), '');
 end;
 
 
@@ -10993,6 +11060,16 @@ begin
   if not ConfirmSaveAll then
     Exit;
 
+  ProjectClosedReset;
+
+  ShowMessage('8625:Выберите проект из списка');
+end;
+
+// Проекта больше нет (закрыт или удалён): окна, вкладки, закладки,
+// конструктор и логи очищаются, редактор остаётся пустым. Вопросы о
+// сохранении - до вызова, у вызывающего.
+procedure TForm1.ProjectClosedReset;
+begin
   CloseAllWindows;
 
   FCurrentProject := '';
@@ -11006,8 +11083,6 @@ begin
   Caption := AppTitle + ' - ' + DisplayName;
   UpdatePathBar;
   RefreshStatusBar;
-
-  ShowMessage('8625:Выберите проект из списка');
 end;
 
 // Смена проекта. Правки формы в конструкторе к этому времени уже в тексте
@@ -11130,7 +11205,7 @@ var
   Names, Sorted: TStringList;
   Nm, PrjFile, DirSl, Dir, Reason, S, Report: string;
   I, J, Cnt, Open, Dirty, Done, Skipped: Integer;
-  Folders, CurGone: Boolean;
+  Folders, CurGone, CurChecked: Boolean;
 begin
   if FProjectReg = nil then
     LoadProjectReg;
@@ -11177,10 +11252,13 @@ begin
     Cnt := 0;
     Open := 0;
     Dirty := 0;
+    CurChecked := False;
     for I := 0 to Lst.Items.Count - 1 do
       if Lst.Checked[I] then
       begin
         Inc(Cnt);
+        if CompareText(Names[I], FCurrentProject) = 0 then
+          CurChecked := True;
       if Folders then
       begin
         DirSl := ExtractFilePath(FProjectReg.Values[Names[I]]);
@@ -11213,6 +11291,13 @@ begin
       S := 'Удалить описания проектов: ' + IntToStr(Cnt) + '? Файлы ' +
       'проектов останутся на месте.';
 if MessageDlg('8865:' + S, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+        Exit;
+
+    // Открытый проект удаляется - его окна закроются. Если удаляется только
+    // описание, файлы остаются, и несохранённое предлагаем сохранить; папка
+    // же уходит в корзину целиком, и сохранять в неё нечего
+    if CurChecked and not Folders then
+      if not ConfirmSaveAll then
         Exit;
 
     Done := 0;
@@ -11272,13 +11357,11 @@ if MessageDlg('8865:' + S, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
     Names.Free;
   end;
 
+  // Открытый проект удалён - редактор очищается, как при Close Project
   if CurGone then
-  begin
-    FCurrentProject := '';
-    SnapReset;
-    Caption := AppTitle + ' - ' + DisplayName;
-  end;
-  RebuildProjectsMenu;
+    ProjectClosedReset
+  else
+    RebuildProjectsMenu;
 
   if Skipped > 0 then
     ShowMessage('8934:Удалено проектов: ' + IntToStr(Done) + ', не удалено: ' +
