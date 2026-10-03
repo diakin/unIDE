@@ -1811,6 +1811,8 @@ type
     procedure RightPagesChange(Sender: TObject);
     procedure RefreshCodeTree;
     procedure RefreshRapidQInspector;
+    function  RapidQComponentsReady: Boolean;
+    procedure RapidQEventJump;
     function  DsgGetText: string;
     procedure DsgSetText(const AText: string);
     function  DsgOpenKeep(const AFile: string): Integer;
@@ -2525,6 +2527,7 @@ var
     FileSearch,   // Find In Files: маски, чтение файлов, обход папок
     DelphiProj,   // .dpr (модули из uses), .dof (ключи dcc32), $(DELPHI)
     ObjParse,     // разбор формы для инспектора: узлы, .dfm, код, кэш
+    RqComponents, // описание компонентов RapidQ (Component.data)
     TextMerge,    // слияние трёх версий текста (файл изменён снаружи)
     HangWatch,    // сторож зависаний главного потока - журнал hang.log
     DlgAskDisk,   // окно "Файл изменён на диске" - см. AskDiskChange
@@ -20066,14 +20069,40 @@ begin
   ARest := Trim(Copy(AStmt, WordEnd, MaxInt));
 end;
 
+// Присваивание в блоке CREATE: "Width = 100", "Font.Name = "courier"",
+// "OnClick = BtnClick". AName - то, что слева, AValue - текст справа как
+// есть (выражение не вычисляется).
+function RapidQAssignment(const AStmt: string; var AName, AValue: string): Boolean;
+var
+  CharIdx: Integer;
+begin
+  Result := False;
+  if (AStmt = '') or not (AStmt[1] in ['A'..'Z', 'a'..'z', '_']) then
+    Exit;
+  CharIdx := 1;
+  while (CharIdx <= Length(AStmt)) and
+        (AStmt[CharIdx] in ['A'..'Z', 'a'..'z', '0'..'9', '_', '.']) do
+    Inc(CharIdx);
+  AName := Copy(AStmt, 1, CharIdx - 1);
+  while (CharIdx <= Length(AStmt)) and (AStmt[CharIdx] <= ' ') do
+    Inc(CharIdx);
+  if (CharIdx > Length(AStmt)) or (AStmt[CharIdx] <> '=') then
+    Exit;
+  AValue := Trim(Copy(AStmt, CharIdx + 1, MaxInt));
+  Result := True;
+end;
+
 // Узлы объектов CREATE из строк ALines - в ANodes (владеет ими он), корни
-// (CREATE вне других CREATE) - в ARoots. Результат - число объектов.
+// (CREATE вне других CREATE) - в ARoots. Присваивания внутри блока -
+// свойствами узла (PropN, PropV; в PropN.Objects - номер строки), On... -
+// событиями (EvN, EvV, номер строки в EvN.Objects). Результат - число
+// объектов.
 function RapidQCreateNodes(ALines: TStrings; ANodes, ARoots: TList): Integer;
 var
   Parts: TStringList;
   OpenNodes: TList;   // узлы CREATE, для которых ещё не было END CREATE
   LineIdx, PartIdx, NodeIdx: Integer;
-  FirstWord, Rest, Tail, NameWord, ClassPart: string;
+  FirstWord, Rest, Tail, NameWord, ClassPart, PropName, PropValue: string;
   Parent, Node: TDfmNode;
 
   function NewNode(AParent: TDfmNode; ALine: Integer): TDfmNode;
@@ -20098,8 +20127,10 @@ begin
   try
     for LineIdx := 0 to ALines.Count - 1 do
     begin
-      // Быстрый отсев: в строке нет слова CREATE ни в каком виде
-      if Pos('CREATE', UpperCase(ALines[LineIdx])) = 0 then
+      // Быстрый отсев: вне блоков CREATE нужны только строки со словом
+      // CREATE
+      if (OpenNodes.Count = 0) and
+         (Pos('CREATE', UpperCase(ALines[LineIdx])) = 0) then
         Continue;
       RapidQSplitStatements(ALines[LineIdx], Parts);
       for PartIdx := 0 to Parts.Count - 1 do
@@ -20141,6 +20172,23 @@ begin
           begin
             Node := NewNode(nil, LineIdx);
             Node.ClassNm := 'END CREATE без CREATE';
+          end;
+        end
+        else if (OpenNodes.Count > 0) and
+                RapidQAssignment(Parts[PartIdx], PropName, PropValue) then
+        begin
+          // Свойство или событие объекта, чей блок сейчас открыт
+          Node := TDfmNode(OpenNodes[OpenNodes.Count - 1]);
+          if UpperCase(Copy(PropName, 1, 2)) = 'ON' then
+          begin
+            Node.EvN.AddObject(PropName, TObject(LineIdx));
+            Node.EvV.Add(PropValue);
+          end
+          else
+          begin
+            Node.PropN.AddObject(PropName, TObject(LineIdx));
+            Node.PropV.Add(PropValue);
+            Node.PropRaw.Add(PropValue);
           end;
         end;
       end;
@@ -20196,11 +20244,110 @@ begin
     else
       FObjSource.Caption := '  ' + ExtractFileName(FCurrentFileName) +
                             ': объектов CREATE - ' + IntToStr(ObjCount) +
-                            '. Значения свойств - из снимка, его пока нет';
+                            '. Значения - текст из блоков CREATE, снимка пока нет';
+    if not RapidQComponentsReady then
+      FObjSource.Caption := FObjSource.Caption +
+                            '. Component.data не найден - список свойств ' +
+                            'классов не показывается';
   finally
     Roots.Free;
     Lines.Free;
   end;
+end;
+
+// Описание компонентов RapidQ (Component.data) загружено. Ищется рядом с
+// exe, в его папке rapidq_ref и в папке компилятора RapidQ из настроек
+// ([Compiler.RapidQ Basic] CompPath). Загружается один раз за сеанс.
+function TForm1.RapidQComponentsReady: Boolean;
+var
+  Candidates: TStringList;
+  Ini: TIniFile;
+  CompDir: string;
+  FileIdx: Integer;
+begin
+  Result := RqComponentFile <> '';
+  if Result then
+    Exit;
+  Candidates := TStringList.Create;
+  try
+    Candidates.Add(ExtractFilePath(Application.ExeName) + 'Component.data');
+    Candidates.Add(ExtractFilePath(Application.ExeName) +
+                   'rapidq_ref\Component.data');
+    if FileExists(SettingsFileName) then
+    begin
+      Ini := TIniFile.Create(SettingsFileName);
+      try
+        CompDir := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
+                                       'CompPath', ''));
+      finally
+        Ini.Free;
+      end;
+      if CompDir <> '' then
+      begin
+        // В CompPath бывает и папка, и путь к rc.exe
+        if FileExists(CompDir) then
+          CompDir := ExtractFilePath(CompDir);
+        Candidates.Add(IncludeTrailingPathDelimiter(CompDir) +
+                       'Component.data');
+      end;
+    end;
+    for FileIdx := 0 to Candidates.Count - 1 do
+      if FileExists(Candidates[FileIdx]) and
+         (RqLoadComponents(Candidates[FileIdx]) > 0) then
+      begin
+        LogComp('Описание компонентов RapidQ: ' + Candidates[FileIdx] +
+                ', классов ' + IntToStr(RqClassCount));
+        Result := True;
+        Exit;
+      end;
+  finally
+    Candidates.Free;
+  end;
+end;
+
+// Двойной щелчок по событию объекта RapidQ - к SUB или FUNCTION
+// обработчика в открытом файле; нет его там (он в $INCLUDE) - к строке,
+// где событие назначено.
+procedure TForm1.RapidQEventJump;
+var
+  Lines: TStringList;
+  Handler, LineWord, Rest, SubName: string;
+  LineIdx, AssignLine, CharIdx: Integer;
+begin
+  if (FObjEvents.Selected = nil) or
+     (FObjEvents.Selected.SubItems.Count = 0) or
+     (Integer(FObjEvents.Selected.Data) < 0) then
+    Exit;
+  Handler := Trim(FObjEvents.Selected.SubItems[0]);
+  AssignLine := Integer(FObjEvents.Selected.Data);
+  if Handler = '' then
+    Exit;
+  Lines := TStringList.Create;
+  try
+    Lines.Text := GetEditorTextCR;
+    for LineIdx := 0 to Lines.Count - 1 do
+    begin
+      LineWord := RapidQFirstWord(Trim(Lines[LineIdx]), Rest);
+      if (LineWord <> 'SUB') and (LineWord <> 'SUBI') and
+         (LineWord <> 'FUNCTION') and (LineWord <> 'FUNCTIONI') then
+        Continue;
+      CharIdx := 1;
+      while (CharIdx <= Length(Rest)) and
+            (Rest[CharIdx] in ['A'..'Z', 'a'..'z', '0'..'9', '_', '$']) do
+        Inc(CharIdx);
+      SubName := Copy(Rest, 1, CharIdx - 1);
+      if CompareText(SubName, Handler) = 0 then
+      begin
+        GotoLine(LineIdx);
+        Exit;
+      end;
+    end;
+  finally
+    Lines.Free;
+  end;
+  LogComp('Обработчик ' + Handler + ' в ' + ExtractFileName(FCurrentFileName) +
+          ' не найден - переход к строке, где он назначен');
+  GotoLine(AssignLine);
 end;
 
 // Дерево всех компонентов, которые создаёт код открытого модуля: главная
@@ -21783,6 +21930,17 @@ begin
     Exit;
   N := TDfmNode(FObjCurNode);
   Idx := Integer(It.Data);
+
+  // Объект RapidQ: правки пока нет - к строке, где свойство задано, или к
+  // его CREATE
+  if FObjRapidQ then
+  begin
+    if (Idx >= 0) and (Idx < N.PropN.Count) then
+      GotoLine(Integer(N.PropN.Objects[Idx]))
+    else if N.CreateLine >= 0 then
+      GotoLine(N.CreateLine);
+    Exit;
+  end;
 
   // Компонент создан в коде - свойство правится в .pas: та же таблица и те
   // же редакторы, а запись идёт строкой присваивания
@@ -28763,6 +28921,8 @@ var
   StartTick, StageTick, TList, TDefaults, TEvents, TCodeCol: Cardinal;
   EvCount: Integer;
   EvList: PPropList;
+  RqCls: TRqClass;
+  RqMember: TRqMember;
 begin
   StartTick := GetTickCount;
   TList := 0;
@@ -28806,26 +28966,57 @@ begin
 
     // Объект RapidQ: только то, что есть в узле. Конструктор форм, классы
     // VCL и строки модуля Delphi к нему не относятся.
+    // Заданное в блоке CREATE - текстом исходника и номером строки (колонка
+    // «Строка кода»); остальное из Component.data - серым: свойства со
+    // значением по умолчанию, события с параметрами обработчика.
     if FObjRapidQ then
     begin
+      RqCls := RqFindClass(Obj.ClassNm);
       FObjHeader.Caption := '  ' + Obj.Name + ': ' + Obj.ClassNm;
       if Obj.CreateLine >= 0 then
         FObjHeader.Caption := FObjHeader.Caption + '   строка ' +
                               IntToStr(Obj.CreateLine + 1);
+      if (RqCls = nil) and (Obj.ClassNm <> '') and (RqComponentFile <> '') then
+        FObjHeader.Caption := FObjHeader.Caption +
+                              '   (класса нет в Component.data)';
       for I := 0 to Obj.PropN.Count - 1 do
       begin
         It := FObjProps.Items.Add;
         It.Caption := Obj.PropN[I];
         It.SubItems.Add(Obj.PropV[I]);
+        It.SubItems.Add(IntToStr(Integer(Obj.PropN.Objects[I]) + 1));
         It.Data := Pointer(I);
       end;
+      if RqCls <> nil then
+        for I := 0 to RqCls.Props.Count - 1 do
+        begin
+          if Obj.PropN.IndexOf(RqCls.Props[I]) >= 0 then
+            Continue;
+          RqMember := TRqMember(RqCls.Props.Objects[I]);
+          It := FObjProps.Items.Add;
+          It.Caption := RqMember.Name;
+          It.SubItems.Add(RqMember.DefValue);
+          It.Data := Pointer(-1);
+        end;
+      FObjProps.AlphaSort;
       for I := 0 to Obj.EvN.Count - 1 do
       begin
         It := FObjEvents.Items.Add;
         It.Caption := Obj.EvN[I];
         It.SubItems.Add(Obj.EvV[I]);
-        It.Data := Pointer(Obj.EvN.Objects[I]);
+        It.Data := Pointer(Obj.EvN.Objects[I]);   // строка назначения
       end;
+      if RqCls <> nil then
+        for I := 0 to RqCls.Events.Count - 1 do
+        begin
+          if Obj.EvN.IndexOf(RqCls.Events[I]) >= 0 then
+            Continue;
+          It := FObjEvents.Items.Add;
+          It.Caption := RqCls.Events[I];
+          It.SubItems.Add(TRqEvent(RqCls.Events.Objects[I]).Params);
+          It.Data := Pointer(-1);
+        end;
+      FObjEvents.AlphaSort;
       Exit;
     end;
 
@@ -28999,6 +29190,12 @@ var
   P, Line, I: Integer;
   Obj: TDfmNode;
 begin
+  // Объект RapidQ - к его SUB-обработчику
+  if FObjRapidQ then
+  begin
+    RapidQEventJump;
+    Exit;
+  end;
   if (FObjEvents.Selected = nil) or (FObjEvents.Selected.SubItems.Count = 0) then
     Exit;
   Handler := FObjEvents.Selected.SubItems[0];
@@ -32268,6 +32465,13 @@ begin
   if FObjProps.Items[HitInfo.Item].SubItems.Count < 2 then
     Exit;
   LineNo := StrToIntDef(FObjProps.Items[HitInfo.Item].SubItems[1], 0);
+  // Объект RapidQ - строка в открытом файле
+  if FObjRapidQ then
+  begin
+    if LineNo > 0 then
+      GotoLine(LineNo - 1);
+    Exit;
+  end;
   UnitFile := ObjFormUnit;
   if (LineNo <= 0) or (UnitFile = '') then
     Exit;
@@ -37622,9 +37826,11 @@ begin
     CopyIfMissing('editor.ini');
   CopyIfMissing('IDE.clr');
   CopyDirIfMissing('schemes');
+  // Описание компонентов RapidQ для инспектора (RapidQComponentsReady)
+  CopyIfMissing('rapidq_ref\Component.data');
   if Copied > 0 then
     LogComp(Format('Рядом с exe скопировано файлов: %d (editor.ini, IDE.clr, ' +
-    'schemes - которых там не было)', [Copied]));
+    'schemes, rapidq_ref\Component.data - которых там не было)', [Copied]));
   if Merged > 0 then
     LogComp(Format('editor.ini рядом с exe: изменено разделов: %d. Пути, ' +
     'которых нет на диске, при запуске берутся из копий [...Old<N>]',
