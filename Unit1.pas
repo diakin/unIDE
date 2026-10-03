@@ -36612,7 +36612,13 @@ end;
 //      RqProbeDump зовёт их по очереди.
 //  Строки - в _rqprobe.txt рядом с .bas; "#obj Имя" перед каждым объектом,
 //  "#end" в конце: нет его - программа остановилась раньше, на последнем
-//  "#obj" видно, где.
+//  "#obj" видно, где. Сразу после таймера копия пишет туда же "#start": в
+//  файле только он - программа дошла до таймера, но закончилась, не начав
+//  обрабатывать сообщения; файла нет - не дошла и до таймера.
+//  Exe копии собирается и запускается рядом с .bas, как обычный: программа
+//  берёт свою папку из пути к exe (COMMAND$(0) в RQdebugger). После запуска
+//  exe переносится в dsgprobe\. Вывод консоли программы - в
+//  dsgprobe\_rqprobe_console.txt, его хвост - в лог.
 //  Свойство, которое компилятор читать не даёт ("Member X not part of
 //  class"), исключается у всех объектов того же класса: их строки
 //  закомментируются, копия собирается снова (до RqProbeMaxRetry раз).
@@ -36844,6 +36850,10 @@ begin
     AOut.Add('RqProbeTimer.Interval = 1');
     AOut.Add('RqProbeTimer.OnTimer = RqProbeDump');
     AOut.Add('RqProbeTimer.Enabled = 1');
+    AOut.Add('RqProbeFile.Open("' + RapidQSlashPath(AOutFile) + '", ' +
+             IntToStr(RqProbeFmCreate) + ')');
+    AOut.Add('RqProbeFile.WriteLine("#start")');
+    AOut.Add('RqProbeFile.Close');
     for LineIdx := InsLine to Lines.Count - 1 do
       AOut.Add(Lines[LineIdx]);
 
@@ -37040,6 +37050,57 @@ var
   ProcInfo: TProcessInformation;
   WaitRes, ProcExit: DWORD;
   StartTick: Cardinal;
+  SecAttr: TSecurityAttributes;
+  ConsoleFile: string;
+  ConsoleHandle: THandle;
+  HasStart, HasTime: Boolean;
+
+  // Хвост вывода консоли программы - в лог
+  procedure LogConsoleTail;
+  const
+    TailLines = 20;
+  var
+    ConsoleLines: TStringList;
+    TailIdx: Integer;
+  begin
+    if not FileExists(ConsoleFile) then
+      Exit;
+    ConsoleLines := TStringList.Create;
+    try
+      try
+        ConsoleLines.LoadFromFile(ConsoleFile);
+      except
+        Exit;
+      end;
+      if ConsoleLines.Count = 0 then
+      begin
+        LogComp('Снимок RapidQ: вывода в консоль нет (' + ConsoleFile + ')');
+        Exit;
+      end;
+      LogComp(Format('Снимок RapidQ: вывод консоли программы, последние ' +
+                     'строки из %d (%s):', [ConsoleLines.Count, ConsoleFile]));
+      TailIdx := ConsoleLines.Count - TailLines;
+      if TailIdx < 0 then
+        TailIdx := 0;
+      while TailIdx < ConsoleLines.Count do
+      begin
+        LogComp('    > ' + ConsoleLines[TailIdx]);
+        Inc(TailIdx);
+      end;
+    finally
+      ConsoleLines.Free;
+    end;
+  end;
+
+  // Exe копии - из папки программы в dsgprobe
+  procedure MoveProbeExe;
+  begin
+    if not FileExists(FRqProbeExe) then
+      Exit;
+    CopyFile(PChar(FRqProbeExe), PChar(FProbeDir + '_rqprobe.exe'), False);
+    DeleteFile(FRqProbeExe);
+  end;
+
 begin
   if FBusyDepth > 0 then
     Exit;   // уже идёт сборка или снимок
@@ -37076,7 +37137,10 @@ begin
   ProbeBas := ExtractFilePath(MainBas) + '_rqprobe.bas';
   OutFile := ExtractFilePath(MainBas) + '_rqprobe.txt';
   RunDir := ExtractFilePath(MainBas);
-  FRqProbeExe := FProbeDir + '_rqprobe.exe';
+  // Exe - рядом с .bas, как обычный: программа может искать свои файлы
+  // по пути к exe
+  FRqProbeExe := ExtractFilePath(MainBas) + '_rqprobe.exe';
+  ConsoleFile := FProbeDir + '_rqprobe_console.txt';
   DeleteFile(OutFile);
 
   Src := TStringList.Create;
@@ -37173,14 +37237,33 @@ begin
     Src.Free;
   end;
 
-  // Запуск: текущая папка - папка программы, как при обычном запуске
+  // Запуск: текущая папка - папка программы, как при обычном запуске.
+  // Вывод консоли (print) - в файл: по нему видно, докуда программа дошла.
   FillChar(StartInfo, SizeOf(StartInfo), 0);
   StartInfo.cb := SizeOf(StartInfo);
+  SecAttr.nLength := SizeOf(SecAttr);
+  SecAttr.lpSecurityDescriptor := nil;
+  SecAttr.bInheritHandle := True;
+  ConsoleHandle := CreateFile(PChar(ConsoleFile), GENERIC_WRITE,
+                              FILE_SHARE_READ, @SecAttr, CREATE_ALWAYS,
+                              FILE_ATTRIBUTE_NORMAL, 0);
+  if ConsoleHandle <> INVALID_HANDLE_VALUE then
+  begin
+    StartInfo.dwFlags := STARTF_USESTDHANDLES;
+    StartInfo.hStdInput := 0;
+    StartInfo.hStdOutput := ConsoleHandle;
+    StartInfo.hStdError := ConsoleHandle;
+  end;
   LogComp('Снимок RapidQ: запуск ' + FRqProbeExe);
-  if not CreateProcess(nil, PChar('"' + FRqProbeExe + '"'), nil, nil, False, 0,
-                       nil, PChar(RunDir), StartInfo, ProcInfo) then
+  if not CreateProcess(nil, PChar('"' + FRqProbeExe + '"'), nil, nil,
+                       ConsoleHandle <> INVALID_HANDLE_VALUE, 0, nil,
+                       PChar(RunDir), StartInfo, ProcInfo) then
   begin
     LogComp('Снимок RapidQ: не запустился, код ' + IntToStr(GetLastError));
+    if ConsoleHandle <> INVALID_HANDLE_VALUE then
+      CloseHandle(ConsoleHandle);
+    MoveProbeExe;
+    SaveCompileLog(FProbeDir + '_rqprobe_compile.log');
     Exit;
   end;
   BusyBegin('Снимок RapidQ: программа работает');
@@ -37209,14 +37292,19 @@ begin
   finally
     CloseHandle(ProcInfo.hThread);
     CloseHandle(ProcInfo.hProcess);
+    if ConsoleHandle <> INVALID_HANDLE_VALUE then
+      CloseHandle(ConsoleHandle);
     Screen.Cursor := crDefault;
     BusyEnd('Снимок RapidQ', FileExists(OutFile));
   end;
+  MoveProbeExe;
 
   if not FileExists(OutFile) then
   begin
-    LogComp('Снимок RapidQ: файла значений нет - таймер не сработал или ' +
-            'программа упала раньше: ' + OutFile);
+    LogConsoleTail;
+    LogComp('Снимок RapidQ: файла значений нет - программа закончилась, не ' +
+            'дойдя до таймера (он перед первым CREATE, строка - в начале ' +
+            'лога): ' + OutFile);
     SaveCompileLog(FProbeDir + '_rqprobe_compile.log');
     Exit;
   end;
@@ -37238,6 +37326,24 @@ begin
     end;
     CopyFile(PChar(OutFile), PChar(FProbeDir + '_rqprobe.txt'), False);
     DeleteFile(OutFile);
+    // Только "#start": таймер создан, но не сработал
+    HasStart := ProbeLines.IndexOf('#start') >= 0;
+    HasTime := False;
+    for LineIdx := 0 to ProbeLines.Count - 1 do
+      if Copy(ProbeLines[LineIdx], 1, 6) = '#time ' then
+      begin
+        HasTime := True;
+        Break;
+      end;
+    if HasStart and not HasTime then
+    begin
+      LogConsoleTail;
+      LogComp('Снимок RapidQ: программа дошла до таймера, но закончилась, не ' +
+              'начав обрабатывать сообщения (ShowModal, DoEvents) - таймер не ' +
+              'сработал');
+      SaveCompileLog(FProbeDir + '_rqprobe_compile.log');
+      Exit;
+    end;
     Props := nil;
     LastObj := '';
     Complete := False;
@@ -37275,6 +37381,7 @@ begin
     LogComp(Format('Снимок RapidQ: значения %d объектов', [FRqProbeObjs.Count]))
   else
   begin
+    LogConsoleTail;
     LogComp(Format('Снимок RapidQ: неполный - %d объектов, программа ' +
                    'остановилась на объекте %s', [FRqProbeObjs.Count, LastObj]));
     SaveCompileLog(FProbeDir + '_rqprobe_compile.log');
