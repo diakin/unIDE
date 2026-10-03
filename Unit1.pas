@@ -20255,24 +20255,28 @@ begin
   end;
 end;
 
-// Описание компонентов RapidQ (Component.data) загружено. Ищется рядом с
-// exe, в его папке rapidq_ref и в папке компилятора RapidQ из настроек
-// ([Compiler.RapidQ Basic] CompPath). Загружается один раз за сеанс.
+// Описание компонентов RapidQ загружено. Папки поиска - рядом с exe, его
+// rapidq_ref и папка компилятора RapidQ из настроек ([Compiler.RapidQ
+// Basic] CompPath). В первой папке, где он есть, основной Component.data;
+// Component1.data той же папки (другая редакция: в ней классы меню)
+// добавляет то, чего в основном нет. Загружается один раз за сеанс.
 function TForm1.RapidQComponentsReady: Boolean;
+const
+  MainName = 'Component.data';
+  ExtraName = 'Component1.data';
 var
-  Candidates: TStringList;
+  Dirs: TStringList;
   Ini: TIniFile;
-  CompDir: string;
-  FileIdx: Integer;
+  CompDir, Primary, Extra: string;
+  DirIdx, Members, Added: Integer;
 begin
   Result := RqComponentFile <> '';
   if Result then
     Exit;
-  Candidates := TStringList.Create;
+  Dirs := TStringList.Create;
   try
-    Candidates.Add(ExtractFilePath(Application.ExeName) + 'Component.data');
-    Candidates.Add(ExtractFilePath(Application.ExeName) +
-                   'rapidq_ref\Component.data');
+    Dirs.Add(ExtractFilePath(Application.ExeName));
+    Dirs.Add(ExtractFilePath(Application.ExeName) + 'rapidq_ref\');
     if FileExists(SettingsFileName) then
     begin
       Ini := TIniFile.Create(SettingsFileName);
@@ -20287,21 +20291,34 @@ begin
         // В CompPath бывает и папка, и путь к rc.exe
         if FileExists(CompDir) then
           CompDir := ExtractFilePath(CompDir);
-        Candidates.Add(IncludeTrailingPathDelimiter(CompDir) +
-                       'Component.data');
+        Dirs.Add(IncludeTrailingPathDelimiter(CompDir));
       end;
     end;
-    for FileIdx := 0 to Candidates.Count - 1 do
-      if FileExists(Candidates[FileIdx]) and
-         (RqLoadComponents(Candidates[FileIdx]) > 0) then
+    for DirIdx := 0 to Dirs.Count - 1 do
+    begin
+      // Основной - Component.data; нет его - Component1.data
+      Primary := Dirs[DirIdx] + MainName;
+      Extra := Dirs[DirIdx] + ExtraName;
+      if not FileExists(Primary) then
       begin
-        LogComp('Описание компонентов RapidQ: ' + Candidates[FileIdx] +
-                ', классов ' + IntToStr(RqClassCount));
-        Result := True;
-        Exit;
+        Primary := Extra;
+        Extra := '';
       end;
+      if not FileExists(Primary) or (RqLoadComponents(Primary) = 0) then
+        Continue;
+      LogComp('Описание компонентов RapidQ: ' + Primary + ', классов ' +
+              IntToStr(RqClassCount));
+      if (Extra <> '') and FileExists(Extra) then
+      begin
+        Added := RqMergeComponents(Extra, Members);
+        LogComp('  из ' + Extra + ' добавлено классов ' + IntToStr(Added) +
+                ', свойств и событий у прежних классов ' + IntToStr(Members));
+      end;
+      Result := True;
+      Exit;
+    end;
   finally
-    Candidates.Free;
+    Dirs.Free;
   end;
 end;
 
@@ -37828,9 +37845,10 @@ begin
   CopyDirIfMissing('schemes');
   // Описание компонентов RapidQ для инспектора (RapidQComponentsReady)
   CopyIfMissing('rapidq_ref\Component.data');
+  CopyIfMissing('rapidq_ref\Component1.data');
   if Copied > 0 then
     LogComp(Format('Рядом с exe скопировано файлов: %d (editor.ini, IDE.clr, ' +
-    'schemes, rapidq_ref\Component.data - которых там не было)', [Copied]));
+    'schemes, rapidq_ref\Component*.data - которых там не было)', [Copied]));
   if Merged > 0 then
     LogComp(Format('editor.ini рядом с exe: изменено разделов: %d. Пути, ' +
     'которых нет на диске, при запуске берутся из копий [...Old<N>]',

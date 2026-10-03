@@ -14,6 +14,14 @@ unit RqComponents;
 //  перечислений и логических (False|True); <default> и <choose> у цвета -
 //  "по умолчанию" и "выбрать". Строка из одного # - конец файла.
 //
+//  Строки без | и записи, у которых имя не идентификатор (пояснения вроде
+//  "NO Properties!||R|"), пропускаются.
+//
+//  Файлов бывает несколько редакций (Component.data, Component1.data): у
+//  одной есть классы меню, у другой - DirectX. Основной загружается
+//  RqLoadComponents, остальные добавляются RqMergeComponents - только
+//  классы и члены классов, которых ещё нет; уже загруженное не меняется.
+//
 //  Модуль самостоятельный: загрузка, поиск класса по имени, освобождение.
 // ---------------------------------------------------------------------------
 
@@ -55,6 +63,10 @@ type
 // Загрузить описание из AFile (прежнее освобождается). Результат - число
 // классов; файла нет или не читается - 0.
 function RqLoadComponents(const AFile: string): Integer;
+// Добавить из AFile классы, которых нет, и свойства, методы, события, которых
+// нет у уже загруженных классов. Результат - число добавленных классов,
+// AMembers - число членов, добавленных к прежним классам.
+function RqMergeComponents(const AFile: string; var AMembers: Integer): Integer;
 // Класс по имени без учёта регистра; nil - нет такого или не загружено
 function RqFindClass(const AName: string): TRqClass;
 function RqClassCount: Integer;
@@ -62,7 +74,8 @@ function RqClassAt(AIndex: Integer): TRqClass;
 procedure RqFreeComponents;
 
 var
-  RqComponentFile: string = '';   // откуда загружено, '' - не загружено
+  RqComponentFile: string = '';   // основной файл, '' - не загружено
+  RqMergedFiles: string = '';     // добавленные к нему, через "; "
 
 implementation
 
@@ -151,6 +164,7 @@ begin
     FreeAndNil(RqClasses);
   end;
   RqComponentFile := '';
+  RqMergedFiles := '';
 end;
 
 // Поля строки через |
@@ -169,6 +183,22 @@ begin
     BarPos := Pos('|', Rest);
   end;
   AFields.Add(Trim(Rest));
+end;
+
+// Имя члена класса - идентификатор, возможно с точкой (Field.Name у
+// QMYSQL). Запись вроде "NO Properties!||R|" (у
+// QOLEOBJECT в Component1.data) - пояснение, не свойство.
+function IsIdent(const AName: string): Boolean;
+var
+  CharIdx: Integer;
+begin
+  Result := AName <> '';
+  for CharIdx := 1 to Length(AName) do
+    if not (AName[CharIdx] in ['A'..'Z', 'a'..'z', '0'..'9', '_', '.']) then
+    begin
+      Result := False;
+      Exit;
+    end;
 end;
 
 // Заголовок класса "# 6 QOVALBTN * Properties  примечание *"
@@ -209,25 +239,34 @@ begin
   Result := True;
 end;
 
-function RqLoadComponents(const AFile: string): Integer;
+// Разбор файла. AMerge = False - в пустой список; True - к загруженному:
+// существующий класс дополняется недостающими членами. Результат - число
+// добавленных классов, AMembers - число членов, добавленных к прежним.
+function LoadComponentFile(const AFile: string; AMerge: Boolean;
+                           var AMembers: Integer): Integer;
 const
   SectProps = 0;
   SectMethods = 1;
   SectEvents = 2;
 var
   Lines, Fields: TStringList;
-  LineIdx, FieldIdx, Section: Integer;
+  LineIdx, FieldIdx, Section, ClassIdx: Integer;
   Line: string;
-  CurClass: TRqClass;
+  CurClass, Header: TRqClass;
+  OldClass: Boolean;   // CurClass был загружен раньше - члены только новые
   Member: TRqMember;
   Event: TRqEvent;
+  Target: TStringList;
 begin
-  RqFreeComponents;
   Result := 0;
+  AMembers := 0;
   if (AFile = '') or not FileExists(AFile) then
     Exit;
-  RqClasses := TStringList.Create;
-  RqClasses.CaseSensitive := False;
+  if RqClasses = nil then
+  begin
+    RqClasses := TStringList.Create;
+    RqClasses.CaseSensitive := False;
+  end;
   Lines := TStringList.Create;
   Fields := TStringList.Create;
   try
@@ -237,6 +276,7 @@ begin
       Exit;
     end;
     CurClass := nil;
+    OldClass := False;
     Section := SectProps;
     for LineIdx := 0 to Lines.Count - 1 do
     begin
@@ -245,14 +285,30 @@ begin
         Continue;
       if Line[1] = '#' then
       begin
-        CurClass := TRqClass.Create;
-        if ParseHeader(Line, CurClass) then
+        CurClass := nil;
+        Header := TRqClass.Create;
+        if not ParseHeader(Line, Header) then
         begin
-          RqClasses.AddObject(CurClass.Name, CurClass);
-          Section := SectProps;
+          Header.Free;   // "#" в конце файла и прочее
+          Continue;
+        end;
+        Section := SectProps;
+        ClassIdx := -1;
+        if AMerge then
+          ClassIdx := RqClasses.IndexOf(Header.Name);
+        if ClassIdx >= 0 then
+        begin
+          CurClass := TRqClass(RqClasses.Objects[ClassIdx]);
+          OldClass := True;
+          Header.Free;
         end
         else
-          FreeAndNil(CurClass);   // "#" в конце файла и прочее
+        begin
+          CurClass := Header;
+          OldClass := False;
+          RqClasses.AddObject(CurClass.Name, CurClass);
+          Inc(Result);
+        end;
         Continue;
       end;
       if CurClass = nil then
@@ -267,21 +323,33 @@ begin
         Section := SectEvents;
         Continue;
       end;
+      if Pos('|', Line) = 0 then
+        Continue;   // пояснение, не запись
 
       SplitBars(Line, Fields);
-      if Fields[0] = '' then
+      if not IsIdent(Fields[0]) then
         Continue;
       if Section = SectEvents then
       begin
+        if OldClass and (CurClass.Events.IndexOf(Fields[0]) >= 0) then
+          Continue;
         Event := TRqEvent.Create;
         Event.Name := Fields[0];
         // "OnClose||(BYREF Action AS INTEGER)": параметры - третье поле
         if Fields.Count >= 3 then
           Event.Params := Fields[2];
         CurClass.Events.AddObject(Event.Name, Event);
+        if OldClass then
+          Inc(AMembers);
         Continue;
       end;
 
+      if Section = SectMethods then
+        Target := CurClass.Methods
+      else
+        Target := CurClass.Props;
+      if OldClass and (Target.IndexOf(Fields[0]) >= 0) then
+        Continue;
       Member := TRqMember.Create;
       Member.Name := Fields[0];
       if Fields.Count >= 2 then
@@ -293,16 +361,38 @@ begin
       for FieldIdx := 4 to Fields.Count - 1 do
         if Fields[FieldIdx] <> '' then
           Member.Choices.Add(Fields[FieldIdx]);
-      if Section = SectMethods then
-        CurClass.Methods.AddObject(Member.Name, Member)
-      else
-        CurClass.Props.AddObject(Member.Name, Member);
+      Target.AddObject(Member.Name, Member);
+      if OldClass then
+        Inc(AMembers);
     end;
-    RqComponentFile := AFile;
-    Result := RqClasses.Count;
   finally
     Fields.Free;
     Lines.Free;
+  end;
+end;
+
+function RqLoadComponents(const AFile: string): Integer;
+var
+  Members: Integer;
+begin
+  RqFreeComponents;
+  Result := LoadComponentFile(AFile, False, Members);
+  if Result > 0 then
+    RqComponentFile := AFile;
+end;
+
+function RqMergeComponents(const AFile: string; var AMembers: Integer): Integer;
+begin
+  AMembers := 0;
+  Result := 0;
+  if RqClasses = nil then
+    Exit;
+  Result := LoadComponentFile(AFile, True, AMembers);
+  if (Result > 0) or (AMembers > 0) then
+  begin
+    if RqMergedFiles <> '' then
+      RqMergedFiles := RqMergedFiles + '; ';
+    RqMergedFiles := RqMergedFiles + AFile;
   end;
 end;
 
