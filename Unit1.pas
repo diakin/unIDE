@@ -1142,6 +1142,7 @@ type
     // Состав своей формы при снимке (OwnFormPrint): другой - снимок устарел
     FObjSnapPrint: string;
     FObjDfmBinary: Boolean; // показанный .dfm двоичный - правка закрыта
+    FObjRapidQ: Boolean;    // в инспекторе - объекты CREATE файла RapidQ
     FObjRebuilding: Boolean; // дерево перестраивается - Data узлов недействительны
     FDfmNodes: TList;
     FObjDfmFile: string;    // какой .dfm показан
@@ -1809,7 +1810,7 @@ type
     procedure ObjTreeChange(Sender: TObject; Node: TTreeNode);
     procedure RightPagesChange(Sender: TObject);
     procedure RefreshCodeTree;
-    procedure RefreshRapidQObjTree;
+    procedure RefreshRapidQInspector;
     function  DsgGetText: string;
     procedure DsgSetText(const AText: string);
     function  DsgOpenKeep(const AFile: string): Integer;
@@ -19437,6 +19438,9 @@ begin
     Result := Result + '  (runtime, значения из снимка)'
   else if N.IsRuntime then
     Result := Result + '  (runtime)';
+  // Приписка узла: у объектов RapidQ - номер строки CREATE
+  if N.Note <> '' then
+    Result := Result + '   ' + N.Note;
 end;
 
 // Узлы - в дерево на экране. Внутрь ссылок не спускаемся: их содержимое
@@ -19649,6 +19653,14 @@ begin
     Exit;
   if not AEvenHidden and (FRightPages.ActivePage <> FTabObjects) then
     Exit;
+
+  // Файл RapidQ (те же правила, что у вкладки Includes) - объекты CREATE
+  if (FCurrentFileName <> '') and IncludesApply then
+  begin
+    RefreshRapidQInspector;
+    Exit;
+  end;
+  FObjRapidQ := False;
 
   Ext := LowerCase(ExtractFileExt(FCurrentFileName));
   // Форма Delphi (.dfm) или Lazarus (.lfm) - один и тот же текстовый вид
@@ -19989,8 +20001,10 @@ begin
 end;
 
 // ---------------------------------------------------------------------------
-//  Вкладка Code для файлов RapidQ: дерево объектов, созданных через
+//  Вкладка Objects для файлов RapidQ: дерево объектов, созданных через
 //  CREATE ... END CREATE (как вкладка Objects в RQdebugger, BuildObjTree).
+//  Узлы - те же TDfmNode, что у форм Delphi: имя, класс, строка CREATE,
+//  дальше в них лягут свойства и события из снимка.
 //
 //  CREATE внутри другого CREATE - его потомок. Комментарии (' и REM) не в
 //  счёт; строка делится на операторы по ":" вне кавычек, так что
@@ -20052,32 +20066,42 @@ begin
   ARest := Trim(Copy(AStmt, WordEnd, MaxInt));
 end;
 
-procedure TForm1.RefreshRapidQObjTree;
+// Узлы объектов CREATE из строк ALines - в ANodes (владеет ими он), корни
+// (CREATE вне других CREATE) - в ARoots. Результат - число объектов.
+function RapidQCreateNodes(ALines: TStrings; ANodes, ARoots: TList): Integer;
 var
-  Lines, Parts: TStringList;
+  Parts: TStringList;
   OpenNodes: TList;   // узлы CREATE, для которых ещё не было END CREATE
-  LineIdx, PartIdx, NodeIdx, CreateCount: Integer;
-  FirstWord, Rest, Tail: string;
-  Root, Parent, Node: TTreeNode;
+  LineIdx, PartIdx, NodeIdx: Integer;
+  FirstWord, Rest, Tail, NameWord, ClassPart: string;
+  Parent, Node: TDfmNode;
+
+  function NewNode(AParent: TDfmNode; ALine: Integer): TDfmNode;
+  begin
+    Result := TDfmNode.Create;
+    ANodes.Add(Result);
+    Result.Line := ALine;
+    Result.CreateLine := ALine;
+    Result.FromCode := True;
+    Result.Note := '[' + IntToStr(ALine + 1) + ']';
+    Result.Parent := AParent;
+    if AParent <> nil then
+      AParent.Children.Add(Result)
+    else
+      ARoots.Add(Result);
+  end;
+
 begin
-  if FCodeTree = nil then
-    Exit;
-  Lines := TStringList.Create;
+  Result := 0;
   Parts := TStringList.Create;
   OpenNodes := TList.Create;
-  FCodeTree.Items.BeginUpdate;
   try
-    FCodeTree.Items.Clear;
-    Root := FCodeTree.Items.AddObject(nil, ExtractFileName(FCurrentFileName),
-                                      Pointer(-1));
-    CreateCount := 0;
-    Lines.Text := GetEditorTextCR;
-    for LineIdx := 0 to Lines.Count - 1 do
+    for LineIdx := 0 to ALines.Count - 1 do
     begin
       // Быстрый отсев: в строке нет слова CREATE ни в каком виде
-      if Pos('CREATE', UpperCase(Lines[LineIdx])) = 0 then
+      if Pos('CREATE', UpperCase(ALines[LineIdx])) = 0 then
         Continue;
-      RapidQSplitStatements(Lines[LineIdx], Parts);
+      RapidQSplitStatements(ALines[LineIdx], Parts);
       for PartIdx := 0 to Parts.Count - 1 do
       begin
         FirstWord := RapidQFirstWord(Parts[PartIdx], Rest);
@@ -20086,22 +20110,38 @@ begin
         if FirstWord = 'CREATE' then
         begin
           if OpenNodes.Count > 0 then
-            Parent := TTreeNode(OpenNodes[OpenNodes.Count - 1])
+            Parent := TDfmNode(OpenNodes[OpenNodes.Count - 1])
           else
-            Parent := Root;
-          Node := FCodeTree.Items.AddChildObject(Parent,
-            Rest + '   [' + IntToStr(LineIdx + 1) + ']', Pointer(LineIdx));
+            Parent := nil;
+          Node := NewNode(Parent, LineIdx);
+          // "MenuText AS QRichEdit"; другой вид - целиком в имя
+          Node.Name := Rest;
+          NameWord := RapidQFirstWord(Rest, Tail);
+          if NameWord <> '' then
+          begin
+            ClassPart := '';
+            if RapidQFirstWord(Tail, ClassPart) = 'AS' then
+            begin
+              Node.Name := Copy(Rest, 1, Length(NameWord));
+              Node.ClassNm := Trim(ClassPart);
+            end;
+          end;
           OpenNodes.Add(Node);
-          Inc(CreateCount);
+          Inc(Result);
         end
         else if (FirstWord = 'END') and
                 (RapidQFirstWord(Rest, Tail) = 'CREATE') then
         begin
           if OpenNodes.Count > 0 then
-            OpenNodes.Delete(OpenNodes.Count - 1)
+          begin
+            TDfmNode(OpenNodes[OpenNodes.Count - 1]).EndLine := LineIdx;
+            OpenNodes.Delete(OpenNodes.Count - 1);
+          end
           else
-            FCodeTree.Items.AddChildObject(Root, 'END CREATE без CREATE   [' +
-              IntToStr(LineIdx + 1) + ']', Pointer(LineIdx));
+          begin
+            Node := NewNode(nil, LineIdx);
+            Node.ClassNm := 'END CREATE без CREATE';
+          end;
         end;
       end;
     end;
@@ -20109,18 +20149,56 @@ begin
     // CREATE, который так и не закрыт
     for NodeIdx := 0 to OpenNodes.Count - 1 do
     begin
-      Node := TTreeNode(OpenNodes[NodeIdx]);
-      Node.Text := Node.Text + '  нет END CREATE';
+      Node := TDfmNode(OpenNodes[NodeIdx]);
+      Node.Note := Node.Note + '  нет END CREATE';
     end;
-    if CreateCount = 0 then
-      FCodeTree.Items.AddChildObject(Root, 'CREATE в файле нет', Pointer(-1));
-
-    FCodeTree.FullExpand;
-    Root.MakeVisible;
   finally
-    FCodeTree.Items.EndUpdate;
     OpenNodes.Free;
     Parts.Free;
+  end;
+end;
+
+// Инспектор для файла RapidQ: дерево объектов CREATE. Свойств у узлов пока
+// нет - их даст снимок программы.
+procedure TForm1.RefreshRapidQInspector;
+var
+  Lines: TStringList;
+  Roots: TList;
+  RootIdx, ObjCount: Integer;
+begin
+  ObjCancelEdit;
+  FObjCurNode := nil;
+  FObjDfmBinary := False;
+  ClearDfmNodes;
+  // Ветка Delphi после RapidQ должна строиться заново, не по старым ключам
+  FObjRapidQ := True;
+  FObjDfmKey := '';
+  FObjTreeKey := '';
+  FObjTreeDfm := '';
+  FObjDfmFile := '';
+  FObjFormClass := '';
+  FObjCacheFile := '';
+  FObjLinesUnsure := False;
+  if FObjRoots = nil then
+    FObjRoots := TList.Create;
+
+  Lines := TStringList.Create;
+  Roots := TList.Create;
+  try
+    Lines.Text := GetEditorTextCR;
+    ObjCount := RapidQCreateNodes(Lines, FDfmNodes, Roots);
+    RenderObjTree(Roots);
+    for RootIdx := 0 to Roots.Count - 1 do
+      FObjRoots.Add(Roots[RootIdx]);
+    if ObjCount = 0 then
+      FObjSource.Caption := '  ' + ExtractFileName(FCurrentFileName) +
+                            ': CREATE в файле нет'
+    else
+      FObjSource.Caption := '  ' + ExtractFileName(FCurrentFileName) +
+                            ': объектов CREATE - ' + IntToStr(ObjCount) +
+                            '. Значения свойств - из снимка, его пока нет';
+  finally
+    Roots.Free;
     Lines.Free;
   end;
 end;
@@ -20210,10 +20288,18 @@ var
 begin
   if FCodeTree = nil then
     Exit;
-  // Файл RapidQ (те же правила, что у вкладки Includes) - дерево CREATE
+  // Файл RapidQ (те же правила, что у вкладки Includes): его объекты
+  // CREATE - на вкладке Objects
   if (FCurrentFileName <> '') and IncludesApply then
   begin
-    RefreshRapidQObjTree;
+    FCodeTree.Items.BeginUpdate;
+    try
+      FCodeTree.Items.Clear;
+      FCodeTree.Items.AddObject(nil, '(RapidQ: объекты CREATE - на вкладке ' +
+                                'Objects)', Pointer(-1));
+    finally
+      FCodeTree.Items.EndUpdate;
+    end;
     Exit;
   end;
   Start := FDfmNodes.Count;
@@ -21232,6 +21318,13 @@ procedure TForm1.ObjSnapBtnClick(Sender: TObject);
 var
   Has: Boolean;
 begin
+  // Пробный запуск собирает копию проекта Delphi - к программе RapidQ он
+  // не подходит, её снимок делается иначе
+  if FObjRapidQ then
+  begin
+    ShowMessage('Снимок программы RapidQ пока не сделан.');
+    Exit;
+  end;
   Has := (OwnSnapFor(FObjFormClass) <> '') or
          (ProbeSnapFor(FObjFormClass) <> '');
 
@@ -21325,6 +21418,9 @@ var
   N: TDfmNode;
 begin
   Result := nil;
+  // Классы RapidQ (QForm, QRichEdit) - не классы VCL
+  if FObjRapidQ then
+    Exit;
   N := TDfmNode(ANode);
   if (N = nil) or (N.ClassNm = '') then
     Exit;
@@ -23677,6 +23773,14 @@ begin
   if (FObjTree.Selected = nil) or (FObjTree.Selected.Data = nil) then
     Exit;
   N := TDfmNode(FObjTree.Selected.Data);
+
+  // Объект RapidQ - к его строке CREATE в открытом файле
+  if FObjRapidQ then
+  begin
+    if N.CreateLine >= 0 then
+      GotoLine(N.CreateLine);
+    Exit;
+  end;
 
   // Компонент из .dfm - к строке его заголовка object в тексте формы.
   // Номер строки и имя файла берём ДО OpenNamedFile: переключение вкладки
@@ -28699,6 +28803,31 @@ begin
       Exit;
     Obj := TDfmNode(Node.Data);
     FObjCurNode := Obj;
+
+    // Объект RapidQ: только то, что есть в узле. Конструктор форм, классы
+    // VCL и строки модуля Delphi к нему не относятся.
+    if FObjRapidQ then
+    begin
+      FObjHeader.Caption := '  ' + Obj.Name + ': ' + Obj.ClassNm;
+      if Obj.CreateLine >= 0 then
+        FObjHeader.Caption := FObjHeader.Caption + '   строка ' +
+                              IntToStr(Obj.CreateLine + 1);
+      for I := 0 to Obj.PropN.Count - 1 do
+      begin
+        It := FObjProps.Items.Add;
+        It.Caption := Obj.PropN[I];
+        It.SubItems.Add(Obj.PropV[I]);
+        It.Data := Pointer(I);
+      end;
+      for I := 0 to Obj.EvN.Count - 1 do
+      begin
+        It := FObjEvents.Items.Add;
+        It.Caption := Obj.EvN[I];
+        It.SubItems.Add(Obj.EvV[I]);
+        It.Data := Pointer(Obj.EvN.Objects[I]);
+      end;
+      Exit;
+    end;
 
     // Выбрали в дереве - выделение и в конструкторе, если он показывает
     // эту форму

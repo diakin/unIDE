@@ -51,6 +51,8 @@ type
     FromCode: Boolean;          // узел из разбора исходника; строки свойств -
                                 // строки модуля, а не .dfm
     IsLive: Boolean;            // значения подставлены из снимка
+    Note: string;               // приписка к подписи в дереве инспектора
+                                // (у объектов RapidQ - номер строки CREATE)
     constructor Create;
     destructor Destroy; override;
   end;
