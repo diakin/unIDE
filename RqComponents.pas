@@ -22,6 +22,19 @@ unit RqComponents;
 //  RqLoadComponents, остальные добавляются RqMergeComponents - только
 //  классы и члены классов, которых ещё нет; уже загруженное не меняется.
 //
+//  Классы программы - TYPE <Имя> EXTENDS <Базовый> ... END TYPE в её
+//  исходнике и include-файлах - разбирает RqParseTypes:
+//    поле "Имя AS Тип [PROPERTY SET Setter]"      - свойство (RW);
+//    поле "OnX AS EVENT(Шаблон)"                  - новое событие;
+//    SUB, SUBI, FUNCTION, FUNCTIONI               - методы;
+//    присваивания в CONSTRUCTOR                   - значения по умолчанию
+//                                                   (и для свойств базового);
+//    PRIVATE: ... до PUBLIC: - не показывается; тела PROPERTY SET, EVENT
+//    (обработчики событий базового класса) и DESTRUCTOR пропускаются,
+//    WITH This ... END WITH - прозрачно.
+//  Свойства такого класса - свои плюс всех базовых по цепочке
+//  (RqClassChain).
+//
 //  Модуль самостоятельный: загрузка, поиск класса по имени, освобождение.
 // ---------------------------------------------------------------------------
 
@@ -54,6 +67,13 @@ type
     Num: Integer;          // номер класса в файле
     Note: string;          // примечание в строке заголовка
     Props, Methods, Events: TStringList;   // Objects - TRqMember / TRqEvent
+    // Класс программы (TYPE ... EXTENDS): базовый, где объявлен, значения
+    // по умолчанию из CONSTRUCTOR ("Height=26")
+    IsCustom: Boolean;
+    BaseName: string;
+    SrcFile: string;
+    SrcLine: Integer;       // строка TYPE, от нуля
+    Defaults: TStringList;
     constructor Create;
     destructor Destroy; override;
     function PropOf(const AName: string): TRqMember;
@@ -67,8 +87,22 @@ function RqLoadComponents(const AFile: string): Integer;
 // нет у уже загруженных классов. Результат - число добавленных классов,
 // AMembers - число членов, добавленных к прежним классам.
 function RqMergeComponents(const AFile: string; var AMembers: Integer): Integer;
-// Класс по имени без учёта регистра; nil - нет такого или не загружено
+// Класс по имени без учёта регистра: сначала классы программы, потом
+// описание из файла; nil - нет такого
 function RqFindClass(const AName: string): TRqClass;
+// Классы программы: TYPE ... EXTENDS из текста ALines файла AFile. Класс,
+// который уже есть среди классов программы, второй раз не добавляется.
+// Результат - число добавленных.
+function RqParseTypes(ALines: TStrings; const AFile: string): Integer;
+procedure RqClearCustom;
+function RqCustomCount: Integer;
+// Класс и его базовые до корня - в AChain (первый - сам класс). Цикл и
+// неизвестный базовый обрывают цепочку.
+procedure RqClassChain(const AName: string; AChain: TList);
+// Значение по умолчанию свойства AName по цепочке: CONSTRUCTOR ближайшего
+// класса, иначе запись описания. AMember - найденная запись (nil - нет).
+function RqDefaultOf(AChain: TList; const AName: string;
+                     var AMember: TRqMember): string;
 function RqClassCount: Integer;
 function RqClassAt(AIndex: Integer): TRqClass;
 procedure RqFreeComponents;
@@ -84,6 +118,7 @@ uses
 
 var
   RqClasses: TStringList = nil;   // имена классов, Objects - TRqClass
+  RqCustom: TStringList = nil;    // классы программы, Objects - TRqClass
 
 constructor TRqMember.Create;
 begin
@@ -113,6 +148,8 @@ begin
   Props := TStringList.Create;
   Methods := TStringList.Create;
   Events := TStringList.Create;
+  Defaults := TStringList.Create;
+  SrcLine := -1;
 end;
 
 destructor TRqClass.Destroy;
@@ -125,6 +162,7 @@ begin
     Methods.Objects[ItemIdx].Free;
   for ItemIdx := 0 to Events.Count - 1 do
     Events.Objects[ItemIdx].Free;
+  Defaults.Free;
   Events.Free;
   Methods.Free;
   Props.Free;
@@ -401,11 +439,385 @@ var
   ClassIdx: Integer;
 begin
   Result := nil;
+  if RqCustom <> nil then
+  begin
+    ClassIdx := RqCustom.IndexOf(AName);
+    if ClassIdx >= 0 then
+    begin
+      Result := TRqClass(RqCustom.Objects[ClassIdx]);
+      Exit;
+    end;
+  end;
   if RqClasses = nil then
     Exit;
   ClassIdx := RqClasses.IndexOf(AName);
   if ClassIdx >= 0 then
     Result := TRqClass(RqClasses.Objects[ClassIdx]);
+end;
+
+procedure RqClearCustom;
+var
+  ClassIdx: Integer;
+begin
+  if RqCustom = nil then
+    Exit;
+  for ClassIdx := 0 to RqCustom.Count - 1 do
+    RqCustom.Objects[ClassIdx].Free;
+  RqCustom.Clear;
+end;
+
+function RqCustomCount: Integer;
+begin
+  if RqCustom = nil then
+    Result := 0
+  else
+    Result := RqCustom.Count;
+end;
+
+// Строка без комментария (' вне кавычек, REM в начале), без пробелов по
+// краям
+function StripBasicComment(const ALine: string): string;
+var
+  CharIdx: Integer;
+  InQuote: Boolean;
+begin
+  Result := ALine;
+  InQuote := False;
+  for CharIdx := 1 to Length(ALine) do
+    if ALine[CharIdx] = '"' then
+      InQuote := not InQuote
+    else if (ALine[CharIdx] = '''') and not InQuote then
+    begin
+      Result := Copy(ALine, 1, CharIdx - 1);
+      Break;
+    end;
+  Result := Trim(Result);
+  if (UpperCase(Copy(Result, 1, 3)) = 'REM') and
+     ((Length(Result) = 3) or (Result[4] <= ' ')) then
+    Result := '';
+end;
+
+// Первое слово строки заглавными, ARest - остаток без пробелов по краям.
+// Слово - до пробела, "(" или ":".
+function FirstWordOf(const AText: string; var ARest: string): string;
+var
+  WordEnd: Integer;
+begin
+  WordEnd := 1;
+  while (WordEnd <= Length(AText)) and (AText[WordEnd] > ' ') and
+        (AText[WordEnd] <> '(') and (AText[WordEnd] <> ':') do
+    Inc(WordEnd);
+  Result := UpperCase(Copy(AText, 1, WordEnd - 1));
+  ARest := Trim(Copy(AText, WordEnd, MaxInt));
+end;
+
+// Имя в начале текста: буквы, цифры, _ . и суффиксы типа % $ & ! #
+function LeadingName(const AText: string): string;
+var
+  CharIdx: Integer;
+begin
+  CharIdx := 1;
+  while (CharIdx <= Length(AText)) and
+        (AText[CharIdx] in ['A'..'Z', 'a'..'z', '0'..'9', '_', '.', '%', '$',
+                            '&', '!', '#']) do
+    Inc(CharIdx);
+  Result := Copy(AText, 1, CharIdx - 1);
+end;
+
+// Поле типа: "Имя[(размер)] AS Тип [хвост]". AIsArray - с размером.
+function ParseField(const AStmt: string; var AName, AType, ATail: string;
+                    var AIsArray: Boolean): Boolean;
+var
+  Rest, Word: string;
+  Depth, CharIdx: Integer;
+begin
+  Result := False;
+  AName := LeadingName(AStmt);
+  if (AName = '') or not (AName[1] in ['A'..'Z', 'a'..'z', '_']) then
+    Exit;
+  Rest := TrimLeft(Copy(AStmt, Length(AName) + 1, MaxInt));
+  AIsArray := (Rest <> '') and (Rest[1] = '(');
+  if AIsArray then
+  begin
+    Depth := 0;
+    CharIdx := 1;
+    repeat
+      if Rest[CharIdx] = '(' then
+        Inc(Depth)
+      else if Rest[CharIdx] = ')' then
+        Dec(Depth);
+      Inc(CharIdx);
+    until (Depth = 0) or (CharIdx > Length(Rest));
+    Rest := TrimLeft(Copy(Rest, CharIdx, MaxInt));
+  end;
+  Word := FirstWordOf(Rest, Rest);
+  if Word <> 'AS' then
+    Exit;
+  AType := LeadingName(Rest);
+  if AType = '' then
+    Exit;
+  ATail := Trim(Copy(Rest, Length(AType) + 1, MaxInt));
+  Result := True;
+end;
+
+// Операторы строки без комментария, разделённые ":" вне кавычек:
+// "SUB X_Click: .OnTop: END SUB" - три оператора
+procedure SplitColons(const ALine: string; AParts: TStrings);
+var
+  CharIdx, StartPos: Integer;
+  InQuote: Boolean;
+  Part: string;
+begin
+  AParts.Clear;
+  InQuote := False;
+  StartPos := 1;
+  for CharIdx := 1 to Length(ALine) + 1 do
+    if (CharIdx <= Length(ALine)) and (ALine[CharIdx] = '"') then
+      InQuote := not InQuote
+    else if (CharIdx > Length(ALine)) or
+            ((ALine[CharIdx] = ':') and not InQuote) then
+    begin
+      Part := Trim(Copy(ALine, StartPos, CharIdx - StartPos));
+      if Part <> '' then
+        AParts.Add(Part);
+      StartPos := CharIdx + 1;
+    end;
+end;
+
+function RqParseTypes(ALines: TStrings; const AFile: string): Integer;
+var
+  LineIdx, PartIdx, AddedCount: Integer;
+  CurClass: TRqClass;
+  BodyKind: string;
+  IsPublic: Boolean;
+  Parts: TStringList;
+
+  procedure FinishClass;
+  begin
+    if RqCustom.IndexOf(CurClass.Name) >= 0 then
+      CurClass.Free
+    else
+    begin
+      RqCustom.AddObject(CurClass.Name, CurClass);
+      Inc(AddedCount);
+    end;
+    CurClass := nil;
+  end;
+
+  // Один оператор строки ALine
+  procedure ProcessStmt(AStmt: string; ALine: Integer);
+  var
+    Word, Rest, FieldName, FieldType, Tail, Second: string;
+    IsArray: Boolean;
+    Member: TRqMember;
+    Event: TRqEvent;
+    EqPos: Integer;
+  begin
+    Word := FirstWordOf(AStmt, Rest);
+
+    if CurClass = nil then
+    begin
+      // TYPE Имя EXTENDS Базовый; TYPE без EXTENDS - запись, не класс
+      if Word <> 'TYPE' then
+        Exit;
+      FieldName := LeadingName(Rest);
+      Second := FirstWordOf(TrimLeft(Copy(Rest, Length(FieldName) + 1,
+                                          MaxInt)), Tail);
+      if (FieldName = '') or (Second <> 'EXTENDS') then
+        Exit;
+      CurClass := TRqClass.Create;
+      CurClass.IsCustom := True;
+      CurClass.Name := FieldName;
+      CurClass.BaseName := LeadingName(Tail);
+      CurClass.SrcFile := AFile;
+      CurClass.SrcLine := ALine;
+      CurClass.Num := -1;
+      BodyKind := '';
+      IsPublic := True;
+      Exit;
+    end;
+
+    if Word = 'END' then
+    begin
+      Second := FirstWordOf(Rest, Tail);
+      if Second = 'TYPE' then
+      begin
+        FinishClass;
+        Exit;
+      end;
+      // Конец тела: END SUB, END PROPERTY, END CONSTRUCTOR... Тело SUB
+      // и FUNCTION закрывает любое из END SUB / FUNCTION: в исходниках
+      // встречается FUNCTION ... END SUB (QAVI.inc), и компилятор его
+      // принимает
+      if (BodyKind <> '') and
+         ((Second = BodyKind) or
+          (((BodyKind = 'SUB') or (BodyKind = 'FUNCTION')) and
+           ((Second = 'SUB') or (Second = 'SUBI') or
+            (Second = 'FUNCTION') or (Second = 'FUNCTIONI')))) then
+        BodyKind := '';
+      Exit;
+    end;
+
+    if BodyKind <> '' then
+    begin
+      // Присваивания конструктора - значения по умолчанию
+      if BodyKind = 'CONSTRUCTOR' then
+      begin
+        EqPos := Pos('=', AStmt);
+        FieldName := LeadingName(AStmt);
+        if (FieldName <> '') and (EqPos > 0) and
+           (Trim(Copy(AStmt, Length(FieldName) + 1,
+                      EqPos - Length(FieldName) - 1)) = '') then
+          CurClass.Defaults.Values[FieldName] :=
+            Trim(Copy(AStmt, EqPos + 1, MaxInt));
+      end;
+      Exit;
+    end;
+
+    if (Word = 'SUB') or (Word = 'SUBI') or (Word = 'FUNCTION') or
+       (Word = 'FUNCTIONI') then
+    begin
+      if Word = 'SUBI' then
+        BodyKind := 'SUB'
+      else if Word = 'FUNCTIONI' then
+        BodyKind := 'FUNCTION'
+      else
+        BodyKind := Word;
+      FieldName := LeadingName(Rest);
+      if IsPublic and (FieldName <> '') and
+         (CurClass.Methods.IndexOf(FieldName) < 0) then
+      begin
+        Member := TRqMember.Create;
+        Member.Name := FieldName;
+        Member.TypeName := Word;
+        Member.DefValue := Trim(Copy(Rest, Length(FieldName) + 1, MaxInt));
+        CurClass.Methods.AddObject(Member.Name, Member);
+      end;
+      Exit;
+    end;
+    if (Word = 'PROPERTY') or (Word = 'CONSTRUCTOR') or
+       (Word = 'DESTRUCTOR') or (Word = 'EVENT') then
+    begin
+      BodyKind := Word;
+      Exit;
+    end;
+    if (Word = 'PUBLIC') or (Word = 'PRIVATE') or (Word = 'PROTECTED') then
+    begin
+      IsPublic := Word = 'PUBLIC';
+      Exit;
+    end;
+    if Word = 'WITH' then
+      Exit;
+    if Word = 'DIM' then
+      AStmt := Rest;
+
+    if not ParseField(AStmt, FieldName, FieldType, Tail, IsArray) or
+       not IsPublic then
+      Exit;
+    if UpperCase(FieldType) = 'EVENT' then
+    begin
+      if CurClass.Events.IndexOf(FieldName) >= 0 then
+        Exit;
+      Event := TRqEvent.Create;
+      Event.Name := FieldName;
+      Event.Params := Tail;   // шаблон обработчика: (Event_Change)
+      CurClass.Events.AddObject(Event.Name, Event);
+      Exit;
+    end;
+    if CurClass.Props.IndexOf(FieldName) >= 0 then
+      Exit;
+    Member := TRqMember.Create;
+    Member.Name := FieldName;
+    if IsArray then
+      Member.TypeName := 'ARRAY of ' + UpperCase(FieldType)
+    else
+      Member.TypeName := UpperCase(FieldType);
+    Member.Access := 'RW';
+    CurClass.Props.AddObject(Member.Name, Member);
+  end;
+
+begin
+  AddedCount := 0;
+  if RqCustom = nil then
+  begin
+    RqCustom := TStringList.Create;
+    RqCustom.CaseSensitive := False;
+  end;
+  CurClass := nil;
+  BodyKind := '';
+  IsPublic := True;
+  Parts := TStringList.Create;
+  try
+    for LineIdx := 0 to ALines.Count - 1 do
+    begin
+      // Быстрый отсев вне TYPE: нужна только строка со словом TYPE
+      if (CurClass = nil) and
+         (Pos('TYPE', UpperCase(ALines[LineIdx])) = 0) then
+        Continue;
+      SplitColons(StripBasicComment(ALines[LineIdx]), Parts);
+      for PartIdx := 0 to Parts.Count - 1 do
+      begin
+        // REM после двоеточия - комментарий до конца строки
+        if (UpperCase(Copy(Parts[PartIdx], 1, 3)) = 'REM') and
+           ((Length(Parts[PartIdx]) = 3) or (Parts[PartIdx][4] <= ' ')) then
+          Break;
+        ProcessStmt(Parts[PartIdx], LineIdx);
+      end;
+    end;
+    // Файл кончился внутри TYPE - то, что успели разобрать, тоже класс
+    if CurClass <> nil then
+      FinishClass;
+  finally
+    Parts.Free;
+  end;
+  Result := AddedCount;
+end;
+
+procedure RqClassChain(const AName: string; AChain: TList);
+const
+  MaxDepth = 20;
+var
+  Cls: TRqClass;
+  Next: string;
+begin
+  AChain.Clear;
+  Next := AName;
+  while (Next <> '') and (AChain.Count < MaxDepth) do
+  begin
+    Cls := RqFindClass(Next);
+    if (Cls = nil) or (AChain.IndexOf(Cls) >= 0) then
+      Break;
+    AChain.Add(Cls);
+    if Cls.IsCustom then
+      Next := Cls.BaseName
+    else
+      Next := '';
+  end;
+end;
+
+function RqDefaultOf(AChain: TList; const AName: string;
+                     var AMember: TRqMember): string;
+var
+  ClassIdx: Integer;
+  Cls: TRqClass;
+  Found: Boolean;
+begin
+  Result := '';
+  AMember := nil;
+  Found := False;
+  for ClassIdx := 0 to AChain.Count - 1 do
+  begin
+    Cls := TRqClass(AChain[ClassIdx]);
+    if not Found and (Cls.Defaults.IndexOfName(AName) >= 0) then
+    begin
+      Result := Cls.Defaults.Values[AName];
+      Found := True;
+    end;
+    if AMember = nil then
+      AMember := Cls.PropOf(AName);
+  end;
+  if not Found and (AMember <> nil) then
+    Result := AMember.DefValue;
 end;
 
 function RqClassCount: Integer;
@@ -425,5 +837,7 @@ initialization
 
 finalization
   RqFreeComponents;
+  RqClearCustom;
+  FreeAndNil(RqCustom);
 
 end.

@@ -1812,6 +1812,9 @@ type
     procedure RefreshCodeTree;
     procedure RefreshRapidQInspector;
     function  RapidQComponentsReady: Boolean;
+    procedure RapidQIncludeDirs(var AMainDir, AIncDir: string);
+    function  RapidQLoadCustomTypes(ALines: TStrings): Integer;
+    procedure RapidQFillObjTables(AObj: TObject);
     procedure RapidQEventJump;
     function  DsgGetText: string;
     procedure DsgSetText(const AText: string);
@@ -20212,7 +20215,7 @@ procedure TForm1.RefreshRapidQInspector;
 var
   Lines: TStringList;
   Roots: TList;
-  RootIdx, ObjCount: Integer;
+  RootIdx, ObjCount, CustomCount: Integer;
 begin
   ObjCancelEdit;
   FObjCurNode := nil;
@@ -20235,6 +20238,7 @@ begin
   try
     Lines.Text := GetEditorTextCR;
     ObjCount := RapidQCreateNodes(Lines, FDfmNodes, Roots);
+    CustomCount := RapidQLoadCustomTypes(Lines);
     RenderObjTree(Roots);
     for RootIdx := 0 to Roots.Count - 1 do
       FObjRoots.Add(Roots[RootIdx]);
@@ -20244,6 +20248,8 @@ begin
     else
       FObjSource.Caption := '  ' + ExtractFileName(FCurrentFileName) +
                             ': объектов CREATE - ' + IntToStr(ObjCount) +
+                            ', классов TYPE ... EXTENDS - ' +
+                            IntToStr(CustomCount) +
                             '. Значения - текст из блоков CREATE, снимка пока нет';
     if not RapidQComponentsReady then
       FObjSource.Caption := FObjSource.Caption +
@@ -20257,11 +20263,13 @@ end;
 
 // Описание компонентов RapidQ загружено. Папки поиска - рядом с exe, его
 // rapidq_ref и папка компилятора RapidQ из настроек ([Compiler.RapidQ
-// Basic] CompPath). В первой папке, где он есть, основной Component.data;
-// Component1.data той же папки (другая редакция: в ней классы меню)
-// добавляет то, чего в основном нет. Загружается один раз за сеанс.
+// Basic] CompPath). В первой папке, где он есть, берётся общий
+// ComponentAll.data (собран из двух редакций); нет его - Component.data и
+// к нему Component1.data той же папки (в ней классы меню). Загружается
+// один раз за сеанс.
 function TForm1.RapidQComponentsReady: Boolean;
 const
+  AllName = 'ComponentAll.data';
   MainName = 'Component.data';
   ExtraName = 'Component1.data';
 var
@@ -20296,9 +20304,15 @@ begin
     end;
     for DirIdx := 0 to Dirs.Count - 1 do
     begin
-      // Основной - Component.data; нет его - Component1.data
-      Primary := Dirs[DirIdx] + MainName;
-      Extra := Dirs[DirIdx] + ExtraName;
+      // Общий файл; нет его - Component.data с добавкой Component1.data;
+      // нет и его - один Component1.data
+      Primary := Dirs[DirIdx] + AllName;
+      Extra := '';
+      if not FileExists(Primary) then
+      begin
+        Primary := Dirs[DirIdx] + MainName;
+        Extra := Dirs[DirIdx] + ExtraName;
+      end;
       if not FileExists(Primary) then
       begin
         Primary := Extra;
@@ -20319,6 +20333,188 @@ begin
     end;
   finally
     Dirs.Free;
+  end;
+end;
+
+// Папки поиска $INCLUDE - как у компилятора и вкладки Includes: папка
+// главного .bas (у вкладки .inc - цели проекта) и Include из настроек
+procedure TForm1.RapidQIncludeDirs(var AMainDir, AIncDir: string);
+var
+  MainBas: string;
+  Ini: TIniFile;
+begin
+  MainBas := RapidQTargetBas(False);
+  if MainBas <> '' then
+    AMainDir := ExtractFilePath(MainBas)
+  else
+    AMainDir := ExtractFilePath(FCurrentFileName);
+  AIncDir := '';
+  if FileExists(SettingsFileName) then
+  begin
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      AIncDir := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
+                                     'IncPath', ''));
+    finally
+      Ini.Free;
+    end;
+  end;
+end;
+
+// Классы программы (TYPE ... EXTENDS) - из открытого текста ALines и всех
+// файлов, которые он подключает через $INCLUDE, с вложенными. Класс берётся
+// из первого файла, где он встретился: открытый текст, затем include по
+// порядку строк. Результат - число классов.
+function TForm1.RapidQLoadCustomTypes(ALines: TStrings): Integer;
+const
+  MaxDepth = 20;
+var
+  MainDir, IncDir: string;
+  Visited: TStringList;
+
+  procedure ScanIncludes(AText: TStrings; ALevel: Integer);
+  var
+    LineIdx: Integer;
+    IncName, Full: string;
+    Nested: TStringList;
+  begin
+    for LineIdx := 0 to AText.Count - 1 do
+    begin
+      IncName := RapidQIncludeName(AText[LineIdx]);
+      if IncName = '' then
+        Continue;
+      Full := RapidQResolveInclude(IncName, MainDir, IncDir);
+      if (Full = '') or (Visited.IndexOf(UpperCase(Full)) >= 0) then
+        Continue;
+      Visited.Add(UpperCase(Full));
+      Nested := TStringList.Create;
+      try
+        try
+          Nested.LoadFromFile(Full);
+        except
+          Continue;
+        end;
+        RqParseTypes(Nested, Full);
+        if ALevel < MaxDepth then
+          ScanIncludes(Nested, ALevel + 1);
+      finally
+        Nested.Free;
+      end;
+    end;
+  end;
+
+begin
+  RqClearCustom;
+  RapidQIncludeDirs(MainDir, IncDir);
+  Visited := TStringList.Create;
+  try
+    Visited.Add(UpperCase(ExpandFileName(FCurrentFileName)));
+    RqParseTypes(ALines, FCurrentFileName);
+    ScanIncludes(ALines, 1);
+  finally
+    Visited.Free;
+  end;
+  Result := RqCustomCount;
+end;
+
+// Таблицы свойств и событий объекта RapidQ AObj (TDfmNode).
+//   Заданное в блоке CREATE - текстом исходника и номером строки (колонка
+//   «Строка кода»).
+//   Остальное - серым по классу и всем его базовым (класс программы TYPE
+//   ... EXTENDS, затем описание из ComponentAll.data): свойства со
+//   значением по умолчанию (CONSTRUCTOR ближайшего класса или запись
+//   описания), события с параметрами обработчика.
+procedure TForm1.RapidQFillObjTables(AObj: TObject);
+var
+  Obj: TDfmNode;
+  Chain: TList;
+  Seen: TStringList;
+  RqCls, ChainCls: TRqClass;
+  RqMember: TRqMember;
+  Item: TListItem;
+  ItemIdx, ChainIdx: Integer;
+  MemberName, DefText: string;
+begin
+  Obj := TDfmNode(AObj);
+  Chain := TList.Create;
+  Seen := TStringList.Create;
+  try
+    Seen.Sorted := True;
+    Seen.CaseSensitive := False;
+    RqClassChain(Obj.ClassNm, Chain);
+    if Chain.Count > 0 then
+      RqCls := TRqClass(Chain[0])
+    else
+      RqCls := nil;
+
+    FObjHeader.Caption := '  ' + Obj.Name + ': ' + Obj.ClassNm;
+    if Obj.CreateLine >= 0 then
+      FObjHeader.Caption := FObjHeader.Caption + '   строка ' +
+                            IntToStr(Obj.CreateLine + 1);
+    if (RqCls <> nil) and RqCls.IsCustom then
+      FObjHeader.Caption := FObjHeader.Caption + '   (EXTENDS ' +
+                            RqCls.BaseName + ', ' +
+                            ExtractFileName(RqCls.SrcFile) + ':' +
+                            IntToStr(RqCls.SrcLine + 1) + ')'
+    else if (RqCls = nil) and (Obj.ClassNm <> '') and
+            (RqComponentFile <> '') then
+      FObjHeader.Caption := FObjHeader.Caption + '   (класс не описан)';
+
+    for ItemIdx := 0 to Obj.PropN.Count - 1 do
+    begin
+      Item := FObjProps.Items.Add;
+      Item.Caption := Obj.PropN[ItemIdx];
+      Item.SubItems.Add(Obj.PropV[ItemIdx]);
+      Item.SubItems.Add(IntToStr(Integer(Obj.PropN.Objects[ItemIdx]) + 1));
+      Item.Data := Pointer(ItemIdx);
+    end;
+    for ChainIdx := 0 to Chain.Count - 1 do
+    begin
+      ChainCls := TRqClass(Chain[ChainIdx]);
+      for ItemIdx := 0 to ChainCls.Props.Count - 1 do
+      begin
+        MemberName := ChainCls.Props[ItemIdx];
+        if (Obj.PropN.IndexOf(MemberName) >= 0) or
+           (Seen.IndexOf(MemberName) >= 0) then
+          Continue;
+        Seen.Add(MemberName);
+        DefText := RqDefaultOf(Chain, MemberName, RqMember);
+        Item := FObjProps.Items.Add;
+        Item.Caption := MemberName;
+        Item.SubItems.Add(DefText);
+        Item.Data := Pointer(-1);
+      end;
+    end;
+    FObjProps.AlphaSort;
+
+    for ItemIdx := 0 to Obj.EvN.Count - 1 do
+    begin
+      Item := FObjEvents.Items.Add;
+      Item.Caption := Obj.EvN[ItemIdx];
+      Item.SubItems.Add(Obj.EvV[ItemIdx]);
+      Item.Data := Pointer(Obj.EvN.Objects[ItemIdx]);   // строка назначения
+    end;
+    Seen.Clear;
+    for ChainIdx := 0 to Chain.Count - 1 do
+    begin
+      ChainCls := TRqClass(Chain[ChainIdx]);
+      for ItemIdx := 0 to ChainCls.Events.Count - 1 do
+      begin
+        MemberName := ChainCls.Events[ItemIdx];
+        if (Obj.EvN.IndexOf(MemberName) >= 0) or
+           (Seen.IndexOf(MemberName) >= 0) then
+          Continue;
+        Seen.Add(MemberName);
+        Item := FObjEvents.Items.Add;
+        Item.Caption := MemberName;
+        Item.SubItems.Add(TRqEvent(ChainCls.Events.Objects[ItemIdx]).Params);
+        Item.Data := Pointer(-1);
+      end;
+    end;
+    FObjEvents.AlphaSort;
+  finally
+    Seen.Free;
+    Chain.Free;
   end;
 end;
 
@@ -28938,8 +29134,6 @@ var
   StartTick, StageTick, TList, TDefaults, TEvents, TCodeCol: Cardinal;
   EvCount: Integer;
   EvList: PPropList;
-  RqCls: TRqClass;
-  RqMember: TRqMember;
 begin
   StartTick := GetTickCount;
   TList := 0;
@@ -28983,57 +29177,10 @@ begin
 
     // Объект RapidQ: только то, что есть в узле. Конструктор форм, классы
     // VCL и строки модуля Delphi к нему не относятся.
-    // Заданное в блоке CREATE - текстом исходника и номером строки (колонка
-    // «Строка кода»); остальное из Component.data - серым: свойства со
-    // значением по умолчанию, события с параметрами обработчика.
+    // Объект RapidQ - таблицы по описанию классов (RapidQFillObjTables)
     if FObjRapidQ then
     begin
-      RqCls := RqFindClass(Obj.ClassNm);
-      FObjHeader.Caption := '  ' + Obj.Name + ': ' + Obj.ClassNm;
-      if Obj.CreateLine >= 0 then
-        FObjHeader.Caption := FObjHeader.Caption + '   строка ' +
-                              IntToStr(Obj.CreateLine + 1);
-      if (RqCls = nil) and (Obj.ClassNm <> '') and (RqComponentFile <> '') then
-        FObjHeader.Caption := FObjHeader.Caption +
-                              '   (класса нет в Component.data)';
-      for I := 0 to Obj.PropN.Count - 1 do
-      begin
-        It := FObjProps.Items.Add;
-        It.Caption := Obj.PropN[I];
-        It.SubItems.Add(Obj.PropV[I]);
-        It.SubItems.Add(IntToStr(Integer(Obj.PropN.Objects[I]) + 1));
-        It.Data := Pointer(I);
-      end;
-      if RqCls <> nil then
-        for I := 0 to RqCls.Props.Count - 1 do
-        begin
-          if Obj.PropN.IndexOf(RqCls.Props[I]) >= 0 then
-            Continue;
-          RqMember := TRqMember(RqCls.Props.Objects[I]);
-          It := FObjProps.Items.Add;
-          It.Caption := RqMember.Name;
-          It.SubItems.Add(RqMember.DefValue);
-          It.Data := Pointer(-1);
-        end;
-      FObjProps.AlphaSort;
-      for I := 0 to Obj.EvN.Count - 1 do
-      begin
-        It := FObjEvents.Items.Add;
-        It.Caption := Obj.EvN[I];
-        It.SubItems.Add(Obj.EvV[I]);
-        It.Data := Pointer(Obj.EvN.Objects[I]);   // строка назначения
-      end;
-      if RqCls <> nil then
-        for I := 0 to RqCls.Events.Count - 1 do
-        begin
-          if Obj.EvN.IndexOf(RqCls.Events[I]) >= 0 then
-            Continue;
-          It := FObjEvents.Items.Add;
-          It.Caption := RqCls.Events[I];
-          It.SubItems.Add(TRqEvent(RqCls.Events.Objects[I]).Params);
-          It.Data := Pointer(-1);
-        end;
-      FObjEvents.AlphaSort;
+      RapidQFillObjTables(Obj);
       Exit;
     end;
 
@@ -37844,6 +37991,7 @@ begin
   CopyIfMissing('IDE.clr');
   CopyDirIfMissing('schemes');
   // Описание компонентов RapidQ для инспектора (RapidQComponentsReady)
+  CopyIfMissing('rapidq_ref\ComponentAll.data');
   CopyIfMissing('rapidq_ref\Component.data');
   CopyIfMissing('rapidq_ref\Component1.data');
   if Copied > 0 then
