@@ -35069,13 +35069,69 @@ begin
     Result := CompileDelphi;
 end;
 
-// Главный .bas: цель проекта, если это исходник RapidQ, иначе открытый
-// .bas. Проект другого типа - пусто. ARemember - открытый .bas
-// запоминается целью, но только если у проекта цели ещё нет: цель .dpr у
-// проекта без типа не перетирается.
+// Подключает ли AMain файл AFile строкой $INCLUDE "..." или $INCLUDE <...>.
+// Сравниваются имена без пути: путь в $INCLUDE бывает и относительным, и
+// от папки Include. Закомментированные строки не в счёт. Только сам AMain,
+// без вложенных include.
+function RapidQIncludes(const AMain, AFile: string): Boolean;
+const
+  IncTag = '$include';
+var
+  Source: TStringList;
+  Index, NameStart, NameEnd: Integer;
+  LowLine, IncName: string;
+begin
+  Result := False;
+  if not FileExists(AMain) then
+    Exit;
+  Source := TStringList.Create;
+  try
+    try
+      Source.LoadFromFile(AMain);
+    except
+      Exit;
+    end;
+    for Index := 0 to Source.Count - 1 do
+    begin
+      LowLine := LowerCase(TrimLeft(Source[Index]));
+      if Copy(LowLine, 1, Length(IncTag)) <> IncTag then
+        Continue;
+      NameStart := Pos('"', LowLine);
+      if NameStart > 0 then
+        NameEnd := Pos('"', Copy(LowLine, NameStart + 1, MaxInt))
+      else
+      begin
+        NameStart := Pos('<', LowLine);
+        NameEnd := Pos('>', Copy(LowLine, NameStart + 1, MaxInt));
+      end;
+      if (NameStart = 0) or (NameEnd = 0) then
+        Continue;
+      IncName := Trim(Copy(LowLine, NameStart + 1, NameEnd - 1));
+      IncName := StringReplace(IncName, '/', '\', [rfReplaceAll]);
+      if CompareText(ExtractFileName(IncName), ExtractFileName(AFile)) = 0 then
+      begin
+        Result := True;
+        Exit;
+      end;
+    end;
+  finally
+    Source.Free;
+  end;
+end;
+
+// Главный .bas сборки RapidQ. Как в RQdebugger, собирается файл активной
+// вкладки:
+//   - активная вкладка - .bas, и цель проекта не подключает его через
+//     $INCLUDE - он; ARemember - он же записывается целью проекта (новая
+//     версия главного файла заводится копией под новым именем, и прежняя
+//     цель отстаёт);
+//   - активный .bas подключён в цель через $INCLUDE - цель;
+//   - активная вкладка не .bas (.inc, .prj) - цель проекта.
+// Проект другого типа - пусто. Цель .dpr у проекта без типа не
+// перетирается.
 function TForm1.RapidQTargetBas(ARemember: Boolean): string;
 var
-  BuildPrj, Stored: string;
+  BuildPrj, Stored, Active: string;
 begin
   Result := '';
   Stored := '';
@@ -35085,22 +35141,46 @@ begin
     if CompareText(ProjectTypeOf(BuildPrj), 'RapidQ Basic') <> 0 then
       Exit;
     Stored := ProjectTargetFind(BuildPrj);
-    if (Stored <> '') and IsRapidQSource(Stored) and FileExists(Stored) then
+  end;
+
+  Active := '';
+  if (FCurrentFileName <> '') and IsRapidQSource(FCurrentFileName) and
+     FileExists(FCurrentFileName) then
+    Active := FCurrentFileName;
+
+  // Цель проекта - .bas, который есть на диске
+  if (Stored <> '') and IsRapidQSource(Stored) and FileExists(Stored) then
+  begin
+    if (Active = '') or
+       (CompareText(ExpandFileName(Active), ExpandFileName(Stored)) = 0) then
     begin
       Result := Stored;
       Exit;
     end;
+    if RapidQIncludes(Stored, Active) then
+    begin
+      Result := Stored;
+      if ARemember then
+        LogComp('Собирается цель проекта ' + ExtractFileName(Stored) + ': ' +
+                ExtractFileName(Active) + ' подключён в неё через $INCLUDE');
+      Exit;
+    end;
   end;
 
-  if (FCurrentFileName = '') or not IsRapidQSource(FCurrentFileName) or
-     not FileExists(FCurrentFileName) then
+  if Active = '' then
     Exit;
+  Result := Active;
 
-  Result := FCurrentFileName;
-  if ARemember and (BuildPrj <> '') and (Stored = '') then
+  // Записываем целью, если прежняя цель - не чужой .dpr
+  if ARemember and (BuildPrj <> '') and
+     ((Stored = '') or IsRapidQSource(Stored)) then
   begin
     SetProjectTarget(BuildPrj, Result);
-    LogComp('Цель сборки проекта: ' + Result);
+    if Stored = '' then
+      LogComp('Цель сборки проекта: ' + Result)
+    else
+      LogComp('Цель сборки проекта: ' + Result + ' (была ' +
+              ExtractFileName(Stored) + ')');
   end;
 end;
 
