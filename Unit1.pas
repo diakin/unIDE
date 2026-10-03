@@ -11146,14 +11146,17 @@ end;
 // Подсказки пунктов меню VCL не показывает всплывающими окнами - они приходят
 // сюда через Application.OnHint. Выводим их в статус-бар, переключая его в
 // режим одной строки: путь к файлу длинный, в отдельную панель не влезет.
-// Открывает в проводнике папку с исходниками текущего проекта: папку его
-// главного файла (цель сборки: .dpr, .lpr ...), и этот файл в ней
-// выделен. Цели нет на диске - папка описания проекта (.prj), его нет -
-// <projects>\<имя>. Без открытого проекта - корень projects, оттуда видно
-// все проекты сразу.
+// Диалог открытия файла в папке с исходниками текущего проекта: папке его
+// главного файла (цель сборки: .dpr, .lpr, .bas ...), этот файл в диалоге
+// уже выбран. Выбрать можно и несколько файлов - откроются все. Цели нет на
+// диске - папка описания проекта (.prj), его нет - <projects>\<имя>. Без
+// открытого проекта - корень projects, оттуда видно все проекты сразу.
+// С нажатым Shift - как раньше, папка в проводнике.
 procedure TForm1.OpenProjectFolderClick(Sender: TObject);
 var
   Dir, Target, PrjFile: string;
+  OldOptions: TOpenOptions;
+  FileIdx: Integer;
 begin
   Dir := '';
   Target := '';
@@ -11185,12 +11188,32 @@ begin
     Exit;
   end;
 
-  if Target <> '' then
-    // Папка с выделенным главным файлом
-    ShellExecute(Handle, 'open', 'explorer.exe',
-                 PChar('/select,"' + Target + '"'), nil, SW_SHOWNORMAL)
-  else
-    ShellExecute(Handle, 'open', PChar(Dir), nil, nil, SW_SHOWNORMAL);
+  if GetKeyState(VK_SHIFT) < 0 then
+  begin
+    if Target <> '' then
+      // Папка с выделенным главным файлом
+      ShellExecute(Handle, 'open', 'explorer.exe',
+                   PChar('/select,"' + Target + '"'), nil, SW_SHOWNORMAL)
+    else
+      ShellExecute(Handle, 'open', PChar(Dir), nil, nil, SW_SHOWNORMAL);
+    Exit;
+  end;
+
+  // Диалог тот же, что у File - Open (фильтры те же), на время - с выбором
+  // нескольких файлов и с выбранным главным файлом
+  OldOptions := OpenDialog1.Options;
+  OpenDialog1.Options := OpenDialog1.Options + [ofAllowMultiSelect];
+  OpenDialog1.InitialDir := Dir;
+  OpenDialog1.FileName := ExtractFileName(Target);
+  try
+    if not OpenDialog1.Execute then
+      Exit;
+    for FileIdx := 0 to OpenDialog1.Files.Count - 1 do
+      OpenNamedFile(OpenDialog1.Files[FileIdx]);
+  finally
+    OpenDialog1.Options := OldOptions;
+    OpenDialog1.FileName := '';
+  end;
 end;
 
 // Показывает полный путь текущего файла в поле над статус-баром
