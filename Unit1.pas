@@ -20336,6 +20336,12 @@ begin
   end;
 end;
 
+// Разбор строки $INCLUDE и поиск файла - ниже, у вкладки Includes;
+// RapidQLoadCustomTypes зовёт их раньше
+function RapidQIncludeName(const ALine: string): string; forward;
+function RapidQResolveInclude(const AName, AMainDir,
+                              AIncDir: string): string; forward;
+
 // Папки поиска $INCLUDE - как у компилятора и вкладки Includes: папка
 // главного .bas (у вкладки .inc - цели проекта) и Include из настроек
 procedure TForm1.RapidQIncludeDirs(var AMainDir, AIncDir: string);
