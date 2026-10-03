@@ -36706,14 +36706,16 @@ function RapidQSimpleType(const AType: string): Integer;
 var
   Upper: string;
 begin
-  // 0 - не пишется, 1 - число (STR$), 2 - строка
+  // 0 - не пишется, 1 - целое (RqProbeNum$), 2 - строка (RqProbeStr$),
+  // 3 - дробное (STR$)
   Upper := UpperCase(Trim(AType));
   if Upper = 'STRING' then
     Result := 2
-  else if (Upper = 'INTEGER') or (Upper = 'LONG') or (Upper = 'SINGLE') or
-          (Upper = 'DOUBLE') or (Upper = 'WORD') or (Upper = 'DWORD') or
-          (Upper = 'BYTE') or (Upper = 'SHORT') then
+  else if (Upper = 'INTEGER') or (Upper = 'LONG') or (Upper = 'WORD') or
+          (Upper = 'DWORD') or (Upper = 'BYTE') or (Upper = 'SHORT') then
     Result := 1
+  else if (Upper = 'SINGLE') or (Upper = 'DOUBLE') then
+    Result := 3
   else
     Result := 0;
 end;
@@ -36724,8 +36726,13 @@ var
   Ref: string;
 begin
   Ref := AObj + '.' + AProp;
+  // Целые - через RqProbeNum$: STR$ даёт большим числам (цвета
+  // &H8000000F) экспоненту и теряет точность: -2.14748363E9
   if AKind = 2 then
     Result := '  RqProbeFile.WriteLine("' + Ref + '=" + RqProbeStr$(' + Ref +
+              '))'
+  else if AKind = 1 then
+    Result := '  RqProbeFile.WriteLine("' + Ref + '=" + RqProbeNum$(' + Ref +
               '))'
   else
     Result := '  RqProbeFile.WriteLine("' + Ref + '=" + STR$(' + Ref + '))';
@@ -36872,6 +36879,18 @@ begin
     AOut.Add('  IF CutPos > 0 THEN ProbeText = LEFT$(ProbeText, CutPos - 1) + " ..."');
     AOut.Add('  IF LEN(ProbeText) > 200 THEN ProbeText = LEFT$(ProbeText, 200) + " ..."');
     AOut.Add('  RqProbeStr$ = ProbeText');
+    AOut.Add('END FUNCTION');
+    AOut.Add('');
+    // Целое без экспоненты - как STRL1$ в RQdebugger: STRF$ с ffFixed (2) и
+    // дробная часть отрезается
+    AOut.Add('FUNCTION RqProbeNum$ (ProbeValue AS LONG) AS STRING');
+    AOut.Add('  DIM ProbeText AS STRING');
+    AOut.Add('  DIM CutPos AS INTEGER');
+    AOut.Add('  ProbeText = STRF$(ProbeValue, 2, 11, 18)');
+    AOut.Add('  CutPos = INSTR(ProbeText, ".")');
+    AOut.Add('  IF CutPos = 0 THEN CutPos = INSTR(ProbeText, ",")');
+    AOut.Add('  IF CutPos > 0 THEN ProbeText = LEFT$(ProbeText, CutPos - 1)');
+    AOut.Add('  RqProbeNum$ = ProbeText');
     AOut.Add('END FUNCTION');
     AOut.Add('');
 
