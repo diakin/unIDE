@@ -169,6 +169,9 @@ type
     // Строки с таким текстом в файле нет (BmValidateWindow): пункт в меню
     // серый, метки на полосе нет. В .prj не пишется - проверяется заново.
     Missing: Boolean;
+    // Закреплена в Hot Bookmarks: стоит вверху списка и не вытесняется
+    // новыми. В .prj - ключ bmarkHot<номер>,<окно>.
+    Pinned: Boolean;
   end;
 
   TBookmarkArray = array of TBookmark;
@@ -529,6 +532,8 @@ type
     mWindows: TMenuItem;
     mBookmarks: TMenuItem;
     mLastBM: TMenuItem;
+    mHotBM: TMenuItem;
+    mHotBmNone: TMenuItem;
     mOptions: TMenuItem;
     mHelp: TMenuItem;
     FMenuBar: TUiMenuBar;
@@ -2213,6 +2218,11 @@ type
                                 Change: TItemChange);
     procedure mWindowsClick(Sender: TObject);
     procedure mBookmarksClick(Sender: TObject);
+    procedure HotBmMenuClick(Sender: TObject);
+    procedure HotBmItemClick(Sender: TObject);
+    procedure HotBmPinClick(Sender: TObject);
+    procedure HotBmCollect(APinned, ARecent: TList);
+    function  HotBmCaption(ACode: Integer): string;
 
     public
     // ---- ПОЛЯ. В Delphi внутри одной секции все поля обязаны идти ДО методов,
@@ -10349,6 +10359,8 @@ var
   Ini: TIniFile;
   I, J, CurIdx, TabCnt, TabWin, Relocated: Integer;
   Raw, Path, Src, Key, OldSample, NewSample: string;
+  HotRecent, HotItem: string;
+  HotSep, HotWin, HotBm: Integer;
   StartTick, StageTick, TClose, TFiles, TShow, FileCount: Cardinal;
 begin
   StartTick := GetTickCount;
@@ -10459,12 +10471,31 @@ begin
         FWindows[I].Bookmarks[J].CharPos :=
           StrToIntDef(StripIniComment(
           Ini.ReadString('Bookmarks', 'bmarkPosic' + Key, '0')), 0);
+        FWindows[I].Bookmarks[J].Pinned :=
+          Ini.ReadString('Bookmarks', 'bmarkHot' + Key, '') = '1';
         Inc(J);
       end;
       // Файл мог измениться после сохранения проекта - номера строк
       // проверяются по тексту, ненайденные закладки помечаются
       if not FWindows[I].Broken then
         BmValidateWindow(I);
+    end;
+
+    // Hot Bookmarks: недавно посещённые - в историю посещений, по порядку
+    HotRecent := Ini.ReadString('HotBookmarks', 'Recent', '');
+    while HotRecent <> '' do
+    begin
+      HotSep := Pos(';', HotRecent);
+      if HotSep = 0 then
+        HotSep := Length(HotRecent) + 1;
+      HotItem := Trim(Copy(HotRecent, 1, HotSep - 1));
+      Delete(HotRecent, 1, HotSep);
+      HotWin := StrToIntDef(Copy(HotItem, 1, Pos(',', HotItem) - 1), -1);
+      HotBm := StrToIntDef(Copy(HotItem, Pos(',', HotItem) + 1, MaxInt), -1);
+      if (HotWin >= 0) and (HotWin <= WindowsItemCount - 1) and
+         FWindows[HotWin].Used and (HotBm >= 0) and
+         (HotBm <= High(FWindows[HotWin].Bookmarks)) then
+        PushBmHistory(HotWin, HotBm);
     end;
 
     // Восстанавливаем набор вкладок. Делаем это ДО ActivateWindow: та вызовет
@@ -10674,6 +10705,8 @@ var
   Ini: TIniFile;
   Dir, PrjFile: string;
   I, J, N: Integer;
+  HotPinned, HotRecentList: TList;
+  HotText: string;
 begin
   if Trim(AName) = '' then
     Exit;
@@ -10758,6 +10791,29 @@ begin
       Ini.WriteString('Bookmarks',
                       Format('bmarkPosic%d,%d', [J, I]),
                       IntToStr(FWindows[I].Bookmarks[J].CharPos));
+      if FWindows[I].Bookmarks[J].Pinned then
+        Ini.WriteString('Bookmarks', Format('bmarkHot%d,%d', [J, I]), '1');
+    end;
+
+    // Hot Bookmarks: недавние (без закреплённых - те в Bookmarks) по порядку
+    HotPinned := TList.Create;
+    HotRecentList := TList.Create;
+    try
+      HotBmCollect(HotPinned, HotRecentList);
+      HotText := '';
+      for I := 0 to HotRecentList.Count - 1 do
+      begin
+        if HotText <> '' then
+          HotText := HotText + ';';
+        HotText := HotText + IntToStr(Integer(HotRecentList[I]) shr 16) + ',' +
+                   IntToStr(Integer(HotRecentList[I]) and $FFFF);
+      end;
+      Ini.EraseSection('HotBookmarks');
+      if HotText <> '' then
+        Ini.WriteString('HotBookmarks', 'Recent', HotText);
+    finally
+      HotRecentList.Free;
+      HotPinned.Free;
     end;
   finally
     Ini.Free;
@@ -11625,6 +11681,12 @@ begin
   mBookmarks.AutoHotkeys := maManual;
   // При открытии меню - квадратики с номерами, текущая закладка выделена
   mBookmarks.OnClick := mBookmarksClick;
+  // Hot Bookmarks - список строится при каждом открытии меню
+  if mHotBM <> nil then
+  begin
+    mHotBM.AutoHotkeys := maManual;
+    mHotBM.OnClick := HotBmMenuClick;
+  end;
 
 
   RebuildBookmarksMenu;
@@ -41546,6 +41608,191 @@ end;
 procedure TForm1.mBookmarksClick(Sender: TObject);
 begin
   BmMenuMarks;
+end;
+
+// ---------------------------------------------------------------------------
+//  Hot Bookmarks: закладки всех вкладок - закреплённые (вверху, с галкой) и
+//  восемь последних посещённых (старая сверху, новая снизу; девятая
+//  вытесняет самую старую). Посещение - переход по закладке (история
+//  LastBM, PushBmHistory). Щелчок - переход, Ctrl+щелчок - закрепить или
+//  открепить, «Закрепить...» - список с галками.
+// ---------------------------------------------------------------------------
+
+const
+  HotBmRecentMax = 8;
+
+// Закладка - числом: окно в старших 16 битах, номер закладки - в младших
+function HotBmCode(AWinIdx, ABmIdx: Integer): Integer;
+begin
+  Result := (AWinIdx shl 16) or (ABmIdx and $FFFF);
+end;
+
+// Закреплённые (по вкладкам и номерам) и недавние незакреплённые - коды
+procedure TForm1.HotBmCollect(APinned, ARecent: TList);
+var
+  WinIdx, BmIdx, HistIdx, Code: Integer;
+begin
+  APinned.Clear;
+  ARecent.Clear;
+  BmHistCompact;
+  for WinIdx := 0 to WindowsItemCount - 1 do
+    if FWindows[WinIdx].Used then
+      for BmIdx := 0 to High(FWindows[WinIdx].Bookmarks) do
+        if FWindows[WinIdx].Bookmarks[BmIdx].Pinned then
+          APinned.Add(Pointer(HotBmCode(WinIdx, BmIdx)));
+  // С конца истории - самые новые; в список - по порядку, старые сверху
+  for HistIdx := High(FBmHistWin) downto 0 do
+  begin
+    if ARecent.Count >= HotBmRecentMax then
+      Break;
+    WinIdx := FBmHistWin[HistIdx];
+    BmIdx := FBmHistIdx[HistIdx];
+    if FWindows[WinIdx].Bookmarks[BmIdx].Pinned then
+      Continue;
+    Code := HotBmCode(WinIdx, BmIdx);
+    if ARecent.IndexOf(Pointer(Code)) < 0 then
+      ARecent.Insert(0, Pointer(Code));
+  end;
+end;
+
+// Подпись: файл, номер строки, начало текста
+function TForm1.HotBmCaption(ACode: Integer): string;
+const
+  MaxTextLen = 60;
+var
+  WinIdx, BmIdx: Integer;
+  BmText: string;
+begin
+  WinIdx := ACode shr 16;
+  BmIdx := ACode and $FFFF;
+  BmText := FWindows[WinIdx].Bookmarks[BmIdx].Text;
+  if Length(BmText) > MaxTextLen then
+    BmText := Copy(BmText, 1, MaxTextLen) + '...';
+  Result := Format('%s   %d   %s', [ExtractFileName(FWindows[WinIdx].FileName),
+                   FWindows[WinIdx].Bookmarks[BmIdx].LineNo, BmText]);
+end;
+
+// Меню открывается - список заново. Пункты без владельца (Create(nil)) -
+// как у списка закладок, см. RebuildBookmarksMenu.
+procedure TForm1.HotBmMenuClick(Sender: TObject);
+var
+  Pinned, Recent: TList;
+  ItemIdx: Integer;
+  MenuItem: TMenuItem;
+
+  procedure AddItem(const ACaption: string; ATag: Integer; AChecked,
+                    AEnabled: Boolean; AClick: TNotifyEvent);
+  begin
+    MenuItem := TMenuItem.Create(nil);
+    MenuItem.Caption := ACaption;
+    MenuItem.Tag := ATag;
+    MenuItem.Checked := AChecked;
+    MenuItem.Enabled := AEnabled;
+    MenuItem.OnClick := AClick;
+    mHotBM.Add(MenuItem);
+  end;
+
+begin
+  if mHotBM = nil then
+    Exit;
+  while mHotBM.Count > 0 do
+    mHotBM.Items[mHotBM.Count - 1].Free;
+  Pinned := TList.Create;
+  Recent := TList.Create;
+  try
+    HotBmCollect(Pinned, Recent);
+    for ItemIdx := 0 to Pinned.Count - 1 do
+      AddItem(HotBmCaption(Integer(Pinned[ItemIdx])), Integer(Pinned[ItemIdx]),
+              True, True, HotBmItemClick);
+    if (Pinned.Count > 0) and (Recent.Count > 0) then
+      AddItem('-', -1, False, True, nil);
+    for ItemIdx := 0 to Recent.Count - 1 do
+      AddItem(HotBmCaption(Integer(Recent[ItemIdx])), Integer(Recent[ItemIdx]),
+              False, True, HotBmItemClick);
+    if (Pinned.Count = 0) and (Recent.Count = 0) then
+      AddItem('(посещённых закладок нет)', -1, False, False, nil);
+    AddItem('-', -1, False, True, nil);
+    AddItem('Закрепить...', -1, False,
+            (Pinned.Count > 0) or (Recent.Count > 0), HotBmPinClick);
+  finally
+    Recent.Free;
+    Pinned.Free;
+  end;
+end;
+
+// Щелчок - переход; с Ctrl - закрепить или открепить. Меню здесь не
+// пересобирается: Sender - его пункт; новый список - при следующем открытии.
+procedure TForm1.HotBmItemClick(Sender: TObject);
+var
+  Code, WinIdx, BmIdx: Integer;
+begin
+  if not (Sender is TMenuItem) then
+    Exit;
+  Code := TMenuItem(Sender).Tag;
+  if Code < 0 then
+    Exit;
+  WinIdx := Code shr 16;
+  BmIdx := Code and $FFFF;
+  if (WinIdx > WindowsItemCount - 1) or not FWindows[WinIdx].Used or
+     (BmIdx > High(FWindows[WinIdx].Bookmarks)) then
+    Exit;
+  if GetKeyState(VK_CONTROL) < 0 then
+  begin
+    FWindows[WinIdx].Bookmarks[BmIdx].Pinned :=
+      not FWindows[WinIdx].Bookmarks[BmIdx].Pinned;
+    Exit;
+  end;
+  JumpToBookmark(WinIdx, BmIdx, True);
+  RebuildBookmarksMenu;
+end;
+
+// «Закрепить...»: закреплённые и недавние списком с галками; отмеченные -
+// закреплены
+procedure TForm1.HotBmPinClick(Sender: TObject);
+var
+  Dlg: TDlgBmClear;
+  Pinned, Recent, Codes: TList;
+  ItemIdx, Code: Integer;
+begin
+  Pinned := TList.Create;
+  Recent := TList.Create;
+  Codes := TList.Create;
+  Dlg := TDlgBmClear.Create(Self);
+  try
+    HotBmCollect(Pinned, Recent);
+    Dlg.Caption := 'Hot Bookmarks';
+    Dlg.lblTitle.Caption := 'Отмеченные закладки закреплены: стоят вверху ' +
+                            'списка и не вытесняются новыми';
+    Dlg.btnMarkMissing.Visible := False;
+    Dlg.btnDelete.Caption := 'OK';
+    Dlg.AllowNone := True;
+    for ItemIdx := 0 to Pinned.Count - 1 do
+    begin
+      Codes.Add(Pinned[ItemIdx]);
+      Dlg.lstBm.Items.Add(HotBmCaption(Integer(Pinned[ItemIdx])));
+      Dlg.lstBm.Checked[Dlg.lstBm.Items.Count - 1] := True;
+    end;
+    for ItemIdx := 0 to Recent.Count - 1 do
+    begin
+      Codes.Add(Recent[ItemIdx]);
+      Dlg.lstBm.Items.Add(HotBmCaption(Integer(Recent[ItemIdx])));
+    end;
+    Dlg.UpdateCount;
+    UiApplyForm(Dlg);
+    if Dlg.ShowModal <> mrOk then
+      Exit;
+    for ItemIdx := 0 to Codes.Count - 1 do
+    begin
+      Code := Integer(Codes[ItemIdx]);
+      FWindows[Code shr 16].Bookmarks[Code and $FFFF].Pinned :=
+        Dlg.lstBm.Checked[ItemIdx];
+    end;
+  finally
+    Dlg.Free;
+    Codes.Free;
+    Recent.Free;
+    Pinned.Free;
+  end;
 end;
 
 procedure TForm1.mHelpClick(Sender: TObject);

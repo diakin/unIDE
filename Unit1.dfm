@@ -633,6 +633,14 @@ object Form1: TForm1
       OnClick = LastBMClick
       Hint = 'Вернуться к предыдущей закладке'
     end
+    object mHotBM: TMenuItem
+      Caption = 'Hot Bookmarks'
+      Hint = 'Закреплённые и 8 последних посещённых закладок всех вкладок'
+      object mHotBmNone: TMenuItem
+        Caption = '(посещённых закладок нет)'
+        Enabled = False
+      end
+    end
     object mOptions: TMenuItem
       Caption = '&Options'
       OnClick = mOptionsClick

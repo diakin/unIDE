@@ -4,6 +4,9 @@ unit DlgBmClear;
 // только отмеченные. Кнопки: отметить все, снять все, отметить
 // несуществующие (строки закладки в файле нет).
 //
+// То же окно - для Hot Bookmarks - «Закрепить...» (HotBmPinClick): там
+// отметки - закреплённые, кнопка - OK, пустой выбор допустим (AllowNone).
+//
 // Окно описано в DlgBmClear.dfm и правится в конструкторе форм. Список
 // заполняет и отмеченное удаляет TForm1.BmClearClick (Unit1); отметки по
 // кнопкам - здесь. Несуществующие закладки - пункты с Objects <> nil.
@@ -32,11 +35,14 @@ type
     procedure btnMarkMissingClick(Sender: TObject);
     procedure lstBmClickCheck(Sender: TObject);
   private
+    FAllowNone: Boolean;
     // $0128 - WM_UPDATEUISTATE, в Messages.pas Delphi 7 этой константы нет
     procedure WMUpdateUIState(var Message: TMessage); message $0128;
   public
     // Число отметок - в подпись и в доступность кнопки удаления
     procedure UpdateCount;
+    // Кнопка подтверждения доступна и без отметок
+    property AllowNone: Boolean read FAllowNone write FAllowNone;
   end;
 
 implementation
@@ -58,7 +64,7 @@ begin
       Inc(Marked);
   lblCount.Caption := 'Отмечено: ' + IntToStr(Marked) + ' из ' +
                       IntToStr(lstBm.Items.Count);
-  btnDelete.Enabled := Marked > 0;
+  btnDelete.Enabled := (Marked > 0) or FAllowNone;
 end;
 
 procedure TDlgBmClear.btnMarkClick(Sender: TObject);
