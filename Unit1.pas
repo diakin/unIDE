@@ -37112,9 +37112,40 @@ var
     DeleteFile(FRqProbeExe);
   end;
 
+  // В файле значений есть "#end" - дамп записан целиком. Файл может быть
+  // ещё открыт программой - читается с общим доступом; не прочиталось -
+  // False.
+  function OutFileDone: Boolean;
+  var
+    OutStream: TFileStream;
+    OutText: string;
+  begin
+    Result := False;
+    if not FileExists(OutFile) then
+      Exit;
+    try
+      OutStream := TFileStream.Create(OutFile, fmOpenRead or fmShareDenyNone);
+      try
+        SetLength(OutText, OutStream.Size);
+        if OutStream.Size > 0 then
+          OutStream.ReadBuffer(OutText[1], OutStream.Size);
+      finally
+        OutStream.Free;
+      end;
+    except
+      Exit;
+    end;
+    Result := Pos(#10'#end', OutText) > 0;
+  end;
+
   // Запуск exe копии из папки программы (текущая папка - она же, как при
   // обычном запуске). Вывод консоли (print) - в AConsole. AElapsed - сколько
-  // программа работала. False - не запустилась.
+  // ждали. False - не запустилась.
+  //
+  // Ждём не только конца процесса, но и "#end" в файле значений: запущенный
+  // процесс может закончиться раньше, чем файл записан (в логе было:
+  // процесс кончился за 31 мс, а файл появился позже). Всего - до
+  // RqProbeWaitMs.
   function RunProbe(const AConsole: string; var AElapsed: Cardinal): Boolean;
   var
     StartInfo: TStartupInfo;
@@ -37122,8 +37153,8 @@ var
     SecAttr: TSecurityAttributes;
     ConsoleHandle: THandle;
     WaitRes, ProcExit: DWORD;
-    StartTick: Cardinal;
-    Started: Boolean;
+    StartTick, ExitMs: Cardinal;
+    Started, ProcEnded: Boolean;
   begin
     AElapsed := 0;
     FillChar(StartInfo, SizeOf(StartInfo), 0);
@@ -37160,25 +37191,43 @@ var
     Screen.Cursor := crHourGlass;
     try
       StartTick := GetTickCount;
+      ProcEnded := False;
+      ExitMs := 0;
+      ProcExit := 0;
       repeat
         WaitRes := WaitForSingleObject(ProcInfo.hProcess, 100);
+        if (WaitRes <> WAIT_TIMEOUT) and not ProcEnded then
+        begin
+          ProcEnded := True;
+          ExitMs := GetTickCount - StartTick;
+          GetExitCodeProcess(ProcInfo.hProcess, ProcExit);
+        end;
         BusyTick;
         Application.ProcessMessages;
-      until (WaitRes <> WAIT_TIMEOUT) or
-            (GetTickCount - StartTick >= RqProbeWaitMs);
+      until OutFileDone or (GetTickCount - StartTick >= RqProbeWaitMs);
       AElapsed := GetTickCount - StartTick;
-      if WaitRes = WAIT_TIMEOUT then
-      begin
-        TerminateProcess(ProcInfo.hProcess, 1);
-        LogComp(Format('Снимок RapidQ: за %d с программа не дошла до цикла ' +
-                       'сообщений и остановлена', [RqProbeWaitMs div 1000]));
-      end
+      if ProcEnded then
+        LogComp(Format('Снимок RapidQ: запущенный процесс завершился за %d ' +
+                       'мс, код %d', [ExitMs, ProcExit]))
+      else if OutFileDone then
+        LogComp(Format('Снимок RapidQ: значения записаны за %d мс', [AElapsed]))
       else
       begin
-        ProcExit := 0;
-        GetExitCodeProcess(ProcInfo.hProcess, ProcExit);
-        LogComp(Format('Снимок RapidQ: программа завершилась за %d мс, код %d',
-                       [AElapsed, ProcExit]));
+        TerminateProcess(ProcInfo.hProcess, 1);
+        LogComp(Format('Снимок RapidQ: за %d с программа не записала значения ' +
+                       'и остановлена', [RqProbeWaitMs div 1000]));
+      end;
+      if ProcEnded then
+      begin
+        if OutFileDone then
+          LogComp(Format('Снимок RapidQ: файл значений записан целиком через ' +
+                         '%d мс от запуска', [AElapsed]))
+        else if FileExists(OutFile) then
+          LogComp(Format('Снимок RapidQ: за %d с файл значений есть, но не ' +
+                         'дописан (#end нет)', [RqProbeWaitMs div 1000]))
+        else
+          LogComp(Format('Снимок RapidQ: за %d с файл значений не появился',
+                         [RqProbeWaitMs div 1000]));
       end;
     finally
       CloseHandle(ProcInfo.hThread);
