@@ -1223,6 +1223,9 @@ type
     // что поменяли в окне и что поменяли снаружи.
     FDiskAges: TStringList;
     FDiskCheckBusy: Boolean;
+    // Файл, который не прочитался при проверке диска (занят): о нём уже
+    // сказано в логе, повторно - после удачного чтения
+    FDiskReadFail: string;
 
     // Индикатор долгой работы - компиляция, пробный запуск для снимка -
     // в строке состояния справа: этап, секунды с начала и бегущие точки.
@@ -5759,7 +5762,10 @@ begin
   FFileIsUtf8 := False;
   FFileHasBom := False;
 
-  Stream := TFileStream.Create(FileName, fmOpenRead or fmShareDenyWrite);
+  // fmShareDenyNone: файл, который другая программа держит открытым на
+  // запись (сборка пишет свой лог), тоже читается; с fmShareDenyWrite
+  // открытие в этом случае не удаётся
+  Stream := TFileStream.Create(FileName, fmOpenRead or fmShareDenyNone);
   try
     Size := Stream.Size;
     SetLength(Raw, Size);
@@ -5992,7 +5998,7 @@ var
   I, K, W, Act, Choice, Cf: Integer;
   FN, Key, MemTxt, BaseTxt, Merged: string;
   Changed, Disk: TStringList;
-  SavedUtf8, SavedBom, IsMod, Same, CanMerge: Boolean;
+  SavedUtf8, SavedBom, IsMod, Same, CanMerge, ReadOk: Boolean;
   Obj: TObject;
 begin
   Result := True;
@@ -6038,13 +6044,18 @@ begin
       // окна - возвращаем
       SavedUtf8 := FFileIsUtf8;
       SavedBom := FFileHasBom;
+      ReadOk := True;
       try
         Merged := ReadTextFileDecoded(FN);
       except
-        Merged := '';
+        ReadOk := False;
       end;
       FFileIsUtf8 := SavedUtf8;
       FFileHasBom := SavedBom;
+      // Не открылся (занят) - сравнивать не с чем; время не запомнено,
+      // следующая проверка попробует снова
+      if not ReadOk then
+        Continue;
 
       if I = FWindowsIndex then
         MemTxt := GetEditorText
@@ -13458,7 +13469,7 @@ end;
 // сама. False - файла нет или отказались.
 function TForm1.ReloadWindowFromDisk(W: Integer; AAsk: Boolean): Boolean;
 var
-  FN: string;
+  FN, LoadedText: string;
   IsMod, SavedUtf8, SavedBom: Boolean;
 begin
   Result := False;
@@ -13488,7 +13499,31 @@ begin
   SavedUtf8 := FFileIsUtf8;
   SavedBom := FFileHasBom;
 
-  FWindows[W].Text := LoadTextFile(FN);
+  // Файл не открылся (его держит другой процесс) - окно остаётся как было,
+  // время файла не запоминается: проверка диска попробует ещё раз
+  try
+    LoadedText := LoadTextFile(FN);
+  except
+    on E: Exception do
+    begin
+      FFileIsUtf8 := SavedUtf8;
+      FFileHasBom := SavedBom;
+      Result := False;
+      if AAsk then
+        ShowMessage('Файл не прочитан:'#13#10 + FN + #13#10#13#10 + E.Message)
+      else if CompareText(FDiskReadFail, FN) <> 0 then
+      begin
+        FDiskReadFail := FN;
+        LogComp(ExtractFileName(FN) + ': изменён на диске, но не прочитан ' +
+                '- окно не обновлено, следующая проверка попробует снова (' +
+                E.Message + ')');
+      end;
+      Exit;
+    end;
+  end;
+  if CompareText(FDiskReadFail, FN) = 0 then
+    FDiskReadFail := '';
+  FWindows[W].Text := LoadedText;
   FWindows[W].IsUtf8 := FFileIsUtf8;
   FWindows[W].HasBom := FFileHasBom;
 
