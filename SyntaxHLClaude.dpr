@@ -21,6 +21,7 @@ uses
   ReleaseBuild in 'ReleaseBuild.pas',
   ObjParse in 'ObjParse.pas',
   RqComponents in 'RqComponents.pas',
+  RqDesign in 'RqDesign.pas',
   HangWatch in 'HangWatch.pas',
   DbgEngine in 'DbgEngine.pas',
   DbgSymbols in 'DbgSymbols.pas',

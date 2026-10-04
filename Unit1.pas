@@ -1047,6 +1047,13 @@ type
     FEdFreezeTop: Integer;  // какая строка была верхней
     FObjEditLine: Integer;  // строка его присваивания в .pas, -1 - такой нет
     FRqEditSrcOld: string;  // правка RapidQ: значение в строке до правки
+    // Конструктор форм RapidQ (RqDsgOpen): свой экземпляр, форма из CREATE
+    FRqDesigner: TFormDesigner;
+    FRqDsgFile: string;      // файл с блоками CREATE этой формы
+    FRqDsgForm: string;      // имя формы (узел QFORM)
+    FRqDsgLastDfm: string;   // текст .dfm, по которому построена форма
+    FRqDsgSelecting: Boolean; // выделение идёт из конструктора или в него
+    FRqDsgOwnWrite: Boolean; // текст поменял сам конструктор - не перестраивать
     // Умолчания по классам: имя класса -> TStringList Имя=значение
     FRttiDefaults: TStringList;
     FObjCurNode: TObject;   // TDfmNode выбранного объекта
@@ -1833,6 +1840,26 @@ type
     procedure RapidQFillObjTables(AObj: TObject);
     procedure RapidQBeginEdit(AItem: TListItem);
     procedure RapidQApplyEdit;
+    // Конструктор форм RapidQ (узлы - TDfmNode, здесь TObject)
+    function  RqDsgNodeByName(const AName: string): TObject;
+    function  RqDsgFormOf(AObj: TObject): TObject;
+    function  RqDsgValue(AObj: TObject; const AProp: string;
+                         var ASource: Integer; var ACodeSet: Boolean): string;
+    function  RqDsgNum(AObj: TObject; const AProp: string; ADefault: Integer;
+                       var ASource: Integer; var ACodeSet: Boolean): Integer;
+    function  RqDsgBuildDfm(ARootObj: TObject; ACodePlaced: TStrings): string;
+    function  RqDsgMapClass(const AClassName: string): TComponentClass;
+    procedure RqDsgLoad(AKeepPlace: Boolean);
+    procedure RqDsgOpen;
+    procedure RqDsgSync;
+    procedure RqDsgShowNode(AObj: TObject);
+    procedure RqDsgSelect(const AName: string);
+    procedure RqDsgDblClick(const AName: string);
+    procedure RqDsgClose(Sender: TObject);
+    procedure WMRqDsgClosed(var Msg: TMessage); message WM_USER + 322;
+    function  RqDsgSetProp(const AName, AProp, AValue: string;
+                           AOnlyIfExists: Boolean): Boolean;
+    procedure RqDsgChange(const AName: string; AProps: TStrings);
     function  RapidQProbeSource(const AMainBas, AOutFile: string;
                                 AOut, AObjClasses: TStringList;
                                 var ADumpStart: Integer;
@@ -2559,6 +2586,7 @@ var
     DelphiProj,   // .dpr (модули из uses), .dof (ключи dcc32), $(DELPHI)
     ObjParse,     // разбор формы для инспектора: узлы, .dfm, код, кэш
     RqComponents, // описание компонентов RapidQ (Component.data)
+    RqDesign,     // конструктор форм RapidQ: заглушки компонентов
     TextMerge,    // слияние трёх версий текста (файл изменён снаружи)
     HangWatch,    // сторож зависаний главного потока - журнал hang.log
     DlgAskDisk,   // окно "Файл изменён на диске" - см. AskDiskChange
@@ -11412,6 +11440,8 @@ begin
     DsgPaletteReset;
     FreeAndNil(FDesigner);
   end;
+  FreeAndNil(FRqDesigner);
+  FRqDsgLastDfm := '';
   DsgFreeOther;
   FDsgDfm := '';
   FDsgHiddenForRun := False;
@@ -17199,6 +17229,7 @@ begin
   FreeAndNil(FRttiDefaults);
   FreeAndNil(FObjMissing);
   FreeAndNil(FDesigner);
+  FreeAndNil(FRqDesigner);
   DsgFreeOther;
   UiMenuPopupHook := nil;
   UiMenuItemHook := nil;
@@ -20344,6 +20375,7 @@ FObjSource.Cursor := crHandPoint;
     Roots.Free;
     Lines.Free;
   end;
+  RqDsgSync;
 end;
 
 // Описание компонентов RapidQ загружено. Сначала - файл из настроек
@@ -21453,6 +21485,836 @@ begin
   finally
     Dec(FObjOwnWrite);
   end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Конструктор форм RapidQ
+//
+//  Форма из блоков CREATE открывается тем же TFormDesigner, что и формы
+//  Delphi, но своим экземпляром (FRqDesigner): из узлов CREATE строится
+//  текст в формате .dfm (RqDsgBuildDfm), компоненты в нём - заглушки
+//  TRqShape (RqDesign.pas), которые рисуют себя по RapidQ-классу.
+//
+//  Значение свойства для показа (RqDsgValue): число или строка в кавычках
+//  из блока CREATE; выражение там или свойства в блоке нет - значение из
+//  снимка; нет и снимка - значение по умолчанию из описания классов.
+//  Место и размер, которые в блоке заданы выражением, конструктор не
+//  меняет (MarkCodePlaced).
+//
+//  Связи:
+//    - щелчок по компоненту в конструкторе выделяет его узел в дереве
+//      объектов, выбор в дереве - компонент в конструкторе; узел другой
+//      формы - конструктор показывает ту форму;
+//    - перемещение и изменение размера пишутся в блок CREATE: значение в
+//      строке присваивания или новое присваивание в блоке (RqDsgSetProp);
+//    - правка в инспекторе и любая правка текста: после разбора форма
+//      строится заново, если её текст .dfm изменился (RqDsgSync).
+// ---------------------------------------------------------------------------
+
+// Узел с именем AName среди узлов инспектора; nil - нет
+function TForm1.RqDsgNodeByName(const AName: string): TObject;
+var
+  NodeIdx: Integer;
+begin
+  Result := nil;
+  if FDfmNodes = nil then
+    Exit;
+  for NodeIdx := 0 to FDfmNodes.Count - 1 do
+    if CompareText(TDfmNode(FDfmNodes[NodeIdx]).Name, AName) = 0 then
+    begin
+      Result := TDfmNode(FDfmNodes[NodeIdx]);
+      Exit;
+    end;
+end;
+
+// Форма, на которой лежит ANode: ближайший предок (или он сам) класса
+// QFORM. nil - узел не на форме.
+function TForm1.RqDsgFormOf(AObj: TObject): TObject;
+var
+  Node: TDfmNode;
+begin
+  Node := TDfmNode(AObj);
+  while (Node <> nil) and not RqDsgIsForm(Node.ClassNm) do
+    Node := Node.Parent;
+  Result := Node;
+end;
+
+// Значение свойства AProp узла ANode для показа. ASource: 0 - не нашлось,
+// 1 - из текста, 2 - из снимка, 3 - по умолчанию. ACodeSet - в тексте оно
+// задано выражением.
+function TForm1.RqDsgValue(AObj: TObject; const AProp: string;
+                           var ASource: Integer;
+                           var ACodeSet: Boolean): string;
+var
+  ANode: TDfmNode;
+  PropIdx, Num: Integer;
+  Raw, Unquoted: string;
+  Member: TRqMember;
+  Live: TStringList;
+  Chain: TList;
+begin
+  ANode := TDfmNode(AObj);
+  Result := '';
+  ASource := 0;
+  ACodeSet := False;
+  Member := RapidQMemberOf(ANode, AProp);
+  // Последнее присваивание в блоке - оно и действует
+  for PropIdx := ANode.PropN.Count - 1 downto 0 do
+    if CompareText(ANode.PropN[PropIdx], AProp) = 0 then
+    begin
+      Raw := Trim(ANode.PropV[PropIdx]);
+      if RapidQUnquote(Raw, Unquoted) then
+      begin
+        Result := Unquoted;
+        ASource := 1;
+        Exit;
+      end;
+      if RqDsgNumber(Member, Raw, Num) then
+      begin
+        Result := IntToStr(Num);
+        ASource := 1;
+        Exit;
+      end;
+      ACodeSet := True;
+      Break;
+    end;
+  Live := RapidQLiveProps(ANode.Name);
+  if (Live <> nil) and (Live.IndexOfName(AProp) >= 0) then
+  begin
+    Result := Live.Values[AProp];
+    ASource := 2;
+    Exit;
+  end;
+  Chain := TList.Create;
+  try
+    RqClassChain(ANode.ClassNm, Chain);
+    Result := RqDefaultOf(Chain, AProp, Member);
+  finally
+    Chain.Free;
+  end;
+  if Result <> '' then
+  begin
+    // По умолчанию в описании - "" у строк
+    if RapidQUnquote(Result, Unquoted) then
+      Result := Unquoted;
+    ASource := 3;
+  end;
+end;
+
+// Значение свойства числом; не нашлось или не число - ADefault
+function TForm1.RqDsgNum(AObj: TObject; const AProp: string;
+                         ADefault: Integer; var ASource: Integer;
+                         var ACodeSet: Boolean): Integer;
+var
+  Raw: string;
+begin
+  Raw := RqDsgValue(AObj, AProp, ASource, ACodeSet);
+  if (ASource = 0) or
+     not RqDsgNumber(RapidQMemberOf(TDfmNode(AObj), AProp), Raw, Result) then
+  begin
+    Result := ADefault;
+    ASource := 0;
+  end;
+end;
+
+// Текст .dfm формы ARoot (узел QFORM). ACodePlaced - строки "имя=буквы":
+// какие из Left, Top, Width, Height заданы в блоке выражением.
+function TForm1.RqDsgBuildDfm(ARootObj: TObject; ACodePlaced: TStrings): string;
+const
+  AlignNames: array[0..5] of string = ('alNone', 'alTop', 'alBottom',
+                                       'alLeft', 'alRight', 'alClient');
+  BorderNames: array[0..5] of string = ('bsNone', 'bsSingle', 'bsSizeable',
+                                        'bsDialog', 'bsToolWindow',
+                                        'bsSizeToolWin');
+var
+  Output, NonVisual, Seen: TStringList;
+  Target: TStringList;    // куда пишет Put: Output или (меню) NonVisual
+  MainMenuName: string;
+  NonVisCount: Integer;
+
+  // Строка .dfm с отступом
+  procedure Put(const AIndent, AText: string);
+  begin
+    Target.Add(AIndent + AText);
+  end;
+
+  // Строковое свойство: из текста или снимка (по умолчанию - не пишется)
+  procedure PutStr(ANode: TDfmNode; const AIndent, AProp, ADfmProp: string);
+  var
+    Source: Integer;
+    CodeSet: Boolean;
+    Value: string;
+  begin
+    Value := RqDsgValue(ANode, AProp, Source, CodeSet);
+    if (Source = 1) or (Source = 2) then
+      Put(AIndent, ADfmProp + ' = ' + RqDsgDfmString(Value));
+  end;
+
+  // Числовое свойство: из текста или снимка
+  procedure PutNum(ANode: TDfmNode; const AIndent, AProp, ADfmProp: string);
+  var
+    Source, Num: Integer;
+    CodeSet: Boolean;
+  begin
+    Num := RqDsgNum(ANode, AProp, 0, Source, CodeSet);
+    if (Source = 1) or (Source = 2) then
+      Put(AIndent, ADfmProp + ' = ' + IntToStr(Num));
+  end;
+
+  // Шрифт: имя, размер, цвет - из текста или снимка
+  procedure PutFont(ANode: TDfmNode; const AIndent: string);
+  begin
+    PutStr(ANode, AIndent, 'Font.Name', 'Font.Name');
+    PutNum(ANode, AIndent, 'Font.Size', 'Font.Size');
+    PutNum(ANode, AIndent, 'Font.Color', 'Font.Color');
+  end;
+
+  // Место и размер: значение есть всегда (умолчание - ADefW x ADefH);
+  // заданное выражением - буквой в ACodePlaced
+  procedure PutBounds(ANode: TDfmNode; const AIndent: string;
+                      ADefLeft, ADefTop, ADefW, ADefH: Integer;
+                      AOwnPlace: Boolean);
+  const
+    BoundNames: array[0..3] of string = ('Left', 'Top', 'Width', 'Height');
+    BoundLetters: array[0..3] of Char = ('L', 'T', 'W', 'H');
+    ClientNames: array[0..3] of string = ('', '', 'ClientWidth',
+                                          'ClientHeight');
+  var
+    BoundIdx, Source, ClientSource, Num: Integer;
+    CodeSet: Boolean;
+    Letters: string;
+    Defaults: array[0..3] of Integer;
+  begin
+    Defaults[0] := ADefLeft;
+    Defaults[1] := ADefTop;
+    Defaults[2] := ADefW;
+    Defaults[3] := ADefH;
+    Letters := '';
+    for BoundIdx := 0 to 3 do
+    begin
+      Num := RqDsgNum(ANode, BoundNames[BoundIdx], Defaults[BoundIdx], Source,
+                      CodeSet);
+      // Место формы, которого нет ни в тексте, ни в снимке, - своё, а не 0
+      // из описания класса
+      if AOwnPlace and (BoundIdx < 2) and (Source = 3) then
+        Num := Defaults[BoundIdx];
+      if CodeSet then
+        Letters := Letters + BoundLetters[BoundIdx];
+      // Ширина и высота 0 - окно не увидеть и не взять мышью. У классов
+      // программы поле Width бывает своё (QToolBarEX: 0), а размер окна -
+      // в ClientWidth / ClientHeight базового класса. Такой размер
+      // конструктор не меняет: в Width записалось бы не то.
+      if (BoundIdx >= 2) and (Num <= 0) then
+      begin
+        Num := RqDsgNum(ANode, ClientNames[BoundIdx], 0, ClientSource,
+                        CodeSet);
+        if Num <= 0 then
+          Num := Defaults[BoundIdx]
+        else if Pos(BoundLetters[BoundIdx], Letters) = 0 then
+          Letters := Letters + BoundLetters[BoundIdx];
+      end;
+      Put(AIndent, BoundNames[BoundIdx] + ' = ' + IntToStr(Num));
+    end;
+    if Letters <> '' then
+      ACodePlaced.Add(ANode.Name + '=' + Letters);
+  end;
+
+  // Компонент годится для .dfm: имя - идентификатор, второго такого нет
+  function Usable(ANode: TDfmNode): Boolean;
+  begin
+    Result := RqDsgNameOk(ANode.Name) and (ANode.ClassNm <> '') and
+              (Seen.IndexOf(ANode.Name) < 0);
+    if Result then
+      Seen.Add(ANode.Name);
+  end;
+
+  // Пункты меню AMenu - вложенными объектами TMenuItem
+  procedure PutMenuItems(AMenu: TDfmNode; const AIndent: string);
+  var
+    ChildIdx: Integer;
+    Child: TDfmNode;
+  begin
+    for ChildIdx := 0 to AMenu.Children.Count - 1 do
+    begin
+      Child := TDfmNode(AMenu.Children[ChildIdx]);
+      if (RqDsgMenuKind(Child.ClassNm) <> 3) or not Usable(Child) then
+        Continue;
+      Put(AIndent, 'object ' + Child.Name + ': TMenuItem');
+      PutStr(Child, AIndent + '  ', 'Caption', 'Caption');
+      PutMenuItems(Child, AIndent + '  ');
+      Put(AIndent, 'end');
+    end;
+  end;
+
+  // Невизуальный или меню - в список корня (в .dfm они лежат на форме)
+  procedure AddNonVisual(ANode: TDfmNode);
+  var
+    MenuKind: Integer;
+  begin
+    if not Usable(ANode) then
+      Exit;
+    MenuKind := RqDsgMenuKind(ANode.ClassNm);
+    case MenuKind of
+      1, 2:
+        begin
+          if MenuKind = 1 then
+          begin
+            NonVisual.Add('  object ' + ANode.Name + ': TMainMenu');
+            if MainMenuName = '' then
+              MainMenuName := ANode.Name;
+          end
+          else
+            NonVisual.Add('  object ' + ANode.Name + ': TPopupMenu');
+          // Значок меню - в ряд со значками невизуальных
+          NonVisual.Add('    Left = ' + IntToStr(8 + NonVisCount * 32));
+          NonVisual.Add('    Top = 8');
+          Inc(NonVisCount);
+          Target := NonVisual;
+          try
+            PutMenuItems(ANode, '    ');
+          finally
+            Target := Output;
+          end;
+          NonVisual.Add('  end');
+        end;
+      3: ; // пункт меню вне меню - не показывается
+    else
+      begin
+        // Класс RapidQ - именем класса: так его подписывает значок
+        NonVisual.Add('  object ' + ANode.Name + ': ' + ANode.ClassNm);
+        NonVisual.Add('    Left = ' + IntToStr(8 + NonVisCount * 32));
+        NonVisual.Add('    Top = 8');
+        Inc(NonVisCount);
+        NonVisual.Add('  end');
+      end;
+    end;
+  end;
+
+  // Визуальный компонент ANode и его дети
+  procedure PutShape(ANode: TDfmNode; const AIndent: string);
+  var
+    ChildIdx, Source, Num: Integer;
+    CodeSet: Boolean;
+    Child: TDfmNode;
+    Inner: string;
+    Kind: TRqKind;
+  begin
+    Inner := AIndent + '  ';
+    Put(AIndent, 'object ' + ANode.Name + ': TRqShape');
+    Put(Inner, 'RqClass = ' + RqDsgDfmString(ANode.ClassNm));
+    Kind := RqDsgKindOf(ANode.ClassNm);
+    if Kind in [rkCheck, rkRadio, rkLabel] then
+      PutBounds(ANode, Inner, 8, 8, 97, 17, False)
+    else if Kind in [rkPanel, rkGroup, rkScrollBox, rkTab, rkMemo] then
+      PutBounds(ANode, Inner, 8, 8, 185, 105, False)
+    else
+      PutBounds(ANode, Inner, 8, 8, 75, 25, False);
+    // Align - и по умолчанию класса (QSTATUSBAR - alBottom)
+    Num := RqDsgNum(ANode, 'Align', 0, Source, CodeSet);
+    if (Source in [1, 2, 3]) and (Num >= 1) and (Num <= 5) then
+      Put(Inner, 'Align = ' + AlignNames[Num]);
+    PutStr(ANode, Inner, 'Caption', 'Caption');
+    PutStr(ANode, Inner, 'Text', 'RqText');
+    PutNum(ANode, Inner, 'Color', 'Color');
+    PutFont(ANode, Inner);
+    Num := RqDsgNum(ANode, 'Checked', 0, Source, CodeSet);
+    if (Source in [1, 2]) and (Num <> 0) then
+      Put(Inner, 'Checked = True');
+    PutNum(ANode, Inner, 'BevelOuter', 'RqBevelOuter');
+    PutNum(ANode, Inner, 'BevelInner', 'RqBevelInner');
+    PutNum(ANode, Inner, 'BorderStyle', 'RqBorderStyle');
+    PutNum(ANode, Inner, 'Alignment', 'RqAlignment');
+    Num := RqDsgNum(ANode, 'Enabled', 1, Source, CodeSet);
+    if (Source in [1, 2]) and (Num = 0) then
+      Put(Inner, 'RqDisabled = True');
+    Num := RqDsgNum(ANode, 'Visible', 1, Source, CodeSet);
+    if (Source in [1, 2]) and (Num = 0) then
+      Put(Inner, 'Visible = False');
+    for ChildIdx := 0 to ANode.Children.Count - 1 do
+    begin
+      Child := TDfmNode(ANode.Children[ChildIdx]);
+      if RqDsgIsVisual(Child.ClassNm) and not RqDsgIsForm(Child.ClassNm) then
+      begin
+        if Usable(Child) then
+          PutShape(Child, Inner);
+      end
+      else if not RqDsgIsForm(Child.ClassNm) then
+        AddNonVisual(Child);
+    end;
+    Put(AIndent, 'end');
+  end;
+
+var
+  ARoot, Child: TDfmNode;
+  ChildIdx, Source, Num, BodyStart: Integer;
+  CodeSet: Boolean;
+  RootLines: TStringList;
+begin
+  ARoot := TDfmNode(ARootObj);
+  Output := TStringList.Create;
+  NonVisual := TStringList.Create;
+  Seen := TStringList.Create;
+  RootLines := TStringList.Create;
+  try
+    Target := Output;
+    MainMenuName := '';
+    NonVisCount := 0;
+    Seen.Add(ARoot.Name);
+    // Сначала дети: так становится известно главное меню формы, а его имя
+    // нужно в свойствах корня
+    for ChildIdx := 0 to ARoot.Children.Count - 1 do
+    begin
+      Child := TDfmNode(ARoot.Children[ChildIdx]);
+      if RqDsgIsForm(Child.ClassNm) then
+        Continue;
+      if RqDsgIsVisual(Child.ClassNm) then
+      begin
+        if Usable(Child) then
+          PutShape(Child, '  ');
+      end
+      else
+        AddNonVisual(Child);
+    end;
+    RootLines.AddStrings(Output);
+    Output.Clear;
+
+    Put('', 'object ' + ARoot.Name + ': TForm');
+    // Где форма на экране: из текста или снимка; нет - рядом с редактором
+    PutBounds(ARoot, '  ', Left + 80, Top + 80, 320, 240, True);
+    PutNum(ARoot, '  ', 'ClientWidth', 'ClientWidth');
+    PutNum(ARoot, '  ', 'ClientHeight', 'ClientHeight');
+    PutStr(ARoot, '  ', 'Caption', 'Caption');
+    PutNum(ARoot, '  ', 'Color', 'Color');
+    PutFont(ARoot, '  ');
+    Num := RqDsgNum(ARoot, 'BorderStyle', 2, Source, CodeSet);
+    if (Source in [1, 2]) and (Num >= 0) and (Num <= 5) then
+      Put('  ', 'BorderStyle = ' + BorderNames[Num]);
+    if MainMenuName <> '' then
+      Put('  ', 'Menu = ' + MainMenuName);
+    // Место и размер формы не трогаются из кода: их и так задаёт окно
+    // конструктора. Буквы корня - не нужны.
+    BodyStart := ACodePlaced.IndexOfName(ARoot.Name);
+    if BodyStart >= 0 then
+      ACodePlaced.Delete(BodyStart);
+    Output.AddStrings(RootLines);
+    Output.AddStrings(NonVisual);
+    Put('', 'end');
+    Result := Output.Text;
+  finally
+    RootLines.Free;
+    Seen.Free;
+    NonVisual.Free;
+    Output.Free;
+  end;
+end;
+
+// Класс, которого нет среди классов редактора: в тексте .dfm это
+// невизуальный компонент RapidQ (QTIMER), показывается значком
+function TForm1.RqDsgMapClass(const AClassName: string): TComponentClass;
+begin
+  Result := TRqNonVis;
+end;
+
+// Построить форму FRqDsgForm заново и показать. AKeepPlace - на том же
+// месте экрана, где была.
+procedure TForm1.RqDsgLoad(AKeepPlace: Boolean);
+var
+  Root, Sel: TDfmNode;
+  Txt, Err, SelName: string;
+  CodePlaced: TStringList;
+  PlaceIdx, PosLeft, PosTop: Integer;
+  Comp: TComponent;
+  HadPlace, LoadOk: Boolean;
+  FocusWnd: HWND;
+begin
+  Root := TDfmNode(RqDsgNodeByName(FRqDsgForm));
+  if (Root = nil) or (FRqDesigner = nil) then
+    Exit;
+  CodePlaced := TStringList.Create;
+  try
+    Txt := RqDsgBuildDfm(Root, CodePlaced);
+    HadPlace := AKeepPlace and (FRqDesigner.Form <> nil);
+    PosLeft := 0;
+    PosTop := 0;
+    if HadPlace then
+    begin
+      PosLeft := FRqDesigner.Form.Left;
+      PosTop := FRqDesigner.Form.Top;
+    end;
+    SelName := FRqDesigner.SelectedName;
+    FocusWnd := Windows.GetFocus;
+    // Load сам возвращает прежнее выделение - дерево при этом не трогаем
+    FRqDsgSelecting := True;
+    try
+      LoadOk := FRqDesigner.Load(Txt, Err, True);
+    finally
+      FRqDsgSelecting := False;
+    end;
+    if not LoadOk then
+    begin
+      LogComp('Конструктор RapidQ: форму ' + FRqDsgForm + ' не удалось ' +
+              'построить: ' + Err);
+      Exit;
+    end;
+    FRqDsgLastDfm := Txt;
+    if HadPlace then
+    begin
+      FRqDesigner.Form.Left := PosLeft;
+      FRqDesigner.Form.Top := PosTop;
+    end;
+    for PlaceIdx := 0 to CodePlaced.Count - 1 do
+    begin
+      Comp := FRqDesigner.Form.FindComponent(CodePlaced.Names[PlaceIdx]);
+      if Comp <> nil then
+        FRqDesigner.MarkCodePlaced(Comp, CodePlaced.ValueFromIndex[PlaceIdx]);
+    end;
+    FRqDesigner.ShowForm;
+    // Выделение - то, что было, или узел, выбранный в дереве
+    Sel := TDfmNode(FObjCurNode);
+    FRqDsgSelecting := True;
+    try
+      if (Sel <> nil) and (RqDsgFormOf(Sel) = Root) then
+        FRqDesigner.SelectByName(Sel.Name)
+      else if SelName <> '' then
+        FRqDesigner.SelectByName(SelName);
+    finally
+      FRqDsgSelecting := False;
+    end;
+    // Перестроение после правки в инспекторе фокус у инспектора не отнимает
+    if AKeepPlace and (FocusWnd <> 0) and IsWindow(FocusWnd) then
+      Windows.SetFocus(FocusWnd);
+  finally
+    CodePlaced.Free;
+  end;
+end;
+
+// Design Form у файла RapidQ: форма выбранного в дереве узла, нет такой -
+// первая форма файла
+procedure TForm1.RqDsgOpen;
+var
+  Root, Node: TDfmNode;
+  NodeIdx: Integer;
+begin
+  if not RapidQComponentsReady(True) then
+  begin
+    ShowMessage('Нет описания компонентов RapidQ (ComponentAll.data) - ' +
+                'форму не из чего построить. Где искали - в логе.');
+    Exit;
+  end;
+  // Узлы - этого файла: инспектор мог показывать другой
+  if not FObjRapidQ or (FDfmNodes = nil) or (FDfmNodes.Count = 0) then
+  begin
+    if FRightPages <> nil then
+      FRightPages.ActivePage := FTabObjects;
+    RefreshObjectInspector(True);
+  end;
+  Root := nil;
+  if FObjCurNode <> nil then
+    Root := TDfmNode(RqDsgFormOf(FObjCurNode));
+  if (Root = nil) and (FDfmNodes <> nil) then
+    for NodeIdx := 0 to FDfmNodes.Count - 1 do
+    begin
+      Node := TDfmNode(FDfmNodes[NodeIdx]);
+      if RqDsgIsForm(Node.ClassNm) and RqDsgNameOk(Node.Name) then
+      begin
+        Root := Node;
+        Break;
+      end;
+    end;
+  if Root = nil then
+  begin
+    ShowMessage('В файле нет блока CREATE ... AS QFORM - конструктору ' +
+                'нечего показать.');
+    Exit;
+  end;
+  if FRqDesigner = nil then
+  begin
+    FRqDesigner := TFormDesigner.Create;
+    FRqDesigner.OnSelect := RqDsgSelect;
+    FRqDesigner.OnChange := RqDsgChange;
+    FRqDesigner.OnClose := RqDsgClose;
+    FRqDesigner.OnDblClick := RqDsgDblClick;
+    FRqDesigner.OnMapClass := RqDsgMapClass;
+  end;
+  FRqDsgFile := FCurrentFileName;
+  FRqDsgForm := Root.Name;
+  RqDsgLoad(False);
+  LogComp('Конструктор RapidQ: форма ' + Root.Name + ' (строка ' +
+          IntToStr(Root.CreateLine + 1) + ')');
+end;
+
+// После разбора текста (RefreshRapidQInspector): форма конструктора - по
+// новым узлам. Текст .dfm тот же - ничего не делается; правка пришла из
+// самого конструктора - он её уже показывает.
+procedure TForm1.RqDsgSync;
+var
+  Root: TDfmNode;
+  CodePlaced: TStringList;
+  Txt: string;
+begin
+  if (FRqDesigner = nil) or (FRqDesigner.Form = nil) or
+     (CompareText(FCurrentFileName, FRqDsgFile) <> 0) then
+    Exit;
+  Root := TDfmNode(RqDsgNodeByName(FRqDsgForm));
+  if Root = nil then
+    Exit;
+  if FRqDsgOwnWrite then
+  begin
+    FRqDsgOwnWrite := False;
+    CodePlaced := TStringList.Create;
+    try
+      FRqDsgLastDfm := RqDsgBuildDfm(Root, CodePlaced);
+    finally
+      CodePlaced.Free;
+    end;
+    Exit;
+  end;
+  CodePlaced := TStringList.Create;
+  try
+    Txt := RqDsgBuildDfm(Root, CodePlaced);
+  finally
+    CodePlaced.Free;
+  end;
+  if Txt = FRqDsgLastDfm then
+    Exit;
+  RqDsgLoad(True);
+end;
+
+// Выбрали узел в дереве: компонент - и в конструкторе; узел другой формы -
+// конструктор показывает ту форму
+procedure TForm1.RqDsgShowNode(AObj: TObject);
+var
+  ANode, Root: TDfmNode;
+begin
+  ANode := TDfmNode(AObj);
+  if (FRqDesigner = nil) or (FRqDesigner.Form = nil) or FRqDsgSelecting or
+     (ANode = nil) or (CompareText(FCurrentFileName, FRqDsgFile) <> 0) then
+    Exit;
+  Root := TDfmNode(RqDsgFormOf(ANode));
+  if Root = nil then
+    Exit;
+  if CompareText(Root.Name, FRqDsgForm) <> 0 then
+  begin
+    if not RqDsgNameOk(Root.Name) then
+      Exit;
+    FRqDsgForm := Root.Name;
+    RqDsgLoad(True);
+    Exit;
+  end;
+  FRqDsgSelecting := True;
+  try
+    FRqDesigner.SelectByName(ANode.Name);
+  finally
+    FRqDsgSelecting := False;
+  end;
+end;
+
+procedure TForm1.RqDsgSelect(const AName: string);
+begin
+  if FRqDsgSelecting then
+    Exit;
+  FRqDsgSelecting := True;
+  try
+    ObjSelectAnyName(AName);
+  finally
+    FRqDsgSelecting := False;
+  end;
+end;
+
+// Двойной щелчок по компоненту: к его строке CREATE
+procedure TForm1.RqDsgDblClick(const AName: string);
+var
+  Node: TDfmNode;
+begin
+  Node := TDfmNode(RqDsgNodeByName(AName));
+  if (Node <> nil) and (Node.CreateLine >= 0) and
+     (CompareText(FCurrentFileName, FRqDsgFile) = 0) then
+    GotoLine(Node.CreateLine);
+end;
+
+procedure TForm1.RqDsgClose(Sender: TObject);
+begin
+  PostMessage(Handle, WM_USER + 322, 0, 0);
+end;
+
+procedure TForm1.WMRqDsgClosed(var Msg: TMessage);
+begin
+  FreeAndNil(FRqDesigner);
+  FRqDsgLastDfm := '';
+end;
+
+// Присваивание AProp = AValue в блоке CREATE объекта AName (открытый файл):
+// есть присваивание с числом - число заменяется; есть с выражением - не
+// трогается; нет - добавляется (AOnlyIfExists - не добавляется). Номера
+// строк - по разбору текста сейчас: предыдущая запись могла их сдвинуть.
+function TForm1.RqDsgSetProp(const AName, AProp, AValue: string;
+                             AOnlyIfExists: Boolean): Boolean;
+var
+  Lines: TStringList;
+  Nodes, Roots: TList;
+  Node: TDfmNode;
+  NodeIdx, PropIdx, LineNo, LineStart, LineLen, ValStart, ValLen, Num,
+    InsAt: Integer;
+  CurLine, NewLine, LineIndent, EqText: string;
+begin
+  Result := False;
+  Lines := TStringList.Create;
+  Nodes := TList.Create;
+  Roots := TList.Create;
+  try
+    Lines.Text := GetEditorTextCR;
+    RapidQCreateNodes(Lines, Nodes, Roots);
+    Node := nil;
+    for NodeIdx := 0 to Nodes.Count - 1 do
+      if CompareText(TDfmNode(Nodes[NodeIdx]).Name, AName) = 0 then
+      begin
+        Node := TDfmNode(Nodes[NodeIdx]);
+        Break;
+      end;
+    if (Node = nil) or (Node.CreateLine < 0) or
+       (Node.EndLine < Node.CreateLine) then
+      Exit;
+
+    PropIdx := -1;
+    for NodeIdx := Node.PropN.Count - 1 downto 0 do
+      if CompareText(Node.PropN[NodeIdx], AProp) = 0 then
+      begin
+        PropIdx := NodeIdx;
+        Break;
+      end;
+
+    if PropIdx >= 0 then
+    begin
+      // Заменить число в строке присваивания
+      LineNo := Integer(Node.PropN.Objects[PropIdx]);
+      LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LineNo, 0);
+      if LineStart < 0 then
+        Exit;
+      LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+      CurLine := ReadLineText(LineNo, LineStart, LineLen);
+      if not RapidQFindAssign(CurLine, AProp, ValStart, ValLen) or
+         not RqDsgNumber(RapidQMemberOf(Node, AProp),
+                         Copy(CurLine, ValStart, ValLen), Num) then
+        Exit;
+      if Trim(Copy(CurLine, ValStart, ValLen)) = AValue then
+      begin
+        Result := True;
+        Exit;
+      end;
+      EditorFreeze;
+      try
+        RichEdit1.SelStart := LineStart + ValStart - 1;
+        RichEdit1.SelLength := ValLen;
+        RichEdit1.SelText := AValue;
+      finally
+        EditorThaw;
+      end;
+      Result := True;
+      Exit;
+    end;
+    if AOnlyIfExists then
+      Exit;
+
+    if Node.EndLine = Node.CreateLine then
+    begin
+      // Блок в одну строку: перед его END CREATE, через ":"
+      LineNo := Node.CreateLine;
+      LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LineNo, 0);
+      if LineStart < 0 then
+        Exit;
+      LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+      CurLine := ReadLineText(LineNo, LineStart, LineLen);
+      if not RapidQInsertBeforeEnd(CurLine, Node.Name,
+               AProp + RapidQEqStyle(CurLine) + AValue, NewLine) then
+        Exit;
+      EditorFreeze;
+      try
+        RichEdit1.SelStart := LineStart;
+        RichEdit1.SelLength := LineLen;
+        RichEdit1.SelText := NewLine;
+      finally
+        EditorThaw;
+      end;
+      Result := True;
+      Exit;
+    end;
+
+    InsAt := RapidQInsertPlace(Lines, Node, LineIndent, EqText);
+    if InsAt < 0 then
+      Exit;
+    LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, InsAt, 0);
+    if LineStart < 0 then
+      Exit;
+    EditorFreeze;
+    try
+      RichEdit1.SelStart := LineStart;
+      RichEdit1.SelLength := 0;
+      RichEdit1.SelText := LineIndent + AProp + EqText + AValue + #13#10;
+    finally
+      EditorThaw;
+    end;
+    Result := True;
+  finally
+    for NodeIdx := 0 to Nodes.Count - 1 do
+      TObject(Nodes[NodeIdx]).Free;
+    Roots.Free;
+    Nodes.Free;
+    Lines.Free;
+  end;
+end;
+
+// Конструктор передвинул или растянул компонент: строки "Имя=значение"
+// (с "?" в начале - только если присваивание уже есть) - в блок CREATE
+procedure TForm1.RqDsgChange(const AName: string; AProps: TStrings);
+var
+  PropIdx, EqPos, WinIdx: Integer;
+  Prop, Value, Written: string;
+  OnlyIfExists: Boolean;
+  Node: TDfmNode;
+begin
+  if CompareText(FCurrentFileName, FRqDsgFile) <> 0 then
+  begin
+    WinIdx := WindowOfFile(FRqDsgFile);
+    if WinIdx < 0 then
+    begin
+      LogComp('Конструктор RapidQ: файла ' + FRqDsgFile + ' нет среди ' +
+              'открытых - изменение не записано');
+      Exit;
+    end;
+    ActivateWindow(WinIdx);
+  end;
+  Node := TDfmNode(RqDsgNodeByName(AName));
+  if (Node = nil) or not RqDsgIsVisual(Node.ClassNm) then
+    Exit;
+  Written := '';
+  Inc(FObjOwnWrite);
+  try
+    for PropIdx := 0 to AProps.Count - 1 do
+    begin
+      Prop := AProps[PropIdx];
+      OnlyIfExists := Copy(Prop, 1, 1) = '?';
+      if OnlyIfExists then
+        System.Delete(Prop, 1, 1);
+      EqPos := Pos('=', Prop);
+      if EqPos = 0 then
+        Continue;
+      Value := Copy(Prop, EqPos + 1, MaxInt);
+      Prop := Copy(Prop, 1, EqPos - 1);
+      // Место формы на экране - это место окна конструктора: в текст
+      // только туда, где оно уже задано
+      if CompareText(AName, FRqDsgForm) = 0 then
+        OnlyIfExists := True;
+      if RqDsgSetProp(AName, Prop, Value, OnlyIfExists) then
+        Written := Written + ' ' + Prop + '=' + Value;
+    end;
+  finally
+    Dec(FObjOwnWrite);
+  end;
+  if Written = '' then
+    Exit;
+  LogComp('Конструктор RapidQ: ' + AName + ':' + Written);
+  FRqDsgOwnWrite := True;
+  ObjScheduleRelines(RqDsgNodeByName(AName), '');
 end;
 
 // Двойной щелчок по событию объекта RapidQ - к SUB или FUNCTION
@@ -24545,7 +25407,8 @@ begin
 
   // В конструкторе тянут мышью: перестроить его форму сейчас - сорвать
   // перетаскивание. Ждём, пока кнопку отпустят.
-  if (FDesigner <> nil) and FDesigner.Dragging then
+  if ((FDesigner <> nil) and FDesigner.Dragging) or
+     ((FRqDesigner <> nil) and FRqDesigner.Dragging) then
   begin
     FObjRefreshTimer.Enabled := True;
     Exit;
@@ -25412,6 +26275,12 @@ var
   Ext, Dfm, Txt, Err: string;
   Prev: Integer;
 begin
+  // Файл RapidQ - форма из блоков CREATE
+  if (FCurrentFileName <> '') and IncludesApply then
+  begin
+    RqDsgOpen;
+    Exit;
+  end;
   Ext := LowerCase(ExtractFileExt(FCurrentFileName));
   if IsFormExt(Ext) then
     Dfm := FCurrentFileName
@@ -30141,6 +31010,7 @@ begin
     // Объект RapidQ - таблицы по описанию классов (RapidQFillObjTables)
     if FObjRapidQ then
     begin
+      RqDsgShowNode(Obj);
       RapidQFillObjTables(Obj);
       Exit;
     end;
