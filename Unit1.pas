@@ -1176,6 +1176,8 @@ type
     FRqProbeTime: TDateTime;
     FRqSnapOff: Boolean;       // снимок скрыт кнопкой
     FRqProbeAges: TStringList; // файлы снимка: "путь=FileAge" (RapidQSnapStale)
+    FObjSnapHint: string;      // обычная подсказка кнопки снимка
+    FRqStaleTick: Cardinal;    // когда UpdateToolbarState проверял снимок
     FRqInspMain: string;       // главный .bas файла в инспекторе
     FObjRebuilding: Boolean; // дерево перестраивается - Data узлов недействительны
     FDfmNodes: TList;
@@ -1894,6 +1896,7 @@ type
     function  RapidQHasSnapshot: Boolean;
     procedure RapidQSnapAges(const AMain: string; AAges: TStrings);
     function  RapidQSnapStale: Boolean;
+    procedure RqSnapBtnState;
     procedure RapidQEventJump;
     function  DsgGetText: string;
     procedure DsgSetText(const AText: string);
@@ -3269,6 +3272,7 @@ begin
   UiDefault('ObjTree.SelText', clBlack, clWhite);
   UiDefault('ObjTree.Broken', clRed, $006060FF);    // объект без имени
   UiDefault('ObjTree.Aligned', clNavy, $00FFC080);  // выровненный контрол
+  UiDefault('ObjSnap.Stale', clRed, $006060FF);     // снимок устарел
   UiDefault('Decl.FoundBG', $00FFF0E0, $00503C28);  // объявление найдено
   UiDefault('Decl.BackBG', $00C0FFFF, $00283C3C);   // стоим на объявлении
   UiDefault('Decl.NoneBG', clBtnFace, $00302D2D);   // не найдено или пусто
@@ -3562,6 +3566,8 @@ begin
     Result := 'Дерево объектов: объект без имени'
   else if AKey = 'ObjTree.Aligned' then
     Result := 'Дерево объектов: выровненный контрол'
+  else if AKey = 'ObjSnap.Stale' then
+    Result := 'Кнопка снимка: снимок устарел (Update snapshot)'
   else if AKey = 'Decl.FoundBG' then
     Result := 'Панель объявления: найдено (щелчок - к объявлению)'
   else if AKey = 'Decl.BackBG' then
@@ -19427,6 +19433,7 @@ begin
   'чего разбор кода не раскрыл. ' + SnapCapHide +
   ' только скрывает снимок; Ctrl+щелчок по ' + SnapCapShow +
   ' - новый пробный запуск';
+  FObjSnapHint := FObjSnapBtn.Hint;
   // Снимка ещё нет - он снимется сам, когда откроется форма (ObjAutoSnap).
   // Ширина - под более длинную из двух подписей.
 FObjSnapBtn.Caption := SnapCapShow;
@@ -19797,6 +19804,13 @@ begin
 
   if (FObjTree = nil) or (FRightPages = nil) then
     Exit;
+  // Красная подпись и подсказка устаревшего снимка RapidQ - только у
+  // файла RapidQ: его ветка ниже поставит их заново
+  if (FObjSnapBtn <> nil) and (FObjSnapBtn.TextColor <> clNone) then
+  begin
+    FObjSnapBtn.TextColor := clNone;
+    FObjSnapBtn.Hint := FObjSnapHint;
+  end;
   if not AEvenHidden and (FRightPages.ActivePage <> FTabObjects) then
     Exit;
 
@@ -20410,13 +20424,7 @@ FObjSource.Cursor := crHandPoint;
         end
       else
         FObjSource.Cursor := crDefault;
-    if FObjSnapBtn <> nil then
-      if RapidQSnapStale then
-        FObjSnapBtn.Caption := RqSnapCapStale
-      else if RapidQHasSnapshot and not FRqSnapOff then
-        FObjSnapBtn.Caption := RqSnapCapHide
-      else
-        FObjSnapBtn.Caption := RqSnapCapShow;
+    RqSnapBtnState;
   finally
     Roots.Free;
     Lines.Free;
@@ -39594,6 +39602,32 @@ begin
   end;
 end;
 
+// Кнопка снимка у файла RapidQ: подпись по состоянию снимка; устаревший -
+// подпись цветом ObjSnap.Stale и своя подсказка
+procedure TForm1.RqSnapBtnState;
+begin
+  if FObjSnapBtn = nil then
+    Exit;
+  if RapidQSnapStale then
+  begin
+    FObjSnapBtn.Caption := RqSnapCapStale;
+    FObjSnapBtn.TextColor := UiColor('ObjSnap.Stale');
+    FObjSnapBtn.Hint := 'Снимок устарел: текст программы менялся после ' +
+                        'снимка (' + TimeToStr(FRqProbeTime) + '), ' +
+                        'значения в инспекторе и конструкторе прежние. ' +
+                        'Щелчок - снять заново';
+  end
+  else
+  begin
+    if RapidQHasSnapshot and not FRqSnapOff then
+      FObjSnapBtn.Caption := RqSnapCapHide
+    else
+      FObjSnapBtn.Caption := RqSnapCapShow;
+    FObjSnapBtn.TextColor := clNone;
+    FObjSnapBtn.Hint := FObjSnapHint;
+  end;
+end;
+
 procedure TForm1.RapidQProbeRun;
 var
   MainBas, ProbeBas, OutFile, RunDir, LastObj, ErrObj, ErrProp, ErrClass,
@@ -41480,6 +41514,17 @@ begin
   if (btnCompileRun = nil) or (csDestroying in ComponentState) then
     Exit;
   ApplyLangMode;
+
+  // Снимок RapidQ устарел после правки текста - кнопка снимка сразу, а не
+  // при следующем обновлении инспектора. Даты файлов - не чаще раза в
+  // секунду.
+  if FObjRapidQ and (FObjSnapBtn <> nil) and RapidQHasSnapshot and
+     (GetTickCount - FRqStaleTick >= 1000) then
+  begin
+    FRqStaleTick := GetTickCount;
+    if RapidQSnapStale <> (FObjSnapBtn.Caption = RqSnapCapStale) then
+      RqSnapBtnState;
+  end;
   Running := (FRunProcess <> 0) or (FDbgSession <> nil);
 
   // Запуск и отладка. Остановка на точке: Run - продолжить.
