@@ -1860,6 +1860,7 @@ type
     function  RqDsgSetProp(const AName, AProp, AValue: string;
                            AOnlyIfExists: Boolean): Boolean;
     procedure RqDsgChange(const AName: string; AProps: TStrings);
+    procedure RqNewForm;
     function  RapidQProbeSource(const AMainBas, AOutFile: string;
                                 AOut, AObjClasses: TStringList;
                                 var ADumpStart: Integer;
@@ -40929,6 +40930,144 @@ begin
   end;
 end;
 
+// New Form у файла RapidQ: в открытый файл - блок CREATE новой формы
+// FormN (N - первый номер с 2, которого нет словом в тексте), и форма
+// открывается в конструкторе. Куда:
+//   - после END CREATE последней формы главной части;
+//   - форм нет - перед первым ShowModal главной части;
+//   - нет и его - перед первой SUB или FUNCTION, иначе в конец файла.
+// Вставка - правкой текста во вкладке, откатывается как обычная.
+procedure TForm1.RqNewForm;
+var
+  Lines, Block: TStringList;
+  Nodes, Roots: TList;
+  Mask: TBits;
+  Node: TDfmNode;
+  NodeIdx, LineIdx, InsAt, Num, LineStart, LastLine: Integer;
+  TextLow, FormNm, Where, BlockText: string;
+  AtEnd: Boolean;
+begin
+  if not RapidQComponentsReady(True) then
+  begin
+    ShowMessage('Нет описания компонентов RapidQ (ComponentAll.data) - ' +
+                'конструктору не по чему строить форму. Где искали - в логе.');
+    Exit;
+  end;
+  Lines := TStringList.Create;
+  Block := TStringList.Create;
+  Nodes := TList.Create;
+  Roots := TList.Create;
+  Mask := TBits.Create;
+  try
+    Lines.Text := GetEditorTextCR;
+    RapidQTopLevelMask(Lines, Mask);
+    RapidQCreateNodes(Lines, Nodes, Roots);
+
+    TextLow := LowerCase(Lines.Text);
+    Num := 2;
+    while HasWordLow(TextLow, 'form' + IntToStr(Num)) do
+      Inc(Num);
+    FormNm := 'Form' + IntToStr(Num);
+
+    // После последней формы главной части
+    InsAt := -1;
+    Where := '';
+    for NodeIdx := 0 to Roots.Count - 1 do
+    begin
+      Node := TDfmNode(Roots[NodeIdx]);
+      if (Node.CreateLine >= 0) and (Node.CreateLine < Mask.Size) and
+         Mask[Node.CreateLine] and (Node.EndLine >= Node.CreateLine) and
+         RqDsgIsForm(Node.ClassNm) and (Node.EndLine + 1 > InsAt) then
+      begin
+        InsAt := Node.EndLine + 1;
+        Where := 'после формы ' + Node.Name;
+      end;
+    end;
+    // Перед первым ShowModal главной части
+    if InsAt < 0 then
+      for LineIdx := 0 to Lines.Count - 1 do
+        if Mask[LineIdx] and
+           (Pos('SHOWMODAL', UpperCase(Lines[LineIdx])) > 0) then
+        begin
+          InsAt := LineIdx;
+          Where := 'перед ShowModal';
+          Break;
+        end;
+    // Перед первой SUB или FUNCTION
+    if InsAt < 0 then
+      for LineIdx := 0 to Lines.Count - 1 do
+        if not Mask[LineIdx] then
+        begin
+          InsAt := LineIdx;
+          Where := 'перед первой SUB / FUNCTION';
+          Break;
+        end;
+    AtEnd := InsAt < 0;
+    if AtEnd then
+    begin
+      InsAt := Lines.Count;
+      Where := 'в конец файла';
+    end;
+
+    Block.Add('');
+    Block.Add('CREATE ' + FormNm + ' AS QFORM');
+    Block.Add('  Caption = "' + FormNm + '"');
+    Block.Add('  Width = 320');
+    Block.Add('  Height = 240');
+    Block.Add('  Center');
+    Block.Add('END CREATE');
+    Block.Add('');
+    BlockText := '';
+    for LineIdx := 0 to Block.Count - 1 do
+      BlockText := BlockText + Block[LineIdx] + #13#10;
+
+    // Место в тексте вкладки: начало строки InsAt; в конце файла - после
+    // последнего символа, с переводом строки перед блоком
+    if AtEnd then
+    begin
+      LastLine := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0) - 1;
+      LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LastLine, 0);
+      if LineStart < 0 then
+        Exit;
+      LineStart := LineStart +
+                   SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+      BlockText := #13#10 + BlockText;
+    end
+    else
+    begin
+      LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, InsAt, 0);
+      if LineStart < 0 then
+        Exit;
+    end;
+    EditorFreeze;
+    try
+      RichEdit1.SelStart := LineStart;
+      RichEdit1.SelLength := 0;
+      RichEdit1.SelText := BlockText;
+    finally
+      EditorThaw;
+    end;
+    RichEdit1.Modified := True;
+  finally
+    for NodeIdx := 0 to Nodes.Count - 1 do
+      TObject(Nodes[NodeIdx]).Free;
+    Mask.Free;
+    Roots.Free;
+    Nodes.Free;
+    Block.Free;
+    Lines.Free;
+  end;
+
+  LogComp('New Form: ' + FormNm + ' - блок CREATE ' + Where + ' (строка ' +
+          IntToStr(InsAt + 2) + ')');
+  // Дерево - по новому тексту, выбрана новая форма; она - в конструктор
+  if FRightPages <> nil then
+    FRightPages.ActivePage := FTabObjects;
+  RefreshObjectInspector(True);
+  ObjSelectAnyName(FormNm);
+  RqDsgOpen;
+end;
+
 // New Form - новый модуль с пустой формой в проекте, как File -> New ->
 // Form в Delphi 7:
 //   - UnitN.pas и UnitN.dfm - в папку .dpr. N - первый свободный номер с 2:
@@ -40946,12 +41085,27 @@ var
   Num, LineIdx, UsesEnd, CreateLast, RunLine, WinIdx: Integer;
   DprMod: Boolean;
 begin
+  // Файл RapidQ - новая форма блоком CREATE в нём же
+  if (FCurrentFileName <> '') and IncludesApply then
+  begin
+    RqNewForm;
+    Exit;
+  end;
   Dpr := DelphiTargetDpr;
   if Dpr = '' then
   begin
     ShowMessage('27240:New Form: не найден файл проекта .dpr. Откройте ' +
     'проект Delphi или его .dpr.');
                 Exit;
+  end;
+  // Цель проекта - не .dpr (проект RapidQ: его .bas): форма Delphi туда
+  // не вписывается
+  if CompareText(ExtractFileExt(Dpr), '.dpr') <> 0 then
+  begin
+    ShowMessage('New Form: цель текущего проекта - ' + ExtractFileName(Dpr) +
+                ', а не .dpr. Форму RapidQ добавляет New Form во вкладке ' +
+                'файла .bas; форму Delphi - в проекте Delphi.');
+    Exit;
   end;
 
   // Цель - сам редактор (имя .dpr совпадает с именем exe, как в
