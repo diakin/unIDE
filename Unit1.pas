@@ -21833,6 +21833,43 @@ begin
   end;
 end;
 
+// Файл ресурса AResName по строке "$RESOURCE Имя AS "файл"" в ALines; нет
+// такой строки - ''
+function RqDsgResourceFile(ALines: TStrings; const AResName: string): string;
+var
+  LineIdx, QuotePos: Integer;
+  Rest: string;
+begin
+  Result := '';
+  if AResName = '' then
+    Exit;
+  for LineIdx := 0 to ALines.Count - 1 do
+  begin
+    Rest := Trim(ALines[LineIdx]);
+    if CompareText(Copy(Rest, 1, 9), '$RESOURCE') <> 0 then
+      Continue;
+    Rest := TrimLeft(Copy(Rest, 10, MaxInt));
+    if CompareText(Copy(Rest, 1, Length(AResName)), AResName) <> 0 then
+      Continue;
+    Rest := Copy(Rest, Length(AResName) + 1, MaxInt);
+    if (Rest = '') or not (Rest[1] in [' ', #9]) then
+      Continue;
+    Rest := TrimLeft(Rest);
+    if (CompareText(Copy(Rest, 1, 2), 'AS') <> 0) or (Length(Rest) < 3) or
+       not (Rest[3] in [' ', #9, '"']) then
+      Continue;
+    Rest := TrimLeft(Copy(Rest, 3, MaxInt));
+    if (Rest = '') or (Rest[1] <> '"') then
+      Continue;
+    QuotePos := Pos('"', Copy(Rest, 2, MaxInt));
+    if QuotePos > 0 then
+    begin
+      Result := Copy(Rest, 2, QuotePos - 1);
+      Exit;
+    end;
+  end;
+end;
+
 // Текст .dfm формы ARoot (узел QFORM). ACodePlaced - строки "имя=буквы":
 // какие из Left, Top, Width, Height заданы в блоке выражением.
 function TForm1.RqDsgBuildDfm(ARootObj: TObject; ACodePlaced: TStrings): string;
@@ -22007,13 +22044,46 @@ var
     end;
   end;
 
+  // Файл картинки кнопки: BMP = "файл" или BMPHandle = Имя и в файле
+  // $RESOURCE Имя AS "файл". Путь без диска - от папки файла формы. Файла
+  // нет - ''.
+  function PictureFile(ANode: TDfmNode): string;
+  var
+    PropIdx: Integer;
+    Raw, Unquoted: string;
+  begin
+    Result := '';
+    for PropIdx := ANode.PropN.Count - 1 downto 0 do
+    begin
+      Raw := Trim(ANode.PropV[PropIdx]);
+      if CompareText(ANode.PropN[PropIdx], 'BMP') = 0 then
+      begin
+        if RapidQUnquote(Raw, Unquoted) then
+          Result := Unquoted;
+        Break;
+      end;
+      if CompareText(ANode.PropN[PropIdx], 'BMPHandle') = 0 then
+      begin
+        Result := RqDsgResourceFile(TextLines, Raw);
+        Break;
+      end;
+    end;
+    if Result = '' then
+      Exit;
+    if (ExtractFileDrive(Result) = '') and (Copy(Result, 1, 1) <> '') and
+       (Copy(Result, 1, 1) <> '/') then
+      Result := ExtractFilePath(FRqDsgFile) + Result;
+    if not FileExists(Result) then
+      Result := '';
+  end;
+
   // Визуальный компонент ANode и его дети
   procedure PutShape(ANode: TDfmNode; const AIndent: string);
   var
     ChildIdx, Source, Num: Integer;
     CodeSet: Boolean;
     Child: TDfmNode;
-    Inner, TabNames: string;
+    Inner, TabNames, BmpFile: string;
     Kind: TRqKind;
   begin
     Inner := AIndent + '  ';
@@ -22041,6 +22111,17 @@ var
     PutNum(ANode, Inner, 'BevelInner', 'RqBevelInner');
     PutNum(ANode, Inner, 'BorderStyle', 'RqBorderStyle');
     PutNum(ANode, Inner, 'Alignment', 'RqAlignment');
+    // Метка - текст по высоте; кнопки - картинка относительно текста
+    if Kind in [rkLabel, rkButton, rkOval] then
+      PutNum(ANode, Inner, 'Layout', 'RqLayout');
+    if Kind in [rkButton, rkOval] then
+    begin
+      PutNum(ANode, Inner, 'Spacing', 'RqSpacing');
+      PutNum(ANode, Inner, 'NumBMPs', 'RqNumBmps');
+      BmpFile := PictureFile(ANode);
+      if BmpFile <> '' then
+        Put(Inner, 'RqBmpFile = ' + RqDsgDfmString(BmpFile));
+    end;
     if Kind = rkTab then
     begin
       TabNames := RqDsgTabNames(TextLines, ANode);

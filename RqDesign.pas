@@ -56,6 +56,18 @@ type
     FSbMin: Integer;
     FSbMax: Integer;
     FSbPageSize: Integer;
+    // Расположение: у QLABEL - tlTop=0, tlCenter=1, tlBottom=2 (текст по
+    // высоте); у кнопок - blBMPLeft=0, blBMPRight=1, blBMPTop=2,
+    // blBMPBottom=3 (картинка относительно текста), Spacing - зазор между
+    // ними, NumBMPs - сколько состояний в картинке по ширине (рисуется
+    // первое)
+    FLayout: Integer;
+    FSpacing: Integer;
+    FNumBmps: Integer;
+    // Картинка кнопки (BMP = "файл" или BMPHandle = ресурс): файл .bmp и
+    // загруженная из него картинка; файла нет - FGlyph = nil
+    FBmpFile: string;
+    FGlyph: TBitmap;
     procedure SetRqClass(const AValue: string);
     procedure SetText(const AValue: string);
     procedure SetChecked(AValue: Boolean);
@@ -70,6 +82,10 @@ type
     procedure SetTabColor(AValue: TColor);
     function GetSbInt(AIndex: Integer): Integer;
     procedure SetSbInt(AIndex: Integer; AValue: Integer);
+    function GetBmpInt(AIndex: Integer): Integer;
+    procedure SetBmpInt(AIndex: Integer; AValue: Integer);
+    procedure SetBmpFile(const AValue: string);
+    procedure PaintGlyphCaption(const ARect: TRect);
     procedure PaintTabs(const AClientBox: TRect);
     procedure PaintScrollBar(const AClientBox: TRect);
     procedure CMTextChanged(var Message: TMessage); message CM_TEXTCHANGED;
@@ -79,6 +95,7 @@ type
     procedure Paint; override;
   public
     constructor Create(AOwner: TComponent); override;
+    destructor Destroy; override;
     property Kind: TRqKind read FKind;
   published
     // Класс RapidQ - первым в тексте .dfm: от него зависят цвет и рамка по
@@ -120,6 +137,14 @@ type
     property RqMax: Integer index 3 read GetSbInt write SetSbInt default 100;
     property RqPageSize: Integer index 4 read GetSbInt write SetSbInt
       default 10;
+    // QLABEL, QBUTTON, QCOOLBTN, QOVALBTN
+    property RqLayout: Integer index 0 read GetBmpInt write SetBmpInt
+      default 0;
+    property RqSpacing: Integer index 1 read GetBmpInt write SetBmpInt
+      default 4;
+    property RqNumBmps: Integer index 2 read GetBmpInt write SetBmpInt
+      default 1;
+    property RqBmpFile: string read FBmpFile write SetBmpFile;
   end;
 
   // Невизуальный компонент RapidQ - значком конструктора
@@ -422,6 +447,152 @@ begin
   FTabColor := clNone;
   FSbMax := 100;
   FSbPageSize := 10;
+  FSpacing := 4;
+  FNumBmps := 1;
+end;
+
+destructor TRqShape.Destroy;
+begin
+  FreeAndNil(FGlyph);
+  inherited Destroy;
+end;
+
+function TRqShape.GetBmpInt(AIndex: Integer): Integer;
+begin
+  case AIndex of
+    0: Result := FLayout;
+    1: Result := FSpacing;
+  else
+    Result := FNumBmps;
+  end;
+end;
+
+procedure TRqShape.SetBmpInt(AIndex: Integer; AValue: Integer);
+begin
+  case AIndex of
+    0: FLayout := AValue;
+    1: FSpacing := AValue;
+  else
+    FNumBmps := AValue;
+  end;
+  Invalidate;
+end;
+
+// Картинка из файла; не читается - без картинки
+procedure TRqShape.SetBmpFile(const AValue: string);
+begin
+  FBmpFile := AValue;
+  FreeAndNil(FGlyph);
+  if (AValue <> '') and FileExists(AValue) then
+  begin
+    FGlyph := TBitmap.Create;
+    try
+      FGlyph.LoadFromFile(AValue);
+    except
+      FreeAndNil(FGlyph);
+    end;
+    if (FGlyph <> nil) and ((FGlyph.Width = 0) or (FGlyph.Height = 0)) then
+      FreeAndNil(FGlyph);
+  end;
+  Invalidate;
+end;
+
+// Картинка и текст кнопки в ARect - расчёт как у TBitBtn
+// (CalcButtonLayout, Margin = -1): картинка и текст вместе по центру,
+// картинка с той стороны, что задаёт Layout, между ними Spacing. Без
+// картинки или без текста зазора нет - текст по центру. Цвет левого
+// нижнего пикселя картинки - прозрачный.
+procedure TRqShape.PaintGlyphCaption(const ARect: TRect);
+var
+  Frame: TBitmap;
+  TextBox: TRect;
+  BoxWidth, BoxHeight, GlyphWidth, GlyphHeight, TextWidth, TextHeight: Integer;
+  Gap, Margin, FrameCount: Integer;
+  GlyphPos, TextPos: TPoint;
+  CaptionText: string;
+begin
+  BoxWidth := ARect.Right - ARect.Left;
+  BoxHeight := ARect.Bottom - ARect.Top;
+  CaptionText := Caption;
+  Canvas.Font := Font;
+  TextWidth := 0;
+  TextHeight := 0;
+  if CaptionText <> '' then
+  begin
+    TextBox := Rect(0, 0, BoxWidth, 0);
+    DrawText(Canvas.Handle, PChar(CaptionText), Length(CaptionText), TextBox,
+             DT_CALCRECT or DT_SINGLELINE or DT_NOPREFIX);
+    TextWidth := TextBox.Right - TextBox.Left;
+    TextHeight := TextBox.Bottom - TextBox.Top;
+  end;
+  GlyphWidth := 0;
+  GlyphHeight := 0;
+  FrameCount := FNumBmps;
+  if FrameCount < 1 then
+    FrameCount := 1;
+  if FGlyph <> nil then
+  begin
+    GlyphWidth := FGlyph.Width div FrameCount;
+    GlyphHeight := FGlyph.Height;
+  end;
+  Gap := FSpacing;
+  if (TextWidth = 0) or (GlyphWidth = 0) then
+    Gap := 0;
+
+  if FLayout in [2, 3] then
+  begin
+    GlyphPos.X := (BoxWidth - GlyphWidth + 1) div 2;
+    TextPos.X := (BoxWidth - TextWidth + 1) div 2;
+    Margin := (BoxHeight - (GlyphHeight + Gap + TextHeight) + 1) div 2;
+    if FLayout = 2 then
+    begin
+      GlyphPos.Y := Margin;
+      TextPos.Y := GlyphPos.Y + GlyphHeight + Gap;
+    end
+    else
+    begin
+      GlyphPos.Y := BoxHeight - Margin - GlyphHeight;
+      TextPos.Y := GlyphPos.Y - Gap - TextHeight;
+    end;
+  end
+  else
+  begin
+    GlyphPos.Y := (BoxHeight - GlyphHeight + 1) div 2;
+    TextPos.Y := (BoxHeight - TextHeight + 1) div 2;
+    Margin := (BoxWidth - (GlyphWidth + Gap + TextWidth) + 1) div 2;
+    if FLayout = 1 then
+    begin
+      GlyphPos.X := BoxWidth - Margin - GlyphWidth;
+      TextPos.X := GlyphPos.X - Gap - TextWidth;
+    end
+    else
+    begin
+      GlyphPos.X := Margin;
+      TextPos.X := GlyphPos.X + GlyphWidth + Gap;
+    end;
+  end;
+
+  if GlyphWidth > 0 then
+  begin
+    Frame := TBitmap.Create;
+    try
+      Frame.Width := GlyphWidth;
+      Frame.Height := GlyphHeight;
+      Frame.Canvas.CopyRect(Rect(0, 0, GlyphWidth, GlyphHeight),
+                            FGlyph.Canvas,
+                            Rect(0, 0, GlyphWidth, GlyphHeight));
+      Frame.TransparentColor := FGlyph.Canvas.Pixels[0, GlyphHeight - 1];
+      Frame.Transparent := True;
+      Canvas.Draw(ARect.Left + GlyphPos.X, ARect.Top + GlyphPos.Y, Frame);
+    finally
+      Frame.Free;
+    end;
+  end;
+  if TextWidth > 0 then
+    DrawCaption(Rect(ARect.Left + TextPos.X, ARect.Top + TextPos.Y,
+                     ARect.Left + TextPos.X + TextWidth,
+                     ARect.Top + TextPos.Y + TextHeight),
+                DT_LEFT or DT_TOP or DT_SINGLELINE);
 end;
 
 procedure TRqShape.SetRqClass(const AValue: string);
@@ -723,7 +894,7 @@ procedure TRqShape.Paint;
 const
   AlignFlags: array[0..2] of Cardinal = (DT_LEFT, DT_RIGHT, DT_CENTER);
 var
-  ClientBox, Part: TRect;
+  ClientBox, Part, TextBox: TRect;
   BoxSize, ButtonWidth, TextHeight, MidY, EdgeFlags: Integer;
   ShownText: string;
   AlignFlag: Cardinal;
@@ -742,16 +913,14 @@ begin
         DrawFrameControl(Canvas.Handle, ClientBox, DFC_BUTTON, DFCS_BUTTONPUSH);
         Part := ClientBox;
         InflateRect(Part, -3, -3);
-        DrawCaption(Part, DT_CENTER or DT_VCENTER or DT_SINGLELINE or
-                    DT_END_ELLIPSIS);
+        PaintGlyphCaption(Part);
       end;
     rkOval:
       begin
         Canvas.Pen.Color := clBtnShadow;
         Canvas.Ellipse(ClientBox.Left, ClientBox.Top, ClientBox.Right,
                        ClientBox.Bottom);
-        DrawCaption(ClientBox, DT_CENTER or DT_VCENTER or DT_SINGLELINE or
-                    DT_END_ELLIPSIS);
+        PaintGlyphCaption(ClientBox);
       end;
     rkEdit, rkCombo:
       begin
@@ -791,6 +960,19 @@ begin
     rkLabel:
       begin
         Part := ClientBox;
+        // Layout: tlCenter, tlBottom - текст по высоте
+        if (FLayout in [1, 2]) and (Caption <> '') then
+        begin
+          Canvas.Font := Font;
+          TextBox := ClientBox;
+          DrawText(Canvas.Handle, PChar(Caption), Length(Caption), TextBox,
+                   DT_CALCRECT or DT_WORDBREAK or DT_NOPREFIX);
+          TextHeight := TextBox.Bottom - TextBox.Top;
+          if FLayout = 1 then
+            Part.Top := (ClientBox.Bottom - TextHeight) div 2
+          else
+            Part.Top := ClientBox.Bottom - TextHeight;
+        end;
         DrawCaption(Part, AlignFlag or DT_WORDBREAK);
         // Пустую подпись на форме не видно - серая пунктирная рамка
         if Caption = '' then
