@@ -665,7 +665,6 @@ type
     mNewItem5: TMenuItem;
     mNewItem6: TMenuItem;
     FDsgMenu: TUiPopupMenu; // меню конструктора по правому щелчку
-    FDsgMenuRq: Boolean;    // меню открыл конструктор RapidQ (RqDsgContext)
     FDsgMenuGrp1: TMenuItem;
     FDsgMiUndo: TMenuItem;
     FDsgMenuGrp1Item1: TMenuItem;
@@ -1066,6 +1065,7 @@ type
     FRqDsgLastDfm: string;   // текст .dfm, по которому построена форма
     FRqDsgSelecting: Boolean; // выделение идёт из конструктора или в него
     FRqDsgOwnWrite: Boolean; // текст поменял сам конструктор - не перестраивать
+    FDsgMenuRq: Boolean;     // FDsgMenu открыл конструктор RapidQ (RqDsgContext)
     FRqPalPage: Integer;     // первая страница палитры RapidQ
     // Режим среды (ApplyLangMode): -1 - ещё не применён, 0 - Delphi,
     // 1 - Basic; для какого файла и проекта считан; места кнопок ряда
