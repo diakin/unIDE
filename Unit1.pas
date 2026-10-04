@@ -21089,10 +21089,10 @@ var
   Obj: TDfmNode;
   Chain: TList;
   Seen: TStringList;
-  RqCls, ChainCls: TRqClass;
-  RqMember: TRqMember;
+  RqCls, ChainCls, FontCls: TRqClass;
+  RqMember, FontMember: TRqMember;
   Item: TListItem;
-  ItemIdx, ChainIdx, LiveIdx: Integer;
+  ItemIdx, ChainIdx, LiveIdx, FontIdx: Integer;
   MemberName, DefText, LiveText, SrcText: string;
   Live: TStringList;
 begin
@@ -21162,7 +21162,41 @@ begin
         Item.Data := Pointer(-1);
       end;
     end;
-    // Что есть в снимке, но не в списке класса (Font.Name, Font.Size...)
+    // Поля шрифта: у свойства типа QFONT (Font, TabInactiveFont) - строки
+    // Font.Name, Font.Size... по классу QFONT, то, что можно задать. Сам
+    // Font - объект, в блоке CREATE задаются его поля: Font.Size = 10.
+    FontCls := RqFindClass('QFONT');
+    if FontCls <> nil then
+      for ChainIdx := 0 to Chain.Count - 1 do
+      begin
+        ChainCls := TRqClass(Chain[ChainIdx]);
+        for ItemIdx := 0 to ChainCls.Props.Count - 1 do
+        begin
+          RqMember := TRqMember(ChainCls.Props.Objects[ItemIdx]);
+          if CompareText(RqMember.TypeName, 'QFONT') <> 0 then
+            Continue;
+          for FontIdx := 0 to FontCls.Props.Count - 1 do
+          begin
+            FontMember := TRqMember(FontCls.Props.Objects[FontIdx]);
+            if not FontMember.CanWrite or
+               (Pos('ARRAY', UpperCase(FontMember.TypeName)) > 0) or
+               (CompareText(FontMember.Name, 'Handle') = 0) then
+              Continue;
+            MemberName := RqMember.Name + '.' + FontMember.Name;
+            if Seen.IndexOf(MemberName) >= 0 then
+              Continue;
+            Seen.Add(MemberName);
+            DefText := FontMember.DefValue;
+            if (Live <> nil) and (Live.IndexOfName(MemberName) >= 0) then
+              DefText := RqChoiceText(FontMember, Live.Values[MemberName]);
+            Item := FObjProps.Items.Add;
+            Item.Caption := MemberName;
+            Item.SubItems.Add(DefText);
+            Item.Data := Pointer(-1);
+          end;
+        end;
+      end;
+    // Что есть в снимке, но не в списке класса
     if Live <> nil then
       for LiveIdx := 0 to Live.Count - 1 do
       begin
@@ -21231,6 +21265,14 @@ begin
   if Member <> nil then
   begin
     TypeUp := UpperCase(Member.TypeName);
+    // Шрифт - объект: задаются его поля, строки Font.Name, Font.Size...
+    if TypeUp = 'QFONT' then
+    begin
+      ShowMessage(PropName + ' - объект QFONT. В блоке CREATE задаются его ' +
+                  'поля: ' + PropName + '.Name, ' + PropName + '.Size, ' +
+                  PropName + '.Color... - строки с ними в этой таблице.');
+      Exit;
+    end;
     if not Member.CanWrite then
     begin
       ShowMessage(PropName + ' - только для чтения, в коде не задаётся.');
