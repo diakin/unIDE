@@ -1,0 +1,184 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>Chapter 11: Using function pointers</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Chapter 11</B></FONT></TD>
+  </TR>
+  <TR>
+    <TD COLSPAN=2><HR SIZE=1> </TD>
+  </TR>
+</TABLE>
+<a name="up"></a>
+<BR>
+<H1>11. Using Function Pointers</H1>
+<DD>Didn't think you'd see function pointers in a BASIC programming language did you?
+Well, in Rapid-Q function pointers are a bit different from what most people are used to.
+There are a few oddities I guess, but most of the important features are there, like redefining function
+pointers, and dynamic function pointers. Unfortunately (as of this writing),
+you can't pass function pointers as arguments.
+<BR><BR>
+
+<a name="111">
+<B>11.1 Introduction to the concept</B>
+<DD>Great, so what are function pointers? I know a lot people are tired of terminology, only because
+the definition is probably a lot easier to understand/grasp. It helps to understand how things are stored
+in memory and addressed. For example, a function (ie. SUB or FUNCTION) occupies space in some address space
+somewhere.  A pointer to that function is just the address of it. So if I know the address of the function,
+I can jump into that "process space" and execute the code within. This is the low level way of thinking,
+first push the parameters, and then jump to (ie. CALL) the function. So if pointers are only numbers, how
+do we find the address of the function? This is the question that will be considered next.
+<BR><BR>
+
+<a name="112">
+<B>11.2 Defining function pointers</B>
+<DD>If you have prior experience with function pointers (ie. in C) there are a few
+differences you'll have to get accustomed to. In Rapid-Q, since function pointers
+are just numbers, you can use any valid numeric datatype to define your function pointers.
+Seems odd, yes, but pointers are only numbers. Try avoiding BYTE, since the address of your
+function may be greater than 255, using BYTE may not be large enough.  I suggest
+sticking with INTEGER/LONG.
+<PRE>
+    DECLARE SUB Test (I AS INTEGER)
+
+    DIM FPtr AS INTEGER
+
+    <B>BIND</B> FPtr <B>TO</B> Test
+</PRE>
+<a name="bind"></a>
+Well, we use <B>BIND</B> in Rapid-Q to bind our variable FPtr to the function Test.
+This will do 2 things, obviously FPtr will point to the address space of Test,
+but it also binds the number of parameters to FPtr, this is important for the
+compiler so that it knows how many parameters to pass/accept.
+To call our function, we have to use the reserved word CALLFUNC:
+<PRE>
+    <b><font color=#ff0000>CALLFUNC</font></b>(FPtr, 120)
+</PRE>
+This calls our SUB Test with 1 parameter. Obviously this isn't a very useful
+example, so consider when it is useful...
+<PRE>
+    DECLARE SUB Test1 (I AS INTEGER)
+    DECLARE SUB Test2 (I AS INTEGER)
+
+    DIM FPtr(1 TO 2) AS INTEGER
+
+    <B>BIND</B> FPtr(1) <B>TO</B> Test1
+    <B>BIND</B> FPtr(2) <B>TO</B> Test2
+</PRE>
+When you're binding arrays, please note that the first function that is bound
+will be the TEMPLATE for all your other elements. Confusing? Okay, let me put
+this into words people can understand. :)  Our array is FPtr, our BIND bounds
+FPtr(1) to SUB Test1. FPtr is now BOUND. What this means is that if you BIND any other
+FPtr(i), the function <b>MUST HAVE MATCHING NUMBER OF PARAMETERS</b>. Maybe an example would help:
+<PRE>
+    DECLARE SUB Test1 (I AS INTEGER)
+    DECLARE SUB Test2 (I AS INTEGER, J AS STRING)
+
+    DIM FPtr(1 TO 2) AS INTEGER
+
+    <B>BIND</B> FPtr(1) <B>TO</B> Test1
+    <FONT COLOR=FF0000><B>BIND</B> FPtr(2) <B>TO</B> Test2</FONT>
+</PRE>
+The second BIND is incorrect, since Test2 does not have matching parameters with Test1.
+You will receive an error message if you do this. Notice that I say matching NUMBER of parameters,
+you really don't need matching TYPE parameters. Don't do this though, results may vary.
+<BR><BR>
+
+<a name="113">
+<B>11.3 Using function pointers properly</B>
+<DD>It will be clear (once you've used function pointers for a while) that
+there are times when using function pointers is necessary, and times when
+they're not. I think every situation is different, but consider this
+situation:
+<PRE>
+     SELECT CASE I
+       CASE 1
+         Process1("1", 44)
+       CASE 2
+         Process2("2", 55)
+       CASE 3
+         Process3("3", 66)
+       CASE 4
+         :
+         :
+      etc...
+</PRE>
+You can generalize this situation, for example, a menu with several options, or
+perhaps a parser (yes Rapid-Q does use function pointers to parse your code).
+As you may notice, that's a lot of comparisons, especially if you're writing
+a parser where there's so many keywords (over 50 say).
+We can easily eliminate these comparisons by using function pointers,
+consequently speeding up your program.  See FUNCPTR.BAS for a concrete example.
+<PRE>
+     BIND FPtr(1) AS Process1
+     BIND FPtr(2) AS Process2
+     BIND FPtr(3) AS Process3
+     BIND FPtr(4) AS Process4
+     BIND FPtr(5) AS Process5
+     BIND FPtr(6) AS Process6
+     BIND FPtr(7) AS Process7
+
+     x = VAL(INPUT$(1))
+     CALLFUNC(FPtr(x), 33)
+</PRE>
+None of the code you see above is executable as is, but I think you get the
+general idea.  We don't need any case statements as you can see (this is assuming
+you've partitioned your function pointers properly).
+<BR><BR>
+
+<a name="114">
+<B>11.4 What is not supported in Rapid-Q</B>
+<DD>Function pointers as arguments is not supported. As funny as that sounds, this is actually
+very useful. Unfortunately I didn't get a chance to implement this (yet).
+You can pass the function pointer value as an argument, but as you can see,
+you won't be able to call your function. The only way would be to define a
+global function pointer as your template, and then assign that to your argument.
+It's easier to see with an example:
+<PRE>
+     DECLARE FUNCTION MyFuncTemp (X AS LONG) AS LONG
+     DECLARE FUNCTION Func1 (X AS LONG) AS LONG
+     DECLARE FUNCTION Func2 (X AS LONG) AS LONG
+
+     DIM Template AS INTEGER
+     DIM I(100) AS INTEGER
+
+     BIND Template TO MyFuncTemp
+     BIND I(1) TO Func1
+     BIND I(2) TO Func2
+
+     SUB Test (FPtr AS INTEGER)
+        Template = FPtr
+        PRINT CALLFUNC(Template, 10)
+     END SUB
+
+     Test I(1)
+</PRE>
+That's about the only way you can work around this limitation.
+<BR><BR>
+
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="chapter10.html">Prev Chapter</a></TD>
+   <TD ALIGN=CENTER><A HREF="#up">Up</A></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</A></TD>
+   <TD ALIGN=RIGHT><A HREF="chapter12.html">Next Chapter</A></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                        

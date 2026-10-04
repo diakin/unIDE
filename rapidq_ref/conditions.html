@@ -1,0 +1,112 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>Appendix C: Conditions</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix C: Conditions</B></FONT></TD>
+  </TR>
+  <TR>
+    <TD COLSPAN=2><HR SIZE=1> </TD>
+  </TR>
+</TABLE>
+<a name="up"></a>
+
+<BR>
+<H1>Introduction to Condition Statements</H1>
+<DD>Conditional statements offer the ability to execute code for which
+the condition is satisfied. This is probably one of the first things
+you learn in programming, besides the usual.
+<BR><BR>
+<a name=""></a>
+
+<a name="ifthenelse"></a>
+<FONT SIZE = +1><B><U>IF .. THEN .. ELSE</U></B></FONT><BR>
+There are 2 ways to use IF .. THEN .. ELSE. You can place your statement
+on one single line like so:
+<PRE>    IF I &gt; 100 THEN PRINT "I is greater than 100"
+</PRE>
+Or split it up like so:
+<PRE>    IF I &gt; 100 THEN
+      PRINT "I is greater than 100"
+    END IF
+</PRE>
+As you can see, I &gt; 100 is a condition, as long as this is satisfied, the code
+gets executed, if not then that piece of code is skipped.
+A condition is satisfied whenever the expression evaluates to any non-zero number.
+Which also means that this is valid:
+<PRE>   I = 100
+   IF I THEN
+     PRINT "Condition satisfied"
+   ELSE
+     PRINT "Condition is not satisfied"
+   END IF
+</PRE>
+<a name="elseif"></a>
+Use <font color=#ff0000>ELSEIF</font> whenever you have multiple conditions that you want satisfied:
+<PRE>   IF I &gt; 10 AND I &lt; 20 THEN
+      <I>'' do stuff</I>
+   ELSEIF I &gt; 55 THEN
+      <I>'' do stuff</I>
+   ELSE
+      <I>'' do stuff</I>
+   END IF
+</PRE>
+<a name="selectcase"></a>
+Sometimes it helps to use SELECT CASE instead of all these ELSEIFs, which we'll
+cover next.
+<br><br>
+
+<FONT SIZE = +1><B><U>SELECT CASE .. END SELECT</U></B></FONT><BR>
+Select cases are usually implemented when you have a lot of conditions that you
+want to test for. It's really not useful if you only have 2 or 3 conditions,
+but no one's stopping you from using it. There are no special cases in using
+SELECT CASEs in Rapid-Q, so everything you learned in QBasic, can be implemented
+here as well.
+<PRE>    SELECT CASE Expression
+      CASE 1
+        <I>'' Do stuff</I>
+      CASE 5
+        <I>'' Do stuff</I>
+      CASE ELSE
+        <I>'' No conditions satisfied, do stuff</I>
+    END SELECT
+</PRE>
+It probably involves less typing, but there are many other useful purposes,
+for example, range testing becomes so much easier:
+<PRE><a name="caseis"></a>
+    SELECT CASE Expression
+      CASE 1 TO 4, 10 TO 20
+        <I>'' Do stuff</I>
+      CASE 100 TO 150
+        <I>'' Do stuff</I>
+      CASE <font color=#ff0000>IS</font> &gt; 200
+        <I>'' Do stuff</I>
+    END SELECT
+</PRE>
+As you can see, you can have <font color="#008000"><b><font size="4">multiple test conditions by separating each with a comma</font></b></font><font size="4">.</font> I think you can figure out how the <B><font color=#ff0000>IS</font></B> <b><i>keyword</i></b> is used.
+<BR><BR>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="types.html">&lt;- User Defined Types</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="loops.html">Loops -&gt;</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>

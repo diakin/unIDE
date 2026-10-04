@@ -1,0 +1,122 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>Appendix C: Rapid-Q Supported Data Types</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix C: Data Types</B></FONT></TD>
+  </TR>
+  <TR>
+    <TD COLSPAN=2><HR SIZE=1> </TD>
+  </TR>
+</TABLE>
+
+<BR>
+<H1>Introduction to Data Types</H1>
+<DD>A data type is just a definition. It is used to bind a variable to its definition
+and cannot be changed once bound (except for <font color=#ff0000><b>VARIANT</b></font> type variables). For example,
+if a variable is bound to a STRING data type, it cannot change itself to an
+INTEGER definition.
+A variable can be assigned any one of these supported data types,
+BYTE, WORD, DWORD, SHORT, LONG/INTEGER, SINGLE, DOUBLE, STRING, VARIANT, and fixed-length
+strings. There are also such things as User Defined Data Types, which will be discussed
+in another section. Some BASIC implementations hold INTEGER as a 16-bit value,
+while Rapid-Q chooses to go 32-bit. So if you're worried about converting your old
+code, make sure to replace all occurrences of INTEGER with SHORT.
+<BR><BR>
+
+<font size = "+1"><B><U>How to use data types</U></B></FONT><BR>
+Since Rapid-Q is a BASIC language, there are 2 ways to define your variables.
+You can choose to do it explicitly using DIM
+<pre>
+    DIM myNum AS LONG
+    DIM myStr AS STRING
+</pre>
+Similarly, you can attach a suffix symbol which describes the variable type:
+<pre>
+    myNum& = 234
+    myStr$ = "abc"
+</pre>
+Chapter 3 has a list of these suffixes, but are listed here again for your convenience:
+<PRE>
+    Type       ID  Size  Range
+    --------- ---- ---- -------------
+    Byte        ?   1   0..255
+    Word       ??   2   0..65535
+    Dword     ???   4   Only Linux version for now...
+    Short       %   2   -32768..32767
+    Integer     &   4   -2147483648..2147483647
+    Long        &   4   -2147483648..2147483647
+    Single      !   4   1.5 x 10<SUP>45</SUP>..3.4 x 10<SUP>38</SUP>
+    Double      #   8   5.0 x 10<SUP>324</SUP>..1.7 x 10<SUP>308</SUP>
+    String      $
+</PRE>
+A variant data type has no suffix, so you'll have to use DIM instead, or
+change the default DIM operation.
+<PRE>
+    $OPTION DIM VARIANT
+
+    myVar = "hello!"
+</PRE>
+<B>myVar</B> is defined as a VARIANT since we've changed the default data type
+for DIM.  Whenever Rapid-Q comes across an undefined symbol (with no suffix), it
+will choose the data type according to traditional BASIC. Traditionally, this has been
+choosen to be either SINGLE or DOUBLE. With Rapid-Q, you can choose any of the existing
+data types as the default one.
+<br><br>
+
+
+<font size = "+1"><B><U>Variant data type</U></B></FONT><BR>
+A Variant is a special kind of data type, since a Variant can mutate.
+Don't be afraid, it won't mutate to a virus or anything like that.
+It simply changes types on the fly, as needed. Even a simple operation like
+addition changes when you add 2 variants together. Take this for example:
+<PRE>
+   DIM V1 AS VARIANT, V2 AS VARIANT
+
+   V1 = 101
+   V2 = "99.5"
+
+   PRINT V1+V2  '-- Output is 200.5
+</PRE>
+As you'll notice V2 is originally assigned a string, but V2 has changed its type to
+a floating point number when the addition takes place. Note that V2 is still a string,
+it just mutated itself for that one operation. Similarly,
+<PRE>
+   DIM V1 AS VARIANT, V2 AS VARIANT
+
+   V1 = "101"
+   V2 = 99.5
+
+   PRINT V1+V2  '-- Output is 10199.5
+</PRE>
+In this case, V2 was originally a floating point number, but changed its type
+during the addition operation to a string. Notice how the order of operation
+defines the mutation. In the previous example, V1 was a number, so V1+V2 results
+in a numeric expression, while the above example produces a string.
+<br><br>
+
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD ALIGN=LEFT><A HREF="defs.html">&lt;- Internal definitions</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="gotos.html">Branching -&gt;</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                        

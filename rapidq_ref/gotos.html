@@ -1,0 +1,137 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>Appendix C: Branching with GOTO and GOSUB</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix C: Branching</B></FONT></TD>
+  </TR>
+  <TR>
+    <TD COLSPAN=2><HR SIZE=1> </TD>
+  </TR>
+</TABLE>
+
+<BR>
+<H1>Introduction to Branching</H1>
+<DD>Branching seems to be very popular in BASIC, mainly because in the old
+days, BASIC was very unstructured and didn't carry with it the concepts we
+now see today.  Sure, some say it's still unstructured, but so is a lot of
+other languages depending on your coding style. Branching is just the mechanism
+of skipping (or jumping) instructions, either forward or backward.
+It's much like writing SUBs and FUNCTIONs, just a bit more unstructured as
+you'll see.
+<BR><BR>
+
+<font size = "+1"><B><U>What are labels?</U></B></FONT><BR>
+Before talking about GOTOs and GOSUBs, you'll need to understand what labels
+are. You can think of them as bookmarks, they don't actually do anything, but
+you can use labels as a guide. The following are valid labels:
+<pre>
+    Label1:
+    100
+    10.5
+</pre>
+A label always appears as the first statement and can be any number or a named
+label.  A named label must end with a colon <B>:</B> symbol.
+After any label, you can write your code as before.
+<pre>
+    Label1:
+       PRINT "some code..."
+    100 PRINT "more code"
+    10.5
+       PRINT "yet more code"
+</pre>
+The formatting above is just an example, it doesn't mean that a named label can't have
+code on the same line.
+<br><br>
+
+
+<font size = "+1"><B><U>Branching with GOTO</U></B></FONT><BR>
+Perhaps the most shunned upon keyword in BASIC is the GOTO statement.
+Obviously if you programmed in BASIC before, GOTO was used almost everywhere.
+This is because GOTO was so easy to understand, and when we first jump into
+programming, we don't usually pick up what subroutines and functions are.
+Rapid-Q still supports GOTO, but we definitely don't encourage its use, at all.
+In fact, if you find yourself using it now, you'll probably wonder why in a few
+years/months as you become more experienced. Here's an example of using GOTO:
+<PRE>
+    IF I = 100 THEN GOTO 10 ELSE GOTO 20
+
+    10 PRINT "I = 100"
+       END
+
+    20 PRINT "I is not 100"
+       END
+</PRE>
+If it's so terrible, are there any penalties in its use?
+No. In fact, it's probably the purest command you'll find. All it does is skip
+instructions, so in the above example, if I = 200, then the lines
+<pre>
+    10 PRINT "I = 100"
+       END
+</pre>
+are skipped. GOTO requires no stack or memory consumption, unlike GOSUB and
+SUBs or FUNCTIONs. If you want to think about assembly, that's basically
+all you do, branch here and there, but since BASIC is a high level language,
+we usually don't like to think that way, so we avoid using GOTO if possible.
+<br><br>
+
+<FONT SIZE = +1><B><U>Branching with GOSUB .. RETURN</U></B></FONT><BR>
+Using GOSUB is actually more useful than using GOTO, but still not recommended.
+It is in essence, calling a SUB without parameters. What it provides is a
+quick "hack" without creating SUBs. It is often used in loops, as you may see
+here:
+<PRE>
+    DO
+      DO
+        A$ = INKEY$
+      LOOP UNTIL LEN(A$)
+
+      IF A$ = "A" THEN
+          GOSUB 100
+      ELSEIF A$ = "B" THEN
+          GOSUB 110
+      ELSEIF A$ = "C" THEN
+          GOSUB 110
+      END IF
+    LOOP
+
+    END
+
+    100 PRINT "A pressed"
+        RETURN
+    110 PRINT "B pressed"
+        RETURN
+    120 PRINT "C pressed"
+        RETURN
+</PRE>
+<a name="return"></a><br>
+
+The <B>RETURN</B> statement is used to jump back to the previous call of GOSUB.
+You can think of GOSUB as a GOTO statement with a marker, and the RETURN statement as another
+GOTO statement that returns to that marker.
+<BR><BR>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD ALIGN=LEFT><A HREF="datatypes.html">&lt;- Data Types</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="types.html">User Defined Types -&gt;</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                        

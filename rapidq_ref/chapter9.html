@@ -1,0 +1,430 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>Chapter 9: SUBI, FUNCTIONI, and DLLs</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+<A NAME="up"></a>
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Chapter 9</B></FONT></TD>
+  </TR>
+  <TR>
+    <TD COLSPAN=2><HR SIZE=1> </TD>
+  </TR>
+</TABLE>
+
+<BR>
+<H1>9. SUBI, FUNCTIONI, and DLLs</H1>
+<DD>You'll learn all there needs to know about creating your own SUB/FUNCTIONs with
+variable number of parameters. If you know a little about C, you'll probably
+know about the most popular command <B>printf</B>. Well, it's actually
+possible to implement your own printf in Rapid-Q!
+<BR><BR>
+
+<a name="91">
+<B>9.1 SUB/FUNCTIONs with variable parameters</B>
+<DD>Traditional SUBs or FUNCTIONs have a fixed number of parameters we can
+pass, but SUBI and FUNCTIONI can accept an infinite number (255) of variable parameters.
+You're probably wondering how we can retrieve these parameters, well, they
+are actually stored in an internal stack. So what you'll have to do is
+probe this stack for the correct parameter. Here are the keywords used to
+do that:
+<PRE>
+   <B>ParamStr$()</B>   - Array of string parameters
+   <B>ParamVal()</B>    - Array of numeric parameters
+   <B>ParamValCount</B> - Number of numeric parameters passed
+   <B>ParamStrCount</B> - Number of string parameters passed
+</PRE>
+As a simple example, we'll just test to see that it works:
+<PRE>
+    SUBI TestSUBI (...)
+       PRINT "String Parameters:  "; ParamStrCount
+         FOR I = 1 TO ParamStrCount
+           PRINT I;" "; ParamStr$(I)
+         NEXT I
+       PRINT "Numeric Parameters: "; ParamValCount
+         FOR I = 1 TO ParamValCount
+           PRINT I;" "; ParamVal(I)
+         NEXT I
+    END SUBI
+
+    TestSUBI "Hello", 1234, "Hmmm", "Yeah...", 9876, 1*2*3*4, UCASE$("Last one")
+</PRE>
+You'll probably notice that the ParamStr$() and ParamVal() arrays aren't zero-based (ie.
+their first value starts at 1). This may seem strange, since everything in Rapid-Q is zero-based.
+Anyway, besides that, something equally strange is the use of (...) in replace of
+parameter names. It doesn't really matter what you put in the brackets, as long as
+it's a valid token (one word). Try creating a FUNCTIONI, it's no different
+from creating a standard FUNCTION except you replace your formal parameter names
+with (...).
+<BR><BR>
+
+<a name="92">
+<B>9.2 More on FUNCTIONI</B>
+<DD>To expand our knowledge, let's do more examples, here's one that will find
+the maximum number from the parameters you provide it.
+<PRE>
+   FUNCTIONI FindMax (...) AS DOUBLE
+
+     DIM Largest AS DOUBLE
+     DIM I AS BYTE
+
+     Largest = -999999999999
+
+     FOR I = 1 TO ParamValCount
+       IF ParamVal(I) > Largest THEN
+          Largest = ParamVal(I)
+       END IF
+     NEXT
+
+     FindMax = Largest         ' or Result = Largest
+   END FUNCTIONI
+</PRE>
+The function goes through the entire list of numeric parameters and checks
+which one is the largest. Any string parameters are properly ignored.
+Now let's test it:
+<PRE>
+   PRINT "Largest number is: "; FindMax(523, 12.4, 602, 45, -1200)
+   PRINT "Largest number is: "; FindMax(523, 12.4, FindMax(602, 45, -1200))
+</PRE>
+You can comfortably embed your FUNCTIONI if you like. There's really nothing
+to it. Just remember the keywords you need to access the internal stack, and
+away you go!
+<BR><BR>
+
+<a name="93">
+<B>9.3 Introduction to DLLs</B>
+<DD>What is a DLL? It's a <I>Dynamic Link Library</I> which contain exported
+functions which can be used by any programming language that support DLLs.
+So you could write your DLL in Delphi or C++ and use those functions in Rapid-Q.
+DLLs work by loading in the same process space as your program, so you have access
+to their exported functions.
+DLLs in Rapid-Q can only be dynamically linked at run-time (ie. executed at run-time).
+<BR><BR>
+
+<a name="94">
+<B>9.4 How to call a DLL</B>
+<DD>There is an example called <FONT FACE="courier">DLL.BAS</FONT> included in
+your Rapid-Q distribution. Included is also a DLL called PASCAL.DLL. You may
+want to take a look at it. To call DLLs in Rapid-Q is almost identical to the way you call DLLs in PowerBASIC
+or VisualBASIC.  It may look nasty, but I've decided to conform to that standard...
+One thing to note is that CASE MATTERS! Yes, that's right, if you miscapitalized
+your function, ka-boom! Oops, not to confuse you even more, but there's actually
+2 functions. One which you will call in your program, and the other is the one
+contained in the DLL. These two functions/subs must have matching parameters, or ka-boom!<BR>
+<a name="alias"></a>
+<PRE>    <B>DECLARE SUB</B> Test <B>LIB</B> "TEST.DLL" <B><font color=#ff0000>ALIAS</font></B> "MyFunc" (S AS STRING)</PRE>
+So you must be wondering, which is case sensitive, <B>Test</B> or <B>MyFunc</B>.
+Well, <B>Test</B> is the one you'll be calling in your own program, so you know that
+can't be it, <B>MyFunc</B>
+is the one contained in the DLL, so make sure you typed that in correctly!
+The above SUB will point to the memory address of your DLL (when loaded), and
+execute the code within. As you can see, there's only one parameter for our MyFunc
+routine. There are only 2 extra keywords introduced here, <B>LIB</B> and <B><font color=#ff0000>ALIAS</font></B>.
+After <B>LIB</B> should be a string corresponding to the path of your DLL.
+If your DLL resides in your $PATH setting, you don't need to specify any path (ie.
+if your TEST.DLL resides in C:\WINDOWS\SYSTEM). The second keyword <B><font color=#ff0000>ALIAS</font></B> is
+to specify the function/subroutine you can execute in that DLL.
+Make sure you check your case, this is very important. If you're not sure of
+the case, you can use a DLL viewer (such as Quick View, more on this later).
+What are the valid datatypes to pass?<BR>
+<DD>SHORT/WORD, INTEGER/LONG/DWORD, DOUBLE, STRING, QRECT, QNOTIFYICONDATA, and any UDT you create.<br>
+Unlike some implementations which force you to pass your STRING as a pointer, Rapid-Q
+will do all this for you, so you need not worry. Whenever you see LPZSTR as a parameter,
+that just means Long Pointer Zero-Terminated String. You can safely pass any string variable.
+You may notice that some BASIC languages (like VB) will ignore <B><font color=#ff0000>ALIAS</font></B> whenever
+the function matches the same function you're declaring. For example:
+<PRE>
+    DECLARE SUB MyFunc LIB "TEST.DLL"
+</PRE>
+As long as your function matches that of the DLL function, you can ignore using <B><font color=#ff0000>ALIAS</font></B>.
+However, this DOES NOT apply to Rapid-Q, you can't do this, so don't even try.
+<DD>Calling a DLL function or calling your own function is exactly the same, there's
+nothing more you need to know:
+<PRE>    MyFunc("Hello")</PRE>
+<BR><BR>
+
+<a name="95">
+<B>9.5 Using Quick View</B>
+<DD>As mentioned before, if you're not sure of the exact case of your function,
+it's a good idea to take a look using Quick View.
+<CENTER><IMG SRC="chap9d1.gif"></CENTER>
+Quick View is included with Windows (you don't need to download it).
+To invoke Quick View, load up Windows Explorer (or click on "My Computer"),
+then find a .DLL file, right click on it, and select Quick View from the menu.
+Look for an <B>Export Table</B>, that's where you'll find all the available
+functions. There are probably better DLL viewers available, but I won't
+advertise them here. Most of the time, Quick View is all you'll need.
+<BR><BR>
+
+<a name="96">
+<B>9.6 Writing your own DLLs</B>
+<DD>As of this writing, it's not possible to write DLLs in Rapid-Q.
+Most languages are capable of creating DLLs, the only problem I see is STRINGs,
+especially if you're using VisualBasic or PowerBasic.  Please use pointers to strings in your
+parameters to avoid using OLE to allocate the string itself. Rapid-Q won't use
+OLE to allocate the string, since I don't anticipate many DLLs that don't use
+pointers to strings.
+<BR><BR>
+
+<a name="97">
+<B>9.7 Using unsupported types in DLL call</B>
+<DD><font color="#bb0000">THIS SECTION IS NULL AND VOID WITH THE INTRODUCTION
+OF STRUCT, BUT CAN STILL BE USED IF YOU LIKE.</font>
+Rapid-Q has a different storage mechanism for user defined TYPEs which renders it useless
+for DLL calls that require certain TYPE parameters. However, all is not lost.
+There is a cheap workaround which works just fine, but does need a little getting
+used to. DLL functions that require TYPE parameters need to be passed a pointer to
+that TYPE, so how is this accomplished? Let's look at an example of a DLL function
+which requires a TYPE parameter:
+<PRE>
+    DECLARE FUNCTION GetWindowRect LIB "USER32" ALIAS "GetWindowRect" _
+                     (hWnd AS LONG, lpRect AS RECT) AS LONG
+</PRE>
+RECT is a structure of the form:
+<PRE>
+    TYPE RECT
+        Left AS LONG
+        Top AS LONG
+        Right AS LONG
+        Bottom AS LONG
+    END TYPE
+</PRE>
+Naturally, you would like this to work:
+<PRE>
+    DIM R AS RECT
+
+    GetWindowRect(MainForm.Handle, R)
+</PRE>
+<font color="#bb0000">YES, THIS WORKS NOW.</font>
+However, Rapid-Q stores user defined types noncontiguously, ie. not as one
+whole block as required by the DLL call, so this call is invalid.
+So what does work? A simple workaround is necessary, using the ever useful
+QMEMORYSTREAM component:
+<PRE>
+    <FONT COLOR=009900><I>'' Notice the change in lpRect</I></FONT>
+    DECLARE FUNCTION GetWindowRect LIB "USER32" ALIAS "GetWindowRect" _
+                     (hWnd AS LONG, lpRect AS LONG) AS LONG
+
+    DIM R AS RECT
+    DIM M AS QMEMORYSTREAM
+
+    M.WriteUDT(R)
+    GetWindowRect(MainForm.Handle, M.Pointer)
+    M.Position
+    M.ReadUDT(R)
+</PRE>
+The first thing we do is change the parameters of the DLL Function.
+We just changed the type of lpRect to LONG. This is because we want to pass
+a pointer (which is just a number). Here we use QMEMORYSTREAM to store the
+user defined type (using M.WriteUDT) in one contiguous block for our DLL call.
+All we have to do is pass the pointer to this block of memory and the DLL
+will read from this memory location. After calling the function we should
+retrieve the returned data (if necessary, in this case GetWindowRect returns the
+rect structure of the Window). This is rather simple, but what if there are
+nested TYPEs within a TYPE?
+<PRE>
+     TYPE Struct1
+         A AS INTEGER
+     END TYPE
+
+     TYPE Struct2
+         S AS Struct1
+         I AS INTEGER
+     END TYPE
+</PRE>
+If a DLL call requires a TYPE, which may have nested TYPEs, then you can
+do the same kind of conversion:
+<PRE>
+     TYPE Struct1
+         A AS INTEGER
+     END TYPE
+
+     TYPE Struct2
+         S AS LONG
+         I AS INTEGER
+     END TYPE
+
+     DIM S1 AS Struct1
+     DIM S2 AS Struct2
+
+     DIM M1 AS QMEMORYSTREAM
+     DIM M2 AS QMEMORYSTREAM
+
+     M1.WriteUDT(S1)
+     S2.S = M1.Pointer
+     M2.WriteUDT(S2)
+
+    <FONT COLOR=009900><I>'' Call DLL function...</I></FONT>
+</PRE>
+Now the last case we have to consider is strings within TYPEs.
+We can't just declare a string anymore, we have to declare a pointer to a string,
+for example:
+<PRE>
+     TYPE TStruct
+         ST AS STRING
+         Other AS INTEGER
+     END TYPE
+</PRE>
+This would not be valid since ST would be passed by value (in which case it can
+consume any number of bytes in memory). However, most DLL calls want strings
+passed by reference (ie. just give it the pointer to the string). A conversion
+is necessary, using VARPTR:
+<PRE>
+     TYPE TStruct
+         ST AS LONG
+         Other AS INTEGER
+     END TYPE
+
+     DIM Struct AS TStruct
+     DIM S AS STRING
+
+     S = SPACE$(100) <FONT COLOR=009900><I>'' Allocate some space for string</I></FONT>
+     Struct.ST = VARPTR(S)
+
+    <FONT COLOR=009900><I>'' To get back the string use VARPTR$</I></FONT>
+    S = VARPTR$(Struct.ST)
+</PRE>
+Please note that this string conversion is only necessary for TYPEs and not necessary
+for normal DLL calls. For normal DLL calls which have STRING as parameters, just pass
+the string and not the pointer, since Rapid-Q will translate this automatically for you.
+You can, of course, do the conversion yourself, just remember to change the STRING
+parameter to something like LONG, and pass VARPTR(S$) instead of the actual string S$.
+<BR><BR>
+
+<a name="98">
+<B>9.8 API conversion table</B>
+<DD>A lot of people have requested an API guide to convert their WinAPI declarations
+in C or VB to use with Rapid-Q, so here is a basic summary with some brief explanations.
+Special thanks to Mayuresh S. Kadu for this WIN32 API in VB guide.<br>
+<table width="100%" border="1" cellpadding="3" cellspacing="1">
+  <tr>
+    <td><b>C data type</b></td><td><b>Pascal</b></td><td><b>VB</b></td><td><b>Rapid-Q</b></td>
+  </tr>
+  <tr><td>ATOM</td><td>SHORT</td><td>byval as INTEGER</td><td>SHORT</td></tr>
+  <tr><td>BOOL</td><td>BOOLEAN</td><td>byval as LONG</td><td>LONG</td></tr>
+  <tr><td>BYTE</td><td>BYTE</td><td>byval as BYTE</td><td>BYTE</td></tr>
+  <tr><td>CHAR</td><td>CHAR</td><td>byval as BYTE</td><td>BYTE</td></tr>
+  <tr><td>CHAR[20]</td><td>STRING[20]</td><td>as STRING</td><td bgcolor="black"><font color="white">N/A in API Declarations</font></td></tr>
+  <tr><td>COLORREF</td><td>LONGINT</td><td>byval as LONG</td><td>LONG</td></tr>
+  <tr><td>DWORD</td><td>DWORD</td><td>byval as LONG</td><td>DWORD</td></tr>
+  <tr><td>Windows handles ie. HDC</td><td>Windows Handles</td><td>byval as LONG</td><td>LONG</td></tr>
+  <tr><td>INT, UINT</td><td>INTEGER, DWORD</td><td>byval as LONG</td><td>INTEGER, DWORD</td></tr>
+  <tr><td>LONG</td><td>LONGINT</td><td>byval as LONG</td><td>LONG</td></tr>
+  <tr><td>LPARAM</td><td>LONGINT</td><td>byval as LONG</td><td>LONG</td></tr>
+  <tr><td>LPDWORD</td><td>^DWORD</td><td>as LONG</td><td>BYREF as DWORD</td></tr>
+  <tr><td>LPINT, LPUINT</td><td>^INTEGER</td><td>as LONG</td><td>BYREF as LONG</td></tr>
+  <tr><td>LPRECT</td><td>^TRECT</td><td>as ANY</td><td>QRECT</td></tr>
+  <tr><td>LPSTR, LPCSTR</td><td>PCHAR</td><td>byval as STRING</td><td>BYREF as STRING</td></tr>
+  <tr><td>LPVOID</td><td>LONGINT</td><td>as ANY</td><td><font color="990000">LONG</font></td></tr>
+  <tr><td>LPWORD</td><td>^WORD</td><td>as INTEGER</td><td>BYREF as WORD</td></tr>
+  <tr><td>LRESULT</td><td>LONGINT</td><td>byval as LONG</td><td>LONG</td></tr>
+  <tr><td>NULL</td><td>NIL</td><td>byval as LONG</td><td><font color="990000">LONG</font></td></tr>
+  <tr><td>SHORT</td><td>SHORT</td><td>byval as INTEGER</td><td>SHORT</td></tr>
+  <tr><td>WORD</td><td>WORD</td><td>byval as INTEGER</td><td>WORD</td></tr>
+  <tr><td>WPARAM</td><td>LONGINT</td><td>byval as LONG</td><td>LONG</td></tr>
+</table><br>
+For those data types in <font color="990000">red</font>, they are pointers to the variable.
+In Rapid-Q, this requires using VARPTR in passing the address of the variable, and not the
+value of the variable. Here's some sample conversions:<br>
+<PRE>
+  In VB:
+        DECLARE SUB Test LIB "USER32" ALIAS "What" _
+                     (byval L AS LONG, byval S AS STRING)
+
+        Test (1230, "Hello world!")
+
+  In Rapid-Q:
+        DECLARE SUB Test LIB "USER32" ALIAS "What" _
+                     (byval L AS LONG, byval S AS STRING)
+
+        Test (1230, "Hello world!")
+</PRE>
+Nothing different there, note that Rapid-Q doesn't use BYVAL, so you can ignore
+putting them there. In the above example, the string is passed by reference, ie.
+the address of the string is passed, not the string itself.
+Here's an example which passes the whole string (not the address, so it involves
+OLE to allocate space for the string), this works fine in VB but not in Rapid-Q:
+<PRE>
+  In VB:
+        DECLARE SUB Test LIB "USER32" ALIAS "What" _
+                     (byval L AS LONG, S AS STRING)
+
+        Test (1230, "Hello world!")
+
+  In Rapid-Q:
+        Not possible, since it doesn't use OLE to allocate the string.
+</PRE>
+How about NULL strings? Here's another situation (please note that I don't use
+VB much so it may be possible to declare S as STRING and pass it a vbNullString,
+I'm not really sure so I'll play it safe):
+<PRE>
+  In VB:
+        DECLARE SUB Test LIB "USER32" ALIAS "What" _
+                     (byval L AS LONG, byval S AS LONG)
+
+        Test (1230, 0&)
+
+  In Rapid-Q:
+        DECLARE SUB Test LIB "USER32" ALIAS "What" _
+                     (byval L AS LONG, byval S AS LONG)
+
+        Test (1230, 0&)
+</PRE>
+So what if we want to pass a string instead of a NULL string, then you'd need to
+use VARPTR:
+<PRE>
+  In VB or Rapid-Q:
+        DIM S AS STRING
+        S = "Hello world!"
+
+        Test (1230, VARPTR(S))
+</PRE>
+A NULL string basically means an address of 0.
+VARPTR just returns the address of a variable.
+How about other pointers, like LPWORD? A WORD is just an unsigned 16-bit number,
+VB only supports signed 16-bit numbers called INTEGERs, but the general idea is
+to remove the byval keyword when passing variables by reference:
+<PRE>
+  In VB (doesn't support WORD, so use next best):
+        DECLARE SUB Test LIB "USER32" ALIAS "Another" _
+                     (L AS INTEGER)
+
+        DIM L AS INTEGER
+
+        Test (L)
+
+  In Rapid-Q:
+        DECLARE SUB Test LIB "USER32" ALIAS "Another" _
+                     (BYREF L AS WORD)
+
+        DIM L AS WORD
+
+        Test (L)
+</PRE>
+In Rapid-Q, use BYREF when passing variables by reference, in VB you don't need to
+use BYREF, as the above example demonstrates.
+<br><br>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="chapter8.html">Prev Chapter</a></TD>
+   <TD><A HREF="#up">Up</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="chapter10.html">Next Chapter</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                        

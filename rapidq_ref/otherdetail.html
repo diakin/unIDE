@@ -1,0 +1,2420 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>Appendix C: Other Detailed Keywords</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix C: Other Detailed Keywords</B></FONT></TD>
+  </TR>
+  <TR>
+    <TD COLSPAN=2><HR SIZE=1> </TD>
+  </TR>
+</TABLE>
+<a name="up"></a>
+<BR>
+<H1>Other Detailed Keywords</H1>
+
+<DD>Most of these have the same functionality as QBasic, so you could just as
+easily look them up there. Again, when I refer to Unix, I mean Linux & Unix.
+<BR><BR>
+
+<!-- ---------------------- Here starts the list: ---------------------------------- -->
+<a name="abs"></a>
+
+<hr width="95%" align=center>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>ABS</B> MATH Function <b>Windows/Unix</b><br>
+<hr width="95%" align=center>
+           A math function that returns the absolute value of a numeric expression.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>ABS(numeric-expression)</FONT><BR>
+           A% = ABS(-123)<BR><BR>
+           <B>Details</B>:<BR>
+           The absolute value of function returns the unsigned magnitude of its argument.
+           So, ABS(-1) and ABS(1) are both 1.
+<br><br>
+
+<!-- ACOS -->
+<a name="acos"></a>
+<hr width="95%" align=center>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>ACOS</B>  MATH Function     <b>Windows/Unix</b><br>
+<hr width="95%" align=center>
+
+           A math function that returns the arccosine of a numeric expression.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>ACOS(numeric-expression)</FONT><BR>
+           D# = ACOS(0.55)<BR><BR>
+           <B>Details</B>:<BR>
+           Numeric-expression is in the range -1 to 1.
+<br><br>
+
+<!-- ASC -->
+<a name="asc"></a>
+<hr width="95%" align=center>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>ASC</B> STRING Function       <b>Windows/Unix</b><br>
+<hr width="95%" align=center>
+
+           A string processing function that returns a numeric value that is the ASCII code for
+           the first character in a string expression.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>ASC(string-expression)</FONT><BR>
+           A% = ASC("A")
+<br><br>
+<a name="asin"></a>
+<hr width="95%" align=center>
+<!-- ASIN -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>ASIN</B>  MATH Function  <b>Windows/Unix</b><br>
+<hr width="95%" align=center>
+
+           A math function that returns the arcsine of a numeric expression.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>ASIN(numeric-expression)</FONT><BR>
+           D# = ASIN(0.55)<BR><BR>
+           <B>Details</B>:<BR>
+           Numeric-expression is in the range -1 to 1.
+
+<br><br>
+<a name="atnatan"></a>
+<hr width="95%" align=center>
+<!-- ATN -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>ATN/ATAN</B>  MATH Function  <b>Windows/Unix</b><br>
+<hr width="95%" align=center>
+
+           A math function that returns the arctangent of a numeric expression.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>ATN(numeric-expression)</FONT><BR>
+           D# = ATN(0.9)<BR><BR>
+           <B>Details</B>:<BR>
+           Numeric-expression is the angle expressed in radians.
+<br><br>
+<a name="bin$"></a>
+<hr width="95%" align=center>
+<!-- BIN$ -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>BIN$</B>   CONVERSION Function   <b>Windows/Unix</b><br>
+<hr width="95%" align=center>
+
+           A binary conversion function which will convert any positive INTEGER number to its binary representation.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>BIN$(numeric-expression)</FONT><BR>
+           S$ = BIN$(123)<BR><BR>
+           <B>Details</B>:<BR>
+           Negative numbers are not supported, and so results are not defined.
+<br><br>
+
+<a name="bind"></a>  
+<hr width="95%" align=center>
+<!-- BIND -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>BIND</B>   POINTER Function  <b>Windows/Unix</b><br>
+<hr width="95%" align=center>
+
+           BIND will bind a variable as a function pointer.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>BIND variable TO function</FONT><BR>
+           DECLARE SUB MyFunc(X AS INTEGER)<BR>
+           BIND A% TO MyFunc<BR><BR>
+           <B>Details</B>:<BR>
+           To invoke this function pointer, use CALLFUNC.
+<br><br>
+
+<a name="callbackcodeptr"></a>
+<hr width="95%" align=center>
+<!-- CALLBACK -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>CALLBACK/CODEPTR</B>   ADDRESS Function   <b>Windows</b><br>
+<hr width="95%" align=center>
+
+           CODEPTR (or CALLBACK) will return the absolute address of a SUB or FUNCTION.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>CODEPTR(MySUB)</FONT><BR>
+           SUB MySUB<BR>
+           END SUB<BR>
+           A& = CODEPTR(MySUB)<BR><BR>
+           <B>Details</B>:<BR>
+           Use this function for CALLBACK routines. Not all cases are implemented,
+           results may vary depending on the CALLBACK and the type of parameters
+           it receives.
+<br><br>
+
+<a name="callfunc"></a>
+<hr width="95%" align=center>
+<!-- CALLFUNC -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>CALLFUNC</B>   POINTER Function   <b>Windows/Unix</b><br>
+<hr width="95%" align=center>
+
+           CALLFUNC will execute the function pointer that was bound by using BIND.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>CALLFUNC(fptr, param1, param2, ...)</FONT><BR>
+           CALLFUNC(FPtr, 10, 20)<BR>
+           PRINT CALLFUNC(FPtr2, 10, 20)<br>
+&nbsp;<p>sub procedure1 <br>
+' Do things... <br>
+end sub <br>
+function procedure2 as long <br>
+procedure2 = 451 <br>
+end function <br>
+<br>
+dim lres as long <br>
+dim fnptr1 as integer <br>
+dim fnptr2 as integer <br>
+bind fnptr1 to procedure1 <br>
+bind fnptr2 to procedure2 <br>
+callfunc fnptr1 'This works <br>
+callfunc fnptr2 'This also works <br>
+'lres=callfunc(fnptr2) 'This doesn't work. Compiler error <br>
+'lres=callfunc fnptr2 'This doesn't work. Compiler error <br>
+lres=(callfunc(fnptr2)) 'This WORKS!!! <br>
+print &quot;lres=&quot; ,lres<br>
+<BR><BR>
+           <B>Details</B>:<BR>
+           Depending on how you BIND your function pointer, you can either call CALLFUNC
+           as a statement or a function. Make sure to supply the necessary number of parameters, else
+           you will receive a compile error. Passing function pointers as parameters is not yet implemented,
+           but you can read up on Chapter 11 to see how to emulate this.
+<br><br>
+
+<a name="ceil"></a>
+</p>
+<hr width="95%" align=center>
+<!-- CEIL -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>CEIL</B>   MATH Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A math function that rounds a numeric expression up toward positive infinity.
+           <BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>CEIL(numeric-expression)</FONT><BR>
+           A% = CEIL(66.2) '-- Returns 67
+<br><br>
+
+<a name="chdir"></a>
+<hr width="95%" align=center>
+<!-- CHDIR -->
+  <TR>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>CHDIR</B>   SYSTEM Statement   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           CHDIR will change the current working directory for your application.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>CHDIR string-expression </FONT> <BR>
+           CHDIR "<a href="file:///c:/windows">c:\windows</a>"
+<br><br>
+<font color="#800000"><b>CHDIR&nbsp; translates a <FONT FACE=Courier>pathname </FONT>
+into the OEM-defined <FONT FACE=Courier>(DOS)</FONT> character set .</b><br>
+</font>So for national codpages you need use next function<br>
+'-------------------------------------------------------------------'<br>
+function CHDirOEM (PathDst$) as short<br>
+result=0<br>
+dim PathDst1$ as string<br>
+PathDst1$=string$(len(PathDst$),&quot;a&quot;) <br>
+chartooem PathDst$,PathDst1$ <br>
+CHDIR PathDst1$ <br>
+result=1<br>
+end function<br>
+'-------------------------------------------------------------------'<br>
+<br>
+
+<a name="chr$"></a>
+<hr width="95%" align=center>
+<!-- CHR$ -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>CHR$</B>   STRING Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A string processing function that returns a one-character string whose
+           ASCII code is the argument.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>CHR$(numeric-expression)</FONT><BR>
+           A$ = CHR$(66)<BR><BR>
+           <B>Details</B>:<BR>
+           Numeric-expression should be in the range 0-255.
+<br><br>
+
+<a name="cint"></a>
+<hr width="95%" align=center>
+<!-- CINT -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>CINT</B>   CONVERSION Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A conversion function that converts a numeric expression to an
+           integer by rounding the fractional part of the expression.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>CINT(numeric-expression)</FONT><BR>
+           A% = CINT(66.7)<BR><BR>
+           <B>Details</B>:<BR>
+           Implemented for compatibility with QBasic, you can use the more logical
+           function, ROUND, instead.
+<br><br>
+
+<a name="clng"></a>
+<hr width="95%" align=center>
+<!-- CLNG -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>CLNG</B>   CONVERSION Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A conversion function that converts a numeric expression to an
+           integer by rounding the fractional part of the expression.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>CLNG(numeric-expression)</FONT><BR>
+           A% = CLNG(66.7) <i>'-- equals 67</i><BR><BR>
+           <B>Details</B>:<BR>
+           Implemented for compatibility with QBasic, you can use the more logical
+           function, ROUND, instead.
+<br><br>
+
+<a name="const"></a>
+<hr width="95%" align=center>
+<!-- CONST -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>CONST</B>   Statement   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A non-executable statement that declares symbolic constants to use in
+           place of numeric or string values.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>CONST constantname [<i> as Datatype</i> ]= expression</FONT><BR>
+           CONST False = 0<BR>
+           CONST True AS LONG = NOT False<BR>
+           CONST A$ = "Hi world!"<BR>
+           CONST Char = CHR$(66)<BR>
+           CONST Combine = A$ + Char<BR><BR>
+           <B>Details</B>:<BR>
+           Expression can be any value, numeric or string.  Rapid-Q will decipher what
+           the constant value will be bound to (ie. a string or a numeric variable) if
+           the constantname is not followed by a type-declaration character (%. &, !, #, $, etc...).
+<br><br>
+
+<a name="convbase$"></a>
+<hr width="95%" align=center>
+<!-- CONVBASE$ -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>CONVBASE$</B>   CONVERSION Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A conversion function which takes the string expression represented in
+           a specified base to be converted to another specified base determined
+           by the arguments passed.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>CONVBASE$(string-expression, frombase, tobase)</FONT><BR>
+           S$ = CONVBASE$("FFD", 16, 2)  '-- Convert from base 16 to 2<BR>
+           S$ = CONVBASE$("287", 10, 16) '-- Convert from base 10 to 16<BR><BR>
+           <B>Details</B>:<BR>
+           Negative numbers are not supported.
+<br><br>
+
+<a name="cos"></a>
+<hr width="95%" align=center>
+<!-- COS -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>COS</B>   MATH Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A math function that returns the cosine of an angle given in radians.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>COS(numeric-expression)</FONT><BR>
+           PI = 3.14153<BR>
+           C# = COS(PI)<BR><BR>
+           <B>Details</B>:<BR>
+           Numeric-expression is the angle expressed in radians.
+<br><br>
+
+<a name="data"></a>
+<hr width="95%" align=center>
+<!-- DATA -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>DATA</B>   Statement   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A non-executable statement that stores the numeric and string constants
+           used by a program's READ statements.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>DATA {constant|EXECUTE(...)}[,...]</FONT><BR>
+           DATA my dog ate my homework, "oh, boy!", 34.4<BR>
+           DATA EXECUTE(LEFT$("Hello", 2, 3))<BR><BR>
+           <B>Details</B>:<BR>
+           Constant is any valid numeric or string constant. If a string constant
+           contains commas, colons, or leading or trailing spaces you want to
+           preserve in your program, you must enclose the string in double quotes.
+           You can also execute code by using the EXECUTE keyword. The return value of
+           this executed code will be the value returned to your READ statement.
+<br><br>
+
+<a name="date$"></a>
+<hr width="95%" align=center>
+<!-- DATE$ -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>DATE$</B>   SYSTEM Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A function that returns a string containing the current date formatted
+           as MM-DD-YYYY. Where MM = month (1-12), DD = day (1-31) and YY = year (1980-2099)<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>DATE$</FONT><BR>
+           PRINT DATE$<BR><BR>
+           <B>Details</B>:<BR>
+           Unlike QBasic where you can set the current date using the DATE$ statement, you cannot do this under Rapid-Q.
+<br><br>
+
+<a name="dec"></a>
+<hr width="95%" align=center>
+<!-- DEC -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>DEC</B>   Statement   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           Decrements numeric variable by one, or by the amount specified.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>DEC(variable [, amount])</FONT><BR>
+           DEC(I)<BR>
+           DEC(I, 10)<BR><BR>
+
+<a name="def"></a>
+<hr width="95%" align=center>
+<!-- DEF... -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>DEF...</B>   Statement   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           DEFBYTE, DEFDBL, DEFDWORD, DEFINT, DEFLNG, DEFSHORT, DEFSNG, DEFSTR, DEFWORD are
+           declaration statements that name one or more variables and allocates storage space for them.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>DEFINT variable[(subscripts)] [, ...]</FONT><BR>
+           DEFSTR A, B, C="Hello", D, E<BR>
+           DEFINT I=99, J(100,10), K<BR><BR>
+           <B>Details</B>:<BR>
+           You cannot specify a range of variables, for example: DEFINT A-Z works
+           fine under QBasic, but not Rapid-Q. You can initialize each variable as
+           demonstrated above. DEF... statements are equivalent to calling DIM, but
+           can save you a lot of typing. To initialize an array, wrap the values
+           around curly braces {...}. For Example,
+<PRE>DEFINT A(1 TO 10) = {1,2,3,4,5,6,7,8,9,10}
+</PRE>
+Initializes elements 1 through 10 with the values 1, 2, 3, 4, 5, 6, 7, 8, 9, and 10 respectively.
+<br><br>
+
+<a name="delete$"></a>
+<hr width="95%" align=center>
+<!-- DELETE$ -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>DELETE$</B>   STRING Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A function that deletes part of a string.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>DELETE$(string-expression, start, length)</FONT><BR>
+           A$ = DELETE$("Hello world", 2, 3)  '-- Result: Ho world
+<br><br>
+
+<a name="dim"></a>
+<hr width="95%" align=center>
+<!-- DIM -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>DIM</B>   Statement   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           Declaration statement that names one or more variables and allocates storage space for them.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>DIM variable[(subscripts)] AS type</FONT><BR>
+           DIM A AS INTEGER, B(2,5,3,9,2) AS INTEGER<BR>
+           DIM S AS STRING<BR>
+           DIM Form AS QFORM<br>
+<font face="Fixedsys">Dim arg!(10) <font color="#000080">as single </font>
+</font><BR><font face="Fixedsys">Dim dateTime(1 <font color="#0000aa">To</font> 
+9)<font color="#0000aa"> as integer<br>
+<br>
+Also you can<br>
+<br>
+DefSng</font> arg!(10) ={0, 1, 2, 3, 4, 5, 6, 7, 8, 9}<br>
+<font color="#0000aa">DefSng</font> dateTime(1 <font color="#0000aa">To</font> 
+9) = { 1, 2, 3, 4, 5, 6, 7, 8, 9}<br>
+</font><BR>
+           <B>See also </B><font face="Fixedsys">
+    <a href="chapter3.html#32">Variables and Assignments</a></font><p>
+           <B><br>
+Details</B>:<BR>
+           Use the optional (subscripts) to declare the size of arrays,
+           up to 5 dimensions.
+<br><br>
+
+<a name="dir$"></a>
+</p>
+<hr width="95%" align=center>
+<!-- DIR$ -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>DIR$</B>   SYSTEM Function   <B>Windows</B><br>
+<hr width="95%" align=center>
+
+           A system function used to obtain the first/next file corresponding to
+           a specified filespec.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>DIR$[(file-spec, attribute)]</FONT><BR>
+           FileName$ = DIR$("*.*", 0)  <I>'-- Get first file</I><BR>
+           FileName$ = DIR$ <I>'-- Get next file</I><p>fn$=&quot;C:\BAS\RAPIDQ&nbsp;&nbsp; 
+old\WSC4VB22.ZIP&quot;<BR>FileName$ = DIR$(fn$, 0) ' not&nbsp; to quote a <b>filename</b> 
+containing <b>spaces</b><BR>
+           &nbsp;</p>
+<p>
+           <B>Details</B>:<BR>
+           File-spec specifies a filename or path (which can include wildcards characters).
+           Calling DIR$ with no parameters return additional filename matches.
+           If no matches exist (or all matches have been exhausted), DIR$ returns an empty string.
+           DIR$ returns all regular files as well as any special files specified in
+           the attribute parameter. </p>
+<PRE>Here are some valid file attributes, you can combine
+them by using OR (ie. faReadOnly OR faDirectory)
+
+&H1 = faReadOnly       &H8 = faVolumeID <b><span style="background-color: #FF0000">'<font color="#FFFF00"> </font>not working </span></b>
+&H2 = faHidden        &H10 = faDirectory
+&H4 = faSysFile       &H20 = faArchive
+                      &H3F = faAnyFile
+</PRE>
+           To obtain additional information on the currently matched file, use the
+           <B>FileRec</B> properties.
+<PRE>FileRec.FileName    - Returns Windows long file name
+FileRec.ShortName   - Returns the short file name
+FileRec.Date        - Returns the file date as a string
+FileRec.Time        - Returns the file time as a string
+FileRec.Size        - Returns the file size
+FileRec.FileTime    - Returns the file time as an integer
+</PRE>
+You can use FileRec.FileTime to compare file times. So a newer
+file will have a FileTime greater than an older file.
+<br><br>
+
+<a name="direxists"></a>
+<hr width="95%" align=center>
+<!-- DIREXISTS -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>DIREXISTS</B>   SYSTEM Function   <B>Windows</B><br>
+<hr width="95%" align=center>
+
+           A function that returns 0 if directory does not exist, non-zero otherwise.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>DIREXISTS(string-expression)</FONT><BR>
+           A = DIREXISTS("c:\windows")&nbsp; or&nbsp;
+           A = DIREXISTS("c:\windows\") <BR><BR>
+
+<a name="doevents"></a>
+<hr width="95%" align=center>
+<!-- DOEVENTS -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>DOEVENTS</B>   RAPID-Q Specific   <B>Windows</B><br>
+<hr width="95%" align=center>
+
+           Returns control to the operating system to process the events in its queue, and returns
+           back control to the program once done.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>DOEVENTS</FONT><BR>
+           DO<BR>
+           &nbsp; &nbsp; DOEVENTS<BR>
+           LOOP<BR><BR>
+           <B>Details</B>:<BR>
+           DoEvents should normally be used for long-running processes (ie. long loops or anything else
+           that eats up the CPU), so that the user can abort the process if necessary. DoEvents can also
+           be used to handle multiple forms.
+<br><br>
+
+<a name="end"></a>
+<hr width="95%" align=center>
+<!-- END -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>END</B>   Statement   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           Terminates your program.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>END</FONT><BR>
+           END<BR><BR>
+           <B>Details</B>:<BR>
+           Call END to terminate your application, but if there are
+           any Windows still opened, you should close them first.
+<br><br>
+
+<a name="environ"></a>
+<hr width="95%" align=center>
+<!-- ENVIRON -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>ENVIRON</B>   SYSTEM Statement   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A statement used to set or modify an environment variable.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>ENVIRON string-expression</FONT><BR>
+           ENVIRON "PATH=c:\windows"<BR>
+           ENVIRON "TEST what"<BR><BR>
+           <B>Details</B>:<BR>
+           String-expression must have the form<BR>
+           parametername=text<BR>
+           or<BR>
+           parametername text<BR>
+           Everything to the left of the equal sign or space is assumed to be a
+           parameter, and everything to the right, text.
+           If the parametername has not previously existed in the environment string table,
+           it is appended to the end of the table. If a pametername already exists, it
+           gets deleted and the new parametername is appended to the end of the table.
+<br><br>
+
+<a name="environ$"></a>
+<hr width="95%" align=center>
+<!-- ENVIRON$ -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>ENVIRON$</B>   SYSTEM Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A function that returns an environment string.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>ENVIRON$(environment-string)</FONT><BR>
+           A$ = ENVIRON$("PATH")<BR><BR>
+           <B>Details</B>:<BR>
+           It is not possible, at this time, to retrieve an environment string
+           by its index.
+<br><br>
+
+<a name="exp"></a>
+<hr width="95%" align=center>
+<!-- EXP -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>EXP</B>   MATH Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A math function that returns the exponential function (e raised to the power
+           of n).<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>EXP(numeric-expression)</FONT><BR>
+           A# = EXP(1)<BR><BR>
+
+<a name="extractresource"></a>
+<hr width="95%" align=center>
+<!-- EXTRACTRESOURCE -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>EXTRACTRESOURCE</B>   RESOURCE Statement   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A statement that extracts a resource, from the current program, to a file.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>EXTRACTRESOURCE resource-value, filename</FONT><BR>
+           EXTRACTRESOURCE Resource(0), "test.bmp"<BR><BR>
+           <B>Details</B>:<BR>
+           The resource-value is the absolute position of the resource within the current program.
+           To find the absolute position of the resource, see also RESOURCE(), and RESOURCECOUNT.
+<br><br>
+
+<a name="field$"></a>
+<hr width="95%" align=center>
+<!-- FIELD$ -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>FIELD$</B>   STRING Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A function that returns a field (or token) separated by deliminators.
+           <BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>FIELD$(Source-string, deliminator-string, field-number)</FONT><BR>
+           A$ = FIELD$("John&Doe&555-1234", "&", 2) &nbsp '-- Returns Doe<BR>
+           A$ = FIELD$("John&&Doe&&555-1234", "&&", 3) &nbsp '-- Returns 555-1234
+<BR><BR>
+
+<a name="fileexists"></a>
+<hr width="95%" align=center>
+<!-- FILEEXISTS -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>FILEEXISTS</B>   SYSTEM Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A function that returns 0 if file does not exist, non-zero otherwise.
+           The current working directory is searched for the file if no path is specified.<BR>
+<font color="#800000">Not to quote a <b>filename</b> containing <b>spaces</b><BR>
+
+</font>
+           <B>Syntax</B>: <FONT FACE=Courier>FILEEXISTS(string-expression)</FONT><BR>
+           A = FILEEXISTS("rapidq.exe")
+<BR>
+
+<a name="fix"></a>
+<hr width="95%" align=center>
+<!-- FIX -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>FIX</B>   MATH Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A function that removes the fractional part of a number.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>FIX(numeric-expression)</FONT><BR>
+           A% = FIX(342.97)
+<BR><BR>
+
+<a name="floor"></a>
+<hr width="95%" align=center>
+<!-- FLOOR -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>FLOOR</B>   MATH Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A math function that rounds a numeric expression down toward negative infinity.
+           <BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>FLOOR(numeric-expression)</FONT><BR>
+           A% = FLOOR(66.7) '-- Returns 66<BR><BR>
+
+<a name="format$"></a>
+<hr width="95%" align=center>
+<!-- FORMAT$ -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>FORMAT$</B>   STRING Function   <B>Windows/<font size="-1">Unix</font></B><br>
+<hr width="95%" align=center>
+
+           A function that returns a formatted string assembled from a Pascal style format string and a series
+           of arguments. The Pascal style format string closely resembles C style format strings, but definitely
+           not VB compatible.
+           <BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>FORMAT$(Format-string, arg1, arg2, ...)</FONT><BR>
+           A$ = FORMAT$("Location: %s %4d %-10.4g", "Any", 1234, 55.39) &nbsp '-- Returns Location: Any 1234 55.39<BR>
+           <B>Details</B>:<BR>
+Format strings passed to the string formatting routines contain two types of objects--plain characters and format specifiers. Plain characters are copied verbatim to the resulting string. Format specifiers fetch arguments from the argument list and apply formatting to them.
+Format specifiers have the following form:
+<PRE>"%" [index ":"] ["-"] [width] ["." prec] type
+</PRE>
+A format specifier begins with a % character. After the % come the following, in this order:
+<PRE>An optional argument index specifier, [index ":"]
+An optional left justification indicator, ["-"]
+An optional width specifier, [width]
+An optional precision specifier, ["." prec]
+The conversion type character, type
+</PRE>
+The following table summarizes the possible values for type:<BR>
+<table border="1" cellspacing="1" cellpadding="4">
+ <tr>
+  <td width = "40" align="center"><b>d</b></td>
+  <td>
+  Decimal. The argument should be an integer value. The value is converted to a string of decimal digits. If the format string contains a precision specifier, it indicates that the resulting string must contain at least the specified number of digits; if the value has less digits, the resulting string is left-padded with zeros.
+  </td>
+ </tr>
+ <tr>
+  <td width = "40" align="center"><b>e</b></td>
+  <td>
+  Scientific. The argument should be a floating-point value. The value is converted to a string of the form "-d.ddd...E+ddd". The resulting string starts with a minus sign if the number is negative. One digit always precedes the decimal point.
+  The total number of digits in the resulting string (including the one before the decimal point) is given by the precision specifier in the format string--a default precision of 15 is assumed if no precision specifier is present. The "E" exponent character in the resulting string is always followed by a plus or minus sign and at least three digits.
+  </td>
+ </tr>
+ <tr>
+  <td width = "40" align="center"><b>f</b></td>
+  <td>
+  Fixed. The argument should be a floating-point value. The value is converted to a string of the form "-ddd.ddd...". The resulting string starts with a minus sign if the number is negative.
+  The number of digits after the decimal point is given by the precision specifier in the format string--a default of 2 decimal digits is assumed if no precision specifier is present.
+  </td>
+ </tr>
+ <tr>
+  <td width = "40" align="center"><b>g</b></td>
+  <td>
+  General. The argument should be a floating-point value. The value is converted to the shortest possible decimal string using fixed or scientific format. The number of significant digits in the resulting string is given by the precision specifier in the format string--a default precision of 15 is assumed if no precision specifier is present.
+  Trailing zeros are removed from the resulting string, and a decimal point appears only if necessary. The resulting string uses fixed point format if the number of digits to the left of the decimal point in the value is less than or equal to the specified precision, and if the value is greater than or equal to 0.00001. Otherwise the resulting string uses scientific format.
+  </td>
+ </tr>
+ <tr>
+  <td width = "40" align="center"><b>n</b></td>
+  <td>
+  Number. The argument should be a floating-point value. The value is converted to a string of the form "-d,ddd,ddd.ddd...". The "n" format corresponds to the "f" format, except that the resulting string contains thousand separators.
+  </td>
+ </tr>
+ <tr>
+  <td width = "40" align="center"><b>m</b></td>
+  <td>
+  Money. The argument should be a floating-point value. The value is converted to a string that represents a currency amount.
+  </td>
+ </tr>
+ <tr>
+  <td width = "40" align="center"><b>s</b></td>
+  <td>
+  String. The argument must be a string. The string or character is inserted in place of the format specifier. The precision specifier, if present in the format string, specifies the maximum length of the resulting string. If the argument is a string that is longer than this maximum, the string is truncated.
+  </td>
+ </tr>
+ <tr>
+  <td width = "40" align="center"><b>x</b></td>
+  <td>
+  Hexadecimal. The argument should be an integer value. The value is converted to a string of hexadecimal digits. If the format string contains a precision specifier, it indicates that the resulting string must contain at least the specified number of digits; if the value has fewer digits, the resulting string is left-padded with zeros.
+  </td>
+ </tr>
+</table>
+<BR>
+Conversion characters may be specified in uppercase as well as in lowercase--both produce the same results.
+<BR>
+An index specifier sets the current argument list index to the specified value.
+The index of the first argument in the argument list is 0. Using index specifiers,
+it is possible to format the same argument multiple times. For example
+Format$("%d %d %0:d %d", 10, 20) produces the string "10 20 10 20". 
+<BR><br>
+
+<a name="frac"></a>
+<hr width="95%" align=center>
+<!-- FRAC -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>FRAC</B>   MATH Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A function that returns the fractional part of a number.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>FRAC(numeric-expression)</FONT><BR>
+           A# = FRAC(342.97)<BR><BR>
+
+<a name="hex$"></a>
+<hr width="95%" align=center>
+<!-- HEX$ -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>HEX$</B>   CONVERSION Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A function that returns the hexidecimal (base 16) representation of the (base 10) numeric expression.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>HEX$(numeric-expression)</FONT><BR>
+           A$ = HEX$(123)<BR><BR>
+           <B>Details</B>:<BR>
+           Negative numbers are supported. In the Windows version, the string is pre-padded with 0's to fit the string length of 8.
+<br><br>
+
+<a name="iif"></a>
+<hr width="95%" align=center>
+<!-- IIF -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>IIF</B>   Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           The immediate IF function returns one of two parts depending on the evaluation of an
+           expression. Notice that both parts are evaluated, whether the expression returned true or false,
+           so watch for undesirable side effects.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>IIF(expression, true-expr, false-expr)</FONT><BR>
+           A$ = IIF(6 &gt; 5, "TRUE", "FALSE") '-- returns TRUE<BR><BR>
+
+<a name="inc"></a>
+<hr width="95%" align=center>
+<!-- INC -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>INC</B>   Statement   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           Increments numeric variable by one, or by the amount specified.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>INC(variable [, amount])</FONT><BR>
+           INC(I)<BR>
+           INC(I, 10)<BR><BR>
+
+<a name="initarray"></a>
+<hr width="95%" align=center>
+<!-- INITARRAY -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>INITARRAY</B>   ARRAY Statement   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           Initializes an array with the corresponding values.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>INITARRAY(Array, value [, ...])</FONT><BR>
+           DIM A(1 TO 100) AS INTEGER<BR>
+           INITARRAY(A, 55, 234, 45, 99)<BR><BR>
+           <B>Details</B>:<BR>
+           Equivalently:<BR>
+           DEFINT A(1 TO 100) = {55, 234, 45, 99}<BR><BR>
+           Initializing arrays as opposed to looping through each one saves a bit of time.
+<br><br>
+
+<a name="inp"></a>
+<hr width="95%" align=center>
+<!-- INP -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>INP</B>   I/O Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A device I/O function that returns the byte value read from an I/O port.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>INP(port)</FONT><BR>
+           A% = INP(&H3C9)<BR><BR>
+           <B>Details</B>:<BR>
+           Port is any word value between 0 and 65535. Return value is in the range 0 to 255.
+<br><br>
+
+<a name="inpw"></a>
+<hr width="95%" align=center>
+<!-- INPW -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>INPW</B>   I/O Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A device I/O function that returns the word value read from an I/O port.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>INPW(port)</FONT><BR>
+           A = INPW(&H3C9)<BR><BR>
+           <B>Details</B>:<BR>
+           Port is any word value between 0 and 65535. Return value is also in the range 0 to 65535.
+<br><br>
+
+<a name="insert$"></a>
+<hr width="95%" align=center>
+<!-- INSERT$ -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>INSERT$</B>   STRING Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A function that returns a string with an inserted substring beginning at a specified index.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>INSERT$(insert-string, source-string, index-number)</FONT><BR>
+           A$ = INSERT$("hi", "Hello", 3) '-- returns Hehillo<BR><BR>
+
+<a name="instr"></a>
+<hr width="95%" align=center>
+<!-- INSTR -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>INSTR</B>   STRING Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A function that compares 2 strings and returns the position of the
+           find-string with respect to the search-string.
+           If found, INSTR returns the index position of the find-string, 0 otherwise.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>INSTR([start,] search-string, find-string)</FONT><BR>
+           A% = INSTR("Hello", "ll") '-- returns 3<BR>
+           A% = INSTR(4, "hehe they", "he") '-- returns 7<BR><BR>
+
+<a name="int"></a>
+<hr width="95%" align=center>
+<!-- INT -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>INT</B>   MATH Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A function that returns the largest integer less than or equal to a numeric-expression.
+           Fractional part is truncated.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>INT(numeric-expression)</FONT><BR>
+           A& = INT(342.97)<BR><BR>
+
+<a name="kill"></a>
+<hr width="95%" align=center>
+<!-- KILL -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>KILL</B>   SYSTEM Statement   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A statement that removes a disk file.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>KILL filespec</FONT><BR>
+           KILL "mydocuments.txt"<br>
+           KILL "<a href="file:///c:/path%20with%20spaces%20/mydocuments.txt">c:\path 
+with spaces \mydocuments.txt</a>" '&nbsp; quotes not needed<br>
+           <b><font color="#FF0000">KILL "*.c" - not working with wildcard<br>
+<br>
+</font>Use<font color="#800080"><br>
+</font></b><font color="#800080"><b>sub</b></font> KillFiles (FileName$) <br>
+<font color="#008000"><i>'Kill files in FileName$<br>
+' for example KillFiles &quot;C:\BAS\RAPIDQ\tmp\*.tmp&quot;</i></font><br>
+<br>
+FName$ = DIR$(FileName$, 0) <i><font color="#008000">'-- Get first file</font></i><br>
+<font color="#000080"><b>while</b></font> FName$ &lt;&gt;&quot;&quot;<br>
+<b><font color="#000080">kill</font></b> FName$<br>
+<font color="#000080"><b>if</b></font> <b>fileexists</b> (FName$)&gt;0 <b>
+<font color="#000080">then </font><font color="#FF00FF">print</font></b> &quot;Can't 
+kill file &quot;+FName$<br>
+FName$ =<b> DIR$</b> <font color="#008000"><i>'-- Get next file</i></font><br>
+<font color="#000080"><b>wend</b></font><br>
+<font color="#800080"><b>end sub</b></font><br>
+<b><font color="#FF0000"><BR></font></b><BR>
+
+<a name="killmessage"></a>
+<hr width="95%" align=center>
+<!-- KILLMESSAGE -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>KILLMESSAGE</B>   RAPID-Q Specific   <B>Windows</B><br>
+<hr width="95%" align=center>
+
+           A statement that removes a message from the queue.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>KILLMESSAGE hWnd, Message</FONT><BR>
+           KILLMESSAGE form.handle, WM_CHAR<BR><BR>
+           <B>Details</B>:<BR>
+           Ideally, KillMessage should be used inside an event, such as OnKeyDown, to remove
+           any messages you don't want processed further.
+<br><br>
+
+<a name="lbound"></a>
+<hr width="95%" align=center>
+<!-- LBOUND -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>LBOUND</B>   ARRAY Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A function that returns the lower bound of the array.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>LBOUND(arrayname [,dimension])</FONT><BR>
+           DIM A(-50 TO 100) AS INTEGER<BR>
+           L% = LBOUND(A) '-- Returns -50<BR><BR>
+           <B>Details</B>:<BR>
+           If the array has multiple dimensions, you can use the optional dimension argument
+           to check the lower bound of each one.
+<br><br>
+
+<a name="lcase$"></a>
+<hr width="95%" align=center>
+<!-- LCASE$ -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>LCASE$</B>   STRING Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A string function that returns a string expression with all letters lower-case.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>LCASE$(string-expression)</FONT><BR>
+           A$ = LCASE$("HELLO") '-- returns hello<BR><BR>
+
+<a name="left$"></a>
+<hr width="95%" align=center>
+<!-- LEFT$ -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>LEFT$</B>   STRING Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A string function that returns a string consisting of the leftmost n characters of a string.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>LEFT$(string-expression, n)</FONT><BR>
+           A$ = LEFT$("Hello",2) '-- returns he<BR><BR>
+
+<a name="len"></a>
+<hr width="95%" align=center>
+<!-- LEN -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>LEN</B>   STRING Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A function that returns the number of characters in a string.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>LEN(string-expression)</FONT><BR>
+           A% = LEN("HELLO") '-- returns 5<BR><BR>
+           <B>Details</B>:<BR>
+           LEN will not return the number of bytes required by a variable.
+           This option is available under QBasic.
+<br><br>
+
+<a name="lflush"></a>
+<hr width="95%" align=center>
+<!-- LFLUSH -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>LFLUSH</B>   PRINTER Statement   <B>Windows</B><br>
+<hr width="95%" align=center>
+
+           A statement used to begin a print job.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>LFLUSH</FONT><BR>
+           LPRINT "print this line"<BR>
+           LFLUSH '-- call this to start printing<BR><BR>
+           <B>Details</B>:<BR>
+           You should call LFLUSH after you're satisfied that you want to start
+           printing. If you don't call LFLUSH, then whenever your application
+           terminates is when your document will start its print job.
+<br><br>
+
+<a name="libraryinst"></a>
+<hr width="95%" align=center>
+<!-- LIBRARYINST -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>LIBRARYINST</B>   DLL Function   <B>Windows</B><br>
+<hr width="95%" align=center>
+
+           Returns the handle to the DLL module.
+           If the DLL hasn't been loaded yet or is not found, this function returns 0.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>LIBRARYINST(DLLName)</FONT><BR>
+           DECLARE FUNCTION UpdateWindow LIB "USER32" ALIAS _<BR>
+                 &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; "UpdateWindow" (hWnd AS LONG) AS LONG<BR>
+           UpdateWindow(0) &nbsp; &nbsp; '-- Using function will load DLL<BR>
+           hInst& = LIBRARYINST("USER32")<BR><BR>
+           <B>Details</B>:<BR>
+           Declaring a function as a DLL function does not automatically load the DLL.
+           The DLL is loaded once the function is used. Please note that library names should
+           match, so in your declaration for LIB "USER32" ... to find this library, you must
+           match that same name. ie. LIBRARYINST("USER32.DLL") returns 0, it must be "USER32" in this particular case.
+           See also UNLOADLIBRARY.
+<br><br>
+
+<a name="log"></a>
+<hr width="95%" align=center>
+<!-- LOG -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>LOG</B>   MATH Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A math function that returns the natural logarithm of a numeric expression.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>LOG(numeric-expression)</FONT><BR>
+           A# = LOG(10)<BR><BR>
+
+<a name="lprint"></a>
+<hr width="95%" align=center>
+<!-- LPRINT -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>LPRINT</B>   PRINTER Statement   <B>Windows</B><br>
+<hr width="95%" align=center>
+
+           A statement just like PRINT except all output is directed to the default printer.
+           Make sure to call LFLUSH to start the print job.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>LPRINT [expressions][{;|,}][...]</FONT><BR>
+           LPRINT "print this line"<BR>
+           LFLUSH<BR><BR>
+           <B>Details</B>:<BR>
+           You should call LFLUSH after you're satisfied that you want to start
+           printing. If you don't call LFLUSH, then whenever your application
+           terminates is when your document will start its print job.
+<br><br>
+
+<a name="ltrim$"></a>
+<hr width="95%" align=center>
+<!-- LTRIM$ -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>LTRIM$</B>   STRING Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A string function that returns a string with leading spaces removed.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>LTRIM$(string-expression)</FONT><BR>
+           A$ = LTRIM$("  Hello") '-- returns Hello<BR><BR>
+
+<a name="memcmp"></a>
+<hr width="95%" align=center>
+<!-- MEMCMP -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>MEMCMP</B>   MEMORY Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A memory function that compares 2 memory addresses and returns 0 if the memory contents
+           do not match, or non-zero otherwise.
+           <BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>MEMCMP(ptr1, ptr2, count)</FONT><BR>
+           DEFINT I=10, J=10<BR>
+           A% = MEMCMP(VARPTR(I), VARPTR(J), SIZEOF(INTEGER))<BR><BR>
+
+<a name="memcpy"></a>
+<hr width="95%" align=center>
+<!-- MEMCPY -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>MEMCPY</B>   MEMORY Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A memory function that copies n bytes of memory from source to destination.
+           <BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>MEMCPY(destination, source, n)</FONT><BR>
+           DEFINT I=90, J=10<BR>
+           '-- After MEMCPY, I should equal 10<BR>
+           MEMCPY(VARPTR(I), VARPTR(J), SIZEOF(INTEGER))<BR><BR>
+
+<a name="memset"></a>
+<hr width="95%" align=center>
+<!-- MEMSET -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>MEMSET</B>   MEMORY Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A memory function that initializes a memory blocks.
+           <BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>MEMSET(ptr, char, size)</FONT><BR>
+           DIM IntArray(1 TO 10) AS INTEGER<BR>
+           MEMSET(VARPTR(I(1)), 0, 10*SIZEOF(INTEGER))<BR><BR>
+
+<a name="messagebox"></a>
+<hr width="95%" align=center>
+<!-- MESSAGEBOX -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>MESSAGEBOX</B>   RAPID-Q Specific   <B>Windows</B><br>
+<hr width="95%" align=center>
+
+           Displays a simple message box with prompts. This implements Window's MessageBox API function.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>MESSAGEBOX(message, title, flags%)</FONT><BR>
+           IF MessageBox("Close this form?", "Close", 1) = 1 THEN<BR>
+           &nbsp; &nbsp; '-- Close form<BR>
+           END IF<BR><BR>
+           <B>Details</B>:<BR>
+           See Windows API Help file for valid flags.
+<br>
+<p>' MessageBox() Flags<br>
+Public Const MB_OK = &amp;H0&amp;<br>
+Public Const MB_OKCANCEL = &amp;H1&amp;<br>
+Public Const MB_ABORTRETRYIGNORE = &amp;H2&amp;<br>
+Public Const MB_YESNOCANCEL = &amp;H3&amp;<br>
+Public Const MB_YESNO = &amp;H4&amp;<br>
+Public Const MB_RETRYCANCEL = &amp;H5&amp;<br>
+<br>
+Public Const MB_ICONHAND = &amp;H10&amp;<br>
+Public Const MB_ICONQUESTION = &amp;H20&amp;<br>
+Public Const MB_ICONEXCLAMATION = &amp;H30&amp;<br>
+Public Const MB_ICONASTERISK = &amp;H40&amp;<br>
+<br>
+Public Const MB_ICONINFORMATION = MB_ICONASTERISK<br>
+Public Const MB_ICONSTOP = MB_ICONHAND<br>
+<br>
+Public Const MB_DEFBUTTON1 = &amp;H0&amp;<br>
+Public Const MB_DEFBUTTON2 = &amp;H100&amp;<br>
+Public Const MB_DEFBUTTON3 = &amp;H200&amp;<br>
+<br>
+Public Const MB_APPLMODAL = &amp;H0&amp;<br>
+Public Const MB_SYSTEMMODAL = &amp;H1000&amp;<br>
+Public Const MB_TASKMODAL = &amp;H2000&amp;<br>
+<br>
+Public Const MB_NOFOCUS = &amp;H8000&amp;<br>
+Public Const MB_SETFOREGROUND = &amp;H10000<br>
+Public Const MB_DEFAULT_DESKTOP_ONLY = &amp;H20000<br>
+<br>
+Public Const MB_TYPEMASK = &amp;HF&amp;<br>
+Public Const MB_ICONMASK = &amp;HF0&amp;<br>
+Public Const MB_DEFMASK = &amp;HF00&amp;<br>
+Public Const MB_MODEMASK = &amp;H3000&amp;<br>
+Public Const MB_MISCMASK = &amp;HC000&amp;<br>
+&nbsp;</p>
+<p>Declare Function MessageBox Lib &quot;user32&quot; Alias &quot;MessageBoxA&quot; _<br>
+&nbsp;(ByVal hwnd As Long, ByVal lpText As String, ByVal lpCaption As String, 
+ByVal wType As Long) As Long</p>
+<p>� hWnd<br>
+Identifies the owner window of the message box to be created. If this parameter 
+is NULL, the message box has no owner window.<br>
+� lpText<br>
+Points to a null-terminated string containing the message to be displayed.<br>
+� lpCaption<br>
+Points to a null-terminated string used for the dialog box title. If this 
+parameter is NULL, the default title Error is used.<br>
+� uType<br>
+Specifies a set of bit flags that determine the contents and behavior of the 
+dialog box. This parameter can be a combination of flags from the following 
+groups of flags.<br>
+&nbsp;</p>
+<p><span style="background-color: #FFFF00">Specify </span>
+<span style="background-color: #FFFF00">one</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">of</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">the</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">following</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">flags</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">to</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">indicate</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">the</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">buttons</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">contained</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">in</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">the</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">message</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">box</span><span style="background-color: #FFFF00">:<br>
+</span><span style="background-color: #CCFFCC">MB_ABORTRETRYIGNORE&nbsp;&nbsp; 
+The</span><span style="background-color: #CCFFCC"> </span>
+<span style="background-color: #CCFFCC">message</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">box</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">contains</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">three</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">push</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">buttons</span><span style="background-color: #CCFFCC">:
+</span><span style="background-color: #CCFFCC">Abort</span><span style="background-color: #CCFFCC">,
+</span><span style="background-color: #CCFFCC">Retry</span><span style="background-color: #CCFFCC">,
+</span><span style="background-color: #CCFFCC">and</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">Ignore</span><span style="background-color: #CCFFCC">.<br>
+</span><span style="background-color: #FFFFCC">MB_OK&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+The</span><span style="background-color: #FFFFCC"> </span>
+<span style="background-color: #FFFFCC">message</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">box</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">contains</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">one</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">push</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">button</span><span style="background-color: #FFFFCC">:
+</span><span style="background-color: #FFFFCC">OK</span><span style="background-color: #FFFFCC">.
+</span><span style="background-color: #FFFFCC">This</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">is</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">the</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">default</span><span style="background-color: #FFFFCC">.<br>
+</span><span style="background-color: #CCFFCC">MB_OKCANCEL&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+The</span><span style="background-color: #CCFFCC"> </span>
+<span style="background-color: #CCFFCC">message</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">box</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">contains</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">two</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">push</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">buttons</span><span style="background-color: #CCFFCC">:
+</span><span style="background-color: #CCFFCC">OK</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">and</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">Cancel</span><span style="background-color: #CCFFCC">.<br>
+</span><span style="background-color: #FFFFCC">MB_RETRYCANCEL&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+The</span><span style="background-color: #FFFFCC"> </span>
+<span style="background-color: #FFFFCC">message</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">box</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">contains</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">two</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">push</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">buttons</span><span style="background-color: #FFFFCC">:
+</span><span style="background-color: #FFFFCC">Retry</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">and</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">Cancel</span><span style="background-color: #FFFFCC">.<br>
+</span><span style="background-color: #CCFFCC">MB_YESNO&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+The</span><span style="background-color: #CCFFCC"> </span>
+<span style="background-color: #CCFFCC">message</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">box</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">contains</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">two</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">push</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">buttons</span><span style="background-color: #CCFFCC">:
+</span><span style="background-color: #CCFFCC">Yes</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">and</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">No</span><span style="background-color: #CCFFCC">.<br>
+</span><span style="background-color: #FFFFCC">MB_YESNOCANCEL&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+The</span><span style="background-color: #FFFFCC"> </span>
+<span style="background-color: #FFFFCC">message</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">box</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">contains</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">three</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">push</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">buttons</span><span style="background-color: #FFFFCC">:
+</span><span style="background-color: #FFFFCC">Yes</span><span style="background-color: #FFFFCC">,
+</span><span style="background-color: #FFFFCC">No</span><span style="background-color: #FFFFCC">,
+</span><span style="background-color: #FFFFCC">and</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">Cancel</span><span style="background-color: #FFFFCC">.</span><br>
+<br>
+<span style="background-color: #FFFF00">Specify</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">one</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">of</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">the</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">following</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">flags</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">to</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">display</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">an</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">icon</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">in</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">the</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">message</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">box</span><span style="background-color: #FFFF00">:<br>
+</span><span style="background-color: #CCFFCC">MB_ICONEXCLAMATION</span><span style="background-color: #CCFFCC">,
+</span><span style="background-color: #CCFFCC">MB_ICONWARNING</span><span style="background-color: #CCFFCC"><br>
+</span><span style="background-color: #CCFFCC">An</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">exclamation-point</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">icon</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">appears</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">in</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">the</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">message</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">box</span><span style="background-color: #CCFFCC">.<br>
+<br>
+</span><span style="background-color: #FFFFCC">MB_ICONINFORMATION</span><span style="background-color: #FFFFCC">,
+</span><span style="background-color: #FFFFCC">MB_ICONASTERISK</span><span style="background-color: #FFFFCC"><br>
+</span><span style="background-color: #FFFFCC">An</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">icon</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">consisting</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">of</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">a</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">lowercase</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">letter</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">i</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">in</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">a</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">circle</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">appears</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">in</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">the</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">message</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">box</span><span style="background-color: #FFFFCC">.<br>
+</span><span style="background-color: #CCFFCC">MB_ICONQUESTION&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+A </span><span style="background-color: #CCFFCC">question-mark</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">icon</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">appears</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">in</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">the</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">message</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">box</span><span style="background-color: #CCFFCC">.<br>
+</span><span style="background-color: #FFFFCC">MB_ICONSTOP</span><span style="background-color: #FFFFCC">,<br>
+</span><span style="background-color: #FFFFCC">MB_ICONERROR</span><span style="background-color: #FFFFCC">,<br>
+</span><span style="background-color: #FFFFCC">MB_ICONHAND</span><span style="background-color: #FFFFCC"><br>
+</span><span style="background-color: #FFFFCC">A</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">stop-sign</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">icon</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">appears</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">in</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">the</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">message</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">box</span><span style="background-color: #FFFFCC">.<br>
+<br>
+</span><span style="background-color: #FFFF00">Specify</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">one</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">of</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">the</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">following</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">flags</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">to</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">indicate</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">the</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">default</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">button</span><span style="background-color: #FFFF00">:<br>
+</span><span style="background-color: #CCFFCC">MB_DEFBUTTON1 The </span>
+<span style="background-color: #CCFFCC">first</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">button</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">is</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">the</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">default</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">button</span><span style="background-color: #CCFFCC">.<br>
+</span><span style="background-color: #FFFFCC">MB_DEFBUTTON1 </span>
+<span style="background-color: #FFFFCC">is</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">the</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">default</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">unless</span><span style="background-color: #FFFFCC"> 
+MB_DEFBUTTON2, MB_DEFBUTTON3, </span><span style="background-color: #FFFFCC">or</span><span style="background-color: #FFFFCC"> 
+MB_DEFBUTTON4 </span><span style="background-color: #FFFFCC">is</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">specified</span><span style="background-color: #FFFFCC">.<br>
+</span><span style="background-color: #CCFFCC">MB_DEFBUTTON2 The </span>
+<span style="background-color: #CCFFCC">second</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">button</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">is</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">the</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">default</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">button</span><span style="background-color: #CCFFCC">.<br>
+</span><span style="background-color: #FFFFCC">MB_DEFBUTTON3 The </span>
+<span style="background-color: #FFFFCC">third</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">button</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">is</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">the</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">default</span><span style="background-color: #FFFFCC">
+</span><span style="background-color: #FFFFCC">button</span><span style="background-color: #FFFFCC">.<br>
+</span><span style="background-color: #CCFFCC">MB_DEFBUTTON4 The </span>
+<span style="background-color: #CCFFCC">fourth</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">button</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">is</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">the</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">default</span><span style="background-color: #CCFFCC">
+</span><span style="background-color: #CCFFCC">button</span><span style="background-color: #CCFFCC">.<br>
+<br>
+</span><span style="background-color: #FFFF00">Specify</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">one</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">of</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">the</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">following</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">flags</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">to</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">indicate</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">the</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">modality</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">of</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">the</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">dialog</span><span style="background-color: #FFFF00">
+</span><span style="background-color: #FFFF00">box</span><span style="background-color: #FFFF00">:<br>
+</span>MB_APPLMODAL<br>
+The user must respond to the message box before continuing work in the window 
+identified by the hWnd parameter. However, the user can move to the windows of 
+other applications and work in those windows.<br>
+Depending on the hierarchy of windows in the application, the user may be able 
+to move to other windows within the application. All child windows of the parent 
+of the message box are automatically disabled, but popup windows are not.<br>
+MB_APPLMODAL is the default if neither MB_SYSTEMMODAL nor MB_TASKMODAL is 
+specified.<br>
+MB_SYSTEMMODAL<br>
+Same as MB_APPLMODAL except that the message box has the WS_EX_TOPMOST style. 
+Use system-modal message boxes to notify the user of serious, potentially 
+damaging errors that require immediate attention (for example, running out of 
+memory). This flag has no effect on the user's ability to interact with windows 
+other than those associated with hWnd.<br>
+MB_TASKMODAL<br>
+Same as MB_APPLMODAL except that all the top-level windows belonging to the 
+current task are disabled if the hWnd parameter is NULL. Use this flag when the 
+calling application or library does not have a window handle available but still 
+needs to prevent input to other windows in the current application without 
+suspending other applications.<br>
+<br>
+In addition, you can specify the following flags:<br>
+MB_DEFAULT_DESKTOP_ONLY<br>
+The desktop currently receiving input must be a default desktop; otherwise, the 
+function fails. A default desktop is one an application runs on after the user 
+has logged on.<br>
+MB_HELP<br>
+Adds a Help button to the message box. Choosing the Help button or pressing F1 
+generates a Help event.<br>
+MB_RIGHT<br>
+The text is right-justified.<br>
+MB_RTLREADING<br>
+Displays message and caption text using right-to-left reading order on Hebrew 
+and Arabic systems.<br>
+MB_SETFOREGROUND<br>
+The message box becomes the foreground window. Internally, Windows calls the 
+SetForegroundWindow function for the message box.<br>
+MB_TOPMOST<br>
+The message box is created with the WS_EX_TOPMOST window style.<br>
+MB_SERVICE_NOTIFICATION<br>
+Windows NT only: The caller is a service notifying the user of an event. The 
+function displays a message box on the current active desktop, even if there is 
+no user logged on to the computer.<br>
+If this flag is set, the hWnd parameter must be NULL. This is so the message box 
+can appear on a desktop other than the desktop corresponding to the hWnd.<br>
+For Windows NT version 4.0, the value of MB_SERVICE_NOTIFICATION has changed. 
+See WINUSER.H for the old and new values. Windows NT 4.0 provides backward 
+compatibility for pre-existing services by mapping the old value to the new 
+value in the implementation of MessageBox and MessageBoxEx. This mapping is only 
+done for executables that have a version number, as set by the linker, less than 
+4.0.<br>
+To build a service that uses MB_SERVICE_NOTIFICATION, and can run on both 
+Windows NT 3.x and Windows NT 4.0, you have two choices. 1. At link-time, 
+specify a version number less than 4.0; or<br>
+2. At link-time, specify version 4.0. At run-time, use the GetVersionEx function 
+to check the system version. Then when running on Windows NT 3.x, use 
+MB_SERVICE_NOTIFICATION_NT3X; and on Windows NT 4.0, use MB_SERVICE_NOTIFICATION.<br>
+MB_SERVICE_NOTIFICATION_NT3X<br>
+Windows NT only: This value corresponds to the value defined for 
+MB_SERVICE_NOTIFICATION for Windows NT version 3.51.<br>
+
+</p>
+<p>
+
+<a name="messagedlg"></a>
+</p>
+<hr width="95%" align=center>
+<!-- MESSAGEDLG -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>MESSAGEDLG</B>   RAPID-Q Specific   <B>Windows</B><br>
+<hr width="95%" align=center>
+
+           Displays a message box with an icon and a user defined caption.
+           This implements Window's MessageBoxEx API function.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>MESSAGEDLG(string-expression, msgType, msgButtons, helpContext)</FONT><BR>
+           IF MessageDlg("Close this form?", mtWarning, mbYes OR mbNo, 0) = mrNo THEN<BR>
+           &nbsp; &nbsp; '-- Don't close form<BR>
+           END IF<BR><BR>
+           <B>Details</B>:<BR>
+           <I>msgType</I> is used to display the type of icon that will be displayed
+           in your message box.<BR>
+<PRE>0 = mtWarning      3 = mtConfirmation
+1 = mtError        4 = mtCustom
+2 = mtInformation</PRE>
+           <I>msgButtons</I> is used to display custom dialog buttons. To display more than one message button,
+           just OR them.
+<PRE>1 = mbYes       32 = mbAbort
+2 = mbNo        64 = mbRetry
+4 = mbOK       128 = mbIgnore
+8 = mbCancel   256 = mbAll
+16 = mbHelp</PRE>
+           <I>helpContext</I> is ignored for now.
+<br><br>
+
+<a name="mid$"></a>
+<hr width="95%" align=center>
+<!-- MID$ -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>MID$</B>   STRING Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A string function that returns a substring with n chracters starting from i of string-expression.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>MID$(string-expression, i, n)</FONT><BR>
+           A$ = MID$("Hello",3,2) '-- returns ll<BR><BR>
+           <B>Details</B>:<BR>
+           You cannot use MID$ in this way:<BR>
+           MID$(A$, 1, 1) = "G"<BR>
+           Under QBasic, this valid statement replaces the first character from A$ with "G".
+           To acheive the same effect under Rapid-Q, please use the REPLACE$ string function.
+<br><br>
+
+<a name="mkdir"></a>
+<hr width="95%" align=center>
+<!-- MKDIR -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>MKDIR</B>   SYSTEM Statement   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A statement that creates a new directory.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>MKDIR pathspec</FONT><BR>
+           MKDIR "abc"<br>
+mkdir &quot;C:\BAS\RAPIDQ\help2\1234&quot; -&nbsp; without last slash<br>
+or<br>
+mkdir &quot;C:\BAS\RAPIDQ\help2\1234\&quot; -&nbsp; with last slash<br>
+All variants are working<BR>
+           <B>Details</B>:<BR>
+           MKDIR will not rewrite a directory if one already exists. <br>
+If no
+           path is specified, the directory is created in the current working directory.
+<p><font color="#800000"><b>In&nbsp; $APPTYPE
+<span style="text-transform: uppercase">console</span> mode&nbsp;&nbsp; MKDIR&nbsp; translates a <FONT FACE=Courier>pathname</FONT>
+character set using OEMtoChar.</b></font><br>
+So, for national codpages you need use next function</p>
+<p>'--------------------------- Custom functions --------------------------<br>
+Declare Function CharToOem Lib &quot;user32&quot; Alias &quot;CharToOemA&quot; _<br>
+(ByVal lpszSrc As String, ByVal lpszDst As String) as Long<br>
+<br>
+Declare Function OemToChar Lib &quot;user32&quot; Alias &quot;OemToCharA&quot; _<br>
+(ByVal lpszSrc As String, ByVal lpszDst As String) As Long<br>
+<br>
+'-------------------------------------------------------------------'<br>
+function MkDirOEM (PathDst$) as short<br>
+result=0<br>
+dim PathDst1$ as string<br>
+PathDst1$=string$(len(PathDst$),&quot;a&quot;) <br>
+chartooem PathDst$,PathDst1$ <br>
+MkDIR PathDst1$ <br>
+result=1<br>
+end function<br>
+'-------------------------------------------------------------------'<br>
+<br>
+
+<a name="out"></a>
+</p>
+<hr width="95%" align=center>
+<!-- OUT -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>OUT</B>   I/O Statement   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A device I/O statement that sends a byte value to a machine I/O port.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>OUT port, value</FONT><BR>
+           OUT &H3C9, 128<BR><BR>
+           <B>Details</B>:<BR>
+           <LI>Port is any word value between 0 and 65535.
+           <LI>Value is any byte value between 0 and 255.
+<br><br>
+
+<a name="outw"></a>
+<hr width="95%" align=center>
+<!-- OUTW -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>OUTW</B>   I/O Statement   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A device I/O statement that sends a word value to a machine I/O port.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>OUTW port, value</FONT><BR>
+           OUTW &H378, 128<BR><BR>
+           <B>Details</B>:<BR>
+           <LI>Port is any word value between 0 and 65535.
+           <LI>Value is any byte value between 0 and 65535.
+<br><br>
+
+<a name="playwav"></a>
+<hr width="95%" align=center>
+<!-- PLAYWAV -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>PLAYWAV</B>   RAPID-Q Specific   <B>Windows</B><br>
+<hr width="95%" align=center>
+
+           Plays a .WAV file or a .WAV resource.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>PLAYWAV wavfilename|wavresource, sndOptions</FONT><BR>
+           $RESOURCE Welcome_WAV AS "welcome.wav"<BR>
+           PLAYWAV "welcome.wav", SND_ASYNC OR SND_LOOP<BR>
+           PLAYWAV Welcome_WAV, SND_ASYNC OR SND_LOOP<BR><BR>
+           <B>Details</B>:<BR>
+           <I>sndOptions</I> determine how the wav file is played back.
+<PRE>0 = SND_SYNC     '-- waits for wav to finish
+1 = SND_ASYNC    '-- background play
+3 = SND_LOOP     '-- Loop wav once finished playing</PRE>
+           You can combine SYNC or ASYNC with LOOP by OR'ing them.
+           If your WAV file is not finished playing when you close your application,
+           you will receive an access violation. You can stop the
+           .WAV by passing an empty string as a filename.
+<br><br>
+
+<a name="postmessage"></a>
+<hr width="95%" align=center>
+<!-- POSTMESSAGE -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>POSTMESSAGE</B>   RAPID-Q Specific   <B>Windows</B><br>
+<hr width="95%" align=center>
+
+           A WinAPI call to PostMessage, does not block.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>POSTMESSAGE hWnd, uMsg, wParam, lParam</FONT><BR>
+           POSTMESSAGE Form.Handle, WM_SYSCOMMAND, SC_MINIMIZE, 0<BR><BR>
+           <B>Details</B>:<BR>
+           PostMessage is a WinAPI call so instead of filling this entire page with
+           information you can look up this function in your WinAPI manual/help file.
+<br><br>
+
+<a name="quicksort"></a>
+<hr width="95%" align=center>
+<!-- QUICKSORT -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>QUICKSORT</B>   SORTING Statement   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           QUICKSORT, aptly named, can be used to sort your arrays of any type, except Objects/UDTs of course.
+           It, obviously, uses the QuickSort algorithm to perform the sort.
+           <BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>QUICKSORT(Array-begin, Array-end, ASCEND|DESCEND)</FONT><BR>
+           DIM A(1000) AS INTEGER<BR>
+           '-- put stuff in A<BR>
+           QUICKSORT(A(10), A(500), ASCEND) '-- sorts elements 10..500<BR><BR>
+           <B>Details</B>:<BR>
+           The pivot element in the above example is A(10), so if you want randomness,
+           you'll have to replace A(10) with some random element from A(10)..A(500) in the above
+           example. You can also sort multi-dimensional arrays and "span sort" arrays.<BR><BR>
+           <B>Span sorting</B>:
+           <PRE>           DIM A(1 TO 100) AS LONG
+           DIM B(1 TO 100) AS LONG
+           DIM C(1 TO 100) AS LONG
+
+           '--- puts some values into array A, B, C
+           RANDOMIZE TIMER
+           FOR I = 1 TO 100
+               A(I) = RND(50000)
+               B(I) = RND(50000)
+               C(I) = RND(50000)
+           NEXT
+
+           QUICKSORT A(1), C(100), ASCEND
+           PRINT A(1)," ",B(1)," ",C(1)
+           </PRE>
+           As long as you DIM the arrays "side by side" they will share a contiguous
+           space of memory, this means you can sort from the start of memory address A(1)
+           to the end of memory address C(100). This technique is not recommended, but
+           if you can find a use for it, go ahead.
+<br><br>
+
+<a name="randomize"></a>
+<hr width="95%" align=center>
+<!-- RANDOMIZE -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>RANDOMIZE</B>   MATH Statement   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           Initializes (reseeds) the random-number generator.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>RANDOMIZE [numeric-expression]</FONT><BR>
+           RANDOMIZE TIMER<BR><BR>
+           <B>Details</B>:<BR>
+           If argument is omitted, randomize will default as RANDOMIZE TIMER.
+<br><br>
+
+<a name="read"></a>
+<hr width="95%" align=center>
+<!-- READ -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>READ</B>   Statement   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A statement that reads values from a DATA statement and assigns the
+           values to variables.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>READ variablelist</FONT><BR>
+           READ A%, S$, P(1,2)<BR><BR>
+           <B>Details</B>:<BR>
+           Variablelist is made up of one or more variables, separated by commas,
+           which are to receive the data. The variables may be string or numeric.
+<br><br>
+
+<a name="redim"></a>
+<hr width="95%" align=center>
+<!-- REDIM -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>REDIM</B>   Statement   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           Declaration statement that changes the space allocated to an array that has already been
+           declared by DIM, preserving as much of the data as possible.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>REDIM variable[(subscripts)] AS type</FONT><BR>
+           DIM B(20) AS INTEGER<BR>
+           REDIM B(100) AS INTEGER<BR><BR>
+           <B>Details</B>:<BR>
+           If the array has not yet been declared by DIM, REDIM will be equivalent to calling DIM (except when
+           dealing with components, in which case you'll receive a compiler error).
+           You cannot change the data type for the array, ie. you cannot redefine array B to be something
+           other than an INTEGER (as in the above example). Combining arrays is a by-product of REDIM.
+<PRE>DIM A(1 to 100) AS INTEGER
+DIM B(1 to 100) AS INTEGER
+REDIM A(1 to 200) AS INTEGER   '-- Combines A and B together</PRE>
+What the above code does is preserve the data in A as well as combining the array B.
+so index from 101 to 200 is the data for B and 1 to 100 is the data for A. Clarification: Array B
+has not been modified, it still maintains its own address space and will not
+overwrite A's data and vice versa. Note that this by-product does not apply to redimming Fixed Strings, Variants and Components.<br>
+           <img src="appcredim.gif" alt="Redim table" width="377" height="118"><br>
+<PRE>  DIM Button(1 TO 2, 1 TO 2) AS QBUTTON
+REDIM Button(1 TO 2, 1 TO 4) AS QBUTTON</PRE>
+           Note that when dealing with multiple dimensions the elements are shifted to fill each column. So element (2,2) is actually
+           moved to position (1,4).
+<br><br>
+
+<a name="rem"></a>
+<hr width="95%" align=center>
+<!-- REM -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>REM</B>   Comment   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A BASIC declaration that allows explanatory remarks to be inserted in a program.
+           It's suggested that you use ' to start your comments instead.
+           <BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>REM remark</FONT><BR>
+           REM This is a comment, nothing is executed<BR>
+           ' This is another comment<p><span style="font-weight: 700">a=5 rem 
+           fkfkl,</span><font color="#FF0000"><span style="font-weight: 700; background-color: #FFFF00">&nbsp;&nbsp; 
+           - not working<br>
+           </span></font><span style="font-weight: 700">a=5 ' fkfkl,</span><span style="font-weight: 700; background-color: #FFFF00"><font color="#FF0000">&nbsp;&nbsp;
+           </font><font color="#008000">- working</font></span></p>
+           <font COLOR="#0000ff">
+           <p>Multiline comment<br>
+           $ifdef</font>&nbsp; 0 <br>
+           commented blok<br>
+           $endif</p>
+           <p>
+
+<a name="rename"></a>
+           </p>
+<hr width="95%" align=center>
+<!-- RENAME -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>RENAME</B>   SYSTEM Statement   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A statement that renames a file. If file already exists the operation
+           is not executed.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>RENAME file1, file2</FONT><BR>
+           RENAME "abc.txt", "xyz.txt"<BR><BR>
+
+<a name="replace$"></a>
+<hr width="95%" align=center>
+<!-- REPLACE$ -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>REPLACE$</B>   STRING Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A function that replaces a portion of a string with another.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>REPLACE$(source-string, replace-string, index)</FONT><BR>
+           A$ = REPLACE$("Hello", "J", 1) '-- returns Jello<BR><BR>
+A$ = REPLACE$("Hello", "Jwer", 1) '-- returns Jwero<BR>
+A$ = REPLACE$("Hello", "Jwer111111111111", 1) '-- returns Jwer111111111111<BR>
+<BR><BR>
+<a name="replacesubstr$"></a>
+<hr width="95%" align=center>
+<!-- REPLACESUBSTR$ -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>REPLACESUBSTR$</B>   STRING Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A function that replaces a substring with another string. All occurrences will
+           be replaced. The length of the replacement string does not need to match the
+           length of the replaced string.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>REPLACESUBSTR$(source-string, replace-string, replacement-string)</FONT><BR>
+           A$ = REPLACESUBSTR$("abcdefgabcdefg", "abc", "99") '-- returns 99defg99defg<BR><BR>
+
+	<a name="resource"></a>
+<hr width="95%" align=center>
+<!-- RESOURCE -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>RESOURCE</B>   RESOURCE Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A function that returns the absolute position of the resource from the current program.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>RESOURCE(numeric-expression)</FONT><BR>
+           EXTRACTRESOURCE Resource(0), "test.bmp"<BR><BR>
+           <B>Details</B>:<BR>
+           RESOURCE() is an array consisting of 0 to RESOURCECOUNT-1 elements.
+           Element 0 corresponds to the first $RESOURCE handle you specify and so on.
+           If numeric-expression is not in the range 0 to RESOURCECOUNT-1, this function
+           returns 0.
+<br><br>
+
+<a name="resourcecount"></a>
+<hr width="95%" align=center>
+<!-- RESOURCECOUNT -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>RESOURCECOUNT</B>   RESOURCE Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A function that returns the number of resources in the current program.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>RESOURCECOUNT</FONT><BR>
+           A% = RESOURCECOUNT<BR><BR>
+
+<a name="restore"></a>
+<hr width="95%" align=center>
+<!-- RESTORE -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>RESTORE</B>   Statement   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A statement that allows DATA statements to be reread from a specified line.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>RESTORE [{linelabel | linenumber}]</FONT><BR>
+           RESTORE<BR><BR>
+           <B>Details</B>:<BR>
+           If the argument is omitted, the next READ statement which executes will read
+           the first item in the first DATA statement in the program.
+           Linelabel or Linenumber identifies the DATA statement you want the
+           next READ statement to use. The first item from that line will be read.
+<br><br>
+
+<a name="reverse$"></a>
+<hr width="95%" align=center>
+<!-- REVERSE$ -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>REVERSE$</B>   STRING Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A function that reverses (or mirrors) a string.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>REVERSE$(string-expression)</FONT><BR>
+           A$ = REVERSE$("Hello") '-- returns olleH<BR><BR>
+
+<a name="rgb"></a>
+<hr width="95%" align=center>
+<!-- RGB -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>RGB</B>   CONVERSION Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A conversion function that takes the red, green and blue parameters and combines them
+           to form a BGR numeric representation.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>RGB(redvalue, greenvalue, bluevalue)</FONT><BR>
+           C = RGB(255, 0, 255)<BR><BR>
+           <B>Details</B>:<BR>
+           Values range from 0-255. Values outside this range produce undefined results.
+<br><br>
+
+<a name="right$"></a>
+<hr width="95%" align=center>
+<!-- RIGHT$ -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>RIGHT$</B>   STRING Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A function that returns the rightmost n characters of a string.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>RIGHT$(string-expression, n)</FONT><BR>
+           A$ = RIGHT$("Hello", 3) '-- returns llo<p><font color="#800000">
+           <span style="font-weight: 700; background-color: #FFFF00">32k 
+           limitation!</span></font><BR><BR>
+
+<a name="rinstr"></a>
+           </p>
+<hr width="95%" align=center>
+<!-- RINSTR -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>RINSTR</B>   STRING Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           Reverse INSTR is a function that compares 2 strings and returns the position of the
+           find-string with respect to the search-string. Instead of starting the search from left to right,
+           like INSTR, RINSTR searches right to left (ie. the reverse of INSTR).
+           If found, RINSTR returns the index position of the find-string, 0 otherwise.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>RINSTR([start,] search-string, find-string)</FONT><BR>
+           <font face="Courier">A% = RINSTR("Hello World", "l") '-- returns 10<BR>
+           A% = RINSTR(<span style="background-color: #00FFFF">4</span>, "he<span style="background-color: #FFFF00">he</span> they", "he") '-- returns 
+           <span style="background-color: #66FF66">3</span><BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+           12<span style="background-color: #66FF66">3</span>&nbsp;&lt;- &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+           <br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+           -&gt;123<span style="background-color: #00FFFF">4</span>&nbsp;
+           </font>
+           <p><font face="Courier">A% = RINSTR(<span style="background-color: #00FFFF">6</span>, 
+           &quot;he t<span style="background-color: #FFFF00">he</span>y&quot;, &quot;he&quot;) '-- 
+           returns <span style="background-color: #66FF66">5</span><br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+           1234<span style="background-color: #66FF66">5</span> &lt;-&nbsp;&nbsp;&nbsp;&nbsp;
+           <br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+           -&gt;12345<span style="background-color: #00FFFF">6</span></font></p>
+           <p>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <BR>
+
+<a name="rmdir"></a>
+           </p>
+<hr width="95%" align=center>
+<!-- RMDIR -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>RMDIR</B>   SYSTEM Statement   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A statement that removes a directory.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>RMDIR directory</FONT><BR>
+           RMDIR "abc"&nbsp;&nbsp;&nbsp;&nbsp; &quot;abc&quot; is subdirectory name in the 
+           current directory. <br>
+           RMDIR &quot;LastCopy\123&quot;&nbsp; sub..subdirectory in the current 
+           directory.<br>
+           RMDIR&nbsp; &quot;C:\W98\&quot;&nbsp;&nbsp;&nbsp;&nbsp; full path<br>
+           <br>
+           <BR>
+
+<a name="rnd"></a>
+<hr width="95%" align=center>
+<!-- RND -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>RND</B>   MATH Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A function that returns a random number whose sequence is generated by
+           calling RANDOMIZE.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>RND[(upper-bound)]</FONT><BR>
+           A% = RND(10)<BR><BR>
+           <B>Details</B>:<BR>
+           If no upper-bound is given, RND returns a decimal number in the range 0 to 1.
+<br><br>
+
+<a name="round"></a>
+<hr width="95%" align=center>
+<!-- ROUND -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>ROUND</B>   MATH Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A math function that converts a number to an integer by rounding the
+           fractional part of the expression.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>ROUND(numeric-expression)</FONT><BR>
+           A% = ROUND(3.49)  &nbsp; <i>'-- Returns 3</i><BR>
+           A% = ROUND(3.50)  &nbsp; <i>'-- Returns 4</i><BR><BR>
+
+<a name="rtrim$"></a>
+<hr width="95%" align=center>
+<!-- RTRIM$ -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>RTRIM$</B>   STRING Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A string function that returns a string with trailing spaces removed.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>RTRIM$(string-expression)</FONT><BR>
+           A$ = RTRIM$("Hello   ") '-- returns Hello<BR><BR>
+
+<a name="run"></a>
+<hr width="95%" align=center>
+<!-- RUN -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>RUN</B>   SYSTEM Statement   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A statement that executes a specified program without blocking.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>RUN filespec</FONT><BR>
+           RUN "rapidq.exe"<BR><BR>
+
+<a name="sendmessage"></a>
+<hr width="95%" align=center>
+<!-- SENDMESSAGE -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>SENDMESSAGE</B>   RAPID-Q Specific   <B>Windows</B><br>
+<hr width="95%" align=center>
+
+           A WinAPI call to SendMessage, blocks until message is processed.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>SENDMESSAGE hWnd, uMsg, wParam, lParam</FONT><BR>
+           SENDMESSAGE Form.Handle, WM_SYSCOMMAND, SC_MINIMIZE, 0<BR><BR>
+           <B>Details</B>:<BR>
+           SendMessage is a WinAPI call so instead of filling this entire page with
+           information you can look up this function in your WinAPI manual/help file.
+<br><br>
+
+<a name="sgn"></a>
+<hr width="95%" align=center>
+<!-- SGN -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>SGN</B>   MATH Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A math function that indicates the sign of a numeric expression.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>SGN(numeric-expression)</FONT><BR>
+           A% = SGN(-123) &nbsp; '-- Returns -1<BR><BR>
+           <B>Details</B>:<BR>
+           If numeric-expression is positive, SGN returns +1.<BR>
+           If numeric-expression is zero, SGN returns 0.<BR>
+           If numeric-expression is negative, SGN returns -1.
+<br><br>
+
+<a name="shell"></a>
+<hr width="95%" align=center>
+<!-- SHELL -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>SHELL</B>   SYSTEM Statement/Function   <B>Windows</B><br>
+<hr width="95%" align=center>
+
+           SHELL can be called as a statement or as a function. It has the same functionality as RUN
+           except that it blocks your application until the executed one has ended.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>SHELL command</FONT><BR>
+           SHELL "rapidq.exe"<BR>
+           <B>Syntax</B>: <FONT FACE=Courier>SHELL(command, showCMD)</FONT><BR>
+           PID = SHELL("rapidq.exe", SW_SHOWNORMAL)<BR><BR>
+           <B>Details</B>:<BR>
+           If calling SHELL as a function, the return value is the process ID of the
+           executed program, and will not block your program. showCMD can be any of the
+           following:
+<PRE>0 = SW_HIDE              6 = SW_MINIMIZE
+1 = SW_SHOWNORMAL        7 = SW_SHOWMINNOACTIVE
+2 = SW_SHOWMINIMIZED     8 = SW_SHOWNA
+3 = SW_SHOWMAXIMIZED     9 = SW_RESTORE
+4 = SW_SHOWNOACTIVATE   10 = SW_SHOWDEFAULT
+5 = SW_SHOW
+</PRE>
+<PRE><b><font size="3">Examples:</font></b><tt><font color="#FF0000"><b><font face="Arial">
+</font></b></font><font face="Courier New" size="3">Shell &quot;command.com /C copy /b one.txt+two.txt oneandtwo.txt&quot;
+
+x=Shell(&quot;Command.com /C echo y| del &quot;+chr$(34) + &quot;.\Original\*.*&quot; +chr$(34) , 0) 
+</font></tt><font face="Arial"><tt>
+</tt></font><font color="#FF0000"><a name="showmessage"></a>
+          </font>
+</PRE>
+<hr width="95%" align=center>
+<!-- SHOWMESSAGE -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>SHOWMESSAGE</B>   RAPID-Q Specific   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A statement used to display a generic popup message box.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>SHOWMESSAGE string-expression</FONT><BR>
+           SHOWMESSAGE "Hello world!"<BR><BR>
+
+<a name="sin"></a>
+<hr width="95%" align=center>
+<!-- SIN -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>SIN</B>   MATH Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A math function that returns the sine of an angle given in radians.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>SIN(numeric-expression)</FONT><BR>
+           PI = 3.14153<BR>
+           C# = SIN(PI)<BR><BR>
+           <B>Details</B>:<BR>
+           Numeric-expression is the angle expressed in radians.
+<br><br>
+
+<a name="sizeof"></a>
+<hr width="95%" align=center>
+<!-- SIZEOF -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>SIZEOF</B>   MEMORY Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A function that returns the size, in bytes, of a data type.
+           <BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>SIZEOF(datatype|variable)</FONT><BR>
+           PRINT SIZEOF(MyUDT)<BR>
+           PRINT SIZEOF(MyVar)<BR>
+           PRINT SIZEOF(INTEGER)<BR><BR>
+           <B>Details</B>:<BR>
+           To calculate the size of a UDT, you must first DIM it.<BR> ie. DIM MyUDT AS TMyUDT
+<br><br>
+
+<a name="sound"></a>
+<hr width="95%" align=center>
+<!-- SOUND -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>SOUND</B>   I/O Statement   <B>Windows</B><br>
+<hr width="95%" align=center>
+
+           A device I/O statement that generates sound through the PC Speaker.
+           <BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>SOUND frequency, duration</FONT><BR>
+           SOUND 4000, 18<BR><BR>
+           <B>Details</B>:<BR>
+           <li>Frequency is a numeric expression whose value is between 37 and 32,767.
+               Frequency is measured in cycles/second, or hertz.
+           <li>Duration is a numeric expression whose value is between 0 and 65,535.
+               There are 18.2 clock ticks per second, so 18 is considered 1 second, etc...
+<br><br>
+
+<a name="space$"></a>
+<hr width="95%" align=center>
+<!-- SPACE$ -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>SPACE$</B>   STRING Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A string function that returns a string of spaces of length n.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>SPACE$(n)</FONT><BR>
+           A$ = SPACE$(5)<BR><BR>
+
+<a name="sqr"></a>
+<hr width="95%" align=center>
+<!-- SQR -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>SQR</B>   MATH Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A math function that returns the square root of a number.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>SQR(numeric-expression)</FONT><BR>
+           A# = SQR(9) '-- returns 3<BR><BR>
+
+<a name="static"></a>
+<hr width="95%" align=center>
+<!-- STATIC -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>STATIC</B>   Statement   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           Similar to DIM, this statement names one or more variables and allocates storage space for them.
+           However, declaring STATIC variables means that variable values are preserved between procedure calls.
+           Note that only simple types are affected.
+           <BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>STATIC variable[(subscripts)] AS type</FONT><BR>
+           STATIC A AS INTEGER, B AS BYTE, S AS STRING<BR><BR>
+           <B>Details</B>:<BR>
+           STATIC has no affect (ie. same as using DIM) when declared in the main module.
+           Use STATIC only inside a SUB/I or FUNCTION/I.<BR><BR>
+           <B>Examples</B>:<BR>
+<PRE>    '-- Non static count
+    SUB Count (N AS INTEGER)
+       DIM B AS LONG
+
+       B = N
+       IF N = 10 THEN EXIT SUB
+       Count(N+1)
+       PRINT B
+    END SUB
+
+    Count(1)
+
+    '-- Static count, B retains the same value
+    SUB StaticCount (N AS INTEGER)
+       STATIC B AS LONG
+
+       B = N
+       IF N = 10 THEN EXIT SUB
+       StaticCount(N+1)
+       PRINT B
+    END SUB
+
+    StaticCount(1)
+</PRE>
+<br><br>
+
+<a name="str$"></a>
+<hr width="95%" align=center>
+<!-- STR$ -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>STR$</B>   CONVERSION Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A conversion function that returns a string representation of the
+           value of a numeric expression.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>STR$(numeric-expression)</FONT><BR>
+           A$ = STR$(99)<BR><BR>
+
+<a name="strf$"></a>
+<hr width="95%" align=center>
+<!-- STRF$ -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>STRF$</B>   CONVERSION Function   <B>Windows</B><br>
+<hr width="95%" align=center>
+
+           A conversion function that returns a formatted string representation of the
+           value of a numeric expression.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>STRF$(numeric-expression, Format%, Precision%, Digits%)</FONT><BR>
+           A$ = STRF$(99.9934, ffGeneral, 4, 4)<BR>
+           A$ = STRF$(12345678, ffNumber, 8, 0)<BR><BR>
+           <B>Details</B>:<BR>
+           Precision% specifies how many decimal places to calculate.<BR>
+           The following are valid Formats:
+<PRE>0 = ffGeneral      2 = ffFixed
+1 = ffExponent     3 = ffNumber</PRE>
+           <b>ffGeneral</b> converts to the shortest possible decimal string, where trailing
+           zeros are removed. Digits% range from values of 0 to 4.<BR>
+           <b>ffExponent</b> converts to scientific notation of the form -d.ddd...E+dddd. Digits% range from values of 0 to 4.<BR>
+           <b>ffFixed</b> converts to fixed point format of the form -ddd.ddd...
+                          Digits% range from values of 0 to 18.<BR>
+           <b>ffNumber</b> converts to a number format of the form -d,ddd,ddd.ddd...
+                          Where the resulting string contains thousand separators.
+<br><br>
+
+<a name="string$"></a>
+<hr width="95%" align=center>
+<!-- STRING$ -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>STRING$</B>   STRING Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A string function that returns a string whose characters all have a given
+           ASCII code or whose characters are all the first character of a string
+           expression.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>STRING$(count, byte)</FONT><BR>
+           A$ = STRING$(9, 65) '-- Returns AAAAAAAAA<BR>
+           <B>Syntax</B>: <FONT FACE=Courier>STRING$(count, string-expression)</FONT><BR>
+           A$ = STRING$(9, "ABC") '-- Returns AAAAAAAAA<BR><BR>
+           <B>Details</B>:<BR>
+           The first parameter indicates the number of times to repeat the character.
+           The second parameter can either be a string expression, whose first character is
+           used as the repeat character, or a byte number in the range from 0 to 255 representing the
+           ASCII character code.
+<br>
+           <p><font color="#800000"><b><span style="background-color: #FFFF00">
+           32k limitation</span></b></font><br>
+
+<a name="swap"></a>
+           </p>
+<hr width="95%" align=center>
+<!-- SWAP -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>SWAP</B>   Statement   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           An assignment statement that exchanges the values of 2 variables.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>SWAP variable1, variable2</FONT><BR>
+           SWAP A$, B$<BR><BR>
+           <B>Details</B>:<BR>
+           Variable1 and variable2 should be of the same type, but Rapid-Q won't complain.
+           Also, do not swap variants using the SWAP function if their types do not match.
+<br><br>
+
+<a name="tally"></a>
+<hr width="95%" align=center>
+<!-- TALLY -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>TALLY</B>   STRING Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           Tally counts the number of occurrences of MatchString within a SearchString.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>TALLY(search-string, match-string)</FONT><BR>
+           Count& = TALLY("abcdefghijklmnabc", "abc") &nbsp; '-- returns 2<p> 
+           <FONT FACE=Courier color="#800000">
+           <span style="background-color: #FFFF00">TALLY is very slow !!!<br>
+           better use (Jacques Philippe):</span></FONT><BR>
+           </p>
+           <p> 
+           <font color="#000080"><b>Function </b></font>f_Tally (sSearchIn As 
+           String, sToFind As string) As Long<br>
+&nbsp;&nbsp;&nbsp; DefInt iCharCounter = 0<br>
+&nbsp;&nbsp;&nbsp; For N = 1 To Len(sSearchIn)<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; If sSearchIn[N] = sToFind Then 
+           iCharCounter ++<br>
+&nbsp;&nbsp;&nbsp; Next N<br>
+&nbsp;&nbsp;&nbsp; Result = iCharCounter<br>
+           <font color="#000080"><b>End Function</b></font><br>
+           ----------------------<br>
+           result<br>
+           for N=1 to 100<br>
+           myString =myString+string$(1000,&quot;a&quot;)<br>
+           next<br>
+           'len(myString)=100000<br>
+           z=tally(myString,&quot;a&quot;)<br>
+           z= f_Tally (myString,&quot;a&quot;)<br>
+           <br>
+           8934 ms for 2 Loops tally=100000<br>
+           1545 ms for 2 Loops RQ Developped Tally=100000<br>
+           ----------------------<BR>
+
+<a name="tan"></a>
+           </p>
+<hr width="95%" align=center>
+<!-- TAN -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>TAN</B>   MATH Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A math function that returns the tangent of an angle given in radians.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>TAN(numeric-expression)</FONT><BR>
+           T# = TAN(90)<BR><BR>
+           <B>Details</B>:<BR>
+           Numeric-expression is the angle expressed in radians.
+<br><br>
+
+<a name="time$"></a>
+<hr width="95%" align=center>
+<!-- TIME$ -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>TIME$</B>   SYSTEM Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A function that returns a string containing the current time formatted
+           as HH:MM:SS. Where HH = hour (0-23), MM = minute (0-59) and SS = seconds (0-59)<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>TIME$</FONT><BR>
+           PRINT TIME$<BR><BR>
+           <B>Details</B>:<BR>
+           Unlike QBasic where you can set the current date using the TIME$ statement, you cannot do this under Rapid-Q.
+<br><br>
+
+<a name="timer"></a>
+<hr width="95%" align=center>
+<!-- TIMER -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>TIMER</B>   SYSTEM Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A function that returns the number of seconds elasped since midnight.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>TIMER</FONT><BR>
+           T! = TIMER<BR><BR>
+           <B>Details</B>:<BR>
+           Timer value for Linux/Unix is the number of seconds elasped since your program started.
+<br><br>
+
+<a name="ubound"></a>
+<hr width="95%" align=center>
+<!-- UBOUND -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>UBOUND</B>   ARRAY Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A function that returns the upper bound of the array.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>UBOUND(arrayname [,dimension])</FONT><BR>
+           DIM A(-50 TO 100) AS INTEGER<BR>
+           L% = UBOUND(A) '-- Returns 100<BR><BR>
+           <B>Details</B>:<BR>
+           If the array has multiple dimensions, you can use the optional dimension argument
+           to check the upper bound of each one.
+           <p><font color="#FF0000"><b>BUG !!<br>
+           DIM A%(-50 TO 100) AS INTEGER<BR>
+           L% = UBOUND(A%) '-- Returns 0<BR></b></font>
+<br><br>
+
+<a name="ucase$"></a>
+           </p>
+<hr width="95%" align=center>
+<!-- UCASE$ -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>UCASE$</B>   STRING Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A string function that returns a string expression with all letters upper-case.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>UCASE$(string-expression)</FONT><BR>
+           A$ = UCASE$("Hello") '-- returns HELLO<BR><BR>
+
+<a name="unloadlibrary"></a>
+<hr width="95%" align=center>
+<!-- UNLOADLIBRARY -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>UNLOADLIBRARY</B>   DLL Statement   <B>Windows</B><br>
+<hr width="95%" align=center>
+
+           Removes DLL from memory (only those declared in Rapid-Q).
+           If DLL hasn't been loaded or is not found, this statement does nothing.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>UNLOADLIBRARY(DLLName)</FONT><BR>
+           DECLARE FUNCTION UpdateWindow LIB "USER32" ALIAS _<BR>
+                 &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; "UpdateWindow" (hWnd AS LONG) AS LONG<BR>
+           UNLOADLIBRARY("USER32") '-- Removes USER32.DLL from memory<BR><BR>
+           <B>Details</B>:<BR>
+           It is not required that you unload a DLL, this is done for you when your Rapid-Q program ends.
+           Unloading a DLL library from memory does not mean the function call
+           that requires the DLL will fail. The DLL is again reloaded into memory before
+           the function call, so you can UnLoad it again if you want. Please note that library names should
+           match, so in your declaration for LIB "USER32" ... to unload this library, you must
+           match that same name. UNLOADLIBRARY("USER32.DLL") does nothing, it must be "USER32" in this particular case.<br>
+           See also LIBRARYINST.
+<br><br>
+
+<a name="val"></a>
+<hr width="95%" align=center>
+<!-- VAL -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>VAL</B>   CONVERSION Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A conversion function that returns a numeric representation of the
+           string expression.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>VAL(string-expression)</FONT><BR>
+           A = VAL("995")<p>A = VAL("") ' return 0<br>
+           A = VAL("-") ' <font color="#800000"><b>
+           <span style="background-color: #FFFF00">cause error !!</span></b></font><BR>A = VAL("+") 
+           ' <font color="#800000"><b><span style="background-color: #FFFF00">
+           cause error !!</span></b></font><BR><BR>
+
+<a name="varptr"></a>
+           </p>
+<hr width="95%" align=center>
+<!-- VARPTR -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>VARPTR</B>   ADDRESS Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A function that returns the address, ie. pointer to, of the given variable name.
+           Variable must be a declared variable, ie. not a component variable such as QForm.Caption
+           <BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>VARPTR(variablename)</FONT><BR>
+           Addr& = VARPTR(MyString$)<BR>
+           Addr& = VARPTR(MyArray(0))<BR><BR>
+
+<a name="varptr$"></a>
+<hr width="95%" align=center>
+<!-- VARPTR$ -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>VARPTR$</B>   ADDRESS Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A function that returns the string representation of a given address.
+           <BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>VARPTR$(address)</FONT><BR>
+           S$ = VARPTR$(279027343)<BR><BR>
+
+<a name="vartype"></a>
+<hr width="95%" align=center>
+<!-- VARTYPE -->
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+<B>VARTYPE</B>   VARIANT Function   <B>Windows/Unix</B><br>
+<hr width="95%" align=center>
+
+           A function that returns the data type of the current value stored
+           in the variant.
+           <BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>VARTYPE(variant)</FONT><BR>
+           DIM myvariant(100) AS VARIANT<BR>
+           myvariant(1) = "G"<BR>
+           VType = VARTYPE(myvariant(1))<BR><BR>
+           <B>Details</B>:<BR>
+           Valid return values are:<BR>
+<PRE>0 - Number (includes Byte, Word, Dword, Short, Long/Integer)
+1 - Float (includes Single, Double)
+2 - String
+</PRE>
+<PRE><b><font size="3">Example</font></b>
+dim TstNum as variant
+DEFDBL Number1
+Number1=77.0 
+TstNum=Number1
+VType = VARTYPE(TstNum)
+print &quot;VType0=&quot; ,VType  ' <b><font size="4" color="#FF0000"><span style="background-color: #FFFF00">Return 0</span></font></b>
+
+Number1=77.01 
+TstNum=Number1
+VType = VARTYPE(TstNum)
+print &quot;VType1=&quot; ,VType  ' <b><font size="4" color="#FF0000"><span style="background-color: #FFFF00">Return 1</span></font></b>
+
+</PRE>
+All undefined variants are initialized as Numbers. <br>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="other.html">Prev Chapter</a></TD>
+   <TD ALIGN=CENTER><A HREF="#up">Up</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="troubles.html">Next Chapter</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>

@@ -1,0 +1,144 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>Chapter 1: Rapid-Q Overview</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Chapter 1</B></FONT></TD>
+  </TR>
+  <TR>
+    <TD COLSPAN=2><HR SIZE=1> </TD>
+  </TR>
+</TABLE>
+
+<BR>
+<H1>1. Rapid-Q Overview</H1>
+<DD>Rapid-Q is a programming language, a BASIC programming language to be precise.
+It is multiplatform, although not completely compatible in terms of the graphical
+interface, but the underlying language is more or less compatible between platforms.
+Rapid-Q is available for Windows, Linux, and Unix (Solaris and HP-UX are supported).
+You can use Rapid-Q to create both GUI and CONSOLE applications, including CGI applications.
+Rapid-Q generates byte-code as opposed to the native opcode of your processor.
+This requires an interpreter to read and execute the byte-codes, however, this
+interpreter is embedded in all your applications, so no extra files are necessary
+when you distribute your executable. The biggest issue is speed, but depending on
+what you're using Rapid-Q for, this may not be a factor. Rapid-Q was originally created to
+provide a free implementation of a BASIC programming language for Windows.
+<BR>&nbsp;<hr noshade color="#FF0000">
+<p><span style="BACKGROUND-COLOR: #ccffcc">RapidQ is compatible with Win95, 
+Win98 and Win ME without limitations. On Win 2000 and Win XP, <b><font size="4">
+3D</font></b> objects and <b><font size="4">Sound </font></b>keyword don't work, 
+and an error popup appears when launching the IDE. RapidQ doesn't work on Win 
+3.x&nbsp; </span></p>
+<hr noshade color="#FF0000">
+<p><BR>
+
+<a name="11">
+<B>1.1 How slow is Rapid-Q anyway?</B>
+<DD>Although Rapid-Q is based on compiling your sources to byte-code, execution isn't
+as slow as many think.
+Your programs will obviously slow down if you require heavy computation or to perform very low level
+manipulation to data. For example, reading a single byte from a 1MB file will
+take longer in Rapid-Q than in most languages, but not so extremely
+slow that you'll be sleeping at the keyboard. Same with looping I = I + 1 a few
+thousand times. But in terms of displaying graphics, controls and forms, it's just as fast
+as any other language. For computations, I suggest writing a separate DLL in a
+more accustomed language like C, and call the DLL in Rapid-Q when you just need that
+extra speed.<BR><BR>
+
+<a name="12">
+<B>1.2 What about bloat-ware?</B>
+<DD>This is obviously something which there's nothing much you can do about.
+Rapid-Q (the interpreter part) itself, requires about 300KB (150KB for Linux, 600KB for Sparc).
+So this is the overhead that all your programs will have.
+Compared to some Windows programs, this isn't that bad, but still bloated
+if all you wanted was a simple "Hello World!" program.
+Your bytecode will only add to it, but most likely
+your bytecode is less than 50KB anyway (for a moderate/large application), plus
+any resources and graphics you may want to include of course.
+<BR><BR>
+
+<a name="13">
+<B>1.3 Does Rapid-Q require extra runtime DLLs?</B>
+<DD>No. All your programs require no extra runtime DLLs or externalities.
+Just distribute your .EXE file and that's it. They should run on any Win95/98/NT
+system, assuming the end user hasn't done anything to his/her Windows System files.
+If you compare the bloat-ware of Rapid-Q and the runtime DLLs of other languages,
+Rapid-Q isn't that bad in terms of bloated size.
+<BR><BR>
+
+<a name="14">
+<B>1.4 How much memory does Rapid-Q suck out of my programs?</B>
+<DD>It doesn't suck anything out of your programs (not literally), but it does suck memory
+out of Windows which in turn limit the amount of memory for your program(s).
+It really isn't as bad as one might think though. It eats up less than 200KB for virtual,
+global, and heap memory combined. This is because all variables and objects are created
+dynamically. The heap/stack memory is
+the one you should look out for. If your program is deeply nested or involves
+intense recursion, this can grow and shrink very rapidly. You don't need to
+worry about cleaning up your objects or variables when your program terminates.
+Rapid-Q will free all your objects and clean up the memory space for you.
+<BR><BR>
+
+<a name="15">
+<B>1.5 How easy is it to hack into my programs?</B>
+<DD>Being a byte-code compiler, if the end user knows how everything is constructed,
+then it's just a formality. However, Rapid-Q generates a non-standard, or non-specific
+type byte-code output, which means, unless the user specifically knows what each
+operation does, it is very very difficult to hack your program.
+It's easy to hack into your string variables (like any other language), because
+these things aren't encrypted anyway. In most cases, your program should be
+safe from snoopers, they might not even know your program is byte-code generated!
+Unlike Java or other languages, Rapid-Q does not attach any symbol table or
+extra debugging information to your .EXE.
+<BR><BR>
+
+<a name="16">
+<B>1.6 Do I need a license to distribute my programs?</B>
+<DD>No. You don't need a license to use Rapid-Q (it's free), and you definitely
+don't need any license to distribute or sell your programs.
+The only agreement you have to worry about is that if you choose to use Rapid-Q,
+you assume any and all consequences, direct or indirectly from the use of Rapid-Q.
+Rapid-Q can be used for any task, whether it's profit-seeking or otherwise.
+You don't pay me a cent, and you don't even have to acknowledge that your
+program was created with Rapid-Q (although this would be a nice gesture).
+You CANNOT, however, distribute Rapid-Q (the program itself) and charge for it.
+You're allowed to bundle Rapid-Q along with your program(s), so long as the
+user is well informed that it's not buying into Rapid-Q, but rather, buying into
+your program. How is that done? By not even advertising that your distribution
+includes a copy of Rapid-Q. Call it the hidden feature.
+<BR><BR>
+
+<table width="95%" border="1">
+<!-- Table 02 Row 01 -->
+<tr>
+<td><B><a href="pref01.html" TARGET="doc">Preface</a></B></td>
+<td><B><a href="contents.html" TARGET="doc">Contents</a></B></td>
+<td><B><a href="#up">Up</a></B></td>
+<td>&nbsp;</td>
+<td><B><a href="chapter2.html" TARGET="doc">Next Chapter</a></B></td>
+<td><B></B></td>
+</tr>
+</table>
+<br>
+
+
+
+
+
+
+
+</BODY>
+</HTML>    

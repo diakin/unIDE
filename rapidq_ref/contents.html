@@ -1,0 +1,686 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>Table of Contents</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu &copy;1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Contents</B></FONT></TD>
+  </TR>
+  <TR>
+    <TD COLSPAN=2><HR SIZE=1> </TD>
+  </TR>
+</TABLE>
+<a name="up"></a>
+
+<BR>
+<H1>Contents</H1>
+
+<UL>
+  <B><a href="preface.html">Preface</a></B><BR>
+  <B><a href="chapter1.html">Chapter 1: Rapid-Q Overview</a></B><BR>
+  <UL>
+  <LI>1.1 <a href="chapter1.html#11">How slow is Rapid-Q anyway?</a>
+  <LI>1.2 <a href="chapter1.html#12">What about bloat-ware?</a>
+  <LI>1.3 <a href="chapter1.html#13">Does Rapid-Q require any extra runtime DLLs?</a>
+  <LI>1.4 <a href="chapter1.html#14">How much memory does Rapid-Q suck out of my programs?</a>
+  <LI>1.5 <a href="chapter1.html#15">How easy is it to hack into my programs?</a>
+  <LI>1.6 <a href="chapter1.html#16">Do I need a license to distribute my programs?</a>
+  </UL>
+  <B><a href="chapter2.html">Chapter 2: Rapid-Q Fundamentals</a></B><BR>
+  <UL>
+  <LI>2.1 <a href="chapter2.html#21">Rapid-Q Environment</a>
+     <UL>
+      <LI>Required files and settings
+     </UL>
+  <LI>2.2 <a href="chapter2.html#22">Using the Rapid-Q IDE</a>
+  <LI>2.3 <a href="chapter2.html#23">Compiling and Running a Simple Application</a>
+  <LI>2.4 <a href="chapter2.html#24">Command line switches</a>
+  <LI>2.5 <a href="chapter2.html#25">General Structure of a Rapid-Q Program</a>
+  <LI>2.6 <a href="chapter2.html#26">How close to the BASIC language is Rapid-Q?</a>
+  </UL>
+  <B><a href="chapter3.html">Chapter 3: Rapid-Q Language Guide</a></B><BR>
+  <UL>
+  <LI>3.1 <a href="chapter3.html#31">Rapid-Q Directives</a>
+     <UL>
+      <LI>$APPTYPE
+      <LI>$DEFINE and $UNDEF
+      <LI>$ESCAPECHARS
+      <LI>$IFDEF and $IFNDEF
+      <LI>$INCLUDE
+      <LI>$MACRO
+      <LI>$OPTIMIZE
+      <LI>$OPTION
+      <LI>$RESOURCE
+      <LI>$TYPECHECK
+     </UL>
+  <LI>3.2 <a href="chapter3.html#32">Variables and Assignments</a>
+     <UL>
+      <LI>Numeric types, string types
+      <LI>Numeric Range values
+      <LI>Proper assignment, and inconsistencies
+     </UL>
+  <LI>3.3 <a href="chapter3.html#33">Rapid-Q Components/Objects</a>
+  <LI>3.4 <a href="chapter3.html#34">Component Methods & Events</a>
+  <LI>3.5 <a href="chapter3.html#35">Rapid-Q Subroutines & Functions</a>
+     <UL>
+      <LI>Special conditions
+      <LI>Passing by value or reference
+     </UL>
+  <LI>3.6 <a href="chapter3.html#36">Rules of Scope</a>
+  </UL>
+  <B><a href="chapter4.html">Chapter 4: Writing your first Rapid-Q Application</a></B><BR>
+  <UL>
+  <LI>4.1 <a href="chapter4.html#41">Deciding what to write</a>
+     <UL>
+      <LI>Simple database like program
+      <LI>Using QButton, QEdit, QForm, QLabel, and QListBox
+     </UL>
+  <LI>4.2 <a href="chapter4.html#42">Designing the form</a>
+  <LI>4.3 <a href="chapter4.html#43">Handling events</a>
+     <UL>
+      <LI>How to handle on click events
+     </UL>
+  <LI>4.4 <a href="chapter4.html#44">Source Code Listing</a>
+  </UL>
+  <B><a href="chapter5.html">Chapter 5: Introduction to Forms</a></B><BR>
+  <UL>
+  <LI>5.1 <a href="chapter5.html#51">What's in a form?</a>
+  <LI>5.2 <a href="chapter5.html#52">Adding components to a form</a>
+  <LI>5.3 <a href="chapter5.html#53">Tracking mouse position on form</a>
+     <UL>
+      <LI>Introduction to MouseX and MouseY
+     </UL>
+  <LI>5.4 <a href="chapter5.html#54">Special Events for forms</a>
+     <UL>
+      <LI>OnResize, OnKeypress, OnKeydown
+     </UL>
+  <LI>5.5 <a href="chapter5.html#55">Dialog boxes</a>
+     <UL>
+      <LI>Use of ModalResult
+     </UL>
+  <LI>5.6 <a href="chapter5.html#56">Using the CREATE Method</a>
+  <LI>5.7 <a href="chapter5.html#57">Embedding CREATEs</a>
+  <LI>5.8 <a href="chapter5.html#58">Creating Menus</a>
+  </UL>
+  <B><a href="chapter6.html">Chapter 6: Writing Console Applications</a></B><BR>
+  <UL>
+  <LI>6.1 <a href="chapter6.html#61">Overview of console functions</a>
+  <LI>6.2 <a href="chapter6.html#62">Hello world example</a>
+     <UL>
+      <LI>Writing/Copying to/from offscreen pages
+     </UL>
+  <LI>6.3 <a href="chapter6.html#63">Using PEEK and POKE</a>
+  <LI>6.4 <a href="chapter6.html#64">Accepting user input</a>
+  <LI>6.5 <a href="chapter6.html#65">Trapping extended keys</a>
+  <LI>6.6 <a href="chapter6.html#66">Mixing CONSOLE with GUI</a>
+  <LI>6.7 <a href="chapter6.html#67">Linux/Unix console</a>
+  </UL>
+  <B><a href="chapter7.html">Chapter 7: Introduction to streams</a></B><BR>
+  <UL>
+  <LI>7.1 <a href="chapter7.html#71">File streams</a>
+     <UL>
+      <LI>Reading/Writing numbers and strings
+     </UL>
+  <LI>7.2 <a href="chapter7.html#72">Memory streams</a>
+     <UL>
+      <LI>Copying between streams
+     </UL>
+  <LI>7.3 <a href="chapter7.html#73">Saving/Loading UDTs and Arrays</a>
+  </UL>
+  <B><a href="chapter8.html">Chapter 8: Using Image Resources</a></B><BR>
+  <UL>
+  <LI>8.1 <a href="chapter8.html#81">Supported Resources</a>
+  <LI>8.2 <a href="chapter8.html#82">Introduction to Image lists</a>
+     <UL>
+      <LI>More on Rapid-Q's image cache
+     </UL>
+  <LI>8.3 <a href="chapter8.html#83">Other kinds of Resources</a>
+  </UL>
+  <B><a href="chapter9.html">Chapter 9: SUBI, FUNCTIONI, and DLLs</a></B><BR>
+  <UL>
+  <LI>9.1 <a href="chapter9.html#91">SUB/FUNCTIONs with variable parameters</a>
+  <LI>9.2 <a href="chapter9.html#92">More on FUNCTIONI</a>
+  <LI>9.3 <a href="chapter9.html#93">Introduction to DLLs</a>
+  <LI>9.4 <a href="chapter9.html#94">How to call a DLL</a>
+  <LI>9.5 <a href="chapter9.html#95">Using Quick View</a>
+  <LI>9.6 <a href="chapter9.html#96">Writing your own DLLs</a>
+  <LI>9.7 <a href="chapter9.html#97">Using unsupported types in DLL call</a>
+  <LI>9.8 <a href="chapter9.html#98">API conversion table</a>
+  </UL>
+  <B><a href="chapter10.html">Chapter 10: Creating Custom Components</a></B><BR>
+  <UL>
+  <LI>10.1 <a href="chapter10.html#101">Introduction to object creation</a>
+  <LI>10.2 <a href="chapter10.html#102">Extending QCanvas</a>
+     <UL>
+      <LI>Adding new properties
+      <LI>Using Constructor
+     </UL>
+  <LI>10.3 <a href="chapter10.html#103">Adding/Overriding Methods</a>
+  <LI>10.4 <a href="chapter10.html#104">Defining Events</a>
+     <UL>
+      <LI>Inherting Events
+     </UL>
+  <LI>10.5 <a href="chapter10.html#105">Adding components to components</a>
+  <LI>10.6 <a href="chapter10.html#106">Extending empty components</a>
+  <LI>10.7 <a href="chapter10.html#107">Public/Private properties and methods</a>
+  <LI>10.8 <a href="chapter10.html#108">Templates and property sets</a>
+  <LI>10.9 <a href="chapter10.html#109">Creating custom events</a>
+  <LI>10.10 <a href="chapter10.html#1010">QDiamondBox Source Code Listing</a>
+  </UL>
+  <B><a href="chapter11.html">Chapter 11: Using Function Pointers</a></B><BR>
+  <UL>
+  <LI>11.1 <a href="chapter11.html#111">Introduction to the concept</a>
+  <LI>11.2 <a href="chapter11.html#112">Defining function pointers</a>
+  <LI>11.3 <a href="chapter11.html#113">Using function pointers properly</a>
+  <LI>11.4 <a href="chapter11.html#114">What's not supported in Rapid-Q</a>
+  </UL>
+  <B><a href="chapter12.html">Chapter 12: Graphics under Windows</a></B><BR>
+  <UL>
+  <LI>12.1 <a href="chapter12.html#121">Graphics under DOS versus Windows</a>
+  <LI>12.2 <a href="chapter12.html#122">What components require painting</a>
+  <LI>12.3 <a href="chapter12.html#123">Drawing graphics dynamically</a>
+     <UL>
+      <LI>Using QBITMAP as the off-screen page
+     </UL>
+  <LI>12.4 <a href="chapter12.html#124">Ownerdraw List and Combo Boxes</a>
+     <UL>
+      <LI>Ownerdraw Variable vs. Fixed
+     </UL>
+  <LI>12.5 <a href="chapter12.html#125">Using DirectX</a>
+  </UL>
+  <B><a href="chapter13.html">Chapter 13: Direct3D for Rapid-Q</a></B><BR>
+  <UL>
+  <LI>13.1 <a href="chapter13.html#131">Requirement specifications</a>
+     <UL>
+      <LI>Required or suggested files
+     </UL>
+  <LI>13.2 <a href="chapter13.html#132">Using Anim8or to create 3D models</a>
+  <LI>13.3 <a href="chapter13.html#133">Loading/Using .X files</a>
+  <LI>13.4 <a href="chapter13.html#134">Wrapping textures around an object</a>
+  <LI>13.5 <a href="chapter13.html#135">Rotate/Moving objects</a>
+  </UL>
+  <B><a href="chapter14.html">Chapter 14: Programming in MySQL</a></B><BR>
+  <UL>
+  <LI>14.1 <a href="chapter14.html#141">Quick introduction</a>
+     <UL>
+      <LI>Required files
+     </UL>
+  <LI>14.2 <a href="chapter14.html#142">Connecting to MySQL</a>
+  <LI>14.3 <a href="chapter14.html#143">How to perform queries and obtain result</a>
+  <LI>14.4 <a href="chapter14.html#144">Interfacing QMYSQL with QSTRINGGRID</a>
+  <LI>14.5 <a href="chapter14.html#145">Storing and retrieving blobs</a>
+  <LI>14.6 <a href="chapter14.html#146">Using LOADBLOB and SAVEBLOB</a>
+  <LI>14.7 <a href="chapter14.html#147">In conclusion</a>
+  </UL>
+  <B><a href="chapter15.html">Chapter 15: COM Programming</a></B><BR>
+  <UL>
+  <LI>15.1 <a href="chapter15.html#151">Supported COM extensions</a>
+     <UL>
+      <LI>COM clients (automation controllers)
+      <LI>Active Documents
+      <LI>How to register COM objects
+     </UL>
+  <LI>15.2 <a href="chapter15.html#152">About QOLEOBJECT</a>
+  <LI>15.3 <a href="chapter15.html#153">About QOLECONTAINER</a>
+  </UL>
+  <B>Appendix A: Rapid-Q Component/Object Reference</B><BR>
+  <UL>
+  <LI><a href="qapplication.html">APPLICATION</a> (Windows/Linux)
+     <UL>
+      <LI><a href="qapplication.html#1">Properties</a>, <a href="qapplication.html#2">Methods</a>
+          <a href="qapplication.html#4">Application examples</a>
+     </UL>
+  <LI><a href="qclipboard.html">CLIPBOARD</a>
+     <UL>
+      <LI><a href="qclipboard.html#1">Properties</a>, <a href="qclipboard.html#2">Methods</a>
+          <a href="qclipboard.html#4">ClipBoard examples</a>
+     </UL>
+  <LI><a href="qprinter.html">PRINTER</a>
+     <UL>
+      <LI><a href="qprinter.html#1">Properties</a>, <a href="qprinter.html#2">Methods</a>
+          <a href="qprinter.html#4">Printer examples</a>
+     </UL>
+  <LI><a href="qbitmap.html">QBITMAP</a>
+     <UL>
+      <LI><a href="qbitmap.html#1">Properties</a>, <a href="qbitmap.html#2">Methods</a>
+          <a href="qbitmap.html#4">QBitmap examples</a>
+     </UL>
+  <LI><a href="qbutton.html">QBUTTON</a> (Windows/Linux)
+     <UL>
+      <LI><a href="qbutton.html#1">Properties</a>, <a href="qbutton.html#2">Methods</a>,
+          <a href="qbutton.html#3">Events</a>,
+          <a href="qbutton.html#4">QButton examples</a>
+     </UL>
+  <LI><a href="qcanvas.html">QCANVAS</a> (Windows/Linux)
+     <UL>
+      <LI><a href="qcanvas.html#1">Properties</a>, <a href="qcanvas.html#2">Methods</a>,
+          <a href="qcanvas.html#3">Events</a>,
+          <a href="qcanvas.html#4">QCanvas examples</a>
+     </UL>
+  <LI><a href="qcheckbox.html">QCHECKBOX</a> (Windows/Linux)
+     <UL>
+      <LI><a href="qcheckbox.html#1">Properties</a>,
+          <a href="qcheckbox.html#3">Events</a>,
+          <a href="qcheckbox.html#4">QCheckbox examples</a>
+     </UL>
+  <LI><a href="qcombobox.html">QCOMBOBOX</a> (Windows/Linux)
+     <UL>
+      <LI><a href="qcombobox.html#1">Properties</a>, <a href="qcombobox.html#2">Methods</a>,
+          <a href="qcombobox.html#3">Events</a>,
+          <a href="qcombobox.html#4">QCombobox examples</a>
+     </UL>
+  <LI><a href="qcomport.html">QCOMPORT</a>
+     <UL>
+      <LI><a href="qcomport.html#1">Properties</a>, <a href="qcomport.html#2">Methods</a>,
+          <a href="qcomport.html#3">Events</a>,
+          <a href="qcomport.html#4">QComPort examples</a>
+     </UL>
+  <LI><a href="qcoolbtn.html">QCOOLBTN</a> (Windows/Linux)
+     <UL>
+      <LI><a href="qcoolbtn.html#1">Properties</a>, <a href="qcoolbtn.html#2">Methods</a>,
+          <a href="qcoolbtn.html#3">Events</a>,
+          <a href="qcoolbtn.html#4">QCoolbtn examples</a>
+     </UL>
+  <LI><a href="qdirtree.html">QDIRTREE</a>
+     <UL>
+      <LI><a href="qdirtree.html#1">Properties</a>, <a href="qdirtree.html#2">Methods</a>,
+          <a href="qdirtree.html#3">Events</a>,
+          <a href="qdirtree.html#4">QDirTree examples</a>
+     </UL>
+  <LI><a href="qedit.html">QEDIT</a> (Windows/Linux)
+     <UL>
+      <LI><a href="qedit.html#1">Properties</a>,
+          <a href="qedit.html#3">Events</a>,
+          <a href="qedit.html#4">QEdit examples</a>
+     </UL>
+  <LI><a href="qfilelistbox.html">QFILELISTBOX</a>
+     <UL>
+      <LI><a href="qfilelistbox.html#1">Properties</a>, <a href="qfilelistbox.html#2">Methods</a>,
+          <a href="qfilelistbox.html#3">Events</a>,
+          <a href="qfilelistbox.html#4">QFileListBox examples</a>
+     </UL>
+  <LI><a href="qfilestream.html">QFILESTREAM</a> (Windows/Linux)
+     <UL>
+      <LI><a href="qfilestream.html#1">Properties</a>, <a href="qfilestream.html#2">Methods</a>,
+          <a href="qfilestream.html#4">QFilestream examples</a>
+     </UL>
+  <LI><a href="qfont.html">QFONT</a> (Windows/Linux)
+     <UL>
+      <LI><a href="qfont.html#1">Properties</a>, <a href="qfont.html#2">Methods</a>,
+         <a href="qfont.html#4">QFont examples</a>
+     </UL>
+  <LI><a href="qfontdialog.html">QFONTDIALOG</a>
+     <UL>
+      <LI><a href="qfontdialog.html#1">Properties</a>, <a href="qfontdialog.html#2">Methods</a>,
+          <a href="qfontdialog.html#3">Events</a>,
+          <a href="qfontdialog.html#4">QFontDialog examples</a>
+     </UL>
+  <LI><a href="qform.html">QFORM</a> (Windows/Linux)
+     <UL>
+      <LI><a href="qform.html#1">Properties</a>, <a href="qform.html#2">Methods</a>,
+          <a href="qform.html#3">Events</a>,
+          <a href="qform.html#4">QForm examples</a>
+     </UL>
+  <LI><a href="qgauge.html">QGAUGE</a>
+     <UL>
+      <LI><a href="qgauge.html#1">Properties</a>,
+          <a href="qgauge.html#4">QGauge examples</a>
+     </UL>
+  <LI><a href="qglassframe.html">QGLASSFRAME</a>
+     <UL>
+      <LI><a href="qglassframe.html#1">Properties</a>
+          <a href="qglassframe.html#4">QGlassFrame examples</a>
+     </UL>
+  <LI><a href="qgroupbox.html">QGROUPBOX</a>
+     <UL>
+      <LI><a href="qgroupbox.html#1">Properties</a>, <a href="qgroupbox.html#2">Methods</a>,
+          <a href="qgroupbox.html#3">Events</a>,
+          <a href="qgroupbox.html#4">QGroupBox examples</a>
+     </UL>
+  <LI><a href="qheader.html">QHEADER</a><!------------------->
+
+<!------------------->
+
+<!------------------->
+     <UL>
+      <LI><a href="qheader.html#1">Properties</a>, <a href="qheader.html#2">Methods</a>,
+          <a href="qheader.html#3">Events</a>,
+          <a href="qheader.html#4">QHeader examples</a>
+     </UL>
+  <LI><a href="qimage.html">QIMAGE</a>
+     <UL>
+      <LI><a href="qimage.html#1">Properties</a>, <a href="qimage.html#2">Methods</a>,
+          <a href="qimage.html#3">Events</a>,
+          <a href="qimage.html#4">QImage examples</a>
+     </UL>
+  <LI><a href="qimagelist.html">QIMAGELIST</a>
+     <UL>
+      <LI><a href="qimagelist.html#1">Properties</a>, <a href="qimagelist.html#2">Methods</a>,
+          <a href="qimagelist.html#4">QImageList examples</a>
+     </UL>
+  <LI><a href="qlabel.html">QLABEL</a> (Windows/Linux)
+     <UL>
+      <LI><a href="qlabel.html#1">Properties</a>,
+          <a href="qlabel.html#3">Events</a>,
+          <a href="qlabel.html#4">QLabel examples</a>
+     </UL>
+  <LI><a href="qlistbox.html">QLISTBOX</a> (Windows/Linux)
+     <UL>
+      <LI><a href="qlistbox.html#1">Properties</a>, <a href="qlistbox.html#2">Methods</a>,
+          <a href="qlistbox.html#3">Events</a>,
+          <a href="qlistbox.html#4">QListbox examples</a>
+     </UL>
+  <LI><a href="qlistview.html">QLISTVIEW</a>
+     <UL>
+      <LI><a href="qlistview.html#1">Properties</a>, <a href="qlistview.html#2">Methods</a>,
+          <a href="qlistview.html#3">Events</a>,
+          <a href="qlistview.html#4">QListView examples</a>
+     </UL>
+  <LI><a href="qmainmenu.html">QMAINMENU</a> (Windows/Linux)
+     <UL>
+      <LI><a href="qmainmenu.html#1">Properties</a>, <a href="qmainmenu.html#2">Methods</a>,
+          <a href="qmainmenu.html#4">QMainMenu examples</a>
+     </UL>
+  <LI><a href="qmemorystream.html">QMEMORYSTREAM</a> (Windows/Linux)
+     <UL>
+      <LI><a href="qmemorystream.html#1">Properties</a>, <a href="qmemorystream.html#2">Methods</a>,
+          <a href="qmemorystream.html#4">QMemorystream examples</a>
+     </UL>
+  <LI><a href="qmenuitem.html">QMENUITEM</a> (Windows/Linux)
+     <UL>
+      <LI><a href="qmenuitem.html#1">Properties</a>, <a href="qmenuitem.html#2">Methods</a>,
+          <a href="qmenuitem.html#3">Events</a>,
+          <a href="qmenuitem.html#4">QMenuItem examples</a>
+     </UL>
+  <LI><a href="qmysql.html">QMYSQL</a> (Windows/Linux)
+     <UL>
+      <LI><a href="qmysql.html#1">Properties</a>, <a href="qmysql.html#2">Methods</a>,
+          <a href="qmysql.html#4">QMySQL examples</a>
+     </UL>
+  <LI><a href="qopendialog.html">QOPENDIALOG</a> (Windows/Linux)
+     <UL>
+      <LI><a href="qopendialog.html#1">Properties</a>, <a href="qopendialog.html#2">Methods</a>,
+          <a href="qopendialog.html#4">QOpenDialog examples</a>
+     </UL>
+  <LI><a href="qolecontainer.html">QOLECONTAINER</a>
+     <UL>
+      <LI><a href="qolecontainer.html#1">Properties</a>, <a href="qolecontainer.html#2">Methods</a>,
+          <a href="qolecontainer.html#4">QOleContainer examples</a>
+     </UL>
+  <LI><a href="qoleobject.html">QOLEOBJECT</a>
+     <UL>
+      <LI><a href="qoleobject.html#1">Properties</a>, <a href="qoleobject.html#2">Methods</a>,
+          <a href="qoleobject.html#4">QOleObject examples</a>
+     </UL>
+  <LI><a href="qoutline.html">QOUTLINE</a>
+     <UL>
+      <LI><a href="qoutline.html#1">Properties</a>, <a href="qoutline.html#2">Methods</a>,
+          <a href="qoutline.html#3">Events</a>,
+          <a href="qoutline.html#4">QOutLine examples</a>
+     </UL>
+  <LI><a href="qovalbtn.html">QOVALBTN</a> (Windows/Linux)
+     <UL>
+      <LI><a href="qovalbtn.html#1">Properties</a>, <a href="qovalbtn.html#2">Methods</a>,
+          <a href="qovalbtn.html#3">Events</a>,
+          <a href="qovalbtn.html#4">QOvalbtn examples</a>
+     </UL>
+  <LI><a href="qpanel.html">QPANEL</a> (Windows/Linux)
+     <UL>
+      <LI><a href="qpanel.html#1">Properties</a>,
+          <a href="qpanel.html#3">Events</a>,
+          <a href="qpanel.html#4">QPanel examples</a>
+     </UL>
+  <LI><a href="qpopupmenu.html">QPOPUPMENU</a>
+     <UL>
+      <LI><a href="qpopupmenu.html#1">Properties</a>, <a href="qpopupmenu.html#2">Methods</a>,
+          <a href="qpopupmenu.html#4">QPopupMenu examples</a>
+     </UL>
+  <LI><a href="qradiobutton.html">QRADIOBUTTON</a> (Windows/Linux)
+     <UL>
+      <LI><a href="qradiobutton.html#1">Properties</a>,
+          <a href="qradiobutton.html#3">Events</a>,
+          <a href="qradiobutton.html#4">QRadioButton examples</a>
+     </UL>
+  <LI><a href="qrect.html">QRECT</a>
+  <LI><a href="qregistry.html">QREGISTRY</a>
+     <UL>
+      <LI><a href="qregistry.html#1">Properties</a>, <a href="qregistry.html#2">Methods</a>,
+          <a href="qregistry.html#4">QRegistry examples</a>
+     </UL>
+  <LI><a href="qrichedit.html">QRICHEDIT</a> (Windows/Linux)
+     <UL>
+      <LI><a href="qrichedit.html#1">Properties</a>, <a href="qrichedit.html#2">Methods</a>,
+          <a href="qrichedit.html#3">Events</a>,
+          <a href="qrichedit.html#4">QRichedit examples</a>
+     </UL>
+  <LI><a href="qsavedialog.html">QSAVEDIALOG</a>
+     <UL>
+      <LI><a href="qsavedialog.html#1">Properties</a>, <a href="qsavedialog.html#2">Methods</a>,
+          <a href="qsavedialog.html#4">QSaveDialog examples</a>
+     </UL>
+  <LI><a href="qscrollbar.html">QSCROLLBAR</a> (Windows/Linux)
+     <UL>
+      <LI><a href="qscrollbar.html#1">Properties</a>,
+          <a href="qscrollbar.html#3">Events</a>,
+          <a href="qscrollbar.html#4">QScrollBar examples</a>
+     </UL>
+  <LI><a href="qscrollbox.html">QSCROLLBOX</a>
+     <UL>
+      <LI><a href="qscrollbox.html#1">Properties</a>, <a href="qscrollbox.html#2">Methods</a>,
+          <a href="qscrollbox.html#3">Events</a>,
+          <a href="qscrollbox.html#4">QScrollBox examples</a>
+     </UL>
+  <LI><a href="qsocket.html">QSOCKET</a> (Windows/Linux)
+     <UL>
+      <LI><a href="qsocket.html#1">Properties</a>, <a href="qsocket.html#2">Methods</a>,
+          <a href="qsocket.html#4">QSocket examples</a>
+     </UL>
+  <LI><a href="qsplitter.html">QSPLITTER</a>
+     <UL>
+      <LI><a href="qsplitter.html#1">Properties</a>,
+          <a href="qsplitter.html#3">Events</a>,
+          <a href="qsplitter.html#4">QSplitter examples</a>
+     </UL>
+  <LI><a href="qstatusbar.html">QSTATUSBAR</a>
+     <UL>
+      <LI><a href="qstatusbar.html#1">Properties</a>, <a href="qstatusbar.html#2">Methods</a>,
+          <a href="qstatusbar.html#3">Events</a>,
+          <a href="qstatusbar.html#4">QTrackBar examples</a>
+     </UL>
+  <LI><a href="qstringgrid.html">QSTRINGGRID</a>
+     <UL>
+      <LI><a href="qstringgrid.html#1">Properties</a>, <a href="qstringgrid.html#2">Methods</a>,
+          <a href="qstringgrid.html#3">Events</a>,
+          <a href="qstringgrid.html#4">QStringGrid examples</a>
+     </UL>
+  <LI><a href="qstringlist.html">QSTRINGLIST</a> (Windows/Linux)
+     <UL>
+      <LI><a href="qstringlist.html#1">Properties</a>, <a href="qstringlist.html#2">Methods</a>,
+          <a href="qstringlist.html#4">QStringList examples</a>
+     </UL>
+  <LI><a href="qtabcontrol.html">QTABCONTROL</a>
+     <UL>
+      <LI><a href="qtabcontrol.html#1">Properties</a>, <a href="qtabcontrol.html#2">Methods</a>,
+          <a href="qtabcontrol.html#3">Events</a>,
+          <a href="qtabcontrol.html#4">QTabControl examples</a>
+     </UL>
+  <LI><a href="qtimer.html">QTIMER</a> (Windows/Linux)
+     <UL>
+      <LI><a href="qtimer.html#1">Properties</a>,
+          <a href="qtimer.html#3">Events</a>,
+          <a href="qtimer.html#4">QTimer examples</a>
+     </UL>
+  <LI><a href="qtrackbar.html">QTRACKBAR</a>
+     <UL>
+      <LI><a href="qtrackbar.html#1">Properties</a>, <a href="qtrackbar.html#2">Methods</a>,
+          <a href="qtrackbar.html#3">Events</a>,
+          <a href="qtrackbar.html#4">QTrackBar examples</a>
+     </UL>
+  <LI><a href="qtreeview.html">QTREEVIEW</a>
+     <UL>
+      <LI><a href="qtreeview.html#1">Properties</a>, <a href="qtreeview.html#2">Methods</a>,
+          <a href="qtreeview.html#3">Events</a>,
+          <a href="qtreeview.html#4">QTreeView examples</a>
+     </UL>
+  </UL>
+  <B>Rapid-Q DirectX Component/Object Reference</B><BR>
+  <UL>
+  <LI><a href="qdximagelist.html">QDXIMAGELIST</a>
+     <UL>
+      <LI><a href="qdximagelist.html#1">Properties</a>, <a href="qdximagelist.html#2">Methods</a>,
+          <a href="qdximagelist.html#3">Events</a>,
+          <a href="qdximagelist.html#4">QDXImageList examples</a>
+     </UL>
+  <LI><a href="qdxscreen.html">QDXSCREEN</a>
+     <UL>
+      <LI><a href="qdxscreen.html#1">Properties</a>, <a href="qdxscreen.html#2">Methods</a>,
+          <a href="qdxscreen.html#3">Events</a>,
+          <a href="qdxscreen.html#4">QDXScreen examples</a>
+     </UL>
+  <LI><a href="qdxsound.html">QDXSOUND</a>
+     <UL>
+      <LI><a href="qdxsound.html#1">Properties</a>, <a href="qdxsound.html#2">Methods</a>
+          <a href="qdxsound.html#4">QDXSound examples</a>
+     </UL>
+  <LI><a href="qdxtimer.html">QDXTIMER</a>
+     <UL>
+      <LI><a href="qdxtimer.html#1">Properties</a>, <a href="qdxtimer.html#2">Methods</a>,
+          <a href="qdxtimer.html#3">Events</a>,
+          <a href="qdxtimer.html#4">QDXTimer examples</a>
+     </UL>
+  </UL>
+  &nbsp; &nbsp; <B>Rapid-Q Direct3D Component/Object Reference</B><BR>
+  &nbsp; &nbsp; This is a work in progress, some properties or methods may change in the future.
+  All 3D operations are done in Retained mode.
+  <UL>
+  <LI><a href="qd3dface.html">QD3DFace</a>
+     <UL>
+      <LI><a href="qd3dface.html#1">Properties</a>, <a href="qd3dface.html#2">Methods</a>,
+          <a href="qd3dface.html#4">QD3DFace examples</a>
+     </UL>
+  <LI><a href="qd3dframe.html">QD3DFrame</a>
+     <UL>
+      <LI><a href="qd3dframe.html#1">Properties</a>, <a href="qd3dframe.html#2">Methods</a>,
+          <a href="qd3dframe.html#4">QD3DFrame examples</a>
+     </UL>
+  <LI><a href="qd3dlight.html">QD3DLight</a>
+     <UL>
+      <LI><a href="qd3dlight.html#2">Methods</a>,
+          <a href="qd3dlight.html#4">QD3DLight examples</a>
+     </UL>
+  <LI><a href="qd3dmesh.html">QD3DMesh</a>
+     <UL>
+      <LI><a href="qd3dmesh.html#1">Properties</a>, <a href="qd3dmesh.html#2">Methods</a>,
+          <a href="qd3dmesh.html#4">QD3DMesh examples</a>
+     </UL>
+  <LI><a href="qd3dmeshbuilder.html">QD3DMeshBuilder</a>
+     <UL>
+      <LI><a href="qd3dmeshbuilder.html#2">Methods</a>,
+          <a href="qd3dmeshbuilder.html#4">QD3DMeshBuilder examples</a>
+     </UL>
+  <LI><a href="qd3dtexture.html">QD3DTexture</a>
+     <UL>
+      <LI><a href="qd3dtexture.html#2">Methods</a>,
+          <a href="qd3dtexture.html#4">QD3DTexture examples</a>
+     </UL>
+  <LI><a href="qd3dvector.html">QD3DVector</a>
+     <UL>
+      <LI><a href="qd3dvector.html#1">Properties</a>,
+          <a href="qd3dvector.html#4">QD3DVector examples</a>
+     </UL>
+  <LI><a href="qd3dvisual.html">QD3DVisual</a>
+     <UL>
+      <LI><a href="qd3dvisual.html#2">Methods</a>,
+          <a href="qd3dvisual.html#4">QD3DVisual examples</a>
+     </UL>
+  <LI><a href="qd3dwrap.html">QD3DWrap</a>
+     <UL>
+      <LI><a href="qd3dwrap.html#2">Methods</a>,
+          <a href="qd3dwrap.html#4">QD3DWrap examples</a>
+     </UL>
+  </UL>
+  <B>Appendix C: Rapid-Q Keywords & Statements</B><BR>
+  <UL>
+  <LI><a href="operators.html">Valid Operators</a> (In order of precedence)
+     <UL>
+      <LI> Exponentiation (^)
+      <LI> Multiplication/Division and Shifts (*, /, \ (integer division), SHL, SHR)
+      <LI> Modulo arithmetic (MOD, INV)
+      <LI> Addition and subtraction (+, -)
+      <LI> Relation operations (=, >, &lt;, &lt;>, &lt;=, >=)
+      <LI> Logical operations in order from high to low (NOT, AND, OR, XOR)
+     </UL>
+  <LI><a href="defs.html">Rapid-Q internal definitions</a>
+     <UL>
+      <LI>WIN32, UNIX, TYPE
+     </UL>
+  <LI><a href="datatypes.html">Rapid-Q supported Data Types</a>
+     <UL>
+      <LI>BYTE, WORD, INTEGER, VARIANT, etc...
+     </UL>
+  <LI><a href="gotos.html">Branching with GOTO and GOSUB</a>
+     <UL>
+      <LI>GOTO, GOSUB, RETURN
+     </UL>
+  <LI><a href="types.html">User defined types</a>
+     <UL>
+      <LI>TYPE versus STRUCT
+     </UL>
+  <LI><a href="conditions.html">Conditional statements</a>
+     <UL>
+      <LI>IF .. THEN .. ELSE, SELECT CASE
+     </UL>
+  <LI><a href="loops.html">Loops</a>
+     <UL>
+      <LI>FOR .. NEXT, DO .. LOOP, WHILE .. WEND
+     </UL>
+  <LI><a href="methods.html">Constructors/Methods</a>
+     <UL>
+      <LI>CONSTRUCTOR, CREATE, WITH
+     </UL>
+  <LI><a href="procs.html">Procedures</a>
+     <UL>
+      <LI>SUB, FUNCTION, SUBI, FUNCTIONI
+     </UL>
+  <LI><a href="internal.html">Internal Variables</a>
+     <UL>
+      <LI>Command$, CurDir$, MouseX, MouseY, etc...
+     </UL>
+  <LI><a href="console.html">Console keywords</a>, <a href="consoledetail.html">Detailed list</a>
+     <UL>
+      <LI>CLS, COLOR, PRINT, INKEY$, etc...
+     </UL>
+  <LI>Other reserved keywords, <a href="otherdetail.html">Detailed list</a>
+     <UL>
+      <LI>ABS, LEN, MID$, SWAP, etc...
+     </UL>
+  <LI><a href="troubles.html">Trouble Shooting</a>
+     <UL>
+      <LI>How to Debug your programs
+     </UL>
+  </UL>
+</UL>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD></TD>
+   <TD ALIGN=RIGHT><a href="#up">Up</a></TD>
+   <TD ALIGN=RIGHT><A HREF="chapter1.html">Next Chapter</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>

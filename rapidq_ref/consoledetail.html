@@ -1,0 +1,321 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>Appendix C: Detailed Console Keywords</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix C: Detailed Console Keywords</B></FONT></TD>
+  </TR>
+  <TR>
+    <TD COLSPAN=2><HR SIZE=1> </TD>
+  </TR>
+</TABLE>
+<a name="up"></a>
+
+<BR>
+<H1>Detailed Console Keywords</H1>
+<DD>Most of these have the same functionality as QBasic, so you could just as
+easily look them up there. Again, when I refer to Unix, I mean Linux & Unix.
+The following keywords are all encapsulated in the CONSOLE object, so <font face="courier">Console.PRINT</font> is the same as PRINT.
+<BR><BR>
+
+<!-- CLS -->
+
+<a name="cls"></a>
+<hr width="95%" align=center>
+<DD><B>CLS</B> CONSOLE Statement   <B>Windows/Unix</B>
+<hr width="95%" align=center><br>
+
+           Clears console screen of all text, and fills the console with the currect background color.
+           CLS also returns the cursor to the home position in the top left corner of the screen.<BR><BR>
+           <B>Syntax</B>: CLS<BR>
+           CLS<BR><BR>
+           <B>Details</B>:<BR>
+           Under Windows, CLS is a CONSOLE statement, under Linux/Unix, CLS is implemented as a system call
+           to <I>clear</I>, so you can safely call CLS without compiling as CONSOLE under Linux/Unix.<br><br>
+<!-- COLOR -->
+<a name="color4"></a>
+<hr width="95%" align=center>
+<DD><B>COLOR</B> CONSOLE Statement <B>Windows/Unix</B><br>
+<hr width="95%" align=center><br>
+
+
+           Sets the current display colors for the console screen.
+           <UL>
+             <LI> Foreground is the text color (range = 0-31)
+             <LI> Background is the screen color (range = 0-7)
+           </UL>
+<PRE>
+0 = black  4 = red       8 = grey        12 = light red
+1 = blue   5 = magenta   9 = light blue  13 = light magenta
+2 = green  6 = brown    10 = light green 14 = yellow
+3 = cyan   7 = white    11 = light cyan  15 = bright white
+</PRE>
+           <BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>COLOR [foreground][,background]</FONT><BR>
+           COLOR 15<BR>
+           COLOR 10, 3<BR>
+           COLOR ,1<BR>
+           COLOR<br><br>
+
+
+<!-- CONSOLE.INPUTHANDLE -->
+<a name="consoleinputhandle"></a>
+<hr width="95%" align=center>
+<DD><B>CONSOLE.INPUTHANDLE</B>  CONSOLE Statement  <B>Windows</B>
+<hr width="95%" align=center><br>
+
+           Returns the console input handle for use in API calls.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>CONSOLE.INPUTHANDLE</FONT><BR>
+           hnd = CONSOLE.INPUTHANDLE<BR><br>
+
+<!-- CONSOLE.OUTPUTHANDLE -->
+<a name="consoleoutputhandle"></a>
+
+<hr width="95%" align=center>
+<DD><B>CONSOLE.OUTPUTHANDLE</B>   CONSOLE Statement   <B>Windows</B>
+<hr width="95%" align=center><br>
+
+           Returns the console output handle for use in API calls.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>CONSOLE.OUTPUTHANDLE</FONT><BR>
+           hnd = CONSOLE.OUTPUTHANDLE<BR><br>
+
+<!-- CSRLIN -->
+   <a name="csrlin"></a>
+<hr width="95%" align=center>
+<DD><B>CSRLIN</B>   CONSOLE Function   <B>Windows/Unix</B>
+<hr width="95%" align=center><br>
+           Returns the current line (row) position of the cursor.<BR><BR>
+           <B>Syntax</B>: CSRLIN<BR>
+           Row% = CSRLIN<BR><br>
+
+<!-- GET$ -->
+   <a name="get$"></a>
+<hr width="95%" align=center>
+<DD><B>GET$</B>   CONSOLE Function   <B>Windows/Unix</B>
+<hr width="95%" align=center><br>
+           This function is mainly used in CGI programs, but can be used as a general purpose
+           read function. It will read the STDIN.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>GET$(numeric-expression)</FONT><BR>
+           A$ = GET$(10)<BR>
+           <BR><BR>
+           <B>Details</B>:<BR>
+           GET$ under Linux/Unix is not a console function.
+           To use GET$, compile your application as CONSOLE or CGI under Windows.<br><br>
+
+<!-- INKEY$ -->
+<a name="inkeys"></a>
+<hr width="95%" align=center>
+<DD><B>INKEY$</B>   CONSOLE Function   <B>Windows/Unix</B>
+<hr width="95%" align=center><br>
+           Returns a one- or two-byte string containing a character read from
+           standard input (console). An empty string is returned if no character
+           is waiting there.<BR><BR>
+           <B>Syntax</B>: INKEY$<BR>
+           A$ = INKEY$<BR>
+           <BR><BR>
+           <B>Details</B>:<BR>
+           Extended keys
+           start with CHR$(27) and are 2 bytes in length. Extended keys are arrow keys, page up/down, home, end, insert, delete,
+           and F1-F12 keys. You can also trap the shift, ctrl, alt, caps/num/scroll lock keys under Windows.<br><br>
+
+<!-- INPUT -->
+   <a name="input"></a>
+<hr width="95%" align=center>
+<DD><B>INPUT</B>   CONSOLE Statement   <B>Windows/Unix</B>
+<hr width="95%" align=center><br>
+           Reads a whole line of input from the. This statement causes the program
+           to pause and wait for data until a carriage return is pressed.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>INPUT ["Prompt string"{;|,}] variable</FONT><BR>
+           INPUT A$<BR>
+           INPUT "Enter name: "; A$<BR>
+           <BR><BR>
+           <B>Details</B>:<BR>
+           INPUT for Rapid-Q is not exactly compatible with QBasic's INPUT. It is
+           more like LINE INPUT.  The return variable can be a string or numeric variable.
+           Under Windows, INPUT is implemented as a CONSOLE function. Under Linux/Unix
+           INPUT is not considered a CONSOLE function so there's no need to compile as CONSOLE.<br><br>
+
+<!-- LOCATE -->
+   <a name="locate"></a>
+<hr width="95%" align=center>
+<DD><B>LOCATE</B>   CONSOLE Statement   <B>Windows/Unix</B>
+<hr width="95%" align=center><br>
+           Moves cursor to specified position.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>LOCATE [row][,column][,cursor]</FONT><BR>
+           LOCATE 10, 1<BR>
+           LOCATE ,10<BR>
+           LOCATE 5<BR>
+           LOCATE 1,,80
+           <BR><BR>
+           <B>Details</B>:<BR>
+           Under Windows you can assume that Row 25 is the last row and Column 80 as the last column.
+           Under Linux/Unix this is dependent on your terminal, but you can use the internal variables
+           <I>Screen.ConsoleX</I> and <I>Screen.ConsoleY</I> to determine the max column and row respectively.
+           The first row and first column always starts at (1,1).
+           The <i>cursor</i> argument is optional, and can take a range of values from 0 to 100 indicating
+           the percentage of the character cell that is filled by the cursor. ie. specifying a value of 0 completely
+           hides the cursor. The default cursor value is 1.<br><br>
+
+<!-- PCOPY -->
+   <a name="pcopy"></a>
+<hr width="95%" align=center>
+<DD><B>PCOPY</B>   CONSOLE Statement   <B>Windows</B>
+<hr width="95%" align=center><br>
+           Copies one screen page to another.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>PCOPY sourcepage, destinationpage</FONT><BR>
+           PCOPY 0, 1<BR>
+           PCOPY 1, 5<BR>
+           <BR><BR>
+           <B>Details</B>:<BR>
+           The visible (on-screen) page is always 0. There are 7 off-screen pages (1 to 7).
+           You can copy from any page onto any other page.<br><br>
+
+<!-- PEEK -->
+   <a name="peek"></a>
+<hr width="95%" align=center>
+<DD><B>PEEK</B>   CONSOLE Function   <B>Windows</B>
+<hr width="95%" align=center><br>
+           Returns the current character/attribute pair stored at a specified location on the console screen.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>PEEK([#pagenum,] address)</FONT><BR>
+           A% = PEEK(2000)     <I>'-- Peek location 2000 on current page</I><BR>
+           A% = PEEK(1, 2000)  <I>'-- Peek location 2000 on page 1</I><BR>
+           <BR><BR>
+           <B>Details</B>:<BR>
+           To understand how to compute the address, use this handy function:
+           <PRE>
+   Char$ = CHR$(PEEK((Row%-1)*160+(Col%-1)*2))
+   Attr = PEEK((Row%-1)*160+(Col%-1)*2+1)</PRE>
+           As you may notice, all the even memory addresses contain the character,
+           and all the odd numbered addresses contain the attribute. The attribute
+           contains information about the foreground and background color.
+           <PRE>
+   ForeGround% = Attr AND &HF
+   BackGround% = Attr SHR 4</PRE>
+           Why all the trouble? This is implemented for compatibility with QBasic.
+           The only difference is that you don't use DEF SEG under Rapid-Q, and PEEK
+           only works at the console level.<br><br>
+
+<!-- POKE -->
+   <a name="poke"></a>
+<hr width="95%" align=center>
+<DD><B>POKE</B>   CONSOLE Statement   <B>Windows</B>
+<hr width="95%" align=center><br>
+           Writes a byte to the console page.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>POKE [#pagenum,] address, byte</FONT><BR>
+           POKE 2000, ASC("A")     <I>'-- Pokes an "A" character at location 2000</I><BR>
+           POKE 2001, 95  <I>'-- Pokes attribute 95 to location 2000</I><BR>
+           POKE 1, 2001, 95  <I>'-- Same as above but pokes to page 1</I><BR>
+           <BR><BR>
+           <B>Details</B>:<BR>
+           To understand how to compute the address, use this handy function:
+           <PRE>
+   ChAddress = (Row%-1)*160+(Col%-1)*2
+   AttrAddress = (Row%-1)*160+(Col%-1)*2+1</PRE>
+           As you may notice, all the even memory addresses contain the character,
+           and all the odd numbered addresses contain the attribute. The attribute
+           contains information about the foreground and background color.
+           To calculate the attribute, try this:
+           <PRE>
+   Attr = (BackGround% SHL 4) OR ForeGround%</PRE>
+           Why all the trouble? This is implemented for compatibility with QBasic.
+           The only difference is that you don't use DEF SEG under Rapid-Q, and POKE
+           only works at the console level.<br><br>
+
+<!-- POS -->
+   <a name="pos"></a>
+<hr width="95%" align=center>
+<DD><B>POS</B>   CONSOLE Function   <B>Windows/Unix</B>
+<hr width="95%" align=center><br>
+           Returns the current horizontal (column) position of the cursor.<BR><BR>
+           <B>Syntax</B>: POS(0)<BR>
+           Column% = POS(0)<BR>
+           <BR><BR>
+           <B>Details</B>:<BR>
+           Please note that I did not make this function up (ie. its weird syntax), it's implemented for
+           compatibility with QBasic.<br><br>
+
+<!-- PRINT -->
+   <a name="print"></a>
+<hr width="95%" align=center>
+<DD><B>PRINT</B>   CONSOLE Statement   <B>Windows/Unix</B>
+<hr width="95%" align=center><br>
+           PRINT outputs data to the screen (or standard output).<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>PRINT [#pagenum,][expressions][{;|,}]</FONT><BR>
+           PRINT "Number: "; 45<BR>
+           PRINT A$<BR>
+           PRINT #1, "This prints to screen page 1"<BR>
+           <BR><BR>
+           <B>Details</B>:<BR>
+           <I>Expressions</I> can be any string, number, or function. You can optionally
+           use ; or , to print out more expressions. Under QBasic, PRINT can format your data
+           if you use the comma, however, under Rapid-Q the comma and semi-colon have the same effect. 
+           Again, under Windows, PRINT is implemented as a CONSOLE function. Under Linux/Unix you do not need
+           to compile as CONSOLE.<br><br>
+
+<!-- SCREEN -->
+   <a name="screen"></a>
+<hr width="95%" align=center>
+<DD><B>SCREEN</B>   CONSOLE Function   <B>Windows</B>
+<hr width="95%" align=center><br>
+           Returns the ASCII character or attribute at (row, col) on the current console screen.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>SCREEN(row, col [, colorflag])</FONT><BR>
+           A% = SCREEN(1, 1)     <I>'-- Get character located on the first row and column</I><BR>
+           A% = SCREEN(5, 3, 1)  <I>'-- Get attribute of character located at (5,3)</I><BR>
+           <BR><BR>
+           <B>Details</B>:<BR>
+           The SCREEN function is very similar to the PEEK function, except that it's much easier to use.
+           If you supply the function with a <b>colorflag</b> parameter, the function returns the attribute (ie. color), otherwise
+           it returns the ASCII character.
+           The SCREEN function only works on the current console screen and not on any hidden pages.<br><br>
+<!-- SETCONSOLETITLE -->
+   <a name="setconsoletitle"></a>
+<hr width="95%" align=center>
+<DD><B>SETCONSOLETITLE</B>   CONSOLE Statement   <B>Windows</B>
+<hr width="95%" align=center><br>
+           SetConsoleTitle is implemented as a WinAPI call to SetConsoleTitle but is called as a statement
+           rather than a function (ie. no return value). If you would like a return value, you'll have to
+           call the API function directly.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>SETCONSOLETITLE string-expression</FONT><BR>
+           SETCONSOLETITLE "Hello World!"<BR><br>
+
+<!-- SLEEP -->
+   <a name="sleep"></a>
+<hr width="95%" align=center>
+<DD><B>SLEEP</B>   CONSOLE Statement   <B>Windows/Unix</B>
+<hr width="95%" align=center><br>
+           Suspends execution of the application for a specified amount of time.<BR><BR>
+           <B>Syntax</B>: <FONT FACE=Courier>SLEEP seconds</FONT><BR>
+           SLEEP .5 <I>'-- Delay for half a second</I><BR>
+           <BR><BR>
+           <B>Details</B>:<BR>
+           SLEEP requires a parameter, unlike QBasic. SLEEP waits until the number of
+           seconds specified has elasped. You cannot break out of it by pressing a
+           key (unlike QBasic). Under Windows, SLEEP is implemented as a console function.
+           Under Linux/Unix, you do not need to compile as CONSOLE.<br><br>
+
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="chapter3.html">Prev Chapter</a></TD>
+<TD ALIGN=CENTER><A HREF="#up">Up</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="chapter5.html">Next Chapter</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                        

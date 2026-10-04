@@ -1,0 +1,331 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>Chapter 13: Direct3D for Rapid-Q</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Chapter 13</B></FONT></TD>
+  </TR>
+  <TR>
+    <TD COLSPAN=2><HR SIZE=1> </TD>
+  </TR>
+</TABLE>
+
+<BR>
+<H1>13. Direct3D for Rapid-Q</H1>
+<DD>This is only an introduction to using Direct3D with Rapid-Q. Since most of
+the Direct3D components have not yet been finalized under Rapid-Q, this chapter
+will deal mostly with what can be done.
+<BR><BR>
+
+<a name="131">
+<B>13.1 Requirement specifications</B>
+<DD>The most basic requirement is that you have the DirectX 6.0 runtimes.
+If you're unsure what version you have, type DXDIAG at the command prompt,
+or find the file under C:\WINDOWS\SYSTEM. If you don't have DXDIAG then you'll
+definitely need to upgrade. You can download the runtime files at
+<a href="http://msdn.microsoft.com/directx/">http://msdn.microsoft.com/directx/</a><BR>
+Just the runtime files, you don't need the SDK, but if you want, no one is stopping
+you from downloading it. The SDK does contain an important file CONV3DS.EXE which
+is necessary to convert different 3D models for use with your programs.
+However, I have posted a link to this file so it's not necessary for you download
+the entire SDK just for that one file.<BR><BR>
+<UL>Other nice things to have:
+ <LI>3D accelerated video card
+ <LI>A 3D modeler (like 3D Studio)
+ <LI>OpenGL (some 3D modelers use this)
+</UL>
+Even if you don't have any of the above, this shouldn't matter.
+A 3D card is not necessary, but you'll find that running your programs can be
+5 to 10 times slower, but still manageable if you have a good Pentium.
+I don't have a 3D card, and only get about 5-10 fps on my P200, but it doesn't
+bother me. If you don't have a 3D modeling program don't worry, there's some
+free 3D modelers on the internet. I find that <I>Anim8or</I> is pretty good,
+for something that's completely free there's nothing to complain about.
+It's only a 500KB download, which is very small compared to other 3D modeling
+programs I've seen. It does require OpenGL, but check your C:\WINDOWS\SYSTEM
+directory for OPENGL32.DLL. If you have it, you're in good shape, if not, just
+download it off the web at <a href="http://www.opengl.org/">http://www.opengl.org/</a>
+<UL>Nice links to have:
+ <LI><a href="http://www.anim8or.com/">Anim8or homepage</a> good 3D modeler
+ <LI><a href="http://www.doga.co.jp/english/index.html">DOGA Homepage</a> another good free 3D modeler
+ <LI><a href="http://www.basicguru.com/abc/rapidq/conv3ds.exe">CONV3DS.EXE</a> converts .3DS files to .X files
+ <LI><a href="http://www.3dcafe.com/">3DCafe.com</a> thousands of free 3D models available
+ <LI><a href="http://msdn.microsoft.com/directx/">Microsoft's DirectX homepage</a> learn more, download their SDK documentation
+</UL>
+<BR><BR>
+
+<a name="132">
+<B>13.2 Using Anim8or to create 3D models</B>
+<DD>If you already have a good understanding of how to create 3D models, you can
+skip this section. I will be using Anim8or to demonstrate simple 3D modeling
+which you can quickly use in your Rapid-Q programs. If you haven't already downloaded
+Anim8or's HTML documentation, I suggest you do that.  I won't cover all there is
+to know about Anim8or, just the basics.<BR><BR>
+<UL>Step by step introduction
+ <LI>Load Anim8or
+ <LI>Click on a polygon object<BR>
+     <IMG SRC="chap13d1.gif">
+ <LI>To draw this object, just click and drag your mouse on the main grid<BR>
+     <IMG SRC="chap13d2.gif">
+ <LI>Make sure to also center the object (not necessary but a good thing anyway).
+     To do this, just select the object you want centered, then select from the
+     menu: 
+     <B>Edit</B>|<B>Locate</B>|<B>Center about origin</B>
+ <LI>Make sure you haven't drawn an overly big polygon, perhaps the size of your pinky
+     is good enough.
+ <LI>Now to export your object, select from the menu: <B>Object</B>|<B>Export</B>
+     Just make sure to save as a .3DS file.
+ <LI>Let's just say you named your file <B>poly.3ds</B> then from the command
+     prompt type in:
+<PRE>   CONV3DS -m poly.3ds</PRE>
+     I assumed you downloaded CONV3DS.EXE (copy this to your Windows directory
+     if you want).
+ <LI>Once converted, you should have a <B>poly.x</B> file, this object file can
+     now be used in your Rapid-Q program!
+</UL>
+If you don't like doing your own 3D models you can always download pre-made
+3D models from www.3dcafe.com and other websites like it. However, it's always nice
+to customize your objects, so learning to use a 3D modeling program wouldn't hurt.
+The optional parameter -m is used to create a single mesh for use with MeshBuilder.
+Without -m, your .X file is saved as a frame so you would have to use QD3DFrame
+to load your .X file.
+<BR><BR>
+
+<a name="133">
+<B>13.3 Loading/Using .X Files</B>
+<DD>Simply loading an .X file is easy enough, to make sure you have this
+much working, copy and paste this code:
+<PRE>
+' Simply places an object on the scene
+
+$TYPECHECK ON
+
+CONST alClient = 5
+
+'-- Light Types
+CONST D3DRMLIGHT_AMBIENT = 0
+CONST D3DRMLIGHT_POINT = 1
+CONST D3DRMLIGHT_SPOT = 2
+CONST D3DRMLIGHT_DIRECTIONAL = 3
+CONST D3DRMLIGHT_PARALLELPOINT = 4
+
+DECLARE SUB DXInitialize(Sender AS QDXScreen)
+DECLARE SUB DXTimerExpired
+
+DIM DXTimer AS QDXTimer
+    DXTimer.Enabled = 1
+    DXTimer.Interval = 0
+    DXTimer.Activeonly = 0
+    DXTimer.OnTimer = DXTimerExpired
+
+CREATE Form AS QForm
+    Caption = "Direct 3D Example"
+    Center
+    CREATE DXScreen AS QDXScreen
+        Init(320,240)
+        Align = alClient
+        Use3D = 1
+        UseHardware = 0        '' This is for non-3D accelerated video cards.
+                               '' 3D will be emulated using software, which
+                               '' is much slower.
+        OnInitialize = DXInitialize
+    END CREATE
+    ShowModal
+END CREATE
+
+
+SUB DXInitialize(Sender AS QDXScreen)
+   DIM Light AS QD3DLight
+   DIM LightFrame AS QD3DFrame, MeshFrame AS QD3DFrame
+   DIM MeshBuilder AS QD3DMeshBuilder
+
+   DXScreen.CreateFrame(LightFrame)
+   DXScreen.CreateFrame(MeshFrame)
+
+   '-- Need light, else object would be completely hidden
+   DXScreen.CreateLightRGB(D3DRMLIGHT_DIRECTIONAL, 0.9, 0.9, 0.9, Light)
+   LightFrame.AddLight(Light)
+
+   DXScreen.SetCameraPosition(-5, 10, 0)
+   DXScreen.SetCameraOrientation(0.35, -0.65, 1.0, -0.15, 1.0, 0.5)
+
+   MeshFrame.SetPosition(0, 0, 15)
+   MeshFrame.SetOrientation(0, 0, 1, 0, 1, 0)
+   MeshFrame.SetRotation(0, 0, 0, 0.05)     '-- Angle of rotation = 0.05
+
+   DXScreen.CreateMeshBuilder(MeshBuilder)  '-- Create object
+
+   MeshBuilder.Load("poly.x")               '-- Load your object
+   MeshFrame.AddVisual(MeshBuilder)         '-- Add object to frame
+END SUB
+
+SUB DXTimerExpired
+   DXScreen.ForceUpdate(0,0,50,50)   '-- Updates FPS Text
+   DXScreen.Render
+   DXScreen.TextOut(10,10,"FPS: "+STR$(DXTimer.FrameRate), &HFFFFFF, -1)
+   DXScreen.Flip
+END SUB
+</PRE>
+If everything worked, you should obtain some output that looks like this:
+<IMG SRC="chap13d3.gif"><BR>
+If you understood the example, it's quite easy to add more objects to the scene,
+just create another MeshFrame and load another object file. Play around with the
+code until you're satisfied.
+<BR><BR>
+
+<a name="134">
+<B>13.4 Wrapping textures around an object</B>
+<DD>Now that we have the basics, time to wrap textures around our object.
+To do this, all we need is a .BMP file for our texture. There's a few important
+points to note, First, width and height of bitmap must be equal, and secondly, they must
+be powers of 2 (ie. 32x32, 256x256, etc.). This is obviously for optimization reasons,
+but don't ask me, I didn't create Direct3D. Anyway, to wrap this texture around our
+object, we just need to modify the above code a bit (changes are noted in <FONT COLOR=000099><B>Blue</B></FONT>):
+<PRE>
+' Wrap textures around 3D object
+
+$TYPECHECK ON
+
+CONST alClient = 5
+
+'-- Light Types
+CONST D3DRMLIGHT_AMBIENT = 0
+CONST D3DRMLIGHT_POINT = 1
+CONST D3DRMLIGHT_SPOT = 2
+CONST D3DRMLIGHT_DIRECTIONAL = 3
+CONST D3DRMLIGHT_PARALLELPOINT = 4
+<FONT COLOR=000099><B>
+'-- Wrap Types
+CONST D3DRMWRAP_FLAT = 0
+CONST D3DRMWRAP_CYLINDER = 1
+CONST D3DRMWRAP_SPHERE = 2
+CONST D3DRMWRAP_CHROME = 3
+CONST D3DRMWRAP_SHEET = 4
+CONST D3DRMWRAP_BOX = 5
+
+CONST WrapType = D3DRMWRAP_SPHERE     '-- You can modify this
+</B></FONT>
+DECLARE SUB DXInitialize(Sender AS QDXScreen)
+DECLARE SUB DXTimerExpired
+
+DIM DXTimer AS QDXTimer
+    DXTimer.Enabled = 1
+    DXTimer.Interval = 0
+    DXTimer.Activeonly = 0
+    DXTimer.OnTimer = DXTimerExpired
+
+CREATE Form AS QForm
+    Caption = "Direct 3D Example"
+    Center
+    CREATE DXScreen AS QDXScreen
+        Init(320,240)
+        Align = alClient
+        Use3D = 1
+        UseHardware = 0        '' This is for non-3D accelerated video cards.
+                               '' 3D will be emulated using software, which
+                               '' is much slower.
+        OnInitialize = DXInitialize
+    END CREATE
+    ShowModal
+END CREATE
+
+
+SUB DXInitialize(Sender AS QDXScreen)
+   DIM Light AS QD3DLight
+   DIM LightFrame AS QD3DFrame, MeshFrame AS QD3DFrame
+   DIM MeshBuilder AS QD3DMeshBuilder
+<FONT COLOR=000099><B>   DIM Texture AS QD3DTexture
+   DIM Wrap AS QD3DWrap
+   DIM Mesh AS QD3DMesh
+</B></FONT>
+
+   DXScreen.CreateFrame(LightFrame)
+   DXScreen.CreateFrame(MeshFrame)
+
+   DXScreen.CreateLightRGB(D3DRMLIGHT_DIRECTIONAL, 0.9, 0.9, 0.9, Light)
+   LightFrame.AddLight(Light)
+
+
+   DXScreen.SetCameraPosition(-5, 10, 0)
+   DXScreen.SetCameraOrientation(0.35, -0.65, 1.0, -0.15, 1.0, 0.5)
+
+   MeshFrame.SetPosition(0, 0, 15)
+   MeshFrame.SetOrientation(0, 0, 1, 0, 1, 0)
+   MeshFrame.SetRotation(0, 0, 0, 0.05)       ' Angle of rotation = 0.05
+
+   DXScreen.CreateMeshBuilder(MeshBuilder)
+
+   MeshBuilder.Load("poly.x")            '-- Egg object
+<FONT COLOR=000099><B>
+   MeshBuilder.LoadTexture("back.bmp")   '-- New lines
+   MeshBuilder.CreateMesh(Mesh)
+
+   MeshFrame.AddVisual(Mesh)
+
+   DXScreen.CreateWrap(WrapType, 0,0,0, 0,0,1, 0,1,0, 0,0, 1,1, Wrap)
+   Wrap.Apply(Mesh)
+</B></FONT>
+END SUB
+
+SUB DXTimerExpired
+   DXScreen.ForceUpdate(0,0,50,50)
+   DXScreen.Render
+   DXScreen.TextOut(10,10,"FPS: "+STR$(DXTimer.FrameRate), &HFFFFFF, -1)
+   DXScreen.Flip
+END SUB
+</PRE>
+Again, if everything worked, you should obtain some output that looks like this (depending
+on what texture file you used of course):<BR>
+<IMG SRC="chap13d4.gif"><BR>
+As you can see, it doesn't take much to add textures to our objects.
+The only problem is you lose a few frame rates by doing this.
+<BR><BR>
+
+<a name="135">
+<B>13.5 Rotating/Moving objects</B>
+<DD>Unfortunately as of this writing, there is no support for Animation sets, but
+that will be worked on later. You can do simple rotations and scene movements just
+by calling the method <B>Move</B> or manually setting the camera angles and
+positions. Using the example from above, add this extra code:
+<PRE>
+
+   DXScreen.ForceUpdate(0,0,50,50)
+   <B>DXScreen.Move(1)</B>            '-- Add this line
+   DXScreen.Render
+</PRE>
+This moves the camera position by the amount specified. The affect is a rotation
+about angle Theta. This Theta was specified on the line:
+<PRE>
+   MeshFrame.SetRotation(0, 0, 0, 0.05)       ' Angle of rotation = 0.05
+</PRE>
+DXScreen.Move animates the entire scene, to just animate a certain frame, you
+can use MeshFrame.Move(1).
+<BR><BR>
+
+
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="chapter12.html">Prev Chapter</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</A></TD>
+   <TD ALIGN=RIGHT><A HREF="chapter14.html">Next Chapter</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>
+                        

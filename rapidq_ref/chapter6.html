@@ -1,0 +1,245 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>Chapter 6: Writing Console Applications</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Chapter 6</B></FONT></TD>
+  </TR>
+  <TR>
+    <TD COLSPAN=2><HR SIZE=1> </TD>
+  </TR>
+</TABLE>
+
+<BR>
+<H1>6. Writing Console Applications</H1>
+<DD>Console applications are as easy to create as Windowed applications.
+Whenever you feel like creating text-based applications, just compile as
+CONSOLE instead of GUI. As you may find, it's easier to learn the fundamentals
+of Rapid-Q (or the BASIC language in general) by creating simple console applications
+and testing your routines. It can also act as a debugging tool for your GUI applications.
+<BR><BR>
+
+<a name="61">
+<B>6.1 Overview of console functions</B>
+<DD>A console application is a text-based application capable of writing to and accepting
+input from the console. A console application, in Rapid-Q, consists of one visible screen, and 7 off screen
+buffers. Here's an overview of some console functions:
+<PRE>
+   <B>CLS</B>    - Clear console screen
+   <B>PRINT</B>  - Write output to screen (visible/offscreen)
+   <B>INPUT</B>  - Accept input from user
+   <B>PCOPY</B>  - Used to copy to and from the screen buffers
+   <B>LOCATE</B> - Position cursor
+   <B>POS(0)</B> - Get current cursor column
+   <B>CSRLIN</B> - Get current cursor row
+<a name="color1">
+   <B>COLOR</B>  - Change color attribute of text
+   <B>POKE</B>   - Put attribute/char on screen
+   <B>PEEK</B>   - Get attribute/char from screen
+   <B>SLEEP</B>  - Delay
+   <B>INKEY$</B> - Non-blocking keyboard check
+</PRE>
+These functions mimic the ones you would see under QBasic.
+PEEK and POKE operate the same way, SLEEP is more precise than QBasic's (ie. you
+can specify a fraction of a second, like in PowerBASIC).
+Notice that you don't require any DEF SEG statements, since this is Windows.
+<BR><BR>
+
+<a name="62">
+<B>6.2 Hello world example</B>
+<DD>Rapid-Q is like most BASIC languages, you can create a hello world program
+in just one line:
+<PRE>
+     PRINT "Hello World!"
+</PRE>
+Compile and run, you've just created your first useless console application for Windows!
+Let's move on to something more interesting, copying to and from screen buffers.
+<PRE>
+   CLS
+   PRINT "This is page 1"
+
+   PCOPY 0, 1    '-- Copy visible page 0, to off screen page 1
+
+   CLS
+   PRINT "Press any key to see page 1"
+
+   DO:LOOP UNTIL INKEY$<>""
+
+   PCOPY 1, 0    '-- Copy off screen page 1, to visible page 0
+</PRE>
+As you can see, our visible page is always 0. Our off screen pages range from 1-7.
+<B>PCOPY</B> just copies the whole buffer and places it into another.
+You can even copy an off screen buffer to another off screen buffer like so:
+<PRE>    PCOPY 1,5</PRE>
+The contents in buffer 1, is now copied to buffer 5. There's nothing new
+introduced here that you wouldn't have found in QBasic. One new feature is that
+you can now write to any offscreen page:
+<PRE>
+   PRINT #1, "Hi World!"       '-- Write to page 1
+</PRE>
+The above example will write the string "Hi World!" to the offscreen page 1.
+Make sure you use the pound sign '#' else it will be treated as a number.
+To see it, use PCOPY 1, 0.<br>
+<a name="color2">
+ LOCATE and COLOR have the same effect on the offscreen
+pages. You can also PEEK from and POKE to the offscreen pages, just supply
+an additional parameter, the first being the page number to write/read from.
+<BR><BR>
+
+<a name="63">
+<B>6.3 Using PEEK and POKE</B>
+<DD>If you've never used PEEK and POKE before, it's not a big deal.
+In Rapid-Q, PEEK and POKE have the same functionality of QBasic (except for
+the additional feature to PEEK/POKE to any offscreen page). Addresses range
+from 0 to 3999. This is because the screen size is restricted to 80x25 in Rapid-Q.
+But if 80x25 = 2000, what's the extra 2000 for?
+<PRE>
+    POKE 0, ASC("A")
+    POKE 1, 15
+</PRE>
+If you run this code, you'll see a white letter 'A' displayed at the upperleft
+corner of your console. One thing you should note is that a "byte" on the
+screen contains a character and its attribute. All even numbered address contain
+the character, all odd numbered addresses contain the attribute.
+If you don't exactly know what an attribute is, it's just a combination of the
+foreground color and background color all in one byte (8-bits). The lower
+4 bits is reserved for the foreground color, and the upper 4 bits is reserved
+for the background color. If you know anything about bits and bytes, you can
+easily calculate the attribute:
+<PRE>
+    B? = &H07       '-- 0 = background, 7 = foreground
+</PRE>
+Yes, you can have high intensity background colors. Blinking is not supported
+yet.
+<BR><BR>
+
+<a name="64">
+<B>6.4 Accepting user input</B>
+<DD>You can accept user input via the INPUT statement or by the INKEY$ function.
+Rapid-Q's INPUT statement is not like "normal" Basic INPUT that you may be
+familiar with.  It is more like a LINE INPUT in that it will prompt for a complete
+line of information and only terminates if the user hits the enter key.
+<PRE>
+   INPUT "What is your age? ", Age
+</PRE>
+A quoted string can follow an INPUT statement, then a comma or semi-colon, followed
+by a variable. The input statement will store the result in the variable, string or
+numeric. The INPUT statement will block until the user has hit the enter key.
+For non-blocking keyboard inputs, try using INKEY$. It's a bit confusing to use
+at first, but it allows for customized keyboard handling. Let's use the same example
+above to demonstrate how this is done using INKEY$. However, in this version,
+we can customize input and filter out non-numeric characters.
+<PRE>
+   PRINT "What is your age? ";
+   AGE$ = ""
+   DO
+     DO
+       A$ = INKEY$
+     LOOP UNTIL LEN(A$)
+     IF A$ = CHR$(13) THEN EXIT DO
+     IF A$ >= "0" AND A$ <= "9" THEN PRINT A$;:AGE$=AGE$+A$
+   LOOP
+   PRINT
+   PRINT "You are "; AGE$; " years old."
+</PRE>
+Notice that if you press a non-numeric key, that character is not echoed.
+This is because we've restricted input to characters 0..9 only. Although the example is
+much longer than the previous one, we have customized our input using INKEY$ and
+that provides so much more power than INPUT. Another advantage of using INKEY$ is
+that you can also trap extended keys.
+<BR><BR>
+
+<a name="65">
+<B>6.5 Trapping Extended Keys</B>
+<DD>Extended keys are 2 bytes in length, the first byte is an ESC character,
+which can be ignored, and the second byte is the virtual key code.
+In the Windows version, you can add the option to trap all keys, including
+shift, ctrl, key, caps lock, num lock, scroll lock, and that PopupMenu key (if
+you're using a Windows specific keyboard, no not the StartMenu Key, the other one, if it
+exists on your keyboard). You can turn on/off this option anytime you wish:
+<PRE>
+   $OPTION INKEY$ TRAPALL
+
+   ' trap all keys including shift, alt, ctrl, caps/num/scroll lock
+   ' and the PopupMenu key
+
+   $OPTION INKEY$ DEFAULT
+
+   ' traps all extended keys except the ones listed above
+</PRE>
+If you've used QBasic, you probably know the scan codes inside out, so all the
+virtual key codes that Rapid-Q dishes out is exactly the same scan codes you'd
+see in QBasic. The following code is an example of how to trap/parse extended keys,
+particularly the arrow keys:
+<PRE>
+   DO
+     DO
+       A$ = INKEY$
+     LOOP UNTIL LEN(A$)
+
+     IF LEN(A$) = 2 THEN
+       SELECT CASE RIGHT$(A$, 1)
+         CASE "P"
+           PRINT "Down arrow key pressed."
+         CASE "H"
+           PRINT "Up arrow key pressed."
+         CASE "M"
+           PRINT "Right arrow key pressed."
+         CASE "K"
+           PRINT "Left arrow key pressed."
+         CASE ELSE
+           PRINT "Extended key "; A$
+       END SELECT
+     END IF
+
+   LOOP UNTIL A$ = CHR$(27)
+</PRE>
+Even if you didn't know the scan codes, you can look at the output of the
+above example to figure them out.
+<BR><BR>
+
+<a name="66">
+<B>6.6 Mixing CONSOLE with GUI</B>
+<DD>As you've noticed in the above example, we've mixed some CONSOLE operations
+with GUI ones. This is perfectly valid as long as you've compiled your
+application as CONSOLE. Under Linux/Unix there are some strange differences,
+please refer to the compatibilty guide for more information. For example,
+a GUI application for Linux/Unix can perform some CONSOLE operations such as
+PRINT, INPUT, and CLS without being compiled as CONSOLE.
+<BR><BR>
+
+<a name="67">
+<B>6.7 Linux/Unix Console</B>
+<DD>Since most terminals are different, some console features will not work.
+If your terminal does not support color, none will be displayed.
+You don't need to worry about these issues, as Rapid-Q performs all proper error checking
+for you. The same can be said for extended keys, some terminals don't support
+certain keys. However, most terminals do support the arrow keys and Page up/down keys.
+You're almost guaranteed that those keys will work for most terminals.
+<BR><BR>
+
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="chapter5.html">Prev Chapter</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="chapter7.html">Next Chapter</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                        

@@ -1,0 +1,193 @@
+<html>
+
+<head>
+<meta http-equiv="Content-Language" content="en-us">
+<meta name="GENERATOR" content="Microsoft FrontPage 5.0">
+<meta name="ProgId" content="FrontPage.Editor.Document">
+<!------------------->
+<!------------------->
+<!------------------->
+<title>Chapter 2: Rapid-Q Fundamentals</title>
+</head>
+
+<!------------------->
+<!------------------->
+<!------------------->
+<body bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<table WIDTH="100%" CELLPADDING="0" CELLSPACING="0">
+  <tr>
+    <td><font FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu 
+    (c)1999-2000</font></td>
+    <td ALIGN="RIGHT"><font FACE="Arial, Helvetica"><b>Chapter 2</b></font></td>
+  </tr>
+  <tr>
+    <td COLSPAN="2"><hr SIZE="1"></td>
+  </tr>
+</table>
+<p><br>
+</p>
+<h1>2. Rapid-Q Fundamentals</h1>
+<dd>Before jumping into any language, it helps to know how to use it first. This 
+chapter will introduce you to the Rapid-Q environment, how to compile and run 
+your programs, and what the general structure of your Rapid-Q program will look 
+like. <br>
+<br>
+<a name="21"><b>2.1 Rapid-Q environment</b> </dd>
+<dd>Your Rapid-Q distribution should have included an IDE (integrated 
+development environment) program (called RAPIDQ.EXE), along with the actual 
+Rapid-Q compiler (RC.EXE). RAPIDQ32.LIB and RAPIDQCC.LIB are also required to 
+compile any of your programs. If any of these files are missing, please report 
+the problem to me or the webmaster of the site you downloaded Rapid-Q from. 
+These are the main (4) programs that you will need to develop and compile your 
+Rapid-Q source codes. The IDE is strictly optional, so if your distribution 
+excludes this file, don't fret. If you feel more comfortable writing your 
+programs in NotePad or whatever editor you choose, that's also fine. If that is 
+the case, you probably want to skip the next section on Using the Rapid-Q IDE. 
+All these files must reside in the same directory. <br>
+<br>
+</a><a name="22"><b>2.2 Using the Rapid-Q IDE</b> </dd>
+<dd>Unlike some IDEs that offer debugging options, the Rapid-Q IDE offers 
+nothing more than an environment to write your programs, run them, and provide 
+run-time command options. It has primitive error checks, I say primitive, 
+because the IDE doesn't do the error checking at all, (RC.EXE) the compiler does 
+all of it. It's just that the Rapid-Q IDE interfaces nicely with RC.EXE so you 
+don't really notice that. It also provides syntax highlighting which makes using 
+the Rapid-Q language much easier.<br>
+<ul>
+  <p><b>What are its limitations:</b> </p>
+  <li>Not all components are available in the form designer </li>
+  <li>When running your program, your source code is automatically saved </li>
+  <li>All files are compiled before they are executed </li>
+</ul>
+<p>I can't speak for everybody, but the Rapid-Q IDE is a good tool to use when 
+starting out to learn the Rapid-Q language, but as you become more accustomed to 
+the language, most people would switch to their favourite text editor. That is 
+not to say that you should abandon using the Rapid-Q IDE altogether, if you feel 
+comfortable using it, by all means, stick with it. <br>
+<br>
+</a><a name="23"><b>2.3 Compiling and Running a Simple Application</b> </dd>
+<dd>Wait a minute, we haven't even covered the BASICs on writing a simple 
+application yet. Don't worry, we'll get to that, it's better to know how to 
+compile and run it first before doing anything else. Here is a very simple GUI 
+application that you can type in and compile for yourself.
+<pre>            DIM MainForm AS QFORM
+            MainForm.ShowModal</pre>
+<p>If you're using the Rapid-Q IDE, just type in that code (or cut &amp; paste if 
+you like). Click on the <b>Run Menu</b>, and select <b>Run</b>. If all goes well, 
+you should see an empty Window at the top left hand corner of the screen. Close 
+it and return to your IDE. If you prefer the command line approach of compiling, 
+then load up your favourite editor, copy the above code and save it to a file (Forms.BAS). 
+Then to compile it, you type in: </p>
+<pre>          RC Forms.BAS
+</pre>
+<p>If all goes well, you should have a Forms.EXE file in the current directory. 
+Just type <b>Forms</b> to run it. If all goes well, continue reading. If not, 
+then something is amiss, in which case, see the Trouble Shooting section. <br>
+<br>
+</a><a name="24"><b>2.4 Command line switches for RC.EXE</b> </dd>
+<dd>I will only discuss the 3 more important ones:
+<pre>      -I[Path] Change Include Path
+      -L[Path] Change Library Path
+      -G[File] Icon file</a>
+<a name="24">
+</pre>
+<p>The compiler by default looks in the current directory for the .LIB files and 
+any include files. You can override this by specifying the above command line 
+switches. Since we're talking about C type parameters, there are a few niceties 
+you have to know about, first, the paths should be specified like so: </p>
+<pre>      RC -Ic:/rapidq/includes
+</pre>
+<p>You can use \ instead of / but there's a reason why / is preferred, consider 
+this: </p>
+<pre>      RC -I&quot;c:\rapidq long dir\includes\&quot;
+</pre>
+<p>If you never used C (or C++) you'll not likely see what I mean. If you prefer 
+the above command line, you have to add an extra \ to the end (or drop it 
+entirely), like so: </p>
+<pre>      RC -I&quot;c:\rapidq long dir\includes\\&quot;
+or
+      RC -I&quot;c:\rapidq long dir\includes&quot;
+</pre>
+<p>This is because C translates \&quot; into &quot; which is obvious to any C programmer. 
+Also, long file names must be enclosed in quotations. Those are the catches, so 
+now you know (or already knew).<br>
+Now, to change the default icon for your .EXE file, you can use the -G command 
+switch: </p>
+<pre>      RC -Gzip.ico zipview.bas
+</pre>
+<p>When your ZIPVIEW.EXE file is generated, the file &quot;zip.ico&quot; will replace the 
+default icon. Please note that your icon must be 32x32 and 16 colors (also 766 
+bytes). </p>
+</a>
+<p>------------------------------------------------<br>
+Options:<br>
+-CONS Generate CONSOLE App <br>
+-GUI Generate GUI App<br>
+-I&lt;Path&gt; Change Include Path <br>
+-L&lt;Path&gt; Change Library Path<br>
+-o I'm Stuck in Unix mode... <br>
+-b Dump byte code only<br>
+-g&lt;Path\Filename.ico&gt; <br>
+-opt Turn on Optimizations<br>
+-d&lt;NAME&gt; Add definition NAME -vON|OFF Toggle verbose output<br>
+<br>
+Also<br>
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; -R -switch to redirect compiler output to <br>
+a file in the same directory as the .bas file called &quot;DUMP.$$$&quot;.<br>
+------------------------------------------------</p>
+<p><a name="24"><br>
+<br>
+</a><a name="25"><b>2.5 General Structure of a Rapid-Q Program</b> </dd>
+<dd>There really is no pre-defined structure of a BASIC program, but there is a 
+general form that most people conform to.
+<ul>
+  <p><i>Directives</i><br>
+  <i>Declarations</i><br>
+  <i>Global Variables</i><br>
+  <i>Main Program</i> </p>
+</ul>
+<p>This is only a general form, your Rapid-Q applications can be structured in a 
+variety of ways. Some of which will have similar results, and some will have 
+devasting or more customized results. For example, <i>$INCLUDE</i> is a 
+directive to import a file at that position. So if you use <i>$INCLUDE</i> 
+somewhere in your main program, it would have a different result than if you 
+included it at the beginning of your program. <br>
+<br>
+</a><a name="26"><b>2.6 How close to the BASIC Language is Rapid-Q?</b> </dd>
+<dd>Very close, all the familiar commands like DIM, PRINT, MID$, etc. are 
+inherited. That does not mean you'll be able to port your DOS based QBasic 
+programs to Rapid-Q without any modification. Since Rapid-Q is Windows based, 
+providing primitive support for CONSOLE, it's a safe bet you won't directly 
+convert your QBasic applications to Rapid-Q without a 50-90% rewrite of your 
+source code (depending on what the code does). Comments in Rapid-Q begin with 
+the <b>'</b> symbol, just like QBasic, or you can use <b>REM</b> instead. You 
+can also separate lines by using the colon <b>:</b> symbol. This has the same 
+effect as starting a new line.
+<pre>             PRINT &quot;Hello&quot; : PRINT &quot;World&quot;
+         or
+             PRINT &quot;Hello&quot;
+             PRINT &quot;World&quot;
+</pre>
+<p>Most BASIC programmers will become very accustomed to the language once they 
+use it. However, Rapid-Q does not inherit the properties of Visual Basic. For 
+example, there's no SUB <b>MAIN</b> procedure, nor is there any public or 
+private identifiers used in Rapid-Q. Your entire program is considered the <b>
+MAIN</b> program. Going from Rapid-Q to Visual Basic probably requires a bit 
+more effort than the reverse. <br>
+<br>
+</p>
+<hr SIZE="1">
+<table WIDTH="100%" CELLPADDING="0" CELLSPACING="0">
+  <tr>
+    <td><a HREF="chapter1.html">Prev Chapter</a></td>
+    <td ALIGN="CENTER"><a HREF="contents.html">Contents</a></td>
+    <td ALIGN="RIGHT"><a HREF="chapter3.html">Next Chapter</a></td>
+  </tr>
+</table>
+</dd>
+</a>
+
+</body>
+
+</html>

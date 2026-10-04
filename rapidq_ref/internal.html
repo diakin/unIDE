@@ -1,0 +1,98 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>Appendix C: Internal Variables</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix C: Internal Variables</B></FONT></TD>
+  </TR>
+  <TR>
+    <TD COLSPAN=2><HR SIZE=1> </TD>
+  </TR>
+</TABLE>
+
+<BR>
+<H1>Internal Variables</H1>
+<DD>Internal Variables are Read-Only (except SCREEN.CURSOR and SCREEN.CURSORS). When I refer to Unix, I mean Linux & Unix.
+<BR><BR>
+
+<TABLE WIDTH=100% CELLPADDING=3 CELLSPACING=3>
+  <TR>
+   <TD><B>Variable</B></TD><TD><B>Support</B></TD><TD><B>Type</B></TD><TD WIDTH=100%><B>Description</B></TD>
+  </TR>
+  <TR>
+   <TD><hr></TD><TD><hr></TD><TD><HR></TD><TD><HR></TD>
+  </TR>
+  <TR><TD VALIGN=TOP>CommandCount</TD><TD VALIGN=TOP>Windows Unix</TD><TD VALIGN=TOP>INTEGER</TD>
+      <TD VALIGN=TOP>Number of command line parameters received.</TD></TR>
+  <TR><TD VALIGN=TOP>Command$()</TD><TD VALIGN=TOP>Windows Unix</TD><TD VALIGN=TOP>ARRAY</TD>
+      <TD VALIGN=TOP>Array of commands received (commands are separated by spaces),
+                     first element starting at 1. The zero'th element is your application path/name.</TD></TR>
+  <TR><TD VALIGN=TOP>CurDir$</TD><TD VALIGN=TOP>Windows Unix</TD><TD VALIGN=TOP>STRING</TD>
+      <TD>Returns the current working directory of your application</TD></TR>
+  <TR><TD VALIGN=TOP>IsConsole</TD><TD VALIGN=TOP>Windows Unix</TD><TD VALIGN=TOP>INTEGER</TD>
+      <TD VALIGN=TOP>Returns a non-zero number if application is a console, 0 otherwise.</TD></TR>
+  <TR><TD VALIGN=TOP>MouseX</TD><TD VALIGN=TOP>Windows</TD><TD VALIGN=TOP>INTEGER</TD><TD>Returns X Coordinate of Mouse Pointer relative to your active Form.
+                            <font color="red">This function is being deprecated.</font>
+                            </TD></TR>
+  <TR><TD VALIGN=TOP>MouseY</TD><TD VALIGN=TOP>Windows</TD><TD VALIGN=TOP>INTEGER</TD><TD>Returns Y Coordinate of Mouse Pointer relative to your active Form.
+                            <font color="red">This function is being deprecated.</font>
+                            </TD></TR>
+  <TR><TD VALIGN=TOP>ParamStrCount</TD><TD VALIGN=TOP>Windows Unix</TD><TD VALIGN=TOP>INTEGER</TD>
+      <TD VALIGN=TOP>Returns number of String parameters received. This variable is used only inside a SUBI or FUNCTIONI declaration.</TD></TR>
+  <TR><TD VALIGN=TOP>ParamStr$()</TD><TD VALIGN=TOP>Windows Unix</TD><TD VALIGN=TOP>ARRAY</TD>
+      <TD VALIGN=TOP>Used only inside a SUBI or FUNCTIONI declaration. Returns string parameter value, first element starting at 0.</TD></TR>
+  <TR><TD VALIGN=TOP>ParamVal()</TD><TD VALIGN=TOP>Windows Unix</TD><TD VALIGN=TOP>ARRAY</TD>
+      <TD VALIGN=TOP>Used only inside a SUBI or FUNCTIONI declaration. Returns numeric parameter value, first element starting at 0.</TD></TR>
+  <TR><TD VALIGN=TOP>ParamValCount</TD><TD VALIGN=TOP>Windows Unix</TD><TD VALIGN=TOP>INTEGER</TD>
+      <TD VALIGN=TOP>Returns number of Numeric parameters received. This variable is used only inside a SUBI or FUNCTIONI declaration.</TD></TR>
+  <TR><TD VALIGN=TOP>Screen.ConsoleX</TD><TD VALIGN=TOP>Windows Unix</TD><TD VALIGN=TOP>INTEGER</TD>
+      <TD VALIGN=TOP>Returns maximum column for console screen, useful under Unix.</TD></TR>
+  <TR><TD VALIGN=TOP>Screen.ConsoleY</TD><TD VALIGN=TOP>Windows Unix</TD><TD VALIGN=TOP>INTEGER</TD>
+      <TD VALIGN=TOP>Returns maximum row for console screen, useful under Unix.</TD></TR>
+  <TR><TD VALIGN=TOP>Screen.Cursor</TD><TD VALIGN=TOP>Windows</TD><TD VALIGN=TOP>INTEGER</TD>
+      <TD>Change global mouse pointer</TD></TR>
+  <TR><TD VALIGN=TOP>Screen.Cursors</TD><TD VALIGN=TOP>Windows</TD><TD VALIGN=TOP>ARRAY of INTEGER</TD>
+      <TD>R/W array of cursor handles.</TD></TR>
+  <TR><TD VALIGN=TOP>Screen.Height</TD><TD VALIGN=TOP>Windows</TD><TD VALIGN=TOP>INTEGER</TD>
+      <TD>Returns Windows screen Height (not to be confused with Form Height)</TD></TR>
+  <TR><TD VALIGN=TOP>Screen.MouseX</TD><TD VALIGN=TOP>Windows</TD><TD VALIGN=TOP>INTEGER</TD><TD>Returns X Coordinate of Mouse Pointer relative to your screen.
+                            </TD></TR>
+  <TR><TD VALIGN=TOP>Screen.MouseY</TD><TD VALIGN=TOP>Windows</TD><TD VALIGN=TOP>INTEGER</TD><TD>Returns Y Coordinate of Mouse Pointer relative to your screen.
+                            </TD></TR>
+  <TR><TD VALIGN=TOP>Screen.Width</TD><TD VALIGN=TOP>Windows</TD><TD VALIGN=TOP>INTEGER</TD>
+      <TD>Returns Windows screen Width</TD></TR>
+  <TR><TD VALIGN=TOP>Stack.Int()</TD><TD VALIGN=TOP>Windows Unix</TD><TD VALIGN=TOP>ARRAY</TD>
+      <TD VALIGN=TOP>Returns most current stack integer parameter. First element starting at 0.
+                            <font color="red">This function is deprecated.</font>
+      </TD></TR>
+  <TR><TD VALIGN=TOP>Stack.Str$()</TD><TD VALIGN=TOP>Windows Unix</TD><TD VALIGN=TOP>ARRAY</TD>
+      <TD VALIGN=TOP>Returns most current stack string parameter. First element starting at 0.
+                            <font color="red">This function is deprecated.</font>
+      </TD></TR>
+</TABLE>
+<br>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="procs.html">&lt;- Procedures</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="console.html">Console keywords -&gt;</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                        
