@@ -1175,6 +1175,7 @@ type
     FRqProbeMain: string;      // главный .bas, с которого снят снимок
     FRqProbeTime: TDateTime;
     FRqSnapOff: Boolean;       // снимок скрыт кнопкой
+    FRqProbeAges: TStringList; // файлы снимка: "путь=FileAge" (RapidQSnapStale)
     FRqInspMain: string;       // главный .bas файла в инспекторе
     FObjRebuilding: Boolean; // дерево перестраивается - Data узлов недействительны
     FDfmNodes: TList;
@@ -1891,6 +1892,8 @@ type
     procedure RapidQProbeClear;
     function  RapidQLiveProps(const AName: string): TStringList;
     function  RapidQHasSnapshot: Boolean;
+    procedure RapidQSnapAges(const AMain: string; AAges: TStrings);
+    function  RapidQSnapStale: Boolean;
     procedure RapidQEventJump;
     function  DsgGetText: string;
     procedure DsgSetText(const AText: string);
@@ -17277,6 +17280,7 @@ begin
   FreeAndNil(FIncludeRows);
   RapidQProbeClear;
   FreeAndNil(FRqProbeObjs);
+  FreeAndNil(FRqProbeAges);
   Screen.OnActiveFormChange := nil;
   // Сами полосы принадлежат спискам и уходят с ними; здесь - только список
   FreeAndNil(FUiListScrolls);
@@ -19406,6 +19410,8 @@ const
   // (SaveCompileLog, LogEditClick)
   LogSavedTag = 'Лог сохранён: ';
   RqSnapCapHide = 'Show source values only';
+  // Снимок есть, но текст после него менялся - щелчок снимает заново
+  RqSnapCapStale = 'Update snapshot';
   DsgCapLive = 'live look';
   DsgCapDfm = '.dfm look';
 
@@ -20397,12 +20403,17 @@ if RapidQHasSnapshot and not FRqSnapOff then
           ': объектов CREATE - ' + IntToStr(ObjCount) +
           '  +  снимок ' + TimeToStr(FRqProbeTime) +
           '.  Щелчок здесь - убрать снимок';
+          if RapidQSnapStale then
+            FObjSource.Caption := FObjSource.Caption + '.  Текст менялся ' +
+              'после снимка - значения прежние, Update snapshot - снять заново';
 FObjSource.Cursor := crHandPoint;
         end
       else
         FObjSource.Cursor := crDefault;
     if FObjSnapBtn <> nil then
-      if RapidQHasSnapshot and not FRqSnapOff then
+      if RapidQSnapStale then
+        FObjSnapBtn.Caption := RqSnapCapStale
+      else if RapidQHasSnapshot and not FRqSnapOff then
         FObjSnapBtn.Caption := RqSnapCapHide
       else
         FObjSnapBtn.Caption := RqSnapCapShow;
@@ -23828,6 +23839,13 @@ begin
   // снять.
   if FObjRapidQ then
   begin
+    // Текст менялся после снимка - снять заново, а не показывать прежний
+    if RapidQSnapStale then
+    begin
+      FRqSnapOff := False;
+      RapidQProbeRun;
+      Exit;
+    end;
     if RapidQHasSnapshot and not FRqSnapOff then
       FRqSnapOff := True
     else if RapidQHasSnapshot and (GetKeyState(VK_CONTROL) >= 0) then
@@ -39492,6 +39510,90 @@ begin
             (CompareText(FRqProbeMain, FRqInspMain) = 0);
 end;
 
+// Файлы, из которых собирается снимок: главный .bas и всё, что он
+// подключает через $INCLUDE (и вложенные), - "путь=FileAge"
+procedure TForm1.RapidQSnapAges(const AMain: string; AAges: TStrings);
+const
+  MaxFiles = 300;
+var
+  Files, Lines: TStringList;
+  Ini: TIniFile;
+  MainDir, IncDir, IncName, IncFull: string;
+  FileIdx, LineIdx: Integer;
+begin
+  AAges.Clear;
+  if AMain = '' then
+    Exit;
+  MainDir := ExtractFilePath(ExpandFileName(AMain));
+  IncDir := '';
+  if FileExists(SettingsFileName) then
+  begin
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      IncDir := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
+                                    'IncPath', ''));
+    finally
+      Ini.Free;
+    end;
+  end;
+  Files := TStringList.Create;
+  Lines := TStringList.Create;
+  try
+    Files.Add(ExpandFileName(AMain));
+    FileIdx := 0;
+    while (FileIdx < Files.Count) and (Files.Count < MaxFiles) do
+    begin
+      try
+        Lines.Text := ReadTextFileDecoded(Files[FileIdx]);
+      except
+        Lines.Clear;
+      end;
+      for LineIdx := 0 to Lines.Count - 1 do
+      begin
+        IncName := RapidQIncludeName(Lines[LineIdx]);
+        if IncName = '' then
+          Continue;
+        IncFull := RapidQResolveInclude(IncName, MainDir, IncDir);
+        if (IncFull <> '') and (Files.IndexOf(IncFull) < 0) then
+          Files.Add(IncFull);
+      end;
+      Inc(FileIdx);
+    end;
+    for FileIdx := 0 to Files.Count - 1 do
+      AAges.Add(Files[FileIdx] + '=' + IntToStr(FileAge(Files[FileIdx])));
+  finally
+    Lines.Free;
+    Files.Free;
+  end;
+end;
+
+// Снимок устарел: после него менялся один из файлов, из которых он снят,
+// - на диске или в открытой вкладке (правка не сохранена)
+function TForm1.RapidQSnapStale: Boolean;
+var
+  FileIdx: Integer;
+  FileNm: string;
+begin
+  Result := False;
+  if not RapidQHasSnapshot or (FRqProbeAges = nil) then
+    Exit;
+  for FileIdx := 0 to FRqProbeAges.Count - 1 do
+  begin
+    FileNm := FRqProbeAges.Names[FileIdx];
+    if IntToStr(FileAge(FileNm)) <> FRqProbeAges.Values[FileNm] then
+    begin
+      Result := True;
+      Exit;
+    end;
+    if RichEdit1.Modified and
+       (CompareText(ExpandFileName(FCurrentFileName), FileNm) = 0) then
+    begin
+      Result := True;
+      Exit;
+    end;
+  end;
+end;
+
 procedure TForm1.RapidQProbeRun;
 var
   MainBas, ProbeBas, OutFile, RunDir, LastObj, ErrObj, ErrProp, ErrClass,
@@ -40161,6 +40263,10 @@ begin
   FRqProbeMain := MainBas;
   FRqProbeTime := Now;
   FRqSnapOff := False;
+  // С каких файлов снят - по ним видно, что снимок устарел
+  if FRqProbeAges = nil then
+    FRqProbeAges := TStringList.Create;
+  RapidQSnapAges(MainBas, FRqProbeAges);
   if Complete then
     LogComp(Format('Снимок RapidQ: значения %d объектов', [FRqProbeObjs.Count]))
   else
