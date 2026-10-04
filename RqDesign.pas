@@ -93,6 +93,11 @@ type
     procedure DrawNameTag(ARect: TRect);
   protected
     procedure Paint; override;
+    // Место для детей, как у VCL: у вкладок - под полосой вкладок, у
+    // рамки с подписью - под подписью, у панели - внутри фасок. По нему
+    // выравниваются дети с Align (QToolBarEX: alTop - под вкладками).
+    procedure AdjustClientRect(var Rect: TRect); override;
+    function TabStripHeight: Integer;
   public
     constructor Create(AOwner: TComponent); override;
     destructor Destroy; override;
@@ -633,12 +638,14 @@ end;
 procedure TRqShape.SetBevelOuter(AValue: Integer);
 begin
   FBevelOuter := AValue;
+  Realign;
   Invalidate;
 end;
 
 procedure TRqShape.SetBevelInner(AValue: Integer);
 begin
   FBevelInner := AValue;
+  Realign;
   Invalidate;
 end;
 
@@ -666,6 +673,55 @@ begin
   Invalidate;
 end;
 
+// Высота полосы вкладок: TabHeight или по шрифту
+function TRqShape.TabStripHeight: Integer;
+begin
+  Result := FTabHeight;
+  if Result > 0 then
+    Exit;
+  if HandleAllocated then
+  begin
+    Canvas.Font := Font;
+    Result := Canvas.TextHeight('Wg') + 6;
+  end
+  else
+    Result := Abs(Font.Height) + 8;
+end;
+
+procedure TRqShape.AdjustClientRect(var Rect: TRect);
+var
+  Inset: Integer;
+begin
+  inherited AdjustClientRect(Rect);
+  case FKind of
+    rkTab:
+      begin
+        Rect.Top := Rect.Top + TabStripHeight;
+        InflateRect(Rect, -2, -2);
+      end;
+    rkGroup:
+      begin
+        if HandleAllocated then
+        begin
+          Canvas.Font := Font;
+          Rect.Top := Rect.Top + Canvas.TextHeight('Wg');
+        end
+        else
+          Rect.Top := Rect.Top + Abs(Font.Height) + 2;
+        InflateRect(Rect, -2, -2);
+      end;
+    rkPanel:
+      begin
+        Inset := 0;
+        if FBevelOuter <> 0 then
+          Inc(Inset);
+        if FBevelInner <> 0 then
+          Inc(Inset);
+        InflateRect(Rect, -Inset, -Inset);
+      end;
+  end;
+end;
+
 function TRqShape.GetTabInt(AIndex: Integer): Integer;
 begin
   case AIndex of
@@ -683,6 +739,9 @@ begin
     1: FTabHeight := AValue;
     2: FTabWidth := AValue;
   end;
+  // Высота полосы - место детей с Align
+  if AIndex = 1 then
+    Realign;
   Invalidate;
 end;
 
@@ -725,10 +784,8 @@ var
   Body, TabBox: TRect;
   TabName: string;
 begin
+  TabHigh := TabStripHeight;
   Canvas.Font := Font;
-  TabHigh := FTabHeight;
-  if TabHigh <= 0 then
-    TabHigh := Canvas.TextHeight('Wg') + 6;
   Body := AClientBox;
   Body.Top := Body.Top + TabHigh;
   DrawEdge(Canvas.Handle, Body, EDGE_RAISED, BF_RECT);
