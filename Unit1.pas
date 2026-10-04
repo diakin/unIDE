@@ -1296,6 +1296,11 @@ type
     // (HighlightVisibleText); щелчок по метке - GuideMarkClick
     FGuideMarks: array of TGuideMark;
     FGuideSkipUp: Boolean;  // кнопку нажали на метке - её отпускание не щелчок
+    // Прокрутка (EM_GETSCROLLPOS) и свой сдвиг FScrollX, при которых метки
+    // нарисованы. Прокрутка сдвигает готовые точки окна, и метка уезжает
+    // от края вместе с текстом - тогда окно перерисовывается целиком.
+    FGuideScrollPos: TPoint;
+    FGuideScrollX: Integer;
     // Список в диалоге Del WinList. Диалог модальный, поэтому одного поля хватает
     FDlgCheckList: TCheckListBox;
     // Статус-бар обновляется не сразу, а через этот таймер - см.
@@ -46366,6 +46371,20 @@ begin
   // идентификатора под ней - в панель над редактором
   if (Message.Msg = WM_LBUTTONUP) and (FMsgDepth = 0) then
     DeclPanelUpdate;
+  // Окно прокрутилось, а на нём метки направляющих: прокрутка сдвинула их
+  // вместе с текстом, перерисовывается только открывшаяся полоса - метки
+  // остались бы следами посреди окна. Перерисовать окно целиком.
+  if (FMsgDepth = 0) and (Length(FGuideMarks) > 0) and
+     RichEdit1.HandleAllocated then
+  begin
+    SendMessageA(RichEdit1.Handle, EM_GETSCROLLPOS, 0, Integer(@CursorPt));
+    if (CursorPt.Y <> FGuideScrollPos.Y) or (FScrollX <> FGuideScrollX) then
+    begin
+      FGuideScrollPos := CursorPt;
+      FGuideScrollX := FScrollX;
+      Windows.InvalidateRect(RichEdit1.Handle, nil, False);
+    end;
+  end;
 end;
 
 procedure TForm1.NewRichEditProcBody(var Message: TMessage);
@@ -47845,8 +47864,12 @@ begin
         HotTabBrushes[HB] := 0;
         GuideMarkBrushes[HB] := 0;
       end;
-    // Метки краёв - заново на каждый кадр
+    // Метки краёв - заново на каждый кадр; прокрутка, при которой они
+    // нарисованы, - для проверки в NewRichEditProc
     SetLength(FGuideMarks, 0);
+    SendMessageA(RichEdit1.Handle, EM_GETSCROLLPOS, 0,
+                 Integer(@FGuideScrollPos));
+    FGuideScrollX := FScrollX;
 
     UpdateVisibleBounds;
 
