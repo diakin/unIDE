@@ -136,11 +136,26 @@ var
   CrashEvent: THandle = 0;   // обработчик - сторожу: сбой, разбери
   CrashDone: THandle = 0;    // сторож - обработчику: записано
   CrashOnce: Integer = 0;    // второй сбой (в разборе первого) не ждёт
-  OldCrashFilter: TFNTopLevelExceptionFilter = nil;
+  OldCrashFilter: Pointer = nil;  // прежний обработчик (TCrashFilter)
 
 const
   // Исключение Delphi (raise): ExceptionInformation[1] - объект исключения
   DelphiExceptCode = $0EEDFADE;
+  // Ответ обработчика: исключение не разобрано, дальше - как у Windows
+  CrashContinueSearch = 0;
+
+type
+  // EXCEPTION_POINTERS (winnt.h) и обработчик SetUnhandledExceptionFilter -
+  // свои описания: в Windows.pas Delphi 7 их нет или они другие
+  PCrashPointers = ^TCrashPointers;
+  TCrashPointers = record
+    ExceptionRecord: ^TExceptionRecord;
+    ContextRecord: ^TContext;
+  end;
+  TCrashFilter = function(AInfo: PCrashPointers): Longint; stdcall;
+
+function CrashSetFilter(AFilter: Pointer): Pointer; stdcall;
+  external kernel32 name 'SetUnhandledExceptionFilter';
 
 // ---------------------------------------------------------------------------
 
@@ -819,9 +834,9 @@ end;
 // глобальные переменные и ожидание: стека у упавшего потока может почти не
 // остаться. Разбирает и пишет сторож (CrashReport). Сбой в самом стороже
 // или повторный - без разбора.
-function HangCrashFilter(ExceptionInfo: PExceptionPointers): Longint; stdcall;
+function HangCrashFilter(ExceptionInfo: PCrashPointers): Longint; stdcall;
 begin
-  Result := EXCEPTION_CONTINUE_SEARCH;
+  Result := CrashContinueSearch;
   if (Watch <> nil) and (CrashEvent <> 0) and (ExceptionInfo <> nil) and
      (GetCurrentThreadId <> Watch.ThreadID) and
      (InterlockedExchange(CrashOnce, 1) = 0) then
@@ -834,8 +849,8 @@ begin
     SetEvent(CrashEvent);
     WaitForSingleObject(CrashDone, 20000);
   end;
-  if Assigned(OldCrashFilter) then
-    Result := OldCrashFilter(ExceptionInfo);
+  if OldCrashFilter <> nil then
+    Result := TCrashFilter(OldCrashFilter)(ExceptionInfo);
 end;
 
 procedure HangWatchStart(AWnd: HWND; const ALogFile: string;
@@ -849,7 +864,7 @@ begin
   CrashDone := CreateEvent(nil, False, False, nil);
   Watch := THangWatch.Create(AWnd, ALogFile, AUiWnd);
   Watch.Resume;
-  OldCrashFilter := SetUnhandledExceptionFilter(@HangCrashFilter);
+  OldCrashFilter := CrashSetFilter(@HangCrashFilter);
 end;
 
 // Событие и Terminate, потом ожидание. Если сторож в это время сидит в
@@ -860,7 +875,7 @@ procedure HangWatchStop;
 begin
   if Watch = nil then
     Exit;
-  SetUnhandledExceptionFilter(OldCrashFilter);
+  CrashSetFilter(OldCrashFilter);
   OldCrashFilter := nil;
   SetEvent(Watch.FStop);
   Watch.Terminate;
