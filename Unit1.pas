@@ -1057,6 +1057,12 @@ type
     FRqDsgSelecting: Boolean; // выделение идёт из конструктора или в него
     FRqDsgOwnWrite: Boolean; // текст поменял сам конструктор - не перестраивать
     FRqPalPage: Integer;     // первая страница палитры RapidQ
+    // Режим среды (ApplyLangMode): -1 - ещё не применён, 0 - Delphi,
+    // 1 - Basic; для какого файла и проекта считан; места кнопок ряда
+    // Project из .dfm
+    FLangMode: Integer;
+    FLangModeKey: string;
+    FRunRowLefts: array of Integer;
     // Вставка с палитры RapidQ (RqDsgPlace -> WMRqDsgPlace): класс,
     // контейнер под мышью и точка в нём
     FRqPlaceClass: string;
@@ -2228,6 +2234,9 @@ type
     procedure btnRunClick(Sender: TObject);
     procedure AppIdle(Sender: TObject; var Done: Boolean);
     procedure UpdateToolbarState;
+    function  IdeBasicMode: Boolean;
+    function  ShownDesigner: TFormDesigner;
+    procedure ApplyLangMode;
     procedure DsgHideForRun;
     procedure DsgShowAfterRun;
     procedure LogEditDblClick(Sender: TObject);
@@ -17017,6 +17026,7 @@ begin
   FDsgPalette.OnSelect := DsgPaletteSelect;
   FDsgPalette.OnGlyphLoaded := DsgPaletteGlyph;
   BuildPaletteButtons;
+  FLangMode := -1;
   // Правая кнопка на кнопке палитры - окно значков с её значком
   FDsgIconPopup := TUiPopupMenu.Create(Self);
   FDsgIconPopup.AutoHotkeys := maManual;
@@ -28720,16 +28730,21 @@ end;
 
 // Hide/Show form: окно конструктора - спрятать или показать как было
 procedure TForm1.DsgShowHideClick(Sender: TObject);
+var
+  Shown: TFormDesigner;
 begin
-  if (FDesigner = nil) or (FDesigner.Form = nil) then
+  // В Basic - конструктор RapidQ, в Delphi - конструктор Delphi
+  Shown := ShownDesigner;
+  if (Shown = nil) or (Shown.Form = nil) then
     Exit;
-  if FDesigner.Form.Visible then
-    FDesigner.Form.Hide    // не Close: Close закрыл бы конструктор
+  if Shown.Form.Visible then
+    Shown.Form.Hide    // не Close: Close закрыл бы конструктор
   else
   begin
     // ShowForm, а не Form.Show: форма появляется уже нарисованной
-    FDesigner.ShowForm;
-    FDsgHiddenForRun := False; // показали вручную - запуск её уже не вернёт
+    Shown.ShowForm;
+    if Shown = FDesigner then
+      FDsgHiddenForRun := False; // показали вручную - запуск её уже не вернёт
   end;
   UpdateToolbarState;
 end;
@@ -41354,9 +41369,11 @@ end;
 procedure TForm1.UpdateToolbarState;
 var
   Running, HasSel: Boolean;
+  Shown: TFormDesigner;
 begin
   if (btnCompileRun = nil) or (csDestroying in ComponentState) then
     Exit;
+  ApplyLangMode;
   Running := (FRunProcess <> 0) or (FDbgSession <> nil);
 
   // Запуск и отладка. Остановка на точке: Run - продолжить.
@@ -41389,8 +41406,9 @@ begin
   // Окно конструктора: кнопка Hide/Show form
   if FObjDsgShowBtn <> nil then
   begin
-    FObjDsgShowBtn.Enabled := (FDesigner <> nil) and (FDesigner.Form <> nil);
-    if FObjDsgShowBtn.Enabled and not FDesigner.Form.Visible then
+    Shown := ShownDesigner;
+    FObjDsgShowBtn.Enabled := (Shown <> nil) and (Shown.Form <> nil);
+    if FObjDsgShowBtn.Enabled and not Shown.Form.Visible then
     begin
       if FObjDsgShowBtn.Caption <> 'Show form' then
         FObjDsgShowBtn.Caption := 'Show form';
@@ -41404,6 +41422,136 @@ begin
     btnSave.Enabled := RichEdit1.Modified or (FCurrentFileName = '');
   if btnSavePrj <> nil then
     btnSavePrj.Enabled := FCurrentProject <> '';
+end;
+
+// ---------------------------------------------------------------------------
+//  Режим среды: Basic (RapidQ) или Delphi. Что есть только у одного из
+//  них, у другого спрятано:
+//    - только Delphi: «Перенести в .dfm», View > Снимок формы редактора,
+//      Project > Build Release и Release files, Program pause, Trace into,
+//      Step over, Run to cursor и Add watch в меню редактора (отладчик
+//      DbgEngine работает только с exe Delphi), вкладка Code (разбор
+//      модуля Паскаля), страницы палитры Delphi и сторонних пакетов;
+//    - только Basic: вкладка Includes, страницы палитры RQ.
+//  Режим - по активному файлу: .bas, .rqb, .rq, .bi - Basic; .pas, .dpr,
+//  .dfm, .dpk - Delphi; остальные (.inc, .ini...) - по проекту сборки.
+// ---------------------------------------------------------------------------
+
+function TForm1.IdeBasicMode: Boolean;
+var
+  Ext: string;
+begin
+  Ext := LowerCase(ExtractFileExt(FCurrentFileName));
+  if IsRapidQSource(FCurrentFileName) or (Ext = '.bi') then
+    Result := True
+  else if (Ext = '.pas') or (Ext = '.dpr') or (Ext = '.dfm') or
+          (Ext = '.dpk') then
+    Result := False
+  else
+    Result := BuildIsRapidQ;
+end;
+
+// Конструктор, окно которого прячет и показывает Hide form: в Basic -
+// конструктор RapidQ, в Delphi - конструктор Delphi
+function TForm1.ShownDesigner: TFormDesigner;
+begin
+  if FLangMode = 1 then
+    Result := FRqDesigner
+  else
+    Result := FDesigner;
+end;
+
+// Режим сменился (или ещё не применялся) - показать то, что есть в нём,
+// и спрятать остальное. Зовётся из UpdateToolbarState (простой программы):
+// режим считается заново, только когда сменились файл или проект.
+procedure TForm1.ApplyLangMode;
+const
+  RunRowCount = 8;
+var
+  ModeKey: string;
+  Basic: Boolean;
+  RunRow: array[0..RunRowCount - 1] of TControl;
+  RowIdx, SlotIdx, PageIdx: Integer;
+
+  procedure ShowTab(ATab: TTabSheet; AShow: Boolean);
+  begin
+    if (ATab = nil) or (ATab.TabVisible = AShow) then
+      Exit;
+    if not AShow and (FRightPages <> nil) and
+       (FRightPages.ActivePage = ATab) then
+    begin
+      FRightPages.ActivePage := FTabObjects;
+      RightPagesChange(FRightPages);
+    end;
+    ATab.TabVisible := AShow;
+  end;
+
+begin
+  ModeKey := FCurrentFileName + '|' + FCurrentProject;
+  if (FLangMode >= 0) and (ModeKey = FLangModeKey) then
+    Exit;
+  FLangModeKey := ModeKey;
+  Basic := IdeBasicMode;
+  if FLangMode = Ord(Basic) then
+    Exit;
+  FLangMode := Ord(Basic);
+
+  // Только Delphi
+  if FObjMoveBtn <> nil then
+    FObjMoveBtn.Visible := not Basic;
+  mViewSnap.Visible := not Basic;
+  mPrjRelease.Visible := not Basic;
+  mPrjReleaseFiles.Visible := not Basic;
+  pmuRunToCursor.Visible := not Basic;
+  pmuAddWatch.Visible := not Basic;
+  pmuSepRun.Visible := not Basic;
+  ShowTab(FTabCode, not Basic);
+  // Только Basic
+  ShowTab(FTabIncludes, Basic);
+
+  // Ряд кнопок Project: видимые - подряд, на места кнопок из .dfm
+  RunRow[0] := btnCompileRun;
+  RunRow[1] := btnViewUnit;
+  RunRow[2] := btnViewForm;
+  RunRow[3] := btnNewForm;
+  RunRow[4] := btnPause;
+  RunRow[5] := btnProgReset;
+  RunRow[6] := btnTraceInto;
+  RunRow[7] := btnStepOver;
+  if Length(FRunRowLefts) = 0 then
+  begin
+    SetLength(FRunRowLefts, RunRowCount);
+    for RowIdx := 0 to RunRowCount - 1 do
+      FRunRowLefts[RowIdx] := RunRow[RowIdx].Left;
+  end;
+  btnPause.Visible := not Basic;
+  btnTraceInto.Visible := not Basic;
+  btnStepOver.Visible := not Basic;
+  SlotIdx := 0;
+  for RowIdx := 0 to RunRowCount - 1 do
+    if RunRow[RowIdx].Visible then
+    begin
+      RunRow[RowIdx].Left := FRunRowLefts[SlotIdx];
+      Inc(SlotIdx);
+    end;
+  if Basic then
+    btnCompileRun.Hint := 'Собрать программу RapidQ и запустить, если без ' +
+                          'ошибок'
+  else
+    btnCompileRun.Hint := 'Собрать проект dcc32 и запустить, если без ошибок';
+
+  // Палитра: в Basic - страницы RQ, в Delphi - все, кроме них
+  if FDsgPalette <> nil then
+  begin
+    for PageIdx := 0 to FDsgPalette.PageCount - 1 do
+      FDsgPalette.SetPageHidden(PageIdx,
+        Basic <> ((PageIdx >= FRqPalPage) and (PageIdx <= FRqPalPage + 3)));
+    FDsgPalette.ApplyPages;
+  end;
+  if Basic then
+    Dbg('Режим среды: Basic (RapidQ)', clGray)
+  else
+    Dbg('Режим среды: Delphi', clGray);
 end;
 
 // Слово AWord (строчными) есть в AText (строчными) отдельным словом: по
@@ -44584,19 +44732,19 @@ begin
   end
   else if (AKey = VK_F7) and not CtrlDown then
   begin
-    if DbgCanStep then
+    if DbgCanStep and (FLangMode <> 1) then
       DbgStepInto;
     Result := True;
   end
   else if (AKey = VK_F8) and not CtrlDown then
   begin
-    if DbgCanStep then
+    if DbgCanStep and (FLangMode <> 1) then
       DbgStepOver;
     Result := True;
   end
   else if (AKey = VK_F4) and not CtrlDown and (ActiveControl = RichEdit1) then
   begin
-    if DbgCanStep then
+    if DbgCanStep and (FLangMode <> 1) then
       DbgRunToCursor;
     Result := True;
   end;

@@ -64,6 +64,12 @@ type
     FBox: TScrollBox;
     FArrow: TSpeedButton;
     FPageBtns: TList;         // по странице - TList её кнопок, в порядке постановки
+    // Страницы и вкладки: вкладка - только у не спрятанной страницы
+    // (SetPageHidden). FPageNames - имена всех страниц, FPageHidden -
+    // спрятана ли, FTabPages - номер страницы по номеру вкладки.
+    FPageNames: TStringList;
+    FPageHidden: array of Boolean;
+    FTabPages: TList;
     // Раскладка по странице: где следующая кнопка первого ряда, сколько в
     // нём кнопок, где первое свободное место второго ряда (свои компоненты)
     FNextX: array of Integer;
@@ -92,6 +98,7 @@ type
     function StdButtonFor(ACustom: TComponentClass; AList: TList;
                           AFirstRowCount: Integer): TSpeedButton;
     procedure TabChange(Sender: TObject);
+    function CurPage: Integer;
     procedure ArrowClick(Sender: TObject);
     procedure CompClick(Sender: TObject);
     procedure SetSelected(AClass: TComponentClass);
@@ -130,8 +137,16 @@ type
                           AHint: string; APage: Integer);
     // Открыть вкладку APage
     procedure SetPage(APage: Integer);
-    // Открытая вкладка
+    // Страница открытой вкладки
     function PageIndex: Integer;
+    // Сколько страниц (и спрятанных)
+    function PageCount: Integer;
+    // Спрятать (AHidden) или вернуть вкладку страницы APage. Вкладки
+    // перестраиваются в ApplyPages, после всех смен.
+    procedure SetPageHidden(APage: Integer; AHidden: Boolean);
+    // Вкладки - по видимым страницам. Открытая страница остаётся открытой,
+    // если её не спрятали; иначе - первая видимая.
+    procedure ApplyPages;
     // Значок кнопки ABtn для темы - в ABmp: значок Delphi (ADark - с
     // перекраской ARecolor в цвет AInk) или сглаженный, нарисованный цветом
     // AInk; у своих компонентов - сглаженная метка цветом AMarkInk. Края -
@@ -207,6 +222,8 @@ var
 begin
   inherited Create(AOwner);
   FPageBtns := TList.Create;
+  FPageNames := TStringList.Create;
+  FTabPages := TList.Create;
   FLibs := TList.Create;
   FForeign := TStringList.Create;
   FGlyphPending := TList.Create;
@@ -223,8 +240,14 @@ begin
   FTabs.Parent := Self;
   FTabs.Align := alClient;
   FTabs.ParentFont := True;
+  SetLength(FPageHidden, DsgPageCount);
   for I := 0 to DsgPageCount - 1 do
+  begin
     FTabs.Tabs.Add(DsgPageName(I));
+    FPageNames.Add(DsgPageName(I));
+    FPageHidden[I] := False;
+    FTabPages.Add(Pointer(I));
+  end;
   FTabs.OnChange := TabChange;
 
   FBox := TScrollBox.Create(Self);
@@ -285,6 +308,8 @@ begin
   for I := 0 to FPageBtns.Count - 1 do
     TObject(FPageBtns[I]).Free;
   FPageBtns.Free;
+  FPageNames.Free;
+  FTabPages.Free;
   FForeign.Free;
   FGlyphPending.Free;
   for I := 0 to FGlyphInfo.Count - 1 do
@@ -696,7 +721,7 @@ begin
   List := TList(FPageBtns[APage]);
 
   ABtn.Parent := FBox;
-  ABtn.Visible := APage = FTabs.TabIndex;
+  ABtn.Visible := APage = CurPage;
   ABtn.Flat := True;
   ABtn.GroupIndex := 1;
   ABtn.AllowAllUp := True;
@@ -810,10 +835,10 @@ begin
   // все кнопки области, и у спрятанных тоже
   FBox.HorzScrollBar.Position := 0;
   // Значки сторонних на открытой странице - при первом её показе
-  if (FGlyphPending.Count > 0) and (FTabs.TabIndex >= 0) and
-     (FTabs.TabIndex < FPageBtns.Count) then
+  if (FGlyphPending.Count > 0) and (CurPage >= 0) and
+     (CurPage < FPageBtns.Count) then
   begin
-    List := TList(FPageBtns[FTabs.TabIndex]);
+    List := TList(FPageBtns[CurPage]);
     for I := 0 to List.Count - 1 do
       if FGlyphPending.IndexOf(List[I]) >= 0 then
       begin
@@ -833,7 +858,7 @@ begin
   begin
     List := TList(FPageBtns[Page]);
     for I := 0 to List.Count - 1 do
-      TSpeedButton(List[I]).Visible := Page = FTabs.TabIndex;
+      TSpeedButton(List[I]).Visible := Page = CurPage;
   end;
   SetSelected(nil);
 end;
@@ -853,6 +878,45 @@ end;
 
 procedure TDsgPalette.TabChange(Sender: TObject);
 begin
+  ShowPage;
+end;
+
+// Страница открытой вкладки; вкладок нет - -1
+function TDsgPalette.CurPage: Integer;
+begin
+  Result := -1;
+  if (FTabs.TabIndex >= 0) and (FTabs.TabIndex < FTabPages.Count) then
+    Result := Integer(FTabPages[FTabs.TabIndex]);
+end;
+
+procedure TDsgPalette.SetPageHidden(APage: Integer; AHidden: Boolean);
+begin
+  if (APage >= 0) and (APage < Length(FPageHidden)) then
+    FPageHidden[APage] := AHidden;
+end;
+
+procedure TDsgPalette.ApplyPages;
+var
+  OldPage, Page, TabIdx: Integer;
+begin
+  OldPage := CurPage;
+  FTabs.Tabs.BeginUpdate;
+  try
+    FTabs.Tabs.Clear;
+    FTabPages.Clear;
+    for Page := 0 to FPageNames.Count - 1 do
+      if not FPageHidden[Page] then
+      begin
+        FTabs.Tabs.Add(FPageNames[Page]);
+        FTabPages.Add(Pointer(Page));
+      end;
+  finally
+    FTabs.Tabs.EndUpdate;
+  end;
+  TabIdx := FTabPages.IndexOf(Pointer(OldPage));
+  if (TabIdx < 0) and (FTabPages.Count > 0) then
+    TabIdx := 0;
+  FTabs.TabIndex := TabIdx;
   ShowPage;
 end;
 
@@ -937,6 +1001,10 @@ begin
   FTabs.Tabs.Add(AName);
   FPageBtns.Add(TList.Create);
   Result := FPageBtns.Count - 1;
+  FPageNames.Add(AName);
+  SetLength(FPageHidden, Result + 1);
+  FPageHidden[Result] := False;
+  FTabPages.Add(Pointer(Result));
   SetLength(FNextX, Result + 1);
   SetLength(FRow1Count, Result + 1);
   SetLength(FNextFree, Result + 1);
@@ -962,7 +1030,7 @@ begin
   if (ABtn = nil) or (APage < 0) or (APage >= FPageBtns.Count) then
     Exit;
   ABtn.Parent := FBox;
-  ABtn.Visible := APage = FTabs.TabIndex;
+  ABtn.Visible := APage = CurPage;
   ABtn.Flat := True;
   ABtn.GroupIndex := 1;
   ABtn.AllowAllUp := True;
@@ -1016,7 +1084,7 @@ begin
   if (ABtn = nil) or (APage < 0) or (APage >= FPageBtns.Count) then
     Exit;
   ABtn.Parent := FBox;
-  ABtn.Visible := APage = FTabs.TabIndex;
+  ABtn.Visible := APage = CurPage;
   ABtn.Flat := True;
   ABtn.GroupIndex := 1;
   ABtn.AllowAllUp := True;
@@ -1050,17 +1118,24 @@ begin
 end;
 
 procedure TDsgPalette.SetPage(APage: Integer);
+var
+  TabIdx: Integer;
 begin
-  if (APage < 0) or (APage >= FTabs.Tabs.Count) or
-     (APage = FTabs.TabIndex) then
+  TabIdx := FTabPages.IndexOf(Pointer(APage));
+  if (TabIdx < 0) or (TabIdx = FTabs.TabIndex) then
     Exit;
-  FTabs.TabIndex := APage;
+  FTabs.TabIndex := TabIdx;
   ShowPage;
 end;
 
 function TDsgPalette.PageIndex: Integer;
 begin
-  Result := FTabs.TabIndex;
+  Result := CurPage;
+end;
+
+function TDsgPalette.PageCount: Integer;
+begin
+  Result := FPageNames.Count;
 end;
 
 function TDsgPalette.ForeignOf(ABtn: TControl): string;
