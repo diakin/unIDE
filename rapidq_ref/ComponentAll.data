@@ -1227,8 +1227,8 @@ Top|INTEGER|R|0
 ' Component1.data: Top|INTEGER|R|
 Width|INTEGER|R|
 Height|INTEGER|RW|17
-Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
-' умолчание по qheader.html: alTop -> alNone (было: Align|INTEGER|RW|alTop|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5)
+Align|INTEGER|RW|alTop|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+' умолчание alTop - заголовок прижимается к верху (в qheader.html alNone; решение автора unIDE)
 ClientHeight|INTEGER|RW|
 ClientWidth|INTEGER|RW|
 CopyMode|INTEGER|RW|cmBlackness|cmBlackness=0|cmDstInvert=1|cmMergeCopy=2|cmMergePaint=3|cmNotSrcCopy=4|cmNotSrcErase=5|cmPatCopy=6|cmPatInvert=7|cmPatPaint=8|cmSrcAnd=9|cmSrcCopy=10|cmSrcErase=11|cmSrcInvert=12|cmSrcPaint=13|cmWhiteness=14
