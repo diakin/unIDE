@@ -20276,6 +20276,109 @@ begin
   Result := True;
 end;
 
+// Parent, заданный в коде явно, - узел дерева переезжает под этот объект.
+// Вложенность CREATE даёт родителя по умолчанию, но "Parent = DesignTab"
+// в блоке или "MenuPanel.Parent = DesignTab" в коде его меняет - так и в
+// работающей программе. Порядок:
+//   1. Parent = ... в самом блоке CREATE (последнее присваивание);
+//   2. Имя.Parent = ... вне блоков (ACodeParents: "Имя=Родитель", в
+//      Objects - номер строки), первое по тексту.
+// Родитель - объект с таким именем; выражение (Form.Panel1, Tab(0)) не
+// разбирается, узел тогда остаётся где был. Себя и своих потомков в
+// родители не берёт. Под новым родителем узел встаёт по номеру строки
+// CREATE.
+procedure RapidQApplyParents(ANodes, ARoots: TList; ACodeParents: TStrings);
+var
+  NodeIdx, PropIdx, CodeIdx, InsIdx, CodeLine: Integer;
+  Node, Target, Walk: TDfmNode;
+  ParentName: string;
+  IsDescendant: Boolean;
+
+  function FindByName(const AName: string): TDfmNode;
+  var
+    FindIdx: Integer;
+  begin
+    Result := nil;
+    for FindIdx := 0 to ANodes.Count - 1 do
+      if CompareText(TDfmNode(ANodes[FindIdx]).Name, AName) = 0 then
+      begin
+        Result := TDfmNode(ANodes[FindIdx]);
+        Exit;
+      end;
+  end;
+
+  // Имя объекта из значения: идентификатор целиком, иначе ''
+  function PlainName(const AValue: string): string;
+  var
+    CharIdx: Integer;
+  begin
+    Result := Trim(AValue);
+    for CharIdx := 1 to Length(Result) do
+      if not (Result[CharIdx] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
+      begin
+        Result := '';
+        Exit;
+      end;
+  end;
+
+begin
+  for NodeIdx := 0 to ANodes.Count - 1 do
+  begin
+    Node := TDfmNode(ANodes[NodeIdx]);
+    if Node.Name = '' then
+      Continue;
+    ParentName := '';
+    CodeLine := -1;
+    for PropIdx := Node.PropN.Count - 1 downto 0 do
+      if CompareText(Node.PropN[PropIdx], 'Parent') = 0 then
+      begin
+        ParentName := PlainName(Node.PropV[PropIdx]);
+        Break;
+      end;
+    if ParentName = '' then
+    begin
+      CodeIdx := ACodeParents.IndexOfName(Node.Name);
+      if CodeIdx >= 0 then
+      begin
+        ParentName := PlainName(ACodeParents.Values[Node.Name]);
+        CodeLine := Integer(ACodeParents.Objects[CodeIdx]);
+      end;
+    end;
+    if ParentName = '' then
+      Continue;
+    Target := FindByName(ParentName);
+    if (Target = nil) or (Target = Node) or (Target = Node.Parent) then
+      Continue;
+    // Цикл: родитель - сам узел или его потомок
+    IsDescendant := False;
+    Walk := Target.Parent;
+    while Walk <> nil do
+    begin
+      if Walk = Node then
+      begin
+        IsDescendant := True;
+        Break;
+      end;
+      Walk := Walk.Parent;
+    end;
+    if IsDescendant then
+      Continue;
+
+    if Node.Parent <> nil then
+      Node.Parent.Children.Remove(Node)
+    else
+      ARoots.Remove(Node);
+    InsIdx := 0;
+    while (InsIdx < Target.Children.Count) and
+          (TDfmNode(Target.Children[InsIdx]).CreateLine <= Node.CreateLine) do
+      Inc(InsIdx);
+    Target.Children.Insert(InsIdx, Node);
+    Node.Parent := Target;
+    if CodeLine >= 0 then
+      Node.Note := Node.Note + '  Parent: строка ' + IntToStr(CodeLine + 1);
+  end;
+end;
+
 // Узлы объектов CREATE из строк ALines - в ANodes (владеет ими он), корни
 // (CREATE вне других CREATE) - в ARoots. Присваивания внутри блока -
 // свойствами узла (PropN, PropV; в PropN.Objects - номер строки), On... -
@@ -20283,7 +20386,7 @@ end;
 // объектов.
 function RapidQCreateNodes(ALines: TStrings; ANodes, ARoots: TList): Integer;
 var
-  Parts: TStringList;
+  Parts, CodeParents: TStringList;
   OpenNodes: TList;   // узлы CREATE, для которых ещё не было END CREATE
   LineIdx, PartIdx, NodeIdx: Integer;
   FirstWord, Rest, Tail, NameWord, ClassPart, PropName, PropValue: string;
@@ -20307,14 +20410,16 @@ var
 begin
   Result := 0;
   Parts := TStringList.Create;
+  CodeParents := TStringList.Create;
   OpenNodes := TList.Create;
   try
     for LineIdx := 0 to ALines.Count - 1 do
     begin
       // Быстрый отсев: вне блоков CREATE нужны только строки со словом
-      // CREATE
+      // CREATE и присваивания Parent (Имя.Parent = ...)
       if (OpenNodes.Count = 0) and
-         (Pos('CREATE', UpperCase(ALines[LineIdx])) = 0) then
+         (Pos('CREATE', UpperCase(ALines[LineIdx])) = 0) and
+         (Pos('.PARENT', UpperCase(ALines[LineIdx])) = 0) then
         Continue;
       RapidQSplitStatements(ALines[LineIdx], Parts);
       for PartIdx := 0 to Parts.Count - 1 do
@@ -20374,9 +20479,25 @@ begin
             Node.PropV.Add(PropValue);
             Node.PropRaw.Add(PropValue);
           end;
+        end
+        else if (OpenNodes.Count = 0) and
+                RapidQAssignment(Parts[PartIdx], PropName, PropValue) and
+                (Length(PropName) > 7) and
+                (CompareText(Copy(PropName, Length(PropName) - 6, 7),
+                             '.Parent') = 0) then
+        begin
+          // "MenuPanel.Parent = DesignTab" в коде - первое по тексту
+          NameWord := Copy(PropName, 1, Length(PropName) - 7);
+          if (Pos('.', NameWord) = 0) and
+             (CodeParents.IndexOfName(NameWord) < 0) then
+            CodeParents.AddObject(NameWord + '=' + PropValue,
+                                  TObject(LineIdx));
         end;
       end;
     end;
+
+    // Явный Parent - узел под указанным объектом
+    RapidQApplyParents(ANodes, ARoots, CodeParents);
 
     // CREATE, который так и не закрыт
     for NodeIdx := 0 to OpenNodes.Count - 1 do
@@ -20386,6 +20507,7 @@ begin
     end;
   finally
     OpenNodes.Free;
+    CodeParents.Free;
     Parts.Free;
   end;
 end;
