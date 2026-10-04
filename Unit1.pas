@@ -1296,13 +1296,8 @@ type
     // (HighlightVisibleText); щелчок по метке - GuideMarkClick
     FGuideMarks: array of TGuideMark;
     FGuideSkipUp: Boolean;  // кнопку нажали на метке - её отпускание не щелчок
-    // Прокрутка (EM_GETSCROLLPOS) и свой сдвиг FScrollX, при которых метки
-    // нарисованы. Прокрутка сдвигает готовые точки окна, и метка уезжает
-    // от края вместе с текстом - тогда окно перерисовывается целиком.
-    FGuideScrollPos: TPoint;
-    FGuideScrollX: Integer;
-    // Идёт проверка прокрутки (её EM_GETSCROLLPOS приходит в тот же
-    // NewRichEditProc) или щелчок по метке - заново не проверять
+    // Идёт щелчок по метке: его запросы окну приходят в тот же
+    // NewRichEditProc - перехват меток для них не нужен
     FGuideBusy: Boolean;
     // Список в диалоге Del WinList. Диалог модальный, поэтому одного поля хватает
     FDlgCheckList: TCheckListBox;
@@ -46126,6 +46121,8 @@ var
   Br: HBRUSH;
   R: TRect;
   W, H: Integer;
+  HadMarks: Boolean;
+  FullDC: HDC;
 begin
   // Здесь НЕ НАДО вызывать InvalidateRect на всю клиентскую область.
   //
@@ -46142,6 +46139,13 @@ begin
   // а BitBlt кладёт его целиком, так что содержимое всегда согласовано.
 
   PerfT := PerfNow;
+  // Метки направляющих у краёв окна (HighlightVisibleText): прокрутка
+  // сдвигает готовые точки вместе с ними, а область обновления - только
+  // открывшаяся полоса. Были метки в прошлом кадре или есть в этом - кадр
+  // уходит на экран целиком, без отсечения по области обновления: старые
+  // метки затираются, новые встают у краёв. Тот же один BitBlt, без
+  // лишнего прохода перерисовки.
+  HadMarks := Length(FGuideMarks) > 0;
 
   ScreenDC := BeginPaint(RichEdit1.Handle, PS);
   try
@@ -46197,7 +46201,17 @@ begin
 
         // 3. Кадр на экран. ScreenDC от BeginPaint уже обрезан по области
         //    обновления, лишние пиксели GDI отсечёт сам.
-        BitBlt(ScreenDC, 0, 0, W, H, MemDC, 0, 0, SRCCOPY);
+        if HadMarks or (Length(FGuideMarks) > 0) then
+        begin
+          FullDC := GetDC(RichEdit1.Handle);
+          try
+            BitBlt(FullDC, 0, 0, W, H, MemDC, 0, 0, SRCCOPY);
+          finally
+            ReleaseDC(RichEdit1.Handle, FullDC);
+          end;
+        end
+        else
+          BitBlt(ScreenDC, 0, 0, W, H, MemDC, 0, 0, SRCCOPY);
       finally
         SelectObject(MemDC, OldBmp);
         DeleteObject(Bmp);
@@ -46382,29 +46396,6 @@ begin
   // идентификатора под ней - в панель над редактором
   if (Message.Msg = WM_LBUTTONUP) and (FMsgDepth = 0) then
     DeclPanelUpdate;
-  // Окно прокрутилось, а на нём метки направляющих: прокрутка сдвинула их
-  // вместе с текстом, перерисовывается только открывшаяся полоса - метки
-  // остались бы следами посреди окна. Перерисовать окно целиком.
-  // EM_GETSCROLLPOS приходит в эту же процедуру, тоже на глубине 0: без
-  // FGuideBusy проверка вызывала бы сама себя без конца (переполнение
-  // стека - так и падало).
-  if (FMsgDepth = 0) and not FGuideBusy and (Length(FGuideMarks) > 0) and
-     RichEdit1.HandleAllocated then
-  begin
-    FGuideBusy := True;
-    try
-      SendMessageA(RichEdit1.Handle, EM_GETSCROLLPOS, 0, Integer(@CursorPt));
-      if (CursorPt.Y <> FGuideScrollPos.Y) or
-         (FScrollX <> FGuideScrollX) then
-      begin
-        FGuideScrollPos := CursorPt;
-        FGuideScrollX := FScrollX;
-        Windows.InvalidateRect(RichEdit1.Handle, nil, False);
-      end;
-    finally
-      FGuideBusy := False;
-    end;
-  end;
 end;
 
 procedure TForm1.NewRichEditProcBody(var Message: TMessage);
@@ -47884,12 +47875,8 @@ begin
         HotTabBrushes[HB] := 0;
         GuideMarkBrushes[HB] := 0;
       end;
-    // Метки краёв - заново на каждый кадр; прокрутка, при которой они
-    // нарисованы, - для проверки в NewRichEditProc
+    // Метки краёв - заново на каждый кадр
     SetLength(FGuideMarks, 0);
-    SendMessageA(RichEdit1.Handle, EM_GETSCROLLPOS, 0,
-                 Integer(@FGuideScrollPos));
-    FGuideScrollX := FScrollX;
 
     UpdateVisibleBounds;
 
