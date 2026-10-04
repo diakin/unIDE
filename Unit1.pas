@@ -1047,6 +1047,8 @@ type
     FEdFreezeTop: Integer;  // какая строка была верхней
     FObjEditLine: Integer;  // строка его присваивания в .pas, -1 - такой нет
     FRqEditSrcOld: string;  // правка RapidQ: значение в строке до правки
+    FRqExpanded: TStringList; // раскрытые узлы свойств (Font) таблицы RapidQ
+    FRqToggleTick: Cardinal;  // когда узел раскрыт или свёрнут щелчком
     // Конструктор форм RapidQ (RqDsgOpen): свой экземпляр, форма из CREATE
     FRqDesigner: TFormDesigner;
     FRqDsgFile: string;      // файл с блоками CREATE этой формы
@@ -2137,6 +2139,10 @@ type
     procedure ProbeCacheSave;
     procedure ProbeCacheLoad;
     procedure ObjSelectPropRow(const AProp: string);
+    function  ObjPropRowName(AItem: TListItem): string;
+    function  RqPropIsNode(AItem: TListItem): Boolean;
+    procedure RqPropsTree(AParents: TStrings);
+    procedure RqPropExpand(const AName: string; AExpand: Boolean);
     procedure ObjComboWndProc(var Message: TMessage);
     function  UnitTextOf(const APas: string): string;
     function  ObjFormUnit: string;
@@ -17242,6 +17248,7 @@ begin
       FRttiDefaults.Objects[I].Free;
   FreeAndNil(FRttiDefaults);
   FreeAndNil(FObjMissing);
+  FreeAndNil(FRqExpanded);
   FreeAndNil(FDesigner);
   FreeAndNil(FRqDesigner);
   DsgFreeOther;
@@ -19447,6 +19454,9 @@ FDsgUndo := TStringList.Create;
   FObjProps.OnCustomDrawSubItem := ObjPropsDrawSubItem;
 
   FObjMissing := TStringList.Create;
+  FRqExpanded := TStringList.Create;
+  FRqExpanded.Sorted := True;
+  FRqExpanded.CaseSensitive := False;
   FRttiDefaults := TStringList.Create;
   RegisterVclClasses;
 
@@ -21094,13 +21104,16 @@ var
   Item: TListItem;
   ItemIdx, ChainIdx, LiveIdx, FontIdx: Integer;
   MemberName, DefText, LiveText, SrcText: string;
-  Live: TStringList;
+  Live, FontParents: TStringList;
 begin
   Obj := TDfmNode(AObj);
   Live := RapidQLiveProps(Obj.Name);
   Chain := TList.Create;
   Seen := TStringList.Create;
+  FontParents := TStringList.Create;
   try
+    FontParents.Sorted := True;
+    FontParents.CaseSensitive := False;
     Seen.Sorted := True;
     Seen.CaseSensitive := False;
     RqClassChain(Obj.ClassNm, Chain);
@@ -21175,6 +21188,8 @@ begin
           RqMember := TRqMember(ChainCls.Props.Objects[ItemIdx]);
           if CompareText(RqMember.TypeName, 'QFONT') <> 0 then
             Continue;
+          if FontParents.IndexOf(RqMember.Name) < 0 then
+            FontParents.Add(RqMember.Name);
           for FontIdx := 0 to FontCls.Props.Count - 1 do
           begin
             FontMember := TRqMember(FontCls.Props.Objects[FontIdx]);
@@ -21210,6 +21225,8 @@ begin
         Item.Data := Pointer(-1);
       end;
     FObjProps.AlphaSort;
+    // Font - узлом с плюсом, поля под ним (RqPropsTree)
+    RqPropsTree(FontParents);
 
     for ItemIdx := 0 to Obj.EvN.Count - 1 do
     begin
@@ -21237,6 +21254,7 @@ begin
     end;
     FObjEvents.AlphaSort;
   finally
+    FontParents.Free;
     Seen.Free;
     Chain.Free;
   end;
@@ -21259,18 +21277,26 @@ begin
     Exit;
   Obj := TDfmNode(FObjCurNode);
   ItemIdx := Integer(AItem.Data);
-  PropName := AItem.Caption;
+  PropName := ObjPropRowName(AItem);
+  // Узел (Font) - раскрыть или свернуть, как в инспекторе Delphi
+  if RqPropIsNode(AItem) then
+  begin
+    // Двойной щелчок по плюсу: первым щелчком узел уже переключён
+    if GetTickCount - FRqToggleTick > GetDoubleClickTime then
+      RqPropExpand(PropName, Copy(AItem.Caption, 1, 1) = '+');
+    Exit;
+  end;
   Member := RapidQMemberOf(Obj, PropName);
   TypeUp := '';
   if Member <> nil then
   begin
     TypeUp := UpperCase(Member.TypeName);
-    // Шрифт - объект: задаются его поля, строки Font.Name, Font.Size...
+    // Шрифт - объект: задаются его поля, строки под узлом Font
     if TypeUp = 'QFONT' then
     begin
       ShowMessage(PropName + ' - объект QFONT. В блоке CREATE задаются его ' +
                   'поля: ' + PropName + '.Name, ' + PropName + '.Size, ' +
-                  PropName + '.Color... - строки с ними в этой таблице.');
+                  PropName + '.Color... - они под узлом ' + PropName + '.');
       Exit;
     end;
     if not Member.CanWrite then
@@ -25648,7 +25674,7 @@ begin
     Prop := '';
   end;
   if FObjProps.Selected <> nil then
-    Prop := FObjProps.Selected.Caption;
+    Prop := ObjPropRowName(FObjProps.Selected);
 
   FObjDfmKey := '';
   RefreshObjectInspector(True);
@@ -25687,7 +25713,7 @@ begin
   for I := 0 to FObjProps.Items.Count - 1 do
   begin
     It := FObjProps.Items[I];
-    if CompareText(It.Caption, AProp) = 0 then
+    if CompareText(ObjPropRowName(It), AProp) = 0 then
     begin
       FObjProps.Selected := It;
       It.MakeVisible(False);
@@ -25744,7 +25770,7 @@ begin
   for I := 0 to FObjProps.Items.Count - 1 do
   begin
     It := FObjProps.Items[I];
-    if CompareText(It.Caption, AProp) = 0 then
+    if CompareText(ObjPropRowName(It), AProp) = 0 then
     begin
       FObjProps.Selected := It;
       It.MakeVisible(False);
@@ -25765,6 +25791,13 @@ begin
   begin
     Key := 0;
     ObjBeginEdit;
+  end
+  // Узел (Font) таблицы RapidQ: + раскрыть, - свернуть
+  else if ((Key = VK_ADD) or (Key = VK_SUBTRACT)) and
+          RqPropIsNode(FObjProps.Selected) then
+  begin
+    RqPropExpand(ObjPropRowName(FObjProps.Selected), Key = VK_ADD);
+    Key := 0;
   end;
 end;
 
@@ -30845,6 +30878,169 @@ begin
 end;
 
 // ---------------------------------------------------------------------------
+//  Таблица свойств RapidQ: свойство типа QFONT (Font, TabInactiveFont...) -
+//  узлом, как в инспекторе Delphi. Строка "+ Font" свёрнута, "- Font"
+//  раскрыта; под раскрытым - его поля Name, Size, Color... с отступом.
+//  Раскрытые - FRqExpanded, по имени свойства, общие для всех объектов.
+//  Настоящее имя строки (Font, Font.Size) - в SubItems[2]: третьей колонки
+//  у таблицы нет, на экране его не видно; см. ObjPropRowName.
+// ---------------------------------------------------------------------------
+
+// Имя свойства строки таблицы: у узла и его полей - из SubItems[2], у
+// остальных - подпись
+function TForm1.ObjPropRowName(AItem: TListItem): string;
+begin
+  Result := AItem.Caption;
+  if FObjRapidQ and (AItem.SubItems.Count >= 3) and
+     (AItem.SubItems[2] <> '') then
+    Result := AItem.SubItems[2];
+end;
+
+// Строка - узел (свойство-объект с плюсом или минусом)
+function TForm1.RqPropIsNode(AItem: TListItem): Boolean;
+var
+  Mark: string;
+begin
+  Result := False;
+  if (AItem = nil) or not FObjRapidQ or (AItem.SubItems.Count < 3) or
+     (Pos('.', AItem.SubItems[2]) > 0) then
+    Exit;
+  Mark := Copy(AItem.Caption, 1, 2);
+  Result := (Mark = '+ ') or (Mark = '- ');
+end;
+
+// Узлы и поля в заполненной и отсортированной таблице. AParents - имена
+// свойств типа QFONT у класса объекта. Строки полей (Font.Size) стоят в
+// общем порядке; они убираются и у раскрытого узла ставятся сразу под ним
+// в том же порядке.
+procedure TForm1.RqPropsTree(AParents: TStrings);
+const
+  FieldSep = #1;
+  FieldIndent = '      ';
+var
+  Held: TStringList;
+  Item, Field: TListItem;
+  ItemIdx, HeldIdx, DotPos, SepPos: Integer;
+  RowName, FieldName, Rest, ValText, LineText: string;
+  IsOpen: Boolean;
+begin
+  if AParents.Count = 0 then
+    Exit;
+  Held := TStringList.Create;
+  try
+    // Снизу вверх: в Held поля идут в обратном порядке таблицы
+    for ItemIdx := FObjProps.Items.Count - 1 downto 0 do
+    begin
+      Item := FObjProps.Items[ItemIdx];
+      RowName := Item.Caption;
+      DotPos := Pos('.', RowName);
+      if (DotPos <= 1) or
+         (AParents.IndexOf(Copy(RowName, 1, DotPos - 1)) < 0) then
+        Continue;
+      if FRqExpanded.IndexOf(Copy(RowName, 1, DotPos - 1)) >= 0 then
+      begin
+        ValText := '';
+        LineText := '';
+        if Item.SubItems.Count > 0 then
+          ValText := Item.SubItems[0];
+        if Item.SubItems.Count > 1 then
+          LineText := Item.SubItems[1];
+        Held.AddObject(RowName + FieldSep + ValText + FieldSep + LineText,
+                       Item.Data);
+      end;
+      Item.Delete;
+    end;
+
+    ItemIdx := 0;
+    while ItemIdx < FObjProps.Items.Count do
+    begin
+      Item := FObjProps.Items[ItemIdx];
+      RowName := Item.Caption;
+      Inc(ItemIdx);
+      if AParents.IndexOf(RowName) < 0 then
+        Continue;
+      IsOpen := FRqExpanded.IndexOf(RowName) >= 0;
+      // Не присвоен в коде - в значении тип, как (TFont) у Delphi
+      if Integer(Item.Data) < 0 then
+      begin
+        if Item.SubItems.Count = 0 then
+          Item.SubItems.Add('');
+        Item.SubItems[0] := '(QFONT)';
+      end;
+      if IsOpen then
+        Item.Caption := '- ' + RowName
+      else
+        Item.Caption := '+ ' + RowName;
+      while Item.SubItems.Count < 2 do
+        Item.SubItems.Add('');
+      Item.SubItems.Add(RowName);
+      if not IsOpen then
+        Continue;
+      for HeldIdx := Held.Count - 1 downto 0 do
+      begin
+        Rest := Held[HeldIdx];
+        SepPos := Pos(FieldSep, Rest);
+        FieldName := Copy(Rest, 1, SepPos - 1);
+        if CompareText(Copy(FieldName, 1, Length(RowName) + 1),
+                       RowName + '.') <> 0 then
+          Continue;
+        System.Delete(Rest, 1, SepPos);
+        SepPos := Pos(FieldSep, Rest);
+        ValText := Copy(Rest, 1, SepPos - 1);
+        LineText := Copy(Rest, SepPos + 1, MaxInt);
+        Field := FObjProps.Items.Insert(ItemIdx);
+        Field.Caption := FieldIndent +
+                         Copy(FieldName, Length(RowName) + 2, MaxInt);
+        Field.SubItems.Add(ValText);
+        Field.SubItems.Add(LineText);
+        Field.SubItems.Add(FieldName);
+        Field.Data := Held.Objects[HeldIdx];
+        Inc(ItemIdx);
+      end;
+    end;
+  finally
+    Held.Free;
+  end;
+end;
+
+// Раскрыть (AExpand) или свернуть узел AName и перестроить таблицы, не
+// сдвигая их; выделена строка узла
+procedure TForm1.RqPropExpand(const AName: string; AExpand: Boolean);
+var
+  NameIdx, TopProps, TopEvents: Integer;
+begin
+  if (FObjCurNode = nil) or not FObjRapidQ then
+    Exit;
+  NameIdx := FRqExpanded.IndexOf(AName);
+  if AExpand = (NameIdx >= 0) then
+    Exit;
+  if AExpand then
+    FRqExpanded.Add(AName)
+  else
+    FRqExpanded.Delete(NameIdx);
+  ObjCancelEdit;
+  TopProps := 0;
+  TopEvents := 0;
+  if FObjProps.TopItem <> nil then
+    TopProps := FObjProps.TopItem.Index;
+  if FObjEvents.TopItem <> nil then
+    TopEvents := FObjEvents.TopItem.Index;
+  FObjProps.Items.BeginUpdate;
+  FObjEvents.Items.BeginUpdate;
+  try
+    FObjProps.Items.Clear;
+    FObjEvents.Items.Clear;
+    RapidQFillObjTables(FObjCurNode);
+  finally
+    FObjEvents.Items.EndUpdate;
+    FObjProps.Items.EndUpdate;
+  end;
+  ObjScrollToTop(FObjProps, TopProps);
+  ObjScrollToTop(FObjEvents, TopEvents);
+  ObjSelectPropRow(AName);
+end;
+
+// ---------------------------------------------------------------------------
 //  Группа в инспекторе (выделена Shift+щелчком в конструкторе)
 //
 //  Таблица - только свойства, которые есть у всех компонентов группы.
@@ -34672,6 +34868,7 @@ var
   HitInfo: TUiLVHitTest;
   LineNo: Integer;
   UnitFile: string;
+  NodeItem: TListItem;
 begin
   if not FObjProps.HandleAllocated or FObjEditing then
     Exit;
@@ -34681,8 +34878,23 @@ begin
   if SendMessage(FObjProps.Handle, UiLVM_SUBITEMHITTEST, 0,
                  Integer(@HitInfo)) < 0 then
     Exit;
-  if (HitInfo.Item < 0) or (HitInfo.Item >= FObjProps.Items.Count) or
-     (HitInfo.SubItem <> ColCodeLine) then
+  if (HitInfo.Item < 0) or (HitInfo.Item >= FObjProps.Items.Count) then
+    Exit;
+  // Плюс или минус узла (Font) таблицы RapidQ - раскрыть или свернуть
+  NodeItem := FObjProps.Items[HitInfo.Item];
+  if (HitInfo.SubItem = 0) and RqPropIsNode(NodeItem) and
+     (HitInfo.Pt.X - NodeItem.DisplayRect(drBounds).Left < 18) then
+  begin
+    // Второй щелчок двойного - не сворачивать обратно
+    if GetTickCount - FRqToggleTick > GetDoubleClickTime then
+    begin
+      RqPropExpand(ObjPropRowName(NodeItem),
+                   Copy(NodeItem.Caption, 1, 1) = '+');
+      FRqToggleTick := GetTickCount;
+    end;
+    Exit;
+  end;
+  if HitInfo.SubItem <> ColCodeLine then
     Exit;
   if FObjProps.Items[HitInfo.Item].SubItems.Count < 2 then
     Exit;
