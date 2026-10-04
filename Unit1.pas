@@ -1054,6 +1054,12 @@ type
     FRqDsgLastDfm: string;   // текст .dfm, по которому построена форма
     FRqDsgSelecting: Boolean; // выделение идёт из конструктора или в него
     FRqDsgOwnWrite: Boolean; // текст поменял сам конструктор - не перестраивать
+    FRqPalPage: Integer;     // первая страница палитры RapidQ
+    // Вставка с палитры RapidQ (RqDsgPlace -> WMRqDsgPlace): класс,
+    // контейнер под мышью и точка в нём
+    FRqPlaceClass: string;
+    FRqPlaceParent: string;
+    FRqPlacePt: TPoint;
     // Умолчания по классам: имя класса -> TStringList Имя=значение
     FRttiDefaults: TStringList;
     FObjCurNode: TObject;   // TDfmNode выбранного объекта
@@ -1861,6 +1867,12 @@ type
                            AOnlyIfExists: Boolean): Boolean;
     procedure RqDsgChange(const AName: string; AProps: TStrings);
     procedure RqNewForm;
+    procedure DsgAddRapidQPages;
+    function  RqPalSelected: string;
+    procedure RqDsgPlace(const AParent: string; X, Y, AFormX, AFormY: Integer;
+                         var AHandled: Boolean);
+    procedure WMRqDsgPlace(var Msg: TMessage); message WM_USER + 323;
+    procedure RqDsgInsert(const AClass, AParent: string; X, Y: Integer);
     procedure RqNewWindowFile(const AFile: string);
     function  RapidQProbeSource(const AMainBas, AOutFile: string;
                                 AOut, AObjClasses: TStringList;
@@ -22193,10 +22205,16 @@ begin
     FRqDesigner.OnClose := RqDsgClose;
     FRqDesigner.OnDblClick := RqDsgDblClick;
     FRqDesigner.OnMapClass := RqDsgMapClass;
+    FRqDesigner.OnPlace := RqDsgPlace;
   end;
   FRqDsgFile := FCurrentFileName;
   FRqDsgForm := Root.Name;
   RqDsgLoad(False);
+  // Палитра - на страницы RapidQ, если открыта другая
+  if (FDsgPalette <> nil) and
+     ((FDsgPalette.PageIndex < FRqPalPage) or
+      (FDsgPalette.PageIndex > FRqPalPage + 3)) then
+    FDsgPalette.SetPage(FRqPalPage);
   LogComp('Конструктор RapidQ: форма ' + Root.Name + ' (строка ' +
           IntToStr(Root.CreateLine + 1) + ')');
 end;
@@ -26776,7 +26794,9 @@ procedure TForm1.DsgPaletteSelect(Sender: TObject);
 begin
   if grpPalette = nil then
     Exit;
-  if FDsgPalette.SelectedForeign <> '' then
+  if RqPalSelected <> '' then
+    grpPalette.Caption := 'Components - ' + RqPalSelected + ' (RapidQ)'
+  else if FDsgPalette.SelectedForeign <> '' then
     grpPalette.Caption := 'Components - ' +
       Copy(FDsgPalette.SelectedForeign,
            Pos('.', FDsgPalette.SelectedForeign) + 1, MaxInt) + ' (сторонний)'
@@ -27802,6 +27822,7 @@ begin
       for I := 0 to L.Count - 1 do
         AddBtn(TComponentClass(L[I]), Page, True);
   end;
+  DsgAddRapidQPages;
   DsgAddForeignPages;
   FDsgPalette.ShowPage;
   ApplyArrayIni('PalBtn', PalBtnCodeProps);
@@ -30300,6 +30321,9 @@ var
   ForeignName, LoadError: string;
   ForeignCls: TClass;
 begin
+  // Компонент RapidQ на форму Delphi не ставится - щелчок как обычный
+  if RqPalSelected <> '' then
+    Exit;
   // Сторонний компонент: визуальный он или нет - по предкам его класса
   // из пакета (TControl или только TComponent)
   if (FDsgPalette <> nil) and (FDsgPalette.SelectedForeign <> '') and
@@ -40929,6 +40953,362 @@ begin
     end;
     StartPos := FoundPos + 1;
   end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Палитра RapidQ: страницы RQ Standard, RQ Additional, RQ System,
+//  RQ Dialogs после страниц Delphi. Кнопка - класс RapidQ, значок - похожий
+//  компонент Delphi (QBUTTON - TButton), у кого похожего нет - надпись.
+//  Выбор - строкой "RapidQ.КЛАСС" (SelectedForeign палитры).
+//
+//  Щелчок по форме конструктора RapidQ при выбранной кнопке (RqDsgPlace)
+//  добавляет в текст блок CREATE: визуальный - в блок контейнера под
+//  мышью, перед его END CREATE, с Left/Top точки щелчка и размером по
+//  умолчанию класса; невизуальный с Parent (QMAINMENU) - в блок формы;
+//  остальные невизуальные (QTIMER, диалоги) - отдельным блоком перед
+//  блоком формы. Имя - база и первый свободный номер (Button1).
+// ---------------------------------------------------------------------------
+
+const
+  RqPalCount = 43;
+  // Класс RapidQ, значок (класс Delphi), основа имени, страница
+  RqPalClass: array[0..RqPalCount - 1] of string = (
+    'QLABEL', 'QEDIT', 'QRICHEDIT', 'QBUTTON', 'QCOOLBTN', 'QOVALBTN',
+    'QCHECKBOX', 'QRADIOBUTTON', 'QLISTBOX', 'QCOMBOBOX', 'QSCROLLBAR',
+    'QGROUPBOX', 'QPANEL', 'QTABCONTROL', 'QSCROLLBOX', 'QMAINMENU',
+    'QPOPUPMENU',
+    'QSTRINGGRID', 'QLISTVIEW', 'QTREEVIEW', 'QDIRTREE', 'QFILELISTBOX',
+    'QOUTLINE', 'QGAUGE', 'QTRACKBAR', 'QHEADER', 'QSTATUSBAR', 'QCANVAS',
+    'QIMAGE', 'QSPLITTER',
+    'QTIMER', 'QIMAGELIST', 'QBITMAP', 'QFONT', 'QSTRINGLIST', 'QFILESTREAM',
+    'QMEMORYSTREAM', 'QSOCKET', 'QREGISTRY',
+    'QOPENDIALOG', 'QSAVEDIALOG', 'QFONTDIALOG', 'QCOLORDIALOG');
+  RqPalIcon: array[0..RqPalCount - 1] of string = (
+    'TLabel', 'TEdit', 'TRichEdit', 'TButton', 'TSpeedButton', 'TShape',
+    'TCheckBox', 'TRadioButton', 'TListBox', 'TComboBox', 'TScrollBar',
+    'TGroupBox', 'TPanel', 'TTabControl', 'TScrollBox', 'TMainMenu',
+    'TPopupMenu',
+    'TStringGrid', 'TListView', 'TTreeView', 'TDirectoryListBox',
+    'TFileListBox', 'TOutline', 'TGauge', 'TTrackBar', 'THeaderControl',
+    'TStatusBar', 'TPaintBox', 'TImage', 'TSplitter',
+    'TTimer', 'TImageList', '', '', '', '', '', '', '',
+    'TOpenDialog', 'TSaveDialog', 'TFontDialog', 'TColorDialog');
+  RqPalBase: array[0..RqPalCount - 1] of string = (
+    'Label', 'Edit', 'RichEdit', 'Button', 'CoolBtn', 'OvalBtn',
+    'CheckBox', 'RadioButton', 'ListBox', 'ComboBox', 'ScrollBar',
+    'GroupBox', 'Panel', 'TabControl', 'ScrollBox', 'MainMenu',
+    'PopupMenu',
+    'StringGrid', 'ListView', 'TreeView', 'DirTree', 'FileListBox',
+    'Outline', 'Gauge', 'TrackBar', 'Header', 'StatusBar', 'Canvas',
+    'Image', 'Splitter',
+    'Timer', 'ImageList', 'Bitmap', 'Font', 'StringList', 'FileStream',
+    'MemoryStream', 'Socket', 'Registry',
+    'OpenDialog', 'SaveDialog', 'FontDialog', 'ColorDialog');
+  RqPalPage: array[0..RqPalCount - 1] of Integer = (
+    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+    1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+    2, 2, 2, 2, 2, 2, 2, 2, 2,
+    3, 3, 3, 3);
+  RqPalPageName: array[0..3] of string = (
+    'RQ Standard', 'RQ Additional', 'RQ System', 'RQ Dialogs');
+
+procedure TForm1.DsgAddRapidQPages;
+var
+  PageIdx, ClassIdx: Integer;
+  Pages: array[0..3] of Integer;
+  RqBtn: TSpeedButton;
+begin
+  for PageIdx := 0 to 3 do
+    Pages[PageIdx] := FDsgPalette.AddPage(RqPalPageName[PageIdx]);
+  FRqPalPage := Pages[0];
+  for ClassIdx := 0 to RqPalCount - 1 do
+  begin
+    RqBtn := TSpeedButton.Create(FDsgPalette);
+    FDsgPalette.PlaceRapidQ(RqBtn, RqPalClass[ClassIdx], RqPalIcon[ClassIdx],
+                            RqPalClass[ClassIdx] + ' (RapidQ)',
+                            Pages[RqPalPage[ClassIdx]]);
+  end;
+end;
+
+// Выбран на палитре компонент RapidQ: его класс, иначе ''
+function TForm1.RqPalSelected: string;
+begin
+  Result := '';
+  if (FDsgPalette <> nil) and
+     (Copy(FDsgPalette.SelectedForeign, 1, 7) = 'RapidQ.') then
+    Result := Copy(FDsgPalette.SelectedForeign, 8, MaxInt);
+end;
+
+// Щелчок по форме конструктора RapidQ при выбранном на палитре классе:
+// вставка - после того, как конструктор закончит с мышью (сообщением)
+procedure TForm1.RqDsgPlace(const AParent: string; X, Y, AFormX,
+                            AFormY: Integer; var AHandled: Boolean);
+begin
+  if RqPalSelected = '' then
+    Exit;
+  AHandled := True;
+  FRqPlaceClass := RqPalSelected;
+  FRqPlaceParent := AParent;
+  FRqPlacePt := Point(X, Y);
+  PostMessage(Handle, WM_USER + 323, 0, 0);
+end;
+
+procedure TForm1.WMRqDsgPlace(var Msg: TMessage);
+var
+  PlaceClass: string;
+begin
+  PlaceClass := FRqPlaceClass;
+  FRqPlaceClass := '';
+  if PlaceClass = '' then
+    Exit;
+  if FDsgPalette <> nil then
+    FDsgPalette.ClearSelection;
+  RqDsgInsert(PlaceClass, FRqPlaceParent, FRqPlacePt.X, FRqPlacePt.Y);
+end;
+
+// Размер нового компонента класса AClass: по умолчанию из описания класса;
+// нет там - по виду (кнопка 75x25, флажок 97x17, панель 185x105)
+procedure RqDsgDefaultSize(const AClass: string; var AWidth, AHeight: Integer);
+var
+  Chain: TList;
+  Member: TRqMember;
+  Kind: TRqKind;
+  Num: Integer;
+begin
+  Kind := RqDsgKindOf(AClass);
+  if Kind in [rkCheck, rkRadio, rkLabel] then
+  begin
+    AWidth := 97;
+    AHeight := 17;
+  end
+  else if Kind in [rkPanel, rkGroup, rkScrollBox, rkTab, rkMemo] then
+  begin
+    AWidth := 185;
+    AHeight := 105;
+  end
+  else
+  begin
+    AWidth := 75;
+    AHeight := 25;
+  end;
+  Chain := TList.Create;
+  try
+    RqClassChain(AClass, Chain);
+    if RqDsgNumber(nil, RqDefaultOf(Chain, 'Width', Member), Num) and
+       (Num > 0) then
+      AWidth := Num;
+    if RqDsgNumber(nil, RqDefaultOf(Chain, 'Height', Member), Num) and
+       (Num > 0) then
+      AHeight := Num;
+  finally
+    Chain.Free;
+  end;
+end;
+
+// В цепочке класса AClass есть свойство AProp
+function RqDsgHasProp(const AClass, AProp: string): Boolean;
+var
+  Chain: TList;
+  Member: TRqMember;
+begin
+  Chain := TList.Create;
+  try
+    RqClassChain(AClass, Chain);
+    RqDefaultOf(Chain, AProp, Member);
+    Result := Member <> nil;
+  finally
+    Chain.Free;
+  end;
+end;
+
+// Блок CREATE компонента класса AClass - в текст (см. начало раздела).
+// AParent - имя контейнера под мышью (или формы), X, Y - точка в нём.
+procedure TForm1.RqDsgInsert(const AClass, AParent: string; X, Y: Integer);
+var
+  Lines, Block: TStringList;
+  Nodes, Roots: TList;
+  Target, RootNode, Node: TDfmNode;
+  NodeIdx, LineIdx, InsAt, Num, LineStart, CompWidth, CompHeight,
+    WinIdx: Integer;
+  Visual, TopLevel: Boolean;
+  TextLow, BaseName, NewName, OwnIndent, ChildIndent, Step, LineText,
+    BlockText, Where: string;
+
+  function IndentOf(const AText: string): string;
+  var
+    CharIdx: Integer;
+  begin
+    CharIdx := 1;
+    while (CharIdx <= Length(AText)) and (AText[CharIdx] in [' ', #9]) do
+      Inc(CharIdx);
+    Result := Copy(AText, 1, CharIdx - 1);
+  end;
+
+  function NodeNamed(const AName: string): TDfmNode;
+  var
+    Idx: Integer;
+  begin
+    Result := nil;
+    for Idx := 0 to Nodes.Count - 1 do
+      if CompareText(TDfmNode(Nodes[Idx]).Name, AName) = 0 then
+      begin
+        Result := TDfmNode(Nodes[Idx]);
+        Exit;
+      end;
+  end;
+
+begin
+  if CompareText(FCurrentFileName, FRqDsgFile) <> 0 then
+  begin
+    WinIdx := WindowOfFile(FRqDsgFile);
+    if WinIdx < 0 then
+      Exit;
+    ActivateWindow(WinIdx);
+  end;
+  Visual := RqDsgIsVisual(AClass);
+  Lines := TStringList.Create;
+  Block := TStringList.Create;
+  Nodes := TList.Create;
+  Roots := TList.Create;
+  try
+    Lines.Text := GetEditorTextCR;
+    RapidQCreateNodes(Lines, Nodes, Roots);
+    RootNode := NodeNamed(FRqDsgForm);
+    if RootNode = nil then
+      Exit;
+
+    // Имя: основа и первый номер, которого нет словом в тексте
+    BaseName := Copy(AClass, 2, MaxInt);
+    for NodeIdx := 0 to RqPalCount - 1 do
+      if RqPalClass[NodeIdx] = UpperCase(AClass) then
+        BaseName := RqPalBase[NodeIdx];
+    TextLow := LowerCase(Lines.Text);
+    Num := 1;
+    while HasWordLow(TextLow, LowerCase(BaseName) + IntToStr(Num)) do
+      Inc(Num);
+    NewName := BaseName + IntToStr(Num);
+
+    // Куда: визуальный - в контейнер под мышью; невизуальный с Parent - в
+    // форму; прочие невизуальные - перед блоком формы
+    TopLevel := False;
+    if Visual then
+    begin
+      Target := NodeNamed(AParent);
+      if Target = nil then
+        Target := RootNode;
+    end
+    else if RqDsgHasProp(AClass, 'Parent') then
+      Target := RootNode
+    else
+    begin
+      Target := RootNode;
+      TopLevel := True;
+    end;
+
+    if TopLevel then
+    begin
+      InsAt := RootNode.CreateLine;
+      OwnIndent := IndentOf(Lines[RootNode.CreateLine]);
+      if Pos(#9, OwnIndent) > 0 then
+        Step := #9
+      else
+        Step := '  ';
+      Where := 'перед формой ' + RootNode.Name;
+    end
+    else
+    begin
+      if (Target.CreateLine < 0) or (Target.EndLine <= Target.CreateLine) then
+      begin
+        ShowMessage('Блок CREATE ' + Target.Name + ' записан в одну строку ' +
+                    'или не закрыт - новый компонент в него не вставить. ' +
+                    'Разверните его (Format text) и повторите.');
+        Exit;
+      end;
+      // Отступ: как у первой непустой строки внутри блока, если она глубже
+      // CREATE; иначе CREATE плюс табуляция или два пробела
+      OwnIndent := IndentOf(Lines[Target.CreateLine]);
+      ChildIndent := '';
+      for LineIdx := Target.CreateLine + 1 to Target.EndLine - 1 do
+        if Trim(Lines[LineIdx]) <> '' then
+        begin
+          LineText := IndentOf(Lines[LineIdx]);
+          if Length(LineText) > Length(OwnIndent) then
+            ChildIndent := LineText;
+          Break;
+        end;
+      if ChildIndent = '' then
+      begin
+        if (Pos(#9, OwnIndent) > 0) or (OwnIndent = '') then
+          ChildIndent := OwnIndent + #9
+        else
+          ChildIndent := OwnIndent + '  ';
+      end;
+      OwnIndent := ChildIndent;
+      if Pos(#9, ChildIndent) > 0 then
+        Step := #9
+      else
+        Step := '  ';
+      InsAt := Target.EndLine;
+      Where := 'в блок ' + Target.Name;
+    end;
+
+    Block.Add(OwnIndent + 'CREATE ' + NewName + ' AS ' + AClass);
+    if Visual then
+    begin
+      if RqDsgHasProp(AClass, 'Caption') then
+        Block.Add(OwnIndent + Step + 'Caption = "' + NewName + '"')
+      else if RqDsgHasProp(AClass, 'Text') then
+        Block.Add(OwnIndent + Step + 'Text = "' + NewName + '"');
+      RqDsgDefaultSize(AClass, CompWidth, CompHeight);
+      Block.Add(OwnIndent + Step + 'Left = ' + IntToStr(X));
+      Block.Add(OwnIndent + Step + 'Top = ' + IntToStr(Y));
+      Block.Add(OwnIndent + Step + 'Width = ' + IntToStr(CompWidth));
+      Block.Add(OwnIndent + Step + 'Height = ' + IntToStr(CompHeight));
+      if RqDsgKindOf(AClass) = rkTab then
+        Block.Add(OwnIndent + Step + 'AddTabs "Tab 1", "Tab 2"');
+    end;
+    Block.Add(OwnIndent + 'END CREATE');
+    BlockText := '';
+    for LineIdx := 0 to Block.Count - 1 do
+      BlockText := BlockText + Block[LineIdx] + #13#10;
+
+    LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, InsAt, 0);
+    if LineStart < 0 then
+      Exit;
+    Inc(FObjOwnWrite);
+    try
+      EditorFreeze;
+      try
+        RichEdit1.SelStart := LineStart;
+        RichEdit1.SelLength := 0;
+        RichEdit1.SelText := BlockText;
+      finally
+        EditorThaw;
+      end;
+    finally
+      Dec(FObjOwnWrite);
+    end;
+    RichEdit1.Modified := True;
+  finally
+    for NodeIdx := 0 to Nodes.Count - 1 do
+      TObject(Nodes[NodeIdx]).Free;
+    Roots.Free;
+    Nodes.Free;
+    Block.Free;
+    Lines.Free;
+  end;
+
+  LogComp('Конструктор RapidQ: ' + NewName + ' AS ' + AClass + ' - ' + Where +
+          ' (строка ' + IntToStr(InsAt + 1) + ')');
+  // Дерево и форма - по новому тексту, выделен новый компонент
+  Node := TDfmNode(RqDsgNodeByName(FRqDsgForm));
+  ObjScheduleRelines(Node, '');
+  FObjRefreshName := NewName;
+  FObjRefreshProp := '';
+  // Выделение в дереве - то же, что сейчас: иначе перестроение вернуло бы
+  // его, а не новый компонент
+  if (FObjTree <> nil) and (FObjTree.Selected <> nil) then
+    FObjRefreshNode := FObjTree.Selected.Data;
 end;
 
 // New Form у файла RapidQ. Вопрос - куда:

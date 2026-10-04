@@ -30,6 +30,10 @@ unit DsgPalette;
 //  стороннего читается при первом показе его страницы (ShowPage): их
 //  больше сотни, а при запуске видна страница Standard. После загрузки
 //  значка - OnGlyphLoaded (тёмная тема перекрашивает его).
+//
+//  Компоненты RapidQ (Unit1, DsgAddRapidQPages) - тоже на своих страницах,
+//  выбор - строкой "RapidQ.КЛАСС", значок - сглаженный значок похожего
+//  компонента Delphi (PlaceRapidQ).
 // ---------------------------------------------------------------------------
 
 interface
@@ -118,6 +122,16 @@ type
                            AHint: string; APage: Integer);
     // "Модуль.Класс" кнопки стороннего компонента; '' - не сторонний
     function ForeignOf(ABtn: TControl): string;
+    // Кнопка компонента RapidQ AClass (QBUTTON) - на страницу APage, в
+    // первый ряд. Значок - сглаженный значок похожего класса Delphi
+    // AIconClass (TButton); нет его - надпись без первой буквы. Выбор -
+    // строкой "RapidQ.QBUTTON" (SelectedForeign), как у сторонних.
+    procedure PlaceRapidQ(ABtn: TSpeedButton; const AClass, AIconClass,
+                          AHint: string; APage: Integer);
+    // Открыть вкладку APage
+    procedure SetPage(APage: Integer);
+    // Открытая вкладка
+    function PageIndex: Integer;
     // Значок кнопки ABtn для темы - в ABmp: значок Delphi (ADark - с
     // перекраской ARecolor в цвет AInk) или сглаженный, нарисованный цветом
     // AInk; у своих компонентов - сглаженная метка цветом AMarkInk. Края -
@@ -992,6 +1006,61 @@ begin
       Result := True;
       Exit;
     end;
+end;
+
+procedure TDsgPalette.PlaceRapidQ(ABtn: TSpeedButton; const AClass,
+                                  AIconClass, AHint: string; APage: Integer);
+var
+  BtnWidth, PosX: Integer;
+begin
+  if (ABtn = nil) or (APage < 0) or (APage >= FPageBtns.Count) then
+    Exit;
+  ABtn.Parent := FBox;
+  ABtn.Visible := APage = FTabs.TabIndex;
+  ABtn.Flat := True;
+  ABtn.GroupIndex := 1;
+  ABtn.AllowAllUp := True;
+  ABtn.Tag := 0;                 // класса VCL нет - выбор по FForeign
+  ABtn.Hint := AHint;
+  ABtn.ShowHint := True;
+  ABtn.OnClick := CompClick;
+  ABtn.Caption := '';
+  BtnWidth := BtnSize;
+  if (AIconClass <> '') and (DsgIconScript(AIconClass) <> '') then
+  begin
+    DsgDrawSmoothIcon(ABtn.Glyph, AIconClass, clBlack, clBtnFace);
+    SetGlyphInfo(ABtn, ABtn.Glyph, AIconClass, False);
+    RenderGlyph(ABtn, False, clBlack, clTeal, FBox.Color, nil, ABtn.Glyph);
+  end
+  else
+  begin
+    // Значка нет - имя класса без Q
+    ABtn.Caption := Copy(AClass, 2, MaxInt);
+    FMeter.Canvas.Font := Font;
+    BtnWidth := FMeter.Canvas.TextWidth(ABtn.Caption) + 10;
+    if BtnWidth < BtnSize then
+      BtnWidth := BtnSize;
+  end;
+  PosX := FNextX[APage];
+  FNextX[APage] := PosX + BtnWidth + 1;
+  Inc(FRow1Count[APage]);
+  ABtn.SetBounds(PosX, 1, BtnWidth, BtnSize);
+  TList(FPageBtns[APage]).Add(ABtn);
+  FForeign.AddObject('RapidQ.' + AClass, ABtn);
+end;
+
+procedure TDsgPalette.SetPage(APage: Integer);
+begin
+  if (APage < 0) or (APage >= FTabs.Tabs.Count) or
+     (APage = FTabs.TabIndex) then
+    Exit;
+  FTabs.TabIndex := APage;
+  ShowPage;
+end;
+
+function TDsgPalette.PageIndex: Integer;
+begin
+  Result := FTabs.TabIndex;
 end;
 
 function TDsgPalette.ForeignOf(ABtn: TControl): string;
