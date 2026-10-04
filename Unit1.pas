@@ -23,6 +23,7 @@ uses
   DfmMove,        // «Перенести в .dfm»: разбор созданного кодом
   DbgEngine,      // отладчик: точки останова, остановка, продолжение
   DbgSymbols,     // отладочная информация TD32: значения переменных (Watch)
+  RqDbgInstr,     // отладчик RapidQ: копия программы с проверками точек
   DlgWatch,       // окно Watch
 // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
 // InputQuery перекрывают одноимённые функции Dialogs
@@ -989,6 +990,19 @@ type
     FDbgEdits: TList;          // TDbgLineEdit, правки за сеанс отладки
     FDbgRunToFile: string;
     FDbgRunToLine: Integer;
+    // Отладчик RapidQ (RqDbgInstr): копия программы последней отладочной
+    // сборки и идущий сеанс. Программа стоит - ждёт события "go"; unIDE
+    // узнаёт об остановке по событию "stop" (таймер FRqDbgTimer).
+    FRqDbgInstr: TRqDbgInstr;   // копия, из которой собран FRqDbgExe
+    FRqDbgExe: string;          // exe отладочной сборки, '' - его нет
+    FRqDbgExeAge: Integer;      // FileAge этого exe сразу после сборки
+    FRqDbgOn: Boolean;          // сеанс идёт (программа FRqDbgExe запущена)
+    FRqDbgPaused: Boolean;      // программа стоит и ждёт команды
+    FRqDbgEvStop: THandle;
+    FRqDbgEvGo: THandle;
+    FRqDbgTimer: TTimer;
+    FRqDbgLastMode: Integer;    // последняя команда (RqDbgMode*)
+    FRqDbgLastRunTo: Integer;   // её точка Run to cursor
     // Окно Watch: выражения, отладочная информация exe сеанса (TD32, -V) и
     // причина, если её нет
     FWatchWnd: TDlgWatch;
@@ -2088,6 +2102,19 @@ type
     procedure DbgStepInto;
     procedure DbgStepOver;
     procedure DbgRunToCursor;
+    // Отладчик RapidQ
+    function  RqDbgBuild(const ABas: string; var ACopy: string): Boolean;
+    function  RqDbgLaunch(const AExe, ADir: string): Boolean;
+    function  RqDbgHere: Boolean;
+    function  RqDbgMarkPoint(AMark: TBreakMark): Integer;
+    procedure RqDbgResolveMark(AMark: TBreakMark);
+    function  RqDbgResolveMarks: Integer;
+    function  RqDbgWriteCmd(AMode, ARunTo: Integer): Boolean;
+    procedure RqDbgCommand(AMode, ARunTo: Integer);
+    procedure RqDbgTimerTick(Sender: TObject);
+    procedure RqDbgStopped(APoint: Integer);
+    procedure RqDbgCloseEvents;
+    procedure RqDbgEnd;
     // Окно Watch
     function  DbgExprAtCaret: string;
     function  DbgDeclNameAt(ACharPos: Integer; const AWord: string): string;
@@ -17370,6 +17397,18 @@ begin
   FreeAndNil(UiGlyphSeen);
   ProbeClear;
   FreeAndNil(FProbeSnaps);
+  // Программа под отладчиком RapidQ работает дальше сама: без файла
+  // команды она идёт без точек останова. Стоит - отпускаем.
+  if FRqDbgOn then
+  begin
+    if FRqDbgInstr <> nil then
+      DeleteFile(FRqDbgInstr.CmdFile);
+    if FRqDbgPaused and (FRqDbgEvGo <> 0) then
+      SetEvent(FRqDbgEvGo);
+    FRqDbgOn := False;
+  end;
+  RqDbgCloseEvents;
+  FreeAndNil(FRqDbgInstr);
   if FRunList <> nil then
   begin
     for I := 0 to FRunList.Count - 1 do
@@ -38898,8 +38937,9 @@ var
 // Блок закончен (File in error или конец вывода) - строка в лог
   procedure Emit;
   var
-    Candidate, Line, Notes: string;
+    Candidate, Line, Notes, CopyNote: string;
     Searched: Boolean;
+    CopyLine: Integer;
   begin
     if ErrFile = '' then
       ErrFile := ABas
@@ -38925,6 +38965,27 @@ var
       Searched := ErrLine > 0;
     end;
 
+    // Ошибка в отладочной копии (RqDbgBuild) - место в исходнике
+    CopyNote := '';
+    if (FRqDbgInstr <> nil) and (FRqDbgInstr.CopyFile <> '') and
+       (CompareText(ExpandFileName(ErrFile),
+                    ExpandFileName(FRqDbgInstr.CopyFile)) = 0) then
+    begin
+      if ErrLine > 0 then
+      begin
+        CopyNote := ', в отладочной копии строка ' + IntToStr(ErrLine);
+        CopyLine := FRqDbgInstr.SrcLineOfCopy(ErrLine - 1);
+        if CopyLine >= 0 then
+          ErrLine := CopyLine + 1
+        else
+        begin
+          ErrLine := 0;
+          CopyNote := CopyNote + ' - код отладчика';
+        end;
+      end;
+      ErrFile := FRqDbgInstr.SrcFile;
+    end;
+
     if Msg = '' then
       Msg := 'ошибка компиляции';
     Notes := '';
@@ -38934,6 +38995,7 @@ var
       Notes := Notes + ', процедура ' + Section;
     if Searched then
       Notes := Notes + ', строка найдена по тексту';
+    Notes := Notes + CopyNote;
     if Notes <> '' then
       Notes := '  [' + Copy(Notes, 3, Length(Notes)) + ']';
 
@@ -39072,10 +39134,11 @@ var
   Ini: TIniFile;
   Sect, CompDir, IncDir, LibDir, IconFile: string;
   RcExe, Bas, Exe, Dir, Params, DumpFile, BuildPrj, FirstFile: string;
+  CompileSrc: string;
   Code, LogStart, Index, FirstLine: Integer;
   T0: Cardinal;
   RcLines, ConsoleLines: TStringList;
-  HasError, Built: Boolean;
+  HasError, Built, DebugBuild: Boolean;
 begin
   Result := False;
   ShowCompLog;
@@ -39193,7 +39256,23 @@ begin
   else
     Exe := ChangeFileExt(Bas, '.exe');
   Dir := ExtractFilePath(Bas);
-  Params := Params + ' "' + Bas + '" "' + Exe + '"';
+  // Точки останова или запуск с F7/F8/F4 - собирается копия с проверками
+  // точек (RqDbgBuild), exe - тот же, что у обычной сборки
+  CompileSrc := Bas;
+  DebugBuild := not FRqProbeActive and DbgWanted;
+  if not FRqProbeActive then
+  begin
+    if DebugBuild and FRqDbgOn then
+    begin
+      LogComp('Сборка RapidQ: идёт отладка ' + ExtractFileName(FRqDbgExe) +
+              ' - сначала Program reset (Ctrl+F2)');
+      Exit;
+    end;
+    FRqDbgExe := '';
+    if DebugBuild and not RqDbgBuild(Bas, CompileSrc) then
+      Exit;
+  end;
+  Params := Params + ' "' + CompileSrc + '" "' + Exe + '"';
 
   // Запущенный exe переименовывается в .old (как у Delphi), прежний exe
   // удаляется: по его появлению видно, что сборка прошла
@@ -39255,7 +39334,8 @@ begin
       else
         RcLines.Assign(ConsoleLines);
 
-      HasError := RapidQReportErrors(RcLines, Bas, IncDir, FirstFile, FirstLine);
+      HasError := RapidQReportErrors(RcLines, CompileSrc, IncDir, FirstFile,
+                                     FirstLine);
       FRqProbeErrFile := FirstFile;
       FRqProbeErrLine := FirstLine;
     finally
@@ -39274,6 +39354,11 @@ begin
 
   if Built then
   begin
+    if DebugBuild then
+    begin
+      FRqDbgExe := ExpandFileName(Exe);
+      FRqDbgExeAge := FileAge(Exe);
+    end;
     LogComp(Format('--- Готово, %d мс: %s', [GetTickCount - T0, Exe]));
     Exit;
   end;
@@ -41924,6 +42009,12 @@ begin
     DbgResume;
     Exit;
   end;
+  // Программа RapidQ под отладчиком стоит - дальше
+  if RqDbgHere then
+  begin
+    RqDbgCommand(RqDbgModeRun, 0);
+    Exit;
+  end;
   DsgHideForRun;
   if CompileProject then
     RunTarget;
@@ -41971,6 +42062,9 @@ begin
       CloseHandle(Process);
       FRunList.Delete(RunIdx);
     end;
+  // Программа под отладчиком RapidQ закрылась или снята
+  if FRqDbgOn and (RunHandleOf(FRqDbgExe) = 0) then
+    RqDbgEnd;
   if (FRunList <> nil) and (FRunList.Count > 0) then
     Exit;
   FRunTimer.Enabled := False;
@@ -42133,7 +42227,8 @@ begin
 
   // Запуск и отладка. Остановка на точке: Run - продолжить.
   btnCompileRun.Enabled := not Running or
-                           ((FDbgSession <> nil) and FDbgSession.Paused);
+                           ((FDbgSession <> nil) and FDbgSession.Paused) or
+                           (RqDbgHere and FRqDbgPaused);
   if btnProgReset <> nil then
     btnProgReset.Enabled := Running;
   // Пауза - у программы под отладчиком, которая идёт
@@ -42257,9 +42352,7 @@ begin
   mViewSnap.Visible := not Basic;
   mPrjRelease.Visible := not Basic;
   mPrjReleaseFiles.Visible := not Basic;
-  pmuRunToCursor.Visible := not Basic;
   pmuAddWatch.Visible := not Basic;
-  pmuSepRun.Visible := not Basic;
   ShowTab(FTabCode, not Basic);
   // Только Basic
   ShowTab(FTabIncludes, Basic);
@@ -42279,9 +42372,8 @@ begin
     for RowIdx := 0 to RunRowCount - 1 do
       FRunRowLefts[RowIdx] := RunRow[RowIdx].Left;
   end;
+  // Пауза - только у отладчика Delphi; шаги и Run to cursor - у обоих
   btnPause.Visible := not Basic;
-  btnTraceInto.Visible := not Basic;
-  btnStepOver.Visible := not Basic;
   SlotIdx := 0;
   for RowIdx := 0 to RunRowCount - 1 do
     if RunRow[RowIdx].Visible then
@@ -44386,6 +44478,27 @@ begin
     if DbgStart(Exe, Dir) then
       Exit;
 
+  // RapidQ под отладчиком - только exe отладочной сборки (CompileRapidQ):
+  // в обычном проверок точек нет
+  if RapidQ and DbgWanted then
+  begin
+    if (FRqDbgInstr <> nil) and (FRqDbgExe <> '') and
+       (CompareText(FRqDbgExe, ExpandFileName(Exe)) = 0) and
+       (FileAge(Exe) = FRqDbgExeAge) then
+    begin
+      if RqDbgLaunch(Exe, Dir) then
+        Exit;
+    end
+    else
+      LogComp('Отладчик RapidQ: ' + ExtractFileName(Exe) + ' собран без ' +
+              'отладки - запуск без отладчика. Для отладки - Compile & Run');
+  end;
+  // Exe отладочной сборки без отладчика: без файла команды он идёт без
+  // остановок
+  if RapidQ and not FRqDbgOn and (FRqDbgInstr <> nil) and
+     FileExists(FRqDbgInstr.CmdFile) then
+    DeleteFile(FRqDbgInstr.CmdFile);
+
   FillChar(SI, SizeOf(SI), 0);
   SI.cb := SizeOf(SI);
 
@@ -44412,6 +44525,11 @@ begin
   if FDbgSession <> nil then
   begin
     DbgResume;
+    Exit;
+  end;
+  if RqDbgHere then
+  begin
+    RqDbgCommand(RqDbgModeRun, 0);
     Exit;
   end;
   DsgHideForRun;
@@ -44609,6 +44727,9 @@ begin
       for OfsIdx := 0 to Mark.Offsets.Count - 1 do
         FDbgSession.SetBreakpoint(Cardinal(Mark.Offsets[OfsIdx]), True);
     end;
+    // RapidQ: точки программа берёт из команды на остановке
+    if FRqDbgOn then
+      RqDbgResolveMark(Mark);
   end;
   DbgRepaint;
 end;
@@ -44831,10 +44952,12 @@ end;
 // стоит. Пока идёт свободно - нельзя, как в Delphi.
 function TForm1.DbgCanStep: Boolean;
 begin
-  if FDbgSession <> nil then
+  if RqDbgHere then
+    Result := FRqDbgPaused
+  else if FDbgSession <> nil then
     Result := FDbgSession.Paused
   else
-    Result := (RunHere = 0) and (FBusyDepth = 0);
+    Result := (RunHere = 0) and (FBusyDepth = 0) and not FRqDbgOn;
 end;
 
 // Сборка и запуск под отладчиком с остановкой (F7/F8 - на begin .dpr, F4 -
@@ -44844,6 +44967,12 @@ procedure TForm1.DbgLaunch(AMode: Integer);
 begin
   if (FBusyDepth > 0) or (FDbgSession <> nil) or (RunHere <> 0) then
     Exit;
+  if FRqDbgOn then
+  begin
+    LogComp('Отладчик RapidQ: уже отлаживается ' + ExtractFileName(FRqDbgExe) +
+            ' - сначала Program reset (Ctrl+F2)');
+    Exit;
+  end;
   FDbgStartMode := AMode;
   try
     btnCompileRunClick(btnCompileRun);
@@ -44856,6 +44985,11 @@ end;
 // есть номера строк
 procedure TForm1.DbgStepInto;
 begin
+  if RqDbgHere then
+  begin
+    RqDbgCommand(RqDbgModeInto, 0);
+    Exit;
+  end;
   if FDbgSession = nil then
   begin
     DbgLaunch(DbgStartStep);
@@ -44871,6 +45005,11 @@ end;
 // Step over (F8): до следующей строки, вызовы целиком
 procedure TForm1.DbgStepOver;
 begin
+  if RqDbgHere then
+  begin
+    RqDbgCommand(RqDbgModeOver, 0);
+    Exit;
+  end;
   if FDbgSession = nil then
   begin
     DbgLaunch(DbgStartStep);
@@ -44888,7 +45027,7 @@ end;
 // совпадать с текстом.
 procedure TForm1.DbgRunToCursor;
 var
-  LineIdx: Integer;
+  LineIdx, BuildLine, PointId: Integer;
   Targets: TList;
 begin
   if FCurrentFileName = '' then
@@ -44899,6 +45038,31 @@ begin
   LineIdx := CurrentLineIndex;
   if LineIdx < 0 then
     Exit;
+  // RapidQ: точка строки по копии сеанса
+  if RqDbgHere then
+  begin
+    if not FRqDbgPaused then
+      Exit;
+    PointId := 0;
+    if CompareText(ExpandFileName(FCurrentFileName),
+                   ExpandFileName(FRqDbgInstr.SrcFile)) = 0 then
+    begin
+      BuildLine := DbgLineThen(FCurrentFileName, LineIdx);
+      if BuildLine >= 0 then
+        PointId := FRqDbgInstr.PointOfLine(BuildLine);
+    end;
+    if PointId = 0 then
+    begin
+      LogComp('Run to cursor: ' + ExtractFileName(FCurrentFileName) +
+              ', строка ' + IntToStr(LineIdx + 1) + ' - кода нет (пустая ' +
+              'строка, комментарий, объявление, CREATE) или файл не ' +
+              'главный: отладчик RapidQ пока отлаживает только главный ' +
+              'файл ' + ExtractFileName(FRqDbgInstr.SrcFile));
+      Exit;
+    end;
+    RqDbgCommand(RqDbgModeRunTo, PointId);
+    Exit;
+  end;
   if FDbgSession = nil then
   begin
     FDbgRunToFile := FCurrentFileName;
@@ -44928,6 +45092,404 @@ begin
   finally
     Targets.Free;
   end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Отладчик RapidQ (этап 1): точки останова, Trace into, Step over, Run to
+//  cursor, строка остановки в редакторе. Пауза и значения переменных -
+//  позже.
+//
+//  Сборка с точками останова (или с F7/F8/F4) собирает не главный .bas, а
+//  его копию <имя>_rqdbg.bas (RqDbgInstr): перед каждым оператором -
+//  проверка номера точки. Exe - тот же <имя>.exe. Программа и unIDE
+//  говорят через два файла рядом с .bas и два именованных события:
+//    <имя>_rqdbg.cmd   - команда unIDE: режим, точка Run to cursor, номера
+//                        точек останова;
+//    <имя>_rqdbg.state - где программа остановилась: "s точка уровень";
+//    события "stop" (программа встала) и "go" (дальше).
+//  Программа на остановке ждёт "go" в WaitForSingleObject - стоит целиком,
+//  её окна не перерисовываются, как под отладчиком Delphi.
+//  Точки останова программа берёт из команды на каждой остановке: точка,
+//  поставленная или снятая, пока программа идёт, начнёт действовать после
+//  следующей остановки. Остановка на точке, которую уже сняли, - программа
+//  сразу идёт дальше с той же командой.
+//  Только главный .bas: точки в $INCLUDE-файлах пока не работают.
+// ---------------------------------------------------------------------------
+
+// Копия главного .bas с проверками точек. ACopy - её путь.
+function TForm1.RqDbgBuild(const ABas: string; var ACopy: string): Boolean;
+var
+  BaseName: string;
+begin
+  Result := False;
+  if FRqDbgInstr = nil then
+    FRqDbgInstr := TRqDbgInstr.Create;
+  BaseName := ChangeFileExt(ABas, '');
+  ACopy := BaseName + '_rqdbg.bas';
+  // Имена событий - свои у каждой сборки: программа прежней сборки, если
+  // ещё работает, их не поднимет
+  if not FRqDbgInstr.Build(ABas, ACopy, BaseName + '_rqdbg.cmd',
+                           BaseName + '_rqdbg.state',
+                           'unIDE_RqDbg_' + IntToStr(Integer(GetCurrentProcessId)) +
+                           '_' + IntToStr(Integer(GetTickCount))) then
+  begin
+    LogComp('Отладчик RapidQ: копия не построена - ' + FRqDbgInstr.LastError);
+    Exit;
+  end;
+  // Номера строк точек - по тексту сборки: правки с этого момента
+  // сдвигают их (DbgLineNow / DbgLineThen)
+  DbgClearEdits;
+  LogComp('Отладочная сборка RapidQ: ' + ExtractFileName(ACopy) + ', точек ' +
+          IntToStr(FRqDbgInstr.PointCount));
+  Result := True;
+end;
+
+// Сеанс отладки RapidQ - у программы цели активной вкладки (или вкладка
+// без цели: .ini, лог)
+function TForm1.RqDbgHere: Boolean;
+var
+  HereExe: string;
+begin
+  Result := False;
+  if not FRqDbgOn then
+    Exit;
+  HereExe := CurRunExe;
+  Result := (HereExe = '') or (CompareText(HereExe, FRqDbgExe) = 0);
+end;
+
+// Точка копии на строке точки останова, 0 - нет (не тот файл, строка без
+// кода, строка вставлена после сборки)
+function TForm1.RqDbgMarkPoint(AMark: TBreakMark): Integer;
+var
+  BuildLine: Integer;
+begin
+  Result := 0;
+  if (FRqDbgInstr = nil) or (FRqDbgInstr.SrcFile = '') or
+     (CompareText(ExpandFileName(AMark.FileName),
+                  ExpandFileName(FRqDbgInstr.SrcFile)) <> 0) then
+    Exit;
+  BuildLine := DbgLineThen(AMark.FileName, AMark.Line);
+  if BuildLine >= 0 then
+    Result := FRqDbgInstr.PointOfLine(BuildLine);
+end;
+
+// Точка, поставленная во время сеанса: есть ли у неё код
+procedure TForm1.RqDbgResolveMark(AMark: TBreakMark);
+begin
+  AMark.Offsets.Clear;
+  AMark.NoCode := RqDbgMarkPoint(AMark) = 0;
+  if AMark.NoCode then
+    LogComp('Точка останова: ' + ExtractFileName(AMark.FileName) +
+            ', строка ' + IntToStr(AMark.Line + 1) + ' - кода нет (пустая ' +
+            'строка, комментарий, объявление, CREATE) или файл не главный, ' +
+            'точка не сработает')
+  else if not FRqDbgPaused then
+    LogComp('Точка останова: программа идёт - точка начнёт действовать ' +
+            'после следующей остановки');
+end;
+
+// Все точки к запуску: серые - те, у которых кода нет. Результат - сколько
+// сработает.
+function TForm1.RqDbgResolveMarks: Integer;
+var
+  MarkIdx, OtherFiles: Integer;
+  Mark: TBreakMark;
+begin
+  Result := 0;
+  OtherFiles := 0;
+  for MarkIdx := 0 to FBreakMarks.Count - 1 do
+  begin
+    Mark := TBreakMark(FBreakMarks[MarkIdx]);
+    Mark.Offsets.Clear;
+    Mark.NoCode := RqDbgMarkPoint(Mark) = 0;
+    if not Mark.NoCode then
+      Inc(Result)
+    else if CompareText(ExpandFileName(Mark.FileName),
+                        ExpandFileName(FRqDbgInstr.SrcFile)) <> 0 then
+      Inc(OtherFiles)
+    else
+      LogComp('Точка останова: ' + ExtractFileName(Mark.FileName) +
+              ', строка ' + IntToStr(Mark.Line + 1) + ' - кода нет (пустая ' +
+              'строка, комментарий, объявление, CREATE), точка не сработает');
+  end;
+  if OtherFiles > 0 then
+    LogComp('Точки останова в других файлах (' + IntToStr(OtherFiles) +
+            ') не сработают: отладчик RapidQ пока отлаживает только главный ' +
+            'файл ' + ExtractFileName(FRqDbgInstr.SrcFile));
+  DbgRepaint;
+end;
+
+// Файл команды: "m режим", "r точка", "b точка" на каждую точку останова,
+// "#end"
+function TForm1.RqDbgWriteCmd(AMode, ARunTo: Integer): Boolean;
+var
+  CmdLines: TStringList;
+  MarkIdx, PointId: Integer;
+begin
+  Result := False;
+  if FRqDbgInstr = nil then
+    Exit;
+  CmdLines := TStringList.Create;
+  try
+    CmdLines.Add('m ' + IntToStr(AMode));
+    if ARunTo > 0 then
+      CmdLines.Add('r ' + IntToStr(ARunTo));
+    for MarkIdx := 0 to FBreakMarks.Count - 1 do
+    begin
+      PointId := RqDbgMarkPoint(TBreakMark(FBreakMarks[MarkIdx]));
+      if PointId > 0 then
+        CmdLines.Add('b ' + IntToStr(PointId));
+    end;
+    CmdLines.Add('#end');
+    try
+      CmdLines.SaveToFile(FRqDbgInstr.CmdFile);
+      Result := True;
+    except
+      on E: Exception do
+        LogComp('Отладчик RapidQ: не записан файл команды ' +
+                FRqDbgInstr.CmdFile + ' (' + E.Message + ')');
+    end;
+  finally
+    CmdLines.Free;
+  end;
+  if Result then
+  begin
+    FRqDbgLastMode := AMode;
+    FRqDbgLastRunTo := ARunTo;
+  end;
+end;
+
+// Запуск exe отладочной сборки под отладчиком. False - не вышло, причина
+// в логе: RunTarget запустит программу как обычно.
+function TForm1.RqDbgLaunch(const AExe, ADir: string): Boolean;
+var
+  StartInfo: TStartupInfo;
+  ProcInfo: TProcessInformation;
+  RunCmd: string;
+  Mode, RunTo, Armed: Integer;
+begin
+  Result := False;
+  if FRqDbgOn then
+  begin
+    LogComp('Отладчик RapidQ: уже отлаживается ' + ExtractFileName(FRqDbgExe));
+    Exit;
+  end;
+  RqDbgCloseEvents;
+  FRqDbgEvStop := CreateEvent(nil, False, False,
+                              PChar(RqDbgStopEventName(FRqDbgInstr.EventBase)));
+  FRqDbgEvGo := CreateEvent(nil, False, False,
+                            PChar(RqDbgGoEventName(FRqDbgInstr.EventBase)));
+  if (FRqDbgEvStop = 0) or (FRqDbgEvGo = 0) then
+  begin
+    LogComp('Отладчик RapidQ: события не созданы (' +
+            SysErrorMessage(GetLastError) + ') - запуск без отладчика');
+    RqDbgCloseEvents;
+    Exit;
+  end;
+  ResetEvent(FRqDbgEvStop);
+  ResetEvent(FRqDbgEvGo);
+
+  Armed := RqDbgResolveMarks;
+  // Первая команда: F7/F8 - стоять на первом операторе, F4 - на строке
+  // курсора, иначе - до точки останова
+  Mode := RqDbgModeRun;
+  RunTo := 0;
+  if FDbgStartMode = DbgStartStep then
+    Mode := RqDbgModeInto
+  else if FDbgStartMode = DbgStartRunTo then
+  begin
+    if CompareText(ExpandFileName(FDbgRunToFile),
+                   ExpandFileName(FRqDbgInstr.SrcFile)) = 0 then
+      RunTo := FRqDbgInstr.PointOfLine(DbgLineThen(FDbgRunToFile,
+                                                   FDbgRunToLine));
+    if RunTo > 0 then
+      Mode := RqDbgModeRunTo
+    else
+      LogComp('Run to cursor: ' + ExtractFileName(FDbgRunToFile) +
+              ', строка ' + IntToStr(FDbgRunToLine + 1) + ' - кода нет или ' +
+              'файл не главный; программа идёт до точки останова');
+  end;
+  DeleteFile(FRqDbgInstr.StateFile);
+  if not RqDbgWriteCmd(Mode, RunTo) then
+  begin
+    RqDbgCloseEvents;
+    Exit;
+  end;
+
+  FillChar(StartInfo, SizeOf(StartInfo), 0);
+  StartInfo.cb := SizeOf(StartInfo);
+  RunCmd := '"' + AExe + '"';
+  if not CreateProcess(nil, PChar(RunCmd), nil, nil, False, 0, nil,
+                       PChar(ADir), StartInfo, ProcInfo) then
+  begin
+    LogComp('Отладчик RapidQ: запуск не удался - ' + AExe + ' (' +
+            SysErrorMessage(GetLastError) + ')');
+    DeleteFile(FRqDbgInstr.CmdFile);
+    RqDbgCloseEvents;
+    Exit;
+  end;
+  CloseHandle(ProcInfo.hThread);
+  RunAdd(ExpandFileName(AExe), ProcInfo.hProcess);
+  FRunExeTick := 0;
+  FRqDbgOn := True;
+  FRqDbgPaused := False;
+  if FRqDbgTimer = nil then
+  begin
+    FRqDbgTimer := TTimer.Create(Self);
+    FRqDbgTimer.Interval := 50;
+    FRqDbgTimer.OnTimer := RqDbgTimerTick;
+  end;
+  FRqDbgTimer.Enabled := True;
+  LogComp('--- Запуск под отладчиком RapidQ: ' + AExe + ' (точек в копии ' +
+          IntToStr(FRqDbgInstr.PointCount) + ', точек останова ' +
+          IntToStr(Armed) + ')');
+  Result := True;
+end;
+
+// Команда стоящей программе: файл команды, затем "go"
+procedure TForm1.RqDbgCommand(AMode, ARunTo: Integer);
+begin
+  if not FRqDbgOn or not FRqDbgPaused then
+    Exit;
+  if not RqDbgWriteCmd(AMode, ARunTo) then
+    Exit;
+  FRqDbgPaused := False;
+  DbgClearExec;
+  SetEvent(FRqDbgEvGo);
+end;
+
+// Раз в 50 мс: не встала ли программа (событие "stop")
+procedure TForm1.RqDbgTimerTick(Sender: TObject);
+var
+  StateLines: TStringList;
+  StateText: string;
+  PointId, SpacePos: Integer;
+begin
+  if not FRqDbgOn then
+  begin
+    FRqDbgTimer.Enabled := False;
+    Exit;
+  end;
+  if FRqDbgPaused or (FRqDbgEvStop = 0) then
+    Exit;
+  if WaitForSingleObject(FRqDbgEvStop, 0) <> WAIT_OBJECT_0 then
+    Exit;
+  // "s точка уровень"; файл записан и закрыт до события
+  PointId := 0;
+  StateLines := TStringList.Create;
+  try
+    try
+      StateLines.LoadFromFile(FRqDbgInstr.StateFile);
+    except
+      StateLines.Clear;
+    end;
+    if StateLines.Count > 0 then
+    begin
+      StateText := Trim(StateLines[0]);
+      if Copy(StateText, 1, 2) = 's ' then
+      begin
+        StateText := Trim(Copy(StateText, 3, MaxInt));
+        SpacePos := Pos(' ', StateText);
+        if SpacePos > 0 then
+          StateText := Copy(StateText, 1, SpacePos - 1);
+        PointId := StrToIntDef(StateText, 0);
+      end;
+    end;
+  finally
+    StateLines.Free;
+  end;
+  FRqDbgPaused := True;
+  RqDbgStopped(PointId);
+end;
+
+// Программа встала на точке APoint: строка в редакторе
+procedure TForm1.RqDbgStopped(APoint: Integer);
+var
+  SrcFile: string;
+  SrcLine, MarkIdx: Integer;
+  OnMark: Boolean;
+begin
+  SrcLine := FRqDbgInstr.LineOfPoint(APoint);
+
+  // Точку сняли, пока программа шла (в программе флаг ещё стоял), - дальше
+  // с той же командой, уже без неё
+  if (SrcLine >= 0) and
+     ((FRqDbgLastMode = RqDbgModeRun) or
+      ((FRqDbgLastMode = RqDbgModeRunTo) and (APoint <> FRqDbgLastRunTo))) then
+  begin
+    OnMark := False;
+    for MarkIdx := 0 to FBreakMarks.Count - 1 do
+      if RqDbgMarkPoint(TBreakMark(FBreakMarks[MarkIdx])) = APoint then
+      begin
+        OnMark := True;
+        Break;
+      end;
+    if not OnMark then
+    begin
+      RqDbgCommand(FRqDbgLastMode, FRqDbgLastRunTo);
+      Exit;
+    end;
+  end;
+
+  // Окно среды - вперёд: программа стоит, работать теперь здесь
+  if IsIconic(Application.Handle) then
+    Application.Restore;
+  SetForegroundWindow(Handle);
+
+  if SrcLine < 0 then
+  begin
+    LogComp('--- Остановка в точке ' + IntToStr(APoint) + ' - строки для ' +
+            'неё нет (файл состояния ' + FRqDbgInstr.StateFile + '). ' +
+            'Продолжить - Run (F9)');
+    DbgRepaint;
+    Exit;
+  end;
+  SrcFile := FRqDbgInstr.SrcFile;
+  if CompareText(ExpandFileName(FCurrentFileName), ExpandFileName(SrcFile)) <> 0 then
+    OpenNamedFile(SrcFile);
+  // Путь - как у вкладки: так его сравнивают точки и правки (FDbgEdits)
+  if CompareText(ExpandFileName(FCurrentFileName), ExpandFileName(SrcFile)) = 0 then
+    SrcFile := FCurrentFileName;
+  // Номер строки - по тексту сборки; правки после неё сдвигают его
+  SrcLine := DbgLineNow(SrcFile, SrcLine);
+  LogComp('--- Остановка: ' + ExtractFileName(SrcFile) + ', строка ' +
+          IntToStr(SrcLine + 1) + '. Дальше: F9 - Run, F8 - Step over, ' +
+          'F7 - Trace into, F4 - Run to cursor, Ctrl+F2 - Program reset');
+  FDbgExecFile := SrcFile;
+  FDbgExecLine := SrcLine;
+  if CompareText(FCurrentFileName, SrcFile) = 0 then
+    GotoLine(SrcLine);
+  DbgRepaint;
+end;
+
+procedure TForm1.RqDbgCloseEvents;
+begin
+  if FRqDbgEvStop <> 0 then
+    CloseHandle(FRqDbgEvStop);
+  if FRqDbgEvGo <> 0 then
+    CloseHandle(FRqDbgEvGo);
+  FRqDbgEvStop := 0;
+  FRqDbgEvGo := 0;
+end;
+
+// Программа сеанса закрылась или снята (RunTimerTick)
+procedure TForm1.RqDbgEnd;
+begin
+  if not FRqDbgOn then
+    Exit;
+  FRqDbgOn := False;
+  FRqDbgPaused := False;
+  if FRqDbgTimer <> nil then
+    FRqDbgTimer.Enabled := False;
+  RqDbgCloseEvents;
+  if FRqDbgInstr <> nil then
+  begin
+    DeleteFile(FRqDbgInstr.CmdFile);
+    DeleteFile(FRqDbgInstr.StateFile);
+  end;
+  DbgClearExec;
+  LogComp('--- Программа завершилась (отладчик RapidQ)');
+  DbgRepaint;
 end;
 
 procedure TForm1.TraceIntoClick(Sender: TObject);
@@ -46268,19 +46830,19 @@ begin
   end
   else if (AKey = VK_F7) and not CtrlDown then
   begin
-    if DbgCanStep and (FLangMode <> 1) then
+    if DbgCanStep then
       DbgStepInto;
     Result := True;
   end
   else if (AKey = VK_F8) and not CtrlDown then
   begin
-    if DbgCanStep and (FLangMode <> 1) then
+    if DbgCanStep then
       DbgStepOver;
     Result := True;
   end
   else if (AKey = VK_F4) and not CtrlDown and (ActiveControl = RichEdit1) then
   begin
-    if DbgCanStep and (FLangMode <> 1) then
+    if DbgCanStep then
       DbgRunToCursor;
     Result := True;
   end;
@@ -46339,8 +46901,8 @@ begin
      (not DbgMarksInCurrent and
       ((FWindowsIndex < 0) or not FWindows[FWindowsIndex].Used or
        (Length(FWindows[FWindowsIndex].Bookmarks) = 0)) and
-      ((FDbgSession = nil) or FDbgSession.Finished or
-       (FCurrentFileName = ''))) then
+      ((((FDbgSession = nil) or FDbgSession.Finished) and
+        (FRqDbgExe = '')) or (FCurrentFileName = ''))) then
     Exit;
   SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
   FDbgPreMin := Sel.cpMin;
@@ -46481,9 +47043,10 @@ begin
     end;
   end;
 
-  // Правка за сеанс - для перевода строк .map в нынешние номера и обратно
-  if (FDbgSession <> nil) and not FDbgSession.Finished and
-     (FCurrentFileName <> '') then
+  // Правка за сеанс - для перевода строк .map в нынешние номера и обратно.
+  // RapidQ - с отладочной сборки: номера точек копии - по её тексту.
+  if (((FDbgSession <> nil) and not FDbgSession.Finished) or
+      (FRqDbgExe <> '')) and (FCurrentFileName <> '') then
   begin
     if FDbgEdits = nil then
       FDbgEdits := TList.Create;

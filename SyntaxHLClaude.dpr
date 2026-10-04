@@ -25,6 +25,7 @@ uses
   HangWatch in 'HangWatch.pas',
   DbgEngine in 'DbgEngine.pas',
   DbgSymbols in 'DbgSymbols.pas',
+  RqDbgInstr in 'RqDbgInstr.pas',
   TextMerge in 'TextMerge.pas',
   FileSearch in 'FileSearch.pas',
   DelphiProj in 'DelphiProj.pas',

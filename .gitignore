@@ -84,3 +84,7 @@ modules/
 
 # Output folder of the IDE build: exe plus copied editor.ini, IDE.clr, schemes
 Output/
+# Отладчик RapidQ: копия программы и файлы сеанса (RqDbgInstr)
+*_rqdbg.bas
+*_rqdbg.cmd
+*_rqdbg.state
