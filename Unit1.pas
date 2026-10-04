@@ -214,6 +214,15 @@ type
   // записи окна и поле формы должны быть совместимы при присваивании
   TSubInfoArray = array of TSubInfo;
   TIntArray = array of Integer;
+
+  // Метка направляющей отступов у верхнего или нижнего края редактора:
+  // полоса уровня Level строки Line уходит за край окна. Box - где
+  // нарисована, в координатах окна редактора.
+  TGuideMark = record
+    Box: TRect;
+    Line: Integer;
+    Level: Integer;
+  end;
   TStrArray = array of string;
 
   // Одно текстовое окно: файл целиком в памяти плюс его состояние.
@@ -1280,6 +1289,13 @@ type
     // Объявление нашлось в другом модуле (из uses): его файл. '' - в том
     // же файле. FDeclLine, FDeclCol, FDeclText тогда относятся к нему.
     FDeclOtherFile: string;
+    // В панели - начало блока по метке направляющей (GuideMarkClick), а не
+    // объявление: своя подсказка
+    FDeclIsBlock: Boolean;
+    // Метки направляющих у краёв окна - с последней отрисовки
+    // (HighlightVisibleText); щелчок по метке - GuideMarkClick
+    FGuideMarks: array of TGuideMark;
+    FGuideSkipUp: Boolean;  // кнопку нажали на метке - её отпускание не щелчок
     // Список в диалоге Del WinList. Диалог модальный, поэтому одного поля хватает
     FDlgCheckList: TCheckListBox;
     // Статус-бар обновляется не сразу, а через этот таймер - см.
@@ -2255,6 +2271,8 @@ type
     procedure BuildDeclPanel;
     procedure SubLabelShow(const AName: string);
     procedure DeclPanelUpdate;
+    function  GuideMarkAt(AX, AY: Integer): Integer;
+    procedure GuideMarkClick(AMarkIdx: Integer);
     procedure DeclPanelShow;
     function  DeclUnitFile(const AUnit, ADir: string; ADprUnits: TStrings;
                            const ADprDir: string): string;
@@ -35805,7 +35823,10 @@ begin
     begin
       S := IntToStr(FDeclLine + 1) + ':   ' + FDeclText;
       FDeclPanel.Color := UiColor('Decl.FoundBG');
-      if FDeclOtherFile = '' then
+      if FDeclIsBlock then
+        FDeclPanel.Hint := 'Начало блока. Щелчок - перейти к строке ' +
+                           IntToStr(FDeclLine + 1) + ', второй - обратно'
+      else if FDeclOtherFile = '' then
         FDeclPanel.Hint := 'Щелчок - перейти к объявлению'
       else
       begin
@@ -35846,6 +35867,68 @@ begin
   FDeclPanel.Caption := '  ' + StringReplace(S, '&', '&&', [rfReplaceAll]);
 end;
 
+// Метка направляющей под точкой (AX, AY) окна редактора; -1 - нет. Точка
+// может быть и рядом с меткой - на две точки вокруг.
+function TForm1.GuideMarkAt(AX, AY: Integer): Integer;
+var
+  MarkIdx: Integer;
+  HitBox: TRect;
+begin
+  Result := -1;
+  for MarkIdx := 0 to High(FGuideMarks) do
+  begin
+    HitBox := FGuideMarks[MarkIdx].Box;
+    InflateRect(HitBox, 2, 2);
+    if PtInRect(HitBox, Point(AX, AY)) then
+    begin
+      Result := MarkIdx;
+      Exit;
+    end;
+  end;
+end;
+
+// Щелчок по метке направляющей: строка, с которой начинается блок этой
+// полосы, - в панель объявления (как объявление идентификатора). Начало
+// блока - первая строка выше, вложенность которой не больше уровня
+// полосы (FLineDepth). Щелчок по панели - туда, второй - обратно к
+// каретке.
+procedure TForm1.GuideMarkClick(AMarkIdx: Integer);
+var
+  HeadLine, Level, FirstPos: Integer;
+  LineText: string;
+  CaretSel: TCharRange;
+begin
+  if (AMarkIdx < 0) or (AMarkIdx > High(FGuideMarks)) or
+     (FDeclPanel = nil) then
+    Exit;
+  Level := FGuideMarks[AMarkIdx].Level;
+  HeadLine := FGuideMarks[AMarkIdx].Line;
+  while (HeadLine >= 0) and (HeadLine <= High(FLineDepth)) and
+        (FLineDepth[HeadLine] > Level) do
+    Dec(HeadLine);
+  if HeadLine < 0 then
+    HeadLine := 0;
+  if HeadLine >= RichEdit1.Lines.Count then
+    Exit;
+  LineText := RichEdit1.Lines[HeadLine];
+  FirstPos := 1;
+  while (FirstPos <= Length(LineText)) and (LineText[FirstPos] in [' ', #9]) do
+    Inc(FirstPos);
+  FDeclFile := FCurrentFileName;
+  FDeclOtherFile := '';
+  FDeclWord := '';
+  FDeclLine := HeadLine;
+  FDeclCol := FirstPos;
+  FDeclText := Trim(StringReplace(LineText, #9, ' ', [rfReplaceAll]));
+  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@CaretSel));
+  FDeclFromPos := CaretSel.cpMin;
+  FDeclFromLine := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0,
+                                FDeclFromPos);
+  FDeclIsBlock := True;
+  FDeclMode := 2;
+  DeclPanelShow;
+end;
+
 // Щелчок в редакторе: идентификатор под кареткой и его объявление
 procedure TForm1.DeclPanelUpdate;
 var
@@ -35857,6 +35940,7 @@ begin
   if (FDeclPanel = nil) or not RichEdit1.HandleAllocated then
     Exit;
   FDeclMode := 0;
+  FDeclIsBlock := False;
   FDeclFile := FCurrentFileName;
   FDeclOtherFile := '';
 
@@ -46230,7 +46314,46 @@ end;
 // раньше EN_CHANGE, снимок пропадал, и EN_CHANGE его уже не видел: карта не
 // сдвигалась, кэш ширин сбрасывался целиком (диагностика "en 0/N").
 procedure TForm1.NewRichEditProc(var Message: TMessage);
+var
+  MarkIdx: Integer;
+  CursorPt: TPoint;
 begin
+  // Метки направляющих у краёв окна: щелчок - начало блока в панель
+  // объявления, каретка остаётся на месте; над меткой - курсор-рука
+  if (FMsgDepth = 0) and (Length(FGuideMarks) > 0) then
+  begin
+    if (Message.Msg = WM_LBUTTONDOWN) or (Message.Msg = WM_LBUTTONDBLCLK) then
+    begin
+      MarkIdx := GuideMarkAt(SmallInt(LoWord(Message.LParam)),
+                             SmallInt(HiWord(Message.LParam)));
+      if MarkIdx >= 0 then
+      begin
+        if Message.Msg = WM_LBUTTONDOWN then
+          GuideMarkClick(MarkIdx);
+        FGuideSkipUp := True;
+        Message.Result := 0;
+        Exit;
+      end;
+    end
+    else if (Message.Msg = WM_SETCURSOR) and
+            (LoWord(Message.LParam) = HTCLIENT) then
+    begin
+      GetCursorPos(CursorPt);
+      Windows.ScreenToClient(RichEdit1.Handle, CursorPt);
+      if GuideMarkAt(CursorPt.X, CursorPt.Y) >= 0 then
+      begin
+        Windows.SetCursor(LoadCursor(0, IDC_HAND));
+        Message.Result := 1;
+        Exit;
+      end;
+    end;
+  end;
+  if (Message.Msg = WM_LBUTTONUP) and FGuideSkipUp then
+  begin
+    FGuideSkipUp := False;
+    Message.Result := 0;
+    Exit;
+  end;
   if FMsgDepth = 0 then
     FOuterMsg := Message.Msg;
   Inc(FMsgDepth);
@@ -46663,6 +46786,8 @@ var
   Metrics: TTextMetric;
   CharW: Integer; // средняя ширина символа - ширина маркера отступа
   HotTabBrushes: array[0..HotTabLevels - 1] of HBRUSH;
+  // Метки у краёв окна (полоса уходит за край) - полным цветом уровня
+  GuideMarkBrushes: array[0..HotTabLevels - 1] of HBRUSH;
   HB: Integer;
   CurrentLineIdx: Integer;
   LineStartCharIdx: Integer;
@@ -47450,6 +47575,35 @@ var
     end;
   end;
 
+// Метка у края окна: полоса уровня ALevel уходит за верхний (ATop) или
+// нижний край. Прямоугольник полным цветом уровня (сама полоса -
+// бледным), шириной с полосу, но не уже 5 точек, высотой в полстроки.
+// Запоминается в FGuideMarks для щелчка.
+  procedure AddGuideMark(AX, AW: Integer; ATop: Boolean; ALevel: Integer);
+  var
+    MarkW, MarkH, MarkY, MarkIdx: Integer;
+    MarkBox: TRect;
+  begin
+    MarkW := AW;
+    if MarkW < 5 then
+      MarkW := 5;
+    MarkH := LineHeight div 2;
+    if MarkH < 6 then
+      MarkH := 6;
+    if ATop then
+      MarkY := 0
+    else
+      MarkY := RichEdit1.ClientHeight - MarkH;
+    MarkBox := Rect(AX, MarkY, AX + MarkW, MarkY + MarkH);
+    if GuideMarkBrushes[ALevel mod HotTabLevels] <> 0 then
+      Windows.FillRect(DC, MarkBox, GuideMarkBrushes[ALevel mod HotTabLevels]);
+    MarkIdx := Length(FGuideMarks);
+    SetLength(FGuideMarks, MarkIdx + 1);
+    FGuideMarks[MarkIdx].Box := MarkBox;
+    FGuideMarks[MarkIdx].Line := CurrentLineIdx;
+    FGuideMarks[MarkIdx].Level := ALevel;
+  end;
+
 // Направляющие отступов: слева от текста рисуются полосы, по одной на
 // уровень вложенности строки. Рисуется последней, поверх всего остального,
 // иначе заливку затрёт комментарий во всю строку.
@@ -47580,6 +47734,17 @@ var
         // Цвет по уровню вложенности, с зацикливанием после пятого
         Windows.FillRect(DC, GRect, HotTabBrushes[Level mod HotTabLevels]);
 
+        // Полоса продолжается за верхним или нижним краем окна - метка у
+        // края (щелчок по ней - начало блока в панели объявления)
+        if (CurrentLineIdx = FirstVisibleLine) and (CurrentLineIdx > 0) and
+           (CurrentLineIdx - 1 <= High(FLineDepth)) and
+           (FLineDepth[CurrentLineIdx - 1] > Level) then
+          AddGuideMark(GX1, GW, True, Level);
+        if (CurrentLineIdx = LastVisibleLine) and
+           (CurrentLineIdx + 1 <= High(FLineDepth)) and
+           (FLineDepth[CurrentLineIdx + 1] > Level) then
+          AddGuideMark(GX1, GW, False, Level);
+
         // Последняя строка раздела объявлений: засечка вправо по низу
         // строки, полоса и засечка вместе - уголок. Толщина - как у полосы,
         // но не больше двух пикселей: полоса бывает во всю ширину символа.
@@ -47671,9 +47836,17 @@ begin
     // Кисти направляющих создаём ОДИН раз на кадр, а не на каждую строку
     for HB := 0 to HotTabLevels - 1 do
       if FUseHotTab then
-        HotTabBrushes[HB] := CreateSolidBrush(ColorToRGB(PaleColor(FHotTabColors[HB])))
+      begin
+        HotTabBrushes[HB] := CreateSolidBrush(ColorToRGB(PaleColor(FHotTabColors[HB])));
+        GuideMarkBrushes[HB] := CreateSolidBrush(ColorToRGB(FHotTabColors[HB]));
+      end
       else
+      begin
         HotTabBrushes[HB] := 0;
+        GuideMarkBrushes[HB] := 0;
+      end;
+    // Метки краёв - заново на каждый кадр
+    SetLength(FGuideMarks, 0);
 
     UpdateVisibleBounds;
 
@@ -48043,8 +48216,12 @@ begin
     Lap(FPerfTok);
   finally
     for HB := 0 to HotTabLevels - 1 do
+    begin
       if HotTabBrushes[HB] <> 0 then
         DeleteObject(HotTabBrushes[HB]);
+      if GuideMarkBrushes[HB] <> 0 then
+        DeleteObject(GuideMarkBrushes[HB]);
+    end;
     if FPaintDC = 0 then
       ReleaseDC(RichEdit1.Handle, DC);
     FLockHighlight := False;
