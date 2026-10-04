@@ -45141,6 +45141,10 @@ begin
   DbgClearEdits;
   LogComp('Отладочная сборка RapidQ: ' + ExtractFileName(ACopy) + ', точек ' +
           IntToStr(FRqDbgInstr.PointCount));
+  // Имена RqDbg... уже есть в программе - код отладчика взял другие
+  if FRqDbgInstr.Prefix <> 'RqDbg' then
+    LogComp('  имена кода отладчика в копии - ' + FRqDbgInstr.Prefix +
+            '...: RqDbg... уже встречается в ' + ExtractFileName(ABas));
   Result := True;
 end;
 

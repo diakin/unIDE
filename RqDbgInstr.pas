@@ -42,6 +42,12 @@ unit RqDbgInstr;
 //  блок не собирается, переносится как есть, без проверок; $IFNDEF -
 //  собирается. Ошибка в эту сторону стоит только точек внутри блока.
 //
+//  Имена кода отладчика в копии - с префиксом RqDbg. Если в исходнике
+//  уже есть слово с таким началом (в любом месте, даже в комментарии),
+//  берётся другой префикс (UniDbg, UnideDbg, RqDbgZ3, ...): иначе rc.exe
+//  выдаст "identifier already in use". Имена событий и пути файлов от
+//  префикса не зависят.
+//
 //  Этап 1: инструментируется только главный .bas; $INCLUDE-файлы - как
 //  есть.
 //
@@ -68,6 +74,7 @@ type
     FStateFile: string;
     FEventBase: string;
     FLastError: string;
+    FPrefix: string;                // начало имён кода отладчика в копии
     FPointCount: Integer;
     FPointLine: array of Integer;   // номер точки -> строка исходника (с 0)
     FLinePoint: array of Integer;   // строка исходника -> первая точка, 0 - нет
@@ -77,6 +84,7 @@ type
                           ASrcLine: Integer);
     function NewPoint(ASrcLine: Integer): Integer;
     procedure AddRuntime(AOut: TStrings);
+    function Pfx(const AText: string): string;
   public
     // Копия ASrcFile в ACopyFile. ACmdFile, AStateFile - файлы команды и
     // состояния (пути целиком), AEventBase - начало имён событий. False -
@@ -96,6 +104,7 @@ type
     property EventBase: string read FEventBase;
     property PointCount: Integer read FPointCount;
     property LastError: string read FLastError;
+    property Prefix: string read FPrefix;
   end;
 
 // Путь для строки в копии: прямые косые (обратная при $ESCAPECHARS ON -
@@ -452,6 +461,12 @@ begin
   Result := FPointCount;
 end;
 
+// Имена кода отладчика: RqDbg в шаблоне - выбранный префикс
+function TRqDbgInstr.Pfx(const AText: string): string;
+begin
+  Result := StringReplace(AText, 'RqDbg', FPrefix, [rfReplaceAll]);
+end;
+
 // Код отладки в копии. Имена - с RqDbg (как RqProbe у снимка), функции
 // Windows - под своими именами через ALIAS: с DECLARE из RAPIDQ.INC не
 // столкнутся.
@@ -461,7 +476,13 @@ var
 
   procedure Add(const AText: string);
   begin
-    AddCopyLine(AOut, AText, -1);
+    AddCopyLine(AOut, Pfx(AText), -1);
+  end;
+
+  // Строка с путём или именем события: префикс - только в коде вокруг
+  procedure AddLit(const ABefore, ALiteral, AAfter: string);
+  begin
+    AddCopyLine(AOut, Pfx(ABefore) + ALiteral + Pfx(AAfter), -1);
   end;
 
 begin
@@ -508,8 +529,8 @@ begin
   Add('  FOR RqDbgCmdIdx = 0 TO ' + MaxIdx);
   Add('    RqDbgUser(RqDbgCmdIdx) = 0');
   Add('  NEXT');
-  Add('  IF FILEEXISTS("' + CmdPath + '") THEN');
-  Add('    RqDbgCmdFile.Open("' + CmdPath + '", 0)');
+  AddLit('  IF FILEEXISTS("', CmdPath, '") THEN');
+  AddLit('    RqDbgCmdFile.Open("', CmdPath, '", 0)');
   Add('    RqDbgCmdGuard = 0');
   Add('    DO');
   Add('      IF RqDbgCmdFile.EOF THEN EXIT DO');
@@ -553,7 +574,7 @@ begin
       'RqDbgPKey AS LONG)');
   Add('  DIM RqDbgStateFile AS QFILESTREAM');
   Add('  DIM RqDbgCallRes AS LONG');
-  Add('  RqDbgStateFile.Open("' + StatePath + '", 65535)');
+  AddLit('  RqDbgStateFile.Open("', StatePath, '", 65535)');
   Add('  RqDbgStateFile.WriteLine("s " + STR$(RqDbgPId) + " " + ' +
       'STR$(RqDbgPLvl))');
   Add('  RqDbgStateFile.WriteLine("#end")');
@@ -598,10 +619,10 @@ begin
   Add('END SUB');
   Add('');
   // События создаёт unIDE до запуска; программа открывает их по имени
-  Add('RqDbgEvStop = RqDbgCreateEvent(0, 0, 0, "' +
-      RqDbgStopEventName(FEventBase) + '")');
-  Add('RqDbgEvGo = RqDbgCreateEvent(0, 0, 0, "' +
-      RqDbgGoEventName(FEventBase) + '")');
+  AddLit('RqDbgEvStop = RqDbgCreateEvent(0, 0, 0, "',
+         RqDbgStopEventName(FEventBase), '")');
+  AddLit('RqDbgEvGo = RqDbgCreateEvent(0, 0, 0, "',
+         RqDbgGoEventName(FEventBase), '")');
   Add('RqDbgStopKey = -1');
   Add('RqDbgStopLvl = -1');
   Add('RqDbgReadCmd');
@@ -627,6 +648,7 @@ var
   SkipBlock: string;            // слово блока, который переносится целиком
   Kinds: array of TRqPartKind;
   OutStream: TFileStream;
+  UpperSrc: string;
   Defined, Aliases: TStringList;  // имена $DEFINE; псевдоним=директива
   ExclStack: array of Boolean;    // блок условной сборки не собирается
   CondStack: array of Boolean;    // условие блока (для $ELSE)
@@ -719,6 +741,12 @@ var
       SetLength(BodySrc, Body.Count * 2 + 256);
     BodySrc[Body.Count] := ASrcLine;
     Body.Add(AText);
+  end;
+
+  // Строка кода отладчика в теле: RqDbg - выбранный префикс
+  procedure AddGen(const AText: string; ASrcLine: Integer);
+  begin
+    AddBody(Pfx(AText), ASrcLine);
   end;
 
   procedure Verbatim(ALog: Integer);
@@ -817,6 +845,32 @@ begin
     SetLength(FLinePoint, Src.Count + 1);
     for LineIdx := 0 to High(FLinePoint) do
       FLinePoint[LineIdx] := 0;
+
+    // Префикс имён, которого в исходнике нет
+    UpperSrc := UpperCase(Src.Text);
+    FPrefix := '';
+    for LineIdx := 0 to 20 do
+    begin
+      case LineIdx of
+        0: Word1 := 'RqDbg';
+        1: Word1 := 'UniDbg';
+        2: Word1 := 'UnideDbg';
+      else
+        Word1 := 'RqDbgZ' + IntToStr(LineIdx);
+      end;
+      if Pos(UpperCase(Word1), UpperSrc) = 0 then
+      begin
+        FPrefix := Word1;
+        Break;
+      end;
+    end;
+    UpperSrc := '';
+    if FPrefix = '' then
+    begin
+      FLastError := 'не подобрано начало имён кода отладчика: RqDbg, UniDbg ' +
+                    'и другие уже есть в исходнике';
+      Exit;
+    end;
 
     // Логические строки: строки с "_" в конце кода склеиваются
     SetLength(Logical, Src.Count);
@@ -969,22 +1023,22 @@ begin
                 MultiPoint := PartIdx;
           end;
         if MultiEnd and InSub then
-          AddBody(Indent + 'RqDbgDepth = RqDbgLvl - 1', StartLine);
+          AddGen(Indent + 'RqDbgDepth = RqDbgLvl - 1', StartLine);
         if (MultiPoint >= 0) and not MultiHead then
         begin
           PointId := NewPoint(StartLine);
-          AddBody(Indent + 'IF RqDbgBrk(' + IntToStr(PointId) +
+          AddGen(Indent + 'IF RqDbgBrk(' + IntToStr(PointId) +
                   ') THEN RqDbg(' + IntToStr(PointId) + ', ' + Lvl + ', ' +
                   IntToStr(StartLine + 1) + ')', StartLine);
           if (Kinds[MultiPoint] = pkExitSub) and InSub then
-            AddBody(Indent + 'RqDbgDepth = RqDbgLvl - 1', StartLine);
+            AddGen(Indent + 'RqDbgDepth = RqDbgLvl - 1', StartLine);
         end;
         Verbatim(LogIdx);
         if MultiHead then
         begin
-          AddBody(Indent + '  DIM RqDbgLvl AS LONG', StartLine);
-          AddBody(Indent + '  RqDbgDepth = RqDbgDepth + 1', StartLine);
-          AddBody(Indent + '  RqDbgLvl = RqDbgDepth', StartLine);
+          AddGen(Indent + '  DIM RqDbgLvl AS LONG', StartLine);
+          AddGen(Indent + '  RqDbgDepth = RqDbgDepth + 1', StartLine);
+          AddGen(Indent + '  RqDbgLvl = RqDbgDepth', StartLine);
           InSub := True;
         end;
         if MultiEnd then
@@ -1006,15 +1060,15 @@ begin
           pkSubHead:
             begin
               AddBody(Indent + Stmt, StartLine);
-              AddBody(Indent + '  DIM RqDbgLvl AS LONG', StartLine);
-              AddBody(Indent + '  RqDbgDepth = RqDbgDepth + 1', StartLine);
-              AddBody(Indent + '  RqDbgLvl = RqDbgDepth', StartLine);
+              AddGen(Indent + '  DIM RqDbgLvl AS LONG', StartLine);
+              AddGen(Indent + '  RqDbgDepth = RqDbgDepth + 1', StartLine);
+              AddGen(Indent + '  RqDbgLvl = RqDbgDepth', StartLine);
               InSub := True;
             end;
           pkSubEnd:
             begin
               if InSub then
-                AddBody(Indent + '  RqDbgDepth = RqDbgLvl - 1', StartLine);
+                AddGen(Indent + '  RqDbgDepth = RqDbgLvl - 1', StartLine);
               AddBody(Indent + Stmt, StartLine);
               InSub := False;
             end;
@@ -1033,9 +1087,9 @@ begin
                          IntToStr(StartLine + 1) + ')';
               if NumLabel <> '' then
                 OutText := NumLabel + ' ' + OutText;
-              AddBody(Indent + OutText, StartLine);
+              AddGen(Indent + OutText, StartLine);
               if (Kinds[PartIdx] = pkExitSub) and InSub then
-                AddBody(Indent + 'RqDbgDepth = RqDbgLvl - 1', StartLine);
+                AddGen(Indent + 'RqDbgDepth = RqDbgLvl - 1', StartLine);
               if Stmt <> '' then
                 AddBody(Indent + Stmt, StartLine);
             end;
