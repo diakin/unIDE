@@ -40930,22 +40930,26 @@ begin
   end;
 end;
 
-// New Form у файла RapidQ: в открытый файл - блок CREATE новой формы
-// FormN (N - первый номер с 2, которого нет словом в тексте), и форма
-// открывается в конструкторе. Куда:
+// New Form у файла RapidQ. Вопрос - куда:
+//   - в этот файл: блок CREATE новой формы FormN прямо в тексте;
+//   - отдельным файлом: FormN.inc рядом с этим файлом (в нём блок CREATE),
+//     а в этот файл - строка $INCLUDE "FormN.inc".
+// N - первый номер с 2, которого нет словом в тексте и нет файла FormN.inc.
+// Место блока или $INCLUDE в этом файле:
 //   - после END CREATE последней формы главной части;
 //   - форм нет - перед первым ShowModal главной части;
 //   - нет и его - перед первой SUB или FUNCTION, иначе в конец файла.
-// Вставка - правкой текста во вкладке, откатывается как обычная.
+// Вставка - правкой текста во вкладке, откатывается как обычная. Новая
+// форма открывается в конструкторе (отдельный файл - в своей вкладке).
 procedure TForm1.RqNewForm;
 var
-  Lines, Block: TStringList;
+  Lines, Block, IncText: TStringList;
   Nodes, Roots: TList;
   Mask: TBits;
   Node: TDfmNode;
   NodeIdx, LineIdx, InsAt, Num, LineStart, LastLine: Integer;
-  TextLow, FormNm, Where, BlockText: string;
-  AtEnd: Boolean;
+  TextLow, FormNm, Where, BlockText, SrcDir, IncName, IncFile: string;
+  AtEnd, Separate: Boolean;
 begin
   if not RapidQComponentsReady(True) then
   begin
@@ -40953,6 +40957,9 @@ begin
                 'конструктору не по чему строить форму. Где искали - в логе.');
     Exit;
   end;
+  SrcDir := '';
+  if not IsUntitledName(FCurrentFileName) then
+    SrcDir := ExtractFilePath(FCurrentFileName);
   Lines := TStringList.Create;
   Block := TStringList.Create;
   Nodes := TList.Create;
@@ -40965,9 +40972,31 @@ begin
 
     TextLow := LowerCase(Lines.Text);
     Num := 2;
-    while HasWordLow(TextLow, 'form' + IntToStr(Num)) do
+    while HasWordLow(TextLow, 'form' + IntToStr(Num)) or
+          ((SrcDir <> '') and
+           FileExists(SrcDir + 'Form' + IntToStr(Num) + '.inc')) do
       Inc(Num);
     FormNm := 'Form' + IntToStr(Num);
+    IncName := FormNm + '.inc';
+    IncFile := SrcDir + IncName;
+
+    // Куда. У файла без имени папки нет - только в этот файл.
+    Separate := False;
+    if SrcDir <> '' then
+      case MessageDlg('New Form: куда поставить новую форму ' + FormNm +
+                      '?'#13#10#13#10 +
+                      'Да - в этот файл (' + ExtractFileName(FCurrentFileName) +
+                      '), блоком CREATE.'#13#10 +
+                      'Нет - отдельным файлом ' + IncName + ' рядом с ним; ' +
+                      'в этот файл - строка $INCLUDE "' + IncName + '".',
+                      mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
+        mrYes:
+          Separate := False;
+        mrNo:
+          Separate := True;
+      else
+        Exit;
+      end;
 
     // После последней формы главной части
     InsAt := -1;
@@ -41009,13 +41038,38 @@ begin
       Where := 'в конец файла';
     end;
 
-    Block.Add('');
+    // Блок формы - в этот файл или в FormN.inc
     Block.Add('CREATE ' + FormNm + ' AS QFORM');
     Block.Add('  Caption = "' + FormNm + '"');
     Block.Add('  Width = 320');
     Block.Add('  Height = 240');
     Block.Add('  Center');
     Block.Add('END CREATE');
+    if Separate then
+    begin
+      IncText := TStringList.Create;
+      try
+        IncText.Add('''' + ' ' + FormNm + ' - форма, подключается в ' +
+                    ExtractFileName(FCurrentFileName) + ' через $INCLUDE');
+        IncText.Add('');
+        IncText.AddStrings(Block);
+        try
+          IncText.SaveToFile(IncFile);
+        except
+          on E: Exception do
+          begin
+            ShowMessage('New Form: файл ' + IncFile + ' не записан: ' +
+                        E.Message);
+            Exit;
+          end;
+        end;
+      finally
+        IncText.Free;
+      end;
+      Block.Clear;
+      Block.Add('$INCLUDE "' + IncName + '"');
+    end;
+    Block.Insert(0, '');
     Block.Add('');
     BlockText := '';
     for LineIdx := 0 to Block.Count - 1 do
@@ -41058,9 +41112,26 @@ begin
     Lines.Free;
   end;
 
-  LogComp('New Form: ' + FormNm + ' - блок CREATE ' + Where + ' (строка ' +
-          IntToStr(InsAt + 2) + ')');
-  // Дерево - по новому тексту, выбрана новая форма; она - в конструктор
+  if Separate then
+  begin
+    LogComp('New Form: ' + FormNm + ' - файл ' + IncFile + ', $INCLUDE ' +
+            Where + ' (строка ' + IntToStr(InsAt + 2) + ' в ' +
+            ExtractFileName(FCurrentFileName) + ')');
+    // Форма - в своей вкладке: конструктор правит текст активной вкладки
+    OpenNamedFile(IncFile);
+    if (CompareText(FCurrentFileName, IncFile) <> 0) or not IncludesApply then
+    begin
+      ShowMessage('New Form: ' + IncName + ' создан, но вкладка не ' +
+                  'распознана как файл RapidQ (.inc - только в проекте ' +
+                  'RapidQ). Форма в конструкторе не открыта.');
+      Exit;
+    end;
+  end
+  else
+    LogComp('New Form: ' + FormNm + ' - блок CREATE ' + Where +
+            ' (строка ' + IntToStr(InsAt + 2) + ')');
+  // Дерево - по тексту активной вкладки, выбрана новая форма; она - в
+  // конструктор
   if FRightPages <> nil then
     FRightPages.ActivePage := FTabObjects;
   RefreshObjectInspector(True);
