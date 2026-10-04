@@ -1063,6 +1063,10 @@ type
     FRqDsgFile: string;      // файл с блоками CREATE этой формы
     FRqDsgForm: string;      // имя формы (узел QFORM)
     FRqDsgLastDfm: string;   // текст .dfm, по которому построена форма
+    // Выражения места и размера, которые конструктор сам подвинул
+    // (RqDsgSetProp): "Имя.Свойство=выражение#1значение" - до нового
+    // снимка значение берётся отсюда, а не из прежнего снимка
+    FRqDsgExprVal: TStringList;
     FRqDsgSelecting: Boolean; // выделение идёт из конструктора или в него
     FRqDsgOwnWrite: Boolean; // текст поменял сам конструктор - не перестраивать
     FRqPalPage: Integer;     // первая страница палитры RapidQ
@@ -17314,6 +17318,7 @@ begin
   RapidQProbeClear;
   FreeAndNil(FRqProbeObjs);
   FreeAndNil(FRqProbeAges);
+  FreeAndNil(FRqDsgExprVal);
   Screen.OnActiveFormChange := nil;
   // Сами полосы принадлежат спискам и уходят с ними; здесь - только список
   FreeAndNil(FUiListScrolls);
@@ -21988,6 +21993,8 @@ var
   Member: TRqMember;
   Live: TStringList;
   Chain: TList;
+  Over: string;
+  SepPos: Integer;
 begin
   ANode := TDfmNode(AObj);
   Result := '';
@@ -22012,6 +22019,22 @@ begin
         Exit;
       end;
       ACodeSet := True;
+      // Выражение, которое подвинул сам конструктор: его значение - то,
+      // что он поставил, а не прежний снимок
+      if FRqDsgExprVal <> nil then
+      begin
+        Over := FRqDsgExprVal.Values[ANode.Name + '.' + AProp];
+        SepPos := Pos(#1, Over);
+        if (SepPos > 0) and
+           (CompareText(StringReplace(Copy(Over, 1, SepPos - 1), ' ', '',
+                                      [rfReplaceAll]),
+                        StringReplace(Raw, ' ', '', [rfReplaceAll])) = 0) then
+        begin
+          Result := Copy(Over, SepPos + 1, MaxInt);
+          ASource := 2;
+          Exit;
+        end;
+      end;
       Break;
     end;
   Live := RapidQLiveProps(ANode.Name);
@@ -22172,7 +22195,10 @@ var
       // из описания класса
       if AOwnPlace and (BoundIdx < 2) and (Source = 3) then
         Num := Defaults[BoundIdx];
-      if CodeSet then
+      // Выражение запирает сторону, только если его значения не знаем
+      // (снимка нет): со снимком конструктор двигает и тянет, а
+      // RqDsgSetProp сдвигает выражение на разницу (RqAdjustExpr)
+      if CodeSet and (Source <> 2) then
         Letters := Letters + BoundLetters[BoundIdx];
       // Ширина и высота 0 - окно не увидеть и не взять мышью. У классов
       // программы поле Width бывает своё (QToolBarEX: 0), а размер окна -
@@ -22688,9 +22714,61 @@ begin
   FRqDsgLastDfm := '';
 end;
 
+// Выражение AExpr места или размера, сдвинутое на ADelta точек: число в
+// конце после + или - меняется ("DesignPan.ClientWidth-500", сдвиг 20 ->
+// "DesignPan.ClientWidth-480"; дошло до нуля - число убирается), иначе
+// число дописывается ("DesignPan.ClientHeight" -> "DesignPan.ClientHeight+20").
+// Число в конце берётся, только если перед знаком - не знак действия и
+// не скобка: у "A*-5" и "(A+5)" дописывается. Умножение и деление
+// сильнее + и -, поэтому число после последнего + или - - слагаемое всего
+// выражения.
+function RqAdjustExpr(const AExpr: string; ADelta: Integer): string;
+var
+  DigitStart, SignPos, PrevPos, TailValue: Integer;
+  Base: string;
+begin
+  Result := Trim(AExpr);
+  if ADelta = 0 then
+    Exit;
+  DigitStart := Length(Result) + 1;
+  while (DigitStart > 1) and (Result[DigitStart - 1] in ['0'..'9']) do
+    Dec(DigitStart);
+  if (DigitStart <= Length(Result)) and (Length(Result) - DigitStart < 9) then
+  begin
+    SignPos := DigitStart - 1;
+    while (SignPos >= 1) and (Result[SignPos] in [' ', #9]) do
+      Dec(SignPos);
+    PrevPos := SignPos - 1;
+    while (PrevPos >= 1) and (Result[PrevPos] in [' ', #9]) do
+      Dec(PrevPos);
+    if (SignPos > 1) and (Result[SignPos] in ['+', '-']) and
+       (PrevPos >= 1) and
+       not (Result[PrevPos] in ['*', '/', '\', '^', '(', ',', '+', '-', '=']) then
+    begin
+      TailValue := StrToInt(Copy(Result, DigitStart, MaxInt));
+      if Result[SignPos] = '-' then
+        TailValue := -TailValue;
+      TailValue := TailValue + ADelta;
+      Base := TrimRight(Copy(Result, 1, SignPos - 1));
+      if TailValue > 0 then
+        Result := Base + '+' + IntToStr(TailValue)
+      else if TailValue < 0 then
+        Result := Base + '-' + IntToStr(-TailValue)
+      else
+        Result := Base;
+      Exit;
+    end;
+  end;
+  if ADelta > 0 then
+    Result := Result + '+' + IntToStr(ADelta)
+  else
+    Result := Result + '-' + IntToStr(-ADelta);
+end;
+
 // Присваивание AProp = AValue в блоке CREATE объекта AName (открытый файл):
-// есть присваивание с числом - число заменяется; есть с выражением - не
-// трогается; нет - добавляется (AOnlyIfExists - не добавляется). Номера
+// есть присваивание с числом - число заменяется; есть с выражением - оно
+// сдвигается на разницу (RqAdjustExpr), если его значение известно (снимок),
+// иначе не трогается; нет - добавляется (AOnlyIfExists - не добавляется). Номера
 // строк - по разбору текста сейчас: предыдущая запись могла их сдвинуть.
 function TForm1.RqDsgSetProp(const AName, AProp, AValue: string;
                              AOnlyIfExists: Boolean): Boolean;
@@ -22699,8 +22777,9 @@ var
   Nodes, Roots: TList;
   Node: TDfmNode;
   NodeIdx, PropIdx, LineNo, LineStart, LineLen, ValStart, ValLen, Num,
-    InsAt: Integer;
-  CurLine, NewLine, LineIndent, EqText: string;
+    InsAt, NewNum, ShownNum, Source: Integer;
+  CurLine, NewLine, LineIndent, EqText, OldText, NewText: string;
+  CodeSet: Boolean;
 begin
   Result := False;
   Lines := TStringList.Create;
@@ -22737,11 +22816,27 @@ begin
         Exit;
       LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
       CurLine := ReadLineText(LineNo, LineStart, LineLen);
-      if not RapidQFindAssign(CurLine, AProp, ValStart, ValLen) or
-         not RqDsgNumber(RapidQMemberOf(Node, AProp),
-                         Copy(CurLine, ValStart, ValLen), Num) then
+      if not RapidQFindAssign(CurLine, AProp, ValStart, ValLen) then
         Exit;
-      if Trim(Copy(CurLine, ValStart, ValLen)) = AValue then
+      OldText := Trim(Copy(CurLine, ValStart, ValLen));
+      if RqDsgNumber(RapidQMemberOf(Node, AProp), OldText, Num) then
+        NewText := AValue
+      else
+      begin
+        // Выражение ("DesignPan.ClientWidth-500"): сдвинуть на разницу
+        // между новым значением и тем, что показывал конструктор (снимок
+        // или прежний сдвиг); значения нет - не трогать
+        if not TryStrToInt(AValue, NewNum) then
+          Exit;
+        ShownNum := RqDsgNum(Node, AProp, 0, Source, CodeSet);
+        if Source <> 2 then
+          Exit;
+        NewText := RqAdjustExpr(OldText, NewNum - ShownNum);
+        if FRqDsgExprVal = nil then
+          FRqDsgExprVal := TStringList.Create;
+        FRqDsgExprVal.Values[Node.Name + '.' + AProp] := NewText + #1 + AValue;
+      end;
+      if OldText = NewText then
       begin
         Result := True;
         Exit;
@@ -22750,7 +22845,7 @@ begin
       try
         RichEdit1.SelStart := LineStart + ValStart - 1;
         RichEdit1.SelLength := ValLen;
-        RichEdit1.SelText := AValue;
+        RichEdit1.SelText := NewText;
       finally
         EditorThaw;
       end;
@@ -40663,6 +40758,9 @@ begin
   if FRqProbeAges = nil then
     FRqProbeAges := TStringList.Create;
   RapidQSnapAges(MainBas, FRqProbeAges);
+  // Снимок свежий - подвинутые конструктором выражения в нём уже посчитаны
+  if FRqDsgExprVal <> nil then
+    FRqDsgExprVal.Clear;
   if Complete then
     LogComp(Format('Снимок RapidQ: значения %d объектов', [FRqProbeObjs.Count]))
   else
