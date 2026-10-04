@@ -2158,6 +2158,7 @@ type
     function  RqPropIsNode(AItem: TListItem): Boolean;
     procedure RqPropsTree(AParents: TStrings);
     procedure RqPropExpand(const AName: string; AExpand: Boolean);
+    procedure RqGotoParent(AItem: TListItem);
     procedure ObjComboWndProc(var Message: TMessage);
     function  UnitTextOf(const APas: string): string;
     function  ObjFormUnit: string;
@@ -21344,6 +21345,16 @@ begin
   Obj := TDfmNode(FObjCurNode);
   ItemIdx := Integer(AItem.Data);
   PropName := ObjPropRowName(AItem);
+  // Parent - переход к родителю (RqGotoParent); второй щелчок двойного
+  // приходит уже в таблицу родителя - не правка
+  if CompareText(PropName, 'Parent') = 0 then
+  begin
+    if GetTickCount - FRqToggleTick > GetDoubleClickTime then
+      RqGotoParent(AItem);
+    Exit;
+  end;
+  if GetTickCount - FRqToggleTick <= GetDoubleClickTime then
+    Exit;
   // Узел (Font) - раскрыть или свернуть, как в инспекторе Delphi
   if RqPropIsNode(AItem) then
   begin
@@ -31234,6 +31245,32 @@ begin
   end;
 end;
 
+// Строка Parent таблицы RapidQ: родитель (имя в ячейке значения) -
+// выделить в дереве объектов (таблицы - его) и перейти к его CREATE в
+// тексте, как щелчком в дереве
+procedure TForm1.RqGotoParent(AItem: TListItem);
+var
+  ParentName: string;
+begin
+  ParentName := '';
+  if AItem.SubItems.Count > 0 then
+    ParentName := Trim(AItem.SubItems[0]);
+  // "Panel1   (код: ...)" - имя до пробела
+  if Pos(' ', ParentName) > 0 then
+    ParentName := Copy(ParentName, 1, Pos(' ', ParentName) - 1);
+  if ParentName = '' then
+    Exit;
+  FRqToggleTick := GetTickCount;
+  if not ObjSelectAnyName(ParentName) then
+  begin
+    LogComp('Parent: объекта ' + ParentName + ' нет в дереве объектов');
+    Exit;
+  end;
+  ObjJumpToSelected;
+  if FObjTree.CanFocus then
+    FObjTree.SetFocus;
+end;
+
 // Раскрыть (AExpand) или свернуть узел AName и перестроить таблицы, не
 // сдвигая их; выделена строка узла
 procedure TForm1.RqPropExpand(const AName: string; AExpand: Boolean);
@@ -35123,6 +35160,14 @@ begin
                    Copy(NodeItem.Caption, 1, 1) = '+');
       FRqToggleTick := GetTickCount;
     end;
+    Exit;
+  end;
+  // Parent объекта RapidQ (свойство или значение) - к родителю: в дереве
+  // и в тексте
+  if FObjRapidQ and (HitInfo.SubItem <= 1) and
+     (CompareText(ObjPropRowName(NodeItem), 'Parent') = 0) then
+  begin
+    RqGotoParent(NodeItem);
     Exit;
   end;
   if HitInfo.SubItem <> ColCodeLine then
