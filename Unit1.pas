@@ -20690,7 +20690,8 @@ end;
 // последнего присваивания; нет их - как у следующей строки, если она
 // глубже CREATE, иначе отступ CREATE плюс табуляция или два пробела),
 // AEq - вид знака: "=" или " = ", как у последнего присваивания.
-// -1 - вставить некуда: блок в одну строку или END CREATE не найден.
+// -1 - блок в одну строку (его правит RapidQInsertBeforeEnd) или END
+// CREATE не найден.
 function RapidQInsertPlace(ALines: TStrings; ANode: TDfmNode;
                            var AIndent, AEq: string): Integer;
 var
@@ -20749,6 +20750,219 @@ begin
     else
       AIndent := CreateIndent + '  ';
   end;
+end;
+
+// Операторы строки RapidQ как есть (через ":" вне кавычек), без пробелов по
+// краям, и комментарий: ' вне кавычек или REM в начале оператора - до
+// конца строки, с самим знаком.
+procedure RapidQSplitKeep(const ALine: string; AParts: TStrings;
+                          var AComment: string);
+var
+  CharIdx, StmtStart, WordPos: Integer;
+  InQuote: Boolean;
+
+  // Оператор с позиции StmtStart начинается с REM - комментарий
+  function StartsWithRem: Boolean;
+  begin
+    WordPos := StmtStart;
+    while (WordPos <= Length(ALine)) and (ALine[WordPos] in [' ', #9]) do
+      Inc(WordPos);
+    Result := (UpperCase(Copy(ALine, WordPos, 3)) = 'REM') and
+              ((WordPos + 3 > Length(ALine)) or
+               (ALine[WordPos + 3] in [' ', #9]));
+  end;
+
+  procedure AddPart(AEnd: Integer);
+  var
+    Part: string;
+  begin
+    Part := Trim(Copy(ALine, StmtStart, AEnd - StmtStart));
+    if Part <> '' then
+      AParts.Add(Part);
+  end;
+
+begin
+  AParts.Clear;
+  AComment := '';
+  InQuote := False;
+  StmtStart := 1;
+  if StartsWithRem then
+  begin
+    AComment := Trim(Copy(ALine, WordPos, MaxInt));
+    Exit;
+  end;
+  for CharIdx := 1 to Length(ALine) do
+  begin
+    if ALine[CharIdx] = '"' then
+      InQuote := not InQuote
+    else if not InQuote and (ALine[CharIdx] = '''') then
+    begin
+      AddPart(CharIdx);
+      AComment := Trim(Copy(ALine, CharIdx, MaxInt));
+      Exit;
+    end
+    else if not InQuote and (ALine[CharIdx] = ':') then
+    begin
+      AddPart(CharIdx);
+      StmtStart := CharIdx + 1;
+      if StartsWithRem then
+      begin
+        AComment := Trim(Copy(ALine, WordPos, MaxInt));
+        Exit;
+      end;
+    end;
+  end;
+  AddPart(Length(ALine) + 1);
+end;
+
+// Однострочные блоки "CREATE ... : ... : END CREATE" - по строке на
+// оператор; комментарий конца строки - на строку CREATE. AText - строки
+// через CR (GetEditorTextCR), результат - так же. ACount - сколько строк
+// развёрнуто. ACaretLine - номер строки (с 0) до и после развёртки.
+function RapidQExpandCreateLines(const AText: string; var ACount: Integer;
+                                 var ACaretLine: Integer): string;
+var
+  Lines, Parts, Output: TStringList;
+  LineIdx, PartIdx, IndentLen, OldCaret: Integer;
+  Comment, Indent, Rest, Tail: string;
+  HasEnd: Boolean;
+begin
+  ACount := 0;
+  OldCaret := ACaretLine;
+  Lines := TStringList.Create;
+  Parts := TStringList.Create;
+  Output := TStringList.Create;
+  try
+    Lines.Text := AText;
+    for LineIdx := 0 to Lines.Count - 1 do
+    begin
+      if Pos('CREATE', UpperCase(Lines[LineIdx])) = 0 then
+      begin
+        Output.Add(Lines[LineIdx]);
+        Continue;
+      end;
+      RapidQSplitKeep(Lines[LineIdx], Parts, Comment);
+      HasEnd := False;
+      for PartIdx := 1 to Parts.Count - 1 do
+        if (RapidQFirstWord(Parts[PartIdx], Rest) = 'END') and
+           (RapidQFirstWord(Rest, Tail) = 'CREATE') then
+          HasEnd := True;
+      if (Parts.Count < 2) or not HasEnd or
+         (RapidQFirstWord(Parts[0], Rest) <> 'CREATE') then
+      begin
+        Output.Add(Lines[LineIdx]);
+        Continue;
+      end;
+      IndentLen := 0;
+      while (IndentLen < Length(Lines[LineIdx])) and
+            (Lines[LineIdx][IndentLen + 1] in [' ', #9]) do
+        Inc(IndentLen);
+      Indent := Copy(Lines[LineIdx], 1, IndentLen);
+      if Comment <> '' then
+        Output.Add(Indent + Parts[0] + '   ' + Comment)
+      else
+        Output.Add(Indent + Parts[0]);
+      for PartIdx := 1 to Parts.Count - 1 do
+        Output.Add(Indent + Parts[PartIdx]);
+      Inc(ACount);
+      if LineIdx < OldCaret then
+        Inc(ACaretLine, Parts.Count - 1);
+    end;
+    // Строки - через CR, как пришли; последний перевод - как был
+    Result := '';
+    for LineIdx := 0 to Output.Count - 1 do
+    begin
+      if LineIdx > 0 then
+        Result := Result + #13;
+      Result := Result + Output[LineIdx];
+    end;
+    if (AText <> '') and (AText[Length(AText)] in [#13, #10]) then
+      Result := Result + #13;
+  finally
+    Output.Free;
+    Parts.Free;
+    Lines.Free;
+  end;
+end;
+
+// Оператор AStmt - в строку ALine перед END CREATE объекта AObjName, тем
+// же разделителем, что перед END CREATE: "... : enabled=0 :   END CREATE"
+// -> "... : enabled=0 :   AStmt :   END CREATE". Вложенные CREATE ... END
+// CREATE в той же строке пропускаются: вставка - в блок самого объекта.
+// False - CREATE объекта или его END CREATE в строке нет.
+function RapidQInsertBeforeEnd(const ALine, AObjName, AStmt: string;
+                               var ANewLine: string): Boolean;
+var
+  CharIdx, StmtStart, WordPos, Depth: Integer;
+  InQuote, AtBreak: Boolean;
+  Stmt, FirstWord, Rest, Tail: string;
+begin
+  Result := False;
+  InQuote := False;
+  StmtStart := 1;
+  Depth := 0;     // 0 - CREATE объекта ещё не встречен
+  for CharIdx := 1 to Length(ALine) + 1 do
+  begin
+    AtBreak := CharIdx > Length(ALine);
+    if not AtBreak then
+      if ALine[CharIdx] = '"' then
+        InQuote := not InQuote
+      else if not InQuote and (ALine[CharIdx] in [':', '''']) then
+        AtBreak := True;
+    if not AtBreak then
+      Continue;
+    Stmt := Trim(Copy(ALine, StmtStart, CharIdx - StmtStart));
+    FirstWord := RapidQFirstWord(Stmt, Rest);
+    if FirstWord = 'REM' then
+      Exit;
+    if FirstWord = 'CREATE' then
+    begin
+      if Depth > 0 then
+        Inc(Depth)
+      else if RapidQFirstWord(Rest, Tail) = UpperCase(AObjName) then
+        Depth := 1;
+    end
+    else if (FirstWord = 'END') and (RapidQFirstWord(Rest, Tail) = 'CREATE') and
+            (Depth > 0) then
+    begin
+      Dec(Depth);
+      if Depth = 0 then
+      begin
+        WordPos := StmtStart;
+        while (WordPos < CharIdx) and (ALine[WordPos] in [' ', #9]) do
+          Inc(WordPos);
+        // Пробелы после ":" перед END CREATE - такие же перед новым
+        ANewLine := Copy(ALine, 1, WordPos - 1) + AStmt + ' :' +
+                    Copy(ALine, StmtStart, MaxInt);
+        Result := True;
+        Exit;
+      end;
+    end;
+    if (CharIdx <= Length(ALine)) and (ALine[CharIdx] = '''') then
+      Exit;
+    StmtStart := CharIdx + 1;
+  end;
+end;
+
+// Вид "=" в строке: у последнего присваивания перед "=" пробел - " = ",
+// нет - "="; присваиваний нет - " = "
+function RapidQEqStyle(const ALine: string): string;
+var
+  CharIdx: Integer;
+  InQuote: Boolean;
+begin
+  Result := ' = ';
+  InQuote := False;
+  for CharIdx := 1 to Length(ALine) do
+    if ALine[CharIdx] = '"' then
+      InQuote := not InQuote
+    else if not InQuote and (ALine[CharIdx] = '''') then
+      Exit
+    else if not InQuote and (ALine[CharIdx] = '=') and (CharIdx > 1) then
+      if ALine[CharIdx - 1] in [' ', #9] then
+        Result := ' = '
+      else
+        Result := '=';
 end;
 
 // Описание свойства AName объекта AObj по цепочке его классов. Font.Name
@@ -20948,10 +21162,11 @@ begin
       Exit;
     end;
   end;
-  if (Obj.CreateLine < 0) or (Obj.EndLine <= Obj.CreateLine) then
+  // Блок может быть и в одну строку: "CREATE A AS QX : ... : END CREATE"
+  if (Obj.CreateLine < 0) or (Obj.EndLine < Obj.CreateLine) then
   begin
-    ShowMessage('У объекта ' + Obj.Name + ' нет блока CREATE ... END CREATE ' +
-                'на отдельных строках - некуда писать свойство.');
+    ShowMessage('У объекта ' + Obj.Name + ' нет END CREATE - некуда ' +
+                'писать свойство.');
     Exit;
   end;
 
@@ -21135,14 +21350,48 @@ begin
           TextChanged;
           Exit;
         end;
-        InsAt := RapidQInsertPlace(Lines, Obj, LineIndent, EqText);
+        if Obj.EndLine = Obj.CreateLine then
+          InsAt := -1
+        else
+          InsAt := RapidQInsertPlace(Lines, Obj, LineIndent, EqText);
       finally
         Lines.Free;
       end;
+      if Obj.EndLine = Obj.CreateLine then
+      begin
+        // Блок в одну строку: оператор - перед его END CREATE, через ":"
+        LineNo := Obj.CreateLine;
+        LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LineNo, 0);
+        if LineStart < 0 then
+        begin
+          TextChanged;
+          Exit;
+        end;
+        LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+        CurLine := ReadLineText(LineNo, LineStart, LineLen);
+        if not RapidQInsertBeforeEnd(CurLine, Obj.Name, FObjEditName +
+                 RapidQEqStyle(CurLine) + NewText, NewLine) then
+        begin
+          TextChanged;
+          Exit;
+        end;
+        EditorFreeze;
+        try
+          RichEdit1.SelStart := LineStart;
+          RichEdit1.SelLength := LineLen;
+          RichEdit1.SelText := NewLine;
+        finally
+          EditorThaw;
+        end;
+        LogComp('Инспектор RapidQ: ' + Obj.Name + '.' + FObjEditName +
+                ' = ' + NewText + '   (добавлено в строку ' +
+                IntToStr(LineNo + 1) + ')');
+        ObjScheduleRelines(Obj, FObjEditName);
+        Exit;
+      end;
       if InsAt < 0 then
       begin
-        ShowMessage('Блок CREATE объекта ' + Obj.Name + ' записан в одну ' +
-                    'строку - новое свойство вставить некуда.');
+        TextChanged;
         Exit;
       end;
       NewLine := LineIndent + FObjEditName + EqText + NewText;
@@ -45821,6 +46070,8 @@ var
   B: TBlockState;
   L: TLineScan;
   PrevCode: string;
+  OrigText, Expanded: string;
+  ExpandCount: Integer;
 
   // Закончен ли оператор строкой S
   function EndsStatement(const S: string): Boolean;
@@ -45868,6 +46119,30 @@ begin
                 Exit;
   end;
 
+  CaretLine := SendMessageA(RichEdit1.Handle, EM_LINEFROMCHAR,
+                            RichEdit1.SelStart, 0);
+
+  // RapidQ: однострочные "CREATE ... : ... : END CREATE" - сначала по
+  // строке на оператор, отступы им расставит форматирование ниже
+  OrigText := '';
+  ExpandCount := 0;
+  if (FCurrentFileName <> '') and IncludesApply then
+  begin
+    Expanded := RapidQExpandCreateLines(GetEditorTextCR, ExpandCount,
+                                        CaretLine);
+    if ExpandCount > 0 then
+    begin
+      OrigText := GetEditorText;
+      FLockHighlight := True;
+      try
+        SetEditorText(StringReplace(Expanded, #13, #13#10, [rfReplaceAll]));
+      finally
+        FLockHighlight := False;
+      end;
+      FMapStale := True;
+    end;
+  end;
+
   // Карта комментариев и литералов должна быть по текущему тексту: по ней
   // отсекаются слова внутри строк и комментариев
   if FMapStale then
@@ -45882,9 +46157,6 @@ begin
   Len := Length(Src);
   if Len = 0 then
     Exit;
-
-  CaretLine := SendMessageA(RichEdit1.Handle, EM_LINEFROMCHAR,
-                            RichEdit1.SelStart, 0);
 
   SL := TStringList.Create;
   try
@@ -46102,15 +46374,19 @@ begin
       Inc(I);
     end;
 
-    if Changed = 0 then
+    if (Changed = 0) and (ExpandCount = 0) then
     begin
       StatusBar1.SimpleText := 'Format text: отступы уже расставлены';
       StatusBar1.SimplePanel := True;
       Exit;
     end;
 
-    // Текст до форматирования - в ту же копию, что и у массовой замены
-    FReplaceBackup := GetEditorText;
+    // Текст до форматирования - в ту же копию, что и у массовой замены;
+    // были развёрнуты блоки CREATE - текст до развёртки
+    if ExpandCount > 0 then
+      FReplaceBackup := OrigText
+    else
+      FReplaceBackup := GetEditorText;
     FReplaceBackupWin := FWindowsIndex;
 
     Res := SL.Text;
@@ -46149,9 +46425,15 @@ begin
     if (Form2 <> nil) and (Form2.Grid <> nil) then
       Form2.HideIndentHint;
 
-    StatusBar1.SimpleText :=
-      Format('Format text: строк изменено %d. Откат - Edit, Отменить массовую замену.',
-             [Changed]);
+    if ExpandCount > 0 then
+      StatusBar1.SimpleText :=
+        Format('Format text: развёрнуто блоков CREATE в одну строку %d, ' +
+               'строк с новым отступом %d. Откат - Edit, Отменить массовую замену.',
+               [ExpandCount, Changed])
+    else
+      StatusBar1.SimpleText :=
+        Format('Format text: строк изменено %d. Откат - Edit, Отменить массовую замену.',
+               [Changed]);
     StatusBar1.SimplePanel := True;
   finally
     SL.Free;
