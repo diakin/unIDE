@@ -1046,6 +1046,7 @@ type
     FEdFreezeSel: Integer;  // где стояла каретка
     FEdFreezeTop: Integer;  // какая строка была верхней
     FObjEditLine: Integer;  // строка его присваивания в .pas, -1 - такой нет
+    FRqEditSrcOld: string;  // правка RapidQ: значение в строке до правки
     // Умолчания по классам: имя класса -> TStringList Имя=значение
     FRttiDefaults: TStringList;
     FObjCurNode: TObject;   // TDfmNode выбранного объекта
@@ -1827,6 +1828,8 @@ type
     function  RapidQLoadCustomTypes(ALines: TStrings;
                                     const AFile: string): Integer;
     procedure RapidQFillObjTables(AObj: TObject);
+    procedure RapidQBeginEdit(AItem: TListItem);
+    procedure RapidQApplyEdit;
     function  RapidQProbeSource(const AMainBas, AOutFile: string;
                                 AOut, AObjClasses: TStringList;
                                 var ADumpStart: Integer;
@@ -20563,6 +20566,222 @@ begin
   Result := RqCustomCount;
 end;
 
+// ---------------------------------------------------------------------------
+//  Правка свойств объекта RapidQ в инспекторе
+//
+//  Свойство задано в блоке CREATE - меняется его значение в той же строке
+//  (отступ, другие операторы через ":" и комментарий остаются). Не задано
+//  (строка таблицы приглушённая) - новая строка "Свойство = значение" в
+//  блоке после последнего присваивания объекта, с тем же отступом; нет
+//  присваиваний - сразу после CREATE, на уровень глубже. Вариантам
+//  перечисления - список из описания компонентов, цвету - константы cl...,
+//  строке - ввод без кавычек (кавычки ставятся при записи). Свойства
+//  только для чтения, массивы и ресурсы не правятся.
+// ---------------------------------------------------------------------------
+
+// Присваивание AName в строке ALine RapidQ: "Width = 100", в том числе
+// одним из операторов через ":" ("CREATE B AS QBUTTON : Caption = "a:b"").
+// AValStart, AValLen - где в строке значение (от 1, без пробелов по краям);
+// комментарий ' после значения и другие операторы не входят. False - нет.
+function RapidQFindAssign(const ALine, AName: string;
+                          var AValStart, AValLen: Integer): Boolean;
+var
+  CharIdx, StmtStart, NamePos, EqPos, ValEnd: Integer;
+  InQuote, AtBreak: Boolean;
+
+  // Оператор ALine[StmtStart..AEnd-1] - "AName = значение"?
+  function CheckStmt(AEnd: Integer): Boolean;
+  begin
+    Result := False;
+    NamePos := StmtStart;
+    while (NamePos < AEnd) and (ALine[NamePos] in [' ', #9]) do
+      Inc(NamePos);
+    if CompareText(Copy(ALine, NamePos, Length(AName)), AName) <> 0 then
+      Exit;
+    EqPos := NamePos + Length(AName);
+    if (EqPos < AEnd) and
+       (ALine[EqPos] in ['A'..'Z', 'a'..'z', '0'..'9', '_', '.', '$']) then
+      Exit;   // длиннее: Width и WidthMax
+    while (EqPos < AEnd) and (ALine[EqPos] in [' ', #9]) do
+      Inc(EqPos);
+    if (EqPos >= AEnd) or (ALine[EqPos] <> '=') then
+      Exit;
+    AValStart := EqPos + 1;
+    while (AValStart < AEnd) and (ALine[AValStart] in [' ', #9]) do
+      Inc(AValStart);
+    ValEnd := AEnd - 1;
+    while (ValEnd >= AValStart) and (ALine[ValEnd] in [' ', #9]) do
+      Dec(ValEnd);
+    AValLen := ValEnd - AValStart + 1;
+    Result := True;
+  end;
+
+begin
+  Result := False;
+  AValStart := 0;
+  AValLen := 0;
+  InQuote := False;
+  StmtStart := 1;
+  for CharIdx := 1 to Length(ALine) + 1 do
+  begin
+    AtBreak := CharIdx > Length(ALine);
+    if not AtBreak then
+      if ALine[CharIdx] = '"' then
+        InQuote := not InQuote
+      else if not InQuote and (ALine[CharIdx] in [':', '''']) then
+        AtBreak := True;
+    if not AtBreak then
+      Continue;
+    if CheckStmt(CharIdx) then
+    begin
+      Result := True;
+      Exit;
+    end;
+    if (CharIdx <= Length(ALine)) and (ALine[CharIdx] = '''') then
+      Exit;   // дальше комментарий
+    StmtStart := CharIdx + 1;
+  end;
+end;
+
+// Строка RapidQ в кавычках. Кавычка внутри - через CHR$(34): в литерале
+// RapidQ её не записать.
+function RapidQQuote(const AText: string): string;
+var
+  QuotePos: Integer;
+  Rest: string;
+begin
+  if Pos('"', AText) = 0 then
+  begin
+    Result := '"' + AText + '"';
+    Exit;
+  end;
+  Result := '';
+  Rest := AText;
+  QuotePos := Pos('"', Rest);
+  while QuotePos > 0 do
+  begin
+    if Result <> '' then
+      Result := Result + ' + ';
+    Result := Result + '"' + Copy(Rest, 1, QuotePos - 1) + '" + CHR$(34)';
+    Delete(Rest, 1, QuotePos);
+    QuotePos := Pos('"', Rest);
+  end;
+  if Rest <> '' then
+    Result := Result + ' + "' + Rest + '"';
+end;
+
+// Текст из литерала "..." без кавычек; не литерал (выражение, число) -
+// False
+function RapidQUnquote(const AValue: string; var AText: string): Boolean;
+var
+  Value: string;
+begin
+  Value := Trim(AValue);
+  Result := (Length(Value) >= 2) and (Value[1] = '"') and
+            (Value[Length(Value)] = '"') and
+            (Pos('"', Copy(Value, 2, Length(Value) - 2)) = 0);
+  if Result then
+    AText := Copy(Value, 2, Length(Value) - 2);
+end;
+
+// Где вставить новое присваивание в блок CREATE объекта ANode: номер строки
+// (новая строка встаёт перед ней) - после последнего присваивания этого
+// объекта, а нет их - сразу после CREATE. AIndent - отступ (как у
+// последнего присваивания; нет их - как у следующей строки, если она
+// глубже CREATE, иначе отступ CREATE плюс табуляция или два пробела),
+// AEq - вид знака: "=" или " = ", как у последнего присваивания.
+// -1 - вставить некуда: блок в одну строку или END CREATE не найден.
+function RapidQInsertPlace(ALines: TStrings; ANode: TDfmNode;
+                           var AIndent, AEq: string): Integer;
+var
+  LastLine, ItemIdx, ItemLine, EqPos: Integer;
+  CreateIndent, NextIndent, LastText: string;
+
+  function IndentOf(const AText: string): string;
+  var
+    CharIdx: Integer;
+  begin
+    CharIdx := 1;
+    while (CharIdx <= Length(AText)) and (AText[CharIdx] in [' ', #9]) do
+      Inc(CharIdx);
+    Result := Copy(AText, 1, CharIdx - 1);
+  end;
+
+begin
+  Result := -1;
+  AIndent := '';
+  AEq := ' = ';
+  if (ANode.CreateLine < 0) or (ANode.EndLine <= ANode.CreateLine) or
+     (ANode.EndLine >= ALines.Count) then
+    Exit;
+  LastLine := ANode.CreateLine;
+  for ItemIdx := 0 to ANode.PropN.Count - 1 do
+  begin
+    ItemLine := Integer(ANode.PropN.Objects[ItemIdx]);
+    if (ItemLine > LastLine) and (ItemLine < ANode.EndLine) then
+      LastLine := ItemLine;
+  end;
+  for ItemIdx := 0 to ANode.EvN.Count - 1 do
+  begin
+    ItemLine := Integer(ANode.EvN.Objects[ItemIdx]);
+    if (ItemLine > LastLine) and (ItemLine < ANode.EndLine) then
+      LastLine := ItemLine;
+  end;
+  Result := LastLine + 1;
+
+  CreateIndent := IndentOf(ALines[ANode.CreateLine]);
+  if LastLine > ANode.CreateLine then
+  begin
+    LastText := ALines[LastLine];
+    AIndent := IndentOf(LastText);
+    // Вид "=": есть пробел перед ним - " = ", нет - "="
+    EqPos := Pos('=', LastText);
+    if (EqPos > 1) and (LastText[EqPos - 1] <> ' ') then
+      AEq := '=';
+  end
+  else
+  begin
+    NextIndent := IndentOf(ALines[ANode.CreateLine + 1]);
+    if Length(NextIndent) > Length(CreateIndent) then
+      AIndent := NextIndent
+    else if (Pos(#9, CreateIndent) > 0) or (CreateIndent = '') then
+      AIndent := CreateIndent + #9
+    else
+      AIndent := CreateIndent + '  ';
+  end;
+end;
+
+// Описание свойства AName объекта AObj по цепочке его классов. Font.Name
+// - свойство Name класса QFONT, если Font у класса этого типа. nil - нет.
+function RapidQMemberOf(AObj: TDfmNode; const AName: string): TRqMember;
+var
+  Chain: TList;
+  DotPos: Integer;
+  HeadMember: TRqMember;
+  FontCls: TRqClass;
+begin
+  Result := nil;
+  Chain := TList.Create;
+  try
+    RqClassChain(AObj.ClassNm, Chain);
+    RqDefaultOf(Chain, AName, Result);
+    if Result <> nil then
+      Exit;
+    DotPos := Pos('.', AName);
+    if DotPos = 0 then
+      Exit;
+    RqDefaultOf(Chain, Copy(AName, 1, DotPos - 1), HeadMember);
+    if (HeadMember = nil) or
+       (CompareText(HeadMember.TypeName, 'QFONT') <> 0) then
+      Exit;
+    FontCls := RqFindClass('QFONT');
+    if FontCls <> nil then
+      Result := FontCls.PropOf(Copy(AName, DotPos + 1, MaxInt));
+  finally
+    Chain.Free;
+  end;
+end;
+
 // Таблицы свойств и событий объекта RapidQ AObj (TDfmNode).
 //   Заданное в блоке CREATE - текстом исходника и номером строки (колонка
 //   «Строка кода»).
@@ -20691,6 +20910,264 @@ begin
   finally
     Seen.Free;
     Chain.Free;
+  end;
+end;
+
+// Начало правки строки AItem таблицы свойств объекта RapidQ
+procedure TForm1.RapidQBeginEdit(AItem: TListItem);
+const
+  LVM_GETSUBITEMRECT = $1000 + 56;
+  LVIR_BOUNDS = 0;
+var
+  Obj: TDfmNode;
+  Member: TRqMember;
+  ItemIdx, ChoiceIdx: Integer;
+  PropName, OldText, LitText, TypeUp: string;
+  CellRect: TRect;
+  IsColor, IsEnum: Boolean;
+begin
+  if FObjCurNode = nil then
+    Exit;
+  Obj := TDfmNode(FObjCurNode);
+  ItemIdx := Integer(AItem.Data);
+  PropName := AItem.Caption;
+  Member := RapidQMemberOf(Obj, PropName);
+  TypeUp := '';
+  if Member <> nil then
+  begin
+    TypeUp := UpperCase(Member.TypeName);
+    if not Member.CanWrite then
+    begin
+      ShowMessage(PropName + ' - только для чтения, в коде не задаётся.');
+      Exit;
+    end;
+    if (Pos('ARRAY', TypeUp) > 0) or (TypeUp = 'RESOURCE') then
+    begin
+      ShowMessage(PropName + ' (' + Member.TypeName + ') одной строкой ' +
+                  'присваивания не задаётся - правьте его в коде.');
+      Exit;
+    end;
+  end;
+  if (Obj.CreateLine < 0) or (Obj.EndLine <= Obj.CreateLine) then
+  begin
+    ShowMessage('У объекта ' + Obj.Name + ' нет блока CREATE ... END CREATE ' +
+                'на отдельных строках - некуда писать свойство.');
+    Exit;
+  end;
+
+  if ItemIdx >= 0 then
+  begin
+    if ItemIdx >= Obj.PropN.Count then
+      Exit;
+    FObjEditInsert := False;
+    FObjEditLine := Integer(Obj.PropN.Objects[ItemIdx]);
+    OldText := Obj.PropV[ItemIdx];
+  end
+  else
+  begin
+    FObjEditInsert := True;
+    FObjEditLine := -1;
+    OldText := '';
+    if AItem.SubItems.Count > 0 then
+      OldText := AItem.SubItems[0];
+  end;
+  FRqEditSrcOld := OldText;
+  FObjEditName := PropName;
+  FObjEditIdx := ItemIdx;
+  FObjEditType := nil;
+  FObjThemeColor := '';
+  FObjEditIsStr := False;
+  FObjEditArray := False;
+  FObjEditCode := False;
+  FObjEditGroup := False;
+
+  CellRect.Top := 1;               // колонка значения
+  CellRect.Left := LVIR_BOUNDS;
+  SendMessage(FObjProps.Handle, LVM_GETSUBITEMRECT, AItem.Index,
+              Integer(@CellRect));
+
+  IsColor := (Member <> nil) and (Member.Choices.IndexOf('<default>') >= 0);
+  IsEnum := (Member <> nil) and (Member.Choices.Count > 0) and not IsColor;
+  if IsEnum then
+    for ChoiceIdx := 0 to Member.Choices.Count - 1 do
+      if Copy(Member.Choices[ChoiceIdx], 1, 1) = '<' then
+        IsEnum := False;
+
+  if IsEnum then
+  begin
+    // Перечисление и False|True - только варианты из описания
+    FObjCombo.Style := csDropDownList;
+    FObjCombo.Items.Clear;
+    for ChoiceIdx := 0 to Member.Choices.Count - 1 do
+      FObjCombo.Items.Add(RqChoiceName(Member.Choices[ChoiceIdx]));
+    FObjCombo.ItemIndex := FObjCombo.Items.IndexOf(Trim(OldText));
+    FObjEditOld := FObjCombo.Text;
+    FObjActive := FObjCombo;
+  end
+  else if IsColor then
+  begin
+    // Цвет - константы cl... или число (&H00FF00)
+    FObjCombo.Style := csDropDown;
+    FObjCombo.Items.Clear;
+    RqConstNames('cl', FObjCombo.Items);
+    if Trim(OldText) = '<default>' then
+      FObjCombo.Text := ''
+    else
+      FObjCombo.Text := Trim(OldText);
+    FObjEditOld := FObjCombo.Text;
+    FObjActive := FObjCombo;
+  end
+  else
+  begin
+    // Строка - без кавычек; выражение ("a" + b$) и числа - как есть
+    if TypeUp = 'STRING' then
+    begin
+      if FObjEditInsert then
+      begin
+        FObjEditIsStr := True;
+        FObjEdit.Text := OldText;
+      end
+      else if RapidQUnquote(OldText, LitText) then
+      begin
+        FObjEditIsStr := True;
+        FObjEdit.Text := LitText;
+      end
+      else
+        FObjEdit.Text := OldText;
+    end
+    else
+      FObjEdit.Text := OldText;
+    FObjEditOld := FObjEdit.Text;
+    FObjActive := FObjEdit;
+  end;
+
+  FObjActive.SetBounds(CellRect.Left, CellRect.Top,
+                       CellRect.Right - CellRect.Left,
+                       CellRect.Bottom - CellRect.Top + 2);
+  FObjActive.Visible := True;
+  FObjActive.SetFocus;
+  if FObjActive = FObjEdit then
+    FObjEdit.SelectAll;
+  FObjEditing := True;
+end;
+
+// Запись правки свойства объекта RapidQ в текст активной вкладки
+procedure TForm1.RapidQApplyEdit;
+var
+  Obj: TDfmNode;
+  EditText, NewText, CurLine, NewLine, LineIndent, EqText: string;
+  LineNo, LineStart, LineLen, ValStart, ValLen, InsAt: Integer;
+  Lines: TStringList;
+
+  procedure TextChanged;
+  begin
+    ShowMessage('Текст изменился после разбора - инспектор обновлён, ' +
+                'повторите правку.');
+    ObjScheduleRelines(Obj, FObjEditName);
+  end;
+
+begin
+  if FObjActive = FObjCombo then
+    EditText := Trim(FObjCombo.Text)
+  else if FObjEditIsStr then
+    EditText := FObjEdit.Text
+  else
+    EditText := Trim(FObjEdit.Text);
+  // Не изменилось или пусто (у нестроки) - ничего не пишем
+  if (EditText = FObjEditOld) or ((EditText = '') and not FObjEditIsStr) then
+  begin
+    ObjCancelEdit;
+    Exit;
+  end;
+  if FObjEditIsStr then
+    NewText := RapidQQuote(EditText)
+  else
+    NewText := EditText;
+
+  FObjEditing := False;   // до всего остального: уход фокуса снова вызовет нас
+  FObjActive.Visible := False;
+  if FObjCurNode = nil then
+    Exit;
+  Obj := TDfmNode(FObjCurNode);
+
+  Inc(FObjOwnWrite);
+  try
+    if not FObjEditInsert then
+    begin
+      // Значение в строке присваивания - на новое; строка сверяется:
+      // в ней то же присваивание с тем же значением
+      LineNo := FObjEditLine;
+      LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LineNo, 0);
+      if LineStart < 0 then
+      begin
+        TextChanged;
+        Exit;
+      end;
+      LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+      CurLine := ReadLineText(LineNo, LineStart, LineLen);
+      if not RapidQFindAssign(CurLine, FObjEditName, ValStart, ValLen) or
+         (Trim(Copy(CurLine, ValStart, ValLen)) <> Trim(FRqEditSrcOld)) then
+      begin
+        TextChanged;
+        Exit;
+      end;
+      EditorFreeze;
+      try
+        RichEdit1.SelStart := LineStart + ValStart - 1;
+        RichEdit1.SelLength := ValLen;
+        RichEdit1.SelText := NewText;
+      finally
+        EditorThaw;
+      end;
+      LogComp('Инспектор RapidQ: ' + Obj.Name + '.' + FObjEditName + ' = ' +
+              NewText + '   (строка ' + IntToStr(LineNo + 1) + ')');
+    end
+    else
+    begin
+      // Новая строка в блоке CREATE; строка CREATE сверяется с узлом
+      Lines := TStringList.Create;
+      try
+        Lines.Text := GetEditorTextCR;
+        if (Obj.CreateLine >= Lines.Count) or
+           (Pos('CREATE', UpperCase(Lines[Obj.CreateLine])) = 0) or
+           (Pos(UpperCase(Obj.Name), UpperCase(Lines[Obj.CreateLine])) = 0) then
+        begin
+          TextChanged;
+          Exit;
+        end;
+        InsAt := RapidQInsertPlace(Lines, Obj, LineIndent, EqText);
+      finally
+        Lines.Free;
+      end;
+      if InsAt < 0 then
+      begin
+        ShowMessage('Блок CREATE объекта ' + Obj.Name + ' записан в одну ' +
+                    'строку - новое свойство вставить некуда.');
+        Exit;
+      end;
+      NewLine := LineIndent + FObjEditName + EqText + NewText;
+      LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, InsAt, 0);
+      if LineStart < 0 then
+      begin
+        TextChanged;
+        Exit;
+      end;
+      EditorFreeze;
+      try
+        RichEdit1.SelStart := LineStart;
+        RichEdit1.SelLength := 0;
+        RichEdit1.SelText := NewLine + #13#10;
+      finally
+        EditorThaw;
+      end;
+      LogComp('Инспектор RapidQ: ' + Obj.Name + ' - добавлена строка ' +
+              IntToStr(InsAt + 1) + ': ' + Trim(NewLine));
+    end;
+    // Узлы и номера строк - заново по тексту; выделение вернётся на этот
+    // объект и свойство
+    ObjScheduleRelines(Obj, FObjEditName);
+  finally
+    Dec(FObjOwnWrite);
   end;
 end;
 
@@ -22341,14 +22818,10 @@ begin
   N := TDfmNode(FObjCurNode);
   Idx := Integer(It.Data);
 
-  // Объект RapidQ: правки пока нет - к строке, где свойство задано, или к
-  // его CREATE
+  // Объект RapidQ - своя правка: значение в блоке CREATE
   if FObjRapidQ then
   begin
-    if (Idx >= 0) and (Idx < N.PropN.Count) then
-      GotoLine(Integer(N.PropN.Objects[Idx]))
-    else if N.CreateLine >= 0 then
-      GotoLine(N.CreateLine);
+    RapidQBeginEdit(It);
     Exit;
   end;
 
@@ -22888,6 +23361,13 @@ var
 begin
   if not FObjEditing or (FObjActive = nil) then
     Exit;
+
+  // Объект RapidQ - запись в его блок CREATE
+  if FObjRapidQ then
+  begin
+    RapidQApplyEdit;
+    Exit;
+  end;
 
   // --- новое значение из того редактора, что открыт
   if FObjActive = FObjSetList then

@@ -131,6 +131,9 @@ function RqConstValue(const AName: string; var AValue: Integer): Boolean;
 // Константы программы (RqParseConsts) - и в описание, раздел * Constants:
 // сборка ComponentAll.data
 procedure RqKeepConstsInData;
+// Имена констант с приставкой APrefix и заглавной буквой после неё
+// (cl -> clRed, clBtnFace), из программы и из описания, по алфавиту
+procedure RqConstNames(const APrefix: string; AList: TStrings);
 // Значение свойства AMember словом из его вариантов: AValue - число из
 // снимка. Варианта с таким значением нет, или у свойства нет вариантов
 // перечисления - AValue как есть. Значение варианта - константа программы
@@ -1081,6 +1084,41 @@ begin
       AValue := Integer(RqDataConsts.Objects[ConstIdx]);
       Result := True;
     end;
+  end;
+end;
+
+procedure RqConstNames(const APrefix: string; AList: TStrings);
+var
+  Names: TStringList;
+  ListIdx, ConstIdx: Integer;
+  ConstList: TStringList;
+  ConstName: string;
+begin
+  Names := TStringList.Create;
+  try
+    Names.Sorted := True;
+    Names.Duplicates := dupIgnore;
+    Names.CaseSensitive := False;
+    for ListIdx := 0 to 1 do
+    begin
+      if ListIdx = 0 then
+        ConstList := RqConsts
+      else
+        ConstList := RqDataConsts;
+      if ConstList = nil then
+        Continue;
+      for ConstIdx := 0 to ConstList.Count - 1 do
+      begin
+        ConstName := ConstList[ConstIdx];
+        if (CompareText(Copy(ConstName, 1, Length(APrefix)), APrefix) = 0) and
+           (Length(ConstName) > Length(APrefix)) and
+           (ConstName[Length(APrefix) + 1] in ['A'..'Z']) then
+          Names.Add(ConstName);
+      end;
+    end;
+    AList.AddStrings(Names);
+  finally
+    Names.Free;
   end;
 end;
 
