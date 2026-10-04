@@ -2113,6 +2113,8 @@ type
     procedure ObjPropsDrawItem(Sender: TCustomListView; Item: TListItem;
                                State: TCustomDrawState;
                                var DefaultDraw: Boolean);
+    procedure ObjPropsPostPaint(ALV: TCustomListView; ADC: HDC;
+                                AItem: Integer);
     procedure ObjPropsDrawSubItem(Sender: TCustomListView; Item: TListItem;
                                   SubItem: Integer; State: TCustomDrawState;
                                   var DefaultDraw: Boolean);
@@ -4845,6 +4847,9 @@ begin
     // Стадию "после" запросили мы, VCL её не ждёт - ему не отдаём
     DrawLines(CD^.DC, Integer(CD^.ItemSpec), CD^.SubItem,
               Stage and UiCDDS_SUBITEM <> 0);
+    // Таблица свойств: вторая половина ячейки значения (хэндл Parent)
+    if Form1 <> nil then
+      Form1.ObjPropsPostPaint(LV, CD^.DC, Integer(CD^.ItemSpec));
     Msg.Result := UiCDRF_DODEFAULT;
   end
   else
@@ -21133,8 +21138,8 @@ var
   RqMember, FontMember: TRqMember;
   Item: TListItem;
   ItemIdx, ChainIdx, LiveIdx, FontIdx: Integer;
-  MemberName, DefText, LiveText, SrcText: string;
-  Live, FontParents: TStringList;
+  MemberName, DefText, LiveText, SrcText, ParentName: string;
+  Live, FontParents, ParentLive: TStringList;
 begin
   Obj := TDfmNode(AObj);
   Live := RapidQLiveProps(Obj.Name);
@@ -21257,6 +21262,37 @@ begin
     FObjProps.AlphaSort;
     // Font - узлом с плюсом, поля под ним (RqPropsTree)
     RqPropsTree(FontParents);
+
+    // Parent - имя родителя текстом: присвоенное в блоке (Parent = Panel1)
+    // или блок CREATE, в котором стоит объект. Хэндл родителя из снимка -
+    // в SubItems[3], справа в той же ячейке (ObjPropsPostPaint).
+    for ItemIdx := 0 to FObjProps.Items.Count - 1 do
+    begin
+      Item := FObjProps.Items[ItemIdx];
+      if CompareText(Item.Caption, 'Parent') <> 0 then
+        Continue;
+      if Integer(Item.Data) >= 0 then
+        ParentName := Trim(Obj.PropV[Integer(Item.Data)])
+      else
+      begin
+        ParentName := '';
+        if Obj.Parent <> nil then
+          ParentName := Obj.Parent.Name;
+        if Item.SubItems.Count = 0 then
+          Item.SubItems.Add('');
+        Item.SubItems[0] := ParentName;
+      end;
+      ParentLive := nil;
+      if ParentName <> '' then
+        ParentLive := RapidQLiveProps(ParentName);
+      if (ParentLive <> nil) and (ParentLive.IndexOfName('Handle') >= 0) then
+      begin
+        while Item.SubItems.Count < 3 do
+          Item.SubItems.Add('');
+        Item.SubItems.Add('Handle ' + ParentLive.Values['Handle']);
+      end;
+      Break;
+    end;
 
     for ItemIdx := 0 to Obj.EvN.Count - 1 do
     begin
@@ -24303,6 +24339,78 @@ procedure TForm1.ObjPropsDrawSubItem(Sender: TCustomListView; Item: TListItem;
                                      var DefaultDraw: Boolean);
 begin
   Sender.Canvas.Font.Color := ObjPropsItemColor(Item);
+end;
+
+// Ячейка значения из двух половин: у строки таблицы свойств RapidQ с
+// SubItems[3] (Parent - хэндл родителя из снимка) слева текст ячейки, как
+// его нарисовала таблица, справа, за чертой, - SubItems[3]. Рисуется после
+// строки (TUiGridMark, стадия "после"); фон правой половины - цвет точки
+// у правого края ячейки, каким его уже залила таблица (и у выделенной
+// строки).
+procedure TForm1.ObjPropsPostPaint(ALV: TCustomListView; ADC: HDC;
+                                   AItem: Integer);
+const
+  LVM_GETSUBITEMRECT = $1000 + 56;
+  LVIR_BOUNDS = 0;
+var
+  Item: TListItem;
+  CellRect, HalfRect, TextRect: TRect;
+  HalfLeft: Integer;
+  BackColor: COLORREF;
+  CellBrush: HBRUSH;
+  LinePen, OldPen: HPEN;
+  OldFont: HFONT;
+  ExtraText: string;
+begin
+  if (ALV <> FObjProps) or not FObjRapidQ or (AItem < 0) or
+     (AItem >= FObjProps.Items.Count) then
+    Exit;
+  Item := FObjProps.Items[AItem];
+  if (Item.SubItems.Count < 4) or (Item.SubItems[3] = '') then
+    Exit;
+  ExtraText := Item.SubItems[3];
+  FillChar(CellRect, SizeOf(CellRect), 0);
+  CellRect.Top := 1;               // колонка значения
+  CellRect.Left := LVIR_BOUNDS;
+  if SendMessage(FObjProps.Handle, LVM_GETSUBITEMRECT, AItem,
+                 Integer(@CellRect)) = 0 then
+    Exit;
+  HalfLeft := (CellRect.Left + CellRect.Right) div 2;
+  if CellRect.Right - HalfLeft < 24 then
+    Exit;
+  // Без линий сетки снизу и справа - их уже нарисовали
+  HalfRect := Rect(HalfLeft, CellRect.Top, CellRect.Right - 1,
+                   CellRect.Bottom - 1);
+  BackColor := GetPixel(ADC, CellRect.Right - 3, CellRect.Top + 2);
+  if BackColor = CLR_INVALID then
+    BackColor := ColorToRGB(FObjProps.Color);
+  CellBrush := CreateSolidBrush(BackColor);
+  try
+    FillRect(ADC, HalfRect, CellBrush);
+  finally
+    DeleteObject(CellBrush);
+  end;
+  LinePen := CreatePen(PS_SOLID, 1, ColorToRGB(UiColor('Grid.Lines')));
+  OldPen := SelectObject(ADC, LinePen);
+  try
+    MoveToEx(ADC, HalfLeft, CellRect.Top, nil);
+    Windows.LineTo(ADC, HalfLeft, CellRect.Bottom - 1);
+  finally
+    SelectObject(ADC, OldPen);
+    DeleteObject(LinePen);
+  end;
+  TextRect := HalfRect;
+  TextRect.Left := HalfLeft + 4;
+  OldFont := SelectObject(ADC, FObjProps.Font.Handle);
+  try
+    SetBkMode(ADC, TRANSPARENT);
+    SetTextColor(ADC, ColorToRGB(UiColor('ObjProps.DefaultText')));
+    DrawText(ADC, PChar(ExtraText), Length(ExtraText), TextRect,
+             DT_LEFT or DT_VCENTER or DT_SINGLELINE or DT_END_ELLIPSIS or
+             DT_NOPREFIX);
+  finally
+    SelectObject(ADC, OldFont);
+  end;
 end;
 
 procedure TForm1.ObjBeginEdit;
