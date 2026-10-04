@@ -1150,6 +1150,7 @@ type
     FRqProbeExe: string;       // её exe
     FRqProbeErrFile: string;   // первая ошибка сборки копии
     FRqProbeErrLine: Integer;
+    FRqProbeHangDepth: Integer; // повтор снимка после остановки на свойстве
     FRqProbeObjs: TStringList; // имена объектов, Objects - "Свойство=значение"
     FRqProbeMain: string;      // главный .bas, с которого снят снимок
     FRqProbeTime: TDateTime;
@@ -37369,6 +37370,13 @@ end;
 //  Исключённое запоминается в dsgprobe\rqprobe_skip.txt строкой
 //  "КЛАСС.СВОЙСТВО" - следующий снимок его уже не пишет. Не удался снимок -
 //  лог компиляции сохраняется в dsgprobe\_rqprobe_compile.log.
+//  Программа остановилась посреди дампа (зависла или закончилась): по
+//  последней строке файла значений находится строка копии, которая не
+//  дописалась, - её свойство исключается у этого объекта (строка "OBJ
+//  ИМЯ.СВОЙСТВО" в rqprobe_skip.txt), снимок повторяется, до
+//  RqProbeMaxHang раз. Если программа не ответила за RqProbeWaitMs, перед
+//  остановкой в лог пишутся её видимые окна - с текстом, если это
+//  сообщение (MessageBox).
 //  _rqprobe.bas, _rqprobe.exe и _rqprobe.txt остаются рядом с .bas; перед
 //  запуском удаляется только прежний _rqprobe.txt.
 // ---------------------------------------------------------------------------
@@ -37379,6 +37387,7 @@ const
   RqProbePartLines = 400;   // строк в одной SUB дампа: компилятору не
                             // даём одну SUB на тысячи строк
   RqProbeWaitMs = 15000;    // сколько ждать программу
+  RqProbeMaxHang = 10;      // повторов снимка после остановки на свойстве
   RqProbeFmCreate = 65535;  // fmCreate (Files.inc), числом: RAPIDQ.INC
                             // подключён не у всех
 
@@ -37520,6 +37529,142 @@ begin
     Result := Copy(AProp, 1, DotPos - 1)
   else
     Result := AProp;
+end;
+
+// Строка дампа в копии, которая шла за последней записанной в файл
+// значений: на ней программа остановилась. AProbe - текст копии
+// (_rqprobe.bas), ALastOut - последняя целая строка файла значений ("#obj
+// Имя" или "Имя.Свойство=значение"). AObj, AProp, ALineIdx (от нуля) -
+// объект, свойство и номер строки копии. False - строка не определяется:
+// последняя записанная не найдена в копии или после неё нет строки
+// свойства.
+function RapidQHangLine(AProbe: TStrings; const ALastOut: string;
+                        var AObj, AProp: string;
+                        var ALineIdx: Integer): Boolean;
+var
+  LineIdx, FoundIdx, EqPos: Integer;
+  Ref, LineObj, LineProp, Trimmed: string;
+
+  // Строка копии - живая строка дампа (не закомментированная)
+  function LiveLine(AIdx: Integer): Boolean;
+  begin
+    Trimmed := Trim(AProbe[AIdx]);
+    Result := (Trimmed <> '') and (Trimmed[1] <> '''');
+  end;
+
+begin
+  Result := False;
+  AObj := '';
+  AProp := '';
+  ALineIdx := -1;
+  FoundIdx := -1;
+  if Copy(ALastOut, 1, 5) = '#obj ' then
+  begin
+    for LineIdx := 0 to AProbe.Count - 1 do
+      if LiveLine(LineIdx) and
+         (Trimmed = 'RqProbeFile.WriteLine("' + ALastOut + '")') then
+      begin
+        FoundIdx := LineIdx;
+        Break;
+      end;
+  end
+  else
+  begin
+    EqPos := Pos('=', ALastOut);
+    if (EqPos < 2) or (Copy(ALastOut, 1, 1) = '#') then
+      Exit;
+    Ref := Copy(ALastOut, 1, EqPos - 1);
+    for LineIdx := 0 to AProbe.Count - 1 do
+      if LiveLine(LineIdx) and
+         RapidQDumpLineParts(AProbe[LineIdx], LineObj, LineProp) and
+         (CompareText(LineObj + '.' + LineProp, Ref) = 0) then
+      begin
+        FoundIdx := LineIdx;
+        Break;
+      end;
+  end;
+  if FoundIdx < 0 then
+    Exit;
+  // Дальше по копии - первая живая строка свойства. "#obj" раньше неё
+  // значит, что записано было всё до следующего объекта, - тогда не она.
+  for LineIdx := FoundIdx + 1 to AProbe.Count - 1 do
+  begin
+    if not LiveLine(LineIdx) then
+      Continue;
+    if Pos('RqProbeFile.WriteLine("#', Trimmed) > 0 then
+      Exit;
+    if RapidQDumpLineParts(AProbe[LineIdx], AObj, AProp) then
+    begin
+      ALineIdx := LineIdx;
+      Result := True;
+      Exit;
+    end;
+    // END SUB, SUB RqProbePartN - границы частей дампа; другое (SUB
+    // RqProbeTrace и дальше) - конец строк свойств
+    if (UpperCase(Trimmed) <> 'END SUB') and
+       (Pos('SUB RQPROBEPART', UpperCase(Trimmed)) <> 1) then
+      Exit;
+  end;
+end;
+
+// Видимые окна процесса APid - в ALines: класс и заголовок, у диалогов
+// (#32770, MessageBox) - ещё тексты их элементов. GetWindowText окну
+// чужого процесса сообщений не шлёт - зависший процесс не держит.
+type
+  TRqWinScan = record
+    Pid: DWORD;
+    Lines: TStrings;
+  end;
+  PRqWinScan = ^TRqWinScan;
+
+function RapidQWinText(AWnd: HWND): string;
+var
+  TextBuf: array[0..511] of Char;
+begin
+  TextBuf[0] := #0;
+  GetWindowText(AWnd, TextBuf, SizeOf(TextBuf));
+  Result := Trim(StrPas(TextBuf));
+end;
+
+function RapidQWinChildProc(AWnd: HWND; AParam: LPARAM): BOOL; stdcall;
+var
+  ChildText: string;
+begin
+  Result := True;
+  if not IsWindowVisible(AWnd) then
+    Exit;
+  ChildText := RapidQWinText(AWnd);
+  if ChildText <> '' then
+    TStrings(AParam).Add('        ' + ChildText);
+end;
+
+function RapidQWinTopProc(AWnd: HWND; AParam: LPARAM): BOOL; stdcall;
+var
+  Scan: PRqWinScan;
+  WinPid: DWORD;
+  ClassBuf: array[0..255] of Char;
+begin
+  Result := True;
+  Scan := PRqWinScan(AParam);
+  WinPid := 0;
+  GetWindowThreadProcessId(AWnd, @WinPid);
+  if (WinPid <> Scan^.Pid) or not IsWindowVisible(AWnd) then
+    Exit;
+  ClassBuf[0] := #0;
+  GetClassName(AWnd, ClassBuf, SizeOf(ClassBuf));
+  Scan^.Lines.Add('    окно ' + StrPas(ClassBuf) + ' "' + RapidQWinText(AWnd) +
+                  '"');
+  if StrPas(ClassBuf) = '#32770' then
+    EnumChildWindows(AWnd, @RapidQWinChildProc, LPARAM(Scan^.Lines));
+end;
+
+procedure RapidQProcessWindows(APid: DWORD; ALines: TStrings);
+var
+  Scan: TRqWinScan;
+begin
+  Scan.Pid := APid;
+  Scan.Lines := ALines;
+  EnumWindows(@RapidQWinTopProc, LPARAM(@Scan));
 end;
 
 // Текст копии главного .bas с таймером и SUB RqProbeDump - в AOut.
@@ -37691,7 +37836,8 @@ begin
              (Pos('.', PropName) > 0) then
             Continue;
           Seen.Add(PropName);
-          if Skip.IndexOf(ClassKey + UpperCase(PropName)) >= 0 then
+          if (Skip.IndexOf(ClassKey + UpperCase(PropName)) >= 0) or
+             (Skip.IndexOf('OBJ ' + UpperCase(Node.Name + '.' + PropName)) >= 0) then
           begin
             Inc(SkipCount);
             Continue;
@@ -37851,6 +37997,9 @@ var
   RunMs: Cardinal;
   LastOutSize, NulCount: Integer;
   OldSrc: TStringList;
+  LastOut, HangObj, HangProp, HangKey: string;
+  HangIdx: Integer;
+  ProbeText: TStringList;
 
   // Хвост вывода консоли программы - в лог
   procedure LogConsoleTail(const AFile: string);
@@ -37958,6 +38107,8 @@ var
     WaitRes, ProcExit: DWORD;
     StartTick, ExitMs: Cardinal;
     Started, ProcEnded: Boolean;
+    WinLines: TStringList;
+    WinIdx: Integer;
   begin
     AElapsed := 0;
     LastOutSize := -1;
@@ -38018,6 +38169,24 @@ var
         LogComp(Format('Снимок RapidQ: значения записаны за %d мс', [AElapsed]))
       else
       begin
+        // Что программа показывает: сообщение об ошибке рантайма или
+        // другое окно, ждущее ответа
+        WinLines := TStringList.Create;
+        try
+          RapidQProcessWindows(ProcInfo.dwProcessId, WinLines);
+          if WinLines.Count = 0 then
+            LogComp(Format('Снимок RapidQ: видимых окон у процесса (pid %d) ' +
+                           'нет', [ProcInfo.dwProcessId]))
+          else
+          begin
+            LogComp(Format('Снимок RapidQ: видимые окна процесса (pid %d):',
+                           [ProcInfo.dwProcessId]));
+            for WinIdx := 0 to WinLines.Count - 1 do
+              LogComp(WinLines[WinIdx]);
+          end;
+        finally
+          WinLines.Free;
+        end;
         TerminateProcess(ProcInfo.hProcess, 1);
         LogComp(Format('Снимок RapidQ: за %d с программа не записала значения ' +
                        'и остановлена', [RqProbeWaitMs div 1000]));
@@ -38200,7 +38369,7 @@ begin
     Exit;
   end;
   ShowCompLog;
-  if CompLogEdit <> nil then
+  if (CompLogEdit <> nil) and (FRqProbeHangDepth = 0) then
     CompLogEdit.Lines.Clear;
   // Копия собирается из файлов на диске
   if RichEdit1.Modified then
@@ -38441,6 +38610,16 @@ begin
     Props := nil;
     LastObj := '';
     Complete := False;
+    // Последняя целая строка файла: без перевода строки в конце последняя
+    // строка могла записаться не вся - тогда берётся предыдущая
+    LastOut := '';
+    LineIdx := ProbeLines.Count - 1;
+    if (OutText <> '') and not (OutText[Length(OutText)] in [#13, #10]) then
+      Dec(LineIdx);
+    while (LineIdx >= 0) and (Trim(ProbeLines[LineIdx]) = '') do
+      Dec(LineIdx);
+    if LineIdx >= 0 then
+      LastOut := ProbeLines[LineIdx];
     for LineIdx := 0 to ProbeLines.Count - 1 do
     begin
       if Copy(ProbeLines[LineIdx], 1, 5) = '#obj ' then
@@ -38478,7 +38657,69 @@ begin
     LogConsoleTail(ConsoleFile);
     LogComp(Format('Снимок RapidQ: неполный - %d объектов, программа ' +
                    'остановилась на объекте %s', [FRqProbeObjs.Count, LastObj]));
+    // Строка копии, которая не дописалась
+    HangKey := '';
+    LogComp('Снимок RapidQ: последняя записанная строка: ' + LastOut);
+    ProbeText := TStringList.Create;
+    try
+      try
+        ProbeText.LoadFromFile(ProbeBas);
+      except
+        ProbeText.Clear;
+      end;
+      if RapidQHangLine(ProbeText, LastOut, HangObj, HangProp, HangIdx) then
+      begin
+        LogComp(Format('Снимок RapidQ: следующая строка копии не дописалась - ' +
+                       'чтение %s.%s (строка %d в %s)',
+                       [HangObj, HangProp, HangIdx + 1, ProbeBas]));
+        HangKey := 'OBJ ' + UpperCase(HangObj + '.' + RapidQPropHead(HangProp));
+      end
+      else
+        LogComp('Снимок RapidQ: строку копии, на которой программа ' +
+                'остановилась, по файлу значений определить не удалось');
+    finally
+      ProbeText.Free;
+    end;
     SaveCompileLog(FProbeDir + '_rqprobe_compile.log');
+    if HangKey <> '' then
+    begin
+      if FRqProbeHangDepth >= RqProbeMaxHang then
+        LogComp(Format('Снимок RapidQ: исключено уже %d свойств после ' +
+                       'остановок - повтора нет', [FRqProbeHangDepth]))
+      else
+      begin
+        SkipList := TStringList.Create;
+        try
+          try
+            if FileExists(FProbeDir + RqProbeSkipName) then
+              SkipList.LoadFromFile(FProbeDir + RqProbeSkipName);
+            if SkipList.IndexOf(HangKey) < 0 then
+              SkipList.Add(HangKey);
+            SkipList.SaveToFile(FProbeDir + RqProbeSkipName);
+          except
+            LogComp('Снимок RapidQ: список исключённых не записан: ' +
+                    FProbeDir + RqProbeSkipName);
+            HangKey := '';
+          end;
+        finally
+          SkipList.Free;
+        end;
+        if HangKey <> '' then
+        begin
+          LogComp(Format('Снимок RapidQ: %s.%s у этого объекта больше не ' +
+                         'читается (%s: %s); снимок - заново',
+                         [HangObj, RapidQPropHead(HangProp), RqProbeSkipName,
+                          HangKey]));
+          Inc(FRqProbeHangDepth);
+          try
+            RapidQProbeRun;
+          finally
+            Dec(FRqProbeHangDepth);
+          end;
+          Exit;
+        end;
+      end;
+    end;
   end;
   FRightPages.ActivePage := FTabObjects;
   RefreshObjectInspector(True);
