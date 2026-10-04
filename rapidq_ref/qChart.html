@@ -1,0 +1,870 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QPANEL</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">based on Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A:  </B></FONT>&nbsp;QChart</TD>
+  </TR>
+    <TR>
+    <TD COLSPAN=2 bgcolor="#E4A99A">&nbsp;Copyright (c) 2003 Michael J. Zito </TD>
+  </TR>
+</TABLE>
+
+<H1>&nbsp;QChart: A Charting Object for Rapid-Q</H1>
+<DD>QChart provides a set of 2-D charting routines for Rapid-Q programmers. <br>
+It generates histograms, bar charts, XY-scatter graphs, line graphs <br>
+and box plots. Each charting routine will calculate an appropriate scale <br>
+and plot the data contained in the .Data component of the object. The user may 
+optionally<br>
+specify the scaling as well as fonts, grids or other properties (see code)<br>
+Once the data is formatted graphs can be called with very few lines of simple 
+code:<br>
+&nbsp;.Initialize<br>
+&nbsp;-------&gt;Change Desired Options Here<br>
+&nbsp;-------&gt;Dimension .Data Grid Here<br>
+&nbsp;-------&gt;Load Data Into .Data Grid Here<br>
+&nbsp;.ChartType = ctXXXX<br>
+&nbsp;.ChartStyle = csXXXX<br>
+&nbsp;.DrawYYYY (Overlay T or F)<br>
+SEE QChartEx.rqb for examples of setting up and calling each chart type.<br>
+<br>
+NOTE: There is little error checking in this object. It is up to the user<br>
+to insure that the data is formatted properly before calling each routine.<br>
+The .Data component is a non-visible QStringGrid which offers the user the <br>
+ability to set the row and column count prior to filling the grid with data. <br>
+The expected data formats for each chart type are listed below:<br>
+<br>
+Bar and Line Charts: Data groups are in columns, data values are in each row<br>
+&nbsp;Set .Data.ColCount to the number of groups<br>
+&nbsp;Set .Data.RowCount to the number of data points in the largest group<br>
+&nbsp;Row 0 is for legend text<br>
+&nbsp;Col 0 is for X Axis Labels<br>
+<br>
+&nbsp;0 1 2 . . . n<br>
+&nbsp;0 (*) &lt;&lt;======Legend======&gt;&gt;<br>
+&nbsp;1 X A1 B1 . . . n1<br>
+&nbsp;2 = A2 B2 . . . n2<br>
+&nbsp;. L . . . . . .<br>
+&nbsp;. b . . . . . .<br>
+&nbsp;. l . . . . . .<br>
+&nbsp;n s An Bn . . . nn<br>
+<br>
+XY Scatter Charts: Data pairs are in adjacent columns: Col1 = X val, Col2 = Y 
+val<br>
+&nbsp;Data values are in each row<br>
+&nbsp;Set .Data.ColCount to the number of XY pairs * 2<br>
+&nbsp;Set .Data.RowCount to the number of data points in the largest group<br>
+&nbsp;Row 0 of the Y Col is for group labels / legend text<br>
+&nbsp;Col 0 and Row 0 of the X Col are not used (*)<br>
+&nbsp;Data for each pair should be in ascending order on the X value<br>
+<br>
+&nbsp;Pair 1 Pair 2 Pair n<br>
+&nbsp;======= ======= ======<br>
+&nbsp;0 1 2 3 4 . . . m n<br>
+&nbsp;0 * * Lgd * Lgd * Lgd<br>
+&nbsp;1 * x11 y11 x21 y21 . . . m1 n1<br>
+&nbsp;2 * x12 y12 x22 y22 . . . m2 n2<br>
+&nbsp;. * . . . . . . . . .<br>
+&nbsp;. * . . . . . . . . .<br>
+&nbsp;. * . . . . . . . . .<br>
+&nbsp;n * x1n y1n x2n y2n . . . mn nn<br>
+<br>
+Box Plots: Data groups are in columns, data values are in each row<br>
+&nbsp;Set .Data.ColCount to the number of groups<br>
+&nbsp;Set .Data.RowCount to 5<br>
+&nbsp;Data must be set up with the highest value in row 1 <br>
+&nbsp;the lowest value in row 5 and intermediate values in <br>
+&nbsp;descending order from row 1 to row 5.<br>
+&nbsp;Row 0 is for legend text<br>
+&nbsp;Col 0 is not used (*)<br>
+<br>
+&nbsp;Box Plots <br>
+&nbsp;0 1 2 3 . . n<br>
+&nbsp;0 * &lt;&lt;=====Legend======&gt;&gt;<br>
+&nbsp;1 * Max <br>
+&nbsp;2 * 3rd Quartile <br>
+&nbsp;3 * 2nd Quartile (Median) <br>
+&nbsp;4 * 1st Quartile <br>
+&nbsp;5 * Min <br>
+'******************************************************************************************<br>
+<BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QChart Properties</B></FONT> </a><br>
+&nbsp;<table border="1" width="90%" id="AutoNumber1" cellspacing="0" bordercolorlight="#808080" bordercolordark="#808080" cellpadding="4">
+  <tr>
+    <td>&nbsp;Data AS QStringGrid </td>
+    <td>Data to be plotted (See header notes for formats)</td>
+  </tr>
+  <tr>
+    <td>XAxis AS AxisType </td>
+    <td>X-axis options</td>
+  </tr>
+  <tr>
+    <td>YAxis AS AxisType </td>
+    <td>Y-axis options</td>
+  </tr>
+  <tr>
+    <td>bgColor AS INTEGER </td>
+    <td>background color</td>
+  </tr>
+  <tr>
+    <td>fgColor AS INTEGER </td>
+    <td>foreground color</td>
+  </tr>
+  <tr>
+    <td>ChartType AS INTEGER </td>
+    <td>ctBar, ctXY, ctBox etc...</td>
+  </tr>
+  <tr>
+    <td>ChartStyle AS INTEGER </td>
+    <td>csHisto, csLines, csPoints, csBoth etc...</td>
+  </tr>
+  <tr>
+    <td>MainTitle AS TitleType </td>
+    <td>MainTitle Text and Location</td>
+  </tr>
+  <tr>
+    <td>MainFont AS QFont</td>
+  </tr>
+  <tr>
+    <td>SubTitle AS TitleType </td>
+    <td>SubTitle Text and Location</td>
+  </tr>
+  <tr>
+    <td>SubFont AS QFont</td>
+  </tr>
+  <tr>
+    <td>XTitle AS TitleType </td>
+    <td>X Axis Title Text and Location</td>
+  </tr>
+  <tr>
+    <td>YTitle AS TitleType </td>
+    <td>Y Axis Title Text and Location</td>
+  </tr>
+  <tr>
+    <td>AxisLbl AS TitleType </td>
+    <td>Axis Label Text and Location</td>
+  </tr>
+  <tr>
+    <td>AxisFont AS QFont</td>
+  </tr>
+  <tr>
+    <td>DoLegend AS INTEGER </td>
+    <td>True = Draw Legend, False = No Legend</td>
+  </tr>
+  <tr>
+    <td>Legend AS TitleType </td>
+    <td>Legend Text and Location</td>
+  </tr>
+  <tr>
+    <td>LegendFont AS QFont </td>
+  </tr>
+  <tr>
+    <td>ChartBorder AS INTEGER </td>
+    <td>True = Draw Frame around entire chart, False = No Frame</td>
+  </tr>
+  <tr>
+    <td>AxisBorder AS INTEGER </td>
+    <td>True = Draw Frame around Plot Area, False = No Frame</td>
+  </tr>
+  <tr>
+    <td>Colors(15) AS INTEGER </td>
+    <td>Array of colors; QChart chooses colors from this</td>
+  </tr>
+  <tr>
+    <td>PlotAreaColr AS INTEGER </td>
+    <td>Color of plot area background</td>
+  </tr>
+  <tr>
+    <td>GridColr AS INTEGER </td>
+    <td>Color of grid lines</td>
+  </tr>
+  <tr>
+    <td>dlgSave AS QSaveDialog</td>
+  </tr>
+  <tr>
+    <td>MarkerSize AS SINGLE </td>
+    <td>Sets size of drawn markers</td>
+  </tr>
+  <tr>
+    <td>BW AS INTEGER </td>
+    <td>True = Use BW only, False = Cycles Colors() array</td>
+  </tr>
+  <tr>
+    <td>GreyScale AS INTEGER </td>
+    <td>True = Use GreyScale, False = Cycles Colors() array </td>
+  </tr>
+  <tr>
+    <td>Series(30) AS SeriesType </td>
+    <td>Series style info</td>
+  </tr>
+</table>
+
+<a name="1">
+<TABLE WIDTH=100% bordercolorlight="#808080" border="1" bordercolordark="#808080" cellspacing="0" cellpadding="4">
+  <TR>
+   <TD bgcolor="#E4A99A"><B>Field</B></TD><TD bgcolor="#E4A99A"><B>Type</B></TD>
+   <TD bgcolor="#E4A99A"><B>R/W</B></TD><TD bgcolor="#E4A99A"><B>Default</B></TD>
+   <TD bgcolor="#E4A99A"><B>Support</B></TD>
+  </TR>
+  <TR><TD>Align</TD><TD>INTEGER</TD><TD>RW</TD><TD>alNone</TD><TD>W</TD></TR>
+  <TR><TD>Alignment</TD><TD>INTEGER</TD><TD>RW</TD><TD>taCenter</TD><TD>W</TD></TR>
+  <TR><TD>BevelInner</TD><TD>INTEGER</TD><TD>RW</TD><TD>bvNone</TD><TD>W</TD></TR>
+  <TR><TD>BevelOuter</TD><TD>INTEGER</TD><TD>RW</TD><TD>bvRaised</TD><TD>W</TD></TR>
+  <TR><TD>BevelWidth</TD><TD>INTEGER</TD><TD>RW</TD><TD>1</TD><TD>W</TD></TR>
+  <TR><TD>BorderStyle</TD><TD>INTEGER</TD><TD>RW</TD><TD>bsNone</TD><TD>W</TD></TR>
+  <TR><TD>&nbsp;</TD><TD>'-- Bevel Style<br>
+    CONST bvNone = 0<br>
+    CONST bvLowered = 1<br>
+    CONST bvRaised = 2<br>
+    <br>
+    '-- Bevel Border<br>
+    CONST bpNone = 0 '-- No visible border<br>
+    CONST bpSingle = 1 '-- Single-line border<br>
+&nbsp;</TD><TD>&nbsp;</TD><TD>&nbsp;</TD><TD>&nbsp;</TD></TR>
+  <TR><TD>Caption</TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD>ClientHeight</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WX</TD></TR>
+  <TR><TD>ClientWidth</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WX</TD></TR>
+  <TR><TD>Color</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD>Cursor</TD><TD>INTEGER</TD><TD>RW</TD><TD>crDefault</TD><TD>W</TD></TR>
+  <TR><TD>Enabled</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD><TD>WX</TD></TR>
+  <TR><TD>Font</TD><TD>QFONT</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD>Height</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WX</TD></TR>
+  <TR><TD>Hint</TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD>Left</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>WX</TD></TR>
+  <TR><TD>Parent</TD><TD>QFORM/QChart/QTABCONTROL</TD><TD>W</TD><TD></TD><TD>WX</TD></TR>
+  <TR><TD>ShowHint</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>W</TD></TR>
+  <TR><TD>TabOrder</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD>Tag</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD>Top</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>WX</TD></TR>
+  <TR><TD>Width</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WX</TD></TR>
+  <TR><TD>Visible</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD><TD>WX</TD></TR>
+</TABLE>
+<br>
+
+<a name="2">
+<FONT SIZE = +1><B>QChart Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD><TD><B>Support</B></TD>
+  </TR>
+  <TR>
+   
+  <TR><TD>Repaint</TD><TD>SUB</TD><TD>Refreshes panel and all contents</TD><TD>0</TD><TD>W</TD></TR>
+  </TR>
+</TABLE>
+<BR>
+
+<a name="3">
+<FONT SIZE = +1><B>QChart Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR><TD>OnClick</TD><TD>VOID</TD><TD>User clicked on open area of panel</TD><TD>0</TD><TD>WX</TD></TR>
+  <TR><TD>OnDblClick</TD><TD>VOID</TD><TD>User double clicked panel</TD><TD>0</TD><TD>W</TD></TR>
+  <TR><TD>OnMouseDown</TD><TD NOWRAP>SUB (Button%, X%, Y%, Shift%)</TD><TD NOWRAP>Mouse button held down</TD><TD>4</TD><TD>W</TD></TR>
+  <TR><TD>OnMouseMove</TD><TD NOWRAP>SUB (X%, Y%, Shift%)</TD><TD NOWRAP>Mouse moves over panel</TD><TD>3</TD><TD>W</TD></TR>
+  <TR><TD>OnMouseUp</TD><TD NOWRAP>SUB (Button%, X%, Y%, Shift%)</TD><TD NOWRAP>Mouse button is released</TD><TD>4</TD><TD>W</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QChart Examples</B></FONT>
+<pre><font color="007700"><i>'----- Compiler Directives</i></font> 
+<font color="0000AA"><b>$OPTIMIZE</b></font> ON
+<font color="0000AA"><b>$TYPECHECK</b></font> ON
+
+<font color="007700"><i>'----- Code modules (Change path to point to the correct directory on your system)</i></font> 
+<font color="0000AA"><b>$INCLUDE</b></font> "<font color="990000">QChart.obj</font>"
+
+<font color="007700"><i>'----- Form Event SUB Declarations</i></font> 
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>SUB</b></font> btnOnClick <b>(</b>SENDER <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>QButton</b></font><b>)</b>
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>SUB</b></font> frmMainResize <b>(</b>SENDER <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>QForm</b></font><b>)</b>
+
+<font color="007700"><i>'----- API Constants and Functions</i></font> 
+<font color="0000AA"><b>CONST</b></font> GWL_HWNDPARENT = <b>(</b>-8<b>)</b>                         <font color="007700"><i>'Minimize to task bar</i></font> 
+<font color="0000AA"><b>CONST</b></font> HWND_DESKTOP = 0
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> SetWindowLong <font color="0000AA"><b>LIB</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">SetWindowLongA</font>"_
+                 <b>(</b>hwnd <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, nIndex <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, dwNewLong <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+
+<font color="007700"><i>'----- Rapid-Q Constants</i></font> 
+<font color="0000AA"><b>CONST</b></font> alRight = 4
+<font color="0000AA"><b>CONST</b></font> poLandscape = 1
+
+<font color="0000AA"><b>CREATE</b></font> frmMain <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QForm</b></font>
+
+  Center
+  Width = 640
+  Height = 480
+  Caption = "<font color="990000">QChart Example</font>"
+  OnResize = frmMainResize
+
+    <font color="0000AA"><b>CREATE</b></font> drwHisto1 <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QButton</b></font>
+      Caption = "<font color="990000">Histogram</font>"
+      OnClick = btnOnClick
+    <font color="0000AA"><b>END</b></font> <font color="0000AA"><b>CREATE</b></font>  
+    
+    <font color="0000AA"><b>CREATE</b></font> drwBar1 <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QButton</b></font>
+      Caption = "<font color="990000">Bar Graph 1</font>"
+      Top = 25
+      OnClick = btnOnClick
+    <font color="0000AA"><b>END</b></font> <font color="0000AA"><b>CREATE</b></font>  
+    
+    <font color="0000AA"><b>CREATE</b></font> drwBar2 <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QButton</b></font>
+      Caption = "<font color="990000">Bar Graph 2</font>"
+      Top = 50
+      OnClick = btnOnClick    
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+
+    <font color="0000AA"><b>CREATE</b></font> drwBar3 <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QButton</b></font>
+      Caption = "<font color="990000">Bar Graph 3</font>"
+      Top = 75
+      OnClick = btnOnClick    
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+
+    <font color="0000AA"><b>CREATE</b></font> drwXYpt <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QButton</b></font>
+      Caption = "<font color="990000">XY Points</font>"
+      Top = 100
+      OnClick = btnOnClick    
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+
+    <font color="0000AA"><b>CREATE</b></font> drwXYln <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QButton</b></font>
+      Caption = "<font color="990000">XY Lines</font>"
+      Top = 125
+      OnClick = btnOnClick    
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+    
+    <font color="0000AA"><b>CREATE</b></font> drwXYboth <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QButton</b></font>
+      Caption = "<font color="990000">XY Both</font>"
+      Top = 150
+      OnClick = btnOnClick    
+    <font color="0000AA"><b>END</b></font> <font color="0000AA"><b>CREATE</b></font>    
+
+    <font color="0000AA"><b>CREATE</b></font> drwXYlog <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QButton</b></font>
+      Caption = "<font color="990000">XY Logs</font>"
+      Top = 175
+      OnClick = btnOnClick    
+    <font color="0000AA"><b>END</b></font> <font color="0000AA"><b>CREATE</b></font>    
+
+    <font color="0000AA"><b>CREATE</b></font> drwLine <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QButton</b></font>
+      Caption = "<font color="990000">Line Graph</font>"
+      Top = 200
+      OnClick = btnOnClick    
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+
+    <font color="0000AA"><b>CREATE</b></font> drwLinePts <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QButton</b></font>
+      Caption = "<font color="990000">Line w/Points</font>"
+      Top = 225
+      OnClick = btnOnClick    
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+
+    <font color="0000AA"><b>CREATE</b></font> drwBox <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QButton</b></font>
+      Caption = "<font color="990000">Box Plot</font>"
+      Top = 250
+      OnClick = btnOnClick    
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+
+    <font color="0000AA"><b>CREATE</b></font> drwHiLo1 <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QButton</b></font>
+      Caption = "<font color="990000">HLC Style 1</font>"
+      Top = 275
+      OnClick = btnOnClick    
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+
+    <font color="0000AA"><b>CREATE</b></font> drwHiLo2 <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QButton</b></font>
+      Caption = "<font color="990000">HLC Style 2</font>"
+      Top = 300
+      OnClick = btnOnClick    
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>CREATE</b></font>
+
+    <font color="0000AA"><b>CREATE</b></font> btnRedraw <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QButton</b></font>
+      Caption = "<font color="990000">Redraw</font>"
+      Top = 325
+      OnClick = btnOnClick
+    <font color="0000AA"><b>END</b></font> <font color="0000AA"><b>CREATE</b></font>  
+
+    <font color="0000AA"><b>CREATE</b></font> btnClear <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QButton</b></font>
+      Caption = "<font color="990000">Clear</font>"
+      Top = 350
+      OnClick = btnOnClick
+    <font color="0000AA"><b>END</b></font> <font color="0000AA"><b>CREATE</b></font>  
+
+    <font color="0000AA"><b>CREATE</b></font> btnSave <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QButton</b></font>
+      Caption = "<font color="990000">Save</font>"
+      Top = 375
+      OnClick = btnOnClick
+    <font color="0000AA"><b>END</b></font> <font color="0000AA"><b>CREATE</b></font>  
+
+    <font color="0000AA"><b>CREATE</b></font> btnPrint <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QButton</b></font>
+      Caption = "<font color="990000">Print</font>"
+      Top = 400
+      OnClick = btnOnClick
+    <font color="0000AA"><b>END</b></font> <font color="0000AA"><b>CREATE</b></font>  
+
+    <font color="0000AA"><b>CREATE</b></font> btnExit <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QButton</b></font>
+      Caption = "<font color="990000">Exit</font>"
+      Top = 425
+      OnClick = btnOnClick
+    <font color="0000AA"><b>END</b></font> <font color="0000AA"><b>CREATE</b></font>  
+    
+    <font color="0000AA"><b>CREATE</b></font> Graph <font color="0000AA"><b>AS</b></font> QChart                              <font color="007700"><i>'Create a copy of the new object</i></font> 
+      Align = alRight
+      Width = frmMain.ClientWidth - btnClear.Width
+      Height = frmMain.ClientHeight          
+      Image.OnPaint = Graph.ImagePaint                  <font color="007700"><i>'This line REQUIRED to process Repaints</i></font> 
+    <font color="0000AA"><b>END</b></font> <font color="0000AA"><b>CREATE</b></font><font color="007700"><i>'Graph</i></font> 
+    
+<font color="0000AA"><b>END</b></font> <font color="0000AA"><b>CREATE</b></font><font color="007700"><i>'frmMain  </i></font> 
+
+<font color="007700"><i>'API Call that lets RapidQ programs minimize to the task bar</i></font> 
+setwindowlong<b>(</b>frmMain.handle, GWL_HWNDPARENT, HWND_DESKTOP<b>)</b>
+setwindowlong<b>(</b>application.handle, GWL_HWNDPARENT, frmMain.handle<b>)</b>
+
+<font color="0000AA"><b>WITH</b></font> Graph
+  .Initialize                                           <font color="007700"><i>'Set default values</i></font> 
+  .ClearBuffer                                          <font color="007700"><i>'Start with a clean slate</i></font> 
+  .ImagePaint                                           <font color="007700"><i>'Paint the blank Canvas</i></font> 
+<font color="0000AA"><b>END</b></font> <font color="0000AA"><b>WITH</b></font>  
+frmMain.ShowModal
+
+<font color="007700"><i>'----- Event SUBs</i></font> 
+
+<font color="0000AA"><b>SUB</b></font> btnOnClick <b>(</b>SENDER <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>QButton</b></font><b>)</b>
+
+  <font color="0000AA"><b>DIM</b></font> i  <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>INTEGER</b></font>                                     <font color="007700"><i>'Loop counters...</i></font> 
+  <font color="0000AA"><b>DIM</b></font> j  <font color="0000AA"><b>AS</b></font> <font color="000099"><b>INTEGER</b></font>
+  <font color="0000AA"><b>DIM</b></font> k  <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>SINGLE</b></font>                                      <font color="007700"><i>'A Scratch Variable</i></font> 
+  
+  <font color="0000AA"><b>SELECT</b></font> <font color="0000AA"><b>CASE</b></font> Sender.Caption
+
+    <font color="0000AA"><b>CASE</b></font> "<font color="990000">Histogram</font>"
+      <font color="0000AA"><b>WITH</b></font> Graph
+        .Initialize                                     <font color="007700"><i>'Set defaults</i></font> 
+        .MainTitle.Text = "<font color="990000">Histogram Example</font>"           <font color="007700"><i>'Change desired options</i></font> 
+        .SubTitle.Text = "<font color="990000">No Grid, No Border</font>"
+        .XTitle.Text = "<font color="990000">X Axis</font>"      
+        .YTitle.Text = "<font color="990000">Y Axis</font>"
+        .DoLegend = False        
+        .AxisBorder = False
+        .XAxis.Grid = False
+        .YAxis.Grid = False
+        .Data.ColCount = 1                              <font color="007700"><i>'Set .Data Grid dimensions    </i></font> 
+        .Data.RowCount = 10
+        j = 25                                          <font color="007700"><i>'Load the data                           </i></font> 
+        <font color="000099"><b>RANDOMIZE</b></font>
+        <font color="0000AA"><b>FOR</b></font> i = 1 <font color="0000AA"><b>to</b></font> .Data.RowCount
+          .Data.Cell<b>(</b>0,i<b>)</b> = "<font color="990000">Class </font>" + <font color="0000AA"><b>STR$</b></font><b>(</b>i<b>)</b>
+          .Data.Cell<b>(</b>1,i<b>)</b> = <font color="0000AA"><b>STR$</b></font><b>(</b><font color="0000AA"><b>RND</b></font> * j<b>)</b>
+        <font color="0000AA"><b>NEXT</b></font> i
+        .ChartType = ctBar                              <font color="007700"><i>'Bar Chart</i></font> 
+        .ChartStyle = csHisto                           <font color="007700"><i>'Histogram        </i></font> 
+        .DrawBar <b>(</b>False<b>)</b>                                <font color="007700"><i>'Draw it!</i></font> 
+      <font color="0000AA"><b>END</b></font> <font color="000099"><b>WITH</b></font>
+
+    <font color="0000AA"><b>CASE</b></font> "<font color="990000">Bar Graph 1</font>"
+      <font color="0000AA"><b>WITH</b></font> Graph
+        .Initialize                                     <font color="007700"><i>'Set defaults</i></font> 
+        .MainTitle.Text = "<font color="990000">Bar Graph Example 1</font>"         <font color="007700"><i>'change desired options</i></font> 
+        .SubTitle.Text = "<font color="990000">Positive Values</font>"        
+        .XTitle.Text = "<font color="990000">X Axis</font>"      
+        .YTitle.Text = "<font color="990000">Y Axis</font>"                                  
+        .XAxis.Grid = False
+        .Data.ColCount = 5                              <font color="007700"><i>'Set .Data Grid dimensions                         </i></font> 
+        .Data.RowCount = 2
+        k = 25                                          <font color="007700"><i>'Load the data                            </i></font> 
+        <font color="000099"><b>RANDOMIZE</b></font>
+        <font color="0000AA"><b>FOR</b></font> i = 1 <font color="0000AA"><b>to</b></font> .Data.ColCount
+          .Data.Cell<b>(</b>i , 0<b>)</b> = <font color="0000AA"><b>STR$</b></font><b>(</b>i<b>)</b>                   <font color="007700"><i>'Legend in Row 0 of each Col        </i></font> 
+          <font color="0000AA"><b>FOR</b></font> j = 1 <font color="0000AA"><b>TO</b></font> .Data.RowCount
+            .Data.Cell<b>(</b>i,j<b>)</b> = <font color="0000AA"><b>STR$</b></font><b>(</b><font color="0000AA"><b>RND</b></font> * k<b>)</b>
+          <font color="0000AA"><b>NEXT</b></font> j
+        <font color="0000AA"><b>NEXT</b></font> i
+        <font color="0000AA"><b>FOR</b></font> j = 1 <font color="0000AA"><b>TO</b></font> .Data.RowCount
+          .Data.Cell<b>(</b>0,j<b>)</b> = "<font color="990000">Treatment </font>" + <font color="0000AA"><b>STR$</b></font><b>(</b>j<b>)</b>      <font color="007700"><i>'X Labels in Col 0 of each Row</i></font> 
+        <font color="0000AA"><b>NEXT</b></font> j
+        .ChartType = ctBar                              <font color="007700"><i>'Bar Chart</i></font> 
+        .ChartStyle = csBar                             <font color="007700"><i>'Grouped Bars        </i></font> 
+        .DrawBar <b>(</b>False<b>)</b>                                <font color="007700"><i>'Draw it!</i></font> 
+      <font color="0000AA"><b>END</b></font> <font color="000099"><b>WITH</b></font>
+
+    <font color="0000AA"><b>CASE</b></font> "<font color="990000">Bar Graph 2</font>"
+      <font color="0000AA"><b>WITH</b></font> Graph
+        .Initialize                                     <font color="007700"><i>'Set defaults</i></font> 
+        .MainTitle.Text = "<font color="990000">Bar Graph Example 2</font>"         <font color="007700"><i>'change desired options</i></font> 
+        .SubTitle.Text = "<font color="990000">Negative Values</font>"
+        .XTitle.Text = "<font color="990000">X Axis</font>"      
+        .YTitle.Text = "<font color="990000">Y Axis</font>"
+        .Data.ColCount = 8                              <font color="007700"><i>'Set .Data Grid dimensions    </i></font> 
+        .Data.RowCount = 1
+        k = 25                                          <font color="007700"><i>'Load the data</i></font> 
+        <font color="000099"><b>RANDOMIZE</b></font>
+        <font color="0000AA"><b>FOR</b></font> i = 1 <font color="0000AA"><b>to</b></font> .Data.ColCount
+          .Data.Cell<b>(</b>i , 0<b>)</b> = "<font color="990000">Group </font>" + <font color="0000AA"><b>STR$</b></font><b>(</b>i<b>)</b>        <font color="007700"><i>'Legend in Row 0 of each Col        </i></font> 
+          <font color="0000AA"><b>FOR</b></font> j = 1 <font color="0000AA"><b>TO</b></font> .Data.RowCount
+            .Data.Cell<b>(</b>i,j<b>)</b> = <font color="0000AA"><b>STR$</b></font><b>(</b><b>(</b><font color="0000AA"><b>RND</b></font><b>)</b> * -k<b>)</b>
+          <font color="0000AA"><b>NEXT</b></font> j
+        <font color="0000AA"><b>NEXT</b></font> i
+        <font color="0000AA"><b>FOR</b></font> j = 1 <font color="0000AA"><b>TO</b></font> .Data.RowCount
+          .Data.Cell<b>(</b>0,j<b>)</b> = "<font color="990000">Level </font>" + <font color="0000AA"><b>STR$</b></font><b>(</b>j<b>)</b>          <font color="007700"><i>'X Labels in Col 0 of each Row</i></font> 
+        <font color="0000AA"><b>NEXT</b></font> j
+        .ChartType = ctBar                              <font color="007700"><i>'Bar Chart</i></font> 
+        .ChartStyle = csBar                             <font color="007700"><i>'Grouped Bars         </i></font> 
+        .DrawBar <b>(</b>False<b>)</b>                                <font color="007700"><i>'Draw it!</i></font> 
+      <font color="0000AA"><b>END</b></font> <font color="000099"><b>WITH</b></font>
+
+    <font color="0000AA"><b>CASE</b></font> "<font color="990000">Bar Graph 3</font>"
+      <font color="0000AA"><b>WITH</b></font> Graph
+        .Initialize                                     <font color="007700"><i>'Set defaults</i></font> 
+        .MainTitle.Text = "<font color="990000">Bar Graph Example 3</font>"         <font color="007700"><i>'change desired options</i></font> 
+        .SubTitle.Text = "<font color="990000">Positive and Negative Values</font>"
+        .XTitle.Text = "<font color="990000">X Axis</font>"      
+        .YTitle.Text = "<font color="990000">Y Axis</font>"
+        .Data.ColCount = 4                              <font color="007700"><i>'Set .Data Grid dimensions    </i></font> 
+        .Data.RowCount = 3
+        k = 20                                          <font color="007700"><i>'Load the data</i></font> 
+        <font color="000099"><b>RANDOMIZE</b></font>
+        <font color="0000AA"><b>FOR</b></font> i = 1 <font color="0000AA"><b>to</b></font> .Data.ColCount
+          .Data.Cell<b>(</b>i , 0<b>)</b> = "<font color="990000">Long Legend Title </font>" + <font color="0000AA"><b>STR$</b></font><b>(</b>i<b>)</b><font color="007700"><i>'Legend in Row 0 of each Col        </i></font> 
+          <font color="0000AA"><b>FOR</b></font> j = 1 <font color="0000AA"><b>TO</b></font> .Data.RowCount
+            .Data.Cell<b>(</b>i,j<b>)</b> = <font color="0000AA"><b>STR$</b></font><b>(</b><b>(</b><font color="0000AA"><b>RND</b></font> - <font color="0000AA"><b>RND</b></font><b>)</b> * k<b>)</b>
+          <font color="0000AA"><b>NEXT</b></font> j
+        <font color="0000AA"><b>NEXT</b></font> i
+        <font color="0000AA"><b>FOR</b></font> j = 1 <font color="0000AA"><b>TO</b></font> .Data.RowCount
+          .Data.Cell<b>(</b>0,j<b>)</b> = "<font color="990000">Level </font>" + <font color="0000AA"><b>STR$</b></font><b>(</b>j<b>)</b>          <font color="007700"><i>'X Labels in Col 0 of each Row</i></font> 
+        <font color="0000AA"><b>NEXT</b></font> j
+        .ChartType = ctBar                              <font color="007700"><i>'Bar Chart</i></font> 
+        .ChartStyle = csBar                             <font color="007700"><i>'Grouped Bars         </i></font> 
+        .DrawBar <b>(</b>False<b>)</b>                                <font color="007700"><i>'Draw it!</i></font> 
+      <font color="0000AA"><b>END</b></font> <font color="000099"><b>WITH</b></font>
+     
+    <font color="0000AA"><b>CASE</b></font> "<font color="990000">XY Points</font>"
+      <font color="0000AA"><b>WITH</b></font> Graph
+        .Initialize                                     <font color="007700"><i>'Set defaults</i></font> 
+        .MainTitle.Text = "<font color="990000">Scatter Plot Example</font>"        <font color="007700"><i>'change desired options</i></font> 
+        .SubTitle.Text = "<font color="990000">Data in All Four Quadrants</font>"
+        .XTitle.Text = "<font color="990000">X Axis</font>"      
+        .YTitle.Text = "<font color="990000">Y Axis</font>"
+        .Data.ColCount = 16                             <font color="007700"><i>'Set .Data Grid dimensions               </i></font> 
+        .Data.RowCount = 5
+        k = .00100                                    <font color="007700"><i>'&lt;-- change k for large and small values</i></font> 
+        <font color="0000AA"><b>RANDOMIZE</b></font>                                       <font color="007700"><i>'Load the data</i></font> 
+        <font color="0000AA"><b>FOR</b></font> i = 2 <font color="0000AA"><b>to</b></font> .Data.ColCount <font color="0000AA"><b>STEP</b></font> 2              <font color="007700"><i>'for each col pair</i></font> 
+          .Data.Cell<b>(</b>i , 0<b>)</b> = "<font color="990000">Group </font>" + <font color="0000AA"><b>STR$</b></font><b>(</b>i \ 2<b>)</b>    <font color="007700"><i>'Legend in 2nd Col (Y) of Pair, Row 0</i></font> 
+          <font color="0000AA"><b>FOR</b></font> j = 1 <font color="0000AA"><b>to</b></font> .Data.RowCount                   <font color="007700"><i>'add data to each row</i></font> 
+            .Data.Cell<b>(</b>i - 1 , j<b>)</b> = <font color="0000AA"><b>STR$</b></font><b>(</b>k * <b>(</b><font color="0000AA"><b>RND</b></font> - <font color="0000AA"><b>RND</b></font><b>)</b><b>)</b><font color="007700"><i>'X Values in Col 1</i></font> 
+            .Data.Cell<b>(</b>i , j<b>)</b> = <font color="0000AA"><b>STR$</b></font><b>(</b>k * <b>(</b><font color="0000AA"><b>RND</b></font> - <font color="0000AA"><b>RND</b></font><b>)</b><b>)</b>   <font color="007700"><i>'Y Values in Col 2</i></font> 
+          <font color="0000AA"><b>NEXT</b></font> j  
+        <font color="0000AA"><b>NEXT</b></font> i
+        .ChartType = ctXY                               <font color="007700"><i>'XY Scatter Chart</i></font> 
+        .ChartStyle = csPointsOnly                      <font color="007700"><i>'Just the Points</i></font> 
+        .DrawXY <b>(</b>False<b>)</b>                                 <font color="007700"><i>'Draw it!</i></font> 
+      <font color="0000AA"><b>END</b></font> <font color="000099"><b>WITH</b></font>
+
+    <font color="0000AA"><b>CASE</b></font> "<font color="990000">XY Lines</font>"
+      <font color="0000AA"><b>WITH</b></font> Graph
+        .Initialize                                     <font color="007700"><i>'Set defaults</i></font> 
+        .MainTitle.Text = "<font color="990000">Two Sine Curves</font>"             <font color="007700"><i>'change desired options      </i></font> 
+        .SubTitle.Text = "<font color="990000">Out of Phase</font>"
+        .XTitle.Text = "<font color="990000">Radians</font>"      
+        .YTitle.Text = "<font color="990000">Sine of X</font>"
+        .BW = True                                   
+        .YAxis.Div = 6
+        .XAxis.AutoScale = False                        <font color="007700"><i>'Manually Scale</i></font> 
+          .XAxis.Max = 2                                <font color="007700"><i>'Set Max Manually</i></font> 
+          .XAxis.Min = 0                                <font color="007700"><i>'Set Min Manually          </i></font> 
+        .YAxis.AutoScale = False                        <font color="007700"><i>'Manually Scale</i></font> 
+          .YAxis.Max = 1.5                              <font color="007700"><i>'Set Max Manually</i></font> 
+          .YAxis.Min = -1.5                             <font color="007700"><i>'Set Min Manually</i></font> 
+        .Data.ColCount = 4                              <font color="007700"><i>'Set .Data Grid dimensions               </i></font> 
+        .Data.RowCount = 21                             <font color="007700"><i>'Load the data</i></font> 
+        <font color="0000AA"><b>FOR</b></font> i = 2 <font color="0000AA"><b>to</b></font> .Data.ColCount <font color="0000AA"><b>STEP</b></font> 2              <font color="007700"><i>'for each col pair</i></font> 
+          .Data.Cell<b>(</b>i , 0<b>)</b> = "<font color="990000">Group </font>" + <font color="0000AA"><b>STR$</b></font><b>(</b>i \ 2<b>)</b>    <font color="007700"><i>'Legend in 2nd Col of Pair, Row 0</i></font> 
+          .Series<b>(</b>i\2<b>)</b>.LineStyle = <b>(</b>i\2-1<b>)</b> <font color="0000AA"><b>MOD</b></font> 5        <font color="007700"><i>'Cycle line styles</i></font> 
+          <font color="0000AA"><b>FOR</b></font> j = 1 <font color="0000AA"><b>to</b></font> .Data.RowCount                   <font color="007700"><i>'add data to each row</i></font> 
+            .Data.Cell<b>(</b>i - 1 , j<b>)</b> = <font color="0000AA"><b>STR$</b></font><b>(</b><b>(</b>j-1<b>)</b>/10<b>)</b>      <font color="007700"><i>'X Values in 1st Col of Pair</i></font> 
+             k = <b>(</b><b>(</b>j-1<b>)</b>/10 + [<b>(</b>i-2<b>)</b> * 4.75]<b>)</b>* 3.141592
+            .Data.Cell<b>(</b>i , j<b>)</b> = <font color="0000AA"><b>STR$</b></font><b>(</b><font color="0000AA"><b>SIN</b></font><b>(</b>k<b>)</b><b>)</b>            <font color="007700"><i>'Y Values in 2nd Col of Pair</i></font> 
+          <font color="0000AA"><b>NEXT</b></font> j  
+        <font color="0000AA"><b>NEXT</b></font> i
+        .ChartType = ctXY                               <font color="007700"><i>'XY Scatter Chart</i></font> 
+        .ChartStyle = csLinesOnly                       <font color="007700"><i>'Just the Lines        </i></font> 
+        .DrawXY <b>(</b>False<b>)</b>                                 <font color="007700"><i>'Draw it!</i></font> 
+      <font color="0000AA"><b>END</b></font> <font color="000099"><b>WITH</b></font>
+      
+    <font color="0000AA"><b>CASE</b></font> "<font color="990000">XY Both</font>"
+      <font color="0000AA"><b>WITH</b></font> Graph
+        .Initialize                                     <font color="007700"><i>'Set defaults</i></font> 
+        .MainTitle.Text = "<font color="990000">Scatter Plot With Lines</font>"     <font color="007700"><i>'change desired options</i></font> 
+        .SubTitle.Text = "<font color="990000">All options set to default</font>"
+        .XTitle.Text = "<font color="990000">X Axis</font>"      
+        .YTitle.Text = "<font color="990000">Y Axis</font>"        
+        .Data.ColCount = 4                              <font color="007700"><i>'Set .Data Grid dimensions               </i></font> 
+        .Data.RowCount = 11      
+        k = 100                                         <font color="007700"><i>'Load the data</i></font> 
+        <font color="000099"><b>RANDOMIZE</b></font>
+        <font color="0000AA"><b>FOR</b></font> i = 2 <font color="0000AA"><b>to</b></font> .Data.ColCount <font color="0000AA"><b>STEP</b></font> 2              <font color="007700"><i>'for each col pair</i></font> 
+          .Data.Cell<b>(</b>i , 0<b>)</b> = "<font color="990000">Group </font>" + <font color="0000AA"><b>STR$</b></font><b>(</b>i \ 2<b>)</b>    <font color="007700"><i>'Legend in 2nd Col of Pair, Row 0</i></font> 
+          <font color="0000AA"><b>FOR</b></font> j = 1 <font color="0000AA"><b>to</b></font> .Data.RowCount                   <font color="007700"><i>'add data to each row</i></font> 
+            .Data.Cell<b>(</b>i - 1 , j<b>)</b> = <font color="0000AA"><b>STR$</b></font><b>(</b>j<b>)</b>             <font color="007700"><i>'X Values in 1st Col of Pair</i></font> 
+            .Data.Cell<b>(</b>i , j<b>)</b> = <font color="0000AA"><b>STR$</b></font><b>(</b><font color="0000AA"><b>RND</b></font> * k<b>)</b>           <font color="007700"><i>'Y Values in 2nd Col of Pair</i></font> 
+          <font color="0000AA"><b>NEXT</b></font> j  
+        <font color="0000AA"><b>NEXT</b></font> i
+<font color="007700"><i>'        .Data.Cell(1,4) = ""                            'Uncomment to see how QChart</i></font> 
+<font color="007700"><i>'        .Data.Cell(4,8) = ""                            'handles missing data                </i></font> 
+        .ChartType = ctXY                               <font color="007700"><i>'XY Scatter Chart</i></font> 
+        .ChartStyle = csBoth                            <font color="007700"><i>'Lines and Points</i></font> 
+        .DrawXY <b>(</b>True<b>)</b>                                  <font color="007700"><i>'Draw it as an Overlay</i></font> 
+
+      <font color="0000AA"><b>END</b></font> <font color="000099"><b>WITH</b></font>
+
+    <font color="0000AA"><b>CASE</b></font> "<font color="990000">XY Logs</font>"
+      <font color="0000AA"><b>WITH</b></font> Graph
+        .Initialize                                     <font color="007700"><i>'Set defaults</i></font> 
+        .MainTitle.Text = "<font color="990000">Log - Log Scaling</font>"           <font color="007700"><i>'change desired options</i></font> 
+        .SubTitle.Text = "<font color="990000">Grid with no Tics</font>"
+        .XTitle.Text = "<font color="990000">X Axis</font>"      
+        .YTitle.Text = "<font color="990000">Y Axis</font>" 
+        .YAxis.Tics = False
+        .YAxis.LogScale = True
+        .XAxis.Tics = False
+        .XAxis.LogScale = True 
+        .DoLegend = False                       
+        .Data.ColCount = 2                              <font color="007700"><i>'Set .Data Grid dimensions               </i></font> 
+        .Data.RowCount = 10
+        <font color="0000AA"><b>RANDOMIZE</b></font>                                       <font color="007700"><i>'Load the data</i></font> 
+        <font color="0000AA"><b>FOR</b></font> i = 2 <font color="0000AA"><b>to</b></font> .Data.ColCount <font color="0000AA"><b>STEP</b></font> 2              <font color="007700"><i>'for each col pair</i></font> 
+          .Data.Cell<b>(</b>i , 0<b>)</b> = "<font color="990000">Group </font>" + <font color="0000AA"><b>STR$</b></font><b>(</b>i \ 2<b>)</b>    <font color="007700"><i>'Legend in 2nd Col of Pair, Row 0</i></font> 
+          <font color="0000AA"><b>FOR</b></font> j = 1 <font color="0000AA"><b>to</b></font> .Data.RowCount                   <font color="007700"><i>'add data to each row</i></font> 
+            .Data.Cell<b>(</b>i - 1 , j<b>)</b> = <font color="0000AA"><b>STR$</b></font><b>(</b>j<b>)</b>             <font color="007700"><i>'X Values in 1st Col of Pair</i></font> 
+            .Data.Cell<b>(</b>i , j<b>)</b> = <font color="0000AA"><b>STR$</b></font><b>(</b><font color="0000AA"><b>RND</b></font> * 10^ <b>(</b>j/5<b>)</b><b>)</b>   <font color="007700"><i>'Y Values in 2nd Col of Pair</i></font> 
+          <font color="0000AA"><b>NEXT</b></font> j  
+        <font color="0000AA"><b>NEXT</b></font> i
+        .ChartType = ctXY                               <font color="007700"><i>'XY Scatter Chart</i></font> 
+        .ChartStyle = csBoth                            <font color="007700"><i>'Points and Lines</i></font> 
+        .DrawXY <b>(</b>True<b>)</b>                                  <font color="007700"><i>'Draw it!</i></font> 
+      <font color="0000AA"><b>END</b></font> <font color="000099"><b>WITH</b></font>
+
+    <font color="0000AA"><b>CASE</b></font> "<font color="990000">Line Graph</font>"
+      <font color="0000AA"><b>WITH</b></font> Graph
+        .Initialize                                     <font color="007700"><i>'Set defaults</i></font> 
+        .MainTitle.Text = "<font color="990000">Simple Line Graph</font>"           <font color="007700"><i>'change desired options</i></font> 
+        .SubTitle.Text = "<font color="990000">X Labels Alternate Up and Down for Room</font>"
+        .XTitle.Text = "<font color="990000">X Axis</font>"      
+        .YTitle.Text = "<font color="990000">Y Axis</font>"
+        .Data.ColCount = 5                              <font color="007700"><i>'Set .Data Grid dimensions               </i></font> 
+        .Data.RowCount = 12
+        k = 18                                          <font color="007700"><i>'Load the data</i></font> 
+        <font color="000099"><b>RANDOMIZE</b></font>
+        <font color="0000AA"><b>FOR</b></font> i = 1 <font color="0000AA"><b>to</b></font> .Data.ColCount                     <font color="007700"><i>'for each col</i></font> 
+          .Series<b>(</b>i<b>)</b>.LineStyle = <b>(</b>i-1<b>)</b> <font color="0000AA"><b>MOD</b></font> 5            <font color="007700"><i>'Cycle line styles          </i></font> 
+          .Data.Cell<b>(</b>i , 0<b>)</b> = "<font color="990000">Group </font>" + <font color="0000AA"><b>STR$</b></font><b>(</b>i<b>)</b>        <font color="007700"><i>'Legend in Row 0 of Each Col</i></font> 
+          <font color="0000AA"><b>FOR</b></font> j = 1 <font color="0000AA"><b>to</b></font> .Data.RowCount                   <font color="007700"><i>'add data to each row</i></font> 
+            .Data.Cell<b>(</b>0 , j<b>)</b> = "<font color="990000">Label </font>" + <font color="0000AA"><b>STR$</b></font><b>(</b>j<b>)</b>      <font color="007700"><i>'X Labels</i></font> 
+            .Data.Cell<b>(</b>i , j<b>)</b> = <font color="0000AA"><b>STR$</b></font><b>(</b><font color="0000AA"><b>RND</b></font> * k<b>)</b>           <font color="007700"><i>'Y Values</i></font> 
+          <font color="0000AA"><b>NEXT</b></font> j  
+        <font color="0000AA"><b>NEXT</b></font> i
+        .ChartType = ctLine                             <font color="007700"><i>'Line Chart</i></font> 
+        .ChartStyle = csLinesOnly                       <font color="007700"><i>'Lines only        </i></font> 
+        .DrawLine <b>(</b>False<b>)</b>                               <font color="007700"><i>'Draw it!</i></font> 
+      <font color="0000AA"><b>END</b></font> <font color="0000AA"><b>WITH</b></font>    
+    
+    <font color="0000AA"><b>CASE</b></font> "<font color="990000">Line w/Points</font>"
+      <font color="0000AA"><b>WITH</b></font> Graph
+        .Initialize                                     <font color="007700"><i>'Set defaults</i></font> 
+        .MainTitle.Text = "<font color="990000">Line Graph With Points</font>"      <font color="007700"><i>'change desired options</i></font> 
+        .SubTitle.Text = "<font color="990000">Tics Only, No Grid</font>"
+        .XTitle.Text = "<font color="990000">X Axis</font>"      
+        .YTitle.Text = "<font color="990000">Y Axis</font>"
+        .BW = True
+        .XAxis.Grid = False                             <font color="007700"><i>'Tics only</i></font> 
+        .YAxis.Grid = False
+        .Data.ColCount = 4                              <font color="007700"><i>'Set .Data Grid dimensions               </i></font> 
+        .Data.RowCount = 6
+        k = 18                                          <font color="007700"><i>'Load the data</i></font> 
+        <font color="000099"><b>RANDOMIZE</b></font>
+        <font color="0000AA"><b>FOR</b></font> i = 1 <font color="0000AA"><b>to</b></font> .Data.ColCount                     <font color="007700"><i>'for each col</i></font> 
+          .Data.Cell<b>(</b>i , 0<b>)</b> = "<font color="990000">Group </font>" + <font color="0000AA"><b>STR$</b></font><b>(</b>i<b>)</b>        <font color="007700"><i>'Legend in Row 0 of Each Col</i></font> 
+          <font color="0000AA"><b>FOR</b></font> j = 1 <font color="0000AA"><b>to</b></font> .Data.RowCount                   <font color="007700"><i>'add data to each row</i></font> 
+            .Data.Cell<b>(</b>0 , j<b>)</b> = "<font color="990000">Lbl </font>" + <font color="0000AA"><b>STR$</b></font><b>(</b>j<b>)</b>        <font color="007700"><i>'X Labels</i></font> 
+            .Data.Cell<b>(</b>i , j<b>)</b> = <font color="0000AA"><b>STR$</b></font><b>(</b><font color="0000AA"><b>RND</b></font> * k<b>)</b>           <font color="007700"><i>'Y Values</i></font> 
+          <font color="0000AA"><b>NEXT</b></font> j  
+        <font color="0000AA"><b>NEXT</b></font> i
+<font color="007700"><i>'        .Data.Cell(1,4) = ""                            'Uncomment to see QChart handle missing data</i></font> 
+        .ChartType = ctLine                             <font color="007700"><i>'Line Chart</i></font> 
+        .ChartStyle = csBoth                            <font color="007700"><i>'Points and Lines        </i></font> 
+        .DrawLine <b>(</b>False<b>)</b>                               <font color="007700"><i>'Draw it!</i></font> 
+      <font color="0000AA"><b>END</b></font> <font color="0000AA"><b>WITH</b></font> 
+
+    <font color="0000AA"><b>CASE</b></font> "<font color="990000">Box Plot</font>"
+      <font color="0000AA"><b>WITH</b></font> Graph
+        .Initialize                                     <font color="007700"><i>'Set defaults</i></font> 
+        .MainTitle.Text = "<font color="990000">Box and Whisker Plot</font>"        <font color="007700"><i>'change desired options</i></font> 
+        .XTitle.Text = "<font color="990000">X Axis</font>"      
+        .YTitle.Text = "<font color="990000">Y Axis</font>"
+        .XAxis.Grid = False
+        .XAxis.Tics = False
+        .YAxis.AutoScale = False
+          .YAxis.Min = 0
+          .YAxis.Max = 50
+        .Data.ColCount = 16                             <font color="007700"><i>'Set .Data Grid dimensions                            </i></font> 
+        .Data.RowCount = 5
+        k = 10                                          <font color="007700"><i>'Load the data</i></font> 
+        <font color="000099"><b>RANDOMIZE</b></font>
+        <font color="0000AA"><b>FOR</b></font> i = 1 <font color="0000AA"><b>to</b></font> .Data.ColCount                     <font color="007700"><i>'for each col</i></font> 
+          .Data.Cell<b>(</b>i , 0<b>)</b> = "<font color="990000">Group </font>" + <font color="0000AA"><b>STR$</b></font><b>(</b>i<b>)</b>        <font color="007700"><i>'Legend in Row 0 of Each Col</i></font> 
+          .Data.Cell<b>(</b>i , 1<b>)</b> = <font color="0000AA"><b>STR$</b></font><b>(</b><font color="0000AA"><b>RND</b></font> * k + 40<b>)</b>        <font color="007700"><i>'Max Values</i></font> 
+          .Data.Cell<b>(</b>i , 2<b>)</b> = <font color="0000AA"><b>STR$</b></font><b>(</b><font color="0000AA"><b>RND</b></font> * k + 30<b>)</b>        <font color="007700"><i>'Q3 Values</i></font> 
+          .Data.Cell<b>(</b>i , 3<b>)</b> = <font color="0000AA"><b>STR$</b></font><b>(</b><font color="0000AA"><b>RND</b></font> * k + 20<b>)</b>        <font color="007700"><i>'Q2 Values</i></font> 
+          .Data.Cell<b>(</b>i , 4<b>)</b> = <font color="0000AA"><b>STR$</b></font><b>(</b><font color="0000AA"><b>RND</b></font> * k + 10<b>)</b>        <font color="007700"><i>'Q1 Values</i></font> 
+          .Data.Cell<b>(</b>i , 5<b>)</b> = <font color="0000AA"><b>STR$</b></font><b>(</b><font color="0000AA"><b>RND</b></font> * k<b>)</b>             <font color="007700"><i>'Min Values                                                </i></font> 
+        <font color="0000AA"><b>NEXT</b></font> i
+        .ChartType = ctBox                              <font color="007700"><i>'Box and Whisker Plot</i></font> 
+        .ChartStyle = csWhisker        
+        .DrawBox <b>(</b>False<b>)</b>                                <font color="007700"><i>'Draw it!</i></font> 
+      <font color="0000AA"><b>END</b></font> <font color="0000AA"><b>WITH</b></font>  
+        
+    <font color="0000AA"><b>CASE</b></font> "<font color="990000">HLC Style 1</font>"
+      <font color="007700"><i>'NOTE: If values for .Data.Cells 2, 3 and 4 are set equal, </i></font> 
+      <font color="007700"><i>'Box routine will draw a Hi-Lo-Close antenna style graph</i></font> 
+      <font color="0000AA"><b>WITH</b></font> Graph
+        .Initialize                                     <font color="007700"><i>'Set defaults</i></font> 
+        .MainTitle.Text = "<font color="990000">Hi-Lo-Close Plot</font>"            <font color="007700"><i>'change desired options</i></font> 
+        .SubTitle.Text = "<font color="990000">Antenna Style</font>"
+        .XTitle.Text = "<font color="990000">X Axis</font>"      
+        .YTitle.Text = "<font color="990000">Y Axis</font>"
+        .XAxis.Grid = False
+        .XAxis.Tics = False
+        .Data.ColCount = 8                             <font color="007700"><i>'Set .Data Grid dimensions                            </i></font> 
+        .Data.RowCount = 5
+        k = 10                                          <font color="007700"><i>'Load the data</i></font> 
+        <font color="000099"><b>RANDOMIZE</b></font>
+        <font color="0000AA"><b>FOR</b></font> i = 1 <font color="0000AA"><b>to</b></font> .Data.ColCount                     <font color="007700"><i>'for each col</i></font> 
+          .Data.Cell<b>(</b>i , 0<b>)</b> = "<font color="990000">Group </font>" + <font color="0000AA"><b>STR$</b></font><b>(</b>i<b>)</b>        <font color="007700"><i>'Legend in Row 0 of Each Col</i></font> 
+          .Data.Cell<b>(</b>i , 1<b>)</b> = <font color="0000AA"><b>STR$</b></font><b>(</b><font color="0000AA"><b>RND</b></font> * k + 50<b>)</b>        <font color="007700"><i>'Hi Value</i></font> 
+          .Data.Cell<b>(</b>i , 2<b>)</b> = <font color="0000AA"><b>STR$</b></font><b>(</b><font color="0000AA"><b>RND</b></font> * k + 37<b>)</b>        <font color="007700"><i>'&lt;-- Set all Three to </i></font> 
+          .Data.Cell<b>(</b>i , 3<b>)</b> = .Data.Cell<b>(</b>i , 2<b>)</b>         <font color="007700"><i>'&lt;-- the mid or "Close"</i></font> 
+          .Data.Cell<b>(</b>i , 4<b>)</b> = .Data.Cell<b>(</b>i , 2<b>)</b>         <font color="007700"><i>'&lt;-- Value</i></font> 
+          .Data.Cell<b>(</b>i , 5<b>)</b> = <font color="0000AA"><b>STR$</b></font><b>(</b><font color="0000AA"><b>RND</b></font> * k + 25<b>)</b>        <font color="007700"><i>'Lo Value</i></font> 
+        <font color="0000AA"><b>NEXT</b></font> i
+        .ChartType = ctBox                              <font color="007700"><i>'Hi-Lo-Close Plot</i></font> 
+        .ChartStyle = csHiLo        
+        .DrawBox <b>(</b>False<b>)</b>                                <font color="007700"><i>'Draw it!    </i></font> 
+      <font color="0000AA"><b>END</b></font> <font color="0000AA"><b>WITH</b></font>  
+
+    <font color="0000AA"><b>CASE</b></font> "<font color="990000">HLC Style 2</font>"
+      <font color="007700"><i>'NOTE: If values for .Data.Cells 1 & 2 and 4 & 5 are set equal, </i></font> 
+      <font color="007700"><i>'Box routine will draw a Hi-Lo-Close box style graph</i></font> 
+      <font color="0000AA"><b>WITH</b></font> Graph
+        .Initialize                                     <font color="007700"><i>'Set defaults</i></font> 
+        .MainTitle.Text = "<font color="990000">Hi-Lo-Close Plot</font>"            <font color="007700"><i>'change desired options</i></font> 
+        .SubTitle.Text = "<font color="990000">Box Style</font>"        
+        .XTitle.Text = "<font color="990000">X Axis</font>"      
+        .YTitle.Text = "<font color="990000">Y Axis</font>"
+        .XAxis.Grid = False
+        .XAxis.Tics = False
+        .Data.ColCount = 8                              <font color="007700"><i>'Set .Data Grid dimensions                            </i></font> 
+        .Data.RowCount = 5
+        k = 10                                          <font color="007700"><i>'Load the data</i></font> 
+        <font color="000099"><b>RANDOMIZE</b></font>
+        <font color="0000AA"><b>FOR</b></font> i = 1 <font color="0000AA"><b>to</b></font> .Data.ColCount                     <font color="007700"><i>'for each col</i></font> 
+          .Data.Cell<b>(</b>i , 0<b>)</b> = "<font color="990000">Group </font>" + <font color="0000AA"><b>STR$</b></font><b>(</b>i<b>)</b>        <font color="007700"><i>'Legend in Row 0 of Each Col</i></font> 
+          .Data.Cell<b>(</b>i , 1<b>)</b> = <font color="0000AA"><b>STR$</b></font><b>(</b><font color="0000AA"><b>RND</b></font> * k + 50<b>)</b>        <font color="007700"><i>'Hi Value</i></font> 
+          .Data.Cell<b>(</b>i , 2<b>)</b> = .Data.Cell<b>(</b>i , 1<b>)</b>         <font color="007700"><i>'&lt;-- Set = to Hi Value </i></font> 
+          .Data.Cell<b>(</b>i , 3<b>)</b> = <font color="0000AA"><b>STR$</b></font><b>(</b><font color="0000AA"><b>RND</b></font> * k + 35<b>)</b>        <font color="007700"><i>'Close Value</i></font> 
+          .Data.Cell<b>(</b>i , 4<b>)</b> = <font color="0000AA"><b>STR$</b></font><b>(</b><font color="0000AA"><b>RND</b></font> * k + 20<b>)</b>        <font color="007700"><i>'Lo Value</i></font> 
+          .Data.Cell<b>(</b>i , 5<b>)</b> = .Data.Cell<b>(</b>i , 4<b>)</b>         <font color="007700"><i>'&lt;-- Set = Lo Value</i></font> 
+        <font color="0000AA"><b>NEXT</b></font> i
+        .ChartType = ctBox                              <font color="007700"><i>'Hi-Lo-Close Plot</i></font> 
+        .ChartStyle = csWhisker                         <font color="007700"><i>'Whiskers are hidden :)</i></font> 
+        .DrawBox <b>(</b>False<b>)</b>                                <font color="007700"><i>'Draw it!    </i></font> 
+      <font color="0000AA"><b>END</b></font> <font color="0000AA"><b>WITH</b></font>  
+      
+    <font color="0000AA"><b>CASE</b></font> "<font color="990000">Redraw</font>"
+      <font color="0000AA"><b>WITH</b></font> Graph 
+        .MainFont.Name =  "<font color="990000">Times New Roman</font>"              <font color="007700"><i>'Change some options </i></font> 
+        .SubFont.Name =   "<font color="990000">Times New Roman</font>"              <font color="007700"><i>'on the currently defined chart</i></font> 
+        .PlotAreaColr = .Colors<b>(</b>15<b>)</b>             
+        <font color="0000AA"><b>SELECT</b></font> <font color="0000AA"><b>CASE</b></font> .SubFont.Size
+          <font color="0000AA"><b>CASE</b></font> .MainFont.Size
+            .SubFont.Size = 12
+          <font color="0000AA"><b>CASE</b></font> <font color="000099"><b>ELSE</b></font>
+            .SubFont.Size = .MainFont.Size
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>SELECT</b></font>
+        <font color="0000AA"><b>SELECT</b></font> <font color="0000AA"><b>CASE</b></font> .DoLegend
+         <font color="0000AA"><b>CASE</b></font> TRUE
+           .DoLegend = False
+         <font color="0000AA"><b>CASE</b></font> FALSE
+           .DoLegend = True        
+       <font color="0000AA"><b>END</b></font> <font color="000099"><b>SELECT</b></font>
+       <font color="0000AA"><b>SELECT</b></font> <font color="0000AA"><b>CASE</b></font> .GreyScale
+         <font color="0000AA"><b>CASE</b></font> TRUE
+           .GreyScale = False
+         <font color="0000AA"><b>CASE</b></font> FALSE
+           .GreyScale = True        
+       <font color="0000AA"><b>END</b></font> <font color="000099"><b>SELECT</b></font>
+       .RedrawChart                                     <font color="007700"><i>'and redraw the chart</i></font> 
+     <font color="0000AA"><b>END</b></font> <font color="000099"><b>WITH</b></font>
+      
+    <font color="0000AA"><b>CASE</b></font> "<font color="990000">Clear</font>"
+      Graph.ClearBuffer                                 <font color="007700"><i>'Start with a clean slate</i></font> 
+      Graph.ImagePaint                                  <font color="007700"><i>'Paint the blank Canvas</i></font> 
+      
+    <font color="0000AA"><b>CASE</b></font> "<font color="990000">Save</font>"
+      Graph.SaveChart <b>(</b>"<font color="990000"></font>"<b>)</b>
+
+    <font color="0000AA"><b>CASE</b></font> "<font color="990000">Print</font>"
+      Graph.PrintChart <b>(</b>Printer.PrinterIndex, poLandscape, 40, 1<b>)</b>
+
+    <font color="0000AA"><b>CASE</b></font> "<font color="990000">Exit</font>"
+      Application.Terminate  
+      
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>SELECT</b></font>
+
+<font color="0000AA"><b>END</b></font> <font color="0000AA"><b>SUB</b></font>  
+<font color="007700"><i>'-------------------------------------------------------------------------------------------</i></font> 
+
+<font color="0000AA"><b>SUB</b></font> frmMainResize <b>(</b>SENDER <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>QForm</b></font><b>)</b>
+  
+  <font color="0000AA"><b>WITH</b></font> Graph
+    .Width = frmMain.ClientWidth - btnClear.Width       <font color="007700"><i>'Calculate new sizes</i></font> 
+    .Height = frmMain.ClientHeight          
+    .RedrawChart                                        <font color="007700"><i>'Redraw the QChart Object</i></font> 
+  <font color="0000AA"><b>END</b></font> <font color="0000AA"><b>WITH</b></font>  
+  <font color="007700"><i>'Plus anything else that needs doing in your form resize</i></font> 
+  
+<font color="0000AA"><b>END</b></font> <font color="0000AA"><b>SUB</b></font>  
+ 
+</pre>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qovalbtn.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qpopupmenu.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>  
+
+</BODY>
+</HTML>     

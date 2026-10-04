@@ -1,0 +1,210 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QFILELISTBOX</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QFILELISTBOX</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QFILELISTBOX Component</H1>
+<DD>Use QFileListBox when you want to maintain a listbox with all the files in a
+specific directory. It can also list directories as well.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QFileListBox Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee"><TD><b>Align</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>alNone</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Align determines how the control aligns within its parent control.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Color</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Cursor</TD><TD>INTEGER</TD><TD>RW</TD><TD>crDefault</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Directory</b></TD><TD>STRING</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Directory is the directory that contains all the files listed in the file listbox.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Drive</TD><TD>STRING</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Enabled</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>ExtendedSelect</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">ExtendedSelect determines if the user can select a sequential range of items in the file listbox.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Filename</b></TD><TD>STRING</TD><TD>R</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">FileName is the name of the selected file in the listbox, including the pathname.
+    <font color="#800000" size="4"><b>Read Only!</b></font>                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Font</TD><TD>QFONT</TD><TD>W</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Height</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Hint</TD><TD>STRING</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Item</TD><TD>ARRAY of STRING&nbsp; <b>
+
+<a name="1">
+    Filename</a></b></a><b> without pathname</b></TD>
+
+<a name="1">
+    <TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>ItemCount</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>ItemHeight</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>ItemIndex</b></TD><TD>INTEGER</TD><TD><b>
+    <font color="#800000">R</font></b></TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">ItemIndex specifies the index of the selected item in the file listbox.
+                If no item is selected, ItemIndex equals -1. </a>
+    <font color="#800000" size="4"><b>Read Only!</b></font></TD></TR>
+
+<a name="1">
+  <TR bgcolor="eeeeee"><TD>Left</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Mask</TD><TD>STRING</TD><TD>RW</TD><TD>*.*</TD></TR>
+  <TR bgcolor="eeeeee"><TD>MultiSelect</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Parent</TD><TD>QFORM/QPANEL/QTABCONTROL</TD><TD>W</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>PopupMenu</TD><TD>QPOPUPMENU</TD><TD>W</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>SelCount</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Selected</TD><TD>ARRAY of INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>ShowHint</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>ShowIcons</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">ShowIcons determines whether images should appear next to the file names.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>TabOrder</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Tag</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>TopIndex</b></TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">TopIndex specifies the index number of the item that appears at the top of the file listbox.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Top</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Width</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Visible</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+</TABLE>
+<br><br>
+
+<a name="2">
+<FONT SIZE = +1><B>QFileListBox Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee" valign="top"><TD><b>AddFileTypes</b></TD><TD>SUBI</TD><TD>Add certain file types to list box</TD><TD NOWRAP>INTEGER, Infinite</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">FileTypes determine which files are displayed in the file listbox according to their attributes.<br>
+                             0 = ftReadOnly -- Display files with read-only attribute.<br>
+                             1 = ftHidden -- Display files with hidden attribute.<br>
+                             2 = ftSystem -- Displays system files.<br>
+                             3 = ftVolumeID -- Displays volume name.<br>
+                             4 = ftDirectory -- Displays directories.<br>
+                             5 = ftArchive -- Display files with archive attribute.<br>
+                             6 = ftNormal -- Display files with no special attributes.<br>
+                             <b><u>Example</u></b>:
+                             <blockquote><font face="courier" size="2">
+                             $INCLUDE "RAPIDQ.INC"<br>
+                             DIM FileListBox AS QFILELISTBOX<br>
+                             FileListBox.AddFileTypes(ftDirectory, ftHidden)
+                             </font></blockquote>
+                </TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>DelFileTypes</TD><TD>SUBI</TD><TD>Remove certain file types from list</TD><TD NOWRAP>INTEGER, Infinite</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Update</TD><TD>SUB</TD><TD>Updates/refreshes file list</TD><TD NOWRAP>0</TD></TR>
+</TABLE>
+<BR>
+
+<a name="3">
+<FONT SIZE = +1><B>QFileListBox Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD>OnChange</TD><TD>VOID</TD><TD>Directory changes</TD><TD>0</TD></TR>
+  <TR><TD>OnClick</TD><TD>VOID</TD><TD>File was clicked on</TD><TD>0</TD></TR>
+  <TR><TD>OnDblClick</TD><TD>VOID</TD><TD>Selection was double clicked on</TD><TD>0</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QFileListBox Examples</B></FONT>
+
+<PRE>'' Simple Application Launcher
+'' How to use the File List Box as a Directory List Box in Rapid-Q by William Yu
+
+$INCLUDE "RAPIDQ.INC"
+
+DECLARE SUB ChangeDirectories
+DECLARE SUB ExecuteApplication
+DECLARE SUB ResizeForm
+
+CREATE Form AS QForm
+  Height = 300
+  Width = 450
+  CREATE DirList AS QFileListBox     '' Can double as a Directory list box
+   ShowIcons = True
+   Mask = "*.*"
+   AddFileTypes(ftDirectory)          '' Add Directories
+   DelFileTypes(ftNormal)             '' Remove files (see RAPIDQ.INC for values)
+   OnDblClick = ChangeDirectories
+   Height = Form.ClientHeight
+   Width = 200
+  END CREATE
+  CREATE EXEList AS QFileListBox
+   ShowIcons = True
+   Mask = "*.EXE"
+   OnDblClick = ExecuteApplication
+   Left = 215
+   Height = Form.ClientHeight
+   Width = 225
+  END CREATE
+  Center
+  Caption = DirList.Directory
+  OnResize = ResizeForm
+  ShowModal
+END CREATE
+
+
+SUB ChangeDirectories
+  ChDir(DirList.Item(DirList.ItemIndex) - "[" - "]")
+  DirList.Directory = CurDir$:  EXEList.Directory = CurDir$
+  Form.Caption = CurDir$
+END SUB
+
+SUB ExecuteApplication
+  RUN EXEList.FileName    ' Non-Blocking
+'  SHELL EXEList.FileName  ' Blocks, until program terminates
+                           ' Becareful running 16-bit applications
+END SUB
+
+SUB ResizeForm
+  DirList.Height = Form.ClientHeight
+  EXEList.Height = Form.ClientHeight
+  EXEList.Width = Form.ClientWidth - 215
+END SUB
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qedit.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qfilestream.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>  ext Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>     

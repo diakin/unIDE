@@ -1,0 +1,181 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> PRINTER</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: PRINTER</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>PRINTER Component</H1>
+<DD>This object is global, and need not be created. Please note that some printers
+do not support Draw or CopyRect. The printer component is mainly used for graphics,
+although it may also be suitable for text, please refer to LPRINT for text-only printing.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>Printer Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee"><TD><b>Aborted</b></TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Aborted determintes if the user aborted the print job.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Capabilities.Copies</b></TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Capabilities.Copies indicates whether the print is capable of printing multiple copies.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Capabilities.Orientation</b></TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Capabilities.Orientation indicates whether the print is capable of different orientations.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Capabilities.Collate</b></TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Capabilities.Collate indicates whether the print is capable of collating.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Copies</b></TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Number of copies to print.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD>CopyMode</TD><TD>INTEGER</TD><TD>RW</TD><TD>cmBlackNess</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Font</TD><TD>QFONT</TD><TD>W</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Fonts</TD><TD>ARRAY of STRING</TD><TD>R</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>FontsCount</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Handle</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Orientation</b></TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Orientation determines if the print job prints vertically or horizontally on a page.<br>
+                             <b><u>Valid orientation values are</u></b>:<br>
+                             0 = poPortrait (Vertical print)<br>
+                             1 = poLandscape (Horizontal print)<br>
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD>PageHeight</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>PageNumber</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>PageWidth</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>PrinterIndex</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Printers</TD><TD>ARRAY of STRING</TD><TD>R</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>PrintersCount</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Printing</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Title</b></TD><TD>STRING</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Title is the text that appears in the Print Manager and on network header pages.
+                             </TD></TR>
+</TABLE>
+<br><br>
+
+<a name="2">
+<FONT SIZE = +1><B>Printer Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee" valign="top"><TD>Abort</TD><TD>SUB</TD><TD>Abort printing the document</TD><TD NOWRAP>0</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>BeginDoc</TD><TD>SUB</TD><TD>Starts new document to print</TD><TD NOWRAP>0</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">BeginDoc sends a print job to the printer.
+                             </TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD VALIGN=TOP>EndDoc</TD><TD>SUB</TD><TD>Nothing is printed until this is called</TD><TD NOWRAP>0</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">EndDoc will start the print job.
+                             </TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD VALIGN=TOP>NewPage</TD><TD>SUB</TD><TD>Start printing on a new page</TD><TD NOWRAP>0</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Circle</TD><TD>SUB (x1%, y1%, x2%, y2%, c%, fill%)</TD><TD NOWRAP>Draw & Fill Circle</TD><TD NOWRAP>6</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>CopyRect</TD><TD>SUB (D, Image, S)</TD><TD>D and S are QRECTs, Image can be a QImage, QCanvas, or QBitmap</TD><TD NOWRAP>3</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Draw</TD><TD>SUB (x%, y%, BMP)</TD><TD NOWRAP>Draw Bitmap on Canvas</TD><TD NOWRAP>3</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>FillRect</TD><TD>SUB (x1%, y1%, x2%, y2%, c%)</TD><TD NOWRAP>Draws & Fills a rectangle</TD><TD NOWRAP>5</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Line</TD><TD>SUB (x1%, y1%, x2%, y2%, c%)</TD><TD NOWRAP>Draws a line</TD><TD NOWRAP>5</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Paint</TD><TD>SUB (x%, y%, c%, borderc%)</TD><TD NOWRAP>Fill Region</TD><TD NOWRAP>4</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Pset</TD><TD>SUB (x%, y%, c%)</TD><TD NOWRAP>Pixel plot</TD><TD NOWRAP>3</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Rectangle</TD><TD>SUB (x1%, y1%, x2%, y2%, c%)</TD><TD NOWRAP>Draws a rectangle</TD><TD NOWRAP>5</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>RoundRect</TD><TD>SUB (x1%, y1%, x2%, y2%, x3%, y3%, c%)</TD><TD NOWRAP>Draws & Fills a rounded rectangle</TD><TD NOWRAP>7</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>StretchDraw</TD><TD>SUB (Rect AS QRECT, BMP)</TD><TD>Draw BMP and stretch to fit inside Rect</TD><TD NOWRAP>2</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>TextHeight</TD><TD>FUNCTION (Text$) AS WORD</TD><TD>Returns the height, in pixels, of Text$ string</TD><TD NOWRAP>1</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>TextWidth</TD><TD>FUNCTION (Text$) AS WORD</TD><TD>Returns the width, in pixels, of Text$ string</TD><TD NOWRAP>1</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>TextRect</TD><TD>SUB (Rect AS QRECT, x%, y%, S$, fc%, bc%)</TD><TD NOWRAP>Write text, and clip within region Rect</TD><TD NOWRAP>6</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>TextOut</TD><TD>SUB (x%, y%, S$, fc%, bc%)</TD><TD NOWRAP>Writes text to printer</TD><TD NOWRAP>5</TD></TR>
+</TABLE>
+<BR><BR>
+
+
+<a name="4">
+<FONT SIZE = +1><B>Printer Examples</B></FONT>
+
+<PRE>
+DECLARE SUB ButtonClick
+
+SUB ComboBoxChange(Sender AS QComboBox)
+  Printer.PrinterIndex = Sender.ItemIndex   '-- Change default printer
+END SUB
+
+DIM Font AS QFont
+    Font.Color = &HFF0000
+    Font.Name = "Arial"
+    Font.Size = 20
+DIM Bitmap AS QBitmap
+Bitmap.BMP = "rapidq.bmp"
+
+
+CREATE Form AS QForm
+  CREATE ComboBox AS QComboBox
+    Left = 5
+    Top = 5
+    Width = 150
+    OnChange = ComboBoxChange
+  END CREATE
+  CREATE Button AS QButton
+    Caption = "&Print"
+    Top = 3
+    Left = 180
+    OnClick = ButtonClick
+  END CREATE
+  CREATE GroupBox AS QGroupBox
+    Caption = "Print Preview..."
+    Top = 35
+    Width = Form.ClientWidth
+  END CREATE
+  Center
+END CREATE
+
+FOR I = 0 TO Printer.PrintersCount-1
+  ComboBox.AddItems(Printer.Printers(I))    '-- Add printer list to combobox
+NEXT
+ComboBox.ItemIndex = Printer.PrinterIndex
+
+Form.ShowModal
+
+SUB ButtonClick
+  Printer.Orientation = 1   ' Landscape
+  Printer.BeginDoc
+  Printer.TextOut(1000,1000,"Hi World!",0,-1)
+  Printer.Font = Font
+  Printer.TextOut(10,10,"Does this print?",0,-1)
+  Printer.Line(10,10,500,500,0)
+  Printer.EndDoc
+END SUB
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD>Prev Component</TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qclipboard.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      
+
+</BODY>
+</HTML>                         

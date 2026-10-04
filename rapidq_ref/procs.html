@@ -1,0 +1,154 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>Appendix C: Procedures</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix C: Procedures</B></FONT></TD>
+  </TR>
+  <TR>
+    <TD COLSPAN=2><HR SIZE=1> </TD>
+  </TR>
+</TABLE>
+
+<BR>
+<H1>Introduction to Procedures</H1>
+<DD>A procedure in BASIC is either a SUB or FUNCTION (or SUBI and FUNCTIONI).
+It's functionally the same as GOSUB and RETURN but introduces the concept of
+parameters and return values. Unlike QBasic, a FUNCTION can also be called
+as a SUB. Meaning you can ignore its return value.
+<BR><BR>
+
+<FONT SIZE = +1><B><U>DECLARE SUB</U></B></FONT><BR>
+Use DECLARE SUB whenever you want to provide a "forward" declaration without
+actually writing the SUB yet.
+<PRE>    DECLARE SUB Test
+
+    CALL Test
+
+    SUB Test
+      <I>'' Do Stuff</I>
+    END SUB
+</PRE>
+<a name="call"></a>
+
+Using <B>CALL</B> to call your subroutine is strictly optional. As you can see,
+we're providing a forward declaration of the SUB Test.
+To avoid using DECLARE SUB, you could have written the SUB Test before
+CALLing it.
+<PRE>    SUB Test
+    END SUB
+
+    Test
+</PRE>
+This way you don't need to use DECLARE SUB. Please note that your parameter names
+in the DECLARE SUB and your actual SUB declaration MUST MATCH exactly!
+If you're not sure what I mean, take this for example:
+<PRE>    DECLARE SUB Test (A AS INTEGER, B AS INTEGER)
+
+<FONT COLOR="red">    SUB Test (X AS INTEGER, Y AS INTEGER)
+       PRINT X;" ";Y
+    END SUB</FONT>
+</PRE>
+Don't change the variable names! This is because when you defined your DECLARE SUB,
+the parameter names have been fixed as A and B, which also means you can
+comfortably do this:
+<PRE>    DECLARE SUB Test (A AS INTEGER, B AS INTEGER)
+
+    SUB Test
+       PRINT A;" ";B
+    END SUB
+</PRE>
+This is perfectly valid, since you've already declared your subroutine to have an
+A and B parameter. You don't actually need to define parameters if you already have
+a forward declaration in place. Obviously this can become confusing so it's
+not recommended.
+<br><br>
+
+
+<FONT SIZE = +1><B><U>Passing variables by reference</U></B></FONT><BR>
+There are 2 ways to pass variables by reference. Unlike other BASIC languages,
+Rapid-Q assumes that all parameters are passed by value unless explicitly
+specified. To do this explicitly, you can attach a BYREF keyword in front of
+your parameter list. Here's an example
+<PRE>    SUB StrCat (BYREF Source AS STRING, Text AS STRING)
+        Source = Source + Text
+    END SUB
+
+    A$ = "Hello"
+    StrCat A$, " world!"
+    PRINT A$              '-- returns "Hello world!"
+</PRE>
+Another way is to prepend an '@' symbol in front of the variable:
+<PRE>    SUB StrCat (Source AS STRING, Text AS STRING)
+        Source = Source + Text
+    END SUB
+
+    A$ = "Hello"
+    StrCat @A$, " world!"
+    PRINT A$              '-- returns "Hello world!"
+</PRE>
+<br><br>
+
+
+
+
+
+
+
+<FONT SIZE = +1><B><U>FUNCTIONs versus SUBs</U></B></FONT><BR>
+The only difference between a FUNCTION and a SUB is that a FUNCTION returns a
+value.
+<PRE>   FUNCTION Test AS INTEGER
+     Test = 123
+     Result = 123
+   END FUNCTION
+
+   Rval% = Test
+</PRE>
+Our FUNCTION Test returns an INTEGER, which we can clearly see returns 123.
+To return a value, you can use the FUNCTION's name or use the keyword <B>
+<a name="Result">Result</a></B>.
+Just because you've attached a return value to the FUNCTION, it does not automatically
+terminate until it reaches your END FUNCTION. So you can really assign as many return
+values as you like without consequences. The last return value assigned will ultimately
+be the one bound to your FUNCTION. To exit a FUNCTION or SUB, just use EXIT FUNCTION, or
+EXIT SUB respectively. One special case in using SUBs or FUNCTIONs in Rapid-Q is
+that you can only pass at most 10 parameters. QObjects, Arrays, UDTs and Variants are passed by reference, everything
+else is passed by value. In order for Rapid-Q to recognize that you want to
+pass a variable by reference, you must attach an @ symbol in front of the variable, or
+use BYREF in your parameter list.
+See Chapter 3 section 5 for more information.
+<BR><BR>
+<a name="subi"></a>
+<FONT SIZE = +1><B><U>SUBI and FUNCTIONI</U></B></FONT><BR>
+There's a whole chapter reserved for these two procedure methods. It's not really
+that complicated, but is very handy to use. They provide the programmer with
+infinite parameters without type checking. Only simple types like numbers and
+strings can be passed, no Arrays, UDTs or QObjects.
+See <a href="chapter9.html">Chapter 9</a> for all the details.
+<BR><BR>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="methods.html">&lt;- Methods</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="internal.html">Internal Variables -&gt;</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>    

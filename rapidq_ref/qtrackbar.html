@@ -1,0 +1,149 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QTRACKBAR</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QTRACKBAR</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QTRACKBAR Component</H1>
+<DD>QTrackBar is a track bar control used to represent a position along a continuum
+using a slider and, optionally, tick marks.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QTrackBar Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee"><TD><b>Align</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>alNone</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Align determines how the control aligns within its parent control.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Cursor</TD><TD>INTEGER</TD><TD>RW</TD><TD>crDefault</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Enabled</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Frequency</b></TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Frequency specifies the increment between tick marks on the trackbar.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Handle</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Height</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Hint</TD><TD>STRING</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Left</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>LineSize</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>1</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">LineSize is the amount the value of Position changes when the user presses the arrow keys.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Max</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>10</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Max specifies the maximum Position of the trackbar.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Min</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Min specifies the minimum Position of the trackbar.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Orientation</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>tbHorizontal</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Orientation specifies whether the trackbar is horizontal or vertical.<br>
+                0 = tbHorizontal -- Min position is on the left, Max is on the right.<br>
+                1 = tbVertical -- Min position is on the top, Max is on the bottom.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>PageSize</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>2</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">PageSize specifies the amount Position is changed when the PageUp or PageDown key is pressed, or when the bar is clicked.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Parent</TD><TD>QFORM/QPANEL/QTABCONTROL</TD><TD>W</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>PopupMenu</TD><TD>QPOPUPMENU</TD><TD>W</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Position</b></TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Position contains the current position of the slider.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>SelEnd</b></TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">SelEnd specifies the position of the end point of the selection range.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>SelStart</b></TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">SelStart specifies the position of the starting point of the selection range.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>ShowHint</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR bgcolor="eeeeee"><TD>TabOrder</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>TickMarks</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>tmBottomRight</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">TickMarks specifies the location of the tick marks.<br>
+                0 = tmBottomRight -- Tick marks are on the bottom or right of the trackbar depending on the value of Orientation.<br>
+                1 = tmTopLeft -- Tick marks are on the top or left of the trackbar depending on the value of Orientation.<br>
+                2 = tmBoth -- Tick marks are on both sides of the trackbar.<br>
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>TickStyle</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>tsAuto</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">TickStyle specifies how tick marks are place on the trackbar.<br>
+                0 = tsNone -- No tick marks are displayed.<br>
+                1 = tsAuto -- Trackbar displays tick marks automatically for each increment in its range.<br>
+                2 = tsManual -- Trackbar displays tick marks at either end. Use SetTick to set a tick in other positions<br>
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Top</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Width</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Visible</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+</TABLE>
+<br><br>
+
+<a name="2">
+<FONT SIZE = +1><B>QTrackBar Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD>SetTick</TD><TD>SUB (Pos%)</TD><TD NOWRAP>Set a tick mark at Pos%</TD><TD NOWRAP>1</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="3">
+<FONT SIZE = +1><B>QTrackBar Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD>OnChange</TD><TD>VOID</TD><TD>Track bar changes</TD><TD>0</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QTrackBar Examples</B></FONT>
+
+<PRE>
+CREATE Form AS QForm
+  Center
+  CREATE TrackBar AS QTrackBar
+    ' Initialize track bar
+  END CREATE
+  ShowModal
+END CREATE
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qtimer.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qtreeview.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      D>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                         

@@ -1,0 +1,163 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QIMAGE</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QIMAGE</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QIMAGE Component</H1>
+<DD>QImage is used to display a graphical image (BMP/ICON). It can also be used to
+draw primitive graphics.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QImage Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee"><TD><b>Align</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>alNone</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Align determines how the control aligns within its parent control.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Autosize</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">AutoSize determines whether the image control resizes to accommodate the image it displays.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>BMP</b></TD><TD>STRING</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Use BMP to assign a new bitmap file, or to store BMP in the image cache.<br>
+                             <b><u>Examples</u></b>:<br>
+                             <blockquote><font face="courier" size="2"><nobr>
+                             DIM Image AS QIMAGE<br>
+                             Image.BMP = "whatever.bmp"
+                             </nobr></font></blockquote>
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD>BMPHandle</TD><TD>RESOURCE</TD><TD>W</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Center</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Center positions the image so that it is centered in the image control.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>CopyMode</TD><TD>INTEGER</TD><TD>RW</TD><TD>cmBlackness</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Cursor</TD><TD>INTEGER</TD><TD>RW</TD><TD>crDefault</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Enabled</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Font</TD><TD>QFONT</TD><TD>W</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Handle</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Height</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Hint</TD><TD>STRING</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>ICOHandle</TD><TD>RESOURCE</TD><TD>W</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Icon</TD><TD>STRING</TD><TD>W</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>IncrementalDisplay</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">IncrementalDisplay specifies whether partial renderings of the image are drawn
+                periodically during slow operations or on large compressed images.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Left</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Parent</TD><TD>QFORM/QPANEL/QTABCONTROL</TD><TD>W</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Pixel</TD><TD>2D ARRAY of INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>PopupMenu</TD><TD>QPOPUPMENU</TD><TD>W</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>ShowHint</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Stretch</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Stretch resizes the image so that it exactly fits the bounds of the image control.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Tag</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Top</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Transparent</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Width</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Visible</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+</TABLE>
+<br>
+
+<a name="2">
+<FONT SIZE = +1><B>QImage Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD>Center</TD><TD>SUB</TD><TD NOWRAP>Centers image</TD><TD NOWRAP>0</TD></TR>
+  <TR><TD>Circle</TD><TD>SUB (x1%, y1%, x2%, y2%, c%, fill%)</TD><TD NOWRAP>Draw & Fill Circle</TD><TD NOWRAP>6</TD></TR>
+  <TR><TD VALIGN=TOP>CopyRect</TD><TD>SUB (D, Image, S)</TD><TD>D and S are QRECTs, Image can be a QImage, QCanvas, or QBitmap</TD><TD NOWRAP>3</TD></TR>
+  <TR><TD>Draw</TD><TD>SUB (x%, y%, BMP)</TD><TD NOWRAP>Draw Bitmap at (X,Y)</TD><TD NOWRAP>3</TD></TR>
+  <TR><TD>FillRect</TD><TD>SUB (x1%, y1%, x2%, y2%, c%)</TD><TD NOWRAP>Draws & Fills a rectangle</TD><TD NOWRAP>5</TD></TR>
+  <TR><TD>Line</TD><TD>SUB (x1%, y1%, x2%, y2%, c%)</TD><TD NOWRAP>Draws a line</TD><TD NOWRAP>5</TD></TR>
+  <TR><TD>Paint</TD><TD>SUB (x%, y%, c%, borderc%)</TD><TD NOWRAP>Fill Region</TD><TD NOWRAP>4</TD></TR>
+  <TR><TD>Pset</TD><TD>SUB (x%, y%, c%)</TD><TD NOWRAP>Pixel plot</TD><TD NOWRAP>3</TD></TR>
+  <TR><TD>Rectangle</TD><TD>SUB (x1%, y1%, x2%, y2%, c%)</TD><TD NOWRAP>Draws a rectangle</TD><TD NOWRAP>5</TD></TR>
+  <TR><TD>Repaint</TD><TD>SUB</TD><TD NOWRAP>Force repainting of image</TD><TD NOWRAP>0</TD></TR>
+  <TR><TD>Rotate</TD><TD>SUB (xOrigin%, yOrigin%, Angle%)</TD><TD NOWRAP>Rotates entire image at specified origin</TD><TD NOWRAP>3</TD></TR>
+  <TR><TD>RoundRect</TD><TD>SUB (x1%, y1%, x2%, y2%, x3%, y3%, c%)</TD><TD NOWRAP>Draws & Fills a rounded rectangle</TD><TD NOWRAP>7</TD></TR>
+  <TR><TD VALIGN=TOP>StretchDraw</TD><TD>SUB (Rect AS QRECT, BMP)</TD><TD>Draw BMP and stretch to fit inside Rect</TD><TD NOWRAP>2</TD></TR>
+  <TR><TD VALIGN=TOP>TextHeight</TD><TD>FUNCTION (Text$) AS WORD</TD><TD>Returns the height, in pixels, of Text$ string</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>TextWidth</TD><TD>FUNCTION (Text$) AS WORD</TD><TD>Returns the width, in pixels, of Text$ string</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD>TextRect</TD><TD>SUB (Rect AS QRECT, x%, y%, S$, fc%, bc%)</TD><TD NOWRAP>Write text, and clip within region Rect</TD><TD NOWRAP>6</TD></TR>
+  <TR><TD>TextOut</TD><TD>SUB (x%, y%, S$, fc%, bc%)</TD><TD NOWRAP>Writes text to image</TD><TD NOWRAP>5</TD></TR>
+</TABLE>
+<BR>
+
+<a name="3">
+<FONT SIZE = +1><B>QImage Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD>OnClick</TD><TD>VOID</TD><TD>User clicked on image</TD><TD>0</TD></TR>
+  <TR><TD>OnDblClick</TD><TD>VOID</TD><TD>User double clicked on image</TD><TD>0</TD></TR>
+  <TR><TD>OnMouseDown</TD><TD NOWRAP>SUB (Button%, X%, Y%, Shift%)</TD><TD NOWRAP>Mouse button held down</TD><TD>4</TD></TR>
+  <TR><TD>OnMouseMove</TD><TD NOWRAP>SUB (X%, Y%, Shift%)</TD><TD NOWRAP>Mouse moves</TD><TD>3</TD></TR>
+  <TR><TD>OnMouseUp</TD><TD NOWRAP>SUB (Button%, X%, Y%, Shift%)</TD><TD NOWRAP>Mouse button is released</TD><TD>4</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QImage Examples</B></FONT>
+
+<PRE>
+  '-- How to use a resource file
+
+  CONST False = 0
+  CONST True = 1
+
+  $RESOURCE RES_BMP1 AS "C:\WINDOWS\CLOUDS.BMP"
+
+  DIM Form AS QForm
+  DIM Image AS QImage
+
+  Image.Parent = Form
+  Image.Autosize = True
+  Image.BMPHandle = RES_BMP1
+  Form.ShowModal
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qheader.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qimagelist.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      D>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                         

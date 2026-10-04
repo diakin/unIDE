@@ -1,0 +1,585 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QLISTVIEW</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QLISTVIEW</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QLISTVIEW Component</H1>
+<DD>QListView provides 3 different ways of displaying items on a form.
+Items can be displayed in columns with column headers and sub-items, or individually
+with large/small icons.
+<BR><BR>
+<FONT SIZE = +1><B>QListView Internal Types</B></FONT>
+
+<PRE>   TYPE ItemType            '' ie. ListView.Item(0).Caption
+     Caption AS STRING
+     Checked AS INTEGER     '' If CheckBoxes is enabled and item is checked
+     Handle AS INTEGER      '' Read-only
+     ImageIndex AS INTEGER
+     Index AS INTEGER       '' Read-only
+     Selected AS INTEGER
+     StateIndex AS INTEGER
+   END TYPE
+
+   TYPE ColumnType          '' ie. ListView.Column(0).Width
+     Caption AS STRING
+     Width AS INTEGER
+   END TYPE
+</PRE>
+
+<a name="1">
+<FONT SIZE = +1><B>QListView Properties</B></FONT>
+<TABLE WIDTH=100% height="1217" border="1" cellspacing="0" style="border-collapse: collapse" bordercolor="#111111" cellpadding="3">
+  <TR>
+   <TD height="19"><B>Field</B></TD><TD height="19"><B>Type</B></TD>
+   <TD height="19"><B>R/W</B></TD><TD height="19"><B>Default</B></TD>
+  </TR>
+  <TR bgcolor="eeeeee"><TD height="19"><b>Align</b></TD><TD height="19">INTEGER</TD>
+    <TD height="19">RW</TD><TD height="19">alNone</TD></TR>
+  <TR><TD height="18"></TD><TD COLSPAN=3 bgcolor="ffdddd" height="18">Align determines how the control aligns within its parent control.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">BorderStyle</TD><TD height="18">INTEGER</TD>
+    <TD height="18">RW</TD><TD height="18">bsSingle</TD></TR>
+  <TR bgcolor="eeeeee"><TD height="19"><b>CheckBoxes</b></TD><TD height="19">INTEGER</TD>
+    <TD height="19">RW</TD><TD height="19">False</TD></TR>
+  <TR><TD height="18"></TD><TD COLSPAN=3 bgcolor="ffdddd" height="18">CheckBoxes specifies whether checkboxes appear next to the items in the listview.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">Color</TD><TD height="18">INTEGER</TD>
+    <TD height="18">RW</TD><TD height="18"></TD></TR>
+  <TR bgcolor="eeeeee"><TD height="19">Column</TD><TD height="19">ARRAY of <I>ColumnType</I></TD>
+    <TD height="19">RW</TD><TD height="19"></TD></TR>
+  <TR bgcolor="eeeeee"><TD height="19"><b>ColumnClick</b></TD><TD height="19">INTEGER</TD>
+    <TD height="19">RW</TD><TD height="19">True</TD></TR>
+  <TR><TD height="18"></TD><TD COLSPAN=3 bgcolor="ffdddd" height="18">ColumnClick determines whether the column header behaves like a button.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">ColumnsCount</TD><TD height="18">INTEGER</TD>
+    <TD height="18">RW</TD><TD height="18"></TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">Cursor</TD><TD height="18">INTEGER</TD>
+    <TD height="18">RW</TD><TD height="18">crDefault</TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">Enabled</TD><TD height="18">INTEGER</TD>
+    <TD height="18">RW</TD><TD height="18">True</TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">Font</TD><TD height="18">QFONT</TD>
+    <TD height="18">W</TD><TD height="18"></TD></TR>
+  <TR bgcolor="eeeeee"><TD height="19"><b>GridLines</b></TD><TD height="19">INTEGER</TD>
+    <TD height="19">RW</TD><TD height="19">False</TD></TR>
+  <TR><TD height="18"></TD><TD COLSPAN=3 bgcolor="ffdddd" height="18">GridLines determines whether lines are drawn separating items in the list.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">Handle</TD><TD height="18">INTEGER</TD>
+    <TD height="18">R</TD><TD height="18"></TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">Height</TD><TD height="18">INTEGER</TD>
+    <TD height="18">RW</TD><TD height="18"></TD></TR>
+  <TR bgcolor="eeeeee"><TD height="19"><b>HideSelection</b></TD><TD height="19">INTEGER</TD>
+    <TD height="19">RW</TD><TD height="19">False</TD></TR>
+  <TR><TD height="36"></TD><TD COLSPAN=3 bgcolor="ffdddd" height="36">HideSelection determines whether the listview gives a visual indication of which item is selected when focus shifts to another control.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">Hint</TD><TD height="18">STRING</TD>
+    <TD height="18">RW</TD><TD height="18"></TD></TR>
+  <TR bgcolor="eeeeee"><TD height="33"><b>HotTrack</b></TD><TD height="33">INTEGER</TD>
+    <TD height="33">RW</TD><TD height="33">False</TD></TR>
+  <TR><TD height="18"></TD><TD COLSPAN=3 bgcolor="ffdddd" height="18">HotTrack specifies whether list items are highlighted when the mouse passes over them.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD height="19">Item</TD><TD height="19">ARRAY of <I>ItemType</I></TD>
+    <TD height="19">RW</TD><TD height="19"></TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">ItemCount</TD><TD height="18">INTEGER</TD>
+    <TD height="18">RW</TD><TD height="18"></TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">ItemIndex</TD>
+    <TD height="36" rowspan="2">INTEGER<br>
+
+<a name="1">
+    <b>Index of selected Item</b></TD><TD height="18">RW</TD><TD height="18"></TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18"></TD><TD height="18"></TD>
+    <TD height="18"></TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">LargeImages</TD><TD height="18">QIMAGELIST</TD>
+    <TD height="18">W</TD><TD height="18"></TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">Left</TD><TD height="18">INTEGER</TD>
+    <TD height="18">RW</TD><TD height="18">0</TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">MultiSelect</TD><TD height="18">INTEGER</TD>
+    <TD height="18">RW</TD><TD height="18">False</TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">Parent</TD><TD height="18">QFORM/QPANEL/QTABCONTROL</TD>
+    <TD height="18">W</TD><TD height="18"></TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">PopupMenu</TD><TD height="18">QPOPUPMENU</TD>
+    <TD height="18">W</TD><TD height="18"></TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">ReadOnly</TD><TD height="18">INTEGER</TD>
+    <TD height="18">RW</TD><TD height="18">False</TD></TR>
+  <TR bgcolor="eeeeee"><TD height="19"><b>RowSelect</b></TD><TD height="19">INTEGER</TD>
+    <TD height="19">RW</TD><TD height="19">False</TD></TR>
+  <TR><TD height="18"></TD><TD COLSPAN=3 bgcolor="ffdddd" height="18">RowSelect determines whether an entire row in the listview can be selected.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">SelCount</TD><TD height="18">INTEGER</TD>
+    <TD height="18">RW</TD><TD height="18"></TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">Selected</TD><TD height="18">ARRAY of INTEGER</TD>
+    <TD height="18">RW</TD><TD height="18"></TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">ShowColumnHeaders</TD><TD height="18">INTEGER</TD>
+    <TD height="18">RW</TD><TD height="18">True</TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">ShowHint</TD><TD height="18">INTEGER</TD>
+    <TD height="18">RW</TD><TD height="18">False</TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">SmallImages</TD><TD height="18">QIMAGELIST</TD>
+    <TD height="18">W</TD><TD height="18"></TD></TR>
+  <TR bgcolor="eeeeee"><TD height="19"><b>SortType</b></TD><TD height="19">INTEGER</TD>
+    <TD height="19">RW</TD><TD height="19">stNone</TD></TR>
+  <TR><TD height="72"></TD><TD COLSPAN=3 bgcolor="ffdddd" height="72">SortType determines if and how the items in the list are automatically sorted.<br>
+                0 = stNone -- No sorting is done.<br>
+                2 = stText -- Items are sorted according to their caption property.<br>
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">StateImages</TD><TD height="18">QIMAGELIST</TD>
+    <TD height="18">W</TD><TD height="18"></TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">SubItem</TD><TD height="18">2D ARRAY of STRING</TD>
+    <TD height="18">RW</TD><TD height="18"></TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">TabOrder</TD><TD height="18">INTEGER</TD>
+    <TD height="18">RW</TD><TD height="18"></TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">Tag</TD><TD height="18">INTEGER</TD>
+    <TD height="18">RW</TD><TD height="18"></TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">Top</TD><TD height="18">INTEGER</TD>
+    <TD height="18">RW</TD><TD height="18">0</TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">Width</TD><TD height="18">INTEGER</TD>
+    <TD height="18">RW</TD><TD height="18"></TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">ViewStyle</TD><TD height="18">INTEGER<br>
+    CONST vsIcon = 0 '-- View Style: Full sized icon, text on bottom<br>
+    CONST vsSmallIcon = 1 '-- Small icons, text aligned to the right<br>
+    CONST vsList = 2 '-- Same as above (nevermind this)<br>
+    CONST vsReport = 3 '-- Each item appears on its own line with information<br>
+    '-- arranged in columns<br>
+&nbsp;</TD>
+    <TD height="18">RW</TD><TD height="18">vsIcon</TD></TR>
+  <TR bgcolor="eeeeee"><TD height="18">Visible</TD><TD height="18">INTEGER</TD>
+    <TD height="18">RW</TD><TD height="18">True</TD></TR>
+</TABLE>
+<br><br>
+
+<a name="2">
+<FONT SIZE = +1><B>QListView Methods</B></FONT>
+<TABLE WIDTH=100% bordercolorlight="#C0C0C0" border="1" style="border-collapse: collapse" bordercolor="#111111" cellpadding="3" cellspacing="0">
+  <TR>
+   <TD bgcolor="#E4A99A"><B>Method</B></TD><TD bgcolor="#E4A99A"><B>Type</B></TD>
+   <TD bgcolor="#E4A99A"><B>Description</B></TD><TD bgcolor="#E4A99A"><B>Params</B></TD>
+  </TR>
+  <TR><TD>AddColumns</TD><TD>SUBI</TD><TD NOWRAP>Add column headers to listview</TD><TD NOWRAP>STRING, Infinite</TD></TR>
+  <TR><TD>AddItems</TD><TD>SUBI</TD><TD NOWRAP>Add items to listview</TD><TD NOWRAP>STRING, Infinite</TD></TR>
+  <TR><TD>AddSubItem</TD><TD>SUB (Index%, String$)</TD><TD NOWRAP>Add sub item to Index%</TD><TD NOWRAP>2</TD></TR>
+  <TR><TD>Clear</TD><TD>SUB</TD><TD NOWRAP>Clear all items in listview</TD><TD NOWRAP>0</TD></TR>
+  <TR><TD>ClearColumns</TD><TD>SUB</TD><TD NOWRAP>Clear all columns in listview</TD><TD NOWRAP>0</TD></TR>
+  <TR><TD>DelItems</TD><TD>SUBI</TD><TD NOWRAP>Delete items from listview by 
+    ItemIndex<br>
+    example:<br>
+    <b>ListView.DelItems ListView.ItemIndex</b></TD><TD NOWRAP>INTEGER, Infinite</TD></TR>
+  <TR><TD>DelSubItem</TD><TD>SUB (Index%, SubIndex%)</TD><TD NOWRAP>Delete subitem from listview</TD><TD NOWRAP>2</TD></TR>
+  <TR><TD>InsertItem</TD><TD>SUB (Index%, String$)</TD><TD NOWRAP>Insert item at Index%</TD><TD NOWRAP>2</TD></TR>
+  <TR><TD>InsertSubItem</TD><TD>SUB (Index%, SubIndex%, String$)</TD><TD NOWRAP>Insert subitem</TD><TD NOWRAP>3</TD></TR>
+  <TR><TD>SwapItem</TD><TD>SUB (Index1%, Index2%)</TD><TD NOWRAP>Swap items</TD><TD NOWRAP>2</TD></TR>
+</TABLE>
+<BR>
+
+<a name="3">
+<FONT SIZE = +1><B>QListView Events</B></FONT>
+<TABLE WIDTH=100% border="1" cellspacing="0" cellpadding="3" bordercolor="#C0C0C0">
+  <TR>
+   <TD bgcolor="#E4A99A"><B>Event</B></TD><TD bgcolor="#E4A99A"><B>Type</B></TD>
+   <TD bgcolor="#E4A99A"><B>Occurs when...</B></TD><TD bgcolor="#E4A99A"><B>Params</B></TD>
+  </TR>
+  <TR><TD>OnClick</TD><TD>VOID</TD><TD>Item was clicked on</TD><TD>0</TD></TR>
+  <TR><TD>OnChange</TD><TD>SUB (Index%, Change AS BYTE)</TD><TD>Item changed (text, image, or state)</TD><TD>2</TD></TR>
+  <TR><TD>OnColumnClick</TD><TD>SUB (Column%)</TD><TD>Column header was clicked<br>
+    <font color="#FF0000"><b>This sub is bugly!&nbsp; Always return 0 in
+
+<a name="3">
+    Column%</a></b></font></a><p><font color="#008000"><b>See
+    <a href="#Example2">example2</a> to solve this problem</b></font></TD>
+
+<a name="3">
+    <TD>1</TD></TR>
+  <TR><TD>OnDblClick</TD><TD>VOID</TD><TD>Selection was double clicked on</TD><TD>0</TD></TR>
+  <TR><TD>OnKeyPressed</TD><TD>SUB (Key AS BYTE)</TD><TD>Key was pressed</TD><TD>1</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QListView Examples</B></FONT>
+
+<PRE>' Simple .ZIP viewer (doesn't extract or anything useful like that).
+' You're free to modify and distribute the code without restrictions.
+' Written in Rapid-Q by William Yu
+' Demonstrates QOpenDialog, QFileStream, QListView, QMainMenu, QMenuItem
+'              and QImageList.
+
+$APPTYPE GUI
+$TYPECHECK ON
+$INCLUDE "RAPIDQ.INC"
+
+$RESOURCE ICO_ZIP AS "ZIP.ICO"
+$RESOURCE ICO_APP AS "APP.ICO"
+
+DECLARE SUB ZipView (ZIPFile AS STRING)
+DECLARE SUB FormResize
+DECLARE SUB OpenClick
+DECLARE SUB ExitClick
+DECLARE SUB IconClick
+DECLARE SUB SmallIconClick
+DECLARE SUB ReportClick
+DECLARE SUB ItemDblClick
+
+CONST SIG = &H04034B50         ' ZIP Signature/ID
+
+TYPE ZFHeader
+  Signature AS LONG
+  Version AS WORD
+  GPBFlag AS WORD              ' ?
+  Compress AS WORD             ' Compression types
+  DateTime AS LONG             ' Packed format
+  CRC32 AS LONG
+  CSize AS LONG                ' Compressed size
+  USize AS LONG                ' Uncompressed size
+  FileNameLen AS LONG
+END TYPE
+
+TYPE PackedDateType            ' I think this is it:
+  Year AS SHORT                ' 7 bits
+  Month AS BYTE                ' 4 bits
+  Day AS BYTE                  ' 5 bits
+  Hour AS BYTE                 ' 5 bits
+  Minute AS BYTE               ' 6 bits
+  Secs AS BYTE                 ' 5 bits
+END TYPE                       ' Total = 32 bits
+
+DIM CompType(0 TO 9) AS STRING
+    CompType(0) = "Stored"
+    CompType(1) = "Shrunk"
+    CompType(2) = "Reduced1"
+    CompType(3) = "Reduced2"
+    CompType(4) = "Reduced3"
+    CompType(5) = "Reduced4"
+    CompType(6) = "Imploded"
+    CompType(7) = "Defalted"
+    CompType(8) = "DeflatN"      '' Could be DeflatX as well...
+    CompType(9) = "DeflatX"
+
+DIM OpenItem AS QMenuItem
+    OpenItem.Caption = "&Open"
+    OpenItem.OnClick = OpenClick
+DIM BreakItem AS QMenuItem
+    BreakItem.Caption = "-"
+DIM ExitItem AS QMenuItem
+    ExitItem.Caption = "E&xit"
+    ExitItem.OnClick = ExitClick
+DIM IconItem AS QMenuItem
+    IconItem.Caption = "vs&Icon"
+    IconItem.RadioItem = True
+    IconItem.OnClick = IconClick
+DIM SmallIconItem AS QMenuItem
+    SmallIconItem.Caption = "vs&SmallIcon"
+    SmallIconItem.RadioItem = True
+    SmallIconItem.OnClick = SmallIconClick
+DIM ReportItem AS QMenuItem
+    ReportItem.Caption = "vs&Report"
+    ReportItem.RadioItem = True
+    ReportItem.Checked = True
+    ReportItem.OnClick = ReportClick
+
+DIM FileMenu AS QMenuItem
+    FileMenu.Caption = "&File"
+    FileMenu.AddItems OpenItem, BreakItem, ExitItem
+DIM ViewMenu AS QMenuItem
+    ViewMenu.Caption = "&View"
+    ViewMenu.AddItems IconItem, SmallIconItem, ReportItem
+
+DIM ImageList1 AS QImageList
+    ImageList1.Height = 32
+    ImageList1.Width = 32
+    ImageList1.AddICOHandle ICO_APP
+    ImageList1.AddICOHandle ICO_ZIP
+DIM ImageList2 AS QImageList            ' Scale 16x16
+    ImageList2.Height = 16
+    ImageList2.Width = 16
+    ImageList2.AddICOHandle ICO_APP
+    ImageList2.AddICOHandle ICO_ZIP
+
+CREATE Form AS QForm
+  ICOHandle = ICO_ZIP
+  Center
+  OnResize = FormResize
+  Height = 330
+  Width = 525
+  Caption = "Simple .ZIP Viewer for Rapid-Q"
+  CREATE MainMenu AS QMainMenu
+    AddItems FileMenu, ViewMenu
+  END CREATE
+  CREATE ListView AS QListView
+    Width = Form.ClientWidth
+    Height = Form.ClientHeight
+    SmallImages = ImageList2
+    LargeImages = ImageList1
+    ViewStyle = vsReport
+    AddColumns "FileName","Length","Method","Size","Rate","Date","Time","CRC-32"
+    Column(0).Width = 200
+    Column(4).Width = 40
+    Column(5).Width = 70
+    Column(7).Width = 70
+    OnDblClick = ItemDblClick
+  END CREATE
+  ShowModal
+END CREATE
+
+
+'------------------------------------------------------------------
+
+SUB ZipView (ZIPFile AS STRING)
+  DIM Hdr      AS ZFHeader
+  DIM ZF       AS QFileStream
+  DIM PD       AS PackedDateType
+  DIM FileName AS STRING
+  DIM Index    AS INTEGER
+
+  IF ZF.Open(ZIPFile, fmOpenRead) = False THEN
+    ShowMessage("Problem with reading "+ZIPFile)
+    EXIT SUB
+  END IF
+
+  ListView.Clear
+  Hdr.Signature = ZF.ReadNum(4)
+
+  Index = 0
+  WHILE Hdr.Signature = SIG
+    Hdr.Version  = ZF.ReadNum(2)
+    Hdr.GPBFlag  = ZF.ReadNum(2)
+    Hdr.Compress = ZF.ReadNum(2)
+    Hdr.DateTime = ZF.ReadNum(4)
+    Hdr.CRC32 = ZF.ReadNum(4)
+    Hdr.CSize = ZF.ReadNum(4)
+    Hdr.USize = ZF.ReadNum(4)
+    Hdr.FileNameLen = ZF.ReadNum(4)
+
+    FileName = ZF.ReadStr(Hdr.FileNameLen)
+
+    PD.Year = ((Hdr.DateTime SHR 25) AND &H7F) + 1980
+    PD.Month = (Hdr.DateTime SHR 21) AND &H0F
+    PD.Day = (Hdr.DateTime SHR 16) AND &H1F
+    PD.Hour = (Hdr.DateTime SHR 11) AND &H1F
+    PD.Minute = (Hdr.DateTime SHR 5) AND &H3F
+    PD.Secs = Hdr.DateTime AND &H1F
+    ListView.AddItems FileName
+    IF INSTR(UCASE$(FileName), ".ZIP") THEN
+      ListView.Item(Index).ImageIndex = 1
+    END IF
+    ListView.AddSubItem Index, STR$(Hdr.USize)
+    ListView.AddSubItem Index, CompType(Hdr.Compress)
+    ListView.AddSubItem Index, STR$(Hdr.CSize)
+    IF Hdr.USize = 0 THEN
+      ListView.AddSubItem Index, "----"
+    ELSE
+      ListView.AddSubItem Index, STR$(INT((Hdr.USize - Hdr.CSize) / Hdr.USize * 100))+"%"
+    END IF
+    ListView.AddSubItem Index, STR$(PD.Month)+"-"+STR$(PD.Day)+"-"+STR$(PD.Year)
+    ListView.AddSubItem Index, STR$(PD.Hour)+":"+STR$(PD.Minute)
+    ListView.AddSubItem Index, LCASE$(HEX$(Hdr.CRC32))
+    ZF.Seek(Hdr.CSize, soFromCurrent)
+    Hdr.Signature = ZF.ReadNum(4)
+    Index = Index + 1
+  WEND
+
+  IF Index = 0 THEN
+     '-- Likely not a .ZIP file
+     ShowMessage(ZIPFile+" is not a valid ZIP file!")
+  END IF
+END SUB
+
+SUB OpenClick
+  DIM OpenDialog AS QOpenDialog
+
+  OpenDialog.InitialDir = CurDir$
+  OpenDialog.Filter = "ZIP Files (*.zip)|*.zip|All Files (*.*)|*.*"
+
+  IF OpenDialog.Execute THEN
+    ZipView(OpenDialog.FileName)
+  END IF
+END SUB
+
+SUB ExitClick
+  Form.Close
+END SUB
+
+SUB FormResize
+  ListView.Height = Form.ClientHeight
+  ListView.Width = Form.ClientWidth
+END SUB
+
+SUB IconClick
+  IconItem.Checked = True
+  ListView.ViewStyle = vsIcon
+END SUB
+
+SUB SmallIconClick
+  SmallIconItem.Checked = True
+  ListView.ViewStyle = vsSmallIcon
+END SUB
+
+SUB ReportClick
+  ReportItem.Checked = True
+  ListView.ViewStyle = vsReport
+END SUB
+
+SUB ItemDblClick
+  IF ListView.ItemIndex >= 0 THEN
+    ShowMessage("Can't extract "+ListView.Item(ListView.ItemIndex).Caption);
+  END IF
+END SUB</a>
+</PRE>
+
+<hr>
+
+<pre><a name="Example2">Example2  (Oscar Fernandez)</a></pre>
+<pre><font color="#0000aa"><b>$TYPECHECK</b></font> ON
+ <font color="#0000aa"><b>$INCLUDE</b></font> &quot;<font color="#990000">RAPIDQ.INC</font>&quot;
+
+ <font color="#0000aa"><b>TYPE</b></font> RECTA
+ Left <font color="#0000aa"><b>As</b></font> <font color="#000099"><b>Long</b></font>
+ Top <font color="#0000aa"><b>As</b></font> <font color="#000099"><b>Long</b></font>
+ Right <font color="#0000aa"><b>As</b></font> <font color="#000099"><b>Long</b></font>
+ Bottom <font color="#0000aa"><b>As</b></font> <font color="#0000aa"><b>Long</b></font> 
+ <font color="#0000aa"><b>END</b></font> <font color="#0000aa"><b>TYPE</b></font> 
+
+ 
+ <font color="#0000aa"><b>CONST</b></font> LVM_FIRST = &amp;H1000
+ <font color="#0000aa"><b>Const</b></font> LVM_GETHEADER = <b>(</b>LVM_FIRST + 31<b>)</b><!------------------->
+
+<!------------------->
+
+<!------------------->
+ <font color="#0000aa"><b>Const</b></font> HDM_FIRST = &amp;H1200
+ <font color="#0000aa"><b>Const</b></font> HDM_HITTEST = HDM_FIRST + 6
+
+ <font color="#0000aa"><b>Declare</b></font> <font color="#0000aa"><b>Function</b></font> SendMessagea <font color="#0000aa"><b>Lib</b></font> &quot;<font color="#990000">user32</font>&quot; Alias_
+ &quot;<font color="#990000">SendMessageA</font>&quot; <b>(</b>ByVal hwnd <font color="#0000aa"><b>As</b></font> <font color="#0000aa"><b>Long</b></font>, ByVal wMsg <font color="#0000aa"><b>As</b></font> <font color="#0000aa"><b>Long</b></font>,_
+ ByVal wParam <font color="#0000aa"><b>As</b></font> <font color="#0000aa"><b>Integer</b></font>, ByVal lParam <font color="#0000aa"><b>As</b></font> <font color="#0000aa"><b>LONG</b></font><b>)</b> <font color="#0000aa"><b>As</b></font> <font color="#000099"><b>Long</b></font>
+
+ <font color="#0000aa"><b>Declare</b></font> <font color="#0000aa"><b>Function</b></font> GetWindowRect <font color="#0000aa"><b>Lib</b></font> &quot;<font color="#990000">user32</font>&quot; Alias_
+ &quot;<font color="#990000">GetWindowRect</font>&quot; <b>(</b>ByVal hwnd <font color="#0000aa"><b>As</b></font> <font color="#0000aa"><b>Long</b></font>, lpRect <font color="#0000aa"><b>As</b></font> RECTA<b>)</b><font color="#0000aa"><b>AS</b></font> <font color="#000099"><b>Long</b></font>
+
+ <font color="#0000aa"><b>Declare</b></font> <font color="#0000aa"><b>Function</b></font> GetParent <font color="#0000aa"><b>Lib</b></font> &quot;<font color="#990000">user32</font>&quot;_
+ <font color="#0000aa"><b>Alias</b></font> &quot;<font color="#990000">GetParent</font>&quot; <b>(</b>ByVal hwnd <font color="#0000aa"><b>As</b></font> <font color="#0000aa"><b>Long</b></font><b>)</b> <font color="#0000aa"><b>As</b></font> <font color="#000099"><b>Long</b></font>
+
+ <font color="#0000aa"><b>DECLARE</b></font> <font color="#0000aa"><b>SUB</b></font> OK<b>(</b>COLUMN%, sender <font color="#0000aa"><b>as</b></font> <font color="#0000aa"><b>qlistview</b></font><b>)</b>
+
+ <font color="#0000aa"><b>dim</b></font> r <font color="#0000aa"><b>as</b></font> rectA
+ <font color="#0000aa"><b>dim</b></font> rh <font color="#0000aa"><b>as</b></font> rectA
+
+ 
+ <font color="#0000aa"><b>dim</b></font> IDcolumn <font color="#0000aa"><b>as</b></font> <font color="#000099"><b>integer</b></font>
+ <font color="#0000aa"><b>dim</b></font> ccount <font color="#0000aa"><b>as</b></font> <font color="#000099"><b>integer</b></font>
+ <font color="#0000aa"><b>CREATE</b></font> Form <font color="#0000aa"><b>AS</b></font> <font color="#000099"><b>QForm</b></font>
+ Center
+ Caption = &quot;<font color="#990000">Sorting Listview Click in the Buttons Headers</font>&quot;
+ Height = 330
+ Width = 525
+ 
+ <font color="#0000aa"><b>CREATE</b></font> ListView <font color="#0000aa"><b>AS</b></font> <font color="#000099"><b>QListView</b></font>
+ ColumnClick = TRUE
+ ALIGN=5
+ Gridlines=1
+ Width = Form.ClientWidth
+ Height = Form.ClientHeight
+ ViewStyle = vsReport
+ AddColumns &quot;<font color="#990000">Group</font>&quot;,&quot;<font color="#990000">Lead Guitar</font>&quot;,&quot;<font color="#990000">Rithms Guitar</font>&quot;,&quot;<font color="#990000">Bass</font>&quot;,&quot;<font color="#990000">Drums</font>&quot;, &quot;<font color="#990000">Others</font>&quot;
+ Column<b>(</b>0<b>)</b>.Width = 110
+ Column<b>(</b>1<b>)</b>.Width = 80
+ Column<b>(</b>2<b>)</b>.Width = 80
+ Column<b>(</b>3<b>)</b>.Width = 80
+ Column<b>(</b>4<b>)</b>.Width = 80
+ Column<b>(</b>5<b>)</b>.Width = 80
+ 
+ AddItems &quot;<font color="#990000">The Rolling Stones</font>&quot;
+ AddSubItem 0, &quot;<font color="#990000">Keith</font>&quot;
+ AddSubItem 0, &quot;<font color="#990000">Brian</font>&quot;
+ AddSubItem 0, &quot;<font color="#990000">Bill</font>&quot;
+ AddSubItem 0, &quot;<font color="#990000">Charlie</font>&quot;
+ AddSubItem 0, &quot;<font color="#990000">Mick</font>&quot;
+
+ AddItems &quot;<font color="#990000">The Beatles</font>&quot;
+ AddSubItem 1, &quot;<font color="#990000">George</font>&quot;
+ AddSubItem 1, &quot;<font color="#990000">John</font>&quot;
+ AddSubItem 1, &quot;<font color="#990000">Paul</font>&quot;
+ AddSubItem 1, &quot;<font color="#990000">Ringo</font>&quot;
+ 
+ AddItems &quot;<font color="#990000">Yes</font>&quot;
+ AddSubItem 2, &quot;<font color="#990000">Steve</font>&quot;
+ AddSubItem 2, &quot;<font color="#990000">Jon</font>&quot;
+ AddSubItem 2, &quot;<font color="#990000">Chris</font>&quot;
+ AddSubItem 2, &quot;<font color="#990000">Alan</font>&quot;
+ AddSubItem 2, &quot;<font color="#990000">Rick</font>&quot;
+ 
+ AddItems &quot;<font color="#990000">Nirvana</font>&quot;
+ AddSubItem 3, &quot;<font color="#990000">Kurt</font>&quot;
+ AddSubItem 3, &quot;&quot;
+ AddSubItem 3, &quot;<font color="#990000">Kris</font>&quot;
+ AddSubItem 3, &quot;<font color="#990000">Dave</font>&quot;
+
+ ONCOLUMNCLICK=OK
+ <font color="#0000aa"><b>END</b></font> <font color="#000099"><b>CREATE</b></font>
+ <font color="#0000aa"><b>END</b></font> <font color="#0000aa"><b>CREATE</b></font> 
+
+ 
+ Form.ShowModal
+
+ <font color="#0000aa"><b>SUB</b></font> OK<b>(</b>COLUMN%, sender <font color="#0000aa"><b>as</b></font> <font color="#0000aa"><b>qlistview</b></font><b>)</b>
+
+<font color="#0000aa"><b>with</b></font> sender
+
+<font color="#0000aa"><b>defint</b></font> i,cw,lvh,cc,hh,parw
+
+ lvh=ListView.Handle
+ hh=sendMESSAGEa<b>(</b>lvh, <b>(</b>LVM_GETHEADER<b>)</b>,0,0<b>)</b><font color="#007700"><i>'get handler of header</i></font> <!------------------->
+
+<!------------------->
+
+<!------------------->
+ ccount=sendMESSAGEa <b>(</b>  hh, <b>(</b>HDM_FIRST + 0<b>)</b>,0, 0<b>)</b> <font color="#007700"><i>'get number of columns</i></font> 
+ parw=getparent<b>(</b>lvh<b>)</b> 
+ getWINDOWrect<b>(</b>hh,Rh<b>)</b> <font color="#007700"><i>' rect of  header !!'</i></font> 
+
+ cc=0:cw=0
+ 
+ <font color="#0000aa"><b>for</b></font> i=0 <font color="#0000aa"><b>to</b></font> ccount-1
+ cw=.column<b>(</b>i<b>)</b>.width
+ cc=cw+cc
+ <font color="#0000aa"><b>if</b></font> cc+Rh.left&gt;screen.mousex <font color="#0000aa"><b>then</b></font> <font color="#0000aa"><b>exit</b></font> <font color="#000099"><b>for</b></font>
+ <font color="#000099"><b>next</b></font>
+ 
+ idcolumn=i
+
+<font color="#0000aa"><b>print</b></font> &quot;<font color="#990000">idcolumn=</font>&quot;,idcolumn
+
+<font color="#0000aa"><b>end</b></font> <font color="#0000aa"><b>with</b></font> 
+ <font color="#0000aa"><b>END</b></font> <font color="#000099"><b>SUB</b></font>
+ <a name="4"></pre>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qlistbox.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qmainmenu.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML> ent</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>     

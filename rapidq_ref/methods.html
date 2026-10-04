@@ -1,0 +1,114 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>Appendix C: Methods</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix C: Methods</B></FONT></TD>
+  </TR>
+  <TR>
+    <TD COLSPAN=2><HR SIZE=1> </TD>
+  </TR>
+</TABLE>
+<a name="up"></a>
+
+<BR>
+<H1>Introduction to Methods</H1>
+<DD>There's many definitions of a "method," for lack of a better word, that's
+what I'm using to describe the methods CONSTRUCTOR, CREATE and WITH.
+Alone they serve no purpose, but you'll learn what each does, and how to
+use them here.
+<BR><BR>
+<a name="create"></a>
+<FONT SIZE = +1><B><U>CREATE .. END CREATE</U></B></FONT><BR>
+Using CREATE is exactly like using DIM
+<PRE>
+    CREATE Form AS QForm
+    END CREATE
+
+    '' or
+
+    DIM Form AS QForm
+</PRE>
+<a name="create2"></a>
+However, the CREATE method offers more. It can save you typing, and also make
+your code look cleaner by embedding CREATEs (refer to Chapter 5).
+Any code you type inbetween the CREATE .. END CREATE method is automatically
+bound to that object. Since there's no point in regurgitating what was already
+mentioned, please refer to <a href="chapter5.html">Chapter 5</a> for some examples.
+<br><br>
+<a name="with"></a>
+<FONT SIZE = +1><B><U>WITH .. END WITH</U></B></FONT><BR>
+The WITH construct is to provide the developer an easier way to reference
+properties, methods, and events of certain objects. Basically what it does is
+save you a lot of typing:
+<PRE>
+    Form.Caption = "Hello"
+    Form.ShowModal
+
+    '' Using WITH
+
+    WITH Form
+       .Caption = "Hello"
+       .ShowModal
+    END WITH
+</PRE>
+You can also embed WITH .. END WITH statements:
+<PRE>
+    Something.Another.Caption = "Hello"
+
+    '' Using WITH
+
+    WITH Something
+       WITH Another
+         .Caption = "Hello"
+       END WITH
+    END WITH
+</PRE>
+As you can see, the embedded WITH statement inherits the previous declaration.
+The period at the front tells the compiler to bind that variable to the WITH
+declaration. Anything which doesn't start with a period won't be bound, don't
+worry, decimal numbers won't be bound.
+<BR><BR>
+
+<FONT SIZE = +1><B><U>CONSTRUCTOR .. END CONSTRUCTOR</U></B></FONT><BR>
+This method is only used inside a TYPE declaration when you're defining
+your own objects. It will give default values to your properties whenever
+your component is created (DIMmed).
+<PRE>
+    TYPE NewObject EXTENDS QObject
+      Left AS INTEGER
+
+      CONSTRUCTOR
+        Left = 50
+      END CONSTRUCTOR
+    END TYPE
+</PRE>
+There's nothing to it, it's much like the CREATE method, except our object
+in this case is NewObject.
+<BR><BR>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="loops.html">&lt;- Loops</a></TD>
+   <TD ALIGN=CENTER><A HREF="#up">Up</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="procs.html">Procedures -&gt;</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                        

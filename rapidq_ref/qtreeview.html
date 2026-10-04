@@ -1,0 +1,192 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QTREEVIEW</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QTREEVIEW</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QTREEVIEW Component</H1>
+<DD>QTreeView displays a hierarchical list of items. Items are ordered by their index.
+<BR><BR>
+<FONT SIZE = +1><B>QTreeView Internal Types</B></FONT>
+
+<PRE>
+   TYPE TreeNodeType           '' ie. TreeView.Item(0).Text
+     Text AS STRING
+     ImageIndex AS INTEGER
+     StateIndex AS INTEGER
+     SelectedIndex AS INTEGER
+     Count AS INTEGER          '' Read only
+     Level AS INTEGER          '' Read only
+     IsVisible AS INTEGER      '' Read only
+     Handle AS INTEGER         '' Read only
+     HasChildren AS INTEGER
+     Selected AS INTEGER
+   END TYPE
+</PRE>
+
+<a name="1">
+<FONT SIZE = +1><B>QTreeView Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD>
+  </TR>
+   <TR><TD>Align</TD><TD>INTEGER</TD><TD>RW</TD><TD>alNone</TD></TR>
+  <TR><TD>BorderStyle</TD><TD>INTEGER</TD><TD>RW</TD><TD>bsSingle</TD></TR>
+  <TR><TD>Color</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Cursor</TD><TD>INTEGER</TD><TD>RW</TD><TD>crDefault</TD></TR>
+  <TR><TD>Enabled</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR><TD>Font</TD><TD>QFONT</TD><TD>W</TD><TD></TD></TR>
+  <TR><TD>Handle</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Height</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>HideSelection</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR><TD>Hint</TD><TD>STRING</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Images</TD><TD>QIMAGELIST</TD><TD>W</TD><TD></TD></TR>
+  <TR><TD>Indent</TD><TD>INTEGER</TD><TD>RW</TD><TD>19</TD></TR>
+  <TR><TD>Item</TD><TD>ARRAY of <I>TreeNodeType</I></TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>ItemCount</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>ItemIndex</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Left</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD></TR>
+  <TR><TD>Parent</TD><TD>QFORM/QPANEL/QTABCONTROL</TD><TD>W</TD><TD></TD></TR>
+  <TR><TD>PopupMenu</TD><TD>QPOPUPMENU</TD><TD>W</TD><TD></TD></TR>
+  <TR><TD>ReadOnly</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR><TD>ShowButtons</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR><TD>ShowHint</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR><TD>ShowLines</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR><TD>ShowRoot</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR><TD>SortType</TD><TD>INTEGER</TD><TD>RW</TD><TD>stText</TD></TR>
+  <TR><TD>StateImages</TD><TD>QIMAGELIST</TD><TD>W</TD><TD></TD></TR>
+  <TR><TD>TabOrder</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Tag</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Top</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD></TR>
+  <TR><TD>TopIndex</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Width</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Visible</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+</TABLE>
+<br>
+
+<a name="2">
+<FONT SIZE = +1><B>QTreeView Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD>AddItems</TD><TD>SUBI</TD><TD NOWRAP>Add items to treeview</TD><TD NOWRAP>STRING, Infinite</TD></TR>
+  <TR><TD>AddChildItems</TD><TD>SUB (Index%, S1$, S2$, ...)</TD><TD>Add child item at Index%</TD><TD NOWRAP>Minimum 2</TD></TR>
+  <TR><TD>Clear</TD><TD>SUB</TD><TD NOWRAP>Clear all items in treeview</TD><TD NOWRAP>0</TD></TR>
+  <TR><TD>Collapse</TD><TD>SUB (Index%, Recurse%)</TD><TD>Collapses node</TD><TD NOWRAP>2</TD></TR>
+  <TR><TD>DelItems</TD><TD>SUBI</TD><TD NOWRAP>Delete items from treeview</TD><TD NOWRAP>INTEGER, Infinite</TD></TR>
+  <TR><TD>Expand</TD><TD>SUB (Index%, Recurse%)</TD><TD>Expand node, revealing its childs</TD><TD NOWRAP>2</TD></TR>
+  <TR><TD>FullCollapse</TD><TD>SUB</TD><TD NOWRAP>Collapses all nodes</TD><TD NOWRAP>0</TD></TR>
+  <TR><TD>FullExpand</TD><TD>SUB</TD><TD NOWRAP>Expands all nodes</TD><TD NOWRAP>0</TD></TR>
+  <TR><TD>GetItemAt</TD><TD>FUNCTION (X%, Y%) AS LONG</TD><TD>Get the index node at X,Y</TD><TD NOWRAP>2</TD></TR>
+  <TR><TD>InsertItem</TD><TD>SUB (Index%, String$)</TD><TD>Insert item at Index%</TD><TD NOWRAP>2</TD></TR>
+  <TR><TD>LoadFromFile</TD><TD>SUB (Filename AS STRING)</TD><TD NOWRAP>Load items from file</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD>SaveToFile</TD><TD>SUB (Filename AS STRING)</TD><TD NOWRAP>Save items to file</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD>Sort</TD><TD>SUB</TD><TD NOWRAP>Sort all items from A-Z</TD><TD NOWRAP>0</TD></TR>
+</TABLE>
+<BR>
+
+<a name="3">
+<FONT SIZE = +1><B>QTreeView Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD>OnClick</TD><TD>VOID</TD><TD>TreeView was clicked on</TD><TD>0</TD></TR>
+  <TR><TD>OnChange</TD><TD>SUB (Index%)</TD><TD>Selection (not modification) has changed from one item to another</TD><TD>1</TD></TR>
+  <TR><TD>OnChanging</TD><TD>SUB (Index%, AllowChange%)</TD><TD>Selection is about to be changed</TD><TD>2</TD></TR>
+  <TR><TD>OnCollapse</TD><TD>SUB (Index%)</TD><TD>Just after a node has been collapsed</TD><TD>1</TD></TR>
+  <TR><TD>OnCollapsing</TD><TD>SUB (Index%, AllowCollapse%)</TD><TD>A node is about to be collapsed</TD><TD>2</TD></TR>
+  <TR><TD>OnDblClick</TD><TD>VOID</TD><TD>TreeView was double clicked on</TD><TD>0</TD></TR>
+  <TR><TD>OnDeletion</TD><TD>SUB (Index%)</TD><TD>A node in the tree is deleted</TD><TD>1</TD></TR>
+  <TR><TD>OnEdited</TD><TD>SUB (Index%, BYREF S$)</TD><TD>After the user edits a text of a node</TD><TD>2</TD></TR>
+  <TR><TD>OnEditing</TD><TD>SUB (Index%, AllowEdit%)</TD><TD>The user starts to edit the text</TD><TD>2</TD></TR>
+  <TR><TD>OnExpand</TD><TD>SUB (Index%)</TD><TD>After a node is expanded</TD><TD>1</TD></TR>
+  <TR><TD>OnExpanding</TD><TD>SUB (Index%, AllowExpansion%)</TD><TD>A node is about to be expanded</TD><TD>2</TD></TR>
+  <TR><TD>OnGetImageIndex</TD><TD>SUB (Index%)</TD><TD>The treeview looks up the ImageIndex of a node</TD><TD>1</TD></TR>
+  <TR><TD>OnGetSelectedIndex</TD><TD>SUB (Index%)</TD><TD>The treeview looks up the SelectedIndex of a node</TD><TD>1</TD></TR>
+  <TR><TD>OnKeyDown</TD><TD NOWRAP>SUB (Key AS Word, Shift AS INTEGER)</TD><TD NOWRAP>Key held down</TD><TD>2</TD></TR>
+  <TR><TD>OnKeyPress</TD><TD>SUB (Key AS BYTE)</TD><TD>User presses a key</TD><TD>1</TD></TR>
+  <TR><TD>OnKeyUp</TD><TD>SUB (Key AS Word, Shift AS INTEGER)</TD><TD>User releases a key</TD><TD>2</TD></TR>
+  <TR><TD>OnMouseDown</TD><TD NOWRAP>SUB (Button%, X%, Y%, Shift%)</TD><TD NOWRAP>Mouse button held down</TD><TD>4</TD></TR>
+  <TR><TD>OnMouseMove</TD><TD NOWRAP>SUB (X%, Y%, Shift%)</TD><TD NOWRAP>Mouse moves</TD><TD>3</TD></TR>
+  <TR><TD>OnMouseUp</TD><TD NOWRAP>SUB (Button%, X%, Y%, Shift%)</TD><TD NOWRAP>Mouse button is released</TD><TD>4</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QTreeView Examples</B></FONT>
+
+<PRE>
+'' Tree view example, hot tracking through items
+
+SUB TreeViewChange (Node AS INTEGER, AllowChange AS INTEGER, Sender AS QTREEVIEW)
+    IF Node = 8 THEN AllowChange = 0
+END SUB
+
+SUB TreeViewMouseMove (X AS INTEGER, Y AS INTEGER, Shift AS INTEGER, Sender AS QTREEVIEW)
+    I = Sender.GetItemAt(X,Y)
+    IF I >= 0 THEN Sender.ItemIndex = I
+END SUB
+
+CREATE Form AS QFORM
+    Center
+    CREATE TreeView AS QTREEVIEW
+        Align = 5
+        AddItems "1","2","3"
+        AddChildItems 0, "Sub 1", "Sub 2", "Sub 3"
+        AddChildItems 4, "Sub 1", "Sub 2", "Sub 3"
+        FullExpand
+        OnChanging = TreeViewChange
+        OnMouseMove = TreeViewMouseMove
+    END CREATE
+END CREATE
+
+
+'-- No real purpose, just change all items
+FOR I = 0 TO TreeView.ItemCount-1
+    TreeView.Item(I).Text = STR$(I)
+NEXT
+
+Form.ShowModal
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qtrackbar.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qdximagelist.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      D>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                         

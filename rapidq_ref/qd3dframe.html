@@ -1,0 +1,101 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>QD3DFRAME</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>QD3DFRAME</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QD3DFRAME Component</H1>
+<DD>QD3DFrame implements IDirect3DRMFrame.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QD3DFrame Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD>
+  </TR>
+   <TR><TD>FogColor</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>FogEnabled</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>FogMode</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+</TABLE>
+<br>
+
+<a name="2">
+<FONT SIZE = +1><B>QD3DFrame Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD VALIGN=TOP>AddFrame</TD><TD>SUB (Frame AS QD3DFrame)</TD><TD>Add a frame to this frame</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>AddLight</TD><TD>SUB (Light AS QD3DLight)</TD><TD>Add light object to frame</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>AddScale</TD><TD>SUB (CombineType%, X#, Y#, Z#)</TD><TD>Add scale</TD><TD NOWRAP>4</TD></TR>
+  <TR><TD VALIGN=TOP>AddVisual</TD><TD>SUB (Visual AS QD3DMeshBuilder/QD3DMesh/QD3DVisual)</TD><TD>Add visual object to frame</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>CreateFrame</TD><TD>SUB (Frame AS QD3DFrame)</TD><TD>Create frame relative to this</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>DeleteFrame</TD><TD>SUB (Frame AS QD3DFrame)</TD><TD>Removes a frame from hierarchy</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>DeleteLight</TD><TD>SUB (Light AS QD3DLight)</TD><TD>Removes light object from frame</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>DeleteVisual</TD><TD>SUB (Visual AS QD3DMeshBuilder/QD3DMesh/QD3DVisual)</TD><TD>Removes visual object from frame</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>Load</TD><TD>SUB (FileName AS STRING)</TD><TD>Load a frame from .X file</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>LookAt</TD><TD>SUB (F AS QD3DFrame, Constraint AS INTEGER)</TD><TD>Fix frame and constrain rotation</TD><TD NOWRAP>2</TD></TR>
+  <TR><TD VALIGN=TOP>Move</TD><TD>SUB (D AS DOUBLE)</TD><TD>Moves frame (rotate)</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>SetBackgroundImage</TD><TD>SUB (Texture AS QD3DTexture)</TD><TD>Add texture to frame</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>SetBackgroundRGB</TD><TD>SUB (R#, G#, B#)</TD><TD>Set background color</TD><TD NOWRAP>3</TD></TR>
+  <TR><TD VALIGN=TOP>SetFogParams</TD><TD>SUB (Start#, End#, Density#)</TD><TD>Set fog parameters</TD><TD NOWRAP>3</TD></TR>
+  <TR><TD VALIGN=TOP>SetOrientation</TD><TD>SUB (DX#, DY#, DZ#, UX#, UY#, UZ#)</TD><TD>Set orientation of frame</TD><TD NOWRAP>6</TD></TR>
+  <TR><TD VALIGN=TOP>SetPosition</TD><TD>SUB (X#, Y#, Z#)</TD><TD>Set viewing position of frame</TD><TD NOWRAP>3</TD></TR>
+  <TR><TD VALIGN=TOP>SetRotation</TD><TD>SUB (X#, Y#, Z#, Theta#)</TD><TD>Set rotation relative to X,Y,Z</TD><TD NOWRAP>4</TD></TR>
+  <TR><TD VALIGN=TOP>SetTexture</TD><TD>SUB (Tex AS QD3DTexture)</TD><TD>Add texture backdrop to frame</TD><TD NOWRAP>1</TD></TR>
+</TABLE>
+<br>
+
+<a name="3">
+<FONT SIZE = +1><B>QD3DFrame Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD>
+  </TR>
+ </TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QD3DFrame Examples</B></FONT>
+
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qd3dface.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qd3dlight.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      D>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                         

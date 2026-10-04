@@ -1,0 +1,136 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>Chapter 8: Using Image Resources</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Chapter 8</B></FONT></TD>
+  </TR>
+  <TR>
+    <TD COLSPAN=2><HR SIZE=1> </TD>
+  </TR>
+</TABLE>
+
+<BR>
+<H1>8. Using Image Resources</H1>
+<DD>Most Windows programming languages offer support for .RES (Resource) files.
+A Resource file is nothing more than a collection of images (plus resource strings
+and data). In this chapter, you'll learn about Image lists, how to embed resources in your
+executable, and how to properly use them in your applications.
+<BR><BR>
+
+<a name="81">
+<B>8.1 Supported RESOURCES</B>
+<DD>Rapid-Q only "directly" supports image resources, ie. just Icons and Bitmaps.
+So what exactly is the difference between loading a picture at run-time, or
+loading resource handles? For one thing, whenever you declare a resource handle,
+that picture file is automatically embedded within your executable. Here's
+an example:
+<PRE>
+     $RESOURCE ICO_TEST AS "C:\ICONS\TEST.ICO"
+
+     DIM Form AS QForm
+
+     Form.ICOHandle = ICO_TEST
+     '<I>Form.Icon = "C:\ICONS\TEST.ICO"</I>
+</PRE>
+The file C:\ICONS\TEST.ICO is embedded within your executable, which means
+you don't need to include TEST.ICO if you plan on distributing your .EXE program.
+Rapid-Q doesn't generate .RES files for you, and it can't handle other people's
+.RES files either. Most languages you'll see have a .RES file, but you can't
+use them in Rapid-Q, you'll have to extract the pictures within it, and use the
+$RESOURCE handle directive to include them in your application. It is also possible
+to do this:
+<PRE>
+     Form.ICOHandle = ICO_TEST
+
+     DIM Image AS QImage
+
+     Image.Icon = Form.Icon
+</PRE>
+Image.Icon normally accepts a string value, but if no string is specified,
+it'll read the previously cached icon. In this case, we're loading Form.Icon
+to our "cache" and Image.Icon will read from it. So what does this do?
+<PRE>
+     Image.Icon = Form.Icon + Form2.Icon
+</PRE>
+This will load Form2.Icon into the cache, so Image.Icon will copy Form2.Icon.
+However, please note that you can't assign Icon Handles, for example:
+<PRE>
+     <FONT COLOR=red>Image.IcoHandle = Form.IcoHandle</FONT>
+</PRE>
+The parser will try to look for a resource handle, but won't find one.
+<BR><BR>
+
+<a name="82">
+<B>8.2 Introduction to Image lists</B>
+<DD>You may want to refer to the Appendix on the properties, and methods of QImageList.
+An Image list is an array of icons and/or bitmaps. They are ordered from 0 to N. The first image
+you add will be index 0, the next index 1, etc... an image list store images of FIXED width and height.
+Anytime you change the <B>Width</B> or <B>Height</B> property, you're ultimately clearing the entire
+array. Note, this does not mean you can't add a 100x100 BMP file when your image list
+width is 32. It just means your BMP will be resized, whether you wanted that or not.
+<PRE>
+    DIM ImageList AS QImageList
+        ImageList.Width = 32
+        ImageList.Height = 32
+        ImageList.AddICOFile("app.ico")
+        ImageList.AddBMPFile("app.bmp", 0)
+</PRE>
+You can add icons or bitmaps in any order. As before, you can also add images
+from the "cache" if no filename was specified. As before:
+<PRE>
+    ImageList.AddICOFile(Form.Icon)
+    ImageList.AddICOFile(ImageList.GetICO(0))
+</PRE>
+<BR><BR>
+
+<a name="83">
+<B>8.3 Other kinds of Resources</B>
+<DD>You can include any kind of resource to your Rapid-Q program, but how
+can you use these other kinds? For example, if I include a .WAV file as a resource,
+how can I use it in my PLAYWAV routine? Well, since PLAYWAV can take resource
+handles, you can just pass it as a parameter:
+<PRE>
+    $RESOURCE Bomb_WAV AS "BOMB.WAV"
+    
+    PlayWav(Bomb_WAV, 1)      '-- 1 = background play
+
+    SLEEP 5                   '-- Wait until wav is finished
+</PRE>
+As for other types, you can extract the resource to be manipulated.
+<PRE>
+    $RESOURCE Whatever_TYPE AS "text.txt"
+    
+    ExtractResource(Resource(0), "text.txt")
+</PRE>
+After you're done using it, you can simply delete the file.
+There are a wide range of uses for extracting resources, you can even use this
+technique in an installation program. For more information on EXTRACTRESOURCE,
+RESOURCE, and RESOURCECOUNT, please see Appendix C: Other reserved keywords
+<BR><BR>
+
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="chapter7.html">Prev Chapter</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="chapter9.html">Next Chapter</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                        

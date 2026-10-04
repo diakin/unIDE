@@ -1,0 +1,133 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QTIMER</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QTIMER</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QTIMER Component</H1>
+<DD>QTimer implements the Windows API timer functions.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QTimer Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee"><TD>Enabled</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Interval</b></TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Interval determines the amount of time, in milliseconds, that passes before the timer component initiates another OnTimer event.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Tag</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+</TABLE>
+<br><br>
+
+<a name="3">
+<FONT SIZE = +1><B>QTimer Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR><TD>OnTimer</TD><TD>VOID</TD><TD>Timer interval elaspes</TD><TD>0</TD><TD>WXG</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QTimer Examples</B></FONT>
+
+<PRE>
+' Timer & OnKeyPress example for Rapid-Q by William Yu
+'       If no form is visible, Timer will not function.
+'       Not for PURE CONSOLE apps, but you're allowed to MIX.
+
+DIM Timer1 AS QTimer, Timer2 AS QTimer
+DIM Form AS QFORM
+DIM Label1 AS QLABEL, Label2 AS QLABEL
+DIM Label3 AS QLABEL
+
+SUB TimerOver
+  Timer1.Interval = 100
+  I = I + 1
+  Label1.Caption = STR$(I)
+END SUB
+
+SUB Timer2Over
+  Timer2.Interval = 1000
+  J = J + 1
+  Label2.Caption = STR$(J)
+END SUB
+
+SUB KeyPressed (Key AS BYTE)      '' Event returns one parameter
+  IF UCASE$(CHR$(Key)) = "Q" THEN
+    FORM.CLOSE
+  END IF
+END SUB
+
+I = 0        ' Undeclared variables are automatically global!
+J = 0
+
+FORM.CAPTION = "Timer Example"
+FORM.WIDTH = 150
+FORM.HEIGHT = 120
+FORM.CENTER
+
+Label1.Parent = Form
+Label1.Caption = STR$(I)
+Label1.Left = FORM.WIDTH/2
+
+Label2.Parent = Form
+Label2.Caption = STR$(J)
+Label2.Left = FORM.WIDTH/2
+Label2.Top = 40
+
+Label3.Parent = Form
+Label3.Caption = "Press 'Q' to quit'
+Label3.Top = 75
+
+Timer1.Interval = 100
+Timer1.Enabled = 1          ' True
+Timer1.OnTimer = TimerOver
+
+Timer2.Interval = 1000
+Timer2.Enabled = 1          ' True
+Timer2.OnTimer = Timer2Over
+
+FORM.OnKeyPress = KeyPressed
+FORM.SHOWMODAL
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qtabcontrol.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qtrackbar.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      
+
+</BODY>
+</HTML>                         

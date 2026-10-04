@@ -1,0 +1,797 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>Chapter 3: Rapid-Q Language Guide</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Chapter 3</B></FONT></TD>
+  </TR>
+  <TR>
+    <TD COLSPAN=2><HR SIZE=1> </TD>
+  </TR>
+</TABLE>
+<a name="sus"></a>
+<BR>
+<H1>3. Rapid-Q Language Guide</H1>
+<DD>In this chapter, I'll go through the language of BASIC, specifically Rapid-Q.
+Since Rapid-Q is derived from the BASIC language, most experienced BASIC programmers
+can skim this section if you so choose. There's a few new concepts that is not
+part of the BASIC language like infinite parameter passing and using the '-'
+operator on strings.
+<BR><BR>
+
+<a name="31">
+ &nbsp;&nbsp;&nbsp;<B>3.1 Rapid-Q Directives</B>
+<DD>Directives are used in Rapid-Q to tell the compiler how, and what kind of
+code is to be generated. Rapid-Q supports the following directives, which are
+usually included at the beginning of your programs.<BR><BR>
+<a name="31$apptype">
+ &nbsp;&nbsp;&nbsp;<i><b><b><u>$APPTYPE</u></b></b></i><br><br>
+
+ &nbsp;&nbsp;&nbsp;
+[ <B>CGI</B> | <B>CONSOLE</B> | <B>GUI</B> ] &nbsp;&nbsp;&nbsp; Default is GUI<BR>
+ &nbsp;&nbsp;&nbsp;
+           <b>$APPTYPE</b> is used to tell the compiler what kind of application you want generated.
+           Although the default is GUI, if no $APPTYPE directive is used, Rapid-Q will detect
+           what kind of application your program is just by looking at the source code.
+           To override this feature, include the $APPTYPE directive at the beginning of your source code.<BR>
+ &nbsp;&nbsp;&nbsp;           <B>Usage</B>: <FONT FACE="Courier">$APPTYPE CONSOLE</FONT>
+     <a name="31$typecheck"><p>
+
+
+ &nbsp;&nbsp;&nbsp;<i><b><u>$TYPECHECK</u></b></i>  <BR><br>
+
+ &nbsp;&nbsp;&nbsp;[ <B>OFF</B> | <B>ON</B> ] &nbsp;&nbsp;&nbsp; Default is OFF<BR>
+ &nbsp;&nbsp;&nbsp;<b>$TYPECHECK </b>is used to tell the compiler whether you want the source code parsed using strict type checking <B>ON</B> (all variables must be declared), or relaxed type checking <B>OFF</B> like traditional BASIC where you don't need to declare your variables. Note, you can turn ON or OFF type checking at anytime, so you can type check a portion of your code and turn it OFF afterwards.<BR>
+           <B>Usage</B>: <FONT FACE="Courier">$TYPECHECK ON</FONT><br><br>
+
+
+
+<a name="31$include">
+ &nbsp;&nbsp;&nbsp;<i><b><u>$INCLUDE</u></b></i><BR><br>
+
+[ <B><I>FileName</I></B> ]<BR>
+ &nbsp;&nbsp;&nbsp;
+           Using <b>$INCLUDE</b> has the same effect as importing your file directly into your program at the point of call.
+           You can use $INCLUDE anywhere in your program, except in a SUB or FUNCTION, but is
+           most often included at the beginning of your source code. Enclosing the filename between quotes will search
+           for that file in the current directory, and specified include paths. Enclosing the filename between &lt; and &gt;
+           will search for that file in the current directory, specified include paths and the environment search paths.<BR>
+ &nbsp;&nbsp;&nbsp;
+           <B>Usage</B>:<BR><FONT FACE="Courier">
+             &nbsp; &nbsp; $INCLUDE "RAPIDQ.INC"<br>
+             &nbsp; &nbsp; $INCLUDE &lt;RAPIDQ.INC&gt;
+           </FONT><br><br>
+
+
+
+<a name="31$resource">
+ &nbsp;&nbsp;&nbsp;
+<i><b><u>$RESOURCE</u></b></i><BR><br>
+
+ &nbsp;&nbsp;&nbsp;
+<I>Handle</I></B> AS <B><I>FileName</I></B><BR>
+ &nbsp;&nbsp;&nbsp;
+           Most Windows programming languages include support for Resource files.
+           In Rapid-Q, this is somewhat different. In Rapid-Q, Resource files are just a collection
+           of graphics files. There is no such thing as resource strings in Rapid-Q.
+           Anyway, what's great about Resource files is that they are embedded into
+           your applications. So if you're using 10 different bitmaps, you don't need
+           to include them in your .ZIP distribution because it's already embedded into the .EXE.
+           Enclosing the filename between quotes will search
+           for that file in the current directory, and specified include paths. Enclosing the filename between &lt; and &gt;
+           will search for that file in the current directory, specified include paths and the environment search paths.<BR>
+ &nbsp;&nbsp;&nbsp;           
+<B>Usage</B>:<BR> <FONT FACE="Courier">
+               &nbsp; &nbsp; $RESOURCE RES_BMP1 AS "CLOUDS.BMP"<br>
+               &nbsp; &nbsp; $RESOURCE RES_BMP1 AS &lt;CLOUDS.BMP&gt;
+           </FONT><br><br>
+
+
+<a name="31$define">
+ &nbsp;&nbsp;&nbsp;
+<i><b><u>$DEFINE</u></b></i><br><br>
+
+ &nbsp;&nbsp;&nbsp;
+<I>NewDefinition</I></B> &nbsp [<B><I>OldDefinition</I></B>]<BR>
+ &nbsp;&nbsp;&nbsp;
+           When you feel like redefining or creating new keywords/tokens, use this directive.
+           You cannot construct a series of tokens to be redefined.
+           You cannot redefine operators or punctuations. $DEFINE cannot be used to define a function (like in C).
+           The OldDefinition parameter is optional, so you can do this just fine: $DEFINE NEWDEF
+           <BR>
+ &nbsp;&nbsp;&nbsp;
+           <B>Usage</B>: <FONT FACE="Courier">$DEFINE INT16 SHORT</FONT><br><br>
+
+<a name="31$undef">
+ &nbsp;&nbsp;&nbsp;
+<i><b><u>$UNDEF</u></b></i><br><br>
+
+ &nbsp;&nbsp;&nbsp;
+<B><I>DefName</I> [, DefName]</B><BR>
+ &nbsp;&nbsp;&nbsp;
+           To undefine a previous call of define, use $UNDEF.
+           You can specify multiple instances on the same line, separated with commas.
+           <BR>
+ &nbsp;&nbsp;&nbsp;
+           <B>Usage</B>: <FONT FACE="Courier">$UNDEF INT16, INT32</FONT><br><br>
+
+
+<a name="31$ifdef">
+ &nbsp;&nbsp;&nbsp;
+<i><b><u>$IFDEF</u></b></i><br><br>
+
+ &nbsp;&nbsp;&nbsp;
+<B><I>Definition</I></B><BR>
+ &nbsp;&nbsp;&nbsp;
+           This directive is used to specify whether a piece of code should or should
+           not be compiled. It is used in conjunction with $DEFINE. If the Definition
+           has been defined, the code within the $IFDEF...($ELSE)...$ENDIF statement will be compiled, otherwise
+           it is skipped entirely.
+           <BR>
+ &nbsp;&nbsp;&nbsp;
+           <B>Usage</B>:<BR><FONT FACE="Courier">
+                &nbsp; &nbsp; $IFDEF INT16<BR>
+                <FONT SIZE=2 COLOR=#009900>&nbsp; &nbsp; ' if INT16 has been defined<BR>
+                &nbsp; &nbsp; ' compile this portion</FONT><BR>
+                &nbsp; &nbsp; $ELSE<BR>
+                <FONT SIZE=2 COLOR=#009900>&nbsp; &nbsp; ' if INT16 has not been defined<BR>
+                &nbsp; &nbsp; ' compile this portion</FONT><BR>
+                &nbsp; &nbsp; $ENDIF<BR><br></FONT>
+
+<a name="31$ifndef">
+ &nbsp;&nbsp;&nbsp;
+<i><b><u>$IFNDEF</u></b></i><br><br>
+
+ &nbsp;&nbsp;&nbsp;
+<B><I>Definition</I></B><BR>
+ &nbsp;&nbsp;&nbsp;
+           $IFNDEF has the opposite effect as $IFDEF.
+           <BR>
+ &nbsp;&nbsp;&nbsp;
+           <B>Usage</B>:<BR><FONT FACE="Courier">
+                &nbsp; &nbsp; $IFNDEF INT16<BR>
+                <FONT SIZE=2 COLOR=#009900>&nbsp; &nbsp; ' if INT16 has not been defined<BR>
+                &nbsp; &nbsp; ' compile this portion</FONT><BR>
+                &nbsp; &nbsp; $ELSE<BR>
+                <FONT SIZE=2 COLOR=#009900>&nbsp; &nbsp; ' if INT16 has been defined<BR>
+                &nbsp; &nbsp; ' compile this portion</FONT><BR>
+                &nbsp; &nbsp; $ENDIF<BR></FONT><br>
+
+<a name="31$option">
+<i><b><u>$OPTION</u></b></i><br><br>
+
+ &nbsp;&nbsp;&nbsp;
+<B><I>OptionName [Parameters]</I></B><BR>
+           BYREF, BYTECODE, DECIMAL, DIM, EXPLICIT, GTK, ICON, INKEY$, and WEAKTYPE are valid OptionNames.
+           <BR>
+ &nbsp;&nbsp;&nbsp;
+           <B>Usage</B>:<BR><FONT FACE="Courier">
+                &nbsp; &nbsp; $OPTION BYREF<BR>
+                <FONT SIZE=2 COLOR=#009900><nobr>
+                &nbsp; &nbsp; This changes the way variables are<BR>
+                &nbsp; &nbsp; passed. By default, Rapid-Q passes variables<BR>
+                &nbsp; &nbsp; by value. This option reverses that.<BR>
+                &nbsp; &nbsp; Use with caution.<BR>
+                </nobr></FONT><BR>
+                &nbsp; &nbsp; $OPTION BYTECODE<BR>
+                <FONT SIZE=2 COLOR=#009900><nobr>
+                &nbsp; &nbsp; Compile as byte code only.<BR>
+                </nobr></FONT><BR>
+                &nbsp; &nbsp; $OPTION DECIMAL ","<BR>
+                &nbsp; &nbsp; $OPTION DECIMAL 64<BR>
+                <FONT SIZE=2 COLOR=#009900><nobr>
+                &nbsp; &nbsp; This changes the default decimal<BR>
+                &nbsp; &nbsp; character for use in VAL.<BR>
+                &nbsp; &nbsp; The default decimal character is the period.<BR>
+                </nobr></FONT><BR>
+                &nbsp; &nbsp; $OPTION DIM BYTE<BR>
+                &nbsp; &nbsp; $OPTION DIM WORD<BR>
+                &nbsp; &nbsp; $OPTION DIM DWORD<BR>
+                &nbsp; &nbsp; $OPTION DIM SHORT<BR>
+                &nbsp; &nbsp; $OPTION DIM INTEGER<BR>
+                &nbsp; &nbsp; $OPTION DIM LONG<BR>
+                &nbsp; &nbsp; $OPTION DIM SINGLE<BR>
+                &nbsp; &nbsp; $OPTION DIM DOUBLE<BR>
+                &nbsp; &nbsp; $OPTION DIM STRING<BR>
+                &nbsp; &nbsp; $OPTION DIM VARIANT<BR>
+                <FONT SIZE=2 COLOR=#009900><nobr>
+                &nbsp; &nbsp; This changes the default type<BR>
+                &nbsp; &nbsp; for an undeclared variable.<BR>
+                &nbsp; &nbsp; By default, all undeclared variables are<BR>
+                &nbsp; &nbsp; assumed to be of type DOUBLE<BR>
+                &nbsp; &nbsp; if no suffix is provided.<BR>
+                </nobr></FONT><BR>
+                &nbsp; &nbsp; $OPTION EXPLICIT<BR>
+                <FONT SIZE=2 COLOR=#009900><nobr>
+                &nbsp; &nbsp; Same as using TYPECHECK ON<BR>
+                &nbsp; &nbsp; Maintained for compatibility with VB<BR>
+                </nobr></FONT><BR>
+                &nbsp; &nbsp; $OPTION GTK<BR>
+                <FONT SIZE=2 COLOR=#009900><nobr>
+                &nbsp; &nbsp; Uses GTK instead of XFORMS<BR>
+                &nbsp; &nbsp; Make sure you have the proper files<BR>
+                </nobr></FONT><BR>
+                &nbsp; &nbsp; $OPTION ICON "path\file.ico"<BR>
+                <FONT SIZE=2 COLOR=#009900><nobr>
+                &nbsp; &nbsp; This changes the default icon<BR>
+                &nbsp; &nbsp; of your executable file.<BR>
+                </nobr></FONT><BR>
+                &nbsp; &nbsp; $OPTION INKEY$ DEFAULT<BR>
+                &nbsp; &nbsp; $OPTION INKEY$ TRAPALL<BR>
+                <FONT SIZE=2 COLOR=#009900><nobr>
+                &nbsp; &nbsp; This allows INKEY$ to accept/reject<BR>
+                &nbsp; &nbsp; certain extended characters.<BR>
+                &nbsp; &nbsp; TRAPALL will trap Shift/Ctrl/Alt/Menu<BR>
+                &nbsp; &nbsp; as well as Caps/Num/Scroll lock.<BR>
+                </nobr></FONT><BR>
+                &nbsp; &nbsp; $OPTION VBDLL ON<BR>
+                &nbsp; &nbsp; $OPTION VBDLL OFF<BR>
+                <FONT SIZE=2 COLOR=#009900><nobr>
+                &nbsp; &nbsp; This determines how DLLs are handled.<BR>
+                &nbsp; &nbsp; If VBDLL is enabled (ON), your DLL<BR>
+                &nbsp; &nbsp; declarations in Rapid-Q will mimic VB's<BR>
+                &nbsp; &nbsp; such that your code can be used the<BR>
+                &nbsp; &nbsp; same way in both languages.<BR>
+                &nbsp; &nbsp; This option is OFF by default.<BR>
+                </nobr></FONT><BR>
+                &nbsp; &nbsp; $OPTION WEAKTYPE ON<BR>
+                &nbsp; &nbsp; $OPTION WEAKTYPE OFF<BR>
+                <FONT SIZE=2 COLOR=#009900><nobr>
+                &nbsp; &nbsp; WeakType is disabled (OFF) by default<BR>
+                &nbsp; &nbsp; WeakType allows for faster parsing<BR>
+                &nbsp; &nbsp; and may help in porting some VB code.<BR>
+                &nbsp; &nbsp; It should not generally be used,<BR>
+                &nbsp; &nbsp; unless you know the code is okay.<BR>
+                </nobr></FONT><BR>
+           </FONT><br>
+
+<a name="31$optimize">
+ &nbsp;&nbsp;&nbsp;
+<i><b><u>$OPTIMIZE</u></b></i><br><br>
+
+ &nbsp;&nbsp;&nbsp;
+[ <B>OFF</B> | <B>ON</B> ] &nbsp;&nbsp;&nbsp;Default is OFF<BR>
+&nbsp;&nbsp;&nbsp;
+<b>$OPTIMIZE</b> can be used to reduce the byte code size by eliminating unnecessary
+           instructions. If you use this option, make sure it's one of the first things you call.<BR>
+ &nbsp;&nbsp;&nbsp;
+           <B>Usage</B>: <FONT FACE="Courier">$OPTIMIZE ON</FONT><br><br>
+
+
+<a name="31$escapechars">
+ &nbsp;&nbsp;&nbsp;
+<i><b><u>$ESCAPECHARS</u></b></i><br><br>
+ &nbsp;&nbsp;&nbsp;
+[ <B>OFF</B> | <B>ON</B> ] &nbsp;&nbsp;&nbsp;Default is OFF<BR>
+ &nbsp;&nbsp;&nbsp;
+           If <b>$ESCAPECHARS</b> is turned ON, you can use escape sequences in your strings.
+           Escape sequences can either be character or numeric escapes. Note that case is sensitive.<BR>
+ &nbsp;&nbsp;&nbsp;
+           <B>Usage</B>: <FONT FACE="Courier">$ESCAPECHARS ON</FONT><br>
+ &nbsp;&nbsp;&nbsp;
+<B>Escape sequence</B><br>
+ &nbsp;&nbsp;&nbsp;
+<B>Details</B></a><B><br>
+&nbsp;</B><div align="left">
+  <table border="1" cellpadding="0" cellspacing="0" style="border-collapse: collapse" bordercolor="#111111" width="379" height="42" id="AutoNumber1">
+    <tr>
+      <td width="1" height="42">
+
+<pre><a name="31$escapechars">  \a        Alarm bell</a>
+<a name="31$escapechars">  \b        Backspace</a>
+<a name="31$escapechars">  \f        Form feed<BR>  \n        New line<BR>  \r        Carriage return<BR>  \t        Horizontal Tab<BR>  \v        Vertical Tab<BR>  \\        Backslash<BR>  \"        Double quote<BR>  \###      ### is any number 0..255<BR>  \xHH      HH is a hexidecimal value 00..FF<BR>&nbsp;</pre>
+      </td>
+    </tr>
+  </table>
+</div>
+<p>
+
+
+<B><br>
+ </B>
+
+
+<a name="31$escapechars">
+ &nbsp;&nbsp;&nbsp;
+           <B>Examples</B>:<BR><FONT FACE="Courier">
+                &nbsp; &nbsp; PRINT "\""<BR>
+                <FONT SIZE=2 COLOR=#009900>&nbsp; &nbsp; Output is "<BR>
+                </FONT><BR>
+                &nbsp; &nbsp; PRINT "\x41"<BR>
+                <FONT SIZE=2 COLOR=#009900>&nbsp; &nbsp; Output is A<BR>
+                </FONT><BR>
+                &nbsp; &nbsp; PRINT "\t\65\66\67\t\68\69\70<BR>
+                <FONT SIZE=2 COLOR=#009900>&nbsp; &nbsp; Output is ABC &nbsp; &nbsp; &nbsp DEF<BR>
+                </FONT><BR>
+                &nbsp; &nbsp; PRINT "Hey\r\n";<BR>
+                <FONT SIZE=2 COLOR=#009900>&nbsp; &nbsp; Output is Hey with newline<BR>
+                </FONT><BR>
+           </FONT>
+
+<a name="31$macro">
+ &nbsp;&nbsp;&nbsp;
+<i><b><u>$MACRO</u></b></i><br><br>
+ &nbsp;&nbsp;&nbsp;
+
+<B><I>MacroName[(Parameters, ...)]  MacroDefinition</I></B><BR>
+           A Macro simply replaces a definition with another. It can be treated
+           like a function if you supply parameters. Rapid-Q allows Macros to be
+           embedded within another Macro (foward only to avoid recursion), token pasting using ##,
+           and even macro overloading.
+           You can also redefine operators and special characters except quotes.
+           A definition can extend to multiple lines by using the colon as a line
+           separator. A $MACRO directive is global if it preceeds any $INCLUDE directives.
+           ie. the included files have access to those Macro definitions.
+           A $MACRO directive only affects the module level (ie. the current file)
+           if used in an $INCLUDE file. So if A depends on B and B has some $MACRO
+           directives, then those $MACRO directives only affect B and <i>A has no
+           access to them unless redeclared in module A.
+</i>           <BR>
+ &nbsp;&nbsp;&nbsp;
+           <B>Notes</B>:<BR><FONT FACE="Times New Roman">
+ &nbsp;&nbsp;&nbsp;
+                If you use the $MACRO directive, you are forcing Rapid-Q to preprocess
+                your code, which will prolong the compilation process. Rapid-Q normally performs
+                a single-pass compilation process.
+           </FONT><BR>
+ &nbsp;&nbsp;&nbsp;
+           <B>Usage</B>:<BR><FONT FACE="Courier">
+                &nbsp; &nbsp; $MACRO ~ ,<BR>
+                <FONT SIZE=2 COLOR=#009900>&nbsp; &nbsp; This redefines the comma character<BR>
+                                           &nbsp; &nbsp; Try: ? STRING$(10 ~ "A")<BR>
+                </FONT><BR>
+                &nbsp; &nbsp; $MACRO strcat(a,b) a=a+b<BR>
+                <FONT SIZE=2 COLOR=#009900>&nbsp; &nbsp; Implements a STRCAT function<BR>
+                                           &nbsp; &nbsp; strcat(a$,"abc") translates to a$=a$+"abc"<br>
+<br>
+                </FONT>
+           </FONT>
+</a><b><font color="#CC0000"><i><span style="background-color: #FFFF00">Not 
+working </span></i>&nbsp;</font></b><a name="31$macro"><FONT FACE="Courier"><b><font color="#CC0000">strcat(a1,b) a1=a1+b</font></b><FONT SIZE=2 COLOR=#009900>
+                </FONT>
+                <FONT SIZE=2 COLOR=#CC0000><BR>
+                </FONT><BR>
+                &nbsp; &nbsp; $MACRO VARID(x) V##x<BR>
+                <FONT SIZE=2 COLOR=#009900>&nbsp; &nbsp; An example of token pasting<BR>
+                                           &nbsp; &nbsp; DEFINT VARID(1) translates to DEFINT V1<BR>
+                </FONT><BR>
+                &nbsp; &nbsp; $MACRO TWO_PI (2*PI)<BR>
+                &nbsp; &nbsp; $MACRO PI 3.14159<BR>
+                <FONT SIZE=2 COLOR=#009900>&nbsp; &nbsp; Embedded Macros (forward only).<BR>
+                                           &nbsp; &nbsp; Can't embed itself as a parameter.<BR>
+                                           &nbsp; &nbsp; This avoids rescanning & recursion.<BR>
+                </FONT><BR>
+                &nbsp; &nbsp; $MACRO ADD(a,b,c,d) ADD(a,b)+ADD(c,d)<BR>
+                &nbsp; &nbsp; $MACRO ADD(x,y) x+y<BR>
+                &nbsp; &nbsp; $MACRO ADD(x,y,z) x+y+z<BR>
+                <FONT SIZE=2 COLOR=#009900>&nbsp; &nbsp; An example of macro overloading</FONT><BR>
+           &nbsp;</FONT></a><hr>
+<p><b><font color="#006600">
+<span style="font-style: italic; background-color: #FFFF00">'MacroPower !!!</span></font></b></p>
+<p><b><font color="#006600">
+<span style="font-style: italic; ">'Char presentation of number&nbsp;
+</span>
+<span style="font-style: italic; background-color: #FFFF00">Macro as pseudo SUB</span></font><font color="#0000aa"><br>
+DIM</font></b> M <font color="#0000aa"><b>AS</b></font> <font color="#000099">
+<b>QMemoryStream</b></font><br>
+&nbsp;&nbsp;&nbsp; <br>
+<font color="#0000aa"><b>$Macro</b></font> Digit2Char<b>(</b>D,a<b>)</b> _<br>
+	M.Write<b>(</b>D<b>)</b>:za=<font color="#0000aa"><b>sizeOf</b></font><b>(</b>D<b>)</b>:<font color="#990000"> </font>
+_<br>
+	M.Position=0:a=M.ReadBinStr<b>(</b>za<b>) </b>: M.Close<br>
+<br>
+<font color="#0000aa"><b>dim</b></font> LPod <font color="#0000aa"><b>as</b></font>&nbsp;
+<font color="#0000aa"><b>double</b></font> <br>
+lpod=33.234<br>
+Digit2Char<b>(</b>lpod,sss$<b>)</b><br>
+<font color="#990000"> 
+print &quot;Char LPod=</font>&quot;,sss$:<br>
+<br>
+<font color="#0000aa"><b>dim</b></font> tst <font color="#0000aa"><b>as</b></font>&nbsp;
+<font color="#0000aa"><b>integer</b></font> <br>
+tst=33.234<br>
+Digit2Char<b>(</b>tst,zz$<b>)<br>
+</b><font color="#990000"> 
+print &quot;Char tst=</font>&quot;,zz$:</p>
+<p><font color="#FF0000"><b>Cause!</b></font></p>
+<p><font color="#FF0000"><b>$Macro can not works in large files. (No damages 
+yet)</b></font></p>
+<hr>
+<p>
+
+<a name="32">
+ &nbsp;&nbsp;&nbsp;
+<B>3.2 Variables and Assignments</B>
+</a>
+<DD>Variables are stored in main memory, and stay there for the entire duration
+of your program. In Rapid-Q, type checking is very relaxed. Which means you
+can assign a string to an integer variable. The result is undefined, but will most likely return 0. Same goes
+with assigning a number to a string variable, the result is an empty string.
+Type checking is really done at the interpreter level in Rapid-Q, but since you don't
+want error messages popping up everywhere, I have disabled the check entirely.
+What this ultimately means is that you should be very very careful in assigning
+values to your variables, since you won't get any warnings from Rapid-Q.
+The only strict type checking done is for QObjects. You cannot assign a number
+or string to a variable expecting an Object for its value. Some examples of
+valid assignments:<BR>
+<PRE>         A% = "Hello"  "World"
+
+         A$ = "Hi World!"
+
+         A# = 34 + 34 - 324 * 3 / (34 / 5 + 5)
+</PRE>&nbsp;&nbsp;&nbsp;
+If you've never programmed in BASIC before, you're probably wondering what all
+those symbols after the <B>A</B> mean. Well, since most implementations of BASIC does not restrict
+you to define your variables before you use them, you can define them by using these
+symbols:
+<PRE>         <B>?, ??, ???, %, &, !, #, $</B></PRE>
+<a name="32a">
+ &nbsp;&nbsp;&nbsp;
+They represent BYTE (?), WORD (??), DWORD (???), SHORT (%), LONG (&) or INTEGER, SINGLE (!), DOUBLE (#), and STRING ($), respectively.</a>
+
+Of course, if you didn't put any symbol in front of your undeclared variable, it's automatically
+assumed that the variable is a DOUBLE. That is the implementation used in Rapid-Q, for
+other languagues, the default maybe SINGLE, LONG, or what have you. Here's a table for your
+viewing pleasure:<BR>
+<PRE>    <a name="VarType">Type</a>       ID  Size  Range
+    --------- ---- ---- -------------
+    <a name="Byte">Byte</a>        ?   1   0..255
+    Word       ??   2   0..65535
+    Dword     ???   4   Only Linux version for now...
+    Short       %   2   -32768..32767
+    Integer     &   4   -2147483648..2147483647
+    Long        &   4   -2147483648..2147483647
+    Single      !   4   1.5 x 10<SUP>45</SUP>..3.4 x 10<SUP>38</SUP>
+    Double      #   8   5.0 x 10<SUP>324</SUP>..1.7 x 10<SUP>308</SUP>
+</PRE>
+ &nbsp;&nbsp;&nbsp;
+If you didn't like the way that was done, you could also use <B>DIM</B> to declare
+your variables, like so:<BR>
+<PRE>            DIM Number AS INTEGER
+            DIM S AS STRING
+            DIM B AS BYTE
+</PRE>
+ &nbsp;&nbsp;&nbsp;
+Well, you get the idea. If you turned $TYPECHECK ON, then you will be forced
+to declare your variables like that. It's a nice habit to pick up, especially
+if you wanted to switch to languages like C or Pascal. You will be forced to
+declare all your variables before you use them. Here's something that's
+valid in Rapid-Q, but can confuse the daylights out of people:
+<PRE>            DIM Num$ AS INTEGER
+</PRE>
+ &nbsp;&nbsp;&nbsp;
+Yes, try to avoid obfuscated code like that.<hr>
+<p>'This program demonstrate how to use <br>
+'DEF... Instead of DIM even for arrays! <br>
+'Boltex &lt;pier..@yahoo.com&gt;<br>
+<br>
+DEFSHORT tour&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 'ok, define type:SHORT<br>
+DEFSHORT a(3) = {1,2,3,4} 'assign value even to arrays...<br>
+DEFSHORT b(1,3) = {1,2,3,4,5,6,7,8} 'of more than 1 dimension!<br>
+<br>
+FOR tour=0 TO 3<br>
+&nbsp;PRINT &quot;a(&quot;;tour;&quot;)=&quot;;a(tour)<br>
+NEXT tour<br>
+?<br>
+FOR tour=0 TO 3<br>
+&nbsp;PRINT &quot;b(0,&quot;;tour;&quot;)=&quot;;b(0,tour)<br>
+NEXT tour <br>
+?<br>
+FOR tour=0 TO 3<br>
+&nbsp;PRINT &quot;b(1,&quot;;tour;&quot;)=&quot;;b(1,tour)<br>
+NEXT tour <br>
+' Outputs to screen:<br>
+'<br>
+'a(0)=1<br>
+'a(1)=2<br>
+'a(2)=3<br>
+'a(3)=4<br>
+'<br>
+'b(0,0)=1<br>
+'b(0,1)=2<br>
+'b(0,2)=3<br>
+'b(0,3)=4<br>
+'<br>
+'b(1,0)=5<br>
+'b(1,1)=6<br>
+'b(1,2)=7<br>
+'b(1,3)=8</p>
+<hr>
+<p>
+
+<a name="33">
+ &nbsp;&nbsp;&nbsp;
+<B>3.3 Rapid-Q Components/Objects</B>
+<DD>Rapid-Q offers reuseable components (or objects) which assists the programmer
+in developing Windows applications. Most RAD (Rapid Application Development) Programming
+languages offer this. For Visual C++, it's MFC, and for Java, it's JFC Swing.
+So what are visual components? They're basically just wrapper code that implement all the
+features of the Windows API control (or under Linux, whatever GUI API you're using) without all the headaches involved in using the
+API directly. For example, you can create windows using pure Windows API
+calls only, but this can run down for pages. In Rapid-Q, all this has been
+wrapped up into a component called <B>QFORM</B>. So instead of having to first
+register your class window, then display it and handle all the callbacks, all
+you do in Rapid-Q is:
+<PRE>             DIM Form AS QFORM
+             Form.ShowModal
+</PRE>
+ &nbsp;&nbsp;&nbsp;
+Comparing this to a C/C++ program, it's much cleaner, and easier to understand.
+There are a lot of supported components in Rapid-Q, like QBUTTON, QIMAGE, QFILESTREAM,
+etc. There are also some which aren't supported, that's the restriction involved
+in using Rapid-Q. Components are created exactly the same way
+you create variables, by using <B>DIM</B>. Each component has its own properties,
+methods and events. <B>Properties</B> are like the component's attributes.
+For example, <B>Left, Top, Width,</B> and <B>Height</B> are properties common
+to all visible controls, which define its placement within the form or Window.
+<B>Caption</B> is a property of type <I>STRING</I>. For a <B>QFORM</B>
+component, the <B>Caption</B> property defines the title of that form.
+<B>Caption</B> for a <B>QBUTTON</B> defines the text of that button. <B>Caption</B>
+for something like <B>QFILESTREAM</B> does not exist, since a <B>QFILESTREAM</B>
+isn't a visible component. It has its own properties. For a complete guide of
+the properties, methods and events for all components, please check the Appendix section.
+Here's a quick example of how you can assign properties to your components:
+<PRE>                 DIM Form AS QFORM
+                 Form.Caption = "My Application"
+                 Form.Left = 100
+                 Form.Top = 100
+</PRE>
+ &nbsp;&nbsp;&nbsp;
+Be careful to know which properties are Read-Only, and which ones are Write-Only.
+An example of a read-only property
+is the <B>ITEMCOUNT</B> property of a <B>QLISTBOX</B>. An example if a write-only
+property is the <B>ICON</B> property of a <B>QFORM</B>, used to specify the
+location of an icon to use as the default. Reading the Write-Only values, or
+Writing to Read-Only values have no defined meaning, and may result in a compile error
+or more seriously, your program crashing.
+<BR><BR>
+
+<a name="34">
+ &nbsp;&nbsp;&nbsp;
+<B>3.4 Component Methods & Events</B>
+<DD>Well, we've covered only the properties so far, but methods aren't much
+different. What exactly is a method you ask? It's really just a SUBROUTINE or FUNCTION.
+It's called a method, because the SUBROUTINE or FUNCTION only refers to that
+component. This is harder to explain than to understand. Here's an example of a method:
+<PRE>              DIM Form AS QFORM
+              Form.Center
+              Form.ShowModal
+</PRE>
+ &nbsp;&nbsp;&nbsp;
+We used 2 methods here, <B>Center</B>, and <B>ShowModal</B>. The <B>Center</B> method
+is a SUBROUTINE that accepts no parameters. What it does is center the form on your
+desktop. <B>ShowModal</B> is actually a FUNCTION, but we ignore the return value
+in this case. It's a method used to Display your form, and wait for the user to
+close it. <I>Note: Unlike some BASIC implementations, a FUNCTION can be called like a SUBROUTINE in Rapid-Q,
+you just ignore the return value. This is similar to C/C++.</I> Other methods
+that you see may require some extra parameters, and some even accept an infinite
+number of parameters. You can also write these in Rapid-Q yourself, but I'll
+cover that topic later. So basically, methods are functions which perform a
+specific task on that component. In our above example, we're centering the form, and
+then displaying it.
+<BR>
+<DD>All right, now what about events? Well, this can be a confusing subject if
+we were talking in terms of message passing and callbacks. Well, luckily, we
+can take a much higher level look at it. An Event occurs whenever something happens.
+This is very vague, something happening could be anything from time elasping, user
+clicking the mouse, user pressing a key, etc. Rapid-Q can't trap all these events,
+but the most important ones are. For example, if a user clicked on a button,
+you'd want to write some code to perform that task. We have to define a <B>CALLBACK</B>
+function to handle it. For each event which occurred, you want to direct that event to
+a subroutine you wrote to handle the event. Here's how:
+<PRE>       SUB ButtonClicked
+          PRINT "Button was clicked"
+       END SUB
+
+       DIM Button AS QBUTTON
+       DIM Form AS QFORM
+
+       Button.Parent = Form                 ' Property
+       Button.OnClick = ButtonClicked       ' Event
+       Form.ShowModal                       ' Method
+</PRE>
+ &nbsp;&nbsp;&nbsp;
+Seems easy enough right? It really is. Whenever an "<b>OnClick</b>" message/event occurs,
+the program jumps into your subroutine <B>ButtonClicked</B> and executes the code
+you have waiting in there. The above program is complete, so you can try it out
+yourself. For a list of all events that a particular component can receive, just
+look at the Appendix section.
+<BR><BR>
+
+<a name="35">
+ &nbsp;&nbsp;&nbsp;
+<B>3.5 Rapid-Q Subroutines & Functions</B>
+<DD>There are some GOTCHAS associated with Rapid-Q <font color=#ff0000>SUB</font>s and <font color=#ff0000>FUNCTION</font>s.
+The first, and most important, is that all values passed are passed by VALUE (except for objects, variants, udts, and arrays).
+To pass a variable by reference, you need to prepend an @ symbol.
+The second catch is that only a maximum of 10 parameters can be accepted (except when
+calling an API function, then it's limited to 25). There's no difference in the way you create <font color=#ff0000>SUB</font>s or <font color=#ff0000>FUNCTION</font>s in
+Rapid-Q (as compared to other BASIC languages like QBasic/PB):
+<PRE>    <font color=#ff0000>FUNCTION</font> FindMax (X AS INTEGER, Y AS INTEGER) AS INTEGER
+      IF X &gt; Y THEN
+        FindMax = X      '' Return value is X
+      ELSE
+        FindMax = Y      '' Return value is Y
+      END IF
+    <font color=#ff0000>END FUNCTION</font>
+</PRE>
+ &nbsp;&nbsp;&nbsp;
+The above code is valid, as is the following:
+<PRE>    <font color=#ff0000>FUNCTION</font> FindMax (X%, Y%) AS INTEGER
+      IF X% &gt; Y% THEN
+        FindMax = X%      '' Return value is X
+      ELSE
+        FindMax = Y%      '' Return value is Y
+      END IF
+    <font color=#ff0000>END FUNCTION</font>
+</PRE>
+ &nbsp;&nbsp;&nbsp;
+However, as you may notice, you can't have FindMax% without attaching an <I>AS INTEGER</I>
+to the end of the function.<br>
+
+<a name="35@sign">
+
+ &nbsp;&nbsp;&nbsp;
+To pass a variable by reference, attach an <font color=#ff0000>@</font> symbol in front of your variable:
+<PRE>    <font color=#ff0000>SUB</font> StrCat (Source AS STRING, Text AS STRING)
+        Source = Source + Text
+    <font color=#ff0000>END SUB</font>
+
+    A$ = "Hello"
+    StrCat(<font color=#ff0000>@A$</font>, " World!")
+    PRINT A$                '-- Should print: Hello World!
+</PRE>
+<a name="35byref">
+ &nbsp;&nbsp;&nbsp;
+Or if you prefer, you can also attach a <font color=#ff0000>BYREF</font> keyword in your parameter list like so:
+<PRE>    <font color=#ff0000>SUB</font> StrCat (<font color=#ff0000>BYREF</font> Source AS STRING, Text AS STRING)
+        Source = Source + Text
+    <font color=#ff0000>END SUB</font>
+
+    A$ = "Hello"
+    StrCat(A$, " World!")
+    PRINT A$                '-- Should print: Hello World!
+</PRE>
+ &nbsp;&nbsp;&nbsp;
+Yet another approach you can use instead (note that this is the "old" way, maintained
+for compatibility reasons):
+<PRE>    <font color=#ff0000>SUB</font> Strcat (A$, B$)
+       A$ = A$ + B$
+    <font color=#ff0000>END SUB</font>
+
+    A$ = "Hello"
+    Strcat(A$, " world!")
+    A$ = STACK.STR(0)
+    PRINT A$
+</PRE>
+ &nbsp;&nbsp;&nbsp;
+The stack contains an array of integers and strings, to access the correct parameter,
+you have to specify the number (from left to right). The first element being 0.
+You can also pass QObjects, but you can't use it as a return value.
+<PRE>    SUB (Button AS QButton)
+        Button.Left = 100
+    END SUB
+</PRE>
+ <a name="35byref">
+ &nbsp;&nbsp;&nbsp;
+All components/QObjects are passed by reference. </a>
+<p>Arrays as parameter.<br>
+<font color="#0000aa"><b><br>
+</b></font><font face="Fixedsys" color="#FF0000">function</font><font face="Fixedsys"> 
+AverageSubtract (Dat1!() <font color="#0000aa">as</font> <font color="#0000aa">
+single</font>) <font color="#0000aa">as</font> <font color="#000099">single</font><br>
+</font><font color="#007700"><i>'calculate and subtract&nbsp; average value from 
+function Dat1!()</i></font> <font face="Fixedsys"><br>
+Npt1 = <font color="#0000aa">UBOUND</font>(Dat1!)<br>
+ARMid! = Dat1!(0)<br>
+<font color="#0000aa">FOR</font> p = 0 <font color="#0000aa">TO</font> Npt1-1:<br>
+&nbsp;&nbsp;&nbsp; ARMid! = ARMid! + Dat1!(p):<br>
+<font color="#0000aa">NEXT</font> p<br>
+average! = ARMid! / Npt1<br>
+<font color="#0000aa">FOR</font> I = 0 <font color="#0000aa">TO</font> Npt1-1: 
+Dat1!(I) = Dat1!(I) - average!: <font color="#0000aa">NEXT</font> I<br>
+result=average!<br>
+<font color="#FF0000">END sub</font> </font><font color="#007700"><i>'' function</i></font>
+<font face="Fixedsys">&nbsp;Heh..It's working too ;-)<br>
+<br>
+<font color="#0000aa">DefSng</font> arg!(10) ={0, 1, 2, 3, 4, 5, 6, 7, 8, 9}<br>
+<font color="#0000aa">DefSng</font> dateTime(1 <font color="#0000aa">To</font> 
+9) = { 1, 2, 3, 4, 5, 6, 7, 8, 9}<br>
+<br>
+<font color="#0000aa">for</font> i=0 <font color="#0000aa">to</font> 9:
+<font color="#0000aa">print</font> &quot;<font color="#990000">arg!(</font>&quot;,i,&quot;<font color="#990000">)=</font>&quot;,arg!(i)&nbsp; 
+:&nbsp; <font color="#0000aa">next</font> i<br>
+abc= AverageSubtract (arg!() )<br>
+<font color="#0000aa">print</font> &quot;<font color="#990000">------------------&nbsp;&nbsp; 
+average=</font>&quot; ,abc<br>
+<font color="#0000aa">for</font> i=0 <font color="#0000aa">to</font> 9:
+<font color="#0000aa">print</font> &quot;<font color="#990000">arg!(</font>&quot;,i,&quot;<font color="#990000">)=</font>&quot;,arg!(i)&nbsp; 
+: <font color="#0000aa">next</font> i<br>
+<font color="#000099">print</font><br>
+<br>
+<font color="#0000aa">for</font> i=1 <font color="#0000aa">to</font> 9:
+<font color="#0000aa">print</font> &quot;<font color="#990000">dateTime(</font>&quot;,i,&quot;<font color="#990000">)=</font>&quot;,dateTime(i)&nbsp; 
+: <font color="#0000aa">next</font> i<br>
+abc= AverageSubtract (dateTime )<br>
+<font color="#0000aa">print</font> &quot;<font color="#990000">------------------&nbsp;&nbsp; 
+avrage=</font>&quot; ,abc<br>
+<font color="#0000aa">for</font> i=1 <font color="#0000aa">to</font> 9:
+<font color="#0000aa">print</font> &quot;<font color="#990000">dateTime(</font>&quot;,i,&quot;<font color="#990000">)=</font>&quot;,dateTime(i)&nbsp;&nbsp; 
+: <font color="#0000aa">next</font>&nbsp; i<br>
+</font>&nbsp;<br>
+<br>
+<a name="35byref">
+<BR><BR>
+
+<a name="36">
+ &nbsp;&nbsp;&nbsp;
+<B>3.6 Rules of Scope</B>
+<DD>Rapid-Q is not like BASIC in this case. Since Rapid-Q is a simple top-down
+one-pass compiler, the scope is very similar to that of Pascal.<br>
+ &nbsp;&nbsp;&nbsp;
+Here's what I mean:
+<PRE><FONT COLOR = "Green">
+       SUB Test
+          DIM I AS INTEGER
+          I = 100
+          PRINT I
+       END SUB
+</FONT><FONT COLOR = "Blue">
+       DIM I AS INTEGER
+       I = 10
+
+       SUB Test2
+         PRINT I
+       END SUB
+
+       Test    '' Call Subroutine
+       Test2</FONT>
+</PRE>
+ &nbsp;&nbsp;&nbsp;
+Here's how the scope works, for the SUB Test, the LOCAL variable <B>I</B> only extends
+down as far as the end of that SUB block. The variable <B>I</B> in the <FONT COLOR="Blue">main program</FONT> extends
+down all the way to the end of your program. That means SUB Test2 can use the global variable <B>I</B> because it's
+within its scope. You can also redeclare the variable <B>I</B> in SUB Test2, in which case the local <B>I</B> is used
+instead of the global <B>I</B>. Here's another situation to demonstrate the scope of variable names:
+<PRE>       DIM <font color="blue">I</font> AS INTEGER
+
+       SUB Scope (<font color="green">I</font> AS INTEGER)
+         DIM <font color="red">I</font> AS INTEGER
+         PRINT <font color="green">I</font>
+       END SUB
+
+       PRINT <font color="blue">I</font>
+</PRE>
+ &nbsp;&nbsp;&nbsp;
+In fact, the line <b><font face="courier">DIM <font color="red">I</font> AS INTEGER</font></b>
+is a wasted statement, since the variable <font color="red">I</font> is shadowed by the parameter
+name <font color="green">I</font>. Rapid-Q will warn you about this, but won't error out.
+<BR><BR>
+
+
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="chapter2.html">Prev Chapter</a></TD>
+   <TD ALIGN=CENTER><A HREF="#sus">Up</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="chapter4.html">Next Chapter</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>

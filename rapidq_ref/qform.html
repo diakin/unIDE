@@ -1,0 +1,346 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QFORM</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QFORM</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QFORM Component</H1>
+<DD>QForm is a standard application Window. You can put any visible control
+component on a QForm, such as QEdit, QLabel, QButton, etc...
+<BR><BR>
+<b>W</b> = Windows, <b>X</b> = Rapid-Q/XForms, <b>G</b> = Rapid-Q/GTK
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QForm Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#800000" style="border-collapse: collapse">
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>Read/Write</B></TD><TD><B>Default Value</B></TD><TD><B>Support</B></TD>
+  </TR>
+  <TR bgcolor="eeeeee"><TD><b>AutoScroll</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Specify whether scroll bars should appear automatically on the form if it is
+                not large enough to display all of its controls</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>BorderStyle</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>bsSizeable</TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">BorderStyle specifies the appearance and behaviour of the form border.<br>
+                             0 = bsNone -- Not resizeable; no visible border line or caption bar<br>
+                             1 = bsSingle -- Not resizeable; single-line border<br>
+                             2 = bsSizeable -- Standard resizeable border<br>
+                             3 = bsDialog -- Not resizeable; standard dialog box border<br>
+                             4 = bsToolWindow -- Like bsSingle but with a smaller caption<br>
+                             5 = bsSizeToolWin -- Like bsSizeable but with a smaller caption<br>
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Caption</b></TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Caption is the text that appears as the title of your form.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>ClientHeight</b></TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">The height of the form's client area, ie. the usable area inside the form's border.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>ClientWidth</b></TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">The width of the form's client area, ie. the usable area inside the form's border.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Color</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>clBtnFace</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Color of the form.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Cursor</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>crDefault</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Cursor that appears when the mouse pointer is over the form.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Font</b></TD><TD>QFONT</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Sets font property. Used for TextOut method.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>FormStyle</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>fsNormal</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Get or set the form's style. Only fsNormal is supported. (fsStayOnTop is also)
+<br>
+fsNormal = 0 <br>
+fsMDIChild = 1<br>
+fsMDIForm = 2<br>
+fsStayOnTop = 3<br>
+
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Handle</b></TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Get the form's handle for WinAPI calls.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Height</b></TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Get or set the form's vertical size (in pixels).
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Hint</b></TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">The hint string that appears when the user moves the mouse pointer over the form. It is not displayed unless ShowHint is true.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>IcoHandle</b></TD><TD>RESOURCE</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Assign an icon resource handle to appear as the icon for your form.<br>
+                             Example:<br>
+                             <blockquote><font face="courier" size="2">
+                             $RESOURCE game_ICO AS "game.ico"<br>
+                             DIM Form AS QFORM<br>
+                                 Form.IcoHandle = game_ICO
+                             </font></blockquote>
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Icon</b></TD><TD>STRING</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Assign an icon filename to appear as the icon for your form.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>KeyPreview</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Specify whether keyboard events should occur on the form before they occur on the active control.
+                             Not all keys will be redirected.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Left</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Specifies the left edge of the form relative to the desktop screen.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>ModalResult</b></TD><TD>INTEGER</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Assigning a value to ModalResult will close the form when it is displayed modally.<br>
+                             0 = mrNone<br>
+                             1 = mrOk<br>
+                             2 = mrCancel<br>
+                             3 = mrAbort<br>
+                             4 = mrRetry<br>
+                             5 = mrIgnore<br>
+                             6 = mrYes<br>
+                             7 = mrNo<br>
+                             8 = mrAll<br>
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Parent</b></TD><TD>QFORM</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Assigning a parent will remove the second form from the taskbar.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>PopupMenu</b></TD><TD>QPOPUPMENU</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Popupmenus are displayed when user right clicks on the form.<br>Example:
+                             <blockquote><font face="courier" size="2">
+                             DIM PopupMenu AS QPOPUPMENU<br>
+                             DIM Form AS QFORM<br>
+                                 Form.PopupMenu = PopupMenu
+                            </font></blockquote>
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>ShowHint</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">If True then the hint popup message can be displayed.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Top</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Visible</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Specifies the visibility of the form.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Width</TD><TD>INTEGER</TD><TD>RW</TD><TD>320</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>WindowState</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>wsNormal</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Specifies how the form appears on the screen.<br> 
+                             0 = wsNormal -- form appears neither maximized nor minimized<br>
+                             1 = wsMinimized -- form is minimized<br>
+                             2 = wsMaximized -- form is maximized<br>
+                             </TD></TR>
+</TABLE>
+<br><br>
+
+<a name="2">
+<FONT SIZE = +1><B>QForm Methods</B></FONT>
+<TABLE WIDTH="100%" cellspacing="0" cellpadding="3" border="1" bordercolor="#800000" style="border-collapse: collapse">
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD><TD><B>Support</B></TD>
+  </TR>
+  <TR bgcolor="eeeeee" valign="top"><TD><b>AddBorderIcons</b></TD><TD>SUBI</TD><TD>Add Border Icons</TD><TD>INTEGER, Infinite</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd"><b><u>Valid border icons are</u></b>:<br>
+                             0 = biSystemMenu -- The form icon<br>
+                             1 = biMinimize -- The minimize icon<br>
+                             2 = biMaximized -- The maximize icon<br>
+                             3 = biHelp -- The help icon<br>
+                             <b><u>Example</u></b>:
+                             <blockquote><font face="courier" size="2"><nobr>
+                             $INCLUDE "RAPIDQ.INC"<br>
+                             DIM Form AS QFORM<br>
+                             Form.AddBorderIcons(biHelp)
+                             </nobr></font></blockquote>
+                             </TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Center</TD><TD>SUB</TD><TD>Used to center a form</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Circle</TD><TD>SUB (x1%, y1%, x2%, y2%, c%, fill%)</TD><TD NOWRAP>Draw & Fill Circle/Ellipse</TD><TD NOWRAP>6</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Close</TD><TD>SUB</TD><TD>Close form</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD><b>CopyRect</b></TD><TD>SUB (D, Image, S)</TD><TD>D and S are QRECTs, Image can be a QImage, QCanvas, or QBitmap</TD><TD NOWRAP>3</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd"><b><u>Example (copies QIMAGE to form at 10,10)</u></b>:<br>
+                             <blockquote><font face="courier" size="2"><nobr>
+                             DIM Destination AS QRECT<br>
+                             DIM Source AS QRECT<br>
+                             DIM Image AS QIMAGE<br>
+                             Image.BMP = "whatever.bmp"<br><br>
+
+                             SUB FormPaint (Sender AS QFORM)<br>
+                             WITH Destination<br>
+                             .Top = 10<br>
+                             .Left = 10<br>
+                             .Right = .Left+Image.Width<br>
+                             .Bottom = .Top+Image.Height<br>
+                             END WITH<br>
+                             WITH Source<br>
+                             .Top = 0<br>
+                             .Left = 0<br>
+                             .Right = Image.Width<br>
+                             .Bottom = Image.Height<br>
+                             END WITH<br>
+                             Sender.CopyRect(Destination, Image, Source)<br>
+                             END SUB<br><br>
+
+                             DIM Form AS QFORM<br>
+                             Form.OnPaint = FormPaint<br>
+                             </nobr></font></blockquote>
+                             </TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD><b>DelBorderIcons</b></TD><TD>SUBI</TD><TD>Remove Border Icons</TD><TD>INTEGER, Infinite</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd"><b><u>Valid border icons are</u></b>:<br>
+                             0 = biSystemMenu -- The form icon<br>
+                             1 = biMinimize -- The minimize icon<br>
+                             2 = biMaximized -- The maximize icon<br>
+                             3 = biHelp -- The help icon<br>
+                             <b><u>Example</u></b>:
+                             <blockquote><font face="courier" size="2"><nobr>
+                             $INCLUDE "RAPIDQ.INC"<br>
+                             DIM Form AS QFORM<br>
+                             Form.DelBorderIcons(biMinimize)
+                             </nobr></font></blockquote>
+                             <b><u>Details</u></b>:<br>
+                             Deleting icon may not necessarily remove it from the form's title bar, but the icon
+                             will be greyed out.
+                             </TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD><b>Draw</b></TD><TD>SUB (x%, y%, BMP)</TD><TD NOWRAP>Draw Bitmap on Canvas</TD><TD NOWRAP>3</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd"><b><u>Details</u></b>:<br>
+                             BMP can be any BMP property from QBitmap, QImage, QImageList, etc. any component with a BMP property is fine.<br>
+                             <b><u>Examples</u></b>:<br>
+                             <blockquote><font face="courier" size="2">
+                             DIM Image1 AS QIMAGE<br>
+                             Image1.BMP = "whatever.bmp"<br>
+                             DIM Image2 AS QBITMAP<br>
+                             Image2.BMP = "whatever.bmp"<br><br>
+
+                             SUB FormPaint (Sender AS QFORM)<br>
+                                 Sender.Draw(0, 0, Image1.BMP)<br>
+                                 Sender.Draw(50, 50, Image2.BMP)<br>
+                             END SUB<br><br>
+
+                             DIM Form AS QFORM<br>
+                             Form.OnPaint = FormPaint<br>
+                             </pre></font></blockquote>
+                             </TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>FillRect</TD><TD>SUB (x1%, y1%, x2%, y2%, c%)</TD><TD NOWRAP>Draws & Fills a rectangle</TD><TD NOWRAP>5</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>HideTitleBar</TD><TD>SUB</TD><TD>Hides Caption</TD><TD>0</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Line</TD><TD NOWRAP>SUB (x1%, y1%, x2%, y2%, c%)</TD><TD>Draw line on form</TD><TD>5</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Paint</TD><TD>SUB (x%, y%, c%, borderc%)</TD><TD NOWRAP>Fill Region</TD><TD NOWRAP>4</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Pset</TD><TD>SUB (x%, y%, c%)</TD><TD NOWRAP>Pixel plot</TD><TD NOWRAP>3</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Rectangle</TD><TD>SUB (x1%, y1%, x2%, y2%, c%)</TD><TD NOWRAP>Draws a rectangle</TD><TD NOWRAP>5</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Repaint</TD><TD>SUB</TD><TD>Repaints the entire form</TD><TD>0</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>RoundRect</TD><TD>SUB (x1%, y1%, x2%, y2%, x3%, y3%, c%)</TD><TD NOWRAP>Draws & Fills a rounded rectangle</TD><TD NOWRAP>7</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD><b>ShapeForm</b></TD><TD>SUB (Filename$|Resource, TransparentColor&)</TD><TD NOWRAP>Shapes form as outline of image</TD><TD NOWRAP>2</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd"><b><u>Details</u></b>:<br>
+                             The first parameter can either be a filename to the BMP file, or a BMP resource file.
+                             The second parameter indicates which color is transparent.<br>
+                             <b><u>Example 1</u></b>:<br>
+                             <blockquote><font face="courier" size="2">
+                             DIM Form AS QFORM<br>
+                             Form.ShapeForm("image.bmp", &HFFFFFF)<br>
+                             </pre></font></blockquote>
+                             <b><u>Example 2</u></b>:<br>
+                             <blockquote><font face="courier" size="2">
+                             $RESOURCE image_BMP AS "image.bmp"<br><br>
+                             DIM Form AS QFORM<br>
+                             Form.ShapeForm(image_BMP, &HFFFFFF)<br>
+                             </pre></font></blockquote>
+                             </TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Show</TD><TD>SUB</TD><TD>Used to show form when hidden</TD><TD>0</TD><TD>WX</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>ShowModal</TD><TD>FUNCTION AS SHORT</TD><TD>Display form and wait for result</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>ShowTitleBar</TD><TD>SUB</TD><TD>Displays Caption</TD><TD>0</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD><b>StretchDraw</b></TD><TD>SUB (Rect AS QRECT, BMP)</TD><TD>Draw BMP and stretch to fit inside Rect</TD><TD NOWRAP>2</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd"><b><u>Details</u></b>:<br>
+                             BMP can be any BMP property from QBitmap, QImage, QImageList, etc. any component with a BMP property is fine.<br>
+                             <b><u>Examples (Double original size)</u></b>:<br>
+                             <blockquote><font face="courier" size="2">
+                             DIM Image1 AS QIMAGE<br>
+                             Image1.BMP = "whatever.bmp"<br><br>
+
+                             SUB FormPaint (Sender AS QFORM)<br>
+                             DIM R AS QRECT<br>
+                                 R.Left = 0<br>
+                                 R.Top = 0<br>
+                                 R.Right = Image1.Width*2<br>
+                                 R.Bottom = Image1.Height*2<br>
+                                 Sender.StretchDraw(R Image1.BMP)<br>
+                             END SUB<br><br>
+
+                             DIM Form AS QFORM<br>
+                             Form.OnPaint = FormPaint<br>
+                             </pre></font></blockquote>
+                             </TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>TextHeight</TD><TD>FUNCTION (Text$) AS WORD</TD><TD>Returns the height, in pixels, of Text$ string</TD><TD NOWRAP>1</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>TextWidth</TD><TD>FUNCTION (Text$) AS WORD</TD><TD>Returns the width, in pixels, of Text$ string</TD><TD NOWRAP>1</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>TextRect</TD><TD>SUB (Rect AS QRECT, x%, y%, S$, fc%, bc%)</TD><TD NOWRAP>Write text, and clip within region Rect</TD><TD NOWRAP>6</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD><b>TextOut</b></TD><TD NOWRAP>SUB (x%, y%, s$, fc%, bc%)</TD><TD>Write text to form</TD><TD>5</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd"><b><u>Details</u></b>:<br>
+                             fc% = foreground color<br>
+                             bc% = background color<br>
+                             For a transparent background, set bc% parameter to -1
+                             </TD></TR>
+</TABLE>
+<br><br>
+
+<a name="3">
+<FONT SIZE = +1><B>QForm Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#800000" style="border-collapse: collapse"><TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD><TD><B>Support</B></TD>
+  </TR>
+  <TR><TD>OnClick</TD><TD>VOID</TD><TD>User clicks on open area of form</TD><TD>0</TD><TD>W</TD></TR>
+  <TR><TD>OnClose</TD><TD>SUB (Action AS INTEGER)</TD><TD>Form closes
+<br>
+-- Close Actions <br>CONST caNone = 0              '-- Don't close the form <br>CONST caHide = 1              '-- Just hide the form <br>CONST caFree = 2
+<br>CONST caClose = caFree        '-- Close form <br>CONST caMinimize = 3          '-- Minimize instead of closing
+<br>
+
+</TD><TD>1</TD><TD>W</TD></TR>
+  <TR><TD>OnHint</TD><TD>SUB (Hint AS STRING)</TD><TD>Hint is displayed</TD><TD>1</TD><TD>W</TD></TR>
+  <TR><TD>OnKeyDown</TD><TD NOWRAP>SUB (Key AS Word, Shift AS INTEGER)</TD><TD NOWRAP>Key held down</TD><TD>2</TD><TD>W</TD></TR>
+  <TR><TD>OnKeyPress</TD><TD>SUB (Key AS BYTE)</TD><TD>User presses a key</TD><TD>1</TD><TD>W</TD></TR>
+  <TR><TD>OnKeyUp</TD><TD>SUB (Key AS Word, Shift AS INTEGER)</TD><TD>User releases a key</TD><TD>2</TD><TD>W</TD></TR>
+  <TR><TD>OnMouseDown</TD><TD NOWRAP>SUB (Button%, X%, Y%, Shift%)</TD><TD NOWRAP>Mouse button held down</TD><TD>4</TD><TD>W</TD></TR>
+  <TR><TD>OnMouseMove</TD><TD NOWRAP>SUB (X%, Y%, Shift%)</TD><TD NOWRAP>Mouse moves</TD><TD>3</TD><TD>W</TD></TR>
+  <TR><TD>OnMouseUp</TD><TD NOWRAP>SUB (Button%, X%, Y%, Shift%)</TD><TD NOWRAP>Mouse button is released</TD><TD>4</TD><TD>W</TD></TR>
+  <TR><TD>OnPaint</TD><TD>VOID</TD><TD>Form requires repainting</TD><TD>0</TD><TD>W</TD></TR>
+  <TR><TD>OnResize</TD><TD>VOID</TD><TD>Form is resized</TD><TD>0</TD><TD>W</TD></TR>
+  <TR><TD>OnShow</TD><TD>VOID</TD><TD>Form is displayed</TD><TD>0</TD><TD>W</TD></TR>
+  <TR><TD>WndProc</TD><TD NOWRAP>SUB (Hwnd%, Msg%, wParam%, lParam%)</TD><TD NOWRAP>Messages posted/sent to form</TD><TD>4</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=2><FONT SIZE=-1><I>Only one WndProc per Form is allowed. So if you have multiple forms, only one may be able to
+                receive messages at a time. (Future consideration to correct this)
+                </I></FONT></TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QForm Examples</B></FONT>
+
+<PRE>&nbsp; DIM Form AS QForm
+&nbsp; DIM Button AS QBUTTON
+
+&nbsp; Button.Parent = Form&nbsp;&nbsp;&nbsp;&nbsp; '' Add button to form container
+&nbsp; Form.Center
+&nbsp; Form.Caption = "Hello world!"
+
+&nbsp; IF Form.ShowModal THEN
+&nbsp;&nbsp;&nbsp; PRINT "Return result is TRUE"
+&nbsp; ELSE
+&nbsp;&nbsp;&nbsp; PRINT "Return result is FALSE"
+&nbsp; END IF
+</PRE>
+
+<p><font face="Fixedsys">DECLARE SUB Form_Close(Action AS INTEGER)<br><br>CREATE Form AS QFORM<br>&nbsp;&nbsp;&nbsp; Center<br>&nbsp;&nbsp;&nbsp; OnClose = Form_Close<br>END CREATE<br><br>Form.ShowModal<br><br>SUB Form_Close<br>&nbsp;&nbsp;&nbsp; IF MessageDlg(&quot;Do you wish to exit now?&quot;, 0, 1 OR 2, 0) = 7 THEN<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Action = 0<br>&nbsp;&nbsp;&nbsp; END IF<br>END SUB<br>&nbsp;</font></p><HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qfontdialog.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qgauge.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML> ent</a></TD></TR></TABLE></BODY></HTML>    

@@ -1,0 +1,143 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QSCROLLBOX</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QSCROLLBOX</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QSCROLLBOX Component</H1>
+<DD>QScrollBox is a scrolling window control.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QScrollBox Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee"><TD><b>Align</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>alNone</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Align determines how the control aligns within its parent control.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>AutoScroll</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">AutoScroll specifies whether scrollbars appear automatically on the scrolling windowed control if it is not large enough to display all of its controls.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>BorderStyle</TD><TD>INTEGER</TD><TD>RW</TD><TD>bsSingle</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Color</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Cursor</TD><TD>INTEGER</TD><TD>RW</TD><TD>crDefault</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Enabled</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Font</TD><TD>QFONT</TD><TD>W</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Handle</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Height</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Hint</TD><TD>STRING</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>HorzIncrement</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>8</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">HorzIncrement determines how far the display moves when the user clicks one of the small end arrows on the scrollbar.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>HorzMargin</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">HorzMargin specifies the minimum number of pixels that must separater each control from the edge of the scrollbox.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>HorzPosition</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">HorzPosition specifies the position of the thumb tab on the scrollbar.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>HorzRange</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">HorzRange determines how far the scrollbox can move.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>HorzTracking</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">HorzTracking determines whether the scrollbox moves before the thumb tab is released.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>HorzVisible</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Left</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Parent</TD><TD>QFORM/QPANEL/QTABCONTROL</TD><TD>W</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>PopupMenu</TD><TD>QPOPUPMENU</TD><TD>W</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>ShowHint</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR bgcolor="eeeeee"><TD>TabOrder</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Tag</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Top</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Width</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>VertIncrement</TD><TD>INTEGER</TD><TD>RW</TD><TD>8</TD></TR>
+  <TR bgcolor="eeeeee"><TD>VertMargin</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD></TR>
+  <TR bgcolor="eeeeee"><TD>VertPosition</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD></TR>
+  <TR bgcolor="eeeeee"><TD>VertRange</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD></TR>
+  <TR bgcolor="eeeeee"><TD>VertTracking</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR bgcolor="eeeeee"><TD>VertVisible</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Visible</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+</TABLE>
+<br>
+
+<a name="2">
+<FONT SIZE = +1><B>QScrollBox Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD>Repaint</TD><TD>SUB</TD><TD NOWRAP>Repaint control</TD><TD NOWRAP>0</TD></TR>
+</TABLE>
+<BR>
+
+<a name="3">
+<FONT SIZE = +1><B>QScrollBox Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD>OnClick</TD><TD>VOID</TD><TD>User clicked on scrollbox</TD><TD>0</TD></TR>
+  <TR><TD>OnDblClick</TD><TD>VOID</TD><TD>User double clicked on scrollbox</TD><TD>0</TD></TR>
+  <TR><TD>OnMouseDown</TD><TD NOWRAP>SUB (Button%, X%, Y%, Shift%)</TD><TD NOWRAP>Mouse button held down</TD><TD>4</TD></TR>
+  <TR><TD>OnMouseMove</TD><TD NOWRAP>SUB (X%, Y%, Shift%)</TD><TD NOWRAP>Mouse moves</TD><TD>3</TD></TR>
+  <TR><TD>OnMouseUp</TD><TD NOWRAP>SUB (Button%, X%, Y%, Shift%)</TD><TD NOWRAP>Mouse button is released</TD><TD>4</TD></TR>
+  <TR><TD>OnResize</TD><TD>VOID</TD><TD>Scrollbox is resized</TD><TD>0</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QScrollBox Examples</B></FONT>
+
+<PRE>
+CREATE Form AS QForm
+  Center
+  CREATE ScrollBox AS QScrollBox
+    Left = 50
+    CREATE Button AS QButton   '-- Create button inside scrollbox
+    END CREATE
+  END CREATE
+  ShowModal
+END CREATE
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qscrollbar.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qsocket.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      D>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                         

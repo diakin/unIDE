@@ -1,0 +1,292 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>Chapter 12: Graphics under Windows</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Chapter 12</B></FONT></TD>
+  </TR>
+  <TR>
+    <TD COLSPAN=2><HR SIZE=1> </TD>
+  </TR>
+</TABLE>
+
+<BR>
+<H1>12. Graphics under Windows</H1>
+<DD>Most of the information contained in this chapter will not apply to the Linux/Unix
+version, except for the first few sections. If you're a DOS programmer
+converting your skills to Windows, there are some differences in the way you
+display graphics, mostly introduced by the concept of events and the multi-tasking nature
+of Windows.
+<BR><BR>
+
+<a name="121">
+<B>12.1 Graphics under DOS versus Windows</B>
+<DD>If you're familiar with DOS programming and not so familiar with Windows
+programming, you'll probably notice some major differences in the nature of
+Graphics programming under the two OSes. Under DOS it's much simpler since you
+don't have to worry about other "programs" interrupting your program.
+This means what you display/draw on the screen won't erase itself magically,
+you only worry about what to draw next. However, there is a slight difference
+under Windows.  Although it's perfectly safe to draw on your form, it has
+several consequences.  The most obvious is that another program may "interrupt"
+the execution/display of your program. Think about minimizing the form or have it
+hidden under another window.  How will Windows know what to redraw once your
+program gains refocus?  You would think that Windows is smart enough to redraw
+the part that was hidden, but unfortunately we're not that lucky. Your program
+must tell Windows what to redraw.
+Windows will tell you that your form requires redrawing by sending messages to your
+form. In particular, the OnPaint (WM_PAINT) message is sent to the window which requires repainting.
+It is then your responsibility to provide an OnPaint procedure to your component/form that requires
+it.
+<BR><BR>
+
+<a name="122">
+<B>12.2 What components require painting?</B>
+<DD>
+All visible components actually, but fortunately most of the work is done by Windows.
+For example, there's no need to provide an OnPaint method for the QButton class
+since it's already implemented for you. You can of course write your own Button class
+as you may have learned in Chapter 10, in which case you'll be writing the OnPaint
+method for the user.  The QForm and QCanvas components are the two most obvious candidates
+to do graphics on.  You can think of QCanvas as your basic DOS graphics screen,
+what you want drawn should be written inside the OnPaint procedure:
+<PRE>
+    DECLARE SUB CanvasPaint (Sender AS QCanvas)
+
+    CREATE Form AS QForm
+        CREATE Canvas AS QCanvas
+            OnPaint = CanvasPaint
+        END CREATE
+        ShowModal
+    END CREATE
+
+    SUB CanvasPaint (Sender AS QCanvas)
+        Sender.FillRect(10,10,100,100,&HFF0000)      '-- Blue box
+    END SUB
+</PRE>
+If you try hiding the form under another Window and then refocus the program, the
+blue box will still appear.  Now try writing something that doesn't utilize the
+OnPaint procedure:
+<PRE>
+    CREATE Form AS QForm
+        CREATE Canvas AS QCanvas
+            FillRect(10,10,100,100,&HFF0000)      '-- Blue box
+        END CREATE
+        Form.ShowModal
+    END CREATE
+</PRE>
+Notice anything?  Exactly, there is no blue box. The paint message was sent
+when your form first appears on your desktop, and since you didn't write any
+OnPaint procedure, there's nothing to draw.  So what really happens to that FillRect
+code?  Nothing really, it's still executed, but the next paint message offset it.
+To understand this better, try this code which will display the blue box when
+your press the button, but try hiding the window again or minimizing it.  Redisplay your window and see
+what happens:
+<PRE>
+    DECLARE SUB ButtonClick
+
+    CREATE Form AS QForm
+        CREATE Button AS QButton
+          OnClick = ButtonClick
+        END CREATE
+        CREATE Canvas AS QCanvas
+        END CREATE
+        ShowModal
+    END CREATE
+
+    SUB ButtonClick
+        Canvas.FillRect(10,10,100,100,&HFF0000)
+    END SUB
+</PRE>
+When you click your button the blue box will be drawn, however, once you hide
+part of the window and redisplay your window, you'll probably notice that your blue box
+has dissappeared.
+<BR><BR>
+
+<a name="123">
+<B>12.3 Drawing graphics dynamically</B>
+<DD>As you may have already noticed, if all your graphics are contained in your
+OnPaint procedure, how do you draw on it dynamically without it erasing itself
+magically? For this purpose, you'll have to draw on an off-screen graphics bitmap
+and then in your OnPaint procedure, you just use the <B>Draw</B> method to
+display the graphic. You can use the QBITMAP component as your off-screen graphics
+page. Here's some sample code for you to test:<BR><BR>
+<CENTER>
+<TABLE><TR><TD>
+<PRE>
+DECLARE SUB CanvasPaint (Sender AS QCanvas)
+DECLARE SUB ButtonClick (Sender AS QButton)
+
+<I>' Create bitmap for off-screen use</I>
+DIM BitMap AS QBITMAP
+    BitMap.Height = 100
+    BitMap.Width = 100
+    BitMap.Paint(0,0,0,0)
+
+CREATE Form AS QForm
+    Center
+    Caption = "Simple graphics demonstration"
+    CREATE Canvas AS QCanvas
+        OnPaint = CanvasPaint
+    END CREATE
+    CREATE SquareButton AS QButton
+        Caption = "Draw Square"
+        OnClick = ButtonClick
+        Left = 150
+    END CREATE
+    CREATE CircleButton AS QButton
+        Caption = "Draw Circle"
+        OnClick = ButtonClick
+        Left = 150
+        Top = 50
+    END CREATE
+    CREATE LineButton AS QButton
+        Caption = "Draw Line"
+        OnClick = ButtonClick
+        Left = 150
+        Top = 100
+    END CREATE
+    ShowModal
+END CREATE
+
+
+SUB CanvasPaint (Sender AS QCanvas)
+    Sender.Draw(0,0,Bitmap.BMP)
+END SUB
+
+SUB ButtonClick (Sender AS QButton)
+    SELECT CASE Sender.Caption
+        CASE "Draw Square"
+            Bitmap.FillRect(10,10,50,50,&HFF0000)
+        CASE "Draw Circle"
+            Bitmap.Circle(10,60,50,110,&H0000FF,&H0000FF)
+        CASE "Draw Line"
+            Bitmap.Line(50,50,90,90,&H00FF00)
+    END SELECT
+    Canvas.Repaint       <I>'-- Tell Canvas to repaint itself.</I>
+END SUB
+</PRE>
+</TD></TR></TABLE>
+</CENTER>
+Sample Output:<BR>
+<IMG SRC="chap12d1.gif" ALT="Output"><BR><BR>
+Code Details:<BR>
+<DD>Much of the code is self explanatory. The first bit of code creates and initializes
+the Bitmap component. Since QBitmap is a non-visible component, it does not receive
+paint messages, so anything you draw on the Bitmap will stay.  Now that we have our
+Bitmap ready, our OnPaint procedure for QCanvas can use the <B>Draw</B> method
+to paint the Bitmap onto the Canvas. This is what you call double buffering,
+a similar technique is utilized in DirectX.
+<BR><BR>
+
+<a name="124">
+<B>12.4 Ownerdraw List and Combo Boxes (including QStringGrid)</B>
+<DD>Ownerdrawn ListBoxes and ComboBoxes allow you to override the default paint method
+somewhat.  It doesn't really let you redraw the entire interface of a list or combo box,
+since that's probably not what you want anyway.  What it does allow you to do is
+override the paint method for the data. So instead of just displaying the text fields
+in your list or combo boxes, you can actually draw pictures in them and/or change
+the font/color for each individual item. There are 2 types of ownerdraw list/combo boxes.
+<UL>
+<LI> 1. OwnerDrawFixed</LI>
+<LI> 2. OwnerDrawVariable</LI>
+</UL>
+A fixed ownerdrawn list/combo box means that all your items will have a fixed predetermined
+height.  So let's consider the case where one of your pictures is 100 pixels high and another
+which is only 10 pixels high. If you specify an ItemHeight of say 10, the 100 pixel high picture will
+actually overlap some of your items since it doesn't have enough room for itself (this can
+be avoided if you use CopyRect instead of Draw). But in any event, it would have been much better to
+create variable sized item fields, so you'd use OwnerDrawVariable instead. The only
+problem with OwnerDrawVariable list/combo boxes is that it requires the programmer
+to specify the height of each item, it doesn't automatically calculate this field for
+you. In most cases this isn't that big of a problem, but nonetheless you'll have to
+store this extra information for each field. How you do this is entirely up to you.
+To see a working example of ownerdrawn list/combo boxes, look at LISTBOX.BAS included
+in EXAMPLES.ZIP.
+You can rewrite the code to work with ComboBoxes. You may notice that you don't
+implement any OnPaint event, but an OnDrawItem event.<BR><BR>
+Code Details:<BR>
+<PRE>
+  SUB ListBoxDrawItem(Index AS INTEGER, State AS BYTE, Rect AS QRECT)
+    IF State = 0 THEN
+      '-- Selected
+      ListBox.FillRect(Rect.Left, Rect.Top, Rect.Right, Rect.Bottom, &H00FF00)
+    ELSE
+      ListBox.FillRect(Rect.Left, Rect.Top, Rect.Right, Rect.Bottom, &HFFFFFF)
+    END IF
+    ListBox.TextOut(100, Rect.Top+(Rect.Bottom-Rect.Top)/4, ListBox.Item(index), 0, -1)
+    ListBox.Draw(Rect.Left, Rect.Top, Bitmap(Index).BMP)
+  END SUB
+</PRE>
+Hopefully the code is self explanatory, but a few things you may notice is that
+you don't paint the entire listbox (ie. all items), but rather a paint message is
+sent everytime an item is changed. This item occupies a rectangular region in your
+listbox, so what the OnDrawItem sends to you is the region of this item (this is
+the <B>Rect</B> parameter). You should not overstep this bound that has been
+given to you (ie. don't try to draw outside this region, it's not yours to draw on!).
+I have not covered QStringGrid in this section, but the same idea persists.
+You'll have to implement the OnDrawCell event, which is similar to the way
+you handle OnDrawItem in list/combo boxes.
+<BR><BR>
+
+<a name="125">
+<B>12.5 Using DirectX</B>
+<DD>Why is DirectX so popular?
+This question can be summed up quite frankly without going into much detail.
+It's faster than Windows GDI (and OpenGL in most cases), it supports most graphics cards, 
+it's free to use, and it provides a lot of the most necessary graphics commands
+that programmers are looking for without implementing it themselves. Not to mention
+that it's widely supported and (to some people) easy to use. As you may note, this
+is not my general opinion about DirectX, but the general public opinion.<BR>
+<DD>Does everyone have DirectX installed? In most cases, yes, it depends what
+version though. Not everyone will have the latest version, but that usually
+doesn't matter. DirectX for Rapid-Q only requires v5.0 and may even work
+for version v3.0 and up (untested). Rapid-Q does not yet support all the features of
+DirectX, like joystick or 3D programming.
+<DD>To use DirectX under Rapid-Q, you'll have to know 2 things.
+<UL>
+<LI>1. All drawing is done on the off-screen page
+<LI>2. You need to FLIP to this page everytime you want it displayed
+</UL>
+In essence, you can think of this off-screen page as already implemented for
+you (like in the above example where we had to use QBitmap as our off-screen page).
+You can think of the FLIP operation as a repaint operation just like in the above
+example. After you understand these 2 concepts, everything else is basically the
+same.  You draw on the DirectX Screen like you would a QCanvas or QBitmap, then
+FLIP pages when you're ready to display your graphics. It is easier to look at
+some examples rather than for me to explain it. There is however, one more important
+topic, that is QDXTimer.
+<DD>QDXTimer is a specialized timer specifically for DirectX, it provides slightly better
+precision than QTimer, and controls the frame rate so that your program doesn't run too fast.  It may
+decrease your frame rate if your program is running too fast, but can't
+do much if your program is chugging along at 5 or 6 frames per second. Please use
+QDXTimer instead of the standard Windows timer QTimer when animating graphics in
+DirectX (not necessary but recommended).
+<BR><BR>
+
+
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="chapter11.html">Prev Chapter</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</A></TD>
+   <TD ALIGN=RIGHT><A HREF="chapter13.html">Next Chapter</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                        

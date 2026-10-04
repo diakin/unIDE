@@ -1,0 +1,90 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QFONT</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QFONT</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QFONT Component</H1>
+<DD>QFont is a component used to specify the font, color, and size for your text.
+It's not meant to be used as a stand-alone component, it has no effect until
+you assign a QFONT component to a component that uses it.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QFont Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR><TD>Charset</TD><TD>INTEGER</TD><TD>RW</TD><TD>DEFAULT_CHARSET</TD><TD>W</TD></TR>
+  <TR><TD>Color</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD>FontCount</TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD>FontName</TD><TD>ARRAY of STRING</TD><TD>R</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD>Handle</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD>Name</TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>WX</TD></TR>
+  <TR><TD>Pitch</TD><TD>INTEGER</TD><TD>RW</TD><TD>fpDefault</TD><TD>W</TD></TR>
+  <TR><TD>Size</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WX</TD></TR>
+</TABLE>
+<br>
+
+<a name="2">
+<FONT SIZE = +1><B>QFont Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR><TD>AddStyles</TD><TD>SUBI</TD><TD>Add styles [bold, italic, etc]</TD><TD>INTEGER, Infinite</TD><TD>W</TD></TR>
+  <TR><TD>DelStyles</TD><TD>SUBI</TD><TD>Delete styles [bold, italic, etc]</TD><TD>INTEGER, Infinite</TD><TD>W</TD></TR>
+</TABLE>
+<br><br>
+
+<a name="4">
+<FONT SIZE = +1><B>QFont Examples</B></FONT>
+
+<PRE>
+  $INCLUDE "RAPIDQ.INC"
+
+  DIM Font AS QFONT
+  DIM Label AS QLABEL
+
+  Font.Name = "Arial"
+  Font.AddStyles(fsBold, fsItalic)
+  Label.Font = Font      '' Assign font values
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qfilestream.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qfontdialog.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+<BR>
+
+</BODY>
+</HTML>                      
+
+</BODY>
+</HTML>                         

@@ -1,0 +1,286 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>Chapter 4: Writing your first Rapid-Q Application</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Chapter 4</B></FONT></TD>
+  </TR>
+  <TR>
+    <TD COLSPAN=2><HR SIZE=1> </TD>
+  </TR>
+</TABLE>
+
+<BR>
+<H1>4. Writing your first Rapid-Q Application</H1>
+<DD>Let's jump right into writing Windows applications in Rapid-Q!
+There will be a simple step-by-step guide, along with the complete source code
+listing at the end of this chapter.
+<BR><BR>
+
+<a name="41">
+<B>4.1 Deciding on what to write</B>
+<DD>We're not going to write a simple "Hello World!" demo, nor are we going to
+write a web browser, we'll start with something meaningful, yet simple to
+write. Let's write a simple form based database type program. Some of the concepts
+we'll learn is form handling, event handling, and using the components, QEDIT, QBUTTON,
+QFORM, QLABEL, and QLISTBOX. Here's what our finished application should look like, you can
+modify the interface to your liking (if you're comfortable you know what you're doing).
+<BR>
+<CENTER>
+<IMG SRC="chap4d1.gif">
+</CENTER>
+<BR CLEAR=ALL>
+It may look like a lot, but honestly, the source code is less than 100 lines!
+Most of the time spent is used designing the layout.
+<BR><BR>
+
+<a name="42">
+<B>4.2 Designing the form</B>
+<DD>You can almost see the components that we'll need. One QFORM, 2 QBUTTONs, 4 QEDITs, 4 QLABELs,
+and finally 1 QLISTBOX. First of all, we need a Window (that's our QFORM). So let's
+type that in:
+<PRE>
+           DIM MainForm AS QFORM
+
+           MainForm.Center
+           MainForm.Caption = "My First Application"
+           MainForm.Height = 340
+           MainForm.Width = 350
+           MainForm.ShowModal    <font color="#009900">'-- Display form</font>
+</PRE>
+If you entered all this correctly, you should see an empty Window, with the
+same geometry as the above diagram. One thing to notice is that we're not
+using MainForm.Left or MainForm.Top because when the MainForm is centered, it
+is automatically calculated for us. All we really need is to supply the width
+and height of our Window.
+<DD>All right, now that we have our Window, we'll have to add controls to it.
+You should place the following code BEFORE the line MainForm.ShowModal.
+For the sake of argument, let's begin by adding some labels to our Window.
+<PRE>
+       DIM NameLabel AS QLABEL, AddrLabel AS QLABEL
+       DIM CityLabel AS QLABEL, PhLabel AS QLABEL
+
+           NameLabel.Parent = MainForm
+           NameLabel.Caption = "Name:"
+           NameLabel.Top = 13
+           NameLabel.Left = 25
+           AddrLabel.Parent = MainForm
+           AddrLabel.Caption = "Address:"
+           AddrLabel.Top = 38
+           AddrLabel.Left = 25
+           CityLabel.Parent = MainForm
+           CityLabel.Caption = "City:"
+           CityLabel.Top = 63
+           CityLabel.Left = 25
+           PhLabel.Parent = MainForm
+           PhLabel.Caption = "Phone #:"
+           PhLabel.Top = 88
+           PhLabel.Left = 25
+</PRE>
+We're creating 4 label components, and we're going to use MainForm as our
+container for these components, hence the Parent = MainForm association.
+If for example, we created a QPANEL on our form, it can also act as a container
+for any of our controls. But we won't get into that until later. For the moment,
+take some time to digest the above code and add it to our previous listing.
+<DD>We now have our Window, our 4 labels, now let's add the 4 edit controls to
+our application.
+<PRE>
+       DIM NameEdit AS QEDIT, AddrEdit AS QEDIT
+       DIM CityEdit AS QEDIT, PhEdit AS QEDIT
+
+           NameEdit.Parent = MainForm
+           NameEdit.Left = 70
+           NameEdit.Top = 10
+           NameEdit.Width = 230
+           AddrEdit.Parent = MainForm
+           AddrEdit.Left = NameEdit.Left
+           AddrEdit.Width = NameEdit.Width
+           AddrEdit.Top = 35
+           CityEdit.Parent = MainForm
+           CityEdit.Left = NameEdit.Left
+           CityEdit.Width = NameEdit.Width
+           CityEdit.Top = 60
+           PhEdit.Parent = MainForm
+           PhEdit.Left = NameEdit.Left
+           PhEdit.Width = NameEdit.Width
+           PhEdit.Top = 85
+</PRE>
+Looks familar doesn't it? It's the same idea as our QLABELs, the biggest thing
+is correct placement on the form. In the above example, we're aligning all the
+QEDIT controls just after the QLABELs. Again, take some time to digest the above
+code and add it to our existing code.
+<DD>All that's left is to add our 2 buttons and one listbox control.
+Here's how we do that:
+<PRE>
+       DIM AddButton AS QBUTTON, ClearButton AS QBUTTON
+       DIM ListBox AS QLISTBOX
+
+           AddButton.Parent = MainForm
+           AddButton.Left = 70
+           AddButton.Top = 115
+           AddButton.Width = 110
+           AddButton.Caption = "&Add to Database"
+           ClearButton.Parent = MainForm
+           ClearButton.Left = 190
+           ClearButton.Top = 115
+           ClearButton.Width = 110
+           ClearButton.Caption = "&Clear Database"
+
+           ListBox.Parent = MainForm
+           ListBox.Top = 150
+           ListBox.Left = 70
+           ListBox.Width = 230
+           ListBox.Height = 150
+</PRE>
+Cut & Paste, and voila! Wow, we now have a form which looks exactly like the diagram above (section 4.1).
+Run it, fool around with it for a while, then return back, there's still two more things to
+implement.<BR><BR>
+
+<a name="43">
+<B>4.3 Handling Events</B>
+<DD>As you can see, the above code just flashes us with a nice user interface, but
+nothing to back it up with. If you tried clicking on the buttons, they do nothing.
+You'll have to write your event handler to handle a button click. Here's how:
+<PRE>
+           AddButton.OnClick = AddButtonClick
+</PRE>
+That it? Well, that's part of it, the OnClick event handler will transfer execution
+to the subroutine we named <I>AddButtonClick</I>. Now we'll have to go and write our
+subroutine. Just make sure you include the subroutine below, before adding the above code.
+<PRE>
+           SUB AddButtonClick
+               IF ListBox.ItemCount > 0 THEN
+                  '-- Add a nice separator
+                  ListBox.AddItems "--------------------------"
+               END IF
+               ListBox.AddItems NameEdit.Text, AddrEdit.Text, _
+                                CityEdit.Text, PhEdit.Text
+           END SUB
+</PRE>
+Well, now we're getting somewhere. Whenever the user clicks on the add button, the
+code above gets executed. As you can see, all it does is add the text fields to
+our listbox. If you didn't already know, the underscore '_' character can be
+used in Rapid-Q to split up long lines. We're almost done, now we'll add an
+event handler for the other button.
+<PRE>
+           SUB ClearButtonClick
+               ListBox.Clear
+           END SUB
+
+           ClearButton.OnClick = ClearButtonClick
+</PRE>
+Whew, if you counted all the lines, it is well below 100!
+Our application is now complete, you can play with it, add stuff to it, and
+generally learn from it.
+<BR><BR>
+
+<a name="44">
+<B>4.4 Source code listing, in its entirety</B>
+<PRE>
+DIM MainForm AS QFORM
+DIM NameEdit AS QEDIT, AddrEdit AS QEDIT, _
+    CityEdit AS QEDIT, PhEdit AS QEDIT
+DIM NameLabel AS QLABEL, AddrLabel AS QLABEL, _
+    CityLabel AS QLABEL, PhLabel AS QLABEL
+DIM ListBox AS QLISTBOX
+DIM AddButton AS QBUTTON, ClearButton AS QBUTTON
+
+SUB AddButtonClick
+  IF ListBox.ItemCount > 0 THEN
+    '-- Add a nice separator
+    ListBox.AddItems "--------------------------------"
+  END IF
+  ListBox.AddItems NameEdit.Text, AddrEdit.Text, _
+                   CityEdit.Text, PhEdit.Text
+END SUB
+
+SUB ClearButtonClick
+  ListBox.Clear
+END SUB
+
+NameLabel.Parent = MainForm
+NameLabel.Caption = "Name:"
+NameLabel.Top = 13
+NameLabel.Left = 25
+AddrLabel.Parent = MainForm
+AddrLabel.Caption = "Address:"
+AddrLabel.Top = 38
+AddrLabel.Left = 25
+CityLabel.Parent = MainForm
+CityLabel.Caption = "City:"
+CityLabel.Top = 63
+CityLabel.Left = 25
+PhLabel.Parent = MainForm
+PhLabel.Caption = "Phone #:"
+PhLabel.Top = 88
+PhLabel.Left = 25
+
+NameEdit.Parent = MainForm
+NameEdit.Left = 70
+NameEdit.Top = 10
+NameEdit.Width = 230
+AddrEdit.Parent = MainForm
+AddrEdit.Left = NameEdit.Left
+AddrEdit.Width = NameEdit.Width
+AddrEdit.Top = 35
+CityEdit.Parent = MainForm
+CityEdit.Left = NameEdit.Left
+CityEdit.Width = NameEdit.Width
+CityEdit.Top = 60
+PhEdit.Parent = MainForm
+PhEdit.Left = NameEdit.Left
+PhEdit.Width = NameEdit.Width
+PhEdit.Top = 85
+
+AddButton.Parent = MainForm
+AddButton.Left = 70
+AddButton.Top = 115
+AddButton.Width = 110
+AddButton.Caption = "&Add to Database"
+AddButton.OnClick = AddButtonClick
+ClearButton.Parent = MainForm
+ClearButton.Left = 190
+ClearButton.Top = 115
+ClearButton.Width = 110
+ClearButton.Caption = "&Clear Database"
+ClearButton.OnClick = ClearButtonClick
+
+ListBox.Parent = MainForm
+ListBox.Top = 150
+ListBox.Left = 70
+ListBox.Width = 230
+ListBox.Height = 150
+
+MainForm.Center
+MainForm.Caption = "My First Application"
+MainForm.Height = 340
+MainForm.Width = 350
+MainForm.ShowModal
+
+
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="chapter3.html">Prev Chapter</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="chapter5.html">Next Chapter</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                        

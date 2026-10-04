@@ -1,0 +1,313 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>QDXSOUND</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>QDXSOUND</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QDXSOUND Component</H1>
+<DD>QDXSound implements DirectSound.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QDXSound Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee"><TD><b>AutoUpdate</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">AutoUpdate determines whether to let the internal thread update the sound buffer every 50ms, or let the programmer control the updates.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>BufferLength</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>1000</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">BufferLength specifies how many bytes to read into the buffer for playing. For heavy computations or deeply nested loops,
+                it's a good idea to extend the BufferLength so that the music can play uninterrupted.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>FileName</b></TD><TD>STRING</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">FileName specifies the .WAV file.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Frequency</b></TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Frequency specifies the reproduction frequency. Do not set the frequency before loading a file, since
+                a default frequency for the .WAV file will be given to you when you load a new sound file.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Looped</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Looped specifies whether to replay the sound file after it has finished playing.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Pan</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Pan specifies the relative volume of the right and left channels within the range from -100 to 100.
+                A value of -100 mutes the right channel, and a value of 100 mutes the left channel.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Parent</TD><TD>QFORM</TD><TD>W</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Playing</b></TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Playing determines whether the sound file is currently playing.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Position</b></TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Use Position to set/get the current playing position of the sound file.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Size</b></TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Size returns the file size of the .WAV file in bytes.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>StickyFocus</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">StickyFocus determines whether to keep playing even if the application loses focus.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Tag</b></TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Tag is not used internally, it is reserved storage space for the programmer.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Volume</b></TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Volume specifies the output volume for the current sound as a percentage.
+                Setting volume to 0 mutes the sound, while setting volume to 100 plays the sound with "normal volume" (ie. your current
+                sound settings for your computer).
+                </TD></TR>
+</TABLE>
+<br><br>
+
+<a name="2">
+<FONT SIZE = +1><B>QDXSound Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD>Play</TD><TD>SUB</TD><TD>Start playing sound</TD><TD NOWRAP>0</TD></TR>
+  <TR><TD>Stop</TD><TD>SUB</TD><TD>Stop playing sound</TD><TD NOWRAP>0</TD></TR>
+  <TR><TD>Update</TD><TD>SUB</TD><TD>Update sound buffer</TD><TD NOWRAP>0</TD></TR>
+</TABLE>
+<br>
+
+<a name="3">
+<FONT SIZE = +1><B>QDXSound Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD>
+  </TR>
+ </TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QDXSound Examples</B></FONT>
+
+<PRE>
+'-- DirectSound example for Rapid-Q by William Yu
+
+$TYPECHECK ON
+$INCLUDE "RAPIDQ.INC"
+
+DECLARE SUB exitItemClick (sender AS QMENUITEM)
+DECLARE SUB openItemClick (sender AS QMENUITEM)
+DECLARE SUB formShow (sender AS QFORM)
+DECLARE SUB playButtonClick (sender AS QBUTTON)
+DECLARE SUB stopButtonClick (sender AS QBUTTON)
+DECLARE SUB positionTrackBarChange (sender AS QTRACKBAR)
+DECLARE SUB freqTrackBarChange (sender AS QTRACKBAR)
+DECLARE SUB volumeTrackBarChange (sender AS QTRACKBAR)
+DECLARE SUB panTrackBarChange (sender AS QTRACKBAR)
+
+
+CREATE form AS QFORM
+    width = 360
+    height = 300
+    center
+    CREATE dxSound AS QDXSOUND
+    END CREATE
+    CREATE mainMenu AS QMAINMENU
+        CREATE fileMenu AS QMENUITEM
+            caption = "&File"
+            CREATE openItem AS QMENUITEM
+                caption = "&Open..."
+                onClick = openItemClick
+            END CREATE
+            CREATE breakItem1 AS QMENUITEM
+                caption = "-"
+            END CREATE
+            CREATE exitItem AS QMENUITEM
+                caption = "E&xit"
+                onClick = exitItemClick
+            END CREATE
+        END CREATE
+    END CREATE
+    CREATE panTrackBar AS QTRACKBAR
+        left = 10
+        top = 10
+        width = 200
+        height = 30
+        tickStyle = tsManual
+        min = -100
+        max = 100
+        onChange = panTrackBarChange
+        enabled = FALSE
+    END CREATE
+    CREATE panLabel AS QLABEL
+        left = 215
+        top = 20
+        caption = "Pan 0dB"
+    END CREATE
+    CREATE volumeTrackBar AS QTRACKBAR
+        left = 10
+        top = 60
+        width = 200
+        height = 30
+        tickStyle = tsManual
+        min = 0
+        max = 100
+        position = 100
+        onChange = volumeTrackBarChange
+        enabled = FALSE
+    END CREATE
+    CREATE volumeLabel AS QLABEL
+        left = 215
+        top = 70
+        caption = "Volume 100%"
+    END CREATE
+    CREATE freqTrackBar AS QTRACKBAR
+        left = 10
+        top = 110
+        width = 200
+        height = 30
+        tickStyle = tsManual
+        max = 44100
+        position = 22050
+        min = 0
+        onChange = freqTrackBarChange
+        enabled = FALSE
+    END CREATE
+    CREATE freqLabel AS QLABEL
+        left = 215
+        top = 120
+        caption = "Frequency 22050Hz"
+    END CREATE
+    CREATE positionTrackBar AS QTRACKBAR
+        left = 10
+        top = 160
+        width = 200
+        height = 30
+        tickStyle = tsManual
+        onChange = positionTrackBarChange
+        enabled = FALSE
+    END CREATE
+    CREATE positionLabel AS QLABEL
+        left = 215
+        top = 170
+        caption = "Position 0 / 0"
+    END CREATE
+    CREATE playButton AS QBUTTON
+        left = 30
+        top = 210
+        caption = "&Play"
+        enabled = FALSE
+        onClick = playButtonClick
+    END CREATE
+    CREATE stopButton AS QBUTTON
+        left = 110
+        top = 210
+        caption = "&Stop"
+        enabled = FALSE
+        onClick = stopButtonClick
+    END CREATE
+    onShow = formShow
+    showModal
+END CREATE
+
+
+SUB formShow (sender AS QFORM)
+    panTrackBar.setTick(0)
+    volumeTrackBar.setTick(50)
+    freqTrackBar.setTick(22050)
+    dxSound.looped = FALSE
+END SUB
+
+SUB exitItemClick (sender AS QMENUITEM)
+    form.close
+END SUB
+
+SUB openItemClick (sender AS QMENUITEM)
+    DIM openDialog AS QOPENDIALOG
+
+    openDialog.filter = "*.wav|*.wav"
+    IF openDialog.execute THEN
+        dxSound.fileName = openDialog.fileName
+        panTrackBar.enabled = TRUE
+        volumeTrackBar.enabled = TRUE
+        freqTrackBar.enabled = TRUE
+        positionTrackBar.enabled = TRUE
+        playButton.enabled = TRUE
+        stopButton.enabled = TRUE
+        positionTrackBar.position = 0
+        positionTrackBar.max = dxSound.size
+        freqTrackBar.position = dxSound.frequency
+        freqTrackBarChange(freqTrackBar)
+        positionTrackBarChange(positionTrackBar)
+    END IF
+END SUB
+
+SUB playButtonClick (sender AS QBUTTON)
+    dxSound.play
+    WHILE dxSound.playing
+        doEvents
+        positionTrackBar.position = dxSound.position
+        positionLabel.caption = "Position "+STR$(positionTrackBar.position)+" / "+STR$(dxSound.size)
+    WEND
+END SUB
+
+SUB stopButtonClick (sender AS QBUTTON)
+    dxSound.stop
+    dxSound.position = 0
+    positionTrackBar.position = 0
+END SUB
+
+SUB positionTrackBarChange (sender AS QTRACKBAR)
+    dxSound.position = sender.position
+    positionLabel.caption = "Position "+STR$(sender.position)+" / "+STR$(dxSound.size)
+END SUB
+
+SUB freqTrackBarChange (sender AS QTRACKBAR)
+    dxSound.frequency = sender.position
+    freqLabel.caption = "Frequency "+STR$(sender.position)+"Hz"
+END SUB
+
+SUB volumeTrackBarChange (sender AS QTRACKBAR)
+    dxSound.volume = sender.position
+    volumeLabel.caption = "Volume "+STR$(sender.position)+"%"
+END SUB
+
+SUB panTrackBarChange (sender AS QTRACKBAR)
+    dxSound.pan = sender.position
+    panLabel.caption = "Pan "+STR$(sender.position)+"dB"
+END SUB
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qdxscreen.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qdxtimer.html">Next Component</TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      D>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                         

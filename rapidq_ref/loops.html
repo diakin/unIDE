@@ -1,0 +1,119 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>Appendix C: Loops</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix C: Loops</B></FONT></TD>
+  </TR>
+  <TR>
+    <TD COLSPAN=2><HR SIZE=1> </TD>
+  </TR>
+</TABLE>
+<a name="up"></a>
+
+<BR>
+<H1>Introduction to Looping</H1>
+<DD>Loops provide a mechanism for executing a series of instructions a certain
+number of times.  Many of your programs will involve looping. Compilers convert
+loops to GOTO statements, so you could implement your own LOOP using GOTOs without
+any consequences. However, for optimization purposes, the FOR loop in Rapid-Q
+doesn't use this mechanism to save on unnecessary instructions.
+You may notice that your FOR loop is slightly faster than your WHILE or DO loop
+in Rapid-Q.
+<BR><BR>
+<a name="fornextloop"></a>
+
+<FONT SIZE = +1><B><U>FOR .. NEXT Loop</U></B></FONT><BR>
+As previously stated, in Rapid-Q this looping structure is optimized, but
+you may only notice a slight difference. There are some special cases when
+using a FOR loop in Rapid-Q.
+<PRE>
+    <FONT COLOR="red">FOR I(1) = 1 <b>TO</b> 100
+    NEXT</FONT>
+</PRE>
+This is not valid in Rapid-Q. Why not? Because I(1) is an array, you'll get
+a compiler error. Only simple types are supported, which means anything BUT arrays.
+The default increment value is 1, <i><u>if you want a different increment value, please
+use <font color=#ff0000>STEP</font>:
+</u></i><PRE>
+    FOR I = 1 TO 100 <b><font color=#ff0000>STEP 2</font></b>
+      PRINT I
+    NEXT
+</PRE>
+This will skip all the even numbers, so the output will be: 1 3 5 7 9 ...etc.
+If for whatever reason you wanted to exit the loop, you can use EXIT FOR.
+<br><br>
+<a name="whilewend"></a>
+<a name="exit"></a>
+
+<FONT SIZE = +1><B><U>WHILE .. WEND</U></B></FONT><BR>
+If you want to test a condition before entering the loop, you could use a WHILE .. WEND loop.
+There are no special cases when using this loop, it's exactly like QBasic:
+<PRE>
+    WHILE I &lt; 100
+      I++          '-- Increment I
+    WEND
+</PRE>
+It's much like a DO .. LOOP, except the expression is tested before entering the loop.
+To exit the WHILE .. WEND loop for whatever reason, you use <font color=#ff0000>EXIT</font> WHILE.
+<BR><BR>
+
+<a name="exit2"></a>
+<a name="doloop"></a>
+<FONT SIZE = +1><B><U>DO .. LOOP</U></B></FONT><BR>
+A simple DO .. LOOP without any test expression will loop infinitely:
+<PRE>
+    DO
+      PRINT " Hello World! "
+    LOOP
+</PRE>
+To exit the DO .. LOOP, you use <font color=#ff0000>EXIT</font> DO. Infinite loops aren't used much in
+Windows programming (event based anyway). You'll usually want a test expression
+as in our WHILE .. WEND loop, except we place it differently:
+<PRE>
+    DO
+      I++
+    LOOP UNTIL I &gt;= 100
+</PRE>
+Unlike QBasic or other implementations of BASIC, Rapid-Q does not offer
+DO WHILE or LOOP WHILE. They're basically useless (ie. they can be implemented
+in another way), except to provide users with more options. For example,
+this is valid in QBasic:
+<PRE>
+   DO
+   LOOP WHILE I &lt; 100
+</PRE>
+Which is equivalent to:
+<a name="until"></a>
+
+<PRE>
+   DO
+   LOOP <font color=#ff0000>UNTIL</font> I &gt;= 100
+</PRE>
+<BR><BR>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="conditions.html">&lt;- Conditions</a></TD>
+   <TD ALIGN=CENTER><A HREF="#up">Up</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="methods.html">Methods -&gt;</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                        

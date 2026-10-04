@@ -1,0 +1,142 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QIMAGELIST</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QIMAGELIST</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QIMAGELIST Component</H1>
+<DD>QImageList is an array of images, all of the same/fixed size.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QImageList Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee"><TD><b>BkColor</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>clNone</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">BkColor determines which background color to use when drawing an image.
+                Setting BkColor to clNone specifies no background color, ie. the image is drawn transparently.
+                Setting BkColor to clDefault specifies using the imagelists background color when drawing.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>BlendColor</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>clNone</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">BlendColor determines which foreground color to use when drawing an image.
+                Setting BlendColor to clNone specifies no blend color, while setting BlendColor to clDefault specifies
+                the system highlight color for the foreground.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Count</b></TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Count returns the number of images in the imagelist.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>DrawingStyle</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>dsNormal</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">DrawingStyle specifies the style to be used when the imagelist is drawing an image.<br>
+                             0 = dsFocused -- Draws the image blending 25% with the system highlight color. This only affects imagelists which contain masks.<br>
+                             1 = dsSelected -- Draws the image blending 50% with the system highlight color. This only affects imagelists which contain masks.<br>
+                             2 = dsNormal -- Draws the image using the color specified in the BkColor property. If the BkColor is clNone then the image is drawn transparently using the mask.<br>
+                             3 = dsTransparent -- Draws using the mask regardless of the BkColor setting.<br>
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>GetBMP</b></TD><TD>ARRAY of IMAGES/BMP</TD><TD>R</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">GetBMP returns the image specified by their index.<br>
+                             <b><u>Examples</u></b>:<br>
+                             <blockquote><font face="courier" size="2"><nobr>
+                             DIM ImageList AS QIMAGELIST<br>
+                             DIM Button AS QBUTTON<br><br>
+                             ImageList.AddBMPFile("whatever.bmp", 0)<br>
+                             Button.BMP = Imagelist.GetBMP(0)<br>
+                             </nobr></font></blockquote>
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>GetICO</TD><TD>ARRAY of IMAGES/ICO</TD><TD>R</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Handle</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Height</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>ImageType</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>itImage</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">ImageType determines whether the imagelist will use the image or the associated image mask when drawing.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Masked</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Masked specifies whether the imagelist contains transparent or non-transparent images.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Width</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+</TABLE>
+<br>
+
+<a name="2">
+<FONT SIZE = +1><B>QImageList Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD>AddBMPFile</TD><TD NOWRAP>SUB (FileName$, MaskColor%)</TD><TD NOWRAP>Add BMP file to Imagelist</TD><TD NOWRAP>2</TD></TR>
+  <TR><TD>AddICOFile</TD><TD NOWRAP>SUB (FileName$)</TD><TD NOWRAP>Add Icon file to Imagelist</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD>AddBMPHandle</TD><TD NOWRAP>SUB (BMP_Resource, MaskColor%)</TD><TD NOWRAP>Add BMP to Imagelist</TD><TD NOWRAP>2</TD></TR>
+  <TR><TD>AddICOHandle</TD><TD NOWRAP>SUB (ICO_Resource)</TD><TD NOWRAP>Add Icon to Imagelist</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD>Clear</TD><TD NOWRAP>SUB</TD><TD NOWRAP>Removes all images</TD><TD NOWRAP>0</TD></TR>
+  <TR><TD>Delete</TD><TD NOWRAP>SUB (Index%)</TD><TD NOWRAP>Delete image at Index%</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD>Draw</TD><TD>SUB (QIMAGE/QBITMAP/QCANVAS/QDXSCREEN, X%, Y%, Index%)</TD><TD>Draw on canvas at (X,Y) with image index% in ImageList</TD><TD NOWRAP>4</TD></TR>
+  <TR><TD>InsertBMPFile</TD><TD NOWRAP>SUB (Index%, Filename$, Mask%)</TD><TD NOWRAP>Insert BMP file at Index%</TD><TD NOWRAP>3</TD></TR>
+  <TR><TD>InsertICOFile</TD><TD NOWRAP>SUB (Index%, Filename$)</TD><TD NOWRAP>Insert Icon file at Index%</TD><TD NOWRAP>2</TD></TR>
+  <TR><TD>InsertBMPHandle</TD><TD NOWRAP>SUB (Index%, BMP_Resource, Mask%)</TD><TD NOWRAP>Insert BMP at Index%</TD><TD NOWRAP>3</TD></TR>
+  <TR><TD>InsertICOHandle</TD><TD NOWRAP>SUB (Index%, ICO_Resource)</TD><TD NOWRAP>Insert Icon at Index%</TD><TD NOWRAP>2</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QImageList Examples</B></FONT>
+
+<PRE>
+' Imagelist demo
+
+$resource bmp_handle as "nolight.bmp"
+$resource ico_handle as "close.ico"
+
+DIM ImageList AS QImageList
+DIM Form AS QForm
+DIM Button AS QButton
+
+ImageList.Width = 9
+ImageList.Height = 17
+ImageList.AddBMPHandle bmp_handle,0
+'ImageList.AddBMPFile "nolight.bmp", 0
+ImageList.AddICOHandle ico_handle
+'ImageList.AddICOFile "close.ico"
+
+Button.Parent = Form
+Button.BMP = Imagelist.GetBMP(0)
+
+Form.Icon = ImageList.GetICO(1)
+
+Form.Showmodal
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qimage.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qlabel.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      
+
+</BODY>
+</HTML>                         

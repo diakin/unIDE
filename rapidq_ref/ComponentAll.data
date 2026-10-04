@@ -12,6 +12,12 @@
 '                       файл строка, раздел * Defaults - значения из
 '                       CONSTRUCTOR.
 '  Формат записей - в RqComponents.pas. Строки с ' - комментарии.
+'  Встроенные классы (# 0-59) сверены с документацией RapidQ
+'  (rapidq_ref\q*.html): доступ R/W - объединение описания и документации,
+'  варианты перечислений, пустые умолчания, недостающие свойства и события,
+'  методы. У каждой изменённой строки - комментарий ' сверено с <файл>
+'  с прежней строкой. Где автор описания отметил ошибки документации
+'  (QHEADER, QSTATUSBAR, QSPLITTER: Left, Top, Width...), осталось как было.
 # 0 QFORM * Properties * >> NB This is the RapidQ component support file <<
 Left|INTEGER|RW|0
 Top|INTEGER|RW|0
@@ -24,21 +30,49 @@ ClientHeight|INTEGER|RW|
 ClientWidth|INTEGER|RW|
 Color|INTEGER|RW|<default>|<default>|<choose>
 Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
-Font|QFONT|R|<default>
+Font|QFONT|RW|<default>
+' сверено с qform.html: доступ R -> RW (было: Font|QFONT|R|<default>)
 ' Component1.data: Font|QFONT|RW|<default>|<default>|<custom>
-FormStyle|INTEGER|R|fsNormal
+FormStyle|INTEGER|RW|fsNormal|fsNormal=0|fsMDIChild=1|fsMDIForm=2|fsStayOnTop=3
+' сверено с qform.html: доступ R -> RW; варианты +fsNormal,fsMDIChild,fsMDIForm,fsStayOnTop (было: FormStyle|INTEGER|R|fsNormal)
 Handle|LONG|R|
 Hint|STRING|RW|
 IcoHandle|RESOURCE|W|
 Icon|STRING|W|
 KeyPreview|INTEGER|RW|False|False=0|True=1
 ModalResult|INTEGER|W|mrNone|mrNone=0|mrOK=1|mrCancel=2|mrAbort=3|mrRetry=4|mrIgnore=5|mrYes=6|mrNo=7|mrAll=8
-Parent|QFORM|R|
+Parent|QFORM|RW|
+' сверено с qform.html: доступ R -> RW (было: Parent|QFORM|R|)
 PopupMenu|QPOPUPMENU|W|
 ShowHint|INTEGER|RW|False|False=0|True=1
 Visible|INTEGER|RW|False|False=0|True=1
 WindowState|INTEGER|RW|wsNormal|wsNormal=0|wsMinimized=1|wsMaximized=2
 * Methods
+' методы - по qform.html
+AddBorderIcons|SUBI||(INTEGER, ...)
+Center|SUB||
+Circle|SUB||(x1%, y1%, x2%, y2%, c%, fill%)
+Close|SUB||
+CopyRect|SUB||(D, Image, S)
+DelBorderIcons|SUBI||(INTEGER, ...)
+Draw|SUB||(x%, y%, BMP)
+FillRect|SUB||(x1%, y1%, x2%, y2%, c%)
+HideTitleBar|SUB||
+Line|SUB||(x1%, y1%, x2%, y2%, c%)
+Paint|SUB||(x%, y%, c%, borderc%)
+Pset|SUB||(x%, y%, c%)
+Rectangle|SUB||(x1%, y1%, x2%, y2%, c%)
+Repaint|SUB||
+RoundRect|SUB||(x1%, y1%, x2%, y2%, x3%, y3%, c%)
+ShapeForm|SUB||(Filename$ or Resource, TransparentColor&)
+Show|SUB||
+ShowModal|FUNCTION||AS SHORT
+ShowTitleBar|SUB||
+StretchDraw|SUB||(Rect AS QRECT, BMP)
+TextHeight|FUNCTION||(Text$) AS WORD
+TextWidth|FUNCTION||(Text$) AS WORD
+TextRect|SUB||(Rect AS QRECT, x%, y%, S$, fc%, bc%)
+TextOut|SUB||(x%, y%, s$, fc%, bc%)
 * Events
 OnClick||
 OnClose||(BYREF Action AS INTEGER)
@@ -55,8 +89,10 @@ OnResize||
 OnShow||
 WndProc||(hWnd AS INTEGER, uMsg AS INTEGER, wParam AS INTEGER, lParam AS INTEGER)
 # 1 QEDIT * Properties *
-Left|INTEGER|RW|
-Top|INTEGER|RW|
+Left|INTEGER|RW|0
+' сверено с qedit.html: умолчание '' -> 0 (было: Left|INTEGER|RW|)
+Top|INTEGER|RW|0
+' сверено с qedit.html: умолчание '' -> 0 (было: Top|INTEGER|RW|)
 Width|INTEGER|RW|100
 ' Component1.data: Width|INTEGER|RW|121
 Height|INTEGER|RW|25
@@ -68,14 +104,16 @@ CharCase|INTEGER|RW|ecNormal|ecNormal=0|ecUpperCase=1|ecLowerCase=2
 Color|INTEGER|RW|<default>|<default>|<choose>
 EditText|STRING|RW|
 Enabled|INTEGER|RW|True|False=0|True=1
-Font|QFONT|R|<default>
+Font|QFONT|RW|<default>
+' сверено с qedit.html: доступ R -> RW (было: Font|QFONT|R|<default>)
 Handle|LONG|R|
 Hint|STRING|RW|
 InputMask|STRING|RW|
 IsMasked|INTEGER|RW|False|False=0|True=1
 MaxLength|INTEGER|RW|0
 Modified|INTEGER|RW|
-Parent|QFORM/QPANEL/QTABCONTROL|R|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qedit.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
 PasswordChar|STRING|RW|
 PopupMenu|QPOPUPMENU|W|
 ReadOnly|INTEGER|RW|False|False=0|True=1
@@ -95,8 +133,10 @@ OnKeyPress||(Key AS BYTE)
 OnKeyUp||(Key AS WORD, Shift AS INTEGER)
 WndProc||(hWnd AS INTEGER, uMsg AS INTEGER, wParam AS INTEGER, lParam AS INTEGER)
 # 2 QRICHEDIT * Properties *
-Left|INTEGER|RW|
-Top|INTEGER|RW|
+Left|INTEGER|RW|0
+' сверено с qrichedit.html: умолчание '' -> 0 (было: Left|INTEGER|RW|)
+Top|INTEGER|RW|0
+' сверено с qrichedit.html: умолчание '' -> 0 (было: Top|INTEGER|RW|)
 Width|INTEGER|RW|200
 ' Component1.data: Width|INTEGER|RW|185
 Height|INTEGER|RW|100
@@ -106,7 +146,8 @@ Alignment|INTEGER|RW|taLeftJustify|taLeftJustify=0|taRightJustify=1|taCenter=2
 BorderStyle|INTEGER|RW|bsSingle|bsNone=0|bsSingle=1
 Color|INTEGER|RW|<default>|<default>|<choose>
 Enabled|INTEGER|RW|True|False=0|True=1
-Font|QFONT|R|<default>
+Font|QFONT|RW|<default>
+' сверено с qrichedit.html: доступ R -> RW (было: Font|QFONT|R|<default>)
 Handle|LONG|R|
 HideScrollBars|INTEGER|RW|True|False=0|True=1
 HideSelection|INTEGER|RW|True|False=0|True=1
@@ -114,7 +155,8 @@ Hint|STRING|RW|
 Line|ARRAY of STRING|RW|
 LineCount|INTEGER|RW|
 Modified|INTEGER|R|
-Parent|QFORM/QPANEL/QTABCONTROL|R|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qrichedit.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
 PopupMenu|QPOPUPMENU|W|
 Plaintext|INTEGER|RW|False|False=0|True=1
 Readonly|INTEGER|RW|False|False=0|True=1
@@ -133,6 +175,22 @@ WhereX|INTEGER|R|
 WhereY|INTEGER|R|
 Wordwrap|INTEGER|RW|True|False=0|True=1
 * Methods
+' методы - по qrichedit.html
+AddStrings|SUBI||(STRING, ...)
+Clear|SUB||
+CopyToClipboard|SUB||
+CutToClipboard|SUB||
+LoadFromFile|SUB||(FileName$)
+LoadFromStream|SUB||(Stream AS QFILESTREAM/QMEMORYSTREAM)
+PasteFromClipboard|SUB||
+SaveToFile|SUB||(FileName$)
+SaveToStream|SUB||(Stream AS QFILESTREAM/QMEMORYSTREAM)
+SelectAll|SUB||
+LINEINDEX|FUNCTION||
+GetLINEIdx|FUNCTION||
+LINEFROMCHAR|FUNCTION||
+GoToLineEnd|FUNCTION||
+GoToLineBegin|FUNCTION||
 * Events
 OnChange||
 OnKeyDown||(Key AS WORD, Shift AS INTEGER)
@@ -142,8 +200,10 @@ OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
 OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
 OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
 # 3 QLABEL * Properties *
-Left|INTEGER|RW|
-Top|INTEGER|RW|
+Left|INTEGER|RW|0
+' сверено с qlabel.html: умолчание '' -> 0 (было: Left|INTEGER|RW|)
+Top|INTEGER|RW|0
+' сверено с qlabel.html: умолчание '' -> 0 (было: Top|INTEGER|RW|)
 Width|INTEGER|RW|75
 Height|INTEGER|RW|25
 Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
@@ -154,13 +214,15 @@ Caption|STRING|RW|
 Color|INTEGER|RW|<default>|<default>|<choose>
 Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
 Enabled|INTEGER|RW|True|False=0|True=1
-Font|QFONT|R|<default>
+Font|QFONT|RW|<default>
+' сверено с qlabel.html: доступ R -> RW (было: Font|QFONT|R|<default>)
 Handle|LONG|R|
 Hint|STRING|RW|
 LabelStyle|INTEGER|RW|lsNone|lsNone=0|lsRaised=1|lsRecessed=2
 Layout|INTEGER|RW|tlTop|tlTop=0|tlCenter=1|tlBottom=2
 LowerColor|INTEGER|RW|<default>|<default>|<choose>
-Parent|QFORM/QPANEL/QTABCONTROL|R|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qlabel.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
 PopupMenu|QPOPUPMENU|W|
 ShowHint|INTEGER|RW|False|False=0|True=1
 Tag|INTEGER|RW|
@@ -177,8 +239,10 @@ OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
 OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
 WndProc||(hWnd AS INTEGER, uMsg AS INTEGER, wParam AS INTEGER, lParam AS INTEGER)
 # 4 QBUTTON * Properties *
-Left|INTEGER|RW|
-Top|INTEGER|RW|
+Left|INTEGER|RW|0
+' сверено с qbutton.html: умолчание '' -> 0 (было: Left|INTEGER|RW|)
+Top|INTEGER|RW|0
+' сверено с qbutton.html: умолчание '' -> 0 (было: Top|INTEGER|RW|)
 Width|INTEGER|RW|75
 Height|INTEGER|RW|25
 Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
@@ -190,15 +254,18 @@ Color|INTEGER|RW|<default>|<default>|<choose>
 Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
 Default|INTEGER|RW|False|False=0|True=1
 Enabled|INTEGER|RW|True|False=0|True=1
-Font|QFONT|R|<default>
+Font|QFONT|RW|<default>
+' сверено с qbutton.html: доступ R -> RW (было: Font|QFONT|R|<default>)
 Handle|LONG|R|
 Hint|STRING|RW|
 Kind|INTEGER|RW|bkCustom|bkCustom=0|bkOK=1|bkCancel=2|bkHelp=3|bkYes=4|bkNo=5|bkClose=6|bkAbort=7|bkRetry=8|bkIgnore=9|bkAll=10
 Layout|INTEGER|RW|blBMPLeft|blBMPLeft=0|blBMPRight=1|blBMPTop=2|blBMPBottom=3
-ModalResult|INTEGER|W|mrNone|mrNone=0|mrOK=1|mrCancel=2|mrAbort=3|mrRetry=4|mrIgnore=5|mrYes=6|mrNo=7|mrAll=8|mrNoToAll=9|mrYesToAll=10
+ModalResult|INTEGER|RW|mrNone|mrNone=0|mrOK=1|mrCancel=2|mrAbort=3|mrRetry=4|mrIgnore=5|mrYes=6|mrNo=7|mrAll=8|mrNoToAll=9|mrYesToAll=10
+' сверено с qbutton.html: доступ W -> RW (было: ModalResult|INTEGER|W|mrNone|mrNone=0|mrOK=1|mrCancel=2|mrAbort=3|mrRetry=4|mrIgnore=5|mrYes=6|mrNo=7|mrAll=8|mrNoToAll=9|mrYesToAll=10)
 NumBMPs|INTEGER|RW|1
 ' Component1.data: NumBMPs|INTEGER|RW|
-Parent|QFORM/QPANEL/QTABCONTROL|R|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qbutton.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
 PopupMenu|QPOPUPMENU|W|
 ShowHint|INTEGER|RW|False|False=0|True=1
 Spacing|INTEGER|RW|4
@@ -206,6 +273,8 @@ TabOrder|INTEGER|RW|
 Tag|INTEGER|RW|
 Visible|INTEGER|RW|True|False=0|True=1
 * Methods
+' методы - по qbutton.html
+StartDrag|SUB||
 * Events
 OnClick||
 OnKeyDown||(Key AS WORD, Shift AS INTEGER)
@@ -215,8 +284,10 @@ OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
 OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
 OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
 # 5 QCOOLBTN * Properties *
-Left|INTEGER|RW|
-Top|INTEGER|RW|
+Left|INTEGER|RW|0
+' сверено с qcoolbtn.html: умолчание '' -> 0 (было: Left|INTEGER|RW|)
+Top|INTEGER|RW|0
+' сверено с qcoolbtn.html: умолчание '' -> 0 (было: Top|INTEGER|RW|)
 Width|INTEGER|RW|25
 Height|INTEGER|RW|25
 Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
@@ -229,26 +300,34 @@ Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=
 Down|INTEGER|RW|False|False=0|True=1
 Enabled|INTEGER|RW|True|False=0|True=1
 Flat|INTEGER|RW|False|False=0|True=1
-Font|QFONT|R|<default>
+Font|QFONT|RW|<default>
+' сверено с qcoolbtn.html: доступ R -> RW (было: Font|QFONT|R|<default>)
 GroupIndex|INTEGER|RW|0
 Hint|STRING|RW|
 Layout|INTEGER|RW|blBMPLeft|blBMPLeft=0|blBMPRight=1|blBMPTop=2|blBMPBottom=3
 NumBMPs|INTEGER|RW|1
 ' Component1.data: NumBMPs|INTEGER|RW|
-Parent|QFORM/QPANEL/QTABCONTROL|R|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qcoolbtn.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
 ShowHint|INTEGER|RW|False|False=0|True=1
 Spacing|INTEGER|RW|4
 TabOrder|INTEGER|RW|
 Tag|INTEGER|RW|
 Visible|INTEGER|RW|True|False=0|True=1
 * Methods
+' методы - по qcoolbtn.html
+StartDrag|SUB||
 * Events
 OnClick||
 OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
 OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+' добавлено по qcoolbtn.html
 # 6 QOVALBTN * Properties * FUDGE Reduced defaults height & width, REAL defaults 100,50 too big!
-Left|INTEGER|RW|
-Top|INTEGER|RW|
+Left|INTEGER|RW|0
+' сверено с qovalbtn.html: умолчание '' -> 0 (было: Left|INTEGER|RW|)
+Top|INTEGER|RW|0
+' сверено с qovalbtn.html: умолчание '' -> 0 (было: Top|INTEGER|RW|)
 Width|INTEGER|RW|75
 Height|INTEGER|RW|40
 Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
@@ -262,13 +341,15 @@ Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=
 Down|INTEGER|RW|False|False=0|True=1
 Enabled|INTEGER|RW|True|False=0|True=1
 Flat|INTEGER|RW|False|False=0|True=1
-Font|QFONT|R|<default>
+Font|QFONT|RW|<default>
+' сверено с qovalbtn.html: доступ R -> RW (было: Font|QFONT|R|<default>)
 GroupIndex|INTEGER|RW|0
 Hint|STRING|RW|
 Layout|INTEGER|RW|blBMPLeft|blBMPLeft=0|blBMPRight=1|blBMPTop=2|blBMPBottom=3
 NumBMPs|INTEGER|RW|1
 ' Component1.data: NumBMPs|INTEGER|RW|
-Parent|QFORM/QPANEL/QTABCONTROL|R|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qovalbtn.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
 ShowHint|INTEGER|RW|False|False=0|True=1
 Spacing|INTEGER|RW|
 TabOrder|INTEGER|RW|
@@ -277,11 +358,21 @@ Transparent|INTEGER|RW|False|False=0|True=1
 TransParentColor|INTEGER|RW|<default>|<default>|<choose>
 Visible|INTEGER|RW|True|False=0|True=1
 * Methods
+' методы - по qovalbtn.html
+StartDrag|SUB||
 * Events
 OnClick||
+OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+' добавлено по qovalbtn.html
+OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+' добавлено по qovalbtn.html
+OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+' добавлено по qovalbtn.html
 # 7 QCHECKBOX * Properties *
-Left|INTEGER|RW|
-Top|INTEGER|RW|
+Left|INTEGER|RW|0
+' сверено с qcheckbox.html: умолчание '' -> 0 (было: Left|INTEGER|RW|)
+Top|INTEGER|RW|0
+' сверено с qcheckbox.html: умолчание '' -> 0 (было: Top|INTEGER|RW|)
 Width|INTEGER|RW|100
 ' Component1.data: Width|INTEGER|RW|97
 Height|INTEGER|RW|20
@@ -290,10 +381,12 @@ Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=
 Caption|STRING|RW|
 Checked|INTEGER|RW|False|False=0|True=1
 Enabled|INTEGER|RW|True|False=0|True=1
-Font|QFONT|R|<default>
+Font|QFONT|RW|<default>
+' сверено с qcheckbox.html: доступ R -> RW (было: Font|QFONT|R|<default>)
 Handle|LONG|R|
 Hint|STRING|RW|
-Parent|QFORM/QPANEL/QTABCONTROL|R|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qcheckbox.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
 PopupMenu|QPOPUPMENU|W|
 ShowHint|INTEGER|RW|False|False=0|True=1
 TabOrder|INTEGER|RW|
@@ -303,8 +396,10 @@ Visible|INTEGER|RW|True|False=0|True=1
 * Events
 OnClick||
 # 8 QRADIOBUTTON * Properties *
-Left|INTEGER|RW|
-Top|INTEGER|RW|
+Left|INTEGER|RW|0
+' сверено с qradiobutton.html: умолчание '' -> 0 (было: Left|INTEGER|RW|)
+Top|INTEGER|RW|0
+' сверено с qradiobutton.html: умолчание '' -> 0 (было: Top|INTEGER|RW|)
 Width|INTEGER|RW|100
 ' Component1.data: Width|INTEGER|RW|113
 Height|INTEGER|RW|20
@@ -313,10 +408,12 @@ Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=
 Caption|STRING|RW|
 Checked|INTEGER|RW|False|False=0|True=1
 Enabled|INTEGER|RW|True|False=0|True=1
-Font|QFONT|R|<default>
+Font|QFONT|RW|<default>
+' сверено с qradiobutton.html: доступ R -> RW (было: Font|QFONT|R|<default>)
 Handle|LONG|R|
 Hint|STRING|RW|
-Parent|QFORM/QPANEL/QTABCONTROL|R|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qradiobutton.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
 PopupMenu|QPOPUPMENU|W|
 ShowHint|INTEGER|RW|False|False=0|True=1
 TabOrder|INTEGER|RW|
@@ -326,8 +423,10 @@ Visible|INTEGER|RW|True|False=0|True=1
 * Events
 OnClick||
 # 9 QPANEL * Properties *
-Left|INTEGER|RW|
-Top|INTEGER|RW|
+Left|INTEGER|RW|0
+' сверено с qpanel.html: умолчание '' -> 0 (было: Left|INTEGER|RW|)
+Top|INTEGER|RW|0
+' сверено с qpanel.html: умолчание '' -> 0 (было: Top|INTEGER|RW|)
 Width|INTEGER|RW|150
 ' Component1.data: Width|INTEGER|RW|185
 Height|INTEGER|RW|100
@@ -345,15 +444,19 @@ ClientWidth|INTEGER|RW|
 Color|INTEGER|RW|<default>|<default>|<choose>
 Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
 Enabled|INTEGER|RW|True|False=0|True=1
-Font|QFONT|R|<default>
+Font|QFONT|RW|<default>
+' сверено с qpanel.html: доступ R -> RW (было: Font|QFONT|R|<default>)
 Handle|LONG|R|
 Hint|STRING|RW|
-Parent|QFORM/QPANEL/QTABCONTROL|R|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qpanel.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
 ShowHint|INTEGER|RW|False|False=0|True=1
 TabOrder|INTEGER|RW|
 Tag|INTEGER|RW|
 Visible|INTEGER|RW|True|False=0|True=1
 * Methods
+' методы - по qpanel.html
+Repaint|SUB||
 * Events
 OnClick||
 OnDblClick||
@@ -361,8 +464,10 @@ OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
 OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
 OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
 # 10 QTABCONTROL * Properties *
-Left|INTEGER|RW|
-Top|INTEGER|RW|
+Left|INTEGER|RW|0
+' сверено с qtabcontrol.html: умолчание '' -> 0 (было: Left|INTEGER|RW|)
+Top|INTEGER|RW|0
+' сверено с qtabcontrol.html: умолчание '' -> 0 (было: Top|INTEGER|RW|)
 Width|INTEGER|RW|150
 ' Component1.data: Width|INTEGER|RW|289
 Height|INTEGER|RW|100
@@ -377,11 +482,13 @@ Enabled|INTEGER|RW|True|False=0|True=1
 FlatButtons|INTEGER|RW|False|False=0|True=1
 FlatSeperators|INTEGER|RW|False|False=0|True=1
 FocusButtons|INTEGER|RW|False|False=0|True=1
-Font|QFONT|R|<default>
+Font|QFONT|RW|<default>
+' сверено с qtabcontrol.html: доступ R -> RW (было: Font|QFONT|R|<default>)
 Hint|STRING|RW|
 HotTrack|INTEGER|RW|False|False=0|True=1
 MultiLine|INTEGER|RW|False|False=0|True=1
-Parent|QFORM/QPANEL/QTABCONTROL|R|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qtabcontrol.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
 PopupMenu|QPOPUPMENU|W|
 ScrollOpposite|INTEGER|RW|False|False=0|True=1
 ShowHint|INTEGER|RW|False|False=0|True=1
@@ -389,7 +496,8 @@ Tab|ARRAY of STRING|RW|
 TabHeight|INTEGER|RW|18
 ' Component1.data: TabHeight|INTEGER|RW|
 TabInactiveColor|INTEGER|RW|<default>|<default>|<choose>
-TabInactiveFont|QFONT|R|<default>
+TabInactiveFont|QFONT|RW|<default>
+' сверено с qtabcontrol.html: доступ R -> RW (было: TabInactiveFont|QFONT|R|<default>)
 TabIndex|INTEGER|RW|
 TabOrder|INTEGER|RW|
 TabPosition|INTEGER|RW|
@@ -401,13 +509,19 @@ Visible|INTEGER|RW|True|False=0|True=1
 * Methods
 AddTabs|*|W|T,A,B
 ' Component1.data: AddTabs|STRING|W|TAB 1,TAB 2,TAB 3
+' методы - по qtabcontrol.html
+DelTabs|SUBI||(INTEGER, ...)
+InsertTab|SUB||(Index%, String$)
 * Events
 OnChange||
 # 11 QCOMBOBOX * Properties *
-Left|INTEGER|RW|
-Top|INTEGER|RW|
+Left|INTEGER|RW|0
+' сверено с qcombobox.html: умолчание '' -> 0 (было: Left|INTEGER|RW|)
+Top|INTEGER|RW|0
+' сверено с qcombobox.html: умолчание '' -> 0 (было: Top|INTEGER|RW|)
 Width|INTEGER|RW|145
-Height|INTEGER|R|
+Height|INTEGER|RW|
+' сверено с qcombobox.html: доступ R -> RW (было: Height|INTEGER|R|)
 ' Component1.data: Height|INTEGER|RW|25
 Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
 Color|INTEGER|RW|<default>|<default>|<choose>
@@ -415,7 +529,8 @@ CopyMode|INTEGER|RW|cmBlackness|cmBlackness=0|cmDstInvert=1|cmMergeCopy=2|cmMerg
 Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
 DropDownCount|INTEGER|RW|8
 Enabled|INTEGER|RW|True|False=0|True=1
-Font|QFONT|R|<default>
+Font|QFONT|RW|<default>
+' сверено с qcombobox.html: доступ R -> RW (было: Font|QFONT|R|<default>)
 Handle|LONG|R|
 Hint|STRING|RW|
 Item|ARRAY of STRING|RW|
@@ -423,7 +538,8 @@ ItemCount|INTEGER|R|
 ItemHeight|INTEGER|RW|
 ItemIndex|INTEGER|RW|-1
 MaxLength|INTEGER|RW|
-Parent|QFORM/QPANEL/QTABCONTROL|R|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qcombobox.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
 PopupMenu|QPOPUPMENU|W|
 ShowHint|INTEGER|RW|False|False=0|True=1
 Sorted|INTEGER|RW|False|False=0|True=1
@@ -434,13 +550,34 @@ Text|STRING|RW|
 Visible|INTEGER|RW|True|False=0|True=1
 * Methods
 AddItems|STRING|W|
+' методы - по qcombobox.html
+Circle|SUB||(x1%, y1%, x2%, y2%, c%, fill%)
+Clear|SUB||
+CopyRect|SUB||(D, Image, S)
+DelItems|SUBI||(Index #s, ...)
+Draw|SUB||(x%, y%, BMP)
+FillRect|SUB||(x1%, y1%, x2%, y2%, c%)
+InsertItem|SUB||(Index%, String$)
+Line|SUB||(x1%, y1%, x2%, y2%, c%)
+Paint|SUB||(x%, y%, c%, borderc%)
+Pset|SUB||(x%, y%, c%)
+Rectangle|SUB||(x1%, y1%, x2%, y2%, c%)
+Repaint|SUB||
+RoundRect|SUB||(x1%, y1%, x2%, y2%, x3%, y3%, c%)
+StretchDraw|SUB||(Rect AS QRECT, BMP)
+TextHeight|FUNCTION||(Text$) AS WORD
+TextWidth|FUNCTION||(Text$) AS WORD
+TextRect|SUB||(Rect AS QRECT, x%, y%, S$, fc%, bc%)
+TextOut|SUB||(x%, y%, S$, fc%, bc%)
 * Events
 OnChange||
 OnDrawItem||(Index AS INTEGER, State AS INTEGER, R AS QRECT)
 OnMeasureItem||(Index AS INTEGER, Height AS INTEGER)
 # 12 QLISTBOX * Properties *
-Left|INTEGER|RW|
-Top|INTEGER|RW|
+Left|INTEGER|RW|0
+' сверено с qlistbox.html: умолчание '' -> 0 (было: Left|INTEGER|RW|)
+Top|INTEGER|RW|0
+' сверено с qlistbox.html: умолчание '' -> 0 (было: Top|INTEGER|RW|)
 Width|INTEGER|RW|120
 ' Component1.data: Width|INTEGER|RW|121
 Height|INTEGER|RW|100
@@ -454,14 +591,16 @@ Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=
 Enabled|INTEGER|RW|True|False=0|True=1
 ExtendedSelect|INTEGER|RW|False|False=0|True=1
 ' Component1.data: ExtendedSelect|INTEGER|RW|True|False|True
-Font|QFONT|R|<default>
+Font|QFONT|RW|<default>
+' сверено с qlistbox.html: доступ R -> RW (было: Font|QFONT|R|<default>)
 Hint|STRING|RW|
 Item|ARRAY of STRING|RW|
 ItemCount|INTEGER|R|
 ItemHeight|INTEGER|RW|
 ItemIndex|INTEGER|RW|
 MultiSelect|INTEGER|RW|False|False=0|True=1
-Parent|QFORM/QPANEL/QTABCONTROL|R|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qlistbox.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
 PopupMenu|QPOPUPMENU|W|
 SelCount|INTEGER|R|
 Selected|ARRAY of INTEGER|RW|
@@ -474,8 +613,31 @@ Tag|INTEGER|RW|
 Text|STRING|RW|
 TopIndex|INTEGER|RW|
 Visible|INTEGER|RW|True|False=0|True=1
+Handle|INTEGER|R|
+' добавлено по qlistbox.html
 * Methods
 AddItems|STRING|W|
+' методы - по qlistbox.html
+Circle|SUB||(x1%, y1%, x2%, y2%, c%, fill%)
+Clear|SUB||
+CopyRect|SUB||(D, Image, S)
+DelItems|SUBI||(Index #s, ...)
+Draw|SUB||(x%, y%, BMP)
+FillRect|SUB||(x1%, y1%, x2%, y2%, c%)
+InsertItem|SUB||(Index%, String$)
+Line|SUB||(x1%, y1%, x2%, y2%, c%)
+LoadFromFile|SUB||(FileName AS STRING)
+Paint|SUB||(x%, y%, c%, borderc%)
+Pset|SUB||(x%, y%, c%)
+Rectangle|SUB||(x1%, y1%, x2%, y2%, c%)
+Repaint|SUB||
+RoundRect|SUB||(x1%, y1%, x2%, y2%, x3%, y3%, c%)
+SaveToFile|SUB||(FileName AS STRING)
+StretchDraw|SUB||(Rect AS QRECT, BMP)
+TextHeight|FUNCTION||(Text$) AS WORD
+TextWidth|FUNCTION||(Text$) AS WORD
+TextRect|SUB||(Rect AS QRECT, x%, y%, S$, fc%, bc%)
+TextOut|SUB||(x%, y%, S$, fc%, bc%)
 * Events
 OnClick||
 OnDblClick||
@@ -484,8 +646,10 @@ OnEnter||
 OnMeasureItem||(Index AS INTEGER, Height AS INTEGER)
 WndProc||(hWnd AS INTEGER, uMsg AS INTEGER, wParam AS INTEGER, lParam AS INTEGER)
 # 13 QGROUPBOX * Properties *
-Left|INTEGER|RW|
-Top|INTEGER|RW|
+Left|INTEGER|RW|0
+' сверено с qgroupbox.html: умолчание '' -> 0 (было: Left|INTEGER|RW|)
+Top|INTEGER|RW|0
+' сверено с qgroupbox.html: умолчание '' -> 0 (было: Top|INTEGER|RW|)
 Width|INTEGER|RW|150
 ' Component1.data: Width|INTEGER|RW|185
 Height|INTEGER|RW|100
@@ -495,16 +659,20 @@ Caption|STRING|RW|
 Color|INTEGER|RW|<default>|<default>|<choose>
 Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
 Enabled|INTEGER|RW|True|False=0|True=1
-Font|QFONT|R|<default>
+Font|QFONT|RW|<default>
+' сверено с qgroupbox.html: доступ R -> RW (было: Font|QFONT|R|<default>)
 Handle|LONG|R|
 Hint|STRING|RW|
-Parent|QFORM/QPANEL/QTABCONTROL|R|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qgroupbox.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
 PopupMenu|QPOPUPMENU|W|
 ShowHint|INTEGER|RW|False|False=0|True=1
 TabOrder|INTEGER|RW|
 Tag|INTEGER|RW|
 Visible|INTEGER|RW|True|False=0|True=1
 * Methods
+' методы - по qgroupbox.html
+Repaint|SUB||
 * Events
 OnClick||
 OnDblClick||
@@ -512,8 +680,10 @@ OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
 OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
 OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
 # 14 QSCROLLBOX * Properties *
-Left|INTEGER|RW|
-Top|INTEGER|RW|
+Left|INTEGER|RW|0
+' сверено с qscrollbox.html: умолчание '' -> 0 (было: Left|INTEGER|RW|)
+Top|INTEGER|RW|0
+' сверено с qscrollbox.html: умолчание '' -> 0 (было: Top|INTEGER|RW|)
 Width|INTEGER|RW|150
 ' Component1.data: Width|INTEGER|RW|185
 Height|INTEGER|RW|100
@@ -524,7 +694,8 @@ BorderStyle|INTEGER|RW|bsSingle|bsNone=0|bsSingle=1
 Color|INTEGER|RW|<default>|<default>|<choose>
 Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
 Enabled|INTEGER|RW|True|False=0|True=1
-Font|QFONT|R|<default>
+Font|QFONT|RW|<default>
+' сверено с qscrollbox.html: доступ R -> RW (было: Font|QFONT|R|<default>)
 Handle|LONG|R|
 Hint|STRING|RW|
 HorzIncrement|INTEGER|RW|8
@@ -533,7 +704,8 @@ HorzPosition|INTEGER|RW|0
 HorzRange|INTEGER|RW|0
 HorzTracking|INTEGER|RW|False|False=0|True=1
 HorzVisible|INTEGER|RW|True|False=0|True=1
-Parent|QFORM/QPANEL/QTABCONTROL|R|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qscrollbox.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
 PopupMenu|QPOPUPMENU|W|
 ShowHint|INTEGER|RW|False|False=0|True=1
 TabOrder|INTEGER|RW|
@@ -546,6 +718,8 @@ VertTracking|INTEGER|RW|False|False=0|True=1
 VertVisible|INTEGER|RW|True|False=0|True=1
 Visible|INTEGER|RW|True|False=0|True=1
 * Methods
+' методы - по qscrollbox.html
+Repaint|SUB||
 * Events
 OnClick||
 OnDblClick||
@@ -554,8 +728,10 @@ OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
 OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
 OnResize||
 # 15 QSCROLLBAR * Properties *
-Left|INTEGER|RW|
-Top|INTEGER|RW|
+Left|INTEGER|RW|0
+' сверено с qscrollbar.html: умолчание '' -> 0 (было: Left|INTEGER|RW|)
+Top|INTEGER|RW|0
+' сверено с qscrollbar.html: умолчание '' -> 0 (было: Top|INTEGER|RW|)
 Width|INTEGER|RW|100
 ' Component1.data: Width|INTEGER|RW|121
 Height|INTEGER|RW|20
@@ -572,7 +748,8 @@ Max|INTEGER|RW|100
 Min|INTEGER|RW|0
 PageSize|INTEGER|RW|10
 ' Component1.data: PageSize|INTEGER|RW|1
-Parent|QFORM/QPANEL/QTABCONTROL|R|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qscrollbar.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
 PopupMenu|QPOPUPMENU|W|
 Position|INTEGER|RW|0
 ShowHint|INTEGER|RW|False|False=0|True=1
@@ -588,8 +765,10 @@ OnKeyPress||(Key AS BYTE)
 OnKeyUp||(Key AS WORD, Shift AS INTEGER)
 OnScroll||(ScrollCode AS BYTE, ScrollPos AS LONG)
 # 16 QSTRINGGRID * Properties *
-Left|INTEGER|RW|
-Top|INTEGER|RW|
+Left|INTEGER|RW|0
+' сверено с qstringgrid.html: умолчание '' -> 0 (было: Left|INTEGER|RW|)
+Top|INTEGER|RW|0
+' сверено с qstringgrid.html: умолчание '' -> 0 (было: Top|INTEGER|RW|)
 Width|INTEGER|RW|150
 Height|INTEGER|RW|100
 Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
@@ -609,17 +788,21 @@ Enabled|INTEGER|RW|True|False=0|True=1
 FixedColor|INTEGER|RW|<default>|<default>|<choose>
 FixedCols|INTEGER|RW|1
 FixedRows|INTEGER|RW|1
-Font|QFONT|R|<default>
-GridHeight|INTEGER|R|
+Font|QFONT|RW|<default>
+' сверено с qstringgrid.html: доступ R -> RW (было: Font|QFONT|R|<default>)
+GridHeight|INTEGER|RW|
+' сверено с qstringgrid.html: доступ R -> RW (было: GridHeight|INTEGER|R|)
 ' Component1.data: GridHeight|INTEGER|RW|
 GridLineWidth|INTEGER|RW|1
-GridWidth|INTEGER|R|
+GridWidth|INTEGER|RW|
+' сверено с qstringgrid.html: доступ R -> RW (было: GridWidth|INTEGER|R|)
 ' Component1.data: GridWidth|INTEGER|RW|
 Handle|LONG|R|
 Hint|STRING|RW|
 LeftCol|INTEGER|RW|1
 ' Component1.data: LeftCol|INTEGER|RW|
-Parent|QFORM/QPANEL/QTABCONTROL|R|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qstringgrid.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
 PopupMenu|QPOPUPMENU|W|
 Row|INTEGER|RW|
 RowCount|INTEGER|RW|5
@@ -637,6 +820,34 @@ Visible|INTEGER|RW|True|False=0|True=1
 VisibleColCount|INTEGER|R|
 VisibleRowCount|INTEGER|R|
 * Methods
+' методы - по qstringgrid.html
+AddOptions|SUBI||
+DeleteCol|SUB||(Column%)
+DeleteRow|SUB||(Row%)
+DelOptions|SUBI||(INTEGER, ...)
+Circle|SUB||(x1%, y1%, x2%, y2%, c%, fill%)
+CopyRect|SUB||(D, Image, S)
+Draw|SUB||(x%, y%, BMP)
+FillRect|SUB||(x1%, y1%, x2%, y2%, c%)
+InsertCol|SUB||(Column%)
+InsertRow|SUB||(Row%)
+Line|SUB||(x1%, y1%, x2%, y2%, c%)
+LoadFromFile|SUB||(File$, RowOffset%, ColOffset%, MaxRows%)
+LoadFromStream|SUB||(S AS QFileStream/QMemoryStream, RowOffset%, ColOffset%, MaxRows%)
+Paint|SUB||(x%, y%, c%, borderc%)
+Pset|SUB||(x%, y%, c%)
+Rectangle|SUB||(x1%, y1%, x2%, y2%, c%)
+Repaint|SUB||
+RoundRect|SUB||(x1%, y1%, x2%, y2%, x3%, y3%, c%)
+SaveToFile|SUB||(File$, RowOffset%, ColOffset%, MaxRows%)
+SaveToStream|SUB||(S AS QFileStream/QMemoryStream, RowOffset%, ColOffset%, MaxRows%)
+SwapCols|SUB||(Col1%, Col2%)
+SwapRows|SUB||(Row1%, Row2%)
+StretchDraw|SUB||(Rect AS QRECT, BMP)
+TextHeight|FUNCTION||(Text$) AS WORD
+TextWidth|FUNCTION||(Text$) AS WORD
+TextRect|SUB||(Rect AS QRECT, x%, y%, S$, fc%, bc%)
+TextOut|SUB||(x%, y%, S$, fc%, bc%)
 * Events
 OnDrawCell||(sgCol AS INTEGER, sgRow AS INTEGER, State AS INTEGER, R AS QRECT)
 ' Component1.data: OnDrawCell||(Col AS INTEGER, Row AS INTEGER, State AS INTEGER, R AS QRECT)
@@ -652,8 +863,10 @@ OnSelectCell||(sgCol AS INTEGER, sgRow AS INTEGER, CanSelect AS INTEGER)
 OnSetEditText||(sgCol AS INTEGER, sgRow AS INTEGER, Value AS STRING)
 ' Component1.data: OnSetEditText||(Col AS INTEGER, Row AS INTEGER, Value AS STRING)
 # 17 QLISTVIEW * Properties *
-Left|INTEGER|RW|
-Top|INTEGER|RW|
+Left|INTEGER|RW|0
+' сверено с qlistview.html: умолчание '' -> 0 (было: Left|INTEGER|RW|)
+Top|INTEGER|RW|0
+' сверено с qlistview.html: умолчание '' -> 0 (было: Top|INTEGER|RW|)
 Width|INTEGER|RW|150
 ' Component1.data: Width|INTEGER|RW|250
 Height|INTEGER|RW|100
@@ -664,11 +877,13 @@ CheckBoxes|INTEGER|RW|False|False=0|True=1
 Color|INTEGER|RW|<default>|<default>|<choose>
 Column|ARRAY of ColumnType|RW|
 ColumnClick|INTEGER|RW|True|False=0|True=1
-ColumnsCount|INTEGER|R|
+ColumnsCount|INTEGER|RW|
+' сверено с qlistview.html: доступ R -> RW (было: ColumnsCount|INTEGER|R|)
 ' Component1.data: ColumnsCount|INTEGER|RW|
 Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
 Enabled|INTEGER|RW|True|False=0|True=1
-Font|QFONT|R|<default>
+Font|QFONT|RW|<default>
+' сверено с qlistview.html: доступ R -> RW (было: Font|QFONT|R|<default>)
 GridLines|INTEGER|RW|False|False=0|True=1
 Handle|LONG|R|
 HideSelection|INTEGER|RW|False|False=0|True=1
@@ -679,7 +894,8 @@ ItemCount|INTEGER|RW|
 ItemIndex|INTEGER|RW|
 LargeImages|QIMAGELIST|W|
 MultiSelect|INTEGER|RW|False|False=0|True=1
-Parent|QFORM/QPANEL/QTABCONTROL|R|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qlistview.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
 PopupMenu|QPOPUPMENU|W|
 ReadOnly|INTEGER|RW|False|False=0|True=1
 RowSelect|INTEGER|RW|False|False=0|True=1
@@ -698,6 +914,15 @@ Visible|INTEGER|RW|True|False=0|True=1
 * Methods
 AddColumns|STRING|W|
 AddItems|STRING|W|
+' методы - по qlistview.html
+AddSubItem|SUB||(Index%, String$)
+Clear|SUB||
+ClearColumns|SUB||
+DelItems|SUBI||(INTEGER, ...)
+DelSubItem|SUB||(Index%, SubIndex%)
+InsertItem|SUB||(Index%, String$)
+InsertSubItem|SUB||(Index%, SubIndex%, String$)
+SwapItem|SUB||(Index1%, Index2%)
 * Events
 OnClick||
 OnChange||(Index AS INTEGER, Change AS BYTE)
@@ -706,8 +931,10 @@ OnDblClick||
 OnKeyPress||(Key AS BYTE)
 OnKeyPressed||(Key AS BYTE)
 # 18 QDIRTREE * Properties *
-Left|INTEGER|RW|
-Top|INTEGER|RW|
+Left|INTEGER|RW|0
+' сверено с qdirtree.html: умолчание '' -> 0 (было: Left|INTEGER|RW|)
+Top|INTEGER|RW|0
+' сверено с qdirtree.html: умолчание '' -> 0 (было: Top|INTEGER|RW|)
 Width|INTEGER|RW|150
 ' Component1.data: Width|INTEGER|RW|121
 Height|INTEGER|RW|150
@@ -720,11 +947,13 @@ Directory|STRING|RW|
 ' Component1.data: Directory|STRING|RW|False|False|True
 Enabled|INTEGER|RW|True|False=0|True=1
 FastLoad|INTEGER|RW|False|False=0|True=1
-Font|QFONT|R|<default>
+Font|QFONT|RW|<default>
+' сверено с qdirtree.html: доступ R -> RW (было: Font|QFONT|R|<default>)
 HideSelection|INTEGER|RW|False|False=0|True=1
 Hint|STRING|RW|
 InitialDir|STRING|RW|
-Parent|QFORM/QPANEL/QTABCONTROL|R|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qdirtree.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
 PopupMenu|QPOPUPMENU|W|
 ReadOnly|INTEGER|RW|False|False=0|True=1
 ReadOnStart|INTEGER|RW|False|False=0|True=1
@@ -732,11 +961,20 @@ ShowHint|INTEGER|RW|False|False=0|True=1
 TabOrder|INTEGER|RW|
 Visible|INTEGER|RW|True|False=0|True=1
 * Methods
+' методы - по qdirtree.html
+AddDirTypes|SUB||
+AddDriveTypes|SUB||
+DelDirTypes|SUB||
+FullCollapse|SUB||
+FullExpand|SUB||
+Reload|SUB||
 * Events
 OnChange||
 # 19 QFILELISTBOX * Properties *
-Left|INTEGER|RW|
-Top|INTEGER|RW|
+Left|INTEGER|RW|0
+' сверено с qfilelistbox.html: умолчание '' -> 0 (было: Left|INTEGER|RW|)
+Top|INTEGER|RW|0
+' сверено с qfilelistbox.html: умолчание '' -> 0 (было: Top|INTEGER|RW|)
 Width|INTEGER|RW|150
 ' Component1.data: Width|INTEGER|RW|145
 Height|INTEGER|RW|150
@@ -750,7 +988,8 @@ Enabled|INTEGER|RW|True|False=0|True=1
 ExtendedSelect|INTEGER|RW|False|False=0|True=1
 ' Component1.data: ExtendedSelect|INTEGER|RW|True|False|True
 Filename|STRING|RW|
-Font|QFONT|R|<default>
+Font|QFONT|RW|<default>
+' сверено с qfilelistbox.html: доступ R -> RW (было: Font|QFONT|R|<default>)
 Hint|STRING|RW|
 Item|ARRAY of STRING|RW|
 ItemCount|INTEGER|R|
@@ -758,7 +997,8 @@ ItemHeight|INTEGER|RW|
 ItemIndex|INTEGER|RW|
 Mask|STRING|RW|*.*
 MultiSelect|INTEGER|RW|False|False=0|True=1
-Parent|QFORM/QPANEL/QTABCONTROL|R|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qfilelistbox.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
 PopupMenu|QPOPUPMENU|W|
 SelCount|INTEGER|R|
 Selected|ARRAY of INTEGER|RW|
@@ -769,13 +1009,19 @@ Tag|INTEGER|RW|
 TopIndex|INTEGER|RW|
 Visible|INTEGER|RW|True|False=0|True=1
 * Methods
+' методы - по qfilelistbox.html
+AddFileTypes|SUBI||(INTEGER, ...)
+DelFileTypes|SUBI||(INTEGER, ...)
+Update|SUB||
 * Events
 OnChange||
 OnClick||
 OnDblClick||
 # 20 QTREEVIEW * Properties *
-Left|INTEGER|RW|
-Top|INTEGER|RW|
+Left|INTEGER|RW|0
+' сверено с qtreeview.html: умолчание '' -> 0 (было: Left|INTEGER|RW|)
+Top|INTEGER|RW|0
+' сверено с qtreeview.html: умолчание '' -> 0 (было: Top|INTEGER|RW|)
 Width|INTEGER|RW|120
 ' Component1.data: Width|INTEGER|RW|121
 Height|INTEGER|RW|100
@@ -785,8 +1031,10 @@ BorderStyle|INTEGER|RW|bsSingle|bsNone=0|bsSingle=1
 Color|INTEGER|RW|<default>|<default>|<choose>
 Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
 Enabled|INTEGER|RW|True|False=0|True=1
-Font|QFONT|R|<default>
-Handle|LONG|R|
+Font|QFONT|RW|<default>
+' сверено с qtreeview.html: доступ R -> RW (было: Font|QFONT|R|<default>)
+Handle|LONG|RW|
+' сверено с qtreeview.html: доступ R -> RW (было: Handle|LONG|R|)
 ' Component1.data: Handle|LONG|RW|
 HideSelection|INTEGER|RW|False|False=0|True=1
 Hint|STRING|RW|
@@ -795,7 +1043,8 @@ Indent|INTEGER|RW|19
 Item|ARRAY of TreeNodeType|RW|
 ItemCount|INTEGER|RW|
 ItemIndex|INTEGER|RW|
-Parent|QFORM/QPANEL/QTABCONTROL|R|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qtreeview.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
 PopupMenu|QPOPUPMENU|W|
 ReadOnly|INTEGER|RW|False|False=0|True=1
 ShowButtons|INTEGER|RW|True|False=0|True=1
@@ -807,8 +1056,23 @@ StateImages|QIMAGELIST|W|
 TabOrder|INTEGER|RW|
 Tag|INTEGER|RW|
 Visible|INTEGER|RW|True|False=0|True=1
+TopIndex|INTEGER|RW|
+' добавлено по qtreeview.html
 * Methods
 AddItems|STRING|W|
+' методы - по qtreeview.html
+AddChildItems|SUB||(Index%, S1$, S2$, ...)
+Clear|SUB||
+Collapse|SUB||(Index%, Recurse%)
+DelItems|SUBI||(INTEGER, ...)
+Expand|SUB||(Index%, Recurse%)
+FullCollapse|SUB||
+FullExpand|SUB||
+GetItemAt|FUNCTION||(X%, Y%) AS LONG
+InsertItem|SUB||(Index%, String$)
+LoadFromFile|SUB||(Filename AS STRING)
+SaveToFile|SUB||(Filename AS STRING)
+Sort|SUB||
 * Events
 OnClick||
 OnChange||(Index AS INTEGER)
@@ -830,8 +1094,10 @@ OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
 OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
 OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
 # 21 QOUTLINE * Properties *
-Left|INTEGER|RW|
-Top|INTEGER|RW|
+Left|INTEGER|RW|0
+' сверено с qoutline.html: умолчание '' -> 0 (было: Left|INTEGER|RW|)
+Top|INTEGER|RW|0
+' сверено с qoutline.html: умолчание '' -> 0 (было: Top|INTEGER|RW|)
 Width|INTEGER|RW|120
 ' Component1.data: Width|INTEGER|RW|121
 Height|INTEGER|RW|100
@@ -851,7 +1117,8 @@ BorderStyle|INTEGER|RW|bsSingle|bsNone=0|bsSingle=1
 Color|INTEGER|RW|<default>|<default>|<choose>
 Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
 Enabled|INTEGER|RW|True|False=0|True=1
-Font|QFONT|R|<default>
+Font|QFONT|RW|<default>
+' сверено с qoutline.html: доступ R -> RW (было: Font|QFONT|R|<default>)
 Handle|LONG|R|
 Hint|STRING|RW|
 Item|ARRAY of STRING|RW|
@@ -860,7 +1127,8 @@ ItemIndex|INTEGER|RW|
 ItemSeparator|STRING|RW|\
 LineCount|INTEGER|RW|
 OutLineStyle|INTEGER|RW|osTreePictureText|osText=0|osPlusMinusText=1|osPictureText=2|osPlusMinusPictureText=3|osTreeText=4|osTreePictureText=5
-Parent|QFORM/QPANEL/QTABCONTROL|R|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qoutline.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
 PopupMenu|QPOPUPMENU|W|
 Row|INTEGER|RW|
 ScrollBars|INTEGER|RW|ssBoth|ssNone=0|ssHorizontal=1|ssVertical=2|ssBoth=3
@@ -871,6 +1139,12 @@ Visible|INTEGER|RW|True|False=0|True=1
 * Methods
 AddLines|STRING|W|
 AddOptions|INTEGER|W|
+' методы - по qoutline.html
+AddChild|SUB||(Index%, String$)
+Clear|SUB||
+DelLines|SUBI||(INTEGER, ...)
+DelOptions|SUBI||(INTEGER, ...)
+Insert|SUB||(Index%, String$)
 * Events
 OnClick||
 OnDblClick||
@@ -886,13 +1160,15 @@ BorderStyle|INTEGER|RW|bsSingle|bsNone=0|bsSingle=1
 Color|INTEGER|RW|<default>|<default>|<choose>
 Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
 Enabled|INTEGER|RW|True|False=0|True=1
-Font|QFONT|R|<default>
+Font|QFONT|RW|<default>
+' сверено с qgauge.html: доступ R -> RW (было: Font|QFONT|R|<default>)
 ForeColor|INTEGER|RW|<default>|<default>|<choose>
 Hint|STRING|RW|
 Kind|INTEGER|RW|gkHorizontalBar|gkText=0|gkHorizontalBar=1|gkVerticalBar=2|gkPie=3|gkNeedle=4
 Max|INTEGER|RW|100
 Min|INTEGER|RW|0
-Parent|QFORM/QPANEL/QTABCONTROL|R|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qgauge.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
 Position|INTEGER|RW|0
 ShowHint|INTEGER|RW|False|False=0|True=1
 ShowText|INTEGER|RW|True|False=0|True=1
@@ -900,8 +1176,10 @@ Visible|INTEGER|RW|True|False=0|True=1
 * Methods
 * Events
 # 23 QTRACKBAR * Properties *
-Left|INTEGER|RW|
-Top|INTEGER|RW|
+Left|INTEGER|RW|0
+' сверено с qtrackbar.html: умолчание '' -> 0 (было: Left|INTEGER|RW|)
+Top|INTEGER|RW|0
+' сверено с qtrackbar.html: умолчание '' -> 0 (было: Top|INTEGER|RW|)
 Width|INTEGER|RW|150
 Height|INTEGER|RW|45
 Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
@@ -915,7 +1193,8 @@ Max|INTEGER|RW|10
 Min|INTEGER|RW|0
 Orientation|INTEGER|RW|tbHorizontal|tbHorizontal=0|tbVertical=1
 PageSize|INTEGER|RW|2
-Parent|QFORM/QPANEL/QTABCONTROL|R|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qtrackbar.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
 PopupMenu|QPOPUPMENU|W|
 Position|INTEGER|RW|0
 ' Component1.data: Position|INTEGER|RW|
@@ -927,6 +1206,8 @@ TickMarks|INTEGER|RW|tmBottomRight|tmBottomRight=0|tmTopLeft=1|tmBoth=2
 TickStyle|INTEGER|RW|tsAuto|tsNone=0|tsAuto=1|tsManual=2
 Visible|INTEGER|RW|True|False=0|True=1
 * Methods
+' методы - по qtrackbar.html
+SetTick|SUB||(Pos%)
 * Events
 OnChange||
 # 24 QHEADER * Properties * Error in doco - Left, Top & Width are not RW properties
@@ -942,12 +1223,15 @@ ClientWidth|INTEGER|RW|
 CopyMode|INTEGER|RW|cmBlackness|cmBlackness=0|cmDstInvert=1|cmMergeCopy=2|cmMergePaint=3|cmNotSrcCopy=4|cmNotSrcErase=5|cmPatCopy=6|cmPatInvert=7|cmPatPaint=8|cmSrcAnd=9|cmSrcCopy=10|cmSrcErase=11|cmSrcInvert=12|cmSrcPaint=13|cmWhiteness=14
 Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
 Enabled|INTEGER|RW|True|False=0|True=1
-Font|QFONT|R|<default>
-Handle|LONG|R|
+Font|QFONT|RW|<default>
+' сверено с qheader.html: доступ R -> RW (было: Font|QFONT|R|<default>)
+Handle|LONG|RW|
+' сверено с qheader.html: доступ R -> RW (было: Handle|LONG|R|)
 ' Component1.data: Handle|LONG|RW|
 Hint|STRING|RW|
 HotTrack|INTEGER|RW|False|False=0|True=1
-Parent|QFORM/QPANEL/QTABCONTROL|R|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qheader.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
 Pixel|2D ARRAY of INTEGER|RW|
 PopupMenu|QPOPUPMENU|W|
 Sections|ARRAY of SectionsType|RW|
@@ -957,6 +1241,23 @@ Tag|INTEGER|RW|
 Visible|INTEGER|RW|True|False=0|True=1
 * Methods
 AddSections|STRING|W|
+' методы - по qheader.html
+Clear|SUB||
+Circle|SUB||(x1%, y1%, x2%, y2%, c%, fill%)
+CopyRect|SUB||(D, Image, S)
+Draw|SUB||(x%, y%, BMP)
+FillRect|SUB||(x1%, y1%, x2%, y2%, c%)
+Line|SUB||(x1%, y1%, x2%, y2%, c%)
+Paint|SUB||(x%, y%, c%, borderc%)
+Pset|SUB||(x%, y%, c%)
+Rectangle|SUB||(x1%, y1%, x2%, y2%, c%)
+Repaint|SUB||
+RoundRect|SUB||(x1%, y1%, x2%, y2%, x3%, y3%, c%)
+StretchDraw|SUB||(Rect AS QRECT, BMP)
+TextHeight|FUNCTION||(Text$) AS WORD
+TextWidth|FUNCTION||(Text$) AS WORD
+TextRect|SUB||(Rect AS QRECT, x%, y%, S$, fc%, bc%)
+TextOut|SUB||(x%, y%, S$, fc%, bc%)
 * Events
 OnDrawSection||(Index AS INTEGER, Pressed AS INTEGER, Rect AS QRECT)
 OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
@@ -980,7 +1281,8 @@ Enabled|INTEGER|RW|True|False=0|True=1
 Handle|LONG|R|
 Hint|STRING|RW|
 Panel|ARRAY of PanelType|RW|
-Parent|QFORM/QPANEL/QTABCONTROL|R|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qstatusbar.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
 PopupMenu|QPOPUPMENU|W|
 ShowHint|INTEGER|RW|False|False=0|True=1
 SimplePanel|INTEGER|RW|False|False=0|True=1
@@ -990,11 +1292,15 @@ TabOrder|INTEGER|RW|
 Visible|INTEGER|RW|True|False=0|True=1
 * Methods
 AddPanels|STRING|W|
+' методы - по qstatusbar.html
+Clear|SUB||
 * Events
 OnResize||
 # 26 QCANVAS * Properties *
-Left|INTEGER|RW|
-Top|INTEGER|RW|
+Left|INTEGER|RW|0
+' сверено с qcanvas.html: умолчание '' -> 0 (было: Left|INTEGER|RW|)
+Top|INTEGER|RW|0
+' сверено с qcanvas.html: умолчание '' -> 0 (было: Top|INTEGER|RW|)
 Width|INTEGER|RW|100
 ' Component1.data: Width|INTEGER|RW|105
 Height|INTEGER|RW|100
@@ -1006,16 +1312,36 @@ Color|INTEGER|RW|<default>|<default>|<choose>
 CopyMode|INTEGER|RW|cmBlackness|cmBlackness=0|cmDstInvert=1|cmMergeCopy=2|cmMergePaint=3|cmNotSrcCopy=4|cmNotSrcErase=5|cmPatCopy=6|cmPatInvert=7|cmPatPaint=8|cmSrcAnd=9|cmSrcCopy=10|cmSrcErase=11|cmSrcInvert=12|cmSrcPaint=13|cmWhiteness=14
 Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
 Enabled|INTEGER|RW|True|False=0|True=1
-Font|QFONT|R|<default>
+Font|QFONT|RW|<default>
+' сверено с qcanvas.html: доступ R -> RW (было: Font|QFONT|R|<default>)
 Hint|STRING|RW|
-Parent|QFORM/QPANEL/QTABCONTROL|R|
-Pixel|ARRAY of INTEGER|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qcanvas.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
+Pixel|2D ARRAY of INTEGER|RW|
+' сверено с qcanvas.html: тип ARRAY of INTEGER -> 2D ARRAY of INTEGER (было: Pixel|ARRAY of INTEGER|RW|)
 PopupMenu|QPOPUPMENU|W|
 ShowHint|INTEGER|RW|False|False=0|True=1
 Tag|INTEGER|RW|
 Visible|INTEGER|RW|True|False=0|True=1
 Handle|LONG|R|
 * Methods
+' методы - по qcanvas.html
+Circle|SUB||(x1%, y1%, x2%, y2%, c%, fill%)
+CopyRect|SUB||(D, Image, S)
+Draw|SUB||(x%, y%, BMP)
+FillRect|SUB||(x1%, y1%, x2%, y2%, c%)
+Line|SUB||(x1%, y1%, x2%, y2%, c%)
+Paint|SUB||(x%, y%, c%, borderc%)
+Pset|SUB||(x%, y%, c%)
+Rectangle|SUB||(x1%, y1%, x2%, y2%, c%)
+Repaint|SUB||
+Rotate|SUB||(xOrigin%, yOrigin%, Angle%)
+RoundRect|SUB||(x1%, y1%, x2%, y2%, x3%, y3%, c%)
+StretchDraw|SUB||(Rect AS QRECT, BMP)
+TextHeight|FUNCTION||(Text$) AS WORD
+TextWidth|FUNCTION||(Text$) AS WORD
+TextRect|SUB||(Rect AS QRECT, x%, y%, S$, fc%, bc%)
+TextOut|SUB||(x%, y%, S$, fc%, bc%)
 * Events
 OnClick||
 OnDblClick||
@@ -1024,8 +1350,10 @@ OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
 OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
 OnPaint||
 # 27 QIMAGE * Properties *
-Left|INTEGER|RW|
-Top|INTEGER|RW|
+Left|INTEGER|RW|0
+' сверено с qimage.html: умолчание '' -> 0 (было: Left|INTEGER|RW|)
+Top|INTEGER|RW|0
+' сверено с qimage.html: умолчание '' -> 0 (было: Top|INTEGER|RW|)
 Width|INTEGER|RW|100
 ' Component1.data: Width|INTEGER|RW|105
 Height|INTEGER|RW|100
@@ -1038,15 +1366,19 @@ Center|INTEGER|RW|False|False=0|True=1
 CopyMode|INTEGER|RW|cmBlackness|cmBlackness=0|cmDstInvert=1|cmMergeCopy=2|cmMergePaint=3|cmNotSrcCopy=4|cmNotSrcErase=5|cmPatCopy=6|cmPatInvert=7|cmPatPaint=8|cmSrcAnd=9|cmSrcCopy=10|cmSrcErase=11|cmSrcInvert=12|cmSrcPaint=13|cmWhiteness=14
 Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
 Enabled|INTEGER|RW|True|False=0|True=1
-Font|QFONT|R|<default>
-Handle|LONG|R|
+Font|QFONT|RW|<default>
+' сверено с qimage.html: доступ R -> RW (было: Font|QFONT|R|<default>)
+Handle|LONG|RW|
+' сверено с qimage.html: доступ R -> RW (было: Handle|LONG|R|)
 ' Component1.data: Handle|LONG|RW|
 Hint|STRING|RW|
 ICOHandle|RESOURCE|W|
 Icon|STRING|W|
 IncrementalDisplay|INTEGER|RW|False|False=0|True=1
-Parent|QFORM/QPANEL/QTABCONTROL|R|
-Pixel|ARRAY of INTEGER|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qimage.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
+Pixel|2D ARRAY of INTEGER|RW|
+' сверено с qimage.html: тип ARRAY of INTEGER -> 2D ARRAY of INTEGER (было: Pixel|ARRAY of INTEGER|RW|)
 PopupMenu|QPOPUPMENU|W|
 ShowHint|INTEGER|RW|False|False=0|True=1
 Stretch|INTEGER|RW|False|False=0|True=1
@@ -1054,6 +1386,24 @@ Tag|INTEGER|RW|
 Transparent|INTEGER|RW|False|False=0|True=1
 Visible|INTEGER|RW|True|False=0|True=1
 * Methods
+' методы - по qimage.html
+Center|SUB||
+Circle|SUB||(x1%, y1%, x2%, y2%, c%, fill%)
+CopyRect|SUB||(D, Image, S)
+Draw|SUB||(x%, y%, BMP)
+FillRect|SUB||(x1%, y1%, x2%, y2%, c%)
+Line|SUB||(x1%, y1%, x2%, y2%, c%)
+Paint|SUB||(x%, y%, c%, borderc%)
+Pset|SUB||(x%, y%, c%)
+Rectangle|SUB||(x1%, y1%, x2%, y2%, c%)
+Repaint|SUB||
+Rotate|SUB||(xOrigin%, yOrigin%, Angle%)
+RoundRect|SUB||(x1%, y1%, x2%, y2%, x3%, y3%, c%)
+StretchDraw|SUB||(Rect AS QRECT, BMP)
+TextHeight|FUNCTION||(Text$) AS WORD
+TextWidth|FUNCTION||(Text$) AS WORD
+TextRect|SUB||(Rect AS QRECT, x%, y%, S$, fc%, bc%)
+TextOut|SUB||(x%, y%, S$, fc%, bc%)
 * Events
 OnClick||
 OnDblClick||
@@ -1061,8 +1411,10 @@ OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
 OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
 OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
 # 28 QOLECONTAINER * Properties *
-Left|INTEGER|RW|
-Top|INTEGER|RW|
+Left|INTEGER|RW|0
+' сверено с qolecontainer.html: умолчание '' -> 0 (было: Left|INTEGER|RW|)
+Top|INTEGER|RW|0
+' сверено с qolecontainer.html: умолчание '' -> 0 (было: Top|INTEGER|RW|)
 Width|INTEGER|RW|100
 ' Component1.data: Width|INTEGER|RW|121
 Height|INTEGER|RW|100
@@ -1077,7 +1429,8 @@ Enabled|INTEGER|RW|True|False=0|True=1
 Handle|LONG|R|
 Hint|STRING|RW|
 Modified|INTEGER|RW|False|False=0|True=1
-Parent|QFORM/QPANEL/QTABCONTROL|R|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qolecontainer.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
 ShowHint|INTEGER|RW|False|False=0|True=1
 SizeMode|INTEGER|RW|smClip|smClip=0|smCenter=1|smScale=2|smStretch=3|smAutoSize=4
 State|INTEGER|RW|osEmpty|osEmpty=0|osLoaded=1|osRunning=2|osOpen=3|osInPlaceActive=4|osUIActive=5
@@ -1085,6 +1438,10 @@ TabOrder|INTEGER|RW|
 Tag|INTEGER|RW|
 Visible|INTEGER|RW|True|False=0|True=1
 * Methods
+' методы - по qolecontainer.html
+CreateObject|FUNCTION||(ClassName AS STRING) AS INTEGER
+Free|SUB||
+Invoke|FUNCTIONI||(ID AS STRING, Params, ...) AS VARIANT
 * Events
 OnKeyDown||(Key AS WORD, Shift AS INTEGER)
 OnKeyPress||(Key AS BYTE)
@@ -1110,7 +1467,8 @@ Cursor|INTEGER|RW|crHSplit|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-
 Enabled|INTEGER|RW|True|False=0|True=1
 Hint|STRING|RW|
 MinSize|INTEGER|RW|30
-Parent|QFORM/QPANEL/QTABCONTROL|R|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qsplitter.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
 ShowHint|INTEGER|RW|False|False=0|True=1
 Tag|INTEGER|RW|
 Visible|INTEGER|RW|True|False=0|True=1
@@ -1122,8 +1480,10 @@ BMP|STRING|RW|
 BMPHandle|RESOURCE|W|
 CopyMode|INTEGER|RW|cmBlackness|cmBlackness=0|cmDstInvert=1|cmMergeCopy=2|cmMergePaint=3|cmNotSrcCopy=4|cmNotSrcErase=5|cmPatCopy=6|cmPatInvert=7|cmPatPaint=8|cmSrcAnd=9|cmSrcCopy=10|cmSrcErase=11|cmSrcInvert=12|cmSrcPaint=13|cmWhiteness=14
 Empty|INTEGER|R|
-Font|QFONT|R|<default>
-Handle|LONG|R|
+Font|QFONT|RW|<default>
+' сверено с qbitmap.html: доступ R -> RW (было: Font|QFONT|R|<default>)
+Handle|LONG|RW|
+' сверено с qbitmap.html: доступ R -> RW (было: Handle|LONG|R|)
 ' Component1.data: Handle|LONG|RW|
 Height|INTEGER|RW|100
 ' Component1.data: Height|INTEGER|RW|
@@ -1137,6 +1497,26 @@ Width|INTEGER|RW|100
 ' Component1.data: Width|INTEGER|RW|
 Top|INTEGER|RW|
 * Methods
+' методы - по qbitmap.html
+Circle|SUB||(x1%, y1%, x2%, y2%, c%, fill%)
+CopyRect|SUB||(D, Image, S)
+Draw|SUB||(x%, y%, BMP)
+FillRect|SUB||(x1%, y1%, x2%, y2%, c%)
+Line|SUB||(x1%, y1%, x2%, y2%, c%)
+LoadFromFile|SUB||(FileName$)
+LoadFromStream|SUB||(Stream)
+Paint|SUB||(x%, y%, c%, borderc%)
+Pset|SUB||(x%, y%, c%)
+Rectangle|SUB||(x1%, y1%, x2%, y2%, c%)
+Rotate|SUB||(xOrigin%, yOrigin%, Angle%)
+RoundRect|SUB||(x1%, y1%, x2%, y2%, x3%, y3%, c%)
+SaveToFile|SUB||(FileName$)
+SaveToStream|SUB||(Stream)
+StretchDraw|SUB||(Rect AS QRECT, BMP)
+TextHeight|FUNCTION||(Text$) AS WORD
+TextWidth|FUNCTION||(Text$) AS WORD
+TextRect|SUB||(Rect AS QRECT, x%, y%, S$, fc%, bc%)
+TextOut|SUB||(x%, y%, S$, fc%, bc%)
 * Events
 # 31 QIMAGELIST * Properties *
 BkColor|INTEGER|RW|<default>|<default>|<choose>
@@ -1145,7 +1525,8 @@ Count|INTEGER|R|
 DrawingStyle|INTEGER|RW|dsNormal|dsFocused=0|dsSelected=1|dsNormal=2|dsTransparent=3
 GetBMP|ARRAY of IMAGES/BMP|R|
 GetICO|ARRAY of IMAGES/ICO|R|
-Handle|LONG|R|
+Handle|LONG|RW|
+' сверено с qimagelist.html: доступ R -> RW (было: Handle|LONG|R|)
 Height|INTEGER|RW|16
 ' Component1.data: Height|INTEGER|RW|
 ImageType|INTEGER|RW|itImage|itImage=0|itMask=1
@@ -1153,6 +1534,18 @@ Masked|INTEGER|RW|True|False=0|True=1
 Width|INTEGER|RW|16
 ' Component1.data: Width|INTEGER|RW|
 * Methods
+' методы - по qimagelist.html
+AddBMPFile|SUB||(FileName$, MaskColor%)
+AddICOFile|SUB||(FileName$)
+AddBMPHandle|SUB||(BMP_Resource, MaskColor%)
+AddICOHandle|SUB||(ICO_Resource)
+Clear|SUB||
+Delete|SUB||(Index%)
+Draw|SUB||(QIMAGE/QBITMAP/QCANVAS/QDXSCREEN, X%, Y%, Index%)
+InsertBMPFile|SUB||(Index%, Filename$, Mask%)
+InsertICOFile|SUB||(Index%, Filename$)
+InsertBMPHandle|SUB||(Index%, BMP_Resource, Mask%)
+InsertICOHandle|SUB||(Index%, ICO_Resource)
 * Events
 # 32 QSTRINGLIST * Properties *
 Duplicates|INTEGER|RW|dupIgnore|dupIgnore=0|dupAccept=1|dupError=2
@@ -1161,6 +1554,22 @@ ItemCount|INTEGER|R|
 Sorted|INTEGER|RW|False|False=0|True=1
 Text|STRING|RW|
 * Methods
+' методы - по qstringlist.html
+AddItems|SUBI||(STRINGs, ...)
+AddList|SUB||(List AS QStringList)
+Build|FUNCTION||(Start%, End%, Delim$) AS STRING
+Clear|SUB||
+DelItems|SUBI||(Index #s, ...)
+Exchange|SUB||(Index1%, Index2%)
+Find|FUNCTION||(string$) as integer
+IndexOf|FUNCTION||%(String$)
+InsertItem|SUB||(Index%, String$)
+LoadFromFile|SUB||(File$)
+LoadFromStream|SUB||(File AS QStream)
+Parse|FUNCTION||(Source$, Delim$) AS LONG
+SaveToFile|SUB||(File$)
+SaveToStream|SUB||(File AS QStream)
+Sort|SUB||
 * Events
 # 33 QTIMER * Properties *
 Enabled|INTEGER|RW|True|False=0|True=1
@@ -1182,6 +1591,24 @@ Transferred|INTEGER|R|
 Type|INTEGER|RW|SOCK_STREAM|SOCK_STREAM=1|SOCK_DGRAM=2|SOCK_RAW=3|SOCK_RDM=4|SOCK_SEQPACKET=5
 WMessage|INTEGER|RW|0
 * Methods
+' методы - по qsocket.html
+Accept|FUNCTION||ClientSock%(Socket%)
+Close|SUB||(Socket%)
+Connect|FUNCTION||Sock%(ServerName$, PortNum%)
+ConnectionReady|FUNCTION||Bool%(Sock%)
+GetHostIP|FUNCTION||AS STRING
+GetHostName|FUNCTION||AS STRING
+GetPeerName|FUNCTION||$(Socket%)
+IsClientReady|FUNCTION||Bool%(Sock%, ClientSock%)
+IsServerReady|FUNCTION||Bool%(Sock%)
+Open|FUNCTION||Sock%(PortNum%)
+Peek|FUNCTION||$(Socket%, NumBytes%)
+Read|FUNCTION||Message$(Socket%, NumBytes%)
+ReadByte|FUNCTION||(Socket%) AS BYTE
+ReadLine|FUNCTION||Message$(Socket%)
+Write|SUB||(Socket%, Message$, NumBytes%)
+WriteByte|SUB||(Socket%, B AS BYTE)
+WriteLine|FUNCTION||Bytes%(Socket%, Message$)
 * Events
 # 35 QFILESTREAM * Properties *
 EOF|INTEGER|R|
@@ -1190,6 +1617,26 @@ LineCount|INTEGER|R|
 Position|INTEGER|RW|
 Size|INTEGER|R|
 * Methods
+' методы - по qfilestream.html
+Close|SUB||
+CopyFrom|SUB||(Stream, Bytes%)
+ExtractRes|SUB||(Resource AS LONG)
+LoadArray|SUB||(Array(), NumElements&)
+Open|SUB||(FileName$, Method%)
+Read|SUB||(variable)
+ReadLine|FUNCTION||() AS STRING
+ReadNum|FUNCTION||(Num_Type) AS DOUBLE
+ReadBinStr|FUNCTION||(n) AS STRING
+ReadStr|FUNCTION||(n) AS STRING
+ReadUDT|SUB||(MyType)
+SaveArray|SUB||(Array(), NumElements&)
+Seek|SUB||(Position%, From%)
+Write|SUB||(variable)
+WriteLine|SUB||(S AS STRING)
+WriteNum|SUB||(number, bytes%)
+WriteBinStr|SUB||(string, bytes%)
+WriteStr|SUB||(string, bytes%)
+WriteUDT|SUB||(MyType)
 * Events
 # 36 QMEMORYSTREAM * Properties *
 LineCount|INTEGER|R|
@@ -1197,18 +1644,43 @@ Pointer|INTEGER|R|
 Position|INTEGER|RW|
 Size|INTEGER|RW|
 * Methods
+' методы - по qmemorystream.html
+Close|SUB||
+CopyFrom|SUB||(Stream, Bytes%)
+ExtractRes|SUB||(Resource AS LONG)
+LoadArray|SUB||(Array(), NumElements&)
+MemCopyFrom|SUB||(Address&, Bytes&)
+MemCopyTo|SUB||(Address&, Bytes&)
+Read|SUB||(variable)
+ReadLine|FUNCTION||() AS STRING
+ReadNum|FUNCTION||( Num_ Type ) AS DOUBLE
+ReadStr|FUNCTION||(n) AS STRING
+ReadBinStr|FUNCTION||(n) AS STRING
+ReadUDT|SUB||(MyType)
+SaveArray|SUB||(Array(), NumElements&)
+Seek|SUB||(Position%, From%)
+Write|SUB||(variable)
+WriteLine|SUB||(S AS STRING)
+WriteNum|SUB||(number, bytes%)
+WriteBinStr|SUB||(string, bytes%)
+WriteStr|SUB||(string, bytes%)
+WriteUDT|SUB||(MyType)
 * Events
 # 37 QFONT * Properties *
 Charset|INTEGER|RW|DEFAULT_CHARSET|ANSI_CHARSET=0|DEFAULT_CHARSET=1|SYMBOL_CHARSET=2|MAC_CHARSET=77|OEM_CHARSET=255
 Color|INTEGER|RW|<default>|<default>|<choose>
 FontCount|INTEGER|R|
 FontName|ARRAY of STRING|R|
-Handle|LONG|R|
+Handle|LONG|RW|
+' сверено с qfont.html: доступ R -> RW (было: Handle|LONG|R|)
 ' Component1.data: Handle|LONG|RW|
 Name|STRING|RW|
 Pitch|INTEGER|RW|fpDefault|fpDefault=0|fpVariable=1|fpFixed=2
 Size|INTEGER|RW|
 * Methods
+' методы - по qfont.html
+AddStyles|SUBI||(INTEGER, ...)
+DelStyles|SUBI||(INTEGER, ...)
 * Events
 # 38 QMYSQL * Properties *
 Connected|INTEGER|R|
@@ -1229,9 +1701,35 @@ RowCount|INTEGER|R|
 Table|ARRAY of STRING|R|
 TableCount|INTEGER|R|
 * Methods
+' методы - по qmysql.html
+Close|SUB||
+Connect|FUNCTION||(Host$, User$, Passwd$) AS INTEGER
+CreateDB|FUNCTION||(DB$) AS INTEGER
+DropDB|FUNCTION||(DB$) AS INTEGER
+EscapeString|FUNCTION||(S$, Length%) AS STRING
+FetchField|FUNCTION||AS INTEGER
+FetchLengths|FUNCTION||AS INTEGER
+FetchRow|FUNCTION||AS INTEGER
+FieldSeek|FUNCTION||(Position%)
+Query|FUNCTION||(Query$) AS INTEGER
+RealConnect|SUB||(Host$, User$, Passwd$, DB$, Port%, UnixSock$, Flags%)
+Refresh|FUNCTION||(RefreshFlags%) AS INTEGER
+RowBlob|FUNCTION||(Row%, Bytes&) AS STRING
+RowSeek|FUNCTION||(Row%)
+SelectDB|FUNCTION||(DB$) AS INTEGER
 * Events
 # 39 QOLEOBJECT * Properties * NB NO Properties
+Container|QOLECONTAINER|W|
+' добавлено по qoleobject.html
 * Methods
+' методы - по qoleobject.html
+CreateObject|FUNCTION||(ClassName AS STRING) AS INTEGER
+CreateRemote|FUNCTION||(Host AS STRING, ClassName AS STRING) AS INTEGER
+Free|SUB||
+GetIDofName|FUNCTION||(Name AS STRING) AS INTEGER
+GetObject|FUNCTION||(ClassName AS STRING) AS INTEGER
+Invoke|FUNCTIONI||(ID AS STRING, Params, ...) AS VARIANT
+InvokeCopy|SUB||(ID AS STRING, Object AS QOLEOBJECT)
 * Events
 # 40 QREGISTRY * Properties *
 CurrentKey|INTEGER|R|
@@ -1243,6 +1741,27 @@ KeyItemCount|INTEGER|R|
 RootKey|INTEGER|RW|HKEY_CURRENT_USER|HKEY_CLASSES_ROOT|HKEY_CURRENT_USER|HKEY_LOCAL_MACHINE|HKEY_USERS|HKEY_CURRENT_CONFIG
 ValueItemCount|INTEGER|R|
 * Methods
+' методы - по qregistry.html
+CloseKey|SUB||
+CreateKey|FUNCTION||(Key$) AS INTEGER
+DeleteKey|FUNCTION||(Key$) AS INTEGER
+DeleteValue|FUNCTION||(ValName$) AS INTEGER
+KeyExists|FUNCTION||(Key$) AS INTEGER
+KeyItem|FUNCTION||(Index%) AS STRING
+MoveKey|FUNCTION||(Old$, New$, Delete%)
+OpenKey|FUNCTION||(Key$, CanCreate%)
+ReadBinary|FUNCTION||(Key$, Index%) AS BYTE
+ReadFloat|FUNCTION||(Key$) AS DOUBLE
+ReadInteger|FUNCTION||(Key$) AS INTEGER
+ReadString|FUNCTION||(Key$) AS STRING
+RegistryConnect|FUNCTION||(CompName$) AS INTEGER
+RenameValue|FUNCTION||(Old$, New$) AS INTEGER
+ValueExists|FUNCTION||(Value$) AS INTEGER
+ValueItem|FUNCTION||(Index%) AS STRING
+WriteBinary|SUB||(Key$, BYTE(), Size%)
+WriteFloat|SUB||(Key$, Value#)
+WriteInteger|SUB||(Key$, Value&)
+WriteString|SUB||(Key$, Value$)
 * Events
 # 41 QOPENDIALOG * Properties *
 Caption|STRING|RW|
@@ -1251,6 +1770,8 @@ Filter|STRING|RW|
 FilterIndex|INTEGER|RW|1
 InitialDir|STRING|RW|
 * Methods
+' методы - по qopendialog.html
+Execute|FUNCTION||
 * Events
 # 42 QSAVEDIALOG * Properties *
 Caption|STRING|RW|
@@ -1259,6 +1780,8 @@ Filter|STRING|RW|
 FilterIndex|INTEGER|RW|1
 InitialDir|STRING|RW|
 * Methods
+' методы - по qsavedialog.html
+Execute|FUNCTION||
 * Events
 # 43 QFONTDIALOG * Properties *
 Color|INTEGER|RW|<default>|<default>|<choose>
@@ -1269,7 +1792,17 @@ MinFontSize|INTEGER|RW|
 Name|STRING|RW|
 Size|INTEGER|RW|
 * Methods
+' методы - по qfontdialog.html
+AddStyles|SUBI||(INTEGER, ...)
+DelStyles|SUBI||(INTEGER, ...)
+AddOptions|SUBI||(INTEGER, ...)
+DelOptions|SUBI||(INTEGER, ...)
+Execute|FUNCTION||
+GetFont|SUB||(F AS QFONT)
+SetFont|SUB||(F AS QFONT)
 * Events
+OnApply||
+' добавлено по qfontdialog.html
 # 44 QCOLORDIALOG * Properties *
 '  класс программы с этим именем: inc\QColorDialog.inc, строка 37 (EXTENDS QOBJECT) - берётся, если программа подключает этот файл
 '  класс программы с этим именем: inc\rapidq2.inc, строка 6050 (EXTENDS QFORM) - берётся, если программа подключает этот файл
@@ -1309,6 +1842,10 @@ StickyFocus|INTEGER|RW|False|False=0|True=1
 Tag|INTEGER|RW|
 Volume|INTEGER|RW|
 * Methods
+' методы - по qdxsound.html
+Play|SUB||
+Stop|SUB||
+Update|SUB||
 * Events
 # 47 QDXScreen * Properties *
 Left|INTEGER|RW|
@@ -1322,7 +1859,8 @@ BitCount|INTEGER|RW|8
 Color|INTEGER|RW||<choose>
 Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
 Enabled|INTEGER|RW|True|False=0|True=1
-Font|QFONT|R|<default>
+Font|QFONT|RW|<default>
+' сверено с qdxscreen.html: доступ R -> RW (было: Font|QFONT|R|<default>)
 FullScreen|INTEGER|RW|False|False=0|True=1
 Hint|STRING|RW|
 Parent|QFORM/QPANEL/QTABCONTROL|W|
@@ -1332,6 +1870,42 @@ Use3D|INTEGER|RW|False|False=0|True=1
 UseHardware|INTEGER|RW|True|False=0|True=1
 Visible|INTEGER|RW|True|False=0|True=1
 * Methods
+' методы - по qdxscreen.html
+Circle|SUB||(x1%, y1%, x2%, y2%, c%, fill%)
+CopyRect|SUB||(D, Image, S)
+Draw|SUB||(x%, y%, BMP)
+Fill|SUB||(DevCol%)
+FillRect|SUB||(x1%, y1%, x2%, y2%, c%)
+Flip|SUB||
+Init|SUB||(Width%, Height%)
+Line|SUB||(x1%, y1%, x2%, y2%, c%)
+Paint|SUB||(x%, y%, c%, borderc%)
+Pset|SUB||(x%, y%, c%)
+Rectangle|SUB||(x1%, y1%, x2%, y2%, c%)
+Release|SUB||
+Rotate|SUB||(xOrigin%, yOrigin%, Angle%)
+RoundRect|SUB||(x1%, y1%, x2%, y2%, x3%, y3%, c%)
+StretchDraw|SUB||(Rect AS QRECT, BMP)
+TextHeight|FUNCTION||(Text$) AS WORD
+TextWidth|FUNCTION||(Text$) AS WORD
+TextRect|SUB||(Rect AS QRECT, x%, y%, S$, fc%, bc%)
+TextOut|SUB||(x%, y%, S$, fc%, bc%)
+AddLight|SUB||(Light AS QD3DLight)
+CameraLookAt|SUB||(F AS QD3DFrame, Constraint AS INTEGER)
+CreateFace|SUB||(Face AS QD3DFace)
+CreateFrame|SUB||(Frame AS QD3DFrame)
+CreateLightRGB|SUB||(LightType%, R#, G#, B#, Light AS QD3DLight)
+CreateMeshBuilder|SUB||(MB AS QD3DMeshBuilder)
+CreateShadow|SUB||(MB AS QD3DMeshBuilder, Light AS QD3DLight, px#, py#, pz#, nx#, ny#, nz#, V AS QD3DVisual)
+CreateWrap|SUB||(WrapType%, A#, B#, C#, D#, E#, F#, G#, H#, I#, J#, K#, L#, M#, W AS QD3DWrap)
+ForceUpdate|SUB||(X1%, Y1%, X2%, Y2%)
+LoadTexture|SUB||(File AS STRING, Tex AS QD3DTexture)
+Move|SUB||(D AS DOUBLE)
+SetBackgroundImage|SUB||(Tex AS QD3DTexture)
+SetCameraPosition|SUB||(X#, Y#, Z#)
+SetCameraOrientation|SUB||(DX#, DY#, DZ#, UX#, UY#, UZ#)
+SetRenderMode|SUB||(M AS INTEGER)
+SetTextureQuality|SUB||(Quality AS INTEGER)
 * Events
 OnClick||
 OnDblClick||
@@ -1345,15 +1919,39 @@ OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER)
 # 48 QDXImageList * Properties *
 Parent|QDXSCREEN|W|
 * Methods
+' методы - по qdximagelist.html
+Draw|SUB||(Item%, X%, Y%, Mask%)
+LoadFromFile|SUB||(FileName$)
+LoadFromResource|SUB||(Resource_Handle)
+LoadFromStream|SUB||(Stream AS QFILESTREAM/QMEMORYSTREAM)
 * Events
 # 49 QD3DFace * Properties *
 VertexCount|INTEGER|R|
 * Methods
+' методы - по qd3dface.html
+AddVertex|SUB||(X#, Y#, Z#)
+GetVertex|SUB||(Index AS LONG, Position AS QD3DVector, Normal AS QD3DVector)
+SetColorRGB|SUB||(R#, G#, B#)
 * Events
 # 50 QD3DMeshBuilder * Properties *
 FaceCount|INTEGER|R|
 Parent|QFORM/QPANEL|RW|
 * Methods
+' методы - по qd3dmeshbuilder.html
+AddFace|SUB||(Face AS QD3DFace)
+AddVertex|SUB||(X#, Y#, Z#)
+CreateFace|SUB||(Face AS QD3DFace)
+CreateMesh|SUB||(Mesh AS QD3DMesh)
+DeleteFace|SUB||(Face AS QD3DFace)
+GetFace|SUB||(Index AS LONG, Face AS QD3DFace)
+Load|SUB||(S AS STRING)
+Move|SUB||(D AS DOUBLE)
+Scale|SUB||(X#,Y#,Z#)
+SetQuality|SUB||(Quality AS INTEGER)
+SetRGB|SUB||(R#, G#, B#)
+SetRGBA|SUB||(R#, G#, B#, A#)
+SetTexture|SUB||(Tex AS QD3DTexture)
+Translate|SUB||(TX#, TY#, TZ#)
 * Events
 # 51 QD3DFrame * Properties *
 FogColor|INTEGER|RW|
@@ -1361,10 +1959,34 @@ FogEnabled|INTEGER|RW|
 FogMode|INTEGER|RW|
 Parent|QFORM/QPANEL|RW|
 * Methods
+' методы - по qd3dframe.html
+AddFrame|SUB||(Frame AS QD3DFrame)
+AddLight|SUB||(Light AS QD3DLight)
+AddScale|SUB||(CombineType%, X#, Y#, Z#)
+AddVisual|SUB||(Visual AS QD3DMeshBuilder/QD3DMesh/QD3DVisual)
+CreateFrame|SUB||(Frame AS QD3DFrame)
+DeleteFrame|SUB||(Frame AS QD3DFrame)
+DeleteLight|SUB||(Light AS QD3DLight)
+DeleteVisual|SUB||(Visual AS QD3DMeshBuilder/QD3DMesh/QD3DVisual)
+Load|SUB||(FileName AS STRING)
+LookAt|SUB||(F AS QD3DFrame, Constraint AS INTEGER)
+Move|SUB||(D AS DOUBLE)
+SetBackgroundImage|SUB||(Texture AS QD3DTexture)
+SetBackgroundRGB|SUB||(R#, G#, B#)
+SetFogParams|SUB||(Start#, End#, Density#)
+SetOrientation|SUB||(DX#, DY#, DZ#, UX#, UY#, UZ#)
+SetPosition|SUB||(X#, Y#, Z#)
+SetRotation|SUB||(X#, Y#, Z#, Theta#)
+SetTexture|SUB||(Tex AS QD3DTexture)
 * Events
 # 52 QD3DLight * Properties *
 Parent|QFORM/QPANEL/QD3DFrame|RW|
 * Methods
+' методы - по qd3dlight.html
+SetLightRGB|SUB||(LightType%, R#, G#, B#)
+SetPenUmbra|SUB||(Angle#)
+SetRange|SUB||(Range#)
+SetUmbra|SUB||(Angle#)
 * Events
 # 53 QD3DTexture * Properties *
 * Methods
@@ -1380,6 +2002,9 @@ Z|SINGLE|RW|
 * Events
 # 55 QD3DWrap * Properties *
 * Methods
+' методы - по qd3dwrap.html
+Apply|SUB||(M AS QD3DMesh/QD3DMeshBuilder)
+ApplyRelative|SUB||(F AS QD3DFrame, M AS QD3DMesh/QD3DMeshBuilder)
 * Events
 # 56 QGLASSFRAME * Properties *
 Left|INTEGER|RW|
@@ -1394,7 +2019,8 @@ Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=
 Handle|LONG|RW|
 Hint|STRING|RW|
 Moveable|INTEGER|RW|True|False=0|True=1
-Parent|QFORM/QPANEL/QTABCONTROL|R|
+Parent|QFORM/QPANEL/QTABCONTROL|RW|
+' сверено с qglassframe.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
 PopupMenu|QPOPUPMENU|W|
 ShowHint|INTEGER|RW|False|False=0|True=1
 Transparency|INTEGER|RW|60
@@ -1403,8 +2029,14 @@ TransparentColor|INTEGER|RW|<default>|<default>|<choose>
 * Events
 # 57 QMAINMENU * Properties * NB not used in "normal" object selection
 Handle|LONG|R|
-Parent|QFORM|R|
+Parent|QFORM|RW|
+' сверено с qmainmenu.html: доступ R -> RW (было: Parent|QFORM|R|)
 * Methods
+' методы - по qmainmenu.html
+AddItems|SUBI||(QMENUITEMs, ...)
+DelIndex|SUB||(index AS LONG)
+DelItems|SUBI||(QMENUITEMs, ...)
+Insert|SUB||(I%, Item AS QMENUITEM)
 * Events
 # 58 QPOPUPMENU * Properties * NB not used in "normal" object selection
 Alignment|INTEGER|RW|paLeft|paLeft|paRight|paCenter
@@ -1413,6 +2045,12 @@ Handle|LONG|R|
 Tag|INTEGER|RW|
 WindowHandle|LONG|RW|
 * Methods
+' методы - по qpopupmenu.html
+AddItems|SUBI||(QMENUITEMs, ...)
+DelIndex|SUB||(index AS LONG)
+DelItems|SUBI||(QMENUITEMs, ...)
+Insert|SUB||(I%, Item AS QMENUITEM)
+Popup|SUB||(X%, Y%)
 * Events
 OnPopup||
 # 59 QMENUITEM * Properties * NB not used in "normal" object selection
@@ -1429,6 +2067,11 @@ ShortCut|STRING|RW|
 Tag|INTEGER|RW|
 Visible|INTEGER|RW|True|False=0|True=1
 * Methods
+' методы - по qmenuitem.html
+AddItems|SUBI||(QMENUITEMs, ...)
+DelIndex|SUB||(index AS LONG)
+DelItems|SUBI||(QMENUITEMs, ...)
+Insert|SUB||(I%, Item AS QMENUITEM)
 * Events
 OnClick||
 # 60 QRichEdit_api EXTENDS QObject * Properties *

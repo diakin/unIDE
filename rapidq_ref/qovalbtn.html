@@ -1,0 +1,122 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QOVALBTN</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QOVALBTN</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QOVALBTN Component</H1>
+<DD>QOvalbtn is similar to QCoolBtn, except the button looks round/oval.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QOvalbtn Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR><TD>Align</TD><TD>INTEGER</TD><TD>RW</TD><TD>alNone</TD><TD>W</TD></TR>
+  <TR><TD>BMP</TD><TD>STRING</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD>BMPHandle</TD><TD>RESOURCE</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD>Caption</TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>WX</TD></TR>
+  <TR><TD>Color</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WX</TD></TR>
+  <TR><TD>ColorHighLight</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD>ColorShadow</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD>Cursor</TD><TD>INTEGER</TD><TD>RW</TD><TD>crDefault</TD><TD>W</TD></TR>
+  <TR><TD>Down</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>W</TD></TR>
+  <TR><TD>Enabled</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD<TD>WX</TD>></TR>
+  <TR><TD>Flat</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>WX</TD></TR>
+  <TR><TD>Font</TD><TD>QFONT</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD>GroupIndex</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>W</TD></TR>
+  <TR><TD>Height</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WX</TD></TR>
+  <TR><TD>Hint</TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>WX</TD></TR>
+  <TR><TD>Layout</TD><TD>INTEGER</TD><TD>RW</TD><TD>blBMPLeft</TD><TD>W</TD></TR>
+  <TR><TD>Left</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>WX</TD></TR>
+  <TR><TD>NumBMPs</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD>Parent</TD><TD>QFORM/QPANEL/QTABCONTROL</TD><TD>W</TD><TD></TD><TD>WX</TD></TR>
+  <TR><TD>ShowHint</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>WX</TD></TR>
+  <TR><TD>Spacing</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD>TabOrder</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD>Tag</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD>Top</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>WX</TD></TR>
+  <TR><TD>Transparent</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>W</TD></TR>
+  <TR><TD>TransParentColor</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD>Width</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WX</TD></TR>
+  <TR><TD>Visible</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD><TD>WX</TD></TR>
+</TABLE>
+<br>
+
+<a name="2">
+<FONT SIZE = +1><B>QOvalbtn Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR><TD>StartDrag</TD><TD>SUB</TD><TD NOWRAP>Allows Button to be dragged</TD><TD NOWRAP>0</TD><TD>W</TD></TR>
+</TABLE>
+<BR>
+
+<a name="3">
+<FONT SIZE = +1><B>QOvalbtn Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR><TD>OnClick</TD><TD>VOID</TD><TD>User clicked on the button</TD><TD>0</TD><TD>WX</TD></TR>
+  <TR><TD>OnMouseDown</TD><TD NOWRAP>SUB (Button%, X%, Y%, Shift%)</TD><TD NOWRAP>Mouse button held down</TD><TD>4</TD><TD>WX</TD></TR>
+  <TR><TD>OnMouseMove</TD><TD NOWRAP>SUB (X%, Y%, Shift%)</TD><TD NOWRAP>Mouse moves</TD><TD>3</TD><TD>WX</TD></TR>
+  <TR><TD>OnMouseUp</TD><TD NOWRAP>SUB (Button%, X%, Y%, Shift%)</TD><TD NOWRAP>Mouse button is released</TD><TD>4</TD><TD>WX</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QOvalbtn Examples</B></FONT>
+
+<PRE>
+CREATE Form AS QForm
+  CREATE OvalBtn AS QOvalBtn
+    Caption = "Oval Button"
+    Color = &H00FF00
+  END CREATE
+  ShowModal
+END CREATE
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qoutline.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qpanel.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      D>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                         

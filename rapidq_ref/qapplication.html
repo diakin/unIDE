@@ -1,0 +1,122 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> APPLICATION</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+<a name="up">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: APPLICATION</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>APPLICATION Component</H1>
+<DD>This object is global, and need not be created.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>Application Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee"><TD><b>ExeName</b></TD><TD>STRING</TD><TD>R</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">The executable name of the application, path name is excluded (use COMMAND$(0) for full path information).
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Handle</b></TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">hInstance of the application.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>HelpFile</b></TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">HelpFile specifies the name of the file the application uses to display help.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>HintColor</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>clInfoBk</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">HintColor determines the color of the hint boxes for the Help Hints.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>HintHidePause</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>2500</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">HintHidePause specifies the time interval to wait before hiding the Help Hint if the mouse
+                             has not moved from the control or menu item.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>HintPause</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>500</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">HintPause specifies the time interval that passes before the control's Help Hint appears
+                             when the user places the mouse pointer on a control or menu item.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>HintShortPause</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>50</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">HideShortPause specifies the pause to wait before bringing up a hint if a hint has already been shown.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Icon</b></TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Specify an icon filename to appear as the default icon of your application.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>IcoHandle</b></TD><TD>RESOURCE</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Specify an icon resource to appear as the default icon of your application.<br>
+                             <b><u>Example</u></b>:<br>
+                             <blockquote><font face="courier" size="2">
+                             $RESOURCE game_ICO AS "game.ico"<br>
+                             Application.IcoHandle = game_ICO
+                            </font></blockquote>
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD>ShowHint</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Title</TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+</TABLE>
+<br><br>
+
+<a name="2">
+<FONT SIZE = +1><B>Application Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR><TD VALIGN=TOP>HelpCommand</TD><TD>SUB (Command AS WORD, Data AS LONG)</TD><TD>Accesses the Help commands in the WinHelp API</TD><TD NOWRAP>2</TD><TD>W</TD></TR>
+  <TR><TD VALIGN=TOP>HelpContext</TD><TD>SUB (Context AS LONG)</TD><TD>Bring up the Application's HelpFile at specifed Context ID</TD><TD NOWRAP>1</TD><TD>W</TD></TR>
+  <TR><TD VALIGN=TOP>HelpJump</TD><TD>SUB (JumpID AS STRING)</TD><TD>Brings up the HelpFile and displays the screen in the Help file that has the JumpID</TD><TD NOWRAP>1</TD><TD>W</TD></TR>
+  <TR><TD VALIGN=TOP>Minimize</TD><TD>SUB</TD><TD>Minimize Application</TD><TD NOWRAP>0</TD><TD>W</TD></TR>
+  <TR><TD VALIGN=TOP>Terminate</TD><TD>SUB</TD><TD>Terminates Application</TD><TD NOWRAP>0</TD><TD>WXG</TD></TR>
+</TABLE>
+<BR><BR>
+
+
+<a name="4">
+<FONT SIZE = +1><B>Application Examples</B></FONT>
+
+<PRE>
+  Application.HintColor = &H00FF00
+
+  CREATE Form AS QFORM
+      CREATE Button AS QBUTTON
+          Hint = "Button Hint"
+          ShowHint = 1
+      END CREATE
+      ShowModal
+  END CREATE  
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qprinter.html">Prev Component</a></TD>
+   <TD><A HREF="#up">Up</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qbitmap.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      
+
+</BODY>
+</HTML>                         

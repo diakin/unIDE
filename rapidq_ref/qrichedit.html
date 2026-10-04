@@ -1,0 +1,557 @@
+<html>
+
+<head>
+<meta http-equiv="Content-Language" content="en-us">
+<meta name="GENERATOR" content="Microsoft FrontPage 5.0">
+<meta name="ProgId" content="FrontPage.Editor.Document">
+<!------------------->
+<!------------------->
+<!------------------->
+<title>QRICHEDIT</title>
+</head>
+
+<!------------------->
+<!------------------->
+<!------------------->
+<body bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<table WIDTH="100%" CELLPADDING="0" CELLSPACING="0">
+  <tr>
+    <td><font FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu 
+    (c)1999-2000</font></td>
+    <td ALIGN="RIGHT"><font FACE="Arial, Helvetica"><b>Appendix A: QRICHEDIT</b></font></td>
+  </tr>
+</table>
+<p><br>
+</p>
+<h1>QRICHEDIT Component</h1>
+<dd>QRichedit implements a fully featured multi-line text edit control. <br>
+<br>
+<a name="1"><font SIZE="+1"><b>QRichedit Properties</b></font>
+<table WIDTH="989" cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+  <tr>
+    <td width="100"><b>Field</b></td>
+    <td width="369"><b>Type</b></td>
+    <td width="111"><b>R/W</b></td>
+    <td width="282"><b>Default</b></td>
+    <td width="81"><b>Support</b></td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100"><b>Align</b></td>
+    <td width="369">INTEGER</td>
+    <td width="111">RW</td>
+    <td width="282">alNone</td>
+    <td width="81">W</td>
+  </tr>
+  <tr>
+    <td width="100"></td>
+    <td COLSPAN="4" bgcolor="ffdddd" width="870">Align determines how the 
+    control aligns within its parent control. </td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100"><b>Alignment</b></td>
+    <td width="369">INTEGER</td>
+    <td width="111">RW</td>
+    <td width="282">taLeftJustify</td>
+    <td width="81">W</td>
+  </tr>
+  <tr>
+    <td width="100"></td>
+    <td COLSPAN="4" bgcolor="ffdddd" width="870">Alignment determines how the 
+    text is aligned within the edit control. </td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100">BorderStyle</td>
+    <td width="369">INTEGER</td>
+    <td width="111">RW</td>
+    <td width="282">bsSingle</td>
+    <td width="81">W</td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100">Color</td>
+    <td width="369">INTEGER</td>
+    <td width="111">RW</td>
+    <td width="282"></td>
+    <td width="81">W</td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100">Enabled</td>
+    <td width="369">INTEGER</td>
+    <td width="111">RW</td>
+    <td width="282">True</td>
+    <td width="81">WXG</td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100">Font</td>
+    <td width="369">QFONT</td>
+    <td width="111">W</td>
+    <td width="282"></td>
+    <td width="81">WX</td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100">Handle</td>
+    <td width="369">INTEGER</td>
+    <td width="111">R</td>
+    <td width="282"></td>
+    <td width="81">W</td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100">Height</td>
+    <td width="369">INTEGER</td>
+    <td width="111">RW</td>
+    <td width="282"></td>
+    <td width="81">WXG</td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100">HideScrollBars</td>
+    <td width="369">INTEGER</td>
+    <td width="111">RW</td>
+    <td width="282">True</td>
+    <td width="81">WG</td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100">HideSelection</td>
+    <td width="369">INTEGER</td>
+    <td width="111">RW</td>
+    <td width="282">True</td>
+    <td width="81">W</td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100">Hint</td>
+    <td width="369">STRING</td>
+    <td width="111">RW</td>
+    <td width="282"></td>
+    <td width="81">WG</td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100">Left</td>
+    <td width="369">INTEGER</td>
+    <td width="111">RW</td>
+    <td width="282">0</td>
+    <td width="81">WXG</td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100">Line</td>
+    <td width="369">ARRAY of STRING</td>
+    <td width="111">RW</td>
+    <td width="282"></td>
+    <td width="81">WXG</td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100">LineCount</td>
+    <td width="369">INTEGER</td>
+    <td width="111"><strike>RW</strike><font color="#FF0000">&nbsp; <strong>
+    ReadOnly</strong></font></td>
+    <td width="282"></td>
+    <td width="81">WXG</td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100">Modified</td>
+    <td width="369">INTEGER</td>
+    <td width="111">R<b><font color="#FF0000">W</font></b></td>
+    <td width="282"></td>
+    <td width="81">WG</td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100">Parent</td>
+    <td width="369">QFORM/QPANEL/QTABCONTROL</td>
+    <td width="111">W</td>
+    <td width="282"></td>
+    <td width="81">WXG</td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100">PopupMenu</td>
+    <td width="369">QPOPUPMENU</td>
+    <td width="111">W</td>
+    <td width="282"></td>
+    <td width="81">W</td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100">Plaintext</td>
+    <td width="369">INTEGER</td>
+    <td width="111">RW</td>
+    <td width="282">False</td>
+    <td width="81">W</td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100">Readonly</td>
+    <td width="369">INTEGER</td>
+    <td width="111">RW</td>
+    <td width="282">False</td>
+    <td width="81">WXG</td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100">ScrollBars</td>
+    <td width="369">INTEGER</td>
+    <td width="111">RW</td>
+    <td width="282">ssNone <br>
+    CONST ssNone = 0 <br>
+    CONST ssHorizontal = 1 <br>
+    CONST ssVertical = 2 <br>
+    CONST ssBoth = 3 <br>
+    </td>
+    <td width="81">WXG</td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100">SelAttributes</td>
+    <td width="369">QFONT</td>
+    <td width="111">W</td>
+    <td width="282"></td>
+    <td width="81">W</td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100"><b>SelLength</b></td>
+    <td width="369">INTEGER</td>
+    <td width="111">RW</td>
+    <td width="282"></td>
+    <td width="81">WXG</td>
+  </tr>
+  <tr>
+    <td width="100"></td>
+    <td COLSPAN="4" bgcolor="ffdddd" width="870">SelLength is the number of 
+    characters that are selected. </td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100"><b>SelStart</b></td>
+    <td width="369">INTEGER</td>
+    <td width="111">RW</td>
+    <td width="282"></td>
+    <td width="81">WXG</td>
+  </tr>
+  <tr>
+    <td width="100"></td>
+    <td COLSPAN="4" bgcolor="ffdddd" width="870">SelStart is the position of the 
+    first selected character in the text. If there is no selected text, SelStart 
+    indicates the position of the cursor. </td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100"><b>SelText</b></td>
+    <td width="369">STRING</td>
+    <td width="111">RW</td>
+    <td width="282"></td>
+    <td width="81">WXG</td>
+  </tr>
+  <tr>
+    <td width="100"></td>
+    <td COLSPAN="4" bgcolor="ffdddd" width="870">SelText is the selected portion 
+    of the edit control's text. </td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100">ShowHint</td>
+    <td width="369">INTEGER</td>
+    <td width="111">RW</td>
+    <td width="282">False</td>
+    <td width="81">WG</td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100">TabOrder</td>
+    <td width="369">INTEGER</td>
+    <td width="111">RW</td>
+    <td width="282"></td>
+    <td width="81">W</td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100">Tag</td>
+    <td width="369">INTEGER</td>
+    <td width="111">RW</td>
+    <td width="282"></td>
+    <td width="81">WXG</td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100">Text</td>
+    <td width="369">STRING</td>
+    <td width="111">RW</td>
+    <td width="282"></td>
+    <td width="81">WXG</td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100">Top</td>
+    <td width="369">INTEGER</td>
+    <td width="111">RW</td>
+    <td width="282">0</td>
+    <td width="81">WXG</td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100"><b>WantTabs</b></td>
+    <td width="369">INTEGER</td>
+    <td width="111">RW</td>
+    <td width="282">False</td>
+    <td width="81">W</td>
+  </tr>
+  <tr>
+    <td width="100"></td>
+    <td COLSPAN="4" bgcolor="ffdddd" width="870">WantTabs determines whether the 
+    user can insert tab characters into the text. </td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100">Width</td>
+    <td width="369">INTEGER</td>
+    <td width="111">RW</td>
+    <td width="282"></td>
+    <td width="81">WXG</td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100">WhereX</td>
+    <td width="369">INTEGER</td>
+    <td width="111">R</td>
+    <td width="282"></td>
+    <td width="81">WXG</td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100">WhereY</td>
+    <td width="369">INTEGER</td>
+    <td width="111">R</td>
+    <td width="282"></td>
+    <td width="81">WXG</td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100">Wordwrap</td>
+    <td width="369">INTEGER</td>
+    <td width="111">RW</td>
+    <td width="282">True</td>
+    <td width="81">W</td>
+  </tr>
+  <tr bgcolor="eeeeee">
+    <td width="100">Visible</td>
+    <td width="369">INTEGER</td>
+    <td width="111">RW</td>
+    <td width="282">True</td>
+    <td width="81">WXG</td>
+  </tr>
+</table>
+<p><br>
+<br>
+</a><a name="2"><font SIZE="+1"><b>QRichedit Methods</b></font> </p>
+<table WIDTH="989" cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+  <tr>
+    <td width="148"><b>Method</b></td>
+    <td width="402"><b>Type</b></td>
+    <td width="210"><b>Description</b></td>
+    <td width="118"><b>Params</b></td>
+    <td width="65"><b>Support</b></td>
+  </tr>
+  <tr>
+    <td width="148">AddStrings</td>
+    <td width="402">SUBI</td>
+    <td NOWRAP width="210">Add strings</td>
+    <td NOWRAP width="118">STRING, Infinite</td>
+    <td width="65">WXG</td>
+  </tr>
+  <tr>
+    <td width="148">Clear</td>
+    <td width="402">SUB</td>
+    <td NOWRAP width="210">Clear entire text</td>
+    <td NOWRAP width="118">0</td>
+    <td width="65">WXG</td>
+  </tr>
+  <tr>
+    <td width="148">CopyToClipboard</td>
+    <td width="402">SUB</td>
+    <td NOWRAP width="210">Copy selected text to clipboard</td>
+    <td NOWRAP width="118">0</td>
+    <td width="65">W</td>
+  </tr>
+  <tr>
+    <td width="148">CutToClipboard</td>
+    <td width="402">SUB</td>
+    <td NOWRAP width="210">Cut selected text to clipboard</td>
+    <td NOWRAP width="118">0</td>
+    <td width="65">W</td>
+  </tr>
+  <tr>
+    <td width="148">LoadFromFile</td>
+    <td width="402">SUB (FileName$)</td>
+    <td NOWRAP width="210">Load text from a file</td>
+    <td NOWRAP width="118">1</td>
+    <td width="65">WXG</td>
+  </tr>
+  <tr>
+    <td width="148">LoadFromStream</td>
+    <td width="402">SUB (Stream AS QFILESTREAM/QMEMORYSTREAM)</td>
+    <td NOWRAP width="210">Load text from a stream</td>
+    <td NOWRAP width="118">1</td>
+    <td width="65">WX</td>
+  </tr>
+  <tr>
+    <td width="148">PasteFromClipboard</td>
+    <td width="402">SUB</td>
+    <td NOWRAP width="210">Paste text from clipboard</td>
+    <td NOWRAP width="118">0</td>
+    <td width="65">W</td>
+  </tr>
+  <tr>
+    <td width="148">SaveToFile</td>
+    <td width="402">SUB (FileName$)</td>
+    <td NOWRAP width="210">Save text to a file</td>
+    <td NOWRAP width="118">1</td>
+    <td width="65">WXG</td>
+  </tr>
+  <tr>
+    <td width="148">SaveToStream</td>
+    <td width="402">SUB (Stream AS QFILESTREAM/QMEMORYSTREAM)</td>
+    <td NOWRAP width="210">Save text to a stream</td>
+    <td NOWRAP width="118">1</td>
+    <td width="65">W</td>
+  </tr>
+  <tr>
+    <td width="148">SelectAll</td>
+    <td width="402">SUB</td>
+    <td NOWRAP width="210">Selects all text from Richedit</td>
+    <td NOWRAP width="118">0</td>
+    <td width="65">WXG</td>
+  </tr>
+  <tr>
+    <td width="148"><a name="2"><font FACE="FixedSys" SIZE="1">LINEINDEX </font>
+    </a></td>
+    <td valign="top" width="402"><a name="2"><font FACE="FixedSys" SIZE="1">
+    Function as long</font></a><br>
+    <font FACE="Arial Narrow" SIZE="2"><a name="2">result=SendMessageA&nbsp; 
+    (.handle, rEM_LINEINDEX, .WhereY, 0)</a></font></td>
+    <td valign="top" width="210"><a name="2"><font FACE="FixedSys" SIZE="1">
+    Returm position of first char of current line</font></a></td>
+    <td NOWRAP valign="bottom" width="118">
+    <font FACE="FixedSys" SIZE="1" color="#CC0000">$INCLUDE &quot;RichEdPopUp.inc&quot;</font></td>
+    <td width="65">W</td>
+  </tr>
+  <tr>
+    <td valign="top" width="148"><a name="2"><font FACE="FixedSys" SIZE="1">
+    GetLINEIdx</font></a></td>
+    <td valign="top" width="402"><a name="2"><font FACE="FixedSys" SIZE="1">
+    Function (<font color="#CC0000">lineN</font> as long) as long </font></a>
+    <br>
+    <font FACE="Arial Narrow" SIZE="2"><a name="2">result=SendMessageA 
+    (.handle,rEM_LINEINDEX, <font color="#FF0000">LineN</font>, 0)</a></font></td>
+    <td valign="top" width="210"><font FACE="FixedSys" SIZE="1"><a name="2">
+    Returm position of first char of line</a></font></a><font FACE="FixedSys" SIZE="1"> 
+    number <font color="#FF0000">LineN</font></font></td>
+    <a name="2">
+    <td NOWRAP valign="top" width="118">
+    <font FACE="FixedSys" SIZE="1" color="#CC0000">$INCLUDE &quot;RichEdPopUp.inc&quot;</font></td>
+    <td width="65">W</td>
+  </tr>
+  <tr>
+    <td valign="top" width="148"><a name="2"><font FACE="FixedSys" SIZE="1">
+    LINEFROMCHAR</font></a></td>
+    <td valign="top" width="402"><a name="2"><font FACE="FixedSys" SIZE="1">
+    Function as long</font></a><br>
+    <font FACE="Arial Narrow" SIZE="2"><a name="2">result=SendMessageA 
+    (.handle,rEM_LINEFROMCHAR,.SelStart,0)</a></font></td>
+    <td valign="top" width="210"><font face="Fixedsys">Return line number when 
+    current selection or cursor</font></td>
+    <td NOWRAP valign="top" width="118">
+    <font FACE="FixedSys" SIZE="1" color="#CC0000">$INCLUDE &quot;RichEdPopUp.inc&quot;</font></td>
+    <td width="65">W</td>
+  </tr>
+  <tr>
+    <td valign="top" width="148"><a name="2"><font FACE="FixedSys" SIZE="1">
+    GoToLineEnd </font></a></td>
+    <td valign="top" width="402"><a name="2"><font FACE="FixedSys" SIZE="1">
+    Function as long</font></a><br>
+    <font FACE="Arial Narrow" SIZE="2"><a name="2">
+    .selstart=.LINEINDEX+len(.line(.WhereY))</a></font></td>
+    <td valign="top" width="210"><font face="Fixedsys">Set cursor to end of line</font></td>
+    <td NOWRAP valign="bottom" width="118">
+    <font FACE="FixedSys" SIZE="1" color="#CC0000">$INCLUDE &quot;RichEdPopUp.inc&quot;</font></td>
+    <td width="65">W</td>
+  </tr>
+  <tr>
+    <td valign="top" width="148"><font FACE="FixedSys" SIZE="1">GoToLineBegin</font></td>
+    <td valign="top" width="402"><a name="2"><font FACE="FixedSys" SIZE="1">
+    Function as long</font></a><br>
+    <font FACE="Arial Narrow" SIZE="2"><a name="2">.selstart=.LINEINDEX</a></font></td>
+    <td valign="top" width="210"><font face="Fixedsys"><a name="2">Set cursor to 
+    begin of line</a></font></td>
+    <td NOWRAP valign="bottom" width="118">
+    <font FACE="FixedSys" SIZE="1" color="#CC0000">$INCLUDE &quot;RichEdPopUp.inc&quot;</font></td>
+    <td width="65">W</td>
+  </tr>
+</table>
+<p><br>
+</a><a name="3"><font SIZE="+1"><b>QRichedit Events</b></font> </p>
+<table WIDTH="100%" cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+  <tr>
+    <td><b>Event</b></td>
+    <td><b>Type</b></td>
+    <td><b>Occurs when...</b></td>
+    <td><b>Params</b></td>
+    <td><b>Support</b></td>
+  </tr>
+  <tr>
+    <td>OnChange</td>
+    <td>VOID</td>
+    <td>Text changes</td>
+    <td>0</td>
+    <td>WG</td>
+  </tr>
+  <tr>
+    <td>OnKeyDown</td>
+    <td NOWRAP>SUB (Key AS WORD, Shift AS INTEGER)</td>
+    <td NOWRAP>Key held down</td>
+    <td>2</td>
+    <td>WG</td>
+  </tr>
+  <tr>
+    <td>OnKeyPress</td>
+    <td>SUB (Key AS BYTE)</td>
+    <td>User presses a key</td>
+    <td>1</td>
+    <td>WG</td>
+  </tr>
+  <tr>
+    <td>OnKeyUp</td>
+    <td NOWRAP>SUB (Key AS WORD, Shift AS INTEGER)</td>
+    <td NOWRAP>Key released</td>
+    <td>2</td>
+    <td>WG</td>
+  </tr>
+  <tr>
+    <td>OnMouseDown</td>
+    <td NOWRAP>SUB (Button%, X%, Y%, Shift%)</td>
+    <td NOWRAP>Mouse button held down</td>
+    <td>4</td>
+    <td>WX</td>
+  </tr>
+  <tr>
+    <td>OnMouseMove</td>
+    <td NOWRAP>SUB (X%, Y%, Shift%)</td>
+    <td NOWRAP>Mouse moves</td>
+    <td>2</td>
+    <td>WX</td>
+  </tr>
+  <tr>
+    <td>OnMouseUp</td>
+    <td NOWRAP>SUB (Button%, X%, Y%, Shift%)</td>
+    <td NOWRAP>Mouse button is released</td>
+    <td>4</td>
+    <td>WX</td>
+  </tr>
+</table>
+<p><br>
+<br>
+</a><a name="4"><font SIZE="+1"><b>QRichedit Examples</b></font> </p>
+<pre>  $INCLUDE &quot;RAPIDQ.INC&quot;
+
+  DIM Form AS QForm
+  DIM RichEdit AS QRichEdit
+
+  RichEdit.Parent = Form
+  RichEdit.Scrollbars = ssBoth
+  RichEdit.AddString &quot;Hello world!&quot;
+
+  Form.ShowModal
+</pre>
+<hr SIZE="1">
+<table WIDTH="100%" CELLPADDING="0" CELLSPACING="0">
+  <tr>
+    <td><a HREF="qregistry.html">Prev Component</a></td>
+    <td ALIGN="CENTER"><a HREF="contents.html">Contents</a></td>
+    <td ALIGN="RIGHT"><a HREF="qsavedialog.html">Next Component</a></td>
+  </tr>
+</table>
+
+</body>
+
+</html>
+<p>D&gt;</tr></table></body></a></dd>
+
+</html>

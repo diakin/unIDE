@@ -1,0 +1,323 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QMYSQL</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QMYSQL</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QMYSQL Component</H1>
+<DD>QMySQL is used to access your local or remote MySQL server.
+More information on MySQL can be obtained at http://www.mysql.com/
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QMySQL Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee"><TD><b>Connected</b></TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Connected specifies whether you are currently connected to a MySQL server. Use the Connect method to establish a connection.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>DB</b></TD><TD>ARRAY of STRING</TD><TD>R</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">DB returns a database list that are currently available on the MySQL server.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>DBCount</b></TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">DBCount returns the number of databases that are currently available on the MySQL server.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>ColCount</b></TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">ColCount returns the number of columns in the table. ColCount is used after an SQL query to determine the number of columns in the resulting table.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>FieldCount</b></TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">FieldCount returns the number of columns in the table. FieldCount is used after an SQL query to determine the number of columns in the resulting table.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Field.Decimals</b></TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Field.Decimals returns the number of decimals in the field.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Field.Flags</b></TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Field.Flags returns the flag settings. Refer to MYSQL.INC for supported values.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Field.Length</b></TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Field.Length returns the width of the column.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Field.MaxLength</b></TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Field.MaxLength returns the maximum width of the selected set. A result set can have multiple fields (or columns), Field.MaxLength returns the largest of these.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Field.Name</b></TD><TD>STRING</TD><TD>R</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Field.Name returns the name of the column.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Field.Table</TD><TD>STRING</TD><TD>R</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Field.Type</b></TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Field.Type returns the type of field. Refer to MYSQL.INC for supported values.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Length</b></TD><TD>ARRAY of INTEGER</TD><TD>R</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Length returns the length of each field. Make sure a call to FetchLengths is made.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Row</b></TD><TD>ARRAY of STRING</TD><TD>R</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Row returns the value stored in the particular Row for the current result set. The value is also dependent
+                on the Field (or column). For example, Row(3) returns the value stored in Row 3 and whatever Column, ie. 2. Which is different from Row(3) of Column 3 for example.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>RowCount</TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Table</b></TD><TD>ARRAY of STRING</TD><TD>R</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Table returns a list of tables for the current database.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>TableCount</TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>WXG</TD></TR>
+</TABLE>
+<br><br>
+
+<a name="2">
+<FONT SIZE = +1><B>QMySQL Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR><TD>Close</TD><TD>SUB</TD><TD NOWRAP>Disconnect from MySQL</TD><TD NOWRAP>0</TD><TD>WXG</TD></TR>
+  <TR><TD>Connect</TD><TD>FUNCTION (Host$, User$, Passwd$) AS INTEGER</TD><TD NOWRAP>Connect to MySQL</TD><TD NOWRAP>3</TD><TD>WXG</TD></TR>
+  <TR><TD>CreateDB</TD><TD>FUNCTION (DB$) AS INTEGER</TD><TD NOWRAP>Creates a new database</TD><TD NOWRAP>1</TD><TD>WXG</TD></TR>
+  <TR><TD>DropDB</TD><TD>FUNCTION (DB$) AS INTEGER</TD><TD NOWRAP>Drop database</TD><TD NOWRAP>1</TD><TD>WXG</TD></TR>
+  <TR><TD>EscapeString</TD><TD>FUNCTION (S$, Length%) AS STRING</TD><TD>Parses binary string S$ and returns a string that can be used in Blob fields</TD><TD NOWRAP>2</TD><TD>WXG</TD></TR>
+  <TR><TD>FetchField</TD><TD>FUNCTION AS INTEGER</TD><TD NOWRAP>Fetch next field</TD><TD NOWRAP>0</TD><TD>WXG</TD></TR>
+  <TR><TD>FetchLengths</TD><TD>FUNCTION AS INTEGER</TD><TD NOWRAP>Fetch lengths for current row</TD><TD NOWRAP>0</TD><TD>WXG</TD></TR>
+  <TR><TD>FetchRow</TD><TD>FUNCTION AS INTEGER</TD><TD NOWRAP>Fetch next row</TD><TD NOWRAP>0</TD><TD>WXG</TD></TR>
+  <TR><TD>FieldSeek</TD><TD>FUNCTION (Position%)</TD><TD NOWRAP>Jump to Field Position%</TD><TD NOWRAP>1</TD><TD>WXG</TD></TR>
+  <TR><TD>Query</TD><TD>FUNCTION (Query$) AS INTEGER</TD><TD NOWRAP>Query database</TD><TD NOWRAP>1</TD><TD>WXG</TD></TR>
+  <TR><TD>RealConnect</TD><TD>SUB (Host$, User$, Passwd$, DB$, Port%, UnixSock$, Flags%)</TD><TD NOWRAP>Connect to MySQL</TD><TD NOWRAP>7</TD><TD>WXG</TD></TR>
+  <TR><TD>Refresh</TD><TD>FUNCTION (RefreshFlags%) AS INTEGER</TD><TD NOWRAP>Refresh database</TD><TD NOWRAP>1</TD><TD>WXG</TD></TR>
+  <TR><TD>RowBlob</TD><TD>FUNCTION (Row%, Bytes&) AS STRING</TD><TD NOWRAP>Returns the binary blob as a string</TD><TD NOWRAP>2</TD><TD>WXG</TD></TR>
+  <TR><TD>RowSeek</TD><TD>FUNCTION (Row%)</TD><TD NOWRAP>Jump to a certain row</TD><TD NOWRAP>1</TD><TD>WXG</TD></TR>
+  <TR><TD>SelectDB</TD><TD>FUNCTION (DB$) AS INTEGER</TD><TD NOWRAP>Select database to use</TD><TD NOWRAP>1</TD><TD>WXG</TD></TR>
+</TABLE>
+<BR>
+
+<a name="3">
+<FONT SIZE = +1><B>QMySQL Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD>
+  </TR>
+ </TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QMySQL Examples</B></FONT>
+
+<PRE>
+' This simply checks that you have a working MySQL server and lets you
+' view some database fields.
+
+$TYPECHECK ON
+$INCLUDE "RAPIDQ.INC"
+
+DECLARE SUB Button1Click (Sender AS QBUTTON)
+DECLARE SUB DBListBoxClick (Sender AS QLISTBOX)
+DECLARE SUB TableListBoxClick (Sender AS QLISTBOX)
+DECLARE SUB SQLFormResize (Sender AS QFORM)
+
+DIM Font AS QFONT
+    Font.Name = "Courier"
+DIM MySQL AS QMYSQL
+
+    CREATE SQLForm AS QFORM
+        Caption = "Connected"
+        Width = 330
+        Height = 300
+        Center
+        CREATE DBLabel AS QLABEL
+            Caption = "Select a database:"
+        END CREATE
+        CREATE DBListBox AS QLISTBOX
+            Top = 20
+            Width = 150
+            Height = 100
+            OnClick = DBListBoxClick
+        END CREATE
+        CREATE TableListBox AS QLISTBOX
+            Top = 20
+            Left = 165
+            Width = 150
+            Height = 100
+            OnClick = TableListBoxClick
+        END CREATE
+        CREATE FieldEdit AS QRICHEDIT
+            Top = 130
+            Width = SQLForm.ClientWidth
+            Height = SQLForm.ClientHeight-130
+            ReadOnly = TRUE
+            WordWrap = FALSE
+            PlainText = TRUE
+            Font = Font
+            ScrollBars = ssBoth
+        END CREATE
+        CREATE Grid AS QSTRINGGRID
+            Top = 130
+            Width = SQLForm.ClientWidth
+            Height = SQLForm.ClientHeight-130
+            AddOptions(goEditing)
+        END CREATE
+        OnResize = SQLFormResize
+    END CREATE
+
+CREATE Form AS QFORM
+    Caption = "SQL Demo"
+    Width = 230
+    Height = 174
+    Center
+    CREATE Label1 AS QLABEL
+        Caption = "Host:"
+        Left = 44
+        Top = 23
+    END CREATE
+    CREATE Label2 AS QLABEL
+        Caption = "User name:"
+        Left = 16
+        Top = 50
+        Width = 57
+    END CREATE
+    CREATE Label3 AS QLABEL
+        Caption = "Password:"
+        Left = 21
+        Top = 79
+        Width = 54
+    END CREATE
+    CREATE Edit1 AS QEDIT
+        Text = ""
+        Left = 83
+        Top = 18
+    END CREATE
+    CREATE Edit2 AS QEDIT
+        Text = ""
+        Left = 83
+        Top = 46
+    END CREATE
+    CREATE Edit3 AS QEDIT
+        Text = ""
+        Left = 83
+        Top = 74
+    END CREATE
+    CREATE Button1 AS QBUTTON
+        Caption = "&Ok"
+        Left = 32
+        Top = 112
+        Kind = 1
+        Default = 1
+        NumBMPs = 2
+        OnClick = Button1Click
+    END CREATE
+    CREATE Button2 AS QBUTTON
+        Caption = "E&xit"
+        Left = 118
+        Top = 112
+        Kind = 6
+        NumBMPs = 2
+    END CREATE
+    ShowModal
+END CREATE
+
+
+SUB Button1Click
+    DIM I AS INTEGER
+
+    IF MySQL.Connect(Edit1.Text, Edit2.Text, Edit3.Text) = 0 THEN
+       ShowMessage("Failed to connect to MySQL Server")
+       EXIT SUB
+    END IF
+
+    FOR I = 0 TO MySQL.DBCount-1
+        DBListBox.AddItems(MySQL.DB(I))
+    NEXT
+
+    SQLForm.ShowModal
+
+    SUB DBListBoxClick (Sender AS QLISTBOX)
+
+        IF Sender.ItemIndex < 0 THEN EXIT SUB
+        IF MySQL.SelectDB(Sender.Item(Sender.ItemIndex)) = 0 THEN
+            ShowMessage("Could not open "+Sender.Item(Sender.ItemIndex))
+            EXIT SUB
+        END IF
+
+        TableListBox.Clear
+        FOR I = 0 TO MySQL.TableCount-1
+            TableListBox.AddItems(MySQL.Table(I))
+        NEXT
+    END SUB
+
+    SUB TableListBoxClick (Sender AS QLISTBOX)
+        DIM Str AS STRING, J AS INTEGER
+
+        IF Sender.ItemIndex < 0 THEN EXIT SUB
+        IF MySQL.Query("show columns from "+Sender.Item(Sender.ItemIndex)) = 0 THEN
+            ShowMessage("Could not query "+Sender.Item(Sender.ItemIndex))
+            EXIT SUB
+        END IF
+
+        FieldEdit.Clear
+        Grid.ColCount = MySQL.FieldCount
+        I = 0
+        WHILE MySQL.FetchField
+            Grid.Cell(I,0) = MySQL.Field.Name
+            I++
+        WEND
+
+        Grid.RowCount = MySQL.RowCount+1
+        IF MySQL.RowCount THEN
+            J = 1
+            WHILE MySQL.FetchRow
+                MySQL.FieldSeek(0)
+                FOR I=0 to MySQL.NumFields-1
+                    Grid.Cell(I,J) = MySQL.Row(I)
+                NEXT
+                J++
+            WEND
+        END IF
+    END SUB
+END SUB
+
+SUB SQLFormResize (Sender AS QFORM)
+    Grid.Height = Sender.ClientHeight - Grid.Top
+    Grid.Width = Sender.ClientWidth-1
+    TableListBox.Width = Sender.ClientWidth-1 - TableListBox.Left
+END SUB
+
+IF MySQL.Connected THEN MySQL.Close
+END
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qmenuitem.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qnotifyicondata.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      D>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                         

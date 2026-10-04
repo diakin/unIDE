@@ -1,0 +1,159 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>Chapter 15: COM Programming</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Chapter 15</B></FONT></TD>
+  </TR>
+  <TR>
+    <TD COLSPAN=2><HR SIZE=1> </TD>
+  </TR>
+</TABLE>
+
+<BR>
+<H1>15. COM Programming</H1>
+<DD>Component Object Model (COM) and Distributed COM (or DCOM), is a specification
+that defines object creation and communication between objects. Rapid-Q only supports
+client-side COM programming (ie. you will not be able to create COM servers in
+Rapid-Q). Since work is still be being done, some of the information in this chapter
+may change in the future.
+<BR><BR>
+
+<a name="151">
+<B>15.1 Supported COM extensions</B>
+<DD>COM has many extended services which have grown over time.
+Unfortunately Rapid-Q is limited to only a few:
+<UL>
+ <LI>COM clients (or Automation controllers) is implemented in <b>QOLEOBJECT</b>
+ <LI>Active Documents is implemented in <b>QOLECONTAINER</b>
+</UL>
+Automation controllers can be used to drive automation servers such as MS WORD over
+a local machine or remotely.  So what are the benefits of automating a server?
+Well, since the server can be invoked by another machine, this can free up resources
+and CPU cycles needed on your client system. Since you could automate an application
+from across a network (or the internet), you don't need the application to reside
+on your machine to do some useful work on it. Imagine automating machinery from your home.
+Active documents is similar to automation, however, the "document" (more like ActiveX control) is embedded
+into your application.  Once embedded, you can use automation to control the behaviour of the document.
+Rapid-Q does not support Type Libraries, so vtable binding is not possible.
+Speaking of binding, a COM server is usually registered on your computer the first time
+it is run or installed. For .DLLs or .OCXs, this may not always be the case, so
+to register a COM server manually, you can use Window's <b>regsvr32</b> program.
+<PRE>
+    regsvr32 myprog.dll
+</PRE>
+You can type that in your MS-DOS command line prompt, or via Start|Run.
+There are also programming examples to register a COM object, see the Windows API help
+file for more information.
+<BR><BR>
+
+<a name="152">
+<B>15.2 About QOLEOBJECT</B>
+<DD>As mentioned in the previous section, QOLEOBJECT implements an automation controller.
+This component works similarly to VB (no, VB does not have a QOLEOBJECT component), except for a few things which are either implemented in another way or
+is not yet supported. Let's look at some examples comparing the 2 methods:
+<PRE><font color="009900"><i>
+    ' Both examples invoke MS WORD
+    ' in VB</i></font>
+    DIM Obj AS OBJECT
+
+    Set Obj = CreateObject("Word.Basic")
+    ' or just DIM Obj AS Word.Basic</i></font>
+    Obj.AppShow
+
+
+    <font color="009900"><i>' in Rapid-Q</i></font>
+    DIM Obj AS QOLEOBJECT
+
+    Obj.CreateObject("Word.Basic")
+    Obj.AppShow
+</PRE>
+Note that type checking is off for OBJECT and QOLEOBJECT, so when you invoke <font face="courier">Obj.AppShow</font>
+this calls the method AppShow in MS WORD. You may notice that Rapid-Q also supports the <b>Invoke</b> method. This is to eliminate
+ambiguity but also to provide a work around. So what if MS WORD has a method called <b>CreateObject</b>? In Rapid-Q this causes a problem
+since CreateObject is a valid method of QOLEOBJECT, so that method will be called, not the one in MS WORD.
+The work around is to use the <b>Invoke</b> method.
+<PRE>    <font color="009900"><i>' in Rapid-Q</i></font>
+    DIM Obj AS QOLEOBJECT
+
+    Obj.CreateObject("Word.Basic")
+    Obj.Invoke("CreateObject") <font color="009900"><i>' Call CreateObject method in MS WORD</i></font>
+</PRE>
+Obviously you shouldn't run the above example, MS WORD doesn't have a CreateObject method, but you get
+the idea. Setting and getting properties can be done similarly:
+<PRE>    <font color="009900"><i>' in Rapid-Q</i></font>
+    DIM Obj AS QOLEOBJECT
+
+    Obj.CreateObject("Gif89.Gif89.1")
+    Obj.AutoStart = 1
+    Obj.Invoke("AutoStart") = 1 <font color="009900"><i>' this also works</i></font>
+</PRE>
+So what's not supported in Rapid-Q? Several data types and arrays are not supported yet, as well as events.
+Also there isn't a "set" method available. ie:
+<PRE>    <font color="009900"><i>' in VB</i></font>
+    DIM ADOCommand AS ADODB.Command
+    DIM ADOConnection AS ADODB.Connection
+
+    <font color="990000">set ADOCommand.ActiveConnection = ADOConnection</font>
+</PRE>
+The line in red is not yet available in Rapid-Q. See the Appendix section on QOLEOBJECT,
+you will find a method called <b>InvokeCopy</b> which does the samething, but unfortunately isn't
+fully functional as of this writing.
+<BR><BR>
+
+<a name="153">
+<B>15.3 About QOLECONTAINER</B>
+<DD>QOLECONTAINER is basically a container for embedding ActiveX components or Active documents.
+This component is very similar to QOLEOBJECT, it is again type check free, so you can automate
+the control like you would automating servers.  You may find yourself using the <b>Invoke</b> method more
+often than not, since QOLECONTAINER does have a lot of properties and methods already defined.
+Another way to avoid this problem is the assign the <b>Container</b> method of QOLEOBJECT.
+This creates a reference to the object, and so you can use QOLEOBJECT to automate the control.
+For those that aren't familiar, ActiveX controls are reusable visual controls which are heavily used in VB.
+Again, the limitations are obvious, Rapid-Q doesn't support ActiveX events, type libraries, and a few others
+mentioned before.
+<PRE>
+    '-- A short example
+    DIM Form AS QFORM
+    DIM Obj AS QOLECONTAINER
+
+    Obj.Parent = Form
+    Obj.CreateObject("gif89.gif89.1")
+</PRE>
+Since an ActiveX control is a visible component, you'll note that the QOLECONTAINER
+requires a parent property. You'll also have to be wary of the fact that the ActiveX
+component could update/refresh the component even before the form is shown, so
+you'll receive a <font color="990000">Can't focus a disabled or invisible window</font> when that happens.
+QOLECONTAINER has an <b>AutoShow</b> property which can be set to False meaning that
+the ActiveX control should not be displayed when created. You can use the method <b>Show</b> of QOLECONTAINER
+to display the control at anytime after creating the object. There is also another way to avoid the error message from popping
+up, see the Appendix section on QOLECONTAINER for a complete example.
+<BR><BR>
+
+
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="chapter14.html">Prev Chapter</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</A></TD>
+   <TD ALIGN=RIGHT>Next Chapter</TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>
+                        

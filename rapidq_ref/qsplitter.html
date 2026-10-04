@@ -1,0 +1,132 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QSPLITTER</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QSPLITTER</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QSPLITTER Component</H1>
+<DD>QSplitter sits between a control aligned to one of the edges of the form and
+the controls that fill up the rest of the client area. It is used to resize the
+controls at runtime.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QSplitter Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee"><TD><b>Align</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>alLeft</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Align determines how the control aligns within its parent control.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Beveled</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Beveled determines whether the splitter looks beveled along the edge that moves.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>ClientHeight</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>ClientWidth</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Color</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Cursor</TD><TD>INTEGER</TD><TD>RW</TD><TD>crHSplit</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Enabled</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Height</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Hint</TD><TD>STRING</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Left</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>MinSize</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>30</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">MinSize is the minimum size, in pixels, of the client area the splitter must leave on the form.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Parent</TD><TD>QFORM/QPANEL/QTABCONTROL</TD><TD>W</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>ShowHint</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Tag</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Top</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Visible</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Width</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+</TABLE>
+<br><br>
+
+<a name="2">
+<FONT SIZE = +1><B>QSplitter Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD>
+  </TR>
+ </TABLE>
+<BR>
+
+<a name="3">
+<FONT SIZE = +1><B>QSplitter Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD>OnMoved</TD><TD>VOID</TD><TD>Splitter Moved</TD><TD>0</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QSplitter Examples</B></FONT>
+
+<PRE>
+$INCLUDE "RAPIDQ.INC"
+
+CREATE Form AS QFORM
+    Height = 400
+    Caption = "QSplitter example"
+    Center
+    Visible = 1                  '-- Required
+    Visible = 0                  '-- trick
+    CREATE Panel AS QPANEL
+        Align = alTop            '-- Fill top portion of form
+        Height = 100
+        Caption = "PANEL"
+    END CREATE
+    CREATE Splitter AS QSPLITTER '-- Note position
+        Align = alTop            '-- Fill middle
+        Cursor = crVSplit
+        Height = 10
+    END CREATE
+    CREATE RichEdit AS QRICHEDIT
+        Align = alClient         '-- Fill rest of form
+        AddStrings "RICHEDIT"
+    END CREATE
+    ShowModal
+END CREATE
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qsocket.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qstatusbar.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      D>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                         

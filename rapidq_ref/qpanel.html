@@ -1,0 +1,205 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>: QPANEL</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QPANEL</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QPANEL Component</H1>
+<DD>QPanel implements a generic container for your components.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QPanel Properties</B></FONT>
+<TABLE WIDTH=986 cellspacing="0" cellpadding="4" border="1" bordercolor="#808080">
+  <TR>
+   <TD bgcolor="#E4A99A" width="99"><B>Field</B></TD>
+   <TD bgcolor="#E4A99A" colspan="8" width="644"><B>Type</B></TD>
+   <TD bgcolor="#E4A99A" width="44"><B>R/W</B></TD>
+   <TD bgcolor="#E4A99A" width="76"><B>Default</B></TD>
+   <TD bgcolor="#E4A99A" width="71"><B>Support</B></TD>
+  </TR>
+  <TR><TD width="99">Align</TD><TD colspan="8" width="644">INTEGER<br>
+    <font FACE="FixedSys" SIZE="1">CONST alNone = 0<br>
+    CONST alTop = 1<br>
+    CONST alBottom = 2<br>
+    CONST alLeft = 3<br>
+    CONST alRight = 4<br>
+    CONST alClient = 5 </font></TD>
+    <TD width="44">RW</TD><TD width="76">alNone</TD><TD width="71">W</TD></TR>
+  <TR><TD width="99">Alignment</TD><TD colspan="8" width="644">INTEGER</TD>
+    <TD width="44">RW</TD><TD width="76">taCenter</TD><TD width="71">W</TD></TR>
+  <TR><TD width="99">BevelInner</TD><TD colspan="8" width="644">INTEGER <br>
+
+<a name="1">
+    '-- Bevel Style<br>
+    CONST bvNone = 0<br>
+    CONST bvLowered = 1<br>
+    CONST bvRaised = 2<br>
+    &nbsp;</TD><TD width="44">RW</TD><TD width="76">bvNone</TD><TD width="71">W</TD></TR>
+  <TR><TD width="99">BevelOuter</TD><TD colspan="8" width="644">INTEGER<br>
+
+<a name="1">
+    '-- Bevel Style<br>
+    CONST bvNone = 0<br>
+    CONST bvLowered = 1<br>
+    CONST bvRaised = 2<br>
+    &nbsp;</TD><TD width="44">RW</TD><TD width="76">bvRaised</TD><TD width="71">W</TD></TR>
+  <TR><TD width="99">BevelWidth</TD><TD colspan="8" width="644">INTEGER</TD>
+    <TD width="44">RW</TD><TD width="76">1</TD><TD width="71">W</TD></TR>
+  <TR><TD width="99">BorderStyle</TD><TD colspan="8" width="644">INTEGER</TD>
+    <TD width="44">RW</TD><TD width="76">bpNone</TD><TD width="71">W</TD></TR>
+  <TR><TD width="99">&nbsp;</TD><TD colspan="8" width="644">'-- Bevel Border<br>
+    CONST bpNone = 0 '-- No visible border<br>
+    CONST bpSingle = 1 '-- Single-line border<br>
+&nbsp;</TD><TD width="44">&nbsp;</TD><TD width="76">&nbsp;</TD><TD width="71">&nbsp;</TD></TR>
+  <TR><TD width="99" rowspan="2">BevelOuter</a>&nbsp; =<a name="1"><p>BevelInner</a> 
+    =</TD>
+
+<a name="1">
+    <TD width="66">bvnone</TD><TD width="60">bvraised</TD><TD width="59">
+    bvLowered</TD><TD width="60">bvLowered</TD><TD width="61">bvLowered</TD>
+    <TD width="59">bvraised</TD><TD width="67">bvraised</TD>
+    <TD width="142" rowspan="2"><font color="#800000"><b><a name="1">BevelWidth</a>=3</b></font></TD>
+    <TD width="44" rowspan="2">&nbsp;</TD><TD width="76" rowspan="2">&nbsp;</TD>
+    <TD width="71" rowspan="2">&nbsp;</TD></TR>
+  <tr>
+    <TD width="66">bvnone</TD><TD width="60">
+
+<a name="1">
+    bvnone</TD><TD width="59">
+
+<a name="1">
+    bvnone</TD><TD width="60">bvLowered</TD><TD width="61">bvraised</TD>
+    <TD width="59">bvraised</TD><TD width="67">
+
+<a name="1">
+    bvLowered</TD>
+  </tr>
+  <TR><TD width="99">
+
+<a name="1">
+    BorderStyle</a></a>=<a name="1">bpNone</TD>
+    <TD rowspan="2" colspan="8" width="644">&nbsp;<img border="0" src="panel.png" width="495" height="146"></TD>
+
+<a name="1">
+    <TD rowspan="2" width="44">&nbsp;</TD><TD rowspan="2" width="76">&nbsp;</TD>
+    <TD rowspan="2" width="71">&nbsp;</TD></TR>
+  <TR><TD width="99">
+
+<a name="1">
+    BorderStyle</a>=<a name="1">bpSingle</TD></TR>
+  <TR><TD width="99">Caption</TD><TD colspan="8" width="644">STRING</TD>
+    <TD width="44">RW</TD><TD width="76"></TD><TD width="71">W</TD></TR>
+  <TR><TD width="99">ClientHeight</TD><TD colspan="8" width="644">INTEGER</TD>
+    <TD width="44">RW</TD><TD width="76"></TD><TD width="71">WX</TD></TR>
+  <TR><TD width="99">ClientWidth</TD><TD colspan="8" width="644">INTEGER</TD>
+    <TD width="44">RW</TD><TD width="76"></TD><TD width="71">WX</TD></TR>
+  <TR><TD width="99">Color</TD><TD colspan="8" width="644">INTEGER</TD>
+    <TD width="44">RW</TD><TD width="76"></TD><TD width="71">W</TD></TR>
+  <TR><TD width="99">Cursor</TD><TD colspan="8" width="644">INTEGER</TD>
+    <TD width="44">RW</TD><TD width="76">crDefault</TD><TD width="71">W</TD></TR>
+  <TR><TD width="99">Enabled</TD><TD colspan="8" width="644">INTEGER</TD>
+    <TD width="44">RW</TD><TD width="76">True</TD><TD width="71">WX</TD></TR>
+  <TR><TD width="99">Font</TD><TD colspan="8" width="644">QFONT</TD>
+    <TD width="44">W</TD><TD width="76"></TD><TD width="71">W</TD></TR>
+  <TR><TD width="99">Height</TD><TD colspan="8" width="644">INTEGER</TD>
+    <TD width="44">RW</TD><TD width="76"></TD><TD width="71">WX</TD></TR>
+  <TR><TD width="99">Hint</TD><TD colspan="8" width="644">STRING</TD>
+    <TD width="44">RW</TD><TD width="76"></TD><TD width="71">W</TD></TR>
+  <TR><TD width="99">Left</TD><TD colspan="8" width="644">INTEGER</TD>
+    <TD width="44">RW</TD><TD width="76">0</TD><TD width="71">WX</TD></TR>
+  <TR><TD width="99">Parent</TD><TD colspan="8" width="644">QFORM/QPANEL/QTABCONTROL</TD>
+    <TD width="44">W</TD><TD width="76"></TD><TD width="71">WX</TD></TR>
+  <TR><TD width="99">ShowHint</TD><TD colspan="8" width="644">INTEGER</TD>
+    <TD width="44">RW</TD><TD width="76">False</TD><TD width="71">W</TD></TR>
+  <TR><TD width="99">TabOrder</TD><TD colspan="8" width="644">INTEGER</TD>
+    <TD width="44">RW</TD><TD width="76"></TD><TD width="71">W</TD></TR>
+  <TR><TD width="99">Tag</TD><TD colspan="8" width="644">INTEGER</TD>
+    <TD width="44">RW</TD><TD width="76"></TD><TD width="71">WXG</TD></TR>
+  <TR><TD width="99">Top</TD><TD colspan="8" width="644">INTEGER</TD>
+    <TD width="44">RW</TD><TD width="76">0</TD><TD width="71">WX</TD></TR>
+  <TR><TD width="99">Width</TD><TD colspan="8" width="644">INTEGER</TD>
+    <TD width="44">RW</TD><TD width="76"></TD><TD width="71">WX</TD></TR>
+  <TR><TD width="99">Visible</TD><TD colspan="8" width="644">INTEGER</TD>
+    <TD width="44">RW</TD><TD width="76">True</TD><TD width="71">WX</TD></TR>
+</TABLE>
+<br>
+
+<a name="2">
+<FONT SIZE = +1><B>QPanel Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD><TD><B>Support</B></TD>
+  </TR>
+  <TR>
+   
+  <TR><TD>Repaint</TD><TD>SUB</TD><TD>Refreshes panel and all contents</TD><TD>0</TD><TD>W</TD></TR>
+  </TR>
+</TABLE>
+<BR>
+
+<a name="3">
+<FONT SIZE = +1><B>QPanel Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR><TD>OnClick</TD><TD>VOID</TD><TD>User clicked on open area of panel</TD><TD>0</TD><TD>WX</TD></TR>
+  <TR><TD>OnDblClick</TD><TD>VOID</TD><TD>User double clicked panel</TD><TD>0</TD><TD>W</TD></TR>
+  <TR><TD>OnMouseDown</TD><TD NOWRAP>SUB (Button%, X%, Y%, Shift%)</TD><TD NOWRAP>Mouse button held down</TD><TD>4</TD><TD>W</TD></TR>
+  <TR><TD>OnMouseMove</TD><TD NOWRAP>SUB (X%, Y%, Shift%)</TD><TD NOWRAP>Mouse moves over panel</TD><TD>3</TD><TD>W</TD></TR>
+  <TR><TD>OnMouseUp</TD><TD NOWRAP>SUB (Button%, X%, Y%, Shift%)</TD><TD NOWRAP>Mouse button is released</TD><TD>4</TD><TD>W</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QPanel Examples</B></FONT>
+
+<PRE>  DIM Form AS QForm
+  DIM Button AS QButton
+  DIM Panel AS QPanel
+
+  Panel.Parent = Form
+  Panel.Width = 100
+  Button.Parent = Panel
+
+  Form.ShowModal
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qovalbtn.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qpopupmenu.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</a>
+
+</BODY>
+</HTML>  
+
+</BODY>
+</HTML>

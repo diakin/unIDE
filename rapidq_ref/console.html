@@ -1,0 +1,211 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>Appendix C: Console keywords</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+<a name="up">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix C: Console Keywords</B></FONT></TD>
+  </TR>
+  <TR>
+    <TD COLSPAN=2><HR SIZE=1> </TD>
+  </TR>
+</TABLE>
+
+<BR>
+<H1>Console Keywords</H1>
+<DD>Please note that it's possible to use some Console statements in Linux/Unix
+even if you compiled your program as GUI. However, this is not possible under Windows.
+The console statements allowed in Linux/Unix without having to compile as CONSOLE
+are: CLS, PRINT, and INPUT. SLEEP can also be used without consequences.<BR><BR>
+
+<TABLE WIDTH=100% border=1 CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD ALIGN=CENTER>
+   <B>Keyword</B> /<B> Support</B>/ <B>Usage</B> /<B>Description</B></TD>
+  </TR>
+</TABLE>
+
+<br><br>
+<hr width="95%" align=center>
+
+<a name="cls">
+<DD><b>CLS</b> /  Windows/Unix<br>
+<hr width="95%" align=center><br>
+
+
+CLS<br>
+Clears console screen<br><br>
+
+
+<a name="color3">
+<hr width="95%" align=center>
+<DD><b>COLOR</b> / Windows Unix
+<hr width="95%" align=center><br>
+
+
+COLOR [Fore%][, Back%]<BR>
+      Sets current color attribute, you can ignore either one of the parameters<br><br>
+
+
+
+
+<hr width="95%" align=center>
+<DD><b>CONSOLE.INPUTHANDLE</b> /  Windows
+<hr width="95%" align=center><br>
+
+hnd = CONSOLE.INPUTHANDLE<BR>
+      Returns the console input handle<br><br>
+
+
+
+<hr width="95%" align=center>
+<DD><b>CONSOLE.OUTPUTHANDLE</b> /  Windows
+<hr width="95%" align=center><br>
+
+
+hnd = CONSOLE.OUTPUTHANDLE<BR>
+      Returns the console output handle<br><br>
+
+
+
+<hr width="95%" align=center>
+<DD><b>CSRLIN</b>  /  Windows Unix
+<hr width="95%" align=center><br>
+
+CurRow% = CSRLIN<BR>
+      Returns current row of cursor<br><br>
+
+
+
+<hr width="95%" align=center>
+<DD><b>INKEY$</b> /  Windows Unix
+<hr width="95%" align=center><br>
+
+
+A$ = INKEY$<BR>
+      Returns ASCII/Extended key character typed<br><br>
+
+
+
+
+<hr width="95%" align=center>
+<DD><b>INPUT</b> /  Windows Unix
+<hr width="95%" align=center><br>
+
+
+INPUT A$<BR>
+      Reads a full line of input from user<br><br>
+
+
+
+<hr width="95%" align=center>
+<DD><b>LOCATE</b> /  Windows Unix
+<hr width="95%" align=center><br>
+
+
+LOCATE [Y%][, X%][, cursor]
+<BR>
+      Moves cursor to Y%, X% (upper left starts at 1,1). You can ignore either one of the parameters<br><br>
+
+
+
+
+<hr width="95%" align=center>
+<DD><b>PCOPY</b> /  Windows
+<hr width="95%" align=center><br>
+
+
+PCOPY source, dest<BR>
+      Copy page from <I>source</I> to <I>dest</I>. The visible page is 0. There are 7 off screen pages.<br><br>
+
+<hr width="95%" align=center>
+<DD><b>PEEK</b> /  Windows
+<hr width="95%" align=center>
+
+A% = PEEK([#PageNum,] address)<BR>
+      Returns the char/attribute value at <I>address</I><br><br>
+
+
+
+<hr width="95%" align=center>
+<DD><b>POK</b>E  / Windows
+<hr width="95%" align=center><br>
+
+POKE [#PageNum,] address, byte<BR>
+      Poke attribute or char at <I>address</I><br><br>
+
+
+
+
+<hr width="95%" align=center>
+<DD><b>POS(0)</b>  / Windows Unix
+<hr width="95%" align=center><br>
+
+CurPos% = POS(0)<BR>
+      Returns current position of cursor<br><br>
+
+
+
+<hr width="95%" align=center>
+<DD><b>PRINT</b> /  Windows Unix
+<hr width="95%" align=center><br>
+
+PRINT [#PageNum[;|,]][stuff][;|,][...]<BR>
+      Write to standard output (console). To write to the offscreen buffers, use #PageNum. Where PageNum is 1-7.
+      Only works under Windows.<br><br>
+
+
+
+<hr width="95%" align=center>
+<DD><b>SCREEN</b> /  Windows
+<hr width="95%" align=center><br>
+
+
+
+A% = SCREEN(row, col [, colorflag])<BR>
+      Returns the chararacter or attribute value at (row,col)<br><br>
+
+<hr width="95%" align=center>
+<DD><b>SETCONSOLETITLE</b> /  Windows
+<hr width="95%" align=center><br>
+
+SetConsoleTitle(Title$)<BR>
+      Set console title<br><br>
+
+
+
+
+<hr width="95%" align=center>
+<DD><b>SLEEP</b> /  Windows Unix
+<hr width="95%" align=center><br>
+
+
+SLEEP n<BR>
+      Delay for <I>n</I> seconds, which can be a fraction<br><br>
+
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="chapter3.html">Prev Chapter</a></TD>
+   <TD ALIGN=CENTER><A HREF="#up">Up</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="chapter5.html">Next Chapter</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                        

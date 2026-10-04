@@ -1,0 +1,181 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QBUTTON</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QBUTTON</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QBUTTON Component</H1>
+<DD>QButton is a general purpose button control.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QButton Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee"><TD><b>Align</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>alNone</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Align determines how the control aligns within its parent control.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>BMP</b></TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Use BMP to assign a new bitmap file, or to use BMP in a draw statement.<br>
+                             <b><u>Examples</u></b>:<br>
+                             <blockquote><font face="courier" size="2">
+                             DIM button AS QBUTTON<br>
+                             button.BMP = "whatever.bmp"
+                             </font></blockquote>
+                             <b><u>Details</u></b>:<br>
+                             You can hold multiple images on a single bitmap, but they must be
+                             of the same size and next to each other in a horizontal row.<br>
+                             The "first" bitmap appears when the button is up.<br>
+                             The "second" bitmap appears when the button disabled.<br>
+                             The "third" bitmap appears when the button is down (clicked).<br>
+                             You have to tell Rapid-Q how many images are in your bitmap by assigning
+                             the number to NumBMPs.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>BMPHandle</b></TD><TD>RESOURCE</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Assign a BMP resource handle to appear on the selected button.<br>
+                             <b><u>Example</u></b>:<br>
+                             <blockquote><font face="courier" size="2">
+                             $RESOURCE game_BMP AS "game.bmp"<br>
+                             DIM button AS QBUTTON<br>
+                                 button.bmpHandle = game_BMP
+                             </font></blockquote>
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Cancel</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">If Cancel is True, the button's OnClick event handler executes
+                             when the user presses the Escape key.<br>
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Caption</b></TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Caption specifies the text that appears on the button.
+                             To underline a character, include an ampersand (&) symbol before the character.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Color</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>X</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Cursor</TD><TD>INTEGER</TD><TD>RW</TD><TD>crDefault</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Default</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">If Default is True, the button's OnClick event handler executes
+                             when the user presses the Enter key.<br>
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Enabled</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Font</TD><TD>QFONT</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Handle</TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Height</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Hint</TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Kind</TD><TD>INTEGER<font FACE="FixedSys" SIZE="1"><br>
+    '-- Button Kind<br>
+    CONST bkCustom = 0 '-- None<br>
+    CONST bkOK = 1 '-- Check Bitmap<br>
+    CONST bkCancel = 2 '-- X Bitmap<br>
+    CONST bkHelp = 3 '-- ? Bitmap<br>
+    CONST bkYes = 4<br>
+    CONST bkNo = 5<br>
+    CONST bkClose = 6<br>
+    CONST bkAbort = 7<br>
+    CONST bkRetry = 8<br>
+    CONST bkIgnore = 9<br>
+    CONST bkAll = 10</font></TD><TD>RW</TD><TD>bkCustom</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Layout</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>blBMPLeft</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Layout determines where the bitmap image appears on the button.<br>
+                             0 = blBMPLeft -- image appears at the left side of the caption<br>
+                             1 = blBMPRight -- image appears at the right side of the caption<br>
+                             2 = blBMPTop -- image appears above the caption<br>
+                             3 = blBMPBottom -- image appears below the caption<br>
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Left</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>ModalResult</TD><TD>INTEGER</TD><TD>RW</TD><TD>mrNone</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>NumBMPs</b></TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">NumBMPs determines the number of images within the bitmap button.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Parent</TD><TD>QFORM/QPANEL/QTABCONTROL</TD><TD>W</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>PopupMenu</TD><TD>QPOPUPMENU</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>ShowHint</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Spacing</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>4</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Determines the separation, in pixels, between the image and the caption.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>TabOrder</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Tag</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Top</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Width</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Visible</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD><TD>WXG</TD></TR>
+</TABLE>
+<br>
+
+<a name="2">
+<FONT SIZE = +1><B>QButton Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR><TD>StartDrag</TD><TD>SUB</TD><TD NOWRAP>Allows Button to be dragged</TD><TD>0</TD><TD>W</TD></TR>
+</TABLE>
+<BR>
+
+<a name="3">
+<FONT SIZE = +1><B>QButton Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR><TD>OnClick</TD><TD>VOID</TD><TD>User clicked on the button</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR><TD>OnKeyDown</TD><TD NOWRAP>SUB (Key AS Word, Shift AS INTEGER)</TD><TD NOWRAP>Key held down</TD><TD>2</TD><TD>W</TD></TR>
+  <TR><TD>OnKeyPress</TD><TD>SUB (Key AS BYTE)</TD><TD>User presses a key</TD><TD>1</TD><TD>W</TD></TR>
+  <TR><TD>OnKeyUp</TD><TD>SUB (Key AS Word, Shift AS INTEGER)</TD><TD>User releases a key</TD><TD>2</TD><TD>W</TD></TR>
+  <TR><TD>OnMouseDown</TD><TD NOWRAP>SUB (Button%, X%, Y%, Shift%)</TD><TD NOWRAP>Mouse button held down</TD><TD>4</TD><TD>WXG</TD></TR>
+  <TR><TD>OnMouseMove</TD><TD NOWRAP>SUB (X%, Y%, Shift%)</TD><TD NOWRAP>Mouse moves</TD><TD>3</TD><TD>WXG</TD></TR>
+  <TR><TD>OnMouseUp</TD><TD NOWRAP>SUB (Button%, X%, Y%, Shift%)</TD><TD NOWRAP>Mouse button is released</TD><TD>4</TD><TD>WXG</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QButton Examples</B></FONT>
+
+<PRE>  '-- A drag button
+
+  DIM Form AS QForm
+  DIM Button AS QButton
+
+  SUB MouseDown
+      Button.StartDrag
+      SHOWMESSAGE STR$(Button.Left)+", "+STR$(Button.Top)
+  END SUB
+
+  Button.Parent = Form
+  Button.OnMouseDown = MouseDown
+
+  Form.ShowModal
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qbitmap.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qcanvas.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      D></TR></TABLE></BODY></a></HTML>

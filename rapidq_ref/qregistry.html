@@ -1,0 +1,124 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QREGISTRY</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QREGISTRY</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QREGISTRY Component</H1>
+<DD>QRegistry encapsulates functions that operate on the Window's system registry.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QRegistry Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD>
+  </TR>
+   <TR><TD>CurrentKey</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR><TD>CurrentPath</TD><TD>STRING</TD><TD>R</TD><TD></TD></TR>
+  <TR><TD>GetDataSize</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR><TD>GetDataType</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR><TD>HasSubKeys</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR><TD>KeyItemCount</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR><TD>ValueItemCount</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR><TD>RootKey</TD><TD>INTEGER</TD><TD>RW</TD><TD>HKEY_CURRENT_USER</TD></TR>
+</TABLE>
+<br>
+
+<a name="2">
+<FONT SIZE = +1><B>QRegistry Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD VALIGN=TOP>CloseKey</TD><TD>SUB</TD><TD>Closes opened key</TD><TD NOWRAP>0</TD></TR>
+  <TR><TD VALIGN=TOP>CreateKey</TD><TD>FUNCTION (Key$) AS INTEGER</TD><TD>Creates a new key in CurrentPath.</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>DeleteKey</TD><TD>FUNCTION (Key$) AS INTEGER</TD><TD>Deletes key.</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>DeleteValue</TD><TD>FUNCTION (ValName$) AS INTEGER</TD><TD>Deletes a value data.</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>KeyExists</TD><TD>FUNCTION (Key$) AS INTEGER</TD><TD>Returns 0 or 1 if key exists.</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>KeyItem</TD><TD>FUNCTION (Index%) AS STRING</TD><TD>Retrieve the names of the subkeys</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>MoveKey</TD><TD>FUNCTION (Old$, New$, Delete%)</TD><TD>Moves existing key, subkeys, and data values.</TD><TD NOWRAP>3</TD></TR>
+  <TR><TD VALIGN=TOP>OpenKey</TD><TD>FUNCTION (Key$, CanCreate%)</TD><TD>CanCreate specifies whether to create the specified key if it does not exist.</TD><TD NOWRAP>2</TD></TR>
+  <TR><TD VALIGN=TOP>ReadBinary</TD><TD>FUNCTION (Key$, Index%) AS BYTE</TD><TD>Return binary value of specified key</TD><TD NOWRAP>2</TD></TR>
+  <TR><TD VALIGN=TOP>ReadFloat</TD><TD>FUNCTION (Key$) AS DOUBLE</TD><TD>Return double value of specified key</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>ReadInteger</TD><TD>FUNCTION (Key$) AS INTEGER</TD><TD>Return integer value of specified key</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>ReadString</TD><TD>FUNCTION (Key$) AS STRING</TD><TD>Return string value of specified key</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>RegistryConnect</TD><TD>FUNCTION (CompName$) AS INTEGER</TD><TD>Establishes connection to another computer's registry.</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>RenameValue</TD><TD>FUNCTION (Old$, New$) AS INTEGER</TD><TD>Renames existing data value.</TD><TD NOWRAP>2</TD></TR>
+  <TR><TD VALIGN=TOP>ValueExists</TD><TD>FUNCTION (Value$) AS INTEGER</TD><TD>Returns 0 or 1 if data value Value$ exists.</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>ValueItem</TD><TD>FUNCTION (Index%) AS STRING</TD><TD>Retrieve the names of the data values</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>WriteBinary</TD><TD>SUB (Key$, BYTE(), Size%)</TD><TD>Write Array of BYTEs in the specified key</TD><TD NOWRAP>3</TD></TR>
+  <TR><TD VALIGN=TOP>WriteFloat</TD><TD>SUB (Key$, Value#)</TD><TD>Write double value in the specified key</TD><TD NOWRAP>2</TD></TR>
+  <TR><TD VALIGN=TOP>WriteInteger</TD><TD>SUB (Key$, Value&)</TD><TD>Write integer value in the specified key</TD><TD NOWRAP>2</TD></TR>
+  <TR><TD VALIGN=TOP>WriteString</TD><TD>SUB (Key$, Value$)</TD><TD>Write string in the specified key</TD><TD NOWRAP>2</TD></TR>
+</TABLE>
+<BR>
+
+<a name="3">
+<FONT SIZE = +1><B>QRegistry Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD>
+  </TR>
+ </TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QRegistry Examples</B></FONT>
+
+<PRE>
+'  Detect if your computer is connected to the internet
+
+Const HKEY_LOCAL_MACHINE = &H80000002
+
+DIM Registry AS QRegistry
+
+Registry.RootKey = HKEY_LOCAL_MACHINE
+Registry.OpenKey("System\CurrentControlSet\Services\RemoteAccess", 0)
+
+IF Registry.ReadBinary("Remote Connection", 0) = 1 THEN
+  ShowMessage("You're connected!")
+ELSE
+  ShowMessage("You're not connected!")
+END IF
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qrect.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qrichedit.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      D>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                         

@@ -1,0 +1,166 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>Chapter 7: Introduction to streams</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Chapter 7</B></FONT></TD>
+  </TR>
+  <TR>
+    <TD COLSPAN=2><HR SIZE=1> </TD>
+  </TR>
+</TABLE>
+
+<BR>
+<H1>7. Introduction to streams</H1>
+<DD>Rapid-Q supports file streams instead of the standard <B>OPEN</B> command 
+used in BASIC. It has the same functionality, but is called differently.
+What's great about streams is that it's unlimited in size, and you can
+copy to and from different streams (ie. File to Memory).
+<BR><BR>
+
+<a name="71">
+<B>7.1 File streams</B>
+<DD>File streams are used to create, read and write to files.
+All streams are opened as binary, with no locking capabilities (ie. all files
+you open are shared). Please familiarize yourself with these file modes:
+<PRE>
+     <B>fmCreate</B>    - Create file (read/write), truncate if file exists
+     <B>fmOpenRead</B>  - Open file for reading only
+     <B>fmOpenWrite</B> - Open file for writing only
+     <B>fmOpenReadWrite</B> - Open file for reading & writing
+</PRE>
+To open a file you need to pass the filename, and provide one of the above file modes.
+<PRE>
+     DIM File AS QFileStream
+
+     File.Open("Test.txt", fmOpenRead)
+</PRE>
+This will open Test.txt for reading only. To read data, you use the methods ReadNum and ReadStr.
+See RAPIDQ.INC for valid numbers.
+<PRE>
+     PRINT File.ReadNum(Num_SINGLE)   '-- Read 4 bytes as a SINGLE number
+     PRINT File.ReadStr(1024)         '-- Read 1024 bytes
+</PRE>
+Another approach is to store the value into a variable, you can use the generic
+Read and Write routines.
+<PRE>
+     File.Read(A&)          '-- Read a long value and store in A&
+     File.Write(B#)         '-- Write a double value B#
+
+     '-- or similarily, with more work:
+     A& = File.ReadNum(Num_LONG)
+     File.WriteNum(B#, Num_DOUBLE)
+</PRE>
+After you're done with the file, make sure you close the handle.
+You can then reuse your file stream and open up another file.
+To test if you've reached the end of the
+file, you can either compare File.Position with File.Size or see if File.EOF is true (-1). So long as File.Position
+is less  than File.Size, you haven't reached the end of the file.
+There are actually 2 ways to test if a file exists:
+<PRE>
+     IF FileExists("Test.txt") <> FALSE THEN
+       File.Open("Test.txt", fmOpenRead)
+     END IF
+</PRE>
+However, it's better just to cut this down to:
+<PRE>
+     IF File.Open("Test.txt", fmOpenRead) = FALSE THEN
+        ShowMessage("Could not open file")
+     END IF
+</PRE>
+File.Open will return a non-zero number if the file was successfully opened, 0 otherwise.
+<BR><BR>
+
+<a name="72">
+<B>7.2 Memory streams</B>
+<DD>A memory stream is created whenever you <B>DIM</B> it. It's similar to
+file streams, all the methods are the same, such as ReadNum, WriteNum, etc...
+The only difference is that memory streams are stored in memory, which can
+grow/shrink with no upper bounds. It's even possible to store arrays of numbers
+in memory stream (see ARRAYS.BAS example). Memory streams serve many purposes,
+let your imagination take over. One useful purpose might be to store
+temporary data, such as copying a file to a memory stream and manipulating the
+data that way. So how can I copy from one stream to another?
+Quite easily, you can copy between different streams (ie. File to Memory) or
+of the same kind (ie. Memory to Memory).
+<PRE>
+    DIM File AS QFileStream
+    File.Open("test.txt", fmOpenRead)
+
+    DIM Memory AS QMemoryStream
+    Memory.CopyFrom(File, File.Size)  '-- Copy everything
+</PRE>
+As you can see, we've just copied the entire contents of our file "test.txt" to
+our memory stream. Now you can manipulate your memory stream without affecting
+the file.
+<BR><BR>
+
+
+<a name="73">
+<B>7.3 Saving/Loading UDTs and Arrays</B>
+<DD>Saving and loading UDTs is as simple as passing the UDT to QFileStream or QMemoryStream.
+<PRE>
+    TYPE TTest
+        S AS STRING*8
+        N AS INTEGER
+    END TYPE
+
+    DIM Test AS TTest
+    DIM File AS QFileStream
+
+    File.Open("test.txt", fmCreate)
+    File.WriteUDT(Test)
+    File.Close
+</PRE>
+In the above example, 12 bytes was saved to the file test.txt. 8 bytes for the fixed
+string <b>S</b>, and 4 bytes for <b>N</b>. To retrieve the UDT, use the method ReadUDT.
+<PRE>
+    File.Open("test.txt", fmOpenRead)
+    File.ReadUDT(Test)
+</PRE>
+Saving/Loading arrays is equally easy.
+<PRE>
+    DIM A(1 TO 100) AS LONG
+    DIM File AS QFileStream
+
+    File.Open("test.txt", fmCreate)
+    File.SaveArray(A(1), 100)
+    File.Close
+</PRE>
+The first parameter of SaveArray is the starting array element to save, this could
+be any value from 1 to 100 in the above example. The next parameter specifies how many
+elements of the array to save. In this case we choose to save all 1..100 elements.
+Similarly, we can use LoadArray to retrieve our data:
+<PRE>
+    File.Open("test.txt", fmOpenRead)
+    File.LoadArray(A(1), 100)
+</PRE>
+Streams are very popular in most high level languages for file/memory manipulation,
+but does take some time to get used to, especially if you're a die-hard BASIC user.
+<BR><BR>
+
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="chapter6.html">Prev Chapter</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="chapter8.html">Next Chapter</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                        

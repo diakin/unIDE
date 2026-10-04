@@ -1,0 +1,121 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QGLASSFRAME</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QGLASSFRAME</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QGLASSFRAME Component</H1>
+<DD>QGlassFrame is a 3rd party Rapid-Q component, that makes your form look transparent and shaded,
+made possible by Aleksey Xacker.
+No support is offered for this component, there are some special cases in using
+this component.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QGlassFrame Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD>
+  </TR>
+   <TR><TD>Align</TD><TD>INTEGER</TD><TD>RW</TD><TD>alNone</TD></TR>
+  <TR><TD>ClientHeight</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>ClientWidth</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Color</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Cursor</TD><TD>INTEGER</TD><TD>RW</TD><TD>crDefault</TD></TR>
+  <TR><TD>Handle</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Height</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Hint</TD><TD>STRING</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Left</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Moveable</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR><TD>Parent</TD><TD>QFORM/QPANEL/QTABCONTROL</TD><TD>W</TD><TD></TD></TR>
+  <TR><TD>PopupMenu</TD><TD>QPOPUPMENU</TD><TD>W</TD><TD></TD></TR>
+  <TR><TD>ShowHint</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR><TD>Top</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Transparency</TD><TD>INTEGER</TD><TD>RW</TD><TD>60</TD></TR>
+  <TR><TD>TransparentColor</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD></TR>
+  <TR><TD>Width</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+</TABLE>
+<br>
+
+<a name="2">
+<FONT SIZE = +1><B>QGlassFrame Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD>
+  </TR>
+ </TABLE>
+<BR><BR>
+
+
+<a name="4">
+<FONT SIZE = +1><B>QGlassFrame Examples</B></FONT>
+
+<PRE>
+$INCLUDE "RAPIDQ.INC"
+
+CREATE Form AS QForm
+  Caption = "Transparent Form"
+  Center
+  CREATE GlassFrame AS QGlassFrame
+      Align = alClient
+  END CREATE
+  ShowModal
+END CREATE
+
+
+'------- Weird transparency color error
+$INCLUDE "RAPIDQ.INC"
+
+CREATE Form AS QForm
+  Caption = "Transparent Form"
+  Center
+  CREATE GlassFrame AS QGlassFrame
+      Align = alClient
+      TransparentColor = &HFF0000
+  END CREATE
+  Show
+END CREATE
+
+'-- I don't know what's wrong, but doing this seems to
+'-- work better than using ShowModal when changing colors
+
+DO
+    DoEvents
+LOOP UNTIL Form.Visible = 0
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qgauge.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qgroupbox.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      
+
+</BODY>
+</HTML>                         

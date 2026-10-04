@@ -1,0 +1,107 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QSOCKET</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QSOCKET</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QSOCKET Component</H1>
+<DD>QSocket provides an easy to use interface to communicate between server/client with
+sockets.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QSocket Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee"><TD><b>Family</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>AF_INET</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Family specifies the address family.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>LParam</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>FD_CONNECT</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">LParam specifies the message to capture when you set WMessage and handle the message processing by assigning a new WndProc to your form.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>MySocket</b></TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">MySocket stores the result of operations such as Open. So instead of using the return value of Open, you can use the property MySocket.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Parent</TD><TD>QFORM</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Protocol</TD><TD>INTEGER</TD><TD>RW</TD><TD>IPPROTO_IP</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Tag</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Transferred</TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Type</TD><TD>INTEGER</TD><TD>RW</TD><TD>SOCK_STREAM</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>WMessage</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">WMessage specifies a user defined message to be passed to your form for non-blocking calls, ie. Connecting.
+                </TD></TR>
+</TABLE>
+<br><br>
+
+<a name="2">
+<FONT SIZE = +1><B>QSocket Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR><TD>Accept</TD><TD>FUNCTION ClientSock%(Socket%)</TD><TD NOWRAP>Accepts Client Connection</TD><TD NOWRAP>1</TD><TD>WXG</TD></TR>
+  <TR><TD>Close</TD><TD>SUB (Socket%)</TD><TD NOWRAP>Closes Socket% file descriptor</TD><TD NOWRAP>1</TD><TD>WXG</TD></TR>
+  <TR><TD>Connect</TD><TD>FUNCTION Sock%(ServerName$, PortNum%)</TD><TD NOWRAP>Connect to server on PortNum%</TD><TD NOWRAP>2</TD><TD>WXG</TD></TR>
+  <TR><TD>ConnectionReady</TD><TD>FUNCTION Bool%(Sock%)</TD><TD NOWRAP>True/False if connection pending</TD><TD NOWRAP>1</TD><TD>WXG</TD></TR>
+  <TR><TD>GetHostIP</TD><TD>FUNCTION AS STRING</TD><TD>Returns host IP Address</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR><TD>GetHostName</TD><TD>FUNCTION AS STRING</TD><TD>Returns host name</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR><TD>GetPeerName</TD><TD>FUNCTION GetPeerName$(Socket%)</TD><TD>Returns peer name</TD><TD>1</TD><TD>WXG</TD></TR>
+  <TR><TD>IsClientReady</TD><TD>FUNCTION Bool%(Sock%, ClientSock%)</TD><TD NOWRAP>True/False if client is sending data</TD><TD NOWRAP>2</TD><TD>WXG</TD></TR>
+  <TR><TD>IsServerReady</TD><TD>FUNCTION Bool%(Sock%)</TD><TD NOWRAP>True/False if server is sending data</TD><TD NOWRAP>1</TD><TD>WXG</TD></TR>
+  <TR><TD>Open</TD><TD>FUNCTION Sock%(PortNum%)</TD><TD NOWRAP>Open TCP server on PortNum%</TD><TD NOWRAP>1</TD><TD>WXG</TD></TR>
+  <TR><TD>Peek</TD><TD>FUNCTION Peek$(Socket%, NumBytes%)</TD><TD>Peek information coming from socket, but do not clear. Win32</TD><TD NOWRAP>2</TD><TD>W</TD></TR>
+  <TR><TD>Read</TD><TD>FUNCTION Message$(Socket%, NumBytes%)</TD><TD NOWRAP>Read NumBytes%</TD><TD NOWRAP>2</TD><TD>WXG</TD></TR>
+  <TR><TD>ReadByte</TD><TD>FUNCTION (Socket%) AS BYTE</TD><TD NOWRAP>Read a single byte</TD><TD NOWRAP>2</TD><TD>WXG</TD></TR>
+  <TR><TD>ReadLine</TD><TD>FUNCTION Message$(Socket%)</TD><TD NOWRAP>Read complete line</TD><TD NOWRAP>1</TD><TD>WXG</TD></TR>
+  <TR><TD>Write</TD><TD>SUB (Socket%, Message$, NumBytes%)</TD><TD NOWRAP>Sends NumBytes% from Message$</TD><TD NOWRAP>3</TD><TD>WXG</TD></TR>
+  <TR><TD>WriteByte</TD><TD>SUB (Socket%, B AS BYTE)</TD><TD NOWRAP>Sends a single byte</TD><TD NOWRAP>2</TD><TD>WXG</TD></TR>
+  <TR><TD>WriteLine</TD><TD>FUNCTION Bytes%(Socket%, Message$)</TD><TD NOWRAP>Send Message$</TD><TD NOWRAP>2</TD><TD>WXG</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QSocket Examples</B></FONT>
+
+<PRE>
+See the chatserver.bas and chatclient.bas (or chatserv.bas and chatcli.bas for Windows)
+included in the Rapid-Q distribution.
+Also take a look at http.bas included in the Rapid-Q for Windows distribution.
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qscrollbox.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qsplitter.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      
+
+</BODY>
+</HTML>                         

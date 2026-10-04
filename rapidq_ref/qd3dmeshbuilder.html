@@ -1,0 +1,95 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>QD3DMESHBUILDER</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>QD3DMESHBUILDER</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QD3DMESHBUILDER Component</H1>
+<DD>QD3DMeshBuilder implements IDirect3DRMMeshBuilder.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QD3DMeshBuilder Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD>
+  </TR>
+   <TR><TD>FaceCount</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+</TABLE>
+<br>
+
+<a name="2">
+<FONT SIZE = +1><B>QD3DMeshBuilder Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD VALIGN=TOP>AddFace</TD><TD>SUB (Face AS QD3DFace)</TD><TD>Add a face to mesh object</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>AddVertex</TD><TD>SUB (X#, Y#, Z#)</TD><TD>Add a vertex</TD><TD NOWRAP>3</TD></TR>
+  <TR><TD VALIGN=TOP>CreateFace</TD><TD>SUB (Face AS QD3DFace)</TD><TD>Creates a new face with no vertices</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>CreateMesh</TD><TD>SUB (Mesh AS QD3DMesh)</TD><TD>Create mesh from meshbuilder</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>DeleteFace</TD><TD>SUB (Face AS QD3DFace)</TD><TD>Delete face from meshbuilder</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>GetFace</TD><TD>SUB (Index AS LONG, Face AS QD3DFace)</TD><TD>Get a single mesh face</TD><TD NOWRAP>2</TD></TR>
+  <TR><TD VALIGN=TOP>Load</TD><TD>SUB (S AS STRING)</TD><TD>Load an object file (.x file)</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>Move</TD><TD>SUB (D AS DOUBLE)</TD><TD>Moves frame (rotate)</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>Scale</TD><TD>SUB (X#,Y#,Z#)</TD><TD>Scale object</TD><TD NOWRAP>3</TD></TR>
+  <TR><TD VALIGN=TOP>SetQuality</TD><TD>SUB (Quality AS INTEGER)</TD><TD>Set rendering quality</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>SetRGB</TD><TD>SUB (R#, G#, B#)</TD><TD>Set object's color</TD><TD NOWRAP>3</TD></TR>
+  <TR><TD VALIGN=TOP>SetRGBA</TD><TD>SUB (R#, G#, B#, A#)</TD><TD>Add color w/alphablending</TD><TD NOWRAP>4</TD></TR>
+  <TR><TD VALIGN=TOP>SetTexture</TD><TD>SUB (Tex AS QD3DTexture)</TD><TD>Add texture backdrop to object</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>Translate</TD><TD>SUB (TX#, TY#, TZ#)</TD><TD>Translate is a move operation but in 3D</TD><TD NOWRAP>3</TD></TR>
+</TABLE>
+<br>
+
+<a name="3">
+<FONT SIZE = +1><B>QD3DMeshBuilder Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD>
+  </TR>
+ </TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QD3DMeshBuilder Examples</B></FONT>
+
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qd3dmesh.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qd3dtexture.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      D>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                         

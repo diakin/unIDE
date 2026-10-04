@@ -1,0 +1,165 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QCOOLBTN</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QCOOLBTN</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QCOOLBTN Component</H1>
+<DD>QCoolbtn is an extension of QButton, but allows Flat buttons, and toggle buttons (via
+GroupIndex).
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QCoolbtn Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee"><TD><b>Align</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>alNone</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Align determines how the control aligns within its parent control.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>AllowAllUp</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">AllowAllUp specifies whether all buttons in the group can be unselected at the same time.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>BMP</b></TD><TD>STRING</TD><TD>W</TD><TD></TD><TD>WX</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Use BMP to assign a new bitmap file, or to use BMP in a draw statement.<br>
+                             <b><u>Examples</u></b>:<br>
+                             <blockquote><font face="courier" size="2">
+                             DIM coolbutton AS QCOOLBTN<br>
+                             coolbutton.BMP = "whatever.bmp"
+                             </font></blockquote>
+                             <b><u>Details</u></b>:<br>
+                             You can hold multiple images on a single bitmap, but they must be
+                             of the same size and next to each other in a horizontal row.<br>
+                             The "first" bitmap appears when the button is up.<br>
+                             The "second" bitmap appears when the button disabled.<br>
+                             The "third" bitmap appears when the button is clicked.<br>
+                             The "fourth" bitmap appears when the button stays down.<br>
+                             You have to tell Rapid-Q how many images are in your bitmap by assigning
+                             the number to NumBMPs.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD>BMPHandle</TD><TD>RESOURCE</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Caption</TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Cursor</TD><TD>INTEGER</TD><TD>RW</TD><TD>crDefault</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Down</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>WX</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Down specifies whether the button is selected (down) or unselected (up).
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Enabled</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Flat</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>WX</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Flat determines whether the button has a 3D border that provides a raised or lowered look.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Font</TD><TD>QFONT</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>GroupIndex</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">GroupIndex allows buttons to work together as a group. If GroupIndex is 0, the button behaves
+                independently of all other buttons.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Height</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Hint</TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Layout</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>blBMPLeft</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Layout determines where the bitmap image appears on the button.<br>
+                             0 = blBMPLeft -- image appears at the left side of the caption<br>
+                             1 = blBMPRight -- image appears at the right side of the caption<br>
+                             2 = blBMPTop -- image appears above the caption<br>
+                             3 = blBMPBottom -- image appears below the caption<br>
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Left</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>NumBMPs</b></TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">NumBMPs determines the number of images within the bitmap button.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Parent</TD><TD>QFORM/QPANEL/QTABCONTROL</TD><TD>W</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>ShowHint</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Spacing</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>4</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Determines the separation, in pixels, between the image and the caption.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>TabOrder</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Tag</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Top</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Width</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Visible</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD><TD>WXG</TD></TR>
+</TABLE>
+<br>
+
+<a name="2">
+<FONT SIZE = +1><B>QCoolbtn Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD>StartDrag</TD><TD>SUB</TD><TD NOWRAP>Allows Button to be dragged</TD><TD NOWRAP>0</TD><TD>W</TD></TR>
+</TABLE>
+<BR>
+
+<a name="3">
+<FONT SIZE = +1><B>QCoolbtn Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD>OnClick</TD><TD>VOID</TD><TD>User clicked on the button</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR><TD>OnMouseDown</TD><TD NOWRAP>SUB (Button%, X%, Y%, Shift%)</TD><TD NOWRAP>Mouse button held down</TD><TD>4</TD><TD>WX</TD></TR>
+  <TR><TD>OnMouseMove</TD><TD NOWRAP>SUB (X%, Y%, Shift%)</TD><TD NOWRAP>Mouse moves</TD><TD>3</TD><TD>WX</TD></TR>
+  <TR><TD>OnMouseUp</TD><TD NOWRAP>SUB (Button%, X%, Y%, Shift%)</TD><TD NOWRAP>Mouse button is released</TD><TD>4</TD><TD>WX</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QCoolbtn Examples</B></FONT>
+
+<PRE>
+  '-- An example of toggle buttons (via GroupIndex)
+
+  CONST False = 0: CONST True = 1
+
+  DIM Form AS QForm
+  DIM Cool1 AS QCoolbtn
+  DIM Cool2 AS QCoolbtn
+
+  Cool1.Parent = Form
+  Cool1.GroupIndex = 1       '' Must be > 0
+  Cool1.Down = True          '' Button initially down
+  Cool2.Parent = Form
+  Cool2.GroupIndex = 1       '' Same group as Cool1
+  Cool2.Left = 40
+
+  Form.ShowModal
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qcomport.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qdirtree.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      D>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                         

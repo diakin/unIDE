@@ -1,0 +1,353 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>Chapter 14: Programming in MySQL</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Chapter 14</B></FONT></TD>
+  </TR>
+  <TR>
+    <TD COLSPAN=2><HR SIZE=1> </TD>
+  </TR>
+</TABLE>
+
+<BR>
+<H1>14. Programming in MySQL</H1>
+<DD>This chapter is a quick overview of what you can do with the QMYSQL component.
+It does not teach you about SQL or how to construct proper queries.
+It is assumed you have some prior knowledge of SQL, but not necessarily with MySQL.
+<BR><BR>
+
+<a name="141">
+<B>14.1 Quick Introduction</B>
+<DD>MySQL is basically free for Unix and OS/2 platforms, but Rapid-Q only supports
+MySQL for Linux and Windows since my resources are limited to such machines. Under Windows,
+if you like MySQL, then you are required to pay a license fee after a 30 day trial period.
+Not to be confused with paying me of course, but if you want, I'll oblige.
+Why did I choose MySQL over other database servers? The reason is fairly simple,
+yet deserves some explanation anyway. MySQL is free, mostly, and it's multiplatform,
+which fits into Rapid-Q quite nicely. It's also easier for me to test, and quite
+simple to implement under Rapid-Q. It's fairly lightweight, fast, robust, and
+did I mention free? Perhaps in the future, other database servers will be supported,
+ie. through MyODBC or Window's ODBC.<BR>
+<UL>Required files:
+ <LI><a href="http://www.mysql.com/">MySQL server</a> version 3.22.xx or better
+ <LI>Rapid-Q MySQL Libraries
+ <LI>MySQL Client if you don't want to run a server
+</UL>
+After installing the MySQL server, test it to make sure it works (read their
+nice documentation and help files), you'll also
+need to copy LIBMYSQL.DLL (under Windows) and libmysqlclient.* (under Linux)
+to your library path directory. C:\WINDOWS\SYSTEM under Windows, and maybe
+/usr/lib under Linux (you can also just add a library path to the file instead
+of moving it). These library files are required by Rapid-Q, they should have come
+with your MySQL distribution, probably in C:\MYSQL\LIB and /usr/local/lib/mysql
+depending on your installation.
+If you already have MySQL installed, which is possible, make
+sure it's up to date, or if you have an SQL Administrator, check with the that person.
+<BR><BR>
+
+<a name="142">
+<B>14.2 Connecting to MySQL</B>
+<DD>The introduction assumed that you wanted to install a MySQL server on your
+machine, but you can access a MySQL database from anywhere, as long as you have
+access of course. If you don't want to install a MySQL server (why wouldn't you?)
+then make sure you have the proper client libraries, ie. LIBMYSQL.DLL. To begin
+with, I'll assume you have the MySQL server installed. To connect to your local
+MySQL server is simple enough:<BR>
+<PRE>
+            DIM MySQL AS QMYSQL
+
+            Host$ = ""
+            User$ = ""
+            Password$ = ""
+            MySQL.Connect(Host$, User$, Password$)
+
+            IF MySQL.Connected THEN PRINT "Successfully connected"
+</PRE>
+Change User$ and Password$ to suit your needs. Host$ can also take the value of
+"localhost" but is not necessary in this case. Now to connect to a remote MySQL
+server located, say, in allsql.com
+<PRE>
+            DIM MySQL AS QMYSQL
+
+            Host$ = "allsql.com"
+            User$ = "anonymous"
+            Password$ = "guest"
+            MySQL.Connect(Host$, User$, Password$)
+
+            IF MySQL.Connected THEN PRINT "Successfully connected"
+</PRE>
+Most servers will use the standard MySQL port 3306, but if you know the exact
+port, then you can use the method RealConnect.
+<PRE>
+            DIM MySQL AS QMYSQL
+
+            Host$ = "allsql.com"
+            User$ = "anonymous"
+            Password$ = "guest"
+            Port% = 12345
+            MySQL.RealConnect(Host$, User$, Password$, "", Port%, "", 0)
+
+            IF MySQL.Connected THEN PRINT "Successfully connected"
+</PRE>
+See appendix section for the parameters of QMYSQL.RealConnect.
+It is suggested by the MySQL documentation that you use RealConnect instead
+of the using Connect.
+<BR><BR>
+
+<a name="143">
+<B>14.3 How to perform queries and obtain the results</B>
+<DD>Write your queries like you would normally, for example, if you want to
+select everything from a certain table, say you have a table named <I>user</I>, then you can do this:
+<PRE>
+            DIM MySQL AS QMYSQL
+
+            '' First connect to server
+
+            '' Use database
+            MySQL.SelectDB("mysql")
+
+            '' Perform query
+            MySQL.Query("select * from user")
+</PRE>
+The result of this query is stored internally, and sequentially.
+To obtain the result, you'll need to Fetch it. You can visualize a 2 dimensional
+table:<BR>
+<CENTER>
+<IMG SRC="chap14d1.gif">
+</CENTER>
+Since the result is stored sequentially, you have to fetch each row one at a time
+(not necessarily true, but assume we have no other choice). To do this is quite simple:
+<PRE>
+            WHILE MySQL.FetchRow       '' Get next row
+                MySQL.FieldSeek(0)     '' Reset field position
+                FOR I = 0 TO MySQL.FieldCount-1
+                    PRINT MySQL.Row(I) '' Read current row element I
+                NEXT
+            WEND
+</PRE>
+<FONT FACE="Courier">MySQL.FetchRow </FONT>fetches the next row. As long as there
+are still rows available to fetch, <FONT FACE="Courier">MySQL.FetchRow</FONT> returns TRUE (non-zero number).
+<FONT FACE="Courier">MySQL.FieldCount</FONT> is used to count how many fields per row there are in the
+current table. The rest is self explanatory.
+<BR><BR>
+
+<a name="144">
+<B>14.4 Interfacing QMYSQL with QSTRINGGRID</B>
+<DD>As you may notice, it would be nice if the results could just be preloaded
+into a string grid instead of having to fetch everything and doing it manually.
+Unfortunately I haven't got any motivation to do this right now, but you can
+use this simple code until I get off my butt and implement it internally:
+<PRE>
+            SUB ExecuteQuery(MySQL AS QMYSQL, Grid AS QSTRINGGRID, Query AS STRING)
+                IF MySQL.Query(Query) = 0 THEN
+                   '' Failed to execute
+                   EXIT SUB
+                END IF
+
+                DEFINT I = 0, J
+
+                <FONT COLOR=009900><I>''-- Write header</I></FONT>
+                Grid.ColCount = MySQL.FieldCount
+                WHILE MySQL.FetchField
+                   Grid.Cell(I,0) = MySQL.Field.Name
+                   I++
+                WEND
+
+                Grid.RowCount = MySQL.RowCount+1
+                J = 1
+                WHILE MySQL.FetchRow       '' Get next row
+                   MySQL.FieldSeek(0)      '' Reset field position
+                   FOR I = 0 TO MySQL.FieldCount-1
+                      Grid.Cell(I,J) = MySQL.Row(I)
+                   NEXT
+                   J++
+               WEND
+            END SUB
+
+            <FONT COLOR=009900><I>''-- Example</I></FONT>
+            ExecuteQuery(MySQL, MyGrid, "select * from user")
+</PRE>
+Obviously, you can interface QMYSQL with any component, or components, you want.
+<BR><BR>
+
+
+<a name="145">
+<B>14.5 Storing and retrieving blobs</B>
+<DD>Blobs are just binary data that require special processing. Since blobs
+can contain NULL characters and other special characters that affect MySQL and
+Rapid-Q, you'll need to do some special processing with your binary data.
+Please note that blob sizes vary, depending on the field type. A BLOB,
+by default can hold up to 65535 bytes (a LONGBLOB should be able
+to handle 2^32-1 bytes). If you want to change the buffer size,
+you'll have to read up on it (max_allowed_packet).
+To store binary data, like images, you'll
+have to preprocess certain characters before you can send it over to your MySQL
+database.
+<PRE>
+            $INCLUDE "RAPIDQ.INC"
+
+            DIM MySQL AS QMYSQL
+
+            <FONT COLOR=009900><I>''-- Connect to database code, etc...</I></FONT>
+
+            DIM File AS QFILESTREAM
+            File.Open("test.bmp", fmOpenRead)
+
+            <FONT COLOR=009900><I>''-- Read file as binary, preserves NULL chars</I></FONT>
+            Buffer$ = File.ReadBinStr(File.Size)
+
+            <FONT COLOR=009900><I>''-- Here's the special processing</I></FONT>
+            <FONT COLOR=009900><I>''-- Converts NULLs to \0 and others</I></FONT>
+            ProcessedBuffer$ = MySQL.EscapeString(Buffer$, File.Size)
+
+            <FONT COLOR=009900><I>''-- Insert blob in our table</I></FONT>
+            MySQL.Query("insert into MyImageTable values('Label 1', '" + _
+                        ProcessedBuffer$ + "')")
+
+            File.Close
+            MySQL.Close
+</PRE>
+Since we're dealing with binary data, you have to be aware that we don't use LEN()
+or any other STRING processing functions with our binary data. Note that we can
+store text data in blob fields, in which case you can use any STRING processing
+functions you want. You may notice that <FONT FACE="Courier">MySQL.EscapeString</FONT>
+converts the binary data to a usable format that can be passed to the MySQL database.
+Basically all it does is convert NULLs to '\0', ' to \', " to \", and CRLF to \r and \n
+respectively. Once parsed, the new string is returned which you can use in a
+query. So far so good, now we consider retrieving our blobs:
+<PRE>
+            $INCLUDE "RAPIDQ.INC"
+            $INCLUDE "MYSQL.INC"
+
+            DIM MySQL AS QMYSQL
+
+            <FONT COLOR=009900><I>''-- Connect to database code, etc...</I></FONT>
+
+            DIM File AS QFILESTREAM
+            File.Open("out.bmp", fmCreate) <FONT COLOR=009900><I>''-- Create new file</I></FONT>
+
+            <FONT COLOR=009900><I>''-- Your query here</I></FONT>
+            MySQL.Query("select * from MyImageTable")
+
+            WHILE MySQL.FetchRow
+                MySQL.FieldSeek(0)
+                MySQL.FetchLengths <FONT COLOR=009900><I>''-- Required for binary data</I></FONT>
+                FOR I = 0 TO MySQL.NumField-1
+                    MySQL.FetchField
+                    IF MySQL.Field.Type = FIELD_TYPE_BLOB THEN
+                        <FONT COLOR=009900><I>''-- Read binary data from table</I></FONT>
+                        Buffer$ = MySQL.RowBlob(I, MySQL.Length(I))
+                        File.WriteBinStr(Buffer$, MySQL.Length(I))
+                    ELSE
+                        Buffer$ = MySQL.Row(I)
+                    END IF
+                NEXT
+            WEND
+
+            File.Close
+            MySQL.Close
+</PRE>
+Retrieving blobs from the database is a little more confusing than storing blobs.
+The first thing you have to note is that reading binary data and text strings are 2
+different operations. Since text strings are NULL terminated, you don't have to
+worry about how many bytes to read, this is automatically calculated for you.
+However, since binary data can contain NULL characters, this makes reading
+blobs a little bit tricky. You have to fetch the lengths of each field, since
+we have blobs in our table, this is done by calling <FONT FACE="Courier">MySQL.FetchLengths</FONT>
+for each row. Then to find out the length of each field, you use the internal array
+<FONT FACE="Courier">MySQL.Length(index%)</FONT> which returns the length for field index%.
+Why do we have to do this? Because we need to know the size of our blob before we can read it in.
+To read binary data from our database, you use the specialized function
+<FONT FACE="Courier">MySQL.RowBlob(Row%, Bytes%)</FONT> which returns a binary
+string. With this binary string, you can write the data to a file or memory, or
+manipulate the data directly. In the above example, we're just writing the data
+to a file.
+<BR><BR>
+
+
+<a name="146">
+<B>14.6 Using LOADBLOB and SAVEBLOB</B>
+<DD>In the previous section, we uncovered the natural way of storing and
+retrieving blobs (binary data). However, there is an easier and faster way of
+doing the samething.
+<PRE>
+            <FONT COLOR=009900><I>''-- Recall the natural way</I></FONT>
+            ProcessedBuffer$ = MySQL.EscapeString(Buffer$, File.Size)
+            MySQL.Query("insert into MyImageTable values('Label 1', '" + _
+                        ProcessedBuffer$ + "')")
+
+            <FONT COLOR=009900><I>''-- Using LOADBLOB instead</I></FONT>
+            ProcessedBuffer$ = MySQL.LoadBlob("test.bmp")
+            MySQL.Query("insert into MyImageTable values('Label 1', '" + _
+                        ProcessedBuffer$ + "')")
+</PRE>
+Using LOADBLOB eliminates the use of <FONT FACE="courier">MySQL.EscapeString</FONT>
+since it is just implemented internally for you. It simply takes a single argument
+(the name of the file to include), and returns the processed string.
+To retrieve a blob from the database and save it to a file, you can try this:
+<PRE>
+            WHILE MySQL.FetchRow
+                MySQL.FieldSeek(0)
+                <FONT COLOR=009900><I>'' MySQL.FetchLengths</I></FONT>
+                FOR I = 0 TO MySQL.NumField-1
+                    MySQL.FetchField
+                    IF MySQL.Field.Type = FIELD_TYPE_BLOB THEN
+                        <FONT COLOR=009900><I>''-- Save data to file</I></FONT>
+                        MySQL.SaveBlob(I, "temp.bmp")
+                    ELSE
+                        Buffer$ = MySQL.Row(I)
+                    END IF
+                NEXT
+            WEND
+</PRE>
+In this instance we can ignore using <FONT FACE="courier">MySQL.FetchLengths</FONT>
+since it is, again, implemented internally for you. <FONT FACE="courier">MySQL.SaveBlob</FONT> takes two
+arguments. The first is the index (or field number if you will), and the second argument is the
+name of the file to save to. There are no return values associated with this function.
+<BR><BR>
+
+
+<a name="147">
+<B>14.7 In conclusion</B>
+<DD>Using MySQL can save you a lot of time and effort, since you
+don't need to design your own database file structure, and searching is quite fast.
+Not to mention that MySQL is multiplatform, so you can use MySQL with Windows
+and Linux. If you already have prior knowledge with programming in MySQL,
+you'll probably notice some differences. For example,
+<PRE>
+            I = MySQL.SelectDB("mysql")
+</PRE>
+Under Rapid-Q, this function returns 0 if database cannot be opened, and a non-zero number
+otherwise. However, if you've used LIBMYSQL.DLL before, this function (called
+<FONT FACE="Courier">mysql_select_db)</FONT> returns 0 on success and -1 on failure.
+So basically, just reverse your way of thinking when using Rapid-Q.
+<BR><BR>
+
+
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="chapter13.html">Prev Chapter</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</A></TD>
+   <TD ALIGN=RIGHT><A HREF="chapter15.html">Next Chapter</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>
+                        

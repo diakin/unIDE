@@ -1,0 +1,192 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>QD3DFACE</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>QD3DFACE</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QD3DFACE Component</H1>
+<DD>QD3DFace implements IDirect3DRMFace.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QD3DFace Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD>
+  </TR>
+   <TR><TD>VertexCount</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+</TABLE>
+<br>
+
+<a name="2">
+<FONT SIZE = +1><B>QD3DFace Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD VALIGN=TOP>AddVertex</TD><TD>SUB (X#, Y#, Z#)</TD><TD>Add a vertex</TD><TD NOWRAP>3</TD></TR>
+  <TR><TD VALIGN=TOP>GetVertex</TD><TD>SUB (Index AS LONG, Position AS QD3DVector, Normal AS QD3DVector)</TD><TD>Retrieve the position and normal of a vertex</TD><TD NOWRAP>3</TD></TR>
+  <TR><TD VALIGN=TOP>SetColorRGB</TD><TD>SUB (R#, G#, B#)</TD><TD>Set face color</TD><TD NOWRAP>3</TD></TR>
+</TABLE>
+<br>
+
+<a name="3">
+<FONT SIZE = +1><B>QD3DFace Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD>
+  </TR>
+ </TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QD3DFace Examples</B></FONT>
+
+<PRE>
+' Direct 3D construction using Faces
+
+$TYPECHECK ON
+
+CONST alClient = 5
+
+'-- Light Types
+CONST D3DRMLIGHT_AMBIENT = 0
+CONST D3DRMLIGHT_POINT = 1
+CONST D3DRMLIGHT_SPOT = 2
+CONST D3DRMLIGHT_DIRECTIONAL = 3
+CONST D3DRMLIGHT_PARALLELPOINT = 4
+
+'-- Renderer modes
+CONST D3DRMRENDERMODE_BLENDEDTRANSPARENCY = 1
+CONST D3DRMRENDERMODE_SORTEDTRANSPARENCY = 2
+CONST D3DRMRENDERMODE_LIGHTINMODELSPACE = 8
+CONST D3DRMRENDERMODE_VIEWDEPENDENTSPECULAR = 16
+CONST D3DRMRENDERMODE_DISABLESORTEDALPHAZWRITE = 32
+
+
+DECLARE SUB DXInitialize(Sender AS QDXScreen)
+DECLARE SUB DXInitializeSurface(Sender AS QDXScreen)
+DECLARE SUB DXTimerExpired
+
+DIM DXTimer AS QDXTimer
+    DXTimer.Enabled = 1
+    DXTimer.Interval = 0
+    DXTimer.Activeonly = 0
+    DXTimer.OnTimer = DXTimerExpired
+DIM MeshBuilder AS QD3DMeshBuilder
+DIM MeshFrame AS QD3DFrame
+
+CREATE Form AS QForm
+    Caption = "Direct 3D Example"
+    Width = 640
+    Height = 480
+    Center
+    CREATE DXScreen AS QDXScreen
+        Init(640,480)
+        Align = alClient
+        BitCount = 16
+        Use3D = 1
+        UseHardware = 0        '' This is for non-3D accelerated video cards.
+                               '' 3D will be emulated using software, which
+                               '' is much slower.
+        OnInitialize = DXInitialize
+        OnInitializeSurface = DXInitializeSurface
+    END CREATE
+    ShowModal
+END CREATE
+
+
+SUB DXInitialize(Sender AS QDXScreen)
+   DIM Light AS QD3DLight, Ambient AS QD3DLight
+   DIM LightFrame AS QD3DFrame
+   DIM Face AS QD3DFace
+
+   DXScreen.CreateFrame(LightFrame)
+   DXScreen.CreateFrame(MeshFrame)
+
+   DXScreen.CreateLightRGB(D3DRMLIGHT_DIRECTIONAL, 0.9, 0.9, 0.9, Light)
+   LightFrame.AddLight(Light)
+
+   DXScreen.CreateLightRGB(D3DRMLIGHT_AMBIENT, 0.6, 0.6, 0.6, Ambient)
+   DXScreen.AddLight(Ambient)
+
+   LightFrame.SetPosition(2, 0, 22)
+   DXScreen.SetCameraPosition(-5, 10, 0)
+
+   MeshFrame.AddLight(Ambient)
+   MeshFrame.SetPosition(0, 0, 0)
+   MeshFrame.SetRotation(0, 0, 0, 0.05)       ' Angle of rotation = 0.05
+
+   DXScreen.CreateMeshBuilder(MeshBuilder)
+   DXScreen.CreateFace(Face)
+
+
+   Face.AddVertex(0.996094,1.000000,-0.995850)
+   Face.AddVertex(-0.995850,1.000000,-0.995850)
+   Face.AddVertex(-0.995850,1.000000,0.996094)
+   Face.AddVertex(0.996094,1.000000,0.996094)
+   Face.AddVertex(0.996094,-0.999756,-0.995850)
+   Face.AddVertex(-0.995850,-0.999756,-0.995850)
+   Face.AddVertex(-0.995850,-0.999756,0.996094)
+   Face.AddVertex(0.996094,-0.999756,0.996094)
+
+   MeshBuilder.AddFace(Face)
+
+   MeshBuilder.Scale(2,2,2)
+   MeshBuilder.SetRGB(1, 1, .7)
+   MeshFrame.AddVisual(MeshBuilder)
+   DXScreen.CameraLookAt(MeshFrame, 1)
+END SUB
+
+SUB DXInitializeSurface(Sender AS QDXScreen)
+   DXScreen.SetRenderMode(D3DRMRENDERMODE_BLENDEDTRANSPARENCY OR D3DRMRENDERMODE_SORTEDTRANSPARENCY)
+END SUB
+
+SUB DXTimerExpired
+   DXScreen.ForceUpdate(0,0,50,40)     ' Update FPS text only
+   DXScreen.Move(1)                    ' This does the rotation by 2 times
+   DXScreen.Render
+   DXScreen.TextOut(10,10,"FPS: "+STR$(DXTimer.FrameRate), &HFFFFFF, -1)
+   DXScreen.Flip
+END SUB
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qdxtimer.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qd3dframe.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      D>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                         

@@ -1,0 +1,205 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>Appendix C: Operators</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix C: Operators</B></FONT></TD>
+  </TR>
+  <TR>
+    <TD COLSPAN=2><HR SIZE=1> </TD>
+  </TR>
+</TABLE>
+<a name="up"></a>
+
+<BR>
+<H1>Introduction to Operators</H1>
+<DD>Operators perform mathematical or logical operations on values.
+They are usually encompassed by an expression. For example, 2 * 8 is a
+valid expression, and * is an operator operating on values 2 and 8.
+Rapid-Q can evaluate both INFIX and POSTFIX (RPN) expressions, but if
+you want to evaluate POSTFIX expressions, you'll need to note the special
+cases.
+<BR><BR>
+<a name="arithmetic"></a>
+<FONT SIZE = +1><B><U>Arithmetic operators</U></B></FONT><BR>
+Rapid-Q maintains a table of precedence for each operator. The highest precedence
+operator will always execute before any lower precedence operator. For operators
+that share the same precedence, the left to right associativity law holds.
+Expressions enclosed in braces (...) automatically have higher precedence than
+expressions outside the braces.
+<table colspan="3" border="1" width="100%" cellpadding="3" cellspacing="1">
+  <tr>
+    <td bgcolor="#AAAAFF"><b>Operation</b></td><td bgcolor="#AAAAFF"><b>Operator</b></td><td bgcolor="#AAAAFF"><b>Precedence</b></td><td bgcolor="#AAAAFF"><b>Description</b></td>
+  </tr>
+  <tr>
+    <td>String index</td><td align="center">[]</td><td align="center">1</td>
+    <td>Returns a character from a string<br><b>ie. s$[2]</b><br>returns the second character in string s$</td>
+  </tr>
+  <tr>
+    <td>Exponentiation</td><td align="center">^</td><td align="center">1</td>
+    <td>Calculates power of a number<br><b>ie. 2^6</b><br>is 2 to the power of 6</td>
+  </tr>
+  <tr>
+    <td>Negation</td><td align="center">-</td><td align="center">1</td>
+    <td>Negates a number<br><b>ie. -99</b><br>is negative 99</td>
+  </tr>
+  <tr>
+    <td>Multiplication</td><td align="center">*</td><td align="center">2</td>
+    <td>Multiplies 2 numbers<br><b>ie. 2*6</b><br>is 2 multiplied by 6</td>
+  </tr>
+  <tr>
+    <td>Floating-point Division</td><td align="center">/</td><td align="center">2</td>
+    <td>Divides 2 floating point numbers<br><b>ie. 6.5/2.6</b><br>is 6.5 divided by 2.6</td>
+  </tr>
+  <tr>
+    <td>Integer Division</td><td align="center">\</td><td align="center">2</td>
+    <td>Divides 2 integer numbers<br>Before integer division is performed, operands are rounded to integers. The result is truncated to an integer value.<br><b>ie. 6\2</b><br>is 6 divided by 2</td>
+  </tr>
+  <tr>
+    <td>Left Bit Shift</td><td align="center">SHL</td><td align="center">2</td>
+    <td>Shifts bits left by amount specified<br><b>ie. 10 SHL 2</b><br>is number 10 whose bits are shifted 2 bits to the left</td>
+  </tr>
+  <tr>
+    <td>Right Bit Shift</td><td align="center">SHR</td><td align="center">2</td>
+    <td>Shifts bits right by amount specified<br><b>ie. 10 SHR 2</b><br>is number 10 whose bits are shifted 2 bits to the right</td>
+  </tr>
+  <tr>
+    <td>Modulus/Remainder</td><td align="center">MOD</td><td align="center">3</td>
+    <td>Returns the remainder of the division<br><b>ie. 15 MOD 10</b><br>is 15/10 whose remainder is 5</td>
+  </tr>
+  <tr>
+    <td>Inverse Modulus</td><td align="center">INV</td><td align="center">3</td>
+    <td>Returns the inverse of a number in modulus<br><b>ie. 3 INV 26</b><br>The inverse of 3 is 9 in 1 (MOD 26)</td>
+  </tr>
+  <tr>
+    <td>Addition</td><td align="center">+</td><td align="center">4</td>
+    <td>Add 2 operands (strings included)<br><b>ie. 3+6</b><br>is 3 plus 6 = 9<br><b>ie. "hi"+"world"</b><br>is "world" appended to "hi" = "hiworld"</td>
+  </tr>
+  <tr>
+    <td>Addition</td><td align="center">&</td><td align="center">4</td>
+    <td>Same as using '+' but maintained for compatibility with other BASIC languages, such as VB.</td>
+  </tr>
+  <tr>
+    <td>Subtraction</td><td align="center">-</td><td align="center">4</td>
+    <td>Subtracts 2 operands (strings included)<br><b>ie. 6-3</b><br>is 6 minus 3 = 3<br><b>ie. "jello"-"l"</b><br>is "jello" minus all occurrences of "l" = "jeo"</td>
+  </tr>
+</table>
+<br><br>
+
+<a name="relational"></a>
+
+<FONT SIZE = +1><B><U>Relational operators</U></B></FONT><BR>
+Relational operators are used to compare 2 values. The result of this comparison
+is either "true" (nonzero) or "false" (zero). You may assume that "true" equals -1.
+<table colspan="3" border="1" width="100%" cellpadding="3" cellspacing="1">
+  <tr>
+    <td bgcolor="#AAAAFF"><b>Relation</b></td><td bgcolor="#AAAAFF"><b>Operator</b></td><td bgcolor="#AAAAFF"><b>Precedence</b></td><td bgcolor="#AAAAFF"><b>Description</b></td>
+  </tr>
+  <tr>
+    <td>Equality</td><td align="center">=</td><td align="center">5</td>
+    <td>Tests for equality between 2 operands (strings included)<br><b>ie. 2=2</b><br>if 2 equals 2 then "true" else "false"</td>
+  </tr>
+  <tr>
+    <td>Inequality</td><td align="center">&lt;&gt;</td><td align="center">5</td>
+    <td>Tests for inequality between 2 operands (strings included)<br><b>ie. "hello"<>"world"</b><br>if "hello" is not equal to "world" then "true" else "false"</td>
+  </tr>
+  <tr>
+    <td>Less than</td><td align="center">&lt;</td><td align="center">5</td>
+    <td>Tests if operand is less than another (strings included)<br><b>ie. 2<10</b><br>if 2 is less than 10 then "true" else "false"</td>
+  </tr>
+  <tr>
+    <td>Greater than</td><td align="center">&gt;</td><td align="center">5</td>
+    <td>Tests if operand is greater than another (strings included)<br><b>ie. "z">"a"</b><br>if "z" is greater than "a" then "true" else "false"</td>
+  </tr>
+  <tr>
+    <td>Less than or equal</td><td align="center">&lt;=</td><td align="center">5</td>
+    <td>Tests if operand is less than or equal to another (strings included)<br><b>ie. 2<=10</b><br>if 2 is less than or equal to 10 then "true" else "false"</td>
+  </tr>
+  <tr>
+    <td>Greater than or equal</td><td align="center">&gt;=</td><td align="center">5</td>
+    <td>Tests if operand is greater than or equal to another (strings included)<br><b>ie. 20&gt;=10</b><br>if 20 is greater than or equal to 10 then "true" else "false"</td>
+  </tr>
+</table>
+<br><br>
+
+<a name="logical"></a>
+
+<FONT SIZE = +1><B><U>Logical operators</U></B></FONT><BR>
+Logical operators perform tests on multiple relations, bit manipulation, or
+Boolean operations and return a true (nonzero) or false (zero) value to be used in
+making a decision.
+<table colspan="3" border="1" width="100%" cellpadding="3" cellspacing="1">
+  <tr>
+    <td bgcolor="#AAAAFF"><b>Operation</b></td><td bgcolor="#AAAAFF"><b>Operator</b></td><td bgcolor="#AAAAFF"><b>Precedence</b></td><td bgcolor="#AAAAFF"><b>Description</b></td>
+  </tr>
+  <tr>
+    <td>Logical complement</td><td align="center">NOT</td><td align="center">6</td>
+    <td>Returns the complement (inverted bits)<br><b>ie. NOT -1</b><br>-1 has all bits set, NOT -1 inverts all bits</td>
+  </tr>
+  <tr>
+    <td>Conjunction</td><td align="center">AND</td><td align="center">7</td>
+    <td>Compare corresponding bits in 2 operands and sets the corresponding bit in the result to 1 if both bits are 1.<br><b>ie. 5 AND 3</b><br>5 AND 3 = 1 since their first bits are set</td>
+  </tr>
+  <tr>
+    <td>Disjunction (inclusive "or")</td><td align="center">OR</td><td align="center">8</td>
+    <td>Compares corresponding bits in 2 operands and sets bit to 1 if either one has a corresponding bit set.<br><b>ie. 5 OR 3</b><br>5 OR 3 = 7 since bits overlap</td>
+  </tr>
+  <tr>
+    <td>Exclusive "or"</td><td align="center">XOR</td><td align="center">9</td>
+    <td>Compares corresponding bits in 2 operands and sets bit to 1 if only one of the operands has a corresponding bit set.<br><b>ie. 5 XOR 3</b><br>5 XOR 3 = 6 since one bit overlaps</td>
+  </tr>
+</table>
+<br><br>
+
+<a name="infix"></a>
+
+<FONT SIZE = +1><B><U>INFIX/POSTFIX notation</U></B></FONT><BR>
+Expressions, in most languages, are expressed in INFIX notation. Rapid-Q prefers
+INFIX notation, but can also handle POSTFIX notation with a few special cases.
+<PRE>
+      Example INFIX expression:
+          A = 4 * 7 + (4 - 1)^6
+</PRE>
+INFIX notation is easier to use and understand than POSTFIX notation.
+In fact, Rapid-Q's POSTFIX notation is a simple side effect, and was not
+intentional. Please avoid using POSTFIX if possible.
+<PRE>
+      Example POSTFIX expression:
+          A = (4) (7) (*) (4) (1) (-) (6) (^) (+)
+</PRE>
+The 2 expressions should evaluate to 757. As you'll note, when dealing with POSTFIX
+notation, make sure all operands and operators are enclosed in braces. When dealing
+with negation, you'll have to do this instead:
+<PRE>
+      Example POSTFIX expression w/negation:
+          A = (5) (0-5) (-)
+</PRE>
+Notice that (0-5) and (-5) return different results.
+<br><br>
+
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=CENTER><A HREF="#up">Up</a></TD>
+   <TD ALIGN=RIGHT><A HREF="defs.html">Internal Definitions -&gt;</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                        

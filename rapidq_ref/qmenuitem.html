@@ -1,0 +1,126 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QMENUITEM</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QMENUITEM</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QMENUITEM Component</H1>
+<DD>QMenuItem is used to describe the properties of an item in a menu.
+It is not meant to be a stand-alone component. You usually add a QMenuItem to
+a QMainMenu or QPopupMenu.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QMenuItem Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee"><TD><b>Caption</b></TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Caption specifies the text of the menu item.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Checked</b></TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Checked specifies whether a check mark should appear beside the caption.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Command</b></TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Command is the Windows command ID associated with the menu item.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Count</b></TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Count is the number of subitems of the menu item.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Enabled</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Handle</TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Hint</TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>MenuIndex</b></TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">MenuIndex is index of the menu item within its parent menu.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>RadioItem</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">RadioItem specifies whether the menu item is mutually exclusive with other menu items in its group.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>ShortCut</b></TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">ShortCut specifies the key combination users can type to quickly access the menu item.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Tag</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Visible</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Visible determines whether the menu item should be displayed.
+                </TD></TR>
+</TABLE>
+<br><br>
+
+<a name="2">
+<FONT SIZE = +1><B>QMenuItem Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR><TD>AddItems</TD><TD>SUBI</TD><TD NOWRAP>Add Subitems to MenuItem</TD><TD NOWRAP>QMENUITEMs, Infinite</TD><TD>WXG</TD></TR>
+  <TR><TD>DelIndex</TD><TD>SUB (index AS LONG)</TD><TD>Delete items, by index, from menu</TD><TD>1</TD><TD>W</TD></TR>
+  <TR><TD>DelItems</TD><TD>SUBI</TD><TD>Delete items from menu</TD><TD>QMENUITEMs, Infinite</TD><TD>W</TD></TR>
+  <TR><TD>Insert</TD><TD NOWRAP>SUB (I%, Item AS QMENUITEM)</TD><TD>Insert an item</TD><TD>2</TD><TD>W</TD></TR>
+</TABLE>
+<BR>
+
+<a name="3">
+<FONT SIZE = +1><B>QMenuItem Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR><TD>OnClick</TD><TD>VOID</TD><TD>User selects item</TD><TD>0</TD><TD>WXG</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QMenuItem Examples</B></FONT>
+
+<PRE>
+  DIM Form AS QForm
+  DIM MainMenu AS QMainMenu
+  DIM Item1 AS QMenuItem
+
+  MainMenu.Parent = Form
+  Item1.Caption = "&File"
+  MainMenu.AddItems Item1
+
+  Form.ShowModal
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qmemorystream.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qmysql.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      D>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                         

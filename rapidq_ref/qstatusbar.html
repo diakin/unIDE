@@ -1,0 +1,128 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QSTATUSBAR</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QSTATUSBAR</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QSTATUSBAR Component</H1>
+<DD>QStatusBar implements a Windows status bar.
+<BR><BR>
+<FONT SIZE = +1><B>QStatusBar Internal Types</B></FONT>
+
+<PRE>
+   TYPE PanelType           '' ie. StatusBar.Panel(0).Caption
+     Alignment AS INTEGER   '' Specifies the text alignment, default is taLeftJustify
+     Caption AS STRING
+     Width AS INTEGER
+   END TYPE
+</PRE>
+
+<a name="1">
+<FONT SIZE = +1><B>QStatusBar Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee"><TD><b>Align</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>alBottom</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Align determines how the control aligns within its parent control.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Cursor</TD><TD>INTEGER</TD><TD>RW</TD><TD>crDefault</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Enabled</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Handle</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Height</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Hint</TD><TD>STRING</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Left</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Panel</TD><TD>ARRAY of <I>PanelType</I></TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Parent</TD><TD>QFORM/QPANEL/QTABCONTROL</TD><TD>W</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>PopupMenu</TD><TD>QPOPUPMENU</TD><TD>W</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>ShowHint</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>SimplePanel</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">SimplePanel determines whether the statusbar displays a single panel or multiple panels.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>SimpleText</b></TD><TD>STRING</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">SimpleText contains the string that is displayed in the statusbar when SimplePanel is true.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>SizeGrip</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">SizeGrip determines whether the statusbar is resizable at runtime.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>TabOrder</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Top</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Width</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Visible</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+</TABLE>
+<br><br>
+
+<a name="2">
+<FONT SIZE = +1><B>QStatusBar Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD>AddPanels</TD><TD>SUBI</TD><TD NOWRAP>Add panels to status bar</TD><TD NOWRAP>STRING, Infinite</TD></TR>
+  <TR><TD>Clear</TD><TD>SUB</TD><TD NOWRAP>Clear panels</TD><TD NOWRAP>0</TD></TR>
+</TABLE>
+<BR>
+
+<a name="3">
+<FONT SIZE = +1><B>QStatusBar Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD>OnResize</TD><TD>VOID</TD><TD>Status bar is being resized</TD><TD>0</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QStatusBar Examples</B></FONT>
+
+<PRE>
+CREATE Form AS QForm
+  Center
+  CREATE StatusBar AS QStatusBar
+    AddPanels "Panel 1", "Panel 2", "Panel 3"
+    Panel(1).Width = 100  ' change width of Panel 2
+  END CREATE
+  ShowModal
+END CREATE
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qsplitter.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qstringgrid.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      D>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                         

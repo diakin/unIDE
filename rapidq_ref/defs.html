@@ -1,0 +1,70 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>Appendix C: Rapid-Q definitions</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix C: Rapid-Q definitions</B></FONT></TD>
+  </TR>
+  <TR>
+    <TD COLSPAN=2><HR SIZE=1> </TD>
+  </TR>
+</TABLE>
+
+<BR>
+<H1>Internal Definitions</H1>
+<DD>Rapid-Q has these variables already defined:<BR>
+<pre>
+    $DEFINE WIN32 WIN32
+    $DEFINE UNIX  UNIX
+    $DEFINE TYPE  STRUCT
+</pre>
+<B>WIN32</B> is defined if you're using the Windows version of Rapid-Q<BR>
+<B>UNIX</B> is defined if you're using the Linux/Unix version of Rapid-Q<BR>
+<B>TYPE</B> is defined to replace the old style TYPE<BR>
+<BR><BR>
+
+<font size = "+1"><B><U>Unhooking definitions</U></B></FONT><BR>
+The term "unhooking" just means undefining a definition, ie:
+<pre>
+    $UNDEF TYPE
+</pre>
+This is the only definition (at this time) that can affect your program when
+unhooked. See the section on "User Defined Types" for more information.
+<br><br>
+
+<font size = "+1"><B><U>Using definitions</U></B></FONT><BR>
+Chapter 3 lists some examples on using $IFDEF and $IFNDEF:
+<pre>
+    $IFDEF WIN32
+         PRINT "I'm using the Windows version!"
+    $ELSE
+         PRINT "I'm using the Linux/Unix version!"
+    $ENDIF
+</pre>
+<br><br>
+
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD ALIGN=LEFT><A HREF="operators.html">&lt;- Operators</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="datatypes.html">Data Types -&gt;</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                        

@@ -1,0 +1,190 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>QFILESTREAM</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY BGCOLOR=#C0C0C0 FONT FACE="Tahoma, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Tahoma, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Tahoma, Helvetica"><B>Appendix A: QFILESTREAM</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QFILESTREAM Component</H1>
+<DD>QFilestream is Rapid-Q's way of handling files. It's more elegant than the
+GET, and PUT method of traditional BASIC.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QFilestream Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee"><TD><b>EOF</b></TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">EOF specifies whether the file pointer has reached the end of file.
+               </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Handle</TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>LineCount</b></TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">LineCount determines how many lines there are in the file. Note that
+               LineCount ignores the CR character, and will only detect LF, so it treats CRLF as one line, but LFLF as 2 lines.
+               </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Position</b></TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Position specifies the current position of the file pointer, any read/write operations will begin from here.
+               </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Size</b></TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Size determines the size of the file in bytes.
+               </TD></TR>
+</TABLE>
+<br><br>
+
+</a>
+<FONT SIZE = +1><B>QFilestream Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee" valign="top"><TD>Close</TD><TD>SUB</TD><TD>Close the stream</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD><b>CopyFrom</b></TD><TD>SUB (Stream, Bytes%)</TD><TD>Copy from another stream<BR>Either QFileStream or QMemoryStream<BR>If Bytes%=0 then the whole stream is copied</TD><TD NOWRAP>2</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Use CopyFrom to copy a QFILESTREAM or a QMEMORYSTREAM to the current filestream.<br>
+                             <b><u>Details</u></b>:<br>
+                             If Bytes% = 0 then the Stream is reset to position 0 and the whole stream is then copied.<br>
+                             <b><u>Example</u></b>:
+                             <blockquote><font face="courier" size="2"><nobr>
+                             $INCLUDE "RAPIDQ.INC"<br>
+                             DIM File1 AS QFILESTREAM<br>
+                             DIM File2 AS QFILESTREAM<br><br>
+                             File1.Open("test.txt", fmCreate)<br>
+                             File2.Open("oldtest.txt", fmOpenRead)<br>
+                             File1.CopyFrom(File2, 123)  '-- Copy 123 bytes from File2<br>
+                             </nobr>
+                             </font></blockquote>
+               </TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD><b>ExtractRes</b></TD><TD>SUB (Resource AS LONG)</TD><TD>Extract resource to filestream</TD><TD NOWRAP>1</TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Extracts a resource from your program to the filestream.<br>
+                             <b><u>Details</u></b>:<br>
+                             The parameter Resource is not the resource handle, but the absolute position of the resource within your file.
+                             This requires that you use the keyword <b>Resource(n)</b> to specify the resource number.<br>
+                             <b><u>Example (dumping all resources)</u></b>:
+                             <blockquote><font face="courier" size="2"><nobr>
+                             $INCLUDE "RAPIDQ.INC"<br>
+                             $RESOURCE res_1 as "res.1"<br>
+                             $RESOURCE res_2 as "res.2"<br><br>
+                             DIM File1 AS QFILESTREAM<br><br>
+                             File1.Open("test.txt", fmCreate)<br><br>
+                             FOR I = 0 TO ResourceCount-1<br>
+                             &nbsp; &nbsp; File1.ExtractRes(Resource(I))<br>
+                             NEXT
+                             </nobr></font></blockquote>
+               </TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD><a name="LoadArray">LoadArray</a></TD><TD>SUB (Array(), NumElements&)</TD><TD>Load data into array</TD><TD NOWRAP>2</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Open</TD><TD>SUB (FileName$, Method%)</TD><TD>Open a file, Method% see RAPIDQ.INC
+'-- File Mode <br>
+CONST fmCreate = 65535<br>
+CONST fmOpenRead = 0<br>
+CONST fmOpenWrite = 1<br>
+CONST fmOpenReadWrite = 2<br>
+
+</TD><TD NOWRAP>2</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD><b>Read</b></TD><TD>SUB (variable)</TD><TD>Generic Read, determines the storage space and saves data in variable</TD><TD NOWRAP>1</TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Datasize is automatically determined, and the value is stored into the variable.<br>
+                             <b><u>Example</u></b>:
+                             <blockquote><font face="courier" size="2"><nobr>
+                             $INCLUDE "RAPIDQ.INC"<br>
+                             DIM File1 AS QFILESTREAM<br>
+                             DIM B AS BYTE, I AS INTEGER<br><br>
+                             File1.Open("test.txt", fmOpenRead)<br>
+                             File1.Read(B)     '-- Read a byte<br>
+                             File1.Read(I)     '-- Read an integer<br>                             
+                             </nobr></font></blockquote>
+               </TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>ReadLine</TD><TD>FUNCTION () AS STRING</TD><TD>Reads an entire line, supports UNIX files</TD><TD NOWRAP>0</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>ReadNum</TD><TD>FUNCTION (Num_Type) AS DOUBLE</TD><TD>Returns number&nbsp;
+&nbsp; '-- ie. PRINT File.ReadNum(Num_SINGLE)<br>
+&nbsp;<p>
+
+    Num_Type can be next <br>
+    CONST Num_BYTE = 1 <br>
+    CONST Num_SHORT = 2<br>
+    CONST Num_WORD = 3<br>
+    CONST Num_LONG = 4<br>
+    CONST Num_DWORD = 5<br>
+    CONST Num_SINGLE = 6<br>
+    CONST Num_DOUBLE = 8<br>
+&nbsp;</TD><TD NOWRAP>1</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>ReadBinStr</TD><TD>FUNCTION (n) AS STRING</TD><TD>Read n bytes, returns the binary string</TD><TD NOWRAP>1</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>ReadStr</TD><TD>FUNCTION (n) AS STRING</TD><TD>Read n bytes, returns the text string</TD><TD NOWRAP>1</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD><a name="ReadUDT">ReadUDT</a></TD><TD>SUB (MyType)</TD><TD>Read and store data in a MyType structure</TD><TD NOWRAP>1</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD><a name="SaveArray">SaveArray</a></TD><TD>SUB (Array(), NumElements&)</TD><TD>Save array</TD><TD NOWRAP>2</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Seek</TD><TD>SUB (Position%, From%)</TD><TD>Seek to Position%, From% see RAPIDQ.INC<br>
+    '-- Offsets<br>
+    CONST soFromBeginning = 0 '-- Seek (offset) from Beginning<br>
+    CONST soFromCurrent = 1 '-- Seek (offset) from Current position<br>
+    CONST soFromEnd = 2 '-- Seek (offset) from End<br>
+&nbsp;</TD><TD NOWRAP>2</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Write</TD><TD>SUB (variable)</TD><TD>Generic Write, determines the storage space and saves data to file</TD><TD NOWRAP>1</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>WriteLine</TD><TD>SUB (S AS STRING)</TD><TD>Writes string with CR+LF</TD><TD NOWRAP>1</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>WriteNum</TD><TD>SUB (number, bytes%)</TD><TD>Writes a number to file</TD><TD NOWRAP>2</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>WriteBinStr</TD><TD>SUB (string, bytes%)</TD><TD>Writes a binary string to file</TD><TD NOWRAP>2</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>WriteStr</TD><TD>SUB (string, bytes%)</TD><TD>Writes a text string to file (fast)</TD><TD NOWRAP>2</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD><a name="WriteUDT">WriteUDT</a></TD><TD>SUB (MyType)</TD><TD>Write data stored in a MyType structure</TD><TD NOWRAP>1</TD><TD>WXG</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QFileStream Examples</B></FONT>
+
+<PRE>  $INCLUDE "RAPIDQ.INC"
+
+  DIM File AS QFileStream
+
+  File.Open("test.bas", fmOpenRead)
+  S$ = File.ReadStr(File.Size)         '' Read entire file
+  PRINT S$                             '' print it
+  File.Close
+
+'------------------------------------------------------
+  $INCLUDE "RAPIDQ.INC"
+
+  TYPE MyType
+      Name AS STRING*30
+      Phone AS STRING*8
+      Age AS INTEGER
+  END TYPE
+
+  DIM Person AS MyType
+      Person.Name = "Joe"
+      Person.Phone = "555-5555"
+
+  DIM File AS QFileStream
+      File.Open("test", fmCreate)
+      File.WriteUDT(Person)
+
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qfilelistbox.html" tppabs="http://www.basicguru.com/abc/rapidq/docs/qfilelistbox.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html" tppabs="http://www.basicguru.com/abc/rapidq/docs/contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qfont.html" tppabs="http://www.basicguru.com/abc/rapidq/docs/qfont.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>  ></TR></TABLE></BODY></a></HTML>    

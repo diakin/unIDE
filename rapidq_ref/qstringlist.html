@@ -1,0 +1,118 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QSTRINGLIST</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QSTRINGLIST</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QSTRINGLIST Component</H1>
+<DD>QStringList is a component to store and manipulate a list of strings.
+<p>
+
+<a name="1">
+<FONT SIZE = +1><B>QStringList Properties</B></FONT> </p>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR><TD>Duplicates</TD><TD>INTEGER</TD><TD>RW</TD><TD>dupIgnore</TD><TD>W</TD></TR>
+  <TR><TD>Item</TD><TD>ARRAY of STRING</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD>ItemCount</TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD>Sorted</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>W</TD></TR>
+  <TR><TD>Text</TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+</TABLE>
+<br>
+
+<a name="2">
+<FONT SIZE = +1><B>QStringList Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR><TD>AddItems</TD><TD>SUBI</TD><TD>Add strings to stringlist</TD><TD>STRINGs, Infinite</TD><TD>WXG</TD></TR>
+  <TR><TD>AddList</TD><TD>SUB (List AS QStringList)</TD><TD>Append another stringlist</TD><TD>1</TD><TD>WXG</TD></TR>
+  <TR><TD>Build</TD><TD>FUNCTION Build(Start%, End%, Delim$) AS STRING</TD><TD>Returns a deliminated string</TD><TD>3</TD><TD>WXG</TD></TR>
+  <TR><TD>Clear</TD><TD>SUB</TD><TD>Clears entire stringlist</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR><TD>DelItems</TD><TD>SUBI</TD><TD>Delete strings by their index</TD><TD>Index #s, Infinite</TD><TD>WXG</TD></TR>
+  <TR><TD>Exchange</TD><TD>SUB (Index1%, Index2%)</TD><TD>Swap strings at Index1% with Index2%</TD><TD>2</TD><TD>WXG</TD></TR>
+  <TR><TD bgcolor="#FFCCCC">Find</TD><TD bgcolor="#FFCCCC">Function (string$) as integer</TD>
+    <TD bgcolor="#FFCCCC">Search string$ in stringlist. Return index of string$</TD>
+    <TD bgcolor="#FFCCCC">1</TD><TD>&nbsp;</TD></TR>
+  <TR><TD>IndexOf</TD><TD>FUNCTION IndexOf%(String$)</TD><TD>Return Index number of string</TD><TD>1</TD><TD>WXG</TD></TR>
+  <TR><TD>InsertItem</TD><TD>SUB (Index%, String$)</TD><TD>Insert string at Index%</TD><TD>2</TD><TD>WXG</TD></TR>
+  <TR><TD>LoadFromFile</TD><TD>SUB (File$)</TD><TD>Load text file in stringlist</TD><TD>1</TD><TD>WXG</TD></TR>
+  <TR><TD>LoadFromStream</TD><TD>SUB (File AS QStream)</TD><TD>Load file/memorystream in stringlist</TD><TD>1</TD><TD>W</TD></TR>
+  <TR><TD>Parse</TD><TD>FUNCTION Parse(Source$, Delim$) AS LONG</TD><TD>Separates strings by the Delim$ and stores each item in the list</TD><TD>2</TD><TD>WXG</TD></TR>
+  <TR><TD>SaveToFile</TD><TD>SUB (File$)</TD><TD>Saves stringlist to file</TD><TD>1</TD><TD>WXG</TD></TR>
+  <TR><TD>SaveToStream</TD><TD>SUB (File AS QStream)</TD><TD>Load file/memorystream in stringlist</TD><TD>1</TD><TD>W</TD></TR>
+  <TR><TD>Sort</TD><TD>SUB</TD><TD>Sort the stringlist</TD><TD>0</TD><TD>WXG</TD></TR>
+</TABLE>
+<br>
+
+<a name="3">
+<FONT SIZE = +1><B>QStringList Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD>
+  </TR>
+ </TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QStringList Examples</B></FONT>
+
+<PRE>  DIM StringList1 AS QStringList
+  DIM StringList2 AS QStringList
+
+  StringList1.AddItems "Oranges","Apples"
+  StringList2.AddItems "Byte","Word","Integer"
+  StringList1.AddList(StringList2)
+  StringList1.Sort
+
+  ?StringList1.Text
+  ?StringList1.Item(3)
+  ?StringList1.IndexOf("Word")
+  ?StringList1.IndexOf("hi")
+
+  '-------------------------------------------------------
+
+  DIM StringList AS QSTRINGLIST
+
+  StringList.Parse("James:Brown:555-3454:House",":")
+
+  PRINT StringList.Build(0,StringList.ItemCount-1,",")
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qstringgrid.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qtabcontrol.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      D></TR></TABLE></BODY></a></HTML>
