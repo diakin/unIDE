@@ -35,7 +35,7 @@ DIM TickCount AS LONG
 DIM TickTimer AS QTIMER
 
 DECLARE SUB StopPoint (StateText AS STRING)
-DECLARE FUNCTION ReadCommand AS STRING
+DECLARE FUNCTION ReadCommand() AS STRING
 DECLARE SUB TickTimerOver
 DECLARE SUB StopButtonClick
 DECLARE SUB BusyButtonClick
@@ -96,7 +96,7 @@ SUB StopPoint (StateText AS STRING)
   END IF
 END SUB
 
-FUNCTION ReadCommand AS STRING
+FUNCTION ReadCommand() AS STRING
   DIM CmdFile AS QFILESTREAM
   ReadCommand = "(no command file)"
   IF FILEEXISTS("RqDbgT2.cmd") THEN
