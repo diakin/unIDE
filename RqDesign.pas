@@ -43,6 +43,19 @@ type
     FBorderStyle: Integer;
     FAlignment: Integer;
     FDisabled: Boolean;
+    // QTABCONTROL: названия вкладок (через #10), выбранная, размеры,
+    // цвет невыбранных (clNone - как у самого компонента)
+    FTabs: string;
+    FTabIndex: Integer;
+    FTabHeight: Integer;
+    FTabWidth: Integer;
+    FTabColor: TColor;
+    // QSCROLLBAR: sbHorizontal=0, sbVertical=1; положение бегунка
+    FSbKind: Integer;
+    FSbPosition: Integer;
+    FSbMin: Integer;
+    FSbMax: Integer;
+    FSbPageSize: Integer;
     procedure SetRqClass(const AValue: string);
     procedure SetText(const AValue: string);
     procedure SetChecked(AValue: Boolean);
@@ -51,6 +64,14 @@ type
     procedure SetBorderStyle(AValue: Integer);
     procedure SetAlignment(AValue: Integer);
     procedure SetDisabled(AValue: Boolean);
+    procedure SetTabs(const AValue: string);
+    function GetTabInt(AIndex: Integer): Integer;
+    procedure SetTabInt(AIndex: Integer; AValue: Integer);
+    procedure SetTabColor(AValue: TColor);
+    function GetSbInt(AIndex: Integer): Integer;
+    procedure SetSbInt(AIndex: Integer; AValue: Integer);
+    procedure PaintTabs(const AClientBox: TRect);
+    procedure PaintScrollBar(const AClientBox: TRect);
     procedure CMTextChanged(var Message: TMessage); message CM_TEXTCHANGED;
     procedure DrawCaption(ARect: TRect; AFlags: Cardinal);
     procedure DrawNameTag(ARect: TRect);
@@ -83,6 +104,22 @@ type
     // Enabled = 0 у компонента: рисуется серым. Сам контрол остаётся
     // включённым - иначе щелчки по нему уходили бы родителю.
     property RqDisabled: Boolean read FDisabled write SetDisabled default False;
+    property RqTabs: string read FTabs write SetTabs;
+    property RqTabIndex: Integer index 0 read GetTabInt write SetTabInt
+      default 0;
+    property RqTabHeight: Integer index 1 read GetTabInt write SetTabInt
+      default 0;
+    property RqTabWidth: Integer index 2 read GetTabInt write SetTabInt
+      default 0;
+    property RqTabColor: TColor read FTabColor write SetTabColor
+      default clNone;
+    property RqKind: Integer index 0 read GetSbInt write SetSbInt default 0;
+    property RqPosition: Integer index 1 read GetSbInt write SetSbInt
+      default 0;
+    property RqMin: Integer index 2 read GetSbInt write SetSbInt default 0;
+    property RqMax: Integer index 3 read GetSbInt write SetSbInt default 100;
+    property RqPageSize: Integer index 4 read GetSbInt write SetSbInt
+      default 10;
   end;
 
   // Невизуальный компонент RapidQ - значком конструктора
@@ -382,6 +419,9 @@ begin
   FBevelInner := 0;
   FBorderStyle := 1;
   FAlignment := 0;
+  FTabColor := clNone;
+  FSbMax := 100;
+  FSbPageSize := 10;
 end;
 
 procedure TRqShape.SetRqClass(const AValue: string);
@@ -447,6 +487,196 @@ procedure TRqShape.SetDisabled(AValue: Boolean);
 begin
   FDisabled := AValue;
   Invalidate;
+end;
+
+procedure TRqShape.SetTabs(const AValue: string);
+begin
+  FTabs := AValue;
+  Invalidate;
+end;
+
+function TRqShape.GetTabInt(AIndex: Integer): Integer;
+begin
+  case AIndex of
+    0: Result := FTabIndex;
+    1: Result := FTabHeight;
+  else
+    Result := FTabWidth;
+  end;
+end;
+
+procedure TRqShape.SetTabInt(AIndex: Integer; AValue: Integer);
+begin
+  case AIndex of
+    0: FTabIndex := AValue;
+    1: FTabHeight := AValue;
+    2: FTabWidth := AValue;
+  end;
+  Invalidate;
+end;
+
+procedure TRqShape.SetTabColor(AValue: TColor);
+begin
+  FTabColor := AValue;
+  Invalidate;
+end;
+
+function TRqShape.GetSbInt(AIndex: Integer): Integer;
+begin
+  case AIndex of
+    0: Result := FSbKind;
+    1: Result := FSbPosition;
+    2: Result := FSbMin;
+    3: Result := FSbMax;
+  else
+    Result := FSbPageSize;
+  end;
+end;
+
+procedure TRqShape.SetSbInt(AIndex: Integer; AValue: Integer);
+begin
+  case AIndex of
+    0: FSbKind := AValue;
+    1: FSbPosition := AValue;
+    2: FSbMin := AValue;
+    3: FSbMax := AValue;
+    4: FSbPageSize := AValue;
+  end;
+  Invalidate;
+end;
+
+// Вкладки QTABCONTROL: ряд ярлыков сверху, выбранный - выше и цветом
+// компонента, под ними - рамка тела. Названий нет - одна вкладка "Tab".
+procedure TRqShape.PaintTabs(const AClientBox: TRect);
+var
+  Names: TStringList;
+  NameIdx, TabLeft, TabWide, TabHigh: Integer;
+  Body, TabBox: TRect;
+  TabName: string;
+begin
+  Canvas.Font := Font;
+  TabHigh := FTabHeight;
+  if TabHigh <= 0 then
+    TabHigh := Canvas.TextHeight('Wg') + 6;
+  Body := AClientBox;
+  Body.Top := Body.Top + TabHigh;
+  DrawEdge(Canvas.Handle, Body, EDGE_RAISED, BF_RECT);
+  Names := TStringList.Create;
+  try
+    Names.Text := FTabs;
+    if Names.Count = 0 then
+      Names.Add('Tab');
+    SetBkMode(Canvas.Handle, TRANSPARENT);
+    TabLeft := AClientBox.Left + 2;
+    for NameIdx := 0 to Names.Count - 1 do
+    begin
+      TabName := Names[NameIdx];
+      TabWide := FTabWidth;
+      if TabWide <= 0 then
+        TabWide := Canvas.TextWidth(TabName) + 16;
+      if NameIdx = FTabIndex then
+      begin
+        // Выбранная - на 2 точки шире и выше, сливается с телом
+        TabBox := Rect(TabLeft - 2, AClientBox.Top, TabLeft + TabWide + 2,
+                       AClientBox.Top + TabHigh + 1);
+        Canvas.Brush.Color := Color;
+      end
+      else
+      begin
+        TabBox := Rect(TabLeft, AClientBox.Top + 2, TabLeft + TabWide,
+                       AClientBox.Top + TabHigh);
+        if FTabColor <> clNone then
+          Canvas.Brush.Color := FTabColor
+        else
+          Canvas.Brush.Color := Color;
+      end;
+      Canvas.FillRect(TabBox);
+      DrawEdge(Canvas.Handle, TabBox, EDGE_RAISED,
+               BF_LEFT or BF_TOP or BF_RIGHT or BF_SOFT);
+      DrawText(Canvas.Handle, PChar(TabName), Length(TabName), TabBox,
+               DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX or
+               DT_END_ELLIPSIS);
+      Inc(TabLeft, TabWide);
+      if TabLeft >= AClientBox.Right then
+        Break;
+    end;
+  finally
+    Names.Free;
+  end;
+end;
+
+// QSCROLLBAR: стрелки по краям, поле и бегунок, как у полосы Windows.
+// Направление - RqKind (свойство Kind), а не соотношение сторон.
+procedure TRqShape.PaintScrollBar(const AClientBox: TRect);
+var
+  Vertical: Boolean;
+  ArrowSize, TrackStart, TrackLen, ThumbLen, ThumbStart, Range, Page,
+    Offset: Integer;
+  FirstArrow, LastArrow, Thumb: TRect;
+begin
+  Vertical := FSbKind = 1;
+  Canvas.Brush.Color := clScrollBar;
+  Canvas.FillRect(AClientBox);
+  if Vertical then
+  begin
+    ArrowSize := AClientBox.Right - AClientBox.Left;
+    if ArrowSize > (AClientBox.Bottom - AClientBox.Top) div 2 then
+      ArrowSize := (AClientBox.Bottom - AClientBox.Top) div 2;
+    FirstArrow := Rect(AClientBox.Left, AClientBox.Top, AClientBox.Right,
+                       AClientBox.Top + ArrowSize);
+    LastArrow := Rect(AClientBox.Left, AClientBox.Bottom - ArrowSize,
+                      AClientBox.Right, AClientBox.Bottom);
+    DrawFrameControl(Canvas.Handle, FirstArrow, DFC_SCROLL, DFCS_SCROLLUP);
+    DrawFrameControl(Canvas.Handle, LastArrow, DFC_SCROLL, DFCS_SCROLLDOWN);
+    TrackStart := FirstArrow.Bottom;
+    TrackLen := LastArrow.Top - FirstArrow.Bottom;
+  end
+  else
+  begin
+    ArrowSize := AClientBox.Bottom - AClientBox.Top;
+    if ArrowSize > (AClientBox.Right - AClientBox.Left) div 2 then
+      ArrowSize := (AClientBox.Right - AClientBox.Left) div 2;
+    FirstArrow := Rect(AClientBox.Left, AClientBox.Top,
+                       AClientBox.Left + ArrowSize, AClientBox.Bottom);
+    LastArrow := Rect(AClientBox.Right - ArrowSize, AClientBox.Top,
+                      AClientBox.Right, AClientBox.Bottom);
+    DrawFrameControl(Canvas.Handle, FirstArrow, DFC_SCROLL, DFCS_SCROLLLEFT);
+    DrawFrameControl(Canvas.Handle, LastArrow, DFC_SCROLL, DFCS_SCROLLRIGHT);
+    TrackStart := FirstArrow.Right;
+    TrackLen := LastArrow.Left - FirstArrow.Right;
+  end;
+  if TrackLen < 8 then
+    Exit;
+  // Бегунок: длина - доля страницы в диапазоне, место - Position
+  Range := FSbMax - FSbMin;
+  if Range < 1 then
+    Range := 1;
+  Page := FSbPageSize;
+  if Page < 0 then
+    Page := 0;
+  if Page > 0 then
+    ThumbLen := TrackLen * Page div (Range + Page)
+  else
+    ThumbLen := ArrowSize;
+  if ThumbLen < 8 then
+    ThumbLen := 8;
+  if ThumbLen > TrackLen then
+    ThumbLen := TrackLen;
+  Offset := FSbPosition - FSbMin;
+  if Offset < 0 then
+    Offset := 0;
+  if Offset > Range then
+    Offset := Range;
+  ThumbStart := TrackStart + (TrackLen - ThumbLen) * Offset div Range;
+  if Vertical then
+    Thumb := Rect(AClientBox.Left, ThumbStart, AClientBox.Right,
+                  ThumbStart + ThumbLen)
+  else
+    Thumb := Rect(ThumbStart, AClientBox.Top, ThumbStart + ThumbLen,
+                  AClientBox.Bottom);
+  Canvas.Brush.Color := clBtnFace;
+  Canvas.FillRect(Thumb);
+  DrawEdge(Canvas.Handle, Thumb, EDGE_RAISED, BF_RECT);
 end;
 
 procedure TRqShape.CMTextChanged(var Message: TMessage);
@@ -639,25 +869,7 @@ begin
     rkScrollBox:
       DrawEdge(Canvas.Handle, ClientBox, EDGE_SUNKEN, BF_RECT);
     rkScrollBar:
-      begin
-        if Width >= Height then
-        begin
-          DrawFrameControl(Canvas.Handle,
-                           Rect(0, 0, Height, Height), DFC_SCROLL,
-                           DFCS_SCROLLLEFT);
-          DrawFrameControl(Canvas.Handle,
-                           Rect(Width - Height, 0, Width, Height), DFC_SCROLL,
-                           DFCS_SCROLLRIGHT);
-        end
-        else
-        begin
-          DrawFrameControl(Canvas.Handle, Rect(0, 0, Width, Width),
-                           DFC_SCROLL, DFCS_SCROLLUP);
-          DrawFrameControl(Canvas.Handle,
-                           Rect(0, Height - Width, Width, Height), DFC_SCROLL,
-                           DFCS_SCROLLDOWN);
-        end;
-      end;
+      PaintScrollBar(ClientBox);
     rkTrack:
       begin
         MidY := ClientBox.Bottom div 2;
@@ -695,19 +907,7 @@ begin
                     DT_END_ELLIPSIS);
       end;
     rkTab:
-      begin
-        Canvas.Font := Font;
-        TextHeight := Canvas.TextHeight('Wg') + 6;
-        Part := ClientBox;
-        Part.Top := Part.Top + TextHeight - 2;
-        DrawEdge(Canvas.Handle, Part, EDGE_RAISED, BF_RECT);
-        Part := Rect(2, 0, 2 + Canvas.TextWidth('Tab') + 16, TextHeight);
-        DrawEdge(Canvas.Handle, Part, EDGE_RAISED,
-                 BF_LEFT or BF_TOP or BF_RIGHT or BF_SOFT);
-        SetBkMode(Canvas.Handle, TRANSPARENT);
-        DrawText(Canvas.Handle, 'Tab', 3, Part,
-                 DT_CENTER or DT_VCENTER or DT_SINGLELINE);
-      end;
+      PaintTabs(ClientBox);
     rkSplitter:
       begin
         Canvas.Brush.Color := clBtnShadow;

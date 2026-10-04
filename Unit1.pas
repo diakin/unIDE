@@ -21511,6 +21511,140 @@ end;
 //      строится заново, если её текст .dfm изменился (RqDsgSync).
 // ---------------------------------------------------------------------------
 
+// Названия вкладок QTABCONTROL ANode через #10, по тексту ALines:
+// AddTabs "a", "b" и Tab(n) = "x" в его блоке CREATE (сам блок, не
+// вложенные), Имя.AddTabs и Имя.Tab(n) = в остальном тексте - по порядку
+// строк. Название-выражение - "?". Нет ни одного - ''.
+function RqDsgTabNames(ALines: TStrings; ANode: TDfmNode): string;
+var
+  Names, Parts: TStringList;
+  LineIdx, PartIdx, Depth, WordEnd: Integer;
+  Stmt, Head, Rest, Prefix, Tail: string;
+  InBlock: Boolean;
+
+  // Аргументы AddTabs: "a", "b" или ("a", "b")
+  procedure AddArgs(const AArgs: string);
+  var
+    Args: string;
+    CharIdx, StartAt: Integer;
+    InQuote: Boolean;
+
+    procedure TakeArg(AEnd: Integer);
+    var
+      Arg, ArgText: string;
+    begin
+      Arg := Trim(Copy(Args, StartAt, AEnd - StartAt));
+      if Arg = '' then
+        Exit;
+      if RapidQUnquote(Arg, ArgText) then
+        Names.Add(ArgText)
+      else
+        Names.Add('?');
+    end;
+
+  begin
+    Args := Trim(AArgs);
+    if (Length(Args) >= 2) and (Args[1] = '(') and
+       (Args[Length(Args)] = ')') then
+      Args := Copy(Args, 2, Length(Args) - 2);
+    InQuote := False;
+    StartAt := 1;
+    for CharIdx := 1 to Length(Args) do
+      if Args[CharIdx] = '"' then
+        InQuote := not InQuote
+      else if (Args[CharIdx] = ',') and not InQuote then
+      begin
+        TakeArg(CharIdx);
+        StartAt := CharIdx + 1;
+      end;
+    TakeArg(Length(Args) + 1);
+  end;
+
+  // Tab(n) = "x": ARest - то, что после Tab
+  procedure SetTab(const ARest: string);
+  var
+    CloseAt, TabNum, Code: Integer;
+    After, TabText: string;
+  begin
+    CloseAt := Pos(')', ARest);
+    if (Copy(ARest, 1, 1) <> '(') or (CloseAt = 0) then
+      Exit;
+    Val(Trim(Copy(ARest, 2, CloseAt - 2)), TabNum, Code);
+    if (Code <> 0) or (TabNum < 0) or (TabNum > 255) then
+      Exit;
+    After := Trim(Copy(ARest, CloseAt + 1, MaxInt));
+    if Copy(After, 1, 1) <> '=' then
+      Exit;
+    if not RapidQUnquote(Trim(Copy(After, 2, MaxInt)), TabText) then
+      TabText := '?';
+    while Names.Count <= TabNum do
+      Names.Add('');
+    Names[TabNum] := TabText;
+  end;
+
+begin
+  Result := '';
+  Names := TStringList.Create;
+  Parts := TStringList.Create;
+  try
+    Prefix := UpperCase(ANode.Name) + '.';
+    Depth := 0;
+    for LineIdx := 0 to ALines.Count - 1 do
+    begin
+      InBlock := (LineIdx >= ANode.CreateLine) and (LineIdx <= ANode.EndLine);
+      if not InBlock and
+         (Pos(Prefix, UpperCase(ALines[LineIdx])) = 0) then
+        Continue;
+      RapidQSplitStatements(ALines[LineIdx], Parts);
+      for PartIdx := 0 to Parts.Count - 1 do
+      begin
+        Stmt := Parts[PartIdx];
+        WordEnd := 1;
+        while (WordEnd <= Length(Stmt)) and
+              (Stmt[WordEnd] in ['A'..'Z', 'a'..'z', '0'..'9', '_', '.']) do
+          Inc(WordEnd);
+        Head := UpperCase(Copy(Stmt, 1, WordEnd - 1));
+        Rest := Trim(Copy(Stmt, WordEnd, MaxInt));
+        if Head = 'REM' then
+          Break;
+        if InBlock then
+        begin
+          // Глубина: 1 - сам блок, больше - вложенные CREATE
+          if Head = 'CREATE' then
+          begin
+            Inc(Depth);
+            Continue;
+          end;
+          if (Head = 'END') and (RapidQFirstWord(Rest, Tail) = 'CREATE') then
+          begin
+            Dec(Depth);
+            Continue;
+          end;
+          if Depth <> 1 then
+            Continue;
+          if Head = 'ADDTABS' then
+            AddArgs(Rest)
+          else if Head = 'TAB' then
+            SetTab(Rest);
+        end
+        else if Head = Prefix + 'ADDTABS' then
+          AddArgs(Rest)
+        else if Head = Prefix + 'TAB' then
+          SetTab(Rest);
+      end;
+    end;
+    for LineIdx := 0 to Names.Count - 1 do
+    begin
+      if LineIdx > 0 then
+        Result := Result + #10;
+      Result := Result + Names[LineIdx];
+    end;
+  finally
+    Parts.Free;
+    Names.Free;
+  end;
+end;
+
 // Узел с именем AName среди узлов инспектора; nil - нет
 function TForm1.RqDsgNodeByName(const AName: string): TObject;
 var
@@ -21629,6 +21763,7 @@ const
 var
   Output, NonVisual, Seen: TStringList;
   Target: TStringList;    // куда пишет Put: Output или (меню) NonVisual
+  TextLines: TStringList; // текст файла: вызовы AddTabs вне свойств
   MainMenuName: string;
   NonVisCount: Integer;
 
@@ -21796,7 +21931,7 @@ var
     ChildIdx, Source, Num: Integer;
     CodeSet: Boolean;
     Child: TDfmNode;
-    Inner: string;
+    Inner, TabNames: string;
     Kind: TRqKind;
   begin
     Inner := AIndent + '  ';
@@ -21824,6 +21959,24 @@ var
     PutNum(ANode, Inner, 'BevelInner', 'RqBevelInner');
     PutNum(ANode, Inner, 'BorderStyle', 'RqBorderStyle');
     PutNum(ANode, Inner, 'Alignment', 'RqAlignment');
+    if Kind = rkTab then
+    begin
+      TabNames := RqDsgTabNames(TextLines, ANode);
+      if TabNames <> '' then
+        Put(Inner, 'RqTabs = ' + RqDsgDfmString(TabNames));
+      PutNum(ANode, Inner, 'TabIndex', 'RqTabIndex');
+      PutNum(ANode, Inner, 'TabHeight', 'RqTabHeight');
+      PutNum(ANode, Inner, 'TabWidth', 'RqTabWidth');
+      PutNum(ANode, Inner, 'TabInactiveColor', 'RqTabColor');
+    end
+    else if Kind = rkScrollBar then
+    begin
+      PutNum(ANode, Inner, 'Kind', 'RqKind');
+      PutNum(ANode, Inner, 'Position', 'RqPosition');
+      PutNum(ANode, Inner, 'Min', 'RqMin');
+      PutNum(ANode, Inner, 'Max', 'RqMax');
+      PutNum(ANode, Inner, 'PageSize', 'RqPageSize');
+    end;
     Num := RqDsgNum(ANode, 'Enabled', 1, Source, CodeSet);
     if (Source in [1, 2]) and (Num = 0) then
       Put(Inner, 'RqDisabled = True');
@@ -21855,7 +22008,9 @@ begin
   NonVisual := TStringList.Create;
   Seen := TStringList.Create;
   RootLines := TStringList.Create;
+  TextLines := TStringList.Create;
   try
+    TextLines.Text := GetEditorTextCR;
     Target := Output;
     MainMenuName := '';
     NonVisCount := 0;
@@ -21901,6 +22056,7 @@ begin
     Put('', 'end');
     Result := Output.Text;
   finally
+    TextLines.Free;
     RootLines.Free;
     Seen.Free;
     NonVisual.Free;
