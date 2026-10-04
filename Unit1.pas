@@ -968,7 +968,15 @@ type
     // Обработчик выбранного пункта меню своей формы: к нему переходит
     // редактор после Click (WMLiveMenuJump)
     FLiveJumpMethod: string;
-    FRunProcess: THandle;      // запущенная программа, 0 - не следим
+    // Программы, запущенные из среды: путь exe -> дескриптор процесса
+    // (Objects). У каждой вкладки своя цель сборки, и состояние кнопок
+    // запуска - по программе цели активной вкладки (RunHere).
+    FRunList: TStringList;
+    // exe цели активной вкладки (RunTargetExe), запомненный: AppIdle
+    // спрашивает часто, а цель RapidQ читает файлы с диска
+    FRunExeCache: string;
+    FRunExeKey: string;
+    FRunExeTick: Cardinal;
     // Отладчик (DbgEngine): точки останова всех файлов (TBreakMark),
     // сеанс отладки и строка, где программа остановилась
     FBreakMarks: TList;
@@ -2292,6 +2300,11 @@ type
     procedure ApplyLangMode;
     procedure DsgHideForRun;
     procedure DsgShowAfterRun;
+    function  RunTargetExe: string;
+    function  CurRunExe: string;
+    function  RunHandleOf(const AExe: string): THandle;
+    function  RunHere: THandle;
+    procedure RunAdd(const AExe: string; AProcess: THandle);
     procedure LogEditDblClick(Sender: TObject);
     procedure LogEditClick(Sender: TObject);
     procedure SaveCompileLog(const AFile: string);
@@ -11553,7 +11566,7 @@ begin
 
   // Программа прежнего проекта, если ещё запущена, работает дальше: её
   // окончание по-прежнему отслеживает RunTimerTick
-  if FRunProcess <> 0 then
+  if (FRunList <> nil) and (FRunList.Count > 0) then
     LogComp('Программа прежнего проекта ещё работает');
 end;
 
@@ -17357,10 +17370,11 @@ begin
   FreeAndNil(UiGlyphSeen);
   ProbeClear;
   FreeAndNil(FProbeSnaps);
-  if FRunProcess <> 0 then
+  if FRunList <> nil then
   begin
-    CloseHandle(FRunProcess);
-    FRunProcess := 0;
+    for I := 0 to FRunList.Count - 1 do
+      CloseHandle(THandle(Pointer(FRunList.Objects[I])));
+    FreeAndNil(FRunList);
   end;
   // Программа под отладчиком снимается вместе со средой
   FreeAndNil(FDbgSession);
@@ -41914,7 +41928,7 @@ begin
   if CompileProject then
     RunTarget;
   // Сборка не прошла или программа не запустилась - форма обратно
-  if (FRunProcess = 0) and (FDbgSession = nil) then
+  if (RunHere = 0) and (FDbgSession = nil) then
     DsgShowAfterRun;
 end;
 
@@ -41941,20 +41955,104 @@ begin
     FDesigner.ShowForm;   // уже нарисованной, как при переключении вида
 end;
 
-// Раз в полсекунды: закрылась ли программа, запущенная из среды
+// Раз в полсекунды: какие из программ, запущенных из среды, закрылись.
+// Закрылись все - таймер стоит, форма конструктора обратно.
 procedure TForm1.RunTimerTick(Sender: TObject);
+var
+  RunIdx: Integer;
+  Process: THandle;
 begin
-  if FRunProcess = 0 then
-  begin
-    FRunTimer.Enabled := False;
+  if FRunList <> nil then
+    for RunIdx := FRunList.Count - 1 downto 0 do
+    begin
+      Process := THandle(Pointer(FRunList.Objects[RunIdx]));
+      if WaitForSingleObject(Process, 0) = WAIT_TIMEOUT then
+        Continue; // ещё работает
+      CloseHandle(Process);
+      FRunList.Delete(RunIdx);
+    end;
+  if (FRunList <> nil) and (FRunList.Count > 0) then
     Exit;
-  end;
-  if WaitForSingleObject(FRunProcess, 0) = WAIT_TIMEOUT then
-    Exit; // ещё работает
-  CloseHandle(FRunProcess);
-  FRunProcess := 0;
   FRunTimer.Enabled := False;
   DsgShowAfterRun;
+end;
+
+// exe цели активной вкладки - то, что запустит Run: для RapidQ - рядом с
+// главным .bas (RapidQTargetBas), для Delphi - DelphiExeOf. Без записи
+// цели и без сообщений в лог. Цели нет - пусто.
+function TForm1.RunTargetExe: string;
+var
+  TargetSrc: string;
+begin
+  Result := '';
+  if BuildIsRapidQ then
+  begin
+    TargetSrc := RapidQTargetBas(False);
+    if TargetSrc <> '' then
+      Result := ChangeFileExt(TargetSrc, '.exe');
+  end
+  else
+  begin
+    TargetSrc := DelphiTargetDpr;
+    if TargetSrc <> '' then
+      Result := DelphiExeOf(TargetSrc);
+  end;
+  if Result <> '' then
+    Result := ExpandFileName(Result);
+end;
+
+// RunTargetExe, запомненный для активной вкладки: пересчёт при смене
+// вкладки и не чаще раза в секунду (цель проекта могла смениться)
+function TForm1.CurRunExe: string;
+const
+  RecheckMs = 1000;
+begin
+  if (FRunExeKey <> FCurrentFileName) or
+     (GetTickCount - FRunExeTick >= RecheckMs) then
+  begin
+    FRunExeKey := FCurrentFileName;
+    FRunExeTick := GetTickCount;
+    FRunExeCache := RunTargetExe;
+  end;
+  Result := FRunExeCache;
+end;
+
+// Дескриптор запущенной из среды программы AExe, 0 - не запущена
+function TForm1.RunHandleOf(const AExe: string): THandle;
+var
+  RunIdx: Integer;
+begin
+  Result := 0;
+  if (FRunList = nil) or (AExe = '') then
+    Exit;
+  RunIdx := FRunList.IndexOf(AExe);
+  if RunIdx >= 0 then
+    Result := THandle(Pointer(FRunList.Objects[RunIdx]));
+end;
+
+// Программа цели активной вкладки, если она запущена из среды
+function TForm1.RunHere: THandle;
+begin
+  Result := RunHandleOf(CurRunExe);
+end;
+
+// Запомнить запущенную программу. Тот же exe, за которым ещё следили, -
+// прежний дескриптор закрывается (сама прежняя программа не снимается).
+procedure TForm1.RunAdd(const AExe: string; AProcess: THandle);
+var
+  RunIdx: Integer;
+begin
+  if FRunList = nil then
+    FRunList := TStringList.Create;
+  RunIdx := FRunList.IndexOf(AExe);
+  if RunIdx >= 0 then
+  begin
+    CloseHandle(THandle(Pointer(FRunList.Objects[RunIdx])));
+    FRunList.Objects[RunIdx] := TObject(Pointer(AProcess));
+  end
+  else
+    FRunList.AddObject(AExe, TObject(Pointer(AProcess)));
+  FRunTimer.Enabled := True;
 end;
 
 // Program pause: остановить программу под отладчиком там, где она сейчас
@@ -41964,7 +42062,7 @@ procedure TForm1.ProgramPauseClick(Sender: TObject);
 begin
   if FDbgSession = nil then
   begin
-    if FRunProcess <> 0 then
+    if RunHere <> 0 then
       ShowMessage('27310:Программа запущена без отладчика - паузу сделать ' +
       'нельзя. Для паузы её нужно запустить под отладчиком ' +
       '(F7, F8 или с точкой останова).');
@@ -41978,6 +42076,8 @@ end;
 
 // Program reset: остановить программу, запущенную из среды
 procedure TForm1.ProgramResetClick(Sender: TObject);
+var
+  Process: THandle;
 begin
   // Под отладчиком: процесс снимается, конец сеанса - в DbgExited
   if FDbgSession <> nil then
@@ -41990,10 +42090,13 @@ begin
     DbgClearExec;
     Exit;
   end;
-  if FRunProcess = 0 then
+  // Снимается программа цели активной вкладки; другие запущенные из
+  // среды программы работают дальше
+  Process := RunHere;
+  if Process = 0 then
     Exit;
-  TerminateProcess(FRunProcess, 1);
-  LogComp('--- Программа остановлена (Program reset)');
+  TerminateProcess(Process, 1);
+  LogComp('--- Программа остановлена (Program reset): ' + CurRunExe);
   RunTimerTick(nil);   // дескриптор закрыть, форму конструктора вернуть
 end;
 
@@ -42024,7 +42127,9 @@ begin
     if RapidQSnapStale <> (FObjSnapBtn.Caption = RqSnapCapStale) then
       RqSnapBtnState;
   end;
-  Running := (FRunProcess <> 0) or (FDbgSession <> nil);
+  // Запущена ли программа цели активной вкладки. Сеанс отладчика Delphi
+  // один на среду - он считается всегда.
+  Running := (RunHere <> 0) or (FDbgSession <> nil);
 
   // Запуск и отладка. Остановка на точке: Run - продолжить.
   btnCompileRun.Enabled := not Running or
@@ -44293,13 +44398,12 @@ begin
 
   CloseHandle(PI.hThread);
   // За запущенной программой следим всегда: пока она работает, Compile &
-  // Run серая, а Program reset её останавливает (как в Delphi). Когда она
-  // закроется, вернётся и форма конструктора, если запуск её прятал.
-  // Прежний запуск, за которым ещё следили, заменяется новым.
-  if FRunProcess <> 0 then
-    CloseHandle(FRunProcess);
-  FRunProcess := PI.hProcess;
-  FRunTimer.Enabled := True;
+  // Run на вкладках с этой целью серая, а Program reset её останавливает
+  // (как в Delphi). На вкладке с другой целью можно собрать и запустить
+  // другую программу. Когда закроются все, вернётся и форма конструктора,
+  // если запуск её прятал.
+  RunAdd(ExpandFileName(Exe), PI.hProcess);
+  FRunExeTick := 0;   // цель могла записаться при сборке - пересчитать
   LogComp('--- Запуск: ' + Exe);
 end;
 
@@ -44312,7 +44416,7 @@ begin
   end;
   DsgHideForRun;
   RunTarget;
-  if (FRunProcess = 0) and (FDbgSession = nil) then
+  if (RunHere = 0) and (FDbgSession = nil) then
     DsgShowAfterRun;
 end;
 
@@ -44730,7 +44834,7 @@ begin
   if FDbgSession <> nil then
     Result := FDbgSession.Paused
   else
-    Result := (FRunProcess = 0) and (FBusyDepth = 0);
+    Result := (RunHere = 0) and (FBusyDepth = 0);
 end;
 
 // Сборка и запуск под отладчиком с остановкой (F7/F8 - на begin .dpr, F4 -
@@ -44738,7 +44842,7 @@ end;
 // запуска виден DbgWanted (отладочная сборка) и DbgStart (цели).
 procedure TForm1.DbgLaunch(AMode: Integer);
 begin
-  if (FBusyDepth > 0) or (FDbgSession <> nil) or (FRunProcess <> 0) then
+  if (FBusyDepth > 0) or (FDbgSession <> nil) or (RunHere <> 0) then
     Exit;
   FDbgStartMode := AMode;
   try
