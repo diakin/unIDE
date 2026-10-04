@@ -1301,6 +1301,9 @@ type
     // от края вместе с текстом - тогда окно перерисовывается целиком.
     FGuideScrollPos: TPoint;
     FGuideScrollX: Integer;
+    // Идёт проверка прокрутки (её EM_GETSCROLLPOS приходит в тот же
+    // NewRichEditProc) или щелчок по метке - заново не проверять
+    FGuideBusy: Boolean;
     // Список в диалоге Del WinList. Диалог модальный, поэтому одного поля хватает
     FDlgCheckList: TCheckListBox;
     // Статус-бар обновляется не сразу, а через этот таймер - см.
@@ -46325,7 +46328,7 @@ var
 begin
   // Метки направляющих у краёв окна: щелчок - начало блока в панель
   // объявления, каретка остаётся на месте; над меткой - курсор-рука
-  if (FMsgDepth = 0) and (Length(FGuideMarks) > 0) then
+  if (FMsgDepth = 0) and not FGuideBusy and (Length(FGuideMarks) > 0) then
   begin
     if (Message.Msg = WM_LBUTTONDOWN) or (Message.Msg = WM_LBUTTONDBLCLK) then
     begin
@@ -46334,7 +46337,15 @@ begin
       if MarkIdx >= 0 then
       begin
         if Message.Msg = WM_LBUTTONDOWN then
-          GuideMarkClick(MarkIdx);
+        begin
+          // GuideMarkClick шлёт окну свои запросы - они вернутся сюда же
+          FGuideBusy := True;
+          try
+            GuideMarkClick(MarkIdx);
+          finally
+            FGuideBusy := False;
+          end;
+        end;
         FGuideSkipUp := True;
         Message.Result := 0;
         Exit;
@@ -46374,15 +46385,24 @@ begin
   // Окно прокрутилось, а на нём метки направляющих: прокрутка сдвинула их
   // вместе с текстом, перерисовывается только открывшаяся полоса - метки
   // остались бы следами посреди окна. Перерисовать окно целиком.
-  if (FMsgDepth = 0) and (Length(FGuideMarks) > 0) and
+  // EM_GETSCROLLPOS приходит в эту же процедуру, тоже на глубине 0: без
+  // FGuideBusy проверка вызывала бы сама себя без конца (переполнение
+  // стека - так и падало).
+  if (FMsgDepth = 0) and not FGuideBusy and (Length(FGuideMarks) > 0) and
      RichEdit1.HandleAllocated then
   begin
-    SendMessageA(RichEdit1.Handle, EM_GETSCROLLPOS, 0, Integer(@CursorPt));
-    if (CursorPt.Y <> FGuideScrollPos.Y) or (FScrollX <> FGuideScrollX) then
-    begin
-      FGuideScrollPos := CursorPt;
-      FGuideScrollX := FScrollX;
-      Windows.InvalidateRect(RichEdit1.Handle, nil, False);
+    FGuideBusy := True;
+    try
+      SendMessageA(RichEdit1.Handle, EM_GETSCROLLPOS, 0, Integer(@CursorPt));
+      if (CursorPt.Y <> FGuideScrollPos.Y) or
+         (FScrollX <> FGuideScrollX) then
+      begin
+        FGuideScrollPos := CursorPt;
+        FGuideScrollX := FScrollX;
+        Windows.InvalidateRect(RichEdit1.Handle, nil, False);
+      end;
+    finally
+      FGuideBusy := False;
     end;
   end;
 end;
