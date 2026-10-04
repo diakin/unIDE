@@ -121,8 +121,8 @@ end if
 
 projectDir$=""
 
-OldPv$="" ' старое значение свойства
-defint OldCol=-1,OldRow=-1 ' предыдущая ячейка. При клике на новую ячейку значение из edit переписывается в ячейку
+OldPv$="" ' СЃС‚Р°СЂРѕРµ Р·РЅР°С‡РµРЅРёРµ СЃРІРѕР№СЃС‚РІР°
+defint OldCol=-1,OldRow=-1 ' РїСЂРµРґС‹РґСѓС‰Р°СЏ СЏС‡РµР№РєР°. РџСЂРё РєР»РёРєРµ РЅР° РЅРѕРІСѓСЋ СЏС‡РµР№РєСѓ Р·РЅР°С‡РµРЅРёРµ РёР· edit РїРµСЂРµРїРёСЃС‹РІР°РµС‚СЃСЏ РІ СЏС‡РµР№РєСѓ
 
 '!!! ----- HiLight -----
 Declare Sub HtHLBoxClick
@@ -130,7 +130,7 @@ dim HotTAbHL as long
 HotTAbHL=1
 
 
-'!!! ----- цвета подсветки ---
+'!!! ----- С†РІРµС‚Р° РїРѕРґСЃРІРµС‚РєРё ---
 defint HLColor (0 TO 15):  for i=0 to  15 : HLColor(i)=0: next i
 HLColor(0)=&HA5E4F5
 HLColor(1)=&HFF0000
@@ -195,7 +195,7 @@ IF fileExists("keyword.lst") = 0 THEN
   showmessage ("2370 ERROR. Can't find file keyword.lst "+"keyword.lst")
   'END
 ELSE
-  'PRINT "Load file keyword.lst "+"keyword.lst" - загрузка ключевых слов для подсветки
+  'PRINT "Load file keyword.lst "+"keyword.lst" - Р·Р°РіСЂСѓР·РєР° РєР»СЋС‡РµРІС‹С… СЃР»РѕРІ РґР»СЏ РїРѕРґСЃРІРµС‚РєРё
   keyList.LoadFromFile("keyword.lst")
 END IF
 
@@ -252,7 +252,7 @@ DIM OpDialog AS QOPENDIALOG
 DIM SvDialog AS QSAVEDIALOG
 DIM SaveDialog AS QSAVEDIALOG
 
-defint SrcEditLineCount ' число строк в редакторе
+defint SrcEditLineCount ' С‡РёСЃР»Рѕ СЃС‚СЂРѕРє РІ СЂРµРґР°РєС‚РѕСЂРµ
 defstr RichRow1,  RichCol1, RichRow2,  RichCol2, RichRow3,  RichCol3
 SrcFileName$="Noname.bas"
 
@@ -340,8 +340,8 @@ DEFINT  FormIndex, NonVIndex ' ' global index of added Forms, Nonvisual componen
 DEFINT ObjectIndex,ObjectCount    ' global index of added objects - added from component palette ans added from source parsing
 DEFINT OldObjectIndex
 
-FormIndex=0: ObjectIndex=0: ComponentCount=0  '! FormIndex=0 - форма по которой кликнули - selected form
-FormCount=0: ObjectCount=0: ComponentCount=0  '! FormCount=0 - количество добавленных форм
+FormIndex=0: ObjectIndex=0: ComponentCount=0  '! FormIndex=0 - С„РѕСЂРјР° РїРѕ РєРѕС‚РѕСЂРѕР№ РєР»РёРєРЅСѓР»Рё - selected form
+FormCount=0: ObjectCount=0: ComponentCount=0  '! FormCount=0 - РєРѕР»РёС‡РµСЃС‚РІРѕ РґРѕР±Р°РІР»РµРЅРЅС‹С… С„РѕСЂРј
 
 
 
@@ -627,8 +627,8 @@ DECLARE SUB EditMethodField(Col AS integer, Row AS integer, CanSelect AS integer
 DECLARE SUB EditEventField(Col AS integer, Row AS integer, CanSelect AS integer, Sender AS QSTRINGGRID)
 DECLARE SUB FieldUpdateCombo(Sender AS QCOMBOBOX)
 DECLARE SUB FieldUpdateEdit(Key AS word, Shift AS integer, Sender AS QEDIT)
-DECLARE SUB ReDrawComponent ' обновление при перемещении
-DECLARE SUB ReDrawComponentbyField ' обновление при изменении свойства
+DECLARE SUB ReDrawComponent ' РѕР±РЅРѕРІР»РµРЅРёРµ РїСЂРё РїРµСЂРµРјРµС‰РµРЅРёРё
+DECLARE SUB ReDrawComponentbyField ' РѕР±РЅРѕРІР»РµРЅРёРµ РїСЂРё РёР·РјРµРЅРµРЅРёРё СЃРІРѕР№СЃС‚РІР°
 
 DECLARE SUB HideEditCtls(Col AS integer, Row AS integer, State AS integer, Rect AS QRect, Sender AS QSTRINGGRID)
 Declare Sub PropertyGridOnDrawCell(Col% AS INTEGER, Row% AS INTEGER, State AS INTEGER, Rect AS QRECT)
@@ -660,7 +660,7 @@ DIM OpenDialog AS QOpenDialog
 OpenDialog.FileName=""
 OpenDialog.Filter ="Bas Files  *.bas;*.rqb;*.vbs|*.bas;*.rqb;*.vbs|_
 Ini Files *.ini;*.prj|*.ini;*.prj|_
-Inс Files *.inc;*tpl|*.inc;*tpl|_
+InСЃ Files *.inc;*tpl|*.inc;*tpl|_
 Log Files *.log|*.log|_
 Txt Files *.txt|*.txt|_
 Html Files *.*htm*;*.js;*.vbs;*.css|*.*htm*;*.js;*.vbs;*.css|_
@@ -1749,7 +1749,7 @@ next
 call  AddClrString ("199:StartPath$="+(StartPath$), clred, LogEdit)
 
 
-'!!!--определение новой процедуры RichEdit'
+'!!!--РѕРїСЂРµРґРµР»РµРЅРёРµ РЅРѕРІРѕР№ РїСЂРѕС†РµРґСѓСЂС‹ RichEdit'
 OldRichEditWndProc = SetWindowLongAPI(SrcEdit.Handle, GWL_WNDPROC, CODEPTR(RichEditWndProc))
 
 
@@ -1789,20 +1789,20 @@ SUB Open_Click
 
   BuildObjTree
 
-  '!!! сюда вставляем компиляцию,запуск и сохранение свойств в таблицы компонентов на !!!__форме приложения__!!!.
-  ' список окон сформирован, читаем его и формируем строку, добавляемую в исходник перед Form.ShowModal
+  '!!! СЃСЋРґР° РІСЃС‚Р°РІР»СЏРµРј РєРѕРјРїРёР»СЏС†РёСЋ,Р·Р°РїСѓСЃРє Рё СЃРѕС…СЂР°РЅРµРЅРёРµ СЃРІРѕР№СЃС‚РІ РІ С‚Р°Р±Р»РёС†С‹ РєРѕРјРїРѕРЅРµРЅС‚РѕРІ РЅР° !!!__С„РѕСЂРјРµ РїСЂРёР»РѕР¶РµРЅРёСЏ__!!!.
+  ' СЃРїРёСЃРѕРє РѕРєРѕРЅ СЃС„РѕСЂРјРёСЂРѕРІР°РЅ, С‡РёС‚Р°РµРј РµРіРѕ Рё С„РѕСЂРјРёСЂСѓРµРј СЃС‚СЂРѕРєСѓ, РґРѕР±Р°РІР»СЏРµРјСѓСЋ РІ РёСЃС…РѕРґРЅРёРє РїРµСЂРµРґ Form.ShowModal
 
   PropStr$=crlf+_
   "StartPath$ = COMMAND$(0)-Application.ExeName"+crlf+_
-  " dim PropList as QStringList "+crlf ' строка добавляемая в исходник
+  " dim PropList as QStringList "+crlf ' СЃС‚СЂРѕРєР° РґРѕР±Р°РІР»СЏРµРјР°СЏ РІ РёСЃС…РѕРґРЅРёРє
 
   call  AddClrString ("1477:PropStr$="+(PropStr$), clred, LogEdit)
   'dim PropStr as QStringList
 
   for cbi=0 to cmboxObj.ItemCount-1
     ObjName$=field$(cmboxObj.Item(cbi)," ",1) '!!!  form1
-    objtype$=trim$(field$(cmboxObj.Item(cbi)," as",2)) ' если не свойств Heith  и тп, то не обрабатывать
-    objtype$=trim$(field$(objtype$," ",1)) ' если не свойств Heith  и тп, то не обрабатывать
+    objtype$=trim$(field$(cmboxObj.Item(cbi)," as",2)) ' РµСЃР»Рё РЅРµ СЃРІРѕР№СЃС‚РІ Heith  Рё С‚Рї, С‚Рѕ РЅРµ РѕР±СЂР°Р±Р°С‚С‹РІР°С‚СЊ
+    objtype$=trim$(field$(objtype$," ",1)) ' РµСЃР»Рё РЅРµ СЃРІРѕР№СЃС‚РІ Heith  Рё С‚Рї, С‚Рѕ РЅРµ РѕР±СЂР°Р±Р°С‚С‹РІР°С‚СЊ
     'call  AddClrString ("1498:objtype$="+(objtype$), clb, LogEdit)
 
     ' dim PropList as QStringList
@@ -1826,7 +1826,7 @@ SUB Open_Click
 
   PropStr$=PropStr$+"PropList.SaveToFile("+qt+StartPath$+"PropList.txt"+qt+")"+crlf
 
-  '!!! вставляем сформированную строку в файл исходника перед Form.ShowModal
+  '!!! РІСЃС‚Р°РІР»СЏРµРј СЃС„РѕСЂРјРёСЂРѕРІР°РЅРЅСѓСЋ СЃС‚СЂРѕРєСѓ РІ С„Р°Р№Р» РёСЃС…РѕРґРЅРёРєР° РїРµСЂРµРґ Form.ShowModal
   ShModal=INSTR(1,lcase$(SrcEdit.text) , lcase$(".ShowModal")) '-- returns 7
   SrcEdit.SelStart=ShModal
   ShModal=SrcEdit.LINEINDEX
@@ -1897,8 +1897,8 @@ SUB Open_Click
 
   '!!!!BuildObjTree
 
-  '!!  перебираем по списку компонентов из комбобокса, и
-  '!! заменяем свойства значениями из PropList.txt.
+  '!!  РїРµСЂРµР±РёСЂР°РµРј РїРѕ СЃРїРёСЃРєСѓ РєРѕРјРїРѕРЅРµРЅС‚РѕРІ РёР· РєРѕРјР±РѕР±РѕРєСЃР°, Рё
+  '!! Р·Р°РјРµРЅСЏРµРј СЃРІРѕР№СЃС‚РІР° Р·РЅР°С‡РµРЅРёСЏРјРё РёР· PropList.txt.
 
   for cbi=0 to cmboxObj.ItemCount-1
     objname$=trim$(field$(cmboxObj.Item(cbi)," ",1))
@@ -1908,15 +1908,15 @@ SUB Open_Click
 
     'call  AddClrString ("***************************** 2081:GridFileName$="+(GridFileName$), clp, LogEdit)
     PropertyGrid.RowCount=5
-    PropertyGrid.LoadFromFile(GridFileName$,0,0,1000) ' загружаем таблицу свойств для компонента из списка
+    PropertyGrid.LoadFromFile(GridFileName$,0,0,1000) ' Р·Р°РіСЂСѓР¶Р°РµРј С‚Р°Р±Р»РёС†Сѓ СЃРІРѕР№СЃС‚РІ РґР»СЏ РєРѕРјРїРѕРЅРµРЅС‚Р° РёР· СЃРїРёСЃРєР°
 
     objtype$=trim$(field$(cmboxObj.Item(cbi)," as ",2))
     objtype$=trim$(field$(objtype$," ",1))
 
     'call  AddClrString ("2091:objtype$=="+(objtype$), cldg, LogEdit)
 
-    ' теперь ищем в PropList строки содержащие имя компонента objname$ и меняем в таблице свойств
-    ' соответствующие свойства
+    ' С‚РµРїРµСЂСЊ РёС‰РµРј РІ PropList СЃС‚СЂРѕРєРё СЃРѕРґРµСЂР¶Р°С‰РёРµ РёРјСЏ РєРѕРјРїРѕРЅРµРЅС‚Р° objname$ Рё РјРµРЅСЏРµРј РІ С‚Р°Р±Р»РёС†Рµ СЃРІРѕР№СЃС‚РІ
+    ' СЃРѕРѕС‚РІРµС‚СЃС‚РІСѓСЋС‰РёРµ СЃРІРѕР№СЃС‚РІР°
     'sillyform.left=820
     'logpanel.height=548
 
@@ -1925,14 +1925,14 @@ SUB Open_Click
 
       '!!!!!if instr(PropList.Item(i), objname$)>0  then
       if  PropName0$=objname$  then
-        ' если в строке содержится имя объекта, то меняем свойство  в таблице
+        ' РµСЃР»Рё РІ СЃС‚СЂРѕРєРµ СЃРѕРґРµСЂР¶РёС‚СЃСЏ РёРјСЏ РѕР±СЉРµРєС‚Р°, С‚Рѕ РјРµРЅСЏРµРј СЃРІРѕР№СЃС‚РІРѕ  РІ С‚Р°Р±Р»РёС†Рµ
 
         PropName1$=(field$(PropList.Item(i),".",2))
         PropName$=(field$(PropName1$,"=",1))
         'call  AddClrString ("1638:PropName$="+(PropName$), &H00FF1F, LogEdit)
         PropValue$=(field$(PropName1$,"=",2))
         'call  AddClrString ("1640:PropValue$="+(PropValue$), clm, LogEdit)
-        ' перебираем по таблице свойств и ищем соответствующее свойство
+        ' РїРµСЂРµР±РёСЂР°РµРј РїРѕ С‚Р°Р±Р»РёС†Рµ СЃРІРѕР№СЃС‚РІ Рё РёС‰РµРј СЃРѕРѕС‚РІРµС‚СЃС‚РІСѓСЋС‰РµРµ СЃРІРѕР№СЃС‚РІРѕ
 
         for ri=1 to PropertyGrid.RowCount-1
           if lcase$(trim$(PropertyGrid.Cell(0,ri)))=lcase$(PropName$) then
@@ -2202,13 +2202,13 @@ sub R2Change
 
   'SrcEdit.SelStart=CursWin(WindowsIndex)
 
-  ''    AddPanels "Строка ", "Столбец ", "Код символа","Номер символа в тексте"
+  ''    AddPanels "РЎС‚СЂРѕРєР° ", "РЎС‚РѕР»Р±РµС† ", "РљРѕРґ СЃРёРјРІРѕР»Р°","РќРѕРјРµСЂ СЃРёРјРІРѕР»Р° РІ С‚РµРєСЃС‚Рµ"
   StatusBar.Panel(0).caption = "Row "+RichRow1+":"+  str$(SrcEdit.LineCount)
   StatusBar.Panel(1).caption = "Col "+RichCol1
   StatusBar.Panel(3).caption = "Asc "+char1$
   StatusBar.Panel(2).caption = "Pos "+str$(pos1)+":"+  str$(SrcEditLen1)
 
-  if SrcEditLen<>SrcEdit.LineCount then 'SrcEditLen1 только при изменении числа строк
+  if SrcEditLen<>SrcEdit.LineCount then 'SrcEditLen1 С‚РѕР»СЊРєРѕ РїСЂРё РёР·РјРµРЅРµРЅРёРё С‡РёСЃР»Р° СЃС‚СЂРѕРє
     SrcEditLen=SrcEdit.LineCount
     Modiflg=1
   end if
@@ -2240,7 +2240,7 @@ Sub BuildObjTree
 
   OperList.clear
 
-  GetOpersList (SrcEdit,OperList) '!!! заполняем масcив начальных и конечных позиций операторов для подсветки при перемещении по шагам.
+  GetOpersList (SrcEdit,OperList) '!!! Р·Р°РїРѕР»РЅСЏРµРј РјР°СЃcРёРІ РЅР°С‡Р°Р»СЊРЅС‹С… Рё РєРѕРЅРµС‡РЅС‹С… РїРѕР·РёС†РёР№ РѕРїРµСЂР°С‚РѕСЂРѕРІ РґР»СЏ РїРѕРґСЃРІРµС‚РєРё РїСЂРё РїРµСЂРµРјРµС‰РµРЅРёРё РїРѕ С€Р°РіР°Рј.
 
   OperList.SaveToFile(StartDir+"Opers.lst")
 
@@ -2262,7 +2262,7 @@ Sub BuildObjTree
   oldObjIdx=-1
 
 
-  for i=0 to MAX_OBJECTS ' очищаем данные компонентов
+  for i=0 to MAX_OBJECTS ' РѕС‡РёС‰Р°РµРј РґР°РЅРЅС‹Рµ РєРѕРјРїРѕРЅРµРЅС‚РѕРІ
     ObjectType(i)=""     '!!! Component's type ie  QPANEL, QButton etc
     ObjectHandle(i)=-1   '!!! Component's handle
     ObjectName(i)=""     '!!! Component's name  ie Edit1, Panel1, StrinGrid3 etc
@@ -2270,7 +2270,7 @@ Sub BuildObjTree
   next i
 
 
-  ' если отсутствует, то создаем директорию проекта
+  ' РµСЃР»Рё РѕС‚СЃСѓС‚СЃС‚РІСѓРµС‚, С‚Рѕ СЃРѕР·РґР°РµРј РґРёСЂРµРєС‚РѕСЂРёСЋ РїСЂРѕРµРєС‚Р°
   projectDir$=ExtractFileName(SrcFileName$)
   projectDir$=FileNameNoExt(projectDir$)
   projectDir$=StartDir+projectpath$+projectDir$
@@ -2283,29 +2283,29 @@ Sub BuildObjTree
   'Gauge1.Forecolor=clM:Gauge1.visible=1: Gauge1.position=30
   brem 0
   '!!!!====================================================
-  1. Ищем CREATE или END CREATE
+  1. РС‰РµРј CREATE РёР»Рё END CREATE
 if CREATE then
-  если level>0 то сохраняем GridFileName$
+  РµСЃР»Рё level>0 С‚Рѕ СЃРѕС…СЂР°РЅСЏРµРј GridFileName$
   2. inc level
   objname$=trim$(field$(LSrc$," as",1))= >GridFileName$
   objtype$= >DefGridFileName$
 
-elseif END CREATE то
-если level>0 то сохраняем GridFileName$
+elseif END CREATE С‚Рѕ
+РµСЃР»Рё level>0 С‚Рѕ СЃРѕС…СЂР°РЅСЏРµРј GridFileName$
 2. dec level
 objname$= >GridFileName$
 objtype$= >DefGridFileName$
 
-загружаем PropertyGrid GridFileName$ если раньше сохраняли
-goto п 1
+Р·Р°РіСЂСѓР¶Р°РµРј PropertyGrid GridFileName$ РµСЃР»Рё СЂР°РЅСЊС€Рµ СЃРѕС…СЂР°РЅСЏР»Рё
+goto Рї 1
 else
-3. дополняем свойствами PropertyGrid
-goto п 1
+3. РґРѕРїРѕР»РЅСЏРµРј СЃРІРѕР№СЃС‚РІР°РјРё PropertyGrid
+goto Рї 1
 end if
 '!!!!====================================================
 erem
 
-for ri=1 to PropertyGrid.RowCount-1  '! очищаем  PropertyGrid
+for ri=1 to PropertyGrid.RowCount-1  '! РѕС‡РёС‰Р°РµРј  PropertyGrid
   for cj=0 to PropertyGrid.ColCount-1
     PropertyGrid.Cell(cj,ri)=""
   next
@@ -2323,23 +2323,23 @@ for i=0 to OperList.ItemCount-1
   zzcreate=0
   zzEndcreate=0
 
-  if instr(LSrc$, "create")>0   then '!Ищем CREATE или END CREATE
+  if instr(LSrc$, "create")>0   then '!РС‰РµРј CREATE РёР»Рё END CREATE
 
     zzcreate=GetVarPos(LSrc$, "create")
     'call  AddClrString ("2333:zzcreate="+str$(zzcreate), clred, LogEdit)
     zzEndcreate=GetVarPos(LSrc$-" ", "endcreate")
     'call  AddClrString ("2335:zzEndcreate="+str$(zzEndcreate), clred, LogEdit)
 
-    if zzcreate=1 then '! if CREATE then будет новый уровень вложенности
+    if zzcreate=1 then '! if CREATE then Р±СѓРґРµС‚ РЅРѕРІС‹Р№ СѓСЂРѕРІРµРЅСЊ РІР»РѕР¶РµРЅРЅРѕСЃС‚Рё
       'call  AddClrString ("2338:zzcreate="+str$(zzcreate), clred, LogEdit)
 
-      if LevelIdx>-1 then '! если level>0 то сохраняем GridFileName$
+      if LevelIdx>-1 then '! РµСЃР»Рё level>0 С‚Рѕ СЃРѕС…СЂР°РЅСЏРµРј GridFileName$
         if GridFileNameParse$>"" then
           'call  AddClrString ("2313:BuildObjTree save GridFileNameParse$="+(GridFileNameParse$), &H0000A9, LogEdit)
           PropertyGrid.SaveToFile(GridFileNameParse$,0,0,PropertyGrid.RowCount)
 
 
-          for ri=1 to PropertyGrid.RowCount-1  '! очищаем  PropertyGrid
+          for ri=1 to PropertyGrid.RowCount-1  '! РѕС‡РёС‰Р°РµРј  PropertyGrid
             for cj=0 to PropertyGrid.ColCount-1
               PropertyGrid.Cell(cj,ri)=""
             next
@@ -2390,7 +2390,7 @@ for i=0 to OperList.ItemCount-1
     elseif zzEndcreate=1 then
       'call  AddClrString ("2394:zzEndcreate="+str$(zzEndcreate), clred, LogEdit)
 
-      if LevelIdx>-1 then '! если level>-1 то сохраняем GridFileName$
+      if LevelIdx>-1 then '! РµСЃР»Рё level>-1 С‚Рѕ СЃРѕС…СЂР°РЅСЏРµРј GridFileName$
         if GridFileNameParse$>"" then
           'call  AddClrString ("2313:BuildObjTree save GridFileNameParse$="+(GridFileNameParse$), &H0000A9, LogEdit)
           PropertyGrid.SaveToFile(GridFileNameParse$,0,0,PropertyGrid.RowCount)
@@ -2423,7 +2423,7 @@ for i=0 to OperList.ItemCount-1
         DefGridFileName$=StartDir+"data\"+objtype$+".data"
         'call  AddClrString ("2362:new DefGridFileName$="+(DefGridFileName$), &HE5000E, LogEdit)
 
-        for ri=1 to PropertyGrid.RowCount-1  '! очищаем  PropertyGrid
+        for ri=1 to PropertyGrid.RowCount-1  '! РѕС‡РёС‰Р°РµРј  PropertyGrid
           for cj=0 to PropertyGrid.ColCount-1
             PropertyGrid.Cell(cj,ri)=""
           next
@@ -2432,7 +2432,7 @@ for i=0 to OperList.ItemCount-1
         PropertyGrid.RowCount=2
 
 
-        PropertyGrid.LoadFromFile(GridFileNameParse$,0,0,1000) ' загружаем таблицу свойств для компонента из списка
+        PropertyGrid.LoadFromFile(GridFileNameParse$,0,0,1000) ' Р·Р°РіСЂСѓР¶Р°РµРј С‚Р°Р±Р»РёС†Сѓ СЃРІРѕР№СЃС‚РІ РґР»СЏ РєРѕРјРїРѕРЅРµРЅС‚Р° РёР· СЃРїРёСЃРєР°
 
 
       end if
@@ -2442,7 +2442,7 @@ for i=0 to OperList.ItemCount-1
 
     end if
 
-  elseif LevelIdx>-1 then '! 3. дополняем свойствами PropertyGrid
+  elseif LevelIdx>-1 then '! 3. РґРѕРїРѕР»РЅСЏРµРј СЃРІРѕР№СЃС‚РІР°РјРё PropertyGrid
     'all  AddClrString ("2387:------------------------- LSrc$="+(LSrc$), clred, LogEdit)
 
     if PropertyGrid.Cell(0,PropertyGrid.RowCount-1)<>"" then
@@ -2452,11 +2452,11 @@ for i=0 to OperList.ItemCount-1
 
     if instr(LSrc$,"=")=0 then
       method$=LSrc$
-      PropertyGrid.Cell(0,PropertyGrid.RowCount-1)=method$ '    LSrc$ ' метод - center например
-      '!!! PropCount остается от предыдущего!!!
+      PropertyGrid.Cell(0,PropertyGrid.RowCount-1)=method$ '    LSrc$ ' РјРµС‚РѕРґ - center РЅР°РїСЂРёРјРµСЂ
+      '!!! PropCount РѕСЃС‚Р°РµС‚СЃСЏ РѕС‚ РїСЂРµРґС‹РґСѓС‰РµРіРѕ!!!
 
-    else ' присутствует знак равенства
-      if instr(LSrc$,"qt")>0 then ' если строковая
+    else ' РїСЂРёСЃСѓС‚СЃС‚РІСѓРµС‚ Р·РЅР°Рє СЂР°РІРµРЅСЃС‚РІР°
+      if instr(LSrc$,"qt")>0 then ' РµСЃР»Рё СЃС‚СЂРѕРєРѕРІР°СЏ
         'call  AddClrString ("2393:LSrc$="+(LSrc$), clred, LogEdit)
         propName$= field$(LSrc$,"=",0)
         'call  AddClrString ("2395:propName$="+(propName$), clred, LogEdit)
@@ -2466,15 +2466,15 @@ for i=0 to OperList.ItemCount-1
         PropertyGrid.Cell(0,PropertyGrid.RowCount-1)=propName$
         PropertyGrid.Cell(1,PropertyGrid.RowCount-1)=propValue$
 
-      else ' если не строковая
-        PropertyGrid.Cell(0,PropertyGrid.RowCount-1)=field$(LSrc$,"=",1) ' имя свойства
-        vall$=trim$(field$(LSrc$,"=",2)) ' значение свойства
+      else ' РµСЃР»Рё РЅРµ СЃС‚СЂРѕРєРѕРІР°СЏ
+        PropertyGrid.Cell(0,PropertyGrid.RowCount-1)=field$(LSrc$,"=",1) ' РёРјСЏ СЃРІРѕР№СЃС‚РІР°
+        vall$=trim$(field$(LSrc$,"=",2)) ' Р·РЅР°С‡РµРЅРёРµ СЃРІРѕР№СЃС‚РІР°
         'call  AddClrString ("2405:vall$="+(vall$), clred, LogEdit)
-        if vall$="0" then ' нулевое значениеbn
+        if vall$="0" then ' РЅСѓР»РµРІРѕРµ Р·РЅР°С‡РµРЅРёРµbn
           PropertyGrid.Cell(1,PropertyGrid.RowCount-1)=vall$
         else
-          if val(vall$)=0 and vall$<>"0" then ' pyfxfybt 'то выражение или функция или именованная константа
-            ' тут надо проверить на константы
+          if val(vall$)=0 and vall$<>"0" then ' pyfxfybt 'С‚Рѕ РІС‹СЂР°Р¶РµРЅРёРµ РёР»Рё С„СѓРЅРєС†РёСЏ РёР»Рё РёРјРµРЅРѕРІР°РЅРЅР°СЏ РєРѕРЅСЃС‚Р°РЅС‚Р°
+            ' С‚СѓС‚ РЅР°РґРѕ РїСЂРѕРІРµСЂРёС‚СЊ РЅР° РєРѕРЅСЃС‚Р°РЅС‚С‹
             PropertyGrid.Cell(1,PropertyGrid.RowCount-1)=vall$
           end if
           PropertyGrid.Cell(1,PropertyGrid.RowCount-1)=vall$
@@ -2506,7 +2506,7 @@ ObjectCount=0
 
 'exit sub '!!!! !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
-'!  перебираем по списку компонентов из комбобокса, и заполняем таблицу runtime значениями.
+'!  РїРµСЂРµР±РёСЂР°РµРј РїРѕ СЃРїРёСЃРєСѓ РєРѕРјРїРѕРЅРµРЅС‚РѕРІ РёР· РєРѕРјР±РѕР±РѕРєСЃР°, Рё Р·Р°РїРѕР»РЅСЏРµРј С‚Р°Р±Р»РёС†Сѓ runtime Р·РЅР°С‡РµРЅРёСЏРјРё.
 
 for cbi=0 to cmboxObj.ItemCount-1
 
@@ -2559,10 +2559,10 @@ for cbi=0 to cmboxObj.ItemCount-1
 
     PropertyGrid.RowCount=DefaultPropertyGrid.RowCount+1
 
-    '! копируем данные из DefaultPropertyGrid в PropertyGrid
-    '! в 0 столбец копируем данные из 0 столбца DefaultPropertyGrid
-    '! в 1 столбец копируем данные из 2 столбца DefaultPropertyGrid
-    '!!! убрать копирование функций обработчиков в таблицу Enents
+    '! РєРѕРїРёСЂСѓРµРј РґР°РЅРЅС‹Рµ РёР· DefaultPropertyGrid РІ PropertyGrid
+    '! РІ 0 СЃС‚РѕР»Р±РµС† РєРѕРїРёСЂСѓРµРј РґР°РЅРЅС‹Рµ РёР· 0 СЃС‚РѕР»Р±С†Р° DefaultPropertyGrid
+    '! РІ 1 СЃС‚РѕР»Р±РµС† РєРѕРїРёСЂСѓРµРј РґР°РЅРЅС‹Рµ РёР· 2 СЃС‚РѕР»Р±С†Р° DefaultPropertyGrid
+    '!!! СѓР±СЂР°С‚СЊ РєРѕРїРёСЂРѕРІР°РЅРёРµ С„СѓРЅРєС†РёР№ РѕР±СЂР°Р±РѕС‚С‡РёРєРѕРІ РІ С‚Р°Р±Р»РёС†Сѓ Enents
 
     for r2=0 to EventGrid.RowCount-1
       for c2=0 to EventGrid.ColCount-1
@@ -2583,7 +2583,7 @@ for cbi=0 to cmboxObj.ItemCount-1
 
       'call  AddClrString ("2576:evRow="+str$(evRow), clred, LogEdit)
       'else
-      PropertyGrid.cell(0,ri)=DefaultPropertyGrid.cell(0,ri-1) ' невидимая таблица для DefaultProperty
+      PropertyGrid.cell(0,ri)=DefaultPropertyGrid.cell(0,ri-1) ' РЅРµРІРёРґРёРјР°СЏ С‚Р°Р±Р»РёС†Р° РґР»СЏ DefaultProperty
       PropertyGrid.cell(1,ri)=DefaultPropertyGrid.cell(2,ri-1)
       PropertyGrid.cell (3,ri)=str$(ri)
       PropertyGrid.cell (4,ri)=DefaultPropertyGrid.cell (1,ri-1)
@@ -2601,7 +2601,7 @@ for cbi=0 to cmboxObj.ItemCount-1
 
 
 
-    '! поверх копируем данные из GridFileNameParse$ используя промежуточную таблицу PropertyListGrid
+    '! РїРѕРІРµСЂС… РєРѕРїРёСЂСѓРµРј РґР°РЅРЅС‹Рµ РёР· GridFileNameParse$ РёСЃРїРѕР»СЊР·СѓСЏ РїСЂРѕРјРµР¶СѓС‚РѕС‡РЅСѓСЋ С‚Р°Р±Р»РёС†Сѓ PropertyListGrid
     for ri=0 to PropertyListGrid.RowCount-1
       for cj=0 to PropertyListGrid.ColCount-1
         PropertyListGrid.Cell(cj,ri)=""
@@ -2717,7 +2717,7 @@ Sub cmboxObjOnChange
     'PropertyGrid.LoadFromFile(DefGridFileName$,0,0,1000)
 
     'call  AddClrString ("1971:======= DefaultPropertyGrid.RowCount="+str$(DefaultPropertyGrid.RowCount), cldp, LogEdit)
-  else ' !!! неизвестный компонент <<<<<<<<<<<<<
+  else ' !!! РЅРµРёР·РІРµСЃС‚РЅС‹Р№ РєРѕРјРїРѕРЅРµРЅС‚ <<<<<<<<<<<<<
     Showmessage ("2220: File not found "+DefGridFileName$+" "+cmboxObj.Item(cmboxObj.ItemIndex))
     'call  AddClrString ("==================== 1990::DefGridFileName File not found "+DefGridFileName$, clY, LogEdit)
     objtype$="qpanel" '"trim$(field$(objtype$," ",1))
@@ -2843,7 +2843,7 @@ END FUNCTION
 
 '!*****************************************
 ' Update StatusBar with CurrentObject Info & CurrentForm
-SUB UpdateStatus '!!!! <<<<<<<<<<<<<<< необновленные процедуры
+SUB UpdateStatus '!!!! <<<<<<<<<<<<<<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   DEFSTR tstr, tok, strCaption
   'DEFINT ObjType
   DEFLNG hWnd
@@ -2874,7 +2874,7 @@ END SUB
 
 '*****************************************
 ' Deselect everything - Current Form active
-SUB Deselect '!!!! <<<<<<<<<<<<<<< необновленные процедуры
+SUB Deselect '!!!! <<<<<<<<<<<<<<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   DEFLNG hWnd
   DEFINT i
   DEFSTR tstr
@@ -2907,7 +2907,7 @@ END SUB
 
 '*****************************************
 ' Returns true for objects that can have child objects (excluding forms)
-FUNCTION IsTypeParent(ThisIdx AS integer) AS integer '!!!! <<<<<<<<<<<<<<<  необновленные процедуры
+FUNCTION IsTypeParent(ThisIdx AS integer) AS integer '!!!! <<<<<<<<<<<<<<<  РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   call  AddClrString ("2731: +++ IsTypeParent ThisIdx="+str$(ThisIdx), cldm, LogEdit)
 
   DEFSTR tstr
@@ -2925,9 +2925,9 @@ END FUNCTION
 
 '*****************************************
 ' Get all direct siblings of this "start" object (non-parent types first)
-FUNCTION FillSiblingList(StartIndex AS integer) AS string '!!!! <<<<<<<<<<<<<<<  необновленные процедуры
+FUNCTION FillSiblingList(StartIndex AS integer) AS string '!!!! <<<<<<<<<<<<<<<  РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   call  AddClrString ("2747:FillSiblingList StartIndex="+str$(StartIndex), clo, LogEdit)
-  '!!StartIndex - index объекта для которого ищутся его дети
+  '!!StartIndex - index РѕР±СЉРµРєС‚Р° РґР»СЏ РєРѕС‚РѕСЂРѕРіРѕ РёС‰СѓС‚СЃСЏ РµРіРѕ РґРµС‚Рё
   DEFINT i
   DEFSTR tstr, strParent, sibResult
 
@@ -2983,7 +2983,7 @@ END FUNCTION
 
 '*****************************************
 ' Recursively called to delete parent/sibling chains
-SUB DeleteThisChain(StartIdx AS integer) '!!!! <<<<<<<<<<<<<<<  необновленные процедуры
+SUB DeleteThisChain(StartIdx AS integer) '!!!! <<<<<<<<<<<<<<<  РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   DEFINT i, cnt, nxt
   DEFSTR tstr, sibString
   DEFLNG hWnd
@@ -3111,7 +3111,7 @@ SUB PropertyFieldUpdate_OLD(pField AS string, vField AS string, position AS inte
 END SUB
 
 
-'!!! ************** 2021 - обновляет поле value - численное значение define или const, например alTop = 1
+'!!! ************** 2021 - РѕР±РЅРѕРІР»СЏРµС‚ РїРѕР»Рµ value - С‡РёСЃР»РµРЅРЅРѕРµ Р·РЅР°С‡РµРЅРёРµ define РёР»Рё const, РЅР°РїСЂРёРјРµСЂ alTop = 1
 sub PropertyValueUpdate
   'call  AddClrString ("4234:PropertyValueUpdate alias", subclr, LogEdit)
   ' there are integer value for property alias , for example bsSingle = 1 bsSingle - alias,
@@ -3131,7 +3131,7 @@ sub PropertyValueUpdate
       ''call  AddClrString ("911:PropVal$="+(PropVal$), clred, LogEdit)
     end if
 
-    PropertyGrid.Cell(2, rowi)="" ' предварительно очищаем ячейку алиаса
+    PropertyGrid.Cell(2, rowi)="" ' РїСЂРµРґРІР°СЂРёС‚РµР»СЊРЅРѕ РѕС‡РёС‰Р°РµРј СЏС‡РµР№РєСѓ Р°Р»РёР°СЃР°
 
     for ci=0 to PropertyList.ItemCount-1 ' contain const name and value ie CONST bsSingle = 1
 
@@ -3165,7 +3165,7 @@ sub PropertyValueUpdate
 end sub
 
 
-'!!! ***************************************** 2021 - обновляет поле value - численное значение define или const, например alTop = 1
+'!!! ***************************************** 2021 - РѕР±РЅРѕРІР»СЏРµС‚ РїРѕР»Рµ value - С‡РёСЃР»РµРЅРЅРѕРµ Р·РЅР°С‡РµРЅРёРµ define РёР»Рё const, РЅР°РїСЂРёРјРµСЂ alTop = 1
 sub PropertyValueUpdate_Old
   defint rowi, ci
   defstr celli
@@ -3264,7 +3264,7 @@ SUB RefreshObject_OLD(hWnd AS long, nuRect AS QRECT)
 END SUB
 
 '*****************************************
-SUB AlignObject '!!!! <<< необновленные процедуры
+SUB AlignObject '!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   call  AddClrString ("1179:AlignObject="+str$(AlignObject), clred, LogEdit)
   DEFINT i, Top, Left, deltaX, deltaY
   DEFSTR tstr, propStr
@@ -3294,7 +3294,7 @@ SUB AlignObject '!!!! <<< необновленные процедуры
 END SUB
 
 '*****************************************
-SUB MouseCopyObject '!!!! <<< необновленные процедуры
+SUB MouseCopyObject '!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   DEFINT i
   DEFSTR tstr
 
@@ -3308,7 +3308,7 @@ SUB MouseCopyObject '!!!! <<< необновленные процедуры
 END SUB
 
 '*****************************************
-SUB MousePasteObject '!!!! <<< необновленные процедуры
+SUB MousePasteObject '!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   DEFINT i
 
   FOR i=0 TO MAX_FORMS
@@ -3324,7 +3324,7 @@ SUB MousePasteObject '!!!! <<< необновленные процедуры
 END SUB
 
 '*****************************************
-SUB ReDrawNonVisibles '!!!! <<< необновленные процедуры
+SUB ReDrawNonVisibles '!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   DEFINT i, j, x, objType
   DEFLNG hWnd
   DEFSTR tstr
@@ -3345,7 +3345,7 @@ END SUB
 
 '*****************************************
 ' Currently forms cannot be deleted
-SUB DeleteComponent '!!!! <<< необновленные процедуры
+SUB DeleteComponent '!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   DEFINT i, j, objType
   DEFLNG hWnd
   DEFSTR tstr
@@ -3530,7 +3530,7 @@ FUNCTION WhichFormIsActive(hWnd AS long) AS integer
 END FUNCTION
 
 '*****************************************
-FUNCTION IsObjectNonVis(ObjIndex AS integer) AS integer '!!!! <<< необновленные процедуры
+FUNCTION IsObjectNonVis(ObjIndex AS integer) AS integer '!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   DEFSTR tstr=FIELD$(AddedObjectList(ObjIndex),"~",1)
 
   Result=False
@@ -3672,12 +3672,12 @@ SUB ScanMouse
 
       IF NewObjectID>0 THEN  ' Adding a new object
         'call  AddClrString ("3586:NewObjectID="+str$(NewObjectID), clred, LogEdit)
-        '!AddNewObject (0)' если добавляем компонент с палитры, то  родителя берем с места клика мышки
+        '!AddNewObject (0)' РµСЃР»Рё РґРѕР±Р°РІР»СЏРµРј РєРѕРјРїРѕРЅРµРЅС‚ СЃ РїР°Р»РёС‚СЂС‹, С‚Рѕ  СЂРѕРґРёС‚РµР»СЏ Р±РµСЂРµРј СЃ РјРµСЃС‚Р° РєР»РёРєР° РјС‹С€РєРё
         FieldEdit.Visible=False
         FieldBox.Visible=False
         OldRow=-1
 
-        AddNewObject (hWnd)' если добавляем компонент с палитры, то  родителя берем с места клика мышки
+        AddNewObject (hWnd)' РµСЃР»Рё РґРѕР±Р°РІР»СЏРµРј РєРѕРјРїРѕРЅРµРЅС‚ СЃ РїР°Р»РёС‚СЂС‹, С‚Рѕ  СЂРѕРґРёС‚РµР»СЏ Р±РµСЂРµРј СЃ РјРµСЃС‚Р° РєР»РёРєР° РјС‹С€РєРё
         'call  AddClrString ("3593:Scan Mouse AddNewObject="+str$(AddNewObject), clb, LogEdit)
         cmboxObj.Text=cmboxObj.Item(cmboxObj.ItemCount-1)
       ELSE
@@ -3685,9 +3685,9 @@ SUB ScanMouse
         'call  AddClrString ("3597:OldObjectIndex="+str$(OldObjectIndex), clb, LogEdit)
         'call  AddClrString ("3597:ObjectIndex="+str$(ObjectIndex), clb, LogEdit)
 
-        IF ObjectIndex<>OldObjectIndex THEN ' !!! переключились на новый компонент. Сохранить таблицу!!!
-          '!!! сохраняем таблицу
-          if projectDir$="" then ' создаем новый проект
+        IF ObjectIndex<>OldObjectIndex THEN ' !!! РїРµСЂРµРєР»СЋС‡РёР»РёСЃСЊ РЅР° РЅРѕРІС‹Р№ РєРѕРјРїРѕРЅРµРЅС‚. РЎРѕС…СЂР°РЅРёС‚СЊ С‚Р°Р±Р»РёС†Сѓ!!!
+          '!!! СЃРѕС…СЂР°РЅСЏРµРј С‚Р°Р±Р»РёС†Сѓ
+          if projectDir$="" then ' СЃРѕР·РґР°РµРј РЅРѕРІС‹Р№ РїСЂРѕРµРєС‚
             'projectDir$=StartDir+projectpath$+"Newproject "+time$-":"
             projectDir$=projectpath$+"Newproject "+time$-":"
             'call  AddClrString ("3600:projectDir$="+(projectDir$), clred, LogEdit)
@@ -3714,7 +3714,7 @@ SUB ScanMouse
 
           GridFileName$=projectDir$+"\"+trim$(field$(cmboxObj.text," ",1))+".dat"
 
-          '!!! сохраняем таблицу OldObjectIndex компонента
+          '!!! СЃРѕС…СЂР°РЅСЏРµРј С‚Р°Р±Р»РёС†Сѓ OldObjectIndex РєРѕРјРїРѕРЅРµРЅС‚Р°
           PropertyGrid.SaveToFile(GridFileName$,0,0,PropertyGrid.RowCount)
           'call  AddClrString ("2666:SaveToFile GridFileName$="+(GridFileName$), clred, LogEdit)
 
@@ -3728,11 +3728,11 @@ SUB ScanMouse
 
           end if
 
-          '!!!  переключаем cmboxObj
+          '!!!  РїРµСЂРµРєР»СЋС‡Р°РµРј cmboxObj
           cmboxObj.ItemIndex=ObjectIndex '!!!! Scanmouse !!!!!!!!!!!!!!!!!
           'call  AddClrString ("3564:ScanMouse ObjectIndex="+str$(ObjectIndex), clred, LogEdit)
 
-          ' загружаем таблицу свойств нового компонента
+          ' Р·Р°РіСЂСѓР¶Р°РµРј С‚Р°Р±Р»РёС†Сѓ СЃРІРѕР№СЃС‚РІ РЅРѕРІРѕРіРѕ РєРѕРјРїРѕРЅРµРЅС‚Р°
           GridFileName$=projectDir$+"\"+trim$(field$(cmboxObj.text," ",1))+".dat"
           'call  AddClrString ("3568:Load GridFileName$="+(GridFileName$), clred, LogEdit)
           'PropertyGrid.RowCount=100
@@ -3764,7 +3764,7 @@ SUB ScanMouse
 
           'call  AddClrString ("3563:objtype$="+(objtype$), clred, LogEdit)
 
-          'call  AddClrString ("2693: ScanMouse Загружаем из GridFileName$="+(GridFileName$), clred, LogEdit)
+          'call  AddClrString ("2693: ScanMouse Р—Р°РіСЂСѓР¶Р°РµРј РёР· GridFileName$="+(GridFileName$), clred, LogEdit)
           PropertyGrid.LoadFromFile(GridFileName$,0,0,1000)
           'ObjNameGrid.Cell(0,1)=PropertyGrid.Cell(0,1)
           'ObjNameGrid.Cell(1,1)=PropertyGrid.Cell(1,1)
@@ -3826,7 +3826,7 @@ SUB ScanMouse
       END IF
     END IF
 
-  ELSEIF gMouseBtns=0 THEN ' !!! переписываем текущие координаты объекта в таблицу свойств
+  ELSEIF gMouseBtns=0 THEN ' !!! РїРµСЂРµРїРёСЃС‹РІР°РµРј С‚РµРєСѓС‰РёРµ РєРѕРѕСЂРґРёРЅР°С‚С‹ РѕР±СЉРµРєС‚Р° РІ С‚Р°Р±Р»РёС†Сѓ СЃРІРѕР№СЃС‚РІ
     'call  AddClrString ("2744:gMouseBtns="+str$(gMouseBtns), clred, LogEdit)
 
     if ReSizing=1 then
@@ -4039,7 +4039,7 @@ END SUB
 '---------------------------------------------------------------------------------
 '*****************************************
 ' Height of Active TitleBar - (Form.Height-Form.ClientHeight-2*Border-1)
-SUB GetThemeOffset()'!!!! <<< необновленные процедуры
+SUB GetThemeOffset()'!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   DEFINT h1,h2,w1,w2,TwoBrdr
 
   h1=Forms(1).Height: w1=Forms(1).Width
@@ -4127,7 +4127,7 @@ SUB Initialise
   FwdDeclares=" ": FormsList=" ": KnownsList=" "                  ' Initialise the global string data
   MainMenuList=" ": PopMenuList=" ": UnknownList=" "
 
-  'FrmIndex=1: ObjectIndex=0: ComponentCount=0  'FrmIndex=1 - эта форма становится видимой при инициализации
+  'FrmIndex=1: ObjectIndex=0: ComponentCount=0  'FrmIndex=1 - СЌС‚Р° С„РѕСЂРјР° СЃС‚Р°РЅРѕРІРёС‚СЃСЏ РІРёРґРёРјРѕР№ РїСЂРё РёРЅРёС†РёР°Р»РёР·Р°С†РёРё
 
   'IF FindHelpFile THEN mnuHelp.Enabled=True
 
@@ -4153,7 +4153,7 @@ SUB Initialise
   'call  AddClrString ("1466:CommandCount="+str$(CommandCount), clred, LogEdit)
 
 
-  '!!! добавить автозагрузку последнего проекта
+  '!!! РґРѕР±Р°РІРёС‚СЊ Р°РІС‚РѕР·Р°РіСЂСѓР·РєСѓ РїРѕСЃР»РµРґРЅРµРіРѕ РїСЂРѕРµРєС‚Р°
   brem 0
   ========================
   ===========
@@ -4187,7 +4187,7 @@ SUB Initialise
       MainForm.Caption=MainForm.Caption+"    [Input clipboard]"
       ProjectMode=INPUT_CLIPBRD                               ' Read the clipboard for input
     ELSE
-      '!!! загружаем  файл исходника
+      '!!! Р·Р°РіСЂСѓР¶Р°РµРј  С„Р°Р№Р» РёСЃС…РѕРґРЅРёРєР°
       MainForm.Caption=MainForm.Caption+"    [Input "+ProjectFile+"]"
       ProjectMode=INPUT_FILE                                  ' Read a file for input
     END IF
@@ -4263,9 +4263,9 @@ SUB Initialise
 
   RQCompGlobalGrid.savetofile("data\RQCompGlobalGrid.data",0,0,1000)
 
-  ' создаем и сохраняем файлы данных по компонентам
+  ' СЃРѕР·РґР°РµРј Рё СЃРѕС…СЂР°РЅСЏРµРј С„Р°Р№Р»С‹ РґР°РЅРЅС‹С… РїРѕ РєРѕРјРїРѕРЅРµРЅС‚Р°Рј
   'dim tmtpgrid as qstringgrid
-  'SUB (File$, RowOffset%, ColOffset%, MaxRows%) RowOffset - начальная строка,  MaxRows% - последняя строка
+  'SUB (File$, RowOffset%, ColOffset%, MaxRows%) RowOffset - РЅР°С‡Р°Р»СЊРЅР°СЏ СЃС‚СЂРѕРєР°,  MaxRows% - РїРѕСЃР»РµРґРЅСЏСЏ СЃС‚СЂРѕРєР°
 
   k%=0
   for i=1 to RQCompGlobalGrid.RowCount-1
@@ -4344,7 +4344,7 @@ FUNCTION FindHelpFile() AS integer
 END FUNCTION
 
 '*****************************************
-SUB HelpOnObject'!!!! <<< необновленные процедуры
+SUB HelpOnObject'!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   DEFSTR tstr, helpStr
   DEFLNG PID
 
@@ -4361,7 +4361,7 @@ SUB HelpOnObject'!!!! <<< необновленные процедуры
 END SUB
 
 '*****************************************
-SUB AboutClick'!!!! <<< необновленные процедуры
+SUB AboutClick'!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   DEFSTR tstr
 
   tstr="RapidFRM - Form Designer/Editor for RapidQ & FreeBasic"+CRLF
@@ -4380,14 +4380,14 @@ END SUB
 
 '*****************************************
 ' General help using the single butn at top of screen
-SUB HelpBtnClick'!!!! <<< необновленные процедуры
+SUB HelpBtnClick'!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   DesignTab.Tag=0
   DesignTab.TabIndex=4
   DesignTabChange
 END SUB
 
 '*****************************************
-SUB FillHelp(idx AS integer)'!!!! <<< необновленные процедуры
+SUB FillHelp(idx AS integer)'!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   DEFINT i
   DEFSTR tstr, token
 
@@ -4451,7 +4451,7 @@ END SUB
 
 '*****************************************
 ' Recursively tunnel down to find which FORM this (objIndx) object belongs to
-FUNCTION GetParentForm(objIndx AS integer) AS integer'!!!! <<< необновленные процедуры
+FUNCTION GetParentForm(objIndx AS integer) AS integer'!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   DEFINT i, max=objIndx
   DEFSTR tstr, parntStr, objStr=""
 
@@ -4472,7 +4472,7 @@ END FUNCTION
 
 '*****************************************
 ' Select a component from combo dropdown list
-SUB SelectComboChange'!!!! <<< необновленные процедуры
+SUB SelectComboChange'!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   DEFINT i, frmIdx
   DEFLNG hWnd
   DEFSTR tstr
@@ -4565,7 +4565,7 @@ SUB DesignTabChange
 
   GridFileName$=projectDir$+"\"+trim$(field$(cmboxObj.text," ",1))+".dat"
 
-  '!!! сохраняем таблицу OldObjectIndex компонента
+  '!!! СЃРѕС…СЂР°РЅСЏРµРј С‚Р°Р±Р»РёС†Сѓ OldObjectIndex РєРѕРјРїРѕРЅРµРЅС‚Р°
   PropertyGrid.SaveToFile(GridFileName$,0,0,PropertyGrid.RowCount)
   call  AddClrString ("4457:SaveToFile GridFileName$="+(GridFileName$), clred, LogEdit)
 
@@ -4627,7 +4627,7 @@ SUB LoadSingleButtons
 END SUB
 
 '*****************************************
-SUB LoadToolbarHints'!!!! <<< необновленные процедуры
+SUB LoadToolbarHints'!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   DEFINT i, lines, cnt=0
   DEFSTR tstr
 
@@ -4710,7 +4710,7 @@ END SUB
 
 '--------------------- Form(s) stuff -------------------------------------------------
 '*****************************************
-FUNCTION UpdateDefProperties(defString AS string, X AS integer, Y AS integer, _ '!!!! <<< необновленные процедуры
+FUNCTION UpdateDefProperties(defString AS string, X AS integer, Y AS integer, _ '!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
                              Width AS integer, Height AS integer, strText AS string) AS string
   DEFINT i, cnt
   DEFSTR token, resStr
@@ -4742,7 +4742,7 @@ END FUNCTION
 
 '*****************************************
 ' Currently only a visual fudge for QSplitter AND only vertically (default)!!
-SUB UpdateChildObjects(Sender AS QFORM) '!!!! <<< необновленные процедуры
+SUB UpdateChildObjects(Sender AS QFORM) '!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   DEFINT i, j, splitLeft, splitWidth
   DEFLNG hWnd
   DEFSTR objStr, tstr, tok
@@ -4783,7 +4783,7 @@ SUB ReSizeForm(Sender)
 
   HideCarets
 
-  '!!! чудо не срабатывает функция!!! не заходит внутрь FormIndex=WhichFormIsActive(Sender.Handle)                    ' Index in Forms()
+  '!!! С‡СѓРґРѕ РЅРµ СЃСЂР°Р±Р°С‚С‹РІР°РµС‚ С„СѓРЅРєС†РёСЏ!!! РЅРµ Р·Р°С…РѕРґРёС‚ РІРЅСѓС‚СЂСЊ FormIndex=WhichFormIsActive(Sender.Handle)                    ' Index in Forms()
 
   ''call  AddClrString ("2070:resize form FormIndex="+str$(FormIndex), clred, LogEdit)
   idx=HandleToIndex(Sender.Handle)                          ' Get index in AddedObjectList()
@@ -4792,7 +4792,7 @@ SUB ReSizeForm(Sender)
   if gMouseBtns=0 then
 
     For rowi=1 to PropertyGrid.RowCount-1
-      celli=trim$(lcase$(PropertyGrid.Cell(0, rowi))) ' имя свойства
+      celli=trim$(lcase$(PropertyGrid.Cell(0, rowi))) ' РёРјСЏ СЃРІРѕР№СЃС‚РІР°
       ''call  AddClrString ("2153:celli="+(celli), clm, LogEdit)
       if  trim$(celli)="width"  then
         PropertyGrid.Cell(1, rowi)=str$(Forms(FormIndex).width)
@@ -4813,7 +4813,7 @@ SUB ReSizeForm(Sender)
     next rowi
     ''call  AddClrString ("2178:rowi="+str$(rowi), clred, LogEdit)
 
-    'сохранить таблицу сейчас. Или при переключении на другой компонент.
+    'СЃРѕС…СЂР°РЅРёС‚СЊ С‚Р°Р±Р»РёС†Сѓ СЃРµР№С‡Р°СЃ. РР»Рё РїСЂРё РїРµСЂРµРєР»СЋС‡РµРЅРёРё РЅР° РґСЂСѓРіРѕР№ РєРѕРјРїРѕРЅРµРЅС‚.
 
     exitReSizeForm:
     brem 0
@@ -4905,7 +4905,7 @@ END SUB
 '----------------------- Updating component fields -------------------------------------
 '
 '*****************************************
-SUB MethodUpdate(newStrings AS string)'!!!! <<< необновленные процедуры
+SUB MethodUpdate(newStrings AS string)'!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   DEFINT i, cnt
   DEFLNG hWnd
   DEFSTR tstr, token
@@ -4957,7 +4957,7 @@ end function
 
 
 '*****************************************
-' если оформить процедурой
+' РµСЃР»Рё РѕС„РѕСЂРјРёС‚СЊ РїСЂРѕС†РµРґСѓСЂРѕР№
 function GetPropString_OLD (prop as string) as string
 
   defint PropValue
@@ -4998,10 +4998,10 @@ function GetPropValue (prop as string) as integer
   'call  AddClrString ("3876:GetPropValue PropertyGrid.RowCount="+str$(PropertyGrid.RowCount), clo, LogEdit)
 
   For rowi=1 to PropertyGrid.RowCount-1
-    celli=trim$(lcase$(PropertyGrid.Cell(0, rowi))) ' имя свойства
+    celli=trim$(lcase$(PropertyGrid.Cell(0, rowi))) ' РёРјСЏ СЃРІРѕР№СЃС‚РІР°
     'call  AddClrString ("2374:celli="+(celli), cldp, LogEdit)
 
-    if  celli=lcase$(prop)  then 'если название свойства совпадает с заданным
+    if  celli=lcase$(prop)  then 'РµСЃР»Рё РЅР°Р·РІР°РЅРёРµ СЃРІРѕР№СЃС‚РІР° СЃРѕРІРїР°РґР°РµС‚ СЃ Р·Р°РґР°РЅРЅС‹Рј
 
       celli=trim$(lcase$(PropertyGrid.Cell(1, rowi)))
       'call  AddClrString ("4727:celli="+(celli), clred, LogEdit)
@@ -5076,7 +5076,7 @@ end function
 
 
 '*****************************************
-' если оформить процедурой
+' РµСЃР»Рё РѕС„РѕСЂРјРёС‚СЊ РїСЂРѕС†РµРґСѓСЂРѕР№
 function GetPropValue_OLD (prop as string) as integer
   'call  AddClrString ("2364:prop="+(prop), clg, LogEdit)
 
@@ -5137,7 +5137,7 @@ SUB ReDrawComponentByField
 
   call  AddClrString ("3332:ReDrawComponentbyField ObjectType("+str$(ObjectIndex)+")="+(ObjectType(ObjectIndex)), clm, LogEdit)
 
-  ObjTIdx=ObjTypeIndex(ObjectIndex) '!!! может путаться в ObjectIndex
+  ObjTIdx=ObjTypeIndex(ObjectIndex) '!!! РјРѕР¶РµС‚ РїСѓС‚Р°С‚СЊСЃСЏ РІ ObjectIndex
   call  AddClrString ("3827:ObjTypeIndex("+str$(ObjectIndex)+")="+str$(ObjTypeIndex(ObjectIndex)), clred, LogEdit)
   'call  AddClrString ("3335:ObjTIdx="+str$(ObjTIdx), clm, LogEdit)
 
@@ -5151,7 +5151,7 @@ SUB ReDrawComponentByField
   call  AddClrString ("3834:ObjectType("+str$(ObjectIndex)+")="+(ObjectType(ObjectIndex)), clm, LogEdit)
   call  AddClrString ("4805:flParsed="+str$(flParsed), clred, LogEdit)
 
-  if flParsed=0 then ' свойства!!!  компонента, если он устанавливается с палитры
+  if flParsed=0 then ' СЃРІРѕР№СЃС‚РІР°!!!  РєРѕРјРїРѕРЅРµРЅС‚Р°, РµСЃР»Рё РѕРЅ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ СЃ РїР°Р»РёС‚СЂС‹
 
     if ucase$(ObjectType(ObjectIndex))<>"QFORM" and ucase$(ObjectType(ObjectIndex))<>"QSCROLLBAR" then
       X =GetPropValue ("Left")
@@ -5172,7 +5172,7 @@ SUB ReDrawComponentByField
   else
     brem 0
     ==================
-    '! переписываем в таблицу свойств из PropList.dat
+    '! РїРµСЂРµРїРёСЃС‹РІР°РµРј РІ С‚Р°Р±Р»РёС†Сѓ СЃРІРѕР№СЃС‚РІ РёР· PropList.dat
     ' PropertyFieldUpdate("Left",STR$(Left))                        !!!!
 
     GridListFileName$=projectDir$+"\"+objname$+"PropList.dat"
@@ -5214,7 +5214,7 @@ SUB ReDrawComponentByField
     fld=GetPropValue ("BorderStyle"):if (fld>-999 ) then Forms(ObjTIdx).BorderStyle=fld 'bsToolWindow 'fld
     'call  AddClrString ("4876:BorderStyle fld="+str$(fld), clred, LogEdit)
 
-    ObjectHandle(ObjectIndex)=Forms(ObjTIdx).handle '! после изменения свойства меняется handle ! ! !
+    ObjectHandle(ObjectIndex)=Forms(ObjTIdx).handle '! РїРѕСЃР»Рµ РёР·РјРµРЅРµРЅРёСЏ СЃРІРѕР№СЃС‚РІР° РјРµРЅСЏРµС‚СЃСЏ handle ! ! !
 
     call  AddClrString ("4879:Forms("+str$(ObjTIdx)+"handle)="+str$(Forms(ObjTIdx).handle), clb, LogEdit)
     PropertyFieldUpdate("handle", str$(Forms(ObjTIdx).handle))
@@ -6190,7 +6190,7 @@ SUB ReDrawComponentbyField_OLD
     BoxEdit(ObjTIdx).cursor=GetPropValue ("cursor")
     BoxEdit(ObjTIdx).showhint=GetPropValue ("showhint")
     BoxEdit(ObjTIdx).hint=GetPropString("hint")
-    BoxEdit(ObjTIdx).Font=StrFont(CurrentObject) '!!! Исправить - каждому компоненту отдельный шрифт
+    BoxEdit(ObjTIdx).Font=StrFont(CurrentObject) '!!! РСЃРїСЂР°РІРёС‚СЊ - РєР°Р¶РґРѕРјСѓ РєРѕРјРїРѕРЅРµРЅС‚Сѓ РѕС‚РґРµР»СЊРЅС‹Р№ С€СЂРёС„С‚
 
     'redraw
     BoxEdit(ObjTIdx).visible=false
@@ -6261,7 +6261,7 @@ SUB ReDrawComponentbyField_OLD
 
     'dPan(ObjTIdx).borderstyle=GetPropValue ("borderstyle")
     brem 0
-    ' обновляем handle
+    ' РѕР±РЅРѕРІР»СЏРµРј handle
     propString=AddedObjectList(CurrentObject)
     'sub SetFIELD(Source$,delim$,fnum%,updField$)
     sHnd$=str$(dPan(ObjTIdx).Handle)
@@ -6302,7 +6302,7 @@ SUB ReDrawComponentbyField_OLD
     TabCtrl(ObjTIdx).TabInactiveColor=GetPropValue ("TabInactiveColor")
     BoxTab(ObjTIdx).visible=GetPropValue ("visible")
 
-    ' обновляем handle
+    ' РѕР±РЅРѕРІР»СЏРµРј handle
 
     'btn.Visible=False: btn.Parent=TabCtrl(TabContIndex)
     'TabHandle=GetParent(btn.Handle)
@@ -6426,7 +6426,7 @@ SUB ReDrawComponentbyField_OLD
     ScrollB(ObjTIdx).VertPosition=GetPropValue ("VertPosition")
     ScrollB(ObjTIdx).VertRange=GetPropValue ("VertRange")
     ScrollB(ObjTIdx).VertTracking=GetPropValue ("VertTracking")
-    ScrollB(ObjTIdx).VertVisible=GetPropValue("VertVisible") '!!! не работает
+    ScrollB(ObjTIdx).VertVisible=GetPropValue("VertVisible") '!!! РЅРµ СЂР°Р±РѕС‚Р°РµС‚
 
     'ScrollB(ObjTIdx).BorderStyle=GetPropValue("BorderStyle")
 
@@ -6603,7 +6603,7 @@ END SUB
 
 '*****************************************
 ' Edit a property field using the combobox
-SUB FieldUpdateCombo(Sender) '!!!! <<< необновленные процедуры
+SUB FieldUpdateCombo(Sender) '!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   'call  AddClrString ("6201:FieldUpdateCombo="+str$(FieldUpdateCombo), 444, LogEdit)
   DEFSTR tstr, tok
   DEFINT i, Row, ColorChosen=False
@@ -6701,7 +6701,7 @@ END SUB
 
 '*****************************************
 ' Return the parameters of the event sub
-FUNCTION GetSubParms(pField AS string) AS string'!!!! <<< необновленные процедуры
+FUNCTION GetSubParms(pField AS string) AS string'!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   DEFSTR tstr, token
   DEFINT i
 
@@ -6718,7 +6718,7 @@ END FUNCTION
 
 '*****************************************
 ' Edit a property/method/event field using the edit box
-SUB FieldUpdateEdit(Key,Shift,Sender) '!!!! <<<<< необновленные процедуры
+SUB FieldUpdateEdit(Key,Shift,Sender) '!!!! <<<<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   call  AddClrString ("2862:FieldUpdateEdit="+str$(FieldUpdateEdit), 6666, LogEdit)
   DEFSTR oldStr, newStr, pField, token
   DEFINT Row
@@ -6789,7 +6789,7 @@ SUB FieldUpdateEdit(Key,Shift,Sender) '!!!! <<<<< необновленные процедуры
     'ReDrawComponent
   elseif Key=27 then
 
-    PropertyGrid.Cell(PropertyGrid.Col,PropertyGrid.Row)=OldPv$ '!восстанавливаем предыдущее значение!!
+    PropertyGrid.Cell(PropertyGrid.Col,PropertyGrid.Row)=OldPv$ '!РІРѕСЃСЃС‚Р°РЅР°РІР»РёРІР°РµРј РїСЂРµРґС‹РґСѓС‰РµРµ Р·РЅР°С‡РµРЅРёРµ!!
     Sender.Text=OldPv$
     'call  AddClrString ("14687:OldPv$="+(OldPv$), clred, LogEdit)
 
@@ -6809,9 +6809,9 @@ SUB EditPropertyField(Col, Row, CanSelect, Sender)'!!!!
   DEFINT i, top, cnt, Sel
   DEFSTR tstr, tok
 
-  'сохраняем изменения предыдущего свойства.
-  'OldPv$="" ' старое значение свойства
-  'defint OldCol=-1,OldRow=-1 ' предыдущая ячейка. При клике на новую ячейку значение из edit переписывается в ячейку
+  'СЃРѕС…СЂР°РЅСЏРµРј РёР·РјРµРЅРµРЅРёСЏ РїСЂРµРґС‹РґСѓС‰РµРіРѕ СЃРІРѕР№СЃС‚РІР°.
+  'OldPv$="" ' СЃС‚Р°СЂРѕРµ Р·РЅР°С‡РµРЅРёРµ СЃРІРѕР№СЃС‚РІР°
+  'defint OldCol=-1,OldRow=-1 ' РїСЂРµРґС‹РґСѓС‰Р°СЏ СЏС‡РµР№РєР°. РџСЂРё РєР»РёРєРµ РЅР° РЅРѕРІСѓСЋ СЏС‡РµР№РєСѓ Р·РЅР°С‡РµРЅРёРµ РёР· edit РїРµСЂРµРїРёСЃС‹РІР°РµС‚СЃСЏ РІ СЏС‡РµР№РєСѓ
 
   'call  AddClrString ("6390:OldRow="+str$(OldRow), clred, LogEdit)
   FieldEdit.Visible=False                                         ' Ensure the field QEDIT hidden
@@ -6835,12 +6835,12 @@ SUB EditPropertyField(Col, Row, CanSelect, Sender)'!!!!
   end if
 
 
-  OldPv$=PropertyGrid.Cell(Col,Row) '!сохраняем текущее  значение ячейки!!
+  OldPv$=PropertyGrid.Cell(Col,Row) '!СЃРѕС…СЂР°РЅСЏРµРј С‚РµРєСѓС‰РµРµ  Р·РЅР°С‡РµРЅРёРµ СЏС‡РµР№РєРё!!
   'call  AddClrString ("6377:EditPropertyField OldPv$="+(OldPv$), clo, LogEdit)
 
   OldCol=Col
   'call  AddClrString ("6401:OldCol="+str$(OldCol), clred, LogEdit)
-  OldRow=Row ' сохраняем параметры ячейки
+  OldRow=Row ' СЃРѕС…СЂР°РЅСЏРµРј РїР°СЂР°РјРµС‚СЂС‹ СЏС‡РµР№РєРё
   'call  AddClrString ("6403:OldRow="+str$(OldRow), clred, LogEdit)
 
   HideCarets                                                      ' Ensure hidden
@@ -6936,7 +6936,7 @@ END SUB
 
 '*****************************************
 ' User selected a field in the method string grid
-SUB EditMethodField(Col, Row, CanSelect, Sender)'!!!! <<< необновленные процедуры
+SUB EditMethodField(Col, Row, CanSelect, Sender)'!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   DEFINT i, top, cnt
   DEFSTR objString, tstr, token
 
@@ -6970,7 +6970,7 @@ END SUB
 
 '*****************************************
 ' User selected a field in the event string grid
-SUB EditEventField(Col, Row, CanSelect, Sender)'!!!! <<< необновленные процедуры
+SUB EditEventField(Col, Row, CanSelect, Sender)'!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   DEFINT i, j, top, cnt
   DEFSTR objString, tstr, token
 
@@ -7018,7 +7018,7 @@ END SUB
 ' Entry point: BuildFormCode()
 '
 '*****************************************
-SUB InsertCodeHeader  '!!!! <<< необновленные процедуры                                              ' STAND_ALONE mode only
+SUB InsertCodeHeader  '!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹                                              ' STAND_ALONE mode only
   DEFINT i
   DEFSTR tstr
 
@@ -7039,7 +7039,7 @@ SUB InsertCodeHeader  '!!!! <<< необновленные процедуры                         
 END SUB
 
 '*****************************************
-SUB InsertCodeFooter     '!!!! <<< необновленные процедуры                                           ' STAND_ALONE mode only
+SUB InsertCodeFooter     '!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹                                           ' STAND_ALONE mode only
   DEFINT i
   DEFSTR tstr
 
@@ -7058,7 +7058,7 @@ SUB InsertCodeFooter     '!!!! <<< необновленные процедуры                      
 END SUB
 
 '*****************************************
-SUB InsertNonVisible'!!!! <<< необновленные процедуры
+SUB InsertNonVisible'!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   DEFINT i, k, cnt, objID
   DEFSTR defString, nuString, tstr, token
   DEFSTR spacer=SPACE$(4)
@@ -7106,7 +7106,7 @@ END SUB
 
 '*****************************************
 ' Insert code for QMainMenus and/or QPopupMenus with formatting
-SUB InsertMenu(which AS integer)'!!!! <<< необновленные процедуры
+SUB InsertMenu(which AS integer)'!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   DEFINT i, j, cnt, lev
   DEFSTR mnuString, tstr, token, spacer
 
@@ -7142,7 +7142,7 @@ SUB InsertMenu(which AS integer)'!!!! <<< необновленные процедуры
 END SUB
 
 '*****************************************
-FUNCTION ObjectHasChildren(ThisIdx AS integer) AS integer'!!!! <<< необновленные процедуры
+FUNCTION ObjectHasChildren(ThisIdx AS integer) AS integer'!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   DEFINT i
   DEFLNG hWnd
   DEFSTR tstr
@@ -7162,7 +7162,7 @@ END FUNCTION
 
 '*****************************************
 ' FIXME Component "methods" of type OTHER THAN <Array of strings>!!
-SUB InsertObjectCode(ThisIdx AS integer, lev AS integer)'!!!! <<< необновленные процедуры
+SUB InsertObjectCode(ThisIdx AS integer, lev AS integer)'!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   call  AddClrString ("6791:InsertObjectCode ThisIdx="+str$(ThisIdx), cldp, LogEdit)
   DEFINT i, j, cnt, aligned, addquotes
   DEFSTR tstr, token, defString, nuString, objType$, objName$
@@ -7188,7 +7188,7 @@ SUB InsertObjectCode(ThisIdx AS integer, lev AS integer)'!!!! <<< необновленные 
   CodeText.AddStrings spacer+"CREATE "+token+" AS "+objtype$ 'FIELD$(nuString,"|",2)
   spacer=spacer+"    "
 
-  'загружаем таблицу свойств
+  'Р·Р°РіСЂСѓР¶Р°РµРј С‚Р°Р±Р»РёС†Сѓ СЃРІРѕР№СЃС‚РІ
 
   DefGridFileName$=StartDir+"data\"+objtype$+".data"
 
@@ -7214,11 +7214,11 @@ SUB InsertObjectCode(ThisIdx AS integer, lev AS integer)'!!!! <<< необновленные 
 
   GridFileName$=projectDir$+"\"+objname$+".dat"
   call  AddClrString ("******** 7005:GridFileName$="+(GridFileName$), clp, LogEdit)
-  PropertyGrid.LoadFromFile(GridFileName$,0,0,1000) ' загружаем таблицу свойств для компонента из списка
+  PropertyGrid.LoadFromFile(GridFileName$,0,0,1000) ' Р·Р°РіСЂСѓР¶Р°РµРј С‚Р°Р±Р»РёС†Сѓ СЃРІРѕР№СЃС‚РІ РґР»СЏ РєРѕРјРїРѕРЅРµРЅС‚Р° РёР· СЃРїРёСЃРєР°
 
 
 
-  '!! Перебираем по таблице свойств и если свойство отлично от дефолтного - добавляем
+  '!! РџРµСЂРµР±РёСЂР°РµРј РїРѕ С‚Р°Р±Р»РёС†Рµ СЃРІРѕР№СЃС‚РІ Рё РµСЃР»Рё СЃРІРѕР№СЃС‚РІРѕ РѕС‚Р»РёС‡РЅРѕ РѕС‚ РґРµС„РѕР»С‚РЅРѕРіРѕ - РґРѕР±Р°РІР»СЏРµРј
 
   for ri=1 to PropertyGrid.RowCount-1
     if PropertyGrid.Cell(0,ri)="" then goto nextri1
@@ -7311,7 +7311,7 @@ exitsub6845:
 END SUB
 
 '*****************************************
-SUB InsertFormCode(idx AS integer)'!!!! <<< необновленные процедуры
+SUB InsertFormCode(idx AS integer)'!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   call  AddClrString ("6929:InsertFormCode idx="+str$(idx), cldm, LogEdit)
   '!! idx - ObjectIndex
 
@@ -7340,7 +7340,7 @@ SUB InsertFormCode(idx AS integer)'!!!! <<< необновленные процедуры
 
   CodeText.AddStrings "CREATE "+token+" AS QFORM"
 
-  '!! Перебираем по таблице свойств и если свойство отлично от дефолтного - добавляем
+  '!! РџРµСЂРµР±РёСЂР°РµРј РїРѕ С‚Р°Р±Р»РёС†Рµ СЃРІРѕР№СЃС‚РІ Рё РµСЃР»Рё СЃРІРѕР№СЃС‚РІРѕ РѕС‚Р»РёС‡РЅРѕ РѕС‚ РґРµС„РѕР»С‚РЅРѕРіРѕ - РґРѕР±Р°РІР»СЏРµРј
 
   for ri=1 to DefaultPropertyGrid.RowCount-1
     'call  AddClrString ("3573:ri="+str$(ri), clred, LogEdit)
@@ -7367,11 +7367,11 @@ SUB InsertFormCode(idx AS integer)'!!!! <<< необновленные процедуры
 
   GridFileName$=projectDir$+"\"+objname$+".dat"
   call  AddClrString ("**** 6981:GridFileName$="+(GridFileName$), clp, LogEdit)
-  PropertyGrid.LoadFromFile(GridFileName$,0,0,1000) ' загружаем таблицу свойств для компонента из списка
+  PropertyGrid.LoadFromFile(GridFileName$,0,0,1000) ' Р·Р°РіСЂСѓР¶Р°РµРј С‚Р°Р±Р»РёС†Сѓ СЃРІРѕР№СЃС‚РІ РґР»СЏ РєРѕРјРїРѕРЅРµРЅС‚Р° РёР· СЃРїРёСЃРєР°
 
 
 
-  '!! Перебираем по таблице свойств и если свойство отлично от дефолтного - добавляем
+  '!! РџРµСЂРµР±РёСЂР°РµРј РїРѕ С‚Р°Р±Р»РёС†Рµ СЃРІРѕР№СЃС‚РІ Рё РµСЃР»Рё СЃРІРѕР№СЃС‚РІРѕ РѕС‚Р»РёС‡РЅРѕ РѕС‚ РґРµС„РѕР»С‚РЅРѕРіРѕ - РґРѕР±Р°РІР»СЏРµРј
 
   for ri=1 to PropertyGrid.RowCount-1
     if PropertyGrid.Cell(0,ri)="" then goto nextri
@@ -7400,7 +7400,7 @@ END SUB
 
 '*****************************************
 ' Recursively called for each new "parent type" object
-SUB InsertThisChain(StartIdx AS integer, lev AS integer)'!!!! <<< необновленные процедуры
+SUB InsertThisChain(StartIdx AS integer, lev AS integer)'!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   'call  AddClrString ("6963:InsertThisChain lev="+str$(lev), clp, LogEdit)
   'call  AddClrString ("6963:InsertThisChain StartIdx="+str$(StartIdx), clp, LogEdit)
   DEFINT i, cnt, nxt
@@ -7439,11 +7439,11 @@ END SUB
 '!*****************************************
 SUB BuildFormCode1'
 
-  DEFINT i, ObjIdx,ObjLvl=-1 ' уровень вложенности родителей-детей
+  DEFINT i, ObjIdx,ObjLvl=-1 ' СѓСЂРѕРІРµРЅСЊ РІР»РѕР¶РµРЅРЅРѕСЃС‚Рё СЂРѕРґРёС‚РµР»РµР№-РґРµС‚РµР№
   DEFSTR tstr, ObjType, ObjName
 
 
-  FOR i=0 TO ObjectCount-1 ' перебираем по объектам
+  FOR i=0 TO ObjectCount-1 ' РїРµСЂРµР±РёСЂР°РµРј РїРѕ РѕР±СЉРµРєС‚Р°Рј
     call  AddClrString ("6919:ObjectType("+str$(i)+")="+(ObjectType(i)), cldb, LogEdit)
 
     objType=ucase$(ObjectType(i))
@@ -7452,7 +7452,7 @@ SUB BuildFormCode1'
 
     SELECT CASE objType
 
-    CASE "QFORM","QSCROLLBOX","QPANEL","QGROUPBOX","QTABCONTROL"  ' объекты могут иметь детей
+    CASE "QFORM","QSCROLLBOX","QPANEL","QGROUPBOX","QTABCONTROL"  ' РѕР±СЉРµРєС‚С‹ РјРѕРіСѓС‚ РёРјРµС‚СЊ РґРµС‚РµР№
 
       CodeText.AddStrings "Create "+ObjectName(i)+" as "+ObjectType(i)
       inc ObjLvl
@@ -7517,7 +7517,7 @@ SUB BuildFormCode
 
 
 
-  for ri=1 to PropertyGrid.RowCount-1  '! очищаем  PropertyGrid
+  for ri=1 to PropertyGrid.RowCount-1  '! РѕС‡РёС‰Р°РµРј  PropertyGrid
     for cj=0 to PropertyGrid.ColCount-1
       PropertyGrid.Cell(cj,ri)=""
     next
@@ -7527,7 +7527,7 @@ SUB BuildFormCode
   GridFileName$=projectDir$+"\"+trim$(ObjectName(ObjectIndex))+".dat"
   call  AddClrString ("7388:GridFileName$="+(GridFileName$), clred, LogEdit)
 
-  PropertyGrid.LoadFromFile(GridFileName$,0,0,1000) ' загружаем таблицу свойств для компонента из списка
+  PropertyGrid.LoadFromFile(GridFileName$,0,0,1000) ' Р·Р°РіСЂСѓР¶Р°РµРј С‚Р°Р±Р»РёС†Сѓ СЃРІРѕР№СЃС‚РІ РґР»СЏ РєРѕРјРїРѕРЅРµРЅС‚Р° РёР· СЃРїРёСЃРєР°
 
 
 END SUB
@@ -7607,7 +7607,7 @@ END SUB
 ' Entry points AddNewObject() or AddNewForm()
 
 '!*****************************************
-FUNCTION GetDefaultProperties(ComponentID)'!!!! <<< необновленные процедуры
+FUNCTION GetDefaultProperties(ComponentID)'!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   DEFINT i, j
   DEFSTR tstr, token
 
@@ -7638,7 +7638,7 @@ FUNCTION GetDefaultProperties(ComponentID)'!!!! <<< необновленные процедуры
 END FUNCTION
 
 '!*****************************************
-SUB UpdatePropGrid(idx)'!!!! <<< необновленные процедуры
+SUB UpdatePropGrid(idx)'!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   call  AddClrString ("3505:UpdatePropGrid="+str$(UpdatePropGrid), clg, LogEdit)
 
   DEFINT i, propCount, methodCount, eventCount, maxStrings
@@ -7722,8 +7722,8 @@ END SUB
 SUB AddNewForm ()
   call  AddClrString ("------------------------- 7465:AddNewForm="+str$(AddNewForm), clg, LogEdit)
 
-  inc FormCount 'был 0 , стал 1
-  inc ObjectCount 'был 0 , стал 1
+  inc FormCount 'Р±С‹Р» 0 , СЃС‚Р°Р» 1
+  inc ObjectCount 'Р±С‹Р» 0 , СЃС‚Р°Р» 1
   'call  AddClrString ("2439:AddNewForm FormCount="+str$(FormCount), subclr, LogEdit)
   'call  AddClrString ("2439:AddNewForm ObjectCount="+str$(ObjectCount), subclr, LogEdit)
 
@@ -7802,8 +7802,8 @@ SUB AddNewForm ()
   'call  AddClrString ("2596:token="+str$(token), clred, LogEdit)
   cmboxObj.ItemIndex=ObjectIndex
 
-  '!!!  заменяем на сохранение свойств формы  в таблицу и таблицы в файл таблицы  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
-  '1 заполняем таблицу свойствами по умолчанию
+  '!!!  Р·Р°РјРµРЅСЏРµРј РЅР° СЃРѕС…СЂР°РЅРµРЅРёРµ СЃРІРѕР№СЃС‚РІ С„РѕСЂРјС‹  РІ С‚Р°Р±Р»РёС†Сѓ Рё С‚Р°Р±Р»РёС†С‹ РІ С„Р°Р№Р» С‚Р°Р±Р»РёС†С‹  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+  '1 Р·Р°РїРѕР»РЅСЏРµРј С‚Р°Р±Р»РёС†Сѓ СЃРІРѕР№СЃС‚РІР°РјРё РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ
   for ri=0 to DefaultPropertyGrid.RowCount-1
     for cj=0 to DefaultPropertyGrid.ColCount-1
       DefaultPropertyGrid.Cell(cj,ri)=""
@@ -7838,7 +7838,7 @@ SUB AddNewForm ()
 
     'call  AddClrString ("7560:evRow="+str$(evRow), clred, LogEdit)
     'else
-    PropertyGrid.cell(0,i)=DefaultPropertyGrid.cell(0,i-1) ' невидимая таблица для DefaultProperty
+    PropertyGrid.cell(0,i)=DefaultPropertyGrid.cell(0,i-1) ' РЅРµРІРёРґРёРјР°СЏ С‚Р°Р±Р»РёС†Р° РґР»СЏ DefaultProperty
     PropertyGrid.cell(1,i)=DefaultPropertyGrid.cell(2,i-1)
     PropertyGrid.cell (4,i)=DefaultPropertyGrid.cell (1,i-1)
 
@@ -7857,7 +7857,7 @@ SUB AddNewForm ()
     'EventGrid.cell(0,evRow)=DefaultPropertyGrid.cell(0,i-3)
     'inc evRow
     'else
-    PropertyGrid.cell(3,i)=str$(i) ' номер строки
+    PropertyGrid.cell(3,i)=str$(i) ' РЅРѕРјРµСЂ СЃС‚СЂРѕРєРё
     PropertyGrid.cell(1,i)=DefaultPropertyGrid.cell(2,i-1)
     'end if
   next i
@@ -7884,8 +7884,8 @@ SUB AddNewForm ()
   PropertyGrid.cell(1,22-qq)=str$(Forms(FormIndex).Parent)
   'SillyForm.Handle
 
-  '!!! сохраняем таблицу
-  if projectDir$="" then ' создаем новый проект
+  '!!! СЃРѕС…СЂР°РЅСЏРµРј С‚Р°Р±Р»РёС†Сѓ
+  if projectDir$="" then ' СЃРѕР·РґР°РµРј РЅРѕРІС‹Р№ РїСЂРѕРµРєС‚
     'projectDir$=StartDir+projectpath$+"Newproject "+time$-":"
     projectDir$=projectpath$+"Newproject "+time$-":"
     'projectDir$=ExtractFileName(SrcFileName$)
@@ -7903,7 +7903,7 @@ SUB AddNewForm ()
   GridFileName$=projectDir$+"\"+trim$(field$(cmboxObj.text," ",1))+".dat"
   'GridFileName$=projectDir$+"\"+trim$(field$(cmboxObj.Item(cmboxObj.ItemIndex)," ",1)+".dat")
 
-  'call  AddClrString ("2659:AddNewForm  Сохраняем в GridFileName$="+(GridFileName$), cldr, LogEdit)
+  'call  AddClrString ("2659:AddNewForm  РЎРѕС…СЂР°РЅСЏРµРј РІ GridFileName$="+(GridFileName$), cldr, LogEdit)
   PropertyGrid.SaveToFile(GridFileName$,0,0,PropertyGrid.RowCount)
 
   exitAddNewFormSub:
@@ -7951,7 +7951,7 @@ SUB AddNewForm_OLD
   token="Form"+STR$(FrmIndex)
   call  AddClrString ("3338:token="+(token), clred, LogEdit)
 
-  '!!!  заменяем на загрузку таблицы
+  '!!!  Р·Р°РјРµРЅСЏРµРј РЅР° Р·Р°РіСЂСѓР·РєСѓ С‚Р°Р±Р»РёС†С‹
   tstr=STR$(0)+"|QFORM|"+STR$(Forms(FrmIndex).Handle)+"|"+token+"|"+token+"|0~"
   AddedObjectList(CurrentObject)=tstr+GetDefaultProperties(0)
 
@@ -7972,7 +7972,7 @@ END SUB
 
 '!*****************************************
 ' When ONLY single instance of this object per form allowed
-FUNCTION FormHasObject(ComponentID AS integer) AS integer '!!!! <<< необновленные процедуры
+FUNCTION FormHasObject(ComponentID AS integer) AS integer '!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   DEFINT i, j, cnt, thisObject
   DEFSTR objStr, tstr
 
@@ -8001,7 +8001,7 @@ END FUNCTION
 
 '!*****************************************
 ' When ONLY single instance of this object per parent object allowed
-FUNCTION ParentHasObject(Parnt AS long, ComponentID AS integer, ComponentType AS string) AS integer'!!!! <<< необновленные процедуры
+FUNCTION ParentHasObject(Parnt AS long, ComponentID AS integer, ComponentType AS string) AS integer'!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   DEFINT i, parntIdx
   DEFSTR tstr
 
@@ -8065,7 +8065,7 @@ END FUNCTION
 
 '*****************************************
 ' Return the name of the object parent
-FUNCTION WhichParent1(hWnd AS long) AS string'!!!! <<< необновленные процедуры
+FUNCTION WhichParent1(hWnd AS long) AS string'!!!! <<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
   DEFINT i
   DEFSTR tstr
 
@@ -8131,7 +8131,7 @@ SUB AddQOVALBTN(hWnd AS long)
   ObjectHandle(ObjectIndex)=panelOval(QOVALIndex).Handle
   ObjectName(ObjectIndex)="OVALBTN"+STR$(QOVALIndex) '!========================
 
-  if flParsed=0 then ' свойства!!!  компонента, если он устанавливается с палитры
+  if flParsed=0 then ' СЃРІРѕР№СЃС‚РІР°!!!  РєРѕРјРїРѕРЅРµРЅС‚Р°, РµСЃР»Рё РѕРЅ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ СЃ РїР°Р»РёС‚СЂС‹
 
     tPoint.x=Screen.MouseX: tPoint.y=Screen.MouseY
     ScreenToClient(hWnd,tPoint)
@@ -8159,8 +8159,8 @@ SUB AddQOVALBTN(hWnd AS long)
     PropertyFieldUpdate("Caption",token)                          ' ..Width & Height defaults
     PropertyFieldUpdate("Parent",WhichParent(hWnd))               '
 
-    'SaveNewObjDataGrid(hWnd, token, ObjectIndex) '!!! сохранение таблицы
-    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, panelOval(QOVALIndex).Width, panelOval(QOVALIndex).Height,panelOval(QOVALIndex).Color) '!!! сохранение таблицы
+    'SaveNewObjDataGrid(hWnd, token, ObjectIndex) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
+    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, panelOval(QOVALIndex).Width, panelOval(QOVALIndex).Height,panelOval(QOVALIndex).Color) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
   else
     ReDrawComponentByField
 
@@ -8198,12 +8198,12 @@ SUB AddQCHECKBOX(hWnd AS long)
   ObjectHandle(ObjectIndex)=Check(CheckIndex).Handle
   token="CHECKBOX"+str$(CheckIndex)+" "
 
-  ObjectName(ObjectIndex)=token ' список имен объектов
+  ObjectName(ObjectIndex)=token ' СЃРїРёСЃРѕРє РёРјРµРЅ РѕР±СЉРµРєС‚РѕРІ
   'call  AddClrString ("4426:token="+str$(token), clo, LogEdit)
   'call  AddClrString ("4391:ObjectName("+str$(ObjectIndex)+")="+(ObjectName(ObjectIndex)), clo, LogEdit)
 
 
-  if flParsed=0 then ' свойства!!!  компонента, если он устанавливается с палитры
+  if flParsed=0 then ' СЃРІРѕР№СЃС‚РІР°!!!  РєРѕРјРїРѕРЅРµРЅС‚Р°, РµСЃР»Рё РѕРЅ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ СЃ РїР°Р»РёС‚СЂС‹
 
     token="ChkBox"+STR$(CheckIndex)
 
@@ -8223,8 +8223,8 @@ SUB AddQCHECKBOX(hWnd AS long)
     PropertyFieldUpdate("Top",STR$(tPoint.y))                     ' Update new properties in AddedObjectList..
     PropertyFieldUpdate("Caption",token)                          ' ..Width & Height defaults
     PropertyFieldUpdate("Parent",WhichParent(hWnd))               '
-    'SaveNewObjDataGrid(hWnd, token, ObjectIndex) '!!! сохранение таблицы
-    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, .Width, .Height,0) '!!! сохранение таблицы
+    'SaveNewObjDataGrid(hWnd, token, ObjectIndex) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
+    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, .Width, .Height,0) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
   else
     ReDrawComponentByField
   end if
@@ -8289,7 +8289,7 @@ SUB AddQLabel(hWnd AS long)
   'ObjectIndex=ObjectIndex
 
 
-  if flParsed=0 then ' свойства!!!  компонента, если он устанавливается с палитры
+  if flParsed=0 then ' СЃРІРѕР№СЃС‚РІР°!!!  РєРѕРјРїРѕРЅРµРЅС‚Р°, РµСЃР»Рё РѕРЅ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ СЃ РїР°Р»РёС‚СЂС‹
 
     BoxLabel(LabelIndex).Caption=token
 
@@ -8305,9 +8305,9 @@ SUB AddQLabel(hWnd AS long)
     PropertyFieldUpdate("Caption",token)                          ' ..Width & Height defaults
     PropertyFieldUpdate("Parent",WhichParent(hWnd))               '
 
-    'SaveNewObjDataGrid(hWnd, token, ObjectIndex) '!!! сохранение таблицы
+    'SaveNewObjDataGrid(hWnd, token, ObjectIndex) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
     SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, BoxLabel(LabelIndex).Width,_
-                       BoxLabel(LabelIndex).Height,BoxLabel(LabelIndex).Color) '!!! сохранение таблицы
+                       BoxLabel(LabelIndex).Height,BoxLabel(LabelIndex).Color) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
   else
     ReDrawComponentByField
   end if
@@ -8350,7 +8350,7 @@ SUB AddQRADIOBUTTON(hWnd AS long)
 
   'call  AddClrString ("4534:flParsed="+str$(flParsed), clb, LogEdit)
 
-  if flParsed=0 then ' свойства!!!  компонента, если он устанавливается с палитры
+  if flParsed=0 then ' СЃРІРѕР№СЃС‚РІР°!!!  РєРѕРјРїРѕРЅРµРЅС‚Р°, РµСЃР»Рё РѕРЅ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ СЃ РїР°Р»РёС‚СЂС‹
 
     Radio(RadioIndex).Caption=token
 
@@ -8366,8 +8366,8 @@ SUB AddQRADIOBUTTON(hWnd AS long)
     PropertyFieldUpdate("Caption",token)                          ' ..Width & Height defaults
     PropertyFieldUpdate("Parent",WhichParent(hWnd))               '
 
-    'SaveNewObjDataGrid(hWnd, token, ObjectIndex) '!!! сохранение таблицы
-    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, Radio(RadioIndex).Width, Radio(RadioIndex).Height,Color) '!!! сохранение таблицы
+    'SaveNewObjDataGrid(hWnd, token, ObjectIndex) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
+    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, Radio(RadioIndex).Width, Radio(RadioIndex).Height,Color) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
   else
     ReDrawComponentByField
   end if
@@ -8433,7 +8433,7 @@ SUB AddQTABCONTROL(hWnd AS long)
   'DestroyWindow(btn.Handle)
 
 
-  if flParsed=0 then ' свойства!!!  компонента, если он устанавливается с палитры
+  if flParsed=0 then ' СЃРІРѕР№СЃС‚РІР°!!!  РєРѕРјРїРѕРЅРµРЅС‚Р°, РµСЃР»Рё РѕРЅ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ СЃ РїР°Р»РёС‚СЂС‹
 
     BoxTab(TabContIndex).Width=150                                  ' Non-Default for a QTabControl...
     BoxTab(TabContIndex).Height=100                                 ' ...Re-sized for convenience
@@ -8453,8 +8453,8 @@ SUB AddQTABCONTROL(hWnd AS long)
     PropertyFieldUpdate("Top",STR$(tPoint.y))                     ' Update new properties in AddedObjectList..
     PropertyFieldUpdate("Parent",WhichParent(hWnd))               '
 
-    'SaveNewObjDataGrid(hWnd, token, ObjectIndex) '!!! сохранение таблицы
-    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, BoxTab(TabContIndex).Width, BoxTab(TabContIndex).Height,BoxTab(TabContIndex).Color) '!!! сохранение таблицы
+    'SaveNewObjDataGrid(hWnd, token, ObjectIndex) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
+    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, BoxTab(TabContIndex).Width, BoxTab(TabContIndex).Height,BoxTab(TabContIndex).Color) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
   else
     ReDrawComponentByField
   end if
@@ -8510,7 +8510,7 @@ SUB AddQCOMBOBOX(hWnd AS long)
   ObjectHandle(ObjectIndex)=Combo(ComboIndex).Handle
   ObjectName(ObjectIndex)="COMBOBOX"+STR$(ComboIndex) '!========================
 
-  if flParsed=0 then ' свойства!!!  компонента, если он устанавливается с палитры
+  if flParsed=0 then ' СЃРІРѕР№СЃС‚РІР°!!!  РєРѕРјРїРѕРЅРµРЅС‚Р°, РµСЃР»Рё РѕРЅ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ СЃ РїР°Р»РёС‚СЂС‹
 
     token="Combo"+STR$(ComboIndex)+_
     " as "+ObjectType(ObjectIndex)+" parent="+_
@@ -8529,8 +8529,8 @@ SUB AddQCOMBOBOX(hWnd AS long)
     PropertyFieldUpdate("Text",token)                             '
     PropertyFieldUpdate("Parent",WhichParent(hWnd))               '
 
-    'SaveNewObjDataGrid(hWnd, token, ObjectIndex) '!!! сохранение таблицы
-    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, Combo(ComboIndex).Width, Combo(ComboIndex).Height,Combo(ComboIndex).Color) '!!! сохранение таблицы
+    'SaveNewObjDataGrid(hWnd, token, ObjectIndex) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
+    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, Combo(ComboIndex).Width, Combo(ComboIndex).Height,Combo(ComboIndex).Color) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
   else
     ReDrawComponentByField
   end if
@@ -8586,7 +8586,7 @@ SUB AddQLISTBOX(hWnd AS long)
   ObjectHandle(ObjectIndex)=ListB(ListBIndex).Handle
   ObjectName(ObjectIndex)=token
 
-  if flParsed=0 then ' свойства!!!  компонента, если он устанавливается с палитры
+  if flParsed=0 then ' СЃРІРѕР№СЃС‚РІР°!!!  РєРѕРјРїРѕРЅРµРЅС‚Р°, РµСЃР»Рё РѕРЅ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ СЃ РїР°Р»РёС‚СЂС‹
 
     token="ListBox"+STR$(ListBIndex)+_
     " as "+ObjectType(ObjectIndex)+" parent="+_
@@ -8606,8 +8606,8 @@ SUB AddQLISTBOX(hWnd AS long)
     PropertyFieldUpdate("Top",STR$(tPoint.y))                     ' Update new properties in AddedObjectList..
     PropertyFieldUpdate("Parent",WhichParent(hWnd))               '
 
-    'SaveNewObjDataGrid(hWnd, token, ObjectIndex) '!!! сохранение таблицы
-    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, ListB(ListBIndex).Width, ListB(ListBIndex).Height,ListB(ListBIndex).Color) '!!! сохранение таблицы
+    'SaveNewObjDataGrid(hWnd, token, ObjectIndex) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
+    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, ListB(ListBIndex).Width, ListB(ListBIndex).Height,ListB(ListBIndex).Color) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
     'cmboxObj.addItems token
 
   else
@@ -8664,7 +8664,7 @@ SUB AddQGROUPBOX(hWnd AS long)
   call  AddClrString ("5732:ObjectName("+str$(ObjectIndex)+")="+(ObjectName(ObjectIndex)), clo, LogEdit)
   'call  AddClrString ("5732:token="+(token), clo, LogEdit)
 
-  if flParsed=0 then ' свойства!!!  компонента, если он устанавливается с палитры
+  if flParsed=0 then ' СЃРІРѕР№СЃС‚РІР°!!!  РєРѕРјРїРѕРЅРµРЅС‚Р°, РµСЃР»Рё РѕРЅ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ СЃ РїР°Р»РёС‚СЂС‹
     GrpBox(GrpBoxIndex).Width=150
     GrpBox(GrpBoxIndex).Height=100
 
@@ -8686,7 +8686,7 @@ SUB AddQGROUPBOX(hWnd AS long)
     PropertyFieldUpdate("Parent",WhichParent(hWnd))               '
 
     SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, GrpBox(GrpBoxIndex).Width,_
-                       GrpBox(GrpBoxIndex).Height,GrpBox(GrpBoxIndex).color) '!!! сохранение таблицы
+                       GrpBox(GrpBoxIndex).Height,GrpBox(GrpBoxIndex).color) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
     'cmboxObj.addItems token
 
   else
@@ -8747,7 +8747,7 @@ SUB AddQSCROLLBOX(hWnd AS long)
   'BoxInner(ScrollBIndex).Parent=ScrollB(ScrollBIndex)
   'BoxInner(ScrollBIndex).Enabled=False                            ' Don't capture mouse clicks!
 
-  if flParsed=0 then ' свойства!!!  компонента, если он устанавливается с палитры
+  if flParsed=0 then ' СЃРІРѕР№СЃС‚РІР°!!!  РєРѕРјРїРѕРЅРµРЅС‚Р°, РµСЃР»Рё РѕРЅ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ СЃ РїР°Р»РёС‚СЂС‹
     ScrollB(ScrollBIndex).Width=150                                 ' Force size of ScrollBox
     ScrollB(ScrollBIndex).Height=100
     BoxInner(ScrollBIndex).Width=500                                ' Force scrollbars visible
@@ -8760,8 +8760,8 @@ SUB AddQSCROLLBOX(hWnd AS long)
     ScrollB(ScrollBIndex).Top=tPoint.y-2                            ' ditto
     ObjectName(ObjectIndex)=token
 
-    'SaveNewObjDataGrid(hWnd, token, ObjectIndex) '!!! сохранение таблицы
-    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, ScrollB(ScrollBIndex).Width, ScrollB(ScrollBIndex).Height,ScrollB(ScrollBIndex).Color) '!!! сохранение таблицы
+    'SaveNewObjDataGrid(hWnd, token, ObjectIndex) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
+    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, ScrollB(ScrollBIndex).Width, ScrollB(ScrollBIndex).Height,ScrollB(ScrollBIndex).Color) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
 
 
     'PropertyFieldUpdate("Left",STR$(tPoint.x))                    '
@@ -8824,7 +8824,7 @@ SUB AddQSCROLLBAR(hWnd AS long)
   ObjectHandle(ObjectIndex)=ScrollBar(ScrllBarIndex).Handle
   'call  AddClrString ("4858:ScrollBar("+str$(ScrllBarIndex)+"Handle)="+str$(ScrollBar(ScrllBarIndex).Handle), clb, LogEdit)
 
-  if flParsed=0 then ' свойства!!!  компонента, если он устанавливается с палитры
+  if flParsed=0 then ' СЃРІРѕР№СЃС‚РІР°!!!  РєРѕРјРїРѕРЅРµРЅС‚Р°, РµСЃР»Рё РѕРЅ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ СЃ РїР°Р»РёС‚СЂС‹
 
     token="ScrlBar"+STR$(ScrllBarIndex)+" "
     ScrollBar(ScrllBarIndex).Width=100
@@ -8844,9 +8844,9 @@ SUB AddQSCROLLBAR(hWnd AS long)
     PropertyFieldUpdate("Top",STR$(tPoint.y))                     ' Update new properties in AddedObjectList..
     PropertyFieldUpdate("Parent",WhichParent(hWnd))               '
 
-    'SaveNewObjDataGrid(hWnd, token, ObjectIndex) '!!! сохранение таблицы
+    'SaveNewObjDataGrid(hWnd, token, ObjectIndex) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
     SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, ScrollBar(ScrllBarIndex).Width, _
-                       ScrollBar(ScrllBarIndex).Height,0) '!!! сохранение таблицы
+                       ScrollBar(ScrllBarIndex).Height,0) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
   else
     ReDrawComponentByField
   end if
@@ -8900,7 +8900,7 @@ SUB AddQSTRINGGRID(hWnd AS long)
   ObjectHandle(ObjectIndex)=StrGrid(StringGIndex).Handle
   'call  AddClrString ("5176:ObjectHandle("+str$(ObjectIndex)+")="+str$(ObjectHandle(ObjectIndex)), clb, LogEdit)
 
-  if flParsed=0 then ' свойства!!!  компонента, если он устанавливается с палитры
+  if flParsed=0 then ' СЃРІРѕР№СЃС‚РІР°!!!  РєРѕРјРїРѕРЅРµРЅС‚Р°, РµСЃР»Рё РѕРЅ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ СЃ РїР°Р»РёС‚СЂС‹
 
     token="StringGrid"+STR$(StringGIndex) +" "
     StrGrid(StringGIndex).Width=150
@@ -8922,8 +8922,8 @@ SUB AddQSTRINGGRID(hWnd AS long)
     PropertyFieldUpdate("Top",STR$(tPoint.y))                     ' Update new properties in AddedObjectList..
     PropertyFieldUpdate("Parent",WhichParent(hWnd))               '
 
-    'SaveNewObjDataGrid(hWnd, token, ObjectIndex) '!!! сохранение таблицы
-    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, StrGrid(StringGIndex).Width, StrGrid(StringGIndex).Height,StrGrid(StringGIndex).Color) '!!! сохранение таблицы
+    'SaveNewObjDataGrid(hWnd, token, ObjectIndex) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
+    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, StrGrid(StringGIndex).Width, StrGrid(StringGIndex).Height,StrGrid(StringGIndex).Color) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
   else
     ReDrawComponentByField
   end if
@@ -8975,7 +8975,7 @@ SUB AddQLISTVIEW(hWnd AS long)
   ObjectType(ObjectIndex)="QLISTVIEW"
   ObjTypeIndex(ObjectIndex)=ListVIndex
   ObjectHandle(ObjectIndex)=ListView(ListVIndex).Handle
-  if flParsed=0 then ' свойства!!!  компонента, если он устанавливается с палитры
+  if flParsed=0 then ' СЃРІРѕР№СЃС‚РІР°!!!  РєРѕРјРїРѕРЅРµРЅС‚Р°, РµСЃР»Рё РѕРЅ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ СЃ РїР°Р»РёС‚СЂС‹
 
     token="ListView"+STR$(ListVIndex)+" "
     ListView(ListVIndex).Width=150
@@ -8996,8 +8996,8 @@ SUB AddQLISTVIEW(hWnd AS long)
     PropertyFieldUpdate("Top",STR$(tPoint.y))                     ' Update new properties in AddedObjectList..
     PropertyFieldUpdate("Parent",WhichParent(hWnd))               '
 
-    'SaveNewObjDataGrid(hWnd, token, ObjectIndex) '!!! сохранение таблицы
-    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, ListView(ListVIndex).Width, ListView(ListVIndex).Height,ListView(ListVIndex).Color) '!!! сохранение таблицы
+    'SaveNewObjDataGrid(hWnd, token, ObjectIndex) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
+    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, ListView(ListVIndex).Width, ListView(ListVIndex).Height,ListView(ListVIndex).Color) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
   else
     ReDrawComponentByField
   end if
@@ -9064,7 +9064,7 @@ SUB AddQHEADER(hWnd AS long)
   ObjTypeIndex(ObjectIndex)=HeadIndex
   ObjectHandle(ObjectIndex)=BoxHeadr(HeadIndex).Handle
 
-  if flParsed=0 then ' свойства!!!  компонента, если он устанавливается с палитры
+  if flParsed=0 then ' СЃРІРѕР№СЃС‚РІР°!!!  РєРѕРјРїРѕРЅРµРЅС‚Р°, РµСЃР»Рё РѕРЅ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ СЃ РїР°Р»РёС‚СЂС‹
 
 
     token="Header"+STR$(HeadIndex)+" "
@@ -9075,9 +9075,9 @@ SUB AddQHEADER(hWnd AS long)
 
 
     PropertyFieldUpdate("Parent",WhichParent(hWnd))
-    'SaveNewObjDataGrid(hWnd, token, ObjectIndex) '!!! сохранение таблицы
+    'SaveNewObjDataGrid(hWnd, token, ObjectIndex) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
 
-    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, BoxHeadr(HeadIndex).Width, BoxHeadr(HeadIndex).Height,BoxHeadr(HeadIndex).Color) '!!! сохранение таблицы
+    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, BoxHeadr(HeadIndex).Width, BoxHeadr(HeadIndex).Height,BoxHeadr(HeadIndex).Color) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
   else
     ReDrawComponentByField
   end if
@@ -9150,7 +9150,7 @@ SUB AddQSTATUSBAR(hWnd AS long)
   StatBar(StatIndex).Enabled=False
 
 
-  if flParsed=0 then ' свойства!!!  компонента, если он устанавливается с палитры
+  if flParsed=0 then ' СЃРІРѕР№СЃС‚РІР°!!!  РєРѕРјРїРѕРЅРµРЅС‚Р°, РµСЃР»Рё РѕРЅ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ СЃ РїР°Р»РёС‚СЂС‹
 
     token="Status"+STR$(StatIndex)+" "
 
@@ -9158,8 +9158,8 @@ SUB AddQSTATUSBAR(hWnd AS long)
 
     PropertyFieldUpdate("Parent",WhichParent(hWnd))
 
-    'SaveNewObjDataGrid(hWnd, token, ObjectIndex) '!!! сохранение таблицы
-    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, BoxStat(StatIndex).Width, BoxStat(StatIndex).Height,BoxStat(StatIndex).Color) '!!! сохранение таблицы
+    'SaveNewObjDataGrid(hWnd, token, ObjectIndex) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
+    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, BoxStat(StatIndex).Width, BoxStat(StatIndex).Height,BoxStat(StatIndex).Color) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
   else
     ReDrawComponentByField
   end if
@@ -9249,7 +9249,7 @@ SUB AddQDIRTREE(hWnd AS long)
   ObjectHandle(ObjectIndex)=BoxDTree(DirTIndex).Handle
   call  AddClrString ("9080:ObjectHandle("+str$(ObjectIndex)+")="+str$(ObjectHandle(ObjectIndex)), clred, LogEdit)
 
-  if flParsed=0 then ' свойства!!!  компонента, если он устанавливается с палитры
+  if flParsed=0 then ' СЃРІРѕР№СЃС‚РІР°!!!  РєРѕРјРїРѕРЅРµРЅС‚Р°, РµСЃР»Рё РѕРЅ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ СЃ РїР°Р»РёС‚СЂС‹
 
     token="DirTree"+STR$(DirTIndex)+" "
     BoxDTree(DirTIndex).Width=150
@@ -9262,8 +9262,8 @@ SUB AddQDIRTREE(hWnd AS long)
 
     PropertyFieldUpdate("Left",STR$(tPoint.x))
 
-    'SaveNewObjDataGrid(hWnd, token, ObjectIndex) '!!! сохранение таблицы
-    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, BoxDTree(DirTIndex).Width, BoxDTree(DirTIndex).Height,BoxDTree(DirTIndex).Color) '!!! сохранение таблицы
+    'SaveNewObjDataGrid(hWnd, token, ObjectIndex) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
+    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, BoxDTree(DirTIndex).Width, BoxDTree(DirTIndex).Height,BoxDTree(DirTIndex).Color) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
   else
     ReDrawComponentByField
 
@@ -9298,7 +9298,7 @@ End Sub
 
 
 '*****************************************
-SUB AddQSPLITTER(hWnd AS long)       ' не используется!                               ' Fudge using a QPanel
+SUB AddQSPLITTER(hWnd AS long)       ' РЅРµ РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ!                               ' Fudge using a QPanel
 
   reDIM panSplit(SplitCount) AS QPANEL
   SplitIndex=SplitCount-1
@@ -9336,7 +9336,7 @@ SUB AddQSPLITTER(hWnd AS long)       ' не используется!                         
   'cmboxObjOnChange
   'UpdatePropGrid(ObjectIndex)                                   ' Update String grid
 
-  SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, panSplit(SplitIndex).Width, panSplit(SplitIndex).Height,panSplit(SplitIndex).Color) '!!! сохранение таблицы
+  SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, panSplit(SplitIndex).Width, panSplit(SplitIndex).Height,panSplit(SplitIndex).Color) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
 
   'INC ObjectCount: INC SplitIndex
 END SUB
@@ -9523,7 +9523,7 @@ SUB AddQFILELISTBOX(hWnd AS long)
 
 
 
-  if flParsed=0 then ' свойства!!!  компонента, если он устанавливается с палитры
+  if flParsed=0 then ' СЃРІРѕР№СЃС‚РІР°!!!  РєРѕРјРїРѕРЅРµРЅС‚Р°, РµСЃР»Рё РѕРЅ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ СЃ РїР°Р»РёС‚СЂС‹
     token="FileListBox"+ STR$(FileLindex)+" "
     BoxFile(FileLindex).Width=150
     BoxFile(FileLindex).Height=150
@@ -9536,7 +9536,7 @@ SUB AddQFILELISTBOX(hWnd AS long)
     ObjectName(ObjectIndex)=token
 
 
-    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, BoxFile(FileLindex).Width, BoxFile(FileLindex).Height,BoxFile(FileLindex).Color) '!!! сохранение таблицы
+    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, BoxFile(FileLindex).Width, BoxFile(FileLindex).Height,BoxFile(FileLindex).Color) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
   else
     ReDrawComponentByField
   end if
@@ -9595,7 +9595,7 @@ SUB AddQGAUGE(hWnd AS long)                                         ' Fudge usin
   ObjectHandle(ObjectIndex)=panGauge(GaugeIndex).Handle
   ''call  AddClrString ("5762:flParsed="+str$(flParsed), clb, LogEdit)
 
-  if flParsed=0 then ' свойства!!!  компонента, если он устанавливается с палитры
+  if flParsed=0 then ' СЃРІРѕР№СЃС‚РІР°!!!  РєРѕРјРїРѕРЅРµРЅС‚Р°, РµСЃР»Рё РѕРЅ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ СЃ РїР°Р»РёС‚СЂС‹
 
     token="Gauge"+STR$(GaugeIndex)+" "
     panGauge(GaugeIndex).Width=100
@@ -9610,7 +9610,7 @@ SUB AddQGAUGE(hWnd AS long)                                         ' Fudge usin
 
 
     SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, panGauge(GaugeIndex).Width, _
-                       panGauge(GaugeIndex).Height,panGauge(GaugeIndex).Color) '!!! сохранение таблицы
+                       panGauge(GaugeIndex).Height,panGauge(GaugeIndex).Color) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
   else
     ReDrawComponentByField
   end if
@@ -9645,7 +9645,7 @@ SUB AddQMenuItem(hWnd AS long)
   'call  AddClrString ("5975:Parent ObjectType("+str$(ObjParentIdx(ObjectIndex))+")="+_
   'ParentObjType$, clp, LogEdit)
 
-  Select case MainMnuIdx-1 'оно всего одно на форму
+  Select case MainMnuIdx-1 'РѕРЅРѕ РІСЃРµРіРѕ РѕРґРЅРѕ РЅР° С„РѕСЂРјСѓ
   case 0
     'call  AddClrString ("5985:MnuItem("+str$(ParentObjIdx)+")caption)="+(MnuItem(ParentObjIdx).caption), clo, LogEdit)
     'call  AddClrString ("5986:ParentObjType$="+(ParentObjType$), clo, LogEdit)
@@ -9718,10 +9718,10 @@ SUB AddQMenuItem(hWnd AS long)
   ObjTypeIndex(ObjectIndex)=MnuItemIdx
   ObjectName(ObjectIndex)=token
 
-  if flParsed=0 then ' свойства!!!  компонента, если он устанавливается с палитры
+  if flParsed=0 then ' СЃРІРѕР№СЃС‚РІР°!!!  РєРѕРјРїРѕРЅРµРЅС‚Р°, РµСЃР»Рё РѕРЅ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ СЃ РїР°Р»РёС‚СЂС‹
     token="MainMnu"+STR$(MnuItemIdx+1)
     'SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, dTrackBar(TrackBIndex).Width, _
-    'dTrackBar(TrackBIndex).Height,Color) '!!! сохранение таблицы
+    'dTrackBar(TrackBIndex).Height,Color) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
   else
     'ReDrawComponentByField
   end if
@@ -9805,10 +9805,10 @@ SUB AddQMainMenu(hWnd AS long)
   ObjTypeIndex(ObjectIndex)=MainMnuIdx
   ObjectName(ObjectIndex)=token
 
-  if flParsed=0 then ' свойства!!!  компонента, если он устанавливается с палитры
+  if flParsed=0 then ' СЃРІРѕР№СЃС‚РІР°!!!  РєРѕРјРїРѕРЅРµРЅС‚Р°, РµСЃР»Рё РѕРЅ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ СЃ РїР°Р»РёС‚СЂС‹
     token="MainMnu"+STR$(MainMnuIdx+1)
     'SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, dTrackBar(TrackBIndex).Width, _
-    'dTrackBar(TrackBIndex).Height,Color) '!!! сохранение таблицы
+    'dTrackBar(TrackBIndex).Height,Color) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
   else
     'ReDrawComponentByField
   end if
@@ -9868,7 +9868,7 @@ SUB AddQTRACKBAR(hWnd AS long)
   ObjectHandle(ObjectIndex)=dTrackBar(TrackBIndex).Handle
   ObjectName(ObjectIndex)=token
 
-  if flParsed=0 then ' свойства!!!  компонента, если он устанавливается с палитры
+  if flParsed=0 then ' СЃРІРѕР№СЃС‚РІР°!!!  РєРѕРјРїРѕРЅРµРЅС‚Р°, РµСЃР»Рё РѕРЅ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ СЃ РїР°Р»РёС‚СЂС‹
 
     token="TrackBar"+STR$(TrackBIndex)+" "
     dTrackBar(TrackBIndex).Width=150
@@ -9880,7 +9880,7 @@ SUB AddQTRACKBAR(hWnd AS long)
     dTrackBar(TrackBIndex).Max=20
 
     SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, dTrackBar(TrackBIndex).Width, _
-                       dTrackBar(TrackBIndex).Height,0) '!!! сохранение таблицы
+                       dTrackBar(TrackBIndex).Height,0) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
 
   else
     ReDrawComponentByField
@@ -9895,11 +9895,11 @@ Sub ShowObjects
   flParsed=1 !!! '!!! global flag - show parsed object, not new.
   '!!! Property grid already exists
 
-  flgPrnt=0 ' нашли корневого родителя. можно парсить дальше и расставлять компоненты на родителей
+  flgPrnt=0 ' РЅР°С€Р»Рё РєРѕСЂРЅРµРІРѕРіРѕ СЂРѕРґРёС‚РµР»СЏ. РјРѕР¶РЅРѕ РїР°СЂСЃРёС‚СЊ РґР°Р»СЊС€Рµ Рё СЂР°СЃСЃС‚Р°РІР»СЏС‚СЊ РєРѕРјРїРѕРЅРµРЅС‚С‹ РЅР° СЂРѕРґРёС‚РµР»РµР№
   pIdx=0
 
   defint cbi
-  ' merge DefaultPropertyGrid and PropertyGrid  !!!!!! пока не будем -
+  ' merge DefaultPropertyGrid and PropertyGrid  !!!!!! РїРѕРєР° РЅРµ Р±СѓРґРµРј -
 
   'DEFINT ObjectIndex    ' global index of added objects - added from component palette ans added from source parsing
   'DIM ObjectType(0 TO MAX_OBJECTS) AS string                          '!!! Component's type ie  QPANEL, QButton etc
@@ -9919,14 +9919,14 @@ Sub ShowObjects
       call  AddClrString ("5770:!!!!!!!!!!!!!!!!!!!!!!! cbi="+str$(cbi), &H00C700, LogEdit)
       'call  AddClrString ("5300:cmboxObj.ItemCount="+str$(cmboxObj.ItemCount), clred, LogEdit)
 
-      exit for '!!! ShamanKING trick иначе не выходит из цикла !!!!!!!!!!!!!!!!!!!!!!
+      exit for '!!! ShamanKING trick РёРЅР°С‡Рµ РЅРµ РІС‹С…РѕРґРёС‚ РёР· С†РёРєР»Р° !!!!!!!!!!!!!!!!!!!!!!
     end if
-    call  AddClrString ("5293:-------- перебираем по комбобоксу и отрисовываем компоненты", cldи, LogEdit)
-    '!!! По факту ObjectIndex это cmboxObj.ItemIndex, поскольку объекты по мере парсинга записываются в cmboxObj
-    '!!! Хендл созданного объекта под номером ObjectIndex сохраняется в массиве ObjectHandle(ObjectIndex)
-    '!!! Хендл родителя объекта под номером ObjectIndex находится в массиве ObjectHandle(ObjParentIdx(ObjectIndex)).
+    call  AddClrString ("5293:-------- РїРµСЂРµР±РёСЂР°РµРј РїРѕ РєРѕРјР±РѕР±РѕРєСЃСѓ Рё РѕС‚СЂРёСЃРѕРІС‹РІР°РµРј РєРѕРјРїРѕРЅРµРЅС‚С‹", cldРё, LogEdit)
+    '!!! РџРѕ С„Р°РєС‚Сѓ ObjectIndex СЌС‚Рѕ cmboxObj.ItemIndex, РїРѕСЃРєРѕР»СЊРєСѓ РѕР±СЉРµРєС‚С‹ РїРѕ РјРµСЂРµ РїР°СЂСЃРёРЅРіР° Р·Р°РїРёСЃС‹РІР°СЋС‚СЃСЏ РІ cmboxObj
+    '!!! РҐРµРЅРґР» СЃРѕР·РґР°РЅРЅРѕРіРѕ РѕР±СЉРµРєС‚Р° РїРѕРґ РЅРѕРјРµСЂРѕРј ObjectIndex СЃРѕС…СЂР°РЅСЏРµС‚СЃСЏ РІ РјР°СЃСЃРёРІРµ ObjectHandle(ObjectIndex)
+    '!!! РҐРµРЅРґР» СЂРѕРґРёС‚РµР»СЏ РѕР±СЉРµРєС‚Р° РїРѕРґ РЅРѕРјРµСЂРѕРј ObjectIndex РЅР°С…РѕРґРёС‚СЃСЏ РІ РјР°СЃСЃРёРІРµ ObjectHandle(ObjParentIdx(ObjectIndex)).
 
-    '!!! проходим по объектам линейно и потом прикручиваем паренты согласно структуре из BuildObjTree
+    '!!! РїСЂРѕС…РѕРґРёРј РїРѕ РѕР±СЉРµРєС‚Р°Рј Р»РёРЅРµР№РЅРѕ Рё РїРѕС‚РѕРј РїСЂРёРєСЂСѓС‡РёРІР°РµРј РїР°СЂРµРЅС‚С‹ СЃРѕРіР»Р°СЃРЅРѕ СЃС‚СЂСѓРєС‚СѓСЂРµ РёР· BuildObjTree
     ObjectIndex=cbi
     ObjectName(ObjectIndex)=field$(cmboxObj.Item(cbi)," ",1) '!!!  form1
     ObjectType(ObjectIndex)=trim$(field$(cmboxObj.Item(cbi)," as ",2)) '!!!  qform
@@ -9943,7 +9943,7 @@ Sub ShowObjects
     cmboxObjOnChange
 
     'call  AddClrString ("5793:ObjectType("+str$(ObjectIndex)+")="+(ObjectType(ObjectIndex)), clred, LogEdit)
-    NewObjectID=GetNewObjectID (ObjectType(ObjectIndex)) 'тип нового объекта
+    NewObjectID=GetNewObjectID (ObjectType(ObjectIndex)) 'С‚РёРї РЅРѕРІРѕРіРѕ РѕР±СЉРµРєС‚Р°
     'call  AddClrString ("6509:NewObjectID="+str$(NewObjectID), clb, LogEdit)
 
 
@@ -10054,7 +10054,7 @@ SUB  SaveAsOnClick        '' SaveAs item clicked
 
     SrcFileName=SaveDialog.FileName
     '!!StatusPanel5.Caption=SrcFileName$
-    ' если файл из списка окон, то при переименовании меняем название в списке
+    ' РµСЃР»Рё С„Р°Р№Р» РёР· СЃРїРёСЃРєР° РѕРєРѕРЅ, С‚Рѕ РїСЂРё РїРµСЂРµРёРјРµРЅРѕРІР°РЅРёРё РјРµРЅСЏРµРј РЅР°Р·РІР°РЅРёРµ РІ СЃРїРёСЃРєРµ
     'if EditFlg=0 then WindMnu(WindowsIndex).caption=str$(WindowsIndex)+ chr$(160)+SrcFileName
 
     if SaveString(SrcEdit.text ,SrcFileName$  )< 1 then
@@ -10224,7 +10224,7 @@ SUB AddQTREEVIEW(hWnd AS long)
   ObjTypeIndex(ObjectIndex)=TreeVIndex
   ObjectHandle(ObjectIndex)=BoxTree(TreeVIndex).Handle
 
-  if flParsed=0 then ' свойства!!!  компонента, если он устанавливается с палитры
+  if flParsed=0 then ' СЃРІРѕР№СЃС‚РІР°!!!  РєРѕРјРїРѕРЅРµРЅС‚Р°, РµСЃР»Рё РѕРЅ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ СЃ РїР°Р»РёС‚СЂС‹
 
     token="TreeView"+STR$(TreeVIndex)+" "
     BoxTree(TreeVIndex).Width=320
@@ -10233,7 +10233,7 @@ SUB AddQTREEVIEW(hWnd AS long)
     ScreenToClient(hWnd,tPoint)
     BoxTree(TreeVIndex).Left=tPoint.x-2
     BoxTree(TreeVIndex).Top=tPoint.y-2
-    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, BoxTree(TreeVIndex).Width, BoxTree(TreeVIndex).Height,BoxTree(TreeVIndex).Color) '!!! сохранение таблицы
+    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, BoxTree(TreeVIndex).Width, BoxTree(TreeVIndex).Height,BoxTree(TreeVIndex).Color) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
 
   else
     ReDrawComponentByField
@@ -10354,7 +10354,7 @@ SUB AddQOUTLINE(hWnd AS long)
   call  AddClrString ("7483:OutLnIndex="+str$(OutLnIndex), clred, LogEdit)
   ObjectHandle(ObjectIndex)=BoxOutLine(OutLnIndex).Handle
 
-  if flParsed=0 then ' свойства!!!  компонента, если он устанавливается с палитры
+  if flParsed=0 then ' СЃРІРѕР№СЃС‚РІР°!!!  РєРѕРјРїРѕРЅРµРЅС‚Р°, РµСЃР»Рё РѕРЅ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ СЃ РїР°Р»РёС‚СЂС‹
 
     BoxOutLine(OutLnIndex).Width=120
     BoxOutLine(OutLnIndex).Height=100
@@ -10369,7 +10369,7 @@ SUB AddQOUTLINE(hWnd AS long)
     BoxOutLine(OutLnIndex).Top=tPoint.y-2
     call  AddClrString ("7498:BoxOutLine("+str$(OutLnIndex)+"Top)="+str$(BoxOutLine(OutLnIndex).Top), clred, LogEdit)
 
-    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, BoxOutLine(OutLnIndex).Width, BoxOutLine(OutLnIndex).Height,BoxOutLine(OutLnIndex).Color) '!!! сохранение таблицы
+    SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, BoxOutLine(OutLnIndex).Width, BoxOutLine(OutLnIndex).Height,BoxOutLine(OutLnIndex).Color) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
 
   else
     ReDrawComponentByField
@@ -10424,7 +10424,7 @@ SUB AddQOLECONTAINER(hWnd AS long)                                  ' Fudge usin
   ObjectType(ObjectIndex)="QOLECONTAINER"
   ObjTypeIndex(ObjectIndex)=OLEContIndex
 
-  if flParsed=0 then ' свойства!!!  компонента, если он устанавливается с палитры
+  if flParsed=0 then ' СЃРІРѕР№СЃС‚РІР°!!!  РєРѕРјРїРѕРЅРµРЅС‚Р°, РµСЃР»Рё РѕРЅ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ СЃ РїР°Р»РёС‚СЂС‹
 
 
     token="OLEContainer"+STR$(OLEContIndex)+" "
@@ -10449,7 +10449,7 @@ SUB AddQOLECONTAINER(hWnd AS long)                                  ' Fudge usin
     'SelectionCombo.ItemIndex=ObjectIndex
     'UpdatePropGrid(ObjectIndex)                                   ' Update String grid
     SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, oleContainer(OLEContIndex).Width,_
-                       oleContainer(OLEContIndex).Height,oleContainer(OLEContIndex).Color) '!!! сохранение таблицы
+                       oleContainer(OLEContIndex).Height,oleContainer(OLEContIndex).Color) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
 
   else
     ReDrawComponentByField
@@ -10513,7 +10513,7 @@ SUB AddQCANVAS(hWnd AS long)                                        ' Fudge usin
   ObjTypeIndex(ObjectIndex)=CanvasIndex
   ObjectHandle(ObjectIndex)=panCanv(CanvasIndex).Handle
 
-  if flParsed=0 then ' свойства!!!  компонента, если он устанавливается с палитры
+  if flParsed=0 then ' СЃРІРѕР№СЃС‚РІР°!!!  РєРѕРјРїРѕРЅРµРЅС‚Р°, РµСЃР»Рё РѕРЅ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ СЃ РїР°Р»РёС‚СЂС‹
 
     token="Canvas"+STR$(CanvasIndex)+" "
     panCanv(CanvasIndex).Width=100
@@ -10525,7 +10525,7 @@ SUB AddQCANVAS(hWnd AS long)                                        ' Fudge usin
     panCanv(CanvasIndex).Caption=token
 
     SaveNewObjDataGrid(hWnd, token, ObjectIndex,tPoint.x, tPoint.y, panCanv(CanvasIndex).Width, _
-                       panCanv(CanvasIndex).Height,panCanv(CanvasIndex).Color) '!!! сохранение таблицы
+                       panCanv(CanvasIndex).Height,panCanv(CanvasIndex).Color) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
   else
     ReDrawComponentByField
   end if
@@ -10591,7 +10591,7 @@ SUB AddQIMAGE(hWnd AS long)                                         ' Fudge usin
   Imag(ImageIndex).enabled=0
 
 
-  if flParsed=0 then ' свойства!!!  компонента, если он устанавливается с палитры
+  if flParsed=0 then ' СЃРІРѕР№СЃС‚РІР°!!!  РєРѕРјРїРѕРЅРµРЅС‚Р°, РµСЃР»Рё РѕРЅ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ СЃ РїР°Р»РёС‚СЂС‹
 
     token="Image"+STR$(ImageIndex)+" "
     panImage(ImageIndex).Width=100
@@ -10679,11 +10679,11 @@ SUB AddQEDIT(hWnd AS long) ' hWnd is handle of the window where was clicked
 
   INC ObjectIndex: INC EdIndex
 
-  ' надо сделать массив индексов ObjTypeIndex(ObjectIndex)=EdIndex
-  ' то есть потом можно будет обращаться к объекту по его индексу в массиве
+  ' РЅР°РґРѕ СЃРґРµР»Р°С‚СЊ РјР°СЃСЃРёРІ РёРЅРґРµРєСЃРѕРІ ObjTypeIndex(ObjectIndex)=EdIndex
+  ' С‚Рѕ РµСЃС‚СЊ РїРѕС‚РѕРј РјРѕР¶РЅРѕ Р±СѓРґРµС‚ РѕР±СЂР°С‰Р°С‚СЊСЃСЏ Рє РѕР±СЉРµРєС‚Сѓ РїРѕ РµРіРѕ РёРЅРґРµРєСЃСѓ РІ РјР°СЃСЃРёРІРµ
   brem 0
-  if ObjectType(ObjectIndex)="QEDIT" then ' если тип данного объекта QEDIT
-    EdIndex=ObjTypeIndex(ObjectIndex) ' берем его индекс и устанавливаем свойства напрямую, а не через winapi по хендлу
+  if ObjectType(ObjectIndex)="QEDIT" then ' РµСЃР»Рё С‚РёРї РґР°РЅРЅРѕРіРѕ РѕР±СЉРµРєС‚Р° QEDIT
+    EdIndex=ObjTypeIndex(ObjectIndex) ' Р±РµСЂРµРј РµРіРѕ РёРЅРґРµРєСЃ Рё СѓСЃС‚Р°РЅР°РІР»РёРІР°РµРј СЃРІРѕР№СЃС‚РІР° РЅР°РїСЂСЏРјСѓСЋ, Р° РЅРµ С‡РµСЂРµР· winapi РїРѕ С…РµРЅРґР»Сѓ
     BoxEdit(EdIndex).color=clr
     BoxEdit(EdIndex).font=
     BoxEdit(EdIndex)./////
@@ -12003,7 +12003,7 @@ SUB AddNewObject (parenthWnd  AS integer) ' hWnd is parent handle ,ObjName as st
   ObjectIndex=ObjectCount-1
   call  AddClrString ("2076:ObjectIndex="+str$(ObjectIndex), clred, LogEdit)
 
-  IF ObjectCount>MAX_OBJECTS THEN ' ObjectIndex уже новый после addnewform
+  IF ObjectCount>MAX_OBJECTS THEN ' ObjectIndex СѓР¶Рµ РЅРѕРІС‹Р№ РїРѕСЃР»Рµ addnewform
     MessageBox("3342:Maximum components ("+STR$(MAX_OBJECTS)+") has been reached","RapidFRM "+VER,&H30)
     NewObjectID=-1
     EXIT SUB
@@ -12228,7 +12228,7 @@ END SUB
 ' Update the temp global string with original menu code
 ' plus the newly selected code. Update screen text.
 '*****************************************
-SUB LoadMenu(which AS integer, index AS integer) '!!!! <<<<<<<<<<<<<<< необновленные процедуры
+SUB LoadMenu(which AS integer, index AS integer) '!!!! <<<<<<<<<<<<<<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
 
   DEFINT i
   DEFSTR tstr, token, ThisParent=""
@@ -12304,7 +12304,7 @@ SUB AddPopupMenu
 END SUB
 
 '*****************************************
-SUB UpdateFwdDeclares '!!!! <<<<<<<<<<<<<<< необновленные процедуры
+SUB UpdateFwdDeclares '!!!! <<<<<<<<<<<<<<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
 
   DEFSTR tstr, token
   DEFINT i
@@ -12323,7 +12323,7 @@ END SUB
 
 ' Insert selected code into project
 '*****************************************
-SUB UpdateProjectMenu '!!!! <<<<<<<<<<<<<<< необновленные процедуры
+SUB UpdateProjectMenu '!!!! <<<<<<<<<<<<<<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
 
   DEFSTR tstr
 
@@ -12347,7 +12347,7 @@ END SUB
 
 ' "Menus" TAB selected
 '*****************************************
-SUB MenuEditor '!!!! <<<<<<<<<<<<<<< необновленные процедуры
+SUB MenuEditor '!!!! <<<<<<<<<<<<<<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
 
   DEFINT i, j
   DEFSTR tstr, token, frmNames=" "
@@ -12400,7 +12400,7 @@ END SUB
 '------------------------------------------------------------------------------
 ' Update the AddedObjectList string with object name
 '*****************************************
-SUB UpdateObjList(objectName AS string) '!!!! <<<<<<<<<<<<<<< необновленные процедуры
+SUB UpdateObjList(objectName AS string) '!!!! <<<<<<<<<<<<<<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
 
   call  AddClrString ("5456:UpdateObjList="+str$(UpdateObjList), clg, LogEdit)
   DEFINT i, cnt
@@ -12431,7 +12431,7 @@ SUB UpdateObjCombo(newObject AS string)
 END SUB
 
 '*****************************************
-SUB UpdateNewProperty(srcString AS string) '!!!! <<<<<<<<<<<<<<< необновленные процедуры
+SUB UpdateNewProperty(srcString AS string) '!!!! <<<<<<<<<<<<<<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
 
   DEFINT i, offset
   DEFSTR ObjString, tstr, token
@@ -12453,7 +12453,7 @@ END SUB
 ' Start=second line of CREATE .. END CREATE string block
 ' NB can be other objects mixed with THIS objects properties!
 '*****************************************
-SUB UpdateObjGrid(Start AS integer, blkString AS string) '!!!! <<<<<<<<<<<<<<< необновленные процедуры
+SUB UpdateObjGrid(Start AS integer, blkString AS string) '!!!! <<<<<<<<<<<<<<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
 
   call  AddClrString ("5507:UpdateObjGrid="+str$(UpdateObjGrid), clg, LogEdit)
   DEFINT i, cnt, lev
@@ -12477,7 +12477,7 @@ SUB UpdateObjGrid(Start AS integer, blkString AS string) '!!!! <<<<<<<<<<<<<<< н
 END SUB
 
 '*****************************************
-FUNCTION ExtractObjectID(objType AS string) AS integer '!!!! <<<<<<<<<<<<<<< необновленные процедуры
+FUNCTION ExtractObjectID(objType AS string) AS integer '!!!! <<<<<<<<<<<<<<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
 
   call  AddClrString ("5530:ExtractObjectID=", clg, LogEdit)
   DEFINT i
@@ -12496,7 +12496,7 @@ END FUNCTION
 
 '*****************************************
 ' Update defaults for this form, then redraw it
-SUB RepaintNewForm(frmString AS string)  '!!!! <<<<<<<<<<<<<<< необновленные процедуры
+SUB RepaintNewForm(frmString AS string)  '!!!! <<<<<<<<<<<<<<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
 
   DEFINT i, lev
   DEFINT left, top, width, height, defWidth, defHeight
@@ -12535,7 +12535,7 @@ END SUB
 ' Get SCREEN properties of object into a rect, then refresh it visually (NOT forms)
 ' Added MAJOR fudge v1.45 for QOvalBtn
 '*****************************************
-SUB RepaintNewObject(Start AS integer, frmString AS string)  '!!!! <<<<<<<<<<<<<<< необновленные процедуры
+SUB RepaintNewObject(Start AS integer, frmString AS string)  '!!!! <<<<<<<<<<<<<<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
 
   DEFINT i, lev, OvalIdx=0
   DEFINT width, height
@@ -12607,7 +12607,7 @@ END SUB
 ' Need to set the cursor in a "free" area of the parent object
 ' NB there may be other child objects in this parent!
 '*****************************************
-FUNCTION SetCursorInParent(hWnd AS long, objType AS string) AS integer '!!!! <<<<<<<<<<<<<<< необновленные процедуры
+FUNCTION SetCursorInParent(hWnd AS long, objType AS string) AS integer '!!!! <<<<<<<<<<<<<<< РЅРµРѕР±РЅРѕРІР»РµРЅРЅС‹Рµ РїСЂРѕС†РµРґСѓСЂС‹
 
   DEFINT px, py, y
   DIM pRect AS QRECT
@@ -13115,7 +13115,7 @@ SUB ParseInputStream
     'call  AddClrString ("6126:tstr="+(tstr), clred, LogEdit)
     call  AddClrString (tstr1, clBrown, RichEdit1)
 
-    if instr(tstr,".Show")>0 then exit for '!!! <<<<<<<<<<<<<< неправильно!!! надо проверить
+    if instr(tstr,".Show")>0 then exit for '!!! <<<<<<<<<<<<<< РЅРµРїСЂР°РІРёР»СЊРЅРѕ!!! РЅР°РґРѕ РїСЂРѕРІРµСЂРёС‚СЊ
 
     IF tstr="" THEN                                             ' Do nothing
     ELSEIF UCASE$(FIELD$(tstr," ",1))="CREATE" THEN
@@ -14766,7 +14766,7 @@ SUB  SaveAsOnClick1        '' SaveAs item clicked
     END IF
     SrcFileName=SaveDialog.FileName
     'StatusPanel5.Caption=SrcFileName
-    ' если файл из списка окон, то при переименовании меняем название в списке
+    ' РµСЃР»Рё С„Р°Р№Р» РёР· СЃРїРёСЃРєР° РѕРєРѕРЅ, С‚Рѕ РїСЂРё РїРµСЂРµРёРјРµРЅРѕРІР°РЅРёРё РјРµРЅСЏРµРј РЅР°Р·РІР°РЅРёРµ РІ СЃРїРёСЃРєРµ
     'if EditFlg=0 then WindMnu(WindowsIndex).caption=str$(WindowsIndex)+ chr$(160)+SrcFileName
 
     'if SaveString(SrcEdit.text ,SrcFileName  )< 1 then
@@ -14795,7 +14795,7 @@ END SUB
 '-----------------------------------------------------------------------------------
 
 brem 0
-=============== отслеживать перемещение формы за caption
+=============== РѕС‚СЃР»РµР¶РёРІР°С‚СЊ РїРµСЂРµРјРµС‰РµРЅРёРµ С„РѕСЂРјС‹ Р·Р° caption
 private
 procedure WMNCRBUTTONDOWN(var msg: TMessage); message WM_NCRBUTTONDOWN;
 procedure WMNCLBUTTONDOWN(var msg: TMessage); message WM_NCLBUTTONDOWN;
@@ -14951,7 +14951,7 @@ SUB SetAddedObjProp(parenthWnd AS long,Sender AS QPANEL, otype as string, oIdx a
 
     for i=0 to ObjectCount-1
 
-      if ObjectHandle(i)= ParenthWnd then ' нашли индекс компонента родителя
+      if ObjectHandle(i)= ParenthWnd then ' РЅР°С€Р»Рё РёРЅРґРµРєСЃ РєРѕРјРїРѕРЅРµРЅС‚Р° СЂРѕРґРёС‚РµР»СЏ
         'call  AddClrString ("3593:ObjectHandle("+str$(i)+")="+str$(ObjectHandle(i)), cldp, LogEdit)
         exit for
 
@@ -14965,7 +14965,7 @@ SUB SetAddedObjProp(parenthWnd AS long,Sender AS QPANEL, otype as string, oIdx a
     'call  AddClrString ("2460:zzz$="+(zzz$), clred, LogEdit)
     'call  AddClrString ("3606:FormCount="+str$(FormCount), clred, LogEdit)
 
-    Select case ucase$(zzz$) '      смотрим тип родителя ucase$(ObjectType(ObjectIndex))
+    Select case ucase$(zzz$) '      СЃРјРѕС‚СЂРёРј С‚РёРї СЂРѕРґРёС‚РµР»СЏ ucase$(ObjectType(ObjectIndex))
     case "QFORM"
 
       for i=0 to FormCount-1
@@ -14976,7 +14976,7 @@ SUB SetAddedObjProp(parenthWnd AS long,Sender AS QPANEL, otype as string, oIdx a
         if Forms(i).handle=ParenthWnd then
           call  AddClrString ("3611:Forms("+str$(i)+"handle)="+str$(Forms(i).handle), clred, LogEdit)
           sender.Parent=Forms(i)
-          exit for ' искомый родитель dpan(PanIndex) !!!!
+          exit for ' РёСЃРєРѕРјС‹Р№ СЂРѕРґРёС‚РµР»СЊ dpan(PanIndex) !!!!
 
         end if
 
@@ -14988,7 +14988,7 @@ SUB SetAddedObjProp(parenthWnd AS long,Sender AS QPANEL, otype as string, oIdx a
 
         if dpan(i).handle=ParenthWnd then
           sender.Parent=dpan(i)
-          exit for ' искомый родитель dpan(i) !!!!
+          exit for ' РёСЃРєРѕРјС‹Р№ СЂРѕРґРёС‚РµР»СЊ dpan(i) !!!!
 
         end if
 
@@ -15002,7 +15002,7 @@ SUB SetAddedObjProp(parenthWnd AS long,Sender AS QPANEL, otype as string, oIdx a
         if BoxTab(i).handle=ParenthWnd then
           sender.Parent=BoxTab(i)
           'result= "BoxTab_"+str$(i)
-          exit for ' искомый родитель TabCtrl(i) !!!!
+          exit for ' РёСЃРєРѕРјС‹Р№ СЂРѕРґРёС‚РµР»СЊ TabCtrl(i) !!!!
 
         end if
 
@@ -15015,7 +15015,7 @@ SUB SetAddedObjProp(parenthWnd AS long,Sender AS QPANEL, otype as string, oIdx a
 
         if GrpBox(i).handle=ParenthWnd then
           sender.Parent=GrpBox(i)
-          exit for ' искомый родитель GrpBox(i) !!!!
+          exit for ' РёСЃРєРѕРјС‹Р№ СЂРѕРґРёС‚РµР»СЊ GrpBox(i) !!!!
 
         end if
 
@@ -15026,7 +15026,7 @@ SUB SetAddedObjProp(parenthWnd AS long,Sender AS QPANEL, otype as string, oIdx a
 
         if ScrollB(i).handle=ParenthWnd then
           sender.Parent=ScrollB(i)
-          exit for ' искомый родитель ScrollB(i) !!!!
+          exit for ' РёСЃРєРѕРјС‹Р№ СЂРѕРґРёС‚РµР»СЊ ScrollB(i) !!!!
 
         end if
 
@@ -15043,11 +15043,11 @@ SUB SetAddedObjProp(parenthWnd AS long,Sender AS QPANEL, otype as string, oIdx a
     '!====================================================================
 
     'call  AddClrString ("3546:ObjectIndex="+str$(ObjectIndex), clred, LogEdit)
-    ObjectType(ObjectIndex)=otype 'список типов "QEDIT"
+    ObjectType(ObjectIndex)=otype 'СЃРїРёСЃРѕРє С‚РёРїРѕРІ "QEDIT"
     'call  AddClrString ("3548:otype="+(otype), clred, LogEdit)
-    ObjTypeIndex(ObjectIndex)=oIdx 'список номер экземпляра конкретного типа QEDIT
+    ObjTypeIndex(ObjectIndex)=oIdx 'СЃРїРёСЃРѕРє РЅРѕРјРµСЂ СЌРєР·РµРјРїР»СЏСЂР° РєРѕРЅРєСЂРµС‚РЅРѕРіРѕ С‚РёРїР° QEDIT
     'call  AddClrString ("3550:oIdx="+str$(oIdx), clred, LogEdit)
-    ObjectHandle(ObjectIndex)=sender.Handle ' список хэндлов
+    ObjectHandle(ObjectIndex)=sender.Handle ' СЃРїРёСЃРѕРє С…СЌРЅРґР»РѕРІ
 
     if childName$<>"" then
       token=childName$
@@ -15055,7 +15055,7 @@ SUB SetAddedObjProp(parenthWnd AS long,Sender AS QPANEL, otype as string, oIdx a
     end if
 
 
-    if flParsed=0 then ' свойства!!!  компонента, если он устанавливается с палитры
+    if flParsed=0 then ' СЃРІРѕР№СЃС‚РІР°!!!  РєРѕРјРїРѕРЅРµРЅС‚Р°, РµСЃР»Рё РѕРЅ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ СЃ РїР°Р»РёС‚СЂС‹
 
       .Width=oWidth
       .Height=oHeight                                      ' ...to the defaults of QEdit
@@ -15072,9 +15072,9 @@ SUB SetAddedObjProp(parenthWnd AS long,Sender AS QPANEL, otype as string, oIdx a
       'call  AddClrString ("3603:token="+(token), clred, LogEdit)
 
       .Caption=token
-      ObjectName(ObjectIndex)=token ' список имен объектов
+      ObjectName(ObjectIndex)=token ' СЃРїРёСЃРѕРє РёРјРµРЅ РѕР±СЉРµРєС‚РѕРІ
 
-      ' ПОЗИЦИЯ!!!  компонента, если он устанавливается с палитры
+      ' РџРћР—РР¦РРЇ!!!  РєРѕРјРїРѕРЅРµРЅС‚Р°, РµСЃР»Рё РѕРЅ СѓСЃС‚Р°РЅР°РІР»РёРІР°РµС‚СЃСЏ СЃ РїР°Р»РёС‚СЂС‹
       tPoint.x=Screen.MouseX: tPoint.y=Screen.MouseY
       ScreenToClient(parenthWnd,tPoint)
       .Left=tPoint.x
@@ -15085,7 +15085,7 @@ SUB SetAddedObjProp(parenthWnd AS long,Sender AS QPANEL, otype as string, oIdx a
         .Top=tPoint.y
       end if
 
-    else ' берем свойства из таблицы PropertyGrid
+    else ' Р±РµСЂРµРј СЃРІРѕР№СЃС‚РІР° РёР· С‚Р°Р±Р»РёС†С‹ PropertyGrid
       call  AddClrString ("3131:SetAddedObjProp call ReDrawComponentByField=", clred, LogEdit)
       ReDrawComponentByField
       'call  AddClrString ("3286:.Width="+str$(.Width), clred, LogEdit)
@@ -15094,7 +15094,7 @@ SUB SetAddedObjProp(parenthWnd AS long,Sender AS QPANEL, otype as string, oIdx a
 
     end if
 
-    '!!! устанавливаем каретку по полученным координатам объекта
+    '!!! СѓСЃС‚Р°РЅР°РІР»РёРІР°РµРј РєР°СЂРµС‚РєСѓ РїРѕ РїРѕР»СѓС‡РµРЅРЅС‹Рј РєРѕРѕСЂРґРёРЅР°С‚Р°Рј РѕР±СЉРµРєС‚Р°
     HideCarets                                                  ' If visible
     SetWindowPos(.Handle, 0, .Left, .Top, .Width, .Height, SW_FLAGS)
     GetWindowRect(.Handle,rect)
@@ -15108,10 +15108,10 @@ SUB SetAddedObjProp(parenthWnd AS long,Sender AS QPANEL, otype as string, oIdx a
 
       'call  AddClrString ("2465:token222="+(token), &H00CA00, LogEdit)
 
-      SaveNewObjDataGrid(parenthWnd, token, ObjectIndex,.Left, .Top, .Width, .Height,.Color) '!!! сохранение таблицы
+      SaveNewObjDataGrid(parenthWnd, token, ObjectIndex,.Left, .Top, .Width, .Height,.Color) '!!! СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
       'cmboxObj.addItems token +"3751"
 
-    else ' берем свойства из таблицы PropertyGrid
+    else ' Р±РµСЂРµРј СЃРІРѕР№СЃС‚РІР° РёР· С‚Р°Р±Р»РёС†С‹ PropertyGrid
       'ReDrawComponentByField
       ''call  AddClrString ("3182:SetAddedObjProp call ReDrawComponentByField=", clb, LogEdit)
 
@@ -15147,9 +15147,9 @@ SUB SaveNewObjDataGrid(hWnd as long, token as string,ObjectIndex as long,oLeft  
   cmboxObj.ItemIndex=ObjectIndex
   'cmboxObjOnChange
 
-  '!!!  заменяем на сохранение свойств формы  в таблицу и таблицы в файл таблицы  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
+  '!!!  Р·Р°РјРµРЅСЏРµРј РЅР° СЃРѕС…СЂР°РЅРµРЅРёРµ СЃРІРѕР№СЃС‚РІ С„РѕСЂРјС‹  РІ С‚Р°Р±Р»РёС†Сѓ Рё С‚Р°Р±Р»РёС†С‹ РІ С„Р°Р№Р» С‚Р°Р±Р»РёС†С‹  <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<
 
-  '1 заполняем таблицу свойствами по умолчанию!!!
+  '1 Р·Р°РїРѕР»РЅСЏРµРј С‚Р°Р±Р»РёС†Сѓ СЃРІРѕР№СЃС‚РІР°РјРё РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ!!!
   datafn$=StartDir+"data\"+ObjectType(ObjectIndex)+".data"
   'call  AddClrString ("14290:datafn$="+(datafn$), 0, LogEdit)
 
@@ -15192,7 +15192,7 @@ SUB SaveNewObjDataGrid(hWnd as long, token as string,ObjectIndex as long,oLeft  
     'inc evRow
     'if EventGrid.RowCount<evRow then EventGrid.RowCount=evRow
     'else
-    PropertyGrid.cell(0,i)=DefaultPropertyGrid.cell(0,i-1) ' невидимая таблица для DefaultProperty
+    PropertyGrid.cell(0,i)=DefaultPropertyGrid.cell(0,i-1) ' РЅРµРІРёРґРёРјР°СЏ С‚Р°Р±Р»РёС†Р° РґР»СЏ DefaultProperty
     PropertyGrid.cell(1,i)=DefaultPropertyGrid.cell(2,i-1)
     PropertyGrid.cell (4,i)=DefaultPropertyGrid.cell (1,i-1)
 
@@ -15212,7 +15212,7 @@ SUB SaveNewObjDataGrid(hWnd as long, token as string,ObjectIndex as long,oLeft  
     'EventGrid.cell(0,evRow)=DefaultPropertyGrid.cell(0,i-3)
     'inc evRow
     'else
-    'PropertyGrid.cell(3,i)=str$(i) ' номер строки
+    'PropertyGrid.cell(3,i)=str$(i) ' РЅРѕРјРµСЂ СЃС‚СЂРѕРєРё
     'PropertyGrid.cell(1,i)=DefaultPropertyGrid.cell(2,i-1)
     'end if
   next i
@@ -15224,7 +15224,7 @@ SUB SaveNewObjDataGrid(hWnd as long, token as string,ObjectIndex as long,oLeft  
   'call  AddClrString ("3016:parent$="+(parent$), clm, LogEdit)
   'call  AddClrString ("3016:parent hWnd="+str$(hWnd), clm, LogEdit)
 
-  '!!! заполняем таблицу свойствами компонента
+  '!!! Р·Р°РїРѕР»РЅСЏРµРј С‚Р°Р±Р»РёС†Сѓ СЃРІРѕР№СЃС‚РІР°РјРё РєРѕРјРїРѕРЅРµРЅС‚Р°
   PropertyFieldUpdate("Caption",token)                          ' ..Width & Height defaults
   PropertyFieldUpdate("Parent",(WhichParent(hWnd)))               '
   PropertyFieldUpdate("Handle",str$(ObjectHandle(ObjectIndex)))               '
@@ -15238,8 +15238,8 @@ SUB SaveNewObjDataGrid(hWnd as long, token as string,ObjectIndex as long,oLeft  
 
   PropertyValueUpdate ' update cont alias to value
 
-  '!!! сохраняем таблицу
-  if projectDir$="" then ' создаем новый проект
+  '!!! СЃРѕС…СЂР°РЅСЏРµРј С‚Р°Р±Р»РёС†Сѓ
+  if projectDir$="" then ' СЃРѕР·РґР°РµРј РЅРѕРІС‹Р№ РїСЂРѕРµРєС‚
     'projectDir$=StartDir+projectpath$+"Newproject "+time$-":"
     projectDir$=projectpath$+"Newproject "+time$-":"
     if direxists(projectDir$)=0 then
@@ -15248,7 +15248,7 @@ SUB SaveNewObjDataGrid(hWnd as long, token as string,ObjectIndex as long,oLeft  
   end if
 
   GridFileName$=projectDir$+"\"+trim$(field$(token," ",1))+".dat"
-  call  AddClrString ("3396 :SetObjProp Сохраняем в GridFileName$="+(GridFileName$), cldr, LogEdit)
+  call  AddClrString ("3396 :SetObjProp РЎРѕС…СЂР°РЅСЏРµРј РІ GridFileName$="+(GridFileName$), cldr, LogEdit)
   PropertyGrid.SaveToFile(GridFileName$,0,0,PropertyGrid.RowCount)
 
 
@@ -15266,7 +15266,7 @@ Function GetQParent (ParenthWnd  AS long) as string
 
   for i=0 to ObjectCount-1
 
-    if ObjectHandle(i)= ParenthWnd then ' нашли индекс компонента родителя
+    if ObjectHandle(i)= ParenthWnd then ' РЅР°С€Р»Рё РёРЅРґРµРєСЃ РєРѕРјРїРѕРЅРµРЅС‚Р° СЂРѕРґРёС‚РµР»СЏ
       call  AddClrString ("7397:ObjectHandle("+str$(i)+")="+str$(ObjectHandle(i)), cldp, LogEdit)
       exit for
 
@@ -15280,7 +15280,7 @@ Function GetQParent (ParenthWnd  AS long) as string
   'call  AddClrString ("7407:zzz$="+(zzz$), clred, LogEdit)
   'call  AddClrString ("7409:FormCount="+str$(FormCount), clred, LogEdit)
 
-  Select case ucase$(zzz$) ' смотрим тип родителя ucase$(ObjectType(ObjectIndex))
+  Select case ucase$(zzz$) ' СЃРјРѕС‚СЂРёРј С‚РёРї СЂРѕРґРёС‚РµР»СЏ ucase$(ObjectType(ObjectIndex))
   case "QFORM"
 
     for i=0 to FormCount-1
@@ -15292,7 +15292,7 @@ Function GetQParent (ParenthWnd  AS long) as string
         call  AddClrString ("3611:Forms("+str$(i)+"handle)="+str$(Forms(i).handle), clred, LogEdit)
         'sender.Parent=Forms(i)
         result= "forms_"+str$(i)
-        exit for ' искомый родитель Forms(i) !!!!
+        exit for ' РёСЃРєРѕРјС‹Р№ СЂРѕРґРёС‚РµР»СЊ Forms(i) !!!!
 
       end if
 
@@ -15306,7 +15306,7 @@ Function GetQParent (ParenthWnd  AS long) as string
         'sender.Parent=dpan(i)
         'call  AddClrString ("7464: dpan_"+str$(i)+")", clb, LogEdit)
         result= "dpan_"+str$(i)
-        exit for ' искомый родитель dpan(i) !!!!
+        exit for ' РёСЃРєРѕРјС‹Р№ СЂРѕРґРёС‚РµР»СЊ dpan(i) !!!!
 
       end if
 
@@ -15321,7 +15321,7 @@ Function GetQParent (ParenthWnd  AS long) as string
         'sender.Parent=BoxTab(i)
         result= "BoxTab_"+str$(i)
 
-        exit for ' искомый родитель TabCtrl(i) !!!!
+        exit for ' РёСЃРєРѕРјС‹Р№ СЂРѕРґРёС‚РµР»СЊ TabCtrl(i) !!!!
 
       end if
 
@@ -15336,7 +15336,7 @@ Function GetQParent (ParenthWnd  AS long) as string
         'sender.Parent=GrpBox(i)
         result ="grpbox_"+str$(i)
 
-        exit for ' искомый родитель GrpBox(i) !!!!
+        exit for ' РёСЃРєРѕРјС‹Р№ СЂРѕРґРёС‚РµР»СЊ GrpBox(i) !!!!
 
       end if
 
@@ -15348,7 +15348,7 @@ Function GetQParent (ParenthWnd  AS long) as string
       if ScrollB(i).handle=ParenthWnd then
         'sender.Parent=ScrollB(i)
         result ="scrollb_"+str$(i)
-        exit for ' искомый родитель ScrollB(i) !!!!
+        exit for ' РёСЃРєРѕРјС‹Р№ СЂРѕРґРёС‚РµР»СЊ ScrollB(i) !!!!
 
       end if
 
@@ -15371,10 +15371,10 @@ END FUNCTION
 '*****************************************
 Sub GetOpersList (~SrcD as Qrichedit,StringList1 as QStringList)
 
-  ' заполняем масcив начальных и конечных позиций операторов для подсветки при перемещении по шагам.
+  ' Р·Р°РїРѕР»РЅСЏРµРј РјР°СЃcРёРІ РЅР°С‡Р°Р»СЊРЅС‹С… Рё РєРѕРЅРµС‡РЅС‹С… РїРѕР·РёС†РёР№ РѕРїРµСЂР°С‚РѕСЂРѕРІ РґР»СЏ РїРѕРґСЃРІРµС‚РєРё РїСЂРё РїРµСЂРµРјРµС‰РµРЅРёРё РїРѕ С€Р°РіР°Рј.
   '-------- operators positions ----------------------
-  ~SrcDLineCount=~SrcD.LineCount ' число строк
-  DobOperCnt=2*GetCharNum(~SrcD.text,":") ' число разделителей операторов
+  ~SrcDLineCount=~SrcD.LineCount ' С‡РёСЃР»Рѕ СЃС‚СЂРѕРє
+  DobOperCnt=2*GetCharNum(~SrcD.text,":") ' С‡РёСЃР»Рѕ СЂР°Р·РґРµР»РёС‚РµР»РµР№ РѕРїРµСЂР°С‚РѕСЂРѕРІ
 
   AllOper=~SrcDLineCount+DobOperCnt
 
@@ -15382,7 +15382,7 @@ Sub GetOpersList (~SrcD as Qrichedit,StringList1 as QStringList)
   redim ~OpPos(AllOper) as integer
   redim ~OpLen(AllOper) as integer
 
-  ' позиции операторов для подсветки !!! ------------------------------
+  ' РїРѕР·РёС†РёРё РѕРїРµСЂР°С‚РѕСЂРѕРІ РґР»СЏ РїРѕРґСЃРІРµС‚РєРё !!! ------------------------------
   call GetOperators1 (~Op() ,~OpPos(),~OpLen(), ~SrcD.text, @opercnt)
 
   for i=0 to opercnt-1
@@ -15405,7 +15405,7 @@ sub GetOperators1 (Oper$() as string,OperPos() as integer, OperLen() as integer,
 
   SrcList.text=SrcTxt$
 
-  ' обрабока конкатенации строк подчеркиванием _
+  ' РѕР±СЂР°Р±РѕРєР° РєРѕРЅРєР°С‚РµРЅР°С†РёРё СЃС‚СЂРѕРє РїРѕРґС‡РµСЂРєРёРІР°РЅРёРµРј _
   'Gauge2.position=0
   oldi=0
   for i=0 to  SrcList.ItemCount-1
@@ -15456,16 +15456,16 @@ sub GetOperators1 (Oper$() as string,OperPos() as integer, OperLen() as integer,
     chrs$=SrcTxt$[~i]
     asc1=asc(chrs$)
     chrsSum$=chrsSum$+chrs$
-    'если следующий за _ символ не пробел или конец строки, то сбрасываем флаг конкатенации
+    'РµСЃР»Рё СЃР»РµРґСѓСЋС‰РёР№ Р·Р° _ СЃРёРјРІРѕР» РЅРµ РїСЂРѕР±РµР» РёР»Рё РєРѕРЅРµС† СЃС‚СЂРѕРєРё, С‚Рѕ СЃР±СЂР°СЃС‹РІР°РµРј С„Р»Р°Рі РєРѕРЅРєР°С‚РµРЅР°С†РёРё
     if  fl_=1 and chrs$<>cr and chrs$<>lf and chrs$<>" " then fl_=0
 
     if chrs$=qt and QTNum=0 then
-      QTNum=1 'следующий char  находится после первого вхождения qt
+      QTNum=1 'СЃР»РµРґСѓСЋС‰РёР№ char  РЅР°С…РѕРґРёС‚СЃСЏ РїРѕСЃР»Рµ РїРµСЂРІРѕРіРѕ РІС…РѕР¶РґРµРЅРёСЏ qt
     elseif chrs$=qt and QTNum=1 then
-      QTNum=0 'следующий char находимся после второго вхождения qt
+      QTNum=0 'СЃР»РµРґСѓСЋС‰РёР№ char РЅР°С…РѕРґРёРјСЃСЏ РїРѕСЃР»Рµ РІС‚РѕСЂРѕРіРѕ РІС…РѕР¶РґРµРЅРёСЏ qt
     elseif chrs$="_"  then
       if  fl_=0 then
-        fl_=1 ' устанавливаем флаг конкатенации
+        fl_=1 ' СѓСЃС‚Р°РЅР°РІР»РёРІР°РµРј С„Р»Р°Рі РєРѕРЅРєР°С‚РµРЅР°С†РёРё
         fl_dob=1
       end if
 
@@ -15478,7 +15478,7 @@ sub GetOperators1 (Oper$() as string,OperPos() as integer, OperLen() as integer,
         OperPos(k)=bop
         OperLen(k)=eop-bop
 
-        If instr(Oper$(k),"_")>0 then 'разбираемся с конкатенациями
+        If instr(Oper$(k),"_")>0 then 'СЂР°Р·Р±РёСЂР°РµРјСЃСЏ СЃ РєРѕРЅРєР°С‚РµРЅР°С†РёСЏРјРё
           ~tmp$=""
           ~tmp2$=""
           ssCnt=Tally(Oper$(k),"_")
@@ -15535,20 +15535,20 @@ end sub
 
 '*****************************************
 Sub PropertyGridOnKeyPress(Key AS BYTE)
-  ' окончание редактирования поля, перерисовка контрола и сохранение таблицы
-  'OldPv$=PropertyGrid.Cell(PropertyGrid.Col,PropertyGrid.Row) '!сохраняем предыдущее значение!!
+  ' РѕРєРѕРЅС‡Р°РЅРёРµ СЂРµРґР°РєС‚РёСЂРѕРІР°РЅРёСЏ РїРѕР»СЏ, РїРµСЂРµСЂРёСЃРѕРІРєР° РєРѕРЅС‚СЂРѕР»Р° Рё СЃРѕС…СЂР°РЅРµРЅРёРµ С‚Р°Р±Р»РёС†С‹
+  'OldPv$=PropertyGrid.Cell(PropertyGrid.Col,PropertyGrid.Row) '!СЃРѕС…СЂР°РЅСЏРµРј РїСЂРµРґС‹РґСѓС‰РµРµ Р·РЅР°С‡РµРЅРёРµ!!
 
   SELECT CASE Key
   CASE 27
-    'PropertyGrid.Cell(PropertyGrid.Col,PropertyGrid.Row)=OldPv$ '!восстанавливаем предыдущее значение!!
-    PropertyGrid.Cell(PropertyGrid.Col,PropertyGrid.Row)=OldPv$ '!восстанавливаем предыдущее значение!!
+    'PropertyGrid.Cell(PropertyGrid.Col,PropertyGrid.Row)=OldPv$ '!РІРѕСЃСЃС‚Р°РЅР°РІР»РёРІР°РµРј РїСЂРµРґС‹РґСѓС‰РµРµ Р·РЅР°С‡РµРЅРёРµ!!
+    PropertyGrid.Cell(PropertyGrid.Col,PropertyGrid.Row)=OldPv$ '!РІРѕСЃСЃС‚Р°РЅР°РІР»РёРІР°РµРј РїСЂРµРґС‹РґСѓС‰РµРµ Р·РЅР°С‡РµРЅРёРµ!!
     call  AddClrString ("14687:OldPv$="+(OldPv$), clred, LogEdit)
 
 
   CASE VK_Enter
     'exit sub
     PropertyValueUpdate ' update cont alias to value
-    '!!! сохраняем таблицу
+    '!!! СЃРѕС…СЂР°РЅСЏРµРј С‚Р°Р±Р»РёС†Сѓ
     'GridFileName$=projectDir$+"\"+trim$(PropertyGrid.Cell(0,1))+".dat"
     GridFileName$=projectDir$+"\"+trim$(ObjectName(ObjectIndex))+".dat"
 
@@ -15556,13 +15556,13 @@ Sub PropertyGridOnKeyPress(Key AS BYTE)
     PropertyGrid.SaveToFile(GridFileName$,0,0,PropertyGrid.RowCount)
 
 
-    '!!! чума какая-то! Мы просто поменяли одно свойство у объекта! Зачем все обновлять???
-    'перерисовка контрола
+    '!!! С‡СѓРјР° РєР°РєР°СЏ-С‚Рѕ! РњС‹ РїСЂРѕСЃС‚Рѕ РїРѕРјРµРЅСЏР»Рё РѕРґРЅРѕ СЃРІРѕР№СЃС‚РІРѕ Сѓ РѕР±СЉРµРєС‚Р°! Р—Р°С‡РµРј РІСЃРµ РѕР±РЅРѕРІР»СЏС‚СЊ???
+    'РїРµСЂРµСЂРёСЃРѕРІРєР° РєРѕРЅС‚СЂРѕР»Р°
     ReDrawComponentbyField
 
     'call  AddClrString ("2886:projectDir$="+(projectDir$), clred, LogEdit)
 
-    if projectDir$="" then ' создаем новый проект
+    if projectDir$="" then ' СЃРѕР·РґР°РµРј РЅРѕРІС‹Р№ РїСЂРѕРµРєС‚
       'projectDir$=StartDir+projectpath$+"Newproject "+time$-":"
       projectDir$=projectpath$+"Newproject "+time$-":"
       'projectDir$=ExtractFileName(SrcFileName$)

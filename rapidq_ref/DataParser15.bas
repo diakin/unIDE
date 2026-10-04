@@ -97,7 +97,7 @@ DIM SD AS QSAVEDIALOG
 
 dim Buffer1 As QStringList
 
-defint SrcEditLineCount ' число строк в редакторе
+defint SrcEditLineCount ' С‡РёСЃР»Рѕ СЃС‚СЂРѕРє РІ СЂРµРґР°РєС‚РѕСЂРµ
 defstr RichRow1,  RichCol1, RichRow2,  RichCol2, RichRow3,  RichCol3
 
 Dim ~Op(1) as string
@@ -113,7 +113,7 @@ dim HotTAbHL as long
 HotTAbHL=1
 
 
-'!!! ----- цвета подсветки ---
+'!!! ----- С†РІРµС‚Р° РїРѕРґСЃРІРµС‚РєРё ---
 defint HLColor (0 TO 15):  for i=0 to  15 : HLColor(i)=0: next i
 HLColor(0)=&HA5E4F5
 HLColor(1)=&HFF0000
@@ -179,7 +179,7 @@ IF fileExists("keyword.lst") = 0 THEN
   showmessage ("2370 ERROR. Can't find file keyword.lst "+"keyword.lst")
   'END
 ELSE
-  'PRINT "Load file keyword.lst "+"keyword.lst" - загрузка ключевых слов для подсветки
+  'PRINT "Load file keyword.lst "+"keyword.lst" - Р·Р°РіСЂСѓР·РєР° РєР»СЋС‡РµРІС‹С… СЃР»РѕРІ РґР»СЏ РїРѕРґСЃРІРµС‚РєРё
   keyList.LoadFromFile("keyword.lst")
 END IF
 
@@ -495,7 +495,7 @@ CREATE SillyForm AS QFORM
     color=&ha2cfce 'clMaroon
     caption="RichPanel"
 
-    CREATE MarginEdit AS QRICHEDIT '=== редактор номеров строк ===========
+    CREATE MarginEdit AS QRICHEDIT '=== СЂРµРґР°РєС‚РѕСЂ РЅРѕРјРµСЂРѕРІ СЃС‚СЂРѕРє ===========
       Align = alLeft
       Left =1
       Top = 1
@@ -600,7 +600,7 @@ result= SendMessageAPI (SrcEdit.handle,EM_EXLIMITTEXT,0,65535*32)
 'call  AddClrString ("415:result="+str$(result), clred, LogEdit)
 
 
-'!!!--определение новой процедуры RichEdit'
+'!!!--РѕРїСЂРµРґРµР»РµРЅРёРµ РЅРѕРІРѕР№ РїСЂРѕС†РµРґСѓСЂС‹ RichEdit'
 OldRichEditWndProc = SetWindowLongAPI(SrcEdit.Handle, GWL_WNDPROC, CODEPTR(RichEditWndProc))
 'call  AddClrString ("417:CODEPTR((RichEditWndProc)="+str$(CODEPTR(RichEditWndProc)), clred, LogEdit)
 'call  AddClrString ("417:GWL_WNDPROC="+str$(GWL_WNDPROC), clred, LogEdit)
@@ -869,14 +869,14 @@ sub R2Change (Sender as QRichEdit)
 
     'SrcEdit.SelStart=CursWin(WindowsIndex)
 
-    ''    AddPanels "Строка ", "Столбец ", "Код символа","Номер символа в тексте"
+    ''    AddPanels "РЎС‚СЂРѕРєР° ", "РЎС‚РѕР»Р±РµС† ", "РљРѕРґ СЃРёРјРІРѕР»Р°","РќРѕРјРµСЂ СЃРёРјРІРѕР»Р° РІ С‚РµРєСЃС‚Рµ"
     StatusBar.Panel(0).caption = "Row "+RichRow1+":"+  str$(.LineCount)
     StatusBar.Panel(1).caption = "Col "+RichCol1
     StatusBar.Panel(3).caption = "Asc "+char1$
     StatusBar.Panel(2).caption = "Pos "+str$(pos1)+":"+  str$(SrcEditLen1)
     StatusBar.Panel(4).caption = "Handle:"+str$(.Handle)
 
-    if SrcEditLen<>.LineCount then 'SrcEditLen1 только при изменении числа строк
+    if SrcEditLen<>.LineCount then 'SrcEditLen1 С‚РѕР»СЊРєРѕ РїСЂРё РёР·РјРµРЅРµРЅРёРё С‡РёСЃР»Р° СЃС‚СЂРѕРє
       SrcEditLen=.LineCount
       Modiflg=1
     end if
@@ -904,8 +904,8 @@ Sub BuildObjInfoSrc
   'create barl0 as qcoolbtn | create langmngpanel as qpanel ~ 2
   'create scansrclangbtn as qcoolbtn | create langmngpanel as qpanel ~ 2
   'create createlangbtn as qcoolbtn | create langmngpanel as qpanel ~ 2
-  '!!! копируем исходник в редактор
-  '!!! добавляем процедуры
+  '!!! РєРѕРїРёСЂСѓРµРј РёСЃС…РѕРґРЅРёРє РІ СЂРµРґР°РєС‚РѕСЂ
+  '!!! РґРѕР±Р°РІР»СЏРµРј РїСЂРѕС†РµРґСѓСЂС‹
 
 END SUB
 
@@ -979,12 +979,12 @@ END SUB
 '*****************************************
 Sub GetOpersList (~SrcD as Qrichedit)
 
-  ' заполняем масcив начальных и конечных позиций операторов для подсветки при перемещении по шагам.
+  ' Р·Р°РїРѕР»РЅСЏРµРј РјР°СЃcРёРІ РЅР°С‡Р°Р»СЊРЅС‹С… Рё РєРѕРЅРµС‡РЅС‹С… РїРѕР·РёС†РёР№ РѕРїРµСЂР°С‚РѕСЂРѕРІ РґР»СЏ РїРѕРґСЃРІРµС‚РєРё РїСЂРё РїРµСЂРµРјРµС‰РµРЅРёРё РїРѕ С€Р°РіР°Рј.
   '-------- operators positions ----------------------
-  ~SrcDLineCount=~SrcD.LineCount ' число строк
+  ~SrcDLineCount=~SrcD.LineCount ' С‡РёСЃР»Рѕ СЃС‚СЂРѕРє
 
-  'DobOperCnt=tally(~SrcD.text,":") ' число разделителей операторов
-  DobOperCnt=2*GetCharNum(~SrcD.text,":") ' число разделителей операторов
+  'DobOperCnt=tally(~SrcD.text,":") ' С‡РёСЃР»Рѕ СЂР°Р·РґРµР»РёС‚РµР»РµР№ РѕРїРµСЂР°С‚РѕСЂРѕРІ
+  DobOperCnt=2*GetCharNum(~SrcD.text,":") ' С‡РёСЃР»Рѕ СЂР°Р·РґРµР»РёС‚РµР»РµР№ РѕРїРµСЂР°С‚РѕСЂРѕРІ
 
   AllOper=~SrcDLineCount+DobOperCnt
   'call  AddClrString ("3558 AllOper="+str$(AllOper), cblue, LogEdit)
@@ -994,7 +994,7 @@ Sub GetOpersList (~SrcD as Qrichedit)
   redim ~OpLen(AllOper) as integer
   LogEdit.clear
 
-  ' позиции операторов для подсветки !!! ------------------------------
+  ' РїРѕР·РёС†РёРё РѕРїРµСЂР°С‚РѕСЂРѕРІ РґР»СЏ РїРѕРґСЃРІРµС‚РєРё !!! ------------------------------
   call GetOperators1 (~Op() ,~OpPos(),~OpLen(), ~SrcD.text, @opercnt)
   'call  AddClrString ("~SrcD.text="+(~SrcD.text), clred, LogEdit)
   'call  AddClrString (" -- 3546 operators count="+str$(opercnt), clgreen, LogEdit)
@@ -1004,7 +1004,7 @@ Sub GetOpersList (~SrcD as Qrichedit)
     '~OpPos(i)
     'call  AddClrString ("~OpPos("+str$(i)+")="+str$(~OpPos(i)), clblue, LogEdit)
     '~Op(i)
-    'call  AddClrString ("Оператор ~Op("+str$(i)+")="+(~Op(i)), cldb, LogEdit)
+    'call  AddClrString ("РћРїРµСЂР°С‚РѕСЂ ~Op("+str$(i)+")="+(~Op(i)), cldb, LogEdit)
     call  AddClrString ((~Op(i)), cldb, LogEdit)
   next i
 
@@ -1024,7 +1024,7 @@ sub GetOperators1 (Oper$() as string,OperPos() as integer, OperLen() as integer,
 
   SrcList.text=SrcTxt$
 
-  ' обрабока конкатенации строк подчеркиванием _
+  ' РѕР±СЂР°Р±РѕРєР° РєРѕРЅРєР°С‚РµРЅР°С†РёРё СЃС‚СЂРѕРє РїРѕРґС‡РµСЂРєРёРІР°РЅРёРµРј _
 
   for i=0 to  SrcList.ItemCount-1
     ReplaceComments (@SrcList.Item(i))
@@ -1061,16 +1061,16 @@ sub GetOperators1 (Oper$() as string,OperPos() as integer, OperLen() as integer,
     chrs$=SrcTxt$[~i]
     asc1=asc(chrs$)
     chrsSum$=chrsSum$+chrs$
-    'если следующий за _ символ не пробел или конец строки, то сбрасываем флаг конкатенации
+    'РµСЃР»Рё СЃР»РµРґСѓСЋС‰РёР№ Р·Р° _ СЃРёРјРІРѕР» РЅРµ РїСЂРѕР±РµР» РёР»Рё РєРѕРЅРµС† СЃС‚СЂРѕРєРё, С‚Рѕ СЃР±СЂР°СЃС‹РІР°РµРј С„Р»Р°Рі РєРѕРЅРєР°С‚РµРЅР°С†РёРё
     if  fl_=1 and chrs$<>cr and chrs$<>lf and chrs$<>" " then fl_=0
 
     if chrs$=qt and QTNum=0 then
-      QTNum=1 'следующий char  находится после первого вхождения qt
+      QTNum=1 'СЃР»РµРґСѓСЋС‰РёР№ char  РЅР°С…РѕРґРёС‚СЃСЏ РїРѕСЃР»Рµ РїРµСЂРІРѕРіРѕ РІС…РѕР¶РґРµРЅРёСЏ qt
     elseif chrs$=qt and QTNum=1 then
-      QTNum=0 'следующий char находимся после второго вхождения qt
+      QTNum=0 'СЃР»РµРґСѓСЋС‰РёР№ char РЅР°С…РѕРґРёРјСЃСЏ РїРѕСЃР»Рµ РІС‚РѕСЂРѕРіРѕ РІС…РѕР¶РґРµРЅРёСЏ qt
     elseif chrs$="_"  then
       if  fl_=0 then
-        fl_=1 ' устанавливаем флаг конкатенации
+        fl_=1 ' СѓСЃС‚Р°РЅР°РІР»РёРІР°РµРј С„Р»Р°Рі РєРѕРЅРєР°С‚РµРЅР°С†РёРё
         fl_dob=1
       end if
 
@@ -1093,7 +1093,7 @@ sub GetOperators1 (Oper$() as string,OperPos() as integer, OperLen() as integer,
         'call  AddClrString ("1099:OperPos("+str$(k)+")="+str$(OperPos(k)), clm, LogEdit)
         OperLen(k)=eop-bop
 
-        If instr(Oper$(k),"_")>0 then 'разбираемся с конкатенациями
+        If instr(Oper$(k),"_")>0 then 'СЂР°Р·Р±РёСЂР°РµРјСЃСЏ СЃ РєРѕРЅРєР°С‚РµРЅР°С†РёСЏРјРё
           ~tmp$=""
           ~tmp2$=""
           ssCnt=Tally(Oper$(k),"_")
@@ -1177,15 +1177,15 @@ Sub BuildObjTree
         inc ItemCount
       else
         ObjList.AddItems LSrc$+" | "+parent$(LevelIdx)+" ~ "+str$(LevelIdx)
-        'ObjTreeView.AddChildItems NodCountOnLevel (LevelIdx-1)-1, LSrc$+chr$(160)+str$(i+1) ' добавляем узел на уровень LevelIdx
+        'ObjTreeView.AddChildItems NodCountOnLevel (LevelIdx-1)-1, LSrc$+chr$(160)+str$(i+1) ' РґРѕР±Р°РІР»СЏРµРј СѓР·РµР» РЅР° СѓСЂРѕРІРµРЅСЊ LevelIdx
 
         inc ItemCount
       end if
-      inc LevelIdx ' на следующий уровень
+      inc LevelIdx ' РЅР° СЃР»РµРґСѓСЋС‰РёР№ СѓСЂРѕРІРµРЅСЊ
       parent$(LevelIdx)=LSrc$
 
     elseif zzEndcreate=1 then
-      dec LevelIdx ' на предыдущий уровень
+      dec LevelIdx ' РЅР° РїСЂРµРґС‹РґСѓС‰РёР№ СѓСЂРѕРІРµРЅСЊ
       if LevelIdx<0 then call  AddClrString ("Error! CREATE statement missed, but END CREATE presents in line "+str$(i+1), &H8200FF, LogEdit)
     else
     end if
