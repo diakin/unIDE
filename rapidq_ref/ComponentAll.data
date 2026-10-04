@@ -13,8 +13,9 @@
 '                       CONSTRUCTOR.
 '  Формат записей - в RqComponents.pas. Строки с ' - комментарии.
 '  Встроенные классы (# 0-59) сверены с документацией RapidQ
-'  (rapidq_ref\q*.html): доступ R/W - объединение описания и документации,
-'  варианты перечислений, пустые умолчания, недостающие свойства и события,
+'  (rapidq_ref\html_doc\q*.html): доступ R/W - объединение описания и документации,
+'  варианты перечислений, умолчания (по документации; опечатки - нет),
+'  недостающие свойства и события,
 '  методы. У каждой изменённой строки - комментарий ' сверено с <файл>
 '  с прежней строкой. Где автор описания отметил ошибки документации
 '  (QHEADER, QSTATUSBAR, QSPLITTER: Left, Top, Width...), осталось как было.
@@ -28,7 +29,8 @@ BorderStyle|INTEGER|RW|bsSizeable|bsNone=0|bsSingle=1|bsSizeable=2|bsDialog=3|bs
 Caption|STRING|RW|
 ClientHeight|INTEGER|RW|
 ClientWidth|INTEGER|RW|
-Color|INTEGER|RW|<default>|<default>|<choose>
+Color|INTEGER|RW|clBtnFace|<default>|<choose>
+' умолчание по qform.html: <default> -> clBtnFace (было: Color|INTEGER|RW|<default>|<default>|<choose>)
 Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
 Font|QFONT|RW|<default>
 ' сверено с qform.html: доступ R -> RW (было: Font|QFONT|R|<default>)
@@ -220,14 +222,16 @@ Handle|LONG|R|
 Hint|STRING|RW|
 LabelStyle|INTEGER|RW|lsNone|lsNone=0|lsRaised=1|lsRecessed=2
 Layout|INTEGER|RW|tlTop|tlTop=0|tlCenter=1|tlBottom=2
-LowerColor|INTEGER|RW|<default>|<default>|<choose>
+LowerColor|INTEGER|RW|clBtnShadow|<default>|<choose>
+' умолчание по qlabel.html: <default> -> clBtnShadow (было: LowerColor|INTEGER|RW|<default>|<default>|<choose>)
 Parent|QFORM/QPANEL/QTABCONTROL|RW|
 ' сверено с qlabel.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
 PopupMenu|QPOPUPMENU|W|
 ShowHint|INTEGER|RW|False|False=0|True=1
 Tag|INTEGER|RW|
 Transparent|INTEGER|RW|False|False=0|True=1
-UpperColor|INTEGER|RW|<default>|<default>|<choose>
+UpperColor|INTEGER|RW|clBtnHighlight|<default>|<choose>
+' умолчание по qlabel.html: <default> -> clBtnHighlight (было: UpperColor|INTEGER|RW|<default>|<default>|<choose>)
 Visible|INTEGER|RW|True|False=0|True=1
 Wordwrap|INTEGER|RW|False|False=0|True=1
 * Methods
@@ -436,7 +440,8 @@ Alignment|INTEGER|RW|taCenter|taLeftJustify=0|taRightJustify=1|taCenter=2
 BevelInner|INTEGER|RW|bvNone|bvNone=0|bvLowered=1|bvRaised=2
 BevelOuter|INTEGER|RW|bvRaised|bvNone=0|bvLowered=1|bvRaised=2
 BevelWidth|INTEGER|RW|1
-BorderStyle|INTEGER|RW|bpSingle|bpNone=0|bpSingle=1
+BorderStyle|INTEGER|RW|bpNone|bpNone=0|bpSingle=1
+' умолчание по qpanel.html: bpSingle -> bpNone (было: BorderStyle|INTEGER|RW|bpSingle|bpNone=0|bpSingle=1)
 ' Component1.data: BorderStyle|INTEGER|RW|bsNone|bsNone|bsSingle
 Caption|STRING|RW|
 ClientHeight|INTEGER|RW|
@@ -589,7 +594,8 @@ Columns|INTEGER|RW|0
 CopyMode|INTEGER|RW|cmBlackness|cmBlackness=0|cmDstInvert=1|cmMergeCopy=2|cmMergePaint=3|cmNotSrcCopy=4|cmNotSrcErase=5|cmPatCopy=6|cmPatInvert=7|cmPatPaint=8|cmSrcAnd=9|cmSrcCopy=10|cmSrcErase=11|cmSrcInvert=12|cmSrcPaint=13|cmWhiteness=14
 Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
 Enabled|INTEGER|RW|True|False=0|True=1
-ExtendedSelect|INTEGER|RW|False|False=0|True=1
+ExtendedSelect|INTEGER|RW|True|False=0|True=1
+' умолчание по qlistbox.html: False -> True (было: ExtendedSelect|INTEGER|RW|False|False=0|True=1)
 ' Component1.data: ExtendedSelect|INTEGER|RW|True|False|True
 Font|QFONT|RW|<default>
 ' сверено с qlistbox.html: доступ R -> RW (было: Font|QFONT|R|<default>)
@@ -742,11 +748,13 @@ Enabled|INTEGER|RW|True|False=0|True=1
 Handle|LONG|R|
 Hint|STRING|RW|
 Kind|INTEGER|RW|sbHorizontal|sbHorizontal=0|sbVertical=1
-LargeChange|INTEGER|RW|10
+LargeChange|INTEGER|RW|1
+' умолчание по qscrollbar.html: 10 -> 1 (было: LargeChange|INTEGER|RW|10)
 ' Component1.data: LargeChange|INTEGER|RW|1
 Max|INTEGER|RW|100
 Min|INTEGER|RW|0
-PageSize|INTEGER|RW|10
+PageSize|INTEGER|RW|1
+' умолчание по qscrollbar.html: 10 -> 1 (было: PageSize|INTEGER|RW|10)
 ' Component1.data: PageSize|INTEGER|RW|1
 Parent|QFORM/QPANEL/QTABCONTROL|RW|
 ' сверено с qscrollbar.html: доступ R -> RW (было: Parent|QFORM/QPANEL/QTABCONTROL|R|)
@@ -985,7 +993,8 @@ Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=
 Directory|STRING|RW|
 Drive|STRING|RW|
 Enabled|INTEGER|RW|True|False=0|True=1
-ExtendedSelect|INTEGER|RW|False|False=0|True=1
+ExtendedSelect|INTEGER|RW|True|False=0|True=1
+' умолчание по qfilelistbox.html: False -> True (было: ExtendedSelect|INTEGER|RW|False|False=0|True=1)
 ' Component1.data: ExtendedSelect|INTEGER|RW|True|False|True
 Filename|STRING|RW|
 Font|QFONT|RW|<default>
@@ -1155,7 +1164,8 @@ Width|INTEGER|RW|100
 Height|INTEGER|RW|25
 ' Component1.data: Height|INTEGER|RW|100
 Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
-BackColor|INTEGER|RW|<default>|<default>|<choose>
+BackColor|INTEGER|RW|clWhite|<default>|<choose>
+' умолчание по qgauge.html: <default> -> clWhite (было: BackColor|INTEGER|RW|<default>|<default>|<choose>)
 BorderStyle|INTEGER|RW|bsSingle|bsNone=0|bsSingle=1
 Color|INTEGER|RW|<default>|<default>|<choose>
 Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
@@ -1217,7 +1227,8 @@ Top|INTEGER|R|0
 ' Component1.data: Top|INTEGER|R|
 Width|INTEGER|R|
 Height|INTEGER|RW|17
-Align|INTEGER|RW|alTop|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+' умолчание по qheader.html: alTop -> alNone (было: Align|INTEGER|RW|alTop|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5)
 ClientHeight|INTEGER|RW|
 ClientWidth|INTEGER|RW|
 CopyMode|INTEGER|RW|cmBlackness|cmBlackness=0|cmDstInvert=1|cmMergeCopy=2|cmMergePaint=3|cmNotSrcCopy=4|cmNotSrcErase=5|cmPatCopy=6|cmPatInvert=7|cmPatPaint=8|cmSrcAnd=9|cmSrcCopy=10|cmSrcErase=11|cmSrcInvert=12|cmSrcPaint=13|cmWhiteness=14
@@ -1519,8 +1530,10 @@ TextRect|SUB||(Rect AS QRECT, x%, y%, S$, fc%, bc%)
 TextOut|SUB||(x%, y%, S$, fc%, bc%)
 * Events
 # 31 QIMAGELIST * Properties *
-BkColor|INTEGER|RW|<default>|<default>|<choose>
-BlendColor|INTEGER|RW|<default>|<default>|<choose>
+BkColor|INTEGER|RW|clNone|<default>|<choose>
+' умолчание по qimagelist.html: <default> -> clNone (было: BkColor|INTEGER|RW|<default>|<default>|<choose>)
+BlendColor|INTEGER|RW|clNone|<default>|<choose>
+' умолчание по qimagelist.html: <default> -> clNone (было: BlendColor|INTEGER|RW|<default>|<default>|<choose>)
 Count|INTEGER|R|
 DrawingStyle|INTEGER|RW|dsNormal|dsFocused=0|dsSelected=1|dsNormal=2|dsTransparent=3
 GetBMP|ARRAY of IMAGES/BMP|R|
@@ -1580,7 +1593,8 @@ Tag|INTEGER|RW|
 OnTimer||
 # 34 QSOCKET * Properties * NB some property VALUES not included
 Family|INTEGER|RW|AF_INET|AF_UNSPEC=0|AF_UNIX=1|AF_INET=2|AF_IPX=6|AF_ISO=7|AF_ECMA=8|AF_CCITT=10|AF_DECNET=12|AF_APPLETALK=16|AF_NETBIOS=17|AF_BAN=21
-LParam|INTEGER|RW|0
+LParam|INTEGER|RW|FD_CONNECT
+' умолчание по qsocket.html: 0 -> FD_CONNECT (было: LParam|INTEGER|RW|0)
 ' Component1.data: LParam|INTEGER|RW|FD_CONNECT
 MySocket|INTEGER|R|
 Parent|QFORM|W|
@@ -2024,7 +2038,8 @@ Parent|QFORM/QPANEL/QTABCONTROL|RW|
 PopupMenu|QPOPUPMENU|W|
 ShowHint|INTEGER|RW|False|False=0|True=1
 Transparency|INTEGER|RW|60
-TransparentColor|INTEGER|RW|<default>|<default>|<choose>
+TransparentColor|INTEGER|RW|0|<default>|<choose>
+' умолчание по qglassframe.html: <default> -> 0 (было: TransparentColor|INTEGER|RW|<default>|<default>|<choose>)
 * Methods
 * Events
 # 57 QMAINMENU * Properties * NB not used in "normal" object selection
