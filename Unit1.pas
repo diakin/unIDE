@@ -1876,6 +1876,7 @@ type
     procedure WMRqDsgPlace(var Msg: TMessage); message WM_USER + 323;
     procedure RqDsgInsert(const AClass, AParent: string; X, Y: Integer);
     procedure RqNewWindowFile(const AFile: string);
+    procedure RqOpenFormOfFile(const AFile, AFormName: string);
     function  RapidQProbeSource(const AMainBas, AOutFile: string;
                                 AOut, AObjClasses: TStringList;
                                 var ADumpStart: Integer;
@@ -40864,6 +40865,129 @@ var
       Result := Trim(Copy(Head, Space + 1, Colon - Space - 1));
   end;
 
+  // Проект RapidQ (цель - .bas): модули - сам .bas и файлы $INCLUDE из его
+  // папки (библиотечные, из IncPath, не показываются), формы - блоки
+  // CREATE ... AS QFORM (и классов от QFORM) в каждом из них. Строка на
+  // форму; у файла без форм - одна строка. Скрытая колонка формы -
+  // "rqform:" + имя формы (ProjectListDblClick).
+  procedure FillRapidQ(const AMain: string);
+  const
+    MaxFiles = 200;
+  var
+    Files, Lines: TStringList;
+    Nodes, Roots: TList;
+    Ini: TIniFile;
+    MainDir, IncDir, FileText, IncName, IncFull, ModName, KindText: string;
+    FileIdx, LineIdx, NodeIdx, FormCount: Integer;
+    FormNode: TDfmNode;
+
+    procedure AddRow(const AFile, AType, AForm, AMarker: string);
+    var
+      Row: TListItem;
+    begin
+      Row := FModLV.Items.Add;
+      Row.Caption := ChangeFileExt(ExtractFileName(AFile), '');
+      Row.SubItems.Add(AType);
+      Row.SubItems.Add(AForm);
+      Row.SubItems.Add(SizeText(AFile));
+      Row.SubItems.Add('');
+      Row.SubItems.Add(DateText(AFile));
+      Row.SubItems.Add('');
+      Row.SubItems.Add(PrjName);
+      Row.SubItems.Add(AMarker);
+      Row.SubItems.Add(AFile);
+    end;
+
+  begin
+    MainDir := ExtractFilePath(ExpandFileName(AMain));
+    IncDir := '';
+    if FileExists(SettingsFileName) then
+    begin
+      Ini := TIniFile.Create(SettingsFileName);
+      try
+        IncDir := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
+                                      'IncPath', ''));
+      finally
+        Ini.Free;
+      end;
+    end;
+
+    Files := TStringList.Create;
+    Lines := TStringList.Create;
+    Nodes := TList.Create;
+    Roots := TList.Create;
+    try
+      Files.Add(ExpandFileName(AMain));
+      FileIdx := 0;
+      while FileIdx < Files.Count do
+      begin
+        // Текст открытого файла - из редактора, с несохранёнными правками
+        if CompareText(Files[FileIdx], ExpandFileName(FCurrentFileName)) = 0 then
+          FileText := GetEditorTextCR
+        else
+          try
+            FileText := ReadTextFileDecoded(Files[FileIdx]);
+          except
+            FileText := '';
+          end;
+        Lines.Text := FileText;
+
+        // Подключённые файлы - в очередь (из папки проекта, без повторов)
+        if Files.Count < MaxFiles then
+          for LineIdx := 0 to Lines.Count - 1 do
+          begin
+            IncName := RapidQIncludeName(Lines[LineIdx]);
+            if IncName = '' then
+              Continue;
+            IncFull := RapidQResolveInclude(IncName, MainDir, IncDir);
+            if (IncFull = '') or
+               (CompareText(Copy(IncFull, 1, Length(MainDir)), MainDir) <> 0) then
+              Continue;
+            if Files.IndexOf(IncFull) < 0 then
+              Files.Add(IncFull);
+          end;
+
+        if FileIdx = 0 then
+          ModName := 'Project'
+        else
+          ModName := 'Include';
+        FormCount := 0;
+        RapidQCreateNodes(Lines, Nodes, Roots);
+        try
+          for NodeIdx := 0 to Roots.Count - 1 do
+          begin
+            FormNode := TDfmNode(Roots[NodeIdx]);
+            if not RqDsgIsForm(FormNode.ClassNm) or
+               not RqDsgNameOk(FormNode.Name) then
+              Continue;
+            Inc(FormCount);
+            KindText := ModName + ' (' + FormNode.Name + ': ' +
+                        FormNode.ClassNm + ')';
+            AddRow(Files[FileIdx], KindText, FormNode.Name,
+                   'rqform:' + FormNode.Name);
+          end;
+        finally
+          for NodeIdx := 0 to Nodes.Count - 1 do
+            TObject(Nodes[NodeIdx]).Free;
+          Nodes.Clear;
+          Roots.Clear;
+        end;
+        if FormCount = 0 then
+          AddRow(Files[FileIdx], ModName, '', '');
+        Inc(FormTotal, FormCount);
+        Inc(FileIdx);
+      end;
+      FModList.Caption := 'Модули и формы проекта - ' + PrjName +
+                          '   (модулей: ' + IntToStr(Files.Count) +
+                          ', форм: ' + IntToStr(FormTotal) + ')';
+    finally
+      Roots.Free;
+      Nodes.Free;
+      Lines.Free;
+      Files.Free;
+    end;
+  end;
+
 begin
   Dpr := DelphiTargetDpr;
   if Dpr = '' then
@@ -40875,6 +40999,19 @@ begin
   Dir := ExtractFilePath(Dpr);
   PrjName := ExtractFileName(Dpr);
   FormTotal := 0;
+
+  // Проект RapidQ - формы в блоках CREATE
+  if IsRapidQSource(Dpr) then
+  begin
+    FModLV.Items.BeginUpdate;
+    try
+      FModLV.Items.Clear;
+      FillRapidQ(Dpr);
+    finally
+      FModLV.Items.EndUpdate;
+    end;
+    Exit;
+  end;
 
   Units := TStringList.Create;
   try
@@ -41010,7 +41147,9 @@ begin
 
   N := LV.Selected.SubItems.Count;
   S := '  ' + LV.Selected.SubItems[N - 1];
-  if LV.Selected.SubItems[N - 2] <> '' then
+  if Copy(LV.Selected.SubItems[N - 2], 1, 7) = 'rqform:' then
+    S := S + '   +   форма ' + Copy(LV.Selected.SubItems[N - 2], 8, MaxInt)
+  else if LV.Selected.SubItems[N - 2] <> '' then
     S := S + '   +   ' + ExtractFileName(LV.Selected.SubItems[N - 2]);
   FModPath.Caption := S;
 end;
@@ -41065,6 +41204,12 @@ begin
      (LV.Selected.SubItems[N - 2] <> '') then
   begin
     Dfm := LV.Selected.SubItems[N - 2];
+    // Форма RapidQ: файл во вкладке, форма в конструкторе
+    if Copy(Dfm, 1, 7) = 'rqform:' then
+    begin
+      RqOpenFormOfFile(FN, Copy(Dfm, 8, MaxInt));
+      Exit;
+    end;
     if not FileExists(Dfm) then
     begin
       ShowMessage('31456:Файл не найден:'#13#10 + Dfm);
@@ -41859,6 +42004,33 @@ begin
     FRightPages.ActivePage := FTabObjects;
   RefreshObjectInspector(True);
   ObjSelectAnyName('Form');
+  RqDsgOpen;
+end;
+
+// Форма AFormName файла RapidQ AFile (View Form): файл - активной вкладкой,
+// в дереве объектов - форма, она же - в конструкторе
+procedure TForm1.RqOpenFormOfFile(const AFile, AFormName: string);
+begin
+  if not FileExists(AFile) then
+  begin
+    ShowMessage('Файл не найден:'#13#10 + AFile);
+    Exit;
+  end;
+  if CompareText(ExpandFileName(FCurrentFileName), ExpandFileName(AFile)) <> 0 then
+    OpenNamedFile(AFile);
+  if CompareText(ExpandFileName(FCurrentFileName),
+                 ExpandFileName(AFile)) <> 0 then
+    Exit;
+  if not IncludesApply then
+  begin
+    ShowMessage(ExtractFileName(AFile) + ' не разбирается как файл RapidQ - ' +
+                'форму не из чего построить.');
+    Exit;
+  end;
+  if FRightPages <> nil then
+    FRightPages.ActivePage := FTabObjects;
+  RefreshObjectInspector(True);
+  ObjSelectAnyName(AFormName);
   RqDsgOpen;
 end;
 
