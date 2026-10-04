@@ -22,16 +22,30 @@
 '
 ' Ожидание - не бесконечное, а 60 с: если Control не ответит, программа
 ' сама продолжит и покажет "timeout".
+'
+' Вариант 2 (после первого прогона):
+'   - пока идёт Busy loop, окно Target не перерисовывается (в цикле нет
+'     DOEVENTS), поэтому ход цикла виден в Control: Target раз в 100000
+'     проходов пишет RqDbgT2.run (номер прохода), Control его показывает;
+'   - перед остановкой сбрасывается событие "continue", после неё -
+'     "pause": лишние нажатия Continue/Pause, сделанные, пока Target не
+'     стоял, не отпускают следующую остановку сразу;
+'   - 30 с цикла считаются без времени остановок;
+'   - в начале Busy loop показывается SumVal до присваивания: проверка,
+'     обнуляется ли локальная переменная при новом вызове SUB.
 
 DECLARE FUNCTION RqDbgCreateEvent LIB "kernel32" ALIAS "CreateEventA" (BYVAL EventAttr AS LONG, BYVAL ManualReset AS LONG, BYVAL InitialState AS LONG, EventName AS STRING) AS LONG
 DECLARE FUNCTION RqDbgSetEvent LIB "kernel32" ALIAS "SetEvent" (BYVAL EventHandle AS LONG) AS LONG
 DECLARE FUNCTION RqDbgWait LIB "kernel32" ALIAS "WaitForSingleObject" (BYVAL EventHandle AS LONG, BYVAL WaitMs AS LONG) AS LONG
 DECLARE FUNCTION RqDbgTicks LIB "kernel32" ALIAS "GetTickCount" () AS LONG
+DECLARE FUNCTION RqDbgResetEvent LIB "kernel32" ALIAS "ResetEvent" (BYVAL EventHandle AS LONG) AS LONG
 
 DIM EvStopped AS LONG
 DIM EvContinue AS LONG
 DIM EvPause AS LONG
 DIM TickCount AS LONG
+DIM StoppedMs AS LONG
+DIM BusyCalls AS LONG
 DIM TickTimer AS QTIMER
 
 DECLARE SUB StopPoint (StateText AS STRING)
@@ -39,6 +53,7 @@ DECLARE FUNCTION ReadCommand() AS STRING
 DECLARE SUB TickTimerOver
 DECLARE SUB StopButtonClick
 DECLARE SUB BusyButtonClick
+DECLARE SUB WriteRunFile (RunText AS STRING)
 
 CREATE MainForm AS QFORM
   Caption = "RqDbgT2 Target"
@@ -80,13 +95,20 @@ SUB StopPoint (StateText AS STRING)
   DIM StateFile AS QFILESTREAM
   DIM WaitRes AS LONG
   DIM CallRes AS LONG
+  DIM StopTick AS LONG
+  StopTick = RqDbgTicks
   StateFile.Open("RqDbgT2.state", 65535)
   StateFile.WriteLine(StateText)
   StateFile.WriteLine("#end")
   StateFile.Close
   StatusLabel.Caption = "stopped: " + StateText
+  WriteRunFile("stopped: " + StateText)
+  CallRes = RqDbgResetEvent(EvContinue)
   CallRes = RqDbgSetEvent(EvStopped)
   WaitRes = RqDbgWait(EvContinue, 60000)
+  CallRes = RqDbgResetEvent(EvPause)
+  StoppedMs = StoppedMs + (RqDbgTicks - StopTick)
+  WriteRunFile("continued after: " + StateText)
   IF WaitRes = 0 THEN
     StatusLabel.Caption = "continued, command: " + ReadCommand
   ELSEIF WaitRes = 258 THEN
@@ -106,6 +128,13 @@ FUNCTION ReadCommand() AS STRING
   END IF
 END FUNCTION
 
+SUB WriteRunFile (RunText AS STRING)
+  DIM RunFile AS QFILESTREAM
+  RunFile.Open("RqDbgT2.run", 65535)
+  RunFile.WriteLine(TIME$ + " " + RunText)
+  RunFile.Close
+END SUB
+
 SUB TickTimerOver
   TickCount = TickCount + 1
   CounterLabel.Caption = "counter: " + STR$(TickCount)
@@ -121,9 +150,15 @@ SUB BusyButtonClick
   DIM LoopIdx AS LONG
   DIM SumVal AS LONG
   DIM StartTick AS LONG
+  DIM EntrySum AS LONG
+  BusyCalls = BusyCalls + 1
+  EntrySum = SumVal
   StartTick = RqDbgTicks
-  StatusLabel.Caption = "busy loop (up to 30 s), press Pause in Control"
+  StoppedMs = 0
+  StatusLabel.Caption = "busy loop #" + STR$(BusyCalls) + " (up to 30 s), SumVal at entry=" + STR$(EntrySum)
+  WriteRunFile("busy loop #" + STR$(BusyCalls) + " start, SumVal at entry=" + STR$(EntrySum))
   LoopIdx = 0
+  SumVal = 0
   DO
     LoopIdx = LoopIdx + 1
     SumVal = SumVal + (LoopIdx MOD 7)
@@ -131,10 +166,14 @@ SUB BusyButtonClick
       IF RqDbgWait(EvPause, 0) = 0 THEN
         StopPoint("pause in BusyButtonClick, LoopIdx=" + STR$(LoopIdx) + ", SumVal=" + STR$(SumVal))
       END IF
-      IF RqDbgTicks - StartTick > 30000 THEN EXIT DO
+      IF (LoopIdx MOD 100000) = 0 THEN
+        WriteRunFile("running: busy loop #" + STR$(BusyCalls) + ", LoopIdx=" + STR$(LoopIdx))
+      END IF
+      IF RqDbgTicks - StartTick - StoppedMs > 30000 THEN EXIT DO
     END IF
   LOOP
-  StatusLabel.Caption = "busy loop done, LoopIdx=" + STR$(LoopIdx)
+  StatusLabel.Caption = "busy loop #" + STR$(BusyCalls) + " done, LoopIdx=" + STR$(LoopIdx) + ", SumVal at entry was" + STR$(EntrySum)
+  WriteRunFile("busy loop #" + STR$(BusyCalls) + " done, LoopIdx=" + STR$(LoopIdx))
 END SUB
 
 

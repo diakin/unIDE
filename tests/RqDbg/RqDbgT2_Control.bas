@@ -5,6 +5,9 @@
 ' Target остановился - показывает его файл состояния.
 ' Continue - пишет файл команды и поднимает "continue".
 ' Pause - поднимает "pause" (Target остановится в цикле Busy loop).
+' Третья строка - файл хода RqDbgT2.run от Target: видно, идёт ли цикл
+' после Continue (окно Target в цикле не перерисовывается).
+' Continue посылается, только когда Target стоит.
 
 DECLARE FUNCTION RqDbgCreateEvent LIB "kernel32" ALIAS "CreateEventA" (BYVAL EventAttr AS LONG, BYVAL ManualReset AS LONG, BYVAL InitialState AS LONG, EventName AS STRING) AS LONG
 DECLARE FUNCTION RqDbgSetEvent LIB "kernel32" ALIAS "SetEvent" (BYVAL EventHandle AS LONG) AS LONG
@@ -14,6 +17,7 @@ DIM EvStopped AS LONG
 DIM EvContinue AS LONG
 DIM EvPause AS LONG
 DIM ContinueCount AS INTEGER
+DIM TargetStopped AS INTEGER
 DIM PollTimer AS QTIMER
 
 DECLARE SUB PollTimerOver
@@ -23,7 +27,7 @@ DECLARE SUB PauseButtonClick
 CREATE MainForm AS QFORM
   Caption = "RqDbgT2 Control"
   Width = 520
-  Height = 170
+  Height = 190
   Left = 100
   Top = 300
   CREATE StatusLabel AS QLABEL
@@ -38,16 +42,22 @@ CREATE MainForm AS QFORM
     Width = 480
     Caption = "-"
   END CREATE
+  CREATE RunLabel AS QLABEL
+    Left = 10
+    Top = 55
+    Width = 480
+    Caption = "-"
+  END CREATE
   CREATE ContinueButton AS QBUTTON
     Left = 10
-    Top = 70
+    Top = 85
     Width = 120
     Caption = "Continue"
     OnClick = ContinueButtonClick
   END CREATE
   CREATE PauseButton AS QBUTTON
     Left = 140
-    Top = 70
+    Top = 85
     Width = 120
     Caption = "Pause"
     OnClick = PauseButtonClick
@@ -56,7 +66,14 @@ END CREATE
 
 SUB PollTimerOver
   DIM StateFile AS QFILESTREAM
+  DIM RunFile AS QFILESTREAM
+  IF FILEEXISTS("RqDbgT2.run") THEN
+    RunFile.Open("RqDbgT2.run", 64)   ' 64 - fmShareDenyNone: Target может писать в него
+    RunLabel.Caption = "run file: " + RunFile.ReadLine
+    RunFile.Close
+  END IF
   IF RqDbgWait(EvStopped, 0) = 0 THEN
+    TargetStopped = 1
     StatusLabel.Caption = "target stopped"
     StateLabel.Caption = "(no state file)"
     IF FILEEXISTS("RqDbgT2.state") THEN
@@ -70,6 +87,11 @@ END SUB
 SUB ContinueButtonClick
   DIM CmdFile AS QFILESTREAM
   DIM CallRes AS LONG
+  IF TargetStopped = 0 THEN
+    StatusLabel.Caption = "target is not stopped - continue not sent"
+    EXIT SUB
+  END IF
+  TargetStopped = 0
   ContinueCount = ContinueCount + 1
   CmdFile.Open("RqDbgT2.cmd", 65535)
   CmdFile.WriteLine("continue #" + STR$(ContinueCount))
