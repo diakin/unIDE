@@ -20,6 +20,7 @@ uses
   DlgWatch in 'DlgWatch.pas' {DlgWatch},
   ReleaseBuild in 'ReleaseBuild.pas',
   ObjParse in 'ObjParse.pas',
+  RqComponents in 'RqComponents.pas',
   HangWatch in 'HangWatch.pas',
   DbgEngine in 'DbgEngine.pas',
   DbgSymbols in 'DbgSymbols.pas',

@@ -1046,6 +1046,7 @@ type
     FEdFreezeSel: Integer;  // где стояла каретка
     FEdFreezeTop: Integer;  // какая строка была верхней
     FObjEditLine: Integer;  // строка его присваивания в .pas, -1 - такой нет
+    FRqEditSrcOld: string;  // правка RapidQ: значение в строке до правки
     // Умолчания по классам: имя класса -> TStringList Имя=значение
     FRttiDefaults: TStringList;
     FObjCurNode: TObject;   // TDfmNode выбранного объекта
@@ -1143,6 +1144,18 @@ type
     FObjSnapPrint: string;
     FObjDfmBinary: Boolean; // показанный .dfm двоичный - правка закрыта
     FObjRapidQ: Boolean;    // в инспекторе - объекты CREATE файла RapidQ
+    // Снимок программы RapidQ (RapidQProbeRun)
+    FRqProbeActive: Boolean;   // CompileRapidQ собирает копию со снимком
+    FRqProbeBas: string;       // её .bas
+    FRqProbeExe: string;       // её exe
+    FRqProbeErrFile: string;   // первая ошибка сборки копии
+    FRqProbeErrLine: Integer;
+    FRqProbeHangDepth: Integer; // повтор снимка после остановки на свойстве
+    FRqProbeObjs: TStringList; // имена объектов, Objects - "Свойство=значение"
+    FRqProbeMain: string;      // главный .bas, с которого снят снимок
+    FRqProbeTime: TDateTime;
+    FRqSnapOff: Boolean;       // снимок скрыт кнопкой
+    FRqInspMain: string;       // главный .bas файла в инспекторе
     FObjRebuilding: Boolean; // дерево перестраивается - Data узлов недействительны
     FDfmNodes: TList;
     FObjDfmFile: string;    // какой .dfm показан
@@ -1811,6 +1824,22 @@ type
     procedure RightPagesChange(Sender: TObject);
     procedure RefreshCodeTree;
     procedure RefreshRapidQInspector;
+    function  RapidQComponentsReady(AReport: Boolean): Boolean;
+    procedure RapidQIncludeDirs(var AMainDir, AIncDir: string);
+    function  RapidQLoadCustomTypes(ALines: TStrings;
+                                    const AFile: string): Integer;
+    procedure RapidQFillObjTables(AObj: TObject);
+    procedure RapidQBeginEdit(AItem: TListItem);
+    procedure RapidQApplyEdit;
+    function  RapidQProbeSource(const AMainBas, AOutFile: string;
+                                AOut, AObjClasses: TStringList;
+                                var ADumpStart: Integer;
+                                AMinimal: Boolean): Boolean;
+    procedure RapidQProbeRun;
+    procedure RapidQProbeClear;
+    function  RapidQLiveProps(const AName: string): TStringList;
+    function  RapidQHasSnapshot: Boolean;
+    procedure RapidQEventJump;
     function  DsgGetText: string;
     procedure DsgSetText(const AText: string);
     function  DsgOpenKeep(const AFile: string): Integer;
@@ -2152,6 +2181,8 @@ type
     procedure DsgHideForRun;
     procedure DsgShowAfterRun;
     procedure LogEditDblClick(Sender: TObject);
+    procedure LogEditClick(Sender: TObject);
+    procedure SaveCompileLog(const AFile: string);
     function  LogPopupEdit: TRichEdit;
     procedure BuildDeclPanel;
     procedure SubLabelShow(const AName: string);
@@ -2525,6 +2556,7 @@ var
     FileSearch,   // Find In Files: маски, чтение файлов, обход папок
     DelphiProj,   // .dpr (модули из uses), .dof (ключи dcc32), $(DELPHI)
     ObjParse,     // разбор формы для инспектора: узлы, .dfm, код, кэш
+    RqComponents, // описание компонентов RapidQ (Component.data)
     TextMerge,    // слияние трёх версий текста (файл изменён снаружи)
     HangWatch,    // сторож зависаний главного потока - журнал hang.log
     DlgAskDisk,   // окно "Файл изменён на диске" - см. AskDiskChange
@@ -17146,6 +17178,8 @@ begin
   FreeAndNil(FDsgResTexts);
   FreeAndNil(FIniPathLog); // обычно уже освобождён в FormShow
   FreeAndNil(FIncludeRows);
+  RapidQProbeClear;
+  FreeAndNil(FRqProbeObjs);
   Screen.OnActiveFormChange := nil;
   // Сами полосы принадлежат спискам и уходят с ними; здесь - только список
   FreeAndNil(FUiListScrolls);
@@ -19269,6 +19303,12 @@ end;
 const
   SnapCapShow = 'Show snapshot values';
   SnapCapHide = 'Show .dfm values only';
+  // Та же кнопка у файла RapidQ (снимок - RapidQProbeRun)
+  RqSnapCapShow = 'Show snapshot values';
+  // Начало строки лога с путём сохранённого лога компиляции
+  // (SaveCompileLog, LogEditClick)
+  LogSavedTag = 'Лог сохранён: ';
+  RqSnapCapHide = 'Show source values only';
   DsgCapLive = 'live look';
   DsgCapDfm = '.dfm look';
 
@@ -20066,14 +20106,40 @@ begin
   ARest := Trim(Copy(AStmt, WordEnd, MaxInt));
 end;
 
+// Присваивание в блоке CREATE: "Width = 100", "Font.Name = "courier"",
+// "OnClick = BtnClick". AName - то, что слева, AValue - текст справа как
+// есть (выражение не вычисляется).
+function RapidQAssignment(const AStmt: string; var AName, AValue: string): Boolean;
+var
+  CharIdx: Integer;
+begin
+  Result := False;
+  if (AStmt = '') or not (AStmt[1] in ['A'..'Z', 'a'..'z', '_']) then
+    Exit;
+  CharIdx := 1;
+  while (CharIdx <= Length(AStmt)) and
+        (AStmt[CharIdx] in ['A'..'Z', 'a'..'z', '0'..'9', '_', '.']) do
+    Inc(CharIdx);
+  AName := Copy(AStmt, 1, CharIdx - 1);
+  while (CharIdx <= Length(AStmt)) and (AStmt[CharIdx] <= ' ') do
+    Inc(CharIdx);
+  if (CharIdx > Length(AStmt)) or (AStmt[CharIdx] <> '=') then
+    Exit;
+  AValue := Trim(Copy(AStmt, CharIdx + 1, MaxInt));
+  Result := True;
+end;
+
 // Узлы объектов CREATE из строк ALines - в ANodes (владеет ими он), корни
-// (CREATE вне других CREATE) - в ARoots. Результат - число объектов.
+// (CREATE вне других CREATE) - в ARoots. Присваивания внутри блока -
+// свойствами узла (PropN, PropV; в PropN.Objects - номер строки), On... -
+// событиями (EvN, EvV, номер строки в EvN.Objects). Результат - число
+// объектов.
 function RapidQCreateNodes(ALines: TStrings; ANodes, ARoots: TList): Integer;
 var
   Parts: TStringList;
   OpenNodes: TList;   // узлы CREATE, для которых ещё не было END CREATE
   LineIdx, PartIdx, NodeIdx: Integer;
-  FirstWord, Rest, Tail, NameWord, ClassPart: string;
+  FirstWord, Rest, Tail, NameWord, ClassPart, PropName, PropValue: string;
   Parent, Node: TDfmNode;
 
   function NewNode(AParent: TDfmNode; ALine: Integer): TDfmNode;
@@ -20098,8 +20164,10 @@ begin
   try
     for LineIdx := 0 to ALines.Count - 1 do
     begin
-      // Быстрый отсев: в строке нет слова CREATE ни в каком виде
-      if Pos('CREATE', UpperCase(ALines[LineIdx])) = 0 then
+      // Быстрый отсев: вне блоков CREATE нужны только строки со словом
+      // CREATE
+      if (OpenNodes.Count = 0) and
+         (Pos('CREATE', UpperCase(ALines[LineIdx])) = 0) then
         Continue;
       RapidQSplitStatements(ALines[LineIdx], Parts);
       for PartIdx := 0 to Parts.Count - 1 do
@@ -20142,6 +20210,23 @@ begin
             Node := NewNode(nil, LineIdx);
             Node.ClassNm := 'END CREATE без CREATE';
           end;
+        end
+        else if (OpenNodes.Count > 0) and
+                RapidQAssignment(Parts[PartIdx], PropName, PropValue) then
+        begin
+          // Свойство или событие объекта, чей блок сейчас открыт
+          Node := TDfmNode(OpenNodes[OpenNodes.Count - 1]);
+          if UpperCase(Copy(PropName, 1, 2)) = 'ON' then
+          begin
+            Node.EvN.AddObject(PropName, TObject(LineIdx));
+            Node.EvV.Add(PropValue);
+          end
+          else
+          begin
+            Node.PropN.AddObject(PropName, TObject(LineIdx));
+            Node.PropV.Add(PropValue);
+            Node.PropRaw.Add(PropValue);
+          end;
         end;
       end;
     end;
@@ -20164,7 +20249,7 @@ procedure TForm1.RefreshRapidQInspector;
 var
   Lines: TStringList;
   Roots: TList;
-  RootIdx, ObjCount: Integer;
+  RootIdx, ObjCount, CustomCount: Integer;
 begin
   ObjCancelEdit;
   FObjCurNode := nil;
@@ -20181,12 +20266,15 @@ begin
   FObjLinesUnsure := False;
   if FObjRoots = nil then
     FObjRoots := TList.Create;
+  // Снимок относится к главному .bas: у вкладки .inc - к цели проекта
+  FRqInspMain := RapidQTargetBas(False);
 
   Lines := TStringList.Create;
   Roots := TList.Create;
   try
     Lines.Text := GetEditorTextCR;
     ObjCount := RapidQCreateNodes(Lines, FDfmNodes, Roots);
+    CustomCount := RapidQLoadCustomTypes(Lines, FCurrentFileName);
     RenderObjTree(Roots);
     for RootIdx := 0 to Roots.Count - 1 do
       FObjRoots.Add(Roots[RootIdx]);
@@ -20196,11 +20284,1186 @@ begin
     else
       FObjSource.Caption := '  ' + ExtractFileName(FCurrentFileName) +
                             ': объектов CREATE - ' + IntToStr(ObjCount) +
-                            '. Значения свойств - из снимка, его пока нет';
+                            ', классов TYPE ... EXTENDS - ' +
+                            IntToStr(CustomCount) +
+                            '. Значения - текст из блоков CREATE, снимка пока нет';
+    if not RapidQComponentsReady(False) then
+      FObjSource.Caption := FObjSource.Caption +
+                            '. Component.data не найден - список свойств ' +
+                            'классов не показывается';
+    if RapidQHasSnapshot and not FRqSnapOff then
+    begin
+      FObjSource.Caption := '  ' + ExtractFileName(FCurrentFileName) +
+                            ': объектов CREATE - ' + IntToStr(ObjCount) +
+                            '  +  снимок ' + TimeToStr(FRqProbeTime) +
+                            '.  Щелчок здесь - убрать снимок';
+      FObjSource.Cursor := crHandPoint;
+    end
+    else
+      FObjSource.Cursor := crDefault;
+    if FObjSnapBtn <> nil then
+      if RapidQHasSnapshot and not FRqSnapOff then
+        FObjSnapBtn.Caption := RqSnapCapHide
+      else
+        FObjSnapBtn.Caption := RqSnapCapShow;
   finally
     Roots.Free;
     Lines.Free;
   end;
+end;
+
+// Описание компонентов RapidQ загружено. Сначала - файл из настроек
+// ([Compiler.RapidQ Basic] CompDataFile, IDE Options - Compilers - поле
+// Components); задан другой, чем загружен, - загружается заново. Не задан
+// или его нет - папки поиска по порядку:
+//   рядом с exe;
+//   rapidq_ref рядом с exe (туда его кладёт пересборка, CopyOwnRunFiles);
+//   rapidq_ref в папке выше exe (exe в Output\, rapidq_ref - рядом с .dpr);
+//   папка компилятора RapidQ из настроек ([Compiler.RapidQ Basic] CompPath);
+//   rapidq_ref каждого проекта в папке projects у exe
+//   (projects\SyntaxHLClaude\rapidq_ref - исходники самого редактора).
+// В первой папке, где что-то нашлось, берётся общий ComponentAll.data; нет
+// его или он пустой - Component.data и к нему Component1.data той же папки;
+// нет и его - один Component1.data. Загружается один раз за сеанс.
+// AReport - не нашлось: каждый проверенный файл и что с ним - в лог.
+function TForm1.RapidQComponentsReady(AReport: Boolean): Boolean;
+const
+  AllName = 'ComponentAll.data';
+  MainName = 'Component.data';
+  ExtraName = 'Component1.data';
+var
+  Dirs, Tried: TStringList;
+  Ini: TIniFile;
+  ExeDir, CompDir, Extra, SetFile: string;
+  DirIdx, Members, Added, TryIdx: Integer;
+  Found: TSearchRec;
+
+  procedure AddDir(const ADir: string);
+  var
+    Full: string;
+  begin
+    if ADir = '' then
+      Exit;
+    Full := IncludeTrailingPathDelimiter(ExpandFileName(ADir));
+    if Dirs.IndexOf(Full) < 0 then
+      Dirs.Add(Full);
+  end;
+
+  // Загрузить AFile; True - классы есть. Что вышло - в Tried.
+  function TryLoad(const AFile: string): Boolean;
+  begin
+    Result := False;
+    if not FileExists(AFile) then
+    begin
+      Tried.Add(AFile + ' - нет файла');
+      Exit;
+    end;
+    Result := RqLoadComponents(AFile) > 0;
+    if not Result then
+      Tried.Add(AFile + ' - есть, но классов в нём не прочитано');
+  end;
+
+begin
+  CompDir := '';
+  SetFile := '';
+  if FileExists(SettingsFileName) then
+  begin
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      CompDir := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
+                                     'CompPath', ''));
+      SetFile := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
+                                     'CompDataFile', ''));
+    finally
+      Ini.Free;
+    end;
+  end;
+
+  // Загружен тот, что задан; не задан никакой или заданного нет на диске
+  // (тогда загружен найденный в папках) - готово
+  Result := (RqComponentFile <> '') and
+            ((SetFile = '') or not FileExists(SetFile) or
+             (CompareText(ExpandFileName(SetFile), RqComponentFile) = 0));
+  if Result then
+    Exit;
+
+  Dirs := TStringList.Create;
+  Tried := TStringList.Create;
+  try
+    // Файл из настроек. Component.data - с добавкой Component1.data рядом.
+    if SetFile <> '' then
+    begin
+      if TryLoad(ExpandFileName(SetFile)) then
+      begin
+        Result := True;
+        LogComp('Описание компонентов RapidQ (из настроек): ' +
+                RqComponentFile + ', классов ' + IntToStr(RqClassCount));
+        Extra := ExtractFilePath(RqComponentFile) + ExtraName;
+        if (CompareText(ExtractFileName(RqComponentFile), MainName) = 0) and
+           FileExists(Extra) then
+        begin
+          Added := RqMergeComponents(Extra, Members);
+          LogComp('  из ' + Extra + ' добавлено классов ' + IntToStr(Added) +
+                  ', свойств и событий у прежних классов ' +
+                  IntToStr(Members));
+        end;
+        Exit;
+      end;
+      Tried[Tried.Count - 1] := Tried[Tried.Count - 1] +
+                                '   (IDE Options - Compilers - Components)';
+    end;
+
+    Dirs.CaseSensitive := False;
+    ExeDir := ExtractFilePath(Application.ExeName);
+    AddDir(ExeDir);
+    AddDir(ExeDir + 'rapidq_ref');
+    AddDir(ExtractFilePath(ExcludeTrailingPathDelimiter(ExeDir)) + 'rapidq_ref');
+    // В CompPath бывает и папка, и путь к rc.exe
+    if (CompDir <> '') and FileExists(CompDir) then
+      CompDir := ExtractFilePath(CompDir);
+    AddDir(CompDir);
+    // Проекты в папке projects: у исходников редактора rapidq_ref свой
+    if FindFirst(ProjectsDir + '*', faDirectory, Found) = 0 then
+    try
+      repeat
+        if ((Found.Attr and faDirectory) <> 0) and (Found.Name <> '.') and
+           (Found.Name <> '..') and
+           DirectoryExists(ProjectsDir + Found.Name + '\rapidq_ref') then
+          AddDir(ProjectsDir + Found.Name + '\rapidq_ref');
+      until FindNext(Found) <> 0;
+    finally
+      FindClose(Found);
+    end;
+
+    for DirIdx := 0 to Dirs.Count - 1 do
+    begin
+      Extra := '';
+      if TryLoad(Dirs[DirIdx] + AllName) then
+        Result := True
+      else if TryLoad(Dirs[DirIdx] + MainName) then
+      begin
+        Result := True;
+        Extra := Dirs[DirIdx] + ExtraName;
+      end
+      else if TryLoad(Dirs[DirIdx] + ExtraName) then
+        Result := True;
+      if not Result then
+        Continue;
+      LogComp('Описание компонентов RapidQ: ' + RqComponentFile +
+              ', классов ' + IntToStr(RqClassCount));
+      if (Extra <> '') and FileExists(Extra) then
+      begin
+        Added := RqMergeComponents(Extra, Members);
+        LogComp('  из ' + Extra + ' добавлено классов ' + IntToStr(Added) +
+                ', свойств и событий у прежних классов ' + IntToStr(Members));
+      end;
+      Exit;
+    end;
+
+    if AReport then
+    begin
+      LogComp('Описание компонентов RapidQ не найдено. Проверено:');
+      for TryIdx := 0 to Tried.Count - 1 do
+        LogComp('    ' + Tried[TryIdx]);
+      LogComp('  ComponentAll.data лежит в репозитории в rapidq_ref. Укажите ' +
+              'его в IDE Options - Compilers - RapidQ Basic - Components ' +
+              'или положите в одну из этих папок');
+    end;
+  finally
+    Tried.Free;
+    Dirs.Free;
+  end;
+end;
+
+// Разбор строки $INCLUDE и поиск файла - ниже, у вкладки Includes;
+// RapidQLoadCustomTypes зовёт их раньше
+function RapidQIncludeName(const ALine: string): string; forward;
+function RapidQResolveInclude(const AName, AMainDir,
+                              AIncDir: string): string; forward;
+
+// Папки поиска $INCLUDE - как у компилятора и вкладки Includes: папка
+// главного .bas (у вкладки .inc - цели проекта) и Include из настроек
+procedure TForm1.RapidQIncludeDirs(var AMainDir, AIncDir: string);
+var
+  MainBas: string;
+  Ini: TIniFile;
+begin
+  MainBas := RapidQTargetBas(False);
+  if MainBas <> '' then
+    AMainDir := ExtractFilePath(MainBas)
+  else
+    AMainDir := ExtractFilePath(FCurrentFileName);
+  AIncDir := '';
+  if FileExists(SettingsFileName) then
+  begin
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      AIncDir := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
+                                     'IncPath', ''));
+    finally
+      Ini.Free;
+    end;
+  end;
+end;
+
+// Классы программы (TYPE ... EXTENDS) и её константы (CONST Имя = целое,
+// для показа перечислений словами) - из текста ALines файла AFile и всех
+// файлов, которые он подключает через $INCLUDE, с вложенными. Класс
+// берётся из первого файла, где он встретился: сам текст, затем include по
+// порядку строк. Результат - число классов.
+function TForm1.RapidQLoadCustomTypes(ALines: TStrings;
+                                      const AFile: string): Integer;
+const
+  MaxDepth = 20;
+var
+  MainDir, IncDir: string;
+  Visited: TStringList;
+
+  procedure ScanIncludes(AText: TStrings; ALevel: Integer);
+  var
+    LineIdx: Integer;
+    IncName, Full: string;
+    Nested: TStringList;
+  begin
+    for LineIdx := 0 to AText.Count - 1 do
+    begin
+      IncName := RapidQIncludeName(AText[LineIdx]);
+      if IncName = '' then
+        Continue;
+      Full := RapidQResolveInclude(IncName, MainDir, IncDir);
+      if (Full = '') or (Visited.IndexOf(UpperCase(Full)) >= 0) then
+        Continue;
+      Visited.Add(UpperCase(Full));
+      Nested := TStringList.Create;
+      try
+        try
+          Nested.LoadFromFile(Full);
+        except
+          Continue;
+        end;
+        RqParseTypes(Nested, Full);
+        RqParseConsts(Nested);
+        if ALevel < MaxDepth then
+          ScanIncludes(Nested, ALevel + 1);
+      finally
+        Nested.Free;
+      end;
+    end;
+  end;
+
+begin
+  RqClearCustom;
+  RqClearConsts;
+  RapidQIncludeDirs(MainDir, IncDir);
+  Visited := TStringList.Create;
+  try
+    Visited.Add(UpperCase(ExpandFileName(AFile)));
+    RqParseTypes(ALines, AFile);
+    RqParseConsts(ALines);
+    ScanIncludes(ALines, 1);
+  finally
+    Visited.Free;
+  end;
+  Result := RqCustomCount;
+end;
+
+// ---------------------------------------------------------------------------
+//  Правка свойств объекта RapidQ в инспекторе
+//
+//  Свойство задано в блоке CREATE - меняется его значение в той же строке
+//  (отступ, другие операторы через ":" и комментарий остаются). Не задано
+//  (строка таблицы приглушённая) - новая строка "Свойство = значение" в
+//  блоке после последнего присваивания объекта, с тем же отступом; нет
+//  присваиваний - сразу после CREATE, на уровень глубже. Вариантам
+//  перечисления - список из описания компонентов, цвету - константы cl...,
+//  строке - ввод без кавычек (кавычки ставятся при записи). Свойства
+//  только для чтения, массивы и ресурсы не правятся.
+// ---------------------------------------------------------------------------
+
+// Присваивание AName в строке ALine RapidQ: "Width = 100", в том числе
+// одним из операторов через ":" ("CREATE B AS QBUTTON : Caption = "a:b"").
+// AValStart, AValLen - где в строке значение (от 1, без пробелов по краям);
+// комментарий ' после значения и другие операторы не входят. False - нет.
+function RapidQFindAssign(const ALine, AName: string;
+                          var AValStart, AValLen: Integer): Boolean;
+var
+  CharIdx, StmtStart, NamePos, EqPos, ValEnd: Integer;
+  InQuote, AtBreak: Boolean;
+
+  // Оператор ALine[StmtStart..AEnd-1] - "AName = значение"?
+  function CheckStmt(AEnd: Integer): Boolean;
+  begin
+    Result := False;
+    NamePos := StmtStart;
+    while (NamePos < AEnd) and (ALine[NamePos] in [' ', #9]) do
+      Inc(NamePos);
+    if CompareText(Copy(ALine, NamePos, Length(AName)), AName) <> 0 then
+      Exit;
+    EqPos := NamePos + Length(AName);
+    if (EqPos < AEnd) and
+       (ALine[EqPos] in ['A'..'Z', 'a'..'z', '0'..'9', '_', '.', '$']) then
+      Exit;   // длиннее: Width и WidthMax
+    while (EqPos < AEnd) and (ALine[EqPos] in [' ', #9]) do
+      Inc(EqPos);
+    if (EqPos >= AEnd) or (ALine[EqPos] <> '=') then
+      Exit;
+    AValStart := EqPos + 1;
+    while (AValStart < AEnd) and (ALine[AValStart] in [' ', #9]) do
+      Inc(AValStart);
+    ValEnd := AEnd - 1;
+    while (ValEnd >= AValStart) and (ALine[ValEnd] in [' ', #9]) do
+      Dec(ValEnd);
+    AValLen := ValEnd - AValStart + 1;
+    Result := True;
+  end;
+
+begin
+  Result := False;
+  AValStart := 0;
+  AValLen := 0;
+  InQuote := False;
+  StmtStart := 1;
+  for CharIdx := 1 to Length(ALine) + 1 do
+  begin
+    AtBreak := CharIdx > Length(ALine);
+    if not AtBreak then
+      if ALine[CharIdx] = '"' then
+        InQuote := not InQuote
+      else if not InQuote and (ALine[CharIdx] in [':', '''']) then
+        AtBreak := True;
+    if not AtBreak then
+      Continue;
+    if CheckStmt(CharIdx) then
+    begin
+      Result := True;
+      Exit;
+    end;
+    if (CharIdx <= Length(ALine)) and (ALine[CharIdx] = '''') then
+      Exit;   // дальше комментарий
+    StmtStart := CharIdx + 1;
+  end;
+end;
+
+// Строка RapidQ в кавычках. Кавычка внутри - через CHR$(34): в литерале
+// RapidQ её не записать.
+function RapidQQuote(const AText: string): string;
+var
+  QuotePos: Integer;
+  Rest: string;
+begin
+  if Pos('"', AText) = 0 then
+  begin
+    Result := '"' + AText + '"';
+    Exit;
+  end;
+  Result := '';
+  Rest := AText;
+  QuotePos := Pos('"', Rest);
+  while QuotePos > 0 do
+  begin
+    if Result <> '' then
+      Result := Result + ' + ';
+    Result := Result + '"' + Copy(Rest, 1, QuotePos - 1) + '" + CHR$(34)';
+    Delete(Rest, 1, QuotePos);
+    QuotePos := Pos('"', Rest);
+  end;
+  if Rest <> '' then
+    Result := Result + ' + "' + Rest + '"';
+end;
+
+// Текст из литерала "..." без кавычек; не литерал (выражение, число) -
+// False
+function RapidQUnquote(const AValue: string; var AText: string): Boolean;
+var
+  Value: string;
+begin
+  Value := Trim(AValue);
+  Result := (Length(Value) >= 2) and (Value[1] = '"') and
+            (Value[Length(Value)] = '"') and
+            (Pos('"', Copy(Value, 2, Length(Value) - 2)) = 0);
+  if Result then
+    AText := Copy(Value, 2, Length(Value) - 2);
+end;
+
+// Где вставить новое присваивание в блок CREATE объекта ANode: номер строки
+// (новая строка встаёт перед ней) - после последнего присваивания этого
+// объекта, а нет их - сразу после CREATE. AIndent - отступ (как у
+// последнего присваивания; нет их - как у следующей строки, если она
+// глубже CREATE, иначе отступ CREATE плюс табуляция или два пробела),
+// AEq - вид знака: "=" или " = ", как у последнего присваивания.
+// -1 - блок в одну строку (его правит RapidQInsertBeforeEnd) или END
+// CREATE не найден.
+function RapidQInsertPlace(ALines: TStrings; ANode: TDfmNode;
+                           var AIndent, AEq: string): Integer;
+var
+  LastLine, ItemIdx, ItemLine, EqPos: Integer;
+  CreateIndent, NextIndent, LastText: string;
+
+  function IndentOf(const AText: string): string;
+  var
+    CharIdx: Integer;
+  begin
+    CharIdx := 1;
+    while (CharIdx <= Length(AText)) and (AText[CharIdx] in [' ', #9]) do
+      Inc(CharIdx);
+    Result := Copy(AText, 1, CharIdx - 1);
+  end;
+
+begin
+  Result := -1;
+  AIndent := '';
+  AEq := ' = ';
+  if (ANode.CreateLine < 0) or (ANode.EndLine <= ANode.CreateLine) or
+     (ANode.EndLine >= ALines.Count) then
+    Exit;
+  LastLine := ANode.CreateLine;
+  for ItemIdx := 0 to ANode.PropN.Count - 1 do
+  begin
+    ItemLine := Integer(ANode.PropN.Objects[ItemIdx]);
+    if (ItemLine > LastLine) and (ItemLine < ANode.EndLine) then
+      LastLine := ItemLine;
+  end;
+  for ItemIdx := 0 to ANode.EvN.Count - 1 do
+  begin
+    ItemLine := Integer(ANode.EvN.Objects[ItemIdx]);
+    if (ItemLine > LastLine) and (ItemLine < ANode.EndLine) then
+      LastLine := ItemLine;
+  end;
+  Result := LastLine + 1;
+
+  CreateIndent := IndentOf(ALines[ANode.CreateLine]);
+  if LastLine > ANode.CreateLine then
+  begin
+    LastText := ALines[LastLine];
+    AIndent := IndentOf(LastText);
+    // Вид "=": есть пробел перед ним - " = ", нет - "="
+    EqPos := Pos('=', LastText);
+    if (EqPos > 1) and (LastText[EqPos - 1] <> ' ') then
+      AEq := '=';
+  end
+  else
+  begin
+    NextIndent := IndentOf(ALines[ANode.CreateLine + 1]);
+    if Length(NextIndent) > Length(CreateIndent) then
+      AIndent := NextIndent
+    else if (Pos(#9, CreateIndent) > 0) or (CreateIndent = '') then
+      AIndent := CreateIndent + #9
+    else
+      AIndent := CreateIndent + '  ';
+  end;
+end;
+
+// Операторы строки RapidQ как есть (через ":" вне кавычек), без пробелов по
+// краям, и комментарий: ' вне кавычек или REM в начале оператора - до
+// конца строки, с самим знаком.
+procedure RapidQSplitKeep(const ALine: string; AParts: TStrings;
+                          var AComment: string);
+var
+  CharIdx, StmtStart, WordPos: Integer;
+  InQuote: Boolean;
+
+  // Оператор с позиции StmtStart начинается с REM - комментарий
+  function StartsWithRem: Boolean;
+  begin
+    WordPos := StmtStart;
+    while (WordPos <= Length(ALine)) and (ALine[WordPos] in [' ', #9]) do
+      Inc(WordPos);
+    Result := (UpperCase(Copy(ALine, WordPos, 3)) = 'REM') and
+              ((WordPos + 3 > Length(ALine)) or
+               (ALine[WordPos + 3] in [' ', #9]));
+  end;
+
+  procedure AddPart(AEnd: Integer);
+  var
+    Part: string;
+  begin
+    Part := Trim(Copy(ALine, StmtStart, AEnd - StmtStart));
+    if Part <> '' then
+      AParts.Add(Part);
+  end;
+
+begin
+  AParts.Clear;
+  AComment := '';
+  InQuote := False;
+  StmtStart := 1;
+  if StartsWithRem then
+  begin
+    AComment := Trim(Copy(ALine, WordPos, MaxInt));
+    Exit;
+  end;
+  for CharIdx := 1 to Length(ALine) do
+  begin
+    if ALine[CharIdx] = '"' then
+      InQuote := not InQuote
+    else if not InQuote and (ALine[CharIdx] = '''') then
+    begin
+      AddPart(CharIdx);
+      AComment := Trim(Copy(ALine, CharIdx, MaxInt));
+      Exit;
+    end
+    else if not InQuote and (ALine[CharIdx] = ':') then
+    begin
+      AddPart(CharIdx);
+      StmtStart := CharIdx + 1;
+      if StartsWithRem then
+      begin
+        AComment := Trim(Copy(ALine, WordPos, MaxInt));
+        Exit;
+      end;
+    end;
+  end;
+  AddPart(Length(ALine) + 1);
+end;
+
+// Однострочные блоки "CREATE ... : ... : END CREATE" - по строке на
+// оператор; комментарий конца строки - на строку CREATE. AText - строки
+// через CR (GetEditorTextCR), результат - так же. ACount - сколько строк
+// развёрнуто. ACaretLine - номер строки (с 0) до и после развёртки.
+function RapidQExpandCreateLines(const AText: string; var ACount: Integer;
+                                 var ACaretLine: Integer): string;
+var
+  Lines, Parts, Output: TStringList;
+  LineIdx, PartIdx, IndentLen, OldCaret: Integer;
+  Comment, Indent, Rest, Tail: string;
+  HasEnd: Boolean;
+begin
+  ACount := 0;
+  OldCaret := ACaretLine;
+  Lines := TStringList.Create;
+  Parts := TStringList.Create;
+  Output := TStringList.Create;
+  try
+    Lines.Text := AText;
+    for LineIdx := 0 to Lines.Count - 1 do
+    begin
+      if Pos('CREATE', UpperCase(Lines[LineIdx])) = 0 then
+      begin
+        Output.Add(Lines[LineIdx]);
+        Continue;
+      end;
+      RapidQSplitKeep(Lines[LineIdx], Parts, Comment);
+      HasEnd := False;
+      for PartIdx := 1 to Parts.Count - 1 do
+        if (RapidQFirstWord(Parts[PartIdx], Rest) = 'END') and
+           (RapidQFirstWord(Rest, Tail) = 'CREATE') then
+          HasEnd := True;
+      if (Parts.Count < 2) or not HasEnd or
+         (RapidQFirstWord(Parts[0], Rest) <> 'CREATE') then
+      begin
+        Output.Add(Lines[LineIdx]);
+        Continue;
+      end;
+      IndentLen := 0;
+      while (IndentLen < Length(Lines[LineIdx])) and
+            (Lines[LineIdx][IndentLen + 1] in [' ', #9]) do
+        Inc(IndentLen);
+      Indent := Copy(Lines[LineIdx], 1, IndentLen);
+      if Comment <> '' then
+        Output.Add(Indent + Parts[0] + '   ' + Comment)
+      else
+        Output.Add(Indent + Parts[0]);
+      for PartIdx := 1 to Parts.Count - 1 do
+        Output.Add(Indent + Parts[PartIdx]);
+      Inc(ACount);
+      if LineIdx < OldCaret then
+        Inc(ACaretLine, Parts.Count - 1);
+    end;
+    // Строки - через CR, как пришли; последний перевод - как был
+    Result := '';
+    for LineIdx := 0 to Output.Count - 1 do
+    begin
+      if LineIdx > 0 then
+        Result := Result + #13;
+      Result := Result + Output[LineIdx];
+    end;
+    if (AText <> '') and (AText[Length(AText)] in [#13, #10]) then
+      Result := Result + #13;
+  finally
+    Output.Free;
+    Parts.Free;
+    Lines.Free;
+  end;
+end;
+
+// Оператор AStmt - в строку ALine перед END CREATE объекта AObjName, тем
+// же разделителем, что перед END CREATE: "... : enabled=0 :   END CREATE"
+// -> "... : enabled=0 :   AStmt :   END CREATE". Вложенные CREATE ... END
+// CREATE в той же строке пропускаются: вставка - в блок самого объекта.
+// False - CREATE объекта или его END CREATE в строке нет.
+function RapidQInsertBeforeEnd(const ALine, AObjName, AStmt: string;
+                               var ANewLine: string): Boolean;
+var
+  CharIdx, StmtStart, WordPos, Depth: Integer;
+  InQuote, AtBreak: Boolean;
+  Stmt, FirstWord, Rest, Tail: string;
+begin
+  Result := False;
+  InQuote := False;
+  StmtStart := 1;
+  Depth := 0;     // 0 - CREATE объекта ещё не встречен
+  for CharIdx := 1 to Length(ALine) + 1 do
+  begin
+    AtBreak := CharIdx > Length(ALine);
+    if not AtBreak then
+      if ALine[CharIdx] = '"' then
+        InQuote := not InQuote
+      else if not InQuote and (ALine[CharIdx] in [':', '''']) then
+        AtBreak := True;
+    if not AtBreak then
+      Continue;
+    Stmt := Trim(Copy(ALine, StmtStart, CharIdx - StmtStart));
+    FirstWord := RapidQFirstWord(Stmt, Rest);
+    if FirstWord = 'REM' then
+      Exit;
+    if FirstWord = 'CREATE' then
+    begin
+      if Depth > 0 then
+        Inc(Depth)
+      else if RapidQFirstWord(Rest, Tail) = UpperCase(AObjName) then
+        Depth := 1;
+    end
+    else if (FirstWord = 'END') and (RapidQFirstWord(Rest, Tail) = 'CREATE') and
+            (Depth > 0) then
+    begin
+      Dec(Depth);
+      if Depth = 0 then
+      begin
+        WordPos := StmtStart;
+        while (WordPos < CharIdx) and (ALine[WordPos] in [' ', #9]) do
+          Inc(WordPos);
+        // Пробелы после ":" перед END CREATE - такие же перед новым
+        ANewLine := Copy(ALine, 1, WordPos - 1) + AStmt + ' :' +
+                    Copy(ALine, StmtStart, MaxInt);
+        Result := True;
+        Exit;
+      end;
+    end;
+    if (CharIdx <= Length(ALine)) and (ALine[CharIdx] = '''') then
+      Exit;
+    StmtStart := CharIdx + 1;
+  end;
+end;
+
+// Вид "=" в строке: у последнего присваивания перед "=" пробел - " = ",
+// нет - "="; присваиваний нет - " = "
+function RapidQEqStyle(const ALine: string): string;
+var
+  CharIdx: Integer;
+  InQuote: Boolean;
+begin
+  Result := ' = ';
+  InQuote := False;
+  for CharIdx := 1 to Length(ALine) do
+    if ALine[CharIdx] = '"' then
+      InQuote := not InQuote
+    else if not InQuote and (ALine[CharIdx] = '''') then
+      Exit
+    else if not InQuote and (ALine[CharIdx] = '=') and (CharIdx > 1) then
+      if ALine[CharIdx - 1] in [' ', #9] then
+        Result := ' = '
+      else
+        Result := '=';
+end;
+
+// Описание свойства AName объекта AObj по цепочке его классов. Font.Name
+// - свойство Name класса QFONT, если Font у класса этого типа. nil - нет.
+function RapidQMemberOf(AObj: TDfmNode; const AName: string): TRqMember;
+var
+  Chain: TList;
+  DotPos: Integer;
+  HeadMember: TRqMember;
+  FontCls: TRqClass;
+begin
+  Result := nil;
+  Chain := TList.Create;
+  try
+    RqClassChain(AObj.ClassNm, Chain);
+    RqDefaultOf(Chain, AName, Result);
+    if Result <> nil then
+      Exit;
+    DotPos := Pos('.', AName);
+    if DotPos = 0 then
+      Exit;
+    RqDefaultOf(Chain, Copy(AName, 1, DotPos - 1), HeadMember);
+    if (HeadMember = nil) or
+       (CompareText(HeadMember.TypeName, 'QFONT') <> 0) then
+      Exit;
+    FontCls := RqFindClass('QFONT');
+    if FontCls <> nil then
+      Result := FontCls.PropOf(Copy(AName, DotPos + 1, MaxInt));
+  finally
+    Chain.Free;
+  end;
+end;
+
+// Таблицы свойств и событий объекта RapidQ AObj (TDfmNode).
+//   Заданное в блоке CREATE - текстом исходника и номером строки (колонка
+//   «Строка кода»).
+//   Остальное - серым по классу и всем его базовым (класс программы TYPE
+//   ... EXTENDS, затем описание из ComponentAll.data): свойства со
+//   значением по умолчанию (CONSTRUCTOR ближайшего класса или запись
+//   описания), события с параметрами обработчика.
+procedure TForm1.RapidQFillObjTables(AObj: TObject);
+var
+  Obj: TDfmNode;
+  Chain: TList;
+  Seen: TStringList;
+  RqCls, ChainCls: TRqClass;
+  RqMember: TRqMember;
+  Item: TListItem;
+  ItemIdx, ChainIdx, LiveIdx: Integer;
+  MemberName, DefText, LiveText, SrcText: string;
+  Live: TStringList;
+begin
+  Obj := TDfmNode(AObj);
+  Live := RapidQLiveProps(Obj.Name);
+  Chain := TList.Create;
+  Seen := TStringList.Create;
+  try
+    Seen.Sorted := True;
+    Seen.CaseSensitive := False;
+    RqClassChain(Obj.ClassNm, Chain);
+    if Chain.Count > 0 then
+      RqCls := TRqClass(Chain[0])
+    else
+      RqCls := nil;
+
+    FObjHeader.Caption := '  ' + Obj.Name + ': ' + Obj.ClassNm;
+    if Obj.CreateLine >= 0 then
+      FObjHeader.Caption := FObjHeader.Caption + '   строка ' +
+                            IntToStr(Obj.CreateLine + 1);
+    if (RqCls <> nil) and RqCls.IsCustom then
+      FObjHeader.Caption := FObjHeader.Caption + '   (EXTENDS ' +
+                            RqCls.BaseName + ', ' +
+                            ExtractFileName(RqCls.SrcFile) + ':' +
+                            IntToStr(RqCls.SrcLine + 1) + ')'
+    else if (RqCls = nil) and (Obj.ClassNm <> '') and
+            (RqComponentFile <> '') then
+      FObjHeader.Caption := FObjHeader.Caption + '   (класс не описан)';
+
+    // Значение из снимка; у заданных в CREATE выражение - рядом, если
+    // отличается от значения
+    for ItemIdx := 0 to Obj.PropN.Count - 1 do
+    begin
+      Item := FObjProps.Items.Add;
+      Item.Caption := Obj.PropN[ItemIdx];
+      SrcText := Obj.PropV[ItemIdx];
+      LiveText := SrcText;
+      if (Live <> nil) and (Live.IndexOfName(Obj.PropN[ItemIdx]) >= 0) then
+      begin
+        // Число перечисления - словом: BorderStyle 2 -> bsSizeable
+        RqDefaultOf(Chain, Obj.PropN[ItemIdx], RqMember);
+        LiveText := RqChoiceText(RqMember, Live.Values[Obj.PropN[ItemIdx]]);
+        if CompareText(Trim(LiveText), Trim(SrcText)) <> 0 then
+          LiveText := LiveText + '   (код: ' + SrcText + ')';
+      end;
+      Item.SubItems.Add(LiveText);
+      Item.SubItems.Add(IntToStr(Integer(Obj.PropN.Objects[ItemIdx]) + 1));
+      Item.Data := Pointer(ItemIdx);
+      Seen.Add(Obj.PropN[ItemIdx]);
+    end;
+    for ChainIdx := 0 to Chain.Count - 1 do
+    begin
+      ChainCls := TRqClass(Chain[ChainIdx]);
+      for ItemIdx := 0 to ChainCls.Props.Count - 1 do
+      begin
+        MemberName := ChainCls.Props[ItemIdx];
+        if (Obj.PropN.IndexOf(MemberName) >= 0) or
+           (Seen.IndexOf(MemberName) >= 0) then
+          Continue;
+        Seen.Add(MemberName);
+        DefText := RqDefaultOf(Chain, MemberName, RqMember);
+        if (Live <> nil) and (Live.IndexOfName(MemberName) >= 0) then
+          DefText := RqChoiceText(RqMember, Live.Values[MemberName]);
+        Item := FObjProps.Items.Add;
+        Item.Caption := MemberName;
+        Item.SubItems.Add(DefText);
+        Item.Data := Pointer(-1);
+      end;
+    end;
+    // Что есть в снимке, но не в списке класса (Font.Name, Font.Size...)
+    if Live <> nil then
+      for LiveIdx := 0 to Live.Count - 1 do
+      begin
+        MemberName := Live.Names[LiveIdx];
+        if (MemberName = '') or (Seen.IndexOf(MemberName) >= 0) then
+          Continue;
+        Seen.Add(MemberName);
+        Item := FObjProps.Items.Add;
+        Item.Caption := MemberName;
+        Item.SubItems.Add(Live.Values[MemberName]);
+        Item.Data := Pointer(-1);
+      end;
+    FObjProps.AlphaSort;
+
+    for ItemIdx := 0 to Obj.EvN.Count - 1 do
+    begin
+      Item := FObjEvents.Items.Add;
+      Item.Caption := Obj.EvN[ItemIdx];
+      Item.SubItems.Add(Obj.EvV[ItemIdx]);
+      Item.Data := Pointer(Obj.EvN.Objects[ItemIdx]);   // строка назначения
+    end;
+    Seen.Clear;
+    for ChainIdx := 0 to Chain.Count - 1 do
+    begin
+      ChainCls := TRqClass(Chain[ChainIdx]);
+      for ItemIdx := 0 to ChainCls.Events.Count - 1 do
+      begin
+        MemberName := ChainCls.Events[ItemIdx];
+        if (Obj.EvN.IndexOf(MemberName) >= 0) or
+           (Seen.IndexOf(MemberName) >= 0) then
+          Continue;
+        Seen.Add(MemberName);
+        Item := FObjEvents.Items.Add;
+        Item.Caption := MemberName;
+        Item.SubItems.Add(TRqEvent(ChainCls.Events.Objects[ItemIdx]).Params);
+        Item.Data := Pointer(-1);
+      end;
+    end;
+    FObjEvents.AlphaSort;
+  finally
+    Seen.Free;
+    Chain.Free;
+  end;
+end;
+
+// Начало правки строки AItem таблицы свойств объекта RapidQ
+procedure TForm1.RapidQBeginEdit(AItem: TListItem);
+const
+  LVM_GETSUBITEMRECT = $1000 + 56;
+  LVIR_BOUNDS = 0;
+var
+  Obj: TDfmNode;
+  Member: TRqMember;
+  ItemIdx, ChoiceIdx: Integer;
+  PropName, OldText, LitText, TypeUp: string;
+  CellRect: TRect;
+  IsColor, IsEnum: Boolean;
+begin
+  if FObjCurNode = nil then
+    Exit;
+  Obj := TDfmNode(FObjCurNode);
+  ItemIdx := Integer(AItem.Data);
+  PropName := AItem.Caption;
+  Member := RapidQMemberOf(Obj, PropName);
+  TypeUp := '';
+  if Member <> nil then
+  begin
+    TypeUp := UpperCase(Member.TypeName);
+    if not Member.CanWrite then
+    begin
+      ShowMessage(PropName + ' - только для чтения, в коде не задаётся.');
+      Exit;
+    end;
+    if (Pos('ARRAY', TypeUp) > 0) or (TypeUp = 'RESOURCE') then
+    begin
+      ShowMessage(PropName + ' (' + Member.TypeName + ') одной строкой ' +
+                  'присваивания не задаётся - правьте его в коде.');
+      Exit;
+    end;
+  end;
+  // Блок может быть и в одну строку: "CREATE A AS QX : ... : END CREATE"
+  if (Obj.CreateLine < 0) or (Obj.EndLine < Obj.CreateLine) then
+  begin
+    ShowMessage('У объекта ' + Obj.Name + ' нет END CREATE - некуда ' +
+                'писать свойство.');
+    Exit;
+  end;
+
+  if ItemIdx >= 0 then
+  begin
+    if ItemIdx >= Obj.PropN.Count then
+      Exit;
+    FObjEditInsert := False;
+    FObjEditLine := Integer(Obj.PropN.Objects[ItemIdx]);
+    OldText := Obj.PropV[ItemIdx];
+  end
+  else
+  begin
+    FObjEditInsert := True;
+    FObjEditLine := -1;
+    OldText := '';
+    if AItem.SubItems.Count > 0 then
+      OldText := AItem.SubItems[0];
+  end;
+  FRqEditSrcOld := OldText;
+  FObjEditName := PropName;
+  FObjEditIdx := ItemIdx;
+  FObjEditType := nil;
+  FObjThemeColor := '';
+  FObjEditIsStr := False;
+  FObjEditArray := False;
+  FObjEditCode := False;
+  FObjEditGroup := False;
+
+  CellRect.Top := 1;               // колонка значения
+  CellRect.Left := LVIR_BOUNDS;
+  SendMessage(FObjProps.Handle, LVM_GETSUBITEMRECT, AItem.Index,
+              Integer(@CellRect));
+
+  IsColor := (Member <> nil) and (Member.Choices.IndexOf('<default>') >= 0);
+  IsEnum := (Member <> nil) and (Member.Choices.Count > 0) and not IsColor;
+  if IsEnum then
+    for ChoiceIdx := 0 to Member.Choices.Count - 1 do
+      if Copy(Member.Choices[ChoiceIdx], 1, 1) = '<' then
+        IsEnum := False;
+
+  if IsEnum then
+  begin
+    // Перечисление и False|True - только варианты из описания
+    FObjCombo.Style := csDropDownList;
+    FObjCombo.Items.Clear;
+    for ChoiceIdx := 0 to Member.Choices.Count - 1 do
+      FObjCombo.Items.Add(RqChoiceName(Member.Choices[ChoiceIdx]));
+    FObjCombo.ItemIndex := FObjCombo.Items.IndexOf(Trim(OldText));
+    FObjEditOld := FObjCombo.Text;
+    FObjActive := FObjCombo;
+  end
+  else if IsColor then
+  begin
+    // Цвет - константы cl... или число (&H00FF00)
+    FObjCombo.Style := csDropDown;
+    FObjCombo.Items.Clear;
+    RqConstNames('cl', FObjCombo.Items);
+    if Trim(OldText) = '<default>' then
+      FObjCombo.Text := ''
+    else
+      FObjCombo.Text := Trim(OldText);
+    FObjEditOld := FObjCombo.Text;
+    FObjActive := FObjCombo;
+  end
+  else
+  begin
+    // Строка - без кавычек; выражение ("a" + b$) и числа - как есть
+    if TypeUp = 'STRING' then
+    begin
+      if FObjEditInsert then
+      begin
+        FObjEditIsStr := True;
+        FObjEdit.Text := OldText;
+      end
+      else if RapidQUnquote(OldText, LitText) then
+      begin
+        FObjEditIsStr := True;
+        FObjEdit.Text := LitText;
+      end
+      else
+        FObjEdit.Text := OldText;
+    end
+    else
+      FObjEdit.Text := OldText;
+    FObjEditOld := FObjEdit.Text;
+    FObjActive := FObjEdit;
+  end;
+
+  FObjActive.SetBounds(CellRect.Left, CellRect.Top,
+                       CellRect.Right - CellRect.Left,
+                       CellRect.Bottom - CellRect.Top + 2);
+  FObjActive.Visible := True;
+  FObjActive.SetFocus;
+  if FObjActive = FObjEdit then
+    FObjEdit.SelectAll;
+  FObjEditing := True;
+end;
+
+// Запись правки свойства объекта RapidQ в текст активной вкладки
+procedure TForm1.RapidQApplyEdit;
+var
+  Obj: TDfmNode;
+  EditText, NewText, CurLine, NewLine, LineIndent, EqText: string;
+  LineNo, LineStart, LineLen, ValStart, ValLen, InsAt: Integer;
+  Lines: TStringList;
+
+  procedure TextChanged;
+  begin
+    ShowMessage('Текст изменился после разбора - инспектор обновлён, ' +
+                'повторите правку.');
+    ObjScheduleRelines(Obj, FObjEditName);
+  end;
+
+begin
+  if FObjActive = FObjCombo then
+    EditText := Trim(FObjCombo.Text)
+  else if FObjEditIsStr then
+    EditText := FObjEdit.Text
+  else
+    EditText := Trim(FObjEdit.Text);
+  // Не изменилось или пусто (у нестроки) - ничего не пишем
+  if (EditText = FObjEditOld) or ((EditText = '') and not FObjEditIsStr) then
+  begin
+    ObjCancelEdit;
+    Exit;
+  end;
+  if FObjEditIsStr then
+    NewText := RapidQQuote(EditText)
+  else
+    NewText := EditText;
+
+  FObjEditing := False;   // до всего остального: уход фокуса снова вызовет нас
+  FObjActive.Visible := False;
+  if FObjCurNode = nil then
+    Exit;
+  Obj := TDfmNode(FObjCurNode);
+
+  Inc(FObjOwnWrite);
+  try
+    if not FObjEditInsert then
+    begin
+      // Значение в строке присваивания - на новое; строка сверяется:
+      // в ней то же присваивание с тем же значением
+      LineNo := FObjEditLine;
+      LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LineNo, 0);
+      if LineStart < 0 then
+      begin
+        TextChanged;
+        Exit;
+      end;
+      LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+      CurLine := ReadLineText(LineNo, LineStart, LineLen);
+      if not RapidQFindAssign(CurLine, FObjEditName, ValStart, ValLen) or
+         (Trim(Copy(CurLine, ValStart, ValLen)) <> Trim(FRqEditSrcOld)) then
+      begin
+        TextChanged;
+        Exit;
+      end;
+      EditorFreeze;
+      try
+        RichEdit1.SelStart := LineStart + ValStart - 1;
+        RichEdit1.SelLength := ValLen;
+        RichEdit1.SelText := NewText;
+      finally
+        EditorThaw;
+      end;
+      LogComp('Инспектор RapidQ: ' + Obj.Name + '.' + FObjEditName + ' = ' +
+              NewText + '   (строка ' + IntToStr(LineNo + 1) + ')');
+    end
+    else
+    begin
+      // Новая строка в блоке CREATE; строка CREATE сверяется с узлом
+      Lines := TStringList.Create;
+      try
+        Lines.Text := GetEditorTextCR;
+        if (Obj.CreateLine >= Lines.Count) or
+           (Pos('CREATE', UpperCase(Lines[Obj.CreateLine])) = 0) or
+           (Pos(UpperCase(Obj.Name), UpperCase(Lines[Obj.CreateLine])) = 0) then
+        begin
+          TextChanged;
+          Exit;
+        end;
+        if Obj.EndLine = Obj.CreateLine then
+          InsAt := -1
+        else
+          InsAt := RapidQInsertPlace(Lines, Obj, LineIndent, EqText);
+      finally
+        Lines.Free;
+      end;
+      if Obj.EndLine = Obj.CreateLine then
+      begin
+        // Блок в одну строку: оператор - перед его END CREATE, через ":"
+        LineNo := Obj.CreateLine;
+        LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LineNo, 0);
+        if LineStart < 0 then
+        begin
+          TextChanged;
+          Exit;
+        end;
+        LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+        CurLine := ReadLineText(LineNo, LineStart, LineLen);
+        if not RapidQInsertBeforeEnd(CurLine, Obj.Name, FObjEditName +
+                 RapidQEqStyle(CurLine) + NewText, NewLine) then
+        begin
+          TextChanged;
+          Exit;
+        end;
+        EditorFreeze;
+        try
+          RichEdit1.SelStart := LineStart;
+          RichEdit1.SelLength := LineLen;
+          RichEdit1.SelText := NewLine;
+        finally
+          EditorThaw;
+        end;
+        LogComp('Инспектор RapidQ: ' + Obj.Name + '.' + FObjEditName +
+                ' = ' + NewText + '   (добавлено в строку ' +
+                IntToStr(LineNo + 1) + ')');
+        ObjScheduleRelines(Obj, FObjEditName);
+        Exit;
+      end;
+      if InsAt < 0 then
+      begin
+        TextChanged;
+        Exit;
+      end;
+      NewLine := LineIndent + FObjEditName + EqText + NewText;
+      LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, InsAt, 0);
+      if LineStart < 0 then
+      begin
+        TextChanged;
+        Exit;
+      end;
+      EditorFreeze;
+      try
+        RichEdit1.SelStart := LineStart;
+        RichEdit1.SelLength := 0;
+        RichEdit1.SelText := NewLine + #13#10;
+      finally
+        EditorThaw;
+      end;
+      LogComp('Инспектор RapidQ: ' + Obj.Name + ' - добавлена строка ' +
+              IntToStr(InsAt + 1) + ': ' + Trim(NewLine));
+    end;
+    // Узлы и номера строк - заново по тексту; выделение вернётся на этот
+    // объект и свойство
+    ObjScheduleRelines(Obj, FObjEditName);
+  finally
+    Dec(FObjOwnWrite);
+  end;
+end;
+
+// Двойной щелчок по событию объекта RapidQ - к SUB или FUNCTION
+// обработчика в открытом файле; нет его там (он в $INCLUDE) - к строке,
+// где событие назначено.
+procedure TForm1.RapidQEventJump;
+var
+  Lines: TStringList;
+  Handler, LineWord, Rest, SubName: string;
+  LineIdx, AssignLine, CharIdx: Integer;
+begin
+  if (FObjEvents.Selected = nil) or
+     (FObjEvents.Selected.SubItems.Count = 0) or
+     (Integer(FObjEvents.Selected.Data) < 0) then
+    Exit;
+  Handler := Trim(FObjEvents.Selected.SubItems[0]);
+  AssignLine := Integer(FObjEvents.Selected.Data);
+  if Handler = '' then
+    Exit;
+  Lines := TStringList.Create;
+  try
+    Lines.Text := GetEditorTextCR;
+    for LineIdx := 0 to Lines.Count - 1 do
+    begin
+      LineWord := RapidQFirstWord(Trim(Lines[LineIdx]), Rest);
+      if (LineWord <> 'SUB') and (LineWord <> 'SUBI') and
+         (LineWord <> 'FUNCTION') and (LineWord <> 'FUNCTIONI') then
+        Continue;
+      CharIdx := 1;
+      while (CharIdx <= Length(Rest)) and
+            (Rest[CharIdx] in ['A'..'Z', 'a'..'z', '0'..'9', '_', '$']) do
+        Inc(CharIdx);
+      SubName := Copy(Rest, 1, CharIdx - 1);
+      if CompareText(SubName, Handler) = 0 then
+      begin
+        GotoLine(LineIdx);
+        Exit;
+      end;
+    end;
+  finally
+    Lines.Free;
+  end;
+  LogComp('Обработчик ' + Handler + ' в ' + ExtractFileName(FCurrentFileName) +
+          ' не найден - переход к строке, где он назначен');
+  GotoLine(AssignLine);
 end;
 
 // Дерево всех компонентов, которые создаёт код открытого модуля: главная
@@ -21288,6 +22551,16 @@ procedure TForm1.ObjSourceClick(Sender: TObject);
 var
   F: string;
 begin
+  // Файл RapidQ: снимок убирается совсем
+  if FObjRapidQ then
+  begin
+    if RapidQHasSnapshot then
+    begin
+      RapidQProbeClear;
+      RefreshObjectInspector(True);
+    end;
+    Exit;
+  end;
   if (FObjSnapText = '') and ((FProbeSnaps = nil) or (FProbeSnaps.Count = 0)) then
     Exit;
   ProbeClear;
@@ -21318,11 +22591,22 @@ procedure TForm1.ObjSnapBtnClick(Sender: TObject);
 var
   Has: Boolean;
 begin
-  // Пробный запуск собирает копию проекта Delphi - к программе RapidQ он
-  // не подходит, её снимок делается иначе
+  // Файл RapidQ - свой снимок (RapidQProbeRun). Снимок есть и показан -
+  // скрыть; есть и скрыт - показать (Ctrl+щелчок - снять заново); нет -
+  // снять.
   if FObjRapidQ then
   begin
-    ShowMessage('Снимок программы RapidQ пока не сделан.');
+    if RapidQHasSnapshot and not FRqSnapOff then
+      FRqSnapOff := True
+    else if RapidQHasSnapshot and (GetKeyState(VK_CONTROL) >= 0) then
+      FRqSnapOff := False
+    else
+    begin
+      FRqSnapOff := False;
+      RapidQProbeRun;
+      Exit;
+    end;
+    RefreshObjectInspector(True);
     Exit;
   end;
   Has := (OwnSnapFor(FObjFormClass) <> '') or
@@ -21783,6 +23067,13 @@ begin
     Exit;
   N := TDfmNode(FObjCurNode);
   Idx := Integer(It.Data);
+
+  // Объект RapidQ - своя правка: значение в блоке CREATE
+  if FObjRapidQ then
+  begin
+    RapidQBeginEdit(It);
+    Exit;
+  end;
 
   // Компонент создан в коде - свойство правится в .pas: та же таблица и те
   // же редакторы, а запись идёт строкой присваивания
@@ -22320,6 +23611,13 @@ var
 begin
   if not FObjEditing or (FObjActive = nil) then
     Exit;
+
+  // Объект RapidQ - запись в его блок CREATE
+  if FObjRapidQ then
+  begin
+    RapidQApplyEdit;
+    Exit;
+  end;
 
   // --- новое значение из того редактора, что открыт
   if FObjActive = FObjSetList then
@@ -28806,26 +30104,10 @@ begin
 
     // Объект RapidQ: только то, что есть в узле. Конструктор форм, классы
     // VCL и строки модуля Delphi к нему не относятся.
+    // Объект RapidQ - таблицы по описанию классов (RapidQFillObjTables)
     if FObjRapidQ then
     begin
-      FObjHeader.Caption := '  ' + Obj.Name + ': ' + Obj.ClassNm;
-      if Obj.CreateLine >= 0 then
-        FObjHeader.Caption := FObjHeader.Caption + '   строка ' +
-                              IntToStr(Obj.CreateLine + 1);
-      for I := 0 to Obj.PropN.Count - 1 do
-      begin
-        It := FObjProps.Items.Add;
-        It.Caption := Obj.PropN[I];
-        It.SubItems.Add(Obj.PropV[I]);
-        It.Data := Pointer(I);
-      end;
-      for I := 0 to Obj.EvN.Count - 1 do
-      begin
-        It := FObjEvents.Items.Add;
-        It.Caption := Obj.EvN[I];
-        It.SubItems.Add(Obj.EvV[I]);
-        It.Data := Pointer(Obj.EvN.Objects[I]);
-      end;
+      RapidQFillObjTables(Obj);
       Exit;
     end;
 
@@ -28999,6 +30281,12 @@ var
   P, Line, I: Integer;
   Obj: TDfmNode;
 begin
+  // Объект RapidQ - к его SUB-обработчику
+  if FObjRapidQ then
+  begin
+    RapidQEventJump;
+    Exit;
+  end;
   if (FObjEvents.Selected = nil) or (FObjEvents.Selected.SubItems.Count = 0) then
     Exit;
   Handler := FObjEvents.Selected.SubItems[0];
@@ -30637,6 +31925,9 @@ begin
     CompLogEdit.OnDblClick := LogEditDblClick;
   if ErrLogEdit <> nil then
     ErrLogEdit.OnDblClick := LogEditDblClick;
+  // Щелчок по строке "Лог сохранён: путь" - путь в буфер обмена
+  if CompLogEdit <> nil then
+    CompLogEdit.OnClick := LogEditClick;
 
   if CompLogEdit <> nil then
     CompLogEdit.PopupMenu := FLogPopup;
@@ -32268,6 +33559,13 @@ begin
   if FObjProps.Items[HitInfo.Item].SubItems.Count < 2 then
     Exit;
   LineNo := StrToIntDef(FObjProps.Items[HitInfo.Item].SubItems[1], 0);
+  // Объект RapidQ - строка в открытом файле
+  if FObjRapidQ then
+  begin
+    if LineNo > 0 then
+      GotoLine(LineNo - 1);
+    Exit;
+  end;
   UnitFile := ObjFormUnit;
   if (LineNo <= 0) or (UnitFile = '') then
     Exit;
@@ -35304,6 +36602,11 @@ begin
   begin
     LogComp(Format('--- Ошибки компиляции, код %d. Двойной щелчок по строке ' +
     'с ошибкой открывает файл на нужной строке', [Code]));
+    // Лог с ошибками - рядом с .dpr; у пробной сборки - в папку зонда
+    if FProbeActive then
+      SaveCompileLog(FProbeDir + '_dsgprobe_compile.log')
+    else
+      SaveCompileLog(ChangeFileExt(OrigDpr, '') + '_compile.log');
     // Строки с Error и Fatal уже отобраны в своё окно - показываем его
                    if (ErrLogEdit <> nil) and (ErrLogEdit.Lines.Count > 0) then
                    ShowErrLog;
@@ -35800,7 +37103,8 @@ var
 begin
   Result := False;
   ShowCompLog;
-  if CompLogEdit <> nil then
+  // Сборка копии для снимка: лог не чистится - в нём шаги снимка
+  if (CompLogEdit <> nil) and not FRqProbeActive then
     CompLogEdit.Lines.Clear;
   if ErrLogEdit <> nil then
     ErrLogEdit.Lines.Clear;
@@ -35824,7 +37128,11 @@ begin
     FBuildRapidQ := False;
   end;
 
-  Bas := RapidQTargetBas(True);
+  // Снимок (RapidQProbeRun) - его копия программы
+  if FRqProbeActive then
+    Bas := FRqProbeBas
+  else
+    Bas := RapidQTargetBas(True);
   if Bas = '' then
   begin
     LogComp('Сборка RapidQ: главный файл не найден. Откройте главный .bas ' +
@@ -35904,7 +37212,10 @@ begin
               IconFile);
   end;
 
-  Exe := ChangeFileExt(Bas, '.exe');
+  if FRqProbeActive then
+    Exe := FRqProbeExe
+  else
+    Exe := ChangeFileExt(Bas, '.exe');
   Dir := ExtractFilePath(Bas);
   Params := Params + ' "' + Bas + '" "' + Exe + '"';
 
@@ -35923,7 +37234,8 @@ begin
 
   LogComp('--- Компиляция: ' + ExtractFileName(Bas) + '   [' + Sect + ']');
   LogComp('"' + RcExe + '" ' + Params);
-  WriteCompileBat(RcExe, Params, Dir, Bas);
+  if not FRqProbeActive then
+    WriteCompileBat(RcExe, Params, Dir, Bas);
 
   if CompLogEdit <> nil then
     LogStart := CompLogEdit.Lines.Count
@@ -35968,6 +37280,8 @@ begin
         RcLines.Assign(ConsoleLines);
 
       HasError := RapidQReportErrors(RcLines, Bas, IncDir, FirstFile, FirstLine);
+      FRqProbeErrFile := FirstFile;
+      FRqProbeErrLine := FirstLine;
     finally
       ConsoleLines.Free;
       RcLines.Free;
@@ -35992,19 +37306,1423 @@ begin
   begin
     LogComp(Format('--- exe не появился: %s. Код завершения rc.exe %d',
                    [Exe, Code]));
+    if not FRqProbeActive then
+      SaveCompileLog(ChangeFileExt(Bas, '') + '_compile.log');
     Exit;
   end;
 
   LogComp('--- Ошибки компиляции. Двойной щелчок по строке с ошибкой ' +
           'открывает файл на нужной строке');
+  // Лог с ошибками - рядом с .bas. У копии для снимка лог сохраняет
+  // RapidQProbeRun, когда снимок не удался.
+  if not FRqProbeActive then
+    SaveCompileLog(ChangeFileExt(Bas, '') + '_compile.log');
   if (ErrLogEdit <> nil) and (ErrLogEdit.Lines.Count > 0) then
     ShowErrLog;
+  // Копия для снимка: строки ошибок - её, а не исходника; что делать с
+  // ошибкой, решает RapidQProbeRun
+  if FRqProbeActive then
+    Exit;
   // Как в RQdebugger: сразу к первой ошибке
   if (FirstLine > 0) and (FirstFile <> '') and FileExists(FirstFile) then
   begin
     OpenNamedFile(FirstFile);
     GotoLine(FirstLine - 1);
   end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Снимок программы RapidQ: настоящие значения свойств объектов CREATE
+//
+//  Значения вроде Width=MenuPanel.ClientWidth*2\3 без запуска не узнать.
+//  Поэтому рядом с главным .bas пишется копия _rqprobe.bas, собирается в
+//  _rqprobe.exe там же и запускается. В копии два добавления:
+//    - перед первым CREATE главной части - таймер (DIM ... AS QTIMER,
+//      Interval = 1). Сообщение таймера Windows доставляет, только когда
+//      программа забирает сообщения из очереди: в ShowModal или DoEvents.
+//      Главная часть до этого выполняется целиком - объекты созданы,
+//      выражения вычислены;
+//    - в конце файла - SUB RqProbeDump: по строке "Объект.Свойство=значение"
+//      на каждое читаемое свойство простого типа (по описанию классов и
+//      цепочке TYPE ... EXTENDS), затем END - программа завершается.
+//      Строки дампа разбиты на SUB RqProbePart1, 2... по RqProbePartLines,
+//      RqProbeDump зовёт их по очереди.
+//  Строки - в _rqprobe.txt рядом с .bas; "#obj Имя" перед каждым объектом,
+//  "#end" в конце: нет его - программа остановилась раньше, на последнем
+//  "#obj" видно, где. Сразу после таймера копия пишет туда же "#start": в
+//  файле только он - программа дошла до таймера, но закончилась, не начав
+//  обрабатывать сообщения; файла нет - не дошла и до таймера.
+//  Exe копии собирается и запускается рядом с .bas, как обычный: программа
+//  берёт свою папку из пути к exe (COMMAND$(0) в RQdebugger). Там же он и
+//  остаётся: QXpTheme.INC при первом запуске пишет рядом с exe .manifest,
+//  запускает exe заново (RUN Command$(0)) и завершает первый процесс - с
+//  manifest на месте этого больше не происходит. Копия не изменилась и exe
+//  новее неё - сборки нет. Готовность - "#end" в файле значений и размер
+//  файла, переставший расти; разбирается проверенный текст. Вывод консоли
+//  программы - в dsgprobe\_rqprobe_console.txt, его хвост - в лог.
+//  Рядом с копией - _rqprobe_run.bat для запуска вручную. Журнал копии -
+//  _rqprobe.trace: строка с временем и номером процесса на "start" (после
+//  таймера), "dump start", "dump end"; повторный вызов дампа в том же
+//  процессе пропускается (RqProbeDone). Журнал выводится в лог.
+//  Свойство, которое компилятор читать не даёт ("Member X not part of
+//  class"), исключается у всех объектов того же класса: их строки
+//  закомментируются, копия собирается снова (до RqProbeMaxRetry раз).
+//  Исключённое запоминается в dsgprobe\rqprobe_skip.txt строкой
+//  "КЛАСС.СВОЙСТВО" - следующий снимок его уже не пишет. Не удался снимок -
+//  лог компиляции сохраняется в dsgprobe\_rqprobe_compile.log.
+//  Программа остановилась посреди дампа (зависла или закончилась): по
+//  последней строке файла значений находится строка копии, которая не
+//  дописалась, - её свойство исключается у этого объекта (строка "OBJ
+//  ИМЯ.СВОЙСТВО" в rqprobe_skip.txt), снимок повторяется, до
+//  RqProbeMaxHang раз. Если программа не ответила за RqProbeWaitMs, перед
+//  остановкой в лог пишутся её видимые окна - с текстом, если это
+//  сообщение (MessageBox).
+//  _rqprobe.bas, _rqprobe.exe и _rqprobe.txt остаются рядом с .bas; перед
+//  запуском удаляется только прежний _rqprobe.txt.
+// ---------------------------------------------------------------------------
+
+const
+  RqProbeMaxRetry = 60;     // пересборок за один снимок
+  RqProbeSkipName = 'rqprobe_skip.txt';   // исключённые КЛАСС.СВОЙСТВО
+  RqProbePartLines = 400;   // строк в одной SUB дампа: компилятору не
+                            // даём одну SUB на тысячи строк
+  RqProbeWaitMs = 15000;    // сколько ждать программу
+  RqProbeMaxHang = 10;      // повторов снимка после остановки на свойстве
+  RqProbeFmCreate = 65535;  // fmCreate (Files.inc), числом: RAPIDQ.INC
+                            // подключён не у всех
+
+// Строки ALines вне SUB, FUNCTION и TYPE: AMask[номер] = True. Конец тела
+// SUB и FUNCTION - любое из END SUB / FUNCTION (встречается FUNCTION ...
+// END SUB).
+procedure RapidQTopLevelMask(ALines: TStrings; AMask: TBits);
+var
+  Parts: TStringList;
+  LineIdx, PartIdx: Integer;
+  FirstWord, Rest, Tail, Second, BodyKind: string;
+begin
+  AMask.Size := ALines.Count;
+  BodyKind := '';
+  Parts := TStringList.Create;
+  try
+    for LineIdx := 0 to ALines.Count - 1 do
+    begin
+      AMask[LineIdx] := BodyKind = '';
+      RapidQSplitStatements(ALines[LineIdx], Parts);
+      for PartIdx := 0 to Parts.Count - 1 do
+      begin
+        FirstWord := RapidQFirstWord(Parts[PartIdx], Rest);
+        if FirstWord = 'REM' then
+          Break;
+        if BodyKind = '' then
+        begin
+          if (FirstWord = 'SUB') or (FirstWord = 'SUBI') or
+             (FirstWord = 'FUNCTION') or (FirstWord = 'FUNCTIONI') then
+            BodyKind := 'SUB'
+          else if FirstWord = 'TYPE' then
+            BodyKind := 'TYPE';
+          if BodyKind <> '' then
+            AMask[LineIdx] := False;
+        end
+        else if FirstWord = 'END' then
+        begin
+          Second := RapidQFirstWord(Rest, Tail);
+          if ((BodyKind = 'TYPE') and (Second = 'TYPE')) or
+             ((BodyKind = 'SUB') and ((Second = 'SUB') or (Second = 'SUBI') or
+              (Second = 'FUNCTION') or (Second = 'FUNCTIONI'))) then
+            BodyKind := '';
+        end;
+      end;
+    end;
+  finally
+    Parts.Free;
+  end;
+end;
+
+// Имя объекта, к которому можно обратиться из кода: буквы, цифры, _ и ~
+// (~SrcD в RQdebugger)
+function RapidQObjNameOk(const AName: string): Boolean;
+var
+  CharIdx: Integer;
+begin
+  Result := (AName <> '') and not (AName[1] in ['0'..'9']);
+  for CharIdx := 1 to Length(AName) do
+    if not (AName[CharIdx] in ['A'..'Z', 'a'..'z', '0'..'9', '_', '~']) then
+    begin
+      Result := False;
+      Exit;
+    end;
+end;
+
+// Тип свойства, значение которого пишется одной строкой
+function RapidQSimpleType(const AType: string): Integer;
+var
+  Upper: string;
+begin
+  // 0 - не пишется, 1 - целое (RqProbeNum$), 2 - строка (RqProbeStr$),
+  // 3 - дробное (STR$)
+  Upper := UpperCase(Trim(AType));
+  if Upper = 'STRING' then
+    Result := 2
+  else if (Upper = 'INTEGER') or (Upper = 'LONG') or (Upper = 'WORD') or
+          (Upper = 'DWORD') or (Upper = 'BYTE') or (Upper = 'SHORT') then
+    Result := 1
+  else if (Upper = 'SINGLE') or (Upper = 'DOUBLE') then
+    Result := 3
+  else
+    Result := 0;
+end;
+
+// Строка дампа одного свойства: "Obj.Prop=" + значение
+function RapidQDumpLine(const AObj, AProp: string; AKind: Integer): string;
+var
+  Ref: string;
+begin
+  Ref := AObj + '.' + AProp;
+  // Целые - через RqProbeNum$: STR$ даёт большим числам (цвета
+  // &H8000000F) экспоненту и теряет точность: -2.14748363E9
+  if AKind = 2 then
+    Result := '  RqProbeFile.WriteLine("' + Ref + '=" + RqProbeStr$(' + Ref +
+              '))'
+  else if AKind = 1 then
+    Result := '  RqProbeFile.WriteLine("' + Ref + '=" + RqProbeNum$(' + Ref +
+              '))'
+  else
+    Result := '  RqProbeFile.WriteLine("' + Ref + '=" + STR$(' + Ref + '))';
+end;
+
+// Объект и свойство из строки дампа
+// '  RqProbeFile.WriteLine("Obj.Font.Name=" + ...)': AObj = Obj,
+// AProp = Font.Name. False - не строка свойства.
+function RapidQDumpLineParts(const ALine: string;
+                             var AObj, AProp: string): Boolean;
+const
+  LineHead = 'RqProbeFile.WriteLine("';
+var
+  HeadPos, EqPos, DotPos: Integer;
+  Ref: string;
+begin
+  Result := False;
+  HeadPos := Pos(LineHead, ALine);
+  if HeadPos = 0 then
+    Exit;
+  Ref := Copy(ALine, HeadPos + Length(LineHead), MaxInt);
+  EqPos := Pos('=', Ref);
+  if (EqPos = 0) or (Copy(Ref, 1, 1) = '#') then
+    Exit;
+  Ref := Copy(Ref, 1, EqPos - 1);
+  DotPos := Pos('.', Ref);
+  if DotPos = 0 then
+    Exit;
+  AObj := Copy(Ref, 1, DotPos - 1);
+  AProp := Copy(Ref, DotPos + 1, MaxInt);
+  Result := (AObj <> '') and (AProp <> '');
+end;
+
+// Первая часть пути свойства: Font.Name -> Font. По ней исключается
+// свойство целиком - со всеми полями шрифта.
+function RapidQPropHead(const AProp: string): string;
+var
+  DotPos: Integer;
+begin
+  DotPos := Pos('.', AProp);
+  if DotPos > 0 then
+    Result := Copy(AProp, 1, DotPos - 1)
+  else
+    Result := AProp;
+end;
+
+// Строка дампа в копии, которая шла за последней записанной в файл
+// значений: на ней программа остановилась. AProbe - текст копии
+// (_rqprobe.bas), ALastOut - последняя целая строка файла значений ("#obj
+// Имя" или "Имя.Свойство=значение"). AObj, AProp, ALineIdx (от нуля) -
+// объект, свойство и номер строки копии. False - строка не определяется:
+// последняя записанная не найдена в копии или после неё нет строки
+// свойства.
+function RapidQHangLine(AProbe: TStrings; const ALastOut: string;
+                        var AObj, AProp: string;
+                        var ALineIdx: Integer): Boolean;
+var
+  LineIdx, FoundIdx, EqPos: Integer;
+  Ref, LineObj, LineProp, Trimmed: string;
+
+  // Строка копии - живая строка дампа (не закомментированная)
+  function LiveLine(AIdx: Integer): Boolean;
+  begin
+    Trimmed := Trim(AProbe[AIdx]);
+    Result := (Trimmed <> '') and (Trimmed[1] <> '''');
+  end;
+
+begin
+  Result := False;
+  AObj := '';
+  AProp := '';
+  ALineIdx := -1;
+  FoundIdx := -1;
+  if Copy(ALastOut, 1, 5) = '#obj ' then
+  begin
+    for LineIdx := 0 to AProbe.Count - 1 do
+      if LiveLine(LineIdx) and
+         (Trimmed = 'RqProbeFile.WriteLine("' + ALastOut + '")') then
+      begin
+        FoundIdx := LineIdx;
+        Break;
+      end;
+  end
+  else
+  begin
+    EqPos := Pos('=', ALastOut);
+    if (EqPos < 2) or (Copy(ALastOut, 1, 1) = '#') then
+      Exit;
+    Ref := Copy(ALastOut, 1, EqPos - 1);
+    for LineIdx := 0 to AProbe.Count - 1 do
+      if LiveLine(LineIdx) and
+         RapidQDumpLineParts(AProbe[LineIdx], LineObj, LineProp) and
+         (CompareText(LineObj + '.' + LineProp, Ref) = 0) then
+      begin
+        FoundIdx := LineIdx;
+        Break;
+      end;
+  end;
+  if FoundIdx < 0 then
+    Exit;
+  // Дальше по копии - первая живая строка свойства. "#obj" раньше неё
+  // значит, что записано было всё до следующего объекта, - тогда не она.
+  for LineIdx := FoundIdx + 1 to AProbe.Count - 1 do
+  begin
+    if not LiveLine(LineIdx) then
+      Continue;
+    if Pos('RqProbeFile.WriteLine("#', Trimmed) > 0 then
+      Exit;
+    if RapidQDumpLineParts(AProbe[LineIdx], AObj, AProp) then
+    begin
+      ALineIdx := LineIdx;
+      Result := True;
+      Exit;
+    end;
+    // END SUB, SUB RqProbePartN - границы частей дампа; другое (SUB
+    // RqProbeTrace и дальше) - конец строк свойств
+    if (UpperCase(Trimmed) <> 'END SUB') and
+       (Pos('SUB RQPROBEPART', UpperCase(Trimmed)) <> 1) then
+      Exit;
+  end;
+end;
+
+// Видимые окна процесса APid - в ALines: класс и заголовок, у диалогов
+// (#32770, MessageBox) - ещё тексты их элементов. GetWindowText окну
+// чужого процесса сообщений не шлёт - зависший процесс не держит.
+type
+  TRqWinScan = record
+    Pid: DWORD;
+    Lines: TStrings;
+  end;
+  PRqWinScan = ^TRqWinScan;
+
+function RapidQWinText(AWnd: HWND): string;
+var
+  TextBuf: array[0..511] of Char;
+begin
+  TextBuf[0] := #0;
+  GetWindowText(AWnd, TextBuf, SizeOf(TextBuf));
+  Result := Trim(StrPas(TextBuf));
+end;
+
+function RapidQWinChildProc(AWnd: HWND; AParam: LPARAM): BOOL; stdcall;
+var
+  ChildText: string;
+begin
+  Result := True;
+  if not IsWindowVisible(AWnd) then
+    Exit;
+  ChildText := RapidQWinText(AWnd);
+  if ChildText <> '' then
+    TStrings(AParam).Add('        ' + ChildText);
+end;
+
+function RapidQWinTopProc(AWnd: HWND; AParam: LPARAM): BOOL; stdcall;
+var
+  Scan: PRqWinScan;
+  WinPid: DWORD;
+  ClassBuf: array[0..255] of Char;
+begin
+  Result := True;
+  Scan := PRqWinScan(AParam);
+  WinPid := 0;
+  GetWindowThreadProcessId(AWnd, @WinPid);
+  if (WinPid <> Scan^.Pid) or not IsWindowVisible(AWnd) then
+    Exit;
+  ClassBuf[0] := #0;
+  GetClassName(AWnd, ClassBuf, SizeOf(ClassBuf));
+  Scan^.Lines.Add('    окно ' + StrPas(ClassBuf) + ' "' + RapidQWinText(AWnd) +
+                  '"');
+  if StrPas(ClassBuf) = '#32770' then
+    EnumChildWindows(AWnd, @RapidQWinChildProc, LPARAM(Scan^.Lines));
+end;
+
+procedure RapidQProcessWindows(APid: DWORD; ALines: TStrings);
+var
+  Scan: TRqWinScan;
+begin
+  Scan.Pid := APid;
+  Scan.Lines := ALines;
+  EnumWindows(@RapidQWinTopProc, LPARAM(@Scan));
+end;
+
+// Текст копии главного .bas с таймером и SUB RqProbeDump - в AOut.
+// AObjClasses - "Объект=Класс" для объектов дампа. AMinimal - контрольная
+// копия: таймер, #start и пустой дамп (#time, #end), без строк свойств.
+// ADumpStart - номер строки (от нуля), с которой начинается добавленное в
+// конце: ошибки компилятора ниже неё - в строках дампа. False - причина в
+// логе.
+function TForm1.RapidQProbeSource(const AMainBas, AOutFile: string;
+                                  AOut, AObjClasses: TStringList;
+                                  var ADumpStart: Integer;
+                                  AMinimal: Boolean): Boolean;
+var
+  Lines, Parts, Seen, Done, Body, Skip: TStringList;
+  Nodes, Roots, Chain: TList;
+  Mask: TBits;
+  InsLine, LineIdx, PartIdx, NodeIdx, ChainIdx, PropIdx, FontIdx,
+    Kind, ObjCount, PropCount, PartCount, BodyIdx, SkipCount: Integer;
+  FirstWord, Rest, PropName, ClassKey, TracePath: string;
+  Node: TDfmNode;
+  ChainCls, FontCls: TRqClass;
+  Member, FontMember: TRqMember;
+begin
+  Result := False;
+  ADumpStart := -1;
+  AOut.Clear;
+  AObjClasses.Clear;
+  Lines := TStringList.Create;
+  Parts := TStringList.Create;
+  Seen := TStringList.Create;
+  Done := TStringList.Create;
+  Body := TStringList.Create;
+  Skip := TStringList.Create;
+  Nodes := TList.Create;
+  Roots := TList.Create;
+  Chain := TList.Create;
+  Mask := TBits.Create;
+  try
+    try
+      Lines.LoadFromFile(AMainBas);
+    except
+      LogComp('Снимок RapidQ: не прочитан ' + AMainBas);
+      Exit;
+    end;
+    RapidQTopLevelMask(Lines, Mask);
+
+    // Таймер - перед первым CREATE главной части
+    InsLine := -1;
+    for LineIdx := 0 to Lines.Count - 1 do
+    begin
+      if not Mask[LineIdx] or
+         (Pos('CREATE', UpperCase(Lines[LineIdx])) = 0) then
+        Continue;
+      RapidQSplitStatements(Lines[LineIdx], Parts);
+      for PartIdx := 0 to Parts.Count - 1 do
+        if RapidQFirstWord(Parts[PartIdx], Rest) = 'CREATE' then
+        begin
+          InsLine := LineIdx;
+          Break;
+        end;
+      if InsLine >= 0 then
+        Break;
+    end;
+    if InsLine < 0 then
+    begin
+      LogComp('Снимок RapidQ: в главной части ' + ExtractFileName(AMainBas) +
+              ' нет CREATE - снимать нечего');
+      Exit;
+    end;
+
+    // Классы программы - из главного .bas и его include
+    RapidQLoadCustomTypes(Lines, AMainBas);
+    RapidQCreateNodes(Lines, Nodes, Roots);
+    FontCls := RqFindClass('QFONT');
+
+    for LineIdx := 0 to InsLine - 1 do
+      AOut.Add(Lines[LineIdx]);
+    AOut.Add('DIM RqProbeTimer AS QTIMER   '' unIDE: снимок значений');
+    AOut.Add('DIM RqProbeFile AS QFILESTREAM');
+    AOut.Add('DIM RqProbeDone AS INTEGER');
+    AOut.Add('DECLARE FUNCTION RqProbePid LIB "kernel32" ALIAS ' +
+             '"GetCurrentProcessId" () AS LONG');
+    AOut.Add('DECLARE SUB RqProbeTrace (TraceText AS STRING)');
+    AOut.Add('DECLARE SUB RqProbeDump');
+    AOut.Add('RqProbeTimer.Interval = 1');
+    AOut.Add('RqProbeTimer.OnTimer = RqProbeDump');
+    AOut.Add('RqProbeTimer.Enabled = 1');
+    AOut.Add('RqProbeFile.Open("' + RapidQSlashPath(AOutFile) + '", ' +
+             IntToStr(RqProbeFmCreate) + ')');
+    AOut.Add('RqProbeFile.WriteLine("#start")');
+    AOut.Add('RqProbeFile.Close');
+    AOut.Add('RqProbeTrace("start")');
+    for LineIdx := InsLine to Lines.Count - 1 do
+      AOut.Add(Lines[LineIdx]);
+
+    ADumpStart := AOut.Count;
+    AOut.Add('');
+    AOut.Add(''' --- unIDE: снимок значений свойств (копия программы) ---');
+    AOut.Add('FUNCTION RqProbeStr$ (ProbeValue AS STRING) AS STRING');
+    AOut.Add('  DIM ProbeText AS STRING');
+    AOut.Add('  DIM CutPos AS INTEGER');
+    AOut.Add('  ProbeText = ProbeValue');
+    AOut.Add('  CutPos = INSTR(ProbeText, CHR$(13))');
+    AOut.Add('  IF CutPos = 0 THEN CutPos = INSTR(ProbeText, CHR$(10))');
+    AOut.Add('  IF CutPos > 0 THEN ProbeText = LEFT$(ProbeText, CutPos - 1) + " ..."');
+    AOut.Add('  IF LEN(ProbeText) > 200 THEN ProbeText = LEFT$(ProbeText, 200) + " ..."');
+    AOut.Add('  RqProbeStr$ = ProbeText');
+    AOut.Add('END FUNCTION');
+    AOut.Add('');
+    // Целое без экспоненты - как STRL1$ в RQdebugger: STRF$ с ffFixed (2) и
+    // дробная часть отрезается
+    AOut.Add('FUNCTION RqProbeNum$ (ProbeValue AS LONG) AS STRING');
+    AOut.Add('  DIM ProbeText AS STRING');
+    AOut.Add('  DIM CutPos AS INTEGER');
+    AOut.Add('  ProbeText = STRF$(ProbeValue, 2, 11, 18)');
+    AOut.Add('  CutPos = INSTR(ProbeText, ".")');
+    AOut.Add('  IF CutPos = 0 THEN CutPos = INSTR(ProbeText, ",")');
+    AOut.Add('  IF CutPos > 0 THEN ProbeText = LEFT$(ProbeText, CutPos - 1)');
+    AOut.Add('  RqProbeNum$ = ProbeText');
+    AOut.Add('END FUNCTION');
+    AOut.Add('');
+
+    // Свойства, которые компилятор уже не принял в прошлых снимках
+    Skip.Sorted := True;
+    Skip.Duplicates := dupIgnore;
+    Skip.CaseSensitive := False;
+    if FileExists(FProbeDir + RqProbeSkipName) then
+    try
+      Skip.LoadFromFile(FProbeDir + RqProbeSkipName);
+    except
+      Skip.Clear;
+    end;
+    SkipCount := 0;
+
+    ObjCount := 0;
+    PropCount := 0;
+    Done.Sorted := True;
+    Done.CaseSensitive := False;
+    Seen.Sorted := True;
+    Seen.CaseSensitive := False;
+    for NodeIdx := 0 to Nodes.Count - 1 do
+    begin
+      if AMinimal then
+        Break;
+      Node := TDfmNode(Nodes[NodeIdx]);
+      // Объект главной части с обычным именем, один раз. Созданные в SUB
+      // и в TYPE - локальные, из SUB RqProbeDump их не видно.
+      if (Node.CreateLine < 0) or not Mask[Node.CreateLine] or
+         not RapidQObjNameOk(Node.Name) or (Node.ClassNm = '') or
+         (Done.IndexOf(Node.Name) >= 0) then
+        Continue;
+      RqClassChain(Node.ClassNm, Chain);
+      if Chain.Count = 0 then
+        Continue;
+      Done.Add(Node.Name);
+      AObjClasses.Add(Node.Name + '=' + Node.ClassNm);
+      ClassKey := UpperCase(Node.ClassNm) + '.';
+      Inc(ObjCount);
+      Body.Add('  RqProbeFile.WriteLine("#obj ' + Node.Name + '")');
+      Seen.Clear;
+      for ChainIdx := 0 to Chain.Count - 1 do
+      begin
+        ChainCls := TRqClass(Chain[ChainIdx]);
+        for PropIdx := 0 to ChainCls.Props.Count - 1 do
+        begin
+          Member := TRqMember(ChainCls.Props.Objects[PropIdx]);
+          PropName := Member.Name;
+          if (Seen.IndexOf(PropName) >= 0) or not Member.CanRead or
+             (Pos('.', PropName) > 0) then
+            Continue;
+          Seen.Add(PropName);
+          if (Skip.IndexOf(ClassKey + UpperCase(PropName)) >= 0) or
+             (Skip.IndexOf('OBJ ' + UpperCase(Node.Name + '.' + PropName)) >= 0) then
+          begin
+            Inc(SkipCount);
+            Continue;
+          end;
+          Kind := RapidQSimpleType(Member.TypeName);
+          if Kind > 0 then
+          begin
+            Body.Add(RapidQDumpLine(Node.Name, PropName, Kind));
+            Inc(PropCount);
+          end
+          else if (UpperCase(Member.TypeName) = 'QFONT') and
+                  (FontCls <> nil) then
+            // Шрифт - его свойствами: Font.Name, Font.Size...
+            for FontIdx := 0 to FontCls.Props.Count - 1 do
+            begin
+              FontMember := TRqMember(FontCls.Props.Objects[FontIdx]);
+              Kind := RapidQSimpleType(FontMember.TypeName);
+              if (Kind = 0) or not FontMember.CanRead or
+                 (CompareText(FontMember.Name, 'Handle') = 0) then
+                Continue;
+              Body.Add(RapidQDumpLine(Node.Name, PropName + '.' +
+                                      FontMember.Name, Kind));
+              Inc(PropCount);
+            end;
+        end;
+      end;
+    end;
+    // Части дампа - SUB по RqProbePartLines строк, объект целиком в одной
+    PartCount := 0;
+    BodyIdx := 0;
+    while BodyIdx < Body.Count do
+    begin
+      Inc(PartCount);
+      AOut.Add('SUB RqProbePart' + IntToStr(PartCount));
+      repeat
+        AOut.Add(Body[BodyIdx]);
+        Inc(BodyIdx);
+      until (BodyIdx >= Body.Count) or
+            ((Pos('"#obj ', Body[BodyIdx]) > 0) and
+             (AOut.Count - ADumpStart >= RqProbePartLines * PartCount));
+      AOut.Add('END SUB');
+      AOut.Add('');
+    end;
+    // Журнал копии: кто (процесс) и когда начинал и кончал дамп - строка
+    // на событие, файл дописывается. По нему видно, если дамп идёт дважды.
+    TracePath := RapidQSlashPath(ChangeFileExt(AOutFile, '.trace'));
+    AOut.Add('SUB RqProbeTrace (TraceText AS STRING)');
+    AOut.Add('  DIM TraceFile AS QFILESTREAM');
+    AOut.Add('  IF FILEEXISTS("' + TracePath + '") THEN');
+    AOut.Add('    TraceFile.Open("' + TracePath + '", 2)');
+    AOut.Add('    TraceFile.Position = TraceFile.Size');
+    AOut.Add('  ELSE');
+    AOut.Add('    TraceFile.Open("' + TracePath + '", ' +
+             IntToStr(RqProbeFmCreate) + ')');
+    AOut.Add('  END IF');
+    AOut.Add('  TraceFile.WriteLine(TIME$ + " pid" + STR$(RqProbePid) + " " + ' +
+             'TraceText)');
+    AOut.Add('  TraceFile.Close');
+    AOut.Add('END SUB');
+    AOut.Add('');
+    AOut.Add('SUB RqProbeDump');
+    AOut.Add('  RqProbeTimer.Enabled = 0');
+    // Второй вызов в том же процессе файл не переписывает
+    AOut.Add('  IF RqProbeDone THEN');
+    AOut.Add('    RqProbeTrace("dump called again - skipped")');
+    AOut.Add('    EXIT SUB');
+    AOut.Add('  END IF');
+    AOut.Add('  RqProbeDone = 1');
+    AOut.Add('  RqProbeTrace("dump start")');
+    // Путь целиком и с прямыми косыми: программа могла сменить текущую
+    // папку, а обратная косая при $ESCAPECHARS ON - начало escape
+    AOut.Add('  RqProbeFile.Open("' + RapidQSlashPath(AOutFile) + '", ' +
+             IntToStr(RqProbeFmCreate) + ')');
+    AOut.Add('  RqProbeFile.WriteLine("#time " + TIME$ + " pid" + ' +
+             'STR$(RqProbePid))');
+    for BodyIdx := 1 to PartCount do
+      AOut.Add('  RqProbePart' + IntToStr(BodyIdx));
+    AOut.Add('  RqProbeFile.WriteLine("#end")');
+    AOut.Add('  RqProbeFile.Close');
+    AOut.Add('  RqProbeTrace("dump end")');
+    AOut.Add('  END');
+    AOut.Add('END SUB');
+
+    if not AMinimal then
+      LogComp(Format('Снимок RapidQ: объектов %d, свойств %d; таймер - ' +
+                     'перед строкой %d (%s)', [ObjCount, PropCount,
+                                              InsLine + 1,
+                                              Trim(Lines[InsLine])]));
+    if SkipCount > 0 then
+      LogComp(Format('Снимок RapidQ: не пишется %d свойств из списка ' +
+                     'исключённых: %s', [SkipCount,
+                                         FProbeDir + RqProbeSkipName]));
+    Result := AMinimal or (ObjCount > 0);
+    if not Result then
+      LogComp('Снимок RapidQ: ни у одного объекта главной части нет ' +
+              'описания класса');
+  finally
+    for NodeIdx := 0 to Nodes.Count - 1 do
+      TObject(Nodes[NodeIdx]).Free;
+    Mask.Free;
+    Chain.Free;
+    Roots.Free;
+    Nodes.Free;
+    Skip.Free;
+    Body.Free;
+    Done.Free;
+    Seen.Free;
+    Parts.Free;
+    Lines.Free;
+  end;
+end;
+
+procedure TForm1.RapidQProbeClear;
+var
+  ObjIdx: Integer;
+begin
+  if FRqProbeObjs = nil then
+    Exit;
+  for ObjIdx := 0 to FRqProbeObjs.Count - 1 do
+    FRqProbeObjs.Objects[ObjIdx].Free;
+  FRqProbeObjs.Clear;
+  FRqProbeMain := '';
+end;
+
+// Значения свойств объекта AName из снимка ("Свойство=значение"); nil -
+// снимка нет, он скрыт или снят с другой программы
+function TForm1.RapidQLiveProps(const AName: string): TStringList;
+var
+  ObjIdx: Integer;
+begin
+  Result := nil;
+  if FRqSnapOff or (FRqProbeObjs = nil) or (FRqProbeMain = '') or
+     (CompareText(FRqProbeMain, FRqInspMain) <> 0) then
+    Exit;
+  ObjIdx := FRqProbeObjs.IndexOf(AName);
+  if ObjIdx >= 0 then
+    Result := TStringList(FRqProbeObjs.Objects[ObjIdx]);
+end;
+
+// Снимок есть и относится к главному .bas, который показывает инспектор
+function TForm1.RapidQHasSnapshot: Boolean;
+begin
+  Result := (FRqProbeObjs <> nil) and (FRqProbeObjs.Count > 0) and
+            (FRqProbeMain <> '') and
+            (CompareText(FRqProbeMain, FRqInspMain) = 0);
+end;
+
+procedure TForm1.RapidQProbeRun;
+var
+  MainBas, ProbeBas, OutFile, RunDir, LastObj, ErrObj, ErrProp, ErrClass,
+    ErrHead, LineObj, LineProp: string;
+  Src, ProbeLines, Props, ObjClasses, SkipList: TStringList;
+  DumpStart, Attempt, Excluded, LineIdx, EqPos, ErrIdx, CutCount: Integer;
+  Ok, Complete: Boolean;
+  ConsoleFile, OutText, TraceFile, CleanText: string;
+  HasStart, HasTime: Boolean;
+  RunMs: Cardinal;
+  LastOutSize, NulCount: Integer;
+  OldSrc: TStringList;
+  LastOut, HangObj, HangProp, HangKey: string;
+  HangIdx: Integer;
+  ProbeText: TStringList;
+
+  // Хвост вывода консоли программы - в лог
+  procedure LogConsoleTail(const AFile: string);
+  const
+    TailLines = 20;
+  var
+    ConsoleLines: TStringList;
+    TailIdx: Integer;
+  begin
+    if not FileExists(AFile) then
+    begin
+      LogComp('Снимок RapidQ: файла вывода консоли нет: ' + AFile);
+      Exit;
+    end;
+    ConsoleLines := TStringList.Create;
+    try
+      try
+        ConsoleLines.LoadFromFile(AFile);
+      except
+        on E: Exception do
+        begin
+          LogComp('Снимок RapidQ: вывод консоли не прочитан: ' + AFile +
+                  ' (' + E.Message + ')');
+          Exit;
+        end;
+      end;
+      if ConsoleLines.Count = 0 then
+      begin
+        LogComp('Снимок RapidQ: программа ничего не вывела в консоль (' +
+                AFile + ')');
+        Exit;
+      end;
+      LogComp(Format('Снимок RapidQ: вывод консоли программы, последние ' +
+                     'строки из %d (%s):', [ConsoleLines.Count, AFile]));
+      TailIdx := ConsoleLines.Count - TailLines;
+      if TailIdx < 0 then
+        TailIdx := 0;
+      while TailIdx < ConsoleLines.Count do
+      begin
+        LogComp('    > ' + ConsoleLines[TailIdx]);
+        Inc(TailIdx);
+      end;
+    finally
+      ConsoleLines.Free;
+    end;
+  end;
+
+  // Файл значений целиком (с общим доступом: программа может держать его
+  // открытым). Нет или не прочитался - ''.
+  function ReadOutFile: string;
+  var
+    OutStream: TFileStream;
+  begin
+    Result := '';
+    if not FileExists(OutFile) then
+      Exit;
+    try
+      OutStream := TFileStream.Create(OutFile, fmOpenRead or fmShareDenyNone);
+      try
+        SetLength(Result, OutStream.Size);
+        if OutStream.Size > 0 then
+          OutStream.ReadBuffer(Result[1], OutStream.Size);
+      finally
+        OutStream.Free;
+      end;
+    except
+      Result := '';
+    end;
+  end;
+
+  // Файл значений записан: в нём "#end", и размер тот же, что при прошлой
+  // проверке (100 мс назад) - программа писать перестала. Тогда его текст
+  // - в OutText: разбирается ровно то, что проверено, без нового чтения.
+  function OutFileDone: Boolean;
+  var
+    FileText: string;
+  begin
+    Result := False;
+    FileText := ReadOutFile;
+    if Pos(#10'#end', FileText) = 0 then
+    begin
+      LastOutSize := Length(FileText);
+      Exit;
+    end;
+    Result := Length(FileText) = LastOutSize;
+    LastOutSize := Length(FileText);
+    if Result then
+      OutText := FileText;
+  end;
+
+  // Запуск exe копии из папки программы (текущая папка - она же, как при
+  // обычном запуске). Вывод консоли (print) - в AConsole. AElapsed - сколько
+  // ждали. False - не запустилась.
+  //
+  // Ждём не только конца процесса, но и "#end" в файле значений: запущенный
+  // процесс может закончиться раньше, чем файл записан (в логе было:
+  // процесс кончился за 31 мс, а файл появился позже). Всего - до
+  // RqProbeWaitMs.
+  function RunProbe(const AConsole: string; var AElapsed: Cardinal): Boolean;
+  var
+    StartInfo: TStartupInfo;
+    ProcInfo: TProcessInformation;
+    SecAttr: TSecurityAttributes;
+    ConsoleHandle: THandle;
+    WaitRes, ProcExit: DWORD;
+    StartTick, ExitMs: Cardinal;
+    Started, ProcEnded: Boolean;
+    WinLines: TStringList;
+    WinIdx: Integer;
+  begin
+    AElapsed := 0;
+    LastOutSize := -1;
+    OutText := '';
+    FillChar(StartInfo, SizeOf(StartInfo), 0);
+    StartInfo.cb := SizeOf(StartInfo);
+    SecAttr.nLength := SizeOf(SecAttr);
+    SecAttr.lpSecurityDescriptor := nil;
+    SecAttr.bInheritHandle := True;
+    ConsoleHandle := CreateFile(PChar(AConsole), GENERIC_WRITE,
+                                FILE_SHARE_READ, @SecAttr, CREATE_ALWAYS,
+                                FILE_ATTRIBUTE_NORMAL, 0);
+    if ConsoleHandle <> INVALID_HANDLE_VALUE then
+    begin
+      StartInfo.dwFlags := STARTF_USESTDHANDLES;
+      StartInfo.hStdInput := 0;
+      StartInfo.hStdOutput := ConsoleHandle;
+      StartInfo.hStdError := ConsoleHandle;
+    end
+    else
+      LogComp('Снимок RapidQ: файл для вывода консоли не создан (' + AConsole +
+              ', код ' + IntToStr(GetLastError) + ') - запуск без него');
+    LogComp('Снимок RapidQ: запуск ' + FRqProbeExe);
+    Started := CreateProcess(nil, PChar('"' + FRqProbeExe + '"'), nil, nil,
+                             ConsoleHandle <> INVALID_HANDLE_VALUE, 0, nil,
+                             PChar(RunDir), StartInfo, ProcInfo);
+    if not Started then
+    begin
+      LogComp('Снимок RapidQ: не запустился, код ' + IntToStr(GetLastError));
+      if ConsoleHandle <> INVALID_HANDLE_VALUE then
+        CloseHandle(ConsoleHandle);
+      Result := False;
+      Exit;
+    end;
+    BusyBegin('Снимок RapidQ: программа работает');
+    Screen.Cursor := crHourGlass;
+    try
+      StartTick := GetTickCount;
+      ProcEnded := False;
+      ExitMs := 0;
+      ProcExit := 0;
+      repeat
+        WaitRes := WaitForSingleObject(ProcInfo.hProcess, 100);
+        if (WaitRes <> WAIT_TIMEOUT) and not ProcEnded then
+        begin
+          ProcEnded := True;
+          ExitMs := GetTickCount - StartTick;
+          GetExitCodeProcess(ProcInfo.hProcess, ProcExit);
+        end;
+        BusyTick;
+        Application.ProcessMessages;
+      until OutFileDone or (GetTickCount - StartTick >= RqProbeWaitMs);
+      AElapsed := GetTickCount - StartTick;
+      if ProcEnded then
+        LogComp(Format('Снимок RapidQ: запущенный процесс завершился за %d ' +
+                       'мс, код %d', [ExitMs, ProcExit]))
+      else if OutFileDone then
+        LogComp(Format('Снимок RapidQ: значения записаны за %d мс', [AElapsed]))
+      else
+      begin
+        // Что программа показывает: сообщение об ошибке рантайма или
+        // другое окно, ждущее ответа
+        WinLines := TStringList.Create;
+        try
+          RapidQProcessWindows(ProcInfo.dwProcessId, WinLines);
+          if WinLines.Count = 0 then
+            LogComp(Format('Снимок RapidQ: видимых окон у процесса (pid %d) ' +
+                           'нет', [ProcInfo.dwProcessId]))
+          else
+          begin
+            LogComp(Format('Снимок RapidQ: видимые окна процесса (pid %d):',
+                           [ProcInfo.dwProcessId]));
+            for WinIdx := 0 to WinLines.Count - 1 do
+              LogComp(WinLines[WinIdx]);
+          end;
+        finally
+          WinLines.Free;
+        end;
+        TerminateProcess(ProcInfo.hProcess, 1);
+        LogComp(Format('Снимок RapidQ: за %d с программа не записала значения ' +
+                       'и остановлена', [RqProbeWaitMs div 1000]));
+      end;
+      if ProcEnded then
+      begin
+        if OutFileDone then
+          LogComp(Format('Снимок RapidQ: файл значений записан целиком через ' +
+                         '%d мс от запуска', [AElapsed]))
+        else if FileExists(OutFile) then
+          LogComp(Format('Снимок RapidQ: за %d с файл значений есть, но не ' +
+                         'дописан (#end нет)', [RqProbeWaitMs div 1000]))
+        else
+          LogComp(Format('Снимок RapidQ: за %d с файл значений не появился',
+                         [RqProbeWaitMs div 1000]));
+      end;
+    finally
+      CloseHandle(ProcInfo.hThread);
+      CloseHandle(ProcInfo.hProcess);
+      if ConsoleHandle <> INVALID_HANDLE_VALUE then
+        CloseHandle(ConsoleHandle);
+      Screen.Cursor := crDefault;
+      BusyEnd('Снимок RapidQ', FileExists(OutFile));
+    end;
+    Result := True;
+  end;
+
+  // Журнал копии (_rqprobe.trace) - в лог: какой процесс когда начинал и
+  // кончал дамп. Две строки "dump start" - файл значений писали дважды.
+  procedure LogTrace;
+  var
+    TraceLines: TStringList;
+    TraceIdx, StartCount: Integer;
+  begin
+    if not FileExists(TraceFile) then
+    begin
+      LogComp('Снимок RapidQ: журнала копии нет: ' + TraceFile);
+      Exit;
+    end;
+    TraceLines := TStringList.Create;
+    try
+      try
+        TraceLines.LoadFromFile(TraceFile);
+      except
+        LogComp('Снимок RapidQ: журнал копии не прочитан: ' + TraceFile);
+        Exit;
+      end;
+      LogComp('Снимок RapidQ: журнал копии (' + TraceFile + '):');
+      StartCount := 0;
+      for TraceIdx := 0 to TraceLines.Count - 1 do
+      begin
+        LogComp('    ' + TraceLines[TraceIdx]);
+        if Pos('dump start', TraceLines[TraceIdx]) > 0 then
+          Inc(StartCount);
+      end;
+      if StartCount > 1 then
+        LogComp(Format('Снимок RapidQ: дамп начинался %d раз - файл ' +
+                       'значений переписывался', [StartCount]));
+    finally
+      TraceLines.Free;
+    end;
+  end;
+
+  // _rqprobe_run.bat рядом с копией - запуск её вручную из папки
+  // программы, с паузой в конце: видно окно консоли и сообщения рантайма
+  // RapidQ
+  procedure WriteRunBat;
+  var
+    Bat: TStringList;
+  begin
+    Bat := TStringList.Create;
+    try
+      Bat.Add('@echo off');
+      Bat.Add('rem unIDE: run the snapshot copy by hand, from the program folder');
+      Bat.Add('cd /d "' + ExcludeTrailingPathDelimiter(RunDir) + '"');
+      Bat.Add('if exist "_rqprobe.txt" del "_rqprobe.txt"');
+      Bat.Add('"_rqprobe.exe"');
+      Bat.Add('echo Exit code: %errorlevel%');
+      Bat.Add('echo The program may restart itself (QXpTheme) - the values ' +
+              'file can appear a bit later');
+      Bat.Add('pause');
+      Bat.Add('if exist "_rqprobe.txt" (echo Values file: %cd%\_rqprobe.txt) ' +
+              'else (echo No values file)');
+      Bat.Add('pause');
+      try
+        Bat.SaveToFile(RunDir + '_rqprobe_run.bat');
+        LogComp('Снимок RapidQ: запуск копии вручную - ' + RunDir +
+                '_rqprobe_run.bat');
+      except
+        LogComp('Снимок RapidQ: не записан ' + RunDir + '_rqprobe_run.bat');
+      end;
+    finally
+      Bat.Free;
+    end;
+  end;
+
+  // Копия без строк дампа - таймер, #start, пустой дамп. Показывает, в
+  // строках ли дампа дело: она работает - да; кончается так же - нет.
+  procedure ControlRun;
+  var
+    CtrlSrc, CtrlClasses, CtrlLines: TStringList;
+    CtrlDump: Integer;
+    CtrlOk: Boolean;
+    CtrlMs: Cardinal;
+    CtrlBas, MainExe: string;
+  begin
+    LogComp('Снимок RapidQ: контрольный запуск - та же копия без строк ' +
+            'свойств (таймер, #start, #end)');
+    CtrlSrc := TStringList.Create;
+    CtrlClasses := TStringList.Create;
+    CtrlLines := TStringList.Create;
+    try
+      if not RapidQProbeSource(MainBas, OutFile, CtrlSrc, CtrlClasses,
+                               CtrlDump, True) then
+        Exit;
+      // Свои имена: основная копия и её exe остаются как есть
+      CtrlBas := RunDir + '_rqprobe_ctrl.bas';
+      MainExe := FRqProbeExe;
+      CtrlSrc.SaveToFile(CtrlBas);
+      FRqProbeExe := RunDir + '_rqprobe_ctrl.exe';
+      try
+        FRqProbeActive := True;
+        FRqProbeBas := CtrlBas;
+        try
+          CtrlOk := CompileRapidQ;
+        finally
+          FRqProbeActive := False;
+        end;
+        if not CtrlOk then
+        begin
+          LogComp('Снимок RapidQ: контрольная копия не собралась');
+          Exit;
+        end;
+        DeleteFile(OutFile);
+        if not RunProbe(FProbeDir + '_rqprobe_ctrl_console.txt', CtrlMs) then
+          Exit;
+      finally
+        FRqProbeExe := MainExe;
+      end;
+      CtrlLines.Text := ReadOutFile;
+      if CtrlLines.IndexOf('#end') >= 0 then
+        LogComp(Format('Снимок RapidQ: контрольная копия дошла до таймера и ' +
+                       'отработала (#end) за %d мс. Программу останавливают ' +
+                       'строки свойств в дампе - их объём или одно из ' +
+                       'свойств', [CtrlMs]))
+      else if CtrlLines.IndexOf('#start') >= 0 then
+        LogComp(Format('Снимок RapidQ: контрольная копия дошла до таймера, ' +
+                       'но закончилась за %d мс, не начав обрабатывать ' +
+                       'сообщения', [CtrlMs]))
+      else
+      begin
+        LogConsoleTail(FProbeDir + '_rqprobe_ctrl_console.txt');
+        LogComp(Format('Снимок RapidQ: контрольная копия без строк свойств ' +
+                       'тоже закончилась за %d мс, не дойдя до таймера - дело ' +
+                       'не в строках дампа. Проверьте, работает ли обычная ' +
+                       'сборка, запущенная так же: из папки программы, ' +
+                       'отдельным процессом', [CtrlMs]));
+      end;
+    finally
+      CtrlLines.Free;
+      CtrlClasses.Free;
+      CtrlSrc.Free;
+    end;
+  end;
+
+begin
+  if FBusyDepth > 0 then
+    Exit;   // уже идёт сборка или снимок
+  MainBas := RapidQTargetBas(False);
+  if MainBas = '' then
+  begin
+    LogComp('Снимок RapidQ: главный .bas не найден. Откройте его - он ' +
+            'запомнится как цель сборки');
+    Exit;
+  end;
+  if not RapidQComponentsReady(True) then
+  begin
+    LogComp('Снимок RapidQ: нет описания компонентов (ComponentAll.data) - ' +
+            'неизвестно, какие свойства читать. Где искали - строками выше');
+    Exit;
+  end;
+  ShowCompLog;
+  if (CompLogEdit <> nil) and (FRqProbeHangDepth = 0) then
+    CompLogEdit.Lines.Clear;
+  // Копия собирается из файлов на диске
+  if RichEdit1.Modified then
+    if not SaveCurrentFile then
+      Exit;
+  FBuildRapidQ := True;
+  try
+    if not SaveSourcesBeforeBuild then
+      Exit;
+  finally
+    FBuildRapidQ := False;
+  end;
+
+  FProbeDir := ExtractFilePath(Application.ExeName) + 'dsgprobe\';
+  ForceDirectories(FProbeDir);
+  ProbeBas := ExtractFilePath(MainBas) + '_rqprobe.bas';
+  OutFile := ExtractFilePath(MainBas) + '_rqprobe.txt';
+  RunDir := ExtractFilePath(MainBas);
+  // Exe - рядом с .bas, как обычный: программа может искать свои файлы
+  // по пути к exe
+  FRqProbeExe := ExtractFilePath(MainBas) + '_rqprobe.exe';
+  ConsoleFile := FProbeDir + '_rqprobe_console.txt';
+
+  Src := TStringList.Create;
+  ObjClasses := TStringList.Create;
+  Ok := False;
+  try
+    if not RapidQProbeSource(MainBas, OutFile, Src, ObjClasses,
+                             DumpStart, False) then
+      Exit;
+    Excluded := 0;
+    Attempt := 0;
+    // Копия та же, что в прошлый раз, и её exe собран после неё - сборка
+    // не нужна
+    if FileExists(ProbeBas) and FileExists(FRqProbeExe) and
+       (FileAge(FRqProbeExe) >= FileAge(ProbeBas)) then
+    begin
+      OldSrc := TStringList.Create;
+      try
+        try
+          OldSrc.LoadFromFile(ProbeBas);
+          Ok := OldSrc.Text = Src.Text;
+        except
+          Ok := False;
+        end;
+      finally
+        OldSrc.Free;
+      end;
+      if Ok then
+        LogComp('Снимок RapidQ: копия не изменилась - ' + FRqProbeExe +
+                ' без пересборки');
+    end;
+    if not Ok then
+    repeat
+      Src.SaveToFile(ProbeBas);
+      FRqProbeActive := True;
+      FRqProbeBas := ProbeBas;
+      FRqProbeErrFile := '';
+      FRqProbeErrLine := 0;
+      try
+        Ok := CompileRapidQ;
+      finally
+        FRqProbeActive := False;
+      end;
+      if Ok then
+        Break;
+      // Ошибка в строке дампа - свойство не читается. Компилятор не
+      // принимает его у класса, значит, и у всех объектов этого класса:
+      // их строки - в комментарий, свойство - в список исключённых, копия
+      // собирается снова. Ошибка не в дампе - в самой программе или в
+      // таймере - дальше не идём.
+      ErrIdx := FRqProbeErrLine - 1;
+      if (FRqProbeErrFile = '') or
+         (CompareText(ExpandFileName(FRqProbeErrFile),
+                      ExpandFileName(ProbeBas)) <> 0) or
+         (ErrIdx <= DumpStart) or (ErrIdx >= Src.Count) or
+         not RapidQDumpLineParts(Src[ErrIdx], ErrObj, ErrProp) then
+      begin
+        LogComp('Снимок RapidQ: копия программы не собралась, ошибка не в ' +
+                'строках снимка. Проверьте обычную сборку (Compile); копия - ' +
+                ProbeBas);
+        SaveCompileLog(FProbeDir + '_rqprobe_compile.log');
+        Exit;
+      end;
+      ErrClass := ObjClasses.Values[ErrObj];
+      ErrHead := RapidQPropHead(ErrProp);
+      CutCount := 0;
+      for LineIdx := DumpStart + 1 to Src.Count - 1 do
+        if RapidQDumpLineParts(Src[LineIdx], LineObj, LineProp) and
+           (CompareText(RapidQPropHead(LineProp), ErrHead) = 0) and
+           ((CompareText(LineObj, ErrObj) = 0) or
+            ((ErrClass <> '') and
+             (CompareText(ObjClasses.Values[LineObj], ErrClass) = 0))) then
+        begin
+          Src[LineIdx] := '  '' unIDE, не читается: ' + Trim(Src[LineIdx]);
+          Inc(CutCount);
+        end;
+      Inc(Excluded);
+      Inc(Attempt);
+      LogComp(Format('Снимок RapidQ: класс %s, свойство %s не читается - ' +
+                     'исключено у всех объектов класса (строк %d)',
+                     [ErrClass, ErrHead, CutCount]));
+      if ErrClass <> '' then
+      begin
+        SkipList := TStringList.Create;
+        try
+          if FileExists(FProbeDir + RqProbeSkipName) then
+            SkipList.LoadFromFile(FProbeDir + RqProbeSkipName);
+          if SkipList.IndexOf(UpperCase(ErrClass + '.' + ErrHead)) < 0 then
+          begin
+            SkipList.Add(UpperCase(ErrClass + '.' + ErrHead));
+            SkipList.SaveToFile(FProbeDir + RqProbeSkipName);
+          end;
+        except
+          LogComp('Снимок RapidQ: список исключённых не записан: ' +
+                  FProbeDir + RqProbeSkipName);
+        end;
+        SkipList.Free;
+      end;
+    until Attempt >= RqProbeMaxRetry;
+    if not Ok then
+    begin
+      LogComp(Format('Снимок RapidQ: исключено %d свойств, копия всё ещё не ' +
+                     'собирается - остановлено', [Excluded]));
+      SaveCompileLog(FProbeDir + '_rqprobe_compile.log');
+      Exit;
+    end;
+  finally
+    // Копия, её exe и файл значений остаются рядом с .bas: exe пригодится
+    // в следующий раз, а его .manifest (QXpTheme) - чтобы программа не
+    // перезапускала себя
+    ObjClasses.Free;
+    Src.Free;
+  end;
+  WriteRunBat;
+
+  // Прежний файл значений - прочь: иначе можно прочитать старые значения.
+  // Журнал копии - тоже: он дописывается.
+  TraceFile := ChangeFileExt(OutFile, '.trace');
+  if FileExists(TraceFile) then
+    DeleteFile(TraceFile);
+  if FileExists(OutFile) then
+    DeleteFile(OutFile);
+  if FileExists(OutFile) then
+  begin
+    LogComp('Снимок RapidQ: прежний файл значений не удаляется (открыт?): ' +
+            OutFile);
+    SaveCompileLog(FProbeDir + '_rqprobe_compile.log');
+    Exit;
+  end;
+
+  // Запуск
+  if not RunProbe(ConsoleFile, RunMs) then
+  begin
+    SaveCompileLog(FProbeDir + '_rqprobe_compile.log');
+    Exit;
+  end;
+  LogTrace;
+
+  if not FileExists(OutFile) then
+  begin
+    LogConsoleTail(ConsoleFile);
+    LogComp('Снимок RapidQ: файла значений нет - программа закончилась, не ' +
+            'дойдя до таймера (он перед первым CREATE, строка - в начале ' +
+            'лога): ' + OutFile);
+    ControlRun;
+    SaveCompileLog(FProbeDir + '_rqprobe_compile.log');
+    Exit;
+  end;
+
+  // Разбор: "#obj Имя", потом "Имя.Свойство=значение"
+  if FRqProbeObjs = nil then
+  begin
+    FRqProbeObjs := TStringList.Create;
+    FRqProbeObjs.CaseSensitive := False;
+  end;
+  RapidQProbeClear;
+  ProbeLines := TStringList.Create;
+  try
+    // Разбирается текст, который проверил OutFileDone; "#end" так и не
+    // появился - то, что есть в файле сейчас
+    if OutText = '' then
+      OutText := ReadOutFile;
+    if OutText = '' then
+    begin
+      LogComp('Снимок RapidQ: не прочитан ' + OutFile);
+      Exit;
+    end;
+    // Символ с кодом 0 в значении (PasswordChar у QEdit без пароля) обрывал
+    // разбор строк: TStrings.Text в Delphi 7 на нём останавливается, и
+    // снимок выглядел неполным. Заменяется текстом #0, как в .dfm.
+    // Посимвольно: StringReplace в Delphi 7 ищет через AnsiPos (PChar) и
+    // на нулевом символе тоже останавливается
+    NulCount := 0;
+    for LineIdx := 1 to Length(OutText) do
+      if OutText[LineIdx] = #0 then
+        Inc(NulCount);
+    if NulCount > 0 then
+    begin
+      CleanText := '';
+      SetLength(CleanText, Length(OutText) + NulCount);
+      EqPos := 0;
+      for LineIdx := 1 to Length(OutText) do
+        if OutText[LineIdx] = #0 then
+        begin
+          CleanText[EqPos + 1] := '#';
+          CleanText[EqPos + 2] := '0';
+          Inc(EqPos, 2);
+        end
+        else
+        begin
+          CleanText[EqPos + 1] := OutText[LineIdx];
+          Inc(EqPos);
+        end;
+      OutText := CleanText;
+      LogComp(Format('Снимок RapidQ: в значениях символов с кодом 0 - %d, ' +
+                     'показаны как #0', [NulCount]));
+    end;
+    ProbeLines.Text := OutText;
+    // Только "#start": таймер создан, но не сработал
+    HasStart := ProbeLines.IndexOf('#start') >= 0;
+    HasTime := False;
+    for LineIdx := 0 to ProbeLines.Count - 1 do
+      if Copy(ProbeLines[LineIdx], 1, 6) = '#time ' then
+      begin
+        HasTime := True;
+        Break;
+      end;
+    if HasStart and not HasTime then
+    begin
+      LogConsoleTail(ConsoleFile);
+      LogComp('Снимок RapidQ: программа дошла до таймера, но закончилась, не ' +
+              'начав обрабатывать сообщения (ShowModal, DoEvents) - таймер не ' +
+              'сработал');
+      SaveCompileLog(FProbeDir + '_rqprobe_compile.log');
+      Exit;
+    end;
+    Props := nil;
+    LastObj := '';
+    Complete := False;
+    // Последняя целая строка файла: без перевода строки в конце последняя
+    // строка могла записаться не вся - тогда берётся предыдущая
+    LastOut := '';
+    LineIdx := ProbeLines.Count - 1;
+    if (OutText <> '') and not (OutText[Length(OutText)] in [#13, #10]) then
+      Dec(LineIdx);
+    while (LineIdx >= 0) and (Trim(ProbeLines[LineIdx]) = '') do
+      Dec(LineIdx);
+    if LineIdx >= 0 then
+      LastOut := ProbeLines[LineIdx];
+    for LineIdx := 0 to ProbeLines.Count - 1 do
+    begin
+      if Copy(ProbeLines[LineIdx], 1, 5) = '#obj ' then
+      begin
+        LastObj := Trim(Copy(ProbeLines[LineIdx], 6, MaxInt));
+        Props := TStringList.Create;
+        FRqProbeObjs.AddObject(LastObj, Props);
+        Continue;
+      end;
+      if ProbeLines[LineIdx] = '#end' then
+      begin
+        Complete := True;
+        Continue;
+      end;
+      EqPos := Pos('=', ProbeLines[LineIdx]);
+      if (Props = nil) or (EqPos = 0) or
+         (CompareText(Copy(ProbeLines[LineIdx], 1, Length(LastObj) + 1),
+                      LastObj + '.') <> 0) then
+        Continue;
+      // "MenuText.Width= 400" -> "Width=400"
+      Props.Add(Copy(ProbeLines[LineIdx], Length(LastObj) + 2,
+                     EqPos - Length(LastObj) - 2) + '=' +
+                Trim(Copy(ProbeLines[LineIdx], EqPos + 1, MaxInt)));
+    end;
+  finally
+    ProbeLines.Free;
+  end;
+  FRqProbeMain := MainBas;
+  FRqProbeTime := Now;
+  FRqSnapOff := False;
+  if Complete then
+    LogComp(Format('Снимок RapidQ: значения %d объектов', [FRqProbeObjs.Count]))
+  else
+  begin
+    LogConsoleTail(ConsoleFile);
+    LogComp(Format('Снимок RapidQ: неполный - %d объектов, программа ' +
+                   'остановилась на объекте %s', [FRqProbeObjs.Count, LastObj]));
+    // Строка копии, которая не дописалась
+    HangKey := '';
+    LogComp('Снимок RapidQ: последняя записанная строка: ' + LastOut);
+    ProbeText := TStringList.Create;
+    try
+      try
+        ProbeText.LoadFromFile(ProbeBas);
+      except
+        ProbeText.Clear;
+      end;
+      if RapidQHangLine(ProbeText, LastOut, HangObj, HangProp, HangIdx) then
+      begin
+        LogComp(Format('Снимок RapidQ: следующая строка копии не дописалась - ' +
+                       'чтение %s.%s (строка %d в %s)',
+                       [HangObj, HangProp, HangIdx + 1, ProbeBas]));
+        HangKey := 'OBJ ' + UpperCase(HangObj + '.' + RapidQPropHead(HangProp));
+      end
+      else
+        LogComp('Снимок RapidQ: строку копии, на которой программа ' +
+                'остановилась, по файлу значений определить не удалось');
+    finally
+      ProbeText.Free;
+    end;
+    SaveCompileLog(FProbeDir + '_rqprobe_compile.log');
+    if HangKey <> '' then
+    begin
+      if FRqProbeHangDepth >= RqProbeMaxHang then
+        LogComp(Format('Снимок RapidQ: исключено уже %d свойств после ' +
+                       'остановок - повтора нет', [FRqProbeHangDepth]))
+      else
+      begin
+        SkipList := TStringList.Create;
+        try
+          try
+            if FileExists(FProbeDir + RqProbeSkipName) then
+              SkipList.LoadFromFile(FProbeDir + RqProbeSkipName);
+            if SkipList.IndexOf(HangKey) < 0 then
+              SkipList.Add(HangKey);
+            SkipList.SaveToFile(FProbeDir + RqProbeSkipName);
+          except
+            LogComp('Снимок RapidQ: список исключённых не записан: ' +
+                    FProbeDir + RqProbeSkipName);
+            HangKey := '';
+          end;
+        finally
+          SkipList.Free;
+        end;
+        if HangKey <> '' then
+        begin
+          LogComp(Format('Снимок RapidQ: %s.%s у этого объекта больше не ' +
+                         'читается (%s: %s); снимок - заново',
+                         [HangObj, RapidQPropHead(HangProp), RqProbeSkipName,
+                          HangKey]));
+          Inc(FRqProbeHangDepth);
+          try
+            RapidQProbeRun;
+          finally
+            Dec(FRqProbeHangDepth);
+          end;
+          Exit;
+        end;
+      end;
+    end;
+  end;
+  FRightPages.ActivePage := FTabObjects;
+  RefreshObjectInspector(True);
 end;
 
 // ---------------------------------------------------------------------------
@@ -37579,6 +40297,27 @@ var
     end;
   end;
 
+  // Файл ARel - из первой папки-источника, где он есть, если там он
+  // новее (описание компонентов RapidQ пересобирается, старая копия рядом
+  // с exe перекрыла бы новую)
+  procedure CopyIfNewer(const ARel: string);
+  var
+    DirIdx: Integer;
+  begin
+    for DirIdx := Low(SrcDirs) to High(SrcDirs) do
+      if FileExists(SrcDirs[DirIdx] + ARel) then
+      begin
+        if FileExists(DstDir + ARel) and
+           (FileAge(DstDir + ARel) >= FileAge(SrcDirs[DirIdx] + ARel)) then
+          Exit;
+        ForceDirectories(ExtractFilePath(DstDir + ARel));
+        if CopyFile(PChar(SrcDirs[DirIdx] + ARel), PChar(DstDir + ARel),
+                    False) then
+          Inc(Copied);
+        Exit;
+      end;
+  end;
+
 // Все файлы папки ARelDir (без вложенных) из всех источников
   procedure CopyDirIfMissing(const ARelDir: string);
   var
@@ -37622,9 +40361,14 @@ begin
     CopyIfMissing('editor.ini');
   CopyIfMissing('IDE.clr');
   CopyDirIfMissing('schemes');
+  // Описание компонентов RapidQ для инспектора (RapidQComponentsReady)
+  CopyIfNewer('rapidq_ref\ComponentAll.data');
+  CopyIfMissing('rapidq_ref\Component.data');
+  CopyIfMissing('rapidq_ref\Component1.data');
   if Copied > 0 then
     LogComp(Format('Рядом с exe скопировано файлов: %d (editor.ini, IDE.clr, ' +
-    'schemes - которых там не было)', [Copied]));
+    'schemes, rapidq_ref\Component*.data - которых там не было или ' +
+    'были старее)', [Copied]));
   if Merged > 0 then
     LogComp(Format('editor.ini рядом с exe: изменено разделов: %d. Пути, ' +
     'которых нет на диске, при запуске берутся из копий [...Old<N>]',
@@ -39947,6 +42691,63 @@ end;
 // Двойной щелчок по строке лога: если это сообщение компилятора - открываем
 // файл и встаём на нужную строку. Файл ищется рядом с компилируемым: dcc32
 // пишет только имя, без пути.
+// Лог компиляции - в файл AFile (перезаписывается), строкой в лог - путь
+// к нему. Щелчок по этой строке копирует путь (LogEditClick).
+// Текст - целиком через Text (WM_GETTEXT) и простым текстом: Lines.SaveToFile
+// у TRichEdit без PlainText пишет RTF.
+procedure TForm1.SaveCompileLog(const AFile: string);
+var
+  LogLines: TStringList;
+begin
+  if (CompLogEdit = nil) or (AFile = '') then
+    Exit;
+  LogLines := TStringList.Create;
+  try
+    try
+      LogLines.Text := CompLogEdit.Text;
+      ForceDirectories(ExtractFilePath(AFile));
+      LogLines.SaveToFile(AFile);
+    except
+      on E: Exception do
+      begin
+        LogComp('Лог компиляции не сохранён: ' + AFile + ' (' + E.Message +
+                ')');
+        Exit;
+      end;
+    end;
+  finally
+    LogLines.Free;
+  end;
+  LogComp(LogSavedTag + AFile);
+end;
+
+// Щелчок по строке "Лог сохранён: путь" - путь в буфер обмена
+procedure TForm1.LogEditClick(Sender: TObject);
+var
+  LineIdx, TextStart: Integer;
+  LineText, FilePath: string;
+  LogBox: TRichEdit;
+begin
+  if not (Sender is TRichEdit) then
+    Exit;
+  LogBox := TRichEdit(Sender);
+  LineIdx := SendMessageA(LogBox.Handle, EM_LINEFROMCHAR, LogBox.SelStart, 0);
+  if (LineIdx < 0) or (LineIdx >= LogBox.Lines.Count) then
+    Exit;
+  LineText := LogBox.Lines[LineIdx];
+  // Время в начале строки - отрезаем, как в LogEditDblClick
+  TextStart := Pos('  ', LineText);
+  if (TextStart > 0) and (TextStart <= 10) then
+    LineText := Copy(LineText, TextStart + 2, Length(LineText));
+  if Copy(LineText, 1, Length(LogSavedTag)) <> LogSavedTag then
+    Exit;
+  FilePath := Trim(Copy(LineText, Length(LogSavedTag) + 1, MaxInt));
+  if FilePath = '' then
+    Exit;
+  Clipboard.AsText := FilePath;
+  LogComp('Путь скопирован в буфер обмена: ' + FilePath);
+end;
+
 procedure TForm1.LogEditDblClick(Sender: TObject);
 var
   LineIdx, Start: Integer;
@@ -43510,6 +46311,8 @@ var
   B: TBlockState;
   L: TLineScan;
   PrevCode: string;
+  OrigText, Expanded: string;
+  ExpandCount: Integer;
 
   // Закончен ли оператор строкой S
   function EndsStatement(const S: string): Boolean;
@@ -43557,6 +46360,30 @@ begin
                 Exit;
   end;
 
+  CaretLine := SendMessageA(RichEdit1.Handle, EM_LINEFROMCHAR,
+                            RichEdit1.SelStart, 0);
+
+  // RapidQ: однострочные "CREATE ... : ... : END CREATE" - сначала по
+  // строке на оператор, отступы им расставит форматирование ниже
+  OrigText := '';
+  ExpandCount := 0;
+  if (FCurrentFileName <> '') and IncludesApply then
+  begin
+    Expanded := RapidQExpandCreateLines(GetEditorTextCR, ExpandCount,
+                                        CaretLine);
+    if ExpandCount > 0 then
+    begin
+      OrigText := GetEditorText;
+      FLockHighlight := True;
+      try
+        SetEditorText(StringReplace(Expanded, #13, #13#10, [rfReplaceAll]));
+      finally
+        FLockHighlight := False;
+      end;
+      FMapStale := True;
+    end;
+  end;
+
   // Карта комментариев и литералов должна быть по текущему тексту: по ней
   // отсекаются слова внутри строк и комментариев
   if FMapStale then
@@ -43571,9 +46398,6 @@ begin
   Len := Length(Src);
   if Len = 0 then
     Exit;
-
-  CaretLine := SendMessageA(RichEdit1.Handle, EM_LINEFROMCHAR,
-                            RichEdit1.SelStart, 0);
 
   SL := TStringList.Create;
   try
@@ -43791,15 +46615,19 @@ begin
       Inc(I);
     end;
 
-    if Changed = 0 then
+    if (Changed = 0) and (ExpandCount = 0) then
     begin
       StatusBar1.SimpleText := 'Format text: отступы уже расставлены';
       StatusBar1.SimplePanel := True;
       Exit;
     end;
 
-    // Текст до форматирования - в ту же копию, что и у массовой замены
-    FReplaceBackup := GetEditorText;
+    // Текст до форматирования - в ту же копию, что и у массовой замены;
+    // были развёрнуты блоки CREATE - текст до развёртки
+    if ExpandCount > 0 then
+      FReplaceBackup := OrigText
+    else
+      FReplaceBackup := GetEditorText;
     FReplaceBackupWin := FWindowsIndex;
 
     Res := SL.Text;
@@ -43838,9 +46666,15 @@ begin
     if (Form2 <> nil) and (Form2.Grid <> nil) then
       Form2.HideIndentHint;
 
-    StatusBar1.SimpleText :=
-      Format('Format text: строк изменено %d. Откат - Edit, Отменить массовую замену.',
-             [Changed]);
+    if ExpandCount > 0 then
+      StatusBar1.SimpleText :=
+        Format('Format text: развёрнуто блоков CREATE в одну строку %d, ' +
+               'строк с новым отступом %d. Откат - Edit, Отменить массовую замену.',
+               [ExpandCount, Changed])
+    else
+      StatusBar1.SimpleText :=
+        Format('Format text: строк изменено %d. Откат - Edit, Отменить массовую замену.',
+               [Changed]);
     StatusBar1.SimplePanel := True;
   finally
     SL.Free;

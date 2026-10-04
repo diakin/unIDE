@@ -1,0 +1,5531 @@
+'  Описание компонентов RapidQ для unIDE - общий файл.
+'  Собран RqDataBuild (rapidq_ref\RqDataBuild.dpr) из:
+'    Component.data   - основная редакция, её записи как есть;
+'    Component1.data  - классы, которых в основной нет (меню,
+'                       QGLASSFRAME), и недостающие свойства и события;
+'                       где у общей записи другое значение - оно
+'                       комментарием под записью;
+'    inc\rapidq.inc   - значения вариантов: bsSizeable=2, и все его
+'                       целые константы - раздел * Constants в конце;
+'    inc\...          - классы TYPE ... EXTENDS: заголовок
+'                       "# N ИМЯ EXTENDS БАЗОВЫЙ", строка '@source
+'                       файл строка, раздел * Defaults - значения из
+'                       CONSTRUCTOR.
+'  Формат записей - в RqComponents.pas. Строки с ' - комментарии.
+# 0 QFORM * Properties * >> NB This is the RapidQ component support file <<
+Left|INTEGER|RW|0
+Top|INTEGER|RW|0
+Width|INTEGER|RW|320
+Height|INTEGER|RW|240
+AutoScroll|INTEGER|RW|True|False=0|True=1
+BorderStyle|INTEGER|RW|bsSizeable|bsNone=0|bsSingle=1|bsSizeable=2|bsDialog=3|bsToolWindow=4|bsSizeToolWin=5
+Caption|STRING|RW|
+ClientHeight|INTEGER|RW|
+ClientWidth|INTEGER|RW|
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
+Font|QFONT|R|<default>
+' Component1.data: Font|QFONT|RW|<default>|<default>|<custom>
+FormStyle|INTEGER|R|fsNormal
+Handle|LONG|R|
+Hint|STRING|RW|
+IcoHandle|RESOURCE|W|
+Icon|STRING|W|
+KeyPreview|INTEGER|RW|False|False=0|True=1
+ModalResult|INTEGER|W|mrNone|mrNone=0|mrOK=1|mrCancel=2|mrAbort=3|mrRetry=4|mrIgnore=5|mrYes=6|mrNo=7|mrAll=8
+Parent|QFORM|R|
+PopupMenu|QPOPUPMENU|W|
+ShowHint|INTEGER|RW|False|False=0|True=1
+Visible|INTEGER|RW|False|False=0|True=1
+WindowState|INTEGER|RW|wsNormal|wsNormal=0|wsMinimized=1|wsMaximized=2
+* Methods
+* Events
+OnClick||
+OnClose||(BYREF Action AS INTEGER)
+' Component1.data: OnClose||(Action AS INTEGER)
+OnHint||(Hint AS STRING)
+OnKeyDown||(Key AS WORD, Shift AS INTEGER)
+OnKeyPress||(Key AS BYTE)
+OnKeyUp||(Key AS WORD, Shift AS INTEGER)
+OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnPaint||
+OnResize||
+OnShow||
+WndProc||(hWnd AS INTEGER, uMsg AS INTEGER, wParam AS INTEGER, lParam AS INTEGER)
+# 1 QEDIT * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|100
+' Component1.data: Width|INTEGER|RW|121
+Height|INTEGER|RW|25
+' Component1.data: Height|INTEGER|RW|21
+Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+AutoSize|INTEGER|RW|True|False=0|True=1
+BorderStyle|INTEGER|RW|bsSingle|bsNone=0|bsSingle=1
+CharCase|INTEGER|RW|ecNormal|ecNormal=0|ecUpperCase=1|ecLowerCase=2
+Color|INTEGER|RW|<default>|<default>|<choose>
+EditText|STRING|RW|
+Enabled|INTEGER|RW|True|False=0|True=1
+Font|QFONT|R|<default>
+Handle|LONG|R|
+Hint|STRING|RW|
+InputMask|STRING|RW|
+IsMasked|INTEGER|RW|False|False=0|True=1
+MaxLength|INTEGER|RW|0
+Modified|INTEGER|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PasswordChar|STRING|RW|
+PopupMenu|QPOPUPMENU|W|
+ReadOnly|INTEGER|RW|False|False=0|True=1
+SelLength|INTEGER|RW|
+SelStart|INTEGER|RW|
+SelText|STRING|RW|
+ShowHint|INTEGER|RW|False|False=0|True=1
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+Text|STRING|RW|
+Visible|INTEGER|RW|True|False=0|True=1
+* Methods
+* Events
+OnChange||
+OnKeyDown||(Key AS WORD, Shift AS INTEGER)
+OnKeyPress||(Key AS BYTE)
+OnKeyUp||(Key AS WORD, Shift AS INTEGER)
+WndProc||(hWnd AS INTEGER, uMsg AS INTEGER, wParam AS INTEGER, lParam AS INTEGER)
+# 2 QRICHEDIT * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|200
+' Component1.data: Width|INTEGER|RW|185
+Height|INTEGER|RW|100
+' Component1.data: Height|INTEGER|RW|89
+Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+Alignment|INTEGER|RW|taLeftJustify|taLeftJustify=0|taRightJustify=1|taCenter=2
+BorderStyle|INTEGER|RW|bsSingle|bsNone=0|bsSingle=1
+Color|INTEGER|RW|<default>|<default>|<choose>
+Enabled|INTEGER|RW|True|False=0|True=1
+Font|QFONT|R|<default>
+Handle|LONG|R|
+HideScrollBars|INTEGER|RW|True|False=0|True=1
+HideSelection|INTEGER|RW|True|False=0|True=1
+Hint|STRING|RW|
+Line|ARRAY of STRING|RW|
+LineCount|INTEGER|RW|
+Modified|INTEGER|R|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+Plaintext|INTEGER|RW|False|False=0|True=1
+Readonly|INTEGER|RW|False|False=0|True=1
+ScrollBars|INTEGER|RW|ssNone|ssNone=0|ssHorizontal=1|ssVertical=2|ssBoth=3
+SelAttributes|QFONT|W|<default>
+SelLength|INTEGER|RW|
+SelStart|INTEGER|RW|
+SelText|STRING|RW|
+ShowHint|INTEGER|RW|False|False=0|True=1
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+Text|STRING|RW|
+Visible|INTEGER|RW|True|False=0|True=1
+WantTabs|INTEGER|RW|False|False=0|True=1
+WhereX|INTEGER|R|
+WhereY|INTEGER|R|
+Wordwrap|INTEGER|RW|True|False=0|True=1
+* Methods
+* Events
+OnChange||
+OnKeyDown||(Key AS WORD, Shift AS INTEGER)
+OnKeyPress||(Key AS BYTE)
+OnKeyUp||(Key AS WORD, Shift AS INTEGER)
+OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+# 3 QLABEL * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|75
+Height|INTEGER|RW|25
+Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+Alignment|INTEGER|RW|taLeftJustify|taLeftJustify=0|taRightJustify=1|taCenter=2
+Angle|INTEGER|RW|0
+Autosize|INTEGER|RW|False|False=0|True=1
+Caption|STRING|RW|
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
+Enabled|INTEGER|RW|True|False=0|True=1
+Font|QFONT|R|<default>
+Handle|LONG|R|
+Hint|STRING|RW|
+LabelStyle|INTEGER|RW|lsNone|lsNone=0|lsRaised=1|lsRecessed=2
+Layout|INTEGER|RW|tlTop|tlTop=0|tlCenter=1|tlBottom=2
+LowerColor|INTEGER|RW|<default>|<default>|<choose>
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+ShowHint|INTEGER|RW|False|False=0|True=1
+Tag|INTEGER|RW|
+Transparent|INTEGER|RW|False|False=0|True=1
+UpperColor|INTEGER|RW|<default>|<default>|<choose>
+Visible|INTEGER|RW|True|False=0|True=1
+Wordwrap|INTEGER|RW|False|False=0|True=1
+* Methods
+* Events
+OnClick||
+OnDblClick||
+OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+WndProc||(hWnd AS INTEGER, uMsg AS INTEGER, wParam AS INTEGER, lParam AS INTEGER)
+# 4 QBUTTON * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|75
+Height|INTEGER|RW|25
+Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+BMP|STRING|RW|
+BMPHandle|RESOURCE|W|
+Cancel|INTEGER|RW|False|False=0|True=1
+Caption|STRING|RW|
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
+Default|INTEGER|RW|False|False=0|True=1
+Enabled|INTEGER|RW|True|False=0|True=1
+Font|QFONT|R|<default>
+Handle|LONG|R|
+Hint|STRING|RW|
+Kind|INTEGER|RW|bkCustom|bkCustom=0|bkOK=1|bkCancel=2|bkHelp=3|bkYes=4|bkNo=5|bkClose=6|bkAbort=7|bkRetry=8|bkIgnore=9|bkAll=10
+Layout|INTEGER|RW|blBMPLeft|blBMPLeft=0|blBMPRight=1|blBMPTop=2|blBMPBottom=3
+ModalResult|INTEGER|W|mrNone|mrNone=0|mrOK=1|mrCancel=2|mrAbort=3|mrRetry=4|mrIgnore=5|mrYes=6|mrNo=7|mrAll=8|mrNoToAll=9|mrYesToAll=10
+NumBMPs|INTEGER|RW|1
+' Component1.data: NumBMPs|INTEGER|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+ShowHint|INTEGER|RW|False|False=0|True=1
+Spacing|INTEGER|RW|4
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+Visible|INTEGER|RW|True|False=0|True=1
+* Methods
+* Events
+OnClick||
+OnKeyDown||(Key AS WORD, Shift AS INTEGER)
+OnKeyPress||(Key AS BYTE)
+OnKeyUp||(Key AS WORD, Shift AS INTEGER)
+OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+# 5 QCOOLBTN * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|25
+Height|INTEGER|RW|25
+Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+AllowAllUp|INTEGER|RW|False|False=0|True=1
+BackColor|INTEGER|RW|<default>|<default>|<choose>
+BMP|STRING|W|
+BMPHandle|RESOURCE|W|
+Caption|STRING|RW|
+Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
+Down|INTEGER|RW|False|False=0|True=1
+Enabled|INTEGER|RW|True|False=0|True=1
+Flat|INTEGER|RW|False|False=0|True=1
+Font|QFONT|R|<default>
+GroupIndex|INTEGER|RW|0
+Hint|STRING|RW|
+Layout|INTEGER|RW|blBMPLeft|blBMPLeft=0|blBMPRight=1|blBMPTop=2|blBMPBottom=3
+NumBMPs|INTEGER|RW|1
+' Component1.data: NumBMPs|INTEGER|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+ShowHint|INTEGER|RW|False|False=0|True=1
+Spacing|INTEGER|RW|4
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+Visible|INTEGER|RW|True|False=0|True=1
+* Methods
+* Events
+OnClick||
+OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+# 6 QOVALBTN * Properties * FUDGE Reduced defaults height & width, REAL defaults 100,50 too big!
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|75
+Height|INTEGER|RW|40
+Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+BMP|STRING|W|
+BMPHandle|RESOURCE|W|
+Caption|STRING|RW|
+Color|INTEGER|RW|<default>|<default>|<choose>
+ColorHighLight|INTEGER|RW|<default>|<default>|<choose>
+ColorShadow|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
+Down|INTEGER|RW|False|False=0|True=1
+Enabled|INTEGER|RW|True|False=0|True=1
+Flat|INTEGER|RW|False|False=0|True=1
+Font|QFONT|R|<default>
+GroupIndex|INTEGER|RW|0
+Hint|STRING|RW|
+Layout|INTEGER|RW|blBMPLeft|blBMPLeft=0|blBMPRight=1|blBMPTop=2|blBMPBottom=3
+NumBMPs|INTEGER|RW|1
+' Component1.data: NumBMPs|INTEGER|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+ShowHint|INTEGER|RW|False|False=0|True=1
+Spacing|INTEGER|RW|
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+Transparent|INTEGER|RW|False|False=0|True=1
+TransParentColor|INTEGER|RW|<default>|<default>|<choose>
+Visible|INTEGER|RW|True|False=0|True=1
+* Methods
+* Events
+OnClick||
+# 7 QCHECKBOX * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|100
+' Component1.data: Width|INTEGER|RW|97
+Height|INTEGER|RW|20
+' Component1.data: Height|INTEGER|RW|17
+Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+Caption|STRING|RW|
+Checked|INTEGER|RW|False|False=0|True=1
+Enabled|INTEGER|RW|True|False=0|True=1
+Font|QFONT|R|<default>
+Handle|LONG|R|
+Hint|STRING|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+ShowHint|INTEGER|RW|False|False=0|True=1
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+Visible|INTEGER|RW|True|False=0|True=1
+* Methods
+* Events
+OnClick||
+# 8 QRADIOBUTTON * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|100
+' Component1.data: Width|INTEGER|RW|113
+Height|INTEGER|RW|20
+' Component1.data: Height|INTEGER|RW|17
+Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+Caption|STRING|RW|
+Checked|INTEGER|RW|False|False=0|True=1
+Enabled|INTEGER|RW|True|False=0|True=1
+Font|QFONT|R|<default>
+Handle|LONG|R|
+Hint|STRING|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+ShowHint|INTEGER|RW|False|False=0|True=1
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+Visible|INTEGER|RW|True|False=0|True=1
+* Methods
+* Events
+OnClick||
+# 9 QPANEL * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|150
+' Component1.data: Width|INTEGER|RW|185
+Height|INTEGER|RW|100
+' Component1.data: Height|INTEGER|RW|41
+Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+Alignment|INTEGER|RW|taCenter|taLeftJustify=0|taRightJustify=1|taCenter=2
+BevelInner|INTEGER|RW|bvNone|bvNone=0|bvLowered=1|bvRaised=2
+BevelOuter|INTEGER|RW|bvRaised|bvNone=0|bvLowered=1|bvRaised=2
+BevelWidth|INTEGER|RW|1
+BorderStyle|INTEGER|RW|bpSingle|bpNone=0|bpSingle=1
+' Component1.data: BorderStyle|INTEGER|RW|bsNone|bsNone|bsSingle
+Caption|STRING|RW|
+ClientHeight|INTEGER|RW|
+ClientWidth|INTEGER|RW|
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
+Enabled|INTEGER|RW|True|False=0|True=1
+Font|QFONT|R|<default>
+Handle|LONG|R|
+Hint|STRING|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+ShowHint|INTEGER|RW|False|False=0|True=1
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+Visible|INTEGER|RW|True|False=0|True=1
+* Methods
+* Events
+OnClick||
+OnDblClick||
+OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+# 10 QTABCONTROL * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|150
+' Component1.data: Width|INTEGER|RW|289
+Height|INTEGER|RW|100
+' Component1.data: Height|INTEGER|RW|193
+Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+ButtonStyle|INTEGER|RW|False|False=0|True=1
+ClientHeight|INTEGER|RW|
+ClientWidth|INTEGER|RW|
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
+Enabled|INTEGER|RW|True|False=0|True=1
+FlatButtons|INTEGER|RW|False|False=0|True=1
+FlatSeperators|INTEGER|RW|False|False=0|True=1
+FocusButtons|INTEGER|RW|False|False=0|True=1
+Font|QFONT|R|<default>
+Hint|STRING|RW|
+HotTrack|INTEGER|RW|False|False=0|True=1
+MultiLine|INTEGER|RW|False|False=0|True=1
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+ScrollOpposite|INTEGER|RW|False|False=0|True=1
+ShowHint|INTEGER|RW|False|False=0|True=1
+Tab|ARRAY of STRING|RW|
+TabHeight|INTEGER|RW|18
+' Component1.data: TabHeight|INTEGER|RW|
+TabInactiveColor|INTEGER|RW|<default>|<default>|<choose>
+TabInactiveFont|QFONT|R|<default>
+TabIndex|INTEGER|RW|
+TabOrder|INTEGER|RW|
+TabPosition|INTEGER|RW|
+TabWidth|INTEGER|RW|42
+' Component1.data: TabWidth|INTEGER|RW|
+Tag|INTEGER|RW|
+VerticalTabs|INTEGER|RW|False|False=0|True=1
+Visible|INTEGER|RW|True|False=0|True=1
+* Methods
+AddTabs|*|W|T,A,B
+' Component1.data: AddTabs|STRING|W|TAB 1,TAB 2,TAB 3
+* Events
+OnChange||
+# 11 QCOMBOBOX * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|145
+Height|INTEGER|R|
+' Component1.data: Height|INTEGER|RW|25
+Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+Color|INTEGER|RW|<default>|<default>|<choose>
+CopyMode|INTEGER|RW|cmBlackness|cmBlackness=0|cmDstInvert=1|cmMergeCopy=2|cmMergePaint=3|cmNotSrcCopy=4|cmNotSrcErase=5|cmPatCopy=6|cmPatInvert=7|cmPatPaint=8|cmSrcAnd=9|cmSrcCopy=10|cmSrcErase=11|cmSrcInvert=12|cmSrcPaint=13|cmWhiteness=14
+Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
+DropDownCount|INTEGER|RW|8
+Enabled|INTEGER|RW|True|False=0|True=1
+Font|QFONT|R|<default>
+Handle|LONG|R|
+Hint|STRING|RW|
+Item|ARRAY of STRING|RW|
+ItemCount|INTEGER|R|
+ItemHeight|INTEGER|RW|
+ItemIndex|INTEGER|RW|-1
+MaxLength|INTEGER|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+ShowHint|INTEGER|RW|False|False=0|True=1
+Sorted|INTEGER|RW|False|False=0|True=1
+Style|INTEGER|RW|csDropDown|csDropDown=0|csSimple=1|csDropDownList=2|csOwnerDrawFixed=3|csOwnerDrawVariable=4
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+Text|STRING|RW|
+Visible|INTEGER|RW|True|False=0|True=1
+* Methods
+AddItems|STRING|W|
+* Events
+OnChange||
+OnDrawItem||(Index AS INTEGER, State AS INTEGER, R AS QRECT)
+OnMeasureItem||(Index AS INTEGER, Height AS INTEGER)
+# 12 QLISTBOX * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|120
+' Component1.data: Width|INTEGER|RW|121
+Height|INTEGER|RW|100
+' Component1.data: Height|INTEGER|RW|97
+Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+BorderStyle|INTEGER|RW|bsSingle|bsNone=0|bsSingle=1
+Color|INTEGER|RW|<default>|<default>|<choose>
+Columns|INTEGER|RW|0
+CopyMode|INTEGER|RW|cmBlackness|cmBlackness=0|cmDstInvert=1|cmMergeCopy=2|cmMergePaint=3|cmNotSrcCopy=4|cmNotSrcErase=5|cmPatCopy=6|cmPatInvert=7|cmPatPaint=8|cmSrcAnd=9|cmSrcCopy=10|cmSrcErase=11|cmSrcInvert=12|cmSrcPaint=13|cmWhiteness=14
+Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
+Enabled|INTEGER|RW|True|False=0|True=1
+ExtendedSelect|INTEGER|RW|False|False=0|True=1
+' Component1.data: ExtendedSelect|INTEGER|RW|True|False|True
+Font|QFONT|R|<default>
+Hint|STRING|RW|
+Item|ARRAY of STRING|RW|
+ItemCount|INTEGER|R|
+ItemHeight|INTEGER|RW|
+ItemIndex|INTEGER|RW|
+MultiSelect|INTEGER|RW|False|False=0|True=1
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+SelCount|INTEGER|R|
+Selected|ARRAY of INTEGER|RW|
+ShowHint|INTEGER|RW|False|False=0|True=1
+Sorted|INTEGER|RW|False|False=0|True=1
+Style|INTEGER|RW|lbStandard|lbStandard=0|lbOwnerDrawFixed=1|lbOwnerDrawVariable=2
+TabOrder|INTEGER|RW|
+TabWidth|INTEGER|RW|0
+Tag|INTEGER|RW|
+Text|STRING|RW|
+TopIndex|INTEGER|RW|
+Visible|INTEGER|RW|True|False=0|True=1
+* Methods
+AddItems|STRING|W|
+* Events
+OnClick||
+OnDblClick||
+OnDrawItem||(Index AS INTEGER, State AS INTEGER, R AS QRECT)
+OnEnter||
+OnMeasureItem||(Index AS INTEGER, Height AS INTEGER)
+WndProc||(hWnd AS INTEGER, uMsg AS INTEGER, wParam AS INTEGER, lParam AS INTEGER)
+# 13 QGROUPBOX * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|150
+' Component1.data: Width|INTEGER|RW|185
+Height|INTEGER|RW|100
+' Component1.data: Height|INTEGER|RW|105
+Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+Caption|STRING|RW|
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
+Enabled|INTEGER|RW|True|False=0|True=1
+Font|QFONT|R|<default>
+Handle|LONG|R|
+Hint|STRING|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+ShowHint|INTEGER|RW|False|False=0|True=1
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+Visible|INTEGER|RW|True|False=0|True=1
+* Methods
+* Events
+OnClick||
+OnDblClick||
+OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+# 14 QSCROLLBOX * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|150
+' Component1.data: Width|INTEGER|RW|185
+Height|INTEGER|RW|100
+' Component1.data: Height|INTEGER|RW|41
+Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+AutoScroll|INTEGER|RW|True|False=0|True=1
+BorderStyle|INTEGER|RW|bsSingle|bsNone=0|bsSingle=1
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
+Enabled|INTEGER|RW|True|False=0|True=1
+Font|QFONT|R|<default>
+Handle|LONG|R|
+Hint|STRING|RW|
+HorzIncrement|INTEGER|RW|8
+HorzMargin|INTEGER|RW|0
+HorzPosition|INTEGER|RW|0
+HorzRange|INTEGER|RW|0
+HorzTracking|INTEGER|RW|False|False=0|True=1
+HorzVisible|INTEGER|RW|True|False=0|True=1
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+ShowHint|INTEGER|RW|False|False=0|True=1
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+VertIncrement|INTEGER|RW|8
+VertMargin|INTEGER|RW|0
+VertPosition|INTEGER|RW|0
+VertRange|INTEGER|RW|0
+VertTracking|INTEGER|RW|False|False=0|True=1
+VertVisible|INTEGER|RW|True|False=0|True=1
+Visible|INTEGER|RW|True|False=0|True=1
+* Methods
+* Events
+OnClick||
+OnDblClick||
+OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnResize||
+# 15 QSCROLLBAR * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|100
+' Component1.data: Width|INTEGER|RW|121
+Height|INTEGER|RW|20
+' Component1.data: Height|INTEGER|RW|17
+Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
+Enabled|INTEGER|RW|True|False=0|True=1
+Handle|LONG|R|
+Hint|STRING|RW|
+Kind|INTEGER|RW|sbHorizontal|sbHorizontal=0|sbVertical=1
+LargeChange|INTEGER|RW|10
+' Component1.data: LargeChange|INTEGER|RW|1
+Max|INTEGER|RW|100
+Min|INTEGER|RW|0
+PageSize|INTEGER|RW|10
+' Component1.data: PageSize|INTEGER|RW|1
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+Position|INTEGER|RW|0
+ShowHint|INTEGER|RW|False|False=0|True=1
+SmallChange|INTEGER|RW|1
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+Visible|INTEGER|RW|True|False=0|True=1
+* Methods
+* Events
+OnChange||
+OnKeyDown||(Key AS WORD, Shift AS INTEGER)
+OnKeyPress||(Key AS BYTE)
+OnKeyUp||(Key AS WORD, Shift AS INTEGER)
+OnScroll||(ScrollCode AS BYTE, ScrollPos AS LONG)
+# 16 QSTRINGGRID * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|150
+Height|INTEGER|RW|100
+Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+BorderStyle|INTEGER|RW|bsSingle|bsNone=0|bsSingle=1
+Cell|2D ARRAY of STRING|RW|
+Col|INTEGER|RW|
+ColCount|INTEGER|RW|5
+Color|INTEGER|RW|<default>|<default>|<choose>
+ColumnList|ARRAY of STRING|RW|
+ColumnStyle|ARRAY of INTEGER|RW|gcsNone|gcsList=0|gcsEllipsis=1|gcsNone=2
+ColWidths|ARRAY of INTEGER|RW|
+Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
+DefaultColWidth|INTEGER|RW|64
+DefaultRowHeight|INTEGER|RW|24
+EditorMode|INTEGER|RW|
+Enabled|INTEGER|RW|True|False=0|True=1
+FixedColor|INTEGER|RW|<default>|<default>|<choose>
+FixedCols|INTEGER|RW|1
+FixedRows|INTEGER|RW|1
+Font|QFONT|R|<default>
+GridHeight|INTEGER|R|
+' Component1.data: GridHeight|INTEGER|RW|
+GridLineWidth|INTEGER|RW|1
+GridWidth|INTEGER|R|
+' Component1.data: GridWidth|INTEGER|RW|
+Handle|LONG|R|
+Hint|STRING|RW|
+LeftCol|INTEGER|RW|1
+' Component1.data: LeftCol|INTEGER|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+Row|INTEGER|RW|
+RowCount|INTEGER|RW|5
+' Component1.data: RowCount|INTEGER|RW|
+RowHeights|ARRAY of INTEGER|RW|
+ScrollBars|INTEGER|RW|ssBoth|ssNone=0|ssHorizontal=1|ssVertical=2|ssBoth=3
+Separator|STRING|RW|
+ShowHint|INTEGER|RW|False|False=0|True=1
+TabOrder|INTEGER|RW|
+TabStops|ARRAY of INTEGER|RW|
+Tag|INTEGER|RW|
+TopRow|INTEGER|RW|1
+' Component1.data: TopRow|INTEGER|RW|
+Visible|INTEGER|RW|True|False=0|True=1
+VisibleColCount|INTEGER|R|
+VisibleRowCount|INTEGER|R|
+* Methods
+* Events
+OnDrawCell||(sgCol AS INTEGER, sgRow AS INTEGER, State AS INTEGER, R AS QRECT)
+' Component1.data: OnDrawCell||(Col AS INTEGER, Row AS INTEGER, State AS INTEGER, R AS QRECT)
+OnEllipsisClick||(sgCol AS INTEGER, sgRow AS INTEGER)
+' Component1.data: OnEllipsisClick||(Col AS INTEGER, Row AS INTEGER)
+OnKeyDown||(Key AS WORD, Shift AS INTEGER)
+OnKeyPress||(Key AS BYTE)
+OnKeyUp||(Key AS WORD, Shift AS INTEGER)
+OnListDropDown||(sgCol AS INTEGER, sgRow AS INTEGER, BYREF S AS STRING)
+' Component1.data: OnListDropDown||(Col AS INTEGER, Row AS INTEGER, BYREF S AS STRING)
+OnSelectCell||(sgCol AS INTEGER, sgRow AS INTEGER, CanSelect AS INTEGER)
+' Component1.data: OnSelectCell||(Col AS INTEGER, Row AS INTEGER, CanSelect AS INTEGER)
+OnSetEditText||(sgCol AS INTEGER, sgRow AS INTEGER, Value AS STRING)
+' Component1.data: OnSetEditText||(Col AS INTEGER, Row AS INTEGER, Value AS STRING)
+# 17 QLISTVIEW * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|150
+' Component1.data: Width|INTEGER|RW|250
+Height|INTEGER|RW|100
+' Component1.data: Height|INTEGER|RW|150
+Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+BorderStyle|INTEGER|RW|bsSingle|bsNone=0|bsSingle=1
+CheckBoxes|INTEGER|RW|False|False=0|True=1
+Color|INTEGER|RW|<default>|<default>|<choose>
+Column|ARRAY of ColumnType|RW|
+ColumnClick|INTEGER|RW|True|False=0|True=1
+ColumnsCount|INTEGER|R|
+' Component1.data: ColumnsCount|INTEGER|RW|
+Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
+Enabled|INTEGER|RW|True|False=0|True=1
+Font|QFONT|R|<default>
+GridLines|INTEGER|RW|False|False=0|True=1
+Handle|LONG|R|
+HideSelection|INTEGER|RW|False|False=0|True=1
+Hint|STRING|RW|
+HotTrack|INTEGER|RW|False|False=0|True=1
+Item|ARRAY of ItemType|RW|
+ItemCount|INTEGER|RW|
+ItemIndex|INTEGER|RW|
+LargeImages|QIMAGELIST|W|
+MultiSelect|INTEGER|RW|False|False=0|True=1
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+ReadOnly|INTEGER|RW|False|False=0|True=1
+RowSelect|INTEGER|RW|False|False=0|True=1
+SelCount|INTEGER|RW|
+Selected|ARRAY of INTEGER|RW|
+ShowColumnHeaders|INTEGER|RW|True|False=0|True=1
+ShowHint|INTEGER|RW|False|False=0|True=1
+SmallImages|QIMAGELIST|W|
+SortType|INTEGER|RW|stNone|stNone=0|stText=2
+StateImages|QIMAGELIST|W|
+SubItem|2D ARRAY of STRING|RW|
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+ViewStyle|INTEGER|RW|vsIcon|vsIcon=0|vsSmallIcon=1|vsList=2|vsReport=3
+Visible|INTEGER|RW|True|False=0|True=1
+* Methods
+AddColumns|STRING|W|
+AddItems|STRING|W|
+* Events
+OnClick||
+OnChange||(Index AS INTEGER, Change AS BYTE)
+OnColumnClick||(Column AS INTEGER)
+OnDblClick||
+OnKeyPress||(Key AS BYTE)
+OnKeyPressed||(Key AS BYTE)
+# 18 QDIRTREE * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|150
+' Component1.data: Width|INTEGER|RW|121
+Height|INTEGER|RW|150
+' Component1.data: Height|INTEGER|RW|97
+Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+BorderStyle|INTEGER|RW|bsSingle|bsNone=0|bsSingle=1
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
+Directory|STRING|RW|
+' Component1.data: Directory|STRING|RW|False|False|True
+Enabled|INTEGER|RW|True|False=0|True=1
+FastLoad|INTEGER|RW|False|False=0|True=1
+Font|QFONT|R|<default>
+HideSelection|INTEGER|RW|False|False=0|True=1
+Hint|STRING|RW|
+InitialDir|STRING|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+ReadOnly|INTEGER|RW|False|False=0|True=1
+ReadOnStart|INTEGER|RW|False|False=0|True=1
+ShowHint|INTEGER|RW|False|False=0|True=1
+TabOrder|INTEGER|RW|
+Visible|INTEGER|RW|True|False=0|True=1
+* Methods
+* Events
+OnChange||
+# 19 QFILELISTBOX * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|150
+' Component1.data: Width|INTEGER|RW|145
+Height|INTEGER|RW|150
+' Component1.data: Height|INTEGER|RW|97
+Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
+Directory|STRING|RW|
+Drive|STRING|RW|
+Enabled|INTEGER|RW|True|False=0|True=1
+ExtendedSelect|INTEGER|RW|False|False=0|True=1
+' Component1.data: ExtendedSelect|INTEGER|RW|True|False|True
+Filename|STRING|RW|
+Font|QFONT|R|<default>
+Hint|STRING|RW|
+Item|ARRAY of STRING|RW|
+ItemCount|INTEGER|R|
+ItemHeight|INTEGER|RW|
+ItemIndex|INTEGER|RW|
+Mask|STRING|RW|*.*
+MultiSelect|INTEGER|RW|False|False=0|True=1
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+SelCount|INTEGER|R|
+Selected|ARRAY of INTEGER|RW|
+ShowHint|INTEGER|RW|False|False=0|True=1
+ShowIcons|INTEGER|RW|False|False=0|True=1
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+TopIndex|INTEGER|RW|
+Visible|INTEGER|RW|True|False=0|True=1
+* Methods
+* Events
+OnChange||
+OnClick||
+OnDblClick||
+# 20 QTREEVIEW * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|120
+' Component1.data: Width|INTEGER|RW|121
+Height|INTEGER|RW|100
+' Component1.data: Height|INTEGER|RW|97
+Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+BorderStyle|INTEGER|RW|bsSingle|bsNone=0|bsSingle=1
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
+Enabled|INTEGER|RW|True|False=0|True=1
+Font|QFONT|R|<default>
+Handle|LONG|R|
+' Component1.data: Handle|LONG|RW|
+HideSelection|INTEGER|RW|False|False=0|True=1
+Hint|STRING|RW|
+Images|QIMAGELIST|W|
+Indent|INTEGER|RW|19
+Item|ARRAY of TreeNodeType|RW|
+ItemCount|INTEGER|RW|
+ItemIndex|INTEGER|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+ReadOnly|INTEGER|RW|False|False=0|True=1
+ShowButtons|INTEGER|RW|True|False=0|True=1
+ShowHint|INTEGER|RW|False|False=0|True=1
+ShowLines|INTEGER|RW|True|False=0|True=1
+ShowRoot|INTEGER|RW|True|False=0|True=1
+SortType|INTEGER|RW|stText|stNone=0|stText=2
+StateImages|QIMAGELIST|W|
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+Visible|INTEGER|RW|True|False=0|True=1
+* Methods
+AddItems|STRING|W|
+* Events
+OnClick||
+OnChange||(Index AS INTEGER)
+OnChanging||(Index AS INTEGER, AllowChange AS INTEGER)
+OnCollapse||(Index AS INTEGER)
+OnCollapsing||(Index AS INTEGER, AllowCollapse AS INTEGER)
+OnDblClick||
+OnDeletion||(Index AS INTEGER)
+OnEdited||(Index AS INTEGER, BYREF S AS STRING)
+OnEditing||(Index AS INTEGER, AllowEdit AS INTEGER)
+OnExpand||(Index AS INTEGER)
+OnExpanding||(Index AS INTEGER, AllowExpansion AS INTEGER)
+OnGetImageIndex||(Index AS INTEGER)
+OnGetSelectedIndex||(Index AS INTEGER)
+OnKeyDown||(Key AS WORD, Shift AS INTEGER)
+OnKeyPress||(Key AS BYTE)
+OnKeyUp||(Key AS WORD, Shift AS INTEGER)
+OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+# 21 QOUTLINE * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|120
+' Component1.data: Width|INTEGER|RW|121
+Height|INTEGER|RW|100
+' Component1.data: Height|INTEGER|RW|97
+Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+BMPClosed|STRING|W|
+BMPLeaf|STRING|W|
+BMPMinus|STRING|W|
+BMPOpen|STRING|W|
+BMPPlus|STRING|W|
+BMPHandleClosed|RESOURCE|W|
+BMPHandleLeaf|RESOURCE|W|
+BMPHandleMinus|RESOURCE|W|
+BMPHandleOpen|RESOURCE|W|
+BMPHandlePlus|RESOURCE|W|
+BorderStyle|INTEGER|RW|bsSingle|bsNone=0|bsSingle=1
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
+Enabled|INTEGER|RW|True|False=0|True=1
+Font|QFONT|R|<default>
+Handle|LONG|R|
+Hint|STRING|RW|
+Item|ARRAY of STRING|RW|
+ItemHeight|INTEGER|RW|13
+ItemIndex|INTEGER|RW|
+ItemSeparator|STRING|RW|\
+LineCount|INTEGER|RW|
+OutLineStyle|INTEGER|RW|osTreePictureText|osText=0|osPlusMinusText=1|osPictureText=2|osPlusMinusPictureText=3|osTreeText=4|osTreePictureText=5
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+Row|INTEGER|RW|
+ScrollBars|INTEGER|RW|ssBoth|ssNone=0|ssHorizontal=1|ssVertical=2|ssBoth=3
+ShowHint|INTEGER|RW|False|False=0|True=1
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+Visible|INTEGER|RW|True|False=0|True=1
+* Methods
+AddLines|STRING|W|
+AddOptions|INTEGER|W|
+* Events
+OnClick||
+OnDblClick||
+# 22 QGAUGE * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|100
+Height|INTEGER|RW|25
+' Component1.data: Height|INTEGER|RW|100
+Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+BackColor|INTEGER|RW|<default>|<default>|<choose>
+BorderStyle|INTEGER|RW|bsSingle|bsNone=0|bsSingle=1
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
+Enabled|INTEGER|RW|True|False=0|True=1
+Font|QFONT|R|<default>
+ForeColor|INTEGER|RW|<default>|<default>|<choose>
+Hint|STRING|RW|
+Kind|INTEGER|RW|gkHorizontalBar|gkText=0|gkHorizontalBar=1|gkVerticalBar=2|gkPie=3|gkNeedle=4
+Max|INTEGER|RW|100
+Min|INTEGER|RW|0
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+Position|INTEGER|RW|0
+ShowHint|INTEGER|RW|False|False=0|True=1
+ShowText|INTEGER|RW|True|False=0|True=1
+Visible|INTEGER|RW|True|False=0|True=1
+* Methods
+* Events
+# 23 QTRACKBAR * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|150
+Height|INTEGER|RW|45
+Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
+Enabled|INTEGER|RW|True|False=0|True=1
+Frequency|INTEGER|RW|
+Handle|LONG|R|
+Hint|STRING|RW|
+LineSize|INTEGER|RW|1
+Max|INTEGER|RW|10
+Min|INTEGER|RW|0
+Orientation|INTEGER|RW|tbHorizontal|tbHorizontal=0|tbVertical=1
+PageSize|INTEGER|RW|2
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+Position|INTEGER|RW|0
+' Component1.data: Position|INTEGER|RW|
+SelEnd|INTEGER|RW|
+SelStart|INTEGER|RW|
+ShowHint|INTEGER|RW|False|False=0|True=1
+TabOrder|INTEGER|RW|
+TickMarks|INTEGER|RW|tmBottomRight|tmBottomRight=0|tmTopLeft=1|tmBoth=2
+TickStyle|INTEGER|RW|tsAuto|tsNone=0|tsAuto=1|tsManual=2
+Visible|INTEGER|RW|True|False=0|True=1
+* Methods
+* Events
+OnChange||
+# 24 QHEADER * Properties * Error in doco - Left, Top & Width are not RW properties
+Left|INTEGER|R|0
+' Component1.data: Left|INTEGER|R|
+Top|INTEGER|R|0
+' Component1.data: Top|INTEGER|R|
+Width|INTEGER|R|
+Height|INTEGER|RW|17
+Align|INTEGER|RW|alTop|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+ClientHeight|INTEGER|RW|
+ClientWidth|INTEGER|RW|
+CopyMode|INTEGER|RW|cmBlackness|cmBlackness=0|cmDstInvert=1|cmMergeCopy=2|cmMergePaint=3|cmNotSrcCopy=4|cmNotSrcErase=5|cmPatCopy=6|cmPatInvert=7|cmPatPaint=8|cmSrcAnd=9|cmSrcCopy=10|cmSrcErase=11|cmSrcInvert=12|cmSrcPaint=13|cmWhiteness=14
+Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
+Enabled|INTEGER|RW|True|False=0|True=1
+Font|QFONT|R|<default>
+Handle|LONG|R|
+' Component1.data: Handle|LONG|RW|
+Hint|STRING|RW|
+HotTrack|INTEGER|RW|False|False=0|True=1
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+Pixel|2D ARRAY of INTEGER|RW|
+PopupMenu|QPOPUPMENU|W|
+Sections|ARRAY of SectionsType|RW|
+SectionsCount|INTEGER|R|
+ShowHint|INTEGER|RW|False|False=0|True=1
+Tag|INTEGER|RW|
+Visible|INTEGER|RW|True|False=0|True=1
+* Methods
+AddSections|STRING|W|
+* Events
+OnDrawSection||(Index AS INTEGER, Pressed AS INTEGER, Rect AS QRECT)
+OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnResize||
+OnSectionClick||(Index AS INTEGER)
+OnSectionResize||(Index AS INTEGER)
+OnSectionTrack||(Index AS INTEGER, Width AS INTEGER, State AS INTEGER)
+# 25 QSTATUSBAR * Properties * Doco incorrect - Left, Top & Width are not RW properties
+Left|INTEGER|R|0
+' Component1.data: Left|INTEGER|R|
+Top|INTEGER|R|0
+' Component1.data: Top|INTEGER|R|
+Width|INTEGER|R|0
+' Component1.data: Width|INTEGER|R|
+Height|INTEGER|RW|19
+Align|INTEGER|RW|alBottom|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
+Enabled|INTEGER|RW|True|False=0|True=1
+Handle|LONG|R|
+Hint|STRING|RW|
+Panel|ARRAY of PanelType|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+ShowHint|INTEGER|RW|False|False=0|True=1
+SimplePanel|INTEGER|RW|False|False=0|True=1
+SimpleText|STRING|RW|
+SizeGrip|INTEGER|RW|True|False=0|True=1
+TabOrder|INTEGER|RW|
+Visible|INTEGER|RW|True|False=0|True=1
+* Methods
+AddPanels|STRING|W|
+* Events
+OnResize||
+# 26 QCANVAS * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|100
+' Component1.data: Width|INTEGER|RW|105
+Height|INTEGER|RW|100
+' Component1.data: Height|INTEGER|RW|105
+Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+ClientHeight|INTEGER|RW|
+ClientWidth|INTEGER|RW|
+Color|INTEGER|RW|<default>|<default>|<choose>
+CopyMode|INTEGER|RW|cmBlackness|cmBlackness=0|cmDstInvert=1|cmMergeCopy=2|cmMergePaint=3|cmNotSrcCopy=4|cmNotSrcErase=5|cmPatCopy=6|cmPatInvert=7|cmPatPaint=8|cmSrcAnd=9|cmSrcCopy=10|cmSrcErase=11|cmSrcInvert=12|cmSrcPaint=13|cmWhiteness=14
+Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
+Enabled|INTEGER|RW|True|False=0|True=1
+Font|QFONT|R|<default>
+Hint|STRING|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+Pixel|ARRAY of INTEGER|RW|
+PopupMenu|QPOPUPMENU|W|
+ShowHint|INTEGER|RW|False|False=0|True=1
+Tag|INTEGER|RW|
+Visible|INTEGER|RW|True|False=0|True=1
+Handle|LONG|R|
+* Methods
+* Events
+OnClick||
+OnDblClick||
+OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnPaint||
+# 27 QIMAGE * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|100
+' Component1.data: Width|INTEGER|RW|105
+Height|INTEGER|RW|100
+' Component1.data: Height|INTEGER|RW|105
+Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+Autosize|INTEGER|RW|False|False=0|True=1
+BMP|STRING|RW|
+BMPHandle|RESOURCE|W|
+Center|INTEGER|RW|False|False=0|True=1
+CopyMode|INTEGER|RW|cmBlackness|cmBlackness=0|cmDstInvert=1|cmMergeCopy=2|cmMergePaint=3|cmNotSrcCopy=4|cmNotSrcErase=5|cmPatCopy=6|cmPatInvert=7|cmPatPaint=8|cmSrcAnd=9|cmSrcCopy=10|cmSrcErase=11|cmSrcInvert=12|cmSrcPaint=13|cmWhiteness=14
+Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
+Enabled|INTEGER|RW|True|False=0|True=1
+Font|QFONT|R|<default>
+Handle|LONG|R|
+' Component1.data: Handle|LONG|RW|
+Hint|STRING|RW|
+ICOHandle|RESOURCE|W|
+Icon|STRING|W|
+IncrementalDisplay|INTEGER|RW|False|False=0|True=1
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+Pixel|ARRAY of INTEGER|RW|
+PopupMenu|QPOPUPMENU|W|
+ShowHint|INTEGER|RW|False|False=0|True=1
+Stretch|INTEGER|RW|False|False=0|True=1
+Tag|INTEGER|RW|
+Transparent|INTEGER|RW|False|False=0|True=1
+Visible|INTEGER|RW|True|False=0|True=1
+* Methods
+* Events
+OnClick||
+OnDblClick||
+OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+# 28 QOLECONTAINER * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|100
+' Component1.data: Width|INTEGER|RW|121
+Height|INTEGER|RW|100
+' Component1.data: Height|INTEGER|RW|121
+Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+AllowInPlace|INTEGER|RW|True|False=0|True=1
+AutoShow|INTEGER|RW|True|False=0|True=1
+BorderStyle|INTEGER|RW|bsSingle|bsNone=0|bsSingle=1
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
+Enabled|INTEGER|RW|True|False=0|True=1
+Handle|LONG|R|
+Hint|STRING|RW|
+Modified|INTEGER|RW|False|False=0|True=1
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+ShowHint|INTEGER|RW|False|False=0|True=1
+SizeMode|INTEGER|RW|smClip|smClip=0|smCenter=1|smScale=2|smStretch=3|smAutoSize=4
+State|INTEGER|RW|osEmpty|osEmpty=0|osLoaded=1|osRunning=2|osOpen=3|osInPlaceActive=4|osUIActive=5
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+Visible|INTEGER|RW|True|False=0|True=1
+* Methods
+* Events
+OnKeyDown||(Key AS WORD, Shift AS INTEGER)
+OnKeyPress||(Key AS BYTE)
+OnKeyUp||(Key AS WORD, Shift AS INTEGER)
+OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnObjectMove||(Rect AS QRECT)
+OnResize||
+# 29 QSPLITTER * Properties * NB Fudge - Left, Top & Height documented as RW properties
+Left|INTEGER|R|
+Top|INTEGER|R|
+Width|INTEGER|RW|3
+Height|INTEGER|R|3
+' Component1.data: Height|INTEGER|R|
+Align|INTEGER|RW|alLeft|alTop=1|alLeft=3
+Beveled|INTEGER|RW|True|False=0|True=1
+ClientHeight|INTEGER|R|
+' Component1.data: ClientHeight|INTEGER|RW|
+ClientWidth|INTEGER|R|
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crHSplit|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
+Enabled|INTEGER|RW|True|False=0|True=1
+Hint|STRING|RW|
+MinSize|INTEGER|RW|30
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+ShowHint|INTEGER|RW|False|False=0|True=1
+Tag|INTEGER|RW|
+Visible|INTEGER|RW|True|False=0|True=1
+* Methods
+* Events
+OnMoved||
+# 30 QBITMAP * Properties *
+BMP|STRING|RW|
+BMPHandle|RESOURCE|W|
+CopyMode|INTEGER|RW|cmBlackness|cmBlackness=0|cmDstInvert=1|cmMergeCopy=2|cmMergePaint=3|cmNotSrcCopy=4|cmNotSrcErase=5|cmPatCopy=6|cmPatInvert=7|cmPatPaint=8|cmSrcAnd=9|cmSrcCopy=10|cmSrcErase=11|cmSrcInvert=12|cmSrcPaint=13|cmWhiteness=14
+Empty|INTEGER|R|
+Font|QFONT|R|<default>
+Handle|LONG|R|
+' Component1.data: Handle|LONG|RW|
+Height|INTEGER|RW|100
+' Component1.data: Height|INTEGER|RW|
+Monochrome|INTEGER|RW|
+Pixel|2D ARRAY of INTEGER|RW|
+PixelFormat|INTEGER|RW|pfDevice|pfDevice=0|pf1bit=1|pf4bit=2|pf8bit=3|pf15bit=4|pf16bit=5|pf24bit=6|pf32bit=7
+Transparent|INTEGER|RW|False|False=0|True=1
+TransparentColor|INTEGER|RW|<default>|<default>|<choose>
+TransparentMode|INTEGER|RW|0
+Width|INTEGER|RW|100
+' Component1.data: Width|INTEGER|RW|
+Top|INTEGER|RW|
+* Methods
+* Events
+# 31 QIMAGELIST * Properties *
+BkColor|INTEGER|RW|<default>|<default>|<choose>
+BlendColor|INTEGER|RW|<default>|<default>|<choose>
+Count|INTEGER|R|
+DrawingStyle|INTEGER|RW|dsNormal|dsFocused=0|dsSelected=1|dsNormal=2|dsTransparent=3
+GetBMP|ARRAY of IMAGES/BMP|R|
+GetICO|ARRAY of IMAGES/ICO|R|
+Handle|LONG|R|
+Height|INTEGER|RW|16
+' Component1.data: Height|INTEGER|RW|
+ImageType|INTEGER|RW|itImage|itImage=0|itMask=1
+Masked|INTEGER|RW|True|False=0|True=1
+Width|INTEGER|RW|16
+' Component1.data: Width|INTEGER|RW|
+* Methods
+* Events
+# 32 QSTRINGLIST * Properties *
+Duplicates|INTEGER|RW|dupIgnore|dupIgnore=0|dupAccept=1|dupError=2
+Item|ARRAY of STRING|RW|
+ItemCount|INTEGER|R|
+Sorted|INTEGER|RW|False|False=0|True=1
+Text|STRING|RW|
+* Methods
+* Events
+# 33 QTIMER * Properties *
+Enabled|INTEGER|RW|True|False=0|True=1
+Interval|INTEGER|RW|
+Tag|INTEGER|RW|
+* Methods
+* Events
+OnTimer||
+# 34 QSOCKET * Properties * NB some property VALUES not included
+Family|INTEGER|RW|AF_INET|AF_UNSPEC=0|AF_UNIX=1|AF_INET=2|AF_IPX=6|AF_ISO=7|AF_ECMA=8|AF_CCITT=10|AF_DECNET=12|AF_APPLETALK=16|AF_NETBIOS=17|AF_BAN=21
+LParam|INTEGER|RW|0
+' Component1.data: LParam|INTEGER|RW|FD_CONNECT
+MySocket|INTEGER|R|
+Parent|QFORM|W|
+' Component1.data: Parent|QFORM|R|
+Protocol|INTEGER|RW|IPPROTO_IP|IPPROTO_IP=0|IPPROTO_ICMP=1|IPPROTO_IGMP=2|IPPROTO_TCP=6|IPPROTO_PUP=12|IPPROTO_UDP=17|IPPROTO_IDP=22|IPPROTO_RAW=255
+Tag|INTEGER|RW|
+Transferred|INTEGER|R|
+Type|INTEGER|RW|SOCK_STREAM|SOCK_STREAM=1|SOCK_DGRAM=2|SOCK_RAW=3|SOCK_RDM=4|SOCK_SEQPACKET=5
+WMessage|INTEGER|RW|0
+* Methods
+* Events
+# 35 QFILESTREAM * Properties *
+EOF|INTEGER|R|
+Handle|LONG|R|
+LineCount|INTEGER|R|
+Position|INTEGER|RW|
+Size|INTEGER|R|
+* Methods
+* Events
+# 36 QMEMORYSTREAM * Properties *
+LineCount|INTEGER|R|
+Pointer|INTEGER|R|
+Position|INTEGER|RW|
+Size|INTEGER|RW|
+* Methods
+* Events
+# 37 QFONT * Properties *
+Charset|INTEGER|RW|DEFAULT_CHARSET|ANSI_CHARSET=0|DEFAULT_CHARSET=1|SYMBOL_CHARSET=2|MAC_CHARSET=77|OEM_CHARSET=255
+Color|INTEGER|RW|<default>|<default>|<choose>
+FontCount|INTEGER|R|
+FontName|ARRAY of STRING|R|
+Handle|LONG|R|
+' Component1.data: Handle|LONG|RW|
+Name|STRING|RW|
+Pitch|INTEGER|RW|fpDefault|fpDefault=0|fpVariable=1|fpFixed=2
+Size|INTEGER|RW|
+* Methods
+* Events
+# 38 QMYSQL * Properties *
+Connected|INTEGER|R|
+DB|ARRAY of STRING|R|
+DBCount|INTEGER|R|
+ColCount|INTEGER|R|
+FieldCount|INTEGER|R|
+Field.Decimals|INTEGER|R|
+Field.Flags|INTEGER|R|
+Field.Length|INTEGER|R|
+Field.MaxLength|INTEGER|R|
+Field.Name|STRING|R|
+Field.Table|STRING|R|
+Field.Type|INTEGER|R|
+Length|ARRAY of INTEGER|R|
+Row|ARRAY of STRING|R|
+RowCount|INTEGER|R|
+Table|ARRAY of STRING|R|
+TableCount|INTEGER|R|
+* Methods
+* Events
+# 39 QOLEOBJECT * Properties * NB NO Properties
+* Methods
+* Events
+# 40 QREGISTRY * Properties *
+CurrentKey|INTEGER|R|
+CurrentPath|STRING|R|
+GetDataSize|INTEGER|R|
+GetDataType|INTEGER|R|
+HasSubKeys|INTEGER|R|
+KeyItemCount|INTEGER|R|
+RootKey|INTEGER|RW|HKEY_CURRENT_USER|HKEY_CLASSES_ROOT|HKEY_CURRENT_USER|HKEY_LOCAL_MACHINE|HKEY_USERS|HKEY_CURRENT_CONFIG
+ValueItemCount|INTEGER|R|
+* Methods
+* Events
+# 41 QOPENDIALOG * Properties *
+Caption|STRING|RW|
+FileName|STRING|RW|
+Filter|STRING|RW|
+FilterIndex|INTEGER|RW|1
+InitialDir|STRING|RW|
+* Methods
+* Events
+# 42 QSAVEDIALOG * Properties *
+Caption|STRING|RW|
+FileName|STRING|RW|
+Filter|STRING|RW|
+FilterIndex|INTEGER|RW|1
+InitialDir|STRING|RW|
+* Methods
+* Events
+# 43 QFONTDIALOG * Properties *
+Color|INTEGER|RW|<default>|<default>|<choose>
+FontCount|INTEGER|R|
+FontName|ARRAY of STRING|R|
+MaxFontSize|INTEGER|RW|
+MinFontSize|INTEGER|RW|
+Name|STRING|RW|
+Size|INTEGER|RW|
+* Methods
+* Events
+# 44 QCOLORDIALOG * Properties *
+'  класс программы с этим именем: inc\QColorDialog.inc, строка 37 (EXTENDS QOBJECT) - берётся, если программа подключает этот файл
+'  класс программы с этим именем: inc\rapidq2.inc, строка 6050 (EXTENDS QFORM) - берётся, если программа подключает этот файл
+'  класс программы с этим именем: inc\object\QColorDialog.inc, строка 41 (EXTENDS QOBJECT) - берётся, если программа подключает этот файл
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Caption|STRING|RW|
+Color|LONG|RW|<default>|<default>|<choose>
+' Component1.data: Color|LONG|R|
+Colors|Array of LONG|R|
+' Component1.data: Colors|Array of LONG|RW|
+Style|INTEGER|RW|cdNormal|cdNormal|cdFullOpen|cdNoFullOpen
+' Component1.data: Style|INTEGER|RW|
+WindowHandle|LONG|RW|
+* Methods
+* Events
+# 45 QDXTimer * Properties *
+ActiveOnly|INTEGER|RW|True|False=0|True=1
+Enabled|INTEGER|RW|False|False=0|True=1
+FrameRate|INTEGER|R|
+Interval|INTEGER|RW|
+* Methods
+* Events
+OnTimer||
+# 46 QDXSound * Properties *
+AutoUpdate|INTEGER|RW|True|False=0|True=1
+BufferLength|INTEGER|RW|1000
+FileName|STRING|RW|
+Frequency|INTEGER|RW|
+Looped|INTEGER|RW|False|False=0|True=1
+Pan|INTEGER|RW|0
+Parent|QFORM|W|
+Playing|INTEGER|R|
+Position|INTEGER|RW|
+Size|INTEGER|R|
+StickyFocus|INTEGER|RW|False|False=0|True=1
+Tag|INTEGER|RW|
+Volume|INTEGER|RW|
+* Methods
+* Events
+# 47 QDXScreen * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|
+Height|INTEGER|RW|
+Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+AllowStretch|INTEGER|RW|True|False=0|True=1
+AutoSize|INTEGER|RW|True|False=0|True=1
+BitCount|INTEGER|RW|8
+Color|INTEGER|RW||<choose>
+Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
+Enabled|INTEGER|RW|True|False=0|True=1
+Font|QFONT|R|<default>
+FullScreen|INTEGER|RW|False|False=0|True=1
+Hint|STRING|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|W|
+Pixel|2D ARRAY of INTEGER|RW|
+ShowHint|INTEGER|RW|False|False=0|True=1
+Use3D|INTEGER|RW|False|False=0|True=1
+UseHardware|INTEGER|RW|True|False=0|True=1
+Visible|INTEGER|RW|True|False=0|True=1
+* Methods
+* Events
+OnClick||
+OnDblClick||
+OnInitialize||
+OnInitializeSurface||
+OnKeyDown||(Key AS WORD, Shift AS INTEGER)
+OnKeyPress||(Key AS BYTE)
+OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER)
+OnMouseMove||(X AS INTEGER, Y AS INTEGER)
+OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER)
+# 48 QDXImageList * Properties *
+Parent|QDXSCREEN|W|
+* Methods
+* Events
+# 49 QD3DFace * Properties *
+VertexCount|INTEGER|R|
+* Methods
+* Events
+# 50 QD3DMeshBuilder * Properties *
+FaceCount|INTEGER|R|
+Parent|QFORM/QPANEL|RW|
+* Methods
+* Events
+# 51 QD3DFrame * Properties *
+FogColor|INTEGER|RW|
+FogEnabled|INTEGER|RW|
+FogMode|INTEGER|RW|
+Parent|QFORM/QPANEL|RW|
+* Methods
+* Events
+# 52 QD3DLight * Properties *
+Parent|QFORM/QPANEL/QD3DFrame|RW|
+* Methods
+* Events
+# 53 QD3DTexture * Properties *
+* Methods
+* Events
+# 54 QD3DVector * Properties *
+DVX|SINGLE|RW|
+DVY|SINGLE|RW|
+DVZ|SINGLE|RW|
+X|SINGLE|RW|
+Y|SINGLE|RW|
+Z|SINGLE|RW|
+* Methods
+* Events
+# 55 QD3DWrap * Properties *
+* Methods
+* Events
+# 56 QGLASSFRAME * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|105
+Height|INTEGER|RW|105
+Align|INTEGER|RW|alNone|alNone=0|alTop=1|alBottom=2|alLeft=3|alRight=4|alClient=5
+ClientHeight|INTEGER|RW|
+ClientWidth|INTEGER|RW|
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault=0|crNone=-1|crArrow=-2|crCross=-3|crIBeam=-4|crSize=-5|crSizeNESW=-6|crSizeNS=-7|crSizeNWSE=-8|crSizeWE=-9|crUpArrow=-10|crHourGlass=-11|crDrag=-12|crNoDrop=-13|crHSplit=-14|crVSplit=-15|crMultiDrag=-16|crSQLWait=-17|crNo=-18|crAppStart=-19|crHelp=-20|crHandPoint=-21
+Handle|LONG|RW|
+Hint|STRING|RW|
+Moveable|INTEGER|RW|True|False=0|True=1
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+ShowHint|INTEGER|RW|False|False=0|True=1
+Transparency|INTEGER|RW|60
+TransparentColor|INTEGER|RW|<default>|<default>|<choose>
+* Methods
+* Events
+# 57 QMAINMENU * Properties * NB not used in "normal" object selection
+Handle|LONG|R|
+Parent|QFORM|R|
+* Methods
+* Events
+# 58 QPOPUPMENU * Properties * NB not used in "normal" object selection
+Alignment|INTEGER|RW|paLeft|paLeft|paRight|paCenter
+AutoPopup|INTEGER|RW|True|False=0|True=1
+Handle|LONG|R|
+Tag|INTEGER|RW|
+WindowHandle|LONG|RW|
+* Methods
+* Events
+OnPopup||
+# 59 QMENUITEM * Properties * NB not used in "normal" object selection
+Caption|STRING|RW|
+Checked|INTEGER|RW|
+Command|INTEGER|R|
+Count|INTEGER|R|
+Enabled|INTEGER|RW|True|False=0|True=1
+Handle|INTEGER|R|
+Hint|STRING|RW|
+MenuIndex|INTEGER|RW|
+RadioItem|INTEGER|RW|False|False=0|True=1
+ShortCut|STRING|RW|
+Tag|INTEGER|RW|
+Visible|INTEGER|RW|True|False=0|True=1
+* Methods
+* Events
+OnClick||
+# 60 QRichEdit_api EXTENDS QObject * Properties *
+'@source inc\API_RichEdid.inc 56
+'  то же имя ещё в inc\apiRe.inc, строка 86 (EXTENDS QObject)
+Align|INTEGER|RW|
+Alignment|INTEGER|RW|
+BorderStyle|INTEGER|RW|
+Color|INTEGER|RW|
+Enabled|INTEGER|RW|
+Font|QFONT|RW|
+Handle|INTEGER|RW|
+Height|INTEGER|RW|
+HideScrollBars|INTEGER|RW|
+HideSelection|INTEGER|RW|
+Hint|STRING|RW|
+Left|INTEGER|RW|
+Line|ARRAY|RW|
+LineCount|INTEGER|RW|
+Modified|INTEGER|RW|
+PopupMenu|QPOPUPMENU|RW|
+Plaintext|INTEGER|RW|
+Readonly|INTEGER|RW|
+ScrollBars|INTEGER|RW|
+SelAttributes|QFONT|RW|
+SelLength|INTEGER|RW|
+SelStart|INTEGER|RW|
+SelText|STRING|RW|
+ShowHint|INTEGER|RW|
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+Text|STRING|RW|
+Top|INTEGER|RW|
+WantTabs|INTEGER|RW|
+Width|INTEGER|RW|
+WhereX|INTEGER|RW|
+WhereY|INTEGER|RW|
+Wordwrap|INTEGER|RW|
+Visible|INTEGER|RW|
+AUTOURLDETECT|INTEGER|RW|
+* Methods
+AddStrings|SUBI||
+* Events
+# 61 Comport EXTENDS QObject * Properties *
+'@source inc\ComPort.cmp 262
+'  то же имя ещё в inc\rapidq2.inc, строка 5177 (EXTENDS QOBJECT)
+Handle|LONG|RW|
+Port|STRING|RW|
+BaudRate|DWORD|RW|
+DataBits|BYTE|RW|
+Parity|BYTE|RW|
+StopBits|BYTE|RW|
+ReadBufSize|DWORD|RW|
+WriteBufSize|DWORD|RW|
+BytesNotRead|DWORD|RW|
+BytesNotWritten|DWORD|RW|
+Connected|BYTE|RW|
+* Methods
+Open|SUB||
+Close|SUB||
+WriteString|SUB||(strData AS STRING, intWait AS INTEGER)
+ReadString|FUNCTION||(dwRdSize AS DWORD, intWait AS INTEGER) AS STRING
+* Events
+OnComError||(OnComError_EventTemplate)
+OnOpen||(OnOpen_EventTemplate)
+OnClose||(OnClose_EventTemplate)
+OnWriteString||(OnWriteString_EventTemplate)
+OnReadString||(OnReadString_EventTemplate)
+* Defaults
+Port="COM1"
+BaudRate=9600
+DataBits=8
+Parity=NOPARITY
+StopBits=1
+ReadBufSize=1024
+WriteBufSize=1024
+BytesNotRead=0
+BytesNotWritten=0
+Connected=FALSE
+# 62 MyCom_Port EXTENDS QObject * Properties *
+'@source inc\COMPORTxp.CMP 262
+Handle|LONG|RW|
+Port|STRING|RW|
+BaudRate|DWORD|RW|
+DataBits|BYTE|RW|
+Parity|BYTE|RW|
+StopBits|BYTE|RW|
+ReadBufSize|DWORD|RW|
+WriteBufSize|DWORD|RW|
+BytesNotRead|DWORD|RW|
+BytesNotWritten|DWORD|RW|
+Connected|BYTE|RW|
+* Methods
+Open|SUB||
+Close|SUB||
+WriteString|SUB||(strData AS STRING, intWait AS INTEGER)
+ReadString|FUNCTION||(dwRdSize AS DWORD, intWait AS INTEGER) AS STRING
+* Events
+OnComError||(OnComError_EventTemplate)
+OnOpen||(OnOpen_EventTemplate)
+OnClose||(OnClose_EventTemplate)
+OnWriteString||(OnWriteString_EventTemplate)
+OnReadString||(OnReadString_EventTemplate)
+* Defaults
+Port="COM1"
+BaudRate=9600
+DataBits=8
+Parity=NOPARITY
+StopBits=1
+ReadBufSize=1024
+WriteBufSize=1024
+BytesNotRead=0
+BytesNotWritten=0
+Connected=FALSE
+# 63 QMAXEDIT EXTENDS QRICHEDIT * Properties *
+'@source inc\cREdit.inc 11
+'  то же имя ещё в inc\qmaxedit.inc, строка 7 (EXTENDS QRICHEDIT)
+'  то же имя ещё в inc\qREdit.inc, строка 11 (EXTENDS QRICHEDIT)
+'  то же имя ещё в inc\RichEdPopUp.inc, строка 26 (EXTENDS QRICHEDIT)
+'  то же имя ещё в inc\RichEdPopUp1.inc, строка 20 (EXTENDS QRICHEDIT)
+'  то же имя ещё в inc\RichEdPopUpold.inc, строка 39 (EXTENDS QRICHEDIT)
+'  то же имя ещё в inc\ultraRichEd.inc, строка 11 (EXTENDS QRICHEDIT)
+RichFont|QFONT|RW|
+Syntaxes|ARRAY of STRING|RW|
+MaxSyntax|INTEGER|RW|
+HiLightColor|INTEGER|RW|
+UsePopup|LONG|RW|
+* Methods
+Undo|SUB||
+Cut|SUB||
+Copy|SUB||
+Paste|SUB||
+Delete|SUB||
+SelectAl|SUB||
+HiLight|SUB||
+AddSyntaxes|SUBI||(...)
+* Events
+* Defaults
+mnuUndo.Caption="&Undo"
+mnuUndo.OnClick=QMAXEDIT.Undo
+mnuSep1.Caption="-"
+mnuCut.Caption="Cu&t"
+mnuCut.OnClick=QMAXEDIT.Cut
+mnuCopy.Caption="&Copy"
+mnuCopy.OnClick=QMAXEDIT.Copy
+mnuPaste.Caption="&Paste"
+mnuPaste.OnClick=QMAXEDIT.Paste
+mnuDelete.Caption="&Delete"
+mnuDelete.OnClick=QMAXEDIT.Delete
+mnuSep2.Caption="-"
+mnuSelectAll.Caption="Select &All"
+mnuSelectAll.OnClick=QMAXEDIT.SelectAl
+PopupMenu=.MaxMenu
+Set_Popup=1
+PlainText=True
+RichFont.Name="MS Sans Serif"
+MaxSyntax=0
+HiLightColor=&H0000bb
+Font=QMAXEDIT.RichFont
+# 64 QREdit EXTENDS QRichEdit * Properties *
+'@source inc\HiLight.inc 23
+RichFont|QFONT|RW|
+Syntaxes|ARRAY of STRING|RW|
+MaxSyntax|INTEGER|RW|
+HiLightColor|INTEGER|RW|
+* Methods
+HiLight|SUB||
+AddSyntaxes|SUBI||(...)
+* Events
+* Defaults
+PlainText=True
+RichFont.Name="Courier"
+MaxSyntax=0
+HiLightColor=&HAA0000
+Font=QREdit.RichFont
+# 65 qODBC EXTENDS QOBJECT * Properties *
+'@source inc\odbc.inc 46
+'  то же имя ещё в inc\qodbc.inc, строка 48 (EXTENDS Qobject)
+glEnv|LONG|RW|
+glDbc|LONG|RW|
+glStmt|LONG|RW|
+sSQL|STRING|RW|
+SQLRet|SHORT|RW|
+sConnect|STRING|RW|
+DriverCount|INTEGER|RW|
+Driver|ARRAY of STRING|RW|
+TableCount|INTEGER|RW|
+Table|ARRAY of STRING|RW|
+FieldCount|INTEGER|RW|
+Field.Name|ARRAY of STRING|RW|
+Field.TypeNum|ARRAY of INTEGER|RW|
+Field.TypeStr|ARRAY of STRING|RW|
+Field.Size|ARRAY of INTEGER|RW|
+Field.DecDigits|ARRAY of INTEGER|RW|
+Field.Nullav|ARRAY of INTEGER|RW|
+Field.Data|ARRAY of STRING|RW|
+* Methods
+ODBCInit|SUB||
+Connect|SUB||(sConn AS STRING)
+Query|SUB||(sSQL AS STRING)
+CloseQuery|SUB||
+GetRecord|FUNCTION||AS INTEGER
+CloseDB|SUB||
+CloseODBC|SUB||
+* Events
+# 66 QAbout EXTENDS QOBJECT * Properties *
+'@source inc\QAbout.inc 15
+'  то же имя ещё в inc\rapidq2.inc, строка 6214 (EXTENDS QOBJECT)
+'  то же имя ещё в inc\object\QAbout.inc, строка 15 (EXTENDS QOBJECT)
+image|QIMAGE|RW|
+Caption|STRING|RW|
+AppName|STRING|RW|
+AppVersion|STRING|RW|
+text|STRING|RW|
+Email|STRING|RW|
+Web|STRING|RW|
+AppFont|QFONT|RW|
+TextFont|QFONT|RW|
+EmailFont|QFONT|RW|
+WebFont|QFONT|RW|
+* Methods
+Show|SUB||
+* Events
+* Defaults
+image.transparent=true
+text=""
+Email=""
+Web=""
+# 67 QAnim EXTENDS QImage * Properties *
+'@source inc\QAnim.inc 17
+'  то же имя ещё в inc\object\QAnim.inc, строка 17 (EXTENDS QImage)
+Speed|LONG|RW|
+ImageList|QIMAGELIST|RW|
+Index|SHORT|RW|
+Width|SHORT|RW|
+Height|SHORT|RW|
+BackColor|LONG|RW|
+Masked|BOOLEAN|RW|
+Move|BOOLEAN|RW|
+* Methods
+* Events
+* Defaults
+Timer.Enabled=false
+Timer.Interval=200
+Visible=false
+Index=0
+Move=false
+ImageList.masked=false
+# 68 QAnimate EXTENDS QObject * Properties *
+'@source inc\QAnimate.inc 20
+Handle|INTEGER|RW|
+Parent|QFORM|RW|
+Parent2|QPANEL|RW|
+ParetWindow|INTEGER|RW|
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|
+Height|INTEGER|RW|
+Enabled|INTEGER|RW|
+Visible|INTEGER|RW|
+Position|SHORT|RW|
+BorderStyle|INTEGER|RW|
+AutoPlay|INTEGER|RW|
+Transparent|INTEGER|RW|
+Center|INTEGER|RW|
+StartFrame|INTEGER|RW|
+StopFrame|INTEGER|RW|
+CommonAvi|INTEGER|RW|
+File|STRING|RW|
+Repeat|INTEGER|RW|
+Color|INTEGER|RW|
+FrameCount|INTEGER|RW|
+FrameWidth|INTEGER|RW|
+FrameHeight|INTEGER|RW|
+* Methods
+Invalidate|SUB||
+Update|SUB||
+Repaint|SUB||
+GetAnimateInfo|SUB||
+Open|SUB||
+Play|SUB||
+Stop|SUB||
+CreateWnd|SUB||
+ReCreateWnd|SUB||
+ParentWndProc|FUNCTION||(hWnd&,Msg&,wParam&,lParam&) As Integer
+WndProc|FUNCTION||(hWnd&,Msg&,wParam&,lParam&) As Integer
+Register|SUB||
+* Events
+OnStart||(EventTemplate_Animate_Start)
+OnStop||(EventTemplate_Animate_Stop)
+OnPaint||(EventTemplate_Animate_Paint)
+* Defaults
+BorderStyle=1
+Width=221
+Height=55
+Visible=1
+Position=0
+Repeat=-1
+Transparent=1
+CommonAvi=aviNone
+# 69 QAVI EXTENDS Qobject * Properties *
+'@source inc\QAVI.inc 326
+NumFrames|LONG|RW|
+FirstFrame|LONG|RW|
+Error|STRING|RW|
+ShowError|INTEGER|RW|
+Width|LONG|RW|
+Height|LONG|RW|
+Left|LONG|RW|
+Right|LONG|RW|
+Top|LONG|RW|
+Bottom|LONG|RW|
+FPS|LONG|RW|
+FileType|STRING|RW|
+Quality|LONG|RW|
+bpp|LONG|RW|
+SampleSize|LONG|RW|
+FramesWritten|LONG|RW|
+BytesWritten|LONG|RW|
+ShowDialog|INTEGER|RW|
+UseCompression|INTEGER|RW|
+* Methods
+CloseAVIFile|FUNCTION||() AS LONG
+CreateAVIFile|FUNCTION||(szFile As STRING, TheWidth AS INTEGER, TheHeight AS INTEGER, Bpp AS INTEGER, fps AS INTEGER) AS LONG
+GetAVIFileInfo|FUNCTION||(szFile As STRING) AS LONG
+AVItoBMP|FUNCTION||(szFile AS STRING, TheBMP AS QBITMAP, FrameNum AS INTEGER) AS LONG
+BMPtoAVIFile|FUNCTION||(TheBmp As QBITMAP) AS LONG
+New|SUB||()
+* Events
+# 70 QBEVEL EXTENDS QPANEL * Properties *
+'@source inc\QBevel.inc 24
+Style|LONG|RW|
+Shape|LONG|RW|
+Canvas|QCANVAS|RW|
+* Methods
+* Events
+* Defaults
+Canvas.Parent=This
+Canvas.Width=2
+Canvas.Height=2
+# 71 QBitmapEx EXTENDS QBITMAP * Properties *
+'@source inc\QBitmapEx.inc 88
+'  то же имя ещё в inc\rapidq2.inc, строка 4366 (EXTENDS QBITMAP)
+'  то же имя ещё в inc\object\QBitmapEx.inc, строка 88 (EXTENDS QBITMAP)
+PenStyle|LONG|RW|
+PenSize|INTEGER|RW|
+* Methods
+DrawIco|SUB||(left as integer,top as integer,width as integer,height as integer,handle as long)
+CopyToClipboard|SUB||
+PasteFromClipboard|SUB||(x as short,y as short)
+GetWidthClipboard|FUNCTION||as integer
+GetHeightClipboard|FUNCTION||as integer
+CanPaste|FUNCTION||as boolean
+circle|SUB||(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long)
+circleFilled|SUB||(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long,fill as long)
+rectangle|SUB||(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long)
+RoundRect|SUB||(x1 as integer,y1 as integer,x2 as integer,y2 as integer,x3 as integer,y3 as integer,c as long)
+RoundRectFilled|SUB||(x1 as integer,y1 as integer,x2 as integer,y2 as integer,x3 as integer,y3 as integer,c as long,fill as long)
+rectangleFilled|SUB||(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long,fill as long)
+line|SUB||(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long)
+FillSurface|SUB||(x as integer,y as integer,c as long)
+InvertColor|SUB||(x as integer,y as integer,width as integer,height as integer)
+mirror|SUB||(x as integer,y as integer,width as integer,height as integer)
+flip|SUB||(x as integer,y as integer,width as integer,height as integer)
+LoadOtherImage|SUB||(FileName as string,Progress as boolean,Language as string)
+SaveAsJpg|SUB||(FileName as string,Quality as Integer)
+* Events
+* Defaults
+PenStyle=PS_SOLID_BMP
+PenSize=1
+# 72 QBROWSEDIALOG EXTENDS QOBJECT * Properties *
+'@source inc\QBrowseDialog.inc 55
+Caption|STRING|RW|
+Title|STRING|RW|
+InitialDir|STRING|RW|
+Directory|STRING|RW|
+X|STRING|RW|
+* Methods
+BrowseHook|FUNCTION||(hWnd AS LONG, uMsg AS LONG, lParam AS LONG, lpData AS LONG) AS LONG
+Execute|FUNCTION||AS LONG
+* Events
+# 73 QButtonXP EXTENDS QButton * Properties *
+'@source inc\QButtonXP.INC 13
+Xp|INTEGER|RW|
+* Methods
+SetFocus|SUB||
+* Events
+* Defaults
+Xp=3
+# 74 qcalendar EXTENDS Qpanel * Properties *
+'@source inc\qcalendar.inc 6
+M|INTEGER|RW|
+Y|INTEGER|RW|
+D|INTEGER|RW|
+w1%|INTEGER|RW|
+PopupMenu|QPOPUPMENU|RW|
+mesi|ARRAY of QMENUITEM|RW|
+Today|QCOOLBTN|RW|
+Grid|QSTRINGGRID|RW|
+Panel1|QPANEL|RW|
+BTNprev|QCOOLBTN|RW|
+btnnext|QCOOLBTN|RW|
+bntupy|QCOOLBTN|RW|
+bntdowny|QCOOLBTN|RW|
+Panel2|QPANEL|RW|
+* Methods
+LoadCal|SUB||(datum$ as string)
+mnuclick|SUB||(s as QmenuItem)
+INIT|SUB||(inidatum$)
+QDate$|FUNCTION||as string
+* Events
+* Defaults
+Caption="Calendar"
+Width=179
+Height=183
+BevelInner=1
+panel2.parent=qcalendar
+panel2.Left=0
+panel2.Top=146
+panel2.Caption="QCalendar by P.C.B."
+panel2.Width=173
+panel2.Height=25
+panel2.BevelInner=1
+panel2.Align=1
+panel2.TabOrder=2
+bntdowny.parent=qcalendar.panel1
+bntdowny.caption="6"
+bntdowny.font.name="Webdings"
+bntdowny.Left=25
+bntdowny.Top=1
+bntdowny.Width=15
+bntdowny.Height=21
+bntdowny.Flat=1
+bntdowny.font.color=-2147483639
+bntdowny.Align=3
+bntupy.parent=qcalendar.panel1
+bntupy.caption="5"
+bntupy.font.name="Webdings"
+bntupy.Left=100
+bntupy.Top=1
+bntupy.Width=15
+bntupy.Height=13
+bntupy.Flat=1
+bntupy.font.color=-2147483639
+bntupy.Align=4
+btnnext.parent=qcalendar.panel1
+btnnext.caption="и"
+btnnext.font.name="Wingdings"
+btnnext.Left=148
+btnnext.Top=1
+btnnext.Width=23
+btnnext.Height=21
+btnnext.Flat=1
+btnnext.font.color=-2147483639
+btnnext.Align=4
+BTNprev.parent=qcalendar.panel1
+BTNprev.caption="з"
+BTNprev.font.name="Wingdings"
+BTNprev.Left=2
+BTNprev.Top=1
+BTNprev.Width=23
+BTNprev.Height=21
+BTNprev.Flat=1
+btnprev.font.color=-2147483639
+BTNprev.Align=3
+Panel1.parent=qcalendar
+Panel1.Left=0
+Panel1.Top=0
+Panel1.Caption="Panel1"
+Panel1.Width=173
+Panel1.Height=29
+Panel1.bevelinner=1
+Panel1.Align=1
+Panel1.TabOrder=1
+Panel1.color=-2147483646
+Panel1.font.color=-2147483639
+grid.parent=qcalendar
+grid.borderstyle=0
+grid.Left=0
+grid.Top=25
+grid.Height=106
+grid.Width=173
+grid.Align=1
+grid.ScrollBars=0
+grid.GridLineWidth=0
+grid.ColCount=8
+grid.RowCount=8
+grid.Col=0
+grid.DefaultColWidth=25
+grid.DefaultRowHeight=15
+grid.FixedCols=0
+Today.parent=qcalendar
+Today.Caption="Today"
+Today.Left=0
+Today.Top=110
+Today.flat=1
+Today.Width=173
+Today.Align=1
+Today.height=18
+Today.font.addstyles=0
+# 75 QCanvasEx EXTENDS QCANVAS * Properties *
+'@source inc\QCanvasEx.inc 105
+'  то же имя ещё в inc\rapidq2.inc, строка 4884 (EXTENDS QCANVAS)
+'  то же имя ещё в inc\object\QCanvasEx.inc, строка 102 (EXTENDS QCANVAS)
+MixMode|LONG|RW|
+PenStyle|LONG|RW|
+PenSize|INTEGER|RW|
+* Methods
+DrawIco|SUB||(left as integer,top as integer,width as integer,height as integer,handle as long)
+CopyToClipboard|SUB||(rect as QRECT)
+PasteFromClipboard|SUB||(x as short,y as short)
+GetWidthClipboard|FUNCTION||as integer
+GetHeightClipboard|FUNCTION||as integer
+CanPaste|FUNCTION||as boolean
+circle|SUB||(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long)
+circleFilled|SUB||(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long,fill as long)
+rectangle|SUB||(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long)
+RoundRect|SUB||(x1 as integer,y1 as integer,x2 as integer,y2 as integer,x3 as integer,y3 as integer,c as long)
+RoundRectFilled|SUB||(x1 as integer,y1 as integer,x2 as integer,y2 as integer,x3 as integer,y3 as integer,c as long,fill as long)
+rectangleFilled|SUB||(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long,fill as long)
+line|SUB||(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long)
+FillSurface|SUB||(x as integer,y as integer,c as long)
+TextOut|SUB||(x as integer,y as integer,s as string,fc as long,bc as long)
+InvertColor|SUB||(x as integer,y as integer,width as integer,height as integer)
+mirror|SUB||(x as integer,y as integer,width as integer,height as integer)
+flip|SUB||(x as integer,y as integer,width as integer,height as integer)
+* Events
+* Defaults
+MixMode=R2_COPYPEN_CAN
+PenStyle=PS_SOLID_CAN
+PenSize=1
+# 76 Qcdaudio EXTENDS Qobject * Properties *
+'@source inc\Qcdaudio.inc 27
+'  то же имя ещё в inc\object\Qcdaudio.inc, строка 26 (EXTENDS Qobject)
+Timer|QTIMER|RW|
+Time|STRING|RW|
+TrackTime|STRING|RW|
+TrackNumber|INTEGER|RW|
+TimePosition|STRING|RW|
+Position|LONG|RW|
+State|INTEGER|RW|
+AudioOpen|BOOLEAN|RW|
+Present|BOOLEAN|RW|
+Error|STRING|RW|
+CurrentTrack|INTEGER|RW|
+* Methods
+Close|SUB||
+Open|FUNCTION||as boolean
+Play|SUB||
+Stop|SUB||
+Pause|SUB||
+Eject|SUB||
+* Events
+OnChange||(event_change)
+* Defaults
+State=CD_CLOSE
+Timer.interval=1000
+Timer.enabled=False
+# 77 QCGI EXTENDS QOBJECT * Properties *
+'@source inc\qcgi.inc 40
+MaxInput|INTEGER|RW|
+AutoConvert|BYTE|RW|
+* Methods
+Accept|FUNCTION||AS STRING
+AuthType|FUNCTION||AS STRING
+ContentLength|FUNCTION||AS INTEGER
+ContentType|FUNCTION||AS STRING
+Cookie|FUNCTION||AS STRING
+GatewayInterface|FUNCTION||AS STRING
+PathInfo|FUNCTION||AS STRING
+PathTranslated|FUNCTION||AS STRING
+Referer|FUNCTION||AS STRING
+RemoteAddr|FUNCTION||AS STRING
+RemoteHost|FUNCTION||AS STRING
+RemoteIdent|FUNCTION||AS STRING
+RemoteUser|FUNCTION||AS STRING
+RequestMethod|FUNCTION||AS STRING
+ScriptName|FUNCTION||AS STRING
+ServerSoftware|FUNCTION||AS STRING
+ServerName|FUNCTION||AS STRING
+ServerPort|FUNCTION||AS INTEGER
+ServerProtocol|FUNCTION||AS STRING
+QueryString|FUNCTION||AS STRING
+UserAgent|FUNCTION||AS STRING
+Parse|SUB||()
+Get|FUNCTION||(name AS STRING, BYREF value AS STRING) AS INTEGER
+* Events
+* Defaults
+_Accept=ENVIRON$("HTTP_ACCEPT")
+_AuthType=ENVIRON$("AUTH_TYPE")
+_ContentLength=VAL(ENVIRON$("CONTENT_LENGTH"))
+_ContentType=ENVIRON$("CONTENT_TYPE")
+_Cookie=ENVIRON$("HTTP_COOKIE")
+_GatewayInterface=ENVIRON$("GATEWAY_INTERFACE")
+_PathInfo=ENVIRON$("PATH_INFO")
+_PathTranslated=ENVIRON$("PATH_TRANSLATED")
+_Referer=ENVIRON$("HTTP_REFERER")
+_RemoteAddr=ENVIRON$("REMOTE_ADDR")
+_RemoteHost=ENVIRON$("REMOTE_HOST")
+_RemoteIdent=ENVIRON$("REMOTE_IDENT")
+_RemoteUser=ENVIRON$("REMOTE_USER")
+_RequestMethod=ENVIRON$("REQUEST_METHOD")
+_ScriptName=ENVIRON$("SCRIPT_NAME")
+_ServerSoftware=ENVIRON$("SERVER_SOFTWARE")
+_ServerName=ENVIRON$("SERVER_NAME")
+_ServerPort=VAL(ENVIRON$("SERVER_PORT"))
+_ServerProtocol=ENVIRON$("SERVER_PROTOCOL")
+_QueryString=ENVIRON$("QUERY_STRING")
+_UserAgent=ENVIRON$("HTTP_USER_AGENT")
+MaxInput=CGI_INPUT_DEFAULT
+AutoConvert=1
+total=0
+parsed=0
+# 78 QCHART EXTENDS QCANVAS * Properties *
+'@source inc\QChart.inc 252
+Data|ARRAY of DOUBLE|RW|
+XYData|ARRAY of DOUBLE|RW|
+Cols|INTEGER|RW|
+Rows|INTEGER|RW|
+LegendList|QSTRINGLIST|RW|
+LabelList|QSTRINGLIST|RW|
+XAxis|AXISTYPE|RW|
+YAxis|AXISTYPE|RW|
+Series|ARRAY of SERIESTYPE|RW|
+bgColor|LONG|RW|
+fgColor|LONG|RW|
+ChartType|BYTE|RW|
+ChartStyle|BYTE|RW|
+MainTitle|TITLETYPE|RW|
+MainFont|QFONT|RW|
+SubTitle|TITLETYPE|RW|
+SubFont|QFONT|RW|
+XTitle|TITLETYPE|RW|
+YTitle|TITLETYPE|RW|
+AxisLbl|TITLETYPE|RW|
+AxisFont|QFONT|RW|
+DoLegend|BYTE|RW|
+Legend|TITLETYPE|RW|
+LegendFont|QFONT|RW|
+ChartBorder|BYTE|RW|
+AxisBorder|BYTE|RW|
+Colors|ARRAY of LONG|RW|
+PlotAreaColor|LONG|RW|
+GridColor|LONG|RW|
+dlgSaveQC|QSAVEDIALOG|RW|
+MarkerSize|SINGLE|RW|
+BW|BYTE|RW|
+GreyScale|BYTE|RW|
+ChartExists|BYTE|RW|
+Viewport|INTEGER|RW|
+Missing|DOUBLE|RW|
+* Methods
+Initialize|SUB||
+PaintChart|SUB||
+ClearAll|SUB||
+DrawChart|SUB||(Overlay AS INTEGER)
+RedrawChart|SUB||
+PrintChart|SUB||(Prn AS INTEGER, Orient AS INTEGER, Margin AS INTEGER,_
+CopyToClipboard|SUB||(Wid AS INTEGER, Hgt AS INTEGER)
+SaveChart|SUB||(SaveAs AS BYTE)
+SaveToFile|SUB||(FileName AS String)
+* Events
+* Defaults
+Parent=QFORM
+Missing=-9.999E-45
+Viewport=100
+bgColor=Colors(30)
+fgColor=Colors(23)
+PlotAreaColor=Colors(4)
+GridColor=Colors(25)
+# 79 Qciccio EXTENDS QOBJECT * Properties *
+'@source inc\qciccio.inc 1
+cacchio|CICCINO|RW|
+* Methods
+* Events
+# 80 QCOLORBUTTON EXTENDS QPANEL * Properties *
+'@source inc\QColorButton.inc 5
+SndFreq|INTEGER|RW|
+SndDur|SINGLE|RW|
+* Methods
+* Events
+* Defaults
+Height=26
+Width=26
+BevelInner=2
+Color=&HEEEEEE
+Cursor=-21
+# 81 QCoolBarXP EXTENDS QPanel * Properties *
+'@source inc\QCoolBarXP90.inc 924
+'  то же имя ещё в inc\QCoolBarXPv1d.inc, строка 705 (EXTENDS QPanel)
+mnuPopup|ARRAY of QPOPUPMENU|RW|
+imgLA|QIMAGELIST|RW|
+imgLD|QIMAGELIST|RW|
+imgLS|QIMAGELIST|RW|
+imgLH|QIMAGELIST|RW|
+ShowGrip|INTEGER|RW|
+DisableXPThemeBG|INTEGER|RW|
+HideCaption|INTEGER|RW|
+ItemsWidth|INTEGER|RW|
+Orientation|INTEGER|RW|
+* Methods
+AddItems|SUBI||(...)
+AddEditCtrl|SUB||(Sender As QEdit)
+AddComboBoxCtrl|SUB||(Sender As QComboBox)
+DefineBtnsGroup|SUBI||(...)
+InitBtnsDownUp|SUBI||(...)
+EnableBtns|SUBI||(...)
+ShowBtnsCaption|SUBI||(...)
+RePaint|SUB||
+* Events
+OnMouseLeave||(CBarOnMouseLeave_EventTemplate)
+OnMouseEnter||(CBarOnMouseEnter_EventTemplate)
+OnChange||(CBarOnChange_EventTemplate)
+* Defaults
+Align=False
+Alignment=False
+Caption="CoolBar"
+Width=120
+Height=24
+IMGStretchedBackGround.Align=4
+IMGStretchedBackGround.Enabled=False
+IMGStretchedBackGround.Stretch=True
+IMGStretchedBackGround.AutoSize=True
+IMGStretchedBackGround.Parent=This
+IMGStretchedBackGround2.Align=5
+IMGStretchedBackGround2.Enabled=False
+IMGStretchedBackGround2.Stretch=True
+IMGStretchedBackGround2.AutoSize=True
+IMGStretchedBackGround2.Parent=This.FlickeringFree
+FlickeringFree.Align=3
+FlickeringFree.BevelWidth=False
+FlickeringFree.Visible=False
+FlickeringFree.Parent=This
+IMGBackGround.Align=5
+IMGBackGround.Enabled=False
+IMGBackGround.AutoSize=True
+IMGBackGround.Transparent=True
+IMGBackGround.Parent=This.FlickeringFree
+BtnsHotTrack.Parent=This.FlickeringFree
+BtnsHotTrack.Align=5
+BtnsHotTrack.Transparent=True
+PnlExceed.Left=This.Width -12
+PnlExceed.Width=12
+PnlExceed.Align=4
+PnlExceed.BevelWidth=False
+PnlExceed.Visible=False
+PnlExceed.Parent=This
+CBtnExceed.Flat=True
+CBtnExceed.Width=12
+CBtnExceed.GroupIndex=True
+CBtnExceed.AllowAllUp=True
+CBtnExceed.Spacing=False
+CBtnExceed.Layout=False
+CBtnExceed.NumBMPs=4
+CBtnExceed.Parent=This.PnlExceed
+CBtnExceedHot.Enabled=False
+CBtnExceedHot.Width=12
+CBtnExceedHot.Visible=False
+CBtnExceedHot.Parent=This.PnlExceed
+CBtnExceedHotTrack.Parent=This.PnlExceed
+CBtnExceedHotTrack.Align=5
+CBtnExceedHotTrack.Transparent=True
+CanvasRight.Width=True
+CanvasRight.Height=True
+CanvasRight.Parent=This
+HideCaption=True
+Hint="CoolBar"
+ShowHint=True
+ItemsWidth=24
+imgLA.BkColor=This.Color
+Orientation=False
+DragTimer.Enabled=False
+# 82 QCursor EXTENDS QObject * Properties *
+'@source inc\QCursor.inc 22
+'  то же имя ещё в inc\object\QCursor.inc, строка 21 (EXTENDS QObject)
+Count|INTEGER|RW|
+Visible|BOOLEAN|RW|
+* Methods
+LoadFromResource|SUB||(Res as long)
+LoadFromFile|SUB||(FileName as string)
+Move|SUB||(x as long,y as long)
+* Events
+* Defaults
+Count=0
+Visible=true
+FileName=left$(command$(0),rinstr(command$(0),"\"))+"temp.cur"
+# 83 QDataBase EXTENDS QObject * Properties *
+'@source inc\QDataBase.inc 31
+'  то же имя ещё в inc\qdataBaseSQL.inc, строка 130 (EXTENDS QOBJECT)
+FileName|STRING|RW|
+RecordSize|LONG|RW|
+RecordCount|LONG|RW|
+FieldCount|LONG|RW|
+Error|INTEGER|RW|
+* Methods
+GetFieldName|FUNCTION||(index as long) as string
+GetFieldIndex|FUNCTION||(name as string) as long
+GetFieldSize|FUNCTION||(index as long) as long
+IsOpen|FUNCTION||() as boolean
+Create|FUNCTION||(FileName as string,RecordFormat as string) as boolean
+Open|FUNCTION||(FileName as string) as boolean
+Close|SUB||
+AddRecord|FUNCTION||(record as string) as boolean
+AddRecordUdt|FUNCTION||(record as long) as boolean
+SaveRecord|FUNCTION||(index as long,record as string) as boolean
+SaveRecordUdt|FUNCTION||(index as long,record as long) as boolean
+GetRecord|FUNCTION||(index as long,byref record as string) as boolean
+GetRecordUdt|FUNCTION||(index as long,record as long) as boolean
+DelRecord|FUNCTION||(index as long) as boolean
+SearchByRecord|FUNCTION||(name as string) as boolean
+SearchByField|FUNCTION||(name as string,fieldIndex as long) as boolean
+SearchByRequest|FUNCTION||(operator as string,value as string,bNum as boolean,fieldIndex as long) as boolean
+* Events
+OnSearch||(OnSearch_eventTemplate)
+# 84 qSQLTABLE EXTENDS QOBJECT * Properties *
+'@source inc\qdataBaseSQL.inc 476
+strConnect|STRING|RW|
+strSQL|STRING|RW|
+RecCount|INTEGER|RW|
+FieldCount|INTEGER|RW|
+FieldName|ARRAY of STRING|RW|
+strData|ARRAY of STRING|RW|
+PointerPosition|INTEGER|RW|
+* Methods
+DataBaseConnect|FUNCTION||(DatabasePath AS STRING, DriverNum AS INTEGER) AS STRING
+DataBaseExtends|FUNCTION||(DBSTMT AS LONG) AS STRING
+ExecSQL|FUNCTION||(xSQL AS STRING) AS STRING
+OpenSQL|FUNCTION||(sSQL AS STRING) AS STRING
+MoveFirst|FUNCTION||AS STRING
+MoveLast|FUNCTION||AS STRING
+MoveNext|FUNCTION||AS STRING
+MovePreview|FUNCTION||AS STRING
+CloseSQL|SUB||
+CloseDataBase|SUB||
+* Events
+# 85 QDebug EXTENDS QObject * Properties *
+'@source inc\QDebug.inc 28
+'  то же имя ещё в inc\rapidq.inc, строка 1060 (EXTENDS QObject)
+'  то же имя ещё в inc\rapidq2.inc, строка 6372 (EXTENDS QOBJECT)
+Enabled|SHORT|RW|
+* Methods
+Print|SUB||(StringToPrint AS STRING)
+* Events
+* Defaults
+Enabled=True
+# 86 QDesktop EXTENDS QObject * Properties *
+'@source inc\QDesktop.inc 18
+'  то же имя ещё в inc\object\QDesktop.inc, строка 18 (EXTENDS QObject)
+* Methods
+Copy|SUB||(handle as long,x as integer,y as integer,width as integer,height as integer)
+CopyWallPaper|SUB||(handle as long)
+GetPixel|FUNCTION||(x as integer,y as integer) as Long
+ChangeWallPaper|SUB||(FileName as string)
+* Events
+# 87 QDigDisplay EXTENDS QCanvas * Properties *
+'@source inc\QDigDisplay.inc 8
+Left|LONG|RW|
+Top|LONG|RW|
+Width|LONG|RW|
+Height|LONG|RW|
+Display|STRING|RW|
+* Methods
+DrawDisplay|SUB||
+* Events
+* Defaults
+DImage.Width=12
+DImage.Height=24
+DImage.BkColor=clDefault
+Display="0"
+# 88 QDir EXTENDS QObject * Properties *
+'@source inc\QDir.Inc 143
+fileName|STRING|RW|
+dosFileName|STRING|RW|
+path|STRING|RW|
+pathFileName|STRING|RW|
+size|DOUBLE|RW|
+WithDotsDirs|LONG|RW|
+dateTime|DOUBLE|RW|
+time|STRING|RW|
+timems|STRING|RW|
+date|STRING|RW|
+dateEU|STRING|RW|
+dateAlpha|STRING|RW|
+dateAlphaEU|STRING|RW|
+strDayOfWeek|STRING|RW|
+strMonthOfYear|STRING|RW|
+attributes|LONG|RW|
+attributesAsString|STRING|RW|
+days|ARRAY of STRING|RW|
+months|ARRAY of STRING|RW|
+creation|QDIR_SYSTEMTIME|RW|
+lastAccess|QDIR_SYSTEMTIME|RW|
+lastWrite|QDIR_SYSTEMTIME|RW|
+flagStop|LONG|RW|
+flagShowFormStopDir|LONG|RW|
+frmDirStop|QFORM|RW|
+lblDirStop|QLABEL|RW|
+* Methods
+Dir|SUB||(sPathFilter As String, sRejectedAttributes As String, sMustAttributes As string)
+Dirs|SUB||(sPathFilter As String, sRejectedAttributes As String, sMustAttributes As String)
+ChangeFileDateAndTime|FUNCTIONI||( ... ) As Long
+ChangeFileAttributes|FUNCTION||(sPathFileName As string, attributesAsString As String) As Long
+* Events
+OnFileFound||(OnFileFound_EventTemplate)
+* Defaults
+flagShowFormStopDir=1
+flagStop=0
+applicationPath=Command$(0) - Application.exeName
+OnFileFound=0
+busy=0
+WithDotsDirs=1
+rejectedAttributes=""
+mustAttributes=""
+frmDirStop.top=40
+frmDirStop.Left=40
+frmDirStop.Width=400
+frmDirStop.Height=200
+frmDirStop.Color=0
+frmDirStop.Visible=0
+frmDirStop.BorderStyle=0
+lblDirStop.Align=5
+lblDirStop.Autosize=0
+lblDirStop.Alignment=2
+lblDirStop.LabelStyle=1
+lblDirStop.Layout=2
+lblDirStop.Parent=QDir.frmDirStop
+lblDirStop.OnClick=QDir.OnClic_frmDirStop
+lblDirStop.Font.Color=&H60FF60
+lblDirStop.Font.Size=16
+lblDirStop.Font.Bold=True
+lblDirStop.Caption=Chr$(10) & "CLIC  ME  TO  ABORT" & Chr$(10) & CHr$(10) & "  DIRECTORY  SCANNING"
+# 89 QDirListView EXTENDS QListView * Properties *
+'@source inc\qdirlistview.inc 40
+'  то же имя ещё в inc\QDirListView1.inc, строка 40 (EXTENDS QListView)
+Directory|STRING|RW|
+Filename|STRING|RW|
+Mask|STRING|RW|
+ShowRoot|INTEGER|RW|
+LargeImageList|QIMAGELIST|RW|
+SmallImageList|QIMAGELIST|RW|
+ExtensionsList|QSTRINGLIST|RW|
+dlw_PopupMenu|QPOPUPMENU|RW|
+dlw_Enter|QMENUITEM|RW|
+dlw_BackSpace|QMENUITEM|RW|
+ColumnsInitialized|INTEGER|RW|
+FilenameSize|INTEGER|RW|
+FilenameType|INTEGER|RW|
+FilenameDate|INTEGER|RW|
+* Methods
+FilenameProp|SUB||
+SetItemImage|SUB||(Extension as string)
+AddFileProperties|SUB||(Extension as string)
+LoadDirectories|SUB||
+LoadFiles|SUB||
+Refresh|SUB||
+ChangeDirUp|SUB||
+ChangeDir|SUB||
+TryToChangeDirOrMakeEvent|SUB||
+* Events
+OnFileSelect||(FileSelect_EventTemplate)
+* Defaults
+Width=400
+Height=138
+Directory=left$(Command$(0), len(Command$(0)) - len(APPLICATION.ExeName) )
+Filename=""
+Mask="*.*"
+ShowRoot=FALSE
+ReadOnly=TRUE
+ColumnsInitialized=FALSE
+LargeImageList.Width=32
+LargeImageList.Height=32
+LargeImages=QDirListView.LargeImageList
+SmallImages=QDirListView.SmallImageList
+dlw_Enter.ShortCut="Enter"
+dlw_Enter.Visible=FALSE
+dlw_BackSpace.ShortCut="BkSp"
+dlw_BackSpace.Visible=FALSE
+PopUpMenu=QDirListView.dlw_PopUpMenu
+FilenameSize=1
+FilenameType=0
+FilenameDate=1
+# 90 QDFPANEL EXTENDS QPANEL * Properties *
+'@source inc\QDOCKFORM.inc 39
+'  то же имя ещё в inc\rapidq2.inc, строка 3343 (EXTENDS QPANEL)
+* Methods
+* Events
+# 91 QDOCKFORM EXTENDS QPANEL * Properties *
+'@source inc\QDOCKFORM.inc 57
+'  то же имя ещё в inc\rapidq2.inc, строка 3361 (EXTENDS QPANEL)
+TitleColor|LONG|RW|
+ST1_TitleBackground|LONG|RW|
+DragCursor|INTEGER|RW|
+AltAlign|INTEGER|RW|
+Sizeable|INTEGER|RW|
+Style|INTEGER|RW|
+UndockedHeight|INTEGER|RW|
+UndockedWidth|INTEGER|RW|
+Caption|STRING|RW|
+Docked|INTEGER|RW|
+UndockedForm|QFORM|RW|
+Panel|QDFPANEL|RW|
+Canvas|QCANVAS|RW|
+Client|QPANEL|RW|
+DockStyle|INTEGER|RW|
+UnDockStyle|INTEGER|RW|
+Locked|INTEGER|RW|
+CanClose|INTEGER|RW|
+Closed|INTEGER|RW|
+AltDock|INTEGER|RW|
+* Methods
+Dock|SUB||(Dock AS INTEGER)
+Close|SUB||
+* Events
+OnDock||(OnDock_eventTemplate)
+OnPaint||(OnPaint_eventTemplate)
+OnClose||(OnClose_eventTemplate)
+* Defaults
+UndockedHeight=400
+UndockedWidth=170
+Docked=1
+Canvas.Align=5
+Canvas.Parent=THIS.Panel
+BevelOuter=0
+Panel.BevelOuter=0
+Panel.Align=5
+Align=3
+AltPanel.Align=4
+AltPanel.Visible=0
+AltPanel.BevelOuter=0
+AltPanel.Parent=THIS
+UndockedForm.BorderStyle=0
+Client.Parent=THIS.Panel
+Client.Top=25
+Client.Left=5
+Client.Width=THIS.Panel.Width - 10
+Client.Height=THIS.Panel.Height - 30
+Client.BevelOuter=2
+Panel.Parent=THIS
+CloseButton.Parent=THIS.Panel
+CloseButton.Width=0
+CloseButton.Height=0
+TempImg.Transparent=1
+TempImg.Width=3
+TempImg.Height=11
+DragCursor=-21
+ST1_TitleBackground=-2147483632
+TitleColor=0
+# 92 Qdownload EXTENDS qobject * Properties *
+'@source inc\qdownload.inc 4
+file|STRING|RW|
+server|STRING|RW|
+port|INTEGER|RW|
+outdevice|INTEGER|RW|
+statedevice|INTEGER|RW|
+outvar|STRING|RW|
+outfile|STRING|RW|
+state|INTEGER|RW|
+stategauge|QGAUGE|RW|
+speedlbl|QLABEL|RW|
+laststringerror|STRING|RW|
+lasterror|INTEGER|RW|
+size|INTEGER|RW|
+* Methods
+check|FUNCTION||AS LONG
+percent|FUNCTION||(now as long, complete as long) as integer
+speed|FUNCTION||(now$ as string, before$ as string, complete as long) as integer
+leechfile|FUNCTION||as long
+* Events
+* Defaults
+port=80
+outdevice=1
+statedevice=1
+stategauge.height=20
+stategauge.width=200
+# 93 QDrawFocus EXTENDS QOBJECT * Properties *
+'@source inc\QDrawFocus.inc 39
+'  то же имя ещё в inc\object\QDrawFocus.inc, строка 19 (EXTENDS QOBJECT)
+Left|SHORT|RW|
+Top|SHORT|RW|
+Width|SHORT|RW|
+Height|SHORT|RW|
+Move|BOOLEAN|RW|
+Visible|BOOLEAN|RW|
+Inside|BOOLEAN|RW|
+NoResize|BOOLEAN|RW|
+ShowCursor|BOOLEAN|RW|
+* Methods
+Remove|SUB||(handle as long)
+Start|SUB||(handle as long,x as integer,y as integer)
+Draw|SUB||(handle as long,x as integer,y as integer,flagDraw as boolean)
+Stop|SUB||(handle as long,flagRemove as boolean)
+* Events
+* Defaults
+Border=10
+ShowCursor=true
+Width=0
+Height=0
+Rect.Right=0
+Rect.Bottom=0
+# 94 QdrawMenu EXTENDS QOBJECT * Properties *
+'@source inc\QDrawMenu.inc 77
+'  то же имя ещё в inc\object\QDrawMenu.inc, строка 69 (EXTENDS QOBJECT)
+* Methods
+MenuProc|SUB||(hwnd AS LONG,uMsg AS LONG,wParam AS LONG,lParam AS LONG)
+AddBitmap|SUB||(SubMenu as Qmenuitem,item as Qmenuitem,picture as Qbitmap,button as boolean,backcolor as long)
+DelBitmap|SUB||(SubMenu as Qmenuitem,item as Qmenuitem)
+* Events
+# 95 QDrive EXTENDS QObject * Properties *
+'@source inc\QDrive.inc 26
+'  то же имя ещё в inc\object\QDrive.inc, строка 15 (EXTENDS QObject)
+Name|ARRAY of STRING|RW|
+Count|INTEGER|RW|
+* Methods
+GetType|FUNCTION||(index as integer) as long
+GetFreeSpace|FUNCTION||(index as integer) as long
+GetSize|FUNCTION||(index as integer) as long
+GetDrives|SUB||
+* Events
+* Defaults
+Count=0
+# 96 QDriveComboBox EXTENDS QComboBox * Properties *
+'@source inc\QDriveCombobox.inc 10
+'  то же имя ещё в inc\rapidq2.inc, строка 6168 (EXTENDS QComboBox)
+'  то же имя ещё в inc\object\QDriveCombobox.inc, строка 8 (EXTENDS QComboBox)
+* Methods
+GetDrives|SUB||
+AddItems|SUB||
+DelItems|SUB||
+Clear|SUB||
+* Events
+# 97 QxEDIT EXTENDS QEDIT * Properties *
+'@source inc\qEditEx.inc 26
+'  то же имя ещё в inc\QxEdit.inc, строка 28 (EXTENDS QEDIT)
+Tmr|QTIMER|RW|
+OldWndProc|LONG|RW|
+EnterKey|LONG|RW|
+* Methods
+Proc|FUNCTION||(hWnd AS LONG, uMsg AS LONG, wParam AS LONG, lParam AS LONG) AS LONG
+* Events
+OnGetFocus||(OnGetFocus_EventTemplate)
+OnLoseFocus||(OnLoseFocus_EventTemplate)
+WndProc||(WndProc_EventTemplate)
+* Defaults
+Tmr.Interval=1
+# 98 QFILEDIALOG EXTENDS QOBJECT * Properties *
+'@source inc\QFileDialog.inc 103
+'  то же имя ещё в inc\QFileDialogDoc.inc, строка 254 (EXTENDS QOBJECT)
+'  то же имя ещё в inc\rapidq2.inc, строка 5877 (EXTENDS QOBJECT)
+Parent|LONG|RW|
+Caption|STRING|RW|
+Filter|STRING|RW|
+FilterIndex|INTEGER|RW|
+InitialDir|STRING|RW|
+Mode|INTEGER|RW|
+WarnIfOverWrite|INTEGER|RW|
+Filename|STRING|RW|
+FileTitle|STRING|RW|
+DefaultExt|STRING|RW|
+MultiSelect|INTEGER|RW|
+SelCount|INTEGER|RW|
+NoChangeDir|INTEGER|RW|
+Files|ARRAY of STRING|RW|
+* Methods
+Execute|FUNCTION||() AS LONG
+* Events
+* Defaults
+Parent=0
+Caption="Open" + STRING$(243, 0)
+Filter="All Files|*.*" + STRING$(243, 0)
+FilterIndex=0
+InitialDir=STRING$(256, 0)
+Mode=0
+WarnIfOverWrite=1
+Filename=STRING$(1024, 0)
+tmpFileName=STRING$(1024, 0)
+DefaultExt=STRING$(256,  0)
+MultiSelect=0
+SelCount=0
+NoChangeDir=0
+# 99 QFileListView EXTENDS QListView * Properties *
+'@source inc\QFileListView.inc 53
+'  то же имя ещё в inc\object\QFileListView.inc, строка 22 (EXTENDS QListView)
+Filename|STRING|RW|
+ColumnCaption|ARRAY of STRING|RW|
+Directory|STRING|RW|
+Mask|STRING|RW|
+* Methods
+Refresh|SUB||
+SetFocus|SUB||
+* Events
+OnFileSelect||(FileSelect_EventTemplate)
+OnFileChange||(FileChange_EventTemplate)
+* Defaults
+Width=400
+Height=200
+Directory=CurDir$
+Filename=""
+Mask="*.*"
+ReadOnly=true
+ColumnsInitialized=false
+# 100 QFlashLabel EXTENDS QLabel * Properties *
+'@source inc\QFlashLabel.inc 17
+'  то же имя ещё в inc\object\QFlashLabel.inc, строка 17 (EXTENDS QLabel)
+LightColor|LONG|RW|
+DarkColor|LONG|RW|
+Flash|BOOLEAN|RW|
+State|SHORT|RW|
+Speed|LONG|RW|
+* Methods
+* Events
+* Defaults
+Timer.Enabled=false
+Timer.Interval=1000
+Speed=1000
+Transparent=true
+autosize=true
+DarkColor=&h0
+LightColor=&h0
+State=0
+# 101 QFlatButton EXTENDS QImage * Properties *
+'@source inc\QFlatButton.inc 3
+b|INTEGER|RW|
+CurrState|INTEGER|RW|
+FlatBMPHandle|STRING|RW|
+G|INTEGER|RW|
+R|INTEGER|RW|
+* Methods
+GetColors|SUB||
+Depress|SUB||
+Flatten|SUB||
+Raise|SUB||
+* Events
+* Defaults
+Autosize=1
+CurrState=0
+height=25
+Stretch=1
+Transparent=1
+width=25
+# 102 QFocus EXTENDS QCanvas * Properties *
+'@source inc\qfocus.inc 63
+transparent|LONG|RW|
+transparentcolor|LONG|RW|
+objectfocustimer|QTIMER|RW|
+show|LONG|RW|
+* Methods
+CopyToClipboard|SUB||
+PasteFromClipboard|SUB||
+dragme|SUB||
+* Events
+OnSize||(SizeFocusEvent)
+* Defaults
+objectfocustimer.enabled=1
+objectfocustimer.interval=1
+transparentcolor=&hffffff
+transparent=1
+# 103 QFormEx EXTENDS QFORM * Properties *
+'@source inc\QFormEx.inc 53
+'  то же имя ещё в inc\rapidq2.inc, строка 2339 (EXTENDS QFORM)
+'  то же имя ещё в inc\object\QFormEx.inc, строка 53 (EXTENDS QFORM)
+DragZone|QRECT|RW|
+DragEnable|BOOLEAN|RW|
+DeskBar|BOOLEAN|RW|
+* Methods
+AddTrayIcon|SUB||
+DelTrayIcon|SUB||
+* Events
+OnDrag||(OnDrag_eventTemplate)
+OnTrayClick||(OnTrayClick_eventTemplate)
+OnTrayDblClick||(OnTrayDblClick_eventTemplate)
+OnMinimise||(OnMinimise_eventTemplate)
+# 104 QFormMDI EXTENDS QFORM * Properties *
+'@source inc\QFormMDI.inc 107
+'  то же имя ещё в inc\rapidq2.inc, строка 2707 (EXTENDS QFORM)
+'  то же имя ещё в inc\object\QFormMDI.inc, строка 107 (EXTENDS QFORM)
+ChildCaption|STRING|RW|
+ChildHandle|LONG|RW|
+ComponentIndex|INTEGER|RW|
+ChildTop|SHORT|RW|
+ChildLeft|SHORT|RW|
+ChildWidth|SHORT|RW|
+ChildHeight|SHORT|RW|
+MdiMenu|LONG|RW|
+ChildMax|INTEGER|RW|
+ChildCount|INTEGER|RW|
+ChildState|INTEGER|RW|
+ChildIcon|LONG|RW|
+ChildResult|INTEGER|RW|
+* Methods
+ChildProc|FUNCTION||(hWnd as long,uMsg as long,wParam as long,lParam as long) as long
+AddChild|SUB||(handle as long,Title as string,index as integer,Left as short,Top as short,Width as short,Height as short,DefaultSize as boolean)
+CloseChild|SUB||
+CloseAllChild|SUB||
+CascadeChild|SUB||
+SetHorzChild|SUB||
+SetVertChild|SUB||
+IconArrangeChild|SUB||
+MinimizeAllChild|SUB||
+MaximizeAllChild|SUB||
+RestoreChild|SUB||
+ActiveNextChild|SUB||
+ActivePreviousChild|SUB||
+GetChild|FUNCTION||(title as string) as integer
+ChildExist|FUNCTION||(title as string) as boolean
+ActiveChild|SUB||(index as integer)
+FreeChild|FUNCTION||(handle as long) as boolean
+SetDeskBar|SUB||
+* Events
+OnChildClose||(OnChildClose_eventTemplate)
+OnChildActive||(OnChildActive_eventTemplate)
+OnChildResize||(OnChildResize_eventTemplate)
+* Defaults
+FormStyle=2
+Color=-2147483636
+ChildMax=1024
+ClassName="MDIChild"
+hClient=0
+ChildCount=0
+# 105 QFtpClient EXTENDS QObject * Properties *
+'@source inc\QFTPCLIENT.INC 139
+ftpHandle|LONG|RW|
+errorMsg|STRING|RW|
+Agent|STRING|RW|
+OpenType|LONG|RW|
+ProxyName|STRING|RW|
+ProxyByPass|STRING|RW|
+Open_dwFlags|LONG|RW|
+FtpPort|LONG|RW|
+InternetService|LONG|RW|
+InternetFlag|LONG|RW|
+Connect_dwContext|LONG|RW|
+FtpTransferType|LONG|RW|
+Put_dwContext|LONG|RW|
+FlagsAndAttributes|LONG|RW|
+Get_dwContext|LONG|RW|
+findfirst_dwFlags|LONG|RW|
+findFirst_dwContext|LONG|RW|
+WIN32_FIND_DATA|QFTP_WIN32_FIND_DATA|RW|
+hFind|LONG|RW|
+fileName|STRING|RW|
+dosFileName|STRING|RW|
+fileSize|DOUBLE|RW|
+fileTime|STRING|RW|
+fileTimems|STRING|RW|
+fileDate|STRING|RW|
+fileDateEU|STRING|RW|
+fileDateTime|DOUBLE|RW|
+fileAttributes|LONG|RW|
+fileAttributesAsString|STRING|RW|
+* Methods
+ReadMessage|FUNCTION||As string
+Connect|FUNCTION||(sRemoteServer as String, sLogin as String, sPassword As String) As Long
+Close|FUNCTION||as Long
+GetDir|FUNCTION||As String
+MakeDir|FUNCTION||(sNewDirectory As String) As Long
+SetDir|FUNCTION||(sNewDirectory As String) As Long
+RemoveDir|FUNCTION||(sDelDirectory As String) As Long
+PutFile|FUNCTION||(sLocalFileName As String, sRemoteFileName As String) As Long
+GetFile|FUNCTION||(sRemoteFileName As String, sLocalFileName As String, _
+Rename|FUNCTION||(sOldName as String, sNewName as String) as Long
+Delete|FUNCTION||(sRemoteFileName As String) As Long
+FindFirstFile|FUNCTION||(sfilter As String) As String
+FindNextFile|FUNCTION||As String
+* Events
+* Defaults
+Agent="FTP Object for RAPIDQ"
+OpenType=QFTP_INTERNET_OPEN_TYPE_PRECONFIG
+ProxyName=""
+ProxyByPass=""
+Open_dwFlags=0
+FtpPort=QFTP_INTERNET_DEFAULT_FTP_PORT
+InternetService=QFTP_INTERNET_SERVICE_FTP
+Connect_dwContext=0
+FtpTransferType=QFTP_TRANSFER_TYPE_UNKNOWN
+Put_dwContext=0
+FlagsAndAttributes=0
+Get_dwContext=0
+findFirst_dwFlags=0
+findFirst_dwContext=0
+# 106 QFTPDirListView EXTENDS QListView * Properties *
+'@source inc\qftpdirlistview.inc 39
+Host|STRING|RW|
+User|STRING|RW|
+Password|STRING|RW|
+Directory|STRING|RW|
+Filename|STRING|RW|
+Mask|STRING|RW|
+ShowRoot|INTEGER|RW|
+LargeImageList|QIMAGELIST|RW|
+SmallImageList|QIMAGELIST|RW|
+ExtensionsList|QSTRINGLIST|RW|
+dlw_PopupMenu|QPOPUPMENU|RW|
+dlw_Enter|QMENUITEM|RW|
+dlw_BackSpace|QMENUITEM|RW|
+ColumnsInitialized|INTEGER|RW|
+FilenameSize|INTEGER|RW|
+FilenameType|INTEGER|RW|
+FilenameDate|INTEGER|RW|
+* Methods
+FilenameProp|SUB||
+SetItemImage|SUB||(Extension as string)
+AddFileProperties|SUB||(Extension as string)
+LoadDirectories|SUB||
+LoadFiles|SUB||
+Refresh|SUB||
+ChangeDirUp|SUB||
+ChangeDir|SUB||
+TryToChangeDirOrMakeEvent|SUB||
+* Events
+OnFileSelect||(FileSelect_EventTemplate)
+* Defaults
+Width=400
+Height=138
+Directory=left$(Command$(0), len(Command$(0)) - len(APPLICATION.ExeName) )
+Filename=""
+Mask="*.*"
+ShowRoot=FALSE
+ReadOnly=TRUE
+ColumnsInitialized=FALSE
+LargeImageList.Width=32
+LargeImageList.Height=32
+LargeImages=QFTPDirListView.LargeImageList
+SmallImages=QFTPDirListView.SmallImageList
+dlw_Enter.ShortCut="Enter"
+dlw_Enter.Visible=FALSE
+dlw_BackSpace.ShortCut="BkSp"
+dlw_BackSpace.Visible=FALSE
+PopUpMenu=QFTPDirListView.dlw_PopUpMenu
+FilenameSize=1
+FilenameType=1
+FilenameDate=1
+# 107 QGL EXTENDS QOBJECT * Properties *
+'@source inc\QGL.inc 76
+RenderToBitMap|INTEGER|RW|
+Bitmap|QBITMAP|RW|
+Width|INTEGER|RW|
+Height|INTEGER|RW|
+Front|GLDOUBLE|RW|
+Back|GLDOUBLE|RW|
+MipMap|INTEGER|RW|
+FullScreen|INTEGER|RW|
+hDC|LONG|RW|
+hBMP|LONG|RW|
+hglRC|LONG|RW|
+hGLRC_bmp|LONG|RW|
+bpp|INTEGER|RW|
+DepthBits|INTEGER|RW|
+StencilBits|INTEGER|RW|
+AccumBits|INTEGER|RW|
+FrameRate|SINGLE|RW|
+FOV|DOUBLE|RW|
+AspectRatio|DOUBLE|RW|
+FogEnabled|INTEGER|RW|
+FogMode|INTEGER|RW|
+* Methods
+ReSize|SUB||(width AS INTEGER, height AS INTEGER)
+Init|FUNCTION||(MainForm AS QFORM) AS INTEGER
+Close|SUB||()
+Flip|SUB||
+CreateTextureFromFile|FUNCTION||(ImgFileName as string) AS LONG
+CreateTextureFromBitMap|FUNCTION||(ImgBMP as QBITMAP) AS LONG
+FogColor|SUB||(R#, G#, B#)
+SetFogParams|SUB||(Start#, End#, Density#)
+* Events
+* Defaults
+hDC=0
+hglRC=0
+hBMP=0
+hGLRC_bmp=0
+FullScreen=False
+OrigWidth=Screen.Width
+OrigHeight=Screen.Height
+bpp=24
+DepthBits=8
+StencilBits=16
+AccumBits=0
+Front=0.1
+Back=500.0
+FOV=60.0
+AspectRatio=1.0
+FPSTimer.Enabled=True
+FPSTimer.OnTimer=QGL.FPSTimerOver
+FPSTimer.Interval=1000
+FogEnabled=False
+FogMode=GL_EXP
+# 108 QMD2model EXTENDS QMEMORYSTREAM * Properties *
+'@source inc\QGL.inc 469
+TheModel|MD2HEADER|RW|
+vertex|ARRAY of BYTE|RW|
+normal|ARRAY of BYTE|RW|
+TexCoord|ARRAY of SINGLE|RW|
+indexXYZ|ARRAY of SHORT|RW|
+indexST|ARRAY of SHORT|RW|
+Frame_Scale|ARRAY of SINGLE|RW|
+Frame_Translate|ARRAY of SINGLE|RW|
+Frame_Name|ARRAY of STRING|RW|
+skins|ARRAY of GLINT|RW|
+StartFrame|INTEGER|RW|
+CurrentFrame|INTEGER|RW|
+MaxFrame|INTEGER|RW|
+AnimationFrame|ARRAY of GLINT|RW|
+MaxAnimationFrame|INTEGER|RW|
+KeyFrame|ARRAY of SHORT|RW|
+KeyFrameIndex|SHORT|RW|
+Position|QD3DVECTOR|RW|
+Rotation|QD3DVECTOR|RW|
+Scale|QD3DVECTOR|RW|
+hDC|LONG|RW|
+FPSTimer|QTIMER|RW|
+FPS|SINGLE|RW|
+* Methods
+LoadMD2File|SUB||(TheFileName AS STRING)
+SetPosition|SUB||(X AS SINGLE, Y AS SINGLE, Z AS SINGLE)
+SetRotation|SUB||(X AS SINGLE, Y AS SINGLE, Z AS SINGLE)
+SetScale|SUB||(X AS SINGLE, Y AS SINGLE, Z AS SINGLE)
+DrawMD2|SUB||(theFrameNum AS INTEGER, theFrameNum2 AS INTEGER, theFrameFactor AS SINGLE, theSkin AS INTEGER)
+CreateAnimationSet|FUNCTION||(FirstFrame AS INTEGER, LastFrame AS INTEGER, FrameFactor AS SINGLE) AS LONG
+Animate|SUB||
+MD2_Set_FPS|SUB||(TheFramesPerSecond AS SINGLE)
+FPSTimerOver|SUB||
+New|SUB||()
+Clear|SUB||
+CalcMD2Normals|SUB||
+* Events
+# 109 QLineGraph EXTENDS qobject * Properties *
+'@source inc\qgraph.inc 41
+Height|INTEGER|RW|
+Width|INTEGER|RW|
+Top|INTEGER|RW|
+Left|INTEGER|RW|
+ExtrapolateToZero|INTEGER|RW|
+AxisColour|INTEGER|RW|
+TextColour|INTEGER|RW|
+BackColour|INTEGER|RW|
+XTitle|STRING|RW|
+YTitle|STRING|RW|
+Title|STRING|RW|
+XScale|SINGLE|RW|
+YScale|SINGLE|RW|
+LineColour|INTEGER|RW|
+Data|QSTRINGGRID|RW|
+Visible|INTEGER|RW|
+Hint|STRING|RW|
+TextFont|QFONT|RW|
+Cursor|INTEGER|RW|
+ShowHint|INTEGER|RW|
+image|QCANVAS|RW|
+maxX|SINGLE|RW|
+maxY|SINGLE|RW|
+powerX|INTEGER|RW|
+powerY|INTEGER|RW|
+roundedupX|LONG|RW|
+roundedupY|LONG|RW|
+* Methods
+Paint|SUB||
+Initialise|SUB||
+SaveToFile|SUB||(file as string)
+* Events
+* Defaults
+Left=0
+Width=400
+Top=0
+Height=300
+AxisColour=0
+TextColour=0
+LineColour=&HFF
+BackColour=&HFFFFFF
+XTitle="X Axis"
+YTitle="Y Axis"
+Title="X Axis vs. Y Axis"
+ExtrapolateToZero=1
+Visible=1
+# 110 QGridColor EXTENDS QPanel * Properties *
+'@source inc\QGridColor.inc 11
+FGColor|INTEGER|RW|
+BKColor|INTEGER|RW|
+Style|INTEGER|RW|
+ShowCaption|INTEGER|RW|
+ShowHints|INTEGER|RW|
+* Methods
+LoadColors|SUB||
+CellClick|SUB||(Button as integer,x as integer,y as integer,Shift as integer,Sender as QPanel)
+Draw|SUB||
+* Events
+OnCellClick||(CellClicked)
+# 111 QHead EXTENDS QCanvas * Properties *
+'@source inc\QHead.inc 1
+Icon|QBITMAP|RW|
+AutoCenter|INTEGER|RW|
+IconX|INTEGER|RW|
+IconY|INTEGER|RW|
+CaptionX|INTEGER|RW|
+CaptionY|INTEGER|RW|
+StartColor|INTEGER|RW|
+EndColor|INTEGER|RW|
+Increment|INTEGER|RW|
+LeftText|STRING|RW|
+RightText|STRING|RW|
+CaptionSize|INTEGER|RW|
+ShowLeftText|INTEGER|RW|
+ShowRightText|INTEGER|RW|
+ShowIcon|INTEGER|RW|
+* Methods
+DrawComponent|SUB||
+* Events
+* Defaults
+Color=&hffffff
+StartColor=&H000044
+EndColor=&H0000FF
+Increment=&H0000001
+LeftText="QHead"
+RightText="Test Component"
+# 112 QHTML EXTENDS QPanel * Properties *
+'@source inc\QHTML.inc 73
+HTMLText|STRING|RW|
+DocumentTitle|STRING|RW|
+DefaultFontName|STRING|RW|
+DefaultFontSize|INTEGER|RW|
+* Methods
+OpenFile|SUB||(FileName as String)
+Repaint|SUB||
+PrintPreview|SUB||
+SearchText|FUNCTION||(Text as String, Popupwindow as integer) as Integer
+* Events
+OnHover||(htmlOnHover_eventTemplate)
+OnTagClick||(htmlOnTagClick_eventTemplate)
+OnLoadImage||(htmlOnLoadImage_eventTemplate)
+* Defaults
+defaultFontSize=12
+defaultFontName="Arial"
+bevelInner=bvlowered
+bevelouter=bvlowered
+image.parent=this
+image.left=2
+image.top=2
+HoverText.left=2
+HoverText.parent=this
+HoverText.sizegrip=false
+bar.kind=sbVertical
+bar.width=17
+PaintTimer.enabled=true
+PaintTimer.Interval=1
+PaintTimer.OnTimer=this.PaintTimer_ToDo
+ExternalPicture.parent=this
+ExternalPicture.AutoSize=true
+ExternalPicture.visible=false
+ZoomWithBG.checked=true
+ZoomTimer.enabled=false
+ZoomTimer.Interval=1
+ZoomTimer.OnTimer=this.ZoomTimer_ToDo
+HTMLColors=143
+BarResize=true
+PrintMode=false
+# 113 QICMP EXTENDS QObject * Properties *
+'@source inc\QICMP.INC 47
+TimeOut|LONG|RW|
+ReqOpts|ARRAY of BYTE|RW|
+EchoString|STRING|RW|
+Reply|ARRAY of LONG|RW|
+h|LONG|RW|
+* Methods
+Ping|FUNCTION||(RemoteIP As String) AS LONG
+ReplyAddress|FUNCTION||as String
+ReplyStatus|FUNCTION||As String
+ReplyData|FUNCTION||As STRING
+ReplyTTL|FUNCTION||AS LONG
+CloseHandle|FUNCTION||As LONG
+* Events
+* Defaults
+EchoString="Echo This"
+TimeOut=3500
+# 114 QICON EXTENDS QOBJECT * Properties *
+'@source inc\QICON.inc 30
+'  то же имя ещё в inc\object\QICON.inc, строка 31 (EXTENDS QOBJECT)
+FileName|STRING|RW|
+count|INTEGER|RW|
+handle|LONG|RW|
+Associated|BOOLEAN|RW|
+index|INTEGER|RW|
+* Methods
+SaveToFile|SUB||(FileName as string,pixelFormat as integer,mask as integer)
+SaveBmpToFile|SUB||(bitmap as QBitmap,FileName as string,pixelFormat as integer,mask as integer)
+ConvertAsCursor|SUB||(FileName as string,XHotSpot as byte,YHotSpot as byte)
+* Events
+# 115 Qid3tag EXTENDS QObject * Properties *
+'@source inc\Qid3Tag.inc 19
+filename|STRING|RW|
+Title|STRING|RW|
+Artist|STRING|RW|
+Album|STRING|RW|
+Year|STRING|RW|
+Comment|STRING|RW|
+Track|BYTE|RW|
+Genre|STRING|RW|
+genreid|BYTE|RW|
+genreslist|QSTRINGLIST|RW|
+genrescb|QCOMBOBOX|RW|
+* Methods
+loadlist|SUB||
+SelectGenre|SUB||
+readtags|SUB||
+writetags|SUB||
+* Events
+* Defaults
+.style=2
+.dropdowncount=20
+.onchange=qid3tag.SelectGenre
+# 116 QImageBox EXTENDS QScrollbox * Properties *
+'@source inc\QImageBox.inc 53
+Language|STRING|RW|
+Progress|BOOLEAN|RW|
+FileName|STRING|RW|
+ImgWidth|INTEGER|RW|
+ImgHeight|INTEGER|RW|
+* Methods
+* Events
+* Defaults
+AutoScroll=False
+HorzVisible=False
+VertVisible=False
+ClientWidth=This.Width-10
+ClientHeight=This.Height-10
+Image.Parent=This
+Image.Visible=False
+Image.stretch=true
+Path=left$(command$(0),rinstr(command$(0),"\"))
+DllName="Nviewlib.dll"
+# 117 QImageDialog EXTENDS QObject * Properties *
+'@source inc\QImageDialog.inc 55
+'  то же имя ещё в inc\object\QImageDialog.inc, строка 34 (EXTENDS QObject)
+FileName|STRING|RW|
+Caption|STRING|RW|
+Filter|STRING|RW|
+FilterIndex|INTEGER|RW|
+InitialDir|STRING|RW|
+DlgCaption|ARRAY of STRING|RW|
+ErrorLanguage|STRING|RW|
+MultiSelect|BOOLEAN|RW|
+SelCount|INTEGER|RW|
+Selected|QSTRINGLIST|RW|
+* Methods
+Execute|FUNCTION||() as boolean
+* Events
+* Defaults
+FilterIndex=1
+Form.Caption="Open"
+Form.Width=422
+Form.Height=325
+Form.borderstyle=3
+Label1.parent=this.form
+Label1.Caption=this.DlgCaption(1)
+Label1.Left=5
+Label1.Top=245
+Label1.AutoSize=True
+Label2.parent=this.form
+Label2.Caption=this.DlgCaption(2)
+Label2.Left=5
+Label2.Top=272
+Label2.AutoSize=True
+Drive.parent=this.form
+Drive.TabOrder=1
+Drive.Style=2
+Drive.Left=5
+Drive.Top=5
+DirList.parent=this.form
+DirList.Left=5
+DirList.Top=30
+DirList.Height=100
+DirList.ShowIcons=True
+DirList.TabOrder=2
+FileList.parent=this.form
+FileList.Left=5
+FileList.Top=135
+FileList.Height=100
+FileList.TabOrder=3
+Name.parent=this.form
+Name.Left=106
+Name.Top=242
+Name.Width=217
+Name.TabOrder=4
+FileType.parent=this.form
+FileType.Style=2
+FileType.Left=106
+FileType.Top=270
+FileType.Width=217
+FileType.TabOrder=5
+BtOpen.parent=this.form
+BtOpen.Caption=this.DlgCaption(3)
+BtOpen.Left=334
+BtOpen.Top=242
+BtOpen.Height=22
+BtOpen.TabOrder=6
+BtCancel.parent=this.form
+BtCancel.Caption=this.DlgCaption(4)
+BtCancel.Left=334
+BtCancel.Top=270
+BtCancel.Height=22
+BtCancel.TabOrder=7
+ScrollBox1.parent=this.form
+ScrollBox1.Left=158
+ScrollBox1.Top=5
+ScrollBox1.Width=250
+ScrollBox1.Height=230
+BoxWidth=220
+BoxHeight=220
+Image.Parent=This.ScrollBox1
+Image.Visible=False
+Image.stretch=true
+EnterKey.ShortCut="Enter"
+EnterKey.Visible=False
+DirList.PopupMenu=This.PopUpMenu
+Path=left$(command$(0),rinstr(command$(0),"\"))
+DllName="Nviewlib.dll"
+# 118 QImageEx EXTENDS QIMAGE * Properties *
+'@source inc\QImageEx.inc 29
+'  то же имя ещё в inc\rapidq2.inc, строка 4788 (EXTENDS QIMAGE)
+'  то же имя ещё в inc\object\QImageEx.inc, строка 36 (EXTENDS QIMAGE)
+* Methods
+CopyToClipboard|SUB||(rect as QRECT)
+PasteFromClipboard|SUB||
+LoadFromFile|SUB||(FileName as string,width as short,height as short,real as boolean)
+CanPaste|FUNCTION||as boolean
+* Events
+# 119 QImageListEX EXTENDS QImageList * Properties *
+'@source inc\QImageListEx.inc 11
+FixWidth|INTEGER|RW|
+FixHeight|INTEGER|RW|
+* Methods
+ExtractFile|SUB||(filename AS string, NumImages AS integer, ColorMask AS integer)
+ExtractRes|SUB||(ResIndex AS integer, NumImages AS integer, ColorMask AS integer)
+* Events
+* Defaults
+FixWidth=0
+FixHeight=0
+ImageCount=0
+ImageMask=536870911
+# 120 QINI EXTENDS QObject * Properties *
+'@source inc\QIni.inc 32
+'  то же имя ещё в inc\QWinIni.inc, строка 18 (EXTENDS QObject)
+'  то же имя ещё в inc\object\QIni.inc, строка 29 (EXTENDS QObject)
+FileName|STRING|RW|
+Exist|BOOLEAN|RW|
+Section|STRING|RW|
+WinDir|STRING|RW|
+SystemDir|STRING|RW|
+TempDir|STRING|RW|
+* Methods
+Get|FUNCTION||(Key as string,Default as string) as String
+Write|FUNCTION||(Key as string,Value as string) as long
+GetIniPath|SUB||()
+* Events
+* Defaults
+FileName=""
+Section=""
+Exist=false
+# 121 QIniFile EXTENDS QstringList * Properties *
+'@source inc\QIniFile.inc 11
+'  то же имя ещё в inc\QLibrary.Inc, строка 137 (EXTENDS QObject)
+File|STRING|RW|
+* Methods
+CreateFile|SUB||(Dir As String)
+SectionExists|FUNCTION||(Section$) As Integer
+KeyExists|FUNCTION||(Section$,Key$) As Integer
+WriteInteger|SUB||(Section$,Key$,Value&)
+WriteFloat|SUB||(Section$,Key$,Value#)
+WriteString|SUB||(Section$,Key$,Value$)
+ReadInteger|FUNCTION||(Section$,Key$,Inplace&) As Integer
+ReadFloat|FUNCTION||(Section$,Key$,Inplace#) As Double
+ReadString|FUNCTION||(Section$,Key$,Inplace$) As String
+ReadSection|SUB||(Section$,Buffer As QStringList)
+ReadSections|SUB||(Buffer As QStringList)
+GetWindowsDir|SUB||
+* Events
+* Defaults
+Name=ChangeFileExt(Application.ExeName,".ini")
+# 122 QInputBox EXTENDS QObject * Properties *
+'@source inc\QInputBox.inc 5
+* Methods
+Show|FUNCTIONI||(...) as string
+* Events
+# 123 QLed EXTENDS QCanvas * Properties *
+'@source inc\QLed.inc 10
+LedColor|BYTE|RW|
+LedState|INTEGER|RW|
+Size|INTEGER|RW|
+* Methods
+Draw|SUB||
+* Events
+* Defaults
+Size=15
+LedColor=LdRed
+# 124 QLEDSCROLL EXTENDS QCANVAS * Properties *
+'@source inc\QLedScroll.inc 1
+TextColor|LONG|RW|
+BgColor|LONG|RW|
+X|SINGLE|RW|
+Y|INTEGER|RW|
+Text|STRING|RW|
+Raster|INTEGER|RW|
+RasterLen|INTEGER|RW|
+Font|QFONT|RW|
+* Methods
+Rewind|SUB||
+Paint|SUB||
+Repaint|SUB||
+Move|SUB||(p AS SINGLE)
+SetString|SUB||(s$)
+SetColor|SUB||(c AS LONG)
+* Events
+* Defaults
+Width=200
+Height=32
+RasterLen=2
+# 125 RQConst EXTENDS QStringList * Properties *
+'@source inc\QLibrary.Inc 49
+FileId|STRING|RW|
+Initialized|BYTE|RW|
+* Methods
+Initialize|SUB||
+ValueOf|FUNCTION||(Entry As String) As Long
+* Events
+* Defaults
+Initialized=False
+FileId="RapidQ.Inc"
+# 126 QLine EXTENDS QCanvas * Properties *
+'@source inc\QLine.inc 7
+'  то же имя ещё в inc\object\QLine.inc, строка 7 (EXTENDS QCanvas)
+* Methods
+* Events
+* Defaults
+width=2
+Height=2
+# 127 QListBoxEx EXTENDS QListBox * Properties *
+'@source inc\QListBoxEx.inc 15
+* Methods
+* Events
+OnEnter||(OnEnter_eventTemplate)
+* Defaults
+EnterKey.ShortCut="Enter"
+EnterKey.Visible=False
+PopupMenu=This.HideMenu
+# 128 Qlistviewex EXTENDS Qlistview * Properties *
+'@source inc\QListviewEx.inc 6
+'  то же имя ещё в inc\rapidq2.inc, строка 6714 (EXTENDS Qlistview)
+ParentPanel|QPANEL|RW|
+Header|QPANEL|RW|
+ColHeader|ARRAY of QCOOLBTN|RW|
+csv|QSTRINGLIST|RW|
+csvFile|STRING|RW|
+Separator|STRING|RW|
+Columns_count|INTEGER|RW|
+FlatHeaders|INTEGER|RW|
+* Methods
+FieldsCount|FUNCTION||as integer
+FastClear|SUB||
+load|SUB||
+loadfromcsvfile|SUB||
+sortby|SUB||(Criterium as string)
+Exclude|SUB||(Column as integer, Criterium as string)
+columnclick|SUB||(hcapt as qcoolbtn)
+draw|SUB||
+addcol|SUB||(coltoadd as string)
+updatecsv|SUB||
+filter|SUB||(Column as integer, criterium  as string)
+SaveToCsvFile|SUB||
+SaveToFileAs|SUB||
+DirectSaveAs|SUB||
+* Events
+* Defaults
+.borderstyle=0
+.bevelouter=0
+.parent=Qlistviewex.parentpanel
+.height=20
+.align=1
+Columns_Count=0
+separator=";"
+showcolumnheaders=0
+FlatHeaders=1
+# 129 QMarker EXTENDS QPanel * Properties *
+'@source inc\QMarker.inc 3
+MarkColor|INTEGER|RW|
+RowHeight|INTEGER|RW|
+Row|ARRAY of QPANEL|RW|
+RowColor|INTEGER|RW|
+Mark|QIMAGE|RW|
+* Methods
+Draw|SUB||
+SetMark|SUB||(ARow as integer,AColor as integer)
+SetImage|SUB||(ARow as integer)
+* Events
+* Defaults
+RowColor=&hc0c0c0
+# 130 QMAXSPLITTER EXTENDS QPANEL * Properties *
+'@source inc\QMaxSplitter.inc 75
+'  то же имя ещё в inc\QSplitter.inc, строка 68 (EXTENDS QPANEL)
+Owner|LONG|RW|
+Tmr|QTIMER|RW|
+MinSize|LONG|RW|
+Beveled|LONG|RW|
+Mover|LONG|RW|
+MoverRect|QRECT|RW|
+Style|LONG|RW|
+Pattern|ARRAY of WORD|RW|
+Canvas|QCANVAS|RW|
+* Methods
+MoveChild|SUB||(Where AS POINTAPI)
+DrawSplitter|SUB||(Split AS POINTAPI)
+* Events
+* Defaults
+Width=5
+Height=5
+Align=1
+Tmr.Interval=1
+MinSize=30
+Cursor=-15
+Canvas.Parent=This
+Canvas.Align=5
+BevelOuter=0
+OnMouseDown=This.Canvas.InheritOnMouseDown
+OnMouseMove=This.Canvas.InheritOnMouseMove
+OnMouseUp=This.Canvas.InheritOnMouseUp
+# 131 QMenu EXTENDS QOBJECT * Properties *
+'@source inc\qmenu.inc 3
+Descrip|WORD|RW|
+Panel|WORD|RW|
+Font|QFONT|RW|
+imgs|QIMAGELIST|RW|
+* Methods
+Set|SUB||(form AS QFORM)
+Close|SUB||
+OwnerDraw|SUB||(ParentItem AS QMENUITEM, MenuItem AS QMENUITEM, dibu AS LONG, descripcion AS STRING)
+Description|SUB||(MenuItem AS QMENUITEM, descripcion AS STRING)
+* Events
+* Defaults
+imgs.masked=0
+Descrip=0
+Panel=0
+# 132 QMidi EXTENDS Qobject * Properties *
+'@source inc\QMidi.inc 27
+'  то же имя ещё в inc\object\QMidi.inc, строка 27 (EXTENDS Qobject)
+Timer|QTIMER|RW|
+Lenght|LONG|RW|
+State|INTEGER|RW|
+FileOpen|BOOLEAN|RW|
+Error|STRING|RW|
+CurrentFrame|LONG|RW|
+Volume|INTEGER|RW|
+* Methods
+Close|SUB||
+Open|FUNCTION||(FileName as string) as boolean
+Play|SUB||
+Stop|SUB||
+Pause|SUB||
+* Events
+OnChange||(event_change)
+* Defaults
+State=MD_CLOSE
+Timer.interval=1000
+Timer.enabled=False
+# 133 Qmp3 EXTENDS QObject * Properties *
+'@source inc\Qmp3.inc 34
+filename|STRING|RW|
+Title|STRING|RW|
+Artist|STRING|RW|
+Album|STRING|RW|
+Year|STRING|RW|
+Comment|STRING|RW|
+Track|BYTE|RW|
+Genre|STRING|RW|
+genreid|BYTE|RW|
+Version|STRING|RW|
+Layer|STRING|RW|
+Protection|STRING|RW|
+Bitrate|INTEGER|RW|
+Frequency|INTEGER|RW|
+Padding|STRING|RW|
+Channels|STRING|RW|
+IntensityStereo|STRING|RW|
+MS_Stereo|STRING|RW|
+Copyright|STRING|RW|
+Original|STRING|RW|
+Emphasis|STRING|RW|
+alias|STRING|RW|
+genreslist|QSTRINGLIST|RW|
+genrescb|QCOMBOBOX|RW|
+* Methods
+HeaderStart|FUNCTION||as integer
+ReadHeader|FUNCTION||as integer
+IsTagged|FUNCTION||(itfs as Qfilestream) as integer
+SelectGenre|SUB||
+loadlist|SUB||
+readtags|SUB||
+writetags|SUB||
+Stop|SUB||
+Play|SUB||
+* Events
+* Defaults
+.style=2
+.dropdowncount=20
+.onchange=Qmp3.SelectGenre
+# 134 QPageSetup EXTENDS QOBJECT * Properties *
+'@source inc\QPageSetup.inc 70
+'  то же имя ещё в inc\rapidq2.inc, строка 7139 (EXTENDS QOBJECT)
+'  то же имя ещё в inc\object\QPageSetup.inc, строка 70 (EXTENDS QOBJECT)
+Caption|STRING|RW|
+DisablePrinter|BOOLEAN|RW|
+DisablePaper|BOOLEAN|RW|
+DisableOrient|BOOLEAN|RW|
+DisableMargins|BOOLEAN|RW|
+Orientation|BOOLEAN|RW|
+MarginLeft|LONG|RW|
+MarginTop|LONG|RW|
+MarginRight|LONG|RW|
+MarginBottom|LONG|RW|
+PageWidth|LONG|RW|
+PageHeight|LONG|RW|
+* Methods
+Execute|FUNCTION||as boolean
+* Events
+* Defaults
+Caption=""
+DisablePrinter=false
+DisablePaper=false
+DisableOrient=false
+DisableMargins=false
+# 135 Qposic EXTENDS qpanel * Properties *
+'@source inc\qposic.inc 10
+'  то же имя ещё в inc\Qposic1.inc, строка 16 (EXTENDS qpanel)
+maxv|SHORT|RW|
+minv|SHORT|RW|
+valuev|SHORT|RW|
+maxh|SHORT|RW|
+minh|SHORT|RW|
+valueh|SHORT|RW|
+* Methods
+initial|SUB||
+* Events
+OnChange||(OnChangePos)
+* Defaults
+width=80
+height=80
+sbv.kind=1
+sbv.top=0
+sbv.left=16
+sbv.width=18
+sbv.PageSize=1
+sbv.height=49
+sbh.kind=0
+sbh.top=16
+sbh.left=0
+sbh.width=50
+sbh.PageSize=1
+sbh.height=17
+btn.top=16
+btn.left=16
+btn.width=17
+btn.height=17
+btn.color=&H0070FF
+btn.BMP="reset.bmp"
+btnUndo.top=0
+btnUndo.left=0
+btnUndo.width=16
+btnUndo.height=16
+btnUndo.color=&H0070FF
+btnUndo.BMP="Undo1.bmp"
+btnUndo.Tag=101
+btnRedo.top=33
+btnRedo.left=35
+btnRedo.width=15
+btnRedo.height=16
+btnRedo.color=&H0070FF
+btnRedo.BMP="Redo1.bmp"
+btnRedo.Tag=102
+btnAllUp.top=0
+btnAllUp.left=35
+btnAllUp.width=15
+btnAllUp.height=16
+btnAllUp.color=&H0070FF
+btnAllUp.BMP="AllUp.bmp"
+btnAllUp.Spacing=0
+btnAllUp.Tag=103
+btnAllDn.top=33
+btnAllDn.left=0
+btnAllDn.width=16
+btnAllDn.height=16
+btnAllDn.color=&H0070FF
+btnAllDn.BMP="AllDn.bmp"
+btnAllDn.Tag=104
+bevelouter=1
+# 136 QPosicL EXTENDS qpanel * Properties *
+'@source inc\QPosicL.inc 11
+maxv|SHORT|RW|
+minv|SHORT|RW|
+valuev|SHORT|RW|
+maxh|SHORT|RW|
+minh|SHORT|RW|
+valueh|SHORT|RW|
+* Methods
+initial|SUB||
+* Events
+OnChange||(OnChangePos)
+* Defaults
+width=100
+height=100
+sbv.kind=1
+sbv.top=0
+sbv.left=QposicL.height/3
+sbv.width=QposicL.height/3+2
+sbv.PageSize=1
+sbv.height=QposicL.height
+sbv.LargeChange=10
+sbh.kind=0
+sbh.top=QposicL.height/3
+sbh.left=0
+sbh.width=QposicL.height+1
+sbh.PageSize=1
+sbh.height=QposicL.height/3+1
+sbh.LargeChange=10
+btn.top=QposicL.height/3
+btn.left=QposicL.height/3
+btn.width=QposicL.height/3+1
+btn.height=QposicL.height/3+1
+btn.color=&H0070FF
+btn.BMP=BmpPath+ "reset.bmp"
+btnUndo.top=0
+btnUndo.left=0
+btnUndo.width=QposicL.height/3
+btnUndo.height=QposicL.height/3
+btnUndo.color=&H0070FF
+btnUndo.BMP=BmpPath+ "Undo1.bmp"
+btnUndo.Tag=101
+btnRedo.top=QposicL.height/3*2+1
+btnRedo.left=QposicL.height/3*2+3
+btnRedo.width=QposicL.height/3-1
+btnRedo.height=QposicL.height/3
+btnRedo.color=&H0070FF
+btnRedo.BMP=BmpPath+ "Redo1.bmp"
+btnRedo.Tag=102
+btnAllUp.top=0
+btnAllUp.left=QposicL.height/3*2+3
+btnAllUp.width=QposicL.height/3-1
+btnAllUp.height=QposicL.height/3
+btnAllUp.color=&H0070FF
+btnAllUp.BMP=BmpPath+ "AllUp.bmp"
+btnAllUp.Spacing=0
+btnAllUp.Tag=103
+btnAllDn.top=QposicL.height/3*2+1
+btnAllDn.left=0
+btnAllDn.width=QposicL.height/3
+btnAllDn.height=QposicL.height/3
+btnAllDn.color=&H0070FF
+btnAllDn.BMP=BmpPath+ "AllDn.bmp"
+btnAllDn.Tag=104
+bevelouter=1
+# 137 QPrinterInfo EXTENDS QObject * Properties *
+'@source inc\QPrinterInfo.inc 21
+'  то же имя ещё в inc\object\QPrinterInfo.inc, строка 21 (EXTENDS QObject)
+* Methods
+Scale|FUNCTION||() as double
+Dpi|FUNCTION||() as integer
+Ppm|FUNCTION||() as double
+MetricToPixel|FUNCTION||(mm as double) as integer
+PixelToMetric|FUNCTION||(pixel as integer) as double
+HorzPageSize|FUNCTION||() as integer
+VertPageSize|FUNCTION||() as integer
+PageWidth|FUNCTION||() as integer
+PageHeight|FUNCTION||() as integer
+PhWidth|FUNCTION||() as integer
+PhHeight|FUNCTION||() as integer
+PhHorz|FUNCTION||() as integer
+PhVert|FUNCTION||() as integer
+PhMarginX|FUNCTION||() as double
+PhMarginY|FUNCTION||() as double
+PhLeftMargin|FUNCTION||() as integer
+PhTopMargin|FUNCTION||() as integer
+* Events
+# 138 QProcess EXTENDS QObject * Properties *
+'@source inc\QProcess.inc 48
+'  то же имя ещё в inc\object\QProcess.inc, строка 19 (EXTENDS QObject)
+Priority|LONG|RW|
+* Methods
+Suspend|SUB||
+Resume|SUB||
+Open|SUB||
+Close|SUB||
+* Events
+OnProcess||(OnProcess_event)
+* Defaults
+priority=0
+IdProcess=0
+hProcess=0
+# 139 QProgress EXTENDS QIMAGE * Properties *
+'@source inc\QProgress.inc 39
+'  то же имя ещё в inc\object\QProgress.inc, строка 28 (EXTENDS QOBJECT)
+Caption|STRING|RW|
+Gauge|QGAUGE|RW|
+StepSize|INTEGER|RW|
+Interval|SINGLE|RW|
+Visible|INTEGER|RW|
+Color|INTEGER|RW|
+BackColor|INTEGER|RW|
+Range|INTEGER|RW|
+value|INTEGER|RW|
+Kind|INTEGER|RW|
+Height|INTEGER|RW|
+Width|INTEGER|RW|
+UseThreading|INTEGER|RW|
+* Methods
+* Events
+* Defaults
+UseThreading=FALSE
+TIMER.Enabled=FALSE
+Visible=FALSE
+hThread=0
+Left=0
+Top=0
+Width=200
+Height=20
+StepSize=50
+Color=RGB(128 , 128 , 128)
+BackColor=0
+Kind=0
+Gauge.Parent=QProgress
+Gauge.Left=0
+Gauge.Top=0
+BitMap.Width=0
+BitMap.Height=0
+Interval=0.500
+Increment=0
+# 140 QProgressBar EXTENDS QOBJECT * Properties *
+'@source inc\QProgressBar.inc 95
+Parent|INTEGER|RW|
+Handle|INTEGER|RW|
+Interval|INTEGER|RW|
+Increment|INTEGER|RW|
+Visible|INTEGER|RW|
+Max|INTEGER|RW|
+Min|INTEGER|RW|
+Color|INTEGER|RW|
+BackColor|INTEGER|RW|
+Position|INTEGER|RW|
+Kind|INTEGER|RW|
+Top|INTEGER|RW|
+Left|INTEGER|RW|
+Height|INTEGER|RW|
+Width|INTEGER|RW|
+State|INTEGER|RW|
+* Methods
+Create|SUB||
+Close|SUB||
+SetRange|SUB||
+ReDraw|SUB||
+SetParent|SUB||(TheParent AS INTEGER)
+SetMax|SUB||(TheValue)
+SetMin|SUB||(TheValue)
+SetPosition|SUB||(TheValue AS INTEGER)
+* Events
+* Defaults
+Visible=True
+Handle=0
+Parent=0
+Left=0
+Top=0
+Width=100
+Height=18
+Min=0
+Max=100
+Color=RGB(128 , 128 , 128)
+BackColor=0
+Kind=PBS_OLD
+Interval=40
+Increment=1
+State=0
+# 141 QRedEx EXTENDS QRichEdit * Properties *
+'@source inc\QRedEx.Inc 57
+'  то же имя ещё в inc\QREDEXTest.INC, строка 50 (EXTENDS QRichEdit)
+'  то же имя ещё в inc\QREDEXTest2.INC, строка 2 (EXTENDS QRichEdit)
+UsePopup|LONG|RW|
+RichTextSizeLimit|LONG|RW|
+SavedTopLeft|LONG|RW|
+SavedBottomRight|LONG|RW|
+SavedCaretPosition|LONG|RW|
+ptPoint|STRING|RW|
+frmSearch|QFORM|RW|
+edtSearchFor|QEDIT|RW|
+lblSearchFor|QLABEL|RW|
+btnSearch|QBUTTON|RW|
+chkSearchCaseS|QCHECKBOX|RW|
+chkSearchWholeWordsOnly|QCHECKBOX|RW|
+frmReplace|QFORM|RW|
+lblToBeReplaced|QLABEL|RW|
+edtToBeReplaced|QEDIT|RW|
+lblReplacedBy|QLABEL|RW|
+edtReplacedBy|QEDIT|RW|
+btnReplace|QBUTTON|RW|
+btnFindNext|QBUTTON|RW|
+btnReplaceAll|QBUTTON|RW|
+chkReplaceCaseS|QCHECKBOX|RW|
+chkReplaceWholeWordsOnly|QCHECKBOX|RW|
+chkReplaceUp|QCHECKBOX|RW|
+* Methods
+ExtendSizeLimit|SUB||
+SetMaxTextSize|SUB||(iTextSizeMax As Long)
+SavePosition|SUB||
+RestorePosition|SUB||
+TopLineIndex|FUNCTION||() As Long
+BottomLineIndex|FUNCTION||() As Long
+ChangeFont|SUB||
+ChangeFontColor|SUB||
+ChangeBgColor|SUB||
+* Events
+* Defaults
+WantTabs=1
+RichTextSizeLimit=1048576
+PopUpMenu=QRedEx.QRED_PopUpMenu
+mnuUnDo.Caption="&Undo"
+mnuUndo.OnClick=QRedEx.OnClic_mnuUndo
+mnuSep_1.Caption="-"
+mnuCut.Caption="Cu&t"
+mnuCut.OnClick=QRedEx.OnClic_mnuCut
+mnuCopy.Caption="&Copy"
+mnuCopy.OnClick=QRedEx.OnClic_mnuCopy
+mnuPaste.Caption="&Paste"
+mnuPaste.OnClick=QRedEx.OnClic_mnuPaste
+mnuDelete.Caption="&Delete"
+mnuDelete.OnClick=QRedEx.OnClic_mnuDelete
+mnuSep_2.Caption="-"
+mnuSelectAll.Caption="Select &All"
+mnuSelectAll.OnClick=QRedEx.OnClic_mnuSelectAll
+mnuSep_3.Caption="-"
+mnuSearch.Caption="&Search"
+mnuSearch.OnClick=QRedEx.OnClic_mnuSearch
+mnuReplace.Caption="&Replace"
+mnuReplace.OnClick=QRedEx.OnClic_mnuReplace
+frmSearch.BorderStyle=3
+frmSearch.Caption="Search in text"
+frmsearch.Width=400
+frmSearch.Height=125
+frmSearch.Visible=0
+lblSearchFor.Parent=QRedEx.frmSearch
+lblSearchFor.Top=5
+lblSearchFor.Left=5
+lblSearchFor.Caption="Text to search for:"
+edtSearchFor.Parent=QRedEx.frmSearch
+edtSearchFor.Top=30
+edtSearchFor.Left=5
+edtSearchFor.Width=QRedEx.frmSearch.ClientWidth - 10
+edtSearchFor.Height=20
+edtSearchFor.OnKeyPress=QRedEx.OnKeyPress_edtSearchFor
+btnSearch.Parent=QRedEx.frmSearch
+btnSearch.Top=65
+btnSearch.Left=5
+btnSearch.Width=125
+btnSearch.Height=25
+btnSearch.Caption="&Find Next"
+btnSearch.OnClick=QRedEx.OnClic_btnSearch
+chkSearchCaseS.Parent=QRedEx.frmSearch
+chkSearchCaseS.Top=65
+chkSearchCaseS.Left=150
+chkSearchCaseS.Width=110
+chkSearchCaseS.Height=25
+chkSearchCaseS.Caption="Match case"
+chkSearchWholeWordsOnly.Parent=QRedEx.frmSearch
+chkSearchWholeWordsOnly.Top=65
+chkSearchWholeWordsOnly.Left=280
+chkSearchWholeWordsOnly.Width=110
+chkSearchWholeWordsOnly.Height=25
+chkSearchWholeWordsOnly.Caption="Full word"
+frmReplace.BorderStyle=3
+frmReplace.Caption="Replace in text"
+frmReplace.Width=400
+frmReplace.Height=210
+frmReplace.Visible=0
+lblToBeReplaced.Parent=QRedEx.frmReplace
+lblToBeReplaced.Top=5
+lblToBeReplaced.Left=5
+lblToBeReplaced.Caption="Text to be replaced:"
+edtToBeReplaced.Parent=QRedEx.frmReplace
+edtToBeReplaced.Top=30
+edtToBeReplaced.Left=5
+edtToBeReplaced.Width=QRedEx.frmReplace.ClientWidth - 10
+edtToBeReplaced.Height=20
+edtToBeReplaced.OnKeyPress=QRedEx.OnKeyPress_edtToBeReplaced
+lblReplacedBy.Parent=QRedEx.frmReplace
+lblReplacedBy.Top=65
+lblReplacedBy.Left=5
+lblReplacedBy.Caption="Replacement text:"
+edtReplacedBy.Parent=QRedEx.frmReplace
+edtReplacedBy.Top=95
+edtReplacedBy.Left=5
+edtReplacedBy.Width=QRedEx.frmReplace.ClientWidth - 10
+edtReplacedBy.Height=20
+edtReplacedBy.OnKeyPress=QRedEx.OnKeyPress_edtReplacedBy
+btnFindNext.Parent=QRedEx.frmReplace
+btnFindNext.Top=130
+btnFindNext.Left=5
+btnFindNext.Width=(QRedEx.frmReplace.ClientWidth - 20)/3
+btnFindNext.Height=25
+btnFindNext.Caption="&Find next"
+btnFindNext.OnClick=QRedEx.OnClic_btnFindNext
+btnReplace.Parent=QRedEx.frmReplace
+btnReplace.Top=130
+btnReplace.Left=10 + (QRedEx.frmReplace.ClientWidth - 20)/3
+btnReplace.Width=(QRedEx.frmReplace.ClientWidth - 20)/3
+btnReplace.Height=25
+btnReplace.Caption="&Replace"
+btnReplace.OnClick=QRedEx.OnClic_btnReplace
+btnReplaceAll.Parent=QRedEx.frmReplace
+btnReplaceAll.Top=130
+btnReplaceAll.Left=15 + 2 * (QRedEx.frmReplace.ClientWidth - 20)/3
+btnReplaceAll.Width=(QRedEx.frmReplace.ClientWidth - 20)/3
+btnReplaceAll.Height=25
+btnReplaceAll.Caption="Replace &All"
+btnReplaceAll.OnClick=QRedEx.OnClic_btnReplaceAll
+chkReplaceCaseS.Parent=QRedEx.frmReplace
+chkReplaceCaseS.Top=155
+chkReplaceCaseS.Left=5
+chkReplaceCaseS.Width=(QRedEx.frmReplace.ClientWidth - 20)/3
+chkReplaceCaseS.Height=25
+chkReplaceCaseS.Caption="Match case"
+chkReplaceWholeWordsOnly.Parent=QRedEx.frmReplace
+chkReplaceWholeWordsOnly.Top=155
+chkReplaceWholeWordsOnly.Left=10 + (QRedEx.frmReplace.ClientWidth - 20)/3
+chkReplaceWholeWordsOnly.Width=30 + (QRedEx.frmReplace.ClientWidth - 20)/3
+chkReplaceWholeWordsOnly.Height=25
+chkReplaceWholeWordsOnly.Caption="Full word"
+chkReplaceUp.Parent=QRedEx.frmReplace
+chkReplaceUp.Top=155
+chkReplaceUp.Left=15 + 2 * (QRedEx.frmReplace.ClientWidth - 20)/3
+chkReplaceUp.Width=(QRedEx.frmReplace.ClientWidth - 20)/3
+chkReplaceUp.Height=25
+chkReplaceUp.Caption="Replace up"
+# 142 QRichEdit_xt EXTENDS QRichEdit * Properties *
+'@source inc\QRichEditXt.inc 193
+HandleDC|INTEGER|RW|
+HiLight|INTEGER|RW|
+KeyListName|STRING|RW|
+AUTOURLDETECT|INTEGER|RW|
+LIMITTEXT|INTEGER|RW|
+AUTOFONT|INTEGER|RW|
+SCROLLPOS|INTEGER|RW|
+* Methods
+Proc|FUNCTION||(hWnd AS LONG, uMsg AS LONG, wParam AS LONG, lParam AS LONG) AS LONG
+* Events
+* Defaults
+SCROLLPOS=1
+LIMITTEXT=65535*32
+AUTOFONT=0
+HiLight=0
+Tmr.Interval=1
+# 143 QrPanel EXTENDS QPanel * Properties *
+'@source inc\QrPanel.inc 17
+RndX|LONG|RW|
+RndY|LONG|RW|
+rBorder|BYTE|RW|
+* Methods
+* Events
+* Defaults
+RndX=20
+RndY=20
+rBorder=0
+# 144 QRun EXTENDS QObject * Properties *
+'@source inc\QRun.inc 56
+'  то же имя ещё в inc\object\QRun.inc, строка 25 (EXTENDS QObject)
+* Methods
+FindApplication|FUNCTION||(FileName as string) as string
+FileRun|SUB||(FileName as string,cmdShow as short)
+ExeRun|SUB||(ExeName as string,Param as string,cmdShow as short)
+EnumWindow|FUNCTION||(All as boolean) as boolean
+FindChild|FUNCTION||(handle as long,class as string,name as string) as long
+EnumFromPoint|FUNCTION||(x as long,y as long) as boolean
+Close|SUB||(handle as long)
+Minimize|SUB||(handle as long)
+Maximize|SUB||(handle as long)
+Restore|SUB||(handle as long)
+SetFocus|SUB||(handle as long)
+SetTopMost|SUB||(handle as long,flag as boolean)
+* Events
+OnEnumWindows||(OnEnumWindows_eventTemplate)
+OnEnumFromPoint||(OnEnumWindows_eventTemplate)
+# 145 QSaveplus EXTENDS QSaveDialog * Properties *
+'@source inc\QSavePlus.inc 46
+* Methods
+Execute2|FUNCTION||AS Integer
+* Events
+# 146 QSHFileOperation EXTENDS QObject * Properties *
+'@source inc\QSHFileOperation.inc 104
+DefaultFlagsEx|INTEGER|RW|
+DefaultFlags|INTEGER|RW|
+* Methods
+CopyEx|FUNCTION||(dSHfoFrom As String, dSHfoTo As String, _
+Copy|FUNCTION||(dSHfoFrom As String, dSHfoTo As String) As Long
+MoveEx|FUNCTION||(dSHfoFrom As String, dSHfoTo As String, _
+Move|FUNCTION||(dSHfoFrom As String, dSHfoTo As String) As Long
+RenameEx|FUNCTION||(dSHfoFrom As String, dSHfoTo As String, _
+Rename|FUNCTION||(dSHfoFrom As String, dSHfoTo As String) As Long
+DeleteEx|FUNCTION||(dSHfoFrom As String, SHfoToBin As Integer, SHConfirm As Integer, _
+Delete|FUNCTION||(dSHfoFrom As String, SHfoToBin As Integer, SHConfirm As Integer) As Long
+* Events
+* Defaults
+DefaultFlagsEx=0
+DefaultFlags=fofRenameOnCollision
+# 147 QShutDown EXTENDS QOBJECT * Properties *
+'@source inc\QShutdown.inc 63
+* Methods
+ShutDown|SUB||
+ShutDownForce|SUB||
+LogOff|SUB||
+Reboot|SUB||
+* Events
+* Defaults
+MyFlag=EWX_LOGOFF
+# 148 QSkin EXTENDS QForm * Properties *
+'@source inc\QSkin.inc 20
+'  то же имя ещё в inc\object\QSkin.inc, строка 20 (EXTENDS QForm)
+Skin|QIMAGE|RW|
+OffsWidth|SHORT|RW|
+OffsHeight|SHORT|RW|
+* Methods
+SetDeskBar|SUB||
+Resize|SUB||
+* Events
+* Defaults
+borderStyle=1
+Skin.parent=QSkin
+Skin.autosize=true
+Skin.left=0
+Skin.top=0
+OffsWidth=0
+OffsHeight=0
+# 149 QSkinBtn EXTENDS qimage * Properties *
+'@source inc\QSkinBtn.inc 17
+'  то же имя ещё в inc\object\QSkinBtn.inc, строка 17 (EXTENDS qimage)
+btUp|QBITMAP|RW|
+btDown|QBITMAP|RW|
+btEnable|QBITMAP|RW|
+mode|SHORT|RW|
+down|BOOLEAN|RW|
+enabled|BOOLEAN|RW|
+* Methods
+* Events
+* Defaults
+autosize=true
+show.parent=qform
+Down=false
+mode=0
+Enabled=true
+# 150 QSocketEx EXTENDS QSocket * Properties *
+'@source inc\QSocketEx.inc 76
+* Methods
+GetPeerName|FUNCTION||(SockNum AS integer) AS string
+NameByAddr|FUNCTION||(strIP AS string) AS string
+AddrByName|FUNCTION||(strName AS string) AS string
+IsConnected|FUNCTION||(SockNum As LONG, TimeOutSecs As LONG) As LONG
+WriteLine|SUB||(SockNum AS integer, Str As STRING) As LONG
+WriteEx|FUNCTION||(SockNum AS integer, Message AS string, NumBytes AS integer) AS long
+ShutDown|FUNCTION||(SockNum AS integer) As LONG
+NonBlock|FUNCTION||(hSocket As LONG) As LONG
+Block|FUNCTION||(hSocket As LONG) As LONG
+LastError|FUNCTION||() AS string
+* Events
+* Defaults
+Tag=0
+# 151 QSpinButton EXTENDS QPanel * Properties *
+'@source inc\QSpinEdit.inc 22
+Font|QFONT|RW|
+Value|VARIANT|RW|
+IncrementBy|VARIANT|RW|
+MaxValue|DOUBLE|RW|
+MinValue|DOUBLE|RW|
+ShowEdit|BOOLEAN|RW|
+Style|INTEGER|RW|
+Text|STRING|RW|
+* Methods
+Draw|SUB||
+Click|SUB||(Sender as QCoolBtn)
+Change|SUB||(Sender as QEdit)
+* Events
+* Defaults
+MaxValue=10
+IncrementBy=0.1
+Style=st3d
+ShowEdit=True
+MinValue=-10
+Value=0
+Width=50
+Height=22
+Text="0"
+ShowHint=1
+SpinUp.OnClick=QSpinButton.Click
+SpinDown.OnClick=QSpinButton.Click
+SpinEdit.OnChange=QSpinButton.Change
+# 152 Qspintext EXTENDS qpanel * Properties *
+'@source inc\qspintext.inc 16
+'  то же имя ещё в inc\qspintextev.inc, строка 12 (EXTENDS qpanel)
+'  то же имя ещё в inc\qspintextOld.inc, строка 12 (EXTENDS qpanel)
+max|LONG|RW|
+min|LONG|RW|
+value|LONG|RW|
+bgcolor|LONG|RW|
+fontcolor|LONG|RW|
+ed|QEDIT|RW|
+sb|QSCROLLBAR|RW|
+* Methods
+initial|SUB||
+* Events
+OnChange||(QspintextOnChange)
+* Defaults
+width=50
+height=22
+sb.kind=1
+sb.width=18
+sb.top=2
+sb.height=18
+ed.top=3
+ed.left=2
+ed.height=16
+ed.borderstyle=0
+ed.width=Qspintext.width - 22
+sb.left=Qspintext.ed.width+Qspintext.ed.left+2
+ed.color=-2147483648
+bgcolor=-2147483643
+fontcolor=0
+bevelouter=1
+# 153 QSplash EXTENDS QObject * Properties *
+'@source inc\QSplash.inc 17
+'  то же имя ещё в inc\object\QSplash.inc, строка 17 (EXTENDS QObject)
+Image|QIMAGE|RW|
+Text|STRING|RW|
+TextCenter|BOOLEAN|RW|
+TextTop|SHORT|RW|
+TextLeft|SHORT|RW|
+TextFont|QFONT|RW|
+TextTransparent|BOOLEAN|RW|
+* Methods
+Show|SUB||(Time as short)
+* Events
+* Defaults
+form.BorderStyle=3
+Image.parent=QSplash.form
+Image.autosize=true
+Image.left=0
+Image.top=0
+Text=""
+TextLeft=5
+TextCenter=False
+# 154 QStatusBarEx EXTENDS QSTATUSBAR * Properties *
+'@source inc\QStatusBarEx.inc 15
+'  то же имя ещё в inc\object\QStatusBarEx.inc, строка 15 (EXTENDS QSTATUSBAR)
+* Methods
+AddOptPanel|SUB||(panel as qpanel,index as integer)
+* Events
+# 155 QTabControlEx EXTENDS QTabControl * Properties *
+'@source inc\QtabControlEx.inc 6
+TabCount|INTEGER|RW|
+* Methods
+DeleteTabs|SUB||(index as integer)
+Add|SUB||(s as string)
+AddTabs|SUBI||(...)
+InsertTab|SUB||(index as integer,s as string)
+Clear|SUB||
+* Events
+* Defaults
+TabCount=0
+# 156 QTButton EXTENDS QButton * Properties *
+'@source inc\QTButton.inc 123
+'  то же имя ещё в inc\QTButton72.inc, строка 22 (EXTENDS QButton)
+'  то же имя ещё в inc\QTButton85b.inc, строка 123 (EXTENDS QButton)
+'  то же имя ещё в inc\QTButton94.inc, строка 339 (EXTENDS QButton)
+'  то же имя ещё в inc\QTButton94b.inc, строка 379 (EXTENDS QButton)
+'  то же имя ещё в inc\QTButton95.inc, строка 400 (EXTENDS QButton)
+Dest|QRECT|RW|
+Source|QRECT|RW|
+BMPBtn|QBITMAP|RW|
+BMPtmp|QBITMAP|RW|
+ICOBMP|QBITMAP|RW|
+Align|INTEGER|RW|
+Caption|STRING|RW|
+Enabled|INTEGER|RW|
+Height|INTEGER|RW|
+Width|INTEGER|RW|
+Layout|INTEGER|RW|
+Spacing|INTEGER|RW|
+NumBMPs|INTEGER|RW|
+NumICOBMPs|INTEGER|RW|
+Kind|INTEGER|RW|
+Down|INTEGER|RW|
+GroupIndex|INTEGER|RW|
+* Methods
+TextWidth|FUNCTION||(text as string) As Integer
+TextHeight|FUNCTION||(text as string) As Integer
+DrawCaption|SUB||
+ReDraw|SUB||
+DrawDownUp|SUB||
+ReleaseHotTrack|SUB||
+FixBtnSize|SUB||
+* Events
+OnMouseLeave||(OnMouseEnterLeave_EventTemplate)
+OnMouseEnter||(OnMouseEnterLeave_EventTemplate)
+* Defaults
+BMPtmp.PixelFormat=DefPixelFormat
+BMPBtn.PixelFormat=DefPixelFormat
+Spacing=DefPixelFormat
+Enabled=True
+NumBMPs=True
+NumICOBMPs=True
+Layout=False
+Down=False
+# 157 QTextBtn EXTENDS QLabel * Properties *
+'@source inc\QTextBtn.inc 18
+'  то же имя ещё в inc\object\QTextBtn.inc, строка 17 (EXTENDS QLabel)
+DownColor|LONG|RW|
+UpColor|LONG|RW|
+mode|SHORT|RW|
+down|BOOLEAN|RW|
+enabled|BOOLEAN|RW|
+* Methods
+* Events
+* Defaults
+Transparent=true
+autosize=true
+Down=false
+mode=0
+cursor=-21
+UpColor=&h0
+DownColor=&h0
+# 158 QTEXTEDIT EXTENDS QRICHEDIT * Properties *
+'@source inc\QTextEdit.inc 19
+'  то же имя ещё в inc\QTextEditTest.inc, строка 4 (EXTENDS QRICHEDIT)
+'  то же имя ещё в inc\object\QTextEdit.inc, строка 19 (EXTENDS QRICHEDIT)
+UsePopup|BOOLEAN|RW|
+UndoCaption|STRING|RW|
+CutCaption|STRING|RW|
+CopyCaption|STRING|RW|
+PasteCaption|STRING|RW|
+SelectAllCaption|STRING|RW|
+* Methods
+Undo|SUB||
+Cut|SUB||
+Copy|SUB||
+Paste|SUB||
+SelectAl|SUB||
+Limit|SUB||(value as long)
+ReplaceSel|SUB||(text as string)
+Find|FUNCTION||(start as long,text as string,case as boolean) as long
+LinesScroll|SUB||(number as long)
+CanUndo|FUNCTION||as boolean
+* Events
+* Defaults
+mnuUndo.Caption="&Undo"
+mnuUndo.OnClick=QTEXTEDIT.Undo
+mnuUndo.ShortCut="CTRL+Z"
+mnuSep1.Caption="-"
+mnuCut.Caption="Cu&t"
+mnuCut.OnClick=QTEXTEDIT.Cut
+mnuCut.ShortCut="CTRL+X"
+mnuCopy.Caption="&Copy"
+mnuCopy.OnClick=QTEXTEDIT.Copy
+mnuCopy.ShortCut="CTRL+C"
+mnuPaste.Caption="&Paste"
+mnuPaste.OnClick=QTEXTEDIT.Paste
+mnuPaste.ShortCut="CTRL+V"
+mnuSep2.Caption="-"
+mnuSelectAll.Caption="Select &All"
+mnuSelectAll.OnClick=QTEXTEDIT.SelectAl
+mnuSelectAll.ShortCut="CTRL+A"
+PopupMenu=QTEXTEDIT.MaxMenu
+UsePopup=1
+# 159 QToolBar EXTENDS QObject * Properties *
+'@source inc\QToolBar.inc 27
+Handle|INTEGER|RW|
+Parent|QFORM|RW|
+Parent2|QPANEL|RW|
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|
+Height|INTEGER|RW|
+Enabled|INTEGER|RW|
+Visible|INTEGER|RW|
+AutoSize|INTEGER|RW|
+Flat|INTEGER|RW|
+Transparent|INTEGER|RW|
+Wrapable|INTEGER|RW|
+Divider|INTEGER|RW|
+ButtonWidth|INTEGER|RW|
+ButtonHeight|INTEGER|RW|
+Font|QFONT|RW|
+PopupMenu|QPOPUPMENU|RW|
+Images|QIMAGELIST|RW|
+HotImages|QIMAGELIST|RW|
+DisabledImages|QIMAGELIST|RW|
+* Methods
+Button|FUNCTION||(Index&) As Integer
+ButtonCount|FUNCTION||As Integer
+CreateWnd|SUB||
+RecreateWnd|SUB||
+Invalidate|SUB||
+Update|SUB||
+Repaint|SUB||
+Refresh|SUB||
+GetCommandID|FUNCTION||(Index&) As Integer
+GetIndex|FUNCTION||(CommandID&) As Integer
+SetButtonImageIndex|SUB||(Index&,ImageIndex&)
+GetButtonImageIndex|FUNCTION||(Index&) As Integer
+SetButtonCaption|SUB||(Index&,Caption$)
+GetButtonCaption|FUNCTION||(Index&) As String
+SetButtonDropDown|SUB||(Index&,DropDown As QPopupMenu)
+GetButtonDropDown|FUNCTION||(Index&) As Integer
+SetButtonHint|SUB||(Index&,Hint$)
+GetButtonHint|FUNCTION||(Index&) As String
+SetButtonShowHint|SUB||(Index&,ShowHint&)
+GetButtonShowHint|FUNCTION||(Index&) As Integer
+SetButtonDown|SUB||(Index&,Down&)
+GetButtonDown|FUNCTION||(Index&) As Integer
+SetButtonEnabled|SUB||(Index&,Enabled&)
+GetButtonEnabled|FUNCTION||(Index&) As Integer
+SetButtonVisible|SUB||(Index&,Visible&)
+GetButtonVisible|FUNCTION||(Index&) As Integer
+AddButton|SUB||(ImageIndex&,Caption$,Style&)
+AddSeparator|SUB||
+InsButton|SUB||(Index&,ImageIndex&,Caption$,Style&)
+DelButton|SUB||(Index&)
+ParentWndProc|FUNCTION||(hWnd&,Msg&,wParam&,lParam&) As Integer
+WndProc|FUNCTION||(hWnd&,Msg&,wParam&,lParam&) As Integer
+Register|SUB||
+* Events
+OnButtonClick||(EventTemplate_ToolBar_ButtonClick)
+OnCommand||(EventTemplate_ToolBar_Command)
+* Defaults
+IDCommand=10
+Autosize=1
+Visible=1
+Transparent=1
+Width=221
+Height=26
+# 160 QToolBarEX EXTENDS QPANEL * Properties *
+'@source inc\QToolBarEX.inc 36
+BMP|STRING|RW|
+BMPHandle|INTEGER|RW|
+BtnCount|INTEGER|RW|
+BtnSpacer|INTEGER|RW|
+BtnMask|INTEGER|RW|
+Cursor|INTEGER|RW|
+Enabled|INTEGER|RW|
+GroupIndex|INTEGER|RW|
+Height|INTEGER|RW|
+Hint|STRING|RW|
+NumBMPs|INTEGER|RW|
+Width|INTEGER|RW|
+tbButtons|ARRAY of QCOOLBTN|RW|
+* Methods
+* Events
+OnSelect||(ToolBtnClick_Event)
+* Defaults
+Align=alTop
+Left=0
+Top=0
+Width=0
+Height=0
+BtnCount=0
+BtnSpacer=1
+BtnMask=&hffffff
+NumBMPs=1
+GroupIndex=0
+Enabled=True
+Hint=""
+Cursor=0
+OnSelect=0
+# 161 QtreeviewEx EXTENDS Qtreeview * Properties *
+'@source inc\QTreeviewEx.inc 4
+* Methods
+getparent|FUNCTION||(i as integer) as integer
+getindex|FUNCTION||(from as integer, itemtext as string) as integer
+strgetparent|FUNCTION||(itemtext as string) as integer
+getchildrenlist|FUNCTION||(i as integer) as string
+addchildto|SUB||(startfrom as integer, itemtext as string, childtext as string)
+Branchlength|FUNCTION||(i as integer) as integer
+MoveDown|SUB||(i as integer)
+MoveUp|SUB||(i as integer)
+IncLevel|SUB||(i as integer)
+DecLevel|SUB||(i as integer)
+* Events
+# 162 QVideo EXTENDS Qobject * Properties *
+'@source inc\QVideo.inc 44
+'  то же имя ещё в inc\object\QVideo.inc, строка 31 (EXTENDS Qobject)
+Timer|QTIMER|RW|
+Lenght|LONG|RW|
+LenghtTime|LONG|RW|
+State|INTEGER|RW|
+Handle|LONG|RW|
+FileOpen|BOOLEAN|RW|
+Error|STRING|RW|
+Parent|LONG|RW|
+BorderStyle|INTEGER|RW|
+ImgWidth|SHORT|RW|
+ImgHeight|SHORT|RW|
+Left|SHORT|RW|
+Top|SHORT|RW|
+Width|SHORT|RW|
+Height|SHORT|RW|
+CurrentFrame|LONG|RW|
+AudioOff|BOOLEAN|RW|
+Caption|STRING|RW|
+WindowState|INTEGER|RW|
+Volume|INTEGER|RW|
+* Methods
+Close|SUB||
+Open|FUNCTION||(FileName as string) as boolean
+Show|SUB||
+Play|SUB||
+Stop|SUB||
+Pause|SUB||
+* Events
+OnChange||(event_change)
+* Defaults
+State=VD_CLOSE
+Timer.interval=1000
+Timer.enabled=False
+# 163 QVolumeInfo EXTENDS QObject * Properties *
+'@source inc\QVolumeInfo.inc 75
+Serial|STRING|RW|
+Name|STRING|RW|
+FileSytem|STRING|RW|
+DriveRoot|STRING|RW|
+Bytes|LONG|RW|
+Sectors|LONG|RW|
+TotalClusters|LONG|RW|
+FreeClusters|LONG|RW|
+TotalBytes|DOUBLE|RW|
+FreeBytes|DOUBLE|RW|
+TotalSpace|STRING|RW|
+FreeSpace|STRING|RW|
+DriveType|LONG|RW|
+DriveTypeString|STRING|RW|
+DriveTypeUnknown|INTEGER|RW|
+* Methods
+GetStringFormat|FUNCTION||(Bytes as double) as string
+SelectDrive|SUB||(DriveRoot as string)
+* Events
+# 164 QVuMeter EXTENDS QCanvas * Properties *
+'@source inc\QVuMeter.inc 17
+'  то же имя ещё в inc\object\QVuMeter.inc, строка 17 (EXTENDS QCanvas)
+Max|INTEGER|RW|
+Min|INTEGER|RW|
+DarkColor|LONG|RW|
+LightColor|LONG|RW|
+Thickness|SHORT|RW|
+Interval|SHORT|RW|
+Value|LONG|RW|
+* Methods
+* Events
+* Defaults
+DarkColor=&h0
+LightColor=&hffffff
+Min=0
+Max=100
+Thickness=2
+Interval=1
+Value=0
+# 165 QWave EXTENDS Qobject * Properties *
+'@source inc\QWave.inc 36
+'  то же имя ещё в inc\object\QWave.inc, строка 36 (EXTENDS Qobject)
+Timer|QTIMER|RW|
+Lenght|LONG|RW|
+State|INTEGER|RW|
+FileOpen|BOOLEAN|RW|
+Error|STRING|RW|
+CurrentPos|LONG|RW|
+Bits|INTEGER|RW|
+Frequence|INTEGER|RW|
+Mode|SHORT|RW|
+Volume|INTEGER|RW|
+* Methods
+Close|SUB||
+Open|FUNCTION||(FileName as string) as boolean
+Play|SUB||
+Stop|SUB||
+Pause|SUB||
+New|SUB||
+Record|SUB||
+Save|FUNCTION||(FileName as string) as boolean
+Delete|SUB||(pos1 as long,pos2 as long)
+* Events
+OnChange||(event_change)
+* Defaults
+State=WV_CLOSE
+Timer.interval=1000
+Timer.enabled=False
+# 166 QXPBUTTON EXTENDS QBUTTON * Properties *
+'@source inc\QXPButton.inc 181
+ImageLeft|INTEGER|RW|
+ImageTop|INTEGER|RW|
+ImageRight|INTEGER|RW|
+ImageBottom|INTEGER|RW|
+ImageAlign|INTEGER|RW|
+ImageList|QIMAGELIST|RW|
+* Methods
+XPStyle|SUB||
+UpdateBtnBmp|SUB||
+* Events
+* Defaults
+hParent=0
+hBitmap=0
+ColorMask=0
+BILTM=0
+BILRM=0
+ImageLeft=0
+ImageTop=0
+ImageRight=0
+ImageBottom=0
+ImageAlign=BUTTON_IMAGELIST_ALIGN_LEFT
+# 167 QColorDlg EXTENDS QFORM * Properties *
+'@source inc\RapidFRM.inc 92
+Width|LONG|RW|
+Height|LONG|RW|
+Style|LONG|RW|
+Left|LONG|RW|
+Top|LONG|RW|
+Caption|STRING|RW|
+Color|LONG|RW|
+Colors|ARRAY of LONG|RW|
+WindowHandle|LONG|RW|
+* Methods
+Execute|FUNCTION||() AS integer
+* Events
+* Defaults
+Style=cdNormal
+Left=-1
+Top=-1
+Width=CC_WIDTH_STD
+Height=CC_HEIGHT
+Color=0
+Caption=""
+BorderStyle=0
+WindowHandle=0
+# 168 QMenuEx EXTENDS QIMAGELIST * Properties *
+'@source inc\rapidq2.inc 5564
+Font|QFONT|RW|
+MaskColor|LONG|RW|
+BackColor|LONG|RW|
+ForeColor|LONG|RW|
+DisabledColor|LONG|RW|
+HighLightColor|LONG|RW|
+HighLightTextColor|LONG|RW|
+Outline|LONG|RW|
+FontSize|WORD|RW|
+Transparent|INTEGER|RW|
+TransparentColor|INTEGER|RW|
+* Methods
+Init|SUB||(Form AS QFORM)
+Close|FUNCTION||() AS LONG
+Parent|SUB||(TheMenuParent AS QMENUITEM)
+AddBMPFile|SUB||(MenuItem AS QMENUITEM, FileName$)
+ICOFile|SUB||(MenuItem AS QMENUITEM, FileName$)
+AddDescription|FUNCTION||(MenuItem AS QMENUITEM, descripcion AS STRING) AS LONG
+MenuModify|FUNCTION||(item as Qmenuitem, picture as QIMAGE, descripcion AS STRING) AS LONG
+DelBitmap|SUB||(item as Qmenuitem)
+* Events
+OnMouseHover||(QM_OnMouseHover_eventTemplate)
+* Defaults
+Transparent=True
+TransparentColor=0
+DescripFlag=0
+Height=18
+Width=18
+flagWinProc=FALSE
+BackColor=clMenu
+ForeColor=clMenuText
+DisabledColor=GetSysColor(COLOR_GRAYTEXT)
+HighLightColor=GetSysColor(COLOR_HIGHLIGHT)
+HighLightTextColor=clMenuText
+OutLine=False
+Margin=9
+LastCount=0
+# 169 QSYSTEM EXTENDS QOBJECT * Properties *
+'@source inc\rapidq2.inc 7503
+MajorVersion|INTEGER|RW|
+MinorVersion|INTEGER|RW|
+BuildNumber|INTEGER|RW|
+ACLineStatus|INTEGER|RW|
+PercentBattery|INTEGER|RW|
+PowerStatus|INTEGER|RW|
+* Methods
+OSName$|FUNCTION||() AS STRING
+PercentFreeMemory|FUNCTION||() AS DWORD
+AvailableMemory|FUNCTION||() AS DWORD
+TotalMemory|FUNCTION||() AS DWORD
+UsedMemory|FUNCTION||() AS DWORD
+PageFileMemory|FUNCTION||() AS DWORD
+DiskFreeSpace|FUNCTION||(RootPathName AS STRING) AS DOUBLE
+MouseWheelPresent|FUNCTION||() AS LONG
+ScrollBarWidth|FUNCTION||() AS LONG
+ScrollBarHeight|FUNCTION||() AS LONG
+CaptionBarHeight|FUNCTION||() AS LONG
+WindowBorderWidth|FUNCTION||() AS LONG
+WindowBorderHeight|FUNCTION||() AS LONG
+IconWidth|FUNCTION||() AS LONG
+IconHeight|FUNCTION||() AS LONG
+MenuBarHeight|FUNCTION||() AS LONG
+NetworkPresent|FUNCTION||() AS LONG
+SlowProcessor|FUNCTION||() AS LONG
+ShowControlPanel|FUNCTION||(PanelName AS STRING,index AS INTEGER) AS LONG
+ShutDown|SUB||
+ShutDownForce|SUB||
+LogOff|SUB||
+Reboot|SUB||
+* Events
+* Defaults
+MyFlag=EWX_LOGOFF
+# 170 QD3DCamera EXTENDS QOBJECT * Properties *
+'@source inc\RapidQ_D3D.inc 321
+Pos|QD3DVECTOR|RW|
+Orient|QD3DORIENTVECTOR|RW|
+Height|SINGLE|RW|
+ZoomFactor|SINGLE|RW|
+AngleX|INTEGER|RW|
+AngleY|INTEGER|RW|
+MouseDownButton|INTEGER|RW|
+MouseDownX|INTEGER|RW|
+MouseDownY|INTEGER|RW|
+MouseZooming|INTEGER|RW|
+* Methods
+GetRadius|FUNCTION||() AS SINGLE
+GetXZRadius|FUNCTION||() AS SINGLE
+GetXYRadius|FUNCTION||() AS SINGLE
+Translate|SUB||(dx AS SINGLE, dy AS SINGLE, dz AS SINGLE)
+ZoomXZ|SUB||(Mag AS SINGLE)
+Zoom|SUB||(Mag AS SINGLE)
+ResetView|SUB||
+FaceCamera|SUB||(BYREF Orient AS QD3DOrientVector, ObjPosX AS SINGLE, ObjPosY AS SINGLE, ObjPosZ AS SINGLE)
+Update|SUB||(DxScrn AS QDXSCREEN)
+SaveMouse|SUB||
+RestoreMouse|SUB||
+* Events
+* Defaults
+Pos.x=0.0
+Pos.y=0.0
+Pos.z=0.0
+Orient.x=0.0
+Orient.y=0.0
+Orient.z=1.0
+Orient.dvx=0.0
+Orient.dvy=1.0
+Orient.dvz=0.0
+Height=1.0
+ZoomFactor=1.0
+AngleX=0
+AngleY=0
+MouseDownButton=MouseNotDown
+MouseDownX=0
+MouseDownY=0
+MouseZooming=False
+# 171 QD3DPrimitive EXTENDS QOBJECT * Properties *
+'@source inc\RapidQ_D3D.inc 455
+Mesh|QD3DMESHBUILDER|RW|
+Frame|QD3DFRAME|RW|
+RenderQuality|LONG|RW|
+TextureFile|STRING|RW|
+TexOriginX|SINGLE|RW|
+TexOriginY|SINGLE|RW|
+TexOriginZ|SINGLE|RW|
+TexOriginU|SINGLE|RW|
+TexOriginV|SINGLE|RW|
+TexScaleU|SINGLE|RW|
+TexScaleV|SINGLE|RW|
+TexWrapType|SHORT|RW|
+Color|QD3DRGBA|RW|
+DrawCenter|QD3DVECTOR|RW|
+BoxSides|INTEGER|RW|
+ViewFromOutside|INTEGER|RW|
+Visible|INTEGER|RW|
+* Methods
+New|FUNCTION||() AS INTEGER
+LoadTextureFile|SUB||
+MakeHorizPlane|SUB||(DXScreen AS QDXSCREEN)
+MakeVertZPlane|SUB||(DXScreen AS QDXSCREEN)
+MakeVertXPlane|SUB||(DXScreen AS QDXSCREEN)
+MakeBox|SUB||(DXScreen AS QDXSCREEN)
+MakePyramid|SUB||(DXScreen AS QDXSCREEN)
+MakeSphere|SUB||(DXScreen AS QDXSCREEN, NumFaces AS INTEGER)
+MakeCylinder|SUB||(DXScreen AS QDXSCREEN, NumFaces AS INTEGER)
+MakeCone|SUB||(DXScreen AS QDXSCREEN, NumFaces AS INTEGER)
+* Events
+# 172 QD3DCloneMesh EXTENDS QOBJECT * Properties *
+'@source inc\RapidQ_D3D.inc 844
+Visible|INTEGER|RW|
+CloneNum|INTEGER|RW|
+File|STRING|RW|
+Mesh|QD3DMESHBUILDER|RW|
+Frame|ARRAY of QD3DFRAME|RW|
+Range|QRECT|RW|
+RandPos|INTEGER|RW|
+Pos|ARRAY of QD3DVECTOR|RW|
+Orient|ARRAY of QD3DORIENTVECTOR|RW|
+RandScale|INTEGER|RW|
+Scale|QD3DVECTOR|RW|
+TextureFile|STRING|RW|
+TexOriginX|SINGLE|RW|
+TexOriginY|SINGLE|RW|
+TexOriginZ|SINGLE|RW|
+TexOriginU|SINGLE|RW|
+TexOriginV|SINGLE|RW|
+TexScaleU|SINGLE|RW|
+TexScaleV|SINGLE|RW|
+TexWrapType|LONG|RW|
+Color|QD3DRGBA|RW|
+* Methods
+Init|SUB||(DXscreen AS QDXSCREEN)
+New|FUNCTION||()		AS INTEGER
+* Events
+# 173 QRC4 EXTENDS QOBJECT * Properties *
+'@source inc\RC4crypt.inc 63
+* Methods
+Reset|SUB||
+Init|SUB||(key AS STRING)
+Pipe|FUNCTION||(str AS STRING) AS STRING
+* Events
+# 174 RSocket EXTENDS QSocket * Properties *
+'@source inc\RSocket.INC 55
+* Methods
+GetPeerName|FUNCTION||(S As LONG) As STRING
+AddrByName|FUNCTION||(strName As STRING) As STRING
+NameByAddr|FUNCTION||(strIP As STRING) As STRING
+S|FUNCTION||As LONG
+Close|FUNCTION||(S As LONG) As LONG
+NonBlock|FUNCTION||(S As LONG) As LONG
+Block|FUNCTION||(S As LONG) As LONG
+Connect|FUNCTION||(S As LONG,Remote As STRING,Port As INTEGER) As LONG
+IsConnected|FUNCTION||(S As LONG,Secs As LONG) As LONG
+EndConnection|FUNCTION||(S As LONG) As LONG
+LastError|FUNCTION||As STRING
+WriteLine|FUNCTION||(S As LONG,str As STRING) As LONG
+* Events
+# 175 TestEDIT EXTENDS QRICHEDIT * Properties *
+'@source inc\TstRichEd.inc 6
+* Methods
+LINEINDEX|FUNCTION||as long
+* Events
+# 176 QWebCam EXTENDS QOBJECT * Properties *
+'@source inc\VFW.inc 720
+'  то же имя ещё в inc\vfw2.inc, строка 714 (EXTENDS QOBJECT)
+'  то же имя ещё в inc\WebCam.inc, строка 78 (EXTENDS QOBJECT)
+CapStats|CAPSTATUS|RW|
+CapParms|CAPTUREPARMS|RW|
+hCapWnd|LONG|RW|
+CamNum|LONG|RW|
+Left|LONG|RW|
+Top|LONG|RW|
+Width|LONG|RW|
+Height|LONG|RW|
+Init|LONG|RW|
+ImageHeight|LONG|RW|
+ImageWidth|LONG|RW|
+BitCount|WORD|RW|
+Preview|LONG|RW|
+Capture|LONG|RW|
+Yield|LONG|RW|
+OnFrame|LONG|RW|
+FrameNum|LONG|RW|
+FrameInterval|WORD|RW|
+FramesDropped|LONG|RW|
+ShowErrors|LONG|RW|
+Error|LONG|RW|
+Caption|STRING|RW|
+Tag|LONG|RW|
+FormStyle|LONG|RW|
+Overlay|LONG|RW|
+FrameBuffers|LONG|RW|
+AudioHardware|LONG|RW|
+AudioBuffers|LONG|RW|
+TimeElapsedMS|LONG|RW|
+WaveSamples|LONG|RW|
+* Methods
+GetStatus|FUNCTION||() AS LONG
+GetParameters|FUNCTION||(MyParams AS CAPTUREPARMS) AS LONG
+SetParameters|FUNCTION||(MyParams AS CAPTUREPARMS) AS LONG
+CamInit|FUNCTION||(Form AS QFORM) AS LONG
+SetOnFrame|SUB||(TheCallBackAddr AS LONG)
+SetImageSize|FUNCTION||(TheImageWidth AS LONG, TheImageHeight AS LONG) AS LONG
+SetImageHeight|FUNCTION||(TheImageHeight AS LONG) AS LONG
+SetImageWidth|SUB||(TheImageWidth AS LONG) AS LONG
+SetBitCount|SUB||(TheBitCount AS WORD)
+ShowDialogBox|FUNCTION||(TheBoxNum) AS LONG
+SetCapture|SUB||(TheCaptureFlag AS LONG)
+SetYield|SUB||(TheYieldFlag AS LONG)
+SetPreview|SUB||(ThePreviewFlag AS LONG)
+CleanUp|SUB||
+GrabFrameToClipBoard|FUNCTION||() AS LONG
+SaveFrameToFile|FUNCTION||(TheFileName AS STRING) AS Long
+ReSize|SUB||(TheForm AS QFORM)
+* Events
+* Defaults
+CamNum=0
+Left=0
+Top=0
+Width=240
+Height=200
+OverLay=0
+Yield=False
+Init=0
+FrameBuffers=4
+BitCount=24
+ImageHeight=This.SetImageHeight(This.Height)
+ImageWidth=This.SetImageWidth(This.Width)
+Capture=0
+FrameInterval=16
+FramesDropped=0
+Preview=True
+Caption="video"
+Tag=0
+FormStyle=WS_CHILD OR WS_VISIBLE
+# 177 XpGroupBox EXTENDS QPANEL * Properties *
+'@source inc\XP_MANIFEST.INC 91
+'  то же имя ещё в inc\xp_manifest1.inc, строка 91 (EXTENDS QPANEL)
+Caption|STRING|RW|
+BorderColor|LONG|RW|
+CaptionColor|LONG|RW|
+LunaDetect|LONG|RW|
+* Methods
+* Events
+* Defaults
+BevelWidth=0
+BorderColor=&HBFD0D0
+CaptionColor=&HD54600
+LunaDetect=1
+Canvas.Parent=XpGroupBox
+Canvas.Align=5
+# 178 myXPSkinnedForm EXTENDS QForm * Properties *
+'@source inc\XPSkinMetallic_2.11_Res.inc 462
+TitleBarHide|INTEGER|RW|
+pOldProc|LONG|RW|
+flagWinProc|BOOLEAN|RW|
+XPPopupMenu|QFORM|RW|
+ItmOptions|QLABEL|RW|
+ItmOnTop|QLABEL|RW|
+ItmOnTop_ICO|QIMAGE|RW|
+ItmDeplace|QLABEL|RW|
+ItmReduire|QLABEL|RW|
+ItmReduire_ICO|QIMAGE|RW|
+ItmAgrandir|QLABEL|RW|
+ItmAgrandir_ICO|QIMAGE|RW|
+ItmFermer|QLABEL|RW|
+ItmFermer_ICO|QIMAGE|RW|
+HiLight|QPANEL|RW|
+QfRegion|LONG|RW|
+Rnd|LONG|RW|
+ToujoursVisible|INTEGER|RW|
+IsInBackGround|INTEGER|RW|
+Maximized|INTEGER|RW|
+Minimized|INTEGER|RW|
+Croped|INTEGER|RW|
+CropHeight|INTEGER|RW|
+scrWIDTH|INTEGER|RW|
+scrHEIGHT|INTEGER|RW|
+PopupBox|INTEGER|RW|
+Title_Left|QIMAGE|RW|
+Title_Mid|QIMAGE|RW|
+Title_Right|QIMAGE|RW|
+Title_ICO|QIMAGE|RW|
+TitleBtnsBg|QIMAGE|RW|
+ICOAsBMP|INTEGER|RW|
+icoList|QIMAGELIST|RW|
+Title_Cap|QIMAGE|RW|
+Title_Caption|QLABEL|RW|
+TitleAsBMP|INTEGER|RW|
+Title_Hot|QIMAGE|RW|
+Bot_Left|QIMAGE|RW|
+Bot_Mid|QIMAGE|RW|
+Bot_Right|QIMAGE|RW|
+Border_Left|QIMAGE|RW|
+Border_Right|QIMAGE|RW|
+MainBtn|QIMAGE|RW|
+MainBtn.Caption|STRING|RW|
+MainBtnIsOn|INTEGER|RW|
+MainBtnIs1st|INTEGER|RW|
+MainBtnCentered|INTEGER|RW|
+PopupL|INTEGER|RW|
+PopupT|INTEGER|RW|
+ClickHold|INTEGER|RW|
+TiTleDblClick|INTEGER|RW|
+TweakSkin|INTEGER|RW|
+MainBtnTimer|QTIMER|RW|
+ActiveTimer|QTIMER|RW|
+MenuTimer|QTIMER|RW|
+* Methods
+DelTitleIcons|SUBI||(...)
+AddTitleIcons|SUBI||(...)
+ActiveOrInactive|SUB||
+WindowProc|FUNCTION||(hwnd AS LONG, uMsg AS LONG, wParam AS LONG, lParam AS LONG) AS LONG
+ActiveInactive|FUNCTION||(Value AS boolean) AS boolean
+MButOut|SUB||
+OnTop|SUB||
+ItmOptions_Click|SUB||
+ItmOnTop_Click|SUB||
+ItmDeplace_Click|SUB||
+ItmReduire_Click|SUB||
+ItmAgrandir_Click|SUB||
+ItmFermer_Click|SUB||
+* Events
+* Defaults
+btn_Aide.Visible=0
+ItmReduire.Visible=0
+ItmAgrandir.Visible=0
+Width=400
+Height=400
+FormStyle=0
+BorderStyle=1
+Rnd=15
+Caption="Form style WinXP"
+ICOHandle=ICO
+Color=frmColor(0)
+MainBtnTimer.Enabled=0
+MenuTimer.Enabled=0
+ActiveTimer.Interval=200
+ActiveTimer.Enabled=0
+MainBtnIs1st=1
+MainBtnCentered=1
+MainBtn.Caption="Fermer"
+MainBtn.Font.Name="Tahoma"
+Title_Caption.Font.Name="Tahoma"
+TiTleDblClick=ttDefault
+icoList.Height=16
+icoList.Width=16
+icoList.BkColor=clPurple
+# 179 QRichEditUx EXTENDS QRICHEDIT * Properties *
+'@source inc\XPThemes.inc 103
+* Methods
+Subclass|SUB||()
+* Events
+* Defaults
+Subclassed=0
+# 180 QScrollBoxUx EXTENDS QSCROLLBOX * Properties *
+'@source inc\XPThemes.inc 175
+* Methods
+Subclass|SUB||()
+* Events
+* Defaults
+Subclassed=0
+# 181 QStringGridUx EXTENDS QStringGrid * Properties *
+'@source inc\XPThemes.inc 247
+* Methods
+Subclass|SUB||()
+* Events
+* Defaults
+Subclassed=0
+# 182 QPanelUx EXTENDS QPanel * Properties *
+'@source inc\XPThemes.inc 319
+* Methods
+Subclass|SUB||()
+* Events
+* Defaults
+Subclassed=0
+# 183 QGroupBoxUx EXTENDS QGROUPBOX * Properties *
+'@source inc\XPThemes.inc 391
+* Methods
+Subclass|SUB||()
+* Events
+* Defaults
+Subclassed=0
+* Constants
+AF_APPLETALK=16
+AF_BAN=21
+AF_CCITT=10
+AF_CHAOS=5
+AF_DATAKIT=9
+AF_DECnet=12
+AF_DLI=13
+AF_ECMA=8
+AF_FIREFOX=19
+AF_HYLINK=15
+AF_IMPLINK=3
+AF_INET=2
+AF_IPX=6
+AF_ISO=7
+AF_LAT=14
+AF_NETBIOS=17
+AF_NS=6
+AF_PUP=4
+AF_SNA=11
+AF_UNIX=1
+AF_UNKNOWN1=20
+AF_UNSPEC=0
+AF_VOICEVIEW=18
+alBottom=2
+alClient=5
+alLeft=3
+alNone=0
+alRight=4
+AltDown=16
+alTop=1
+ANSI_CHARSET=0
+ARABIC_CHARSET=178
+BALTIC_CHARSET=186
+biHelp=3
+biMaximize=2
+biMinimize=1
+biSystemMenu=0
+bkAbort=7
+bkAll=10
+bkCancel=2
+bkClose=6
+bkCustom=0
+bkHelp=3
+bkIgnore=9
+bkNo=5
+bkOK=1
+bkRetry=8
+bkYes=4
+blBMPBottom=3
+blBMPLeft=0
+blBMPRight=1
+blBMPTop=2
+bpNone=0
+bpSingle=1
+br110=0
+br115200=12
+br1200=3
+br14400=7
+br19200=8
+br2400=4
+br300=1
+br38400=9
+br4800=5
+br56000=10
+br57600=11
+br600=2
+br9600=6
+bsDialog=3
+bsNone=0
+bsSingle=1
+bsSizeable=2
+bsSizeToolWin=5
+bsToolWindow=4
+bvLowered=1
+bvNone=0
+bvRaised=2
+caFree=2
+caHide=1
+caMinimize=3
+caNone=0
+CHINESEBIG5_CHARSET=136
+cl3DDkShadow=-2147483627
+cl3DLight=-2147483626
+clA=16776960
+clActiveBorder=-2147483638
+clActiveCaption=-2147483646
+clAppWorkSpace=-2147483636
+clAqua=16776960
+clB=16711680
+clBackGround=-2147483647
+clBlack=0
+clBlue=16711680
+clBrown=32896
+clBtnFace=-2147483633
+clBtnHighlight=-2147483628
+clBtnShadow=-2147483632
+clBtnText=-2147483630
+clCaptionText=-2147483639
+clDB=8388608
+clDBlue=8388608
+clDefault=536870912
+clDG=32768
+clDGray=8421504
+clDGreen=32768
+clDGrey=8421504
+clDP=8388736
+clDPurple=8388736
+clDR=128
+clDRed=128
+clG=65280
+clGray=8421504
+clGrayText=-2147483631
+clGreen=65280
+clGrey=8421504
+clHilight=-2147483635
+clHilightText=-2147483634
+clInActiveBorder=-2147483637
+clInActiveCaption=-2147483645
+clInActiveCaptionText=-2147483629
+clInfoBk3DDkShadow=-2147483624
+clInfoText=-2147483625
+clLA=16777200
+clLAqua=16777200
+clLB=16755200
+clLBlue=16755200
+clLMagenta=16711935
+clLMg=16711935
+clLR=8421631
+clLRed=8421631
+clLtBlue=16755200
+clM=8421376
+clMagenta=8388736
+clMaroon=8421376
+clMenu=-2147483644
+clMenuText=-2147483641
+clMg=8388736
+clNone=536870911
+clO=33023
+clOr=33023
+clOrange=33023
+clP=16711935
+clPurple=16711935
+clR=255
+clRed=255
+clSilver=12632256
+clSl=12632256
+clW=16777215
+clWhite=16777215
+clWindow=-2147483643
+clWindowFrame=-2147483642
+clWindowText=-2147483640
+cly=65535
+clyellow=65535
+cmBlackness=0
+cmDstInvert=1
+cmMergeCopy=2
+cmMergePaint=3
+cmNotSrcCopy=4
+cmNotSrcErase=5
+cmPatCopy=6
+cmPatInvert=7
+cmPatPaint=8
+cmSrcAnd=9
+cmSrcCopy=10
+cmSrcErase=11
+cmSrcInvert=12
+cmSrcPaint=13
+cmWhiteness=14
+crAppStart=-19
+crArrow=-2
+crCross=-3
+crDefault=0
+crDrag=-12
+crHandPoint=-21
+crHelp=-20
+crHourGlass=-11
+crHSplit=-14
+crIBeam=-4
+crMultiDrag=-16
+crNo=-18
+crNoDrop=-13
+crNone=-1
+crSize=-5
+crSizeNESW=-6
+crSizeNS=-7
+crSizeNWSE=-8
+crSizeWE=-9
+crSQLWait=-17
+crUpArrow=-10
+crVSplit=-15
+csDropDown=0
+csDropDownList=2
+csOwnerDrawFixed=3
+csOwnerDrawVariable=4
+csSimple=1
+CtrlDown=1
+DEFAULT_CHARSET=1
+drtCDRom=4
+drtFixed=2
+drtRamDisk=5
+drtRemote=3
+drtRemovable=1
+drtUnknown=0
+dsFocused=0
+dsNormal=2
+dsSelected=1
+dsTransparent=3
+dtAll=4
+dtHidden=1
+dtNormal=3
+dtReadOnly=0
+dtSystem=2
+dupAccept=1
+dupError=2
+dupIgnore=0
+EASTEUROPE_CHARSET=238
+ecLowerCase=2
+ecNormal=0
+ecUpperCase=1
+EM_CANPASTE=1074
+EM_CANUNDO=198
+EM_CHARFROMPOS=215
+EM_DISPLAYBAND=1075
+EM_EMPTYUNDOBUFFER=205
+EM_EXGETSEL=1076
+EM_EXLIMITTEXT=1077
+EM_EXLINEFROMCHAR=1078
+EM_EXSETSEL=1079
+EM_FINDTEXT=1080
+EM_FINDTEXTEX=1103
+EM_FINDWORDBREAK=1100
+EM_FMTLINES=200
+EM_FORMATRANGE=1081
+EM_GETCHARFORMAT=1082
+EM_GETEVENTMASK=1083
+EM_GETFIRSTVISIBLELINE=206
+EM_GETHANDLE=189
+EM_GETIMECOLOR=1129
+EM_GETIMEOPTIONS=1131
+EM_GETLIMITTEXT=213
+EM_GETLINE=196
+EM_GETLINECOUNT=186
+EM_GETMARGINS=212
+EM_GETMODIFY=184
+EM_GETOLEINTERFACE=1084
+EM_GETOPTIONS=1102
+EM_GETPARAFORMAT=1085
+EM_GETPASSWORDCHAR=210
+EM_GETPUNCTUATION=1125
+EM_GETRECT=178
+EM_GETSEL=176
+EM_GETSELTEXT=1086
+EM_GETTEXTRANGE=1099
+EM_GETTHUMB=190
+EM_GETWORDBREAKPROC=209
+EM_GETWORDBREAKPROCEX=1104
+EM_GETWORDWRAPMODE=1127
+EM_HIDESELECTION=1087
+EM_LIMITTEXT=197
+EM_LINEFROMCHAR=201
+EM_LINEINDEX=187
+EM_LINELENGTH=193
+EM_LINESCROLL=182
+EM_PASTESPECIAL=1088
+EM_POSFROMCHAR=214
+EM_REPLACESEL=194
+EM_REQUESTRESIZE=1089
+EM_SCROLL=181
+EM_SCROLLCARET=183
+EM_SELECTIONTYPE=1090
+EM_SETBKGNDCOLOR=1091
+EM_SETCHARFORMAT=1092
+EM_SETEVENTMASK=1093
+EM_SETHANDLE=188
+EM_SETIMECOLOR=1128
+EM_SETIMEOPTIONS=1130
+EM_SETLIMITTEXT=197
+EM_SETMARGINS=211
+EM_SETMODIFY=185
+EM_SETOLECALLBACK=1094
+EM_SETOPTIONS=1101
+EM_SETPARAFORMAT=1095
+EM_SETPASSWORDCHAR=204
+EM_SETPUNCTUATION=1124
+EM_SETREADONLY=207
+EM_SETRECT=179
+EM_SETRECTNP=180
+EM_SETSEL=177
+EM_SETTABSTOPS=203
+EM_SETTARGETDEVICE=1096
+EM_SETWORDBREAKPROC=208
+EM_SETWORDBREAKPROCEX=1105
+EM_SETWORDWRAPMODE=1126
+EM_STREAMIN=1097
+EM_STREAMOUT=1098
+EM_UNDO=199
+faAnyFile=63
+faArchive=32
+faDirectory=16
+faHidden=2
+faReadOnly=1
+faSysFile=4
+faVolumeID=8
+fdAnsiOnly=0
+fdApplyButton=15
+fdEffects=2
+fdFixedPitchOnly=3
+fdForceFontExist=4
+fdLimitSize=13
+fdNoFaceSel=5
+fdNoOEMFonts=6
+fdNoSimulations=7
+fdNoSizeSel=8
+fdNoStyleSel=9
+fdNoVectorFonts=10
+fdScalableOnly=14
+fdShowHelp=11
+fdTrueTypeOnly=1
+fdWysiwyg=12
+ffExponent=1
+ffFixed=2
+ffGeneral=0
+ffNumber=3
+fmCreate=65535
+fmOpenRead=0
+fmOpenReadWrite=2
+fmOpenWrite=1
+fpDefault=0
+fpFixed=2
+fpVariable=1
+fsBold=0
+fsItalic=1
+fsMDIChild=1
+fsMDIForm=2
+fsNormal=0
+fsStayOnTop=3
+fsStrikeOut=3
+fsUnderline=2
+ftArchive=5
+ftDirectory=4
+ftHidden=1
+ftNormal=6
+ftReadOnly=0
+ftSystem=2
+ftVolumeID=3
+GB2312_CHARSET=134
+gcsEllipsis=1
+gcsList=0
+gcsNone=2
+gkHorizontalBar=1
+gkNeedle=4
+gkPie=3
+gkText=0
+gkVerticalBar=2
+goAlwaysShowEditor=13
+goColMoving=9
+goColSizing=7
+goDrawFocusSelected=5
+goEditing=10
+goFixedHorzLine=1
+goFixedVertLine=0
+goHorzLine=3
+goRangeSelect=4
+goRowMoving=8
+goRowSelect=12
+goRowSizing=6
+goTabs=11
+goThumbTracking=14
+goVertLine=2
+GREEK_CHARSET=161
+HANGEUL_CHARSET=129
+HEBREW_CHARSET=177
+hsOwnerDraw=1
+hsText=0
+IPPROTO_ICMP=1
+IPPROTO_IDP=22
+IPPROTO_IGMP=2
+IPPROTO_IP=0
+IPPROTO_PUP=12
+IPPROTO_RAW=255
+IPPROTO_TCP=6
+IPPROTO_UDP=17
+itImage=0
+itMask=1
+JOHAB_CHARSET=130
+lbOwnerDrawFixed=1
+lbOwnerDrawVariable=2
+lbStandard=0
+lsNone=0
+lsRaised=1
+lsRecessed=2
+MAC_CHARSET=77
+mbAbort=32
+mbAll=256
+mbCancel=8
+mbHelp=16
+mbIgnore=128
+mbNo=2
+mbOK=4
+mbRetry=64
+mbYes=1
+mrAbort=3
+mrAll=8
+mrCancel=2
+mrIgnore=5
+mrNo=7
+mrNone=0
+mrNoToAll=9
+mrOK=1
+mrRetry=4
+mrYes=6
+mrYesToAll=10
+mtConfirmation=3
+mtCustom=4
+mtError=1
+mtInformation=2
+mtWarning=0
+Num_BYTE=1
+Num_DOUBLE=8
+Num_DWORD=5
+Num_LONG=4
+Num_SHORT=2
+Num_SINGLE=6
+Num_WORD=3
+OEM_CHARSET=255
+ooDrawFocusRect=1
+ooDrawStretchBitmaps=2
+ooDrawTreeRoot=0
+osEmpty=0
+osInPlaceActive=4
+osLoaded=1
+osOpen=3
+osPictureText=2
+osPlusMinusPictureText=3
+osPlusMinusText=1
+osRunning=2
+osText=0
+osTreePictureText=5
+osTreeText=4
+osUIActive=5
+pf15bit=4
+pf16bit=5
+pf1bit=1
+pf24bit=6
+pf32bit=7
+pf4bit=2
+pf8bit=3
+pfDevice=0
+poLandscape=1
+poPortrait=0
+prEven=2
+prMark=3
+prNone=0
+prOdd=1
+prSpace=4
+RUSSIAN_CHARSET=204
+sbHorizontal=0
+sbOne5StopBits=1
+sbOneStopBit=0
+sbTwoStopBits=2
+sbVertical=1
+scBottom=7
+scEndScroll=8
+scLineDown=1
+scLineUp=0
+scPageDown=3
+scPageUp=2
+scPosition=4
+scTop=6
+scTrack=5
+ShiftDown=256
+SHIFTJIS_CHARSET=128
+smAutoSize=4
+smCenter=1
+smClip=0
+smScale=2
+smStretch=3
+SND_ASYNC=1
+SND_LOOP=8
+SND_SYNC=0
+SOCK_DGRAM=2
+SOCK_RAW=3
+SOCK_RDM=4
+SOCK_SEQPACKET=5
+SOCK_STREAM=1
+soFromBeginning=0
+soFromCurrent=1
+soFromEnd=2
+ssAlt=1
+ssBoth=3
+ssCtrl=16
+ssHorizontal=1
+ssNone=0
+ssShift=256
+ssVertical=2
+stNone=0
+stText=2
+SYMBOL_CHARSET=2
+taCenter=2
+taLeftJustify=0
+taRightJustify=1
+tbHorizontal=0
+tbVertical=1
+THAI_CHARSET=222
+tlBottom=2
+tlCenter=1
+tlTop=0
+tmAuto=0
+tmBoth=2
+tmBottomRight=0
+tmFixed=1
+tmTopLeft=1
+tsAuto=1
+tsManual=2
+tsNone=0
+TURKISH_CHARSET=162
+VIETNAMESE_CHARSET=163
+vsIcon=0
+vsList=2
+vsReport=3
+vsSmallIcon=1
+WM_INPUTLANGCHANGE=81
+WM_INPUTLANGCHANGEREQUEST=80
+WM_KEYDOWN=256
+WM_KEYUP=257
+WM_LBUTTONDBLCLK=515
+WM_LBUTTONDOWN=513
+WM_LBUTTONUP=514
+WM_MBUTTONDBLCLK=521
+WM_MBUTTONDOWN=519
+WM_MBUTTONUP=520
+WM_MOUSEMOVE=512
+WM_MOUSEWHEEL=522
+WM_RBUTTONDBLCLK=518
+WM_RBUTTONDOWN=516
+WM_RBUTTONUP=517
+wsMaximized=2
+wsMinimized=1
+wsNormal=0
+#

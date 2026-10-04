@@ -1,0 +1,1234 @@
+# 0 QFORM * Properties *
+Left|INTEGER|RW|0
+Top|INTEGER|RW|0
+Width|INTEGER|RW|320
+Height|INTEGER|RW|240
+AutoScroll|INTEGER|RW|True|False|True
+BorderStyle|INTEGER|RW|bsSizeable|bsNone|bsSingle|bsSizeable|bsDialog|bsToolWindow|bsSizeToolWin
+Caption|STRING|RW|
+ClientHeight|INTEGER|RW|
+ClientWidth|INTEGER|RW|
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault|crNone|crArrow|crCross|crIBeam|crSize|crSizeNESW|crSizeNS|crSizeNWSE|crSizeWE|crUpArrow|crHourGlass|crDrag|crNoDrop|crHSplit|crVSplit|crMultiDrag|crSQLWait|crNo|crAppStart|crHelp|crHandPoint
+Font|QFONT|RW|<default>|<default>|<custom>
+FormStyle|INTEGER|R|fsNormal
+Handle|LONG|R|
+Hint|STRING|RW|
+IcoHandle|RESOURCE|W|
+Icon|STRING|W|
+KeyPreview|INTEGER|RW|False|False|True
+ModalResult|INTEGER|W|mrNone|mrNone|mrOK|mrCancel|mrAbort|mrRetry|mrIgnore|mrYes|mrNo|mrAll
+Parent|QFORM|R|
+PopupMenu|QPOPUPMENU|W|
+ShowHint|INTEGER|RW|False|False|True
+Visible|INTEGER|RW|False|False|True
+WindowState|INTEGER|RW|wsNormal|wsNormal|wsMinimized|wsMaximized
+* Methods
+* Events
+OnClick||
+OnClose||(Action AS INTEGER)
+OnHint||(Hint AS STRING)
+OnKeyDown||(Key AS WORD, Shift AS INTEGER)
+OnKeyPress||(Key AS BYTE)
+OnKeyUp||(Key AS WORD, Shift AS INTEGER)
+OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnPaint||
+OnResize||
+OnShow||
+WndProc||(hWnd AS INTEGER, uMsg AS INTEGER, wParam AS INTEGER, lParam AS INTEGER)
+# 1 QEDIT * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|121
+Height|INTEGER|RW|21
+Align|INTEGER|RW|alNone|alNone|alTop|alBottom|alLeft|alRight|alClient
+AutoSize|INTEGER|RW|True|False|True
+BorderStyle|INTEGER|RW|bsSingle|bsNone|bsSingle
+CharCase|INTEGER|RW|ecNormal|ecNormal|ecUpperCase|ecLowerCase
+Color|INTEGER|RW|<default>|<default>|<choose>
+EditText|STRING|RW|
+Enabled|INTEGER|RW|True|False|True
+Font|QFONT|R|<default>
+Handle|LONG|R|
+Hint|STRING|RW|
+InputMask|STRING|RW|
+IsMasked|INTEGER|RW|False|False|True
+MaxLength|INTEGER|RW|0
+Modified|INTEGER|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PasswordChar|STRING|RW|
+PopupMenu|QPOPUPMENU|W|
+ReadOnly|INTEGER|RW|False|False|True
+SelLength|INTEGER|RW|
+SelStart|INTEGER|RW|
+SelText|STRING|RW|
+ShowHint|INTEGER|RW|False|False|True
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+Text|STRING|RW|
+Visible|INTEGER|RW|True|False|True
+* Methods
+* Events
+OnChange|| 
+OnKeyDown||(Key AS WORD, Shift AS INTEGER)
+OnKeyPress||(Key AS BYTE)
+OnKeyUp||(Key AS WORD, Shift AS INTEGER)
+WndProc||(hWnd AS INTEGER, uMsg AS INTEGER, wParam AS INTEGER, lParam AS INTEGER)
+# 2 QRICHEDIT * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|185
+Height|INTEGER|RW|89
+Align|INTEGER|RW|alNone|alNone|alTop|alBottom|alLeft|alRight|alClient
+Alignment|INTEGER|RW|taLeftJustify|taLeftJustify|taRightJustify|taCenter
+BorderStyle|INTEGER|RW|bsSingle|bsNone|bsSingle
+Color|INTEGER|RW|<default>|<default>|<choose>
+Enabled|INTEGER|RW|True|False|True
+Font|QFONT|R|<default>
+Handle|LONG|R|
+HideScrollBars|INTEGER|RW|True|False|True
+HideSelection|INTEGER|RW|True|False|True
+Hint|STRING|RW|
+Line|ARRAY of STRING|RW|
+LineCount|INTEGER|RW|
+Modified|INTEGER|R|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+Plaintext|INTEGER|RW|False|False|True
+Readonly|INTEGER|RW|False|False|True
+ScrollBars|INTEGER|RW|ssNone|ssNone|ssHorizontal|ssVertical|ssBoth
+SelAttributes|QFONT|W|<default>
+SelLength|INTEGER|RW|
+SelStart|INTEGER|RW|
+SelText|STRING|RW|
+ShowHint|INTEGER|RW|False|False|True
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+Text|STRING|RW|
+Visible|INTEGER|RW|True|False|True
+WantTabs|INTEGER|RW|False|False|True
+WhereX|INTEGER|R|
+WhereY|INTEGER|R|
+Wordwrap|INTEGER|RW|True|False|True
+* Methods
+* Events
+OnChange||
+OnKeyDown||(Key AS WORD, Shift AS INTEGER)
+OnKeyPress||(Key AS BYTE)
+OnKeyUp||(Key AS WORD, Shift AS INTEGER)
+OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+# 3 QLABEL * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|75
+Height|INTEGER|RW|25
+Align|INTEGER|RW|alNone|alNone|alTop|alBottom|alLeft|alRight|alClient
+Alignment|INTEGER|RW|taLeftJustify|taLeftJustify|taRightJustify|taCenter
+Angle|INTEGER|RW|0
+Autosize|INTEGER|RW|False|False|True
+Caption|STRING|RW|
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault|crNone|crArrow|crCross|crIBeam|crSize|crSizeNESW|crSizeNS|crSizeNWSE|crSizeWE|crUpArrow|crHourGlass|crDrag|crNoDrop|crHSplit|crVSplit|crMultiDrag|crSQLWait|crNo|crAppStart|crHelp|crHandPoint
+Enabled|INTEGER|RW|True|False|True
+Font|QFONT|R|<default>
+Handle|LONG|R|
+Hint|STRING|RW|
+LabelStyle|INTEGER|RW|lsNone|lsNone|lsRaised|lsRecessed
+Layout|INTEGER|RW|tlTop|tlTop|tlCenter|tlBottom
+LowerColor|INTEGER|RW|<default>|<default>|<choose>
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+ShowHint|INTEGER|RW|False|False|True
+Tag|INTEGER|RW|
+Transparent|INTEGER|RW|False|False|True
+UpperColor|INTEGER|RW|<default>|<default>|<choose>
+Visible|INTEGER|RW|True|False|True
+Wordwrap|INTEGER|RW|False|False|True
+* Methods
+* Events
+OnClick||
+OnDblClick||
+OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+WndProc||(hWnd AS INTEGER, uMsg AS INTEGER, wParam AS INTEGER, lParam AS INTEGER)
+# 4 QBUTTON * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|75
+Height|INTEGER|RW|25
+Align|INTEGER|RW|alNone|alNone|alTop|alBottom|alLeft|alRight|alClient
+BMP|STRING|RW|
+BMPHandle|RESOURCE|W|
+Cancel|INTEGER|RW|False|False|True
+Caption|STRING|RW|
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault|crNone|crArrow|crCross|crIBeam|crSize|crSizeNESW|crSizeNS|crSizeNWSE|crSizeWE|crUpArrow|crHourGlass|crDrag|crNoDrop|crHSplit|crVSplit|crMultiDrag|crSQLWait|crNo|crAppStart|crHelp|crHandPoint
+Default|INTEGER|RW|False|False|True
+Enabled|INTEGER|RW|True|False|True
+Font|QFONT|R|<default>
+Handle|LONG|R|
+Hint|STRING|RW|
+Kind|INTEGER|RW|bkCustom|bkCustom|bkOK|bkCancel|bkHelp|bkYes|bkNo|bkClose|bkAbort|bkRetry|bkIgnore|bkAll
+Layout|INTEGER|RW|blBMPLeft|blBMPLeft|blBMPRight|blBMPTop|blBMPBottom
+ModalResult|INTEGER|W|mrNone|mrNone|mrOK|mrCancel|mrAbort|mrRetry|mrIgnore|mrYes|mrNo|mrAll|mrNoToAll|mrYesToAll
+NumBMPs|INTEGER|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+ShowHint|INTEGER|RW|False|False|True
+Spacing|INTEGER|RW|4
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+Visible|INTEGER|RW|True|False|True
+* Methods
+* Events
+OnClick||
+OnKeyDown||(Key AS WORD, Shift AS INTEGER)
+OnKeyPress||(Key AS BYTE)
+OnKeyUp||(Key AS WORD, Shift AS INTEGER)
+OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+# 5 QCOOLBTN * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|25
+Height|INTEGER|RW|25
+Align|INTEGER|RW|alNone|alNone|alTop|alBottom|alLeft|alRight|alClient
+AllowAllUp|INTEGER|RW|False|False|True
+BMP|STRING|W|
+BMPHandle|RESOURCE|W|
+Caption|STRING|RW|
+Cursor|INTEGER|RW|crDefault|crDefault|crNone|crArrow|crCross|crIBeam|crSize|crSizeNESW|crSizeNS|crSizeNWSE|crSizeWE|crUpArrow|crHourGlass|crDrag|crNoDrop|crHSplit|crVSplit|crMultiDrag|crSQLWait|crNo|crAppStart|crHelp|crHandPoint
+Down|INTEGER|RW|False|False|True
+Enabled|INTEGER|RW|True|False|True
+Flat|INTEGER|RW|False|False|True
+Font|QFONT|R|<default>
+GroupIndex|INTEGER|RW|0
+Hint|STRING|RW|
+Layout|INTEGER|RW|blBMPLeft|blBMPLeft|blBMPRight|blBMPTop|blBMPBottom
+NumBMPs|INTEGER|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+ShowHint|INTEGER|RW|False|False|True
+Spacing|INTEGER|RW|4
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+Visible|INTEGER|RW|True|False|True
+* Methods
+* Events
+OnClick||
+OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+# 6 QOVALBTN * Properties  FUDGE Reduced defaults height & width, REAL defaults 100,50 too big!*
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|75
+Height|INTEGER|RW|40
+Align|INTEGER|RW|alNone|alNone|alTop|alBottom|alLeft|alRight|alClient
+BMP|STRING|W|
+BMPHandle|RESOURCE|W|
+Caption|STRING|RW|
+Color|INTEGER|RW|<default>|<default>|<choose>
+ColorHighLight|INTEGER|RW|<default>|<default>|<choose>
+ColorShadow|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault|crNone|crArrow|crCross|crIBeam|crSize|crSizeNESW|crSizeNS|crSizeNWSE|crSizeWE|crUpArrow|crHourGlass|crDrag|crNoDrop|crHSplit|crVSplit|crMultiDrag|crSQLWait|crNo|crAppStart|crHelp|crHandPoint
+Down|INTEGER|RW|False|False|True
+Enabled|INTEGER|RW|True|False|True
+Flat|INTEGER|RW|False|False|True
+Font|QFONT|R|<default>
+GroupIndex|INTEGER|RW|0
+Hint|STRING|RW|
+Layout|INTEGER|RW|blBMPLeft|blBMPLeft|blBMPRight|blBMPTop|blBMPBottom
+NumBMPs|INTEGER|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+ShowHint|INTEGER|RW|False|False|True
+Spacing|INTEGER|RW|
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+Transparent|INTEGER|RW|False|False|True
+TransParentColor|INTEGER|RW|<default>|<default>|<choose>
+Visible|INTEGER|RW|True|False|True
+* Methods
+* Events
+OnClick||
+# 7 QCHECKBOX * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|97
+Height|INTEGER|RW|17
+Align|INTEGER|RW|alNone|alNone|alTop|alBottom|alLeft|alRight|alClient
+Caption|STRING|RW|
+Checked|INTEGER|RW|False|False|True
+Enabled|INTEGER|RW|True|False|True
+Font|QFONT|R|<default>
+Handle|LONG|R|
+Hint|STRING|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+ShowHint|INTEGER|RW|False|False|True
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+Visible|INTEGER|RW|True|False|True
+* Methods
+* Events
+OnClick||
+# 8 QRADIOBUTTON * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|113
+Height|INTEGER|RW|17
+Align|INTEGER|RW|alNone|alNone|alTop|alBottom|alLeft|alRight|alClient
+Caption|STRING|RW|
+Checked|INTEGER|RW|False|False|True
+Enabled|INTEGER|RW|True|False|True
+Font|QFONT|R|<default>
+Handle|LONG|R|
+Hint|STRING|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+ShowHint|INTEGER|RW|False|False|True
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+Visible|INTEGER|RW|True|False|True
+* Methods
+* Events
+OnClick||
+# 9 QPANEL * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|185
+Height|INTEGER|RW|41
+Align|INTEGER|RW|alNone|alNone|alTop|alBottom|alLeft|alRight|alClient
+Alignment|INTEGER|RW|taCenter|taLeftJustify|taRightJustify|taCenter
+BevelInner|INTEGER|RW|bvNone|bvNone|bvLowered|bvRaised
+BevelOuter|INTEGER|RW|bvRaised|bvNone|bvLowered|bvRaised
+BevelWidth|INTEGER|RW|1
+BorderStyle|INTEGER|RW|bsNone|bsNone|bsSingle
+Caption|STRING|RW|
+ClientHeight|INTEGER|RW|
+ClientWidth|INTEGER|RW|
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault|crNone|crArrow|crCross|crIBeam|crSize|crSizeNESW|crSizeNS|crSizeNWSE|crSizeWE|crUpArrow|crHourGlass|crDrag|crNoDrop|crHSplit|crVSplit|crMultiDrag|crSQLWait|crNo|crAppStart|crHelp|crHandPoint
+Enabled|INTEGER|RW|True|False|True
+Font|QFONT|R|<default>
+Handle|LONG|R|
+Hint|STRING|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+ShowHint|INTEGER|RW|False|False|True
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+Visible|INTEGER|RW|True|False|True
+* Methods
+* Events
+OnClick||
+OnDblClick||
+OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+# 10 QTABCONTROL * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|289
+Height|INTEGER|RW|193
+Align|INTEGER|RW|alNone|alNone|alTop|alBottom|alLeft|alRight|alClient
+ButtonStyle|INTEGER|RW|False|False|True
+ClientHeight|INTEGER|RW|
+ClientWidth|INTEGER|RW|
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault|crNone|crArrow|crCross|crIBeam|crSize|crSizeNESW|crSizeNS|crSizeNWSE|crSizeWE|crUpArrow|crHourGlass|crDrag|crNoDrop|crHSplit|crVSplit|crMultiDrag|crSQLWait|crNo|crAppStart|crHelp|crHandPoint
+Enabled|INTEGER|RW|True|False|True
+FlatButtons|INTEGER|RW|False|False|True
+FlatSeperators|INTEGER|RW|False|False|True
+FocusButtons|INTEGER|RW|False|False|True
+Font|QFONT|R|<default>
+Hint|STRING|RW|
+HotTrack|INTEGER|RW|False|False|True
+MultiLine|INTEGER|RW|False|False|True
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+ScrollOpposite|INTEGER|RW|False|False|True
+ShowHint|INTEGER|RW|False|False|True
+Tab|ARRAY of STRING|RW|
+TabHeight|INTEGER|RW|
+TabInactiveColor|INTEGER|RW|<default>|<default>|<choose>
+TabInactiveFont|QFONT|R|<default>
+TabIndex|INTEGER|RW|
+TabOrder|INTEGER|RW|
+TabPosition|INTEGER|RW|
+TabWidth|INTEGER|RW|
+Tag|INTEGER|RW|
+VerticalTabs|INTEGER|RW|False|False|True
+Visible|INTEGER|RW|True|False|True
+* Methods
+AddTabs|STRING|W|TAB 1,TAB 2,TAB 3
+* Events
+OnChange||
+# 11 QCOMBOBOX * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|145
+Height|INTEGER|RW|25
+Align|INTEGER|RW|alNone|alNone|alTop|alBottom|alLeft|alRight|alClient
+Color|INTEGER|RW|<default>|<default>|<choose>
+CopyMode|INTEGER|RW|cmBlackness|cmBlackness|cmDstInvert|cmMergeCopy|cmMergePaint|cmNotSrcCopy|cmNotSrcErase|cmPatCopy|cmPatInvert|cmPatPaint|cmSrcAnd|cmSrcCopy|cmSrcErase|cmSrcInvert|cmSrcPaint|cmWhiteness
+Cursor|INTEGER|RW|crDefault|crDefault|crNone|crArrow|crCross|crIBeam|crSize|crSizeNESW|crSizeNS|crSizeNWSE|crSizeWE|crUpArrow|crHourGlass|crDrag|crNoDrop|crHSplit|crVSplit|crMultiDrag|crSQLWait|crNo|crAppStart|crHelp|crHandPoint
+DropDownCount|INTEGER|RW|8
+Enabled|INTEGER|RW|True|False|True
+Font|QFONT|R|<default>
+Handle|LONG|R|
+Hint|STRING|RW|
+Item|ARRAY of STRING|RW|
+ItemCount|INTEGER|R|
+ItemHeight|INTEGER|RW|
+ItemIndex|INTEGER|RW|-1
+MaxLength|INTEGER|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+ShowHint|INTEGER|RW|False|False|True
+Sorted|INTEGER|RW|False|False|True
+Style|INTEGER|RW|csDropDown|csDropDown|csSimple|csDropDownList|csOwnerDrawFixed|csOwnerDrawVariable
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+Text|STRING|RW|
+Visible|INTEGER|RW|True|False|True
+* Methods
+AddItems|STRING|W|
+* Events
+OnChange||
+OnDrawItem||(Index AS INTEGER, State AS INTEGER, R AS QRECT)
+OnMeasureItem||(Index AS INTEGER, Height AS INTEGER)
+# 12 QLISTBOX * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|121
+Height|INTEGER|RW|97
+Align|INTEGER|RW|alNone|alNone|alTop|alBottom|alLeft|alRight|alClient
+BorderStyle|INTEGER|RW|bsSingle|bsNone|bsSingle
+Color|INTEGER|RW|<default>|<default>|<choose>
+Columns|INTEGER|RW|0
+CopyMode|INTEGER|RW|cmBlackness|cmBlackness|cmDstInvert|cmMergeCopy|cmMergePaint|cmNotSrcCopy|cmNotSrcErase|cmPatCopy|cmPatInvert|cmPatPaint|cmSrcAnd|cmSrcCopy|cmSrcErase|cmSrcInvert|cmSrcPaint|cmWhiteness
+Cursor|INTEGER|RW|crDefault|crDefault|crNone|crArrow|crCross|crIBeam|crSize|crSizeNESW|crSizeNS|crSizeNWSE|crSizeWE|crUpArrow|crHourGlass|crDrag|crNoDrop|crHSplit|crVSplit|crMultiDrag|crSQLWait|crNo|crAppStart|crHelp|crHandPoint
+Enabled|INTEGER|RW|True|False|True
+ExtendedSelect|INTEGER|RW|True|False|True
+Font|QFONT|R|<default>
+Hint|STRING|RW|
+Item|ARRAY of STRING|RW|
+ItemCount|INTEGER|R|
+ItemHeight|INTEGER|RW|
+ItemIndex|INTEGER|RW|
+MultiSelect|INTEGER|RW|False|False|True
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+SelCount|INTEGER|R|
+Selected|ARRAY of INTEGER|RW|
+ShowHint|INTEGER|RW|False|False|True
+Sorted|INTEGER|RW|False|False|True
+Style|INTEGER|RW|lbStandard|lbStandard|lbOwnerDrawFixed|lbOwnerDrawVariable
+TabOrder|INTEGER|RW|
+TabWidth|INTEGER|RW|0
+Tag|INTEGER|RW|
+Text|STRING|RW|
+TopIndex|INTEGER|RW|
+Visible|INTEGER|RW|True|False|True
+* Methods
+AddItems|STRING|W|
+* Events
+OnClick||
+OnDblClick||
+OnDrawItem||(Index AS INTEGER, State AS INTEGER, R AS QRECT)
+OnEnter||
+OnMeasureItem||(Index AS INTEGER, Height AS INTEGER)
+WndProc||(hWnd AS INTEGER, uMsg AS INTEGER, wParam AS INTEGER, lParam AS INTEGER)
+# 13 QGROUPBOX * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|185
+Height|INTEGER|RW|105
+Align|INTEGER|RW|alNone|alNone|alTop|alBottom|alLeft|alRight|alClient
+Caption|STRING|RW|
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault|crNone|crArrow|crCross|crIBeam|crSize|crSizeNESW|crSizeNS|crSizeNWSE|crSizeWE|crUpArrow|crHourGlass|crDrag|crNoDrop|crHSplit|crVSplit|crMultiDrag|crSQLWait|crNo|crAppStart|crHelp|crHandPoint
+Enabled|INTEGER|RW|True|False|True
+Font|QFONT|R|<default>
+Handle|LONG|R|
+Hint|STRING|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+ShowHint|INTEGER|RW|False|False|True
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+Visible|INTEGER|RW|True|False|True
+* Methods
+* Events
+OnClick||
+OnDblClick||
+OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+# 14 QSCROLLBOX * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|185
+Height|INTEGER|RW|41
+Align|INTEGER|RW|alNone|alNone|alTop|alBottom|alLeft|alRight|alClient
+AutoScroll|INTEGER|RW|True|False|True
+BorderStyle|INTEGER|RW|bsSingle|bsNone|bsSingle
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault|crNone|crArrow|crCross|crIBeam|crSize|crSizeNESW|crSizeNS|crSizeNWSE|crSizeWE|crUpArrow|crHourGlass|crDrag|crNoDrop|crHSplit|crVSplit|crMultiDrag|crSQLWait|crNo|crAppStart|crHelp|crHandPoint
+Enabled|INTEGER|RW|True|False|True
+Font|QFONT|R|<default>
+Handle|LONG|R|
+Hint|STRING|RW|
+HorzIncrement|INTEGER|RW|8
+HorzMargin|INTEGER|RW|0
+HorzPosition|INTEGER|RW|0
+HorzRange|INTEGER|RW|0
+HorzTracking|INTEGER|RW|False|False|True
+HorzVisible|INTEGER|RW|True|False|True
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+ShowHint|INTEGER|RW|False|False|True
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+VertIncrement|INTEGER|RW|8
+VertMargin|INTEGER|RW|0
+VertPosition|INTEGER|RW|0
+VertRange|INTEGER|RW|0
+VertTracking|INTEGER|RW|False|False|True
+VertVisible|INTEGER|RW|True|False|True
+Visible|INTEGER|RW|True|False|True 
+* Methods
+* Events
+OnClick||
+OnDblClick||
+OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnResize||
+# 15 QSCROLLBAR * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|121
+Height|INTEGER|RW|17
+Align|INTEGER|RW|alNone|alNone|alTop|alBottom|alLeft|alRight|alClient
+Cursor|INTEGER|RW|crDefault|crDefault|crNone|crArrow|crCross|crIBeam|crSize|crSizeNESW|crSizeNS|crSizeNWSE|crSizeWE|crUpArrow|crHourGlass|crDrag|crNoDrop|crHSplit|crVSplit|crMultiDrag|crSQLWait|crNo|crAppStart|crHelp|crHandPoint
+Enabled|INTEGER|RW|True|False|True
+Handle|LONG|R|
+Hint|STRING|RW|
+Kind|INTEGER|RW|sbHorizontal|sbHorizontal|sbVertical
+LargeChange|INTEGER|RW|1
+Max|INTEGER|RW|100
+Min|INTEGER|RW|0
+PageSize|INTEGER|RW|1
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+Position|INTEGER|RW|0
+ShowHint|INTEGER|RW|False|False|True
+SmallChange|INTEGER|RW|1
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+Visible|INTEGER|RW|True|False|True
+* Methods
+* Events
+OnChange||
+OnKeyDown||(Key AS WORD, Shift AS INTEGER)
+OnKeyPress||(Key AS BYTE)
+OnKeyUp||(Key AS WORD, Shift AS INTEGER)
+OnScroll||(ScrollCode AS BYTE, ScrollPos AS LONG)
+# 16 QSTRINGGRID * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|150
+Height|INTEGER|RW|100
+Align|INTEGER|RW|alNone|alNone|alTop|alBottom|alLeft|alRight|alClient
+BorderStyle|INTEGER|RW|bsSingle|bsNone|bsSingle
+Cell|2D ARRAY of STRING|RW|
+Col|INTEGER|RW|
+ColCount|INTEGER|RW|5
+Color|INTEGER|RW|<default>|<default>|<choose>
+ColumnList|ARRAY of STRING|RW|
+ColumnStyle|ARRAY of INTEGER|RW|gcsNone|gcsList|gcsEllipsis|gcsNone
+ColWidths|ARRAY of INTEGER|RW|
+Cursor|INTEGER|RW|crDefault|crDefault|crNone|crArrow|crCross|crIBeam|crSize|crSizeNESW|crSizeNS|crSizeNWSE|crSizeWE|crUpArrow|crHourGlass|crDrag|crNoDrop|crHSplit|crVSplit|crMultiDrag|crSQLWait|crNo|crAppStart|crHelp|crHandPoint
+DefaultColWidth|INTEGER|RW|64
+DefaultRowHeight|INTEGER|RW|24
+EditorMode|INTEGER|RW|
+Enabled|INTEGER|RW|True|False|True
+FixedColor|INTEGER|RW|<default>|<default>|<choose>
+FixedCols|INTEGER|RW|1
+FixedRows|INTEGER|RW|1
+Font|QFONT|R|<default>
+GridHeight|INTEGER|RW|
+GridLineWidth|INTEGER|RW|1
+GridWidth|INTEGER|RW|
+Handle|LONG|R|
+Hint|STRING|RW|
+LeftCol|INTEGER|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+Row|INTEGER|RW|
+RowCount|INTEGER|RW|
+RowHeights|ARRAY of INTEGER|RW|
+ScrollBars|INTEGER|RW|ssBoth|ssNone|ssHorizontal|ssVertical|ssBoth
+Separator|STRING|RW|
+ShowHint|INTEGER|RW|False|False|True
+TabOrder|INTEGER|RW|
+TabStops|ARRAY of INTEGER|RW|
+Tag|INTEGER|RW|
+TopRow|INTEGER|RW|
+Visible|INTEGER|RW|True|False|True
+VisibleColCount|INTEGER|R|
+VisibleRowCount|INTEGER|R|
+* Methods
+* Events
+OnDrawCell||(Col AS INTEGER, Row AS INTEGER, State AS INTEGER, R AS QRECT)
+OnEllipsisClick||(Col AS INTEGER, Row AS INTEGER)
+OnKeyDown||(Key AS WORD, Shift AS INTEGER)
+OnKeyPress||(Key AS BYTE)
+OnKeyUp||(Key AS WORD, Shift AS INTEGER)
+OnListDropDown||(Col AS INTEGER, Row AS INTEGER, BYREF S AS STRING)
+OnSelectCell||(Col AS INTEGER, Row AS INTEGER, CanSelect AS INTEGER)
+OnSetEditText||(Col AS INTEGER, Row AS INTEGER, Value AS STRING)
+# 17 QLISTVIEW * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|250
+Height|INTEGER|RW|150
+Align|INTEGER|RW|alNone|alNone|alTop|alBottom|alLeft|alRight|alClient
+BorderStyle|INTEGER|RW|bsSingle|bsNone|bsSingle
+CheckBoxes|INTEGER|RW|False|False|True
+Color|INTEGER|RW|<default>|<default>|<choose>
+Column|ARRAY of ColumnType|RW|
+ColumnClick|INTEGER|RW|True|False|True
+ColumnsCount|INTEGER|RW|
+Cursor|INTEGER|RW|crDefault|crDefault|crNone|crArrow|crCross|crIBeam|crSize|crSizeNESW|crSizeNS|crSizeNWSE|crSizeWE|crUpArrow|crHourGlass|crDrag|crNoDrop|crHSplit|crVSplit|crMultiDrag|crSQLWait|crNo|crAppStart|crHelp|crHandPoint
+Enabled|INTEGER|RW|True|False|True
+Font|QFONT|R|<default>
+GridLines|INTEGER|RW|False|False|True
+Handle|LONG|R|
+HideSelection|INTEGER|RW|False|False|True
+Hint|STRING|RW|
+HotTrack|INTEGER|RW|False|False|True
+Item|ARRAY of ItemType|RW|
+ItemCount|INTEGER|RW|
+ItemIndex|INTEGER|RW|
+LargeImages|QIMAGELIST|W|
+MultiSelect|INTEGER|RW|False|False|True
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+ReadOnly|INTEGER|RW|False|False|True
+RowSelect|INTEGER|RW|False|False|True
+SelCount|INTEGER|RW|
+Selected|ARRAY of INTEGER|RW|
+ShowColumnHeaders|INTEGER|RW|True|False|True
+ShowHint|INTEGER|RW|False|False|True
+SmallImages|QIMAGELIST|W|
+SortType|INTEGER|RW|stNone|stNone|stText
+StateImages|QIMAGELIST|W|
+SubItem|2D ARRAY of STRING|RW|
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+ViewStyle|INTEGER|RW|vsIcon|vsIcon|vsSmallIcon|vsList|vsReport
+Visible|INTEGER|RW|True|False|True 
+* Methods
+AddColumns|STRING|W|
+AddItems|STRING|W|
+* Events
+OnClick||
+OnChange||(Index AS INTEGER, Change AS BYTE)
+OnColumnClick||(Column AS INTEGER)
+OnDblClick||
+OnKeyPressed||(Key AS BYTE)
+# 18 QDIRTREE * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|121
+Height|INTEGER|RW|97
+Align|INTEGER|RW|alNone|alNone|alTop|alBottom|alLeft|alRight|alClient
+BorderStyle|INTEGER|RW|bsSingle|bsNone|bsSingle
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault|crNone|crArrow|crCross|crIBeam|crSize|crSizeNESW|crSizeNS|crSizeNWSE|crSizeWE|crUpArrow|crHourGlass|crDrag|crNoDrop|crHSplit|crVSplit|crMultiDrag|crSQLWait|crNo|crAppStart|crHelp|crHandPoint
+Directory|STRING|RW|False|False|True
+Enabled|INTEGER|RW|True|False|True
+FastLoad|INTEGER|RW|False|False|True
+Font|QFONT|R|<default>
+HideSelection|INTEGER|RW|False|False|True
+Hint|STRING|RW|
+InitialDir|STRING|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+ReadOnly|INTEGER|RW|False|False|True
+ReadOnStart|INTEGER|RW|False|False|True
+ShowHint|INTEGER|RW|False|False|True
+TabOrder|INTEGER|RW|
+Visible|INTEGER|RW|True|False|True
+* Methods
+* Events
+OnChange||
+# 19 QFILELISTBOX * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|145
+Height|INTEGER|RW|97
+Align|INTEGER|RW|alNone|alNone|alTop|alBottom|alLeft|alRight|alClient
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault|crNone|crArrow|crCross|crIBeam|crSize|crSizeNESW|crSizeNS|crSizeNWSE|crSizeWE|crUpArrow|crHourGlass|crDrag|crNoDrop|crHSplit|crVSplit|crMultiDrag|crSQLWait|crNo|crAppStart|crHelp|crHandPoint
+Directory|STRING|RW|
+Drive|STRING|RW|
+Enabled|INTEGER|RW|True|False|True
+ExtendedSelect|INTEGER|RW|True|False|True
+Filename|STRING|RW|
+Font|QFONT|R|<default>
+Hint|STRING|RW|
+Item|ARRAY of STRING|RW|
+ItemCount|INTEGER|R|
+ItemHeight|INTEGER|RW|
+ItemIndex|INTEGER|RW|
+Mask|STRING|RW|*.*
+MultiSelect|INTEGER|RW|False|False|True
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+SelCount|INTEGER|R|
+Selected|ARRAY of INTEGER|RW|
+ShowHint|INTEGER|RW|False|False|True
+ShowIcons|INTEGER|RW|False|False|True
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+TopIndex|INTEGER|RW|
+Visible|INTEGER|RW|True|False|True 
+* Methods
+* Events
+OnChange||
+OnClick||
+OnDblClick||
+# 20 QTREEVIEW * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|121
+Height|INTEGER|RW|97
+Align|INTEGER|RW|alNone|alNone|alTop|alBottom|alLeft|alRight|alClient
+BorderStyle|INTEGER|RW|bsSingle|bsNone|bsSingle
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault|crNone|crArrow|crCross|crIBeam|crSize|crSizeNESW|crSizeNS|crSizeNWSE|crSizeWE|crUpArrow|crHourGlass|crDrag|crNoDrop|crHSplit|crVSplit|crMultiDrag|crSQLWait|crNo|crAppStart|crHelp|crHandPoint
+Enabled|INTEGER|RW|True|False|True
+Font|QFONT|R|<default>
+Handle|LONG|RW|
+HideSelection|INTEGER|RW|False|False|True
+Hint|STRING|RW|
+Images|QIMAGELIST|W|
+Indent|INTEGER|RW|19
+Item|ARRAY of TreeNodeType|RW|
+ItemCount|INTEGER|RW|
+ItemIndex|INTEGER|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+ReadOnly|INTEGER|RW|False|False|True
+ShowButtons|INTEGER|RW|True|False|True
+ShowHint|INTEGER|RW|False|False|True
+ShowLines|INTEGER|RW|True|False|True
+ShowRoot|INTEGER|RW|True|False|True
+SortType|INTEGER|RW|stText|stNone|stText|
+StateImages|QIMAGELIST|W|
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+Visible|INTEGER|RW|True|False|True
+* Methods
+AddItems|STRING|W|
+* Events
+OnClick||
+OnChange||(Index AS INTEGER)
+OnChanging||(Index AS INTEGER, AllowChange AS INTEGER)
+OnCollapse||(Index AS INTEGER)
+OnCollapsing||(Index AS INTEGER, AllowCollapse AS INTEGER)
+OnDblClick||
+OnDeletion||(Index AS INTEGER)
+OnEdited||(Index AS INTEGER, BYREF S AS STRING)
+OnEditing||(Index AS INTEGER, AllowEdit AS INTEGER)
+OnExpand||(Index AS INTEGER)
+OnExpanding||(Index AS INTEGER, AllowExpansion AS INTEGER)
+OnGetImageIndex||(Index AS INTEGER)
+OnGetSelectedIndex||(Index AS INTEGER)
+OnKeyDown||(Key AS WORD, Shift AS INTEGER)
+OnKeyPress||(Key AS BYTE)
+OnKeyUp||(Key AS WORD, Shift AS INTEGER)
+OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+# 21 QOUTLINE * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|121
+Height|INTEGER|RW|97
+Align|INTEGER|RW|alNone|alNone|alTop|alBottom|alLeft|alRight|alClient
+BMPClosed|STRING|W|
+BMPLeaf|STRING|W|
+BMPMinus|STRING|W|
+BMPOpen|STRING|W|
+BMPPlus|STRING|W|
+BMPHandleClosed|RESOURCE|W|
+BMPHandleLeaf|RESOURCE|W|
+BMPHandleMinus|RESOURCE|W|
+BMPHandleOpen|RESOURCE|W|
+BMPHandlePlus|RESOURCE|W|
+BorderStyle|INTEGER|RW|bsSingle|bsNone|bsSingle
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault|crNone|crArrow|crCross|crIBeam|crSize|crSizeNESW|crSizeNS|crSizeNWSE|crSizeWE|crUpArrow|crHourGlass|crDrag|crNoDrop|crHSplit|crVSplit|crMultiDrag|crSQLWait|crNo|crAppStart|crHelp|crHandPoint
+Enabled|INTEGER|RW|True|False|True
+Font|QFONT|R|<default>
+Handle|LONG|R|
+Hint|STRING|RW|
+Item|ARRAY of STRING|RW|
+ItemHeight|INTEGER|RW|13
+ItemIndex|INTEGER|RW|
+ItemSeparator|STRING|RW|\
+LineCount|INTEGER|RW|
+OutLineStyle|INTEGER|RW|osTreePictureText|osText|osPlusMinusText|osPictureText|osPlusMinusPictureText|osTreeText|osTreePictureText
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+Row|INTEGER|RW|
+ScrollBars|INTEGER|RW|ssBoth|ssNone|ssHorizontal|ssVertical|ssBoth
+ShowHint|INTEGER|RW|False|False|True
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+Visible|INTEGER|RW|True|False|True
+* Methods
+AddLines|STRING|W|
+AddOptions|INTEGER|W|
+* Events
+OnClick||
+OnDblClick||
+# 22 QGAUGE * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|100
+Height|INTEGER|RW|100
+Align|INTEGER|RW|alNone|alNone|alTop|alBottom|alLeft|alRight|alClient
+BackColor|INTEGER|RW|<default>|<default>|<choose>
+BorderStyle|INTEGER|RW|bsSingle|bsNone|bsSingle
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault|crNone|crArrow|crCross|crIBeam|crSize|crSizeNESW|crSizeNS|crSizeNWSE|crSizeWE|crUpArrow|crHourGlass|crDrag|crNoDrop|crHSplit|crVSplit|crMultiDrag|crSQLWait|crNo|crAppStart|crHelp|crHandPoint
+Enabled|INTEGER|RW|True|False|True
+Font|QFONT|R|<default>
+ForeColor|INTEGER|RW|<default>|<default>|<choose>
+Hint|STRING|RW|
+Kind|INTEGER|RW|gkHorizontalBar|gkText|gkHorizontalBar|gkVerticalBar|gkPie|gkNeedle
+Max|INTEGER|RW|100
+Min|INTEGER|RW|0
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+Position|INTEGER|RW|0
+ShowHint|INTEGER|RW|False|False|True
+ShowText|INTEGER|RW|True|False|True
+Visible|INTEGER|RW|True|False|True
+* Methods
+* Events
+# 23 QTRACKBAR * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|150
+Height|INTEGER|RW|45
+Align|INTEGER|RW|alNone|alNone|alTop|alBottom|alLeft|alRight|alClient
+Cursor|INTEGER|RW|crDefault|crDefault|crNone|crArrow|crCross|crIBeam|crSize|crSizeNESW|crSizeNS|crSizeNWSE|crSizeWE|crUpArrow|crHourGlass|crDrag|crNoDrop|crHSplit|crVSplit|crMultiDrag|crSQLWait|crNo|crAppStart|crHelp|crHandPoint
+Enabled|INTEGER|RW|True|False|True
+Frequency|INTEGER|RW|
+Handle|LONG|R|
+Hint|STRING|RW|
+LineSize|INTEGER|RW|1
+Max|INTEGER|RW|10
+Min|INTEGER|RW|0
+Orientation|INTEGER|RW|tbHorizontal|tbHorizontal|tbVertical
+PageSize|INTEGER|RW|2
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+Position|INTEGER|RW|
+SelEnd|INTEGER|RW|
+SelStart|INTEGER|RW|
+ShowHint|INTEGER|RW|False|False|True
+TabOrder|INTEGER|RW|
+TickMarks|INTEGER|RW|tmBottomRight|tmBottomRight|tmTopLeft|tmBoth
+TickStyle|INTEGER|RW|tsAuto|tsNone|tsAuto|tsManual
+Visible|INTEGER|RW|True|False|True
+* Methods
+* Events
+OnChange||
+# 24 QHEADER ****** Error in doco - Left, Top & Width are not RW properties ******
+Left|INTEGER|R|
+Top|INTEGER|R|
+Width|INTEGER|R|
+Height|INTEGER|RW|17
+Align|INTEGER|RW|alTop|alNone|alTop|alBottom|alLeft|alRight|alClient
+ClientHeight|INTEGER|RW|
+ClientWidth|INTEGER|RW|
+CopyMode|INTEGER|RW|cmBlackness|cmBlackness|cmDstInvert|cmMergeCopy|cmMergePaint|cmNotSrcCopy|cmNotSrcErase|cmPatCopy|cmPatInvert|cmPatPaint|cmSrcAnd|cmSrcCopy|cmSrcErase|cmSrcInvert|cmSrcPaint|cmWhiteness
+Cursor|INTEGER|RW|crDefault|crDefault|crNone|crArrow|crCross|crIBeam|crSize|crSizeNESW|crSizeNS|crSizeNWSE|crSizeWE|crUpArrow|crHourGlass|crDrag|crNoDrop|crHSplit|crVSplit|crMultiDrag|crSQLWait|crNo|crAppStart|crHelp|crHandPoint
+Enabled|INTEGER|RW|True|False|True
+Font|QFONT|R|<default>
+Handle|LONG|RW|
+Hint|STRING|RW|
+HotTrack|INTEGER|RW|False|False|True
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+Pixel|2D ARRAY of INTEGER|RW|
+PopupMenu|QPOPUPMENU|W|
+Sections|ARRAY of SectionsType|RW|
+SectionsCount|INTEGER|R|
+ShowHint|INTEGER|RW|False|False|True
+Tag|INTEGER|RW|
+Visible|INTEGER|RW|True|False|True 
+* Methods
+AddSections|STRING|W|
+* Events
+OnDrawSection||(Index AS INTEGER, Pressed AS INTEGER, Rect AS QRECT)
+OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnResize||
+OnSectionClick||(Index AS INTEGER)
+OnSectionResize||(Index AS INTEGER)
+OnSectionTrack||(Index AS INTEGER, Width AS INTEGER, State AS INTEGER)
+# 25 QSTATUSBAR ***** Doco incorrect - Left, Top & Width are not RW properties ******
+Left|INTEGER|R|
+Top|INTEGER|R|
+Width|INTEGER|R|
+Height|INTEGER|RW|19
+Align|INTEGER|RW|alBottom|alNone|alTop|alBottom|alLeft|alRight|alClient
+Cursor|INTEGER|RW|crDefault|crDefault|crNone|crArrow|crCross|crIBeam|crSize|crSizeNESW|crSizeNS|crSizeNWSE|crSizeWE|crUpArrow|crHourGlass|crDrag|crNoDrop|crHSplit|crVSplit|crMultiDrag|crSQLWait|crNo|crAppStart|crHelp|crHandPoint
+Enabled|INTEGER|RW|True|False|True
+Handle|LONG|R|
+Hint|STRING|RW|
+Panel|ARRAY of PanelType|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+ShowHint|INTEGER|RW|False|False|True
+SimplePanel|INTEGER|RW|False|False|True
+SimpleText|STRING|RW|
+SizeGrip|INTEGER|RW|True|False|True
+TabOrder|INTEGER|RW|
+Visible|INTEGER|RW|True|False|True
+* Methods
+AddPanels|STRING|W|
+* Events
+OnResize||
+# 26 QCANVAS * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|105
+Height|INTEGER|RW|105
+Align|INTEGER|RW|alNone|alNone|alTop|alBottom|alLeft|alRight|alClient
+ClientHeight|INTEGER|RW|
+ClientWidth|INTEGER|RW|
+Color|INTEGER|RW|<default>|<default>|<choose>
+CopyMode|INTEGER|RW|cmBlackness|cmBlackness|cmDstInvert|cmMergeCopy|cmMergePaint|cmNotSrcCopy|cmNotSrcErase|cmPatCopy|cmPatInvert|cmPatPaint|cmSrcAnd|cmSrcCopy|cmSrcErase|cmSrcInvert|cmSrcPaint|cmWhiteness
+Cursor|INTEGER|RW|crDefault|crDefault|crNone|crArrow|crCross|crIBeam|crSize|crSizeNESW|crSizeNS|crSizeNWSE|crSizeWE|crUpArrow|crHourGlass|crDrag|crNoDrop|crHSplit|crVSplit|crMultiDrag|crSQLWait|crNo|crAppStart|crHelp|crHandPoint
+Enabled|INTEGER|RW|True|False|True
+Font|QFONT|R|<default>
+Handle|LONG|R|
+Hint|STRING|RW|
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+Pixel|ARRAY of INTEGER|RW|
+PopupMenu|QPOPUPMENU|W|
+ShowHint|INTEGER|RW|False|False|True
+Tag|INTEGER|RW|
+Visible|INTEGER|RW|True|False|True
+* Methods
+* Events
+OnClick||
+OnDblClick||
+OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnPaint||
+# 27 QIMAGE * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|105
+Height|INTEGER|RW|105
+Align|INTEGER|RW|alNone|alNone|alTop|alBottom|alLeft|alRight|alClient
+Autosize|INTEGER|RW|False|False|True
+BMP|STRING|RW|
+BMPHandle|RESOURCE|W|
+Center|INTEGER|RW|False|False|True
+CopyMode|INTEGER|RW|cmBlackness|cmBlackness|cmDstInvert|cmMergeCopy|cmMergePaint|cmNotSrcCopy|cmNotSrcErase|cmPatCopy|cmPatInvert|cmPatPaint|cmSrcAnd|cmSrcCopy|cmSrcErase|cmSrcInvert|cmSrcPaint|cmWhiteness
+Cursor|INTEGER|RW|crDefault|crDefault|crNone|crArrow|crCross|crIBeam|crSize|crSizeNESW|crSizeNS|crSizeNWSE|crSizeWE|crUpArrow|crHourGlass|crDrag|crNoDrop|crHSplit|crVSplit|crMultiDrag|crSQLWait|crNo|crAppStart|crHelp|crHandPoint
+Enabled|INTEGER|RW|True|False|True
+Font|QFONT|R|<default>
+Handle|LONG|RW|
+Hint|STRING|RW|
+ICOHandle|RESOURCE|W|
+Icon|STRING|W|
+IncrementalDisplay|INTEGER|RW|False|False|True
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+Pixel|ARRAY of INTEGER|RW|
+PopupMenu|QPOPUPMENU|W|
+ShowHint|INTEGER|RW|False|False|True
+Stretch|INTEGER|RW|False|False|True
+Tag|INTEGER|RW|
+Transparent|INTEGER|RW|False|False|True
+Visible|INTEGER|RW|True|False|True
+* Methods
+* Events
+OnClick||
+OnDblClick||
+OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+# 28 QOLECONTAINER * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|121
+Height|INTEGER|RW|121
+Align|INTEGER|RW|alNone|alNone|alTop|alBottom|alLeft|alRight|alClient
+AllowInPlace|INTEGER|RW|True|False|True
+AutoShow|INTEGER|RW|True|False|True
+BorderStyle|INTEGER|RW|bsSingle|bsNone|bsSingle
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault|crNone|crArrow|crCross|crIBeam|crSize|crSizeNESW|crSizeNS|crSizeNWSE|crSizeWE|crUpArrow|crHourGlass|crDrag|crNoDrop|crHSplit|crVSplit|crMultiDrag|crSQLWait|crNo|crAppStart|crHelp|crHandPoint
+Enabled|INTEGER|RW|True|False|True
+Handle|LONG|R|
+Hint|STRING|RW|
+Modified|INTEGER|RW|False|False|True
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+ShowHint|INTEGER|RW|False|False|True
+SizeMode|INTEGER|RW|smClip|smClip|smCenter|smScale|smStretch|smAutoSize
+State|INTEGER|RW|osEmpty|osEmpty|osLoaded|osRunning|osOpen|osInPlaceActive|osUIActive
+TabOrder|INTEGER|RW|
+Tag|INTEGER|RW|
+Visible|INTEGER|RW|True|False|True
+* Methods
+* Events
+OnKeyDown||(Key AS WORD, Shift AS INTEGER)
+OnKeyPress||(Key AS BYTE)
+OnKeyUp||(Key AS WORD, Shift AS INTEGER)
+OnMouseDown||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseMove||(X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnMouseUp||(Button AS INTEGER, X AS INTEGER, Y AS INTEGER, Shift AS INTEGER)
+OnObjectMove||(Rect AS QRECT)
+OnResize||
+# 29 QSPLITTER ***** NB Fudge - Left, Top & Height documented as RW properties ******
+Left|INTEGER|R|
+Top|INTEGER|R|
+Width|INTEGER|RW|3
+Height|INTEGER|R|
+Align|INTEGER|RW|alLeft|alTop|alLeft 
+Beveled|INTEGER|RW|True|False|True 
+ClientHeight|INTEGER|RW|
+ClientWidth|INTEGER|R|
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crHSplit|crDefault|crNone|crArrow|crCross|crIBeam|crSize|crSizeNESW|crSizeNS|crSizeNWSE|crSizeWE|crUpArrow|crHourGlass|crDrag|crNoDrop|crHSplit|crVSplit|crMultiDrag|crSQLWait|crNo|crAppStart|crHelp|crHandPoint
+Enabled|INTEGER|RW|True|False|True
+Hint|STRING|RW|
+MinSize|INTEGER|RW|30
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+ShowHint|INTEGER|RW|False|False|True
+Tag|INTEGER|RW|
+Visible|INTEGER|RW|True|False|True
+* Methods
+* Events
+OnMoved||
+# 30 QGLASSFRAME * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Width|INTEGER|RW|105
+Height|INTEGER|RW|105
+Align|INTEGER|RW|alNone|alNone|alTop|alBottom|alLeft|alRight|alClient
+ClientHeight|INTEGER|RW|
+ClientWidth|INTEGER|RW|
+Color|INTEGER|RW|<default>|<default>|<choose>
+Cursor|INTEGER|RW|crDefault|crDefault|crNone|crArrow|crCross|crIBeam|crSize|crSizeNESW|crSizeNS|crSizeNWSE|crSizeWE|crUpArrow|crHourGlass|crDrag|crNoDrop|crHSplit|crVSplit|crMultiDrag|crSQLWait|crNo|crAppStart|crHelp|crHandPoint
+Handle|LONG|RW|
+Hint|STRING|RW|
+Moveable|INTEGER|RW|True|False|True
+Parent|QFORM/QPANEL/QTABCONTROL|R|
+PopupMenu|QPOPUPMENU|W|
+ShowHint|INTEGER|RW|False|False|True
+Transparency|INTEGER|RW|60
+TransparentColor|INTEGER|RW|<default>|<default>|<choose>
+* Methods
+* Events
+# 31 QOPENDIALOG * Properties *
+Caption|STRING|RW|
+FileName|STRING|RW|
+Filter|STRING|RW|
+FilterIndex|INTEGER|RW|1
+InitialDir|STRING|RW|
+* Methods
+* Events
+# 32 QSAVEDIALOG * Properties * 
+Caption|STRING|RW|
+FileName|STRING|RW|
+Filter|STRING|RW|
+FilterIndex|INTEGER|RW|1
+InitialDir|STRING|RW|
+* Methods
+* Events
+# 33 QFONTDIALOG * Properties *
+Color|INTEGER|RW|<default>|<default>|<choose>
+FontCount|INTEGER|R|
+FontName|ARRAY of STRING|R|
+MaxFontSize|INTEGER|RW|
+MinFontSize|INTEGER|RW|
+Name|STRING|RW|
+Size|INTEGER|RW|
+* Methods
+* Events
+# 34 QCOLORDIALOG * Properties *
+Left|INTEGER|RW|
+Top|INTEGER|RW|
+Caption|STRING|RW|
+Color|LONG|R|
+Colors|Array of LONG|RW|
+Style|INTEGER|RW|
+WindowHandle|LONG|RW|
+* Methods
+* Events
+# 35 QBITMAP * Properties *
+BMP|STRING|RW|
+BMPHandle|RESOURCE|W|
+CopyMode|INTEGER|RW|cmBlackness|cmBlackness|cmDstInvert|cmMergeCopy|cmMergePaint|cmNotSrcCopy|cmNotSrcErase|cmPatCopy|cmPatInvert|cmPatPaint|cmSrcAnd|cmSrcCopy|cmSrcErase|cmSrcInvert|cmSrcPaint|cmWhiteness
+Empty|INTEGER|R|
+Font|QFONT|R|<default>
+Handle|LONG|RW|
+Height|INTEGER|RW|
+Monochrome|INTEGER|RW|
+Pixel|2D ARRAY of INTEGER|RW|
+PixelFormat|INTEGER|RW|pfDevice|pfDevice|pf1bit|pf4bit|pf8bit|pf15bit|pf16bit|pf24bit|pf32bit
+Top|INTEGER|RW|
+Transparent|INTEGER|RW|False|False|True
+TransparentColor|INTEGER|RW|<default>|<default>|<choose>
+TransparentMode|INTEGER|RW|0
+Width|INTEGER|RW|
+* Methods
+* Events
+# 36 QIMAGELIST * Properties *
+BkColor|INTEGER|RW|<default>|<default>|<choose>
+BlendColor|INTEGER|RW|<default>|<default>|<choose>
+Count|INTEGER|R|
+DrawingStyle|INTEGER|RW|dsNormal|dsFocused|dsSelected|dsNormal|dsTransparent
+GetBMP|ARRAY of IMAGES/BMP|R|
+GetICO|ARRAY of IMAGES/ICO|R|
+Handle|LONG|R|
+Height|INTEGER|RW|
+ImageType|INTEGER|RW|itImage|itImage|itMask
+Masked|INTEGER|RW|True|False|True
+Width|INTEGER|RW|
+* Methods
+* Events
+# 37 QTIMER * Properties *
+Enabled|INTEGER|RW|True|False|True
+Interval|INTEGER|RW|
+Tag|INTEGER|RW|
+* Methods
+* Events
+OnTimer||
+# 38 QSOCKET * Properties  - NB some property values not included *
+Family|INTEGER|RW|AF_INET|AF_UNSPEC|AF_UNIX|AF_INET|AF_IPX|AF_ISO|AF_ECMA|AF_CCITT|AF_DECNET|AF_APPLETALK|AF_NETBIOS|AF_BAN
+LParam|INTEGER|RW|FD_CONNECT
+MySocket|INTEGER|R|
+Parent|QFORM|R|
+Protocol|INTEGER|RW|IPPROTO_IP|IPPROTO_IP|IPPROTO_ICMP|IPPROTO_IGMP|IPPROTO_TCP|IPPROTO_PUP|IPPROTO_UDP|IPPROTO_IDP|IPPROTO_RAW
+Tag|INTEGER|RW|
+Transferred|INTEGER|R|
+Type|INTEGER|RW|SOCK_STREAM|SOCK_STREAM|SOCK_DGRAM|SOCK_RAW|SOCK_RDM|SOCK_SEQPACKET
+WMessage|INTEGER|RW|0
+* Methods
+* Events
+# 39 QFILESTREAM * Properties *
+EOF|INTEGER|R|
+Handle|LONG|R|
+LineCount|INTEGER|R|
+Position|INTEGER|RW|
+Size|INTEGER|R|
+# 40 QMEMORYSTREAM * Properties *
+LineCount|INTEGER|R|
+Pointer|INTEGER|R|
+Position|INTEGER|RW|
+Size|INTEGER|RW|
+* Methods
+* Events
+# 41 QFONT * Properties *
+Charset|INTEGER|RW|DEFAULT_CHARSET|ANSI_CHARSET|DEFAULT_CHARSET|SYMBOL_CHARSET|MAC_CHARSET|OEM_CHARSET
+Color|INTEGER|RW|<default>|<default>|<choose>
+FontCount|INTEGER|R|
+FontName|ARRAY of STRING|R|
+Handle|LONG|RW|
+Name|STRING|RW|
+Pitch|INTEGER|RW|fpDefault|fpDefault|fpVariable|fpFixed
+Size|INTEGER|RW|
+* Methods
+* Events
+# 42 QMYSQL * Properties *
+Connected|INTEGER|R|
+DB|ARRAY of STRING|R|
+DBCount|INTEGER|R|
+ColCount|INTEGER|R|
+FieldCount|INTEGER|R|
+Field.Decimals|INTEGER|R|
+Field.Flags|INTEGER|R|
+Field.Length|INTEGER|R| 
+Field.MaxLength|INTEGER|R| 
+Field.Name|STRING|R|
+Field.Table|STRING|R|
+Field.Type|INTEGER|R|
+Length|ARRAY of INTEGER|R|
+Row|ARRAY of STRING|R|
+RowCount|INTEGER|R|
+Table|ARRAY of STRING|R|
+TableCount|INTEGER|R|
+* Methods
+* Events
+# 43 QOLEOBJECT * NB ----NO Properties or events------ *
+NO Properties!||R|
+* Methods
+* Events
+# 44 QREGISTRY * Properties *
+CurrentKey|INTEGER|R|
+CurrentPath|STRING|R|
+GetDataSize|INTEGER|R|
+GetDataType|INTEGER|R|
+HasSubKeys|INTEGER|R|
+KeyItemCount|INTEGER|R|
+RootKey|INTEGER|RW|HKEY_CURRENT_USER|HKEY_CLASSES_ROOT|HKEY_CURRENT_USER| HKEY_LOCAL_MACHINE|HKEY_USERS|HKEY_CURRENT_CONFIG
+ValueItemCount|INTEGER|R|
+* Methods
+* Events
+# 45 QSTRINGLIST * Properties *
+Duplicates|INTEGER|RW|dupIgnore|dupIgnore|dupAccept|dupError
+Item|ARRAY of STRING|RW|
+ItemCount|INTEGER|R|
+Sorted|INTEGER|RW|False|False|True
+Text|STRING|RW|
+* Methods
+* Events
+# 46 QMAINMENU * Properties NB not used in "normal" object selection *
+Handle|LONG|R|
+Parent|QFORM|R|
+* Methods
+* Events
+# 47 QPOPUPMENU * Properties NB not used in "normal" object selection *
+Alignment|INTEGER|RW|paLeft|paLeft|paRight|paCenter
+AutoPopup|INTEGER|RW|True|False|True
+Handle|LONG|R|
+Tag|INTEGER|RW|
+WindowHandle|LONG|RW|
+* Methods
+* Events
+OnPopup||
+# 48 QMENUITEM * Properties NB not used in "normal" object selection*
+Caption|STRING|RW| 
+Checked|INTEGER|RW|
+Command|INTEGER|R|
+Count|INTEGER|R|
+Enabled|INTEGER|RW|True|False|True
+Handle|INTEGER|R|
+Hint|STRING|RW|
+MenuIndex|INTEGER|RW|
+RadioItem|INTEGER|RW|False|False|True
+ShortCut|STRING|RW|
+Tag|INTEGER|RW|
+Visible|INTEGER|RW|True|False|True
+* Methods
+* Events
+OnClick||
+#
