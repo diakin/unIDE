@@ -1,0 +1,208 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QTABCONTROL</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QTABCONTROL</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QTABCONTROL Component</H1>
+<DD>QTabControl is a tab set that has the appearance of notebook dividers, except
+it is not made up of several pages.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QTabControl Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD>
+  </TR>
+   <TR><TD>Align</TD><TD>INTEGER</TD><TD>RW</TD><TD>alNone</TD></TR>
+  <TR><TD>ButtonStyle</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR><TD>ClientHeight</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>ClientWidth</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Color</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Cursor</TD><TD>INTEGER</TD><TD>RW</TD><TD>crDefault</TD></TR>
+  <TR><TD>Enabled</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR><TD>FlatButtons</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR><TD>FlatSeperators</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR><TD>FocusButtons</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR><TD>Font</TD><TD>QFONT</TD><TD>W</TD><TD></TD></TR>
+  <TR><TD>Height</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Hint</TD><TD>STRING</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>HotTrack</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR><TD>Left</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD></TR>
+  <TR><TD>MultiLine</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR><TD>Parent</TD><TD>QFORM/QPANEL/QTABCONTROL</TD><TD>W</TD><TD></TD></TR>
+  <TR><TD>PopupMenu</TD><TD>QPOPUPMENU</TD><TD>W</TD><TD></TD></TR>
+  <TR><TD>ScrollOpposite</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR><TD>ShowHint</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR><TD>Tab</TD><TD>ARRAY of STRING</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>TabHeight</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>TabInactiveColor</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>TabInactiveFont</TD><TD>QFONT</TD><TD>W</TD><TD></TD></TR>
+  <TR><TD>TabIndex</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>TabOrder</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>TabPosition</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>TabWidth</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Tag</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Top</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD></TR>
+  <TR><TD>Width</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>VerticalTabs</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR><TD>Visible</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+</TABLE>
+<br>
+
+<a name="2">
+<FONT SIZE = +1><B>QTabControl Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD>AddTabs</TD><TD>SUBI</TD><TD NOWRAP>Add tabs to control</TD><TD NOWRAP>STRING, Infinite</TD></TR>
+  <TR><TD>DelTabs</TD><TD>SUBI</TD><TD NOWRAP>Delete tabs from control</TD><TD NOWRAP>INTEGER, Infinite</TD></TR>
+  <TR><TD>InsertTab</TD><TD>SUB (Index%, String$)</TD><TD NOWRAP>Inserts Tab at Index%</TD><TD NOWRAP>2</TD></TR>
+</TABLE>
+<BR>
+
+<a name="3">
+<FONT SIZE = +1><B>QTabControl Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD>OnChange</TD><TD>VOID</TD><TD>Tabs change</TD><TD>0</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QTabControl Examples</B></FONT>
+
+<PRE>
+'' Tab Control Example for Rapid-Q by William Yu
+'' When you hide a container (like QFORM, QTABCONTROL, and QPANEL), all the
+'' components within it are also hidden.
+
+$INCLUDE "RAPIDQ.INC"
+
+DECLARE SUB TabChange
+
+CREATE MainForm AS QForm
+  Center
+  Height = 300
+  Width = 350
+  Caption = "Tab Control demo"
+  CREATE Tab AS QTabControl
+    AddTabs "Tab 1","Tab 2","Tab 3","Tab 4"
+    Width = MainForm.ClientWidth
+    Height = MainForm.ClientHeight
+    OnChange = TabChange
+    HotTrack = True
+    CREATE Panel0 AS QPanel
+      Top = 40
+      Left = 5
+      Width = Tab.ClientWidth - 10
+      Height = Tab.ClientHeight - 50
+      Caption = "Panel 1"
+      BevelInner = bvLowered
+      CREATE Button1 AS QButton
+        Caption = "Hello world!"
+      END CREATE
+    END CREATE
+    CREATE Panel1 AS QPanel
+      Top = 40
+      Left = 5
+      Width = Tab.ClientWidth - 10
+      Height = Tab.ClientHeight - 50
+      Caption = "Panel 2"
+      BevelInner = bvLowered
+      Visible = False
+    END CREATE
+    CREATE Panel2 AS QPanel
+      Top = 40
+      Left = 5
+      Width = Tab.ClientWidth - 10
+      Height = Tab.ClientHeight - 50
+      Caption = "Panel 3"
+      BevelInner = bvLowered
+      Visible = False
+    END CREATE
+    CREATE Panel3 AS QPanel
+      Top = 40
+      Left = 5
+      Width = Tab.ClientWidth - 10
+      Height = Tab.ClientHeight - 50
+      Caption = "Panel 4"
+      BevelInner = bvLowered
+      Visible = False
+    END CREATE
+  END CREATE
+END CREATE
+
+
+SUB TabChange
+  SELECT CASE Tab.TabIndex
+    CASE 0
+      Panel0.Visible = True
+      Panel1.Visible = False
+      Panel2.Visible = False
+      Panel3.Visible = False
+    CASE 1
+      Panel1.Visible = True
+      Panel0.Visible = False
+      Panel2.Visible = False
+      Panel3.Visible = False
+    CASE 2
+      Panel2.Visible = True
+      Panel1.Visible = False
+      Panel0.Visible = False
+      Panel3.Visible = False
+    CASE 3
+      Panel3.Visible = True
+      Panel1.Visible = False
+      Panel2.Visible = False
+      Panel0.Visible = False
+  END SELECT
+END SUB
+
+
+MainForm.ShowModal
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qstringlist.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qtimer.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      D>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                         

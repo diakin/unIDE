@@ -1,0 +1,296 @@
+<html>
+
+<head>
+<meta name="GENERATOR" content="Microsoft FrontPage 5.0">
+<meta name="ProgId" content="FrontPage.Editor.Document">
+<!------------------->
+<!------------------->
+<!------------------->
+<title>QDIRTREE</title>
+</head>
+
+<!------------------->
+<!------------------->
+<!------------------->
+<body bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<table WIDTH="100%" CELLPADDING="0" CELLSPACING="0">
+  <tr>
+    <td><font FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu 
+    (c)1999</font></td>
+    <td ALIGN="RIGHT"><font FACE="Arial, Helvetica"><b>Appendix A: QDIRTREE</b></font></td>
+  </tr>
+</table>
+<p><br>
+</p>
+<h1>QDIRTREE Component</h1>
+<dd>QDirTree is a custom component used to provide users with a Windows Explorer 
+like directory list. It eats up a lot of resources, so use with caution. You 
+don't usually need more than one of these. <br>
+<br>
+<a name="1"><font SIZE="+1"><b>QDirTree Properties</b></font>
+<table WIDTH="100%" cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+  <tr>
+    <td><b>Field</b></td>
+    <td><b>Type</b></td>
+    <td><b>R/W</b></td>
+    <td><b>Default</b></td>
+  </tr>
+  <tr>
+    <td>Align</td>
+    <td>INTEGER</td>
+    <td>RW</td>
+    <td>alNone</td>
+  </tr>
+  <tr>
+    <td>BorderStyle</td>
+    <td>INTEGER</td>
+    <td>RW</td>
+    <td>bsSingle</td>
+  </tr>
+  <tr>
+    <td>Color</td>
+    <td>INTEGER</td>
+    <td>RW</td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>Cursor</td>
+    <td>INTEGER</td>
+    <td>RW</td>
+    <td>crDefault</td>
+  </tr>
+  <tr>
+    <td>Directory</td>
+    <td>STRING</td>
+    <td>RW</td>
+    <td>False</td>
+  </tr>
+  <tr>
+    <td>Enabled</td>
+    <td>INTEGER</td>
+    <td>RW</td>
+    <td>True</td>
+  </tr>
+  <tr>
+    <td>FastLoad</td>
+    <td>INTEGER</td>
+    <td>RW</td>
+    <td>False</td>
+  </tr>
+  <tr>
+    <td>Font</td>
+    <td>QFONT</td>
+    <td>W</td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>Height</td>
+    <td>INTEGER</td>
+    <td>RW</td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>HideSelection</td>
+    <td>INTEGER</td>
+    <td>RW</td>
+    <td>False</td>
+  </tr>
+  <tr>
+    <td>Hint</td>
+    <td>STRING</td>
+    <td>RW</td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>InitialDir</td>
+    <td>STRING</td>
+    <td>RW</td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>Left</td>
+    <td>INTEGER</td>
+    <td>RW</td>
+    <td>0</td>
+  </tr>
+  <tr>
+    <td>Parent</td>
+    <td>QFORM/QPANEL/QTABCONTROL</td>
+    <td>W</td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>PopupMenu</td>
+    <td>QPOPUPMENU</td>
+    <td>W</td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>ReadOnly</td>
+    <td>INTEGER</td>
+    <td>RW</td>
+    <td>False</td>
+  </tr>
+  <tr>
+    <td>ReadOnStart</td>
+    <td>INTEGER</td>
+    <td>RW</td>
+    <td>False</td>
+  </tr>
+  <tr>
+    <td>ShowHint</td>
+    <td>INTEGER</td>
+    <td>RW</td>
+    <td>False</td>
+  </tr>
+  <tr>
+    <td>TabOrder</td>
+    <td>INTEGER</td>
+    <td>RW</td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>Top</td>
+    <td>INTEGER</td>
+    <td>RW</td>
+    <td>0</td>
+  </tr>
+  <tr>
+    <td>Width</td>
+    <td>INTEGER</td>
+    <td>RW</td>
+    <td></td>
+  </tr>
+  <tr>
+    <td>Visible</td>
+    <td>INTEGER</td>
+    <td>RW</td>
+    <td>True</td>
+  </tr>
+</table>
+<p><br>
+</a><a name="2"><font SIZE="+1"><b>QDirTree Methods</b></font> </p>
+<table WIDTH="100%" cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+  <tr>
+    <td><b>Method</b></td>
+    <td><b>Type</b></td>
+    <td><b>Description</b></td>
+    <td><b>Params</b></td>
+  </tr>
+  <tr>
+    <td>AddDirTypes</td>
+    <td>SUB</td>
+    <td NOWRAP>Add directory types<br>
+    <font FACE="FixedSys" SIZE="1">'-- DirTypes<br>
+    CONST dtReadOnly = 0<br>
+    CONST dtHidden = 1<br>
+    CONST dtSystem = 2<br>
+    CONST dtNormal = 3<br>
+    CONST dtAll = 4</font></td>
+    <td NOWRAP>0</td>
+  </tr>
+  <tr>
+    <td>AddDriveTypes</td>
+    <td>SUB</td>
+    <td NOWRAP>Add drive types<br>
+    <font FACE="FixedSys" SIZE="1"><a name="2">'-- DriveTypes</a><br>
+    <a name="2">CONST drtUnknown = 0</a><br>
+    <a name="2">CONST drtRemovable = 1</a><br>
+    <a name="2">CONST drtFixed = 2</a><br>
+    <a name="2">CONST drtRemote = 3</a><br>
+    <a name="2">CONST drtCDRom = 4</a><br>
+    <a name="2">CONST drtRamDisk = 5</a></font></td>
+    <td NOWRAP>0</td>
+  </tr>
+  <tr>
+    <td>DelDirTypes</td>
+    <td>SUB</td>
+    <td NOWRAP>Del directory types</td>
+    <td NOWRAP>0</td>
+  </tr>
+  <tr>
+    <td>Del<a name="2">Drive</a>Types</td>
+    <td>SUB</td>
+    <td NOWRAP>Del drive types</td>
+    <td NOWRAP>0</td>
+  </tr>
+  <tr>
+    <td>FullCollapse</td>
+    <td>SUB</td>
+    <td NOWRAP>Collapse entire directory list</td>
+    <td NOWRAP>0</td>
+  </tr>
+  <tr>
+    <td>FullExpand</td>
+    <td>SUB</td>
+    <td NOWRAP>Expand entire directory list (slow!)</td>
+    <td NOWRAP>0</td>
+  </tr>
+  <tr>
+    <td>Reload</td>
+    <td>SUB</td>
+    <td NOWRAP>Re-read directories</td>
+    <td NOWRAP>0</td>
+  </tr>
+</table>
+<p><br>
+</a><a name="3"><font SIZE="+1"><b>QDirTree Events</b></font> </p>
+<table WIDTH="100%" cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+  <tr>
+    <td><b>Event</b></td>
+    <td><b>Type</b></td>
+    <td><b>Occurs when...</b></td>
+    <td><b>Params</b></td>
+  </tr>
+  <tr>
+    <td>OnChange</td>
+    <td>VOID</td>
+    <td>Current directory changes</td>
+    <td>0</td>
+  </tr>
+</table>
+<p><br>
+<br>
+</a><a name="4"><font SIZE="+1"><b>QDirTree Examples</b></font> </p>
+<pre>'' A Directory Tree like Windows Explorer.
+'' QDIRTREE Component courtesy of Markus Stephany.
+'' I took out removable drives because it doesn't work properly.
+'' So you won't be able to view your floppy disk drives.  CD-ROM drives
+'' are fine, as far as I know...
+
+$TYPECHECK ON
+
+DECLARE SUB ChangeDirectory
+
+CREATE Form AS QForm
+  Caption = &quot;Directory Tree&quot;
+  Center
+  CREATE DirTree AS QDirTree
+    InitialDir = CURDIR$
+    Width = Form.ClientWidth
+    Height = Form.ClientHeight
+    OnChange = ChangeDirectory
+  END CREATE
+  ShowModal
+END CREATE
+
+SUB ChangeDirectory
+  ShowMessage DirTree.Directory
+END SUB
+</pre>
+<hr SIZE="1">
+<table WIDTH="100%" CELLPADDING="0" CELLSPACING="0">
+  <tr>
+    <td><a HREF="qcoolbtn.html">Prev Component</a></td>
+    <td ALIGN="CENTER"><a HREF="contents.html">Contents</a></td>
+    <td ALIGN="RIGHT"><a HREF="qedit.html">Next Component</a></td>
+  </tr>
+</table>
+
+</body>
+
+</html>
+<p>D&gt;</tr></table></body></a></dd>
+
+</html>

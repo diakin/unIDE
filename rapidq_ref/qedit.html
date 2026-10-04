@@ -1,0 +1,201 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QEDIT</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QEDIT</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QEDIT Component</H1>
+<DD>QEdit is a single-line edit control. More or less used to take input from user.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QEdit Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee"><TD><b>Align</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>alNone</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Align determines how the control aligns within its parent control.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>AutoSize</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">AutoSize determines whether the edit control should adjust its size automatically to accomodate
+                the height of the text.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>BorderStyle</TD><TD>INTEGER</TD><TD>RW</TD><TD>bsSingle</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>CharCase</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>ecNormal</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">CharCase determines the case of the text within the edit control.<br>
+                             0 = ecNormal -- The text of the edit box displays in mixed case.<br>
+                             1 = ecUpperCase -- The text of the edit box displays in uppercase.<br>
+                             2 = ecLowerCase -- The text of the edit box displays in lowercase.<br>
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Color</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>EditText</b></TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">EditText is the value of the text for the edit control after it is formatted using
+                InputMask
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Enabled</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Font</TD><TD>QFONT</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Handle</TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Height</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Hint</TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>InputMask</b></TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">InputMask is the mask that represents what text is valid for the edit control
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>IsMasked</b></TD><TD>INTEGER</TD><TD>R</TD><TD>False</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">IsMasked indicates whether a mask exists for the edit control.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Left</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>MaxLength</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Modified</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Parent</TD><TD>QFORM/QPANEL/QTABCONTROL</TD><TD>W</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>PasswordChar</b></TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">PasswordChar indicates the character, if any, to display in place of the
+                actual characters typed in the control. An empty string indicates that text should be displayed normally.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>PopupMenu</TD><TD>QPOPUPMENU</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>ReadOnly</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>SelLength</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>SelStart</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>SelText</TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>ShowHint</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>TabOrder</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Tag</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Text</TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Top</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Visible</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Width</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+</TABLE>
+<br><br>
+
+<a name="3">
+<FONT SIZE = +1><B>QEdit Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR><TD>OnChange</TD><TD>VOID</TD><TD>Text changed</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR><TD>OnKeyDown</TD><TD NOWRAP>SUB (Key AS WORD, Shift AS INTEGER)</TD><TD NOWRAP>Key held down</TD><TD>2</TD><TD>W</TD></TR>
+  <TR><TD>OnKeyPress</TD><TD>SUB (Key AS BYTE)</TD><TD>User presses a key</TD><TD>1</TD><TD>W</TD></TR>
+  <TR><TD>OnKeyUp</TD><TD>SUB (Key AS Word, Shift AS INTEGER)</TD><TD>User releases a key</TD><TD>2</TD><TD>W</TD></TR>
+  <TR><TD>WndProc</TD><TD NOWRAP>SUB (Hwnd%, Msg%, wParam%, lParam%)</TD><TD NOWRAP>Messages sent to QEdit</TD><TD>4</TD><TD>W</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QEdit Examples</B></FONT>
+
+<PRE>
+  DIM Form AS QForm
+  DIM Edit1 AS QEdit
+
+  Edit1.Parent = Form
+
+  Edit1.Text = "Hello"   '' Set as default text
+  Form.ShowModal
+
+'--------------------------------------------------------------
+
+' Example on how to handle OnKeyDown event
+
+SUB EditKeyDown (Key AS WORD, Shift AS INTEGER, Sender AS QEDIT)
+    SELECT CASE Key
+        CASE 27
+            SHOWMESSAGE "Escape key pressed!"
+        CASE 13
+            SHOWMESSAGE "Enter key pressed!"
+    END SELECT
+END SUB
+
+
+CREATE Form AS QFORM
+    Center
+    CREATE Edit AS QEDIT
+        OnKeyDown = EditKeyDown
+    END CREATE
+    ShowModal
+END CREATE
+</PRE>
+
+<FONT SIZE = +1><B>QEdit Input Masks</B></FONT>
+
+<PRE>
+ !	If a ! character appears in the mask, optional characters are represented
+        in the EditText as leading blanks. If a ! character is not present, optional
+        characters are represented in the EditText as trailing blanks.
+ >	If a > character appears in the mask, all characters that follow are in
+        uppercase until the end of the mask or until a &lt; character is encountered.
+ &lt;      If a &lt; character appears in the mask, all characters that follow are in
+        lowercase until the end of the mask or until a > character is encountered.
+
+ &lt;>     If these two characters appear together in a mask, no case checking is
+        done and the data is formatted with the case the user uses to enter the data.
+ \	The character that follows a \ character is a literal character. Use this
+        character to use any of the mask special characters as a literal in the data.
+ L	The L character requires an alphabetic character only in this position.
+        For the US, this is A-Z, a-z.
+ l	The l character permits only an alphabetic character in this position, but
+        doesn't require it.
+
+ A	The A character requires an alphanumeric character only in this position.
+        For the US, this is A-Z, a-z, 0-9.
+ a	The a character permits an alphanumeric character in this position, but
+        doesn't require it.
+ C	The C character requires an arbitrary character in this position.
+ c	The c character permits an arbitrary character in this position, but
+        doesn't require it.
+ 0	The 0 character requires a numeric character only in this position.
+ 9	The 9 character permits a numeric character in this position, but doesn't
+        require it.
+
+ #	The # character permits a numeric character or a plus or minus sign in
+        this position, but doesn't require it.
+ :	The : character is used to separate hours, minutes, and seconds in times.
+        If the character that separates hours, minutes, and seconds is different
+        in the regional settings of the Control Panel utility on your computer
+        system, that character is used instead.
+ /	The / character is used to separate months, days, and years in dates.
+        If the character that separates months, days, and years is different
+        in the regional settings of the Control Panel utility on your computer
+        system, that character is used instead.
+
+ ;	The ; character is used to separate the three fields of the mask.
+ _	The _ character automatically inserts spaces into the text. When the
+        user enters characters in the field, the cursor skips the _ character.
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qdirtree.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qfilelistbox.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>
+                      
+</BODY>
+</HTML>
+                         

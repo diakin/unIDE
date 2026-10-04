@@ -1,0 +1,115 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>Appendix C: Trouble Shooting</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix C: Trouble Shooting</B></FONT></TD>
+  </TR>
+  <TR>
+    <TD COLSPAN=2><HR SIZE=1> </TD>
+  </TR>
+</TABLE>
+
+<BR>
+<H1>How to debug your programs</H1>
+<DD>In most cases, it's either a typo, or you're trying to use a function
+which is not supported under Rapid-Q. This occurs most often when you don't have
+$TYPECHECK ON. I can't stress this enough, unless you've used Rapid-Q for awhile,
+I strongly encourage everybody to turn this directive on. Rapid-Q has a very poor
+checking mechanism, and relies heavily on the programmer to write proper code.
+For Example:
+<PRE>
+    PRINT SPC(10)
+</PRE>
+SPC is not supported in Rapid-Q (in QBasic, SPC just skips spaces). If typechecking
+is off, the above statement is perfectly valid. SPC is a variable, initialized
+to 0, and (10) has no effect (ie. the number 10 is pushed on the stack, but no operation
+is done), so the above output will be 0.
+<BR><BR>
+
+<FONT SIZE = +1><B>Passing by reference</B></FONT><BR>
+Only QObjects, Arrays, and Variants are passed by reference, all other variables are
+passed by value. To pass a variable by reference, you can either explicitly
+specify this by adding BYREF to your parameter list, or prepend an @ symbol
+to any variables you want passed by reference when calling the function.
+Do not use the @ symbol for Arrays, Variants, or QObjects since they are passed by reference
+by default. Read more about this in Chapter 3 or Appendix C: Procedures.
+Typechecking is done only for Arrays, Variants, and QObjects, since
+you can't pass an array of integers to a SUB that expects an array of doubles.
+You should get an error message if you try this, however, for all other variables
+which are passed by value, NO checking is done. Which means you could easily
+pass an integer to a SUB expecting a string. So becareful that you know the type of
+parameters for your SUB/FUNCTION, since Rapid-Q won't complain. Also make sure if
+you have DECLARE SUBs, that your SUB will have matching parameters, including
+matching parameter names.
+<br><br>
+
+<FONT SIZE = +1><B>Using Undocumented features</B></FONT><BR>
+Rapid-Q has some undocumented features, most of which are in a beta-like stage.
+You can embed SUBs or FUNCTIONs but they can only be one level deep, and there
+are some consequences with using them. If you don't know what an embedded SUB
+looks like, take this for example:
+<PRE>
+    SUB MySub
+      DIM I AS INTEGER
+
+      SUB MyChildSub (X AS INTEGER)
+        DIM N AS DOUBLE
+
+        PRINT "In Child Sub"
+      END SUB
+
+      CALL MyChildSub(100)
+    END SUB
+</PRE>
+There are some special issues involved, such as all variables are local to the
+SUBs that follow. Meaning, the variable I is local to SUB MyChildSub.
+Also, since Rapid-Q doesn't actually clean things up, you can actually
+call MyChildSub in your main program as well. This is a problem I'm
+working to correct when I find the time. One other feature which might interest
+people is postfix ++ and --
+<PRE>
+    DIM I AS INTEGER
+
+    I++           <I>'-- same as I = I + 1</I>
+    I--           <I>'-- same as I = I - 1</I>
+    I -= 10       <I>'-- same as DEC(I, 10)</I>
+    I += 15       <I>'-- same as INC(I, 15)</I>
+</PRE>
+Arrays are a special case, anything but Arrays can be incremented/decremented.
+Rapid-Q doesn't do any optimizing, so the above code and the given translation
+runs exactly the same.
+<BR><BR>
+
+<FONT SIZE = +1><B>Other errors</B></FONT><BR>
+If you don't have a clue as to what is causing your programs to crash, your
+only hope is to put several PRINT statements in your program and incrementally
+check each block of code so that it works properly. If you're using Unix or Linux,
+try using gdb, sometimes it will give you some useful information, but most
+of the time it's not really that helpful in this kind of setting.
+<BR><BR>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                        

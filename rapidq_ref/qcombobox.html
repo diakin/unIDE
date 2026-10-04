@@ -1,0 +1,161 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QCOMBOBOX</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QCOMBOBOX</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QCOMBOBOX Component</H1>
+<DD>QCombobox implements a simple pull down listbox. The first item
+in any combobox is 0, the next is 1, and so on...
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QCombobox Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee"><TD><b>Align</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>alNone</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Align determines how the control aligns within its parent control.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Color</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>CopyMode</TD><TD>INTEGER</TD><TD>RW</TD><TD>cmBlackness</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Cursor</TD><TD>INTEGER</TD><TD>RW</TD><TD>crDefault</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>DropDownCount</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>8</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">DropDownCount is the maximum number of items displayed in the drop-down list.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Enabled</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Font</TD><TD>QFONT</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Height</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Hint</TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Item</TD><TD>ARRAY of STRING</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>ItemCount</TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>ItemHeight</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>ItemIndex</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>-1</TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">ItemIndex indicates which item in the drop-down list is selected. If no item is
+                selected, then ItemIndex is -1.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Left</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>MaxLength</b></TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">MaxLength is the maximum number of characters the user can type
+                into the edit portion of the combobox.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Parent</TD><TD>QFORM/QPANEL/QTABCONTROL</TD><TD>W</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>PopupMenu</TD><TD>QPOPUPMENU</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>ShowHint</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Sorted</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>WG</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Style</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>csDropDown</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Style determines the display style of the combobox.<br>
+                             0 = csDropDown -- A drop-down list with an edit box for manually entered text.<br>
+                             1 = csSimple -- A drop-down list with an edit box and a fixed list (list box) underneath.<br>
+                             2 = csDropDownList -- A drop-down list with no edit box for manual entry.<br>
+                             3 = csOwnerDrawFixed -- Owner-draw drop-down list with an edit box. Each item in the list is the
+                                     height specified by the ItemHeight property.<br>
+                             4 = csOwnerDrawVariable -- Owner-draw drop-down list with an edit box. Each item can have varying heights.<br>
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>TabOrder</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Tag</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Text</TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Top</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Visible</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Width</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+</TABLE>
+<br>
+
+<a name="2">
+<FONT SIZE = +1><B>QCombobox Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR><TD>AddItems</TD><TD>SUBI</TD><TD>Add items to combobox</TD><TD>STRINGs, Infinite</TD><TD>WXG</TD></TR>
+  <TR><TD>Circle</TD><TD>SUB (x1%, y1%, x2%, y2%, c%, fill%)</TD><TD NOWRAP>Draw & Fill Circle</TD><TD NOWRAP>6</TD><TD>W</TD></TR>
+  <TR><TD>Clear</TD><TD>SUB</TD><TD>Clears entire Combobox</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR><TD VALIGN=TOP>CopyRect</TD><TD>SUB (D, Image, S)</TD><TD>D and S are QRECTs, Image can be a QImage, QCanvas, or QBitmap</TD><TD NOWRAP>3</TD><TD>W</TD></TR>
+  <TR><TD>DelItems</TD><TD>SUBI</TD><TD>Delete items by their index</TD><TD>Index #s, Infinite</TD><TD>WXG</TD></TR>
+  <TR><TD>Draw</TD><TD>SUB (x%, y%, BMP)</TD><TD NOWRAP>Draw Bitmap at (X,Y)</TD><TD NOWRAP>3</TD><TD>W</TD></TR>
+  <TR><TD>FillRect</TD><TD>SUB (x1%, y1%, x2%, y2%, c%)</TD><TD NOWRAP>Draws & Fills a rectangle</TD><TD NOWRAP>5</TD><TD>W</TD></TR>
+  <TR><TD>InsertItem</TD><TD>SUB (Index%, String$)</TD><TD>Insert item at Index%</TD><TD>2</TD><TD>WXG</TD></TR>
+  <TR><TD>Line</TD><TD>SUB (x1%, y1%, x2%, y2%, c%)</TD><TD NOWRAP>Draws a line</TD><TD NOWRAP>5</TD><TD>W</TD></TR>
+  <TR><TD>Paint</TD><TD>SUB (x%, y%, c%, borderc%)</TD><TD NOWRAP>Fill Region</TD><TD NOWRAP>4</TD><TD>W</TD></TR>
+  <TR><TD>Pset</TD><TD>SUB (x%, y%, c%)</TD><TD NOWRAP>Pixel plot</TD><TD NOWRAP>3</TD><TD>W</TD></TR>
+  <TR><TD>Rectangle</TD><TD>SUB (x1%, y1%, x2%, y2%, c%)</TD><TD NOWRAP>Draws a rectangle</TD><TD NOWRAP>5</TD><TD>W</TD></TR>
+  <TR><TD>Repaint</TD><TD>SUB</TD><TD NOWRAP>Force repainting of combobox</TD><TD NOWRAP>0</TD><TD>W</TD></TR>
+  <TR><TD>RoundRect</TD><TD>SUB (x1%, y1%, x2%, y2%, x3%, y3%, c%)</TD><TD NOWRAP>Draws & Fills a rounded rectangle</TD><TD NOWRAP>7</TD><TD>W</TD></TR>
+  <TR><TD VALIGN=TOP>StretchDraw</TD><TD>SUB (Rect AS QRECT, BMP)</TD><TD>Draw BMP and stretch to fit inside Rect</TD><TD NOWRAP>2</TD><TD>W</TD></TR>
+  <TR><TD VALIGN=TOP>TextHeight</TD><TD>FUNCTION (Text$) AS WORD</TD><TD>Returns the height, in pixels, of Text$ string</TD><TD NOWRAP>1</TD><TD>W</TD></TR>
+  <TR><TD VALIGN=TOP>TextWidth</TD><TD>FUNCTION (Text$) AS WORD</TD><TD>Returns the width, in pixels, of Text$ string</TD><TD NOWRAP>1</TD><TD>W</TD></TR>
+  <TR><TD VALIGN=TOP>TextRect</TD><TD>SUB (Rect AS QRECT, x%, y%, S$, fc%, bc%)</TD><TD NOWRAP>Write text, and clip within region Rect</TD><TD NOWRAP>6</TD><TD>W</TD></TR>
+  <TR><TD>TextOut</TD><TD>SUB (x%, y%, S$, fc%, bc%)</TD><TD NOWRAP>Writes text to image</TD><TD NOWRAP>5</TD><TD>W</TD></TR>
+</TABLE>
+<br>
+
+<a name="3">
+<FONT SIZE = +1><B>QCombobox Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR><TD>OnChange</TD><TD>VOID</TD><TD>User selects a different item</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR><TD>OnDrawItem</TD><TD>SUB (Index%, State%, R AS QRect)</TD><TD>Items are redrawn for ownerdraw comboboxes</TD><TD>3</TD><TD>W</TD></TR>
+  <TR><TD>OnMeasureItem</TD><TD>SUB (Index%, Height%)</TD><TD>Calculate Height for ownerdraw variable comboboxes</TD><TD>3</TD><TD>W</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QCombobox Examples</B></FONT>
+
+<PRE>
+  DIM Form AS QForm
+  DIM ComboBox AS QComboBox
+
+  SUB ItemChanged
+    PRINT ComboBox.Item(ItemIndex)
+  END SUB
+
+  ComboBox.Parent = Form
+  ComboBox.OnChange = ItemChanged
+  ComboBox.AddItems "1. Apples", "2. Oranges", "3. Bananas"
+
+  Form.ShowModal
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qcheckbox.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qcomport.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      D>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                         

@@ -1,0 +1,117 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QPOPUPMENU</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QPOPUPMENU</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QPOPUPMENU Component</H1>
+<DD>QPopupMenu provides a popup menu selection control
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QPopupMenu Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee"><TD><b>Alignment</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>paLeft</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Alignment determines where the pop-up menu appears when the user clicks the
+                             right mouse button.<br>
+                             0 = paLeft - Pop-up menu appears with its top left corner under the mouse pointer<br>
+                             1 = paRight = Pop-up menu appears with its top right corner under the mouse pointer<br>
+                             2 = paCenter - Pop-up menu appears with the top center of the menu under the mouse pointer<br>
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>AutoPopup</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">AutoPopup determines whether the pop-up menu appears automatically when the user clicks the
+                             right mouse button.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Handle</b></TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Handle is the Windows menu handle for the menu.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Tag</b></TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Tag stores an integer value, but is not used internally.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>WindowHandle</b></TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">WindowHandle is the handle of the window that uses the menu.
+                             </TD></TR>
+</TABLE>
+<br><br>
+
+<a name="2">
+<FONT SIZE = +1><B>QPopupMenu Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD>AddItems</TD><TD>SUBI</TD><TD NOWRAP>Add Item to Menu</TD><TD NOWRAP>QMENUITEMs, Infinite</TD></TR>
+  <TR><TD>DelIndex</TD><TD>SUB (index AS LONG)</TD><TD>Delete items, by index, from menu</TD><TD>1</TD></TR>
+  <TR><TD>DelItems</TD><TD>SUBI</TD><TD>Delete items from menu</TD><TD>QMENUITEMs, Infinite</TD></TR>
+  <TR><TD>Insert</TD><TD NOWRAP>SUB (I%, Item AS QMENUITEM)</TD><TD>Insert an item</TD><TD>2</TD></TR>
+  <TR><TD>Popup</TD><TD>SUB (X%, Y%)</TD><TD NOWRAP>Popup menu at (X,Y)</TD><TD NOWRAP>2</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="3">
+<FONT SIZE = +1><B>QPopupMenu Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD>OnPopup</TD><TD>VOID</TD><TD>Just before the pop-up menu appears</TD><TD>0</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QPopupMenu Examples</B></FONT>
+
+<PRE>
+  DIM PopupMenu AS QPopupMenu
+  DIM Item1 AS QMenuItem
+  DIM Item2 AS QMenuItem
+
+  Item1.Caption = "Item 1"
+  Item2.Caption = "Item 2"
+  PopupMenu.AddItems(Item1, Item2)
+
+  PopupMenu.Popup(100,100)
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qpanel.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qradiobutton.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      D>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                         

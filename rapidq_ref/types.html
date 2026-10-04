@@ -1,0 +1,119 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>Appendix C: User Defined Types</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix C: User Defined Types</B></FONT></TD>
+  </TR>
+  <TR>
+    <TD COLSPAN=2><HR SIZE=1> </TD>
+  </TR>
+</TABLE>
+
+<BR>
+<H1>Introduction to UDTs</H1>
+<DD>User defined types (or UDTs) are structures that you can use in most BASIC
+languages, Rapid-Q is no exception.
+<BR><BR>
+
+<font size = "+1"><B><U>Using TYPE</U></B></FONT><BR>
+Here's an example of a user defined type:
+<pre>    TYPE TWorld
+        CityName(100) AS STRING
+        Population(100) AS LONG
+    END TYPE
+
+    DIM World AS TWorld
+</pre>
+As you can see, you can have arrays within UDTs. You can also create arrays of UDTs:
+<pre>    TYPE TWorld
+        CityName(100) AS STRING
+        Population(100) AS LONG
+    END TYPE
+
+    DIM Country(100) AS TWorld
+</pre>
+There is currently an issue with the memory address of your array (within UDT). Please note that
+this is hardly ever noticed unless you're going to pass one of these structures
+to a DLL that require arrays within UDTs.  This address problem won't affect
+your program, but it's hard to explain (without getting too deep). NOTE: it only occurs when you create
+arrays of UDTs that have arrays within UDTs. In the first example (higher up), there
+is no address problem since you're not creating an array of UDTs. You can
+safely pass that to a DLL.
+<br>&nbsp;<p>-----------------------------<br>
+I Know that there can be arrays of UDT's but why can't they be&nbsp; nested like 
+so ???<br>
+&nbsp;<br>
+Because it's not implemented in RapidQ :(<br>
+---------------------------------------<br>
+
+
+<font size = "+1"><B><U>Copying UDTs</U></B></FONT><BR>
+To copy 2 UDTs, just assign the two: </p>
+<pre>    TYPE TStuff
+        A AS LONG
+        B AS INTEGER
+    END TYPE
+
+    DIM S1 AS TStuff
+    DIM S2 AS TStuff
+
+    S1 = S2
+</pre>
+Contents in S2 are copied to S1. When dealing with arrays within UDTs, the
+arrays are not copied, only referenced. To copy arrays of UDTs, you'll have to
+manually copy each one:
+<pre>    DIM S1(100) AS TStuff
+    DIM S2(100) AS TStuff
+
+    FOR I = 1 TO 100
+        S1(I) = S2(I)
+    NEXT
+</pre>
+<br><br>
+
+
+<font size = "+1"><B><U>Unhooking TYPE</U></B></FONT><BR>
+There are actually 2 ways to create your types, with TYPE and STRUCT.
+STRUCT is actually mirrored in TYPE, to unhook the two, you have to undefine
+TYPE.
+<pre>    $UNDEF TYPE
+
+    TYPE TWorld
+        CityName(100) AS STRING
+        Population(100) AS LONG
+    END TYPE
+
+    DIM World AS TWorld
+</pre>
+Using TYPE and STRUCT are not the same. If you unhook the two, TYPE now reverts
+back to the old style (pre-May 17 version), where arrays of UDTs is not allowed.
+Why the heck would I want a stripped down version? Well, perhaps performance.
+The old style TYPE lacks in many things, but makes up in performance, if that's
+really necessary.
+<br><br>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="gotos.html">&lt;- Branching</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="conditions.html">Conditions -&gt;</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>      

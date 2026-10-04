@@ -1,0 +1,109 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> CLIPBOARD</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: CLIPBOARD</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>CLIPBOARD Component</H1>
+<DD>This object is global, and need not be created.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>ClipBoard Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee"><TD><b>Format</b></TD><TD>ARRAY of WORD</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Format is a list of all the format the Clipboard contains.
+                             There are too may formats to fit on this page, not to mention all the custom formats
+                             you may have registered. Check your WinAPI help file for a list.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>FormatCount</b></TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">FormatCount contains the number of formats in the Format array.
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Text</b></TD><TD>STRING</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Text specifies the current contents of the Clipboard as a string.
+                             </TD></TR>
+</TABLE>
+<br><br>
+
+<a name="2">
+<FONT SIZE = +1><B>ClipBoard Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee" valign="top"><TD><b>Clear</b></TD><TD>SUB</TD><TD>Clear clipboard</TD><TD NOWRAP>0</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Deletes contents of the Clipboard.
+                             </TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD><b>Close</b></TD><TD>SUB</TD><TD>Free clipboard for other processes</TD><TD NOWRAP>0</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Closes the Clipboard if it is open. The Clipboard can be opened multiple times, so the Clipboard will remain opened until it has been closed
+                             the same number of times it has been opened.
+                             </TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD><b>GetAsHandle</b></TD><TD>FUNCTION (Format AS WORD) AS LONG</TD><TD>Returns handle of specified format</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">GetAsHandle returns the data from the Clipboard in a raw Windows handle for the specified format.
+                             </TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD><b>GetAsText</b></TD><TD>FUNCTION (length%) AS STRING</TD><TD>Returns text of length%</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">GetAsText returns the text contents of the Clipboard. See also Text property.
+                             </TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD><b>HasFormat</b></TD><TD>FUNCTION (Format AS WORD) AS SHORT</TD><TD>Returns true or false if the format exists or not</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">HasFormat indicates if the Clipboard object contains a particular format. Returns 0 if format is absent, non-zero otherwise if format is present.
+                             </TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD><b>Open</b></TD><TD>SUB</TD><TD>Begin critcal section</TD><TD NOWRAP>0</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Opens the Clipboard and prevents other applications from changing its contents until the Clipboard is closed.
+                             </TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD><b>SetAsHandle</b></TD><TD>SUB (Format AS WORD, Handle AS LONG)</TD><TD>Set handle and format</TD><TD NOWRAP>2</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">SetAsHandle places the data in the given format as a Windows handle.
+                             </TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD><b>SetAsText</b></TD><TD>SUB (Text$)</TD><TD>Set text of clipboard</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">SetAsText sets the text contents of the Clipboard. See also Text property.
+                             </TD></TR>
+</TABLE>
+<BR><BR>
+
+
+<a name="4">
+<FONT SIZE = +1><B>ClipBoard Examples</B></FONT>
+
+<PRE>
+ClipBoard.Open
+PRINT ClipBoard.Text
+ClipBoard.Close
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qprinter.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qbitmap.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      
+
+</BODY>
+</HTML>                         

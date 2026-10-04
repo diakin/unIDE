@@ -1,0 +1,448 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>QSTRINGGRID</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY BGCOLOR=#C0C0C0 FONT FACE="Tahoma, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Tahoma, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Tahoma, Helvetica"><B>Appendix A: QSTRINGGRID</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QSTRINGGRID Component</H1>
+<DD>QStringGrid allows you to present textual data in a tabular format.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QStringGrid Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee"><TD><b>Align</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>alNone</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Align determines how the control aligns within its parent control.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>BorderStyle</TD><TD>INTEGER</TD><TD>RW</TD><TD>bsSingle</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Cell</b></TD><TD>2D ARRAY of STRING</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Cell(X, Y) is an array of strings, one string for each cell in the grid.<br>
+                  X = Column, Y = Row
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Col</b></TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Col is the index of the column that contains the selected cell.<span lang="en-us">&nbsp;
+    </span>&nbsp;<span style="background-color: #FFFF00" lang="en-us">From 0 to
+    </span>
+
+<a name="1">
+    <span style="background-color: #FFFF00">Col</span><span style="background-color: #FFFF00" lang="en-us">Count
+    </span></a></a><span style="background-color: #FFFF00" lang="en-us">-1</span></TD></TR>
+
+<a name="1">
+  <TR bgcolor="eeeeee"><TD>ColCount</TD><TD>INTEGER</TD><TD>RW</TD><TD>5</TD></TR>
+  <tr>
+    <TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Col<span lang="en-us">Count </span>&nbsp;is the 
+    <span lang="en-us">number of </span>&nbsp;the column<span lang="en-us">s</span>
+    <span lang="en-us">in grid.</span>.
+                </TD>
+  </tr>
+  <TR bgcolor="eeeeee"><TD>Color</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <tr>
+    <TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Col<span lang="en-us">or of</span> the
+    <span lang="en-us">grid.</span>. <font color="#FF0000"><b>
+    <span lang="en-us">Be careful!&nbsp; Use colors from current screen colors 
+    only i.e </span>256 <span lang="en-us">colors or 16 bit or 32 bit.</span></b></font></TD>
+  </tr>
+  <TR bgcolor="eeeeee"><TD><b>ColumnList</b></TD><TD>ARRAY of STRING</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">ColumnList maintains a list of strings deliminated by LF for use in Columned lists.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>ColumnStyle</b></TD><TD>ARRAY of INTEGER</TD><TD>RW</TD><TD>gcsNone</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">ColumnStyle determines the style of each column.<br>
+                     0 = gcsList -- Column with a drop-down list for each item<br>
+                     1 = gcsEllipsis -- Column with an ellipsis button for each item<br>
+                     2 = gcsNone -- Normal column<br>
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>ColWidths</b></TD><TD>ARRAY of INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">ColWidths is an indexed array giving the width in pixels of all the columns in the grid.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Cursor</TD><TD>INTEGER</TD><TD>RW</TD><TD>crDefault</TD></TR>
+  <tr>
+    <TD></TD><TD COLSPAN=3 bgcolor="ffdddd">&nbsp;</TD>
+  </tr>
+  <TR bgcolor="eeeeee"><TD>DefaultColWidth</TD><TD>INTEGER</TD><TD>RW</TD><TD>64</TD></TR>
+  <tr>
+    <TD></TD><TD COLSPAN=3 bgcolor="ffdddd">&nbsp;</TD>
+  </tr>
+  <TR bgcolor="eeeeee"><TD>DefaultRowHeight</TD><TD>INTEGER</TD><TD>RW</TD><TD>24</TD></TR>
+  <tr>
+    <TD></TD><TD COLSPAN=3 bgcolor="ffdddd">&nbsp;</TD>
+  </tr>
+  <TR bgcolor="eeeeee"><TD>EditorMode</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <tr>
+    <TD></TD><TD COLSPAN=3 bgcolor="ffdddd">&nbsp;</TD>
+  </tr>
+  <TR bgcolor="eeeeee"><TD>Enabled</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <tr>
+    <TD></TD><TD COLSPAN=3 bgcolor="ffdddd">&nbsp;</TD>
+  </tr>
+  <TR bgcolor="eeeeee"><TD>FixedColor</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>FixedCols</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>1</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">FixedColss is the number of columns on the left of the grid that cannot be scrolled.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>FixedRows</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>1</TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">FixedRows is the number of rows on the top of the grid that cannot be scrolled.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Font</TD><TD>QFONT</TD><TD>W</TD><TD></TD></TR>
+  <tr>
+    <TD></TD><TD COLSPAN=3 bgcolor="ffdddd">&nbsp;</TD>
+  </tr>
+  <TR bgcolor="eeeeee"><TD>GridHeight</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <tr>
+    <TD></TD><TD COLSPAN=3 bgcolor="ffdddd">&nbsp;</TD>
+  </tr>
+  <TR bgcolor="eeeeee"><TD>GridLineWidth</TD><TD>INTEGER</TD><TD>RW</TD><TD>1</TD></TR>
+  <tr>
+    <TD></TD><TD COLSPAN=3 bgcolor="ffdddd">&nbsp;</TD>
+  </tr>
+  <TR bgcolor="eeeeee"><TD>GridWidth</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <tr>
+    <TD></TD><TD COLSPAN=3 bgcolor="ffdddd">&nbsp;</TD>
+  </tr>
+  <TR bgcolor="eeeeee"><TD>Handle</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Height</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Hint</TD><TD>STRING</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Left</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD></TR>
+  <TR bgcolor="eeeeee"><TD>LeftCol</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <tr>
+    <TD></TD><TD COLSPAN=3 bgcolor="ffdddd">&nbsp;</TD>
+  </tr>
+  <TR bgcolor="eeeeee"><TD>Parent</TD><TD>QFORM/QPANEL/QTABCONTROL</TD><TD>W</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>PopupMenu</TD><TD>QPOPUPMENU</TD><TD>W</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Row</b></TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Row is the index of the row that contains the selected cell.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>RowCount</TD><TD>INTEGER</TD><TD>RW</TD><TD>5</TD></TR>
+  <tr>
+    <TD></TD><TD COLSPAN=3 bgcolor="ffdddd">&nbsp;</TD>
+  </tr>
+  <TR bgcolor="eeeeee"><TD><b>RowHeights</b></TD><TD>ARRAY of INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">RowHeights is an indexed array giving the height in pixels of all the rows in the grid.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>ScrollBars</TD><TD>INTEGER</TD><TD>RW</TD><TD>ssBoth</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Separator</b></TD><TD>STRING</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD></TD><TD COLSPAN=3 bgcolor="ffdddd">Separator determines how the stringgrid should parse (ie. read/write) grid data. For example, you can save the grid data to a file, with each item deliminated by the Separator.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>ShowHint</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR bgcolor="eeeeee"><TD>TabOrder</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>TabStops</TD><TD>ARRAY of INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <tr>
+    <TD></TD><TD COLSPAN=3 bgcolor="ffdddd">&nbsp;</TD>
+  </tr>
+  <TR bgcolor="eeeeee"><TD>Tag</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR bgcolor="eeeeee"><TD>Top</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD></TR>
+  <TR bgcolor="eeeeee"><TD>TopRow</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <tr>
+    <TD></TD><TD COLSPAN=3 bgcolor="ffdddd">&nbsp;</TD>
+  </tr>
+  <TR bgcolor="eeeeee"><TD>Visible</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR bgcolor="eeeeee"><TD>VisibleColCount</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <tr>
+    <TD></TD><TD COLSPAN=3 bgcolor="ffdddd">&nbsp;</TD>
+  </tr>
+  <TR bgcolor="eeeeee"><TD>VisibleRowCount</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <tr>
+    <TD></TD><TD COLSPAN=3 bgcolor="ffdddd">&nbsp;</TD>
+  </tr>
+  <TR bgcolor="eeeeee"><TD>Width</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+</TABLE>
+<br><br>
+
+<a name="2">
+<FONT SIZE = +1><B>QStringGrid Methods</B></FONT>
+<TABLE WIDTH="100%" height="1272" border="1" bordercolor="#808080" cellpadding="4" cellspacing="0" style="border-collapse: collapse">
+  <TR>
+   <TD width="108" height="19"><B>Method</B></TD><TD width="164" height="19"><B>Type</B></TD>
+   <TD width="221" height="19">&nbsp;</TD><TD width="482" height="19"><B>Description</B></TD>
+   <TD width="94" height="19"><B>Params</B></TD>
+  </TR>
+  <TR><TD width="108" valign="top" height="18">
+
+<a name="2">
+    AddOptions</TD><TD width="109" valign="top" height="18">
+
+<a name="2">
+    SUBI</TD>
+    <TD width="838" valign="top" colspan="2" height="18">
+
+<a name="2">
+    Add options to string grid</a></TD><TD width="94" height="18"></TD></TR>
+  <TR><TD width="108" valign="top" height="522">&nbsp;</TD>
+    <TD width="947" valign="top" height="522" colspan="3">
+
+<a name="2">
+    <span style="background-color: #FFDDDD">CONST goFixedVertLine = 0&nbsp;&nbsp;&nbsp; 
+    When True, horizontal lines appear between the rows within nonscrolling 
+    regions.</span><br>
+    <span style="background-color: #CCFFFF">CONST goFixedHorzLine = 1&nbsp;&nbsp; 
+    When True, vertical lines appear between the columns within nonscrolling 
+    regions.<br>
+    </span><span style="background-color: #FFDDDD">CONST goVertLine = 2&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    When True, vertical lines appear between the columns</span><br>
+
+    <span style="background-color: #CCFFFF">CONST goHorzLine = 3&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    When True, horizontal lines appear between the rows.<br>
+    </span><span style="background-color: #FFDDDD">CONST goRangeSelect = 4&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    When True, the user can select a range of cells at one time. When goEditing 
+    is True, the user can no longer select a range of cells.</span><br>
+    <span style="background-color: #CCFFFF">CONST goDrawFocusSelected = 5&nbsp;&nbsp; 
+    When True, the cell with the focus is colored 'the same as other cells in a 
+    selected block are colored. When False, the cell with the focus remains the 
+    color of all unselected cells, the color specified with the grid Color 
+    property.</span><br>
+    <span style="background-color: #FFDDDD">CONST goRowSizing = 6&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    When True, rows can be resized individually except for fixed or nonscrolling 
+    rows.</span><br>
+    <span style="background-color: #CCFFFF">CONST goColSizing = 7&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+    When True, columns can be resized individually except for fixed or 
+    nonscrolling columns.<br>
+    </span><span style="background-color: #FFDDDD">CONST goRowMoving = 8&nbsp;&nbsp; 
+    When True, the user can move a row to a new location in the grid using the 
+    mouse.</span><br>
+    <span style="background-color: #CCFFFF">CONST goColMoving = 9 When True, the 
+    user can move a column to a new location in the grid using the mouse.<br>
+    </span><span style="background-color: #FFDDDD">CONST goEditing = 10&nbsp;&nbsp; 
+    When True, the user can edit the text in the grid. When goEditing is True, 
+    the user cannot select a range of cells at one time.</span><br>
+    <span style="background-color: #CCFFFF">CONST goTabs = 11&nbsp; When True, 
+    the user can use the Tab and Shift-Tab keys to move from column to column in 
+    the grid.</span><br>
+    <span style="background-color: #FFDDDD">CONST goRowSelect = 12&nbsp;&nbsp; 
+    When True, the user can only whole rows at a time instead of individual 
+    cells.<br>
+    </span><span style="background-color: #CCFFFF">CONST goAlwaysShowEditor = 13&nbsp; 
+    When True, the grid is in automatic edit mode 'if goEditing is also True. 
+    When the grid is in automatic edit mode, the user does not have to press 
+    Enter or F2 before editing the contents of a cell. When goAlwaysShowEditor 
+    is False and goEditing is True, the user must press Enter or F2 before 
+    editing the contents of a cell. If goEditing is False, setting 
+    goAlwaysShowEditor to True has no effect.</span><br>
+    <span style="background-color: #FFDDDD">CONST goThumbTracking = 14 When 
+    True, the contents of the grid scrolls while the user is moving the thumb 
+    tab of the grid scroll bar. When False, the contents of the grid doesn't 
+    scroll until the user releases the thumb tab in its new position.<br>
+    </span><br>
+    '-- ColumnStyles<br>
+    CONST gcsList = 0<br>
+    CONST gcsEllipsis = 1<br>
+    CONST gcsNone = 2<br>
+    &nbsp;</TD>
+    <TD width="94" height="522">INTEGER, Infinite</TD></TR>
+  <TR><TD width="108" height="18">DeleteCol</TD>
+    <TD width="385" colspan="2" height="18">SUB (Column%)</TD>
+    <TD width="482" height="18">Deletes/Remove a column</TD>
+    <TD width="94" height="18">1</TD></TR>
+  <TR><TD width="108" height="18">DeleteRow</TD>
+    <TD width="385" colspan="2" height="18">SUB (Row%)</TD>
+    <TD width="482" height="18">Deletes/Remove a row</TD>
+    <TD width="94" height="18">1</TD></TR>
+  <TR><TD width="108" height="36">DelOptions</TD>
+    <TD width="385" colspan="2" height="36">SUBI</TD>
+    <TD width="482" height="36">Delete options from string grid</TD>
+    <TD width="94" height="36">INTEGER, Infinite</TD></TR>
+  <TR><TD width="108" height="18">Circle</TD>
+    <TD width="385" colspan="2" height="18">SUB (x1%, y1%, x2%, y2%, c%, fill%)</TD>
+    <TD NOWRAP width="482" height="18">Draw & Fill Circle</TD>
+    <TD NOWRAP width="94" height="18">6</TD></TR>
+  <TR><TD VALIGN=TOP width="108" height="36">CopyRect</TD>
+    <TD width="385" colspan="2" height="36">SUB (D, Image, S)</TD>
+    <TD width="482" height="36">D and S are QRECTs, Image can be a QImage, QCanvas, or QBitmap</TD>
+    <TD NOWRAP width="94" height="36">3</TD></TR>
+  <TR><TD width="108" height="18">Draw</TD>
+    <TD width="385" colspan="2" height="18">SUB (x%, y%, BMP)</TD>
+    <TD NOWRAP width="482" height="18">Draw Bitmap at (X,Y)</TD>
+    <TD NOWRAP width="94" height="18">3</TD></TR>
+  <TR><TD width="108" height="18">FillRect</TD>
+    <TD width="385" colspan="2" height="18">SUB (x1%, y1%, x2%, y2%, c%)</TD>
+    <TD NOWRAP width="482" height="18">Draws & Fills a rectangle</TD>
+    <TD NOWRAP width="94" height="18">5</TD></TR>
+  <TR><TD width="108" height="18">InsertCol</TD>
+    <TD width="385" colspan="2" height="18">SUB (Column%)</TD>
+    <TD width="482" height="18">Inserts a blank column</TD>
+    <TD width="94" height="18">1</TD></TR>
+  <TR><TD width="108" height="18">InsertRow</TD>
+    <TD width="385" colspan="2" height="18">SUB (Row%)</TD>
+    <TD width="482" height="18">Inserts a blank row</TD>
+    <TD width="94" height="18">1</TD></TR>
+  <TR><TD width="108" height="18">Line</TD>
+    <TD width="385" colspan="2" height="18">SUB (x1%, y1%, x2%, y2%, c%)</TD>
+    <TD NOWRAP width="482" height="18">Draws a line</TD>
+    <TD NOWRAP width="94" height="18">5</TD></TR>
+  <TR><TD width="108" height="36">LoadFromFile</TD>
+    <TD width="385" colspan="2" height="36">SUB (File$, RowOffset%, ColOffset%, MaxRows%)</TD>
+    <TD NOWRAP width="482" height="36">Loads table from file w/Separator</TD>
+    <TD NOWRAP width="94" height="36">4</TD></TR>
+  <TR><TD width="108" height="36">LoadFromStream</TD>
+    <TD width="385" colspan="2" height="36">SUB (S AS QFileStream/QMemoryStream, RowOffset%, ColOffset%, MaxRows%)</TD>
+    <TD NOWRAP width="482" height="36">Loads table from stream w/Separator</TD>
+    <TD NOWRAP width="94" height="36">4</TD></TR>
+  <TR><TD width="108" height="18">Paint</TD>
+    <TD width="385" colspan="2" height="18">SUB (x%, y%, c%, borderc%)</TD>
+    <TD NOWRAP width="482" height="18">Fill Region</TD>
+    <TD NOWRAP width="94" height="18">4</TD></TR>
+  <TR><TD width="108" height="18">Pset</TD>
+    <TD width="385" colspan="2" height="18">SUB (x%, y%, c%)</TD>
+    <TD NOWRAP width="482" height="18">Pixel plot</TD>
+    <TD NOWRAP width="94" height="18">3</TD></TR>
+  <TR><TD width="108" height="19">Rectangle</TD>
+    <TD width="385" colspan="2" height="19">SUB (x1%, y1%, x2%, y2%, c%)</TD>
+    <TD NOWRAP width="482" height="19">Draws a rectangle</TD>
+    <TD NOWRAP width="94" height="19">5</TD></TR>
+  <TR><TD width="108" height="18">Repaint</TD>
+    <TD width="385" colspan="2" height="18">SUB</TD>
+    <TD NOWRAP width="482" height="18">Force repainting of stringgrid</TD>
+    <TD NOWRAP width="94" height="18">0</TD></TR>
+  <TR><TD width="108" height="18">RoundRect</TD>
+    <TD width="385" colspan="2" height="18">SUB (x1%, y1%, x2%, y2%, x3%, y3%, c%)</TD>
+    <TD NOWRAP width="482" height="18">Draws & Fills a rounded rectangle</TD>
+    <TD NOWRAP width="94" height="18">7</TD></TR>
+  <TR><TD width="108" height="36">SaveToFile</TD>
+    <TD width="385" colspan="2" height="36">SUB (File$, RowOffset%, ColOffset%, MaxRows%)</TD>
+    <TD NOWRAP width="482" height="36">Saves table to file w/Separator</TD>
+    <TD NOWRAP width="94" height="36">4</TD></TR>
+  <TR><TD width="108" height="36">SaveToStream</TD>
+    <TD width="385" colspan="2" height="36">SUB (S AS QFileStream/QMemoryStream, RowOffset%, ColOffset%, MaxRows%)</TD>
+    <TD NOWRAP width="482" height="36">Saves table to stream w/Separator</TD>
+    <TD NOWRAP width="94" height="36">4</TD></TR>
+  <TR><TD width="108" height="18">SwapCols</TD>
+    <TD width="385" colspan="2" height="18">SUB (Col1%, Col2%)</TD>
+    <TD width="482" height="18">Swap two columns</TD><TD width="94" height="18">2</TD></TR>
+  <TR><TD width="108" height="18">SwapRows</TD>
+    <TD width="385" colspan="2" height="18">SUB (Row1%, Row2%)</TD>
+    <TD width="482" height="18">Swap two rows</TD><TD width="94" height="18">2</TD></TR>
+  <TR><TD VALIGN=TOP width="108" height="18">StretchDraw</TD>
+    <TD width="385" colspan="2" height="18">SUB (Rect AS QRECT, BMP)</TD>
+    <TD width="482" height="18">Draw BMP and stretch to fit inside Rect</TD>
+    <TD NOWRAP width="94" height="18">2</TD></TR>
+  <TR><TD VALIGN=TOP width="108" height="18">TextHeight</TD>
+    <TD width="385" colspan="2" height="18">FUNCTION (Text$) AS WORD</TD>
+    <TD width="482" height="18">Returns the height, in pixels, of Text$ string</TD>
+    <TD NOWRAP width="94" height="18">1</TD></TR>
+  <TR><TD VALIGN=TOP width="108" height="18">TextWidth</TD>
+    <TD width="385" colspan="2" height="18">FUNCTION (Text$) AS WORD</TD>
+    <TD width="482" height="18">Returns the width, in pixels, of Text$ string</TD>
+    <TD NOWRAP width="94" height="18">1</TD></TR>
+  <TR><TD VALIGN=TOP width="108" height="18">TextRect</TD>
+    <TD width="385" colspan="2" height="18">SUB (Rect AS QRECT, x%, y%, S$, fc%, bc%)</TD>
+    <TD NOWRAP width="482" height="18">Write text, and clip within region Rect</TD>
+    <TD NOWRAP width="94" height="18">6</TD></TR>
+  <TR><TD width="108" height="18">TextOut</TD>
+    <TD width="385" colspan="2" height="18">SUB (x%, y%, S$, fc%, bc%)</TD>
+    <TD NOWRAP width="482" height="18">Writes text to selected cell</TD>
+    <TD NOWRAP width="94" height="18">5</TD></TR>
+  <tr>
+    <TD></TD><TD COLSPAN=4 bgcolor="ffdddd"><b><u>Details</u></b>:<br>
+
+<a name="2">
+    x% </a></a>- X coordinate of left,top corner of <a name="2">Rect</a>&nbsp; 
+    where text out. X=0 is left,top corner of selected cell<a name="2"><br>
+
+<a name="2">
+    y%</a></a> - Y coordinate of left,top corner of <a name="2">Rect</a>&nbsp; 
+    text in selected cell<a name="2"><br>
+                             fc% = foreground color<br>
+                             bc% = background color<br>
+                             For a transparent background, set bc% parameter to -1
+                             </TD>
+  </tr>
+</TABLE>
+<br>
+
+<a name="3">
+<FONT SIZE = +1><B>QStringGrid Events</B></FONT>
+<TABLE WIDTH=100% border="1" bordercolor="#808080" cellspacing="0" cellpadding="4" style="border-collapse: collapse">
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD>
+  </TR>
+  <TR><TD>OnDrawCell</TD><TD>SUB (Col%, Row%, State%, R AS QRect)</TD><TD>Cells need to be redrawn</TD><TD>4</TD></TR>
+  <TR><TD>OnEllipsisClick</TD><TD>SUB (Col%, Row%)</TD><TD>Pull down list is clicked</TD><TD>2</TD></TR>
+  <TR><TD>OnKeyDown</TD><TD NOWRAP>SUB (Key AS Word, Shift AS INTEGER)</TD><TD NOWRAP>Key held down</TD><TD>2</TD></TR>
+  <TR><TD>OnKeyPress</TD><TD>SUB (Key AS BYTE)</TD><TD>User presses a key</TD><TD>1</TD></TR>
+  <TR><TD>OnKeyUp</TD><TD>SUB (Key AS Word, Shift AS INTEGER)</TD><TD>User releases a key</TD><TD>2</TD></TR>
+  <TR><TD>OnListDropDown</TD><TD>SUB (Col%, Row%, BYREF S AS STRING)</TD><TD>Pull down list is clicked. S is a string with items separated by a new line character.</TD><TD>3</TD></TR>
+  <TR><TD>OnSelectCell</TD><TD>SUB (Col%, Row%, CanSelect%)</TD><TD>User has selected a cell</TD><TD>3</TD></TR>
+  <TR><TD>OnSetEditText</TD><TD>SUB (Col%, Row%, Value$)</TD><TD>User has changed contents of cell</TD><TD>3</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QStringGrid Examples</B></FONT>
+
+<PRE>CREATE Form AS QForm
+  CREATE Grid AS QStringGrid
+    Cell(1,1) = "hello"
+  END CREATE
+  Center
+  ShowModal
+END CREATE
+
+'------------------------------------------------------------------
+' Pulldown list example
+
+$INCLUDE "RAPIDQ.INC"
+$ESCAPECHARS ON
+
+CONST AgeList = "10\n11\n12\n13\n14\n15\n16\n17\n18\n19"
+
+SUB EllipsisClick (Col AS LONG, Row AS LONG, Sender AS QSTRINGGRID)
+    Sender.Cell(Col, Row) = "Comments"+STR$(Row)
+END SUB
+
+CREATE Form AS QFORM
+    CREATE Grid AS QSTRINGGRID
+        Align = alClient
+        AddOptions(goEditing)
+        FixedRows = 1
+        FixedCols = 0
+        ColCount = 3
+        RowCount = 5
+        DefaultRowHeight = 20
+        ColumnStyle(0) = gcsList
+        ColumnStyle(1) = gcsEllipsis
+        ColumnList(0) = AgeList
+        Cell(0,0) = " Age"
+        Cell(1,0) = " Comments"
+        OnEllipsisClick = EllipsisClick
+    END CREATE
+    Caption = "Dropdown list example"
+    Center
+    ShowModal
+END CREATE
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qstatusbar.html" tppabs="http://www.basicguru.com/abc/rapidq/docs/qstatusbar.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html" tppabs="http://www.basicguru.com/abc/rapidq/docs/contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qstringlist.html" tppabs="http://www.basicguru.com/abc/rapidq/docs/qstringlist.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</a>
+
+</BODY>
+</HTML>    
+</BODY>
+</HTML>

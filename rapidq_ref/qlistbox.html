@@ -1,0 +1,166 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QLISTBOX</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QLISTBOX</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QLISTBOX Component</H1>
+<DD>QListbox implements a generic (veritcal scrolling) Windows listbox. The first item
+in any listbox is 0, the next is 1, and so on...
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QListbox Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee"><TD><b>Align</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>alNone</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Align determines how the control aligns within its parent control.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>BorderStyle</TD><TD>INTEGER</TD><TD>RW</TD><TD>bsSingle</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Color</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WX</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Columns</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Columns specifies the number of columns, in a multi-column listbox, that are visible without having to scroll.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>CopyMode</TD><TD>INTEGER</TD><TD>RW</TD><TD>cmBlackness</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Cursor</TD><TD>INTEGER</TD><TD>RW</TD><TD>crDefault</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Enabled</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>ExtendedSelect</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD><TD>WX</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">ExtendedSelect determines if the user can select a sequential range of items in the listbox.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Font</TD><TD>QFONT</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <tr>
+    <TD>Handle</TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>W</TD>
+  </tr>
+  <TR bgcolor="eeeeee"><TD>Height</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Hint</TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Item</b></TD><TD>ARRAY of STRING</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Item contains the strings that appear in the listbox.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>ItemCount</TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>ItemHeight</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>ItemIndex</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Left</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>MultiSelect</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>WX</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Parent</TD><TD>QFORM/QPANEL/QTABCONTROL</TD><TD>W</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>PopupMenu</TD><TD>QPOPUPMENU</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>SelCount</TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Selected</TD><TD>ARRAY of INTEGER</TD><TD>RW</TD><TD></TD><TD>WX</TD></TR>
+  <TR bgcolor="eeeeee"><TD>ShowHint</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Sorted</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>WG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Sorted specifies whether the items in a listbox are arranged alphabetically.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Style</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>lbStandard</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Style determines whether the listbox is standard or owner-draw.<br>
+                        0 = lbStandard -- All items are strings, with each item the same height.<br>
+                        1 = lbOwnerDrawFixed -- Each item in the listbox is the height specified by the ItemHeight property.<br>
+                        2 = lbOwnerDrawVariable -- Items in the listbox can be of varying heights.<br>
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>TabOrder</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>TabWidth</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Tag</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Text</b></TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Text defines the items in the listbox as CRLF terminated strings.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Top</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>TopIndex</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Visible</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Width</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+</TABLE>
+<br>
+
+<a name="2">
+<FONT SIZE = +1><B>QListbox Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR><TD>AddItems</TD><TD>SUBI</TD><TD>Add items to listbox</TD><TD>STRINGs, Infinite</TD><TD>WXG</TD></TR>
+  <TR><TD>Circle</TD><TD>SUB (x1%, y1%, x2%, y2%, c%, fill%)</TD><TD NOWRAP>Draw & Fill Circle</TD><TD NOWRAP>6</TD><TD>W</TD></TR>
+  <TR><TD>Clear</TD><TD>SUB</TD><TD>Clears entire listbox</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR><TD VALIGN=TOP>CopyRect</TD><TD>SUB (D, Image, S)</TD><TD>D and S are QRECTs, Image can be a QImage, QCanvas, or QBitmap</TD><TD NOWRAP>3</TD><TD>W</TD></TR>
+  <TR><TD>DelItems</TD><TD>SUBI</TD><TD>Delete items by their index</TD><TD>Index #s, Infinite</TD><TD>WXG</TD></TR>
+  <TR><TD>Draw</TD><TD>SUB (x%, y%, BMP)</TD><TD NOWRAP>Draw Bitmap at (X,Y)</TD><TD NOWRAP>3</TD><TD>W</TD></TR>
+  <TR><TD>FillRect</TD><TD>SUB (x1%, y1%, x2%, y2%, c%)</TD><TD NOWRAP>Draws & Fills a rectangle</TD><TD NOWRAP>5</TD><TD>W</TD></TR>
+  <TR><TD>InsertItem</TD><TD>SUB (Index%, String$)</TD><TD>Insert item at Index%</TD><TD>2</TD><TD>WXG</TD></TR>
+  <TR><TD>Line</TD><TD>SUB (x1%, y1%, x2%, y2%, c%)</TD><TD NOWRAP>Draws a line</TD><TD NOWRAP>5</TD><TD>W</TD></TR>
+  <TR><TD>LoadFromFile</TD><TD>SUB (FileName AS STRING)</TD><TD NOWRAP>Load file to list</TD><TD NOWRAP>1</TD><TD>W</TD></TR>
+  <TR><TD>Paint</TD><TD>SUB (x%, y%, c%, borderc%)</TD><TD NOWRAP>Fill Region</TD><TD NOWRAP>4</TD><TD>W</TD></TR>
+  <TR><TD>Pset</TD><TD>SUB (x%, y%, c%)</TD><TD NOWRAP>Pixel plot</TD><TD NOWRAP>3</TD><TD>W</TD></TR>
+  <TR><TD>Rectangle</TD><TD>SUB (x1%, y1%, x2%, y2%, c%)</TD><TD NOWRAP>Draws a rectangle</TD><TD NOWRAP>5</TD><TD>W</TD></TR>
+  <TR><TD>Repaint</TD><TD>SUB</TD><TD NOWRAP>Force repainting of listbox</TD><TD NOWRAP>0</TD><TD>W</TD></TR>
+  <TR><TD>RoundRect</TD><TD>SUB (x1%, y1%, x2%, y2%, x3%, y3%, c%)</TD><TD NOWRAP>Draws & Fills a rounded rectangle</TD><TD NOWRAP>7</TD><TD>W</TD></TR>
+  <TR><TD>SaveToFile</TD><TD>SUB (FileName AS STRING)</TD><TD NOWRAP>Save list to file</TD><TD NOWRAP>1</TD><TD>W</TD></TR>
+  <TR><TD VALIGN=TOP>StretchDraw</TD><TD>SUB (Rect AS QRECT, BMP)</TD><TD>Draw BMP and stretch to fit inside Rect</TD><TD NOWRAP>2</TD><TD>W</TD></TR>
+  <TR><TD VALIGN=TOP>TextHeight</TD><TD>FUNCTION (Text$) AS WORD</TD><TD>Returns the height, in pixels, of Text$ string</TD><TD NOWRAP>1</TD><TD>W</TD></TR>
+  <TR><TD VALIGN=TOP>TextWidth</TD><TD>FUNCTION (Text$) AS WORD</TD><TD>Returns the width, in pixels, of Text$ string</TD><TD NOWRAP>1</TD><TD>W</TD></TR>
+  <TR><TD VALIGN=TOP>TextRect</TD><TD>SUB (Rect AS QRECT, x%, y%, S$, fc%, bc%)</TD><TD NOWRAP>Write text, and clip within region Rect</TD><TD NOWRAP>6</TD><TD>W</TD></TR>
+  <TR><TD>TextOut</TD><TD>SUB (x%, y%, S$, fc%, bc%)</TD><TD NOWRAP>Writes text to image</TD><TD NOWRAP>5</TD><TD>W</TD></TR>
+</TABLE>
+<br>
+
+<a name="3">
+<FONT SIZE = +1><B>QListbox Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR><TD>OnClick</TD><TD>VOID</TD><TD>User clicks on item</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR><TD>OnDblClick</TD><TD>VOID</TD><TD>User double clicks on an item</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR><TD>OnDrawItem</TD><TD>SUB (Index%, State%, R AS QRect)</TD><TD>Items are redrawn for ownerdraw listboxes</TD><TD>3</TD><TD>W</TD></TR>
+  <TR><TD>OnEnter</TD><TD>VOID</TD><TD>User presses enter to select item</TD><TD>0</TD><TD>W</TD></TR>
+  <TR><TD>OnMeasureItem</TD><TD>SUB (Index%, Height%)</TD><TD>Calculate Height for ownerdraw variable listboxes</TD><TD>3</TD><TD>W</TD></TR>
+  <TR><TD>WndProc</TD><TD NOWRAP>SUB (Hwnd%, Msg%, wParam%, lParam%)</TD><TD NOWRAP>Messages sent to Listbox</TD><TD>4</TD><TD>W</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QListbox Examples</B></FONT>
+
+<PRE>  DIM Form AS QForm
+  DIM ListBox AS QListBox
+
+  ListBox.Parent = Form
+  ListBox.AddItems "1. Apples", "2. Oranges", "3. Bananas"
+  ListBox.DelItems 1,2       '' <I>Deletes Oranges and Bananas</I>
+ 
+  ListBox.Item(0) = "1. Strawberries"   '-- Change the first item
+
+  Form.ShowModal
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qlabel.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qlistview.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      D></TR></TABLE></BODY></a></HTML>

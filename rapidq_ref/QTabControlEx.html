@@ -1,0 +1,607 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+	<META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1252">
+	<TITLE>Appendix A: QTabControlEx</TITLE>
+	<META NAME="GENERATOR" CONTENT="Microsoft FrontPage 5.0">
+	<META NAME="AUTHOR" CONTENT="dominique glodt">
+	<META NAME="CREATED" CONTENT="20040923;18425363">
+	<META NAME="CHANGED" CONTENT="20041013;12250755">
+</HEAD>
+<BODY LANG="fr-FR" BGCOLOR="#ffffff" DIR="LTR">
+<P STYLE="margin-bottom: 0cm">&nbsp; 
+<br>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+	<TR>
+		<TD>
+			<FONT FACE="Arial, Helvetica">Documentation component by
+			D.Glodt (c)2004</FONT><br>
+		</TD>
+		<TD>
+			<P ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A:
+			QTabControlEx</B></FONT><br>
+		</TD>
+	</TR>
+	<TR>
+		<TD COLSPAN=2>
+			<HR SIZE=1>
+		</TD>
+	</TR>
+</TABLE>
+<H1>QTabControlEx Component</H1>
+<DL>
+	<DD>QTabControlEx is a component inherited from QtabControl with
+	members extend. 
+	</DD><DD STYLE="margin-bottom: 0.5cm">
+	The DelTabs  method from standard component is replaced by
+	DeleteTabs method. 
+	</DD></DL>
+<P STYLE="margin-bottom: 0cm">
+<A NAME="1"></A><BR><B><FONT SIZE=4>QTabControlEx Properties</FONT></B><br>
+<TABLE WIDTH=100% BORDER=0 CELLPADDING=2 CELLSPACING=0>
+	<COL WIDTH=60*>
+	<COL WIDTH=143*>
+	<COL WIDTH=18*>
+	<COL WIDTH=30*>
+	<COL WIDTH=5*>
+	<TR>
+		<TD WIDTH=23%>
+			<B>Fields</B><br>
+		</TD>
+		<TD WIDTH=56%>
+			<B>Type</B><br>
+		</TD>
+		<TD WIDTH=7%>
+			<B>R/W</B><br>
+		</TD>
+		<TD WIDTH=12%>
+			<B>Default</B><br>
+		</TD>
+		<TD WIDTH=2% VALIGN=TOP></TD>
+	</TR>
+	<TR>
+		<TD WIDTH=23%>
+			<HR>
+		</TD>
+		<TD WIDTH=56%>
+			<HR>
+		</TD>
+		<TD WIDTH=7%>
+			<HR>
+		</TD>
+		<TD WIDTH=12%>
+			<HR>
+		</TD>
+		<TD WIDTH=2%>
+			<HR>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=23%>
+			TabCount<br>
+		</TD>
+		<TD WIDTH=56%>
+			INTEGER<br>
+		</TD>
+		<TD WIDTH=7%>
+			R<br>
+		</TD>
+		<TD WIDTH=12% SDVAL="0" SDNUM="1036;">
+			<P ALIGN=RIGHT>0<br>
+		</TD>
+		<TD WIDTH=2% VALIGN=TOP></TD>
+	</TR>
+	<TR BGCOLOR="#ffcccc">
+		<TD WIDTH=23%></TD>
+		<TD WIDTH=56%>
+			Tab count<br>
+		</TD>
+		<TD WIDTH=7%></TD>
+		<TD WIDTH=12%></TD>
+		<TD WIDTH=2%>
+			<BR>
+			<br>
+		</TD>
+	</TR>
+</TABLE>
+<P STYLE="margin-bottom: 0cm"><BR>
+<br>
+<P STYLE="margin-bottom: 0cm"><A NAME="2"></A><B><FONT SIZE=4>QTabControlEx
+Methods</FONT></B><br>
+<TABLE WIDTH=100% BORDER=0 CELLPADDING=2 CELLSPACING=0>
+	<COL WIDTH=47*>
+	<COL WIDTH=61*>
+	<COL WIDTH=84*>
+	<COL WIDTH=57*>
+	<COL WIDTH=7*>
+	<TR>
+		<TD WIDTH=18%>
+			<B>Method</B><br>
+		</TD>
+		<TD WIDTH=24%>
+			<B>Type</B><br>
+		</TD>
+		<TD WIDTH=33%>
+			<B>Description</B><br>
+		</TD>
+		<TD WIDTH=22%>
+			<B>Params</B><br>
+		</TD>
+		<TD WIDTH=3% VALIGN=TOP></TD>
+	</TR>
+	<TR>
+		<TD WIDTH=18%>
+			<HR>
+		</TD>
+		<TD WIDTH=24%>
+			<HR>
+		</TD>
+		<TD WIDTH=33%>
+			<HR>
+		</TD>
+		<TD WIDTH=22%>
+			<HR>
+		</TD>
+		<TD WIDTH=3%>
+			<HR>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff" VALIGN=TOP>
+		<TD WIDTH=18%>
+			DeleteTabs<br>
+		</TD>
+		<TD WIDTH=24%>
+			SUBI(Index&amp;)<br>
+		</TD>
+		<TD WIDTH=33%>
+			Delete  tabs&nbsp;<br>
+		</TD>
+		<TD WIDTH=22%>
+			1<br>
+		</TD>
+		<TD WIDTH=3%></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=18% VALIGN=TOP>
+			Clear<br>
+		</TD>
+		<TD WIDTH=24% VALIGN=TOP>
+			SUB<br>
+		</TD>
+		<TD WIDTH=33% VALIGN=TOP>
+			Remove all<br>
+		</TD>
+		<TD WIDTH=22% VALIGN=BOTTOM SDVAL="0" SDNUM="1036;">
+			<P ALIGN=LEFT>0<br>
+		</TD>
+		<TD WIDTH=3% VALIGN=TOP></TD>
+	</TR>
+</TABLE>
+<P STYLE="margin-bottom: 0cm"><BR>
+<br>
+<P STYLE="margin-bottom: 0cm"><A NAME="3"></A><B><FONT SIZE=4>QTabControlEx
+Events</FONT></B> 
+<br>
+<TABLE WIDTH=100% CELLPADDING=2 CELLSPACING=2>
+	<TR>
+		<TD>
+			<B>Event</B><br>
+		</TD>
+		<TD>
+			<B>Type</B><br>
+		</TD>
+		<TD>
+			<B>Occurs when...</B><br>
+		</TD>
+		<TD>
+			<B>Params</B><br>
+		</TD>
+		<TD VALIGN=TOP></TD>
+	</TR>
+	<TR>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+	</TR>
+</TABLE>
+<A NAME="4"></A><B><FONT SIZE=4>QTabControlEx Example</FONT></B>
+<BR>&nbsp; <BR><B><FONT SIZE=4>Example<span lang="en-us"> 1</span></FONT></B><p>
+<font face="Courier New" size="2">
+' From Paul Ludgate alias <a href="mailto:snakedile@yahoo.com">
+snakedile@yahoo.com</a><br>
+' Re:- QTabControl Deltabs (and finding out number of tabs)<br>
+' I've only just joined your group so sorry I'm late.<br>
+' A fresh approach (I think)<br>
+' There are ways of doing this with API calls.<br>
+' One small problem... you need the tabcontrol's handle<br>
+' and RapidQ doesn't provide one!<br>
+' The best way I find to get one is to wrap the tabcontrol<br>
+' in a QPanel and find the handle of its child.<br>
+' The tabcontrol is aligned as alClient to this Qpanel<br>
+' so any resizing or further aligning should be applied <br>
+' to the QPanel and not directly to the tabcontrol.<br>
+' Now if you try the new QObject (QTabControlEx)<br>
+' noting the line just before Form.ShowModal,<br>
+' I think you'll find that DelTabs behaves exactly<br>
+' how it should have in QTabControl.<br>
+' Plus I've thrown in three extra methods that could<br>
+' solve some other needs.<br>
+' METHOD TYPE<br>
+' SetMinTabWidth SUB(Width%)<br>
+' Clear SUB()<br>
+' TabCount FUNCTION() AS INTEGER</font></p>
+<p>
+<font face="Courier New" size="2">
+<br>
+CONST TCM_GETITEMCOUNT = &amp;H1304<br>
+CONST TCM_DELETEITEM = &amp;H1308<br>
+CONST TCM_DELETEALLITEMS = &amp;H1309<br>
+CONST TCM_SETMINTABWIDTH = &amp;H1331<br>
+CONST GW_CHILD = 5<br>
+DECLARE FUNCTION GetWindow LIB &quot;USER32&quot; ALIAS &quot;GetWindow&quot; (hWnd%, wCmd%) AS 
+LONG<br>
+DECLARE FUNCTION SendMessageGet LIB &quot;USER32&quot; ALIAS &quot;SendMessageA&quot; (hWnd%, 
+wMsg%, wParam%, lParam%) AS LONG<br>
+TYPE QTabControlEx EXTENDS QTABCONTROL<br>
+Handle AS INTEGER<br>
+SUBI DelTabs(...)<br>
+FOR I% = ParamValCount TO 1 STEP - 1<br>
+SendMessage(QTabControlEx.Handle, TCM_DELETEITEM, ParamVal(I%), 0&amp;)<br>
+NEXT<br>
+END SUB<br>
+SUB Clear()<br>
+SendMessage(Tab.Handle, TCM_DELETEALLITEMS, 0&amp;, 0&amp;)<br>
+END SUB<br>
+SUB SetMinTabWidth(Width%)<br>
+SendMessage(Tab.Handle, TCM_SETMINTABWIDTH, 0&amp;, Width%)<br>
+END SUB<br>
+FUNCTION TabCount() AS INTEGER<br>
+QTabControlEx.TabCount = SendMessageGet(Tab.Handle, TCM_GETITEMCOUNT, 0&amp;, 0&amp;)<br>
+END FUNCTION<br>
+END TYPE<br>
+DECLARE SUB Demo1<br>
+DECLARE SUB Demo2<br>
+DECLARE SUB Demo3<br>
+CREATE Form AS QFORM<br>
+Width = 500<br>
+Height = 300<br>
+Caption = &quot;QTabControlEx Demo&quot;<br>
+Center<br>
+CREATE ButtonBar AS QPANEL<br>
+Height = 44<br>
+Align = 1<br>
+Color = &amp;HFFC080<br>
+BevelOuter = 1<br>
+CREATE Button1 AS QBUTTON<br>
+Top = 10<br>
+Left = 10<br>
+Width = 150<br>
+Caption = &quot;Tab.SetMinTabWidth 60&quot;<br>
+OnClick = Demo1<br>
+END CREATE<br>
+CREATE Button2 AS QBUTTON<br>
+Top = 10<br>
+Left = 170<br>
+Width = 70<br>
+Width = 150<br>
+Caption = &quot;Tab.DelTabs 1,3&quot;<br>
+OnClick = Demo2<br>
+END CREATE<br>
+CREATE Button3 AS QBUTTON<br>
+Top = 10<br>
+Left = 330<br>
+Width = 150<br>
+Caption = &quot;Tab.Clear&quot;<br>
+OnClick = Demo3<br>
+END CREATE<br>
+END CREATE<br>
+CREATE TabWrapper AS QPANEL<br>
+BevelOuter = 0<br>
+Align = 5<br>
+CREATE Tab AS QTabControlEx<br>
+Align = 5<br>
+AddTabs &quot;Tab 0&quot;, &quot;Tab 1&quot;, &quot;Tab 2 with long name not subject to MinTabWidth&quot;, 
+&quot;Tab 3&quot;, &quot;Tab 4&quot;<br>
+END CREATE<br>
+END CREATE<br>
+END CREATE<br>
+' get the handle of the TabControl<br>
+Tab.Handle = GetWindow(TabWrapper.Handle, GW_CHILD)<br>
+Form.ShowModal<br>
+&nbsp;<br>
+SUB Demo1<br>
+Tab.SetMinTabWidth 60<br>
+Form.Caption = &quot;QTabControlEx Demo&quot;<br>
+END SUB<br>
+SUB Demo2<br>
+Tab.DelTabs 1,3<br>
+Form.Caption = &quot;Number of Tabs = &quot; + STR$(Tab.TabCount)<br>
+END SUB<br>
+SUB Demo3<br>
+Tab.Clear<br>
+Form.Caption = &quot;Number of Tabs = &quot; + STR$(Tab.TabCount)<br>
+END SUB</font><font face="FixedSys" size="1"><br>
+</font>
+ <BR><B><FONT SIZE=4>Example<span lang="en-us"> 2. </span></FONT></B></p>
+<p><span lang="en-us"><B><FONT SIZE=4>Burkley David.<br>
+<br>
+</FONT></B><font size="2" face="Courier New">$Include &quot;RapidQ.inc&quot;<br>
+<br>
+Declare Function SetWindowLong Lib &quot;user32&quot; Alias &quot;SetWindowLongA&quot; (hWnd As 
+Long, nIndex As Long, dwNewLong As Long) As Long<br>
+Declare Function SendMessageAPI Lib &quot;user32&quot; Alias &quot;SendMessageA&quot; (hWnd As Long, 
+Msg As Long, wParam As Long, lParam As Long) As Long<br>
+Declare Function GetParent Lib &quot;user32&quot; Alias &quot;GetParent&quot; (hWnd As Long) As Long<br>
+<br>
+Declare Sub FileOpen<br>
+Declare Sub FileNewTab<br>
+Declare Sub FileClearTab<br>
+Declare Sub FileCloseTab<br>
+Declare Sub FormExit<br>
+Declare Sub TabChanged<br>
+Declare Sub TabCheck<br>
+<br>
+Const TCM_DELETEITEM = &amp;H1308 'need to use this when you delete a tab<br>
+<br>
+DefStr NameOfTab, NameOfFile<br>
+<br>
+DefInt TabIdx, TabCnt<br>
+DefInt REditCnt = 1<br>
+<br>
+Dim FileNames As QStringList<br>
+<br>
+Dim OpenDialog As QOpenDialog<br>
+OpenDialog.Filter = &quot;All Files|*.*&quot;<br>
+<br>
+Dim InactiveTabFont As QFont<br>
+InactiveTabFont.Name = &quot;Arial&quot;<br>
+InactiveTabFont.Color = RGB(255,255,255)<br>
+InactiveTabFont.Bold = True<br>
+<br>
+Dim ActiveTabFont As QFont<br>
+ActiveTabFont.Name = &quot;Arial&quot;<br>
+ActiveTabFont.Color = RGB(000,000,000)<br>
+<br>
+Dim RichEditFont As QFont<br>
+RichEditFont.Name = &quot;Courier New&quot;<br>
+RichEditFont.Size = 10<br>
+<br>
+Dim MainForm as QForm<br>
+MainForm.Caption = &quot; TabControl Demo (that includes a fully functional Close Tab 
+option)&quot;<br>
+MainForm.Width = 640<br>
+MainForm.Height = 480<br>
+MainForm.Center<br>
+MainForm.OnClose = FormExit<br>
+<br>
+Dim MainMenu As QMainMenu<br>
+MainMenu.Parent = MainForm<br>
+<br>
+Dim File As QMenuItem<br>
+File.Caption = &quot;&amp;File&quot;<br>
+MainMenu.AddItems File<br>
+<br>
+Dim fOpen As QMenuItem<br>
+fOpen.Caption = &quot;Open a File...&quot;<br>
+fOpen.OnClick = FileOpen<br>
+File.AddItems fOpen<br>
+<br>
+Dim fLine1 As QMenuItem<br>
+fLine1.Caption = &quot;-&quot;<br>
+File.AddItems fLine1<br>
+<br>
+Dim fNewTab As QMenuItem<br>
+fNewTab.Caption = &quot;Open New Tab&quot;<br>
+fNewTab.Enabled = False<br>
+fNewTab.Onclick = FileNewTab<br>
+File.AddItems fNewTab<br>
+<br>
+Dim fClearTab As QMenuItem<br>
+fClearTab.Caption = &quot;Clear This Tab&quot;<br>
+fClearTab.Enabled = False<br>
+fClearTab.Onclick = FileClearTab<br>
+File.AddItems fClearTab<br>
+<br>
+Dim fCloseTab As QMenuItem<br>
+fCloseTab.Caption = &quot;Close This Tab&quot;<br>
+fCloseTab.Enabled = False<br>
+fCloseTab.Onclick = FileCloseTab<br>
+File.AddItems fCloseTab<br>
+<br>
+Dim fLine2 As QMenuItem<br>
+fLine2.Caption = &quot;-&quot;<br>
+File.AddItems fLine2<br>
+<br>
+Dim fExit As QMenuItem<br>
+fExit.Caption = &quot;Exit&quot;<br>
+fExit.OnClick = FormExit<br>
+File.AddItems fExit<br>
+<br>
+Dim StatusBar As QStatusBar<br>
+StatusBar.Parent = MainForm<br>
+StatusBar.SizeGrip = False<br>
+StatusBar.AddPanels &quot;&quot; , &quot;&quot;<br>
+StatusBar.Panel(0).Width = 60<br>
+StatusBar.Panel(0).Alignment = taCenter<br>
+<br>
+Dim TabControl As QTabControl<br>
+TabControl.Parent = MainForm<br>
+TabControl.Align = alClient<br>
+TabControl.Font = ActiveTabFont<br>
+TabControl.TabInactiveFont = InactiveTabFont<br>
+TabControl.TabInactiveColor = RGB(000,000,000)<br>
+TabControl.AddTabs &quot;&quot;<br>
+TabControl.MultiLine = True<br>
+TabControl.OnChange = TabChanged<br>
+<br>
+Dim RichEdit(1) As QRichEdit<br>
+RichEdit(1).Parent = TabControl<br>
+RichEdit(1).Align = alClient<br>
+RichEdit(1).ScrollBars = ssBoth<br>
+RichEdit(1).HideSelection = False<br>
+RichEdit(1).WordWrap = False<br>
+RichEdit(1).SelectAll 'start of fix for Win98 quirk with setting the font<br>
+RichEdit(1).Font = RichEditFont 'this is typical for Win98 and WinXP and not 
+part of the fix<br>
+RichEdit(1).SelStart = 0 'end of fix for Win98 quirk<br>
+RichEdit(1).PlainText = True<br>
+SendMessageAPI(RichEdit(1).Handle, &amp;H435, 0, 1024*1024*2)<br>
+<br>
+SetWindowLong(MainForm.Handle, -8, 0)<br>
+SetWindowLong(Application.Handle, -8, MainForm.Handle)<br>
+<br>
+MainForm.ShowModal<br>
+<br>
+Sub FileOpen<br>
+If OpenDialog.Execute Then<br>
+NameOfFile = OpenDialog.FileName<br>
+TabIdx = TabControl.TabIndex<br>
+REditCnt = TabIdx + 1<br>
+If FileNames.ItemCount = 0 Then FileNames.AddItems(NameOfFile)<br>
+If FileNames.ItemCount &gt; 0 And FileNames.Item(TabIdx) &lt;&gt; NameOfFile Then 
+FileNames.Item(TabIdx) = NameOfFile<br>
+NameOfTab = &quot; &quot; + Right$(NameOfFile, Len(NameOfFile) - rInStr(NameOfFile,&quot;\&quot;)) + 
+&quot; &quot;<br>
+TabControl.Tab(TabIdx) = NameOfTab<br>
+RichEdit(REditCnt).Parent = TabControl<br>
+RichEdit(REditCnt).Align = alClient<br>
+RichEdit(REditCnt).ScrollBars = ssBoth<br>
+RichEdit(REditCnt).HideSelection = False<br>
+RichEdit(REditCnt).WordWrap = False<br>
+RichEdit(REditCnt).SelectAll 'start of fix for Win98 quirk with setting the font<br>
+RichEdit(REditCnt).Font = RichEditFont 'this is typical for Win98 and WinXP and 
+not part of the fix<br>
+RichEdit(REditCnt).SelStart = 0 'end of fix for Win98 quirk<br>
+RichEdit(REditCnt).PlainText = True<br>
+RichEdit(REditCnt).Clear<br>
+RichEdit(REditCnt).LoadFromFile NameOfFile<br>
+RichEdit(REditCnt).Modified = False<br>
+SendMessageAPI(RichEdit(REditCnt).Handle, &amp;H435, 0, 1024*1024*2)<br>
+StatusBar.Panel(1).Caption = FileNames.Item(TabIdx)<br>
+fClearTab.Enabled = True<br>
+TabCheck<br>
+End If<br>
+End Sub<br>
+<br>
+Sub FileNewTab<br>
+INC(TabCnt)<br>
+REditCnt = TabCnt + 1<br>
+ReDim RichEdit(REditCnt) As QRichEdit<br>
+TabControl.AddTabs &quot;&quot;<br>
+RichEdit(REditCnt).Parent = TabControl<br>
+RichEdit(REditCnt).Align = alClient<br>
+RichEdit(REditCnt).ScrollBars = ssBoth<br>
+RichEdit(REditCnt).HideSelection = False<br>
+RichEdit(REditCnt).WordWrap = False<br>
+RichEdit(REditCnt).SelectAll 'start of fix for Win98 quirk with setting the font<br>
+RichEdit(REditCnt).Font = RichEditFont 'this is typical for Win98 and WinXP and 
+not part of the fix<br>
+RichEdit(REditCnt).SelStart = 0 'end of fix for Win98 quirk<br>
+RichEdit(REditCnt).PlainText = True<br>
+RichEdit(REditCnt).Clear<br>
+SendMessageAPI(RichEdit(REditCnt).Handle, &amp;H435, 0, 1024*1024*2)<br>
+StatusBar.Panel(1).Caption = &quot;&quot;<br>
+FileNames.AddItems(&quot;&quot;)<br>
+TabControl.TabIndex = TabCnt<br>
+TabChanged<br>
+TabCheck<br>
+FileOpen<br>
+End Sub<br>
+<br>
+Sub FileClearTab<br>
+TabIdx = TabControl.TabIndex<br>
+ReEditIdx = TabIdx + 1<br>
+RichEdit(ReEditIdx).Clear<br>
+TabControl.Tab(TabIdx) = &quot;&quot;<br>
+FileNames.Item(TabIdx) = &quot;&quot;<br>
+StatusBar.Panel(1).Caption = &quot;&quot;<br>
+fClearTab.Enabled = False<br>
+TabCheck<br>
+End Sub<br>
+<br>
+Sub FileCloseTab<br>
+TabIdx = TabControl.TabIndex<br>
+'the next two (if/then) conditions are needed &quot;before&quot; you delete a tab so you 
+don't<br>
+'lose any information about objects within &quot;any other&quot; tabs and so that when you<br>
+'reference information about those objext... things will get pointed to the 
+&quot;correct&quot;<br>
+'information.<br>
+If TabControl.TabIndex &lt; TabCnt Then<br>
+ReEditIdx = TabIdx + 1<br>
+FileNames.DelItems(TabIdx)<br>
+For I = ReEditIdx To TabCnt<br>
+RichEdit(I).Text = RichEdit(I+1).Text<br>
+Next I<br>
+End If<br>
+If TabControl.TabIndex = TabCnt Then<br>
+ReEditIdx = TabIdx + 1<br>
+FileNames.DelItems(TabIdx)<br>
+RichEdit(ReEditIdx).Visible = False<br>
+End If<br>
+'this is the workaround to the missing Handle class for a QTabControl object.<br>
+'just get the handle of the parent for an object already within the QTabControl 
+object.<br>
+TabCtrl = GetParent(RichEdit(ReEditIdx).Handle)<br>
+'simple API call to delete a tab.<br>
+'just pass the Handle of the QTabControl object and also the TabIndex to be 
+deleted.<br>
+SendMessageAPI(TabCtrl, TCM_DELETEITEM, TabIdx, 0)<br>
+DEC(TabCnt)<br>
+DEC(REditCnt)<br>
+StatusBar.Panel(1).Caption = FileNames.Item(TabCnt)<br>
+'point the TabIndex to the &quot;last&quot; opened tab so that the QTabControl<br>
+'will get painted properly... if there's multiple tabs still opened.<br>
+TabControl.TabIndex = TabCnt<br>
+TabChanged<br>
+TabCheck<br>
+End Sub<br>
+<br>
+Sub FormExit<br>
+Application.Terminate<br>
+End Sub<br>
+<br>
+Sub TabChanged<br>
+StatusBar.Panel(1).Caption = &quot;&quot;<br>
+For I = 0 To TabCnt<br>
+If I = TabControl.TabIndex Then<br>
+RichEdit(I+1).Visible = True<br>
+StatusBar.Panel(1).Caption = FileNames.Item(I)<br>
+If RichEdit(I+1).Text &lt;&gt; &quot;&quot; Then<br>
+fClearTab.Enabled = True<br>
+Else<br>
+fClearTab.Enabled = False<br>
+End If<br>
+Else<br>
+RichEdit(I+1).Visible = False<br>
+End If<br>
+Next I<br>
+TabCheck<br>
+End Sub<br>
+<br>
+Sub TabCheck<br>
+fNewTab.Enabled = True<br>
+For I = 0 To TabCnt<br>
+If RichEdit(I+1).Text = &quot;&quot; Then fNewTab.Enabled = False<br>
+Next I<br>
+fCloseTab.Enabled = IIF(TabCnt&gt;0, True, False)<br>
+End Sub<br>
+<br>
+<br>
+</font></span><font size="2" face="Courier New">&nbsp; 
+<br>
+</font></p>
+</BODY>
+</HTML>

@@ -1,0 +1,147 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QLABEL</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QLABEL</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QLABEL Component</H1>
+<DD>QLabel is a non-windowed control used to display 2D, 3D, and/or rotated text on a form/container.
+    Note that rotated labels only work with true type fonts.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QLabel Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee"><TD><b>Align</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>alNone</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Align determines how the control aligns within its parent control.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Alignment</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>taLeftJustify</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Alignment determines the horizontal placement of the text within the label.<br>
+                             0 = taLeftJustify -- The text appears lined up along the left edge of the label.<br>
+                             1 = taRightJustify -- The text appears lined up along the right edge of the label.<br>
+                             2 = taCenter -- The text is horizontally centered in the label.<br>
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Angle</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Angle determines how the label is rotated. Specify a degree from 0 to 360.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Autosize</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">AutoSize determines whether the size of the label automatically resizes to accommodate the text.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Caption</TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Color</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WX</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Cursor</TD><TD>INTEGER</TD><TD>RW</TD><TD>crDefault</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Enabled</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Font</TD><TD>QFONT</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Handle</TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Height</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Hint</TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>LabelStyle</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>tsNone</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">LabelStyle determines whether the label is displayed as 3D or 2D.<br>
+                             0 = lsNone -- The text appears as normal 2d text.<br>
+                             1 = lsRaised -- The text appears as 3d.<br>
+                             2 = lsRecessed -- The text appears engraved.<br>
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Layout</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>tlTop</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Layout determines the vertical placement of the text within the label.<br>
+                             0 = tlTop -- The text appears at the top of the label.<br>
+                             1 = tlCenter -- The text is vertically centered in the label.<br>
+                             2 = tlBottom -- The text appears along the bottom of the label.<br>
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Left</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>LowerColor</TD><TD>INTEGER</TD><TD>RW</TD><TD>clBtnShadow</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Parent</TD><TD>QFORM/QPANEL/QTABCONTROL</TD><TD>W</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>PopupMenu</TD><TD>QPOPUPMENU</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>ShowHint</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Tag</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Top</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Transparent</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>UpperColor</TD><TD>INTEGER</TD><TD>RW</TD><TD>clBtnHighlight</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Visible</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Width</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Wordwrap</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>W</TD></TR>
+</TABLE>
+<br><br>
+
+<a name="3">
+<FONT SIZE = +1><B>QLabel Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR><TD>OnClick</TD><TD>VOID</TD><TD>User clicks on label</TD><TD>0</TD><TD>W</TD></TR>
+  <TR><TD>OnDblClick</TD><TD>VOID</TD><TD>User double clicked on label</TD><TD>0</TD><TD>W</TD></TR>
+  <TR><TD>OnMouseDown</TD><TD NOWRAP>SUB (Button%, X%, Y%, Shift%)</TD><TD NOWRAP>Mouse button held down</TD><TD>3</TD><TD>W</TD></TR>
+  <TR><TD>OnMouseMove</TD><TD NOWRAP>SUB (X%, Y%, Shift%)</TD><TD NOWRAP>Mouse moves</TD><TD>2</TD><TD>W</TD></TR>
+  <TR><TD>OnMouseUp</TD><TD NOWRAP>SUB (Button%, X%, Y%, Shift%)</TD><TD NOWRAP>Mouse button is released</TD><TD>3</TD><TD>W</TD></TR>
+  <TR><TD>WndProc</TD><TD NOWRAP>SUB (Hwnd%, Msg%, wParam%, lParam%)</TD><TD NOWRAP>Messages sent to QLabel</TD><TD>4</TD><TD>W</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QLabel Examples</B></FONT>
+
+<PRE>
+  DIM Form AS QForm
+  DIM Label1 AS QLabel
+
+  Label1.Parent = Form
+
+  Label1.Text = "Hello"
+  Form.ShowModal
+
+'--------------------------------------------------------
+
+  ' Note that rotated labels only work with true type
+  ' fonts, such as Arial and Courier New.
+
+  DIM Form AS QForm
+  DIM Label1 AS QLabel
+  DIM Font AS QFont
+
+  Font.Name = "Arial"
+
+  Label1.Parent = Form
+  Label1.Font = Font
+  Label1.Text = "Hello"
+  Label1.Angle = 45
+  Form.ShowModal
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qimagelist.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qlistbox.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      
+
+</BODY>
+</HTML>                         

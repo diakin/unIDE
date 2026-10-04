@@ -1,0 +1,225 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QCOMPORT</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QCOMPORT</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QCOMPORT Component</H1>
+<DD>QComPort provides an easy to use interface to communicate with the com ports.
+This component was made possible by Dejan Crnila. This component is currently
+being tested for stability, more functionality is expected in the future.
+Make sure to download the optional comport libraries to use this component.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QComPort Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD>
+  </TR>
+   <TR><TD>BaudRate</TD><TD>INTEGER</TD><TD>RW</TD><TD>br110</TD></TR>
+  <TR><TD>Connected</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR><TD>DataBits</TD><TD>INTEGER</TD><TD>RW</TD><TD>8</TD></TR>
+  <TR><TD>Handle</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR><TD>InQue</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR><TD>OutQue</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR><TD>Parity</TD><TD>INTEGER</TD><TD>RW</TD><TD>prNone</TD></TR>
+  <TR><TD>PendingIO</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR><TD>Port</TD><TD>INTEGER</TD><TD>RW</TD><TD>1</TD></TR>
+  <TR><TD>ReadBufSize</TD><TD>INTEGER</TD><TD>RW</TD><TD>1024</TD></TR>
+  <TR><TD>StopBits</TD><TD>INTEGER</TD><TD>RW</TD><TD>sbOneStopBit</TD></TR>
+  <TR><TD>WriteBufSize</TD><TD>INTEGER</TD><TD>RW</TD><TD>1024</TD></TR>
+</TABLE>
+<br>
+
+<a name="2">
+<FONT SIZE = +1><B>QComPort Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD>AbortAllIO</TD><TD>SUB</TD><TD NOWRAP>Aborts all asynchronous read/write operations</TD><TD NOWRAP>0</TD></TR>
+  <TR><TD>Close</TD><TD>SUB</TD><TD NOWRAP>Closes communication port</TD><TD NOWRAP>0</TD></TR>
+  <TR><TD>Open</TD><TD>SUB</TD><TD NOWRAP>Opens communication port</TD><TD NOWRAP>0</TD></TR>
+  <TR><TD>PurgeIn</TD><TD>SUB</TD><TD NOWRAP>Clears input buffer and stops all input functions</TD><TD NOWRAP>0</TD></TR>
+  <TR><TD>PurgeOut</TD><TD>SUB</TD><TD NOWRAP>Clears output buffer and stops all output functions</TD><TD NOWRAP>0</TD></TR>
+  <TR><TD>Read</TD><TD>SUB Read(QFile/QMemoryStream, Count%, Wait%)</TD><TD NOWRAP>Reads stream data from com port, Count% < 32000</TD><TD NOWRAP>3</TD></TR>
+  <TR><TD>ReadString</TD><TD>FUNCTION ReadString$(Count%, Wait%)</TD><TD NOWRAP>Returns a string representation bytes read from comport</TD><TD NOWRAP>2</TD></TR>
+  <TR><TD>WaitForLastIO</TD><TD>SUB</TD><TD NOWRAP>Blocks until last IO is completed</TD><TD NOWRAP>0</TD></TR>
+  <TR><TD>Write</TD><TD>SUB Write(QFile/QMemoryStream, Count%, Wait%)</TD><TD NOWRAP>Writes stream to com port, Count% < 32000</TD><TD NOWRAP>3</TD></TR>
+  <TR><TD>WriteString</TD><TD>SUB WriteString(Str$, Wait%)</TD><TD NOWRAP>Writes string to communication port</TD><TD NOWRAP>2</TD></TR>
+</TABLE>
+<BR>
+
+<a name="3">
+<FONT SIZE = +1><B>QComPort Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD>OnBreak</TD><TD>VOID</TD><TD>A line break is detected, input and output is suspended until break is cleared</TD><TD>0</TD></TR>
+  <TR><TD>OnClose</TD><TD>VOID</TD><TD>Com port is closed</TD><TD>0</TD></TR>
+  <TR><TD>OnError</TD><TD>VOID</TD><TD>A line error occurs</TD><TD>0</TD></TR>
+  <TR><TD>OnOpen</TD><TD>VOID</TD><TD>Com port is successfully opened</TD><TD>0</TD></TR>
+  <TR><TD>OnRing</TD><TD>VOID</TD><TD>A ring signal is detected, used only with modems.</TD><TD>0</TD></TR>
+  <TR><TD>OnRxChar</TD><TD>SUB (InQue AS INTEGER)</TD><TD>A character(s) arrives in the input buffer.</TD><TD>1</TD></TR>
+  <TR><TD>OnTxEmpty</TD><TD>VOID</TD><TD>Output buffer is flushed</TD><TD>0</TD></TR>
+</TABLE>
+<BR><BR>
+
+
+<a name="4">
+<FONT SIZE = +1><B>QComPort Examples</B></FONT>
+
+<PRE>
+$TYPECHECK ON
+
+CONST sbOneStopBit = 0
+CONST prNone = 0
+
+DECLARE SUB CommRxChar (InQue AS INTEGER)
+DECLARE SUB OpenClick
+DECLARE SUB SendClick
+DECLARE SUB FormClose
+
+DIM Comm AS QComPort
+    Comm.OnRxChar = CommRxChar
+    Comm.DataBits = 8
+    Comm.StopBits = sbOneStopBit
+    Comm.Parity = prNone
+
+CREATE Form AS QFORM
+    Caption = "Form1"
+    Width = 302
+    Height = 240
+    Center
+    CREATE Label1 AS QLABEL
+        Caption = "Com Port:"
+        Left = 5
+        Top = 9
+        Width = 51
+    END CREATE
+    CREATE ComboBox1 AS QCOMBOBOX
+        AddItems "COM1", _
+                 "COM2", _
+                 "COM3", _
+                 "COM4"
+        Left = 55
+        Width = 65
+        Top = 5
+        ItemIndex = 0
+    END CREATE
+    CREATE ComboBox2 AS QCOMBOBOX
+        AddItems "110", "300", "600", "1200", "2400", "4800", "9600", _
+                 "14400", "19200", "38400", "56000", "57600", "115200"
+        Left = 130
+        Width = 70
+        Top = 5
+        ItemIndex = 0
+    END CREATE
+    CREATE OpenButton AS QBUTTON
+        Caption = "&Open"
+        Left = 210
+        Top = 4
+        OnClick = OpenClick
+    END CREATE
+    CREATE Edit1 AS QEDIT
+        Text = ""
+        Left = 12
+        Top = 40
+        Width = 186
+    END CREATE
+    CREATE SendButton AS QBUTTON
+        Caption = "&Send"
+        Left = 210
+        Top = 38
+        Enabled = 0
+        OnClick = SendClick
+    END CREATE
+    CREATE RichEdit1 AS QRICHEDIT
+        Left = 11
+        Top = 73
+        Width = 274
+        Height = 132
+        PlainText = 1
+        ReadOnly = 1
+        ScrollBars = 3
+        WordWrap = 0
+    END CREATE
+    OnClose = FormClose
+END CREATE
+
+
+SUB OpenClick
+    IF Comm.Connected THEN
+       PRINT Comm.InQue
+       EXIT SUB
+    END IF
+    Comm.Port = ComboBox1.ItemIndex + 1
+    Comm.BaudRate = ComboBox2.ItemIndex
+    Comm.Open
+    IF Comm.Connected THEN
+       SendButton.Enabled = 1
+    ELSE
+       ShowMessage("Cannot open port, try another")
+    END IF
+END SUB
+
+SUB SendClick
+    Comm.WriteString(Edit1.Text+CHR$(13)+CHR$(10), 1)
+    Comm.WaitForLastIO
+END SUB
+
+SUB CommRxChar (InQue AS INTEGER)
+    RichEdit1.AddStrings(Comm.ReadString(InQue, 1))
+END SUB
+
+SUB FormClose
+    IF Comm.Connected THEN
+       Comm.Close
+    END IF
+END SUB
+
+Form.ShowModal
+
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qcombobox.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qcoolbtn.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      D>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                         

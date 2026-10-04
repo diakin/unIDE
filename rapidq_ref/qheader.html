@@ -1,0 +1,223 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QHEADER</TITLE><!------------------->
+
+<!------------------->
+
+<!------------------->
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QHEADER</B></FONT></TD><!------------------->
+
+<!------------------->
+
+<!------------------->
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QHEADER Component</H1><!------------------->
+
+<!------------------->
+
+<!------------------->
+<DD>QHeader is a set of column headers that the user can resize at runtime.
+<BR><BR>
+<FONT SIZE = +1><B>QHeader Internal Types</B></FONT>
+
+<PRE>
+   TYPE SectionsType       '' ie. Header.Sections(0).Caption
+     Alignment AS INTEGER  '' Default taLeftJustify
+     AllowClick AS INTEGER '' True
+     Caption AS STRING
+     MaxWidth AS INTEGER   '' Default  10000
+     MinWidth AS INTEGER   '' Default 0
+     Style AS INTEGER      '' Default hsText
+     Width AS INTEGER      '' Default 50
+   END TYPE
+</PRE>
+
+<a name="1">
+<FONT SIZE = +1><B>QHeader Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD>
+  </TR>
+   <TR><TD>Align</TD><TD>INTEGER</TD><TD>RW</TD><TD>alNone</TD></TR>
+  <TR><TD>ClientHeight</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>ClientWidth</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>CopyMode</TD><TD>INTEGER</TD><TD>RW</TD><TD>cmBlackness</TD></TR>
+  <TR><TD>Cursor</TD><TD>INTEGER</TD><TD>RW</TD><TD>crDefault</TD></TR>
+  <TR><TD>Enabled</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR><TD>Font</TD><TD>QFONT</TD><TD>W</TD><TD></TD></TR>
+  <TR><TD>Handle</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Height</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Hint</TD><TD>STRING</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>HotTrack</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR><TD>Left</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD></TR>
+  <TR><TD>Parent</TD><TD>QFORM/QPANEL/QTABCONTROL</TD><TD>W</TD><TD></TD></TR>
+  <TR><TD>Pixel</TD><TD>2D ARRAY of INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>PopupMenu</TD><TD>QPOPUPMENU</TD><TD>W</TD><TD></TD></TR>
+  <TR><TD>Sections</TD><TD>ARRAY of <I>SectionsType</I></TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>SectionsCount</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR><TD>ShowHint</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR><TD>Tag</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Top</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD></TR>
+  <TR><TD>Width</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Visible</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+</TABLE>
+<br>
+
+<a name="2">
+<FONT SIZE = +1><B>QHeader Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD>AddSections</TD><TD>SUBI</TD><TD NOWRAP>Add new sections to header</TD><TD NOWRAP>STRING, Infinite</TD></TR>
+  <TR><TD>Clear</TD><TD>SUB</TD><TD NOWRAP>Clears all sections</TD><TD NOWRAP>0</TD></TR>
+  <TR><TD>Circle</TD><TD>SUB (x1%, y1%, x2%, y2%, c%, fill%)</TD><TD NOWRAP>Draw & Fill Circle</TD><TD NOWRAP>6</TD></TR>
+  <TR><TD VALIGN=TOP>CopyRect</TD><TD>SUB (D, Image, S)</TD><TD>D and S are QRECTs, Image can be a QImage, QCanvas, or QBitmap</TD><TD NOWRAP>3</TD></TR>
+  <TR><TD>Draw</TD><TD>SUB (x%, y%, BMP)</TD><TD NOWRAP>Draw Bitmap at (X,Y)</TD><TD NOWRAP>3</TD></TR>
+  <TR><TD>FillRect</TD><TD>SUB (x1%, y1%, x2%, y2%, c%)</TD><TD NOWRAP>Draws & Fills a rectangle</TD><TD NOWRAP>5</TD></TR>
+  <TR><TD>Line</TD><TD>SUB (x1%, y1%, x2%, y2%, c%)</TD><TD NOWRAP>Draws a line</TD><TD NOWRAP>5</TD></TR>
+  <TR><TD>Paint</TD><TD>SUB (x%, y%, c%, borderc%)</TD><TD NOWRAP>Fill Region</TD><TD NOWRAP>4</TD></TR>
+  <TR><TD>Pset</TD><TD>SUB (x%, y%, c%)</TD><TD NOWRAP>Pixel plot</TD><TD NOWRAP>3</TD></TR>
+  <TR><TD>Rectangle</TD><TD>SUB (x1%, y1%, x2%, y2%, c%)</TD><TD NOWRAP>Draws a rectangle</TD><TD NOWRAP>5</TD></TR>
+  <TR><TD>Repaint</TD><TD>SUB</TD><TD NOWRAP>Force repainting of header</TD><TD NOWRAP>0</TD></TR>
+  <TR><TD>RoundRect</TD><TD>SUB (x1%, y1%, x2%, y2%, x3%, y3%, c%)</TD><TD NOWRAP>Draws & Fills a rounded rectangle</TD><TD NOWRAP>7</TD></TR>
+  <TR><TD VALIGN=TOP>StretchDraw</TD><TD>SUB (Rect AS QRECT, BMP)</TD><TD>Draw BMP and stretch to fit inside Rect</TD><TD NOWRAP>2</TD></TR>
+  <TR><TD VALIGN=TOP>TextHeight</TD><TD>FUNCTION (Text$) AS WORD</TD><TD>Returns the height, in pixels, of Text$ string</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>TextWidth</TD><TD>FUNCTION (Text$) AS WORD</TD><TD>Returns the width, in pixels, of Text$ string</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD>TextRect</TD><TD>SUB (Rect AS QRECT, x%, y%, S$, fc%, bc%)</TD><TD NOWRAP>Write text, and clip within region Rect</TD><TD NOWRAP>6</TD></TR>
+  <TR><TD>TextOut</TD><TD>SUB (x%, y%, S$, fc%, bc%)</TD><TD NOWRAP>Writes text to image</TD><TD NOWRAP>5</TD></TR>
+</TABLE>
+<BR>
+
+<a name="3">
+<FONT SIZE = +1><B>QHeader Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD>OnDrawSection</TD><TD NOWRAP>SUB (Index%, Pressed%, Rect AS QRECT)</TD><TD>A header section needs to be redisplayed. Header section's Style property must be hsOwnerDraw</TD><TD>3</TD></TR>
+  <TR><TD>OnMouseDown</TD><TD NOWRAP>SUB (Button%, X%, Y%, Shift%)</TD><TD NOWRAP>Mouse button held down</TD><TD>4</TD></TR>
+  <TR><TD>OnMouseMove</TD><TD NOWRAP>SUB (X%, Y%, Shift%)</TD><TD NOWRAP>Mouse moves</TD><TD>3</TD></TR>
+  <TR><TD>OnMouseUp</TD><TD NOWRAP>SUB (Button%, X%, Y%, Shift%)</TD><TD NOWRAP>Mouse button is released</TD><TD>4</TD></TR>
+  <TR><TD>OnResize</TD><TD>VOID</TD><TD>Size of header control changes</TD><TD>0</TD></TR>
+  <TR><TD>OnSectionClick</TD><TD>SUB (Index%)</TD><TD>Header section Index% is clicked</TD><TD>1</TD></TR>
+  <TR><TD>OnSectionResize</TD><TD>SUB (Index%)</TD><TD>Header section is resized</TD><TD>1</TD></TR>
+  <TR><TD>OnSectionTrack</TD><TD>SUB (Index%, Width%, State%)</TD><TD>Header section is dragged</TD><TD>3</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QHeader Examples</B></FONT>
+
+<PRE>
+$TYPECHECK ON
+$INCLUDE "RAPIDQ.INC"
+
+DECLARE SUB DrawSection (Index AS INTEGER, Pressed AS INTEGER, Rect AS QRECT, Sender AS QHEADER)<!------------------->
+
+<!------------------->
+
+<!------------------->
+DECLARE SUB SectionTrack (Index AS INTEGER, Width AS INTEGER, State AS INTEGER, Sender AS QHEADER)<!------------------->
+
+<!------------------->
+
+<!------------------->
+
+CREATE Form AS QFORM
+    Caption = "QHeader example"
+    Center
+    CREATE Header AS QHEADER<!------------------->
+
+<!------------------->
+
+<!------------------->
+        AddSections "1", "2", "3"
+        Sections(1).AllowClick = FALSE
+        Sections(0).Style = hsOwnerDraw
+        Sections(0).Width = 100
+        Sections(1).Style = hsOwnerDraw
+        Sections(2).Style = hsOwnerDraw
+        OnDrawSection = DrawSection
+        OnSectionTrack = SectionTrack
+    END CREATE
+    CREATE ListBox1 AS QLISTBOX
+        Align = alLeft
+        Width = 100
+        AddItems "1. Rapid-Q", "2. Taxes"
+    END CREATE
+    CREATE StatusBar AS QSTATUSBAR
+        SimplePanel = TRUE
+        SimpleText = "Not moving"
+    END CREATE
+    ShowModal
+END CREATE
+
+SUB DrawSection (Index AS INTEGER, Pressed AS INTEGER, Rect AS QRECT, Sender AS QHEADER)<!------------------->
+
+<!------------------->
+
+<!------------------->
+    Sender.TextOut(Rect.Left+5,Rect.Top+1, STR$(Index+1), &HFF0000, -1)
+    SELECT CASE Index
+        CASE 0
+            Sender.FillRect(Rect.Left+20,Rect.Top+2,Rect.Right-20,Rect.Bottom-2, &H00FF00)
+        CASE 1
+            Sender.Circle(Rect.Left+20,Rect.Top+2,Rect.Right-20,Rect.Bottom-2, &HFF, &HFF)
+        CASE 2
+    END SELECT
+END SUB
+
+SUB SectionTrack (Index AS INTEGER, Width AS INTEGER, State AS INTEGER, Sender AS QHEADER)<!------------------->
+
+<!------------------->
+
+<!------------------->
+    StatusBar.SimpleText = "Moving "+STR$(Width)
+    SELECT CASE Index
+        CASE 0
+            ListBox1.Width = Width
+    END SELECT
+END SUB
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qgroupbox.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qimage.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      D>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                         

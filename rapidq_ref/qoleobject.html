@@ -1,0 +1,511 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>: QOLEOBJECT</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QOLEOBJECT</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QOLEOBJECT Component</H1>
+<DD>QOleObject implements an automation client. Type checking is disabled for
+this component, see examples on how this can help you.
+This component is currently in an experimental stage. Longs, Doubles, and
+Strings are currently supported, other data types may be added later.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QOleObject Properties</B></FONT>
+<TABLE WIDTH=986 cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD width="208"><B>Field</B></TD><TD width="264"><B>Type</B></TD>
+   <TD width="299"><B>R/W</B></TD><TD width="178"><B>Default</B></TD>
+  </TR>
+
+
+  <TR>
+   <TD width="208">
+
+<a name="2">
+   Container</a></TD><TD width="264">
+
+<a name="2">
+   QOLECONTAINER</a></TD><TD width="299">
+
+<a name="2">
+   W</a></TD><TD width="178">&nbsp;</TD>
+  </TR>
+ </TABLE>
+<br>
+
+<a name="2">
+<FONT SIZE = +1><B>QOleObject Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD>
+  </TR>
+  <TR><TD>CreateObject</TD><TD>FUNCTION (ClassName AS STRING) AS INTEGER</TD><TD>Create COM object, with actual name or CLSID</TD><TD>1</TD></TR>
+  <TR><TD>CreateRemote</TD><TD>FUNCTION (Host AS STRING, ClassName AS STRING) AS INTEGER</TD><TD>Create remote COM object, with actual name or CLSID</TD><TD>2</TD></TR>
+  <TR><TD>Free</TD><TD>SUB</TD><TD>Release object</TD><TD>0</TD></TR>
+  <TR><TD>GetIDofName</TD><TD>FUNCTION (Name AS STRING) AS INTEGER</TD><TD>Returns the ID of an identifier, good for checking if it exists. Returns -1 if name is not found.</TD><TD>1</TD></TR>
+  <TR><TD>GetObject</TD><TD>FUNCTION (ClassName AS STRING) AS INTEGER</TD><TD>Get active COM object, with actual name or CLSID</TD><TD>1</TD></TR>
+  <TR><TD>Invoke</TD><TD>FUNCTIONI (ID AS STRING, Params, ...) AS VARIANT</TD><TD>Invoke method/property</TD><TD>Infinite</TD></TR>
+  <TR><TD>InvokeCopy</TD><TD>SUB (ID AS STRING, Object AS QOLEOBJECT)</TD><TD>Copy object (might not work... yet)</TD><TD>2</TD></TR>
+</TABLE>
+<br>
+
+</a>
+<FONT SIZE = +1><B>QOleObject Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD>
+  </TR>
+ </TABLE>
+<p>&nbsp;</p>
+<p><b><font size="5">
+<a target="_blank" href="file:///C:/BAS/RAPIDQ/RQDPhlp/RQDPhlp/oleWord/word/html/wohowWordBasicEquivalents.htm">Word.Basic </a></font></b>
+
+<a name="2">
+<FONT SIZE = 5><B>Methods</B></FONT>
+
+</a>
+<b><font size="5">
+&nbsp;- WRDBASIC.HLP</font></b><br>
+&nbsp;</p>
+<TABLE WIDTH=986 cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+
+<a name="2">
+   <TD width="153"><B>Method</B></TD><TD width="195"><B>Params</B></TD>
+   <TD width="88"><B>Type</B></TD><TD width="513"><B>Description</B></TD>
+
+</a>
+  </TR>
+</TABLE>
+<TABLE WIDTH="100%" cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+
+<a name="3">
+   <TD width="154" rowspan="21" height="579" bgcolor="#E4DFD1" valign="top"><b><a name="2">FileOpen</a></b></TD>
+   <TD width="174" align="left" height="19" bgcolor="#E4DFD1">
+
+<a name="3">
+   <b><a name="2">FileName</a> </b></TD>
+
+   <TD width="57" align="left" height="19" bgcolor="#E4DFD1">
+
+<a name="3">
+   <b>&nbsp;string</b></TD>
+
+   <TD bgcolor="#E4DFD1">The name of the document (paths 
+   are accepted).</TD>
+
+  </TR>
+ 
+
+  <TR>
+
+   <TD width="194" height="19" bgcolor="#E4DFD1">
+
+<a name="3">
+   ConfirmConversions</TD>
+
+   <TD width="88" height="19" bgcolor="#E4DFD1">
+
+<a name="3">
+   integer</TD>
+   <TD bgcolor="#E4DFD1"><b>True</b> to 
+   display the <b>Convert File</b> dialog box if the file isn't in 
+   Microsoft Word format</TD>
+  </TR>
+ 
+
+  <TR>
+
+   <TD width="194" height="19" bgcolor="#E4DFD1">
+
+<a name="3">
+   ReadOnly
+
+   </TD>
+
+   <TD width="88" height="19" bgcolor="#E4DFD1">
+
+<a name="3">
+   &nbsp;integer</TD><TD bgcolor="#E4DFD1">
+   <font face="Times New Roman"><b>True</b> to open the document as read-only.</font><font face="Arial Narrow"><br>
+&nbsp;<b><font size="2">Note</font></b><font size="2"> This argument doesn't 
+   override the read-only recommended setting on a saved document. For example, 
+   if a document has been saved with read-only recommended turned on, setting 
+   the <b>ReadOnly</b> argument to <b>False</b> will not cause the file to be 
+   opened as read/write.</font></font></TD>
+  </TR>
+ 
+
+  <TR>
+
+   <TD width="194" height="19" bgcolor="#E4DFD1">
+
+<a name="3">
+   AddToMru&nbsp;
+
+   </TD>
+
+   <TD width="88" height="19" bgcolor="#E4DFD1">
+
+<a name="3">
+   integer</TD><TD bgcolor="#E4DFD1">. <b>True</b> to 
+   add the file name to the list of recently used files at the bottom of the <b>
+   File</b> menu.</TD>
+  </TR>
+ 
+
+  <TR>
+
+   <TD width="194" height="19" bgcolor="#E4DFD1">DummyParam</TD>
+
+   <TD width="88" height="19" bgcolor="#E4DFD1">integer</TD>
+   <TD bgcolor="#E4DFD1"><font color="#008000"><i>Needed 
+   for XP Office</i></font></TD>
+  </TR>
+ 
+
+  <TR>
+
+   <TD width="194" height="19" bgcolor="#E4DFD1">
+
+<a name="3">
+   PasswordDoc</TD>
+
+   <TD width="88" height="19" bgcolor="#E4DFD1">string</TD>
+   <TD bgcolor="#E4DFD1">The password for opening the 
+   document.</TD>
+  </TR>
+ 
+
+  <TR>
+
+   <TD width="194" height="19" bgcolor="#E4DFD1">
+
+<a name="3">
+   PasswordDot</TD>
+
+   <TD width="88" height="19" bgcolor="#E4DFD1">
+
+<a name="3">
+   string</TD><TD bgcolor="#E4DFD1">The password for 
+   opening the template.</TD>
+  </TR>
+ 
+
+  <TR>
+
+   <TD width="194" height="19" bgcolor="#E4DFD1">
+
+<a name="3">
+   Revert</TD>
+
+   <TD width="88" height="19" bgcolor="#E4DFD1">long</TD>
+   <TD bgcolor="#E4DFD1">Controls what happens if <b><i>
+   FileName</i></b> is the name of an open document. <b><br>
+   True</b> to discard any 
+   unsaved changes to the open document and reopen the file. <b>False</b> to 
+   activate the open document.</TD>
+  </TR>
+ 
+
+  <TR>
+
+   <TD width="194" height="19" bgcolor="#E4DFD1">
+
+<a name="3">
+   WritePasswordDoc</TD>
+
+   <TD width="88" height="19" bgcolor="#E4DFD1">string</TD>
+   <TD bgcolor="#E4DFD1">The password for saving changes 
+   to the document.</TD>
+  </TR>
+ 
+
+  <TR>
+
+   <TD width="194" height="19" bgcolor="#E4DFD1">
+
+<a name="3">
+   WritePasswordDot</TD>
+
+   <TD width="88" height="19" bgcolor="#E4DFD1">string</TD>
+   <TD bgcolor="#E4DFD1">The password for saving changes 
+   to the template.</TD>
+  </TR>
+ 
+
+  <TR>
+
+   <TD width="194" height="19" bgcolor="#E4DFD1">Dummy</TD>
+
+   <TD width="88" height="19" bgcolor="#E4DFD1">
+
+<a name="3">
+   string</TD><TD bgcolor="#E4DFD1">&nbsp;</TD>
+  </TR>
+ 
+
+  <TR>
+
+   <TD width="194" height="19" bgcolor="#E4DFD1">
+
+<a name="3">
+   Dummy</TD>
+
+   <TD width="88" height="19" bgcolor="#E4DFD1">
+
+<a name="3">
+   string</TD><TD bgcolor="#E4DFD1">&nbsp;</TD>
+  </TR>
+ 
+
+  <TR>
+
+   <TD width="194" height="19" bgcolor="#E4DFD1">
+
+<a name="3">
+   Dummy</TD>
+
+   <TD width="88" height="19" bgcolor="#E4DFD1">
+
+<a name="3">
+   string</TD><TD bgcolor="#E4DFD1">&nbsp;</TD>
+  </TR>
+ 
+
+  <TR>
+
+   <TD width="194" height="19" bgcolor="#E4DFD1">FormatOpen</TD>
+
+   <TD width="88" height="19" bgcolor="#E4DFD1">
+
+<a name="3">
+   long</TD><TD bgcolor="#E4DFD1">The file converter to 
+   be used to open the document. Can be one of the following&nbsp; constants<p>
+&nbsp;wdOpenFormatAuto = 0 <br>
+   wdOpenFormatDocument = 1 <br>
+   wdOpenFormatTemplate = 2 <br>
+   wdOpenFormatRTF = 3 <br>
+   wdOpenFormatText = 4 <br>
+   wdOpenFormatUnicodeText = 5<br>
+   wdOpenFormatEncodedText = 5 <br>
+   wdOpenFormatAllWord = 6 <br>
+   wdOpenFormatWebPages = 7</TD>
+  </TR>
+ 
+
+  <TR>
+
+   <TD width="194" height="19" bgcolor="#E4DFD1">CodePage</TD>
+
+   <TD width="88" height="19" bgcolor="#E4DFD1">
+
+<a name="3">
+   long</TD><TD bgcolor="#E4DFD1">The document encoding 
+   (code page or character set) to be used by Microsoft Word when you view the 
+   saved document. Can be any valid <b>MsoEncoding</b> constant.</TD>
+  </TR>
+ 
+
+  <TR>
+
+   <TD width="194" height="10" bgcolor="#E4DFD1">Visible</TD>
+
+   <TD width="88" height="10" bgcolor="#E4DFD1">
+
+<a name="3">
+   long</TD><TD bgcolor="#E4DFD1"><b>True</b> if the 
+   document is opened in a visible window. The default value is <b>True</b>.</TD>
+  </TR>
+ 
+
+  <TR>
+
+   <TD width="194" height="9" bgcolor="#E4DFD1">
+
+<a name="3">
+   DummyParam</TD>
+
+   <TD width="88" height="9" bgcolor="#E4DFD1">
+
+long</TD><TD bgcolor="#E4DFD1">&nbsp;</TD>
+  </TR>
+ 
+
+  <TR>
+
+   <TD width="194" height="19" bgcolor="#E4DFD1">OpenConflictDocument</TD>
+
+   <TD width="88" height="19" bgcolor="#E4DFD1">
+
+<a name="3">
+   long</TD><TD bgcolor="#E4DFD1">Specifies whether to 
+   open the conflict file for a document with an offline conflict.</TD>
+  </TR>
+ 
+
+  <TR>
+
+   <TD width="194" height="19" bgcolor="#E4DFD1">OpenAndRepair</TD>
+
+   <TD width="88" height="19" bgcolor="#E4DFD1">
+
+<a name="3">
+   long</TD><TD bgcolor="#E4DFD1"><b>True</b> to repair 
+   the document to prevent document corruption.</TD>
+  </TR>
+ 
+
+  <TR>
+
+   <TD width="194" height="19" bgcolor="#E4DFD1">DocumentDirection</TD>
+
+   <TD width="88" height="19" bgcolor="#E4DFD1">
+
+<a name="3">
+   long</TD><TD bgcolor="#E4DFD1">Indicates the 
+   horizontal flow of text in a document.<br>
+   wdLeftToRight = 0 <br>
+   wdRightToLeft = 1<br>
+&nbsp;</TD>
+  </TR>
+ 
+
+  <TR>
+
+   <TD width="194" height="19" bgcolor="#E4DFD1">NoEncodingDialog</TD>
+
+   <TD width="88" height="19" bgcolor="#E4DFD1">
+
+<a name="3">
+   long</TD><TD bgcolor="#E4DFD1">. <b>True</b> to skip 
+   displaying the Encoding dialog box that Word displays if the text encoding 
+   cannot be recognized. The default value is <b>False</b>.</TD>
+  </TR>
+ 
+
+ </TABLE>
+<p><b><a target="_blank" href="../oleWord/VBAXL10.CHM"><font size="5">
+Excel.Properties</font></a></b></p>
+<p>
+
+<a name="4">
+<FONT SIZE = +1><B>QOleObject Examples</B></FONT> </p>
+
+<PRE>' This example requires MS WORD
+' If you're using a localized version with a foreign language,
+' you'll have to adjust the parameter names to match.
+' Comments in italics indicate the old style syntax before
+' type checking was disabled.  You can choose either approach.
+
+$ESCAPECHARS ON
+
+DIM Object AS QOLEOBJECT
+
+<i>'Object.CreateObject("{000209FE-0000-0000-C000-000000000046}")</i>
+Object.CreateObject("Word.Basic")
+<i>'Object.Invoke("AppShow")</i>
+Object.AppShow
+<i>'Object.Invoke("AppMaximize", "", 1)</i>
+Object.AppMaximize("", 1)
+<i>'Object.Invoke("FileNew")</i>
+Object.FileNew
+
+PRINT Object.Bold  '-- is bold enabled?
+
+Object.Insert("Hello world!\n")
+Object.Bold
+
+PRINT Object.Bold  '-- Bold should be enabled
+
+Object.Insert("Rapid-Q is awesome!\n")
+Object.Bold(0)     '-- Turn Bold off
+
+SLEEP 5
+
+Object.Free</PRE>
+
+</a>
+
+<PRE>----------------------------------------------</PRE>
+
+<PRE>DIM WordObject AS QOLEOBJECT
+
+filename$=&quot;C:\BAS\RAPIDQ\ole\hamai40.doc&quot;
+ConfirmConversions=1
+ReadOnly=0
+AddToRecentFiles =1
+DummyInt=0
+PasswordDoc$=&quot;qq&quot;
+PasswordTmp$ =&quot;rr&quot;
+Revert =0
+WritePasswordDocument$ =&quot;&quot;
+WritePasswordTemplate$ =&quot;&quot;
+DummyStr=&quot;&quot;
+'--------------------------'
+FormatOpen =5'' wdOpenFormatEncodedText
+CodePage =866
+Visible =1
+OpenConflictDocument =1
+OpenAndRepair =1
+DocumentDirection =1
+NoEncodingDialog =1
+
+
+WordObject.CreateObject(&quot;Word.Basic&quot;)
+WordObject.AppShow
+
+with WordObject
+
+.fileOpen(filename$,ConfirmConversions,ReadOnly, AddToRecentFiles ,DummyInt, PasswordDoc$, PasswordDoc$, Revert , _
+ WritePasswordDocument$,WritePasswordTemplate$,DummyStr$,DummyStr$,DummyStr$,FormatOpen ,CodePage,Visible, _
+<a name="3">DummyParam</a>,OpenConflictDocument,OpenAndRepair,DocumentDirection,NoEncodingDialog)
+
+.TableInsertTable(0, 3, 5) 
+
+.Free
+end with
+<a name="4">
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qolecontainer.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qoutline.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      </a></HTML>

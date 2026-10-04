@@ -1,0 +1,138 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QOUTLINE</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QOUTLINE</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QOUTLINE Component</H1>
+<DD>QOutLine implements the old style Win3.1 tree view.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QOutLine Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD>
+  </TR>
+   <TR><TD>Align</TD><TD>INTEGER</TD><TD>RW</TD><TD>alNone</TD></TR>
+  <TR><TD>BMPClosed</TD><TD>STRING</TD><TD>W</TD><TD></TD></TR>
+  <TR><TD>BMPLeaf</TD><TD>STRING</TD><TD>W</TD><TD></TD></TR>
+  <TR><TD>BMPMinus</TD><TD>STRING</TD><TD>W</TD><TD></TD></TR>
+  <TR><TD>BMPOpen</TD><TD>STRING</TD><TD>W</TD><TD></TD></TR>
+  <TR><TD>BMPPlus</TD><TD>STRING</TD><TD>W</TD><TD></TD></TR>
+  <TR><TD>BMPHandleClosed</TD><TD>RESOURCE</TD><TD>W</TD><TD></TD></TR>
+  <TR><TD>BMPHandleLeaf</TD><TD>RESOURCE</TD><TD>W</TD><TD></TD></TR>
+  <TR><TD>BMPHandleMinus</TD><TD>RESOURCE</TD><TD>W</TD><TD></TD></TR>
+  <TR><TD>BMPHandleOpen</TD><TD>RESOURCE</TD><TD>W</TD><TD></TD></TR>
+  <TR><TD>BMPHandlePlus</TD><TD>RESOURCE</TD><TD>W</TD><TD></TD></TR>
+  <TR><TD>BorderStyle</TD><TD>INTEGER</TD><TD>RW</TD><TD>bsSingle</TD></TR>
+  <TR><TD>Color</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Cursor</TD><TD>INTEGER</TD><TD>RW</TD><TD>crDefault</TD></TR>
+  <TR><TD>Enabled</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR><TD>Font</TD><TD>QFONT</TD><TD>W</TD><TD></TD></TR>
+  <TR><TD>Handle</TD><TD>INTEGER</TD><TD>R</TD><TD></TD></TR>
+  <TR><TD>Height</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Hint</TD><TD>STRING</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Item</TD><TD>ARRAY of STRING</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>ItemHeight</TD><TD>INTEGER</TD><TD>RW</TD><TD>13</TD></TR>
+  <TR><TD>ItemIndex</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>ItemSeparator</TD><TD>STRING</TD><TD>RW</TD><TD>\</TD></TR>
+  <TR><TD>Left</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD></TR>
+  <TR><TD>LineCount</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>OutLineStyle</TD><TD>INTEGER</TD><TD>RW</TD><TD>osTreePictureText</TD></TR>
+  <TR><TD>Parent</TD><TD>QFORM/QPANEL/QTABCONTROL</TD><TD>W</TD><TD></TD></TR>
+  <TR><TD>PopupMenu</TD><TD>QPOPUPMENU</TD><TD>W</TD><TD></TD></TR>
+  <TR><TD>Row</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>ScrollBars</TD><TD>INTEGER</TD><TD>RW</TD><TD>ssBoth</TD></TR>
+  <TR><TD>ShowHint</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR><TD>TabOrder</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Tag</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Top</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD></TR>
+  <TR><TD>Visible</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR><TD>Width</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+</TABLE>
+<br>
+
+<a name="2">
+<FONT SIZE = +1><B>QOutLine Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD>AddChild</TD><TD>SUB (Index%, String$)</TD><TD>Add child at Index%</TD><TD>2</TD></TR>
+  <TR><TD>AddLines</TD><TD>SUBI</TD><TD>Add lines to Outline</TD><TD>STRING, Infinite</TD></TR>
+  <TR><TD>AddOptions</TD><TD>SUBI</TD><TD>Add Outline options</TD><TD>INTEGER, Infinite</TD></TR>
+  <TR><TD>Clear</TD><TD>SUB</TD><TD>Clear all items</TD><TD>0</TD></TR>
+  <TR><TD>DelLines</TD><TD>SUBI</TD><TD>Delete lines from Outline</TD><TD>INTEGER, Infinite</TD></TR>
+  <TR><TD>DelOptions</TD><TD>SUBI</TD><TD>Delete Outline options</TD><TD>INTEGER, Infinite</TD></TR>
+  <TR><TD>Insert</TD><TD>SUB (Index%, String$)</TD><TD>Insert node at Index%</TD><TD>2</TD></TR>
+</TABLE>
+<br>
+
+<a name="3">
+<FONT SIZE = +1><B>QOutLine Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD>OnClick</TD><TD>VOID</TD><TD>User clicked on item</TD><TD>0</TD></TR>
+  <TR><TD>OnDblClick</TD><TD>VOID</TD><TD>User double clicked on item</TD><TD>0</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QOutLine Examples</B></FONT>
+
+<PRE>
+CREATE Form AS QForm
+  CREATE OutLine AS QOutLine
+    AddLines "Parent 1", _
+             " Child of Parent 1", _
+             "  Child of Child of Parent 1", _
+             "Parent 2", _
+             "Parent 3", _
+  END CREATE
+  Center
+  ShowModal
+END CREATE
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qoleobject.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qovalbtn.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      D>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                         

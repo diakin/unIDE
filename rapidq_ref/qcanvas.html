@@ -1,0 +1,214 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QCANVAS</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QCANVAS</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QCANVAS Component</H1>
+<DD>QCanvas is an empty image for painting on. Instead of loading your images,
+you must draw them on the QCanvas.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QCanvas Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee"><TD><b>Align</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>alNone</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Align determines how the control aligns within its parent control.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>ClientHeight</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>ClientWidth</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Color</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>CopyMode</TD><TD>INTEGER</TD><TD>RW</TD><TD>cmBlackness</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Cursor</TD><TD>INTEGER</TD><TD>RW</TD><TD>crDefault</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Enabled</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Font</TD><TD>QFONT</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Height</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Hint</TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Left</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Parent</TD><TD>QFORM/QPANEL/QTABCONTROL</TD><TD>W</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Pixel</TD><TD>2D ARRAY of INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>PopupMenu</TD><TD>QPOPUPMENU</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>ShowHint</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Tag</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Top</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Width</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Visible</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD><TD>WXG</TD></TR>
+</TABLE>
+<br><br>
+
+<a name="2">
+<FONT SIZE = +1><B>QCanvas Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee" valign="top"><TD>Circle</TD><TD>SUB (x1%, y1%, x2%, y2%, c%, fill%)</TD><TD NOWRAP>Draw & Fill Circle</TD><TD NOWRAP>6</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD><b>CopyRect</b></TD><TD>SUB (D, Image, S)</TD><TD>D and S are QRECTs, Image can be a QImage, QCanvas, or QBitmap</TD><TD NOWRAP>3</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd"><b><u>Example (copies QIMAGE to canvas at 10,10)</u></b>:<br>
+                             <blockquote><font face="courier" size="2">
+                             DIM Destination AS QRECT<br>
+                             DIM Source AS QRECT<br>
+                             DIM Image AS QIMAGE<br>
+                             Image.BMP = "whatever.bmp"<br><br>
+
+                             SUB CanvasPaint (Sender AS QCANVAS)<br>
+                             WITH Destination<br>
+                             .Top = 10<br>
+                             .Left = 10<br>
+                             .Right = .Left+Image.Width<br>
+                             .Bottom = .Top+Image.Height<br>
+                             END WITH<br>
+                             WITH Source<br>
+                             .Top = 0<br>
+                             .Left = 0<br>
+                             .Right = Image.Width<br>
+                             .Bottom = Image.Height<br>
+                             END WITH<br>
+                             Sender.CopyRect(Destination, Image, Source)<br>
+                             END SUB<br><br>
+
+                             DIM Canvas AS QCANVAS<br>
+                             Canvas.OnPaint = CanvasPaint<br>
+                             </pre></font></blockquote>
+                             </TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD><b>Draw</b></TD><TD>SUB (x%, y%, BMP)</TD><TD NOWRAP>Draw Bitmap on Canvas</TD><TD NOWRAP>3</TD><TD>WG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd"><b><u>Details</u></b>:<br>
+                             BMP can be any BMP property from QBitmap, QImage, QImageList, etc. any component with a BMP property is fine.<br>
+                             <b><u>Examples</u></b>:<br>
+                             <blockquote><font face="courier" size="2">
+                             DIM Image1 AS QIMAGE<br>
+                             Image1.BMP = "whatever.bmp"<br>
+                             DIM Image2 AS QBITMAP<br>
+                             Image2.BMP = "whatever.bmp"<br><br>
+
+                             SUB CanvasPaint (Sender AS QCANVAS)<br>
+                                 Sender.Draw(0, 0, Image1.BMP)<br>
+                                 Sender.Draw(50, 50, Image2.BMP)<br>
+                             END SUB<br><br>
+
+                             DIM Canvas AS QCANVAS<br>
+                             Canvas.OnPaint = CanvasPaint<br>
+                             </pre></font></blockquote>
+                             </TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>FillRect</TD><TD>SUB (x1%, y1%, x2%, y2%, c%)</TD><TD NOWRAP>Draws & Fills a rectangle</TD><TD NOWRAP>5</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Line</TD><TD>SUB (x1%, y1%, x2%, y2%, c%)</TD><TD NOWRAP>Draws a line</TD><TD NOWRAP>5</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Paint</TD><TD>SUB (x%, y%, c%, borderc%)</TD><TD NOWRAP>Fill Region</TD><TD NOWRAP>4</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Pset</TD><TD>SUB (x%, y%, c%)</TD><TD NOWRAP>Pixel plot</TD><TD NOWRAP>3</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Rectangle</TD><TD>SUB (x1%, y1%, x2%, y2%, c%)</TD><TD NOWRAP>Draws a rectangle</TD><TD NOWRAP>5</TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Repaint</TD><TD>SUB</TD><TD NOWRAP>Force repainting</TD><TD NOWRAP>0</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Rotate</TD><TD>SUB (xOrigin%, yOrigin%, Angle%)</TD><TD NOWRAP>Rotates entire canvas at specified origin</TD><TD NOWRAP>3</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>RoundRect</TD><TD>SUB (x1%, y1%, x2%, y2%, x3%, y3%, c%)</TD><TD NOWRAP>Draws & Fills a rounded rectangle</TD><TD NOWRAP>7</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>StretchDraw</TD><TD>SUB (Rect AS QRECT, BMP)</TD><TD>Draw image and stretch to fit inside Rect</TD><TD NOWRAP>2</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>TextHeight</TD><TD>FUNCTION (Text$) AS WORD</TD><TD>Returns the height, in pixels, of Text$ string</TD><TD NOWRAP>1</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>TextWidth</TD><TD>FUNCTION (Text$) AS WORD</TD><TD>Returns the width, in pixels, of Text$ string</TD><TD NOWRAP>1</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>TextRect</TD><TD>SUB (Rect AS QRECT, x%, y%, S$, fc%, bc%)</TD><TD NOWRAP>Write text, and clip within region Rect</TD><TD NOWRAP>6</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>TextOut</TD><TD>SUB (x%, y%, S$, fc%, bc%)</TD><TD NOWRAP>Writes text to image</TD><TD NOWRAP>5</TD><TD>WXG</TD></TR>
+</TABLE>
+<BR>
+
+<a name="3">
+<FONT SIZE = +1><B>QCanvas Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR><TD>OnClick</TD><TD>VOID</TD><TD>User clicked on canvas</TD><TD>0</TD><TD>WXG</TD></TR>
+  <TR><TD>OnDblClick</TD><TD>VOID</TD><TD>User double clicked on canvas</TD><TD>0</TD><TD>W</TD></TR>
+  <TR><TD>OnMouseDown</TD><TD NOWRAP>SUB (Button%, X%, Y%, Shift%)</TD><TD NOWRAP>Mouse button held down</TD><TD>4</TD><TD>WXG</TD></TR>
+  <TR><TD>OnMouseMove</TD><TD NOWRAP>SUB (X%, Y%, Shift%)</TD><TD NOWRAP>Mouse moves</TD><TD>3</TD><TD>WXG</TD></TR>
+  <TR><TD>OnMouseUp</TD><TD NOWRAP>SUB (Button%, X%, Y%, Shift%)</TD><TD NOWRAP>Mouse button is released</TD><TD>4</TD><TD>WXG</TD></TR>
+  <TR><TD>OnPaint</TD><TD>VOID</TD><TD>Receives WM_PAINT message</TD><TD>0</TD><TD>WXG</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QCanvas Examples</B></FONT>
+
+<PRE>
+'  Pixel by pixel credit scroller for Rapid-Q by William Yu
+
+DIM Canvas AS QCanvas
+DIM Form AS QForm
+DIM Timer1 AS QTimer
+DIM Font AS QFont
+DIM Y AS INTEGER
+    Y = -20
+
+SUB Resize
+  Canvas.Height = Form.ClientHeight
+  Canvas.Width = Form.ClientWidth
+END SUB
+
+SUB Paint
+  Canvas.Textout (65,Y-30,"Beware the power of Rapid-Q!", &H00FF00, 0)
+  Canvas.Textout (30,Y,"Credit Scroller written in Rapid-Q by William Yu", &HFFFFFF, 0)
+END SUB
+
+SUB TimerOver
+  Timer1.Interval = 1  '' Can't go any lower!
+  Y = Y + 1            '' Pixel by pixel!
+  Paint
+END SUB
+
+Form.Width = 400
+Form.Height = 200
+Form.Center
+Form.Color = 0
+
+Font.Name = "Arial"
+Font.Size = 12
+Font.Color = &H00FF00
+Canvas.Parent = Form
+Canvas.Font = Font
+Canvas.Color = 0
+Canvas.OnPaint = Paint
+
+Timer1.Interval = 1
+Timer1.OnTimer = TimerOver
+
+Form.Onresize = Resize
+Form.ShowModal
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qbutton.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qcheckbox.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      D>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                         

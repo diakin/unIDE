@@ -1,0 +1,226 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QMEMORYSTREAM</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QMEMORYSTREAM</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QMEMORYSTREAM Component</H1>
+<DD>QMemorystream is used to store temporary data to memory for manipulation.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QMemorystream Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee"><TD><b>LineCount</b></TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">LineCount determines how many lines there are in the memorystream. Note that
+               LineCount ignores the CR character, and will only detect LF, so it treats CRLF as one line, but LFLF as 2 lines.
+               </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Pointer</b></TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Pointer specifies the memory address of the memorystream.
+               </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Position</b></TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Position specifies the current position of the memory pointer, any read/write operations will begin from here.
+               </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Size</b></TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Size determines the number of bytes allocated to the memorystream.
+               </TD></TR>
+</TABLE>
+<br><br>
+
+<a name="2">
+<FONT SIZE = +1><B>QMemorystream Methods</B></FONT>
+<TABLE WIDTH=986>
+  <TR>
+   <TD width="99"><B>Method</B></TD><TD width="272"><B>Type</B></TD>
+   <TD width="463"><B>Description</B></TD><TD width="64"><B>Params</B></TD>
+   <TD width="66"><B>Support</B></TD>
+  </TR>
+  <TR>
+   <TD width="99"><hr></TD><TD width="272"><hr></TD><TD width="463"><HR></TD>
+   <TD width="64"><HR></TD><TD width="66"><HR></TD>
+  </TR>
+  <TR bgcolor="eeeeee" valign="top"><TD width="99">Close</TD><TD width="272">SUB</TD>
+    <TD width="463">Close the stream</TD><TD NOWRAP width="64">0</TD>
+    <TD width="66">WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD width="99"><b>CopyFrom</b></TD>
+    <TD NOWRAP width="272">SUB (Stream, Bytes%)</TD><TD width="463">Copy from another stream<BR>Either QFileStream or QMemoryStream</TD>
+    <TD NOWRAP width="64">2</TD><TD width="66">WXG</TD></TR>
+  <TR><TD width="99"></TD><TD COLSPAN=4 bgcolor="ffdddd" width="877">Use CopyFrom to copy a QFILESTREAM or a QMEMORYSTREAM to the current memorystream.<br>
+                             <b><u>Details</u></b>:<br>
+                             If Bytes% = 0 then the Stream is reset to position 0 and the whole stream is then copied.<br>
+                             <b><u>Example</u></b>:
+                             <blockquote><font face="courier" size="2"><nobr>
+                             $INCLUDE "RAPIDQ.INC"<br>
+                             DIM File1 AS QFILESTREAM<br>
+                             DIM Mem AS QMEMORYSTREAM<br><br>
+                             File1.Open("test.txt", fmOpenRead)<br>
+                             Mem.CopyFrom(File1, 123)  '-- Copy 123 bytes from File1<br>
+                             </nobr>
+                             </font></blockquote>
+               </TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD width="99"><b>ExtractRes</b></TD>
+    <TD width="272">SUB (Resource AS LONG)</TD><TD width="463">Extract resource to memorystream</TD>
+    <TD NOWRAP width="64">1</TD><TD width="66">WXG</TD></TR>
+  <TR><TD width="99"></TD><TD COLSPAN=4 bgcolor="ffdddd" width="877">Extracts a resource from your program to the memorystream.<br>
+                             <b><u>Details</u></b>:<br>
+                             The parameter Resource is not the resource handle, but the absolute position of the resource within your file.
+                             This requires that you use the keyword <b>Resource(n)</b> to specify the resource number.<br>
+                             <b><u>Example (dumping all resources)</u></b>:
+                             <blockquote><font face="courier" size="2"><nobr>
+                             $INCLUDE "RAPIDQ.INC"<br>
+                             $RESOURCE res_1 as "res.1"<br>
+                             $RESOURCE res_2 as "res.2"<br><br>
+                             DIM Mem AS QMEMORYSTREAM<br><br>
+                             FOR I = 0 TO ResourceCount-1<br>
+                             &nbsp; &nbsp; Mem.ExtractRes(Resource(I))<br>
+                             NEXT
+                             </nobr></font></blockquote>
+               </TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD width="99">LoadArray</TD>
+    <TD width="272">SUB (Array(), NumElements&)</TD><TD width="463">Load data into array</TD>
+    <TD NOWRAP width="64">2</TD><TD width="66">WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD width="99">MemCopyFrom</TD>
+    <TD width="272">SUB (Address&, Bytes&)</TD><TD width="463">Copies contents of Address& to memorystream</TD>
+    <TD NOWRAP width="64">2</TD><TD width="66">WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD width="99">MemCopyTo</TD>
+    <TD width="272">SUB (Address&, Bytes&)</TD><TD width="463">Copies contents to Address&</TD>
+    <TD NOWRAP width="64">2</TD><TD width="66">WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD width="99">Read</TD><TD width="272">SUB (variable)</TD>
+    <TD width="463">Generic Read, determines the storage space and saves data in variable</TD>
+    <TD NOWRAP width="64">1</TD><TD width="66">WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD width="99">ReadLine</TD><TD width="272">FUNCTION () AS STRING</TD>
+    <TD width="463">Reads an entire line</TD><TD NOWRAP width="64">0</TD>
+    <TD width="66">W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD width="99">ReadNum</TD><TD width="272">FUNCTION (<a name="2">Num_</a></a>Type<a name="2">) AS DOUBLE</TD>
+    <TD width="463">Returns number
+
+<a name="2">
+&nbsp;-- ie. PRINT File.ReadNum(Num_SINGLE)</a><br>
+
+<a name="2">
+    Num_</a>Type </a>can be next
+
+<a name="2">
+    <br>
+    CONST Num_BYTE = 1 <br>
+    CONST Num_SHORT = 2<br>
+    CONST Num_WORD = 3<br>
+    CONST Num_LONG = 4<br>
+    CONST Num_DWORD = 5<br>
+    CONST Num_SINGLE = 6<br>
+    CONST Num_DOUBLE = 8</TD><TD NOWRAP width="64">1</TD><TD width="66">WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD width="99">ReadStr</TD><TD width="272">FUNCTION (n) AS STRING</TD>
+    <TD width="463">Read n bytes, returns the string</TD><TD NOWRAP width="64">1</TD>
+    <TD width="66">WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD width="99">ReadBinStr</TD>
+    <TD width="272">FUNCTION (n) AS STRING</TD><TD width="463">Read n bytes, returns the binary string</TD>
+    <TD NOWRAP width="64">1</TD><TD width="66">W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD width="99">ReadUDT</TD><TD width="272">SUB (MyType)</TD>
+    <TD NOWRAP width="463">Read and store data in a MyType structure</TD>
+    <TD NOWRAP width="64">1</TD><TD width="66">WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD width="99">SaveArray</TD>
+    <TD width="272">SUB (Array(), NumElements&)</TD><TD width="463">Save array</TD>
+    <TD NOWRAP width="64">2</TD><TD width="66">WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD width="99">Seek</TD><TD width="272">SUB (Position%, From%)</TD>
+    <TD width="463">Seek to Position%, From% see RAPIDQ.INC</TD>
+    <TD NOWRAP width="64">2</TD><TD width="66">WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD width="99">Write</TD><TD width="272">SUB (variable)</TD>
+    <TD width="463">Generic Write, determines the storage space and saves data to memory</TD>
+    <TD NOWRAP width="64">1</TD><TD width="66">WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD width="99">WriteLine</TD>
+    <TD width="272">SUB (S AS STRING)</TD><TD width="463">Writes string with CR+LF</TD>
+    <TD NOWRAP width="64">1</TD><TD width="66">W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD width="99">WriteNum</TD><TD width="272">SUB (number, bytes%)</TD>
+    <TD width="463">Writes a number to memory</TD><TD NOWRAP width="64">2</TD>
+    <TD width="66">WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD width="99">WriteBinStr</TD>
+    <TD width="272">SUB (string, bytes%)</TD><TD width="463">Writes a binary string to file (slow)</TD>
+    <TD NOWRAP width="64">2</TD><TD width="66">W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD width="99">WriteStr</TD><TD width="272">SUB (string, bytes%)</TD>
+    <TD width="463">Writes string to memory</TD><TD NOWRAP width="64">2</TD>
+    <TD width="66">WXG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD width="99">WriteUDT</TD><TD width="272">SUB (MyType)</TD>
+    <TD width="463">Write data stored in a MyType structure</TD>
+    <TD NOWRAP width="64">1</TD><TD width="66">WXG</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QMemoryStream Examples</B></FONT>
+
+<PRE>  DIM Mem AS QMemoryStream
+
+  S$ = "Hello world!"
+  Mem.WriteStr(S$, LEN(S$))
+  Mem.Position = 0
+  S$ = Mem.ReadStr(LEN(S$))
+  PRINT S$                            '' print it
+  Mem.Close
+
+'------------------------------------------------------
+
+  DIM Mem AS QMemoryStream
+  DIM I AS INTEGER
+
+  I = 12
+  Mem.Write(I)
+  S$ = "Hello world!"
+  Mem.Write(S$)
+  Mem.Position = 0
+  Mem.Read(I)
+  S$ = SPACE$(I)
+  Mem.Read(S$)
+  PRINT S$                            '' print it
+  Mem.Close
+
+'------------------------------------------------------
+
+  TYPE MyType
+      Name AS STRING*30
+      Phone AS STRING*8
+      Age AS INTEGER
+  END TYPE
+
+  DIM Person AS MyType
+      Person.Name = "Joe"
+      Person.Phone = "555-5555"
+
+  DIM Mem AS QMemoryStream
+      Mem.WriteUDT(Person)
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qmainmenu.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qmenuitem.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML> ODY>
+</HTML> /HTML> ODY>
+</HTML>    

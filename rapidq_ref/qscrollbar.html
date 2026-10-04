@@ -1,0 +1,207 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE> QSCROLLBAR</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999-2000</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QSCROLLBAR</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QSCROLLBAR Component</H1>
+<DD>QScrollBar is a Windows scroll bar, used to scroll contents of a window, form, or
+control. It can also act as a simple trackbar.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QScrollBar Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee"><TD><b>Align</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>alNone</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Align determines how the control aligns within its parent control.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Cursor</TD><TD>INTEGER</TD><TD>RW</TD><TD>crDefault</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Enabled</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD><TD>WX</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Handle</TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Height</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WX</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Hint</TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>WX</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>Kind</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>sbHorizontal</TD><TD>WX</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Kind specifies whether the scrollbar is horizontal or vertical.<br>
+                  0 = sbHorizontal -- Scrollbar is horizontal.<br>
+                  1 = sbVertical -- Scrollbar is vertical.<br>
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>LargeChange</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>1</TD><TD>WX</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">LargeChange determines how much Position changes when the user clicks on the scrollbar on either side of the thumb or pressed PageUp or PageDown.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Left</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>WX</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Max</TD><TD>INTEGER</TD><TD>RW</TD><TD>100</TD><TD>WX</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Min</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>WX</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>PageSize</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>1</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">PageSize specifies the distance along the trackbar.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>Parent</TD><TD>QFORM/QPANEL/QTABCONTROL</TD><TD>W</TD><TD></TD><TD>WX</TD></TR>
+  <TR bgcolor="eeeeee"><TD>PopupMenu</TD><TD>QPOPUPMENU</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Position</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>WX</TD></TR>
+  <TR bgcolor="eeeeee"><TD>ShowHint</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>WX</TD></TR>
+  <TR bgcolor="eeeeee"><TD><b>SmallChange</b></TD><TD>INTEGER</TD><TD>RW</TD><TD>1</TD><TD>WX</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">SmallChange determines how much Position changes when the user clicks the arrow buttons on the scrollbar or presses the arrow keys.
+                </TD></TR>
+  <TR bgcolor="eeeeee"><TD>TabOrder</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Tag</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WXG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Top</TD><TD>INTEGER</TD><TD>RW</TD><TD>0</TD><TD>WX</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Width</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WX</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Visible</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD><TD>WX</TD></TR>
+</TABLE>
+<br><br>
+
+<a name="3">
+<FONT SIZE = +1><B>QScrollBar Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR><TD>OnChange</TD><TD>VOID</TD><TD>Scroll position changes</TD><TD>0</TD><TD>WX</TD></TR>
+  <TR><TD>OnKeyDown</TD><TD NOWRAP>SUB (Key AS Word, Shift AS INTEGER)</TD><TD NOWRAP>Key held down</TD><TD>2</TD><TD>W</TD></TR>
+  <TR><TD>OnKeyPress</TD><TD>SUB (Key AS BYTE)</TD><TD>User presses a key</TD><TD>1</TD><TD>W</TD></TR>
+  <TR><TD>OnKeyUp</TD><TD>SUB (Key AS Word, Shift AS INTEGER)</TD><TD>User releases a key</TD><TD>2</TD><TD>W</TD></TR>
+  <TR><TD>OnScroll</TD><TD>SUB (ScrollCode AS BYTE, ScrollPos AS LONG)</TD><TD>Scrolling</TD><TD>2</TD><TD>W</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QScrollBar Examples</B></FONT>
+
+<PRE>
+' Color Palette for Rapid-Q by William Yu
+
+
+DECLARE SUB ColorChange
+DECLARE SUB Paint
+
+CONST False = 0
+CONST True = NOT False
+
+'' Here's something that will convert your standard RGB to Rapid-Q's BGR.
+'' And quite useless because an RGB function is already implemented!
+FUNCTION ConvertRGB(R AS INTEGER, G AS INTEGER, B AS INTEGER) AS INTEGER
+  ConvertRGB = (B SHL 16) OR (G SHL 8) OR R
+END FUNCTION
+
+CREATE Form AS QForm
+  CREATE LabelRed AS QLabel
+    Left = 10
+    Top = 22
+    Caption = "Red:"
+  END CREATE
+  CREATE LabelGreen AS QLabel
+    Left = 5
+    Top = 52
+    Caption = "Green:"
+  END CREATE
+  CREATE LabelBlue AS QLabel
+    Left = 10
+    Top = 82
+    Caption = "Blue:"
+  END CREATE
+  CREATE LabelNum1 AS QLabel
+    Left = 270
+    Top = 22
+    Caption = "0"
+  END CREATE
+  CREATE LabelNum2 AS QLabel
+    Left = 270
+    Top = 52
+    Caption = "0"
+  END CREATE
+  CREATE LabelNum3 AS QLabel
+    Left = 270
+    Top = 82
+    Caption = "0"
+  END CREATE
+  CREATE ScrollRed AS QScrollBar
+    Left = 50
+    Top = 20
+    Width = 200
+    Height = 20
+    Min = 0: Max = 255
+    ShowHint =  True
+    Hint = "Red Attribute"
+    OnChange = ColorChange
+  END CREATE
+  CREATE ScrollGreen AS QScrollBar
+    Left = 50
+    Top = 50
+    Width = 200
+    Height = 20
+    Min = 0: Max = 255
+    ShowHint =  True
+    Hint = "Green Attribute"
+    OnChange = ColorChange
+  END CREATE
+  CREATE ScrollBlue AS QScrollBar
+    Left = 50
+    Top = 80
+    Width = 200
+    Height = 20
+    Min = 0: Max = 255
+    ShowHint =  True
+    Hint = "Blue Attribute"
+    OnChange = ColorChange
+  END CREATE
+  CREATE PaintBox AS QCanvas
+    Left = 50
+    Top = 110
+    Height = 90
+    Width = 200
+    OnPaint = Paint
+  END CREATE
+  Caption = "Color Palette"
+  Center
+  ShowModal
+END CREATE
+
+SUB ColorChange
+  LabelNum1.Caption = STR$(ScrollRed.Position)
+  LabelNum2.Caption = STR$(ScrollGreen.Position)
+  LabelNum3.Caption = STR$(ScrollBlue.Position)
+  Paint
+END SUB
+
+SUB Paint
+  PaintBox.Paint(0,0,ConvertRGB(ScrollRed.Position, ScrollGreen.Position, ScrollBlue.Position),&HFFFFFF)
+END SUB
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qsavedialog.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qscrollbox.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      
+
+</BODY>
+</HTML>                         

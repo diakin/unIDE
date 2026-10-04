@@ -1,0 +1,233 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>QDXIMAGELIST</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>QDXIMAGELIST</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QDXIMAGELIST Component</H1>
+<DD>QDXImageList maintains a list of images for use in your programs.
+Unlike QImageList, you must create the imagelist using an Image Library.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QDXImageList Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD>
+  </TR>
+   <TR><TD>Parent</TD><TD>QDXSCREEN</TD><TD>W</TD><TD></TD></TR>
+</TABLE>
+<br>
+
+<a name="2">
+<FONT SIZE = +1><B>QDXImageList Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD>Draw</TD><TD>SUB (Item%, X%, Y%, Mask%)</TD><TD>Draw image on Screen</TD><TD>4</TD></TR>
+  <TR><TD>LoadFromFile</TD><TD>SUB (FileName$)</TD><TD>Load imagelist</TD><TD>1</TD></TR>
+  <TR><TD>LoadFromResource</TD><TD>SUB (Resource_Handle)</TD><TD>Load imagelist from resource handle</TD><TD>1</TD></TR>
+  <TR><TD>LoadFromStream</TD><TD>SUB (Stream AS QFILESTREAM/QMEMORYSTREAM)</TD><TD>Load imagelist from stream</TD><TD>1</TD></TR>
+</TABLE>
+<br>
+
+<a name="3">
+<FONT SIZE = +1><B>QDXImageList Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD>
+  </TR>
+ </TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QDXImageList Examples</B></FONT>
+
+<PRE>
+' Target practise w/DirectX for Rapid-Q by William Yu
+' Move using arrow keys, to shoot, press SPACEBAR
+
+$APPTYPE GUI
+$TYPECHECK ON
+$INCLUDE "RAPIDQ.INC"
+$RESOURCE ships_DXG AS "ships.dxg"
+
+DECLARE SUB DXTimerExpired
+DECLARE SUB InitStars
+DECLARE SUB KeyDown (Key AS BYTE, Shift AS BYTE)
+
+CONST ScreenX = 400
+CONST ScreenY = 300
+CONST MaxStars = 150        '' Depending on your system, adjust as needed.
+
+TYPE StarType
+  X(MaxStars) AS INTEGER
+  Y(MaxStars) AS INTEGER
+  Z(MaxStars) AS INTEGER
+END TYPE
+
+DIM DXTimer AS QDXTimer
+    DXTimer.Enabled = True
+    DXTimer.Interval = 10
+    DXTimer.OnTimer = DXTimerExpired
+DIM Stars AS StarType
+DIM MyShipX AS INTEGER
+    MyShipX = 50
+DIM EnemyShipX AS INTEGER
+    EnemyShipX = ScreenX + 45
+DIM EnemyShipY AS INTEGER
+    EnemyShipY = 20
+DIM Shoot AS INTEGER, ShootX AS INTEGER, ShootY AS INTEGER
+    Shoot = False
+DIM Hit AS INTEGER, HitCount AS INTEGER
+    Hit = False
+
+InitStars
+
+CREATE Form AS QForm
+  Center
+  Caption = "DirectX Target Practise"
+  ClientWidth = ScreenX
+  ClientHeight = ScreenY
+  'BorderStyle = bsNone           '' Setup fullscreen
+  CREATE DXScreen AS QDXScreen
+    Init(ScreenX, ScreenY)
+    Align = alClient
+    'FullScreen = True            '' Fullscreen mode
+    Cursor = crNone              '' Hide Mouse
+    CREATE DXImageList AS QDXImageList
+      LoadFromResource(SHIPS_DXG)
+    END CREATE
+  END CREATE
+  OnKeyDown = KeyDown
+  ShowModal
+END CREATE
+
+SUB KeyDown (Key AS BYTE, Shift AS BYTE)
+  SELECT CASE Key
+    CASE 27
+      Form.Close
+    CASE 39
+      MyShipX = MyShipX + 4
+    CASE 37
+      MyShipX = MyShipX - 4
+    CASE IS = 32 AND Shoot = False
+      Shoot = True
+      ShootX = MyShipX + 20
+      ShootY = ScreenY - 58
+  END SELECT
+END SUB
+
+
+SUB InitStars
+  DIM I AS INTEGER
+
+  RANDOMIZE TIMER
+
+  FOR I = 1 TO MaxStars
+    Stars.X(I) = RND(ScreenX)
+    Stars.Y(I) = RND(ScreenY)
+    Stars.Z(I) = RND(3)
+  NEXT I
+END SUB
+
+SUB DXTimerExpired
+  DIM I AS INTEGER
+
+  DXScreen.Fill(0)
+  FOR I = 1 TO MaxStars
+    SELECT CASE Stars.Z(I)
+      CASE 0
+        DXScreen.Pixel(Stars.X(I),Stars.Y(I)) = clWhite
+        Stars.Y(I) = Stars.Y(I) + 3
+      CASE 1 
+        DXScreen.Pixel(Stars.X(I),Stars.Y(I)) = &HAAAAAA
+        Stars.Y(I) = Stars.Y(I) + 2
+      CASE ELSE
+        DXScreen.Pixel(Stars.X(I),Stars.Y(I)) = &H555555
+        Stars.Y(I) = Stars.Y(I) + 1
+    END SELECT
+    IF Stars.Y(I) > ScreenY THEN
+      Stars.Y(I) = -1
+      Stars.X(I) = RND(ScreenX)
+    END IF
+  NEXT I
+  DXScreen.TextOut(10,10,"FPS: "+STR$(DXTimer.FrameRate), clWhite, -1)
+  IF Hit THEN
+    DXScreen.Circle(ShootX-HitCount/2,ShootY-20,ShootX+4+HitCount/2,ShootY-20+4+HitCount,&H2090FF,&H2090FF)
+    IF HitCount = 0 THEN
+      Hit = False
+    ELSE
+      HitCount = HitCount - 2
+    END IF
+  ELSE
+    IF Shoot THEN
+      SELECT CASE ShootX
+        CASE EnemyShipX TO EnemyShipX+45
+          IF ShootY > EnemyShipY AND ShootY < EnemyShipY+45 THEN
+            EnemyShipX = ScreenX + 45
+            EnemyShipY = EnemyShipY + 45
+            Shoot = False
+            Hit = True
+            HitCount = 40
+          END IF
+      END SELECT
+      DXScreen.Circle(ShootX,ShootY,ShootX+4,ShootY+4,&H2090FF,&H2090FF)
+      IF ShootY < -4 THEN
+         Shoot = False
+      ELSE
+         ShootY = ShootY - 4
+      END IF
+    END IF
+    EnemyShipX = EnemyShipX - 2
+    DXImageList.Draw(1, EnemyShipX, EnemyShipY, 0)
+    IF EnemyShipX < -45 THEN
+      EnemyShipX = ScreenX + 45
+      EnemyShipY = EnemyShipY + 45
+    END IF
+  END IF
+  DXImageList.Draw(0, MyShipX, ScreenY - 55, 0)
+  DXScreen.Flip
+END SUB
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qtrackbar.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qdxscreen.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      D>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                         

@@ -1,0 +1,172 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>QDXSCREEN</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>QDXSCREEN</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QDXSCREEN Component</H1>
+<DD>QDXScreen allows you to create a DirectX screen for all your DXComponents.
+All operations are done on the off-screen buffer, so nothing is displayed until
+you <B>flip</B> to it. To use full screen mode, set FullScreen to true, and
+make sure your form border style is bsNone.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QDXScreen Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD>
+  </TR>
+   <TR><TD>Align</TD><TD>INTEGER</TD><TD>RW</TD><TD>alNone</TD></TR>
+  <TR><TD>AllowStretch</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR><TD>AutoSize</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR><TD>BitCount</TD><TD>INTEGER</TD><TD>RW</TD><TD>8</TD></TR>
+  <TR><TD>Color</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Cursor</TD><TD>INTEGER</TD><TD>RW</TD><TD>crDefault</TD></TR>
+  <TR><TD>Enabled</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR><TD>Font</TD><TD>QFONT</TD><TD>W</TD><TD></TD></TR>
+  <TR><TD>FullScreen</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR><TD>Height</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Hint</TD><TD>STRING</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Left</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Parent</TD><TD>QFORM/QPANEL/QTABCONTROL</TD><TD>W</TD><TD></TD></TR>
+  <TR><TD>Pixel</TD><TD>2D ARRAY of INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>ShowHint</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR><TD>Top</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+  <TR><TD>Use3D</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD></TR>
+  <TR><TD>UseHardware</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR><TD>Visible</TD><TD>INTEGER</TD><TD>RW</TD><TD>True</TD></TR>
+  <TR><TD>Width</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD></TR>
+</TABLE>
+<br>
+
+<a name="2">
+<FONT SIZE = +1><B>QDXScreen Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD>Circle</TD><TD>SUB (x1%, y1%, x2%, y2%, c%, fill%)</TD><TD NOWRAP>Draw & Fill Circle</TD><TD NOWRAP>6</TD></TR>
+  <TR><TD VALIGN=TOP>CopyRect</TD><TD>SUB (D, Image, S)</TD><TD>D and S are QRECTs, Image can be a QImage, QCanvas, or QBitmap</TD><TD NOWRAP>3</TD></TR>
+  <TR><TD>Draw</TD><TD>SUB (x%, y%, BMP)</TD><TD NOWRAP>Draw Bitmap at (X,Y)</TD><TD NOWRAP>3</TD></TR>
+  <TR><TD>Fill</TD><TD>SUB (DevCol%)</TD><TD>Fill screen (not traditional colors)</TD><TD>1</TD></TR>
+  <TR><TD>FillRect</TD><TD>SUB (x1%, y1%, x2%, y2%, c%)</TD><TD NOWRAP>Draw & Fill a rectangle</TD><TD NOWRAP>5</TD></TR>
+  <TR><TD>Flip</TD><TD>SUB</TD><TD>Copies off-screen buffer to visible page</TD><TD>0</TD></TR>
+  <TR><TD>Init</TD><TD>SUB (Width%, Height%)</TD><TD>Create Screen</TD><TD>2</TD></TR>
+  <TR><TD>Line</TD><TD>SUB (x1%, y1%, x2%, y2%, c%)</TD><TD NOWRAP>Draws a line</TD><TD NOWRAP>5</TD></TR>
+  <TR><TD>Paint</TD><TD>SUB (x%, y%, c%, borderc%)</TD><TD NOWRAP>Fill Region</TD><TD NOWRAP>4</TD></TR>
+  <TR><TD>Pset</TD><TD>SUB (x%, y%, c%)</TD><TD NOWRAP>Pixel Plot</TD><TD NOWRAP>3</TD></TR>
+  <TR><TD>Rectangle</TD><TD>SUB (x1%, y1%, x2%, y2%, c%)</TD><TD NOWRAP>Draws a rectangle</TD><TD NOWRAP>5</TD></TR>
+  <TR><TD>Release</TD><TD>SUB</TD><TD NOWRAP>Force update</TD><TD NOWRAP>0</TD></TR>
+  <TR><TD>Rotate</TD><TD>SUB (xOrigin%, yOrigin%, Angle%)</TD><TD NOWRAP>Rotates entire screen at specified origin</TD><TD NOWRAP>3</TD></TR>
+  <TR><TD>RoundRect</TD><TD>SUB (x1%, y1%, x2%, y2%, x3%, y3%, c%)</TD><TD NOWRAP>Draws & Fills a rounded rectangle</TD><TD NOWRAP>7</TD></TR>
+  <TR><TD VALIGN=TOP>StretchDraw</TD><TD>SUB (Rect AS QRECT, BMP)</TD><TD>Draw BMP and stretch to fit inside Rect</TD><TD NOWRAP>2</TD></TR>
+  <TR><TD VALIGN=TOP>TextHeight</TD><TD>FUNCTION (Text$) AS WORD</TD><TD>Returns the height, in pixels, of Text$ string</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>TextWidth</TD><TD>FUNCTION (Text$) AS WORD</TD><TD>Returns the width, in pixels, of Text$ string</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>TextRect</TD><TD>SUB (Rect AS QRECT, x%, y%, S$, fc%, bc%)</TD><TD NOWRAP>Write text, and clip within region Rect</TD><TD NOWRAP>6</TD></TR>
+  <TR><TD>TextOut</TD><TD>SUB (x%, y%, S$, fc%, bc%)</TD><TD NOWRAP>Writes text</TD><TD NOWRAP>5</TD></TR>
+</TABLE>
+
+<FONT SIZE = +1><B>QDXScreen 3D Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD VALIGN=TOP>AddLight</TD><TD>SUB (Light AS QD3DLight)</TD><TD>Add light to scene</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>CameraLookAt</TD><TD>SUB (F AS QD3DFrame, Constraint AS INTEGER)</TD><TD>Fix frame and constrain rotation</TD><TD NOWRAP>2</TD></TR>
+  <TR><TD VALIGN=TOP>CreateFace</TD><TD>SUB (Face AS QD3DFace)</TD><TD>Creates a face</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>CreateFrame</TD><TD>SUB (Frame AS QD3DFrame)</TD><TD>Creates frame</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>CreateLightRGB</TD><TD>SUB (LightType%, R#, G#, B#, Light AS QD3DLight)</TD><TD>Create light object</TD><TD NOWRAP>5</TD></TR>
+  <TR><TD VALIGN=TOP>CreateMeshBuilder</TD><TD>SUB (MB AS QD3DMeshBuilder)</TD><TD>Creates meshbuilder</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>CreateShadow</TD><TD>SUB (MB AS QD3DMeshBuilder, Light AS QD3DLight, px#, py#, pz#, nx#, ny#, nz#, V AS QD3DVisual)</TD><TD>Creates a visual shadow object</TD><TD NOWRAP>9</TD></TR>
+  <TR><TD VALIGN=TOP>CreateWrap</TD><TD>SUB (WrapType%, A#, B#, C#, D#, E#, F#, G#, H#, I#, J#, K#, L#, M#, W AS QD3DWrap)</TD><TD>Creates a wrap object</TD><TD NOWRAP>15</TD></TR>
+  <TR><TD VALIGN=TOP>ForceUpdate</TD><TD>SUB (X1%, Y1%, X2%, Y2%)</TD><TD>Force update on specific region</TD><TD NOWRAP>4</TD></TR>
+  <TR><TD VALIGN=TOP>LoadTexture</TD><TD>SUB (File AS STRING, Tex AS QD3DTexture)</TD><TD>Create a texture object</TD><TD NOWRAP>2</TD></TR>
+  <TR><TD VALIGN=TOP>Move</TD><TD>SUB (D AS DOUBLE)</TD><TD>Moves/animates scene</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>SetBackgroundImage</TD><TD>SUB (Tex AS QD3DTexture)</TD><TD>Set background image for scene</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>SetCameraPosition</TD><TD>SUB (X#, Y#, Z#)</TD><TD>Set camera position for entire scene</TD><TD NOWRAP>3</TD></TR>
+  <TR><TD VALIGN=TOP>SetCameraOrientation</TD><TD>SUB (DX#, DY#, DZ#, UX#, UY#, UZ#)</TD><TD>Set camera orientation for scene</TD><TD NOWRAP>6</TD></TR>
+  <TR><TD VALIGN=TOP>SetRenderMode</TD><TD>SUB (M AS INTEGER)</TD><TD>Set render mode for scene</TD><TD NOWRAP>1</TD></TR>
+  <TR><TD VALIGN=TOP>SetTextureQuality</TD><TD>SUB (Quality AS INTEGER)</TD><TD>Set texture quality for scene</TD><TD NOWRAP>1</TD></TR>
+</TABLE>
+<br>
+
+<a name="3">
+<FONT SIZE = +1><B>QDXScreen Events</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Event</B></TD><TD><B>Type</B></TD><TD><B>Occurs when...</B></TD><TD><B>Params</B></TD>
+  </TR>
+   <TR><TD>OnClick</TD><TD>VOID</TD><TD>Mouse button clicked</TD><TD>0</TD></TR>
+  <TR><TD>OnDblClick</TD><TD>VOID</TD><TD>Mouse button double clicked</TD><TD>0</TD></TR>
+  <TR><TD>OnInitialize</TD><TD>VOID</TD><TD>DirectX succeeds in initializing</TD><TD>0</TD></TR>
+  <TR><TD>OnInitializeSurface</TD><TD>VOID</TD><TD>Another event for you to do initializing</TD><TD>0</TD></TR>
+  <TR><TD>OnKeyDown</TD><TD NOWRAP>SUB (Key AS Word, Shift AS INTEGER)</TD><TD NOWRAP>Key held down</TD><TD>2</TD></TR>
+  <TR><TD>OnKeyPress</TD><TD>SUB (Key AS BYTE)</TD><TD>User presses a key</TD><TD>1</TD></TR>
+  <TR><TD>OnMouseDown</TD><TD NOWRAP>SUB (Button%, X%, Y%)</TD><TD NOWRAP>Mouse button held down</TD><TD>3</TD></TR>
+  <TR><TD>OnMouseMove</TD><TD NOWRAP>SUB (X%, Y%)</TD><TD NOWRAP>Mouse moves</TD><TD>2</TD></TR>
+  <TR><TD>OnMouseUp</TD><TD NOWRAP>SUB (Button%, X%, Y%)</TD><TD NOWRAP>Mouse button is released</TD><TD>3</TD></TR>
+</TABLE>
+<BR><BR>
+
+<a name="4">
+<FONT SIZE = +1><B>QDXScreen Examples</B></FONT>
+
+<PRE>
+$APPTYPE GUI
+$TYPECHECK ON
+$INCLUDE "RAPIDQ.INC"
+
+DIM Form AS QForm
+    Form.ClientHeight = 480
+    Form.ClientWidth = 640
+DIM Screen AS QDXScreen
+
+Screen.Parent = Form
+Screen.Init(640, 480)
+Screen.Align = alClient
+
+Form.ShowModal
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qdximagelist.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qdxsound.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                      Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</BODY>
+</HTML>                         

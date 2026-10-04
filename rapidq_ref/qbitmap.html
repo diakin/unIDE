@@ -1,0 +1,173 @@
+<HTML>
+<HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+<TITLE>: QBITMAP</TITLE>
+</HEAD><!------------------->
+
+<!------------------->
+
+<!------------------->
+
+<BODY bgcolor="#dodoco" FONT FACE="Arial, Helvetica">
+
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><FONT FACE="Arial, Helvetica">Rapid-Q Documentation by William Yu (c)1999</FONT></TD>
+   <TD ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QBITMAP</B></FONT></TD>
+  </TR>
+  </TABLE>
+
+<BR>
+<H1>QBITMAP Component</H1>
+<DD>QBitmap is a non-visible component, used to store/retrieve BMP images.
+<BR><BR>
+
+<a name="1">
+<FONT SIZE = +1><B>QBitmap Properties</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Field</B></TD><TD><B>Type</B></TD><TD><B>R/W</B></TD><TD><B>Default</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee"><TD><b>BMP</b></TD><TD>STRING</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd">Use BMP to assign a new bitmap file, or to store BMP in the image cache.<br>
+                             <b><u>Examples</u></b>:<br>
+                             <blockquote><font face="courier" size="2">
+                             DIM Bitmap AS QBITMAP<br>
+                             Bitmap.BMP = "whatever.bmp"
+                             </font></blockquote>
+                             </TD></TR>
+  <TR bgcolor="eeeeee"><TD>BMPHandle</TD><TD>RESOURCE</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>CopyMode</TD><TD>INTEGER</TD><TD>RW</TD><TD>cmBlackness<p>
+    CONST cmBlackness = 0 ' Fill Destination rectange on the canvas with black<br>
+    CONST cmDstInvert = 1<br>
+    CONST cmMergeCopy = 2<br>
+    CONST cmMergePaint = 3<br>
+    CONST cmNotSrcCopy = 4<br>
+    CONST cmNotSrcErase = 5<br>
+    CONST cmPatCopy = 6<br>
+    CONST cmPatInvert = 7<br>
+    CONST cmPatPaint = 8<br>
+    CONST cmSrcAnd = 9<br>
+    CONST cmSrcCopy = 10 ' Copies source image to the canvas<br>
+    CONST cmSrcErase = 11<br>
+    CONST cmSrcInvert = 12<br>
+    CONST cmSrcPaint = 13<br>
+    CONST cmWhiteness = 14 ' Fill Destination rectange on the canvas with white<br>
+&nbsp;</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Empty</TD><TD>INTEGER</TD><TD>R</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Font</TD><TD>QFONT</TD><TD>W</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Handle</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Height</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Monochrome</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Pixel</TD><TD>2D ARRAY of INTEGER</TD><TD>RW</TD><TD></TD><TD>WG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>PixelFormat</TD><TD>INTEGER</TD><TD>RW</TD><TD>pfDevice<br>
+    '-- QBITMAP Pixel Formats<br>
+    CONST pfDevice = 0<br>
+    CONST pf1bit = 1<br>
+    CONST pf4bit = 2<br>
+    CONST pf8bit = 3<br>
+    CONST pf15bit = 4<br>
+    CONST pf16bit = 5<br>
+    CONST pf24bit = 6<br>
+    CONST pf32bit = 7</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Top</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WG</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Transparent</TD><TD>INTEGER</TD><TD>RW</TD><TD>False</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>TransparentColor</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>TransparentMode</TD><TD>INTEGER</TD><TD>RW</TD><TD>0<br>
+    '-- QBITMAP TransparentMode<br>
+    CONST tmAuto = 0<br>
+    CONST tmFixed = 1</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee"><TD>Width</TD><TD>INTEGER</TD><TD>RW</TD><TD></TD><TD>WG</TD></TR>
+</TABLE>
+<br><br>
+
+<a name="2">
+<FONT SIZE = +1><B>QBitmap Methods</B></FONT>
+<TABLE WIDTH=100% cellspacing="0" cellpadding="4" border="1" bordercolor="#600000" style="border-collapse: collapse">
+
+
+  <TR>
+   <TD><B>Method</B></TD><TD><B>Type</B></TD><TD><B>Description</B></TD><TD><B>Params</B></TD><TD><B>Support</B></TD>
+  </TR>
+   <TR bgcolor="eeeeee" valign="top"><TD>Circle</TD><TD>SUB (x1%, y1%, x2%, y2%, c%, fill%)</TD><TD>Draw & Fill Circle</TD><TD NOWRAP>6</TD><TD>WG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD><b>CopyRect</b></TD><TD>SUB (D, Image, S)</TD><TD>D and S are QRECTs, Image can be a QImage, QCanvas, or QBitmap</TD><TD NOWRAP>3</TD><TD>W</TD></TR>
+  <TR><TD></TD><TD COLSPAN=4 bgcolor="ffdddd"><b><u>Example (copies QIMAGE to bitmap at 10,10)</u></b>:<br>
+                             <blockquote><font face="courier" size="2">
+                             DIM Destination AS QRECT<br>
+                             DIM Source AS QRECT<br>
+                             DIM Image AS QIMAGE<br>
+                             DIM Bitmap AS QBITMAP<br>
+                             Image.BMP = "whatever.bmp"<br><br>
+
+                             WITH Destination<br>
+                             .Top = 10<br>
+                             .Left = 10<br>
+                             .Right = .Left+Image.Width<br>
+                             .Bottom = .Top+Image.Height<br>
+                             END WITH<br>
+                             WITH Source<br>
+                             .Top = 0<br>
+                             .Left = 0<br>
+                             .Right = Image.Width<br>
+                             .Bottom = Image.Height<br>
+                             END WITH<br>
+                             Bitmap.CopyRect(Destination, Image, Source)<br>
+                             </pre></font></blockquote>
+                             </TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Draw</TD><TD>SUB (x%, y%, BMP)</TD><TD>Draw Bitmap on Canvas</TD><TD NOWRAP>3</TD><TD>WG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>FillRect</TD><TD>SUB (x1%, y1%, x2%, y2%, c%)</TD><TD>Draws & Fills a rectangle</TD><TD NOWRAP>5</TD><TD>WG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Line</TD><TD>SUB (x1%, y1%, x2%, y2%, c%)</TD><TD>Draws a line</TD><TD NOWRAP>5</TD><TD>WG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>LoadFromFile</TD><TD>SUB (FileName$)</TD><TD>Load BMP from a file</TD><TD NOWRAP>1</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>LoadFromStream</TD><TD>SUB (Stream)</TD><TD>Load BMP from a stream</TD><TD NOWRAP>1</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Paint</TD><TD>SUB (x%, y%, c%, borderc%)</TD><TD>Fill Region</TD><TD NOWRAP>4</TD><TD>WG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Pset</TD><TD>SUB (x%, y%, c%)</TD><TD>Pixel plot</TD><TD NOWRAP>3</TD><TD>WG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Rectangle</TD><TD>SUB (x1%, y1%, x2%, y2%, c%)</TD><TD>Draws a rectangle</TD><TD NOWRAP>5</TD><TD>WG</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>Rotate</TD><TD>SUB (xOrigin%, yOrigin%, Angle%)</TD><TD>Rotates entire bitmap at specified origin</TD><TD NOWRAP>3</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>RoundRect</TD><TD>SUB (x1%, y1%, x2%, y2%, x3%, y3%, c%)</TD><TD>Draws & Fills a rounded rectangle</TD><TD NOWRAP>7</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>SaveToFile</TD><TD>SUB (FileName$)</TD><TD>Save BMP to a file</TD><TD NOWRAP>1</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>SaveToStream</TD><TD>SUB (Stream)</TD><TD>Save BMP to a stream</TD><TD NOWRAP>1</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>StretchDraw</TD><TD>SUB (Rect AS QRECT, BMP)</TD><TD>Draw BMP and stretch to fit inside Rect</TD><TD NOWRAP>2</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>TextHeight</TD><TD>FUNCTION (Text$) AS WORD</TD><TD>Returns the height, in pixels, of Text$ string</TD><TD NOWRAP>1</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>TextWidth</TD><TD>FUNCTION (Text$) AS WORD</TD><TD>Returns the width, in pixels, of Text$ string</TD><TD NOWRAP>1</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>TextRect</TD><TD>SUB (Rect AS QRECT, x%, y%, S$, fc%, bc%)</TD><TD>Write text, and clip within region Rect</TD><TD NOWRAP>6</TD><TD>W</TD></TR>
+  <TR bgcolor="eeeeee" valign="top"><TD>TextOut</TD><TD>SUB (x%, y%, S$, fc%, bc%)</TD><TD>Writes text to image</TD><TD NOWRAP>5</TD><TD>WG</TD></TR>
+</TABLE>
+<BR><BR>
+
+
+<a name="4">
+<FONT SIZE = +1><B>QBitmap Examples</B></FONT>
+
+<PRE>DIM BitMap AS QBitMap
+
+BitMap.BMP = "close.bmp"
+
+CREATE Form AS QForm
+&nbsp; CREATE Image1 AS QImage
+&nbsp;&nbsp;&nbsp; Left = 100
+&nbsp;&nbsp;&nbsp; Draw 5, 5, BitMap.BMP
+&nbsp; END CREATE
+&nbsp; Center
+&nbsp; ShowModal
+END CREATE
+</PRE>
+
+<HR SIZE=1>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+  <TR>
+   <TD><A HREF="qclipboard.html">Prev Component</a></TD>
+   <TD ALIGN=CENTER><A HREF="contents.html">Contents</a></TD>
+   <TD ALIGN=RIGHT><A HREF="qbutton.html">Next Component</a></TD>
+  </TR>
+</TABLE>
+
+</a></BODY>
+</HTML>                      
+
+</BODY>
+</HTML>  
