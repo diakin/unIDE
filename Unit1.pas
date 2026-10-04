@@ -665,6 +665,7 @@ type
     mNewItem5: TMenuItem;
     mNewItem6: TMenuItem;
     FDsgMenu: TUiPopupMenu; // меню конструктора по правому щелчку
+    FDsgMenuRq: Boolean;    // меню открыл конструктор RapidQ (RqDsgContext)
     FDsgMenuGrp1: TMenuItem;
     FDsgMiUndo: TMenuItem;
     FDsgMenuGrp1Item1: TMenuItem;
@@ -1989,6 +1990,26 @@ type
                                    X, Y: Integer; AForeign: TClass): string;
     procedure DsgDblClick(const AName: string);
     procedure DsgContext(const AScreen: TPoint);
+    // Меню и клавиши конструктора RapidQ
+    procedure RqDsgSetLines(ALineFrom, ACount: Integer; const AText: string);
+    procedure RqDsgSetLineText(ALine: Integer; const AText: string);
+    procedure RqDsgSelNames(ANames: TStrings);
+    function  RqDsgFileActive: Boolean;
+    procedure RqDsgAfterEdit(const ASelect: string);
+    procedure RqDsgContext(const AScreen: TPoint);
+    procedure RqDsgKey(AKey: Word; ACtrl, AShift: Boolean);
+    procedure RqDsgMenuClick(Sender: TObject);
+    procedure RqDsgUndo;
+    function  RqDsgSelBlocks(ALines: TStrings; ANodes: TList;
+                             ABlocks: TStrings): Boolean;
+    procedure RqDsgCopyBlocks(ADelete: Boolean);
+    procedure RqDsgCopy;
+    procedure RqDsgCut;
+    procedure RqDsgDelete;
+    procedure RqDsgPaste;
+    procedure RqDsgOrder(AFront: Boolean);
+    procedure RqDsgRename;
+    procedure RqDsgCopyNames;
     procedure DsgPageChange(const APageCtl: string; AIndex: Integer);
     // Мастер меню: набор меню в форму; меню формы - шаблоном
     procedure DsgMenuWizard;
@@ -22596,6 +22617,8 @@ begin
     FRqDesigner.OnDblClick := RqDsgDblClick;
     FRqDesigner.OnMapClass := RqDsgMapClass;
     FRqDesigner.OnPlace := RqDsgPlace;
+    FRqDesigner.OnContext := RqDsgContext;
+    FRqDesigner.OnKey := RqDsgKey;
   end;
   FRqDsgFile := FCurrentFileName;
   FRqDsgForm := Root.Name;
@@ -29046,6 +29069,12 @@ var
 begin
   if FDesigner = nil then
     Exit;
+  // Меню общее с конструктором RapidQ: пункты, которые он прячет, - назад
+  FDsgMenuRq := False;
+  FDsgMiReplace.Visible := True;
+  FDsgMenuGrp3.Visible := True;
+  FDsgMiLiveSep.Visible := True;
+  FDsgMiLiveView.Visible := True;
 
   // Что доступно: выделен компонент (не сама форма и не из кода), есть
   // шаг отката, в буфере - текст объекта
@@ -29141,6 +29170,12 @@ end;
 
 procedure TForm1.DsgMenuClick(Sender: TObject);
 begin
+  // Меню открыл конструктор RapidQ - его команды
+  if FDsgMenuRq then
+  begin
+    RqDsgMenuClick(Sender);
+    Exit;
+  end;
   if Sender = FDsgMiUndo then
     DsgUndo
   else if Sender = FDsgMiCut then
@@ -42552,6 +42587,788 @@ begin
   // его, а не новый компонент
   if (FObjTree <> nil) and (FObjTree.Selected <> nil) then
     FObjRefreshNode := FObjTree.Selected.Data;
+end;
+
+// ---------------------------------------------------------------------------
+//  Меню конструктора RapidQ по правому щелчку - то же FDsgMenu, что у
+//  конструктора Delphi (чьё меню открыто - FDsgMenuRq), и те же клавиши в
+//  окне конструктора:
+//    Undo (Ctrl+Z)        - шаг назад правки текста (откат редактора);
+//    Cut, Copy (Ctrl+X, C) - блоки CREATE ... END CREATE выделенных -
+//                           в буфер обмена текстом;
+//    Paste (Ctrl+V)       - блоки из буфера - в выделенный контейнер
+//                           (выделен не контейнер - в его родителя, ничего
+//                           - в форму); имена, которые в файле уже есть,
+//                           - с первым свободным номером;
+//    Delete (Del)         - блоки CREATE выделенных (с детьми) из текста;
+//    Bring to Front, Send to Back - блок после всех / перед всеми блоками
+//                           детей родителя: в RapidQ созданный позже лежит
+//                           выше;
+//    Rename Component     - имя словом во всём файле, кроме строк в
+//                           кавычках и комментариев;
+//    Copy Component Names, Align - как у Delphi.
+//  Группа (Shift+щелчок) - Cut, Copy, Delete, Copy Component Names, Align.
+//  Сама форма не удаляется и не копируется. Блок правится, только если
+//  он занимает целые строки (CREATE в начале строки, END CREATE - один в
+//  своей); блок в одну строку - Format text сначала.
+// ---------------------------------------------------------------------------
+
+// Блок CREATE узла ANode - целые строки AFirst..ALast текста ALines
+function RqBlockLines(ALines: TStrings; ANode: TDfmNode;
+                      var AFirst, ALast: Integer): Boolean;
+var
+  Parts: TStringList;
+  Rest, Tail: string;
+begin
+  Result := False;
+  AFirst := ANode.CreateLine;
+  ALast := ANode.EndLine;
+  if (AFirst < 0) or (ALast <= AFirst) or (ALast >= ALines.Count) then
+    Exit;
+  Parts := TStringList.Create;
+  try
+    RapidQSplitStatements(ALines[AFirst], Parts);
+    if (Parts.Count <> 1) or (RapidQFirstWord(Parts[0], Rest) <> 'CREATE') then
+      Exit;
+    RapidQSplitStatements(ALines[ALast], Parts);
+    if (Parts.Count <> 1) or (RapidQFirstWord(Parts[0], Rest) <> 'END') or
+       (RapidQFirstWord(Rest, Tail) <> 'CREATE') then
+      Exit;
+  finally
+    Parts.Free;
+  end;
+  Result := True;
+end;
+
+// Имя AOld словом в строке ALine - на ANew; в строках в кавычках и в
+// комментарии после ' не меняется. ACount - сколько замен прибавилось.
+function RqRenameInLine(const ALine, AOld, ANew: string;
+                        var ACount: Integer): string;
+const
+  IdentChars = ['A'..'Z', 'a'..'z', '0'..'9', '_', '$', '%', '&', '!', '#'];
+var
+  CharIdx, OldLen: Integer;
+  InQuote: Boolean;
+begin
+  Result := '';
+  OldLen := Length(AOld);
+  InQuote := False;
+  CharIdx := 1;
+  while CharIdx <= Length(ALine) do
+  begin
+    if ALine[CharIdx] = '"' then
+      InQuote := not InQuote
+    else if not InQuote and (ALine[CharIdx] = '''') then
+    begin
+      Result := Result + Copy(ALine, CharIdx, MaxInt);
+      Exit;
+    end
+    else if not InQuote and
+            ((CharIdx = 1) or not (ALine[CharIdx - 1] in IdentChars + ['.'])) and
+            (CompareText(Copy(ALine, CharIdx, OldLen), AOld) = 0) and
+            ((CharIdx + OldLen > Length(ALine)) or
+             not (ALine[CharIdx + OldLen] in IdentChars)) then
+    begin
+      Result := Result + ANew;
+      Inc(CharIdx, OldLen);
+      Inc(ACount);
+      Continue;
+    end;
+    Result := Result + ALine[CharIdx];
+    Inc(CharIdx);
+  end;
+end;
+
+// Строки ALineFrom..ALineFrom+ACount-1 редактора - на AText (с переводами
+// строк; '' - убрать строки). ACount = 0 - вставить перед строкой.
+procedure TForm1.RqDsgSetLines(ALineFrom, ACount: Integer; const AText: string);
+var
+  StartPos, EndPos, LineTotal: Integer;
+begin
+  LineTotal := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+  StartPos := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, ALineFrom, 0);
+  if StartPos < 0 then
+    Exit;
+  if ALineFrom + ACount < LineTotal then
+    EndPos := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, ALineFrom + ACount, 0)
+  else
+  begin
+    EndPos := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LineTotal - 1, 0);
+    EndPos := EndPos + SendMessageA(RichEdit1.Handle, EM_LINELENGTH, EndPos, 0);
+  end;
+  Inc(FObjOwnWrite);
+  try
+    EditorFreeze;
+    try
+      RichEdit1.SelStart := StartPos;
+      RichEdit1.SelLength := EndPos - StartPos;
+      RichEdit1.SelText := AText;
+    finally
+      EditorThaw;
+    end;
+  finally
+    Dec(FObjOwnWrite);
+  end;
+  RichEdit1.Modified := True;
+end;
+
+// Выделенные в конструкторе (группа или один), без самой формы
+procedure TForm1.RqDsgSelNames(ANames: TStrings);
+var
+  NameIdx: Integer;
+begin
+  ANames.Clear;
+  if FRqDesigner = nil then
+    Exit;
+  FRqDesigner.GroupNames(ANames);
+  for NameIdx := ANames.Count - 1 downto 0 do
+    if CompareText(ANames[NameIdx], FRqDsgForm) = 0 then
+      ANames.Delete(NameIdx);
+end;
+
+// Файл конструктора - активной вкладкой; False - его нет среди открытых
+function TForm1.RqDsgFileActive: Boolean;
+var
+  WinIdx: Integer;
+begin
+  Result := True;
+  if CompareText(FCurrentFileName, FRqDsgFile) = 0 then
+    Exit;
+  WinIdx := WindowOfFile(FRqDsgFile);
+  Result := WinIdx >= 0;
+  if Result then
+    ActivateWindow(WinIdx);
+end;
+
+// После правки: дерево и форма - по новому тексту, выделен ASelect
+procedure TForm1.RqDsgAfterEdit(const ASelect: string);
+begin
+  ObjScheduleRelines(RqDsgNodeByName(FRqDsgForm), '');
+  FObjRefreshName := ASelect;
+  FObjRefreshProp := '';
+  if (FObjTree <> nil) and (FObjTree.Selected <> nil) then
+    FObjRefreshNode := FObjTree.Selected.Data;
+end;
+
+procedure TForm1.RqDsgContext(const AScreen: TPoint);
+var
+  Names: TStringList;
+  HasSel, CanPaste: Boolean;
+begin
+  if FRqDesigner = nil then
+    Exit;
+  FDsgMenuRq := True;
+  Names := TStringList.Create;
+  try
+    RqDsgSelNames(Names);
+    HasSel := Names.Count > 0;
+  finally
+    Names.Free;
+  end;
+  CanPaste := Clipboard.HasFormat(CF_TEXT) and
+              (CompareText(Copy(TrimLeft(Clipboard.AsText), 1, 7), 'CREATE ') = 0);
+  FDsgMiUndo.Enabled := RichEdit1.HandleAllocated and
+    (SendMessageA(RichEdit1.Handle, EM_CANUNDO, 0, 0) <> 0);
+  FDsgMiCut.Enabled := HasSel;
+  FDsgMiCopy.Enabled := HasSel;
+  FDsgMiPaste.Enabled := CanPaste;
+  FDsgMiDelete.Enabled := HasSel;
+  FDsgMiFront.Enabled := HasSel and (FRqDesigner.GroupCount < 2);
+  FDsgMiBack.Enabled := FDsgMiFront.Enabled;
+  FDsgMiRename.Enabled := FDsgMiFront.Enabled;
+  FDsgMiCopyNames.Enabled := HasSel;
+  DsgAlignMenuExtra;
+  FDsgMenuGrpAlign.Enabled := FRqDesigner.GroupCount > 1;
+  // Только у Delphi: замена класса, меню формы, вид по .dfm
+  FDsgMiReplace.Visible := False;
+  FDsgMenuGrp3.Visible := False;
+  FDsgMiLiveSep.Visible := False;
+  FDsgMiLiveView.Visible := False;
+  FDsgMenu.Popup(AScreen.X, AScreen.Y);
+end;
+
+procedure TForm1.RqDsgKey(AKey: Word; ACtrl, AShift: Boolean);
+begin
+  if (AKey = VK_DELETE) and not ACtrl and not AShift then
+  begin
+    RqDsgDelete;
+    Exit;
+  end;
+  if not ACtrl or AShift then
+    Exit;
+  case AKey of
+    Ord('Z'): RqDsgUndo;
+    Ord('C'): RqDsgCopy;
+    Ord('X'): RqDsgCut;
+    Ord('V'): RqDsgPaste;
+  end;
+end;
+
+procedure TForm1.RqDsgMenuClick(Sender: TObject);
+begin
+  if Sender = FDsgMiUndo then
+    RqDsgUndo
+  else if Sender = FDsgMiCut then
+    RqDsgCut
+  else if Sender = FDsgMiCopy then
+    RqDsgCopy
+  else if Sender = FDsgMiPaste then
+    RqDsgPaste
+  else if Sender = FDsgMiDelete then
+    RqDsgDelete
+  else if Sender = FDsgMiFront then
+    RqDsgOrder(True)
+  else if Sender = FDsgMiBack then
+    RqDsgOrder(False)
+  else if Sender = FDsgMiRename then
+    RqDsgRename
+  else if Sender = FDsgMiCopyNames then
+    RqDsgCopyNames
+  else if FRqDesigner = nil then
+    Exit
+  else if Sender = FDsgMiAlignLeft then
+    FRqDesigner.AlignGroup(0)
+  else if Sender = FDsgMiAlignRight then
+    FRqDesigner.AlignGroup(1)
+  else if Sender = FDsgMiAlignTop then
+    FRqDesigner.AlignGroup(2)
+  else if Sender = FDsgMiAlignBottom then
+    FRqDesigner.AlignGroup(3)
+  else if Sender = FDsgMiAlignWidth then
+    FRqDesigner.AlignGroup(4)
+  else if Sender = FDsgMiAlignHeight then
+    FRqDesigner.AlignGroup(5)
+  else if Sender = FDsgMiSpaceH then
+    FRqDesigner.AlignGroup(6)
+  else if Sender = FDsgMiSpaceV then
+    FRqDesigner.AlignGroup(7);
+end;
+
+// Шаг назад: откат редактора (правки конструктора - правки текста)
+procedure TForm1.RqDsgUndo;
+begin
+  if not RqDsgFileActive or
+     (SendMessageA(RichEdit1.Handle, EM_CANUNDO, 0, 0) = 0) then
+    Exit;
+  ObjCancelEdit;
+  SendMessageA(RichEdit1.Handle, EM_UNDO, 0, 0);
+  RqDsgAfterEdit(FRqDsgForm);
+end;
+
+// Блоки выделенных: строки (Objects - номер первой, по возрастанию) и
+// диапазоны; вложенный в другой выделенный не берётся. False - какой-то
+// блок не в целых строках (сообщение уже показано).
+function TForm1.RqDsgSelBlocks(ALines: TStrings; ANodes: TList;
+                               ABlocks: TStrings): Boolean;
+var
+  Names: TStringList;
+  NameIdx, NodeIdx, FirstLine, LastLine, BlockIdx, OtherFirst,
+    OtherLast: Integer;
+  Node: TDfmNode;
+  Inside: Boolean;
+begin
+  Result := False;
+  ABlocks.Clear;
+  Names := TStringList.Create;
+  try
+    RqDsgSelNames(Names);
+    for NameIdx := 0 to Names.Count - 1 do
+    begin
+      Node := nil;
+      for NodeIdx := 0 to ANodes.Count - 1 do
+        if CompareText(TDfmNode(ANodes[NodeIdx]).Name, Names[NameIdx]) = 0 then
+        begin
+          Node := TDfmNode(ANodes[NodeIdx]);
+          Break;
+        end;
+      if Node = nil then
+        Continue;
+      if not RqBlockLines(ALines, Node, FirstLine, LastLine) then
+      begin
+        ShowMessage('Блок CREATE ' + Node.Name + ' (строка ' +
+                    IntToStr(Node.CreateLine + 1) + ') не занимает целые ' +
+                    'строки - сначала Format text.');
+        Exit;
+      end;
+      ABlocks.AddObject(Format('%.8d %.8d', [FirstLine, LastLine]),
+                        TObject(FirstLine));
+    end;
+  finally
+    Names.Free;
+  end;
+  ABlocks.Sort;
+  // Вложенные в другой выделенный - уже в его блоке
+  for BlockIdx := ABlocks.Count - 1 downto 0 do
+  begin
+    FirstLine := StrToInt(Copy(ABlocks[BlockIdx], 1, 8));
+    LastLine := StrToInt(Copy(ABlocks[BlockIdx], 10, 8));
+    Inside := False;
+    for NodeIdx := 0 to ABlocks.Count - 1 do
+      if NodeIdx <> BlockIdx then
+      begin
+        OtherFirst := StrToInt(Copy(ABlocks[NodeIdx], 1, 8));
+        OtherLast := StrToInt(Copy(ABlocks[NodeIdx], 10, 8));
+        if (OtherFirst <= FirstLine) and (OtherLast >= LastLine) then
+          Inside := True;
+      end;
+    if Inside then
+      ABlocks.Delete(BlockIdx);
+  end;
+  Result := ABlocks.Count > 0;
+end;
+
+procedure TForm1.RqDsgCopyBlocks(ADelete: Boolean);
+var
+  Lines, Blocks: TStringList;
+  Nodes, Roots: TList;
+  BlockIdx, NodeIdx, FirstLine, LastLine, LineIdx: Integer;
+  ClipText, ParentName: string;
+  Node: TDfmNode;
+begin
+  if (FRqDesigner = nil) or not RqDsgFileActive then
+    Exit;
+  Lines := TStringList.Create;
+  Blocks := TStringList.Create;
+  Nodes := TList.Create;
+  Roots := TList.Create;
+  try
+    Lines.Text := GetEditorTextCR;
+    RapidQCreateNodes(Lines, Nodes, Roots);
+    if not RqDsgSelBlocks(Lines, Nodes, Blocks) then
+      Exit;
+    ClipText := '';
+    for BlockIdx := 0 to Blocks.Count - 1 do
+    begin
+      FirstLine := StrToInt(Copy(Blocks[BlockIdx], 1, 8));
+      LastLine := StrToInt(Copy(Blocks[BlockIdx], 10, 8));
+      for LineIdx := FirstLine to LastLine do
+        ClipText := ClipText + Lines[LineIdx] + #13#10;
+    end;
+    Clipboard.AsText := ClipText;
+    if not ADelete then
+    begin
+      LogComp('Конструктор RapidQ: в буфер обмена - блоков ' +
+              IntToStr(Blocks.Count));
+      Exit;
+    end;
+    // Родитель первого - выделить после удаления
+    ParentName := FRqDsgForm;
+    for NodeIdx := 0 to Nodes.Count - 1 do
+    begin
+      Node := TDfmNode(Nodes[NodeIdx]);
+      if (Node.CreateLine = Integer(Blocks.Objects[0])) and
+         (Node.Parent <> nil) then
+        ParentName := Node.Parent.Name;
+    end;
+    ObjCancelEdit;
+    // С конца: строки выше не сдвигаются
+    for BlockIdx := Blocks.Count - 1 downto 0 do
+    begin
+      FirstLine := StrToInt(Copy(Blocks[BlockIdx], 1, 8));
+      LastLine := StrToInt(Copy(Blocks[BlockIdx], 10, 8));
+      RqDsgSetLines(FirstLine, LastLine - FirstLine + 1, '');
+    end;
+    LogComp('Конструктор RapidQ: удалено блоков CREATE - ' +
+            IntToStr(Blocks.Count));
+  finally
+    for NodeIdx := 0 to Nodes.Count - 1 do
+      TObject(Nodes[NodeIdx]).Free;
+    Roots.Free;
+    Nodes.Free;
+    Blocks.Free;
+    Lines.Free;
+  end;
+  if ADelete then
+    RqDsgAfterEdit(ParentName);
+end;
+
+procedure TForm1.RqDsgCopy;
+begin
+  RqDsgCopyBlocks(False);
+end;
+
+procedure TForm1.RqDsgCut;
+begin
+  RqDsgCopyBlocks(True);
+end;
+
+procedure TForm1.RqDsgDelete;
+var
+  Names: TStringList;
+  Saved: string;
+begin
+  Names := TStringList.Create;
+  try
+    RqDsgSelNames(Names);
+    if Names.Count = 0 then
+      Exit;
+  finally
+    Names.Free;
+  end;
+  // Удаление - вырезание без буфера: буфер обмена остаётся прежним
+  Saved := '';
+  if Clipboard.HasFormat(CF_TEXT) then
+    Saved := Clipboard.AsText;
+  RqDsgCopyBlocks(True);
+  if Saved <> '' then
+    Clipboard.AsText := Saved;
+end;
+
+procedure TForm1.RqDsgPaste;
+var
+  Lines, Paste, Used: TStringList;
+  Nodes, Roots, PasteNodes, PasteRoots: TList;
+  Names: TStringList;
+  Target, Node: TDfmNode;
+  NodeIdx, LineIdx, MinIndent, IndentLen, Num, Renamed: Integer;
+  TextLow, OldName, BaseName, NewName, OwnIndent, ChildIndent, LineText,
+    BlockText, FirstName: string;
+
+  function IndentOf(const AText: string): string;
+  var
+    CharIdx: Integer;
+  begin
+    CharIdx := 1;
+    while (CharIdx <= Length(AText)) and (AText[CharIdx] in [' ', #9]) do
+      Inc(CharIdx);
+    Result := Copy(AText, 1, CharIdx - 1);
+  end;
+
+  function NodeNamed(AList: TList; const AName: string): TDfmNode;
+  var
+    Idx: Integer;
+  begin
+    Result := nil;
+    for Idx := 0 to AList.Count - 1 do
+      if CompareText(TDfmNode(AList[Idx]).Name, AName) = 0 then
+      begin
+        Result := TDfmNode(AList[Idx]);
+        Exit;
+      end;
+  end;
+
+begin
+  if (FRqDesigner = nil) or not Clipboard.HasFormat(CF_TEXT) or
+     not RqDsgFileActive then
+    Exit;
+  Lines := TStringList.Create;
+  Paste := TStringList.Create;
+  Used := TStringList.Create;
+  Names := TStringList.Create;
+  Nodes := TList.Create;
+  Roots := TList.Create;
+  PasteNodes := TList.Create;
+  PasteRoots := TList.Create;
+  try
+    Paste.Text := Clipboard.AsText;
+    while (Paste.Count > 0) and (Trim(Paste[Paste.Count - 1]) = '') do
+      Paste.Delete(Paste.Count - 1);
+    if (Paste.Count = 0) or
+       (CompareText(Copy(TrimLeft(Paste[0]), 1, 7), 'CREATE ') <> 0) then
+      Exit;
+    Lines.Text := GetEditorTextCR;
+    RapidQCreateNodes(Lines, Nodes, Roots);
+    RapidQCreateNodes(Paste, PasteNodes, PasteRoots);
+    if PasteNodes.Count = 0 then
+      Exit;
+
+    // Куда: выделенный контейнер, иначе его родитель, иначе форма
+    RqDsgSelNames(Names);
+    Target := nil;
+    if Names.Count = 1 then
+    begin
+      Node := NodeNamed(Nodes, Names[0]);
+      if Node <> nil then
+        if RqDsgIsContainer(RqDsgKindOf(Node.ClassNm)) then
+          Target := Node
+        else
+          Target := Node.Parent;
+    end;
+    if Target = nil then
+      Target := NodeNamed(Nodes, FRqDsgForm);
+    if (Target = nil) or (Target.CreateLine < 0) or
+       (Target.EndLine <= Target.CreateLine) then
+    begin
+      ShowMessage('Блок CREATE, куда вставлять, записан в одну строку или ' +
+                  'не закрыт - сначала Format text.');
+      Exit;
+    end;
+
+    // Имена, которые в файле уже есть, - основа и первый свободный номер
+    TextLow := LowerCase(Lines.Text);
+    Renamed := 0;
+    FirstName := '';
+    for NodeIdx := 0 to PasteNodes.Count - 1 do
+    begin
+      OldName := TDfmNode(PasteNodes[NodeIdx]).Name;
+      if (OldName = '') or not RqDsgNameOk(OldName) then
+        Continue;
+      NewName := OldName;
+      if HasWordLow(TextLow, LowerCase(OldName)) or
+         (Used.IndexOf(OldName) >= 0) then
+      begin
+        BaseName := OldName;
+        while (BaseName <> '') and (BaseName[Length(BaseName)] in ['0'..'9']) do
+          System.Delete(BaseName, Length(BaseName), 1);
+        if BaseName = '' then
+          BaseName := OldName;
+        Num := 1;
+        while HasWordLow(TextLow, LowerCase(BaseName + IntToStr(Num))) or
+              (Used.IndexOf(BaseName + IntToStr(Num)) >= 0) do
+          Inc(Num);
+        NewName := BaseName + IntToStr(Num);
+        for LineIdx := 0 to Paste.Count - 1 do
+          Paste[LineIdx] := RqRenameInLine(Paste[LineIdx], OldName, NewName,
+                                           Renamed);
+      end;
+      Used.Add(NewName);
+      if FirstName = '' then
+        FirstName := NewName;
+    end;
+
+    // Отступ: как у детей блока-цели
+    OwnIndent := IndentOf(Lines[Target.CreateLine]);
+    ChildIndent := '';
+    for LineIdx := Target.CreateLine + 1 to Target.EndLine - 1 do
+      if Trim(Lines[LineIdx]) <> '' then
+      begin
+        LineText := IndentOf(Lines[LineIdx]);
+        if Length(LineText) > Length(OwnIndent) then
+          ChildIndent := LineText;
+        Break;
+      end;
+    if ChildIndent = '' then
+      if (Pos(#9, OwnIndent) > 0) or (OwnIndent = '') then
+        ChildIndent := OwnIndent + #9
+      else
+        ChildIndent := OwnIndent + '  ';
+    MinIndent := MaxInt;
+    for LineIdx := 0 to Paste.Count - 1 do
+      if Trim(Paste[LineIdx]) <> '' then
+      begin
+        IndentLen := Length(IndentOf(Paste[LineIdx]));
+        if IndentLen < MinIndent then
+          MinIndent := IndentLen;
+      end;
+    if MinIndent = MaxInt then
+      MinIndent := 0;
+    BlockText := '';
+    for LineIdx := 0 to Paste.Count - 1 do
+      if Trim(Paste[LineIdx]) = '' then
+        BlockText := BlockText + #13#10
+      else
+        BlockText := BlockText + ChildIndent +
+                     Copy(Paste[LineIdx], MinIndent + 1, MaxInt) + #13#10;
+    ObjCancelEdit;
+    RqDsgSetLines(Target.EndLine, 0, BlockText);
+    LogComp('Конструктор RapidQ: вставлено в блок ' + Target.Name +
+            ' (строка ' + IntToStr(Target.EndLine + 1) + '): ' +
+            IntToStr(PasteNodes.Count) + ' CREATE; переименований - ' +
+            IntToStr(Renamed));
+  finally
+    for NodeIdx := 0 to Nodes.Count - 1 do
+      TObject(Nodes[NodeIdx]).Free;
+    for NodeIdx := 0 to PasteNodes.Count - 1 do
+      TObject(PasteNodes[NodeIdx]).Free;
+    PasteRoots.Free;
+    PasteNodes.Free;
+    Roots.Free;
+    Nodes.Free;
+    Names.Free;
+    Used.Free;
+    Paste.Free;
+    Lines.Free;
+  end;
+  if FirstName <> '' then
+    RqDsgAfterEdit(FirstName);
+end;
+
+// Блок выделенного - после всех (AFront) или перед всеми блоками детей
+// своего родителя, внутри его блока
+procedure TForm1.RqDsgOrder(AFront: Boolean);
+var
+  Lines, Names: TStringList;
+  Nodes, Roots: TList;
+  Node, Sibling, ParentNode: TDfmNode;
+  NodeIdx, FirstLine, LastLine, SibFirst, SibLast, InsAt, LineIdx,
+    MinSib, MaxSib: Integer;
+  BlockText, SelName: string;
+begin
+  if (FRqDesigner = nil) or not RqDsgFileActive then
+    Exit;
+  Lines := TStringList.Create;
+  Names := TStringList.Create;
+  Nodes := TList.Create;
+  Roots := TList.Create;
+  try
+    RqDsgSelNames(Names);
+    if Names.Count <> 1 then
+      Exit;
+    SelName := Names[0];
+    Lines.Text := GetEditorTextCR;
+    RapidQCreateNodes(Lines, Nodes, Roots);
+    Node := nil;
+    for NodeIdx := 0 to Nodes.Count - 1 do
+      if CompareText(TDfmNode(Nodes[NodeIdx]).Name, Names[0]) = 0 then
+        Node := TDfmNode(Nodes[NodeIdx]);
+    if Node = nil then
+      Exit;
+    ParentNode := Node.Parent;
+    if (ParentNode = nil) or not RqBlockLines(Lines, Node, FirstLine, LastLine) or
+       (FirstLine < ParentNode.CreateLine) or (LastLine > ParentNode.EndLine) then
+    begin
+      ShowMessage(Node.Name + ': блок CREATE не внутри блока родителя (родитель ' +
+                  'задан Parent = ...) или не в целых строках - порядок ' +
+                  'не меняется.');
+      Exit;
+    end;
+    // Соседи - дети родителя внутри его блока
+    MinSib := MaxInt;
+    MaxSib := -1;
+    for NodeIdx := 0 to ParentNode.Children.Count - 1 do
+    begin
+      Sibling := TDfmNode(ParentNode.Children[NodeIdx]);
+      if (Sibling = Node) or
+         not RqBlockLines(Lines, Sibling, SibFirst, SibLast) or
+         (SibFirst < ParentNode.CreateLine) or (SibLast > ParentNode.EndLine) then
+        Continue;
+      if SibFirst < MinSib then
+        MinSib := SibFirst;
+      if SibLast > MaxSib then
+        MaxSib := SibLast;
+    end;
+    if MaxSib < 0 then
+      Exit;
+    for LineIdx := FirstLine to LastLine do
+      BlockText := BlockText + Lines[LineIdx] + #13#10;
+    ObjCancelEdit;
+    if AFront then
+    begin
+      if FirstLine > MaxSib then
+        Exit;   // уже последний
+      InsAt := MaxSib + 1;
+      // Сначала вставка ниже, потом удаление выше: строки выше не сдвигаются
+      RqDsgSetLines(InsAt, 0, BlockText);
+      RqDsgSetLines(FirstLine, LastLine - FirstLine + 1, '');
+    end
+    else
+    begin
+      if FirstLine < MinSib then
+        Exit;   // уже первый
+      RqDsgSetLines(FirstLine, LastLine - FirstLine + 1, '');
+      RqDsgSetLines(MinSib, 0, BlockText);
+    end;
+    if AFront then
+      LogComp('Конструктор RapidQ: ' + Node.Name + ' - Bring to Front')
+    else
+      LogComp('Конструктор RapidQ: ' + Node.Name + ' - Send to Back');
+  finally
+    for NodeIdx := 0 to Nodes.Count - 1 do
+      TObject(Nodes[NodeIdx]).Free;
+    Roots.Free;
+    Nodes.Free;
+    Names.Free;
+    Lines.Free;
+  end;
+  RqDsgAfterEdit(SelName);
+end;
+
+procedure TForm1.RqDsgRename;
+var
+  Names, Lines: TStringList;
+  OldName, NewName, NewLine: string;
+  LineIdx, Count, LineCount: Integer;
+begin
+  if (FRqDesigner = nil) or not RqDsgFileActive then
+    Exit;
+  Names := TStringList.Create;
+  Lines := TStringList.Create;
+  try
+    RqDsgSelNames(Names);
+    if Names.Count <> 1 then
+      Exit;
+    OldName := Names[0];
+    NewName := OldName;
+    if not InputQuery('Rename Component', 'Новое имя ' + OldName + ':',
+                      NewName) then
+      Exit;
+    NewName := Trim(NewName);
+    if (NewName = '') or (CompareText(NewName, OldName) = 0) then
+      Exit;
+    Lines.Text := GetEditorTextCR;
+    if not RqDsgNameOk(NewName) or
+       HasWordLow(LowerCase(Lines.Text), LowerCase(NewName)) then
+    begin
+      ShowMessage(NewName + ': не идентификатор или такое слово в файле уже ' +
+                  'есть.');
+      Exit;
+    end;
+    ObjCancelEdit;
+    Count := 0;
+    LineCount := 0;
+    for LineIdx := 0 to Lines.Count - 1 do
+    begin
+      if Pos(UpperCase(OldName), UpperCase(Lines[LineIdx])) = 0 then
+        Continue;
+      NewLine := RqRenameInLine(Lines[LineIdx], OldName, NewName, Count);
+      if NewLine <> Lines[LineIdx] then
+      begin
+        // Строка без перевода: перевод остаётся
+        RqDsgSetLineText(LineIdx, NewLine);
+        Inc(LineCount);
+      end;
+    end;
+    LogComp('Конструктор RapidQ: ' + OldName + ' -> ' + NewName + ', замен ' +
+            IntToStr(Count) + ' в строках: ' + IntToStr(LineCount) +
+            ' (только этот файл)');
+  finally
+    Lines.Free;
+    Names.Free;
+  end;
+  if FRqDsgForm = OldName then
+    FRqDsgForm := NewName;
+  RqDsgAfterEdit(NewName);
+end;
+
+// Текст строки ALine редактора (без перевода строки) - на AText
+procedure TForm1.RqDsgSetLineText(ALine: Integer; const AText: string);
+var
+  LineStart, LineLen: Integer;
+begin
+  LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, ALine, 0);
+  if LineStart < 0 then
+    Exit;
+  LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+  Inc(FObjOwnWrite);
+  try
+    EditorFreeze;
+    try
+      RichEdit1.SelStart := LineStart;
+      RichEdit1.SelLength := LineLen;
+      RichEdit1.SelText := AText;
+    finally
+      EditorThaw;
+    end;
+  finally
+    Dec(FObjOwnWrite);
+  end;
+  RichEdit1.Modified := True;
+end;
+
+procedure TForm1.RqDsgCopyNames;
+var
+  Names: TStringList;
+begin
+  Names := TStringList.Create;
+  try
+    RqDsgSelNames(Names);
+    if Names.Count = 1 then
+      Clipboard.AsText := Names[0]
+    else if Names.Count > 1 then
+      Clipboard.AsText := Names.Text;
+  finally
+    Names.Free;
+  end;
 end;
 
 // New Form у файла RapidQ. Вопрос - куда:
