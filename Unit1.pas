@@ -1063,10 +1063,6 @@ type
     FRqDsgFile: string;      // файл с блоками CREATE этой формы
     FRqDsgForm: string;      // имя формы (узел QFORM)
     FRqDsgLastDfm: string;   // текст .dfm, по которому построена форма
-    // Выражения места и размера, которые конструктор сам подвинул
-    // (RqDsgSetProp): "Имя.Свойство=выражение#1значение" - до нового
-    // снимка значение берётся отсюда, а не из прежнего снимка
-    FRqDsgExprVal: TStringList;
     FRqDsgSelecting: Boolean; // выделение идёт из конструктора или в него
     FRqDsgOwnWrite: Boolean; // текст поменял сам конструктор - не перестраивать
     FRqPalPage: Integer;     // первая страница палитры RapidQ
@@ -1898,7 +1894,11 @@ type
     procedure RqDsgClose(Sender: TObject);
     procedure WMRqDsgClosed(var Msg: TMessage); message WM_USER + 322;
     function  RqDsgSetProp(const AName, AProp, AValue: string;
-                           AOnlyIfExists: Boolean): Boolean;
+                           AOnlyIfExists, AKeepExpr: Boolean): Boolean;
+    function  RqReplaceExprLine(ALineNo, ALineStart: Integer;
+                                const ACurLine: string;
+                                AValStart, AValLen: Integer;
+                                const AProp, ANewValue: string): Boolean;
     procedure RqDsgChange(const AName: string; AProps: TStrings);
     procedure RqNewForm;
     procedure DsgAddRapidQPages;
@@ -17318,7 +17318,6 @@ begin
   RapidQProbeClear;
   FreeAndNil(FRqProbeObjs);
   FreeAndNil(FRqProbeAges);
-  FreeAndNil(FRqDsgExprVal);
   Screen.OnActiveFormChange := nil;
   // Сами полосы принадлежат спискам и уходят с ними; здесь - только список
   FreeAndNil(FUiListScrolls);
@@ -21644,8 +21643,9 @@ end;
 procedure TForm1.RapidQApplyEdit;
 var
   Obj: TDfmNode;
-  EditText, NewText, CurLine, NewLine, LineIndent, EqText: string;
-  LineNo, LineStart, LineLen, ValStart, ValLen, InsAt: Integer;
+  EditText, NewText, CurLine, NewLine, LineIndent, EqText, OldSrc,
+    OldStr: string;
+  LineNo, LineStart, LineLen, ValStart, ValLen, InsAt, OldNum: Integer;
   Lines: TStringList;
 
   procedure TextChanged;
@@ -21698,6 +21698,21 @@ begin
          (Trim(Copy(CurLine, ValStart, ValLen)) <> Trim(FRqEditSrcOld)) then
       begin
         TextChanged;
+        Exit;
+      end;
+      // Было выражение - строка с ним остаётся комментарием, под ней -
+      // новое значение
+      OldSrc := Trim(FRqEditSrcOld);
+      if not RqDsgNumber(RapidQMemberOf(Obj, FObjEditName), OldSrc, OldNum) and
+         not RapidQUnquote(OldSrc, OldStr) then
+      begin
+        if not RqReplaceExprLine(LineNo, LineStart, CurLine, ValStart, ValLen,
+                                 FObjEditName, NewText) then
+        begin
+          TextChanged;
+          Exit;
+        end;
+        ObjScheduleRelines(Obj, FObjEditName);
         Exit;
       end;
       EditorFreeze;
@@ -21805,8 +21820,9 @@ end;
 //  Значение свойства для показа (RqDsgValue): число или строка в кавычках
 //  из блока CREATE; выражение там или свойства в блоке нет - значение из
 //  снимка; нет и снимка - значение по умолчанию из описания классов.
-//  Место и размер, которые в блоке заданы выражением, конструктор не
-//  меняет (MarkCodePlaced).
+//  Место и размер, которые в блоке заданы выражением, конструктор
+//  меняет так же, как числа: строка с выражением закомментируется, под ней
+//  пишется число (RqReplaceExprLine). Место формы - не трогается.
 //
 //  Связи:
 //    - щелчок по компоненту в конструкторе выделяет его узел в дереве
@@ -21993,8 +22009,6 @@ var
   Member: TRqMember;
   Live: TStringList;
   Chain: TList;
-  Over: string;
-  SepPos: Integer;
 begin
   ANode := TDfmNode(AObj);
   Result := '';
@@ -22019,22 +22033,6 @@ begin
         Exit;
       end;
       ACodeSet := True;
-      // Выражение, которое подвинул сам конструктор: его значение - то,
-      // что он поставил, а не прежний снимок
-      if FRqDsgExprVal <> nil then
-      begin
-        Over := FRqDsgExprVal.Values[ANode.Name + '.' + AProp];
-        SepPos := Pos(#1, Over);
-        if (SepPos > 0) and
-           (CompareText(StringReplace(Copy(Over, 1, SepPos - 1), ' ', '',
-                                      [rfReplaceAll]),
-                        StringReplace(Raw, ' ', '', [rfReplaceAll])) = 0) then
-        begin
-          Result := Copy(Over, SepPos + 1, MaxInt);
-          ASource := 2;
-          Exit;
-        end;
-      end;
       Break;
     end;
   Live := RapidQLiveProps(ANode.Name);
@@ -22195,11 +22193,8 @@ var
       // из описания класса
       if AOwnPlace and (BoundIdx < 2) and (Source = 3) then
         Num := Defaults[BoundIdx];
-      // Выражение запирает сторону, только если его значения не знаем
-      // (снимка нет): со снимком конструктор двигает и тянет, а
-      // RqDsgSetProp сдвигает выражение на разницу (RqAdjustExpr)
-      if CodeSet and (Source <> 2) then
-        Letters := Letters + BoundLetters[BoundIdx];
+      // Выражение сторону не запирает: тянут - RqDsgSetProp
+      // закомментирует строку с выражением и запишет под ней число
       // Ширина и высота 0 - окно не увидеть и не взять мышью. У классов
       // программы поле Width бывает своё (QToolBarEX: 0), а размер окна -
       // в ClientWidth / ClientHeight базового класса. Такой размер
@@ -22714,64 +22709,66 @@ begin
   FRqDsgLastDfm := '';
 end;
 
-// Выражение AExpr места или размера, сдвинутое на ADelta точек: число в
-// конце после + или - меняется ("DesignPan.ClientWidth-500", сдвиг 20 ->
-// "DesignPan.ClientWidth-480"; дошло до нуля - число убирается), иначе
-// число дописывается ("DesignPan.ClientHeight" -> "DesignPan.ClientHeight+20").
-// Число в конце берётся, только если перед знаком - не знак действия и
-// не скобка: у "A*-5" и "(A+5)" дописывается. Умножение и деление
-// сильнее + и -, поэтому число после последнего + или - - слагаемое всего
-// выражения.
-function RqAdjustExpr(const AExpr: string; ADelta: Integer): string;
+// Присваивание с выражением в строке LineNo (текст ACurLine, начало в
+// редакторе ALineStart, значение - ACurLine[AValStart..+AValLen]) - на
+// значение ANewValue, а прежнее остаётся строкой-комментарием над ней:
+//     'Width=DesignPan.ClientWidth-500
+//     Width=812
+// Комментарий - с тем же отступом, только сам оператор (другие операторы
+// строки через ":" и её комментарий остаются в строке с новым значением).
+// False - перед значением нет "AProp =".
+function TForm1.RqReplaceExprLine(ALineNo, ALineStart: Integer;
+                                  const ACurLine: string;
+                                  AValStart, AValLen: Integer;
+                                  const AProp, ANewValue: string): Boolean;
 var
-  DigitStart, SignPos, PrevPos, TailValue: Integer;
-  Base: string;
+  NamePos, NameStart, IndentEnd: Integer;
+  OldStmt, Indent: string;
 begin
-  Result := Trim(AExpr);
-  if ADelta = 0 then
+  Result := False;
+  NamePos := AValStart - 1;
+  while (NamePos >= 1) and (ACurLine[NamePos] in [' ', #9]) do
+    Dec(NamePos);
+  if (NamePos < 1) or (ACurLine[NamePos] <> '=') then
     Exit;
-  DigitStart := Length(Result) + 1;
-  while (DigitStart > 1) and (Result[DigitStart - 1] in ['0'..'9']) do
-    Dec(DigitStart);
-  if (DigitStart <= Length(Result)) and (Length(Result) - DigitStart < 9) then
-  begin
-    SignPos := DigitStart - 1;
-    while (SignPos >= 1) and (Result[SignPos] in [' ', #9]) do
-      Dec(SignPos);
-    PrevPos := SignPos - 1;
-    while (PrevPos >= 1) and (Result[PrevPos] in [' ', #9]) do
-      Dec(PrevPos);
-    if (SignPos > 1) and (Result[SignPos] in ['+', '-']) and
-       (PrevPos >= 1) and
-       not (Result[PrevPos] in ['*', '/', '\', '^', '(', ',', '+', '-', '=']) then
-    begin
-      TailValue := StrToInt(Copy(Result, DigitStart, MaxInt));
-      if Result[SignPos] = '-' then
-        TailValue := -TailValue;
-      TailValue := TailValue + ADelta;
-      Base := TrimRight(Copy(Result, 1, SignPos - 1));
-      if TailValue > 0 then
-        Result := Base + '+' + IntToStr(TailValue)
-      else if TailValue < 0 then
-        Result := Base + '-' + IntToStr(-TailValue)
-      else
-        Result := Base;
-      Exit;
-    end;
+  Dec(NamePos);
+  while (NamePos >= 1) and (ACurLine[NamePos] in [' ', #9]) do
+    Dec(NamePos);
+  NameStart := NamePos - Length(AProp) + 1;
+  if (NameStart < 1) or
+     (CompareText(Copy(ACurLine, NameStart, Length(AProp)), AProp) <> 0) then
+    Exit;
+  OldStmt := Copy(ACurLine, NameStart, AValStart + AValLen - NameStart);
+  IndentEnd := 1;
+  while (IndentEnd <= Length(ACurLine)) and
+        (ACurLine[IndentEnd] in [' ', #9]) do
+    Inc(IndentEnd);
+  Indent := Copy(ACurLine, 1, IndentEnd - 1);
+  EditorFreeze;
+  try
+    // Сначала значение (позиции в строке ещё прежние), потом строка над ней
+    RichEdit1.SelStart := ALineStart + AValStart - 1;
+    RichEdit1.SelLength := AValLen;
+    RichEdit1.SelText := ANewValue;
+    RichEdit1.SelStart := ALineStart;
+    RichEdit1.SelLength := 0;
+    RichEdit1.SelText := Indent + '''' + OldStmt + #13#10;
+  finally
+    EditorThaw;
   end;
-  if ADelta > 0 then
-    Result := Result + '+' + IntToStr(ADelta)
-  else
-    Result := Result + '-' + IntToStr(-ADelta);
+  LogComp('RapidQ: ' + AProp + ' - было выражение (строка ' +
+          IntToStr(ALineNo + 1) + ' закомментирована), записано ' + ANewValue);
+  Result := True;
 end;
 
 // Присваивание AProp = AValue в блоке CREATE объекта AName (открытый файл):
-// есть присваивание с числом - число заменяется; есть с выражением - оно
-// сдвигается на разницу (RqAdjustExpr), если его значение известно (снимок),
-// иначе не трогается; нет - добавляется (AOnlyIfExists - не добавляется). Номера
+// есть присваивание с числом - число заменяется; есть с выражением -
+// строка с ним закомментируется, под ней - число (RqReplaceExprLine), если
+// значение другое, чем показывал конструктор; AKeepExpr - выражение не
+// трогается; нет - добавляется (AOnlyIfExists - не добавляется). Номера
 // строк - по разбору текста сейчас: предыдущая запись могла их сдвинуть.
 function TForm1.RqDsgSetProp(const AName, AProp, AValue: string;
-                             AOnlyIfExists: Boolean): Boolean;
+                             AOnlyIfExists, AKeepExpr: Boolean): Boolean;
 var
   Lines: TStringList;
   Nodes, Roots: TList;
@@ -22823,18 +22820,23 @@ begin
         NewText := AValue
       else
       begin
-        // Выражение ("DesignPan.ClientWidth-500"): сдвинуть на разницу
-        // между новым значением и тем, что показывал конструктор (снимок
-        // или прежний сдвиг); значения нет - не трогать
-        if not TryStrToInt(AValue, NewNum) then
+        // Выражение ("DesignPan.ClientWidth-500")
+        if AKeepExpr then
           Exit;
-        ShownNum := RqDsgNum(Node, AProp, 0, Source, CodeSet);
-        if Source <> 2 then
-          Exit;
-        NewText := RqAdjustExpr(OldText, NewNum - ShownNum);
-        if FRqDsgExprVal = nil then
-          FRqDsgExprVal := TStringList.Create;
-        FRqDsgExprVal.Values[Node.Name + '.' + AProp] := NewText + #1 + AValue;
+        // Значение то же, что показывал конструктор (снимок), - не
+        // менялось: форму подвинули, а размер прислан вместе с местом
+        if TryStrToInt(AValue, NewNum) then
+        begin
+          ShownNum := RqDsgNum(Node, AProp, Low(Integer), Source, CodeSet);
+          if (Source <> 0) and (ShownNum = NewNum) then
+          begin
+            Result := True;
+            Exit;
+          end;
+        end;
+        Result := RqReplaceExprLine(LineNo, LineStart, CurLine, ValStart,
+                                    ValLen, AProp, AValue);
+        Exit;
       end;
       if OldText = NewText then
       begin
@@ -22944,7 +22946,12 @@ begin
       // только туда, где оно уже задано
       if CompareText(AName, FRqDsgForm) = 0 then
         OnlyIfExists := True;
-      if RqDsgSetProp(AName, Prop, Value, OnlyIfExists) then
+      // Окно конструктора подвинули - выражение места формы
+      // ((Screen.Width-Width)\2) остаётся
+      if RqDsgSetProp(AName, Prop, Value, OnlyIfExists,
+                      (CompareText(AName, FRqDsgForm) = 0) and
+                      ((CompareText(Prop, 'Left') = 0) or
+                       (CompareText(Prop, 'Top') = 0))) then
         Written := Written + ' ' + Prop + '=' + Value;
     end;
   finally
@@ -40758,9 +40765,6 @@ begin
   if FRqProbeAges = nil then
     FRqProbeAges := TStringList.Create;
   RapidQSnapAges(MainBas, FRqProbeAges);
-  // Снимок свежий - подвинутые конструктором выражения в нём уже посчитаны
-  if FRqDsgExprVal <> nil then
-    FRqDsgExprVal.Clear;
   if Complete then
     LogComp(Format('Снимок RapidQ: значения %d объектов', [FRqProbeObjs.Count]))
   else
