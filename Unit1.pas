@@ -3554,7 +3554,7 @@ begin
     Result := 'Конструктор форм: уголки группы (Shift+щелчок)'
   else if AKey = 'Dsg.Foreign' then
     Result := 'Конструктор форм: рамка стороннего компонента, показанного ' +
-              'аналогом'
+    'аналогом'
   else if AKey = 'Gutter.CurBG' then
     Result := 'Полоса номеров: фон текущей строки'
   else if AKey = 'Gutter.CurText' then
@@ -3786,7 +3786,7 @@ begin
      (OwnLiveForm(FObjFormClass) <> nil) then
     DsgRetheme;
   Dbg('3091: тема: UiApply ' + IntToStr(GetTickCount - StartTick) +
-      ' мс (окна ' + IntToStr(FormsTick) + ', элементы темы ' +
+  ' мс (окна ' + IntToStr(FormsTick) + ', элементы темы ' +
       IntToStr(ThemeTick) + '; тёмных значков построено ' +
       IntToStr(FUiGlyphBuilt - GlyphsBefore) + ')', clGray);
 end;
@@ -3952,8 +3952,8 @@ var
               Ring[AY * BmpW + AX];
   end;
 
-  // Точка (AX, AY) - вторая линия полосы в две точки: снаружи (в сторону
-  // ADX, ADY) - внешняя линия, внутри - не цвет значка
+// Точка (AX, AY) - вторая линия полосы в две точки: снаружи (в сторону
+// ADX, ADY) - внешняя линия, внутри - не цвет значка
   function InnerAt(AX, AY, ADX, ADY: Integer): Boolean;
   begin
     Result := InkAt(AX, AY) and not RingAt(AX, AY) and
@@ -3998,35 +3998,35 @@ begin
   // Шаги 1 и 2: какие точки цвета значка
   for PosY := 0 to BmpH - 1 do
     for PosX := 0 to BmpW - 1 do
-      case Kinds[PosY * BmpW + PosX] of
-        KindKey:
-          Ink[PosY * BmpW + PosX] := False;
-        KindInk:
-          Ink[PosY * BmpW + PosX] := True;
-      else
-        begin
-          NearKey := False;
-          InkSide := 0;
-          InkDiag := 0;
-          for StepIdx := 0 to 7 do
-          begin
-            NearX := PosX + StepX[StepIdx];
-            NearY := PosY + StepY[StepIdx];
-            case KindAt(NearX, NearY) of
-              KindKey:
-                if StepIdx < 4 then
-                  NearKey := True;
-              KindInk:
-                if StepIdx < 4 then
-                  Inc(InkSide)
-                else
-                  Inc(InkDiag);
-            end;
-          end;
-          Ink[PosY * BmpW + PosX] := NearKey and
-            ((InkSide = 0) or ((InkSide = 1) and (InkDiag = 0)));
+    case Kinds[PosY * BmpW + PosX] of
+      KindKey:
+        Ink[PosY * BmpW + PosX] := False;
+      KindInk:
+        Ink[PosY * BmpW + PosX] := True;
+    else
+    begin
+      NearKey := False;
+      InkSide := 0;
+      InkDiag := 0;
+      for StepIdx := 0 to 7 do
+      begin
+        NearX := PosX + StepX[StepIdx];
+        NearY := PosY + StepY[StepIdx];
+        case KindAt(NearX, NearY) of
+          KindKey:
+            if StepIdx < 4 then
+            NearKey := True;
+          KindInk:
+            if StepIdx < 4 then
+            Inc(InkSide)
+          else
+            Inc(InkDiag);
         end;
       end;
+      Ink[PosY * BmpW + PosX] := NearKey and
+        ((InkSide = 0) or ((InkSide = 1) and (InkDiag = 0)));
+    end;
+    end;
 
   // Внешняя линия: цвет значка, касается прозрачного фона исходного значка
   for PosY := 0 to BmpH - 1 do
@@ -4485,8 +4485,8 @@ begin
     if AC.Components[K] is TUiBgMark then
     begin
       M := AC.Components[K];
-    Break;
-  end;
+      Break;
+    end;
   if ADark then
   begin
     if TUiWin(AC).ParentBackground then
@@ -4598,8 +4598,8 @@ begin
     if TColor(ColorVal) = ASys[SysIdx] then
     begin
       Result := True;
-    Exit;
-  end;
+      Exit;
+    end;
 end;
 
 procedure TForm1.UiPaintColors(C: TControl);
@@ -5005,10 +5005,10 @@ begin
   // Время по частям - чтобы было видно, что ускорять
   case FIdeMode of
     IdeModeDark: Dbg(Format('IDE Dark - %d мс: цвета %d, перекраска окон %d',
-                     [GetTickCount - StartTick, TFill, TApply]), clNavy);
+                            [GetTickCount - StartTick, TFill, TApply]), clNavy);
     IdeModeCustom: Dbg(Format('IDE Custom: %s - %d мс: цвета %d, ' +
-                       'перекраска окон %d',
-                       [FIdeCustom, GetTickCount - StartTick, TFill, TApply]),
+    'перекраска окон %d',
+                              [FIdeCustom, GetTickCount - StartTick, TFill, TApply]),
                        clNavy);
   else
     Dbg(Format('IDE Light - %d мс: цвета %d, перекраска окон %d',
@@ -5043,13 +5043,13 @@ begin
       for J := 0 to FUiCustom.Count - 1 do
       begin
         L := TStringList(FUiCustom.Objects[J]);
-      for I := 0 to L.Count - 1 do
-      begin
-        Key := L.Names[I];
-        Val := Copy(L[I], Length(Key) + 2, MaxInt);
-        SL.Add(Key + '@Ide:' + FUiCustom[J] + '=' + Val);
+        for I := 0 to L.Count - 1 do
+        begin
+          Key := L.Names[I];
+          Val := Copy(L[I], Length(Key) + 2, MaxInt);
+          SL.Add(Key + '@Ide:' + FUiCustom[J] + '=' + Val);
+        end;
       end;
-    end;
     if FUiExtra <> nil then
       for I := 0 to FUiExtra.Count - 1 do
         SL.Add(FUiExtra[I]);
@@ -5264,9 +5264,9 @@ begin
 
   // Сколько заняла каждая часть - чтобы было видно, что ускорять
   Dbg(Format('3361: тема %s - %d мс: цвета редактора %d, карты вкладок %d, ' +
-             'схема %d, конструктор %d',
+  'схема %d, конструктор %d',
              [FThemeName, GetTickCount - StartTick, TColors, TMaps, TSchema,
-              TDesigner]), clNavy);
+             TDesigner]), clNavy);
 end;
 
 procedure TForm1.LoadSettings;
@@ -5664,11 +5664,11 @@ begin
         begin
           // Хвост не того вида - ведущий байт считаем одиночным
           CP := Ord('?');
-        Extra := 0;
-        Break;
+          Extra := 0;
+          Break;
+        end;
+        CP := (CP shl 6) or (Byte(S[I + K]) and $3F);
       end;
-      CP := (CP shl 6) or (Byte(S[I + K]) and $3F);
-    end;
     Inc(I, Extra + 1);
 
     if CP > $10FFFF then
@@ -6303,8 +6303,8 @@ begin
     begin
       if Idx <> FWindowsIndex then
         ActivateWindow(Idx);
-    Exit;
-  end;
+      Exit;
+    end;
 
   Idx := FindFreeWindow;
   if Idx < 0 then
@@ -6450,8 +6450,8 @@ begin
     if not FWindows[I].Used then
     begin
       Result := I;
-    Exit;
-  end;
+      Exit;
+    end;
 end;
 
 function TForm1.WindowsInUse: Integer;
@@ -7088,24 +7088,24 @@ begin
     if FWindows[I].Used then
     begin
       Inc(N);
-    It := TMenuItem.Create(Self);
-    It.Caption := Format('%d %s', [N, FWindows[I].FileName]);
-    It.Tag := I; // индекс слота, а не номер в списке
-    It.OnClick := WindowsItemClick;
-    It.RadioItem := True;
-    It.Checked := (I = FWindowsIndex);
+      It := TMenuItem.Create(Self);
+      It.Caption := Format('%d %s', [N, FWindows[I].FileName]);
+      It.Tag := I; // индекс слота, а не номер в списке
+      It.OnClick := WindowsItemClick;
+      It.RadioItem := True;
+      It.Checked := (I = FWindowsIndex);
 
-    // Потерянный файл НЕ гасим: по серому пункту не кликнуть, а сказать
-    // о пропаже надо. Вместо этого красный крестик и сообщение по клику.
-    if FWindows[I].Broken then
-    begin
-      if FBrokenGlyph <> nil then
-        It.Bitmap.Assign(FBrokenGlyph);
-      It.Hint := 'Файл не найден: ' + FWindows[I].FileName;
+      // Потерянный файл НЕ гасим: по серому пункту не кликнуть, а сказать
+      // о пропаже надо. Вместо этого красный крестик и сообщение по клику.
+      if FWindows[I].Broken then
+      begin
+        if FBrokenGlyph <> nil then
+          It.Bitmap.Assign(FBrokenGlyph);
+        It.Hint := 'Файл не найден: ' + FWindows[I].FileName;
+      end;
+
+      mWindows.Add(It);
     end;
-
-    mWindows.Add(It);
-  end;
 
   if N = 0 then
   begin
@@ -7555,11 +7555,11 @@ begin
                            IniValueOf(SrcValues[KeyIdx]));
       if IniIsOldSection(Sect) then
         LogComp('editor.ini рядом с exe: копия [' + Sect + '] из папки ' +
-                'проекта перенесена как [' + CopyName + ']')
+        'проекта перенесена как [' + CopyName + ']')
       else
         LogComp('editor.ini рядом с exe: [' + Sect + '] в папке проекта ' +
-                'другой - сохранён как [' + CopyName + ']');
-      Inc(Result);
+        'другой - сохранён как [' + CopyName + ']');
+                Inc(Result);
     end;
 
     if Result > 0 then
@@ -7637,13 +7637,13 @@ begin
            (Length(Sects[J]) > Length(S) + 3) then
         begin
           N := StrToIntDef(Copy(Sects[J], Length(S) + 4, MaxInt), 0);
-        if N > 0 then
-        begin
-          Olds.AddObject(Sects[J], TObject(N));
-          if N > MaxN then
-            MaxN := N;
+          if N > 0 then
+          begin
+            Olds.AddObject(Sects[J], TObject(N));
+            if N > MaxN then
+              MaxN := N;
+          end;
         end;
-      end;
       // сортировка по номеру вниз: пузырёк, копий единицы
       for J := 0 to Olds.Count - 1 do
         for K := 0 to Olds.Count - 2 - J do
@@ -7797,24 +7797,24 @@ begin
         if (CompareText(Copy(Sects[J], 1, 11), 'ProjectsOld') = 0) then
         begin
           OV := StripIniComment(Ini.ReadString(Sects[J], Key, ''));
-        if (OV <> '') and (Cands.IndexOf(OV) < 0) then
-          Cands.Add(OV);
-      end;
+          if (OV <> '') and (Cands.IndexOf(OV) < 0) then
+            Cands.Add(OV);
+        end;
 
       Found := '';
       for J := 0 to Cands.Count - 1 do
         if FileExists(Cands[J]) then
         begin
           Found := Cands[J];
-        Break;
-      end;
+          Break;
+        end;
       if Found = '' then
         for J := 0 to Cands.Count - 1 do
         begin
           Found := RelocateFile(Cands[J]);
-        if Found <> '' then
-          Break;
-      end;
+          if Found <> '' then
+            Break;
+        end;
 
       if Found <> '' then
       begin
@@ -8291,8 +8291,8 @@ begin
       if Pos(LowerCase(Nm) + ' in ', LowerCase(SL[I])) > 0 then
       begin
         LogRaw('Модуль уже есть в проекте: ' + Nm);
-      Exit;
-    end;
+        Exit;
+      end;
 
     // Конец списка uses - строка, кончающаяся точкой с запятой, после
     // строки uses
@@ -8301,13 +8301,13 @@ begin
       if CompareText(Trim(SL[I]), 'uses') = 0 then
       begin
         UsesEnd := I;
-      while (UsesEnd < SL.Count) and
-            ((Trim(SL[UsesEnd]) = '') or
-             (Copy(TrimRight(SL[UsesEnd]),
-                   Length(TrimRight(SL[UsesEnd])), 1) <> ';')) do
-        Inc(UsesEnd);
-      Break;
-    end;
+        while (UsesEnd < SL.Count) and
+              ((Trim(SL[UsesEnd]) = '') or
+               (Copy(TrimRight(SL[UsesEnd]),
+                     Length(TrimRight(SL[UsesEnd])), 1) <> ';')) do
+          Inc(UsesEnd);
+        Break;
+      end;
 
     if (UsesEnd < 0) or (UsesEnd >= SL.Count) then
     begin
@@ -8515,7 +8515,7 @@ begin
   Ini := TIniFile.Create(OldPrj);
   try
     OldTarget := PrjPathFromStore(OldPrj,
-      StripIniComment(Ini.ReadString('Project', 'Target', '')));
+                                  StripIniComment(Ini.ReadString('Project', 'Target', '')));
   finally
     Ini.Free;
   end;
@@ -8663,16 +8663,16 @@ begin
       for I := 0 to SL.Count - 1 do
       begin
         K := Pos('=', SL[I]);
-      if K = 0 then
-        Continue;
-      // В [Windows] и [Tabs] значение - "<номер> <путь>": старая папка
-      // ищется внутри значения, а не только в начале
-      Val := Copy(SL[I], K + 1, MaxInt);
-      P := Pos(AnsiUpperCase(OldDir), AnsiUpperCase(Val));
-      if P > 0 then
-        SL[I] := Copy(SL[I], 1, K) + Copy(Val, 1, P - 1) + NewDir +
-                 Copy(Val, P + Length(OldDir), MaxInt);
-    end;
+        if K = 0 then
+          Continue;
+        // В [Windows] и [Tabs] значение - "<номер> <путь>": старая папка
+        // ищется внутри значения, а не только в начале
+        Val := Copy(SL[I], K + 1, MaxInt);
+        P := Pos(AnsiUpperCase(OldDir), AnsiUpperCase(Val));
+        if P > 0 then
+          SL[I] := Copy(SL[I], 1, K) + Copy(Val, 1, P - 1) + NewDir +
+                   Copy(Val, P + Length(OldDir), MaxInt);
+      end;
     SetLine('Project', 'Type', NewType);
     if NewTarget <> '' then
       SetLine('Project', 'Target', PrjPathToStore(NewPrj, NewTarget));
@@ -8902,8 +8902,8 @@ begin
       if not ForceDirectories(Dir) then
       begin
         ShowMessage('6183:Не удалось создать папку ' + Dir);
-      Exit;
-    end;
+        Exit;
+      end;
 
     // Папка с готовым проектом: главный файл этого типа (.dpr, .lpr,
     // *.go ...) или, для Delphi и Lazarus, хотя бы один .pas. Заготовки
@@ -8945,10 +8945,10 @@ begin
       else
       begin
         RegisterProject(Nm, PrjFile);
-      RebuildProjectsMenu;
-      LoadProject(Nm);
-      Exit;
-    end;
+        RebuildProjectsMenu;
+        LoadProject(Nm);
+        Exit;
+      end;
 
     // ЗАГОТОВКА ДЛЯ DELPHI: проект, модуль и пустая форма. Готовому
     // проекту она не нужна - его файлы уже на месте.
@@ -9598,8 +9598,8 @@ begin
         if CompareText(ChangeFileExt(L[I], ''), Folder) = 0 then
         begin
           Nm := L[I];
-        Break;
-      end;
+          Break;
+        end;
       // Точка входа по соглашению языка: main.go, main.py, src\main.rs
       if Nm = '' then
         for I := 0 to L.Count - 1 do
@@ -9607,15 +9607,15 @@ begin
              (CompareText(ChangeFileExt(ExtractFileName(L[I]), ''), '__main__') = 0) then
           begin
             Nm := L[I];
-        Break;
-      end;
+            Break;
+          end;
       if (Nm = '') and (CompareText(AType, 'WebSite') = 0) then
         for I := 0 to L.Count - 1 do
           if CompareText(ChangeFileExt(L[I], ''), 'index') = 0 then
           begin
             Nm := L[I];
-        Break;
-      end;
+            Break;
+          end;
       if Nm = '' then
         Nm := ChooseFromList('Проект ' + AType,
         'В папке несколько подходящих файлов:', L);
@@ -9917,8 +9917,8 @@ begin
     if CompareText(FHfList.Items[I], S) = 0 then
     begin
       FHfList.ItemIndex := I;
-    Exit;
-  end;
+      Exit;
+    end;
 
   I := FHfList.Items.Add(S);
   FHfList.Checked[I] := True; // только что добавили - значит она и нужна
@@ -9970,8 +9970,8 @@ begin
       for I := 0 to FHotFolders.Count - 1 do
       begin
         FHfList.Items.Add(FHotFolders[I]);
-      FHfList.Checked[I] := FHotFolders.Objects[I] <> nil;
-    end;
+        FHfList.Checked[I] := FHotFolders.Objects[I] <> nil;
+      end;
 
     // Подсказанная папка: в списке она должна быть отмечена, а в дереве -
     // раскрыта, чтобы сразу было видно, о каком месте речь
@@ -9982,8 +9982,8 @@ begin
         if CompareText(FHfList.Items[K], APreselect) = 0 then
         begin
           I := K;
-        Break;
-      end;
+          Break;
+        end;
 
       if I < 0 then
         I := FHfList.Items.Add(APreselect);
@@ -10063,8 +10063,8 @@ begin
          (CompareText(FHfTree.Items[I].Text, Parts[0]) = 0) then
       begin
         Node := FHfTree.Items[I];
-      Break;
-    end;
+        Break;
+      end;
 
     if Node = nil then
       Exit;
@@ -10887,8 +10887,8 @@ begin
       if FWindows[I].Used then
       begin
         ActivateWindow(I);
-    Break;
-  end;
+        Break;
+      end;
 
   TShow := GetTickCount - StageTick;
   RebuildProjectsMenu;
@@ -10898,9 +10898,9 @@ begin
   // Время открытия проекта - в HiLite log; показ активной вкладки по
   // частям - строка 5364 выше
   Dbg(Format('Проект %s: открытие %d мс (закрытие прежних окон %d, ' +
-             'чтение файлов %d - %d шт., закладки, вкладки; показ вкладки %d)',
+  'чтение файлов %d - %d шт., закладки, вкладки; показ вкладки %d)',
              [AName, GetTickCount - StartTick, TClose, TFiles, FileCount,
-              TShow]), clNavy);
+             TShow]), clNavy);
 
 
   // Спрашиваем В САМОМ КОНЦЕ: SaveProjectTo зовёт StoreCurrentWindow, а тот
@@ -10934,9 +10934,9 @@ begin
       if FWindows[I].Used then
       begin
         SL.Add('w' + IntToStr(I) + ' ' + FWindows[I].FileName);
-      for J := 0 to High(FWindows[I].Bookmarks) do
-        SL.Add('  b' + IntToStr(J) + ' ' + FWindows[I].Bookmarks[J].Text);
-    end;
+        for J := 0 to High(FWindows[I].Bookmarks) do
+          SL.Add('  b' + IntToStr(J) + ' ' + FWindows[I].Bookmarks[J].Text);
+      end;
 
     for I := 0 to High(FTabWin) do
       SL.Add('t ' + IntToStr(FTabWin[I]));
@@ -11042,10 +11042,10 @@ end;
 procedure RemoveCompilerStubs(AIni: TIniFile);
 const
   StubKeys: array[0..5] of string = ('CompPath', 'IncPath', 'LibPath',
-    'IcoFile', 'TplFile', 'FBCompPath');
-var
-  Index: Integer;
-  Keys: TStringList;
+  'IcoFile', 'TplFile', 'FBCompPath');
+                                     var
+                                     Index: Integer;
+                                     Keys: TStringList;
 begin
   for Index := Low(StubKeys) to High(StubKeys) do
     if Trim(AIni.ReadString('Compiler', StubKeys[Index], '')) = 'C:\' then
@@ -11109,12 +11109,12 @@ begin
       if FWindows[I].Used then
       begin
         Inc(N);
-      Ini.WriteString('Windows', 'win' + IntToStr(I),
-                      IntToStr(N) + ' ' +
-                      PrjPathToStore(PrjFile, FWindows[I].FileName));
-      Ini.WriteString('Windows', 'curposic' + IntToStr(I),
-                      IntToStr(FWindows[I].CursorPos));
-    end;
+        Ini.WriteString('Windows', 'win' + IntToStr(I),
+                        IntToStr(N) + ' ' +
+                        PrjPathToStore(PrjFile, FWindows[I].FileName));
+        Ini.WriteString('Windows', 'curposic' + IntToStr(I),
+                        IntToStr(FWindows[I].CursorPos));
+      end;
 
     // Вкладки. Набор вкладок - это не то же самое, что список окон: в панели
     // оседают только те файлы, с которыми работали, поэтому храним отдельно.
@@ -11143,12 +11143,12 @@ begin
                           Format('bmarkCaption%d,%d', [J, I]),
                           Format('%d %s', [FWindows[I].Bookmarks[J].LineNo,
                                  FWindows[I].Bookmarks[J].Text]));
-      Ini.WriteString('Bookmarks',
-                      Format('bmarkPosic%d,%d', [J, I]),
-                      IntToStr(FWindows[I].Bookmarks[J].CharPos));
-      if FWindows[I].Bookmarks[J].Pinned then
-        Ini.WriteString('Bookmarks', Format('bmarkHot%d,%d', [J, I]), '1');
-    end;
+          Ini.WriteString('Bookmarks',
+                          Format('bmarkPosic%d,%d', [J, I]),
+                          IntToStr(FWindows[I].Bookmarks[J].CharPos));
+          if FWindows[I].Bookmarks[J].Pinned then
+            Ini.WriteString('Bookmarks', Format('bmarkHot%d,%d', [J, I]), '1');
+        end;
 
     // Hot Bookmarks: недавние (без закреплённых - те в Bookmarks) по порядку
     HotPinned := TList.Create;
@@ -11563,19 +11563,19 @@ begin
         Inc(Cnt);
         if CompareText(Names[I], FCurrentProject) = 0 then
           CurChecked := True;
-      if Folders then
-      begin
-        DirSl := ExtractFilePath(FProjectReg.Values[Names[I]]);
-        for J := 0 to High(FWindows) do
-          if FWindows[J].Used and
-             AnsiStartsText(DirSl, FWindows[J].FileName) then
-          begin
-            Inc(Open);
-          if FWindows[J].Modified then
-            Inc(Dirty);
+        if Folders then
+        begin
+          DirSl := ExtractFilePath(FProjectReg.Values[Names[I]]);
+          for J := 0 to High(FWindows) do
+            if FWindows[J].Used and
+               AnsiStartsText(DirSl, FWindows[J].FileName) then
+            begin
+              Inc(Open);
+              if FWindows[J].Modified then
+                Inc(Dirty);
+            end;
         end;
       end;
-    end;
     if Cnt = 0 then
       Exit;
 
@@ -11704,8 +11704,8 @@ begin
     if Lst.Checked[I] then
     begin
       Any := True;
-    Break;
-  end;
+      Break;
+    end;
   if Lst.Owner <> nil then
   begin
     Btn := Lst.Owner.FindComponent('btnDelPrj');
@@ -12425,8 +12425,8 @@ begin
     if FWindows[FWindowsIndex].Bookmarks[I].LineNo = LineIdx + 1 then
     begin
       ShowMessage('9431:На этой строке закладка уже есть.');
-    Exit;
-  end;
+      Exit;
+    end;
 
   SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
 
@@ -12460,12 +12460,12 @@ begin
       for J := I to High(FWindows[FWindowsIndex].Bookmarks) - 1 do
         FWindows[FWindowsIndex].Bookmarks[J] :=
           FWindows[FWindowsIndex].Bookmarks[J + 1];
-    SetLength(FWindows[FWindowsIndex].Bookmarks,
-              Length(FWindows[FWindowsIndex].Bookmarks) - 1);
-    BmHistDeleted(FWindowsIndex, I);
-    RebuildBookmarksMenu;
-    Exit;
-  end;
+      SetLength(FWindows[FWindowsIndex].Bookmarks,
+                Length(FWindows[FWindowsIndex].Bookmarks) - 1);
+      BmHistDeleted(FWindowsIndex, I);
+      RebuildBookmarksMenu;
+      Exit;
+    end;
 
   ShowMessage('9471:На этой строке закладки нет.');
 end;
@@ -12564,8 +12564,8 @@ begin
   try
     Dlg.lblTitle.Caption := 'Закладки ' +
       ExtractFileName(FWindows[FWindowsIndex].FileName) +
-      ': отмеченные будут удалены';
-    for BmIdx := 0 to High(FWindows[FWindowsIndex].Bookmarks) do
+    ': отмеченные будут удалены';
+  for BmIdx := 0 to High(FWindows[FWindowsIndex].Bookmarks) do
     begin
       ItemText := IntToStr(BmIdx + 1) + '.  ' +
                   BookmarkCaption(FWindowsIndex, BmIdx);
@@ -12704,7 +12704,7 @@ begin
         BmHistRemoveAt(HistIdx)
       else if FBmHistIdx[HistIdx] > BmIdx then
         Dec(FBmHistIdx[HistIdx]);
-  end;
+    end;
 end;
 
 // Записи на закладки, которых уже нет (окно не занято, номер за концом
@@ -13085,8 +13085,8 @@ begin
     if FTabWin[I] = WinIdx then
     begin
       Result := I;
-    Exit;
-  end;
+      Exit;
+    end;
 end;
 
 // Место для новой вкладки окна WinIdx. У .pas и .dfm ищется вкладка
@@ -13276,8 +13276,8 @@ begin
        (CompareText(ExtractFileName(FWindows[I].FileName), Nm) = 0) then
     begin
       Dup := True;
-    Break;
-  end;
+      Break;
+    end;
 
   if Dup then
   begin
@@ -13609,8 +13609,8 @@ begin
       if FWindows[I].Used then
       begin
         NewIdx := I;
-      Break;
-    end;
+        Break;
+      end;
 
     if NewIdx >= 0 then
       ActivateWindow(NewIdx)
@@ -13669,8 +13669,8 @@ begin
     if not FDlgCheckList.Checked[I] then
     begin
       AllSet := False;
-    Break;
-  end;
+      Break;
+    end;
 
   for I := 0 to FDlgCheckList.Items.Count - 1 do
     FDlgCheckList.Checked[I] := not AllSet;
@@ -13716,9 +13716,9 @@ begin
       if FWindows[I].Used then
       begin
         SetLength(Map, Length(Map) + 1);
-      Map[High(Map)] := I;
-      Lst.Items.Add(Format('%d  %s', [Length(Map), FWindows[I].FileName]));
-    end;
+        Map[High(Map)] := I;
+        Lst.Items.Add(Format('%d  %s', [Length(Map), FWindows[I].FileName]));
+      end;
 
     // Размер окна подгоняем под содержимое: ширину по самому длинному пути,
     // высоту по числу строк. Меряем на временном холсте шрифтом списка -
@@ -15794,19 +15794,19 @@ begin
   // текст, а затем возвращаем каретку и флаг изменений на место.
   if AWholeText then
   begin
-  WasModified := RichEdit1.Modified;
-  OldStart := RichEdit1.SelStart;
-  OldLen := RichEdit1.SelLength;
-  FLockHighlight := True;
-  try
-    RichEdit1.SelectAll;
-    SendMessageA(RichEdit1.Handle, EM_SETPARAFORMAT, 0, Integer(@PF));
-    RichEdit1.SelStart := OldStart;
-    RichEdit1.SelLength := OldLen;
-  finally
-    FLockHighlight := False;
-    RichEdit1.Modified := WasModified;
-  end;
+    WasModified := RichEdit1.Modified;
+    OldStart := RichEdit1.SelStart;
+    OldLen := RichEdit1.SelLength;
+    FLockHighlight := True;
+    try
+      RichEdit1.SelectAll;
+      SendMessageA(RichEdit1.Handle, EM_SETPARAFORMAT, 0, Integer(@PF));
+      RichEdit1.SelStart := OldStart;
+      RichEdit1.SelLength := OldLen;
+    finally
+      FLockHighlight := False;
+      RichEdit1.Modified := WasModified;
+    end;
   end;
 
   // Номера строк должны жить в том же шрифте, что и текст редактора
@@ -16319,8 +16319,8 @@ begin
       if CommentRanges[I].StartPos >= EditPos then
       begin
         Inc(CommentRanges[I].StartPos, D);
-      Inc(CommentRanges[I].EndPos, D);
-    end
+        Inc(CommentRanges[I].EndPos, D);
+      end
     else if CommentRanges[I].EndPos > EditPos then
       Inc(CommentRanges[I].EndPos, D);
 
@@ -16328,8 +16328,8 @@ begin
       if StringRanges[I].StartPos >= EditPos then
       begin
         Inc(StringRanges[I].StartPos, D);
-      Inc(StringRanges[I].EndPos, D);
-    end
+        Inc(StringRanges[I].EndPos, D);
+      end
     else if StringRanges[I].EndPos > EditPos then
       Inc(StringRanges[I].EndPos, D);
 
@@ -16656,7 +16656,7 @@ type
     FOldProc: TWndMethod;
     FTitle: string;
     procedure TimedProc(var Message: TMessage);
-  public
+    public
     constructor Create(ACtl: TControl; const ATitle: string);
   end;
 
@@ -18041,9 +18041,9 @@ begin
     if B.TagStack[I] = Nm then
     begin
       ALevel := I;
-    Result := True;
-    Exit;
-  end;
+      Result := True;
+      Exit;
+    end;
 end;
 
 // ПАРА ПОД КАРЕТКОЙ: скобка со своей парной либо тег со своим закрывающим.
@@ -18218,8 +18218,8 @@ begin
         else if Txt[K] = '<' then
         begin
           TagStart := K;
-        Break;
-      end;
+          Break;
+        end;
       Dec(K);
     end;
 
@@ -18709,8 +18709,8 @@ begin
         if not (AText[K] in [' ', #9]) then
         begin
           Blank[LineNo] := False;
-        Break;
-      end;
+          Break;
+        end;
 
       if L.IsHeader then
         BlockPushHeader(-1, B);
@@ -19243,8 +19243,8 @@ begin
     if (ALine >= FSubs[K].BeginLine) and (ALine <= FSubs[K].EndLine) then
     begin
       Result := K;
-    Exit;
-  end;
+      Exit;
+    end;
 end;
 
 // Двойной щелчок по строке списка - переход к объявлению
@@ -19511,10 +19511,10 @@ var
       AddNode(T, TDfmNode(N.Children[I]));
   end;
 
-  // Ключ узла - путь из подписей с номером среди братьев: подписи у
-  // безымянных runtime-узлов повторяются. По Data ключ не строим: к моменту
-  // перестроения старые узлы TDfmNode уже освобождены, живы только подписи.
-  // Обход - от AFirst по братьям и вглубь; APrefix - ключ родителя.
+// Ключ узла - путь из подписей с номером среди братьев: подписи у
+// безымянных runtime-узлов повторяются. По Data ключ не строим: к моменту
+// перестроения старые узлы TDfmNode уже освобождены, живы только подписи.
+// Обход - от AFirst по братьям и вглубь; APrefix - ключ родителя.
   procedure SaveState(AFirst: TTreeNode; const APrefix: string);
   var
     Node: TTreeNode;
@@ -19539,8 +19539,8 @@ var
     end;
   end;
 
-  // Раскрытые ветки, выделение и верх - по ключам; ветки runtime раскрыты
-  // всегда (что создано в коде, видно сразу)
+// Раскрытые ветки, выделение и верх - по ключам; ветки runtime раскрыты
+// всегда (что создано в коде, видно сразу)
   procedure RestoreState(AFirst: TTreeNode; const APrefix: string);
   var
     Node, ParentNode: TTreeNode;
@@ -19644,9 +19644,9 @@ begin
   TProps := GetTickCount - StageTick;
 
   Dbg(Format('17150: дерево инспектора - %d мс (состояние %d, узлы %d, ' +
-             'раскрытие %d, показ %d, свойства выбранного %d)',
+  'раскрытие %d, показ %d, свойства выбранного %d)',
              [GetTickCount - StartTick, TSave, TAdd, TRestore, TShow,
-              TProps]), clNavy);
+             TProps]), clNavy);
 end;
 
 // Какую форму показывать - по активному окну: открыт .dfm - разбираем текст
@@ -19911,16 +19911,16 @@ begin
           if (DfmRoot <> nil) and SameText(DfmRoot.ClassNm, SnapRoot.ClassNm) then
           begin
             MergeSnapNode(DfmRoot, SnapRoot, Index, Gone);
-          TSnap := GetTickCount - TA;
-          if UnitSrc <> '' then
-          begin
-            // Узлы снимка - к переменным, а совпавшие с узлами из кода по
-            // строке создания сливаются с ними
-            TA := GetTickCount;
-            ResolveRuntimeNames(DfmRoot, UnitSrc);
-            TNames := GetTickCount - TA;
-            TA := GetTickCount;
-            ByLine := TStringList.Create;
+            TSnap := GetTickCount - TA;
+            if UnitSrc <> '' then
+            begin
+              // Узлы снимка - к переменным, а совпавшие с узлами из кода по
+              // строке создания сливаются с ними
+              TA := GetTickCount;
+              ResolveRuntimeNames(DfmRoot, UnitSrc);
+              TNames := GetTickCount - TA;
+              TA := GetTickCount;
+              ByLine := TStringList.Create;
             try
               ByLine.Sorted := True;
               ByLine.Duplicates := dupIgnore;
@@ -19933,9 +19933,9 @@ begin
             finally
               ByLine.Free;
             end;
-            TDedup := GetTickCount - TA;
-          end;
-        end
+              TDedup := GetTickCount - TA;
+            end;
+          end
         else
         begin
           SnapRoot.SnapRoot := True;
@@ -19990,7 +19990,7 @@ begin
             IntToStr(TPrep) + ': тексты ' + IntToStr(TPText) + ', массивы ' +
             IntToStr(TPArr) + ', снимок ' + IntToStr(TPSnap) + ', ключ ' +
             IntToStr(TPKey) + ', чтение кэша ' + IntToStr(TPRead) +
-            '; дерево ' + IntToStr(TRender) + ')', clNavy)
+        '; дерево ' + IntToStr(TRender) + ')', clNavy)
       else
         // По этапам: подготовка - тексты, ключ, снимок своей формы, разбор
         // .dfm; код - BuildCodeRuntime; снимок - его разбор и слияние с
@@ -20074,22 +20074,22 @@ begin
   InQuote := False;
   StartPos := 1;
   for CharIdx := 1 to Length(ALine) do
-    case ALine[CharIdx] of
-      '"':
-        InQuote := not InQuote;
-      '''':
-        if not InQuote then
-        begin
-          AddPart(CharIdx);
-          Exit;
-        end;
-      ':':
-        if not InQuote then
-        begin
-          AddPart(CharIdx);
-          StartPos := CharIdx + 1;
-        end;
+  case ALine[CharIdx] of
+    '"':
+    InQuote := not InQuote;
+    '''':
+    if not InQuote then
+    begin
+      AddPart(CharIdx);
+      Exit;
     end;
+    ':':
+    if not InQuote then
+    begin
+      AddPart(CharIdx);
+      StartPos := CharIdx + 1;
+    end;
+  end;
   AddPart(Length(ALine) + 1);
 end;
 
@@ -20279,27 +20279,27 @@ begin
       FObjRoots.Add(Roots[RootIdx]);
     if ObjCount = 0 then
       FObjSource.Caption := '  ' + ExtractFileName(FCurrentFileName) +
-                            ': CREATE в файле нет'
+      ': CREATE в файле нет'
     else
       FObjSource.Caption := '  ' + ExtractFileName(FCurrentFileName) +
-                            ': объектов CREATE - ' + IntToStr(ObjCount) +
-                            ', классов TYPE ... EXTENDS - ' +
-                            IntToStr(CustomCount) +
-                            '. Значения - текст из блоков CREATE, снимка пока нет';
-    if not RapidQComponentsReady(False) then
-      FObjSource.Caption := FObjSource.Caption +
-                            '. Component.data не найден - список свойств ' +
-                            'классов не показывается';
-    if RapidQHasSnapshot and not FRqSnapOff then
-    begin
-      FObjSource.Caption := '  ' + ExtractFileName(FCurrentFileName) +
-                            ': объектов CREATE - ' + IntToStr(ObjCount) +
-                            '  +  снимок ' + TimeToStr(FRqProbeTime) +
-                            '.  Щелчок здесь - убрать снимок';
-      FObjSource.Cursor := crHandPoint;
-    end
-    else
-      FObjSource.Cursor := crDefault;
+      ': объектов CREATE - ' + IntToStr(ObjCount) +
+      ', классов TYPE ... EXTENDS - ' +
+      IntToStr(CustomCount) +
+      '. Значения - текст из блоков CREATE, снимка пока нет';
+if not RapidQComponentsReady(False) then
+        FObjSource.Caption := FObjSource.Caption +
+        '. Component.data не найден - список свойств ' +
+        'классов не показывается';
+if RapidQHasSnapshot and not FRqSnapOff then
+        begin
+          FObjSource.Caption := '  ' + ExtractFileName(FCurrentFileName) +
+          ': объектов CREATE - ' + IntToStr(ObjCount) +
+          '  +  снимок ' + TimeToStr(FRqProbeTime) +
+          '.  Щелчок здесь - убрать снимок';
+FObjSource.Cursor := crHandPoint;
+        end
+      else
+        FObjSource.Cursor := crDefault;
     if FObjSnapBtn <> nil then
       if RapidQHasSnapshot and not FRqSnapOff then
         FObjSnapBtn.Caption := RqSnapCapHide
@@ -20348,7 +20348,7 @@ var
       Dirs.Add(Full);
   end;
 
-  // Загрузить AFile; True - классы есть. Что вышло - в Tried.
+// Загрузить AFile; True - классы есть. Что вышло - в Tried.
   function TryLoad(const AFile: string): Boolean;
   begin
     Result := False;
@@ -20370,9 +20370,9 @@ begin
     Ini := TIniFile.Create(SettingsFileName);
     try
       CompDir := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
-                                     'CompPath', ''));
-      SetFile := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
-                                     'CompDataFile', ''));
+      'CompPath', ''));
+                                     SetFile := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
+      'CompDataFile', ''));
     finally
       Ini.Free;
     end;
@@ -20403,13 +20403,13 @@ begin
         begin
           Added := RqMergeComponents(Extra, Members);
           LogComp('  из ' + Extra + ' добавлено классов ' + IntToStr(Added) +
-                  ', свойств и событий у прежних классов ' +
+          ', свойств и событий у прежних классов ' +
                   IntToStr(Members));
         end;
         Exit;
       end;
       Tried[Tried.Count - 1] := Tried[Tried.Count - 1] +
-                                '   (IDE Options - Compilers - Components)';
+      '   (IDE Options - Compilers - Components)';
     end;
 
     Dirs.CaseSensitive := False;
@@ -20449,12 +20449,12 @@ begin
       if not Result then
         Continue;
       LogComp('Описание компонентов RapidQ: ' + RqComponentFile +
-              ', классов ' + IntToStr(RqClassCount));
-      if (Extra <> '') and FileExists(Extra) then
+      ', классов ' + IntToStr(RqClassCount));
+              if (Extra <> '') and FileExists(Extra) then
       begin
         Added := RqMergeComponents(Extra, Members);
         LogComp('  из ' + Extra + ' добавлено классов ' + IntToStr(Added) +
-                ', свойств и событий у прежних классов ' + IntToStr(Members));
+        ', свойств и событий у прежних классов ' + IntToStr(Members));
       end;
       Exit;
     end;
@@ -20465,8 +20465,8 @@ begin
       for TryIdx := 0 to Tried.Count - 1 do
         LogComp('    ' + Tried[TryIdx]);
       LogComp('  ComponentAll.data лежит в репозитории в rapidq_ref. Укажите ' +
-              'его в IDE Options - Compilers - RapidQ Basic - Components ' +
-              'или положите в одну из этих папок');
+      'его в IDE Options - Compilers - RapidQ Basic - Components ' +
+      'или положите в одну из этих папок');
     end;
   finally
     Tried.Free;
@@ -20498,7 +20498,7 @@ begin
     Ini := TIniFile.Create(SettingsFileName);
     try
       AIncDir := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
-                                     'IncPath', ''));
+      'IncPath', ''));
     finally
       Ini.Free;
     end;
@@ -21158,16 +21158,16 @@ begin
     if (Pos('ARRAY', TypeUp) > 0) or (TypeUp = 'RESOURCE') then
     begin
       ShowMessage(PropName + ' (' + Member.TypeName + ') одной строкой ' +
-                  'присваивания не задаётся - правьте его в коде.');
-      Exit;
+      'присваивания не задаётся - правьте его в коде.');
+                  Exit;
     end;
   end;
   // Блок может быть и в одну строку: "CREATE A AS QX : ... : END CREATE"
   if (Obj.CreateLine < 0) or (Obj.EndLine < Obj.CreateLine) then
   begin
     ShowMessage('У объекта ' + Obj.Name + ' нет END CREATE - некуда ' +
-                'писать свойство.');
-    Exit;
+    'писать свойство.');
+                Exit;
   end;
 
   if ItemIdx >= 0 then
@@ -21277,8 +21277,8 @@ var
   procedure TextChanged;
   begin
     ShowMessage('Текст изменился после разбора - инспектор обновлён, ' +
-                'повторите правку.');
-    ObjScheduleRelines(Obj, FObjEditName);
+    'повторите правку.');
+                ObjScheduleRelines(Obj, FObjEditName);
   end;
 
 begin
@@ -21370,7 +21370,7 @@ begin
         LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
         CurLine := ReadLineText(LineNo, LineStart, LineLen);
         if not RapidQInsertBeforeEnd(CurLine, Obj.Name, FObjEditName +
-                 RapidQEqStyle(CurLine) + NewText, NewLine) then
+                                     RapidQEqStyle(CurLine) + NewText, NewLine) then
         begin
           TextChanged;
           Exit;
@@ -21384,7 +21384,7 @@ begin
           EditorThaw;
         end;
         LogComp('Инспектор RapidQ: ' + Obj.Name + '.' + FObjEditName +
-                ' = ' + NewText + '   (добавлено в строку ' +
+        ' = ' + NewText + '   (добавлено в строку ' +
                 IntToStr(LineNo + 1) + ')');
         ObjScheduleRelines(Obj, FObjEditName);
         Exit;
@@ -21461,8 +21461,8 @@ begin
     Lines.Free;
   end;
   LogComp('Обработчик ' + Handler + ' в ' + ExtractFileName(FCurrentFileName) +
-          ' не найден - переход к строке, где он назначен');
-  GotoLine(AssignLine);
+  ' не найден - переход к строке, где он назначен');
+          GotoLine(AssignLine);
 end;
 
 // Дерево всех компонентов, которые создаёт код открытого модуля: главная
@@ -21558,7 +21558,7 @@ begin
     try
       FCodeTree.Items.Clear;
       FCodeTree.Items.AddObject(nil, '(RapidQ: объекты CREATE - на вкладке ' +
-                                'Objects)', Pointer(-1));
+      'Objects)', Pointer(-1));
     finally
       FCodeTree.Items.EndUpdate;
     end;
@@ -21749,8 +21749,8 @@ const
 
   // Редактор открыт на собственном проекте - его форму можно снять с живого
   // окна, без пробного запуска
-// Ответ запоминается на проект и дату его .prj: без этого каждый вызов
-// читал .prj с диска (ProjectTargetOf), а зовут его и при отрисовке.
+  // Ответ запоминается на проект и дату его .prj: без этого каждый вызов
+  // читал .prj с диска (ProjectTargetOf), а зовут его и при отрисовке.
 function TForm1.IsOwnProject: Boolean;
 var
   Dpr: string;
@@ -21771,9 +21771,9 @@ begin
             (CompareText(ChangeFileExt(ExtractFileName(Dpr), ''),
                          ChangeFileExt(ExtractFileName(Application.ExeName),
   '')) = 0);
-  FOwnPrjName := FCurrentProject;
-  FOwnPrjAge := PrjAge;
-  FOwnPrjResult := Result;
+                                       FOwnPrjName := FCurrentProject;
+                                       FOwnPrjAge := PrjAge;
+                                       FOwnPrjResult := Result;
 end;
 
 function TForm1.ProbeSnapFor(const AClass: string): string;
@@ -21821,10 +21821,10 @@ begin
       // берём его; нет - снимаем
       if not OwnSnapRestore(AClass) then
         TakeOwnSnap(AClass);
-    FObjSource.Cursor := crHandPoint;
-    if FObjSnapBtn <> nil then
-      FObjSnapBtn.Caption := SnapCapHide;
-  end
+      FObjSource.Cursor := crHandPoint;
+      if FObjSnapBtn <> nil then
+        FObjSnapBtn.Caption := SnapCapHide;
+    end
   else if OwnSnapStale(AClass) then
   begin
     // Состав формы другой (построились контролы, добавились пункты) -
@@ -21967,12 +21967,12 @@ begin
       if Copy(SL[I], 1, 16) = '//DSGPROBE-TIME ' then
       begin
         T := StrToIntDef(Trim(Copy(SL[I], 17, MaxInt)), 0);
-      if T > 0 then
-      try
-        FProbeTime := FileDateToDateTime(T);
-      except
-      end;
-    end
+        if T > 0 then
+        try
+          FProbeTime := FileDateToDateTime(T);
+        except
+        end;
+      end
     else if Copy(SL[I], 1, 11) = '//DSGPROBE ' then
     begin
       PT := TProbeText.Create;
@@ -22229,9 +22229,9 @@ begin
         if Copy(SL[I], 1, 11) = '//DSGPROBE ' then
         begin
           Cls := Trim(Copy(SL[I], 12, MaxInt));
-        PT := TProbeText.Create;
-        FProbeSnaps.AddObject(Cls, PT);
-      end
+          PT := TProbeText.Create;
+          FProbeSnaps.AddObject(Cls, PT);
+        end
       else if Copy(SL[I], 1, 16) = '//DSGPROBE-ERROR' then
         Step(SL[I])
       else if PT <> nil then
@@ -22282,9 +22282,9 @@ begin
     if AForm.Components[I] is TWinControl then
     try
       TWinControl(AForm.Components[I]).HandleNeeded;
-  except
-    // контрол без родителя окна не получит - пропускаем
-  end;
+    except
+      // контрол без родителя окна не получит - пропускаем
+    end;
 end;
 
 type
@@ -22326,7 +22326,7 @@ const
   // обычно единицы
   ObjStashMax = 8;
 
-// Нынешний снимок - в отложенные, под классом его формы
+  // Нынешний снимок - в отложенные, под классом его формы
 procedure TForm1.OwnSnapStashCurrent;
 var
   ClassNm: string;
@@ -22477,8 +22477,8 @@ begin
     if CompareText(Screen.Forms[I].ClassName, AClass) = 0 then
     begin
       Result := Screen.Forms[I];
-    Exit;
-  end;
+      Exit;
+    end;
 end;
 
 // Отпечаток состава формы: сколько у неё компонентов и сколько контролов во
@@ -22673,8 +22673,8 @@ begin
     if FWindows[I].Used and (CompareText(FWindows[I].FileName, AFile) = 0) then
     begin
       Result := I;
-    Exit;
-  end;
+      Exit;
+    end;
 end;
 
 // ---------------------------------------------------------------------------
@@ -23391,8 +23391,8 @@ var
          (Abs(J - AHint) < Best) then
       begin
         Best := Abs(J - AHint);
-      Result := J;
-    end;
+        Result := J;
+      end;
   end;
 
 begin
@@ -23627,8 +23627,8 @@ begin
       begin
         if S <> '' then
           S := S + ', ';
-      S := S + FObjSetList.Items[K];
-    end;
+        S := S + FObjSetList.Items[K];
+      end;
     NewRaw := '[' + S + ']';
   end
   else if FObjActive = FObjCombo then
@@ -24015,17 +24015,17 @@ begin
     for I := 0 to FObjProps.Items.Count - 1 do
     begin
       It := FObjProps.Items[I];
-    if Integer(It.Data) = FObjEditIdx then
-    begin
-      if It.SubItems.Count > 0 then
-        It.SubItems[0] := Shown
-      else
-        It.SubItems.Add(Shown);
-      It.Data := Pointer(Idx);
-      FObjProps.UpdateItems(I, I);
-      Break;
+      if Integer(It.Data) = FObjEditIdx then
+      begin
+        if It.SubItems.Count > 0 then
+          It.SubItems[0] := Shown
+        else
+          It.SubItems.Add(Shown);
+        It.Data := Pointer(Idx);
+        FObjProps.UpdateItems(I, I);
+        Break;
+      end;
     end;
-  end;
 
   // --- компонент на форме конструктора. Созданный в коде назван там по
   // переменной (см. DsgAddRuntime).
@@ -24707,11 +24707,11 @@ begin
     with TFileStream.Create(APas, fmOpenRead or fmShareDenyNone) do
     try
       SetLength(Result, Size);
-    if Size > 0 then
-      ReadBuffer(Result[1], Size);
-  finally
-    Free;
-  end;
+      if Size > 0 then
+        ReadBuffer(Result[1], Size);
+    finally
+      Free;
+    end;
 end;
 
 // Модуль формы: рядом с .dfm, а если показан только снимок - среди
@@ -24739,8 +24739,8 @@ begin
        (Pos(Pat, AnsiUpperCase(FWindows[I].Text)) > 0) then
     begin
       Result := FWindows[I].FileName;
-    Exit;
-  end;
+      Exit;
+    end;
 end;
 
 // Строка, где создаётся компонент узла. -1 - не нашлась или выбор отменён.
@@ -24890,18 +24890,18 @@ begin
         begin
           if J >= Lines.Count then
             Break;
-        U := AnsiUpperCase(Trim(Lines[J]));
-        if ((Pos(AnsiUpperCase(Lhs + '.Caption'), U) = 1) or
-            (Pos(AnsiUpperCase(Lhs + '.Text'), U) = 1)) and
-           (LiteralAfterAssign(Lines[J]) = Cap) then
-        begin
-          AddCand(CapHit, I);
-          Break;
+          U := AnsiUpperCase(Trim(Lines[J]));
+          if ((Pos(AnsiUpperCase(Lhs + '.Caption'), U) = 1) or
+              (Pos(AnsiUpperCase(Lhs + '.Text'), U) = 1)) and
+             (LiteralAfterAssign(Lines[J]) = Cap) then
+          begin
+            AddCand(CapHit, I);
+            Break;
+          end;
+          // Дошли до создания следующего - дальше не наше
+          if ParseCreate(Lines[J], S, L) then
+            Break;
         end;
-        // Дошли до создания следующего - дальше не наше
-        if ParseCreate(Lines[J], S, L) then
-          Break;
-      end;
     end;
 
     Result := Choose(CapHit);
@@ -25054,8 +25054,8 @@ var
              ((LitW <> Cap) and (Pos(LitW, SL[I]) > 0)) then
           begin
             Line := I;
-          Break;
-        end;
+            Break;
+          end;
       finally
         SL.Free;
       end;
@@ -25138,16 +25138,16 @@ begin
     with TStringList.Create do
     try
       Text := Txt;
-    // Строка создания: X := TКласс.Create(...) или через помощник модуля
-    // X := MakeBtn(...) - тогда .Create в ней нет, но есть присваивание
-    if (N.CreateLine < Count) and
-       (Pos(AnsiUpperCase(N.VarName), AnsiUpperCase(Strings[N.CreateLine])) > 0) and
-       ((CodeCreatePos(AnsiUpperCase(Strings[N.CreateLine])) > 0) or
-        (Pos(':=', Strings[N.CreateLine]) > 0)) then
-      Line := N.CreateLine;
-  finally
-    Free;
-  end;
+      // Строка создания: X := TКласс.Create(...) или через помощник модуля
+      // X := MakeBtn(...) - тогда .Create в ней нет, но есть присваивание
+      if (N.CreateLine < Count) and
+         (Pos(AnsiUpperCase(N.VarName), AnsiUpperCase(Strings[N.CreateLine])) > 0) and
+         ((CodeCreatePos(AnsiUpperCase(Strings[N.CreateLine])) > 0) or
+          (Pos(':=', Strings[N.CreateLine]) > 0)) then
+        Line := N.CreateLine;
+    finally
+      Free;
+    end;
   if Line < 0 then
     Line := FindCreateLine(Txt, N);
   if Line < 0 then
@@ -25849,8 +25849,8 @@ begin
     if Copy(AMade[I], Pos('=', AMade[I]) + 1, MaxInt) = Path then
     begin
       Result := TComponent(AMade.Objects[I]);
-    Break;
-  end;
+      Break;
+    end;
   if not DsgMadeMatch(T, Result) then
     Result := nil;
 end;
@@ -26248,8 +26248,8 @@ begin
     if ALV.Components[K] is TUiGridMark then
     begin
       Result := True;
-    Exit;
-  end;
+      Exit;
+    end;
 end;
 
 // Раскрытые узлы - как у живого дерева того же состава
@@ -26771,7 +26771,7 @@ begin
   StageTick := GetTickCount;
   try
     FDsgForeign.Scan(RootDir, ExtractFilePath(Application.ExeName) +
-                     'dsgcache\palette_foreign.txt');
+    'dsgcache\palette_foreign.txt');
   except
     on E: Exception do
     begin
@@ -26791,7 +26791,7 @@ begin
   try
     for PageIdx := 0 to FDsgForeign.Pages.Count - 1 do
       PageMap.AddObject(FDsgForeign.Pages[PageIdx],
-        TObject(FDsgPalette.AddPage(FDsgForeign.Pages[PageIdx])));
+                        TObject(FDsgPalette.AddPage(FDsgForeign.Pages[PageIdx])));
     for CompIdx := 0 to FDsgForeign.Count - 1 do
     begin
       Comp := FDsgForeign[CompIdx];
@@ -26800,9 +26800,9 @@ begin
         Continue;
       ForeignBtn := TSpeedButton.Create(FDsgPalette);
       FDsgPalette.PlaceForeign(ForeignBtn, Comp.CompUnit, Comp.CompClass,
-        Comp.CompClass + ' (' + Comp.CompUnit + ', ' +
-        ExtractFileName(Comp.RuntimePkg) + ') - ' + Comp.PkgDescr,
-        Integer(PageMap.Objects[PageIdx]));
+                               Comp.CompClass + ' (' + Comp.CompUnit + ', ' +
+                               ExtractFileName(Comp.RuntimePkg) + ') - ' + Comp.PkgDescr,
+                               Integer(PageMap.Objects[PageIdx]));
     end;
   finally
     PageMap.Free;
@@ -26810,7 +26810,7 @@ begin
   for LogIdx := 0 to FDsgForeign.Log.Count - 1 do
     Dbg('21880: палитра, сторонние: ' + FDsgForeign.Log[LogIdx], clGray);
   Dbg('21880: палитра, сторонние: ' + IntToStr(GetTickCount - StartTick) +
-      ' мс (список ' + IntToStr(ScanTick) + ', пакеты значков ' +
+  ' мс (список ' + IntToStr(ScanTick) + ', пакеты значков ' +
       IntToStr(LibsTick) + ', кнопки ' +
       IntToStr(GetTickCount - StageTick) + ')', clGray);
 end;
@@ -27344,8 +27344,8 @@ begin
       if DfmObjectNames(NewDfm, Sel[I], One) then
       begin
         Names.AddStrings(One);
-      NewDfm := DfmDeleteObject(NewDfm, Sel[I]);
-    end;
+        NewDfm := DfmDeleteObject(NewDfm, Sel[I]);
+      end;
     if NewDfm = OldDfm then
       Exit;
     NewDfm := DfmRemoveRefs(NewDfm, Names);
@@ -28003,11 +28003,11 @@ begin
         begin
           if not DfmObjectNames(BaseDfm, AllNames[Index], OldNames) then
             Continue;
-      BaseDfm := DfmDeleteObject(BaseDfm, AllNames[Index]);
-      BaseDfm := DfmRemoveRefs(BaseDfm, OldNames);
-      if BasePas <> '' then
-        BasePas := PasRemoveFields(BasePas, FormClass, OldNames);
-    end;
+          BaseDfm := DfmDeleteObject(BaseDfm, AllNames[Index]);
+          BaseDfm := DfmRemoveRefs(BaseDfm, OldNames);
+          if BasePas <> '' then
+            BasePas := PasRemoveFields(BasePas, FormClass, OldNames);
+        end;
     // Имена убранного снова свободны
     FMenuWizDfm := BaseDfm;
     FMenuWizPas := BasePas;
@@ -28079,8 +28079,8 @@ begin
         if MenuIsMainClass(DfmObjectClass(FMenuWizDfm, AllNames[Index])) then
         begin
           Result := True;
-      Exit;
-    end;
+          Exit;
+        end;
   finally
     AllNames.Free;
   end;
@@ -28194,9 +28194,9 @@ begin
       for Index := 0 to AllNames.Count - 1 do
       begin
         Cls := DfmObjectClass(DfmText, AllNames[Index]);
-      if MenuIsMainClass(Cls) or MenuIsPopupClass(Cls) then
-        MenuNames.Add(AllNames[Index]);
-    end;
+        if MenuIsMainClass(Cls) or MenuIsPopupClass(Cls) then
+          MenuNames.Add(AllNames[Index]);
+      end;
     if MenuNames.Count = 0 then
     begin
       ShowMessage('В форме нет меню.');
@@ -28472,9 +28472,9 @@ begin
       if Trim(SL[I]) <> '' then
       begin
         P := Length(SL[I]) - Length(TrimLeft(SL[I]));
-      if P < Ind then
-        Ind := P;
-    end;
+        if P < Ind then
+          Ind := P;
+      end;
     if (Ind > 0) and (Ind < MaxInt) then
       for I := 0 to SL.Count - 1 do
         SL[I] := Copy(SL[I], Ind + 1, MaxInt);
@@ -28644,8 +28644,8 @@ begin
   if not IsValidIdent(NewNm) then
   begin
     ShowMessage('25311:' + NewNm + ' - не идентификатор: имя начинается с ' +
-                'буквы или _, дальше латинские буквы, цифры и _.');
-    Exit;
+    'буквы или _, дальше латинские буквы, цифры и _.');
+                Exit;
   end;
   // Меняется только регистр букв - имя занято им же самим
   CaseOnly := CompareText(NewNm, OldNm) = 0;
@@ -28660,8 +28660,8 @@ begin
       PasHasIdent(OldPas, NewNm)) then
   begin
     ShowMessage('25323:Имя ' + NewNm + ' уже встречается в форме или в ' +
-                'её модуле.');
-    Exit;
+    'её модуле.');
+                Exit;
   end;
 
   Renamed := '';
@@ -28674,8 +28674,8 @@ begin
       if not CaseOnly and PasHasIdent(OldPas, NewMeth) then
       begin
         LogRaw('Rename: обработчик ' + Pairs.Names[Idx] + ' не ' +
-               'переименован - имя ' + NewMeth + ' уже занято');
-        Pairs.Delete(Idx);
+        'переименован - имя ' + NewMeth + ' уже занято');
+               Pairs.Delete(Idx);
       end;
     end;
     NewDfm := DfmRenameObject(OldDfm, OldNm, NewNm, Pairs);
@@ -28746,8 +28746,8 @@ begin
                 DfmObjectClass(OldDfm, Names[0]) + ' на класс:'
     else
       Prompt := 'Заменить класс у ' + IntToStr(Names.Count) +
-                ' компонентов на:';
-    Pick := ChooseFromList('Replace Components', Prompt, Items);
+      ' компонентов на:';
+Pick := ChooseFromList('Replace Components', Prompt, Items);
     if Pick = '' then
       Exit;
     NewCls := GetClass(Pick);
@@ -28781,17 +28781,17 @@ begin
     end;
     if Skipped.Count > 0 then
       LogRaw('Replace: не заменены (визуальный и невизуальный классы ' +
-             'не взаимозаменяемы): ' + Skipped.CommaText);
-    if Done = 0 then
-    begin
-      if Skipped.Count > 0 then
-        ShowMessage('25412:' + Pick + ' и класс выделенного - один ' +
-                    'визуальный, другой нет; такую замену конструктор не ' +
-                    'делает.')
-      else
-        ShowMessage('25416:У выделенного уже класс ' + Pick + '.');
-      Exit;
-    end;
+      'не взаимозаменяемы): ' + Skipped.CommaText);
+             if Done = 0 then
+      begin
+        if Skipped.Count > 0 then
+          ShowMessage('25412:' + Pick + ' и класс выделенного - один ' +
+          'визуальный, другой нет; такую замену конструктор не ' +
+          'делает.')
+        else
+          ShowMessage('25416:У выделенного уже класс ' + Pick + '.');
+        Exit;
+      end;
     if NewPas <> '' then
       NewPas := PasAddUses(NewPas,
                            GetTypeData(PTypeInfo(NewCls.ClassInfo))^.UnitName);
@@ -28803,7 +28803,7 @@ begin
       LogRaw('Replace: убраны свойства, которых у ' + Pick + ' нет: ' +
              Removed.CommaText);
       ShowMessage('25430:Свойств, которых у ' + Pick + ' нет, в .dfm ' +
-                  'больше нет:'#13#10#13#10 + Removed.Text);
+      'больше нет:'#13#10#13#10 + Removed.Text);
     end;
   finally
     Skipped.Free;
@@ -29247,7 +29247,7 @@ begin
     ForeignName := Copy(FDsgPalette.SelectedForeign,
                         Pos('.', FDsgPalette.SelectedForeign) + 1, MaxInt);
     ForeignCls := FDsgForeign.ForeignClass(
-                    FDsgForeign.IndexOfClass(ForeignName), LoadError);
+      FDsgForeign.IndexOfClass(ForeignName), LoadError);
     if ForeignCls = nil then
     begin
       ShowMessage('21885:' + ForeignName + ': ' + LoadError);
@@ -29391,7 +29391,7 @@ begin
     ClsName := Copy(Foreign, Pos('.', Foreign) + 1, MaxInt);
     if FDsgForeign <> nil then
       ForeignCls := FDsgForeign.ForeignClass(
-                      FDsgForeign.IndexOfClass(ClsName), LoadError);
+        FDsgForeign.IndexOfClass(ClsName), LoadError);
     if ForeignCls = nil then
     begin
       ShowMessage('21886:' + ClsName + ': ' + LoadError);
@@ -29627,9 +29627,9 @@ begin
   end;
 
   Result := 'object ' + AName + ': ' + AClass + #13#10 +
-            '  Left = ' + IntToStr(X) + #13#10 +
-            '  Top = ' + IntToStr(Y) + #13#10;
-  if (AForeign <> nil) and BplInheritsFromName(AForeign, 'TWinControl') then
+  '  Left = ' + IntToStr(X) + #13#10 +
+  '  Top = ' + IntToStr(Y) + #13#10;
+if (AForeign <> nil) and BplInheritsFromName(AForeign, 'TWinControl') then
     Result := Result + '  Width = 185'#13#10'  Height = 89'#13#10
   else if (AForeign <> nil) and BplInheritsFromName(AForeign, 'TControl') then
     Result := Result + '  Width = 65'#13#10'  Height = 65'#13#10;
@@ -29906,8 +29906,8 @@ begin
       if not FDesigner.SetPropText(Names[I], AProp, ARaw) then
       begin
         DsgReload;
-      Break;
-    end;
+        Break;
+      end;
     // То же - спрятанному виду: всем компонентам группы, один переход
     // текста Old -> New
     if (FDsgOther <> nil) and (FDsgOtherKey = DsgViewKeyOf(Old)) then
@@ -30262,10 +30262,10 @@ begin
   // не засорять лог на каждом щелчке по дереву)
   if GetTickCount - StartTick >= 30 then
     Dbg(Format('17151: свойства в инспекторе - %d мс (список %d, ' +
-               'умолчания класса %d, события %d, колонка «Строка кода» %d: ' +
-               'отличия от .dfm %d, строки модуля %d)',
+    'умолчания класса %d, события %d, колонка «Строка кода» %d: ' +
+    'отличия от .dfm %d, строки модуля %d)',
                [GetTickCount - StartTick, TList, TDefaults, TEvents, TCodeCol,
-                FObjTCodeProps, FObjTSetIndex]), clNavy);
+               FObjTCodeProps, FObjTSetIndex]), clNavy);
 end;
 
 // Двойной щелчок по событию - к обработчику в .pas формы.
@@ -30300,9 +30300,9 @@ begin
     if (FDesigner = nil) or (CompareText(FObjDfmFile, FDsgDfm) <> 0) then
     begin
       ShowMessage('22150:Обработчик создаётся при открытом конструкторе ' +
-                  'этой формы: откройте ' + ExtractFileName(FObjDfmFile) +
-                  ' кнопкой Design form и повторите.');
-      Exit;
+      'этой формы: откройте ' + ExtractFileName(FObjDfmFile) +
+      ' кнопкой Design form и повторите.');
+                  Exit;
     end;
     FDsgEventName := Obj.Name;
     FDsgEventProp := FObjEvents.Selected.Caption;
@@ -30326,8 +30326,8 @@ begin
          (Pos(Pat, AnsiUpperCase(FWindows[I].Text)) > 0) then
       begin
         Pas := FWindows[I].FileName;
-      Break;
-    end;
+        Break;
+      end;
     if Pas = '' then
     begin
       ShowMessage('22158:Обработчик ' + Handler + ' не найден в открытых файлах.' +
@@ -30609,13 +30609,13 @@ begin
       for G := 0 to High(FScheme.KeywordGroups) do
       begin
         L := FScheme.KeywordGroups[G].Words;
-      if (FKwSig[G] <> Pointer(L)) or
-         ((L <> nil) and not Assigned(L.OnChange)) then
-      begin
-        FKwStale := True;
-        Break;
+        if (FKwSig[G] <> Pointer(L)) or
+           ((L <> nil) and not Assigned(L.OnChange)) then
+        begin
+          FKwStale := True;
+          Break;
+        end;
       end;
-    end;
   end;
 
   if FKwStale then
@@ -30694,8 +30694,8 @@ var
         if not (S[J] in ['a'..'z', 'A'..'Z', '0'..'9', '_']) then
         begin
           Result := False;
-      Exit;
-    end;
+          Exit;
+        end;
   end;
 
 // Имена из строк object / inherited / inline
@@ -31190,8 +31190,8 @@ begin
        (FLineInfo[I].CFont = F) and (FLineInfo[I].CTab = Tab) then
     begin
       Result := I;
-    Exit;
-  end;
+      Exit;
+    end;
 
   Inc(FInfoBuilds);
   AText := ReadLineText(ALine, AStart, ALen);
@@ -31243,8 +31243,8 @@ begin
       if P[K * XBlockLen + J] = #9 then
       begin
         T := 1;
-      Break;
-    end;
+        Break;
+      end;
     ATab[K] := T;
     X := MeasureRun(DC, P + K * XBlockLen, BlockN, X, nil);
   end;
@@ -31369,8 +31369,8 @@ begin
       if L^.CSegTab[J] <> 0 then
       begin
         S := J;
-      Break;
-    end;
+        Break;
+      end;
 
     Delta2 := Delta1;
     if (S >= 0) and (Delta1 <> 0) then
@@ -32448,8 +32448,8 @@ begin
       if DeclMatchLine(ACl[I], AW, I <> H, True, C) then
       begin
         ALine := I;
-    ACol := C;
-  end;
+        ACol := C;
+      end;
   if ALine >= 0 then
   begin
     Result := True;
@@ -32465,8 +32465,8 @@ begin
     if DeclCol1Word(ACl[I]) = 'INTERFACE' then
     begin
       HasIntf := True;
-    Break;
-  end;
+      Break;
+    end;
   InImpl := not HasIntf;
   InRoutine := False;
   for I := 0 to ACl.Count - 1 do
@@ -34071,8 +34071,8 @@ begin
           else if (B >= 0) and (DeclCol1Word(Src[I]) = 'END') then
           begin
             E := I;
-        Break;
-      end;
+            Break;
+          end;
 
       if (B >= 0) and (E > B) then
       begin
@@ -34347,14 +34347,14 @@ begin
     if FWindows[I].Used then
     begin
       FN := FWindows[I].FileName;
-    Ext := LowerCase(ExtractFileExt(FN));
-    if ((Ext = '.pas') or (Ext = '.pp')) and
-       (CompareText(ChangeFileExt(ExtractFileName(FN), ''), AUnit) = 0) then
-    begin
-      Result := FN;
-      Exit;
+      Ext := LowerCase(ExtractFileExt(FN));
+      if ((Ext = '.pas') or (Ext = '.pp')) and
+         (CompareText(ChangeFileExt(ExtractFileName(FN), ''), AUnit) = 0) then
+      begin
+        Result := FN;
+        Exit;
+      end;
     end;
-  end;
 
   if ADir <> '' then
   begin
@@ -34839,28 +34839,28 @@ begin
             for I := 0 to Refs.Count - 1 do
       begin
         Ref := TRelRef(Refs.Objects[I]);
-      if Ref.ByOp <> (Pass = 1) then
-        Continue;
-      Nm := Refs[I];
-      // ChangeFileExt(Application.ExeName, '.ini') - файл по имени exe
-      if Copy(Nm, 1, 5) = '<exe>' then
-        Nm := ChangeFileExt(ExeName, Copy(Nm, 6, MaxInt));
-      Low_ := LowerCase(Nm);
-      if Ref.IsDir then
-      begin
-        // Папка - только та, что есть. Служебные папки сборки и сам
-        // Release - никогда.
-        Found := DirectoryExists(ExeDir + Nm) or
-                 DirectoryExists(DprDir + Nm);
-        if not Found or (Low_ = 'release') or (Low_ = 'dsgprobe') or
-           (Low_ = 'dsgcache') or (Low_ = '__history') or
-           (Low_ = '__recovery') or
-           (CompareText(ExcludeTrailingPathDelimiter(ExeDir),
-                        ExcludeTrailingPathDelimiter(DprDir + Nm)) = 0) then
+        if Ref.ByOp <> (Pass = 1) then
           Continue;
-        Key := Nm + '\';
-        Place := 'папка';
-      end
+        Nm := Refs[I];
+        // ChangeFileExt(Application.ExeName, '.ini') - файл по имени exe
+        if Copy(Nm, 1, 5) = '<exe>' then
+          Nm := ChangeFileExt(ExeName, Copy(Nm, 6, MaxInt));
+        Low_ := LowerCase(Nm);
+        if Ref.IsDir then
+        begin
+          // Папка - только та, что есть. Служебные папки сборки и сам
+          // Release - никогда.
+          Found := DirectoryExists(ExeDir + Nm) or
+                   DirectoryExists(DprDir + Nm);
+          if not Found or (Low_ = 'release') or (Low_ = 'dsgprobe') or
+             (Low_ = 'dsgcache') or (Low_ = '__history') or
+             (Low_ = '__recovery') or
+             (CompareText(ExcludeTrailingPathDelimiter(ExeDir),
+                          ExcludeTrailingPathDelimiter(DprDir + Nm)) = 0) then
+            Continue;
+          Key := Nm + '\';
+          Place := 'папка';
+        end
       else
       begin
         Found := FileExists(ExeDir + Nm) or FileExists(DprDir + Nm);
@@ -34885,45 +34885,45 @@ begin
           Place := 'НЕ НАЙДЕН';
       end;
 
-      if not Ref.ByOp then
-        Usage := 'только строка в кавычках'
-      else if Ref.Uses_ = [ruRead] then
-        Usage := 'читается'
-      else if Ref.Uses_ = [ruWrite] then
-        Usage := 'только пишется'
-      else if Ref.Uses_ = [ruRead, ruWrite] then
-        Usage := 'читается и пишется'
-      else
-        Usage := 'операция без чтения и записи';
+        if not Ref.ByOp then
+          Usage := 'только строка в кавычках'
+        else if Ref.Uses_ = [ruRead] then
+          Usage := 'читается'
+        else if Ref.Uses_ = [ruWrite] then
+          Usage := 'только пишется'
+        else if Ref.Uses_ = [ruRead, ruWrite] then
+          Usage := 'читается и пишется'
+        else
+          Usage := 'операция без чтения и записи';
 
-      if HasSaved then
-        Check := Saved.IndexOf(Key) >= 0
-      else
-        Check := Ref.ByOp and Found and (ruRead in Ref.Uses_);
+        if HasSaved then
+          Check := Saved.IndexOf(Key) >= 0
+        else
+          Check := Ref.ByOp and Found and (ruRead in Ref.Uses_);
 
-      Keys.Add(Key);
-      K := Dlg.lstFiles.Items.Add(Key + '   -   ' + Place + ', ' + Usage +
-      '   (' + Ref.Where + ')');
-                                  Dlg.lstFiles.Checked[K] := Check;
+        Keys.Add(Key);
+        K := Dlg.lstFiles.Items.Add(Key + '   -   ' + Place + ', ' + Usage +
+        '   (' + Ref.Where + ')');
+                                    Dlg.lstFiles.Checked[K] := Check;
 
-      // Места - в лог
-                                  for K := 0 to Ref.Places.Count - 1 do
-      begin
-        SplitPlace(Ref.Places[K], Fn, Ln, Note);
-        LogComp('  ' + ReleaseLogPlace(Fn, Ln) + ' ' + Key + ' - ' + Note +
-        '  [' + Usage + ']');
+        // Места - в лог
+                                    for K := 0 to Ref.Places.Count - 1 do
+        begin
+          SplitPlace(Ref.Places[K], Fn, Ln, Note);
+          LogComp('  ' + ReleaseLogPlace(Fn, Ln) + ' ' + Key + ' - ' + Note +
+          '  [' + Usage + ']');
+        end;
       end;
-    end;
 
     // Выбранное раньше, чего в исходниках больше нет, - тоже в списке
     for I := 0 to Saved.Count - 1 do
       if Keys.IndexOf(Saved[I]) < 0 then
       begin
         Keys.Add(Saved[I]);
-      K := Dlg.lstFiles.Items.Add(Saved[I] +
-      '   -   выбрано раньше, в исходниках не найдено');
-                                  Dlg.lstFiles.Checked[K] := True;
-    end;
+        K := Dlg.lstFiles.Items.Add(Saved[I] +
+        '   -   выбрано раньше, в исходниках не найдено');
+                                    Dlg.lstFiles.Checked[K] := True;
+      end;
 
     if Unres.Count > 0 then
     begin
@@ -35067,8 +35067,8 @@ begin
       if not ReleaseFilesDialog(Dpr, ExeDir, L) then
       begin
         LogComp('--- Релиз не собран: состав не выбран');
-      Exit;
-    end;
+        Exit;
+      end;
 
     DprDir := ExtractFilePath(Dpr);
     RelDir := DprDir + 'Release\';
@@ -35077,8 +35077,8 @@ begin
       begin
         ShowMessage('29575:Не удалось убрать прежнюю папку Release:'#13#10 +
                     RelDir);
-      Exit;
-    end;
+        Exit;
+      end;
     if not ForceDirectories(ExcludeTrailingPathDelimiter(RelDir)) then
     begin
       ShowMessage('29581:Не удалось создать папку'#13#10 + RelDir);
@@ -35454,24 +35454,24 @@ function TForm1.FindDelphiRoots(AList: TStrings): Integer;
         if Reg.OpenKeyReadOnly(ABranch + '\' + Keys[I]) then
         begin
           Root := '';
-        if Reg.ValueExists('RootDir') then
-          Root := Reg.ReadString('RootDir');
-        Reg.CloseKey;
+          if Reg.ValueExists('RootDir') then
+            Root := Reg.ReadString('RootDir');
+          Reg.CloseKey;
 
-        if (Root = '') or
-           not FileExists(IncludeTrailingPathDelimiter(Root) +
-        'Bin\dcc32.exe') then
-                          Continue;
+          if (Root = '') or
+             not FileExists(IncludeTrailingPathDelimiter(Root) +
+          'Bin\dcc32.exe') then
+                            Continue;
 
-        // Имя - то же, что пишет Find installed: "Delphi 7", "BDS 22.0"
-                          if AShortName then
-                          Nm := APrefix + Copy(Keys[I], 1, Pos('.', Keys[I] + '.') - 1)
-        else
-          Nm := APrefix + Keys[I];
+          // Имя - то же, что пишет Find installed: "Delphi 7", "BDS 22.0"
+                            if AShortName then
+                            Nm := APrefix + Copy(Keys[I], 1, Pos('.', Keys[I] + '.') - 1)
+          else
+            Nm := APrefix + Keys[I];
 
-        if AList.IndexOfName(Nm) < 0 then
-          AList.Add(Nm + '=' + IncludeTrailingPathDelimiter(Root));
-      end;
+          if AList.IndexOfName(Nm) < 0 then
+            AList.Add(Nm + '=' + IncludeTrailingPathDelimiter(Root));
+        end;
     finally
       Keys.Free;
       Reg.Free;
@@ -35633,17 +35633,17 @@ function TForm1.DelphiRegKeyOf(const ARoot: string; var ARootKey: HKEY): string;
         if Reg.OpenKeyReadOnly(ABranch + '\' + Keys[I]) then
         begin
           R := '';
-        if Reg.ValueExists('RootDir') then
-          R := Reg.ReadString('RootDir');
-        Reg.CloseKey;
-        if (R <> '') and
-           (CompareText(ExcludeTrailingPathDelimiter(R),
-                        ExcludeTrailingPathDelimiter(ARoot)) = 0) then
-        begin
-          Result := ABranch + '\' + Keys[I];
-          Exit;
+          if Reg.ValueExists('RootDir') then
+            R := Reg.ReadString('RootDir');
+          Reg.CloseKey;
+          if (R <> '') and
+             (CompareText(ExcludeTrailingPathDelimiter(R),
+                          ExcludeTrailingPathDelimiter(ARoot)) = 0) then
+          begin
+            Result := ABranch + '\' + Keys[I];
+            Exit;
+          end;
         end;
-      end;
     finally
       Keys.Free;
       Reg.Free;
@@ -35744,8 +35744,8 @@ begin
       begin
         Result := Copy(Result, 1, P - 1) + ExcludeTrailingPathDelimiter(V) +
                   Copy(Result, Q + 1, MaxInt);
-      P := PosEx('$(', Result, P);
-    end
+        P := PosEx('$(', Result, P);
+      end
     else
       P := PosEx('$(', Result, Q + 1);
   end;
@@ -35832,7 +35832,7 @@ begin
       begin
         if I < P then
           LogComp('  ' + ATitle + ': папки нет на этом компьютере, ' +
-                  'оставлена - ' + V)
+          'оставлена - ' + V)
         else
         begin
           Inc(Dropped);
@@ -36066,7 +36066,7 @@ begin
   if SkipCount > 0 then
     LogComp(ATitle + ': на этом компьютере нет папок - ' +
             IntToStr(SkipCount) + ', компилятору не переданы (в настройках ' +
-            'остались):' + Copy(Skipped, 2, MaxInt));
+    'остались):' + Copy(Skipped, 2, MaxInt));
 end;
 
 // Папки внутри <Delphi>\Source и <Delphi>\Experts из списка поиска - вон.
@@ -36301,11 +36301,11 @@ begin
     if CompareText(ProjectTypeOf(BuildPrj), 'Delphi') <> 0 then
       LogComp('Внимание: тип проекта - ' + ProjectTypeOf(BuildPrj) +
       ', а собирается он компилятором Delphi');
-    Dpr := ProjectTargetFind(BuildPrj);
+              Dpr := ProjectTargetFind(BuildPrj);
     // Записанной цели на диске нет (описание с другого компьютера), а
     // нашлась другая - она и запоминается
-    if (Dpr <> '') and
-       (CompareText(Dpr, ProjectTargetOf(BuildPrj)) <> 0) then
+              if (Dpr <> '') and
+              (CompareText(Dpr, ProjectTargetOf(BuildPrj)) <> 0) then
     begin
       LogComp('Цель сборки проекта: записанной в описании нет на диске (' +
               ProjectTargetOf(BuildPrj) + '), взята ' + Dpr);
@@ -36602,13 +36602,13 @@ begin
     LogComp(Format('--- Ошибки компиляции, код %d. Двойной щелчок по строке ' +
     'с ошибкой открывает файл на нужной строке', [Code]));
     // Лог с ошибками - рядом с .dpr; у пробной сборки - в папку зонда
-    if FProbeActive then
-      SaveCompileLog(FProbeDir + '_dsgprobe_compile.log')
+                   if FProbeActive then
+                   SaveCompileLog(FProbeDir + '_dsgprobe_compile.log')
     else
       SaveCompileLog(ChangeFileExt(OrigDpr, '') + '_compile.log');
     // Строки с Error и Fatal уже отобраны в своё окно - показываем его
-                   if (ErrLogEdit <> nil) and (ErrLogEdit.Lines.Count > 0) then
-                   ShowErrLog;
+    if (ErrLogEdit <> nil) and (ErrLogEdit.Lines.Count > 0) then
+      ShowErrLog;
   end;
 end;
 
@@ -36906,8 +36906,8 @@ var
     LastText := '';
   end;
 
-  // Ошибка - красным в оба окна сама, не по разбору LogComp: в тексте
-  // ошибки rc.exe бывают скобки, и IsCompilerError мог бы её не узнать
+// Ошибка - красным в оба окна сама, не по разбору LogComp: в тексте
+// ошибки rc.exe бывают скобки, и IsCompilerError мог бы её не узнать
   procedure LogRed(const AText: string);
   begin
     FLastDiag := '';
@@ -36918,7 +36918,7 @@ var
     LogErr(AText);
   end;
 
-  // Блок закончен (File in error или конец вывода) - строка в лог
+// Блок закончен (File in error или конец вывода) - строка в лог
   procedure Emit;
   var
     Candidate, Line, Notes: string;
@@ -37111,8 +37111,8 @@ begin
   if not CheckDiskChanges(-1) then
   begin
     LogComp('Компиляция отменена: файлы на диске изменены снаружи, ' +
-            'разберитесь с ними и соберите снова');
-    Exit;
+    'разберитесь с ними и соберите снова');
+            Exit;
   end;
 
   // rc.exe читает файлы с диска: несохранённые правки он не увидит
@@ -37135,13 +37135,13 @@ begin
   if Bas = '' then
   begin
     LogComp('Сборка RapidQ: главный файл не найден. Откройте главный .bas ' +
-            'проекта - он запомнится как цель сборки');
-    BuildPrj := BuildProject;
-    if (BuildPrj <> '') and (ProjectTargetOf(BuildPrj) <> '') then
-      LogComp('  Цель в описании проекта: ' + ProjectTargetOf(BuildPrj) +
-              '. Если это проект Delphi, укажите в описании ' +
-              '[Project] Type=Delphi');
-    Exit;
+    'проекта - он запомнится как цель сборки');
+            BuildPrj := BuildProject;
+            if (BuildPrj <> '') and (ProjectTargetOf(BuildPrj) <> '') then
+            LogComp('  Цель в описании проекта: ' + ProjectTargetOf(BuildPrj) +
+      '. Если это проект Delphi, укажите в описании ' +
+      '[Project] Type=Delphi');
+                    Exit;
   end;
 
   // Пути компилятора. StripIniComment к путям не применяется: точка с
@@ -37167,9 +37167,9 @@ begin
   if CompDir = '' then
   begin
     LogComp('Сборка RapidQ: не задана папка компилятора [' + Sect + ']. ' +
-            'IDE Options - Compilers - RapidQ Basic, поле Compiler: ' +
-            'папка с rc.exe');
-    Exit;
+    'IDE Options - Compilers - RapidQ Basic, поле Compiler: ' +
+    'папка с rc.exe');
+            Exit;
   end;
   if FileExists(CompDir) and not DirectoryExists(CompDir) then
     RcExe := CompDir
@@ -37311,19 +37311,19 @@ begin
   end;
 
   LogComp('--- Ошибки компиляции. Двойной щелчок по строке с ошибкой ' +
-          'открывает файл на нужной строке');
+  'открывает файл на нужной строке');
   // Лог с ошибками - рядом с .bas. У копии для снимка лог сохраняет
   // RapidQProbeRun, когда снимок не удался.
-  if not FRqProbeActive then
-    SaveCompileLog(ChangeFileExt(Bas, '') + '_compile.log');
-  if (ErrLogEdit <> nil) and (ErrLogEdit.Lines.Count > 0) then
-    ShowErrLog;
+          if not FRqProbeActive then
+          SaveCompileLog(ChangeFileExt(Bas, '') + '_compile.log');
+          if (ErrLogEdit <> nil) and (ErrLogEdit.Lines.Count > 0) then
+          ShowErrLog;
   // Копия для снимка: строки ошибок - её, а не исходника; что делать с
   // ошибкой, решает RapidQProbeRun
-  if FRqProbeActive then
-    Exit;
+          if FRqProbeActive then
+          Exit;
   // Как в RQdebugger: сразу к первой ошибке
-  if (FirstLine > 0) and (FirstFile <> '') and FileExists(FirstFile) then
+          if (FirstLine > 0) and (FirstFile <> '') and FileExists(FirstFile) then
   begin
     OpenNamedFile(FirstFile);
     GotoLine(FirstLine - 1);
@@ -37377,14 +37377,14 @@ const
   RqProbeMaxRetry = 60;     // пересборок за один снимок
   RqProbeSkipName = 'rqprobe_skip.txt';   // исключённые КЛАСС.СВОЙСТВО
   RqProbePartLines = 400;   // строк в одной SUB дампа: компилятору не
-                            // даём одну SUB на тысячи строк
+  // даём одну SUB на тысячи строк
   RqProbeWaitMs = 15000;    // сколько ждать программу
   RqProbeFmCreate = 65535;  // fmCreate (Files.inc), числом: RAPIDQ.INC
-                            // подключён не у всех
+  // подключён не у всех
 
-// Строки ALines вне SUB, FUNCTION и TYPE: AMask[номер] = True. Конец тела
-// SUB и FUNCTION - любое из END SUB / FUNCTION (встречается FUNCTION ...
-// END SUB).
+  // Строки ALines вне SUB, FUNCTION и TYPE: AMask[номер] = True. Конец тела
+  // SUB и FUNCTION - любое из END SUB / FUNCTION (встречается FUNCTION ...
+  // END SUB).
 procedure RapidQTopLevelMask(ALines: TStrings; AMask: TBits);
 var
   Parts: TStringList;
@@ -37419,7 +37419,7 @@ begin
           Second := RapidQFirstWord(Rest, Tail);
           if ((BodyKind = 'TYPE') and (Second = 'TYPE')) or
              ((BodyKind = 'SUB') and ((Second = 'SUB') or (Second = 'SUBI') or
-              (Second = 'FUNCTION') or (Second = 'FUNCTIONI'))) then
+                                      (Second = 'FUNCTION') or (Second = 'FUNCTIONI'))) then
             BodyKind := '';
         end;
       end;
@@ -37473,10 +37473,10 @@ begin
   // &H8000000F) экспоненту и теряет точность: -2.14748363E9
   if AKind = 2 then
     Result := '  RqProbeFile.WriteLine("' + Ref + '=" + RqProbeStr$(' + Ref +
-              '))'
+    '))'
   else if AKind = 1 then
     Result := '  RqProbeFile.WriteLine("' + Ref + '=" + RqProbeNum$(' + Ref +
-              '))'
+    '))'
   else
     Result := '  RqProbeFile.WriteLine("' + Ref + '=" + STR$(' + Ref + '))';
 end;
@@ -37586,8 +37586,8 @@ begin
     if InsLine < 0 then
     begin
       LogComp('Снимок RapidQ: в главной части ' + ExtractFileName(AMainBas) +
-              ' нет CREATE - снимать нечего');
-      Exit;
+      ' нет CREATE - снимать нечего');
+              Exit;
     end;
 
     // Классы программы - из главного .bas и его include
@@ -37601,52 +37601,52 @@ begin
     AOut.Add('DIM RqProbeFile AS QFILESTREAM');
     AOut.Add('DIM RqProbeDone AS INTEGER');
     AOut.Add('DECLARE FUNCTION RqProbePid LIB "kernel32" ALIAS ' +
-             '"GetCurrentProcessId" () AS LONG');
-    AOut.Add('DECLARE SUB RqProbeTrace (TraceText AS STRING)');
-    AOut.Add('DECLARE SUB RqProbeDump');
-    AOut.Add('RqProbeTimer.Interval = 1');
-    AOut.Add('RqProbeTimer.OnTimer = RqProbeDump');
-    AOut.Add('RqProbeTimer.Enabled = 1');
-    AOut.Add('RqProbeFile.Open("' + RapidQSlashPath(AOutFile) + '", ' +
-             IntToStr(RqProbeFmCreate) + ')');
-    AOut.Add('RqProbeFile.WriteLine("#start")');
-    AOut.Add('RqProbeFile.Close');
-    AOut.Add('RqProbeTrace("start")');
-    for LineIdx := InsLine to Lines.Count - 1 do
-      AOut.Add(Lines[LineIdx]);
+    '"GetCurrentProcessId" () AS LONG');
+             AOut.Add('DECLARE SUB RqProbeTrace (TraceText AS STRING)');
+             AOut.Add('DECLARE SUB RqProbeDump');
+             AOut.Add('RqProbeTimer.Interval = 1');
+             AOut.Add('RqProbeTimer.OnTimer = RqProbeDump');
+             AOut.Add('RqProbeTimer.Enabled = 1');
+             AOut.Add('RqProbeFile.Open("' + RapidQSlashPath(AOutFile) + '", ' +
+                      IntToStr(RqProbeFmCreate) + ')');
+             AOut.Add('RqProbeFile.WriteLine("#start")');
+             AOut.Add('RqProbeFile.Close');
+             AOut.Add('RqProbeTrace("start")');
+             for LineIdx := InsLine to Lines.Count - 1 do
+             AOut.Add(Lines[LineIdx]);
 
-    ADumpStart := AOut.Count;
-    AOut.Add('');
-    AOut.Add(''' --- unIDE: снимок значений свойств (копия программы) ---');
-    AOut.Add('FUNCTION RqProbeStr$ (ProbeValue AS STRING) AS STRING');
-    AOut.Add('  DIM ProbeText AS STRING');
-    AOut.Add('  DIM CutPos AS INTEGER');
-    AOut.Add('  ProbeText = ProbeValue');
-    AOut.Add('  CutPos = INSTR(ProbeText, CHR$(13))');
-    AOut.Add('  IF CutPos = 0 THEN CutPos = INSTR(ProbeText, CHR$(10))');
-    AOut.Add('  IF CutPos > 0 THEN ProbeText = LEFT$(ProbeText, CutPos - 1) + " ..."');
-    AOut.Add('  IF LEN(ProbeText) > 200 THEN ProbeText = LEFT$(ProbeText, 200) + " ..."');
-    AOut.Add('  RqProbeStr$ = ProbeText');
-    AOut.Add('END FUNCTION');
-    AOut.Add('');
+             ADumpStart := AOut.Count;
+             AOut.Add('');
+             AOut.Add(''' --- unIDE: снимок значений свойств (копия программы) ---');
+             AOut.Add('FUNCTION RqProbeStr$ (ProbeValue AS STRING) AS STRING');
+             AOut.Add('  DIM ProbeText AS STRING');
+             AOut.Add('  DIM CutPos AS INTEGER');
+             AOut.Add('  ProbeText = ProbeValue');
+             AOut.Add('  CutPos = INSTR(ProbeText, CHR$(13))');
+             AOut.Add('  IF CutPos = 0 THEN CutPos = INSTR(ProbeText, CHR$(10))');
+             AOut.Add('  IF CutPos > 0 THEN ProbeText = LEFT$(ProbeText, CutPos - 1) + " ..."');
+             AOut.Add('  IF LEN(ProbeText) > 200 THEN ProbeText = LEFT$(ProbeText, 200) + " ..."');
+             AOut.Add('  RqProbeStr$ = ProbeText');
+             AOut.Add('END FUNCTION');
+             AOut.Add('');
     // Целое без экспоненты - как STRL1$ в RQdebugger: STRF$ с ffFixed (2) и
     // дробная часть отрезается
-    AOut.Add('FUNCTION RqProbeNum$ (ProbeValue AS LONG) AS STRING');
-    AOut.Add('  DIM ProbeText AS STRING');
-    AOut.Add('  DIM CutPos AS INTEGER');
-    AOut.Add('  ProbeText = STRF$(ProbeValue, 2, 11, 18)');
-    AOut.Add('  CutPos = INSTR(ProbeText, ".")');
-    AOut.Add('  IF CutPos = 0 THEN CutPos = INSTR(ProbeText, ",")');
-    AOut.Add('  IF CutPos > 0 THEN ProbeText = LEFT$(ProbeText, CutPos - 1)');
-    AOut.Add('  RqProbeNum$ = ProbeText');
-    AOut.Add('END FUNCTION');
-    AOut.Add('');
+             AOut.Add('FUNCTION RqProbeNum$ (ProbeValue AS LONG) AS STRING');
+             AOut.Add('  DIM ProbeText AS STRING');
+             AOut.Add('  DIM CutPos AS INTEGER');
+             AOut.Add('  ProbeText = STRF$(ProbeValue, 2, 11, 18)');
+             AOut.Add('  CutPos = INSTR(ProbeText, ".")');
+             AOut.Add('  IF CutPos = 0 THEN CutPos = INSTR(ProbeText, ",")');
+             AOut.Add('  IF CutPos > 0 THEN ProbeText = LEFT$(ProbeText, CutPos - 1)');
+             AOut.Add('  RqProbeNum$ = ProbeText');
+             AOut.Add('END FUNCTION');
+             AOut.Add('');
 
     // Свойства, которые компилятор уже не принял в прошлых снимках
-    Skip.Sorted := True;
-    Skip.Duplicates := dupIgnore;
-    Skip.CaseSensitive := False;
-    if FileExists(FProbeDir + RqProbeSkipName) then
+             Skip.Sorted := True;
+             Skip.Duplicates := dupIgnore;
+             Skip.CaseSensitive := False;
+             if FileExists(FProbeDir + RqProbeSkipName) then
     try
       Skip.LoadFromFile(FProbeDir + RqProbeSkipName);
     except
@@ -37748,46 +37748,46 @@ begin
              IntToStr(RqProbeFmCreate) + ')');
     AOut.Add('  END IF');
     AOut.Add('  TraceFile.WriteLine(TIME$ + " pid" + STR$(RqProbePid) + " " + ' +
-             'TraceText)');
-    AOut.Add('  TraceFile.Close');
-    AOut.Add('END SUB');
-    AOut.Add('');
-    AOut.Add('SUB RqProbeDump');
-    AOut.Add('  RqProbeTimer.Enabled = 0');
+    'TraceText)');
+             AOut.Add('  TraceFile.Close');
+             AOut.Add('END SUB');
+             AOut.Add('');
+             AOut.Add('SUB RqProbeDump');
+             AOut.Add('  RqProbeTimer.Enabled = 0');
     // Второй вызов в том же процессе файл не переписывает
-    AOut.Add('  IF RqProbeDone THEN');
-    AOut.Add('    RqProbeTrace("dump called again - skipped")');
-    AOut.Add('    EXIT SUB');
-    AOut.Add('  END IF');
-    AOut.Add('  RqProbeDone = 1');
-    AOut.Add('  RqProbeTrace("dump start")');
+             AOut.Add('  IF RqProbeDone THEN');
+             AOut.Add('    RqProbeTrace("dump called again - skipped")');
+             AOut.Add('    EXIT SUB');
+             AOut.Add('  END IF');
+             AOut.Add('  RqProbeDone = 1');
+             AOut.Add('  RqProbeTrace("dump start")');
     // Путь целиком и с прямыми косыми: программа могла сменить текущую
     // папку, а обратная косая при $ESCAPECHARS ON - начало escape
-    AOut.Add('  RqProbeFile.Open("' + RapidQSlashPath(AOutFile) + '", ' +
-             IntToStr(RqProbeFmCreate) + ')');
-    AOut.Add('  RqProbeFile.WriteLine("#time " + TIME$ + " pid" + ' +
-             'STR$(RqProbePid))');
-    for BodyIdx := 1 to PartCount do
-      AOut.Add('  RqProbePart' + IntToStr(BodyIdx));
-    AOut.Add('  RqProbeFile.WriteLine("#end")');
-    AOut.Add('  RqProbeFile.Close');
-    AOut.Add('  RqProbeTrace("dump end")');
-    AOut.Add('  END');
-    AOut.Add('END SUB');
+             AOut.Add('  RqProbeFile.Open("' + RapidQSlashPath(AOutFile) + '", ' +
+                      IntToStr(RqProbeFmCreate) + ')');
+             AOut.Add('  RqProbeFile.WriteLine("#time " + TIME$ + " pid" + ' +
+    'STR$(RqProbePid))');
+                      for BodyIdx := 1 to PartCount do
+                      AOut.Add('  RqProbePart' + IntToStr(BodyIdx));
+                      AOut.Add('  RqProbeFile.WriteLine("#end")');
+                      AOut.Add('  RqProbeFile.Close');
+                      AOut.Add('  RqProbeTrace("dump end")');
+                      AOut.Add('  END');
+                      AOut.Add('END SUB');
 
-    if not AMinimal then
-      LogComp(Format('Снимок RapidQ: объектов %d, свойств %d; таймер - ' +
-                     'перед строкой %d (%s)', [ObjCount, PropCount,
-                                              InsLine + 1,
-                                              Trim(Lines[InsLine])]));
-    if SkipCount > 0 then
-      LogComp(Format('Снимок RapidQ: не пишется %d свойств из списка ' +
-                     'исключённых: %s', [SkipCount,
-                                         FProbeDir + RqProbeSkipName]));
-    Result := AMinimal or (ObjCount > 0);
-    if not Result then
-      LogComp('Снимок RapidQ: ни у одного объекта главной части нет ' +
-              'описания класса');
+                      if not AMinimal then
+                      LogComp(Format('Снимок RapidQ: объектов %d, свойств %d; таймер - ' +
+      'перед строкой %d (%s)', [ObjCount, PropCount,
+                                     InsLine + 1,
+                                     Trim(Lines[InsLine])]));
+                      if SkipCount > 0 then
+                      LogComp(Format('Снимок RapidQ: не пишется %d свойств из списка ' +
+      'исключённых: %s', [SkipCount,
+                                     FProbeDir + RqProbeSkipName]));
+                      Result := AMinimal or (ObjCount > 0);
+                      if not Result then
+                      LogComp('Снимок RapidQ: ни у одного объекта главной части нет ' +
+      'описания класса');
   finally
     for NodeIdx := 0 to Nodes.Count - 1 do
       TObject(Nodes[NodeIdx]).Free;
@@ -37873,8 +37873,8 @@ var
         on E: Exception do
         begin
           LogComp('Снимок RapidQ: вывод консоли не прочитан: ' + AFile +
-                  ' (' + E.Message + ')');
-          Exit;
+          ' (' + E.Message + ')');
+                  Exit;
         end;
       end;
       if ConsoleLines.Count = 0 then
@@ -37884,11 +37884,11 @@ var
         Exit;
       end;
       LogComp(Format('Снимок RapidQ: вывод консоли программы, последние ' +
-                     'строки из %d (%s):', [ConsoleLines.Count, AFile]));
-      TailIdx := ConsoleLines.Count - TailLines;
-      if TailIdx < 0 then
-        TailIdx := 0;
-      while TailIdx < ConsoleLines.Count do
+      'строки из %d (%s):', [ConsoleLines.Count, AFile]));
+                     TailIdx := ConsoleLines.Count - TailLines;
+                     if TailIdx < 0 then
+                     TailIdx := 0;
+                     while TailIdx < ConsoleLines.Count do
       begin
         LogComp('    > ' + ConsoleLines[TailIdx]);
         Inc(TailIdx);
@@ -37898,8 +37898,8 @@ var
     end;
   end;
 
-  // Файл значений целиком (с общим доступом: программа может держать его
-  // открытым). Нет или не прочитался - ''.
+// Файл значений целиком (с общим доступом: программа может держать его
+// открытым). Нет или не прочитался - ''.
   function ReadOutFile: string;
   var
     OutStream: TFileStream;
@@ -37921,9 +37921,9 @@ var
     end;
   end;
 
-  // Файл значений записан: в нём "#end", и размер тот же, что при прошлой
-  // проверке (100 мс назад) - программа писать перестала. Тогда его текст
-  // - в OutText: разбирается ровно то, что проверено, без нового чтения.
+// Файл значений записан: в нём "#end", и размер тот же, что при прошлой
+// проверке (100 мс назад) - программа писать перестала. Тогда его текст
+// - в OutText: разбирается ровно то, что проверено, без нового чтения.
   function OutFileDone: Boolean;
   var
     FileText: string;
@@ -37941,14 +37941,14 @@ var
       OutText := FileText;
   end;
 
-  // Запуск exe копии из папки программы (текущая папка - она же, как при
-  // обычном запуске). Вывод консоли (print) - в AConsole. AElapsed - сколько
-  // ждали. False - не запустилась.
-  //
-  // Ждём не только конца процесса, но и "#end" в файле значений: запущенный
-  // процесс может закончиться раньше, чем файл записан (в логе было:
-  // процесс кончился за 31 мс, а файл появился позже). Всего - до
-  // RqProbeWaitMs.
+// Запуск exe копии из папки программы (текущая папка - она же, как при
+// обычном запуске). Вывод консоли (print) - в AConsole. AElapsed - сколько
+// ждали. False - не запустилась.
+//
+// Ждём не только конца процесса, но и "#end" в файле значений: запущенный
+// процесс может закончиться раньше, чем файл записан (в логе было:
+// процесс кончился за 31 мс, а файл появился позже). Всего - до
+// RqProbeWaitMs.
   function RunProbe(const AConsole: string; var AElapsed: Cardinal): Boolean;
   var
     StartInfo: TStartupInfo;
@@ -37979,12 +37979,12 @@ var
     end
     else
       LogComp('Снимок RapidQ: файл для вывода консоли не создан (' + AConsole +
-              ', код ' + IntToStr(GetLastError) + ') - запуск без него');
-    LogComp('Снимок RapidQ: запуск ' + FRqProbeExe);
-    Started := CreateProcess(nil, PChar('"' + FRqProbeExe + '"'), nil, nil,
-                             ConsoleHandle <> INVALID_HANDLE_VALUE, 0, nil,
-                             PChar(RunDir), StartInfo, ProcInfo);
-    if not Started then
+      ', код ' + IntToStr(GetLastError) + ') - запуск без него');
+              LogComp('Снимок RapidQ: запуск ' + FRqProbeExe);
+              Started := CreateProcess(nil, PChar('"' + FRqProbeExe + '"'), nil, nil,
+                                       ConsoleHandle <> INVALID_HANDLE_VALUE, 0, nil,
+                                       PChar(RunDir), StartInfo, ProcInfo);
+              if not Started then
     begin
       LogComp('Снимок RapidQ: не запустился, код ' + IntToStr(GetLastError));
       if ConsoleHandle <> INVALID_HANDLE_VALUE then
@@ -38013,23 +38013,23 @@ var
       AElapsed := GetTickCount - StartTick;
       if ProcEnded then
         LogComp(Format('Снимок RapidQ: запущенный процесс завершился за %d ' +
-                       'мс, код %d', [ExitMs, ProcExit]))
+        'мс, код %d', [ExitMs, ProcExit]))
       else if OutFileDone then
         LogComp(Format('Снимок RapidQ: значения записаны за %d мс', [AElapsed]))
       else
       begin
         TerminateProcess(ProcInfo.hProcess, 1);
         LogComp(Format('Снимок RapidQ: за %d с программа не записала значения ' +
-                       'и остановлена', [RqProbeWaitMs div 1000]));
+        'и остановлена', [RqProbeWaitMs div 1000]));
       end;
       if ProcEnded then
       begin
         if OutFileDone then
           LogComp(Format('Снимок RapidQ: файл значений записан целиком через ' +
-                         '%d мс от запуска', [AElapsed]))
+          '%d мс от запуска', [AElapsed]))
         else if FileExists(OutFile) then
           LogComp(Format('Снимок RapidQ: за %d с файл значений есть, но не ' +
-                         'дописан (#end нет)', [RqProbeWaitMs div 1000]))
+          'дописан (#end нет)', [RqProbeWaitMs div 1000]))
         else
           LogComp(Format('Снимок RapidQ: за %d с файл значений не появился',
                          [RqProbeWaitMs div 1000]));
@@ -38045,8 +38045,8 @@ var
     Result := True;
   end;
 
-  // Журнал копии (_rqprobe.trace) - в лог: какой процесс когда начинал и
-  // кончал дамп. Две строки "dump start" - файл значений писали дважды.
+// Журнал копии (_rqprobe.trace) - в лог: какой процесс когда начинал и
+// кончал дамп. Две строки "dump start" - файл значений писали дважды.
   procedure LogTrace;
   var
     TraceLines: TStringList;
@@ -38075,15 +38075,15 @@ var
       end;
       if StartCount > 1 then
         LogComp(Format('Снимок RapidQ: дамп начинался %d раз - файл ' +
-                       'значений переписывался', [StartCount]));
+        'значений переписывался', [StartCount]));
     finally
       TraceLines.Free;
     end;
   end;
 
-  // _rqprobe_run.bat рядом с копией - запуск её вручную из папки
-  // программы, с паузой в конце: видно окно консоли и сообщения рантайма
-  // RapidQ
+// _rqprobe_run.bat рядом с копией - запуск её вручную из папки
+// программы, с паузой в конце: видно окно консоли и сообщения рантайма
+// RapidQ
   procedure WriteRunBat;
   var
     Bat: TStringList;
@@ -38097,15 +38097,15 @@ var
       Bat.Add('"_rqprobe.exe"');
       Bat.Add('echo Exit code: %errorlevel%');
       Bat.Add('echo The program may restart itself (QXpTheme) - the values ' +
-              'file can appear a bit later');
-      Bat.Add('pause');
-      Bat.Add('if exist "_rqprobe.txt" (echo Values file: %cd%\_rqprobe.txt) ' +
-              'else (echo No values file)');
-      Bat.Add('pause');
+      'file can appear a bit later');
+              Bat.Add('pause');
+              Bat.Add('if exist "_rqprobe.txt" (echo Values file: %cd%\_rqprobe.txt) ' +
+      'else (echo No values file)');
+                      Bat.Add('pause');
       try
         Bat.SaveToFile(RunDir + '_rqprobe_run.bat');
         LogComp('Снимок RapidQ: запуск копии вручную - ' + RunDir +
-                '_rqprobe_run.bat');
+        '_rqprobe_run.bat');
       except
         LogComp('Снимок RapidQ: не записан ' + RunDir + '_rqprobe_run.bat');
       end;
@@ -38114,8 +38114,8 @@ var
     end;
   end;
 
-  // Копия без строк дампа - таймер, #start, пустой дамп. Показывает, в
-  // строках ли дампа дело: она работает - да; кончается так же - нет.
+// Копия без строк дампа - таймер, #start, пустой дамп. Показывает, в
+// строках ли дампа дело: она работает - да; кончается так же - нет.
   procedure ControlRun;
   var
     CtrlSrc, CtrlClasses, CtrlLines: TStringList;
@@ -38125,10 +38125,10 @@ var
     CtrlBas, MainExe: string;
   begin
     LogComp('Снимок RapidQ: контрольный запуск - та же копия без строк ' +
-            'свойств (таймер, #start, #end)');
-    CtrlSrc := TStringList.Create;
-    CtrlClasses := TStringList.Create;
-    CtrlLines := TStringList.Create;
+    'свойств (таймер, #start, #end)');
+            CtrlSrc := TStringList.Create;
+            CtrlClasses := TStringList.Create;
+            CtrlLines := TStringList.Create;
     try
       if not RapidQProbeSource(MainBas, OutFile, CtrlSrc, CtrlClasses,
                                CtrlDump, True) then
@@ -38160,21 +38160,21 @@ var
       CtrlLines.Text := ReadOutFile;
       if CtrlLines.IndexOf('#end') >= 0 then
         LogComp(Format('Снимок RapidQ: контрольная копия дошла до таймера и ' +
-                       'отработала (#end) за %d мс. Программу останавливают ' +
-                       'строки свойств в дампе - их объём или одно из ' +
-                       'свойств', [CtrlMs]))
+        'отработала (#end) за %d мс. Программу останавливают ' +
+        'строки свойств в дампе - их объём или одно из ' +
+        'свойств', [CtrlMs]))
       else if CtrlLines.IndexOf('#start') >= 0 then
         LogComp(Format('Снимок RapidQ: контрольная копия дошла до таймера, ' +
-                       'но закончилась за %d мс, не начав обрабатывать ' +
-                       'сообщения', [CtrlMs]))
+        'но закончилась за %d мс, не начав обрабатывать ' +
+        'сообщения', [CtrlMs]))
       else
       begin
         LogConsoleTail(FProbeDir + '_rqprobe_ctrl_console.txt');
         LogComp(Format('Снимок RapidQ: контрольная копия без строк свойств ' +
-                       'тоже закончилась за %d мс, не дойдя до таймера - дело ' +
-                       'не в строках дампа. Проверьте, работает ли обычная ' +
-                       'сборка, запущенная так же: из папки программы, ' +
-                       'отдельным процессом', [CtrlMs]));
+        'тоже закончилась за %d мс, не дойдя до таймера - дело ' +
+        'не в строках дампа. Проверьте, работает ли обычная ' +
+        'сборка, запущенная так же: из папки программы, ' +
+        'отдельным процессом', [CtrlMs]));
       end;
     finally
       CtrlLines.Free;
@@ -38190,14 +38190,14 @@ begin
   if MainBas = '' then
   begin
     LogComp('Снимок RapidQ: главный .bas не найден. Откройте его - он ' +
-            'запомнится как цель сборки');
-    Exit;
+    'запомнится как цель сборки');
+            Exit;
   end;
   if not RapidQComponentsReady(True) then
   begin
     LogComp('Снимок RapidQ: нет описания компонентов (ComponentAll.data) - ' +
-            'неизвестно, какие свойства читать. Где искали - строками выше');
-    Exit;
+    'неизвестно, какие свойства читать. Где искали - строками выше');
+            Exit;
   end;
   ShowCompLog;
   if CompLogEdit <> nil then
@@ -38251,7 +38251,7 @@ begin
       end;
       if Ok then
         LogComp('Снимок RapidQ: копия не изменилась - ' + FRqProbeExe +
-                ' без пересборки');
+        ' без пересборки');
     end;
     if not Ok then
     repeat
@@ -38280,7 +38280,7 @@ begin
          not RapidQDumpLineParts(Src[ErrIdx], ErrObj, ErrProp) then
       begin
         LogComp('Снимок RapidQ: копия программы не собралась, ошибка не в ' +
-                'строках снимка. Проверьте обычную сборку (Compile); копия - ' +
+        'строках снимка. Проверьте обычную сборку (Compile); копия - ' +
                 ProbeBas);
         SaveCompileLog(FProbeDir + '_rqprobe_compile.log');
         Exit;
@@ -38301,7 +38301,7 @@ begin
       Inc(Excluded);
       Inc(Attempt);
       LogComp(Format('Снимок RapidQ: класс %s, свойство %s не читается - ' +
-                     'исключено у всех объектов класса (строк %d)',
+      'исключено у всех объектов класса (строк %d)',
                      [ErrClass, ErrHead, CutCount]));
       if ErrClass <> '' then
       begin
@@ -38324,9 +38324,9 @@ begin
     if not Ok then
     begin
       LogComp(Format('Снимок RapidQ: исключено %d свойств, копия всё ещё не ' +
-                     'собирается - остановлено', [Excluded]));
-      SaveCompileLog(FProbeDir + '_rqprobe_compile.log');
-      Exit;
+      'собирается - остановлено', [Excluded]));
+                     SaveCompileLog(FProbeDir + '_rqprobe_compile.log');
+                     Exit;
     end;
   finally
     // Копия, её exe и файл значений остаются рядом с .bas: exe пригодится
@@ -38364,11 +38364,11 @@ begin
   begin
     LogConsoleTail(ConsoleFile);
     LogComp('Снимок RapidQ: файла значений нет - программа закончилась, не ' +
-            'дойдя до таймера (он перед первым CREATE, строка - в начале ' +
-            'лога): ' + OutFile);
-    ControlRun;
-    SaveCompileLog(FProbeDir + '_rqprobe_compile.log');
-    Exit;
+    'дойдя до таймера (он перед первым CREATE, строка - в начале ' +
+    'лога): ' + OutFile);
+            ControlRun;
+            SaveCompileLog(FProbeDir + '_rqprobe_compile.log');
+            Exit;
   end;
 
   // Разбор: "#obj Имя", потом "Имя.Свойство=значение"
@@ -38410,14 +38410,14 @@ begin
           CleanText[EqPos + 2] := '0';
           Inc(EqPos, 2);
         end
-        else
-        begin
-          CleanText[EqPos + 1] := OutText[LineIdx];
-          Inc(EqPos);
-        end;
+      else
+      begin
+        CleanText[EqPos + 1] := OutText[LineIdx];
+        Inc(EqPos);
+      end;
       OutText := CleanText;
       LogComp(Format('Снимок RapidQ: в значениях символов с кодом 0 - %d, ' +
-                     'показаны как #0', [NulCount]));
+      'показаны как #0', [NulCount]));
     end;
     ProbeLines.Text := OutText;
     // Только "#start": таймер создан, но не сработал
@@ -38433,10 +38433,10 @@ begin
     begin
       LogConsoleTail(ConsoleFile);
       LogComp('Снимок RapidQ: программа дошла до таймера, но закончилась, не ' +
-              'начав обрабатывать сообщения (ShowModal, DoEvents) - таймер не ' +
-              'сработал');
-      SaveCompileLog(FProbeDir + '_rqprobe_compile.log');
-      Exit;
+      'начав обрабатывать сообщения (ShowModal, DoEvents) - таймер не ' +
+      'сработал');
+              SaveCompileLog(FProbeDir + '_rqprobe_compile.log');
+              Exit;
     end;
     Props := nil;
     LastObj := '';
@@ -38477,8 +38477,8 @@ begin
   begin
     LogConsoleTail(ConsoleFile);
     LogComp(Format('Снимок RapidQ: неполный - %d объектов, программа ' +
-                   'остановилась на объекте %s', [FRqProbeObjs.Count, LastObj]));
-    SaveCompileLog(FProbeDir + '_rqprobe_compile.log');
+    'остановилась на объекте %s', [FRqProbeObjs.Count, LastObj]));
+                   SaveCompileLog(FProbeDir + '_rqprobe_compile.log');
   end;
   FRightPages.ActivePage := FTabObjects;
   RefreshObjectInspector(True);
@@ -38587,7 +38587,7 @@ var
                                             Pointer(FIncludeRows.Count - 1));
   end;
 
-  // Include файла AFile (его строки - ALines) - потомками узла AParent
+// Include файла AFile (его строки - ALines) - потомками узла AParent
   procedure AddIncludesOf(ALines: TStrings; const AFile: string;
                           AParent: TTreeNode; ALevel: Integer);
   var
@@ -38664,7 +38664,7 @@ begin
       Ini := TIniFile.Create(SettingsFileName);
       try
         IncDir := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
-                                      'IncPath', ''));
+        'IncPath', ''));
       finally
         Ini.Free;
       end;
@@ -38798,8 +38798,8 @@ begin
       if (SrcFile <> '') and
          (CompareText(ChangeFileExt(ExtractFileName(SrcFile), ''),
                       ChangeFileExt(ExtractFileName(Application.ExeName),
-                                    '')) = 0) and
-         FileExists(ExtractFilePath(SrcFile) + 'UiTheme.pas') then
+      '')) = 0) and
+                                    FileExists(ExtractFilePath(SrcFile) + 'UiTheme.pas') then
       begin
         SourceDir := ExtractFilePath(SrcFile);
         Break;
@@ -39119,9 +39119,9 @@ var
       Result := 'файла нет';
   end;
 
-  // Имя формы из начала .dfm. Текстовый: "object FormIzm1: TFormIzm1"
-  // (или inherited). Двоичный: 'TPF0', байт флагов (если старшие четыре
-  // бита заняты), затем короткие строки - класс и имя.
+// Имя формы из начала .dfm. Текстовый: "object FormIzm1: TFormIzm1"
+// (или inherited). Двоичный: 'TPF0', байт флагов (если старшие четыре
+// бита заняты), затем короткие строки - класс и имя.
   function DfmFormName(const AFile: string): string;
   var
     Stream: TFileStream;
@@ -39472,9 +39472,9 @@ begin
   begin
     if FRunProcess <> 0 then
       ShowMessage('27310:Программа запущена без отладчика - паузу сделать ' +
-                  'нельзя. Для паузы её нужно запустить под отладчиком ' +
-                  '(F7, F8 или с точкой останова).');
-    Exit;
+      'нельзя. Для паузы её нужно запустить под отладчиком ' +
+      '(F7, F8 или с точкой останова).');
+                  Exit;
   end;
   if FDbgSession.Finished or FDbgSession.Paused then
     Exit;
@@ -39616,8 +39616,8 @@ begin
   if Dpr = '' then
   begin
     ShowMessage('27240:New Form: не найден файл проекта .dpr. Откройте ' +
-                'проект Delphi или его .dpr.');
-    Exit;
+    'проект Delphi или его .dpr.');
+                Exit;
   end;
 
   // Цель - сам редактор (имя .dpr совпадает с именем exe, как в
@@ -39625,22 +39625,22 @@ begin
   // нужен отдельный проект - спрашиваем.
   if CompareText(ChangeFileExt(ExtractFileName(Dpr), ''),
                  ChangeFileExt(ExtractFileName(Application.ExeName), '')) = 0 then
-    case MessageDlg('27238:New Form: текущий проект - сам редактор (' +
-                    ExtractFileName(Dpr) + ').'#13#10#13#10 +
-                    'Да - создать отдельный тестовый проект с новой ' +
-                    'формой.'#13#10 +
-                    'Нет - добавить форму в ' + ExtractFileName(Dpr) + '.',
-                    mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
-      mrYes:
-        begin
-          NewFormTestProject(Sender);
-          Exit;
-        end;
-      mrNo:
-        ; // дальше - как для любого проекта
-    else
+  case MessageDlg('27238:New Form: текущий проект - сам редактор (' +
+                  ExtractFileName(Dpr) + ').'#13#10#13#10 +
+    'Да - создать отдельный тестовый проект с новой ' +
+    'формой.'#13#10 +
+    'Нет - добавить форму в ' + ExtractFileName(Dpr) + '.',
+                  mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
+    mrYes:
+    begin
+      NewFormTestProject(Sender);
       Exit;
     end;
+    mrNo:
+      ; // дальше - как для любого проекта
+  else
+    Exit;
+  end;
   WinIdx := IndexOfWindowByFile(Dpr);
   if WinIdx >= 0 then
   begin
@@ -39651,8 +39651,8 @@ begin
     if DprMod then
     begin
       ShowMessage('27252:New Form: в ' + ExtractFileName(Dpr) +
-                  ' есть несохранённые правки. Сохраните его и повторите.');
-      Exit;
+      ' есть несохранённые правки. Сохраните его и повторите.');
+                  Exit;
     end;
   end;
 
@@ -39688,8 +39688,8 @@ begin
     if (UsesEnd < 0) or (UsesEnd >= DprText.Count) then
     begin
       ShowMessage('27283:New Form: в ' + ExtractFileName(Dpr) +
-                  ' не найден список uses.');
-      Exit;
+      ' не найден список uses.');
+                  Exit;
     end;
 
     // Модуль
@@ -39758,27 +39758,27 @@ begin
       DprText.Insert(RunLine, Line)
     else
       LogRaw('New Form: в ' + ExtractFileName(Dpr) + ' нет ни ' +
-             'Application.CreateForm, ни Application.Run - создание формы ' +
-             'не вписано');
+      'Application.CreateForm, ни Application.Run - создание формы ' +
+      'не вписано');
 
-    Line := TrimRight(DprText[UsesEnd]);
-    SetLength(Line, Length(Line) - 1);
-    DprText[UsesEnd] := Line + ',';
-    DprText.Insert(UsesEnd + 1, '  ' + UnitNm + ' in ''' + UnitNm +
-                   '.pas'' {' + FormNm + '};');
-    DprText.SaveToFile(Dpr);
+             Line := TrimRight(DprText[UsesEnd]);
+             SetLength(Line, Length(Line) - 1);
+             DprText[UsesEnd] := Line + ',';
+             DprText.Insert(UsesEnd + 1, '  ' + UnitNm + ' in ''' + UnitNm +
+    '.pas'' {' + FormNm + '};');
+                            DprText.SaveToFile(Dpr);
   finally
     NewText.Free;
     DprText.Free;
   end;
 
   LogRaw('New Form: ' + UnitNm + '.pas и ' + UnitNm + '.dfm (' + FormNm +
-         ') созданы и вписаны в ' + ExtractFileName(Dpr));
+  ') созданы и вписаны в ' + ExtractFileName(Dpr));
   // Открытый .dpr - сразу с новыми строками
-  if WinIdx >= 0 then
-    ReloadWindowFromDisk(WinIdx, False);
-  OpenNamedFile(PasFile);
-  DesignFormClick(Sender);
+         if WinIdx >= 0 then
+         ReloadWindowFromDisk(WinIdx, False);
+         OpenNamedFile(PasFile);
+         DesignFormClick(Sender);
 end;
 
 // New Form, когда текущий проект - сам редактор, и выбран отдельный
@@ -40049,16 +40049,16 @@ var
       if FileExists(SrcDirs[DirIdx] + ARel) then
       begin
         ForceDirectories(ExtractFilePath(DstDir + ARel));
-      if CopyFile(PChar(SrcDirs[DirIdx] + ARel), PChar(DstDir + ARel),
-                  True) then
-        Inc(Copied);
-      Exit;
-    end;
+        if CopyFile(PChar(SrcDirs[DirIdx] + ARel), PChar(DstDir + ARel),
+                    True) then
+          Inc(Copied);
+        Exit;
+      end;
   end;
 
-  // Файл ARel - из первой папки-источника, где он есть, если там он
-  // новее (описание компонентов RapidQ пересобирается, старая копия рядом
-  // с exe перекрыла бы новую)
+// Файл ARel - из первой папки-источника, где он есть, если там он
+// новее (описание компонентов RapidQ пересобирается, старая копия рядом
+// с exe перекрыла бы новую)
   procedure CopyIfNewer(const ARel: string);
   var
     DirIdx: Integer;
@@ -40091,9 +40091,9 @@ var
         if (Found.Attr and faDirectory) = 0 then
           CopyIfMissing(ARelDir + '\' + Found.Name);
       until FindNext(Found) <> 0;
-    finally
-      FindClose(Found);
-    end;
+      finally
+        FindClose(Found);
+      end;
   end;
 
 begin
@@ -40128,10 +40128,10 @@ begin
     LogComp(Format('Рядом с exe скопировано файлов: %d (editor.ini, IDE.clr, ' +
     'schemes, rapidq_ref\Component*.data - которых там не было или ' +
     'были старее)', [Copied]));
-  if Merged > 0 then
-    LogComp(Format('editor.ini рядом с exe: изменено разделов: %d. Пути, ' +
-    'которых нет на диске, при запуске берутся из копий [...Old<N>]',
-    [Merged]));
+                   if Merged > 0 then
+                   LogComp(Format('editor.ini рядом с exe: изменено разделов: %d. Пути, ' +
+      'которых нет на диске, при запуске берутся из копий [...Old<N>]',
+                                  [Merged]));
 end;
 
 // Можно ли записать exe; занят - переименовать его в <имя>.exe.old (или
@@ -40344,8 +40344,8 @@ begin
                     AFileName) = 0) then
     begin
       Result := TBreakMark(FBreakMarks[MarkIdx]);
-    Exit;
-  end;
+      Exit;
+    end;
 end;
 
 // Что показать на строке текущего файла: 0 - ничего, 1 - точка останова,
@@ -40395,8 +40395,8 @@ begin
                    FCurrentFileName) = 0 then
     begin
       Result := True;
-    Exit;
-  end;
+      Exit;
+    end;
 end;
 
 procedure TForm1.DbgRepaint;
@@ -40632,12 +40632,12 @@ begin
           FDbgExecLine := SrcLine;
           if CompareText(FCurrentFileName, SrcFile) <> 0 then
           OpenNamedFile(SrcFile);
-  if CompareText(FCurrentFileName, SrcFile) = 0 then
-    GotoLine(SrcLine);
-  DbgRepaint;
-  DbgWatchRefresh;
+          if CompareText(FCurrentFileName, SrcFile) = 0 then
+          GotoLine(SrcLine);
+          DbgRepaint;
+          DbgWatchRefresh;
   // Значение под мышью - подсказкой, пока программа стоит
-  if FDbgHintTimer = nil then
+          if FDbgHintTimer = nil then
   begin
     FDbgHintTimer := TTimer.Create(Self);
     FDbgHintTimer.Interval := 400;
@@ -41011,10 +41011,10 @@ end;
 const
   MarkClickDelay = 250;
 
-// Одиночный щелчок ждёт MarkClickDelay, не станет ли он двойным: закладку
-// ставит таймер. Задержка короче системного времени двойного щелчка:
-// медленный двойной щелчок успевает поставить закладку - её снимает
-// MarksBoxDblClick.
+  // Одиночный щелчок ждёт MarkClickDelay, не станет ли он двойным: закладку
+  // ставит таймер. Задержка короче системного времени двойного щелчка:
+  // медленный двойной щелчок успевает поставить закладку - её снимает
+  // MarksBoxDblClick.
 procedure TForm1.MarksBoxClick(Sender: TObject);
 begin
   if FMarkClickLine < 0 then
@@ -41893,7 +41893,7 @@ begin
     ValueText := StateText
   else
     ValueText := FDbgSyms.ArrayElement(FWatchArr,
-                   Slice(Index, FWatchArr.DimCount), FDbgSession.ReadMemory);
+                                       Slice(Index, FWatchArr.DimCount), FDbgSession.ReadMemory);
   FWatchArrCell.Caption := FWatchArrExpr + '[' + IdxText + '] = ' + ValueText;
 end;
 
@@ -41998,8 +41998,8 @@ begin
   Grid.Canvas.FillRect(Rect);
   Grid.Canvas.Brush.Style := bsClear;
   Grid.Canvas.TextRect(Rect, Rect.Left + 4,
-    Rect.Top + (Rect.Bottom - Rect.Top - Grid.Canvas.TextHeight('0')) div 2,
-    CellText);
+                       Rect.Top + (Rect.Bottom - Rect.Top - Grid.Canvas.TextHeight('0')) div 2,
+                       CellText);
   Grid.Canvas.Brush.Style := bsSolid;
 end;
 
@@ -42470,8 +42470,8 @@ begin
       on E: Exception do
       begin
         LogComp('Лог компиляции не сохранён: ' + AFile + ' (' + E.Message +
-                ')');
-        Exit;
+        ')');
+                Exit;
       end;
     end;
   finally
@@ -44226,9 +44226,9 @@ var
             if not (LineStr[K] in ['0'..'9', 'a'..'f', 'A'..'F']) then
             begin
               IsNum := False;
-            WordIsText := True;   // слово пропускаем целиком
-            Break;
-          end;
+              WordIsText := True;   // слово пропускаем целиком
+              Break;
+            end;
           NumI := WordEnd;
         end;
       end;
@@ -44317,8 +44317,8 @@ var
            not IsCharInBlockComment(LineStartCharIdx + FI - 1) then
         begin
           Result := FI;
-        Exit;
-      end;
+          Exit;
+        end;
       Inc(FI);
     end;
   end;
@@ -44427,9 +44427,9 @@ var
                (FScheme.MarkGroups[G].Words.IndexOf(Ident) >= 0) then
             begin
               Best := MI;
-          Result := G;
-          Break;
-        end;
+              Result := G;
+              Break;
+            end;
         if Best < MaxInt then
           Break;
         MI := MEnd;
@@ -45555,8 +45555,8 @@ begin
       if Copy(Builtin[I], 1, Length(E) + 1) = E + '=' then
       begin
         V := Copy(Builtin[I], Length(E) + 2, MaxInt);
-    Break;
-  end;
+        Break;
+      end;
 
   if (V <> '') and FileExists(Dir + V + '.clr') then
     Result := V;
@@ -45703,7 +45703,7 @@ begin
     PaintBox1.Invalidate;
   Dbg(Format('Save схемы %s - %d мс: запись %d, карта активной вкладки %d',
              [ExtractFileName(APath), GetTickCount - StartTick, TWrite,
-              GetTickCount - StartTick - TWrite]), clNavy);
+             GetTickCount - StartTick - TWrite]), clNavy);
 end;
 
 procedure TForm1.LoadCustomClrSchema(const Ext: string);
@@ -45975,12 +45975,12 @@ begin
   // строится (InitOptions), поэтому дольше.
   if FirstTime then
     Dbg(Format('Options: открытие %d мс (построение и заполнение %d, ' +
-               'показ %d) - первое', [GetTickCount - StartTick, TPrepare,
+    'показ %d) - первое', [GetTickCount - StartTick, TPrepare,
                GetTickCount - StartTick - TPrepare]), clNavy)
   else
     Dbg(Format('Options: открытие %d мс (заполнение %d, показ %d)',
                [GetTickCount - StartTick, TPrepare,
-                GetTickCount - StartTick - TPrepare]), clNavy);
+               GetTickCount - StartTick - TPrepare]), clNavy);
 end;
 
 // Окно настроек построено и заполнено значениями редактора - всё, что
@@ -46428,7 +46428,7 @@ begin
     if ExpandCount > 0 then
       StatusBar1.SimpleText :=
         Format('Format text: развёрнуто блоков CREATE в одну строку %d, ' +
-               'строк с новым отступом %d. Откат - Edit, Отменить массовую замену.',
+      'строк с новым отступом %d. Откат - Edit, Отменить массовую замену.',
                [ExpandCount, Changed])
     else
       StatusBar1.SimpleText :=
@@ -46470,7 +46470,7 @@ end;
 const
   HotBmRecentMax = 8;
 
-// Закладка - числом: окно в старших 16 битах, номер закладки - в младших
+  // Закладка - числом: окно в старших 16 битах, номер закладки - в младших
 function HotBmCode(AWinIdx, ABmIdx: Integer): Integer;
 begin
   Result := (AWinIdx shl 16) or (ABmIdx and $FFFF);
@@ -46611,8 +46611,8 @@ begin
     HotBmCollect(Pinned, Recent);
     Dlg.Caption := 'Hot Bookmarks';
     Dlg.lblTitle.Caption := 'Отмеченные закладки закреплены: стоят вверху ' +
-                            'списка и не вытесняются новыми';
-    Dlg.btnMarkMissing.Visible := False;
+    'списка и не вытесняются новыми';
+Dlg.btnMarkMissing.Visible := False;
     Dlg.btnDelete.Caption := 'OK';
     Dlg.AllowNone := True;
     for ItemIdx := 0 to Pinned.Count - 1 do
@@ -46892,4 +46892,5 @@ initialization
 UiThemeHostLocked := True;
 
 end.
+
 
