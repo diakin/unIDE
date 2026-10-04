@@ -2001,7 +2001,7 @@ type
     procedure RqDsgMenuClick(Sender: TObject);
     procedure RqDsgUndo;
     function  RqDsgSelBlocks(ALines: TStrings; ANodes: TList;
-                             ABlocks: TStrings): Boolean;
+                             ABlocks: TStringList): Boolean;
     procedure RqDsgCopyBlocks(ADelete: Boolean);
     procedure RqDsgCopy;
     procedure RqDsgCut;
@@ -42859,7 +42859,7 @@ end;
 // диапазоны; вложенный в другой выделенный не берётся. False - какой-то
 // блок не в целых строках (сообщение уже показано).
 function TForm1.RqDsgSelBlocks(ALines: TStrings; ANodes: TList;
-                               ABlocks: TStrings): Boolean;
+                               ABlocks: TStringList): Boolean;
 var
   Names: TStringList;
   NameIdx, NodeIdx, FirstLine, LastLine, BlockIdx, OtherFirst,
