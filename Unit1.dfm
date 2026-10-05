@@ -641,6 +641,27 @@ object Form1: TForm1
         Enabled = False
       end
     end
+    object mArduino: TMenuItem
+      Caption = '&Arduino'
+      object mArdBoards: TMenuItem
+        Caption = 'Board Manager...'
+        OnClick = mArdBoardsClick
+        Hint = 'Платформы и платы arduino-cli (core, board)'
+      end
+      object mArdLibs: TMenuItem
+        Caption = 'Library Manager...'
+        OnClick = mArdLibsClick
+        Hint = 'Библиотеки Arduino (library_index.json, lib)'
+      end
+      object mArdSep: TMenuItem
+        Caption = '-'
+      end
+      object mArdCli: TMenuItem
+        Caption = 'Arduino CLI Help...'
+        OnClick = mArdCliClick
+        Hint = 'Команды arduino-cli и их справка'
+      end
+    end
     object mOptions: TMenuItem
       Caption = '&Options'
       OnClick = mOptionsClick

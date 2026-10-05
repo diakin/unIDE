@@ -25,6 +25,9 @@ uses
   DbgSymbols,     // отладочная информация TD32: значения переменных (Watch)
   RqDbgInstr,     // отладчик RapidQ: копия программы с проверками точек
   DlgWatch,       // окно Watch
+  DlgArdBoards,   // Arduino: Board Manager
+  DlgArdLibs,     // Arduino: Library Manager
+  DlgArdCli,      // Arduino: Arduino CLI Help
 // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
 // InputQuery перекрывают одноимённые функции Dialogs
   UiDialogs;
@@ -558,6 +561,11 @@ type
     mLastBM: TMenuItem;
     mHotBM: TMenuItem;
     mHotBmNone: TMenuItem;
+    mArduino: TMenuItem;
+    mArdBoards: TMenuItem;
+    mArdLibs: TMenuItem;
+    mArdSep: TMenuItem;
+    mArdCli: TMenuItem;
     mOptions: TMenuItem;
     mHelp: TMenuItem;
     FMenuBar: TUiMenuBar;
@@ -751,6 +759,9 @@ type
     procedure DelWinListClick(Sender: TObject);
     procedure LastBMClick(Sender: TObject);
     procedure mOptionsClick(Sender: TObject);
+    procedure mArdBoardsClick(Sender: TObject);
+    procedure mArdLibsClick(Sender: TObject);
+    procedure mArdCliClick(Sender: TObject);
     procedure mHelpClick(Sender: TObject);
     procedure Status2MouseDown(Sender: TObject; Button: TMouseButton;
                                Shift: TShiftState; X, Y: Integer);
@@ -1019,6 +1030,11 @@ type
     // Окно Watch: выражения, отладочная информация exe сеанса (TD32, -V) и
     // причина, если её нет
     FWatchWnd: TDlgWatch;
+    // Окна Arduino: Board Manager, Library Manager, Arduino CLI Help -
+    // создаются при первом показе (mArdBoardsClick и др.)
+    FArdBoardsWnd: TDlgArdBoards;
+    FArdLibsWnd: TDlgArdLibs;
+    FArdCliWnd: TDlgArdCli;
     FWatchList: TStringList;
     // Условия строк Watch ("=10", "<5"): выражение и условие. Отладчик
     // RapidQ: точка останова, где выражение вычисляется, стоит, только если
@@ -2159,6 +2175,8 @@ type
     procedure BmToggleAtLine(ALineIdx: Integer);
     procedure DbgAddWatch(const AExpr: string);
     procedure DbgWatchShow;
+    procedure ArdWndShow(AWnd: TForm);
+    procedure ArdBoardSelected(Sender: TObject);
     procedure DbgWatchRefresh;
     function  DbgWatchSelected: Integer;
     procedure WatchAddClick(Sender: TObject);
@@ -46828,6 +46846,71 @@ begin
   // Работа - в редакторе: фокус обратно
   if RichEdit1.CanFocus then
     RichEdit1.SetFocus;
+end;
+
+// ---------------------------------------------------------------------------
+//  Окна Arduino: Board Manager, Library Manager, Arduino CLI Help
+// ---------------------------------------------------------------------------
+//
+// Перенос окон RQdebugger. Вся работа - в самих окнах (DlgArdBoards,
+// DlgArdLibs, DlgArdCli) и в ArduinoCli; здесь - создание при первом
+// показе, файл настроек, тема и владелец. Окна не модальные; владелец -
+// главное окно, они остаются над ним.
+
+procedure TForm1.ArdWndShow(AWnd: TForm);
+begin
+  if not AWnd.Visible then
+  begin
+    AWnd.Show;
+    SetWindowLong(AWnd.Handle, GWL_HWNDPARENT, Integer(Handle));
+  end
+  else if AWnd.WindowState = wsMinimized then
+    AWnd.WindowState := wsNormal;
+  AWnd.BringToFront;
+end;
+
+procedure TForm1.mArdBoardsClick(Sender: TObject);
+begin
+  if FArdBoardsWnd = nil then
+  begin
+    FArdBoardsWnd := TDlgArdBoards.Create(Self);
+    FArdBoardsWnd.SettingsFile := SettingsFileName;
+    FArdBoardsWnd.OnBoardSelected := ArdBoardSelected;
+    UiApplyForm(FArdBoardsWnd);
+  end;
+  ArdWndShow(FArdBoardsWnd);
+end;
+
+procedure TForm1.mArdLibsClick(Sender: TObject);
+begin
+  if FArdLibsWnd = nil then
+  begin
+    FArdLibsWnd := TDlgArdLibs.Create(Self);
+    FArdLibsWnd.SettingsFile := SettingsFileName;
+    UiApplyForm(FArdLibsWnd);
+  end;
+  ArdWndShow(FArdLibsWnd);
+end;
+
+procedure TForm1.mArdCliClick(Sender: TObject);
+begin
+  if FArdCliWnd = nil then
+  begin
+    FArdCliWnd := TDlgArdCli.Create(Self);
+    FArdCliWnd.SettingsFile := SettingsFileName;
+    UiApplyForm(FArdCliWnd);
+  end;
+  ArdWndShow(FArdCliWnd);
+end;
+
+// Select board в Board Manager. Пока только запись в лог: панели Arduino с
+// выбором платы и порта ещё нет (этап 1 плана), плату она возьмёт из
+// FArdBoardsWnd.SelectedFqbn.
+procedure TForm1.ArdBoardSelected(Sender: TObject);
+begin
+  if FArdBoardsWnd <> nil then
+    Dbg('Arduino: выбрана плата ' + FArdBoardsWnd.SelectedBoardName +
+        ' (' + FArdBoardsWnd.SelectedFqbn + ')', clGray);
 end;
 
 procedure TForm1.DbgWatchRefresh;

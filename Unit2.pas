@@ -14,6 +14,7 @@ uses
   UiMenus,        // всплывающее меню по теме (TUiPopupMenu)
   UiStdDlgs,      // диалоги цвета и шрифта по теме
   FolderDlg,      // выбор папки окном Проводника вместо "Обзор папок"
+  ArduinoCli,     // Compilers - Arduino: импорт путей из RQdb.ini
   // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
   // InputQuery перекрывают одноимённые функции Dialogs
   UiDialogs;
@@ -80,6 +81,7 @@ FLockMemo: Boolean; // НАШ СЕМАФОР БЛОКИРОВКИ ДЛЯ TMEMO
     FSkipNormalize: Boolean;
     FCompSection: string;         // раздел настроек текущего типа
     btnDelphiImport: TUiButton;  // Compilers - Delphi: «Взять из Delphi»
+    btnArdImport: TUiButton;     // Compilers - Arduino: «Импорт из RQdb.ini»
     // Окно списка путей (EditPathList): его элементы на время показа
     FPathList: TUiListBox;
     FPathEdit: TUiEdit;
@@ -251,6 +253,7 @@ function  LookupEnvVar(const AName: string): string;
 function  NormalizePathValue(const S: string; AIsFile, AIsList: Boolean;
                              ADropped: TStrings): string;
 procedure btnDelphiImportClick(Sender: TObject);
+procedure btnArdImportClick(Sender: TObject);
 function  CompFieldIdx(const AKey: string): Integer;
 function  CompIniSection(const AKey: string): string;
 function  CompIniKey(const AKey: string): string;
@@ -3352,6 +3355,14 @@ begin
                           'в конце';
   btnDelphiImport.OnClick := btnDelphiImportClick;
 
+  btnArdImport := TUiButton.Create(Self);
+  btnArdImport.Parent := ATab;
+  btnArdImport.Caption := 'Импорт из RQdb.ini';
+  btnArdImport.ShowHint := True;
+  btnArdImport.Hint := 'Пути Arduino из RQdb.ini RQdebugger (раздел ' +
+                       '[Arduino]) и Additional URLs из AdditURLEdit.txt';
+  btnArdImport.OnClick := btnArdImportClick;
+
   lstCompTypes.ItemIndex := 0;
   FCompType := lstCompTypes.Items[0];
   LoadToolList(FCompType);
@@ -3452,6 +3463,10 @@ begin
       Fields.Add('LogFile|Log file');
       Fields.Add('CliCfgFile|Cli cfg file');
       Fields.Add('CliDataPath|Cli data path');
+      Fields.Add('DownloadsPath|Cli downloads path');
+      // Папка Arduino IDE (%LOCALAPPDATA%\Arduino15): там тоже ищутся
+      // установленные платформы и library_index.json
+      Fields.Add('Arduino15Path|Arduino15 path');
     end
     else if (AType = 'C project') or (AType = 'CPP project') then
     begin
@@ -3490,6 +3505,11 @@ begin
       btnDelphiImport.Width := 110;
       btnDelphiImport.Height := 23;
       btnDelphiImport.Visible := AType = 'Delphi';
+      btnArdImport.Left := btnToolFind.Left + 96;
+      btnArdImport.Top := 7;
+      btnArdImport.Width := 140;
+      btnArdImport.Height := 23;
+      btnArdImport.Visible := AType = 'Arduino';
     end;
 
     T := TLabel.Create(Self);
@@ -3764,6 +3784,61 @@ begin
     Result := 'Source'
   else
     Result := AKey;
+end;
+
+// «Импорт из RQdb.ini» (Compilers - Arduino): пути из раздела [Arduino]
+// RQdb.ini RQdebugger и Additional URLs из AdditURLEdit.txt рядом с ним -
+// в раздел страницы (ArdImportRqdbIni). Окно выбора файла начинается с
+// папки IDE path страницы RapidQ Basic.
+procedure TForm2.btnArdImportClick(Sender: TObject);
+var
+  Dlg: TOpenDialog;
+  Report: TStringList;
+  Ini: TIniFile;
+  StartDir: string;
+  KeyCount: Integer;
+begin
+  if (Form1 = nil) or (FCompSection = '') then
+    Exit;
+  Dlg := TOpenDialog.Create(Self);
+  Report := TStringList.Create;
+  try
+    Dlg.Title := 'RQdb.ini RQdebugger';
+    Dlg.Filter := 'RQdb.ini|RQdb.ini|*.ini|*.ini';
+    StartDir := '';
+    if FileExists(Form1.SettingsFileName) then
+    begin
+      Ini := TIniFile.Create(Form1.SettingsFileName);
+      try
+        StartDir := Trim(Ini.ReadString('Compiler.RapidQ Basic', 'IdePath',
+                                        ''));
+      finally
+        Ini.Free;
+      end;
+    end;
+    if (StartDir <> '') and DirectoryExists(StartDir) then
+      Dlg.InitialDir := StartDir;
+    Dlg.FileName := 'RQdb.ini';
+    if not Dlg.Execute then
+      Exit;
+
+    // Поля страницы - пока прежние значения: перед пересборкой их не
+    // нормализуем, иначе они записались бы поверх перенесённых
+    NormalizeCompFields;
+    KeyCount := ArdImportRqdbIni(Dlg.FileName, Form1.SettingsFileName,
+                                 FCompSection, Report);
+    FSkipNormalize := True;
+    ShowCompilerPage(FCompType);
+    if KeyCount = 0 then
+      ShowMessage('В ' + Dlg.FileName + ' нет путей Arduino (раздел ' +
+                  '[Arduino])')
+    else
+      ShowMessage('Перенесено из ' + Dlg.FileName + ' в [' +
+                  FCompSection + ']:' + #13#10#13#10 + Report.Text);
+  finally
+    Report.Free;
+    Dlg.Free;
+  end;
 end;
 
 // «Взять из Delphi»: Library path и Browsing path из Environment Options
