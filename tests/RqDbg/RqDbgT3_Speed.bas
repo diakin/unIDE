@@ -94,6 +94,11 @@ FOR CheckIdx = 0 TO 1000
   END IF
 NEXT
 LogLine("check after DIM: RqDbgStep=" + STR$(RqDbgStep) + " RqDbgOn=" + STR$(RqDbgOn) + " RqDbgHit=" + STR$(RqDbgHit) + " nonzero RqDbgBrk:" + STR$(NonZero) + " (all must be 0)" + NonZeroText)
+' DIM массива его не обнуляет (проверка выше: мусор есть и без
+' отладчика) - обнуляем сами
+FOR CheckIdx = 0 TO 1000
+  RqDbgBrk(CheckIdx) = 0
+NEXT
 ' Точка останова на номере, которого в цикле нет: проверки идут,
 ' остановок нет
 RqDbgBrk(999) = 1
