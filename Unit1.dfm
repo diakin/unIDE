@@ -1,7 +1,7 @@
 object Form1: TForm1
   BorderIcons = [biSystemMenu, biMinimize, biMaximize]
-  Left = 213
-  Top = 101
+  Left = -16
+  Top = 71
   Width = 1111
   Height = 910
   Caption = 'Form1 current'
@@ -1082,7 +1082,7 @@ object Form1: TForm1
           OnClick = FindInFilesClick
         end
         object cmbScope: TUiComboBox
-          Top = 72
+          Top = 50
           Style = csDropDownList
           Left = 0
           Width = 145
