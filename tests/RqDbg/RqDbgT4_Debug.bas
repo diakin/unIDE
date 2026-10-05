@@ -17,6 +17,11 @@
 '   7. Точка на строке DIM или комментария - серая, не срабатывает.
 '   8. Ctrl+F2 на остановке - программа снимается, строка остановки
 '      пропадает.
+'   9. Watch (Ctrl+F5 на имени): на остановке в CalcSum - LimitVal,
+'      SumIdx (локальные) и TotalVal (глобальная); в Square - BaseVal;
+'      в главной части - LoopIdx, ShortSum. Мышь над именем на остановке -
+'      подсказка со значением. В окне Watch пункт Locals добавляет
+'      параметры и локальные текущей SUB.
 
 DECLARE SUB CalcSum (LimitVal AS INTEGER)
 DECLARE FUNCTION Square (BaseVal AS INTEGER) AS INTEGER

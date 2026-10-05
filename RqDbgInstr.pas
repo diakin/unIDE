@@ -23,6 +23,32 @@ unit RqDbgInstr;
 //  строку): пропущенный выход исправляет следующая точка вызывающей SUB -
 //  RqDbg пишет в глубину уровень своей точки.
 //
+//  Переменные на остановке (этап 2). Объявленные переменные простых типов
+//  (DIM ... AS STRING/INTEGER/LONG/..., суффиксы $ % & ! # ?, DEFINT и
+//  подобные) и параметры SUB пишутся в файл состояния строками
+//  "вид имя|тип=значение" (вид: p - параметр, l - локальная, g - глобальная).
+//  Локальные видны только в своей SUB, поэтому в конце каждой SUB/FUNCTION
+//  стоит блок дампа с меткой RqDbgVars<номер> (по тесту 1: GOSUB на метку
+//  после EXIT SUB работает, метки общие на программу - номер уникален):
+//      RqDbgDepth = RqDbgLvl - 1
+//      EXIT SUB
+//    RqDbgVars3:
+//      RqDbgVal("l", "Count", "LONG", STR$(Count))
+//      RqDbgHalt
+//      RETURN
+//    END SUB
+//  а проверка в SUB - блочным IF:
+//      IF RqDbgBrk(12) THEN
+//        RqDbg(12, RqDbgLvl, 345, 0)
+//        IF RqDbgWant THEN GOSUB RqDbgVars3
+//      END IF
+//  RqDbg решает, стоять ли, открывает файл состояния и поднимает
+//  RqDbgWant; блок дописывает локальные, RqDbgHalt - глобальные (SUB
+//  RqDbgGlobals в конце копии, после всех DIM), закрывает файл и ждёт.
+//  На верхнем уровне и в SUBI/FUNCTIONI локальных нет - RqDbg(..., 1)
+//  останавливается сам. Массивы, объекты, VARIANT, свои TYPE, переменные
+//  без DIM и глобальные из $INCLUDE-файлов не показываются.
+//
 //  Строка копии - строка исходника: каждая вставленная или пересобранная
 //  строка помнит строку исходника (SrcLineOfCopy), по ней показываются
 //  ошибки компиляции копии.
@@ -80,6 +106,9 @@ type
     FLinePoint: array of Integer;   // строка исходника -> первая точка, 0 - нет
     FCopySrc: array of Integer;     // строка копии -> строка исходника, -1
     FCopyCount: Integer;
+    FPointProc: array of Integer;   // номер точки -> процедура, -1 - главная часть
+    FProcNames: TStringList;        // "SUB Имя" по номеру процедуры
+    FCurProc: Integer;              // процедура, в которой идёт разбор
     procedure AddCopyLine(AOut: TStrings; const AText: string;
                           ASrcLine: Integer);
     function NewPoint(ASrcLine: Integer): Integer;
@@ -105,6 +134,10 @@ type
     property PointCount: Integer read FPointCount;
     property LastError: string read FLastError;
     property Prefix: string read FPrefix;
+    // Где точка: "SUB Имя", "FUNCTION Имя" или '' - главная часть
+    function ProcOfPoint(APoint: Integer): string;
+    constructor Create;
+    destructor Destroy; override;
   end;
 
 // Путь для строки в копии: прямые косые (обратная при $ESCAPECHARS ON -
@@ -376,6 +409,167 @@ begin
   ARest := Trim(Copy(Trimmed, CharIdx, MaxInt));
 end;
 
+// Части через запятую вне скобок и кавычек
+procedure SplitCommas(const AText: string; AParts: TStrings);
+var
+  CharIdx, Depth, StartPos: Integer;
+  InQuote: Boolean;
+begin
+  AParts.Clear;
+  Depth := 0;
+  InQuote := False;
+  StartPos := 1;
+  for CharIdx := 1 to Length(AText) do
+    case AText[CharIdx] of
+      '"': InQuote := not InQuote;
+      '(': if not InQuote then Inc(Depth);
+      ')': if not InQuote then Dec(Depth);
+      ',':
+        if not InQuote and (Depth <= 0) then
+        begin
+          AParts.Add(Trim(Copy(AText, StartPos, CharIdx - StartPos)));
+          StartPos := CharIdx + 1;
+        end;
+    end;
+  AParts.Add(Trim(Copy(AText, StartPos, MaxInt)));
+end;
+
+// Тип, который можно показать: STRING или число. '' - нельзя (объект,
+// VARIANT, свой TYPE).
+function ShowableType(const AType: string): string;
+const
+  NumTypes: array[0..8] of string = ('BYTE', 'WORD', 'DWORD', 'SHORT',
+    'INTEGER', 'LONG', 'SINGLE', 'DOUBLE', 'INT64');
+var
+  TypeIdx: Integer;
+begin
+  Result := '';
+  if AType = 'STRING' then
+  begin
+    Result := AType;
+    Exit;
+  end;
+  for TypeIdx := Low(NumTypes) to High(NumTypes) do
+    if AType = NumTypes[TypeIdx] then
+    begin
+      Result := AType;
+      Exit;
+    end;
+end;
+
+// Тип по DEFxxx: DEFSTR - STRING, DEFINT - INTEGER... '' - не показывается
+function DefWordType(const AWord: string): string;
+begin
+  Result := '';
+  if AWord = 'DEFSTR' then Result := 'STRING'
+  else if AWord = 'DEFINT' then Result := 'INTEGER'
+  else if AWord = 'DEFLNG' then Result := 'LONG'
+  else if AWord = 'DEFSNG' then Result := 'SINGLE'
+  else if AWord = 'DEFDBL' then Result := 'DOUBLE'
+  else if AWord = 'DEFBYTE' then Result := 'BYTE'
+  else if AWord = 'DEFWORD' then Result := 'WORD'
+  else if AWord = 'DEFDWORD' then Result := 'DWORD'
+  else if AWord = 'DEFSHORT' then Result := 'SHORT';
+end;
+
+// Переменные из списка объявлений ("a AS LONG, b$, c(10) AS INTEGER" -
+// после DIM, в скобках заголовка SUB, после DEFINT). ADefType - тип, если
+// нет ни AS, ни суффикса ('' - такие не берутся). В AOut - строки
+// "вид<TAB>имя<TAB>тип", без повторов имён.
+procedure CollectVars(const AText: string; AKind: Char; const ADefType: string;
+                      AOut: TStrings);
+var
+  Items: TStringList;
+  ItemIdx, CharIdx, OutIdx: Integer;
+  Item, VarName, Rest, VarType, Upper: string;
+  Known: Boolean;
+begin
+  Items := TStringList.Create;
+  try
+    SplitCommas(AText, Items);
+    for ItemIdx := 0 to Items.Count - 1 do
+    begin
+      Item := Trim(Items[ItemIdx]);
+      Upper := UpperCase(Item);
+      if (Copy(Upper, 1, 6) = 'BYREF ') or (Copy(Upper, 1, 6) = 'BYVAL ') then
+        Item := Trim(Copy(Item, 7, MaxInt));
+      if (Item = '') or not (Item[1] in ['A'..'Z', 'a'..'z', '_']) then
+        Continue;
+      CharIdx := 1;
+      while (CharIdx <= Length(Item)) and
+            (Item[CharIdx] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+        Inc(CharIdx);
+      while (CharIdx <= Length(Item)) and
+            (Item[CharIdx] in ['$', '%', '&', '!', '#', '?']) do
+        Inc(CharIdx);
+      VarName := Copy(Item, 1, CharIdx - 1);
+      Rest := TrimLeft(Copy(Item, CharIdx, MaxInt));
+      // Массив - не показывается
+      if Copy(Rest, 1, 1) = '(' then
+        Continue;
+      VarType := '';
+      if UpperCase(Copy(Rest, 1, 3)) = 'AS ' then
+        VarType := UpperCase(WordAt(Copy(Rest, 4, MaxInt), 1))
+      else
+        case VarName[Length(VarName)] of
+          '$': VarType := 'STRING';
+          '%': VarType := 'SHORT';
+          '&': VarType := 'LONG';
+          '!': VarType := 'SINGLE';
+          '#': VarType := 'DOUBLE';
+          '?':
+            if Copy(VarName, Length(VarName) - 1, 2) = '??' then
+              VarType := 'WORD'
+            else
+              VarType := 'BYTE';
+        else
+          VarType := ADefType;
+        end;
+      VarType := ShowableType(VarType);
+      if VarType = '' then
+        Continue;
+      Known := False;
+      for OutIdx := 0 to AOut.Count - 1 do
+        if CompareText(Copy(AOut[OutIdx], 3, Length(VarName) + 1),
+                       VarName + #9) = 0 then
+        begin
+          Known := True;
+          Break;
+        end;
+      if not Known then
+        AOut.Add(AKind + #9 + VarName + #9 + VarType);
+    end;
+  finally
+    Items.Free;
+  end;
+end;
+
+// Параметры из заголовка "SUB Имя (a AS LONG, b$)"
+function HeaderParams(const AHead: string): string;
+var
+  OpenPos, CharIdx, Depth: Integer;
+begin
+  Result := '';
+  OpenPos := Pos('(', AHead);
+  if OpenPos = 0 then
+    Exit;
+  Depth := 0;
+  for CharIdx := OpenPos to Length(AHead) do
+  begin
+    if AHead[CharIdx] = '(' then
+      Inc(Depth)
+    else if AHead[CharIdx] = ')' then
+    begin
+      Dec(Depth);
+      if Depth = 0 then
+      begin
+        Result := Copy(AHead, OpenPos + 1, CharIdx - OpenPos - 1);
+        Exit;
+      end;
+    end;
+  end;
+end;
+
 function IsSubWord(const AWord: string): Boolean;
 begin
   Result := (AWord = 'SUB') or (AWord = 'FUNCTION') or (AWord = 'SUBI') or
@@ -449,12 +643,36 @@ begin
   Inc(FCopyCount);
 end;
 
+constructor TRqDbgInstr.Create;
+begin
+  inherited Create;
+  FProcNames := TStringList.Create;
+end;
+
+destructor TRqDbgInstr.Destroy;
+begin
+  FProcNames.Free;
+  inherited;
+end;
+
+function TRqDbgInstr.ProcOfPoint(APoint: Integer): string;
+begin
+  Result := '';
+  if (APoint >= 1) and (APoint <= FPointCount) and
+     (FPointProc[APoint] >= 0) and (FPointProc[APoint] < FProcNames.Count) then
+    Result := FProcNames[FPointProc[APoint]];
+end;
+
 function TRqDbgInstr.NewPoint(ASrcLine: Integer): Integer;
 begin
   Inc(FPointCount);
   if FPointCount >= Length(FPointLine) then
+  begin
     SetLength(FPointLine, FPointCount * 2 + 256);
+    SetLength(FPointProc, FPointCount * 2 + 256);
+  end;
   FPointLine[FPointCount] := ASrcLine;
+  FPointProc[FPointCount] := FCurProc;
   if (ASrcLine >= 0) and (ASrcLine < Length(FLinePoint)) and
      (FLinePoint[ASrcLine] = 0) then
     FLinePoint[ASrcLine] := FPointCount;
@@ -511,11 +729,18 @@ begin
   Add('DIM RqDbgStopKey AS LONG');
   Add('DIM RqDbgEvStop AS LONG');
   Add('DIM RqDbgEvGo AS LONG');
+  Add('DIM RqDbgWant AS LONG');
+  Add('DIM RqDbgPendId AS LONG');
+  Add('DIM RqDbgPendLvl AS LONG');
+  Add('DIM RqDbgPendKey AS LONG');
+  Add('DIM RqDbgStateFile AS QFILESTREAM');
   Add('DECLARE SUB RqDbgReadCmd');
-  Add('DECLARE SUB RqDbgStop (RqDbgPId AS LONG, RqDbgPLvl AS LONG, ' +
-      'RqDbgPKey AS LONG)');
+  Add('DECLARE SUB RqDbgGlobals');
+  Add('DECLARE SUB RqDbgHalt');
+  Add('DECLARE SUB RqDbgVal (RqDbgVK AS STRING, RqDbgVN AS STRING, ' +
+      'RqDbgVT AS STRING, RqDbgVV AS STRING)');
   Add('DECLARE SUB RqDbg (RqDbgPId AS LONG, RqDbgPLvl AS LONG, ' +
-      'RqDbgPKey AS LONG)');
+      'RqDbgPKey AS LONG, RqDbgPSelf AS LONG)');
   Add('');
   // Команда: "m режим", "r точка Run to cursor", "b точка" на каждую точку
   // останова, "#end". Файла нет - Run без точек.
@@ -568,30 +793,45 @@ begin
   Add('  END IF');
   Add('END SUB');
   Add('');
-  // Остановка: состояние в файл, "stop", ждать "go" (без DOEVENTS - окна
-  // программы стоят), затем новая команда
-  Add('SUB RqDbgStop (RqDbgPId AS LONG, RqDbgPLvl AS LONG, ' +
-      'RqDbgPKey AS LONG)');
-  Add('  DIM RqDbgStateFile AS QFILESTREAM');
+  // Строка переменной в файл состояния: "вид имя|тип=значение". Длинная
+  // строка - обрезается, перевод строки - знак CHR$(182).
+  Add('SUB RqDbgVal (RqDbgVK AS STRING, RqDbgVN AS STRING, ' +
+      'RqDbgVT AS STRING, RqDbgVV AS STRING)');
+  Add('  DIM RqDbgVText AS STRING');
+  Add('  RqDbgVText = RqDbgVV');
+  Add('  IF LEN(RqDbgVText) > 300 THEN RqDbgVText = LEFT$(RqDbgVText, 300) + "..."');
+  Add('  RqDbgVText = REPLACESUBSTR$(RqDbgVText, CHR$(13), CHR$(182))');
+  Add('  RqDbgVText = REPLACESUBSTR$(RqDbgVText, CHR$(10), "")');
+  Add('  RqDbgStateFile.WriteLine(RqDbgVK + " " + RqDbgVN + "|" + RqDbgVT + ' +
+      '"=" + RqDbgVText)');
+  Add('END SUB');
+  Add('');
+  // Остановка: глобальные в файл состояния (начат в RqDbg, локальные уже
+  // в нём), "stop", ждать "go" (без DOEVENTS - окна программы стоят),
+  // затем новая команда
+  Add('SUB RqDbgHalt');
   Add('  DIM RqDbgCallRes AS LONG');
-  AddLit('  RqDbgStateFile.Open("', StatePath, '", 65535)');
-  Add('  RqDbgStateFile.WriteLine("s " + STR$(RqDbgPId) + " " + ' +
-      'STR$(RqDbgPLvl))');
+  Add('  RqDbgWant = 0');
+  Add('  RqDbgGlobals');
   Add('  RqDbgStateFile.WriteLine("#end")');
   Add('  RqDbgStateFile.Close');
   Add('  RqDbgCallRes = RqDbgResetEvent(RqDbgEvGo)');
   Add('  RqDbgCallRes = RqDbgSetEvent(RqDbgEvStop)');
   Add('  RqDbgCallRes = RqDbgWait(RqDbgEvGo, -1)');
-  Add('  RqDbgStopId = RqDbgPId');
-  Add('  RqDbgStopLvl = RqDbgPLvl');
-  Add('  RqDbgStopKey = RqDbgPKey');
+  Add('  RqDbgStopId = RqDbgPendId');
+  Add('  RqDbgStopLvl = RqDbgPendLvl');
+  Add('  RqDbgStopKey = RqDbgPendKey');
   Add('  RqDbgReadCmd');
   Add('END SUB');
   Add('');
   // Точка с поднятым флагом: стоять ли здесь. Шаг не стоит дальше на той
   // же строке того же уровня (FOR ... : ... : NEXT в одной строке), Step
   // over - на точках глубже уровня остановки, если там нет точки останова.
-  Add('SUB RqDbg (RqDbgPId AS LONG, RqDbgPLvl AS LONG, RqDbgPKey AS LONG)');
+  // RqDbgPSelf = 1 - остановиться здесь же (главная часть, SUBI); 0 -
+  // поднять RqDbgWant: SUB допишет локальные (GOSUB RqDbgVars...) и
+  // позовёт RqDbgHalt
+  Add('SUB RqDbg (RqDbgPId AS LONG, RqDbgPLvl AS LONG, RqDbgPKey AS LONG, ' +
+      'RqDbgPSelf AS LONG)');
   Add('  RqDbgDepth = RqDbgPLvl');
   Add('  IF RqDbgMode = 1 THEN');
   Add('    IF RqDbgPKey = RqDbgStopKey THEN');
@@ -615,7 +855,17 @@ begin
   Add('  ELSE');
   Add('    IF RqDbgUser(RqDbgPId) = 0 THEN EXIT SUB');
   Add('  END IF');
-  Add('  RqDbgStop(RqDbgPId, RqDbgPLvl, RqDbgPKey)');
+  Add('  RqDbgPendId = RqDbgPId');
+  Add('  RqDbgPendLvl = RqDbgPLvl');
+  Add('  RqDbgPendKey = RqDbgPKey');
+  AddLit('  RqDbgStateFile.Open("', StatePath, '", 65535)');
+  Add('  RqDbgStateFile.WriteLine("s " + STR$(RqDbgPId) + " " + ' +
+      'STR$(RqDbgPLvl))');
+  Add('  IF RqDbgPSelf THEN');
+  Add('    RqDbgHalt');
+  Add('  ELSE');
+  Add('    RqDbgWant = 1');
+  Add('  END IF');
   Add('END SUB');
   Add('');
   // События создаёт unIDE до запуска; программа открывает их по имени
@@ -640,7 +890,7 @@ var
   LogicalEsc: array of Boolean;  // $ESCAPECHARS ON на этой строке
   LogicalCount, LineIdx, LogIdx, PartIdx, StartLine, PointId, LeadLines,
     CharIdx: Integer;
-  Code, LineCode, Stmt, Indent, NumLabel, Lvl, Word1, OutText, OutAll: string;
+  Code, LineCode, Stmt, Indent, NumLabel, Word1, OutAll: string;
   Escape, InSub, AwaitCase, Changed, ColonAfterFirst, HeadDone: Boolean;
   MultiHead, MultiEnd: Boolean;
   MultiPoint: Integer;
@@ -650,6 +900,11 @@ var
   OutStream: TFileStream;
   UpperSrc: string;
   Defined, Aliases: TStringList;  // имена $DEFINE; псевдоним=директива
+  GlobalVars, ProcVars: TStringList; // "вид<TAB>имя<TAB>тип" для дампа
+  CurDump: Boolean;               // у SUB есть блок дампа (не SUBI)
+  CurExit, CurVarsLabel: string;  // EXIT SUB/FUNCTION и метка блока
+  VarIdx: Integer;
+  VarRest: string;
   ExclStack: array of Boolean;    // блок условной сборки не собирается
   CondStack: array of Boolean;    // условие блока (для $ELSE)
   CondDepth: Integer;
@@ -749,6 +1004,101 @@ var
     AddBody(Pfx(AText), ASrcLine);
   end;
 
+  // Строка дампа переменной: RqDbgVal("вид", "имя", "тип", значение).
+  // Префикс - только у RqDbgVal: в имени переменной программы RqDbg
+  // может быть и своё.
+  function ValLine(const AVarDesc: string): string;
+  var
+    DescKind, DescName, DescType, DescRest: string;
+    TabPos: Integer;
+  begin
+    DescKind := Copy(AVarDesc, 1, 1);
+    DescRest := Copy(AVarDesc, 3, MaxInt);
+    TabPos := Pos(#9, DescRest);
+    DescName := Copy(DescRest, 1, TabPos - 1);
+    DescType := Copy(DescRest, TabPos + 1, MaxInt);
+    if DescType = 'STRING' then
+      Result := DescName
+    else
+      Result := 'STR$(' + DescName + ')';
+    Result := Pfx('RqDbgVal("') + DescKind + '", "' + DescName + '", "' +
+              DescType + '", ' + Result + ')';
+  end;
+
+  // Начало SUB/FUNCTION: номер процедуры, параметры, метка блока дампа
+  procedure StartProc(const AHead: string);
+  var
+    HeadWord, HeadRest, ProcName: string;
+    NameEnd: Integer;
+  begin
+    HeadWord := FirstToken(AHead, HeadRest);
+    NameEnd := 1;
+    while (NameEnd <= Length(HeadRest)) and
+          (HeadRest[NameEnd] in ['A'..'Z', 'a'..'z', '0'..'9', '_', '$', '%',
+                                 '&', '!', '#', '?']) do
+      Inc(NameEnd);
+    ProcName := Copy(HeadRest, 1, NameEnd - 1);
+    FProcNames.Add(HeadWord + ' ' + ProcName);
+    FCurProc := FProcNames.Count - 1;
+    ProcVars.Clear;
+    CollectVars(HeaderParams(AHead), 'p', '', ProcVars);
+    CurDump := (HeadWord = 'SUB') or (HeadWord = 'FUNCTION');
+    if HeadWord = 'FUNCTION' then
+      CurExit := 'EXIT FUNCTION'
+    else
+      CurExit := 'EXIT SUB';
+    CurVarsLabel := 'RqDbgVars' + IntToStr(FCurProc);
+  end;
+
+  // Перед END SUB: глубина, выход и блок дампа локальных
+  procedure EndProc(const AIndent: string; ALine: Integer);
+  var
+    DumpIdx: Integer;
+  begin
+    if InSub then
+      AddGen(AIndent + '  RqDbgDepth = RqDbgLvl - 1', ALine);
+    if InSub and CurDump then
+    begin
+      AddGen(AIndent + '  ' + CurExit, ALine);
+      AddGen(AIndent + CurVarsLabel + ':', ALine);
+      for DumpIdx := 0 to ProcVars.Count - 1 do
+        AddBody(AIndent + '  ' + ValLine(ProcVars[DumpIdx]), ALine);
+      AddGen(AIndent + '  RqDbgHalt', ALine);
+      AddGen(AIndent + '  RETURN', ALine);
+    end;
+    FCurProc := -1;
+    CurDump := False;
+  end;
+
+  // Проверка перед оператором. В SUB с блоком дампа - блочный IF с GOSUB
+  // на блок, иначе - RqDbg останавливается сам.
+  procedure AddCheck(const AIndent, ALabel: string; APoint, ALine: Integer);
+  var
+    LabelText, KeyText: string;
+  begin
+    LabelText := '';
+    if ALabel <> '' then
+      LabelText := ALabel + ' ';
+    KeyText := IntToStr(ALine + 1);
+    if InSub and CurDump then
+    begin
+      AddGen(AIndent + LabelText + 'IF RqDbgBrk(' + IntToStr(APoint) + ') THEN',
+             ALine);
+      AddGen(AIndent + '  RqDbg(' + IntToStr(APoint) + ', RqDbgLvl, ' + KeyText +
+             ', 0)', ALine);
+      AddGen(AIndent + '  IF RqDbgWant THEN GOSUB ' + CurVarsLabel, ALine);
+      AddGen(AIndent + 'END IF', ALine);
+    end
+    else if InSub then
+      AddGen(AIndent + LabelText + 'IF RqDbgBrk(' + IntToStr(APoint) +
+             ') THEN RqDbg(' + IntToStr(APoint) + ', RqDbgLvl, ' + KeyText +
+             ', 1)', ALine)
+    else
+      AddGen(AIndent + LabelText + 'IF RqDbgBrk(' + IntToStr(APoint) +
+             ') THEN RqDbg(' + IntToStr(APoint) + ', 0, ' + KeyText + ', 1)',
+             ALine);
+  end;
+
   procedure Verbatim(ALog: Integer);
   var
     PhysIdx: Integer;
@@ -826,7 +1176,15 @@ begin
   OutLines := TStringList.Create;
   Defined := TStringList.Create;
   Aliases := TStringList.Create;
+  GlobalVars := TStringList.Create;
+  ProcVars := TStringList.Create;
   CondDepth := 0;
+  FProcNames.Clear;
+  FCurProc := -1;
+  SetLength(FPointProc, 0);
+  CurDump := False;
+  CurExit := '';
+  CurVarsLabel := '';
   try
     // Из RAPIDQ.INC: $define brem $ifdef, erem $endif, remb, reme
     Aliases.Values['BREM'] := 'IFDEF';
@@ -987,6 +1345,30 @@ begin
         if Kinds[PartIdx] in [pkPoint, pkSubHead, pkSubEnd, pkExitSub] then
           Changed := True;
       end;
+
+      // Объявления - в списки дампа: DIM и DEFxxx в SUB - локальные, вне
+      // SUB - глобальные
+      for PartIdx := 0 to Parts.Count - 1 do
+      begin
+        Stmt := Parts[PartIdx];
+        Word1 := WordAt(Stmt, 1);
+        VarRest := Trim(Copy(Stmt, Length(Word1) + 1, MaxInt));
+        if Word1 = 'DIM' then
+        begin
+          if InSub then
+            CollectVars(VarRest, 'l', '', ProcVars)
+          else
+            CollectVars(VarRest, 'g', '', GlobalVars);
+        end
+        else if DefWordType(Word1) <> '' then
+        begin
+          if InSub then
+            CollectVars(VarRest, 'l', DefWordType(Word1), ProcVars)
+          else
+            CollectVars(VarRest, 'g', DefWordType(Word1), GlobalVars);
+        end;
+      end;
+
       if not Changed then
       begin
         Verbatim(LogIdx);
@@ -999,10 +1381,6 @@ begin
       while (CharIdx <= Length(LineCode)) and (LineCode[CharIdx] in [' ', #9]) do
         Inc(CharIdx);
       Indent := Copy(LineCode, 1, CharIdx - 1);
-      if InSub then
-        Lvl := 'RqDbgLvl'
-      else
-        Lvl := '0';
 
       // Строка с продолжением "_" переносится как есть: склеенная строка
       // могла бы изменить текст ("_" бывает и внутри кавычек - строка
@@ -1022,20 +1400,24 @@ begin
               if MultiPoint < 0 then
                 MultiPoint := PartIdx;
           end;
-        if MultiEnd and InSub then
-          AddGen(Indent + 'RqDbgDepth = RqDbgLvl - 1', StartLine);
+        if MultiEnd then
+          EndProc(Indent, StartLine);
         if (MultiPoint >= 0) and not MultiHead then
         begin
           PointId := NewPoint(StartLine);
-          AddGen(Indent + 'IF RqDbgBrk(' + IntToStr(PointId) +
-                  ') THEN RqDbg(' + IntToStr(PointId) + ', ' + Lvl + ', ' +
-                  IntToStr(StartLine + 1) + ')', StartLine);
+          AddCheck(Indent, '', PointId, StartLine);
           if (Kinds[MultiPoint] = pkExitSub) and InSub then
             AddGen(Indent + 'RqDbgDepth = RqDbgLvl - 1', StartLine);
         end;
         Verbatim(LogIdx);
         if MultiHead then
         begin
+          for PartIdx := 0 to Parts.Count - 1 do
+            if Kinds[PartIdx] = pkSubHead then
+            begin
+              StartProc(Parts[PartIdx]);
+              Break;
+            end;
           AddGen(Indent + '  DIM RqDbgLvl AS LONG', StartLine);
           AddGen(Indent + '  RqDbgDepth = RqDbgDepth + 1', StartLine);
           AddGen(Indent + '  RqDbgLvl = RqDbgDepth', StartLine);
@@ -1060,6 +1442,7 @@ begin
           pkSubHead:
             begin
               AddBody(Indent + Stmt, StartLine);
+              StartProc(Stmt);
               AddGen(Indent + '  DIM RqDbgLvl AS LONG', StartLine);
               AddGen(Indent + '  RqDbgDepth = RqDbgDepth + 1', StartLine);
               AddGen(Indent + '  RqDbgLvl = RqDbgDepth', StartLine);
@@ -1067,8 +1450,7 @@ begin
             end;
           pkSubEnd:
             begin
-              if InSub then
-                AddGen(Indent + '  RqDbgDepth = RqDbgLvl - 1', StartLine);
+              EndProc(Indent, StartLine);
               AddBody(Indent + Stmt, StartLine);
               InSub := False;
             end;
@@ -1078,16 +1460,7 @@ begin
               if PartIdx = 0 then
                 TakeNumericLabel(Stmt, NumLabel);
               PointId := NewPoint(StartLine);
-              if InSub then
-                Lvl := 'RqDbgLvl'
-              else
-                Lvl := '0';
-              OutText := 'IF RqDbgBrk(' + IntToStr(PointId) + ') THEN RqDbg(' +
-                         IntToStr(PointId) + ', ' + Lvl + ', ' +
-                         IntToStr(StartLine + 1) + ')';
-              if NumLabel <> '' then
-                OutText := NumLabel + ' ' + OutText;
-              AddGen(Indent + OutText, StartLine);
+              AddCheck(Indent, NumLabel, PointId, StartLine);
               if (Kinds[PartIdx] = pkExitSub) and InSub then
                 AddGen(Indent + 'RqDbgDepth = RqDbgLvl - 1', StartLine);
               if Stmt <> '' then
@@ -1104,6 +1477,14 @@ begin
     AddRuntime(OutLines);
     for LineIdx := LeadLines to Body.Count - 1 do
       AddCopyLine(OutLines, Body[LineIdx], BodySrc[LineIdx]);
+    // Глобальные - в конце, после всех их DIM
+    AddCopyLine(OutLines, '', -1);
+    AddCopyLine(OutLines, Pfx(''' --- unIDE: глобальные переменные для ' +
+                'отладчика ---'), -1);
+    AddCopyLine(OutLines, Pfx('SUB RqDbgGlobals'), -1);
+    for VarIdx := 0 to GlobalVars.Count - 1 do
+      AddCopyLine(OutLines, '  ' + ValLine(GlobalVars[VarIdx]), -1);
+    AddCopyLine(OutLines, Pfx('END SUB'), -1);
 
     // Концы строк - CRLF, как у исходников RapidQ
     try
@@ -1126,6 +1507,8 @@ begin
     end;
     Result := True;
   finally
+    ProcVars.Free;
+    GlobalVars.Free;
     Aliases.Free;
     Defined.Free;
     OutLines.Free;

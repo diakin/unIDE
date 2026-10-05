@@ -1003,6 +1003,10 @@ type
     FRqDbgTimer: TTimer;
     FRqDbgLastMode: Integer;    // последняя команда (RqDbgMode*)
     FRqDbgLastRunTo: Integer;   // её точка Run to cursor
+    // Переменные на остановке (файл состояния): "вид<TAB>имя<TAB>тип<TAB>
+    // значение", вид p - параметр, l - локальная, g - глобальная
+    FRqDbgVars: TStringList;
+    FRqDbgWhere: string;        // "SUB Имя" остановки, '' - главная часть
     // Окно Watch: выражения, отладочная информация exe сеанса (TD32, -V) и
     // причина, если её нет
     FWatchWnd: TDlgWatch;
@@ -2116,6 +2120,9 @@ type
     procedure RqDbgStopped(APoint: Integer);
     procedure RqDbgCloseEvents;
     procedure RqDbgEnd;
+    function  RqDbgVarFind(const AExpr: string; var AValue,
+                           AType: string): Boolean;
+    procedure RqDbgWatchRefresh;
     // Окно Watch
     function  DbgExprAtCaret: string;
     function  DbgDeclNameAt(ACharPos: Integer; const AWord: string): string;
@@ -17410,6 +17417,7 @@ begin
   end;
   RqDbgCloseEvents;
   FreeAndNil(FRqDbgInstr);
+  FreeAndNil(FRqDbgVars);
   if FRunList <> nil then
   begin
     for I := 0 to FRunList.Count - 1 do
@@ -42353,7 +42361,6 @@ begin
   mViewSnap.Visible := not Basic;
   mPrjRelease.Visible := not Basic;
   mPrjReleaseFiles.Visible := not Basic;
-  pmuAddWatch.Visible := not Basic;
   ShowTab(FTabCode, not Basic);
   // Только Basic
   ShowTab(FTabIncludes, Basic);
@@ -45379,7 +45386,10 @@ begin
     Exit;
   FRqDbgPaused := False;
   DbgClearExec;
+  if FRqDbgVars <> nil then
+    FRqDbgVars.Clear;
   SetEvent(FRqDbgEvGo);
+  DbgWatchRefresh;
 end;
 
 // Раз в 50 мс: не встала ли программа (событие "stop")
@@ -45387,7 +45397,7 @@ procedure TForm1.RqDbgTimerTick(Sender: TObject);
 var
   StateLines: TStringList;
   StateText: string;
-  PointId, SpacePos: Integer;
+  PointId, SpacePos, LineIdx, BarPos, EqPos: Integer;
 begin
   if not FRqDbgOn then
   begin
@@ -45398,8 +45408,12 @@ begin
     Exit;
   if WaitForSingleObject(FRqDbgEvStop, 0) <> WAIT_OBJECT_0 then
     Exit;
-  // "s точка уровень"; файл записан и закрыт до события
+  // "s точка уровень", затем переменные "вид имя|тип=значение", "#end";
+  // файл записан и закрыт до события
   PointId := 0;
+  if FRqDbgVars = nil then
+    FRqDbgVars := TStringList.Create;
+  FRqDbgVars.Clear;
   StateLines := TStringList.Create;
   try
     try
@@ -45419,9 +45433,26 @@ begin
         PointId := StrToIntDef(StateText, 0);
       end;
     end;
+    for LineIdx := 1 to StateLines.Count - 1 do
+    begin
+      StateText := StateLines[LineIdx];
+      if Copy(StateText, 1, 4) = '#end' then
+        Break;
+      // Значение - всё после первого "=" за "|" (в строке бывает и "=")
+      BarPos := Pos('|', StateText);
+      if (Length(StateText) < 3) or (StateText[2] <> ' ') or (BarPos = 0) then
+        Continue;
+      EqPos := BarPos + Pos('=', Copy(StateText, BarPos + 1, MaxInt));
+      if EqPos = BarPos then
+        Continue;
+      FRqDbgVars.Add(StateText[1] + #9 + Copy(StateText, 3, BarPos - 3) + #9 +
+                     Copy(StateText, BarPos + 1, EqPos - BarPos - 1) + #9 +
+                     Copy(StateText, EqPos + 1, MaxInt));
+    end;
   finally
     StateLines.Free;
   end;
+  FRqDbgWhere := FRqDbgInstr.ProcOfPoint(PointId);
   FRqDbgPaused := True;
   RqDbgStopped(PointId);
 end;
@@ -45484,6 +45515,15 @@ begin
   if CompareText(FCurrentFileName, SrcFile) = 0 then
     GotoLine(SrcLine);
   DbgRepaint;
+  DbgWatchRefresh;
+  // Значение под мышью - подсказкой, пока программа стоит
+  if FDbgHintTimer = nil then
+  begin
+    FDbgHintTimer := TTimer.Create(Self);
+    FDbgHintTimer.Interval := 400;
+    FDbgHintTimer.OnTimer := DbgHintTimerTick;
+  end;
+  FDbgHintTimer.Enabled := True;
 end;
 
 procedure TForm1.RqDbgCloseEvents;
@@ -45512,12 +45552,135 @@ begin
     DeleteFile(FRqDbgInstr.StateFile);
   end;
   DbgClearExec;
+  if FRqDbgVars <> nil then
+    FRqDbgVars.Clear;
+  DbgWatchRefresh;
   LogComp('--- Программа завершилась (отладчик RapidQ)');
   // Лог сборки и сеанса (остановки, команды) - рядом с .bas: окно лога
   // очищает следующая сборка
   if FRqDbgInstr <> nil then
     SaveCompileLog(ChangeFileExt(FRqDbgInstr.SrcFile, '') + '_rqdbg.log');
   DbgRepaint;
+end;
+
+// Значение переменной RapidQ на остановке. Сначала параметры и локальные,
+// потом глобальные; имя без учёта регистра. Имя под мышью приходит без
+// суффикса ($, %...) - тогда подходит и имя с суффиксом.
+function TForm1.RqDbgVarFind(const AExpr: string; var AValue,
+                             AType: string): Boolean;
+var
+  Pass, VarIdx: Integer;
+  Fields: TStringList;
+  BaseName: string;
+begin
+  Result := False;
+  AValue := '';
+  AType := '';
+  if (FRqDbgVars = nil) or (Trim(AExpr) = '') then
+    Exit;
+  Fields := TStringList.Create;
+  try
+    for Pass := 1 to 4 do
+      for VarIdx := 0 to FRqDbgVars.Count - 1 do
+      begin
+        Fields.Text := StringReplace(FRqDbgVars[VarIdx], #9, #13#10,
+                                     [rfReplaceAll]);
+        if Fields.Count < 3 then
+          Continue;
+        // 1, 2 - локальные и параметры, 3, 4 - глобальные; нечётные -
+        // точное имя, чётные - имя без суффикса
+        if (Pass <= 2) <> (Fields[0] <> 'g') then
+          Continue;
+        BaseName := Fields[1];
+        if not Odd(Pass) then
+          while (BaseName <> '') and
+                (BaseName[Length(BaseName)] in ['$', '%', '&', '!', '#', '?']) do
+            Delete(BaseName, Length(BaseName), 1);
+        if CompareText(BaseName, Trim(AExpr)) <> 0 then
+          Continue;
+        AType := Fields[2];
+        if Fields.Count > 3 then
+          AValue := Fields[3];
+        if AType = 'STRING' then
+          AValue := '"' + AValue + '"';
+        Result := True;
+        Exit;
+      end;
+  finally
+    Fields.Free;
+  end;
+end;
+
+// Окно Watch под отладчиком RapidQ: значения - из файла состояния
+// остановки. Показываются объявленные переменные простых типов; массивы,
+// объекты, выражения - пока нет.
+procedure TForm1.RqDbgWatchRefresh;
+var
+  ExprIdx, CharIdx: Integer;
+  State, ValueText, TypeText, Where, ExprText: string;
+  Item: TListItem;
+  IsName: Boolean;
+
+  procedure SetSub(AItem: TListItem; ASubIdx: Integer; const AText: string);
+  begin
+    while AItem.SubItems.Count <= ASubIdx do
+      AItem.SubItems.Add('');
+    if AItem.SubItems[ASubIdx] <> AText then
+      AItem.SubItems[ASubIdx] := AText;
+  end;
+
+begin
+  State := '';
+  if not FRqDbgOn then
+    State := '<программа не запущена>'
+  else if not FRqDbgPaused then
+    State := '<программа выполняется>';
+  if State <> '' then
+    Where := State
+  else if FRqDbgWhere = '' then
+    Where := 'Остановка в главной части'
+  else
+    Where := 'Остановка в ' + FRqDbgWhere;
+  if FWatchWnd.lblWhere.Caption <> ' ' + Where then
+    FWatchWnd.lblWhere.Caption := ' ' + Where;
+
+  FWatchWnd.lvWatch.Items.BeginUpdate;
+  try
+    while FWatchWnd.lvWatch.Items.Count > FWatchList.Count do
+      FWatchWnd.lvWatch.Items.Delete(FWatchWnd.lvWatch.Items.Count - 1);
+    while FWatchWnd.lvWatch.Items.Count < FWatchList.Count do
+      FWatchWnd.lvWatch.Items.Add;
+    for ExprIdx := 0 to FWatchList.Count - 1 do
+    begin
+      Item := FWatchWnd.lvWatch.Items[ExprIdx];
+      ExprText := Trim(FWatchList[ExprIdx]);
+      if Item.Caption <> FWatchList[ExprIdx] then
+        Item.Caption := FWatchList[ExprIdx];
+      TypeText := '';
+      if State <> '' then
+        ValueText := State
+      else if not RqDbgVarFind(ExprText, ValueText, TypeText) then
+      begin
+        // Имя или выражение: имя - буквы, цифры, _ и суффикс типа
+        IsName := ExprText <> '';
+        for CharIdx := 1 to Length(ExprText) do
+          if not (ExprText[CharIdx] in ['A'..'Z', 'a'..'z', '0'..'9', '_',
+                                        '$', '%', '&', '!', '#', '?']) then
+            IsName := False;
+        if IsName then
+          ValueText := '<нет: не объявлена через DIM в этой SUB или ' +
+                       'глобально, массив, объект или из $INCLUDE>'
+        else
+          ValueText := '<выражения пока не вычисляются - только имена ' +
+                       'переменных>';
+      end;
+      SetSub(Item, 0, ValueText);
+      SetSub(Item, 1, TypeText);
+    end;
+  finally
+    FWatchWnd.lvWatch.Items.EndUpdate;
+  end;
+  WatchArrShow(False);
 end;
 
 procedure TForm1.TraceIntoClick(Sender: TObject);
@@ -45979,6 +46142,12 @@ var
 begin
   Result := False;
   AValue := '';
+  if (FDbgSession = nil) and FRqDbgOn then
+  begin
+    if FRqDbgPaused then
+      Result := RqDbgVarFind(AExpr, AValue, TypeText);
+    Exit;
+  end;
   if (AExpr = '') or (FDbgSession = nil) or FDbgSession.Finished or
      not FDbgSession.Paused or (FDbgSyms = nil) then
     Exit;
@@ -46006,8 +46175,9 @@ var
   Expr, ValueText, HintText: string;
   HintRect: TRect;
 begin
-  if (FDbgSession = nil) or FDbgSession.Finished or
-     not FDbgSession.Paused then
+  if not (FRqDbgOn and FRqDbgPaused) and
+     ((FDbgSession = nil) or FDbgSession.Finished or
+      not FDbgSession.Paused) then
   begin
     if FDbgHintTimer <> nil then
       FDbgHintTimer.Enabled := False;
@@ -46138,6 +46308,12 @@ var
 begin
   if (FWatchWnd = nil) or (FWatchList = nil) then
     Exit;
+  // Отладчик RapidQ - свои значения (файл состояния)
+  if (FDbgSession = nil) and FRqDbgOn then
+  begin
+    RqDbgWatchRefresh;
+    Exit;
+  end;
   // Состояние вместо значений
   State := '';
   Where := '';
@@ -46283,7 +46459,29 @@ procedure TForm1.WatchLocalsClick(Sender: TObject);
 var
   Names: TStringList;
   NameIdx: Integer;
+  VarText: string;
 begin
+  // RapidQ: параметры и локальные из файла состояния
+  if (FDbgSession = nil) and FRqDbgOn then
+  begin
+    if not FRqDbgPaused or (FRqDbgVars = nil) then
+    begin
+      ShowMessage('Watch: программа не стоит на остановке.');
+      Exit;
+    end;
+    for NameIdx := 0 to FRqDbgVars.Count - 1 do
+    begin
+      VarText := FRqDbgVars[NameIdx];
+      if Copy(VarText, 1, 1) = 'g' then
+        Continue;
+      VarText := Copy(VarText, 3, MaxInt);
+      VarText := Copy(VarText, 1, Pos(#9, VarText) - 1);
+      if (VarText <> '') and (FWatchList.IndexOf(VarText) < 0) then
+        FWatchList.Add(VarText);
+    end;
+    DbgWatchRefresh;
+    Exit;
+  end;
   if (FDbgSession = nil) or not FDbgSession.Paused or (FDbgSyms = nil) then
   begin
     ShowMessage('Watch: программа не стоит на остановке или нет ' +
@@ -46342,7 +46540,9 @@ end;
 function TForm1.WatchStateText: string;
 begin
   Result := '';
-  if FDbgSession = nil then
+  if (FDbgSession = nil) and FRqDbgOn then
+    Result := '<массивы RapidQ пока не показываются>'
+  else if FDbgSession = nil then
     Result := '<программа не запущена>'
   else if FDbgSession.Finished then
     Result := '<программа завершилась>'
@@ -46530,6 +46730,12 @@ var
 begin
   if (FWatchWnd = nil) or (FWatchArrPanel = nil) then
     Exit;
+  // RapidQ: панели массива нет
+  if (FDbgSession = nil) and FRqDbgOn then
+  begin
+    WatchArrShow(False);
+    Exit;
+  end;
   ExprIdx := DbgWatchSelected;
   if ExprIdx < 0 then
   begin
