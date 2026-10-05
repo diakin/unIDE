@@ -98,6 +98,20 @@ FLockMemo: Boolean; // НАШ СЕМАФОР БЛОКИРОВКИ ДЛЯ TMEMO
     memArdCfg: TUiMemo;             // arduino-cli.yaml
     lblArdCfgState: TLabel;
     FArdLoading: Boolean;           // элементы заполняются из editor.ini
+    FArdTop: TPanel;                // панель путей на листе Settings
+    FArdPathBtns: array of TUiButton;  // кнопки выбора справа от путей
+    // Лист Network: прокси, как в настройках Arduino IDE
+    rbArdProxyNone: TUiRadioButton;
+    rbArdProxyAuto: TUiRadioButton;
+    rbArdProxyManual: TUiRadioButton;
+    chkArdProxyAutoUrl: TUiCheckBox;
+    edArdProxyAutoUrl: TUiEdit;
+    rbArdProxyHttp: TUiRadioButton;
+    rbArdProxySocks: TUiRadioButton;
+    edArdProxyHost: TUiEdit;
+    edArdProxyPort: TUiEdit;
+    edArdProxyUser: TUiEdit;
+    edArdProxyPassword: TUiEdit;
     // Окно списка путей (EditPathList): его элементы на время показа
     FPathList: TUiListBox;
     FPathEdit: TUiEdit;
@@ -283,6 +297,10 @@ procedure ArdCfgLoadClick(Sender: TObject);
 procedure ArdCfgWriteClick(Sender: TObject);
 procedure ArdCliIdle(var ACancel: Boolean);
 procedure OptionsPageChange(Sender: TObject);
+procedure ArdTopResize(Sender: TObject);
+procedure BuildArduinoNetwork(ATab: TTabSheet);
+procedure ArdNetChange(Sender: TObject);
+procedure ArdNetEnable;
 function  CompFieldIdx(const AKey: string): Integer;
 function  CompIniSection(const AKey: string): string;
 function  CompIniKey(const AKey: string): string;
@@ -3870,16 +3888,14 @@ end;
 procedure TForm2.BuildArduinoTab(ATab: TTabSheet);
 var
   InnerPages: TUiPageControl;
-  TabSettings, TabCfg: TTabSheet;
+  TabSettings, TabNetwork, TabCfg: TTabSheet;
   PnlTop, PnlBottom, PnlCfgTop: TPanel;
   FieldEdit: TUiEdit;
   BrowseBtn, ImportBtn, CfgReloadBtn, CfgWriteBtn: TUiButton;
   TextLbl: TLabel;
-  RowIdx, RowTop, TabWidth, ItemIdx: Integer;
+  RowIdx, RowTop, ItemIdx: Integer;
 begin
   FArdTab := ATab;
-  // Ширина листа на этот момент ещё не посчитана - от ширины окна
-  TabWidth := Self.ClientWidth - 24;
 
   InnerPages := TUiPageControl.Create(Self);
   InnerPages.Parent := ATab;
@@ -3887,6 +3903,9 @@ begin
   TabSettings := TTabSheet.Create(Self);
   TabSettings.PageControl := InnerPages;
   TabSettings.Caption := 'Settings';
+  TabNetwork := TTabSheet.Create(Self);
+  TabNetwork.PageControl := InnerPages;
+  TabNetwork.Caption := 'Network';
   TabCfg := TTabSheet.Create(Self);
   TabCfg.PageControl := InnerPages;
   TabCfg.Caption := 'Cli config file';
@@ -3899,9 +3918,14 @@ begin
   PnlTop.Height := 392;
   PnlTop.BevelOuter := bvNone;
   PnlTop.Caption := '';
+  FArdTop := PnlTop;
 
+  // Ширина полей и место кнопок - в ArdTopResize, по ширине панели: при
+  // постройке она ещё не та, что будет на экране (выравнивание alTop
+  // применится позже), и привязка к правому краю считалась бы от неё
   SetLength(FArdEdits, Length(ArdPathFields));
   SetLength(FArdEditKeys, Length(ArdPathFields));
+  SetLength(FArdPathBtns, Length(ArdPathFields));
   RowTop := 10;
   for RowIdx := 0 to High(ArdPathFields) do
   begin
@@ -3911,8 +3935,7 @@ begin
     FieldEdit.Parent := PnlTop;
     FieldEdit.Left := 8;
     FieldEdit.Top := RowTop;
-    FieldEdit.Width := TabWidth - 8 - 150 - 14;
-    FieldEdit.Anchors := [akLeft, akTop, akRight];
+    FieldEdit.Width := 300;
     FieldEdit.Tag := RowIdx;
     FieldEdit.ShowHint := True;
     FieldEdit.Hint := ArdBarField(ArdPathFields[RowIdx], 2);
@@ -3925,7 +3948,7 @@ begin
     BrowseBtn.Top := RowTop - 1;
     BrowseBtn.Width := 150;
     BrowseBtn.Height := 23;
-    BrowseBtn.Anchors := [akTop, akRight];
+    FArdPathBtns[RowIdx] := BrowseBtn;
     BrowseBtn.Caption := ArdBarField(ArdPathFields[RowIdx], 1);
     BrowseBtn.ShowHint := True;
     BrowseBtn.Hint := FieldEdit.Hint;
@@ -4018,6 +4041,7 @@ begin
   TextLbl.Left := 8;
   TextLbl.Top := RowTop;
   PnlTop.Height := RowTop + 22;
+  PnlTop.OnResize := ArdTopResize;
 
   PnlBottom := TPanel.Create(Self);
   PnlBottom.Parent := TabSettings;
@@ -4043,6 +4067,8 @@ begin
   memArdUrls.ScrollBars := ssBoth;
   memArdUrls.WordWrap := False;
   memArdUrls.OnChange := ArdUrlsChange;
+
+  BuildArduinoNetwork(TabNetwork);
 
   // --- Cli config file: arduino-cli.yaml ---
   PnlCfgTop := TPanel.Create(Self);
@@ -4088,6 +4114,178 @@ begin
   memArdCfg.Font.Size := 9;
 
   ArdTabLoad;
+  ArdTopResize(nil);
+end;
+
+// Поля путей - на всю ширину панели, кнопки выбора - у правого края
+procedure TForm2.ArdTopResize(Sender: TObject);
+const
+  BtnWidth = 150;
+var
+  RowIdx, EditWidth: Integer;
+begin
+  if FArdTop = nil then
+    Exit;
+  EditWidth := FArdTop.ClientWidth - 8 - BtnWidth - 14;
+  if EditWidth < 120 then
+    EditWidth := 120;
+  for RowIdx := 0 to High(FArdEdits) do
+  begin
+    FArdEdits[RowIdx].Width := EditWidth;
+    if RowIdx <= High(FArdPathBtns) then
+      FArdPathBtns[RowIdx].Left := FArdEdits[RowIdx].Left + EditWidth + 6;
+  end;
+end;
+
+// Лист Network - прокси, как вкладка Network в настройках Arduino IDE:
+// без прокси, определять автоматически (с адресом файла настройки или без),
+// вручную (HTTP или SOCKS, хост, порт, имя, пароль). Значения - в
+// [Compiler.Arduino]: ProxyMode (none, auto, manual), ProxyAutoUrlOn,
+// ProxyAutoUrl, ProxyType (http, socks), ProxyHost, ProxyPort, ProxyUser,
+// ProxyPassword. В arduino-cli пока не передаются.
+procedure TForm2.BuildArduinoNetwork(ATab: TTabSheet);
+var
+  PnlType: TPanel;
+  TextLbl: TLabel;
+  RowTop: Integer;
+
+  function AddRadio(AParent: TWinControl; const ACaption: string;
+                    ALeft, ATop, AWidth: Integer): TUiRadioButton;
+  begin
+    Result := TUiRadioButton.Create(Self);
+    Result.Parent := AParent;
+    Result.Caption := ACaption;
+    Result.Left := ALeft;
+    Result.Top := ATop;
+    Result.Width := AWidth;
+    Result.OnClick := ArdNetChange;
+  end;
+
+  function AddEdit(const ALabel: string; ATop, AWidth: Integer): TUiEdit;
+  begin
+    TextLbl := TLabel.Create(Self);
+    TextLbl.Parent := ATab;
+    TextLbl.Caption := ALabel;
+    TextLbl.Left := 50;
+    TextLbl.Top := ATop + 4;
+    Result := TUiEdit.Create(Self);
+    Result.Parent := ATab;
+    Result.Left := 180;
+    Result.Top := ATop;
+    Result.Width := AWidth;
+    Result.OnChange := ArdNetChange;
+  end;
+
+begin
+  RowTop := 12;
+  rbArdProxyNone := AddRadio(ATab, 'No proxy', 8, RowTop, 300);
+  Inc(RowTop, 26);
+  rbArdProxyAuto := AddRadio(ATab, 'Auto-detect proxy settings', 8, RowTop,
+                             300);
+  Inc(RowTop, 26);
+  chkArdProxyAutoUrl := TUiCheckBox.Create(Self);
+  chkArdProxyAutoUrl.Parent := ATab;
+  chkArdProxyAutoUrl.Caption := 'Automatic proxy configuration URL:';
+  chkArdProxyAutoUrl.Left := 30;
+  chkArdProxyAutoUrl.Top := RowTop;
+  chkArdProxyAutoUrl.Width := 260;
+  chkArdProxyAutoUrl.OnClick := ArdNetChange;
+  Inc(RowTop, 24);
+  edArdProxyAutoUrl := TUiEdit.Create(Self);
+  edArdProxyAutoUrl.Parent := ATab;
+  edArdProxyAutoUrl.Left := 50;
+  edArdProxyAutoUrl.Top := RowTop;
+  edArdProxyAutoUrl.Width := 400;
+  edArdProxyAutoUrl.OnChange := ArdNetChange;
+  Inc(RowTop, 34);
+  rbArdProxyManual := AddRadio(ATab, 'Manual proxy configuration', 8,
+                               RowTop, 300);
+  Inc(RowTop, 26);
+
+  // HTTP / SOCKS - своя группа: переключатели выбираются в пределах
+  // родителя
+  PnlType := TPanel.Create(Self);
+  PnlType.Parent := ATab;
+  PnlType.Left := 44;
+  PnlType.Top := RowTop;
+  PnlType.Width := 260;
+  PnlType.Height := 24;
+  PnlType.BevelOuter := bvNone;
+  PnlType.Caption := '';
+  rbArdProxyHttp := AddRadio(PnlType, 'HTTP', 6, 2, 80);
+  rbArdProxySocks := AddRadio(PnlType, 'SOCKS', 100, 2, 90);
+  Inc(RowTop, 32);
+
+  edArdProxyHost := AddEdit('Host name:', RowTop, 270);
+  Inc(RowTop, 28);
+  edArdProxyPort := AddEdit('Port number:', RowTop, 80);
+  Inc(RowTop, 28);
+  edArdProxyUser := AddEdit('Username:', RowTop, 200);
+  Inc(RowTop, 28);
+  edArdProxyPassword := AddEdit('Password:', RowTop, 200);
+  edArdProxyPassword.PasswordChar := '*';
+  Inc(RowTop, 36);
+
+  TextLbl := TLabel.Create(Self);
+  TextLbl.Parent := ATab;
+  TextLbl.Left := 8;
+  TextLbl.Top := RowTop;
+  TextLbl.Width := 520;
+  TextLbl.Height := 48;
+  TextLbl.AutoSize := False;
+  TextLbl.WordWrap := True;
+  TextLbl.Caption := 'Настройки хранятся в editor.ini ([Compiler.Arduino], ' +
+                     'пароль - открытым текстом). В arduino-cli пока не ' +
+                     'передаются.';
+end;
+
+// Доступность полей по выбранному режиму прокси
+procedure TForm2.ArdNetEnable;
+var
+  Manual: Boolean;
+begin
+  chkArdProxyAutoUrl.Enabled := rbArdProxyAuto.Checked;
+  edArdProxyAutoUrl.Enabled := rbArdProxyAuto.Checked and
+                               chkArdProxyAutoUrl.Checked;
+  Manual := rbArdProxyManual.Checked;
+  rbArdProxyHttp.Enabled := Manual;
+  rbArdProxySocks.Enabled := Manual;
+  edArdProxyHost.Enabled := Manual;
+  edArdProxyPort.Enabled := Manual;
+  edArdProxyUser.Enabled := Manual;
+  edArdProxyPassword.Enabled := Manual;
+end;
+
+// Любая правка на листе Network - все его значения в editor.ini
+procedure TForm2.ArdNetChange(Sender: TObject);
+var
+  ModeText, TypeText, AutoUrlOn: string;
+begin
+  if FArdLoading then
+    Exit;
+  if rbArdProxyAuto.Checked then
+    ModeText := 'auto'
+  else if rbArdProxyManual.Checked then
+    ModeText := 'manual'
+  else
+    ModeText := 'none';
+  if rbArdProxySocks.Checked then
+    TypeText := 'socks'
+  else
+    TypeText := 'http';
+  if chkArdProxyAutoUrl.Checked then
+    AutoUrlOn := '1'
+  else
+    AutoUrlOn := '0';
+  ArdWrite('ProxyMode', ModeText);
+  ArdWrite('ProxyAutoUrlOn', AutoUrlOn);
+  ArdWrite('ProxyAutoUrl', Trim(edArdProxyAutoUrl.Text));
+  ArdWrite('ProxyType', TypeText);
+  ArdWrite('ProxyHost', Trim(edArdProxyHost.Text));
+  ArdWrite('ProxyPort', Trim(edArdProxyPort.Text));
+  ArdWrite('ProxyUser', edArdProxyUser.Text);
+  ArdWrite('ProxyPassword', edArdProxyPassword.Text);
+  ArdNetEnable;
 end;
 
 // Раздел настроек Arduino - как его читает ArduinoCli (с инструментом по
@@ -4146,6 +4344,22 @@ begin
     memArdUrls.Lines.Text := StringReplace(
       Ini.ReadString(Section, 'AdditionalUrls', ''), ',', #13#10,
       [rfReplaceAll]);
+
+    Value := LowerCase(Trim(Ini.ReadString(Section, 'ProxyMode', 'none')));
+    rbArdProxyAuto.Checked := Value = 'auto';
+    rbArdProxyManual.Checked := Value = 'manual';
+    rbArdProxyNone.Checked := (Value <> 'auto') and (Value <> 'manual');
+    chkArdProxyAutoUrl.Checked := Ini.ReadString(Section, 'ProxyAutoUrlOn',
+                                                 '0') = '1';
+    edArdProxyAutoUrl.Text := Ini.ReadString(Section, 'ProxyAutoUrl', '');
+    Value := LowerCase(Trim(Ini.ReadString(Section, 'ProxyType', 'http')));
+    rbArdProxySocks.Checked := Value = 'socks';
+    rbArdProxyHttp.Checked := Value <> 'socks';
+    edArdProxyHost.Text := Ini.ReadString(Section, 'ProxyHost', '');
+    edArdProxyPort.Text := Ini.ReadString(Section, 'ProxyPort', '');
+    edArdProxyUser.Text := Ini.ReadString(Section, 'ProxyUser', '');
+    edArdProxyPassword.Text := Ini.ReadString(Section, 'ProxyPassword', '');
+    ArdNetEnable;
   finally
     Ini.Free;
     FArdLoading := False;
