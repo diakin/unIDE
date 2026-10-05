@@ -38,13 +38,58 @@ type
     DsgExtendedHints: Boolean;    // в подсказке - место, размер, TabOrder
   end;
 
+  // Editor Options - Margin and gutter, Code Insight. В editor.ini -
+  // [Editor] (поля и номера) и [CodeInsight].
+  TEdInsightOptions = record
+    ShowRightMargin: Boolean;
+    RightMargin: Integer;        // столбец, по которому идёт линия
+    ShowGutter: Boolean;         // полоса слева: номера строк и метки
+    ShowLineNumbers: Boolean;    // номера строк в полосе
+    GutterWidth: Integer;        // ширина полосы; 0 - по числу цифр
+    CodeCompletion: Boolean;     // список имён: Ctrl+Space и после точки
+    CodeParams: Boolean;         // параметры подпрограммы после "("
+    TooltipEval: Boolean;        // значение под мышью на остановке
+    TooltipSymbol: Boolean;      // объявление имени под мышью
+    DelayMs: Integer;            // задержка автоматических подсказок
+    Colors: array[0..9] of Integer;  // CiCol*: цвета списка (TColor)
+  end;
+
 const
   EnvGridMin = 2;
   EnvGridMax = 128;
 
+  // Цвета Code Insight - номера в TEdInsightOptions.Colors
+  CiColAbstract = 0;
+  CiColConstant = 1;
+  CiColFunction = 2;
+  CiColLabel = 3;
+  CiColProcedure = 4;
+  CiColProperty = 5;
+  CiColType = 6;
+  CiColUnit = 7;
+  CiColVariable = 8;
+  CiColBackground = 9;
+  CiColorNames: array[0..9] of string = (
+    'Abstract Symbol', 'Constant Symbol', 'Function Symbol', 'Label Symbol',
+    'Procedure Symbol', 'Property Symbol', 'Type Symbol', 'Unit Symbol',
+    'Variable Symbol', 'Background');
+  // Фон списка «по окну»: фон и текст редактора (clWindow в Delphi)
+  CiWindowColor = Integer($FF000005);
+  CiDelayMin = 100;
+  CiDelayMax = 1500;
+
 procedure EnvDefaultOptions(var AOpts: TEnvOptions);
 procedure EnvLoadOptions(const AIniFile: string; var AOpts: TEnvOptions);
 procedure EnvSaveOptions(const AIniFile: string; const AOpts: TEnvOptions);
+
+// ADarkBg - фон редактора тёмный: цвета Code Insight по умолчанию светлее
+// (цвета Delphi на тёмном фоне не читаются). Записанные в editor.ini
+// цвета берутся как есть.
+procedure EdDefaultInsight(var AOpts: TEdInsightOptions; ADarkBg: Boolean);
+procedure EdLoadInsight(const AIniFile: string; var AOpts: TEdInsightOptions;
+                        ADarkBg: Boolean);
+procedure EdSaveInsight(const AIniFile: string;
+                        const AOpts: TEdInsightOptions);
 
 // Окружение программы при запуске (до подмен): строки имя=значение, по
 // алфавиту; служебные переменные Windows вида =C: не входят
@@ -156,6 +201,124 @@ begin
     Ini.WriteBool(SecDesigner, 'ShowComponentCaptions', AOpts.DsgShowCaptions);
     Ini.WriteBool(SecDesigner, 'ShowDesignerHints', AOpts.DsgShowHints);
     Ini.WriteBool(SecDesigner, 'ShowExtendedHints', AOpts.DsgExtendedHints);
+  finally
+    Ini.Free;
+  end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Editor Options: Margin and gutter, Code Insight
+// ---------------------------------------------------------------------------
+
+const
+  SecEditor = 'Editor';
+  SecInsight = 'CodeInsight';
+  // Цвета Delphi 7 (clRed, clGreen, clBlue, clTeal, clTeal, clNavy, clOlive,
+  // clBlack, clMaroon) и светлые замены для тёмного фона; формат TColor
+  // ($00BBGGRR)
+  CiLightDefaults: array[0..8] of Integer = (
+    $000000FF, $00008000, $00FF0000, $00808000, $00808000, $00800000,
+    $00008080, $00000000, $00000080);
+  CiDarkDefaults: array[0..8] of Integer = (
+    $006060FF, $0060C060, $00FF9A50, $00C0C040, $00C0C040, $00FF9090,
+    $0040C0C0, $00C0C0C0, $008080FF);
+
+procedure EdDefaultInsight(var AOpts: TEdInsightOptions; ADarkBg: Boolean);
+var
+  ColorIdx: Integer;
+begin
+  AOpts.ShowRightMargin := True;
+  AOpts.RightMargin := 80;
+  AOpts.ShowGutter := True;
+  AOpts.ShowLineNumbers := True;
+  AOpts.GutterWidth := 0;
+  AOpts.CodeCompletion := True;
+  AOpts.CodeParams := True;
+  AOpts.TooltipEval := True;
+  AOpts.TooltipSymbol := True;
+  AOpts.DelayMs := 500;
+  for ColorIdx := 0 to 8 do
+    if ADarkBg then
+      AOpts.Colors[ColorIdx] := CiDarkDefaults[ColorIdx]
+    else
+      AOpts.Colors[ColorIdx] := CiLightDefaults[ColorIdx];
+  AOpts.Colors[CiColBackground] := CiWindowColor;
+end;
+
+procedure EdLoadInsight(const AIniFile: string; var AOpts: TEdInsightOptions;
+                        ADarkBg: Boolean);
+var
+  Ini: TIniFile;
+  ColorIdx: Integer;
+  KeyName: string;
+begin
+  EdDefaultInsight(AOpts, ADarkBg);
+  if (AIniFile = '') or not FileExists(AIniFile) then
+    Exit;
+  Ini := TIniFile.Create(AIniFile);
+  try
+    AOpts.ShowRightMargin := Ini.ReadBool(SecEditor, 'VisibleRightMargin',
+                                          AOpts.ShowRightMargin);
+    AOpts.RightMargin := Ini.ReadInteger(SecEditor, 'RightMargin',
+                                         AOpts.RightMargin);
+    if (AOpts.RightMargin < 1) or (AOpts.RightMargin > 1024) then
+      AOpts.RightMargin := 80;
+    AOpts.ShowGutter := Ini.ReadBool(SecEditor, 'VisibleGutter',
+                                     AOpts.ShowGutter);
+    AOpts.ShowLineNumbers := Ini.ReadBool(SecEditor, 'ShowLineNumbers',
+                                          AOpts.ShowLineNumbers);
+    AOpts.GutterWidth := Ini.ReadInteger(SecEditor, 'GutterWidth',
+                                         AOpts.GutterWidth);
+    if (AOpts.GutterWidth < 0) or (AOpts.GutterWidth > 400) then
+      AOpts.GutterWidth := 0;
+    AOpts.CodeCompletion := Ini.ReadBool(SecInsight, 'CodeCompletion',
+                                         AOpts.CodeCompletion);
+    AOpts.CodeParams := Ini.ReadBool(SecInsight, 'CodeParameters',
+                                     AOpts.CodeParams);
+    AOpts.TooltipEval := Ini.ReadBool(SecInsight, 'TooltipEvaluation',
+                                      AOpts.TooltipEval);
+    AOpts.TooltipSymbol := Ini.ReadBool(SecInsight, 'TooltipSymbolInsight',
+                                        AOpts.TooltipSymbol);
+    AOpts.DelayMs := Ini.ReadInteger(SecInsight, 'DelayMs', AOpts.DelayMs);
+    if AOpts.DelayMs < CiDelayMin then
+      AOpts.DelayMs := CiDelayMin;
+    if AOpts.DelayMs > CiDelayMax then
+      AOpts.DelayMs := CiDelayMax;
+    for ColorIdx := 0 to 9 do
+    begin
+      KeyName := StringReplace(CiColorNames[ColorIdx], ' ', '',
+                               [rfReplaceAll]);
+      AOpts.Colors[ColorIdx] := Ini.ReadInteger(SecInsight, KeyName,
+                                                AOpts.Colors[ColorIdx]);
+    end;
+  finally
+    Ini.Free;
+  end;
+end;
+
+procedure EdSaveInsight(const AIniFile: string;
+                        const AOpts: TEdInsightOptions);
+var
+  Ini: TIniFile;
+  ColorIdx: Integer;
+begin
+  if AIniFile = '' then
+    Exit;
+  Ini := TIniFile.Create(AIniFile);
+  try
+    Ini.WriteBool(SecEditor, 'VisibleRightMargin', AOpts.ShowRightMargin);
+    Ini.WriteInteger(SecEditor, 'RightMargin', AOpts.RightMargin);
+    Ini.WriteBool(SecEditor, 'VisibleGutter', AOpts.ShowGutter);
+    Ini.WriteBool(SecEditor, 'ShowLineNumbers', AOpts.ShowLineNumbers);
+    Ini.WriteInteger(SecEditor, 'GutterWidth', AOpts.GutterWidth);
+    Ini.WriteBool(SecInsight, 'CodeCompletion', AOpts.CodeCompletion);
+    Ini.WriteBool(SecInsight, 'CodeParameters', AOpts.CodeParams);
+    Ini.WriteBool(SecInsight, 'TooltipEvaluation', AOpts.TooltipEval);
+    Ini.WriteBool(SecInsight, 'TooltipSymbolInsight', AOpts.TooltipSymbol);
+    Ini.WriteInteger(SecInsight, 'DelayMs', AOpts.DelayMs);
+    for ColorIdx := 0 to 9 do
+      Ini.WriteInteger(SecInsight, StringReplace(CiColorNames[ColorIdx], ' ',
+                       '', [rfReplaceAll]), AOpts.Colors[ColorIdx]);
   finally
     Ini.Free;
   end;

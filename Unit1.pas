@@ -33,6 +33,7 @@ uses
   ArduinoHw,      // Arduino: платформы, платы, библиотеки, скетчи с диска
   ArduinoPorts,   // Arduino: COM-порты и событие подключения устройства
   EnvOptions,     // IDE Options: Preferences, Designer, Environment Variables
+  CodeInsight,    // Code Insight: имена для списка подстановки, сам список
   WndWatch,       // журнал главного окна и перерисовки (wnd.log)
 // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
 // InputQuery перекрывают одноимённые функции Dialogs
@@ -2648,6 +2649,30 @@ type
     FCompProgHints: Integer;
     FCompProgWarns: Integer;
     FCompProgErrors: Integer;
+    // Editor Options - Margin and gutter, Code Insight (EnvOptions,
+    // CodeInsight). См. EdInsightChanged и CiBeforeMessage.
+    FEdIns: TEdInsightOptions;
+    FCiPopup: TCiListPopup;
+    FCiSyms: TCiSymbols;          // список: текущий файл и модули uses
+    FCiFileSyms: TCiSymbols;      // имена текущего файла
+    FCiFileKey: string;           // по какому тексту они собраны
+    FCiUnitCache: TStringList;    // модули: имя файла - TCiUnitEntry
+    FCiDeclSrc: TStringList;      // текущий файл: строки как есть
+    FCiDeclCl: TStringList;       // и очищенные, заглавными
+    FCiDeclKey: string;
+    FCiPrefixStart: Integer;      // где начинается набранное начало имени
+    FCiSwallowChar: Char;         // WM_CHAR клавиши, обработанной списком
+    FCiTimer: TTimer;             // задержка после "." и "("
+    FCiTimerMode: Integer;        // 1 - список, 2 - параметры
+    FCiTriggerPos: Integer;
+    FCiParamWnd: THintWindow;
+    FCiParamShown: Boolean;
+    FCiParamOpen: Integer;        // позиция "(" показанной подсказки
+    FCiParamLine: Integer;
+    FSymHintWnd: THintWindow;     // Tooltip symbol insight
+    FSymHintTimer: TTimer;
+    FSymHintWord: string;
+    FSymHintPt: TPoint;
     FIndentKind: Integer;
     FIndentSize: Integer;
 
@@ -2780,6 +2805,40 @@ type
     procedure CompProgressStart(const AExe, AParams: string);
     procedure CompProgressLine(const ALine: string);
     procedure CompProgressDone(AExitCode: Integer);
+    procedure EdInsightLoad;
+    procedure EdInsightChanged;
+    function  CiTickMs: Integer;
+    procedure EdApplyGutter;
+    procedure EdDrawRightMargin(ADC: HDC; AWidth, AHeight: Integer);
+    function  CiIsPascalFile: Boolean;
+    function  CiCaretPos: Integer;
+    function  CiLineOf(ACharPos: Integer; var ALineIdx,
+                       ALineStart: Integer): string;
+    function  CiPrefixAt(ACaret: Integer; var AStart: Integer): string;
+    function  CiCaretScreen(var ALineTop: Integer): TPoint;
+    function  CiWordAt(ACharPos: Integer; var ALineIdx: Integer): string;
+    procedure CiEnsureDeclCache;
+    function  CiDeclText(const AWordU: string; ALine: Integer;
+                         var AFile: string; var ADeclLine: Integer): string;
+    procedure CiCollect;
+    procedure CiFreeAll;
+    procedure CiShowCompletion;
+    function  CiCompletionShown: Boolean;
+    procedure CiHideCompletion;
+    procedure CiAccept;
+    procedure CiAcceptClick(Sender: TObject);
+    procedure CiRefilter;
+    function  CiOpenParen(var AName: string; var ALineIdx: Integer): Integer;
+    procedure CiShowParams;
+    procedure CiHideParams;
+    procedure CiCheckParams;
+    procedure CiHideAll;
+    function  CiBeforeMessage(var Message: TMessage): Boolean;
+    procedure CiAfterMessage(const Message: TMessage);
+    procedure CiTimerTick(Sender: TObject);
+    procedure SymHintSetup;
+    procedure SymHintHide;
+    procedure SymHintTimerTick(Sender: TObject);
     procedure SaveFormBounds(Ini: TIniFile);
     procedure RestoreFormBounds(Ini: TIniFile);
 
@@ -7139,6 +7198,7 @@ var
   MapFlushed: Boolean;
   Stages, MapFrom, TabWhole: string;
 begin
+  CiHideAll;   // список и подсказки Code Insight - от прежней вкладки
   TabWhole := '';
   if (Index < 0) or (Index > WindowsItemCount - 1) then
     Exit;
@@ -17053,6 +17113,9 @@ end;
 constructor TForm1.Create(AOwner: TComponent);
 begin
   FScheme := TClrScheme.Create;
+  // Поля, полоса номеров и Code Insight - по умолчанию до чтения настроек
+  // (EnvInit): ширину полосы номеров считают уже при создании окна
+  EdDefaultInsight(FEdIns, False);
   inherited Create(AOwner);
 end;
 
@@ -17565,6 +17628,7 @@ begin
   WndWatchStop;
   ArdFreeAll;
   FreeAndNil(FEnvOverrides);
+  CiFreeAll;
   // Возвращаем старую процедуру на место. Если FormShow не отработал,
   // сабклассинга не было и присваивать nil нельзя.
   if Assigned(OldRichEditProc) then
@@ -45441,7 +45505,7 @@ begin
           if FDbgHintTimer = nil then
   begin
     FDbgHintTimer := TTimer.Create(Self);
-    FDbgHintTimer.Interval := 400;
+    FDbgHintTimer.Interval := CiTickMs;   // Code Insight - Delay
     FDbgHintTimer.OnTimer := DbgHintTimerTick;
   end;
   FDbgHintTimer.Enabled := True;
@@ -46161,7 +46225,7 @@ begin
   if FDbgHintTimer = nil then
   begin
     FDbgHintTimer := TTimer.Create(Self);
-    FDbgHintTimer.Interval := 400;
+    FDbgHintTimer.Interval := CiTickMs;   // Code Insight - Delay
     FDbgHintTimer.OnTimer := DbgHintTimerTick;
   end;
   FDbgHintTimer.Enabled := True;
@@ -46892,6 +46956,12 @@ var
   Expr, ValueText, HintText: string;
   HintRect: TRect;
 begin
+  // Editor Options - Code Insight - Tooltip expression evaluation
+  if not FEdIns.TooltipEval then
+  begin
+    DbgHintHide;
+    Exit;
+  end;
   if not (FRqDbgOn and FRqDbgPaused) and
      ((FDbgSession = nil) or FDbgSession.Finished or
       not FDbgSession.Paused) then
@@ -47920,6 +47990,10 @@ begin
   EnvLoadOverrides(SettingsFileName, FEnvOverrides);
   // Подмены - в окружение среды до первой сборки и первого запуска
   EnvApplyOverrides(FEnvOverrides);
+  // Editor Options - Margin and gutter, Code Insight
+  EdInsightLoad;
+  EdApplyGutter;
+  SymHintSetup;
 end;
 
 // Сетка, подписи значков, подсказки - конструктору ADesigner
@@ -48134,6 +48208,861 @@ begin
   else
     FCompProgStatus.Caption := 'Done: exit code ' + IntToStr(AExitCode) + '.';
   FCompProgOk.Enabled := True;
+end;
+
+// ---------------------------------------------------------------------------
+//  Editor Options: Margin and gutter, Code Insight (FEdIns, EnvOptions).
+//
+//  Margin and gutter: линия правого поля (EdDrawRightMargin - поверх кадра
+//  редактора), полоса слева (Panel1: номера строк PaintBox1 и метки
+//  MarksBox), её ширина.
+//
+//  Code Insight:
+//  - Code completion: список имён (CodeInsight, TCiListPopup) по
+//    Ctrl+Space всегда, после точки - с задержкой, если включено. Имена -
+//    объявления текущего файла и interface-частей модулей из uses (для
+//    Pascal), в остальных файлах - слова файла. Стрелки, PgUp/PgDn -
+//    выбор, Enter и Tab - вставить, Esc - закрыть; набор букв сужает список.
+//  - Code parameters: параметры подпрограммы подсказкой у каретки - по
+//    Ctrl+Shift+Space всегда, после "(" - с задержкой, если включено.
+//  - Tooltip expression evaluation: значение под мышью на остановке
+//    отладчика (DbgHintTimerTick).
+//  - Tooltip symbol insight: объявление имени под мышью (Pascal).
+//  Клавиши редактора приходят в CiBeforeMessage (до контрола) и
+//  CiAfterMessage (после) из NewRichEditProc.
+// ---------------------------------------------------------------------------
+
+type
+  // Имена модуля из uses (interface-часть) и по чему они прочитаны
+  TCiUnitEntry = class
+  public
+    Key: string;
+    Syms: TCiSymbols;
+    constructor Create;
+    destructor Destroy; override;
+  end;
+
+constructor TCiUnitEntry.Create;
+begin
+  inherited Create;
+  Syms := TCiSymbols.Create;
+end;
+
+destructor TCiUnitEntry.Destroy;
+begin
+  Syms.Free;
+  inherited Destroy;
+end;
+
+// Цвет тёмный (по яркости)
+function CiIsDark(AColor: TColor): Boolean;
+var
+  RgbValue: Integer;
+begin
+  RgbValue := ColorToRGB(AColor);
+  Result := (GetRValue(RgbValue) * 30 + GetGValue(RgbValue) * 59 +
+             GetBValue(RgbValue) * 11) div 100 < 128;
+end;
+
+procedure TForm1.EdInsightLoad;
+begin
+  EdLoadInsight(SettingsFileName, FEdIns, CiIsDark(RichEdit1.Color));
+end;
+
+// Настройки поменяли (окно настроек): записать и применить
+procedure TForm1.EdInsightChanged;
+begin
+  EdSaveInsight(SettingsFileName, FEdIns);
+  EdApplyGutter;
+  if FDbgHintTimer <> nil then
+    FDbgHintTimer.Interval := CiTickMs;
+  SymHintSetup;
+  if not FEdIns.CodeCompletion and not FEdIns.CodeParams and
+     (FCiTimer <> nil) then
+    FCiTimer.Enabled := False;
+  if RichEdit1.HandleAllocated then
+    RichEdit1.Invalidate;
+end;
+
+// Шаг таймеров подсказок под мышью: показ - когда мышь простояла тик
+function TForm1.CiTickMs: Integer;
+begin
+  Result := FEdIns.DelayMs div 2;
+  if Result < 100 then
+    Result := 100;
+end;
+
+procedure TForm1.EdApplyGutter;
+begin
+  if (Panel1 = nil) or (PaintBox1 = nil) then
+    Exit;
+  PaintBox1.Visible := FEdIns.ShowLineNumbers;
+  Panel1.Visible := FEdIns.ShowGutter;
+  UpdateGutterWidth;
+end;
+
+// Линия правого поля - в кадр редактора (PaintDoubleBuffered)
+procedure TForm1.EdDrawRightMargin(ADC: HDC; AWidth, AHeight: Integer);
+var
+  OldFont: HFONT;
+  TextSize: TSize;
+  LineX: Integer;
+  LinePen, OldPen: HPEN;
+  PenColor: TColor;
+begin
+  if not FEdIns.ShowRightMargin or (FEdIns.RightMargin <= 0) then
+    Exit;
+  OldFont := SelectObject(ADC, RichEdit1.Font.Handle);
+  try
+    // По десяти знакам - точнее, чем по одному
+    if not GetTextExtentPoint32(ADC, 'MMMMMMMMMM', 10, TextSize) then
+      Exit;
+  finally
+    SelectObject(ADC, OldFont);
+  end;
+  LineX := FEdIns.RightMargin * TextSize.cx div 10 - FScrollX;
+  if (LineX < 0) or (LineX >= AWidth) then
+    Exit;
+  if CiIsDark(RichEdit1.Color) then
+    PenColor := $00505050
+  else
+    PenColor := $00C0C0C0;
+  LinePen := CreatePen(PS_SOLID, 1, ColorToRGB(PenColor));
+  OldPen := SelectObject(ADC, LinePen);
+  try
+    MoveToEx(ADC, LineX, 0, nil);
+    LineTo(ADC, LineX, AHeight);
+  finally
+    SelectObject(ADC, OldPen);
+    DeleteObject(LinePen);
+  end;
+end;
+
+function TForm1.CiIsPascalFile: Boolean;
+var
+  Ext: string;
+begin
+  Ext := LowerCase(ExtractFileExt(FCurrentFileName));
+  Result := (Ext = '.pas') or (Ext = '.pp') or (Ext = '.dpr') or
+            (Ext = '.lpr') or (Ext = '.inc') or (Ext = '.dpk');
+end;
+
+function TForm1.CiCaretPos: Integer;
+var
+  Sel: TCharRange;
+begin
+  Result := 0;
+  if not RichEdit1.HandleAllocated then
+    Exit;
+  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
+  Result := Sel.cpMax;
+end;
+
+// Строка с позицией ACharPos: текст, номер, начало (позиция первого знака)
+function TForm1.CiLineOf(ACharPos: Integer; var ALineIdx,
+  ALineStart: Integer): string;
+begin
+  Result := '';
+  ALineIdx := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0, ACharPos);
+  ALineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, ALineIdx, 0);
+  if (ALineIdx >= 0) and (ALineIdx < RichEdit1.Lines.Count) then
+    Result := RichEdit1.Lines[ALineIdx];
+end;
+
+// Начало имени перед кареткой: AStart - его позиция, результат - набранное
+function TForm1.CiPrefixAt(ACaret: Integer; var AStart: Integer): string;
+var
+  LineText: string;
+  LineIdx, LineStart, Col: Integer;
+begin
+  LineText := CiLineOf(ACaret, LineIdx, LineStart);
+  Col := ACaret - LineStart;    // знаков до каретки
+  if Col > Length(LineText) then
+    Col := Length(LineText);
+  AStart := Col;
+  while (AStart > 0) and
+        (LineText[AStart] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+    Dec(AStart);
+  Result := Copy(LineText, AStart + 1, Col - AStart);
+  AStart := LineStart + AStart;
+end;
+
+// Каретка на экране: X, низ строки; ALineTop - верх строки
+function TForm1.CiCaretScreen(var ALineTop: Integer): TPoint;
+var
+  RowHeight: Integer;
+begin
+  RowHeight := LineHeight;
+  if RowHeight <= 0 then
+    RowHeight := 16;
+  Result := RichEdit1.ClientToScreen(FOwnCaretPt);
+  ALineTop := Result.Y;
+  Result.Y := Result.Y + RowHeight;
+end;
+
+// Имя под позицией ACharPos (без цепочки через точки); ALineIdx - строка
+function TForm1.CiWordAt(ACharPos: Integer; var ALineIdx: Integer): string;
+var
+  LineText: string;
+  LineStart, StartCol, EndCol: Integer;
+begin
+  Result := '';
+  ALineIdx := -1;
+  if (ACharPos < 0) or not RichEdit1.HandleAllocated then
+    Exit;
+  LineText := CiLineOf(ACharPos, ALineIdx, LineStart);
+  StartCol := ACharPos - LineStart + 1;
+  if (StartCol < 1) or (StartCol > Length(LineText)) or
+     not (LineText[StartCol] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
+    Exit;
+  EndCol := StartCol;
+  while (StartCol > 1) and
+        (LineText[StartCol - 1] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+    Dec(StartCol);
+  while (EndCol < Length(LineText)) and
+        (LineText[EndCol + 1] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+    Inc(EndCol);
+  if LineText[StartCol] in ['0'..'9'] then
+    Exit;
+  if (StartCol > 1) and (LineText[StartCol - 1] in ['#', '$']) then
+    Exit;
+  Result := Copy(LineText, StartCol, EndCol - StartCol + 1);
+end;
+
+// Строки текущего файла как есть и очищенные (заглавными, как у панели
+// объявления) - заново, только если текст изменился
+procedure TForm1.CiEnsureDeclCache;
+var
+  Text, Key: string;
+  LineIdx, CleanState: Integer;
+begin
+  Text := GetEditorText;
+  Key := FCurrentFileName + '|' + IntToStr(Length(Text)) + '|' +
+         IntToHex(Crc32Of(Text), 8);
+  if (FCiDeclSrc <> nil) and (Key = FCiDeclKey) then
+    Exit;
+  if FCiDeclSrc = nil then
+  begin
+    FCiDeclSrc := TStringList.Create;
+    FCiDeclCl := TStringList.Create;
+  end;
+  FCiDeclSrc.Text := Text;
+  FCiDeclCl.Clear;
+  CleanState := 0;
+  for LineIdx := 0 to FCiDeclSrc.Count - 1 do
+    FCiDeclCl.Add(UpperCase(DeclCleanLine(FCiDeclSrc[LineIdx], CleanState)));
+  FCiDeclKey := Key;
+end;
+
+// Объявление имени AWordU (заглавными), встреченного в строке ALine:
+// текст объявления (заголовок подпрограммы - до ")"), AFile - файл, если
+// объявление в другом модуле, ADeclLine - его строка. '' - не нашлось.
+function TForm1.CiDeclText(const AWordU: string; ALine: Integer;
+  var AFile: string; var ADeclLine: Integer): string;
+var
+  DeclLine, DeclCol, ExtraIdx: Integer;
+  Text: string;
+begin
+  Result := '';
+  AFile := '';
+  ADeclLine := -1;
+  if (AWordU = '') or DeclIsKeyword(AWordU) then
+    Exit;
+  CiEnsureDeclCache;
+  if (ALine < 0) or (ALine >= FCiDeclCl.Count) then
+    Exit;
+  if FindPascalDecl(FCiDeclCl, ALine, AWordU, DeclLine, DeclCol) then
+  begin
+    Result := Trim(StringReplace(FCiDeclSrc[DeclLine], #9, ' ',
+                                 [rfReplaceAll]));
+    // Заголовок на нескольких строках - до закрывающей скобки
+    ExtraIdx := DeclLine + 1;
+    while (Pos('(', Result) > 0) and (Pos(')', Result) = 0) and
+          (ExtraIdx < FCiDeclSrc.Count) and (ExtraIdx <= DeclLine + 8) do
+    begin
+      Result := Result + ' ' + Trim(StringReplace(FCiDeclSrc[ExtraIdx], #9,
+                                                  ' ', [rfReplaceAll]));
+      Inc(ExtraIdx);
+    end;
+    ADeclLine := DeclLine;
+  end
+  else if FindDeclInUnits(FCiDeclSrc, FCiDeclCl, AWordU, AFile, DeclLine,
+                          DeclCol, Text) then
+  begin
+    Result := Text;
+    ADeclLine := DeclLine;
+  end;
+end;
+
+// Имена для списка: текущий файл и модули из uses
+procedure TForm1.CiCollect;
+var
+  Units, DprUnits, UnitSrc: TStringList;
+  Dpr, DprDir, Dir, FileName, Key: string;
+  UnitIdx, WinIdx, CacheIdx: Integer;
+  Entry: TCiUnitEntry;
+  Pascal: Boolean;
+begin
+  if FCiSyms = nil then
+  begin
+    FCiSyms := TCiSymbols.Create;
+    FCiFileSyms := TCiSymbols.Create;
+    FCiUnitCache := TStringList.Create;
+  end;
+  Pascal := CiIsPascalFile;
+  CiEnsureDeclCache;
+  if FCiFileKey <> FCiDeclKey then
+  begin
+    FCiFileSyms.Clear;
+    if Pascal then
+      CiScanPascal(FCiDeclSrc, False, FCiFileSyms)
+    else
+      CiScanWords(FCiDeclSrc, FCiFileSyms);
+    FCiFileKey := FCiDeclKey;
+  end;
+  FCiSyms.Clear;
+  FCiSyms.AddAll(FCiFileSyms);
+
+  if Pascal then
+  begin
+    Units := TStringList.Create;
+    DprUnits := TStringList.Create;
+    UnitSrc := TStringList.Create;
+    try
+      DeclUsesUnits(FCiDeclSrc, FCiDeclCl, Units);
+      Dpr := DelphiTargetDpr;
+      DprDir := ExtractFilePath(Dpr);
+      if Dpr <> '' then
+        ParseDprUnits(Dpr, DprUnits);
+      Dir := ExtractFilePath(FCurrentFileName);
+      for UnitIdx := 0 to Units.Count - 1 do
+      begin
+        FileName := DeclUnitFile(Units[UnitIdx], Dir, DprUnits, DprDir);
+        if (FileName = '') or (CompareText(FileName, FCurrentFileName) = 0) then
+          Continue;
+        // Открыт во вкладке - его текст (там могут быть правки), иначе
+        // файл; разбирается заново, только если изменился
+        WinIdx := IndexOfWindowByFile(FileName);
+        if WinIdx >= 0 then
+          Key := 'w' + IntToHex(Crc32Of(FWindows[WinIdx].Text), 8)
+        else
+          Key := 'f' + IntToStr(FileAge(FileName));
+        CacheIdx := FCiUnitCache.IndexOf(LowerCase(FileName));
+        if CacheIdx >= 0 then
+          Entry := TCiUnitEntry(FCiUnitCache.Objects[CacheIdx])
+        else
+        begin
+          Entry := TCiUnitEntry.Create;
+          FCiUnitCache.AddObject(LowerCase(FileName), Entry);
+        end;
+        if Entry.Key <> Key then
+        begin
+          Entry.Syms.Clear;
+          try
+            if WinIdx >= 0 then
+              UnitSrc.Text := FWindows[WinIdx].Text
+            else
+              UnitSrc.LoadFromFile(FileName);
+            CiScanPascal(UnitSrc, True, Entry.Syms);
+          except
+            Entry.Syms.Clear;   // файл занят или недоступен
+          end;
+          Entry.Key := Key;
+        end;
+        FCiSyms.AddAll(Entry.Syms);
+      end;
+    finally
+      UnitSrc.Free;
+      DprUnits.Free;
+      Units.Free;
+    end;
+  end;
+  FCiSyms.SortUnique;
+end;
+
+procedure TForm1.CiFreeAll;
+var
+  CacheIdx: Integer;
+begin
+  if FCiUnitCache <> nil then
+    for CacheIdx := 0 to FCiUnitCache.Count - 1 do
+      FCiUnitCache.Objects[CacheIdx].Free;
+  FreeAndNil(FCiUnitCache);
+  FreeAndNil(FCiSyms);
+  FreeAndNil(FCiFileSyms);
+  FreeAndNil(FCiDeclSrc);
+  FreeAndNil(FCiDeclCl);
+end;
+
+procedure TForm1.CiShowCompletion;
+var
+  Prefix: string;
+  ScreenPt: TPoint;
+  LineTop, ColorIdx: Integer;
+begin
+  if not RichEdit1.HandleAllocated or RichEdit1.ReadOnly then
+    Exit;
+  CiHideParams;
+  SymHintHide;
+  Prefix := CiPrefixAt(CiCaretPos, FCiPrefixStart);
+  // Не Pascal - слова файла: без начала имени список бессмыслен
+  if not CiIsPascalFile and (Prefix = '') then
+    Exit;
+  Screen.Cursor := crHourGlass;
+  try
+    CiCollect;
+  finally
+    Screen.Cursor := crDefault;
+  end;
+  if FCiPopup = nil then
+  begin
+    FCiPopup := TCiListPopup.Create(Self);
+    FCiPopup.OnAccept := CiAcceptClick;
+  end;
+  for ColorIdx := 0 to 8 do
+    FCiPopup.KindColors[ColorIdx] := TColor(FEdIns.Colors[ColorIdx]);
+  if FEdIns.Colors[CiColBackground] = CiWindowColor then
+  begin
+    FCiPopup.BackColor := RichEdit1.Color;
+    FCiPopup.TextColor := BaseFontColor;
+  end
+  else
+  begin
+    FCiPopup.BackColor := TColor(FEdIns.Colors[CiColBackground]);
+    if CiIsDark(FCiPopup.BackColor) then
+      FCiPopup.TextColor := clWhite
+    else
+      FCiPopup.TextColor := clBlack;
+  end;
+  FCiPopup.SetSymbols(FCiSyms);
+  if FCiPopup.ApplyFilter(Prefix) = 0 then
+  begin
+    CiHideCompletion;
+    Exit;
+  end;
+  ScreenPt := CiCaretScreen(LineTop);
+  FCiPopup.ShowAt(ScreenPt.X, ScreenPt.Y, LineTop);
+end;
+
+function TForm1.CiCompletionShown: Boolean;
+begin
+  Result := (FCiPopup <> nil) and FCiPopup.IsShown;
+end;
+
+procedure TForm1.CiHideCompletion;
+begin
+  if FCiPopup <> nil then
+    FCiPopup.HidePopup;
+end;
+
+// Выбранное имя - вместо набранного начала
+procedure TForm1.CiAccept;
+var
+  Name: string;
+  Caret: Integer;
+begin
+  if not CiCompletionShown then
+    Exit;
+  Name := FCiPopup.SelectedName;
+  CiHideCompletion;
+  if Name = '' then
+    Exit;
+  Caret := CiCaretPos;
+  if Caret < FCiPrefixStart then
+    Exit;
+  RichEdit1.SelStart := FCiPrefixStart;
+  RichEdit1.SelLength := Caret - FCiPrefixStart;
+  RichEdit1.SelText := Name;
+end;
+
+procedure TForm1.CiAcceptClick(Sender: TObject);
+begin
+  CiAccept;
+  if RichEdit1.CanFocus then
+    RichEdit1.SetFocus;
+end;
+
+// Набрали или стёрли знак при открытом списке: список по новому началу
+procedure TForm1.CiRefilter;
+var
+  Caret, PrefixStart: Integer;
+  Prefix: string;
+begin
+  if not CiCompletionShown then
+    Exit;
+  Caret := CiCaretPos;
+  Prefix := CiPrefixAt(Caret, PrefixStart);
+  if (Caret < FCiPrefixStart) or (PrefixStart <> FCiPrefixStart) then
+  begin
+    CiHideCompletion;
+    Exit;
+  end;
+  if FCiPopup.ApplyFilter(Prefix) = 0 then
+    CiHideCompletion;
+end;
+
+// Открытая скобка перед кареткой в той же строке (позиция) и имя перед
+// ней; -1 - нет
+function TForm1.CiOpenParen(var AName: string; var ALineIdx: Integer): Integer;
+var
+  LineText: string;
+  LineStart, Col, Depth, NameEnd, NameStart: Integer;
+begin
+  Result := -1;
+  AName := '';
+  LineText := CiLineOf(CiCaretPos, ALineIdx, LineStart);
+  Col := CiCaretPos - LineStart;
+  if Col > Length(LineText) then
+    Col := Length(LineText);
+  Depth := 0;
+  while Col >= 1 do
+  begin
+    if LineText[Col] = ')' then
+      Inc(Depth)
+    else if LineText[Col] = '(' then
+    begin
+      if Depth = 0 then
+        Break;
+      Dec(Depth);
+    end;
+    Dec(Col);
+  end;
+  if Col < 1 then
+    Exit;
+  NameEnd := Col - 1;
+  while (NameEnd >= 1) and (LineText[NameEnd] = ' ') do
+    Dec(NameEnd);
+  NameStart := NameEnd;
+  while (NameStart >= 1) and
+        (LineText[NameStart] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+    Dec(NameStart);
+  AName := Copy(LineText, NameStart + 1, NameEnd - NameStart);
+  if AName = '' then
+    Exit;
+  Result := LineStart + Col - 1;
+end;
+
+// Параметры подпрограммы, в скобках которой стоит каретка
+procedure TForm1.CiShowParams;
+var
+  Name, DeclText, DeclFile, HintText: string;
+  LineIdx, OpenPos, DeclLine, ParenFrom, ParenTo, Depth, CharIdx: Integer;
+  ScreenPt: TPoint;
+  LineTop: Integer;
+  HintRect: TRect;
+begin
+  CiHideParams;
+  if not RichEdit1.HandleAllocated or not CiIsPascalFile then
+    Exit;
+  OpenPos := CiOpenParen(Name, LineIdx);
+  if OpenPos < 0 then
+    Exit;
+  DeclText := CiDeclText(UpperCase(Name), LineIdx, DeclFile, DeclLine);
+  if DeclText = '' then
+    Exit;
+  ParenFrom := Pos('(', DeclText);
+  if ParenFrom = 0 then
+    HintText := 'No parameters expected'
+  else
+  begin
+    Depth := 0;
+    ParenTo := Length(DeclText);
+    for CharIdx := ParenFrom to Length(DeclText) do
+    begin
+      if DeclText[CharIdx] = '(' then
+        Inc(Depth)
+      else if DeclText[CharIdx] = ')' then
+      begin
+        Dec(Depth);
+        if Depth = 0 then
+        begin
+          ParenTo := CharIdx;
+          Break;
+        end;
+      end;
+    end;
+    HintText := Copy(DeclText, ParenFrom + 1, ParenTo - ParenFrom - 1);
+  end;
+  if FCiParamWnd = nil then
+    FCiParamWnd := HintWindowClass.Create(Self);
+  ScreenPt := CiCaretScreen(LineTop);
+  HintRect := FCiParamWnd.CalcHintRect(700, HintText, nil);
+  OffsetRect(HintRect, ScreenPt.X, ScreenPt.Y + 2);
+  FCiParamWnd.ActivateHint(HintRect, HintText);
+  FCiParamShown := True;
+  FCiParamOpen := OpenPos;
+  FCiParamLine := LineIdx;
+end;
+
+procedure TForm1.CiHideParams;
+begin
+  if FCiParamShown and (FCiParamWnd <> nil) then
+    FCiParamWnd.ReleaseHandle;
+  FCiParamShown := False;
+end;
+
+// Каретка ушла из скобок или на другую строку - подсказка параметров уходит
+procedure TForm1.CiCheckParams;
+var
+  Name: string;
+  LineIdx, OpenPos: Integer;
+begin
+  if not FCiParamShown then
+    Exit;
+  OpenPos := CiOpenParen(Name, LineIdx);
+  if (OpenPos <> FCiParamOpen) or (LineIdx <> FCiParamLine) then
+    CiHideParams;
+end;
+
+procedure TForm1.CiHideAll;
+begin
+  CiHideCompletion;
+  CiHideParams;
+  SymHintHide;
+  if FCiTimer <> nil then
+    FCiTimer.Enabled := False;
+end;
+
+// Сообщение редактору - до контрола. True - обработано здесь, контролу не
+// отдавать.
+function TForm1.CiBeforeMessage(var Message: TMessage): Boolean;
+var
+  CtrlDown, ShiftDown: Boolean;
+begin
+  Result := False;
+  case Message.Msg of
+    WM_CHAR:
+      if FCiSwallowChar <> #0 then
+      begin
+        Result := Char(Message.WParam) = FCiSwallowChar;
+        FCiSwallowChar := #0;
+      end;
+    WM_KEYDOWN:
+      begin
+        SymHintHide;
+        CtrlDown := GetKeyState(VK_CONTROL) < 0;
+        ShiftDown := GetKeyState(VK_SHIFT) < 0;
+        if (Message.WParam = VK_SPACE) and CtrlDown then
+        begin
+          if ShiftDown then
+            CiShowParams
+          else
+            CiShowCompletion;
+          FCiSwallowChar := ' ';
+          Result := True;
+        end
+        else if CiCompletionShown then
+          case Message.WParam of
+            VK_UP:
+              begin
+                FCiPopup.MoveSel(-1);
+                Result := True;
+              end;
+            VK_DOWN:
+              begin
+                FCiPopup.MoveSel(1);
+                Result := True;
+              end;
+            VK_PRIOR:
+              begin
+                FCiPopup.MoveSel(-11);
+                Result := True;
+              end;
+            VK_NEXT:
+              begin
+                FCiPopup.MoveSel(11);
+                Result := True;
+              end;
+            VK_RETURN, VK_TAB:
+              begin
+                CiAccept;
+                if Message.WParam = VK_RETURN then
+                  FCiSwallowChar := #13
+                else
+                  FCiSwallowChar := #9;
+                Result := True;
+              end;
+            VK_ESCAPE:
+              begin
+                CiHideCompletion;
+                FCiSwallowChar := #27;
+                Result := True;
+              end;
+          end
+        else if FCiParamShown and (Message.WParam = VK_ESCAPE) then
+        begin
+          CiHideParams;
+          FCiSwallowChar := #27;
+          Result := True;
+        end;
+      end;
+    WM_MOUSEWHEEL:
+      if CiCompletionShown then
+      begin
+        if SmallInt(HiWord(Message.WParam)) > 0 then
+          FCiPopup.MoveSel(-3)
+        else
+          FCiPopup.MoveSel(3);
+        Result := True;
+      end;
+  end;
+  if Result then
+    Message.Result := 0;
+end;
+
+// Сообщение редактору - после контрола: текст и каретка уже новые
+procedure TForm1.CiAfterMessage(const Message: TMessage);
+var
+  TypedChar: Char;
+begin
+  case Message.Msg of
+    WM_CHAR:
+      begin
+        TypedChar := Char(Message.WParam);
+        if CiCompletionShown then
+        begin
+          if TypedChar in ['A'..'Z', 'a'..'z', '0'..'9', '_', #8] then
+            CiRefilter
+          else
+            CiHideCompletion;
+        end;
+        if ((TypedChar = '.') and FEdIns.CodeCompletion) or
+           ((TypedChar = '(') and FEdIns.CodeParams) then
+          if CiIsPascalFile then
+          begin
+            if FCiTimer = nil then
+            begin
+              FCiTimer := TTimer.Create(Self);
+              FCiTimer.OnTimer := CiTimerTick;
+            end;
+            FCiTimer.Enabled := False;
+            FCiTimer.Interval := FEdIns.DelayMs;
+            if TypedChar = '.' then
+              FCiTimerMode := 1
+            else
+              FCiTimerMode := 2;
+            FCiTriggerPos := CiCaretPos;
+            FCiTimer.Enabled := True;
+          end;
+        CiCheckParams;
+      end;
+    WM_KEYDOWN:
+      begin
+        if CiCompletionShown then
+          CiRefilter;
+        CiCheckParams;
+      end;
+    WM_LBUTTONDOWN, WM_KILLFOCUS, WM_VSCROLL, WM_HSCROLL:
+      CiHideAll;
+  end;
+end;
+
+// Задержка после "." или "(" прошла: каретка там же - список или параметры
+procedure TForm1.CiTimerTick(Sender: TObject);
+begin
+  FCiTimer.Enabled := False;
+  if not RichEdit1.Focused or (CiCaretPos <> FCiTriggerPos) then
+    Exit;
+  if FCiTimerMode = 1 then
+    CiShowCompletion
+  else
+    CiShowParams;
+end;
+
+// ---------------------------------------------------------------------------
+//  Tooltip symbol insight: объявление имени под мышью
+// ---------------------------------------------------------------------------
+
+procedure TForm1.SymHintSetup;
+begin
+  if FEdIns.TooltipSymbol then
+  begin
+    if FSymHintTimer = nil then
+    begin
+      FSymHintTimer := TTimer.Create(Self);
+      FSymHintTimer.OnTimer := SymHintTimerTick;
+    end;
+    FSymHintTimer.Interval := CiTickMs;
+    FSymHintTimer.Enabled := True;
+  end
+  else
+  begin
+    if FSymHintTimer <> nil then
+      FSymHintTimer.Enabled := False;
+    SymHintHide;
+  end;
+end;
+
+procedure TForm1.SymHintHide;
+begin
+  FSymHintWord := '';
+  if (FSymHintWnd <> nil) and FSymHintWnd.HandleAllocated and
+     IsWindowVisible(FSymHintWnd.Handle) then
+    FSymHintWnd.ReleaseHandle;
+end;
+
+procedure TForm1.SymHintTimerTick(Sender: TObject);
+var
+  CursorPt, ClientPt: TPoint;
+  CharPos, LineIdx, DeclLine: Integer;
+  WordText, DeclText, DeclFile, HintText: string;
+  HintRect: TRect;
+begin
+  // На остановке отладчика под мышью - значение (DbgHintTimerTick)
+  if ((FDbgSession <> nil) and not FDbgSession.Finished and
+      FDbgSession.Paused) or (FRqDbgOn and FRqDbgPaused) or
+     CiCompletionShown or FCiParamShown then
+  begin
+    SymHintHide;
+    Exit;
+  end;
+  if not Application.Active or not RichEdit1.HandleAllocated or
+     not GetCursorPos(CursorPt) or
+     (WindowFromPoint(CursorPt) <> RichEdit1.Handle) or
+     (GetKeyState(VK_LBUTTON) < 0) or (GetKeyState(VK_RBUTTON) < 0) then
+  begin
+    SymHintHide;
+    FSymHintPt := Point(-1, -1);
+    Exit;
+  end;
+  ClientPt := RichEdit1.ScreenToClient(CursorPt);
+  CharPos := DbgCharAtClient(ClientPt);
+  WordText := CiWordAt(CharPos, LineIdx);
+  if WordText = '' then
+  begin
+    SymHintHide;
+    FSymHintPt := CursorPt;
+    Exit;
+  end;
+  // То же имя уже разобрано (показано или объявления нет)
+  if CompareText(WordText, FSymHintWord) = 0 then
+    Exit;
+  // Ждём, пока мышь постоит на месте один тик
+  if (CursorPt.X <> FSymHintPt.X) or (CursorPt.Y <> FSymHintPt.Y) then
+  begin
+    SymHintHide;
+    FSymHintPt := CursorPt;
+    Exit;
+  end;
+  SymHintHide;
+  FSymHintWord := WordText;
+  if not CiIsPascalFile then
+    Exit;
+  DeclText := CiDeclText(UpperCase(WordText), LineIdx, DeclFile, DeclLine);
+  if DeclText = '' then
+    Exit;
+  if DeclFile <> '' then
+    HintText := DeclText + #13#10 + ExtractFileName(DeclFile) + ' (' +
+                IntToStr(DeclLine + 1) + ')'
+  else
+    HintText := DeclText + #13#10 + ExtractFileName(FCurrentFileName) + ' (' +
+                IntToStr(DeclLine + 1) + ')';
+  if FSymHintWnd = nil then
+    FSymHintWnd := HintWindowClass.Create(Self);
+  HintRect := FSymHintWnd.CalcHintRect(700, HintText, nil);
+  OffsetRect(HintRect, CursorPt.X + 12, CursorPt.Y + 18);
+  FSymHintWnd.ActivateHint(HintRect, HintText);
+  FSymHintWord := WordText;
 end;
 
 procedure TForm1.DbgWatchRefresh;
@@ -50098,6 +51027,9 @@ begin
           FPaintDC := 0;
         end;
 
+        // Линия правого поля (Editor Options - Margin and gutter)
+        EdDrawRightMargin(MemDC, W, H);
+
         // Своя каретка - в кадр, если по флагу она сейчас на экране
         if FOwnCaretDrawn then
           XorOwnCaret(MemDC, FOwnCaretPt);
@@ -50243,6 +51175,9 @@ var
   MarkIdx: Integer;
   CursorPt: TPoint;
 begin
+  // Code Insight: клавиши списка подстановки и подсказки параметров
+  if (FMsgDepth = 0) and CiBeforeMessage(Message) then
+    Exit;
   // Метки направляющих у краёв окна: щелчок - начало блока в панель
   // объявления, каретка остаётся на месте; над меткой - курсор-рука
   if (FMsgDepth = 0) and not FGuideBusy and (Length(FGuideMarks) > 0) then
@@ -50299,6 +51234,9 @@ begin
   // идентификатора под ней - в панель над редактором
   if (Message.Msg = WM_LBUTTONUP) and (FMsgDepth = 0) then
     DeclPanelUpdate;
+  // Code Insight: список по набранному, "." и "(" - по задержке
+  if FMsgDepth = 0 then
+    CiAfterMessage(Message);
 end;
 
 procedure TForm1.NewRichEditProcBody(var Message: TMessage);
@@ -52350,6 +53288,21 @@ begin
   end;
 
   NewW := 4 + DigitW * GutterDigits + 9;
+  // Editor Options - Gutter width: вся полоса, номера - что останется
+  // после меток
+  if FEdIns.GutterWidth > 0 then
+  begin
+    NewW := FEdIns.GutterWidth - MarksW;
+    if NewW < 8 then
+      NewW := 8;
+  end;
+  // Номера выключены - в полосе одни метки
+  if not FEdIns.ShowLineNumbers then
+  begin
+    if Panel1.Width <> MarksW then
+      Panel1.Width := MarksW;
+    Exit;
+  end;
   if (PaintBox1.Width <> NewW) or (Panel1.Width <> NewW + MarksW) then
   begin
     PaintBox1.Width := NewW;
@@ -53037,6 +53990,8 @@ begin
   Form2.ArdTabLoad;
   // Preferences, Designer, Environment Variables - из FEnv и FEnvOverrides
   Form2.EnvTabsLoad;
+  // Editor Options - Margin and gutter, Code Insight - из FEdIns
+  Form2.EdTabsLoad;
   Form2.chkUseHighlight.Checked := FUseSyntaxHighlight;
   Form2.chkHotTabHighlight.Checked := FUseHotTab;
   Form2.SetTabWidthInCombo(FTabChars);

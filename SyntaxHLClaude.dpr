@@ -25,6 +25,7 @@ uses
   ArduinoHw in 'ArduinoHw.pas',
   ArduinoPorts in 'ArduinoPorts.pas',
   EnvOptions in 'EnvOptions.pas',
+  CodeInsight in 'CodeInsight.pas',
   DlgArdSerial in 'DlgArdSerial.pas' {DlgArdSerial},
   ReleaseBuild in 'ReleaseBuild.pas',
   ObjParse in 'ObjParse.pas',

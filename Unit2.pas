@@ -137,6 +137,18 @@ FLockMemo: Boolean; // НАШ СЕМАФОР БЛОКИРОВКИ ДЛЯ TMEMO
     btnEnvNew: TUiButton;
     btnEnvEdit: TUiButton;
     btnEnvDelete: TUiButton;
+    // EDITOR OPTIONS: Margin and gutter, Code Insight (Form1.FEdIns)
+    FEdLoading: Boolean;
+    chkEdRightMargin: TUiCheckBox;
+    cmbEdRightMargin: TUiComboBox;
+    chkEdGutter: TUiCheckBox;
+    cmbEdGutterWidth: TUiComboBox;
+    chkEdCompletion: TUiCheckBox;
+    chkEdParams: TUiCheckBox;
+    chkEdTipEval: TUiCheckBox;
+    chkEdTipSymbol: TUiCheckBox;
+    cmbEdDelay: TUiComboBox;
+    FEdSwatches: array[0..9] of TPanel;   // образцы цветов CodeInsight Colors
     // Окно списка путей (EditPathList): его элементы на время показа
     FPathList: TUiListBox;
     FPathEdit: TUiEdit;
@@ -342,6 +354,12 @@ procedure EnvOverrideClick(Sender: TObject);
 procedure EnvNewClick(Sender: TObject);
 procedure EnvEditClick(Sender: TObject);
 procedure EnvDeleteClick(Sender: TObject);
+procedure BuildEditorInsight(ATab: TTabSheet; AAfter: TControl);
+procedure EdTabsLoad;
+procedure EdUpdateSwatches;
+procedure EdOptionClick(Sender: TObject);
+procedure EdColorClick(Sender: TObject);
+procedure EdDefaultColorsClick(Sender: TObject);
 procedure ArdNetChange(Sender: TObject);
 procedure ArdNetEnable;
 function  CompFieldIdx(const AKey: string): Integer;
@@ -1019,6 +1037,8 @@ FLockMemo := False; // Инициализация
   BuildPreferencesTab(TabPrefs);
   BuildDesignerTab(TabDesigner);
   BuildEnvVarsTab(TabEnvVars);
+  // Editor Options: Margin and gutter, Code Insight - под Editor colors
+  BuildEditorInsight(TabEdOptions, grpEditorColors);
   PageControl.OnChange := OptionsPageChange;
 
   pnlGroupActions := TPanel.Create(Self);
@@ -2946,15 +2966,14 @@ begin
   Form1.ApplyTabStops; // пересчёт шага и EM_SETPARAFORMAT
 end;
 
+// Номера строк в полосе слева; саму полосу (с метками) включает Visible
+// gutter (Margin and gutter)
 procedure TForm2.chkShowLineNumbersClick(Sender: TObject);
 begin
-  if Form1 = nil then
+  if (Form1 = nil) or FEdLoading then
     Exit;
-  if Form1.PaintBox1 <> nil then
-    Form1.PaintBox1.Visible := chkShowLineNumbers.Checked;
-  if Form1.Panel1 <> nil then
-    Form1.Panel1.Visible := chkShowLineNumbers.Checked;
-  Form1.RichEdit1.Invalidate;
+  Form1.FEdIns.ShowLineNumbers := chkShowLineNumbers.Checked;
+  Form1.EdInsightChanged;
 end;
 
 
@@ -6491,6 +6510,288 @@ begin
   Form1.FEnvOverrides.Delete(LineIdx);
   Form1.EnvOverridesChanged;
   EnvFillLists;
+end;
+
+// ---------------------------------------------------------------------------
+//  Editor Options: группы Margin and gutter и Code Insight (как Display и
+//  Code Insight в Editor Properties Delphi 7). Значения - Form1.FEdIns,
+//  применяет и пишет в editor.ini Form1.EdInsightChanged.
+// ---------------------------------------------------------------------------
+
+const
+  EdDelayItems: array[0..7] of Integer = (
+    100, 200, 300, 500, 750, 1000, 1250, 1500);
+  EdMarginItems: array[0..7] of string = (
+    '40', '60', '72', '80', '100', '120', '132', '200');
+  EdGutterItems: array[0..6] of string = (
+    'Auto', '20', '30', '40', '50', '60', '80');
+
+// Подпись образца цвета: имя цвета VCL без cl, свой - $BBGGRR
+function EdColorText(AColor: Integer): string;
+begin
+  if AColor = CiWindowColor then
+  begin
+    Result := 'Window Background';
+    Exit;
+  end;
+  Result := ColorToString(TColor(AColor));
+  if Copy(Result, 1, 2) = 'cl' then
+    Delete(Result, 1, 2);
+end;
+
+procedure TForm2.BuildEditorInsight(ATab: TTabSheet; AAfter: TControl);
+var
+  GrpMargin, GrpInsight: TUiGroupBox;
+  TextLbl: TLabel;
+  ItemIdx, ColIdx, RowIdx, ColorIdx: Integer;
+  Swatch: TPanel;
+  DefaultsBtn: TUiButton;
+
+  function AddCheck(AParent: TWinControl; const ACaption: string;
+                    ALeft, ATop, AWidth: Integer): TUiCheckBox;
+  begin
+    Result := TUiCheckBox.Create(Self);
+    Result.Parent := AParent;
+    Result.Caption := ACaption;
+    Result.SetBounds(ALeft, ATop, AWidth, 20);
+    Result.OnClick := EdOptionClick;
+  end;
+
+  function AddLabel(AParent: TWinControl; const ACaption: string;
+                    ALeft, ATop: Integer): TLabel;
+  begin
+    Result := TLabel.Create(Self);
+    Result.Parent := AParent;
+    Result.Caption := ACaption;
+    Result.Left := ALeft;
+    Result.Top := ATop;
+  end;
+
+  function AddCombo(AParent: TWinControl; ALeft, ATop, AWidth: Integer;
+                    AStyle: TComboBoxStyle): TUiComboBox;
+  begin
+    Result := TUiComboBox.Create(Self);
+    Result.Parent := AParent;
+    Result.Style := AStyle;
+    Result.SetBounds(ALeft, ATop, AWidth, 24);
+    Result.OnChange := EdOptionClick;
+  end;
+
+begin
+  // --- Margin and gutter: одна строка ---
+  GrpMargin := TUiGroupBox.Create(Self);
+  GrpMargin.Parent := ATab;
+  GrpMargin.Caption := ' Margin and gutter ';
+  GrpMargin.Top := AAfter.Top + AAfter.Height + 1;
+  GrpMargin.Align := alTop;
+  GrpMargin.Height := 48;
+  chkEdRightMargin := AddCheck(GrpMargin, 'Visible right margin', 8, 18, 140);
+  AddLabel(GrpMargin, 'Right margin:', 152, 21);
+  cmbEdRightMargin := AddCombo(GrpMargin, 228, 16, 56, csDropDown);
+  for ItemIdx := Low(EdMarginItems) to High(EdMarginItems) do
+    cmbEdRightMargin.Items.Add(EdMarginItems[ItemIdx]);
+  cmbEdRightMargin.ShowHint := True;
+  cmbEdRightMargin.Hint := 'Столбец линии правого поля (можно ввести число)';
+  chkEdGutter := AddCheck(GrpMargin, 'Visible gutter', 298, 18, 110);
+  chkEdGutter.ShowHint := True;
+  chkEdGutter.Hint := 'Полоса слева от текста: номера строк, закладки, ' +
+                      'точки останова';
+  AddLabel(GrpMargin, 'Gutter width:', 412, 21);
+  cmbEdGutterWidth := AddCombo(GrpMargin, 486, 16, 64, csDropDown);
+  for ItemIdx := Low(EdGutterItems) to High(EdGutterItems) do
+    cmbEdGutterWidth.Items.Add(EdGutterItems[ItemIdx]);
+  cmbEdGutterWidth.ShowHint := True;
+  cmbEdGutterWidth.Hint := 'Ширина полосы в точках; Auto - по числу цифр ' +
+                           'номеров строк';
+
+  // --- Code Insight ---
+  GrpInsight := TUiGroupBox.Create(Self);
+  GrpInsight.Parent := ATab;
+  GrpInsight.Caption := ' Code Insight ';
+  GrpInsight.Top := GrpMargin.Top + GrpMargin.Height + 1;
+  GrpInsight.Align := alTop;
+  GrpInsight.Height := 226;
+  chkEdCompletion := AddCheck(GrpInsight, 'Code completion', 8, 18, 200);
+  chkEdCompletion.ShowHint := True;
+  chkEdCompletion.Hint := 'Список имён после точки (с задержкой); ' +
+                          'Ctrl+Space - всегда';
+  chkEdParams := AddCheck(GrpInsight, 'Code parameters', 8, 40, 200);
+  chkEdParams.ShowHint := True;
+  chkEdParams.Hint := 'Параметры подпрограммы после "(" (с задержкой); ' +
+                      'Ctrl+Shift+Space - всегда';
+  chkEdTipEval := AddCheck(GrpInsight, 'Tooltip expression evaluation', 212,
+                           18, 220);
+  chkEdTipEval.ShowHint := True;
+  chkEdTipEval.Hint := 'Значение под мышью, пока программа стоит в отладчике';
+  chkEdTipSymbol := AddCheck(GrpInsight, 'Tooltip symbol insight', 212, 40,
+                             220);
+  chkEdTipSymbol.ShowHint := True;
+  chkEdTipSymbol.Hint := 'Объявление имени под мышью (Pascal)';
+  AddLabel(GrpInsight, 'Delay:', 446, 21);
+  cmbEdDelay := AddCombo(GrpInsight, 486, 16, 80, csDropDownList);
+  for ItemIdx := Low(EdDelayItems) to High(EdDelayItems) do
+    cmbEdDelay.Items.Add(FormatFloat('0.0#', EdDelayItems[ItemIdx] / 1000) +
+                         ' sec');
+
+  TextLbl := AddLabel(GrpInsight, 'CodeInsight Colors', 8, 68);
+  TextLbl.Font.Style := [fsBold];
+  for ColorIdx := 0 to 9 do
+  begin
+    ColIdx := ColorIdx div 5;
+    RowIdx := ColorIdx mod 5;
+    TextLbl := AddLabel(GrpInsight, CiColorNames[ColorIdx] + ':', 0,
+                        92 + RowIdx * 26);
+    TextLbl.AutoSize := False;
+    TextLbl.Alignment := taRightJustify;
+    TextLbl.SetBounds(8 + ColIdx * 280, 92 + RowIdx * 26, 110, 16);
+    Swatch := TPanel.Create(Self);
+    Swatch.Parent := GrpInsight;
+    Swatch.SetBounds(124 + ColIdx * 280, 88 + RowIdx * 26, 140, 22);
+    Swatch.BevelOuter := bvLowered;
+    Swatch.ParentBackground := False;
+    Swatch.ParentFont := False;
+    Swatch.Cursor := crHandPoint;
+    Swatch.Tag := ColorIdx;
+    Swatch.ShowHint := True;
+    Swatch.Hint := 'Щелчок - выбор цвета';
+    Swatch.OnClick := EdColorClick;
+    FEdSwatches[ColorIdx] := Swatch;
+  end;
+  DefaultsBtn := TUiButton.Create(Self);
+  DefaultsBtn.Parent := GrpInsight;
+  DefaultsBtn.Caption := 'Default colors';
+  DefaultsBtn.SetBounds(446, 194, 120, 24);
+  DefaultsBtn.ShowHint := True;
+  DefaultsBtn.Hint := 'Цвета по умолчанию; фон - как у редактора';
+  DefaultsBtn.OnClick := EdDefaultColorsClick;
+end;
+
+// Значения групп - из Form1.FEdIns (PrepareOptionsForm)
+procedure TForm2.EdTabsLoad;
+var
+  ItemIdx, Best: Integer;
+begin
+  if (Form1 = nil) or (chkEdRightMargin = nil) then
+    Exit;
+  FEdLoading := True;
+  try
+    chkShowLineNumbers.Checked := Form1.FEdIns.ShowLineNumbers;
+    chkEdRightMargin.Checked := Form1.FEdIns.ShowRightMargin;
+    cmbEdRightMargin.Text := IntToStr(Form1.FEdIns.RightMargin);
+    chkEdGutter.Checked := Form1.FEdIns.ShowGutter;
+    if Form1.FEdIns.GutterWidth > 0 then
+      cmbEdGutterWidth.Text := IntToStr(Form1.FEdIns.GutterWidth)
+    else
+      cmbEdGutterWidth.Text := 'Auto';
+    chkEdCompletion.Checked := Form1.FEdIns.CodeCompletion;
+    chkEdParams.Checked := Form1.FEdIns.CodeParams;
+    chkEdTipEval.Checked := Form1.FEdIns.TooltipEval;
+    chkEdTipSymbol.Checked := Form1.FEdIns.TooltipSymbol;
+    // Ближайшая задержка из списка
+    Best := 0;
+    for ItemIdx := 0 to cmbEdDelay.Items.Count - 1 do
+      if Abs(EdDelayItems[ItemIdx] - Form1.FEdIns.DelayMs) <
+         Abs(EdDelayItems[Best] - Form1.FEdIns.DelayMs) then
+        Best := ItemIdx;
+    cmbEdDelay.ItemIndex := Best;
+  finally
+    FEdLoading := False;
+  end;
+  EdUpdateSwatches;
+end;
+
+procedure TForm2.EdUpdateSwatches;
+var
+  ColorIdx, ColorValue: Integer;
+  FillColor: TColor;
+begin
+  if Form1 = nil then
+    Exit;
+  for ColorIdx := 0 to 9 do
+  begin
+    if FEdSwatches[ColorIdx] = nil then
+      Continue;
+    ColorValue := Form1.FEdIns.Colors[ColorIdx];
+    if ColorValue = CiWindowColor then
+      FillColor := Form1.RichEdit1.Color
+    else
+      FillColor := TColor(ColorValue);
+    FEdSwatches[ColorIdx].Color := FillColor;
+    FEdSwatches[ColorIdx].Caption := EdColorText(ColorValue);
+    if (GetRValue(ColorToRGB(FillColor)) * 30 +
+        GetGValue(ColorToRGB(FillColor)) * 59 +
+        GetBValue(ColorToRGB(FillColor)) * 11) div 100 < 128 then
+      FEdSwatches[ColorIdx].Font.Color := clWhite
+    else
+      FEdSwatches[ColorIdx].Font.Color := clBlack;
+  end;
+end;
+
+// Флажки и списки групп - в Form1.FEdIns, применить
+procedure TForm2.EdOptionClick(Sender: TObject);
+var
+  NumValue: Integer;
+begin
+  if FEdLoading or (Form1 = nil) then
+    Exit;
+  Form1.FEdIns.ShowRightMargin := chkEdRightMargin.Checked;
+  NumValue := StrToIntDef(Trim(cmbEdRightMargin.Text), -1);
+  if (NumValue >= 1) and (NumValue <= 1024) then
+    Form1.FEdIns.RightMargin := NumValue;
+  Form1.FEdIns.ShowGutter := chkEdGutter.Checked;
+  if CompareText(Trim(cmbEdGutterWidth.Text), 'Auto') = 0 then
+    Form1.FEdIns.GutterWidth := 0
+  else
+  begin
+    NumValue := StrToIntDef(Trim(cmbEdGutterWidth.Text), -1);
+    if (NumValue >= 8) and (NumValue <= 400) then
+      Form1.FEdIns.GutterWidth := NumValue;
+  end;
+  Form1.FEdIns.CodeCompletion := chkEdCompletion.Checked;
+  Form1.FEdIns.CodeParams := chkEdParams.Checked;
+  Form1.FEdIns.TooltipEval := chkEdTipEval.Checked;
+  Form1.FEdIns.TooltipSymbol := chkEdTipSymbol.Checked;
+  if (cmbEdDelay.ItemIndex >= 0) and
+     (cmbEdDelay.ItemIndex <= High(EdDelayItems)) then
+    Form1.FEdIns.DelayMs := EdDelayItems[cmbEdDelay.ItemIndex];
+  Form1.EdInsightChanged;
+end;
+
+procedure TForm2.EdColorClick(Sender: TObject);
+var
+  ColorIdx, ColorValue: Integer;
+begin
+  if (Form1 = nil) or not (Sender is TPanel) then
+    Exit;
+  ColorIdx := TPanel(Sender).Tag;
+  if (ColorIdx < 0) or (ColorIdx > 9) then
+    Exit;
+  ColorValue := Form1.FEdIns.Colors[ColorIdx];
+  if ColorValue = CiWindowColor then
+    ColorDlg.Color := Form1.RichEdit1.Color
+  else
+    ColorDlg.Color := TColor(ColorValue);
+  if not ColorDlg.Execute then
+    Exit;
+  Form1.FEdIns.Colors[ColorIdx] := ColorDlg.Color;
+  Form1.EdInsightChanged;
+  EdUpdateSwatches;
+end;
+
+procedure TForm2.EdDefaultColorsClick(Sender: TObject);
+var
+  Defaults: TEdInsightOptions;
+  ColorIdx: Integer;
+begin
+  if Form1 = nil then
+    Exit;
+  EdDefaultInsight(Defaults, (GetRValue(ColorToRGB(Form1.RichEdit1.Color)) *
+    30 + GetGValue(ColorToRGB(Form1.RichEdit1.Color)) * 59 +
+    GetBValue(ColorToRGB(Form1.RichEdit1.Color)) * 11) div 100 < 128);
+  for ColorIdx := 0 to 9 do
+    Form1.FEdIns.Colors[ColorIdx] := Defaults.Colors[ColorIdx];
+  Form1.EdInsightChanged;
+  EdUpdateSwatches;
 end;
 
 end.
