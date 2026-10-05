@@ -2837,6 +2837,7 @@ type
                             var ALineIdx: Integer): Boolean;
     function  CiMembersAtDot(ADotPos: Integer; AOut: TCiSymbols): Boolean;
     procedure CiEnsureFileSyms;
+    procedure CiExpandEvents(ASyms: TCiSymbols);
     procedure CiCollect(ALine: Integer);
     procedure CiFreeAll;
     procedure CiShowCompletion(AAuto: Boolean);
@@ -49027,6 +49028,63 @@ begin
   end;
 end;
 
+// События - как в списке Delphi: вместо типа (TNotifyEvent) его
+// объявление, OnClick: procedure(Sender: TObject)
+procedure TForm1.CiExpandEvents(ASyms: TCiSymbols);
+var
+  Expanded: TStringList;
+  SymIdx, CacheIdx, ColonPos: Integer;
+  TypeName, TypeText, Low: string;
+  TypeSym: TCiSymbol;
+  Source: TCiSymbols;
+begin
+  Expanded := TStringList.Create;
+  try
+    Expanded.Sorted := True;
+    Expanded.CaseSensitive := False;
+    for SymIdx := 0 to ASyms.Count - 1 do
+    begin
+      if ASyms[SymIdx].Kind <> ckProperty then
+        Continue;
+      TypeName := CiTypeOfSymbol(ASyms[SymIdx]);
+      if TypeName = '' then
+        Continue;
+      CacheIdx := Expanded.IndexOfName(TypeName);
+      if CacheIdx >= 0 then
+        TypeText := Copy(Expanded[CacheIdx], Length(TypeName) + 2, MaxInt)
+      else
+      begin
+        TypeText := '';
+        if CiFindType(TypeName, TypeSym, Source) then
+        begin
+          TypeText := Trim(TypeSym.Detail);
+          Low := LowerCase(TypeText);
+          if (Copy(Low, 1, 9) = 'procedure') or (Copy(Low, 1, 8) = 'function') then
+          begin
+            if Copy(Low, Length(Low) - 9, 10) = ' of object' then
+              SetLength(TypeText, Length(TypeText) - 10);
+          end
+          else
+            TypeText := '';
+        end;
+        Expanded.Add(TypeName + '=' + TypeText);
+      end;
+      if TypeText = '' then
+        Continue;
+      // ": TNotifyEvent" - тип после последнего ':' на нулевой глубине;
+      // у свойства-массива [Index: Integer] остаётся
+      ColonPos := Length(ASyms[SymIdx].Detail);
+      while (ColonPos > 0) and (ASyms[SymIdx].Detail[ColonPos] <> ':') do
+        Dec(ColonPos);
+      if ColonPos > 0 then
+        ASyms.SetDetail(SymIdx, Copy(ASyms[SymIdx].Detail, 1, ColonPos) + ' ' +
+                        TypeText);
+    end;
+  finally
+    Expanded.Free;
+  end;
+end;
+
 // Имена текущего файла - заново, только если текст изменился
 procedure TForm1.CiEnsureFileSyms;
 begin
@@ -49128,6 +49186,7 @@ begin
     else
       CiCollect(LineIdx);
     FCiSyms.SortUnique;
+    CiExpandEvents(FCiSyms);
   finally
     Screen.Cursor := crDefault;
   end;

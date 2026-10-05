@@ -116,10 +116,6 @@ procedure CiScanPascal(ASrc: TStrings; AInterfaceOnly: Boolean;
 procedure CiScanWords(ASrc: TStrings; ASymbols: TCiSymbols);
 // Слово вида: procedure, function, var ...
 function CiKindText(AKind: TCiKind): string;
-// Свойство-событие: тип - указатель на метод (...Event) или имя OnXxx.
-// В списке - словом event, хотя в Pascal это свойство (property OnClick:
-// TNotifyEvent).
-function CiIsEvent(const ASymbol: TCiSymbol): Boolean;
 // Номер цвета CiCol* для символа
 function CiColorIndex(const ASymbol: TCiSymbol): Integer;
 
@@ -174,22 +170,6 @@ begin
   else
     Result := '';
   end;
-end;
-
-function CiIsEvent(const ASymbol: TCiSymbol): Boolean;
-var
-  TypeName: string;
-begin
-  Result := False;
-  if ASymbol.Kind <> ckProperty then
-    Exit;
-  TypeName := CiTypeOfSymbol(ASymbol);
-  if TypeName <> '' then
-    Result := LowerCase(Copy(TypeName, Length(TypeName) - 4, 5)) = 'event'
-  else
-    Result := (Length(ASymbol.Name) > 2) and
-              (LowerCase(Copy(ASymbol.Name, 1, 2)) = 'on') and
-              (ASymbol.Name[3] in ['A'..'Z']);
 end;
 
 function CiColorIndex(const ASymbol: TCiSymbol): Integer;
@@ -1491,10 +1471,7 @@ begin
     Canvas.Brush.Style := bsClear;
 
     // Вид - своим цветом, имя - жирным, дальше параметры или тип
-    if CiIsEvent(Symbol) then
-      KindText := 'event'
-    else
-      KindText := CiKindText(Symbol.Kind);
+    KindText := CiKindText(Symbol.Kind);
     TextRect := RowRect;
     TextRect.Left := 4;
     if IsSel then
