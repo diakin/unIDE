@@ -35,6 +35,7 @@ type
     Detail: string;       // параметры, тип, значение - как в объявлении
     IsAbstract: Boolean;
     Line: Integer;        // строка объявления (от 0)
+    Owner: string;        // класс или запись, чей это член; '' - нет
   end;
 
   // Именованный тип: в Delphi 7 два разных "array of TCiSymbol"
@@ -50,6 +51,7 @@ type
     procedure Clear;
     procedure Add(const ASymbol: TCiSymbol);
     procedure AddAll(ASource: TCiSymbols);
+    procedure SetDetail(AIndex: Integer; const ADetail: string);
     // По имени без учёта регистра; одноимённые одного вида - один раз
     procedure SortUnique;
     property Count: Integer read FCount;
@@ -112,6 +114,20 @@ function CiKindText(AKind: TCiKind): string;
 // Номер цвета CiCol* для символа
 function CiColorIndex(const ASymbol: TCiSymbol): Integer;
 
+// Тип переменной, поля, свойства, константы или результата функции - из
+// Detail ('' - не имя типа: array of, set of, ^T ...)
+function CiTypeOfSymbol(const ASymbol: TCiSymbol): string;
+// Объявление типа (Detail символа типа) - класс, запись, объект или
+// интерфейс с членами
+function CiIsStructType(const ADetail: string): Boolean;
+// Предок класса из Detail: class(TCustomEdit) - TCustomEdit; class без
+// скобок - TObject; не класс - ''
+function CiParentType(const ADetail: string): string;
+// Синоним: TFoo = TBar или type TBar - TBar; иначе ''
+function CiAliasType(const ADetail: string): string;
+// Тип параметра AName из Detail подпрограммы "(A: T; var B, C: U)"
+function CiParamType(const ADetail, AName: string): string;
+
 implementation
 
 const
@@ -172,6 +188,170 @@ begin
 end;
 
 // ---------------------------------------------------------------------------
+//  Типы из объявлений
+// ---------------------------------------------------------------------------
+
+// Первое имя в AText (с точками - последняя часть: Unit.TType - TType);
+// ключевые слова, после которых не имя типа, - ''
+function FirstTypeName(const AText: string): string;
+var
+  CharIdx, StartIdx: Integer;
+  Low: string;
+begin
+  Result := '';
+  CharIdx := 1;
+  while (CharIdx <= Length(AText)) and (AText[CharIdx] = ' ') do
+    Inc(CharIdx);
+  if (CharIdx > Length(AText)) or not IsIdStart(AText[CharIdx]) then
+    Exit;
+  repeat
+    StartIdx := CharIdx;
+    while (CharIdx <= Length(AText)) and IsIdChar(AText[CharIdx]) do
+      Inc(CharIdx);
+    Result := Copy(AText, StartIdx, CharIdx - StartIdx);
+    if (CharIdx < Length(AText)) and (AText[CharIdx] = '.') and
+       IsIdStart(AText[CharIdx + 1]) then
+      Inc(CharIdx)
+    else
+      Break;
+  until False;
+  Low := LowerCase(Result);
+  if (Low = 'array') or (Low = 'set') or (Low = 'file') or
+     (Low = 'record') or (Low = 'packed') or (Low = 'procedure') or
+     (Low = 'function') or (Low = 'class') or (Low = 'object') or
+     (Low = 'interface') then
+    Result := '';
+end;
+
+// Текст после ':' на нулевой вложенности скобок, начиная с AFrom
+function AfterColon(const AText: string; AFrom: Integer): string;
+var
+  CharIdx, Depth: Integer;
+begin
+  Result := '';
+  Depth := 0;
+  for CharIdx := AFrom to Length(AText) do
+    case AText[CharIdx] of
+      '(', '[': Inc(Depth);
+      ')', ']': Dec(Depth);
+      ':':
+        if Depth = 0 then
+        begin
+          Result := Copy(AText, CharIdx + 1, MaxInt);
+          Exit;
+        end;
+    end;
+end;
+
+function CiTypeOfSymbol(const ASymbol: TCiSymbol): string;
+var
+  TypeText: string;
+  EqPos: Integer;
+begin
+  Result := '';
+  case ASymbol.Kind of
+    ckVariable, ckConstant, ckProperty, ckFunction:
+      begin
+        TypeText := AfterColon(ASymbol.Detail, 1);
+        EqPos := Pos('=', TypeText);
+        if EqPos > 0 then
+          SetLength(TypeText, EqPos - 1);
+        Result := FirstTypeName(TypeText);
+      end;
+  end;
+end;
+
+function CiIsStructType(const ADetail: string): Boolean;
+var
+  Low: string;
+begin
+  Low := LowerCase(Trim(ADetail));
+  if Copy(Low, 1, 7) = 'packed ' then
+    Low := Trim(Copy(Low, 8, MaxInt));
+  Result := ((Copy(Low, 1, 5) = 'class') and (Copy(Low, 1, 8) <> 'class of')) or
+            (Copy(Low, 1, 6) = 'record') or (Copy(Low, 1, 6) = 'object') or
+            (Copy(Low, 1, 9) = 'interface') or
+            (Copy(Low, 1, 13) = 'dispinterface');
+end;
+
+function CiParentType(const ADetail: string): string;
+var
+  Low: string;
+  ParenPos: Integer;
+begin
+  Result := '';
+  Low := LowerCase(Trim(ADetail));
+  if not ((Copy(Low, 1, 5) = 'class') or (Copy(Low, 1, 6) = 'object') or
+          (Copy(Low, 1, 9) = 'interface')) then
+    Exit;
+  ParenPos := Pos('(', ADetail);
+  if ParenPos > 0 then
+    Result := FirstTypeName(Copy(ADetail, ParenPos + 1, MaxInt))
+  else if Copy(Low, 1, 5) = 'class' then
+    Result := 'TObject';
+end;
+
+function CiAliasType(const ADetail: string): string;
+var
+  Text: string;
+begin
+  Text := Trim(ADetail);
+  if LowerCase(Copy(Text, 1, 5)) = 'type ' then
+    Text := Trim(Copy(Text, 6, MaxInt));
+  Result := FirstTypeName(Text);
+end;
+
+function CiParamType(const ADetail, AName: string): string;
+var
+  Inner, Group, NamesPart: string;
+  OpenPos, CloseIdx, Depth, SemiPos, ColonPos, CharIdx: Integer;
+begin
+  Result := '';
+  OpenPos := Pos('(', ADetail);
+  if OpenPos = 0 then
+    Exit;
+  Depth := 0;
+  CloseIdx := Length(ADetail);
+  for CharIdx := OpenPos to Length(ADetail) do
+  begin
+    if ADetail[CharIdx] = '(' then
+      Inc(Depth)
+    else if ADetail[CharIdx] = ')' then
+    begin
+      Dec(Depth);
+      if Depth = 0 then
+      begin
+        CloseIdx := CharIdx;
+        Break;
+      end;
+    end;
+  end;
+  Inner := Copy(ADetail, OpenPos + 1, CloseIdx - OpenPos - 1);
+  while Inner <> '' do
+  begin
+    SemiPos := Pos(';', Inner);
+    if SemiPos = 0 then
+      SemiPos := Length(Inner) + 1;
+    Group := Trim(Copy(Inner, 1, SemiPos - 1));
+    Delete(Inner, 1, SemiPos);
+    ColonPos := Pos(':', Group);
+    if ColonPos = 0 then
+      Continue;
+    // const, var, out перед именами - тоже слова, имя ищется среди слов
+    NamesPart := ' ' + StringReplace(Copy(Group, 1, ColonPos - 1), ',', ' ',
+                                     [rfReplaceAll]) + ' ';
+    if Pos(' ' + LowerCase(AName) + ' ', LowerCase(NamesPart)) > 0 then
+    begin
+      Group := Copy(Group, ColonPos + 1, MaxInt);
+      if Pos('=', Group) > 0 then
+        SetLength(Group, Pos('=', Group) - 1);
+      Result := FirstTypeName(Group);
+      Exit;
+    end;
+  end;
+end;
+
+// ---------------------------------------------------------------------------
 //  TCiSymbols
 // ---------------------------------------------------------------------------
 
@@ -202,6 +382,11 @@ var
 begin
   for ItemIdx := 0 to ASource.Count - 1 do
     Add(ASource.FItems[ItemIdx]);
+end;
+
+procedure TCiSymbols.SetDetail(AIndex: Integer; const ADetail: string);
+begin
+  FItems[AIndex].Detail := ADetail;
 end;
 
 procedure TCiSymbols.SortUnique;
@@ -404,6 +589,7 @@ begin
   Symbol.Kind := ckWord;
   Symbol.Detail := '';
   Symbol.IsAbstract := False;
+  Symbol.Owner := '';
   for LineIdx := 0 to ASrc.Count - 1 do
   begin
     Line := ASrc[LineIdx];
@@ -446,13 +632,14 @@ type
     FSyms: TCiSymbols;
     FSection: TCiSection;
     FBodyDepth: Integer;     // вложенность class/record/object в type
+    FOwners: TStringList;    // чьи члены сейчас: стек имён по FBodyDepth
     function Tok(AOffset: Integer): string;   // строчными; '' - конец
     function IsId(AIndex: Integer): Boolean;
     function SourceText(AFrom, ATo: Integer): string;
     function SkipToSemicolon: Integer;
     procedure AddSym(const AName: string; AKind: TCiKind;
                      const ADetail: string; ALine: Integer;
-                     AAbstract: Boolean);
+                     AAbstract: Boolean; const AOwner: string = #0);
     procedure SkipCodeBlock;
     procedure ParseRoutine;
     procedure ParseProperty;
@@ -463,6 +650,7 @@ type
   public
     constructor Create(ASrc: TStrings; ATokens: TCiTokens;
                        ASymbols: TCiSymbols);
+    destructor Destroy; override;
     procedure Run(AInterfaceOnly: Boolean);
   end;
 
@@ -491,6 +679,13 @@ begin
   FSrc := ASrc;
   FTok := ATokens;
   FSyms := ASymbols;
+  FOwners := TStringList.Create;
+end;
+
+destructor TCiParser.Destroy;
+begin
+  FOwners.Free;
+  inherited Destroy;
 end;
 
 function TCiParser.Tok(AOffset: Integer): string;
@@ -559,8 +754,10 @@ begin
   Result := FPos - 1;
 end;
 
+// AOwner = #0 - чей член, решает стек FOwners
 procedure TCiParser.AddSym(const AName: string; AKind: TCiKind;
-  const ADetail: string; ALine: Integer; AAbstract: Boolean);
+  const ADetail: string; ALine: Integer; AAbstract: Boolean;
+  const AOwner: string);
 var
   Symbol: TCiSymbol;
 begin
@@ -569,6 +766,12 @@ begin
   Symbol.Detail := ADetail;
   Symbol.Line := ALine;
   Symbol.IsAbstract := AAbstract;
+  if AOwner <> #0 then
+    Symbol.Owner := AOwner
+  else if (FBodyDepth > 0) and (FOwners.Count > 0) then
+    Symbol.Owner := FOwners[FOwners.Count - 1]
+  else
+    Symbol.Owner := '';
   FSyms.Add(Symbol);
 end;
 
@@ -603,7 +806,7 @@ end;
 procedure TCiParser.ParseRoutine;
 var
   IsFunc, IsAbstract: Boolean;
-  Name, Detail: string;
+  Name, Detail, Owner: string;
   NameLine, DetailFrom, DetailTo, Depth: Integer;
 begin
   IsFunc := Tok(0) = 'function';
@@ -613,9 +816,11 @@ begin
   Name := FTok.Items[FPos].Text;
   NameLine := FTok.Items[FPos].Line;
   Inc(FPos);
-  // Имя метода с классом: TForm1.Foo - имя Foo
+  // Имя метода с классом: TForm1.Foo - имя Foo, класс TForm1
+  Owner := #0;
   while (Tok(0) = '.') and IsId(FPos + 1) do
   begin
+    Owner := Name;
     Name := FTok.Items[FPos + 1].Text;
     Inc(FPos, 2);
   end;
@@ -660,9 +865,9 @@ begin
       Inc(FPos);
   end;
   if IsFunc then
-    AddSym(Name, ckFunction, Detail, NameLine, IsAbstract)
+    AddSym(Name, ckFunction, Detail, NameLine, IsAbstract, Owner)
   else
-    AddSym(Name, ckProcedure, Detail, NameLine, IsAbstract);
+    AddSym(Name, ckProcedure, Detail, NameLine, IsAbstract, Owner);
 end;
 
 procedure TCiParser.ParseProperty;
@@ -791,6 +996,7 @@ begin
   if HasBody then
   begin
     Inc(FBodyDepth);
+    FOwners.Add(Name);
     Exit;
   end;
   // Остальное: Name = Integer; Name = (a, b); Name = procedure of object;
@@ -888,6 +1094,8 @@ begin
       if TokWord = 'end' then
       begin
         Dec(FBodyDepth);
+        if FOwners.Count > 0 then
+          FOwners.Delete(FOwners.Count - 1);
         Inc(FPos);
         if Tok(0) = ';' then
           Inc(FPos);
@@ -901,8 +1109,13 @@ begin
       begin
         // Вложенная запись или вариантная часть: 'case' закрывается тем же
         // 'end', что и запись, - пропуск до ')' вариантов не нужен
+        // Вложенная запись: её поля - члены того же класса; у 'case'
+        // своего 'end' нет - стек не растёт
         if TokWord = 'record' then
+        begin
           Inc(FBodyDepth);
+          FOwners.Add(FOwners[FOwners.Count - 1]);
+        end;
         Inc(FPos);
         if TokWord = 'case' then
           SkipToSemicolon;

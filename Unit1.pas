@@ -2660,6 +2660,8 @@ type
     FCiDeclSrc: TStringList;      // текущий файл: строки как есть
     FCiDeclCl: TStringList;       // и очищенные, заглавными
     FCiDeclKey: string;
+    FCiUsesList: TStringList;     // файлы модулей uses текущего текста
+    FCiUsesKey: string;
     FCiPrefixStart: Integer;      // где начинается набранное начало имени
     FCiSwallowChar: Char;         // WM_CHAR клавиши, обработанной списком
     FCiTimer: TTimer;             // задержка после "." и "("
@@ -2820,9 +2822,23 @@ type
     procedure CiEnsureDeclCache;
     function  CiDeclText(const AWordU: string; ALine: Integer;
                          var AFile: string; var ADeclLine: Integer): string;
-    procedure CiCollect;
+    function  CiDelphiRoot: string;
+    procedure CiDelphiSourceDirs(ADirs: TStrings);
+    function  CiUnitFileByName(const AUnit: string): string;
+    function  CiUnitSyms(const AFile: string): TCiSymbols;
+    procedure CiUsesFiles(AFiles: TStrings);
+    function  CiFindType(const ATypeName: string; var ASym: TCiSymbol;
+                         var ASource: TCiSymbols): Boolean;
+    procedure CiTypeMembers(const ATypeName: string; AOut: TCiSymbols);
+    function  CiMemberType(const ATypeName, AMember: string): string;
+    function  CiNameType(const AName: string; ALine: Integer): string;
+    function  CiChainBefore(ADotPos: Integer; AParts: TStrings;
+                            var ALineIdx: Integer): Boolean;
+    function  CiMembersAtDot(ADotPos: Integer; AOut: TCiSymbols): Boolean;
+    procedure CiEnsureFileSyms;
+    procedure CiCollect(ALine: Integer);
     procedure CiFreeAll;
-    procedure CiShowCompletion;
+    procedure CiShowCompletion(AAuto: Boolean);
     function  CiCompletionShown: Boolean;
     procedure CiHideCompletion;
     procedure CiAccept;
@@ -48219,10 +48235,13 @@ end;
 //
 //  Code Insight:
 //  - Code completion: список имён (CodeInsight, TCiListPopup) по
-//    Ctrl+Space всегда, после точки - с задержкой, если включено. Имена -
-//    объявления текущего файла и interface-частей модулей из uses (для
-//    Pascal), в остальных файлах - слова файла. Стрелки, PgUp/PgDn -
-//    выбор, Enter и Tab - вставить, Esc - закрыть; набор букв сужает список.
+//    Ctrl+Space всегда, после точки - с задержкой, если включено.
+//    После точки - члены типа выражения перед ней (с предками; классы
+//    VCL - из исходников Delphi, Compilers - Delphi - DelphiPath\Source);
+//    тип не нашёлся - списка нет. Без точки - имена файла, члены класса
+//    подпрограммы и имена модулей uses. В не-Pascal файлах - слова файла.
+//    Стрелки, PgUp/PgDn - выбор, Enter и Tab - вставить, Esc - закрыть;
+//    набор букв сужает список.
 //  - Code parameters: параметры подпрограммы подсказкой у каретки - по
 //    Ctrl+Shift+Space всегда, после "(" - с задержкой, если включено.
 //  - Tooltip expression evaluation: значение под мышью на остановке
@@ -48494,92 +48513,6 @@ begin
   end;
 end;
 
-// Имена для списка: текущий файл и модули из uses
-procedure TForm1.CiCollect;
-var
-  Units, DprUnits, UnitSrc: TStringList;
-  Dpr, DprDir, Dir, FileName, Key: string;
-  UnitIdx, WinIdx, CacheIdx: Integer;
-  Entry: TCiUnitEntry;
-  Pascal: Boolean;
-begin
-  if FCiSyms = nil then
-  begin
-    FCiSyms := TCiSymbols.Create;
-    FCiFileSyms := TCiSymbols.Create;
-    FCiUnitCache := TStringList.Create;
-  end;
-  Pascal := CiIsPascalFile;
-  CiEnsureDeclCache;
-  if FCiFileKey <> FCiDeclKey then
-  begin
-    FCiFileSyms.Clear;
-    if Pascal then
-      CiScanPascal(FCiDeclSrc, False, FCiFileSyms)
-    else
-      CiScanWords(FCiDeclSrc, FCiFileSyms);
-    FCiFileKey := FCiDeclKey;
-  end;
-  FCiSyms.Clear;
-  FCiSyms.AddAll(FCiFileSyms);
-
-  if Pascal then
-  begin
-    Units := TStringList.Create;
-    DprUnits := TStringList.Create;
-    UnitSrc := TStringList.Create;
-    try
-      DeclUsesUnits(FCiDeclSrc, FCiDeclCl, Units);
-      Dpr := DelphiTargetDpr;
-      DprDir := ExtractFilePath(Dpr);
-      if Dpr <> '' then
-        ParseDprUnits(Dpr, DprUnits);
-      Dir := ExtractFilePath(FCurrentFileName);
-      for UnitIdx := 0 to Units.Count - 1 do
-      begin
-        FileName := DeclUnitFile(Units[UnitIdx], Dir, DprUnits, DprDir);
-        if (FileName = '') or (CompareText(FileName, FCurrentFileName) = 0) then
-          Continue;
-        // Открыт во вкладке - его текст (там могут быть правки), иначе
-        // файл; разбирается заново, только если изменился
-        WinIdx := IndexOfWindowByFile(FileName);
-        if WinIdx >= 0 then
-          Key := 'w' + IntToHex(Crc32Of(FWindows[WinIdx].Text), 8)
-        else
-          Key := 'f' + IntToStr(FileAge(FileName));
-        CacheIdx := FCiUnitCache.IndexOf(LowerCase(FileName));
-        if CacheIdx >= 0 then
-          Entry := TCiUnitEntry(FCiUnitCache.Objects[CacheIdx])
-        else
-        begin
-          Entry := TCiUnitEntry.Create;
-          FCiUnitCache.AddObject(LowerCase(FileName), Entry);
-        end;
-        if Entry.Key <> Key then
-        begin
-          Entry.Syms.Clear;
-          try
-            if WinIdx >= 0 then
-              UnitSrc.Text := FWindows[WinIdx].Text
-            else
-              UnitSrc.LoadFromFile(FileName);
-            CiScanPascal(UnitSrc, True, Entry.Syms);
-          except
-            Entry.Syms.Clear;   // файл занят или недоступен
-          end;
-          Entry.Key := Key;
-        end;
-        FCiSyms.AddAll(Entry.Syms);
-      end;
-    finally
-      UnitSrc.Free;
-      DprUnits.Free;
-      Units.Free;
-    end;
-  end;
-  FCiSyms.SortUnique;
-end;
-
 procedure TForm1.CiFreeAll;
 var
   CacheIdx: Integer;
@@ -48592,13 +48525,553 @@ begin
   FreeAndNil(FCiFileSyms);
   FreeAndNil(FCiDeclSrc);
   FreeAndNil(FCiDeclCl);
+  FreeAndNil(FCiUsesList);
 end;
 
-procedure TForm1.CiShowCompletion;
+// Папка установки Delphi (Compilers - Delphi - DelphiPath) с \ на конце;
+// '' - не задана
+function TForm1.CiDelphiRoot: string;
 var
-  Prefix: string;
+  Ini: TIniFile;
+begin
+  Result := '';
+  if not FileExists(SettingsFileName) then
+    Exit;
+  Ini := TIniFile.Create(SettingsFileName);
+  try
+    Result := StripIniComment(Ini.ReadString(CompilerSection('Delphi'),
+                                             'DelphiPath', ''));
+    if Result = '' then
+      Result := StripIniComment(Ini.ReadString('Compiler.Delphi',
+                                               'DelphiPath', ''));
+    if Result = '' then
+      Result := StripIniComment(Ini.ReadString('Compiler', 'DelphiPath', ''));
+  finally
+    Ini.Free;
+  end;
+  if Result <> '' then
+    Result := IncludeTrailingPathDelimiter(Result);
+end;
+
+// Папки исходников VCL и RTL Delphi, которые есть на диске
+procedure TForm1.CiDelphiSourceDirs(ADirs: TStrings);
+const
+  SubDirs: array[0..4] of string = (
+    'Source\Vcl\', 'Source\Rtl\Common\', 'Source\Rtl\Sys\',
+    'Source\Rtl\Win\', 'Source\Internet\');
+var
+  Root: string;
+  DirIdx: Integer;
+begin
+  ADirs.Clear;
+  Root := CiDelphiRoot;
+  if Root = '' then
+    Exit;
+  for DirIdx := Low(SubDirs) to High(SubDirs) do
+    if DirectoryExists(Root + SubDirs[DirIdx]) then
+      ADirs.Add(Root + SubDirs[DirIdx]);
+end;
+
+// Файл модуля AUnit: модуль проекта (рядом с файлом, из .dpr), иначе
+// исходник Delphi; '' - не найден
+function TForm1.CiUnitFileByName(const AUnit: string): string;
+var
+  DprUnits, Dirs: TStringList;
+  Dpr: string;
+  DirIdx: Integer;
+begin
+  DprUnits := TStringList.Create;
+  Dirs := TStringList.Create;
+  try
+    Dpr := DelphiTargetDpr;
+    if Dpr <> '' then
+      ParseDprUnits(Dpr, DprUnits);
+    Result := DeclUnitFile(AUnit, ExtractFilePath(FCurrentFileName), DprUnits,
+                           ExtractFilePath(Dpr));
+    if Result <> '' then
+      Exit;
+    CiDelphiSourceDirs(Dirs);
+    for DirIdx := 0 to Dirs.Count - 1 do
+      if FileExists(Dirs[DirIdx] + AUnit + '.pas') then
+      begin
+        Result := Dirs[DirIdx] + AUnit + '.pas';
+        Exit;
+      end;
+  finally
+    Dirs.Free;
+    DprUnits.Free;
+  end;
+end;
+
+// Имена interface-части модуля AFile - из кэша, разбор заново, только
+// если файл (или его вкладка) изменился
+function TForm1.CiUnitSyms(const AFile: string): TCiSymbols;
+var
+  WinIdx, CacheIdx: Integer;
+  Key: string;
+  Entry: TCiUnitEntry;
+  UnitSrc: TStringList;
+begin
+  if FCiUnitCache = nil then
+    FCiUnitCache := TStringList.Create;
+  WinIdx := IndexOfWindowByFile(AFile);
+  if WinIdx >= 0 then
+    Key := 'w' + IntToHex(Crc32Of(FWindows[WinIdx].Text), 8)
+  else
+    Key := 'f' + IntToStr(FileAge(AFile));
+  CacheIdx := FCiUnitCache.IndexOf(LowerCase(AFile));
+  if CacheIdx >= 0 then
+    Entry := TCiUnitEntry(FCiUnitCache.Objects[CacheIdx])
+  else
+  begin
+    Entry := TCiUnitEntry.Create;
+    FCiUnitCache.AddObject(LowerCase(AFile), Entry);
+  end;
+  if Entry.Key <> Key then
+  begin
+    Entry.Syms.Clear;
+    UnitSrc := TStringList.Create;
+    try
+      try
+        if WinIdx >= 0 then
+          UnitSrc.Text := FWindows[WinIdx].Text
+        else
+          UnitSrc.LoadFromFile(AFile);
+        CiScanPascal(UnitSrc, True, Entry.Syms);
+      except
+        Entry.Syms.Clear;   // файл занят или недоступен
+      end;
+    finally
+      UnitSrc.Free;
+    end;
+    Entry.Key := Key;
+  end;
+  Result := Entry.Syms;
+end;
+
+// Файлы модулей из uses текущего файла - в порядке поиска компилятора
+// (с конца списка)
+procedure TForm1.CiUsesFiles(AFiles: TStrings);
+var
+  Units: TStringList;
+  UnitIdx: Integer;
+  FileName: string;
+begin
+  AFiles.Clear;
+  CiEnsureDeclCache;
+  // Тот же текст - тот же список (поиск файлов модулей не повторяется)
+  if (FCiUsesList <> nil) and (FCiUsesKey = FCiDeclKey) then
+  begin
+    AFiles.Assign(FCiUsesList);
+    Exit;
+  end;
+  Units := TStringList.Create;
+  try
+    DeclUsesUnits(FCiDeclSrc, FCiDeclCl, Units);
+    for UnitIdx := Units.Count - 1 downto 0 do
+    begin
+      FileName := CiUnitFileByName(Units[UnitIdx]);
+      if (FileName <> '') and (CompareText(FileName, FCurrentFileName) <> 0) then
+        AFiles.Add(FileName);
+    end;
+    // System - всегда: TObject и прочее
+    FileName := CiUnitFileByName('System');
+    if FileName <> '' then
+      AFiles.Add(FileName);
+    if FCiUsesList = nil then
+      FCiUsesList := TStringList.Create;
+    FCiUsesList.Assign(AFiles);
+    FCiUsesKey := FCiDeclKey;
+  finally
+    Units.Free;
+  end;
+end;
+
+// Тип с именем ATypeName: в текущем файле, в модулях из uses, потом во
+// всех исходниках Delphi. ASource - имена файла, где он объявлен (там и
+// его члены).
+function TForm1.CiFindType(const ATypeName: string; var ASym: TCiSymbol;
+  var ASource: TCiSymbols): Boolean;
+var
+  Files, Dirs: TStringList;
+  FileIdx, DirIdx: Integer;
+  Found: TSearchRec;
+
+  function FindIn(ASyms: TCiSymbols): Boolean;
+  var
+    SymIdx: Integer;
+  begin
+    Result := False;
+    if ASyms = nil then
+      Exit;
+    for SymIdx := 0 to ASyms.Count - 1 do
+      if (ASyms[SymIdx].Kind = ckType) and (ASyms[SymIdx].Owner = '') and
+         (CompareText(ASyms[SymIdx].Name, ATypeName) = 0) then
+      begin
+        ASym := ASyms[SymIdx];
+        ASource := ASyms;
+        Result := True;
+        Exit;
+      end;
+  end;
+
+begin
+  Result := FindIn(FCiFileSyms);
+  if Result then
+    Exit;
+  Files := TStringList.Create;
+  Dirs := TStringList.Create;
+  try
+    CiUsesFiles(Files);
+    for FileIdx := 0 to Files.Count - 1 do
+      if FindIn(CiUnitSyms(Files[FileIdx])) then
+      begin
+        Result := True;
+        Exit;
+      end;
+    // Предок из модуля, которого нет в uses этого файла (TWinControl у
+    // TCustomEdit) - во всех исходниках Delphi; разобранные - в кэше
+    CiDelphiSourceDirs(Dirs);
+    for DirIdx := 0 to Dirs.Count - 1 do
+      if FindFirst(Dirs[DirIdx] + '*.pas', faAnyFile and not faDirectory,
+                   Found) = 0 then
+      try
+        repeat
+          if FindIn(CiUnitSyms(Dirs[DirIdx] + Found.Name)) then
+          begin
+            Result := True;
+            Exit;
+          end;
+        until FindNext(Found) <> 0;
+      finally
+        FindClose(Found);
+      end;
+  finally
+    Dirs.Free;
+    Files.Free;
+  end;
+end;
+
+// Члены типа ATypeName и его предков - в AOut. Одноимённый член предка
+// не повторяется; у переобъявленного без типа (property Text;) тип и
+// описание берутся у предка.
+procedure TForm1.CiTypeMembers(const ATypeName: string; AOut: TCiSymbols);
+var
+  TypeName, Parent: string;
+  TypeSym: TCiSymbol;
+  Source: TCiSymbols;
+  Names: TStringList;
+  Level, SymIdx, NameIdx: Integer;
+  Member: TCiSymbol;
+  Merged: TCiSymbols;
+begin
+  Names := TStringList.Create;
+  Merged := TCiSymbols.Create;
+  try
+    Names.Sorted := True;
+    Names.CaseSensitive := False;
+    TypeName := ATypeName;
+    for Level := 1 to 32 do
+    begin
+      if (TypeName = '') or not CiFindType(TypeName, TypeSym, Source) then
+        Break;
+      if not CiIsStructType(TypeSym.Detail) then
+      begin
+        // TFoo = TBar - члены TBar
+        TypeName := CiAliasType(TypeSym.Detail);
+        Continue;
+      end;
+      for SymIdx := 0 to Source.Count - 1 do
+      begin
+        Member := Source[SymIdx];
+        if (CompareText(Member.Owner, TypeSym.Name) <> 0) or
+           (Member.Kind = ckType) then
+          Continue;
+        NameIdx := Names.IndexOf(Member.Name);
+        if NameIdx < 0 then
+          Names.AddObject(Member.Name, TObject(Merged.Count))
+        else
+        begin
+          // Уже есть от потомка: без описания - дополнить описанием предка
+          NameIdx := Integer(Names.Objects[NameIdx]);
+          if (Merged[NameIdx].Detail = '') and (Member.Detail <> '') then
+            Merged.SetDetail(NameIdx, Member.Detail);
+          Continue;
+        end;
+        Merged.Add(Member);
+      end;
+      Parent := CiParentType(TypeSym.Detail);
+      if CompareText(Parent, TypeSym.Name) = 0 then
+        Break;
+      TypeName := Parent;
+    end;
+    AOut.AddAll(Merged);
+  finally
+    Merged.Free;
+    Names.Free;
+  end;
+end;
+
+// Тип члена AMember у типа ATypeName (с предками); '' - нет или не имя типа
+function TForm1.CiMemberType(const ATypeName, AMember: string): string;
+var
+  Members: TCiSymbols;
+  SymIdx: Integer;
+begin
+  Result := '';
+  Members := TCiSymbols.Create;
+  try
+    CiTypeMembers(ATypeName, Members);
+    for SymIdx := 0 to Members.Count - 1 do
+      if CompareText(Members[SymIdx].Name, AMember) = 0 then
+      begin
+        Result := CiTypeOfSymbol(Members[SymIdx]);
+        Exit;
+      end;
+  finally
+    Members.Free;
+  end;
+end;
+
+// Тип имени AName в строке ALine текущего файла: Self, параметр и
+// локальная переменная подпрограммы, член её класса, имя файла, имя
+// модулей uses. Имя - тип сам (TForm1.) - он же.
+function TForm1.CiNameType(const AName: string; ALine: Integer): string;
+var
+  SymIdx, RoutineIdx, FileIdx: Integer;
+  Routine, Symbol, TypeSym: TCiSymbol;
+  Files: TStringList;
+  Source: TCiSymbols;
+  UnitSyms: TCiSymbols;
+begin
+  Result := '';
+  // Подпрограмма, в которой каретка: ближайшая выше
+  RoutineIdx := -1;
+  for SymIdx := 0 to FCiFileSyms.Count - 1 do
+  begin
+    Symbol := FCiFileSyms[SymIdx];
+    if (Symbol.Kind in [ckProcedure, ckFunction]) and (Symbol.Line <= ALine) and
+       ((RoutineIdx < 0) or (Symbol.Line > FCiFileSyms[RoutineIdx].Line)) then
+      RoutineIdx := SymIdx;
+  end;
+  if RoutineIdx >= 0 then
+    Routine := FCiFileSyms[RoutineIdx]
+  else
+  begin
+    Routine.Name := '';
+    Routine.Owner := '';
+    Routine.Detail := '';
+    Routine.Line := 0;
+  end;
+
+  if CompareText(AName, 'Self') = 0 then
+  begin
+    Result := Routine.Owner;
+    Exit;
+  end;
+  if CompareText(AName, 'Result') = 0 then
+  begin
+    if RoutineIdx >= 0 then
+      Result := CiTypeOfSymbol(Routine);
+    Exit;
+  end;
+  // Параметр
+  if RoutineIdx >= 0 then
+  begin
+    Result := CiParamType(Routine.Detail, AName);
+    if Result <> '' then
+      Exit;
+  end;
+  // Локальная переменная: между заголовком подпрограммы и кареткой
+  if RoutineIdx >= 0 then
+    for SymIdx := 0 to FCiFileSyms.Count - 1 do
+    begin
+      Symbol := FCiFileSyms[SymIdx];
+      if (Symbol.Kind = ckVariable) and (Symbol.Owner = '') and
+         (Symbol.Line >= Routine.Line) and (Symbol.Line <= ALine) and
+         (CompareText(Symbol.Name, AName) = 0) then
+      begin
+        Result := CiTypeOfSymbol(Symbol);
+        Exit;
+      end;
+    end;
+  // Член класса подпрограммы (поле, свойство, метод)
+  if Routine.Owner <> '' then
+  begin
+    Result := CiMemberType(Routine.Owner, AName);
+    if Result <> '' then
+      Exit;
+  end;
+  // Глобальное в файле и в модулях uses
+  for SymIdx := 0 to FCiFileSyms.Count - 1 do
+  begin
+    Symbol := FCiFileSyms[SymIdx];
+    if (Symbol.Owner = '') and (Symbol.Kind <> ckType) and
+       (CompareText(Symbol.Name, AName) = 0) then
+    begin
+      Result := CiTypeOfSymbol(Symbol);
+      if Result <> '' then
+        Exit;
+    end;
+  end;
+  Files := TStringList.Create;
+  try
+    CiUsesFiles(Files);
+    for FileIdx := 0 to Files.Count - 1 do
+    begin
+      UnitSyms := CiUnitSyms(Files[FileIdx]);
+      for SymIdx := 0 to UnitSyms.Count - 1 do
+      begin
+        Symbol := UnitSyms[SymIdx];
+        if (Symbol.Owner = '') and (Symbol.Kind <> ckType) and
+           (CompareText(Symbol.Name, AName) = 0) then
+        begin
+          Result := CiTypeOfSymbol(Symbol);
+          if Result <> '' then
+            Exit;
+        end;
+      end;
+    end;
+  finally
+    Files.Free;
+  end;
+  // Имя типа: TForm1. - члены самого типа
+  if CiFindType(AName, TypeSym, Source) then
+    Result := TypeSym.Name;
+end;
+
+// Цепочка имён перед точкой в позиции ADotPos (позиция самой точки):
+// FObjEdit. - FObjEdit; Form1.Edit1. - Form1, Edit1. False - перед точкой
+// не имя или вызов со скобками.
+function TForm1.CiChainBefore(ADotPos: Integer; AParts: TStrings;
+  var ALineIdx: Integer): Boolean;
+var
+  LineText: string;
+  LineStart, Col, NameEnd: Integer;
+begin
+  Result := False;
+  AParts.Clear;
+  LineText := CiLineOf(ADotPos, ALineIdx, LineStart);
+  Col := ADotPos - LineStart;    // знаков перед точкой
+  repeat
+    while (Col >= 1) and (LineText[Col] = ' ') do
+      Dec(Col);
+    NameEnd := Col;
+    while (Col >= 1) and
+          (LineText[Col] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+      Dec(Col);
+    if (NameEnd = Col) or (LineText[Col + 1] in ['0'..'9']) then
+      Exit;
+    AParts.Insert(0, Copy(LineText, Col + 1, NameEnd - Col));
+    while (Col >= 1) and (LineText[Col] = ' ') do
+      Dec(Col);
+    if (Col >= 1) and (LineText[Col] = '.') then
+      Dec(Col)
+    else
+      Break;
+  until False;
+  // Перед цепочкой - "^" или ")" : разыменование или вызов - не разбираем
+  Result := not ((Col >= 1) and (LineText[Col] in [')', ']', '^']));
+end;
+
+// Члены типа выражения перед точкой ADotPos - в AOut. False - тип не
+// найден.
+function TForm1.CiMembersAtDot(ADotPos: Integer; AOut: TCiSymbols): Boolean;
+var
+  Parts: TStringList;
+  LineIdx, PartIdx: Integer;
+  TypeName: string;
+begin
+  Result := False;
+  Parts := TStringList.Create;
+  try
+    if not CiChainBefore(ADotPos, Parts, LineIdx) or (Parts.Count = 0) then
+      Exit;
+    TypeName := CiNameType(Parts[0], LineIdx);
+    for PartIdx := 1 to Parts.Count - 1 do
+    begin
+      if TypeName = '' then
+        Break;
+      TypeName := CiMemberType(TypeName, Parts[PartIdx]);
+    end;
+    if TypeName = '' then
+      Exit;
+    CiTypeMembers(TypeName, AOut);
+    Result := AOut.Count > 0;
+  finally
+    Parts.Free;
+  end;
+end;
+
+// Имена текущего файла - заново, только если текст изменился
+procedure TForm1.CiEnsureFileSyms;
+begin
+  if FCiSyms = nil then
+  begin
+    FCiSyms := TCiSymbols.Create;
+    FCiFileSyms := TCiSymbols.Create;
+  end;
+  CiEnsureDeclCache;
+  if FCiFileKey <> FCiDeclKey then
+  begin
+    FCiFileSyms.Clear;
+    if CiIsPascalFile then
+      CiScanPascal(FCiDeclSrc, False, FCiFileSyms)
+    else
+      CiScanWords(FCiDeclSrc, FCiFileSyms);
+    FCiFileKey := FCiDeclKey;
+  end;
+end;
+
+// Список без точки - что видно в строке ALine: имена файла вне классов,
+// члены класса подпрограммы (с предками), имена модулей uses вне классов
+procedure TForm1.CiCollect(ALine: Integer);
+var
+  Files: TStringList;
+  FileIdx, SymIdx, RoutineIdx: Integer;
+  UnitSyms: TCiSymbols;
+  Symbol: TCiSymbol;
+begin
+  CiEnsureFileSyms;
+  FCiSyms.Clear;
+  if not CiIsPascalFile then
+  begin
+    FCiSyms.AddAll(FCiFileSyms);
+    Exit;
+  end;
+  RoutineIdx := -1;
+  for SymIdx := 0 to FCiFileSyms.Count - 1 do
+  begin
+    Symbol := FCiFileSyms[SymIdx];
+    if Symbol.Owner = '' then
+      FCiSyms.Add(Symbol);
+    if (Symbol.Kind in [ckProcedure, ckFunction]) and (Symbol.Line <= ALine) and
+       ((RoutineIdx < 0) or (Symbol.Line > FCiFileSyms[RoutineIdx].Line)) then
+      RoutineIdx := SymIdx;
+  end;
+  if (RoutineIdx >= 0) and (FCiFileSyms[RoutineIdx].Owner <> '') then
+    CiTypeMembers(FCiFileSyms[RoutineIdx].Owner, FCiSyms);
+  Files := TStringList.Create;
+  try
+    CiUsesFiles(Files);
+    for FileIdx := 0 to Files.Count - 1 do
+    begin
+      UnitSyms := CiUnitSyms(Files[FileIdx]);
+      for SymIdx := 0 to UnitSyms.Count - 1 do
+        if UnitSyms[SymIdx].Owner = '' then
+          FCiSyms.Add(UnitSyms[SymIdx]);
+    end;
+  finally
+    Files.Free;
+  end;
+end;
+
+procedure TForm1.CiShowCompletion(AAuto: Boolean);
+var
+  Prefix, LineText: string;
   ScreenPt: TPoint;
-  LineTop, ColorIdx: Integer;
+  LineTop, ColorIdx, LineIdx, LineStart: Integer;
+  AfterDot: Boolean;
 begin
   if not RichEdit1.HandleAllocated or RichEdit1.ReadOnly then
     Exit;
@@ -48608,9 +49081,29 @@ begin
   // Не Pascal - слова файла: без начала имени список бессмыслен
   if not CiIsPascalFile and (Prefix = '') then
     Exit;
+  LineText := CiLineOf(FCiPrefixStart, LineIdx, LineStart);
+  AfterDot := CiIsPascalFile and (FCiPrefixStart > LineStart) and
+              (FCiPrefixStart - LineStart <= Length(LineText)) and
+              (LineText[FCiPrefixStart - LineStart] = '.');
   Screen.Cursor := crHourGlass;
   try
-    CiCollect;
+    CiEnsureFileSyms;
+    if AfterDot then
+    begin
+      // После точки - только члены типа выражения перед ней. Тип не
+      // нашёлся - списка нет: все имена подряд здесь только мешают
+      FCiSyms.Clear;
+      if not CiMembersAtDot(FCiPrefixStart - 1, FCiSyms) then
+      begin
+        if not AAuto then
+          StatusBar1.Panels[0].Text := 'Code completion: тип выражения ' +
+            'перед точкой не найден';
+        Exit;
+      end;
+    end
+    else
+      CiCollect(LineIdx);
+    FCiSyms.SortUnique;
   finally
     Screen.Cursor := crDefault;
   end;
@@ -48847,7 +49340,7 @@ begin
           if ShiftDown then
             CiShowParams
           else
-            CiShowCompletion;
+            CiShowCompletion(False);
           FCiSwallowChar := ' ';
           Result := True;
         end
@@ -48964,7 +49457,7 @@ begin
   if not RichEdit1.Focused or (CiCaretPos <> FCiTriggerPos) then
     Exit;
   if FCiTimerMode = 1 then
-    CiShowCompletion
+    CiShowCompletion(True)
   else
     CiShowParams;
 end;
