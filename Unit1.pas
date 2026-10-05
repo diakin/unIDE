@@ -2106,6 +2106,7 @@ type
     function  RqDbgBuild(const ABas: string; var ACopy: string): Boolean;
     function  RqDbgLaunch(const AExe, ADir: string): Boolean;
     function  RqDbgHere: Boolean;
+    function  RqDbgWantedFor(const ABas: string): Boolean;
     function  RqDbgMarkPoint(AMark: TBreakMark): Integer;
     procedure RqDbgResolveMark(AMark: TBreakMark);
     function  RqDbgResolveMarks: Integer;
@@ -39259,7 +39260,7 @@ begin
   // Точки останова или запуск с F7/F8/F4 - собирается копия с проверками
   // точек (RqDbgBuild), exe - тот же, что у обычной сборки
   CompileSrc := Bas;
-  DebugBuild := not FRqProbeActive and DbgWanted;
+  DebugBuild := not FRqProbeActive and RqDbgWantedFor(Bas);
   if not FRqProbeActive then
   begin
     if DebugBuild and FRqDbgOn then
@@ -44480,7 +44481,7 @@ begin
 
   // RapidQ под отладчиком - только exe отладочной сборки (CompileRapidQ):
   // в обычном проверок точек нет
-  if RapidQ and DbgWanted then
+  if RapidQ and RqDbgWantedFor(Dpr) then
   begin
     if (FRqDbgInstr <> nil) and (FRqDbgExe <> '') and
        (CompareText(FRqDbgExe, ExpandFileName(Exe)) = 0) and
@@ -44580,6 +44581,25 @@ end;
 
 // Сборка и запуск - с отладчиком: есть хотя бы одна точка или запуск с
 // F7/F8/F4. Пробная сборка конструктора форм - никогда.
+// RapidQ под отладчиком: точка останова в главном .bas этой программы
+// или запуск с F7/F8/F4. Точки в других файлах (другая программа, $INCLUDE)
+// отладку не включают. Пробная сборка снимка - никогда (CompileRapidQ).
+function TForm1.RqDbgWantedFor(const ABas: string): Boolean;
+var
+  MarkIdx: Integer;
+begin
+  Result := FDbgStartMode <> DbgStartNone;
+  if Result or (ABas = '') or (FBreakMarks = nil) then
+    Exit;
+  for MarkIdx := 0 to FBreakMarks.Count - 1 do
+    if CompareText(ExpandFileName(TBreakMark(FBreakMarks[MarkIdx]).FileName),
+                   ExpandFileName(ABas)) = 0 then
+    begin
+      Result := True;
+      Exit;
+    end;
+end;
+
 function TForm1.DbgWanted: Boolean;
 begin
   Result := (((FBreakMarks <> nil) and (FBreakMarks.Count > 0)) or
