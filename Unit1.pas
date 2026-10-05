@@ -48798,6 +48798,17 @@ begin
         if (CompareText(Member.Owner, TypeSym.Name) <> 0) or
            (Member.Kind = ckType) then
           Continue;
+        NameIdx := Names.IndexOf(Member.Name);
+        if NameIdx >= 0 then
+        begin
+          // Уже есть от потомка: без описания - дополнить описанием
+          // предка, даже скрытого (published OnClick; - тип у protected
+          // OnClick: TNotifyEvent в TControl)
+          NameIdx := Integer(Names.Objects[NameIdx]);
+          if (Merged[NameIdx].Detail = '') and (Member.Detail <> '') then
+            Merged.SetDetail(NameIdx, Member.Detail);
+          Continue;
+        end;
         // Чужой модуль: private не видно никогда, protected - только
         // из потомка
         if (AAccess <> CiAccAll) and (Source <> FCiFileSyms) and
@@ -48805,17 +48816,7 @@ begin
             ((Member.Visibility = cvProtected) and
              (AAccess = CiAccOutside))) then
           Continue;
-        NameIdx := Names.IndexOf(Member.Name);
-        if NameIdx < 0 then
-          Names.AddObject(Member.Name, TObject(Merged.Count))
-        else
-        begin
-          // Уже есть от потомка: без описания - дополнить описанием предка
-          NameIdx := Integer(Names.Objects[NameIdx]);
-          if (Merged[NameIdx].Detail = '') and (Member.Detail <> '') then
-            Merged.SetDetail(NameIdx, Member.Detail);
-          Continue;
-        end;
+        Names.AddObject(Member.Name, TObject(Merged.Count));
         Merged.Add(Member);
       end;
       Parent := CiParentType(TypeSym.Detail);
