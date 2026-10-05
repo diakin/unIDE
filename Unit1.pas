@@ -17446,8 +17446,11 @@ OpenDialog1.FilterIndex := 1; // по умолчанию показываем в
   // Журнал окна wnd.log рядом с exe: поиск давней ошибки - белые полосы на
   // полосе вкладок и строке состояния, когда поверх окна двигают другое
   // окно, и пропадание окна с экрана, как свёрнутого. Что пишется - в
-  // WndWatch.pas.
-  WndWatchStart(ExtractFilePath(Application.ExeName) + 'wnd.log');
+  // WndWatch.pas. Включается файлом wnd.on рядом с exe (содержимое не
+  // важно); без него журнал не ведётся и остальные вызовы WndWatch ничего
+  // не делают.
+  if FileExists(ExtractFilePath(Application.ExeName) + 'wnd.on') then
+    WndWatchStart(ExtractFilePath(Application.ExeName) + 'wnd.log');
   WndWatchMainForm(Self, 'главное окно');
   WndWatchControl(FTabs, 'полоса вкладок', True, True);
   WndWatchControl(FStatus2, 'строка состояния', True, True);
