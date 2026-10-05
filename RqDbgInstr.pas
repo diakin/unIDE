@@ -49,6 +49,21 @@ unit RqDbgInstr;
 //  останавливается сам. Массивы, объекты, VARIANT, свои TYPE, переменные
 //  без DIM и глобальные из $INCLUDE-файлов не показываются.
 //
+//  Выражения Watch (этап 3): a(3), Form.Caption, a+b и т.п. RapidQ не
+//  вычисляет текст на ходу, поэтому выражения окна Watch на момент сборки
+//  вставляются в копию: в блок дампа SUB, где известны все имена
+//  выражения и хотя бы одно из них - параметр или локальная этой SUB, или
+//  в RqDbgGlobals, если все имена глобальные (DIM, CREATE, CONST, SUB и
+//  FUNCTION главного файла). Встроенные функции (LEN, MID$...) и свойства
+//  после точки именами не считаются. Строка в файле состояния -
+//  "w номер|тип=значение". Элемент массива или переменная известного
+//  простого типа - через STR$ или как есть, остальное - через VARIANT:
+//      RqDbgWV = выражение
+//      RqDbgWT = RqDbgWS + RqDbgWV     (RqDbgWS - VARIANT со строкой "":
+//                                      строка + число дают строку)
+//  Выражение с ":" или "'" вне кавычек не вставляется. Новое выражение в
+//  Watch видно только после пересборки.
+//
 //  Строка копии - строка исходника: каждая вставленная или пересобранная
 //  строка помнит строку исходника (SrcLineOfCopy), по ней показываются
 //  ошибки компиляции копии.
@@ -109,8 +124,12 @@ type
     FPointProc: array of Integer;   // номер точки -> процедура, -1 - главная часть
     FProcNames: TStringList;        // "SUB Имя" по номеру процедуры
     FCurProc: Integer;              // процедура, в которой идёт разбор
+    FCopyWatch: array of Integer;   // строка копии -> выражение Watch, -1
+    FWatchExprs: TStringList;       // выражения Watch на момент сборки
+    FWatchWhere: TStringList;       // где вычисляется: "SUB A, SUB B", "*"
+    FWatchNote: TStringList;        // почему не вычисляется нигде
     procedure AddCopyLine(AOut: TStrings; const AText: string;
-                          ASrcLine: Integer);
+                          ASrcLine: Integer; AWatch: Integer = -1);
     function NewPoint(ASrcLine: Integer): Integer;
     procedure AddRuntime(AOut: TStrings);
     function Pfx(const AText: string): string;
@@ -118,8 +137,19 @@ type
     // Копия ASrcFile в ACopyFile. ACmdFile, AStateFile - файлы команды и
     // состояния (пути целиком), AEventBase - начало имён событий. False -
     // причина в LastError.
+    // AWatch - выражения окна Watch (может быть nil)
     function Build(const ASrcFile, ACopyFile, ACmdFile, AStateFile,
-                   AEventBase: string): Boolean;
+                   AEventBase: string; AWatch: TStrings): Boolean;
+    // Номер выражения Watch этой сборки, -1 - его не было при сборке
+    function WatchIndex(const AExpr: string): Integer;
+    // Где вычисляется выражение ("SUB A, SUB B", "*" - везде) и почему
+    // нигде (пусто - вычисляется)
+    function WatchWhere(AIndex: Integer): string;
+    function WatchNote(AIndex: Integer): string;
+    // Выражение Watch строки копии (с 0), -1 - не его строка
+    function WatchOfCopy(ACopyLine: Integer): Integer;
+    // Текст выражения Watch этой сборки по номеру
+    function WatchExpr(AIndex: Integer): string;
     // Первая точка строки исходника (с 0), 0 - на строке нет кода
     function PointOfLine(ALine: Integer): Integer;
     // Строка исходника (с 0) точки, -1 - нет такой
@@ -570,6 +600,199 @@ begin
   end;
 end;
 
+// Все имена объявления ("a AS LONG, b$, c(10) AS QFORM" - после DIM,
+// CONST, DEFxxx, в скобках заголовка SUB) - в AOut строками "ИМЯ=ТИП",
+// у массива тип с "[]". Тип по суффиксу, без AS и суффикса - пустой.
+procedure CollectNames(const AText: string; AOut: TStrings);
+var
+  Items: TStringList;
+  ItemIdx, CharIdx, Depth: Integer;
+  Item, VarName, Rest, VarType: string;
+  IsArray: Boolean;
+begin
+  Items := TStringList.Create;
+  try
+    SplitCommas(AText, Items);
+    for ItemIdx := 0 to Items.Count - 1 do
+    begin
+      Item := Trim(Items[ItemIdx]);
+      if (UpperCase(Copy(Item, 1, 6)) = 'BYREF ') or
+         (UpperCase(Copy(Item, 1, 6)) = 'BYVAL ') then
+        Item := Trim(Copy(Item, 7, MaxInt));
+      if (Item = '') or not (Item[1] in ['A'..'Z', 'a'..'z', '_']) then
+        Continue;
+      CharIdx := 1;
+      while (CharIdx <= Length(Item)) and
+            (Item[CharIdx] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+        Inc(CharIdx);
+      while (CharIdx <= Length(Item)) and
+            (Item[CharIdx] in ['$', '%', '&', '!', '#', '?']) do
+        Inc(CharIdx);
+      VarName := UpperCase(Copy(Item, 1, CharIdx - 1));
+      Rest := TrimLeft(Copy(Item, CharIdx, MaxInt));
+      IsArray := Copy(Rest, 1, 1) = '(';
+      if IsArray then
+      begin
+        Depth := 0;
+        CharIdx := 1;
+        while CharIdx <= Length(Rest) do
+        begin
+          if Rest[CharIdx] = '(' then
+            Inc(Depth)
+          else if Rest[CharIdx] = ')' then
+          begin
+            Dec(Depth);
+            if Depth = 0 then
+              Break;
+          end;
+          Inc(CharIdx);
+        end;
+        Rest := TrimLeft(Copy(Rest, CharIdx + 1, MaxInt));
+      end;
+      VarType := '';
+      if UpperCase(Copy(Rest, 1, 3)) = 'AS ' then
+        VarType := UpperCase(WordAt(Copy(Rest, 4, MaxInt), 1))
+      else
+        case VarName[Length(VarName)] of
+          '$': VarType := 'STRING';
+          '%': VarType := 'SHORT';
+          '&': VarType := 'LONG';
+          '!': VarType := 'SINGLE';
+          '#': VarType := 'DOUBLE';
+          '?': VarType := 'BYTE';
+        end;
+      if IsArray then
+        VarType := VarType + '[]';
+      if AOut.IndexOfName(VarName) < 0 then
+        AOut.Add(VarName + '=' + VarType);
+    end;
+  finally
+    Items.Free;
+  end;
+end;
+
+// Встроенные функции и слова-операторы RapidQ: в выражении Watch это не
+// имена переменных
+function IsBuiltinWord(const AWord: string): Boolean;
+const
+  Builtins: array[0..63] of string = ('AND', 'OR', 'NOT', 'XOR', 'MOD',
+    'SHL', 'SHR', 'INV', 'LEN', 'LEFT$', 'RIGHT$', 'MID$', 'STR$', 'VAL',
+    'CHR$', 'ASC', 'UCASE$', 'LCASE$', 'INSTR', 'RINSTR', 'ABS', 'INT',
+    'FIX', 'SQR', 'SIN', 'COS', 'TAN', 'ATN', 'EXP', 'LOG', 'SGN', 'ROUND',
+    'FRAC', 'RND', 'HEX$', 'BIN$', 'OCT$', 'SPACE$', 'STRING$', 'TRIM$',
+    'LTRIM$', 'RTRIM$', 'FIELD$', 'TALLY', 'DELETE$', 'INSERT$', 'REPLACE$',
+    'REPLACESUBSTR$', 'REVERSE$', 'STRF$', 'FORMAT$', 'TIME$', 'DATE$',
+    'TIMER', 'LBOUND', 'UBOUND', 'FILEEXISTS', 'DIREXISTS', 'CURDIR$',
+    'COMMAND$', 'ENVIRON$', 'VARPTR', 'CONVBASE$', 'LCASE');
+var
+  WordIdx: Integer;
+begin
+  Result := True;
+  for WordIdx := Low(Builtins) to High(Builtins) do
+    if AWord = Builtins[WordIdx] then
+      Exit;
+  Result := False;
+end;
+
+// Имена в выражении Watch: без свойств после ".", встроенных функций и
+// чисел, заглавными, без повторов. False - выражение нельзя вставить в код
+// (":" или "'" вне кавычек).
+function ExprNames(const AExpr: string; ANames: TStrings): Boolean;
+var
+  CharIdx, WordStart, PrevIdx: Integer;
+  WordText: string;
+  AfterDot: Boolean;
+begin
+  ANames.Clear;
+  Result := False;
+  CharIdx := 1;
+  while CharIdx <= Length(AExpr) do
+  begin
+    case AExpr[CharIdx] of
+      '"':
+        begin
+          CharIdx := SkipQuoted(AExpr, CharIdx, False) + 1;
+          Continue;
+        end;
+      ':', '''', #13, #10:
+        Exit;
+      'A'..'Z', 'a'..'z', '_':
+        begin
+          WordStart := CharIdx;
+          while (CharIdx <= Length(AExpr)) and
+                (AExpr[CharIdx] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+            Inc(CharIdx);
+          while (CharIdx <= Length(AExpr)) and
+                (AExpr[CharIdx] in ['$', '%', '&', '!', '#', '?']) do
+            Inc(CharIdx);
+          WordText := UpperCase(Copy(AExpr, WordStart, CharIdx - WordStart));
+          PrevIdx := WordStart - 1;
+          while (PrevIdx >= 1) and (AExpr[PrevIdx] = ' ') do
+            Dec(PrevIdx);
+          AfterDot := (PrevIdx >= 1) and (AExpr[PrevIdx] = '.');
+          if not AfterDot and not IsBuiltinWord(WordText) and
+             (ANames.IndexOf(WordText) < 0) then
+            ANames.Add(WordText);
+          Continue;
+        end;
+      '0'..'9':
+        begin
+          while (CharIdx <= Length(AExpr)) and
+                (AExpr[CharIdx] in ['0'..'9', '.', 'E', 'e']) do
+            Inc(CharIdx);
+          Continue;
+        end;
+    end;
+    Inc(CharIdx);
+  end;
+  Result := True;
+end;
+
+// Выражение вида "Имя" или "Имя(...)" (скобки - до конца): AName - имя
+// заглавными, AHasArgs - есть скобки. False - выражение сложнее.
+function SimpleExpr(const AExpr: string; var AName: string;
+                    var AHasArgs: Boolean): Boolean;
+var
+  CharIdx, Depth: Integer;
+  Rest: string;
+begin
+  Result := False;
+  AName := '';
+  AHasArgs := False;
+  if (AExpr = '') or not (AExpr[1] in ['A'..'Z', 'a'..'z', '_']) then
+    Exit;
+  CharIdx := 1;
+  while (CharIdx <= Length(AExpr)) and
+        (AExpr[CharIdx] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+    Inc(CharIdx);
+  while (CharIdx <= Length(AExpr)) and
+        (AExpr[CharIdx] in ['$', '%', '&', '!', '#', '?']) do
+    Inc(CharIdx);
+  AName := UpperCase(Copy(AExpr, 1, CharIdx - 1));
+  Rest := Trim(Copy(AExpr, CharIdx, MaxInt));
+  if Rest = '' then
+  begin
+    Result := True;
+    Exit;
+  end;
+  if Rest[1] <> '(' then
+    Exit;
+  Depth := 0;
+  for CharIdx := 1 to Length(Rest) do
+  begin
+    if Rest[CharIdx] = '(' then
+      Inc(Depth)
+    else if Rest[CharIdx] = ')' then
+    begin
+      Dec(Depth);
+      if (Depth = 0) and (CharIdx < Length(Rest)) then
+        Exit;   // после скобок ещё что-то: a(1).Caption, a(1)+2
+    end;
+  end;
+  AHasArgs := True;
+  Result := Depth = 0;
+end;
+
 function IsSubWord(const AWord: string): Boolean;
 begin
   Result := (AWord = 'SUB') or (AWord = 'FUNCTION') or (AWord = 'SUBI') or
@@ -634,24 +857,75 @@ end;
 { TRqDbgInstr }
 
 procedure TRqDbgInstr.AddCopyLine(AOut: TStrings; const AText: string;
-                                  ASrcLine: Integer);
+                                  ASrcLine: Integer; AWatch: Integer = -1);
 begin
   AOut.Add(AText);
   if FCopyCount >= Length(FCopySrc) then
+  begin
     SetLength(FCopySrc, FCopyCount * 2 + 256);
+    SetLength(FCopyWatch, FCopyCount * 2 + 256);
+  end;
   FCopySrc[FCopyCount] := ASrcLine;
+  FCopyWatch[FCopyCount] := AWatch;
   Inc(FCopyCount);
+end;
+
+function TRqDbgInstr.WatchIndex(const AExpr: string): Integer;
+var
+  ExprIdx: Integer;
+begin
+  Result := -1;
+  for ExprIdx := 0 to FWatchExprs.Count - 1 do
+    if CompareText(FWatchExprs[ExprIdx], Trim(AExpr)) = 0 then
+    begin
+      Result := ExprIdx;
+      Exit;
+    end;
+end;
+
+function TRqDbgInstr.WatchWhere(AIndex: Integer): string;
+begin
+  Result := '';
+  if (AIndex >= 0) and (AIndex < FWatchWhere.Count) then
+    Result := FWatchWhere[AIndex];
+end;
+
+function TRqDbgInstr.WatchNote(AIndex: Integer): string;
+begin
+  Result := '';
+  if (AIndex >= 0) and (AIndex < FWatchNote.Count) then
+    Result := FWatchNote[AIndex];
+end;
+
+function TRqDbgInstr.WatchExpr(AIndex: Integer): string;
+begin
+  Result := '';
+  if (AIndex >= 0) and (AIndex < FWatchExprs.Count) then
+    Result := FWatchExprs[AIndex];
+end;
+
+function TRqDbgInstr.WatchOfCopy(ACopyLine: Integer): Integer;
+begin
+  Result := -1;
+  if (ACopyLine >= 0) and (ACopyLine < FCopyCount) then
+    Result := FCopyWatch[ACopyLine];
 end;
 
 constructor TRqDbgInstr.Create;
 begin
   inherited Create;
   FProcNames := TStringList.Create;
+  FWatchExprs := TStringList.Create;
+  FWatchWhere := TStringList.Create;
+  FWatchNote := TStringList.Create;
 end;
 
 destructor TRqDbgInstr.Destroy;
 begin
   FProcNames.Free;
+  FWatchExprs.Free;
+  FWatchWhere.Free;
+  FWatchNote.Free;
   inherited;
 end;
 
@@ -734,6 +1008,10 @@ begin
   Add('DIM RqDbgPendLvl AS LONG');
   Add('DIM RqDbgPendKey AS LONG');
   Add('DIM RqDbgStateFile AS QFILESTREAM');
+  Add('DIM RqDbgWV AS VARIANT');
+  Add('DIM RqDbgWS AS VARIANT');
+  Add('DIM RqDbgWT AS STRING');
+  Add('DIM RqDbgBusy AS LONG');
   Add('DECLARE SUB RqDbgReadCmd');
   Add('DECLARE SUB RqDbgGlobals');
   Add('DECLARE SUB RqDbgHalt');
@@ -822,6 +1100,7 @@ begin
   Add('  RqDbgStopLvl = RqDbgPendLvl');
   Add('  RqDbgStopKey = RqDbgPendKey');
   Add('  RqDbgReadCmd');
+  Add('  RqDbgBusy = 0');
   Add('END SUB');
   Add('');
   // Точка с поднятым флагом: стоять ли здесь. Шаг не стоит дальше на той
@@ -832,6 +1111,9 @@ begin
   // позовёт RqDbgHalt
   Add('SUB RqDbg (RqDbgPId AS LONG, RqDbgPLvl AS LONG, RqDbgPKey AS LONG, ' +
       'RqDbgPSelf AS LONG)');
+  // Пока идёт остановка (дамп, выражения Watch с вызовом FUNCTION
+  // программы) - проверки молчат
+  Add('  IF RqDbgBusy THEN EXIT SUB');
   Add('  RqDbgDepth = RqDbgPLvl');
   Add('  IF RqDbgMode = 1 THEN');
   Add('    IF RqDbgPKey = RqDbgStopKey THEN');
@@ -855,6 +1137,7 @@ begin
   Add('  ELSE');
   Add('    IF RqDbgUser(RqDbgPId) = 0 THEN EXIT SUB');
   Add('  END IF');
+  Add('  RqDbgBusy = 1');
   Add('  RqDbgPendId = RqDbgPId');
   Add('  RqDbgPendLvl = RqDbgPLvl');
   Add('  RqDbgPendKey = RqDbgPKey');
@@ -875,15 +1158,17 @@ begin
          RqDbgGoEventName(FEventBase), '")');
   Add('RqDbgStopKey = -1');
   Add('RqDbgStopLvl = -1');
+  Add('RqDbgWS = ""');
   Add('RqDbgReadCmd');
   Add(''' --- unIDE: конец кода отладчика ---');
 end;
 
 function TRqDbgInstr.Build(const ASrcFile, ACopyFile, ACmdFile, AStateFile,
-                           AEventBase: string): Boolean;
+                           AEventBase: string; AWatch: TStrings): Boolean;
 var
   Src, Body, Parts, OutLines: TStringList;
   BodySrc: array of Integer;     // строка Body -> строка исходника
+  BodyWatch: array of Integer;   // строка Body -> выражение Watch, -1
   Logical: array of Integer;     // первая строка логической строки
   LogicalEnd: array of Integer;  // последняя
   LogicalCode: array of string;  // код без комментариев и "_"
@@ -905,6 +1190,15 @@ var
   CurExit, CurVarsLabel: string;  // EXIT SUB/FUNCTION и метка блока
   VarIdx: Integer;
   VarRest: string;
+  GlobalAll: TStringList;         // все глобальные имена: "ИМЯ=ТИП"
+  ProcAll: TStringList;           // все имена SUB: параметры и DIM
+  LocalAll: TStringList;          // имена всех SUB (для "не найдено")
+  WatchNames: array of TStringList; // имена каждого выражения, nil - нельзя
+  WatchIdx, NameIdx: Integer;
+  WatchLines: TStringList;
+  PreInSub: Boolean;
+  PreCreate: Integer;
+  PreSkip, NoteText: string;
   ExclStack: array of Boolean;    // блок условной сборки не собирается
   CondStack: array of Boolean;    // условие блока (для $ELSE)
   CondDepth: Integer;
@@ -990,12 +1284,21 @@ var
     Result := True;
   end;
 
-  procedure AddBody(const AText: string; ASrcLine: Integer);
+  procedure AddBodyW(const AText: string; ASrcLine, AWatch: Integer);
   begin
     if Body.Count >= Length(BodySrc) then
+    begin
       SetLength(BodySrc, Body.Count * 2 + 256);
+      SetLength(BodyWatch, Body.Count * 2 + 256);
+    end;
     BodySrc[Body.Count] := ASrcLine;
+    BodyWatch[Body.Count] := AWatch;
     Body.Add(AText);
+  end;
+
+  procedure AddBody(const AText: string; ASrcLine: Integer);
+  begin
+    AddBodyW(AText, ASrcLine, -1);
   end;
 
   // Строка кода отладчика в теле: RqDbg - выбранный префикс
@@ -1025,6 +1328,94 @@ var
               DescType + '", ' + Result + ')';
   end;
 
+  // Тип имени в области: сначала ALocal (может быть nil), потом глобальные.
+  // AFound - имя известно.
+  function NameType(const AName: string; ALocal: TStrings;
+                    var AFound: Boolean): string;
+  begin
+    AFound := True;
+    if (ALocal <> nil) and (ALocal.IndexOfName(AName) >= 0) then
+      Result := ALocal.Values[AName]
+    else if GlobalAll.IndexOfName(AName) >= 0 then
+      Result := GlobalAll.Values[AName]
+    else
+    begin
+      AFound := False;
+      Result := '';
+    end;
+  end;
+
+  // Выражение вычисляется в области: все его имена известны; в SUB
+  // (ALocal <> nil) - хотя бы одно из них её параметр или локальная
+  function WatchFits(AIdx: Integer; ALocal: TStrings): Boolean;
+  var
+    FitIdx: Integer;
+    AnyLocal: Boolean;
+  begin
+    Result := False;
+    if WatchNames[AIdx] = nil then
+      Exit;
+    AnyLocal := False;
+    for FitIdx := 0 to WatchNames[AIdx].Count - 1 do
+      if (ALocal <> nil) and
+         (ALocal.IndexOfName(WatchNames[AIdx][FitIdx]) >= 0) then
+        AnyLocal := True
+      else if GlobalAll.IndexOfName(WatchNames[AIdx][FitIdx]) < 0 then
+        Exit;
+    Result := (ALocal = nil) or AnyLocal;
+  end;
+
+  // Строки вычисления выражения AIdx в области ALocal. Пусто - вычислять
+  // не нужно или нельзя (простое имя - его покажет дамп, массив целиком,
+  // объект).
+  procedure WatchCode(AIdx: Integer; ALocal: TStrings; ALines: TStrings);
+  var
+    ExprText, SimpleName, SimpleType, ElemType, IdxText: string;
+    HasArgs, Known, IsArray: Boolean;
+  begin
+    ALines.Clear;
+    ExprText := FWatchExprs[AIdx];
+    IdxText := IntToStr(AIdx);
+    if SimpleExpr(ExprText, SimpleName, HasArgs) then
+    begin
+      SimpleType := NameType(SimpleName, ALocal, Known);
+      // SUB значения не имеет; FUNCTION - вызов, через VARIANT
+      if SimpleType = 'SUB' then
+        Exit;
+      if SimpleType = 'FUNCTION' then
+        SimpleType := 'VARIANT';
+      IsArray := Copy(SimpleType, Length(SimpleType) - 1, 2) = '[]';
+      ElemType := SimpleType;
+      if IsArray then
+        ElemType := Copy(SimpleType, 1, Length(SimpleType) - 2);
+      if not HasArgs then
+      begin
+        // Имя целиком: простой тип покажет дамп; массив и объект - нечего
+        if IsArray or (ShowableType(ElemType) <> '') or
+           ((ElemType <> '') and (ElemType <> 'VARIANT')) then
+          Exit;
+      end
+      else if IsArray and (ElemType <> '') and (ElemType <> 'VARIANT') and
+              (ShowableType(ElemType) = '') then
+        Exit   // элемент - объект
+      else if IsArray and (ShowableType(ElemType) <> '') then
+      begin
+        // Элемент массива известного типа
+        if ElemType = 'STRING' then
+          ALines.Add(Pfx('RqDbgVal("w", "') + IdxText + '", "STRING", ' +
+                     ExprText + ')')
+        else
+          ALines.Add(Pfx('RqDbgVal("w", "') + IdxText + '", "' + ElemType +
+                     '", STR$(' + ExprText + '))');
+        Exit;
+      end;
+    end;
+    // Остальное - через VARIANT
+    ALines.Add(Pfx('RqDbgWV = ') + ExprText);
+    ALines.Add(Pfx('RqDbgWT = RqDbgWS + RqDbgWV'));
+    ALines.Add(Pfx('RqDbgVal("w", "') + IdxText + Pfx('", "", RqDbgWT)'));
+  end;
+
   // Начало SUB/FUNCTION: номер процедуры, параметры, метка блока дампа
   procedure StartProc(const AHead: string);
   var
@@ -1042,6 +1433,8 @@ var
     FCurProc := FProcNames.Count - 1;
     ProcVars.Clear;
     CollectVars(HeaderParams(AHead), 'p', '', ProcVars);
+    ProcAll.Clear;
+    CollectNames(HeaderParams(AHead), ProcAll);
     CurDump := (HeadWord = 'SUB') or (HeadWord = 'FUNCTION');
     if HeadWord = 'FUNCTION' then
       CurExit := 'EXIT FUNCTION'
@@ -1053,8 +1446,12 @@ var
   // Перед END SUB: глубина, выход и блок дампа локальных
   procedure EndProc(const AIndent: string; ALine: Integer);
   var
-    DumpIdx: Integer;
+    DumpIdx, CodeIdx, NameAdd: Integer;
   begin
+    // Имена этой SUB - в общий список: для пояснения "имя не найдено"
+    for NameAdd := 0 to ProcAll.Count - 1 do
+      if LocalAll.IndexOf(ProcAll.Names[NameAdd]) < 0 then
+        LocalAll.Add(ProcAll.Names[NameAdd]);
     if InSub then
       AddGen(AIndent + '  RqDbgDepth = RqDbgLvl - 1', ALine);
     if InSub and CurDump then
@@ -1063,6 +1460,20 @@ var
       AddGen(AIndent + CurVarsLabel + ':', ALine);
       for DumpIdx := 0 to ProcVars.Count - 1 do
         AddBody(AIndent + '  ' + ValLine(ProcVars[DumpIdx]), ALine);
+      // Выражения Watch, имена которых есть в этой SUB
+      for DumpIdx := 0 to FWatchExprs.Count - 1 do
+        if WatchFits(DumpIdx, ProcAll) then
+        begin
+          WatchCode(DumpIdx, ProcAll, WatchLines);
+          if WatchLines.Count = 0 then
+            Continue;
+          for CodeIdx := 0 to WatchLines.Count - 1 do
+            AddBodyW(AIndent + '  ' + WatchLines[CodeIdx], ALine, DumpIdx);
+          if FWatchWhere[DumpIdx] <> '' then
+            FWatchWhere[DumpIdx] := FWatchWhere[DumpIdx] + ', ';
+          FWatchWhere[DumpIdx] := FWatchWhere[DumpIdx] +
+                                  FProcNames[FCurProc];
+        end;
       AddGen(AIndent + '  RqDbgHalt', ALine);
       AddGen(AIndent + '  RETURN', ALine);
     end;
@@ -1178,6 +1589,32 @@ begin
   Aliases := TStringList.Create;
   GlobalVars := TStringList.Create;
   ProcVars := TStringList.Create;
+  GlobalAll := TStringList.Create;
+  ProcAll := TStringList.Create;
+  LocalAll := TStringList.Create;
+  WatchLines := TStringList.Create;
+  FWatchExprs.Clear;
+  FWatchWhere.Clear;
+  FWatchNote.Clear;
+  SetLength(FCopyWatch, 0);
+  if AWatch <> nil then
+    for WatchIdx := 0 to AWatch.Count - 1 do
+      if (Trim(AWatch[WatchIdx]) <> '') and
+         (FWatchExprs.IndexOf(Trim(AWatch[WatchIdx])) < 0) then
+        FWatchExprs.Add(Trim(AWatch[WatchIdx]));
+  SetLength(WatchNames, FWatchExprs.Count);
+  for WatchIdx := 0 to FWatchExprs.Count - 1 do
+  begin
+    FWatchWhere.Add('');
+    FWatchNote.Add('');
+    WatchNames[WatchIdx] := TStringList.Create;
+    if not ExprNames(FWatchExprs[WatchIdx], WatchNames[WatchIdx]) then
+    begin
+      FreeAndNil(WatchNames[WatchIdx]);
+      FWatchNote[WatchIdx] := 'в выражении ":" или комментарий - в код ' +
+                              'не вставляется';
+    end;
+  end;
   CondDepth := 0;
   FProcNames.Clear;
   FCurProc := -1;
@@ -1264,6 +1701,68 @@ begin
         Escape := Pos('ON', Copy(Word1, 13, MaxInt)) > 0;
       Inc(LogicalCount);
       Inc(LineIdx);
+    end;
+
+    // Предварительный проход: все глобальные имена главного файла (для
+    // выражений Watch в SUB нужны и глобальные, объявленные ниже SUB):
+    // DIM, CONST, DEFxxx вне SUB, имена CREATE, SUB и FUNCTION
+    PreInSub := False;
+    PreCreate := 0;
+    PreSkip := '';
+    for LogIdx := 0 to LogicalCount - 1 do
+    begin
+      Code := Trim(LogicalCode[LogIdx]);
+      if (Code = '') or (Code[1] in ['$', '#']) then
+        Continue;
+      SplitStatements(Code, LogicalEsc[LogIdx], Parts, ColonAfterFirst);
+      for PartIdx := 0 to Parts.Count - 1 do
+      begin
+        Stmt := Parts[PartIdx];
+        Word1 := WordAt(Stmt, 1);
+        VarRest := Trim(Copy(Stmt, Length(Word1) + 1, MaxInt));
+        if PreSkip <> '' then
+        begin
+          if (Word1 = 'END') and (WordAt(Stmt, 2) = PreSkip) then
+            PreSkip := '';
+          Continue;
+        end;
+        if Word1 = 'CREATE' then
+        begin
+          Inc(PreCreate);
+          CollectNames(VarRest, GlobalAll);   // "Имя AS QFORM" - объект
+        end
+        else if (Word1 = 'END') and (WordAt(Stmt, 2) = 'CREATE') then
+        begin
+          if PreCreate > 0 then
+            Dec(PreCreate);
+        end
+        else if PreCreate > 0 then
+          // присваивания свойств внутри CREATE
+        else if IsSkipBlockWord(Word1) then
+          PreSkip := Word1
+        else if Word1 = 'DECLARE' then
+        begin
+          // Тип - SUB или FUNCTION: у SUB значения нет, FUNCTION - вызов
+          if (WordAt(VarRest, 1) = 'FUNCTION') or
+             (WordAt(VarRest, 1) = 'FUNCTIONI') then
+            CollectNames(WordAt(VarRest, 2) + ' AS FUNCTION', GlobalAll)
+          else
+            CollectNames(WordAt(VarRest, 2) + ' AS SUB', GlobalAll);
+        end
+        else if PartKind(Stmt) = pkSubHead then
+        begin
+          if (Word1 = 'FUNCTION') or (Word1 = 'FUNCTIONI') then
+            CollectNames(WordAt(VarRest, 1) + ' AS FUNCTION', GlobalAll)
+          else
+            CollectNames(WordAt(VarRest, 1) + ' AS SUB', GlobalAll);
+          PreInSub := True;
+        end
+        else if PartKind(Stmt) = pkSubEnd then
+          PreInSub := False
+        else if not PreInSub and ((Word1 = 'DIM') or (Word1 = 'CONST') or
+                                  (DefWordType(Word1) <> '')) then
+          CollectNames(VarRest, GlobalAll);
+      end;
     end;
 
     // Начало файла (пустые строки, комментарии, $APPTYPE и подобное) -
@@ -1356,17 +1855,25 @@ begin
         if Word1 = 'DIM' then
         begin
           if InSub then
-            CollectVars(VarRest, 'l', '', ProcVars)
+          begin
+            CollectVars(VarRest, 'l', '', ProcVars);
+            CollectNames(VarRest, ProcAll);
+          end
           else
             CollectVars(VarRest, 'g', '', GlobalVars);
         end
         else if DefWordType(Word1) <> '' then
         begin
           if InSub then
-            CollectVars(VarRest, 'l', DefWordType(Word1), ProcVars)
+          begin
+            CollectVars(VarRest, 'l', DefWordType(Word1), ProcVars);
+            CollectNames(VarRest, ProcAll);
+          end
           else
             CollectVars(VarRest, 'g', DefWordType(Word1), GlobalVars);
-        end;
+        end
+        else if (Word1 = 'CONST') and InSub then
+          CollectNames(VarRest, ProcAll);
       end;
 
       if not Changed then
@@ -1473,10 +1980,12 @@ begin
     // Копия: начало файла, код отладчика (число точек известно только
     // теперь), тело
     for LineIdx := 0 to LeadLines - 1 do
-      AddCopyLine(OutLines, Body[LineIdx], BodySrc[LineIdx]);
+      AddCopyLine(OutLines, Body[LineIdx], BodySrc[LineIdx],
+                  BodyWatch[LineIdx]);
     AddRuntime(OutLines);
     for LineIdx := LeadLines to Body.Count - 1 do
-      AddCopyLine(OutLines, Body[LineIdx], BodySrc[LineIdx]);
+      AddCopyLine(OutLines, Body[LineIdx], BodySrc[LineIdx],
+                  BodyWatch[LineIdx]);
     // Глобальные - в конце, после всех их DIM
     AddCopyLine(OutLines, '', -1);
     AddCopyLine(OutLines, Pfx(''' --- unIDE: глобальные переменные для ' +
@@ -1484,7 +1993,42 @@ begin
     AddCopyLine(OutLines, Pfx('SUB RqDbgGlobals'), -1);
     for VarIdx := 0 to GlobalVars.Count - 1 do
       AddCopyLine(OutLines, '  ' + ValLine(GlobalVars[VarIdx]), -1);
+    // Выражения Watch только из глобальных имён - здесь (они видны на любой
+    // остановке)
+    for WatchIdx := 0 to FWatchExprs.Count - 1 do
+      if (FWatchWhere[WatchIdx] = '') and WatchFits(WatchIdx, nil) then
+      begin
+        WatchCode(WatchIdx, nil, WatchLines);
+        for LineIdx := 0 to WatchLines.Count - 1 do
+          AddCopyLine(OutLines, '  ' + WatchLines[LineIdx], -1, WatchIdx);
+        if WatchLines.Count > 0 then
+          FWatchWhere[WatchIdx] := '*';
+      end;
     AddCopyLine(OutLines, Pfx('END SUB'), -1);
+
+    // Почему выражение не вычисляется нигде
+    for WatchIdx := 0 to FWatchExprs.Count - 1 do
+    begin
+      if (FWatchWhere[WatchIdx] <> '') or (FWatchNote[WatchIdx] <> '') or
+         (WatchNames[WatchIdx] = nil) then
+        Continue;
+      NoteText := '';
+      for NameIdx := 0 to WatchNames[WatchIdx].Count - 1 do
+        if (GlobalAll.IndexOfName(WatchNames[WatchIdx][NameIdx]) < 0) and
+           (LocalAll.IndexOf(WatchNames[WatchIdx][NameIdx]) < 0) then
+        begin
+          if NoteText <> '' then
+            NoteText := NoteText + ', ';
+          NoteText := NoteText + WatchNames[WatchIdx][NameIdx];
+        end;
+      if NoteText <> '' then
+        FWatchNote[WatchIdx] := 'не найдено: ' + NoteText + ' (нужно ' +
+          'объявление DIM/CREATE в главном файле; переменные без DIM и ' +
+          'из $INCLUDE не видны)'
+      else
+        FWatchNote[WatchIdx] := 'имена из разных SUB или простое имя, ' +
+          'массив целиком, объект - не вычисляется';
+    end;
 
     // Концы строк - CRLF, как у исходников RapidQ
     try
@@ -1507,6 +2051,12 @@ begin
     end;
     Result := True;
   finally
+    for WatchIdx := 0 to High(WatchNames) do
+      WatchNames[WatchIdx].Free;
+    WatchLines.Free;
+    LocalAll.Free;
+    ProcAll.Free;
+    GlobalAll.Free;
     ProcVars.Free;
     GlobalVars.Free;
     Aliases.Free;

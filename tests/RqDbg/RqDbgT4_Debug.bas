@@ -22,6 +22,11 @@
 '      в главной части - LoopIdx, ShortSum. Мышь над именем на остановке -
 '      подсказка со значением. В окне Watch пункт Locals добавляет
 '      параметры и локальные текущей SUB.
+'  10. Выражения в Watch (добавить до сборки, затем Compile & Run):
+'      SumIdx * 2 и LimitVal + TotalVal - на остановке в CalcSum;
+'      InfoLabel.Caption, MainForm.Width, Square(3) - на любой остановке;
+'      Nope + 1 - пояснение "не найдено". Выражение, добавленное после
+'      сборки, покажет значение после пересборки.
 
 DECLARE SUB CalcSum (LimitVal AS INTEGER)
 DECLARE FUNCTION Square (BaseVal AS INTEGER) AS INTEGER

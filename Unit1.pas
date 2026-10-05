@@ -2123,6 +2123,9 @@ type
     function  RqDbgVarFind(const AExpr: string; var AValue,
                            AType: string): Boolean;
     procedure RqDbgWatchRefresh;
+    function  RqDbgWatchValue(const AExpr: string; var AValue,
+                              ANote: string): Boolean;
+    function  RqDbgPlainName(const AExpr: string): Boolean;
     // Окно Watch
     function  DbgExprAtCaret: string;
     function  DbgDeclNameAt(ACharPos: Integer; const AWord: string): string;
@@ -38948,7 +38951,7 @@ var
   var
     Candidate, Line, Notes, CopyNote: string;
     Searched: Boolean;
-    CopyLine: Integer;
+    CopyLine, WatchLine: Integer;
   begin
     if ErrFile = '' then
       ErrFile := ABas
@@ -38983,6 +38986,12 @@ var
       if ErrLine > 0 then
       begin
         CopyNote := ', в отладочной копии строка ' + IntToStr(ErrLine);
+        // Строка выражения Watch: исправить или убрать его из окна Watch
+        WatchLine := FRqDbgInstr.WatchOfCopy(ErrLine - 1);
+        if WatchLine >= 0 then
+          CopyNote := CopyNote + ' - выражение Watch "' +
+                      FRqDbgInstr.WatchExpr(WatchLine) + '": исправьте его ' +
+                      'или уберите из окна Watch';
         CopyLine := FRqDbgInstr.SrcLineOfCopy(ErrLine - 1);
         if CopyLine >= 0 then
           ErrLine := CopyLine + 1
@@ -45147,6 +45156,7 @@ end;
 function TForm1.RqDbgBuild(const ABas: string; var ACopy: string): Boolean;
 var
   BaseName: string;
+  WatchIdx, WatchPos: Integer;
 begin
   Result := False;
   if FRqDbgInstr = nil then
@@ -45158,7 +45168,8 @@ begin
   if not FRqDbgInstr.Build(ABas, ACopy, BaseName + '_rqdbg.cmd',
                            BaseName + '_rqdbg.state',
                            'unIDE_RqDbg_' + IntToStr(Integer(GetCurrentProcessId)) +
-                           '_' + IntToStr(Integer(GetTickCount))) then
+                           '_' + IntToStr(Integer(GetTickCount)),
+                           FWatchList) then
   begin
     LogComp('Отладчик RapidQ: копия не построена - ' + FRqDbgInstr.LastError);
     Exit;
@@ -45168,6 +45179,16 @@ begin
   DbgClearEdits;
   LogComp('Отладочная сборка RapidQ: ' + ExtractFileName(ACopy) + ', точек ' +
           IntToStr(FRqDbgInstr.PointCount));
+  // Выражения Watch, которые не вставлены в копию, - с причиной
+  if FWatchList <> nil then
+    for WatchIdx := 0 to FWatchList.Count - 1 do
+    begin
+      WatchPos := FRqDbgInstr.WatchIndex(FWatchList[WatchIdx]);
+      if (WatchPos >= 0) and (FRqDbgInstr.WatchNote(WatchPos) <> '') and
+         not RqDbgPlainName(FWatchList[WatchIdx]) then
+        LogComp('  Watch "' + FWatchList[WatchIdx] + '": ' +
+                FRqDbgInstr.WatchNote(WatchPos));
+    end;
   // Имена RqDbg... уже есть в программе - код отладчика взял другие
   if FRqDbgInstr.Prefix <> 'RqDbg' then
     LogComp('  имена кода отладчика в копии - ' + FRqDbgInstr.Prefix +
@@ -45611,15 +45632,68 @@ begin
   end;
 end;
 
+// Простое имя: буквы, цифры, _ и суффикс типа
+function TForm1.RqDbgPlainName(const AExpr: string): Boolean;
+var
+  CharIdx: Integer;
+begin
+  Result := Trim(AExpr) <> '';
+  for CharIdx := 1 to Length(Trim(AExpr)) do
+    if not (Trim(AExpr)[CharIdx] in ['A'..'Z', 'a'..'z', '0'..'9', '_',
+                                     '$', '%', '&', '!', '#', '?']) then
+      Result := False;
+end;
+
+// Значение выражения Watch, вычисленного копией (строки "w номер" файла
+// состояния). False - значения нет, ANote - почему (в угловых скобках).
+function TForm1.RqDbgWatchValue(const AExpr: string; var AValue,
+                                ANote: string): Boolean;
+var
+  WatchPos, VarIdx: Integer;
+  KeyText, Where, Entry: string;
+begin
+  Result := False;
+  AValue := '';
+  ANote := '';
+  if FRqDbgInstr = nil then
+    Exit;
+  WatchPos := FRqDbgInstr.WatchIndex(AExpr);
+  if WatchPos < 0 then
+  begin
+    ANote := '<выражение добавлено после сборки - значение будет после ' +
+             'пересборки (Compile & Run)>';
+    Exit;
+  end;
+  if FRqDbgVars <> nil then
+  begin
+    KeyText := 'w'#9 + IntToStr(WatchPos) + #9;
+    for VarIdx := 0 to FRqDbgVars.Count - 1 do
+      if Copy(FRqDbgVars[VarIdx], 1, Length(KeyText)) = KeyText then
+      begin
+        // "w<TAB>номер<TAB>тип<TAB>значение"
+        Entry := Copy(FRqDbgVars[VarIdx], Length(KeyText) + 1, MaxInt);
+        AValue := Copy(Entry, Pos(#9, Entry) + 1, MaxInt);
+        Result := True;
+        Exit;
+      end;
+  end;
+  Where := FRqDbgInstr.WatchWhere(WatchPos);
+  if FRqDbgInstr.WatchNote(WatchPos) <> '' then
+    ANote := '<' + FRqDbgInstr.WatchNote(WatchPos) + '>'
+  else if (Where <> '') and (Where <> '*') then
+    ANote := '<вычисляется только в: ' + Where + '>'
+  else
+    ANote := '<нет значения>';
+end;
+
 // Окно Watch под отладчиком RapidQ: значения - из файла состояния
 // остановки. Показываются объявленные переменные простых типов; массивы,
 // объекты, выражения - пока нет.
 procedure TForm1.RqDbgWatchRefresh;
 var
-  ExprIdx, CharIdx: Integer;
-  State, ValueText, TypeText, Where, ExprText: string;
+  ExprIdx: Integer;
+  State, ValueText, TypeText, Where, ExprText, NoteText: string;
   Item: TListItem;
-  IsName: Boolean;
 
   procedure SetSub(AItem: TListItem; ASubIdx: Integer; const AText: string);
   begin
@@ -45661,18 +45735,16 @@ begin
         ValueText := State
       else if not RqDbgVarFind(ExprText, ValueText, TypeText) then
       begin
-        // Имя или выражение: имя - буквы, цифры, _ и суффикс типа
-        IsName := ExprText <> '';
-        for CharIdx := 1 to Length(ExprText) do
-          if not (ExprText[CharIdx] in ['A'..'Z', 'a'..'z', '0'..'9', '_',
-                                        '$', '%', '&', '!', '#', '?']) then
-            IsName := False;
-        if IsName then
+        // Выражение, вычисленное копией; простое имя без значения -
+        // своё пояснение
+        if RqDbgWatchValue(ExprText, ValueText, NoteText) then
+          TypeText := '(выражение)'
+        else if RqDbgPlainName(ExprText) and (FRqDbgInstr <> nil) and
+                (FRqDbgInstr.WatchIndex(ExprText) >= 0) then
           ValueText := '<нет: не объявлена через DIM в этой SUB или ' +
                        'глобально, массив, объект или из $INCLUDE>'
         else
-          ValueText := '<выражения пока не вычисляются - только имена ' +
-                       'переменных>';
+          ValueText := NoteText;
       end;
       SetSub(Item, 0, ValueText);
       SetSub(Item, 1, TypeText);
@@ -46145,7 +46217,8 @@ begin
   if (FDbgSession = nil) and FRqDbgOn then
   begin
     if FRqDbgPaused then
-      Result := RqDbgVarFind(AExpr, AValue, TypeText);
+      Result := RqDbgVarFind(AExpr, AValue, TypeText) or
+                RqDbgWatchValue(AExpr, AValue, TypeText);
     Exit;
   end;
   if (AExpr = '') or (FDbgSession = nil) or FDbgSession.Finished or
