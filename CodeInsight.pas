@@ -37,9 +37,13 @@ type
     Line: Integer;        // строка объявления (от 0)
   end;
 
+  // Именованный тип: в Delphi 7 два разных "array of TCiSymbol"
+  // несовместимы при присваивании
+  TCiSymbolArray = array of TCiSymbol;
+
   TCiSymbols = class
   private
-    FItems: array of TCiSymbol;
+    FItems: TCiSymbolArray;
     FCount: Integer;
     function GetItem(AIndex: Integer): TCiSymbol;
   public
@@ -204,7 +208,7 @@ procedure TCiSymbols.SortUnique;
 var
   Keys: TStringList;
   ItemIdx, KeyIdx: Integer;
-  Sorted: array of TCiSymbol;
+  Sorted: TCiSymbolArray;
   Key: string;
 begin
   Keys := TStringList.Create;
