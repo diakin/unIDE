@@ -17452,6 +17452,10 @@ OpenDialog1.FilterIndex := 1; // по умолчанию показываем в
   WndWatchControl(FTabs, 'полоса вкладок', True, True);
   WndWatchControl(FStatus2, 'строка состояния', True, True);
   WndWatchControl(pnlMain, 'pnlMain', True);
+  // Сообщения родителя полосы вкладок и главного окна - в журнал вместе с
+  // белой полосой: видно, кому досталась перерисовка
+  WndWatchTrace(pnlMain);
+  WndWatchTrace(Self);
 end;
 
 procedure TForm1.FormDestroy(Sender: TObject);
@@ -51792,6 +51796,8 @@ end;
 // делается перед его показом. Отдельно от показа: снимок формы для
 // инспектора (TakeOwnSnap) делает то же, не открывая окна.
 procedure TForm1.PrepareOptionsForm;
+var
+  CtlIdx: Integer;
 begin
   // Форма создаётся ОДИН раз. Раньше каждый клик порождал новый экземпляр,
   // а старый оставался висеть в памяти вместе со всеми своими контролами.
@@ -51804,6 +51810,13 @@ begin
   begin
     Form2.InitOptions;
     UiApplyForm(Form2);
+    // wnd.log: белые полосы и на вкладках окна настроек, и на самом окне
+    for CtlIdx := 0 to Form2.ControlCount - 1 do
+      if Form2.Controls[CtlIdx] is TPageControl then
+        WndWatchControl(TPageControl(Form2.Controls[CtlIdx]),
+                        'IDE Options: вкладки', True, True);
+    WndWatchControl(Form2, 'IDE Options', False);
+    WndWatchTrace(Form2);
   end;
 
   // RefreshGridFromForm1 сама пересчитывает структуру таблицы под текущее число
