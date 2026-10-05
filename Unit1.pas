@@ -28,6 +28,7 @@ uses
   DlgArdBoards,   // Arduino: Board Manager
   DlgArdLibs,     // Arduino: Library Manager
   DlgArdCli,      // Arduino: Arduino CLI Help
+  WndWatch,       // журнал главного окна и перерисовки (wnd.log)
 // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
 // InputQuery перекрывают одноимённые функции Dialogs
   UiDialogs;
@@ -17441,6 +17442,16 @@ OpenDialog1.FilterIndex := 1; // по умолчанию показываем в
   TMsgTimer.Create(FRightPanel, 'правая панель');
   TMsgTimer.Create(RichEdit1, 'редактор');
   TMsgTimer.Create(Self, 'главное окно');
+
+  // Журнал окна wnd.log рядом с exe: поиск давней ошибки - белые полосы на
+  // полосе вкладок и строке состояния, когда поверх окна двигают другое
+  // окно, и пропадание окна с экрана, как свёрнутого. Что пишется - в
+  // WndWatch.pas.
+  WndWatchStart(ExtractFilePath(Application.ExeName) + 'wnd.log');
+  WndWatchControl(Self, 'главное окно', False);
+  WndWatchControl(FTabs, 'полоса вкладок', True);
+  WndWatchControl(FStatus2, 'строка состояния', True);
+  WndWatchControl(pnlMain, 'pnlMain', True);
 end;
 
 procedure TForm1.FormDestroy(Sender: TObject);
@@ -17450,6 +17461,7 @@ begin
   // Сторож - первым: дальше главный поток занят закрытием, и это не
   // зависание
   HangWatchStop;
+  WndWatchStop;
   // Возвращаем старую процедуру на место. Если FormShow не отработал,
   // сабклассинга не было и присваивать nil нельзя.
   if Assigned(OldRichEditProc) then

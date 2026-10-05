@@ -27,6 +27,7 @@ uses
   RqComponents in 'RqComponents.pas',
   RqDesign in 'RqDesign.pas',
   HangWatch in 'HangWatch.pas',
+  WndWatch in 'WndWatch.pas',
   DbgEngine in 'DbgEngine.pas',
   DbgSymbols in 'DbgSymbols.pas',
   RqDbgInstr in 'RqDbgInstr.pas',
