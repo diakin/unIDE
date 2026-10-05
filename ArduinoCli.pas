@@ -257,7 +257,14 @@ end;
 function ArdQuote(const AValue: string): string;
 begin
   if (Pos(' ', AValue) > 0) and (Copy(AValue, 1, 1) <> '"') then
-    Result := '"' + AValue + '"'
+  begin
+    // \ перед закрывающей кавычкой в командной строке Windows её
+    // экранирует: завершающий \ удваивается
+    if Copy(AValue, Length(AValue), 1) = '\' then
+      Result := '"' + AValue + '\"'
+    else
+      Result := '"' + AValue + '"';
+  end
   else
     Result := AValue;
 end;

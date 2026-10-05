@@ -82,6 +82,22 @@ FLockMemo: Boolean; // НАШ СЕМАФОР БЛОКИРОВКИ ДЛЯ TMEMO
     FCompSection: string;         // раздел настроек текущего типа
     btnDelphiImport: TUiButton;  // Compilers - Delphi: «Взять из Delphi»
     btnArdImport: TUiButton;     // Compilers - Arduino: «Импорт из RQdb.ini»
+    // ВКЛАДКА ARDUINO (BuildArduinoTab): настройки arduino-cli, как в IDE
+    // Options RQdebugger. Ключи - [Compiler.Arduino], те же, что на
+    // странице Compilers - Arduino.
+    FArdTab: TTabSheet;
+    FArdEdits: array of TUiEdit;    // поля путей
+    FArdEditKeys: array of string;  // их ключи в editor.ini
+    cbArdWarnings: TUiComboBox;
+    cbArdLogLevel: TUiComboBox;
+    chkArdCompileVerbose: TUiCheckBox;
+    chkArdUploadVerbose: TUiCheckBox;
+    chkArdVerifyAfterUpload: TUiCheckBox;
+    chkArdSaveBeforeBuild: TUiCheckBox;
+    memArdUrls: TUiMemo;            // Additional Boards Manager URLs
+    memArdCfg: TUiMemo;             // arduino-cli.yaml
+    lblArdCfgState: TLabel;
+    FArdLoading: Boolean;           // элементы заполняются из editor.ini
     // Окно списка путей (EditPathList): его элементы на время показа
     FPathList: TUiListBox;
     FPathEdit: TUiEdit;
@@ -254,6 +270,19 @@ function  NormalizePathValue(const S: string; AIsFile, AIsList: Boolean;
                              ADropped: TStrings): string;
 procedure btnDelphiImportClick(Sender: TObject);
 procedure btnArdImportClick(Sender: TObject);
+procedure BuildArduinoTab(ATab: TTabSheet);
+procedure ArdTabLoad;
+procedure ArdTabSetField(const AKey, AValue: string);
+function  ArdSection: string;
+procedure ArdWrite(const AKey, AValue: string);
+procedure ArdEditChange(Sender: TObject);
+procedure ArdBrowseClick(Sender: TObject);
+procedure ArdOptionChange(Sender: TObject);
+procedure ArdUrlsChange(Sender: TObject);
+procedure ArdCfgLoadClick(Sender: TObject);
+procedure ArdCfgWriteClick(Sender: TObject);
+procedure ArdCliIdle(var ACancel: Boolean);
+procedure OptionsPageChange(Sender: TObject);
 function  CompFieldIdx(const AKey: string): Integer;
 function  CompIniSection(const AKey: string): string;
 function  CompIniKey(const AKey: string): string;
@@ -882,6 +911,10 @@ FLockMemo := False; // Инициализация
   // высоту: таблице цветов место не уменьшаем.
   BuildThemePanel(TabEditor);
   Self.ClientHeight := Self.ClientHeight + pnlTheme.Height;
+
+  // Вкладка Arduino; при переходе на неё значения перечитываются
+  BuildArduinoTab(TabArduino);
+  PageControl.OnChange := OptionsPageChange;
 
   pnlGroupActions := TPanel.Create(Self);
   pnlGroupActions.Parent := TabEditor;
@@ -3786,6 +3819,589 @@ begin
     Result := AKey;
 end;
 
+// ---------------------------------------------------------------------------
+//  Вкладка Arduino: настройки arduino-cli (как вкладка Arduino в IDE Options
+//  RQdebugger). Ключи - те же, что на странице Compilers - Arduino
+//  ([Compiler.Arduino] editor.ini); правка сразу пишется в editor.ini, поле
+//  с тем же ключом на странице Compilers обновляется.
+// ---------------------------------------------------------------------------
+
+const
+  // Поля путей: ключ | подпись кнопки | подсказка
+  ArdPathFields: array[0..8] of string = (
+    'SketchPath|Sketch path|Sketchbook (directories.user arduino-cli)',
+    'CliFile|Arduino CLI file|arduino-cli.exe',
+    'BuildPath|Build Path|Папка, куда сохраняются собранные файлы (--build-path)',
+    'LibPath|Library Path|Папки своих библиотек (--libraries)',
+    'LogFile|Log file|Файл лога сборки (--log-file)',
+    'CliCfgFile|Cli cfg file|arduino-cli.yaml (--config-file)',
+    'CliDataPath|Cli Data Path|directories.data: индексы, платформы (packages)',
+    'DownloadsPath|Cli Downloads Path|directories.downloads: скачанные архивы',
+    'Arduino15Path|Ard15 Default Path|Папка Arduino IDE (%LOCALAPPDATA%\Arduino15): ' +
+      'там тоже ищутся платформы и library_index.json');
+  ArdWarningItems: array[0..3] of string = ('none', 'default', 'more', 'all');
+  ArdLogLevelItems: array[0..6] of string = (
+    'trace', 'debug', 'info', 'warn', 'error', 'fatal', 'panic');
+
+// Поле AIndex (от нуля) строки "a|b|c"
+function ArdBarField(const AText: string; AIndex: Integer): string;
+var
+  Rest: string;
+  BarPos, FieldIdx: Integer;
+begin
+  Rest := AText;
+  for FieldIdx := 0 to AIndex - 1 do
+  begin
+    BarPos := Pos('|', Rest);
+    if BarPos = 0 then
+    begin
+      Result := '';
+      Exit;
+    end;
+    Rest := Copy(Rest, BarPos + 1, Length(Rest));
+  end;
+  BarPos := Pos('|', Rest);
+  if BarPos > 0 then
+    Result := Copy(Rest, 1, BarPos - 1)
+  else
+    Result := Rest;
+end;
+
+procedure TForm2.BuildArduinoTab(ATab: TTabSheet);
+var
+  InnerPages: TUiPageControl;
+  TabSettings, TabCfg: TTabSheet;
+  PnlTop, PnlBottom, PnlCfgTop: TPanel;
+  FieldEdit: TUiEdit;
+  BrowseBtn, ImportBtn, CfgReloadBtn, CfgWriteBtn: TUiButton;
+  TextLbl: TLabel;
+  RowIdx, RowTop, TabWidth, ItemIdx: Integer;
+begin
+  FArdTab := ATab;
+  // Ширина листа на этот момент ещё не посчитана - от ширины окна
+  TabWidth := Self.ClientWidth - 24;
+
+  InnerPages := TUiPageControl.Create(Self);
+  InnerPages.Parent := ATab;
+  InnerPages.Align := alClient;
+  TabSettings := TTabSheet.Create(Self);
+  TabSettings.PageControl := InnerPages;
+  TabSettings.Caption := 'Settings';
+  TabCfg := TTabSheet.Create(Self);
+  TabCfg.PageControl := InnerPages;
+  TabCfg.Caption := 'Cli config file';
+  InnerPages.ActivePage := TabSettings;
+
+  // --- Settings: пути, уровни, флажки ---
+  PnlTop := TPanel.Create(Self);
+  PnlTop.Parent := TabSettings;
+  PnlTop.Align := alTop;
+  PnlTop.Height := 392;
+  PnlTop.BevelOuter := bvNone;
+  PnlTop.Caption := '';
+
+  SetLength(FArdEdits, Length(ArdPathFields));
+  SetLength(FArdEditKeys, Length(ArdPathFields));
+  RowTop := 10;
+  for RowIdx := 0 to High(ArdPathFields) do
+  begin
+    FArdEditKeys[RowIdx] := ArdBarField(ArdPathFields[RowIdx], 0);
+
+    FieldEdit := TUiEdit.Create(Self);
+    FieldEdit.Parent := PnlTop;
+    FieldEdit.Left := 8;
+    FieldEdit.Top := RowTop;
+    FieldEdit.Width := TabWidth - 8 - 150 - 14;
+    FieldEdit.Anchors := [akLeft, akTop, akRight];
+    FieldEdit.Tag := RowIdx;
+    FieldEdit.ShowHint := True;
+    FieldEdit.Hint := ArdBarField(ArdPathFields[RowIdx], 2);
+    FieldEdit.OnChange := ArdEditChange;
+    FArdEdits[RowIdx] := FieldEdit;
+
+    BrowseBtn := TUiButton.Create(Self);
+    BrowseBtn.Parent := PnlTop;
+    BrowseBtn.Left := FieldEdit.Left + FieldEdit.Width + 6;
+    BrowseBtn.Top := RowTop - 1;
+    BrowseBtn.Width := 150;
+    BrowseBtn.Height := 23;
+    BrowseBtn.Anchors := [akTop, akRight];
+    BrowseBtn.Caption := ArdBarField(ArdPathFields[RowIdx], 1);
+    BrowseBtn.ShowHint := True;
+    BrowseBtn.Hint := FieldEdit.Hint;
+    BrowseBtn.Tag := RowIdx;
+    BrowseBtn.OnClick := ArdBrowseClick;
+
+    Inc(RowTop, 26);
+  end;
+
+  Inc(RowTop, 8);
+  TextLbl := TLabel.Create(Self);
+  TextLbl.Parent := PnlTop;
+  TextLbl.Caption := 'Warnings';
+  TextLbl.Left := 8;
+  TextLbl.Top := RowTop + 4;
+  cbArdWarnings := TUiComboBox.Create(Self);
+  cbArdWarnings.Parent := PnlTop;
+  cbArdWarnings.Style := csDropDownList;
+  cbArdWarnings.Left := 80;
+  cbArdWarnings.Top := RowTop;
+  cbArdWarnings.Width := 100;
+  cbArdWarnings.ShowHint := True;
+  cbArdWarnings.Hint := 'Уровень предупреждений gcc (--warnings)';
+  for ItemIdx := Low(ArdWarningItems) to High(ArdWarningItems) do
+    cbArdWarnings.Items.Add(ArdWarningItems[ItemIdx]);
+  cbArdWarnings.OnChange := ArdOptionChange;
+
+  TextLbl := TLabel.Create(Self);
+  TextLbl.Parent := PnlTop;
+  TextLbl.Caption := 'Log level';
+  TextLbl.Left := 220;
+  TextLbl.Top := RowTop + 4;
+  cbArdLogLevel := TUiComboBox.Create(Self);
+  cbArdLogLevel.Parent := PnlTop;
+  cbArdLogLevel.Style := csDropDownList;
+  cbArdLogLevel.Left := 290;
+  cbArdLogLevel.Top := RowTop;
+  cbArdLogLevel.Width := 100;
+  cbArdLogLevel.ShowHint := True;
+  cbArdLogLevel.Hint := 'Сообщения этого уровня и выше пишутся в лог ' +
+                        '(--log-level)';
+  for ItemIdx := Low(ArdLogLevelItems) to High(ArdLogLevelItems) do
+    cbArdLogLevel.Items.Add(ArdLogLevelItems[ItemIdx]);
+  cbArdLogLevel.OnChange := ArdOptionChange;
+
+  Inc(RowTop, 30);
+  TextLbl := TLabel.Create(Self);
+  TextLbl.Parent := PnlTop;
+  TextLbl.Caption := 'Show verbose output during';
+  TextLbl.Left := 8;
+  TextLbl.Top := RowTop + 2;
+  chkArdCompileVerbose := TUiCheckBox.Create(Self);
+  chkArdCompileVerbose.Parent := PnlTop;
+  chkArdCompileVerbose.Caption := 'Compilation';
+  chkArdCompileVerbose.Left := 200;
+  chkArdCompileVerbose.Top := RowTop;
+  chkArdCompileVerbose.Width := 110;
+  chkArdCompileVerbose.OnClick := ArdOptionChange;
+  chkArdUploadVerbose := TUiCheckBox.Create(Self);
+  chkArdUploadVerbose.Parent := PnlTop;
+  chkArdUploadVerbose.Caption := 'Upload';
+  chkArdUploadVerbose.Left := 320;
+  chkArdUploadVerbose.Top := RowTop;
+  chkArdUploadVerbose.Width := 90;
+  chkArdUploadVerbose.OnClick := ArdOptionChange;
+
+  Inc(RowTop, 24);
+  chkArdVerifyAfterUpload := TUiCheckBox.Create(Self);
+  chkArdVerifyAfterUpload.Parent := PnlTop;
+  chkArdVerifyAfterUpload.Caption := 'Verify code after upload';
+  chkArdVerifyAfterUpload.Left := 8;
+  chkArdVerifyAfterUpload.Top := RowTop;
+  chkArdVerifyAfterUpload.Width := 300;
+  chkArdVerifyAfterUpload.OnClick := ArdOptionChange;
+
+  Inc(RowTop, 24);
+  chkArdSaveBeforeBuild := TUiCheckBox.Create(Self);
+  chkArdSaveBeforeBuild.Parent := PnlTop;
+  chkArdSaveBeforeBuild.Caption := 'Save sketch when verifying or uploading';
+  chkArdSaveBeforeBuild.Left := 8;
+  chkArdSaveBeforeBuild.Top := RowTop;
+  chkArdSaveBeforeBuild.Width := 340;
+  chkArdSaveBeforeBuild.OnClick := ArdOptionChange;
+
+  Inc(RowTop, 28);
+  TextLbl := TLabel.Create(Self);
+  TextLbl.Parent := PnlTop;
+  TextLbl.Caption := 'Additional Boards Manager URLs (по одному в строке; ' +
+                     'в arduino-cli уходят только адреса http(s))';
+  TextLbl.Left := 8;
+  TextLbl.Top := RowTop;
+  PnlTop.Height := RowTop + 22;
+
+  PnlBottom := TPanel.Create(Self);
+  PnlBottom.Parent := TabSettings;
+  PnlBottom.Align := alBottom;
+  PnlBottom.Height := 34;
+  PnlBottom.BevelOuter := bvNone;
+  PnlBottom.Caption := '';
+  ImportBtn := TUiButton.Create(Self);
+  ImportBtn.Parent := PnlBottom;
+  ImportBtn.Left := 8;
+  ImportBtn.Top := 5;
+  ImportBtn.Width := 160;
+  ImportBtn.Height := 24;
+  ImportBtn.Caption := 'Импорт из RQdb.ini';
+  ImportBtn.ShowHint := True;
+  ImportBtn.Hint := 'Пути Arduino из RQdb.ini RQdebugger (раздел ' +
+                    '[Arduino]) и Additional URLs из AdditURLEdit.txt';
+  ImportBtn.OnClick := btnArdImportClick;
+
+  memArdUrls := TUiMemo.Create(Self);
+  memArdUrls.Parent := TabSettings;
+  memArdUrls.Align := alClient;
+  memArdUrls.ScrollBars := ssBoth;
+  memArdUrls.WordWrap := False;
+  memArdUrls.OnChange := ArdUrlsChange;
+
+  // --- Cli config file: arduino-cli.yaml ---
+  PnlCfgTop := TPanel.Create(Self);
+  PnlCfgTop.Parent := TabCfg;
+  PnlCfgTop.Align := alTop;
+  PnlCfgTop.Height := 34;
+  PnlCfgTop.BevelOuter := bvNone;
+  PnlCfgTop.Caption := '';
+  CfgReloadBtn := TUiButton.Create(Self);
+  CfgReloadBtn.Parent := PnlCfgTop;
+  CfgReloadBtn.Left := 8;
+  CfgReloadBtn.Top := 5;
+  CfgReloadBtn.Width := 110;
+  CfgReloadBtn.Height := 24;
+  CfgReloadBtn.Caption := 'Перечитать';
+  CfgReloadBtn.OnClick := ArdCfgLoadClick;
+  CfgWriteBtn := TUiButton.Create(Self);
+  CfgWriteBtn.Parent := PnlCfgTop;
+  CfgWriteBtn.Left := 124;
+  CfgWriteBtn.Top := 5;
+  CfgWriteBtn.Width := 190;
+  CfgWriteBtn.Height := 24;
+  CfgWriteBtn.Caption := 'Записать пути в yaml';
+  CfgWriteBtn.ShowHint := True;
+  CfgWriteBtn.Hint := 'arduino-cli config set: directories.data = Cli Data ' +
+                      'Path, directories.downloads = Cli Downloads Path, ' +
+                      'directories.user = Sketch path. Нет файла - сначала ' +
+                      'config init';
+  CfgWriteBtn.OnClick := ArdCfgWriteClick;
+  lblArdCfgState := TLabel.Create(Self);
+  lblArdCfgState.Parent := PnlCfgTop;
+  lblArdCfgState.Left := 324;
+  lblArdCfgState.Top := 9;
+  lblArdCfgState.Caption := '';
+
+  memArdCfg := TUiMemo.Create(Self);
+  memArdCfg.Parent := TabCfg;
+  memArdCfg.Align := alClient;
+  memArdCfg.ReadOnly := True;
+  memArdCfg.ScrollBars := ssBoth;
+  memArdCfg.WordWrap := False;
+  memArdCfg.Font.Name := 'Courier New';
+  memArdCfg.Font.Size := 9;
+
+  ArdTabLoad;
+end;
+
+// Раздел настроек Arduino - как его читает ArduinoCli (с инструментом по
+// умолчанию, если он выбран на странице Compilers)
+function TForm2.ArdSection: string;
+begin
+  if Form1 <> nil then
+    Result := ArdLoadSettings(Form1.SettingsFileName).Section
+  else
+    Result := ArdIniSection;
+end;
+
+procedure TForm2.ArdWrite(const AKey, AValue: string);
+begin
+  if (Form1 = nil) or FArdLoading then
+    Exit;
+  ArdSaveSetting(Form1.SettingsFileName, ArdSection, AKey, AValue);
+end;
+
+// Значения из editor.ini - в элементы вкладки (при построении, показе окна
+// настроек, переходе на вкладку и после импорта)
+procedure TForm2.ArdTabLoad;
+var
+  Ini: TIniFile;
+  Section, Value: string;
+  RowIdx: Integer;
+begin
+  if (FArdTab = nil) or (Form1 = nil) then
+    Exit;
+  Section := ArdSection;
+  FArdLoading := True;
+  Ini := TIniFile.Create(Form1.SettingsFileName);
+  try
+    for RowIdx := 0 to High(FArdEdits) do
+      FArdEdits[RowIdx].Text := Ini.ReadString(Section, FArdEditKeys[RowIdx],
+                                               '');
+
+    Value := LowerCase(Trim(Ini.ReadString(Section, 'Warnings', 'none')));
+    cbArdWarnings.ItemIndex := cbArdWarnings.Items.IndexOf(Value);
+    if cbArdWarnings.ItemIndex < 0 then
+      cbArdWarnings.ItemIndex := 0;   // none
+    Value := LowerCase(Trim(Ini.ReadString(Section, 'LogLevel', 'info')));
+    cbArdLogLevel.ItemIndex := cbArdLogLevel.Items.IndexOf(Value);
+    if cbArdLogLevel.ItemIndex < 0 then
+      cbArdLogLevel.ItemIndex := cbArdLogLevel.Items.IndexOf('info');
+
+    chkArdCompileVerbose.Checked := Ini.ReadString(Section, 'CompileVerbose',
+                                                   '0') = '1';
+    chkArdUploadVerbose.Checked := Ini.ReadString(Section, 'UploadVerbose',
+                                                  '0') = '1';
+    chkArdVerifyAfterUpload.Checked := Ini.ReadString(Section,
+                                         'VerifyAfterUpload', '0') = '1';
+    chkArdSaveBeforeBuild.Checked := Ini.ReadString(Section,
+                                       'SaveBeforeBuild', '0') = '1';
+
+    memArdUrls.Lines.Text := StringReplace(
+      Ini.ReadString(Section, 'AdditionalUrls', ''), ',', #13#10,
+      [rfReplaceAll]);
+  finally
+    Ini.Free;
+    FArdLoading := False;
+  end;
+  ArdCfgLoadClick(nil);
+end;
+
+// Поле пути с ключом AKey - новое значение (правка на странице Compilers)
+procedure TForm2.ArdTabSetField(const AKey, AValue: string);
+var
+  RowIdx: Integer;
+begin
+  for RowIdx := 0 to High(FArdEdits) do
+    if (CompareText(FArdEditKeys[RowIdx], AKey) = 0) and
+       (FArdEdits[RowIdx].Text <> AValue) then
+    begin
+      FArdLoading := True;
+      try
+        FArdEdits[RowIdx].Text := AValue;
+      finally
+        FArdLoading := False;
+      end;
+    end;
+end;
+
+procedure TForm2.ArdEditChange(Sender: TObject);
+var
+  RowIdx, CompIdx: Integer;
+  Value: string;
+begin
+  if FArdLoading then
+    Exit;
+  RowIdx := TUiEdit(Sender).Tag;
+  if (RowIdx < 0) or (RowIdx > High(FArdEditKeys)) then
+    Exit;
+  Value := TUiEdit(Sender).Text;
+  ArdWrite(FArdEditKeys[RowIdx], Value);
+
+  // То же поле на странице Compilers - Arduino, если она открыта: иначе
+  // при уходе с неё прежнее значение записалось бы обратно
+  if (CompareText(FCompType, 'Arduino') = 0) and
+     (CompareText(FCompSection, ArdSection) = 0) then
+  begin
+    CompIdx := CompFieldIdx(FArdEditKeys[RowIdx]);
+    if (CompIdx >= 0) and (FCompEdits[CompIdx] <> nil) and
+       (FCompEdits[CompIdx].Text <> Value) then
+      FCompEdits[CompIdx].Text := Value;
+  end;
+end;
+
+procedure TForm2.ArdBrowseClick(Sender: TObject);
+var
+  RowIdx: Integer;
+  Dir: string;
+  Dlg: TOpenDialog;
+begin
+  RowIdx := TUiButton(Sender).Tag;
+  if (RowIdx < 0) or (RowIdx > High(FArdEdits)) then
+    Exit;
+  if IsFileKey(FArdEditKeys[RowIdx]) then
+  begin
+    Dlg := TOpenDialog.Create(Self);
+    try
+      Dlg.Title := 'Выберите файл';
+      Dlg.FileName := FArdEdits[RowIdx].Text;
+      if Dlg.Execute then
+        FArdEdits[RowIdx].Text := Dlg.FileName;   // OnChange пишет в ini
+    finally
+      Dlg.Free;
+    end;
+  end
+  else
+  begin
+    Dir := FArdEdits[RowIdx].Text;
+    if BrowseFolderDialog('Выберите папку', Dir) then
+      FArdEdits[RowIdx].Text := IncludeTrailingPathDelimiter(Dir);
+  end;
+end;
+
+// Warnings, Log level и флажки
+procedure TForm2.ArdOptionChange(Sender: TObject);
+
+  function Flag(ABox: TUiCheckBox): string;
+  begin
+    if ABox.Checked then
+      Result := '1'
+    else
+      Result := '0';
+  end;
+
+begin
+  if FArdLoading then
+    Exit;
+  if Sender = cbArdWarnings then
+  begin
+    if cbArdWarnings.ItemIndex >= 0 then
+      ArdWrite('Warnings', cbArdWarnings.Items[cbArdWarnings.ItemIndex]);
+  end
+  else if Sender = cbArdLogLevel then
+  begin
+    if cbArdLogLevel.ItemIndex >= 0 then
+      ArdWrite('LogLevel', cbArdLogLevel.Items[cbArdLogLevel.ItemIndex]);
+  end
+  else if Sender = chkArdCompileVerbose then
+    ArdWrite('CompileVerbose', Flag(chkArdCompileVerbose))
+  else if Sender = chkArdUploadVerbose then
+    ArdWrite('UploadVerbose', Flag(chkArdUploadVerbose))
+  else if Sender = chkArdVerifyAfterUpload then
+    ArdWrite('VerifyAfterUpload', Flag(chkArdVerifyAfterUpload))
+  else if Sender = chkArdSaveBeforeBuild then
+    ArdWrite('SaveBeforeBuild', Flag(chkArdSaveBeforeBuild));
+end;
+
+// Список адресов - в editor.ini через запятую, все непустые строки как
+// есть (во время набора адрес ещё не похож на http); в arduino-cli уходят
+// только http(s) - отбор при запуске (ArdHttpUrls)
+procedure TForm2.ArdUrlsChange(Sender: TObject);
+var
+  LineIdx: Integer;
+  Joined, LineText: string;
+begin
+  if FArdLoading then
+    Exit;
+  Joined := '';
+  for LineIdx := 0 to memArdUrls.Lines.Count - 1 do
+  begin
+    LineText := Trim(memArdUrls.Lines[LineIdx]);
+    if LineText = '' then
+      Continue;
+    if Joined <> '' then
+      Joined := Joined + ',';
+    Joined := Joined + LineText;
+  end;
+  ArdWrite('AdditionalUrls', Joined);
+end;
+
+// arduino-cli.yaml - на вкладку Cli config file (файл в UTF-8)
+procedure TForm2.ArdCfgLoadClick(Sender: TObject);
+var
+  Settings: TArdSettings;
+  CfgLines: TStringList;
+begin
+  if (memArdCfg = nil) or (Form1 = nil) then
+    Exit;
+  Settings := ArdLoadSettings(Form1.SettingsFileName);
+  memArdCfg.Lines.Clear;
+  if Settings.CliCfgFile = '' then
+  begin
+    lblArdCfgState.Caption := 'Не задан Cli cfg file (вкладка Settings)';
+    Exit;
+  end;
+  if not FileExists(Settings.CliCfgFile) then
+  begin
+    lblArdCfgState.Caption := 'Нет файла ' + Settings.CliCfgFile;
+    Exit;
+  end;
+  CfgLines := TStringList.Create;
+  try
+    CfgLines.LoadFromFile(Settings.CliCfgFile);
+    memArdCfg.Lines.Text := ArdUtf8ToAnsi(CfgLines.Text);
+  finally
+    CfgLines.Free;
+  end;
+  lblArdCfgState.Caption := Settings.CliCfgFile;
+end;
+
+procedure TForm2.ArdCliIdle(var ACancel: Boolean);
+begin
+  Application.ProcessMessages;
+  ACancel := False;
+end;
+
+// «Записать пути в yaml»: каталоги arduino-cli - из полей вкладки Settings.
+// Так делал RQdebugger при каждом сохранении настроек (SaveIDEOptions),
+// здесь - по кнопке. Файла нет - config init в его папку.
+procedure TForm2.ArdCfgWriteClick(Sender: TObject);
+const
+  // Ключ arduino-cli = ключ editor.ini
+  CfgKeys: array[0..2] of string = (
+    'directories.data=CliDataPath',
+    'directories.downloads=DownloadsPath',
+    'directories.user=SketchPath');
+var
+  Settings: TArdSettings;
+  Output: TStringList;
+  ErrText, CfgKey, Value: string;
+  KeyIdx, EqPos, ExitCode: Integer;
+  Ini: TIniFile;
+begin
+  if Form1 = nil then
+    Exit;
+  Settings := ArdLoadSettings(Form1.SettingsFileName);
+  if not ArdCheckCli(Settings, ErrText) then
+  begin
+    ShowMessage(ErrText);
+    Exit;
+  end;
+  if Settings.CliCfgFile = '' then
+  begin
+    ShowMessage('Не задан Cli cfg file (вкладка Settings)');
+    Exit;
+  end;
+
+  Output := TStringList.Create;
+  Ini := TIniFile.Create(Form1.SettingsFileName);
+  Screen.Cursor := crHourGlass;
+  try
+    if not FileExists(Settings.CliCfgFile) then
+    begin
+      Output.Add('> config init');
+      ExitCode := ArdRunCli(Settings, 'config init --dest-dir ' +
+        ArdQuote(ExcludeTrailingPathDelimiter(
+          ExtractFilePath(Settings.CliCfgFile))), Output, nil, ArdCliIdle);
+      if (ExitCode <> 0) or not FileExists(Settings.CliCfgFile) then
+      begin
+        ShowMessage('Не удалось создать ' + Settings.CliCfgFile + #13#10 +
+                    Output.Text);
+        Exit;
+      end;
+    end;
+
+    for KeyIdx := Low(CfgKeys) to High(CfgKeys) do
+    begin
+      EqPos := Pos('=', CfgKeys[KeyIdx]);
+      CfgKey := Copy(CfgKeys[KeyIdx], 1, EqPos - 1);
+      Value := Trim(Ini.ReadString(Settings.Section,
+        Copy(CfgKeys[KeyIdx], EqPos + 1, Length(CfgKeys[KeyIdx])), ''));
+      if Value = '' then
+        Continue;
+      Output.Add('> config set ' + CfgKey + ' ' + Value);
+      ExitCode := ArdRunCli(Settings, 'config set ' + CfgKey + ' ' +
+                            ArdQuote(ExcludeTrailingPathDelimiter(Value)),
+                            Output, nil, ArdCliIdle);
+      if ExitCode <> 0 then
+      begin
+        ShowMessage('Ошибка arduino-cli:' + #13#10 + Output.Text);
+        Exit;
+      end;
+    end;
+  finally
+    Screen.Cursor := crDefault;
+    Ini.Free;
+    Output.Free;
+    ArdCfgLoadClick(nil);
+  end;
+end;
+
+// Переход на вкладку Arduino - значения заново: их мог поменять Board
+// Manager (Additional URLs) или страница Compilers
+procedure TForm2.OptionsPageChange(Sender: TObject);
+begin
+  if (Sender is TPageControl) and (FArdTab <> nil) and
+     (TPageControl(Sender).ActivePage = FArdTab) then
+    ArdTabLoad;
+end;
+
 // «Импорт из RQdb.ini» (Compilers - Arduino): пути из раздела [Arduino]
 // RQdb.ini RQdebugger и Additional URLs из AdditURLEdit.txt рядом с ним -
 // в раздел страницы (ArdImportRqdbIni). Окно выбора файла начинается с
@@ -3795,10 +4411,10 @@ var
   Dlg: TOpenDialog;
   Report: TStringList;
   Ini: TIniFile;
-  StartDir: string;
+  StartDir, Section: string;
   KeyCount: Integer;
 begin
-  if (Form1 = nil) or (FCompSection = '') then
+  if Form1 = nil then
     Exit;
   Dlg := TOpenDialog.Create(Self);
   Report := TStringList.Create;
@@ -3822,19 +4438,26 @@ begin
     if not Dlg.Execute then
       Exit;
 
-    // Поля страницы - пока прежние значения: перед пересборкой их не
-    // нормализуем, иначе они записались бы поверх перенесённых
+    // Правки на открытой странице Compilers - в editor.ini до переноса;
+    // после - страница строится заново без нормализации (иначе прежние
+    // значения полей записались бы поверх перенесённых). Раздел - как его
+    // читает ArduinoCli, с какой бы вкладки ни нажали кнопку.
     NormalizeCompFields;
+    Section := ArdSection;
     KeyCount := ArdImportRqdbIni(Dlg.FileName, Form1.SettingsFileName,
-                                 FCompSection, Report);
-    FSkipNormalize := True;
-    ShowCompilerPage(FCompType);
+                                 Section, Report);
+    if CompareText(FCompType, 'Arduino') = 0 then
+    begin
+      FSkipNormalize := True;
+      ShowCompilerPage(FCompType);
+    end;
+    ArdTabLoad;
     if KeyCount = 0 then
       ShowMessage('В ' + Dlg.FileName + ' нет путей Arduino (раздел ' +
                   '[Arduino])')
     else
       ShowMessage('Перенесено из ' + Dlg.FileName + ' в [' +
-                  FCompSection + ']:' + #13#10#13#10 + Report.Text);
+                  Section + ']:' + #13#10#13#10 + Report.Text);
   finally
     Report.Free;
     Dlg.Free;
@@ -4660,6 +5283,10 @@ begin
   finally
     Ini.Free;
   end;
+
+  // То же поле на вкладке Arduino
+  if CompareText(FCompType, 'Arduino') = 0 then
+    ArdTabSetField(FCompKeys[I], TUiEdit(Sender).Text);
 end;
 
 procedure TForm2.LayoutIndentGroup;

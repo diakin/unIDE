@@ -51797,6 +51797,8 @@ begin
   // RefreshGridFromForm1 сама пересчитывает структуру таблицы под текущее число
   // групп и переносит туда все цвета и списки слов
   Form2.RefreshGridFromForm1;
+  // Вкладка Arduino - значения из editor.ini (их мог поменять Board Manager)
+  Form2.ArdTabLoad;
   Form2.chkUseHighlight.Checked := FUseSyntaxHighlight;
   Form2.chkHotTabHighlight.Checked := FUseHotTab;
   Form2.SetTabWidthInCombo(FTabChars);

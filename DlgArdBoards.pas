@@ -811,28 +811,35 @@ end;
 //  Additional Boards Manager URLs
 // ---------------------------------------------------------------------------
 
-// В editor.ini - только адреса http(s), через запятую; строки другого
-// вида (папки) в CLI не передаются, о них - в строке состояния
+// В editor.ini - все непустые строки через запятую (как вкладка Arduino в
+// IDE Options); в arduino-cli уходят только адреса http(s) (UrlArgs), о
+// строках другого вида (папках) - в строке состояния
 procedure TDlgArdBoards.btnUrlsSaveClick(Sender: TObject);
 var
-  Urls: string;
-  LineIdx, Dropped: Integer;
+  Joined, LineText: string;
+  LineIdx, Skipped: Integer;
 begin
   if FSettingsFile = '' then
     Exit;
   FSettings := ArdLoadSettings(FSettingsFile);
-  Urls := ArdHttpUrls(memUrls.Lines.Text);
-  Dropped := 0;
+  Joined := '';
+  Skipped := 0;
   for LineIdx := 0 to memUrls.Lines.Count - 1 do
-    if (Trim(memUrls.Lines[LineIdx]) <> '') and
-       (ArdHttpUrls(memUrls.Lines[LineIdx]) = '') then
-      Inc(Dropped);
-  ArdSaveSetting(FSettingsFile, FSettings.Section, 'AdditionalUrls', Urls);
-  FSettings.AdditionalUrls := Urls;
-  memUrls.Lines.Text := StringReplace(Urls, ',', #13#10, [rfReplaceAll]);
-  if Dropped > 0 then
-    SetStatus(Format('Сохранено. Строк не http(s), не сохранено: %d',
-                     [Dropped]))
+  begin
+    LineText := Trim(memUrls.Lines[LineIdx]);
+    if LineText = '' then
+      Continue;
+    if ArdHttpUrls(LineText) = '' then
+      Inc(Skipped);
+    if Joined <> '' then
+      Joined := Joined + ',';
+    Joined := Joined + LineText;
+  end;
+  ArdSaveSetting(FSettingsFile, FSettings.Section, 'AdditionalUrls', Joined);
+  FSettings.AdditionalUrls := Joined;
+  if Skipped > 0 then
+    SetStatus(Format('Сохранено. Строк не http(s) - в arduino-cli не ' +
+                     'передаются: %d', [Skipped]))
   else
     SetStatus('Сохранено');
 end;
