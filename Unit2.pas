@@ -4070,6 +4070,17 @@ begin
 
   BuildArduinoNetwork(TabNetwork);
 
+  // Надписи (TLabel) рисует родитель: без буфера при смене размера окна
+  // фон под ними стирается и рисуется заново - надписи моргают. Буфер - у
+  // родителей надписей и у поля адресов (так же сделано в главном окне,
+  // FormCreate: панели, которые мерцали при смене ширины)
+  TabSettings.DoubleBuffered := True;
+  TabNetwork.DoubleBuffered := True;
+  TabCfg.DoubleBuffered := True;
+  PnlTop.DoubleBuffered := True;
+  PnlBottom.DoubleBuffered := True;
+  memArdUrls.DoubleBuffered := True;
+
   // --- Cli config file: arduino-cli.yaml ---
   PnlCfgTop := TPanel.Create(Self);
   PnlCfgTop.Parent := TabCfg;
@@ -4077,6 +4088,7 @@ begin
   PnlCfgTop.Height := 34;
   PnlCfgTop.BevelOuter := bvNone;
   PnlCfgTop.Caption := '';
+  PnlCfgTop.DoubleBuffered := True;
   CfgReloadBtn := TUiButton.Create(Self);
   CfgReloadBtn.Parent := PnlCfgTop;
   CfgReloadBtn.Left := 8;
