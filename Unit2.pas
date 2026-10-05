@@ -648,6 +648,29 @@ end;
 
 
 
+// Буфер отрисовки у окна настроек и у всех контейнеров в нём (листы
+// вкладок, панели, рамки), а также у таблиц и многострочных полей. Надписи
+// (TLabel) рисует их родитель: без буфера при смене размера окна фон под
+// ними стирается и рисуется заново, и надписи моргают. Так же сделано в
+// главном окне (TForm1.FormCreate) и на вкладке Arduino.
+procedure BufferPaintTree(AControl: TWinControl);
+var
+  ChildIdx: Integer;
+  Child: TControl;
+begin
+  if (AControl is TCustomForm) or (AControl is TTabSheet) or
+     (AControl is TCustomPanel) or (AControl is TCustomGroupBox) or
+     (AControl is TCustomGrid) or (AControl is TCustomMemo) or
+     (AControl is TScrollBox) then
+    AControl.DoubleBuffered := True;
+  for ChildIdx := 0 to AControl.ControlCount - 1 do
+  begin
+    Child := AControl.Controls[ChildIdx];
+    if Child is TWinControl then
+      BufferPaintTree(TWinControl(Child));
+  end;
+end;
+
 procedure TForm2.InitOptions;
 var
   PageControl: TPageControl;
@@ -1134,6 +1157,11 @@ FLockMemo := False; // Инициализация
  // Имитируем выбор первой строки, чтобы скрытый кэш сразу выгрузился в TMemo при старте!
   Grid.Row := 1;
   MemoSchemaDetails.Lines.Text := Grid.Cells[3, 1];  
+
+  // Всё окно построено - буфер отрисовки у контейнеров всех вкладок.
+  // Страница Compilers при смене типа строится заново внутри pnlCompPage,
+  // а он уже с буфером.
+  BufferPaintTree(Self);
 end;
 
 
