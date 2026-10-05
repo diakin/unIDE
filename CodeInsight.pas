@@ -29,6 +29,10 @@ type
   TCiKind = (ckConstant, ckFunction, ckLabel, ckProcedure, ckProperty,
              ckType, ckUnit, ckVariable, ckWord);
 
+  // Видимость члена класса (strict private, strict protected - как
+  // private и protected)
+  TCiVisibility = (cvPublic, cvPublished, cvProtected, cvPrivate);
+
   TCiSymbol = record
     Name: string;
     Kind: TCiKind;
@@ -36,6 +40,7 @@ type
     IsAbstract: Boolean;
     Line: Integer;        // строка объявления (от 0)
     Owner: string;        // класс или запись, чей это член; '' - нет
+    Visibility: TCiVisibility;   // у члена; у остальных - cvPublic
   end;
 
   // Именованный тип: в Delphi 7 два разных "array of TCiSymbol"
@@ -590,6 +595,7 @@ begin
   Symbol.Detail := '';
   Symbol.IsAbstract := False;
   Symbol.Owner := '';
+  Symbol.Visibility := cvPublic;
   for LineIdx := 0 to ASrc.Count - 1 do
   begin
     Line := ASrc[LineIdx];
@@ -633,6 +639,7 @@ type
     FSection: TCiSection;
     FBodyDepth: Integer;     // вложенность class/record/object в type
     FOwners: TStringList;    // чьи члены сейчас: стек имён по FBodyDepth
+                             // (Objects - текущая видимость, TCiVisibility)
     function Tok(AOffset: Integer): string;   // строчными; '' - конец
     function IsId(AIndex: Integer): Boolean;
     function SourceText(AFrom, ATo: Integer): string;
@@ -772,6 +779,10 @@ begin
     Symbol.Owner := FOwners[FOwners.Count - 1]
   else
     Symbol.Owner := '';
+  Symbol.Visibility := cvPublic;
+  if (FBodyDepth > 0) and (FOwners.Count > 0) then
+    Symbol.Visibility :=
+      TCiVisibility(Integer(FOwners.Objects[FOwners.Count - 1]));
   FSyms.Add(Symbol);
 end;
 
@@ -996,7 +1007,7 @@ begin
   if HasBody then
   begin
     Inc(FBodyDepth);
-    FOwners.Add(Name);
+    FOwners.AddObject(Name, TObject(Ord(cvPublic)));
     Exit;
   end;
   // Остальное: Name = Integer; Name = (a, b); Name = procedure of object;
@@ -1114,7 +1125,8 @@ begin
         if TokWord = 'record' then
         begin
           Inc(FBodyDepth);
-          FOwners.Add(FOwners[FOwners.Count - 1]);
+          FOwners.AddObject(FOwners[FOwners.Count - 1],
+                            FOwners.Objects[FOwners.Count - 1]);
         end;
         Inc(FPos);
         if TokWord = 'case' then
@@ -1122,8 +1134,23 @@ begin
       end
       else if (TokWord = 'private') or (TokWord = 'protected') or
               (TokWord = 'public') or (TokWord = 'published') or
-              (TokWord = 'strict') or (TokWord = 'automated') or
-              (TokWord = 'class') or (TokWord = 'var') or (TokWord = 'const') or
+              (TokWord = 'automated') then
+      begin
+        if FOwners.Count > 0 then
+        begin
+          if TokWord = 'private' then
+            FOwners.Objects[FOwners.Count - 1] := TObject(Ord(cvPrivate))
+          else if TokWord = 'protected' then
+            FOwners.Objects[FOwners.Count - 1] := TObject(Ord(cvProtected))
+          else if TokWord = 'published' then
+            FOwners.Objects[FOwners.Count - 1] := TObject(Ord(cvPublished))
+          else
+            FOwners.Objects[FOwners.Count - 1] := TObject(Ord(cvPublic));
+        end;
+        Inc(FPos);
+      end
+      else if (TokWord = 'strict') or (TokWord = 'class') or
+              (TokWord = 'var') or (TokWord = 'const') or
               (TokWord = 'type') then
         Inc(FPos)
       else if IsId(FPos) and ((Tok(1) = ':') or (Tok(1) = ',')) then

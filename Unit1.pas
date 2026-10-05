@@ -2829,7 +2829,8 @@ type
     procedure CiUsesFiles(AFiles: TStrings);
     function  CiFindType(const ATypeName: string; var ASym: TCiSymbol;
                          var ASource: TCiSymbols): Boolean;
-    procedure CiTypeMembers(const ATypeName: string; AOut: TCiSymbols);
+    procedure CiTypeMembers(const ATypeName: string; AOut: TCiSymbols;
+                            AAccess: Integer);
     function  CiMemberType(const ATypeName, AMember: string): string;
     function  CiNameType(const AName: string; ALine: Integer): string;
     function  CiChainBefore(ADotPos: Integer; AParts: TStrings;
@@ -48251,6 +48252,12 @@ end;
 //  CiAfterMessage (после) из NewRichEditProc.
 // ---------------------------------------------------------------------------
 
+const
+  // Видимость членов в CiTypeMembers
+  CiAccAll = 0;
+  CiAccOutside = 1;
+  CiAccOwn = 2;
+
 type
   // Имена модуля из uses (interface-часть) и по чему они прочитаны
   TCiUnitEntry = class
@@ -48754,8 +48761,12 @@ end;
 
 // Члены типа ATypeName и его предков - в AOut. Одноимённый член предка
 // не повторяется; у переобъявленного без типа (property Text;) тип и
-// описание берутся у предка.
-procedure TForm1.CiTypeMembers(const ATypeName: string; AOut: TCiSymbols);
+// описание берутся у предка. AAccess - какие члены видны, как у
+// компилятора: CiAccAll - все (для поиска типа), CiAccOutside - снаружи
+// класса: private и protected - только объявленные в этом же файле,
+// CiAccOwn - из метода самого класса (Self): protected предков тоже.
+procedure TForm1.CiTypeMembers(const ATypeName: string; AOut: TCiSymbols;
+  AAccess: Integer);
 var
   TypeName, Parent: string;
   TypeSym: TCiSymbol;
@@ -48786,6 +48797,13 @@ begin
         Member := Source[SymIdx];
         if (CompareText(Member.Owner, TypeSym.Name) <> 0) or
            (Member.Kind = ckType) then
+          Continue;
+        // Чужой модуль: private не видно никогда, protected - только
+        // из потомка
+        if (AAccess <> CiAccAll) and (Source <> FCiFileSyms) and
+           ((Member.Visibility = cvPrivate) or
+            ((Member.Visibility = cvProtected) and
+             (AAccess = CiAccOutside))) then
           Continue;
         NameIdx := Names.IndexOf(Member.Name);
         if NameIdx < 0 then
@@ -48821,7 +48839,7 @@ begin
   Result := '';
   Members := TCiSymbols.Create;
   try
-    CiTypeMembers(ATypeName, Members);
+    CiTypeMembers(ATypeName, Members, CiAccAll);
     for SymIdx := 0 to Members.Count - 1 do
       if CompareText(Members[SymIdx].Name, AMember) = 0 then
       begin
@@ -48996,7 +49014,12 @@ begin
     end;
     if TypeName = '' then
       Exit;
-    CiTypeMembers(TypeName, AOut);
+    // Self. - изнутри класса (protected предков видно), остальное -
+    // снаружи
+    if (Parts.Count = 1) and (CompareText(Parts[0], 'Self') = 0) then
+      CiTypeMembers(TypeName, AOut, CiAccOwn)
+    else
+      CiTypeMembers(TypeName, AOut, CiAccOutside);
     Result := AOut.Count > 0;
   finally
     Parts.Free;
@@ -49050,7 +49073,7 @@ begin
       RoutineIdx := SymIdx;
   end;
   if (RoutineIdx >= 0) and (FCiFileSyms[RoutineIdx].Owner <> '') then
-    CiTypeMembers(FCiFileSyms[RoutineIdx].Owner, FCiSyms);
+    CiTypeMembers(FCiFileSyms[RoutineIdx].Owner, FCiSyms, CiAccOwn);
   Files := TStringList.Create;
   try
     CiUsesFiles(Files);
