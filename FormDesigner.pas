@@ -152,15 +152,6 @@ type
     FHintTimer: TTimer;
     FHintTarget: TComponent;
     FHintShown: Boolean;
-    procedure SetGridX(AValue: Integer);
-    procedure SetGridY(AValue: Integer);
-    procedure SetGrid(AValue: Integer);
-    procedure SetShowGrid(AValue: Boolean);
-    procedure SetShowCaptions(AValue: Boolean);
-    procedure SetShowHints(AValue: Boolean);
-    procedure HintTimerTick(Sender: TObject);
-    function  HintTarget(const AScreen: TPoint): TComponent;
-    function  HintText(AComp: TComponent): string;
     FRootName: string;
     FClassOf: TStringList;    // имя компонента -> класс из .dfm
     FVisualUnknown: TStringList; // неизвестные классы, у которых есть Width
@@ -225,6 +216,15 @@ type
     // Компоненты вкладок TTabControl (SetTabMembers): строки - адрес
     // TTabControl, Objects - TStringList "Имя=номер вкладки"
     FTabMembers: TStringList;
+    procedure SetGridX(AValue: Integer);
+    procedure SetGridY(AValue: Integer);
+    procedure SetGrid(AValue: Integer);
+    procedure SetShowGrid(AValue: Boolean);
+    procedure SetShowCaptions(AValue: Boolean);
+    procedure SetShowHints(AValue: Boolean);
+    procedure HintTimerTick(Sender: TObject);
+    function  HintTarget(const AScreen: TPoint): TComponent;
+    function  HintText(AComp: TComponent): string;
     procedure ApplyTabMembers(ATabCtl: TTabControl);
     procedure LockButtonRows;
     procedure ToggleGroup(AComp: TComponent);
