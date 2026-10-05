@@ -98,7 +98,8 @@ object Form1: TForm1
         Tabs.Strings = (
           'Compilation log'
           'Error log'
-          'HiLite log')
+          'HiLite log'
+          'Runtime log')
         TabIndex = 0
       end
       object pnlCompLog: TPanel
@@ -167,6 +168,34 @@ object Form1: TForm1
         TabOrder = 2
         Visible = False
         object LogEdit: TRichEdit
+          Left = 0
+          Top = 0
+          Width = 0
+          Height = 105
+          Align = alClient
+          BorderStyle = bsNone
+          Font.Charset = DEFAULT_CHARSET
+          Font.Color = clWindowText
+          Font.Height = -14
+          Font.Name = 'Tahoma'
+          Font.Style = []
+          ParentFont = False
+          ScrollBars = ssBoth
+          TabOrder = 0
+          WordWrap = False
+        end
+      end
+      object pnlRunLog: TPanel
+        Left = 0
+        Top = 22
+        Width = 0
+        Height = 105
+        Align = alClient
+        BevelOuter = bvNone
+        ParentBackground = False
+        TabOrder = 4
+        Visible = False
+        object RuntimeLog: TRichEdit
           Left = 0
           Top = 0
           Width = 0
