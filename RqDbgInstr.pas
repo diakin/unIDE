@@ -86,6 +86,34 @@ unit RqDbgInstr;
 //  кавычек не вставляется. Новое или изменённое условие - после
 //  пересборки.
 //
+//  Условия из окна Watch (выражение "LoopIdx", условие "=10"): действуют
+//  на все точки останова, где выражение вычисляется (как выражение Watch:
+//  в SUB, где известны все его имена и хотя бы одно - её параметр или
+//  локальная, а только из глобальных имён - везде). Точка останова
+//  стоит, только если выполнены все такие условия. RqDbg на остановке по
+//  точке останова (не шагом) ставит RqDbgCondReq и не открывает файл
+//  состояния; блок дампа SUB проверяет условия:
+//    RqDbgVars3:
+//      IF RqDbgCondReq THEN
+//        RqDbgCondOk = 1
+//        IF RqDbgWOn(0) THEN
+//          RqDbgCondT = 0
+//          IF (SumIdx) =2 THEN RqDbgCondT = 1
+//          IF RqDbgCondT = 0 THEN RqDbgCondOk = 0
+//        END IF
+//        RqDbgWatchCond              (условия из глобальных имён - в конце
+//        IF RqDbgCondOk = 0 THEN      копии, как RqDbgGlobals)
+//          RqDbgWant = 0
+//          RqDbgBusy = 0
+//          RETURN
+//        END IF
+//        RqDbgOpenState
+//      END IF
+//      ... дамп ...
+//  На верхнем уровне и в SUBI - только RqDbgWatchCond, из самой RqDbg.
+//  unIDE включает условие командой "k номер выражения" (RqDbgWOn):
+//  изменённое после сборки не включается.
+//
 //  Строка копии - строка исходника: каждая вставленная или пересобранная
 //  строка помнит строку исходника (SrcLineOfCopy), по ней показываются
 //  ошибки компиляции копии.
@@ -165,7 +193,14 @@ type
     FCondKeys: TStringList;         // условия точек: "ФАЙЛ<TAB>строка"
     FCondTexts: TStringList;        // и текст условия
     FPointCond: array of string;    // точка -> вписанное условие, '' - нет
-    FCopyCond: array of Integer;    // строка копии -> точка условия, 0
+    FCopyCond: array of Integer;    // строка копии -> точка условия, 0;
+                                    // -(N+1) - условие Watch номер N
+    FWCondExprs: TStringList;       // условия Watch для Build: выражение
+    FWCondTexts: TStringList;       // и условие ("=10")
+    FWatchCond: TStringList;        // вписанное условие выражения Watch
+    FWatchCondWhere: TStringList;   // где проверяется: "SUB A", "*"
+    FWatchCondNote: TStringList;    // почему не вписано
+    FHasWatchCond: Boolean;         // в копии есть условия Watch
     procedure AddCopyLine(AOut: TStrings; const AText: string;
                           ASrcLine: Integer; AWatch: Integer = -1;
                           ACond: Integer = 0);
@@ -187,6 +222,16 @@ type
     procedure ClearConditions;
     procedure AddCondition(const AFile: string; ALine: Integer;
                            const ACond: string);
+    // Условие выражения Watch AExpr ("=10", "<5") для следующей Build
+    procedure ClearWatchConditions;
+    procedure SetWatchCondition(const AExpr, ACond: string);
+    // Условие Watch, вписанное в копию (номер выражения - WatchIndex), где
+    // проверяется и почему не вписано
+    function WatchCondition(AIndex: Integer): string;
+    function WatchCondWhere(AIndex: Integer): string;
+    function WatchCondNote(AIndex: Integer): string;
+    // Условие Watch в строке копии: номер выражения, -1 - нет
+    function WatchCondOfCopy(ACopyLine: Integer): Integer;
     // Условие, вписанное в копию у точки, '' - нет
     function PointCondition(APoint: Integer): string;
     // Точка, условие которой в строке копии (с 0), 0 - не строка условия
@@ -248,6 +293,10 @@ function RqDbgResolveInclude(const AName, AMainDir, AIncDir: string): string;
 // Можно ли вписать выражение (Watch, условие точки) в код: нет ":" и "'"
 // вне кавычек и переводов строки
 function RqDbgExprInsertable(const AExpr: string): Boolean;
+
+// Условие Watch: начинается со сравнения (=, <, >, <>, <=, >=), дальше
+// не пусто, вписывается в код
+function RqDbgWatchCondValid(const ACond: string): Boolean;
 
 implementation
 
@@ -884,6 +933,23 @@ begin
   end;
 end;
 
+function RqDbgWatchCondValid(const ACond: string): Boolean;
+var
+  CondText: string;
+  OpLen: Integer;
+begin
+  Result := False;
+  CondText := Trim(ACond);
+  if (CondText = '') or not (CondText[1] in ['=', '<', '>']) then
+    Exit;
+  OpLen := 1;
+  if (Length(CondText) >= 2) and (CondText[2] in ['=', '>']) then
+    OpLen := 2;
+  if Trim(Copy(CondText, OpLen + 1, MaxInt)) = '' then
+    Exit;
+  Result := RqDbgExprInsertable(Copy(CondText, OpLen + 1, MaxInt));
+end;
+
 // Выражение вида "Имя" или "Имя(...)" (скобки - до конца): AName - имя
 // заглавными, AHasArgs - есть скобки. False - выражение сложнее.
 function SimpleExpr(const AExpr: string; var AName: string;
@@ -1009,6 +1075,57 @@ begin
   Inc(FCopyCount);
 end;
 
+procedure TRqDbgInstr.ClearWatchConditions;
+begin
+  FWCondExprs.Clear;
+  FWCondTexts.Clear;
+end;
+
+procedure TRqDbgInstr.SetWatchCondition(const AExpr, ACond: string);
+var
+  ExprIdx: Integer;
+begin
+  for ExprIdx := 0 to FWCondExprs.Count - 1 do
+    if CompareText(FWCondExprs[ExprIdx], Trim(AExpr)) = 0 then
+    begin
+      FWCondTexts[ExprIdx] := Trim(ACond);
+      Exit;
+    end;
+  if Trim(ACond) = '' then
+    Exit;
+  FWCondExprs.Add(Trim(AExpr));
+  FWCondTexts.Add(Trim(ACond));
+end;
+
+function TRqDbgInstr.WatchCondition(AIndex: Integer): string;
+begin
+  Result := '';
+  if (AIndex >= 0) and (AIndex < FWatchCond.Count) then
+    Result := FWatchCond[AIndex];
+end;
+
+function TRqDbgInstr.WatchCondWhere(AIndex: Integer): string;
+begin
+  Result := '';
+  if (AIndex >= 0) and (AIndex < FWatchCondWhere.Count) then
+    Result := FWatchCondWhere[AIndex];
+end;
+
+function TRqDbgInstr.WatchCondNote(AIndex: Integer): string;
+begin
+  Result := '';
+  if (AIndex >= 0) and (AIndex < FWatchCondNote.Count) then
+    Result := FWatchCondNote[AIndex];
+end;
+
+function TRqDbgInstr.WatchCondOfCopy(ACopyLine: Integer): Integer;
+begin
+  Result := -1;
+  if (ACopyLine >= 0) and (ACopyLine < FCopyCount) and
+     (FCopyCond[ACopyLine] < 0) then
+    Result := -FCopyCond[ACopyLine] - 1;
+end;
+
 procedure TRqDbgInstr.ClearConditions;
 begin
   FCondKeys.Clear;
@@ -1035,7 +1152,8 @@ end;
 function TRqDbgInstr.CondOfCopy(ACopyLine: Integer): Integer;
 begin
   Result := 0;
-  if (ACopyLine >= 0) and (ACopyLine < FCopyCount) then
+  if (ACopyLine >= 0) and (ACopyLine < FCopyCount) and
+     (FCopyCond[ACopyLine] > 0) then
     Result := FCopyCond[ACopyLine];
 end;
 
@@ -1090,6 +1208,11 @@ begin
   FFiles := TStringList.Create;
   FCondKeys := TStringList.Create;
   FCondTexts := TStringList.Create;
+  FWCondExprs := TStringList.Create;
+  FWCondTexts := TStringList.Create;
+  FWatchCond := TStringList.Create;
+  FWatchCondWhere := TStringList.Create;
+  FWatchCondNote := TStringList.Create;
 end;
 
 destructor TRqDbgInstr.Destroy;
@@ -1101,6 +1224,11 @@ begin
   FFiles.Free;
   FCondKeys.Free;
   FCondTexts.Free;
+  FWCondExprs.Free;
+  FWCondTexts.Free;
+  FWatchCond.Free;
+  FWatchCondWhere.Free;
+  FWatchCondNote.Free;
   inherited;
 end;
 
@@ -1141,7 +1269,7 @@ end;
 // столкнутся.
 procedure TRqDbgInstr.AddRuntime(AOut: TStrings);
 var
-  MaxIdx, CmdPath, StatePath: string;
+  MaxIdx, CmdPath, StatePath, WatchMax: string;
 
   procedure Add(const AText: string);
   begin
@@ -1156,6 +1284,7 @@ var
 
 begin
   MaxIdx := IntToStr(FPointCount);
+  WatchMax := IntToStr(FWatchExprs.Count);
   CmdPath := RqDbgSlashPath(FCmdFile);
   StatePath := RqDbgSlashPath(FStateFile);
   Add(''' --- unIDE: отладчик (копия программы, ' +
@@ -1190,16 +1319,23 @@ begin
   Add('DIM RqDbgWT AS STRING');
   Add('DIM RqDbgBusy AS LONG');
   Add('DIM RqDbgHit AS LONG');
+  Add('DIM RqDbgCondReq AS LONG');
+  Add('DIM RqDbgCondOk AS LONG');
+  Add('DIM RqDbgCondT AS LONG');
+  Add('DIM RqDbgWOn(' + WatchMax + ') AS INTEGER');
   Add('DECLARE SUB RqDbgReadCmd');
   Add('DECLARE SUB RqDbgGlobals');
   Add('DECLARE SUB RqDbgHalt');
+  Add('DECLARE SUB RqDbgWatchCond');
+  Add('DECLARE SUB RqDbgOpenState');
   Add('DECLARE SUB RqDbgVal (RqDbgVK AS STRING, RqDbgVN AS STRING, ' +
       'RqDbgVT AS STRING, RqDbgVV AS STRING)');
   Add('DECLARE SUB RqDbg (RqDbgPId AS LONG, RqDbgPLvl AS LONG, ' +
       'RqDbgPKey AS LONG, RqDbgPSelf AS LONG)');
   Add('');
   // Команда: "m режим", "r точка Run to cursor", "b точка" на каждую точку
-  // останова, "c точка" - на условную, "#end". Файла нет - Run без точек.
+  // останова, "c точка" - на условную, "k номер" - условие Watch включено,
+  // "#end". Файла нет - Run без точек.
   Add('SUB RqDbgReadCmd');
   Add('  DIM RqDbgCmdFile AS QFILESTREAM');
   Add('  DIM RqDbgCmdLine AS STRING');
@@ -1209,6 +1345,9 @@ begin
   Add('  RqDbgRunTo = 0');
   Add('  FOR RqDbgCmdIdx = 0 TO ' + MaxIdx);
   Add('    RqDbgUser(RqDbgCmdIdx) = 0');
+  Add('  NEXT');
+  Add('  FOR RqDbgCmdIdx = 0 TO ' + WatchMax);
+  Add('    RqDbgWOn(RqDbgCmdIdx) = 0');
   Add('  NEXT');
   AddLit('  IF FILEEXISTS("', CmdPath, '") THEN');
   AddLit('    RqDbgCmdFile.Open("', CmdPath, '", 0)');
@@ -1226,6 +1365,13 @@ begin
   Add('        IF RqDbgCmdIdx > 0 THEN');
   Add('          IF RqDbgCmdIdx <= ' + MaxIdx +
       ' THEN RqDbgUser(RqDbgCmdIdx) = 1');
+  Add('        END IF');
+  Add('      END IF');
+  Add('      IF LEFT$(RqDbgCmdLine, 2) = "k " THEN');
+  Add('        RqDbgCmdIdx = VAL(MID$(RqDbgCmdLine, 3, 20))');
+  Add('        IF RqDbgCmdIdx >= 0 THEN');
+  Add('          IF RqDbgCmdIdx <= ' + WatchMax +
+      ' THEN RqDbgWOn(RqDbgCmdIdx) = 1');
   Add('        END IF');
   Add('      END IF');
   Add('      IF LEFT$(RqDbgCmdLine, 2) = "c " THEN');
@@ -1288,6 +1434,13 @@ begin
   Add('  RqDbgBusy = 0');
   Add('END SUB');
   Add('');
+  // Начало файла состояния: "s точка уровень"
+  Add('SUB RqDbgOpenState');
+  AddLit('  RqDbgStateFile.Open("', StatePath, '", 65535)');
+  Add('  RqDbgStateFile.WriteLine("s " + STR$(RqDbgPendId) + " " + ' +
+      'STR$(RqDbgPendLvl))');
+  Add('END SUB');
+  Add('');
   // Точка с поднятым флагом: стоять ли здесь. Шаг не стоит дальше на той
   // же строке того же уровня (FOR ... : ... : NEXT в одной строке), Step
   // over - на точках глубже уровня остановки, если там нет точки останова.
@@ -1301,11 +1454,15 @@ begin
   // Пока идёт остановка (дамп, выражения Watch с вызовом FUNCTION
   // программы) - проверки молчат
   Add('  DIM RqDbgOn AS LONG');
+  Add('  DIM RqDbgStep AS LONG');
   Add('  IF RqDbgBusy THEN EXIT SUB');
   Add('  RqDbgDepth = RqDbgPLvl');
   Add('  RqDbgOn = RqDbgUser(RqDbgPId)');
   Add('  IF RqDbgOn = 2 THEN RqDbgOn = RqDbgHit');
   Add('  RqDbgHit = 0');
+  // RqDbgCondReq - стоп по точке останова, а не шагом: проверить условия
+  // Watch
+  Add('  RqDbgCondReq = 0');
   Add('  IF RqDbgMode = 1 THEN');
   Add('    IF RqDbgPKey = RqDbgStopKey THEN');
   Add('      IF RqDbgPLvl = RqDbgStopLvl THEN');
@@ -1313,31 +1470,47 @@ begin
   Add('      END IF');
   Add('    END IF');
   Add('  ELSEIF RqDbgMode = 2 THEN');
-  Add('    IF RqDbgOn = 0 THEN');
-  Add('      IF RqDbgPLvl > RqDbgStopLvl THEN EXIT SUB');
-  Add('      IF RqDbgPKey = RqDbgStopKey THEN');
-  Add('        IF RqDbgPLvl = RqDbgStopLvl THEN');
-  Add('          IF RqDbgPId > RqDbgStopId THEN EXIT SUB');
-  Add('        END IF');
+  Add('    RqDbgStep = 1');
+  Add('    IF RqDbgPLvl > RqDbgStopLvl THEN RqDbgStep = 0');
+  Add('    IF RqDbgPKey = RqDbgStopKey THEN');
+  Add('      IF RqDbgPLvl = RqDbgStopLvl THEN');
+  Add('        IF RqDbgPId > RqDbgStopId THEN RqDbgStep = 0');
   Add('      END IF');
+  Add('    END IF');
+  Add('    IF RqDbgStep = 0 THEN');
+  Add('      IF RqDbgOn = 0 THEN EXIT SUB');
+  Add('      RqDbgCondReq = 1');
   Add('    END IF');
   Add('  ELSEIF RqDbgMode = 3 THEN');
   Add('    IF RqDbgPId <> RqDbgRunTo THEN');
   Add('      IF RqDbgOn = 0 THEN EXIT SUB');
+  Add('      RqDbgCondReq = 1');
   Add('    END IF');
   Add('  ELSE');
   Add('    IF RqDbgOn = 0 THEN EXIT SUB');
+  Add('    RqDbgCondReq = 1');
   Add('  END IF');
+  if not FHasWatchCond then
+    Add('  RqDbgCondReq = 0');
   Add('  RqDbgBusy = 1');
   Add('  RqDbgPendId = RqDbgPId');
   Add('  RqDbgPendLvl = RqDbgPLvl');
   Add('  RqDbgPendKey = RqDbgPKey');
-  AddLit('  RqDbgStateFile.Open("', StatePath, '", 65535)');
-  Add('  RqDbgStateFile.WriteLine("s " + STR$(RqDbgPId) + " " + ' +
-      'STR$(RqDbgPLvl))');
   Add('  IF RqDbgPSelf THEN');
+  // Главная часть, SUBI: условия Watch из глобальных имён
+  Add('    IF RqDbgCondReq THEN');
+  Add('      RqDbgCondOk = 1');
+  Add('      RqDbgWatchCond');
+  Add('      IF RqDbgCondOk = 0 THEN');
+  Add('        RqDbgBusy = 0');
+  Add('        EXIT SUB');
+  Add('      END IF');
+  Add('    END IF');
+  Add('    RqDbgOpenState');
   Add('    RqDbgHalt');
   Add('  ELSE');
+  // SUB: условия проверит блок дампа, он же откроет файл состояния
+  Add('    IF RqDbgCondReq = 0 THEN RqDbgOpenState');
   Add('    RqDbgWant = 1');
   Add('  END IF');
   Add('END SUB');
@@ -1717,6 +1890,24 @@ var
     ALines.Add(Pfx('RqDbgVal("w", "') + IdxText + Pfx('", "", RqDbgWT)'));
   end;
 
+  // Проверка условия Watch AIdx: RqDbgCondOk = 0, если оно включено и не
+  // выполнено. Строка с самим условием - последняя четвёртая (ошибки
+  // компиляции). AIndent - отступ.
+  procedure WatchCondCode(AIdx: Integer; const AIndent: string;
+                          ALines: TStrings);
+  var
+    IdxText: string;
+  begin
+    ALines.Clear;
+    IdxText := IntToStr(AIdx);
+    ALines.Add(Pfx(AIndent + 'IF RqDbgWOn(') + IdxText + ') THEN');
+    ALines.Add(Pfx(AIndent + '  RqDbgCondT = 0'));
+    ALines.Add(AIndent + '  IF (' + FWatchExprs[AIdx] + ') ' + FWatchCond[AIdx] +
+               ' THEN ' + Pfx('RqDbgCondT') + ' = 1');
+    ALines.Add(Pfx(AIndent + '  IF RqDbgCondT = 0 THEN RqDbgCondOk = 0'));
+    ALines.Add(AIndent + 'END IF');
+  end;
+
   // Начало SUB/FUNCTION: номер процедуры, параметры, метка блока дампа
   procedure StartProc(const AHead: string);
   var
@@ -1759,6 +1950,36 @@ var
     begin
       AddGen(AIndent + '  ' + CurExit, ALine);
       AddGen(AIndent + CurVarsLabel + ':', ALine);
+      // Остановка по точке останова - сначала условия Watch этой SUB и
+      // глобальные; не выполнены - назад, без остановки
+      if FHasWatchCond then
+      begin
+        AddGen(AIndent + '  IF RqDbgCondReq THEN', ALine);
+        AddGen(AIndent + '    RqDbgCondOk = 1', ALine);
+        for DumpIdx := 0 to FWatchExprs.Count - 1 do
+          if (FWatchCond[DumpIdx] <> '') and WatchFits(DumpIdx, ProcAll) then
+          begin
+            WatchCondCode(DumpIdx, AIndent + '    ', WatchLines);
+            for CodeIdx := 0 to WatchLines.Count - 1 do
+            begin
+              AddBody(WatchLines[CodeIdx], ALine);
+              if CodeIdx = 2 then
+                BodyCond[Body.Count - 1] := -(DumpIdx + 1);
+            end;
+            if FWatchCondWhere[DumpIdx] <> '' then
+              FWatchCondWhere[DumpIdx] := FWatchCondWhere[DumpIdx] + ', ';
+            FWatchCondWhere[DumpIdx] := FWatchCondWhere[DumpIdx] +
+                                        FProcNames[FCurProc];
+          end;
+        AddGen(AIndent + '    RqDbgWatchCond', ALine);
+        AddGen(AIndent + '    IF RqDbgCondOk = 0 THEN', ALine);
+        AddGen(AIndent + '      RqDbgWant = 0', ALine);
+        AddGen(AIndent + '      RqDbgBusy = 0', ALine);
+        AddGen(AIndent + '      RETURN', ALine);
+        AddGen(AIndent + '    END IF', ALine);
+        AddGen(AIndent + '    RqDbgOpenState', ALine);
+        AddGen(AIndent + '  END IF', ALine);
+      end;
       for DumpIdx := 0 to ProcVars.Count - 1 do
         AddBody(AIndent + '  ' + ValLine(ProcVars[DumpIdx]), ALine);
       // Выражения Watch, имена которых есть в этой SUB
@@ -1956,6 +2177,31 @@ begin
                               'не вставляется';
     end;
   end;
+  // Условия Watch: у выражения, которое можно вписать, условие со
+  // сравнением
+  FWatchCond.Clear;
+  FWatchCondWhere.Clear;
+  FWatchCondNote.Clear;
+  FHasWatchCond := False;
+  for WatchIdx := 0 to FWatchExprs.Count - 1 do
+  begin
+    FWatchCond.Add('');
+    FWatchCondWhere.Add('');
+    FWatchCondNote.Add('');
+    for NameIdx := 0 to FWCondExprs.Count - 1 do
+      if (CompareText(FWCondExprs[NameIdx], FWatchExprs[WatchIdx]) = 0) and
+         (FWCondTexts[NameIdx] <> '') then
+      begin
+        if WatchNames[WatchIdx] = nil then
+          FWatchCondNote[WatchIdx] := 'выражение не вписывается в код'
+        else if not RqDbgWatchCondValid(FWCondTexts[NameIdx]) then
+          FWatchCondNote[WatchIdx] := 'условие должно начинаться со ' +
+            'сравнения (=, <>, <, >, <=, >=), без ":" и комментария'
+        else
+          FWatchCond[WatchIdx] := FWCondTexts[NameIdx];
+        Break;
+      end;
+  end;
   CondDepth := 0;
   FProcNames.Clear;
   FCurProc := -1;
@@ -1984,7 +2230,7 @@ begin
 
     // Префикс имён, которого в исходнике нет
     // Текст условий точек тоже вписывается в копию
-    UpperSrc := UpperCase(Src.Text + FCondTexts.Text);
+    UpperSrc := UpperCase(Src.Text + FCondTexts.Text + FWCondTexts.Text);
     FPrefix := '';
     for LineIdx := 0 to 20 do
     begin
@@ -2108,6 +2354,11 @@ begin
           CollectNames(VarRest, GlobalAll);
       end;
     end;
+
+    // Есть ли условия Watch (где именно проверяются - видно по ходу)
+    for WatchIdx := 0 to FWatchExprs.Count - 1 do
+      if FWatchCond[WatchIdx] <> '' then
+        FHasWatchCond := True;
 
     // Начало файла (пустые строки, комментарии, $APPTYPE и подобное) -
     // как есть; код отладчика встанет после него
@@ -2349,6 +2600,30 @@ begin
           FWatchWhere[WatchIdx] := '*';
       end;
     AddCopyLine(OutLines, Pfx('END SUB'), -1);
+    // Условия Watch только из глобальных имён - на любой остановке по
+    // точке останова
+    AddCopyLine(OutLines, Pfx('SUB RqDbgWatchCond'), -1);
+    for WatchIdx := 0 to FWatchExprs.Count - 1 do
+      if (FWatchCond[WatchIdx] <> '') and WatchFits(WatchIdx, nil) then
+      begin
+        WatchCondCode(WatchIdx, '  ', WatchLines);
+        for LineIdx := 0 to WatchLines.Count - 1 do
+          if LineIdx = 2 then
+            AddCopyLine(OutLines, WatchLines[LineIdx], -1, -1,
+                        -(WatchIdx + 1))
+          else
+            AddCopyLine(OutLines, WatchLines[LineIdx], -1);
+        FWatchCondWhere[WatchIdx] := '*';
+      end;
+    AddCopyLine(OutLines, Pfx('END SUB'), -1);
+    // Условие, которое не проверяется нигде
+    for WatchIdx := 0 to FWatchExprs.Count - 1 do
+      if (FWatchCond[WatchIdx] <> '') and (FWatchCondWhere[WatchIdx] = '') then
+      begin
+        FWatchCondNote[WatchIdx] := 'не проверяется: имена выражения не ' +
+          'известны вместе ни в одной SUB и не все глобальные';
+        FWatchCond[WatchIdx] := '';
+      end;
 
     // Почему выражение не вычисляется нигде
     for WatchIdx := 0 to FWatchExprs.Count - 1 do

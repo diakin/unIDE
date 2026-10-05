@@ -1020,6 +1020,11 @@ type
     // причина, если её нет
     FWatchWnd: TDlgWatch;
     FWatchList: TStringList;
+    // Условия строк Watch ("=10", "<5"): выражение и условие. Отладчик
+    // RapidQ: точка останова, где выражение вычисляется, стоит, только если
+    // условие выполнено (RqDbgInstr)
+    FWatchCondExprs: TStringList;
+    FWatchCondTexts: TStringList;
     FWatchNotes: string;      // уже записанные в лог разборы «не найдено»
     // Массив, выбранный в окне Watch: панель справа - поля индексов (по
     // одному на измерение), значение ячейки и таблица (1 и 2 измерения).
@@ -2161,6 +2166,10 @@ type
     procedure WatchDeleteClick(Sender: TObject);
     procedure WatchDeleteAllClick(Sender: TObject);
     procedure WatchLocalsClick(Sender: TObject);
+    procedure WatchCondClick(Sender: TObject);
+    procedure WatchDblClick(Sender: TObject);
+    function  WatchCondGet(const AExpr: string): string;
+    procedure WatchCondSet(const AExpr, ACond: string);
     procedure WatchKeyDown(Sender: TObject; var Key: Word;
                            Shift: TShiftState);
     procedure WatchSelectItem(Sender: TObject; Item: TListItem;
@@ -17034,6 +17043,8 @@ begin
   // Точки останова: щелчок по полосе номеров строк
   FBreakMarks := TList.Create;
   FWatchList := TStringList.Create;
+  FWatchCondExprs := TStringList.Create;
+  FWatchCondTexts := TStringList.Create;
   PaintBox1.OnMouseDown := PaintBox1MouseDown;
 
   HangWatchStart(Application.Handle,
@@ -17524,6 +17535,8 @@ begin
   FreeAndNil(FDbgSession);
   FreeAndNil(FDbgSyms);
   FreeAndNil(FWatchList);
+  FreeAndNil(FWatchCondExprs);
+  FreeAndNil(FWatchCondTexts);
   DbgClearEdits;
   FreeAndNil(FDbgEdits);
   if FBreakMarks <> nil then
@@ -39127,6 +39140,13 @@ var
           CopyNote := CopyNote + ' - выражение Watch "' +
                       FRqDbgInstr.WatchExpr(WatchLine) + '": исправьте его ' +
                       'или уберите из окна Watch';
+        // Строка условия Watch
+        if FRqDbgInstr.WatchCondOfCopy(ErrLine - 1) >= 0 then
+          CopyNote := CopyNote + ' - условие Watch "' +
+            FRqDbgInstr.WatchExpr(FRqDbgInstr.WatchCondOfCopy(ErrLine - 1)) +
+            ' ' + FRqDbgInstr.WatchCondition(
+                    FRqDbgInstr.WatchCondOfCopy(ErrLine - 1)) +
+            '": исправьте его в окне Watch (столбец Условие)';
         // Строка условия точки останова
         CondPoint := FRqDbgInstr.CondOfCopy(ErrLine - 1);
         if CondPoint > 0 then
@@ -45472,6 +45492,12 @@ begin
   BaseName := ChangeFileExt(ABas, '');
   ACopy := BaseName + '_rqdbg.bas';
   RapidQIncludeDirs(IgnoredDir, IncDir);
+  // Условия строк Watch - в копию
+  FRqDbgInstr.ClearWatchConditions;
+  for WatchIdx := 0 to FWatchList.Count - 1 do
+    if WatchCondGet(FWatchList[WatchIdx]) <> '' then
+      FRqDbgInstr.SetWatchCondition(FWatchList[WatchIdx],
+                                    WatchCondGet(FWatchList[WatchIdx]));
   // Условия точек останова - в копию
   FRqDbgInstr.ClearConditions;
   for MarkIdx := 0 to FBreakMarks.Count - 1 do
@@ -45525,6 +45551,28 @@ begin
     end;
   if CondCount > 0 then
     LogComp('  точек с условием: ' + IntToStr(CondCount));
+  // Условия Watch: где проверяются или почему нет
+  for WatchIdx := 0 to FWatchList.Count - 1 do
+  begin
+    if WatchCondGet(FWatchList[WatchIdx]) = '' then
+      Continue;
+    WatchPos := FRqDbgInstr.WatchIndex(FWatchList[WatchIdx]);
+    if FRqDbgInstr.WatchCondition(WatchPos) <> '' then
+    begin
+      if FRqDbgInstr.WatchCondWhere(WatchPos) = '*' then
+        LogComp('  условие Watch ' + FWatchList[WatchIdx] + ' ' +
+                FRqDbgInstr.WatchCondition(WatchPos) + ' - у всех точек ' +
+                'останова')
+      else
+        LogComp('  условие Watch ' + FWatchList[WatchIdx] + ' ' +
+                FRqDbgInstr.WatchCondition(WatchPos) + ' - у точек ' +
+                'останова в: ' + FRqDbgInstr.WatchCondWhere(WatchPos));
+    end
+    else
+      LogComp('  условие Watch ' + FWatchList[WatchIdx] + ' ' +
+              WatchCondGet(FWatchList[WatchIdx]) + ' не вписано: ' +
+              FRqDbgInstr.WatchCondNote(WatchPos));
+  end;
   // Выражения Watch, которые не вставлены в копию, - с причиной
   if FWatchList <> nil then
     for WatchIdx := 0 to FWatchList.Count - 1 do
@@ -45641,11 +45689,12 @@ begin
 end;
 
 // Файл команды: "m режим", "r точка", "b точка" или "c точка" (с условием)
-// на каждую точку останова (RqDbgMarkCmd), "#end"
+// на каждую точку останова (RqDbgMarkCmd), "k номер" на каждое условие
+// Watch, "#end"
 function TForm1.RqDbgWriteCmd(AMode, ARunTo: Integer): Boolean;
 var
   CmdLines: TStringList;
-  MarkIdx: Integer;
+  MarkIdx, WatchPos: Integer;
   CmdText: string;
 begin
   Result := False;
@@ -45661,6 +45710,17 @@ begin
       CmdText := RqDbgMarkCmd(TBreakMark(FBreakMarks[MarkIdx]));
       if CmdText <> '' then
         CmdLines.Add(CmdText);
+    end;
+    // Условия Watch, вписанные в копию и с тех пор не изменённые
+    for MarkIdx := 0 to FWatchList.Count - 1 do
+    begin
+      CmdText := WatchCondGet(FWatchList[MarkIdx]);
+      if CmdText = '' then
+        Continue;
+      WatchPos := FRqDbgInstr.WatchIndex(FWatchList[MarkIdx]);
+      if (WatchPos >= 0) and
+         (FRqDbgInstr.WatchCondition(WatchPos) = CmdText) then
+        CmdLines.Add('k ' + IntToStr(WatchPos));
     end;
     CmdLines.Add('#end');
     try
@@ -46130,7 +46190,8 @@ begin
           ValueText := NoteText;
       end;
       SetSub(Item, 0, ValueText);
-      SetSub(Item, 1, TypeText);
+      SetSub(Item, 1, WatchCondGet(ExprText));
+      SetSub(Item, 2, TypeText);
     end;
   finally
     FWatchWnd.lvWatch.Items.EndUpdate;
@@ -46746,8 +46807,9 @@ begin
     FWatchWnd.miWatchDelete.OnClick := WatchDeleteClick;
     FWatchWnd.miWatchDeleteAll.OnClick := WatchDeleteAllClick;
     FWatchWnd.miWatchLocals.OnClick := WatchLocalsClick;
+    FWatchWnd.miWatchCond.OnClick := WatchCondClick;
     FWatchWnd.lvWatch.OnKeyDown := WatchKeyDown;
-    FWatchWnd.lvWatch.OnDblClick := WatchEditClick;
+    FWatchWnd.lvWatch.OnDblClick := WatchDblClick;
     FWatchWnd.lvWatch.OnSelectItem := WatchSelectItem;
     WatchArrBuild;
     FWatchWnd.Left := Left + Width - FWatchWnd.Width - 40;
@@ -46860,7 +46922,8 @@ begin
         end;
       end;
       SetSub(Item, 0, ValueText);
-      SetSub(Item, 1, TypeText);
+      SetSub(Item, 1, WatchCondGet(FWatchList[ExprIdx]));
+      SetSub(Item, 2, TypeText);
     end;
   finally
     FWatchWnd.lvWatch.Items.EndUpdate;
@@ -46890,7 +46953,7 @@ end;
 procedure TForm1.WatchEditClick(Sender: TObject);
 var
   ExprIdx: Integer;
-  ExprText: string;
+  ExprText, OldCond: string;
 begin
   ExprIdx := DbgWatchSelected;
   if ExprIdx < 0 then
@@ -46901,10 +46964,16 @@ begin
   ExprText := FWatchList[ExprIdx];
   if not InputQuery('Watch', 'Выражение (имя или Имя.Поле):', ExprText) then
     Exit;
+  // Условие строки остаётся у неё и при новом выражении
+  OldCond := WatchCondGet(FWatchList[ExprIdx]);
+  WatchCondSet(FWatchList[ExprIdx], '');
   if Trim(ExprText) = '' then
     FWatchList.Delete(ExprIdx)
   else
+  begin
     FWatchList[ExprIdx] := Trim(ExprText);
+    WatchCondSet(FWatchList[ExprIdx], OldCond);
+  end;
   DbgWatchRefresh;
 end;
 
@@ -46915,6 +46984,7 @@ begin
   ExprIdx := DbgWatchSelected;
   if ExprIdx < 0 then
     Exit;
+  WatchCondSet(FWatchList[ExprIdx], '');
   FWatchList.Delete(ExprIdx);
   DbgWatchRefresh;
   if FWatchWnd.lvWatch.Items.Count > 0 then
@@ -46928,7 +46998,114 @@ end;
 procedure TForm1.WatchDeleteAllClick(Sender: TObject);
 begin
   FWatchList.Clear;
+  FWatchCondExprs.Clear;
+  FWatchCondTexts.Clear;
   DbgWatchRefresh;
+end;
+
+// Условие строки Watch, '' - нет
+function TForm1.WatchCondGet(const AExpr: string): string;
+var
+  CondIdx: Integer;
+begin
+  Result := '';
+  if FWatchCondExprs = nil then
+    Exit;
+  for CondIdx := 0 to FWatchCondExprs.Count - 1 do
+    if CompareText(FWatchCondExprs[CondIdx], Trim(AExpr)) = 0 then
+    begin
+      Result := FWatchCondTexts[CondIdx];
+      Exit;
+    end;
+end;
+
+// Условие строки Watch; пустое - убрать
+procedure TForm1.WatchCondSet(const AExpr, ACond: string);
+var
+  CondIdx: Integer;
+begin
+  for CondIdx := 0 to FWatchCondExprs.Count - 1 do
+    if CompareText(FWatchCondExprs[CondIdx], Trim(AExpr)) = 0 then
+    begin
+      if Trim(ACond) = '' then
+      begin
+        FWatchCondExprs.Delete(CondIdx);
+        FWatchCondTexts.Delete(CondIdx);
+      end
+      else
+        FWatchCondTexts[CondIdx] := Trim(ACond);
+      Exit;
+    end;
+  if Trim(ACond) = '' then
+    Exit;
+  FWatchCondExprs.Add(Trim(AExpr));
+  FWatchCondTexts.Add(Trim(ACond));
+end;
+
+// Условие строки Watch: точка останова отладчика RapidQ, где выражение
+// вычисляется, стоит, только если оно выполнено. Вписывается в отладочную
+// копию при сборке.
+procedure TForm1.WatchCondClick(Sender: TObject);
+var
+  ExprIdx, InstrIdx: Integer;
+  ExprText, CondText: string;
+begin
+  ExprIdx := DbgWatchSelected;
+  if ExprIdx < 0 then
+    Exit;
+  ExprText := FWatchList[ExprIdx];
+  CondText := WatchCondGet(ExprText);
+  if not InputQuery('Watch: условие', 'Условие для ' + ExprText +
+                    ' (=10, <5, <> 0; пусто - без условия):', CondText) then
+    Exit;
+  CondText := Trim(CondText);
+  if (CondText <> '') and not RqDbgWatchCondValid(CondText) then
+  begin
+    ShowMessage('Условие начинается со сравнения: =, <>, <, >, <=, >= ' +
+                '(например  =10  или  <> "abc"), без ":" и комментария.');
+    Exit;
+  end;
+  WatchCondSet(ExprText, CondText);
+  if CondText = '' then
+    LogComp('Watch: условие для ' + ExprText + ' снято')
+  else
+    LogComp('Watch: условие ' + ExprText + ' ' + CondText + ' - точки ' +
+            'останова RapidQ, где выражение вычисляется, стоят, только ' +
+            'если оно выполнено');
+  // Идёт отладка: условие из копии или после пересборки
+  if FRqDbgOn and (FRqDbgInstr <> nil) and (CondText <> '') then
+  begin
+    InstrIdx := FRqDbgInstr.WatchIndex(ExprText);
+    if (InstrIdx < 0) or (FRqDbgInstr.WatchCondition(InstrIdx) <> CondText) then
+      LogComp('  условие не вписано в эту сборку - действует после ' +
+              'пересборки (Ctrl+F2, затем F9)');
+  end;
+  DbgWatchRefresh;
+end;
+
+// Двойной щелчок: по столбцу «Условие» - условие, иначе - выражение
+procedure TForm1.WatchDblClick(Sender: TObject);
+var
+  ClickPt: TPoint;
+  ColLeft, CondCol: Integer;
+begin
+  GetCursorPos(ClickPt);
+  ClickPt := FWatchWnd.lvWatch.ScreenToClient(ClickPt);
+  CondCol := 2;   // Выражение, Значение, Условие, Тип
+  ColLeft := -GetScrollPos(FWatchWnd.lvWatch.Handle, SB_HORZ);
+  if FWatchWnd.lvWatch.Columns.Count > CondCol then
+  begin
+    ColLeft := ColLeft + FWatchWnd.lvWatch.Columns[0].Width +
+               FWatchWnd.lvWatch.Columns[1].Width;
+    if (ClickPt.X >= ColLeft) and
+       (ClickPt.X < ColLeft + FWatchWnd.lvWatch.Columns[CondCol].Width) and
+       (DbgWatchSelected >= 0) then
+    begin
+      WatchCondClick(Sender);
+      Exit;
+    end;
+  end;
+  WatchEditClick(Sender);
 end;
 
 // Параметры и локальные переменные процедуры, где стоит программа, - все
