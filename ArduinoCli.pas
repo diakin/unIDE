@@ -43,6 +43,8 @@ type
     LibPath: string;
     LogFile: string;
     Arduino15Path: string;  // папка Arduino IDE (%LOCALAPPDATA%\Arduino15)
+    IdePath: string;        // установленная Arduino IDE (examples, libraries);
+                            // не обязательно
     AdditionalUrls: string; // Additional Boards Manager URLs, через запятую
   end;
 
@@ -154,6 +156,7 @@ begin
   Result.LibPath := '';
   Result.LogFile := '';
   Result.Arduino15Path := '';
+  Result.IdePath := '';
   Result.AdditionalUrls := '';
   if (AIniFile = '') or not FileExists(AIniFile) then
     Exit;
@@ -182,6 +185,7 @@ begin
     Result.LogFile := Trim(Ini.ReadString(Result.Section, 'LogFile', ''));
     Result.Arduino15Path := ArdDir(Ini.ReadString(Result.Section,
                                                   'Arduino15Path', ''));
+    Result.IdePath := ArdDir(Ini.ReadString(Result.Section, 'IdePath', ''));
     Result.AdditionalUrls := Trim(Ini.ReadString(Result.Section,
                                                  'AdditionalUrls', ''));
   finally

@@ -28,6 +28,10 @@ uses
   DlgArdBoards,   // Arduino: Board Manager
   DlgArdLibs,     // Arduino: Library Manager
   DlgArdCli,      // Arduino: Arduino CLI Help
+  DlgArdSerial,   // Arduino: Serial Monitor
+  ArduinoCli,     // Arduino: настройки, запуск arduino-cli
+  ArduinoHw,      // Arduino: платформы, платы, библиотеки, скетчи с диска
+  ArduinoPorts,   // Arduino: COM-порты и событие подключения устройства
   WndWatch,       // журнал главного окна и перерисовки (wnd.log)
 // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
 // InputQuery перекрывают одноимённые функции Dialogs
@@ -1036,6 +1040,21 @@ type
     FArdBoardsWnd: TDlgArdBoards;
     FArdLibsWnd: TDlgArdLibs;
     FArdCliWnd: TDlgArdCli;
+    FArdMonitorWnd: TDlgArdSerial;
+    // Меню Arduino (ArdBuildMenu): пункты с подменю, которые строятся при
+    // открытии; платы с диска; порты; пути пунктов (номер - Tag пункта)
+    mArdSketchbook: TMenuItem;
+    mArdExamples: TMenuItem;
+    mArdInclude: TMenuItem;
+    mArdBoard: TMenuItem;
+    mArdPort: TMenuItem;
+    mArdBoardInfo: TMenuItem;
+    mArdMonitor: TMenuItem;
+    FArdHw: TArdHardware;
+    FArdPorts: TArdPortWatcher;
+    FArdPort: string;           // выбранный порт; не хранится
+    FArdMenuPaths: TStringList;
+    FArdBusy: Boolean;          // идёт arduino-cli из меню (Add .ZIP Library)
     FWatchList: TStringList;
     // Условия строк Watch ("=10", "<5"): выражение и условие. Отладчик
     // RapidQ: точка останова, где выражение вычисляется, стоит, только если
@@ -2178,6 +2197,43 @@ type
     procedure DbgWatchShow;
     procedure ArdWndShow(AWnd: TForm);
     procedure ArdBoardSelected(Sender: TObject);
+    function  ArdCurSettings: TArdSettings;
+    function  ArdAddItem(AParent: TMenuItem; const ACaption: string;
+                         AClick: TNotifyEvent; ATag: Integer): TMenuItem;
+    procedure ArdAddHeader(AParent: TMenuItem; const ACaption: string);
+    procedure ArdClearItems(AParent: TMenuItem);
+    procedure ArdResetSubmenu(AParent: TMenuItem);
+    function  ArdPathIndex(const APath: string): Integer;
+    function  ArdChunkParent(AParent: TMenuItem; AIndex, ATotal: Integer;
+                             ACaptions: TStrings): TMenuItem;
+    procedure ArdFillFolderItems(AParent: TMenuItem; const AFolder,
+                                 ASkip: string);
+    procedure ArdFolderMenuClick(Sender: TObject);
+    procedure ArdSketchItemClick(Sender: TObject);
+    procedure ArdBuildMenu;
+    procedure ArdFreeAll;
+    procedure mArduinoClick(Sender: TObject);
+    procedure mArdSketchbookClick(Sender: TObject);
+    procedure ArdAddLibExamples(AParent: TMenuItem; const ALibRoot,
+                                AHeader: string; var AHeaderDone: Boolean);
+    procedure mArdExamplesClick(Sender: TObject);
+    procedure ArdAddLibGroup(const AHeader: string; ARoots: TStrings);
+    procedure mArdIncludeClick(Sender: TObject);
+    procedure ArdIncludeItemClick(Sender: TObject);
+    procedure ArdCliIdle(var ACancel: Boolean);
+    procedure ArdAddZipClick(Sender: TObject);
+    function  ArdBoardFqbn: string;
+    function  ArdBoardName: string;
+    procedure ArdSetBoard(const AFqbn, AName: string);
+    procedure mArdBoardClick(Sender: TObject);
+    procedure ArdBoardItemClick(Sender: TObject);
+    function  ArdPortCaption(const APort: TArdPortInfo): string;
+    procedure ArdAutoPort;
+    procedure mArdPortClick(Sender: TObject);
+    procedure ArdPortItemClick(Sender: TObject);
+    procedure mArdBoardInfoClick(Sender: TObject);
+    procedure ArdPortsChanged(Sender: TObject; AArrived, ARemoved: TStrings);
+    procedure mArdMonitorClick(Sender: TObject);
     procedure DbgWatchRefresh;
     function  DbgWatchSelected: Integer;
     procedure WatchAddClick(Sender: TObject);
@@ -17443,6 +17499,9 @@ OpenDialog1.FilterIndex := 1; // по умолчанию показываем в
   TMsgTimer.Create(RichEdit1, 'редактор');
   TMsgTimer.Create(Self, 'главное окно');
 
+  // Меню Arduino: Sketchbook, Examples, Include Library, Board, Port ...
+  ArdBuildMenu;
+
   // Журнал окна wnd.log рядом с exe: поиск давней ошибки - белые полосы на
   // полосе вкладок и строке состояния, когда поверх окна двигают другое
   // окно, и пропадание окна с экрана, как свёрнутого. Что пишется - в
@@ -17469,6 +17528,7 @@ begin
   // зависание
   HangWatchStop;
   WndWatchStop;
+  ArdFreeAll;
   // Возвращаем старую процедуру на место. Если FormShow не отработал,
   // сабклассинга не было и присваивать nil нельзя.
   if Assigned(OldRichEditProc) then
@@ -46922,14 +46982,846 @@ begin
   ArdWndShow(FArdCliWnd);
 end;
 
-// Select board в Board Manager. Пока только запись в лог: панели Arduino с
-// выбором платы и порта ещё нет (этап 1 плана), плату она возьмёт из
-// FArdBoardsWnd.SelectedFqbn.
+// Select board в Board Manager - та же плата, что выбор в меню Board
 procedure TForm1.ArdBoardSelected(Sender: TObject);
 begin
-  if FArdBoardsWnd <> nil then
-    Dbg('Arduino: выбрана плата ' + FArdBoardsWnd.SelectedBoardName +
-        ' (' + FArdBoardsWnd.SelectedFqbn + ')', clGray);
+  if (FArdBoardsWnd <> nil) and (FArdBoardsWnd.SelectedFqbn <> '') then
+    ArdSetBoard(FArdBoardsWnd.SelectedFqbn, FArdBoardsWnd.SelectedBoardName);
+end;
+
+// ---------------------------------------------------------------------------
+//  Меню Arduino: Sketchbook, Examples, Include Library, Board, Port,
+//  Get Board Info, Serial Monitor - как в Arduino IDE 1.8.
+//
+//  Подменю строятся при открытии (OnClick пункта с подменю вызывают и меню
+//  Windows, и строка меню UiMenus). Платформы, платы, библиотеки и скетчи
+//  читаются с диска (ArduinoHw) при каждом открытии меню Arduino: после
+//  установки платформы или библиотеки список сразу новый. Папки примеров и
+//  скетчбука раскрываются по уровню, когда открывается их подменю. Пути
+//  пунктов - в FArdMenuPaths, номер - в Tag пункта; список очищается при
+//  открытии меню Arduino вместе с пунктами, которые на него ссылались.
+//
+//  Плата (FQBN) - в editor.ini ([Compiler.Arduino] Fqbn, BoardName); потом
+//  её место - .prj скетча (план, этап 1). Порт не хранится: список - по
+//  факту подключения (ArduinoPorts, событие Windows), выбранный порт - в
+//  памяти до выхода из программы.
+// ---------------------------------------------------------------------------
+
+const
+  // Пунктов в одном подменю больше - список делится на подменю по
+  // ArdMenuChunk (меню UiMenus не прокручивается)
+  ArdMenuChunk = 30;
+
+// & в подписи пункта - буквально, не ускоритель
+function ArdMenuText(const AText: string): string;
+begin
+  Result := StringReplace(AText, '&', '&&', [rfReplaceAll]);
+end;
+
+function TForm1.ArdCurSettings: TArdSettings;
+begin
+  Result := ArdLoadSettings(SettingsFileName);
+end;
+
+function TForm1.ArdAddItem(AParent: TMenuItem; const ACaption: string;
+  AClick: TNotifyEvent; ATag: Integer): TMenuItem;
+begin
+  Result := TMenuItem.Create(nil);
+  Result.Caption := ACaption;
+  Result.OnClick := AClick;
+  Result.Tag := ATag;
+  AParent.Add(Result);
+end;
+
+// Подпись-заголовок группы (как «Built-in Examples» в Arduino IDE)
+procedure TForm1.ArdAddHeader(AParent: TMenuItem; const ACaption: string);
+begin
+  if AParent.Count > 0 then
+    ArdAddItem(AParent, '-', nil, -1);
+  ArdAddItem(AParent, ACaption, nil, -1).Enabled := False;
+end;
+
+// Все пункты подменю
+procedure TForm1.ArdClearItems(AParent: TMenuItem);
+begin
+  while AParent.Count > 0 do
+    AParent.Items[AParent.Count - 1].Free;
+end;
+
+// Пустое подменю: один выключенный пункт - иначе у меню Windows нет
+// стрелки подменю и OnClick не вызывается при раскрытии
+procedure TForm1.ArdResetSubmenu(AParent: TMenuItem);
+begin
+  ArdClearItems(AParent);
+  ArdAddItem(AParent, '(пусто)', nil, -1).Enabled := False;
+end;
+
+function TForm1.ArdPathIndex(const APath: string): Integer;
+begin
+  Result := FArdMenuPaths.Add(APath);
+end;
+
+// Родитель для пункта AIndex из ATotal: при длинном списке - подменю по
+// ArdMenuChunk пунктов с подписью «первый ... последний»
+function TForm1.ArdChunkParent(AParent: TMenuItem; AIndex, ATotal: Integer;
+  ACaptions: TStrings): TMenuItem;
+var
+  LastIdx: Integer;
+
+  function Short(const AText: string): string;
+  begin
+    Result := AText;
+    if Length(Result) > 24 then
+      Result := Copy(Result, 1, 22) + '...';
+  end;
+
+begin
+  if ATotal <= ArdMenuChunk + 5 then
+  begin
+    Result := AParent;
+    Exit;
+  end;
+  if AIndex mod ArdMenuChunk = 0 then
+  begin
+    LastIdx := AIndex + ArdMenuChunk - 1;
+    if LastIdx > ATotal - 1 then
+      LastIdx := ATotal - 1;
+    Result := ArdAddItem(AParent, ArdMenuText(Short(ACaptions[AIndex]) +
+                         '  -  ' + Short(ACaptions[LastIdx])), nil, -1);
+  end
+  else
+    Result := AParent.Items[AParent.Count - 1];
+end;
+
+// Скетчи и папки папки AFolder: скетч - пункт, открывающий его .ino;
+// папка без скетча - подменю, раскрывается при открытии. ASkip - имена
+// папок, которые не показываются (через ;).
+procedure TForm1.ArdFillFolderItems(AParent: TMenuItem; const AFolder,
+  ASkip: string);
+var
+  Names, Shown: TStringList;
+  NameIdx: Integer;
+  SubFolder, Sketch: string;
+  Parent, Item: TMenuItem;
+begin
+  Names := TStringList.Create;
+  Shown := TStringList.Create;
+  try
+    ArdSubFolders(AFolder, Names);
+    for NameIdx := 0 to Names.Count - 1 do
+      if Pos(';' + LowerCase(Names[NameIdx]) + ';',
+             ';' + LowerCase(ASkip) + ';') = 0 then
+        Shown.Add(Names[NameIdx]);
+    for NameIdx := 0 to Shown.Count - 1 do
+    begin
+      Parent := ArdChunkParent(AParent, NameIdx, Shown.Count, Shown);
+      SubFolder := IncludeTrailingPathDelimiter(AFolder) + Shown[NameIdx] + '\';
+      Sketch := ArdSketchFile(SubFolder);
+      if Sketch <> '' then
+        ArdAddItem(Parent, ArdMenuText(Shown[NameIdx]), ArdSketchItemClick,
+                   ArdPathIndex(Sketch))
+      else
+      begin
+        Item := ArdAddItem(Parent, ArdMenuText(Shown[NameIdx]),
+                           ArdFolderMenuClick, ArdPathIndex(SubFolder));
+        ArdAddItem(Item, '(пусто)', nil, -1).Enabled := False;
+      end;
+    end;
+  finally
+    Shown.Free;
+    Names.Free;
+  end;
+end;
+
+// Подменю папки открывается - её скетчи и вложенные папки
+procedure TForm1.ArdFolderMenuClick(Sender: TObject);
+var
+  Item: TMenuItem;
+begin
+  if not (Sender is TMenuItem) then
+    Exit;
+  Item := TMenuItem(Sender);
+  if (Item.Tag < 0) or (Item.Tag >= FArdMenuPaths.Count) then
+    Exit;
+  ArdClearItems(Item);
+  ArdFillFolderItems(Item, FArdMenuPaths[Item.Tag], '');
+  if Item.Count = 0 then
+    ArdAddItem(Item, '(пусто)', nil, -1).Enabled := False;
+end;
+
+procedure TForm1.ArdSketchItemClick(Sender: TObject);
+var
+  PathIdx: Integer;
+begin
+  if not (Sender is TMenuItem) then
+    Exit;
+  PathIdx := TMenuItem(Sender).Tag;
+  if (PathIdx >= 0) and (PathIdx < FArdMenuPaths.Count) then
+    OpenNamedFile(FArdMenuPaths[PathIdx]);
+end;
+
+// Постоянные пункты меню Arduino - перед Board Manager...
+procedure TForm1.ArdBuildMenu;
+var
+  InsertIdx: Integer;
+
+  function NewItem(const ACaption: string; AClick: TNotifyEvent;
+                   ASubmenu: Boolean): TMenuItem;
+  begin
+    Result := TMenuItem.Create(Self);
+    Result.Caption := ACaption;
+    Result.OnClick := AClick;
+    mArduino.Insert(InsertIdx, Result);
+    Inc(InsertIdx);
+    if ASubmenu then
+      ArdResetSubmenu(Result);
+  end;
+
+begin
+  FArdMenuPaths := TStringList.Create;
+  FArdHw := TArdHardware.Create;
+  FArdPorts := TArdPortWatcher.Create;
+  FArdPorts.OnChange := ArdPortsChanged;
+
+  // Подписи с именами файлов и плат: & в них - не ускоритель
+  mArduino.AutoHotkeys := maManual;
+  mArduino.OnClick := mArduinoClick;
+  InsertIdx := 0;
+  mArdSketchbook := NewItem('Sketchbook', mArdSketchbookClick, True);
+  mArdExamples := NewItem('Examples', mArdExamplesClick, True);
+  mArdInclude := NewItem('Include Library', mArdIncludeClick, True);
+  NewItem('-', nil, False);
+  mArdBoard := NewItem('Board', mArdBoardClick, True);
+  mArdPort := NewItem('Port', mArdPortClick, True);
+  mArdBoardInfo := NewItem('Get Board Info', mArdBoardInfoClick, False);
+  NewItem('-', nil, False);
+  mArdMonitor := NewItem('Serial Monitor', mArdMonitorClick, False);
+  mArdMonitor.ShortCut := ShortCut(Ord('M'), [ssCtrl, ssShift]);
+  NewItem('-', nil, False);
+end;
+
+procedure TForm1.ArdFreeAll;
+begin
+  // Слежение за портами - первым: окно и подписка на события Windows
+  FreeAndNil(FArdPorts);
+  FreeAndNil(FArdHw);
+  FreeAndNil(FArdMenuPaths);
+end;
+
+// Меню Arduino открывается: платы с диска, подменю - заново при раскрытии
+procedure TForm1.mArduinoClick(Sender: TObject);
+var
+  Settings: TArdSettings;
+begin
+  if FArdHw = nil then
+    Exit;
+  Settings := ArdCurSettings;
+  FArdHw.Scan(Settings);
+  FArdMenuPaths.Clear;
+  ArdResetSubmenu(mArdSketchbook);
+  ArdResetSubmenu(mArdExamples);
+  ArdResetSubmenu(mArdInclude);
+  ArdResetSubmenu(mArdBoard);
+  ArdResetSubmenu(mArdPort);
+
+  if ArdBoardName <> '' then
+    mArdBoard.Caption := 'Board: "' + ArdMenuText(ArdBoardName) + '"'
+  else
+    mArdBoard.Caption := 'Board';
+
+  FArdPorts.Refresh;
+  ArdAutoPort;
+  if FArdPort <> '' then
+    mArdPort.Caption := 'Port: "' + FArdPort + '"'
+  else
+    mArdPort.Caption := 'Port';
+  mArdPort.Enabled := FArdPorts.Count > 0;
+  mArdBoardInfo.Enabled := (FArdPort <> '') and
+                           (FArdPorts.IndexOf(FArdPort) >= 0);
+end;
+
+// ---------------------------------------------------------------------------
+//  Sketchbook и Examples
+// ---------------------------------------------------------------------------
+
+procedure TForm1.mArdSketchbookClick(Sender: TObject);
+var
+  Settings: TArdSettings;
+begin
+  Settings := ArdCurSettings;
+  ArdClearItems(mArdSketchbook);
+  if (Settings.SketchPath = '') or not DirectoryExists(Settings.SketchPath) then
+    ArdAddItem(mArdSketchbook, '(папка Sketch path не задана или ее нет: ' +
+               'IDE Options - Arduino)', nil, -1).Enabled := False
+  else
+  begin
+    ArdFillFolderItems(mArdSketchbook, Settings.SketchPath,
+                       'libraries;hardware');
+    if mArdSketchbook.Count = 0 then
+      ArdAddItem(mArdSketchbook, '(скетчей нет)', nil, -1).Enabled := False;
+  end;
+end;
+
+// Библиотеки с примерами папки ALibRoot - пункты-папки примеров
+procedure TForm1.ArdAddLibExamples(AParent: TMenuItem; const ALibRoot,
+  AHeader: string; var AHeaderDone: Boolean);
+var
+  Libs, Names: TStringList;
+  LibIdx: Integer;
+  Parent, Item: TMenuItem;
+begin
+  if (ALibRoot = '') or not DirectoryExists(ALibRoot) then
+    Exit;
+  Libs := TStringList.Create;
+  Names := TStringList.Create;
+  try
+    ArdScanLibraries(ALibRoot, Libs, True);
+    if Libs.Count = 0 then
+      Exit;
+    if not AHeaderDone then
+    begin
+      ArdAddHeader(AParent, AHeader);
+      AHeaderDone := True;
+    end;
+    for LibIdx := 0 to Libs.Count - 1 do
+      Names.Add(ArdRowField(Libs[LibIdx], 0));
+    for LibIdx := 0 to Libs.Count - 1 do
+    begin
+      Parent := ArdChunkParent(AParent, LibIdx, Libs.Count, Names);
+      Item := ArdAddItem(Parent, ArdMenuText(Names[LibIdx]),
+                         ArdFolderMenuClick,
+                         ArdPathIndex(ArdLibraryExamples(
+                           ArdRowField(Libs[LibIdx], 1))));
+      ArdAddItem(Item, '(пусто)', nil, -1).Enabled := False;
+    end;
+  finally
+    Names.Free;
+    Libs.Free;
+  end;
+end;
+
+procedure TForm1.mArdExamplesClick(Sender: TObject);
+var
+  Settings: TArdSettings;
+  Folder: string;
+  BoardIdx: Integer;
+  HeaderDone: Boolean;
+begin
+  Settings := ArdCurSettings;
+  ArdClearItems(mArdExamples);
+
+  Folder := ArdBuiltinExamples(Settings);
+  if Folder <> '' then
+  begin
+    ArdAddHeader(mArdExamples, 'Built-in Examples');
+    ArdFillFolderItems(mArdExamples, Folder, '');
+  end;
+
+  if Settings.IdePath <> '' then
+  begin
+    HeaderDone := False;
+    ArdAddLibExamples(mArdExamples, Settings.IdePath + 'libraries',
+                      'Examples for any board', HeaderDone);
+  end;
+
+  BoardIdx := FArdHw.BoardByFqbn(ArdBoardFqbn);
+  if BoardIdx >= 0 then
+  begin
+    HeaderDone := False;
+    ArdAddLibExamples(mArdExamples,
+      FArdHw.PlatformLibFolder(FArdHw.Boards[BoardIdx].PlatformIdx),
+      'Examples for ' + ArdMenuText(FArdHw.Boards[BoardIdx].Name), HeaderDone);
+  end;
+
+  HeaderDone := False;
+  if Settings.SketchPath <> '' then
+    ArdAddLibExamples(mArdExamples, Settings.SketchPath + 'libraries',
+                      'Examples from Custom Libraries', HeaderDone);
+  if (Settings.LibPath <> '') and
+     (CompareText(Settings.LibPath, Settings.SketchPath + 'libraries\') <> 0) then
+    ArdAddLibExamples(mArdExamples, Settings.LibPath,
+                      'Examples from Custom Libraries', HeaderDone);
+
+  if mArdExamples.Count = 0 then
+    ArdAddItem(mArdExamples, '(примеров не найдено: папки задаются в ' +
+               'IDE Options - Arduino)', nil, -1).Enabled := False;
+end;
+
+// ---------------------------------------------------------------------------
+//  Include Library
+// ---------------------------------------------------------------------------
+
+// Библиотеки папок ARoots - одной группой под заголовком; одноимённая из
+// следующей папки не повторяется
+procedure TForm1.ArdAddLibGroup(const AHeader: string; ARoots: TStrings);
+var
+  Libs, AllLibs, Names: TStringList;
+  RootIdx, LibIdx: Integer;
+  Parent: TMenuItem;
+begin
+  Libs := TStringList.Create;
+  AllLibs := TStringList.Create;
+  Names := TStringList.Create;
+  try
+    for RootIdx := 0 to ARoots.Count - 1 do
+    begin
+      ArdScanLibraries(ARoots[RootIdx], Libs, False);
+      for LibIdx := 0 to Libs.Count - 1 do
+        // Одноимённая библиотека из следующей папки - не повторяется
+        if Names.IndexOf(ArdRowField(Libs[LibIdx], 0)) < 0 then
+        begin
+          Names.Add(ArdRowField(Libs[LibIdx], 0));
+          AllLibs.Add(Libs[LibIdx]);
+        end;
+    end;
+    if AllLibs.Count = 0 then
+      Exit;
+    AllLibs.Sort;
+    Names.Clear;
+    for LibIdx := 0 to AllLibs.Count - 1 do
+      Names.Add(ArdRowField(AllLibs[LibIdx], 0));
+    ArdAddHeader(mArdInclude, AHeader);
+    for LibIdx := 0 to AllLibs.Count - 1 do
+    begin
+      Parent := ArdChunkParent(mArdInclude, LibIdx, AllLibs.Count, Names);
+      ArdAddItem(Parent, ArdMenuText(Names[LibIdx]), ArdIncludeItemClick,
+                 ArdPathIndex(ArdRowField(AllLibs[LibIdx], 1)));
+    end;
+  finally
+    Names.Free;
+    AllLibs.Free;
+    Libs.Free;
+  end;
+end;
+
+procedure TForm1.mArdIncludeClick(Sender: TObject);
+var
+  Settings: TArdSettings;
+  Roots: TStringList;
+  BoardIdx: Integer;
+  Folder: string;
+begin
+  Settings := ArdCurSettings;
+  ArdClearItems(mArdInclude);
+  ArdAddItem(mArdInclude, 'Manage Libraries...', mArdLibsClick, -1);
+  ArdAddItem(mArdInclude, 'Add .ZIP Library...', ArdAddZipClick, -1);
+
+  Roots := TStringList.Create;
+  try
+    if Settings.IdePath <> '' then
+      Roots.Add(Settings.IdePath + 'libraries\');
+    BoardIdx := FArdHw.BoardByFqbn(ArdBoardFqbn);
+    if BoardIdx >= 0 then
+    begin
+      Folder := FArdHw.PlatformLibFolder(FArdHw.Boards[BoardIdx].PlatformIdx);
+      if Folder <> '' then
+        Roots.Add(Folder);
+    end;
+    ArdAddLibGroup('Arduino libraries', Roots);
+
+    Roots.Clear;
+    if Settings.SketchPath <> '' then
+      Roots.Add(Settings.SketchPath + 'libraries\');
+    if (Settings.LibPath <> '') and
+       (CompareText(Settings.LibPath, Settings.SketchPath + 'libraries\') <> 0) then
+      Roots.Add(Settings.LibPath);
+    ArdAddLibGroup('Contributed libraries', Roots);
+  finally
+    Roots.Free;
+  end;
+end;
+
+// #include заголовков библиотеки - в начало текущего файла, как в
+// Arduino IDE
+procedure TForm1.ArdIncludeItemClick(Sender: TObject);
+var
+  PathIdx, HeaderIdx, OldStart, OldLength, Inserted: Integer;
+  Headers: TStringList;
+  Ext, IncText: string;
+begin
+  if not (Sender is TMenuItem) then
+    Exit;
+  PathIdx := TMenuItem(Sender).Tag;
+  if (PathIdx < 0) or (PathIdx >= FArdMenuPaths.Count) then
+    Exit;
+  if (FWindowsIndex < 0) or (FWindowsIndex > WindowsItemCount - 1) or
+     not FWindows[FWindowsIndex].Used then
+  begin
+    ShowMessage('Нет открытого файла скетча.');
+    Exit;
+  end;
+  Ext := LowerCase(ExtractFileExt(FWindows[FWindowsIndex].FileName));
+  if (Ext <> '.ino') and (Ext <> '.pde') and (Ext <> '.cpp') and
+     (Ext <> '.c') and (Ext <> '.h') and (Ext <> '.hpp') then
+  begin
+    ShowMessage('Текущий файл не скетч и не исходник C/C++:'#13#10 +
+                FWindows[FWindowsIndex].FileName);
+    Exit;
+  end;
+
+  Headers := TStringList.Create;
+  try
+    ArdLibraryIncludes(FArdMenuPaths[PathIdx], Headers);
+    if Headers.Count = 0 then
+    begin
+      ShowMessage('В библиотеке не найдено заголовков .h:'#13#10 +
+                  FArdMenuPaths[PathIdx]);
+      Exit;
+    end;
+    IncText := '';
+    for HeaderIdx := 0 to Headers.Count - 1 do
+      IncText := IncText + '#include <' + Headers[HeaderIdx] + '>'#13#10;
+    IncText := IncText + #13#10;
+  finally
+    Headers.Free;
+  end;
+
+  OldStart := RichEdit1.SelStart;
+  OldLength := RichEdit1.SelLength;
+  EditorFreeze;
+  try
+    RichEdit1.SelStart := 0;
+    RichEdit1.SelLength := 0;
+    RichEdit1.SelText := IncText;
+    // Длина вставки в единицах редактора (перевод строки у RichEdit может
+    // считаться одним знаком) - по каретке после вставки
+    Inserted := RichEdit1.SelStart;
+    RichEdit1.SelStart := OldStart + Inserted;
+    RichEdit1.SelLength := OldLength;
+  finally
+    EditorThaw;
+  end;
+  RichEdit1.Modified := True;
+end;
+
+procedure TForm1.ArdCliIdle(var ACancel: Boolean);
+begin
+  Application.ProcessMessages;
+end;
+
+// Add .ZIP Library: arduino-cli lib install --zip-path
+procedure TForm1.ArdAddZipClick(Sender: TObject);
+var
+  Settings: TArdSettings;
+  Dlg: TOpenDialog;
+  ZipFile, ErrText: string;
+  Output: TStringList;
+  ExitCode, LineIdx: Integer;
+begin
+  if FArdBusy then
+    Exit;
+  Settings := ArdCurSettings;
+  if not ArdCheckCli(Settings, ErrText) then
+  begin
+    ShowMessage(ErrText);
+    Exit;
+  end;
+  Dlg := TOpenDialog.Create(nil);
+  try
+    Dlg.Title := 'Библиотека в архиве .zip';
+    Dlg.Filter := 'ZIP (*.zip)|*.zip|Все файлы (*.*)|*.*';
+    if not Dlg.Execute then
+      Exit;
+    ZipFile := Dlg.FileName;
+  finally
+    Dlg.Free;
+  end;
+
+  FArdBusy := True;
+  Output := TStringList.Create;
+  Screen.Cursor := crHourGlass;
+  try
+    Dbg('Arduino: ' + ArdCommandLine(Settings, 'lib install --zip-path ' +
+        ArdQuote(ZipFile)), clGray);
+    ExitCode := ArdRunCli(Settings, 'lib install --zip-path ' +
+                          ArdQuote(ZipFile), Output, nil, ArdCliIdle);
+    for LineIdx := 0 to Output.Count - 1 do
+      Dbg('  ' + Output[LineIdx], clGray);
+    if ExitCode = 0 then
+      Dbg('Arduino: библиотека из ' + ExtractFileName(ZipFile) +
+          ' установлена', clGreen)
+    else
+      ShowMessage('arduino-cli lib install --zip-path завершилась с кодом ' +
+                  IntToStr(ExitCode) + '.'#13#10'Вывод - в логе.');
+  finally
+    Screen.Cursor := crDefault;
+    Output.Free;
+    FArdBusy := False;
+  end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Board
+// ---------------------------------------------------------------------------
+
+function TForm1.ArdBoardFqbn: string;
+var
+  Ini: TIniFile;
+begin
+  Result := '';
+  if not FileExists(SettingsFileName) then
+    Exit;
+  Ini := TIniFile.Create(SettingsFileName);
+  try
+    Result := Trim(Ini.ReadString(ArdCurSettings.Section, 'Fqbn', ''));
+  finally
+    Ini.Free;
+  end;
+end;
+
+function TForm1.ArdBoardName: string;
+var
+  Ini: TIniFile;
+begin
+  Result := '';
+  if not FileExists(SettingsFileName) then
+    Exit;
+  Ini := TIniFile.Create(SettingsFileName);
+  try
+    Result := Trim(Ini.ReadString(ArdCurSettings.Section, 'BoardName', ''));
+  finally
+    Ini.Free;
+  end;
+  if (Result = '') and (FArdHw <> nil) and
+     (FArdHw.BoardByFqbn(ArdBoardFqbn) >= 0) then
+    Result := FArdHw.Boards[FArdHw.BoardByFqbn(ArdBoardFqbn)].Name;
+end;
+
+procedure TForm1.ArdSetBoard(const AFqbn, AName: string);
+var
+  Section: string;
+begin
+  Section := ArdCurSettings.Section;
+  ArdSaveSetting(SettingsFileName, Section, 'Fqbn', AFqbn);
+  ArdSaveSetting(SettingsFileName, Section, 'BoardName', AName);
+  Dbg('Arduino: плата ' + AName + ' (' + AFqbn + ')', clGray);
+end;
+
+procedure TForm1.mArdBoardClick(Sender: TObject);
+var
+  PlatformIdx, BoardIdx, ItemIdx: Integer;
+  Info: TArdPlatformInfo;
+  Group, Parent, Item: TMenuItem;
+  Names: TStringList;
+  CurFqbn: string;
+begin
+  ArdClearItems(mArdBoard);
+  ArdAddItem(mArdBoard, 'Boards Manager...', mArdBoardsClick, -1);
+  if FArdHw.PlatformCount = 0 then
+  begin
+    ArdAddItem(mArdBoard, '-', nil, -1);
+    ArdAddItem(mArdBoard, '(установленных платформ не найдено)', nil,
+               -1).Enabled := False;
+    Exit;
+  end;
+  ArdAddItem(mArdBoard, '-', nil, -1);
+  CurFqbn := ArdBoardFqbn;
+  Names := TStringList.Create;
+  try
+    for PlatformIdx := 0 to FArdHw.PlatformCount - 1 do
+    begin
+      Info := FArdHw.Platforms[PlatformIdx];
+      Group := ArdAddItem(mArdBoard, ArdMenuText(Info.Name), nil, -1);
+      Names.Clear;
+      for BoardIdx := Info.FirstBoard to Info.FirstBoard + Info.BoardCount - 1 do
+        Names.Add(FArdHw.Boards[BoardIdx].Name);
+      for ItemIdx := 0 to Names.Count - 1 do
+      begin
+        BoardIdx := Info.FirstBoard + ItemIdx;
+        Parent := ArdChunkParent(Group, ItemIdx, Names.Count, Names);
+        Item := ArdAddItem(Parent, ArdMenuText(Names[ItemIdx]),
+                           ArdBoardItemClick, BoardIdx);
+        Item.RadioItem := True;
+        Item.Checked := (CurFqbn <> '') and
+                        (FArdHw.BoardByFqbn(CurFqbn) = BoardIdx);
+      end;
+      if Group.Count = 0 then
+        ArdAddItem(Group, '(нет плат)', nil, -1).Enabled := False;
+    end;
+  finally
+    Names.Free;
+  end;
+end;
+
+procedure TForm1.ArdBoardItemClick(Sender: TObject);
+var
+  BoardIdx: Integer;
+begin
+  if not (Sender is TMenuItem) then
+    Exit;
+  BoardIdx := TMenuItem(Sender).Tag;
+  if (BoardIdx < 0) or (BoardIdx >= FArdHw.BoardCount) then
+    Exit;
+  ArdSetBoard(FArdHw.Boards[BoardIdx].Fqbn, FArdHw.Boards[BoardIdx].Name);
+end;
+
+// ---------------------------------------------------------------------------
+//  Port и Get Board Info
+// ---------------------------------------------------------------------------
+
+// Подпись порта: имя платы по VID/PID из boards.txt, иначе имя устройства
+function TForm1.ArdPortCaption(const APort: TArdPortInfo): string;
+var
+  BoardIdx: Integer;
+  DeviceName: string;
+begin
+  Result := APort.Name;
+  BoardIdx := FArdHw.BoardByVidPid(APort.Vid, APort.Pid);
+  if BoardIdx >= 0 then
+    Result := Result + ' (' + FArdHw.Boards[BoardIdx].Name + ')'
+  else
+  begin
+    DeviceName := ArdPortDeviceName(APort);
+    if DeviceName <> '' then
+      Result := Result + ' (' + DeviceName + ')';
+  end;
+end;
+
+// Порт не выбран - первый, чей VID/PID есть в boards.txt; если таких нет и
+// USB-порт один - он
+procedure TForm1.ArdAutoPort;
+var
+  PortIdx, UsbIdx, UsbCount: Integer;
+begin
+  if (FArdPort <> '') or (FArdPorts = nil) then
+    Exit;
+  UsbIdx := -1;
+  UsbCount := 0;
+  for PortIdx := 0 to FArdPorts.Count - 1 do
+  begin
+    if FArdHw.BoardByVidPid(FArdPorts[PortIdx].Vid,
+                            FArdPorts[PortIdx].Pid) >= 0 then
+    begin
+      FArdPort := FArdPorts[PortIdx].Name;
+      Exit;
+    end;
+    if FArdPorts[PortIdx].Vid <> '' then
+    begin
+      UsbIdx := PortIdx;
+      Inc(UsbCount);
+    end;
+  end;
+  if UsbCount = 1 then
+    FArdPort := FArdPorts[UsbIdx].Name;
+end;
+
+procedure TForm1.mArdPortClick(Sender: TObject);
+var
+  PortIdx: Integer;
+  Item: TMenuItem;
+begin
+  ArdClearItems(mArdPort);
+  for PortIdx := 0 to FArdPorts.Count - 1 do
+  begin
+    Item := ArdAddItem(mArdPort, ArdMenuText(ArdPortCaption(FArdPorts[PortIdx])),
+                       ArdPortItemClick, PortIdx);
+    Item.RadioItem := True;
+    Item.Checked := CompareText(FArdPorts[PortIdx].Name, FArdPort) = 0;
+  end;
+  if mArdPort.Count = 0 then
+    ArdAddItem(mArdPort, '(портов нет)', nil, -1).Enabled := False;
+end;
+
+procedure TForm1.ArdPortItemClick(Sender: TObject);
+var
+  PortIdx: Integer;
+begin
+  if not (Sender is TMenuItem) then
+    Exit;
+  PortIdx := TMenuItem(Sender).Tag;
+  if (PortIdx < 0) or (PortIdx >= FArdPorts.Count) then
+    Exit;
+  FArdPort := FArdPorts[PortIdx].Name;
+  // Открытый монитор переходит на новый порт, как в Arduino IDE
+  if (FArdMonitorWnd <> nil) and FArdMonitorWnd.Visible and
+     (CompareText(FArdMonitorWnd.PortName, FArdPort) <> 0) then
+    FArdMonitorWnd.OpenPort(FArdPort);
+end;
+
+procedure TForm1.mArdBoardInfoClick(Sender: TObject);
+var
+  PortIdx, BoardIdx: Integer;
+  Info: TArdPortInfo;
+  BoardText: string;
+begin
+  PortIdx := -1;
+  if (FArdPorts <> nil) and (FArdPort <> '') then
+    PortIdx := FArdPorts.IndexOf(FArdPort);
+  if PortIdx < 0 then
+  begin
+    ShowMessage('Порт не выбран или его нет в системе (меню Arduino - Port).');
+    Exit;
+  end;
+  Info := FArdPorts[PortIdx];
+  BoardIdx := FArdHw.BoardByVidPid(Info.Vid, Info.Pid);
+  if BoardIdx >= 0 then
+    BoardText := FArdHw.Boards[BoardIdx].Name + ' (' +
+                 FArdHw.Boards[BoardIdx].Fqbn + ')'
+  else
+    BoardText := 'Unknown board';
+  ShowMessage('Port: ' + Info.Name + #13#10 +
+              'BN: ' + BoardText + #13#10 +
+              'VID: ' + Info.Vid + #13#10 +
+              'PID: ' + Info.Pid + #13#10 +
+              'SN: ' + Info.SerialNo + #13#10#13#10 +
+              'Устройство: ' + Info.FriendlyName + #13#10 +
+              'Код устройства: ' + Info.InstanceId);
+end;
+
+// Порты появились или пропали (событие Windows, ArduinoPorts)
+procedure TForm1.ArdPortsChanged(Sender: TObject; AArrived,
+  ARemoved: TStrings);
+var
+  NameIdx, PortIdx: Integer;
+begin
+  for NameIdx := 0 to ARemoved.Count - 1 do
+  begin
+    Dbg('Arduino: отключён порт ' + ARemoved[NameIdx], clGray);
+    if FArdMonitorWnd <> nil then
+      FArdMonitorWnd.PortRemoved(ARemoved[NameIdx]);
+  end;
+  for NameIdx := 0 to AArrived.Count - 1 do
+  begin
+    PortIdx := FArdPorts.IndexOf(AArrived[NameIdx]);
+    if PortIdx >= 0 then
+      Dbg('Arduino: подключён порт ' + ArdPortCaption(FArdPorts[PortIdx]),
+          clGray);
+    // Выбранного порта нет или он пропал - выбирается подключённый
+    if (FArdPort = '') or (FArdPorts.IndexOf(FArdPort) < 0) then
+      FArdPort := AArrived[NameIdx];
+    if FArdMonitorWnd <> nil then
+      FArdMonitorWnd.PortArrived(AArrived[NameIdx]);
+  end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Serial Monitor
+// ---------------------------------------------------------------------------
+
+procedure TForm1.mArdMonitorClick(Sender: TObject);
+begin
+  if FArdPorts <> nil then
+  begin
+    FArdPorts.Refresh;
+    if FArdHw.BoardCount = 0 then
+      FArdHw.Scan(ArdCurSettings);
+    ArdAutoPort;
+  end;
+  if FArdPort = '' then
+  begin
+    ShowMessage('Порт не выбран (меню Arduino - Port).');
+    Exit;
+  end;
+  if FArdMonitorWnd = nil then
+  begin
+    FArdMonitorWnd := TDlgArdSerial.Create(Self);
+    FArdMonitorWnd.SettingsFile := SettingsFileName;
+    UiApplyForm(FArdMonitorWnd);
+  end;
+  ArdWndShow(FArdMonitorWnd);
+  if not FArdMonitorWnd.IsOpen or
+     (CompareText(FArdMonitorWnd.PortName, FArdPort) <> 0) then
+    FArdMonitorWnd.OpenPort(FArdPort);
 end;
 
 procedure TForm1.DbgWatchRefresh;

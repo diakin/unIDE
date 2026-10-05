@@ -3874,7 +3874,7 @@ end;
 
 const
   // Поля путей: ключ | подпись кнопки | подсказка
-  ArdPathFields: array[0..8] of string = (
+  ArdPathFields: array[0..9] of string = (
     'SketchPath|Sketch path|Sketchbook (directories.user arduino-cli)',
     'CliFile|Arduino CLI file|arduino-cli.exe',
     'BuildPath|Build Path|Папка, куда сохраняются собранные файлы (--build-path)',
@@ -3884,7 +3884,9 @@ const
     'CliDataPath|Cli Data Path|directories.data: индексы, платформы (packages)',
     'DownloadsPath|Cli Downloads Path|directories.downloads: скачанные архивы',
     'Arduino15Path|Ard15 Default Path|Папка Arduino IDE (%LOCALAPPDATA%\Arduino15): ' +
-      'там тоже ищутся платформы и library_index.json');
+      'там тоже ищутся платформы и library_index.json',
+    'IdePath|Arduino IDE folder|Папка установленной Arduino IDE (не обязательно): ' +
+      'её examples и libraries - в меню Arduino - Examples и Include Library');
   ArdWarningItems: array[0..3] of string = ('none', 'default', 'more', 'all');
   ArdLogLevelItems: array[0..6] of string = (
     'trace', 'debug', 'info', 'warn', 'error', 'fatal', 'panic');
@@ -3943,7 +3945,7 @@ begin
   PnlTop := TPanel.Create(Self);
   PnlTop.Parent := TabSettings;
   PnlTop.Align := alTop;
-  PnlTop.Height := 392;
+  PnlTop.Height := 418;
   PnlTop.BevelOuter := bvNone;
   PnlTop.Caption := '';
   FArdTop := PnlTop;
