@@ -422,6 +422,9 @@ type
     Line: Integer;      // с 0
     NoCode: Boolean;    // в .map у строки нет кода - точка не сработает
     Offsets: TList;     // смещения кода в сеансе отладки (Cardinal)
+    // Условие RapidQ: точка стоит, только если оно выполнено. Вписывается
+    // в отладочную копию (RqDbgInstr); '' - без условия.
+    Condition: string;
     constructor Create(const AFileName: string; ALine: Integer);
     destructor Destroy; override;
   end;
@@ -487,6 +490,7 @@ type
     pmuSepDebug: TMenuItem;
     pmuRunToCursor: TMenuItem;
     pmuAddWatch: TMenuItem;
+    pmuBreakCond: TMenuItem;
     pmuSepRun: TMenuItem;
     pmuUndo: TMenuItem;
     pmuRedo: TMenuItem;
@@ -806,6 +810,7 @@ type
     procedure StepOverClick(Sender: TObject);
     procedure RunToCursorClick(Sender: TObject);
     procedure AddWatchClick(Sender: TObject);
+    procedure BreakCondClick(Sender: TObject);
     procedure MarksBoxPaint(Sender: TObject);
     procedure MarksBoxMouseDown(Sender: TObject; Button: TMouseButton;
                                 Shift: TShiftState; X, Y: Integer);
@@ -1032,6 +1037,8 @@ type
     FWatchArrGrown: Integer;  // на сколько расширили окно под панель
     // Выражение для пункта Add watch меню редактора (PopupMenuPopup)
     FPopupWatchExpr: string;
+    // Строка, где открыто меню редактора: для пункта условия точки
+    FPopupCondLine: Integer;
     // Полоса меток: строка, по которой щёлкнули; одиночный щелчок
     // (закладка) ждёт FMarkTimer - не окажется ли он началом двойного
     // (точка останова)
@@ -2098,6 +2105,7 @@ type
     function  DbgLineKind(ALine: Integer): Integer;
     function  DbgMarksInCurrent: Boolean;
     procedure DbgToggleBreak(ALine: Integer);
+    procedure DbgEditCondition(ALine: Integer);
     procedure DbgResolveMark(AMark: TBreakMark);
     procedure DbgMarkOff(AMark: TBreakMark);
     function  DbgStart(const AExe, ADir: string): Boolean;
@@ -2118,6 +2126,7 @@ type
     procedure RqDbgIncludeSet(const ABas: string; AAll, AInline: TStrings);
     function  RqDbgPointAt(const AFile: string; ALine: Integer): Integer;
     function  RqDbgMarkPoint(AMark: TBreakMark): Integer;
+    function  RqDbgMarkCmd(AMark: TBreakMark): string;
     procedure RqDbgResolveMark(AMark: TBreakMark);
     function  RqDbgResolveMarks: Integer;
     function  RqDbgWriteCmd(AMode, ARunTo: Integer): Boolean;
@@ -14798,6 +14807,7 @@ var
   ClickPt: TPoint;
   ClickChar: Integer;
   PopupSel: string;
+  PopupMark: TBreakMark;
 begin
   if pmuSearch = nil then
     Exit;
@@ -14844,6 +14854,8 @@ begin
   // Add watch: имя там, где щёлкнули правой кнопкой; меню с клавиатуры
   // VCL вызывает в левом верхнем углу редактора - тогда имя у каретки.
   // Не на имени - пункт серый.
+  // Строка щелчка - для пункта условия точки останова
+  FPopupCondLine := CurrentLineIndex;
   if pmuAddWatch <> nil then
   begin
     FPopupWatchExpr := '';
@@ -14853,6 +14865,9 @@ begin
        (WindowFromPoint(FPopupMenu.PopupAt) = RichEdit1.Handle) then
     begin
       ClickChar := DbgCharAtClient(ClickPt);
+      if ClickChar >= 0 then
+        FPopupCondLine := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0,
+                                       ClickChar);
       // Щелчок по выделению в одной строке - выражение целиком
       // ("SumIdx * 2"), как у Ctrl+F5; иначе - имя под мышью
       if (ClickChar >= 0) and (RichEdit1.SelLength > 0) and
@@ -14873,6 +14888,20 @@ begin
     else
       pmuAddWatch.Caption := 'Add watch'#9'Ctrl+F5';
     pmuAddWatch.Enabled := FPopupWatchExpr <> '';
+  end;
+
+  // Условие точки останова (RapidQ): у строки щелчка, с нынешним условием
+  if pmuBreakCond <> nil then
+  begin
+    PopupMark := nil;
+    if (FCurrentFileName <> '') and (FPopupCondLine >= 0) then
+      PopupMark := DbgMarkAt(FCurrentFileName, FPopupCondLine);
+    if (PopupMark <> nil) and (PopupMark.Condition <> '') then
+      pmuBreakCond.Caption := 'Breakpoint condition {' +
+                              PopupMark.Condition + '}...'
+    else
+      pmuBreakCond.Caption := 'Breakpoint condition...';
+    pmuBreakCond.Enabled := (FCurrentFileName <> '') and (FPopupCondLine >= 0);
   end;
 end;
 
@@ -39056,7 +39085,7 @@ var
   var
     Candidate, Line, Notes, CopyNote: string;
     Searched: Boolean;
-    CopyLine, WatchLine, CopyFileIdx: Integer;
+    CopyLine, WatchLine, CopyFileIdx, CondPoint: Integer;
   begin
     if ErrFile = '' then
       ErrFile := ABas
@@ -39098,6 +39127,12 @@ var
           CopyNote := CopyNote + ' - выражение Watch "' +
                       FRqDbgInstr.WatchExpr(WatchLine) + '": исправьте его ' +
                       'или уберите из окна Watch';
+        // Строка условия точки останова
+        CondPoint := FRqDbgInstr.CondOfCopy(ErrLine - 1);
+        if CondPoint > 0 then
+          CopyNote := CopyNote + ' - условие точки останова "' +
+                      FRqDbgInstr.PointCondition(CondPoint) + '": исправьте ' +
+                      'его (правый щелчок по номеру строки) или снимите точку';
         CopyLine := FRqDbgInstr.SrcLineOfCopy(ErrLine - 1);
         CopyFileIdx := FRqDbgInstr.SrcFileOfCopy(ErrLine - 1);
         if CopyLine >= 0 then
@@ -42469,6 +42504,9 @@ begin
   end;
   // Пауза - только у отладчика Delphi; шаги и Run to cursor - у обоих
   btnPause.Visible := not Basic;
+  // Условия точек останова - только у отладчика RapidQ
+  if pmuBreakCond <> nil then
+    pmuBreakCond.Visible := Basic;
   SlotIdx := 0;
   for RowIdx := 0 to RunRowCount - 1 do
     if RunRow[RowIdx].Visible then
@@ -44979,20 +45017,81 @@ begin
   DbgRepaint;
 end;
 
+// Условие точки останова строки ALine (RapidQ): ввод; точки нет - она
+// ставится с этим условием. Пустое условие - точка без условия. Условие
+// вписывается в отладочную копию при сборке: заданное во время сеанса
+// действует после пересборки (до неё точка не срабатывает).
+procedure TForm1.DbgEditCondition(ALine: Integer);
+var
+  Mark: TBreakMark;
+  CondText: string;
+begin
+  if ALine < 0 then
+    Exit;
+  if FCurrentFileName = '' then
+  begin
+    LogComp('Условие точки останова: файл не сохранён на диск');
+    Exit;
+  end;
+  if not IdeBasicMode then
+  begin
+    LogComp('Условие точки останова: есть только у отладчика RapidQ');
+    Exit;
+  end;
+  Mark := DbgMarkAt(FCurrentFileName, ALine);
+  CondText := '';
+  if Mark <> nil then
+    CondText := Mark.Condition;
+  if not InputQuery('Breakpoint condition', 'Строка ' + IntToStr(ALine + 1) +
+                    ': условие RapidQ (пусто - без условия)', CondText) then
+    Exit;
+  CondText := Trim(CondText);
+  if (CondText <> '') and not RqDbgExprInsertable(CondText) then
+  begin
+    ShowMessage('Условие не вписать в код: в нём ":" или комментарий ''. ' +
+                'Нужно одно выражение, например  SumIdx = 2  или  ' +
+                'Count > 10 AND Name$ = "abc"');
+    Exit;
+  end;
+  if Mark = nil then
+  begin
+    if CondText = '' then
+      Exit;
+    Mark := TBreakMark.Create(FCurrentFileName, ALine);
+    FBreakMarks.Add(Mark);
+  end;
+  if Mark.Condition = CondText then
+    Exit;
+  Mark.Condition := CondText;
+  if CondText <> '' then
+    LogComp('Точка останова: ' + ExtractFileName(FCurrentFileName) +
+            ', строка ' + IntToStr(ALine + 1) + ', условие: ' + CondText)
+  else
+    LogComp('Точка останова: ' + ExtractFileName(FCurrentFileName) +
+            ', строка ' + IntToStr(ALine + 1) + ' - без условия');
+  if FRqDbgOn then
+    RqDbgResolveMark(Mark);
+  DbgRepaint;
+end;
+
 // Щелчок по номеру строки - точка останова на этой строке
 procedure TForm1.PaintBox1MouseDown(Sender: TObject; Button: TMouseButton;
                                     Shift: TShiftState; X, Y: Integer);
 var
   LineIdx, LineTotal: Integer;
 begin
-  if (Button <> mbLeft) or (LineHeight <= 0) or (Y < YOffset) or
-     not RichEdit1.HandleAllocated then
+  if not (Button in [mbLeft, mbRight]) or (LineHeight <= 0) or
+     (Y < YOffset) or not RichEdit1.HandleAllocated then
     Exit;
   LineIdx := FirstVisibleLine + (Y - YOffset) div LineHeight;
   LineTotal := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
   if (LineIdx < 0) or (LineIdx >= LineTotal) then
     Exit;
-  DbgToggleBreak(LineIdx);
+  // Правая кнопка - условие точки останова (RapidQ)
+  if Button = mbRight then
+    DbgEditCondition(LineIdx)
+  else
+    DbgToggleBreak(LineIdx);
 end;
 
 // Запуск под отладчиком. False - не вышло (нет .map или в нём нет номеров
@@ -45363,7 +45462,7 @@ end;
 function TForm1.RqDbgBuild(const ABas: string; var ACopy: string): Boolean;
 var
   BaseName, IgnoredDir, IncDir, IncText: string;
-  WatchIdx, WatchPos, FileIdx: Integer;
+  WatchIdx, WatchPos, FileIdx, MarkIdx, CondCount: Integer;
   IncInline: TStringList;
   Built: Boolean;
 begin
@@ -45373,6 +45472,13 @@ begin
   BaseName := ChangeFileExt(ABas, '');
   ACopy := BaseName + '_rqdbg.bas';
   RapidQIncludeDirs(IgnoredDir, IncDir);
+  // Условия точек останова - в копию
+  FRqDbgInstr.ClearConditions;
+  for MarkIdx := 0 to FBreakMarks.Count - 1 do
+    if TBreakMark(FBreakMarks[MarkIdx]).Condition <> '' then
+      FRqDbgInstr.AddCondition(TBreakMark(FBreakMarks[MarkIdx]).FileName,
+                               TBreakMark(FBreakMarks[MarkIdx]).Line,
+                               TBreakMark(FBreakMarks[MarkIdx]).Condition);
   IncInline := TStringList.Create;
   try
     RqDbgIncludeSet(ABas, nil, IncInline);
@@ -45408,6 +45514,17 @@ begin
     end;
     LogComp('  $INCLUDE под отладкой: ' + IncText);
   end;
+  // Условные точки: вписаны или нет (строка без кода, файл не в копии)
+  CondCount := 0;
+  for MarkIdx := 0 to FBreakMarks.Count - 1 do
+    if TBreakMark(FBreakMarks[MarkIdx]).Condition <> '' then
+    begin
+      if FRqDbgInstr.PointCondition(
+           RqDbgMarkPoint(TBreakMark(FBreakMarks[MarkIdx]))) <> '' then
+        Inc(CondCount);
+    end;
+  if CondCount > 0 then
+    LogComp('  точек с условием: ' + IntToStr(CondCount));
   // Выражения Watch, которые не вставлены в копию, - с причиной
   if FWatchList <> nil then
     for WatchIdx := 0 to FWatchList.Count - 1 do
@@ -45451,12 +45568,34 @@ begin
   Result := RqDbgPointAt(AMark.FileName, BuildLine);
 end;
 
+// Строка команды для точки останова: "b номер" - без условия, "c номер" -
+// с условием, вписанным в копию. '' - точка не срабатывает: кода нет или
+// условие задано (изменено) после сборки.
+function TForm1.RqDbgMarkCmd(AMark: TBreakMark): string;
+var
+  PointId: Integer;
+begin
+  Result := '';
+  PointId := RqDbgMarkPoint(AMark);
+  if PointId = 0 then
+    Exit;
+  if AMark.Condition = '' then
+    Result := 'b ' + IntToStr(PointId)
+  else if AMark.Condition = FRqDbgInstr.PointCondition(PointId) then
+    Result := 'c ' + IntToStr(PointId);
+end;
+
 // Точка, поставленная во время сеанса: есть ли у неё код
 procedure TForm1.RqDbgResolveMark(AMark: TBreakMark);
 begin
   AMark.Offsets.Clear;
-  AMark.NoCode := RqDbgMarkPoint(AMark) = 0;
-  if AMark.NoCode then
+  AMark.NoCode := RqDbgMarkCmd(AMark) = '';
+  if AMark.NoCode and (RqDbgMarkPoint(AMark) > 0) then
+    LogComp('Точка останова: ' + ExtractFileName(AMark.FileName) +
+            ', строка ' + IntToStr(AMark.Line + 1) + ' - условие "' +
+            AMark.Condition + '" не вписано в эту сборку; точка не ' +
+            'сработает до пересборки (Ctrl+F2, затем F9)')
+  else if AMark.NoCode then
     LogComp('Точка останова: ' + ExtractFileName(AMark.FileName) +
             ', строка ' + IntToStr(AMark.Line + 1) + ' - кода нет (пустая ' +
             'строка, комментарий, объявление, CREATE) или файла нет в ' +
@@ -45480,11 +45619,15 @@ begin
   begin
     Mark := TBreakMark(FBreakMarks[MarkIdx]);
     Mark.Offsets.Clear;
-    Mark.NoCode := RqDbgMarkPoint(Mark) = 0;
+    Mark.NoCode := RqDbgMarkCmd(Mark) = '';
     if not Mark.NoCode then
       Inc(Result)
     else if FRqDbgInstr.FileIndex(Mark.FileName) < 0 then
       Inc(OtherFiles)
+    else if RqDbgMarkPoint(Mark) > 0 then
+      LogComp('Точка останова: ' + ExtractFileName(Mark.FileName) +
+              ', строка ' + IntToStr(Mark.Line + 1) + ' - условие "' +
+              Mark.Condition + '" не вписано в копию, точка не сработает')
     else
       LogComp('Точка останова: ' + ExtractFileName(Mark.FileName) +
               ', строка ' + IntToStr(Mark.Line + 1) + ' - кода нет (пустая ' +
@@ -45497,12 +45640,13 @@ begin
   DbgRepaint;
 end;
 
-// Файл команды: "m режим", "r точка", "b точка" на каждую точку останова,
-// "#end"
+// Файл команды: "m режим", "r точка", "b точка" или "c точка" (с условием)
+// на каждую точку останова (RqDbgMarkCmd), "#end"
 function TForm1.RqDbgWriteCmd(AMode, ARunTo: Integer): Boolean;
 var
   CmdLines: TStringList;
-  MarkIdx, PointId: Integer;
+  MarkIdx: Integer;
+  CmdText: string;
 begin
   Result := False;
   if FRqDbgInstr = nil then
@@ -45514,9 +45658,9 @@ begin
       CmdLines.Add('r ' + IntToStr(ARunTo));
     for MarkIdx := 0 to FBreakMarks.Count - 1 do
     begin
-      PointId := RqDbgMarkPoint(TBreakMark(FBreakMarks[MarkIdx]));
-      if PointId > 0 then
-        CmdLines.Add('b ' + IntToStr(PointId));
+      CmdText := RqDbgMarkCmd(TBreakMark(FBreakMarks[MarkIdx]));
+      if CmdText <> '' then
+        CmdLines.Add(CmdText);
     end;
     CmdLines.Add('#end');
     try
@@ -45720,7 +45864,8 @@ begin
   begin
     OnMark := False;
     for MarkIdx := 0 to FBreakMarks.Count - 1 do
-      if RqDbgMarkPoint(TBreakMark(FBreakMarks[MarkIdx])) = APoint then
+      if (RqDbgMarkPoint(TBreakMark(FBreakMarks[MarkIdx])) = APoint) and
+         (RqDbgMarkCmd(TBreakMark(FBreakMarks[MarkIdx])) <> '') then
       begin
         OnMark := True;
         Break;
@@ -46014,6 +46159,11 @@ begin
   DbgAddWatch(FPopupWatchExpr);
 end;
 
+procedure TForm1.BreakCondClick(Sender: TObject);
+begin
+  DbgEditCondition(FPopupCondLine);
+end;
+
 // ---------------------------------------------------------------------------
 //  Полоса меток (MarksBox) - между номерами строк и текстом, как в Delphi.
 //  Закладка окна - квадратик с её номером в списке закладок (Bookmarks),
@@ -46152,9 +46302,17 @@ begin
         BoxCanvas.Pen.Color := UiColor('Gutter.BreakDot');
       end;
       BoxCanvas.Brush.Style := bsSolid;
+      // Точка с условием - кольцо
+      if Mark.Condition <> '' then
+      begin
+        BoxCanvas.Brush.Style := bsClear;
+        BoxCanvas.Pen.Width := 2;
+      end;
       BoxCanvas.Ellipse(CenterX - DotD div 2, CenterY - DotD div 2,
                         CenterX - DotD div 2 + DotD,
                         CenterY - DotD div 2 + DotD);
+      BoxCanvas.Pen.Width := 1;
+      BoxCanvas.Brush.Style := bsSolid;
     end;
 
     // Строка остановки - стрелка вправо
@@ -46203,9 +46361,18 @@ end;
 
 procedure TForm1.MarksBoxMouseDown(Sender: TObject; Button: TMouseButton;
                                    Shift: TShiftState; X, Y: Integer);
+var
+  CondLine: Integer;
 begin
   if Button = mbLeft then
-    FMarkClickLine := MarksLineAtY(Y);
+    FMarkClickLine := MarksLineAtY(Y)
+  else if Button = mbRight then
+  begin
+    // Как на номерах строк: условие точки останова
+    CondLine := MarksLineAtY(Y);
+    if CondLine >= 0 then
+      DbgEditCondition(CondLine);
+  end;
 end;
 
 // Задержка закладки после щелчка по полосе меток, мс

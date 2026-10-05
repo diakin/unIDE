@@ -729,6 +729,10 @@ object Form1: TForm1
       Caption = 'Add watch'#9'Ctrl+F5'
       OnClick = AddWatchClick
     end
+    object pmuBreakCond: TMenuItem
+      Caption = 'Breakpoint condition...'
+      OnClick = BreakCondClick
+    end
     object pmuSepRun: TMenuItem
       Caption = '-'
     end

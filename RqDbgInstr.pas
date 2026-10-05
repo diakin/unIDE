@@ -64,6 +64,28 @@ unit RqDbgInstr;
 //  Выражение с ":" или "'" вне кавычек не вставляется. Новое выражение в
 //  Watch видно только после пересборки.
 //
+//  Условные точки останова. Условие (выражение RapidQ) вписывается в
+//  копию перед вызовом RqDbg первой точки строки и вычисляется там, в
+//  области видимости этой строки:
+//      IF RqDbgBrk(12) THEN
+//        IF RqDbgBusy = 0 THEN
+//          IF RqDbgUser(12) = 2 THEN
+//            RqDbgBusy = 1
+//            RqDbgHit = 0
+//            IF (условие) THEN RqDbgHit = 1
+//            RqDbgBusy = 0
+//          END IF
+//        END IF
+//        RqDbg(12, RqDbgLvl, 345, 0)
+//        ...
+//  unIDE включает точку командой "c номер" (RqDbgUser = 2): точка стоит,
+//  только если условие выполнено (RqDbgHit). "b номер" - без условия,
+//  как раньше (условие в копии есть, но не вычисляется). Шаги F7/F8 на
+//  условие не смотрят. Пока условие вычисляется, RqDbgBusy: FUNCTION
+//  программы в условии не останавливается. Условие с ":" или "'" вне
+//  кавычек не вставляется. Новое или изменённое условие - после
+//  пересборки.
+//
 //  Строка копии - строка исходника: каждая вставленная или пересобранная
 //  строка помнит строку исходника (SrcLineOfCopy), по ней показываются
 //  ошибки компиляции копии.
@@ -140,8 +162,13 @@ type
     FMergedFile: array of Integer;  // строка общего текста -> номер файла
     FMergedLine: array of Integer;  // -> строка в своём файле (с 0)
     FFileMerged: array of array of Integer; // файл, строка -> строка текста
+    FCondKeys: TStringList;         // условия точек: "ФАЙЛ<TAB>строка"
+    FCondTexts: TStringList;        // и текст условия
+    FPointCond: array of string;    // точка -> вписанное условие, '' - нет
+    FCopyCond: array of Integer;    // строка копии -> точка условия, 0
     procedure AddCopyLine(AOut: TStrings; const AText: string;
-                          ASrcLine: Integer; AWatch: Integer = -1);
+                          ASrcLine: Integer; AWatch: Integer = -1;
+                          ACond: Integer = 0);
     function NewPoint(ASrcLine: Integer): Integer;
     procedure AddRuntime(AOut: TStrings);
     function Pfx(const AText: string): string;
@@ -155,6 +182,15 @@ type
     function Build(const ASrcFile, ACopyFile, ACmdFile, AStateFile,
                    AEventBase: string; AWatch: TStrings;
                    const AIncDir: string; AIncFiles: TStrings): Boolean;
+    // Условия точек останова для следующей Build: строка ALine (с 0) файла
+    // AFile. Пустое условие не запоминается.
+    procedure ClearConditions;
+    procedure AddCondition(const AFile: string; ALine: Integer;
+                           const ACond: string);
+    // Условие, вписанное в копию у точки, '' - нет
+    function PointCondition(APoint: Integer): string;
+    // Точка, условие которой в строке копии (с 0), 0 - не строка условия
+    function CondOfCopy(ACopyLine: Integer): Integer;
     // Файлы копии: 0 - главный, дальше вставленные $INCLUDE
     function FileCount: Integer;
     function FileName(AFileIdx: Integer): string;
@@ -208,6 +244,10 @@ function RqDbgIncludeName(const ALine: string): string;
 // Где лежит подключаемый файл: путь целиком - как есть, иначе в AMainDir,
 // потом в AIncDir. '' - не найден.
 function RqDbgResolveInclude(const AName, AMainDir, AIncDir: string): string;
+
+// Можно ли вписать выражение (Watch, условие точки) в код: нет ":" и "'"
+// вне кавычек и переводов строки
+function RqDbgExprInsertable(const AExpr: string): Boolean;
 
 implementation
 
@@ -832,6 +872,18 @@ begin
   Result := True;
 end;
 
+function RqDbgExprInsertable(const AExpr: string): Boolean;
+var
+  NameList: TStringList;
+begin
+  NameList := TStringList.Create;
+  try
+    Result := (Trim(AExpr) <> '') and ExprNames(AExpr, NameList);
+  finally
+    NameList.Free;
+  end;
+end;
+
 // Выражение вида "Имя" или "Имя(...)" (скобки - до конца): AName - имя
 // заглавными, AHasArgs - есть скобки. False - выражение сложнее.
 function SimpleExpr(const AExpr: string; var AName: string;
@@ -941,17 +993,50 @@ end;
 { TRqDbgInstr }
 
 procedure TRqDbgInstr.AddCopyLine(AOut: TStrings; const AText: string;
-                                  ASrcLine: Integer; AWatch: Integer = -1);
+                                  ASrcLine: Integer; AWatch: Integer = -1;
+                                  ACond: Integer = 0);
 begin
   AOut.Add(AText);
   if FCopyCount >= Length(FCopySrc) then
   begin
     SetLength(FCopySrc, FCopyCount * 2 + 256);
     SetLength(FCopyWatch, FCopyCount * 2 + 256);
+    SetLength(FCopyCond, FCopyCount * 2 + 256);
   end;
   FCopySrc[FCopyCount] := ASrcLine;
   FCopyWatch[FCopyCount] := AWatch;
+  FCopyCond[FCopyCount] := ACond;
   Inc(FCopyCount);
+end;
+
+procedure TRqDbgInstr.ClearConditions;
+begin
+  FCondKeys.Clear;
+  FCondTexts.Clear;
+end;
+
+procedure TRqDbgInstr.AddCondition(const AFile: string; ALine: Integer;
+                                   const ACond: string);
+begin
+  if (Trim(ACond) = '') or (ALine < 0) then
+    Exit;
+  FCondKeys.Add(UpperCase(ExpandFileName(AFile)) + #9 + IntToStr(ALine));
+  FCondTexts.Add(Trim(ACond));
+end;
+
+function TRqDbgInstr.PointCondition(APoint: Integer): string;
+begin
+  Result := '';
+  if (APoint >= 1) and (APoint <= FPointCount) and
+     (APoint < Length(FPointCond)) then
+    Result := FPointCond[APoint];
+end;
+
+function TRqDbgInstr.CondOfCopy(ACopyLine: Integer): Integer;
+begin
+  Result := 0;
+  if (ACopyLine >= 0) and (ACopyLine < FCopyCount) then
+    Result := FCopyCond[ACopyLine];
 end;
 
 function TRqDbgInstr.WatchIndex(const AExpr: string): Integer;
@@ -1003,6 +1088,8 @@ begin
   FWatchWhere := TStringList.Create;
   FWatchNote := TStringList.Create;
   FFiles := TStringList.Create;
+  FCondKeys := TStringList.Create;
+  FCondTexts := TStringList.Create;
 end;
 
 destructor TRqDbgInstr.Destroy;
@@ -1012,6 +1099,8 @@ begin
   FWatchWhere.Free;
   FWatchNote.Free;
   FFiles.Free;
+  FCondKeys.Free;
+  FCondTexts.Free;
   inherited;
 end;
 
@@ -1030,8 +1119,10 @@ begin
   begin
     SetLength(FPointLine, FPointCount * 2 + 256);
     SetLength(FPointProc, FPointCount * 2 + 256);
+    SetLength(FPointCond, FPointCount * 2 + 256);
   end;
   FPointLine[FPointCount] := ASrcLine;
+  FPointCond[FPointCount] := '';
   FPointProc[FPointCount] := FCurProc;
   if (ASrcLine >= 0) and (ASrcLine < Length(FLinePoint)) and
      (FLinePoint[ASrcLine] = 0) then
@@ -1098,6 +1189,7 @@ begin
   Add('DIM RqDbgWS AS VARIANT');
   Add('DIM RqDbgWT AS STRING');
   Add('DIM RqDbgBusy AS LONG');
+  Add('DIM RqDbgHit AS LONG');
   Add('DECLARE SUB RqDbgReadCmd');
   Add('DECLARE SUB RqDbgGlobals');
   Add('DECLARE SUB RqDbgHalt');
@@ -1107,7 +1199,7 @@ begin
       'RqDbgPKey AS LONG, RqDbgPSelf AS LONG)');
   Add('');
   // Команда: "m режим", "r точка Run to cursor", "b точка" на каждую точку
-  // останова, "#end". Файла нет - Run без точек.
+  // останова, "c точка" - на условную, "#end". Файла нет - Run без точек.
   Add('SUB RqDbgReadCmd');
   Add('  DIM RqDbgCmdFile AS QFILESTREAM');
   Add('  DIM RqDbgCmdLine AS STRING');
@@ -1134,6 +1226,13 @@ begin
   Add('        IF RqDbgCmdIdx > 0 THEN');
   Add('          IF RqDbgCmdIdx <= ' + MaxIdx +
       ' THEN RqDbgUser(RqDbgCmdIdx) = 1');
+  Add('        END IF');
+  Add('      END IF');
+  Add('      IF LEFT$(RqDbgCmdLine, 2) = "c " THEN');
+  Add('        RqDbgCmdIdx = VAL(MID$(RqDbgCmdLine, 3, 20))');
+  Add('        IF RqDbgCmdIdx > 0 THEN');
+  Add('          IF RqDbgCmdIdx <= ' + MaxIdx +
+      ' THEN RqDbgUser(RqDbgCmdIdx) = 2');
   Add('        END IF');
   Add('      END IF');
   Add('      RqDbgCmdGuard = RqDbgCmdGuard + 1');
@@ -1192,6 +1291,8 @@ begin
   // Точка с поднятым флагом: стоять ли здесь. Шаг не стоит дальше на той
   // же строке того же уровня (FOR ... : ... : NEXT в одной строке), Step
   // over - на точках глубже уровня остановки, если там нет точки останова.
+  // Точка останова - RqDbgOn: RqDbgUser 1, или 2 и условие выполнено
+  // (RqDbgHit из проверки точки).
   // RqDbgPSelf = 1 - остановиться здесь же (главная часть, SUBI); 0 -
   // поднять RqDbgWant: SUB допишет локальные (GOSUB RqDbgVars...) и
   // позовёт RqDbgHalt
@@ -1199,8 +1300,12 @@ begin
       'RqDbgPSelf AS LONG)');
   // Пока идёт остановка (дамп, выражения Watch с вызовом FUNCTION
   // программы) - проверки молчат
+  Add('  DIM RqDbgOn AS LONG');
   Add('  IF RqDbgBusy THEN EXIT SUB');
   Add('  RqDbgDepth = RqDbgPLvl');
+  Add('  RqDbgOn = RqDbgUser(RqDbgPId)');
+  Add('  IF RqDbgOn = 2 THEN RqDbgOn = RqDbgHit');
+  Add('  RqDbgHit = 0');
   Add('  IF RqDbgMode = 1 THEN');
   Add('    IF RqDbgPKey = RqDbgStopKey THEN');
   Add('      IF RqDbgPLvl = RqDbgStopLvl THEN');
@@ -1208,7 +1313,7 @@ begin
   Add('      END IF');
   Add('    END IF');
   Add('  ELSEIF RqDbgMode = 2 THEN');
-  Add('    IF RqDbgUser(RqDbgPId) = 0 THEN');
+  Add('    IF RqDbgOn = 0 THEN');
   Add('      IF RqDbgPLvl > RqDbgStopLvl THEN EXIT SUB');
   Add('      IF RqDbgPKey = RqDbgStopKey THEN');
   Add('        IF RqDbgPLvl = RqDbgStopLvl THEN');
@@ -1218,10 +1323,10 @@ begin
   Add('    END IF');
   Add('  ELSEIF RqDbgMode = 3 THEN');
   Add('    IF RqDbgPId <> RqDbgRunTo THEN');
-  Add('      IF RqDbgUser(RqDbgPId) = 0 THEN EXIT SUB');
+  Add('      IF RqDbgOn = 0 THEN EXIT SUB');
   Add('    END IF');
   Add('  ELSE');
-  Add('    IF RqDbgUser(RqDbgPId) = 0 THEN EXIT SUB');
+  Add('    IF RqDbgOn = 0 THEN EXIT SUB');
   Add('  END IF');
   Add('  RqDbgBusy = 1');
   Add('  RqDbgPendId = RqDbgPId');
@@ -1258,6 +1363,7 @@ var
   Src, Body, Parts, OutLines: TStringList;
   BodySrc: array of Integer;     // строка Body -> строка исходника
   BodyWatch: array of Integer;   // строка Body -> выражение Watch, -1
+  BodyCond: array of Integer;    // строка Body -> точка условия, 0
   Logical: array of Integer;     // первая строка логической строки
   LogicalEnd: array of Integer;  // последняя
   LogicalCode: array of string;  // код без комментариев и "_"
@@ -1469,10 +1575,26 @@ var
     begin
       SetLength(BodySrc, Body.Count * 2 + 256);
       SetLength(BodyWatch, Body.Count * 2 + 256);
+      SetLength(BodyCond, Body.Count * 2 + 256);
     end;
     BodySrc[Body.Count] := ASrcLine;
     BodyWatch[Body.Count] := AWatch;
+    BodyCond[Body.Count] := 0;
     Body.Add(AText);
+  end;
+
+  // Условие точки останова строки ALine общего текста, '' - нет
+  function CondFor(ALine: Integer): string;
+  var
+    KeyIdx: Integer;
+  begin
+    Result := '';
+    if (ALine < 0) or (ALine >= Src.Count) then
+      Exit;
+    KeyIdx := FCondKeys.IndexOf(UpperCase(FFiles[FMergedFile[ALine]]) + #9 +
+                                IntToStr(FMergedLine[ALine]));
+    if KeyIdx >= 0 then
+      Result := FCondTexts[KeyIdx];
   end;
 
   procedure AddBody(const AText: string; ASrcLine: Integer);
@@ -1664,12 +1786,50 @@ var
   // на блок, иначе - RqDbg останавливается сам.
   procedure AddCheck(const AIndent, ALabel: string; APoint, ALine: Integer);
   var
-    LabelText, KeyText: string;
+    LabelText, KeyText, CondText, LvlText, SelfText: string;
   begin
     LabelText := '';
     if ALabel <> '' then
       LabelText := ALabel + ' ';
     KeyText := IntToStr(ALine + 1);
+    // Условная точка останова - у первой точки строки
+    CondText := '';
+    if FLinePoint[ALine] = APoint then
+      CondText := CondFor(ALine);
+    if (CondText <> '') and not RqDbgExprInsertable(CondText) then
+      CondText := '';
+    if CondText <> '' then
+    begin
+      FPointCond[APoint] := CondText;
+      if InSub then
+        LvlText := 'RqDbgLvl'
+      else
+        LvlText := '0';
+      if InSub and CurDump then
+        SelfText := '0'
+      else
+        SelfText := '1';
+      AddGen(AIndent + LabelText + 'IF RqDbgBrk(' + IntToStr(APoint) + ') THEN',
+             ALine);
+      AddGen(AIndent + '  IF RqDbgBusy = 0 THEN', ALine);
+      AddGen(AIndent + '    IF RqDbgUser(' + IntToStr(APoint) + ') = 2 THEN',
+             ALine);
+      AddGen(AIndent + '      RqDbgBusy = 1', ALine);
+      AddGen(AIndent + '      RqDbgHit = 0', ALine);
+      // Условие - как написано: префикс только у RqDbgHit
+      AddBody(AIndent + '      IF (' + CondText + ') THEN ' + Pfx('RqDbgHit') +
+              ' = 1', ALine);
+      BodyCond[Body.Count - 1] := APoint;
+      AddGen(AIndent + '      RqDbgBusy = 0', ALine);
+      AddGen(AIndent + '    END IF', ALine);
+      AddGen(AIndent + '  END IF', ALine);
+      AddGen(AIndent + '  RqDbg(' + IntToStr(APoint) + ', ' + LvlText + ', ' +
+             KeyText + ', ' + SelfText + ')', ALine);
+      if InSub and CurDump then
+        AddGen(AIndent + '  IF RqDbgWant THEN GOSUB ' + CurVarsLabel, ALine);
+      AddGen(AIndent + 'END IF', ALine);
+      Exit;
+    end;
     if InSub and CurDump then
     begin
       AddGen(AIndent + LabelText + 'IF RqDbgBrk(' + IntToStr(APoint) + ') THEN',
@@ -1759,6 +1919,8 @@ begin
   SetLength(FPointLine, 0);
   SetLength(FCopySrc, 0);
   SetLength(FLinePoint, 0);
+  SetLength(FPointCond, 0);
+  SetLength(FCopyCond, 0);
 
   Src := TStringList.Create;
   Body := TStringList.Create;
@@ -1821,7 +1983,8 @@ begin
       FLinePoint[LineIdx] := 0;
 
     // Префикс имён, которого в исходнике нет
-    UpperSrc := UpperCase(Src.Text);
+    // Текст условий точек тоже вписывается в копию
+    UpperSrc := UpperCase(Src.Text + FCondTexts.Text);
     FPrefix := '';
     for LineIdx := 0 to 20 do
     begin
@@ -2162,11 +2325,11 @@ begin
     // теперь), тело
     for LineIdx := 0 to LeadLines - 1 do
       AddCopyLine(OutLines, Body[LineIdx], BodySrc[LineIdx],
-                  BodyWatch[LineIdx]);
+                  BodyWatch[LineIdx], BodyCond[LineIdx]);
     AddRuntime(OutLines);
     for LineIdx := LeadLines to Body.Count - 1 do
       AddCopyLine(OutLines, Body[LineIdx], BodySrc[LineIdx],
-                  BodyWatch[LineIdx]);
+                  BodyWatch[LineIdx], BodyCond[LineIdx]);
     // Глобальные - в конце, после всех их DIM
     AddCopyLine(OutLines, '', -1);
     AddCopyLine(OutLines, Pfx(''' --- unIDE: глобальные переменные для ' +

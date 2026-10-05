@@ -27,6 +27,15 @@
 '      InfoLabel.Caption, MainForm.Width, Square(3) - на любой остановке;
 '      Nope + 1 - пояснение "не найдено". Выражение, добавленное после
 '      сборки, покажет значение после пересборки.
+'  11. Условная точка: правый щелчок по номеру строки
+'      "TotalVal = TotalVal + Square(SumIdx)" в CalcSum (или пункт
+'      Breakpoint condition... в меню редактора), условие SumIdx = 2.
+'      На полосе меток - кольцо вместо кружка. F9 - остановка один раз,
+'      при SumIdx = 2 (Watch: SumIdx). F7/F8 на условие не смотрят.
+'      Условие, изменённое во время отладки, - точка серая до
+'      пересборки; пустое условие - обычная точка сразу.
+'      Ошибка в условии (SumIdx = ) - в логе строка точки и текст
+'      условия.
 
 DECLARE SUB CalcSum (LimitVal AS INTEGER)
 DECLARE FUNCTION Square (BaseVal AS INTEGER) AS INTEGER
