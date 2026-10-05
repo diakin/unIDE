@@ -6017,10 +6017,9 @@ end;
 //  Form1.FEnvOverrides (модуль EnvOptions), в editor.ini пишутся сразу при
 //  изменении, применяет их Form1.EnvOptionsChanged.
 //
-//  Пункты Delphi, которым в unIDE нет соответствия (Desktop contents,
+//  Пунктов Delphi, которым в unIDE нет соответствия (Desktop contents,
 //  Docking, Warn on package rebuild, Shared repository, New forms as
-//  text), показаны выключенными: подпись группы или подсказка говорит,
-//  почему.
+//  text), здесь нет.
 // ---------------------------------------------------------------------------
 
 function TForm2.EnvGroup(AParent: TWinControl; const ACaption: string;
@@ -6045,11 +6044,6 @@ end;
 procedure TForm2.BuildPreferencesTab(ATab: TTabSheet);
 var
   Group: TUiGroupBox;
-  Radio: TUiRadioButton;
-  Check: TUiCheckBox;
-  TextLbl: TLabel;
-  RepoEdit: TUiEdit;
-  RepoBtn: TUiButton;
 begin
   Group := EnvGroup(ATab, 'Autosave options', 8, 8, 290, 72);
   chkPrefAutoEditor := EnvCheck(Group, 'Editor files', 12, 20, 270);
@@ -6062,86 +6056,25 @@ begin
   chkPrefAutoDesktop.Hint := 'Состав проекта (окна, вкладки, закладки) ' +
     'сохраняется в .prj без вопроса при закрытии проекта и выходе';
 
-  Group := EnvGroup(ATab, 'Desktop contents (нет в unIDE)', 8, 88, 290, 72);
-  Group.ShowHint := True;
-  Group.Hint := 'В unIDE состав проекта всегда пишется в .prj; отдельного ' +
-                'файла символов нет';
-  Radio := TUiRadioButton.Create(Self);
-  Radio.Parent := Group;
-  Radio.Caption := 'Desktop only';
-  Radio.SetBounds(12, 20, 270, 20);
-  Radio.Enabled := False;
-  Radio := TUiRadioButton.Create(Self);
-  Radio.Parent := Group;
-  Radio.Caption := 'Desktop and symbols';
-  Radio.SetBounds(12, 44, 270, 20);
-  Radio.Checked := True;
-  Radio.Enabled := False;
-
-  Group := EnvGroup(ATab, 'Docking (нет в unIDE)', 8, 168, 290, 80);
-  Check := TUiCheckBox.Create(Self);
-  Check.Parent := Group;
-  Check.Caption := 'Auto drag docking';
-  Check.SetBounds(12, 20, 270, 20);
-  Check.Enabled := False;
-  TextLbl := TLabel.Create(Self);
-  TextLbl.Parent := Group;
-  TextLbl.AutoSize := False;
-  TextLbl.WordWrap := True;
-  TextLbl.SetBounds(12, 42, 270, 32);
-  TextLbl.Caption := 'Pressing the Control key while dragging will prevent ' +
-                     'window docking';
-  TextLbl.Enabled := False;
-
-  Group := EnvGroup(ATab, 'Compiling and running', 306, 8, 290, 240);
+  Group := EnvGroup(ATab, 'Compiling and running', 306, 8, 290, 96);
   chkPrefProgress := EnvCheck(Group, 'Show compiler progress', 12, 20, 270);
   chkPrefProgress.ShowHint := True;
   chkPrefProgress.Hint := 'Окно хода сборки: файл, строки, ошибки, ' +
     'предупреждения; при ошибках остаётся до OK';
-  Check := TUiCheckBox.Create(Self);
-  Check.Parent := Group;
-  Check.Caption := 'Warn on package rebuild';
-  Check.SetBounds(12, 44, 270, 20);
-  Check.Enabled := False;
-  chkPrefMinimize := EnvCheck(Group, 'Minimize on run', 12, 68, 270);
+  chkPrefMinimize := EnvCheck(Group, 'Minimize on run', 12, 44, 270);
   chkPrefMinimize.ShowHint := True;
   chkPrefMinimize.Hint := 'Среда сворачивается, пока работает запущенная ' +
     'программа (без отладчика), и разворачивается, когда она закроется';
-  chkPrefHideDsg := EnvCheck(Group, 'Hide designers on run', 12, 92, 270);
+  chkPrefHideDsg := EnvCheck(Group, 'Hide designers on run', 12, 68, 270);
   chkPrefHideDsg.ShowHint := True;
   chkPrefHideDsg.Hint := 'Формы конструктора прячутся, пока работает ' +
     'запущенная программа';
-  TextLbl := TLabel.Create(Self);
-  TextLbl.Parent := Group;
-  TextLbl.AutoSize := False;
-  TextLbl.WordWrap := True;
-  TextLbl.SetBounds(12, 124, 270, 48);
-  TextLbl.Caption := 'Warn on package rebuild - в unIDE пакеты не ' +
-                     'собираются.';
-
-  Group := EnvGroup(ATab, 'Shared repository (нет в unIDE)', 8, 256, 588,
-                    56);
-  TextLbl := TLabel.Create(Self);
-  TextLbl.Parent := Group;
-  TextLbl.Caption := 'Directory:';
-  TextLbl.SetBounds(12, 24, 60, 16);
-  TextLbl.Enabled := False;
-  RepoEdit := TUiEdit.Create(Self);
-  RepoEdit.Parent := Group;
-  RepoEdit.SetBounds(80, 20, 400, 24);
-  RepoEdit.Enabled := False;
-  RepoBtn := TUiButton.Create(Self);
-  RepoBtn.Parent := Group;
-  RepoBtn.Caption := 'Browse...';
-  RepoBtn.SetBounds(488, 19, 90, 26);
-  RepoBtn.Enabled := False;
 end;
 
 procedure TForm2.BuildDesignerTab(ATab: TTabSheet);
 var
   Group: TUiGroupBox;
   TextLbl: TLabel;
-  Check: TUiCheckBox;
 
   procedure AddGridEdit(const ALabel: string; ALeft: Integer;
                         var AEdit: TUiEdit; var AUpDown: TUiUpDown);
@@ -6172,17 +6105,9 @@ begin
   AddGridEdit('X', 40, edDsgGridX, udDsgGridX);
   AddGridEdit('Y', 140, edDsgGridY, udDsgGridY);
 
-  Group := EnvGroup(ATab, 'Module creation options', 8, 144, 290, 72);
-  Check := TUiCheckBox.Create(Self);
-  Check.Parent := Group;
-  Check.Caption := 'New forms as text';
-  Check.SetBounds(12, 20, 270, 20);
-  Check.Checked := True;
-  Check.Enabled := False;
-  Group.ShowHint := True;
-  Group.Hint := 'New forms as text: unIDE пишет .dfm только текстом';
+  Group := EnvGroup(ATab, 'Module creation options', 8, 144, 290, 48);
   chkDsgAutoCreate := EnvCheck(Group, 'Auto create forms & data modules', 12,
-                               44, 270);
+                               20, 270);
   chkDsgAutoCreate.ShowHint := True;
   chkDsgAutoCreate.Hint := 'New Form вписывает в .dpr ' +
                            'Application.CreateForm новой формы';
