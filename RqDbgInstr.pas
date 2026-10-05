@@ -47,14 +47,14 @@ unit RqDbgInstr;
 //  RqDbgGlobals в конце копии, после всех DIM), закрывает файл и ждёт.
 //  На верхнем уровне и в SUBI/FUNCTIONI локальных нет - RqDbg(..., 1)
 //  останавливается сам. Массивы, объекты, VARIANT, свои TYPE, переменные
-//  без DIM и глобальные из $INCLUDE-файлов не показываются.
+//  без DIM и глобальные из невставленных $INCLUDE-файлов не показываются.
 //
 //  Выражения Watch (этап 3): a(3), Form.Caption, a+b и т.п. RapidQ не
 //  вычисляет текст на ходу, поэтому выражения окна Watch на момент сборки
 //  вставляются в копию: в блок дампа SUB, где известны все имена
 //  выражения и хотя бы одно из них - параметр или локальная этой SUB, или
 //  в RqDbgGlobals, если все имена глобальные (DIM, CREATE, CONST, SUB и
-//  FUNCTION главного файла). Встроенные функции (LEN, MID$...) и свойства
+//  FUNCTION главного файла и вставленных $INCLUDE). Встроенные функции (LEN, MID$...) и свойства
 //  после точки именами не считаются. Строка в файле состояния -
 //  "w номер|тип=значение". Элемент массива или переменная известного
 //  простого типа - через STR$ или как есть, остальное - через VARIANT:
@@ -89,8 +89,16 @@ unit RqDbgInstr;
 //  выдаст "identifier already in use". Имена событий и пути файлов от
 //  префикса не зависят.
 //
-//  Этап 1: инструментируется только главный .bas; $INCLUDE-файлы - как
-//  есть.
+//  $INCLUDE-файлы. Файлы из списка AIncFiles (Build) вставляются в копию
+//  текстом на место строки $INCLUDE и инструментируются вместе с главным:
+//  точки, шаги, их переменные и имена для Watch. Строка $INCLUDE
+//  становится комментарием, после текста файла - комментарий "конец".
+//  Файл ищется, как у rc.exe и вкладки Includes: путь целиком - как есть,
+//  иначе в папке главного .bas, потом в папке Include из настроек.
+//  Повторный $INCLUDE уже вставленного файла - комментарий (так же
+//  вкладка Includes: "уже подключён выше"). Остальные $INCLUDE остаются
+//  как есть: rc.exe берёт исходный файл, без проверок. У каждой строки
+//  общего текста - файл (номер в FileName) и строка в нём.
 //
 //  Без VCL: проверяется FPC (fpc -Mdelphi).
 // ---------------------------------------------------------------------------
@@ -128,6 +136,10 @@ type
     FWatchExprs: TStringList;       // выражения Watch на момент сборки
     FWatchWhere: TStringList;       // где вычисляется: "SUB A, SUB B", "*"
     FWatchNote: TStringList;        // почему не вычисляется нигде
+    FFiles: TStringList;            // файлы копии: 0 - главный, дальше $INCLUDE
+    FMergedFile: array of Integer;  // строка общего текста -> номер файла
+    FMergedLine: array of Integer;  // -> строка в своём файле (с 0)
+    FFileMerged: array of array of Integer; // файл, строка -> строка текста
     procedure AddCopyLine(AOut: TStrings; const AText: string;
                           ASrcLine: Integer; AWatch: Integer = -1);
     function NewPoint(ASrcLine: Integer): Integer;
@@ -137,9 +149,17 @@ type
     // Копия ASrcFile в ACopyFile. ACmdFile, AStateFile - файлы команды и
     // состояния (пути целиком), AEventBase - начало имён событий. False -
     // причина в LastError.
-    // AWatch - выражения окна Watch (может быть nil)
+    // AWatch - выражения окна Watch (может быть nil). AIncFiles - пути
+    // $INCLUDE-файлов, которые вставляются в копию (nil - никакие),
+    // AIncDir - папка Include из настроек.
     function Build(const ASrcFile, ACopyFile, ACmdFile, AStateFile,
-                   AEventBase: string; AWatch: TStrings): Boolean;
+                   AEventBase: string; AWatch: TStrings;
+                   const AIncDir: string; AIncFiles: TStrings): Boolean;
+    // Файлы копии: 0 - главный, дальше вставленные $INCLUDE
+    function FileCount: Integer;
+    function FileName(AFileIdx: Integer): string;
+    // Номер файла копии, -1 - файл в неё не вставлен
+    function FileIndex(const AFile: string): Integer;
     // Номер выражения Watch этой сборки, -1 - его не было при сборке
     function WatchIndex(const AExpr: string): Integer;
     // Где вычисляется выражение ("SUB A, SUB B", "*" - везде) и почему
@@ -150,12 +170,16 @@ type
     function WatchOfCopy(ACopyLine: Integer): Integer;
     // Текст выражения Watch этой сборки по номеру
     function WatchExpr(AIndex: Integer): string;
-    // Первая точка строки исходника (с 0), 0 - на строке нет кода
-    function PointOfLine(ALine: Integer): Integer;
-    // Строка исходника (с 0) точки, -1 - нет такой
+    // Первая точка строки ALine (с 0) файла AFileIdx, 0 - на строке нет
+    // кода
+    function PointOfLine(AFileIdx, ALine: Integer): Integer;
+    // Строка (с 0) и файл точки; -1 - нет такой
     function LineOfPoint(APoint: Integer): Integer;
-    // Строка исходника (с 0) по строке копии (с 0), -1 - строка добавлена
+    function FileOfPoint(APoint: Integer): Integer;
+    // Строка исходника (с 0) по строке копии (с 0), -1 - строка добавлена;
+    // файл этой строки (у добавленной - 0, главный)
     function SrcLineOfCopy(ACopyLine: Integer): Integer;
+    function SrcFileOfCopy(ACopyLine: Integer): Integer;
     property SrcFile: string read FSrcFile;
     property CopyFile: string read FCopyFile;
     property CmdFile: string read FCmdFile;
@@ -177,6 +201,13 @@ function RqDbgSlashPath(const APath: string): string;
 // Имена событий по началу AEventBase
 function RqDbgStopEventName(const AEventBase: string): string;
 function RqDbgGoEventName(const AEventBase: string): string;
+
+// Имя файла из строки "$INCLUDE "файл"" или "$INCLUDE <файл>"; не
+// $INCLUDE (в том числе закомментированная) - пусто. Косые - обратные.
+function RqDbgIncludeName(const ALine: string): string;
+// Где лежит подключаемый файл: путь целиком - как есть, иначе в AMainDir,
+// потом в AIncDir. '' - не найден.
+function RqDbgResolveInclude(const AName, AMainDir, AIncDir: string): string;
 
 implementation
 
@@ -205,6 +236,59 @@ end;
 function RqDbgGoEventName(const AEventBase: string): string;
 begin
   Result := AEventBase + '_G';
+end;
+
+function RqDbgIncludeName(const ALine: string): string;
+const
+  IncTag = '$include';
+var
+  Txt: string;
+  NameStart, NameEnd: Integer;
+  CloseChar: Char;
+begin
+  Result := '';
+  Txt := TrimLeft(ALine);
+  if LowerCase(Copy(Txt, 1, Length(IncTag))) <> IncTag then
+    Exit;
+  Txt := TrimLeft(Copy(Txt, Length(IncTag) + 1, MaxInt));
+  if Txt = '' then
+    Exit;
+  if Txt[1] = '"' then
+    CloseChar := '"'
+  else if Txt[1] = '<' then
+    CloseChar := '>'
+  else
+    Exit;
+  NameStart := 2;
+  NameEnd := NameStart;
+  while (NameEnd <= Length(Txt)) and (Txt[NameEnd] <> CloseChar) do
+    Inc(NameEnd);
+  if NameEnd > Length(Txt) then
+    Exit;
+  Result := Trim(Copy(Txt, NameStart, NameEnd - NameStart));
+  Result := StringReplace(Result, '/', '\', [rfReplaceAll]);
+end;
+
+function RqDbgResolveInclude(const AName, AMainDir, AIncDir: string): string;
+begin
+  Result := '';
+  if AName = '' then
+    Exit;
+  if (ExtractFileDrive(AName) <> '') or (Copy(AName, 1, 2) = '\\') then
+  begin
+    if FileExists(AName) then
+      Result := AName;
+    Exit;
+  end;
+  if (AMainDir <> '') and
+     FileExists(IncludeTrailingPathDelimiter(AMainDir) + AName) then
+  begin
+    Result := ExpandFileName(IncludeTrailingPathDelimiter(AMainDir) + AName);
+    Exit;
+  end;
+  if (AIncDir <> '') and
+     FileExists(IncludeTrailingPathDelimiter(AIncDir) + AName) then
+    Result := ExpandFileName(IncludeTrailingPathDelimiter(AIncDir) + AName);
 end;
 
 // Конец строки в кавычках, начатой на AStart (там "). AEscape - при
@@ -918,6 +1002,7 @@ begin
   FWatchExprs := TStringList.Create;
   FWatchWhere := TStringList.Create;
   FWatchNote := TStringList.Create;
+  FFiles := TStringList.Create;
 end;
 
 destructor TRqDbgInstr.Destroy;
@@ -926,6 +1011,7 @@ begin
   FWatchExprs.Free;
   FWatchWhere.Free;
   FWatchNote.Free;
+  FFiles.Free;
   inherited;
 end;
 
@@ -1164,7 +1250,10 @@ begin
 end;
 
 function TRqDbgInstr.Build(const ASrcFile, ACopyFile, ACmdFile, AStateFile,
-                           AEventBase: string; AWatch: TStrings): Boolean;
+                           AEventBase: string; AWatch: TStrings;
+                           const AIncDir: string; AIncFiles: TStrings): Boolean;
+const
+  MaxIncDepth = 20;   // защита от зацикливания через разные имена файла
 var
   Src, Body, Parts, OutLines: TStringList;
   BodySrc: array of Integer;     // строка Body -> строка исходника
@@ -1202,6 +1291,96 @@ var
   ExclStack: array of Boolean;    // блок условной сборки не собирается
   CondStack: array of Boolean;    // условие блока (для $ELSE)
   CondDepth: Integer;
+  MainDir: string;
+
+  // Строка общего текста: файл AFileIdx, его строка ALine
+  procedure AddMerged(const AText: string; AFileIdx, ALine: Integer);
+  begin
+    if Src.Count >= Length(FMergedFile) then
+    begin
+      SetLength(FMergedFile, Src.Count * 2 + 256);
+      SetLength(FMergedLine, Src.Count * 2 + 256);
+    end;
+    FMergedFile[Src.Count] := AFileIdx;
+    FMergedLine[Src.Count] := ALine;
+    Src.Add(AText);
+  end;
+
+  // Вставлять ли $INCLUDE-файл AFull
+  function InIncList(const AFull: string): Boolean;
+  var
+    ListIdx: Integer;
+  begin
+    Result := False;
+    if AIncFiles = nil then
+      Exit;
+    for ListIdx := 0 to AIncFiles.Count - 1 do
+      if CompareText(ExpandFileName(AIncFiles[ListIdx]),
+                     ExpandFileName(AFull)) = 0 then
+      begin
+        Result := True;
+        Exit;
+      end;
+  end;
+
+  // Файл AFile (номер AFileIdx) - в общий текст, вставляемые $INCLUDE -
+  // на место своей строки. False - файл не прочитан (LastError).
+  function LoadMerged(const AFile: string; AFileIdx, ADepth: Integer): Boolean;
+  var
+    FileLines: TStringList;
+    FileLineIdx, NewIdx: Integer;
+    IncName, IncFull, IncLine: string;
+  begin
+    Result := False;
+    FileLines := TStringList.Create;
+    try
+      try
+        FileLines.LoadFromFile(AFile);
+      except
+        on E: Exception do
+        begin
+          FLastError := 'не прочитан ' + AFile + ': ' + E.Message;
+          Exit;
+        end;
+      end;
+      SetLength(FFileMerged[AFileIdx], FileLines.Count);
+      for FileLineIdx := 0 to FileLines.Count - 1 do
+      begin
+        FFileMerged[AFileIdx][FileLineIdx] := Src.Count;
+        IncName := RqDbgIncludeName(FileLines[FileLineIdx]);
+        IncFull := '';
+        if (IncName <> '') and (ADepth < MaxIncDepth) then
+        begin
+          IncFull := RqDbgResolveInclude(IncName, MainDir, AIncDir);
+          if (IncFull <> '') and not InIncList(IncFull) then
+            IncFull := '';
+        end;
+        if IncFull = '' then
+        begin
+          AddMerged(FileLines[FileLineIdx], AFileIdx, FileLineIdx);
+          Continue;
+        end;
+        IncLine := Trim(FileLines[FileLineIdx]);
+        if FileIndex(IncFull) >= 0 then
+        begin
+          AddMerged(''' unIDE: ' + IncLine + ' - уже вставлен выше',
+                    AFileIdx, FileLineIdx);
+          Continue;
+        end;
+        AddMerged(''' unIDE: ' + IncLine + ' - текст файла ниже', AFileIdx,
+                  FileLineIdx);
+        FFiles.Add(ExpandFileName(IncFull));
+        NewIdx := FFiles.Count - 1;
+        SetLength(FFileMerged, FFiles.Count);
+        if not LoadMerged(IncFull, NewIdx, ADepth + 1) then
+          Exit;
+        AddMerged(''' unIDE: конец ' + IncName, AFileIdx, FileLineIdx);
+      end;
+      Result := True;
+    finally
+      FileLines.Free;
+    end;
+  end;
 
   function Excluded: Boolean;
   begin
@@ -1628,15 +1807,15 @@ begin
     Aliases.Values['EREM'] := 'ENDIF';
     Aliases.Values['REMB'] := 'IFDEF';
     Aliases.Values['REME'] := 'ENDIF';
-    try
-      Src.LoadFromFile(ASrcFile);
-    except
-      on E: Exception do
-      begin
-        FLastError := 'не прочитан ' + ASrcFile + ': ' + E.Message;
-        Exit;
-      end;
-    end;
+    // Главный файл и вставляемые $INCLUDE - общим текстом
+    FFiles.Clear;
+    FFiles.Add(ExpandFileName(ASrcFile));
+    SetLength(FFileMerged, 1);
+    SetLength(FMergedFile, 0);
+    SetLength(FMergedLine, 0);
+    MainDir := ExtractFilePath(ExpandFileName(ASrcFile));
+    if not LoadMerged(ASrcFile, 0, 0) then
+      Exit;
     SetLength(FLinePoint, Src.Count + 1);
     for LineIdx := 0 to High(FLinePoint) do
       FLinePoint[LineIdx] := 0;
@@ -1681,8 +1860,10 @@ begin
       Code := '';
       repeat
         LineCode := TrimRight(StripComment(Src[LineIdx], Escape));
+        // Продолжение - только в том же файле
         if (LineCode <> '') and (LineCode[Length(LineCode)] = '_') and
-           (LineIdx < Src.Count - 1) then
+           (LineIdx < Src.Count - 1) and
+           (FMergedFile[LineIdx + 1] = FMergedFile[LineIdx]) then
         begin
           Code := Code + Copy(LineCode, 1, Length(LineCode) - 1) + ' ';
           Inc(LineIdx);
@@ -1703,7 +1884,7 @@ begin
       Inc(LineIdx);
     end;
 
-    // Предварительный проход: все глобальные имена главного файла (для
+    // Предварительный проход: все глобальные имена общего текста (для
     // выражений Watch в SUB нужны и глобальные, объявленные ниже SUB):
     // DIM, CONST, DEFxxx вне SUB, имена CREATE, SUB и FUNCTION
     PreInSub := False;
@@ -2023,8 +2204,8 @@ begin
         end;
       if NoteText <> '' then
         FWatchNote[WatchIdx] := 'не найдено: ' + NoteText + ' (нужно ' +
-          'объявление DIM/CREATE в главном файле; переменные без DIM и ' +
-          'из $INCLUDE не видны)'
+          'объявление DIM/CREATE в главном файле или в $INCLUDE-файле под ' +
+          'отладкой; переменные без DIM не видны)'
       else
         FWatchNote[WatchIdx] := 'имена из разных SUB или простое имя, ' +
           'массив целиком, объект - не вычисляется';
@@ -2068,25 +2249,74 @@ begin
   end;
 end;
 
-function TRqDbgInstr.PointOfLine(ALine: Integer): Integer;
+function TRqDbgInstr.FileCount: Integer;
+begin
+  Result := FFiles.Count;
+end;
+
+function TRqDbgInstr.FileName(AFileIdx: Integer): string;
+begin
+  Result := '';
+  if (AFileIdx >= 0) and (AFileIdx < FFiles.Count) then
+    Result := FFiles[AFileIdx];
+end;
+
+function TRqDbgInstr.FileIndex(const AFile: string): Integer;
+var
+  FileIdx: Integer;
+begin
+  Result := -1;
+  if AFile = '' then
+    Exit;
+  for FileIdx := 0 to FFiles.Count - 1 do
+    if CompareText(FFiles[FileIdx], ExpandFileName(AFile)) = 0 then
+    begin
+      Result := FileIdx;
+      Exit;
+    end;
+end;
+
+function TRqDbgInstr.PointOfLine(AFileIdx, ALine: Integer): Integer;
+var
+  MergedIdx: Integer;
 begin
   Result := 0;
-  if (ALine >= 0) and (ALine < Length(FLinePoint)) then
-    Result := FLinePoint[ALine];
+  if (AFileIdx < 0) or (AFileIdx >= Length(FFileMerged)) or (ALine < 0) or
+     (ALine >= Length(FFileMerged[AFileIdx])) then
+    Exit;
+  MergedIdx := FFileMerged[AFileIdx][ALine];
+  if (MergedIdx >= 0) and (MergedIdx < Length(FLinePoint)) then
+    Result := FLinePoint[MergedIdx];
 end;
 
 function TRqDbgInstr.LineOfPoint(APoint: Integer): Integer;
 begin
   Result := -1;
-  if (APoint >= 1) and (APoint <= FPointCount) then
-    Result := FPointLine[APoint];
+  if (APoint >= 1) and (APoint <= FPointCount) and (FPointLine[APoint] >= 0) then
+    Result := FMergedLine[FPointLine[APoint]];
+end;
+
+function TRqDbgInstr.FileOfPoint(APoint: Integer): Integer;
+begin
+  Result := -1;
+  if (APoint >= 1) and (APoint <= FPointCount) and (FPointLine[APoint] >= 0) then
+    Result := FMergedFile[FPointLine[APoint]];
 end;
 
 function TRqDbgInstr.SrcLineOfCopy(ACopyLine: Integer): Integer;
 begin
   Result := -1;
-  if (ACopyLine >= 0) and (ACopyLine < FCopyCount) then
-    Result := FCopySrc[ACopyLine];
+  if (ACopyLine >= 0) and (ACopyLine < FCopyCount) and
+     (FCopySrc[ACopyLine] >= 0) then
+    Result := FMergedLine[FCopySrc[ACopyLine]];
+end;
+
+function TRqDbgInstr.SrcFileOfCopy(ACopyLine: Integer): Integer;
+begin
+  Result := 0;
+  if (ACopyLine >= 0) and (ACopyLine < FCopyCount) and
+     (FCopySrc[ACopyLine] >= 0) then
+    Result := FMergedFile[FCopySrc[ACopyLine]];
 end;
 
 end.

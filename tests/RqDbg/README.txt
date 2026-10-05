@@ -31,3 +31,13 @@ RqDbgT4_Debug.bas   Этап 1 отладчика в unIDE: точки останова (F5), F7, F8,
                     RqDbgT4_Debug_rqdbg.bas (её можно открыть и посмотреть,
                     что вставлено); рядом во время отладки появляются
                     RqDbgT4_Debug_rqdbg.cmd и .state.
+
+RqDbgT5_Include.bas $INCLUDE-файлы под отладкой: RqDbgT5_Lib.inc и
+RqDbgT5_Lib.inc     вложенный RqDbgT5_Nested.inc. Пометка главного
+RqDbgT5_Nested.inc  файла на вкладке include, точки и шаги внутри
+                    include, ошибки компиляции в них. Что пробовать - в
+                    начале RqDbgT5_Include.bas. В копию
+                    RqDbgT5_Include_rqdbg.bas include-файлы с точками
+                    (и открытые на вкладке с пометкой) вставлены текстом
+                    между комментариями "' unIDE: $INCLUDE ..." и
+                    "' unIDE: конец ...".

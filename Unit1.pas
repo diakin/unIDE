@@ -240,6 +240,10 @@ type
     IsUtf8: Boolean;    // кодировка файла на диске
     HasBom: Boolean;
     Broken: Boolean;    // файла нет на диске - окно помечается как нерабочее
+    // Главный .bas, к которому файл подключён через $INCLUDE: файл открыт
+    // из дерева вкладки Includes (или остановкой отладчика в нём). На
+    // вкладке - после имени; сборка и запуск с этой вкладки - его. '' - нет.
+    IncOwner: string;
 
     // Кэш карт комментариев и строковых литералов этого окна.
     // Построение карты - полный проход по тексту, и при переключении окон
@@ -2111,6 +2115,8 @@ type
     function  RqDbgLaunch(const AExe, ADir: string): Boolean;
     function  RqDbgHere: Boolean;
     function  RqDbgWantedFor(const ABas: string): Boolean;
+    procedure RqDbgIncludeSet(const ABas: string; AAll, AInline: TStrings);
+    function  RqDbgPointAt(const AFile: string; ALine: Integer): Integer;
     function  RqDbgMarkPoint(AMark: TBreakMark): Integer;
     procedure RqDbgResolveMark(AMark: TBreakMark);
     function  RqDbgResolveMarks: Integer;
@@ -2340,6 +2346,10 @@ type
     procedure DsgShowAfterRun;
     function  RunTargetExe: string;
     function  CurRunExe: string;
+    // Главный .bas $INCLUDE-файла окна (IncOwner, если он есть на диске)
+    function  WinIncOwner(AWinIdx: Integer): string;
+    function  CurIncOwner: string;
+    procedure SetIncOwner(AWinIdx: Integer; const AOwner: string);
     function  RunHandleOf(const AExe: string): THandle;
     function  RunHere: THandle;
     procedure RunAdd(const AExe: string; AProcess: THandle);
@@ -3360,6 +3370,7 @@ begin
   UiDefault('Tabs.Text', clWindowText, $00DCDCDC);
   UiDefault('Tabs.CloseOn', clRed);        // крестик активной вкладки
   UiDefault('Tabs.CloseOff', clGray, $00808080);
+  UiDefault('Tabs.Owner', clGray, $00A0A0A0);   // главный .bas у include
   // Рамки ярлычков - у вкладок редактора и у всех вкладок окон IDE
   UiDefault('Tabs.Border', clBtnShadow, $00707070);
   // Своё меню (TUiMenuBar, TUiPopupMenu) - в темах Dark и Custom
@@ -3658,6 +3669,8 @@ begin
     Result := 'Вкладки: рамка'
   else if AKey = 'Tabs.CloseOff' then
     Result := 'Вкладки: крестик остальных'
+  else if AKey = 'Tabs.Owner' then
+    Result := 'Вкладки: главный файл у $INCLUDE-файла'
   else if AKey = 'ObjTree.SelBG' then
     Result := 'Дерево объектов: фон выделения'
   else if AKey = 'ObjTree.SelText' then
@@ -6327,6 +6340,7 @@ begin
             FWindows[I].Used := True;
             FWindows[I].FileName := '(без имени: ' + ExtractFileName(FN) +
             ' с диска' + ExtractFileExt(FN) + ')';
+            FWindows[I].IncOwner := '';
 FWindows[I].Text := Disk[K];
             FWindows[I].CursorPos := 0;
             FWindows[I].Modified := False;
@@ -6501,6 +6515,7 @@ begin
 
   FWindows[Idx].Used := True;
   FWindows[Idx].FileName := FN;
+  FWindows[Idx].IncOwner := '';
   FWindows[Idx].Text := LoadTextFile(FN); // тут же определится кодировка
   FWindows[Idx].CursorPos := 0;
   FWindows[Idx].Modified := False;
@@ -6537,6 +6552,7 @@ begin
 
   FWindows[Idx].Used := True;
   FWindows[Idx].FileName := '(без имени' + Ext + ')';
+  FWindows[Idx].IncOwner := '';
   FWindows[Idx].Text := '';
   FWindows[Idx].CursorPos := 0;
   FWindows[Idx].Modified := False;
@@ -8160,6 +8176,7 @@ begin
   begin
     FWindows[I].Used := False;
     FWindows[I].FileName := '';
+    FWindows[I].IncOwner := '';
     FWindows[I].Text := '';
     FWindows[I].CursorPos := 0;
     FWindows[I].Modified := False;
@@ -10952,6 +10969,13 @@ begin
       FWindows[I].FileName := Path;
       FWindows[I].CursorPos :=
         StrToIntDef(StripIniComment(Ini.ReadString('Windows', 'curposic' + IntToStr(I), '0')), 0);
+      // Главный .bas, если файл открыт из дерева Includes
+      Raw := Trim(Ini.ReadString('Windows', 'incowner' + IntToStr(I), ''));
+      if Raw <> '' then
+        FWindows[I].IncOwner :=
+          ResolveFileName(PrjPathFromStore(ProjectFileName(AName), Raw))
+      else
+        FWindows[I].IncOwner := '';
       FWindows[I].Modified := False;
       FWindows[I].MapValid := False;
 
@@ -11295,6 +11319,9 @@ begin
                         PrjPathToStore(PrjFile, FWindows[I].FileName));
         Ini.WriteString('Windows', 'curposic' + IntToStr(I),
                         IntToStr(FWindows[I].CursorPos));
+        if FWindows[I].IncOwner <> '' then
+          Ini.WriteString('Windows', 'incowner' + IntToStr(I),
+                          PrjPathToStore(PrjFile, FWindows[I].IncOwner));
       end;
 
     // Вкладки. Набор вкладок - это не то же самое, что список окон: в панели
@@ -13432,6 +13459,10 @@ begin
 end;
 
 
+// Знак между именем файла и его главным .bas на вкладке ("Lib.inc « Main.bas")
+const
+  TabOwnerMark = ' « ';
+
 // Подпись вкладки. Пробелы по краям - не украшение: ширину вкладки Windows
 // считает по тексту, а нам нужно место под маркер изменений слева и крестик
 // справа. Owner-draw поверх этого рисует настоящее содержимое.
@@ -13470,6 +13501,11 @@ begin
       Nm := Nm + ' [' + Dir + ']';
   end;
 
+  // Файл подключён в главный .bas через $INCLUDE - имя главного после
+  // знака TabOwnerMark (TabsDrawTab рисует его приглушённо)
+  if FWindows[WinIdx].IncOwner <> '' then
+    Nm := Nm + TabOwnerMark + ExtractFileName(FWindows[WinIdx].IncOwner);
+
   Result := Nm;
   if IsMod then
     Result := '* ' + Result;
@@ -13486,8 +13522,8 @@ procedure TForm1.TabsDrawTab(ADC: HDC; const ARect: TRect; ATab: Integer;
                              AActive: Boolean);
 var
   C: TCanvas;
-  S, Main, Cross: string;
-  P, X, Y: Integer;
+  S, Main, Cross, OwnerPart: string;
+  P, X, Y, OwnerPos: Integer;
 begin
   C := TCanvas.Create;
   try
@@ -13519,9 +13555,25 @@ begin
     C.Font.Color := UiColor('Tabs.Text');
     C.Brush.Style := bsClear;
 
+    // Главный файл include (TabCaptionFor) - своим цветом
+    OwnerPart := '';
+    OwnerPos := Pos(TabOwnerMark, Main);
+    if OwnerPos > 0 then
+    begin
+      OwnerPart := Copy(Main, OwnerPos, MaxInt);
+      Main := Copy(Main, 1, OwnerPos - 1);
+    end;
+
     Y := ARect.Top + ((ARect.Bottom - ARect.Top) - C.TextHeight('Wg')) div 2;
     X := ARect.Left + 6;
     C.TextOut(X, Y, Main);
+    if OwnerPart <> '' then
+    begin
+      X := X + C.TextWidth(Main);
+      C.Font.Color := UiColor('Tabs.Owner');
+      C.TextOut(X, Y, OwnerPart);
+      C.Font.Color := UiColor('Tabs.Text');
+    end;
 
     if Cross <> '' then
     begin
@@ -13797,6 +13849,7 @@ begin
 
   FWindows[WinIdx].Used := False;
   FWindows[WinIdx].FileName := '';
+  FWindows[WinIdx].IncOwner := '';
   FWindows[WinIdx].Text := '';
   FWindows[WinIdx].CursorPos := 0;
   FWindows[WinIdx].Modified := False;
@@ -38703,7 +38756,8 @@ begin
 end;
 
 // Сборка RapidQ или Delphi - по типу проекта. Без проекта - по открытому
-// файлу: .bas собирает rc.exe, остальное - dcc32, как раньше.
+// файлу: .bas (и $INCLUDE-файл с главным .bas на вкладке) собирает rc.exe,
+// остальное - dcc32, как раньше.
 function TForm1.BuildIsRapidQ: Boolean;
 var
   BuildPrj: string;
@@ -38712,7 +38766,38 @@ begin
   if BuildPrj <> '' then
     Result := CompareText(ProjectTypeOf(BuildPrj), 'RapidQ Basic') = 0
   else
-    Result := (FCurrentFileName <> '') and IsRapidQSource(FCurrentFileName);
+    Result := ((FCurrentFileName <> '') and IsRapidQSource(FCurrentFileName)) or
+              (CurIncOwner <> '');
+end;
+
+function TForm1.WinIncOwner(AWinIdx: Integer): string;
+begin
+  Result := '';
+  if (AWinIdx < 0) or (AWinIdx > WindowsItemCount - 1) or
+     not FWindows[AWinIdx].Used then
+    Exit;
+  Result := FWindows[AWinIdx].IncOwner;
+  if (Result <> '') and not (IsRapidQSource(Result) and FileExists(Result)) then
+    Result := '';
+end;
+
+function TForm1.CurIncOwner: string;
+begin
+  Result := WinIncOwner(FWindowsIndex);
+end;
+
+// Главный .bas окна AWinIdx: запись и подпись вкладки (ширина меняется)
+procedure TForm1.SetIncOwner(AWinIdx: Integer; const AOwner: string);
+begin
+  if (AWinIdx < 0) or (AWinIdx > WindowsItemCount - 1) or
+     not FWindows[AWinIdx].Used then
+    Exit;
+  if CompareText(FWindows[AWinIdx].IncOwner, AOwner) = 0 then
+    Exit;
+  FWindows[AWinIdx].IncOwner := AOwner;
+  UpdateTabCaption(AWinIdx);
+  FRunExeKey := '';   // CurRunExe - заново: программа вкладки другая
+  FLangModeKey := ''; // режим Basic/Delphi у .inc - по главному файлу
 end;
 
 // Кнопки Compile и Compile & Run. Остальные места (пробный запуск
@@ -38777,7 +38862,8 @@ begin
 end;
 
 // Главный .bas сборки RapidQ. Как в RQdebugger, собирается файл активной
-// вкладки:
+// вкладки. У вкладки $INCLUDE-файла с главным .bas (IncOwner) - вместо
+// неё этот главный, дальше по тем же правилам:
 //   - активная вкладка - .bas, и цель проекта не подключает его через
 //     $INCLUDE - он; ARemember - он же записывается целью проекта (новая
 //     версия главного файла заводится копией под новым именем, и прежняя
@@ -38801,8 +38887,16 @@ begin
   end;
 
   Active := '';
-  if (FCurrentFileName <> '') and IsRapidQSource(FCurrentFileName) and
-     FileExists(FCurrentFileName) then
+  if CurIncOwner <> '' then
+  begin
+    Active := CurIncOwner;
+    if ARemember then
+      LogComp('Собирается ' + ExtractFileName(Active) + ': ' +
+              ExtractFileName(FCurrentFileName) + ' подключён в него через ' +
+              '$INCLUDE (вкладка открыта из Includes)');
+  end
+  else if (FCurrentFileName <> '') and IsRapidQSource(FCurrentFileName) and
+          FileExists(FCurrentFileName) then
     Active := FCurrentFileName;
 
   // Цель проекта - .bas, который есть на диске
@@ -38962,7 +39056,7 @@ var
   var
     Candidate, Line, Notes, CopyNote: string;
     Searched: Boolean;
-    CopyLine, WatchLine: Integer;
+    CopyLine, WatchLine, CopyFileIdx: Integer;
   begin
     if ErrFile = '' then
       ErrFile := ABas
@@ -38990,6 +39084,7 @@ var
 
     // Ошибка в отладочной копии (RqDbgBuild) - место в исходнике
     CopyNote := '';
+    CopyFileIdx := 0;
     if (FRqDbgInstr <> nil) and (FRqDbgInstr.CopyFile <> '') and
        (CompareText(ExpandFileName(ErrFile),
                     ExpandFileName(FRqDbgInstr.CopyFile)) = 0) then
@@ -39004,6 +39099,7 @@ var
                       FRqDbgInstr.WatchExpr(WatchLine) + '": исправьте его ' +
                       'или уберите из окна Watch';
         CopyLine := FRqDbgInstr.SrcLineOfCopy(ErrLine - 1);
+        CopyFileIdx := FRqDbgInstr.SrcFileOfCopy(ErrLine - 1);
         if CopyLine >= 0 then
           ErrLine := CopyLine + 1
         else
@@ -39012,7 +39108,10 @@ var
           CopyNote := CopyNote + ' - код отладчика';
         end;
       end;
-      ErrFile := FRqDbgInstr.SrcFile;
+      // Файл строки: главный или вставленный в копию $INCLUDE
+      ErrFile := FRqDbgInstr.FileName(CopyFileIdx);
+      if ErrFile = '' then
+        ErrFile := FRqDbgInstr.SrcFile;
     end;
 
     if Msg = '' then
@@ -40981,58 +41080,16 @@ end;
 
 // Имя файла из строки "$INCLUDE "файл"" или "$INCLUDE <файл>"; не
 // $INCLUDE (в том числе закомментированная) - пусто. Косые - обратные.
+// Правила те же, что у отладочной копии (RqDbgInstr): разбор там
 function RapidQIncludeName(const ALine: string): string;
-const
-  IncTag = '$include';
-var
-  Txt: string;
-  NameStart, NameEnd: Integer;
-  CloseChar: Char;
 begin
-  Result := '';
-  Txt := TrimLeft(ALine);
-  if LowerCase(Copy(Txt, 1, Length(IncTag))) <> IncTag then
-    Exit;
-  Txt := TrimLeft(Copy(Txt, Length(IncTag) + 1, MaxInt));
-  if Txt = '' then
-    Exit;
-  if Txt[1] = '"' then
-    CloseChar := '"'
-  else if Txt[1] = '<' then
-    CloseChar := '>'
-  else
-    Exit;
-  NameStart := 2;
-  NameEnd := NameStart;
-  while (NameEnd <= Length(Txt)) and (Txt[NameEnd] <> CloseChar) do
-    Inc(NameEnd);
-  if NameEnd > Length(Txt) then
-    Exit;
-  Result := Trim(Copy(Txt, NameStart, NameEnd - NameStart));
-  Result := StringReplace(Result, '/', '\', [rfReplaceAll]);
+  Result := RqDbgIncludeName(ALine);
 end;
 
 // Где лежит подключаемый файл. '' - не найден.
 function RapidQResolveInclude(const AName, AMainDir, AIncDir: string): string;
 begin
-  Result := '';
-  if AName = '' then
-    Exit;
-  if (ExtractFileDrive(AName) <> '') or (Copy(AName, 1, 2) = '\\') then
-  begin
-    if FileExists(AName) then
-      Result := AName;
-    Exit;
-  end;
-  if (AMainDir <> '') and
-     FileExists(IncludeTrailingPathDelimiter(AMainDir) + AName) then
-  begin
-    Result := ExpandFileName(IncludeTrailingPathDelimiter(AMainDir) + AName);
-    Exit;
-  end;
-  if (AIncDir <> '') and
-     FileExists(IncludeTrailingPathDelimiter(AIncDir) + AName) then
-    Result := ExpandFileName(IncludeTrailingPathDelimiter(AIncDir) + AName);
+  Result := RqDbgResolveInclude(AName, AMainDir, AIncDir);
 end;
 
 // Строить ли список для открытого файла
@@ -41177,7 +41234,7 @@ end;
 procedure TForm1.IncludesDblClick(Sender: TObject);
 var
   RowIdx, LineNum: Integer;
-  Row, Full, FromFile: string;
+  Row, Full, FromFile, OwnerBas: string;
   Parts: TStringList;
 begin
   if (FIncTree = nil) or (FIncTree.Selected = nil) or
@@ -41203,7 +41260,17 @@ begin
 
   if (Full <> '') and FileExists(Full) then
   begin
+    // Главный .bas дерева - программа активной вкладки (для вкладки .inc -
+    // её главный), иначе сам файл-корень, если он .bas
+    OwnerBas := RapidQTargetBas(False);
+    if (OwnerBas = '') and IsRapidQSource(FCurrentFileName) then
+      OwnerBas := FCurrentFileName;
     OpenNamedFile(Full);
+    if (OwnerBas <> '') and (FWindowsIndex >= 0) and
+       (CompareText(ExpandFileName(FCurrentFileName),
+                    ExpandFileName(Full)) = 0) and
+       (CompareText(ExpandFileName(Full), ExpandFileName(OwnerBas)) <> 0) then
+      SetIncOwner(FWindowsIndex, OwnerBas);
     Exit;
   end;
   if (FromFile <> '') and FileExists(FromFile) and (LineNum > 0) then
@@ -44608,23 +44675,154 @@ end;
 
 // Сборка и запуск - с отладчиком: есть хотя бы одна точка или запуск с
 // F7/F8/F4. Пробная сборка конструктора форм - никогда.
-// RapidQ под отладчиком: точка останова в главном .bas этой программы
-// или запуск с F7/F8/F4. Точки в других файлах (другая программа, $INCLUDE)
-// отладку не включают. Пробная сборка снимка - никогда (CompileRapidQ).
+// RapidQ под отладчиком: точка останова в главном .bas этой программы или
+// в её $INCLUDE-файле (с вложенными), или запуск с F7/F8/F4. Точки в
+// других файлах (другая программа) отладку не включают. Пробная сборка
+// снимка - никогда (CompileRapidQ).
 function TForm1.RqDbgWantedFor(const ABas: string): Boolean;
 var
   MarkIdx: Integer;
+  AllInc: TStringList;
+  MarkFile: string;
 begin
   Result := FDbgStartMode <> DbgStartNone;
-  if Result or (ABas = '') or (FBreakMarks = nil) then
+  if Result or (ABas = '') or (FBreakMarks = nil) or
+     (FBreakMarks.Count = 0) then
     Exit;
-  for MarkIdx := 0 to FBreakMarks.Count - 1 do
-    if CompareText(ExpandFileName(TBreakMark(FBreakMarks[MarkIdx]).FileName),
-                   ExpandFileName(ABas)) = 0 then
+  AllInc := TStringList.Create;
+  try
+    AllInc.Add(ExpandFileName(ABas));
+    RqDbgIncludeSet(ABas, AllInc, nil);
+    for MarkIdx := 0 to FBreakMarks.Count - 1 do
     begin
-      Result := True;
-      Exit;
+      MarkFile := ExpandFileName(TBreakMark(FBreakMarks[MarkIdx]).FileName);
+      if AllInc.IndexOf(MarkFile) >= 0 then
+      begin
+        Result := True;
+        Exit;
+      end;
     end;
+  finally
+    AllInc.Free;
+  end;
+end;
+
+// $INCLUDE-файлы программы ABas, с вложенными, по порядку строк; файл, уже
+// встреченный выше, второй раз не смотрится (как у вкладки Includes и
+// отладочной копии). AAll - все найденные (пути ExpandFileName). AInline
+// (может быть nil) - те, что идут в отладочную копию: с точкой останова,
+// открытые на вкладке с этим главным .bas (IncOwner), файл Run to cursor
+// при запуске с F4 - и все include по пути к ним от главного (иначе rc.exe
+// взял бы их исходные файлы).
+procedure TForm1.RqDbgIncludeSet(const ABas: string; AAll, AInline: TStrings);
+const
+  MaxDepth = 20;
+var
+  MainDir, IncDir, IgnoredDir: string;
+  Visited, Chain: TStringList;
+
+  function Wanted(const AFull: string): Boolean;
+  var
+    MarkIdx, WinIdx: Integer;
+  begin
+    Result := True;
+    if FBreakMarks <> nil then
+      for MarkIdx := 0 to FBreakMarks.Count - 1 do
+        if CompareText(ExpandFileName(TBreakMark(FBreakMarks[MarkIdx]).FileName),
+                       AFull) = 0 then
+          Exit;
+    for WinIdx := 0 to WindowsItemCount - 1 do
+      if FWindows[WinIdx].Used and (FWindows[WinIdx].IncOwner <> '') and
+         (CompareText(ExpandFileName(FWindows[WinIdx].FileName), AFull) = 0) and
+         (CompareText(ExpandFileName(FWindows[WinIdx].IncOwner),
+                      ExpandFileName(ABas)) = 0) then
+        Exit;
+    if (FDbgStartMode = DbgStartRunTo) and (FDbgRunToFile <> '') and
+       (CompareText(ExpandFileName(FDbgRunToFile), AFull) = 0) then
+      Exit;
+    Result := False;
+  end;
+
+  procedure AddInline(const AFull: string);
+  begin
+    if (AInline <> nil) and (AInline.IndexOf(AFull) < 0) then
+      AInline.Add(AFull);
+  end;
+
+  procedure Walk(const AFile: string; ADepth: Integer);
+  var
+    FileLines: TStringList;
+    LineIdx, ChainIdx: Integer;
+    IncName, Full: string;
+  begin
+    FileLines := TStringList.Create;
+    try
+      try
+        FileLines.LoadFromFile(AFile);
+      except
+        Exit;
+      end;
+      for LineIdx := 0 to FileLines.Count - 1 do
+      begin
+        IncName := RapidQIncludeName(FileLines[LineIdx]);
+        if IncName = '' then
+          Continue;
+        Full := RapidQResolveInclude(IncName, MainDir, IncDir);
+        if Full = '' then
+          Continue;
+        Full := ExpandFileName(Full);
+        if Visited.IndexOf(Full) >= 0 then
+          Continue;
+        Visited.Add(Full);
+        if (AAll <> nil) and (AAll.IndexOf(Full) < 0) then
+          AAll.Add(Full);
+        if Wanted(Full) then
+        begin
+          for ChainIdx := 0 to Chain.Count - 1 do
+            AddInline(Chain[ChainIdx]);
+          AddInline(Full);
+        end;
+        if ADepth < MaxDepth then
+        begin
+          Chain.Add(Full);
+          Walk(Full, ADepth + 1);
+          Chain.Delete(Chain.Count - 1);
+        end;
+      end;
+    finally
+      FileLines.Free;
+    end;
+  end;
+
+begin
+  if ABas = '' then
+    Exit;
+  // Папка поиска - папка главного .bas, как у копии (RqDbgBuild)
+  RapidQIncludeDirs(IgnoredDir, IncDir);
+  MainDir := ExtractFilePath(ExpandFileName(ABas));
+  Visited := TStringList.Create;
+  Chain := TStringList.Create;
+  try
+    Visited.Add(ExpandFileName(ABas));
+    Walk(ABas, 1);
+  finally
+    Chain.Free;
+    Visited.Free;
+  end;
+end;
+
+// Точка копии сеанса на строке ALine (с 0, по тексту сборки) файла AFile;
+// 0 - файла нет в копии или на строке нет кода
+function TForm1.RqDbgPointAt(const AFile: string; ALine: Integer): Integer;
+var
+  FileIdx: Integer;
+begin
+  Result := 0;
+  if (FRqDbgInstr = nil) or (ALine < 0) then
+    Exit;
+  FileIdx := FRqDbgInstr.FileIndex(AFile);
+  if FileIdx >= 0 then
+    Result := FRqDbgInstr.PointOfLine(FileIdx, ALine);
 end;
 
 function TForm1.DbgWanted: Boolean;
@@ -45090,21 +45288,16 @@ begin
   begin
     if not FRqDbgPaused then
       Exit;
-    PointId := 0;
-    if CompareText(ExpandFileName(FCurrentFileName),
-                   ExpandFileName(FRqDbgInstr.SrcFile)) = 0 then
-    begin
-      BuildLine := DbgLineThen(FCurrentFileName, LineIdx);
-      if BuildLine >= 0 then
-        PointId := FRqDbgInstr.PointOfLine(BuildLine);
-    end;
+    BuildLine := DbgLineThen(FCurrentFileName, LineIdx);
+    PointId := RqDbgPointAt(FCurrentFileName, BuildLine);
     if PointId = 0 then
     begin
       LogComp('Run to cursor: ' + ExtractFileName(FCurrentFileName) +
               ', строка ' + IntToStr(LineIdx + 1) + ' - кода нет (пустая ' +
-              'строка, комментарий, объявление, CREATE) или файл не ' +
-              'главный: отладчик RapidQ пока отлаживает только главный ' +
-              'файл ' + ExtractFileName(FRqDbgInstr.SrcFile));
+              'строка, комментарий, объявление, CREATE) или файл не в ' +
+              'отладочной сборке ' + ExtractFileName(FRqDbgInstr.SrcFile) +
+              ' (в неё идут $INCLUDE-файлы с точками останова и вкладки с ' +
+              'пометкой главного файла; новые - после пересборки)');
       Exit;
     end;
     RqDbgCommand(RqDbgModeRunTo, PointId);
@@ -45160,27 +45353,41 @@ end;
 //  поставленная или снятая, пока программа идёт, начнёт действовать после
 //  следующей остановки. Остановка на точке, которую уже сняли, - программа
 //  сразу идёт дальше с той же командой.
-//  Только главный .bas: точки в $INCLUDE-файлах пока не работают.
+//  $INCLUDE-файлы (RqDbgIncludeSet): в копию текстом вставляются те, где
+//  есть точка останова, открытые на вкладке с пометкой этого главного .bas
+//  (IncOwner) и файл Run to cursor при запуске с F4. Остальные - как есть,
+//  без точек.
 // ---------------------------------------------------------------------------
 
 // Копия главного .bas с проверками точек. ACopy - её путь.
 function TForm1.RqDbgBuild(const ABas: string; var ACopy: string): Boolean;
 var
-  BaseName: string;
-  WatchIdx, WatchPos: Integer;
+  BaseName, IgnoredDir, IncDir, IncText: string;
+  WatchIdx, WatchPos, FileIdx: Integer;
+  IncInline: TStringList;
+  Built: Boolean;
 begin
   Result := False;
   if FRqDbgInstr = nil then
     FRqDbgInstr := TRqDbgInstr.Create;
   BaseName := ChangeFileExt(ABas, '');
   ACopy := BaseName + '_rqdbg.bas';
-  // Имена событий - свои у каждой сборки: программа прежней сборки, если
-  // ещё работает, их не поднимет
-  if not FRqDbgInstr.Build(ABas, ACopy, BaseName + '_rqdbg.cmd',
-                           BaseName + '_rqdbg.state',
-                           'unIDE_RqDbg_' + IntToStr(Integer(GetCurrentProcessId)) +
-                           '_' + IntToStr(Integer(GetTickCount)),
-                           FWatchList) then
+  RapidQIncludeDirs(IgnoredDir, IncDir);
+  IncInline := TStringList.Create;
+  try
+    RqDbgIncludeSet(ABas, nil, IncInline);
+    // Имена событий - свои у каждой сборки: программа прежней сборки, если
+    // ещё работает, их не поднимет
+    Built := FRqDbgInstr.Build(ABas, ACopy, BaseName + '_rqdbg.cmd',
+                               BaseName + '_rqdbg.state',
+                               'unIDE_RqDbg_' +
+                               IntToStr(Integer(GetCurrentProcessId)) + '_' +
+                               IntToStr(Integer(GetTickCount)),
+                               FWatchList, IncDir, IncInline);
+  finally
+    IncInline.Free;
+  end;
+  if not Built then
   begin
     LogComp('Отладчик RapidQ: копия не построена - ' + FRqDbgInstr.LastError);
     Exit;
@@ -45190,6 +45397,17 @@ begin
   DbgClearEdits;
   LogComp('Отладочная сборка RapidQ: ' + ExtractFileName(ACopy) + ', точек ' +
           IntToStr(FRqDbgInstr.PointCount));
+  if FRqDbgInstr.FileCount > 1 then
+  begin
+    IncText := '';
+    for FileIdx := 1 to FRqDbgInstr.FileCount - 1 do
+    begin
+      if IncText <> '' then
+        IncText := IncText + ', ';
+      IncText := IncText + ExtractFileName(FRqDbgInstr.FileName(FileIdx));
+    end;
+    LogComp('  $INCLUDE под отладкой: ' + IncText);
+  end;
   // Выражения Watch, которые не вставлены в копию, - с причиной
   if FWatchList <> nil then
     for WatchIdx := 0 to FWatchList.Count - 1 do
@@ -45227,13 +45445,10 @@ var
   BuildLine: Integer;
 begin
   Result := 0;
-  if (FRqDbgInstr = nil) or (FRqDbgInstr.SrcFile = '') or
-     (CompareText(ExpandFileName(AMark.FileName),
-                  ExpandFileName(FRqDbgInstr.SrcFile)) <> 0) then
+  if (FRqDbgInstr = nil) or (FRqDbgInstr.SrcFile = '') then
     Exit;
   BuildLine := DbgLineThen(AMark.FileName, AMark.Line);
-  if BuildLine >= 0 then
-    Result := FRqDbgInstr.PointOfLine(BuildLine);
+  Result := RqDbgPointAt(AMark.FileName, BuildLine);
 end;
 
 // Точка, поставленная во время сеанса: есть ли у неё код
@@ -45244,7 +45459,8 @@ begin
   if AMark.NoCode then
     LogComp('Точка останова: ' + ExtractFileName(AMark.FileName) +
             ', строка ' + IntToStr(AMark.Line + 1) + ' - кода нет (пустая ' +
-            'строка, комментарий, объявление, CREATE) или файл не главный, ' +
+            'строка, комментарий, объявление, CREATE) или файла нет в ' +
+            'отладочной сборке (новый $INCLUDE-файл - после пересборки), ' +
             'точка не сработает')
   else if not FRqDbgPaused then
     LogComp('Точка останова: программа идёт - точка начнёт действовать ' +
@@ -45267,8 +45483,7 @@ begin
     Mark.NoCode := RqDbgMarkPoint(Mark) = 0;
     if not Mark.NoCode then
       Inc(Result)
-    else if CompareText(ExpandFileName(Mark.FileName),
-                        ExpandFileName(FRqDbgInstr.SrcFile)) <> 0 then
+    else if FRqDbgInstr.FileIndex(Mark.FileName) < 0 then
       Inc(OtherFiles)
     else
       LogComp('Точка останова: ' + ExtractFileName(Mark.FileName) +
@@ -45277,8 +45492,8 @@ begin
   end;
   if OtherFiles > 0 then
     LogComp('Точки останова в других файлах (' + IntToStr(OtherFiles) +
-            ') не сработают: отладчик RapidQ пока отлаживает только главный ' +
-            'файл ' + ExtractFileName(FRqDbgInstr.SrcFile));
+            ') не сработают: их нет в отладочной сборке ' +
+            ExtractFileName(FRqDbgInstr.SrcFile) + ' (другая программа)');
   DbgRepaint;
 end;
 
@@ -45361,16 +45576,15 @@ begin
     Mode := RqDbgModeInto
   else if FDbgStartMode = DbgStartRunTo then
   begin
-    if CompareText(ExpandFileName(FDbgRunToFile),
-                   ExpandFileName(FRqDbgInstr.SrcFile)) = 0 then
-      RunTo := FRqDbgInstr.PointOfLine(DbgLineThen(FDbgRunToFile,
-                                                   FDbgRunToLine));
+    RunTo := RqDbgPointAt(FDbgRunToFile, DbgLineThen(FDbgRunToFile,
+                                                     FDbgRunToLine));
     if RunTo > 0 then
       Mode := RqDbgModeRunTo
     else
       LogComp('Run to cursor: ' + ExtractFileName(FDbgRunToFile) +
               ', строка ' + IntToStr(FDbgRunToLine + 1) + ' - кода нет или ' +
-              'файл не главный; программа идёт до точки останова');
+              'файла нет в отладочной сборке; программа идёт до точки ' +
+              'останова');
   end;
   DeleteFile(FRqDbgInstr.StateFile);
   if not RqDbgWriteCmd(Mode, RunTo) then
@@ -45531,9 +45745,21 @@ begin
     DbgRepaint;
     Exit;
   end;
-  SrcFile := FRqDbgInstr.SrcFile;
+  // Файл точки: главный или вставленный $INCLUDE
+  SrcFile := FRqDbgInstr.FileName(FRqDbgInstr.FileOfPoint(APoint));
+  if SrcFile = '' then
+    SrcFile := FRqDbgInstr.SrcFile;
   if CompareText(ExpandFileName(FCurrentFileName), ExpandFileName(SrcFile)) <> 0 then
     OpenNamedFile(SrcFile);
+  // Вкладка include без пометки главного файла - с пометкой: с неё F7/F8/F9
+  // идут этому сеансу
+  if (FWindowsIndex >= 0) and
+     (CompareText(ExpandFileName(FCurrentFileName),
+                  ExpandFileName(SrcFile)) = 0) and
+     (CompareText(ExpandFileName(SrcFile),
+                  ExpandFileName(FRqDbgInstr.SrcFile)) <> 0) and
+     (FWindows[FWindowsIndex].IncOwner = '') then
+    SetIncOwner(FWindowsIndex, FRqDbgInstr.SrcFile);
   // Путь - как у вкладки: так его сравнивают точки и правки (FDbgEdits)
   if CompareText(ExpandFileName(FCurrentFileName), ExpandFileName(SrcFile)) = 0 then
     SrcFile := FCurrentFileName;
@@ -45753,7 +45979,8 @@ begin
         else if RqDbgPlainName(ExprText) and (FRqDbgInstr <> nil) and
                 (FRqDbgInstr.WatchIndex(ExprText) >= 0) then
           ValueText := '<нет: не объявлена через DIM в этой SUB или ' +
-                       'глобально, массив, объект или из $INCLUDE>'
+                       'глобально, массив, объект или из $INCLUDE не под ' +
+                       'отладкой>'
         else
           ValueText := NoteText;
       end;
