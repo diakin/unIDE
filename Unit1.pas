@@ -45493,6 +45493,10 @@ begin
   end;
   DbgClearExec;
   LogComp('--- Программа завершилась (отладчик RapidQ)');
+  // Лог сборки и сеанса (остановки, команды) - рядом с .bas: окно лога
+  // очищает следующая сборка
+  if FRqDbgInstr <> nil then
+    SaveCompileLog(ChangeFileExt(FRqDbgInstr.SrcFile, '') + '_rqdbg.log');
   DbgRepaint;
 end;
 
