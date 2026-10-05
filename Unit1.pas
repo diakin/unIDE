@@ -14744,6 +14744,7 @@ var
   I: Integer;
   ClickPt: TPoint;
   ClickChar: Integer;
+  PopupSel: string;
 begin
   if pmuSearch = nil then
     Exit;
@@ -14799,7 +14800,17 @@ begin
        (WindowFromPoint(FPopupMenu.PopupAt) = RichEdit1.Handle) then
     begin
       ClickChar := DbgCharAtClient(ClickPt);
-      if ClickChar >= 0 then
+      // Щелчок по выделению в одной строке - выражение целиком
+      // ("SumIdx * 2"), как у Ctrl+F5; иначе - имя под мышью
+      if (ClickChar >= 0) and (RichEdit1.SelLength > 0) and
+         (ClickChar >= RichEdit1.SelStart) and
+         (ClickChar <= RichEdit1.SelStart + RichEdit1.SelLength) then
+      begin
+        PopupSel := SelTextA(200);
+        if (Pos(#13, PopupSel) = 0) and (Pos(#10, PopupSel) = 0) then
+          FPopupWatchExpr := Trim(PopupSel);
+      end;
+      if (FPopupWatchExpr = '') and (ClickChar >= 0) then
         FPopupWatchExpr := DbgExprAtChar(ClickChar);
     end
     else
