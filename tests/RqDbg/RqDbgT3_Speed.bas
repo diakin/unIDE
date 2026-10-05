@@ -75,6 +75,7 @@ DIM SpentMs AS LONG
 DIM WaitKey AS STRING
 DIM CheckIdx AS LONG
 DIM NonZero AS LONG
+DIM NonZeroText AS STRING
 
 LoopMax = 300000
 LogFile.Open("RqDbgT3.log", 65535)
@@ -82,11 +83,17 @@ RqDbgEvPause = RqDbgCreateEvent(0, 0, 0, "unIDE_RqDbgT3_Pause")
 LogLine("RqDbgT3 start, LoopMax=" + STR$(LoopMax) + ", pause event=" + STR$(RqDbgEvPause))
 ' Проверка: массив и флаги после DIM нулевые (ничего им ещё не
 ' присваивалось). Под отладчиком перед этими DIM работает код отладчика.
+' Первые ненулевые элементы - номер=значение: единицы на 0..N похожи на
+' массив отладчика, разные значения - на неочищенную память
 NonZero = 0
+NonZeroText = ""
 FOR CheckIdx = 0 TO 1000
-  IF RqDbgBrk(CheckIdx) <> 0 THEN NonZero = NonZero + 1
+  IF RqDbgBrk(CheckIdx) <> 0 THEN
+    NonZero = NonZero + 1
+    IF NonZero <= 8 THEN NonZeroText = NonZeroText + " " + STR$(CheckIdx) + "=" + STR$(RqDbgBrk(CheckIdx))
+  END IF
 NEXT
-LogLine("check after DIM: RqDbgStep=" + STR$(RqDbgStep) + " RqDbgOn=" + STR$(RqDbgOn) + " RqDbgHit=" + STR$(RqDbgHit) + " nonzero RqDbgBrk:" + STR$(NonZero) + " (all must be 0)")
+LogLine("check after DIM: RqDbgStep=" + STR$(RqDbgStep) + " RqDbgOn=" + STR$(RqDbgOn) + " RqDbgHit=" + STR$(RqDbgHit) + " nonzero RqDbgBrk:" + STR$(NonZero) + " (all must be 0)" + NonZeroText)
 ' Точка останова на номере, которого в цикле нет: проверки идут,
 ' остановок нет
 RqDbgBrk(999) = 1
