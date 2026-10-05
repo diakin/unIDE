@@ -15,6 +15,7 @@ uses
   UiStdDlgs,      // диалоги цвета и шрифта по теме
   FolderDlg,      // выбор папки окном Проводника вместо "Обзор папок"
   ArduinoCli,     // Compilers - Arduino: импорт путей из RQdb.ini
+  EnvOptions,     // Preferences, Designer, Environment Variables
   // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
   // InputQuery перекрывают одноимённые функции Dialogs
   UiDialogs;
@@ -112,6 +113,30 @@ FLockMemo: Boolean; // НАШ СЕМАФОР БЛОКИРОВКИ ДЛЯ TMEMO
     edArdProxyPort: TUiEdit;
     edArdProxyUser: TUiEdit;
     edArdProxyPassword: TUiEdit;
+    // ВКЛАДКИ PREFERENCES, DESIGNER, ENVIRONMENT VARIABLES (как Environment
+    // Options Delphi 7). Значения - Form1.FEnv и Form1.FEnvOverrides.
+    FEnvLoading: Boolean;
+    chkPrefAutoEditor: TUiCheckBox;
+    chkPrefAutoDesktop: TUiCheckBox;
+    chkPrefProgress: TUiCheckBox;
+    chkPrefMinimize: TUiCheckBox;
+    chkPrefHideDsg: TUiCheckBox;
+    chkDsgGrid: TUiCheckBox;
+    chkDsgSnap: TUiCheckBox;
+    edDsgGridX: TUiEdit;
+    edDsgGridY: TUiEdit;
+    udDsgGridX: TUiUpDown;
+    udDsgGridY: TUiUpDown;
+    chkDsgAutoCreate: TUiCheckBox;
+    chkDsgCaptions: TUiCheckBox;
+    chkDsgHints: TUiCheckBox;
+    chkDsgExtHints: TUiCheckBox;
+    lvEnvSystem: TUiListView;
+    lvEnvUser: TUiListView;
+    btnEnvOverride: TUiButton;
+    btnEnvNew: TUiButton;
+    btnEnvEdit: TUiButton;
+    btnEnvDelete: TUiButton;
     // Окно списка путей (EditPathList): его элементы на время показа
     FPathList: TUiListBox;
     FPathEdit: TUiEdit;
@@ -299,6 +324,24 @@ procedure ArdCliIdle(var ACancel: Boolean);
 procedure OptionsPageChange(Sender: TObject);
 procedure ArdTopResize(Sender: TObject);
 procedure BuildArduinoNetwork(ATab: TTabSheet);
+function  EnvGroup(AParent: TWinControl; const ACaption: string;
+                   ALeft, ATop, AWidth, AHeight: Integer): TUiGroupBox;
+function  EnvCheck(AParent: TWinControl; const ACaption: string;
+                   ALeft, ATop, AWidth: Integer): TUiCheckBox;
+procedure BuildPreferencesTab(ATab: TTabSheet);
+procedure BuildDesignerTab(ATab: TTabSheet);
+procedure BuildEnvVarsTab(ATab: TTabSheet);
+procedure EnvTabsLoad;
+procedure EnvOptionClick(Sender: TObject);
+procedure EnvGridChange(Sender: TObject);
+procedure EnvFillLists;
+function  EnvEditDialog(const ATitle: string; var AName, AValue: string;
+                        ANameFixed: Boolean): Boolean;
+procedure EnvSetOverride(const AName, AValue: string);
+procedure EnvOverrideClick(Sender: TObject);
+procedure EnvNewClick(Sender: TObject);
+procedure EnvEditClick(Sender: TObject);
+procedure EnvDeleteClick(Sender: TObject);
 procedure ArdNetChange(Sender: TObject);
 procedure ArdNetEnable;
 function  CompFieldIdx(const AKey: string): Integer;
@@ -675,6 +718,7 @@ procedure TForm2.InitOptions;
 var
   PageControl: TPageControl;
   TabEditor, TabEdOptions, TabColors, TabDirs, TabArduino: TTabSheet;
+  TabPrefs, TabDesigner, TabEnvVars: TTabSheet;
   grpEditorOptions: TUiGroupBox; // Переменная для нашего нового групбокса
   Bmp: TBitmap;                // замер ширины текста
   W, I: Integer;
@@ -727,6 +771,23 @@ FLockMemo := False; // Инициализация
   TabArduino := TTabSheet.Create(Self);
   TabArduino.PageControl := PageControl;
   TabArduino.Caption := 'Arduino';
+
+  // Как Environment Options Delphi 7
+  TabPrefs := TTabSheet.Create(Self);
+  TabPrefs.PageControl := PageControl;
+  TabPrefs.Caption := 'Preferences';
+
+  TabDesigner := TTabSheet.Create(Self);
+  TabDesigner.PageControl := PageControl;
+  TabDesigner.Caption := 'Designer';
+
+  TabEnvVars := TTabSheet.Create(Self);
+  TabEnvVars.PageControl := PageControl;
+  TabEnvVars.Caption := 'Environment Variables';
+
+  // Вкладок восемь - в одну строку не входят: в несколько рядов, как у
+  // Delphi, а не со стрелками прокрутки
+  PageControl.MultiLine := True;
 
 // 5. ГРУППА НАСТРОЕК РЕДАКТОРА - на своей вкладке Editor Options.
   // На вкладке Color Scheme остались только таблица цветов и работа с группами.
@@ -955,6 +1016,9 @@ FLockMemo := False; // Инициализация
 
   // Вкладка Arduino; при переходе на неё значения перечитываются
   BuildArduinoTab(TabArduino);
+  BuildPreferencesTab(TabPrefs);
+  BuildDesignerTab(TabDesigner);
+  BuildEnvVarsTab(TabEnvVars);
   PageControl.OnChange := OptionsPageChange;
 
   pnlGroupActions := TPanel.Create(Self);
@@ -5926,6 +5990,507 @@ begin
   MemoSchemaDetails.Lines.Text := Grid.Cells[3, Grid.Row];
   Grid.Invalidate;
   ShowMessage('4203:Defaults restored. Press Save to write the scheme.');
+end;
+
+// ---------------------------------------------------------------------------
+//  Вкладки Preferences, Designer, Environment Variables - как Tools -
+//  Environment Options в Delphi 7. Значения - Form1.FEnv и
+//  Form1.FEnvOverrides (модуль EnvOptions), в editor.ini пишутся сразу при
+//  изменении, применяет их Form1.EnvOptionsChanged.
+//
+//  Пункты Delphi, которым в unIDE нет соответствия (Desktop contents,
+//  Docking, Warn on package rebuild, Shared repository, New forms as
+//  text), показаны выключенными: подпись группы или подсказка говорит,
+//  почему.
+// ---------------------------------------------------------------------------
+
+function TForm2.EnvGroup(AParent: TWinControl; const ACaption: string;
+  ALeft, ATop, AWidth, AHeight: Integer): TUiGroupBox;
+begin
+  Result := TUiGroupBox.Create(Self);
+  Result.Parent := AParent;
+  Result.Caption := ' ' + ACaption + ' ';
+  Result.SetBounds(ALeft, ATop, AWidth, AHeight);
+end;
+
+function TForm2.EnvCheck(AParent: TWinControl; const ACaption: string;
+  ALeft, ATop, AWidth: Integer): TUiCheckBox;
+begin
+  Result := TUiCheckBox.Create(Self);
+  Result.Parent := AParent;
+  Result.Caption := ACaption;
+  Result.SetBounds(ALeft, ATop, AWidth, 20);
+  Result.OnClick := EnvOptionClick;
+end;
+
+procedure TForm2.BuildPreferencesTab(ATab: TTabSheet);
+var
+  Group: TUiGroupBox;
+  Radio: TUiRadioButton;
+  Check: TUiCheckBox;
+  TextLbl: TLabel;
+  RepoEdit: TUiEdit;
+  RepoBtn: TUiButton;
+begin
+  Group := EnvGroup(ATab, 'Autosave options', 8, 8, 290, 72);
+  chkPrefAutoEditor := EnvCheck(Group, 'Editor files', 12, 20, 270);
+  chkPrefAutoEditor.ShowHint := True;
+  chkPrefAutoEditor.Hint := 'Изменённые файлы сохраняются без вопроса перед ' +
+    'сборкой и запуском, при смене проекта и при выходе (файлы без имени - ' +
+    'по-прежнему с вопросом)';
+  chkPrefAutoDesktop := EnvCheck(Group, 'Project desktop', 12, 44, 270);
+  chkPrefAutoDesktop.ShowHint := True;
+  chkPrefAutoDesktop.Hint := 'Состав проекта (окна, вкладки, закладки) ' +
+    'сохраняется в .prj без вопроса при закрытии проекта и выходе';
+
+  Group := EnvGroup(ATab, 'Desktop contents (нет в unIDE)', 8, 88, 290, 72);
+  Group.ShowHint := True;
+  Group.Hint := 'В unIDE состав проекта всегда пишется в .prj; отдельного ' +
+                'файла символов нет';
+  Radio := TUiRadioButton.Create(Self);
+  Radio.Parent := Group;
+  Radio.Caption := 'Desktop only';
+  Radio.SetBounds(12, 20, 270, 20);
+  Radio.Enabled := False;
+  Radio := TUiRadioButton.Create(Self);
+  Radio.Parent := Group;
+  Radio.Caption := 'Desktop and symbols';
+  Radio.SetBounds(12, 44, 270, 20);
+  Radio.Checked := True;
+  Radio.Enabled := False;
+
+  Group := EnvGroup(ATab, 'Docking (нет в unIDE)', 8, 168, 290, 80);
+  Check := TUiCheckBox.Create(Self);
+  Check.Parent := Group;
+  Check.Caption := 'Auto drag docking';
+  Check.SetBounds(12, 20, 270, 20);
+  Check.Enabled := False;
+  TextLbl := TLabel.Create(Self);
+  TextLbl.Parent := Group;
+  TextLbl.AutoSize := False;
+  TextLbl.WordWrap := True;
+  TextLbl.SetBounds(12, 42, 270, 32);
+  TextLbl.Caption := 'Pressing the Control key while dragging will prevent ' +
+                     'window docking';
+  TextLbl.Enabled := False;
+
+  Group := EnvGroup(ATab, 'Compiling and running', 306, 8, 290, 240);
+  chkPrefProgress := EnvCheck(Group, 'Show compiler progress', 12, 20, 270);
+  chkPrefProgress.ShowHint := True;
+  chkPrefProgress.Hint := 'Окно хода сборки: файл, строки, ошибки, ' +
+    'предупреждения; при ошибках остаётся до OK';
+  Check := TUiCheckBox.Create(Self);
+  Check.Parent := Group;
+  Check.Caption := 'Warn on package rebuild';
+  Check.SetBounds(12, 44, 270, 20);
+  Check.Enabled := False;
+  chkPrefMinimize := EnvCheck(Group, 'Minimize on run', 12, 68, 270);
+  chkPrefMinimize.ShowHint := True;
+  chkPrefMinimize.Hint := 'Среда сворачивается, пока работает запущенная ' +
+    'программа (без отладчика), и разворачивается, когда она закроется';
+  chkPrefHideDsg := EnvCheck(Group, 'Hide designers on run', 12, 92, 270);
+  chkPrefHideDsg.ShowHint := True;
+  chkPrefHideDsg.Hint := 'Формы конструктора прячутся, пока работает ' +
+    'запущенная программа';
+  TextLbl := TLabel.Create(Self);
+  TextLbl.Parent := Group;
+  TextLbl.AutoSize := False;
+  TextLbl.WordWrap := True;
+  TextLbl.SetBounds(12, 124, 270, 48);
+  TextLbl.Caption := 'Warn on package rebuild - в unIDE пакеты не ' +
+                     'собираются.';
+
+  Group := EnvGroup(ATab, 'Shared repository (нет в unIDE)', 8, 256, 588,
+                    56);
+  TextLbl := TLabel.Create(Self);
+  TextLbl.Parent := Group;
+  TextLbl.Caption := 'Directory:';
+  TextLbl.SetBounds(12, 24, 60, 16);
+  TextLbl.Enabled := False;
+  RepoEdit := TUiEdit.Create(Self);
+  RepoEdit.Parent := Group;
+  RepoEdit.SetBounds(80, 20, 400, 24);
+  RepoEdit.Enabled := False;
+  RepoBtn := TUiButton.Create(Self);
+  RepoBtn.Parent := Group;
+  RepoBtn.Caption := 'Browse...';
+  RepoBtn.SetBounds(488, 19, 90, 26);
+  RepoBtn.Enabled := False;
+end;
+
+procedure TForm2.BuildDesignerTab(ATab: TTabSheet);
+var
+  Group: TUiGroupBox;
+  TextLbl: TLabel;
+  Check: TUiCheckBox;
+
+  procedure AddGridEdit(const ALabel: string; ALeft: Integer;
+                        var AEdit: TUiEdit; var AUpDown: TUiUpDown);
+  begin
+    TextLbl := TLabel.Create(Self);
+    TextLbl.Parent := Group;
+    TextLbl.Caption := ALabel;
+    TextLbl.SetBounds(ALeft, 94, 12, 16);
+    AEdit := TUiEdit.Create(Self);
+    AEdit.Parent := Group;
+    AEdit.SetBounds(ALeft + 14, 90, 50, 24);
+    AUpDown := TUiUpDown.Create(Self);
+    AUpDown.Parent := Group;
+    AUpDown.Min := EnvGridMin;
+    AUpDown.Max := EnvGridMax;
+    AUpDown.Associate := AEdit;
+    AEdit.OnChange := EnvGridChange;
+  end;
+
+begin
+  Group := EnvGroup(ATab, 'Grid options', 8, 8, 290, 128);
+  chkDsgGrid := EnvCheck(Group, 'Display grid', 12, 20, 270);
+  chkDsgSnap := EnvCheck(Group, 'Snap to grid', 12, 44, 270);
+  TextLbl := TLabel.Create(Self);
+  TextLbl.Parent := Group;
+  TextLbl.Caption := 'Grid size';
+  TextLbl.SetBounds(30, 70, 100, 16);
+  AddGridEdit('X', 40, edDsgGridX, udDsgGridX);
+  AddGridEdit('Y', 140, edDsgGridY, udDsgGridY);
+
+  Group := EnvGroup(ATab, 'Module creation options', 8, 144, 290, 72);
+  Check := TUiCheckBox.Create(Self);
+  Check.Parent := Group;
+  Check.Caption := 'New forms as text';
+  Check.SetBounds(12, 20, 270, 20);
+  Check.Checked := True;
+  Check.Enabled := False;
+  Group.ShowHint := True;
+  Group.Hint := 'New forms as text: unIDE пишет .dfm только текстом';
+  chkDsgAutoCreate := EnvCheck(Group, 'Auto create forms & data modules', 12,
+                               44, 270);
+  chkDsgAutoCreate.ShowHint := True;
+  chkDsgAutoCreate.Hint := 'New Form вписывает в .dpr ' +
+                           'Application.CreateForm новой формы';
+
+  Group := EnvGroup(ATab, 'Options', 306, 8, 290, 128);
+  chkDsgCaptions := EnvCheck(Group, 'Show component captions', 12, 20, 270);
+  chkDsgCaptions.ShowHint := True;
+  chkDsgCaptions.Hint := 'Имена невизуальных компонентов под их значками';
+  chkDsgHints := EnvCheck(Group, 'Show designer hints', 12, 44, 270);
+  chkDsgHints.ShowHint := True;
+  chkDsgHints.Hint := 'Подсказка «Имя: Класс» над компонентом под мышью';
+  chkDsgExtHints := EnvCheck(Group, 'Show extended control hints', 30, 68,
+                             252);
+  chkDsgExtHints.ShowHint := True;
+  chkDsgExtHints.Hint := 'В подсказке - место, размер, Tab Stop и Tab Order';
+end;
+
+procedure TForm2.BuildEnvVarsTab(ATab: TTabSheet);
+var
+  Group: TUiGroupBox;
+
+  function AddList(AParent: TWinControl; AHeight: Integer): TUiListView;
+  var
+    Column: TListColumn;
+  begin
+    Result := TUiListView.Create(Self);
+    Result.Parent := AParent;
+    Result.SetBounds(12, 20, 566, AHeight);
+    Result.ViewStyle := vsReport;
+    Result.ReadOnly := True;
+    Result.RowSelect := True;
+    Result.HideSelection := False;
+    Column := Result.Columns.Add;
+    Column.Caption := 'Variable';
+    Column.Width := 180;
+    Column := Result.Columns.Add;
+    Column.Caption := 'Value';
+    Column.Width := 360;
+  end;
+
+  function AddButton(AParent: TWinControl; const ACaption: string;
+                     ALeft, ATop: Integer; AClick: TNotifyEvent): TUiButton;
+  begin
+    Result := TUiButton.Create(Self);
+    Result.Parent := AParent;
+    Result.Caption := ACaption;
+    Result.SetBounds(ALeft, ATop, 100, 26);
+    Result.OnClick := AClick;
+  end;
+
+begin
+  Group := EnvGroup(ATab, 'System variables', 8, 8, 590, 210);
+  lvEnvSystem := AddList(Group, 150);
+  lvEnvSystem.OnDblClick := EnvOverrideClick;
+  btnEnvOverride := AddButton(Group, 'Add Override...', 478, 176,
+                              EnvOverrideClick);
+
+  Group := EnvGroup(ATab, 'User overrides', 8, 224, 590, 200);
+  Group.ShowHint := True;
+  Group.Hint := 'Подмены ставятся в окружение среды: их видят пути ' +
+    'компиляторов ($(VAR), %VAR%) и все программы, которые среда запускает. ' +
+    '%VAR% в значении раскрывается по системным переменным.';
+  lvEnvUser := AddList(Group, 140);
+  lvEnvUser.OnDblClick := EnvEditClick;
+  btnEnvNew := AddButton(Group, 'New...', 266, 166, EnvNewClick);
+  btnEnvEdit := AddButton(Group, 'Edit...', 372, 166, EnvEditClick);
+  btnEnvDelete := AddButton(Group, 'Delete', 478, 166, EnvDeleteClick);
+end;
+
+// Значения вкладок - из Form1 (PrepareOptionsForm)
+procedure TForm2.EnvTabsLoad;
+begin
+  if (Form1 = nil) or (chkPrefAutoEditor = nil) then
+    Exit;
+  FEnvLoading := True;
+  try
+    chkPrefAutoEditor.Checked := Form1.FEnv.AutosaveEditor;
+    chkPrefAutoDesktop.Checked := Form1.FEnv.AutosaveDesktop;
+    chkPrefProgress.Checked := Form1.FEnv.ShowCompileProgress;
+    chkPrefMinimize.Checked := Form1.FEnv.MinimizeOnRun;
+    chkPrefHideDsg.Checked := Form1.FEnv.HideDesignersOnRun;
+    chkDsgGrid.Checked := Form1.FEnv.DsgShowGrid;
+    chkDsgSnap.Checked := Form1.FEnv.DsgSnapToGrid;
+    udDsgGridX.Position := Form1.FEnv.DsgGridX;
+    udDsgGridY.Position := Form1.FEnv.DsgGridY;
+    edDsgGridX.Text := IntToStr(Form1.FEnv.DsgGridX);
+    edDsgGridY.Text := IntToStr(Form1.FEnv.DsgGridY);
+    chkDsgAutoCreate.Checked := Form1.FEnv.DsgAutoCreateForms;
+    chkDsgCaptions.Checked := Form1.FEnv.DsgShowCaptions;
+    chkDsgHints.Checked := Form1.FEnv.DsgShowHints;
+    chkDsgExtHints.Checked := Form1.FEnv.DsgExtendedHints;
+    chkDsgExtHints.Enabled := chkDsgHints.Checked;
+  finally
+    FEnvLoading := False;
+  end;
+  EnvFillLists;
+end;
+
+// Флажки Preferences и Designer - в Form1.FEnv, в editor.ini, применить
+procedure TForm2.EnvOptionClick(Sender: TObject);
+begin
+  if FEnvLoading or (Form1 = nil) then
+    Exit;
+  Form1.FEnv.AutosaveEditor := chkPrefAutoEditor.Checked;
+  Form1.FEnv.AutosaveDesktop := chkPrefAutoDesktop.Checked;
+  Form1.FEnv.ShowCompileProgress := chkPrefProgress.Checked;
+  Form1.FEnv.MinimizeOnRun := chkPrefMinimize.Checked;
+  Form1.FEnv.HideDesignersOnRun := chkPrefHideDsg.Checked;
+  Form1.FEnv.DsgShowGrid := chkDsgGrid.Checked;
+  Form1.FEnv.DsgSnapToGrid := chkDsgSnap.Checked;
+  Form1.FEnv.DsgAutoCreateForms := chkDsgAutoCreate.Checked;
+  Form1.FEnv.DsgShowCaptions := chkDsgCaptions.Checked;
+  Form1.FEnv.DsgShowHints := chkDsgHints.Checked;
+  Form1.FEnv.DsgExtendedHints := chkDsgExtHints.Checked;
+  chkDsgExtHints.Enabled := chkDsgHints.Checked;
+  Form1.EnvOptionsChanged;
+end;
+
+// Шаг сетки: число в поле (стрелки счётчика пишут туда же)
+procedure TForm2.EnvGridChange(Sender: TObject);
+var
+  GridValue: Integer;
+begin
+  if FEnvLoading or (Form1 = nil) then
+    Exit;
+  GridValue := StrToIntDef(Trim(TUiEdit(Sender).Text), -1);
+  if (GridValue < EnvGridMin) or (GridValue > EnvGridMax) then
+    Exit;     // набирают число - ждём правильного
+  if Sender = edDsgGridX then
+    Form1.FEnv.DsgGridX := GridValue
+  else
+    Form1.FEnv.DsgGridY := GridValue;
+  Form1.EnvOptionsChanged;
+end;
+
+// Списки: системные переменные (как при запуске среды) и подмены
+procedure TForm2.EnvFillLists;
+var
+  SysVars: TStringList;
+  LineIdx: Integer;
+  Item: TListItem;
+  VarName: string;
+begin
+  if (Form1 = nil) or (lvEnvSystem = nil) then
+    Exit;
+  SysVars := TStringList.Create;
+  lvEnvSystem.Items.BeginUpdate;
+  lvEnvUser.Items.BeginUpdate;
+  try
+    EnvSystemVars(SysVars);
+    lvEnvSystem.Items.Clear;
+    for LineIdx := 0 to SysVars.Count - 1 do
+    begin
+      VarName := SysVars.Names[LineIdx];
+      Item := lvEnvSystem.Items.Add;
+      Item.Caption := VarName;
+      Item.SubItems.Add(Copy(SysVars[LineIdx], Length(VarName) + 2, MaxInt));
+    end;
+    lvEnvUser.Items.Clear;
+    for LineIdx := 0 to Form1.FEnvOverrides.Count - 1 do
+    begin
+      VarName := Form1.FEnvOverrides.Names[LineIdx];
+      Item := lvEnvUser.Items.Add;
+      Item.Caption := VarName;
+      Item.SubItems.Add(Copy(Form1.FEnvOverrides[LineIdx],
+                             Length(VarName) + 2, MaxInt));
+    end;
+  finally
+    lvEnvUser.Items.EndUpdate;
+    lvEnvSystem.Items.EndUpdate;
+    SysVars.Free;
+  end;
+  btnEnvEdit.Enabled := lvEnvUser.Items.Count > 0;
+  btnEnvDelete.Enabled := lvEnvUser.Items.Count > 0;
+end;
+
+// Окно имени и значения переменной. ANameFixed - имя не меняется (подмена
+// системной переменной)
+function TForm2.EnvEditDialog(const ATitle: string; var AName,
+  AValue: string; ANameFixed: Boolean): Boolean;
+var
+  Dlg: TForm;
+  NameEdit, ValueEdit: TUiEdit;
+  TextLbl: TLabel;
+  OkBtn, CancelBtn: TUiButton;
+begin
+  Result := False;
+  Dlg := TForm.CreateNew(Self);
+  try
+    Dlg.Caption := ATitle;
+    Dlg.BorderStyle := bsDialog;
+    // Окно настроек - поверх всех (fsStayOnTop); диалог над ним
+    Dlg.FormStyle := fsStayOnTop;
+    Dlg.Position := poOwnerFormCenter;
+    Dlg.ClientWidth := 460;
+    Dlg.ClientHeight := 128;
+    Dlg.Font.Assign(Self.Font);
+
+    TextLbl := TLabel.Create(Dlg);
+    TextLbl.Parent := Dlg;
+    TextLbl.Caption := 'Variable Name:';
+    TextLbl.SetBounds(12, 16, 100, 16);
+    NameEdit := TUiEdit.Create(Dlg);
+    NameEdit.Parent := Dlg;
+    NameEdit.SetBounds(120, 12, 328, 24);
+    NameEdit.Text := AName;
+    NameEdit.ReadOnly := ANameFixed;
+
+    TextLbl := TLabel.Create(Dlg);
+    TextLbl.Parent := Dlg;
+    TextLbl.Caption := 'Variable Value:';
+    TextLbl.SetBounds(12, 50, 100, 16);
+    ValueEdit := TUiEdit.Create(Dlg);
+    ValueEdit.Parent := Dlg;
+    ValueEdit.SetBounds(120, 46, 328, 24);
+    ValueEdit.Text := AValue;
+
+    OkBtn := TUiButton.Create(Dlg);
+    OkBtn.Parent := Dlg;
+    OkBtn.Caption := 'OK';
+    OkBtn.SetBounds(262, 88, 90, 28);
+    OkBtn.ModalResult := mrOk;
+    OkBtn.Default := True;
+    CancelBtn := TUiButton.Create(Dlg);
+    CancelBtn.Parent := Dlg;
+    CancelBtn.Caption := 'Cancel';
+    CancelBtn.SetBounds(358, 88, 90, 28);
+    CancelBtn.ModalResult := mrCancel;
+    CancelBtn.Cancel := True;
+
+    if ANameFixed then
+      Dlg.ActiveControl := ValueEdit
+    else
+      Dlg.ActiveControl := NameEdit;
+    if Form1 <> nil then
+      Form1.UiApplyForm(Dlg);
+
+    if Dlg.ShowModal <> mrOk then
+      Exit;
+    AName := Trim(NameEdit.Text);
+    AValue := ValueEdit.Text;
+    if (AName = '') or (Pos('=', AName) > 0) then
+    begin
+      ShowMessage('Имя переменной не может быть пустым и содержать "=".');
+      Exit;
+    end;
+    Result := True;
+  finally
+    Dlg.Free;
+  end;
+end;
+
+// Подмена AName=AValue в Form1.FEnvOverrides (новая или вместо прежней)
+procedure TForm2.EnvSetOverride(const AName, AValue: string);
+var
+  LineIdx: Integer;
+begin
+  LineIdx := Form1.FEnvOverrides.IndexOfName(AName);
+  if LineIdx >= 0 then
+    Form1.FEnvOverrides[LineIdx] := AName + '=' + AValue
+  else
+    Form1.FEnvOverrides.Add(AName + '=' + AValue);
+  Form1.EnvOverridesChanged;
+  EnvFillLists;
+end;
+
+procedure TForm2.EnvOverrideClick(Sender: TObject);
+var
+  VarName, VarValue: string;
+begin
+  if (Form1 = nil) or (lvEnvSystem.Selected = nil) then
+    Exit;
+  VarName := lvEnvSystem.Selected.Caption;
+  VarValue := lvEnvSystem.Selected.SubItems[0];
+  if Form1.FEnvOverrides.IndexOfName(VarName) >= 0 then
+    VarValue := Copy(Form1.FEnvOverrides[Form1.FEnvOverrides.IndexOfName(
+      VarName)], Length(VarName) + 2, MaxInt);
+  if EnvEditDialog('Override System Variable', VarName, VarValue, True) then
+    EnvSetOverride(VarName, VarValue);
+end;
+
+procedure TForm2.EnvNewClick(Sender: TObject);
+var
+  VarName, VarValue: string;
+begin
+  if Form1 = nil then
+    Exit;
+  VarName := '';
+  VarValue := '';
+  if EnvEditDialog('New User Variable', VarName, VarValue, False) then
+    EnvSetOverride(VarName, VarValue);
+end;
+
+procedure TForm2.EnvEditClick(Sender: TObject);
+var
+  OldName, VarName, VarValue: string;
+  LineIdx: Integer;
+begin
+  if (Form1 = nil) or (lvEnvUser.Selected = nil) then
+    Exit;
+  OldName := lvEnvUser.Selected.Caption;
+  VarName := OldName;
+  VarValue := lvEnvUser.Selected.SubItems[0];
+  if not EnvEditDialog('Edit User Variable', VarName, VarValue, False) then
+    Exit;
+  // Имя сменили - прежняя подмена уходит
+  if CompareText(OldName, VarName) <> 0 then
+  begin
+    LineIdx := Form1.FEnvOverrides.IndexOfName(OldName);
+    if LineIdx >= 0 then
+      Form1.FEnvOverrides.Delete(LineIdx);
+  end;
+  EnvSetOverride(VarName, VarValue);
+end;
+
+procedure TForm2.EnvDeleteClick(Sender: TObject);
+var
+  LineIdx: Integer;
+begin
+  if (Form1 = nil) or (lvEnvUser.Selected = nil) then
+    Exit;
+  LineIdx := Form1.FEnvOverrides.IndexOfName(lvEnvUser.Selected.Caption);
+  if LineIdx < 0 then
+    Exit;
+  Form1.FEnvOverrides.Delete(LineIdx);
+  Form1.EnvOverridesChanged;
+  EnvFillLists;
 end;
 
 end.

@@ -32,6 +32,7 @@ uses
   ArduinoCli,     // Arduino: настройки, запуск arduino-cli
   ArduinoHw,      // Arduino: платформы, платы, библиотеки, скетчи с диска
   ArduinoPorts,   // Arduino: COM-порты и событие подключения устройства
+  EnvOptions,     // IDE Options: Preferences, Designer, Environment Variables
   WndWatch,       // журнал главного окна и перерисовки (wnd.log)
 // Окна сообщений по теме. Последним: его ShowMessage, MessageDlg,
 // InputQuery перекрывают одноимённые функции Dialogs
@@ -2630,6 +2631,23 @@ type
     // Показывать непечатные символы - пробелы и табуляции, везде в строке,
     // включая хвостовые. Рисуется поверх текста, см. DrawWhitespaceMarks.
     FShowSpaces: Boolean;
+    // IDE Options - Preferences, Designer (EnvOptions) и подмены переменных
+    // окружения (Environment Variables, строки имя=значение)
+    FEnv: TEnvOptions;
+    FEnvOverrides: TStringList;
+    FRunMinimized: Boolean;       // Minimize on run свернул среду
+    FRqDsgHiddenForRun: Boolean;  // запуск спрятал конструктор RapidQ
+    // Окно хода сборки (Show compiler progress)
+    FCompProgForm: TForm;
+    FCompProgProject: TLabel;
+    FCompProgStatus: TLabel;
+    FCompProgLine: TLabel;
+    FCompProgCounts: TLabel;
+    FCompProgOk: TUiButton;
+    FCompProgTick: Cardinal;
+    FCompProgHints: Integer;
+    FCompProgWarns: Integer;
+    FCompProgErrors: Integer;
     FIndentKind: Integer;
     FIndentSize: Integer;
 
@@ -2753,6 +2771,15 @@ type
     property  UiColors: TStringList read FUiColors;
     procedure LoadSettings;        // Настройки редактора из editor.ini
     procedure SaveSettings;
+    procedure EnvInit;
+    procedure EnvApplyDesigner(ADesigner: TFormDesigner);
+    procedure EnvOptionsChanged;
+    procedure EnvOverridesChanged;
+    procedure AutoSaveEditorFiles;
+    procedure CompProgressOkClick(Sender: TObject);
+    procedure CompProgressStart(const AExe, AParams: string);
+    procedure CompProgressLine(const ALine: string);
+    procedure CompProgressDone(AExitCode: Integer);
     procedure SaveFormBounds(Ini: TIniFile);
     procedure RestoreFormBounds(Ini: TIniFile);
 
@@ -11271,6 +11298,13 @@ begin
   if ProjectSignature = FProjectSig then
     Exit;
 
+  // Autosave Project desktop - без вопроса
+  if FEnv.AutosaveDesktop then
+  begin
+    SaveProjectTo(FCurrentProject);
+    Exit;
+  end;
+
   case MessageDlg('8315:Состав проекта "' + FCurrentProject + '" изменился:' +
                   #13#10 + 'список окон, вкладок или закладок.' + #13#10#13#10 +
     'Сохранить проект?',
@@ -13357,6 +13391,7 @@ end;
 // несколько. False - человек отменил.
 function TForm1.ConfirmSaveAll: Boolean;
 begin
+  AutoSaveEditorFiles;
   Result := ConfirmSaveCurrent;
   if Result then
     Result := ConfirmSaveOthers;
@@ -17529,6 +17564,7 @@ begin
   HangWatchStop;
   WndWatchStop;
   ArdFreeAll;
+  FreeAndNil(FEnvOverrides);
   // Возвращаем старую процедуру на место. Если FormShow не отработал,
   // сабклассинга не было и присваивать nil нельзя.
   if Assigned(OldRichEditProc) then
@@ -22887,6 +22923,7 @@ begin
     FRqDesigner.OnPlace := RqDsgPlace;
     FRqDesigner.OnContext := RqDsgContext;
     FRqDesigner.OnKey := RqDsgKey;
+    EnvApplyDesigner(FRqDesigner);   // IDE Options - Designer
   end;
   FRqDsgFile := FCurrentFileName;
   FRqDsgForm := Root.Name;
@@ -27391,6 +27428,7 @@ begin
   Result.OnGroupChange := DsgGroupChange;
   Result.OnMapClass := DsgMapClass;
   Result.ForeignColor := UiColor('Dsg.Foreign');
+  EnvApplyDesigner(Result);   // IDE Options - Designer
 end;
 
 // По чему построена форма конструктора: текст .dfm, номер снимка, режим
@@ -37543,6 +37581,7 @@ begin
     // Свой конец записи закрываем сразу, иначе чтение не увидит конца
     CloseHandle(hWrite);
     hWrite := 0;
+    CompProgressStart(AExe, AParams);   // Preferences - Show compiler progress
 
     // Чтение без блокировки: ReadFile ждал бы, пока компилятор что-нибудь
     // напишет, а с -Q он пишет мало - окно стояло бы, и индикатор тоже.
@@ -37585,7 +37624,10 @@ begin
         while (Line <> '') and (Line[Length(Line)] = #13) do
           SetLength(Line, Length(Line) - 1);
         if Trim(Line) <> '' then
+        begin
           LogComp(Line);
+          CompProgressLine(Line);
+        end;
         NL := Pos(#10, Acc);
       end;
 
@@ -37594,12 +37636,16 @@ begin
     until False;
 
     if Trim(Acc) <> '' then
+    begin
       LogComp(Acc);
+      CompProgressLine(Acc);
+    end;
 
     WaitForSingleObject(PI.hProcess, INFINITE);
     Code := 0;
     GetExitCodeProcess(PI.hProcess, Code);
     Result := Code;
+    CompProgressDone(Result);
 
     CloseHandle(PI.hThread);
     CloseHandle(PI.hProcess);
@@ -38944,6 +38990,7 @@ end;
 // работают только с проектами Delphi.
 function TForm1.CompileProject: Boolean;
 begin
+  AutoSaveEditorFiles;
   if BuildIsRapidQ then
     Result := CompileRapidQ
   else
@@ -42275,11 +42322,20 @@ end;
 // поверх редактора и закрывала бы окна программы
 procedure TForm1.DsgHideForRun;
 begin
+  // Preferences - Hide designers on run
+  if not FEnv.HideDesignersOnRun then
+    Exit;
   if (FDesigner <> nil) and (FDesigner.Form <> nil) and
      FDesigner.Form.Visible then
   begin
     FDesigner.Form.Hide; // не Close: Close закрыл бы конструктор
     FDsgHiddenForRun := True;
+  end;
+  if (FRqDesigner <> nil) and (FRqDesigner.Form <> nil) and
+     FRqDesigner.Form.Visible then
+  begin
+    FRqDesigner.Form.Hide;
+    FRqDsgHiddenForRun := True;
   end;
 end;
 
@@ -42287,6 +42343,12 @@ end;
 // если её прятал запуск
 procedure TForm1.DsgShowAfterRun;
 begin
+  if FRqDsgHiddenForRun then
+  begin
+    FRqDsgHiddenForRun := False;
+    if (FRqDesigner <> nil) and (FRqDesigner.Form <> nil) then
+      FRqDesigner.ShowForm;
+  end;
   if not FDsgHiddenForRun then
     Exit;
   FDsgHiddenForRun := False;
@@ -42316,6 +42378,13 @@ begin
   if (FRunList <> nil) and (FRunList.Count > 0) then
     Exit;
   FRunTimer.Enabled := False;
+  // Preferences - Minimize on run: программа закрылась - среда обратно
+  if FRunMinimized then
+  begin
+    FRunMinimized := False;
+    Application.Restore;
+    Application.BringToFront;
+  end;
   DsgShowAfterRun;
 end;
 
@@ -44233,7 +44302,11 @@ begin
         RunLine := LineIdx;
     end;
     Line := '  Application.CreateForm(T' + FormNm + ', ' + FormNm + ');';
-    if CreateLast >= 0 then
+    // IDE Options - Designer - Auto create forms & data modules
+    if not FEnv.DsgAutoCreateForms then
+      LogRaw('New Form: Auto create forms выключено - создание ' + FormNm +
+             ' в ' + ExtractFileName(Dpr) + ' не вписано')
+    else if CreateLast >= 0 then
       DprText.Insert(CreateLast + 1, Line)
     else if RunLine >= 0 then
       DprText.Insert(RunLine, Line)
@@ -44688,6 +44761,7 @@ var
   RapidQ: Boolean;
 begin
   ShowCompLog;
+  AutoSaveEditorFiles;
 
   // RapidQ: exe рядом с главным .bas, отладчика Delphi для него нет
   RapidQ := BuildIsRapidQ;
@@ -44768,6 +44842,13 @@ begin
   RunAdd(ExpandFileName(Exe), PI.hProcess);
   FRunExeTick := 0;   // цель могла записаться при сборке - пересчитать
   LogComp('--- Запуск: ' + Exe);
+  // Preferences - Minimize on run (запуск без отладчика): среда
+  // развернётся, когда программа закроется (RunTimerTick)
+  if FEnv.MinimizeOnRun then
+  begin
+    FRunMinimized := True;
+    Application.Minimize;
+  end;
 end;
 
 procedure TForm1.btnRunClick(Sender: TObject);
@@ -47822,6 +47903,237 @@ begin
   if not FArdMonitorWnd.IsOpen or
      (CompareText(FArdMonitorWnd.PortName, FArdPort) <> 0) then
     FArdMonitorWnd.OpenPort(FArdPort);
+end;
+
+// ---------------------------------------------------------------------------
+//  Настройки среды: IDE Options - Preferences, Designer, Environment
+//  Variables (EnvOptions). Читаются вместе с остальными настройками
+//  (EnvInit после LoadSettings), меняются окном настроек (Unit2), которое
+//  после правки зовёт EnvOptionsChanged / EnvOverridesChanged.
+// ---------------------------------------------------------------------------
+
+procedure TForm1.EnvInit;
+begin
+  EnvLoadOptions(SettingsFileName, FEnv);
+  if FEnvOverrides = nil then
+    FEnvOverrides := TStringList.Create;
+  EnvLoadOverrides(SettingsFileName, FEnvOverrides);
+  // Подмены - в окружение среды до первой сборки и первого запуска
+  EnvApplyOverrides(FEnvOverrides);
+end;
+
+// Сетка, подписи значков, подсказки - конструктору ADesigner
+procedure TForm1.EnvApplyDesigner(ADesigner: TFormDesigner);
+begin
+  if ADesigner = nil then
+    Exit;
+  ADesigner.GridX := FEnv.DsgGridX;
+  ADesigner.GridY := FEnv.DsgGridY;
+  ADesigner.ShowGrid := FEnv.DsgShowGrid;
+  ADesigner.SnapToGrid := FEnv.DsgSnapToGrid;
+  ADesigner.ShowCaptions := FEnv.DsgShowCaptions;
+  ADesigner.ShowHints := FEnv.DsgShowHints;
+  ADesigner.ExtendedHints := FEnv.DsgExtendedHints;
+end;
+
+procedure TForm1.EnvOptionsChanged;
+begin
+  EnvSaveOptions(SettingsFileName, FEnv);
+  EnvApplyDesigner(FDesigner);
+  if FDsgOther <> FDesigner then
+    EnvApplyDesigner(FDsgOther);
+  EnvApplyDesigner(FRqDesigner);
+end;
+
+procedure TForm1.EnvOverridesChanged;
+begin
+  EnvSaveOverrides(SettingsFileName, FEnvOverrides);
+  EnvApplyOverrides(FEnvOverrides);
+end;
+
+// Autosave options - Editor files: изменённые файлы с именем - на диск без
+// вопроса. Файлы без имени и те, что сохранить не вышло, остаются
+// изменёнными: о них спросят как обычно.
+procedure TForm1.AutoSaveEditorFiles;
+var
+  Cur, WinIdx: Integer;
+  FileLabel: string;
+
+  function Named(AWinIdx: Integer): Boolean;
+  begin
+    Result := (FWindows[AWinIdx].FileName <> '') and
+              not IsUntitledName(FWindows[AWinIdx].FileName);
+  end;
+
+begin
+  if not FEnv.AutosaveEditor then
+    Exit;
+  Cur := FWindowsIndex;
+  if (Cur >= 0) and (Cur < WindowsItemCount) and FWindows[Cur].Used and
+     RichEdit1.Modified and Named(Cur) then
+  begin
+    FileLabel := ExtractFileName(FWindows[Cur].FileName);
+    if SaveCurrentFile then
+      LogComp('Autosave: ' + FileLabel)
+    else
+      LogComp('Autosave: не удалось сохранить ' + FileLabel);
+  end;
+  for WinIdx := 0 to WindowsItemCount - 1 do
+  begin
+    if (WinIdx = Cur) or not FWindows[WinIdx].Used or
+       not FWindows[WinIdx].Modified or not Named(WinIdx) then
+      Continue;
+    FileLabel := ExtractFileName(FWindows[WinIdx].FileName);
+    ActivateWindow(WinIdx);    // сохраняем через обычный путь
+    if SaveCurrentFile then
+      LogComp('Autosave: ' + FileLabel)
+    else
+      LogComp('Autosave: не удалось сохранить ' + FileLabel);
+  end;
+  if (FWindowsIndex <> Cur) and (Cur >= 0) and (Cur < WindowsItemCount) and
+     FWindows[Cur].Used then
+    ActivateWindow(Cur);
+end;
+
+// ---------------------------------------------------------------------------
+//  Окно хода сборки (Preferences - Show compiler progress): программа и
+//  проект, последняя строка вывода, число подсказок, предупреждений и
+//  ошибок. Сборка без ошибок - окно закрывается само; с ошибками -
+//  остаётся до OK, как в Delphi.
+// ---------------------------------------------------------------------------
+
+// Файл проекта в параметрах (.dpr, .bas ...): последнее слово, не ключ
+function CompProjectOf(const AParams: string): string;
+var
+  CharIdx: Integer;
+  ParamWord: string;
+  InQuote: Boolean;
+
+  procedure TakeWord;
+  begin
+    if (ParamWord <> '') and (ParamWord[1] <> '-') and (ParamWord[1] <> '/') then
+      Result := ParamWord;
+    ParamWord := '';
+  end;
+
+begin
+  Result := '';
+  ParamWord := '';
+  InQuote := False;
+  for CharIdx := 1 to Length(AParams) do
+    if AParams[CharIdx] = '"' then
+      InQuote := not InQuote
+    else if (AParams[CharIdx] = ' ') and not InQuote then
+      TakeWord
+    else
+      ParamWord := ParamWord + AParams[CharIdx];
+  TakeWord;
+  Result := ExtractFileName(Result);
+end;
+
+procedure TForm1.CompProgressOkClick(Sender: TObject);
+begin
+  if FCompProgForm <> nil then
+    FCompProgForm.Hide;
+end;
+
+procedure TForm1.CompProgressStart(const AExe, AParams: string);
+
+  function AddLabel(ATop: Integer; ABold: Boolean): TLabel;
+  begin
+    Result := TLabel.Create(FCompProgForm);
+    Result.Parent := FCompProgForm;
+    Result.AutoSize := False;
+    Result.ShowAccelChar := False;
+    Result.SetBounds(12, ATop, 396, 18);
+    if ABold then
+      Result.Font.Style := [fsBold];
+  end;
+
+begin
+  if not FEnv.ShowCompileProgress then
+    Exit;
+  if FCompProgForm = nil then
+  begin
+    FCompProgForm := TForm.CreateNew(Self);
+    FCompProgForm.Caption := 'Compiling';
+    FCompProgForm.BorderStyle := bsDialog;
+    FCompProgForm.Position := poMainFormCenter;
+    FCompProgForm.ClientWidth := 420;
+    FCompProgForm.ClientHeight := 150;
+    FCompProgForm.Font.Assign(Font);
+    FCompProgProject := AddLabel(12, True);
+    FCompProgStatus := AddLabel(36, False);
+    FCompProgLine := AddLabel(60, False);
+    FCompProgCounts := AddLabel(84, False);
+    FCompProgOk := TUiButton.Create(FCompProgForm);
+    FCompProgOk.Parent := FCompProgForm;
+    FCompProgOk.Caption := 'OK';
+    FCompProgOk.SetBounds(165, 112, 90, 28);
+    FCompProgOk.OnClick := CompProgressOkClick;
+    UiApplyForm(FCompProgForm);
+  end;
+  FCompProgTick := GetTickCount;
+  FCompProgHints := 0;
+  FCompProgWarns := 0;
+  FCompProgErrors := 0;
+  FCompProgProject.Caption := 'Project: ' + CompProjectOf(AParams) + '  (' +
+                              ExtractFileName(AExe) + ')';
+  FCompProgStatus.Caption := 'Compiling...';
+  FCompProgLine.Caption := '';
+  FCompProgCounts.Caption := 'Hints: 0    Warnings: 0    Errors: 0';
+  FCompProgOk.Enabled := False;
+  if not FCompProgForm.Visible then
+  begin
+    FCompProgForm.Show;
+    // Над главным окном, как окна Arduino
+    SetWindowLong(FCompProgForm.Handle, GWL_HWNDPARENT, Integer(Handle));
+  end;
+  FCompProgForm.Update;
+end;
+
+procedure TForm1.CompProgressLine(const ALine: string);
+var
+  LowLine: string;
+
+  // Метка сообщения компилятора: "Unit1.pas(12) Error: ..." или в начале
+  function HasTag(const ATag: string): Boolean;
+  begin
+    Result := (Pos(' ' + ATag, LowLine) > 0) or
+              (Copy(LowLine, 1, Length(ATag)) = ATag);
+  end;
+
+begin
+  if (FCompProgForm = nil) or not FCompProgForm.Visible then
+    Exit;
+  LowLine := LowerCase(ALine);
+  if HasTag('error:') or HasTag('fatal:') then
+    Inc(FCompProgErrors)
+  else if HasTag('warning:') then
+    Inc(FCompProgWarns)
+  else if HasTag('hint:') then
+    Inc(FCompProgHints);
+  FCompProgLine.Caption := ALine;
+  FCompProgCounts.Caption := Format('Hints: %d    Warnings: %d    Errors: %d',
+    [FCompProgHints, FCompProgWarns, FCompProgErrors]);
+  FCompProgStatus.Caption := Format('Compiling... %d s',
+    [(GetTickCount - FCompProgTick) div 1000]);
+end;
+
+procedure TForm1.CompProgressDone(AExitCode: Integer);
+begin
+  if (FCompProgForm = nil) or not FCompProgForm.Visible then
+    Exit;
+  if (AExitCode = 0) and (FCompProgErrors = 0) then
+  begin
+    FCompProgForm.Hide;
+    Exit;
+  end;
+  if FCompProgErrors > 0 then
+    FCompProgStatus.Caption := 'Done: There are errors.'
+  else
+    FCompProgStatus.Caption := 'Done: exit code ' + IntToStr(AExitCode) + '.';
+  FCompProgOk.Enabled := True;
 end;
 
 procedure TForm1.DbgWatchRefresh;
@@ -51892,6 +52204,8 @@ begin
 
   // Настройки читаем ДО ApplyTabStops: она опирается на FTabChars
   LoadSettings;
+  // IDE Options - Preferences, Designer, Environment Variables
+  EnvInit;
   RebuildReopenMenu; // список недавних файлов уже прочитан
 
   // Проекты, которых нет по записанному пути, - поиск по копиям разделов
@@ -52565,7 +52879,9 @@ end;
 procedure TForm1.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 begin
   // Сначала текст активного окна, потом сам проект, потом цветовая схема:
-  // отказ на любом вопросе отменяет выход, и следующие задавать незачем
+  // отказ на любом вопросе отменяет выход, и следующие задавать незачем.
+  // Autosave Editor files - файлы с именем сохраняются без вопроса.
+  AutoSaveEditorFiles;
   CanClose := ConfirmSaveCurrent;
   if CanClose then
     CanClose := ConfirmSaveOthers;   // правки конструктора в других вкладках
@@ -52719,6 +53035,8 @@ begin
   Form2.RefreshGridFromForm1;
   // Вкладка Arduino - значения из editor.ini (их мог поменять Board Manager)
   Form2.ArdTabLoad;
+  // Preferences, Designer, Environment Variables - из FEnv и FEnvOverrides
+  Form2.EnvTabsLoad;
   Form2.chkUseHighlight.Checked := FUseSyntaxHighlight;
   Form2.chkHotTabHighlight.Checked := FUseHotTab;
   Form2.SetTabWidthInCombo(FTabChars);

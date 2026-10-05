@@ -24,6 +24,7 @@ uses
   ArduinoCli in 'ArduinoCli.pas',
   ArduinoHw in 'ArduinoHw.pas',
   ArduinoPorts in 'ArduinoPorts.pas',
+  EnvOptions in 'EnvOptions.pas',
   DlgArdSerial in 'DlgArdSerial.pas' {DlgArdSerial},
   ReleaseBuild in 'ReleaseBuild.pas',
   ObjParse in 'ObjParse.pas',

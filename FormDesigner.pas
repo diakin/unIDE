@@ -94,6 +94,14 @@ type
     procedure Paint; override;
   end;
 
+  // Имя невизуального компонента под его значком (Show component captions).
+  // Как уголки группы - окно формы через ParentWindow, выключенное: в
+  // раскладку формы не входит, щелчки проходят мимо.
+  TDsgIconCaption = class(TCustomControl)
+  protected
+    procedure Paint; override;
+  end;
+
   // Значок невизуального компонента (TTimer, TMainMenu, диалоги) в его точке
   // Left/Top, как в конструкторе Delphi
   TDsgIcon = class(TCustomControl)
@@ -104,6 +112,10 @@ type
     FActive, FMoved: Boolean;
     FFrom: TPoint;
     FStart: TPoint;
+    FCaption: TDsgIconCaption;   // принадлежит значку; nil - подписи нет
+    procedure PlaceCaption;
+  public
+    procedure SetBounds(ALeft, ATop, AWidth, AHeight: Integer); override;
   protected
     procedure Paint; override;
     procedure MouseDown(Button: TMouseButton; Shift: TShiftState;
@@ -123,7 +135,32 @@ type
     FForm: TForm;
     FCarets: array[1..8] of TDsgCaret;
     FSel: TComponent;
-    FGrid: Integer;
+    // Сетка (IDE Options - Designer): шаг по X и Y, показывать ли точки,
+    // привязывать ли к ней перемещение и размер
+    FGridX: Integer;
+    FGridY: Integer;
+    FShowGrid: Boolean;
+    FSnapToGrid: Boolean;
+    // Имена под значками невизуальных компонентов
+    FShowCaptions: Boolean;
+    // Подсказка над компонентом под мышью: «Имя: Класс», с ExtendedHints -
+    // место, размер, TabStop и TabOrder. Своё окно подсказки: Hint самих
+    // компонентов формы - их свойство из .dfm, его не трогаем.
+    FShowHints: Boolean;
+    FExtendedHints: Boolean;
+    FHintWnd: THintWindow;
+    FHintTimer: TTimer;
+    FHintTarget: TComponent;
+    FHintShown: Boolean;
+    procedure SetGridX(AValue: Integer);
+    procedure SetGridY(AValue: Integer);
+    procedure SetGrid(AValue: Integer);
+    procedure SetShowGrid(AValue: Boolean);
+    procedure SetShowCaptions(AValue: Boolean);
+    procedure SetShowHints(AValue: Boolean);
+    procedure HintTimerTick(Sender: TObject);
+    function  HintTarget(const AScreen: TPoint): TComponent;
+    function  HintText(AComp: TComponent): string;
     FRootName: string;
     FClassOf: TStringList;    // имя компонента -> класс из .dfm
     FVisualUnknown: TStringList; // неизвестные классы, у которых есть Width
@@ -219,7 +256,14 @@ type
     procedure ShowForm;
     // Прежняя форма больше не нужна, а новую не показывают (спрятана)
     procedure DropOldForm;
-    function Snap(V: Integer): Integer;
+    // Значение по сетке (если привязка включена): X - по шагу X, Y - по Y
+    function SnapX(V: Integer): Integer;
+    function SnapY(V: Integer): Integer;
+    // Подписи значков - по ShowCaptions
+    procedure UpdateIconCaptions;
+    // Мышь над формой конструктора (точка экрана): подсказка компонента
+    procedure HoverAt(const AScreen: TPoint);
+    procedure HideHint;
     procedure Select(AComp: TComponent; ANotify: Boolean);
     // Щелчок по строке меню формы (точка в координатах экрана): меню не
     // раскрывается, выделяется меню формы, а в инспекторе - пункт под
@@ -241,7 +285,15 @@ type
     property Form: TForm read FForm;
     property RootName: string read FRootName;
     property Dragging: Boolean read FDragging;
-    property Grid: Integer read FGrid write FGrid;
+    // Шаг сетки по обеим осям (прежнее свойство): чтение - шаг по X
+    property Grid: Integer read FGridX write SetGrid;
+    property GridX: Integer read FGridX write SetGridX;
+    property GridY: Integer read FGridY write SetGridY;
+    property ShowGrid: Boolean read FShowGrid write SetShowGrid;
+    property SnapToGrid: Boolean read FSnapToGrid write FSnapToGrid;
+    property ShowCaptions: Boolean read FShowCaptions write SetShowCaptions;
+    property ShowHints: Boolean read FShowHints write SetShowHints;
+    property ExtendedHints: Boolean read FExtendedHints write FExtendedHints;
     property OnSelect: TDsgSelectEvent read FOnSelect write FOnSelect;
     property OnChange: TDsgChangeEvent read FOnChange write FOnChange;
     property OnKey: TDsgKeyEvent read FOnKey write FOnKey;
@@ -1797,12 +1849,15 @@ begin
 
     WM_MOUSEMOVE:
       begin
+        Pt := Point(SmallInt(LoWord(Msg.LParam)),
+                    SmallInt(HiWord(Msg.LParam)));
         if FDesigner.Dragging then
         begin
-          Pt := Point(SmallInt(LoWord(Msg.LParam)),
-                      SmallInt(HiWord(Msg.LParam)));
+          FDesigner.HideHint;
           FDesigner.MouseMove(FCtl.ClientToScreen(Pt));
-        end;
+        end
+        else
+          FDesigner.HoverAt(FCtl.ClientToScreen(Pt));
         Exit;
       end;
 
@@ -2082,13 +2137,13 @@ begin
   R := FRect;
 
   if FIndex in [1, 2, 3] then
-    R.Left := FDesigner.Snap(FRect.Left + DX);
+    R.Left := FDesigner.SnapX(FRect.Left + DX);
   if FIndex in [5, 6, 7] then
-    R.Right := FDesigner.Snap(FRect.Right + DX);
+    R.Right := FDesigner.SnapX(FRect.Right + DX);
   if FIndex in [1, 7, 8] then
-    R.Top := FDesigner.Snap(FRect.Top + DY);
+    R.Top := FDesigner.SnapY(FRect.Top + DY);
   if FIndex in [3, 4, 5] then
-    R.Bottom := FDesigner.Snap(FRect.Bottom + DY);
+    R.Bottom := FDesigner.SnapY(FRect.Bottom + DY);
 
   if R.Right - R.Left < 4 then
     if FIndex in [1, 2, 3] then
@@ -2121,7 +2176,57 @@ begin
     FDesigner.CommitBounds(C);
 end;
 
+{ TDsgIconCaption }
+
+procedure TDsgIconCaption.Paint;
+var
+  R: TRect;
+  S: string;
+begin
+  R := ClientRect;
+  Canvas.Brush.Color := Color;
+  Canvas.FillRect(R);
+  S := Caption;
+  Canvas.Font.Height := -11;
+  Canvas.Font.Color := clWindowText;
+  SetBkMode(Canvas.Handle, TRANSPARENT);
+  DrawText(Canvas.Handle, PChar(S), Length(S), R,
+           DT_CENTER or DT_VCENTER or DT_SINGLELINE or DT_NOPREFIX);
+end;
+
 { TDsgIcon }
+
+// Подпись - под значком, по середине
+procedure TDsgIcon.PlaceCaption;
+var
+  TextWidth: Integer;
+  ScreenDC: HDC;
+  OldFont: HFONT;
+  TextSize: TSize;
+begin
+  if (FCaption = nil) or (Parent = nil) or not Parent.HandleAllocated then
+    Exit;
+  TextWidth := 40;
+  ScreenDC := GetDC(0);
+  try
+    FCaption.Canvas.Font.Height := -11;
+    OldFont := SelectObject(ScreenDC, FCaption.Canvas.Font.Handle);
+    if GetTextExtentPoint32(ScreenDC, PChar(FCaption.Caption),
+                            Length(FCaption.Caption), TextSize) then
+      TextWidth := TextSize.cx + 4;
+    SelectObject(ScreenDC, OldFont);
+  finally
+    ReleaseDC(0, ScreenDC);
+  end;
+  FCaption.SetBounds(Left + Width div 2 - TextWidth div 2, Top + Height + 1,
+                     TextWidth, 14);
+end;
+
+procedure TDsgIcon.SetBounds(ALeft, ATop, AWidth, AHeight: Integer);
+begin
+  inherited SetBounds(ALeft, ATop, AWidth, AHeight);
+  PlaceCaption;
+end;
 
 procedure TDsgIcon.Paint;
 var
@@ -2176,14 +2281,18 @@ var
   R: TRect;
 begin
   if not FActive then
+  begin
+    FDesigner.HoverAt(ClientToScreen(Point(X, Y)));
     Exit;
+  end;
+  FDesigner.HideHint;
   P := ClientToScreen(Point(X, Y));
   if not FMoved and (Abs(P.X - FFrom.X) < 3) and (Abs(P.Y - FFrom.Y) < 3) then
     Exit;
   FMoved := True;
   // Значок - в пределах формы
-  R.Left := FDesigner.Snap(FStart.X + P.X - FFrom.X);
-  R.Top := FDesigner.Snap(FStart.Y + P.Y - FFrom.Y);
+  R.Left := FDesigner.SnapX(FStart.X + P.X - FFrom.X);
+  R.Top := FDesigner.SnapY(FStart.Y + P.Y - FFrom.Y);
   R.Right := R.Left + Width;
   R.Bottom := R.Top + Height;
   ClampToParent(Parent, R, False);
@@ -2209,7 +2318,17 @@ end;
 constructor TFormDesigner.Create;
 begin
   inherited Create;
-  FGrid := 8;   // как у Delphi: формы, сделанные в ней, выровнены по 8
+  // Как у Delphi: формы, сделанные в ней, выровнены по 8. Настройки IDE
+  // Options - Designer ставит главное окно после создания.
+  FGridX := 8;
+  FGridY := 8;
+  FShowGrid := True;
+  FSnapToGrid := True;
+  FShowHints := True;
+  FExtendedHints := True;
+  FHintTimer := TTimer.Create(nil);
+  FHintTimer.Enabled := False;
+  FHintTimer.OnTimer := HintTimerTick;
   FClassOf := TStringList.Create;
   FVisualUnknown := TStringList.Create;
   FVisualUnknown.Sorted := True;
@@ -2231,6 +2350,9 @@ end;
 
 destructor TFormDesigner.Destroy;
 begin
+  HideHint;
+  FreeAndNil(FHintTimer);
+  FreeAndNil(FHintWnd);
   DropOldForm;
   Clear;
   FTabMembers.Free;
@@ -2252,6 +2374,7 @@ procedure TFormDesigner.Clear;
 var
   I: Integer;
 begin
+  HideHint;
   FSel := nil;
   FDragging := False;
   FDragCtl := nil;
@@ -2289,12 +2412,57 @@ begin
   end;
 end;
 
-function TFormDesigner.Snap(V: Integer): Integer;
+function TFormDesigner.SnapX(V: Integer): Integer;
 begin
-  if FGrid > 1 then
-    Result := Round(V / FGrid) * FGrid
+  if FSnapToGrid and (FGridX > 1) then
+    Result := Round(V / FGridX) * FGridX
   else
     Result := V;
+end;
+
+function TFormDesigner.SnapY(V: Integer): Integer;
+begin
+  if FSnapToGrid and (FGridY > 1) then
+    Result := Round(V / FGridY) * FGridY
+  else
+    Result := V;
+end;
+
+procedure TFormDesigner.SetGridX(AValue: Integer);
+begin
+  if AValue < 2 then
+    AValue := 2;
+  if AValue = FGridX then
+    Exit;
+  FGridX := AValue;
+  if FForm <> nil then
+    FForm.Invalidate;
+end;
+
+procedure TFormDesigner.SetGridY(AValue: Integer);
+begin
+  if AValue < 2 then
+    AValue := 2;
+  if AValue = FGridY then
+    Exit;
+  FGridY := AValue;
+  if FForm <> nil then
+    FForm.Invalidate;
+end;
+
+procedure TFormDesigner.SetGrid(AValue: Integer);
+begin
+  SetGridX(AValue);
+  SetGridY(AValue);
+end;
+
+procedure TFormDesigner.SetShowGrid(AValue: Boolean);
+begin
+  if AValue = FShowGrid then
+    Exit;
+  FShowGrid := AValue;
+  if FForm <> nil then
+    FForm.Invalidate;
 end;
 
 // Текст перед чтением. Имена и классы всех объектов - в FClassOf; классы,
@@ -2492,6 +2660,8 @@ begin
   // но на экране его нет. Нарисовали всё сразу (FlushPaint) - прозрачность
   // снимается, и форма появляется готовой.
   FForm.HandleNeeded;
+  // Подписи значков - окна формы: нужен её дескриптор
+  UpdateIconCaptions;
   FForm.AlphaBlendValue := 0;
   FForm.AlphaBlend := True;
   try
@@ -2591,10 +2761,11 @@ begin
     Icon.FComp := C;
     Icon.FClassName := Cl;
     Icon.SetBounds(LongRec(C.DesignInfo).Lo, LongRec(C.DesignInfo).Hi, 28, 28);
-    Icon.Hint := C.Name + ': ' + Cl;
-    Icon.ShowHint := True;
+    // Подсказка значка - общая подсказка конструктора (HoverAt)
+    Icon.ShowHint := False;
     Icon.Parent := FForm;
   end;
+  UpdateIconCaptions;
 
   for I := 1 to 8 do
   begin
@@ -2637,12 +2808,175 @@ begin
     FOnClose(Self);
 end;
 
+// Подписи значков невизуальных компонентов: есть, если ShowCaptions
+procedure TFormDesigner.UpdateIconCaptions;
+var
+  CtlIdx: Integer;
+  Icon: TDsgIcon;
+begin
+  if (FForm = nil) or not FForm.HandleAllocated then
+    Exit;
+  for CtlIdx := 0 to FForm.ControlCount - 1 do
+  begin
+    if not (FForm.Controls[CtlIdx] is TDsgIcon) then
+      Continue;
+    Icon := TDsgIcon(FForm.Controls[CtlIdx]);
+    if FShowCaptions and (Icon.FComp <> nil) then
+    begin
+      if Icon.FCaption = nil then
+      begin
+        Icon.FCaption := TDsgIconCaption.Create(Icon);
+        Icon.FCaption.Enabled := False;
+        Icon.FCaption.ParentWindow := FForm.Handle;
+      end;
+      Icon.FCaption.Color := FForm.Color;
+      Icon.FCaption.Caption := Icon.FComp.Name;
+      Icon.PlaceCaption;
+      Icon.FCaption.Visible := True;
+      Icon.FCaption.Invalidate;
+    end
+    else if Icon.FCaption <> nil then
+      FreeAndNil(Icon.FCaption);
+  end;
+end;
+
+procedure TFormDesigner.SetShowCaptions(AValue: Boolean);
+begin
+  if AValue = FShowCaptions then
+    Exit;
+  FShowCaptions := AValue;
+  UpdateIconCaptions;
+end;
+
+procedure TFormDesigner.SetShowHints(AValue: Boolean);
+begin
+  FShowHints := AValue;
+  if not AValue then
+    HideHint;
+end;
+
+// Компонент .dfm под точкой экрана для подсказки: значок - его компонент;
+// nil - не над компонентом формы конструктора
+function TFormDesigner.HintTarget(const AScreen: TPoint): TComponent;
+var
+  UnderWnd: HWND;
+begin
+  Result := nil;
+  if (FForm = nil) or not FForm.HandleAllocated or not FForm.Visible then
+    Exit;
+  UnderWnd := WindowFromPoint(AScreen);
+  if (UnderWnd <> FForm.Handle) and not IsChild(FForm.Handle, UnderWnd) then
+    Exit;
+  Result := TargetAt(AScreen);
+  // Над самой формой (между компонентами) подсказки нет - как в Delphi
+  if Result = FForm then
+    Result := nil
+  else if Result is TDsgIcon then
+    Result := TDsgIcon(Result).FComp;
+end;
+
+function TFormDesigner.HintText(AComp: TComponent): string;
+var
+  ClassText: string;
+  Ctl: TControl;
+begin
+  if AComp = FForm then
+  begin
+    Result := FRootName;
+    ClassText := FClassOf.Values[FRootName];
+  end
+  else
+  begin
+    Result := AComp.Name;
+    ClassText := FClassOf.Values[AComp.Name];
+  end;
+  if ClassText = '' then
+    ClassText := AComp.ClassName;
+  Result := Result + ': ' + ClassText;
+  if not FExtendedHints then
+    Exit;
+  if AComp is TControl then
+  begin
+    Ctl := TControl(AComp);
+    Result := Result + #13#10 + Format('Origin: %d, %d; Size: %d x %d',
+      [Ctl.Left, Ctl.Top, Ctl.Width, Ctl.Height]);
+    if (Ctl is TWinControl) and (Ctl <> FForm) then
+      Result := Result + #13#10 + Format('Tab Stop: %s; Order: %d',
+        [BoolToStr(TWinControl(Ctl).TabStop, True),
+         TWinControl(Ctl).TabOrder]);
+  end
+  else
+    Result := Result + #13#10 + Format('Origin: %d, %d',
+      [LongRec(AComp.DesignInfo).Lo, LongRec(AComp.DesignInfo).Hi]);
+end;
+
+procedure TFormDesigner.HideHint;
+begin
+  if FHintTimer <> nil then
+    FHintTimer.Enabled := False;
+  if FHintShown and (FHintWnd <> nil) then
+    FHintWnd.ReleaseHandle;
+  FHintShown := False;
+  FHintTarget := nil;
+end;
+
+// Мышь над компонентом: подсказка - через полсекунды, если мышь на нём
+procedure TFormDesigner.HoverAt(const AScreen: TPoint);
+var
+  Target: TComponent;
+begin
+  if not FShowHints or FDragging then
+  begin
+    HideHint;
+    Exit;
+  end;
+  Target := HintTarget(AScreen);
+  if Target = FHintTarget then
+    Exit;
+  HideHint;
+  FHintTarget := Target;
+  if Target = nil then
+    Exit;
+  FHintTimer.Interval := 500;
+  FHintTimer.Enabled := True;
+end;
+
+// Подсказка показывается; пока она видна - проверка, что мышь на том же
+// компоненте
+procedure TFormDesigner.HintTimerTick(Sender: TObject);
+var
+  CursorPt: TPoint;
+  HintRect: TRect;
+  Text: string;
+begin
+  GetCursorPos(CursorPt);
+  if (FHintTarget = nil) or FDragging or
+     (HintTarget(CursorPt) <> FHintTarget) then
+  begin
+    HideHint;
+    Exit;
+  end;
+  if FHintShown then
+    Exit;
+  if FHintWnd = nil then
+  begin
+    FHintWnd := HintWindowClass.Create(nil);
+    FHintWnd.Color := Application.HintColor;
+  end;
+  Text := HintText(FHintTarget);
+  HintRect := FHintWnd.CalcHintRect(400, Text, nil);
+  OffsetRect(HintRect, CursorPt.X, CursorPt.Y + 20);
+  FHintWnd.ActivateHint(HintRect, Text);
+  FHintShown := True;
+  FHintTimer.Interval := 200;
+end;
+
 // Сетка точками поверх фона формы - как PaintFormGrid у RQ
 procedure TFormDesigner.PaintGrid(DC: HDC);
 var
   X, Y: Integer;
 begin
-  if (FForm = nil) or (FGrid < 2) then
+  if (FForm = nil) or not FShowGrid or (FGridX < 2) or (FGridY < 2) then
     Exit;
   Y := 0;
   while Y < FForm.ClientHeight do
@@ -2651,9 +2985,9 @@ begin
     while X < FForm.ClientWidth do
     begin
       SetPixel(DC, X, Y, $007F7F7F);
-      Inc(X, FGrid);
+      Inc(X, FGridX);
     end;
-    Inc(Y, FGrid);
+    Inc(Y, FGridY);
   end;
 end;
 
@@ -4221,6 +4555,7 @@ var
   Handled: Boolean;
   I: Integer;
 begin
+  HideHint;
   // Выбран класс на палитре - щелчок ставит компонент
   if Assigned(FOnPlace) then
   begin
@@ -4232,7 +4567,7 @@ begin
     Pt := Par.ScreenToClient(AScreen);
     FPt := FForm.ScreenToClient(AScreen);
     Handled := False;
-    FOnPlace(Nm, Snap(Pt.X), Snap(Pt.Y), Snap(FPt.X), Snap(FPt.Y), Handled);
+    FOnPlace(Nm, SnapX(Pt.X), SnapY(Pt.Y), SnapX(FPt.X), SnapY(FPt.Y), Handled);
     if Handled then
     begin
       FDragging := False;
@@ -4327,8 +4662,8 @@ begin
   // которой место задаёт код, остаётся, за край родителя не уходит.
   if FGroupDrag then
   begin
-    DX := Snap(FDragRect.Left + DX) - FDragRect.Left;
-    DY := Snap(FDragRect.Top + DY) - FDragRect.Top;
+    DX := SnapX(FDragRect.Left + DX) - FDragRect.Left;
+    DY := SnapY(FDragRect.Top + DY) - FDragRect.Top;
     for I := 0 to FGroup.Count - 1 do
     begin
       C := TControl(FGroup[I]);
@@ -4349,8 +4684,8 @@ begin
 
   // Ось, по которой место задаёт код, остаётся на месте
   Code := CodePlacedSides(FDragCtl);
-  NewX := Snap(FDragRect.Left + DX);
-  NewY := Snap(FDragRect.Top + DY);
+  NewX := SnapX(FDragRect.Left + DX);
+  NewY := SnapY(FDragRect.Top + DY);
   if Pos('L', Code) > 0 then
     NewX := FDragRect.Left;
   if Pos('T', Code) > 0 then
@@ -4385,6 +4720,7 @@ end;
 
 procedure TFormDesigner.KeyDown(AKey: Word);
 begin
+  HideHint;
   if Assigned(FOnKey) then
     FOnKey(AKey, GetKeyState(VK_CONTROL) < 0, GetKeyState(VK_SHIFT) < 0);
 end;
