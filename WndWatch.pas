@@ -26,13 +26,22 @@ unit WndWatch;
 //  окна не меняется, только запись до и после. Опрос - таймер своего
 //  скрытого окна (AllocateHWnd) в главном потоке.
 //
+//  Кто скрыл или свернул окно: при скрытии главного окна (WM_SHOWWINDOW с
+//  показом 0), команде SC_MINIMIZE и сворачивании окна приложения
+//  (WM_SIZE SIZE_MINIMIZED) пишутся
+//  - пришло ли сообщение из другого потока или процесса (InSendMessageEx):
+//    тогда вызов сделан не нашим кодом - Windows, оболочка и т.п.;
+//  - цепочка вызовов главного потока по .map (HangWatchCallStack): если
+//    вызов наш, в ней видна процедура, которая его сделала.
+//
 //  Журнал больше 2 МБ при запуске переименовывается в wnd.old.log.
 // ---------------------------------------------------------------------------
 
 interface
 
 uses
-  Windows, Messages, SysUtils, Classes, Controls, Forms;
+  Windows, Messages, SysUtils, Classes, Controls, Forms,
+  HangWatch;    // HangWatchCallStack - цепочка вызовов по .map
 
 // Начать журнал ALogFile: окно приложения подключается сразу
 procedure WndWatchStart(const ALogFile: string);
@@ -40,6 +49,9 @@ procedure WndWatchStart(const ALogFile: string);
 // перерисовкой (непрорисованная область, частота и длительность WM_PAINT).
 procedure WndWatchControl(AControl: TWinControl; const AName: string;
                           APaintCheck: Boolean);
+// То же для главного окна: дополнительно при его скрытии и сворачивании -
+// откуда пришло сообщение и цепочка вызовов
+procedure WndWatchMainForm(AForm: TWinControl; const AName: string);
 // Остановить журнал (FormDestroy главного окна - до уничтожения окон)
 procedure WndWatchStop;
 
@@ -59,6 +71,7 @@ type
     ItemName: string;
     OldProc: TWndMethod;
     PaintCheck: Boolean;
+    StackOnHide: Boolean;     // при скрытии и сворачивании - кто вызвал
     PaintCount: Integer;      // WM_PAINT с прошлой секунды
     DirtySince: Cardinal;     // с какого опроса есть непрорисованная область
     DirtyLogged: Boolean;
@@ -88,6 +101,7 @@ type
     procedure Log(const AText: string);
     procedure LogWindowMessage(const AWho: string; AWnd: HWND;
                                var Message: TMessage; AAfter: Boolean);
+    procedure LogWhoCalled(const AWho, AWhat: string);
     procedure Stop;
   end;
 
@@ -181,6 +195,48 @@ begin
   else
     Result := WndText(AWnd);
   end;
+end;
+
+// Сообщение - скрытие или сворачивание окна: тогда в журнал - кто вызвал
+function HideOrMinimizeText(const Message: TMessage): string;
+begin
+  Result := '';
+  case Message.Msg of
+    WM_SHOWWINDOW:
+      if Message.WParam = 0 then
+        Result := Format('WM_SHOWWINDOW показ=0 причина=%d',
+                         [Message.LParam]);
+    WM_SYSCOMMAND:
+      if Message.WParam and $FFF0 = SC_MINIMIZE then
+        Result := 'WM_SYSCOMMAND SC_MINIMIZE';
+    WM_SIZE:
+      if Message.WParam = SIZE_MINIMIZED then
+        Result := 'WM_SIZE SIZE_MINIMIZED';
+  end;
+end;
+
+// Своё описание: есть ли InSendMessageEx в Windows.pas Delphi 7 - не
+// проверено, а в user32 она с Windows 2000
+function InSendMessageExApi(lpReserved: Pointer): DWORD; stdcall;
+  external user32 name 'InSendMessageEx';
+
+// Откуда пришло сообщение (InSendMessageEx) - словами
+function SenderText: string;
+const
+  ISMEX_SEND_ = $00000001;
+  ISMEX_REPLIED_ = $00000008;
+var
+  Flags: DWORD;
+begin
+  Flags := InSendMessageExApi(nil);
+  if Flags = 0 then
+    Result := 'из своего потока (вызов нашего кода или выборка из очереди)'
+  else if Flags and ISMEX_SEND_ <> 0 then
+    Result := 'прислано из другого потока или процесса (SendMessage)'
+  else
+    Result := Format('из другого потока, флаги $%x', [Flags]);
+  if Flags and ISMEX_REPLIED_ <> 0 then
+    Result := Result + ', ответ уже дан';
 end;
 
 // ---------------------------------------------------------------------------
@@ -331,11 +387,44 @@ begin
   end;
 end;
 
+// Кто вызвал: откуда сообщение и цепочка вызовов главного потока
+procedure TWatcher.LogWhoCalled(const AWho, AWhat: string);
+var
+  StackLines: TStringList;
+  LineIdx: Integer;
+begin
+  if not FActive then
+    Exit;
+  StackLines := TStringList.Create;
+  try
+    try
+      HangWatchCallStack(StackLines);
+    except
+      on E: Exception do
+        StackLines.Add('цепочка не получена: ' + E.Message);
+    end;
+    Log(Format('%s: %s - %s; на переднем плане %s',
+               [AWho, AWhat, SenderText, WndText(GetForegroundWindow)]));
+    for LineIdx := 0 to StackLines.Count - 1 do
+      Log('    ' + StackLines[LineIdx]);
+  finally
+    StackLines.Free;
+  end;
+end;
+
 // Окно приложения: до его обработки (крюк HookMainWindow), дальше - как
 // обычно
 function TWatcher.AppHook(var Message: TMessage): Boolean;
+var
+  WhatText: string;
 begin
   Result := False;
+  if FActive then
+  begin
+    WhatText := HideOrMinimizeText(Message);
+    if WhatText <> '' then
+      LogWhoCalled('окно приложения', WhatText);
+  end;
   if FActive then
     LogWindowMessage('окно приложения', Application.Handle, Message, False);
   // Состояние после - в опросе (Poll): у крюка нет вызова "после"
@@ -470,6 +559,8 @@ begin
   StartTick := GetTickCount;
   if MsgId = WM_PAINT then
     Inc(PaintCount);
+  if StackOnHide and (HideOrMinimizeText(Message) <> '') then
+    Watcher.LogWhoCalled(ItemName, HideOrMinimizeText(Message));
   try
     OldProc(Message);
   except
@@ -518,6 +609,13 @@ begin
   if AllItems = nil then
     AllItems := TList.Create;
   AllItems.Add(Item);
+end;
+
+procedure WndWatchMainForm(AForm: TWinControl; const AName: string);
+begin
+  WndWatchControl(AForm, AName, False);
+  if (Watcher <> nil) and (Watcher.FItems.Count > 0) then
+    TWatchItem(Watcher.FItems[Watcher.FItems.Count - 1]).StackOnHide := True;
 end;
 
 procedure WndWatchStop;

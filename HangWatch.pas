@@ -61,6 +61,10 @@ uses
 procedure HangWatchStart(AWnd: HWND; const ALogFile: string;
                          AUiWnd: HWND = 0);
 procedure HangWatchStop;
+// Цепочка вызовов текущего потока - строками в ALines, теми же словами,
+// что в hang.log (процедура и строка по .map). Для журналов, которым надо
+// знать, кто сделал вызов (WndWatch: кто скрыл главное окно).
+procedure HangWatchCallStack(ALines: TStrings);
 
 implementation
 
@@ -865,6 +869,45 @@ begin
   Watch := THangWatch.Create(AWnd, ALogFile, AUiWnd);
   Watch.Resume;
   OldCrashFilter := CrashSetFilter(@HangCrashFilter);
+end;
+
+procedure HangWatchCallStack(ALines: TStrings);
+var
+  FrameBase: Cardinal;     // EBP этой процедуры
+  StackFrom: Cardinal;     // откуда копировать: адрес своей переменной
+  StackTop: Cardinal;      // верх выделенной части стека
+  CopyBytes: Cardinal;
+  StackBuf: ^TStackCopy;
+  MemInfo: TMemoryBasicInformation;
+begin
+  if Watch = nil then
+  begin
+    ALines.Add('(сторож не запущен - цепочки нет)');
+    Exit;
+  end;
+  asm
+    mov FrameBase, ebp
+  end;
+  StackFrom := Cardinal(@FrameBase) and not 3;
+  // Копируем до конца выделенной области стека, не больше StackBytes
+  StackTop := StackFrom + StackBytes;
+  if VirtualQuery(Pointer(StackFrom), MemInfo, SizeOf(MemInfo)) =
+     SizeOf(MemInfo) then
+    if Cardinal(MemInfo.BaseAddress) + MemInfo.RegionSize < StackTop then
+      StackTop := Cardinal(MemInfo.BaseAddress) + MemInfo.RegionSize;
+  CopyBytes := StackTop - StackFrom;
+
+  New(StackBuf);
+  try
+    FillChar(StackBuf^, SizeOf(TStackCopy), 0);
+    Move(Pointer(StackFrom)^, StackBuf^, CopyBytes);
+    // Первая строка - адрес возврата из этой процедуры, то есть место
+    // вызова; цепочка - от кадра вызывающего
+    Watch.DescribeStack(PDWORD(FrameBase + 4)^, StackFrom,
+                        PDWORD(FrameBase)^, StackBuf^, CopyBytes, ALines);
+  finally
+    Dispose(StackBuf);
+  end;
 end;
 
 // Событие и Terminate, потом ожидание. Если сторож в это время сидит в

@@ -17448,7 +17448,7 @@ OpenDialog1.FilterIndex := 1; // по умолчанию показываем в
   // окно, и пропадание окна с экрана, как свёрнутого. Что пишется - в
   // WndWatch.pas.
   WndWatchStart(ExtractFilePath(Application.ExeName) + 'wnd.log');
-  WndWatchControl(Self, 'главное окно', False);
+  WndWatchMainForm(Self, 'главное окно');
   WndWatchControl(FTabs, 'полоса вкладок', True);
   WndWatchControl(FStatus2, 'строка состояния', True);
   WndWatchControl(pnlMain, 'pnlMain', True);
