@@ -34,13 +34,15 @@ unit WndWatch;
 //  - цепочка вызовов главного потока по .map (HangWatchCallStack): если
 //    вызов наш, в ней видна процедура, которая его сделала.
 //
-//  Белые полосы (WndWatchControl с AWhiteCheck): раз в 500 мс с экрана
-//  читаются две строки пикселей окна - вторая сверху и вторая снизу.
-//  Считаются только точки, где сверху именно это окно, без его дочерних
-//  (WindowFromPoint):
+//  Светлые полосы (WndWatchControl с AWhiteCheck): раз в 500 мс с экрана
+//  читается вся клиентская область окна. Считаются только точки, где окно
+//  открыто: без видимых окон выше по стопке и без дочерних окон Windows
+//  (не элементов VCL: стрелки прокрутки вкладок и т.п.) -
 //  без композиции рабочего стола DC окна - это экран, и чужое окно поверх
-//  нашего читалось бы как наше. Серия белых пикселей ($FFFFFF) от 16 подряд
-//  на открытой части окна - в журнал, с последними сообщениями этого окна
+//  нашего читалось бы как наше. Светлая точка - R, G и B от $E0 (белый,
+//  цвет кнопок $F0F0F0). Серии светлых точек от 16 подряд на открытой части
+//  окна - в журнал (границы, число строк и точек, цвет, дочерние окна в
+//  этом месте, в том числе скрытые), с последними сообщениями этого окна
 //  и остальных окон с записью сообщений (WndWatchTrace): что приходило, с
 //  какой областью перерисовки, сколько обрабатывалось. Частые сообщения
 //  мыши, курсора и таймера не записываются.
@@ -81,7 +83,8 @@ const
   LogMaxSize = 2 * 1024 * 1024;
   WhiteRunMin = 16;       // белых пикселей подряд - полоса
   TraceSize = 48;         // сколько последних сообщений помнить
-  VisStep = 4;            // шаг проверки, что сверху наше окно, пикселей
+  LightMin = $E0;         // светлая точка: R, G и B не меньше
+  WhiteAreaMax = 4000000; // клиентская область больше, точек - не проверяется
 
 type
   // Сообщение рисования окна - для записи вместе с белой полосой
@@ -182,6 +185,42 @@ begin
     Owner := 'чужое';
   Result := Format('$%x %s "%s" (%s)', [AWnd, string(ClassBuf),
                                        string(TitleBuf), Owner]);
+end;
+
+// Дочерние окна AWnd, которые накрывают точку экрана APoint, - все, в том
+// числе скрытые и запрещённые (WindowFromPoint их пропускает)
+function ChildrenAtText(AWnd: HWND; APoint: TPoint): string;
+var
+  ChildWnd: HWND;
+  ChildBox: TRect;
+  ClassBuf: array[0..63] of Char;
+  StateStr: string;
+begin
+  Result := '';
+  ChildWnd := GetWindow(AWnd, GW_CHILD);
+  while ChildWnd <> 0 do
+  begin
+    if GetWindowRect(ChildWnd, ChildBox) and PtInRect(ChildBox, APoint) then
+    begin
+      ClassBuf[0] := #0;
+      GetClassName(ChildWnd, ClassBuf, SizeOf(ClassBuf));
+      if IsWindowVisible(ChildWnd) then
+        StateStr := 'видно'
+      else
+        StateStr := 'скрыто';
+      if not IsWindowEnabled(ChildWnd) then
+        StateStr := StateStr + ', запрещено';
+      if Result <> '' then
+        Result := Result + ', ';
+      Result := Result + Format('$%x %s (%s, %dx%d)',
+                                [ChildWnd, string(ClassBuf), StateStr,
+                                 ChildBox.Right - ChildBox.Left,
+                                 ChildBox.Bottom - ChildBox.Top]);
+    end;
+    ChildWnd := GetWindow(ChildWnd, GW_HWNDNEXT);
+  end;
+  if Result = '' then
+    Result := 'дочерних окон нет';
 end;
 
 function StateText(AWnd: HWND): string;
@@ -670,133 +709,255 @@ begin
     FSecondStart := NowTick;
 end;
 
-// Белые полосы в окне AWnd: строка 1 и предпоследняя, с экрана, только
-// там, где сверху это окно. Пишется только смена: появилась, изменилась,
-// пропала.
+// Светлые полосы в окне AWnd: вся клиентская область читается с экрана,
+// считаются только точки, где окно открыто (VisibleMask). Пишется только
+// смена: появилась, изменилась, пропала.
 procedure TWatcher.CheckWhite(AItem: TWatchItem; AWnd: HWND;
                               ANowTick: Cardinal);
 var
   ClientBox: TRect;
-  RowIdx, RowY, PixIdx, RunStart, RunCount: Integer;
-  ScrDC: HDC;
-  RowOrigin, TestPt: TPoint;
+  BoxWidth, BoxHeight, RowIdx, PixIdx, RunStart, CellIdx: Integer;
+  LightRows, LightPix, VisiblePix, AllLightPix: Integer;
+  MinX, MaxX, MinY, MaxY: Integer;
+  SampleColor: Cardinal;
+  ScrOrigin, TestPt: TPoint;
   WhiteText, ActiveText, PaintText: string;
-  HitWnd: HWND;
-  RowPixels: array of Cardinal;
-  RowVisible: array of Boolean;
-  IsWhite: Boolean;
+  Pixels: array of Cardinal;
+  VisibleMask: array of Boolean;
+  LightMask: array of Boolean;
+  RowHasRun: Boolean;
 
-  // Строка экрана шириной ClientBox.Right от RowOrigin - в RowPixels
-  function ReadRow: Boolean;
+  // Светлая точка: все три составляющие не меньше LightMin. Белый $FFFFFF,
+  // цвет кнопок $F0F0F0 и т.п.
+  function IsLight(AColor: Cardinal): Boolean;
+  begin
+    Result := ((AColor shr 16) and $FF >= LightMin) and
+              ((AColor shr 8) and $FF >= LightMin) and
+              (AColor and $FF >= LightMin);
+  end;
+
+  // Клиентская область с экрана - в Pixels
+  function ReadScreen: Boolean;
   var
     BmpInfo: TBitmapInfo;
     Bits: Pointer;
-    MemDC: HDC;
+    ScrDC, MemDC: HDC;
     MemBmp, OldBmp: HBITMAP;
     Src: PPixelRow;
     CopyIdx: Integer;
   begin
     Result := False;
-    FillChar(BmpInfo, SizeOf(BmpInfo), 0);
-    BmpInfo.bmiHeader.biSize := SizeOf(TBitmapInfoHeader);
-    BmpInfo.bmiHeader.biWidth := ClientBox.Right;
-    BmpInfo.bmiHeader.biHeight := -1;
-    BmpInfo.bmiHeader.biPlanes := 1;
-    BmpInfo.bmiHeader.biBitCount := 32;
-    BmpInfo.bmiHeader.biCompression := BI_RGB;
-    MemDC := CreateCompatibleDC(ScrDC);
-    if MemDC = 0 then
+    ScrDC := GetDC(0);
+    if ScrDC = 0 then
       Exit;
-    Bits := nil;
-    MemBmp := CreateDIBSection(MemDC, BmpInfo, DIB_RGB_COLORS, Bits, 0, 0);
-    if (MemBmp = 0) or (Bits = nil) then
-    begin
-      if MemBmp <> 0 then
-        DeleteObject(MemBmp);
-      DeleteDC(MemDC);
-      Exit;
-    end;
-    OldBmp := SelectObject(MemDC, MemBmp);
     try
-      if BitBlt(MemDC, 0, 0, ClientBox.Right, 1, ScrDC, RowOrigin.X,
-                RowOrigin.Y, SRCCOPY) then
+      FillChar(BmpInfo, SizeOf(BmpInfo), 0);
+      BmpInfo.bmiHeader.biSize := SizeOf(TBitmapInfoHeader);
+      BmpInfo.bmiHeader.biWidth := BoxWidth;
+      BmpInfo.bmiHeader.biHeight := -BoxHeight;
+      BmpInfo.bmiHeader.biPlanes := 1;
+      BmpInfo.bmiHeader.biBitCount := 32;
+      BmpInfo.bmiHeader.biCompression := BI_RGB;
+      MemDC := CreateCompatibleDC(ScrDC);
+      if MemDC = 0 then
+        Exit;
+      Bits := nil;
+      MemBmp := CreateDIBSection(MemDC, BmpInfo, DIB_RGB_COLORS, Bits, 0, 0);
+      if (MemBmp = 0) or (Bits = nil) then
       begin
-        GdiFlush;
-        Src := PPixelRow(Bits);
-        for CopyIdx := 0 to ClientBox.Right - 1 do
-          RowPixels[CopyIdx] := Src^[CopyIdx];
-        Result := True;
+        if MemBmp <> 0 then
+          DeleteObject(MemBmp);
+        DeleteDC(MemDC);
+        Exit;
+      end;
+      OldBmp := SelectObject(MemDC, MemBmp);
+      try
+        if BitBlt(MemDC, 0, 0, BoxWidth, BoxHeight, ScrDC, ScrOrigin.X,
+                  ScrOrigin.Y, SRCCOPY) then
+        begin
+          GdiFlush;
+          Src := PPixelRow(Bits);
+          for CopyIdx := 0 to BoxWidth * BoxHeight - 1 do
+            Pixels[CopyIdx] := Src^[CopyIdx] and $FFFFFF;
+          Result := True;
+        end;
+      finally
+        SelectObject(MemDC, OldBmp);
+        DeleteObject(MemBmp);
+        DeleteDC(MemDC);
       end;
     finally
-      SelectObject(MemDC, OldBmp);
-      DeleteObject(MemBmp);
-      DeleteDC(MemDC);
+      ReleaseDC(0, ScrDC);
+    end;
+  end;
+
+  // Где окно открыто. Без композиции рабочего стола DC окна - это экран:
+  // чужое окно поверх нашего читалось бы как наше. Из клиентской области
+  // вычитаются видимые окна выше нашего верхнего окна по стопке и видимые
+  // дочерние окна AWnd, которые не элементы VCL (у полосы вкладок - стрелки
+  // прокрутки msctls_updown32). Наши дочерние элементы (страницы вкладок,
+  // панели) остаются: полосы бывают и на них
+  procedure BuildVisibleMask;
+  var
+    VisRgn, CutRgn: HRGN;
+    RootWnd, AboveWnd, ChildWnd: HWND;
+    CutBox: TRect;
+    DataSize, RectIdx, FillY, FillX: Integer;
+    RgnData: PRgnData;
+    RgnRects: PRect;
+    PartBox: TRect;
+  begin
+    VisRgn := CreateRectRgn(ScrOrigin.X, ScrOrigin.Y,
+                            ScrOrigin.X + BoxWidth, ScrOrigin.Y + BoxHeight);
+    try
+      ChildWnd := GetWindow(AWnd, GW_CHILD);
+      while ChildWnd <> 0 do
+      begin
+        if IsWindowVisible(ChildWnd) and (FindControl(ChildWnd) = nil) and
+           GetWindowRect(ChildWnd, CutBox) then
+        begin
+          CutRgn := CreateRectRgnIndirect(CutBox);
+          CombineRgn(VisRgn, VisRgn, CutRgn, RGN_DIFF);
+          DeleteObject(CutRgn);
+        end;
+        ChildWnd := GetWindow(ChildWnd, GW_HWNDNEXT);
+      end;
+
+      RootWnd := AWnd;
+      while (GetWindowLong(RootWnd, GWL_STYLE) and WS_CHILD <> 0) and
+            (GetParent(RootWnd) <> 0) do
+        RootWnd := GetParent(RootWnd);
+      if RootWnd <> 0 then
+      begin
+        AboveWnd := GetWindow(RootWnd, GW_HWNDPREV);
+        while AboveWnd <> 0 do
+        begin
+          if IsWindowVisible(AboveWnd) and not IsIconic(AboveWnd) and
+             GetWindowRect(AboveWnd, CutBox) then
+          begin
+            CutRgn := CreateRectRgnIndirect(CutBox);
+            CombineRgn(VisRgn, VisRgn, CutRgn, RGN_DIFF);
+            DeleteObject(CutRgn);
+          end;
+          AboveWnd := GetWindow(AboveWnd, GW_HWNDPREV);
+        end;
+      end;
+
+      DataSize := GetRegionData(VisRgn, 0, nil);
+      if DataSize <= 0 then
+        Exit;
+      GetMem(RgnData, DataSize);
+      try
+        if GetRegionData(VisRgn, DataSize, RgnData) = 0 then
+          Exit;
+        RgnRects := PRect(@RgnData^.Buffer[0]);
+        for RectIdx := 0 to Integer(RgnData^.rdh.nCount) - 1 do
+        begin
+          PartBox := RgnRects^;
+          OffsetRect(PartBox, -ScrOrigin.X, -ScrOrigin.Y);
+          if PartBox.Left < 0 then PartBox.Left := 0;
+          if PartBox.Top < 0 then PartBox.Top := 0;
+          if PartBox.Right > BoxWidth then PartBox.Right := BoxWidth;
+          if PartBox.Bottom > BoxHeight then PartBox.Bottom := BoxHeight;
+          for FillY := PartBox.Top to PartBox.Bottom - 1 do
+            for FillX := PartBox.Left to PartBox.Right - 1 do
+              VisibleMask[FillY * BoxWidth + FillX] := True;
+          Inc(RgnRects);
+        end;
+      finally
+        FreeMem(RgnData);
+      end;
+    finally
+      DeleteObject(VisRgn);
     end;
   end;
 
 begin
   if not GetClientRect(AWnd, ClientBox) then
     Exit;
-  if (ClientBox.Right < WhiteRunMin) or (ClientBox.Bottom < 4) or
-     (ClientBox.Right > High(TPixelRow) + 1) then
+  BoxWidth := ClientBox.Right;
+  BoxHeight := ClientBox.Bottom;
+  if (BoxWidth < WhiteRunMin) or (BoxHeight < 2) or
+     (BoxWidth > High(TPixelRow) + 1) or
+     (BoxWidth * BoxHeight > WhiteAreaMax) then
     Exit;
-  SetLength(RowPixels, ClientBox.Right);
-  SetLength(RowVisible, ClientBox.Right);
+  ScrOrigin := Point(0, 0);
+  Windows.ClientToScreen(AWnd, ScrOrigin);
+  SetLength(Pixels, BoxWidth * BoxHeight);
+  SetLength(VisibleMask, BoxWidth * BoxHeight);
+  SetLength(LightMask, BoxWidth * BoxHeight);
+  if not ReadScreen then
+    Exit;
+  BuildVisibleMask;
 
-  WhiteText := '';
-  ScrDC := GetDC(0);
-  try
-    for RowIdx := 0 to 1 do
+  // Серии светлых точек от WhiteRunMin подряд на открытой части
+  LightRows := 0;
+  LightPix := 0;
+  VisiblePix := 0;
+  AllLightPix := 0;
+  MinX := MaxInt;
+  MaxX := -1;
+  MinY := MaxInt;
+  MaxY := -1;
+  SampleColor := 0;
+  for RowIdx := 0 to BoxHeight - 1 do
+  begin
+    RowHasRun := False;
+    RunStart := -1;
+    for PixIdx := 0 to BoxWidth do
     begin
-      if RowIdx = 0 then
-        RowY := 1
-      else
-        RowY := ClientBox.Bottom - 2;
-      RowOrigin := Point(0, RowY);
-      Windows.ClientToScreen(AWnd, RowOrigin);
-      if not ReadRow then
-        Continue;
-
-      // Где сверху само окно: проверка через VisStep пикселей, между ними -
-      // как у ближайшей проверенной слева. Дочерние окна не считаются: у
-      // полосы вкладок справа светлые стрелки прокрутки (msctls_updown32) -
-      // их белое не полоса
-      HitWnd := 0;
-      for PixIdx := 0 to ClientBox.Right - 1 do
+      if PixIdx < BoxWidth then
       begin
-        if PixIdx mod VisStep = 0 then
+        CellIdx := RowIdx * BoxWidth + PixIdx;
+        if VisibleMask[CellIdx] then
         begin
-          TestPt := Point(RowOrigin.X + PixIdx, RowOrigin.Y);
-          HitWnd := WindowFromPoint(TestPt);
+          Inc(VisiblePix);
+          LightMask[CellIdx] := IsLight(Pixels[CellIdx]);
+          if LightMask[CellIdx] then
+            Inc(AllLightPix);
         end;
-        RowVisible[PixIdx] := HitWnd = AWnd;
-      end;
-
-      // Серии белого на открытой части
-      RunStart := -1;
-      RunCount := 0;
-      for PixIdx := 0 to ClientBox.Right do
-      begin
-        IsWhite := (PixIdx < ClientBox.Right) and RowVisible[PixIdx] and
-                   (RowPixels[PixIdx] and $FFFFFF = $FFFFFF);
-        if IsWhite then
+        if VisibleMask[CellIdx] and LightMask[CellIdx] then
         begin
           if RunStart < 0 then
             RunStart := PixIdx;
           Continue;
         end;
-        if (RunStart >= 0) and (PixIdx - RunStart >= WhiteRunMin) and
-           (RunCount < 4) then
-        begin
-          WhiteText := WhiteText + Format(' строка %d x=%d..%d;',
-                                          [RowY, RunStart, PixIdx - 1]);
-          Inc(RunCount);
-        end;
-        RunStart := -1;
       end;
+      if (RunStart >= 0) and (PixIdx - RunStart >= WhiteRunMin) then
+      begin
+        RowHasRun := True;
+        Inc(LightPix, PixIdx - RunStart);
+        if RunStart < MinX then
+        begin
+          MinX := RunStart;
+          SampleColor := Pixels[RowIdx * BoxWidth + RunStart];
+        end;
+        if PixIdx - 1 > MaxX then
+          MaxX := PixIdx - 1;
+        if RowIdx < MinY then
+          MinY := RowIdx;
+        if RowIdx > MaxY then
+          MaxY := RowIdx;
+      end;
+      RunStart := -1;
     end;
-  finally
-    ReleaseDC(0, ScrDC);
+    if RowHasRun then
+      Inc(LightRows);
+  end;
+
+  WhiteText := '';
+  if (VisiblePix > 0) and (AllLightPix * 2 > VisiblePix) then
+    // Больше половины открытой части светлая - светлая тема, не полоса
+    WhiteText := ' светлого больше половины - не проверяется'
+  else if LightRows > 0 then
+  begin
+    TestPt := Point(ScrOrigin.X + (MinX + MaxX) div 2,
+                    ScrOrigin.Y + (MinY + MaxY) div 2);
+    WhiteText := Format(' x=%d..%d y=%d..%d (строк %d, точек %d из %d ' +
+                        'открытых), цвет $%.6x [%s]',
+                        [MinX, MaxX, MinY, MaxY, LightRows, LightPix,
+                         VisiblePix, SampleColor,
+                         ChildrenAtText(AWnd, TestPt)]);
   end;
 
   if WhiteText = AItem.WhiteWinText then
@@ -815,7 +976,7 @@ begin
                           [ANowTick - AItem.LastPaintTick])
     else
       PaintText := 'WM_PAINT не было';
-    Log(Format('%s: белая полоса на открытой части окна:%s %s; %s',
+    Log(Format('%s: светлая полоса на открытой части окна:%s; %s; %s',
                [AItem.ItemName, WhiteText, PaintText, ActiveText]));
     if AItem.WhiteWinText = '' then
     begin
@@ -824,7 +985,7 @@ begin
     end;
   end
   else
-    Log(Format('%s: белой полосы больше нет (была %d мс)',
+    Log(Format('%s: светлой полосы больше нет (была %d мс)',
                [AItem.ItemName, ANowTick - AItem.WhiteWinSince]));
   AItem.WhiteWinText := WhiteText;
 end;
