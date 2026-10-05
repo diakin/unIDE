@@ -1947,6 +1947,8 @@ type
     procedure RenderObjTree(ARoots: TList);
     procedure RefreshObjectInspector(AEvenHidden: Boolean);
     procedure ObjTreeChange(Sender: TObject; Node: TTreeNode);
+    // TDfmNode (ObjParse - в uses раздела implementation)
+    function  ObjLinkTarget(ALink: TObject): TObject;
     procedure RightPagesChange(Sender: TObject);
     procedure RefreshCodeTree;
     procedure RefreshRapidQInspector;
@@ -32306,6 +32308,34 @@ begin
   DsgGroupChange(nil);
 end;
 
+// Узел-ссылка (компонент .dfm, которому код меняет родителя) - узел самого
+// компонента из .dfm: то же имя, не ссылка; из .dfm, если есть, иначе из
+// снимка. Не нашёлся - сама ссылка.
+function TForm1.ObjLinkTarget(ALink: TObject): TObject;
+var
+  NodeIdx: Integer;
+  Link, Cand: TDfmNode;
+begin
+  Result := ALink;
+  Link := TDfmNode(ALink);
+  if (Link = nil) or (Link.Name = '') or (FDfmNodes = nil) then
+    Exit;
+  for NodeIdx := 0 to FDfmNodes.Count - 1 do
+  begin
+    Cand := TDfmNode(FDfmNodes[NodeIdx]);
+    if (Cand = Link) or Cand.IsLink or
+       (CompareText(Cand.Name, Link.Name) <> 0) then
+      Continue;
+    if not Cand.IsSnap then
+    begin
+      Result := Cand;
+      Exit;
+    end;
+    if Result = ALink then
+      Result := Cand;
+  end;
+end;
+
 procedure TForm1.ObjTreeChange(Sender: TObject; Node: TTreeNode);
 var
   Obj: TDfmNode;
@@ -32359,6 +32389,11 @@ begin
     if (Node = nil) or (Node.Data = nil) then
       Exit;
     Obj := TDfmNode(Node.Data);
+    // Узел "(из .dfm, перенесён в коде)" - ссылка: свойств у неё нет (только
+    // имя и класс), они у самого компонента в его месте .dfm. Показываем и
+    // правим их.
+    if Obj.IsLink then
+      Obj := TDfmNode(ObjLinkTarget(Obj));
     FObjCurNode := Obj;
 
     // Объект RapidQ: только то, что есть в узле. Конструктор форм, классы
