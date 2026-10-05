@@ -34,6 +34,19 @@ unit WndWatch;
 //  - цепочка вызовов главного потока по .map (HangWatchCallStack): если
 //    вызов наш, в ней видна процедура, которая его сделала.
 //
+//  Белые полосы (полоса вкладок, строка состояния - WndWatchControl с
+//  AWhiteCheck): раз в 500 мс читаются две строки пикселей окна - вторая
+//  сверху и вторая снизу - из его собственного рисунка (DC окна) и с
+//  экрана. Серия белых пикселей ($FFFFFF) от 16 подряд - в журнал:
+//  - «белая полоса в окне» - белое нарисовано в самом окне (его WM_PAINT
+//    или стирание фона); к записи - последние сообщения рисования этого
+//    окна (WM_PAINT с областью, WM_ERASEBKGND, WM_NCPAINT ...), время и
+//    длительность;
+//  - «белое только на экране» - в рисунке окна белого нет, а на экране в
+//    этих точках оно есть, и сверху нет другого окна: окно нарисовано, но
+//    на экран не попало (вывод окна на экран делает Windows).
+//  В начале журнала - включена ли композиция рабочего стола (Aero, DWM).
+//
 //  Журнал больше 2 МБ при запуске переименовывается в wnd.old.log.
 // ---------------------------------------------------------------------------
 
@@ -48,7 +61,8 @@ procedure WndWatchStart(const ALogFile: string);
 // Подключить окно AControl под именем AName. APaintCheck - следить за
 // перерисовкой (непрорисованная область, частота и длительность WM_PAINT).
 procedure WndWatchControl(AControl: TWinControl; const AName: string;
-                          APaintCheck: Boolean);
+                          APaintCheck: Boolean;
+                          AWhiteCheck: Boolean = False);
 // То же для главного окна: дополнительно при его скрытии и сворачивании -
 // откуда пришло сообщение и цепочка вызовов
 procedure WndWatchMainForm(AForm: TWinControl; const AName: string);
@@ -63,15 +77,38 @@ const
   PaintSlowLimit = 100;   // WM_PAINT дольше - в журнал
   PaintRateLimit = 60;    // WM_PAINT за секунду больше - в журнал
   LogMaxSize = 2 * 1024 * 1024;
+  WhiteRunMin = 16;       // белых пикселей подряд - полоса
+  TraceSize = 24;         // сколько последних сообщений рисования помнить
 
 type
+  // Сообщение рисования окна - для записи вместе с белой полосой
+  TMsgTrace = record
+    Tick: Cardinal;
+    MsgId: Cardinal;
+    WParamVal: Integer;
+    AreaRect: TRect;        // WM_PAINT - область перерисовки, стирание -
+    HasArea: Boolean;       // область отсечения DC
+    Spent: Cardinal;
+  end;
+
+  TPixelRow = array[0..32767] of Cardinal;
+  PPixelRow = ^TPixelRow;
+
   TWatchItem = class
   public
     Control: TWinControl;
     ItemName: string;
     OldProc: TWndMethod;
     PaintCheck: Boolean;
+    WhiteCheck: Boolean;      // искать белые полосы
     StackOnHide: Boolean;     // при скрытии и сворачивании - кто вызвал
+    Traces: array[0..TraceSize - 1] of TMsgTrace;
+    TracePos: Integer;        // куда писать следующее
+    TraceCount: Integer;
+    WhiteWinText: string;     // последняя записанная полоса в окне, '' - нет
+    WhiteWinSince: Cardinal;
+    WhiteScrText: string;     // белое только на экране
+    WhiteScrSince: Cardinal;
     PaintCount: Integer;      // WM_PAINT с прошлой секунды
     DirtySince: Cardinal;     // с какого опроса есть непрорисованная область
     DirtyLogged: Boolean;
@@ -79,6 +116,8 @@ type
     LastIconic: Boolean;
     LastVisible: Boolean;
     procedure WatchProc(var Message: TMessage);
+    procedure AddTrace(const ATrace: TMsgTrace);
+    procedure TracesTo(ALines: TStrings; ANowTick: Cardinal);
   end;
 
   TWatcher = class
@@ -92,6 +131,8 @@ type
     FAppVisible: Boolean;
     FAppStateKnown: Boolean;
     FHooked: Boolean;
+    FWhiteTurn: Boolean;      // проверка полос - через раз (500 мс)
+    procedure CheckWhite(AItem: TWatchItem; AWnd: HWND; ANowTick: Cardinal);
     procedure TimerWndProc(var Message: TMessage);
     function  AppHook(var Message: TMessage): Boolean;
     procedure Poll;
@@ -220,6 +261,145 @@ end;
 function InSendMessageExApi(lpReserved: Pointer): DWORD; stdcall;
   external user32 name 'InSendMessageEx';
 
+function MsgShortName(AMsgId: Cardinal): string;
+begin
+  case AMsgId of
+    WM_PAINT: Result := 'WM_PAINT';
+    WM_ERASEBKGND: Result := 'WM_ERASEBKGND';
+    WM_NCPAINT: Result := 'WM_NCPAINT';
+    WM_PRINTCLIENT: Result := 'WM_PRINTCLIENT';
+    WM_SETREDRAW: Result := 'WM_SETREDRAW';
+    WM_SIZE: Result := 'WM_SIZE';
+    WM_WINDOWPOSCHANGED: Result := 'WM_WINDOWPOSCHANGED';
+    WM_DRAWITEM: Result := 'WM_DRAWITEM';
+    CN_DRAWITEM: Result := 'CN_DRAWITEM';
+  else
+    Result := '$' + IntToHex(AMsgId, 4);
+  end;
+end;
+
+function IsTracedMsg(AMsgId: Cardinal): Boolean;
+begin
+  Result := (AMsgId = WM_PAINT) or (AMsgId = WM_ERASEBKGND) or
+            (AMsgId = WM_NCPAINT) or (AMsgId = WM_PRINTCLIENT) or
+            (AMsgId = WM_SETREDRAW) or (AMsgId = WM_SIZE) or
+            (AMsgId = WM_WINDOWPOSCHANGED) or (AMsgId = WM_DRAWITEM) or
+            (AMsgId = CN_DRAWITEM);
+end;
+
+// Первая серия белых пикселей не короче WhiteRunMin в строке ширины
+// AWidth, которая в ADC начинается в (AOrgX, AOrgY). ARunFrom, ARunTo - от
+// начала строки.
+function FindWhiteRun(ADC: HDC; AOrgX, AOrgY, AWidth: Integer;
+                      var ARunFrom, ARunTo: Integer): Boolean;
+var
+  BmpInfo: TBitmapInfo;
+  Bits: Pointer;
+  MemDC: HDC;
+  MemBmp, OldBmp: HBITMAP;
+  Pixels: PPixelRow;
+  PixIdx, RunStart: Integer;
+begin
+  Result := False;
+  ARunFrom := -1;
+  ARunTo := -1;
+  if (AWidth <= 0) or (ADC = 0) then
+    Exit;
+  if AWidth > High(TPixelRow) + 1 then
+    AWidth := High(TPixelRow) + 1;
+
+  FillChar(BmpInfo, SizeOf(BmpInfo), 0);
+  BmpInfo.bmiHeader.biSize := SizeOf(TBitmapInfoHeader);
+  BmpInfo.bmiHeader.biWidth := AWidth;
+  BmpInfo.bmiHeader.biHeight := -1;      // сверху вниз
+  BmpInfo.bmiHeader.biPlanes := 1;
+  BmpInfo.bmiHeader.biBitCount := 32;
+  BmpInfo.bmiHeader.biCompression := BI_RGB;
+
+  MemDC := CreateCompatibleDC(ADC);
+  if MemDC = 0 then
+    Exit;
+  Bits := nil;
+  MemBmp := CreateDIBSection(MemDC, BmpInfo, DIB_RGB_COLORS, Bits, 0, 0);
+  if (MemBmp = 0) or (Bits = nil) then
+  begin
+    if MemBmp <> 0 then
+      DeleteObject(MemBmp);
+    DeleteDC(MemDC);
+    Exit;
+  end;
+  OldBmp := SelectObject(MemDC, MemBmp);
+  try
+    if not BitBlt(MemDC, 0, 0, AWidth, 1, ADC, AOrgX, AOrgY, SRCCOPY) then
+      Exit;
+    GdiFlush;
+    Pixels := PPixelRow(Bits);
+    RunStart := -1;
+    for PixIdx := 0 to AWidth do
+    begin
+      if (PixIdx < AWidth) and
+         (Pixels^[PixIdx] and $FFFFFF = $FFFFFF) then
+      begin
+        if RunStart < 0 then
+          RunStart := PixIdx;
+        Continue;
+      end;
+      // Серия кончилась (или кончилась строка)
+      if (RunStart >= 0) and (PixIdx - RunStart >= WhiteRunMin) then
+      begin
+        ARunFrom := RunStart;
+        ARunTo := PixIdx - 1;
+        Result := True;
+        Exit;
+      end;
+      RunStart := -1;
+    end;
+  finally
+    SelectObject(MemDC, OldBmp);
+    DeleteObject(MemBmp);
+    DeleteDC(MemDC);
+  end;
+end;
+
+// Композиция рабочего стола (Aero): dwmapi.dll есть с Vista
+function CompositionText: string;
+type
+  TDwmIsCompositionEnabled = function(var AEnabled: BOOL): HResult; stdcall;
+var
+  DwmLib: HMODULE;
+  DwmFunc: TDwmIsCompositionEnabled;
+  Enabled: BOOL;
+begin
+  Result := 'нет dwmapi.dll (композиции нет)';
+  DwmLib := LoadLibrary('dwmapi.dll');
+  if DwmLib = 0 then
+    Exit;
+  try
+    @DwmFunc := GetProcAddress(DwmLib, 'DwmIsCompositionEnabled');
+    if not Assigned(DwmFunc) then
+      Exit;
+    Enabled := False;
+    if DwmFunc(Enabled) <> 0 then
+      Result := 'не удалось узнать'
+    else if Enabled then
+      Result := 'включена (Aero)'
+    else
+      Result := 'выключена';
+  finally
+    FreeLibrary(DwmLib);
+  end;
+end;
+
+// Программа на переднем плане (окно переднего плана - нашего процесса)
+function AppIsForeground: Boolean;
+var
+  ProcId: DWORD;
+begin
+  ProcId := 0;
+  GetWindowThreadProcessId(GetForegroundWindow, @ProcId);
+  Result := ProcId = GetCurrentProcessId;
+end;
+
 // Откуда пришло сообщение (InSendMessageEx) - словами
 function SenderText: string;
 const
@@ -267,6 +447,7 @@ begin
   FActive := True;
   FSecondStart := GetTickCount;
   Log('=== запуск ' + Application.ExeName);
+  Log('композиция рабочего стола: ' + CompositionText);
 
   Application.HookMainWindow(AppHook);
   FHooked := True;
@@ -473,6 +654,7 @@ begin
   FAppStateKnown := True;
 
   SecondDone := NowTick - FSecondStart >= 1000;
+  FWhiteTurn := not FWhiteTurn;
 
   for ItemIdx := 0 to FItems.Count - 1 do
   begin
@@ -491,6 +673,9 @@ begin
     Item.LastIconic := NowIconic;
     Item.LastVisible := NowVisible;
     Item.StateKnown := True;
+
+    if Item.WhiteCheck and FWhiteTurn and NowVisible and not NowIconic then
+      CheckWhite(Item, WndHandle, NowTick);
 
     if not Item.PaintCheck then
       Continue;
@@ -534,15 +719,155 @@ begin
     FSecondStart := NowTick;
 end;
 
+// Белые полосы в окне AWnd: строка 1 и предпоследняя, в рисунке окна и
+// на экране. Пишется только смена: появилась, изменилась, пропала.
+procedure TWatcher.CheckWhite(AItem: TWatchItem; AWnd: HWND;
+                              ANowTick: Cardinal);
+var
+  ClientBox: TRect;
+  RowIdx, RowY, RunFrom, RunTo, ScrFrom, ScrTo, MidX: Integer;
+  WinDC, ScrDC: HDC;
+  RowOrigin, MidPt: TPoint;
+  WinText, ScrText, ActiveText: string;
+  HitWnd: HWND;
+  TraceLines: TStringList;
+  LineIdx: Integer;
+begin
+  if not GetClientRect(AWnd, ClientBox) then
+    Exit;
+  if (ClientBox.Right < WhiteRunMin) or (ClientBox.Bottom < 4) then
+    Exit;
+
+  WinText := '';
+  ScrText := '';
+  WinDC := GetDC(AWnd);
+  ScrDC := GetDC(0);
+  try
+    for RowIdx := 0 to 1 do
+    begin
+      if RowIdx = 0 then
+        RowY := 1
+      else
+        RowY := ClientBox.Bottom - 2;
+
+      // Рисунок окна
+      if FindWhiteRun(WinDC, 0, RowY, ClientBox.Right, RunFrom, RunTo) then
+        WinText := WinText + Format(' строка %d x=%d..%d;',
+                                    [RowY, RunFrom, RunTo]);
+
+      // Экран: только если в середине найденного белого сверху наше окно
+      RowOrigin := Point(0, RowY);
+      Windows.ClientToScreen(AWnd, RowOrigin);
+      if FindWhiteRun(ScrDC, RowOrigin.X, RowOrigin.Y, ClientBox.Right,
+                      ScrFrom, ScrTo) then
+      begin
+        MidX := (ScrFrom + ScrTo) div 2;
+        MidPt := Point(RowOrigin.X + MidX, RowOrigin.Y);
+        HitWnd := WindowFromPoint(MidPt);
+        if (HitWnd = AWnd) or IsChild(AWnd, HitWnd) then
+          // В рисунке окна в этом месте белого нет - пишем отдельно
+          if not FindWhiteRun(WinDC, ScrFrom, RowY, ScrTo - ScrFrom + 1,
+                              RunFrom, RunTo) then
+            ScrText := ScrText + Format(' строка %d x=%d..%d;',
+                                        [RowY, ScrFrom, ScrTo]);
+      end;
+    end;
+  finally
+    ReleaseDC(0, ScrDC);
+    ReleaseDC(AWnd, WinDC);
+  end;
+
+  if AppIsForeground then
+    ActiveText := 'программа активна'
+  else
+    ActiveText := 'программа не активна, на переднем плане ' +
+                  WndText(GetForegroundWindow);
+
+  if WinText <> AItem.WhiteWinText then
+  begin
+    if WinText <> '' then
+    begin
+      Log(Format('%s: белая полоса в окне:%s %s', [AItem.ItemName, WinText,
+                 ActiveText]));
+      if AItem.WhiteWinText = '' then
+      begin
+        AItem.WhiteWinSince := ANowTick;
+        TraceLines := TStringList.Create;
+        try
+          AItem.TracesTo(TraceLines, ANowTick);
+          Log('    последние сообщения рисования (мс назад, сообщение, ' +
+              'область, длительность):');
+          for LineIdx := 0 to TraceLines.Count - 1 do
+            Log('    ' + TraceLines[LineIdx]);
+        finally
+          TraceLines.Free;
+        end;
+      end;
+    end
+    else
+      Log(Format('%s: белой полосы в окне больше нет (была %d мс)',
+                 [AItem.ItemName, ANowTick - AItem.WhiteWinSince]));
+    AItem.WhiteWinText := WinText;
+  end;
+
+  if ScrText <> AItem.WhiteScrText then
+  begin
+    if ScrText <> '' then
+    begin
+      if AItem.WhiteScrText = '' then
+        AItem.WhiteScrSince := ANowTick;
+      Log(Format('%s: белое только на экране (в рисунке окна его нет):%s ' +
+                 '%s', [AItem.ItemName, ScrText, ActiveText]));
+    end
+    else
+      Log(Format('%s: на экране белого больше нет (было %d мс)',
+                 [AItem.ItemName, ANowTick - AItem.WhiteScrSince]));
+    AItem.WhiteScrText := ScrText;
+  end;
+end;
+
 // ---------------------------------------------------------------------------
 //  TWatchItem
 // ---------------------------------------------------------------------------
+
+procedure TWatchItem.AddTrace(const ATrace: TMsgTrace);
+begin
+  Traces[TracePos] := ATrace;
+  TracePos := (TracePos + 1) mod TraceSize;
+  if TraceCount < TraceSize then
+    Inc(TraceCount);
+end;
+
+// Последние сообщения рисования, от старых к новым
+procedure TWatchItem.TracesTo(ALines: TStrings; ANowTick: Cardinal);
+var
+  StepIdx, SlotIdx: Integer;
+  Trace: TMsgTrace;
+  AreaText: string;
+begin
+  for StepIdx := 0 to TraceCount - 1 do
+  begin
+    SlotIdx := (TracePos - TraceCount + StepIdx + TraceSize) mod TraceSize;
+    Trace := Traces[SlotIdx];
+    if Trace.HasArea then
+      AreaText := Format('(%d,%d)-(%d,%d)', [Trace.AreaRect.Left,
+                         Trace.AreaRect.Top, Trace.AreaRect.Right,
+                         Trace.AreaRect.Bottom])
+    else
+      AreaText := '';
+    ALines.Add(Format('%6d  %-20s %-22s %d мс wParam=$%x',
+                      [ANowTick - Trace.Tick, MsgShortName(Trace.MsgId),
+                       AreaText, Trace.Spent, Trace.WParamVal]));
+  end;
+end;
 
 procedure TWatchItem.WatchProc(var Message: TMessage);
 var
   StartTick, Spent: Cardinal;
   MsgId: Cardinal;
   WndHandle: HWND;
+  Trace: TMsgTrace;
+  Traced: Boolean;
 begin
   MsgId := Message.Msg;
   if (Watcher = nil) or not Watcher.FActive then
@@ -561,6 +886,23 @@ begin
     Inc(PaintCount);
   if StackOnHide and (HideOrMinimizeText(Message) <> '') then
     Watcher.LogWhoCalled(ItemName, HideOrMinimizeText(Message));
+
+  // Сообщение рисования - в память окна (к записи о белой полосе)
+  Traced := WhiteCheck and IsTracedMsg(MsgId);
+  if Traced then
+  begin
+    FillChar(Trace, SizeOf(Trace), 0);
+    Trace.Tick := StartTick;
+    Trace.MsgId := MsgId;
+    Trace.WParamVal := Message.WParam;
+    if (MsgId = WM_PAINT) and (WndHandle <> 0) then
+      Trace.HasArea := GetUpdateRect(WndHandle, Trace.AreaRect, False)
+    else if ((MsgId = WM_ERASEBKGND) or (MsgId = WM_PRINTCLIENT)) and
+            (Message.WParam <> 0) then
+      Trace.HasArea := GetClipBox(HDC(Message.WParam), Trace.AreaRect) <>
+                       ERROR;
+  end;
+
   try
     OldProc(Message);
   except
@@ -574,6 +916,11 @@ begin
     end;
   end;
   Spent := GetTickCount - StartTick;
+  if Traced then
+  begin
+    Trace.Spent := Spent;
+    AddTrace(Trace);
+  end;
 
   if (Watcher = nil) or not Watcher.FActive then
     Exit;
@@ -593,7 +940,8 @@ begin
 end;
 
 procedure WndWatchControl(AControl: TWinControl; const AName: string;
-                          APaintCheck: Boolean);
+                          APaintCheck: Boolean;
+                          AWhiteCheck: Boolean = False);
 var
   Item: TWatchItem;
 begin
@@ -603,6 +951,7 @@ begin
   Item.Control := AControl;
   Item.ItemName := AName;
   Item.PaintCheck := APaintCheck;
+  Item.WhiteCheck := AWhiteCheck;
   Item.OldProc := AControl.WindowProc;
   AControl.WindowProc := Item.WatchProc;
   Watcher.FItems.Add(Item);
@@ -628,7 +977,10 @@ begin
   // Окна ещё живы: обработчики остаются в цепочке и дальше только передают
   // сообщения (FActive = False); ссылки на окна опросу больше не нужны
   for ItemIdx := 0 to Watcher.FItems.Count - 1 do
+  begin
     TWatchItem(Watcher.FItems[ItemIdx]).PaintCheck := False;
+    TWatchItem(Watcher.FItems[ItemIdx]).WhiteCheck := False;
+  end;
 end;
 
 initialization

@@ -17449,8 +17449,8 @@ OpenDialog1.FilterIndex := 1; // по умолчанию показываем в
   // WndWatch.pas.
   WndWatchStart(ExtractFilePath(Application.ExeName) + 'wnd.log');
   WndWatchMainForm(Self, 'главное окно');
-  WndWatchControl(FTabs, 'полоса вкладок', True);
-  WndWatchControl(FStatus2, 'строка состояния', True);
+  WndWatchControl(FTabs, 'полоса вкладок', True, True);
+  WndWatchControl(FStatus2, 'строка состояния', True, True);
   WndWatchControl(pnlMain, 'pnlMain', True);
 end;
 
