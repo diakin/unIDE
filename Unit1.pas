@@ -1200,6 +1200,16 @@ type
     // снимок хранится один (FObjSnapText), и переход Unit1 -> Unit2 ->
     // Unit1 снимал Form1 заново и разбирал Unit1.dfm целиком
     FOwnSnapStash: TStringList;
+    // Состав живой формы при последнем снимке: класс, имя и родитель
+    // каждого компонента и контрола (OwnFormCensus). Снимок устарел - в
+    // HiLite log пишется, что именно появилось или пропало.
+    FOwnSnapCensus: TStringList;
+    // Правка в конструкторе (Cut, Delete, Paste...): таблица свойств
+    // выбранного узла заполняется не сразу, а когда правки стихнут
+    // (FObjPropsTimer). Пока таблица пуста - свойства компонента и так
+    // никто не смотрит, пока не выберут другой.
+    FObjDeferProps: Boolean;
+    FObjPropsTimer: TTimer;
     // Указатели строк других модулей (Strings - ключ FObjSetKey, Objects -
     // TObjSetterEntry)
     FObjSetStash: TStringList;
@@ -1967,6 +1977,7 @@ type
     procedure RenderObjTree(ARoots: TList);
     procedure RefreshObjectInspector(AEvenHidden: Boolean);
     procedure ObjTreeChange(Sender: TObject; Node: TTreeNode);
+    procedure ObjPropsTimerTick(Sender: TObject);
     // TDfmNode (ObjParse - в uses раздела implementation)
     function  ObjLinkTarget(ALink: TObject): TObject;
     procedure RightPagesChange(Sender: TObject);
@@ -2441,6 +2452,8 @@ type
     procedure PrepareOptionsForm;
     function  OwnLiveForm(const AClass: string): TCustomForm;
     function  OwnFormPrint(F: TCustomForm): string;
+    procedure OwnFormCensus(F: TCustomForm; AList: TStringList);
+    function  OwnCensusDiff(const AClass: string): string;
     function  OwnSnapStale(const AClass: string): Boolean;
     function  OwnSnapFor(const AClass: string): string;
     procedure ObjJumpToSelected;
@@ -23818,8 +23831,8 @@ begin
   begin
     // Состав формы другой (построились контролы, добавились пункты) -
     // старый снимок её уже не описывает
-    Dbg('17516: снимок ' + AClass + ': состав формы изменился - снят заново',
-        clNavy);
+    Dbg('17516: снимок ' + AClass + ': состав формы изменился - снят заново' +
+        OwnCensusDiff(AClass), clNavy);
     TakeOwnSnap(AClass);
   end;
   // Снимок пробного запуска прошлого сеанса - из dsgcache
@@ -24483,6 +24496,9 @@ begin
     ProbeCreateHandles(F);
     FObjSnapText := FormSnapshotText(F);
     FObjSnapPrint := OwnFormPrint(F);
+    if FOwnSnapCensus = nil then
+      FOwnSnapCensus := TStringList.Create;
+    OwnFormCensus(F, FOwnSnapCensus);
   finally
     if not FTabWork then
       Screen.Cursor := OldCursor;
@@ -24526,6 +24542,86 @@ begin
   Result := '';
   if F <> nil then
     Result := IntToStr(F.ComponentCount) + '/' + IntToStr(CountCtl(F));
+end;
+
+// Состав живой формы для сверки (что появилось или пропало с прошлого
+// снимка): компоненты формы - "класс имя", контролы чужих владельцев в
+// дереве Parent - "ctl класс имя @родитель". Сортированный, с повторами.
+procedure TForm1.OwnFormCensus(F: TCustomForm; AList: TStringList);
+
+  procedure WalkControls(AParent: TWinControl);
+  var
+    CtlIdx: Integer;
+    Ctl: TControl;
+  begin
+    for CtlIdx := 0 to AParent.ControlCount - 1 do
+    begin
+      Ctl := AParent.Controls[CtlIdx];
+      if Ctl.Owner <> F then
+        AList.Add('ctl ' + Ctl.ClassName + ' ' + Ctl.Name + ' @' +
+                  AParent.Name);
+      if Ctl is TWinControl then
+        WalkControls(TWinControl(Ctl));
+    end;
+  end;
+
+var
+  CompIdx: Integer;
+begin
+  AList.Clear;
+  AList.Sorted := True;
+  AList.Duplicates := dupAccept;
+  if F = nil then
+    Exit;
+  for CompIdx := 0 to F.ComponentCount - 1 do
+    AList.Add(F.Components[CompIdx].ClassName + ' ' +
+              F.Components[CompIdx].Name);
+  WalkControls(F);
+end;
+
+// Что в составе живой формы AClass появилось (+) и пропало (-) с прошлого
+// снимка - для строки 17516. Первые несколько, остальное - числом.
+function TForm1.OwnCensusDiff(const AClass: string): string;
+const
+  CensusShowMax = 8;
+var
+  NowList: TStringList;
+  ListIdx, Shown, Hidden: Integer;
+  Found: Integer;
+begin
+  Result := '';
+  if FOwnSnapCensus = nil then
+    Exit;
+  NowList := TStringList.Create;
+  try
+    OwnFormCensus(OwnLiveForm(AClass), NowList);
+    Shown := 0;
+    Hidden := 0;
+    for ListIdx := 0 to NowList.Count - 1 do
+      if not FOwnSnapCensus.Find(NowList[ListIdx], Found) then
+        if Shown < CensusShowMax then
+        begin
+          Result := Result + '; +' + NowList[ListIdx];
+          Inc(Shown);
+        end
+        else
+          Inc(Hidden);
+    for ListIdx := 0 to FOwnSnapCensus.Count - 1 do
+      if not NowList.Find(FOwnSnapCensus[ListIdx], Found) then
+        if Shown < CensusShowMax then
+        begin
+          Result := Result + '; -' + FOwnSnapCensus[ListIdx];
+          Inc(Shown);
+        end
+        else
+          Inc(Hidden);
+    if Hidden > 0 then
+      Result := Result + '; ещё ' + IntToStr(Hidden);
+    Result := Result + ' (было ' + IntToStr(FOwnSnapCensus.Count) +
+              ', стало ' + IntToStr(NowList.Count) + ')';
+  finally
+    NowList.Free;
+  end;
 end;
 
 // Свой снимок формы AClass есть, но состав живой формы с тех пор другой
@@ -29653,75 +29749,82 @@ var
   Names, Sel, One: TStringList;
   I: Integer;
   TickStart, TickText, TickInsp: Cardinal;
+  WasDeferred: Boolean;
 begin
   if FDesigner = nil then
     Exit;
   if FObjEditing then
     ObjApplyEdit;
   TickStart := GetTickCount;
-
-  OldDfm := DsgGetText;
-  Names := TStringList.Create;
-  Sel := TStringList.Create;
-  One := TStringList.Create;
+  // Таблица свойств - после правки, когда она стихнет (ObjPropsTimerTick)
+  WasDeferred := FObjDeferProps;
+  FObjDeferProps := True;
   try
-    // Выделенные - группа или один; сама форма и компоненты из кода не
-    // входят (DsgSelNames)
-    DsgSelNames(Sel);
-    if Sel.Count = 0 then
-      Exit;
-    NewDfm := OldDfm;
-    for I := 0 to Sel.Count - 1 do
-      if DfmObjectNames(NewDfm, Sel[I], One) then
-      begin
-        Names.AddStrings(One);
-        NewDfm := DfmDeleteObject(NewDfm, Sel[I]);
-      end;
-    if NewDfm = OldDfm then
-      Exit;
-    NewDfm := DfmRemoveRefs(NewDfm, Names);
+    OldDfm := DsgGetText;
+    Names := TStringList.Create;
+    Sel := TStringList.Create;
+    One := TStringList.Create;
+    try
+      // Выделенные - группа или один; сама форма и компоненты из кода не
+      // входят (DsgSelNames)
+      DsgSelNames(Sel);
+      if Sel.Count = 0 then
+        Exit;
+      NewDfm := OldDfm;
+      for I := 0 to Sel.Count - 1 do
+        if DfmObjectNames(NewDfm, Sel[I], One) then
+        begin
+          Names.AddStrings(One);
+          NewDfm := DfmDeleteObject(NewDfm, Sel[I]);
+        end;
+      if NewDfm = OldDfm then
+        Exit;
+      NewDfm := DfmRemoveRefs(NewDfm, Names);
 
-    // Модуль формы: читаем до записи .dfm - DsgFileText может открыть
-    // его вкладку
-    OldPas := '';
-    NewPas := '';
-    PasFile := UnitFileFor(FDsgDfm);
-    if PasFile <> '' then
-    begin
-      OldPas := DsgFileText(PasFile);
-      if OldPas <> '' then
-        NewPas := PasRemoveFields(OldPas, DfmRootClass(OldDfm), Names);
-      if NewPas = OldPas then
+      // Модуль формы: читаем до записи .dfm - DsgFileText может открыть
+      // его вкладку
+      OldPas := '';
+      NewPas := '';
+      PasFile := UnitFileFor(FDsgDfm);
+      if PasFile <> '' then
       begin
-        OldPas := '';
-        NewPas := '';
+        OldPas := DsgFileText(PasFile);
+        if OldPas <> '' then
+          NewPas := PasRemoveFields(OldPas, DfmRootClass(OldDfm), Names);
+        if NewPas = OldPas then
+        begin
+          OldPas := '';
+          NewPas := '';
+        end;
       end;
+
+      DsgPushUndo(OldDfm, OldPas);
+      DsgSetText(NewDfm);
+      if NewPas <> '' then
+        DsgSetFileText(PasFile, NewPas);
+    finally
+      One.Free;
+      Sel.Free;
+      Names.Free;
     end;
+    TickText := GetTickCount;
 
-    DsgPushUndo(OldDfm, OldPas);
-    DsgSetText(NewDfm);
-    if NewPas <> '' then
-      DsgSetFileText(PasFile, NewPas);
+    FDsgSelecting := True;
+    try
+      FObjDfmKey := '';
+      RefreshObjectInspector(False);
+    finally
+      FDsgSelecting := False;
+    end;
+    TickInsp := GetTickCount;
+    DsgReload;
+    Dbg('21993: конструктор, удаление: тексты вкладок ' +
+        IntToStr(TickText - TickStart) + ' мс, инспектор ' +
+        IntToStr(TickInsp - TickText) + ' мс, форма ' +
+        IntToStr(GetTickCount - TickInsp) + ' мс', clNavy);
   finally
-    One.Free;
-    Sel.Free;
-    Names.Free;
+    FObjDeferProps := WasDeferred;
   end;
-  TickText := GetTickCount;
-
-  FDsgSelecting := True;
-  try
-    FObjDfmKey := '';
-    RefreshObjectInspector(False);
-  finally
-    FDsgSelecting := False;
-  end;
-  TickInsp := GetTickCount;
-  DsgReload;
-  Dbg('21993: конструктор, удаление: тексты вкладок ' +
-      IntToStr(TickText - TickStart) + ' мс, инспектор ' +
-      IntToStr(TickInsp - TickText) + ' мс, форма ' +
-      IntToStr(GetTickCount - TickInsp) + ' мс', clNavy);
 end;
 
 // ---------------------------------------------------------------------------
@@ -30668,34 +30771,42 @@ procedure TForm1.DsgApply(const OldDfm, NewDfm, PasFile, OldPas, NewPas,
                           ASelect: string);
 var
   TickStart, TickText, TickInsp: Cardinal;
+  WasDeferred: Boolean;
 begin
-  TickStart := GetTickCount;
-  if (NewPas <> '') and (NewPas <> OldPas) then
-    DsgPushUndo(OldDfm, OldPas)
-  else
-    DsgPushUndo(OldDfm, '');
-  DsgSetText(NewDfm);
-  if (NewPas <> '') and (NewPas <> OldPas) and (PasFile <> '') then
-    DsgSetFileText(PasFile, NewPas);
-  TickText := GetTickCount;
-
-  FDsgSelecting := True;
+  // Таблица свойств - после правки, когда она стихнет (ObjPropsTimerTick)
+  WasDeferred := FObjDeferProps;
+  FObjDeferProps := True;
   try
-    FObjDfmKey := '';
-    RefreshObjectInspector(False);
+    TickStart := GetTickCount;
+    if (NewPas <> '') and (NewPas <> OldPas) then
+      DsgPushUndo(OldDfm, OldPas)
+    else
+      DsgPushUndo(OldDfm, '');
+    DsgSetText(NewDfm);
+    if (NewPas <> '') and (NewPas <> OldPas) and (PasFile <> '') then
+      DsgSetFileText(PasFile, NewPas);
+    TickText := GetTickCount;
+
+    FDsgSelecting := True;
+    try
+      FObjDfmKey := '';
+      RefreshObjectInspector(False);
+    finally
+      FDsgSelecting := False;
+    end;
+    TickInsp := GetTickCount;
+    DsgReload;
+    Dbg('21991: конструктор, правка: тексты вкладок ' +
+        IntToStr(TickText - TickStart) + ' мс, инспектор ' +
+        IntToStr(TickInsp - TickText) + ' мс, форма ' +
+        IntToStr(GetTickCount - TickInsp) + ' мс', clNavy);
+    if (FDesigner <> nil) and (ASelect <> '') then
+    begin
+      FDesigner.SelectByName(ASelect);
+      DsgSelect(ASelect);
+    end;
   finally
-    FDsgSelecting := False;
-  end;
-  TickInsp := GetTickCount;
-  DsgReload;
-  Dbg('21991: конструктор, правка: тексты вкладок ' +
-      IntToStr(TickText - TickStart) + ' мс, инспектор ' +
-      IntToStr(TickInsp - TickText) + ' мс, форма ' +
-      IntToStr(GetTickCount - TickInsp) + ' мс', clNavy);
-  if (FDesigner <> nil) and (ASelect <> '') then
-  begin
-    FDesigner.SelectByName(ASelect);
-    DsgSelect(ASelect);
+    FObjDeferProps := WasDeferred;
   end;
 end;
 
@@ -32639,6 +32750,27 @@ begin
   end;
 end;
 
+// Отложенное заполнение таблиц свойств после правки в конструкторе
+procedure TForm1.ObjPropsTimerTick(Sender: TObject);
+begin
+  FObjPropsTimer.Enabled := False;
+  if FObjRebuilding or FObjDeferProps then
+  begin
+    FObjPropsTimer.Enabled := True;   // правка ещё идёт - позже
+    Exit;
+  end;
+  if (FObjTree <> nil) and (FObjTree.Selected <> nil) and
+     (FObjCurNode = nil) then
+  begin
+    FDsgSelecting := True;   // выделение в конструкторе уже то же
+    try
+      ObjTreeChange(FObjTree, FObjTree.Selected);
+    finally
+      FDsgSelecting := False;
+    end;
+  end;
+end;
+
 procedure TForm1.ObjTreeChange(Sender: TObject; Node: TTreeNode);
 var
   Obj: TDfmNode;
@@ -32666,6 +32798,27 @@ begin
   if FObjEditing and not FObjRebuilding and (FObjCurNode <> nil) and
      ((Node = nil) or (Node.Data <> FObjCurNode)) then
     ObjApplyEdit;
+
+  // Правка в конструкторе: таблицы - пустые сейчас, заполнятся, когда
+  // правки стихнут. Прежние строки ссылаются на узлы старого дерева.
+  if FObjDeferProps and not FObjRebuilding then
+  begin
+    ObjCancelEdit;
+    FObjCurNode := nil;
+    FObjProps.Items.Clear;
+    FObjEvents.Items.Clear;
+    FObjHeader.Caption := '';
+    if FObjPropsTimer = nil then
+    begin
+      FObjPropsTimer := TTimer.Create(Self);
+      FObjPropsTimer.Enabled := False;
+      FObjPropsTimer.Interval := 300;
+      FObjPropsTimer.OnTimer := ObjPropsTimerTick;
+    end;
+    FObjPropsTimer.Enabled := False;
+    FObjPropsTimer.Enabled := True;
+    Exit;
+  end;
 
   // Прокрутка того, что показано сейчас. Пустые таблицы (их уже очистил
   // предыдущий вызов, например при перестроении дерева) её не затирают.
