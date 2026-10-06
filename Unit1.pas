@@ -28370,6 +28370,7 @@ var
   Defs: TStringList;
   S, R, ResRoot, SnapRoot, TabRoot, TabNode: TDfmNode;
   SameParent: Boolean;
+  TickStart, TickSnap, TickParsed, TickComps: Cardinal;
 begin
   if (FDesigner = nil) or (FDesigner.Form = nil) or not FDsgLiveView or
      not IsOwnProject then
@@ -28387,6 +28388,9 @@ begin
     ' - живой вид не строится', clRed);
         Exit;
   end;
+  TickStart := GetTickCount;
+  TickParsed := TickStart;
+  TickComps := TickStart;
   // После смены темы прежний снимок - в старых цветах: снимаем заново
   if FDsgFreshSnap then
     SnapTxt := ''
@@ -28394,6 +28398,7 @@ begin
     SnapTxt := OwnSnapFor(LF.ClassName);
   if SnapTxt = '' then
     SnapTxt := FormSnapshotText(LF);
+  TickSnap := GetTickCount;
 
   Comps := 0;
   Props := 0;
@@ -28421,6 +28426,7 @@ begin
     DsgIndexNodes(ResNodes, ResIdx);
     DsgIndexNodes(SnapNodes, SnapIdx);
     DsgIndexNodes(TabNodes, TabIdx);
+    TickParsed := GetTickCount;
 
     // Цвет самой формы
     if (ResRoot <> nil) and (SnapRoot <> nil) and
@@ -28593,6 +28599,7 @@ begin
       end;
     end;
 
+    TickComps := GetTickCount;
     // Свои полосы прокрутки (UiScroll) - отдельные окна поверх полос
     // Windows: ни в .dfm, ни в снимке их нет. Ставятся по тому же правилу,
     // что у живой формы (UiPaintControl): списки, деревья, таблицы, мемо и
@@ -28659,7 +28666,11 @@ begin
   ', свойств от кода ' + IntToStr(Props) + ', место от кода у ' +
       IntToStr(Placed) + ', значков ' + IntToStr(Glyphs) +
   ', полос прокрутки ' + IntToStr(Scrolls) + ', таблиц и деревьев ' +
-      IntToStr(Lists) + ', сеток ' + IntToStr(Grids), clGray);
+      IntToStr(Lists) + ', сеток ' + IntToStr(Grids) + '; время: снимок ' +
+      IntToStr(TickSnap - TickStart) + ' мс, разбор текстов ' +
+      IntToStr(TickParsed - TickSnap) + ', компоненты ' +
+      IntToStr(TickComps - TickParsed) + ', полосы и сетки ' +
+      IntToStr(GetTickCount - TickComps), clGray);
 end;
 
 // Смена режима IDE при открытой своей форме в конструкторе: перекрасить на
@@ -31176,12 +31187,22 @@ end;
 // ---------------------------------------------------------------------------
 
 // Меню этой формы открыто в конструкторе и в инспекторе
+//
+// Меню самого конструктора (FDsgMenu: Cut, Paste, Delete...) - тоже меню
+// этой формы, но им правят форму, а не смотрят её. Переход к его
+// обработчику (DsgMenuClick) после каждой команды открывал Unit1.pas, и
+// вкладка с изменённым текстом разбиралась заново - больше секунды.
 function TForm1.LiveMenuTracked(AComp: TComponent): Boolean;
 begin
   Result := (AComp <> nil) and (AComp.Owner <> nil) and
             (AComp.Name <> '') and (FDesigner <> nil) and
             (FDesigner.Form <> nil) and (FObjTree <> nil) and IsOwnProject and
             (CompareText(AComp.Owner.ClassName, FObjFormClass) = 0);
+  if Result and (FDsgMenu <> nil) then
+    if (AComp = FDsgMenu) or
+       ((AComp is TMenuItem) and
+        (TMenuItem(AComp).GetParentMenu = FDsgMenu)) then
+      Result := False;
 end;
 
 // Узел в дереве инспектора - без выделения в конструкторе
