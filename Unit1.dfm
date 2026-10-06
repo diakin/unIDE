@@ -1,8 +1,8 @@
 object Form1: TForm1
   BorderIcons = [biSystemMenu, biMinimize, biMaximize]
-  Left = 209
-  Top = 112
-  Width = 1181
+  Left = 357
+  Top = 52
+  Width = 1111
   Height = 910
   Caption = 'Form1 current'
   Color = 10944511
@@ -899,16 +899,16 @@ object Form1: TForm1
       Align = alLeft
       BevelOuter = bvNone
       object grpCompiler: TUiGroupBox
-        Color = clOlive
+        Color = clPurple
         Align = alBottom
         Caption = 'Project'
-        Height = 90
+        Height = 98
         object pnlCompilerIn: TPanel
-          Color = clPurple
+          Color = clTeal
           Align = alTop
           BevelOuter = bvNone
           ParentFont = True
-          Height = 33
+          Height = 41
           object btnCompileRun: TUiIconButton
             Left = 122
             Top = 0
@@ -982,12 +982,35 @@ object Form1: TForm1
             OnClick = StepOverClick
           end
         end
+        object pnlBuildKind: TPanel
+          Align = alClient
+          BevelOuter = bvNone
+          ParentFont = True
+          object cmbBuildKind: TUiComboBox
+            Left = 2
+            Top = 4
+            Width = 96
+            Style = csDropDownList
+            ShowHint = True
+            OnChange = cmbBuildKindChange
+          end
+          object lblBuildTarget: TUiLabel
+            Left = 104
+            Top = 8
+            Width = 170
+            Height = 13
+            Anchors = [akLeft, akTop, akRight]
+            AutoSize = False
+            ShowHint = True
+          end
+        end
       end
       object pnlToolbarIn: TPanel
-        Color = clMaroon
-        Align = alClient
+        Color = clGreen
+        Align = alTop
         BevelOuter = bvNone
         ParentFont = True
+        Height = 32
         object btnOpen: TUiIconButton
           Left = 2
           Top = 1
@@ -1137,12 +1160,6 @@ object Form1: TForm1
           Left = 0
           Width = 145
           Height = 21
-        end
-        object grpToolbar: TUiGroupBox
-          Color = clGreen
-          Align = alTop
-          Height = 54
-          Caption = ''
         end
       end
     end
@@ -1301,25 +1318,30 @@ object Form1: TForm1
                 Visible = False
                 OnKeyDown = ObjEditKeyDown
                 OnExit = ObjEditExit
-                Left = 304
+                Left = 128
                 Top = 0
-                Width = 41
+                Width = 72
+                Height = 21
               end
               object FObjCombo: TUiComboBox
                 Visible = False
                 DropDownCount = 16
                 OnKeyDown = ObjEditKeyDown
                 OnExit = ObjEditExit
-                Left = 240
+                Left = 264
                 Top = 0
-                Width = 49
+                Width = 41
+                Height = 21
               end
               object FObjSetList: TCheckListBox
-                Height = 22
-                Align = alNone
                 Visible = False
                 OnKeyDown = ObjEditKeyDown
                 OnExit = ObjEditExit
+                Left = 208
+                Top = 0
+                Width = 41
+                Height = 24
+                OnClick = FObjSetListClick
               end
             end
           end
