@@ -926,6 +926,14 @@ type
     // вложенным) и класс формы. Вставка в ту же форму сохраняет эти имена -
     // код модуля ссылается на них (см. DsgPaste, NameFree).
     FDsgCutNames: TStringList;
+    // История Cut и Copy конструктора: буфер обмена может перезаписать
+    // любая программа (снимок экрана, Paint), а вырезанный компонент из
+    // .dfm уже убран. Тексты блоков - в FDsgClipTexts (новые первыми),
+    // подписи "время Cut/Copy" - в FDsgClipInfo; на диске -
+    // dsgcache\clipboard.txt, переживает перезапуск.
+    FDsgClipTexts: TStringList;
+    FDsgClipInfo: TStringList;
+    FDsgMiClipHist: TMenuItem;   // пункт меню конструктора «Clipboard history...»
     FDsgCutClass: string;
     // Компоненты, которые DsgAddRuntime поставил в конструктор по узлам
     // дерева: строки "адрес компонента=место узла" (TreeNodePath), в Objects
@@ -2159,7 +2167,13 @@ type
     procedure DsgMenuItemDelete;
     procedure DsgUndo;
     procedure DsgCopy;
+    procedure DsgCopyAs(const AKind: string);
     procedure DsgPaste;
+    procedure DsgClipLoad;
+    procedure DsgClipSave;
+    procedure DsgClipRemember(const AKind, AText: string);
+    procedure DsgClipHistory;
+    procedure DsgClipMenuExtra;
     procedure DsgOrder(AToFront: Boolean);
     procedure DsgRename;
     procedure DsgEditableNames(ANames: TStrings);
@@ -17276,6 +17290,7 @@ begin
   // показе: появившись посреди работы, они меняли состав формы, и её
   // снимок (OwnSnapStale) снимался заново на первом Cut
   DsgAlignMenuExtra;
+  DsgClipMenuExtra;
 
   // Точки останова: щелчок по полосе номеров строк
   FBreakMarks := TList.Create;
@@ -29919,6 +29934,15 @@ begin
          not FDesigner.IsRuntime(FDesigner.Form.FindComponent(Nm));
   CanPaste := Clipboard.HasFormat(CF_TEXT) and
               (CompareText(Copy(TrimLeft(Clipboard.AsText), 1, 7), 'object ') = 0);
+  // Нет в буфере обмена - вставится последний Cut или Copy из истории
+  DsgClipLoad;
+  if not CanPaste and (FDsgClipTexts.Count > 0) then
+    CanPaste := True;
+  if FDsgMiClipHist <> nil then
+  begin
+    FDsgMiClipHist.Visible := True;
+    FDsgMiClipHist.Enabled := FDsgClipTexts.Count > 0;
+  end;
   FDsgMiUndo.Enabled := FDsgUndo.Count > 0;
   FDsgMiCut.Enabled := Sel;
   FDsgMiCopy.Enabled := Sel;
@@ -30020,6 +30044,8 @@ begin
     DsgCopy
   else if Sender = FDsgMiPaste then
     DsgPaste
+  else if Sender = FDsgMiClipHist then
+    DsgClipHistory
   else if Sender = FDsgMiDelete then
     DsgDelete
   else if Sender = FDsgMiFront then
@@ -30871,6 +30897,13 @@ end;
 
 // Выделенный компонент - в буфер обмена текстом блока .dfm
 procedure TForm1.DsgCopy;
+begin
+  DsgCopyAs('Copy');
+end;
+
+// Copy и Cut: в буфер обмена и в историю (DsgClipRemember). AKind - для
+// подписи в истории.
+procedure TForm1.DsgCopyAs(const AKind: string);
 var
   Txt, Dfm: string;
   Sel: TStringList;
@@ -30890,7 +30923,197 @@ begin
     Sel.Free;
   end;
   if Txt <> '' then
+  begin
     Clipboard.AsText := Txt;
+    DsgClipRemember(AKind, Txt);
+  end;
+end;
+
+const
+  DsgClipMax = 20;              // записей в истории
+  DsgClipMark = '#DSGCLIP ';     // заголовок записи в clipboard.txt
+
+function DsgClipFileName: string;
+begin
+  Result := ExtractFilePath(Application.ExeName) + 'dsgcache\clipboard.txt';
+end;
+
+// Первый object блока: "Name: TClass" - для подписи в истории
+function DsgClipTitle(const AText: string): string;
+var
+  Lines: TStringList;
+  LineIdx, ObjCount: Integer;
+  LineText: string;
+begin
+  Result := '';
+  ObjCount := 0;
+  Lines := TStringList.Create;
+  try
+    Lines.Text := AText;
+    for LineIdx := 0 to Lines.Count - 1 do
+    begin
+      LineText := Lines[LineIdx];
+      // Верхний уровень - без отступа
+      if CompareText(Copy(LineText, 1, 7), 'object ') = 0 then
+      begin
+        Inc(ObjCount);
+        if Result = '' then
+          Result := Trim(Copy(LineText, 8, MaxInt));
+      end;
+    end;
+  finally
+    Lines.Free;
+  end;
+  if ObjCount > 1 then
+    Result := Result + ' и ещё ' + IntToStr(ObjCount - 1);
+end;
+
+// История - из файла, один раз за сеанс
+procedure TForm1.DsgClipLoad;
+var
+  Lines: TStringList;
+  LineIdx: Integer;
+  Info, Block: string;
+  InBlock: Boolean;
+
+  procedure Flush;
+  begin
+    if InBlock and (Trim(Block) <> '') and
+       (FDsgClipTexts.Count < DsgClipMax) then
+    begin
+      FDsgClipTexts.Add(Block);
+      FDsgClipInfo.Add(Info);
+    end;
+    Block := '';
+  end;
+
+begin
+  if FDsgClipTexts <> nil then
+    Exit;
+  FDsgClipTexts := TStringList.Create;
+  FDsgClipInfo := TStringList.Create;
+  if not FileExists(DsgClipFileName) then
+    Exit;
+  Lines := TStringList.Create;
+  try
+    try
+      Lines.LoadFromFile(DsgClipFileName);
+    except
+      Exit;   // файл занят или испорчен - истории нет
+    end;
+    InBlock := False;
+    Block := '';
+    Info := '';
+    for LineIdx := 0 to Lines.Count - 1 do
+      if Copy(Lines[LineIdx], 1, Length(DsgClipMark)) = DsgClipMark then
+      begin
+        Flush;
+        Info := Copy(Lines[LineIdx], Length(DsgClipMark) + 1, MaxInt);
+        InBlock := True;
+      end
+      else if InBlock then
+        Block := Block + Lines[LineIdx] + #13#10;
+    Flush;
+  finally
+    Lines.Free;
+  end;
+end;
+
+procedure TForm1.DsgClipSave;
+var
+  Lines: TStringList;
+  EntryIdx: Integer;
+begin
+  if FDsgClipTexts = nil then
+    Exit;
+  Lines := TStringList.Create;
+  try
+    for EntryIdx := 0 to FDsgClipTexts.Count - 1 do
+    begin
+      Lines.Add(DsgClipMark + FDsgClipInfo[EntryIdx]);
+      Lines.Text := Lines.Text + FDsgClipTexts[EntryIdx];
+    end;
+    try
+      ForceDirectories(ExtractFilePath(DsgClipFileName));
+      Lines.SaveToFile(DsgClipFileName);
+    except
+      // не записалось - история останется до конца сеанса
+    end;
+  finally
+    Lines.Free;
+  end;
+end;
+
+// Новая запись - первой; такая же прежняя (тот же текст) убирается
+procedure TForm1.DsgClipRemember(const AKind, AText: string);
+var
+  OldIdx: Integer;
+begin
+  DsgClipLoad;
+  OldIdx := FDsgClipTexts.IndexOf(AText);
+  if OldIdx >= 0 then
+  begin
+    FDsgClipTexts.Delete(OldIdx);
+    FDsgClipInfo.Delete(OldIdx);
+  end;
+  FDsgClipTexts.Insert(0, AText);
+  FDsgClipInfo.Insert(0, FormatDateTime('dd.mm hh:nn:ss', Now) + ' ' + AKind +
+                         ': ' + DsgClipTitle(AText));
+  while FDsgClipTexts.Count > DsgClipMax do
+  begin
+    FDsgClipTexts.Delete(FDsgClipTexts.Count - 1);
+    FDsgClipInfo.Delete(FDsgClipInfo.Count - 1);
+  end;
+  DsgClipSave;
+end;
+
+// «Clipboard history...»: выбранная запись - снова в буфер обмена,
+// дальше обычный Paste (Ctrl+V)
+procedure TForm1.DsgClipHistory;
+var
+  Items: TStringList;
+  EntryIdx, Picked: Integer;
+  Pick: string;
+begin
+  DsgClipLoad;
+  if FDsgClipTexts.Count = 0 then
+  begin
+    ShowMessage('22010:История Cut и Copy конструктора пуста.');
+    Exit;
+  end;
+  Items := TStringList.Create;
+  try
+    for EntryIdx := 0 to FDsgClipInfo.Count - 1 do
+      Items.Add(IntToStr(EntryIdx + 1) + '. ' + FDsgClipInfo[EntryIdx]);
+    Pick := ChooseFromList('Clipboard history',
+      'Выбранный компонент вернётся в буфер обмена - затем Paste (Ctrl+V)',
+      Items);
+  finally
+    Items.Free;
+  end;
+  if Pick = '' then
+    Exit;
+  Picked := StrToIntDef(Copy(Pick, 1, Pos('.', Pick) - 1), 0) - 1;
+  if (Picked < 0) or (Picked >= FDsgClipTexts.Count) then
+    Exit;
+  Clipboard.AsText := FDsgClipTexts[Picked];
+end;
+
+// Пункт «Clipboard history...» - в подменю Edit меню конструктора, после
+// Paste. Создаётся при запуске, как пункты Space Equally (DsgAlignMenuExtra).
+procedure TForm1.DsgClipMenuExtra;
+var
+  EditMenu: TMenuItem;
+begin
+  if (FDsgMiClipHist <> nil) or (FDsgMiPaste = nil) then
+    Exit;
+  EditMenu := FDsgMiPaste.Parent;
+  if EditMenu = nil then
+    Exit;
+  FDsgMiClipHist := TMenuItem.Create(Self);
+  FDsgMiClipHist.Caption := 'Clipboard history...';
+  FDsgMiClipHist.OnClick := DsgMenuClick;
+  EditMenu.Insert(FDsgMiPaste.MenuIndex + 1, FDsgMiClipHist);
 end;
 
 // Куда вставлять: в выделенный контейнер (у TPageControl - в открытый
@@ -30947,7 +31170,7 @@ begin
     One.Free;
     Sel.Free;
   end;
-  DsgCopy;
+  DsgCopyAs('Cut');
   DsgDelete;
 end;
 
@@ -30983,8 +31206,17 @@ begin
   if FDesigner = nil then
     Exit;
   Txt := Clipboard.AsText;
+  // В буфере обмена уже не компонент (его перезаписала другая программа) -
+  // последний Cut или Copy из истории
   if CompareText(Copy(TrimLeft(Txt), 1, 7), 'object ') <> 0 then
-    Exit;
+  begin
+    DsgClipLoad;
+    if FDsgClipTexts.Count = 0 then
+      Exit;
+    Txt := FDsgClipTexts[0];
+    Dbg('22011: Paste: в буфере обмена не компонент - вставка из истории: ' +
+        FDsgClipInfo[0], clNavy);
+  end;
 
   OldDfm := DsgGetText;
   Root := DfmRootClass(OldDfm);
@@ -44129,6 +44361,9 @@ begin
   end;
   CanPaste := Clipboard.HasFormat(CF_TEXT) and
               (CompareText(Copy(TrimLeft(Clipboard.AsText), 1, 7), 'CREATE ') = 0);
+  // История Cut и Copy - только у конструктора Delphi
+  if FDsgMiClipHist <> nil then
+    FDsgMiClipHist.Visible := False;
   FDsgMiUndo.Enabled := RichEdit1.HandleAllocated and
     (SendMessageA(RichEdit1.Handle, EM_CANUNDO, 0, 0) <> 0);
   FDsgMiCut.Enabled := HasSel;
