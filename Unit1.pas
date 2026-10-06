@@ -28332,10 +28332,10 @@ var
   C, L: TComponent;
   DC, LC: TControl;
   ResTxt, SnapTxt, Nm, SV, RV, Sides: string;
-  ResNodes, SnapNodes: TList;
-  ResIdx, SnapIdx, Names: TStringList;
+  ResNodes, SnapNodes, TabNodes: TList;
+  ResIdx, SnapIdx, TabIdx, Names: TStringList;
   Defs: TStringList;
-  S, R, ResRoot, SnapRoot: TDfmNode;
+  S, R, ResRoot, SnapRoot, TabRoot, TabNode: TDfmNode;
   SameParent: Boolean;
 begin
   if (FDesigner = nil) or (FDesigner.Form = nil) or not FDsgLiveView or
@@ -28373,17 +28373,29 @@ begin
   SnapNodes := TList.Create;
   ResIdx := TStringList.Create;
   SnapIdx := TStringList.Create;
+  // .dfm вкладки - тот текст, по которому построена форма конструктора.
+  // Свойство, которое в нём уже не такое, как в ресурсе exe, правили после
+  // сборки: правка важнее живого значения. Иначе, пока работает exe,
+  // собранный до правки, конструктор показывает прежнее значение (цвет
+  // панели, место), а новая сборка - уже правку.
+  TabNodes := TList.Create;
+  TabIdx := TStringList.Create;
   Names := TStringList.Create;
   try
     ResRoot := ParseDfmNodes(ResTxt, False, ResNodes);
     SnapRoot := ParseDfmNodes(SnapTxt, True, SnapNodes);
+    TabRoot := ParseDfmNodes(DsgGetText, False, TabNodes);
     DsgIndexNodes(ResNodes, ResIdx);
     DsgIndexNodes(SnapNodes, SnapIdx);
+    DsgIndexNodes(TabNodes, TabIdx);
 
     // Цвет самой формы
     if (ResRoot <> nil) and (SnapRoot <> nil) and
        (DsgNormValue(DsgNodeValue(SnapRoot, 'Color', nil)) <>
-        DsgNormValue(DsgNodeValue(ResRoot, 'Color', nil))) then
+        DsgNormValue(DsgNodeValue(ResRoot, 'Color', nil))) and
+       ((TabRoot = nil) or
+        (DsgNormValue(DsgNodeValue(TabRoot, 'Color', nil)) =
+         DsgNormValue(DsgNodeValue(ResRoot, 'Color', nil)))) then
       FDesigner.Form.Color := LF.Color;
 
     for I := 0 to FDesigner.Form.ComponentCount - 1 do
@@ -28465,6 +28477,10 @@ begin
       if J < 0 then
         Continue;   // компонента не было при сборке - всё из .dfm вкладки
       R := TDfmNode(ResIdx.Objects[J]);
+      TabNode := nil;
+      J := TabIdx.IndexOf(C.Name);
+      if J >= 0 then
+        TabNode := TDfmNode(TabIdx.Objects[J]);
       Defs := DefaultsFor(LC.ClassType);
       Inc(Comps);
 
@@ -28495,6 +28511,12 @@ begin
         SV := DsgNodeValue(S, Nm, Defs);
         RV := DsgNodeValue(R, Nm, Defs);
         if (SV = '') or (DsgNormValue(SV) = DsgNormValue(RV)) then
+          Continue;
+        // Во вкладке значение уже другое, чем при сборке exe, - правка
+        // после сборки, остаётся значение из .dfm вкладки
+        if (TabNode <> nil) and
+           (DsgNormValue(DsgNodeValue(TabNode, Nm, Defs)) <>
+            DsgNormValue(RV)) then
           Continue;
         // Заглушки снимка вместо содержимого: текст богатого редактора,
         // длинный список, коллекция
@@ -28590,9 +28612,13 @@ begin
       TObject(ResNodes[I]).Free;
     for I := 0 to SnapNodes.Count - 1 do
       TObject(SnapNodes[I]).Free;
+    for I := 0 to TabNodes.Count - 1 do
+      TObject(TabNodes[I]).Free;
     Names.Free;
+    TabIdx.Free;
     SnapIdx.Free;
     ResIdx.Free;
+    TabNodes.Free;
     SnapNodes.Free;
     ResNodes.Free;
   end;
