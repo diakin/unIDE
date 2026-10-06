@@ -934,6 +934,7 @@ type
     FDsgClipTexts: TStringList;
     FDsgClipInfo: TStringList;
     FDsgMiClipHist: TMenuItem;   // пункт меню конструктора «Clipboard history...»
+    FDsgMiLayoutLog: TMenuItem;  // пункт «Layout to log»: раскладка выделенного в журнал
     FDsgCutClass: string;
     // Компоненты, которые DsgAddRuntime поставил в конструктор по узлам
     // дерева: строки "адрес компонента=место узла" (TreeNodePath), в Objects
@@ -1325,6 +1326,7 @@ type
     FObjSnapText: string;
     FObjSnapTime: TDateTime;
     FObjSnapGen: Integer;
+    FObjTreeCached: Boolean; // дерево инспектора прочитано из кэша, а не разобрано
     // Пробный запуск проекта: снимки его форм, класс формы -> текст
     // (TProbeText в Objects). Берутся, когда своего снимка нет.
     FProbeSnaps: TStringList;
@@ -2174,6 +2176,9 @@ type
     procedure DsgClipRemember(const AKind, AText: string);
     procedure DsgClipHistory;
     procedure DsgClipMenuExtra;
+    procedure DsgLayoutMenuExtra;
+    procedure DsgLayoutLog;
+    function DsgLayoutLine(AControl: TControl): string;
     procedure DsgOrder(AToFront: Boolean);
     procedure DsgRename;
     procedure DsgEditableNames(ANames: TStrings);
@@ -17291,6 +17296,7 @@ begin
   // снимок (OwnSnapStale) снимался заново на первом Cut
   DsgAlignMenuExtra;
   DsgClipMenuExtra;
+  DsgLayoutMenuExtra;
 
   // Точки останова: щелчок по полосе номеров строк
   FBreakMarks := TList.Create;
@@ -20610,6 +20616,7 @@ begin
       else
         ObjCacheWrite(CacheFile, CacheKey);
     TWrite := GetTickCount - TA;
+    FObjTreeCached := FromCache;
     if Dfm <> '' then
       if FromCache then
         Dbg('17134: инспектор: ' + ExtractFileName(Dfm) + ' из кэша, ' +
@@ -28179,8 +28186,10 @@ var
   ParComp: TComponent;
   T0, TFin, TTheme, TLive, TickMark: Cardinal;
   Cnt: Integer;
+  LinkMoves: string;   // переставленные по коду компоненты .dfm - для журнала
 begin
   T0 := GetTickCount;
+  LinkMoves := '';
   TTheme := 0;
   TLive := 0;
   Cnt := 0;
@@ -28229,6 +28238,9 @@ begin
       if N.IsLink then
       begin
         FDesigner.Reparent(N.Name, ParNm);
+        if LinkMoves <> '' then
+          LinkMoves := LinkMoves + ', ';
+        LinkMoves := LinkMoves + N.Name + ' -> ' + ParNm;
         Continue;
       end;
       if not (N.FromCode or N.IsRuntime) then
@@ -28301,6 +28313,8 @@ begin
     end;
     // Своя форма - в цветах темы IDE, затем в живом виде; внутри серии:
     // раскладка - один раз
+    if LinkMoves <> '' then
+      Dbg('22025: DsgAddRuntime: родитель по коду - ' + LinkMoves, clGray);
     TickMark := GetTickCount;
     DsgThemeLook;
     TTheme := GetTickCount - TickMark;
@@ -29943,6 +29957,8 @@ begin
     FDsgMiClipHist.Visible := True;
     FDsgMiClipHist.Enabled := FDsgClipTexts.Count > 0;
   end;
+  if FDsgMiLayoutLog <> nil then
+    FDsgMiLayoutLog.Visible := True;
   FDsgMiUndo.Enabled := FDsgUndo.Count > 0;
   FDsgMiCut.Enabled := Sel;
   FDsgMiCopy.Enabled := Sel;
@@ -30046,6 +30062,8 @@ begin
     DsgPaste
   else if Sender = FDsgMiClipHist then
     DsgClipHistory
+  else if Sender = FDsgMiLayoutLog then
+    DsgLayoutLog
   else if Sender = FDsgMiDelete then
     DsgDelete
   else if Sender = FDsgMiFront then
@@ -31114,6 +31132,162 @@ begin
   FDsgMiClipHist.Caption := 'Clipboard history...';
   FDsgMiClipHist.OnClick := DsgMenuClick;
   EditMenu.Insert(FDsgMiPaste.MenuIndex + 1, FDsgMiClipHist);
+end;
+
+// Пункт «Layout to log» - в конце меню конструктора. Пишет в журнал
+// раскладку выделенного компонента (DsgLayoutLog): по двум таким записям -
+// до и после исправления вида - видно, на каком компоненте и в каком
+// свойстве они расходятся.
+procedure TForm1.DsgLayoutMenuExtra;
+begin
+  if (FDsgMiLayoutLog <> nil) or (FDsgMenu = nil) then
+    Exit;
+  FDsgMiLayoutLog := TMenuItem.Create(Self);
+  FDsgMiLayoutLog.Caption := 'Layout to log';
+  FDsgMiLayoutLog.OnClick := DsgMenuClick;
+  FDsgMenu.Items.Add(FDsgMiLayoutLog);
+end;
+
+// Одна строка о контроле формы конструктора: имя и класс, выравнивание,
+// место и размер, видимость, клиентская область, подпись, цвет, номер среди
+// контролов родителя, число детей, значок кнопки, поставлен ли кодом
+function TForm1.DsgLayoutLine(AControl: TControl): string;
+var
+  CliRect: TRect;
+  Idx, CtlIdx: Integer;
+  Glyph: TBitmap;
+  Txt: string;
+begin
+  Result := AControl.Name + ': ' + AControl.ClassName + ' ' +
+            GetEnumName(TypeInfo(TAlign), Ord(AControl.Align)) + ' ' +
+            IntToStr(AControl.Left) + ',' + IntToStr(AControl.Top) + ' ' +
+            IntToStr(AControl.Width) + 'x' + IntToStr(AControl.Height);
+  if not AControl.Visible then
+    Result := Result + ' скрыт';
+  if AControl is TWinControl then
+  begin
+    CliRect := TWinControl(AControl).ClientRect;
+    TUiWin(AControl).AdjustClientRect(CliRect);
+    Result := Result + ' клиент ' + IntToStr(CliRect.Left) + ',' +
+              IntToStr(CliRect.Top) + '-' + IntToStr(CliRect.Right) + ',' +
+              IntToStr(CliRect.Bottom) + ' детей ' +
+              IntToStr(TWinControl(AControl).ControlCount);
+  end;
+  Txt := TUiCtl(AControl).Caption;
+  if Length(Txt) > 40 then
+    Txt := Copy(Txt, 1, 40) + '...';
+  Result := Result + ' подпись ''' + Txt + ''' цвет $' +
+            IntToHex(TUiCtl(AControl).Color, 8);
+  if AControl.Parent <> nil then
+  begin
+    Idx := -1;
+    for CtlIdx := 0 to AControl.Parent.ControlCount - 1 do
+      if AControl.Parent.Controls[CtlIdx] = AControl then
+        Idx := CtlIdx;
+    Result := Result + ' место в родителе ' + IntToStr(Idx) + ' из ' +
+              IntToStr(AControl.Parent.ControlCount);
+  end;
+  Glyph := nil;
+  if AControl is TUiIconButton then
+    Glyph := TUiIconButton(AControl).Glyph
+  else if AControl is TSpeedButton then
+    Glyph := TSpeedButton(AControl).Glyph
+  else if AControl is TBitBtn then
+    Glyph := TBitBtn(AControl).Glyph;
+  if Glyph <> nil then
+    if Glyph.Empty then
+      Result := Result + ' значок пуст'
+    else
+      Result := Result + ' значок ' + IntToStr(Glyph.Width) + 'x' +
+                IntToStr(Glyph.Height);
+  if FDesigner.IsRuntime(AControl) then
+    Result := Result + ' [от кода]';
+end;
+
+// Раскладка выделенного компонента в журнал: состояние снимка и дерева,
+// цепочка родителей до формы, дети, узлы дерева инспектора с тем же именем
+// (флаги и свойства, по которым конструктор его ставил)
+procedure TForm1.DsgLayoutLog;
+var
+  SelCtl, Cur: TControl;
+  Idx, CtlIdx: Integer;
+  Node: TDfmNode;
+  Info, Flags, PropText: string;
+begin
+  if (FDesigner = nil) or (FDesigner.Form = nil) then
+    Exit;
+  SelCtl := FDesigner.SelControl;
+  if SelCtl = nil then
+    SelCtl := FDesigner.Form;
+  if FSnapOff then
+    Info := 'убран кнопкой'
+  else if FObjSnapText = '' then
+    Info := 'нет'
+  else
+    Info := 'есть, снят ' + FormatDateTime('hh:nn:ss', FObjSnapTime);
+  Info := '22020: раскладка ' + SelCtl.Name + ': снимок ' + Info +
+          ', номер ' + IntToStr(FObjSnapGen) + ', дерево инспектора ';
+  if FObjTreeCached then
+    Info := Info + 'из кэша'
+  else
+    Info := Info + 'разобрано';
+  Dbg(Info, clNavy);
+
+  // От выделенного к форме
+  Cur := SelCtl;
+  while Cur <> nil do
+  begin
+    Dbg('22021:   ' + DsgLayoutLine(Cur), clNavy);
+    Cur := Cur.Parent;
+  end;
+  if SelCtl is TWinControl then
+    for CtlIdx := 0 to TWinControl(SelCtl).ControlCount - 1 do
+      Dbg('22022:     ' + DsgLayoutLine(TWinControl(SelCtl).Controls[CtlIdx]),
+          clNavy);
+
+  // Узлы дерева инспектора: по ним DsgAddRuntime переставлял и ставил
+  if FObjTree = nil then
+    Exit;
+  for Idx := 0 to FObjTree.Items.Count - 1 do
+  begin
+    Node := TDfmNode(FObjTree.Items[Idx].Data);
+    if Node = nil then
+      Continue;
+    if (CompareText(Node.Name, SelCtl.Name) <> 0) and
+       ((Node.Name <> '') or (CompareText(Node.VarName, SelCtl.Name) <> 0)) then
+      Continue;
+    Flags := '';
+    if InSnapTree(Node) then
+      Flags := Flags + ' дерево-снимка';
+    if Node.IsSnap then
+      Flags := Flags + ' snap';
+    if Node.IsRuntime then
+      Flags := Flags + ' runtime';
+    if Node.IsLink then
+      Flags := Flags + ' link';
+    if Node.FromCode then
+      Flags := Flags + ' code';
+    if Node.IsLive then
+      Flags := Flags + ' live';
+    PropText := '';
+    for CtlIdx := 0 to Node.PropN.Count - 1 do
+    begin
+      if CtlIdx > 0 then
+        PropText := PropText + '; ';
+      PropText := PropText + Node.PropN[CtlIdx];
+      if CtlIdx < Node.PropV.Count then
+        PropText := PropText + '=' + Node.PropV[CtlIdx];
+    end;
+    if Length(PropText) > 400 then
+      PropText := Copy(PropText, 1, 400) + '...';
+    Info := '22023:   узел ' + Node.Name + '/' + Node.VarName + ' ' +
+            Node.ClassNm + ', родитель ';
+    if Node.Parent <> nil then
+      Info := Info + Node.Parent.Name + '/' + Node.Parent.VarName
+    else
+      Info := Info + '-';
+    Dbg(Info + ',' + Flags + ': ' + PropText, clNavy);
+  end;
 end;
 
 // Куда вставлять: в выделенный контейнер (у TPageControl - в открытый
@@ -44364,6 +44538,8 @@ begin
   // История Cut и Copy - только у конструктора Delphi
   if FDsgMiClipHist <> nil then
     FDsgMiClipHist.Visible := False;
+  if FDsgMiLayoutLog <> nil then
+    FDsgMiLayoutLog.Visible := False;
   FDsgMiUndo.Enabled := RichEdit1.HandleAllocated and
     (SendMessageA(RichEdit1.Handle, EM_CANUNDO, 0, 0) <> 0);
   FDsgMiCut.Enabled := HasSel;
