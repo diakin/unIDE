@@ -124,6 +124,12 @@ function BuildCodeRuntime(ADfmRoot: TDfmNode; const AText, AFormClass: string;
 // созданными в коде они не стали: такие узлы снимка в дерево не идут.
 procedure MergeSnapNode(ATarget, ASnap: TDfmNode; AIndex: TStringList;
                         AGone: TStrings = nil);
+// Новый текст модуля отличается от прежнего только в строках-объявлениях
+// ("Panel5: TPanel;"): строки [AHead, AOldEnd) прежнего стали [AHead,
+// ANewEnd) нового. По нему кэши разбора модуля сдвигают номера строк,
+// а не разбирают модуль заново.
+function CodeDiffPlain(AOld, ANew: TStrings;
+                       var AHead, AOldEnd, ANewEnd: Integer): Boolean;
 procedure ResolveRuntimeNames(ARoot: TDfmNode; const AText: string);
 procedure DedupeSnapNodes(ANode: TDfmNode; AByLine: TStringList;
                           ANodes: TList);

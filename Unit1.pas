@@ -1200,6 +1200,10 @@ type
     FObjSetLines: TStringList;
     FObjSetAlias: TStringList;
     FObjSetKey: string;
+    // Строки текста, по которому построен FObjSetLines: следующий текст,
+    // отличный от него только строками-объявлениями (Cut, Paste в
+    // конструкторе), не разбирается - номера строк сдвигаются
+    FObjSetSrc: TStringList;
     FObjSetFresh: Boolean;   // указатель только что сверен - не сверять снова
     // Время частей колонки «Строка кода» последнего заполнения (мс) - для
     // строки 17151 HiLite log
@@ -1247,6 +1251,12 @@ type
     FObjRoots: TList;
     FObjCacheFile: string;
     FObjCacheSnapKey: string;
+    // Отложенная запись кэша после правки в конструкторе: правки идут
+    // подряд, файл пишется, когда они стихли (ObjCacheWriteLater). Ключ и
+    // первый корень дерева на момент заказа - дерево с тех пор то же.
+    FObjCacheTimer: TTimer;
+    FObjCacheDueKey: string;
+    FObjCacheDueRoot: Pointer;
     // Ключ и .dfm дерева, что сейчас в памяти: тот же ключ - перестраивать
     // нечего (переход между .dfm и .pas той же формы, повторный щелчок)
     FObjTreeKey, FObjTreeDfm: string;
@@ -2341,6 +2351,8 @@ type
     function  ObjCacheKey(const ADfmText, AUnitFile, AUnitSrc,
                           ASnapKey: string): string;
     procedure ObjCacheWrite(const AFile, AKey: string);
+    procedure ObjCacheWriteLater;
+    procedure ObjCacheTimerTick(Sender: TObject);
     function  ObjCacheRead(const AFile, AKey: string; ARoots: TList): Boolean;
     procedure ObjCacheSaveCurrent;
     function  ProbeCacheFile: string;
@@ -20542,7 +20554,12 @@ begin
     FObjLinesUnsure := False;
     TA := GetTickCount;
     if not FromCache and (CacheFile <> '') and (DfmRoot <> nil) then
-      ObjCacheWrite(CacheFile, CacheKey);
+      // Перестройка после правки в конструкторе - запись позже, когда
+      // правки стихнут
+      if FDsgSelecting then
+        ObjCacheWriteLater
+      else
+        ObjCacheWrite(CacheFile, CacheKey);
     TWrite := GetTickCount - TA;
     if Dfm <> '' then
       if FromCache then
@@ -20559,7 +20576,10 @@ begin
         // дерево - RenderObjTree; кэш - запись файла
         Dbg('17142: инспектор: ' + ExtractFileName(Dfm) + ' разобран, ' +
             IntToStr(GetTickCount - T0) + ' мс (подготовка ' +
-            IntToStr(TPrep) + ', код ' + IntToStr(TCode) + ', снимок ' +
+            IntToStr(TPrep) + ': тексты ' + IntToStr(TPText) +
+            ', массивы ' + IntToStr(TPArr) + ', снимок ' + IntToStr(TPSnap) +
+            ', ключ ' + IntToStr(TPKey) + ', разбор .dfm ' + IntToStr(TPRead) +
+            '; код ' + IntToStr(TCode) + ', снимок ' +
             IntToStr(TSnap) + ', имена ' + IntToStr(TNames) + ', места ' +
             IntToStr(TDedup) + ', дерево ' + IntToStr(TRender) + ', кэш ' +
             IntToStr(TWrite) + ')', clNavy);
@@ -23820,6 +23840,40 @@ end;
 procedure TForm1.ObjCacheWrite(const AFile, AKey: string);
 begin
   DfmCacheWrite(AFile, AKey, FObjDfmFile, FObjRoots);
+end;
+
+// Кэш дерева - на диск через 1,5 с после последней правки в конструкторе,
+// а не на каждую (запись - около 50 мс). Кэш нужен при следующем открытии
+// формы; промежуточные состояния серии правок на диске не нужны.
+procedure TForm1.ObjCacheWriteLater;
+begin
+  if (FObjRoots = nil) or (FObjRoots.Count = 0) or (FObjTreeKey = '') then
+    Exit;
+  FObjCacheDueKey := FObjTreeKey;
+  FObjCacheDueRoot := FObjRoots[0];
+  if FObjCacheTimer = nil then
+  begin
+    FObjCacheTimer := TTimer.Create(Self);
+    FObjCacheTimer.Enabled := False;
+    FObjCacheTimer.Interval := 1500;
+    FObjCacheTimer.OnTimer := ObjCacheTimerTick;
+  end;
+  FObjCacheTimer.Enabled := False;
+  FObjCacheTimer.Enabled := True;
+end;
+
+procedure TForm1.ObjCacheTimerTick(Sender: TObject);
+begin
+  FObjCacheTimer.Enabled := False;
+  // Дерево с заказа перестроили (другой ключ, другие узлы) или правили из
+  // инспектора (номера строк под сомнением) - писать нечего: новое дерево
+  // своё запишет само
+  if (FObjCacheDueKey <> '') and (FObjCacheDueKey = FObjTreeKey) and
+     not FObjLinesUnsure and (FObjCacheFile <> '') and
+     (FObjRoots <> nil) and (FObjRoots.Count > 0) and
+     (FObjRoots[0] = FObjCacheDueRoot) then
+    ObjCacheWrite(FObjCacheFile, FObjTreeKey);
+  FObjCacheDueKey := '';
 end;
 
 // Дерево из файла кэша - в FDfmNodes, корни - в ARoots. False - файла нет,
@@ -28371,6 +28425,7 @@ var
   S, R, ResRoot, SnapRoot, TabRoot, TabNode: TDfmNode;
   SameParent: Boolean;
   TickStart, TickSnap, TickParsed, TickComps: Cardinal;
+  TickPart, TGlyphs, TLists: Cardinal;
 begin
   if (FDesigner = nil) or (FDesigner.Form = nil) or not FDsgLiveView or
      not IsOwnProject then
@@ -28391,6 +28446,8 @@ begin
   TickStart := GetTickCount;
   TickParsed := TickStart;
   TickComps := TickStart;
+  TGlyphs := 0;
+  TLists := 0;
   // После смены темы прежний снимок - в старых цветах: снимаем заново
   if FDsgFreshSnap then
     SnapTxt := ''
@@ -28452,6 +28509,7 @@ begin
       LC := TControl(L);
 
 
+      TickPart := GetTickCount;
       // Значок - у живой кнопки (у неё он уже под тему, UiApplyGlyph).
       // И у компонентов из кода: в снимке значков нет.
       if (DC is TUiIconButton) and
@@ -28483,6 +28541,8 @@ begin
         Inc(Glyphs);
       end;
 
+      Inc(TGlyphs, GetTickCount - TickPart);
+      TickPart := GetTickCount;
       // Строки таблиц и узлы деревьев - у живых: в снимке их нет
       try
         if (DC is TListView) and (LC is TListView) and
@@ -28503,6 +28563,7 @@ begin
         // не скопировалось - остаётся пустым, как в .dfm
       end;
 
+      Inc(TLists, GetTickCount - TickPart);
       // Созданных кодом в ресурсе нет - они и так стоят по снимку и
       // отсеиваются ниже. Компонент .dfm, которому код сменил родителя
       // (RichEdit1, логи), конструктор держит среди компонентов из кода
@@ -28669,7 +28730,8 @@ begin
       IntToStr(Lists) + ', сеток ' + IntToStr(Grids) + '; время: снимок ' +
       IntToStr(TickSnap - TickStart) + ' мс, разбор текстов ' +
       IntToStr(TickParsed - TickSnap) + ', компоненты ' +
-      IntToStr(TickComps - TickParsed) + ', полосы и сетки ' +
+      IntToStr(TickComps - TickParsed) + ' (значки ' + IntToStr(TGlyphs) +
+      ', строки таблиц и деревьев ' + IntToStr(TLists) + '), полосы и сетки ' +
       IntToStr(GetTickCount - TickComps), clGray);
 end;
 
@@ -35607,6 +35669,9 @@ var
   Src, Key, LineText, Ident, PathText, PartText, LeftText, RightText: string;
   LineIdx, CharPos, ScanPos, CleanState, CharIdx: Integer;
   PlainIdents: Boolean;
+  PrevKey: string;
+  NewLines: TStringList;
+  HeadCnt, OldEnd, NewEnd, LineNo, SetIdx: Integer;
 
   procedure AddLine(const AKey: string);
   begin
@@ -35663,6 +35728,7 @@ begin
       FObjSetStash.Delete(0);
     end;
   end;
+  PrevKey := FObjSetKey;
   FObjSetKey := Key;
   FObjSetLines.Clear;
   FObjSetAlias.Clear;
@@ -35672,9 +35738,47 @@ begin
     SetEntry := TObjSetterEntry(FObjSetStash.Objects[StashPos]);
     FObjSetLines.Assign(SetEntry.SetLines);
     FObjSetAlias.Assign(SetEntry.SetAlias);
+    // Строки этого текста - для сдвига при следующей правке объявлений
+    // (Cut и Paste того же компонента возвращают прежний текст)
+    if FObjSetSrc = nil then
+      FObjSetSrc := TStringList.Create;
+    FObjSetSrc.Text := Src;
     Exit;
   end;
 
+  // Тот же модуль, правка - только строки-объявления: прежний указатель
+  // (он только что ушёл в отложенные) со сдвигом номеров. В строке-
+  // объявлении нет ни "Имя.Путь :=", ни "X := Имя;", ни скобок
+  // комментария, так что сами записи прежние.
+  NewLines := TStringList.Create;
+  try
+    NewLines.Text := Src;
+    StashPos := -1;
+    if (FObjSetSrc <> nil) and (PrevKey <> '') and
+       (Copy(PrevKey, 1, Length(ObjFormUnit) + 1) = ObjFormUnit + '|') then
+      StashPos := FObjSetStash.IndexOf(PrevKey);
+    if (StashPos >= 0) and
+       CodeDiffPlain(FObjSetSrc, NewLines, HeadCnt, OldEnd, NewEnd) then
+    begin
+      SetEntry := TObjSetterEntry(FObjSetStash.Objects[StashPos]);
+      FObjSetLines.Assign(SetEntry.SetLines);
+      FObjSetAlias.Assign(SetEntry.SetAlias);
+      for SetIdx := 0 to FObjSetLines.Count - 1 do
+      begin
+        LineNo := Integer(FObjSetLines.Objects[SetIdx]) - 1;
+        if LineNo >= OldEnd then
+          FObjSetLines.Objects[SetIdx] :=
+            TObject(LineNo + NewEnd - OldEnd + 1);
+      end;
+      FObjSetSrc.Free;
+      FObjSetSrc := NewLines;
+      NewLines := nil;
+      Exit;
+    end;
+  finally
+    NewLines.Free;
+  end;
+  FreeAndNil(FObjSetSrc);
 
   SL := TStringList.Create;
   try
@@ -35741,6 +35845,9 @@ begin
           AddLine(Ident + '.' + PathText);
       end;
     end;
+    // Строки - для сдвига при следующей правке объявлений
+    FObjSetSrc := SL;
+    SL := nil;
   finally
     SL.Free;
   end;
