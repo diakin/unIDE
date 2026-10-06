@@ -982,6 +982,28 @@ object Form1: TForm1
             OnClick = StepOverClick
           end
         end
+        object pnlBuildKind: TPanel
+          Align = alClient
+          BevelOuter = bvNone
+          ParentFont = True
+          object cmbBuildKind: TUiComboBox
+            Left = 2
+            Top = 4
+            Width = 96
+            Style = csDropDownList
+            ShowHint = True
+            OnChange = cmbBuildKindChange
+          end
+          object lblBuildTarget: TUiLabel
+            Left = 104
+            Top = 8
+            Width = 170
+            Height = 13
+            Anchors = [akLeft, akTop, akRight]
+            AutoSize = False
+            ShowHint = True
+          end
+        end
       end
       object pnlToolbarIn: TPanel
         Color = clGreen

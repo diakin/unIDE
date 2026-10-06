@@ -549,6 +549,10 @@ type
     FLeftPanel: TPanel;
     grpCompiler: TUiGroupBox;
     pnlCompilerIn: TPanel;
+    // Сборщик активной вкладки и её цель (UpdateBuildBar)
+    pnlBuildKind: TPanel;
+    cmbBuildKind: TUiComboBox;
+    lblBuildTarget: TUiLabel;
     btnCompileRun: TUiIconButton;
     grpSearch: TUiGroupBox;
     pnlSearchIn: TPanel;
@@ -749,6 +753,7 @@ type
     procedure FindPanelClick(Sender: TObject);
     procedure UndoReplaceAllClick(Sender: TObject);
     procedure btnCompileRunClick(Sender: TObject);
+    procedure cmbBuildKindChange(Sender: TObject);
     procedure TabsMouseDown(Sender: TObject; Button: TMouseButton;
                             Shift: TShiftState; X, Y: Integer);
     procedure ShowModulesClick(Sender: TObject);
@@ -1172,6 +1177,10 @@ type
     FLangMode: Integer;
     FBuildReason: string;       // почему CurBuildKind выбрал этот сборщик
     FBasDialects: TStringList;  // диалект .bas по файлу: путь|время -> сборщик
+    // Сборщик, выбранный вручную в cmbBuildKind: путь (строчными) = имя
+    // сборщика; editor.ini, раздел [BuildKind]
+    FBuildKindManual: TStringList;
+    FBuildBarBusy: Boolean;     // UpdateBuildBar ставит пункт списка сам
     FLangModeKey: string;
     FRunRowLefts: array of Integer;
     // Вставка с палитры RapidQ (RqDsgPlace -> WMRqDsgPlace): класс,
@@ -2538,6 +2547,10 @@ type
     // Сборка RapidQ Basic (rc.exe) и выбор между ней и Delphi
     function  BuildIsRapidQ: Boolean;
     function  CurBuildKind: Integer;
+    function  ManualBuildKind(const AFile: string): Integer;
+    procedure SetManualBuildKind(const AFile: string; AKind: Integer);
+    function  BuildTargetOf(AKind: Integer): string;
+    procedure UpdateBuildBar;
     function  ProjectBuildKind(const APrj: string): Integer;
     function  BasDialectOf(const AFile: string): Integer;
     function  DelphiDprInFolder(const ADir: string; AAsk: Boolean): string;
@@ -10348,6 +10361,14 @@ var
   Dprs: TStringList;
   PrjKind: Integer;
 begin
+  // Выбран вручную в переключателе - он
+  Result := ManualBuildKind(FCurrentFileName);
+  if Result <> bkNone then
+  begin
+    FBuildReason := 'выбрано вручную';
+    Exit;
+  end;
+
   FileNm := FCurrentFileName;
   Ext := LowerCase(ExtractFileExt(FileNm));
   PrjName := BuildProject;
@@ -10570,6 +10591,173 @@ begin
   end;
   if Changed then
     RefreshAllTabCaptions;
+end;
+
+// Сборщик, выбранный для файла вручную (cmbBuildKind); bkNone - не
+// выбирался. Список читается из editor.ini один раз.
+function TForm1.ManualBuildKind(const AFile: string): Integer;
+var
+  Ini: TIniFile;
+  KindName: string;
+  KindIdx: Integer;
+begin
+  Result := bkNone;
+  if AFile = '' then
+    Exit;
+  if FBuildKindManual = nil then
+  begin
+    FBuildKindManual := TStringList.Create;
+    if FileExists(SettingsFileName) then
+    begin
+      Ini := TIniFile.Create(SettingsFileName);
+      try
+        Ini.ReadSectionValues('BuildKind', FBuildKindManual);
+      finally
+        Ini.Free;
+      end;
+    end;
+  end;
+  if FBuildKindManual.Count = 0 then
+    Exit;
+  KindName := FBuildKindManual.Values[LowerCase(ExpandFileName(AFile))];
+  if KindName = '' then
+    Exit;
+  for KindIdx := bkDelphi to bkArduino do
+    if CompareText(BuildKindName(KindIdx), KindName) = 0 then
+    begin
+      Result := KindIdx;
+      Exit;
+    end;
+end;
+
+// Запомнить выбор для файла; bkNone - забыть (снова по файлу). В
+// editor.ini - только файлы на диске, у несохранённого - до закрытия.
+procedure TForm1.SetManualBuildKind(const AFile: string; AKind: Integer);
+var
+  Ini: TIniFile;
+  Key: string;
+  KeyIdx: Integer;
+begin
+  if AFile = '' then
+    Exit;
+  ManualBuildKind(AFile);   // список прочитан
+  Key := LowerCase(ExpandFileName(AFile));
+  KeyIdx := FBuildKindManual.IndexOfName(Key);
+  if AKind = bkNone then
+  begin
+    if KeyIdx >= 0 then
+      FBuildKindManual.Delete(KeyIdx);
+  end
+  else
+    FBuildKindManual.Values[Key] := BuildKindName(AKind);
+  if not FileExists(AFile) then
+    Exit;
+  Ini := TIniFile.Create(SettingsFileName);
+  try
+    if AKind = bkNone then
+      Ini.DeleteKey('BuildKind', Key)
+    else
+      Ini.WriteString('BuildKind', Key, BuildKindName(AKind));
+  finally
+    Ini.Free;
+  end;
+end;
+
+// Что соберёт сборщик AKind для активной вкладки - без вопросов и записи
+// цели. Пусто - не найдено.
+function TForm1.BuildTargetOf(AKind: Integer): string;
+var
+  Ext, Dir, Folder: string;
+begin
+  Result := '';
+  if FCurrentFileName = '' then
+    Exit;
+  Ext := LowerCase(ExtractFileExt(FCurrentFileName));
+  case AKind of
+    bkDelphi:
+      Result := DelphiTargetDpr;
+    bkRapidQ:
+      Result := RapidQTargetBas(False);
+    bkFreeBasic:
+      // Главный файл по #include - вместе со сборкой FreeBASIC
+      if Ext = '.bas' then
+        Result := FCurrentFileName;
+    bkArduino:
+      begin
+        // arduino-cli собирает папку скетча: <папка>\<папка>.ino
+        Dir := ExtractFilePath(FCurrentFileName);
+        Folder := ExtractFileName(ExcludeTrailingPathDelimiter(Dir));
+        if FileExists(Dir + Folder + '.ino') then
+          Result := Dir + Folder + '.ino'
+        else if FileExists(Dir + Folder + '.pde') then
+          Result := Dir + Folder + '.pde'
+        else if (Ext = '.ino') or (Ext = '.pde') then
+          Result := FCurrentFileName;
+      end;
+  end;
+end;
+
+// Переключатель сборщика и подпись цели в рамке Project: пункт - сборщик
+// активной вкладки (CurBuildKind), подпись - что он соберёт
+// (BuildTargetOf), подсказки - почему выбран и полный путь цели
+procedure TForm1.UpdateBuildBar;
+var
+  Kind: Integer;
+  Target, Why: string;
+begin
+  if (cmbBuildKind = nil) or (lblBuildTarget = nil) then
+    Exit;
+  Kind := CurBuildKind;
+  FBuildBarBusy := True;
+  try
+    if Kind = bkNone then
+      cmbBuildKind.ItemIndex := -1
+    else
+      cmbBuildKind.ItemIndex := Kind;
+  finally
+    FBuildBarBusy := False;
+  end;
+  cmbBuildKind.Enabled := FCurrentFileName <> '';
+
+  if Kind = bkNone then
+    Why := 'не определён (' + FBuildReason + ')'
+  else
+    Why := BuildKindName(Kind) + ' - ' + FBuildReason;
+  cmbBuildKind.Hint := 'Чем собирается вкладка: ' + Why + #13#10 +
+    'Выбор в списке запоминается для этого файла; Auto - снова по файлу';
+
+  Target := '';
+  if Kind <> bkNone then
+    Target := BuildTargetOf(Kind);
+  if Kind = bkNone then
+    lblBuildTarget.Caption := ''
+  else if Target = '' then
+    lblBuildTarget.Caption := '» цель не найдена'
+  else
+    lblBuildTarget.Caption := '» ' + ExtractFileName(Target);
+  lblBuildTarget.Hint := Target;
+end;
+
+// Выбор в переключателе: сборщик для файла вкладки, Auto - снова по файлу.
+// Режим среды (кнопки, вкладки) и exe для Run - заново.
+procedure TForm1.cmbBuildKindChange(Sender: TObject);
+var
+  NewKind: Integer;
+begin
+  if FBuildBarBusy then
+    Exit;
+  if FCurrentFileName = '' then
+  begin
+    UpdateBuildBar;
+    Exit;
+  end;
+  NewKind := cmbBuildKind.ItemIndex;
+  if (NewKind < bkDelphi) or (NewKind > bkArduino) then
+    NewKind := bkNone;
+  SetManualBuildKind(FCurrentFileName, NewKind);
+  FLangModeKey := '';
+  FRunExeKey := '';
+  ApplyLangMode;
 end;
 
 // Выбор одной строки из списка. Пустая строка - отказались.
@@ -17747,6 +17935,15 @@ begin
   DsgClipMenuExtra;
   DsgLayoutMenuExtra;
 
+  // Переключатель сборщика: номер пункта - bkDelphi..bkArduino, последний
+  // пункт Auto - снова выбор по файлу (UpdateBuildBar, cmbBuildKindChange)
+  cmbBuildKind.Items.Clear;
+  cmbBuildKind.Items.Add('Delphi');
+  cmbBuildKind.Items.Add('RapidQ');
+  cmbBuildKind.Items.Add('FreeBASIC');
+  cmbBuildKind.Items.Add('Arduino');
+  cmbBuildKind.Items.Add('Auto');
+
   // Точки останова: щелчок по полосе номеров строк
   FBreakMarks := TList.Create;
   FWatchList := TStringList.Create;
@@ -18172,6 +18369,7 @@ begin
   FreeAndNil(FDiskAges);
   FreeAndNil(FProjectReg);
   FreeAndNil(FBasDialects);
+  FreeAndNil(FBuildKindManual);
   // Схема подсветки (её списки и группы) освобождается в Destroy формы,
   // после FormDestroy
   ClearDfmNodes;
@@ -40667,8 +40865,16 @@ begin
   AutoSaveEditorFiles;
   Kind := CurBuildKind;
   case Kind of
-    bkDelphi: Result := CompileDelphi;
-    bkRapidQ: Result := CompileRapidQ;
+    bkDelphi:
+      begin
+        Result := CompileDelphi;
+        UpdateBuildBar;   // цель могла выбраться из списка
+      end;
+    bkRapidQ:
+      begin
+        Result := CompileRapidQ;
+        UpdateBuildBar;   // и записаться в проект
+      end;
   else
     ShowCompLog;
     if CompLogEdit <> nil then
@@ -44366,6 +44572,8 @@ begin
   if (FLangMode >= 0) and (ModeKey = FLangModeKey) then
     Exit;
   FLangModeKey := ModeKey;
+  // Переключатель и цель - при каждой смене вкладки, и когда режим тот же
+  UpdateBuildBar;
   // Сборщик вкладки; не определён - как Delphi
   Kind := CurBuildKind;
   if Kind = bkNone then
