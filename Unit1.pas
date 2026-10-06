@@ -972,6 +972,13 @@ type
     // .dfm своих форм из ресурса exe (OwnFormResText): строки - класс
     // формы, Objects - TProbeText с текстом
     FDsgResTexts: TStringList;
+    // Живой вид: расхождения снимка с ресурсом exe по компонентам (строки -
+    // имя, Objects - TStringList записей "свойство#1значение снимка#1
+    // значение ресурса для сравнения"; nil - сверять нечего). Снимок и
+    // ресурс между правками в конструкторе те же - сверка всех свойств
+    // всех компонентов делается один раз на снимок (FDsgLiveDiffKey).
+    FDsgLiveDiff: TStringList;
+    FDsgLiveDiffKey: string;
     // DsgRetheme: живой вид - по снимку, снятому сейчас, а не по прежнему
     FDsgFreshSnap: Boolean;
     // Серия правок конструктора (DsgBatch): глубина и был ли уже записан
@@ -1128,6 +1135,9 @@ type
     // По какому тексту модуля собраны FObjArrayNames и FObjArrayLines
     // (длина и контрольная сумма): тот же текст - собирать заново незачем
     FObjArrayKey: string;
+    // Строки этого текста: следующий, отличный только строками-объявлениями
+    // (Cut, Paste в конструкторе), - сдвигом номеров, без прохода
+    FObjArraySrc: TStringList;
     // Правка текста не человеком, а инспектором или конструктором: на это
     // время перерисовка редактора выключается, иначе видно, как текст
     // выделяется целиком и тут же заменяется
@@ -2036,6 +2046,7 @@ type
     procedure DsgAddRuntime;
     procedure DsgPaletteTabs;
     procedure DsgLiveLook;
+    procedure DsgLiveDiffClear;
     function  OwnFormResText(const AClass: string): string;
     procedure OwnFormGoneNames(const AClass, ADfmText: string;
                                AGone: TStrings);
@@ -17718,6 +17729,8 @@ begin
     for I := 0 to FDsgResTexts.Count - 1 do
       FDsgResTexts.Objects[I].Free;
   FreeAndNil(FDsgResTexts);
+  DsgLiveDiffClear;
+  FreeAndNil(FDsgLiveDiff);
   FreeAndNil(FIniPathLog); // обычно уже освобождён в FormShow
   FreeAndNil(FIncludeRows);
   RapidQProbeClear;
@@ -28407,6 +28420,19 @@ begin
   end;
 end;
 
+// Сверки живого вида - прочь (другой снимок, конец работы)
+procedure TForm1.DsgLiveDiffClear;
+var
+  Idx: Integer;
+begin
+  FDsgLiveDiffKey := '';
+  if FDsgLiveDiff = nil then
+    Exit;
+  for Idx := 0 to FDsgLiveDiff.Count - 1 do
+    FDsgLiveDiff.Objects[Idx].Free;
+  FDsgLiveDiff.Clear;
+end;
+
 procedure TForm1.DsgLiveLook;
 const
   // Строк таблицы или узлов дерева больше - не копируются: это содержимое,
@@ -28418,14 +28444,104 @@ var
   I, J, Comps, Props, Placed, Glyphs, Scrolls, Lists, Grids: Integer;
   C, L: TComponent;
   DC, LC: TControl;
-  ResTxt, SnapTxt, Nm, SV, RV, Sides: string;
+  ResTxt, SnapTxt, Nm, SV, Sides: string;
   ResNodes, SnapNodes, TabNodes: TList;
   ResIdx, SnapIdx, TabIdx, Names: TStringList;
   Defs: TStringList;
-  S, R, ResRoot, SnapRoot, TabRoot, TabNode: TDfmNode;
+  ResRoot, SnapRoot, TabRoot, TabNode: TDfmNode;
   SameParent: Boolean;
   TickStart, TickSnap, TickParsed, TickComps: Cardinal;
   TickPart, TGlyphs, TLists: Cardinal;
+  Parsed: Boolean;
+  DiffKey, Entry, NormRV: string;
+  Entries: TStringList;
+  SepPos, Computed: Integer;
+
+  // Снимок и ресурс - в узлы, один раз и только если нужны (сверка
+  // компонента, которого ещё нет в FDsgLiveDiff)
+  procedure EnsureParsed;
+  begin
+    if Parsed then
+      Exit;
+    Parsed := True;
+    ResRoot := ParseDfmNodes(ResTxt, False, ResNodes);
+    SnapRoot := ParseDfmNodes(SnapTxt, True, SnapNodes);
+    DsgIndexNodes(ResNodes, ResIdx);
+    DsgIndexNodes(SnapNodes, SnapIdx);
+  end;
+
+  // Расхождения снимка с ресурсом у компонента AName (LC - живой): из
+  // FDsgLiveDiff, нет там - сверка и запись туда. nil - компонента нет в
+  // снимке или в ресурсе (создан кодом или добавлен после сборки).
+  function DiffFor(const AName: string; ALive: TControl): TStringList;
+  var
+    Pos0, PropIdx: Integer;
+    SnapNode, ResNode: TDfmNode;
+    PropName, SnapVal, ResVal: string;
+    ClassDefs, Seen: TStringList;
+  begin
+    Pos0 := FDsgLiveDiff.IndexOf(AName);
+    if Pos0 >= 0 then
+    begin
+      Result := TStringList(FDsgLiveDiff.Objects[Pos0]);
+      Exit;
+    end;
+    Result := nil;
+    Inc(Computed);
+    EnsureParsed;
+    Pos0 := SnapIdx.IndexOf(AName);
+    if Pos0 >= 0 then
+    begin
+      SnapNode := TDfmNode(SnapIdx.Objects[Pos0]);
+      Pos0 := ResIdx.IndexOf(AName);
+      if Pos0 >= 0 then
+      begin
+        ResNode := TDfmNode(ResIdx.Objects[Pos0]);
+        ClassDefs := DefaultsFor(ALive.ClassType);
+        // Свойства снимка (в нём все) и ресурса - в порядке снимка, как
+        // их и ставили раньше: порядок бывает важен (Items до ItemIndex)
+        Names.Clear;
+        Names.AddStrings(SnapNode.PropN);
+        Seen := TStringList.Create;
+        try
+          Seen.Sorted := True;
+          Seen.Duplicates := dupIgnore;
+          Seen.AddStrings(SnapNode.PropN);
+          for PropIdx := 0 to ResNode.PropN.Count - 1 do
+            if Seen.IndexOf(ResNode.PropN[PropIdx]) < 0 then
+            begin
+              Seen.Add(ResNode.PropN[PropIdx]);
+              Names.Add(ResNode.PropN[PropIdx]);
+            end;
+        finally
+          Seen.Free;
+        end;
+        Result := TStringList.Create;
+        for PropIdx := 0 to Names.Count - 1 do
+        begin
+          PropName := Names[PropIdx];
+          // Имя - в заголовке; размер клиентской части следует из
+          // размера; картинки в снимке - только их размеры
+          if (PropName = 'Name') or (PropName = 'ClientWidth') or
+             (PropName = 'ClientHeight') or
+             (Copy(PropName, 1, 6) = 'Glyph.') or
+             (Copy(PropName, 1, 8) = 'Picture.') then
+            Continue;
+          SnapVal := DsgNodeValue(SnapNode, PropName, ClassDefs);
+          ResVal := DsgNormValue(DsgNodeValue(ResNode, PropName, ClassDefs));
+          if (SnapVal = '') or (DsgNormValue(SnapVal) = ResVal) then
+            Continue;
+          // Заглушки снимка вместо содержимого: текст богатого редактора,
+          // длинный список, коллекция
+          if Copy(SnapVal, 1, 2) = '''(' then
+            Continue;
+          Result.Add(PropName + #1 + SnapVal + #1 + ResVal);
+        end;
+      end;
+    end;
+    FDsgLiveDiff.AddObject(AName, Result);
+  end;
+
 begin
   if (FDesigner = nil) or (FDesigner.Form = nil) or not FDsgLiveView or
      not IsOwnProject then
@@ -28476,23 +28592,59 @@ begin
   TabNodes := TList.Create;
   TabIdx := TStringList.Create;
   Names := TStringList.Create;
+  Parsed := False;
+  ResRoot := nil;
+  SnapRoot := nil;
+  Computed := 0;
   try
-    ResRoot := ParseDfmNodes(ResTxt, False, ResNodes);
-    SnapRoot := ParseDfmNodes(SnapTxt, True, SnapNodes);
+    // Сверки прежнего снимка не годятся: другой снимок или другая форма
+    DiffKey := LF.ClassName + '|' + IntToStr(Length(SnapTxt)) + ':' +
+               IntToHex(Crc32Of(SnapTxt), 8) + '|' + IntToStr(Length(ResTxt));
+    if FDsgLiveDiff = nil then
+    begin
+      FDsgLiveDiff := TStringList.Create;
+      FDsgLiveDiff.Sorted := True;
+      FDsgLiveDiff.CaseSensitive := False;
+    end;
+    if DiffKey <> FDsgLiveDiffKey then
+    begin
+      DsgLiveDiffClear;
+      FDsgLiveDiffKey := DiffKey;
+    end;
     TabRoot := ParseDfmNodes(DsgGetText, False, TabNodes);
-    DsgIndexNodes(ResNodes, ResIdx);
-    DsgIndexNodes(SnapNodes, SnapIdx);
     DsgIndexNodes(TabNodes, TabIdx);
-    TickParsed := GetTickCount;
 
-    // Цвет самой формы
-    if (ResRoot <> nil) and (SnapRoot <> nil) and
-       (DsgNormValue(DsgNodeValue(SnapRoot, 'Color', nil)) <>
-        DsgNormValue(DsgNodeValue(ResRoot, 'Color', nil))) and
-       ((TabRoot = nil) or
-        (DsgNormValue(DsgNodeValue(TabRoot, 'Color', nil)) =
-         DsgNormValue(DsgNodeValue(ResRoot, 'Color', nil)))) then
-      FDesigner.Form.Color := LF.Color;
+    // Цвет самой формы: запись '|root' - Color снимка и ресурса
+    J := FDsgLiveDiff.IndexOf('|root');
+    if J < 0 then
+    begin
+      EnsureParsed;
+      Entries := nil;
+      if (ResRoot <> nil) and (SnapRoot <> nil) then
+      begin
+        Entries := TStringList.Create;
+        Entries.Add('Color' + #1 +
+                    DsgNormValue(DsgNodeValue(SnapRoot, 'Color', nil)) + #1 +
+                    DsgNormValue(DsgNodeValue(ResRoot, 'Color', nil)));
+      end;
+      FDsgLiveDiff.AddObject('|root', Entries);
+      J := FDsgLiveDiff.IndexOf('|root');
+    end;
+    Entries := TStringList(FDsgLiveDiff.Objects[J]);
+    TickParsed := GetTickCount;
+    if (Entries <> nil) and (Entries.Count > 0) then
+    begin
+      Entry := Entries[0];
+      SepPos := Pos(#1, Entry);
+      Entry := Copy(Entry, SepPos + 1, MaxInt);
+      SepPos := Pos(#1, Entry);
+      SV := Copy(Entry, 1, SepPos - 1);
+      NormRV := Copy(Entry, SepPos + 1, MaxInt);
+      if (SV <> NormRV) and
+         ((TabRoot = nil) or
+          (DsgNormValue(DsgNodeValue(TabRoot, 'Color', nil)) = NormRV)) then
+        FDesigner.Form.Color := LF.Color;
+    end;
 
     for I := 0 to FDesigner.Form.ComponentCount - 1 do
     begin
@@ -28569,14 +28721,11 @@ begin
       // (RichEdit1, логи), конструктор держит среди компонентов из кода
       // (Reparent), но он из .dfm: свойства сверяются как у всех, место -
       // нет, оно у другого родителя.
-      J := SnapIdx.IndexOf(C.Name);
-      if J < 0 then
+      // Компонента нет в снимке или не было при сборке (nil) - всё из
+      // .dfm вкладки
+      Entries := DiffFor(C.Name, LC);
+      if Entries = nil then
         Continue;
-      S := TDfmNode(SnapIdx.Objects[J]);
-      J := ResIdx.IndexOf(C.Name);
-      if J < 0 then
-        Continue;   // компонента не было при сборке - всё из .dfm вкладки
-      R := TDfmNode(ResIdx.Objects[J]);
       TabNode := nil;
       J := TabIdx.IndexOf(C.Name);
       if J >= 0 then
@@ -28584,43 +28733,29 @@ begin
       Defs := DefaultsFor(LC.ClassType);
       Inc(Comps);
 
-      // Свойства снимка (в нём все) и ресурса
-      Names.Clear;
-      Names.AddStrings(S.PropN);
-      for J := 0 to R.PropN.Count - 1 do
-        if Names.IndexOf(R.PropN[J]) < 0 then
-          Names.Add(R.PropN[J]);
-
       SameParent := not FDesigner.IsRuntime(DC) and
                     (DC.Parent <> nil) and (LC.Parent <> nil) and
                     (DC.Align = LC.Align) and
                     (((DC.Parent = FDesigner.Form) and (LC.Parent = LF)) or
                      (CompareText(DC.Parent.Name, LC.Parent.Name) = 0));
       Sides := '';
-      for J := 0 to Names.Count - 1 do
+      for J := 0 to Entries.Count - 1 do
       begin
-        Nm := Names[J];
-        // Имя - в заголовке; размер клиентской части следует из размера;
-        // картинки в снимке - только их размеры
-        if (Nm = 'Name') or (Nm = 'ClientWidth') or (Nm = 'ClientHeight') or
-           (Copy(Nm, 1, 6) = 'Glyph.') or (Copy(Nm, 1, 8) = 'Picture.') then
-          Continue;
+        // Запись: свойство #1 значение снимка #1 значение ресурса
+        Entry := Entries[J];
+        SepPos := Pos(#1, Entry);
+        Nm := Copy(Entry, 1, SepPos - 1);
+        Entry := Copy(Entry, SepPos + 1, MaxInt);
+        SepPos := Pos(#1, Entry);
+        SV := Copy(Entry, 1, SepPos - 1);
+        NormRV := Copy(Entry, SepPos + 1, MaxInt);
         // Видимость листов переключает сам TPageControl
         if (DC is TTabSheet) and (Nm = 'Visible') then
-          Continue;
-        SV := DsgNodeValue(S, Nm, Defs);
-        RV := DsgNodeValue(R, Nm, Defs);
-        if (SV = '') or (DsgNormValue(SV) = DsgNormValue(RV)) then
           Continue;
         // Во вкладке значение уже другое, чем при сборке exe, - правка
         // после сборки, остаётся значение из .dfm вкладки
         if (TabNode <> nil) and
-           (DsgNormValue(DsgNodeValue(TabNode, Nm, Defs)) <>
-            DsgNormValue(RV)) then
-          Continue;
-        // Заглушки снимка вместо содержимого: текст богатого редактора,
-        // длинный список, коллекция
-        if (Copy(SV, 1, 2) = '''(') then
+           (DsgNormValue(DsgNodeValue(TabNode, Nm, Defs)) <> NormRV) then
           Continue;
 
         if (Nm = 'Left') or (Nm = 'Top') or (Nm = 'Width') or
@@ -28724,6 +28859,7 @@ begin
     ResNodes.Free;
   end;
   Dbg('21720: конструктор, живой вид: компонентов ' + IntToStr(Comps) +
+  ' (сверено заново ' + IntToStr(Computed) + ')' +
   ', свойств от кода ' + IntToStr(Props) + ', место от кода у ' +
       IntToStr(Placed) + ', значков ' + IntToStr(Glyphs) +
   ', полос прокрутки ' + IntToStr(Scrolls) + ', таблиц и деревьев ' +
@@ -35197,6 +35333,8 @@ var
   I, St, P, K, E, A: Integer;
   U, Rest, Names, Nm, TypeNm: string;
   Cls: TPersistentClass;
+  NewLines: TStringList;
+  HeadCnt, OldEnd, NewEnd, LineNo: Integer;
 begin
   // Тот же текст модуля, что в прошлый раз, - списки те же. Проход по
   // модулю построчно с очисткой комментариев на Unit1.pas (1,3 МБ) стоит
@@ -35206,6 +35344,35 @@ begin
      (ArrKey = FObjArrayKey) then
     Exit;
   FObjArrayKey := ArrKey;
+
+  // Правка - только строки-объявления полей (в них нет ни "array of", ни
+  // обращений к элементам): списки прежние, номера строк ниже правки
+  // сдвигаются
+  if (FObjArraySrc <> nil) and (FObjArrayNames <> nil) and
+     (FObjArrayLines <> nil) then
+  begin
+    NewLines := TStringList.Create;
+    try
+      NewLines.Text := ASrc;
+      if CodeDiffPlain(FObjArraySrc, NewLines, HeadCnt, OldEnd, NewEnd) then
+      begin
+        for I := 0 to FObjArrayLines.Count - 1 do
+        begin
+          LineNo := Integer(FObjArrayLines.Objects[I]);
+          if LineNo >= OldEnd then
+            FObjArrayLines.Objects[I] := TObject(LineNo + NewEnd - OldEnd);
+        end;
+        FObjArraySrc.Free;
+        FObjArraySrc := NewLines;
+        NewLines := nil;
+        Exit;
+      end;
+    finally
+      NewLines.Free;
+    end;
+  end;
+  FreeAndNil(FObjArraySrc);
+
   if FObjArrayNames = nil then
   begin
     FObjArrayNames := TStringList.Create;
@@ -35286,7 +35453,8 @@ begin
                     UpperCase(FObjArrayNames[A]), I);
     end;
   finally
-    SL.Free;
+    // Строки - для сдвига при следующей правке объявлений
+    FObjArraySrc := SL;
   end;
 end;
 
