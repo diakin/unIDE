@@ -190,8 +190,11 @@ type
     FRuntime: TList;
     // Компоненты .dfm, у которых часть места и размера при работе задаёт
     // код (MarkCodePlaced): строки "адрес компонента=буквы" - L, T, W, H.
-    // Эти координаты не меняются ни мышью, ни маркерами.
+    // С FLockCodePlaced эти координаты не меняются ни мышью, ни маркерами;
+    // без него (по умолчанию, как в Delphi) двигаются и пишутся в .dfm, а
+    // при работе код всё равно ставит своё.
     FCodePlaced: TStringList;
+    FLockCodePlaced: Boolean;
     // Идёт установка компонентов из кода (BeginRuntime .. FinishRuntime):
     // окно не перерисовывается, выравнивание в контейнерах отложено
     FRtBatch: Boolean;
@@ -294,6 +297,9 @@ type
     property ShowCaptions: Boolean read FShowCaptions write SetShowCaptions;
     property ShowHints: Boolean read FShowHints write SetShowHints;
     property ExtendedHints: Boolean read FExtendedHints write FExtendedHints;
+    // Запирать координаты, которые задаёт код (MarkCodePlaced); False -
+    // как в Delphi
+    property LockCodePlaced: Boolean read FLockCodePlaced write FLockCodePlaced;
     property OnSelect: TDsgSelectEvent read FOnSelect write FOnSelect;
     property OnChange: TDsgChangeEvent read FOnChange write FOnChange;
     property OnKey: TDsgKeyEvent read FOnKey write FOnKey;
@@ -374,7 +380,8 @@ type
     // здесь: двигать по этой оси и тянуть эту сторону нельзя, остальное -
     // можно, и в .dfm пишется только оно.
     procedure MarkCodePlaced(AComp: TComponent; const ASides: string);
-    // Буквы координат, которые задаёт код; '' - никакие
+    // Буквы координат, которые задаёт код и которые заперты; '' - никакие
+    // (и всегда '', пока LockCodePlaced = False)
     function CodePlacedSides(AComp: TComponent): string;
     // Красная рамка у скрытых: у самого ACtl, если он скрыт, и у его
     // безоконных детей (TLabel и т. п.) - их рисует ACtl
@@ -3338,6 +3345,9 @@ end;
 function TFormDesigner.CodePlacedSides(AComp: TComponent): string;
 begin
   Result := '';
+  // Не запирать: как в Delphi, место и размер правятся мышью и маркерами
+  if not FLockCodePlaced then
+    Exit;
   if (AComp <> nil) and (FCodePlaced <> nil) then
     Result := FCodePlaced.Values[IntToHex(Integer(AComp), 8)];
 end;
