@@ -76,6 +76,10 @@ FLockMemo: Boolean; // НАШ СЕМАФОР БЛОКИРОВКИ ДЛЯ TMEMO
     // открывает окно списка (EditPathList). Папки, которых нет на этом
     // компьютере, в списке остаются - сборка их пропускает.
     FCompIsList: array of Boolean;
+    FCompBtns: array of TUiButton;  // кнопки «...» полей, по номеру поля
+    // RapidQ: Use IDE path - Compiler, Include, Library, Projects,
+    // Templates, App icon берутся от IDE path (CompApplyIdePath)
+    FCompUseIde: TUiCheckBox;
     // Find installed только что записал пути в editor.ini, а на экране
     // ещё прежние значения полей. Нормализация при пересборке страницы
     // вернула бы их поверх найденных - на один раз её отключаем.
@@ -310,6 +314,8 @@ procedure lstCompTypesClick(Sender: TObject);
 procedure CompBrowseClick(Sender: TObject);
 procedure CompEditChange(Sender: TObject);
 procedure CompEditExit(Sender: TObject);
+procedure CompUseIdeClick(Sender: TObject);
+procedure CompApplyIdePath;
 procedure NormalizeCompFields;
 procedure CollectUnresolved(const S: string; AList: TStrings);
 procedure WarnUnresolved(ABad, ADropped: TStrings);
@@ -3561,6 +3567,8 @@ begin
 
   while pnlCompPage.ControlCount > 0 do
     pnlCompPage.Controls[0].Free;
+  FCompUseIde := nil;
+  SetLength(FCompBtns, 0);
   SetLength(FCompEdits, 0);
   SetLength(FCompKeys, 0);
   SetLength(FCompIsList, 0);
@@ -3700,6 +3708,24 @@ begin
       SetLength(FCompEdits, Fields.Count);
       SetLength(FCompKeys, Fields.Count);
       SetLength(FCompIsList, Fields.Count);
+      SetLength(FCompBtns, Fields.Count);
+
+      // RapidQ: галка Use IDE path над полями, как в RQdebugger
+      if AType = 'RapidQ Basic' then
+      begin
+        FCompUseIde := TUiCheckBox.Create(Self);
+        FCompUseIde.Parent := pnlCompPage;
+        FCompUseIde.Caption := 'Use IDE path';
+        FCompUseIde.Left := 12 + LabW;
+        FCompUseIde.Top := Y;
+        FCompUseIde.Width := 200;
+        if Ini <> nil then
+          FCompUseIde.Checked := Ini.ReadBool(FCompSection, 'UseIdePath',
+                                              False);
+        // Обработчик - после чтения: OnClick бывает и при смене из кода
+        FCompUseIde.OnClick := CompUseIdeClick;
+        Inc(Y, 28);
+      end;
 
       for I := 0 to Fields.Count - 1 do
       begin
@@ -3744,6 +3770,7 @@ begin
         B.Anchors := [akTop, akRight];
         B.Tag := I;
         B.OnClick := CompBrowseClick;
+        FCompBtns[I] := B;
 
         Inc(Y, 28);
       end;
@@ -3755,6 +3782,9 @@ begin
     Bmp.Free;
     Fields.Free;
   end;
+
+  // Use IDE path: производные поля - от IDE path и только для чтения
+  CompApplyIdePath;
 
   // Порядок поиска модулей при сборке Delphi - под полями
   if AType = 'Delphi' then
@@ -3775,6 +3805,8 @@ begin
       'папки программы, папки проекта редактора или папок выше программы); ' +
       'Library path. Browsing path компилятору не передаётся, как и в самой ' +
       'Delphi.' + #13#10#13#10 +
+      'Output (exe) и Output (dcu) пустые - exe и .dcu кладутся в папку ' +
+      '.dpr проекта.' + #13#10#13#10 +
       'Папки, которых нет на этом компьютере, в списках остаются (они могут ' +
       'быть с другого компьютера) и при сборке пропускаются; удалить их - ' +
       'кнопка ... и Delete invalid.';
@@ -5626,6 +5658,70 @@ begin
   // То же поле на вкладке Arduino
   if CompareText(FCompType, 'Arduino') = 0 then
     ArdTabSetField(FCompKeys[I], TUiEdit(Sender).Text);
+
+  // Сменился IDE path - поля от него следом (Use IDE path)
+  if (FCompUseIde <> nil) and FCompUseIde.Checked and
+     (CompareText(FCompKeys[I], 'IdePath') = 0) then
+    CompApplyIdePath;
+end;
+
+// Галка Use IDE path (RapidQ): состояние - в editor.ini, ключ UseIdePath
+// раздела инструмента
+procedure TForm2.CompUseIdeClick(Sender: TObject);
+var
+  Ini: TIniFile;
+begin
+  if (FCompUseIde = nil) or (Form1 = nil) or (FCompSection = '') then
+    Exit;
+  Ini := TIniFile.Create(Form1.SettingsFileName);
+  try
+    Ini.WriteBool(FCompSection, 'UseIdePath', FCompUseIde.Checked);
+  finally
+    Ini.Free;
+  end;
+  CompApplyIdePath;
+end;
+
+// Use IDE path (RapidQ), как в RQdebugger: Compiler - сам IDE path,
+// Include - IDE path + INC\, Library - LIB\, Projects - PROJECTS\,
+// Templates - TEMPLATES\, App icon - DEFAULT.ICO. Поля только для чтения,
+// кнопки «...» выключены; значения пишутся в editor.ini (OnChange), так что
+// сборка читает их как раньше. Галка снята - поля снова правятся, значения
+// остаются прежними. Components от IDE path не зависит.
+procedure TForm2.CompApplyIdePath;
+const
+  DerivedKeys: array[0..5] of string = (
+    'CompPath', 'IncPath', 'LibPath', 'PrjPath', 'TplPath', 'IcoFile');
+  DerivedTails: array[0..5] of string = (
+    '', 'INC\', 'LIB\', 'PROJECTS\', 'TEMPLATES\', 'DEFAULT.ICO');
+var
+  UseIde: Boolean;
+  Root, NewValue: string;
+  KeyIdx, FieldIdx: Integer;
+begin
+  if FCompUseIde = nil then
+    Exit;
+  UseIde := FCompUseIde.Checked;
+  Root := '';
+  FieldIdx := CompFieldIdx('IdePath');
+  if FieldIdx >= 0 then
+    Root := Trim(FCompEdits[FieldIdx].Text);
+  if Root <> '' then
+    Root := IncludeTrailingPathDelimiter(Root);
+  for KeyIdx := 0 to High(DerivedKeys) do
+  begin
+    FieldIdx := CompFieldIdx(DerivedKeys[KeyIdx]);
+    if FieldIdx < 0 then
+      Continue;
+    FCompEdits[FieldIdx].ReadOnly := UseIde;
+    if (FieldIdx <= High(FCompBtns)) and (FCompBtns[FieldIdx] <> nil) then
+      FCompBtns[FieldIdx].Enabled := not UseIde;
+    if not UseIde or (Root = '') then
+      Continue;
+    NewValue := Root + DerivedTails[KeyIdx];
+    if FCompEdits[FieldIdx].Text <> NewValue then
+      FCompEdits[FieldIdx].Text := NewValue;   // OnChange пишет в editor.ini
+  end;
 end;
 
 procedure TForm2.LayoutIndentGroup;
