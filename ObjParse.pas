@@ -1825,13 +1825,16 @@ begin
   FreeAndNil(RrnLines);
 end;
 
-// Строка-объявление поля или переменной: "Panel5: TPanel; // ...".
-// Описаний созданий в такой строке нет: ни присваивания, ни вызова, ни
-// скобок комментария, которые меняли бы смысл соседних строк.
+// Строка-объявление поля или переменной: "Panel5: TPanel; // ...",
+// "A, B: TLabel;". Описаний созданий в такой строке нет: ни присваивания,
+// ни вызова, ни скобок комментария, которые меняли бы смысл соседних строк.
+// Заголовок без скобок ("function GetX: TPanel;") объявлением не считается:
+// это граница процедуры и, бывает, помощник-создатель. Пустая строка и
+// строка-комментарий // - тоже годятся.
 function RrnPlainLine(const ALine: string): Boolean;
 var
-  Code: string;
-  CharIdx, CommentPos: Integer;
+  Code, Before, After, FirstWord: string;
+  CharIdx, CommentPos, ColonPos: Integer;
 begin
   Code := ALine;
   CommentPos := Pos('//', Code);
@@ -1846,7 +1849,79 @@ begin
     if not (Code[CharIdx] in ['A'..'Z', 'a'..'z', '0'..'9', '_', ' ', #9,
                                ',', ':', ';', '.']) then
       Exit;
-  Result := (Pos(':', Code) > 0) and (Code[Length(Code)] = ';');
+  ColonPos := Pos(':', Code);
+  if (ColonPos <= 1) or (Code[Length(Code)] <> ';') then
+    Exit;
+  // Слева - имена через запятую, справа - один тип (можно с модулем)
+  Before := Trim(Copy(Code, 1, ColonPos - 1));
+  After := Trim(Copy(Code, ColonPos + 1, Length(Code) - ColonPos - 1));
+  if (After = '') or (Pos(':', After) > 0) or (Pos(' ', After) > 0) or
+     (Pos(',', After) > 0) or (Pos(';', After) > 0) then
+    Exit;
+  if (Pos(';', Before) > 0) or (Pos('.', Before) > 0) then
+    Exit;
+  FirstWord := Before;
+  CharIdx := 1;
+  while (CharIdx <= Length(FirstWord)) and
+        (FirstWord[CharIdx] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+    Inc(CharIdx);
+  FirstWord := LowerCase(Copy(FirstWord, 1, CharIdx - 1));
+  if (FirstWord = 'procedure') or (FirstWord = 'function') or
+     (FirstWord = 'constructor') or (FirstWord = 'destructor') or
+     (FirstWord = 'property') or (FirstWord = 'class') or
+     (FirstWord = 'var') or (FirstWord = 'const') or (FirstWord = 'type') or
+     (FirstWord = 'out') or (FirstWord = 'label') or (FirstWord = 'case') then
+    Exit;
+  Result := True;
+end;
+
+// Где новый текст отличается от прежнего: строки [AHead, AOldEnd) прежнего
+// стали строками [AHead, ANewEnd) нового. True - отличие небольшое и только
+// в строках-объявлениях (RrnPlainLine).
+function CodeDiffPlain(AOld, ANew: TStrings;
+                       var AHead, AOldEnd, ANewEnd: Integer): Boolean;
+const
+  DiffMaxLines = 500;
+var
+  Idx: Integer;
+begin
+  Result := False;
+  AHead := 0;
+  while (AHead < AOld.Count) and (AHead < ANew.Count) and
+        (AOld[AHead] = ANew[AHead]) do
+    Inc(AHead);
+  AOldEnd := AOld.Count;
+  ANewEnd := ANew.Count;
+  while (AOldEnd > AHead) and (ANewEnd > AHead) and
+        (AOld[AOldEnd - 1] = ANew[ANewEnd - 1]) do
+  begin
+    Dec(AOldEnd);
+    Dec(ANewEnd);
+  end;
+  if (AOldEnd - AHead > DiffMaxLines) or (ANewEnd - AHead > DiffMaxLines) then
+    Exit;
+  for Idx := AHead to AOldEnd - 1 do
+    if not RrnPlainLine(AOld[Idx]) then
+      Exit;
+  for Idx := AHead to ANewEnd - 1 do
+    if not RrnPlainLine(ANew[Idx]) then
+      Exit;
+  Result := True;
+end;
+
+// Номер строки ALine прежнего текста - в новом. False - строка была среди
+// изменившихся.
+function CodeShiftLine(var ALine: Integer; AHead, AOldEnd, ADelta: Integer): Boolean;
+begin
+  Result := True;
+  if ALine < AHead then
+    Exit;
+  if ALine < AOldEnd then
+  begin
+    Result := False;
+    Exit;
+  end;
+  Inc(ALine, ADelta);
 end;
 
 // Текст модуля изменился только в строках-объявлениях (конструктор форм
@@ -1855,8 +1930,6 @@ end;
 // это сотни миллисекунд на каждую правку в конструкторе) не нужен.
 // True - кэш переведён на новый текст.
 function RrnRemap(const AText, AKey: string): Boolean;
-const
-  RrnRemapMaxLines = 500;
 var
   NewLines: TStringList;
   HeadCnt, OldEnd, NewEnd, Delta, Idx: Integer;
@@ -1869,29 +1942,10 @@ begin
   NewLines := TStringList.Create;
   try
     NewLines.Text := AText;
-    HeadCnt := 0;
-    while (HeadCnt < RrnLines.Count) and (HeadCnt < NewLines.Count) and
-          (RrnLines[HeadCnt] = NewLines[HeadCnt]) do
-      Inc(HeadCnt);
-    OldEnd := RrnLines.Count;
-    NewEnd := NewLines.Count;
-    while (OldEnd > HeadCnt) and (NewEnd > HeadCnt) and
-          (RrnLines[OldEnd - 1] = NewLines[NewEnd - 1]) do
-    begin
-      Dec(OldEnd);
-      Dec(NewEnd);
-    end;
     // Изменились строки [HeadCnt, OldEnd) прежнего текста - теперь
-    // [HeadCnt, NewEnd). Большая правка - разбор заново.
-    if (OldEnd - HeadCnt > RrnRemapMaxLines) or
-       (NewEnd - HeadCnt > RrnRemapMaxLines) then
+    // [HeadCnt, NewEnd). Большая правка или не объявления - разбор заново.
+    if not CodeDiffPlain(RrnLines, NewLines, HeadCnt, OldEnd, NewEnd) then
       Exit;
-    for Idx := HeadCnt to OldEnd - 1 do
-      if not RrnPlainLine(RrnLines[Idx]) then
-        Exit;
-    for Idx := HeadCnt to NewEnd - 1 do
-      if not RrnPlainLine(NewLines[Idx]) then
-        Exit;
     for Idx := 0 to RrnRecs.Count - 1 do
     begin
       Rec := TCreateRec(RrnRecs[Idx]);
@@ -2748,17 +2802,212 @@ var
   CbrKey: string = '';
   CbrLines: TStringList = nil;
   CbrRecs: TList = nil;         // TCodeRec с шаблонами узлов
+  CbrNames: TStringList = nil;  // имена .dfm, по которым собран кэш
+  CbrClassFull: string = '';    // класс формы и AFull того же сбора
 
 procedure CbrFree;
 var
   I: Integer;
 begin
   CbrKey := '';
+  CbrClassFull := '';
+  FreeAndNil(CbrNames);
   if CbrRecs <> nil then
     for I := 0 to CbrRecs.Count - 1 do
       TCodeRec(CbrRecs[I]).Free;
   FreeAndNil(CbrRecs);
   FreeAndNil(CbrLines);
+end;
+
+// Кэш BuildCodeRuntime - на новый текст модуля и новые имена .dfm без
+// разбора модуля, если правка - только строки-объявления (конструктор форм
+// убрал или добавил поле компонента: Cut, Delete, Paste). Записи кэша
+// верны, если:
+//  - ни одна их строка (создание, родитель, свойство, событие) не среди
+//    изменившихся - строки ниже правки сдвигаются;
+//  - переменная записи не объявлена в изменившихся строках: от того, поле
+//    ли она формы, зависит, идёт ли запись в дерево;
+//  - ни одно имя .dfm, которое появилось или пропало, не стоит в строке
+//    создания: по нему угадывается родитель из аргумента конструктора.
+// True - кэш переведён на новый текст и имена.
+function CbrRemap(const AText, AKey, AClassFull: string;
+                  ANames: TStringList): Boolean;
+var
+  NewLines, Changed, Declared: TStringList;
+  HeadCnt, OldEnd, NewEnd, Delta, Idx, PropIdx, NameIdx: Integer;
+  Rec: TCodeRec;
+  NewLine, Word: string;
+  LineNo: Integer;
+
+  // Имена слева от ':' в строке-объявлении - в Declared
+  procedure AddDeclared(const ALine: string);
+  var
+    Code: string;
+    CommaPos, ColonPos: Integer;
+  begin
+    Code := ALine;
+    CommaPos := Pos('//', Code);
+    if CommaPos > 0 then
+      Code := Copy(Code, 1, CommaPos - 1);
+    ColonPos := Pos(':', Code);
+    if ColonPos <= 0 then
+      Exit;
+    Code := Copy(Code, 1, ColonPos - 1);
+    repeat
+      CommaPos := Pos(',', Code);
+      if CommaPos > 0 then
+      begin
+        Declared.Add(Trim(Copy(Code, 1, CommaPos - 1)));
+        Delete(Code, 1, CommaPos);
+      end
+      else
+        Declared.Add(Trim(Code));
+    until CommaPos <= 0;
+  end;
+
+  // Слово AWord (без учёта регистра) стоит в строке отдельным словом
+  function HasWord(const ALine, AWord: string): Boolean;
+  var
+    UpLine, UpWord: string;
+    FoundPos, AfterPos: Integer;
+  begin
+    Result := False;
+    UpLine := UpperCase(ALine);
+    UpWord := UpperCase(AWord);
+    FoundPos := Pos(UpWord, UpLine);
+    while FoundPos > 0 do
+    begin
+      AfterPos := FoundPos + Length(UpWord);
+      if ((FoundPos = 1) or
+          not (UpLine[FoundPos - 1] in ['A'..'Z', '0'..'9', '_'])) and
+         ((AfterPos > Length(UpLine)) or
+          not (UpLine[AfterPos] in ['A'..'Z', '0'..'9', '_'])) then
+      begin
+        Result := True;
+        Exit;
+      end;
+      UpLine[FoundPos] := '#';
+      FoundPos := Pos(UpWord, UpLine);
+    end;
+  end;
+
+begin
+  Result := False;
+  if (CbrKey = '') or (CbrLines = nil) or (CbrRecs = nil) or
+     (CbrNames = nil) or (AClassFull <> CbrClassFull) then
+    Exit;
+  NewLines := TStringList.Create;
+  Changed := TStringList.Create;
+  Declared := TStringList.Create;
+  try
+    NewLines.Text := AText;
+    if not CodeDiffPlain(CbrLines, NewLines, HeadCnt, OldEnd, NewEnd) then
+      Exit;
+    for Idx := HeadCnt to OldEnd - 1 do
+      AddDeclared(CbrLines[Idx]);
+    for Idx := HeadCnt to NewEnd - 1 do
+      AddDeclared(NewLines[Idx]);
+    Declared.CaseSensitive := False;
+
+    // Имена .dfm, которые появились или пропали
+    Changed.CaseSensitive := False;
+    for NameIdx := 0 to ANames.Count - 1 do
+      if CbrNames.IndexOf(ANames[NameIdx]) < 0 then
+        Changed.Add(ANames[NameIdx]);
+    for NameIdx := 0 to CbrNames.Count - 1 do
+      if ANames.IndexOf(CbrNames[NameIdx]) < 0 then
+        Changed.Add(CbrNames[NameIdx]);
+
+    Delta := NewEnd - OldEnd;
+    // Сначала только проверка: кэш меняется, лишь когда годится весь
+    for Idx := 0 to CbrRecs.Count - 1 do
+    begin
+      Rec := TCodeRec(CbrRecs[Idx]);
+      if Declared.IndexOf(Rec.LHS) >= 0 then
+        Exit;
+      LineNo := Rec.Line;
+      if not CodeShiftLine(LineNo, HeadCnt, OldEnd, Delta) then
+        Exit;
+      if Rec.ParLine >= 0 then
+      begin
+        LineNo := Rec.ParLine;
+        if not CodeShiftLine(LineNo, HeadCnt, OldEnd, Delta) then
+          Exit;
+      end;
+      if Rec.Tpl <> nil then
+      begin
+        for PropIdx := 0 to Rec.Tpl.PropN.Count - 1 do
+        begin
+          LineNo := Integer(Rec.Tpl.PropN.Objects[PropIdx]);
+          if (LineNo >= 0) and
+             not CodeShiftLine(LineNo, HeadCnt, OldEnd, Delta) then
+            Exit;
+        end;
+        for PropIdx := 0 to Rec.Tpl.EvN.Count - 1 do
+        begin
+          LineNo := Integer(Rec.Tpl.EvN.Objects[PropIdx]);
+          if (LineNo >= 0) and
+             not CodeShiftLine(LineNo, HeadCnt, OldEnd, Delta) then
+            Exit;
+        end;
+      end;
+      if Changed.Count > 0 then
+      begin
+        NewLine := CbrLines[Rec.Line];
+        for NameIdx := 0 to Changed.Count - 1 do
+        begin
+          Word := Changed[NameIdx];
+          if HasWord(NewLine, Word) then
+            Exit;
+        end;
+      end;
+    end;
+
+    // Годится - сдвиг номеров строк
+    if Delta <> 0 then
+      for Idx := 0 to CbrRecs.Count - 1 do
+      begin
+        Rec := TCodeRec(CbrRecs[Idx]);
+        CodeShiftLine(Rec.Line, HeadCnt, OldEnd, Delta);
+        if Rec.ParLine >= 0 then
+          CodeShiftLine(Rec.ParLine, HeadCnt, OldEnd, Delta);
+        // Конец описания - строка перед границей (а граница - не
+        // объявление, она ниже правки) или последняя строка модуля
+        if Rec.EndLine + 1 >= OldEnd then
+          Inc(Rec.EndLine, Delta);
+        if Rec.Tpl <> nil then
+        begin
+          for PropIdx := 0 to Rec.Tpl.PropN.Count - 1 do
+          begin
+            LineNo := Integer(Rec.Tpl.PropN.Objects[PropIdx]);
+            if LineNo >= 0 then
+            begin
+              CodeShiftLine(LineNo, HeadCnt, OldEnd, Delta);
+              Rec.Tpl.PropN.Objects[PropIdx] := TObject(LineNo);
+            end;
+          end;
+          for PropIdx := 0 to Rec.Tpl.EvN.Count - 1 do
+          begin
+            LineNo := Integer(Rec.Tpl.EvN.Objects[PropIdx]);
+            if LineNo >= 0 then
+            begin
+              CodeShiftLine(LineNo, HeadCnt, OldEnd, Delta);
+              Rec.Tpl.EvN.Objects[PropIdx] := TObject(LineNo);
+            end;
+          end;
+        end;
+      end;
+    CbrLines.Free;
+    CbrLines := NewLines;
+    NewLines := nil;
+    CbrNames.Assign(ANames);
+    CbrKey := AKey;
+    Result := True;
+  finally
+    Declared.Free;
+    Changed.Free;
+    NewLines.Free;
+  end;
 end;
 
 // AFormClass - класс формы: по нему в модуле ищутся её поля. AFull - полное
@@ -2951,7 +3200,8 @@ begin
     Key := IntToHex(Crc32Of(AText), 8) + ':' + IntToStr(Length(AText)) +
            '|' + AFormClass + '|' + IntToStr(Ord(AFull)) + '|' +
            IntToHex(Crc32Of(Names), 8);
-    if Key = CbrKey then
+    if (Key = CbrKey) or
+       CbrRemap(AText, Key, AFormClass + '|' + IntToStr(Ord(AFull)), Index) then
       Lines := CbrLines
     else
     begin
@@ -3162,6 +3412,12 @@ begin
 
       // Сбор дошёл до конца - годится и для следующих вызовов
       CbrKey := Key;
+      CbrClassFull := AFormClass + '|' + IntToStr(Ord(AFull));
+      CbrNames := TStringList.Create;
+      CbrNames.Sorted := True;
+      CbrNames.CaseSensitive := False;
+      CbrNames.Duplicates := dupIgnore;
+      CbrNames.Assign(Index);
     end;
 
     // --- узлы этого вызова: копии записей кэша (раскладка их меняет) и
