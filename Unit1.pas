@@ -1167,10 +1167,12 @@ type
     FRqDsgOwnWrite: Boolean; // текст поменял сам конструктор - не перестраивать
     FDsgMenuRq: Boolean;     // FDsgMenu открыл конструктор RapidQ (RqDsgContext)
     FRqPalPage: Integer;     // первая страница палитры RapidQ
-    // Режим среды (ApplyLangMode): -1 - ещё не применён, 0 - Delphi,
-    // 1 - Basic; для какого файла и проекта считан; места кнопок ряда
-    // Project из .dfm
+    // Режим среды (ApplyLangMode): -1 - ещё не применён, иначе сборщик
+    // активной вкладки (bkDelphi, bkRapidQ, bkFreeBasic, bkArduino); для
+    // какого файла и проекта считан; места кнопок ряда Project из .dfm
     FLangMode: Integer;
+    FBuildReason: string;       // почему CurBuildKind выбрал этот сборщик
+    FBasDialects: TStringList;  // диалект .bas по файлу: путь|время -> сборщик
     FLangModeKey: string;
     FRunRowLefts: array of Integer;
     // Вставка с палитры RapidQ (RqDsgPlace -> WMRqDsgPlace): класс,
@@ -2536,6 +2538,11 @@ type
     function  CompileDelphi: Boolean;
     // Сборка RapidQ Basic (rc.exe) и выбор между ней и Delphi
     function  BuildIsRapidQ: Boolean;
+    function  CurBuildKind: Integer;
+    function  ProjectBuildKind(const APrj: string): Integer;
+    function  BasDialectOf(const AFile: string): Integer;
+    function  DelphiDprInFolder(const ADir: string; AAsk: Boolean): string;
+    procedure DelphiRenameOtherDprs(ADprs: TStrings; const AKeep: string);
     function  CompileProject: Boolean;
     function  RapidQTargetBas(ARemember: Boolean): string;
     function  RapidQFindSourceLine(const AFile, AText,
@@ -3015,6 +3022,14 @@ var
   {$R *.dfm}
   {$R formsnapshot_src.res} // FormSnapshot.pas для пробного запуска - ProbeRun
   {$R toolbar_icons.res} // ЭТА СТРОЧКА ЗАСТАВИТ DELPHI ИЗ RC-ФАЙЛА СДЕЛАТЬ ВШИТЫЙ РЕСУРС!
+
+const
+  // Сборщик активной вкладки (CurBuildKind) и режим среды (FLangMode)
+  bkNone = -1;       // не определён: файл и проект ничего не говорят
+  bkDelphi = 0;
+  bkRapidQ = 1;
+  bkFreeBasic = 2;
+  bkArduino = 3;
 
 var
   // msftedit.dll загружена, и окна TRichEdit создаются классом RICHEDIT50W
@@ -10150,11 +10165,413 @@ begin
     Result := ChangeFileExt(ExtractFileName(AMain), '');
 end;
 
+// ---------------------------------------------------------------------------
+//  Сборщик активной вкладки: Delphi, RapidQ, FreeBASIC или Arduino. Решает
+//  файл вкладки, а не открытый проект (CurBuildKind):
+//    - описание проекта (.prj) - тип этого проекта;
+//    - .pas, .dpr, .dfm, .dpk - Delphi; .ino, .pde - Arduino; .rqb, .rq -
+//      RapidQ;
+//    - .bas - по тексту (BasDialectOf); признаков нет - по типу проекта,
+//      если он RapidQ или FreeBASIC, иначе RapidQ;
+//    - .inc, .bi - по главному файлу (IncOwner); без него .bi - FreeBASIC,
+//      .inc - Delphi, если в папке есть .dpr, иначе по типу проекта;
+//    - .h, .c, .cpp, .hpp - Arduino, если папка - скетч (<папка>.ino),
+//      иначе по типу проекта;
+//    - остальное - по типу проекта.
+//  Почему выбран - в FBuildReason, это пишется в лог сборки.
+// ---------------------------------------------------------------------------
 
-// Файлы .dpr в папке, без путей. Возвращает их число.
+function BuildKindName(AKind: Integer): string;
+begin
+  case AKind of
+    bkDelphi: Result := 'Delphi';
+    bkRapidQ: Result := 'RapidQ';
+    bkFreeBasic: Result := 'FreeBASIC';
+    bkArduino: Result := 'Arduino';
+  else
+    Result := '(не определён)';
+  end;
+end;
 
-// Выбор .dpr в папке. Один файл берётся молча, несколько - спрашиваем,
-// ни одного - папка не та.
+// Диалект Basic по тексту. RapidQ: директивы с $ в начале строки
+// ($INCLUDE, $TYPECHECK, $APPTYPE...), объявления с классами RapidQ
+// (AS QFORM, CREATE ... AS Q...). FreeBASIC: директивы с # (#include,
+// #define, #lang, #if...). Строки-комментарии (' и REM) не в счёт: в них
+// у FreeBASIC бывает '$include из QBasic. Решает перевес; поровну или
+// признаков нет - bkNone.
+function BasDialectOfText(const AText: string): Integer;
+var
+  Lines: TStringList;
+  LineIdx, RqScore, FbScore: Integer;
+  LowLine: string;
+begin
+  RqScore := 0;
+  FbScore := 0;
+  Lines := TStringList.Create;
+  try
+    Lines.Text := AText;
+    for LineIdx := 0 to Lines.Count - 1 do
+    begin
+      LowLine := LowerCase(TrimLeft(Lines[LineIdx]));
+      if Length(LowLine) < 2 then
+        Continue;
+      if (LowLine[1] = '''') or (Copy(LowLine, 1, 4) = 'rem ') then
+        Continue;
+      if (LowLine[1] = '$') and (LowLine[2] in ['a'..'z']) then
+        Inc(RqScore)
+      else if (LowLine[1] = '#') and (LowLine[2] in ['a'..'z']) then
+        Inc(FbScore)
+      else if (Pos(' as qform', LowLine) > 0) or
+              ((Copy(LowLine, 1, 7) = 'create ') and
+               (Pos(' as q', LowLine) > 0)) then
+        Inc(RqScore);
+    end;
+  finally
+    Lines.Free;
+  end;
+  if RqScore > FbScore then
+    Result := bkRapidQ
+  else if FbScore > RqScore then
+    Result := bkFreeBasic
+  else
+    Result := bkNone;
+end;
+
+// Папка - скетч Arduino: в ней <имя папки>.ino (или .pde)
+function IsSketchFolder(const ADir: string): Boolean;
+var
+  Dir, Folder: string;
+begin
+  Result := False;
+  if ADir = '' then
+    Exit;
+  Dir := IncludeTrailingPathDelimiter(ADir);
+  Folder := ExtractFileName(ExcludeTrailingPathDelimiter(ADir));
+  Result := (Folder <> '') and (FileExists(Dir + Folder + '.ino') or
+                                FileExists(Dir + Folder + '.pde'));
+end;
+
+// Файлы .dpr в папке - полными путями, по имени. Маска *.dpr находит и
+// x.dpr1 (его короткое имя X~1.DPR), поэтому расширение проверяется ещё
+// раз. Возвращает их число.
+function DelphiDprList(const ADir: string; AList: TStringList): Integer;
+var
+  SR: TSearchRec;
+  Dir: string;
+begin
+  AList.Clear;
+  Result := 0;
+  if ADir = '' then
+    Exit;
+  Dir := IncludeTrailingPathDelimiter(ADir);
+  if FindFirst(Dir + '*.dpr', faAnyFile and not faDirectory, SR) = 0 then
+  try
+    repeat
+      if CompareText(ExtractFileExt(SR.Name), '.dpr') = 0 then
+        AList.Add(Dir + SR.Name);
+    until FindNext(SR) <> 0;
+  finally
+    FindClose(SR);
+  end;
+  AList.Sort;
+  Result := AList.Count;
+end;
+
+// Тип проекта -> сборщик. Lazarus, Go и прочие, которых здесь не собрать,
+// и пустое имя - bkNone. Проект без типа - RapidQ (ProjectTypeOf).
+function TForm1.ProjectBuildKind(const APrj: string): Integer;
+var
+  PrjType: string;
+begin
+  Result := bkNone;
+  if APrj = '' then
+    Exit;
+  PrjType := ProjectTypeOf(APrj);
+  if CompareText(PrjType, 'Delphi') = 0 then
+    Result := bkDelphi
+  else if CompareText(PrjType, 'RapidQ Basic') = 0 then
+    Result := bkRapidQ
+  else if CompareText(PrjType, 'FreeBASIC') = 0 then
+    Result := bkFreeBasic
+  else if CompareText(PrjType, 'Arduino') = 0 then
+    Result := bkArduino;
+end;
+
+// Диалект .bas по файлу на диске (BasDialectOfText по первым 64 КБ).
+// Запоминается по пути и времени файла: после записи считается заново.
+function TForm1.BasDialectOf(const AFile: string): Integer;
+const
+  HeadBytes = 65536;
+var
+  Key, Head: string;
+  Idx, HeadLen: Integer;
+  Stream: TFileStream;
+begin
+  Result := bkNone;
+  if (AFile = '') or not FileExists(AFile) then
+    Exit;
+  Key := LowerCase(ExpandFileName(AFile)) + '|' + IntToStr(FileAge(AFile));
+  if FBasDialects = nil then
+  begin
+    FBasDialects := TStringList.Create;
+    FBasDialects.Sorted := True;
+  end;
+  Idx := FBasDialects.IndexOf(Key);
+  if Idx >= 0 then
+  begin
+    Result := Integer(FBasDialects.Objects[Idx]) - 10;
+    Exit;
+  end;
+  Head := '';
+  try
+    Stream := TFileStream.Create(AFile, fmOpenRead or fmShareDenyNone);
+    try
+      if Stream.Size > HeadBytes then
+        HeadLen := HeadBytes
+      else
+        HeadLen := Integer(Stream.Size);
+      SetLength(Head, HeadLen);
+      if HeadLen > 0 then
+        Stream.ReadBuffer(Head[1], HeadLen);
+    finally
+      Stream.Free;
+    end;
+  except
+    Exit;   // файл занят или пропал - диалект не известен
+  end;
+  Result := BasDialectOfText(Head);
+  FBasDialects.AddObject(Key, TObject(Result + 10));
+end;
+
+function TForm1.CurBuildKind: Integer;
+var
+  FileNm, Ext, Owner, PrjName, PrjNote: string;
+  Dprs: TStringList;
+  PrjKind: Integer;
+begin
+  FileNm := FCurrentFileName;
+  Ext := LowerCase(ExtractFileExt(FileNm));
+  PrjName := BuildProject;
+  PrjKind := ProjectBuildKind(PrjName);
+  if PrjName <> '' then
+    PrjNote := 'тип проекта ' + PrjName
+  else
+    PrjNote := 'проекта нет';
+  Result := bkNone;
+  FBuildReason := '';
+
+  if Ext = '.prj' then
+  begin
+    Result := PrjKind;
+    FBuildReason := PrjNote;
+  end
+  else if (Ext = '.pas') or (Ext = '.dpr') or (Ext = '.dfm') or
+          (Ext = '.dpk') then
+  begin
+    Result := bkDelphi;
+    FBuildReason := 'по расширению ' + Ext;
+  end
+  else if (Ext = '.ino') or (Ext = '.pde') then
+  begin
+    Result := bkArduino;
+    FBuildReason := 'по расширению ' + Ext;
+  end
+  else if (Ext = '.rqb') or (Ext = '.rq') then
+  begin
+    Result := bkRapidQ;
+    FBuildReason := 'по расширению ' + Ext;
+  end
+  else if Ext = '.bas' then
+  begin
+    Result := BasDialectOf(FileNm);
+    if Result <> bkNone then
+      FBuildReason := 'по тексту файла'
+    else if (PrjKind = bkRapidQ) or (PrjKind = bkFreeBasic) then
+    begin
+      Result := PrjKind;
+      FBuildReason := 'признаков в тексте нет, ' + PrjNote;
+    end
+    else
+    begin
+      Result := bkRapidQ;
+      FBuildReason := 'признаков в тексте нет, по умолчанию';
+    end;
+  end
+  else if (Ext = '.inc') or (Ext = '.bi') then
+  begin
+    Owner := CurIncOwner;
+    if Owner <> '' then
+    begin
+      Result := BasDialectOf(Owner);
+      if Result = bkNone then
+        Result := bkRapidQ;
+      FBuildReason := 'подключён в ' + ExtractFileName(Owner);
+    end
+    else if Ext = '.bi' then
+    begin
+      Result := bkFreeBasic;
+      FBuildReason := 'по расширению .bi';
+    end
+    else
+    begin
+      Dprs := TStringList.Create;
+      try
+        if DelphiDprList(ExtractFilePath(FileNm), Dprs) > 0 then
+        begin
+          Result := bkDelphi;
+          FBuildReason := 'в папке есть .dpr';
+        end;
+      finally
+        Dprs.Free;
+      end;
+      if Result = bkNone then
+      begin
+        Result := PrjKind;
+        FBuildReason := PrjNote;
+      end;
+    end;
+  end
+  else if (Ext = '.h') or (Ext = '.c') or (Ext = '.cpp') or
+          (Ext = '.hpp') then
+  begin
+    if IsSketchFolder(ExtractFilePath(FileNm)) then
+    begin
+      Result := bkArduino;
+      FBuildReason := 'папка скетча';
+    end
+    else
+    begin
+      Result := PrjKind;
+      FBuildReason := PrjNote;
+    end;
+  end
+  else
+  begin
+    Result := PrjKind;
+    FBuildReason := PrjNote;
+  end;
+end;
+
+// .dpr папки ADir - цель сборки Delphi. Один - он. Ни одного - цель
+// проекта Delphi (модуль из общей папки), иначе пусто. Несколько: AAsk -
+// список на выбор, остальные переименовываются в .dpr1, .dpr2... (в папке
+// остаётся один .dpr, вопрос больше не встаёт); без AAsk (Run, отладчик -
+// молча) - цель проекта, если она среди них, иначе пусто.
+function TForm1.DelphiDprInFolder(const ADir: string; AAsk: Boolean): string;
+var
+  Dprs, Names: TStringList;
+  BuildPrj, Stored, Chosen: string;
+  DprIdx: Integer;
+begin
+  Result := '';
+  BuildPrj := BuildProject;
+  Stored := '';
+  if ProjectBuildKind(BuildPrj) = bkDelphi then
+    Stored := ProjectTargetFind(BuildPrj);
+  if Stored <> '' then
+    Stored := ExpandFileName(Stored);
+  Dprs := TStringList.Create;
+  try
+    DelphiDprList(ADir, Dprs);
+    if Dprs.Count = 0 then
+    begin
+      if (Stored <> '') and FileExists(Stored) then
+      begin
+        Result := Stored;
+        if AAsk then
+          LogComp('В папке вкладки нет .dpr - собирается цель проекта ' +
+                  BuildPrj + ': ' + Stored);
+      end
+      else if AAsk then
+        LogComp('Компиляция: в папке ' + ADir + ' нет .dpr');
+      Exit;
+    end;
+    if Dprs.Count = 1 then
+    begin
+      Result := Dprs[0];
+      Exit;
+    end;
+
+    if not AAsk then
+    begin
+      for DprIdx := 0 to Dprs.Count - 1 do
+        if CompareText(Dprs[DprIdx], Stored) = 0 then
+          Result := Dprs[DprIdx];
+      Exit;
+    end;
+
+    // Несколько - выбор из списка; цель проекта первой, она и выделена
+    Names := TStringList.Create;
+    try
+      for DprIdx := 0 to Dprs.Count - 1 do
+        if CompareText(Dprs[DprIdx], Stored) = 0 then
+          Names.Insert(0, ExtractFileName(Dprs[DprIdx]))
+        else
+          Names.Add(ExtractFileName(Dprs[DprIdx]));
+      Chosen := ChooseFromList('Сборка Delphi',
+        'В папке несколько .dpr. Остальные будут переименованы в .dpr1, ' +
+        '.dpr2...', Names);
+    finally
+      Names.Free;
+    end;
+    if Chosen = '' then
+    begin
+      LogComp('Компиляция отменена: .dpr не выбран');
+      Exit;
+    end;
+    Result := IncludeTrailingPathDelimiter(ADir) + Chosen;
+    DelphiRenameOtherDprs(Dprs, Result);
+    // Цель проекта переименована - целью становится выбранный
+    if (Stored <> '') and not FileExists(Stored) then
+    begin
+      SetProjectTarget(BuildPrj, Result);
+      LogComp('Цель сборки проекта: ' + Result);
+    end;
+  finally
+    Dprs.Free;
+  end;
+end;
+
+// Все .dpr из ADprs, кроме AKeep, - в .dpr1, .dpr2... (номер - первый
+// свободный). Открытые во вкладках - под новым именем. .dof, .res и .cfg
+// не трогаются.
+procedure TForm1.DelphiRenameOtherDprs(ADprs: TStrings; const AKeep: string);
+var
+  DprIdx, Num, WinIdx: Integer;
+  OldName, NewName: string;
+  Changed: Boolean;
+begin
+  Num := 1;
+  Changed := False;
+  for DprIdx := 0 to ADprs.Count - 1 do
+  begin
+    OldName := ADprs[DprIdx];
+    if CompareText(OldName, AKeep) = 0 then
+      Continue;
+    repeat
+      NewName := OldName + IntToStr(Num);   // X.dpr -> X.dpr1
+      Inc(Num);
+    until not FileExists(NewName);
+    if not RenameFile(OldName, NewName) then
+    begin
+      LogComp('Не удалось переименовать ' + OldName + ': ' +
+              SysErrorMessage(GetLastError));
+      Continue;
+    end;
+    LogComp('Переименован: ' + ExtractFileName(OldName) + ' -> ' +
+            ExtractFileName(NewName));
+    WinIdx := WindowOfFile(OldName);
+    if WinIdx >= 0 then
+    begin
+      FWindows[WinIdx].FileName := NewName;
+      if WinIdx = FWindowsIndex then
+        FCurrentFileName := NewName;
+      Changed := True;
+    end;
+  end;
+  if Changed then
+    RefreshAllTabCaptions;
+end;
 
 // Выбор одной строки из списка. Пустая строка - отказались.
 function TForm1.ChooseFromList(const ACaption, APrompt: string;
@@ -17755,6 +18172,7 @@ begin
       FDiskAges.Objects[I].Free;
   FreeAndNil(FDiskAges);
   FreeAndNil(FProjectReg);
+  FreeAndNil(FBasDialects);
   // Схема подсветки (её списки и группы) освобождается в Destroy формы,
   // после FormDestroy
   ClearDfmNodes;
@@ -39773,7 +40191,6 @@ end;
 // Compile & Run решает, запускать ли собранное.
 function TForm1.CompileDelphi: Boolean;
 var
-  PrjType: string;
   Ini: TIniFile;
   Root, Exe, Dpr, Dir, Params: string;
   LibDir, UnitPath, ExeDir, DcuDir, Sect: string;
@@ -39787,31 +40204,10 @@ var
 begin
   Result := False;   // любой ранний выход - сборки не было
   ShowCompLog;
-  // Проект сборки: активная вкладка - описание другого проекта (.prj) - он
+  // Проект сборки: активная вкладка - описание другого проекта (.prj) - он.
+  // Собирать ли Delphi, решил CurBuildKind (CompileProject) - по файлу
+  // вкладки, тип проекта здесь уже не проверяется.
   BuildPrj := BuildProject;
-
-  // dcc32 собирает только Delphi. Проект другого типа - Lazarus, Go,
-  // Python, Rust - он не соберёт, а в логе была бы сотня ошибок не по делу.
-  // Проект без типа - старый, сделанный до появления типов: как раньше.
-  if BuildPrj <> '' then
-  begin
-    PrjType := ProjectTypeOf(BuildPrj);
-    if (PrjType <> '') and (CompareText(PrjType, 'Delphi') <> 0) then
-    begin
-      if CompLogEdit <> nil then
-        CompLogEdit.Lines.Clear;
-      LogComp('Сборка проектов ' + PrjType + ' здесь пока не поддерживается');
-      if CompareText(PrjType, 'Lazarus') = 0 then
-        LogComp('  Соберите проект в самой Lazarus или lazbuild <проект>.lpi')
-      else if CompareText(PrjType, 'Go') = 0 then
-        LogComp('  В папке проекта: go build')
-      else if CompareText(PrjType, 'Rust') = 0 then
-        LogComp('  В папке проекта: cargo build')
-      else if CompareText(PrjType, 'Python') = 0 then
-        LogComp('  Сборки не требуется: python main.py');
-      Exit;
-    end;
-  end;
 
   // Оба окна - только про эту сборку. Прежний вывод мешает: в нём те же
   // имена файлов и строк, и понять, к какому запуску относится строка,
@@ -39820,6 +40216,8 @@ begin
     CompLogEdit.Lines.Clear;
   if ErrLogEdit <> nil then
     ErrLogEdit.Lines.Clear;
+  if FBuildReason <> '' then
+    LogComp('Сборщик: Delphi (' + FBuildReason + ')');
   if CompareText(BuildPrj, FCurrentProject) <> 0 then
     LogComp('Собирается проект активной вкладки: ' + BuildPrj + ' (' +
             ProjectFileName(BuildPrj) + ')');
@@ -39849,48 +40247,48 @@ begin
   if not SaveSourcesBeforeBuild then
     Exit;
 
-  // Цель сборки берётся у проекта. Так собирается то, что задано, а не то,
-  // что случайно открыто в соседней вкладке.
+  // Цель сборки - .dpr папки активной вкладки (DelphiDprInFolder: один -
+  // он, несколько - выбор из списка, остальные переименовываются; ни
+  // одного - цель проекта). Вкладка - .dpr - он сам; описание проекта
+  // (.prj) - цель этого проекта.
   Dpr := '';
-  if BuildPrj <> '' then
+  if CompareText(ExtractFileExt(FCurrentFileName), '.prj') = 0 then
   begin
-    if CompareText(ProjectTypeOf(BuildPrj), 'Delphi') <> 0 then
-      LogComp('Внимание: тип проекта - ' + ProjectTypeOf(BuildPrj) +
-      ', а собирается он компилятором Delphi');
-              Dpr := ProjectTargetFind(BuildPrj);
-    // Записанной цели на диске нет (описание с другого компьютера), а
-    // нашлась другая - она и запоминается
-              if (Dpr <> '') and
-              (CompareText(Dpr, ProjectTargetOf(BuildPrj)) <> 0) then
+    if BuildPrj <> '' then
     begin
-      LogComp('Цель сборки проекта: записанной в описании нет на диске (' +
-              ProjectTargetOf(BuildPrj) + '), взята ' + Dpr);
-      SetProjectTarget(BuildPrj, Dpr);
+      Dpr := ProjectTargetFind(BuildPrj);
+      // Записанной цели на диске нет (описание с другого компьютера), а
+      // нашлась другая - она и запоминается
+      if (Dpr <> '') and
+         (CompareText(Dpr, ProjectTargetOf(BuildPrj)) <> 0) then
+      begin
+        LogComp('Цель сборки проекта: записанной в описании нет на диске (' +
+                ProjectTargetOf(BuildPrj) + '), взята ' + Dpr);
+        SetProjectTarget(BuildPrj, Dpr);
+      end;
     end;
+    if (Dpr = '') or not FileExists(Dpr) then
+    begin
+      LogComp('Компиляция: у проекта ' + BuildPrj + ' нет цели сборки. ' +
+              'Откройте его .dpr и соберите - он запомнится как цель');
+      Exit;
+    end;
+  end
+  else if CompareText(ExtractFileExt(FCurrentFileName), '.dpr') = 0 then
+    Dpr := FCurrentFileName
+  else
+  begin
+    Dpr := DelphiDprInFolder(ExtractFilePath(FCurrentFileName), True);
+    if Dpr = '' then
+      Exit;
   end;
 
-  // Цели нет - берём открытый .dpr и запоминаем его как цель
-  if (Dpr = '') or not FileExists(Dpr) then
+  // У проекта Delphi цели ещё нет - запоминается собранный .dpr
+  if (BuildPrj <> '') and (ProjectBuildKind(BuildPrj) = bkDelphi) and
+     (ProjectTargetOf(BuildPrj) = '') then
   begin
-    if CompareText(ExtractFileExt(FCurrentFileName), '.dpr') = 0 then
-    begin
-      Dpr := FCurrentFileName;
-      if BuildPrj <> '' then
-      begin
-        SetProjectTarget(BuildPrj, Dpr);
-        LogComp('Цель сборки проекта: ' + Dpr);
-      end;
-    end
-    else
-    begin
-      Dpr := ChangeFileExt(FCurrentFileName, '.dpr');
-      if not FileExists(Dpr) then
-      begin
-        LogComp('Компиляция: цель не задана. Откройте .dpr проекта - он ' +
-        'запомнится как цель сборки');
-                Exit;
-      end;
-    end;
+    SetProjectTarget(BuildPrj, Dpr);
+    LogComp('Цель сборки проекта: ' + Dpr);
   end;
 
   // Настройки проекта (.dof) - по настоящему .dpr, не по копии с зондом
@@ -40222,16 +40620,10 @@ end;
 // Сборка RapidQ или Delphi - по типу проекта. Без проекта - по открытому
 // файлу: .bas (и $INCLUDE-файл с главным .bas на вкладке) собирает rc.exe,
 // остальное - dcc32, как раньше.
+// Активная вкладка собирается RapidQ (CurBuildKind)
 function TForm1.BuildIsRapidQ: Boolean;
-var
-  BuildPrj: string;
 begin
-  BuildPrj := BuildProject;
-  if BuildPrj <> '' then
-    Result := CompareText(ProjectTypeOf(BuildPrj), 'RapidQ Basic') = 0
-  else
-    Result := ((FCurrentFileName <> '') and IsRapidQSource(FCurrentFileName)) or
-              (CurIncOwner <> '');
+  Result := CurBuildKind = bkRapidQ;
 end;
 
 function TForm1.WinIncOwner(AWinIdx: Integer): string;
@@ -40268,12 +40660,52 @@ end;
 // конструктора, Build Release) по-прежнему зовут CompileDelphi: они
 // работают только с проектами Delphi.
 function TForm1.CompileProject: Boolean;
+var
+  Kind: Integer;
+  BuildPrj, PrjType: string;
 begin
+  Result := False;
   AutoSaveEditorFiles;
-  if BuildIsRapidQ then
-    Result := CompileRapidQ
+  Kind := CurBuildKind;
+  case Kind of
+    bkDelphi: Result := CompileDelphi;
+    bkRapidQ: Result := CompileRapidQ;
   else
-    Result := CompileDelphi;
+    ShowCompLog;
+    if CompLogEdit <> nil then
+      CompLogEdit.Lines.Clear;
+    if ErrLogEdit <> nil then
+      ErrLogEdit.Lines.Clear;
+    if Kind <> bkNone then
+    begin
+      LogComp('Сборщик: ' + BuildKindName(Kind) + ' (' + FBuildReason + ')');
+      LogComp('Сборка ' + BuildKindName(Kind) + ' здесь пока не подключена');
+      Exit;
+    end;
+    BuildPrj := BuildProject;
+    PrjType := '';
+    if BuildPrj <> '' then
+      PrjType := ProjectTypeOf(BuildPrj);
+    if FCurrentFileName = '' then
+      LogComp('Компиляция: нет открытого файла')
+    else if PrjType = '' then
+      LogComp('Компиляция: для ' + ExtractFileName(FCurrentFileName) +
+              ' сборщик не определён - по расширению его не узнать, а ' +
+              'проекта нет')
+    else
+    begin
+      // Проект типа, которого здесь не собрать
+      LogComp('Сборка проектов ' + PrjType + ' здесь пока не поддерживается');
+      if CompareText(PrjType, 'Lazarus') = 0 then
+        LogComp('  Соберите проект в самой Lazarus или lazbuild <проект>.lpi')
+      else if CompareText(PrjType, 'Go') = 0 then
+        LogComp('  В папке проекта: go build')
+      else if CompareText(PrjType, 'Rust') = 0 then
+        LogComp('  В папке проекта: cargo build')
+      else if CompareText(PrjType, 'Python') = 0 then
+        LogComp('  Сборки не требуется: python main.py');
+    end;
+  end;
 end;
 
 // Подключает ли AMain файл AFile строкой $INCLUDE "..." или $INCLUDE <...>.
@@ -40344,12 +40776,13 @@ begin
   Result := '';
   Stored := '';
   BuildPrj := BuildProject;
+  // Проект другого типа: его цель не берётся и не перезаписывается -
+  // собирается файл вкладки
+  if (BuildPrj <> '') and
+     (CompareText(ProjectTypeOf(BuildPrj), 'RapidQ Basic') <> 0) then
+    BuildPrj := '';
   if BuildPrj <> '' then
-  begin
-    if CompareText(ProjectTypeOf(BuildPrj), 'RapidQ Basic') <> 0 then
-      Exit;
     Stored := ProjectTargetFind(BuildPrj);
-  end;
 
   Active := '';
   if CurIncOwner <> '' then
@@ -40753,6 +41186,8 @@ begin
     CompLogEdit.Lines.Clear;
   if ErrLogEdit <> nil then
     ErrLogEdit.Lines.Clear;
+  if not FRqProbeActive and (FBuildReason <> '') then
+    LogComp('Сборщик: RapidQ (' + FBuildReason + ')');
 
   if not CheckDiskChanges(-1) then
   begin
@@ -42576,8 +43011,8 @@ var
   Ext: string;
 begin
   Ext := LowerCase(ExtractFileExt(FCurrentFileName));
-  Result := IsRapidQSource(FCurrentFileName) or (Ext = '.bi') or
-            ((Ext = '.inc') and BuildIsRapidQ);
+  Result := (IsRapidQSource(FCurrentFileName) or (Ext = '.bi') or
+             (Ext = '.inc')) and BuildIsRapidQ;
 end;
 
 procedure TForm1.RefreshIncludes;
@@ -43673,15 +44108,17 @@ end;
 function TForm1.RunTargetExe: string;
 var
   TargetSrc: string;
+  Kind: Integer;
 begin
   Result := '';
-  if BuildIsRapidQ then
+  Kind := CurBuildKind;
+  if Kind = bkRapidQ then
   begin
     TargetSrc := RapidQTargetBas(False);
     if TargetSrc <> '' then
       Result := ChangeFileExt(TargetSrc, '.exe');
   end
-  else
+  else if Kind = bkDelphi then
   begin
     TargetSrc := DelphiTargetDpr;
     if TargetSrc <> '' then
@@ -43883,18 +44320,10 @@ end;
 //  .dfm, .dpk - Delphi; остальные (.inc, .ini...) - по проекту сборки.
 // ---------------------------------------------------------------------------
 
+// Активная вкладка - RapidQ (сборщик по CurBuildKind)
 function TForm1.IdeBasicMode: Boolean;
-var
-  Ext: string;
 begin
-  Ext := LowerCase(ExtractFileExt(FCurrentFileName));
-  if IsRapidQSource(FCurrentFileName) or (Ext = '.bi') then
-    Result := True
-  else if (Ext = '.pas') or (Ext = '.dpr') or (Ext = '.dfm') or
-          (Ext = '.dpk') then
-    Result := False
-  else
-    Result := BuildIsRapidQ;
+  Result := CurBuildKind = bkRapidQ;
 end;
 
 // Конструктор, окно которого прячет и показывает Hide form: в Basic -
@@ -43915,7 +44344,8 @@ const
   RunRowCount = 8;
 var
   ModeKey: string;
-  Basic: Boolean;
+  Basic, RqMode, CanStep: Boolean;
+  Kind: Integer;
   RunRow: array[0..RunRowCount - 1] of TControl;
   RowIdx, SlotIdx, PageIdx: Integer;
 
@@ -43937,10 +44367,19 @@ begin
   if (FLangMode >= 0) and (ModeKey = FLangModeKey) then
     Exit;
   FLangModeKey := ModeKey;
-  Basic := IdeBasicMode;
-  if FLangMode = Ord(Basic) then
+  // Сборщик вкладки; не определён - как Delphi
+  Kind := CurBuildKind;
+  if Kind = bkNone then
+    Kind := bkDelphi;
+  if FLangMode = Kind then
     Exit;
-  FLangMode := Ord(Basic);
+  FLangMode := Kind;
+  // Basic - всё, что не Delphi: только-Delphi спрятано. RqMode - то, что
+  // есть только у RapidQ (Includes, палитра RQ, условия точек останова).
+  Basic := Kind <> bkDelphi;
+  RqMode := Kind = bkRapidQ;
+  // Отладчик (шаги, Run to cursor) - у Delphi и RapidQ
+  CanStep := (Kind = bkDelphi) or (Kind = bkRapidQ);
 
   // Только Delphi
   if FObjMoveBtn <> nil then
@@ -43949,8 +44388,8 @@ begin
   mPrjRelease.Visible := not Basic;
   mPrjReleaseFiles.Visible := not Basic;
   ShowTab(FTabCode, not Basic);
-  // Только Basic
-  ShowTab(FTabIncludes, Basic);
+  // Только RapidQ
+  ShowTab(FTabIncludes, RqMode);
 
   // Ряд кнопок Project: видимые - подряд, на места кнопок из .dfm
   RunRow[0] := btnCompileRun;
@@ -43969,9 +44408,11 @@ begin
   end;
   // Пауза - только у отладчика Delphi; шаги и Run to cursor - у обоих
   btnPause.Visible := not Basic;
+  btnTraceInto.Visible := CanStep;
+  btnStepOver.Visible := CanStep;
   // Условия точек останова - только у отладчика RapidQ
   if pmuBreakCond <> nil then
-    pmuBreakCond.Visible := Basic;
+    pmuBreakCond.Visible := RqMode;
   SlotIdx := 0;
   for RowIdx := 0 to RunRowCount - 1 do
     if RunRow[RowIdx].Visible then
@@ -43979,24 +44420,28 @@ begin
       RunRow[RowIdx].Left := FRunRowLefts[SlotIdx];
       Inc(SlotIdx);
     end;
-  if Basic then
-    btnCompileRun.Hint := 'Собрать программу RapidQ и запустить, если без ' +
-                          'ошибок'
+  case Kind of
+    bkRapidQ:
+      btnCompileRun.Hint := 'Собрать программу RapidQ и запустить, если без ' +
+                            'ошибок';
+    bkDelphi:
+      btnCompileRun.Hint := 'Собрать проект dcc32 и запустить, если без ' +
+                            'ошибок';
   else
-    btnCompileRun.Hint := 'Собрать проект dcc32 и запустить, если без ошибок';
+    btnCompileRun.Hint := 'Сборка ' + BuildKindName(Kind) +
+                          ' здесь пока не подключена';
+  end;
 
   // Палитра: в Basic - страницы RQ, в Delphi - все, кроме них
   if FDsgPalette <> nil then
   begin
     for PageIdx := 0 to FDsgPalette.PageCount - 1 do
       FDsgPalette.SetPageHidden(PageIdx,
-        Basic <> ((PageIdx >= FRqPalPage) and (PageIdx <= FRqPalPage + 3)));
+        RqMode <> ((PageIdx >= FRqPalPage) and (PageIdx <= FRqPalPage + 3)));
     FDsgPalette.ApplyPages;
   end;
-  if Basic then
-    Dbg('Режим среды: Basic (RapidQ)', clGray)
-  else
-    Dbg('Режим среды: Delphi', clGray);
+  Dbg('Режим среды: ' + BuildKindName(Kind) + ' (' + FBuildReason + ')',
+      clGray);
 end;
 
 // Слово AWord (строчными) есть в AText (строчными) отдельным словом: по
@@ -45756,28 +46201,27 @@ var
   BuildPrj: string;
 begin
   Result := '';
-
-  BuildPrj := BuildProject;
-  if BuildPrj <> '' then
-  begin
-    Result := ProjectTargetFind(BuildPrj);
-    if Result <> '' then
-      Exit;
-  end;
-
   if FCurrentFileName = '' then
+    Exit;
+
+  // Вкладка - описание проекта: цель этого проекта
+  if CompareText(ExtractFileExt(FCurrentFileName), '.prj') = 0 then
   begin
-    Result := '';
+    BuildPrj := BuildProject;
+    if BuildPrj <> '' then
+      Result := ProjectTargetFind(BuildPrj);
     Exit;
   end;
 
   if CompareText(ExtractFileExt(FCurrentFileName), '.dpr') = 0 then
-    Result := FCurrentFileName
-  else
-    Result := ChangeFileExt(FCurrentFileName, '.dpr');
+  begin
+    if FileExists(FCurrentFileName) then
+      Result := FCurrentFileName;
+    Exit;
+  end;
 
-  if not FileExists(Result) then
-    Result := '';
+  // .dpr папки вкладки, молча (без списка и переименования)
+  Result := DelphiDprInFolder(ExtractFilePath(FCurrentFileName), False);
 end;
 
 // Куда dcc32 кладёт exe проекта ADpr. По порядку:
@@ -46043,12 +46487,20 @@ var
   SI: TStartupInfo;
   PI: TProcessInformation;
   RapidQ: Boolean;
+  Kind: Integer;
 begin
   ShowCompLog;
   AutoSaveEditorFiles;
 
+  Kind := CurBuildKind;
+  if (Kind <> bkDelphi) and (Kind <> bkRapidQ) then
+  begin
+    LogComp('Запуск: сборщик ' + BuildKindName(Kind) + ' (' + FBuildReason +
+            ') здесь пока не подключён');
+    Exit;
+  end;
   // RapidQ: exe рядом с главным .bas, отладчика Delphi для него нет
-  RapidQ := BuildIsRapidQ;
+  RapidQ := Kind = bkRapidQ;
   if RapidQ then
   begin
     Dpr := RapidQTargetBas(False);
