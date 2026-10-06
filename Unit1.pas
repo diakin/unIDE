@@ -27940,10 +27940,12 @@ var
   Props, Made: TStringList;
   Nm, ParNm, Val: string;
   ParComp: TComponent;
-  T0, TFin: Cardinal;
+  T0, TFin, TTheme, TLive, TickMark: Cardinal;
   Cnt: Integer;
 begin
   T0 := GetTickCount;
+  TTheme := 0;
+  TLive := 0;
   Cnt := 0;
   // Форма конструктора построена заново - прежних компонентов нет
   if FDsgMade <> nil then
@@ -28062,8 +28064,12 @@ begin
     end;
     // Своя форма - в цветах темы IDE, затем в живом виде; внутри серии:
     // раскладка - один раз
+    TickMark := GetTickCount;
     DsgThemeLook;
+    TTheme := GetTickCount - TickMark;
+    TickMark := GetTickCount;
     DsgLiveLook;
+    TLive := GetTickCount - TickMark;
   finally
     // И при ошибке: без него форма конструктора осталась бы без
     // перерисовки и выравнивания
@@ -28077,8 +28083,9 @@ begin
   // Одна строка итога: построчный журнал каждого компонента и свойства -
   // только при DsgLogVerbose (FormDesigner)
   Dbg('20877: DsgAddRuntime: готово, компонентов ' + IntToStr(Cnt) + ', ' +
-      IntToStr(GetTickCount - T0) + ' мс (из них раскладка в конце ' +
-      IntToStr(TFin) + ')', clNavy);
+      IntToStr(GetTickCount - T0) + ' мс (из них цвета темы ' +
+      IntToStr(TTheme) + ', живой вид ' + IntToStr(TLive) +
+      ', раскладка в конце ' + IntToStr(TFin) + ')', clNavy);
   DsgPaletteTabs;
 end;
 

@@ -1825,6 +1825,116 @@ begin
   FreeAndNil(RrnLines);
 end;
 
+// Строка-объявление поля или переменной: "Panel5: TPanel; // ...".
+// Описаний созданий в такой строке нет: ни присваивания, ни вызова, ни
+// скобок комментария, которые меняли бы смысл соседних строк.
+function RrnPlainLine(const ALine: string): Boolean;
+var
+  Code: string;
+  CharIdx, CommentPos: Integer;
+begin
+  Code := ALine;
+  CommentPos := Pos('//', Code);
+  if CommentPos > 0 then
+    Code := Copy(Code, 1, CommentPos - 1);
+  Code := Trim(Code);
+  Result := True;
+  if Code = '' then
+    Exit;
+  Result := False;
+  for CharIdx := 1 to Length(Code) do
+    if not (Code[CharIdx] in ['A'..'Z', 'a'..'z', '0'..'9', '_', ' ', #9,
+                               ',', ':', ';', '.']) then
+      Exit;
+  Result := (Pos(':', Code) > 0) and (Code[Length(Code)] = ';');
+end;
+
+// Текст модуля изменился только в строках-объявлениях (конструктор форм
+// убрал или добавил поле компонента): описания созданий прежние, у них
+// сдвигаются только номера строк. Разбор всего модуля заново (у Unit1.pas
+// это сотни миллисекунд на каждую правку в конструкторе) не нужен.
+// True - кэш переведён на новый текст.
+function RrnRemap(const AText, AKey: string): Boolean;
+const
+  RrnRemapMaxLines = 500;
+var
+  NewLines: TStringList;
+  HeadCnt, OldEnd, NewEnd, Delta, Idx: Integer;
+  Rec: TCreateRec;
+  Fact: TFactoryRec;
+begin
+  Result := False;
+  if (RrnKey = '') or (RrnLines = nil) or (RrnRecs = nil) or (RrnCrs = nil) then
+    Exit;
+  NewLines := TStringList.Create;
+  try
+    NewLines.Text := AText;
+    HeadCnt := 0;
+    while (HeadCnt < RrnLines.Count) and (HeadCnt < NewLines.Count) and
+          (RrnLines[HeadCnt] = NewLines[HeadCnt]) do
+      Inc(HeadCnt);
+    OldEnd := RrnLines.Count;
+    NewEnd := NewLines.Count;
+    while (OldEnd > HeadCnt) and (NewEnd > HeadCnt) and
+          (RrnLines[OldEnd - 1] = NewLines[NewEnd - 1]) do
+    begin
+      Dec(OldEnd);
+      Dec(NewEnd);
+    end;
+    // Изменились строки [HeadCnt, OldEnd) прежнего текста - теперь
+    // [HeadCnt, NewEnd). Большая правка - разбор заново.
+    if (OldEnd - HeadCnt > RrnRemapMaxLines) or
+       (NewEnd - HeadCnt > RrnRemapMaxLines) then
+      Exit;
+    for Idx := HeadCnt to OldEnd - 1 do
+      if not RrnPlainLine(RrnLines[Idx]) then
+        Exit;
+    for Idx := HeadCnt to NewEnd - 1 do
+      if not RrnPlainLine(NewLines[Idx]) then
+        Exit;
+    for Idx := 0 to RrnRecs.Count - 1 do
+    begin
+      Rec := TCreateRec(RrnRecs[Idx]);
+      if (Rec.Line >= HeadCnt) and (Rec.Line < OldEnd) then
+        Exit;
+    end;
+    for Idx := 0 to RrnCrs.Count - 1 do
+    begin
+      Fact := TFactoryRec(RrnCrs[Idx]);
+      if (Fact.HdrLine >= HeadCnt) and (Fact.HdrLine < OldEnd) then
+        Exit;
+      if (Fact.EndLine >= HeadCnt) and (Fact.EndLine < OldEnd) then
+        Exit;
+    end;
+
+    Delta := NewEnd - OldEnd;
+    if Delta <> 0 then
+    begin
+      for Idx := 0 to RrnRecs.Count - 1 do
+      begin
+        Rec := TCreateRec(RrnRecs[Idx]);
+        if Rec.Line >= OldEnd then
+          Inc(Rec.Line, Delta);
+      end;
+      for Idx := 0 to RrnCrs.Count - 1 do
+      begin
+        Fact := TFactoryRec(RrnCrs[Idx]);
+        if Fact.HdrLine >= OldEnd then
+          Inc(Fact.HdrLine, Delta);
+        if Fact.EndLine >= OldEnd then
+          Inc(Fact.EndLine, Delta);
+      end;
+    end;
+    RrnLines.Free;
+    RrnLines := NewLines;
+    NewLines := nil;
+    RrnKey := AKey;
+    Result := True;
+  finally
+    NewLines.Free;
+  end;
+end;
+
 procedure ResolveRuntimeNames(ARoot: TDfmNode; const AText: string);
 var
   Lines: TStringList;
@@ -2196,7 +2306,7 @@ begin
   // заново и при том же тексте - снимок другой, правка .dfm в конструкторе:
   // тогда описания берутся из прошлого вызова, только с Used - заново.
   Key := IntToHex(Crc32Of(AText), 8) + ':' + IntToStr(Length(AText));
-  if Key = RrnKey then
+  if (Key = RrnKey) or RrnRemap(AText, Key) then
   begin
     Lines := RrnLines;
     Recs := RrnRecs;
