@@ -2648,8 +2648,42 @@ begin
     SelectByName(OldSel);
 end;
 
+// Анимация появления и исчезновения окна (DWM, Windows Vista и новее, с
+// включённой темой Aero): новое окно показывается с коротким увеличением
+// от чуть меньшего размера, закрытое - с уменьшением. Форма конструктора
+// при перестройке - новое окно на месте прежнего, и анимация выглядит как
+// подёргивание. Отключается для одного окна; без dwmapi.dll (Windows XP)
+// ничего не делается.
+procedure DsgNoWindowAnimation(AWnd: HWND);
+const
+  DWMWA_TRANSITIONS_FORCEDISABLED = 3;
+type
+  TDwmSetWindowAttribute = function(AHwnd: HWND; AAttribute: DWORD;
+    AValue: Pointer; ASize: DWORD): HResult; stdcall;
+var
+  DwmLib: HMODULE;
+  SetAttr: TDwmSetWindowAttribute;
+  Disabled: BOOL;
+begin
+  if AWnd = 0 then
+    Exit;
+  DwmLib := GetModuleHandle('dwmapi.dll');
+  if DwmLib = 0 then
+    DwmLib := LoadLibrary('dwmapi.dll');
+  if DwmLib = 0 then
+    Exit;
+  @SetAttr := GetProcAddress(DwmLib, 'DwmSetWindowAttribute');
+  if not Assigned(SetAttr) then
+    Exit;
+  Disabled := True;
+  SetAttr(AWnd, DWMWA_TRANSITIONS_FORCEDISABLED, @Disabled, SizeOf(Disabled));
+end;
+
 procedure TFormDesigner.DropOldForm;
 begin
+  // Прежняя форма уходит без анимации исчезновения
+  if (FOldForm <> nil) and FOldForm.HandleAllocated then
+    DsgNoWindowAnimation(FOldForm.Handle);
   FreeAndNil(FOldForm);
 end;
 
@@ -2665,6 +2699,8 @@ begin
   // но на экране его нет. Нарисовали всё сразу (FlushPaint) - прозрачность
   // снимается, и форма появляется готовой.
   FForm.HandleNeeded;
+  // Новое окно на месте прежнего - без анимации появления
+  DsgNoWindowAnimation(FForm.Handle);
   // Подписи значков - окна формы: нужен её дескриптор
   UpdateIconCaptions;
   FForm.AlphaBlendValue := 0;
