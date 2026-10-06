@@ -1,8 +1,8 @@
 object Form1: TForm1
   BorderIcons = [biSystemMenu, biMinimize, biMaximize]
-  Left = 357
-  Top = 52
-  Width = 1111
+  Left = 99
+  Top = 210
+  Width = 1407
   Height = 910
   Caption = 'Form1 current'
   Color = 10944511
@@ -895,7 +895,7 @@ object Form1: TForm1
     BevelOuter = bvNone
     Color = 15790320
     object FLeftPanel: TPanel
-      Width = 280
+      Width = 408
       Align = alLeft
       BevelOuter = bvNone
       object grpCompiler: TUiGroupBox
@@ -908,7 +908,7 @@ object Form1: TForm1
           Align = alTop
           BevelOuter = bvNone
           ParentFont = True
-          Height = 41
+          Height = 33
           object btnCompileRun: TUiIconButton
             Left = 122
             Top = 0
@@ -1007,17 +1007,18 @@ object Form1: TForm1
           BevelOuter = bvNone
           ParentFont = True
           object cmbBuildKind: TUiComboBox
-            Left = 2
-            Top = 4
+            Left = 8
+            Top = 24
             Width = 96
             Style = csDropDownList
             ShowHint = True
             OnChange = cmbBuildKindChange
+            Height = 21
           end
           object lblBuildTarget: TUiLabel
-            Left = 104
+            Left = 8
             Top = 8
-            Width = 170
+            Width = 129
             Height = 13
             Anchors = [akLeft, akTop, akRight]
             AutoSize = False
@@ -1098,7 +1099,7 @@ object Form1: TForm1
     end
     object grpSearch: TUiGroupBox
       Align = alLeft
-      Width = 560
+      Width = 344
       Caption = 'Search and replace'
       object pnlSearchIn: TPanel
         Align = alClient
@@ -1160,25 +1161,32 @@ object Form1: TForm1
           Hint = 'Отменить массовую замену (All)'
         end
         object cmbMode: TUiComboBox
-          Left = 4
-          Top = 50
+          Left = 8
+          Top = 56
           Style = csDropDownList
+          Width = 72
+          Height = 21
         end
         object chkCase: TUiCheckBox
-          Top = 52
+          Top = 56
           Caption = 'Case'
+          Left = 88
+          Width = 44
+          Height = 17
         end
         object btnFindInFiles: TUiButton
-          Top = 49
+          Top = 56
           Height = 22
           Caption = 'Find In Files'
           OnClick = FindInFilesClick
+          Left = 136
+          Width = 77
         end
         object cmbScope: TUiComboBox
-          Top = 50
+          Top = 56
           Style = csDropDownList
-          Left = 0
-          Width = 145
+          Left = 224
+          Width = 80
           Height = 21
         end
       end

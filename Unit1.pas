@@ -15072,7 +15072,7 @@ begin
     for I := 0 to cmbMode.Items.Count - 1 do
       if TextW(cmbMode.Items[I]) > W then
         W := TextW(cmbMode.Items[I]);
-    cmbMode.Width := TextW('Normal') + Arrow + 6;
+    cmbMode.Width := TextW('WholeWord') + Arrow + 6;
     SendMessage(cmbMode.Handle, CB_SETDROPPEDWIDTH, W + Arrow + 8, 0);
 
     chkCase.Left := cmbMode.Left + cmbMode.Width + 4;
@@ -15089,7 +15089,7 @@ begin
     //   3 - папка на диске
     cmbScope.Items.Add('Во вкладках');
     cmbScope.Items.Add('В окнах');
-    cmbScope.Items.Add('Во всех файлах проекта');
+    cmbScope.Items.Add('В файлах проекта');
     cmbScope.Items.Add('На диске');
     cmbScope.ItemIndex := 0;
 
@@ -15143,7 +15143,7 @@ begin
 
   // Разница между шириной рамки и её клиентской частью - это обе боковые
   // кромки; плюс отступ справа, как слева у первого поля
-  grpSearch.Width := R + (grpSearch.Width - grpSearch.ClientWidth) + 8;
+ // grpSearch.Width := R + (grpSearch.Width - grpSearch.ClientWidth) + 8;
 end;
 
 procedure TForm1.FindPanelClick(Sender: TObject);
@@ -18142,7 +18142,7 @@ begin
     IconsLight.Free;
   end;
 
-  FLeftPanel.Width := 520;
+ // FLeftPanel.Width := 520;
 
   FCompilerBox := grpCompiler;   // заголовок меняется вместе с проектом
 
@@ -18180,11 +18180,12 @@ begin
 
   // Теперь известны правые края рядов - подгоняем под них левую панель.
   // Рядов два, панель шире того, который длиннее.
+{
   if CurrentLeft + 10 > CmpLeft + 10 then
     FLeftPanel.Width := CurrentLeft + 10
   else
     FLeftPanel.Width := CmpLeft + 10;
-
+ //}
   BuildSearchPanel; // элементы поиска на группе Search and replace
   FitSearchBox;
 
