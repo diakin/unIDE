@@ -24985,7 +24985,7 @@ end;
 // подписано в таблице свойство, чей цвет перекрашивает тема
 // (ObjMarkSchemeItem).
 const
-  ObjThemeItem = 'Scheme color';
+  ObjThemeItem = 'Theme color';
 
   // Какой цвет поставить свойству AProp компонента класса AClass, чтобы его
   // перекрашивала тема IDE. Тема (UiPaintControl) меняет только системные
@@ -26275,7 +26275,7 @@ begin
         else
           It.SubItems.Add(Shown);
         It.Data := Pointer(Idx);
-        // Новое значение - снова «Scheme color» или уже свой цвет
+        // Новое значение - снова «Theme color» или уже свой цвет
         if not N.IsSnap and not N.IsLink then
           ObjMarkSchemeItem(It, RttiClassFor(N));
         FObjProps.UpdateItems(I, I);
@@ -32877,7 +32877,7 @@ end;
 
 // Строка цвета, который перекрашивает тема IDE (ObjThemeColorFor:
 // clBtnFace у панели, clWindow у поля, clWindowText у шрифта): в ячейке
-// значения - «Scheme color», справа за чертой - сам системный цвет из
+// значения - «Theme color», справа за чертой - сам системный цвет из
 // .dfm (SubItems[3], ObjPropsPostPaint). Любой другой цвет - как записан.
 procedure TForm1.ObjMarkSchemeItem(AItem: TListItem; AClass: TClass);
 var
@@ -33116,7 +33116,7 @@ begin
     // родителю в дереве и в тексте (как у RapidQ)
     ObjParentRow(Node, Obj);
     // Цвета, которые перекрашивает тема (clBtnFace у панели и т. п.), -
-    // «Scheme color», сам цвет - справа в той же ячейке
+    // «Theme color», сам цвет - справа в той же ячейке
     if not Obj.IsSnap and not Obj.IsLink then
     begin
       Cls := RttiClassFor(Obj);
