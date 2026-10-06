@@ -46437,7 +46437,11 @@ end;
 //      папка .dpr (как было до папки Output).
 //   2. ExePath из настроек компилятора (IDE Options -> Compilers) - общий
 //      для всех проектов, если задан.
-//   3. Папка самого .dpr.
+//   3. Сам редактор (.dpr с именем его exe) - папка Output рядом с .dpr:
+//      работающий редактор пишет рядом с собой editor.ini, UiLib,
+//      dsgcache, а в папке .dpr они под git. Output - в .gitignore,
+//      редактор запускается оттуда.
+//   4. Папка самого .dpr.
 // Этим же пользуются сборка (ключ -E) и Run - иначе Run искал бы exe не
 // там, где он появился.
 function TForm1.DelphiOutputDir(const ADpr, ARoot: string): string;
@@ -46499,7 +46503,15 @@ begin
     end;
   end;
 
-  // 3. По умолчанию - папка .dpr, как у самой Delphi
+  // 3. Сам редактор - в Output
+  if CompareText(ChangeFileExt(ExtractFileName(ADpr), ''),
+                 ChangeFileExt(ExtractFileName(Application.ExeName), '')) = 0 then
+  begin
+    Result := IncludeTrailingPathDelimiter(DprDir + 'Output');
+    Exit;
+  end;
+
+  // 4. По умолчанию - папка .dpr, как у самой Delphi
   Result := IncludeTrailingPathDelimiter(DprDir);
 end;
 
