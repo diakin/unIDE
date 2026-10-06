@@ -27270,9 +27270,15 @@ begin
 end;
 
 // Новый текст во вкладку файла. На диск ничего не пишется - до Save.
+//
+// В активной вкладке заменяется только изменившаяся середина: общее начало
+// и общий конец старого и нового текста остаются в контроле. Удаление
+// компонента меняет в модуле одну строку поля, а прежняя замена всего
+// текста гоняла через RichEdit весь модуль (у Unit1.pas - мегабайты).
 procedure TForm1.DsgSetFileText(const AFile, AText: string);
 var
-  Idx: Integer;
+  Idx, HeadLen, TailLen, OldLen, NewLen: Integer;
+  OldCR, NewCR: string;
 begin
   // Вкладку могли закрыть, пока конструктор был открыт - открываем снова
   Idx := DsgOpenKeep(AFile);
@@ -27284,11 +27290,31 @@ begin
     // Весь текст одной правкой: Undo редактора вернёт его тоже одним шагом.
     // Перерисовка на это время выключена - иначе видно, как текст
     // выделяется целиком и тут же заменяется.
+    //
+    // Сравнение - в координатах контрола: перевод строки одним CR
+    OldCR := GetEditorTextCR;
+    // Без Msftedit текст приходит с CRLF - позиции контрола те же, по CR
+    OldCR := StringReplace(OldCR, #13#10, #13, [rfReplaceAll]);
+    NewCR := StringReplace(AText, #13#10, #13, [rfReplaceAll]);
+    NewCR := StringReplace(NewCR, #10, #13, [rfReplaceAll]);
+    if NewCR = OldCR then
+      Exit;
+    OldLen := Length(OldCR);
+    NewLen := Length(NewCR);
+    HeadLen := 0;
+    while (HeadLen < OldLen) and (HeadLen < NewLen) and
+          (OldCR[HeadLen + 1] = NewCR[HeadLen + 1]) do
+      Inc(HeadLen);
+    TailLen := 0;
+    while (TailLen < OldLen - HeadLen) and (TailLen < NewLen - HeadLen) and
+          (OldCR[OldLen - TailLen] = NewCR[NewLen - TailLen]) do
+      Inc(TailLen);
     EditorFreeze;
     try
-      RichEdit1.SelStart := 0;
-      RichEdit1.SelLength := RichEdit1.GetTextLen;
-      RichEdit1.SelText := AText;
+      RichEdit1.SelStart := HeadLen;
+      RichEdit1.SelLength := OldLen - HeadLen - TailLen;
+      RichEdit1.SelText := Copy(NewCR, HeadLen + 1,
+                                NewLen - HeadLen - TailLen);
     finally
       EditorThaw;
     end;
@@ -29333,20 +29359,28 @@ procedure TForm1.DsgReload;
 var
   Err: string;
   WasVisible: Boolean;
+  TickStart, TickLoad, TickRuntime: Cardinal;
 begin
   if FDesigner = nil then
     Exit;
+  TickStart := GetTickCount;
   // Новая форма строится невидимой, прежняя остаётся на экране до её
   // показа (TFormDesigner.ShowForm) - без мелькания. Спрятанная (Hide form,
   // запуск программы) остаётся спрятанной.
   WasVisible := (FDesigner.Form <> nil) and FDesigner.Form.Visible;
   if FDesigner.Load(DsgGetText, Err, True) then
   begin
+    TickLoad := GetTickCount;
     DsgAddRuntime;
+    TickRuntime := GetTickCount;
     if WasVisible then
       FDesigner.ShowForm
     else
       FDesigner.DropOldForm;
+    Dbg('21992: конструктор, форма заново: .dfm ' +
+        IntToStr(TickLoad - TickStart) + ' мс, из кода и живой вид ' +
+        IntToStr(TickRuntime - TickLoad) + ' мс, показ ' +
+        IntToStr(GetTickCount - TickRuntime) + ' мс', clNavy);
     // Спрятанный второй вид отстал - перестроится, когда правки стихнут
     DsgOtherLater;
   end
@@ -29402,11 +29436,13 @@ var
   OldDfm, NewDfm, PasFile, OldPas, NewPas: string;
   Names, Sel, One: TStringList;
   I: Integer;
+  TickStart, TickText, TickInsp: Cardinal;
 begin
   if FDesigner = nil then
     Exit;
   if FObjEditing then
     ObjApplyEdit;
+  TickStart := GetTickCount;
 
   OldDfm := DsgGetText;
   Names := TStringList.Create;
@@ -29455,6 +29491,7 @@ begin
     Sel.Free;
     Names.Free;
   end;
+  TickText := GetTickCount;
 
   FDsgSelecting := True;
   try
@@ -29463,7 +29500,12 @@ begin
   finally
     FDsgSelecting := False;
   end;
+  TickInsp := GetTickCount;
   DsgReload;
+  Dbg('21993: конструктор, удаление: тексты вкладок ' +
+      IntToStr(TickText - TickStart) + ' мс, инспектор ' +
+      IntToStr(TickInsp - TickText) + ' мс, форма ' +
+      IntToStr(GetTickCount - TickInsp) + ' мс', clNavy);
 end;
 
 // ---------------------------------------------------------------------------
@@ -30408,7 +30450,10 @@ end;
 // перестройка инспектора и формы, выделение ASelect
 procedure TForm1.DsgApply(const OldDfm, NewDfm, PasFile, OldPas, NewPas,
                           ASelect: string);
+var
+  TickStart, TickText, TickInsp: Cardinal;
 begin
+  TickStart := GetTickCount;
   if (NewPas <> '') and (NewPas <> OldPas) then
     DsgPushUndo(OldDfm, OldPas)
   else
@@ -30416,6 +30461,7 @@ begin
   DsgSetText(NewDfm);
   if (NewPas <> '') and (NewPas <> OldPas) and (PasFile <> '') then
     DsgSetFileText(PasFile, NewPas);
+  TickText := GetTickCount;
 
   FDsgSelecting := True;
   try
@@ -30424,7 +30470,12 @@ begin
   finally
     FDsgSelecting := False;
   end;
+  TickInsp := GetTickCount;
   DsgReload;
+  Dbg('21991: конструктор, правка: тексты вкладок ' +
+      IntToStr(TickText - TickStart) + ' мс, инспектор ' +
+      IntToStr(TickInsp - TickText) + ' мс, форма ' +
+      IntToStr(GetTickCount - TickInsp) + ' мс', clNavy);
   if (FDesigner <> nil) and (ASelect <> '') then
   begin
     FDesigner.SelectByName(ASelect);
