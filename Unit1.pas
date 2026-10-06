@@ -547,8 +547,6 @@ type
     mPrjDeleteWrong: TMenuItem;
     FToolbar: TPanel;
     FLeftPanel: TPanel;
-    grpToolbar: TUiGroupBox;
-    pnlToolbarIn: TPanel;
     grpCompiler: TUiGroupBox;
     pnlCompilerIn: TPanel;
     btnCompileRun: TUiIconButton;
@@ -660,13 +658,6 @@ type
     btnProgReset: TUiIconButton;
     btnTraceInto: TUiIconButton;
     btnStepOver: TUiIconButton;
-    btnOpen: TUiIconButton;
-    btnSave: TUiIconButton;
-    btnSavePrj: TUiIconButton;
-    btnUndo: TUiIconButton;
-    btnCut: TUiIconButton;
-    btnCopy: TUiIconButton;
-    btnPaste: TUiIconButton;
     mBmAdd: TMenuItem;
     mBmDelete: TMenuItem;
     mBmSet: TMenuItem;
@@ -724,6 +715,14 @@ type
     FDsgMenuGrpAlignSep: TMenuItem;
     FDsgMiAlignWidth: TMenuItem;
     FDsgMiAlignHeight: TMenuItem;
+    pnlToolbarIn: TPanel;
+    btnOpen: TUiIconButton;
+    btnSave: TUiIconButton;
+    btnSavePrj: TUiIconButton;
+    btnUndo: TUiIconButton;
+    btnCut: TUiIconButton;
+    btnCopy: TUiIconButton;
+    btnPaste: TUiIconButton;
 
     procedure FormCreate(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
