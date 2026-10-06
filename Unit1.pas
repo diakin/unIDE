@@ -2386,6 +2386,8 @@ type
     procedure RqPropsTree(AParents: TStrings);
     procedure RqPropExpand(const AName: string; AExpand: Boolean);
     procedure RqGotoParent(AItem: TListItem);
+    procedure ObjParentRow(ANode: TTreeNode; AObj: TObject);
+    procedure ObjGotoParent;
     procedure ObjComboWndProc(var Message: TMessage);
     function  UnitTextOf(const APas: string): string;
     function  ObjFormUnit: string;
@@ -25230,7 +25232,7 @@ var
   OldFont: HFONT;
   ExtraText: string;
 begin
-  if (ALV <> FObjProps) or not FObjRapidQ or (AItem < 0) or
+  if (ALV <> FObjProps) or (AItem < 0) or
      (AItem >= FObjProps.Items.Count) then
     Exit;
   Item := FObjProps.Items[AItem];
@@ -25281,6 +25283,12 @@ begin
   end;
 end;
 
+// Data строки Parent, которой нет среди свойств узла (ObjParentRow):
+// отрицательное, но не номер в FObjMissing - правка такой строки не
+// начинается
+const
+  ObjParentRowData = -$7FFFFFF0;
+
 procedure TForm1.ObjBeginEdit;
 const
   LVM_GETSUBITEMRECT = $1000 + 56;
@@ -25301,6 +25309,13 @@ begin
     Exit;
   N := TDfmNode(FObjCurNode);
   Idx := Integer(It.Data);
+
+  // Строка Parent (ObjParentRow) не правится - переход к родителю
+  if not FObjRapidQ and (Idx = ObjParentRowData) then
+  begin
+    ObjGotoParent;
+    Exit;
+  end;
 
   // Объект RapidQ - своя правка: значение в блоке CREATE
   if FObjRapidQ then
@@ -32787,6 +32802,97 @@ begin
   end;
 end;
 
+// Строка Parent таблицы свойств Delphi: родитель - узел над этим в дереве
+// инспектора (имя, у созданного в коде без имени - переменная, иначе
+// класс), справа в той же ячейке - хэндл родителя у живой формы своего
+// проекта (ObjPropsPostPaint, SubItems[3]). Своё свойство Parent уже
+// есть (из кода: X.Parent := Y) - ему только хэндл. Без своего - строка
+// с Data = ObjParentRowData: не правится, по щелчку - к родителю.
+procedure TForm1.ObjParentRow(ANode: TTreeNode; AObj: TObject);
+var
+  Obj, ParentObj: TDfmNode;
+  ParentName, HandleText, CompName: string;
+  ItemIdx: Integer;
+  Item, ParentItem: TListItem;
+  LiveForm: TCustomForm;
+  LiveComp: TComponent;
+begin
+  if (ANode = nil) or (ANode.Parent = nil) or (AObj = nil) then
+    Exit;
+  Obj := TDfmNode(AObj);
+  ParentObj := TDfmNode(ANode.Parent.Data);
+  if ParentObj = nil then
+    Exit;
+  ParentName := ParentObj.Name;
+  if ParentName = '' then
+    ParentName := ParentObj.VarName;
+  if ParentName = '' then
+    ParentName := ParentObj.ClassNm;
+
+  // Хэндл - у живого родителя живого компонента
+  HandleText := '';
+  if IsOwnProject then
+  begin
+    LiveForm := OwnLiveForm(FObjFormClass);
+    CompName := Obj.Name;
+    if CompName = '' then
+      CompName := Obj.VarName;
+    LiveComp := nil;
+    if (LiveForm <> nil) and (CompName <> '') then
+      LiveComp := LiveForm.FindComponent(CompName);
+    if (LiveComp is TControl) and (TControl(LiveComp).Parent <> nil) and
+       TControl(LiveComp).Parent.HandleAllocated then
+      HandleText := 'Handle ' + IntToStr(TControl(LiveComp).Parent.Handle);
+  end;
+
+  ParentItem := nil;
+  for ItemIdx := 0 to FObjProps.Items.Count - 1 do
+    if CompareText(FObjProps.Items[ItemIdx].Caption, 'Parent') = 0 then
+    begin
+      ParentItem := FObjProps.Items[ItemIdx];
+      Break;
+    end;
+  if ParentItem = nil then
+  begin
+    Item := FObjProps.Items.Add;
+    Item.Caption := 'Parent';
+    Item.SubItems.Add(ParentName);
+    Item.Data := Pointer(ObjParentRowData);
+    ParentItem := Item;
+    FObjProps.AlphaSort;
+  end;
+  while ParentItem.SubItems.Count < 3 do
+    ParentItem.SubItems.Add('');
+  if ParentItem.SubItems.Count = 3 then
+    ParentItem.SubItems.Add(HandleText)
+  else
+    ParentItem.SubItems[3] := HandleText;
+end;
+
+// К родителю выбранного узла: в дереве инспектора и в тексте (заголовок
+// object в .dfm или строка создания в .pas), как щелчком в дереве
+procedure TForm1.ObjGotoParent;
+var
+  ParentNode, Walk: TTreeNode;
+begin
+  if (FObjTree = nil) or (FObjTree.Selected = nil) then
+    Exit;
+  ParentNode := FObjTree.Selected.Parent;
+  if ParentNode = nil then
+    Exit;
+  Walk := ParentNode.Parent;
+  while Walk <> nil do
+  begin
+    Walk.Expanded := True;
+    Walk := Walk.Parent;
+  end;
+  FObjTree.Selected := ParentNode;
+  ParentNode.MakeVisible;
+  ObjJumpToSelected;
+  if FObjTree.CanFocus then
+    FObjTree.SetFocus;
+end;
+
 // Отложенное заполнение таблиц свойств после правки в конструкторе
 procedure TForm1.ObjPropsTimerTick(Sender: TObject);
 begin
@@ -32973,6 +33079,9 @@ begin
         FObjProps.AlphaSort;
       end;
     end;
+    // Parent - имя родителя и хэндл родителя у живой формы; щелчок - к
+    // родителю в дереве и в тексте (как у RapidQ)
+    ObjParentRow(Node, Obj);
     TDefaults := GetTickCount - StageTick;
 
     StageTick := GetTickCount;
@@ -36441,6 +36550,13 @@ begin
      (CompareText(ObjPropRowName(NodeItem), 'Parent') = 0) then
   begin
     RqGotoParent(NodeItem);
+    Exit;
+  end;
+  // Parent компонента Delphi - так же: к родителю в дереве и в тексте
+  if not FObjRapidQ and (HitInfo.SubItem <= 1) and
+     (CompareText(NodeItem.Caption, 'Parent') = 0) then
+  begin
+    ObjGotoParent;
     Exit;
   end;
   if HitInfo.SubItem <> ColCodeLine then
