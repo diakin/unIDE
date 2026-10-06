@@ -17268,6 +17268,10 @@ begin
   // Меню своей формы: инспектор и редактор - за ним (LiveMenuPopup)
   UiMenuPopupHook := LiveMenuPopup;
   UiMenuItemHook := LiveMenuItem;
+  // Пункты Space Equally меню конструктора - сразу, а не при первом его
+  // показе: появившись посреди работы, они меняли состав формы, и её
+  // снимок (OwnSnapStale) снимался заново на первом Cut
+  DsgAlignMenuExtra;
 
   // Точки останова: щелчок по полосе номеров строк
   FBreakMarks := TList.Create;
@@ -24538,10 +24542,21 @@ function TForm1.OwnFormPrint(F: TCustomForm): string;
         Inc(Result, CountCtl(TWinControl(W.Controls[I])));
   end;
 
+var
+  CompIdx, CompCnt: Integer;
 begin
   Result := '';
-  if F <> nil then
-    Result := IntToStr(F.ComponentCount) + '/' + IntToStr(CountCtl(F));
+  if F = nil then
+    Exit;
+  // Таймеры не считаются: редактор заводит свои по ходу работы (отложенная
+  // запись, подсказки, второй вид конструктора), и каждый такой таймер
+  // заставлял снимать форму заново - с пересверкой живого вида и столбца
+  // «Строка кода» (полсекунды на первый Cut)
+  CompCnt := 0;
+  for CompIdx := 0 to F.ComponentCount - 1 do
+    if not (F.Components[CompIdx] is TTimer) then
+      Inc(CompCnt);
+  Result := IntToStr(CompCnt) + '/' + IntToStr(CountCtl(F));
 end;
 
 // Состав живой формы для сверки (что появилось или пропало с прошлого
@@ -24574,8 +24589,9 @@ begin
   if F = nil then
     Exit;
   for CompIdx := 0 to F.ComponentCount - 1 do
-    AList.Add(F.Components[CompIdx].ClassName + ' ' +
-              F.Components[CompIdx].Name);
+    if not (F.Components[CompIdx] is TTimer) then   // как в OwnFormPrint
+      AList.Add(F.Components[CompIdx].ClassName + ' ' +
+                F.Components[CompIdx].Name);
   WalkControls(F);
 end;
 
