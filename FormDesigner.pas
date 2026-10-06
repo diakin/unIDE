@@ -3905,7 +3905,8 @@ begin
     end
     else
       FHidden.Remove(C);
-    if FForm.HandleAllocated then
+    // В серии (BeginRuntime) форма перерисуется один раз в FinishRuntime
+    if FForm.HandleAllocated and not FRtBatch then
       RedrawWindow(FForm.Handle, nil, 0,
                    RDW_INVALIDATE or RDW_ERASE or RDW_ALLCHILDREN);
     Exit;
@@ -3914,10 +3915,12 @@ begin
   ApplyPropText(C, AProp, AValue);
 
   // Размер, место или выравнивание могли сдвинуть и соседей - маркеры
-  // выделения ставятся заново
+  // выделения ставятся заново. В серии (живой вид ставит сотни свойств
+  // подряд) - один раз, в FinishRuntime (Select): на каждое свойство это
+  // удваивало время живого вида, когда в конструкторе что-то выделено.
   if C is TControl then
     TControl(C).Invalidate;
-  if SelControl <> nil then
+  if (SelControl <> nil) and not FRtBatch then
     ShowCarets;
 end;
 
