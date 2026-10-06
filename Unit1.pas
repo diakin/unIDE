@@ -2387,6 +2387,7 @@ type
     procedure RqPropExpand(const AName: string; AExpand: Boolean);
     procedure RqGotoParent(AItem: TListItem);
     procedure ObjParentRow(ANode: TTreeNode; AObj: TObject);
+    procedure ObjMarkSchemeItem(AItem: TListItem; AClass: TClass);
     procedure ObjGotoParent;
     procedure ObjComboWndProc(var Message: TMessage);
     function  UnitTextOf(const APas: string): string;
@@ -24980,9 +24981,11 @@ begin
   end;
 end;
 
-// Пункт списка цветов инспектора: вернуть свойству цвет темы
+// Пункт списка цветов инспектора: вернуть свойству цвет темы. Так же
+// подписано в таблице свойство, чей цвет перекрашивает тема
+// (ObjMarkSchemeItem).
 const
-  ObjThemeItem = '(цвет темы)';
+  ObjThemeItem = 'Scheme color';
 
   // Какой цвет поставить свойству AProp компонента класса AClass, чтобы его
   // перекрашивала тема IDE. Тема (UiPaintControl) меняет только системные
@@ -26272,6 +26275,9 @@ begin
         else
           It.SubItems.Add(Shown);
         It.Data := Pointer(Idx);
+        // Новое значение - снова «Scheme color» или уже свой цвет
+        if not N.IsSnap and not N.IsLink then
+          ObjMarkSchemeItem(It, RttiClassFor(N));
         FObjProps.UpdateItems(I, I);
         Break;
       end;
@@ -32869,6 +32875,33 @@ begin
     ParentItem.SubItems[3] := HandleText;
 end;
 
+// Строка цвета, который перекрашивает тема IDE (ObjThemeColorFor:
+// clBtnFace у панели, clWindow у поля, clWindowText у шрифта): в ячейке
+// значения - «Scheme color», справа за чертой - сам системный цвет из
+// .dfm (SubItems[3], ObjPropsPostPaint). Любой другой цвет - как записан.
+procedure TForm1.ObjMarkSchemeItem(AItem: TListItem; AClass: TClass);
+var
+  ThemeColor, CellText: string;
+begin
+  if (AItem = nil) or (AClass = nil) or (AItem.SubItems.Count = 0) then
+    Exit;
+  ThemeColor := ObjThemeColorFor(AClass, AItem.Caption);
+  if ThemeColor = '' then
+    Exit;
+  CellText := Trim(AItem.SubItems[0]);
+  if CompareText(CellText, ObjThemeItem) = 0 then
+    Exit;   // уже подписана
+  while AItem.SubItems.Count < 4 do
+    AItem.SubItems.Add('');
+  if CompareText(CellText, ThemeColor) = 0 then
+  begin
+    AItem.SubItems[0] := ObjThemeItem;
+    AItem.SubItems[3] := ThemeColor;
+  end
+  else
+    AItem.SubItems[3] := '';
+end;
+
 // К родителю выбранного узла: в дереве инспектора и в тексте (заголовок
 // object в .dfm или строка создания в .pas), как щелчком в дереве
 procedure TForm1.ObjGotoParent;
@@ -33082,6 +33115,15 @@ begin
     // Parent - имя родителя и хэндл родителя у живой формы; щелчок - к
     // родителю в дереве и в тексте (как у RapidQ)
     ObjParentRow(Node, Obj);
+    // Цвета, которые перекрашивает тема (clBtnFace у панели и т. п.), -
+    // «Scheme color», сам цвет - справа в той же ячейке
+    if not Obj.IsSnap and not Obj.IsLink then
+    begin
+      Cls := RttiClassFor(Obj);
+      if Cls <> nil then
+        for I := 0 to FObjProps.Items.Count - 1 do
+          ObjMarkSchemeItem(FObjProps.Items[I], Cls);
+    end;
     TDefaults := GetTickCount - StageTick;
 
     StageTick := GetTickCount;
