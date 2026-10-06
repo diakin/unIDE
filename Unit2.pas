@@ -65,7 +65,7 @@ FLockMemo: Boolean; // НАШ СЕМАФОР БЛОКИРОВКИ ДЛЯ TMEMO
     // MSVC, GCC или Clang. У каждого свои пути, поэтому раздел настроек
     // свой: [Compiler.<Тип>.<Инструмент>]. Какой из них берётся по
     // умолчанию, хранится в [Compiler.<Тип>] Default, а проект может
-    // указать свой ключом Toolchain в .prj.
+    // указать свой ключом Toolchain в разделе проекта.
     cbTool: TUiComboBox;
     btnToolAdd, btnToolDel, btnToolFind: TUiButton;
     FCompType: string;
@@ -6151,7 +6151,7 @@ begin
   chkPrefAutoDesktop := EnvCheck(Group, 'Project desktop', 12, 44, 270);
   chkPrefAutoDesktop.ShowHint := True;
   chkPrefAutoDesktop.Hint := 'Состав проекта (окна, вкладки, закладки) ' +
-    'сохраняется в .prj без вопроса при закрытии проекта и выходе';
+    'сохраняется (editor.ini, раздел проекта) без вопроса при закрытии проекта и выходе';
 
   Group := EnvGroup(ATab, 'Compiling and running', 306, 8, 290, 96);
   chkPrefProgress := EnvCheck(Group, 'Show compiler progress', 12, 20, 270);

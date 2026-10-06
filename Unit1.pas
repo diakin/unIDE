@@ -963,9 +963,6 @@ type
     FDsgPlaceCls: TComponentClass;
     // Вставка стороннего компонента: "Модуль.Класс" (класса в редакторе нет)
     FDsgPlaceForeign: string;
-    // Описание проекта из активной вкладки для сборки (BuildProject)
-    FBuildPrjName: string;
-    FBuildPrjFile: string;
     // Сторонний класс -> класс-аналог из Delphi (DsgMapClass); nil в
     // Objects - аналога нет, заглушка
     FDsgAnalogs: TStringList;
@@ -1928,7 +1925,12 @@ type
                                var AFile: string): Boolean;
     function  ChooseFromList(const ACaption, APrompt: string;
                              AItems: TStrings): string;
-    function  ProjectFileName(const AName: string): string;
+    function  ProjectDir(const AName: string): string;
+    function  ProjectExists(const AName: string): Boolean;
+    procedure MigratePrjProjects(ANotes: TStrings);
+    procedure ImportPrjAndLog;
+    function  ImportPrjFile(const APrjFile, AName: string;
+                            var AFolder: string): Boolean;
     procedure BuildProjectsMenu;
     procedure RebuildProjectsMenu;
     procedure LoadProject(const AName: string);
@@ -1937,7 +1939,7 @@ type
     function  CopyProjectFiles(const AOldDir, ANewDir,
                                AOldName, ANewName: string;
                                AOnlyNamed: Boolean): Integer;
-    procedure FixProjectTarget(const APrjFile, ADir, AName: string);
+    procedure FixProjectTarget(const AProject, ADir, AName: string);
     procedure RepointWindows(const AOldDir, ANewDir,
                              AOldName, ANewName: string);
     procedure ProjectItemClick(Sender: TObject);
@@ -3029,6 +3031,7 @@ var
     DlgRelease,   // Release files - ReleaseFilesDialog
     ReleaseBuild, // Build Release: файлы, нужные программе, по исходникам
     BplRtti,      // классы сторонних пакетов: предки по именам
+    PrjStore,     // проекты в editor.ini, выбор editor.ini по папке программы
     TypInfo;      // свойства классов VCL для инспектора объектов
 
   {$R *.dfm}
@@ -7780,45 +7783,15 @@ begin
     Delete(Result, 1, 1);
 end;
 
-// --- Пути в описании проекта (.prj) ----------------------------------------
+// --- Пути в разделе проекта ---------------------------------------------
 //
-// Пути к файлам проекта пишутся ОТНОСИТЕЛЬНО папки .prj: проект переносят
-// с компьютера на компьютер (через git), корневые папки там разные, а
-// устройство дерева под ними одно. Абсолютные пути давали правку .prj при
-// каждом переходе.
-//
-// Относительным путь пишется, если файл на том же диске и до общей папки
-// не больше PrjRelMaxUp уровней вверх (..\..\..\). Файл дальше - скорее
-// всего, вне дерева проекта (исходники VCL, чужая папка): его путь на
-// другом компьютере всё равно другой, и он пишется как есть, полностью.
-// Читаются оба вида: старые .prj с абсолютными путями тоже.
-const
-  PrjRelMaxUp = 3;
+// Проект - раздел [Project.<имя>] editor.ini (PrjStore), а editor.ini у
+// каждого компьютера свой: пути окон и вкладок пишутся полными. В прежних
+// описаниях .prj они бывают относительными - от папки .prj; их переводит в
+// полные перенос (ImportPrjFile). Читаются оба вида.
 
-function PrjPathToStore(const APrjFile, APath: string): string;
-var
-  BaseDir, RelPath: string;
-  UpCount: Integer;
-begin
-  Result := APath;
-  if (APath = '') or (APrjFile = '') then
-    Exit;
-  BaseDir := ExtractFilePath(ExpandFileName(APrjFile));
-  if (ExtractFileDrive(APath) = '') or
-     (CompareText(ExtractFileDrive(BaseDir), ExtractFileDrive(APath)) <> 0) then
-    Exit;
-  RelPath := ExtractRelativePath(BaseDir, APath);
-  if (RelPath = '') or (ExtractFileDrive(RelPath) <> '') then
-    Exit;
-  UpCount := 0;
-  while Copy(RelPath, UpCount * 3 + 1, 3) = '..' do
-    Inc(UpCount);
-  if UpCount > PrjRelMaxUp then
-    Exit;
-  Result := RelPath;
-end;
-
-// Путь из .prj - полный: относительный считается от папки .prj
+// Путь - полный: относительный считается от папки APrjFile (файл .prj или
+// папка проекта с \ в конце)
 function PrjPathFromStore(const APrjFile, APath: string): string;
 begin
   Result := Trim(APath);
@@ -7827,6 +7800,31 @@ begin
   if (ExtractFileDrive(Result) <> '') or (Result[1] = '') then
     Exit;
   Result := ExpandFileName(ExtractFilePath(ExpandFileName(APrjFile)) + Result);
+end;
+
+// Цель сборки в разделе проекта ([Project.<имя>] Target): файл в папке
+// проекта - от неё, с \ в начале (\BalKom1A.dpr), иначе - полный путь
+function PrjTargetToStore(const ADir, APath: string): string;
+var
+  Dir: string;
+begin
+  Result := APath;
+  if (ADir = '') or (APath = '') then
+    Exit;
+  Dir := IncludeTrailingPathDelimiter(ADir);
+  if AnsiStartsText(Dir, APath) then
+    Result := '\' + Copy(APath, Length(Dir) + 1, MaxInt);
+end;
+
+function PrjTargetFromStore(const ADir, AValue: string): string;
+begin
+  Result := Trim(AValue);
+  if (Result = '') or (ADir = '') then
+    Exit;
+  if (Result[1] = '\') and (Copy(Result, 1, 2) <> '\\') then
+    Result := IncludeTrailingPathDelimiter(ADir) + Copy(Result, 2, MaxInt)
+  else
+    Result := PrjPathFromStore(IncludeTrailingPathDelimiter(ADir), Result);
 end;
 
 
@@ -7968,6 +7966,13 @@ begin
     for SectIdx := 0 to SrcSects.Count - 1 do
     begin
       Sect := SrcSects[SectIdx];
+      // Папка программы и проекты - свои у каждого editor.ini (PrjStore):
+      // из editor.ini папки .dpr не переносятся
+      if (CompareText(Sect, IniPathSection) = 0) or
+         (CompareText(Copy(Sect, 1, 8), 'Projects') = 0) or
+         (CompareText(Copy(Sect, 1, Length(ProjectSectionPrefix)),
+                      ProjectSectionPrefix) = 0) then
+        Continue;
       SrcIni.ReadSectionValues(Sect, SrcValues);
       if IniSectionEmpty(SrcValues) then
         Continue;
@@ -8250,82 +8255,178 @@ end;
 // В HiLite log - что откуда взято.
 procedure TForm1.RelocateMissingProjects;
 var
-  Ini: TIniFile;
-  Cur, Sects, Cands: TStringList;
-  I, J: Integer;
-  Key, V, Found, OV: string;
-  Changed: Boolean;
+  Index: Integer;
+  Dir: string;
 begin
-  if not FileExists(SettingsFileName) then
-    Exit;
-  Changed := False;
-  Ini := TIniFile.Create(SettingsFileName);
-  Cur := TStringList.Create;
-  Sects := TStringList.Create;
-  Cands := TStringList.Create;
-  try
-    Ini.ReadSectionValues('Projects', Cur);
-    Ini.ReadSections(Sects);
-    for I := 0 to Cur.Count - 1 do
-    begin
-      Key := Cur.Names[I];
-      V := StripIniComment(Copy(Cur[I], Length(Key) + 2, MaxInt));
-      if (Key = '') or (V = '') or FileExists(V) then
-        Continue;
-
-      // Кандидаты: текущий путь и пути из копий, без повторов
-      Cands.Clear;
-      Cands.Add(V);
-      for J := 0 to Sects.Count - 1 do
-        if (CompareText(Copy(Sects[J], 1, 11), 'ProjectsOld') = 0) then
-        begin
-          OV := StripIniComment(Ini.ReadString(Sects[J], Key, ''));
-          if (OV <> '') and (Cands.IndexOf(OV) < 0) then
-            Cands.Add(OV);
-        end;
-
-      Found := '';
-      for J := 0 to Cands.Count - 1 do
-        if FileExists(Cands[J]) then
-        begin
-          Found := Cands[J];
-          Break;
-        end;
-      if Found = '' then
-        for J := 0 to Cands.Count - 1 do
-        begin
-          Found := RelocateFile(Cands[J]);
-          if Found <> '' then
-            Break;
-        end;
-
-      if Found <> '' then
-      begin
-        Ini.WriteString('Projects', Key, Found);
-        Changed := True;
-        LogDiag('Проект ' + Key + ': ' + V + ' не найден, взят ' + Found);
-      end
-      else
-        LogDiag('Проект ' + Key + ': ' + V + ' не найден ни по копиям, ни ' +
-        'поиском - в меню его нет');
-    end;
-  finally
-    Cands.Free;
-    Sects.Free;
-    Cur.Free;
-    Ini.Free;
-  end;
-  if Changed then
-  begin
-    // Реестр в памяти уже прочитан в FormCreate (BuildProjectsMenu) - без
-    // найденных здесь проектов. Перечитать, иначе меню их не покажет, а
-    // следующий SaveProjectReg перепишет [Projects] по старому списку.
+  // Проекты лежат в editor.ini своего компьютера (SelectEditorIni) - их
+  // папки искать по копиям не нужно; ненайденные - строкой в журнал
+  if FProjectReg = nil then
     LoadProjectReg;
-    RebuildProjectsMenu;
+  for Index := 0 to FProjectReg.Count - 1 do
+  begin
+    Dir := FProjectReg.ValueFromIndex[Index];
+    if (FProjectReg.Names[Index] <> '') and (Dir <> '') and
+       not DirectoryExists(Dir) then
+      LogDiag('Проект ' + FProjectReg.Names[Index] + ': папки ' + Dir +
+              ' нет на диске');
   end;
 end;
 
-// Реестр проектов из editor.ini. Имя проекта - ключ, путь к .prj - значение.
+// Описание .prj (прежний формат проекта, он же у RQdebugger) - в раздел
+// [Project.<имя>] editor.ini: [Project] - ключи как есть, остальные разделы
+// - с приставкой "<раздел>_" (TProjectIni). Пути окон и вкладок - полными
+// (в .prj они бывают от его папки), цель сборки - от папки проекта
+// (\Имя.dpr). AFolder - папка проекта: на входе папка .prj; у старой
+// раскладки (projects\Имя.prj) - папка цели сборки. [Editor] и заглушки
+// C:\ в [Compiler] не переносятся. False - .prj не прочитан.
+function TForm1.ImportPrjFile(const APrjFile, AName: string;
+                              var AFolder: string): Boolean;
+var
+  PrjIni: TIniFile;
+  Prj: TProjectIni;
+  Sects, Values: TStringList;
+  SectIdx, ValIdx, SpaceAt: Integer;
+  Sect, Key, Val, Target: string;
+  PathValue: Boolean;
+begin
+  Result := False;
+  if not FileExists(APrjFile) then
+    Exit;
+  PrjIni := TIniFile.Create(APrjFile);
+  Sects := TStringList.Create;
+  Values := TStringList.Create;
+  Prj := TProjectIni.Create(SettingsFileName, AName);
+  try
+    Target := PrjPathFromStore(APrjFile,
+      StripIniComment(PrjIni.ReadString('Project', 'Target', '')));
+    if (Target <> '') and
+       SamePathText(AFolder, ProjectsDir) then
+      AFolder := ExtractFilePath(Target);
+    AFolder := IncludeTrailingPathDelimiter(AFolder);
+
+    Prj.Clear;
+    PrjIni.ReadSections(Sects);
+    for SectIdx := 0 to Sects.Count - 1 do
+    begin
+      Sect := Sects[SectIdx];
+      if CompareText(Sect, 'Editor') = 0 then
+        Continue;
+      PrjIni.ReadSectionValues(Sect, Values);
+      for ValIdx := 0 to Values.Count - 1 do
+      begin
+        Key := Values.Names[ValIdx];
+        if Key = '' then
+          Continue;
+        Val := Values.ValueFromIndex[ValIdx];
+        if (CompareText(Sect, 'Compiler') = 0) and
+           ((Trim(Val) = 'C:\') or (CompareText(Key, 'DelphiPath') = 0)) then
+          Continue;
+        if (CompareText(Sect, 'Project') = 0) and
+           (CompareText(Key, 'Target') = 0) then
+          Val := PrjTargetToStore(AFolder, Target)
+        else if (CompareText(Sect, 'Windows') = 0) and
+                (CompareText(Copy(Key, 1, 8), 'incowner') = 0) then
+          Val := PrjPathFromStore(APrjFile, Val)
+        else
+        begin
+          // "<номер> <путь>": winN в [Windows], номера в [Tabs]
+          PathValue := ((CompareText(Sect, 'Windows') = 0) and
+                        (CompareText(Copy(Key, 1, 3), 'win') = 0)) or
+                       ((CompareText(Sect, 'Tabs') = 0) and
+                        (StrToIntDef(Key, -1) >= 0));
+          SpaceAt := Pos(' ', Trim(Val));
+          if PathValue and (SpaceAt > 1) and
+             (StrToIntDef(Copy(Trim(Val), 1, SpaceAt - 1), -1) >= 0) then
+            Val := Copy(Trim(Val), 1, SpaceAt) +
+                   PrjPathFromStore(APrjFile,
+                                    Copy(Trim(Val), SpaceAt + 1, MaxInt));
+        end;
+        Prj.WriteString(Sect, Key, Val);
+      end;
+    end;
+    Result := True;
+  finally
+    Prj.Free;
+    Values.Free;
+    Sects.Free;
+    PrjIni.Free;
+  end;
+end;
+
+// Проекты прежнего вида: в [Projects] значение - путь к .prj. Описание
+// переносится в editor.ini (ImportPrjFile), значение становится папкой
+// проекта. Сами .prj остаются на диске нетронутыми. Проект, у которого
+// раздел уже есть, повторно не переносится. Что сделано - в ANotes.
+procedure TForm1.MigratePrjProjects(ANotes: TStrings);
+var
+  Ini: TIniFile;
+  Reg, Moved: TStringList;
+  RegIdx: Integer;
+  PrjName, PrjFile, Folder: string;
+  Prj: TProjectIni;
+  HasSection: Boolean;
+begin
+  if not FileExists(SettingsFileName) then
+    Exit;
+  Reg := TStringList.Create;
+  Moved := TStringList.Create;
+  try
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      Ini.ReadSectionValues('Projects', Reg);
+    finally
+      Ini.Free;
+    end;
+
+    // Разделы проектов пишет TProjectIni (текстом файла), [Projects] -
+    // после, одним заходом
+    for RegIdx := 0 to Reg.Count - 1 do
+    begin
+      PrjName := Reg.Names[RegIdx];
+      PrjFile := StripIniComment(Reg.ValueFromIndex[RegIdx]);
+      if (PrjName = '') or
+         (CompareText(ExtractFileExt(PrjFile), '.prj') <> 0) then
+        Continue;
+      Folder := ExtractFilePath(PrjFile);
+      Prj := TProjectIni.Create(SettingsFileName, PrjName);
+      try
+        HasSection := Prj.Exists;
+      finally
+        Prj.Free;
+      end;
+      if HasSection then
+        ANotes.Add('Проект ' + PrjName + ': раздел уже есть в editor.ini, ' +
+                   PrjFile + ' не переносится')
+      else if ImportPrjFile(PrjFile, PrjName, Folder) then
+        ANotes.Add('Проект ' + PrjName + ': описание ' + PrjFile +
+                   ' перенесено в editor.ini, папка проекта ' + Folder)
+      else
+        ANotes.Add('Проект ' + PrjName + ': описания ' + PrjFile + ' нет - ' +
+                   'в списке остаётся папка ' + Folder);
+      Moved.Values[PrjName] := Folder;
+    end;
+
+    if Moved.Count > 0 then
+    begin
+      Ini := TIniFile.Create(SettingsFileName);
+      try
+        for RegIdx := 0 to Moved.Count - 1 do
+          Ini.WriteString('Projects', Moved.Names[RegIdx],
+                          Moved.ValueFromIndex[RegIdx]);
+      finally
+        Ini.Free;
+      end;
+    end;
+  finally
+    Moved.Free;
+    Reg.Free;
+  end;
+  // [Projects] записан через TIniFile - разделы проектов читаются заново
+  IniCacheReset;
+end;
+
+// Реестр проектов из editor.ini, [Projects]: имя проекта - ключ, папка
+// проекта - значение. Сам проект - раздел [Project.<имя>] (PrjStore).
 procedure TForm1.LoadProjectReg;
 var
   Ini: TIniFile;
@@ -8345,9 +8446,9 @@ begin
     Ini.ReadSectionValues('Projects', SL);
     for I := 0 to SL.Count - 1 do
       if (SL.Names[I] <> '') and
-         FileExists(StripIniComment(SL.ValueFromIndex[I])) then
+         (StripIniComment(SL.ValueFromIndex[I]) <> '') then
         FProjectReg.Values[SL.Names[I]] :=
-          StripIniComment(SL.ValueFromIndex[I]);
+          IncludeTrailingPathDelimiter(StripIniComment(SL.ValueFromIndex[I]));
   finally
     SL.Free;
     Ini.Free;
@@ -8385,71 +8486,54 @@ begin
 end;
 
 // Проект, который собирается и запускается (сборка, Run, отладчик, New
-// Form). Активная вкладка - описание проекта (.prj): собирается он, даже
-// если текущий проект другой. Иначе - текущий проект. Описания из вкладки
-// может не быть в реестре проектов, или реестр для того же имени указывает
-// в другое место: тогда путь к нему подставляет ProjectFileName
-// (FBuildPrjName, FBuildPrjFile) - до следующего вызова.
+// Form) - текущий. Что именно собирать, решает файл активной вкладки
+// (CurBuildKind, DelphiTargetDpr, RapidQTargetBas).
 function TForm1.BuildProject: string;
-var
-  TabPrj, PrjName: string;
 begin
-  FBuildPrjName := '';
-  FBuildPrjFile := '';
   Result := FCurrentProject;
-  TabPrj := FCurrentFileName;
-  if (TabPrj = '') or
-     (CompareText(ExtractFileExt(TabPrj), '.prj') <> 0) or
-     not FileExists(TabPrj) then
-    Exit;
-  PrjName := ChangeFileExt(ExtractFileName(TabPrj), '');
-  if CompareText(ExpandFileName(ProjectFileName(PrjName)),
-                 ExpandFileName(TabPrj)) <> 0 then
-  begin
-    FBuildPrjName := PrjName;
-    FBuildPrjFile := ExpandFileName(TabPrj);
-  end;
-  Result := PrjName;
 end;
 
-// Путь к файлу описания проекта. Сначала по реестру - там путь к папке
-// самого проекта; если проекта в реестре нет, берётся прежнее место,
-// projects\<Имя>.prj, чтобы старые проекты открывались как раньше.
-function TForm1.ProjectFileName(const AName: string): string;
+// Папка проекта из реестра ([Projects]), с \ в конце; нет проекта - пусто
+function TForm1.ProjectDir(const AName: string): string;
 begin
-  // Описание проекта из активной вкладки, которого нет в реестре (или
-  // реестр для этого имени указывает в другое место) - см. BuildProject
-  if (FBuildPrjName <> '') and (CompareText(AName, FBuildPrjName) = 0) then
-  begin
-    Result := FBuildPrjFile;
-    Exit;
-  end;
   Result := '';
-  if FProjectReg <> nil then
-    Result := FProjectReg.Values[AName];
-  if Result = '' then
-    Result := ProjectsDir + AName + '.prj';
+  if AName = '' then
+    Exit;
+  if FProjectReg = nil then
+    LoadProjectReg;
+  Result := FProjectReg.Values[AName];
+  if Result <> '' then
+    Result := IncludeTrailingPathDelimiter(Result);
 end;
 
-// Тип проекта из его описания. Пусто - проект сделан до появления типов,
+// Проект есть в списке проектов
+function TForm1.ProjectExists(const AName: string): Boolean;
+begin
+  Result := False;
+  if AName = '' then
+    Exit;
+  if FProjectReg = nil then
+    LoadProjectReg;
+  Result := FProjectReg.IndexOfName(AName) >= 0;
+end;
+
+// Тип проекта из его раздела. Пусто - проект сделан до появления типов,
 // это набор файлов RapidQ.
 function TForm1.ProjectTypeOf(const AName: string): string;
 var
-  Ini: TIniFile;
-  F: string;
+  Prj: TProjectIni;
+  TypeText: string;
 begin
   Result := 'RapidQ Basic';
-  F := ProjectFileName(AName);
-  if not FileExists(F) then
+  if not ProjectExists(AName) then
     Exit;
-
-  Ini := TIniFile.Create(F);
+  Prj := TProjectIni.Create(SettingsFileName, AName);
   try
-    F := StripIniComment(Ini.ReadString('Project', 'Type', ''));
-    if F <> '' then
-      Result := F;
+    TypeText := StripIniComment(Prj.ReadString('Project', 'Type', ''));
+    if TypeText <> '' then
+      Result := TypeText;
   finally
-    Ini.Free;
+    Prj.Free;
   end;
 end;
 
@@ -8511,9 +8595,9 @@ begin
   RebuildProjectsMenu;
 end;
 
-// Delete wrong projects names: из реестра убираются записи, чей файл
-// описания не найден. Сами файлы не трогаются - удалять с диска должен
-// Delete Project, а не уборка списка.
+// Delete wrong projects names: из реестра убираются записи, чьей папки
+// нет на диске, вместе с разделом проекта. Файлы не трогаются - удалять с
+// диска должен Delete Project, а не уборка списка.
 procedure TForm1.DeleteWrongProjectsClick(Sender: TObject);
 var
   I, N: Integer;
@@ -8527,10 +8611,13 @@ begin
   begin
     Nm := FProjectReg.Names[I];
     Path := FProjectReg.ValueFromIndex[I];
-    if (Nm = '') or not FileExists(Path) then
+    if (Nm = '') or not DirectoryExists(Path) then
     begin
       if Nm <> '' then
+      begin
         LogRaw('Убран из списка: ' + Nm + '  ' + #149 + '  ' + Path);
+        IniReplaceSection(SettingsFileName, ProjectSectionPrefix + Nm, nil);
+      end;
       FProjectReg.Delete(I);
       Inc(N);
     end;
@@ -8548,18 +8635,19 @@ end;
 function TForm1.CompilerSection(const AType: string): string;
 var
   Ini: TIniFile;
+  Prj: TProjectIni;
   Tool: string;
 begin
   Result := 'Compiler.' + AType;
   Tool := '';
 
-  if (FCurrentProject <> '') and FileExists(ProjectFileName(FCurrentProject)) then
+  if ProjectExists(FCurrentProject) then
   begin
-    Ini := TIniFile.Create(ProjectFileName(FCurrentProject));
+    Prj := TProjectIni.Create(SettingsFileName, FCurrentProject);
     try
-      Tool := StripIniComment(Ini.ReadString('Project', 'Toolchain', ''));
+      Tool := StripIniComment(Prj.ReadString('Project', 'Toolchain', ''));
     finally
-      Ini.Free;
+      Prj.Free;
     end;
   end;
 
@@ -8578,36 +8666,33 @@ begin
     Result := Result + '.' + Tool;
 end;
 
-// Цель сборки проекта: [Project] Target в его описании
+// Цель сборки проекта: Target в разделе [Project.<имя>]
 function TForm1.ProjectTargetOf(const AName: string): string;
 var
-  Ini: TIniFile;
-  F: string;
+  Prj: TProjectIni;
 begin
   Result := '';
-  F := ProjectFileName(AName);
-  if not FileExists(F) then
+  if not ProjectExists(AName) then
     Exit;
 
-  Ini := TIniFile.Create(F);
+  Prj := TProjectIni.Create(SettingsFileName, AName);
   try
-    Result := StripIniComment(Ini.ReadString('Project', 'Target', ''));
+    Result := StripIniComment(Prj.ReadString('Project', 'Target', ''));
   finally
-    Ini.Free;
+    Prj.Free;
   end;
 
-  // Путь может быть относительным - считаем его от папки описания
-  Result := PrjPathFromStore(F, Result);
+  // \Имя.dpr или относительный путь - от папки проекта
+  Result := PrjTargetFromStore(ProjectDir(AName), Result);
 end;
 
-// Цель сборки проекта, которая есть на диске. Записанная в .prj может
-// указывать в папку другого компьютера (описание переносят через git) -
-// тогда она ищется по порядку:
-//   1. файл с тем же именем в папке .prj;
-//   2. .dpr среди открытых окон: сначала из папки .prj, иначе - если такой
-//      открыт ровно один;
-//   3. <имя проекта>.dpr в папке .prj;
-//   4. единственный .dpr в папке .prj.
+// Цель сборки проекта, которая есть на диске. Записанная может указывать
+// в папку, которой уже нет, - тогда она ищется по порядку:
+//   1. файл с тем же именем в папке проекта;
+//   2. .dpr среди открытых окон: сначала из папки проекта, иначе - если
+//      такой открыт ровно один;
+//   3. <имя проекта>.dpr в папке проекта;
+//   4. единственный .dpr в папке проекта.
 // Ничего не пишет; не нашлось - пустая строка.
 function TForm1.ProjectTargetFind(const AName: string): string;
 var
@@ -8624,9 +8709,9 @@ begin
     Result := Stored;
     Exit;
   end;
-  PrjDir := ExtractFilePath(ProjectFileName(AName));
+  PrjDir := ProjectDir(AName);
 
-  // 1. То же имя - в папке описания
+  // 1. То же имя - в папке проекта
   if Stored <> '' then
   begin
     Candidate := PrjDir + ExtractFileName(Stored);
@@ -8682,16 +8767,16 @@ end;
 
 procedure TForm1.SetProjectTarget(const AName, ATarget: string);
 var
-  Ini: TIniFile;
+  Prj: TProjectIni;
 begin
-  if (AName = '') or not FileExists(ProjectFileName(AName)) then
+  if not ProjectExists(AName) then
     Exit;
-  Ini := TIniFile.Create(ProjectFileName(AName));
+  Prj := TProjectIni.Create(SettingsFileName, AName);
   try
-    Ini.WriteString('Project', 'Target',
-                    PrjPathToStore(ProjectFileName(AName), ATarget));
+    Prj.WriteString('Project', 'Target',
+                    PrjTargetToStore(ProjectDir(AName), ATarget));
   finally
-    Ini.Free;
+    Prj.Free;
   end;
 end;
 
@@ -8723,7 +8808,7 @@ begin
     if not SaveCurrentFile then
       Exit;
 
-  PrjDir := ExtractFilePath(ProjectFileName(FCurrentProject));
+  PrjDir := ProjectDir(FCurrentProject);
   Src := FCurrentFileName;
   Dst := Src;
 
@@ -8821,57 +8906,90 @@ end;
 // Scan projects folder: старые проекты лежали в projects\ одним списком.
 // Пробегаем её и заносим найденное в реестр - так прежние проекты попадают
 // в меню наравне с новыми, у которых описание лежит в своей папке.
+// Описания .prj из [Projects] (имя = путь к .prj) - в editor.ini
+// (MigratePrjProjects), что сделано - в лог; список проектов - заново
+procedure TForm1.ImportPrjAndLog;
+var
+  Notes: TStringList;
+  NoteIdx: Integer;
+begin
+  Notes := TStringList.Create;
+  try
+    MigratePrjProjects(Notes);
+    for NoteIdx := 0 to Notes.Count - 1 do
+      LogRaw(Notes[NoteIdx]);
+  finally
+    Notes.Free;
+  end;
+  LoadProjectReg;
+  RebuildProjectsMenu;
+end;
+
+// Scan projects folder: описания .prj в папке projects (projects\Имя.prj и
+// projects\Имя\Имя.prj) переносятся в editor.ini. Проекты, которые уже
+// есть в списке, не трогаются.
 procedure TForm1.ScanProjectsFolderClick(Sender: TObject);
 var
   SR: TSearchRec;
   N: Integer;
   Sub: string;
+  Ini: TIniFile;
+
+  procedure AddPrj(const AName, AFile: string);
+  begin
+    if ProjectExists(AName) then
+      Exit;
+    Ini.WriteString('Projects', AName, AFile);
+    Inc(N);
+  end;
+
 begin
   if FProjectReg = nil then
     LoadProjectReg;
 
   N := 0;
-  // Старая раскладка: описания прямо в projects
-  if FindFirst(ProjectsDir + '*.prj', faAnyFile, SR) = 0 then
+  Ini := TIniFile.Create(SettingsFileName);
   try
-    repeat
-      if (SR.Attr and faDirectory) <> 0 then
-        Continue;
-      FProjectReg.Values[ChangeFileExt(SR.Name, '')] := ProjectsDir + SR.Name;
-      Inc(N);
-    until FindNext(SR) <> 0;
+    // Старая раскладка: описания прямо в projects
+    if FindFirst(ProjectsDir + '*.prj', faAnyFile, SR) = 0 then
+    try
+      repeat
+        if (SR.Attr and faDirectory) = 0 then
+          AddPrj(ChangeFileExt(SR.Name, ''), ProjectsDir + SR.Name);
+      until FindNext(SR) <> 0;
+    finally
+      FindClose(SR);
+    end;
+
+    // У каждого проекта своя папка, projects\Имя\Имя.prj
+    if FindFirst(ProjectsDir + '*.*', faDirectory, SR) = 0 then
+    try
+      repeat
+        if ((SR.Attr and faDirectory) = 0) or (SR.Name = '.') or
+           (SR.Name = '..') then
+          Continue;
+        Sub := ProjectsDir + SR.Name + '\' + SR.Name + '.prj';
+        if FileExists(Sub) then
+          AddPrj(SR.Name, Sub);
+      until FindNext(SR) <> 0;
+    finally
+      FindClose(SR);
+    end;
   finally
-    FindClose(SR);
+    Ini.Free;
   end;
 
-  // Нынешняя: у каждого проекта своя папка, projects\Имя\Имя.prj
-  if FindFirst(ProjectsDir + '*.*', faDirectory, SR) = 0 then
-  try
-    repeat
-      if ((SR.Attr and faDirectory) = 0) or (SR.Name = '.') or
-         (SR.Name = '..') then
-        Continue;
-      Sub := ProjectsDir + SR.Name + '\' + SR.Name + '.prj';
-      if FileExists(Sub) then
-      begin
-        FProjectReg.Values[SR.Name] := Sub;
-        Inc(N);
-      end;
-    until FindNext(SR) <> 0;
-  finally
-    FindClose(SR);
-  end;
-
-  SaveProjectReg;
-  RebuildProjectsMenu;
-  LogRaw(Format('Scan projects folder: найдено описаний %d', [N]));
+  ImportPrjAndLog;
+  LogRaw(Format('Scan projects folder: перенесено описаний %d', [N]));
 end;
 
-// Open Project: выбрать .prj где угодно на диске и занести в реестр
+// Open Project: описание .prj где угодно на диске - в список проектов,
+// переносится в editor.ini (ImportPrjAndLog)
 procedure TForm1.OpenProjectClick(Sender: TObject);
 var
   Dlg: TOpenDialog;
-  Nm: string;
+  Nm, PrjFile: string;
+  Ini: TIniFile;
 begin
   Dlg := TOpenDialog.Create(Self);
   try
@@ -8880,14 +8998,26 @@ begin
     Dlg.InitialDir := ProjectsDir;
     if not Dlg.Execute then
       Exit;
-
-    Nm := ChangeFileExt(ExtractFileName(Dlg.FileName), '');
-    RegisterProject(Nm, Dlg.FileName);
-    RebuildProjectsMenu;
-    LoadProject(Nm);
+    PrjFile := Dlg.FileName;
+    Nm := ChangeFileExt(ExtractFileName(PrjFile), '');
   finally
     Dlg.Free;
   end;
+
+  if ProjectExists(Nm) then
+    LogRaw('Open Project: проект ' + Nm + ' уже есть в списке - открыт он, ' +
+           'описание .prj не переносится')
+  else
+  begin
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      Ini.WriteString('Projects', Nm, PrjFile);
+    finally
+      Ini.Free;
+    end;
+    ImportPrjAndLog;
+  end;
+  LoadProject(Nm);
 end;
 
 // Reopen Project: перечитать текущий с диска, отбросив несохранённое
@@ -8903,76 +9033,25 @@ end;
 
 // PROJECT PROPERTIES: имя, папка и тип текущего проекта - в том же окне,
 // что New Project (DlgNewPrj), только заполненном. Файлы проекта не
-// создаются, не копируются и не переносятся - меняется только описание:
-//   - имя: файл описания <Имя>.prj переименовывается, запись в реестре -
-//     под новым именем. Главный файл (.dpr и т. п.) остаётся как был;
-//   - папка: где лежит описание. Проект перенесли в другую папку (сами
-//     файлы) - пути описания, начинающиеся со старой папки (цель сборки,
-//     окна, вкладки), переводятся на новую. Файлы там уже должны быть:
-//     главного файла нет - вопрос, записывать ли всё равно. У проекта
-//     старой раскладки (описание в общей папке projects\) переносится
-//     только описание - пути в нём указывают на чужие папки;
+// создаются, не копируются и не переносятся - меняется только его раздел
+// [Project.<имя>] в editor.ini и запись в [Projects]:
+//   - имя: раздел и запись - под новым именем;
+//   - папка: проект перенесли в другую папку (сами файлы) - пути раздела,
+//     начинающиеся со старой папки (цель сборки, окна, вкладки), переводятся
+//     на новую. Главного файла там нет - вопрос, записывать ли всё равно;
 //   - тип: Type=. Главный файл, который новому типу не подходит, ищется
 //     в папке проекта заново (PickExistingMain).
 // Перед правкой - вопросы о несохранённом (ConfirmSaveAll,
-// ConfirmSaveProject), после - проект загружается заново уже с новым
-// описанием.
+// ConfirmSaveProject), после - проект загружается заново.
 procedure TForm1.ProjectPropsClick(Sender: TObject);
 var
   Dlg: TDlgNewPrj;
-  SL: TStringList;
-  Ini: TIniFile;
-  OldName, OldPrj, OldDir, OldType, OldTarget: string;
-  NewName, NewDir, NewType, NewTarget, NewPrj, Dir, Val: string;
-  CurSect, NumText, PathText: string;
-  I, K, P: Integer;
-  DirChanged, OldLayout: Boolean;
-
-  // Строка "Ключ=значение" в разделе ASect описания (SL). Нет строки -
-  // дописывается в конец раздела, нет раздела - в начало файла.
-  procedure SetLine(const ASect, AKey, AValue: string);
-  var
-    J, SectAt, InsAt, Eq: Integer;
-    S: string;
-  begin
-    SectAt := -1;
-    InsAt := -1;
-    for J := 0 to SL.Count - 1 do
-    begin
-      S := Trim(SL[J]);
-      if (S <> '') and (S[1] = '[') then
-      begin
-        if SectAt >= 0 then
-        begin
-          InsAt := J;   // нужный раздел кончился
-          Break;
-        end;
-        if CompareText(S, '[' + ASect + ']') = 0 then
-          SectAt := J;
-        Continue;
-      end;
-      Eq := Pos('=', S);
-      if (SectAt >= 0) and (Eq > 0) and
-         (CompareText(Trim(Copy(S, 1, Eq - 1)), AKey) = 0) then
-      begin
-        SL[J] := AKey + '=' + AValue;
-        Exit;
-      end;
-    end;
-    if SectAt < 0 then
-    begin
-      SL.Insert(0, '[' + ASect + ']');
-      SL.Insert(1, AKey + '=' + AValue);
-      Exit;
-    end;
-    if InsAt < 0 then
-      InsAt := SL.Count;
-    // Пустые строки перед следующим разделом остаются после новой строки
-    while (InsAt > SectAt + 1) and (Trim(SL[InsAt - 1]) = '') do
-      Dec(InsAt);
-    SL.Insert(InsAt, AKey + '=' + AValue);
-  end;
-
+  Prj: TProjectIni;
+  Keys: TStringList;
+  OldName, OldDir, OldType, OldTarget: string;
+  NewName, NewDir, NewType, NewTarget, Dir, Val, SectName: string;
+  K, SectIdx, KeyIdx, FoundAt: Integer;
+  DirChanged: Boolean;
 begin
   if FCurrentProject = '' then
   begin
@@ -8980,32 +9059,24 @@ begin
     Exit;
   end;
   OldName := FCurrentProject;
-  OldPrj := ProjectFileName(OldName);
-  if not FileExists(OldPrj) then
+  if not ProjectExists(OldName) then
   begin
-    ShowMessage('7314:Файл проекта не найден:'#13#10 + OldPrj);
+    ShowMessage('7314:Проекта нет в списке проектов: ' + OldName);
     Exit;
   end;
 
   // Несохранённые тексты и состав окон - до правки: после неё проект
-  // загружается заново из описания
+  // загружается заново
   if not ConfirmSaveAll then
     Exit;
   if not ConfirmSaveProject then
     Exit;
 
-  OldDir := ExtractFilePath(OldPrj);
+  OldDir := ProjectDir(OldName);
   OldType := ProjectTypeOf(OldName);
-  Ini := TIniFile.Create(OldPrj);
-  try
-    OldTarget := PrjPathFromStore(OldPrj,
-                                  StripIniComment(Ini.ReadString('Project', 'Target', '')));
-  finally
-    Ini.Free;
-  end;
+  OldTarget := ProjectTargetOf(OldName);
 
   Dlg := TDlgNewPrj.Create(Self);
-  SL := TStringList.Create;
   try
     // То же окно, что New Project: галка "на базе существующего" здесь
     // не нужна - проект уже есть. Подсказка папки по имени не
@@ -9070,17 +9141,7 @@ begin
       Exit;
     end;
 
-    NewPrj := NewDir + NewName + '.prj';
-    if (CompareText(NewPrj, OldPrj) <> 0) and FileExists(NewPrj) then
-    begin
-      ShowMessage('7403:В этой папке уже есть описание проекта:'#13#10 +
-                  NewPrj);
-      Exit;
-    end;
-
     DirChanged := CompareText(NewDir, OldDir) <> 0;
-    OldLayout := CompareText(OldDir,
-                             IncludeTrailingPathDelimiter(ProjectsDir)) = 0;
 
     // Ничего не поменялось - писать нечего
     if (NewName = OldName) and not DirChanged and
@@ -9090,7 +9151,7 @@ begin
     // Главный файл: в новой папке, если в неё перенесли проект; другой,
     // если прежний новому типу не подходит
     NewTarget := OldTarget;
-    if DirChanged and not OldLayout and (OldTarget <> '') and
+    if DirChanged and (OldTarget <> '') and
        AnsiStartsText(OldDir, OldTarget) then
       NewTarget := NewDir + Copy(OldTarget, Length(OldDir) + 1, MaxInt);
     if (CompareText(NewType, OldType) <> 0) and
@@ -9111,85 +9172,53 @@ begin
                     mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
         Exit;
 
-    // Описание - текстом, как есть: разделы окон, вкладок, закладок и
-    // компилятора переносятся без разбора
-    SL.LoadFromFile(OldPrj);
-    // Относительные пути окон и вкладок отсчитаны от прежнего места .prj -
-    // переводим их в полные: описание может переехать в другую папку.
-    // При следующем сохранении проекта они снова станут относительными.
-    CurSect := '';
-    for I := 0 to SL.Count - 1 do
-    begin
-      Val := Trim(SL[I]);
-      if (Val <> '') and (Val[1] = '[') then
-      begin
-        CurSect := Val;
-        Continue;
-      end;
-      if (CompareText(CurSect, '[Windows]') <> 0) and
-         (CompareText(CurSect, '[Tabs]') <> 0) then
-        Continue;
-      K := Pos('=', SL[I]);
-      if K = 0 then
-        Continue;
-      Val := Trim(Copy(SL[I], K + 1, MaxInt));
-      P := Pos(' ', Val);
-      if (P <= 1) or (StrToIntDef(Copy(Val, 1, P - 1), -1) < 0) then
-        Continue;
-      NumText := Copy(Val, 1, P - 1);
-      PathText := Trim(Copy(Val, P + 1, MaxInt));
-      if PathText = '' then
-        Continue;
-      SL[I] := Copy(SL[I], 1, K) + NumText + ' ' +
-               PrjPathFromStore(OldPrj, PathText);
-    end;
-    if DirChanged and not OldLayout then
-      for I := 0 to SL.Count - 1 do
-      begin
-        K := Pos('=', SL[I]);
-        if K = 0 then
-          Continue;
-        // В [Windows] и [Tabs] значение - "<номер> <путь>": старая папка
-        // ищется внутри значения, а не только в начале
-        Val := Copy(SL[I], K + 1, MaxInt);
-        P := Pos(AnsiUpperCase(OldDir), AnsiUpperCase(Val));
-        if P > 0 then
-          SL[I] := Copy(SL[I], 1, K) + Copy(Val, 1, P - 1) + NewDir +
-                   Copy(Val, P + Length(OldDir), MaxInt);
-      end;
-    SetLine('Project', 'Type', NewType);
-    if NewTarget <> '' then
-      SetLine('Project', 'Target', PrjPathToStore(NewPrj, NewTarget));
-
-    // Смена одного регистра букв в имени - тот же файл: переименовать,
-    // иначе удаление старого удалило бы новый
-    if (CompareText(NewPrj, OldPrj) = 0) and (NewPrj <> OldPrj) then
-      RenameFile(OldPrj, NewPrj);
-    try
-      SL.SaveToFile(NewPrj);
-    except
-      on E: Exception do
-      begin
-        ShowMessage('7471:Не удалось записать описание проекта:'#13#10 +
-                    NewPrj + #13#10 + E.Message);
-        Exit;
-      end;
-    end;
-    if CompareText(NewPrj, OldPrj) <> 0 then
-      if not DeleteFile(OldPrj) then
-        LogRaw('Project Properties: прежнее описание не удалено - ' + OldPrj);
-
-    if CompareText(NewName, OldName) <> 0 then
-      UnregisterProject(OldName);
-    RegisterProject(NewName, NewPrj);
-    LogRaw('Project Properties: ' + NewName + '  ' + #149 + '  ' + NewType +
-    '  ' + #149 + '  ' + NewPrj);
   finally
-    SL.Free;
     Dlg.Free;
   end;
 
-  // Тот же проект под новым описанием: имя меняем до загрузки, иначе
+  // Раздел и запись в списке - под новым именем
+  if CompareText(NewName, OldName) <> 0 then
+  begin
+    IniRenameSection(SettingsFileName, ProjectSectionPrefix + OldName,
+                     ProjectSectionPrefix + NewName);
+    UnregisterProject(OldName);
+  end;
+  RegisterProject(NewName, NewDir);
+
+  Prj := TProjectIni.Create(SettingsFileName, NewName);
+  Keys := TStringList.Create;
+  try
+    // Окна и вкладки: значение - "<номер> <путь>", старая папка ищется
+    // внутри значения
+    if DirChanged then
+      for SectIdx := 0 to 1 do
+      begin
+        if SectIdx = 0 then
+          SectName := 'Windows'
+        else
+          SectName := 'Tabs';
+        Prj.ReadSection(SectName, Keys);
+        for KeyIdx := 0 to Keys.Count - 1 do
+        begin
+          Val := Prj.ReadString(SectName, Keys[KeyIdx], '');
+          FoundAt := Pos(AnsiUpperCase(OldDir), AnsiUpperCase(Val));
+          if FoundAt > 0 then
+            Prj.WriteString(SectName, Keys[KeyIdx],
+                            Copy(Val, 1, FoundAt - 1) + NewDir +
+                            Copy(Val, FoundAt + Length(OldDir), MaxInt));
+        end;
+      end;
+    Prj.WriteString('Project', 'Type', NewType);
+    if NewTarget <> '' then
+      Prj.WriteString('Project', 'Target', PrjTargetToStore(NewDir, NewTarget));
+  finally
+    Keys.Free;
+    Prj.Free;
+  end;
+  LogRaw('Project Properties: ' + NewName + '  ' + #149 + '  ' + NewType +
+         '  ' + #149 + '  ' + NewDir);
+
+  // Тот же проект под новым именем: имя меняем до загрузки, иначе
   // LoadProject сочтёт его другим проектом и сбросит снимки форм и
   // конструктор (ProjectSwitchReset)
   FCurrentProject := NewName;
@@ -9246,9 +9275,10 @@ var
   edName, edDir: TUiEdit;
   cbType: TUiComboBox;
   chkBase: TUiCheckBox;
-  Dir, Nm, Tp, PrjFile: string;
+  Dir, Nm, Tp, TargetFile: string;
   OnBase: Boolean;
   Existing: Boolean;  // в папке уже лежит проект - своих файлов не пишем
+  Prj: TProjectIni;
   ExMain: string;     // его главный файл, '' - не найден
   SL: TStringList;
 
@@ -9421,15 +9451,14 @@ begin
           '- заготовка не создаётся, Target пустой');
     end;
 
-    PrjFile := Dir + Nm + '.prj';
-    if FileExists(PrjFile) then
-      if MessageDlg('6221:Проект ' + Nm + ' в этой папке уже есть. Открыть его?',
+    // Проект с этим именем уже есть в списке (editor.ini, [Projects])
+    if ProjectExists(Nm) then
+      if MessageDlg('6221:Проект ' + Nm + ' уже есть в списке проектов (' +
+                    ProjectDir(Nm) + '). Открыть его?',
                     mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
         Exit
       else
       begin
-        RegisterProject(Nm, PrjFile);
-        RebuildProjectsMenu;
         LoadProject(Nm);
         Exit;
       end;
@@ -9702,30 +9731,33 @@ begin
       end;
     end;
 
-    // Описание проекта: тип и цель сборки
-    SL.Clear;
-    SL.Add('[Project]');
-    SL.Add('Type=' + Tp);
+    // Проект: запись в [Projects] (имя = папка) и раздел [Project.<имя>] -
+    // тип и цель сборки
+    TargetFile := '';
     if OnBase then
-      SL.Add('Target=' + FNewPrjMain)
+      TargetFile := FNewPrjMain
     else if Existing then
-    begin
-      if ExMain <> '' then
-        SL.Add('Target=' + ExMain);
-    end
+      TargetFile := ExMain
     else if CompareText(Tp, 'Delphi') = 0 then
-      SL.Add('Target=' + Dir + Nm + '.dpr')
+      TargetFile := Dir + Nm + '.dpr'
     else if CompareText(Tp, 'Lazarus') = 0 then
-      SL.Add('Target=' + Dir + Nm + '.lpr')
+      TargetFile := Dir + Nm + '.lpr'
     else if CompareText(Tp, 'Go') = 0 then
-      SL.Add('Target=' + Dir + 'main.go')
+      TargetFile := Dir + 'main.go'
     else if CompareText(Tp, 'Python') = 0 then
-      SL.Add('Target=' + Dir + 'main.py')
+      TargetFile := Dir + 'main.py'
     else if CompareText(Tp, 'Rust') = 0 then
-      SL.Add('Target=' + Dir + 'src\main.rs');
-    SL.SaveToFile(PrjFile);
+      TargetFile := Dir + 'src\main.rs';
 
-    RegisterProject(Nm, PrjFile);
+    RegisterProject(Nm, Dir);
+    Prj := TProjectIni.Create(SettingsFileName, Nm);
+    try
+      Prj.WriteString('Project', 'Type', Tp);
+      if TargetFile <> '' then
+        Prj.WriteString('Project', 'Target', PrjTargetToStore(Dir, TargetFile));
+    finally
+      Prj.Free;
+    end;
     RebuildProjectsMenu;
     LoadProject(Nm);
 
@@ -10820,7 +10852,7 @@ begin
     if FCurrentProject = '' then
       mPrjFolder.Hint := ProjectsDir
     else
-      mPrjFolder.Hint := ExtractFilePath(ProjectFileName(FCurrentProject));
+      mPrjFolder.Hint := ProjectDir(FCurrentProject);
 
   if FProjectReg = nil then
     LoadProjectReg;
@@ -10833,8 +10865,8 @@ begin
 
     It := TMenuItem.Create(Self);
     It.Caption := Nm + '  ' + #149 + '  ' + ProjectTypeOf(Nm);
-    // В Hint - полный путь к описанию. Данные держим тут, а не в Caption:
-    // VCL вставляет в подписи амперсанды под ускорители.
+    // В Hint - папка проекта (её показывает строка состояния); имя -
+    // начало Caption, до " • " (ProjectItemClick)
     It.Hint := FProjectReg.ValueFromIndex[I];
     It.OnClick := ProjectItemClick;
     It.RadioItem := True;
@@ -11190,7 +11222,7 @@ begin
   // У нового файла пути ещё нет - показываем папку проекта
   if (Result = '') or not DirectoryExists(Result) then
     if FCurrentProject <> '' then
-      Result := ProjectsDir + FCurrentProject;
+      Result := ProjectDir(FCurrentProject);
 
   if (Result = '') or not DirectoryExists(Result) then
     Result := ExtractFilePath(Application.ExeName);
@@ -11755,7 +11787,8 @@ end;
 // Открывает проект: читает .prj и поднимает все перечисленные в нём окна
 procedure TForm1.LoadProject(const AName: string);
 var
-  Ini: TIniFile;
+  Ini: TProjectIni;
+  PrjDir: string;
   I, J, CurIdx, TabCnt, TabWin, Relocated: Integer;
   Raw, Path, Src, Key, OldSample, NewSample: string;
   HotRecent, HotItem: string;
@@ -11767,9 +11800,9 @@ begin
   TFiles := 0;
   TShow := 0;
   FileCount := 0;
-  if not FileExists(ProjectFileName(AName)) then
+  if not ProjectExists(AName) then
   begin
-    ShowMessage('8095:Файл проекта не найден:'#13#10 + ProjectFileName(AName));
+    ShowMessage('8095:Проекта нет в списке проектов: ' + AName);
     Exit;
   end;
 
@@ -11798,11 +11831,11 @@ begin
   // на всю загрузку (RelocateFile)
   FRelocateUpEnd := GetTickCount + RelocateSearchMs;
 
-  Ini := TIniFile.Create(ProjectFileName(AName));
+  // Раздел проекта в editor.ini: [Project.<имя>], ключи бывших разделов .prj
+  // с приставкой (Windows_win0, Tabs_0, Bookmarks_...) - см. PrjStore
+  PrjDir := ProjectDir(AName);
+  Ini := TProjectIni.Create(SettingsFileName, AName);
   try
-    // Раздела [Editor] в .prj нет: подсветка, ширина табуляции, бледность
-    // направляющих и прочее - это свойства РЕДАКТОРА, а не проекта. Они лежат
-    // в editor.ini и будут меняться заодно со светлой/тёмной темой.
     CurIdx := StrToIntDef(StripIniComment(Ini.ReadString('Windows', 'Index', '0')), 0);
 
     // Слоты занимаем ТЕМИ ЖЕ индексами, что в файле: на них ссылаются закладки
@@ -11814,9 +11847,9 @@ begin
       if Raw = '' then
         Continue;
 
-      // Путь из .prj мог остаться от другой машины - пробуем найти файл
-      // рядом с программой по хвосту пути
-      Src := PrjPathFromStore(ProjectFileName(AName), StripLeadingNumber(Raw));
+      // Файла по записанному пути может не быть (папку перенесли) -
+      // пробуем найти его рядом с программой по хвосту пути
+      Src := PrjPathFromStore(PrjDir, StripLeadingNumber(Raw));
       Path := ResolveFileName(Src);
 
       if CompareText(Path, Src) <> 0 then
@@ -11836,7 +11869,7 @@ begin
       Raw := Trim(Ini.ReadString('Windows', 'incowner' + IntToStr(I), ''));
       if Raw <> '' then
         FWindows[I].IncOwner :=
-          ResolveFileName(PrjPathFromStore(ProjectFileName(AName), Raw))
+          ResolveFileName(PrjPathFromStore(PrjDir, Raw))
       else
         FWindows[I].IncOwner := '';
       FWindows[I].Modified := False;
@@ -12073,8 +12106,8 @@ end;
 // бы пустым, и активной стала бы случайная вкладка.
 procedure TForm1.SaveActiveTabToProject;
 var
-  Ini: TIniFile;
-  FN, Raw, Stored: string;
+  Ini: TProjectIni;
+  Raw, Stored: string;
   SpPos: Integer;
 begin
   if FCurrentProject = '' then
@@ -12084,11 +12117,10 @@ begin
   if not FWindows[FWindowsIndex].Used then
     Exit;
 
-  FN := ProjectFileName(FCurrentProject);
-  if not FileExists(FN) then
-    Exit; // проект ни разу не сохраняли - записывать индекс некуда
+  if not ProjectExists(FCurrentProject) then
+    Exit;
 
-  Ini := TIniFile.Create(FN);
+  Ini := TProjectIni.Create(SettingsFileName, FCurrentProject);
   try
     Raw := Trim(Ini.ReadString('Windows', 'win' + IntToStr(FWindowsIndex), ''));
     if Raw = '' then
@@ -12102,7 +12134,7 @@ begin
       Exit; // номера в начале нет
 
     // Слот мог быть занят другим файлом - тогда индекс соврёт
-    Stored := PrjPathFromStore(FN, Stored);
+    Stored := PrjPathFromStore(ProjectDir(FCurrentProject), Stored);
     if CompareText(Stored, FWindows[FWindowsIndex].FileName) <> 0 then
       Exit;
 
@@ -12112,34 +12144,10 @@ begin
   end;
 end;
 
-// Убирает из [Compiler] описания проекта заглушки C:\, которые писали
-// прежние версии. Раздел, оставшийся пустым, стирается.
-procedure RemoveCompilerStubs(AIni: TIniFile);
-const
-  StubKeys: array[0..5] of string = ('CompPath', 'IncPath', 'LibPath',
-  'IcoFile', 'TplFile', 'FBCompPath');
-                                     var
-                                     Index: Integer;
-                                     Keys: TStringList;
-begin
-  for Index := Low(StubKeys) to High(StubKeys) do
-    if Trim(AIni.ReadString('Compiler', StubKeys[Index], '')) = 'C:\' then
-      AIni.DeleteKey('Compiler', StubKeys[Index]);
-  Keys := TStringList.Create;
-  try
-    AIni.ReadSection('Compiler', Keys);
-    if Keys.Count = 0 then
-      AIni.EraseSection('Compiler');
-  finally
-    Keys.Free;
-  end;
-end;
-
 // Записывает текущий список окон в проект AName, создавая папку при надобности
 procedure TForm1.SaveProjectTo(const AName: string);
 var
-  Ini: TIniFile;
-  Dir, PrjFile: string;
+  Ini: TProjectIni;
   I, J, N: Integer;
   HotPinned, HotRecentList: TList;
   HotText: string;
@@ -12147,35 +12155,22 @@ begin
   if Trim(AName) = '' then
     Exit;
 
-  // Создаём только корневую папку projects. Папку самого проекта здесь не
-  // трогаем: .prj лежит рядом с ней, а файлы проекта пользователь размещает
-  // где угодно. Пути в описании - от папки .prj, см. PrjPathToStore.
-  Dir := ProjectsDir;
-  if not DirectoryExists(Dir) then
-    CreateDir(Dir);
+  // Проекта нет в списке - запись в [Projects]: папка проекта - папка
+  // активного файла, его нет на диске - projects\<имя>
+  if not ProjectExists(AName) then
+    if (FCurrentFileName <> '') and FileExists(FCurrentFileName) then
+      RegisterProject(AName, ExtractFilePath(FCurrentFileName))
+    else
+      RegisterProject(AName, ProjectsDir + AName + '\');
 
   StoreCurrentWindow; // в записи окна должны лежать свежие текст и каретка
 
-  PrjFile := ProjectFileName(AName);
-  Ini := TIniFile.Create(PrjFile);
+  // Раздел проекта в editor.ini (PrjStore): пути окон и вкладок - полные,
+  // editor.ini у каждого компьютера свой
+  Ini := TProjectIni.Create(SettingsFileName, AName);
   try
-    // Раздел [Editor] в проекте не нужен. Стираем его на случай, если файл
-    // был создан прежней версией и раздел там остался.
-    Ini.EraseSection('Editor');
-
-    // Корень Delphi - свойство компьютера, а не проекта: он берётся из
-    // editor.ini ([Compiler.Delphi] DelphiPath, вкладка Compilers). Ключ,
-    // который писали в .prj прежние версии, нигде не читался и давал правку
-    // .prj при переходе на другой компьютер - убираем.
-    Ini.DeleteKey('Compiler', 'DelphiPath');
-    // Пути компиляторов - свойство компьютера: они в editor.ini
-    // ([Compiler.<тип>], вкладка Compilers), а не в проекте. Прежние версии
-    // писали в [Compiler] проекта заглушки C:\ (формат RQdb.ini) - их
-    // убираем; ключи с другими значениями (перенесённые из RQIDE) остаются.
-    RemoveCompilerStubs(Ini);
-
     // Раздел окон переписываем целиком, иначе остались бы ключи win<N>
-    // от закрытых окон. [Compiler] и [Bookmarks] при этом не трогаются.
+    // от закрытых окон. Остальные ключи проекта при этом не трогаются.
     Ini.EraseSection('Windows');
     Ini.WriteString('Windows', 'Index', IntToStr(FWindowsIndex));
 
@@ -12185,13 +12180,12 @@ begin
       begin
         Inc(N);
         Ini.WriteString('Windows', 'win' + IntToStr(I),
-                        IntToStr(N) + ' ' +
-                        PrjPathToStore(PrjFile, FWindows[I].FileName));
+                        IntToStr(N) + ' ' + FWindows[I].FileName);
         Ini.WriteString('Windows', 'curposic' + IntToStr(I),
                         IntToStr(FWindows[I].CursorPos));
         if FWindows[I].IncOwner <> '' then
           Ini.WriteString('Windows', 'incowner' + IntToStr(I),
-                          PrjPathToStore(PrjFile, FWindows[I].IncOwner));
+                          FWindows[I].IncOwner);
       end;
 
     // Вкладки. Набор вкладок - это не то же самое, что список окон: в панели
@@ -12206,7 +12200,7 @@ begin
         if FWindows[FTabWin[I]].Used then
           Ini.WriteString('Tabs', IntToStr(I),
                           IntToStr(FTabWin[I]) + ' ' +
-                          PrjPathToStore(PrjFile, FWindows[FTabWin[I]].FileName));
+                          FWindows[FTabWin[I]].FileName);
     end;
 
     // Закладки. Раздел переписываем целиком, иначе остались бы ключи
@@ -12272,7 +12266,7 @@ end;
 // С нажатым Shift - как раньше, папка в проводнике.
 procedure TForm1.OpenProjectFolderClick(Sender: TObject);
 var
-  Dir, Target, PrjFile: string;
+  Dir, Target: string;
   OldOptions: TOpenOptions;
   FileIdx: Integer;
 begin
@@ -12286,10 +12280,8 @@ begin
     else
     begin
       Target := '';
-      PrjFile := ProjectFileName(FCurrentProject);
-      if FileExists(PrjFile) then
-        Dir := ExtractFilePath(PrjFile)
-      else
+      Dir := ProjectDir(FCurrentProject);
+      if Dir = '' then
         Dir := ProjectsDir + FCurrentProject;
     end;
   end;
@@ -12594,7 +12586,7 @@ var
   Dlg: TDlgDelPrj;
   Lst: TCheckListBox;
   Names, Sorted: TStringList;
-  Nm, PrjFile, DirSl, Dir, Reason, S, Report: string;
+  Nm, DirSl, Dir, Reason, S, Report: string;
   I, J, Cnt, Open, Dirty, Done, Skipped: Integer;
   Folders, CurGone, CurChecked: Boolean;
 begin
@@ -12624,12 +12616,12 @@ begin
     for I := 0 to Sorted.Count - 1 do
     begin
       Nm := Sorted[I];
-      PrjFile := FProjectReg.Values[Nm];
-      S := Nm + '   ' + #149 + '   ' + ExtractFilePath(PrjFile);
+      DirSl := ProjectDir(Nm);
+      S := Nm + '   ' + #149 + '   ' + DirSl;
       if CompareText(Nm, FCurrentProject) = 0 then
         S := S + '   (открыт)';
-      if not FileExists(PrjFile) then
-        S := S + '   (описание не найдено)';
+      if not DirectoryExists(DirSl) then
+        S := S + '   (папки нет)';
       Lst.Items.Add(S);
       Names.Add(Nm);
     end;
@@ -12652,7 +12644,7 @@ begin
           CurChecked := True;
         if Folders then
         begin
-          DirSl := ExtractFilePath(FProjectReg.Values[Names[I]]);
+          DirSl := ProjectDir(Names[I]);
           for J := 0 to High(FWindows) do
             if FWindows[J].Used and
                AnsiStartsText(DirSl, FWindows[J].FileName) then
@@ -12679,7 +12671,7 @@ begin
       end;
     end
     else
-      S := 'Удалить описания проектов: ' + IntToStr(Cnt) + '? Файлы ' +
+      S := 'Убрать из списка проектов: ' + IntToStr(Cnt) + '? Файлы ' +
       'проектов останутся на месте.';
 if MessageDlg('8865:' + S, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
         Exit;
@@ -12700,13 +12692,12 @@ if MessageDlg('8865:' + S, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
       if not Lst.Checked[I] then
         Continue;
       Nm := Names[I];
-      PrjFile := FProjectReg.Values[Nm];
-      DirSl := ExtractFilePath(PrjFile);
+      DirSl := ProjectDir(Nm);
       Dir := ExcludeTrailingPathDelimiter(DirSl);
 
-      if not FileExists(PrjFile) then
-        // Описания уже нет - только запись в списке
-        LogRaw('Убран из списка: ' + Nm + '  ' + #149 + '  ' + PrjFile)
+      if not DirectoryExists(DirSl) then
+        // Папки уже нет - только запись в списке
+        LogRaw('Убран из списка: ' + Nm + '  ' + #149 + '  ' + DirSl)
       else if Folders then
       begin
         Reason := ProjectFolderBlockReason(DirSl);
@@ -12726,17 +12717,11 @@ if MessageDlg('8865:' + S, mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
         '  ' + Dir);
       end
       else
-      begin
-        if not DeleteFile(PrjFile) then
-        begin
-          Inc(Skipped);
-          Report := Report + #13#10 + Nm + ': не удалось удалить ' + PrjFile;
-          Continue;
-        end;
-        LogRaw('Удалено описание проекта: ' + Nm + '  ' + #149 + '  ' +
-               PrjFile);
-      end;
+        LogRaw('Убран из списка проектов: ' + Nm + '  ' + #149 + '  ' +
+               DirSl);
 
+      // Раздел проекта в editor.ini и запись в [Projects]
+      IniReplaceSection(SettingsFileName, ProjectSectionPrefix + Nm, nil);
       UnregisterProject(Nm);
       Inc(Done);
       if CompareText(Nm, FCurrentProject) = 0 then
@@ -12801,6 +12786,17 @@ begin
   end;
 end;
 
+// Имя проекта по пункту меню Projects: подпись "Имя  •  Тип"
+function ProjectNameOfItem(AItem: TMenuItem): string;
+var
+  SepAt: Integer;
+begin
+  Result := StripHotkey(AItem.Caption);
+  SepAt := Pos('  ' + #149, Result);
+  if SepAt > 0 then
+    Result := Copy(Result, 1, SepAt - 1);
+end;
+
 procedure TForm1.ProjectItemClick(Sender: TObject);
 begin
   if not (Sender is TMenuItem) then
@@ -12813,8 +12809,8 @@ begin
     Exit;
   end;
 
-  // Имя проекта - это имя файла без расширения, по построению пути
-  LoadProject(ChangeFileExt(ExtractFileName(TMenuItem(Sender).Hint), ''));
+  // Имя проекта - начало подписи, до " • тип" (RebuildProjectsMenu)
+  LoadProject(ProjectNameOfItem(TMenuItem(Sender)));
 end;
 
 // Копирование папки со всем содержимым. Имена внутри не меняются: правило
@@ -12918,26 +12914,16 @@ end;
 // Цель сборки в описании нового проекта: та же по расширению, но в новой
 // папке и с новым именем. Расширение берём у прежней цели - у Delphi это
 // .dpr, у других типов своё.
-procedure TForm1.FixProjectTarget(const APrjFile, ADir, AName: string);
+procedure TForm1.FixProjectTarget(const AProject, ADir, AName: string);
 var
-  Ini: TIniFile;
-  T, NewT: string;
+  Target, NewTarget: string;
 begin
-  if not FileExists(APrjFile) then
+  Target := ProjectTargetOf(AProject);
+  if Target = '' then
     Exit;
-
-  Ini := TIniFile.Create(APrjFile);
-  try
-    T := StripIniComment(Ini.ReadString('Project', 'Target', ''));
-    if T = '' then
-      Exit;
-
-    NewT := ADir + AName + ExtractFileExt(T);
-    if FileExists(NewT) then
-      Ini.WriteString('Project', 'Target', PrjPathToStore(APrjFile, NewT));
-  finally
-    Ini.Free;
-  end;
+  NewTarget := ADir + AName + ExtractFileExt(Target);
+  if FileExists(NewTarget) then
+    SetProjectTarget(AProject, NewTarget);
 end;
 
 // Окна, открытые из старой папки, переводим на копии в новой: после Save
@@ -12985,7 +12971,7 @@ end;
 // остаётся на диске и в списке нетронутым.
 procedure TForm1.SaveProjectAsClick(Sender: TObject);
 var
-  S, OldName, OldDir, NewDir, NewPrj: string;
+  S, OldName, OldDir, NewDir: string;
   Cnt: Integer;
 begin
   S := FCurrentProject;
@@ -13013,11 +12999,11 @@ begin
   end;
 
   NewDir := IncludeTrailingPathDelimiter(ProjectsDir + S);
-  NewPrj := NewDir + S + '.prj';
 
-  if FileExists(NewPrj) then
+  if ProjectExists(S) then
   begin
-    ShowMessage('9196:Проект с таким именем уже есть:'#13#10 + NewPrj);
+    ShowMessage('9196:Проект с таким именем уже есть в списке:'#13#10 +
+                ProjectDir(S));
     Exit;
   end;
 
@@ -13031,7 +13017,7 @@ begin
   OldDir := '';
   if OldName <> '' then
   begin
-    OldDir := ExtractFilePath(ProjectFileName(OldName));
+    OldDir := ProjectDir(OldName);
     if DirectoryExists(OldDir) then
     begin
       Cnt := CopyProjectFiles(OldDir, NewDir, OldName, S,
@@ -13046,12 +13032,14 @@ begin
     end;
   end;
 
-  // Цель сборки теперь в новой папке. Делается до SaveProjectTo: тот пишет
-  // в этот же файл разделы окон и вкладок.
-  FixProjectTarget(NewPrj, NewDir, S);
-
-  // Запись в реестре - до сохранения: путь к .prj SaveProjectTo берёт оттуда
-  RegisterProject(S, NewPrj);
+  // Запись в [Projects] и раздел проекта - копия прежнего (тип, цель,
+  // папка вывода...), окна и вкладки перепишет SaveProjectTo
+  RegisterProject(S, NewDir);
+  if OldName <> '' then
+    IniCopySection(SettingsFileName, ProjectSectionPrefix + OldName,
+                   ProjectSectionPrefix + S);
+  // Цель сборки теперь в новой папке
+  FixProjectTarget(S, NewDir, S);
   RepointWindows(OldDir, NewDir, OldName, S);
   SaveProjectTo(S);
   RebuildProjectsMenu;
@@ -13059,23 +13047,31 @@ end;
 
 // NewProject: заводит пустой проект. Папку под его файлы создаём сразу -
 // пользоваться ей необязательно, но так она есть под рукой.
-// OpenPrjFile: открывает описание текущего проекта как обычный текстовый файл.
-// Дальше он живёт в общем списке окон - его можно править и сохранять.
+// OpenPrjFile: открывает editor.ini - там раздел текущего проекта
+// [Project.<имя>] - как обычный текстовый файл, на строке этого раздела
 procedure TForm1.OpenPrjFileClick(Sender: TObject);
+var
+  Lines: TStringList;
+  First, Last: Integer;
 begin
+  if not FileExists(SettingsFileName) then
+  begin
+    ShowMessage('9250:Файл настроек не найден:'#13#10 + SettingsFileName);
+    Exit;
+  end;
+  OpenNamedFile(SettingsFileName);
   if FCurrentProject = '' then
-  begin
-    ShowMessage('9244:Проект не открыт.');
     Exit;
+  Lines := TStringList.Create;
+  try
+    Lines.LoadFromFile(SettingsFileName);
+    First := IniFindSection(Lines, ProjectSectionPrefix + FCurrentProject,
+                            Last);
+  finally
+    Lines.Free;
   end;
-
-  if not FileExists(ProjectFileName(FCurrentProject)) then
-  begin
-    ShowMessage('9250:Файл проекта не найден:'#13#10 + ProjectFileName(FCurrentProject));
-    Exit;
-  end;
-
-  OpenNamedFile(ProjectFileName(FCurrentProject));
+  if First >= 0 then
+    GotoLine(First);
 end;
 
 // SaveProject: сначала все изменённые окна и вкладки - на диск
@@ -16700,7 +16696,7 @@ begin
   if (Target <> '') and FileExists(Target) then
     Dir := ExtractFilePath(Target)
   else
-    Dir := ExtractFilePath(ProjectFileName(FCurrentProject));
+    Dir := ProjectDir(FCurrentProject);
   if (Dir = '') or (CompareText(Dir, ProjectsDir) = 0) then
   begin
     for I := 0 to WindowsItemCount - 1 do
@@ -17310,7 +17306,7 @@ function TForm1.CurrentProjectDir: string;
 begin
   Result := '';
   if FCurrentProject <> '' then
-    Result := ExtractFilePath(ProjectFileName(FCurrentProject));
+    Result := ProjectDir(FCurrentProject);
   if (Result = '') or not DirectoryExists(Result) then
     Result := ExtractFilePath(Application.ExeName);
 end;
@@ -17966,8 +17962,15 @@ begin
   // бы Form1 из .dfm
   Caption := AppTitle;
 
-  // Пути в editor.ini - до того, как их кто-нибудь прочитает
+  // editor.ini этой папки программы: файл другого компьютера уходит в
+  // editorN.ini, свой возвращается (SelectEditorIni, PrjStore). Затем
+  // проекты из описаний .prj - в editor.ini. До того, как editor.ini
+  // кто-нибудь прочитает; что сделано - в FIniPathLog, в HiLite log.
   FIniPathLog := TStringList.Create;
+  SelectEditorIni(ExtractFilePath(Application.ExeName), FIniPathLog);
+  MigratePrjProjects(FIniPathLog);
+
+  // Пути в editor.ini - до того, как их кто-нибудь прочитает
   CheckIniPaths;
 
   // Отладочный вывод конструктора форм - в наш лог
@@ -24433,7 +24436,8 @@ begin
   Result := False;
   if FCurrentProject = '' then
     Exit;
-  PrjAge := FileAge(ProjectFileName(FCurrentProject));
+  // Проект - раздел editor.ini: ответ верен, пока файл не менялся
+  PrjAge := FileAge(SettingsFileName);
   if (PrjAge <> -1) and (PrjAge = FOwnPrjAge) and
      (FCurrentProject = FOwnPrjName) then
   begin
@@ -38899,16 +38903,15 @@ end;
 // выбрано "только exe".
 function TForm1.ReleaseSavedList(AList: TStrings): Boolean;
 var
-  Ini: TIniFile;
+  Ini: TProjectIni;
   I, N: Integer;
   V: string;
 begin
   AList.Clear;
   Result := False;
-  if (FCurrentProject = '') or
-     not FileExists(ProjectFileName(FCurrentProject)) then
+  if not ProjectExists(FCurrentProject) then
     Exit;
-  Ini := TIniFile.Create(ProjectFileName(FCurrentProject));
+  Ini := TProjectIni.Create(SettingsFileName, FCurrentProject);
   try
     if not Ini.ValueExists('Release', 'Count') then
       Exit;
@@ -38927,13 +38930,12 @@ end;
 
 procedure TForm1.ReleaseSaveList(AList: TStrings);
 var
-  Ini: TIniFile;
+  Ini: TProjectIni;
   I: Integer;
 begin
-  if (FCurrentProject = '') or
-     not FileExists(ProjectFileName(FCurrentProject)) then
+  if not ProjectExists(FCurrentProject) then
     Exit;
-  Ini := TIniFile.Create(ProjectFileName(FCurrentProject));
+  Ini := TProjectIni.Create(SettingsFileName, FCurrentProject);
   try
     Ini.EraseSection('Release');
     Ini.WriteInteger('Release', 'Count', AList.Count);
@@ -40028,8 +40030,9 @@ end;
 
 procedure TForm1.FixPathsAfterMoveClick(Sender: TObject);
 var
-  Ini, Prj: TIniFile;
-  Sect, OldRoot, NewRoot, RegKey, V, NewV, PrjFile, PrjDir, Head: string;
+  Ini: TIniFile;
+  Prj: TProjectIni;
+  Sect, OldRoot, NewRoot, RegKey, V, NewV, PrjDir, Head: string;
   RootKey: HKEY;
   Keys: TStringList;
   I, P, Fixed, Lost: Integer;
@@ -40049,7 +40052,7 @@ var
       if P <= 0 then
         Continue;
       Num := Copy(Val, 1, P - 1);
-      Path := PrjPathFromStore(PrjFile, Copy(Val, P + 1, MaxInt));
+      Path := PrjPathFromStore(PrjDir, Copy(Val, P + 1, MaxInt));
       if (Path = '') or (StrToIntDef(Num, -1) < 0) then
         Continue;
       if FileExists(Path) then
@@ -40058,8 +40061,7 @@ var
       NewPath := RemapMovedPath(Path, PrjDir);
       if NewPath <> '' then
       begin
-        Prj.WriteString(ASection, Keys[J],
-                        Num + ' ' + PrjPathToStore(PrjFile, NewPath));
+        Prj.WriteString(ASection, Keys[J], Num + ' ' + NewPath);
         Inc(Fixed);
       end
       else
@@ -40154,26 +40156,25 @@ begin
     'повторите команду.')
   else
   begin
-    PrjFile := ProjectFileName(FCurrentProject);
-    if not FileExists(PrjFile) then
-      LogComp('Файл проекта не найден: ' + PrjFile + '. Если он лежит вне ' +
+    if not ProjectExists(FCurrentProject) then
+      LogComp('Проекта нет в списке: ' + FCurrentProject + '. Если он лежит вне ' +
       'папки projects, откройте его через Open Project и повторите ' +
       'команду.')
     else
     begin
-      PrjDir := ExtractFilePath(PrjFile);
+      PrjDir := ProjectDir(FCurrentProject);
       Fixed := 0;
       Lost := 0;
       Keys := TStringList.Create;
-      Prj := TIniFile.Create(PrjFile);
+      Prj := TProjectIni.Create(SettingsFileName, FCurrentProject);
       try
-        V := PrjPathFromStore(PrjFile, Prj.ReadString('Project', 'Target', ''));
+        V := PrjTargetFromStore(PrjDir, Prj.ReadString('Project', 'Target', ''));
         if (V <> '') and not FileExists(V) then
         begin
           NewV := RemapMovedPath(V, PrjDir);
           if NewV <> '' then
           begin
-            Prj.WriteString('Project', 'Target', PrjPathToStore(PrjFile, NewV));
+            Prj.WriteString('Project', 'Target', PrjTargetToStore(PrjDir, NewV));
             Inc(Fixed);
           end
           else
@@ -40191,7 +40192,7 @@ begin
       end;
 
       LogComp(Format('Файл проекта %s: путей исправлено %d, не найдено %d',
-                     [ExtractFileName(PrjFile), Fixed, Lost]));
+                     [FCurrentProject, Fixed, Lost]));
 
       // Окна проекта сейчас смотрят на старые пути - перечитываем проект
       if Fixed > 0 then
@@ -40418,7 +40419,7 @@ begin
     LogComp('Сборщик: Delphi (' + FBuildReason + ')');
   if CompareText(BuildPrj, FCurrentProject) <> 0 then
     LogComp('Собирается проект активной вкладки: ' + BuildPrj + ' (' +
-            ProjectFileName(BuildPrj) + ')');
+            ProjectDir(BuildPrj) + ')');
 
   if FCurrentFileName = '' then
   begin
@@ -46297,8 +46298,9 @@ end;
 procedure TForm1.NewFormTestProject(Sender: TObject);
 var
   Num: Integer;
-  Nm, Dir, PrjFile: string;
+  Nm, Dir: string;
   SL: TStringList;
+  Prj: TProjectIni;
 begin
   // Новый проект закроет окна текущего - сначала несохранённое
   if not ConfirmSaveAll then
@@ -46317,8 +46319,6 @@ begin
     ShowMessage('27239:New Form: не удалось создать папку ' + Dir);
     Exit;
   end;
-  PrjFile := Dir + Nm + '.prj';
-
   SL := TStringList.Create;
   try
     SL.Add('program ' + Nm + ';');
@@ -46386,16 +46386,18 @@ begin
     if not WriteEmptyRes(Dir + Nm + '.res') then
       ShowMessage('27241:New Form: не удалось создать ' + Nm + '.res');
 
-    SL.Clear;
-    SL.Add('[Project]');
-    SL.Add('Type=Delphi');
-    SL.Add('Target=' + Dir + Nm + '.dpr');
-    SL.SaveToFile(PrjFile);
   finally
     SL.Free;
   end;
 
-  RegisterProject(Nm, PrjFile);
+  RegisterProject(Nm, Dir);
+  Prj := TProjectIni.Create(SettingsFileName, Nm);
+  try
+    Prj.WriteString('Project', 'Type', 'Delphi');
+    Prj.WriteString('Project', 'Target', PrjTargetToStore(Dir, Dir + Nm + '.dpr'));
+  finally
+    Prj.Free;
+  end;
   RebuildProjectsMenu;
   LoadProject(Nm);
   if CompareText(FCurrentProject, Nm) <> 0 then
@@ -46465,7 +46467,8 @@ end;
 function TForm1.DelphiOutputDir(const ADpr, ARoot: string): string;
 var
   Ini: TIniFile;
-  PrjFile, DprDir, OutDir, BuildPrj: string;
+  Prj: TProjectIni;
+  DprDir, OutDir, BuildPrj: string;
   HasKey: Boolean;
 begin
   Result := '';
@@ -46481,16 +46484,15 @@ begin
   if (BuildPrj <> '') and
      (CompareText(ProjectTargetOf(BuildPrj), ADpr) = 0) then
   begin
-    PrjFile := ProjectFileName(BuildPrj);
-    if FileExists(PrjFile) then
+    if ProjectExists(BuildPrj) then
     begin
-      Ini := TIniFile.Create(PrjFile);
+      Prj := TProjectIni.Create(SettingsFileName, BuildPrj);
       try
-        HasKey := Ini.ValueExists('Project', 'OutputDir');
-        OutDir := Trim(StripIniComment(Ini.ReadString('Project', 'OutputDir',
+        HasKey := Prj.ValueExists('Project', 'OutputDir');
+        OutDir := Trim(StripIniComment(Prj.ReadString('Project', 'OutputDir',
         '')));
       finally
-        Ini.Free;
+        Prj.Free;
       end;
       if HasKey then
       begin
@@ -46640,7 +46642,13 @@ begin
       end;
   end
   else
+  begin
     CopyIfMissing('editor.ini');
+    // Копия настроек того же компьютера: [Path] - папка нового exe, иначе
+    // при запуске он счёл бы файл чужим (SelectEditorIni) и убрал проекты
+    if FileExists(DstDir + 'editor.ini') then
+      IniSetPath(DstDir + 'editor.ini', DstDir);
+  end;
   CopyIfMissing('IDE.clr');
   CopyDirIfMissing('schemes');
   // Описание компонентов RapidQ для инспектора (RapidQComponentsReady)
@@ -55683,7 +55691,7 @@ begin
   // Последний проект поднимаем В САМОМ КОНЦЕ: LoadProject вызывает
   // CloseAllWindows, и демонстрационный текст вместе со схемой .pas будет
   // заменён на файлы проекта. Делать это раньше бессмысленно - всё затёрлось бы.
-  if (FStartupProject <> '') and FileExists(ProjectFileName(FStartupProject)) then
+  if ProjectExists(FStartupProject) then
     LoadProject(FStartupProject);
 
   // Свои полосы прокрутки у списков и деревьев правой панели, затем цвета

@@ -29,6 +29,7 @@ uses
   DlgArdSerial in 'DlgArdSerial.pas' {DlgArdSerial},
   ReleaseBuild in 'ReleaseBuild.pas',
   ObjParse in 'ObjParse.pas',
+  PrjStore in 'PrjStore.pas',
   RqComponents in 'RqComponents.pas',
   RqDesign in 'RqDesign.pas',
   HangWatch in 'HangWatch.pas',

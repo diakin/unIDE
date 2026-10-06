@@ -22,7 +22,7 @@ type
     // Preferences
     AutosaveEditor: Boolean;      // сохранять изменённые файлы перед
                                   // сборкой, запуском и при выходе - без вопроса
-    AutosaveDesktop: Boolean;     // сохранять состав проекта (.prj) при
+    AutosaveDesktop: Boolean;     // сохранять состав проекта (editor.ini) при
                                   // закрытии проекта и выходе - без вопроса
     ShowCompileProgress: Boolean; // окно хода сборки
     MinimizeOnRun: Boolean;       // свернуть среду, пока работает программа
