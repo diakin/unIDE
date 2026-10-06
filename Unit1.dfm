@@ -1,8 +1,8 @@
 object Form1: TForm1
   BorderIcons = [biSystemMenu, biMinimize, biMaximize]
-  Left = -16
-  Top = 71
-  Width = 1111
+  Left = 209
+  Top = 112
+  Width = 1181
   Height = 910
   Caption = 'Form1 current'
   Color = 10944511
@@ -898,89 +898,20 @@ object Form1: TForm1
       Width = 280
       Align = alLeft
       BevelOuter = bvNone
-      object grpToolbar: TUiGroupBox
-        Align = alTop
-        Height = 54
-        Caption = ''
-        object pnlToolbarIn: TPanel
-          Align = alClient
-          BevelOuter = bvNone
-          ParentFont = True
-          object btnOpen: TUiIconButton
-            Left = 2
-            Top = 1
-            Width = 34
-            Height = 34
-            Hint = 'Открыть файл'
-            ShowHint = True
-            OnClick = ToolbarButtonClickEvent
-          end
-          object btnSave: TUiIconButton
-            Left = 37
-            Top = 1
-            Width = 34
-            Height = 34
-            Hint = 'Сохранить файл'
-            ShowHint = True
-            OnClick = ToolbarButtonClickEvent
-          end
-          object btnSavePrj: TUiIconButton
-            Left = 72
-            Top = 1
-            Width = 34
-            Height = 34
-            Hint = 'Сохранить проект'
-            ShowHint = True
-            OnClick = ToolbarButtonClickEvent
-          end
-          object btnUndo: TUiIconButton
-            Left = 117
-            Top = 1
-            Width = 34
-            Height = 34
-            Hint = 'Отменить'
-            ShowHint = True
-            OnClick = ToolbarButtonClickEvent
-          end
-          object btnCut: TUiIconButton
-            Left = 152
-            Top = 1
-            Width = 34
-            Height = 34
-            Hint = 'Вырезать'
-            ShowHint = True
-            OnClick = ToolbarButtonClickEvent
-          end
-          object btnCopy: TUiIconButton
-            Left = 187
-            Top = 1
-            Width = 34
-            Height = 34
-            Hint = 'Копировать'
-            ShowHint = True
-            OnClick = ToolbarButtonClickEvent
-          end
-          object btnPaste: TUiIconButton
-            Left = 222
-            Top = 1
-            Width = 34
-            Height = 34
-            Hint = 'Вставить'
-            ShowHint = True
-            OnClick = ToolbarButtonClickEvent
-          end
-        end
-      end
       object grpCompiler: TUiGroupBox
-        Align = alClient
+        Color = clOlive
+        Align = alBottom
         Caption = 'Project'
+        Height = 90
         object pnlCompilerIn: TPanel
-          Align = alClient
+          Color = clPurple
+          Align = alTop
           BevelOuter = bvNone
           ParentFont = True
+          Height = 33
           object btnCompileRun: TUiIconButton
-            Left = 128
-            Top = 8
+            Left = 122
+            Top = 0
             Width = 34
             Height = 34
             Hint = 'Собрать проект dcc32 и запустить, если без ошибок'
@@ -988,8 +919,8 @@ object Form1: TForm1
             OnClick = btnCompileRunClick
           end
           object btnViewUnit: TUiIconButton
-            Left = 8
-            Top = 8
+            Left = 2
+            Top = 0
             Width = 34
             Height = 34
             Hint = 'View Unit - список модулей'
@@ -997,8 +928,8 @@ object Form1: TForm1
             OnClick = ShowModulesClick
           end
           object btnViewForm: TUiIconButton
-            Left = 48
-            Top = 8
+            Left = 42
+            Top = 0
             Width = 34
             Height = 34
             Hint = 'View Form - список форм'
@@ -1006,8 +937,8 @@ object Form1: TForm1
             OnClick = ShowFormsClick
           end
           object btnNewForm: TUiIconButton
-            Left = 88
-            Top = 8
+            Left = 82
+            Top = 0
             Width = 34
             Height = 34
             Hint = 'New Form - новая форма'
@@ -1015,8 +946,8 @@ object Form1: TForm1
             OnClick = NewFormClick
           end
           object btnPause: TUiIconButton
-            Left = 165
-            Top = 8
+            Left = 159
+            Top = 0
             Width = 34
             Height = 34
             Hint = 'Program pause - остановить программу там, где она сейчас'
@@ -1024,8 +955,8 @@ object Form1: TForm1
             OnClick = ProgramPauseClick
           end
           object btnProgReset: TUiIconButton
-            Left = 200
-            Top = 8
+            Left = 194
+            Top = 0
             Width = 34
             Height = 34
             Hint = 'Program reset - остановить запущенную программу'
@@ -1033,8 +964,8 @@ object Form1: TForm1
             OnClick = ProgramResetClick
           end
           object btnTraceInto: TUiIconButton
-            Left = 235
-            Top = 8
+            Left = 229
+            Top = 0
             Width = 34
             Height = 34
             Hint = 'Trace into (F7)'
@@ -1042,14 +973,83 @@ object Form1: TForm1
             OnClick = TraceIntoClick
           end
           object btnStepOver: TUiIconButton
-            Left = 270
-            Top = 8
+            Left = 264
+            Top = 0
             Width = 34
             Height = 34
             Hint = 'Step over (F8)'
             ShowHint = True
             OnClick = StepOverClick
           end
+        end
+      end
+      object pnlToolbarIn: TPanel
+        Color = clMaroon
+        Align = alClient
+        BevelOuter = bvNone
+        ParentFont = True
+        object btnOpen: TUiIconButton
+          Left = 2
+          Top = 1
+          Width = 34
+          Height = 34
+          Hint = 'Открыть файл'
+          ShowHint = True
+          OnClick = ToolbarButtonClickEvent
+        end
+        object btnSave: TUiIconButton
+          Left = 37
+          Top = 1
+          Width = 34
+          Height = 34
+          Hint = 'Сохранить файл'
+          ShowHint = True
+          OnClick = ToolbarButtonClickEvent
+        end
+        object btnSavePrj: TUiIconButton
+          Left = 72
+          Top = 1
+          Width = 34
+          Height = 34
+          Hint = 'Сохранить проект'
+          ShowHint = True
+          OnClick = ToolbarButtonClickEvent
+        end
+        object btnUndo: TUiIconButton
+          Left = 117
+          Top = 1
+          Width = 34
+          Height = 34
+          Hint = 'Отменить'
+          ShowHint = True
+          OnClick = ToolbarButtonClickEvent
+        end
+        object btnCut: TUiIconButton
+          Left = 152
+          Top = 1
+          Width = 34
+          Height = 34
+          Hint = 'Вырезать'
+          ShowHint = True
+          OnClick = ToolbarButtonClickEvent
+        end
+        object btnCopy: TUiIconButton
+          Left = 187
+          Top = 1
+          Width = 34
+          Height = 34
+          Hint = 'Копировать'
+          ShowHint = True
+          OnClick = ToolbarButtonClickEvent
+        end
+        object btnPaste: TUiIconButton
+          Left = 222
+          Top = 1
+          Width = 34
+          Height = 34
+          Hint = 'Вставить'
+          ShowHint = True
+          OnClick = ToolbarButtonClickEvent
         end
       end
     end
@@ -1137,6 +1137,12 @@ object Form1: TForm1
           Left = 0
           Width = 145
           Height = 21
+        end
+        object grpToolbar: TUiGroupBox
+          Color = clGreen
+          Align = alTop
+          Height = 54
+          Caption = ''
         end
       end
     end
@@ -1295,14 +1301,22 @@ object Form1: TForm1
                 Visible = False
                 OnKeyDown = ObjEditKeyDown
                 OnExit = ObjEditExit
+                Left = 304
+                Top = 0
+                Width = 41
               end
               object FObjCombo: TUiComboBox
                 Visible = False
                 DropDownCount = 16
                 OnKeyDown = ObjEditKeyDown
                 OnExit = ObjEditExit
+                Left = 240
+                Top = 0
+                Width = 49
               end
               object FObjSetList: TCheckListBox
+                Height = 22
+                Align = alNone
                 Visible = False
                 OnKeyDown = ObjEditKeyDown
                 OnExit = ObjEditExit
