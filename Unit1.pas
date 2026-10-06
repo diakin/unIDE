@@ -40396,7 +40396,7 @@ begin
 
   LibDir := ExpandDelphiRoot(LibDir, Root);
   DcuDir := ExpandDelphiRoot(DcuDir, Root);
-  // Папка exe: у проекта своя (Output), см. DelphiOutputDir. По настоящему
+  // Папка exe: см. DelphiOutputDir (не задана - папка .dpr). По настоящему
   // .dpr, не по копии с зондом.
   ExeDir := DelphiOutputDir(OrigDpr, Root);
 
@@ -46229,12 +46229,10 @@ end;
 //      папка .dpr (как было до папки Output).
 //   2. ExePath из настроек компилятора (IDE Options -> Compilers) - общий
 //      для всех проектов, если задан.
-//   3. Папка Output рядом с .dpr.
+//   3. Папка самого .dpr.
 // Этим же пользуются сборка (ключ -E) и Run - иначе Run искал бы exe не
 // там, где он появился.
 function TForm1.DelphiOutputDir(const ADpr, ARoot: string): string;
-const
-  DefOutput = 'Output';
 var
   Ini: TIniFile;
   PrjFile, DprDir, OutDir, BuildPrj: string;
@@ -46293,8 +46291,8 @@ begin
     end;
   end;
 
-  // 3. По умолчанию
-  Result := IncludeTrailingPathDelimiter(DprDir + DefOutput);
+  // 3. По умолчанию - папка .dpr, как у самой Delphi
+  Result := IncludeTrailingPathDelimiter(DprDir);
 end;
 
 function TForm1.DelphiExeOf(const ADpr: string): string;
