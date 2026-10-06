@@ -845,6 +845,7 @@ type
     procedure NewFileClick(Sender: TObject);
     procedure DsgMenuClick(Sender: TObject);
     procedure DsgAlignMenuExtra;
+    procedure FObjSetListClick(Sender: TObject);
 
     private
     OldRichEditProc: TWndMethod;
@@ -56168,6 +56169,11 @@ begin
   Result := UiScrollIsService(C);
   if not Result and (C is TSpeedButton) and (C.Owner is TDsgPalette) then
     Result := TDsgPalette(C.Owner).ForeignOf(TControl(C)) <> '';
+end;
+
+procedure TForm1.FObjSetListClick(Sender: TObject);
+begin
+
 end;
 
 initialization

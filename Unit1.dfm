@@ -1,7 +1,7 @@
 object Form1: TForm1
   BorderIcons = [biSystemMenu, biMinimize, biMaximize]
-  Left = -16
-  Top = 71
+  Left = 43
+  Top = 9
   Width = 1111
   Height = 910
   Caption = 'Form1 current'
@@ -899,10 +899,12 @@ object Form1: TForm1
       Align = alLeft
       BevelOuter = bvNone
       object grpToolbar: TUiGroupBox
+        Color = clMaroon
         Align = alTop
         Height = 54
         Caption = ''
         object pnlToolbarIn: TPanel
+          Color = clGreen
           Align = alClient
           BevelOuter = bvNone
           ParentFont = True
@@ -972,9 +974,11 @@ object Form1: TForm1
         end
       end
       object grpCompiler: TUiGroupBox
+        Color = clPurple
         Align = alClient
         Caption = 'Project'
         object pnlCompilerIn: TPanel
+          Color = clTeal
           Align = alClient
           BevelOuter = bvNone
           ParentFont = True
@@ -1295,17 +1299,30 @@ object Form1: TForm1
                 Visible = False
                 OnKeyDown = ObjEditKeyDown
                 OnExit = ObjEditExit
+                Left = 128
+                Top = 0
+                Width = 72
+                Height = 21
               end
               object FObjCombo: TUiComboBox
                 Visible = False
                 DropDownCount = 16
                 OnKeyDown = ObjEditKeyDown
                 OnExit = ObjEditExit
+                Left = 264
+                Top = 0
+                Width = 41
+                Height = 21
               end
               object FObjSetList: TCheckListBox
                 Visible = False
                 OnKeyDown = ObjEditKeyDown
                 OnExit = ObjEditExit
+                Left = 208
+                Top = 0
+                Width = 41
+                Height = 24
+                OnClick = FObjSetListClick
               end
             end
           end
