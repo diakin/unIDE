@@ -48631,6 +48631,7 @@ begin
   ADesigner.ShowCaptions := FEnv.DsgShowCaptions;
   ADesigner.ShowHints := FEnv.DsgShowHints;
   ADesigner.ExtendedHints := FEnv.DsgExtendedHints;
+  ADesigner.KeepLayered := FEnv.DsgLayeredForm;
 end;
 
 procedure TForm1.EnvOptionsChanged;

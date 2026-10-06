@@ -36,6 +36,11 @@ type
     DsgShowCaptions: Boolean;     // имена под значками невизуальных компонентов
     DsgShowHints: Boolean;        // подсказка «Имя: Класс» над компонентом
     DsgExtendedHints: Boolean;    // в подсказке - место, размер, TabOrder
+    // Форма конструктора остаётся прозрачным (layered) окном с
+    // непрозрачностью 255: при перестройке формы стиль окна не снимается,
+    // и окно не перерисовывается заново. Только в editor.ini
+    // ([Designer] LayeredForm=0 - как раньше).
+    DsgLayeredForm: Boolean;
   end;
 
   // Editor Options - Margin and gutter, Code Insight. В editor.ini -
@@ -129,6 +134,7 @@ begin
   AOpts.DsgShowCaptions := False;
   AOpts.DsgShowHints := True;
   AOpts.DsgExtendedHints := True;
+  AOpts.DsgLayeredForm := True;
 end;
 
 function GridValue(AValue: Integer): Integer;
@@ -175,6 +181,8 @@ begin
                                        AOpts.DsgShowHints);
     AOpts.DsgExtendedHints := Ini.ReadBool(SecDesigner, 'ShowExtendedHints',
                                            AOpts.DsgExtendedHints);
+    AOpts.DsgLayeredForm := Ini.ReadBool(SecDesigner, 'LayeredForm',
+                                         AOpts.DsgLayeredForm);
   finally
     Ini.Free;
   end;
@@ -201,6 +209,7 @@ begin
     Ini.WriteBool(SecDesigner, 'ShowComponentCaptions', AOpts.DsgShowCaptions);
     Ini.WriteBool(SecDesigner, 'ShowDesignerHints', AOpts.DsgShowHints);
     Ini.WriteBool(SecDesigner, 'ShowExtendedHints', AOpts.DsgExtendedHints);
+    Ini.WriteBool(SecDesigner, 'LayeredForm', AOpts.DsgLayeredForm);
   finally
     Ini.Free;
   end;

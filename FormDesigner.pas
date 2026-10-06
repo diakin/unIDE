@@ -148,6 +148,9 @@ type
     // компонентов формы - их свойство из .dfm, его не трогаем.
     FShowHints: Boolean;
     FExtendedHints: Boolean;
+    // Форма после показа остаётся layered-окном (непрозрачность 255), см.
+    // ShowForm
+    FKeepLayered: Boolean;
     FHintWnd: THintWindow;
     FHintTimer: TTimer;
     FHintTarget: TComponent;
@@ -294,6 +297,7 @@ type
     property ShowCaptions: Boolean read FShowCaptions write SetShowCaptions;
     property ShowHints: Boolean read FShowHints write SetShowHints;
     property ExtendedHints: Boolean read FExtendedHints write FExtendedHints;
+    property KeepLayered: Boolean read FKeepLayered write FKeepLayered;
     property OnSelect: TDsgSelectEvent read FOnSelect write FOnSelect;
     property OnChange: TDsgChangeEvent read FOnChange write FOnChange;
     property OnKey: TDsgKeyEvent read FOnKey write FOnKey;
@@ -2326,6 +2330,7 @@ begin
   FSnapToGrid := True;
   FShowHints := True;
   FExtendedHints := True;
+  FKeepLayered := True;
   FHintTimer := TTimer.Create(nil);
   FHintTimer.Enabled := False;
   FHintTimer.OnTimer := HintTimerTick;
@@ -2683,15 +2688,26 @@ begin
     RedrawWindow(FForm.Handle, nil, 0, RDW_INVALIDATE or RDW_ERASE or
                  RDW_FRAME or RDW_ALLCHILDREN or RDW_UPDATENOW);
   finally
-    // Снятие layered помечает окно к перерисовке (VCL, SetLayeredAttribs) -
-    // рисуем сразу, не дожидаясь очереди
-    FForm.AlphaBlend := False;
-    FForm.AlphaBlendValue := 255;
-    FlushPaint;
+    if FKeepLayered then
+    begin
+      // Окно остаётся layered, только непрозрачным: содержимое уже
+      // нарисовано в его буфер и выводится как есть. Снятие стиля
+      // (AlphaBlend := False) заставляло Windows перерисовать всё окно
+      // заново уже на экране - фон, затем контролы.
+      FForm.AlphaBlendValue := 255;
+    end
+    else
+    begin
+      // Снятие layered помечает окно к перерисовке (VCL,
+      // SetLayeredAttribs) - рисуем сразу, не дожидаясь очереди
+      FForm.AlphaBlend := False;
+      FForm.AlphaBlendValue := 255;
+      FlushPaint;
+    end;
   end;
-  Windows.SetFocus(FForm.Handle);
-  // Новая форма уже на экране - прежнюю можно убрать
+  // Новая форма уже на экране и закрывает прежнюю - прежнюю можно убрать
   DropOldForm;
+  Windows.SetFocus(FForm.Handle);
 end;
 
 procedure TFormDesigner.AfterLoad(AHidden: Boolean);
