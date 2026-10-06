@@ -662,6 +662,8 @@ type
     btnProgReset: TUiIconButton;
     btnTraceInto: TUiIconButton;
     btnStepOver: TUiIconButton;
+    btnArdVerify: TUiIconButton;
+    btnArdUpload: TUiIconButton;
     mBmAdd: TMenuItem;
     mBmDelete: TMenuItem;
     mBmSet: TMenuItem;
@@ -827,6 +829,8 @@ type
     procedure NotDoneClick(Sender: TObject);
     procedure NewFormClick(Sender: TObject);
     procedure ProgramResetClick(Sender: TObject);
+    procedure ArdVerifyClick(Sender: TObject);
+    procedure ArdUploadClick(Sender: TObject);
     procedure ProgramPauseClick(Sender: TObject);
     procedure TraceIntoClick(Sender: TObject);
     procedure StepOverClick(Sender: TObject);
@@ -2311,6 +2315,7 @@ type
     function  CompileArduino(AUpload: Boolean;
                              AKeepLog: Boolean = False): Boolean;
     procedure ArdBuildLine(const ALine: string);
+    procedure ArdBuildButtons;
     procedure ArdBuildIdle(var ACancel: Boolean);
     function  ArdSaveSketchFiles(const ASketchDir: string;
                                  ASave: Boolean): Boolean;
@@ -4832,6 +4837,8 @@ const
   IconReset     = 12;
   IconTraceInto = 13;
   IconStepOver  = 14;
+  IconArdVerify = 15;   // Arduino: Verify
+  IconArdUpload = 16;   // Arduino: Upload
 
   // Лента из ресурсов программы. Нет ресурса - лента остаётся пустой, и
   // кнопки останутся без значков, но программа запустится.
@@ -18128,6 +18135,8 @@ begin
     SetToolIcon(btnProgReset, IconReset, IconsLight, IconsDark);
     SetToolIcon(btnTraceInto, IconTraceInto, IconsLight, IconsDark);
     SetToolIcon(btnStepOver, IconStepOver, IconsLight, IconsDark);
+    SetToolIcon(btnArdVerify, IconArdVerify, IconsLight, IconsDark);
+    SetToolIcon(btnArdUpload, IconArdUpload, IconsLight, IconsDark);
   finally
     IconsDark.Free;
     IconsLight.Free;
@@ -41009,6 +41018,34 @@ end;
 //  загрузки закрывает порт и после неё открывает снова.
 // ---------------------------------------------------------------------------
 
+// Кнопки Verify и Upload (ряд Project в режиме Arduino) - те же
+// CompileArduino, что Compile и Compile & Run
+procedure TForm1.ArdVerifyClick(Sender: TObject);
+begin
+  if FBusyDepth > 0 then
+    Exit;   // уже идёт сборка
+  CompileArduino(False);
+end;
+
+procedure TForm1.ArdUploadClick(Sender: TObject);
+begin
+  if FBusyDepth > 0 then
+    Exit;
+  CompileArduino(True);
+end;
+
+// Пока идёт arduino-cli: Verify и Upload недоступны, Program reset
+// доступен (снять arduino-cli). Зовётся и из UpdateToolbarState.
+procedure TForm1.ArdBuildButtons;
+begin
+  if btnArdVerify <> nil then
+    btnArdVerify.Enabled := not FArdBuilding;
+  if btnArdUpload <> nil then
+    btnArdUpload.Enabled := not FArdBuilding;
+  if FArdBuilding and (btnProgReset <> nil) then
+    btnProgReset.Enabled := True;
+end;
+
 procedure TForm1.ArdBuildLine(const ALine: string);
 begin
   if Trim(ALine) <> '' then
@@ -41098,8 +41135,7 @@ begin
   LogComp('> ' + ArdCommandLine(ASettings, Args));
   FArdBuilding := True;
   FArdCancel := False;
-  if btnProgReset <> nil then
-    btnProgReset.Enabled := True;
+  ArdBuildButtons;
   BusyBegin('Arduino: установка ' + APlatform);
   ExitCode := ArdRunNoStart;
   try
@@ -41246,8 +41282,7 @@ begin
     FArdBuilding := True;
     FArdCancel := False;
     FArdUploading := AUpload;
-    if btnProgReset <> nil then
-      btnProgReset.Enabled := True;
+    ArdBuildButtons;
     StartTick := GetTickCount;
     ExitCode := ArdRunNoStart;
     BusyBegin(Stage);
@@ -44885,6 +44920,7 @@ begin
                            (RqDbgHere and FRqDbgPaused);
   if btnProgReset <> nil then
     btnProgReset.Enabled := Running;
+  ArdBuildButtons;
   // Пауза - у программы под отладчиком, которая идёт
   if btnPause <> nil then
     btnPause.Enabled := Running and
@@ -44965,7 +45001,7 @@ const
   RunRowCount = 8;
 var
   ModeKey: string;
-  Basic, RqMode, CanStep: Boolean;
+  Basic, RqMode, CanStep, ArdRow: Boolean;
   Kind: Integer;
   RunRow: array[0..RunRowCount - 1] of TControl;
   RowIdx, SlotIdx, PageIdx: Integer;
@@ -45036,13 +45072,33 @@ begin
   // Условия точек останова - только у отладчика RapidQ
   if pmuBreakCond <> nil then
     pmuBreakCond.Visible := RqMode;
-  SlotIdx := 0;
-  for RowIdx := 0 to RunRowCount - 1 do
-    if RunRow[RowIdx].Visible then
-    begin
-      RunRow[RowIdx].Left := FRunRowLefts[SlotIdx];
-      Inc(SlotIdx);
-    end;
+  // Arduino: Verify, Upload и Program reset, как в Arduino IDE;
+  // остальной ряд - у Delphi и RapidQ
+  ArdRow := Kind = bkArduino;
+  btnCompileRun.Visible := not ArdRow;
+  btnViewUnit.Visible := not ArdRow;
+  btnViewForm.Visible := not ArdRow;
+  btnNewForm.Visible := not ArdRow;
+  if btnArdVerify <> nil then
+    btnArdVerify.Visible := ArdRow;
+  if btnArdUpload <> nil then
+    btnArdUpload.Visible := ArdRow;
+  if ArdRow and (btnArdVerify <> nil) and (btnArdUpload <> nil) then
+  begin
+    btnArdVerify.Left := FRunRowLefts[1];        // места View Unit,
+    btnArdUpload.Left := FRunRowLefts[2];        // View Form
+    btnProgReset.Left := FRunRowLefts[3];        // и New Form
+  end
+  else
+  begin
+    SlotIdx := 0;
+    for RowIdx := 0 to RunRowCount - 1 do
+      if RunRow[RowIdx].Visible then
+      begin
+        RunRow[RowIdx].Left := FRunRowLefts[SlotIdx];
+        Inc(SlotIdx);
+      end;
+  end;
   case Kind of
     bkRapidQ:
       btnCompileRun.Hint := 'Собрать программу RapidQ и запустить, если без ' +

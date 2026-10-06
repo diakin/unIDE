@@ -12,11 +12,13 @@ Current set: Lazarus IDE, `general_purpose` icons by Roland Hahn
   is recoloured from blue to black (grey on the dark strip) by
   `make_icons.py`.
 
+Arduino Verify and Upload: `Ok_07`, `Arrow_05` from the same set.
+
 `make_icons.py` puts the icons into two 32-bit strips with premultiplied
-alpha (`icons_light.bmp`, `icons_dark.bmp`: 24*15 x 48, row 0 normal,
+alpha (`icons_light.bmp`, `icons_dark.bmp`: 24*17 x 48, row 0 normal,
 row 1 disabled) and writes `..\toolbar_icons.res` (same as
 `brcc32 toolbar_icons.rc`). The order in the list `ICONS` must match the
-constants `IconOpen` .. `IconStepOver` in Unit1.pas. Needs Python 3, Pillow
+constants `IconOpen` .. `IconArdUpload` in Unit1.pas. Needs Python 3, Pillow
 and cairosvg.
 
 ## Old sets (`old/`)

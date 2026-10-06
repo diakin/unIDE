@@ -981,6 +981,26 @@ object Form1: TForm1
             ShowHint = True
             OnClick = StepOverClick
           end
+          object btnArdVerify: TUiIconButton
+            Left = 2
+            Top = 0
+            Width = 34
+            Height = 34
+            Hint = 'Verify - собрать скетч (arduino-cli compile)'
+            ShowHint = True
+            Visible = False
+            OnClick = ArdVerifyClick
+          end
+          object btnArdUpload: TUiIconButton
+            Left = 37
+            Top = 0
+            Width = 34
+            Height = 34
+            Hint = 'Upload - собрать скетч и загрузить в плату'
+            ShowHint = True
+            Visible = False
+            OnClick = ArdUploadClick
+          end
         end
         object pnlBuildKind: TPanel
           Align = alClient
