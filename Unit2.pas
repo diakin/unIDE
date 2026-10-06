@@ -98,6 +98,7 @@ FLockMemo: Boolean; // НАШ СЕМАФОР БЛОКИРОВКИ ДЛЯ TMEMO
     chkArdCompileVerbose: TUiCheckBox;
     chkArdUploadVerbose: TUiCheckBox;
     chkArdVerifyAfterUpload: TUiCheckBox;
+    chkArdExportBinaries: TUiCheckBox;
     chkArdSaveBeforeBuild: TUiCheckBox;
     memArdUrls: TUiMemo;            // Additional Boards Manager URLs
     memArdCfg: TUiMemo;             // arduino-cli.yaml
@@ -4167,8 +4168,17 @@ begin
   chkArdVerifyAfterUpload.Caption := 'Verify code after upload';
   chkArdVerifyAfterUpload.Left := 8;
   chkArdVerifyAfterUpload.Top := RowTop;
-  chkArdVerifyAfterUpload.Width := 300;
+  chkArdVerifyAfterUpload.Width := 200;
   chkArdVerifyAfterUpload.OnClick := ArdOptionChange;
+  chkArdExportBinaries := TUiCheckBox.Create(Self);
+  chkArdExportBinaries.Parent := PnlTop;
+  chkArdExportBinaries.Caption := 'Export compiled binary';
+  chkArdExportBinaries.Left := 220;
+  chkArdExportBinaries.Top := RowTop;
+  chkArdExportBinaries.Width := 190;
+  chkArdExportBinaries.ShowHint := True;
+  chkArdExportBinaries.Hint := 'compile -e: .hex / .bin - в папку скетча';
+  chkArdExportBinaries.OnClick := ArdOptionChange;
 
   Inc(RowTop, 24);
   chkArdSaveBeforeBuild := TUiCheckBox.Create(Self);
@@ -4498,6 +4508,8 @@ begin
                                          'VerifyAfterUpload', '0') = '1';
     chkArdSaveBeforeBuild.Checked := Ini.ReadString(Section,
                                        'SaveBeforeBuild', '0') = '1';
+    chkArdExportBinaries.Checked := Ini.ReadString(Section,
+                                      'ExportBinaries', '0') = '1';
 
     memArdUrls.Lines.Text := StringReplace(
       Ini.ReadString(Section, 'AdditionalUrls', ''), ',', #13#10,
@@ -4628,7 +4640,9 @@ begin
   else if Sender = chkArdVerifyAfterUpload then
     ArdWrite('VerifyAfterUpload', Flag(chkArdVerifyAfterUpload))
   else if Sender = chkArdSaveBeforeBuild then
-    ArdWrite('SaveBeforeBuild', Flag(chkArdSaveBeforeBuild));
+    ArdWrite('SaveBeforeBuild', Flag(chkArdSaveBeforeBuild))
+  else if Sender = chkArdExportBinaries then
+    ArdWrite('ExportBinaries', Flag(chkArdExportBinaries));
 end;
 
 // Список адресов - в editor.ini через запятую, все непустые строки как

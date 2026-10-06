@@ -1075,6 +1075,11 @@ type
     FArdPort: string;           // выбранный порт; не хранится
     FArdMenuPaths: TStringList;
     FArdBusy: Boolean;          // идёт arduino-cli из меню (Add .ZIP Library)
+    FArdBuilding: Boolean;      // идёт сборка или загрузка скетча
+    FArdCancel: Boolean;        // Program reset во время сборки скетча
+    FArdUploading: Boolean;     // идёт загрузка: события портов не меняют
+                                // выбранный порт
+    FArdHwScanned: Boolean;     // платы с диска прочитаны (FArdHw.Scan)
     FWatchList: TStringList;
     // Условия строк Watch ("=10", "<5"): выражение и условие. Отладчик
     // RapidQ: точка останова, где выражение вычисляется, стоит, только если
@@ -2302,6 +2307,17 @@ type
     procedure mArdBoardInfoClick(Sender: TObject);
     procedure ArdPortsChanged(Sender: TObject; AArrived, ARemoved: TStrings);
     procedure mArdMonitorClick(Sender: TObject);
+    // Сборка скетча: Verify, Upload
+    function  CompileArduino(AUpload: Boolean;
+                             AKeepLog: Boolean = False): Boolean;
+    procedure ArdBuildLine(const ALine: string);
+    procedure ArdBuildIdle(var ACancel: Boolean);
+    function  ArdSaveSketchFiles(const ASketchDir: string;
+                                 ASave: Boolean): Boolean;
+    function  ArdInstallCore(const ASettings: TArdSettings;
+                             const APlatform: string): Boolean;
+    function  ArdSketchProject(const ASketchDir: string): string;
+    procedure ArdReadBoard(var AFqbn, AName: string);
     procedure DbgWatchRefresh;
     function  DbgWatchSelected: Integer;
     procedure WatchAddClick(Sender: TObject);
@@ -10735,7 +10751,7 @@ end;
 procedure TForm1.UpdateBuildBar;
 var
   Kind: Integer;
-  Target, Why: string;
+  Target, Why, Fqbn, BoardName, BoardText, PortText: string;
 begin
   if (cmbBuildKind = nil) or (lblBuildTarget = nil) then
     Exit;
@@ -10768,6 +10784,33 @@ begin
   else
     lblBuildTarget.Caption := '» ' + ExtractFileName(Target);
   lblBuildTarget.Hint := Target;
+
+  // Скетч: ещё порт в подписи, плата и порт в подсказке
+  if (Kind = bkArduino) and (Target <> '') then
+  begin
+    if (FArdHw <> nil) and not FArdHwScanned then
+    begin
+      FArdHw.Scan(ArdCurSettings);
+      FArdHwScanned := True;
+    end;
+    if FArdHw <> nil then
+      ArdAutoPort;
+    ArdReadBoard(Fqbn, BoardName);
+    if Fqbn = '' then
+      BoardText := 'не выбрана (меню Arduino - Board)'
+    else
+      BoardText := BoardName + ' (' + Fqbn + ')';
+    if FArdPort = '' then
+      PortText := 'не выбран (меню Arduino - Port)'
+    else if (FArdPorts <> nil) and (FArdPorts.IndexOf(FArdPort) < 0) then
+      PortText := FArdPort + ' - отключён'
+    else
+      PortText := FArdPort;
+    if FArdPort <> '' then
+      lblBuildTarget.Caption := lblBuildTarget.Caption + '  ' + FArdPort;
+    lblBuildTarget.Hint := Target + #13#10 + 'Плата: ' + BoardText +
+                           #13#10 + 'Порт: ' + PortText;
+  end;
 end;
 
 // Выбор в переключателе: сборщик для файла вкладки, Auto - снова по файлу.
@@ -35869,7 +35912,8 @@ begin
     T := Copy(T, P + 1, Length(T));
   T := TrimLeft(T);
   Result := (AnsiCompareText(Copy(T, 1, 5), 'Error') = 0) or
-            (AnsiCompareText(Copy(T, 1, 5), 'Fatal') = 0);
+            (AnsiCompareText(Copy(T, 1, 5), 'Fatal') = 0) or
+            ArdIsGccError(S);   // gcc: "файл:строка:столбец: error: ..."
 end;
 
 // Строка в окно компиляции. Панель могла ещё не строиться (сообщение до
@@ -38754,35 +38798,49 @@ end;
 //   Unit1.pas(1234) Error: Undeclared identifier: 'Foo'
 // Возвращает имя файла и номер строки, от единицы. Так пишет dcc32; тем же
 // форматом пользуются и другие компиляторы Borland.
+// Строки gcc (сборка скетча arduino-cli) - вида
+//   C:\...\Blink\Blink.ino:12:5: error: 'foo' was not declared
+// разбирает ArdParseGccLine; они проверяются первыми: в тексте сообщения
+// gcc бывают скобки с числом, и разбор Borland принял бы их за номер.
 function TForm1.ParseCompilerLine(const S: string; var AFile: string;
                                   var ALine: Integer): Boolean;
 var
-  P1, P2, I: Integer;
-  Num: string;
-begin
-  Result := False;
-  AFile := '';
-  ALine := 0;
+  ColNo: Integer;
 
-  P1 := Pos('(', S);
-  if P1 < 2 then
-    Exit;
-  P2 := P1;
-  while (P2 <= Length(S)) and (S[P2] <> ')') do
-    Inc(P2);
-  if P2 > Length(S) then
-    Exit;
+  function ParseBorland: Boolean;
+  var
+    P1, P2, I: Integer;
+    Num: string;
+  begin
+    Result := False;
+    AFile := '';
+    ALine := 0;
 
-  Num := Copy(S, P1 + 1, P2 - P1 - 1);
-  if Num = '' then
-    Exit;
-  for I := 1 to Length(Num) do
-    if not (Num[I] in ['0'..'9']) then
+    P1 := Pos('(', S);
+    if P1 < 2 then
+      Exit;
+    P2 := P1;
+    while (P2 <= Length(S)) and (S[P2] <> ')') do
+      Inc(P2);
+    if P2 > Length(S) then
       Exit;
 
-  AFile := Trim(Copy(S, 1, P1 - 1));
-  ALine := StrToIntDef(Num, 0);
-  Result := (AFile <> '') and (ALine > 0);
+    Num := Copy(S, P1 + 1, P2 - P1 - 1);
+    if Num = '' then
+      Exit;
+    for I := 1 to Length(Num) do
+      if not (Num[I] in ['0'..'9']) then
+        Exit;
+
+    AFile := Trim(Copy(S, 1, P1 - 1));
+    ALine := StrToIntDef(Num, 0);
+    Result := (AFile <> '') and (ALine > 0);
+  end;
+
+begin
+  Result := ArdParseGccLine(S, AFile, ALine, ColNo);
+  if not Result then
+    Result := ParseBorland;
 end;
 
 // Запуск внешней программы с перехватом вывода. Вывод идёт в лог построчно
@@ -40894,6 +40952,8 @@ begin
         Result := CompileRapidQ;
         UpdateBuildBar;   // и записаться в проект
       end;
+    bkArduino:
+      Result := CompileArduino(False);   // Verify
   else
     ShowCompLog;
     if CompLogEdit <> nil then
@@ -40929,6 +40989,331 @@ begin
       else if CompareText(PrjType, 'Python') = 0 then
         LogComp('  Сборки не требуется: python main.py');
     end;
+  end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Сборка скетча: Verify (Compile) и Upload (Compile & Run, Run)
+//
+//  arduino-cli compile собирает папку скетча: <папка>\<папка>.ino вместе с
+//  .ino, .h, .c, .cpp рядом. Плата (FQBN) - меню Arduino - Board, порт -
+//  меню Arduino - Port (по подключению, не хранится). Ключи из IDE Options
+//  - Arduino (Warnings, Log level, verbose, Verify code after upload, Save
+//  sketch...) - ArdLoadBuildOptions. Вывод - в Compilation log построчно;
+//  ошибки gcc - ещё и в окно ошибок, двойной щелчок - к строке
+//  (ParseCompilerLine). Program reset - снять arduino-cli.
+//
+//  Во время загрузки события подключения портов не меняют выбранный порт
+//  (ArdPortsChanged): Leonardo, Due и подобные платы при загрузке
+//  переподключаются. Открытый на этом порту Serial Monitor на время
+//  загрузки закрывает порт и после неё открывает снова.
+// ---------------------------------------------------------------------------
+
+procedure TForm1.ArdBuildLine(const ALine: string);
+begin
+  if Trim(ALine) <> '' then
+    LogComp(ALine);
+end;
+
+procedure TForm1.ArdBuildIdle(var ACancel: Boolean);
+begin
+  BusyTick;
+  Application.ProcessMessages;
+  if FArdCancel then
+    ACancel := True;
+end;
+
+// Изменённые вкладки с файлами из папки скетча. arduino-cli читает файлы с
+// диска: ASave - сохранить (Save sketch when verifying or uploading),
+// иначе - строка в лог, что собирается версия с диска. False - сохранить
+// не удалось.
+function TForm1.ArdSaveSketchFiles(const ASketchDir: string;
+                                   ASave: Boolean): Boolean;
+var
+  Cur, WinIdx: Integer;
+  SketchDir, FileLabel: string;
+
+  function InSketch(AWinIdx: Integer): Boolean;
+  begin
+    Result := FWindows[AWinIdx].Used and
+              (FWindows[AWinIdx].FileName <> '') and
+              not IsUntitledName(FWindows[AWinIdx].FileName) and
+              SameText(ExtractFilePath(ExpandFileName(
+                FWindows[AWinIdx].FileName)), SketchDir);
+  end;
+
+  function IsModified(AWinIdx: Integer): Boolean;
+  begin
+    if AWinIdx = Cur then
+      Result := RichEdit1.Modified
+    else
+      Result := FWindows[AWinIdx].Modified;
+  end;
+
+begin
+  Result := True;
+  SketchDir := IncludeTrailingPathDelimiter(ExpandFileName(ASketchDir));
+  Cur := FWindowsIndex;
+  for WinIdx := 0 to WindowsItemCount - 1 do
+  begin
+    if not InSketch(WinIdx) or not IsModified(WinIdx) then
+      Continue;
+    FileLabel := ExtractFileName(FWindows[WinIdx].FileName);
+    if not ASave then
+    begin
+      LogComp('Не сохранён: ' + FileLabel + ' - собирается версия с диска ' +
+              '(IDE Options - Arduino - Save sketch when verifying or ' +
+              'uploading)');
+      Continue;
+    end;
+    if WinIdx <> FWindowsIndex then
+      ActivateWindow(WinIdx);    // сохраняем через обычный путь
+    if SaveCurrentFile then
+      LogComp('Сохранён: ' + FileLabel)
+    else
+    begin
+      LogComp('Не удалось сохранить ' + FileLabel + ' - сборка отменена');
+      Result := False;
+      Break;
+    end;
+  end;
+  if (FWindowsIndex <> Cur) and (Cur >= 0) and (Cur < WindowsItemCount) and
+     FWindows[Cur].Used then
+    ActivateWindow(Cur);
+end;
+
+// arduino-cli core install APlatform (packager:arch), вывод - в
+// Compilation log. Адреса Additional Boards Manager URLs - ключом
+// --additional-urls: без них платформы сторонних плат не найти.
+function TForm1.ArdInstallCore(const ASettings: TArdSettings;
+                               const APlatform: string): Boolean;
+var
+  Args, Urls: string;
+  ExitCode: Integer;
+begin
+  Args := 'core install ' + APlatform;
+  Urls := ArdHttpUrls(ASettings.AdditionalUrls);
+  if Urls <> '' then
+    Args := Args + ' --additional-urls ' + Urls;
+  LogComp('> ' + ArdCommandLine(ASettings, Args));
+  FArdBuilding := True;
+  FArdCancel := False;
+  if btnProgReset <> nil then
+    btnProgReset.Enabled := True;
+  BusyBegin('Arduino: установка ' + APlatform);
+  ExitCode := ArdRunNoStart;
+  try
+    ExitCode := ArdRunCli(ASettings, Args, nil, ArdBuildLine, ArdBuildIdle);
+  finally
+    FArdBuilding := False;
+    if ExitCode = 0 then
+      BusyEnd('Arduino: ' + APlatform + ' установлена', True)
+    else
+      BusyEnd('Arduino: ' + APlatform + ' не установлена', False);
+  end;
+  Result := ExitCode = 0;
+  if Result then
+  begin
+    LogComp('--- Платформа ' + APlatform + ' установлена');
+    FArdHwScanned := False;   // платы - заново с диска
+  end
+  else if ExitCode = ArdRunCancelled then
+    LogComp('--- Установка остановлена (Program reset)')
+  else
+    LogComp('--- core install завершилась с кодом ' + IntToStr(ExitCode));
+end;
+
+// AUpload - сборка и загрузка (compile -u -p <порт>), иначе Verify.
+// AKeepLog - лог не чистить (повторная сборка после core install).
+function TForm1.CompileArduino(AUpload: Boolean; AKeepLog: Boolean): Boolean;
+var
+  Settings: TArdSettings;
+  Options: TArdBuildOptions;
+  Sketch, SketchDir, SketchName, Fqbn, BoardName, Port, Args: string;
+  ErrText, Stage, PlatformId: string;
+  Output: TStringList;
+  ExitCode, LineIdx, PortIdx: Integer;
+  MonitorPaused, PlatformMissing: Boolean;
+  StartTick: Cardinal;
+begin
+  Result := False;
+  PortIdx := -1;
+  if FArdBuilding then
+    Exit;
+  ShowCompLog;
+  if not AKeepLog then
+  begin
+    if CompLogEdit <> nil then
+      CompLogEdit.Lines.Clear;
+    if ErrLogEdit <> nil then
+      ErrLogEdit.Lines.Clear;
+    if FBuildReason <> '' then
+      LogComp('Сборщик: Arduino (' + FBuildReason + ')');
+  end;
+
+  Settings := ArdCurSettings;
+  if not ArdCheckCli(Settings, ErrText) then
+  begin
+    LogComp('Сборка Arduino: ' + ErrText);
+    Exit;
+  end;
+
+  // Скетч - папка, в которой лежит <имя папки>.ino
+  Sketch := BuildTargetOf(bkArduino);
+  if Sketch = '' then
+  begin
+    LogComp('Сборка Arduino: скетч не найден. arduino-cli собирает папку, ' +
+            'в которой лежит <имя папки>.ino');
+    Exit;
+  end;
+  SketchDir := ExtractFilePath(ExpandFileName(Sketch));
+  SketchName := ExtractFileName(ExcludeTrailingPathDelimiter(SketchDir));
+  if CompareText(ChangeFileExt(ExtractFileName(Sketch), ''),
+                 SketchName) <> 0 then
+  begin
+    LogComp('Сборка Arduino: ' + ExtractFileName(Sketch) + ' лежит в папке ' +
+            SketchName + '. arduino-cli собирает только папку, в которой ' +
+            'главный файл называется как папка: ' + SketchName + '.ino');
+    Exit;
+  end;
+
+  ArdReadBoard(Fqbn, BoardName);
+  if Fqbn = '' then
+  begin
+    LogComp('Сборка Arduino: плата не выбрана - меню Arduino - Board ' +
+            '(или Select board в Boards Manager)');
+    Exit;
+  end;
+
+  // Порт - только для загрузки: список заново, выбранного нет - по
+  // правилам ArdAutoPort
+  Port := '';
+  if AUpload then
+  begin
+    if FArdPorts <> nil then
+    begin
+      FArdPorts.Refresh;
+      if not FArdHwScanned then
+      begin
+        FArdHw.Scan(Settings);
+        FArdHwScanned := True;
+      end;
+      ArdAutoPort;
+    end;
+    PortIdx := -1;
+    if (FArdPorts <> nil) and (FArdPort <> '') then
+      PortIdx := FArdPorts.IndexOf(FArdPort);
+    if PortIdx < 0 then
+    begin
+      if FArdPort = '' then
+        LogComp('Загрузка: порт не выбран - меню Arduino - Port')
+      else
+        LogComp('Загрузка: порта ' + FArdPort + ' нет в системе - плата не ' +
+                'подключена? Меню Arduino - Port');
+      Exit;
+    end;
+    Port := FArdPort;
+  end;
+
+  Options := ArdLoadBuildOptions(SettingsFileName, Settings.Section);
+  AutoSaveEditorFiles;
+  if not ArdSaveSketchFiles(SketchDir, Options.SaveBeforeBuild) then
+    Exit;
+
+  Args := ArdCompileArgs(Settings, Options, Fqbn, SketchDir, Port);
+  LogComp('Скетч: ' + Sketch);
+  LogComp('Плата: ' + BoardName + ' (' + Fqbn + ')');
+  if AUpload then
+    LogComp('Порт: ' + ArdPortCaption(FArdPorts[PortIdx]));
+  LogComp('> ' + ArdCommandLine(Settings, Args));
+  // Имена файлов без пути в сообщениях - от папки скетча
+  FLastBuildDir := SketchDir;
+
+  MonitorPaused := False;
+  if AUpload and (FArdMonitorWnd <> nil) and FArdMonitorWnd.IsOpen and
+     (CompareText(FArdMonitorWnd.PortName, Port) = 0) then
+  begin
+    FArdMonitorWnd.PauseForUpload;
+    MonitorPaused := True;
+  end;
+
+  if AUpload then
+    Stage := 'Arduino: сборка и загрузка ' + SketchName
+  else
+    Stage := 'Arduino: сборка ' + SketchName;
+  Output := TStringList.Create;
+  try
+    FArdBuilding := True;
+    FArdCancel := False;
+    FArdUploading := AUpload;
+    if btnProgReset <> nil then
+      btnProgReset.Enabled := True;
+    StartTick := GetTickCount;
+    ExitCode := ArdRunNoStart;
+    BusyBegin(Stage);
+    try
+      ExitCode := ArdRunCli(Settings, Args, Output, ArdBuildLine,
+                            ArdBuildIdle);
+    finally
+      FArdBuilding := False;
+      FArdUploading := False;
+      if ExitCode = 0 then
+        BusyEnd('Arduino: готово', True)
+      else
+        BusyEnd('Arduino: ошибки', False);
+    end;
+    Result := ExitCode = 0;
+
+    PlatformMissing := False;
+    for LineIdx := 0 to Output.Count - 1 do
+      if ArdIsPlatformMissing(Output[LineIdx]) then
+      begin
+        PlatformMissing := True;
+        Break;
+      end;
+  finally
+    Output.Free;
+  end;
+
+  if ExitCode = 0 then
+  begin
+    if AUpload then
+      LogComp(Format('--- Собрано и загружено, %d мс: %s -> %s',
+                     [GetTickCount - StartTick, SketchName, Port]))
+    else
+      LogComp(Format('--- Собрано, %d мс: %s', [GetTickCount - StartTick,
+                                                 SketchName]));
+  end
+  else if ExitCode = ArdRunCancelled then
+    LogComp('--- Остановлено (Program reset)')
+  else if ExitCode = ArdRunNoStart then
+    LogComp('--- arduino-cli не запустилась: ' + Settings.CliFile)
+  else
+    LogComp('--- arduino-cli завершилась с кодом ' + IntToStr(ExitCode) +
+            '. Двойной щелчок по строке с ошибкой - к месту в исходнике');
+
+  // После загрузки - порты заново: плата могла переподключиться под тем
+  // же или другим именем. Монитор открывается, когда порт снова есть.
+  if AUpload and (FArdPorts <> nil) then
+  begin
+    FArdPorts.Refresh;
+    if MonitorPaused and (FArdMonitorWnd <> nil) and
+       (FArdPorts.IndexOf(Port) >= 0) then
+      FArdMonitorWnd.PortArrived(Port);
+  end;
+  UpdateBuildBar;
+
+  // Платформа платы не установлена - установить и собрать снова
+  if PlatformMissing and (ExitCode <> ArdRunCancelled) then
+  begin
+    PlatformId := ArdPlatformOfFqbn(Fqbn);
+    if MessageDlg('Платформа ' + PlatformId + ' (плата ' + BoardName +
+                  ') не установлена.'#13#10 +
+                  'Установить её (arduino-cli core install ' + PlatformId +
+                  ') и собрать снова?', mtConfirmation, [mbYes, mbNo],
+                  0) = mrYes then
+      if ArdInstallCore(Settings, PlatformId) then
+        Result := CompileArduino(AUpload, True);
   end;
 end;
 
@@ -44248,6 +44633,12 @@ begin
     RqDbgCommand(RqDbgModeRun, 0);
     Exit;
   end;
+  // Скетч: сборка и загрузка в плату (Upload)
+  if CurBuildKind = bkArduino then
+  begin
+    CompileArduino(True);
+    Exit;
+  end;
   DsgHideForRun;
   if CompileProject then
     RunTarget;
@@ -44430,6 +44821,12 @@ procedure TForm1.ProgramResetClick(Sender: TObject);
 var
   Process: THandle;
 begin
+  // Идёт сборка или загрузка скетча - снять arduino-cli (ArdBuildIdle)
+  if FArdBuilding then
+  begin
+    FArdCancel := True;
+    Exit;
+  end;
   // Под отладчиком: процесс снимается, конец сеанса - в DbgExited
   if FDbgSession <> nil then
   begin
@@ -44480,7 +44877,7 @@ begin
   end;
   // Запущена ли программа цели активной вкладки. Сеанс отладчика Delphi
   // один на среду - он считается всегда.
-  Running := (RunHere <> 0) or (FDbgSession <> nil);
+  Running := (RunHere <> 0) or (FDbgSession <> nil) or FArdBuilding;
 
   // Запуск и отладка. Остановка на точке: Run - продолжить.
   btnCompileRun.Enabled := not Running or
@@ -44653,6 +45050,10 @@ begin
     bkDelphi:
       btnCompileRun.Hint := 'Собрать проект dcc32 и запустить, если без ' +
                             'ошибок';
+    bkArduino:
+      btnCompileRun.Hint := 'Собрать скетч (arduino-cli compile) и ' +
+                            'загрузить в плату (Upload). Плата и порт - ' +
+                            'меню Arduino - Board и Port';
   else
     btnCompileRun.Hint := 'Сборка ' + BuildKindName(Kind) +
                           ' здесь пока не подключена';
@@ -46846,6 +47247,14 @@ begin
   if RqDbgHere then
   begin
     RqDbgCommand(RqDbgModeRun, 0);
+    Exit;
+  end;
+  // Скетч: запуск - это загрузка в плату, а загрузка у arduino-cli
+  // compile идёт вместе со сборкой (как Upload в Arduino IDE)
+  if CurBuildKind = bkArduino then
+  begin
+    if FBusyDepth = 0 then
+      CompileArduino(True);
     Exit;
   end;
   DsgHideForRun;
@@ -49289,6 +49698,7 @@ begin
     Exit;
   Settings := ArdCurSettings;
   FArdHw.Scan(Settings);
+  FArdHwScanned := True;
   FArdMenuPaths.Clear;
   ArdResetSubmenu(mArdSketchbook);
   ArdResetSubmenu(mArdExamples);
@@ -49626,47 +50036,121 @@ end;
 //  Board
 // ---------------------------------------------------------------------------
 
-function TForm1.ArdBoardFqbn: string;
+// Плата (FQBN) скетча активной вкладки. Папка скетча - папка проекта из
+// списка [Projects] - плата в разделе проекта ([Project.<имя>] Fqbn,
+// BoardName). Нет проекта или в нём платы нет - последняя выбранная,
+// [Compiler.Arduino] Fqbn, BoardName (как одна плата на всё в Arduino IDE).
+
+// Проект, папка которого - папка скетча ASketchDir; '' - нет такого
+function TForm1.ArdSketchProject(const ASketchDir: string): string;
 var
-  Ini: TIniFile;
+  PrjIdx: Integer;
+  SketchDir, PrjDir: string;
 begin
   Result := '';
-  if not FileExists(SettingsFileName) then
+  if Trim(ASketchDir) = '' then
     Exit;
-  Ini := TIniFile.Create(SettingsFileName);
-  try
-    Result := Trim(Ini.ReadString(ArdCurSettings.Section, 'Fqbn', ''));
-  finally
-    Ini.Free;
+  if FProjectReg = nil then
+    LoadProjectReg;
+  SketchDir := IncludeTrailingPathDelimiter(ExpandFileName(ASketchDir));
+  for PrjIdx := 0 to FProjectReg.Count - 1 do
+  begin
+    PrjDir := Trim(FProjectReg.ValueFromIndex[PrjIdx]);
+    if PrjDir = '' then
+      Continue;
+    PrjDir := IncludeTrailingPathDelimiter(ExpandFileName(PrjDir));
+    if SameText(PrjDir, SketchDir) then
+    begin
+      Result := FProjectReg.Names[PrjIdx];
+      Exit;
+    end;
   end;
+end;
+
+procedure TForm1.ArdReadBoard(var AFqbn, AName: string);
+var
+  PrjName, Sketch: string;
+  PrjIni: TProjectIni;
+  Ini: TIniFile;
+  BoardIdx: Integer;
+begin
+  AFqbn := '';
+  AName := '';
+  Sketch := BuildTargetOf(bkArduino);
+  PrjName := '';
+  if Sketch <> '' then
+    PrjName := ArdSketchProject(ExtractFilePath(Sketch));
+  if PrjName <> '' then
+  begin
+    PrjIni := TProjectIni.Create(SettingsFileName, PrjName);
+    try
+      AFqbn := Trim(PrjIni.ReadString('Project', 'Fqbn', ''));
+      AName := Trim(PrjIni.ReadString('Project', 'BoardName', ''));
+    finally
+      PrjIni.Free;
+    end;
+  end;
+  if (AFqbn = '') and FileExists(SettingsFileName) then
+  begin
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      AFqbn := Trim(Ini.ReadString(ArdCurSettings.Section, 'Fqbn', ''));
+      AName := Trim(Ini.ReadString(ArdCurSettings.Section, 'BoardName', ''));
+    finally
+      Ini.Free;
+    end;
+  end;
+  if (AName = '') and (AFqbn <> '') and (FArdHw <> nil) then
+  begin
+    BoardIdx := FArdHw.BoardByFqbn(AFqbn);
+    if BoardIdx >= 0 then
+      AName := FArdHw.Boards[BoardIdx].Name;
+  end;
+end;
+
+function TForm1.ArdBoardFqbn: string;
+var
+  BoardName: string;
+begin
+  ArdReadBoard(Result, BoardName);
 end;
 
 function TForm1.ArdBoardName: string;
 var
-  Ini: TIniFile;
+  Fqbn: string;
 begin
-  Result := '';
-  if not FileExists(SettingsFileName) then
-    Exit;
-  Ini := TIniFile.Create(SettingsFileName);
-  try
-    Result := Trim(Ini.ReadString(ArdCurSettings.Section, 'BoardName', ''));
-  finally
-    Ini.Free;
-  end;
-  if (Result = '') and (FArdHw <> nil) and
-     (FArdHw.BoardByFqbn(ArdBoardFqbn) >= 0) then
-    Result := FArdHw.Boards[FArdHw.BoardByFqbn(ArdBoardFqbn)].Name;
+  ArdReadBoard(Fqbn, Result);
 end;
 
+// Выбор платы: последняя выбранная - в [Compiler.Arduino]; скетч - папка
+// проекта - ещё и в раздел проекта
 procedure TForm1.ArdSetBoard(const AFqbn, AName: string);
 var
-  Section: string;
+  Section, PrjName, Sketch: string;
+  PrjIni: TProjectIni;
 begin
   Section := ArdCurSettings.Section;
   ArdSaveSetting(SettingsFileName, Section, 'Fqbn', AFqbn);
   ArdSaveSetting(SettingsFileName, Section, 'BoardName', AName);
-  Dbg('Arduino: плата ' + AName + ' (' + AFqbn + ')', clGray);
+  Sketch := BuildTargetOf(bkArduino);
+  PrjName := '';
+  if Sketch <> '' then
+    PrjName := ArdSketchProject(ExtractFilePath(Sketch));
+  if PrjName <> '' then
+  begin
+    PrjIni := TProjectIni.Create(SettingsFileName, PrjName);
+    try
+      PrjIni.WriteString('Project', 'Fqbn', AFqbn);
+      PrjIni.WriteString('Project', 'BoardName', AName);
+    finally
+      PrjIni.Free;   // запись в editor.ini
+    end;
+    Dbg('Arduino: плата ' + AName + ' (' + AFqbn + ') - проект ' + PrjName,
+        clGray);
+  end
+  else
+    Dbg('Arduino: плата ' + AName + ' (' + AFqbn + ')', clGray);
+  UpdateBuildBar;
 end;
 
 procedure TForm1.mArdBoardClick(Sender: TObject);
@@ -49808,6 +50292,7 @@ begin
   if (FArdMonitorWnd <> nil) and FArdMonitorWnd.Visible and
      (CompareText(FArdMonitorWnd.PortName, FArdPort) <> 0) then
     FArdMonitorWnd.OpenPort(FArdPort);
+  UpdateBuildBar;
 end;
 
 procedure TForm1.mArdBoardInfoClick(Sender: TObject);
@@ -49846,6 +50331,19 @@ procedure TForm1.ArdPortsChanged(Sender: TObject; AArrived,
 var
   NameIdx, PortIdx: Integer;
 begin
+  // Идёт загрузка: плата переподключается сама (сброс на 1200 бод у
+  // Leonardo, Due...). Выбор порта и монитор не трогаются - после загрузки
+  // CompileArduino перечитает порты.
+  if FArdUploading then
+  begin
+    for NameIdx := 0 to ARemoved.Count - 1 do
+      Dbg('Arduino: во время загрузки отключён порт ' + ARemoved[NameIdx],
+          clGray);
+    for NameIdx := 0 to AArrived.Count - 1 do
+      Dbg('Arduino: во время загрузки подключён порт ' + AArrived[NameIdx],
+          clGray);
+    Exit;
+  end;
   for NameIdx := 0 to ARemoved.Count - 1 do
   begin
     Dbg('Arduino: отключён порт ' + ARemoved[NameIdx], clGray);
@@ -49864,6 +50362,7 @@ begin
     if FArdMonitorWnd <> nil then
       FArdMonitorWnd.PortArrived(AArrived[NameIdx]);
   end;
+  UpdateBuildBar;
 end;
 
 // ---------------------------------------------------------------------------

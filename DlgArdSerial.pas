@@ -90,6 +90,9 @@ type
     // Порт пропал или снова появился (TForm1 по событию подключения)
     procedure PortRemoved(const APortName: string);
     procedure PortArrived(const APortName: string);
+    // Загрузка скетча (Upload) в плату на этом порту: порт закрывается и
+    // откроется снова по PortArrived - после загрузки, когда порт есть
+    procedure PauseForUpload;
     function IsOpen: Boolean;
     property PortName: string read FPortName;
     property SettingsFile: string read FSettingsFile write FSettingsFile;
@@ -346,6 +349,16 @@ begin
     UpdateState('Порт ' + FPortName + ' пропал из системы. Порт закрыт; ' +
                 'откроется снова, когда появится.');
   end;
+end;
+
+procedure TDlgArdSerial.PauseForUpload;
+begin
+  if not IsOpen then
+    Exit;
+  ClosePortHandle;
+  FLostPort := True;
+  UpdateState(FPortName + ' закрыт на время загрузки скетча; откроется ' +
+              'снова после неё');
 end;
 
 procedure TDlgArdSerial.PortArrived(const APortName: string);

@@ -127,6 +127,51 @@ function ArdPackagePath(const ASettings: TArdSettings;
 function ArdImportRqdbIni(const ARqdbIni, AEditorIni, ASection: string;
                           AReport: TStrings): Integer;
 
+// ---------------------------------------------------------------------------
+//  Сборка скетча (Verify / Upload)
+// ---------------------------------------------------------------------------
+
+type
+  // Ключи [Compiler.Arduino], которые меняют командную строку compile.
+  // Пишет их IDE Options - Arduino (Unit2).
+  TArdBuildOptions = record
+    Warnings: string;          // none / default / more / all
+    LogLevel: string;          // trace ... panic; идёт вместе с --log-file
+    CompileVerbose: Boolean;   // Show verbose output - Compilation: -v
+    UploadVerbose: Boolean;    // Show verbose output - Upload: -v
+    VerifyAfterUpload: Boolean;// Verify code after upload: -t
+    SaveBeforeBuild: Boolean;  // Save sketch when verifying or uploading
+    ExportBinaries: Boolean;   // -e: .hex / .bin в папку скетча
+  end;
+
+function ArdLoadBuildOptions(const AIniFile, ASection: string):
+  TArdBuildOptions;
+// Папка сборки скетча: <BuildPath>\<имя папки скетча>\. Своя папка у
+// каждого скетча - объектные файлы и compile_commands.json разных скетчей
+// не смешиваются. BuildPath не задан - пусто (arduino-cli берёт временную
+// папку).
+function ArdSketchBuildDir(const ASettings: TArdSettings;
+                           const ASketchDir: string): string;
+// Аргументы arduino-cli compile (без --config-file - его добавляет
+// ArdCommandLine). APort не пусто - с загрузкой (-u -p).
+function ArdCompileArgs(const ASettings: TArdSettings;
+                        const AOptions: TArdBuildOptions;
+                        const AFqbn, ASketchDir, APort: string): string;
+// Платформа из FQBN: первые две части (arduino:avr:uno -> arduino:avr) -
+// аргумент core install
+function ArdPlatformOfFqbn(const AFqbn: string): string;
+// Вывод сборки говорит, что платформа не установлена
+function ArdIsPlatformMissing(const AText: string): Boolean;
+// Строка ошибки gcc: "файл:строка:столбец: error: ..." или
+// "... fatal error: ..."
+function ArdIsGccError(const AText: string): Boolean;
+// Строка gcc/ld с местом: "файл:строка:столбец: текст" или
+// "файл:строка: текст", с приставкой "In file included from " или
+// "from ". Буква диска (C:) номером не считается. AColNo = 0 - столбца
+// нет. / в пути заменяется на \.
+function ArdParseGccLine(const AText: string; var AFile: string;
+                         var ALineNo, AColNo: Integer): Boolean;
+
 implementation
 
 // ---------------------------------------------------------------------------
@@ -1312,6 +1357,204 @@ begin
     Scan.Free;
     Lines.Free;
   end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Сборка скетча (Verify / Upload)
+// ---------------------------------------------------------------------------
+
+function ArdLoadBuildOptions(const AIniFile, ASection: string):
+  TArdBuildOptions;
+const
+  WarningValues = ',none,default,more,all,';
+  LogLevelValues = ',trace,debug,info,warn,error,fatal,panic,';
+var
+  Ini: TIniFile;
+begin
+  Result.Warnings := 'none';
+  Result.LogLevel := 'info';
+  Result.CompileVerbose := False;
+  Result.UploadVerbose := False;
+  Result.VerifyAfterUpload := False;
+  Result.SaveBeforeBuild := False;
+  Result.ExportBinaries := False;
+  if (AIniFile = '') or not FileExists(AIniFile) then
+    Exit;
+  Ini := TIniFile.Create(AIniFile);
+  try
+    Result.Warnings := LowerCase(Trim(Ini.ReadString(ASection, 'Warnings',
+                                                     'none')));
+    if Pos(',' + Result.Warnings + ',', WarningValues) = 0 then
+      Result.Warnings := 'none';
+    Result.LogLevel := LowerCase(Trim(Ini.ReadString(ASection, 'LogLevel',
+                                                     'info')));
+    if Pos(',' + Result.LogLevel + ',', LogLevelValues) = 0 then
+      Result.LogLevel := 'info';
+    Result.CompileVerbose := Trim(Ini.ReadString(ASection, 'CompileVerbose',
+                                                 '0')) = '1';
+    Result.UploadVerbose := Trim(Ini.ReadString(ASection, 'UploadVerbose',
+                                                '0')) = '1';
+    Result.VerifyAfterUpload := Trim(Ini.ReadString(ASection,
+                                       'VerifyAfterUpload', '0')) = '1';
+    Result.SaveBeforeBuild := Trim(Ini.ReadString(ASection,
+                                     'SaveBeforeBuild', '0')) = '1';
+    Result.ExportBinaries := Trim(Ini.ReadString(ASection, 'ExportBinaries',
+                                                 '0')) = '1';
+  finally
+    Ini.Free;
+  end;
+end;
+
+function ArdSketchBuildDir(const ASettings: TArdSettings;
+                           const ASketchDir: string): string;
+var
+  SketchName: string;
+begin
+  Result := '';
+  if ASettings.BuildPath = '' then
+    Exit;
+  SketchName := ExtractFileName(ExcludeTrailingPathDelimiter(ASketchDir));
+  if SketchName = '' then
+    Exit;
+  Result := IncludeTrailingPathDelimiter(ASettings.BuildPath) + SketchName +
+            '\';
+end;
+
+function ArdCompileArgs(const ASettings: TArdSettings;
+                        const AOptions: TArdBuildOptions;
+                        const AFqbn, ASketchDir, APort: string): string;
+var
+  BuildDir: string;
+  Upload: Boolean;
+begin
+  Upload := Trim(APort) <> '';
+  Result := 'compile -b ' + Trim(AFqbn);
+  BuildDir := ArdSketchBuildDir(ASettings, ASketchDir);
+  if BuildDir <> '' then
+    Result := Result + ' --build-path ' +
+              ArdQuote(ExcludeTrailingPathDelimiter(BuildDir));
+  if (ASettings.LibPath <> '') and DirectoryExists(ASettings.LibPath) then
+    Result := Result + ' --libraries ' +
+              ArdQuote(ExcludeTrailingPathDelimiter(ASettings.LibPath));
+  Result := Result + ' --warnings ' + AOptions.Warnings;
+  if AOptions.CompileVerbose or (Upload and AOptions.UploadVerbose) then
+    Result := Result + ' -v';
+  if AOptions.ExportBinaries then
+    Result := Result + ' -e';
+  // Уровень лога без файла лога сыплет служебные строки в вывод
+  if ASettings.LogFile <> '' then
+    Result := Result + ' --log-file ' + ArdQuote(ASettings.LogFile) +
+              ' --log-level ' + AOptions.LogLevel;
+  if Upload then
+  begin
+    Result := Result + ' -u -p ' + Trim(APort);
+    if AOptions.VerifyAfterUpload then
+      Result := Result + ' -t';
+  end;
+  Result := Result + ' ' + ArdQuote(ExcludeTrailingPathDelimiter(ASketchDir));
+end;
+
+function ArdPlatformOfFqbn(const AFqbn: string): string;
+var
+  FirstColon, SecondColon: Integer;
+begin
+  Result := Trim(AFqbn);
+  FirstColon := Pos(':', Result);
+  if FirstColon = 0 then
+    Exit;
+  SecondColon := Pos(':', Copy(Result, FirstColon + 1, MaxInt));
+  if SecondColon > 0 then
+    Result := Copy(Result, 1, FirstColon + SecondColon - 1);
+end;
+
+function ArdIsPlatformMissing(const AText: string): Boolean;
+var
+  LowText: string;
+begin
+  LowText := LowerCase(AText);
+  Result := (Pos('platform', LowText) > 0) and
+            ((Pos('not found', LowText) > 0) or
+             (Pos('not installed', LowText) > 0));
+end;
+
+function ArdIsGccError(const AText: string): Boolean;
+var
+  LowText: string;
+begin
+  LowText := LowerCase(AText);
+  Result := (Pos(': error:', LowText) > 0) or
+            (Pos(': fatal error:', LowText) > 0) or
+            (Pos('undefined reference to', LowText) > 0);
+end;
+
+function ArdParseGccLine(const AText: string; var AFile: string;
+                         var ALineNo, AColNo: Integer): Boolean;
+const
+  IncludedTag = 'in file included from ';
+  FromTag = 'from ';
+var
+  Work, LowWork: string;
+  ColonPos, NumEnd, ColEnd, SearchFrom, Found: Integer;
+
+  // Конец цифр, начиная с AFrom; цифр нет - AFrom
+  function DigitsEnd(AFrom: Integer): Integer;
+  begin
+    Result := AFrom;
+    while (Result <= Length(Work)) and (Work[Result] in ['0'..'9']) do
+      Inc(Result);
+  end;
+
+begin
+  Result := False;
+  AFile := '';
+  ALineNo := 0;
+  AColNo := 0;
+  Work := Trim(AText);
+  LowWork := LowerCase(Work);
+  if Copy(LowWork, 1, Length(IncludedTag)) = IncludedTag then
+    Work := TrimLeft(Copy(Work, Length(IncludedTag) + 1, MaxInt))
+  else if Copy(LowWork, 1, Length(FromTag)) = FromTag then
+    Work := TrimLeft(Copy(Work, Length(FromTag) + 1, MaxInt));
+  if Length(Work) < 4 then
+    Exit;
+
+  // C: в начале - буква диска, искать двоеточие после неё
+  SearchFrom := 1;
+  if (Work[2] = ':') and (UpCase(Work[1]) in ['A'..'Z']) then
+    SearchFrom := 3;
+
+  // Первое двоеточие, за которым цифры и снова двоеточие (или запятая)
+  ColonPos := 0;
+  while SearchFrom <= Length(Work) do
+  begin
+    Found := Pos(':', Copy(Work, SearchFrom, MaxInt));
+    if Found = 0 then
+      Exit;
+    Found := SearchFrom + Found - 1;
+    NumEnd := DigitsEnd(Found + 1);
+    // "from файл:12," - у вложенного include после строки запятая
+    if (NumEnd > Found + 1) and (NumEnd <= Length(Work)) and
+       (Work[NumEnd] in [':', ',']) then
+    begin
+      ColonPos := Found;
+      Break;
+    end;
+    SearchFrom := Found + 1;
+  end;
+  if ColonPos <= 1 then
+    Exit;
+
+  NumEnd := DigitsEnd(ColonPos + 1);
+  ALineNo := StrToIntDef(Copy(Work, ColonPos + 1, NumEnd - ColonPos - 1), 0);
+  // Столбец: цифры после второго двоеточия, дальше : , или конец строки
+  ColEnd := DigitsEnd(NumEnd + 1);
+  if (ColEnd > NumEnd + 1) and
+     ((ColEnd > Length(Work)) or (Work[ColEnd] in [':', ','])) then
+    AColNo := StrToIntDef(Copy(Work, NumEnd + 1, ColEnd - NumEnd - 1), 0);
+
+  AFile := Trim(Copy(Work, 1, ColonPos - 1));
+  AFile := StringReplace(AFile, '/', '\', [rfReplaceAll]);
+  Result := (AFile <> '') and (ALineNo > 0);
 end;
 
 end.
