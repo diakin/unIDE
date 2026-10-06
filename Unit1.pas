@@ -40388,6 +40388,7 @@ end;
 // Compile & Run решает, запускать ли собранное.
 function TForm1.CompileDelphi: Boolean;
 var
+  MadeDir: Boolean;
   Ini: TIniFile;
   Root, Exe, Dpr, Dir, Params: string;
   LibDir, UnitPath, ExeDir, DcuDir, Sect: string;
@@ -40487,6 +40488,10 @@ begin
     SetProjectTarget(BuildPrj, Dpr);
     LogComp('Цель сборки проекта: ' + Dpr);
   end;
+
+  // Полный путь: дальше от него считаются папки exe и .dcu
+  Dpr := ExpandFileName(Dpr);
+  LogComp('Цель: ' + Dpr);
 
   // Настройки проекта (.dof) - по настоящему .dpr, не по копии с зондом
   OrigDpr := Dpr;
@@ -40698,11 +40703,24 @@ begin
   Params := Params + ' -E"' + ExcludeTrailingPathDelimiter(ExeDir) + '"';
   Params := Params + ' -N"' + ExcludeTrailingPathDelimiter(DcuDir) + '"';
 
-  // Папки exe ещё нет (первая сборка в Output) - dcc32 сам её не создаёт
-  if not DirectoryExists(ExeDir) and not ForceDirectories(ExeDir) then
+  // Папки exe ещё нет (первая сборка в Output) - dcc32 сам её не создаёт.
+  // ForceDirectories на пустом или относительном пути без папки бросает
+  // исключение "Unable to create directory" - ловим и пишем путь в лог.
+  LogComp('Папка exe: ' + ExeDir + '; папка .dcu: ' + DcuDir);
+  if not DirectoryExists(ExeDir) then
   begin
-    LogComp('Компиляция: не удалось создать папку для exe: ' + ExeDir);
-    Exit;
+    MadeDir := False;
+    try
+      MadeDir := ForceDirectories(ExeDir);
+    except
+      on E: Exception do
+        LogComp('Компиляция: ' + E.Message + ' - ' + ExeDir);
+    end;
+    if not MadeDir then
+    begin
+      LogComp('Компиляция: не удалось создать папку для exe: ' + ExeDir);
+      Exit;
+    end;
   end;
 
   // exe занят - запущен (например, сам редактор из папки вывода): файл
@@ -46453,7 +46471,10 @@ begin
   Result := '';
   if ADpr = '' then
     Exit;
-  DprDir := ExtractFilePath(ADpr);
+  // Путь .dpr без папки или относительный: папка exe от него была бы
+  // относительной ('Output\'), и ForceDirectories на ней падает с
+  // "Unable to create directory"
+  DprDir := ExtractFilePath(ExpandFileName(ADpr));
 
   // 1. Своя папка проекта
   BuildPrj := BuildProject;
@@ -46498,6 +46519,9 @@ begin
     OutDir := ExpandDelphiRoot(Trim(OutDir), ARoot);
     if OutDir <> '' then
     begin
+      // Относительный путь - от папки .dpr, как у OutputDir проекта
+      if (ExtractFileDrive(OutDir) = '') and (OutDir[1] <> '\') then
+        OutDir := ExpandFileName(DprDir + OutDir);
       Result := IncludeTrailingPathDelimiter(OutDir);
       Exit;
     end;
