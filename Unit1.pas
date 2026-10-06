@@ -24586,8 +24586,19 @@ const
   CensusShowMax = 8;
 var
   NowList: TStringList;
-  ListIdx, Shown, Hidden: Integer;
-  Found: Integer;
+  OldIdx, NowIdx, Shown, Hidden, Cmp: Integer;
+
+  procedure Note(const ASign, AItem: string);
+  begin
+    if Shown < CensusShowMax then
+    begin
+      Result := Result + '; ' + ASign + AItem;
+      Inc(Shown);
+    end
+    else
+      Inc(Hidden);
+  end;
+
 begin
   Result := '';
   if FOwnSnapCensus = nil then
@@ -24597,24 +24608,34 @@ begin
     OwnFormCensus(OwnLiveForm(AClass), NowList);
     Shown := 0;
     Hidden := 0;
-    for ListIdx := 0 to NowList.Count - 1 do
-      if not FOwnSnapCensus.Find(NowList[ListIdx], Found) then
-        if Shown < CensusShowMax then
-        begin
-          Result := Result + '; +' + NowList[ListIdx];
-          Inc(Shown);
-        end
-        else
-          Inc(Hidden);
-    for ListIdx := 0 to FOwnSnapCensus.Count - 1 do
-      if not NowList.Find(FOwnSnapCensus[ListIdx], Found) then
-        if Shown < CensusShowMax then
-        begin
-          Result := Result + '; -' + FOwnSnapCensus[ListIdx];
-          Inc(Shown);
-        end
-        else
-          Inc(Hidden);
+    // Оба списка сортированы и с повторами (безымянные одного класса):
+    // слияние, чтобы лишний второй "TMenuItem " тоже был виден
+    OldIdx := 0;
+    NowIdx := 0;
+    while (OldIdx < FOwnSnapCensus.Count) or (NowIdx < NowList.Count) do
+    begin
+      if OldIdx >= FOwnSnapCensus.Count then
+        Cmp := 1
+      else if NowIdx >= NowList.Count then
+        Cmp := -1
+      else
+        Cmp := AnsiCompareText(FOwnSnapCensus[OldIdx], NowList[NowIdx]);
+      if Cmp = 0 then
+      begin
+        Inc(OldIdx);
+        Inc(NowIdx);
+      end
+      else if Cmp < 0 then
+      begin
+        Note('-', FOwnSnapCensus[OldIdx]);
+        Inc(OldIdx);
+      end
+      else
+      begin
+        Note('+', NowList[NowIdx]);
+        Inc(NowIdx);
+      end;
+    end;
     if Hidden > 0 then
       Result := Result + '; ещё ' + IntToStr(Hidden);
     Result := Result + ' (было ' + IntToStr(FOwnSnapCensus.Count) +
