@@ -17260,6 +17260,32 @@ begin
               clNavy);
 end;
 
+// Двойная буферизация панелям и рамкам внутри AParent, по всему дереву.
+// Рамкам (TCustomGroupBox) ещё стиль WS_CLIPCHILDREN: без него рамка при
+// перерисовке заливает фон и под дочерней панелью, и при протяжке окна это
+// мелькало (подробнее - в FormCreate).
+procedure BufferToolbarTree(AParent: TWinControl);
+var
+  Idx: Integer;
+  Child: TControl;
+  Wnd: HWND;
+begin
+  for Idx := 0 to AParent.ControlCount - 1 do
+  begin
+    Child := AParent.Controls[Idx];
+    if not ((Child is TPanel) or (Child is TCustomGroupBox)) then
+      Continue;
+    TWinControl(Child).DoubleBuffered := True;
+    if Child is TCustomGroupBox then
+    begin
+      Wnd := TWinControl(Child).Handle;
+      SetWindowLong(Wnd, GWL_STYLE,
+                    GetWindowLong(Wnd, GWL_STYLE) or WS_CLIPCHILDREN);
+    end;
+    BufferToolbarTree(TWinControl(Child));
+  end;
+end;
+
 procedure TForm1.FormCreate(Sender: TObject);
 var
   SampleBmp: TBitmap; // временный холст для замера ширины панелей
@@ -17572,13 +17598,10 @@ begin
   // буферизуется только то, что действительно мерцало, а редактор со своей
   // отрисовкой остаётся нетронутым.
   FToolbar.DoubleBuffered := True;
-  FLeftPanel.DoubleBuffered := True;
-  grpToolbar.DoubleBuffered := True;
-  pnlToolbarIn.DoubleBuffered := True;
-  grpCompiler.DoubleBuffered := True;
-  pnlCompilerIn.DoubleBuffered := True;
-  grpSearch.DoubleBuffered := True;
-  pnlSearchIn.DoubleBuffered := True;
+  // Панели и рамки внутри тулбара - по дереву, а не по именам: состав
+  // тулбара меняется в конструкторе, и удалённая там панель не должна
+  // ломать сборку (BufferToolbarTree)
+  BufferToolbarTree(FToolbar);
   FTabs.DoubleBuffered := True;
   Panel1.DoubleBuffered := True;
   Panel2.DoubleBuffered := True;
@@ -17605,10 +17628,7 @@ begin
   // умолчанию нет стиля WS_CLIPCHILDREN - значит при перерисовке групбокс
   // закрашивает свой фон И под дочерней панелью, хотя та закрывает его
   // целиком. Этот лишний слой заливки и мелькал при протяжке рамки.
-  SetWindowLong(grpToolbar.Handle, GWL_STYLE,
-                GetWindowLong(grpToolbar.Handle, GWL_STYLE) or WS_CLIPCHILDREN);
-  SetWindowLong(grpCompiler.Handle, GWL_STYLE,
-                GetWindowLong(grpCompiler.Handle, GWL_STYLE) or WS_CLIPCHILDREN);
+  // WS_CLIPCHILDREN рамкам тулбара ставит BufferToolbarTree (выше).
 
   // Шестая панель статус-бара - кодировка открытого файла. Создаём кодом,
   // чтобы не зависеть от того, сколько панелей описано в DFM.
