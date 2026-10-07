@@ -3147,8 +3147,8 @@ End Sub
 '*****************************************
 SUB AboutFrmMouseMove  (X%, Y%, Shift%) 
 
-if Label1.font.color <> cldb then Label1.font.color=cldb
-if Label2.font.color <> cldb then Label2.font.color=cldb
+if AboutLabel1.font.color <> cldb then AboutLabel1.font.color=cldb
+if AboutLabel2.font.color <> cldb then AboutLabel2.font.color=cldb
 'NagPanel.color=clSilver
 
 
