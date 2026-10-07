@@ -27,6 +27,8 @@
 #pragma once
 
 #include once "rqstream.bi"
+#include once "rqstrlist.bi"
+#include once "rqreg.bi"
 
 #ifdef __FB_64BIT__
     #define RQLCL_DLL "rqlcl64.dll"
@@ -71,6 +73,19 @@ Type RqSetItemStrFn As Function stdcall (ByVal ObjPtr As Any Ptr, _
     ByVal Value As ZString Ptr) As Long
 Type RqCallStrFn As Function stdcall (ByVal ObjPtr As Any Ptr, _
     ByVal MethodName As ZString Ptr, ByVal Value As ZString Ptr) As Long
+Type RqGetCellFn As Function stdcall (ByVal ObjPtr As Any Ptr, _
+    ByVal ColIdx As Long, ByVal RowIdx As Long, _
+    ByVal Buffer As ZString Ptr, ByVal BufferLen As Long) As Long
+Type RqSetCellFn As Function stdcall (ByVal ObjPtr As Any Ptr, _
+    ByVal ColIdx As Long, ByVal RowIdx As Long, ByVal Value As ZString Ptr) As Long
+Type RqGetItemIntFn As Function stdcall (ByVal ObjPtr As Any Ptr, _
+    ByVal PropName As ZString Ptr, ByVal ItemIndex As Long) As Long
+Type RqSetItemIntFn As Function stdcall (ByVal ObjPtr As Any Ptr, _
+    ByVal PropName As ZString Ptr, ByVal ItemIndex As Long, ByVal Value As Long) As Long
+Type RqCallExFn As Function stdcall (ByVal ObjPtr As Any Ptr, _
+    ByVal MethodName As ZString Ptr, ByVal StrArg As ZString Ptr, _
+    ByVal IntArg1 As Long, ByVal IntArg2 As Long, ByVal IntArg3 As Long, _
+    ByVal Buffer As ZString Ptr, ByVal BufferLen As Long) As Long
 Type RqDoEventsFn As Sub stdcall ()
 Type RqLastErrorFn As Function stdcall (ByVal Buffer As ZString Ptr, _
     ByVal BufferLen As Long) As Long
@@ -93,6 +108,11 @@ Dim Shared RqGetHandle As RqGetHandleFn
 Dim Shared RqGetItemStr As RqGetItemStrFn
 Dim Shared RqSetItemStr As RqSetItemStrFn
 Dim Shared RqCallStr As RqCallStrFn
+Dim Shared RqGetCell As RqGetCellFn
+Dim Shared RqSetCell As RqSetCellFn
+Dim Shared RqGetItemInt As RqGetItemIntFn
+Dim Shared RqSetItemInt As RqSetItemIntFn
+Dim Shared RqCallEx As RqCallExFn
 Dim Shared RqDoEventsProc As RqDoEventsFn
 Dim Shared RqLastError As RqLastErrorFn
 
@@ -138,6 +158,11 @@ Sub RqLclEnsure()
     RqGetItemStr = Cast(RqGetItemStrFn, DyLibSymbol(RqLclLib, "RqGetItemStr"))
     RqSetItemStr = Cast(RqSetItemStrFn, DyLibSymbol(RqLclLib, "RqSetItemStr"))
     RqCallStr = Cast(RqCallStrFn, DyLibSymbol(RqLclLib, "RqCallStr"))
+    RqGetCell = Cast(RqGetCellFn, DyLibSymbol(RqLclLib, "RqGetCell"))
+    RqSetCell = Cast(RqSetCellFn, DyLibSymbol(RqLclLib, "RqSetCell"))
+    RqGetItemInt = Cast(RqGetItemIntFn, DyLibSymbol(RqLclLib, "RqGetItemInt"))
+    RqSetItemInt = Cast(RqSetItemIntFn, DyLibSymbol(RqLclLib, "RqSetItemInt"))
+    RqCallEx = Cast(RqCallExFn, DyLibSymbol(RqLclLib, "RqCallEx"))
     RqDoEventsProc = Cast(RqDoEventsFn, DyLibSymbol(RqLclLib, "RqDoEvents"))
     RqLastError = Cast(RqLastErrorFn, DyLibSymbol(RqLclLib, "RqLastError"))
     If (RqInit = 0) Or (RqCreate = 0) Or (RqSetInt = 0) Or (RqGetInt = 0) _
@@ -145,7 +170,9 @@ Sub RqLclEnsure()
        Or (RqSetEvent = 0) Or (RqCall = 0) Or (RqDoEventsProc = 0) _
        Or (RqLastError = 0) Or (RqFree = 0) Or (RqDone = 0) _
        Or (RqCallInt = 0) Or (RqGetObj = 0) Or (RqGetHandle = 0) _
-       Or (RqGetItemStr = 0) Or (RqSetItemStr = 0) Or (RqCallStr = 0) Then
+       Or (RqGetItemStr = 0) Or (RqSetItemStr = 0) Or (RqCallStr = 0) _
+       Or (RqGetCell = 0) Or (RqSetCell = 0) Or (RqGetItemInt = 0) _
+       Or (RqSetItemInt = 0) Or (RqCallEx = 0) Then
         RqLclMessageBox(0, "В " & RQLCL_DLL & " нет нужных функций " & _
             "(другая версия DLL?)", "RqLcl", &h10)
         End 1
@@ -191,6 +218,25 @@ End Function
 
 Sub RqLclCall(ByVal ObjPtr As Any Ptr, ByRef MethodName As String)
     If RqCall(ObjPtr, StrPtr(MethodName)) = 0 Then RqLclShowError(MethodName)
+End Sub
+
+' Текст последней ошибки DLL
+Function RqLclLastError() As String
+    Dim ErrText As String
+    Dim ErrLen As Long
+    If RqLastError = 0 Then Return ""
+    ErrLen = RqLastError(0, 0)
+    If ErrLen <= 0 Then Return ""
+    ErrText = Space(ErrLen)
+    RqLastError(StrPtr(ErrText), ErrLen + 1)
+    Return ErrText
+End Function
+
+' Ошибка, которая в цикле повторилась бы много раз (ячейка вне таблицы):
+' не окно, а как у QSTRINGLIST - Smart: предупреждение в лог, Compat:
+' сообщение и конец программы
+Sub RqLclClassError(ByRef What As String)
+    RqRtClassError(What & ": " & RqLclLastError())
 End Sub
 
 Sub RqLclCallStr(ByVal ObjPtr As Any Ptr, ByRef MethodName As String, ByRef Value As String)
@@ -922,4 +968,506 @@ End Sub
 Sub QRICHEDIT.SaveToStream(ByRef Stream As RqStream)
     Dim StreamText As String = RqLclGetStr(RqObj, "RichText")
     If Len(StreamText) > 0 Then Stream.WriteBuf(StrPtr(StreamText), Len(StreamText))
+End Sub
+
+' ---------------------------------------------------------------------------
+'  QSTRINGGRID - таблица строк (TStringGrid LCL)
+'  Cell(Col, Row) - функция; запись - SetCell(Col, Row, Значение): у
+'  свойства FreeBASIC только один индекс. Препроцессор переводит
+'  Grid.Cell(c, r) = x в Grid.SetCell(c, r, x).
+'  Ячейка вне таблицы: Smart - "" и предупреждение в лог, Compat - конец
+'  программы.
+'  Пока нет: события (OnSelectCell, OnDrawCell...), ColumnStyle,
+'  ColumnList, TabStops, рисование (TextOut, Line, Circle...).
+' ---------------------------------------------------------------------------
+
+Type QSTRINGGRID Extends QCONTROL
+    Declare Constructor()
+    Declare Function Cell(ByVal ColIdx As Long, ByVal RowIdx As Long) As String
+    Declare Sub SetCell(ByVal ColIdx As Long, ByVal RowIdx As Long, ByRef Value As String)
+    Declare Property ColWidths(ByVal ColIdx As Long) As Long
+    Declare Property ColWidths(ByVal ColIdx As Long, ByVal Value As Long)
+    Declare Property RowHeights(ByVal RowIdx As Long) As Long
+    Declare Property RowHeights(ByVal RowIdx As Long, ByVal Value As Long)
+    Declare Property Align() As Long
+    Declare Property Align(ByVal Value As Long)
+    Declare Property BorderStyle() As Long
+    Declare Property BorderStyle(ByVal Value As Long)
+    Declare Property Col() As Long
+    Declare Property Col(ByVal Value As Long)
+    Declare Property ColCount() As Long
+    Declare Property ColCount(ByVal Value As Long)
+    Declare Property DefaultColWidth() As Long
+    Declare Property DefaultColWidth(ByVal Value As Long)
+    Declare Property DefaultRowHeight() As Long
+    Declare Property DefaultRowHeight(ByVal Value As Long)
+    Declare Property EditorMode() As Long
+    Declare Property EditorMode(ByVal Value As Long)
+    Declare Property FixedColor() As Long
+    Declare Property FixedColor(ByVal Value As Long)
+    Declare Property FixedCols() As Long
+    Declare Property FixedCols(ByVal Value As Long)
+    Declare Property FixedRows() As Long
+    Declare Property FixedRows(ByVal Value As Long)
+    Declare Property GridHeight() As Long
+    Declare Property GridLineWidth() As Long
+    Declare Property GridLineWidth(ByVal Value As Long)
+    Declare Property GridWidth() As Long
+    Declare Property LeftCol() As Long
+    Declare Property LeftCol(ByVal Value As Long)
+    Declare Property Row() As Long
+    Declare Property Row(ByVal Value As Long)
+    Declare Property RowCount() As Long
+    Declare Property RowCount(ByVal Value As Long)
+    Declare Property ScrollBars() As Long
+    Declare Property ScrollBars(ByVal Value As Long)
+    Declare Property Separator() As String
+    Declare Property Separator(ByRef Value As String)
+    Declare Property TabOrder() As Long
+    Declare Property TabOrder(ByVal Value As Long)
+    Declare Property Tag() As Long
+    Declare Property Tag(ByVal Value As Long)
+    Declare Property TopRow() As Long
+    Declare Property TopRow(ByVal Value As Long)
+    Declare Property VisibleColCount() As Long
+    Declare Property VisibleRowCount() As Long
+    Declare Sub AddOptions(ByVal Option1 As Long, ByVal Option2 As Long = -1, _
+        ByVal Option3 As Long = -1, ByVal Option4 As Long = -1, _
+        ByVal Option5 As Long = -1, ByVal Option6 As Long = -1)
+    Declare Sub DelOptions(ByVal Option1 As Long, ByVal Option2 As Long = -1, _
+        ByVal Option3 As Long = -1, ByVal Option4 As Long = -1, _
+        ByVal Option5 As Long = -1, ByVal Option6 As Long = -1)
+    Declare Sub DeleteCol(ByVal ColIdx As Long)
+    Declare Sub DeleteRow(ByVal RowIdx As Long)
+    Declare Sub InsertCol(ByVal ColIdx As Long)
+    Declare Sub InsertRow(ByVal RowIdx As Long)
+    Declare Sub SwapCols(ByVal Col1 As Long, ByVal Col2 As Long)
+    Declare Sub SwapRows(ByVal Row1 As Long, ByVal Row2 As Long)
+    Declare Sub LoadFromFile(ByRef FileName As String, ByVal RowOffset As Long = 0, _
+        ByVal ColOffset As Long = 0, ByVal MaxRows As Long = 0)
+    Declare Sub SaveToFile(ByRef FileName As String, ByVal RowOffset As Long = 0, _
+        ByVal ColOffset As Long = 0, ByVal MaxRows As Long = 0)
+    Declare Sub LoadFromStream(ByRef Stream As RqStream, ByVal RowOffset As Long = 0, _
+        ByVal ColOffset As Long = 0, ByVal MaxRows As Long = 0)
+    Declare Sub SaveToStream(ByRef Stream As RqStream, ByVal RowOffset As Long = 0, _
+        ByVal ColOffset As Long = 0, ByVal MaxRows As Long = 0)
+    Declare Function TextWidth(ByRef Text1 As String) As Long
+    Declare Function TextHeight(ByRef Text1 As String) As Long
+    ' служебное
+    Declare Sub CallInts(ByRef MethodName As String, ByVal IntArg1 As Long, _
+        ByVal IntArg2 As Long = 0)
+    Declare Sub OptionList(ByRef MethodName As String, ByVal Option1 As Long, _
+        ByVal Option2 As Long, ByVal Option3 As Long, ByVal Option4 As Long, _
+        ByVal Option5 As Long, ByVal Option6 As Long)
+End Type
+
+Constructor QSTRINGGRID()
+    RqObj = RqLclNew("QSTRINGGRID", @This)
+End Constructor
+
+Function QSTRINGGRID.Cell(ByVal ColIdx As Long, ByVal RowIdx As Long) As String
+    Dim TextLen As Long
+    Dim TextValue As String
+    TextLen = RqGetCell(RqObj, ColIdx, RowIdx, 0, 0)
+    If TextLen < 0 Then
+        RqLclClassError("QSTRINGGRID.Cell")
+        Return ""
+    End If
+    If TextLen = 0 Then Return ""
+    TextValue = Space(TextLen)
+    RqGetCell(RqObj, ColIdx, RowIdx, StrPtr(TextValue), TextLen + 1)
+    Return TextValue
+End Function
+
+Sub QSTRINGGRID.SetCell(ByVal ColIdx As Long, ByVal RowIdx As Long, ByRef Value As String)
+    If RqSetCell(RqObj, ColIdx, RowIdx, StrPtr(Value)) = 0 Then RqLclClassError("QSTRINGGRID.Cell")
+End Sub
+
+Property QSTRINGGRID.ColWidths(ByVal ColIdx As Long) As Long
+    Return RqGetItemInt(RqObj, "ColWidths", ColIdx)
+End Property
+Property QSTRINGGRID.ColWidths(ByVal ColIdx As Long, ByVal Value As Long)
+    If RqSetItemInt(RqObj, "ColWidths", ColIdx, Value) = 0 Then RqLclClassError("QSTRINGGRID.ColWidths")
+End Property
+Property QSTRINGGRID.RowHeights(ByVal RowIdx As Long) As Long
+    Return RqGetItemInt(RqObj, "RowHeights", RowIdx)
+End Property
+Property QSTRINGGRID.RowHeights(ByVal RowIdx As Long, ByVal Value As Long)
+    If RqSetItemInt(RqObj, "RowHeights", RowIdx, Value) = 0 Then RqLclClassError("QSTRINGGRID.RowHeights")
+End Property
+Property QSTRINGGRID.Align() As Long
+    Return RqGetInt(RqObj, "Align")
+End Property
+Property QSTRINGGRID.Align(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Align", Value)
+End Property
+Property QSTRINGGRID.BorderStyle() As Long
+    Return RqGetInt(RqObj, "BorderStyle")
+End Property
+Property QSTRINGGRID.BorderStyle(ByVal Value As Long)
+    RqLclSetInt(RqObj, "BorderStyle", Value)
+End Property
+Property QSTRINGGRID.Col() As Long
+    Return RqGetInt(RqObj, "Col")
+End Property
+Property QSTRINGGRID.Col(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Col", Value)
+End Property
+Property QSTRINGGRID.ColCount() As Long
+    Return RqGetInt(RqObj, "ColCount")
+End Property
+Property QSTRINGGRID.ColCount(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ColCount", Value)
+End Property
+Property QSTRINGGRID.DefaultColWidth() As Long
+    Return RqGetInt(RqObj, "DefaultColWidth")
+End Property
+Property QSTRINGGRID.DefaultColWidth(ByVal Value As Long)
+    RqLclSetInt(RqObj, "DefaultColWidth", Value)
+End Property
+Property QSTRINGGRID.DefaultRowHeight() As Long
+    Return RqGetInt(RqObj, "DefaultRowHeight")
+End Property
+Property QSTRINGGRID.DefaultRowHeight(ByVal Value As Long)
+    RqLclSetInt(RqObj, "DefaultRowHeight", Value)
+End Property
+Property QSTRINGGRID.EditorMode() As Long
+    Return RqGetInt(RqObj, "EditorMode")
+End Property
+Property QSTRINGGRID.EditorMode(ByVal Value As Long)
+    RqLclSetInt(RqObj, "EditorMode", Value)
+End Property
+Property QSTRINGGRID.FixedColor() As Long
+    Return RqGetInt(RqObj, "FixedColor")
+End Property
+Property QSTRINGGRID.FixedColor(ByVal Value As Long)
+    RqLclSetInt(RqObj, "FixedColor", Value)
+End Property
+Property QSTRINGGRID.FixedCols() As Long
+    Return RqGetInt(RqObj, "FixedCols")
+End Property
+Property QSTRINGGRID.FixedCols(ByVal Value As Long)
+    RqLclSetInt(RqObj, "FixedCols", Value)
+End Property
+Property QSTRINGGRID.FixedRows() As Long
+    Return RqGetInt(RqObj, "FixedRows")
+End Property
+Property QSTRINGGRID.FixedRows(ByVal Value As Long)
+    RqLclSetInt(RqObj, "FixedRows", Value)
+End Property
+Property QSTRINGGRID.GridHeight() As Long
+    Return RqGetInt(RqObj, "GridHeight")
+End Property
+Property QSTRINGGRID.GridLineWidth() As Long
+    Return RqGetInt(RqObj, "GridLineWidth")
+End Property
+Property QSTRINGGRID.GridLineWidth(ByVal Value As Long)
+    RqLclSetInt(RqObj, "GridLineWidth", Value)
+End Property
+Property QSTRINGGRID.GridWidth() As Long
+    Return RqGetInt(RqObj, "GridWidth")
+End Property
+Property QSTRINGGRID.LeftCol() As Long
+    Return RqGetInt(RqObj, "LeftCol")
+End Property
+Property QSTRINGGRID.LeftCol(ByVal Value As Long)
+    RqLclSetInt(RqObj, "LeftCol", Value)
+End Property
+Property QSTRINGGRID.Row() As Long
+    Return RqGetInt(RqObj, "Row")
+End Property
+Property QSTRINGGRID.Row(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Row", Value)
+End Property
+Property QSTRINGGRID.RowCount() As Long
+    Return RqGetInt(RqObj, "RowCount")
+End Property
+Property QSTRINGGRID.RowCount(ByVal Value As Long)
+    RqLclSetInt(RqObj, "RowCount", Value)
+End Property
+Property QSTRINGGRID.ScrollBars() As Long
+    Return RqGetInt(RqObj, "ScrollBars")
+End Property
+Property QSTRINGGRID.ScrollBars(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ScrollBars", Value)
+End Property
+Property QSTRINGGRID.TabOrder() As Long
+    Return RqGetInt(RqObj, "TabOrder")
+End Property
+Property QSTRINGGRID.TabOrder(ByVal Value As Long)
+    RqLclSetInt(RqObj, "TabOrder", Value)
+End Property
+Property QSTRINGGRID.Tag() As Long
+    Return RqGetInt(RqObj, "Tag")
+End Property
+Property QSTRINGGRID.Tag(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Tag", Value)
+End Property
+Property QSTRINGGRID.TopRow() As Long
+    Return RqGetInt(RqObj, "TopRow")
+End Property
+Property QSTRINGGRID.TopRow(ByVal Value As Long)
+    RqLclSetInt(RqObj, "TopRow", Value)
+End Property
+Property QSTRINGGRID.VisibleColCount() As Long
+    Return RqGetInt(RqObj, "VisibleColCount")
+End Property
+Property QSTRINGGRID.VisibleRowCount() As Long
+    Return RqGetInt(RqObj, "VisibleRowCount")
+End Property
+' Разделитель ячеек в LoadFromFile / SaveToFile (по умолчанию - Tab)
+Property QSTRINGGRID.Separator() As String
+    Return RqLclGetStr(RqObj, "Separator")
+End Property
+Property QSTRINGGRID.Separator(ByRef Value As String)
+    RqLclSetStr(RqObj, "Separator", Value)
+End Property
+
+Sub QSTRINGGRID.CallInts(ByRef MethodName As String, ByVal IntArg1 As Long, _
+        ByVal IntArg2 As Long = 0)
+    If RqCallEx(RqObj, MethodName, 0, IntArg1, IntArg2, 0, 0, 0) = 0 Then
+        RqLclClassError("QSTRINGGRID." & MethodName)
+    End If
+End Sub
+
+Sub QSTRINGGRID.OptionList(ByRef MethodName As String, ByVal Option1 As Long, _
+        ByVal Option2 As Long, ByVal Option3 As Long, ByVal Option4 As Long, _
+        ByVal Option5 As Long, ByVal Option6 As Long)
+    Dim OptionArr(1 To 6) As Long = {Option1, Option2, Option3, Option4, Option5, Option6}
+    For ArgIdx As Long = 1 To 6
+        If (ArgIdx > 1) AndAlso (OptionArr(ArgIdx) = -1) Then Exit For
+        CallInts(MethodName, OptionArr(ArgIdx))
+    Next
+End Sub
+
+' goFixedVertLine 0 ... goThumbTracking 14, до шести за вызов
+Sub QSTRINGGRID.AddOptions(ByVal Option1 As Long, ByVal Option2 As Long = -1, _
+        ByVal Option3 As Long = -1, ByVal Option4 As Long = -1, _
+        ByVal Option5 As Long = -1, ByVal Option6 As Long = -1)
+    OptionList("AddOptions", Option1, Option2, Option3, Option4, Option5, Option6)
+End Sub
+Sub QSTRINGGRID.DelOptions(ByVal Option1 As Long, ByVal Option2 As Long = -1, _
+        ByVal Option3 As Long = -1, ByVal Option4 As Long = -1, _
+        ByVal Option5 As Long = -1, ByVal Option6 As Long = -1)
+    OptionList("DelOptions", Option1, Option2, Option3, Option4, Option5, Option6)
+End Sub
+Sub QSTRINGGRID.DeleteCol(ByVal ColIdx As Long)
+    CallInts("DeleteCol", ColIdx)
+End Sub
+Sub QSTRINGGRID.DeleteRow(ByVal RowIdx As Long)
+    CallInts("DeleteRow", RowIdx)
+End Sub
+Sub QSTRINGGRID.InsertCol(ByVal ColIdx As Long)
+    CallInts("InsertCol", ColIdx)
+End Sub
+Sub QSTRINGGRID.InsertRow(ByVal RowIdx As Long)
+    CallInts("InsertRow", RowIdx)
+End Sub
+Sub QSTRINGGRID.SwapCols(ByVal Col1 As Long, ByVal Col2 As Long)
+    CallInts("SwapCols", Col1, Col2)
+End Sub
+Sub QSTRINGGRID.SwapRows(ByVal Row1 As Long, ByVal Row2 As Long)
+    CallInts("SwapRows", Row1, Row2)
+End Sub
+
+' Строка файла - строка таблицы с RowOffset, ячейки через Separator - с
+' ColOffset; MaxRows - не больше строк (0 - все). RowCount = RowOffset +
+' число строк файла.
+Sub QSTRINGGRID.LoadFromFile(ByRef FileName As String, ByVal RowOffset As Long = 0, _
+        ByVal ColOffset As Long = 0, ByVal MaxRows As Long = 0)
+    If RqCallEx(RqObj, "LoadFromFile", StrPtr(FileName), RowOffset, ColOffset, MaxRows, 0, 0) = 0 Then
+        RqLclClassError("QSTRINGGRID.LoadFromFile")
+    End If
+End Sub
+Sub QSTRINGGRID.SaveToFile(ByRef FileName As String, ByVal RowOffset As Long = 0, _
+        ByVal ColOffset As Long = 0, ByVal MaxRows As Long = 0)
+    If RqCallEx(RqObj, "SaveToFile", StrPtr(FileName), RowOffset, ColOffset, MaxRows, 0, 0) = 0 Then
+        RqLclClassError("QSTRINGGRID.SaveToFile")
+    End If
+End Sub
+' Из потока - от текущей позиции до конца
+Sub QSTRINGGRID.LoadFromStream(ByRef Stream As RqStream, ByVal RowOffset As Long = 0, _
+        ByVal ColOffset As Long = 0, ByVal MaxRows As Long = 0)
+    Dim DataLen As Long = Stream.Size - Stream.Position
+    Dim StreamText As String
+    If DataLen > 0 Then
+        StreamText = Space(DataLen)
+        DataLen = Stream.ReadBuf(StrPtr(StreamText), DataLen)
+        StreamText = Mid(StreamText, 1, DataLen)
+    End If
+    If RqCallEx(RqObj, "LoadFromText", StrPtr(StreamText), RowOffset, ColOffset, MaxRows, 0, 0) = 0 Then
+        RqLclClassError("QSTRINGGRID.LoadFromStream")
+    End If
+End Sub
+Sub QSTRINGGRID.SaveToStream(ByRef Stream As RqStream, ByVal RowOffset As Long = 0, _
+        ByVal ColOffset As Long = 0, ByVal MaxRows As Long = 0)
+    Dim TextLen As Long = RqCallEx(RqObj, "SaveToText", 0, RowOffset, ColOffset, MaxRows, 0, 0)
+    If TextLen < 0 Then
+        RqLclClassError("QSTRINGGRID.SaveToStream")
+        Exit Sub
+    End If
+    If TextLen = 0 Then Exit Sub
+    Dim StreamText As String = Space(TextLen)
+    RqCallEx(RqObj, "SaveToText", 0, RowOffset, ColOffset, MaxRows, StrPtr(StreamText), TextLen + 1)
+    Stream.WriteBuf(StrPtr(StreamText), TextLen)
+End Sub
+Function QSTRINGGRID.TextWidth(ByRef Text1 As String) As Long
+    Return RqCallEx(RqObj, "TextWidth", StrPtr(Text1), 0, 0, 0, 0, 0)
+End Function
+Function QSTRINGGRID.TextHeight(ByRef Text1 As String) As Long
+    Return RqCallEx(RqObj, "TextHeight", StrPtr(Text1), 0, 0, 0, 0, 0)
+End Function
+
+' ---------------------------------------------------------------------------
+'  QDIRTREE - дерево папок (TShellTreeView LCL)
+'  Directory - выбранная папка, без "\" в конце (кроме корня диска).
+'  FastLoad, ReadOnStart, AddDriveTypes / DelDriveTypes - запоминаются, на
+'  дерево не влияют (LCL читает папки по мере раскрытия и показывает все
+'  диски).
+' ---------------------------------------------------------------------------
+
+Type QDIRTREE Extends QCONTROL
+    OnChangeProc As Sub(ByRef Sender As QDIRTREE)
+    OnChangeProcPlain As Sub()
+    Declare Constructor()
+    Declare Property Directory() As String
+    Declare Property Directory(ByRef Value As String)
+    Declare Property InitialDir() As String
+    Declare Property InitialDir(ByRef Value As String)
+    Declare Property Align() As Long
+    Declare Property Align(ByVal Value As Long)
+    Declare Property BorderStyle() As Long
+    Declare Property BorderStyle(ByVal Value As Long)
+    Declare Property FastLoad() As Long
+    Declare Property FastLoad(ByVal Value As Long)
+    Declare Property HideSelection() As Long
+    Declare Property HideSelection(ByVal Value As Long)
+    Declare Property ReadOnly() As Long
+    Declare Property ReadOnly(ByVal Value As Long)
+    Declare Property ReadOnStart() As Long
+    Declare Property ReadOnStart(ByVal Value As Long)
+    Declare Property TabOrder() As Long
+    Declare Property TabOrder(ByVal Value As Long)
+    Declare Property Tag() As Long
+    Declare Property Tag(ByVal Value As Long)
+    Declare Property OnChange(ByVal Handler As Sub(ByRef Sender As QDIRTREE))
+    Declare Property OnChange(ByVal Handler As Sub())
+    Declare Sub AddDirTypes(ByVal DirType As Long)
+    Declare Sub DelDirTypes(ByVal DirType As Long)
+    Declare Sub AddDriveTypes(ByVal DriveType As Long)
+    Declare Sub DelDriveTypes(ByVal DriveType As Long)
+    Declare Sub FullCollapse()
+    Declare Sub FullExpand()
+    Declare Sub Reload()
+    Declare Sub CallInt1(ByRef MethodName As String, ByVal IntArg1 As Long)
+End Type
+
+Private Sub QDIRTREE_ChangeEvent stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any Ptr)
+    Dim TreePtr As QDIRTREE Ptr = UserPtr
+    If TreePtr->OnChangeProc <> 0 Then TreePtr->OnChangeProc(*TreePtr)
+    If TreePtr->OnChangeProcPlain <> 0 Then TreePtr->OnChangeProcPlain()
+End Sub
+
+Constructor QDIRTREE()
+    RqObj = RqLclNew("QDIRTREE", @This)
+End Constructor
+Property QDIRTREE.Directory() As String
+    Return RqLclGetStr(RqObj, "Directory")
+End Property
+Property QDIRTREE.Directory(ByRef Value As String)
+    RqLclSetStr(RqObj, "Directory", Value)
+End Property
+Property QDIRTREE.InitialDir() As String
+    Return RqLclGetStr(RqObj, "InitialDir")
+End Property
+Property QDIRTREE.InitialDir(ByRef Value As String)
+    RqLclSetStr(RqObj, "InitialDir", Value)
+End Property
+Property QDIRTREE.Align() As Long
+    Return RqGetInt(RqObj, "Align")
+End Property
+Property QDIRTREE.Align(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Align", Value)
+End Property
+Property QDIRTREE.BorderStyle() As Long
+    Return RqGetInt(RqObj, "BorderStyle")
+End Property
+Property QDIRTREE.BorderStyle(ByVal Value As Long)
+    RqLclSetInt(RqObj, "BorderStyle", Value)
+End Property
+Property QDIRTREE.FastLoad() As Long
+    Return RqGetInt(RqObj, "FastLoad")
+End Property
+Property QDIRTREE.FastLoad(ByVal Value As Long)
+    RqLclSetInt(RqObj, "FastLoad", Value)
+End Property
+Property QDIRTREE.HideSelection() As Long
+    Return RqGetInt(RqObj, "HideSelection")
+End Property
+Property QDIRTREE.HideSelection(ByVal Value As Long)
+    RqLclSetInt(RqObj, "HideSelection", Value)
+End Property
+Property QDIRTREE.ReadOnly() As Long
+    Return RqGetInt(RqObj, "ReadOnly")
+End Property
+Property QDIRTREE.ReadOnly(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ReadOnly", Value)
+End Property
+Property QDIRTREE.ReadOnStart() As Long
+    Return RqGetInt(RqObj, "ReadOnStart")
+End Property
+Property QDIRTREE.ReadOnStart(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ReadOnStart", Value)
+End Property
+Property QDIRTREE.TabOrder() As Long
+    Return RqGetInt(RqObj, "TabOrder")
+End Property
+Property QDIRTREE.TabOrder(ByVal Value As Long)
+    RqLclSetInt(RqObj, "TabOrder", Value)
+End Property
+Property QDIRTREE.Tag() As Long
+    Return RqGetInt(RqObj, "Tag")
+End Property
+Property QDIRTREE.Tag(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Tag", Value)
+End Property
+Property QDIRTREE.OnChange(ByVal Handler As Sub(ByRef Sender As QDIRTREE))
+    OnChangeProc = Handler
+    OnChangeProcPlain = 0
+    If RqSetEvent(RqObj, "OnChange", @QDIRTREE_ChangeEvent) = 0 Then RqLclShowError("OnChange")
+End Property
+' Обработчик без параметра Sender
+Property QDIRTREE.OnChange(ByVal Handler As Sub())
+    OnChangeProcPlain = Handler
+    OnChangeProc = 0
+    If RqSetEvent(RqObj, "OnChange", @QDIRTREE_ChangeEvent) = 0 Then RqLclShowError("OnChange")
+End Property
+Sub QDIRTREE.CallInt1(ByRef MethodName As String, ByVal IntArg1 As Long)
+    If RqCallEx(RqObj, MethodName, 0, IntArg1, 0, 0, 0, 0) = 0 Then
+        RqLclShowError(MethodName)
+    End If
+End Sub
+' dtReadOnly 0, dtHidden 1, dtSystem 2, dtNormal 3, dtAll 4: 1, 2, 4 -
+' показывать скрытые папки
+Sub QDIRTREE.AddDirTypes(ByVal DirType As Long)
+    CallInt1("AddDirTypes", DirType)
+End Sub
+Sub QDIRTREE.DelDirTypes(ByVal DirType As Long)
+    CallInt1("DelDirTypes", DirType)
+End Sub
+Sub QDIRTREE.AddDriveTypes(ByVal DriveType As Long)
+    CallInt1("AddDriveTypes", DriveType)
+End Sub
+Sub QDIRTREE.DelDriveTypes(ByVal DriveType As Long)
+    CallInt1("DelDriveTypes", DriveType)
+End Sub
+Sub QDIRTREE.FullCollapse()
+    CallInt1("FullCollapse", 0)
+End Sub
+' Медленно: читает все папки всех дисков
+Sub QDIRTREE.FullExpand()
+    CallInt1("FullExpand", 0)
+End Sub
+Sub QDIRTREE.Reload()
+    CallInt1("Reload", 0)
 End Sub

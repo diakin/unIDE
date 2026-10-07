@@ -1,0 +1,17 @@
+Apples
+Byte
+Integer
+Oranges
+Word
+
+Oranges
+4
+-1
+James,Brown,555-3454,House
+Jim! 4
+value1 1
+1
+abcyes
+[]
+77
+c:\windows

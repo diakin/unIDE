@@ -27,6 +27,11 @@ exports
   RqGetItemStr,
   RqSetItemStr,
   RqCallStr,
+  RqGetCell,
+  RqSetCell,
+  RqGetItemInt,
+  RqSetItemInt,
+  RqCallEx,
   RqDoEvents,
   RqLastError;
 

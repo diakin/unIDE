@@ -26,7 +26,8 @@ interface
 
 uses
   Classes, SysUtils, TypInfo, Math, Controls, StdCtrls, Forms, Graphics,
-  LazUTF8, LCLType, RichMemo, rqlclrich;
+  LazUTF8, LCLType, ComCtrls, Grids, ShellCtrls, RichMemo, rqlclrich,
+  rqlclgrid;
 
 const
   RqLclVersion = 2;   // меняется при несовместимой смене набора функций
@@ -63,6 +64,17 @@ function RqSetItemStr(AObj: Pointer; AProp: PChar; AIndex: Integer;
                       AValue: PChar): Integer; stdcall;
 function RqCallStr(AObj: Pointer; AMethod: PChar; AValue: PChar): Integer;
   stdcall;
+function RqGetCell(AObj: Pointer; ACol, ARow: Integer; ABuf: PChar;
+                   ABufLen: Integer): Integer; stdcall;
+function RqSetCell(AObj: Pointer; ACol, ARow: Integer;
+                   AValue: PChar): Integer; stdcall;
+function RqGetItemInt(AObj: Pointer; AProp: PChar; AIndex: Integer): Integer;
+  stdcall;
+function RqSetItemInt(AObj: Pointer; AProp: PChar; AIndex: Integer;
+                      AValue: Integer): Integer; stdcall;
+function RqCallEx(AObj: Pointer; AMethod: PChar; AStr: PChar;
+                  AInt1, AInt2, AInt3: Integer; ABuf: PChar;
+                  ABufLen: Integer): Integer; stdcall;
 procedure RqDoEvents; stdcall;
 function RqLastError(ABuf: PChar; ABufLen: Integer): Integer; stdcall;
 
@@ -85,6 +97,7 @@ type
     Proc: TRqEventProc;
     procedure FireNotify(Sender: TObject);
     procedure FireCloseQuery(Sender: TObject; var CanClose: Boolean);
+    procedure FireTreeChange(Sender: TObject; Node: TTreeNode);
   end;
 
   // Класс RapidQ -> класс LCL
@@ -100,7 +113,7 @@ type
   end;
 
 var
-  RqClassTable: array[0..4] of TRqClassRec;
+  RqClassTable: array[0..6] of TRqClassRec;
   RqPropTable: array[0..0] of TRqPropRec;
   RqLastErrorText: string = '';
   RqInitDone: Boolean = False;
@@ -121,6 +134,10 @@ begin
   RqClassTable[3].LclClass := TEdit;
   RqClassTable[4].RqName := 'QRICHEDIT';
   RqClassTable[4].LclClass := TRichMemo;
+  RqClassTable[5].RqName := 'QSTRINGGRID';
+  RqClassTable[5].LclClass := TStringGrid;
+  RqClassTable[6].RqName := 'QDIRTREE';
+  RqClassTable[6].LclClass := TShellTreeView;
   // У RapidQ OnClose формы - сигнал о закрытии без параметров; в LCL ему
   // ближе всего OnCloseQuery (FireCloseQuery разрешает закрытие)
   RqPropTable[0].RqName := 'ONCLOSE';
@@ -202,6 +219,12 @@ end;
 procedure TRqEventLink.FireCloseQuery(Sender: TObject; var CanClose: Boolean);
 begin
   CanClose := True;
+  FireNotify(Sender);
+end;
+
+// OnChange дерева (QDIRTREE): выбрана другая папка
+procedure TRqEventLink.FireTreeChange(Sender: TObject; Node: TTreeNode);
+begin
   FireNotify(Sender);
 end;
 
@@ -297,6 +320,7 @@ begin
       Comp := RqClassTable[ClassIdx].LclClass.Create(nil);
     Data := TRqData.Create(Comp);
     Data.User := AUser;
+    GridInitNew(Comp);
     if (AParent <> nil) and (Comp is TControl) and
        (TObject(AParent) is TWinControl) then
       TControl(Comp).Parent := TWinControl(AParent);
@@ -331,7 +355,8 @@ var
 begin
   Result := 0;
   try
-    if EditSetInt(TObject(AObj), string(AProp), AValue) then
+    if EditSetInt(TObject(AObj), string(AProp), AValue) or
+       GridSetInt(TObject(AObj), string(AProp), AValue) then
     begin
       Result := 1;
       Exit;
@@ -363,7 +388,8 @@ var
 begin
   Result := 0;
   try
-    if EditGetInt(TObject(AObj), string(AProp), Result) then
+    if EditGetInt(TObject(AObj), string(AProp), Result) or
+       GridGetInt(TObject(AObj), string(AProp), Result) then
       Exit;
     Info := FindProp(TObject(AObj), string(AProp));
     if Info = nil then
@@ -382,7 +408,8 @@ var
 begin
   Result := 0;
   try
-    if EditSetStr(TObject(AObj), string(AProp), string(AValue)) then
+    if EditSetStr(TObject(AObj), string(AProp), string(AValue)) or
+       GridSetStr(TObject(AObj), string(AProp), string(AValue)) then
     begin
       Result := 1;
       Exit;
@@ -417,7 +444,8 @@ begin
   try
     if (ABuf <> nil) and (ABufLen > 0) then
       ABuf^ := #0;
-    if not EditGetStr(TObject(AObj), string(AProp), Value) then
+    if not EditGetStr(TObject(AObj), string(AProp), Value) and
+       not GridGetStr(TObject(AObj), string(AProp), Value) then
     begin
       Info := FindProp(TObject(AObj), string(AProp));
       if Info = nil then
@@ -498,6 +526,7 @@ var
   Handler: TMethod;
   NotifyProc: TNotifyEvent;
   CloseQueryProc: TCloseQueryEvent;
+  TreeChangeProc: TTVChangedEvent;
   TypeName: string;
 begin
   Result := 0;
@@ -528,7 +557,8 @@ begin
       Exit;
     end;
     TypeName := Info^.PropType^.Name;
-    if (TypeName <> 'TNotifyEvent') and (TypeName <> 'TCloseQueryEvent') then
+    if (TypeName <> 'TNotifyEvent') and (TypeName <> 'TCloseQueryEvent') and
+       (TypeName <> 'TTVChangedEvent') then
     begin
       SetError(string(AEvent) + ': event type ' + TypeName +
                ' is not supported yet');
@@ -547,6 +577,11 @@ begin
     begin
       NotifyProc := @Link.FireNotify;
       Handler := TMethod(NotifyProc);
+    end
+    else if TypeName = 'TTVChangedEvent' then
+    begin
+      TreeChangeProc := @Link.FireTreeChange;
+      Handler := TMethod(TreeChangeProc);
     end
     else
     begin
@@ -816,6 +851,116 @@ begin
   except
     on E: Exception do
       SetError('RqCallStr ' + string(AMethod) + ': ' + E.Message);
+  end;
+end;
+
+// Строка в буфер вызывающего: как у RqGetStr
+function CopyOut(const AValue: string; ABuf: PChar; ABufLen: Integer): Integer;
+begin
+  Result := Length(AValue);
+  if (ABuf <> nil) and (ABufLen > 0) then
+    StrPLCopy(ABuf, AValue, ABufLen - 1);
+end;
+
+// Ячейка таблицы (QSTRINGGRID.Cell(Col, Row)). Вне таблицы - -1.
+function RqGetCell(AObj: Pointer; ACol, ARow: Integer; ABuf: PChar;
+                   ABufLen: Integer): Integer; stdcall;
+var
+  Value: string;
+begin
+  Result := -1;
+  try
+    if (ABuf <> nil) and (ABufLen > 0) then
+      ABuf^ := #0;
+    if GridGetCell(TObject(AObj), ACol, ARow, Value) then
+      Result := CopyOut(Value, ABuf, ABufLen)
+    else
+      SetError('RqGetCell: object has no cells');
+  except
+    on E: Exception do
+      SetError(E.Message);
+  end;
+end;
+
+function RqSetCell(AObj: Pointer; ACol, ARow: Integer;
+                   AValue: PChar): Integer; stdcall;
+begin
+  Result := 0;
+  try
+    if GridSetCell(TObject(AObj), ACol, ARow, string(AValue)) then
+      Result := 1
+    else
+      SetError('RqSetCell: object has no cells');
+  except
+    on E: Exception do
+      SetError(E.Message);
+  end;
+end;
+
+// Целое из списка по номеру: ColWidths(i), RowHeights(i)
+function RqGetItemInt(AObj: Pointer; AProp: PChar; AIndex: Integer): Integer;
+  stdcall;
+begin
+  Result := 0;
+  try
+    if not GridGetItemInt(TObject(AObj), string(AProp), AIndex, Result) then
+      SetError('RqGetItemInt: no list ' + string(AProp));
+  except
+    on E: Exception do
+      SetError(E.Message);
+  end;
+end;
+
+function RqSetItemInt(AObj: Pointer; AProp: PChar; AIndex: Integer;
+                      AValue: Integer): Integer; stdcall;
+begin
+  Result := 0;
+  try
+    if GridSetItemInt(TObject(AObj), string(AProp), AIndex, AValue) then
+      Result := 1
+    else
+      SetError('RqSetItemInt: no list ' + string(AProp));
+  except
+    on E: Exception do
+      SetError(E.Message);
+  end;
+end;
+
+// Метод со строкой и тремя целыми (LoadFromFile таблицы, SwapCols...).
+// Результат - целое метода (ошибка - 0, текст в RqLastError) или, у
+// методов со строкой-результатом, её длина (как у RqGetStr; ошибка - -1).
+function RqCallEx(AObj: Pointer; AMethod: PChar; AStr: PChar;
+                  AInt1, AInt2, AInt3: Integer; ABuf: PChar;
+                  ABufLen: Integer): Integer; stdcall;
+var
+  IntResult: Integer;
+  StrResult: string;
+  IsStr: Boolean;
+begin
+  Result := 0;
+  IsStr := False;
+  try
+    if (ABuf <> nil) and (ABufLen > 0) then
+      ABuf^ := #0;
+    if GridCallEx(TObject(AObj), string(AMethod), string(AStr), AInt1, AInt2,
+                  AInt3, IntResult, StrResult, IsStr) then
+    begin
+      if IsStr then
+        Result := CopyOut(StrResult, ABuf, ABufLen)
+      else
+        Result := IntResult;
+    end
+    else if AObj = nil then
+      SetError('RqCallEx ' + string(AMethod) + ': no object')
+    else
+      SetError(TObject(AObj).ClassName + ': no method ' + string(AMethod));
+  except
+    on E: Exception do
+    begin
+      SetError(string(AMethod) + ': ' + E.Message);
+      if IsStr then
+        Result := -1;
+    end;
   end;
 end;
 

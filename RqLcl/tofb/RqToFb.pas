@@ -112,6 +112,11 @@ const
   RqMemberMapText =
     'POINTER=PointerAddr';
 
+  // Запись в массив-свойство с двумя индексами: у свойства FreeBASIC
+  // индекс один, поэтому Grid.Cell(c, r) = x -> Grid.SetCell(c, r, x)
+  RqIndexedSetText =
+    'CELL=SetCell';
+
   // Слова FreeBASIC, которыми переменная называться не может
   FbReservedText =
     'ACCESS ALIAS AND ANDALSO ANY APPEND AS ASM BASE BEEP BINARY BOOLEAN ' +
@@ -218,6 +223,7 @@ type
     FGuiClasses: TStringList;
     FFuncMap: TStringList;        // ИМЯ$=функция rqrt.bi
     FMemberMap: TStringList;      // СВОЙСТВО=имя в .bi
+    FIndexedSet: TStringList;     // СВОЙСТВО=метод записи
     FCurFile: string;
     FCurLine: Integer;
     FCurProc: TRqProc;
@@ -457,6 +463,8 @@ begin
   FillWordList(FGuiClasses, RqGuiObjectText);
   FFuncMap := TStringList.Create;
   FFuncMap.Text := StringReplace(RqFuncMapText, ' ', CrLf, [rfReplaceAll]);
+  FIndexedSet := TStringList.Create;
+  FIndexedSet.Text := StringReplace(RqIndexedSetText, ' ', CrLf, [rfReplaceAll]);
   FMemberMap := TStringList.Create;
   FMemberMap.Text := StringReplace(RqMemberMapText, ' ', CrLf, [rfReplaceAll]);
 end;
@@ -486,6 +494,7 @@ begin
   FGuiClasses.Free;
   FFuncMap.Free;
   FMemberMap.Free;
+  FIndexedSet.Free;
   inherited Destroy;
 end;
 
@@ -1840,6 +1849,19 @@ begin
       end;
     end;
     ProcessExpr(AToks, FirstIdx, ATo);
+    // Объект.Cell(c, r) = x -> Объект.SetCell(c, r, x)
+    if (LastMember >= 0) and (FIndexedSet.IndexOfName(AToks[LastMember].Up) >= 0) and
+       IsOp(AToks, NextSig(AToks, LastMember + 1, ATo), '(') then
+    begin
+      CloseIdx := MatchParen(AToks, NextSig(AToks, LastMember + 1, ATo), EqIdx - 1);
+      if (CloseIdx > 0) and (PrevSig(AToks, EqIdx - 1) = CloseIdx) then
+      begin
+        AToks[LastMember].OutText := FIndexedSet.Values[AToks[LastMember].Up];
+        AToks[CloseIdx].OutText := '';
+        AToks[EqIdx].OutText := ',';
+        AToks[RhsLast].Post := AToks[RhsLast].Post + ')';
+      end;
+    end;
     Exit;
   end;
 

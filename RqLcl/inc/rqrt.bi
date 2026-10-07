@@ -47,7 +47,9 @@ End Function
 Sub RqRtReport(ByRef Level As String, ByRef Msg As String, _
                ByRef FileName As String, ByVal LineNum As Long, _
                ByVal ShowWindow As Long)
-    Dim Text As String = FileName & "(" & LineNum & ") " & Level & ": " & Msg
+    Dim Text As String = Level & ": " & Msg
+    ' Ошибка в классе RapidQ (QSTRINGLIST и т.д.) - без файла и строки
+    If FileName <> "" Then Text = FileName & "(" & LineNum & ") " & Text
     Dim FileNum As Long = FreeFile
     If Open(RqRtLogName() For Append As #FileNum) = 0 Then
         Print #FileNum, Date & " " & Time & "  " & Text
@@ -78,6 +80,16 @@ End Sub
 Sub RqRtFatal(ByRef Msg As String, ByRef FileName As String, ByVal LineNum As Long)
     RqRtReport("Error", Msg, FileName, LineNum, 1)
     End 1
+End Sub
+
+' Ошибка в классе RapidQ (номер вне списка, нет файла): Smart -
+' предупреждение, программа продолжает работу; Compat - конец программы
+Sub RqRtClassError(ByRef Msg As String)
+#ifdef RQ_COMPAT
+    RqRtFatal(Msg, "", 0)
+#else
+    RqRtWarn(Msg, "", 0)
+#endif
 End Sub
 
 ' Int и Fix без перевода в целое: у FreeBASIC они для чисел больше 2^63
