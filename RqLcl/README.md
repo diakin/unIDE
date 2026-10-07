@@ -8,7 +8,7 @@
 |---|---|---|
 | общее (QCONTROL) | Left, Top, Width, Height, ClientWidth, ClientHeight, Visible, Enabled, Color, Cursor, Hint, ShowHint, Parent, PopupMenu (запись), Font, Handle (HWND, чтение) | Show, Hide, Repaint, SetFocus |
 | QFORM | Caption | OnShow, OnClose; ShowModal, Close, Center |
-| QBUTTON | Caption | OnClick; Click |
+| QBUTTON | Caption, Default, Cancel | OnClick; Click |
 | QLABEL | Caption | — |
 | QEDIT | Text | OnChange |
 | QFONT | Name, Size, Color, Charset, Pitch, Bold, Italic, Underline, StrikeOut, Handle (HFONT), FontCount, FontName(i) | AddStyles, DelStyles (до четырёх стилей за вызов) |
@@ -33,6 +33,7 @@
 | QSTATUSBAR | Panel(i).Caption/Width/Alignment, PanelCount, SimplePanel, SimpleText, SizeGrip, Align, Tag | OnResize; AddPanels, Clear |
 | QSTRINGLIST | Item(i), ItemCount, Text, Sorted, Duplicates | AddItems (до шести), AddList, Build, Clear, DelItems (до шести), Exchange, Find, IndexOf, InsertItem, LoadFromFile, SaveToFile, LoadFromStream, SaveToStream, Parse, Sort — в `inc/rqstrlist.bi`, без DLL |
 | QREGISTRY | RootKey, CurrentKey, CurrentPath, HasSubKeys, KeyItemCount, ValueItemCount; GetDataSize(имя), GetDataType(имя) | CloseKey, CreateKey, DeleteKey (с подключами), DeleteValue, KeyExists, KeyItem, MoveKey, OpenKey, ReadBinary, ReadFloat, ReadInteger, ReadString, RegistryConnect, RenameValue, ValueExists, ValueItem, WriteBinary, WriteFloat, WriteInteger, WriteString — в `inc/rqreg.bi`, без DLL, функции advapi32 |
+| QOBJECT | — | пустой объект: основа своих невидимых компонентов (`TYPE Имя EXTENDS QOBJECT`) |
 | QMEMORYSTREAM, QFILESTREAM | Position, Size, LineCount; у памяти `Pointer` (в FreeBASIC — `PointerAddr`, препроцессор переименовывает) | Read/Write, ReadNum/WriteNum, ReadStr/WriteStr, ReadLine/WriteLine, CopyFrom, Seek; у файла Open, Close — в `inc/rqstream.bi`, без DLL |
 
 `Label.Font = Font` копирует значения шрифта в элемент, как в RapidQ. `Label.Font` при чтении — QFONT поверх шрифта самого элемента: `Label.Font.Size = 20` меняет элемент. `Font` и `SelAttributes` в `rqlcl.bi` — функции `ByRef`, а не свойства: у свойства FreeBASIC с парой get/set запись `Label.Font.Size = 20` не компилируется (fbc 1.10.1); присваивание `Label.Font = Font` идёт через `Operator Let` у QFONT.
@@ -109,7 +110,7 @@ demo.exe
 
 ## Не сделано
 
-- Синтаксис RapidQ (`Button1.OnClick = Button1Click` без `@`, `CREATE … END CREATE`, `$INCLUDE` и т. д.) — это переводчик или форк fbc, отдельная работа.
+- Синтаксис RapidQ (`Button1.OnClick = Button1Click` без `@`, `CREATE … END CREATE`, `TYPE … EXTENDS`, `$INCLUDE` и т. д.) переводит препроцессор `tofb/RqToFb.pas` — что сделано и что нет, в `tofb/README.md`.
 - Остальные классы RapidQ и события с параметрами (OnKeyPress, OnMouseDown…).
 - Font, свойства-объекты кроме Parent, значения True/False в стиле RapidQ (сейчас чтение даёт 0/1).
 

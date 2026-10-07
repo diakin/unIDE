@@ -151,6 +151,18 @@ const
     'VAR VIEW WEND WHILE WIDTH WINDOW WITH WRITE WSTRING XOR ZSTRING ' +
     'LEN VAL STR CHR ASC LEFT RIGHT MID INSTR ABS INT FIX SGN SQR TIMER RND';
 
+  // Слова, которыми член Type FreeBASIC называться не может (Delete, Swap,
+  // Type, Select, Case, New, Return проверены, fbc 1.10.1: "Duplicated
+  // definition"); остальные слова FreeBASIC (Print, Get, Write, Line,
+  // Open, Close...) членами быть могут
+  FbBadMemberText =
+    'DELETE SWAP TYPE SELECT CASE NEW RETURN IF THEN ELSE ELSEIF END FOR ' +
+    'NEXT DO LOOP WHILE WEND UNTIL SUB FUNCTION DIM REDIM AS GOTO GOSUB ' +
+    'EXIT CONST DECLARE PROPERTY OPERATOR CONSTRUCTOR DESTRUCTOR WITH ' +
+    'SCOPE NAMESPACE ENUM UNION EXTENDS BYVAL BYREF AND OR NOT XOR MOD ' +
+    'SHL SHR ANDALSO ORELSE CAST CONTINUE STATIC SHARED PUBLIC PRIVATE ' +
+    'PROTECTED THIS BASE VAR LET CALL';
+
   // Классы RapidQ (объекты: передаются по ссылке, без преобразования)
   RqObjectText =
     'QFORM QBITMAP QCANVAS QBUTTON QCOOLBTN QSTRINGGRID QSTRINGLIST QLISTBOX ' +
@@ -207,7 +219,36 @@ type
     IsFunc: Boolean;
     RetType: string;
     DeclParams: string; // параметры FreeBASIC из DECLARE
+    DeclAliases: string; // " : Dim ByRef ..." для параметров из DECLARE
     Declared: Boolean;
+  end;
+
+  // Свой компонент RapidQ: TYPE Имя EXTENDS Класс (документация RapidQ,
+  // глава 10). Собирается в первом проходе; во втором по нему выводится
+  // Type FreeBASIC (в строке TYPE) и переходники событий (в строке
+  // END TYPE).
+  TRqTypeInfo = class
+  public
+    Name: string;             // верхний регистр
+    Display: string;          // как в исходнике
+    BaseClass: string;        // верхний регистр
+    BaseDisplay: string;
+    Members: TStringList;     // ИМЯ=вид: F поле, P поле с PROPERTY SET,
+                              // E событие (AS EVENT), M SUB, N FUNCTION,
+                              // S процедура PROPERTY SET
+    MemberFb: TStringList;    // ИМЯ=имя в FreeBASIC
+    MemberType: TStringList;  // ИМЯ=тип RapidQ (поле, FUNCTION; у E - шаблон)
+    ParamCounts: TStringList; // ИМЯ=число параметров (M, N, S)
+    Before: TStringList;      // строки перед Type (типы шаблонов событий)
+    Decls: TStringList;       // строки внутри Type
+    After: TStringList;       // строки после End Type
+    Tail: TStringList;        // строки в END TYPE (переходники событий)
+    Thunks: TStringList;      // переходник=Поле|КЛАСС|Событие|МЕТОД
+    Regs: string;             // подключение событий в начале конструктора
+    HasCtor: Boolean;
+    constructor Create;
+    destructor Destroy; override;
+    function Kind(const AUp: string): Char;
   end;
 
   TCondRec = record
@@ -242,6 +283,8 @@ type
     FIndexedSet: TStringList;     // СВОЙСТВО=метод записи
     FEventSigs: TStringList;      // СОБЫТИЕ=типы параметров обработчика
     FHandlerEvents: TStringList;  // ПРОЦЕДУРА=СОБЫТИЕ (из Объект.OnXxx = Процедура)
+    FHandlerProcs: TStringList;   // процедуры - обработчики событий
+    FParamAliases: string;        // от ParseParams: " : Dim ByRef ..."
     FClassMembers: TStringList;   // КЛАСС.ИМЯ=P|M|E (RqClassMembersText)
     FAllMembers: TStringList;     // ИМЯ=P|M|E по всем классам
     FCreateStack: TStringList;    // CREATE: ИмяОбъекта=КЛАСС, внутренний - последний
@@ -249,7 +292,6 @@ type
     FCurLine: Integer;
     FCurProc: TRqProc;
     FInType: Boolean;
-    FTypeExtends: Boolean;
     FCreateDepth: Integer;
     FTypeCheck: Boolean;
     FEscape: Boolean;
@@ -268,6 +310,14 @@ type
                                   // (первый проход; '*' - модуль)
     FGosubProcNum: Integer;       // номер GOSUB в текущей SUB/FUNCTION
     FGosubModNum: Integer;        // номер GOSUB на уровне модуля
+    FTypeInfos: TStringList;      // свои компоненты: ИМЯ -> TRqTypeInfo
+    FCurType: TRqTypeInfo;        // внутри TYPE ... EXTENDS
+    FTypeBody: Integer;           // 0 - уровень TYPE, 1 - SUB/FUNCTION,
+                                  // 2 - CONSTRUCTOR, 3 - EVENT, 4 - PROPERTY SET
+    FTypeWith: string;            // WITH внутри TYPE: T - сам объект, O - другой
+    FCurMethodUp: string;         // метод своего компонента (верхний регистр)
+    FBadMembers: TStringList;
+    FLineBreaks: Integer;         // переводов строк в текущей строке
 
     procedure Msg(const ALevel, AText: string);
     procedure Warn(const AText: string);
@@ -338,12 +388,36 @@ type
     procedure ProcessGosub(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessReturn(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessIncDec(var AToks: TToks; AFrom, ATo: Integer);
+    procedure SplitVariadicCall(var AToks: TToks; AFirst, ATo: Integer);
     function ProcessDirective(var AToks: TToks; AFrom, ATo: Integer;
                               var AOut: string): Boolean;
     function ResolveInclude(const AName: string; AAngle: Boolean): string;
     function ProcessFile(const AFileName: string; AIsMain: Boolean): string;
     function MainHeader: string;
     procedure EndOfPass1;
+
+    // TYPE ... EXTENDS
+    function FindTypeInfo(const AUp: string): TRqTypeInfo;
+    function MemberFbName(const ADisplay: string): string;
+    function TypeMemberCollides(const AUp: string): Boolean;
+    procedure GlobalQualify(var AToks: TToks; AIdx: Integer);
+    procedure FixMemberClash(AVar: TRqVar; const AScope: string);
+    function EventSigFor(const AClassUp, AEventUp: string): string;
+    function SigParams(const ASig: string; ANames: TStrings;
+                       const AScope: string; out ACount: Integer): string;
+    function LocalsText(const AScope: string): string;
+    function RewriteTypeText(const AText: string): string;
+    function TypeStatement(var AToks: TToks; AFirst, ATo: Integer): Boolean;
+    procedure TypeMethodHeader(var AToks: TToks; AFirst, ATo: Integer;
+                               AIsSetter: Boolean);
+    procedure TypeEventHeader(var AToks: TToks; AFirst, ATo: Integer);
+    procedure TypeCtorHeader(var AToks: TToks; AFirst, ATo: Integer);
+    procedure TypeField(var AToks: TToks; AFirst, ATo: Integer);
+    procedure TypeEnd(var AToks: TToks; AFirst, ATo: Integer);
+    function TypeAssign(var AToks: TToks; AFirst, AEq, ATo: Integer): Boolean;
+    procedure TypeCallFunc(var AToks: TToks; AFirst, ATo: Integer);
+    procedure AddThunk(const AName, ACompFb, AClassUp, AEventDisplay,
+                       AMethUp: string);
   public
     constructor Create(const AOptions: TRqFbOptions; AMessages: TStrings);
     destructor Destroy; override;
@@ -379,6 +453,46 @@ begin
   Result := AList.Find(AUp, Found);
 end;
 
+constructor TRqTypeInfo.Create;
+begin
+  inherited Create;
+  Members := TStringList.Create;
+  MemberFb := TStringList.Create;
+  MemberType := TStringList.Create;
+  ParamCounts := TStringList.Create;
+  Before := TStringList.Create;
+  Decls := TStringList.Create;
+  After := TStringList.Create;
+  Tail := TStringList.Create;
+  Thunks := TStringList.Create;
+end;
+
+destructor TRqTypeInfo.Destroy;
+begin
+  Members.Free;
+  MemberFb.Free;
+  MemberType.Free;
+  ParamCounts.Free;
+  Before.Free;
+  Decls.Free;
+  After.Free;
+  Tail.Free;
+  Thunks.Free;
+  inherited Destroy;
+end;
+
+// Вид члена (#0 - нет такого)
+function TRqTypeInfo.Kind(const AUp: string): Char;
+var
+  ItemIdx: Integer;
+begin
+  ItemIdx := Members.IndexOfName(AUp);
+  if ItemIdx < 0 then
+    Result := #0
+  else
+    Result := Members.ValueFromIndex[ItemIdx][1];
+end;
+
 // Файл без учёта регистра букв (для Linux; в Windows - как есть)
 function FindFileCI(const APath: string): string;
 var
@@ -386,15 +500,26 @@ var
   Found: TSearchRec;
 begin
   Result := '';
-  if FileExists(APath) then
+  if FileExists(APath) or DirectoryExists(APath) then
   begin
     Result := ExpandFileName(APath);
     Exit;
   end;
   Dir := ExtractFilePath(APath);
   NamePart := ExtractFileName(APath);
-  if (Dir = '') or not DirectoryExists(Dir) then
+  if Dir = '' then
     Exit;
+  // папка в другом регистре букв (Object\QIni.inc при папке object)
+  if not DirectoryExists(Dir) then
+  begin
+    Dir := ExcludeTrailingPathDelimiter(Dir);
+    if (Dir = '') or (ExtractFileName(Dir) = '') or
+       (ExtractFilePath(Dir) = Dir + PathDelim) then
+      Exit;
+    Dir := FindFileCI(Dir);
+    if (Dir = '') or not DirectoryExists(Dir) then
+      Exit;
+  end;
   if FindFirst(IncludeTrailingPathDelimiter(Dir) + '*', faAnyFile, Found) = 0 then
   try
     repeat
@@ -413,28 +538,40 @@ end;
 // комментария)
 function EndsWithContinue(const AText: string): Boolean;
 var
-  CharIdx: Integer;
+  CharIdx, LineStart, LastIdx: Integer;
   InQuote: Boolean;
-  LastIdx: Integer;
 begin
   Result := False;
+  // последняя физическая строка (AText может быть уже собран из
+  // нескольких)
+  LineStart := Length(AText);
+  while (LineStart > 0) and (AText[LineStart] <> #10) do
+    Dec(LineStart);
+  Inc(LineStart);
+  // "_ 'комментарий" - тоже продолжение (ComPort.cmp)
   InQuote := False;
   LastIdx := Length(AText);
-  while (LastIdx > 0) and (AText[LastIdx] in [' ', #9]) do
-    Dec(LastIdx);
-  if (LastIdx < 1) or (AText[LastIdx] <> '_') then
-    Exit;
-  // перед "_" - не часть имени (пробел, кавычка, скобка...)
-  if (LastIdx > 1) and (AText[LastIdx - 1] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
-    Exit;
-  for CharIdx := 1 to LastIdx - 1 do
+  for CharIdx := LineStart to Length(AText) do
   begin
     if AText[CharIdx] = '"' then
       InQuote := not InQuote
     else if (AText[CharIdx] = '''') and not InQuote then
-      Exit;
+    begin
+      LastIdx := CharIdx - 1;
+      Break;
+    end;
   end;
-  Result := not InQuote;
+  if InQuote then
+    Exit;
+  while (LastIdx >= LineStart) and (AText[LastIdx] in [' ', #9, #13]) do
+    Dec(LastIdx);
+  if (LastIdx < LineStart) or (AText[LastIdx] <> '_') then
+    Exit;
+  // перед "_" - не часть имени (пробел, кавычка, скобка...)
+  if (LastIdx > LineStart) and
+     (AText[LastIdx - 1] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
+    Exit;
+  Result := True;
 end;
 
 function CountLineBreaks(const AText: string): Integer;
@@ -545,6 +682,7 @@ const
     'QMYSQL:CLOSE=M,COLCOUNT=P,CONNECT=M,CONNECTED=P,CREATEDB=M,DB=P,DBCOUNT=P,DROPDB=M,ESCAPESTRING=M,FETCHFIELD=M,FETCHLENGTHS=M,FETCHROW=M,FIELDCOUNT=P,FIELDSEEK=M,LENGTH=P,QUERY=M,R' +
     'EALCONNECT=M,REFRESH=M,ROW=P,ROWBLOB=M,ROWCOUNT=P,ROWSEEK=M,SELECTDB=M,TABLE=P,TABLECOUNT=P|' +
     'QNOTIFYICONDATA:|' +
+    'QOBJECT:|' +
     'QOLECONTAINER:ALIGN=P,ALLOWINPLACE=P,AUTOSHOW=P,BORDERSTYLE=P,COLOR=P,CREATEOBJECT=M,CURSOR=P,ENABLED=P,FREE=M,HANDLE=P,HEIGHT=P,HINT=P,INVOKE=M,LEFT=P,MODIFIED=P,ONKEYDOWN=E,ONKEY' +
     'PRESS=E,ONKEYUP=E,ONMOUSEDOWN=E,ONMOUSEMOVE=E,ONMOUSEUP=E,ONOBJECTMOVE=E,ONRESIZE=E,PARENT=P,SHOWHINT=P,SIZEMODE=P,STATE=P,TABORDER=P,TAG=P,TOP=P,VISIBLE=P,WIDTH=P|' +
     'QOLEOBJECT:CODEPAGE=M,CREATEOBJECT=M,CREATEREMOTE=M,DOCUMENTDIRECTION=M,DUMMY=M,DUMMYPARAM=M,FORMATOPEN=M,FREE=M,GETIDOFNAME=M,GETOBJECT=M,INVOKE=M,INVOKECOPY=M,NOENCODINGDIALOG=M,' +
@@ -684,6 +822,9 @@ begin
   FEventSigs := TStringList.Create;
   FEventSigs.Text := StringReplace(RqEventSigText, ' ', CrLf, [rfReplaceAll]);
   FHandlerEvents := TStringList.Create;
+  FHandlerProcs := TStringList.Create;
+  FHandlerProcs.Sorted := True;
+  FHandlerProcs.Duplicates := dupIgnore;
   FCreateStack := TStringList.Create;
   FClassMembers := TStringList.Create;
   FillClassMembers(FClassMembers);
@@ -703,6 +844,10 @@ begin
   FIndexedSet.Text := StringReplace(RqIndexedSetText, ' ', CrLf, [rfReplaceAll]);
   FMemberMap := TStringList.Create;
   FMemberMap.Text := StringReplace(RqMemberMapText, ' ', CrLf, [rfReplaceAll]);
+  FTypeInfos := TStringList.Create;
+  FTypeInfos.Sorted := True;
+  FBadMembers := TStringList.Create;
+  FillWordList(FBadMembers, FbBadMemberText);
 end;
 
 destructor TRqFbConv.Destroy;
@@ -734,9 +879,14 @@ begin
   FIndexedSet.Free;
   FEventSigs.Free;
   FHandlerEvents.Free;
+  FHandlerProcs.Free;
   FCreateStack.Free;
   FClassMembers.Free;
   FAllMembers.Free;
+  for ItemIdx := 0 to FTypeInfos.Count - 1 do
+    FTypeInfos.Objects[ItemIdx].Free;
+  FTypeInfos.Free;
+  FBadMembers.Free;
   inherited Destroy;
 end;
 
@@ -855,6 +1005,13 @@ begin
       // QBasic; ''$INCLUDE - обычный комментарий
       if Copy(TrimLeft(Copy(AToks[Count - 1].Text, 2, MaxInt)), 1, 1) = '$' then
         AToks[Count - 1].OutText := '''' + AToks[Count - 1].Text;
+      // Комментарий после "_" внутри строки, собранной из продолжений: дальше
+      // оператор идёт - это часть пробела (FreeBASIC после "_" тоже
+      // пропускает всё до конца строки)
+      if (Count >= 2) and (AToks[Count - 2].Kind = tkSpace) and
+         (Copy(AToks[Count - 2].Text, 1, 1) = '_') and
+         (Trim(Copy(AText, Pos1 + 1, MaxInt)) <> '') then
+        AToks[Count - 1].Kind := tkSpace;
     end
     else if Ch = '"' then
     begin
@@ -1510,8 +1667,12 @@ var
   IsDefined: Boolean;
 begin
   Text := ApplyDefines(AText);
+  FLineBreaks := CountLineBreaks(AText);
+  // Внутри TYPE ... EXTENDS - обращения к членам через This; иначе
   // CREATE ... END CREATE - переписать строку до разбора
-  if CondActive and not (FInType and FTypeExtends) then
+  if CondActive and (FCurType <> nil) then
+    Text := RewriteTypeText(Text)
+  else if CondActive then
     Text := RewriteCreate(Text);
   Lex(Text, Toks);
   AOut := Text;
@@ -1690,6 +1851,7 @@ var
   ObjName, ClassUp, OuterName, OuterClass, Up: string;
   Kind: Char;
   Changed: Boolean;
+  OwnInfo: TRqTypeInfo;
 
   procedure DoStatement(AFrom, ATo: Integer);
   var
@@ -1713,11 +1875,17 @@ var
       end;
       ObjName := Toks[NameIdx].Text;
       ClassUp := Toks[ClassIdx].Up;
+      // свой компонент - правила его класса RapidQ
+      OwnInfo := FindTypeInfo(ClassUp);
+      if OwnInfo <> nil then
+        ClassUp := OwnInfo.BaseClass;
       Toks[FirstIdx].Text := 'DIM';
       if FCreateStack.Count > 0 then
       begin
         OuterName := FCreateStack.Names[FCreateStack.Count - 1];
         OuterClass := FCreateStack.ValueFromIndex[FCreateStack.Count - 1];
+        if FindTypeInfo(OuterClass) <> nil then
+          OuterClass := FindTypeInfo(OuterClass).BaseClass;
         if (ClassUp = 'QMENUITEM') and
            ((OuterClass = 'QMENUITEM') or (OuterClass = 'QMAINMENU') or
             (OuterClass = 'QPOPUPMENU')) then
@@ -1725,9 +1893,9 @@ var
         else if ClassUp = 'QMAINMENU' then
           // меню формы
           Toks[ATo].Post := Toks[ATo].Post + ' : ' + ObjName + '.Parent = ' + OuterName
-        else if ClassUp = 'QPOPUPMENU' then
+        else if (ClassUp = 'QPOPUPMENU') or (ClassUp = 'QOBJECT') then
           // всплывающее меню не имеет родителя: элемент получает его
-          // через PopupMenu = Имя
+          // через PopupMenu = Имя; QOBJECT - не элемент окна
         else if InList(FObjClasses, ClassUp) and (MemberKind(ClassUp, 'PARENT') = #0) and
                 ClassKnown(ClassUp) and (MemberKind(ClassUp, 'LEFT') = #0) then
           // невидимый компонент (QTIMER, QSTRINGLIST...) - без родителя
@@ -1741,7 +1909,7 @@ var
                ' внутри CREATE ' + OuterName + ': у класса нет Parent, ' +
                'объект создан без родителя');
       end;
-      FCreateStack.Add(ObjName + '=' + ClassUp);
+      FCreateStack.Add(ObjName + '=' + Toks[ClassIdx].Up);
       Changed := True;
       Exit;
     end;
@@ -1765,7 +1933,19 @@ var
     NextIdx := NextSig(Toks, FirstIdx + 1, ATo);
     ObjName := FCreateStack.Names[FCreateStack.Count - 1];
     ClassUp := FCreateStack.ValueFromIndex[FCreateStack.Count - 1];
-    Kind := MemberKind(ClassUp, Up);
+    Kind := #0;
+    // Свой компонент: его поля и методы, затем - его класса RapidQ
+    OwnInfo := FindTypeInfo(ClassUp);
+    if OwnInfo <> nil then
+    begin
+      case OwnInfo.Kind(Up) of
+        'F', 'P', 'E': Kind := 'P';
+        'M', 'N', 'S': Kind := 'M';
+      end;
+      ClassUp := OwnInfo.BaseClass;
+    end;
+    if Kind = #0 then
+      Kind := MemberKind(ClassUp, Up);
     // Свой класс (TYPE ... EXTENDS, $DEFINE QRICHEDIT QMAXEDIT): вид слова
     // - по любому классу из списка
     if (Kind = #0) and not ClassKnown(ClassUp) then
@@ -2042,6 +2222,12 @@ begin
     ProcessPrint(AToks, FirstIdx, ATo);
     Exit;
   end;
+  // .Свойство = x внутри WITH Объект - как Объект.Свойство = x
+  if IsOp(AToks, FirstIdx, '.') then
+  begin
+    ProcessAssignOrCall(AToks, FirstIdx, ATo);
+    Exit;
+  end;
   if AToks[FirstIdx].Kind <> tkIdent then
   begin
     ProcessExpr(AToks, FirstIdx, ATo);
@@ -2050,8 +2236,8 @@ begin
   Up := AToks[FirstIdx].Up;
   NextIdx := NextSig(AToks, FirstIdx + 1, ATo);
 
-  // Внутри TYPE ... EXTENDS - пока как есть
-  if FInType and FTypeExtends and not ((Up = 'END') and IsWord(AToks, NextIdx, 'TYPE')) then
+  // Внутри TYPE ... EXTENDS: заголовки и концы методов, поля
+  if (FCurType <> nil) and TypeStatement(AToks, FirstIdx, ATo) then
     Exit;
 
   if Up = 'REM' then
@@ -2086,10 +2272,7 @@ begin
         AToks[NextIdx].OutText := 'Function';
     end
     else if IsWord(AToks, NextIdx, 'TYPE') then
-    begin
-      FInType := False;
-      FTypeExtends := False;
-    end
+      FInType := False
     else if IsWord(AToks, NextIdx, 'CREATE') then
     begin
       if FCreateDepth > 0 then
@@ -2186,17 +2369,35 @@ begin
   PrevIdx := PrevSig(AToks, AIdx - 1);
   if IsOp(AToks, PrevIdx, '.') then
   begin
+    // Член своего компонента через This: поле с PROPERTY SET внутри
+    // TYPE - само значение (RqVal_Имя), без вызова установщика
+    if (FCurType <> nil) and IsWord(AToks, PrevSig(AToks, PrevIdx - 1), 'THIS') and
+       (FCurType.Kind(Up) <> #0) then
+    begin
+      if FCurType.Kind(Up) = 'P' then
+        AToks[AIdx].OutText := 'RqVal_' + FCurType.MemberFb.Values[Up]
+      else
+        AToks[AIdx].OutText := FCurType.MemberFb.Values[Up];
+      Exit;
+    end;
     // свойство или метод объекта
     if FMemberMap.IndexOfName(Up) >= 0 then
       AToks[AIdx].OutText := FMemberMap.Values[Up];
     Exit;
   end;
   NextIdx := NextSig(AToks, AIdx + 1, ATo);
+  // Super.x внутри TYPE ... EXTENDS -> Base.x
+  if (Up = 'SUPER') and (FCurType <> nil) and IsOp(AToks, NextIdx, '.') then
+  begin
+    AToks[AIdx].OutText := 'Base';
+    Exit;
+  end;
 
   ProcRec := FindProc(Up);
   if ProcRec <> nil then
   begin
     AToks[AIdx].OutText := ProcRec.FbName;
+    GlobalQualify(AToks, AIdx);
     Exit;
   end;
   if FFuncMap.IndexOfName(Up) >= 0 then
@@ -2205,10 +2406,32 @@ begin
     Exit;
   end;
   if InList(FFbStrFuncs, Up) then
+  begin
+    if IsOp(AToks, NextIdx, '(') then
+      GlobalQualify(AToks, AIdx);
     Exit;
+  end;
   if InList(FRqStrFuncs, Up) then
   begin
     WarnOnce('FN|' + Up, AToks[AIdx].Text + ': функция RapidQ пока не поддержана');
+    Exit;
+  end;
+  // Объявленная переменная с именем слова RapidQ (параметр line в
+  // RichEdPopUp.inc) - переменная
+  if InList(FKeywords, Up) then
+  begin
+    VarRec := FindVar(Up);
+    if (VarRec <> nil) and VarRec.Explicit and not VarRec.IsArray and
+       not IsOp(AToks, NextIdx, '(') then
+    begin
+      AToks[AIdx].OutText := VarRec.FbName;
+      Exit;
+    end;
+  end;
+  if InList(FKeywords, Up) and IsOp(AToks, NextIdx, '(') then
+  begin
+    // Left(...) внутри метода компонента со свойством Left
+    GlobalQualify(AToks, AIdx);
     Exit;
   end;
   if InList(FKeywords, Up) or InList(FTypes, Up) or InList(FObjClasses, Up) or
@@ -2230,10 +2453,14 @@ begin
     end
     else
       AToks[AIdx].OutText := VarRec.FbName;
+    if (VarRec <> nil) and (VarRec.Scope = '') and VarRec.Explicit then
+      GlobalQualify(AToks, AIdx);
     Exit;
   end;
   VarRec := ResolveVar(AToks[AIdx].Text, False);
   AToks[AIdx].OutText := VarRec.FbName;
+  if (VarRec.Scope = '') and VarRec.Explicit then
+    GlobalQualify(AToks, AIdx);
 end;
 
 // Присваивание (Переменная = выражение, Объект.Свойство = выражение) или
@@ -2273,7 +2500,8 @@ begin
     end;
   end;
 
-  if (EqIdx < 0) or (AToks[FirstIdx].Kind <> tkIdent) then
+  if (EqIdx < 0) or ((AToks[FirstIdx].Kind <> tkIdent) and
+                     not IsOp(AToks, FirstIdx, '.')) then
   begin
     // Вызов: Proc арг, Объект.Метод арг. Первое слово - не переменная.
     if (AToks[FirstIdx].Kind = tkIdent) and (FindVar(AToks[FirstIdx].Up) = nil) and
@@ -2281,11 +2509,17 @@ begin
     begin
       ProcRec := FindProc(AToks[FirstIdx].Up);
       if ProcRec <> nil then
+      begin
         AToks[FirstIdx].OutText := ProcRec.FbName;
+        GlobalQualify(AToks, FirstIdx);
+      end;
       ProcessExpr(AToks, FirstIdx + 1, ATo);
     end
     else
+    begin
       ProcessExpr(AToks, FirstIdx, ATo);
+      SplitVariadicCall(AToks, FirstIdx, ATo);
+    end;
     Exit;
   end;
 
@@ -2299,10 +2533,15 @@ begin
 
   if HasDot then
   begin
+    // This.Установщик = x, This.OnXxx = This.Метод внутри TYPE ... EXTENDS
+    if (FCurType <> nil) and TypeAssign(AToks, FirstIdx, EqIdx, ATo) then
+      Exit;
     // Объект.OnXxx = Процедура -> @Процедура
     if (LastMember >= 0) and (Copy(AToks[LastMember].Up, 1, 2) = 'ON') and
        (RhsFirst = RhsLast) and (AToks[RhsFirst].Kind = tkIdent) then
     begin
+      if FPass = 1 then
+        FHandlerProcs.Add(AToks[RhsFirst].Up);
       // Обработчик события с параметрами - типы его параметров по событию
       if FEventSigs.IndexOfName(AToks[LastMember].Up) >= 0 then
       begin
@@ -2346,10 +2585,11 @@ begin
   LhsEnd := NextSig(AToks, FirstIdx + 1, EqIdx - 1);
   TargetType := '';
   if (FCurProc <> nil) and FCurProc.IsFunc and
-     ((Up = 'RESULT') or (Up = FCurProc.Name)) and (LhsEnd < 0) then
+     ((Up = 'RESULT') or (Up = FCurProc.Name) or
+      ((FCurType <> nil) and (Up = FCurMethodUp))) and (LhsEnd < 0) then
   begin
     // Возврат значения функции: Result = ... или Имя = ...
-    if Up = 'RESULT' then
+    if (Up = 'RESULT') or (FCurType <> nil) then
       AToks[FirstIdx].OutText := 'Function'
     else
       AToks[FirstIdx].OutText := FCurProc.FbName;
@@ -2373,6 +2613,8 @@ begin
     else
       VarRec := ResolveVar(Display, False);
     AToks[FirstIdx].OutText := VarRec.FbName;
+    if (VarRec.Scope = '') and VarRec.Explicit then
+      GlobalQualify(AToks, FirstIdx);
     if not VarRec.IsConst then
       TargetType := VarRec.RqType;
   end;
@@ -2490,6 +2732,7 @@ begin
         FHasGui := True;
       VarRec := DeclareVar(AToks[NameIdx].Text, RqType, Scope, IsArray, True,
                            False);
+      FixMemberClash(VarRec, Scope);
       Dynamic := IsArray and (FRedims.IndexOf(Scope + '|' + VarRec.Name) >= 0);
       if Dynamic then
       begin
@@ -2650,8 +2893,10 @@ var
   SavedProc: TRqProc;
   ParamIdx, SigCount, SigPos: Integer;
   SigList: TStringList;
+  OwnInfo: TRqTypeInfo;
 begin
   Result := '';
+  FParamAliases := '';
   ItemStart := AFrom;
   ParamIdx := 0;
   // Обработчик события с параметрами: типы по событию (RqEventSigText)
@@ -2732,10 +2977,22 @@ begin
       SavedProc := FCurProc;
       VarRec := DeclareVar(AToks[NameIdx].Text, RqType, AScope, IsArray, True,
                            False);
+      FixMemberClash(VarRec, AScope);
       FCurProc := SavedProc;
       VarRec.RqType := RqType;
+      OwnInfo := FindTypeInfo(RqType);
       if IsArray then
         ItemText := VarRec.FbName + '() As ' + FbType(RqType)
+      else if (OwnInfo <> nil) and InList(FHandlerProcs, UpperCase(AScope)) then
+      begin
+        // Sender AS свой компонент у обработчика события: событие
+        // объявлено в классе RapidQ (Sender As QBUTTON) - параметр того
+        // класса и ссылка своего типа на тот же объект
+        ItemText := 'ByRef ' + VarRec.FbName + '_RqB As ' + OwnInfo.BaseDisplay;
+        FParamAliases := FParamAliases + ' : Dim ByRef ' + VarRec.FbName +
+          ' As ' + OwnInfo.Display + ' = *Cast(' + OwnInfo.Display +
+          ' Ptr, Cast(Any Ptr, @' + VarRec.FbName + '_RqB))';
+      end
       else
       begin
         if ByRefFlag or ((FByRefDefault or IsObjectType(RqType)) and
@@ -2764,7 +3021,7 @@ end;
 // SUB Имя [(параметры)] / FUNCTION Имя[суффикс] [(параметры)] [AS тип]
 procedure TRqFbConv.ProcessProcHeader(var AToks: TToks; AFrom, ATo: Integer);
 var
-  Up, Params, Header, RetType, StarLen, Locals: string;
+  Up, Params, Header, RetType, StarLen, Locals, Aliases: string;
   NameIdx, OpenIdx, CloseIdx, AsIdx, TypeIdx, VarIdx: Integer;
   ProcRec: TRqProc;
   VarRec: TRqVar;
@@ -2782,6 +3039,7 @@ begin
   FGosubProcNum := 0;
   OpenIdx := NextSig(AToks, NameIdx + 1, ATo);
   Params := '';
+  Aliases := '';
   CloseIdx := NameIdx;
   if IsOp(AToks, OpenIdx, '(') then
   begin
@@ -2789,9 +3047,13 @@ begin
     if CloseIdx < 0 then
       CloseIdx := ATo;
     Params := ParseParams(AToks, OpenIdx + 1, CloseIdx - 1, ProcRec.Name);
+    Aliases := FParamAliases;
   end
   else if ProcRec.Declared then
+  begin
     Params := ProcRec.DeclParams;
+    Aliases := ProcRec.DeclAliases;
+  end;
   RetType := SuffixType(SuffixOf(ProcRec.Name));
   AsIdx := NextSig(AToks, CloseIdx + 1, ATo);
   if IsWord(AToks, AsIdx, 'AS') then
@@ -2819,7 +3081,7 @@ begin
   // GOSUB/RETURN в этой SUB - свой стек возврата (у каждого вызова)
   if (FPass = 2) and (FGosubSites.IndexOfName(ProcRec.Name) >= 0) then
     Locals := Locals + ' : Dim rqgs_sp As Long : ReDim rqgs_stk(1 To 16) As Long';
-  Rebuild(AToks, AFrom, ATo, Header + Locals);
+  Rebuild(AToks, AFrom, ATo, Header + Aliases + Locals);
 end;
 
 // DECLARE SUB|FUNCTION Имя [LIB "dll"] [ALIAS "имя"] [(параметры)] [AS тип]
@@ -2862,6 +3124,7 @@ begin
     TokIdx := NextSig(AToks, TokIdx + 1, ATo);
   end;
   Params := '';
+  FParamAliases := '';
   OpenIdx := TokIdx;
   CloseIdx := TokIdx - 1;
   if IsOp(AToks, OpenIdx, '(') then
@@ -2874,6 +3137,7 @@ begin
     FCurProc := SavedProc;
   end;
   ProcRec.DeclParams := Params;
+  ProcRec.DeclAliases := FParamAliases;
   RetType := SuffixType(SuffixOf(ProcRec.Name));
   TokIdx := NextSig(AToks, CloseIdx + 1, ATo);
   if IsWord(AToks, TokIdx, 'AS') then
@@ -2892,21 +3156,79 @@ begin
   Rebuild(AToks, AFrom, ATo, Header);
 end;
 
-// TYPE Имя [EXTENDS Класс]
+// TYPE Имя [EXTENDS Класс]. Свой компонент (EXTENDS; TYPE Имя AS Класс в
+// главе 10.5 документации - то же): Type FreeBASIC целиком, со всеми
+// полями и Declare методов (собраны в первом проходе), выводится здесь;
+// после него #line возвращает номера строк исходника.
 procedure TRqFbConv.ProcessTypeHeader(var AToks: TToks; AFrom, ATo: Integer);
 var
-  NameIdx, ExtIdx: Integer;
+  NameIdx, ExtIdx, BaseIdx, LineIdx, Found: Integer;
+  Info: TRqTypeInfo;
+  Block: string;
 begin
   NameIdx := NextSig(AToks, AFrom + 1, ATo);
   if (NameIdx < 0) or (AToks[NameIdx].Kind <> tkIdent) then
     Exit;
   FTypes.Add(AToks[NameIdx].Up);
-  FInType := True;
   ExtIdx := NextSig(AToks, NameIdx + 1, ATo);
-  FTypeExtends := IsWord(AToks, ExtIdx, 'EXTENDS');
-  if FTypeExtends then
-    Warn('TYPE ' + AToks[NameIdx].Text + ' EXTENDS: свои компоненты пока не ' +
+  BaseIdx := NextSig(AToks, ExtIdx + 1, ATo);
+  if IsOp(AToks, ExtIdx, '<') then
+  begin
+    Warn('TYPE ' + AToks[NameIdx].Text + '<...>: шаблоны TYPE пока не ' +
          'поддержаны, текст оставлен как есть');
+    FInType := True;
+    Exit;
+  end;
+  if not ((IsWord(AToks, ExtIdx, 'EXTENDS') or IsWord(AToks, ExtIdx, 'AS')) and
+          (BaseIdx >= 0) and (AToks[BaseIdx].Kind = tkIdent)) then
+  begin
+    FInType := True;
+    Exit;
+  end;
+  if FPass = 1 then
+  begin
+    if FTypeInfos.Find(AToks[NameIdx].Up, Found) then
+    begin
+      Info := TRqTypeInfo(FTypeInfos.Objects[Found]);
+      Info.Free;
+      FTypeInfos.Delete(Found);
+    end;
+    Info := TRqTypeInfo.Create;
+    Info.Name := AToks[NameIdx].Up;
+    Info.Display := AToks[NameIdx].Text;
+    Info.BaseClass := AToks[BaseIdx].Up;
+    Info.BaseDisplay := AToks[BaseIdx].Text;
+    FTypeInfos.AddObject(Info.Name, Info);
+    if InList(FGuiClasses, Info.BaseClass) then
+      FGuiClasses.Add(Info.Name);
+  end
+  else
+    Info := FindTypeInfo(AToks[NameIdx].Up);
+  if Info = nil then
+    Exit;
+  FCurType := Info;
+  FTypeBody := 0;
+  FTypeWith := '';
+  FCurMethodUp := '';
+  if FPass <> 2 then
+    Exit;
+  Block := '';
+  for LineIdx := 0 to Info.Before.Count - 1 do
+    Block := Block + Info.Before[LineIdx] + CrLf;
+  Block := Block + 'Type ' + Info.Display + ' Extends ' + Info.BaseDisplay + CrLf;
+  for LineIdx := 0 to Info.Decls.Count - 1 do
+    Block := Block + '    ' + Info.Decls[LineIdx] + CrLf;
+  if Info.HasCtor or (Info.Regs <> '') then
+    Block := Block + '    Declare Constructor()' + CrLf;
+  Block := Block + 'End Type' + CrLf;
+  for LineIdx := 0 to Info.After.Count - 1 do
+    Block := Block + Info.After[LineIdx] + CrLf;
+  Block := Block + '#line ' + IntToStr(FCurLine + FLineBreaks) + ' "' +
+           FCurFile + '"';
+  // строка целиком (и комментарий: после #line его не должно быть)
+  ClearRange(AToks, AFrom, High(AToks));
+  FLostLines := 0;
+  AToks[AFrom].OutText := Block;
 end;
 
 // Поле TYPE: имя [(размеры)] AS тип
@@ -2967,6 +3289,9 @@ var
 
 begin
   AToks[AFrom].OutText := 'Print';
+  // у компонента свой метод Print (QDebug) - оператор FreeBASIC через ..
+  if (FCurType <> nil) and (FCurType.Kind('PRINT') <> #0) then
+    AToks[AFrom].OutText := '..Print';
   // print"x" - у FreeBASIC нужен пробел после Print
   if (AFrom + 1 <= High(AToks)) and (AToks[AFrom + 1].Kind <> tkSpace) then
     AToks[AFrom].Post := ' ';
@@ -3206,29 +3531,1200 @@ begin
                           ', __FILE__, __LINE__) Goto ' + Targets;
 end;
 
-// INC перем [, n] -> перем += n; DEC -> -=
+// Объект.AddItems a, b, c, d, e... - у методов rqlcl.bi с переменным
+// числом параметров перегрузки только до 4 (меню) или 6 (списки) -
+// вызов делится на несколько по 4 параметра
+procedure TRqFbConv.SplitVariadicCall(var AToks: TToks; AFirst, ATo: Integer);
+const
+  ChunkSize = 4;
+var
+  TokIdx, Depth, LastMember, ArgsFrom, ArgsTo, OpenIdx, CloseIdx,
+    ArgStart, ArgCount: Integer;
+  ObjText, CallText, ChunkText: string;
+  Args: TStringList;
+begin
+  LastMember := -1;
+  Depth := 0;
+  for TokIdx := AFirst to ATo do
+  begin
+    if IsOp(AToks, TokIdx, '(') then
+      Inc(Depth)
+    else if IsOp(AToks, TokIdx, ')') then
+      Dec(Depth)
+    else if (Depth = 0) and IsOp(AToks, TokIdx, '.') then
+      LastMember := NextSig(AToks, TokIdx + 1, ATo)
+    else if (Depth = 0) and (TokIdx > LastMember) and (LastMember >= 0) and
+            (AToks[TokIdx].Kind <> tkSpace) then
+      Break;
+  end;
+  if (LastMember < 0) or (AToks[LastMember].Kind <> tkIdent) then
+    Exit;
+  if not ((AToks[LastMember].Up = 'ADDITEMS') or (AToks[LastMember].Up = 'ADDTABS') or
+          (AToks[LastMember].Up = 'ADDPANELS')) then
+    Exit;
+  ArgsFrom := NextSig(AToks, LastMember + 1, ATo);
+  if ArgsFrom < 0 then
+    Exit;
+  ArgsTo := PrevSig(AToks, ATo);
+  OpenIdx := ArgsFrom;
+  if IsOp(AToks, OpenIdx, '(') then
+  begin
+    CloseIdx := MatchParen(AToks, OpenIdx, ATo);
+    if (CloseIdx > 0) and (CloseIdx = ArgsTo) then
+    begin
+      ArgsFrom := OpenIdx + 1;
+      ArgsTo := CloseIdx - 1;
+    end;
+  end;
+  Args := TStringList.Create;
+  try
+    Depth := 0;
+    ArgStart := ArgsFrom;
+    for TokIdx := ArgsFrom to ArgsTo do
+    begin
+      if IsOp(AToks, TokIdx, '(') then
+        Inc(Depth)
+      else if IsOp(AToks, TokIdx, ')') then
+        Dec(Depth)
+      else if (Depth = 0) and IsOp(AToks, TokIdx, ',') then
+      begin
+        Args.Add(RangeText(AToks, ArgStart, TokIdx - 1));
+        ArgStart := TokIdx + 1;
+      end;
+    end;
+    Args.Add(RangeText(AToks, ArgStart, ArgsTo));
+    if Args.Count <= ChunkSize then
+    begin
+      FLostLines := 0;
+      Exit;
+    end;
+    ObjText := RangeText(AToks, AFirst, LastMember);
+    CallText := '';
+    ChunkText := '';
+    ArgCount := 0;
+    for TokIdx := 0 to Args.Count - 1 do
+    begin
+      if ChunkText <> '' then
+        ChunkText := ChunkText + ', ';
+      ChunkText := ChunkText + Args[TokIdx];
+      Inc(ArgCount);
+      if (ArgCount = ChunkSize) or (TokIdx = Args.Count - 1) then
+      begin
+        if CallText <> '' then
+          CallText := CallText + ' : ';
+        CallText := CallText + ObjText + ' ' + ChunkText;
+        ChunkText := '';
+        ArgCount := 0;
+      end;
+    end;
+    FLostLines := 0;
+    Rebuild(AToks, AFirst, ATo, CallText);
+  finally
+    Args.Free;
+  end;
+end;
+
+// INC перем [, n] / INC(перем [, n]) -> перем += n; DEC -> -=.
+// Перем - и элемент массива, и поле (INC(This.RowNum, h) в rapidq.inc)
 procedure TRqFbConv.ProcessIncDec(var AToks: TToks; AFrom, ATo: Integer);
 var
-  VarIdx, CommaIdx: Integer;
-  VarRec: TRqVar;
-  Step, OpText: string;
+  OpenIdx, CloseIdx, ArgFrom, ArgTo, CommaIdx, TargetIdx, TokIdx,
+    Depth: Integer;
+  Target, Step, OpText: string;
 begin
-  VarIdx := NextSig(AToks, AFrom + 1, ATo);
-  if (VarIdx < 0) or (AToks[VarIdx].Kind <> tkIdent) then
-    Exit;
-  VarRec := ResolveVar(AToks[VarIdx].Text, False);
-  CommaIdx := NextSig(AToks, VarIdx + 1, ATo);
-  Step := '1';
-  if IsOp(AToks, CommaIdx, ',') then
+  ArgFrom := AFrom + 1;
+  ArgTo := ATo;
+  OpenIdx := NextSig(AToks, AFrom + 1, ATo);
+  if IsOp(AToks, OpenIdx, '(') then
   begin
-    ProcessExpr(AToks, CommaIdx + 1, ATo);
-    Step := '(' + RangeText(AToks, CommaIdx + 1, ATo) + ')';
+    CloseIdx := MatchParen(AToks, OpenIdx, ATo);
+    if (CloseIdx > 0) and (NextSig(AToks, CloseIdx + 1, ATo) < 0) then
+    begin
+      ArgFrom := OpenIdx + 1;
+      ArgTo := CloseIdx - 1;
+    end;
+  end;
+  CommaIdx := ArgTo + 1;
+  Depth := 0;
+  for TokIdx := ArgFrom to ArgTo do
+  begin
+    if IsOp(AToks, TokIdx, '(') then
+      Inc(Depth)
+    else if IsOp(AToks, TokIdx, ')') then
+      Dec(Depth)
+    else if (Depth = 0) and IsOp(AToks, TokIdx, ',') then
+    begin
+      CommaIdx := TokIdx;
+      Break;
+    end;
+  end;
+  TargetIdx := NextSig(AToks, ArgFrom, CommaIdx - 1);
+  if (TargetIdx < 0) or (AToks[TargetIdx].Kind <> tkIdent) then
+    Exit;
+  ProcessExpr(AToks, TargetIdx, CommaIdx - 1);
+  Target := RangeText(AToks, TargetIdx, CommaIdx - 1);
+  Step := '1';
+  if CommaIdx < ArgTo then
+  begin
+    ProcessExpr(AToks, CommaIdx + 1, ArgTo);
+    Step := '(' + RangeText(AToks, CommaIdx + 1, ArgTo) + ')';
   end;
   if AToks[AFrom].Up = 'INC' then
     OpText := ' += '
   else
     OpText := ' -= ';
-  Rebuild(AToks, AFrom, ATo, VarRec.FbName + OpText + Step);
+  Rebuild(AToks, AFrom, ATo, Target + OpText + Step);
+end;
+
+// ---------------------------------------------------------------------------
+//  Свои компоненты: TYPE Имя EXTENDS Класс ... END TYPE (глава 10
+//  документации RapidQ)
+//
+//  Перевод в FreeBASIC:
+//    - в строке TYPE - Type Имя Extends Класс со всеми полями и Declare
+//      методов (собраны в первом проходе), затем #line;
+//    - поле - поле Type; поле с PROPERTY SET Установщик - значение
+//      RqVal_Поле и свойство FreeBASIC Поле: снаружи запись вызывает
+//      установщик, внутри TYPE This.Поле - само значение (без вызова:
+//      иначе установщик, который пишет в поле, вызывал бы себя);
+//      Поле AS EVENT(Шаблон) - Any Ptr, CALLFUNC - вызов по типу шаблона;
+//    - SUB, FUNCTION, PROPERTY SET - методы (Sub Имя.Метод на месте
+//      исходника), CONSTRUCTOR - Constructor (вначале подключаются
+//      события), EVENT OnXxx / EVENT Поле.OnXxx - метод InheritOnXxx /
+//      RqEv_Поле_OnXxx и переходник: процедура модуля с Sender, которая
+//      вызывает метод объекта (объект - Sender или, для поля, по смещению
+//      поля OffsetOf);
+//    - Имя.x, This.x, .x внутри WITH Имя / WITH This - This.x; Super.x -
+//      Base.x; в CONSTRUCTOR член и без имени объекта (Caption = "x");
+//    - внутри метода переменная, процедура или функция модуля с именем
+//      члена компонента или его класса - с ".." (иначе FreeBASIC берёт
+//      член).
+// ---------------------------------------------------------------------------
+
+function TRqFbConv.FindTypeInfo(const AUp: string): TRqTypeInfo;
+var
+  Found: Integer;
+begin
+  Result := nil;
+  if FTypeInfos.Find(AUp, Found) then
+    Result := TRqTypeInfo(FTypeInfos.Objects[Found]);
+end;
+
+// Имя члена в FreeBASIC: суффикс - частью имени (Err$ -> Err__s); слово,
+// которым член называться не может (Delete), - с _v
+function TRqFbConv.MemberFbName(const ADisplay: string): string;
+begin
+  if SuffixOf(ADisplay) <> '' then
+    Result := Mangle(ADisplay)
+  else if InList(FBadMembers, UpperCase(ADisplay)) then
+    Result := ADisplay + '_v'
+  else
+    Result := ADisplay;
+  if Pos('~', Result) > 0 then
+    Result := StringReplace(Result, '~', '_T_', [rfReplaceAll]);
+end;
+
+// Имя совпадает с членом текущего компонента или его класса RapidQ
+function TRqFbConv.TypeMemberCollides(const AUp: string): Boolean;
+var
+  NameUp: string;
+begin
+  Result := False;
+  if FCurType = nil then
+    Exit;
+  NameUp := BaseOf(AUp);
+  Result := (FCurType.Kind(AUp) <> #0) or (FCurType.Kind(NameUp) <> #0) or
+            (MemberKind(FCurType.BaseClass, NameUp) <> #0);
+end;
+
+// Внутри метода компонента имя модуля, совпадающее с членом, - через ".."
+// (FreeBASIC внутри метода сначала ищет член; проверено, fbc 1.10.1)
+procedure TRqFbConv.GlobalQualify(var AToks: TToks; AIdx: Integer);
+begin
+  if (FCurType <> nil) and (FTypeBody <> 0) and
+     TypeMemberCollides(AToks[AIdx].Up) and (Pos('..', AToks[AIdx].Pre) = 0) then
+    AToks[AIdx].Pre := AToks[AIdx].Pre + '..';
+end;
+
+// Параметр или локальная переменная метода с именем члена компонента:
+// у FreeBASIC это "Duplicated definition" (для свойств и методов) - с _p
+procedure TRqFbConv.FixMemberClash(AVar: TRqVar; const AScope: string);
+begin
+  if (FCurType = nil) or (Pos('.', AScope) = 0) then
+    Exit;
+  if FCurType.Kind(AVar.Name) = #0 then
+    Exit;
+  if Copy(AVar.FbName, Length(AVar.FbName) - 1, 2) <> '_p' then
+    AVar.FbName := AVar.FbName + '_p';
+end;
+
+// Типы параметров события класса (RqEventSigText); у OnChange и событий
+// пунктов параметры только у QTREEVIEW
+function TRqFbConv.EventSigFor(const AClassUp, AEventUp: string): string;
+begin
+  Result := FEventSigs.Values[AEventUp];
+  if (AClassUp <> 'QTREEVIEW') and
+     ((AEventUp = 'ONCHANGE') or (AEventUp = 'ONEXPAND') or
+      (AEventUp = 'ONCOLLAPSE') or (AEventUp = 'ONCHANGING') or
+      (AEventUp = 'ONEXPANDING') or (AEventUp = 'ONCOLLAPSING')) then
+    Result := '';
+end;
+
+// Параметры FreeBASIC по типам события ("VLONG;RLONG"). Имена - из ANames
+// (по порядку), остальные - RqArgN. AScope <> '' - параметры объявляются
+// переменными этой области.
+function TRqFbConv.SigParams(const ASig: string; ANames: TStrings;
+                             const AScope: string; out ACount: Integer): string;
+var
+  Rest, Item, ParamName, RqType: string;
+  SepPos: Integer;
+  VarRec: TRqVar;
+begin
+  Result := '';
+  ACount := 0;
+  Rest := ASig;
+  if Rest <> '' then
+    Rest := Rest + ';';
+  while Rest <> '' do
+  begin
+    SepPos := Pos(';', Rest);
+    Item := Copy(Rest, 1, SepPos - 1);
+    System.Delete(Rest, 1, SepPos);
+    if Length(Item) < 2 then
+      Continue;
+    RqType := Copy(Item, 2, MaxInt);
+    if (ANames <> nil) and (ACount < ANames.Count) then
+      ParamName := ANames[ACount]
+    else
+      ParamName := 'RqArg' + IntToStr(ACount + 1);
+    if AScope <> '' then
+    begin
+      VarRec := DeclareVar(ParamName, RqType, AScope, False, True, False);
+      VarRec.RqType := RqType;
+      FixMemberClash(VarRec, AScope);
+      ParamName := VarRec.FbName;
+    end;
+    if Result <> '' then
+      Result := Result + ', ';
+    if Item[1] = 'R' then
+      Result := Result + 'ByRef '
+    else
+      Result := Result + 'ByVal ';
+    Result := Result + ParamName + ' As ' + FbType(RqType);
+    Inc(ACount);
+  end;
+end;
+
+// Необъявленные переменные процедуры (области AScope), которых нет в
+// модуле, - локальные: " : Dim ..." в строке заголовка
+function TRqFbConv.LocalsText(const AScope: string): string;
+var
+  VarIdx: Integer;
+  VarRec: TRqVar;
+begin
+  Result := '';
+  if FPass <> 2 then
+    Exit;
+  for VarIdx := 0 to FVars.Count - 1 do
+  begin
+    VarRec := TRqVar(FVars.Objects[VarIdx]);
+    if (VarRec.Scope = AScope) and not VarRec.Explicit then
+      Result := Result + ' : Dim ' + VarRec.FbName + ' As ' +
+                FbType(VarRec.RqType);
+  end;
+  // GOSUB/RETURN в методе - свой стек возврата, как в SUB
+  if FGosubSites.IndexOfName(AScope) >= 0 then
+    Result := Result + ' : Dim rqgs_sp As Long : ReDim rqgs_stk(1 To 16) As Long';
+end;
+
+// Строка внутри TYPE ... EXTENDS до разбора: Имя.x и This.x -> This.x;
+// .x внутри WITH Имя / WITH This -> This.x; в CONSTRUCTOR член
+// компонента без имени объекта (и член класса RapidQ в начале оператора)
+// -> This.x. WITH Имя, WITH This, END WITH к ним, PUBLIC:, PRIVATE:,
+// PROTECTED: убираются. Заодно отслеживается, внутри чего строка
+// (FTypeBody): заголовки и концы SUB, FUNCTION, EVENT, CONSTRUCTOR...
+function TRqFbConv.RewriteTypeText(const AText: string): string;
+var
+  Toks: TToks;
+  TokIdx, StartIdx, LastIdx, Depth, FirstIdx: Integer;
+  Changed: Boolean;
+
+  procedure Blank(AFrom, ATo: Integer);
+  var
+    ClearIdx: Integer;
+  begin
+    for ClearIdx := AFrom to ATo do
+      if Toks[ClearIdx].Kind <> tkSpace then
+        Toks[ClearIdx].Text := '';
+    Changed := True;
+  end;
+
+  function IsLocalName(const AUp: string): Boolean;
+  var
+    VarRec: TRqVar;
+  begin
+    VarRec := FindVar(AUp);
+    Result := (VarRec <> nil) and (VarRec.Scope <> '') and VarRec.Explicit;
+  end;
+
+  // "." перед членом объекта WITH: в начале выражения (после знака, кроме
+  // ")", или ключевого слова вроде THEN)
+  function IsWithDot(ADotIdx, ATo: Integer): Boolean;
+  var
+    PrevIdx, AfterIdx: Integer;
+  begin
+    Result := False;
+    AfterIdx := NextSig(Toks, ADotIdx + 1, ATo);
+    if (AfterIdx < 0) or (Toks[AfterIdx].Kind <> tkIdent) then
+      Exit;
+    PrevIdx := PrevSig(Toks, ADotIdx - 1);
+    if PrevIdx < 0 then
+      Result := True
+    else if Toks[PrevIdx].Kind = tkOp then
+      Result := (Toks[PrevIdx].Text <> ')') and (Toks[PrevIdx].Text <> '.')
+    else if Toks[PrevIdx].Kind = tkIdent then
+      Result := InList(FKeywords, Toks[PrevIdx].Up) and
+                (Toks[PrevIdx].Up <> 'THIS') and (Toks[PrevIdx].Up <> 'SUPER') and
+                (Toks[PrevIdx].Text <> 'This');
+  end;
+
+  procedure DoStatement(AFrom, ATo: Integer);
+  var
+    Up, WithTop: string;
+    NextIdx, PrevIdx, AfterIdx, RefIdx: Integer;
+    Kind: Char;
+    StmtStart: Boolean;
+  begin
+    FirstIdx := NextSig(Toks, AFrom, ATo);
+    if FirstIdx < 0 then
+      Exit;
+    NextIdx := NextSig(Toks, FirstIdx + 1, ATo);
+    if Toks[FirstIdx].Kind = tkIdent then
+    begin
+      Up := Toks[FirstIdx].Up;
+      if (Up = 'SUB') or (Up = 'FUNCTION') or (Up = 'SUBI') or
+         (Up = 'FUNCTIONI') then
+      begin
+        FTypeBody := 1;
+        Exit;
+      end;
+      if (Up = 'PROPERTY') and IsWord(Toks, NextIdx, 'SET') then
+      begin
+        FTypeBody := 4;
+        Exit;
+      end;
+      if Up = 'EVENT' then
+      begin
+        FTypeBody := 3;
+        Exit;
+      end;
+      if Up = 'CONSTRUCTOR' then
+      begin
+        FTypeBody := 2;
+        Exit;
+      end;
+      if Up = 'END' then
+      begin
+        if IsWord(Toks, NextIdx, 'SUB') or IsWord(Toks, NextIdx, 'FUNCTION') or
+           IsWord(Toks, NextIdx, 'SUBI') or IsWord(Toks, NextIdx, 'FUNCTIONI') or
+           IsWord(Toks, NextIdx, 'PROPERTY') or IsWord(Toks, NextIdx, 'EVENT') or
+           IsWord(Toks, NextIdx, 'CONSTRUCTOR') then
+          FTypeBody := 0
+        else if IsWord(Toks, NextIdx, 'WITH') then
+        begin
+          WithTop := Copy(FTypeWith, Length(FTypeWith), 1);
+          if FTypeWith <> '' then
+            System.Delete(FTypeWith, Length(FTypeWith), 1);
+          if WithTop = 'T' then
+            Blank(AFrom, ATo);
+        end;
+        Exit;
+      end;
+      if Up = 'WITH' then
+      begin
+        if (IsWord(Toks, NextIdx, FCurType.Name) or IsWord(Toks, NextIdx, 'THIS')) and
+           (NextSig(Toks, NextIdx + 1, ATo) < 0) then
+        begin
+          FTypeWith := FTypeWith + 'T';
+          Blank(AFrom, ATo);
+          Exit;
+        end;
+        FTypeWith := FTypeWith + 'O';
+      end;
+      if ((Up = 'PUBLIC') or (Up = 'PRIVATE') or (Up = 'PROTECTED')) and
+         (NextIdx < 0) then
+      begin
+        Blank(AFrom, ATo);
+        if IsOp(Toks, ATo + 1, ':') then
+          Toks[ATo + 1].Text := '';
+        Exit;
+      end;
+    end;
+    if FTypeBody = 0 then
+      Exit;
+    for RefIdx := AFrom to ATo do
+    begin
+      if Toks[RefIdx].Kind = tkIdent then
+      begin
+        PrevIdx := PrevSig(Toks, RefIdx - 1);
+        // после "." (и после ".", уже ставшей "This.")
+        if (PrevIdx >= 0) and (Toks[PrevIdx].Kind = tkOp) and
+           ((Toks[PrevIdx].Text = '.') or (Toks[PrevIdx].Text = 'This.')) then
+          Continue;
+        AfterIdx := NextSig(Toks, RefIdx + 1, ATo);
+        Up := Toks[RefIdx].Up;
+        if ((Up = FCurType.Name) or (Up = 'THIS')) and IsOp(Toks, AfterIdx, '.') then
+        begin
+          Toks[RefIdx].Text := 'This';
+          Changed := True;
+          Continue;
+        end;
+        if FTypeBody <> 2 then
+          Continue;
+        // CONSTRUCTOR: член без имени объекта
+        if IsLocalName(Up) or InList(FTypes, Up) then
+          Continue;
+        StmtStart := (RefIdx = FirstIdx) or IsWord(Toks, PrevIdx, 'THEN') or
+                     IsWord(Toks, PrevIdx, 'ELSE');
+        Kind := FCurType.Kind(Up);
+        if (Kind = #0) and StmtStart and not IsOp(Toks, AfterIdx, '#') and
+           (MemberKind(FCurType.BaseClass, Up) <> #0) then
+          Kind := 'B';
+        if Kind <> #0 then
+        begin
+          Toks[RefIdx].Text := 'This.' + Toks[RefIdx].Text;
+          Changed := True;
+        end;
+      end
+      else if IsOp(Toks, RefIdx, '.') and
+              (Copy(FTypeWith, Length(FTypeWith), 1) = 'T') and
+              IsWithDot(RefIdx, ATo) then
+      begin
+        Toks[RefIdx].Text := 'This.';
+        Changed := True;
+      end;
+    end;
+  end;
+
+begin
+  Result := AText;
+  Lex(AText, Toks);
+  Changed := False;
+  LastIdx := High(Toks);
+  for TokIdx := 0 to High(Toks) do
+    if Toks[TokIdx].Kind = tkComment then
+    begin
+      LastIdx := TokIdx - 1;
+      Break;
+    end;
+  FirstIdx := NextSig(Toks, 0, LastIdx);
+  if (FirstIdx < 0) or (Toks[FirstIdx].Kind = tkDirective) then
+    Exit;
+  Depth := 0;
+  StartIdx := 0;
+  TokIdx := 0;
+  while TokIdx <= LastIdx do
+  begin
+    if IsOp(Toks, TokIdx, '(') then
+      Inc(Depth)
+    else if IsOp(Toks, TokIdx, ')') then
+      Dec(Depth)
+    else if (Depth = 0) and IsOp(Toks, TokIdx, ':') then
+    begin
+      if TokIdx - 1 >= StartIdx then
+        DoStatement(StartIdx, TokIdx - 1);
+      StartIdx := TokIdx + 1;
+    end;
+    Inc(TokIdx);
+  end;
+  if StartIdx <= LastIdx then
+    DoStatement(StartIdx, LastIdx);
+  if not Changed then
+    Exit;
+  Result := '';
+  for TokIdx := 0 to High(Toks) do
+    Result := Result + Toks[TokIdx].Text;
+end;
+
+// Оператор внутри TYPE ... EXTENDS. True - обработан здесь (заголовок или
+// конец метода, поле, END TYPE); False - обычный оператор тела метода
+function TRqFbConv.TypeStatement(var AToks: TToks; AFirst, ATo: Integer): Boolean;
+var
+  Up: string;
+  NextIdx: Integer;
+begin
+  Result := FTypeBody = 0;
+  if AToks[AFirst].Kind <> tkIdent then
+  begin
+    if Result then
+    begin
+      Warn('внутри TYPE ' + FCurType.Display + ' непонятный оператор: ' +
+           RawText(AToks, AFirst, ATo));
+      Rebuild(AToks, AFirst, ATo, '');
+    end;
+    Exit;
+  end;
+  Result := True;
+  Up := AToks[AFirst].Up;
+  NextIdx := NextSig(AToks, AFirst + 1, ATo);
+  if Up = 'END' then
+  begin
+    if IsWord(AToks, NextIdx, 'TYPE') then
+      TypeEnd(AToks, AFirst, ATo)
+    else if IsWord(AToks, NextIdx, 'CONSTRUCTOR') then
+      Rebuild(AToks, AFirst, ATo, 'End Constructor')
+    else if IsWord(AToks, NextIdx, 'FUNCTION') or IsWord(AToks, NextIdx, 'FUNCTIONI') then
+      Rebuild(AToks, AFirst, ATo, 'End Function')
+    else if IsWord(AToks, NextIdx, 'SUB') or IsWord(AToks, NextIdx, 'SUBI') or
+            IsWord(AToks, NextIdx, 'PROPERTY') or IsWord(AToks, NextIdx, 'EVENT') then
+      Rebuild(AToks, AFirst, ATo, 'End Sub')
+    else
+    begin
+      Result := False;
+      Exit;
+    end;
+    FCurProc := nil;
+    FCurMethodUp := '';
+    Exit;
+  end;
+  if (Up = 'SUB') or (Up = 'FUNCTION') or (Up = 'SUBI') or (Up = 'FUNCTIONI') then
+  begin
+    TypeMethodHeader(AToks, AFirst, ATo, False);
+    Exit;
+  end;
+  if (Up = 'PROPERTY') and IsWord(AToks, NextIdx, 'SET') then
+  begin
+    TypeMethodHeader(AToks, AFirst, ATo, True);
+    Exit;
+  end;
+  if Up = 'EVENT' then
+  begin
+    TypeEventHeader(AToks, AFirst, ATo);
+    Exit;
+  end;
+  if Up = 'CONSTRUCTOR' then
+  begin
+    TypeCtorHeader(AToks, AFirst, ATo);
+    Exit;
+  end;
+  if FTypeBody <> 0 then
+  begin
+    if Up = 'CALLFUNC' then
+      TypeCallFunc(AToks, AFirst, ATo)
+    else
+      Result := False;
+    Exit;
+  end;
+  // Уровень TYPE: DECLARE, CONST - как обычно (в FreeBASIC - на уровне
+  // модуля, между методами); остальное - поля
+  if (Up = 'DECLARE') or (Up = 'CONST') or
+     (((Up = 'PUBLIC') or (Up = 'PRIVATE')) and IsWord(AToks, NextIdx, 'CONST')) then
+  begin
+    Result := False;
+    Exit;
+  end;
+  if Up = 'DIM' then
+  begin
+    if NextIdx < 0 then
+      Exit;
+    AToks[AFirst].OutText := '';
+    TypeField(AToks, NextIdx, ATo);
+    Exit;
+  end;
+  TypeField(AToks, AFirst, ATo);
+end;
+
+// SUB/FUNCTION Имя[(параметры)] [AS тип] и PROPERTY SET Имя(параметр)
+// внутри TYPE -> Sub/Function Компонент.Имя(...)
+procedure TRqFbConv.TypeMethodHeader(var AToks: TToks; AFirst, ATo: Integer;
+                                     AIsSetter: Boolean);
+var
+  NameIdx, OpenIdx, CloseIdx, AsIdx, TypeIdx, ParamCount, SpacePos: Integer;
+  KindUp, Display, NameUp, FbName, Params, RetType, StarLen, DeclText: string;
+  IsFunc: Boolean;
+  ProcRec: TRqProc;
+  Kind: Char;
+begin
+  KindUp := AToks[AFirst].Up;
+  if AIsSetter then
+    NameIdx := NextSig(AToks, NextSig(AToks, AFirst + 1, ATo) + 1, ATo)
+  else
+    NameIdx := NextSig(AToks, AFirst + 1, ATo);
+  if (NameIdx < 0) or (AToks[NameIdx].Kind <> tkIdent) then
+  begin
+    Error(AToks[AFirst].Text + ': ожидалось имя');
+    Exit;
+  end;
+  if (KindUp = 'SUBI') or (KindUp = 'FUNCTIONI') then
+    WarnOnce('SUBI', 'SUBI/FUNCTIONI (переменное число параметров) пока не ' +
+             'поддержаны');
+  IsFunc := (KindUp = 'FUNCTION') or (KindUp = 'FUNCTIONI');
+  Display := AToks[NameIdx].Text;
+  NameUp := AToks[NameIdx].Up;
+  FbName := MemberFbName(Display);
+  ProcRec := GetProc(FCurType.Name + '.' + NameUp);
+  ProcRec.IsFunc := IsFunc;
+  FCurProc := ProcRec;
+  FCurMethodUp := NameUp;
+  FGosubProcNum := 0;
+  OpenIdx := NextSig(AToks, NameIdx + 1, ATo);
+  Params := '';
+  CloseIdx := NameIdx;
+  if IsOp(AToks, OpenIdx, '(') then
+  begin
+    CloseIdx := MatchParen(AToks, OpenIdx, ATo);
+    if CloseIdx < 0 then
+      CloseIdx := ATo;
+    Params := ParseParams(AToks, OpenIdx + 1, CloseIdx - 1, ProcRec.Name);
+  end;
+  RetType := SuffixType(SuffixOf(NameUp));
+  AsIdx := NextSig(AToks, CloseIdx + 1, ATo);
+  if IsWord(AToks, AsIdx, 'AS') then
+  begin
+    TypeIdx := NextSig(AToks, AsIdx + 1, ATo);
+    if TypeIdx >= 0 then
+      RetType := ParseType(AToks, TypeIdx, ATo, StarLen);
+  end;
+  ProcRec.RetType := RetType;
+  if IsFunc then
+    DeclText := 'Function ' + FbName + '(' + Params + ') As ' + FbType(RetType)
+  else
+    DeclText := 'Sub ' + FbName + '(' + Params + ')';
+  if FPass = 1 then
+  begin
+    if FCurType.Kind(NameUp) = #0 then
+    begin
+      if AIsSetter then
+        Kind := 'S'
+      else if IsFunc then
+        Kind := 'N'
+      else
+        Kind := 'M';
+      ParamCount := 0;
+      if Params <> '' then
+        ParamCount := 1 + (Length(Params) -
+                           Length(StringReplace(Params, ', ', ',', [rfReplaceAll])));
+      FCurType.Members.Add(NameUp + '=' + Kind);
+      FCurType.MemberFb.Add(NameUp + '=' + FbName);
+      FCurType.MemberType.Add(NameUp + '=' + RetType);
+      FCurType.ParamCounts.Add(NameUp + '=' + IntToStr(ParamCount));
+      FCurType.Decls.Add('Declare ' + DeclText);
+      // Объект.Delete, Объект.Err$ снаружи - тем же именем
+      if FbName <> Display then
+        FMemberMap.Values[NameUp] := FbName;
+    end;
+  end;
+  SpacePos := Pos(' ', DeclText);
+  Rebuild(AToks, AFirst, ATo, Copy(DeclText, 1, SpacePos) + FCurType.Display + '.' +
+          Copy(DeclText, SpacePos + 1, MaxInt) + LocalsText(ProcRec.Name));
+end;
+
+// EVENT OnXxx [(параметры)] / EVENT Поле.OnXxx [(параметры)] - обработчик
+// события самого компонента или его поля: метод InheritOnXxx /
+// RqEv_Поле_OnXxx (типы параметров - по событию; имена - из заголовка,
+// их может быть меньше) и переходник с Sender, который подключается в
+// конструкторе
+procedure TRqFbConv.TypeEventHeader(var AToks: TToks; AFirst, ATo: Integer);
+var
+  NameIdx, DotIdx, EventIdx, OpenIdx, CloseIdx, TokIdx, Depth,
+    ParamCount: Integer;
+  CompUp, CompFb, ClassUp, EventUp, EventDisplay, MethName, MethUp, Params,
+    ThunkName: string;
+  Names: TStringList;
+  ExpectName: Boolean;
+  ProcRec: TRqProc;
+begin
+  NameIdx := NextSig(AToks, AFirst + 1, ATo);
+  if (NameIdx < 0) or (AToks[NameIdx].Kind <> tkIdent) then
+  begin
+    Error('EVENT: ожидалось имя события');
+    Exit;
+  end;
+  DotIdx := NextSig(AToks, NameIdx + 1, ATo);
+  CompUp := '';
+  CompFb := '';
+  if IsOp(AToks, DotIdx, '.') then
+  begin
+    EventIdx := NextSig(AToks, DotIdx + 1, ATo);
+    if (EventIdx < 0) or (AToks[EventIdx].Kind <> tkIdent) then
+    begin
+      Error('EVENT: ожидалось Поле.Событие');
+      Exit;
+    end;
+    CompUp := AToks[NameIdx].Up;
+    CompFb := MemberFbName(AToks[NameIdx].Text);
+    ClassUp := FCurType.MemberType.Values[CompUp];
+    if FCurType.Kind(CompUp) <> 'F' then
+      Warn('EVENT ' + RawText(AToks, NameIdx, EventIdx) + ': поля ' +
+           AToks[NameIdx].Text + ' нет в TYPE ' + FCurType.Display);
+  end
+  else
+  begin
+    EventIdx := NameIdx;
+    ClassUp := FCurType.BaseClass;
+  end;
+  EventUp := AToks[EventIdx].Up;
+  EventDisplay := AToks[EventIdx].Text;
+  if CompUp = '' then
+    MethName := 'Inherit' + EventDisplay
+  else
+    MethName := 'RqEv_' + CompFb + '_' + EventDisplay;
+  MethUp := UpperCase(MethName);
+  ProcRec := GetProc(FCurType.Name + '.' + MethUp);
+  ProcRec.IsFunc := False;
+  FCurProc := ProcRec;
+  FCurMethodUp := MethUp;
+  FGosubProcNum := 0;
+  Names := TStringList.Create;
+  try
+    OpenIdx := NextSig(AToks, EventIdx + 1, ATo);
+    if IsOp(AToks, OpenIdx, '(') then
+    begin
+      CloseIdx := MatchParen(AToks, OpenIdx, ATo);
+      if CloseIdx < 0 then
+        CloseIdx := ATo + 1;
+      Depth := 0;
+      ExpectName := True;
+      for TokIdx := OpenIdx + 1 to CloseIdx - 1 do
+      begin
+        if IsOp(AToks, TokIdx, '(') then
+          Inc(Depth)
+        else if IsOp(AToks, TokIdx, ')') then
+          Dec(Depth)
+        else if (Depth = 0) and IsOp(AToks, TokIdx, ',') then
+          ExpectName := True
+        else if ExpectName and (AToks[TokIdx].Kind = tkIdent) and
+                not IsWord(AToks, TokIdx, 'BYVAL') and
+                not IsWord(AToks, TokIdx, 'BYREF') then
+        begin
+          Names.Add(AToks[TokIdx].Text);
+          ExpectName := False;
+        end;
+      end;
+    end;
+    Params := SigParams(EventSigFor(ClassUp, EventUp), Names, ProcRec.Name,
+                        ParamCount);
+    if Names.Count > ParamCount then
+      Warn('EVENT ' + EventDisplay + ': параметров ' + IntToStr(Names.Count) +
+           ', у события ' + IntToStr(ParamCount) + ' - лишние пропущены');
+  finally
+    Names.Free;
+  end;
+  if (FPass = 1) and (FCurType.Kind(MethUp) = #0) then
+  begin
+    FCurType.Members.Add(MethUp + '=M');
+    FCurType.MemberFb.Add(MethUp + '=' + MethName);
+    FCurType.ParamCounts.Add(MethUp + '=' + IntToStr(ParamCount));
+    FCurType.Decls.Add('Declare Sub ' + MethName + '(' + Params + ')');
+    if CompFb <> '' then
+    begin
+      ThunkName := FCurType.Display + '__RqEv_' + CompFb + '_' + EventDisplay;
+      FCurType.Regs := FCurType.Regs + ' : This.' + CompFb + '.' + EventDisplay +
+                       ' = @' + ThunkName;
+    end
+    else
+    begin
+      ThunkName := FCurType.Display + '__RqEv_' + EventDisplay;
+      FCurType.Regs := FCurType.Regs + ' : This.' + EventDisplay + ' = @' +
+                       ThunkName;
+    end;
+    AddThunk(ThunkName, CompFb, ClassUp, EventDisplay, MethUp);
+  end;
+  Rebuild(AToks, AFirst, ATo, 'Sub ' + FCurType.Display + '.' + MethName + '(' +
+          Params + ')' + LocalsText(ProcRec.Name));
+end;
+
+// CONSTRUCTOR -> Constructor Компонент() : подключение событий
+procedure TRqFbConv.TypeCtorHeader(var AToks: TToks; AFirst, ATo: Integer);
+var
+  ProcRec: TRqProc;
+begin
+  ProcRec := GetProc(FCurType.Name + '.$CTOR');
+  ProcRec.IsFunc := False;
+  FCurProc := ProcRec;
+  FCurMethodUp := '';
+  FGosubProcNum := 0;
+  if FPass = 1 then
+    FCurType.HasCtor := True;
+  Rebuild(AToks, AFirst, ATo, 'Constructor ' + FCurType.Display + '()' +
+          FCurType.Regs + LocalsText(ProcRec.Name));
+end;
+
+// Поле: Имя[(размеры)] AS тип [PROPERTY SET Установщик] или
+// Имя AS EVENT(Шаблон). В выводе строка пустая - поле в Type (строка TYPE).
+procedure TRqFbConv.TypeField(var AToks: TToks; AFirst, ATo: Integer);
+var
+  NameIdx, OpenIdx, CloseIdx, AsIdx, TypeIdx, PropIdx, SetterIdx, TplIdx,
+    TplClose: Integer;
+  Display, NameUp, FbName, DimsText, RqType, StarLen, FbTypeText, ByText,
+    TplUp, TplFb: string;
+  Kind: Char;
+  TplProc: TRqProc;
+begin
+  NameIdx := AFirst;
+  if AToks[NameIdx].Kind <> tkIdent then
+  begin
+    Warn('внутри TYPE ' + FCurType.Display + ' непонятный оператор: ' +
+         RawText(AToks, AFirst, ATo));
+    Rebuild(AToks, AFirst, ATo, '');
+    Exit;
+  end;
+  Display := AToks[NameIdx].Text;
+  NameUp := AToks[NameIdx].Up;
+  FbName := MemberFbName(Display);
+  OpenIdx := NextSig(AToks, NameIdx + 1, ATo);
+  DimsText := '';
+  CloseIdx := NameIdx;
+  if IsOp(AToks, OpenIdx, '(') then
+  begin
+    CloseIdx := MatchParen(AToks, OpenIdx, ATo);
+    if CloseIdx < 0 then
+      CloseIdx := ATo;
+    ProcessExpr(AToks, OpenIdx + 1, CloseIdx - 1);
+    DimsText := RangeText(AToks, OpenIdx, CloseIdx);
+  end;
+  Kind := 'F';
+  RqType := SuffixType(SuffixOf(NameUp));
+  StarLen := '';
+  TplUp := '';
+  TplFb := '';
+  TypeIdx := CloseIdx;
+  AsIdx := NextSig(AToks, CloseIdx + 1, ATo);
+  if IsWord(AToks, AsIdx, 'AS') then
+  begin
+    TypeIdx := NextSig(AToks, AsIdx + 1, ATo);
+    if IsWord(AToks, TypeIdx, 'EVENT') then
+    begin
+      // Событие компонента: указатель на процедуру; тип - по шаблону
+      // (DECLARE SUB Шаблон ...), для CALLFUNC
+      Kind := 'E';
+      TplIdx := NextSig(AToks, TypeIdx + 1, ATo);
+      if IsOp(AToks, TplIdx, '(') then
+      begin
+        TplClose := MatchParen(AToks, TplIdx, ATo);
+        TplIdx := NextSig(AToks, TplIdx + 1, ATo);
+        if (TplIdx >= 0) and (AToks[TplIdx].Kind = tkIdent) and
+           ((TplClose < 0) or (TplIdx < TplClose)) then
+          TplUp := AToks[TplIdx].Up;
+      end;
+      RqType := TplUp;
+    end
+    else if TypeIdx >= 0 then
+      RqType := ParseType(AToks, TypeIdx, ATo, StarLen);
+  end;
+  PropIdx := NextSig(AToks, TypeIdx + 1, ATo);
+  SetterIdx := -1;
+  if (Kind = 'F') and IsWord(AToks, PropIdx, 'PROPERTY') and
+     IsWord(AToks, NextSig(AToks, PropIdx + 1, ATo), 'SET') then
+  begin
+    SetterIdx := NextSig(AToks, NextSig(AToks, PropIdx + 1, ATo) + 1, ATo);
+    if (SetterIdx < 0) or (AToks[SetterIdx].Kind <> tkIdent) then
+      SetterIdx := -1
+    else if IsObjectType(RqType) or (DimsText <> '') then
+    begin
+      Warn(Display + ' PROPERTY SET: у поля-объекта или массива не ' +
+           'поддержано - обычное поле');
+      SetterIdx := -1;
+    end
+    else
+      Kind := 'P';
+  end;
+  if (FPass = 1) and (FCurType.Kind(NameUp) = #0) then
+  begin
+    FbTypeText := FbType(RqType);
+    if StarLen <> '' then
+      FbTypeText := FbTypeText + ' * ' + StarLen;
+    FCurType.Members.Add(NameUp + '=' + Kind);
+    FCurType.MemberFb.Add(NameUp + '=' + FbName);
+    FCurType.MemberType.Add(NameUp + '=' + RqType);
+    if FbName <> Display then
+      FMemberMap.Values[NameUp] := FbName;
+    case Kind of
+      'E':
+        begin
+          FCurType.Decls.Add(FbName + ' As Any Ptr');
+          TplProc := FindProc(TplUp);
+          if TplProc <> nil then
+          begin
+            TplFb := 'RqTpl_' + TplProc.FbName;
+            if FCurType.Before.IndexOf('Type ' + TplFb) < 0 then
+            begin
+              if TplProc.IsFunc then
+                FCurType.Before.Add('Type ' + TplFb + ' As Function(' +
+                  TplProc.DeclParams + ') As ' + FbType(TplProc.RetType))
+              else
+                FCurType.Before.Add('Type ' + TplFb + ' As Sub(' +
+                  TplProc.DeclParams + ')');
+            end;
+          end;
+        end;
+      'P':
+        begin
+          if RqType = 'STRING' then
+            ByText := 'ByRef'
+          else
+            ByText := 'ByVal';
+          FCurType.Decls.Add('RqVal_' + FbName + ' As ' + FbTypeText);
+          FCurType.Decls.Add('Declare Property ' + FbName + '() As ' + FbTypeText);
+          FCurType.Decls.Add('Declare Property ' + FbName + '(' + ByText +
+                             ' RqValue As ' + FbTypeText + ')');
+          FCurType.After.Add('Property ' + FCurType.Display + '.' + FbName +
+            '() As ' + FbTypeText + ' : Return This.RqVal_' + FbName +
+            ' : End Property');
+          FCurType.After.Add('Property ' + FCurType.Display + '.' + FbName + '(' +
+            ByText + ' RqValue As ' + FbTypeText + ') : This.' +
+            MemberFbName(AToks[SetterIdx].Text) + '(RqValue) : End Property');
+        end;
+    else
+      FCurType.Decls.Add(FbName + DimsText + ' As ' + FbTypeText);
+    end;
+  end;
+  Rebuild(AToks, AFirst, ATo, '');
+end;
+
+// Переходник события: процедура модуля, которую вызывает событие (с
+// Sender), - вызывает метод своего компонента. Строится в END TYPE
+// первого прохода (метод может быть объявлен ниже присваивания).
+procedure TRqFbConv.AddThunk(const AName, ACompFb, AClassUp, AEventDisplay,
+                             AMethUp: string);
+begin
+  if FCurType.Thunks.IndexOfName(AName) >= 0 then
+    Exit;
+  FCurType.Thunks.Add(AName + '=' + ACompFb + '|' + AClassUp + '|' +
+                      AEventDisplay + '|' + AMethUp);
+end;
+
+// END TYPE: переходники событий (и конструктор, если его нет, а события
+// подключать надо), затем #line
+procedure TRqFbConv.TypeEnd(var AToks: TToks; AFirst, ATo: Integer);
+var
+  ThunkIdx, ArgIdx, ArgCount, LineIdx, SepPos: Integer;
+  Rest, ThunkName, CompFb, ClassUp, EventDisplay, MethUp, MethFb, Params,
+    Args, SelfText, Block: string;
+begin
+  if FPass = 1 then
+  begin
+    for ThunkIdx := 0 to FCurType.Thunks.Count - 1 do
+    begin
+      ThunkName := FCurType.Thunks.Names[ThunkIdx];
+      Rest := FCurType.Thunks.ValueFromIndex[ThunkIdx] + '|';
+      SepPos := Pos('|', Rest);
+      CompFb := Copy(Rest, 1, SepPos - 1);
+      System.Delete(Rest, 1, SepPos);
+      SepPos := Pos('|', Rest);
+      ClassUp := Copy(Rest, 1, SepPos - 1);
+      System.Delete(Rest, 1, SepPos);
+      SepPos := Pos('|', Rest);
+      EventDisplay := Copy(Rest, 1, SepPos - 1);
+      System.Delete(Rest, 1, SepPos);
+      SepPos := Pos('|', Rest);
+      MethUp := Copy(Rest, 1, SepPos - 1);
+      Params := SigParams(EventSigFor(ClassUp, UpperCase(EventDisplay)), nil,
+                          '', ArgCount);
+      if Params <> '' then
+        Params := Params + ', ';
+      if ClassUp = '' then
+        ClassUp := 'QCONTROL';
+      Params := Params + 'ByRef Sender As ' + ClassUp;
+      Args := '';
+      if (ArgCount > 0) and
+         (FCurType.ParamCounts.Values[MethUp] = IntToStr(ArgCount)) then
+        for ArgIdx := 1 to ArgCount do
+        begin
+          if Args <> '' then
+            Args := Args + ', ';
+          Args := Args + 'RqArg' + IntToStr(ArgIdx);
+        end;
+      MethFb := FCurType.MemberFb.Values[MethUp];
+      if MethFb = '' then
+        MethFb := MethUp;
+      if CompFb = '' then
+        SelfText := 'Cast(' + FCurType.Display + ' Ptr, Cast(Any Ptr, @Sender))'
+      else
+        SelfText := 'Cast(' + FCurType.Display + ' Ptr, Cast(Any Ptr, ' +
+          'Cast(UByte Ptr, Cast(Any Ptr, @Sender)) - OffsetOf(' +
+          FCurType.Display + ', ' + CompFb + ')))';
+      FCurType.After.Add('Declare Sub ' + ThunkName + '(' + Params + ')');
+      FCurType.Tail.Add('Sub ' + ThunkName + '(' + Params + ') : ' + SelfText +
+                        '->' + MethFb + '(' + Args + ') : End Sub');
+    end;
+    if not FCurType.HasCtor and (FCurType.Regs <> '') then
+      FCurType.Tail.Insert(0, 'Constructor ' + FCurType.Display + '()' +
+                           FCurType.Regs + ' : End Constructor');
+  end
+  else
+  begin
+    Block := '';
+    for LineIdx := 0 to FCurType.Tail.Count - 1 do
+      Block := Block + FCurType.Tail[LineIdx] + CrLf;
+    if Block <> '' then
+      Block := Block + '#line ' + IntToStr(FCurLine + FLineBreaks) + ' "' +
+               FCurFile + '"';
+    ClearRange(AToks, AFirst, High(AToks));
+    FLostLines := 0;
+    AToks[AFirst].OutText := Block;
+  end;
+  FCurType := nil;
+  FCurProc := nil;
+  FCurMethodUp := '';
+  FTypeBody := 0;
+  FTypeWith := '';
+end;
+
+// Присваивание внутри метода (после RewriteTypeText члены - This.x):
+//   This.Установщик = x (PROPERTY SET) -> This.Установщик(x);
+//   This.Функция = x в самой FUNCTION -> Function = x;
+//   This.OnXxx = This.Метод, This.Поле.OnXxx = This.Метод -> @переходник
+function TRqFbConv.TypeAssign(var AToks: TToks; AFirst, AEq, ATo: Integer): Boolean;
+var
+  SigIdx: array[0..4] of Integer;
+  SigCount, TokIdx, RhsFirst, RhsLast, RhsDot, MethIdx: Integer;
+  MemberUp, CompUp, CompFb, ClassUp, EventDisplay, MethUp, ThunkName: string;
+  Kind: Char;
+begin
+  Result := False;
+  SigCount := 0;
+  for TokIdx := AFirst to AEq - 1 do
+    if AToks[TokIdx].Kind <> tkSpace then
+    begin
+      if SigCount > 4 then
+        Exit;
+      SigIdx[SigCount] := TokIdx;
+      Inc(SigCount);
+    end;
+  if (SigCount <> 3) and (SigCount <> 5) then
+    Exit;
+  if not IsWord(AToks, SigIdx[0], 'THIS') or not IsOp(AToks, SigIdx[1], '.') or
+     (AToks[SigIdx[2]].Kind <> tkIdent) then
+    Exit;
+  if (SigCount = 5) and (not IsOp(AToks, SigIdx[3], '.') or
+                         (AToks[SigIdx[4]].Kind <> tkIdent)) then
+    Exit;
+  RhsFirst := NextSig(AToks, AEq + 1, ATo);
+  RhsLast := PrevSig(AToks, ATo);
+  if (RhsFirst < 0) or (RhsLast < RhsFirst) then
+    Exit;
+  MemberUp := AToks[SigIdx[SigCount - 1]].Up;
+  if SigCount = 3 then
+  begin
+    Kind := FCurType.Kind(MemberUp);
+    if Kind = 'S' then
+    begin
+      ProcessExpr(AToks, AFirst, ATo);
+      AToks[AEq].OutText := '(';
+      AToks[RhsLast].Post := AToks[RhsLast].Post + ')';
+      Result := True;
+      Exit;
+    end;
+    if (MemberUp = FCurMethodUp) and (FCurProc <> nil) and FCurProc.IsFunc then
+    begin
+      ClearRange(AToks, AFirst, AEq - 1);
+      AToks[AFirst].OutText := 'Function ';
+      ProcessExpr(AToks, RhsFirst, ATo);
+      Result := True;
+      Exit;
+    end;
+  end;
+  // OnXxx = This.Метод
+  if Copy(MemberUp, 1, 2) <> 'ON' then
+    Exit;
+  RhsDot := NextSig(AToks, RhsFirst + 1, ATo);
+  MethIdx := NextSig(AToks, RhsDot + 1, ATo);
+  if not IsWord(AToks, RhsFirst, 'THIS') or not IsOp(AToks, RhsDot, '.') or
+     (MethIdx <> RhsLast) or (AToks[MethIdx].Kind <> tkIdent) then
+    Exit;
+  MethUp := AToks[MethIdx].Up;
+  if FCurType.Kind(MethUp) in ['F', 'P', 'E'] then
+    Exit;
+  EventDisplay := AToks[SigIdx[SigCount - 1]].Text;
+  if SigCount = 5 then
+  begin
+    CompUp := AToks[SigIdx[2]].Up;
+    if FCurType.Kind(CompUp) <> 'F' then
+      Exit;
+    CompFb := FCurType.MemberFb.Values[CompUp];
+    ClassUp := FCurType.MemberType.Values[CompUp];
+    ThunkName := FCurType.Display + '__RqTh_' + CompFb + '_' + EventDisplay + '_' +
+                 MemberFbName(AToks[MethIdx].Text);
+  end
+  else
+  begin
+    CompFb := '';
+    ClassUp := FCurType.BaseClass;
+    ThunkName := FCurType.Display + '__RqTh_' + EventDisplay + '_' +
+                 MemberFbName(AToks[MethIdx].Text);
+  end;
+  if FPass = 1 then
+    AddThunk(ThunkName, CompFb, ClassUp, EventDisplay, MethUp);
+  ProcessExpr(AToks, AFirst, AEq - 1);
+  Rebuild(AToks, RhsFirst, RhsLast, '@' + ThunkName);
+  Result := True;
+end;
+
+// CALLFUNC(This.Событие, параметры) / CALLFUNC This.Событие - вызов
+// события компонента (поле AS EVENT(Шаблон)) по типу шаблона
+procedure TRqFbConv.TypeCallFunc(var AToks: TToks; AFirst, ATo: Integer);
+var
+  ArgsFrom, ArgsTo, OpenIdx, CloseIdx, TokIdx, Depth, CommaIdx, DotIdx,
+    FieldIdx: Integer;
+  FieldUp, TplUp, ArgsText: string;
+  TplProc: TRqProc;
+begin
+  OpenIdx := NextSig(AToks, AFirst + 1, ATo);
+  ArgsFrom := OpenIdx;
+  ArgsTo := ATo;
+  if IsOp(AToks, OpenIdx, '(') then
+  begin
+    CloseIdx := MatchParen(AToks, OpenIdx, ATo);
+    if (CloseIdx > 0) and (NextSig(AToks, CloseIdx + 1, ATo) < 0) then
+    begin
+      ArgsFrom := OpenIdx + 1;
+      ArgsTo := CloseIdx - 1;
+    end;
+  end;
+  // первый параметр - This.Поле
+  CommaIdx := ArgsTo + 1;
+  Depth := 0;
+  for TokIdx := ArgsFrom to ArgsTo do
+  begin
+    if IsOp(AToks, TokIdx, '(') then
+      Inc(Depth)
+    else if IsOp(AToks, TokIdx, ')') then
+      Dec(Depth)
+    else if (Depth = 0) and IsOp(AToks, TokIdx, ',') then
+    begin
+      CommaIdx := TokIdx;
+      Break;
+    end;
+  end;
+  FieldUp := '';
+  DotIdx := NextSig(AToks, NextSig(AToks, ArgsFrom, ArgsTo) + 1, ArgsTo);
+  FieldIdx := NextSig(AToks, DotIdx + 1, ArgsTo);
+  if IsWord(AToks, NextSig(AToks, ArgsFrom, ArgsTo), 'THIS') and
+     IsOp(AToks, DotIdx, '.') and (FieldIdx >= 0) and
+     (NextSig(AToks, FieldIdx + 1, CommaIdx - 1) < 0) then
+    FieldUp := AToks[FieldIdx].Up;
+  TplProc := nil;
+  if (FieldUp <> '') and (FCurType.Kind(FieldUp) = 'E') then
+  begin
+    TplUp := FCurType.MemberType.Values[FieldUp];
+    TplProc := FindProc(TplUp);
+  end;
+  if TplProc = nil then
+  begin
+    Warn('CALLFUNC: поддержан только вызов события компонента ' +
+         '(поле AS EVENT(Шаблон) с DECLARE шаблона)');
+    ProcessExpr(AToks, AFirst + 1, ATo);
+    Exit;
+  end;
+  ArgsText := '';
+  if CommaIdx < ArgsTo then
+  begin
+    ProcessExpr(AToks, CommaIdx + 1, ArgsTo);
+    ArgsText := RangeText(AToks, CommaIdx + 1, ArgsTo);
+  end;
+  Rebuild(AToks, AFirst, ATo, 'Cast(RqTpl_' + TplProc.FbName + ', This.' +
+          FCurType.MemberFb.Values[FieldUp] + ')(' + ArgsText + ')');
 end;
 
 // ---------------------------------------------------------------------------
@@ -3353,6 +4849,14 @@ begin
       OutLines.Add(OutText);
       Inc(LineIdx);
     end;
+    // TYPE ... EXTENDS без END TYPE
+    if FCurType <> nil then
+    begin
+      if FPass = 2 then
+        Error('TYPE ' + FCurType.Display + ' без END TYPE');
+      FCurType := nil;
+      FCurProc := nil;
+    end;
     // CREATE без END CREATE в этом файле
     if FCreateStack.Count > CreateBase then
     begin
@@ -3401,7 +4905,10 @@ begin
     SetLength(FConds, 0);
     FCurProc := nil;
     FInType := False;
-    FTypeExtends := False;
+    FCurType := nil;
+    FTypeBody := 0;
+    FTypeWith := '';
+    FCurMethodUp := '';
     FCreateDepth := 0;
     FTypeCheck := False;
     FEscape := False;

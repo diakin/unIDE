@@ -461,6 +461,12 @@ Type QRECT
     Bottom As Long
 End Type
 
+' QOBJECT - пустой объект RapidQ: основа своих невидимых компонентов
+' (TYPE Имя EXTENDS QOBJECT, глава 10.6 документации RapidQ)
+Type QOBJECT
+    RqReserved As Long
+End Type
+
 ' ---------------------------------------------------------------------------
 '  QCONTROL - общее у всех элементов: положение, размер, видимость, Parent
 ' ---------------------------------------------------------------------------
@@ -962,6 +968,11 @@ Type QBUTTON Extends QCONTROL
     Declare Property OnClick(ByVal Handler As Sub(ByRef Sender As QBUTTON))
     Declare Property OnClick(ByVal Handler As Sub())
     Declare Sub Click()
+    ' Кнопка по Enter / по Esc на форме
+    Declare Property Default() As Long
+    Declare Property Default(ByVal Value As Long)
+    Declare Property Cancel() As Long
+    Declare Property Cancel(ByVal Value As Long)
     Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
     Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QBUTTON))
     Declare Property OnKeyDown(ByVal Handler As Sub())
@@ -997,6 +1008,19 @@ End Sub
 Constructor QBUTTON()
     RqObj = RqLclNew("QBUTTON", @This)
 End Constructor
+
+Property QBUTTON.Default() As Long
+    Return RqGetInt(RqObj, "Default")
+End Property
+Property QBUTTON.Default(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Default", Value)
+End Property
+Property QBUTTON.Cancel() As Long
+    Return RqGetInt(RqObj, "Cancel")
+End Property
+Property QBUTTON.Cancel(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Cancel", Value)
+End Property
 
 ' События с параметрами QBUTTON: обработчик с параметрами, с ними и Sender
 ' последним, только с Sender или без параметров
