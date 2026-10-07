@@ -2446,6 +2446,16 @@ begin
     AToks[AIdx].OutText := 'Base';
     Exit;
   end;
+  // TRUE / FALSE RapidQ - 1 / 0 (у FreeBASIC True в целом -1); своя
+  // переменная или константа с таким именем не заменяется
+  if ((Up = 'TRUE') or (Up = 'FALSE')) and (FindVar(Up) = nil) then
+  begin
+    if Up = 'TRUE' then
+      AToks[AIdx].OutText := '1'
+    else
+      AToks[AIdx].OutText := '0';
+    Exit;
+  end;
 
   // ParamStrCount, ParamValCount, ParamStr$(i), ParamVal(i) в SUBI /
   // FUNCTIONI - из списка параметров RqParams
