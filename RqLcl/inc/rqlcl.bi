@@ -98,6 +98,8 @@ Type RqSetEventExFn As Function stdcall (ByVal ObjPtr As Any Ptr, _
 Type RqCallIntsFn As Function stdcall (ByVal ObjPtr As Any Ptr, _
     ByVal MethodName As ZString Ptr, ByVal StrArg As ZString Ptr, _
     ByVal IntList As Long Ptr, ByVal IntCount As Long) As Long
+Type RqCallObjFn As Function stdcall (ByVal ObjPtr As Any Ptr, _
+    ByVal MethodName As ZString Ptr, ByVal OtherPtr As Any Ptr, ByVal IntArg As Long) As Long
 Type RqDoEventsFn As Sub stdcall ()
 Type RqLastErrorFn As Function stdcall (ByVal Buffer As ZString Ptr, _
     ByVal BufferLen As Long) As Long
@@ -127,6 +129,7 @@ Dim Shared RqSetItemInt As RqSetItemIntFn
 Dim Shared RqCallEx As RqCallExFn
 Dim Shared RqSetEventEx As RqSetEventExFn
 Dim Shared RqCallInts As RqCallIntsFn
+Dim Shared RqCallObj As RqCallObjFn
 Dim Shared RqDoEventsProc As RqDoEventsFn
 Dim Shared RqLastError As RqLastErrorFn
 
@@ -179,6 +182,7 @@ Sub RqLclEnsure()
     RqCallEx = Cast(RqCallExFn, DyLibSymbol(RqLclLib, "RqCallEx"))
     RqSetEventEx = Cast(RqSetEventExFn, DyLibSymbol(RqLclLib, "RqSetEventEx"))
     RqCallInts = Cast(RqCallIntsFn, DyLibSymbol(RqLclLib, "RqCallInts"))
+    RqCallObj = Cast(RqCallObjFn, DyLibSymbol(RqLclLib, "RqCallObj"))
     RqDoEventsProc = Cast(RqDoEventsFn, DyLibSymbol(RqLclLib, "RqDoEvents"))
     RqLastError = Cast(RqLastErrorFn, DyLibSymbol(RqLclLib, "RqLastError"))
     If (RqInit = 0) Or (RqCreate = 0) Or (RqSetInt = 0) Or (RqGetInt = 0) _
@@ -189,7 +193,7 @@ Sub RqLclEnsure()
        Or (RqGetItemStr = 0) Or (RqSetItemStr = 0) Or (RqCallStr = 0) _
        Or (RqGetCell = 0) Or (RqSetCell = 0) Or (RqGetItemInt = 0) _
        Or (RqSetItemInt = 0) Or (RqCallEx = 0) Or (RqSetEventEx = 0) _
-       Or (RqCallInts = 0) Then
+       Or (RqCallInts = 0) Or (RqCallObj = 0) Then
         RqLclMessageBox(0, "В " & RQLCL_DLL & " нет нужных функций " & _
             "(другая версия DLL?)", "RqLcl", &h10)
         End 1
@@ -309,6 +313,16 @@ Type QFONT
     Declare Property Handle() As Integer
     Declare Property Handle(ByVal Value As Integer)
     Declare Property FontCount() As Long
+    Declare Property Bold() As Long
+    Declare Property Bold(ByVal Value As Long)
+    Declare Property Italic() As Long
+    Declare Property Italic(ByVal Value As Long)
+    Declare Property Underline() As Long
+    Declare Property Underline(ByVal Value As Long)
+    Declare Property StrikeOut() As Long
+    Declare Property StrikeOut(ByVal Value As Long)
+    Declare Function HasStyle(ByVal StyleNum As Long) As Long
+    Declare Sub SetStyle(ByVal StyleNum As Long, ByVal Value As Long)
     Declare Property FontName(ByVal ItemIndex As Long) As String
     Declare Sub AddStyles(ByVal Style1 As Long, ByVal Style2 As Long = -1, _
         ByVal Style3 As Long = -1, ByVal Style4 As Long = -1)
@@ -369,6 +383,43 @@ End Property
 Property QFONT.Handle(ByVal Value As Integer)
     If RqCallInt(RqObj, "SetHandle", Value) = 0 Then RqLclShowError("Handle")
 End Property
+' Стиль по номеру (fsBold 0 ... fsStrikeOut 3): 1 - есть
+Function QFONT.HasStyle(ByVal StyleNum As Long) As Long
+    Return IIf((RqGetInt(RqObj, "Style") Shr StyleNum) And 1, 1, 0)
+End Function
+Sub QFONT.SetStyle(ByVal StyleNum As Long, ByVal Value As Long)
+    If Value Then
+        If RqCallInt(RqObj, "AddStyle", StyleNum) = 0 Then RqLclShowError("QFONT style")
+    Else
+        If RqCallInt(RqObj, "DelStyle", StyleNum) = 0 Then RqLclShowError("QFONT style")
+    End If
+End Sub
+' Font.Bold = 1 и т.п. - как AddStyles / DelStyles (в программах RapidQ
+' встречается, в документации QFONT не описано)
+Property QFONT.Bold() As Long
+    Return HasStyle(0)
+End Property
+Property QFONT.Bold(ByVal Value As Long)
+    SetStyle(0, Value)
+End Property
+Property QFONT.Italic() As Long
+    Return HasStyle(1)
+End Property
+Property QFONT.Italic(ByVal Value As Long)
+    SetStyle(1, Value)
+End Property
+Property QFONT.Underline() As Long
+    Return HasStyle(2)
+End Property
+Property QFONT.Underline(ByVal Value As Long)
+    SetStyle(2, Value)
+End Property
+Property QFONT.StrikeOut() As Long
+    Return HasStyle(3)
+End Property
+Property QFONT.StrikeOut(ByVal Value As Long)
+    SetStyle(3, Value)
+End Property
 ' Число шрифтов в системе
 Property QFONT.FontCount() As Long
     RqLclEnsure()
@@ -420,8 +471,8 @@ Type QCONTROL
     ' События с параметрами: обработчик и его вид по номеру события
     ' (RqEv...): 0 - Sub(), 1 - с параметрами, 2 - с параметрами и Sender,
     ' 3 - только Sender
-    EventProcs(0 To 8) As Any Ptr
-    EventKinds(0 To 8) As Long
+    EventProcs(0 To 31) As Any Ptr
+    EventKinds(0 To 31) As Long
     Declare Sub SetEventEx(ByVal EventId As Long, ByRef EventName As String, _
         ByVal Handler As Any Ptr, ByVal HandlerKind As Long)
     Declare Property Left() As Long
@@ -443,6 +494,13 @@ Type QCONTROL
     Declare Property ShowHint() As Long
     Declare Property ShowHint(ByVal Value As Long)
     Declare Property Parent(ByRef Value As QCONTROL)
+    Declare Property Cursor() As Long
+    Declare Property Cursor(ByVal Value As Long)
+    Declare Property PopupMenu(ByRef Value As QCONTROL)
+    Declare Property ClientWidth() As Long
+    Declare Property ClientWidth(ByVal Value As Long)
+    Declare Property ClientHeight() As Long
+    Declare Property ClientHeight(ByVal Value As Long)
     Declare Function Font() ByRef As QFONT
     Declare Property Handle() As Integer
     Declare Sub Show()
@@ -508,6 +566,29 @@ End Property
 Property QCONTROL.Parent(ByRef Value As QCONTROL)
     If RqSetObj(RqObj, "Parent", Value.RqObj) = 0 Then RqLclShowError("Parent")
 End Property
+' Всплывающее меню элемента (QPOPUPMENU)
+Property QCONTROL.PopupMenu(ByRef Value As QCONTROL)
+    If RqSetObj(RqObj, "PopupMenu", Value.RqObj) = 0 Then RqLclShowError("PopupMenu")
+End Property
+Property QCONTROL.Cursor() As Long
+    Return RqGetInt(RqObj, "Cursor")
+End Property
+Property QCONTROL.Cursor(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Cursor", Value)
+End Property
+Property QCONTROL.ClientWidth() As Long
+    Return RqGetInt(RqObj, "ClientWidth")
+End Property
+Property QCONTROL.ClientWidth(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ClientWidth", Value)
+End Property
+Property QCONTROL.ClientHeight() As Long
+    Return RqGetInt(RqObj, "ClientHeight")
+End Property
+Property QCONTROL.ClientHeight(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ClientHeight", Value)
+End Property
+
 ' Шрифт элемента; Label.Font = Font копирует значения (QFONT.Let)
 Function QCONTROL.Font() ByRef As QFONT
     FontWrap.RqObj = RqGetObj(RqObj, "Font")
@@ -541,6 +622,13 @@ Const RqEvMouseMove = 5
 Const RqEvSelectCell = 6
 Const RqEvDrawCell = 7
 Const RqEvSetEditText = 8
+Const RqEvDrawItem = 9
+' События без параметров через тот же механизм (новые классы)
+Const RqEvClick = 10
+Const RqEvDblClick = 11
+Const RqEvChange = 12
+Const RqEvPopup = 13
+Const RqEvMoved = 14
 
 ' Виды обработчиков для вызова (Sender - как QCONTROL: у элемента любого
 ' класса QCONTROL лежит в начале)
@@ -562,6 +650,8 @@ Type RqEvProcDrawCell As Sub(ByVal As Long, ByVal As Long, ByVal As Long, ByRef 
 Type RqEvProcDrawCellS As Sub(ByVal As Long, ByVal As Long, ByVal As Long, ByRef As QRECT, ByRef As QCONTROL)
 Type RqEvProcSetEditText As Sub(ByVal As Long, ByVal As Long, ByVal As String)
 Type RqEvProcSetEditTextS As Sub(ByVal As Long, ByVal As Long, ByVal As String, ByRef As QCONTROL)
+Type RqEvProcDrawItem As Sub(ByVal As Long, ByVal As Long, ByRef As QRECT)
+Type RqEvProcDrawItemS As Sub(ByVal As Long, ByVal As Long, ByRef As QRECT, ByRef As QCONTROL)
 Type RqEvProcPlain As Sub()
 Type RqEvProcSender As Sub(ByRef As QCONTROL)
 
@@ -569,7 +659,7 @@ Type RqEvProcSender As Sub(ByRef As QCONTROL)
 Private Sub RqLclEventEx stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any Ptr, _
         ByVal EventId As Long, ByVal Args As RqEventArgs Ptr)
     Dim CtlPtr As QCONTROL Ptr = UserPtr
-    If (EventId < 0) OrElse (EventId > 8) Then Exit Sub
+    If (EventId < 0) OrElse (EventId > 31) Then Exit Sub
     Dim HandlerPtr As Any Ptr = CtlPtr->EventProcs(EventId)
     Dim HandlerKind As Long = CtlPtr->EventKinds(EventId)
     If HandlerPtr = 0 Then Exit Sub
@@ -641,6 +731,15 @@ Private Sub RqLclEventEx stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any 
             Cast(RqEvProcSetEditText, HandlerPtr)(ArgList[0], ArgList[1], EditText)
         Else
             Cast(RqEvProcSetEditTextS, HandlerPtr)(ArgList[0], ArgList[1], EditText, *CtlPtr)
+        End If
+    Case RqEvDrawItem
+        Dim ItemRect As QRECT
+        ItemRect.Left = ArgList[2] : ItemRect.Top = ArgList[3]
+        ItemRect.Right = ArgList[4] : ItemRect.Bottom = ArgList[5]
+        If HandlerKind = 1 Then
+            Cast(RqEvProcDrawItem, HandlerPtr)(ArgList[0], ArgList[1], ItemRect)
+        Else
+            Cast(RqEvProcDrawItemS, HandlerPtr)(ArgList[0], ArgList[1], ItemRect, *CtlPtr)
         End If
     End Select
 End Sub
@@ -2387,3 +2486,1445 @@ End Sub
 Sub QDIRTREE.Reload()
     CallInt1("Reload", 0)
 End Sub
+
+' ---------------------------------------------------------------------------
+'  QMENUITEM - пункт меню (TMenuItem); Caption = "-" - разделитель
+' ---------------------------------------------------------------------------
+
+Type QMENUITEM Extends QCONTROL
+    Declare Constructor()
+    Declare Property Caption() As String
+    Declare Property Caption(ByRef Value As String)
+    Declare Property Checked() As Long
+    Declare Property Checked(ByVal Value As Long)
+    Declare Property RadioItem() As Long
+    Declare Property RadioItem(ByVal Value As Long)
+    Declare Property ShortCut() As String
+    Declare Property ShortCut(ByRef Value As String)
+    Declare Property MenuIndex() As Long
+    Declare Property MenuIndex(ByVal Value As Long)
+    Declare Property Count() As Long
+    Declare Property Command() As Long
+    Declare Property Tag() As Long
+    Declare Property Tag(ByVal Value As Long)
+    Declare Sub AddItems Overload (ByRef Item1 As QMENUITEM)
+    Declare Sub AddItems Overload (ByRef Item1 As QMENUITEM, ByRef Item2 As QMENUITEM)
+    Declare Sub AddItems Overload (ByRef Item1 As QMENUITEM, ByRef Item2 As QMENUITEM, ByRef Item3 As QMENUITEM)
+    Declare Sub AddItems Overload (ByRef Item1 As QMENUITEM, ByRef Item2 As QMENUITEM, ByRef Item3 As QMENUITEM, ByRef Item4 As QMENUITEM)
+    Declare Sub DelItems Overload (ByRef Item1 As QMENUITEM)
+    Declare Sub DelItems Overload (ByRef Item1 As QMENUITEM, ByRef Item2 As QMENUITEM)
+    Declare Sub DelIndex(ByVal ItemNum As Long)
+    Declare Sub Insert(ByVal ItemNum As Long, ByRef Item1 As QMENUITEM)
+    Declare Sub MenuCall(ByRef MethodName As String, ByRef Item1 As QMENUITEM, ByVal IntArg As Long = 0)
+    Declare Property OnClick(ByVal Handler As Sub())
+    Declare Property OnClick(ByVal Handler As Sub(ByRef Sender As QMENUITEM))
+End Type
+
+Constructor QMENUITEM()
+    RqObj = RqLclNew("QMENUITEM", @This)
+End Constructor
+Property QMENUITEM.Caption() As String
+    Return RqLclGetStr(RqObj, "Caption")
+End Property
+Property QMENUITEM.Caption(ByRef Value As String)
+    RqLclSetStr(RqObj, "Caption", Value)
+End Property
+Property QMENUITEM.Checked() As Long
+    Return RqGetInt(RqObj, "Checked")
+End Property
+Property QMENUITEM.Checked(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Checked", Value)
+End Property
+Property QMENUITEM.RadioItem() As Long
+    Return RqGetInt(RqObj, "RadioItem")
+End Property
+Property QMENUITEM.RadioItem(ByVal Value As Long)
+    RqLclSetInt(RqObj, "RadioItem", Value)
+End Property
+Property QMENUITEM.ShortCut() As String
+    Return RqLclGetStr(RqObj, "ShortCut")
+End Property
+Property QMENUITEM.ShortCut(ByRef Value As String)
+    RqLclSetStr(RqObj, "ShortCut", Value)
+End Property
+Property QMENUITEM.MenuIndex() As Long
+    Return RqGetInt(RqObj, "MenuIndex")
+End Property
+Property QMENUITEM.MenuIndex(ByVal Value As Long)
+    RqLclSetInt(RqObj, "MenuIndex", Value)
+End Property
+Property QMENUITEM.Count() As Long
+    Return RqGetInt(RqObj, "Count")
+End Property
+Property QMENUITEM.Command() As Long
+    Return RqGetInt(RqObj, "Command")
+End Property
+Property QMENUITEM.Tag() As Long
+    Return RqGetInt(RqObj, "Tag")
+End Property
+Property QMENUITEM.Tag(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Tag", Value)
+End Property
+Sub QMENUITEM.MenuCall(ByRef MethodName As String, ByRef Item1 As QMENUITEM, ByVal IntArg As Long = 0)
+    If RqCallObj(RqObj, MethodName, Item1.RqObj, IntArg) = 0 Then RqLclShowError("QMENUITEM." & MethodName)
+End Sub
+' Пункты в меню, до четырёх за вызов (в RapidQ не ограничено)
+Sub QMENUITEM.AddItems(ByRef Item1 As QMENUITEM)
+    MenuCall("AddItems", Item1)
+End Sub
+Sub QMENUITEM.AddItems(ByRef Item1 As QMENUITEM, ByRef Item2 As QMENUITEM)
+    MenuCall("AddItems", Item1) : MenuCall("AddItems", Item2)
+End Sub
+Sub QMENUITEM.AddItems(ByRef Item1 As QMENUITEM, ByRef Item2 As QMENUITEM, ByRef Item3 As QMENUITEM)
+    MenuCall("AddItems", Item1) : MenuCall("AddItems", Item2) : MenuCall("AddItems", Item3)
+End Sub
+Sub QMENUITEM.AddItems(ByRef Item1 As QMENUITEM, ByRef Item2 As QMENUITEM, ByRef Item3 As QMENUITEM, ByRef Item4 As QMENUITEM)
+    MenuCall("AddItems", Item1) : MenuCall("AddItems", Item2) : MenuCall("AddItems", Item3)
+    MenuCall("AddItems", Item4)
+End Sub
+Sub QMENUITEM.DelItems(ByRef Item1 As QMENUITEM)
+    MenuCall("DelItems", Item1)
+End Sub
+Sub QMENUITEM.DelItems(ByRef Item1 As QMENUITEM, ByRef Item2 As QMENUITEM)
+    MenuCall("DelItems", Item1) : MenuCall("DelItems", Item2)
+End Sub
+Sub QMENUITEM.DelIndex(ByVal ItemNum As Long)
+    If RqCallEx(RqObj, "DelIndex", 0, ItemNum, 0, 0, 0, 0) = 0 Then RqLclShowError("QMENUITEM.DelIndex")
+End Sub
+Sub QMENUITEM.Insert(ByVal ItemNum As Long, ByRef Item1 As QMENUITEM)
+    MenuCall("Insert", Item1, ItemNum)
+End Sub
+Property QMENUITEM.OnClick(ByVal Handler As Sub())
+    SetEventEx(10, "OnClick", Cast(Any Ptr, Handler), 0)
+End Property
+Property QMENUITEM.OnClick(ByVal Handler As Sub(ByRef Sender As QMENUITEM))
+    SetEventEx(10, "OnClick", Cast(Any Ptr, Handler), 3)
+End Property
+
+' ---------------------------------------------------------------------------
+'  QMAINMENU - главное меню формы (TMainMenu LCL); MainMenu.Parent = Form
+' ---------------------------------------------------------------------------
+
+Type QMAINMENU Extends QCONTROL
+    Declare Constructor()
+    Declare Sub AddItems Overload (ByRef Item1 As QMENUITEM)
+    Declare Sub AddItems Overload (ByRef Item1 As QMENUITEM, ByRef Item2 As QMENUITEM)
+    Declare Sub AddItems Overload (ByRef Item1 As QMENUITEM, ByRef Item2 As QMENUITEM, ByRef Item3 As QMENUITEM)
+    Declare Sub AddItems Overload (ByRef Item1 As QMENUITEM, ByRef Item2 As QMENUITEM, ByRef Item3 As QMENUITEM, ByRef Item4 As QMENUITEM)
+    Declare Sub DelItems Overload (ByRef Item1 As QMENUITEM)
+    Declare Sub DelItems Overload (ByRef Item1 As QMENUITEM, ByRef Item2 As QMENUITEM)
+    Declare Sub DelIndex(ByVal ItemNum As Long)
+    Declare Sub Insert(ByVal ItemNum As Long, ByRef Item1 As QMENUITEM)
+    Declare Sub MenuCall(ByRef MethodName As String, ByRef Item1 As QMENUITEM, ByVal IntArg As Long = 0)
+End Type
+
+Constructor QMAINMENU()
+    RqObj = RqLclNew("QMAINMENU", @This)
+End Constructor
+Sub QMAINMENU.MenuCall(ByRef MethodName As String, ByRef Item1 As QMENUITEM, ByVal IntArg As Long = 0)
+    If RqCallObj(RqObj, MethodName, Item1.RqObj, IntArg) = 0 Then RqLclShowError("QMAINMENU." & MethodName)
+End Sub
+' Пункты в меню, до четырёх за вызов (в RapidQ не ограничено)
+Sub QMAINMENU.AddItems(ByRef Item1 As QMENUITEM)
+    MenuCall("AddItems", Item1)
+End Sub
+Sub QMAINMENU.AddItems(ByRef Item1 As QMENUITEM, ByRef Item2 As QMENUITEM)
+    MenuCall("AddItems", Item1) : MenuCall("AddItems", Item2)
+End Sub
+Sub QMAINMENU.AddItems(ByRef Item1 As QMENUITEM, ByRef Item2 As QMENUITEM, ByRef Item3 As QMENUITEM)
+    MenuCall("AddItems", Item1) : MenuCall("AddItems", Item2) : MenuCall("AddItems", Item3)
+End Sub
+Sub QMAINMENU.AddItems(ByRef Item1 As QMENUITEM, ByRef Item2 As QMENUITEM, ByRef Item3 As QMENUITEM, ByRef Item4 As QMENUITEM)
+    MenuCall("AddItems", Item1) : MenuCall("AddItems", Item2) : MenuCall("AddItems", Item3)
+    MenuCall("AddItems", Item4)
+End Sub
+Sub QMAINMENU.DelItems(ByRef Item1 As QMENUITEM)
+    MenuCall("DelItems", Item1)
+End Sub
+Sub QMAINMENU.DelItems(ByRef Item1 As QMENUITEM, ByRef Item2 As QMENUITEM)
+    MenuCall("DelItems", Item1) : MenuCall("DelItems", Item2)
+End Sub
+Sub QMAINMENU.DelIndex(ByVal ItemNum As Long)
+    If RqCallEx(RqObj, "DelIndex", 0, ItemNum, 0, 0, 0, 0) = 0 Then RqLclShowError("QMAINMENU.DelIndex")
+End Sub
+Sub QMAINMENU.Insert(ByVal ItemNum As Long, ByRef Item1 As QMENUITEM)
+    MenuCall("Insert", Item1, ItemNum)
+End Sub
+
+' ---------------------------------------------------------------------------
+'  QPOPUPMENU - всплывающее меню (TPopupMenu); Control.PopupMenu = Menu или Menu.Popup(x, y)
+' ---------------------------------------------------------------------------
+
+Type QPOPUPMENU Extends QCONTROL
+    Declare Constructor()
+    Declare Property Alignment() As Long
+    Declare Property Alignment(ByVal Value As Long)
+    Declare Property AutoPopup() As Long
+    Declare Property AutoPopup(ByVal Value As Long)
+    Declare Property Tag() As Long
+    Declare Property Tag(ByVal Value As Long)
+    Declare Sub AddItems Overload (ByRef Item1 As QMENUITEM)
+    Declare Sub AddItems Overload (ByRef Item1 As QMENUITEM, ByRef Item2 As QMENUITEM)
+    Declare Sub AddItems Overload (ByRef Item1 As QMENUITEM, ByRef Item2 As QMENUITEM, ByRef Item3 As QMENUITEM)
+    Declare Sub AddItems Overload (ByRef Item1 As QMENUITEM, ByRef Item2 As QMENUITEM, ByRef Item3 As QMENUITEM, ByRef Item4 As QMENUITEM)
+    Declare Sub DelItems Overload (ByRef Item1 As QMENUITEM)
+    Declare Sub DelItems Overload (ByRef Item1 As QMENUITEM, ByRef Item2 As QMENUITEM)
+    Declare Sub DelIndex(ByVal ItemNum As Long)
+    Declare Sub Insert(ByVal ItemNum As Long, ByRef Item1 As QMENUITEM)
+    Declare Sub MenuCall(ByRef MethodName As String, ByRef Item1 As QMENUITEM, ByVal IntArg As Long = 0)
+    Declare Sub Popup(ByVal X As Long, ByVal Y As Long)
+    Declare Property OnPopup(ByVal Handler As Sub())
+    Declare Property OnPopup(ByVal Handler As Sub(ByRef Sender As QPOPUPMENU))
+End Type
+
+Constructor QPOPUPMENU()
+    RqObj = RqLclNew("QPOPUPMENU", @This)
+End Constructor
+Property QPOPUPMENU.Alignment() As Long
+    Return RqGetInt(RqObj, "Alignment")
+End Property
+Property QPOPUPMENU.Alignment(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Alignment", Value)
+End Property
+Property QPOPUPMENU.AutoPopup() As Long
+    Return RqGetInt(RqObj, "AutoPopup")
+End Property
+Property QPOPUPMENU.AutoPopup(ByVal Value As Long)
+    RqLclSetInt(RqObj, "AutoPopup", Value)
+End Property
+Property QPOPUPMENU.Tag() As Long
+    Return RqGetInt(RqObj, "Tag")
+End Property
+Property QPOPUPMENU.Tag(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Tag", Value)
+End Property
+Sub QPOPUPMENU.MenuCall(ByRef MethodName As String, ByRef Item1 As QMENUITEM, ByVal IntArg As Long = 0)
+    If RqCallObj(RqObj, MethodName, Item1.RqObj, IntArg) = 0 Then RqLclShowError("QPOPUPMENU." & MethodName)
+End Sub
+' Пункты в меню, до четырёх за вызов (в RapidQ не ограничено)
+Sub QPOPUPMENU.AddItems(ByRef Item1 As QMENUITEM)
+    MenuCall("AddItems", Item1)
+End Sub
+Sub QPOPUPMENU.AddItems(ByRef Item1 As QMENUITEM, ByRef Item2 As QMENUITEM)
+    MenuCall("AddItems", Item1) : MenuCall("AddItems", Item2)
+End Sub
+Sub QPOPUPMENU.AddItems(ByRef Item1 As QMENUITEM, ByRef Item2 As QMENUITEM, ByRef Item3 As QMENUITEM)
+    MenuCall("AddItems", Item1) : MenuCall("AddItems", Item2) : MenuCall("AddItems", Item3)
+End Sub
+Sub QPOPUPMENU.AddItems(ByRef Item1 As QMENUITEM, ByRef Item2 As QMENUITEM, ByRef Item3 As QMENUITEM, ByRef Item4 As QMENUITEM)
+    MenuCall("AddItems", Item1) : MenuCall("AddItems", Item2) : MenuCall("AddItems", Item3)
+    MenuCall("AddItems", Item4)
+End Sub
+Sub QPOPUPMENU.DelItems(ByRef Item1 As QMENUITEM)
+    MenuCall("DelItems", Item1)
+End Sub
+Sub QPOPUPMENU.DelItems(ByRef Item1 As QMENUITEM, ByRef Item2 As QMENUITEM)
+    MenuCall("DelItems", Item1) : MenuCall("DelItems", Item2)
+End Sub
+Sub QPOPUPMENU.DelIndex(ByVal ItemNum As Long)
+    If RqCallEx(RqObj, "DelIndex", 0, ItemNum, 0, 0, 0, 0) = 0 Then RqLclShowError("QPOPUPMENU.DelIndex")
+End Sub
+Sub QPOPUPMENU.Insert(ByVal ItemNum As Long, ByRef Item1 As QMENUITEM)
+    MenuCall("Insert", Item1, ItemNum)
+End Sub
+' Показать меню в точке экрана (X, Y)
+Sub QPOPUPMENU.Popup(ByVal X As Long, ByVal Y As Long)
+    If RqCallEx(RqObj, "Popup", 0, X, Y, 0, 0, 0) = 0 Then RqLclShowError("QPOPUPMENU.Popup")
+End Sub
+Property QPOPUPMENU.OnPopup(ByVal Handler As Sub())
+    SetEventEx(13, "OnPopup", Cast(Any Ptr, Handler), 0)
+End Property
+Property QPOPUPMENU.OnPopup(ByVal Handler As Sub(ByRef Sender As QPOPUPMENU))
+    SetEventEx(13, "OnPopup", Cast(Any Ptr, Handler), 3)
+End Property
+
+' ---------------------------------------------------------------------------
+'  QPANEL - панель (TPanel)
+' ---------------------------------------------------------------------------
+
+Type QPANEL Extends QCONTROL
+    Declare Constructor()
+    Declare Property Caption() As String
+    Declare Property Caption(ByRef Value As String)
+    Declare Property Align() As Long
+    Declare Property Align(ByVal Value As Long)
+    Declare Property Alignment() As Long
+    Declare Property Alignment(ByVal Value As Long)
+    Declare Property BevelInner() As Long
+    Declare Property BevelInner(ByVal Value As Long)
+    Declare Property BevelOuter() As Long
+    Declare Property BevelOuter(ByVal Value As Long)
+    Declare Property BevelWidth() As Long
+    Declare Property BevelWidth(ByVal Value As Long)
+    Declare Property BorderStyle() As Long
+    Declare Property BorderStyle(ByVal Value As Long)
+    Declare Property TabOrder() As Long
+    Declare Property TabOrder(ByVal Value As Long)
+    Declare Property Tag() As Long
+    Declare Property Tag(ByVal Value As Long)
+    Declare Property OnClick(ByVal Handler As Sub())
+    Declare Property OnClick(ByVal Handler As Sub(ByRef Sender As QPANEL))
+    Declare Property OnDblClick(ByVal Handler As Sub())
+    Declare Property OnDblClick(ByVal Handler As Sub(ByRef Sender As QPANEL))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QPANEL))
+    Declare Property OnMouseDown(ByVal Handler As Sub())
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByRef Sender As QPANEL))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QPANEL))
+    Declare Property OnMouseUp(ByVal Handler As Sub())
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByRef Sender As QPANEL))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QPANEL))
+    Declare Property OnMouseMove(ByVal Handler As Sub())
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByRef Sender As QPANEL))
+End Type
+
+Constructor QPANEL()
+    RqObj = RqLclNew("QPANEL", @This)
+End Constructor
+Property QPANEL.Caption() As String
+    Return RqLclGetStr(RqObj, "Caption")
+End Property
+Property QPANEL.Caption(ByRef Value As String)
+    RqLclSetStr(RqObj, "Caption", Value)
+End Property
+Property QPANEL.Align() As Long
+    Return RqGetInt(RqObj, "Align")
+End Property
+Property QPANEL.Align(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Align", Value)
+End Property
+Property QPANEL.Alignment() As Long
+    Return RqGetInt(RqObj, "Alignment")
+End Property
+Property QPANEL.Alignment(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Alignment", Value)
+End Property
+Property QPANEL.BevelInner() As Long
+    Return RqGetInt(RqObj, "BevelInner")
+End Property
+Property QPANEL.BevelInner(ByVal Value As Long)
+    RqLclSetInt(RqObj, "BevelInner", Value)
+End Property
+Property QPANEL.BevelOuter() As Long
+    Return RqGetInt(RqObj, "BevelOuter")
+End Property
+Property QPANEL.BevelOuter(ByVal Value As Long)
+    RqLclSetInt(RqObj, "BevelOuter", Value)
+End Property
+Property QPANEL.BevelWidth() As Long
+    Return RqGetInt(RqObj, "BevelWidth")
+End Property
+Property QPANEL.BevelWidth(ByVal Value As Long)
+    RqLclSetInt(RqObj, "BevelWidth", Value)
+End Property
+Property QPANEL.BorderStyle() As Long
+    Return RqGetInt(RqObj, "BorderStyle")
+End Property
+Property QPANEL.BorderStyle(ByVal Value As Long)
+    RqLclSetInt(RqObj, "BorderStyle", Value)
+End Property
+Property QPANEL.TabOrder() As Long
+    Return RqGetInt(RqObj, "TabOrder")
+End Property
+Property QPANEL.TabOrder(ByVal Value As Long)
+    RqLclSetInt(RqObj, "TabOrder", Value)
+End Property
+Property QPANEL.Tag() As Long
+    Return RqGetInt(RqObj, "Tag")
+End Property
+Property QPANEL.Tag(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Tag", Value)
+End Property
+Property QPANEL.OnClick(ByVal Handler As Sub())
+    SetEventEx(10, "OnClick", Cast(Any Ptr, Handler), 0)
+End Property
+Property QPANEL.OnClick(ByVal Handler As Sub(ByRef Sender As QPANEL))
+    SetEventEx(10, "OnClick", Cast(Any Ptr, Handler), 3)
+End Property
+Property QPANEL.OnDblClick(ByVal Handler As Sub())
+    SetEventEx(11, "OnDblClick", Cast(Any Ptr, Handler), 0)
+End Property
+Property QPANEL.OnDblClick(ByVal Handler As Sub(ByRef Sender As QPANEL))
+    SetEventEx(11, "OnDblClick", Cast(Any Ptr, Handler), 3)
+End Property
+Property QPANEL.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QPANEL.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QPANEL))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QPANEL.OnMouseDown(ByVal Handler As Sub())
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QPANEL.OnMouseDown(ByVal Handler As Sub(ByRef Sender As QPANEL))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 3)
+End Property
+Property QPANEL.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 1)
+End Property
+Property QPANEL.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QPANEL))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 2)
+End Property
+Property QPANEL.OnMouseUp(ByVal Handler As Sub())
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 0)
+End Property
+Property QPANEL.OnMouseUp(ByVal Handler As Sub(ByRef Sender As QPANEL))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 3)
+End Property
+Property QPANEL.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 1)
+End Property
+Property QPANEL.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QPANEL))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 2)
+End Property
+Property QPANEL.OnMouseMove(ByVal Handler As Sub())
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 0)
+End Property
+Property QPANEL.OnMouseMove(ByVal Handler As Sub(ByRef Sender As QPANEL))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 3)
+End Property
+
+' ---------------------------------------------------------------------------
+'  QCOOLBTN - кнопка с картинкой (TSpeedButton); BMP = файл .bmp, BMPHandle = HBITMAP
+' ---------------------------------------------------------------------------
+
+Type QCOOLBTN Extends QCONTROL
+    Declare Constructor()
+    Declare Property Caption() As String
+    Declare Property Caption(ByRef Value As String)
+    Declare Property Align() As Long
+    Declare Property Align(ByVal Value As Long)
+    Declare Property AllowAllUp() As Long
+    Declare Property AllowAllUp(ByVal Value As Long)
+    Declare Property BMP(ByRef Value As String)
+    Declare Property BMPHandle(ByVal Value As Long)
+    Declare Property Down() As Long
+    Declare Property Down(ByVal Value As Long)
+    Declare Property Flat() As Long
+    Declare Property Flat(ByVal Value As Long)
+    Declare Property GroupIndex() As Long
+    Declare Property GroupIndex(ByVal Value As Long)
+    Declare Property Layout() As Long
+    Declare Property Layout(ByVal Value As Long)
+    Declare Property NumBMPs() As Long
+    Declare Property NumBMPs(ByVal Value As Long)
+    Declare Property Spacing() As Long
+    Declare Property Spacing(ByVal Value As Long)
+    Declare Property Tag() As Long
+    Declare Property Tag(ByVal Value As Long)
+    Declare Property OnClick(ByVal Handler As Sub())
+    Declare Property OnClick(ByVal Handler As Sub(ByRef Sender As QCOOLBTN))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QCOOLBTN))
+    Declare Property OnMouseDown(ByVal Handler As Sub())
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByRef Sender As QCOOLBTN))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QCOOLBTN))
+    Declare Property OnMouseUp(ByVal Handler As Sub())
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByRef Sender As QCOOLBTN))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QCOOLBTN))
+    Declare Property OnMouseMove(ByVal Handler As Sub())
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByRef Sender As QCOOLBTN))
+End Type
+
+Constructor QCOOLBTN()
+    RqObj = RqLclNew("QCOOLBTN", @This)
+End Constructor
+Property QCOOLBTN.Caption() As String
+    Return RqLclGetStr(RqObj, "Caption")
+End Property
+Property QCOOLBTN.Caption(ByRef Value As String)
+    RqLclSetStr(RqObj, "Caption", Value)
+End Property
+Property QCOOLBTN.Align() As Long
+    Return RqGetInt(RqObj, "Align")
+End Property
+Property QCOOLBTN.Align(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Align", Value)
+End Property
+Property QCOOLBTN.AllowAllUp() As Long
+    Return RqGetInt(RqObj, "AllowAllUp")
+End Property
+Property QCOOLBTN.AllowAllUp(ByVal Value As Long)
+    RqLclSetInt(RqObj, "AllowAllUp", Value)
+End Property
+Property QCOOLBTN.BMP(ByRef Value As String)
+    RqLclSetStr(RqObj, "BMP", Value)
+End Property
+Property QCOOLBTN.BMPHandle(ByVal Value As Long)
+    RqLclSetInt(RqObj, "BMPHandle", Value)
+End Property
+Property QCOOLBTN.Down() As Long
+    Return RqGetInt(RqObj, "Down")
+End Property
+Property QCOOLBTN.Down(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Down", Value)
+End Property
+Property QCOOLBTN.Flat() As Long
+    Return RqGetInt(RqObj, "Flat")
+End Property
+Property QCOOLBTN.Flat(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Flat", Value)
+End Property
+Property QCOOLBTN.GroupIndex() As Long
+    Return RqGetInt(RqObj, "GroupIndex")
+End Property
+Property QCOOLBTN.GroupIndex(ByVal Value As Long)
+    RqLclSetInt(RqObj, "GroupIndex", Value)
+End Property
+Property QCOOLBTN.Layout() As Long
+    Return RqGetInt(RqObj, "Layout")
+End Property
+Property QCOOLBTN.Layout(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Layout", Value)
+End Property
+Property QCOOLBTN.NumBMPs() As Long
+    Return RqGetInt(RqObj, "NumBMPs")
+End Property
+Property QCOOLBTN.NumBMPs(ByVal Value As Long)
+    RqLclSetInt(RqObj, "NumBMPs", Value)
+End Property
+Property QCOOLBTN.Spacing() As Long
+    Return RqGetInt(RqObj, "Spacing")
+End Property
+Property QCOOLBTN.Spacing(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Spacing", Value)
+End Property
+Property QCOOLBTN.Tag() As Long
+    Return RqGetInt(RqObj, "Tag")
+End Property
+Property QCOOLBTN.Tag(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Tag", Value)
+End Property
+Property QCOOLBTN.OnClick(ByVal Handler As Sub())
+    SetEventEx(10, "OnClick", Cast(Any Ptr, Handler), 0)
+End Property
+Property QCOOLBTN.OnClick(ByVal Handler As Sub(ByRef Sender As QCOOLBTN))
+    SetEventEx(10, "OnClick", Cast(Any Ptr, Handler), 3)
+End Property
+Property QCOOLBTN.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QCOOLBTN.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QCOOLBTN))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QCOOLBTN.OnMouseDown(ByVal Handler As Sub())
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QCOOLBTN.OnMouseDown(ByVal Handler As Sub(ByRef Sender As QCOOLBTN))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 3)
+End Property
+Property QCOOLBTN.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 1)
+End Property
+Property QCOOLBTN.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QCOOLBTN))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 2)
+End Property
+Property QCOOLBTN.OnMouseUp(ByVal Handler As Sub())
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 0)
+End Property
+Property QCOOLBTN.OnMouseUp(ByVal Handler As Sub(ByRef Sender As QCOOLBTN))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 3)
+End Property
+Property QCOOLBTN.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 1)
+End Property
+Property QCOOLBTN.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QCOOLBTN))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 2)
+End Property
+Property QCOOLBTN.OnMouseMove(ByVal Handler As Sub())
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 0)
+End Property
+Property QCOOLBTN.OnMouseMove(ByVal Handler As Sub(ByRef Sender As QCOOLBTN))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 3)
+End Property
+
+' ---------------------------------------------------------------------------
+'  QCOMBOBOX - выпадающий список (TComboBox)
+' ---------------------------------------------------------------------------
+
+Type QCOMBOBOX Extends QCONTROL
+    Declare Constructor()
+    Declare Property Text() As String
+    Declare Property Text(ByRef Value As String)
+    Declare Property Align() As Long
+    Declare Property Align(ByVal Value As Long)
+    Declare Property DropDownCount() As Long
+    Declare Property DropDownCount(ByVal Value As Long)
+    Declare Property ItemIndex() As Long
+    Declare Property ItemIndex(ByVal Value As Long)
+    Declare Property ItemHeight() As Long
+    Declare Property ItemHeight(ByVal Value As Long)
+    Declare Property MaxLength() As Long
+    Declare Property MaxLength(ByVal Value As Long)
+    Declare Property Sorted() As Long
+    Declare Property Sorted(ByVal Value As Long)
+    Declare Property Style() As Long
+    Declare Property Style(ByVal Value As Long)
+    Declare Property TabOrder() As Long
+    Declare Property TabOrder(ByVal Value As Long)
+    Declare Property Tag() As Long
+    Declare Property Tag(ByVal Value As Long)
+    Declare Property Item(ByVal ItemNum As Long) As String
+    Declare Property Item(ByVal ItemNum As Long, ByRef Value As String)
+    Declare Property ItemCount() As Long
+    Declare Sub AddItems Overload (ByRef Text1 As String)
+    Declare Sub AddItems Overload (ByRef Text1 As String, ByRef Text2 As String)
+    Declare Sub AddItems Overload (ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String)
+    Declare Sub AddItems Overload (ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String)
+    Declare Sub AddItems Overload (ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String, ByRef Text5 As String)
+    Declare Sub AddItems Overload (ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String, ByRef Text5 As String, ByRef Text6 As String)
+    Declare Sub Clear()
+    Declare Sub DelItems(ByVal Index1 As Long, ByVal Index2 As Long = -1, ByVal Index3 As Long = -1, ByVal Index4 As Long = -1)
+    Declare Sub InsertItem(ByVal ItemNum As Long, ByRef Text1 As String)
+    Declare Function TextWidth(ByRef Text1 As String) As Long
+    Declare Function TextHeight(ByRef Text1 As String) As Long
+    Declare Sub ListCall(ByRef MethodName As String, ByRef Text1 As String, ByVal IntArg As Long = 0)
+    Declare Sub DrawInts(ByRef MethodName As String, ByRef Text1 As String, IntList() As Long)
+    Declare Sub TextOut(ByVal X1 As Long, ByVal Y1 As Long, ByRef Text1 As String, ByVal TextColor As Long, ByVal BackColor As Long = -1)
+    Declare Sub FillRect(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal FillColor As Long)
+    Declare Sub Line(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal LineColor As Long)
+    Declare Sub Rectangle(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal LineColor As Long)
+    Declare Sub RoundRect(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal X3 As Long, ByVal Y3 As Long, ByVal FillColor As Long)
+    Declare Sub Circle(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal LineColor As Long, ByVal FillFlag As Long)
+    Declare Sub Pset(ByVal X1 As Long, ByVal Y1 As Long, ByVal PixelColor As Long)
+    Declare Sub Paint(ByVal X1 As Long, ByVal Y1 As Long, ByVal FillColor As Long, ByVal BorderColor As Long)
+    Declare Property OnChange(ByVal Handler As Sub())
+    Declare Property OnChange(ByVal Handler As Sub(ByRef Sender As QCOMBOBOX))
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QCOMBOBOX))
+    Declare Property OnKeyDown(ByVal Handler As Sub())
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Sender As QCOMBOBOX))
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QCOMBOBOX))
+    Declare Property OnKeyUp(ByVal Handler As Sub())
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Sender As QCOMBOBOX))
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Key As Long))
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Key As Long, ByRef Sender As QCOMBOBOX))
+    Declare Property OnKeyPress(ByVal Handler As Sub())
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Sender As QCOMBOBOX))
+    Declare Property OnDrawItem(ByVal Handler As Sub(ByVal Index As Long, ByVal State As Long, ByRef R As QRECT))
+    Declare Property OnDrawItem(ByVal Handler As Sub(ByVal Index As Long, ByVal State As Long, ByRef R As QRECT, ByRef Sender As QCOMBOBOX))
+    Declare Property OnDrawItem(ByVal Handler As Sub())
+    Declare Property OnDrawItem(ByVal Handler As Sub(ByRef Sender As QCOMBOBOX))
+End Type
+
+Constructor QCOMBOBOX()
+    RqObj = RqLclNew("QCOMBOBOX", @This)
+End Constructor
+Property QCOMBOBOX.Text() As String
+    Return RqLclGetStr(RqObj, "Text")
+End Property
+Property QCOMBOBOX.Text(ByRef Value As String)
+    RqLclSetStr(RqObj, "Text", Value)
+End Property
+Property QCOMBOBOX.Align() As Long
+    Return RqGetInt(RqObj, "Align")
+End Property
+Property QCOMBOBOX.Align(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Align", Value)
+End Property
+Property QCOMBOBOX.DropDownCount() As Long
+    Return RqGetInt(RqObj, "DropDownCount")
+End Property
+Property QCOMBOBOX.DropDownCount(ByVal Value As Long)
+    RqLclSetInt(RqObj, "DropDownCount", Value)
+End Property
+Property QCOMBOBOX.ItemIndex() As Long
+    Return RqGetInt(RqObj, "ItemIndex")
+End Property
+Property QCOMBOBOX.ItemIndex(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ItemIndex", Value)
+End Property
+Property QCOMBOBOX.ItemHeight() As Long
+    Return RqGetInt(RqObj, "ItemHeight")
+End Property
+Property QCOMBOBOX.ItemHeight(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ItemHeight", Value)
+End Property
+Property QCOMBOBOX.MaxLength() As Long
+    Return RqGetInt(RqObj, "MaxLength")
+End Property
+Property QCOMBOBOX.MaxLength(ByVal Value As Long)
+    RqLclSetInt(RqObj, "MaxLength", Value)
+End Property
+Property QCOMBOBOX.Sorted() As Long
+    Return RqGetInt(RqObj, "Sorted")
+End Property
+Property QCOMBOBOX.Sorted(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Sorted", Value)
+End Property
+Property QCOMBOBOX.Style() As Long
+    Return RqGetInt(RqObj, "Style")
+End Property
+Property QCOMBOBOX.Style(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Style", Value)
+End Property
+Property QCOMBOBOX.TabOrder() As Long
+    Return RqGetInt(RqObj, "TabOrder")
+End Property
+Property QCOMBOBOX.TabOrder(ByVal Value As Long)
+    RqLclSetInt(RqObj, "TabOrder", Value)
+End Property
+Property QCOMBOBOX.Tag() As Long
+    Return RqGetInt(RqObj, "Tag")
+End Property
+Property QCOMBOBOX.Tag(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Tag", Value)
+End Property
+Sub QCOMBOBOX.ListCall(ByRef MethodName As String, ByRef Text1 As String, ByVal IntArg As Long = 0)
+    If RqCallEx(RqObj, MethodName, StrPtr(Text1), IntArg, 0, 0, 0, 0) = 0 Then
+        RqLclClassError("QCOMBOBOX." & MethodName)
+    End If
+End Sub
+' Строка с номером ItemIndex (с 0); вне списка: Smart - "" и
+' предупреждение, Compat - конец программы
+Property QCOMBOBOX.Item(ByVal ItemNum As Long) As String
+    Dim TextLen As Long = RqGetItemStr(RqObj, "Item", ItemNum, 0, 0)
+    If TextLen < 0 Then
+        RqLclClassError("QCOMBOBOX.Item")
+        Return ""
+    End If
+    If TextLen = 0 Then Return ""
+    Dim TextValue As String = Space(TextLen)
+    RqGetItemStr(RqObj, "Item", ItemNum, StrPtr(TextValue), TextLen + 1)
+    Return TextValue
+End Property
+Property QCOMBOBOX.Item(ByVal ItemNum As Long, ByRef Value As String)
+    If RqSetItemStr(RqObj, "Item", ItemNum, StrPtr(Value)) = 0 Then RqLclClassError("QCOMBOBOX.Item")
+End Property
+Property QCOMBOBOX.ItemCount() As Long
+    Return RqGetInt(RqObj, "ItemCount")
+End Property
+Sub QCOMBOBOX.AddItems(ByRef Text1 As String)
+    ListCall("AddItems", Text1)
+End Sub
+Sub QCOMBOBOX.AddItems(ByRef Text1 As String, ByRef Text2 As String)
+    ListCall("AddItems", Text1) : ListCall("AddItems", Text2)
+End Sub
+Sub QCOMBOBOX.AddItems(ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String)
+    ListCall("AddItems", Text1) : ListCall("AddItems", Text2) : ListCall("AddItems", Text3)
+End Sub
+Sub QCOMBOBOX.AddItems(ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String)
+    ListCall("AddItems", Text1) : ListCall("AddItems", Text2) : ListCall("AddItems", Text3) : ListCall("AddItems", Text4)
+End Sub
+Sub QCOMBOBOX.AddItems(ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String, ByRef Text5 As String)
+    ListCall("AddItems", Text1) : ListCall("AddItems", Text2) : ListCall("AddItems", Text3) : ListCall("AddItems", Text4) : ListCall("AddItems", Text5)
+End Sub
+Sub QCOMBOBOX.AddItems(ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String, ByRef Text5 As String, ByRef Text6 As String)
+    ListCall("AddItems", Text1) : ListCall("AddItems", Text2) : ListCall("AddItems", Text3) : ListCall("AddItems", Text4) : ListCall("AddItems", Text5) : ListCall("AddItems", Text6)
+End Sub
+Sub QCOMBOBOX.Clear()
+    ListCall("Clear", "")
+End Sub
+' Удаление по номерам - по очереди, до четырёх за вызов
+Sub QCOMBOBOX.DelItems(ByVal Index1 As Long, ByVal Index2 As Long = -1, ByVal Index3 As Long = -1, ByVal Index4 As Long = -1)
+    Dim IndexList(1 To 4) As Long = {Index1, Index2, Index3, Index4}
+    For ArgIdx As Long = 1 To 4
+        If (ArgIdx > 1) AndAlso (IndexList(ArgIdx) = -1) Then Exit For
+        ListCall("DelItems", "", IndexList(ArgIdx))
+    Next
+End Sub
+Sub QCOMBOBOX.InsertItem(ByVal ItemNum As Long, ByRef Text1 As String)
+    ListCall("InsertItem", Text1, ItemNum)
+End Sub
+Function QCOMBOBOX.TextWidth(ByRef Text1 As String) As Long
+    Return RqCallEx(RqObj, "TextWidth", StrPtr(Text1), 0, 0, 0, 0, 0)
+End Function
+Function QCOMBOBOX.TextHeight(ByRef Text1 As String) As Long
+    Return RqCallEx(RqObj, "TextHeight", StrPtr(Text1), 0, 0, 0, 0, 0)
+End Function
+Sub QCOMBOBOX.DrawInts(ByRef MethodName As String, ByRef Text1 As String, IntList() As Long)
+    If RqCallInts(RqObj, MethodName, StrPtr(Text1), @IntList(0), UBound(IntList) + 1) = 0 Then
+        RqLclClassError("QCOMBOBOX." & MethodName)
+    End If
+End Sub
+' BackColor = -1 - фон прозрачный
+Sub QCOMBOBOX.TextOut(ByVal X1 As Long, ByVal Y1 As Long, ByRef Text1 As String, ByVal TextColor As Long, ByVal BackColor As Long = -1)
+    Dim IntList(0 To 3) As Long = {X1, Y1, TextColor, BackColor}
+    DrawInts("TextOut", Text1, IntList())
+End Sub
+Sub QCOMBOBOX.FillRect(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal FillColor As Long)
+    Dim IntList(0 To 4) As Long = {X1, Y1, X2, Y2, FillColor}
+    DrawInts("FillRect", "", IntList())
+End Sub
+Sub QCOMBOBOX.Line(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal LineColor As Long)
+    Dim IntList(0 To 4) As Long = {X1, Y1, X2, Y2, LineColor}
+    DrawInts("Line", "", IntList())
+End Sub
+Sub QCOMBOBOX.Rectangle(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal LineColor As Long)
+    Dim IntList(0 To 4) As Long = {X1, Y1, X2, Y2, LineColor}
+    DrawInts("Rectangle", "", IntList())
+End Sub
+Sub QCOMBOBOX.RoundRect(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal X3 As Long, ByVal Y3 As Long, ByVal FillColor As Long)
+    Dim IntList(0 To 6) As Long = {X1, Y1, X2, Y2, X3, Y3, FillColor}
+    DrawInts("RoundRect", "", IntList())
+End Sub
+Sub QCOMBOBOX.Circle(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal LineColor As Long, ByVal FillFlag As Long)
+    Dim IntList(0 To 5) As Long = {X1, Y1, X2, Y2, LineColor, FillFlag}
+    DrawInts("Circle", "", IntList())
+End Sub
+Sub QCOMBOBOX.Pset(ByVal X1 As Long, ByVal Y1 As Long, ByVal PixelColor As Long)
+    Dim IntList(0 To 2) As Long = {X1, Y1, PixelColor}
+    DrawInts("Pset", "", IntList())
+End Sub
+Sub QCOMBOBOX.Paint(ByVal X1 As Long, ByVal Y1 As Long, ByVal FillColor As Long, ByVal BorderColor As Long)
+    Dim IntList(0 To 3) As Long = {X1, Y1, FillColor, BorderColor}
+    DrawInts("Paint", "", IntList())
+End Sub
+Property QCOMBOBOX.OnChange(ByVal Handler As Sub())
+    SetEventEx(12, "OnChange", Cast(Any Ptr, Handler), 0)
+End Property
+Property QCOMBOBOX.OnChange(ByVal Handler As Sub(ByRef Sender As QCOMBOBOX))
+    SetEventEx(12, "OnChange", Cast(Any Ptr, Handler), 3)
+End Property
+Property QCOMBOBOX.OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    SetEventEx(0, "OnKeyDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QCOMBOBOX.OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QCOMBOBOX))
+    SetEventEx(0, "OnKeyDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QCOMBOBOX.OnKeyDown(ByVal Handler As Sub())
+    SetEventEx(0, "OnKeyDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QCOMBOBOX.OnKeyDown(ByVal Handler As Sub(ByRef Sender As QCOMBOBOX))
+    SetEventEx(0, "OnKeyDown", Cast(Any Ptr, Handler), 3)
+End Property
+Property QCOMBOBOX.OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    SetEventEx(1, "OnKeyUp", Cast(Any Ptr, Handler), 1)
+End Property
+Property QCOMBOBOX.OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QCOMBOBOX))
+    SetEventEx(1, "OnKeyUp", Cast(Any Ptr, Handler), 2)
+End Property
+Property QCOMBOBOX.OnKeyUp(ByVal Handler As Sub())
+    SetEventEx(1, "OnKeyUp", Cast(Any Ptr, Handler), 0)
+End Property
+Property QCOMBOBOX.OnKeyUp(ByVal Handler As Sub(ByRef Sender As QCOMBOBOX))
+    SetEventEx(1, "OnKeyUp", Cast(Any Ptr, Handler), 3)
+End Property
+Property QCOMBOBOX.OnKeyPress(ByVal Handler As Sub(ByRef Key As Long))
+    SetEventEx(2, "OnKeyPress", Cast(Any Ptr, Handler), 1)
+End Property
+Property QCOMBOBOX.OnKeyPress(ByVal Handler As Sub(ByRef Key As Long, ByRef Sender As QCOMBOBOX))
+    SetEventEx(2, "OnKeyPress", Cast(Any Ptr, Handler), 2)
+End Property
+Property QCOMBOBOX.OnKeyPress(ByVal Handler As Sub())
+    SetEventEx(2, "OnKeyPress", Cast(Any Ptr, Handler), 0)
+End Property
+Property QCOMBOBOX.OnKeyPress(ByVal Handler As Sub(ByRef Sender As QCOMBOBOX))
+    SetEventEx(2, "OnKeyPress", Cast(Any Ptr, Handler), 3)
+End Property
+Property QCOMBOBOX.OnDrawItem(ByVal Handler As Sub(ByVal Index As Long, ByVal State As Long, ByRef R As QRECT))
+    SetEventEx(9, "OnDrawItem", Cast(Any Ptr, Handler), 1)
+End Property
+Property QCOMBOBOX.OnDrawItem(ByVal Handler As Sub(ByVal Index As Long, ByVal State As Long, ByRef R As QRECT, ByRef Sender As QCOMBOBOX))
+    SetEventEx(9, "OnDrawItem", Cast(Any Ptr, Handler), 2)
+End Property
+Property QCOMBOBOX.OnDrawItem(ByVal Handler As Sub())
+    SetEventEx(9, "OnDrawItem", Cast(Any Ptr, Handler), 0)
+End Property
+Property QCOMBOBOX.OnDrawItem(ByVal Handler As Sub(ByRef Sender As QCOMBOBOX))
+    SetEventEx(9, "OnDrawItem", Cast(Any Ptr, Handler), 3)
+End Property
+
+' ---------------------------------------------------------------------------
+'  QCHECKBOX - флажок (TCheckBox)
+' ---------------------------------------------------------------------------
+
+Type QCHECKBOX Extends QCONTROL
+    Declare Constructor()
+    Declare Property Caption() As String
+    Declare Property Caption(ByRef Value As String)
+    Declare Property Checked() As Long
+    Declare Property Checked(ByVal Value As Long)
+    Declare Property Align() As Long
+    Declare Property Align(ByVal Value As Long)
+    Declare Property TabOrder() As Long
+    Declare Property TabOrder(ByVal Value As Long)
+    Declare Property Tag() As Long
+    Declare Property Tag(ByVal Value As Long)
+    Declare Property OnClick(ByVal Handler As Sub())
+    Declare Property OnClick(ByVal Handler As Sub(ByRef Sender As QCHECKBOX))
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QCHECKBOX))
+    Declare Property OnKeyDown(ByVal Handler As Sub())
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Sender As QCHECKBOX))
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QCHECKBOX))
+    Declare Property OnKeyUp(ByVal Handler As Sub())
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Sender As QCHECKBOX))
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Key As Long))
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Key As Long, ByRef Sender As QCHECKBOX))
+    Declare Property OnKeyPress(ByVal Handler As Sub())
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Sender As QCHECKBOX))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QCHECKBOX))
+    Declare Property OnMouseDown(ByVal Handler As Sub())
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByRef Sender As QCHECKBOX))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QCHECKBOX))
+    Declare Property OnMouseUp(ByVal Handler As Sub())
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByRef Sender As QCHECKBOX))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QCHECKBOX))
+    Declare Property OnMouseMove(ByVal Handler As Sub())
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByRef Sender As QCHECKBOX))
+End Type
+
+Constructor QCHECKBOX()
+    RqObj = RqLclNew("QCHECKBOX", @This)
+End Constructor
+Property QCHECKBOX.Caption() As String
+    Return RqLclGetStr(RqObj, "Caption")
+End Property
+Property QCHECKBOX.Caption(ByRef Value As String)
+    RqLclSetStr(RqObj, "Caption", Value)
+End Property
+Property QCHECKBOX.Checked() As Long
+    Return RqGetInt(RqObj, "Checked")
+End Property
+Property QCHECKBOX.Checked(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Checked", Value)
+End Property
+Property QCHECKBOX.Align() As Long
+    Return RqGetInt(RqObj, "Align")
+End Property
+Property QCHECKBOX.Align(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Align", Value)
+End Property
+Property QCHECKBOX.TabOrder() As Long
+    Return RqGetInt(RqObj, "TabOrder")
+End Property
+Property QCHECKBOX.TabOrder(ByVal Value As Long)
+    RqLclSetInt(RqObj, "TabOrder", Value)
+End Property
+Property QCHECKBOX.Tag() As Long
+    Return RqGetInt(RqObj, "Tag")
+End Property
+Property QCHECKBOX.Tag(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Tag", Value)
+End Property
+Property QCHECKBOX.OnClick(ByVal Handler As Sub())
+    SetEventEx(10, "OnClick", Cast(Any Ptr, Handler), 0)
+End Property
+Property QCHECKBOX.OnClick(ByVal Handler As Sub(ByRef Sender As QCHECKBOX))
+    SetEventEx(10, "OnClick", Cast(Any Ptr, Handler), 3)
+End Property
+Property QCHECKBOX.OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    SetEventEx(0, "OnKeyDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QCHECKBOX.OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QCHECKBOX))
+    SetEventEx(0, "OnKeyDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QCHECKBOX.OnKeyDown(ByVal Handler As Sub())
+    SetEventEx(0, "OnKeyDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QCHECKBOX.OnKeyDown(ByVal Handler As Sub(ByRef Sender As QCHECKBOX))
+    SetEventEx(0, "OnKeyDown", Cast(Any Ptr, Handler), 3)
+End Property
+Property QCHECKBOX.OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    SetEventEx(1, "OnKeyUp", Cast(Any Ptr, Handler), 1)
+End Property
+Property QCHECKBOX.OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QCHECKBOX))
+    SetEventEx(1, "OnKeyUp", Cast(Any Ptr, Handler), 2)
+End Property
+Property QCHECKBOX.OnKeyUp(ByVal Handler As Sub())
+    SetEventEx(1, "OnKeyUp", Cast(Any Ptr, Handler), 0)
+End Property
+Property QCHECKBOX.OnKeyUp(ByVal Handler As Sub(ByRef Sender As QCHECKBOX))
+    SetEventEx(1, "OnKeyUp", Cast(Any Ptr, Handler), 3)
+End Property
+Property QCHECKBOX.OnKeyPress(ByVal Handler As Sub(ByRef Key As Long))
+    SetEventEx(2, "OnKeyPress", Cast(Any Ptr, Handler), 1)
+End Property
+Property QCHECKBOX.OnKeyPress(ByVal Handler As Sub(ByRef Key As Long, ByRef Sender As QCHECKBOX))
+    SetEventEx(2, "OnKeyPress", Cast(Any Ptr, Handler), 2)
+End Property
+Property QCHECKBOX.OnKeyPress(ByVal Handler As Sub())
+    SetEventEx(2, "OnKeyPress", Cast(Any Ptr, Handler), 0)
+End Property
+Property QCHECKBOX.OnKeyPress(ByVal Handler As Sub(ByRef Sender As QCHECKBOX))
+    SetEventEx(2, "OnKeyPress", Cast(Any Ptr, Handler), 3)
+End Property
+Property QCHECKBOX.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QCHECKBOX.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QCHECKBOX))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QCHECKBOX.OnMouseDown(ByVal Handler As Sub())
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QCHECKBOX.OnMouseDown(ByVal Handler As Sub(ByRef Sender As QCHECKBOX))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 3)
+End Property
+Property QCHECKBOX.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 1)
+End Property
+Property QCHECKBOX.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QCHECKBOX))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 2)
+End Property
+Property QCHECKBOX.OnMouseUp(ByVal Handler As Sub())
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 0)
+End Property
+Property QCHECKBOX.OnMouseUp(ByVal Handler As Sub(ByRef Sender As QCHECKBOX))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 3)
+End Property
+Property QCHECKBOX.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 1)
+End Property
+Property QCHECKBOX.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QCHECKBOX))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 2)
+End Property
+Property QCHECKBOX.OnMouseMove(ByVal Handler As Sub())
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 0)
+End Property
+Property QCHECKBOX.OnMouseMove(ByVal Handler As Sub(ByRef Sender As QCHECKBOX))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 3)
+End Property
+
+' ---------------------------------------------------------------------------
+'  QLISTBOX - список (TListBox); Text - строки через CR LF
+' ---------------------------------------------------------------------------
+
+Type QLISTBOX Extends QCONTROL
+    Declare Constructor()
+    Declare Property Text() As String
+    Declare Property Text(ByRef Value As String)
+    Declare Property Align() As Long
+    Declare Property Align(ByVal Value As Long)
+    Declare Property BorderStyle() As Long
+    Declare Property BorderStyle(ByVal Value As Long)
+    Declare Property Columns() As Long
+    Declare Property Columns(ByVal Value As Long)
+    Declare Property ExtendedSelect() As Long
+    Declare Property ExtendedSelect(ByVal Value As Long)
+    Declare Property ItemIndex() As Long
+    Declare Property ItemIndex(ByVal Value As Long)
+    Declare Property ItemHeight() As Long
+    Declare Property ItemHeight(ByVal Value As Long)
+    Declare Property MultiSelect() As Long
+    Declare Property MultiSelect(ByVal Value As Long)
+    Declare Property SelCount() As Long
+    Declare Property Sorted() As Long
+    Declare Property Sorted(ByVal Value As Long)
+    Declare Property Style() As Long
+    Declare Property Style(ByVal Value As Long)
+    Declare Property TabOrder() As Long
+    Declare Property TabOrder(ByVal Value As Long)
+    Declare Property Tag() As Long
+    Declare Property Tag(ByVal Value As Long)
+    Declare Property TopIndex() As Long
+    Declare Property TopIndex(ByVal Value As Long)
+    Declare Property Item(ByVal ItemNum As Long) As String
+    Declare Property Item(ByVal ItemNum As Long, ByRef Value As String)
+    Declare Property ItemCount() As Long
+    Declare Sub AddItems Overload (ByRef Text1 As String)
+    Declare Sub AddItems Overload (ByRef Text1 As String, ByRef Text2 As String)
+    Declare Sub AddItems Overload (ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String)
+    Declare Sub AddItems Overload (ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String)
+    Declare Sub AddItems Overload (ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String, ByRef Text5 As String)
+    Declare Sub AddItems Overload (ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String, ByRef Text5 As String, ByRef Text6 As String)
+    Declare Sub Clear()
+    Declare Sub DelItems(ByVal Index1 As Long, ByVal Index2 As Long = -1, ByVal Index3 As Long = -1, ByVal Index4 As Long = -1)
+    Declare Sub InsertItem(ByVal ItemNum As Long, ByRef Text1 As String)
+    Declare Function TextWidth(ByRef Text1 As String) As Long
+    Declare Function TextHeight(ByRef Text1 As String) As Long
+    Declare Sub ListCall(ByRef MethodName As String, ByRef Text1 As String, ByVal IntArg As Long = 0)
+    Declare Sub LoadFromFile(ByRef FileName As String)
+    Declare Sub SaveToFile(ByRef FileName As String)
+    Declare Property Selected(ByVal ItemNum As Long) As Long
+    Declare Property Selected(ByVal ItemNum As Long, ByVal Value As Long)
+    Declare Sub DrawInts(ByRef MethodName As String, ByRef Text1 As String, IntList() As Long)
+    Declare Sub TextOut(ByVal X1 As Long, ByVal Y1 As Long, ByRef Text1 As String, ByVal TextColor As Long, ByVal BackColor As Long = -1)
+    Declare Sub FillRect(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal FillColor As Long)
+    Declare Sub Line(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal LineColor As Long)
+    Declare Sub Rectangle(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal LineColor As Long)
+    Declare Sub RoundRect(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal X3 As Long, ByVal Y3 As Long, ByVal FillColor As Long)
+    Declare Sub Circle(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal LineColor As Long, ByVal FillFlag As Long)
+    Declare Sub Pset(ByVal X1 As Long, ByVal Y1 As Long, ByVal PixelColor As Long)
+    Declare Sub Paint(ByVal X1 As Long, ByVal Y1 As Long, ByVal FillColor As Long, ByVal BorderColor As Long)
+    Declare Property OnClick(ByVal Handler As Sub())
+    Declare Property OnClick(ByVal Handler As Sub(ByRef Sender As QLISTBOX))
+    Declare Property OnDblClick(ByVal Handler As Sub())
+    Declare Property OnDblClick(ByVal Handler As Sub(ByRef Sender As QLISTBOX))
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QLISTBOX))
+    Declare Property OnKeyDown(ByVal Handler As Sub())
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Sender As QLISTBOX))
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QLISTBOX))
+    Declare Property OnKeyUp(ByVal Handler As Sub())
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Sender As QLISTBOX))
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Key As Long))
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Key As Long, ByRef Sender As QLISTBOX))
+    Declare Property OnKeyPress(ByVal Handler As Sub())
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Sender As QLISTBOX))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QLISTBOX))
+    Declare Property OnMouseDown(ByVal Handler As Sub())
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByRef Sender As QLISTBOX))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QLISTBOX))
+    Declare Property OnMouseUp(ByVal Handler As Sub())
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByRef Sender As QLISTBOX))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QLISTBOX))
+    Declare Property OnMouseMove(ByVal Handler As Sub())
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByRef Sender As QLISTBOX))
+    Declare Property OnDrawItem(ByVal Handler As Sub(ByVal Index As Long, ByVal State As Long, ByRef R As QRECT))
+    Declare Property OnDrawItem(ByVal Handler As Sub(ByVal Index As Long, ByVal State As Long, ByRef R As QRECT, ByRef Sender As QLISTBOX))
+    Declare Property OnDrawItem(ByVal Handler As Sub())
+    Declare Property OnDrawItem(ByVal Handler As Sub(ByRef Sender As QLISTBOX))
+End Type
+
+Constructor QLISTBOX()
+    RqObj = RqLclNew("QLISTBOX", @This)
+End Constructor
+Property QLISTBOX.Text() As String
+    Return RqLclGetStr(RqObj, "Text")
+End Property
+Property QLISTBOX.Text(ByRef Value As String)
+    RqLclSetStr(RqObj, "Text", Value)
+End Property
+Property QLISTBOX.Align() As Long
+    Return RqGetInt(RqObj, "Align")
+End Property
+Property QLISTBOX.Align(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Align", Value)
+End Property
+Property QLISTBOX.BorderStyle() As Long
+    Return RqGetInt(RqObj, "BorderStyle")
+End Property
+Property QLISTBOX.BorderStyle(ByVal Value As Long)
+    RqLclSetInt(RqObj, "BorderStyle", Value)
+End Property
+Property QLISTBOX.Columns() As Long
+    Return RqGetInt(RqObj, "Columns")
+End Property
+Property QLISTBOX.Columns(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Columns", Value)
+End Property
+Property QLISTBOX.ExtendedSelect() As Long
+    Return RqGetInt(RqObj, "ExtendedSelect")
+End Property
+Property QLISTBOX.ExtendedSelect(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ExtendedSelect", Value)
+End Property
+Property QLISTBOX.ItemIndex() As Long
+    Return RqGetInt(RqObj, "ItemIndex")
+End Property
+Property QLISTBOX.ItemIndex(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ItemIndex", Value)
+End Property
+Property QLISTBOX.ItemHeight() As Long
+    Return RqGetInt(RqObj, "ItemHeight")
+End Property
+Property QLISTBOX.ItemHeight(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ItemHeight", Value)
+End Property
+Property QLISTBOX.MultiSelect() As Long
+    Return RqGetInt(RqObj, "MultiSelect")
+End Property
+Property QLISTBOX.MultiSelect(ByVal Value As Long)
+    RqLclSetInt(RqObj, "MultiSelect", Value)
+End Property
+Property QLISTBOX.SelCount() As Long
+    Return RqGetInt(RqObj, "SelCount")
+End Property
+Property QLISTBOX.Sorted() As Long
+    Return RqGetInt(RqObj, "Sorted")
+End Property
+Property QLISTBOX.Sorted(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Sorted", Value)
+End Property
+Property QLISTBOX.Style() As Long
+    Return RqGetInt(RqObj, "Style")
+End Property
+Property QLISTBOX.Style(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Style", Value)
+End Property
+Property QLISTBOX.TabOrder() As Long
+    Return RqGetInt(RqObj, "TabOrder")
+End Property
+Property QLISTBOX.TabOrder(ByVal Value As Long)
+    RqLclSetInt(RqObj, "TabOrder", Value)
+End Property
+Property QLISTBOX.Tag() As Long
+    Return RqGetInt(RqObj, "Tag")
+End Property
+Property QLISTBOX.Tag(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Tag", Value)
+End Property
+Property QLISTBOX.TopIndex() As Long
+    Return RqGetInt(RqObj, "TopIndex")
+End Property
+Property QLISTBOX.TopIndex(ByVal Value As Long)
+    RqLclSetInt(RqObj, "TopIndex", Value)
+End Property
+Sub QLISTBOX.ListCall(ByRef MethodName As String, ByRef Text1 As String, ByVal IntArg As Long = 0)
+    If RqCallEx(RqObj, MethodName, StrPtr(Text1), IntArg, 0, 0, 0, 0) = 0 Then
+        RqLclClassError("QLISTBOX." & MethodName)
+    End If
+End Sub
+' Строка с номером ItemIndex (с 0); вне списка: Smart - "" и
+' предупреждение, Compat - конец программы
+Property QLISTBOX.Item(ByVal ItemNum As Long) As String
+    Dim TextLen As Long = RqGetItemStr(RqObj, "Item", ItemNum, 0, 0)
+    If TextLen < 0 Then
+        RqLclClassError("QLISTBOX.Item")
+        Return ""
+    End If
+    If TextLen = 0 Then Return ""
+    Dim TextValue As String = Space(TextLen)
+    RqGetItemStr(RqObj, "Item", ItemNum, StrPtr(TextValue), TextLen + 1)
+    Return TextValue
+End Property
+Property QLISTBOX.Item(ByVal ItemNum As Long, ByRef Value As String)
+    If RqSetItemStr(RqObj, "Item", ItemNum, StrPtr(Value)) = 0 Then RqLclClassError("QLISTBOX.Item")
+End Property
+Property QLISTBOX.ItemCount() As Long
+    Return RqGetInt(RqObj, "ItemCount")
+End Property
+Sub QLISTBOX.AddItems(ByRef Text1 As String)
+    ListCall("AddItems", Text1)
+End Sub
+Sub QLISTBOX.AddItems(ByRef Text1 As String, ByRef Text2 As String)
+    ListCall("AddItems", Text1) : ListCall("AddItems", Text2)
+End Sub
+Sub QLISTBOX.AddItems(ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String)
+    ListCall("AddItems", Text1) : ListCall("AddItems", Text2) : ListCall("AddItems", Text3)
+End Sub
+Sub QLISTBOX.AddItems(ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String)
+    ListCall("AddItems", Text1) : ListCall("AddItems", Text2) : ListCall("AddItems", Text3) : ListCall("AddItems", Text4)
+End Sub
+Sub QLISTBOX.AddItems(ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String, ByRef Text5 As String)
+    ListCall("AddItems", Text1) : ListCall("AddItems", Text2) : ListCall("AddItems", Text3) : ListCall("AddItems", Text4) : ListCall("AddItems", Text5)
+End Sub
+Sub QLISTBOX.AddItems(ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String, ByRef Text5 As String, ByRef Text6 As String)
+    ListCall("AddItems", Text1) : ListCall("AddItems", Text2) : ListCall("AddItems", Text3) : ListCall("AddItems", Text4) : ListCall("AddItems", Text5) : ListCall("AddItems", Text6)
+End Sub
+Sub QLISTBOX.Clear()
+    ListCall("Clear", "")
+End Sub
+' Удаление по номерам - по очереди, до четырёх за вызов
+Sub QLISTBOX.DelItems(ByVal Index1 As Long, ByVal Index2 As Long = -1, ByVal Index3 As Long = -1, ByVal Index4 As Long = -1)
+    Dim IndexList(1 To 4) As Long = {Index1, Index2, Index3, Index4}
+    For ArgIdx As Long = 1 To 4
+        If (ArgIdx > 1) AndAlso (IndexList(ArgIdx) = -1) Then Exit For
+        ListCall("DelItems", "", IndexList(ArgIdx))
+    Next
+End Sub
+Sub QLISTBOX.InsertItem(ByVal ItemNum As Long, ByRef Text1 As String)
+    ListCall("InsertItem", Text1, ItemNum)
+End Sub
+Function QLISTBOX.TextWidth(ByRef Text1 As String) As Long
+    Return RqCallEx(RqObj, "TextWidth", StrPtr(Text1), 0, 0, 0, 0, 0)
+End Function
+Function QLISTBOX.TextHeight(ByRef Text1 As String) As Long
+    Return RqCallEx(RqObj, "TextHeight", StrPtr(Text1), 0, 0, 0, 0, 0)
+End Function
+Sub QLISTBOX.LoadFromFile(ByRef FileName As String)
+    ListCall("LoadFromFile", FileName)
+End Sub
+Sub QLISTBOX.SaveToFile(ByRef FileName As String)
+    ListCall("SaveToFile", FileName)
+End Sub
+Property QLISTBOX.Selected(ByVal ItemNum As Long) As Long
+    ' DLL очищает текст ошибки в начале RqGetItemInt
+    Dim SelValue As Long = RqGetItemInt(RqObj, "Selected", ItemNum)
+    If RqLclLastError() <> "" Then RqLclClassError("QLISTBOX.Selected")
+    Return SelValue
+End Property
+Property QLISTBOX.Selected(ByVal ItemNum As Long, ByVal Value As Long)
+    If RqSetItemInt(RqObj, "Selected", ItemNum, Value) = 0 Then RqLclClassError("QLISTBOX.Selected")
+End Property
+Sub QLISTBOX.DrawInts(ByRef MethodName As String, ByRef Text1 As String, IntList() As Long)
+    If RqCallInts(RqObj, MethodName, StrPtr(Text1), @IntList(0), UBound(IntList) + 1) = 0 Then
+        RqLclClassError("QLISTBOX." & MethodName)
+    End If
+End Sub
+' BackColor = -1 - фон прозрачный
+Sub QLISTBOX.TextOut(ByVal X1 As Long, ByVal Y1 As Long, ByRef Text1 As String, ByVal TextColor As Long, ByVal BackColor As Long = -1)
+    Dim IntList(0 To 3) As Long = {X1, Y1, TextColor, BackColor}
+    DrawInts("TextOut", Text1, IntList())
+End Sub
+Sub QLISTBOX.FillRect(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal FillColor As Long)
+    Dim IntList(0 To 4) As Long = {X1, Y1, X2, Y2, FillColor}
+    DrawInts("FillRect", "", IntList())
+End Sub
+Sub QLISTBOX.Line(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal LineColor As Long)
+    Dim IntList(0 To 4) As Long = {X1, Y1, X2, Y2, LineColor}
+    DrawInts("Line", "", IntList())
+End Sub
+Sub QLISTBOX.Rectangle(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal LineColor As Long)
+    Dim IntList(0 To 4) As Long = {X1, Y1, X2, Y2, LineColor}
+    DrawInts("Rectangle", "", IntList())
+End Sub
+Sub QLISTBOX.RoundRect(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal X3 As Long, ByVal Y3 As Long, ByVal FillColor As Long)
+    Dim IntList(0 To 6) As Long = {X1, Y1, X2, Y2, X3, Y3, FillColor}
+    DrawInts("RoundRect", "", IntList())
+End Sub
+Sub QLISTBOX.Circle(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal LineColor As Long, ByVal FillFlag As Long)
+    Dim IntList(0 To 5) As Long = {X1, Y1, X2, Y2, LineColor, FillFlag}
+    DrawInts("Circle", "", IntList())
+End Sub
+Sub QLISTBOX.Pset(ByVal X1 As Long, ByVal Y1 As Long, ByVal PixelColor As Long)
+    Dim IntList(0 To 2) As Long = {X1, Y1, PixelColor}
+    DrawInts("Pset", "", IntList())
+End Sub
+Sub QLISTBOX.Paint(ByVal X1 As Long, ByVal Y1 As Long, ByVal FillColor As Long, ByVal BorderColor As Long)
+    Dim IntList(0 To 3) As Long = {X1, Y1, FillColor, BorderColor}
+    DrawInts("Paint", "", IntList())
+End Sub
+Property QLISTBOX.OnClick(ByVal Handler As Sub())
+    SetEventEx(10, "OnClick", Cast(Any Ptr, Handler), 0)
+End Property
+Property QLISTBOX.OnClick(ByVal Handler As Sub(ByRef Sender As QLISTBOX))
+    SetEventEx(10, "OnClick", Cast(Any Ptr, Handler), 3)
+End Property
+Property QLISTBOX.OnDblClick(ByVal Handler As Sub())
+    SetEventEx(11, "OnDblClick", Cast(Any Ptr, Handler), 0)
+End Property
+Property QLISTBOX.OnDblClick(ByVal Handler As Sub(ByRef Sender As QLISTBOX))
+    SetEventEx(11, "OnDblClick", Cast(Any Ptr, Handler), 3)
+End Property
+Property QLISTBOX.OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    SetEventEx(0, "OnKeyDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QLISTBOX.OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QLISTBOX))
+    SetEventEx(0, "OnKeyDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QLISTBOX.OnKeyDown(ByVal Handler As Sub())
+    SetEventEx(0, "OnKeyDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QLISTBOX.OnKeyDown(ByVal Handler As Sub(ByRef Sender As QLISTBOX))
+    SetEventEx(0, "OnKeyDown", Cast(Any Ptr, Handler), 3)
+End Property
+Property QLISTBOX.OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    SetEventEx(1, "OnKeyUp", Cast(Any Ptr, Handler), 1)
+End Property
+Property QLISTBOX.OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QLISTBOX))
+    SetEventEx(1, "OnKeyUp", Cast(Any Ptr, Handler), 2)
+End Property
+Property QLISTBOX.OnKeyUp(ByVal Handler As Sub())
+    SetEventEx(1, "OnKeyUp", Cast(Any Ptr, Handler), 0)
+End Property
+Property QLISTBOX.OnKeyUp(ByVal Handler As Sub(ByRef Sender As QLISTBOX))
+    SetEventEx(1, "OnKeyUp", Cast(Any Ptr, Handler), 3)
+End Property
+Property QLISTBOX.OnKeyPress(ByVal Handler As Sub(ByRef Key As Long))
+    SetEventEx(2, "OnKeyPress", Cast(Any Ptr, Handler), 1)
+End Property
+Property QLISTBOX.OnKeyPress(ByVal Handler As Sub(ByRef Key As Long, ByRef Sender As QLISTBOX))
+    SetEventEx(2, "OnKeyPress", Cast(Any Ptr, Handler), 2)
+End Property
+Property QLISTBOX.OnKeyPress(ByVal Handler As Sub())
+    SetEventEx(2, "OnKeyPress", Cast(Any Ptr, Handler), 0)
+End Property
+Property QLISTBOX.OnKeyPress(ByVal Handler As Sub(ByRef Sender As QLISTBOX))
+    SetEventEx(2, "OnKeyPress", Cast(Any Ptr, Handler), 3)
+End Property
+Property QLISTBOX.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QLISTBOX.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QLISTBOX))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QLISTBOX.OnMouseDown(ByVal Handler As Sub())
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QLISTBOX.OnMouseDown(ByVal Handler As Sub(ByRef Sender As QLISTBOX))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 3)
+End Property
+Property QLISTBOX.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 1)
+End Property
+Property QLISTBOX.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QLISTBOX))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 2)
+End Property
+Property QLISTBOX.OnMouseUp(ByVal Handler As Sub())
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 0)
+End Property
+Property QLISTBOX.OnMouseUp(ByVal Handler As Sub(ByRef Sender As QLISTBOX))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 3)
+End Property
+Property QLISTBOX.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 1)
+End Property
+Property QLISTBOX.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QLISTBOX))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 2)
+End Property
+Property QLISTBOX.OnMouseMove(ByVal Handler As Sub())
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 0)
+End Property
+Property QLISTBOX.OnMouseMove(ByVal Handler As Sub(ByRef Sender As QLISTBOX))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 3)
+End Property
+Property QLISTBOX.OnDrawItem(ByVal Handler As Sub(ByVal Index As Long, ByVal State As Long, ByRef R As QRECT))
+    SetEventEx(9, "OnDrawItem", Cast(Any Ptr, Handler), 1)
+End Property
+Property QLISTBOX.OnDrawItem(ByVal Handler As Sub(ByVal Index As Long, ByVal State As Long, ByRef R As QRECT, ByRef Sender As QLISTBOX))
+    SetEventEx(9, "OnDrawItem", Cast(Any Ptr, Handler), 2)
+End Property
+Property QLISTBOX.OnDrawItem(ByVal Handler As Sub())
+    SetEventEx(9, "OnDrawItem", Cast(Any Ptr, Handler), 0)
+End Property
+Property QLISTBOX.OnDrawItem(ByVal Handler As Sub(ByRef Sender As QLISTBOX))
+    SetEventEx(9, "OnDrawItem", Cast(Any Ptr, Handler), 3)
+End Property
+
+' ---------------------------------------------------------------------------
+'  QSPLITTER - разделитель (TSplitter)
+' ---------------------------------------------------------------------------
+
+Type QSPLITTER Extends QCONTROL
+    Declare Constructor()
+    Declare Property Align() As Long
+    Declare Property Align(ByVal Value As Long)
+    Declare Property Beveled() As Long
+    Declare Property Beveled(ByVal Value As Long)
+    Declare Property MinSize() As Long
+    Declare Property MinSize(ByVal Value As Long)
+    Declare Property Tag() As Long
+    Declare Property Tag(ByVal Value As Long)
+    Declare Property OnMoved(ByVal Handler As Sub())
+    Declare Property OnMoved(ByVal Handler As Sub(ByRef Sender As QSPLITTER))
+End Type
+
+Constructor QSPLITTER()
+    RqObj = RqLclNew("QSPLITTER", @This)
+End Constructor
+Property QSPLITTER.Align() As Long
+    Return RqGetInt(RqObj, "Align")
+End Property
+Property QSPLITTER.Align(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Align", Value)
+End Property
+Property QSPLITTER.Beveled() As Long
+    Return RqGetInt(RqObj, "Beveled")
+End Property
+Property QSPLITTER.Beveled(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Beveled", Value)
+End Property
+Property QSPLITTER.MinSize() As Long
+    Return RqGetInt(RqObj, "MinSize")
+End Property
+Property QSPLITTER.MinSize(ByVal Value As Long)
+    RqLclSetInt(RqObj, "MinSize", Value)
+End Property
+Property QSPLITTER.Tag() As Long
+    Return RqGetInt(RqObj, "Tag")
+End Property
+Property QSPLITTER.Tag(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Tag", Value)
+End Property
+Property QSPLITTER.OnMoved(ByVal Handler As Sub())
+    SetEventEx(14, "OnMoved", Cast(Any Ptr, Handler), 0)
+End Property
+Property QSPLITTER.OnMoved(ByVal Handler As Sub(ByRef Sender As QSPLITTER))
+    SetEventEx(14, "OnMoved", Cast(Any Ptr, Handler), 3)
+End Property

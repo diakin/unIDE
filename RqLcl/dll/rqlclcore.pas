@@ -26,8 +26,8 @@ interface
 
 uses
   Classes, SysUtils, TypInfo, Math, Controls, StdCtrls, Forms, Graphics,
-  LazUTF8, LCLType, ComCtrls, Grids, ShellCtrls, RichMemo, rqlclrich,
-  rqlclgrid;
+  LazUTF8, LCLType, ComCtrls, Grids, ShellCtrls, ExtCtrls, Buttons, Menus,
+  RichMemo, rqlclrich, rqlclgrid, rqlclmisc;
 
 const
   RqLclVersion = 2;   // меняется при несовместимой смене набора функций
@@ -67,6 +67,8 @@ function RqSetEventEx(AObj: Pointer; AEvent: PChar; AEventId: Integer;
                       AProc: TRqEventProcEx): Integer; stdcall;
 function RqCallInts(AObj: Pointer; AMethod: PChar; AStr: PChar;
                     AInts: PInteger; ACount: Integer): Integer; stdcall;
+function RqCallObj(AObj: Pointer; AMethod: PChar; AOther: Pointer;
+                   AInt: Integer): Integer; stdcall;
 function RqCall(AObj: Pointer; AMethod: PChar): Integer; stdcall;
 function RqCallInt(AObj: Pointer; AMethod: PChar; AValue: Integer): Integer;
   stdcall;
@@ -123,6 +125,8 @@ type
                            aState: TGridDrawState);
     procedure FireSetEditText(Sender: TObject; ACol, ARow: Integer;
                               const Value: string);
+    procedure FireDrawItem(Control: TWinControl; Index: Integer; ARect: TRect;
+                           State: TOwnerDrawState);
     procedure FireCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure FireTreeChange(Sender: TObject; Node: TTreeNode);
   end;
@@ -140,7 +144,7 @@ type
   end;
 
 var
-  RqClassTable: array[0..6] of TRqClassRec;
+  RqClassTable: array[0..15] of TRqClassRec;
   RqPropTable: array[0..1] of TRqPropRec;
   RqLastErrorText: string = '';
   RqInitDone: Boolean = False;
@@ -165,6 +169,24 @@ begin
   RqClassTable[5].LclClass := TStringGrid;
   RqClassTable[6].RqName := 'QDIRTREE';
   RqClassTable[6].LclClass := TShellTreeView;
+  RqClassTable[7].RqName := 'QMAINMENU';
+  RqClassTable[7].LclClass := TMainMenu;
+  RqClassTable[8].RqName := 'QMENUITEM';
+  RqClassTable[8].LclClass := TMenuItem;
+  RqClassTable[9].RqName := 'QPOPUPMENU';
+  RqClassTable[9].LclClass := TPopupMenu;
+  RqClassTable[10].RqName := 'QPANEL';
+  RqClassTable[10].LclClass := TPanel;
+  RqClassTable[11].RqName := 'QCOOLBTN';
+  RqClassTable[11].LclClass := TSpeedButton;
+  RqClassTable[12].RqName := 'QCOMBOBOX';
+  RqClassTable[12].LclClass := TComboBox;
+  RqClassTable[13].RqName := 'QCHECKBOX';
+  RqClassTable[13].LclClass := TCheckBox;
+  RqClassTable[14].RqName := 'QLISTBOX';
+  RqClassTable[14].LclClass := TListBox;
+  RqClassTable[15].RqName := 'QSPLITTER';
+  RqClassTable[15].LclClass := TSplitter;
   // У RapidQ OnClose формы - сигнал о закрытии без параметров; в LCL ему
   // ближе всего OnCloseQuery (FireCloseQuery разрешает закрытие)
   RqPropTable[0].RqName := 'ONCLOSE';
@@ -240,9 +262,48 @@ end;
 // ---------------------------------------------------------------------------
 
 procedure TRqEventLink.FireNotify(Sender: TObject);
+var
+  Args: TRqEventArgs;
 begin
-  if Assigned(Proc) then
+  if Assigned(ProcEx) then
+  begin
+    FillChar(Args, SizeOf(Args), 0);
+    ProcEx(User, Owner, EventId, @Args);
+  end
+  else if Assigned(Proc) then
     Proc(User, Owner);
+end;
+
+// OnDrawItem (QLISTBOX, QCOMBOBOX): Index, State, прямоугольник пункта.
+// State как TOwnerDrawState Delphi: выделен 1, серый 2, недоступен 4,
+// отмечен 8, в фокусе 16
+procedure TRqEventLink.FireDrawItem(Control: TWinControl; Index: Integer;
+                                    ARect: TRect; State: TOwnerDrawState);
+var
+  Args: TRqEventArgs;
+  StateBits: Integer;
+begin
+  if not Assigned(ProcEx) then
+    Exit;
+  StateBits := 0;
+  if odSelected in State then
+    StateBits := StateBits or 1;
+  if odGrayed in State then
+    StateBits := StateBits or 2;
+  if odDisabled in State then
+    StateBits := StateBits or 4;
+  if odChecked in State then
+    StateBits := StateBits or 8;
+  if odFocused in State then
+    StateBits := StateBits or 16;
+  FillChar(Args, SizeOf(Args), 0);
+  Args.IntArgs[0] := Index;
+  Args.IntArgs[1] := StateBits;
+  Args.IntArgs[2] := ARect.Left;
+  Args.IntArgs[3] := ARect.Top;
+  Args.IntArgs[4] := ARect.Right;
+  Args.IntArgs[5] := ARect.Bottom;
+  ProcEx(User, Owner, EventId, @Args);
 end;
 
 // OnClose RapidQ: сигнал, закрытие разрешено
@@ -527,7 +588,8 @@ begin
   Result := 0;
   try
     if EditSetInt(TObject(AObj), string(AProp), AValue) or
-       GridSetInt(TObject(AObj), string(AProp), AValue) then
+       GridSetInt(TObject(AObj), string(AProp), AValue) or
+       MiscSetInt(TObject(AObj), string(AProp), AValue) then
     begin
       Result := 1;
       Exit;
@@ -560,7 +622,8 @@ begin
   Result := 0;
   try
     if EditGetInt(TObject(AObj), string(AProp), Result) or
-       GridGetInt(TObject(AObj), string(AProp), Result) then
+       GridGetInt(TObject(AObj), string(AProp), Result) or
+       MiscGetInt(TObject(AObj), string(AProp), Result) then
       Exit;
     Info := FindProp(TObject(AObj), string(AProp));
     if Info = nil then
@@ -580,7 +643,8 @@ begin
   Result := 0;
   try
     if EditSetStr(TObject(AObj), string(AProp), string(AValue)) or
-       GridSetStr(TObject(AObj), string(AProp), string(AValue)) then
+       GridSetStr(TObject(AObj), string(AProp), string(AValue)) or
+       MiscSetStr(TObject(AObj), string(AProp), string(AValue)) then
     begin
       Result := 1;
       Exit;
@@ -616,7 +680,8 @@ begin
     if (ABuf <> nil) and (ABufLen > 0) then
       ABuf^ := #0;
     if not EditGetStr(TObject(AObj), string(AProp), Value) and
-       not GridGetStr(TObject(AObj), string(AProp), Value) then
+       not GridGetStr(TObject(AObj), string(AProp), Value) and
+       not MiscGetStr(TObject(AObj), string(AProp), Value) then
     begin
       Info := FindProp(TObject(AObj), string(AProp));
       if Info = nil then
@@ -640,6 +705,11 @@ var
 begin
   Result := 0;
   try
+    if MiscSetObj(TObject(AObj), string(AProp), TObject(AValue)) then
+    begin
+      Result := 1;
+      Exit;
+    end;
     if CompareText(string(AProp), 'PARENT') = 0 then
     begin
       if not (TObject(AObj) is TControl) then
@@ -744,6 +814,7 @@ begin
     if Data <> nil then
       Link.User := Data.User;
     Link.Proc := AProc;
+    Link.ProcEx := nil;
     if TypeName = 'TNotifyEvent' then
     begin
       NotifyProc := @Link.FireNotify;
@@ -787,6 +858,8 @@ var
   SelectCellProc: TOnSelectCellEvent;
   DrawCellProc: TOnDrawCell;
   SetEditProc: TSetEditEvent;
+  NotifyExProc: TNotifyEvent;
+  DrawItemProc: TDrawItemEvent;
 begin
   Result := 0;
   try
@@ -823,9 +896,20 @@ begin
     if Data <> nil then
       Link.User := Data.User;
     Link.ProcEx := AProc;
+    Link.Proc := nil;
     Link.EventId := AEventId;
     TypeName := Info^.PropType^.Name;
-    if TypeName = 'TKeyEvent' then
+    if TypeName = 'TNotifyEvent' then
+    begin
+      NotifyExProc := @Link.FireNotify;
+      Handler := TMethod(NotifyExProc);
+    end
+    else if TypeName = 'TDrawItemEvent' then
+    begin
+      DrawItemProc := @Link.FireDrawItem;
+      Handler := TMethod(DrawItemProc);
+    end
+    else if TypeName = 'TKeyEvent' then
     begin
       KeyProc := @Link.FireKey;
       Handler := TMethod(KeyProc);
@@ -899,6 +983,24 @@ begin
       SetError(string(AMethod) + ': ' + E.Message);
       Result := 0;
     end;
+  end;
+end;
+
+// Метод с объектом и целым: AddItems, DelItems, Insert у меню. 1 - выполнен.
+function RqCallObj(AObj: Pointer; AMethod: PChar; AOther: Pointer;
+                   AInt: Integer): Integer; stdcall;
+begin
+  Result := 0;
+  try
+    if MiscCallObj(TObject(AObj), string(AMethod), TObject(AOther), AInt) then
+      Result := 1
+    else if AObj = nil then
+      SetError('RqCallObj ' + string(AMethod) + ': no object')
+    else
+      SetError(TObject(AObj).ClassName + ': no method ' + string(AMethod));
+  except
+    on E: Exception do
+      SetError(string(AMethod) + ': ' + E.Message);
   end;
 end;
 
@@ -1088,7 +1190,8 @@ begin
     Prop := UpperCase(string(AProp));
     Found := False;
     Value := '';
-    if EditGetItem(TObject(AObj), Prop, AIndex, Value) then
+    if EditGetItem(TObject(AObj), Prop, AIndex, Value) or
+       MiscGetItem(TObject(AObj), Prop, AIndex, Value) then
       Found := True
     else if (TObject(AObj) is TFont) and (Prop = 'FONTNAME') then
     begin
@@ -1129,7 +1232,8 @@ function RqSetItemStr(AObj: Pointer; AProp: PChar; AIndex: Integer;
 begin
   Result := 0;
   try
-    if EditSetItem(TObject(AObj), string(AProp), AIndex, string(AValue)) then
+    if EditSetItem(TObject(AObj), string(AProp), AIndex, string(AValue)) or
+       MiscSetItem(TObject(AObj), string(AProp), AIndex, string(AValue)) then
       Result := 1
     else if AObj = nil then
       SetError('RqSetItemStr ' + string(AProp) + ': no object')
@@ -1208,8 +1312,11 @@ function RqGetItemInt(AObj: Pointer; AProp: PChar; AIndex: Integer): Integer;
   stdcall;
 begin
   Result := 0;
+  // 0 - и значение, и ошибка; вызывающий отличает их по RqLastError
+  RqLastErrorText := '';
   try
-    if not GridGetItemInt(TObject(AObj), string(AProp), AIndex, Result) then
+    if not GridGetItemInt(TObject(AObj), string(AProp), AIndex, Result) and
+       not MiscGetItemInt(TObject(AObj), string(AProp), AIndex, Result) then
       SetError('RqGetItemInt: no list ' + string(AProp));
   except
     on E: Exception do
@@ -1222,7 +1329,8 @@ function RqSetItemInt(AObj: Pointer; AProp: PChar; AIndex: Integer;
 begin
   Result := 0;
   try
-    if GridSetItemInt(TObject(AObj), string(AProp), AIndex, AValue) then
+    if GridSetItemInt(TObject(AObj), string(AProp), AIndex, AValue) or
+       MiscSetItemInt(TObject(AObj), string(AProp), AIndex, AValue) then
       Result := 1
     else
       SetError('RqSetItemInt: no list ' + string(AProp));
@@ -1256,6 +1364,9 @@ begin
       else
         Result := IntResult;
     end
+    else if MiscCallEx(TObject(AObj), string(AMethod), string(AStr), AInt1,
+                       AInt2, AInt3, IntResult) then
+      Result := IntResult
     else if AObj = nil then
       SetError('RqCallEx ' + string(AMethod) + ': no object')
     else

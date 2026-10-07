@@ -36,6 +36,9 @@ Check(Label1.Font.Size = 20, "label font via wrapper " & Label1.Font.Size)
 Font1.Size = 9
 Check(Label1.Font.Size = 20, "label keeps copy " & Label1.Font.Size)
 Font1.DelStyles(1)
+Check(Font1.Bold = 1 And Font1.Italic = 0, "bold prop")
+Font1.Bold = 0 : Font1.Underline = 1
+Check(Font1.Bold = 0 And Font1.Underline = 1, "bold/underline set")
 Check(Font1.FontCount > 0, "fontcount " & Font1.FontCount)
 Check(Len(Font1.FontName(0)) > 0, "fontname(0) " & Font1.FontName(0))
 Check(Font1.Handle <> 0, "font handle")

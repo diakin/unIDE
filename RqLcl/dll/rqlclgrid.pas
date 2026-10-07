@@ -49,7 +49,8 @@ function GridSetCell(AObj: TObject; ACol, ARow: Integer;
 function GridCallEx(AObj: TObject; const AMethod, AStr: string;
                     AInt1, AInt2, AInt3: Integer; out AIntResult: Integer;
                     out AStrResult: string; out AIsStr: Boolean): Boolean;
-// Рисование на таблице (обычно в OnDrawCell): FillRect, TextOut, Line,
+// Рисование на таблице, списке, комбобоксе, форме (обычно в OnDrawCell /
+// OnDrawItem): FillRect, TextOut, Line,
 // Rectangle, RoundRect, Circle, Pset, Paint. Координаты - в окне таблицы.
 function GridDraw(AObj: TObject; const AMethod, AStr: string;
                   const AInts: array of Integer; out AResult: Integer): Boolean;
@@ -57,6 +58,9 @@ function GridDraw(AObj: TObject; const AMethod, AStr: string;
 procedure GridInitNew(AObj: TObject);
 
 implementation
+
+uses
+  rqlclmisc;
 
 type
   // Данные QSTRINGGRID и QDIRTREE, которых нет у объекта LCL
@@ -253,9 +257,9 @@ var
 begin
   Result := False;
   AResult := 1;
-  if not (AObj is TCustomGrid) then
+  Canvas := CanvasOf(AObj);
+  if Canvas = nil then
     Exit;
-  Canvas := TStringGrid(AObj).Canvas;
   Method := UpperCase(AMethod);
   Result := True;
   if Method = 'FILLRECT' then

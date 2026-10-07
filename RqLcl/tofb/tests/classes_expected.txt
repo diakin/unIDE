@@ -1,0 +1,7 @@
+menu 2 Ctrl+O 0
+open click &Open
+combo 3 blue
+combo text green
+check click 1
+list 3 three
+panel 40 split 40
