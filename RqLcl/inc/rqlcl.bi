@@ -840,6 +840,8 @@ Type QFORM Extends QCONTROL
     Declare Property WindowState(ByVal Value As Long)
     Declare Property KeyPreview() As Long
     Declare Property KeyPreview(ByVal Value As Long)
+    ' ICOHandle = ресурс $RESOURCE с файлом .ico (значок окна)
+    Declare Property ICOHandle(ByVal Value As Long)
     Declare Property ModalResult() As Long
     Declare Property ModalResult(ByVal Value As Long)
     Declare Property OnResize(ByVal Handler As Sub())
@@ -928,6 +930,9 @@ Property QFORM.WindowState(ByVal Value As Long)
 End Property
 Property QFORM.KeyPreview() As Long
     Return RqGetInt(RqObj, "KeyPreview")
+End Property
+Property QFORM.ICOHandle(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ICOHandle", Value)
 End Property
 Property QFORM.KeyPreview(ByVal Value As Long)
     RqLclSetInt(RqObj, "KeyPreview", Value)
@@ -1083,6 +1088,13 @@ Type QBUTTON Extends QCONTROL
     Declare Property Default(ByVal Value As Long)
     Declare Property Cancel() As Long
     Declare Property Cancel(ByVal Value As Long)
+    ' Картинка кнопки (TBitBtn): BMP - файл .bmp, BMPHandle - ресурс $RESOURCE
+    Declare Property BMP(ByRef Value As String)
+    Declare Property BMPHandle(ByVal Value As Long)
+    Declare Property NumBMPs() As Long
+    Declare Property NumBMPs(ByVal Value As Long)
+    Declare Property Spacing() As Long
+    Declare Property Spacing(ByVal Value As Long)
     Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
     Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QBUTTON))
     Declare Property OnKeyDown(ByVal Handler As Sub())
@@ -1231,6 +1243,24 @@ Property QBUTTON.OnClick(ByVal Handler As Sub())
     If RqSetEvent(RqObj, "OnClick", @QBUTTON_ClickEvent) = 0 Then RqLclShowError("OnClick")
 End Property
 ' Нажатие из программы, как щелчок мышью
+Property QBUTTON.BMP(ByRef Value As String)
+    RqLclSetStr(RqObj, "BMP", Value)
+End Property
+Property QBUTTON.BMPHandle(ByVal Value As Long)
+    RqLclSetInt(RqObj, "BMPHandle", Value)
+End Property
+Property QBUTTON.NumBMPs() As Long
+    Return RqGetInt(RqObj, "NumBMPs")
+End Property
+Property QBUTTON.NumBMPs(ByVal Value As Long)
+    RqLclSetInt(RqObj, "NumBMPs", Value)
+End Property
+Property QBUTTON.Spacing() As Long
+    Return RqGetInt(RqObj, "Spacing")
+End Property
+Property QBUTTON.Spacing(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Spacing", Value)
+End Property
 Sub QBUTTON.Click()
     RqLclCall(RqObj, "Click")
 End Sub
@@ -3182,7 +3212,7 @@ Property QPANEL.OnMouseMove(ByVal Handler As Sub(ByRef Sender As QPANEL))
 End Property
 
 ' ---------------------------------------------------------------------------
-'  QCOOLBTN - кнопка с картинкой (TSpeedButton); BMP = файл .bmp, BMPHandle = HBITMAP
+'  QCOOLBTN - кнопка с картинкой (TSpeedButton); BMP = файл .bmp, BMPHandle = ресурс $RESOURCE
 ' ---------------------------------------------------------------------------
 
 Type QCOOLBTN Extends QCONTROL

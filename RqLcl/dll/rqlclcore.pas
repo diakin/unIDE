@@ -164,7 +164,8 @@ begin
   RqClassTable[0].RqName := 'QFORM';
   RqClassTable[0].LclClass := TForm;
   RqClassTable[1].RqName := 'QBUTTON';
-  RqClassTable[1].LclClass := TButton;
+  // TBitBtn, как у RapidQ (QBUTTON: BMP, BMPHandle, NumBMPs, Kind)
+  RqClassTable[1].LclClass := TBitBtn;
   RqClassTable[2].RqName := 'QLABEL';
   RqClassTable[2].LclClass := TLabel;
   RqClassTable[3].RqName := 'QEDIT';
@@ -1206,8 +1207,8 @@ begin
         TWinControl(Obj).SetFocus
       // Нажатие кнопки из программы (как щелчок мышью) - для проверки
       // событий без пользователя
-      else if (Method = 'CLICK') and (Obj is TButton) then
-        TButton(Obj).Click
+      else if (Method = 'CLICK') and (Obj is TCustomButton) then
+        TCustomButton(Obj).Click
       else
       begin
         SetError(Obj.ClassName + ': no method ' + string(AMethod));

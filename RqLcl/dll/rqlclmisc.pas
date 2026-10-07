@@ -13,8 +13,12 @@ unit rqlclmisc;
 interface
 
 uses
-  Classes, SysUtils, Controls, StdCtrls, ExtCtrls, Buttons, Menus, Forms,
-  Graphics, LCLProc, LCLType, LazUTF8;
+  Windows, Classes, SysUtils, Controls, StdCtrls, ExtCtrls, Buttons, Menus,
+  Forms, Graphics, LCLProc, LCLType, LazUTF8;
+
+// Ресурс $RESOURCE программы (RCDATA с номером в exe, содержимое - файл
+// как есть) - поток; нет такого ресурса - nil
+function MiscResourceStream(AResId: Integer): TStream;
 
 function MiscGetInt(AObj: TObject; const AProp: string;
                     out AValue: Integer): Boolean;
@@ -48,6 +52,56 @@ implementation
 
 uses
   Grids;
+
+function MiscResourceStream(AResId: Integer): TStream;
+var
+  ExeModule: HMODULE;
+begin
+  Result := nil;
+  if (AResId <= 0) or (AResId > $FFFF) then
+    Exit;
+  ExeModule := GetModuleHandle(nil);
+  if FindResource(ExeModule, MAKEINTRESOURCE(AResId), RT_RCDATA) = 0 then
+    Exit;
+  Result := TResourceStream.CreateFromID(ExeModule, AResId, RT_RCDATA);
+end;
+
+// Картинка кнопки QCOOLBTN (TSpeedButton) / QBUTTON (TBitBtn); нет - nil
+function GlyphOf(AObj: TObject): TBitmap;
+begin
+  Result := nil;
+  if AObj is TSpeedButton then
+    Result := TSpeedButton(AObj).Glyph
+  else if AObj is TCustomBitBtn then
+    Result := TCustomBitBtn(AObj).Glyph;
+end;
+
+// BMPHandle = ресурс $RESOURCE (номер RCDATA в exe, документация RapidQ:
+// тип RESOURCE); не ресурс - HBITMAP
+procedure SetGlyphHandle(AObj: TObject; AValue: Integer);
+var
+  Glyph: TBitmap;
+  ResStream: TStream;
+begin
+  Glyph := TBitmap.Create;
+  try
+    ResStream := MiscResourceStream(AValue);
+    if ResStream <> nil then
+      try
+        Glyph.LoadFromStream(ResStream);
+      finally
+        ResStream.Free;
+      end
+    else
+      Glyph.Handle := HBITMAP(PtrInt(AValue));
+    if AObj is TSpeedButton then
+      TSpeedButton(AObj).Glyph := Glyph
+    else
+      TCustomBitBtn(AObj).Glyph := Glyph;
+  finally
+    Glyph.Free;
+  end;
+end;
 
 function ListOf(AObj: TObject): TStrings;
 begin
@@ -173,6 +227,11 @@ begin
     AValue := TSpeedButton(AObj).NumGlyphs;
     Result := True;
   end
+  else if (AObj is TCustomBitBtn) and (Prop = 'NUMBMPS') then
+  begin
+    AValue := TCustomBitBtn(AObj).NumGlyphs;
+    Result := True;
+  end
   else if (AObj is TControl) and (Prop = 'CLIENTWIDTH') then
   begin
     AValue := TControl(AObj).ClientWidth;
@@ -215,7 +274,7 @@ function MiscSetInt(AObj: TObject; const AProp: string;
                     AValue: Integer): Boolean;
 var
   Prop: string;
-  Glyph: TBitmap;
+  ResStream: TStream;
 begin
   Result := False;
   Prop := UpperCase(AProp);
@@ -244,15 +303,26 @@ begin
     TSpeedButton(AObj).NumGlyphs := AValue;
     Result := True;
   end
-  else if (AObj is TSpeedButton) and (Prop = 'BMPHANDLE') then
+  else if (AObj is TCustomBitBtn) and (Prop = 'NUMBMPS') then
   begin
-    // HBITMAP: картинка кнопки
-    Glyph := TBitmap.Create;
+    TCustomBitBtn(AObj).NumGlyphs := AValue;
+    Result := True;
+  end
+  else if (GlyphOf(AObj) <> nil) and (Prop = 'BMPHANDLE') then
+  begin
+    SetGlyphHandle(AObj, AValue);
+    Result := True;
+  end
+  // QFORM.ICOHandle = ресурс $RESOURCE с файлом .ico
+  else if (AObj is TCustomForm) and (Prop = 'ICOHANDLE') then
+  begin
+    ResStream := MiscResourceStream(AValue);
+    if ResStream = nil then
+      raise Exception.Create('ICOHandle: no resource ' + IntToStr(AValue));
     try
-      Glyph.Handle := HBITMAP(PtrInt(AValue));
-      TSpeedButton(AObj).Glyph.Assign(Glyph);
+      TCustomForm(AObj).Icon.LoadFromStream(ResStream);
     finally
-      Glyph.Free;
+      ResStream.Free;
     end;
     Result := True;
   end
@@ -337,10 +407,10 @@ begin
       raise Exception.Create('ShortCut: unknown key combination "' + AValue + '"');
     Result := True;
   end
-  else if (AObj is TSpeedButton) and (Prop = 'BMP') then
+  else if (GlyphOf(AObj) <> nil) and (Prop = 'BMP') then
   begin
-    // файл .bmp - картинка кнопки
-    TSpeedButton(AObj).Glyph.LoadFromFile(AValue);
+    // файл .bmp - картинка кнопки (имя - в кодировке Windows)
+    GlyphOf(AObj).LoadFromFile(WinCPToUTF8(AValue));
     Result := True;
   end;
 end;

@@ -1,6 +1,7 @@
 // rqtofbcli - перевод программы RapidQ в FreeBASIC (модуль RqToFb).
 //   rqtofbcli <главный.bas> <папка вывода> [smart|compat] [папки include через ;]
-// Сообщения - в консоль, в конце строки APPTYPE= и OUT=. Код завершения 1 -
+// Сообщения - в консоль, в конце строки APPTYPE=, OUT= и RC= (если есть
+// $RESOURCE: файл .rc для fbc). Код завершения 1 -
 // были ошибки.
 program rqtofbcli;
 
@@ -40,6 +41,9 @@ begin
     else
       Writeln('MODE=SMART');
     Writeln('OUT=', ConvResult.MainOut);
+    // ресурсы $RESOURCE: файл .rc - вторым файлом в командной строке fbc
+    if ConvResult.ResourceFile <> '' then
+      Writeln('RC=', ConvResult.ResourceFile);
     Writeln('ERRORS=', ConvResult.ErrorCount, ' WARNINGS=', ConvResult.WarningCount);
   finally
     Messages.Free;

@@ -902,3 +902,66 @@ Function RqStrSub(ByRef Source As String, ByRef Part As String) As String
     Wend
     Return ResultText & Mid(Source, StartPos)
 End Function
+
+' ---------------------------------------------------------------------------
+'  Ресурсы $RESOURCE (глава 8): препроцессор пишет файл .rc, где каждый
+'  ресурс - RCDATA с номером 20001 + порядковый номер (с 0), содержимое -
+'  файл как есть. Имя ресурса в программе - его номер.
+' ---------------------------------------------------------------------------
+
+Declare Function RqRtFindResource Lib "kernel32" Alias "FindResourceA" ( _
+    ByVal hModule As Any Ptr, ByVal lpName As Any Ptr, ByVal lpType As Any Ptr) As Any Ptr
+Declare Function RqRtLoadResource Lib "kernel32" Alias "LoadResource" ( _
+    ByVal hModule As Any Ptr, ByVal hResInfo As Any Ptr) As Any Ptr
+Declare Function RqRtLockResource Lib "kernel32" Alias "LockResource" ( _
+    ByVal hResData As Any Ptr) As Any Ptr
+Declare Function RqRtSizeofResource Lib "kernel32" Alias "SizeofResource" ( _
+    ByVal hModule As Any Ptr, ByVal hResInfo As Any Ptr) As ULong
+' тип параметра - как у RqLclGetModuleHandle в rqsys.bi (gcc в 64 бит
+' не допускает двух разных объявлений одной функции)
+Declare Function RqRtGetModuleHandle Lib "kernel32" Alias "GetModuleHandleA" ( _
+    ByVal lpModuleName As ZString Ptr) As Any Ptr
+
+Const RqResourceBase = 20001
+Const RqRtRcData = 10   ' RT_RCDATA
+
+Private Function RqRtResInfo(ByVal ResId As Long) As Any Ptr
+    If (ResId <= 0) OrElse (ResId > &HFFFF) Then Return 0
+    Return RqRtFindResource(RqRtGetModuleHandle(0), Cast(Any Ptr, CInt(ResId)), _
+                            Cast(Any Ptr, CInt(RqRtRcData)))
+End Function
+
+' RESOURCE(n) - номер n-го ресурса (с 0)
+Function RqResource(ByVal ResNum As Long) As Long
+    Return RqResourceBase + ResNum
+End Function
+
+' RESOURCECOUNT - число ресурсов в exe
+Function RqResourceCount() As Long
+    Dim ResCount As Long = 0
+    While RqRtResInfo(RqResourceBase + ResCount) <> 0
+        ResCount += 1
+    Wend
+    Return ResCount
+End Function
+
+' EXTRACTRESOURCE(ресурс, файл) - записать ресурс в файл
+Sub RqExtractResource(ByVal ResId As Long, ByRef FileName As String)
+    Dim ResInfo As Any Ptr = RqRtResInfo(ResId)
+    If ResInfo = 0 Then
+        RqRtClassError("EXTRACTRESOURCE: no resource " & ResId)
+        Exit Sub
+    End If
+    Dim ExeModule As Any Ptr = RqRtGetModuleHandle(0)
+    Dim ResSize As ULong = RqRtSizeofResource(ExeModule, ResInfo)
+    Dim ResData As UByte Ptr = RqRtLockResource(RqRtLoadResource(ExeModule, ResInfo))
+    Dim FileNum As Long = FreeFile
+    ' прежнее содержимое файла - стереть
+    If Open(FileName For Output As #FileNum) = 0 Then Close #FileNum
+    If Open(FileName For Binary Access Write As #FileNum) <> 0 Then
+        RqRtClassError("EXTRACTRESOURCE: cannot write " & FileName)
+        Exit Sub
+    End If
+    Put #FileNum, 1, *ResData, ResSize
+    Close #FileNum
+End Sub

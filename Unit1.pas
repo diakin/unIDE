@@ -43785,6 +43785,9 @@ begin
   Params := Params + ' -i "' + LclDir + 'inc"';
   Exe := ChangeFileExt(MainBas, '.exe');
   Params := Params + ' -x "' + Exe + '" "' + ConvResult.MainOut + '"';
+  // $RESOURCE: файл .rc от перевода - fbc собирает его в exe (GoRC)
+  if ConvResult.ResourceFile <> '' then
+    Params := Params + ' "' + ConvResult.ResourceFile + '"';
   if not FreeBusyExe(Exe) then
     Exit;
   if FileExists(Exe) and not DeleteFile(Exe) then

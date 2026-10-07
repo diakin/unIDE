@@ -111,7 +111,7 @@ Function RqStr Overload (ByVal Value As Double) As String   ' число -> ""
 | `$APPTYPE CGI\|CONSOLE\|GUI` (по умолчанию GUI, без директивы RapidQ определяет сам) | ключ fbc `-s console` / `-s gui` |
 | `$TYPECHECK ON\|OFF` (по умолчанию OFF) | режим препроцессора: вставлять `Dim` или нет |
 | `$INCLUDE "f"` / `<f>` (не внутри SUB/FUNCTION) | `#include "f"` на нормализованную копию; `"..."` — текущая папка и пути include, `<...>` — ещё и пути окружения |
-| `$RESOURCE Handle AS "file"` | .rc файл |
+| `$RESOURCE Handle AS "file"` / `<file>` (глава 8: файл встраивается в exe; BMPHandle, ICOHandle, PlayWav, `RESOURCE(n)`, `EXTRACTRESOURCE`) | `Const Handle = 20001 + n` и файл `<главный>_res.rc` (RCDATA с тем же номером, содержимое — файл как есть), его fbc собирает в exe; поиск файла — как у `$INCLUDE`, `./` в начале убирается; имя второй раз — предупреждение, второе объявление пропускается; файл не найден — предупреждение, ресурс пустой. Номер ресурса в RapidQ не проверялся — программы его только передают |
 | `$DEFINE`, `$UNDEF a, b`, `$IFDEF`, `$IFNDEF`, `$ELSE`, `$ENDIF` | `#define`, `#undef`, `#ifdef`… (`$DEFINE` — замена одного токена, не функция) |
 | `$OPTION BYREF` | параметры по ссылке; по умолчанию RapidQ передаёт по значению |
 | `$OPTION DECIMAL ","` | разделитель для VAL |

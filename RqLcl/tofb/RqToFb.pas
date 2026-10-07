@@ -53,6 +53,8 @@ type
     Mode: TRqFbMode;     // режим с учётом строки '$RQFB в исходнике
     ErrorCount: Integer;
     WarningCount: Integer;
+    // файл ресурсов ($RESOURCE) для fbc; '' - ресурсов нет
+    ResourceFile: string;
   end;
 
 // Перевести программу AMainFile. Сообщения - в AMessages. False - были
@@ -105,7 +107,9 @@ const
   RqFuncMapText =
     'INSERT$=RqInsert REPLACE$=RqReplace DELETE$=RqDelete ' +
     'REPLACESUBSTR$=RqReplaceSubStr CONVBASE$=RqConvBase FIELD$=RqField ' +
-    'REVERSE$=RqReverse HEX$=RqHex DIR$=RqDir STRF$=RqStrF';
+    'REVERSE$=RqReverse HEX$=RqHex DIR$=RqDir STRF$=RqStrF ' +
+    'RESOURCE=RqResource RESOURCECOUNT=RqResourceCount ' +
+    'EXTRACTRESOURCE=RqExtractResource';
 
   // Свойства и методы RapidQ, имена которых в FreeBASIC - ключевые слова:
   // .Pointer (QMEMORYSTREAM) -> .PointerAddr (rqstream.bi)
@@ -196,7 +200,9 @@ const
   CrLf = #13#10;
   // Параметр SUBI / FUNCTIONI (RqPList - в rqrt.bi)
   VariadicParam = 'ByRef RqParams As RqPList';
-  ContinueMark = ' _' + #13#10;   // перенос строки внутри собранного заново
+  ContinueMark = ' _' + #13#10;
+  // номер первого ресурса $RESOURCE (RCDATA в exe); так же в rqrt.bi и DLL
+  RqResourceBase = 20001;   // перенос строки внутри собранного заново
 
 type
   TTokKind = (tkSpace, tkIdent, tkNumber, tkString, tkComment, tkDirective,
@@ -284,6 +290,7 @@ type
     FLabels: TStringList;
     FRedims: TStringList;         // имена, у которых есть REDIM
     FDefines: TStringList;        // NAME=замена
+    FResources: TStringList;      // $RESOURCE: ИМЯ=полный путь ('' - не найден)
     FDoneFiles: TStringList;      // исходный файл (верхний регистр) -> вывод
     FOutNames: TStringList;       // занятые имена файлов вывода
     FWarnedNames: TStringList;    // о чём уже предупреждали
@@ -416,6 +423,9 @@ type
     function VariadicMember(const AToks: TToks; AMemberIdx: Integer): Boolean;
     function ProcessDirective(var AToks: TToks; AFrom, ATo: Integer;
                               var AOut: string): Boolean;
+    function WriteResources: string;
+    procedure ProcessResource(var AToks: TToks; AFrom, ATo, AArgIdx: Integer;
+                              const AOriginal: string; var AOut: string);
     function ResolveInclude(const AName: string; AAngle: Boolean): string;
     function ProcessFile(const AFileName: string; AIsMain: Boolean): string;
     function MainHeader: string;
@@ -836,6 +846,7 @@ begin
   FRedims.Sorted := True;
   FRedims.Duplicates := dupIgnore;
   FDefines := TStringList.Create;
+  FResources := TStringList.Create;
   FDoneFiles := TStringList.Create;
   FOutNames := TStringList.Create;
   FWarnedNames := TStringList.Create;
@@ -905,6 +916,7 @@ begin
   FGosubSites.Free;
   FRedims.Free;
   FDefines.Free;
+  FResources.Free;
   FDoneFiles.Free;
   FOutNames.Free;
   FWarnedNames.Free;
@@ -2419,7 +2431,15 @@ begin
     Exit;
   end;
 
-  if (Name = '$RESOURCE') or (Name = '$MACRO') then
+  // $RESOURCE Имя AS "файл" / <файл> (глава 8): файл встраивается в exe,
+  // Имя - номер ресурса (константа)
+  if Name = '$RESOURCE' then
+  begin
+    ProcessResource(AToks, AFrom, ATo, ArgIdx, Original, AOut);
+    Exit;
+  end;
+
+  if Name = '$MACRO' then
   begin
     Warn(AToks[AFrom].Text + ': пока не поддержано, строка пропущена');
     Exit;
@@ -2878,7 +2898,10 @@ begin
       begin
         AToks[FirstIdx].OutText := ProcRec.FbName;
         GlobalQualify(AToks, FirstIdx);
-      end;
+      end
+      // процедура RapidQ из rqrt.bi (EXTRACTRESOURCE)
+      else if FFuncMap.IndexOfName(AToks[FirstIdx].Up) >= 0 then
+        AToks[FirstIdx].OutText := FFuncMap.Values[AToks[FirstIdx].Up];
       ProcessExpr(AToks, FirstIdx + 1, ATo);
       // SUBI Имя a, b / Имя(a, b) -> Имя(RqPList().Arg(a).Arg(b))
       if (ProcRec <> nil) and ProcRec.IsVariadic then
@@ -5439,6 +5462,7 @@ begin
     FDoneFiles.Clear;
     FOutNames.Clear;
     FDefines.Clear;
+    FResources.Clear;
     SetLength(FConds, 0);
     FCurProc := nil;
     FInType := False;
@@ -5490,7 +5514,124 @@ begin
   AResult.Mode := FOpt.Mode;
   AResult.ErrorCount := FErrors;
   AResult.WarningCount := FWarnings;
+  AResult.ResourceFile := WriteResources;
   Result := FErrors = 0;
+end;
+
+procedure TRqFbConv.ProcessResource(var AToks: TToks; AFrom, ATo, AArgIdx: Integer;
+                                    const AOriginal: string; var AOut: string);
+var
+  AsIdx, NameIdx, CloseIdx, ResIdx: Integer;
+  ResName, FileName, Found: string;
+  Angle: Boolean;
+  VarRec: TRqVar;
+begin
+  NameIdx := AArgIdx;
+  if (NameIdx < 0) or (AToks[NameIdx].Kind <> tkIdent) then
+  begin
+    Error('$RESOURCE: нужно имя (Имя AS "файл")');
+    Exit;
+  end;
+  AsIdx := NextSig(AToks, NameIdx + 1, ATo);
+  if not IsWord(AToks, AsIdx, 'AS') then
+  begin
+    Error('$RESOURCE ' + AToks[NameIdx].Text + ': нет AS "файл"');
+    Exit;
+  end;
+  FileName := '';
+  Angle := False;
+  CloseIdx := NextSig(AToks, AsIdx + 1, ATo);
+  if (CloseIdx >= 0) and (AToks[CloseIdx].Kind = tkString) then
+    FileName := Copy(AToks[CloseIdx].Text, 2, Length(AToks[CloseIdx].Text) - 2)
+  else if IsOp(AToks, CloseIdx, '<') then
+  begin
+    Angle := True;
+    Inc(CloseIdx);
+    while (CloseIdx <= ATo) and not IsOp(AToks, CloseIdx, '>') do
+    begin
+      FileName := FileName + AToks[CloseIdx].Text;
+      Inc(CloseIdx);
+    end;
+  end;
+  FileName := Trim(FileName);
+  if FileName = '' then
+  begin
+    Error('$RESOURCE ' + AToks[NameIdx].Text + ': не указан файл');
+    Exit;
+  end;
+  ResName := AToks[NameIdx].Up;
+  // ./resource/x.bmp - от папки исходника, как у $INCLUDE
+  if (Copy(FileName, 1, 2) = './') or (Copy(FileName, 1, 2) = '.\') then
+    System.Delete(FileName, 1, 2);
+  Found := ResolveInclude(FileName, Angle);
+  ResIdx := FResources.IndexOfName(ResName);
+  if ResIdx >= 0 then
+  begin
+    // тот же ресурс второй раз (sOpen в RQdebugger и в include)
+    if FPass = 2 then
+      Warn('$RESOURCE ' + AToks[NameIdx].Text + ': уже объявлен выше, это ' +
+           'объявление ("' + FileName + '") пропущено');
+    Exit;
+  end;
+  if (Found = '') and (FPass = 2) then
+    Warn('$RESOURCE ' + AToks[NameIdx].Text + ': файл "' + FileName +
+         '" не найден - ресурс будет пустым');
+  FResources.Add(ResName + '=' + Found);
+  VarRec := DeclareVar(AToks[NameIdx].Text, 'LONG', '', False, True, True);
+  AOut := 'Const ' + VarRec.FbName + ' = ' +
+          IntToStr(RqResourceBase + FResources.Count - 1) + ' ' + CommentOut(AOriginal);
+end;
+
+// Файл ресурсов для fbc: каждый $RESOURCE - RCDATA с номером
+// RqResourceBase + порядковый номер (с 0), содержимое - файл как есть
+// (BMP, ICO, WAV...). DLL и rqrt.bi берут его из exe по номеру.
+function TRqFbConv.WriteResources: string;
+var
+  RcLines: TStringList;
+  ResIdx: Integer;
+  ResPath, RcText: string;
+  RcStream: TFileStream;
+begin
+  Result := '';
+  if FResources.Count = 0 then
+    Exit;
+  RcLines := TStringList.Create;
+  try
+    RcLines.Add('// $RESOURCE ' + ExtractFileName(FMainFile) + ' (RqToFb)');
+    for ResIdx := 0 to FResources.Count - 1 do
+    begin
+      ResPath := FResources.ValueFromIndex[ResIdx];
+      if ResPath = '' then
+        RcLines.Add('// ' + FResources.Names[ResIdx] + ': file not found')
+      else
+        RcLines.Add(IntToStr(RqResourceBase + ResIdx) + ' RCDATA "' +
+                    StringReplace(ResPath, '\', '/', [rfReplaceAll]) + '"');
+    end;
+    Result := IncludeTrailingPathDelimiter(FOpt.OutDir) +
+              ChangeFileExt(ExtractFileName(FMainFile), '') + '_res.rc';
+    try
+      ForceDirectories(FOpt.OutDir);
+      // строки через CR LF: GoRC (компилятор ресурсов fbc) с одним LF
+      // ресурсов не видит
+      RcText := '';
+      for ResIdx := 0 to RcLines.Count - 1 do
+        RcText := RcText + RcLines[ResIdx] + #13#10;
+      RcStream := TFileStream.Create(Result, fmCreate);
+      try
+        RcStream.WriteBuffer(PChar(RcText)^, Length(RcText));
+      finally
+        RcStream.Free;
+      end;
+    except
+      on E: Exception do
+      begin
+        Error('не удалось записать ' + Result + ': ' + E.Message);
+        Result := '';
+      end;
+    end;
+  finally
+    RcLines.Free;
+  end;
 end;
 
 function RqToFbConvert(const AMainFile: string; const AOptions: TRqFbOptions;

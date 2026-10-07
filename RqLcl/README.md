@@ -7,8 +7,8 @@
 | Класс | Свойства | События, методы |
 |---|---|---|
 | общее (QCONTROL) | Left, Top, Width, Height, ClientWidth, ClientHeight, Visible, Enabled, Color, Cursor, Hint, ShowHint, Parent, PopupMenu (запись), Font, Handle (HWND, чтение), Align (0 нет, 1 верх, 2 низ, 3 лево, 4 право, 5 всё), Tag, TabOrder (у элементов без окна — QLABEL, QCOOLBTN — не действует, чтение даёт -1) | Show, Hide, Repaint, SetFocus |
-| QFORM | Caption, BorderStyle, FormStyle, WindowState, AutoScroll, KeyPreview, ModalResult | OnShow, OnClose, OnResize, OnClick; ShowModal, Close, Center |
-| QBUTTON | Caption, Default, Cancel, ModalResult | OnClick; Click |
+| QFORM | Caption, BorderStyle, FormStyle, WindowState, AutoScroll, KeyPreview, ModalResult, ICOHandle (ресурс $RESOURCE с .ico, запись) | OnShow, OnClose, OnResize, OnClick; ShowModal, Close, Center |
+| QBUTTON (TBitBtn, как у RapidQ) | Caption, Default, Cancel, ModalResult, BMP (файл .bmp), BMPHandle (ресурс $RESOURCE), NumBMPs, Spacing | OnClick; Click |
 | QLABEL | Caption, Transparent, AutoSize, Alignment, Layout, WordWrap | OnClick, OnDblClick, мышь |
 | QEDIT | Text, SelStart, SelLength, SelText, MaxLength, ReadOnly, Modified, CharCase, AutoSize, BorderStyle | OnChange, клавиатура, мышь |
 | QFONT | Name, Size, Color, Charset, Pitch, Bold, Italic, Underline, StrikeOut, Handle (HFONT), FontCount, FontName(i) | AddStyles, DelStyles (до четырёх стилей за вызов) |
@@ -19,7 +19,7 @@
 | QMENUITEM | Caption («-» — разделитель), Checked, RadioItem, ShortCut ("Ctrl+O"), MenuIndex, Count, Command, Tag | OnClick; AddItems, DelItems, DelIndex, Insert |
 | QPOPUPMENU | Alignment, AutoPopup, Tag (элемент: PopupMenu = Меню) | OnPopup; AddItems, DelItems, DelIndex, Insert, Popup(x, y) |
 | QPANEL | Caption, Align, Alignment, BevelInner, BevelOuter, BevelWidth, BorderStyle, TabOrder, Tag | OnClick, OnDblClick, мышь |
-| QCOOLBTN | Caption, Align, AllowAllUp, BMP (файл .bmp, запись), BMPHandle (HBITMAP, запись), Down, Flat, GroupIndex, Layout, NumBMPs, Spacing, Tag | OnClick, мышь |
+| QCOOLBTN | Caption, Align, AllowAllUp, BMP (файл .bmp, запись), BMPHandle (ресурс $RESOURCE; не ресурс — HBITMAP; запись), Down, Flat, GroupIndex, Layout, NumBMPs, Spacing, Tag | OnClick, мышь |
 | QCOMBOBOX | Item(i), ItemCount, ItemIndex, ItemHeight, Text, Style, Sorted, DropDownCount, MaxLength, Align, TabOrder, Tag | OnChange, OnDrawItem, клавиатура; AddItems, Clear, DelItems, InsertItem, TextWidth/Height, рисование |
 | QCHECKBOX | Caption, Checked, Align, TabOrder, Tag | OnClick, клавиатура, мышь |
 | QLISTBOX | Item(i), ItemCount, ItemIndex, Selected(i), SelCount, MultiSelect, ExtendedSelect, Sorted, Style, ItemHeight, Columns, TopIndex, Text (строки через CR LF), BorderStyle, Align, TabOrder, Tag | OnClick, OnDblClick, OnDrawItem, клавиатура, мышь; AddItems, Clear, DelItems, InsertItem, LoadFromFile, SaveToFile, TextWidth/Height, рисование |
@@ -89,6 +89,7 @@ QRICHEDIT — `TRichMemo` из пакета RichMemo (на Windows — окно 
 - `demo/richtest.bas`, `gridtest.bas`, `listtest.bas`, `regtest.bas` — проверки QRICHEDIT, QSTRINGGRID + QDIRTREE, QSTRINGLIST, QREGISTRY без пользователя.
 - `inc/rqstrlist.bi`, `inc/rqreg.bi`, `inc/rqtimer.bi` — QSTRINGLIST, QREGISTRY и QTIMER (без DLL).
 - `inc/rqsys.bi` — QOPENDIALOG, QSAVEDIALOG, глобальные Application, Screen_v, Clipboard (подключается из rqlcl.bi; в DLL — `dll/rqlclsys.pas`).
+- Ресурсы `$RESOURCE`: препроцессор пишет `<главный>_res.rc` (RCDATA, номера с 20001), unIDE передаёт его fbc вместе с главным файлом; в DLL BMPHandle/ICOHandle читают ресурс из exe (`GetModuleHandle(nil)`, `TResourceStream`); в `rqrt.bi` — `RqResource(n)`, `RqResourceCount`, `RqExtractResource`.
 - `inc/rqview.bi` — QLISTVIEW (с посредниками QLISTITEM, QLISTCOLUMN) и QFONTDIALOG (подключается из rqlcl.bi; в DLL — `dll/rqlclview.pas`).
 - `dll/richmemo/` — нужная часть пакета RichMemo (источник и лицензия — в его README).
 - `demo/selftest.bas` — проверка без пользователя: форма открывается, OnShow нажимает кнопку три раза, сверяет свойства и закрывает форму; итог в консоль и в код завершения.
