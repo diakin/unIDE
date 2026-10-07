@@ -98,7 +98,14 @@ const
   // Функции RapidQ со знаком $, которых в FreeBASIC нет
   RqOnlyStrFuncText =
     'INSERT$ REPLACE$ DELETE$ PARAMSTR$ GET$ REPLACESUBSTR$ CONVBASE$ ' +
-    'FIELD$ VARPTR$';
+    'FIELD$ VARPTR$ REVERSE$';
+
+  // Функции RapidQ со знаком $ -> функции rqrt.bi (у HEX$ RapidQ дополняет
+  // до 8 знаков, у FreeBASIC - нет)
+  RqFuncMapText =
+    'INSERT$=RqInsert REPLACE$=RqReplace DELETE$=RqDelete ' +
+    'REPLACESUBSTR$=RqReplaceSubStr CONVBASE$=RqConvBase FIELD$=RqField ' +
+    'REVERSE$=RqReverse HEX$=RqHex';
 
   // Слова FreeBASIC, которыми переменная называться не может
   FbReservedText =
@@ -204,6 +211,7 @@ type
     FFbReserved: TStringList;
     FObjClasses: TStringList;
     FGuiClasses: TStringList;
+    FFuncMap: TStringList;        // ИМЯ$=функция rqrt.bi
     FCurFile: string;
     FCurLine: Integer;
     FCurProc: TRqProc;
@@ -441,6 +449,8 @@ begin
   FillWordList(FObjClasses, RqObjectText);
   FGuiClasses := TStringList.Create;
   FillWordList(FGuiClasses, RqGuiObjectText);
+  FFuncMap := TStringList.Create;
+  FFuncMap.Text := StringReplace(RqFuncMapText, ' ', CrLf, [rfReplaceAll]);
 end;
 
 destructor TRqFbConv.Destroy;
@@ -466,6 +476,7 @@ begin
   FFbReserved.Free;
   FObjClasses.Free;
   FGuiClasses.Free;
+  FFuncMap.Free;
   inherited Destroy;
 end;
 
@@ -1693,6 +1704,11 @@ begin
   if ProcRec <> nil then
   begin
     AToks[AIdx].OutText := ProcRec.FbName;
+    Exit;
+  end;
+  if FFuncMap.IndexOfName(Up) >= 0 then
+  begin
+    AToks[AIdx].OutText := FFuncMap.Values[Up];
     Exit;
   end;
   if InList(FFbStrFuncs, Up) then

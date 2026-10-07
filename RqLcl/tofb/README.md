@@ -30,6 +30,11 @@
 - `Объект.OnXxx = Процедура` → `@Процедура`; в `rqlcl.bi` обработчики и с `Sender`, и без него.
 - `Result =` в функции → `Function =`; `INC x[, n]` / `DEC` → `x += n` / `x -= n`; `CALL`, `LET` убираются; `'$...` в комментарии → `' $...` (иначе fbc принимает за метакоманду).
 
+## Функции RapidQ (rqrt.bi)
+
+По `rapidq_ref/html_doc/otherdetail.html`, проверено на примерах оттуда (`tests/funcs.bas`):
+FIELD$, REPLACESUBSTR$, INSERT$, DELETE$, REPLACE$, REVERSE$, CONVBASE$, HEX$ (8 знаков, как в Windows-версии RapidQ) — препроцессор переименовывает в `RqField`, `RqReplaceSubStr`, … ; RINSTR, TALLY, ROUND (половина — от нуля), CEIL, FLOOR, FILEEXISTS, DIREXISTS, SHOWMESSAGE, MESSAGEBOX, MESSAGEDLG — под теми же именами. FRAC есть в FreeBASIC. RINSTR с начальной позицией — как `InStrRev` FreeBASIC (пример в документации RapidQ не однозначен); ROUND для отрицательных и MESSAGEDLG — по описанию, с RapidQ не сверялись.
+
 ## Проверено (Linux, Wine, fbc 1.10.1 win32)
 
 - `tests/types16.bas` — вывод совпадает с RapidQ построчно.
@@ -40,5 +45,5 @@
 ## Пока не сделано
 
 - CREATE … END CREATE, TYPE … EXTENDS, SUBI/FUNCTIONI, `$MACRO`, `$RESOURCE`, VARIANT, LPRINT, PRINT USING.
-- Функции RapidQ без пары в FreeBASIC; присваивание свойству объекта числа или строки — без преобразования.
+- Функции RapidQ PARAMSTR$, GET$, VARPTR$, FORMAT$ и подобные; присваивание свойству объекта числа или строки — без преобразования.
 - Передача по ссылке через `@` при вызове (предупреждение, параметр получает копию).

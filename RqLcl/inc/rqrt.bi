@@ -277,3 +277,211 @@ Function RqFmt Overload (ByVal Value As Double) As String
     End If
     Return Sign & RqRtWholeDigits(WholePart) & "." & Right("000000000" & Str(Fraction), 9)
 End Function
+
+' ---------------------------------------------------------------------------
+'  Функции RapidQ, которых нет в FreeBASIC (rapidq_ref/html_doc/
+'  otherdetail.html). Функции со знаком $ препроцессор переименовывает:
+'  INSERT$ -> RqInsert и т.д.; остальные называются как в RapidQ.
+' ---------------------------------------------------------------------------
+
+' FIELD$("John&Doe&555-1234", "&", 2) -> "Doe"; номер с 1, нет - ""
+Function RqField(ByRef Source As String, ByRef Delim As String, _
+                 ByVal FieldNum As Long) As String
+    If (FieldNum < 1) Or (Len(Delim) = 0) Then Return ""
+    Dim StartPos As Long = 1
+    Dim FoundPos As Long
+    Dim FieldIdx As Long = 1
+    Do
+        FoundPos = InStr(StartPos, Source, Delim)
+        If FieldIdx = FieldNum Then
+            If FoundPos = 0 Then Return Mid(Source, StartPos)
+            Return Mid(Source, StartPos, FoundPos - StartPos)
+        End If
+        If FoundPos = 0 Then Return ""
+        StartPos = FoundPos + Len(Delim)
+        FieldIdx += 1
+    Loop
+End Function
+
+' REPLACESUBSTR$("abcdefgabcdefg", "abc", "99") -> "99defg99defg" (все)
+Function RqReplaceSubStr(ByRef Source As String, ByRef Find As String, _
+                         ByRef Replacement As String) As String
+    If Len(Find) = 0 Then Return Source
+    Dim Result As String = ""
+    Dim StartPos As Long = 1
+    Dim FoundPos As Long = InStr(StartPos, Source, Find)
+    While FoundPos > 0
+        Result &= Mid(Source, StartPos, FoundPos - StartPos) & Replacement
+        StartPos = FoundPos + Len(Find)
+        FoundPos = InStr(StartPos, Source, Find)
+    Wend
+    Return Result & Mid(Source, StartPos)
+End Function
+
+' INSERT$("hi", "Hello", 3) -> "Hehillo"
+Function RqInsert(ByRef InsertText As String, ByRef Source As String, _
+                  ByVal Index As Long) As String
+    If Index < 1 Then Index = 1
+    Return Left(Source, Index - 1) & InsertText & Mid(Source, Index)
+End Function
+
+' DELETE$("Hello world", 2, 3) -> "Ho world"
+Function RqDelete(ByRef Source As String, ByVal StartPos As Long, _
+                  ByVal Count As Long) As String
+    If (StartPos < 1) Or (Count <= 0) Then Return Source
+    Return Left(Source, StartPos - 1) & Mid(Source, StartPos + Count)
+End Function
+
+' REPLACE$("Hello", "Jwer", 1) -> "Jwero" (поверх, с удлинением)
+Function RqReplace(ByRef Source As String, ByRef Replacement As String, _
+                   ByVal Index As Long) As String
+    If Index < 1 Then Index = 1
+    Return Left(Source, Index - 1) & Replacement & _
+           Mid(Source, Index + Len(Replacement))
+End Function
+
+' REVERSE$("Hello") -> "olleH"
+Function RqReverse(ByRef Source As String) As String
+    Dim Result As String = Source
+    Dim CharIdx As Long
+    Dim TextLen As Long = Len(Source)
+    For CharIdx = 0 To TextLen - 1
+        Result[CharIdx] = Source[TextLen - 1 - CharIdx]
+    Next
+    Return Result
+End Function
+
+' CONVBASE$("FFD", 16, 2); отрицательные не поддержаны (как в RapidQ)
+Function RqConvBase(ByRef Source As String, ByVal FromBase As Long, _
+                    ByVal ToBase As Long) As String
+    Const DigitChars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+    If (FromBase < 2) Or (FromBase > 36) Or (ToBase < 2) Or (ToBase > 36) Then Return ""
+    Dim Value As ULongInt = 0
+    Dim CharIdx As Long
+    Dim DigitValue As Long
+    Dim Upper As String = UCase(Trim(Source))
+    For CharIdx = 1 To Len(Upper)
+        DigitValue = InStr(DigitChars, Mid(Upper, CharIdx, 1)) - 1
+        If (DigitValue < 0) Or (DigitValue >= FromBase) Then Exit For
+        Value = Value * FromBase + DigitValue
+    Next
+    If Value = 0 Then Return "0"
+    Dim Result As String = ""
+    While Value > 0
+        Result = Mid(DigitChars, (Value Mod ToBase) + 1, 1) & Result
+        Value \= ToBase
+    Wend
+    Return Result
+End Function
+
+' HEX$ в Windows-версии RapidQ дополняется нулями до 8 знаков;
+' отрицательные - в дополнительном коде (32 бита)
+Function RqHex(ByVal Value As Double) As String
+    Return Hex(CLng(RqRtWrap(Value, 32, 1)), 8)
+End Function
+
+' RINSTR([start,] строка, искомое) - поиск справа налево; 0 - нет
+Function Rinstr Overload (ByRef Source As String, ByRef Find As String) As Long
+    Return InStrRev(Source, Find)
+End Function
+Function Rinstr Overload (ByVal StartPos As Long, ByRef Source As String, _
+                          ByRef Find As String) As Long
+    Return InStrRev(Source, Find, StartPos)
+End Function
+
+' TALLY("abcdefghijklmnabc", "abc") -> 2 (без перекрытий)
+Function Tally(ByRef Source As String, ByRef Find As String) As Long
+    If Len(Find) = 0 Then Return 0
+    Dim Count As Long = 0
+    Dim FoundPos As Long = InStr(Source, Find)
+    While FoundPos > 0
+        Count += 1
+        FoundPos = InStr(FoundPos + Len(Find), Source, Find)
+    Wend
+    Return Count
+End Function
+
+' ROUND(3.49) -> 3, ROUND(3.50) -> 4 (половина - от нуля)
+Function Round(ByVal Value As Double) As Double
+    If Value >= 0 Then Return RqRtFloor(Value + 0.5)
+    Return -RqRtFloor(-Value + 0.5)
+End Function
+
+' CEIL(66.2) -> 67, FLOOR(66.7) -> 66
+Function Ceil(ByVal Value As Double) As Double
+    Return -RqRtFloor(-Value)
+End Function
+Function Floor(ByVal Value As Double) As Double
+    Return RqRtFloor(Value)
+End Function
+
+Declare Function RqRtGetFileAttributes Lib "kernel32" Alias "GetFileAttributesA" ( _
+    ByVal FileName As ZString Ptr) As ULong
+
+' FILEEXISTS / DIREXISTS: 0 - нет, иначе не 0
+Function FileExists(ByRef FileName As String) As Long
+    Dim Attr As ULong = RqRtGetFileAttributes(StrPtr(FileName))
+    If Attr = &hFFFFFFFF Then Return 0
+    If (Attr And &h10) <> 0 Then Return 0     ' папка
+    Return 1
+End Function
+Function DirExists(ByRef DirName As String) As Long
+    Dim Attr As ULong = RqRtGetFileAttributes(StrPtr(DirName))
+    If Attr = &hFFFFFFFF Then Return 0
+    If (Attr And &h10) = 0 Then Return 0
+    Return 1
+End Function
+
+' SHOWMESSAGE "текст"
+Sub ShowMessage(ByRef Text As String)
+    Dim AppName As String = Command(0)
+    Dim SlashPos As Long = InStrRev(AppName, Any "\/")
+    If SlashPos > 0 Then AppName = Mid(AppName, SlashPos + 1)
+    Dim DotPos As Long = InStrRev(AppName, ".")
+    If DotPos > 0 Then AppName = Left(AppName, DotPos - 1)
+    RqRtMessageBox(0, Text, AppName, 0)
+End Sub
+
+' MESSAGEBOX(текст, заголовок, флаги) - MessageBoxA
+Function MessageBox(ByRef Text As String, ByRef Title As String, _
+                    ByVal Flags As Long) As Long
+    Return RqRtMessageBox(0, Text, Title, Flags)
+End Function
+
+' MESSAGEDLG(текст, msgType, msgButtons, helpContext): msgType 0..4 =
+' mtWarning, mtError, mtInformation, mtConfirmation, mtCustom; кнопки -
+' mbYes 1, mbNo 2, mbOK 4, mbCancel 8, mbAbort 32, mbRetry 64, mbIgnore 128.
+' Результат - mrOk 1, mrCancel 2, mrAbort 3, mrRetry 4, mrIgnore 5, mrYes 6,
+' mrNo 7 (те же номера, что у MessageBox).
+Function MessageDlg(ByRef Text As String, ByVal MsgType As Long, _
+                    ByVal Buttons As Long, ByVal HelpContext As Long) As Long
+    Dim Flags As ULong = 0
+    Select Case MsgType
+        Case 0: Flags = &h30          ' MB_ICONWARNING
+        Case 1: Flags = &h10          ' MB_ICONERROR
+        Case 2: Flags = &h40          ' MB_ICONINFORMATION
+        Case 3: Flags = &h20          ' MB_ICONQUESTION
+    End Select
+    If (Buttons And (1 Or 2)) = (1 Or 2) Then
+        If (Buttons And 8) <> 0 Then
+            Flags Or= &h3             ' MB_YESNOCANCEL
+        Else
+            Flags Or= &h4             ' MB_YESNO
+        End If
+    ElseIf (Buttons And (32 Or 64 Or 128)) = (32 Or 64 Or 128) Then
+        Flags Or= &h2                 ' MB_ABORTRETRYIGNORE
+    ElseIf (Buttons And (64 Or 8)) = (64 Or 8) Then
+        Flags Or= &h5                 ' MB_RETRYCANCEL
+    ElseIf (Buttons And (4 Or 8)) = (4 Or 8) Then
+        Flags Or= &h1                 ' MB_OKCANCEL
+    End If
+    Dim Caption As String
+    Select Case MsgType
+        Case 0: Caption = "Warning"
+        Case 1: Caption = "Error"
+        Case 2: Caption = "Information"
+        Case 3: Caption = "Confirm"
+        Case Else: Caption = ""
+    End Select
+    Return RqRtMessageBox(0, Text, Caption, Flags)
+End Function
