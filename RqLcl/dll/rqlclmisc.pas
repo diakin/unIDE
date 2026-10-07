@@ -188,6 +188,26 @@ begin
   begin
     AValue := TControl(AObj).ClientHeight;
     Result := True;
+  end
+  // Align, Tag, TabOrder - у всех элементов (не у всех классов LCL
+  // published: TabOrder нет у TSpeedButton, TLabel)
+  else if (AObj is TControl) and (Prop = 'ALIGN') then
+  begin
+    AValue := Ord(TControl(AObj).Align);
+    Result := True;
+  end
+  else if (AObj is TComponent) and (Prop = 'TAG') then
+  begin
+    AValue := Integer(TComponent(AObj).Tag);
+    Result := True;
+  end
+  else if (AObj is TControl) and (Prop = 'TABORDER') then
+  begin
+    if AObj is TWinControl then
+      AValue := TWinControl(AObj).TabOrder
+    else
+      AValue := -1;
+    Result := True;
   end;
 end;
 
@@ -249,6 +269,25 @@ begin
   else if (AObj is TControl) and (Prop = 'CLIENTHEIGHT') then
   begin
     TControl(AObj).ClientHeight := AValue;
+    Result := True;
+  end
+  else if (AObj is TControl) and (Prop = 'ALIGN') then
+  begin
+    if (AValue < Ord(Low(TAlign))) or (AValue > Ord(High(TAlign))) then
+      raise Exception.CreateFmt('Align: %d - out of range', [AValue]);
+    TControl(AObj).Align := TAlign(AValue);
+    Result := True;
+  end
+  else if (AObj is TComponent) and (Prop = 'TAG') then
+  begin
+    TComponent(AObj).Tag := AValue;
+    Result := True;
+  end
+  else if (AObj is TControl) and (Prop = 'TABORDER') then
+  begin
+    // у элемента без окна (QLABEL, QCOOLBTN) TabOrder нет - пропускается
+    if AObj is TWinControl then
+      TWinControl(AObj).TabOrder := TTabOrder(AValue);
     Result := True;
   end;
 end;

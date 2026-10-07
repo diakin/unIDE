@@ -507,6 +507,14 @@ Type QCONTROL
     Declare Property ClientWidth(ByVal Value As Long)
     Declare Property ClientHeight() As Long
     Declare Property ClientHeight(ByVal Value As Long)
+    ' Align (0 нет, 1 верх, 2 низ, 3 лево, 4 право, 5 всё), Tag, TabOrder -
+    ' у всех элементов (у элемента без окна TabOrder не действует)
+    Declare Property Align() As Long
+    Declare Property Align(ByVal Value As Long)
+    Declare Property Tag() As Long
+    Declare Property Tag(ByVal Value As Long)
+    Declare Property TabOrder() As Long
+    Declare Property TabOrder(ByVal Value As Long)
     Declare Function Font() ByRef As QFONT
     Declare Property Handle() As Integer
     Declare Sub Show()
@@ -593,6 +601,25 @@ Property QCONTROL.ClientHeight() As Long
 End Property
 Property QCONTROL.ClientHeight(ByVal Value As Long)
     RqLclSetInt(RqObj, "ClientHeight", Value)
+End Property
+
+Property QCONTROL.Align() As Long
+    Return RqGetInt(RqObj, "Align")
+End Property
+Property QCONTROL.Align(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Align", Value)
+End Property
+Property QCONTROL.Tag() As Long
+    Return RqGetInt(RqObj, "Tag")
+End Property
+Property QCONTROL.Tag(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Tag", Value)
+End Property
+Property QCONTROL.TabOrder() As Long
+    Return RqGetInt(RqObj, "TabOrder")
+End Property
+Property QCONTROL.TabOrder(ByVal Value As Long)
+    RqLclSetInt(RqObj, "TabOrder", Value)
 End Property
 
 ' Шрифт элемента; Label.Font = Font копирует значения (QFONT.Let)
@@ -787,6 +814,22 @@ End Sub
 ' ---------------------------------------------------------------------------
 
 Type QFORM Extends QCONTROL
+    Declare Property BorderStyle() As Long
+    Declare Property BorderStyle(ByVal Value As Long)
+    Declare Property AutoScroll() As Long
+    Declare Property AutoScroll(ByVal Value As Long)
+    Declare Property FormStyle() As Long
+    Declare Property FormStyle(ByVal Value As Long)
+    Declare Property WindowState() As Long
+    Declare Property WindowState(ByVal Value As Long)
+    Declare Property KeyPreview() As Long
+    Declare Property KeyPreview(ByVal Value As Long)
+    Declare Property ModalResult() As Long
+    Declare Property ModalResult(ByVal Value As Long)
+    Declare Property OnResize(ByVal Handler As Sub())
+    Declare Property OnResize(ByVal Handler As Sub(ByRef Sender As QFORM))
+    Declare Property OnClick(ByVal Handler As Sub())
+    Declare Property OnClick(ByVal Handler As Sub(ByRef Sender As QFORM))
     OnShowProc As Sub(ByRef Sender As QFORM)
     OnShowProcPlain As Sub()
     OnCloseProc As Sub(ByRef Sender As QFORM)
@@ -842,6 +885,55 @@ End Sub
 Constructor QFORM()
     RqObj = RqLclNew("QFORM", @This)
 End Constructor
+
+Property QFORM.BorderStyle() As Long
+    Return RqGetInt(RqObj, "BorderStyle")
+End Property
+Property QFORM.BorderStyle(ByVal Value As Long)
+    RqLclSetInt(RqObj, "BorderStyle", Value)
+End Property
+Property QFORM.AutoScroll() As Long
+    Return RqGetInt(RqObj, "AutoScroll")
+End Property
+Property QFORM.AutoScroll(ByVal Value As Long)
+    RqLclSetInt(RqObj, "AutoScroll", Value)
+End Property
+Property QFORM.FormStyle() As Long
+    Return RqGetInt(RqObj, "FormStyle")
+End Property
+Property QFORM.FormStyle(ByVal Value As Long)
+    RqLclSetInt(RqObj, "FormStyle", Value)
+End Property
+Property QFORM.WindowState() As Long
+    Return RqGetInt(RqObj, "WindowState")
+End Property
+Property QFORM.WindowState(ByVal Value As Long)
+    RqLclSetInt(RqObj, "WindowState", Value)
+End Property
+Property QFORM.KeyPreview() As Long
+    Return RqGetInt(RqObj, "KeyPreview")
+End Property
+Property QFORM.KeyPreview(ByVal Value As Long)
+    RqLclSetInt(RqObj, "KeyPreview", Value)
+End Property
+Property QFORM.ModalResult() As Long
+    Return RqGetInt(RqObj, "ModalResult")
+End Property
+Property QFORM.ModalResult(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ModalResult", Value)
+End Property
+Property QFORM.OnResize(ByVal Handler As Sub())
+    SetEventEx(21, "OnResize", Cast(Any Ptr, Handler), 0)
+End Property
+Property QFORM.OnResize(ByVal Handler As Sub(ByRef Sender As QFORM))
+    SetEventEx(21, "OnResize", Cast(Any Ptr, Handler), 3)
+End Property
+Property QFORM.OnClick(ByVal Handler As Sub())
+    SetEventEx(10, "OnClick", Cast(Any Ptr, Handler), 0)
+End Property
+Property QFORM.OnClick(ByVal Handler As Sub(ByRef Sender As QFORM))
+    SetEventEx(10, "OnClick", Cast(Any Ptr, Handler), 3)
+End Property
 
 ' События с параметрами QFORM: обработчик с параметрами, с ними и Sender
 ' последним, только с Sender или без параметров
@@ -960,6 +1052,8 @@ End Sub
 ' ---------------------------------------------------------------------------
 
 Type QBUTTON Extends QCONTROL
+    Declare Property ModalResult() As Long
+    Declare Property ModalResult(ByVal Value As Long)
     OnClickProc As Sub(ByRef Sender As QBUTTON)
     OnClickProcPlain As Sub()
     Declare Constructor()
@@ -1008,6 +1102,13 @@ End Sub
 Constructor QBUTTON()
     RqObj = RqLclNew("QBUTTON", @This)
 End Constructor
+
+Property QBUTTON.ModalResult() As Long
+    Return RqGetInt(RqObj, "ModalResult")
+End Property
+Property QBUTTON.ModalResult(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ModalResult", Value)
+End Property
 
 Property QBUTTON.Default() As Long
     Return RqGetInt(RqObj, "Default")
@@ -1123,6 +1224,20 @@ End Sub
 ' ---------------------------------------------------------------------------
 
 Type QLABEL Extends QCONTROL
+    Declare Property Transparent() As Long
+    Declare Property Transparent(ByVal Value As Long)
+    Declare Property AutoSize() As Long
+    Declare Property AutoSize(ByVal Value As Long)
+    Declare Property Alignment() As Long
+    Declare Property Alignment(ByVal Value As Long)
+    Declare Property Layout() As Long
+    Declare Property Layout(ByVal Value As Long)
+    Declare Property WordWrap() As Long
+    Declare Property WordWrap(ByVal Value As Long)
+    Declare Property OnClick(ByVal Handler As Sub())
+    Declare Property OnClick(ByVal Handler As Sub(ByRef Sender As QLABEL))
+    Declare Property OnDblClick(ByVal Handler As Sub())
+    Declare Property OnDblClick(ByVal Handler As Sub(ByRef Sender As QLABEL))
     Declare Constructor()
     Declare Property Caption() As String
     Declare Property Caption(ByRef Value As String)
@@ -1143,6 +1258,49 @@ End Type
 Constructor QLABEL()
     RqObj = RqLclNew("QLABEL", @This)
 End Constructor
+
+Property QLABEL.Transparent() As Long
+    Return RqGetInt(RqObj, "Transparent")
+End Property
+Property QLABEL.Transparent(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Transparent", Value)
+End Property
+Property QLABEL.AutoSize() As Long
+    Return RqGetInt(RqObj, "AutoSize")
+End Property
+Property QLABEL.AutoSize(ByVal Value As Long)
+    RqLclSetInt(RqObj, "AutoSize", Value)
+End Property
+Property QLABEL.Alignment() As Long
+    Return RqGetInt(RqObj, "Alignment")
+End Property
+Property QLABEL.Alignment(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Alignment", Value)
+End Property
+Property QLABEL.Layout() As Long
+    Return RqGetInt(RqObj, "Layout")
+End Property
+Property QLABEL.Layout(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Layout", Value)
+End Property
+Property QLABEL.WordWrap() As Long
+    Return RqGetInt(RqObj, "WordWrap")
+End Property
+Property QLABEL.WordWrap(ByVal Value As Long)
+    RqLclSetInt(RqObj, "WordWrap", Value)
+End Property
+Property QLABEL.OnClick(ByVal Handler As Sub())
+    SetEventEx(10, "OnClick", Cast(Any Ptr, Handler), 0)
+End Property
+Property QLABEL.OnClick(ByVal Handler As Sub(ByRef Sender As QLABEL))
+    SetEventEx(10, "OnClick", Cast(Any Ptr, Handler), 3)
+End Property
+Property QLABEL.OnDblClick(ByVal Handler As Sub())
+    SetEventEx(11, "OnDblClick", Cast(Any Ptr, Handler), 0)
+End Property
+Property QLABEL.OnDblClick(ByVal Handler As Sub(ByRef Sender As QLABEL))
+    SetEventEx(11, "OnDblClick", Cast(Any Ptr, Handler), 3)
+End Property
 
 ' События с параметрами QLABEL: обработчик с параметрами, с ними и Sender
 ' последним, только с Sender или без параметров
@@ -1194,6 +1352,24 @@ End Property
 ' ---------------------------------------------------------------------------
 
 Type QEDIT Extends QCONTROL
+    Declare Property AutoSize() As Long
+    Declare Property AutoSize(ByVal Value As Long)
+    Declare Property BorderStyle() As Long
+    Declare Property BorderStyle(ByVal Value As Long)
+    Declare Property MaxLength() As Long
+    Declare Property MaxLength(ByVal Value As Long)
+    Declare Property ReadOnly() As Long
+    Declare Property ReadOnly(ByVal Value As Long)
+    Declare Property SelStart() As Long
+    Declare Property SelStart(ByVal Value As Long)
+    Declare Property SelLength() As Long
+    Declare Property SelLength(ByVal Value As Long)
+    Declare Property Modified() As Long
+    Declare Property Modified(ByVal Value As Long)
+    Declare Property CharCase() As Long
+    Declare Property CharCase(ByVal Value As Long)
+    Declare Property SelText() As String
+    Declare Property SelText(ByRef Value As String)
     OnChangeProc As Sub(ByRef Sender As QEDIT)
     OnChangeProcPlain As Sub()
     Declare Constructor()
@@ -1236,6 +1412,61 @@ End Sub
 Constructor QEDIT()
     RqObj = RqLclNew("QEDIT", @This)
 End Constructor
+
+Property QEDIT.AutoSize() As Long
+    Return RqGetInt(RqObj, "AutoSize")
+End Property
+Property QEDIT.AutoSize(ByVal Value As Long)
+    RqLclSetInt(RqObj, "AutoSize", Value)
+End Property
+Property QEDIT.BorderStyle() As Long
+    Return RqGetInt(RqObj, "BorderStyle")
+End Property
+Property QEDIT.BorderStyle(ByVal Value As Long)
+    RqLclSetInt(RqObj, "BorderStyle", Value)
+End Property
+Property QEDIT.MaxLength() As Long
+    Return RqGetInt(RqObj, "MaxLength")
+End Property
+Property QEDIT.MaxLength(ByVal Value As Long)
+    RqLclSetInt(RqObj, "MaxLength", Value)
+End Property
+Property QEDIT.ReadOnly() As Long
+    Return RqGetInt(RqObj, "ReadOnly")
+End Property
+Property QEDIT.ReadOnly(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ReadOnly", Value)
+End Property
+Property QEDIT.SelStart() As Long
+    Return RqGetInt(RqObj, "SelStart")
+End Property
+Property QEDIT.SelStart(ByVal Value As Long)
+    RqLclSetInt(RqObj, "SelStart", Value)
+End Property
+Property QEDIT.SelLength() As Long
+    Return RqGetInt(RqObj, "SelLength")
+End Property
+Property QEDIT.SelLength(ByVal Value As Long)
+    RqLclSetInt(RqObj, "SelLength", Value)
+End Property
+Property QEDIT.Modified() As Long
+    Return RqGetInt(RqObj, "Modified")
+End Property
+Property QEDIT.Modified(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Modified", Value)
+End Property
+Property QEDIT.CharCase() As Long
+    Return RqGetInt(RqObj, "CharCase")
+End Property
+Property QEDIT.CharCase(ByVal Value As Long)
+    RqLclSetInt(RqObj, "CharCase", Value)
+End Property
+Property QEDIT.SelText() As String
+    Return RqLclGetStr(RqObj, "SelText")
+End Property
+Property QEDIT.SelText(ByRef Value As String)
+    RqLclSetStr(RqObj, "SelText", Value)
+End Property
 
 ' События с параметрами QEDIT: обработчик с параметрами, с ними и Sender
 ' последним, только с Sender или без параметров

@@ -1,0 +1,11 @@
+tags 7 11 12 13
+label 10211
+edit 2011
+button 01 cool -1
+form 210
+align 20
+btn align 4
+sel cde
+resize ok
+label click 11
+end

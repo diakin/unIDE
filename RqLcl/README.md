@@ -6,11 +6,11 @@
 
 | Класс | Свойства | События, методы |
 |---|---|---|
-| общее (QCONTROL) | Left, Top, Width, Height, ClientWidth, ClientHeight, Visible, Enabled, Color, Cursor, Hint, ShowHint, Parent, PopupMenu (запись), Font, Handle (HWND, чтение) | Show, Hide, Repaint, SetFocus |
-| QFORM | Caption | OnShow, OnClose; ShowModal, Close, Center |
-| QBUTTON | Caption, Default, Cancel | OnClick; Click |
-| QLABEL | Caption | — |
-| QEDIT | Text | OnChange |
+| общее (QCONTROL) | Left, Top, Width, Height, ClientWidth, ClientHeight, Visible, Enabled, Color, Cursor, Hint, ShowHint, Parent, PopupMenu (запись), Font, Handle (HWND, чтение), Align (0 нет, 1 верх, 2 низ, 3 лево, 4 право, 5 всё), Tag, TabOrder (у элементов без окна — QLABEL, QCOOLBTN — не действует, чтение даёт -1) | Show, Hide, Repaint, SetFocus |
+| QFORM | Caption, BorderStyle, FormStyle, WindowState, AutoScroll, KeyPreview, ModalResult | OnShow, OnClose, OnResize, OnClick; ShowModal, Close, Center |
+| QBUTTON | Caption, Default, Cancel, ModalResult | OnClick; Click |
+| QLABEL | Caption, Transparent, AutoSize, Alignment, Layout, WordWrap | OnClick, OnDblClick, мышь |
+| QEDIT | Text, SelStart, SelLength, SelText, MaxLength, ReadOnly, Modified, CharCase, AutoSize, BorderStyle | OnChange, клавиатура, мышь |
 | QFONT | Name, Size, Color, Charset, Pitch, Bold, Italic, Underline, StrikeOut, Handle (HFONT), FontCount, FontName(i) | AddStyles, DelStyles (до четырёх стилей за вызов) |
 | QRICHEDIT | Text, Align, Alignment, BorderStyle, HideScrollBars (только запоминается), HideSelection, Line(i), LineCount, Modified, PlainText, ReadOnly, ScrollBars, SelAttributes, SelLength, SelStart, SelText, TabOrder, Tag, WantTabs, WhereX, WhereY, WordWrap | OnChange; AddStrings (до четырёх строк), AddString, Clear, CopyToClipboard, CutToClipboard, PasteFromClipboard, SelectAll, LoadFromFile, SaveToFile, LoadFromStream, SaveToStream |
 | QSTRINGGRID | Cell(c, r) (запись — `SetCell`, см. ниже), ColWidths(i), RowHeights(i), Align, BorderStyle, Col, ColCount, DefaultColWidth, DefaultRowHeight, EditorMode, FixedColor, FixedCols, FixedRows, GridHeight, GridLineWidth, GridWidth, LeftCol, Row, RowCount, ScrollBars, Separator, TabOrder, Tag, TopRow, VisibleColCount, VisibleRowCount | AddOptions, DelOptions, DeleteCol, DeleteRow, InsertCol, InsertRow, SwapCols, SwapRows, LoadFromFile, SaveToFile, LoadFromStream, SaveToStream, TextWidth, TextHeight |

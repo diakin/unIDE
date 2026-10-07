@@ -121,6 +121,57 @@ Function RqGosubPop(Stk() As Long, ByRef Sp As Long, _
     Return Stk(Sp + 1)
 End Function
 
+' SUBI / FUNCTIONI (документация RapidQ, глава 9): параметры - строки в
+' ParamStr$(1..ParamStrCount), числа в ParamVal(1..ParamValCount).
+' Препроцессор переводит SUBI Имя(...) в Sub Имя(ByRef RqParams As RqPList),
+' вызов Имя "a", 5 - в Имя(RqPList().Arg("a").Arg(5)): временный список
+' живёт до конца оператора; строка или число - выбирает перегрузка Arg.
+Type RqPList
+    Strs(Any) As String
+    Vals(Any) As Double
+    StrCount As Long
+    ValCount As Long
+    Declare Function Arg Overload (ByRef Value As Const String) ByRef As RqPList
+    Declare Function Arg Overload (ByVal Value As Double) ByRef As RqPList
+End Type
+
+Function RqPList.Arg(ByRef Value As Const String) ByRef As RqPList
+    StrCount += 1
+    ReDim Preserve Strs(1 To StrCount)
+    Strs(StrCount) = Value
+    Return This
+End Function
+
+Function RqPList.Arg(ByVal Value As Double) ByRef As RqPList
+    ValCount += 1
+    ReDim Preserve Vals(1 To ValCount)
+    Vals(ValCount) = Value
+    Return This
+End Function
+
+' ParamStr$(Номер). Номер вне 1..ParamStrCount - пустая строка; Smart -
+' и предупреждение (что делает RapidQ - не проверено)
+Function RqParamStr(ByRef List As RqPList, ByVal Index As Long, _
+                    ByRef FileName As String, ByVal LineNum As Long) As String
+    If (Index >= 1) AndAlso (Index <= List.StrCount) Then Return List.Strs(Index)
+#ifndef RQ_COMPAT
+    RqRtWarn("ParamStr$(" & Index & "): строковых параметров " & List.StrCount, _
+             FileName, LineNum)
+#endif
+    Return ""
+End Function
+
+' ParamVal(Номер). Номер вне 1..ParamValCount - 0; Smart - и предупреждение
+Function RqParamVal(ByRef List As RqPList, ByVal Index As Long, _
+                    ByRef FileName As String, ByVal LineNum As Long) As Double
+    If (Index >= 1) AndAlso (Index <= List.ValCount) Then Return List.Vals(Index)
+#ifndef RQ_COMPAT
+    RqRtWarn("ParamVal(" & Index & "): числовых параметров " & List.ValCount, _
+             FileName, LineNum)
+#endif
+    Return 0
+End Function
+
 ' Int и Fix без перевода в целое: у FreeBASIC они для чисел больше 2^63
 ' переполняются; от 2^52 Double и так целое
 Function RqRtFloor(ByVal Value As Double) As Double

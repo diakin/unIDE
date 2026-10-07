@@ -184,6 +184,8 @@ const
     'QTABCONTROL QLISTVIEW QTREEVIEW QSTATUSBAR QMAINMENU QPOPUPMENU';
 
   CrLf = #13#10;
+  // Параметр SUBI / FUNCTIONI (RqPList - в rqrt.bi)
+  VariadicParam = 'ByRef RqParams As RqPList';
   ContinueMark = ' _' + #13#10;   // перенос строки внутри собранного заново
 
 type
@@ -220,6 +222,7 @@ type
     RetType: string;
     DeclParams: string; // параметры FreeBASIC из DECLARE
     DeclAliases: string; // " : Dim ByRef ..." для параметров из DECLARE
+    IsVariadic: Boolean; // SUBI / FUNCTIONI
     Declared: Boolean;
   end;
 
@@ -244,6 +247,7 @@ type
     After: TStringList;       // строки после End Type
     Tail: TStringList;        // строки в END TYPE (переходники событий)
     Thunks: TStringList;      // переходник=Поле|КЛАСС|Событие|МЕТОД
+    Variadic: TStringList;    // методы SUBI / FUNCTIONI (верхний регистр)
     Regs: string;             // подключение событий в начале конструктора
     HasCtor: Boolean;
     constructor Create;
@@ -390,6 +394,9 @@ type
     procedure ProcessReturn(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessIncDec(var AToks: TToks; AFrom, ATo: Integer);
     procedure SplitVariadicCall(var AToks: TToks; AFirst, ATo: Integer);
+    procedure WrapVariadicArgs(var AToks: TToks; AFrom, ATo, ANameIdx: Integer;
+                               AInParens: Boolean);
+    function VariadicMember(const AToks: TToks; AMemberIdx: Integer): Boolean;
     function ProcessDirective(var AToks: TToks; AFrom, ATo: Integer;
                               var AOut: string): Boolean;
     function ResolveInclude(const AName: string; AAngle: Boolean): string;
@@ -466,6 +473,7 @@ begin
   After := TStringList.Create;
   Tail := TStringList.Create;
   Thunks := TStringList.Create;
+  Variadic := TStringList.Create;
 end;
 
 destructor TRqTypeInfo.Destroy;
@@ -479,6 +487,7 @@ begin
   After.Free;
   Tail.Free;
   Thunks.Free;
+  Variadic.Free;
   inherited Destroy;
 end;
 
@@ -644,12 +653,12 @@ const
     'ELINE=M,WRITENUM=M,WRITESTR=M|' +
     'QFONT:ADDSTYLES=M,BOLD=P,CHARSET=P,COLOR=P,DELSTYLES=M,FONTCOUNT=P,FONTNAME=P,HANDLE=P,HASSTYLE=M,ITALIC=P,NAME=P,PITCH=P,SETSTYLE=M,SIZE=P,STRIKEOUT=P,UNDERLINE=P|' +
     'QFONTDIALOG:ADDOPTIONS=M,ADDSTYLES=M,COLOR=P,DELOPTIONS=M,DELSTYLES=M,EXECUTE=M,FONTCOUNT=P,FONTNAME=P,GETFONT=M,MAXFONTSIZE=P,MINFONTSIZE=P,NAME=P,ONAPPLY=E,SETFONT=M,SIZE=P|' +
-    'QFORM:ADDBORDERICONS=M,AUTOSCROLL=P,BORDERSTYLE=P,CAPTION=P,CENTER=M,CIRCLE=M,CLIENTHEIGHT=P,CLIENTWIDTH=P,CLOSE=M,COLOR=P,COPYRECT=M,CURSOR=P,DELBORDERICONS=M,DRAW=M,ENABLED=P,FIL' +
-    'LRECT=M,FONT=P,FORMSTYLE=P,HANDLE=P,HEIGHT=P,HIDE=M,HIDETITLEBAR=M,HINT=P,ICOHANDLE=P,ICON=P,KEYPREVIEW=P,LEFT=P,LINE=M,MODALRESULT=P,ONCLICK=E,ONCLOSE=E,ONHINT=E,ONKEYDOWN=E,ONKEY' +
-    'PRESS=E,ONKEYUP=E,ONMOUSEDOWN=E,ONMOUSEMOVE=E,ONMOUSEUP=E,ONPAINT=E,ONRESIZE=E,ONSHOW=E,PAINT=M,PARENT=P,POPUPMENU=P,PSET=M,RECTANGLE=M,REPAINT=M,ROUNDRECT=M,SETFOCUS=M,SHAPEFORM=M' +
-    ',SHOW=M,SHOWHINT=P,SHOWMODAL=M,SHOWTITLEBAR=M,STRETCHDRAW=M,TEXTHEIGHT=M,TEXTOUT=M,TEXTRECT=M,TEXTWIDTH=M,TOP=P,VISIBLE=P,WIDTH=P,WINDOWSTATE=P,WNDPROC=E|' +
+    'QFORM:ADDBORDERICONS=M,ALIGN=P,AUTOSCROLL=P,BORDERSTYLE=P,CAPTION=P,CENTER=M,CIRCLE=M,CLIENTHEIGHT=P,CLIENTWIDTH=P,CLOSE=M,COLOR=P,COPYRECT=M,CURSOR=P,DELBORDERICONS=M,DRAW=M,ENABL' +
+    'ED=P,FILLRECT=M,FONT=P,FORMSTYLE=P,HANDLE=P,HEIGHT=P,HIDE=M,HIDETITLEBAR=M,HINT=P,ICOHANDLE=P,ICON=P,KEYPREVIEW=P,LEFT=P,LINE=M,MODALRESULT=P,ONCLICK=E,ONCLOSE=E,ONHINT=E,ONKEYDOWN' +
+    '=E,ONKEYPRESS=E,ONKEYUP=E,ONMOUSEDOWN=E,ONMOUSEMOVE=E,ONMOUSEUP=E,ONPAINT=E,ONRESIZE=E,ONSHOW=E,PAINT=M,PARENT=P,POPUPMENU=P,PSET=M,RECTANGLE=M,REPAINT=M,ROUNDRECT=M,SETFOCUS=M,SHA' +
+    'PEFORM=M,SHOW=M,SHOWHINT=P,SHOWMODAL=M,SHOWTITLEBAR=M,STRETCHDRAW=M,TABORDER=P,TAG=P,TEXTHEIGHT=M,TEXTOUT=M,TEXTRECT=M,TEXTWIDTH=M,TOP=P,VISIBLE=P,WIDTH=P,WINDOWSTATE=P,WNDPROC=E|' +
     'QGAUGE:ALIGN=P,BACKCOLOR=P,BORDERSTYLE=P,CLIENTHEIGHT=P,CLIENTWIDTH=P,COLOR=P,CURSOR=P,ENABLED=P,FONT=P,FORECOLOR=P,HANDLE=P,HEIGHT=P,HIDE=M,HINT=P,KIND=P,LEFT=P,MAX=P,MIN=P,ONCLIC' +
-    'K=E,ONDBLCLICK=E,ONMOUSEDOWN=E,ONMOUSEMOVE=E,ONMOUSEUP=E,PARENT=P,POPUPMENU=P,POSITION=P,REPAINT=M,SETFOCUS=M,SHOW=M,SHOWHINT=P,SHOWTEXT=P,TAG=P,TOP=P,VISIBLE=P,WIDTH=P|' +
+    'K=E,ONDBLCLICK=E,ONMOUSEDOWN=E,ONMOUSEMOVE=E,ONMOUSEUP=E,PARENT=P,POPUPMENU=P,POSITION=P,REPAINT=M,SETFOCUS=M,SHOW=M,SHOWHINT=P,SHOWTEXT=P,TABORDER=P,TAG=P,TOP=P,VISIBLE=P,WIDTH=P|' +
     'QGLASSFRAME:ALIGN=P,CLIENTHEIGHT=P,CLIENTWIDTH=P,COLOR=P,CURSOR=P,HANDLE=P,HEIGHT=P,HINT=P,LEFT=P,MOVEABLE=P,PARENT=P,POPUPMENU=P,SHOWHINT=P,TOP=P,TRANSPARENCY=P,TRANSPARENTCOLOR=P' +
     ',WIDTH=P|' +
     'QGROUPBOX:ALIGN=P,CAPTION=P,CLIENTHEIGHT=P,CLIENTWIDTH=P,COLOR=P,CURSOR=P,ENABLED=P,FONT=P,HANDLE=P,HEIGHT=P,HIDE=M,HINT=P,LEFT=P,ONCLICK=E,ONDBLCLICK=E,ONMOUSEDOWN=E,ONMOUSEMOVE=E' +
@@ -663,8 +672,8 @@ const
     'QIMAGELIST:ADDBMPFILE=M,ADDBMPHANDLE=M,ADDICOFILE=M,ADDICOHANDLE=M,BKCOLOR=P,BLENDCOLOR=P,CLEAR=M,COUNT=P,DELETE=M,DRAW=M,DRAWINGSTYLE=P,GETBMP=P,GETICO=P,HANDLE=P,HEIGHT=P,IMAGETY' +
     'PE=P,INSERTBMPFILE=M,INSERTBMPHANDLE=M,INSERTICOFILE=M,INSERTICOHANDLE=M,MASKED=P,WIDTH=P|' +
     'QLABEL:ALIGN=P,ALIGNMENT=P,ANGLE=P,AUTOSIZE=P,CAPTION=P,CLIENTHEIGHT=P,CLIENTWIDTH=P,COLOR=P,CURSOR=P,ENABLED=P,FONT=P,HANDLE=P,HEIGHT=P,HIDE=M,HINT=P,LABELSTYLE=P,LAYOUT=P,LEFT=P,' +
-    'LOWERCOLOR=P,ONCLICK=E,ONDBLCLICK=E,ONMOUSEDOWN=E,ONMOUSEMOVE=E,ONMOUSEUP=E,PARENT=P,POPUPMENU=P,REPAINT=M,SETFOCUS=M,SHOW=M,SHOWHINT=P,TAG=P,TOP=P,TRANSPARENT=P,UPPERCOLOR=P,VISIB' +
-    'LE=P,WIDTH=P,WNDPROC=E,WORDWRAP=P|' +
+    'LOWERCOLOR=P,ONCLICK=E,ONDBLCLICK=E,ONMOUSEDOWN=E,ONMOUSEMOVE=E,ONMOUSEUP=E,PARENT=P,POPUPMENU=P,REPAINT=M,SETFOCUS=M,SHOW=M,SHOWHINT=P,TABORDER=P,TAG=P,TOP=P,TRANSPARENT=P,UPPERCO' +
+    'LOR=P,VISIBLE=P,WIDTH=P,WNDPROC=E,WORDWRAP=P|' +
     'QLISTBOX:ADDITEMS=M,ALIGN=P,BORDERSTYLE=P,CIRCLE=M,CLEAR=M,CLIENTHEIGHT=P,CLIENTWIDTH=P,COLOR=P,COLUMNS=P,COPYMODE=P,COPYRECT=M,CURSOR=P,DELITEMS=M,DRAW=M,ENABLED=P,EXTENDEDSELECT=' +
     'P,FILLRECT=M,FONT=P,HANDLE=P,HEIGHT=P,HIDE=M,HINT=P,INSERTITEM=M,ITEM=P,ITEMCOUNT=P,ITEMHEIGHT=P,ITEMINDEX=P,LEFT=P,LINE=M,LISTCALL=M,LOADFROMFILE=M,MULTISELECT=P,ONCLICK=E,ONDBLCL' +
     'ICK=E,ONDRAWITEM=E,ONENTER=E,ONKEYDOWN=E,ONKEYPRESS=E,ONKEYUP=E,ONMEASUREITEM=E,ONMOUSEDOWN=E,ONMOUSEMOVE=E,ONMOUSEUP=E,PAINT=M,PARENT=P,POPUPMENU=P,PSET=M,RECTANGLE=M,REPAINT=M,RO' +
@@ -674,12 +683,12 @@ const
     'M=M,ENABLED=P,FONT=P,GRIDLINES=P,HANDLE=P,HEIGHT=P,HIDESELECTION=P,HINT=P,HOTTRACK=P,INSERTITEM=M,INSERTSUBITEM=M,ITEM=P,ITEMCOUNT=P,ITEMINDEX=P,LARGEIMAGES=P,LEFT=P,MULTISELECT=P,' +
     'ONCHANGE=E,ONCLICK=E,ONCOLUMNCLICK=E,ONDBLCLICK=E,ONKEYPRESSED=E,PARENT=P,POPUPMENU=P,READONLY=P,ROWSELECT=P,SELCOUNT=P,SELECTED=P,SHOWCOLUMNHEADERS=P,SHOWHINT=P,SMALLIMAGES=P,SORT' +
     'TYPE=P,STATEIMAGES=P,SUBITEM=P,SWAPITEM=M,TABORDER=P,TAG=P,TOP=P,VIEWSTYLE=P,VISIBLE=P,WIDTH=P|' +
-    'QMAINMENU:ADDITEMS=M,CLIENTHEIGHT=P,CLIENTWIDTH=P,COLOR=P,CURSOR=P,DELINDEX=M,DELITEMS=M,ENABLED=P,FONT=M,HANDLE=P,HEIGHT=P,HIDE=M,HINT=P,INSERT=M,LEFT=P,MENUCALL=M,PARENT=P,POPUPM' +
-    'ENU=P,REPAINT=M,SETFOCUS=M,SHOW=M,SHOWHINT=P,TOP=P,VISIBLE=P,WIDTH=P|' +
+    'QMAINMENU:ADDITEMS=M,ALIGN=P,CLIENTHEIGHT=P,CLIENTWIDTH=P,COLOR=P,CURSOR=P,DELINDEX=M,DELITEMS=M,ENABLED=P,FONT=M,HANDLE=P,HEIGHT=P,HIDE=M,HINT=P,INSERT=M,LEFT=P,MENUCALL=M,PARENT=' +
+    'P,POPUPMENU=P,REPAINT=M,SETFOCUS=M,SHOW=M,SHOWHINT=P,TABORDER=P,TAG=P,TOP=P,VISIBLE=P,WIDTH=P|' +
     'QMEMORYSTREAM:CLOSE=M,COPYFROM=M,EOF=P,EXTRACTRES=M,LINECOUNT=P,LOADARRAY=M,MEMCOPYFROM=M,MEMCOPYTO=M,POINTER=P,POINTERADDR=P,POSITION=P,READ=M,READBINSTR=M,READLINE=M,READNUM=M,RE' +
     'ADSTR=M,READUDT=M,SAVEARRAY=M,SEEK=M,SIZE=P,WRITE=M,WRITEBINSTR=M,WRITELINE=M,WRITENUM=M,WRITESTR=M,WRITEUDT=M|' +
-    'QMENUITEM:ADDITEMS=M,CAPTION=P,CHECKED=P,CLIENTHEIGHT=P,CLIENTWIDTH=P,COLOR=P,COMMAND=P,COUNT=P,CURSOR=P,DELINDEX=M,DELITEMS=M,ENABLED=P,FONT=M,HANDLE=P,HEIGHT=P,HIDE=M,HINT=P,INSE' +
-    'RT=M,LEFT=P,MENUCALL=M,MENUINDEX=P,ONCLICK=E,PARENT=P,POPUPMENU=P,RADIOITEM=P,REPAINT=M,SETFOCUS=M,SHORTCUT=P,SHOW=M,SHOWHINT=P,TAG=P,TOP=P,VISIBLE=P,WIDTH=P|' +
+    'QMENUITEM:ADDITEMS=M,ALIGN=P,CAPTION=P,CHECKED=P,CLIENTHEIGHT=P,CLIENTWIDTH=P,COLOR=P,COMMAND=P,COUNT=P,CURSOR=P,DELINDEX=M,DELITEMS=M,ENABLED=P,FONT=M,HANDLE=P,HEIGHT=P,HIDE=M,HIN' +
+    'T=P,INSERT=M,LEFT=P,MENUCALL=M,MENUINDEX=P,ONCLICK=E,PARENT=P,POPUPMENU=P,RADIOITEM=P,REPAINT=M,SETFOCUS=M,SHORTCUT=P,SHOW=M,SHOWHINT=P,TABORDER=P,TAG=P,TOP=P,VISIBLE=P,WIDTH=P|' +
     'QMYSQL:CLOSE=M,COLCOUNT=P,CONNECT=M,CONNECTED=P,CREATEDB=M,DB=P,DBCOUNT=P,DROPDB=M,ESCAPESTRING=M,FETCHFIELD=M,FETCHLENGTHS=M,FETCHROW=M,FIELDCOUNT=P,FIELDSEEK=M,LENGTH=P,QUERY=M,R' +
     'EALCONNECT=M,REFRESH=M,ROW=P,ROWBLOB=M,ROWCOUNT=P,ROWSEEK=M,SELECTDB=M,TABLE=P,TABLECOUNT=P|' +
     'QNOTIFYICONDATA:|' +
@@ -697,8 +706,8 @@ const
     'QPANEL:ALIGN=P,ALIGNMENT=P,BEVELINNER=P,BEVELOUTER=P,BEVELWIDTH=P,BORDERSTYLE=P,BVNONE=P,CAPTION=P,CLIENTHEIGHT=P,CLIENTWIDTH=P,COLOR=P,CURSOR=P,ENABLED=P,FONT=P,HANDLE=P,HEIGHT=P,' +
     'HIDE=M,HINT=P,LEFT=P,ONCLICK=E,ONDBLCLICK=E,ONMOUSEDOWN=E,ONMOUSEMOVE=E,ONMOUSEUP=E,PARENT=P,POPUPMENU=P,REPAINT=M,SETFOCUS=M,SHOW=M,SHOWHINT=P,TABORDER=P,TAG=P,TOP=P,VISIBLE=P,WID' +
     'TH=P|' +
-    'QPOPUPMENU:ADDITEMS=M,ALIGNMENT=P,AUTOPOPUP=P,CLIENTHEIGHT=P,CLIENTWIDTH=P,COLOR=P,CURSOR=P,DELINDEX=M,DELITEMS=M,ENABLED=P,FONT=M,HANDLE=P,HEIGHT=P,HIDE=M,HINT=P,INSERT=M,LEFT=P,M' +
-    'ENUCALL=M,ONPOPUP=E,PARENT=P,POPUP=M,POPUPMENU=P,REPAINT=M,SETFOCUS=M,SHOW=M,SHOWHINT=P,TAG=P,TOP=P,VISIBLE=P,WIDTH=P,WINDOWHANDLE=P|' +
+    'QPOPUPMENU:ADDITEMS=M,ALIGN=P,ALIGNMENT=P,AUTOPOPUP=P,CLIENTHEIGHT=P,CLIENTWIDTH=P,COLOR=P,CURSOR=P,DELINDEX=M,DELITEMS=M,ENABLED=P,FONT=M,HANDLE=P,HEIGHT=P,HIDE=M,HINT=P,INSERT=M,' +
+    'LEFT=P,MENUCALL=M,ONPOPUP=E,PARENT=P,POPUP=M,POPUPMENU=P,REPAINT=M,SETFOCUS=M,SHOW=M,SHOWHINT=P,TABORDER=P,TAG=P,TOP=P,VISIBLE=P,WIDTH=P,WINDOWHANDLE=P|' +
     'QRADIOBUTTON:ALIGN=P,CAPTION=P,CHECKED=P,CLIENTHEIGHT=P,CLIENTWIDTH=P,COLOR=P,CURSOR=P,ENABLED=P,FONT=P,HANDLE=P,HEIGHT=P,HIDE=M,HINT=P,LEFT=P,ONCLICK=E,ONKEYDOWN=E,ONKEYPRESS=E,ON' +
     'KEYUP=E,ONMOUSEDOWN=E,ONMOUSEMOVE=E,ONMOUSEUP=E,PARENT=P,POPUPMENU=P,REPAINT=M,SETFOCUS=M,SHOW=M,SHOWHINT=P,TABORDER=P,TAG=P,TOP=P,VISIBLE=P,WIDTH=P|' +
     'QRECT:|' +
@@ -718,7 +727,7 @@ const
     'QSOCKET:ACCEPT=M,CLOSE=M,CONNECT=M,CONNECTIONREADY=M,FAMILY=P,GETHOSTIP=M,GETHOSTNAME=M,GETPEERNAME=M,ISCLIENTREADY=M,ISSERVERREADY=M,LPARAM=P,MYSOCKET=P,OPEN=M,PARENT=P,PEEK=M,PRO' +
     'TOCOL=P,READ=M,READBYTE=M,READLINE=M,TAG=P,TRANSFERRED=P,WMESSAGE=P,WRITE=M,WRITEBYTE=M,WRITELINE=M|' +
     'QSPLITTER:ALIGN=P,BEVELED=P,CLIENTHEIGHT=P,CLIENTWIDTH=P,COLOR=P,CURSOR=P,ENABLED=P,FONT=M,HANDLE=P,HEIGHT=P,HIDE=M,HINT=P,LEFT=P,MINSIZE=P,ONMOVED=E,PARENT=P,POPUPMENU=P,REPAINT=M' +
-    ',SETFOCUS=M,SHOW=M,SHOWHINT=P,TAG=P,TOP=P,VISIBLE=P,WIDTH=P|' +
+    ',SETFOCUS=M,SHOW=M,SHOWHINT=P,TABORDER=P,TAG=P,TOP=P,VISIBLE=P,WIDTH=P|' +
     'QSTATUSBAR:ADDPANELS=M,ALIGN=P,CLEAR=M,CLIENTHEIGHT=P,CLIENTWIDTH=P,COLOR=P,CURSOR=P,ENABLED=P,FONT=M,HANDLE=P,HEIGHT=P,HIDE=M,HINT=P,LEFT=P,ONRESIZE=E,PANEL=P,PANELCOUNT=P,PARENT=' +
     'P,POPUPMENU=P,REPAINT=M,SETFOCUS=M,SHOW=M,SHOWHINT=P,SIMPLEPANEL=P,SIMPLETEXT=P,SIZEGRIP=P,STRCALL=M,TABORDER=P,TAG=P,TOP=P,VISIBLE=P,WIDTH=P|' +
     'QSTATUSPANEL:ALIGNMENT=P,CAPTION=P,WIDTH=P|' +
@@ -2379,11 +2388,24 @@ begin
         AToks[AIdx].OutText := 'RqVal_' + FCurType.MemberFb.Values[Up]
       else
         AToks[AIdx].OutText := FCurType.MemberFb.Values[Up];
-      Exit;
-    end;
+    end
     // свойство или метод объекта
-    if FMemberMap.IndexOfName(Up) >= 0 then
+    else if FMemberMap.IndexOfName(Up) >= 0 then
       AToks[AIdx].OutText := FMemberMap.Values[Up];
+    // метод SUBI / FUNCTIONI своего компонента
+    if VariadicMember(AToks, AIdx) then
+    begin
+      NextIdx := NextSig(AToks, AIdx + 1, ATo);
+      if IsOp(AToks, NextIdx, '(') and (MatchParen(AToks, NextIdx, ATo) > 0) then
+        WrapVariadicArgs(AToks, NextIdx + 1, MatchParen(AToks, NextIdx, ATo) - 1,
+                         AIdx, True)
+      else if (NextIdx < 0) or ((AToks[NextIdx].Kind = tkOp) and
+              (AToks[NextIdx].Text <> '(')) or IsWord(AToks, NextIdx, 'THEN') or
+              IsWord(AToks, NextIdx, 'ELSE') or IsWord(AToks, NextIdx, 'AND') or
+              IsWord(AToks, NextIdx, 'OR') or IsWord(AToks, NextIdx, 'TO') then
+        // без параметров в выражении (x = Obj.F + 1)
+        AToks[AIdx].Post := AToks[AIdx].Post + '(RqPList())';
+    end;
     Exit;
   end;
   NextIdx := NextSig(AToks, AIdx + 1, ATo);
@@ -2394,11 +2416,48 @@ begin
     Exit;
   end;
 
+  // ParamStrCount, ParamValCount, ParamStr$(i), ParamVal(i) в SUBI /
+  // FUNCTIONI - из списка параметров RqParams
+  if (FCurProc <> nil) and FCurProc.IsVariadic then
+  begin
+    if Up = 'PARAMSTRCOUNT' then
+    begin
+      AToks[AIdx].OutText := 'RqParams.StrCount';
+      Exit;
+    end;
+    if Up = 'PARAMVALCOUNT' then
+    begin
+      AToks[AIdx].OutText := 'RqParams.ValCount';
+      Exit;
+    end;
+    if ((Up = 'PARAMSTR$') or (Up = 'PARAMVAL')) and IsOp(AToks, NextIdx, '(') and
+       (MatchParen(AToks, NextIdx, ATo) > 0) then
+    begin
+      if Up = 'PARAMSTR$' then
+        AToks[AIdx].OutText := 'RqParamStr'
+      else
+        AToks[AIdx].OutText := 'RqParamVal';
+      AToks[NextIdx].Post := AToks[NextIdx].Post + 'RqParams, ';
+      AToks[MatchParen(AToks, NextIdx, ATo)].Pre := ', __FILE__, __LINE__' +
+        AToks[MatchParen(AToks, NextIdx, ATo)].Pre;
+      Exit;
+    end;
+  end;
+
   ProcRec := FindProc(Up);
   if ProcRec <> nil then
   begin
     AToks[AIdx].OutText := ProcRec.FbName;
     GlobalQualify(AToks, AIdx);
+    // вызов FUNCTIONI / SUBI в выражении: параметры - списком RqPList
+    if ProcRec.IsVariadic then
+    begin
+      if IsOp(AToks, NextIdx, '(') and (MatchParen(AToks, NextIdx, ATo) > 0) then
+        WrapVariadicArgs(AToks, NextIdx + 1, MatchParen(AToks, NextIdx, ATo) - 1,
+                         AIdx, True)
+      else
+        AToks[AIdx].Post := AToks[AIdx].Post + '(RqPList())';
+    end;
     Exit;
   end;
   if FFuncMap.IndexOfName(Up) >= 0 then
@@ -2515,11 +2574,33 @@ begin
         GlobalQualify(AToks, FirstIdx);
       end;
       ProcessExpr(AToks, FirstIdx + 1, ATo);
+      // SUBI Имя a, b / Имя(a, b) -> Имя(RqPList().Arg(a).Arg(b))
+      if (ProcRec <> nil) and ProcRec.IsVariadic then
+      begin
+        TokIdx := NextSig(AToks, FirstIdx + 1, ATo);
+        if IsOp(AToks, TokIdx, '(') and (MatchParen(AToks, TokIdx, ATo) = PrevSig(AToks, ATo)) then
+          WrapVariadicArgs(AToks, TokIdx + 1, MatchParen(AToks, TokIdx, ATo) - 1,
+                           FirstIdx, True)
+        else
+          WrapVariadicArgs(AToks, FirstIdx + 1, ATo, FirstIdx, False);
+      end;
     end
     else
     begin
       ProcessExpr(AToks, FirstIdx, ATo);
-      SplitVariadicCall(AToks, FirstIdx, ATo);
+      // Объект.МетодSUBI a, b (без скобок; со скобками - в ProcessIdent)
+      LastMember := -1;
+      if (AToks[FirstIdx].Kind = tkIdent) and
+         IsOp(AToks, NextSig(AToks, FirstIdx + 1, ATo), '.') then
+        LastMember := NextSig(AToks, NextSig(AToks, FirstIdx + 1, ATo) + 1, ATo);
+      if (LastMember >= 0) and VariadicMember(AToks, LastMember) then
+      begin
+        TokIdx := NextSig(AToks, LastMember + 1, ATo);
+        if (TokIdx >= 0) and not IsOp(AToks, TokIdx, '(') then
+          WrapVariadicArgs(AToks, LastMember + 1, ATo, LastMember, False);
+      end
+      else
+        SplitVariadicCall(AToks, FirstIdx, ATo);
     end;
     Exit;
   end;
@@ -3035,14 +3116,12 @@ var
   VarRec: TRqVar;
 begin
   Up := AToks[AFrom].Up;
-  if (Up = 'SUBI') or (Up = 'FUNCTIONI') then
-    WarnOnce('SUBI', 'SUBI/FUNCTIONI (переменное число параметров) пока не ' +
-             'поддержаны');
   NameIdx := NextSig(AToks, AFrom + 1, ATo);
   if (NameIdx < 0) or (AToks[NameIdx].Kind <> tkIdent) then
     Exit;
   ProcRec := GetProc(AToks[NameIdx].Text);
   ProcRec.IsFunc := (Up = 'FUNCTION') or (Up = 'FUNCTIONI');
+  ProcRec.IsVariadic := (Up = 'SUBI') or (Up = 'FUNCTIONI');
   FCurProc := ProcRec;
   FGosubProcNum := 0;
   OpenIdx := NextSig(AToks, NameIdx + 1, ATo);
@@ -3054,9 +3133,16 @@ begin
     CloseIdx := MatchParen(AToks, OpenIdx, ATo);
     if CloseIdx < 0 then
       CloseIdx := ATo;
-    Params := ParseParams(AToks, OpenIdx + 1, CloseIdx - 1, ProcRec.Name);
-    Aliases := FParamAliases;
+    if ProcRec.IsVariadic then
+      Params := VariadicParam
+    else
+    begin
+      Params := ParseParams(AToks, OpenIdx + 1, CloseIdx - 1, ProcRec.Name);
+      Aliases := FParamAliases;
+    end;
   end
+  else if ProcRec.IsVariadic then
+    Params := VariadicParam
   else if ProcRec.Declared then
   begin
     Params := ProcRec.DeclParams;
@@ -3102,17 +3188,19 @@ var
   SavedProc: TRqProc;
 begin
   KindIdx := NextSig(AToks, AFrom + 1, ATo);
-  if not (IsWord(AToks, KindIdx, 'SUB') or IsWord(AToks, KindIdx, 'FUNCTION')) then
+  if not (IsWord(AToks, KindIdx, 'SUB') or IsWord(AToks, KindIdx, 'FUNCTION') or
+          IsWord(AToks, KindIdx, 'SUBI') or IsWord(AToks, KindIdx, 'FUNCTIONI')) then
   begin
     Warn('DECLARE ' + RawText(AToks, KindIdx, KindIdx) + ': не поддержано');
     Exit;
   end;
-  IsFunc := IsWord(AToks, KindIdx, 'FUNCTION');
+  IsFunc := IsWord(AToks, KindIdx, 'FUNCTION') or IsWord(AToks, KindIdx, 'FUNCTIONI');
   NameIdx := NextSig(AToks, KindIdx + 1, ATo);
   if (NameIdx < 0) or (AToks[NameIdx].Kind <> tkIdent) then
     Exit;
   ProcRec := GetProc(AToks[NameIdx].Text);
   ProcRec.IsFunc := IsFunc;
+  ProcRec.IsVariadic := IsWord(AToks, KindIdx, 'SUBI') or IsWord(AToks, KindIdx, 'FUNCTIONI');
   ProcRec.Declared := True;
   LibText := '';
   AliasText := '';
@@ -3143,12 +3231,17 @@ begin
     SavedProc := FCurProc;
     FLibParams := LibText <> '';
     try
-      Params := ParseParams(AToks, OpenIdx + 1, CloseIdx - 1, ProcRec.Name);
+      if ProcRec.IsVariadic then
+        Params := VariadicParam
+      else
+        Params := ParseParams(AToks, OpenIdx + 1, CloseIdx - 1, ProcRec.Name);
     finally
       FLibParams := False;
     end;
     FCurProc := SavedProc;
-  end;
+  end
+  else if ProcRec.IsVariadic then
+    Params := VariadicParam;
   ProcRec.DeclParams := Params;
   ProcRec.DeclAliases := FParamAliases;
   RetType := SuffixType(SuffixOf(ProcRec.Name));
@@ -3542,6 +3635,74 @@ begin
   end;
   AToks[AFrom].OutText := 'On RqGosubPop(' + StkName + '(), ' + SpName +
                           ', __FILE__, __LINE__) Goto ' + Targets;
+end;
+
+// Параметры вызова SUBI / FUNCTIONI AFrom..ATo -> RqPList().Arg(a).Arg(b)...
+// (AInParens - в скобках после имени ANameIdx; иначе скобки добавляются)
+procedure TRqFbConv.WrapVariadicArgs(var AToks: TToks; AFrom, ATo, ANameIdx: Integer;
+                                     AInParens: Boolean);
+var
+  ArgFirst, ArgLast, TokIdx, Depth: Integer;
+begin
+  ArgFirst := NextSig(AToks, AFrom, ATo);
+  if ArgFirst < 0 then
+  begin
+    if AInParens then
+      AToks[AFrom - 1].Post := AToks[AFrom - 1].Post + 'RqPList()'
+    else
+      AToks[ANameIdx].Post := AToks[ANameIdx].Post + '(RqPList())';
+    Exit;
+  end;
+  ArgLast := PrevSig(AToks, ATo);
+  AToks[ArgFirst].Pre := 'RqPList().Arg(' + AToks[ArgFirst].Pre;
+  Depth := 0;
+  for TokIdx := ArgFirst to ArgLast do
+  begin
+    if IsOp(AToks, TokIdx, '(') then
+      Inc(Depth)
+    else if IsOp(AToks, TokIdx, ')') then
+      Dec(Depth)
+    else if (Depth = 0) and IsOp(AToks, TokIdx, ',') then
+      AToks[TokIdx].OutText := ').Arg(';
+  end;
+  AToks[ArgLast].Post := AToks[ArgLast].Post + ')';
+  if not AInParens then
+  begin
+    AToks[ANameIdx].Post := AToks[ANameIdx].Post + '(';
+    AToks[ArgLast].Post := AToks[ArgLast].Post + ')';
+  end;
+end;
+
+// Член AMemberIdx (после ".") - метод SUBI / FUNCTIONI своего компонента:
+// объект - This (внутри TYPE) или переменная своего компонента
+function TRqFbConv.VariadicMember(const AToks: TToks; AMemberIdx: Integer): Boolean;
+var
+  DotIdx, ObjIdx: Integer;
+  Info: TRqTypeInfo;
+  VarRec: TRqVar;
+begin
+  Result := False;
+  if (AMemberIdx < 0) or (AToks[AMemberIdx].Kind <> tkIdent) then
+    Exit;
+  DotIdx := PrevSig(AToks, AMemberIdx - 1);
+  if not IsOp(AToks, DotIdx, '.') then
+    Exit;
+  ObjIdx := PrevSig(AToks, DotIdx - 1);
+  if (ObjIdx < 0) or (AToks[ObjIdx].Kind <> tkIdent) then
+    Exit;
+  // объект - сам, без "." перед ним (A.B.Метод не разбирается)
+  if IsOp(AToks, PrevSig(AToks, ObjIdx - 1), '.') then
+    Exit;
+  Info := nil;
+  if (AToks[ObjIdx].Up = 'THIS') and (FCurType <> nil) then
+    Info := FCurType
+  else
+  begin
+    VarRec := FindVar(AToks[ObjIdx].Up);
+    if VarRec <> nil then
+      Info := FindTypeInfo(VarRec.RqType);
+  end;
+  Result := (Info <> nil) and (Info.Variadic.IndexOf(AToks[AMemberIdx].Up) >= 0);
 end;
 
 // Объект.AddItems a, b, c, d, e... - у методов rqlcl.bi с переменным
@@ -4168,15 +4329,13 @@ begin
     Error(AToks[AFirst].Text + ': ожидалось имя');
     Exit;
   end;
-  if (KindUp = 'SUBI') or (KindUp = 'FUNCTIONI') then
-    WarnOnce('SUBI', 'SUBI/FUNCTIONI (переменное число параметров) пока не ' +
-             'поддержаны');
   IsFunc := (KindUp = 'FUNCTION') or (KindUp = 'FUNCTIONI');
   Display := AToks[NameIdx].Text;
   NameUp := AToks[NameIdx].Up;
   FbName := MemberFbName(Display);
   ProcRec := GetProc(FCurType.Name + '.' + NameUp);
   ProcRec.IsFunc := IsFunc;
+  ProcRec.IsVariadic := (KindUp = 'SUBI') or (KindUp = 'FUNCTIONI');
   FCurProc := ProcRec;
   FCurMethodUp := NameUp;
   FGosubProcNum := 0;
@@ -4188,8 +4347,11 @@ begin
     CloseIdx := MatchParen(AToks, OpenIdx, ATo);
     if CloseIdx < 0 then
       CloseIdx := ATo;
-    Params := ParseParams(AToks, OpenIdx + 1, CloseIdx - 1, ProcRec.Name);
+    if not ProcRec.IsVariadic then
+      Params := ParseParams(AToks, OpenIdx + 1, CloseIdx - 1, ProcRec.Name);
   end;
+  if ProcRec.IsVariadic then
+    Params := VariadicParam;
   RetType := SuffixType(SuffixOf(NameUp));
   AsIdx := NextSig(AToks, CloseIdx + 1, ATo);
   if IsWord(AToks, AsIdx, 'AS') then
@@ -4222,6 +4384,11 @@ begin
       FCurType.MemberType.Add(NameUp + '=' + RetType);
       FCurType.ParamCounts.Add(NameUp + '=' + IntToStr(ParamCount));
       FCurType.Decls.Add('Declare ' + DeclText);
+      if ProcRec.IsVariadic then
+      begin
+        FCurType.Variadic.Add(NameUp);
+        FCurType.ParamCounts.Values[NameUp] := '-1';
+      end;
       // Объект.Delete, Объект.Err$ снаружи - тем же именем
       if FbName <> Display then
         FMemberMap.Values[NameUp] := FbName;
