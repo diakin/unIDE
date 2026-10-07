@@ -1046,6 +1046,17 @@ object Form1: TForm1
             Visible = False
             OnChange = cmbFbBuildChange
           end
+          object cmbRqComp: TUiComboBox
+            Left = 110
+            Top = 24
+            Width = 84
+            Height = 21
+            Style = csDropDownList
+            ShowHint = True
+            Hint = 'Чем собирать программу RapidQ: rc.exe или FreeBASIC (Smart, Compat)'
+            Visible = False
+            OnChange = cmbRqCompChange
+          end
           object cmbFbBits: TUiComboBox
             Left = 190
             Top = 24

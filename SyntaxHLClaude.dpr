@@ -41,6 +41,7 @@ uses
   FileSearch in 'FileSearch.pas',
   DelphiProj in 'DelphiProj.pas',
   ClrScheme in 'ClrScheme.pas',
+  RqToFb in 'RqLcl\tofb\RqToFb.pas',
   UiScroll in 'UiScroll.pas';
 
 {$R *.res}

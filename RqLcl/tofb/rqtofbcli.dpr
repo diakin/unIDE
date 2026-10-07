@@ -35,6 +35,10 @@ begin
     for MsgIdx := 0 to Messages.Count - 1 do
       Writeln(Messages[MsgIdx]);
     Writeln('APPTYPE=', ConvResult.AppType);
+    if ConvResult.Mode = rfmCompat then
+      Writeln('MODE=COMPAT')
+    else
+      Writeln('MODE=SMART');
     Writeln('OUT=', ConvResult.MainOut);
     Writeln('ERRORS=', ConvResult.ErrorCount, ' WARNINGS=', ConvResult.WarningCount);
   finally

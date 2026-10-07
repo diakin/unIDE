@@ -3600,6 +3600,10 @@ begin
       // Описание компонентов для инспектора и снимка: ComponentAll.data
       // (RapidQComponentsReady в Unit1)
       Fields.Add('CompDataFile|Components');
+      // Сборка через FreeBASIC (рамка Project, FB Smart/Compat): папка
+      // RqLcl с inc\rqrt.bi, inc\rqlcl.bi и bin\rqlcl32.dll (Unit1,
+      // RqLclDir); пустая - RqLcl рядом с exe редактора
+      Fields.Add('RqLclPath|RqLcl folder');
     end
     else if AType = 'Delphi' then
     begin

@@ -556,6 +556,8 @@ type
     // FreeBASIC: вид результата (GUI, Console, DLL) и разрядность
     cmbFbKind: TUiComboBox;
     cmbFbBits: TUiComboBox;
+    // RapidQ: чем собирать - rc.exe или FreeBASIC через перевод RqToFb
+    cmbRqComp: TUiComboBox;
     lblBuildTarget: TUiLabel;
     btnCompileRun: TUiIconButton;
     grpSearch: TUiGroupBox;
@@ -762,6 +764,7 @@ type
     procedure cmbBuildKindChange(Sender: TObject);
     procedure cmbArdPortChange(Sender: TObject);
     procedure cmbFbBuildChange(Sender: TObject);
+    procedure cmbRqCompChange(Sender: TObject);
     procedure TabsMouseDown(Sender: TObject; Button: TMouseButton;
                             Shift: TShiftState; X, Y: Integer);
     procedure ShowModulesClick(Sender: TObject);
@@ -1206,6 +1209,9 @@ type
     // Сборка FreeBASIC главного .bas: путь (строчными) = "вид разрядность"
     // (FbOutName); editor.ini, раздел [FreeBASIC.Build]
     FFbBuild: TStringList;
+    // Компилятор программы RapidQ: путь главного .bas (строчными) = rc,
+    // fb smart или fb compat (RqCompName); editor.ini, раздел [RapidQ.Build]
+    FRqBuild: TStringList;
     // RunCompiler без перевода вывода из OEM (fbc пишет пути в ANSI)
     FCompNoOem: Boolean;
     FBuildBarBusy: Boolean;     // UpdateBuildBar ставит пункт списка сам
@@ -2618,6 +2624,10 @@ type
                                  var AFirstLine: Integer): Boolean;
     function  CompileRapidQ: Boolean;
     function  CompileFreeBasic: Boolean;
+    function  RqCompOf(const AMain: string): Integer;
+    procedure SetRqComp(const AMain: string; AComp: Integer);
+    function  RqLclDir(var AProblem: string): string;
+    function  CompileRapidQFb: Boolean;
     procedure CheckUnitPath(const AList: string);
     // Папка UiLib рядом с программой: свои компоненты (Ui*.pas) для сборки
     // проектов пользователя. '' - модулей нет.
@@ -3065,6 +3075,7 @@ var
     FileSearch,   // Find In Files: маски, чтение файлов, обход папок
     DelphiProj,   // .dpr (модули из uses), .dof (ключи dcc32), $(DELPHI)
     ObjParse,     // разбор формы для инспектора: узлы, .dfm, код, кэш
+    RqToFb,       // перевод RapidQ -> FreeBASIC (RqLcl\tofb)
     RqComponents, // описание компонентов RapidQ (Component.data)
     RqDesign,     // конструктор форм RapidQ: заглушки компонентов
     TextMerge,    // слияние трёх версий текста (файл изменён снаружи)
@@ -3165,6 +3176,10 @@ const
   fbOutGui = 0;       // -s gui
   fbOutConsole = 1;   // -s console
   fbOutDll = 2;       // -dll
+  // RapidQ: чем собирать (cmbRqComp, RqCompOf)
+  rqcRc = 0;          // rc.exe RapidQ
+  rqcFbSmart = 1;     // FreeBASIC через RqToFb, режим Smart
+  rqcFbCompat = 2;    // FreeBASIC через RqToFb, режим Compat
 
 var
   // msftedit.dll загружена, и окна TRichEdit создаются классом RICHEDIT50W
@@ -11114,7 +11129,8 @@ end;
 // (BuildTargetOf), подсказки - почему выбран и полный путь цели
 procedure TForm1.UpdateBuildBar;
 var
-  Kind, OutKind, Bits: Integer;
+  Kind, OutKind, Bits, RqComp: Integer;
+  RqViaFb: Boolean;
   Target, Why, Fqbn, BoardName, BoardText, PortText, ManualMark: string;
 begin
   if (cmbBuildKind = nil) or (lblBuildTarget = nil) then
@@ -11220,6 +11236,79 @@ begin
         'FreeBASIC)';
     end;
   end;
+
+  // RapidQ: rc.exe или FreeBASIC через перевод (и тогда - разрядность)
+  RqViaFb := False;
+  if (Kind = bkRapidQ) and (cmbRqComp <> nil) then
+  begin
+    RqComp := RqCompOf(Target);
+    RqViaFb := RqComp <> rqcRc;
+    FBuildBarBusy := True;
+    try
+      cmbRqComp.ItemIndex := RqComp;
+      if RqViaFb and (cmbFbBits <> nil) then
+      begin
+        FbBuildOf(Target, OutKind, Bits);
+        if Bits = 64 then
+          cmbFbBits.ItemIndex := 1
+        else
+          cmbFbBits.ItemIndex := 0;
+      end;
+    finally
+      FBuildBarBusy := False;
+    end;
+    cmbRqComp.Enabled := Target <> '';
+    cmbRqComp.Hint := 'Чем собирать ' + ExtractFileName(Target) + ': rc.exe ' +
+      'RapidQ или FreeBASIC через перевод RqToFb. FB Smart - программа не ' +
+      'падает там, где можно продолжить, ошибки с файлом и строкой; ' +
+      'FB Compat - как RapidQ. Запоминается для главного файла; строка ' +
+      '''$RQFB SMART или ''$RQFB COMPAT в исходнике выбирает режим сама';
+    if RqViaFb and (cmbFbBits <> nil) then
+    begin
+      cmbFbBits.Enabled := Target <> '';
+      cmbFbBits.Hint := 'Разрядность для ' + ExtractFileName(Target) +
+        ': 32 - fbc32.exe, 64 - fbc64.exe (IDE Options - Compilers - ' +
+        'FreeBASIC)';
+    end;
+  end;
+  if cmbRqComp <> nil then
+    cmbRqComp.Visible := Kind = bkRapidQ;
+  if cmbFbKind <> nil then
+    cmbFbKind.Visible := Kind = bkFreeBasic;
+  if cmbFbBits <> nil then
+  begin
+    cmbFbBits.Visible := (Kind = bkFreeBasic) or RqViaFb;
+    if RqViaFb and (cmbRqComp <> nil) then
+      cmbFbBits.Left := cmbRqComp.Left + cmbRqComp.Width + 4
+    else if cmbFbKind <> nil then
+      cmbFbBits.Left := cmbFbKind.Left + cmbFbKind.Width + 4;
+  end;
+end;
+
+// Чем собирать программу RapidQ - выбрано в рамке Project: запоминается
+// для главного файла (editor.ini [RapidQ.Build])
+procedure TForm1.cmbRqCompChange(Sender: TObject);
+var
+  MainBas: string;
+  RqComp: Integer;
+begin
+  if FBuildBarBusy or (cmbRqComp = nil) then
+    Exit;
+  MainBas := RapidQTargetBas(False);
+  if MainBas = '' then
+  begin
+    UpdateBuildBar;
+    Exit;
+  end;
+  RqComp := cmbRqComp.ItemIndex;
+  if (RqComp < rqcRc) or (RqComp > rqcFbCompat) then
+    RqComp := rqcRc;
+  SetRqComp(MainBas, RqComp);
+  Dbg('RapidQ ' + ExtractFileName(MainBas) + ': ' + cmbRqComp.Text +
+      ' (editor.ini [RapidQ.Build])', clGray);
+  UpdateBuildBar;
+  if not cmbRqComp.DroppedDown and RichEdit1.CanFocus then
+    RichEdit1.SetFocus;
 end;
 
 // Вид результата или разрядность FreeBASIC выбраны в рамке Project:
@@ -11231,13 +11320,20 @@ var
 begin
   if FBuildBarBusy or (cmbFbKind = nil) or (cmbFbBits = nil) then
     Exit;
-  MainBas := FbTargetBas(False);
+  // RapidQ через FreeBASIC: только разрядность, вид - по $APPTYPE
+  if CurBuildKind = bkRapidQ then
+    MainBas := RapidQTargetBas(False)
+  else
+    MainBas := FbTargetBas(False);
   if MainBas = '' then
   begin
     UpdateBuildBar;
     Exit;
   end;
-  OutKind := cmbFbKind.ItemIndex;
+  if CurBuildKind = bkRapidQ then
+    FbBuildOf(MainBas, OutKind, Bits)
+  else
+    OutKind := cmbFbKind.ItemIndex;
   if (OutKind < fbOutGui) or (OutKind > fbOutDll) then
     OutKind := fbOutConsole;
   if cmbFbBits.ItemIndex = 1 then
@@ -18454,6 +18550,14 @@ begin
     cmbFbBits.Items.Add('32');
     cmbFbBits.Items.Add('64');
   end;
+  // RapidQ: номер пункта - rqcRc..rqcFbCompat
+  if cmbRqComp <> nil then
+  begin
+    cmbRqComp.Items.Clear;
+    cmbRqComp.Items.Add('rc.exe');
+    cmbRqComp.Items.Add('FB Smart');
+    cmbRqComp.Items.Add('FB Compat');
+  end;
 
   // Точки останова: щелчок по полосе номеров строк
   FBreakMarks := TList.Create;
@@ -18942,6 +19046,7 @@ begin
   FreeAndNil(FBasDialects);
   FreeAndNil(FBuildKindManual);
   FreeAndNil(FFbBuild);
+  FreeAndNil(FRqBuild);
   FreeAndNil(FSplitLineBrush);
   // Схема подсветки (её списки и группы) освобождается в Destroy формы,
   // после FormDestroy
@@ -41598,7 +41703,11 @@ begin
       end;
     bkRapidQ:
       begin
-        Result := CompileRapidQ;
+        // rc.exe или FreeBASIC через перевод - выбор для главного файла
+        if RqCompOf(RapidQTargetBas(False)) <> rqcRc then
+          Result := CompileRapidQFb
+        else
+          Result := CompileRapidQ;
         UpdateBuildBar;   // и записаться в проект
       end;
     bkFreeBasic:
@@ -43424,6 +43533,348 @@ begin
   if (ErrLogEdit <> nil) and (ErrLogEdit.Lines.Count > 0) then
     ShowErrLog;
   // Как у RapidQ: сразу к первой ошибке
+  if (FirstLine > 0) and (FirstFile <> '') and FileExists(FirstFile) then
+  begin
+    OpenNamedFile(FirstFile);
+    GotoLine(FirstLine - 1);
+  end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Сборка программы RapidQ через FreeBASIC
+//
+//  Чем собирать - список в рамке Project (cmbRqComp), запоминается для
+//  главного .bas: editor.ini [RapidQ.Build] "путь=rc|fb smart|fb compat".
+//  Перевод - модуль RqToFb (RqLcl\tofb): каждый файл программы в
+//  <папка главного .bas>\_rqfb, строки один к одному, #line на исходник -
+//  ошибки fbc ведут к строке RapidQ. Сообщения перевода - в лог.
+//  Сборка: fbc разрядности из списка (FbBuildOf / FbCompilerExe),
+//  -s gui|console по $APPTYPE (без него - по наличию QFORM и подобных),
+//  -exx в режиме Smart, -i <RqLcl>\inc (rqrt.bi, rqlcl.bi). exe - рядом с
+//  главным .bas, как у rc.exe; туда же копируется rqlcl32.dll/rqlcl64.dll
+//  из <RqLcl>\bin, если её там нет или она старее.
+//  Папка RqLcl: IDE Options - Compilers - RapidQ Basic, поле RqLcl folder;
+//  пустое - RqLcl рядом с exe редактора.
+// ---------------------------------------------------------------------------
+
+function RqCompName(AComp: Integer): string;
+begin
+  case AComp of
+    rqcFbSmart: Result := 'fb smart';
+    rqcFbCompat: Result := 'fb compat';
+  else
+    Result := 'rc';
+  end;
+end;
+
+function TForm1.RqCompOf(const AMain: string): Integer;
+var
+  Ini: TIniFile;
+  Value: string;
+begin
+  Result := rqcRc;
+  if FRqBuild = nil then
+  begin
+    FRqBuild := TStringList.Create;
+    if FileExists(SettingsFileName) then
+    begin
+      Ini := TIniFile.Create(SettingsFileName);
+      try
+        Ini.ReadSectionValues('RapidQ.Build', FRqBuild);
+      finally
+        Ini.Free;
+      end;
+    end;
+  end;
+  if AMain = '' then
+    Exit;
+  Value := LowerCase(Trim(FRqBuild.Values[LowerCase(ExpandFileName(AMain))]));
+  if Value = RqCompName(rqcFbSmart) then
+    Result := rqcFbSmart
+  else if Value = RqCompName(rqcFbCompat) then
+    Result := rqcFbCompat;
+end;
+
+procedure TForm1.SetRqComp(const AMain: string; AComp: Integer);
+var
+  Ini: TIniFile;
+  Key: string;
+begin
+  if AMain = '' then
+    Exit;
+  RqCompOf(AMain);   // список прочитан
+  Key := LowerCase(ExpandFileName(AMain));
+  FRqBuild.Values[Key] := RqCompName(AComp);
+  if not FileExists(AMain) then
+    Exit;
+  Ini := TIniFile.Create(SettingsFileName);
+  try
+    Ini.WriteString('RapidQ.Build', Key, RqCompName(AComp));
+  finally
+    Ini.Free;
+  end;
+end;
+
+// Папка RqLcl (в ней inc\rqrt.bi, inc\rqlcl.bi, bin\rqlcl32.dll...), с "\"
+// в конце. Не найдена - пусто, причина в AProblem.
+function TForm1.RqLclDir(var AProblem: string): string;
+var
+  Ini: TIniFile;
+  Setting, Candidate: string;
+begin
+  Result := '';
+  AProblem := '';
+  Setting := '';
+  if FileExists(SettingsFileName) then
+  begin
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      Setting := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
+                                     'RqLclPath', ''));
+    finally
+      Ini.Free;
+    end;
+  end;
+  if Setting <> '' then
+    Candidate := IncludeTrailingPathDelimiter(Setting)
+  else
+    Candidate := ExtractFilePath(Application.ExeName) + 'RqLcl\';
+  if FileExists(Candidate + 'inc\rqrt.bi') and
+     FileExists(Candidate + 'inc\rqlcl.bi') then
+  begin
+    Result := Candidate;
+    Exit;
+  end;
+  AProblem := 'папка RqLcl не найдена (нужны inc\rqrt.bi и inc\rqlcl.bi): ' +
+              Candidate + '. IDE Options - Compilers - RapidQ Basic, поле ' +
+              'RqLcl folder - папка RqLcl из исходников unIDE';
+end;
+
+// Перевод RqToFb и сборка fbc. True - собрано, exe на месте.
+function TForm1.CompileRapidQFb: Boolean;
+var
+  Ini: TIniFile;
+  Sect, IncDir, LclDir, Problem, MainBas, OutDir, FbcExe, Exe, Dir: string;
+  Params, ShortName, DllName, DllSrc, DllDst, LogLine, ErrFile, FirstFile: string;
+  Options: TRqFbOptions;
+  ConvResult: TRqFbResult;
+  ConvMessages: TStringList;
+  RqComp, OutKind, Bits, Code, LogStart, LineIdx, ErrLine, FirstLine: Integer;
+  ErrCount, WarnCount, MsgIdx: Integer;
+  ModeName: string;
+  StartTick: Cardinal;
+  Built, IsError, Converted: Boolean;
+begin
+  Result := False;
+  ShowCompLog;
+  if CompLogEdit <> nil then
+    CompLogEdit.Lines.Clear;
+  if ErrLogEdit <> nil then
+    ErrLogEdit.Lines.Clear;
+  if FBuildReason <> '' then
+    LogComp('Сборщик: RapidQ через FreeBASIC (' + FBuildReason + ')');
+
+  if not CheckDiskChanges(-1) then
+  begin
+    LogComp('Компиляция отменена: файлы на диске изменены снаружи, ' +
+            'разберитесь с ними и соберите снова');
+    Exit;
+  end;
+  // Перевод читает файлы с диска
+  if RichEdit1.Modified then
+    if not SaveCurrentFile then
+      Exit;
+  FBuildRapidQ := True;
+  try
+    if not SaveSourcesBeforeBuild then
+      Exit;
+  finally
+    FBuildRapidQ := False;
+  end;
+
+  MainBas := RapidQTargetBas(True);
+  if MainBas = '' then
+  begin
+    LogComp('Сборка RapidQ: главный файл не найден. Откройте главный .bas ' +
+            'проекта - он запомнится как цель сборки');
+    Exit;
+  end;
+  RqComp := RqCompOf(MainBas);
+  ShortName := ExtractFileName(MainBas);
+  Dir := ExtractFilePath(MainBas);
+
+  LclDir := RqLclDir(Problem);
+  if LclDir = '' then
+  begin
+    LogComp('Сборка RapidQ через FreeBASIC: ' + Problem);
+    Exit;
+  end;
+  FbBuildOf(MainBas, OutKind, Bits);
+  FbcExe := FbCompilerExe(Bits, Problem);
+  if FbcExe = '' then
+  begin
+    LogComp('Сборка RapidQ через FreeBASIC: ' + Problem);
+    Exit;
+  end;
+  Sect := CompilerSection('RapidQ Basic');
+  IncDir := '';
+  if FileExists(SettingsFileName) then
+  begin
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      IncDir := Trim(Ini.ReadString(Sect, 'IncPath', ''));
+    finally
+      Ini.Free;
+    end;
+  end;
+
+  // Перевод
+  OutDir := Dir + '_rqfb';
+  if RqComp = rqcFbCompat then
+    Options.Mode := rfmCompat
+  else
+    Options.Mode := rfmSmart;
+  Options.IncDirs := IncDir;
+  Options.OutDir := OutDir;
+  ConvMessages := TStringList.Create;
+  try
+    LogComp('--- Перевод RapidQ -> FreeBASIC: ' + ShortName + ' -> ' +
+            OutDir + '\');
+    StartTick := GetTickCount;
+    Converted := RqToFbConvert(MainBas, Options, ConvMessages, ConvResult);
+    for MsgIdx := 0 to ConvMessages.Count - 1 do
+      LogComp(ConvMessages[MsgIdx]);
+    if not Converted then
+    begin
+      LogComp(Format('--- Перевод: ошибок %d, предупреждений %d. Двойной ' +
+                     'щелчок по строке открывает исходник',
+                     [ConvResult.ErrorCount, ConvResult.WarningCount]));
+      if (ErrLogEdit <> nil) and (ErrLogEdit.Lines.Count > 0) then
+        ShowErrLog;
+      Exit;
+    end;
+    if ConvResult.Mode = rfmCompat then
+      ModeName := 'Compat'
+    else
+      ModeName := 'Smart';
+    LogComp(Format('--- Перевод: %d мс, предупреждений %d, %s, режим %s',
+                   [GetTickCount - StartTick, ConvResult.WarningCount,
+                    ConvResult.AppType, ModeName]));
+  finally
+    ConvMessages.Free;
+  end;
+
+  // Сборка fbc
+  if ConvResult.AppType = 'CONSOLE' then
+    Params := '-s console'
+  else
+    Params := '-s gui';
+  if ConvResult.Mode = rfmSmart then
+    Params := Params + ' -exx';
+  Params := Params + ' -i "' + LclDir + 'inc"';
+  Exe := ChangeFileExt(MainBas, '.exe');
+  Params := Params + ' -x "' + Exe + '" "' + ConvResult.MainOut + '"';
+  if not FreeBusyExe(Exe) then
+    Exit;
+  if FileExists(Exe) and not DeleteFile(Exe) then
+  begin
+    LogComp('Сборка RapidQ: не удалось удалить прежний ' + Exe + ' (' +
+            SysErrorMessage(GetLastError) + ')');
+    Exit;
+  end;
+  LogComp('--- Компиляция: ' + ExtractFileName(ConvResult.MainOut) + ', ' +
+          IntToStr(Bits) + ' бит');
+  LogComp('"' + FbcExe + '" ' + Params);
+  WriteCompileBat(FbcExe, Params, Dir, MainBas);
+
+  if CompLogEdit <> nil then
+    LogStart := CompLogEdit.Lines.Count
+  else
+    LogStart := -1;
+  StartTick := GetTickCount;
+  Code := -1;
+  Built := False;
+  ErrCount := 0;
+  WarnCount := 0;
+  FirstFile := '';
+  FirstLine := 0;
+  BusyBegin('Компиляция ' + ShortName);
+  try
+    FCompNoOem := True;
+    try
+      Code := RunCompiler(FbcExe, Params, Dir);
+    finally
+      FCompNoOem := False;
+    end;
+    if Code = -1 then
+      Exit;
+    if LogStart >= 0 then
+      for LineIdx := LogStart to CompLogEdit.Lines.Count - 1 do
+      begin
+        LogLine := StripLogTime(CompLogEdit.Lines[LineIdx]);
+        if not FbParseErrorLine(LogLine, ErrFile, ErrLine, IsError) then
+          Continue;
+        if not IsError then
+        begin
+          Inc(WarnCount);
+          Continue;
+        end;
+        Inc(ErrCount);
+        if FirstFile = '' then
+        begin
+          FirstFile := ErrFile;
+          FirstLine := ErrLine;
+        end;
+      end;
+    Built := (Code = 0) and FileExists(Exe);
+  finally
+    if Built then
+      BusyEnd('Компиляция: готово', True)
+    else
+      BusyEnd('Компиляция: ошибки', False);
+  end;
+  Result := Built;
+
+  if Built then
+  begin
+    // Компоненты RapidQ - в rqlcl32.dll / rqlcl64.dll рядом с exe
+    if Bits = 64 then
+      DllName := 'rqlcl64.dll'
+    else
+      DllName := 'rqlcl32.dll';
+    DllSrc := LclDir + 'bin\' + DllName;
+    DllDst := Dir + DllName;
+    if not FileExists(DllSrc) then
+      LogComp('Нет ' + DllSrc + ' - программе с компонентами (QFORM и ' +
+              'другие) она нужна рядом с exe')
+    else if not FileExists(DllDst) or (FileAge(DllSrc) > FileAge(DllDst)) then
+    begin
+      if CopyFile(PChar(DllSrc), PChar(DllDst), False) then
+        LogComp('Скопирован ' + DllName + ' рядом с exe')
+      else
+        LogComp('Не удалось скопировать ' + DllSrc + ' в ' + DllDst + ' (' +
+                SysErrorMessage(GetLastError) + ')');
+    end;
+    if WarnCount > 0 then
+      LogComp(Format('--- Готово, %d мс, предупреждений fbc: %d: %s',
+                     [GetTickCount - StartTick, WarnCount, Exe]))
+    else
+      LogComp(Format('--- Готово, %d мс: %s', [GetTickCount - StartTick, Exe]));
+    Exit;
+  end;
+
+  SaveCompileLog(ChangeFileExt(MainBas, '') + '_compile.log');
+  if ErrCount = 0 then
+  begin
+    LogComp(Format('--- %s не появился. Код завершения fbc %d', [Exe, Code]));
+    if (ErrLogEdit <> nil) and (ErrLogEdit.Lines.Count > 0) then
+      ShowErrLog;
+    Exit;
+  end;
+  LogComp(Format('--- Ошибок fbc: %d. Строки - исходника RapidQ, двойной ' +
+                 'щелчок открывает его', [ErrCount]));
+  if (ErrLogEdit <> nil) and (ErrLogEdit.Lines.Count > 0) then
+    ShowErrLog;
   if (FirstLine > 0) and (FirstFile <> '') and FileExists(FirstFile) then
   begin
     OpenNamedFile(FirstFile);
@@ -46397,7 +46848,7 @@ const
   RunRowCount = 8;
 var
   ModeKey: string;
-  Basic, RqMode, CanStep, ArdRow, FbRow: Boolean;
+  Basic, RqMode, CanStep, ArdRow: Boolean;
   Kind: Integer;
   RunRow: array[0..RunRowCount - 1] of TControl;
   RowIdx, SlotIdx, PageIdx: Integer;
@@ -46481,12 +46932,8 @@ begin
     btnArdUpload.Visible := ArdRow;
   if cmbArdPort <> nil then
     cmbArdPort.Visible := ArdRow;
-  // FreeBASIC: вид результата и разрядность
-  FbRow := Kind = bkFreeBasic;
-  if cmbFbKind <> nil then
-    cmbFbKind.Visible := FbRow;
-  if cmbFbBits <> nil then
-    cmbFbBits.Visible := FbRow;
+  // Списки FreeBASIC и компилятора RapidQ показывает UpdateBuildBar: их
+  // видимость зависит и от выбора для файла, не только от сборщика
   if ArdRow and (btnArdVerify <> nil) and (btnArdUpload <> nil) then
   begin
     btnArdVerify.Left := FRunRowLefts[1];        // места View Unit,
@@ -48745,7 +49192,7 @@ begin
 
   // RapidQ под отладчиком - только exe отладочной сборки (CompileRapidQ):
   // в обычном проверок точек нет
-  if RapidQ and RqDbgWantedFor(Dpr) then
+  if RapidQ and (RqCompOf(Dpr) = rqcRc) and RqDbgWantedFor(Dpr) then
   begin
     if (FRqDbgInstr <> nil) and (FRqDbgExe <> '') and
        (CompareText(FRqDbgExe, ExpandFileName(Exe)) = 0) and
@@ -49466,7 +49913,8 @@ begin
   end;
   // F7, F8, F4 у FreeBASIC: отладчика пока нет, иначе это был бы обычный
   // Compile & Run
-  if CurBuildKind = bkFreeBasic then
+  if (CurBuildKind = bkFreeBasic) or
+     ((CurBuildKind = bkRapidQ) and (RqCompOf(RapidQTargetBas(False)) <> rqcRc)) then
   begin
     ShowCompLog;
     LogComp('Отладчик FreeBASIC пока не подключён: шаги и Run to cursor ' +

@@ -50,6 +50,7 @@ type
   TRqFbResult = record
     MainOut: string;     // переведённый главный файл - его собирает fbc
     AppType: string;     // GUI или CONSOLE ($APPTYPE или по наличию QFORM...)
+    Mode: TRqFbMode;     // режим с учётом строки '$RQFB в исходнике
     ErrorCount: Integer;
     WarningCount: Integer;
   end;
@@ -219,6 +220,7 @@ type
     FErrors: Integer;
     FWarnings: Integer;
     FLostLines: Integer;          // переводы строк, убранные сборкой заново
+    FSourceMode: string;          // '$RQFB SMART|COMPAT из исходника
     FLineIsLabel: Boolean;
 
     procedure Msg(const ALevel, AText: string);
@@ -1228,6 +1230,18 @@ begin
   Text := ApplyDefines(AText);
   Lex(Text, Toks);
   AOut := AText;
+  // '$RQFB SMART / '$RQFB COMPAT - режим перевода из исходника (строка -
+  // комментарий, rc.exe RapidQ её пропускает)
+  for TokIdx := 0 to High(Toks) do
+    if (Toks[TokIdx].Kind = tkComment) and
+       (UpperCase(Copy(Toks[TokIdx].Text, 1, 6)) = '''$RQFB') then
+    begin
+      CondName := UpperCase(Trim(Copy(Toks[TokIdx].Text, 7, MaxInt)));
+      if (CondName = 'SMART') or (CondName = 'COMPAT') then
+        FSourceMode := CondName
+      else
+        Warn('''$RQFB ' + CondName + ': ожидалось SMART или COMPAT');
+    end;
   FirstIdx := NextSig(Toks, 0, High(Toks));
   if FirstIdx < 0 then
     Exit;
@@ -2641,6 +2655,7 @@ var
 begin
   FMainFile := ExpandFileName(AMainFile);
   FOpt.OutDir := ExpandFileName(FOpt.OutDir);
+  FSourceMode := '';
   for PassIdx := 1 to 2 do
   begin
     FPass := PassIdx;
@@ -2674,7 +2689,14 @@ begin
     end;
     AResult.MainOut := ProcessFile(FMainFile, True);
     if PassIdx = 1 then
+    begin
       EndOfPass1;
+      // режим из исходника - сильнее настройки
+      if FSourceMode = 'SMART' then
+        FOpt.Mode := rfmSmart
+      else if FSourceMode = 'COMPAT' then
+        FOpt.Mode := rfmCompat;
+    end;
   end;
   if Length(FConds) > 0 then
   begin
@@ -2682,6 +2704,7 @@ begin
     Error('$IFDEF без $ENDIF');
   end;
   AResult.AppType := FAppType;
+  AResult.Mode := FOpt.Mode;
   AResult.ErrorCount := FErrors;
   AResult.WarningCount := FWarnings;
   Result := FErrors = 0;

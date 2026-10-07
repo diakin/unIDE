@@ -4,10 +4,18 @@
 
 ## Файлы
 
-- `RqToFb.pas` — модуль без VCL (Delphi 7 / FPC `-Mdelphi`): `RqToFbConvert(главный файл, опции, сообщения, результат)`. Будет подключён в unIDE.
-- `rqtofbcli.dpr` — консольная утилита: `rqtofbcli <главный.bas> <папка вывода> [smart|compat] [папки include через ;]`. Пишет сообщения, затем `APPTYPE=`, `OUT=`, `ERRORS=`/`WARNINGS=`; код 1 — были ошибки.
+- `RqToFb.pas` — модуль без VCL (Delphi 7 / FPC `-Mdelphi`): `RqToFbConvert(главный файл, опции, сообщения, результат)`. Подключён в unIDE: рамка Project, список rc.exe / FB Smart / FB Compat для программы RapidQ (`CompileRapidQFb` в Unit1).
+- `rqtofbcli.dpr` — консольная утилита: `rqtofbcli <главный.bas> <папка вывода> [smart|compat] [папки include через ;]`. Пишет сообщения, затем `APPTYPE=`, `MODE=`, `OUT=`, `ERRORS=`/`WARNINGS=`; код 1 — были ошибки.
+- Строка `'$RQFB SMART` или `'$RQFB COMPAT` в исходнике (комментарий — rc.exe её пропускает) задаёт режим сильнее настройки.
 - `../inc/rqrt.bi` — функции, которые вставляет перевод: `RqNum`/`RqLong`/`RqShort`/`RqByte`/`RqWord`/`RqDword`/`RqSng`/`RqStr` (присваивание), `RqFmt` (PRINT), сообщения об ошибках (окно, stderr, `<программа>_error.log`), режимы `RQ_SMART`/`RQ_COMPAT`.
 - `tests/` — проверочные программы и ожидаемый вывод (`*_expected.txt`; для `types16` — вывод самого RapidQ).
+
+## В unIDE
+
+- Рамка Project для программы RapidQ: список **rc.exe / FB Smart / FB Compat** и, для FB, разрядность 32/64. Выбор запоминается для главного .bas (editor.ini `[RapidQ.Build]`, разрядность — `[FreeBASIC.Build]`).
+- IDE Options → Compilers → RapidQ Basic → **RqLcl folder** — папка `RqLcl` из исходников unIDE (пустое поле — `RqLcl` рядом с exe редактора). Компилятор fbc — из IDE Options → Compilers → FreeBASIC.
+- Compile: перевод в `<папка главного .bas>\_rqfb`, сообщения перевода в лог; затем fbc `-s gui|console` (по `$APPTYPE`), `-exx` в Smart, `-i RqLcl\inc`; exe рядом с главным .bas; `rqlcl32.dll`/`rqlcl64.dll` копируется рядом с exe. Ошибки fbc указывают на строки исходника RapidQ — двойной щелчок открывает их.
+- Отладчик RapidQ (F7/F8/F4, точки останова) при сборке через FreeBASIC не работает — сообщение в логе.
 
 ## Как устроен перевод
 
@@ -31,7 +39,6 @@
 
 ## Пока не сделано
 
-- В unIDE не подключено (сборка RapidQ через fbc).
 - CREATE … END CREATE, TYPE … EXTENDS, SUBI/FUNCTIONI, `$MACRO`, `$RESOURCE`, VARIANT, LPRINT, PRINT USING.
 - Функции RapidQ без пары в FreeBASIC; присваивание свойству объекта числа или строки — без преобразования.
 - Передача по ссылке через `@` при вызове (предупреждение, параметр получает копию).
