@@ -35,4 +35,3 @@
 - CREATE … END CREATE, TYPE … EXTENDS, SUBI/FUNCTIONI, `$MACRO`, `$RESOURCE`, VARIANT, LPRINT, PRINT USING.
 - Функции RapidQ без пары в FreeBASIC; присваивание свойству объекта числа или строки — без преобразования.
 - Передача по ссылке через `@` при вызове (предупреждение, параметр получает копию).
-- `STR$` у FreeBASIC даёт `"3"`; что даёт RapidQ для положительных чисел — проверить.
