@@ -41258,7 +41258,8 @@ begin
                            OwnExeBase) = 0);
   OutDir := ExeDir;
   if OwnBuild then
-    OutDir := IncludeTrailingPathDelimiter(ExeDir) + OwnStageDir + '';
+    OutDir := IncludeTrailingPathDelimiter(IncludeTrailingPathDelimiter(ExeDir) +
+                                           OwnStageDir);
 
   if LibDir = '' then
     if DirectoryExists(Root + 'Lib') then
@@ -48400,12 +48401,15 @@ end;
 function TForm1.OwnTrialInstall(const AStageDir, AExeDir,
                                 ABase: string): Boolean;
 var
-  StageExe, TrialExe, StageMap, TrialMap: string;
+  StageDir, StageExe, TrialExe, StageMap, TrialMap: string;
   Found: TSearchRec;
 begin
   Result := False;
-  StageExe := AStageDir + ABase + '.exe';
-  TrialExe := AExeDir + ABase + OwnTrialSuffix + '.exe';
+  // Папки - с обратной косой в конце: имя файла дописывается к ним прямо
+  StageDir := IncludeTrailingPathDelimiter(AStageDir);
+  StageExe := StageDir + ABase + '.exe';
+  TrialExe := IncludeTrailingPathDelimiter(AExeDir) + ABase + OwnTrialSuffix +
+              '.exe';
   if not FileExists(StageExe) then
   begin
     LogComp('Пробная сборка: dcc32 не создал ' + StageExe);
@@ -48435,15 +48439,15 @@ begin
       LogComp('Пробная сборка: .map не перенесён - ' + TrialMap);
   end;
   // Остальное в папке сборки (.drc и т. п.) - убрать, и саму папку
-  if FindFirst(AStageDir + '*.*', faAnyFile and not faDirectory, Found) = 0 then
+  if FindFirst(StageDir + '*.*', faAnyFile and not faDirectory, Found) = 0 then
   try
     repeat
-      DeleteFile(AStageDir + Found.Name);
+      DeleteFile(StageDir + Found.Name);
     until FindNext(Found) <> 0;
   finally
     FindClose(Found);
   end;
-  RemoveDir(ExcludeTrailingPathDelimiter(AStageDir));
+  RemoveDir(ExcludeTrailingPathDelimiter(StageDir));
   Result := True;
 end;
 
