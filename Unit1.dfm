@@ -1024,6 +1024,17 @@ object Form1: TForm1
             AutoSize = False
             ShowHint = True
           end
+          object cmbArdPort: TUiComboBox
+            Left = 110
+            Top = 24
+            Width = 160
+            Height = 21
+            Style = csDropDownList
+            ShowHint = True
+            Hint = 'Плата на USB, с которой работать (порт для Upload и Serial Monitor)'
+            Visible = False
+            OnChange = cmbArdPortChange
+          end
         end
       end
       object pnlToolbarIn: TPanel

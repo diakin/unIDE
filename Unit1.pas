@@ -552,6 +552,7 @@ type
     // Сборщик активной вкладки и её цель (UpdateBuildBar)
     pnlBuildKind: TPanel;
     cmbBuildKind: TUiComboBox;
+    cmbArdPort: TUiComboBox;
     lblBuildTarget: TUiLabel;
     btnCompileRun: TUiIconButton;
     grpSearch: TUiGroupBox;
@@ -756,6 +757,7 @@ type
     procedure UndoReplaceAllClick(Sender: TObject);
     procedure btnCompileRunClick(Sender: TObject);
     procedure cmbBuildKindChange(Sender: TObject);
+    procedure cmbArdPortChange(Sender: TObject);
     procedure TabsMouseDown(Sender: TObject; Button: TMouseButton;
                             Shift: TShiftState; X, Y: Integer);
     procedure ShowModulesClick(Sender: TObject);
@@ -1092,6 +1094,7 @@ type
     FArdUploading: Boolean;     // идёт загрузка: события портов не меняют
                                 // выбранный порт
     FArdHwScanned: Boolean;     // платы с диска прочитаны (FArdHw.Scan)
+    FArdPortComboBusy: Boolean; // список плат на USB заполняется из кода
     FWatchList: TStringList;
     // Условия строк Watch ("=10", "<5"): выражение и условие. Отладчик
     // RapidQ: точка останова, где выражение вычисляется, стоит, только если
@@ -2324,6 +2327,7 @@ type
                              AKeepLog: Boolean = False): Boolean;
     procedure ArdBuildLine(const ALine: string);
     procedure ArdBuildButtons;
+    procedure ArdFillPortCombo;
     procedure ArdBuildIdle(var ACancel: Boolean);
     function  ArdSaveSketchFiles(const ASketchDir: string;
                                  ASave: Boolean): Boolean;
@@ -10804,8 +10808,9 @@ begin
     lblBuildTarget.Caption := '» ' + ManualMark + ExtractFileName(Target);
   lblBuildTarget.Hint := Target;
 
-  // Скетч: ещё порт в подписи, плата и порт в подсказке
-  if (Kind = bkArduino) and (Target <> '') then
+  // Arduino: список плат на USB; у скетча ещё порт в подписи, плата и
+  // порт в подсказке
+  if Kind = bkArduino then
   begin
     if (FArdHw <> nil) and not FArdHwScanned then
     begin
@@ -10814,6 +10819,10 @@ begin
     end;
     if FArdHw <> nil then
       ArdAutoPort;
+    ArdFillPortCombo;
+  end;
+  if (Kind = bkArduino) and (Target <> '') then
+  begin
     ArdReadBoard(Fqbn, BoardName);
     if Fqbn = '' then
       BoardText := 'не выбрана (меню Arduino - Board)'
@@ -41153,6 +41162,90 @@ begin
     btnProgReset.Enabled := True;
 end;
 
+// Список плат на USB в рамке Project (как BoardComboBox в RQdebugger):
+// пункт - порт и плата на нём (имя по VID/PID из boards.txt, иначе имя
+// устройства, ArdPortCaption). Выбранный пункт - FArdPort. Заполняется при
+// смене вкладки, подключении и отключении (UpdateBuildBar).
+procedure TForm1.ArdFillPortCombo;
+var
+  PortIdx, SelIdx, TextWidth, MaxWidth: Integer;
+  ItemText: string;
+begin
+  if (cmbArdPort = nil) or (FArdPorts = nil) or (FArdHw = nil) then
+    Exit;
+  FArdPortComboBusy := True;
+  try
+    cmbArdPort.Items.BeginUpdate;
+    try
+      cmbArdPort.Items.Clear;
+      cmbArdPort.Canvas.Font := cmbArdPort.Font;
+      SelIdx := -1;
+      MaxWidth := 0;
+      for PortIdx := 0 to FArdPorts.Count - 1 do
+      begin
+        ItemText := ArdPortCaption(FArdPorts[PortIdx]);
+        cmbArdPort.Items.Add(ItemText);
+        if CompareText(FArdPorts[PortIdx].Name, FArdPort) = 0 then
+          SelIdx := PortIdx;
+        TextWidth := cmbArdPort.Canvas.TextWidth(ItemText);
+        if TextWidth > MaxWidth then
+          MaxWidth := TextWidth;
+      end;
+      // Выбранный порт отключён - он остаётся в списке с пометкой
+      if (SelIdx < 0) and (FArdPort <> '') then
+        SelIdx := cmbArdPort.Items.Add(FArdPort + ' (отключён)');
+      if cmbArdPort.Items.Count = 0 then
+        SelIdx := cmbArdPort.Items.Add('(плат на USB нет)');
+    finally
+      cmbArdPort.Items.EndUpdate;
+    end;
+    cmbArdPort.ItemIndex := SelIdx;
+  finally
+    FArdPortComboBusy := False;
+  end;
+  // Ширина - до правого края рамки; раскрытый список - по самому
+  // длинному пункту
+  if cmbArdPort.Parent <> nil then
+  begin
+    TextWidth := cmbArdPort.Parent.ClientWidth - cmbArdPort.Left - 6;
+    if TextWidth >= 60 then
+      cmbArdPort.Width := TextWidth;
+  end;
+  if MaxWidth + 30 > cmbArdPort.Width then
+    SendMessage(cmbArdPort.Handle, CB_SETDROPPEDWIDTH, MaxWidth + 30, 0);
+  if FArdPort <> '' then
+    cmbArdPort.Hint := 'Плата на USB: ' + cmbArdPort.Text + #13#10 +
+      'Порт для Upload и Serial Monitor. Плата (FQBN), для которой ' +
+      'собирается скетч, - меню Arduino - Board'
+  else
+    cmbArdPort.Hint := 'Плата на USB, с которой работать (порт для ' +
+                       'Upload и Serial Monitor)';
+end;
+
+// Выбор платы на USB: её порт - текущий, открытый монитор переходит на
+// него (как Arduino - Port). Фокус - обратно в редактор, чтобы колесо мыши
+// и клавиши не меняли выбор дальше.
+procedure TForm1.cmbArdPortChange(Sender: TObject);
+var
+  ItemIdx: Integer;
+begin
+  if FArdPortComboBusy or (FArdPorts = nil) then
+    Exit;
+  ItemIdx := cmbArdPort.ItemIndex;
+  if (ItemIdx >= 0) and (ItemIdx < FArdPorts.Count) then
+  begin
+    FArdPort := FArdPorts[ItemIdx].Name;
+    Dbg('Arduino: выбран порт ' + ArdPortCaption(FArdPorts[ItemIdx]),
+        clGray);
+    if (FArdMonitorWnd <> nil) and FArdMonitorWnd.Visible and
+       (CompareText(FArdMonitorWnd.PortName, FArdPort) <> 0) then
+      FArdMonitorWnd.OpenPort(FArdPort);
+  end;
+  UpdateBuildBar;
+  if not cmbArdPort.DroppedDown and RichEdit1.CanFocus then
+    RichEdit1.SetFocus;
+end;
+
 procedure TForm1.ArdBuildLine(const ALine: string);
 begin
   if Trim(ALine) <> '' then
@@ -45190,6 +45283,8 @@ begin
     btnArdVerify.Visible := ArdRow;
   if btnArdUpload <> nil then
     btnArdUpload.Visible := ArdRow;
+  if cmbArdPort <> nil then
+    cmbArdPort.Visible := ArdRow;
   if ArdRow and (btnArdVerify <> nil) and (btnArdUpload <> nil) then
   begin
     btnArdVerify.Left := FRunRowLefts[1];        // места View Unit,
