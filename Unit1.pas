@@ -10766,11 +10766,15 @@ end;
 procedure TForm1.UpdateBuildBar;
 var
   Kind: Integer;
-  Target, Why, Fqbn, BoardName, BoardText, PortText: string;
+  Target, Why, Fqbn, BoardName, BoardText, PortText, ManualMark: string;
 begin
   if (cmbBuildKind = nil) or (lblBuildTarget = nil) then
     Exit;
   Kind := CurBuildKind;
+  // Сборщик выбран вручную - это видно в подписи, а не только в подсказке
+  ManualMark := '';
+  if ManualBuildKind(FCurrentFileName) <> bkNone then
+    ManualMark := 'вручную, ';
   FBuildBarBusy := True;
   try
     if Kind = bkNone then
@@ -10795,9 +10799,9 @@ begin
   if Kind = bkNone then
     lblBuildTarget.Caption := ''
   else if Target = '' then
-    lblBuildTarget.Caption := '» цель не найдена'
+    lblBuildTarget.Caption := '» ' + ManualMark + 'цель не найдена'
   else
-    lblBuildTarget.Caption := '» ' + ExtractFileName(Target);
+    lblBuildTarget.Caption := '» ' + ManualMark + ExtractFileName(Target);
   lblBuildTarget.Hint := Target;
 
   // Скетч: ещё порт в подписи, плата и порт в подсказке
@@ -10845,9 +10849,24 @@ begin
   if (NewKind < bkDelphi) or (NewKind > bkArduino) then
     NewKind := bkNone;
   SetManualBuildKind(FCurrentFileName, NewKind);
+  // Запись в editor.ini [BuildKind] - строкой в лог: по ней видно, когда
+  // и для какого файла выбор сделан
+  if NewKind = bkNone then
+    Dbg('Сборщик для ' + ExtractFileName(FCurrentFileName) +
+        ': Auto - снова по файлу', clGray)
+  else
+    Dbg('Сборщик для ' + ExtractFileName(FCurrentFileName) +
+        ' выбран вручную: ' + BuildKindName(NewKind) +
+        ' (editor.ini [BuildKind])', clGray);
   FLangModeKey := '';
   FRunExeKey := '';
   ApplyLangMode;
+  // Фокус - обратно в редактор. Список выбора с фокусом меняет пункт от
+  // колеса мыши и от букв на клавиатуре (F - FreeBASIC), и такая смена
+  // тоже записалась бы как выбор для файла. Пока список раскрыт - не
+  // трогать: по нему ходят стрелками.
+  if not cmbBuildKind.DroppedDown and RichEdit1.CanFocus then
+    RichEdit1.SetFocus;
 end;
 
 // Выбор одной строки из списка. Пустая строка - отказались.
