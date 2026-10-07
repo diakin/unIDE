@@ -49,6 +49,10 @@ function GridSetCell(AObj: TObject; ACol, ARow: Integer;
 function GridCallEx(AObj: TObject; const AMethod, AStr: string;
                     AInt1, AInt2, AInt3: Integer; out AIntResult: Integer;
                     out AStrResult: string; out AIsStr: Boolean): Boolean;
+// Рисование на таблице (обычно в OnDrawCell): FillRect, TextOut, Line,
+// Rectangle, RoundRect, Circle, Pset, Paint. Координаты - в окне таблицы.
+function GridDraw(AObj: TObject; const AMethod, AStr: string;
+                  const AInts: array of Integer; out AResult: Integer): Boolean;
 // Начальные значения как в RapidQ
 procedure GridInitNew(AObj: TObject);
 
@@ -232,6 +236,102 @@ begin
 end;
 
 // ---------------------------------------------------------------------------
+
+procedure NeedInts(const AMethod: string; const AInts: array of Integer;
+                   ACount: Integer);
+begin
+  if Length(AInts) < ACount then
+    raise Exception.Create(AMethod + ': ' + IntToStr(ACount) +
+                           ' parameters expected');
+end;
+
+function GridDraw(AObj: TObject; const AMethod, AStr: string;
+                  const AInts: array of Integer; out AResult: Integer): Boolean;
+var
+  Method: string;
+  Canvas: TCanvas;
+begin
+  Result := False;
+  AResult := 1;
+  if not (AObj is TCustomGrid) then
+    Exit;
+  Canvas := TStringGrid(AObj).Canvas;
+  Method := UpperCase(AMethod);
+  Result := True;
+  if Method = 'FILLRECT' then
+  begin
+    // (x1, y1, x2, y2, цвет)
+    NeedInts(AMethod, AInts, 5);
+    Canvas.Brush.Style := bsSolid;
+    Canvas.Brush.Color := TColor(AInts[4]);
+    Canvas.FillRect(Rect(AInts[0], AInts[1], AInts[2], AInts[3]));
+  end
+  else if Method = 'TEXTOUT' then
+  begin
+    // (x, y, текст, цвет текста, цвет фона; -1 - фон прозрачный)
+    NeedInts(AMethod, AInts, 4);
+    Canvas.Font.Color := TColor(AInts[2]);
+    if AInts[3] = -1 then
+      Canvas.Brush.Style := bsClear
+    else
+    begin
+      Canvas.Brush.Style := bsSolid;
+      Canvas.Brush.Color := TColor(AInts[3]);
+    end;
+    Canvas.TextOut(AInts[0], AInts[1], WinCPToUTF8(AStr));
+  end
+  else if Method = 'LINE' then
+  begin
+    NeedInts(AMethod, AInts, 5);
+    Canvas.Pen.Color := TColor(AInts[4]);
+    Canvas.Line(AInts[0], AInts[1], AInts[2], AInts[3]);
+  end
+  else if Method = 'RECTANGLE' then
+  begin
+    NeedInts(AMethod, AInts, 5);
+    Canvas.Pen.Color := TColor(AInts[4]);
+    Canvas.Brush.Style := bsClear;
+    Canvas.Rectangle(AInts[0], AInts[1], AInts[2], AInts[3]);
+  end
+  else if Method = 'ROUNDRECT' then
+  begin
+    // (x1, y1, x2, y2, x3, y3, цвет) - с заливкой
+    NeedInts(AMethod, AInts, 7);
+    Canvas.Pen.Color := TColor(AInts[6]);
+    Canvas.Brush.Style := bsSolid;
+    Canvas.Brush.Color := TColor(AInts[6]);
+    Canvas.RoundRect(AInts[0], AInts[1], AInts[2], AInts[3], AInts[4], AInts[5]);
+  end
+  else if Method = 'CIRCLE' then
+  begin
+    // (x1, y1, x2, y2, цвет, заливка)
+    NeedInts(AMethod, AInts, 6);
+    Canvas.Pen.Color := TColor(AInts[4]);
+    if AInts[5] <> 0 then
+    begin
+      Canvas.Brush.Style := bsSolid;
+      Canvas.Brush.Color := TColor(AInts[4]);
+    end
+    else
+      Canvas.Brush.Style := bsClear;
+    Canvas.Ellipse(AInts[0], AInts[1], AInts[2], AInts[3]);
+  end
+  else if Method = 'PSET' then
+  begin
+    NeedInts(AMethod, AInts, 3);
+    Canvas.Pixels[AInts[0], AInts[1]] := TColor(AInts[2]);
+  end
+  else if Method = 'PAINT' then
+  begin
+    // (x, y, цвет заливки, цвет границы)
+    NeedInts(AMethod, AInts, 4);
+    Canvas.Brush.Style := bsSolid;
+    Canvas.Brush.Color := TColor(AInts[2]);
+    Canvas.FloodFill(AInts[0], AInts[1], TColor(AInts[3]), fsBorder);
+  end
+  else
+    Result := False;
+end;
 
 procedure GridInitNew(AObj: TObject);
 begin

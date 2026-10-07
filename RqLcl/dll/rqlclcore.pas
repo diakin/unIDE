@@ -37,6 +37,16 @@ type
   //   AUser - указатель, переданный в RqCreate; AObj - сам объект
   TRqEventProc = procedure(AUser: Pointer; AObj: Pointer); stdcall;
 
+  // Событие с параметрами: целые - IntArgs (параметры var LCL - после
+  // вызова берутся обратно), строка - StrArg (кодировка Windows)
+  TRqEventArgs = record
+    IntArgs: array[0..7] of Integer;
+    StrArg: PChar;
+  end;
+  PRqEventArgs = ^TRqEventArgs;
+  TRqEventProcEx = procedure(AUser: Pointer; AObj: Pointer; AEventId: Integer;
+                             AArgs: PRqEventArgs); stdcall;
+
 function RqInit: Integer; stdcall;
 procedure RqDone; stdcall;
 function RqCreate(AClassName: PChar; AParent: Pointer;
@@ -53,6 +63,10 @@ function RqSetObj(AObj: Pointer; AProp: PChar; AValue: Pointer): Integer;
   stdcall;
 function RqSetEvent(AObj: Pointer; AEvent: PChar;
                     AProc: TRqEventProc): Integer; stdcall;
+function RqSetEventEx(AObj: Pointer; AEvent: PChar; AEventId: Integer;
+                      AProc: TRqEventProcEx): Integer; stdcall;
+function RqCallInts(AObj: Pointer; AMethod: PChar; AStr: PChar;
+                    AInts: PInteger; ACount: Integer): Integer; stdcall;
 function RqCall(AObj: Pointer; AMethod: PChar): Integer; stdcall;
 function RqCallInt(AObj: Pointer; AMethod: PChar; AValue: Integer): Integer;
   stdcall;
@@ -95,7 +109,20 @@ type
     User: Pointer;
     EventName: string;
     Proc: TRqEventProc;
+    ProcEx: TRqEventProcEx;
+    EventId: Integer;
     procedure FireNotify(Sender: TObject);
+    procedure FireKey(Sender: TObject; var Key: Word; Shift: TShiftState);
+    procedure FireUTF8KeyPress(Sender: TObject; var UTF8Key: TUTF8Char);
+    procedure FireMouse(Sender: TObject; Button: TMouseButton;
+                        Shift: TShiftState; X, Y: Integer);
+    procedure FireMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+    procedure FireSelectCell(Sender: TObject; aCol, aRow: Integer;
+                             var CanSelect: Boolean);
+    procedure FireDrawCell(Sender: TObject; aCol, aRow: Integer; aRect: TRect;
+                           aState: TGridDrawState);
+    procedure FireSetEditText(Sender: TObject; ACol, ARow: Integer;
+                              const Value: string);
     procedure FireCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure FireTreeChange(Sender: TObject; Node: TTreeNode);
   end;
@@ -114,7 +141,7 @@ type
 
 var
   RqClassTable: array[0..6] of TRqClassRec;
-  RqPropTable: array[0..0] of TRqPropRec;
+  RqPropTable: array[0..1] of TRqPropRec;
   RqLastErrorText: string = '';
   RqInitDone: Boolean = False;
 
@@ -142,6 +169,9 @@ begin
   // ближе всего OnCloseQuery (FireCloseQuery разрешает закрытие)
   RqPropTable[0].RqName := 'ONCLOSE';
   RqPropTable[0].LclName := 'OnCloseQuery';
+  // Буквы не только ASCII (кириллица) LCL сообщает в OnUTF8KeyPress
+  RqPropTable[1].RqName := 'ONKEYPRESS';
+  RqPropTable[1].LclName := 'OnUTF8KeyPress';
 end;
 
 procedure SetError(const AText: string);
@@ -220,6 +250,147 @@ procedure TRqEventLink.FireCloseQuery(Sender: TObject; var CanClose: Boolean);
 begin
   CanClose := True;
   FireNotify(Sender);
+end;
+
+// Shift RapidQ (как TShiftState Delphi): Shift 1, Alt 2, Ctrl 4, кнопки
+// мыши Left 8, Right 16, Middle 32, Double 64
+function ShiftToInt(AShift: TShiftState): Integer;
+const
+  ShiftOrder: array[0..6] of TShiftStateEnum =
+    (ssShift, ssAlt, ssCtrl, ssLeft, ssRight, ssMiddle, ssDouble);
+var
+  BitIdx: Integer;
+begin
+  Result := 0;
+  for BitIdx := 0 to High(ShiftOrder) do
+    if ShiftOrder[BitIdx] in AShift then
+      Result := Result or (1 shl BitIdx);
+end;
+
+function GridStateToInt(AState: TGridDrawState): Integer;
+begin
+  Result := 0;
+  if gdSelected in AState then
+    Result := Result or 1;
+  if gdFocused in AState then
+    Result := Result or 2;
+  if gdFixed in AState then
+    Result := Result or 4;
+end;
+
+procedure TRqEventLink.FireKey(Sender: TObject; var Key: Word;
+                               Shift: TShiftState);
+var
+  Args: TRqEventArgs;
+begin
+  if not Assigned(ProcEx) then
+    Exit;
+  FillChar(Args, SizeOf(Args), 0);
+  Args.IntArgs[0] := Key;
+  Args.IntArgs[1] := ShiftToInt(Shift);
+  ProcEx(User, Owner, EventId, @Args);
+  Key := Word(Args.IntArgs[0]);
+end;
+
+// OnKeyPress RapidQ: код символа в кодировке Windows (Key AS BYTE)
+procedure TRqEventLink.FireUTF8KeyPress(Sender: TObject; var UTF8Key: TUTF8Char);
+var
+  Args: TRqEventArgs;
+  AnsiKey: string;
+begin
+  if not Assigned(ProcEx) then
+    Exit;
+  AnsiKey := UTF8ToWinCP(UTF8Key);
+  if Length(AnsiKey) <> 1 then
+    Exit;
+  FillChar(Args, SizeOf(Args), 0);
+  Args.IntArgs[0] := Ord(AnsiKey[1]);
+  ProcEx(User, Owner, EventId, @Args);
+  // обработчик обнулил Key - символ не вводится
+  if Args.IntArgs[0] = 0 then
+    UTF8Key := ''
+  else if Args.IntArgs[0] <> Ord(AnsiKey[1]) then
+    UTF8Key := WinCPToUTF8(Chr(Byte(Args.IntArgs[0])));
+end;
+
+// OnMouseDown / OnMouseUp: Button (0 левая, 1 правая, 2 средняя), X, Y, Shift
+procedure TRqEventLink.FireMouse(Sender: TObject; Button: TMouseButton;
+                                 Shift: TShiftState; X, Y: Integer);
+var
+  Args: TRqEventArgs;
+begin
+  if not Assigned(ProcEx) then
+    Exit;
+  FillChar(Args, SizeOf(Args), 0);
+  Args.IntArgs[0] := Ord(Button);
+  Args.IntArgs[1] := X;
+  Args.IntArgs[2] := Y;
+  Args.IntArgs[3] := ShiftToInt(Shift);
+  ProcEx(User, Owner, EventId, @Args);
+end;
+
+procedure TRqEventLink.FireMouseMove(Sender: TObject; Shift: TShiftState;
+                                     X, Y: Integer);
+var
+  Args: TRqEventArgs;
+begin
+  if not Assigned(ProcEx) then
+    Exit;
+  FillChar(Args, SizeOf(Args), 0);
+  Args.IntArgs[0] := X;
+  Args.IntArgs[1] := Y;
+  Args.IntArgs[2] := ShiftToInt(Shift);
+  ProcEx(User, Owner, EventId, @Args);
+end;
+
+procedure TRqEventLink.FireSelectCell(Sender: TObject; aCol, aRow: Integer;
+                                      var CanSelect: Boolean);
+var
+  Args: TRqEventArgs;
+begin
+  if not Assigned(ProcEx) then
+    Exit;
+  FillChar(Args, SizeOf(Args), 0);
+  Args.IntArgs[0] := aCol;
+  Args.IntArgs[1] := aRow;
+  Args.IntArgs[2] := Ord(CanSelect);
+  ProcEx(User, Owner, EventId, @Args);
+  CanSelect := Args.IntArgs[2] <> 0;
+end;
+
+// OnDrawCell: Col, Row, State, прямоугольник ячейки Left, Top, Right, Bottom
+procedure TRqEventLink.FireDrawCell(Sender: TObject; aCol, aRow: Integer;
+                                    aRect: TRect; aState: TGridDrawState);
+var
+  Args: TRqEventArgs;
+begin
+  if not Assigned(ProcEx) then
+    Exit;
+  FillChar(Args, SizeOf(Args), 0);
+  Args.IntArgs[0] := aCol;
+  Args.IntArgs[1] := aRow;
+  Args.IntArgs[2] := GridStateToInt(aState);
+  Args.IntArgs[3] := aRect.Left;
+  Args.IntArgs[4] := aRect.Top;
+  Args.IntArgs[5] := aRect.Right;
+  Args.IntArgs[6] := aRect.Bottom;
+  ProcEx(User, Owner, EventId, @Args);
+end;
+
+procedure TRqEventLink.FireSetEditText(Sender: TObject; ACol, ARow: Integer;
+                                       const Value: string);
+var
+  Args: TRqEventArgs;
+  AnsiValue: string;
+begin
+  if not Assigned(ProcEx) then
+    Exit;
+  FillChar(Args, SizeOf(Args), 0);
+  Args.IntArgs[0] := ACol;
+  Args.IntArgs[1] := ARow;
+  AnsiValue := UTF8ToWinCP(Value);
+  Args.StrArg := PChar(AnsiValue);
+  ProcEx(User, Owner, EventId, @Args);
 end;
 
 // OnChange дерева (QDIRTREE): выбрана другая папка
@@ -593,6 +764,141 @@ begin
   except
     on E: Exception do
       SetError('RqSetEvent ' + string(AEvent) + ': ' + E.Message);
+  end;
+end;
+
+// Обработчик события с параметрами (OnKeyDown, OnKeyPress, OnKeyUp,
+// OnMouseDown, OnMouseUp, OnMouseMove, OnSelectCell, OnDrawCell,
+// OnSetEditText). AEventId возвращается в AProc - по нему вызывающий
+// находит свой обработчик. nil - снять. 1 - назначено.
+function RqSetEventEx(AObj: Pointer; AEvent: PChar; AEventId: Integer;
+                      AProc: TRqEventProcEx): Integer; stdcall;
+var
+  Info: PPropInfo;
+  Comp: TComponent;
+  Data: TRqData;
+  Link: TRqEventLink;
+  Handler: TMethod;
+  TypeName: string;
+  KeyProc: TKeyEvent;
+  KeyPressProc: TUTF8KeyPressEvent;
+  MouseProc: TMouseEvent;
+  MouseMoveProc: TMouseMoveEvent;
+  SelectCellProc: TOnSelectCellEvent;
+  DrawCellProc: TOnDrawCell;
+  SetEditProc: TSetEditEvent;
+begin
+  Result := 0;
+  try
+    if not (TObject(AObj) is TComponent) then
+    begin
+      SetError('RqSetEventEx: no object');
+      Exit;
+    end;
+    Comp := TComponent(AObj);
+    Info := FindProp(Comp, string(AEvent));
+    if Info = nil then
+      Exit;
+    if Info^.PropType^.Kind <> tkMethod then
+    begin
+      SetError(string(AEvent) + ': not an event');
+      Exit;
+    end;
+    Link := LinkOf(Comp, string(AEvent));
+    if not Assigned(AProc) then
+    begin
+      Handler.Code := nil;
+      Handler.Data := nil;
+      SetMethodProp(Comp, Info, Handler);
+      Link.Free;
+      Result := 1;
+      Exit;
+    end;
+    if Link = nil then
+    begin
+      Link := TRqEventLink.Create(Comp);
+      Link.EventName := string(AEvent);
+    end;
+    Data := DataOf(Comp);
+    if Data <> nil then
+      Link.User := Data.User;
+    Link.ProcEx := AProc;
+    Link.EventId := AEventId;
+    TypeName := Info^.PropType^.Name;
+    if TypeName = 'TKeyEvent' then
+    begin
+      KeyProc := @Link.FireKey;
+      Handler := TMethod(KeyProc);
+    end
+    else if TypeName = 'TUTF8KeyPressEvent' then
+    begin
+      KeyPressProc := @Link.FireUTF8KeyPress;
+      Handler := TMethod(KeyPressProc);
+    end
+    else if TypeName = 'TMouseEvent' then
+    begin
+      MouseProc := @Link.FireMouse;
+      Handler := TMethod(MouseProc);
+    end
+    else if TypeName = 'TMouseMoveEvent' then
+    begin
+      MouseMoveProc := @Link.FireMouseMove;
+      Handler := TMethod(MouseMoveProc);
+    end
+    else if TypeName = 'TOnSelectCellEvent' then
+    begin
+      SelectCellProc := @Link.FireSelectCell;
+      Handler := TMethod(SelectCellProc);
+    end
+    else if TypeName = 'TOnDrawCell' then
+    begin
+      DrawCellProc := @Link.FireDrawCell;
+      Handler := TMethod(DrawCellProc);
+    end
+    else if TypeName = 'TSetEditEvent' then
+    begin
+      SetEditProc := @Link.FireSetEditText;
+      Handler := TMethod(SetEditProc);
+    end
+    else
+    begin
+      SetError(string(AEvent) + ': event type ' + TypeName +
+               ' is not supported yet');
+      Exit;
+    end;
+    SetMethodProp(Comp, Info, Handler);
+    Result := 1;
+  except
+    on E: Exception do
+      SetError('RqSetEventEx ' + string(AEvent) + ': ' + E.Message);
+  end;
+end;
+
+// Метод со строкой и списком целых (рисование: FillRect, TextOut, Line...)
+function RqCallInts(AObj: Pointer; AMethod: PChar; AStr: PChar;
+                    AInts: PInteger; ACount: Integer): Integer; stdcall;
+var
+  IntList: array of Integer;
+  IntIdx: Integer;
+begin
+  Result := 0;
+  try
+    SetLength(IntList, ACount);
+    for IntIdx := 0 to ACount - 1 do
+      IntList[IntIdx] := PInteger(PtrUInt(AInts) + PtrUInt(IntIdx * SizeOf(Integer)))^;
+    if GridDraw(TObject(AObj), string(AMethod), string(AStr), IntList, Result) then
+      Exit;
+    if AObj = nil then
+      SetError('RqCallInts ' + string(AMethod) + ': no object')
+    else
+      SetError(TObject(AObj).ClassName + ': no method ' + string(AMethod));
+    Result := 0;
+  except
+    on E: Exception do
+    begin
+      SetError(string(AMethod) + ': ' + E.Message);
+      Result := 0;
+    end;
   end;
 end;
 

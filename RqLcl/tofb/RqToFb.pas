@@ -112,6 +112,17 @@ const
   RqMemberMapText =
     'POINTER=PointerAddr';
 
+  // События с параметрами: типы параметров обработчика (R - ByRef, V -
+  // ByVal; тип RapidQ). Обработчик, назначенный такому событию, получает
+  // эти типы, какие бы ни были в его заголовке (Key AS WORD -> ByRef
+  // Long): адрес процедуры передаётся в rqlcl.bi без преобразования, и
+  // типы должны совпасть точно.
+  RqEventSigText =
+    'ONKEYDOWN=RLONG;VLONG ONKEYUP=RLONG;VLONG ONKEYPRESS=RLONG ' +
+    'ONMOUSEDOWN=VLONG;VLONG;VLONG;VLONG ONMOUSEUP=VLONG;VLONG;VLONG;VLONG ' +
+    'ONMOUSEMOVE=VLONG;VLONG;VLONG ONSELECTCELL=VLONG;VLONG;RLONG ' +
+    'ONDRAWCELL=VLONG;VLONG;VLONG;RQRECT ONSETEDITTEXT=VLONG;VLONG;VSTRING';
+
   // Запись в массив-свойство с двумя индексами: у свойства FreeBASIC
   // индекс один, поэтому Grid.Cell(c, r) = x -> Grid.SetCell(c, r, x)
   RqIndexedSetText =
@@ -224,6 +235,10 @@ type
     FFuncMap: TStringList;        // ИМЯ$=функция rqrt.bi
     FMemberMap: TStringList;      // СВОЙСТВО=имя в .bi
     FIndexedSet: TStringList;     // СВОЙСТВО=метод записи
+    FEventSigs: TStringList;      // СОБЫТИЕ=типы параметров обработчика
+    FHandlerEvents: TStringList;  // ПРОЦЕДУРА=СОБЫТИЕ (из Объект.OnXxx = Процедура)
+    FClassMembers: TStringList;   // КЛАСС.ИМЯ=P|M|E (rqmembers.inc)
+    FCreateStack: TStringList;    // CREATE: ИмяОбъекта=КЛАСС, внутренний - последний
     FCurFile: string;
     FCurLine: Integer;
     FCurProc: TRqProc;
@@ -298,6 +313,9 @@ type
     procedure ProcessDeclare(var AToks: TToks; AFrom, ATo: Integer);
     function ParseParams(var AToks: TToks; AFrom, ATo: Integer;
                          const AScope: string): string;
+    function RewriteCreate(const AText: string): string;
+    function MemberKind(const AClassUp, AMemberUp: string): Char;
+    function ClassKnown(const AClassUp: string): Boolean;
     procedure ProcessTypeHeader(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessField(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessPrint(var AToks: TToks; AFrom, ATo: Integer);
@@ -426,6 +444,173 @@ end;
 //  TRqFbConv
 // ---------------------------------------------------------------------------
 
+// --- rqmembers: начало (создано tofb/gen_members.py, руками не править)
+// Свойства (P), методы (M) и события (E) классов RapidQ - из документации
+// (rapidq_ref/html_doc) и типов RqLcl/inc/*.bi. Нужен для CREATE ...
+// END CREATE: какие слова внутри - свойства объекта.
+// Формат: КЛАСС:ИМЯ=вид,...|
+const
+  RqClassMembersText =
+    'APPLICATION:EXENAME=P,HANDLE=P,HELPCOMMAND=M,HELPCONTEXT=M,HELPFILE=P,HELPJUMP=M,HINTCOLOR=P,HINTHIDEPAUSE=P,HINTPAUSE=P,HINTSHORTPAUSE=P,ICOHANDLE=P,ICON=P,MINIMIZE=M,SHOWHINT=P,T' +
+    'ERMINATE=M,TITLE=P|' +
+    'CLIPBOARD:CLEAR=M,CLOSE=M,FORMAT=P,FORMATCOUNT=P,GETASHANDLE=M,GETASTEXT=M,HASFORMAT=M,OPEN=M,SETASHANDLE=M,SETASTEXT=M,TEXT=P|' +
+    'PRINTER:ABORT=M,ABORTED=P,BEGINDOC=M,CIRCLE=M,COPIES=P,COPYMODE=P,COPYRECT=M,DRAW=M,ENDDOC=M,FILLRECT=M,FONT=P,FONTS=P,FONTSCOUNT=P,HANDLE=P,LINE=M,NEWPAGE=M,ORIENTATION=P,PAGEHEIG' +
+    'HT=P,PAGENUMBER=P,PAGEWIDTH=P,PAINT=M,PRINTERINDEX=P,PRINTERS=P,PRINTERSCOUNT=P,PRINTING=P,PSET=M,RECTANGLE=M,ROUNDRECT=M,STRETCHDRAW=M,TEXTHEIGHT=M,TEXTOUT=M,TEXTRECT=M,TEXTWIDTH=' +
+    'M,TITLE=P|' +
+    'QBITMAP:BMP=P,BMPHANDLE=P,CIRCLE=M,COPYMODE=P,COPYRECT=M,DRAW=M,EMPTY=P,FILLRECT=M,FONT=P,HANDLE=P,HEIGHT=P,LINE=M,LOADFROMFILE=M,LOADFROMSTREAM=M,MONOCHROME=P,PAINT=M,PIXEL=P,PIXE' +
+    'LFORMAT=P,PSET=M,RECTANGLE=M,ROTATE=M,ROUNDRECT=M,SAVETOFILE=M,SAVETOSTREAM=M,STRETCHDRAW=M,TEXTHEIGHT=M,TEXTOUT=M,TEXTRECT=M,TEXTWIDTH=M,TOP=P,TRANSPARENT=P,TRANSPARENTCOLOR=P,TRA' +
+    'NSPARENTMODE=P,WIDTH=P|' +
+    'QBUTTON:ALIGN=P,BMP=P,BMPHANDLE=P,CANCEL=P,CAPTION=P,CLICK=M,COLOR=P,CURSOR=P,DEFAULT=P,ENABLED=P,FONT=P,HANDLE=P,HEIGHT=P,HIDE=M,HINT=P,KIND=P,LAYOUT=P,LEFT=P,MODALRESULT=P,NUMBMP' +
+    'S=P,ONCLICK=E,ONKEYDOWN=E,ONKEYPRESS=E,ONKEYUP=E,ONMOUSEDOWN=E,ONMOUSEMOVE=E,ONMOUSEUP=E,PARENT=P,POPUPMENU=P,REPAINT=M,SETFOCUS=M,SHOW=M,SHOWHINT=P,SPACING=P,STARTDRAG=M,TABORDER=' +
+    'P,TAG=P,TOP=P,VISIBLE=P,WIDTH=P|' +
+    'QCANVAS:ALIGN=P,CIRCLE=M,CLIENTHEIGHT=P,CLIENTWIDTH=P,COLOR=P,COPYMODE=P,COPYRECT=M,CURSOR=P,DRAW=M,ENABLED=P,FILLRECT=M,FONT=P,HEIGHT=P,HINT=P,LEFT=P,LINE=M,ONCLICK=E,ONDBLCLICK=E' +
+    ',ONMOUSEDOWN=E,ONMOUSEMOVE=E,ONMOUSEUP=E,ONPAINT=E,PAINT=M,PARENT=P,PIXEL=P,POPUPMENU=P,PSET=M,RECTANGLE=M,REPAINT=M,ROTATE=M,ROUNDRECT=M,SHOWHINT=P,STRETCHDRAW=M,TAG=P,TEXTHEIGHT=' +
+    'M,TEXTOUT=M,TEXTRECT=M,TEXTWIDTH=M,TOP=P,VISIBLE=P,WIDTH=P|' +
+    'QCHECKBOX:ALIGN=P,CAPTION=P,CHECKED=P,ENABLED=P,FONT=P,HEIGHT=P,HINT=P,LEFT=P,ONCLICK=E,PARENT=P,POPUPMENU=P,SHOWHINT=P,TABORDER=P,TAG=P,TOP=P,VISIBLE=P,WIDTH=P|' +
+    'QCOMBOBOX:ADDITEMS=M,ALIGN=P,CIRCLE=M,CLEAR=M,COLOR=P,COPYMODE=P,COPYRECT=M,CURSOR=P,DELITEMS=M,DRAW=M,DROPDOWNCOUNT=P,ENABLED=P,FILLRECT=M,FONT=P,HEIGHT=P,HINT=P,INSERTITEM=M,ITEM' +
+    '=P,ITEMCOUNT=P,ITEMHEIGHT=P,ITEMINDEX=P,LEFT=P,LINE=M,MAXLENGTH=P,ONCHANGE=E,ONDRAWITEM=E,ONMEASUREITEM=E,PAINT=M,PARENT=P,POPUPMENU=P,PSET=M,RECTANGLE=M,REPAINT=M,ROUNDRECT=M,SHOW' +
+    'HINT=P,SORTED=P,STRETCHDRAW=M,STYLE=P,TABORDER=P,TAG=P,TEXT=P,TEXTHEIGHT=M,TEXTOUT=M,TEXTRECT=M,TEXTWIDTH=M,TOP=P,VISIBLE=P,WIDTH=P|' +
+    'QCOMPORT:ABORTALLIO=M,BAUDRATE=P,CLOSE=M,CONNECTED=P,DATABITS=P,HANDLE=P,INQUE=P,ONBREAK=E,ONCLOSE=E,ONERROR=E,ONOPEN=E,ONRING=E,ONRXCHAR=E,ONTXEMPTY=E,OPEN=M,OUTQUE=P,PARITY=P,PEN' +
+    'DINGIO=P,PORT=P,PURGEIN=M,PURGEOUT=M,READ=M,READBUFSIZE=P,READSTRING=M,STOPBITS=P,WAITFORLASTIO=M,WRITE=M,WRITEBUFSIZE=P,WRITESTRING=M|' +
+    'QCOOLBTN:ALIGN=P,ALLOWALLUP=P,BMP=P,BMPHANDLE=P,CAPTION=P,CURSOR=P,DOWN=P,ENABLED=P,FLAT=P,FONT=P,GROUPINDEX=P,HEIGHT=P,HINT=P,LAYOUT=P,LEFT=P,NUMBMPS=P,ONCLICK=E,ONMOUSEDOWN=E,ONM' +
+    'OUSEMOVE=E,ONMOUSEUP=E,PARENT=P,SHOWHINT=P,SPACING=P,STARTDRAG=M,TABORDER=P,TAG=P,TOP=P,VISIBLE=P,WIDTH=P|' +
+    'QDIRTREE:ADDDIRTYPES=M,ADDDRIVETYPES=M,ALIGN=P,BORDERSTYLE=P,COLOR=P,CURSOR=P,DELDIRTYPES=M,DELDRIVETYPES=M,DIRECTORY=P,ENABLED=P,FASTLOAD=P,FONT=P,FULLCOLLAPSE=M,FULLEXPAND=M,HAND' +
+    'LE=P,HEIGHT=P,HIDE=M,HIDESELECTION=P,HINT=P,INITIALDIR=P,LEFT=P,ONCHANGE=E,ONKEYDOWN=E,ONKEYPRESS=E,ONKEYUP=E,ONMOUSEDOWN=E,ONMOUSEMOVE=E,ONMOUSEUP=E,PARENT=P,POPUPMENU=P,READONLY=' +
+    'P,READONSTART=P,RELOAD=M,REPAINT=M,SETFOCUS=M,SHOW=M,SHOWHINT=P,TABORDER=P,TAG=P,TOP=P,VISIBLE=P,WIDTH=P|' +
+    'QEDIT:ALIGN=P,AUTOSIZE=P,BORDERSTYLE=P,CHARCASE=P,COLOR=P,EDITTEXT=P,ENABLED=P,FONT=P,HANDLE=P,HEIGHT=P,HIDE=M,HINT=P,INPUTMASK=P,ISMASKED=P,LEFT=P,MAXLENGTH=P,MODIFIED=P,ONCHANGE=' +
+    'E,ONKEYDOWN=E,ONKEYPRESS=E,ONKEYUP=E,ONMOUSEDOWN=E,ONMOUSEMOVE=E,ONMOUSEUP=E,PARENT=P,PASSWORDCHAR=P,POPUPMENU=P,READONLY=P,REPAINT=M,SELLENGTH=P,SELSTART=P,SELTEXT=P,SETFOCUS=M,SH' +
+    'OW=M,SHOWHINT=P,TABORDER=P,TAG=P,TEXT=P,TOP=P,VISIBLE=P,WIDTH=P,WNDPROC=E|' +
+    'QFILELISTBOX:ADDFILETYPES=M,ALIGN=P,COLOR=P,CURSOR=P,DELFILETYPES=M,DIRECTORY=P,DRIVE=P,ENABLED=P,EXTENDEDSELECT=P,FILENAME=P,FONT=P,HEIGHT=P,HINT=P,ITEM=P,ITEMCOUNT=P,ITEMHEIGHT=P' +
+    ',ITEMINDEX=P,LEFT=P,MASK=P,MULTISELECT=P,ONCHANGE=E,ONCLICK=E,ONDBLCLICK=E,PARENT=P,POPUPMENU=P,SELCOUNT=P,SELECTED=P,SHOWHINT=P,SHOWICONS=P,TABORDER=P,TAG=P,TOP=P,TOPINDEX=P,UPDAT' +
+    'E=M,VISIBLE=P,WIDTH=P|' +
+    'QFILESTREAM:CLOSE=M,COPYFROM=M,EOF=P,EXTRACTRES=M,HANDLE=P,LINECOUNT=P,OPEN=M,POSITION=P,READ=M,READBINSTR=M,READLINE=M,READNUM=M,READSTR=M,SEEK=M,SIZE=P,WRITE=M,WRITEBINSTR=M,WRIT' +
+    'ELINE=M,WRITENUM=M,WRITESTR=M|' +
+    'QFONT:ADDSTYLES=M,CHARSET=P,COLOR=P,DELSTYLES=M,FONTCOUNT=P,FONTNAME=P,HANDLE=P,NAME=P,PITCH=P,SIZE=P|' +
+    'QFONTDIALOG:ADDOPTIONS=M,ADDSTYLES=M,COLOR=P,DELOPTIONS=M,DELSTYLES=M,EXECUTE=M,FONTCOUNT=P,FONTNAME=P,GETFONT=M,MAXFONTSIZE=P,MINFONTSIZE=P,NAME=P,ONAPPLY=E,SETFONT=M,SIZE=P|' +
+    'QFORM:ADDBORDERICONS=M,AUTOSCROLL=P,BORDERSTYLE=P,CAPTION=P,CENTER=M,CIRCLE=M,CLIENTHEIGHT=P,CLIENTWIDTH=P,CLOSE=M,COLOR=P,COPYRECT=M,CURSOR=P,DELBORDERICONS=M,DRAW=M,ENABLED=P,FIL' +
+    'LRECT=M,FONT=P,FORMSTYLE=P,HANDLE=P,HEIGHT=P,HIDE=M,HIDETITLEBAR=M,HINT=P,ICOHANDLE=P,ICON=P,KEYPREVIEW=P,LEFT=P,LINE=M,MODALRESULT=P,ONCLICK=E,ONCLOSE=E,ONHINT=E,ONKEYDOWN=E,ONKEY' +
+    'PRESS=E,ONKEYUP=E,ONMOUSEDOWN=E,ONMOUSEMOVE=E,ONMOUSEUP=E,ONPAINT=E,ONRESIZE=E,ONSHOW=E,PAINT=M,PARENT=P,POPUPMENU=P,PSET=M,RECTANGLE=M,REPAINT=M,ROUNDRECT=M,SETFOCUS=M,SHAPEFORM=M' +
+    ',SHOW=M,SHOWHINT=P,SHOWMODAL=M,SHOWTITLEBAR=M,STRETCHDRAW=M,TEXTHEIGHT=M,TEXTOUT=M,TEXTRECT=M,TEXTWIDTH=M,TOP=P,VISIBLE=P,WIDTH=P,WINDOWSTATE=P,WNDPROC=E|' +
+    'QGAUGE:ALIGN=P,BACKCOLOR=P,BORDERSTYLE=P,COLOR=P,CURSOR=P,ENABLED=P,FONT=P,FORECOLOR=P,HEIGHT=P,HINT=P,KIND=P,LEFT=P,MAX=P,MIN=P,PARENT=P,POSITION=P,SHOWHINT=P,SHOWTEXT=P,TOP=P,VIS' +
+    'IBLE=P,WIDTH=P|' +
+    'QGLASSFRAME:ALIGN=P,CLIENTHEIGHT=P,CLIENTWIDTH=P,COLOR=P,CURSOR=P,HANDLE=P,HEIGHT=P,HINT=P,LEFT=P,MOVEABLE=P,PARENT=P,POPUPMENU=P,SHOWHINT=P,TOP=P,TRANSPARENCY=P,TRANSPARENTCOLOR=P' +
+    ',WIDTH=P|' +
+    'QGROUPBOX:ALIGN=P,CAPTION=P,COLOR=P,CURSOR=P,ENABLED=P,FONT=P,HANDLE=P,HEIGHT=P,HINT=P,LEFT=P,ONCLICK=E,ONDBLCLICK=E,ONMOUSEDOWN=E,ONMOUSEMOVE=E,ONMOUSEUP=E,PARENT=P,POPUPMENU=P,RE' +
+    'PAINT=M,SHOWHINT=P,TABORDER=P,TAG=P,TOP=P,VISIBLE=P,WIDTH=P|' +
+    'QHEADER:ADDSECTIONS=M,ALIGN=P,CIRCLE=M,CLEAR=M,CLIENTHEIGHT=P,CLIENTWIDTH=P,COPYMODE=P,COPYRECT=M,CURSOR=P,DRAW=M,ENABLED=P,FILLRECT=M,FONT=P,HANDLE=P,HEIGHT=P,HINT=P,HOTTRACK=P,LE' +
+    'FT=P,LINE=M,ONDRAWSECTION=E,ONMOUSEDOWN=E,ONMOUSEMOVE=E,ONMOUSEUP=E,ONRESIZE=E,ONSECTIONCLICK=E,ONSECTIONRESIZE=E,ONSECTIONTRACK=E,PAINT=M,PARENT=P,PIXEL=P,POPUPMENU=P,PSET=M,RECTA' +
+    'NGLE=M,REPAINT=M,ROUNDRECT=M,SECTIONS=P,SECTIONSCOUNT=P,SHOWHINT=P,STRETCHDRAW=M,TAG=P,TEXTHEIGHT=M,TEXTOUT=M,TEXTRECT=M,TEXTWIDTH=M,TOP=P,VISIBLE=P,WIDTH=P|' +
+    'QIMAGE:ALIGN=P,AUTOSIZE=P,BMP=P,BMPHANDLE=P,CENTER=P,CIRCLE=M,COPYMODE=P,COPYRECT=M,CURSOR=P,DRAW=M,ENABLED=P,FILLRECT=M,FONT=P,HANDLE=P,HEIGHT=P,HINT=P,ICOHANDLE=P,ICON=P,INCREMEN' +
+    'TALDISPLAY=P,LEFT=P,LINE=M,ONCLICK=E,ONDBLCLICK=E,ONMOUSEDOWN=E,ONMOUSEMOVE=E,ONMOUSEUP=E,PAINT=M,PARENT=P,PIXEL=P,POPUPMENU=P,PSET=M,RECTANGLE=M,REPAINT=M,ROTATE=M,ROUNDRECT=M,SHO' +
+    'WHINT=P,STRETCH=P,STRETCHDRAW=M,TAG=P,TEXTHEIGHT=M,TEXTOUT=M,TEXTRECT=M,TEXTWIDTH=M,TOP=P,TRANSPARENT=P,VISIBLE=P,WIDTH=P|' +
+    'QIMAGELIST:ADDBMPFILE=M,ADDBMPHANDLE=M,ADDICOFILE=M,ADDICOHANDLE=M,BKCOLOR=P,BLENDCOLOR=P,CLEAR=M,COUNT=P,DELETE=M,DRAW=M,DRAWINGSTYLE=P,GETBMP=P,GETICO=P,HANDLE=P,HEIGHT=P,IMAGETY' +
+    'PE=P,INSERTBMPFILE=M,INSERTBMPHANDLE=M,INSERTICOFILE=M,INSERTICOHANDLE=M,MASKED=P,WIDTH=P|' +
+    'QLABEL:ALIGN=P,ALIGNMENT=P,ANGLE=P,AUTOSIZE=P,CAPTION=P,COLOR=P,CURSOR=P,ENABLED=P,FONT=P,HANDLE=P,HEIGHT=P,HIDE=M,HINT=P,LABELSTYLE=P,LAYOUT=P,LEFT=P,LOWERCOLOR=P,ONCLICK=E,ONDBLC' +
+    'LICK=E,ONMOUSEDOWN=E,ONMOUSEMOVE=E,ONMOUSEUP=E,PARENT=P,POPUPMENU=P,REPAINT=M,SETFOCUS=M,SHOW=M,SHOWHINT=P,TAG=P,TOP=P,TRANSPARENT=P,UPPERCOLOR=P,VISIBLE=P,WIDTH=P,WNDPROC=E,WORDWR' +
+    'AP=P|' +
+    'QLISTBOX:ADDITEMS=M,ALIGN=P,BORDERSTYLE=P,CIRCLE=M,CLEAR=M,COLOR=P,COLUMNS=P,COPYMODE=P,COPYRECT=M,CURSOR=P,DELITEMS=M,DRAW=M,ENABLED=P,EXTENDEDSELECT=P,FILLRECT=M,FONT=P,HANDLE=P,' +
+    'HEIGHT=P,HINT=P,INSERTITEM=M,ITEM=P,ITEMCOUNT=P,ITEMHEIGHT=P,ITEMINDEX=P,LEFT=P,LINE=M,LOADFROMFILE=M,MULTISELECT=P,ONCLICK=E,ONDBLCLICK=E,ONDRAWITEM=E,ONENTER=E,ONMEASUREITEM=E,PA' +
+    'INT=M,PARENT=P,POPUPMENU=P,PSET=M,RECTANGLE=M,REPAINT=M,ROUNDRECT=M,SAVETOFILE=M,SELCOUNT=P,SELECTED=P,SHOWHINT=P,SORTED=P,STRETCHDRAW=M,STYLE=P,TABORDER=P,TABWIDTH=P,TAG=P,TEXT=P,' +
+    'TEXTHEIGHT=M,TEXTOUT=M,TEXTRECT=M,TEXTWIDTH=M,TOP=P,TOPINDEX=P,VISIBLE=P,WIDTH=P,WNDPROC=E|' +
+    'QLISTVIEW:ADDCOLUMNS=M,ADDITEMS=M,ADDSUBITEM=M,ALIGN=P,BORDERSTYLE=P,CHECKBOXES=P,CLEAR=M,CLEARCOLUMNS=M,COLOR=P,COLUMN=P,COLUMNCLICK=P,COLUMNSCOUNT=P,CURSOR=P,DELITEMS=M,DELSUBITE' +
+    'M=M,ENABLED=P,FONT=P,GRIDLINES=P,HANDLE=P,HEIGHT=P,HIDESELECTION=P,HINT=P,HOTTRACK=P,INSERTITEM=M,INSERTSUBITEM=M,ITEM=P,ITEMCOUNT=P,ITEMINDEX=P,LARGEIMAGES=P,LEFT=P,MULTISELECT=P,' +
+    'ONCHANGE=E,ONCLICK=E,ONCOLUMNCLICK=E,ONDBLCLICK=E,ONKEYPRESSED=E,PARENT=P,POPUPMENU=P,READONLY=P,ROWSELECT=P,SELCOUNT=P,SELECTED=P,SHOWCOLUMNHEADERS=P,SHOWHINT=P,SMALLIMAGES=P,SORT' +
+    'TYPE=P,STATEIMAGES=P,SUBITEM=P,SWAPITEM=M,TABORDER=P,TAG=P,TOP=P,VIEWSTYLE=P,VISIBLE=P,WIDTH=P|' +
+    'QMAINMENU:ADDITEMS=M,DELINDEX=M,DELITEMS=M,HANDLE=P,INSERT=M,PARENT=P|' +
+    'QMEMORYSTREAM:CLOSE=M,COPYFROM=M,EOF=P,EXTRACTRES=M,LINECOUNT=P,LOADARRAY=M,MEMCOPYFROM=M,MEMCOPYTO=M,POINTER=P,POINTERADDR=P,POSITION=P,READ=M,READBINSTR=M,READLINE=M,READNUM=M,RE' +
+    'ADSTR=M,READUDT=M,SAVEARRAY=M,SEEK=M,SIZE=P,WRITE=M,WRITEBINSTR=M,WRITELINE=M,WRITENUM=M,WRITESTR=M,WRITEUDT=M|' +
+    'QMENUITEM:ADDITEMS=M,CAPTION=P,CHECKED=P,COMMAND=P,COUNT=P,DELINDEX=M,DELITEMS=M,ENABLED=P,HANDLE=P,HINT=P,INSERT=M,MENUINDEX=P,ONCLICK=E,RADIOITEM=P,SHORTCUT=P,TAG=P,VISIBLE=P|' +
+    'QMYSQL:CLOSE=M,COLCOUNT=P,CONNECT=M,CONNECTED=P,CREATEDB=M,DB=P,DBCOUNT=P,DROPDB=M,ESCAPESTRING=M,FETCHFIELD=M,FETCHLENGTHS=M,FETCHROW=M,FIELDCOUNT=P,FIELDSEEK=M,LENGTH=P,QUERY=M,R' +
+    'EALCONNECT=M,REFRESH=M,ROW=P,ROWBLOB=M,ROWCOUNT=P,ROWSEEK=M,SELECTDB=M,TABLE=P,TABLECOUNT=P|' +
+    'QNOTIFYICONDATA:|' +
+    'QOLECONTAINER:ALIGN=P,ALLOWINPLACE=P,AUTOSHOW=P,BORDERSTYLE=P,COLOR=P,CREATEOBJECT=M,CURSOR=P,ENABLED=P,FREE=M,HANDLE=P,HEIGHT=P,HINT=P,INVOKE=M,LEFT=P,MODIFIED=P,ONKEYDOWN=E,ONKEY' +
+    'PRESS=E,ONKEYUP=E,ONMOUSEDOWN=E,ONMOUSEMOVE=E,ONMOUSEUP=E,ONOBJECTMOVE=E,ONRESIZE=E,PARENT=P,SHOWHINT=P,SIZEMODE=P,STATE=P,TABORDER=P,TAG=P,TOP=P,VISIBLE=P,WIDTH=P|' +
+    'QOLEOBJECT:CODEPAGE=M,CREATEOBJECT=M,CREATEREMOTE=M,DOCUMENTDIRECTION=M,DUMMY=M,DUMMYPARAM=M,FORMATOPEN=M,FREE=M,GETIDOFNAME=M,GETOBJECT=M,INVOKE=M,INVOKECOPY=M,NOENCODINGDIALOG=M,' +
+    'OPENANDREPAIR=M,OPENCONFLICTDOCUMENT=M,VISIBLE=M|' +
+    'QOPENDIALOG:CAPTION=P,EXECUTE=M,FILENAME=P,FILTER=P,FILTERINDEX=P,INITIALDIR=P|' +
+    'QOUTLINE:ADDCHILD=M,ADDLINES=M,ADDOPTIONS=M,ALIGN=P,BMPCLOSED=P,BMPHANDLECLOSED=P,BMPHANDLELEAF=P,BMPHANDLEMINUS=P,BMPHANDLEOPEN=P,BMPHANDLEPLUS=P,BMPLEAF=P,BMPMINUS=P,BMPOPEN=P,BM' +
+    'PPLUS=P,BORDERSTYLE=P,CLEAR=M,COLOR=P,CURSOR=P,DELLINES=M,DELOPTIONS=M,ENABLED=P,FONT=P,HANDLE=P,HEIGHT=P,HINT=P,INSERT=M,ITEM=P,ITEMHEIGHT=P,ITEMINDEX=P,ITEMSEPARATOR=P,LEFT=P,LIN' +
+    'ECOUNT=P,ONCLICK=E,ONDBLCLICK=E,OUTLINESTYLE=P,PARENT=P,POPUPMENU=P,ROW=P,SCROLLBARS=P,SHOWHINT=P,TABORDER=P,TAG=P,TOP=P,VISIBLE=P,WIDTH=P|' +
+    'QOVALBTN:ALIGN=P,BMP=P,BMPHANDLE=P,CAPTION=P,COLOR=P,COLORHIGHLIGHT=P,COLORSHADOW=P,CURSOR=P,DOWN=P,ENABLED=P,FLAT=P,FONT=P,GROUPINDEX=P,HEIGHT=P,HINT=P,LAYOUT=P,LEFT=P,NUMBMPS=P,O' +
+    'NCLICK=E,ONMOUSEDOWN=E,ONMOUSEMOVE=E,ONMOUSEUP=E,PARENT=P,SHOWHINT=P,SPACING=P,STARTDRAG=M,TABORDER=P,TAG=P,TOP=P,TRANSPARENT=P,TRANSPARENTCOLOR=P,VISIBLE=P,WIDTH=P|' +
+    'QPANEL:ALIGN=P,ALIGNMENT=P,BEVELINNER=P,BEVELOUTER=P,BEVELWIDTH=P,BORDERSTYLE=P,BVNONE=P,CAPTION=P,CLIENTHEIGHT=P,CLIENTWIDTH=P,COLOR=P,CURSOR=P,ENABLED=P,FONT=P,HEIGHT=P,HINT=P,LE' +
+    'FT=P,ONCLICK=E,ONDBLCLICK=E,ONMOUSEDOWN=E,ONMOUSEMOVE=E,ONMOUSEUP=E,PARENT=P,REPAINT=M,SHOWHINT=P,TABORDER=P,TAG=P,TOP=P,VISIBLE=P,WIDTH=P|' +
+    'QPOPUPMENU:ADDITEMS=M,ALIGNMENT=P,AUTOPOPUP=P,DELINDEX=M,DELITEMS=M,HANDLE=P,INSERT=M,ONPOPUP=E,POPUP=M,TAG=P,WINDOWHANDLE=P|' +
+    'QRADIOBUTTON:ALIGN=P,CAPTION=P,CHECKED=P,ENABLED=P,FONT=P,HEIGHT=P,HINT=P,LEFT=P,ONCLICK=E,PARENT=P,POPUPMENU=P,SHOWHINT=P,TABORDER=P,TAG=P,TOP=P,VISIBLE=P,WIDTH=P|' +
+    'QRECT:|' +
+    'QREGISTRY:CLOSEKEY=M,CREATEKEY=M,CURRENTKEY=P,CURRENTPATH=P,DELETEKEY=M,DELETEVALUE=M,GETDATASIZE=P,GETDATATYPE=P,HASSUBKEYS=P,KEYEXISTS=M,KEYITEM=M,KEYITEMCOUNT=P,MOVEKEY=M,OPENKE' +
+    'Y=M,READBINARY=M,READFLOAT=M,READINTEGER=M,READSTRING=M,REGISTRYCONNECT=M,RENAMEVALUE=M,ROOTKEY=P,VALUEEXISTS=M,VALUEITEM=M,VALUEITEMCOUNT=P,WRITEBINARY=M,WRITEFLOAT=M,WRITEINTEGER' +
+    '=M,WRITESTRING=M|' +
+    'QRICHEDIT:ADDSTRING=M,ADDSTRINGS=M,ALIGN=P,ALIGNMENT=P,BORDERSTYLE=P,CLEAR=M,COLOR=P,COPYTOCLIPBOARD=M,CUTTOCLIPBOARD=M,ENABLED=P,FONT=P,HANDLE=P,HEIGHT=P,HIDE=M,HIDESCROLLBARS=P,H' +
+    'IDESELECTION=P,HINT=P,LEFT=P,LINE=P,LINECOUNT=P,LOADFROMFILE=M,LOADFROMSTREAM=M,MODIFIED=P,ONCHANGE=E,ONKEYDOWN=E,ONKEYPRESS=E,ONKEYUP=E,ONMOUSEDOWN=E,ONMOUSEMOVE=E,ONMOUSEUP=E,PAR' +
+    'ENT=P,PASTEFROMCLIPBOARD=M,PLAINTEXT=P,POPUPMENU=P,READONLY=P,REPAINT=M,SAVETOFILE=M,SAVETOSTREAM=M,SCROLLBARS=P,SELATTRIBUTES=P,SELECTALL=M,SELLENGTH=P,SELSTART=P,SELTEXT=P,SETFOC' +
+    'US=M,SHOW=M,SHOWHINT=P,TABORDER=P,TAG=P,TEXT=P,TOP=P,VISIBLE=P,WANTTABS=P,WHEREX=P,WHEREY=P,WIDTH=P,WORDWRAP=P|' +
+    'QSAVEDIALOG:CAPTION=P,EXECUTE=M,FILENAME=P,FILTER=P,FILTERINDEX=P,INITIALDIR=P|' +
+    'QSCROLLBAR:ALIGN=P,CURSOR=P,ENABLED=P,HANDLE=P,HEIGHT=P,HINT=P,KIND=P,LARGECHANGE=P,LEFT=P,MAX=P,MIN=P,ONCHANGE=E,ONKEYDOWN=E,ONKEYPRESS=E,ONKEYUP=E,ONSCROLL=E,PAGESIZE=P,PARENT=P,' +
+    'POPUPMENU=P,POSITION=P,SHOWHINT=P,SMALLCHANGE=P,TABORDER=P,TAG=P,TOP=P,VISIBLE=P,WIDTH=P|' +
+    'QSCROLLBOX:ALIGN=P,AUTOSCROLL=P,BORDERSTYLE=P,COLOR=P,CURSOR=P,ENABLED=P,FONT=P,HANDLE=P,HEIGHT=P,HINT=P,HORZINCREMENT=P,HORZMARGIN=P,HORZPOSITION=P,HORZRANGE=P,HORZTRACKING=P,HORZ' +
+    'VISIBLE=P,LEFT=P,ONCLICK=E,ONDBLCLICK=E,ONMOUSEDOWN=E,ONMOUSEMOVE=E,ONMOUSEUP=E,ONRESIZE=E,PARENT=P,POPUPMENU=P,REPAINT=M,SHOWHINT=P,TABORDER=P,TAG=P,TOP=P,VERTINCREMENT=P,VERTMARG' +
+    'IN=P,VERTPOSITION=P,VERTRANGE=P,VERTTRACKING=P,VERTVISIBLE=P,VISIBLE=P,WIDTH=P|' +
+    'QSOCKET:ACCEPT=M,CLOSE=M,CONNECT=M,CONNECTIONREADY=M,FAMILY=P,GETHOSTIP=M,GETHOSTNAME=M,GETPEERNAME=M,ISCLIENTREADY=M,ISSERVERREADY=M,LPARAM=P,MYSOCKET=P,OPEN=M,PARENT=P,PEEK=M,PRO' +
+    'TOCOL=P,READ=M,READBYTE=M,READLINE=M,TAG=P,TRANSFERRED=P,WMESSAGE=P,WRITE=M,WRITEBYTE=M,WRITELINE=M|' +
+    'QSPLITTER:ALIGN=P,BEVELED=P,CLIENTHEIGHT=P,CLIENTWIDTH=P,COLOR=P,CURSOR=P,ENABLED=P,HEIGHT=P,HINT=P,LEFT=P,MINSIZE=P,ONMOVED=E,PARENT=P,SHOWHINT=P,TAG=P,TOP=P,VISIBLE=P,WIDTH=P|' +
+    'QSTATUSBAR:ADDPANELS=M,ALIGN=P,CLEAR=M,CURSOR=P,ENABLED=P,HANDLE=P,HEIGHT=P,HINT=P,LEFT=P,ONRESIZE=E,PANEL=P,PARENT=P,POPUPMENU=P,SHOWHINT=P,SIMPLEPANEL=P,SIMPLETEXT=P,SIZEGRIP=P,T' +
+    'ABORDER=P,TOP=P,VISIBLE=P,WIDTH=P|' +
+    'QSTRINGGRID:ADDOPTIONS=M,ALIGN=P,BORDERSTYLE=P,CELL=P,CIRCLE=M,COL=P,COLCOUNT=P,COLOR=P,COLUMNLIST=P,COLUMNSTYLE=P,COLWIDTHS=P,COPYRECT=M,CURSOR=P,DEFAULTCOLWIDTH=P,DEFAULTROWHEIGH' +
+    'T=P,DELETECOL=M,DELETEROW=M,DELOPTIONS=M,DRAW=M,EDITORMODE=P,ENABLED=P,FILLRECT=M,FIXEDCOLOR=P,FIXEDCOLS=P,FIXEDROWS=P,FONT=P,GRIDHEIGHT=P,GRIDLINEWIDTH=P,GRIDWIDTH=P,HANDLE=P,HEIG' +
+    'HT=P,HIDE=M,HINT=P,INSERTCOL=M,INSERTROW=M,LEFT=P,LEFTCOL=P,LINE=M,LOADFROMFILE=M,LOADFROMSTREAM=M,ONDRAWCELL=E,ONELLIPSISCLICK=E,ONKEYDOWN=E,ONKEYPRESS=E,ONKEYUP=E,ONLISTDROPDOWN=' +
+    'E,ONMOUSEDOWN=E,ONMOUSEMOVE=E,ONMOUSEUP=E,ONSELECTCELL=E,ONSETEDITTEXT=E,PAINT=M,PARENT=P,POPUPMENU=P,PSET=M,RECTANGLE=M,REPAINT=M,ROUNDRECT=M,ROW=P,ROWCOUNT=P,ROWHEIGHTS=P,SAVETOF' +
+    'ILE=M,SAVETOSTREAM=M,SCROLLBARS=P,SEPARATOR=P,SETCELL=M,SETFOCUS=M,SHOW=M,SHOWHINT=P,STRETCHDRAW=M,SWAPCOLS=M,SWAPROWS=M,TABORDER=P,TABSTOPS=P,TAG=P,TEXTHEIGHT=M,TEXTOUT=M,TEXTRECT' +
+    '=M,TEXTWIDTH=M,TOP=P,TOPROW=P,VISIBLE=P,VISIBLECOLCOUNT=P,VISIBLEROWCOUNT=P,WIDTH=P|' +
+    'QSTRINGLIST:ADDITEMS=M,ADDLIST=M,BUILD=M,CLEAR=M,DELITEMS=M,DUPLICATES=P,EXCHANGE=M,FIND=M,INDEXOF=M,INSERTITEM=M,ITEM=P,ITEMCOUNT=P,LOADFROMFILE=M,LOADFROMSTREAM=M,PARSE=M,SAVETOF' +
+    'ILE=M,SAVETOSTREAM=M,SORT=M,SORTED=P,TEXT=P|' +
+    'QTABCONTROL:ADDTABS=M,ALIGN=P,BUTTONSTYLE=P,CLIENTHEIGHT=P,CLIENTWIDTH=P,COLOR=P,CURSOR=P,DELTABS=M,ENABLED=P,FLATBUTTONS=P,FLATSEPERATORS=P,FOCUSBUTTONS=P,FONT=P,HEIGHT=P,HINT=P,H' +
+    'OTTRACK=P,INSERTTAB=M,LEFT=P,MULTILINE=P,ONCHANGE=E,PARENT=P,POPUPMENU=P,SCROLLOPPOSITE=P,SHOWHINT=P,TAB=P,TABHEIGHT=P,TABINACTIVECOLOR=P,TABINACTIVEFONT=P,TABINDEX=P,TABORDER=P,TA' +
+    'BPOSITION=P,TABWIDTH=P,TAG=P,TOP=P,VERTICALTABS=P,VISIBLE=P,WIDTH=P|' +
+    'QTABCONTROLEX:|' +
+    'QTIMER:ENABLED=P,INTERVAL=P,ONTIMER=E,TAG=P|' +
+    'QTRACKBAR:ALIGN=P,CURSOR=P,ENABLED=P,FREQUENCY=P,HANDLE=P,HEIGHT=P,HINT=P,LEFT=P,LINESIZE=P,MAX=P,MIN=P,ONCHANGE=E,ORIENTATION=P,PAGESIZE=P,PARENT=P,POPUPMENU=P,POSITION=P,SELEND=P' +
+    ',SELSTART=P,SETTICK=M,SHOWHINT=P,TABORDER=P,TICKMARKS=P,TICKSTYLE=P,TOP=P,VISIBLE=P,WIDTH=P|' +
+    'QTREEVIEW:ADDCHILDITEMS=M,ADDITEMS=M,ALIGN=P,BORDERSTYLE=P,CLEAR=M,COLLAPSE=M,COLOR=P,CURSOR=P,DELITEMS=M,ENABLED=P,EXPAND=M,FONT=P,FULLCOLLAPSE=M,FULLEXPAND=M,GETITEMAT=M,HANDLE=P' +
+    ',HEIGHT=P,HIDESELECTION=P,HINT=P,IMAGES=P,INDENT=P,INSERTITEM=M,ITEM=P,ITEMCOUNT=P,ITEMINDEX=P,LEFT=P,LOADFROMFILE=M,ONCHANGE=E,ONCHANGING=E,ONCLICK=E,ONCOLLAPSE=E,ONCOLLAPSING=E,O' +
+    'NDBLCLICK=E,ONDELETION=E,ONEDITED=E,ONEDITING=E,ONEXPAND=E,ONEXPANDING=E,ONGETIMAGEINDEX=E,ONGETSELECTEDINDEX=E,ONKEYDOWN=E,ONKEYPRESS=E,ONKEYUP=E,ONMOUSEDOWN=E,ONMOUSEMOVE=E,ONMOU' +
+    'SEUP=E,PARENT=P,POPUPMENU=P,READONLY=P,SAVETOFILE=M,SHOWBUTTONS=P,SHOWHINT=P,SHOWLINES=P,SHOWROOT=P,SORT=M,SORTTYPE=P,STATEIMAGES=P,TABORDER=P,TAG=P,TOP=P,TOPINDEX=P,VISIBLE=P,WIDT' +
+    'H=P|' +
+    'RAPID:|';
+// --- rqmembers: конец
+
+// RqClassMembersText -> список 'КЛАСС.ИМЯ=вид' (отсортирован)
+procedure FillClassMembers(AList: TStringList);
+var
+  ClassText, ClassName, Item: string;
+  SepPos, ColonPos: Integer;
+  Rest, Items: string;
+begin
+  Rest := RqClassMembersText;
+  while Rest <> '' do
+  begin
+    SepPos := Pos('|', Rest);
+    if SepPos = 0 then
+      SepPos := Length(Rest) + 1;
+    ClassText := Copy(Rest, 1, SepPos - 1);
+    Delete(Rest, 1, SepPos);
+    ColonPos := Pos(':', ClassText);
+    if ColonPos = 0 then
+      Continue;
+    ClassName := Copy(ClassText, 1, ColonPos - 1);
+    Items := Copy(ClassText, ColonPos + 1, MaxInt) + ',';
+    while Items <> '' do
+    begin
+      SepPos := Pos(',', Items);
+      Item := Copy(Items, 1, SepPos - 1);
+      Delete(Items, 1, SepPos);
+      if Item <> '' then
+        AList.Add(ClassName + '.' + Item);
+    end;
+  end;
+  AList.Sorted := True;
+end;
+
 constructor TRqFbConv.Create(const AOptions: TRqFbOptions; AMessages: TStrings);
 begin
   inherited Create;
@@ -463,6 +648,12 @@ begin
   FillWordList(FGuiClasses, RqGuiObjectText);
   FFuncMap := TStringList.Create;
   FFuncMap.Text := StringReplace(RqFuncMapText, ' ', CrLf, [rfReplaceAll]);
+  FEventSigs := TStringList.Create;
+  FEventSigs.Text := StringReplace(RqEventSigText, ' ', CrLf, [rfReplaceAll]);
+  FHandlerEvents := TStringList.Create;
+  FCreateStack := TStringList.Create;
+  FClassMembers := TStringList.Create;
+  FillClassMembers(FClassMembers);
   FIndexedSet := TStringList.Create;
   FIndexedSet.Text := StringReplace(RqIndexedSetText, ' ', CrLf, [rfReplaceAll]);
   FMemberMap := TStringList.Create;
@@ -495,6 +686,10 @@ begin
   FFuncMap.Free;
   FMemberMap.Free;
   FIndexedSet.Free;
+  FEventSigs.Free;
+  FHandlerEvents.Free;
+  FCreateStack.Free;
+  FClassMembers.Free;
   inherited Destroy;
 end;
 
@@ -568,12 +763,13 @@ var
 
   function IsIdentStart(AChar: Char): Boolean;
   begin
-    Result := AChar in ['A'..'Z', 'a'..'z', '_'];
+    // ~ - в именах RapidQ (~SrcD, ~tmp$)
+    Result := AChar in ['A'..'Z', 'a'..'z', '_', '~'];
   end;
 
   function IsIdentChar(AChar: Char): Boolean;
   begin
-    Result := AChar in ['A'..'Z', 'a'..'z', '0'..'9', '_'];
+    Result := AChar in ['A'..'Z', 'a'..'z', '0'..'9', '_', '~'];
   end;
 
 begin
@@ -942,6 +1138,9 @@ begin
     Result := Base + '_v'
   else
     Result := Base;
+  // ~ в имени RapidQ: в FreeBASIC нельзя -> _T_ (~SrcD -> _T_SrcD)
+  if Pos('~', Result) > 0 then
+    Result := StringReplace(Result, '~', '_T_', [rfReplaceAll]);
 end;
 
 function TRqFbConv.NormType(const AUp: string): string;
@@ -1264,8 +1463,11 @@ var
   IsDefined: Boolean;
 begin
   Text := ApplyDefines(AText);
+  // CREATE ... END CREATE - переписать строку до разбора
+  if CondActive and not (FInType and FTypeExtends) then
+    Text := RewriteCreate(Text);
   Lex(Text, Toks);
-  AOut := AText;
+  AOut := Text;
   // '$RQFB SMART / '$RQFB COMPAT - режим перевода из исходника (строка -
   // комментарий, rc.exe RapidQ её пропускает)
   for TokIdx := 0 to High(Toks) do
@@ -1381,6 +1583,191 @@ begin
   AOut := '';
   for TokIdx := 0 to High(Toks) do
     AOut := AOut + Toks[TokIdx].Pre + Toks[TokIdx].OutText + Toks[TokIdx].Post;
+end;
+
+// Класс есть в rqmembers.inc
+function TRqFbConv.ClassKnown(const AClassUp: string): Boolean;
+var
+  Found: Integer;
+begin
+  FClassMembers.Find(AClassUp + '.', Found);
+  Result := (Found < FClassMembers.Count) and
+            (Copy(FClassMembers[Found], 1, Length(AClassUp) + 1) = AClassUp + '.');
+end;
+
+function TRqFbConv.MemberKind(const AClassUp, AMemberUp: string): Char;
+var
+  Found: Integer;
+  Item: string;
+begin
+  Result := #0;
+  // ищется 'КЛАСС.ИМЯ=': Find в отсортированном списке по началу строки
+  FClassMembers.Find(AClassUp + '.' + AMemberUp + '=', Found);
+  if Found < FClassMembers.Count then
+  begin
+    Item := FClassMembers[Found];
+    if Copy(Item, 1, Length(AClassUp) + Length(AMemberUp) + 2) =
+       AClassUp + '.' + AMemberUp + '=' then
+      Result := Item[Length(Item)];
+  end;
+end;
+
+// CREATE Имя AS Класс ... END CREATE (документация RapidQ, глава 5.6-5.7):
+//   CREATE Имя AS Класс -> DIM Имя AS Класс (+ Имя.Parent = Внешний у
+//     вложенного CREATE элемента; у пункта меню - Внешний.AddItems Имя);
+//   Свойство = x, Метод, Метод арг внутри -> Имя.Свойство = x, Имя.Метод...;
+//   Метод = a, b (AddOptions = goEditing, goTabs) -> Имя.Метод a, b;
+//   END CREATE -> убирается.
+// Слово в начале оператора - свойство объекта, если оно есть в списке
+// класса (rqmembers.inc); класса нет в списке (свой TYPE EXTENDS) или
+// слова нет - свойство, если это не переменная, не процедура и не
+// ключевое слово.
+function TRqFbConv.RewriteCreate(const AText: string): string;
+var
+  Toks: TToks;
+  TokIdx, StartIdx, LastIdx, Depth, FirstIdx, NameIdx, AsIdx, ClassIdx,
+    NextIdx: Integer;
+  ObjName, ClassUp, OuterName, OuterClass, Up: string;
+  Kind: Char;
+  Changed: Boolean;
+
+  procedure DoStatement(AFrom, ATo: Integer);
+  var
+    ClearIdx: Integer;
+  begin
+    FirstIdx := NextSig(Toks, AFrom, ATo);
+    if FirstIdx < 0 then
+      Exit;
+    Up := Toks[FirstIdx].Up;
+    if (Toks[FirstIdx].Kind = tkIdent) and (Up = 'CREATE') then
+    begin
+      NameIdx := NextSig(Toks, FirstIdx + 1, ATo);
+      AsIdx := NextSig(Toks, NameIdx + 1, ATo);
+      ClassIdx := NextSig(Toks, AsIdx + 1, ATo);
+      if (NameIdx < 0) or (Toks[NameIdx].Kind <> tkIdent) or
+         not IsWord(Toks, AsIdx, 'AS') or (ClassIdx < 0) then
+      begin
+        if FPass = 2 then
+          Error('CREATE: ожидалось CREATE Имя AS Класс');
+        Exit;
+      end;
+      ObjName := Toks[NameIdx].Text;
+      ClassUp := Toks[ClassIdx].Up;
+      Toks[FirstIdx].Text := 'DIM';
+      if FCreateStack.Count > 0 then
+      begin
+        OuterName := FCreateStack.Names[FCreateStack.Count - 1];
+        OuterClass := FCreateStack.ValueFromIndex[FCreateStack.Count - 1];
+        if (ClassUp = 'QMENUITEM') and
+           ((OuterClass = 'QMENUITEM') or (OuterClass = 'QMAINMENU') or
+            (OuterClass = 'QPOPUPMENU')) then
+          Toks[ATo].Post := Toks[ATo].Post + ' : ' + OuterName + '.AddItems ' + ObjName
+        else if (ClassUp = 'QMAINMENU') or (ClassUp = 'QPOPUPMENU') then
+          // меню формы - Parent; если у класса его нет, ошибку даст fbc
+          Toks[ATo].Post := Toks[ATo].Post + ' : ' + ObjName + '.Parent = ' + OuterName
+        // Parent есть у класса по списку; класса нет в списке (свой
+        // компонент, QBUTTONXP...) - считается элементом с Parent
+        else if (MemberKind(ClassUp, 'PARENT') <> #0) or
+                not ClassKnown(ClassUp) then
+          Toks[ATo].Post := Toks[ATo].Post + ' : ' + ObjName + '.Parent = ' + OuterName
+        else if FPass = 2 then
+          Warn('CREATE ' + ObjName + ' AS ' + Toks[ClassIdx].Text +
+               ' внутри CREATE ' + OuterName + ': у класса нет Parent, ' +
+               'объект создан без родителя');
+      end;
+      FCreateStack.Add(ObjName + '=' + ClassUp);
+      Changed := True;
+      Exit;
+    end;
+    if FCreateStack.Count = 0 then
+      Exit;
+    if (Toks[FirstIdx].Kind = tkIdent) and (Up = 'END') then
+    begin
+      NextIdx := NextSig(Toks, FirstIdx + 1, ATo);
+      if IsWord(Toks, NextIdx, 'CREATE') then
+      begin
+        FCreateStack.Delete(FCreateStack.Count - 1);
+        for ClearIdx := AFrom to ATo do
+          if Toks[ClearIdx].Kind <> tkSpace then
+            Toks[ClearIdx].Text := '';
+        Changed := True;
+      end;
+      Exit;
+    end;
+    if Toks[FirstIdx].Kind <> tkIdent then
+      Exit;
+    NextIdx := NextSig(Toks, FirstIdx + 1, ATo);
+    if IsOp(Toks, NextIdx, '.') then
+      Exit;                                       // Объект.Свойство - как есть
+    ObjName := FCreateStack.Names[FCreateStack.Count - 1];
+    ClassUp := FCreateStack.ValueFromIndex[FCreateStack.Count - 1];
+    Kind := MemberKind(ClassUp, Up);
+    if Kind = #0 then
+    begin
+      if InList(FKeywords, Up) or InList(FTypes, Up) or
+         (FindVar(Up) <> nil) or (FindProc(Up) <> nil) or
+         InList(FFbStrFuncs, Up) or InList(FRqStrFuncs, Up) then
+        Exit;
+      if FPass = 2 then
+      begin
+        if ClassKnown(ClassUp) then
+          WarnOnce('CM|' + ClassUp + '|' + Up, Toks[FirstIdx].Text +
+            ' внутри CREATE ' + ObjName + ': в списке свойств ' + ClassUp +
+            ' нет, считается свойством объекта')
+        else
+          WarnOnce('CC|' + ClassUp, ClassUp + ' (CREATE ' + ObjName +
+            '): класса нет в документации RapidQ - слова в начале ' +
+            'операторов внутри CREATE считаются его свойствами');
+      end;
+    end;
+    Toks[FirstIdx].Text := ObjName + '.' + Toks[FirstIdx].Text;
+    // Метод = a, b -> Объект.Метод a, b
+    if (Kind = 'M') and IsOp(Toks, NextIdx, '=') then
+      Toks[NextIdx].Text := ' ';
+    Changed := True;
+  end;
+
+begin
+  Result := AText;
+  // быстрый выход: вне CREATE и без слова CREATE
+  if (FCreateStack.Count = 0) and (Pos('CREATE', UpperCase(AText)) = 0) then
+    Exit;
+  Lex(AText, Toks);
+  Changed := False;
+  LastIdx := High(Toks);
+  for TokIdx := 0 to High(Toks) do
+    if Toks[TokIdx].Kind = tkComment then
+    begin
+      LastIdx := TokIdx - 1;
+      Break;
+    end;
+  FirstIdx := NextSig(Toks, 0, LastIdx);
+  if (FirstIdx >= 0) and (Toks[FirstIdx].Kind = tkDirective) then
+    Exit;
+  Depth := 0;
+  StartIdx := 0;
+  TokIdx := 0;
+  while TokIdx <= LastIdx do
+  begin
+    if IsOp(Toks, TokIdx, '(') then
+      Inc(Depth)
+    else if IsOp(Toks, TokIdx, ')') then
+      Dec(Depth)
+    else if (Depth = 0) and IsOp(Toks, TokIdx, ':') then
+    begin
+      if TokIdx - 1 >= StartIdx then
+        DoStatement(StartIdx, TokIdx - 1);
+      StartIdx := TokIdx + 1;
+    end;
+    Inc(TokIdx);
+  end;
+  if StartIdx <= LastIdx then
+    DoStatement(StartIdx, LastIdx);
+  if not Changed then
+    Exit;
+  Result := '';
+  for TokIdx := 0 to High(Toks) do
+    Result := Result + Toks[TokIdx].Pre + Toks[TokIdx].Text + Toks[TokIdx].Post;
 end;
 
 // Директива в начале строки. True - строка выведена целиком (AOut).
@@ -1840,6 +2227,18 @@ begin
     if (LastMember >= 0) and (Copy(AToks[LastMember].Up, 1, 2) = 'ON') and
        (RhsFirst = RhsLast) and (AToks[RhsFirst].Kind = tkIdent) then
     begin
+      // Обработчик события с параметрами - типы его параметров по событию
+      if FEventSigs.IndexOfName(AToks[LastMember].Up) >= 0 then
+      begin
+        Up := FHandlerEvents.Values[AToks[RhsFirst].Up];
+        if Up = '' then
+          FHandlerEvents.Values[AToks[RhsFirst].Up] := AToks[LastMember].Up
+        else if (Up <> AToks[LastMember].Up) and
+                (FEventSigs.Values[Up] <> FEventSigs.Values[AToks[LastMember].Up]) then
+          WarnOnce('HE|' + AToks[RhsFirst].Up, AToks[RhsFirst].Text +
+            ': обработчик событий ' + Up + ' и ' + AToks[LastMember].Up +
+            ' с разными параметрами - типы взяты по ' + Up);
+      end;
       ProcRec := FindProc(AToks[RhsFirst].Up);
       if ProcRec <> nil then
       begin
@@ -2170,12 +2569,35 @@ function TRqFbConv.ParseParams(var AToks: TToks; AFrom, ATo: Integer;
 var
   TokIdx, ItemStart, ItemEnd, NameIdx, NextIdx, Depth, TypeIdx: Integer;
   ByRefFlag, ByValFlag, IsArray: Boolean;
-  RqType, StarLen, ItemText: string;
+  RqType, StarLen, ItemText, EventName, Sig, SigItem: string;
   VarRec: TRqVar;
   SavedProc: TRqProc;
+  ParamIdx, SigCount, SigPos: Integer;
+  SigList: TStringList;
 begin
   Result := '';
   ItemStart := AFrom;
+  ParamIdx := 0;
+  // Обработчик события с параметрами: типы по событию (RqEventSigText)
+  SigList := nil;
+  EventName := FHandlerEvents.Values[UpperCase(AScope)];
+  if EventName <> '' then
+  begin
+    SigList := TStringList.Create;
+    Sig := FEventSigs.Values[EventName] + ';';
+    while Sig <> '' do
+    begin
+      SigPos := Pos(';', Sig);
+      SigItem := Copy(Sig, 1, SigPos - 1);
+      Delete(Sig, 1, SigPos);
+      if SigItem <> '' then
+        SigList.Add(SigItem);
+    end;
+  end;
+  SigCount := 0;
+  if SigList <> nil then
+    SigCount := SigList.Count;
+  try
   while ItemStart <= ATo do
   begin
     ItemEnd := ATo;
@@ -2219,10 +2641,23 @@ begin
         if TypeIdx >= 0 then
           RqType := ParseType(AToks, TypeIdx, ItemEnd, StarLen);
       end;
+      // Параметр обработчика события: тип и ByRef/ByVal - по событию
+      if (ParamIdx < SigCount) and not IsArray then
+      begin
+        SigItem := SigList[ParamIdx];
+        if not IsObjectType(RqType) or (Copy(SigItem, 2, MaxInt) = 'QRECT') then
+        begin
+          RqType := Copy(SigItem, 2, MaxInt);
+          ByRefFlag := SigItem[1] = 'R';
+          ByValFlag := SigItem[1] = 'V';
+        end;
+      end;
+      Inc(ParamIdx);
       SavedProc := FCurProc;
       VarRec := DeclareVar(AToks[NameIdx].Text, RqType, AScope, IsArray, True,
                            False);
       FCurProc := SavedProc;
+      VarRec.RqType := RqType;
       if IsArray then
         ItemText := VarRec.FbName + '() As ' + FbType(RqType)
       else
@@ -2239,6 +2674,14 @@ begin
       Result := Result + ItemText;
     end;
     ItemStart := ItemEnd + 2;
+  end;
+  if (SigList <> nil) and (FPass = 2) and (ParamIdx <> 0) and
+     (ParamIdx <> SigCount) and (ParamIdx <> SigCount + 1) and
+     (ParamIdx <> 1) then
+    Warn(AScope + ': у обработчика ' + EventName + ' ' + IntToStr(ParamIdx) +
+         ' параметров, ожидалось ' + IntToStr(SigCount) + ' (и Sender)');
+  finally
+    SigList.Free;
   end;
 end;
 
@@ -2620,7 +3063,7 @@ end;
 function TRqFbConv.ProcessFile(const AFileName: string; AIsMain: Boolean): string;
 var
   Lines, OutLines: TStringList;
-  LineIdx, StartIdx, DoneIdx, Suffix: Integer;
+  LineIdx, StartIdx, DoneIdx, Suffix, CreateBase: Integer;
   Text, OutText, OutName, SavedFile: string;
   SavedLine: Integer;
   SavedProc: TRqProc;
@@ -2670,6 +3113,7 @@ begin
       end;
     end;
     LineIdx := 0;
+    CreateBase := FCreateStack.Count;
     while LineIdx < Lines.Count do
     begin
       StartIdx := LineIdx;
@@ -2685,6 +3129,15 @@ begin
       ProcessLine(Text, OutText);
       OutLines.Add(OutText);
       Inc(LineIdx);
+    end;
+    // CREATE без END CREATE в этом файле
+    if FCreateStack.Count > CreateBase then
+    begin
+      if FPass = 2 then
+        Error('CREATE ' + FCreateStack.Names[FCreateStack.Count - 1] +
+              ' без END CREATE');
+      while FCreateStack.Count > CreateBase do
+        FCreateStack.Delete(FCreateStack.Count - 1);
     end;
     if FPass = 2 then
     begin

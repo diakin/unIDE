@@ -86,6 +86,18 @@ Type RqCallExFn As Function stdcall (ByVal ObjPtr As Any Ptr, _
     ByVal MethodName As ZString Ptr, ByVal StrArg As ZString Ptr, _
     ByVal IntArg1 As Long, ByVal IntArg2 As Long, ByVal IntArg3 As Long, _
     ByVal Buffer As ZString Ptr, ByVal BufferLen As Long) As Long
+Type RqEventArgs
+    IntArgs(0 To 7) As Long
+    StrArg As ZString Ptr
+End Type
+Type RqEventProcEx As Sub stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any Ptr, _
+    ByVal EventId As Long, ByVal Args As RqEventArgs Ptr)
+Type RqSetEventExFn As Function stdcall (ByVal ObjPtr As Any Ptr, _
+    ByVal EventName As ZString Ptr, ByVal EventId As Long, _
+    ByVal Handler As RqEventProcEx) As Long
+Type RqCallIntsFn As Function stdcall (ByVal ObjPtr As Any Ptr, _
+    ByVal MethodName As ZString Ptr, ByVal StrArg As ZString Ptr, _
+    ByVal IntList As Long Ptr, ByVal IntCount As Long) As Long
 Type RqDoEventsFn As Sub stdcall ()
 Type RqLastErrorFn As Function stdcall (ByVal Buffer As ZString Ptr, _
     ByVal BufferLen As Long) As Long
@@ -113,6 +125,8 @@ Dim Shared RqSetCell As RqSetCellFn
 Dim Shared RqGetItemInt As RqGetItemIntFn
 Dim Shared RqSetItemInt As RqSetItemIntFn
 Dim Shared RqCallEx As RqCallExFn
+Dim Shared RqSetEventEx As RqSetEventExFn
+Dim Shared RqCallInts As RqCallIntsFn
 Dim Shared RqDoEventsProc As RqDoEventsFn
 Dim Shared RqLastError As RqLastErrorFn
 
@@ -163,6 +177,8 @@ Sub RqLclEnsure()
     RqGetItemInt = Cast(RqGetItemIntFn, DyLibSymbol(RqLclLib, "RqGetItemInt"))
     RqSetItemInt = Cast(RqSetItemIntFn, DyLibSymbol(RqLclLib, "RqSetItemInt"))
     RqCallEx = Cast(RqCallExFn, DyLibSymbol(RqLclLib, "RqCallEx"))
+    RqSetEventEx = Cast(RqSetEventExFn, DyLibSymbol(RqLclLib, "RqSetEventEx"))
+    RqCallInts = Cast(RqCallIntsFn, DyLibSymbol(RqLclLib, "RqCallInts"))
     RqDoEventsProc = Cast(RqDoEventsFn, DyLibSymbol(RqLclLib, "RqDoEvents"))
     RqLastError = Cast(RqLastErrorFn, DyLibSymbol(RqLclLib, "RqLastError"))
     If (RqInit = 0) Or (RqCreate = 0) Or (RqSetInt = 0) Or (RqGetInt = 0) _
@@ -172,7 +188,8 @@ Sub RqLclEnsure()
        Or (RqCallInt = 0) Or (RqGetObj = 0) Or (RqGetHandle = 0) _
        Or (RqGetItemStr = 0) Or (RqSetItemStr = 0) Or (RqCallStr = 0) _
        Or (RqGetCell = 0) Or (RqSetCell = 0) Or (RqGetItemInt = 0) _
-       Or (RqSetItemInt = 0) Or (RqCallEx = 0) Then
+       Or (RqSetItemInt = 0) Or (RqCallEx = 0) Or (RqSetEventEx = 0) _
+       Or (RqCallInts = 0) Then
         RqLclMessageBox(0, "В " & RQLCL_DLL & " нет нужных функций " & _
             "(другая версия DLL?)", "RqLcl", &h10)
         End 1
@@ -383,12 +400,30 @@ Sub QFONT.DelStyles(ByVal Style1 As Long, ByVal Style2 As Long = -1, _
 End Sub
 
 ' ---------------------------------------------------------------------------
+'  QRECT - прямоугольник (OnDrawCell и рисование)
+' ---------------------------------------------------------------------------
+
+Type QRECT
+    Left As Long
+    Top As Long
+    Right As Long
+    Bottom As Long
+End Type
+
+' ---------------------------------------------------------------------------
 '  QCONTROL - общее у всех элементов: положение, размер, видимость, Parent
 ' ---------------------------------------------------------------------------
 
 Type QCONTROL
     RqObj As Any Ptr
     FontWrap As QFONT = QFONT(0)
+    ' События с параметрами: обработчик и его вид по номеру события
+    ' (RqEv...): 0 - Sub(), 1 - с параметрами, 2 - с параметрами и Sender,
+    ' 3 - только Sender
+    EventProcs(0 To 8) As Any Ptr
+    EventKinds(0 To 8) As Long
+    Declare Sub SetEventEx(ByVal EventId As Long, ByRef EventName As String, _
+        ByVal Handler As Any Ptr, ByVal HandlerKind As Long)
     Declare Property Left() As Long
     Declare Property Left(ByVal Value As Long)
     Declare Property Top() As Long
@@ -496,6 +531,128 @@ Sub QCONTROL.SetFocus()
     RqLclCall(RqObj, "SetFocus")
 End Sub
 
+' Константы номеров событий с параметрами
+Const RqEvKeyDown = 0
+Const RqEvKeyUp = 1
+Const RqEvKeyPress = 2
+Const RqEvMouseDown = 3
+Const RqEvMouseUp = 4
+Const RqEvMouseMove = 5
+Const RqEvSelectCell = 6
+Const RqEvDrawCell = 7
+Const RqEvSetEditText = 8
+
+' Виды обработчиков для вызова (Sender - как QCONTROL: у элемента любого
+' класса QCONTROL лежит в начале)
+Type RqEvProcKeyDown As Sub(ByRef As Long, ByVal As Long)
+Type RqEvProcKeyDownS As Sub(ByRef As Long, ByVal As Long, ByRef As QCONTROL)
+Type RqEvProcKeyUp As Sub(ByRef As Long, ByVal As Long)
+Type RqEvProcKeyUpS As Sub(ByRef As Long, ByVal As Long, ByRef As QCONTROL)
+Type RqEvProcKeyPress As Sub(ByRef As Long)
+Type RqEvProcKeyPressS As Sub(ByRef As Long, ByRef As QCONTROL)
+Type RqEvProcMouseDown As Sub(ByVal As Long, ByVal As Long, ByVal As Long, ByVal As Long)
+Type RqEvProcMouseDownS As Sub(ByVal As Long, ByVal As Long, ByVal As Long, ByVal As Long, ByRef As QCONTROL)
+Type RqEvProcMouseUp As Sub(ByVal As Long, ByVal As Long, ByVal As Long, ByVal As Long)
+Type RqEvProcMouseUpS As Sub(ByVal As Long, ByVal As Long, ByVal As Long, ByVal As Long, ByRef As QCONTROL)
+Type RqEvProcMouseMove As Sub(ByVal As Long, ByVal As Long, ByVal As Long)
+Type RqEvProcMouseMoveS As Sub(ByVal As Long, ByVal As Long, ByVal As Long, ByRef As QCONTROL)
+Type RqEvProcSelectCell As Sub(ByVal As Long, ByVal As Long, ByRef As Long)
+Type RqEvProcSelectCellS As Sub(ByVal As Long, ByVal As Long, ByRef As Long, ByRef As QCONTROL)
+Type RqEvProcDrawCell As Sub(ByVal As Long, ByVal As Long, ByVal As Long, ByRef As QRECT)
+Type RqEvProcDrawCellS As Sub(ByVal As Long, ByVal As Long, ByVal As Long, ByRef As QRECT, ByRef As QCONTROL)
+Type RqEvProcSetEditText As Sub(ByVal As Long, ByVal As Long, ByVal As String)
+Type RqEvProcSetEditTextS As Sub(ByVal As Long, ByVal As Long, ByVal As String, ByRef As QCONTROL)
+Type RqEvProcPlain As Sub()
+Type RqEvProcSender As Sub(ByRef As QCONTROL)
+
+' Вызов обработчика события с параметрами (из DLL)
+Private Sub RqLclEventEx stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any Ptr, _
+        ByVal EventId As Long, ByVal Args As RqEventArgs Ptr)
+    Dim CtlPtr As QCONTROL Ptr = UserPtr
+    If (EventId < 0) OrElse (EventId > 8) Then Exit Sub
+    Dim HandlerPtr As Any Ptr = CtlPtr->EventProcs(EventId)
+    Dim HandlerKind As Long = CtlPtr->EventKinds(EventId)
+    If HandlerPtr = 0 Then Exit Sub
+    If HandlerKind = 0 Then
+        Cast(RqEvProcPlain, HandlerPtr)()
+        Exit Sub
+    End If
+    If HandlerKind = 3 Then
+        Cast(RqEvProcSender, HandlerPtr)(*CtlPtr)
+        Exit Sub
+    End If
+    Dim ArgList As Long Ptr = @(Args->IntArgs(0))
+    Select Case EventId
+    Case RqEvKeyDown
+        If HandlerKind = 1 Then
+            Cast(RqEvProcKeyDown, HandlerPtr)(ArgList[0], ArgList[1])
+        Else
+            Cast(RqEvProcKeyDownS, HandlerPtr)(ArgList[0], ArgList[1], *CtlPtr)
+        End If
+    Case RqEvKeyUp
+        If HandlerKind = 1 Then
+            Cast(RqEvProcKeyUp, HandlerPtr)(ArgList[0], ArgList[1])
+        Else
+            Cast(RqEvProcKeyUpS, HandlerPtr)(ArgList[0], ArgList[1], *CtlPtr)
+        End If
+    Case RqEvKeyPress
+        If HandlerKind = 1 Then
+            Cast(RqEvProcKeyPress, HandlerPtr)(ArgList[0])
+        Else
+            Cast(RqEvProcKeyPressS, HandlerPtr)(ArgList[0], *CtlPtr)
+        End If
+    Case RqEvMouseDown
+        If HandlerKind = 1 Then
+            Cast(RqEvProcMouseDown, HandlerPtr)(ArgList[0], ArgList[1], ArgList[2], ArgList[3])
+        Else
+            Cast(RqEvProcMouseDownS, HandlerPtr)(ArgList[0], ArgList[1], ArgList[2], ArgList[3], *CtlPtr)
+        End If
+    Case RqEvMouseUp
+        If HandlerKind = 1 Then
+            Cast(RqEvProcMouseUp, HandlerPtr)(ArgList[0], ArgList[1], ArgList[2], ArgList[3])
+        Else
+            Cast(RqEvProcMouseUpS, HandlerPtr)(ArgList[0], ArgList[1], ArgList[2], ArgList[3], *CtlPtr)
+        End If
+    Case RqEvMouseMove
+        If HandlerKind = 1 Then
+            Cast(RqEvProcMouseMove, HandlerPtr)(ArgList[0], ArgList[1], ArgList[2])
+        Else
+            Cast(RqEvProcMouseMoveS, HandlerPtr)(ArgList[0], ArgList[1], ArgList[2], *CtlPtr)
+        End If
+    Case RqEvSelectCell
+        If HandlerKind = 1 Then
+            Cast(RqEvProcSelectCell, HandlerPtr)(ArgList[0], ArgList[1], ArgList[2])
+        Else
+            Cast(RqEvProcSelectCellS, HandlerPtr)(ArgList[0], ArgList[1], ArgList[2], *CtlPtr)
+        End If
+    Case RqEvDrawCell
+        Dim CellRect As QRECT
+        CellRect.Left = ArgList[3] : CellRect.Top = ArgList[4]
+        CellRect.Right = ArgList[5] : CellRect.Bottom = ArgList[6]
+        If HandlerKind = 1 Then
+            Cast(RqEvProcDrawCell, HandlerPtr)(ArgList[0], ArgList[1], ArgList[2], CellRect)
+        Else
+            Cast(RqEvProcDrawCellS, HandlerPtr)(ArgList[0], ArgList[1], ArgList[2], CellRect, *CtlPtr)
+        End If
+    Case RqEvSetEditText
+        Dim EditText As String
+        If Args->StrArg <> 0 Then EditText = *Args->StrArg
+        If HandlerKind = 1 Then
+            Cast(RqEvProcSetEditText, HandlerPtr)(ArgList[0], ArgList[1], EditText)
+        Else
+            Cast(RqEvProcSetEditTextS, HandlerPtr)(ArgList[0], ArgList[1], EditText, *CtlPtr)
+        End If
+    End Select
+End Sub
+
+' Обработчик события с параметрами: запомнить и подключить в DLL
+Sub QCONTROL.SetEventEx(ByVal EventId As Long, ByRef EventName As String, _
+        ByVal Handler As Any Ptr, ByVal HandlerKind As Long)
+    EventProcs(EventId) = Handler
+    EventKinds(EventId) = HandlerKind
+    If RqSetEventEx(RqObj, EventName, EventId, @RqLclEventEx) = 0 Then RqLclShowError(EventName)
+End Sub
+
 ' ---------------------------------------------------------------------------
 '  QFORM
 ' ---------------------------------------------------------------------------
@@ -515,6 +672,30 @@ Type QFORM Extends QCONTROL
     Declare Function ShowModal() As Long
     Declare Sub Close()
     Declare Sub Center()
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QFORM))
+    Declare Property OnKeyDown(ByVal Handler As Sub())
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Sender As QFORM))
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QFORM))
+    Declare Property OnKeyUp(ByVal Handler As Sub())
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Sender As QFORM))
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Key As Long))
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Key As Long, ByRef Sender As QFORM))
+    Declare Property OnKeyPress(ByVal Handler As Sub())
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Sender As QFORM))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QFORM))
+    Declare Property OnMouseDown(ByVal Handler As Sub())
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByRef Sender As QFORM))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QFORM))
+    Declare Property OnMouseUp(ByVal Handler As Sub())
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByRef Sender As QFORM))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QFORM))
+    Declare Property OnMouseMove(ByVal Handler As Sub())
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByRef Sender As QFORM))
 End Type
 
 Private Sub QFORM_ShowEvent stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any Ptr)
@@ -532,6 +713,81 @@ End Sub
 Constructor QFORM()
     RqObj = RqLclNew("QFORM", @This)
 End Constructor
+
+' События с параметрами QFORM: обработчик с параметрами, с ними и Sender
+' последним, только с Sender или без параметров
+Property QFORM.OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    SetEventEx(RqEvKeyDown, "OnKeyDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QFORM.OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QFORM))
+    SetEventEx(RqEvKeyDown, "OnKeyDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QFORM.OnKeyDown(ByVal Handler As Sub())
+    SetEventEx(RqEvKeyDown, "OnKeyDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QFORM.OnKeyDown(ByVal Handler As Sub(ByRef Sender As QFORM))
+    SetEventEx(RqEvKeyDown, "OnKeyDown", Cast(Any Ptr, Handler), 3)
+End Property
+Property QFORM.OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    SetEventEx(RqEvKeyUp, "OnKeyUp", Cast(Any Ptr, Handler), 1)
+End Property
+Property QFORM.OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QFORM))
+    SetEventEx(RqEvKeyUp, "OnKeyUp", Cast(Any Ptr, Handler), 2)
+End Property
+Property QFORM.OnKeyUp(ByVal Handler As Sub())
+    SetEventEx(RqEvKeyUp, "OnKeyUp", Cast(Any Ptr, Handler), 0)
+End Property
+Property QFORM.OnKeyUp(ByVal Handler As Sub(ByRef Sender As QFORM))
+    SetEventEx(RqEvKeyUp, "OnKeyUp", Cast(Any Ptr, Handler), 3)
+End Property
+Property QFORM.OnKeyPress(ByVal Handler As Sub(ByRef Key As Long))
+    SetEventEx(RqEvKeyPress, "OnKeyPress", Cast(Any Ptr, Handler), 1)
+End Property
+Property QFORM.OnKeyPress(ByVal Handler As Sub(ByRef Key As Long, ByRef Sender As QFORM))
+    SetEventEx(RqEvKeyPress, "OnKeyPress", Cast(Any Ptr, Handler), 2)
+End Property
+Property QFORM.OnKeyPress(ByVal Handler As Sub())
+    SetEventEx(RqEvKeyPress, "OnKeyPress", Cast(Any Ptr, Handler), 0)
+End Property
+Property QFORM.OnKeyPress(ByVal Handler As Sub(ByRef Sender As QFORM))
+    SetEventEx(RqEvKeyPress, "OnKeyPress", Cast(Any Ptr, Handler), 3)
+End Property
+Property QFORM.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(RqEvMouseDown, "OnMouseDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QFORM.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QFORM))
+    SetEventEx(RqEvMouseDown, "OnMouseDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QFORM.OnMouseDown(ByVal Handler As Sub())
+    SetEventEx(RqEvMouseDown, "OnMouseDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QFORM.OnMouseDown(ByVal Handler As Sub(ByRef Sender As QFORM))
+    SetEventEx(RqEvMouseDown, "OnMouseDown", Cast(Any Ptr, Handler), 3)
+End Property
+Property QFORM.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(RqEvMouseUp, "OnMouseUp", Cast(Any Ptr, Handler), 1)
+End Property
+Property QFORM.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QFORM))
+    SetEventEx(RqEvMouseUp, "OnMouseUp", Cast(Any Ptr, Handler), 2)
+End Property
+Property QFORM.OnMouseUp(ByVal Handler As Sub())
+    SetEventEx(RqEvMouseUp, "OnMouseUp", Cast(Any Ptr, Handler), 0)
+End Property
+Property QFORM.OnMouseUp(ByVal Handler As Sub(ByRef Sender As QFORM))
+    SetEventEx(RqEvMouseUp, "OnMouseUp", Cast(Any Ptr, Handler), 3)
+End Property
+Property QFORM.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(RqEvMouseMove, "OnMouseMove", Cast(Any Ptr, Handler), 1)
+End Property
+Property QFORM.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QFORM))
+    SetEventEx(RqEvMouseMove, "OnMouseMove", Cast(Any Ptr, Handler), 2)
+End Property
+Property QFORM.OnMouseMove(ByVal Handler As Sub())
+    SetEventEx(RqEvMouseMove, "OnMouseMove", Cast(Any Ptr, Handler), 0)
+End Property
+Property QFORM.OnMouseMove(ByVal Handler As Sub(ByRef Sender As QFORM))
+    SetEventEx(RqEvMouseMove, "OnMouseMove", Cast(Any Ptr, Handler), 3)
+End Property
 Property QFORM.Caption() As String
     Return RqLclGetStr(RqObj, "Caption")
 End Property
@@ -583,6 +839,30 @@ Type QBUTTON Extends QCONTROL
     Declare Property OnClick(ByVal Handler As Sub(ByRef Sender As QBUTTON))
     Declare Property OnClick(ByVal Handler As Sub())
     Declare Sub Click()
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QBUTTON))
+    Declare Property OnKeyDown(ByVal Handler As Sub())
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Sender As QBUTTON))
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QBUTTON))
+    Declare Property OnKeyUp(ByVal Handler As Sub())
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Sender As QBUTTON))
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Key As Long))
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Key As Long, ByRef Sender As QBUTTON))
+    Declare Property OnKeyPress(ByVal Handler As Sub())
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Sender As QBUTTON))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QBUTTON))
+    Declare Property OnMouseDown(ByVal Handler As Sub())
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByRef Sender As QBUTTON))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QBUTTON))
+    Declare Property OnMouseUp(ByVal Handler As Sub())
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByRef Sender As QBUTTON))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QBUTTON))
+    Declare Property OnMouseMove(ByVal Handler As Sub())
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByRef Sender As QBUTTON))
 End Type
 
 Private Sub QBUTTON_ClickEvent stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any Ptr)
@@ -594,6 +874,81 @@ End Sub
 Constructor QBUTTON()
     RqObj = RqLclNew("QBUTTON", @This)
 End Constructor
+
+' События с параметрами QBUTTON: обработчик с параметрами, с ними и Sender
+' последним, только с Sender или без параметров
+Property QBUTTON.OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    SetEventEx(RqEvKeyDown, "OnKeyDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QBUTTON.OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QBUTTON))
+    SetEventEx(RqEvKeyDown, "OnKeyDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QBUTTON.OnKeyDown(ByVal Handler As Sub())
+    SetEventEx(RqEvKeyDown, "OnKeyDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QBUTTON.OnKeyDown(ByVal Handler As Sub(ByRef Sender As QBUTTON))
+    SetEventEx(RqEvKeyDown, "OnKeyDown", Cast(Any Ptr, Handler), 3)
+End Property
+Property QBUTTON.OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    SetEventEx(RqEvKeyUp, "OnKeyUp", Cast(Any Ptr, Handler), 1)
+End Property
+Property QBUTTON.OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QBUTTON))
+    SetEventEx(RqEvKeyUp, "OnKeyUp", Cast(Any Ptr, Handler), 2)
+End Property
+Property QBUTTON.OnKeyUp(ByVal Handler As Sub())
+    SetEventEx(RqEvKeyUp, "OnKeyUp", Cast(Any Ptr, Handler), 0)
+End Property
+Property QBUTTON.OnKeyUp(ByVal Handler As Sub(ByRef Sender As QBUTTON))
+    SetEventEx(RqEvKeyUp, "OnKeyUp", Cast(Any Ptr, Handler), 3)
+End Property
+Property QBUTTON.OnKeyPress(ByVal Handler As Sub(ByRef Key As Long))
+    SetEventEx(RqEvKeyPress, "OnKeyPress", Cast(Any Ptr, Handler), 1)
+End Property
+Property QBUTTON.OnKeyPress(ByVal Handler As Sub(ByRef Key As Long, ByRef Sender As QBUTTON))
+    SetEventEx(RqEvKeyPress, "OnKeyPress", Cast(Any Ptr, Handler), 2)
+End Property
+Property QBUTTON.OnKeyPress(ByVal Handler As Sub())
+    SetEventEx(RqEvKeyPress, "OnKeyPress", Cast(Any Ptr, Handler), 0)
+End Property
+Property QBUTTON.OnKeyPress(ByVal Handler As Sub(ByRef Sender As QBUTTON))
+    SetEventEx(RqEvKeyPress, "OnKeyPress", Cast(Any Ptr, Handler), 3)
+End Property
+Property QBUTTON.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(RqEvMouseDown, "OnMouseDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QBUTTON.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QBUTTON))
+    SetEventEx(RqEvMouseDown, "OnMouseDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QBUTTON.OnMouseDown(ByVal Handler As Sub())
+    SetEventEx(RqEvMouseDown, "OnMouseDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QBUTTON.OnMouseDown(ByVal Handler As Sub(ByRef Sender As QBUTTON))
+    SetEventEx(RqEvMouseDown, "OnMouseDown", Cast(Any Ptr, Handler), 3)
+End Property
+Property QBUTTON.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(RqEvMouseUp, "OnMouseUp", Cast(Any Ptr, Handler), 1)
+End Property
+Property QBUTTON.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QBUTTON))
+    SetEventEx(RqEvMouseUp, "OnMouseUp", Cast(Any Ptr, Handler), 2)
+End Property
+Property QBUTTON.OnMouseUp(ByVal Handler As Sub())
+    SetEventEx(RqEvMouseUp, "OnMouseUp", Cast(Any Ptr, Handler), 0)
+End Property
+Property QBUTTON.OnMouseUp(ByVal Handler As Sub(ByRef Sender As QBUTTON))
+    SetEventEx(RqEvMouseUp, "OnMouseUp", Cast(Any Ptr, Handler), 3)
+End Property
+Property QBUTTON.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(RqEvMouseMove, "OnMouseMove", Cast(Any Ptr, Handler), 1)
+End Property
+Property QBUTTON.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QBUTTON))
+    SetEventEx(RqEvMouseMove, "OnMouseMove", Cast(Any Ptr, Handler), 2)
+End Property
+Property QBUTTON.OnMouseMove(ByVal Handler As Sub())
+    SetEventEx(RqEvMouseMove, "OnMouseMove", Cast(Any Ptr, Handler), 0)
+End Property
+Property QBUTTON.OnMouseMove(ByVal Handler As Sub(ByRef Sender As QBUTTON))
+    SetEventEx(RqEvMouseMove, "OnMouseMove", Cast(Any Ptr, Handler), 3)
+End Property
 Property QBUTTON.Caption() As String
     Return RqLclGetStr(RqObj, "Caption")
 End Property
@@ -624,11 +979,62 @@ Type QLABEL Extends QCONTROL
     Declare Constructor()
     Declare Property Caption() As String
     Declare Property Caption(ByRef Value As String)
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QLABEL))
+    Declare Property OnMouseDown(ByVal Handler As Sub())
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByRef Sender As QLABEL))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QLABEL))
+    Declare Property OnMouseUp(ByVal Handler As Sub())
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByRef Sender As QLABEL))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QLABEL))
+    Declare Property OnMouseMove(ByVal Handler As Sub())
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByRef Sender As QLABEL))
 End Type
 
 Constructor QLABEL()
     RqObj = RqLclNew("QLABEL", @This)
 End Constructor
+
+' События с параметрами QLABEL: обработчик с параметрами, с ними и Sender
+' последним, только с Sender или без параметров
+Property QLABEL.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(RqEvMouseDown, "OnMouseDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QLABEL.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QLABEL))
+    SetEventEx(RqEvMouseDown, "OnMouseDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QLABEL.OnMouseDown(ByVal Handler As Sub())
+    SetEventEx(RqEvMouseDown, "OnMouseDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QLABEL.OnMouseDown(ByVal Handler As Sub(ByRef Sender As QLABEL))
+    SetEventEx(RqEvMouseDown, "OnMouseDown", Cast(Any Ptr, Handler), 3)
+End Property
+Property QLABEL.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(RqEvMouseUp, "OnMouseUp", Cast(Any Ptr, Handler), 1)
+End Property
+Property QLABEL.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QLABEL))
+    SetEventEx(RqEvMouseUp, "OnMouseUp", Cast(Any Ptr, Handler), 2)
+End Property
+Property QLABEL.OnMouseUp(ByVal Handler As Sub())
+    SetEventEx(RqEvMouseUp, "OnMouseUp", Cast(Any Ptr, Handler), 0)
+End Property
+Property QLABEL.OnMouseUp(ByVal Handler As Sub(ByRef Sender As QLABEL))
+    SetEventEx(RqEvMouseUp, "OnMouseUp", Cast(Any Ptr, Handler), 3)
+End Property
+Property QLABEL.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(RqEvMouseMove, "OnMouseMove", Cast(Any Ptr, Handler), 1)
+End Property
+Property QLABEL.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QLABEL))
+    SetEventEx(RqEvMouseMove, "OnMouseMove", Cast(Any Ptr, Handler), 2)
+End Property
+Property QLABEL.OnMouseMove(ByVal Handler As Sub())
+    SetEventEx(RqEvMouseMove, "OnMouseMove", Cast(Any Ptr, Handler), 0)
+End Property
+Property QLABEL.OnMouseMove(ByVal Handler As Sub(ByRef Sender As QLABEL))
+    SetEventEx(RqEvMouseMove, "OnMouseMove", Cast(Any Ptr, Handler), 3)
+End Property
 Property QLABEL.Caption() As String
     Return RqLclGetStr(RqObj, "Caption")
 End Property
@@ -648,6 +1054,30 @@ Type QEDIT Extends QCONTROL
     Declare Property Text(ByRef Value As String)
     Declare Property OnChange(ByVal Handler As Sub(ByRef Sender As QEDIT))
     Declare Property OnChange(ByVal Handler As Sub())
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QEDIT))
+    Declare Property OnKeyDown(ByVal Handler As Sub())
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Sender As QEDIT))
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QEDIT))
+    Declare Property OnKeyUp(ByVal Handler As Sub())
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Sender As QEDIT))
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Key As Long))
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Key As Long, ByRef Sender As QEDIT))
+    Declare Property OnKeyPress(ByVal Handler As Sub())
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Sender As QEDIT))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QEDIT))
+    Declare Property OnMouseDown(ByVal Handler As Sub())
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByRef Sender As QEDIT))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QEDIT))
+    Declare Property OnMouseUp(ByVal Handler As Sub())
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByRef Sender As QEDIT))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QEDIT))
+    Declare Property OnMouseMove(ByVal Handler As Sub())
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByRef Sender As QEDIT))
 End Type
 
 Private Sub QEDIT_ChangeEvent stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any Ptr)
@@ -659,6 +1089,81 @@ End Sub
 Constructor QEDIT()
     RqObj = RqLclNew("QEDIT", @This)
 End Constructor
+
+' События с параметрами QEDIT: обработчик с параметрами, с ними и Sender
+' последним, только с Sender или без параметров
+Property QEDIT.OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    SetEventEx(RqEvKeyDown, "OnKeyDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QEDIT.OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QEDIT))
+    SetEventEx(RqEvKeyDown, "OnKeyDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QEDIT.OnKeyDown(ByVal Handler As Sub())
+    SetEventEx(RqEvKeyDown, "OnKeyDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QEDIT.OnKeyDown(ByVal Handler As Sub(ByRef Sender As QEDIT))
+    SetEventEx(RqEvKeyDown, "OnKeyDown", Cast(Any Ptr, Handler), 3)
+End Property
+Property QEDIT.OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    SetEventEx(RqEvKeyUp, "OnKeyUp", Cast(Any Ptr, Handler), 1)
+End Property
+Property QEDIT.OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QEDIT))
+    SetEventEx(RqEvKeyUp, "OnKeyUp", Cast(Any Ptr, Handler), 2)
+End Property
+Property QEDIT.OnKeyUp(ByVal Handler As Sub())
+    SetEventEx(RqEvKeyUp, "OnKeyUp", Cast(Any Ptr, Handler), 0)
+End Property
+Property QEDIT.OnKeyUp(ByVal Handler As Sub(ByRef Sender As QEDIT))
+    SetEventEx(RqEvKeyUp, "OnKeyUp", Cast(Any Ptr, Handler), 3)
+End Property
+Property QEDIT.OnKeyPress(ByVal Handler As Sub(ByRef Key As Long))
+    SetEventEx(RqEvKeyPress, "OnKeyPress", Cast(Any Ptr, Handler), 1)
+End Property
+Property QEDIT.OnKeyPress(ByVal Handler As Sub(ByRef Key As Long, ByRef Sender As QEDIT))
+    SetEventEx(RqEvKeyPress, "OnKeyPress", Cast(Any Ptr, Handler), 2)
+End Property
+Property QEDIT.OnKeyPress(ByVal Handler As Sub())
+    SetEventEx(RqEvKeyPress, "OnKeyPress", Cast(Any Ptr, Handler), 0)
+End Property
+Property QEDIT.OnKeyPress(ByVal Handler As Sub(ByRef Sender As QEDIT))
+    SetEventEx(RqEvKeyPress, "OnKeyPress", Cast(Any Ptr, Handler), 3)
+End Property
+Property QEDIT.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(RqEvMouseDown, "OnMouseDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QEDIT.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QEDIT))
+    SetEventEx(RqEvMouseDown, "OnMouseDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QEDIT.OnMouseDown(ByVal Handler As Sub())
+    SetEventEx(RqEvMouseDown, "OnMouseDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QEDIT.OnMouseDown(ByVal Handler As Sub(ByRef Sender As QEDIT))
+    SetEventEx(RqEvMouseDown, "OnMouseDown", Cast(Any Ptr, Handler), 3)
+End Property
+Property QEDIT.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(RqEvMouseUp, "OnMouseUp", Cast(Any Ptr, Handler), 1)
+End Property
+Property QEDIT.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QEDIT))
+    SetEventEx(RqEvMouseUp, "OnMouseUp", Cast(Any Ptr, Handler), 2)
+End Property
+Property QEDIT.OnMouseUp(ByVal Handler As Sub())
+    SetEventEx(RqEvMouseUp, "OnMouseUp", Cast(Any Ptr, Handler), 0)
+End Property
+Property QEDIT.OnMouseUp(ByVal Handler As Sub(ByRef Sender As QEDIT))
+    SetEventEx(RqEvMouseUp, "OnMouseUp", Cast(Any Ptr, Handler), 3)
+End Property
+Property QEDIT.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(RqEvMouseMove, "OnMouseMove", Cast(Any Ptr, Handler), 1)
+End Property
+Property QEDIT.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QEDIT))
+    SetEventEx(RqEvMouseMove, "OnMouseMove", Cast(Any Ptr, Handler), 2)
+End Property
+Property QEDIT.OnMouseMove(ByVal Handler As Sub())
+    SetEventEx(RqEvMouseMove, "OnMouseMove", Cast(Any Ptr, Handler), 0)
+End Property
+Property QEDIT.OnMouseMove(ByVal Handler As Sub(ByRef Sender As QEDIT))
+    SetEventEx(RqEvMouseMove, "OnMouseMove", Cast(Any Ptr, Handler), 3)
+End Property
 Property QEDIT.Text() As String
     Return RqLclGetStr(RqObj, "Text")
 End Property
@@ -750,6 +1255,30 @@ Type QRICHEDIT Extends QCONTROL
     Declare Sub SaveToFile(ByRef FileName As String)
     Declare Sub LoadFromStream(ByRef Stream As RqStream)
     Declare Sub SaveToStream(ByRef Stream As RqStream)
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QRICHEDIT))
+    Declare Property OnKeyDown(ByVal Handler As Sub())
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Sender As QRICHEDIT))
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QRICHEDIT))
+    Declare Property OnKeyUp(ByVal Handler As Sub())
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Sender As QRICHEDIT))
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Key As Long))
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Key As Long, ByRef Sender As QRICHEDIT))
+    Declare Property OnKeyPress(ByVal Handler As Sub())
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Sender As QRICHEDIT))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QRICHEDIT))
+    Declare Property OnMouseDown(ByVal Handler As Sub())
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByRef Sender As QRICHEDIT))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QRICHEDIT))
+    Declare Property OnMouseUp(ByVal Handler As Sub())
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByRef Sender As QRICHEDIT))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QRICHEDIT))
+    Declare Property OnMouseMove(ByVal Handler As Sub())
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByRef Sender As QRICHEDIT))
 End Type
 
 Private Sub QRICHEDIT_ChangeEvent stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any Ptr)
@@ -761,6 +1290,81 @@ End Sub
 Constructor QRICHEDIT()
     RqObj = RqLclNew("QRICHEDIT", @This)
 End Constructor
+
+' События с параметрами QRICHEDIT: обработчик с параметрами, с ними и Sender
+' последним, только с Sender или без параметров
+Property QRICHEDIT.OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    SetEventEx(RqEvKeyDown, "OnKeyDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QRICHEDIT.OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QRICHEDIT))
+    SetEventEx(RqEvKeyDown, "OnKeyDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QRICHEDIT.OnKeyDown(ByVal Handler As Sub())
+    SetEventEx(RqEvKeyDown, "OnKeyDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QRICHEDIT.OnKeyDown(ByVal Handler As Sub(ByRef Sender As QRICHEDIT))
+    SetEventEx(RqEvKeyDown, "OnKeyDown", Cast(Any Ptr, Handler), 3)
+End Property
+Property QRICHEDIT.OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    SetEventEx(RqEvKeyUp, "OnKeyUp", Cast(Any Ptr, Handler), 1)
+End Property
+Property QRICHEDIT.OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QRICHEDIT))
+    SetEventEx(RqEvKeyUp, "OnKeyUp", Cast(Any Ptr, Handler), 2)
+End Property
+Property QRICHEDIT.OnKeyUp(ByVal Handler As Sub())
+    SetEventEx(RqEvKeyUp, "OnKeyUp", Cast(Any Ptr, Handler), 0)
+End Property
+Property QRICHEDIT.OnKeyUp(ByVal Handler As Sub(ByRef Sender As QRICHEDIT))
+    SetEventEx(RqEvKeyUp, "OnKeyUp", Cast(Any Ptr, Handler), 3)
+End Property
+Property QRICHEDIT.OnKeyPress(ByVal Handler As Sub(ByRef Key As Long))
+    SetEventEx(RqEvKeyPress, "OnKeyPress", Cast(Any Ptr, Handler), 1)
+End Property
+Property QRICHEDIT.OnKeyPress(ByVal Handler As Sub(ByRef Key As Long, ByRef Sender As QRICHEDIT))
+    SetEventEx(RqEvKeyPress, "OnKeyPress", Cast(Any Ptr, Handler), 2)
+End Property
+Property QRICHEDIT.OnKeyPress(ByVal Handler As Sub())
+    SetEventEx(RqEvKeyPress, "OnKeyPress", Cast(Any Ptr, Handler), 0)
+End Property
+Property QRICHEDIT.OnKeyPress(ByVal Handler As Sub(ByRef Sender As QRICHEDIT))
+    SetEventEx(RqEvKeyPress, "OnKeyPress", Cast(Any Ptr, Handler), 3)
+End Property
+Property QRICHEDIT.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(RqEvMouseDown, "OnMouseDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QRICHEDIT.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QRICHEDIT))
+    SetEventEx(RqEvMouseDown, "OnMouseDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QRICHEDIT.OnMouseDown(ByVal Handler As Sub())
+    SetEventEx(RqEvMouseDown, "OnMouseDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QRICHEDIT.OnMouseDown(ByVal Handler As Sub(ByRef Sender As QRICHEDIT))
+    SetEventEx(RqEvMouseDown, "OnMouseDown", Cast(Any Ptr, Handler), 3)
+End Property
+Property QRICHEDIT.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(RqEvMouseUp, "OnMouseUp", Cast(Any Ptr, Handler), 1)
+End Property
+Property QRICHEDIT.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QRICHEDIT))
+    SetEventEx(RqEvMouseUp, "OnMouseUp", Cast(Any Ptr, Handler), 2)
+End Property
+Property QRICHEDIT.OnMouseUp(ByVal Handler As Sub())
+    SetEventEx(RqEvMouseUp, "OnMouseUp", Cast(Any Ptr, Handler), 0)
+End Property
+Property QRICHEDIT.OnMouseUp(ByVal Handler As Sub(ByRef Sender As QRICHEDIT))
+    SetEventEx(RqEvMouseUp, "OnMouseUp", Cast(Any Ptr, Handler), 3)
+End Property
+Property QRICHEDIT.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(RqEvMouseMove, "OnMouseMove", Cast(Any Ptr, Handler), 1)
+End Property
+Property QRICHEDIT.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QRICHEDIT))
+    SetEventEx(RqEvMouseMove, "OnMouseMove", Cast(Any Ptr, Handler), 2)
+End Property
+Property QRICHEDIT.OnMouseMove(ByVal Handler As Sub())
+    SetEventEx(RqEvMouseMove, "OnMouseMove", Cast(Any Ptr, Handler), 0)
+End Property
+Property QRICHEDIT.OnMouseMove(ByVal Handler As Sub(ByRef Sender As QRICHEDIT))
+    SetEventEx(RqEvMouseMove, "OnMouseMove", Cast(Any Ptr, Handler), 3)
+End Property
 Property QRICHEDIT.Text() As String
     Return RqLclGetStr(RqObj, "Text")
 End Property
@@ -977,8 +1581,8 @@ End Sub
 '  Grid.Cell(c, r) = x в Grid.SetCell(c, r, x).
 '  Ячейка вне таблицы: Smart - "" и предупреждение в лог, Compat - конец
 '  программы.
-'  Пока нет: события (OnSelectCell, OnDrawCell...), ColumnStyle,
-'  ColumnList, TabStops, рисование (TextOut, Line, Circle...).
+'  Пока нет: ColumnStyle, ColumnList, TabStops, OnEllipsisClick,
+'  OnListDropDown, Draw, CopyRect, StretchDraw, TextRect.
 ' ---------------------------------------------------------------------------
 
 Type QSTRINGGRID Extends QCONTROL
@@ -1053,17 +1657,181 @@ Type QSTRINGGRID Extends QCONTROL
         ByVal ColOffset As Long = 0, ByVal MaxRows As Long = 0)
     Declare Function TextWidth(ByRef Text1 As String) As Long
     Declare Function TextHeight(ByRef Text1 As String) As Long
+    Declare Sub FillRect(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, _
+        ByVal Y2 As Long, ByVal FillColor As Long)
+    Declare Sub TextOut(ByVal X1 As Long, ByVal Y1 As Long, ByRef Text1 As String, _
+        ByVal TextColor As Long, ByVal BackColor As Long = -1)
+    Declare Sub Line(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, _
+        ByVal Y2 As Long, ByVal LineColor As Long)
+    Declare Sub Rectangle(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, _
+        ByVal Y2 As Long, ByVal LineColor As Long)
+    Declare Sub RoundRect(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, _
+        ByVal Y2 As Long, ByVal X3 As Long, ByVal Y3 As Long, ByVal FillColor As Long)
+    Declare Sub Circle(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, _
+        ByVal Y2 As Long, ByVal LineColor As Long, ByVal FillFlag As Long)
+    Declare Sub Pset(ByVal X1 As Long, ByVal Y1 As Long, ByVal PixelColor As Long)
+    Declare Sub Paint(ByVal X1 As Long, ByVal Y1 As Long, ByVal FillColor As Long, _
+        ByVal BorderColor As Long)
+    Declare Sub DrawInts(ByRef MethodName As String, ByRef Text1 As String, _
+        IntList() As Long)
     ' служебное
     Declare Sub CallInts(ByRef MethodName As String, ByVal IntArg1 As Long, _
         ByVal IntArg2 As Long = 0)
     Declare Sub OptionList(ByRef MethodName As String, ByVal Option1 As Long, _
         ByVal Option2 As Long, ByVal Option3 As Long, ByVal Option4 As Long, _
         ByVal Option5 As Long, ByVal Option6 As Long)
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QSTRINGGRID))
+    Declare Property OnKeyDown(ByVal Handler As Sub())
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Sender As QSTRINGGRID))
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QSTRINGGRID))
+    Declare Property OnKeyUp(ByVal Handler As Sub())
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Sender As QSTRINGGRID))
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Key As Long))
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Key As Long, ByRef Sender As QSTRINGGRID))
+    Declare Property OnKeyPress(ByVal Handler As Sub())
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Sender As QSTRINGGRID))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QSTRINGGRID))
+    Declare Property OnMouseDown(ByVal Handler As Sub())
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByRef Sender As QSTRINGGRID))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QSTRINGGRID))
+    Declare Property OnMouseUp(ByVal Handler As Sub())
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByRef Sender As QSTRINGGRID))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QSTRINGGRID))
+    Declare Property OnMouseMove(ByVal Handler As Sub())
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByRef Sender As QSTRINGGRID))
+    Declare Property OnSelectCell(ByVal Handler As Sub(ByVal Col As Long, ByVal Row As Long, ByRef CanSelect As Long))
+    Declare Property OnSelectCell(ByVal Handler As Sub(ByVal Col As Long, ByVal Row As Long, ByRef CanSelect As Long, ByRef Sender As QSTRINGGRID))
+    Declare Property OnSelectCell(ByVal Handler As Sub())
+    Declare Property OnSelectCell(ByVal Handler As Sub(ByRef Sender As QSTRINGGRID))
+    Declare Property OnDrawCell(ByVal Handler As Sub(ByVal Col As Long, ByVal Row As Long, ByVal State As Long, ByRef R As QRECT))
+    Declare Property OnDrawCell(ByVal Handler As Sub(ByVal Col As Long, ByVal Row As Long, ByVal State As Long, ByRef R As QRECT, ByRef Sender As QSTRINGGRID))
+    Declare Property OnDrawCell(ByVal Handler As Sub())
+    Declare Property OnDrawCell(ByVal Handler As Sub(ByRef Sender As QSTRINGGRID))
+    Declare Property OnSetEditText(ByVal Handler As Sub(ByVal Col As Long, ByVal Row As Long, ByVal Value As String))
+    Declare Property OnSetEditText(ByVal Handler As Sub(ByVal Col As Long, ByVal Row As Long, ByVal Value As String, ByRef Sender As QSTRINGGRID))
+    Declare Property OnSetEditText(ByVal Handler As Sub())
+    Declare Property OnSetEditText(ByVal Handler As Sub(ByRef Sender As QSTRINGGRID))
 End Type
 
 Constructor QSTRINGGRID()
     RqObj = RqLclNew("QSTRINGGRID", @This)
 End Constructor
+
+' События с параметрами QSTRINGGRID: обработчик с параметрами, с ними и Sender
+' последним, только с Sender или без параметров
+Property QSTRINGGRID.OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    SetEventEx(RqEvKeyDown, "OnKeyDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QSTRINGGRID.OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QSTRINGGRID))
+    SetEventEx(RqEvKeyDown, "OnKeyDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QSTRINGGRID.OnKeyDown(ByVal Handler As Sub())
+    SetEventEx(RqEvKeyDown, "OnKeyDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QSTRINGGRID.OnKeyDown(ByVal Handler As Sub(ByRef Sender As QSTRINGGRID))
+    SetEventEx(RqEvKeyDown, "OnKeyDown", Cast(Any Ptr, Handler), 3)
+End Property
+Property QSTRINGGRID.OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    SetEventEx(RqEvKeyUp, "OnKeyUp", Cast(Any Ptr, Handler), 1)
+End Property
+Property QSTRINGGRID.OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QSTRINGGRID))
+    SetEventEx(RqEvKeyUp, "OnKeyUp", Cast(Any Ptr, Handler), 2)
+End Property
+Property QSTRINGGRID.OnKeyUp(ByVal Handler As Sub())
+    SetEventEx(RqEvKeyUp, "OnKeyUp", Cast(Any Ptr, Handler), 0)
+End Property
+Property QSTRINGGRID.OnKeyUp(ByVal Handler As Sub(ByRef Sender As QSTRINGGRID))
+    SetEventEx(RqEvKeyUp, "OnKeyUp", Cast(Any Ptr, Handler), 3)
+End Property
+Property QSTRINGGRID.OnKeyPress(ByVal Handler As Sub(ByRef Key As Long))
+    SetEventEx(RqEvKeyPress, "OnKeyPress", Cast(Any Ptr, Handler), 1)
+End Property
+Property QSTRINGGRID.OnKeyPress(ByVal Handler As Sub(ByRef Key As Long, ByRef Sender As QSTRINGGRID))
+    SetEventEx(RqEvKeyPress, "OnKeyPress", Cast(Any Ptr, Handler), 2)
+End Property
+Property QSTRINGGRID.OnKeyPress(ByVal Handler As Sub())
+    SetEventEx(RqEvKeyPress, "OnKeyPress", Cast(Any Ptr, Handler), 0)
+End Property
+Property QSTRINGGRID.OnKeyPress(ByVal Handler As Sub(ByRef Sender As QSTRINGGRID))
+    SetEventEx(RqEvKeyPress, "OnKeyPress", Cast(Any Ptr, Handler), 3)
+End Property
+Property QSTRINGGRID.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(RqEvMouseDown, "OnMouseDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QSTRINGGRID.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QSTRINGGRID))
+    SetEventEx(RqEvMouseDown, "OnMouseDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QSTRINGGRID.OnMouseDown(ByVal Handler As Sub())
+    SetEventEx(RqEvMouseDown, "OnMouseDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QSTRINGGRID.OnMouseDown(ByVal Handler As Sub(ByRef Sender As QSTRINGGRID))
+    SetEventEx(RqEvMouseDown, "OnMouseDown", Cast(Any Ptr, Handler), 3)
+End Property
+Property QSTRINGGRID.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(RqEvMouseUp, "OnMouseUp", Cast(Any Ptr, Handler), 1)
+End Property
+Property QSTRINGGRID.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QSTRINGGRID))
+    SetEventEx(RqEvMouseUp, "OnMouseUp", Cast(Any Ptr, Handler), 2)
+End Property
+Property QSTRINGGRID.OnMouseUp(ByVal Handler As Sub())
+    SetEventEx(RqEvMouseUp, "OnMouseUp", Cast(Any Ptr, Handler), 0)
+End Property
+Property QSTRINGGRID.OnMouseUp(ByVal Handler As Sub(ByRef Sender As QSTRINGGRID))
+    SetEventEx(RqEvMouseUp, "OnMouseUp", Cast(Any Ptr, Handler), 3)
+End Property
+Property QSTRINGGRID.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(RqEvMouseMove, "OnMouseMove", Cast(Any Ptr, Handler), 1)
+End Property
+Property QSTRINGGRID.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QSTRINGGRID))
+    SetEventEx(RqEvMouseMove, "OnMouseMove", Cast(Any Ptr, Handler), 2)
+End Property
+Property QSTRINGGRID.OnMouseMove(ByVal Handler As Sub())
+    SetEventEx(RqEvMouseMove, "OnMouseMove", Cast(Any Ptr, Handler), 0)
+End Property
+Property QSTRINGGRID.OnMouseMove(ByVal Handler As Sub(ByRef Sender As QSTRINGGRID))
+    SetEventEx(RqEvMouseMove, "OnMouseMove", Cast(Any Ptr, Handler), 3)
+End Property
+Property QSTRINGGRID.OnSelectCell(ByVal Handler As Sub(ByVal Col As Long, ByVal Row As Long, ByRef CanSelect As Long))
+    SetEventEx(RqEvSelectCell, "OnSelectCell", Cast(Any Ptr, Handler), 1)
+End Property
+Property QSTRINGGRID.OnSelectCell(ByVal Handler As Sub(ByVal Col As Long, ByVal Row As Long, ByRef CanSelect As Long, ByRef Sender As QSTRINGGRID))
+    SetEventEx(RqEvSelectCell, "OnSelectCell", Cast(Any Ptr, Handler), 2)
+End Property
+Property QSTRINGGRID.OnSelectCell(ByVal Handler As Sub())
+    SetEventEx(RqEvSelectCell, "OnSelectCell", Cast(Any Ptr, Handler), 0)
+End Property
+Property QSTRINGGRID.OnSelectCell(ByVal Handler As Sub(ByRef Sender As QSTRINGGRID))
+    SetEventEx(RqEvSelectCell, "OnSelectCell", Cast(Any Ptr, Handler), 3)
+End Property
+Property QSTRINGGRID.OnDrawCell(ByVal Handler As Sub(ByVal Col As Long, ByVal Row As Long, ByVal State As Long, ByRef R As QRECT))
+    SetEventEx(RqEvDrawCell, "OnDrawCell", Cast(Any Ptr, Handler), 1)
+End Property
+Property QSTRINGGRID.OnDrawCell(ByVal Handler As Sub(ByVal Col As Long, ByVal Row As Long, ByVal State As Long, ByRef R As QRECT, ByRef Sender As QSTRINGGRID))
+    SetEventEx(RqEvDrawCell, "OnDrawCell", Cast(Any Ptr, Handler), 2)
+End Property
+Property QSTRINGGRID.OnDrawCell(ByVal Handler As Sub())
+    SetEventEx(RqEvDrawCell, "OnDrawCell", Cast(Any Ptr, Handler), 0)
+End Property
+Property QSTRINGGRID.OnDrawCell(ByVal Handler As Sub(ByRef Sender As QSTRINGGRID))
+    SetEventEx(RqEvDrawCell, "OnDrawCell", Cast(Any Ptr, Handler), 3)
+End Property
+Property QSTRINGGRID.OnSetEditText(ByVal Handler As Sub(ByVal Col As Long, ByVal Row As Long, ByVal Value As String))
+    SetEventEx(RqEvSetEditText, "OnSetEditText", Cast(Any Ptr, Handler), 1)
+End Property
+Property QSTRINGGRID.OnSetEditText(ByVal Handler As Sub(ByVal Col As Long, ByVal Row As Long, ByVal Value As String, ByRef Sender As QSTRINGGRID))
+    SetEventEx(RqEvSetEditText, "OnSetEditText", Cast(Any Ptr, Handler), 2)
+End Property
+Property QSTRINGGRID.OnSetEditText(ByVal Handler As Sub())
+    SetEventEx(RqEvSetEditText, "OnSetEditText", Cast(Any Ptr, Handler), 0)
+End Property
+Property QSTRINGGRID.OnSetEditText(ByVal Handler As Sub(ByRef Sender As QSTRINGGRID))
+    SetEventEx(RqEvSetEditText, "OnSetEditText", Cast(Any Ptr, Handler), 3)
+End Property
 
 Function QSTRINGGRID.Cell(ByVal ColIdx As Long, ByVal RowIdx As Long) As String
     Dim TextLen As Long
@@ -1318,6 +2086,55 @@ Function QSTRINGGRID.TextHeight(ByRef Text1 As String) As Long
     Return RqCallEx(RqObj, "TextHeight", StrPtr(Text1), 0, 0, 0, 0, 0)
 End Function
 
+' Рисование на таблице - обычно в OnDrawCell; координаты - в окне таблицы
+' (прямоугольник ячейки - параметр R / Rect обработчика)
+Sub QSTRINGGRID.DrawInts(ByRef MethodName As String, ByRef Text1 As String, _
+        IntList() As Long)
+    If RqCallInts(RqObj, MethodName, StrPtr(Text1), @IntList(0), UBound(IntList) + 1) = 0 Then
+        RqLclClassError("QSTRINGGRID." & MethodName)
+    End If
+End Sub
+Sub QSTRINGGRID.FillRect(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, _
+        ByVal Y2 As Long, ByVal FillColor As Long)
+    Dim IntList(0 To 4) As Long = {X1, Y1, X2, Y2, FillColor}
+    DrawInts("FillRect", "", IntList())
+End Sub
+' BackColor = -1 - фон прозрачный
+Sub QSTRINGGRID.TextOut(ByVal X1 As Long, ByVal Y1 As Long, ByRef Text1 As String, _
+        ByVal TextColor As Long, ByVal BackColor As Long = -1)
+    Dim IntList(0 To 3) As Long = {X1, Y1, TextColor, BackColor}
+    DrawInts("TextOut", Text1, IntList())
+End Sub
+Sub QSTRINGGRID.Line(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, _
+        ByVal Y2 As Long, ByVal LineColor As Long)
+    Dim IntList(0 To 4) As Long = {X1, Y1, X2, Y2, LineColor}
+    DrawInts("Line", "", IntList())
+End Sub
+Sub QSTRINGGRID.Rectangle(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, _
+        ByVal Y2 As Long, ByVal LineColor As Long)
+    Dim IntList(0 To 4) As Long = {X1, Y1, X2, Y2, LineColor}
+    DrawInts("Rectangle", "", IntList())
+End Sub
+Sub QSTRINGGRID.RoundRect(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, _
+        ByVal Y2 As Long, ByVal X3 As Long, ByVal Y3 As Long, ByVal FillColor As Long)
+    Dim IntList(0 To 6) As Long = {X1, Y1, X2, Y2, X3, Y3, FillColor}
+    DrawInts("RoundRect", "", IntList())
+End Sub
+Sub QSTRINGGRID.Circle(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, _
+        ByVal Y2 As Long, ByVal LineColor As Long, ByVal FillFlag As Long)
+    Dim IntList(0 To 5) As Long = {X1, Y1, X2, Y2, LineColor, FillFlag}
+    DrawInts("Circle", "", IntList())
+End Sub
+Sub QSTRINGGRID.Pset(ByVal X1 As Long, ByVal Y1 As Long, ByVal PixelColor As Long)
+    Dim IntList(0 To 2) As Long = {X1, Y1, PixelColor}
+    DrawInts("Pset", "", IntList())
+End Sub
+Sub QSTRINGGRID.Paint(ByVal X1 As Long, ByVal Y1 As Long, ByVal FillColor As Long, _
+        ByVal BorderColor As Long)
+    Dim IntList(0 To 3) As Long = {X1, Y1, FillColor, BorderColor}
+    DrawInts("Paint", "", IntList())
+End Sub
+
 ' ---------------------------------------------------------------------------
 '  QDIRTREE - дерево папок (TShellTreeView LCL)
 '  Directory - выбранная папка, без "\" в конце (кроме корня диска).
@@ -1360,6 +2177,30 @@ Type QDIRTREE Extends QCONTROL
     Declare Sub FullExpand()
     Declare Sub Reload()
     Declare Sub CallInt1(ByRef MethodName As String, ByVal IntArg1 As Long)
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QDIRTREE))
+    Declare Property OnKeyDown(ByVal Handler As Sub())
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Sender As QDIRTREE))
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QDIRTREE))
+    Declare Property OnKeyUp(ByVal Handler As Sub())
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Sender As QDIRTREE))
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Key As Long))
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Key As Long, ByRef Sender As QDIRTREE))
+    Declare Property OnKeyPress(ByVal Handler As Sub())
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Sender As QDIRTREE))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QDIRTREE))
+    Declare Property OnMouseDown(ByVal Handler As Sub())
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByRef Sender As QDIRTREE))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QDIRTREE))
+    Declare Property OnMouseUp(ByVal Handler As Sub())
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByRef Sender As QDIRTREE))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QDIRTREE))
+    Declare Property OnMouseMove(ByVal Handler As Sub())
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByRef Sender As QDIRTREE))
 End Type
 
 Private Sub QDIRTREE_ChangeEvent stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any Ptr)
@@ -1371,6 +2212,81 @@ End Sub
 Constructor QDIRTREE()
     RqObj = RqLclNew("QDIRTREE", @This)
 End Constructor
+
+' События с параметрами QDIRTREE: обработчик с параметрами, с ними и Sender
+' последним, только с Sender или без параметров
+Property QDIRTREE.OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    SetEventEx(RqEvKeyDown, "OnKeyDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QDIRTREE.OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QDIRTREE))
+    SetEventEx(RqEvKeyDown, "OnKeyDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QDIRTREE.OnKeyDown(ByVal Handler As Sub())
+    SetEventEx(RqEvKeyDown, "OnKeyDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QDIRTREE.OnKeyDown(ByVal Handler As Sub(ByRef Sender As QDIRTREE))
+    SetEventEx(RqEvKeyDown, "OnKeyDown", Cast(Any Ptr, Handler), 3)
+End Property
+Property QDIRTREE.OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    SetEventEx(RqEvKeyUp, "OnKeyUp", Cast(Any Ptr, Handler), 1)
+End Property
+Property QDIRTREE.OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QDIRTREE))
+    SetEventEx(RqEvKeyUp, "OnKeyUp", Cast(Any Ptr, Handler), 2)
+End Property
+Property QDIRTREE.OnKeyUp(ByVal Handler As Sub())
+    SetEventEx(RqEvKeyUp, "OnKeyUp", Cast(Any Ptr, Handler), 0)
+End Property
+Property QDIRTREE.OnKeyUp(ByVal Handler As Sub(ByRef Sender As QDIRTREE))
+    SetEventEx(RqEvKeyUp, "OnKeyUp", Cast(Any Ptr, Handler), 3)
+End Property
+Property QDIRTREE.OnKeyPress(ByVal Handler As Sub(ByRef Key As Long))
+    SetEventEx(RqEvKeyPress, "OnKeyPress", Cast(Any Ptr, Handler), 1)
+End Property
+Property QDIRTREE.OnKeyPress(ByVal Handler As Sub(ByRef Key As Long, ByRef Sender As QDIRTREE))
+    SetEventEx(RqEvKeyPress, "OnKeyPress", Cast(Any Ptr, Handler), 2)
+End Property
+Property QDIRTREE.OnKeyPress(ByVal Handler As Sub())
+    SetEventEx(RqEvKeyPress, "OnKeyPress", Cast(Any Ptr, Handler), 0)
+End Property
+Property QDIRTREE.OnKeyPress(ByVal Handler As Sub(ByRef Sender As QDIRTREE))
+    SetEventEx(RqEvKeyPress, "OnKeyPress", Cast(Any Ptr, Handler), 3)
+End Property
+Property QDIRTREE.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(RqEvMouseDown, "OnMouseDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QDIRTREE.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QDIRTREE))
+    SetEventEx(RqEvMouseDown, "OnMouseDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QDIRTREE.OnMouseDown(ByVal Handler As Sub())
+    SetEventEx(RqEvMouseDown, "OnMouseDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QDIRTREE.OnMouseDown(ByVal Handler As Sub(ByRef Sender As QDIRTREE))
+    SetEventEx(RqEvMouseDown, "OnMouseDown", Cast(Any Ptr, Handler), 3)
+End Property
+Property QDIRTREE.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(RqEvMouseUp, "OnMouseUp", Cast(Any Ptr, Handler), 1)
+End Property
+Property QDIRTREE.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QDIRTREE))
+    SetEventEx(RqEvMouseUp, "OnMouseUp", Cast(Any Ptr, Handler), 2)
+End Property
+Property QDIRTREE.OnMouseUp(ByVal Handler As Sub())
+    SetEventEx(RqEvMouseUp, "OnMouseUp", Cast(Any Ptr, Handler), 0)
+End Property
+Property QDIRTREE.OnMouseUp(ByVal Handler As Sub(ByRef Sender As QDIRTREE))
+    SetEventEx(RqEvMouseUp, "OnMouseUp", Cast(Any Ptr, Handler), 3)
+End Property
+Property QDIRTREE.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(RqEvMouseMove, "OnMouseMove", Cast(Any Ptr, Handler), 1)
+End Property
+Property QDIRTREE.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QDIRTREE))
+    SetEventEx(RqEvMouseMove, "OnMouseMove", Cast(Any Ptr, Handler), 2)
+End Property
+Property QDIRTREE.OnMouseMove(ByVal Handler As Sub())
+    SetEventEx(RqEvMouseMove, "OnMouseMove", Cast(Any Ptr, Handler), 0)
+End Property
+Property QDIRTREE.OnMouseMove(ByVal Handler As Sub(ByRef Sender As QDIRTREE))
+    SetEventEx(RqEvMouseMove, "OnMouseMove", Cast(Any Ptr, Handler), 3)
+End Property
 Property QDIRTREE.Directory() As String
     Return RqLclGetStr(RqObj, "Directory")
 End Property

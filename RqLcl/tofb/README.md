@@ -31,6 +31,9 @@
 - `Result =` в функции → `Function =`; `INC x[, n]` / `DEC` → `x += n` / `x -= n`; `CALL`, `LET` убираются; `'$...` и `' $...` в комментарии → `''$...` (иначе fbc принимает за метакоманду; `' $` fbc тоже читает как метакоманду, проверено).
 - Параметр или локальная переменная с именем константы модуля (`CONST clR` и параметр `Clr` в rapidq.inc) — с `_p`: в RapidQ параметр перекрывает константу, в FreeBASIC это ошибка.
 - `Объект.Cell(c, r) = x` → `Объект.SetCell(c, r, x)` (у свойства FreeBASIC один индекс); таблица `RqIndexedSetText`.
+- CREATE … END CREATE (документация RapidQ, гл. 5.6–5.7): `CREATE Имя AS Класс` → `DIM Имя AS Класс` (на уровне модуля — `Dim Shared`); у вложенного CREATE — `Имя.Parent = Внешний`, у пункта меню внутри меню — `Внешний.AddItems Имя`; слово в начале оператора внутри блока, если это свойство, метод или событие класса, получает имя объекта (`Caption = "x"` → `Форма.Caption = "x"`, `Center` → `Форма.Center`, `OnClick = Proc` → `Кнопка.OnClick = @Proc`, `Cell(0, 0) = "#"` → `Таблица.SetCell(0, 0, "#")`); `AddOptions = a, b, c` (метод через `=`) → `Таблица.AddOptions a, b, c`; `END CREATE` убирается. Список свойств и методов классов — константа `RqClassMembersText` в RqToFb.pas, её создаёт `gen_members.py` из документации (`rapidq_ref/html_doc`) и типов `RqLcl/inc/*.bi`. Класса нет в списке (свои TYPE … EXTENDS: QBUTTONXP, QMAXEDIT…) — словом объекта считается всё, что не переменная, не процедура и не ключевое слово; один раз на класс — предупреждение.
+- Обработчик события с параметрами (`Объект.OnKeyDown = Proc` и др.): заголовок `Proc` и его `DECLARE` получают типы параметров события (`Key AS WORD` → `ByRef Key As Long`, `Col%` → `ByVal Col As Long`, `Rect AS QRect` → `ByRef Rect As QRECT`); таблица `RqEventSigText`.
+- `~` в именах RapidQ (`~SrcD`, `~tmp$`) → `_T_` (`_T_SrcD`).
 - `.Pointer` → `.PointerAddr` (`Pointer` в FreeBASIC — ключевое слово); таблица `RqMemberMapText`.
 - В заголовке главного файла: `#include once "rqrt.bi"`, `"rqstream.bi"`, `"rqlcl.bi"`.
 
@@ -44,13 +47,17 @@ FIELD$, REPLACESUBSTR$, INSERT$, DELETE$, REPLACE$, REVERSE$, CONVBASE$, HEX$ (8
 - `tests/types16.bas` — вывод совпадает с RapidQ построчно.
 - `tests/b_eq_a.bas` — `b=a` (a — STRING) даёт 0, как в RapidQ, с предупреждением при переводе.
 - `tests/gui1.bas` + `mylib.inc` — QFORM/QLABEL/QEDIT/QBUTTON, обработчики без Sender, DECLARE, FUNCTION с `Result` и с именем, CONST, DEFINT, массив, SELECT CASE, FOR, однострочный IF/ELSE, неявные переменные модуля и локальные, `$INCLUDE`, `$DEFINE`, `$IFDEF`/`$IFNDEF`, `$ESCAPECHARS`.
+- `tests/createev.bas` — CREATE с вложенными CREATE, свойства, `AddOptions = a, b`, `Cell(c, r) = x` внутри CREATE; события OnKeyDown с Sender, OnKeyPress, OnMouseDown без параметров, OnSelectCell с `CanSelect% = 0`, OnDrawCell с FillRect/TextOut.
 - `tests/lists.bas` — QSTRINGLIST (пример из документации), QSTRINGGRID (`Cell = …` в SUB с Sender и в однострочном IF), QREGISTRY, QDIRTREE.
 - `tests/richedit.bas` — QRICHEDIT как в `AddClrString` из rapidq.inc (Sender, SelAttributes.Color, AddStrings), `SelAttributes = Font`, `RichEdit.Font.Size`.
 - `tests/fontstream.bas` — QFONT (Label.Font = Font, Label.Font.Name) и QMEMORYSTREAM (WriteLine, WriteNum, ReadLine, ReadNum, Size, Pointer).
-- `rapidq.inc` из `rapidq_ref/inc` (с его include) переводится без ошибок перевода за 0,3 с. fbc на результате: было около 300 ошибок, после добавления функций, QFONT и потоков — 243, после QRICHEDIT — 231, после QSTRINGLIST, QSTRINGGRID, QREGISTRY, QDIRTREE — 143 (2026-10-07). Основные оставшиеся: вычитание строк RapidQ (`a$ - b$`); индекс строки `s[N]`; `x++`; `TYPE … EXTENDS QObject` с `PROPERTY SET`; нет QOPENDIALOG и записи из DIR (`FileRec.Size`); имена с `~`; число вместо строки в параметре (`REPLACESUBSTR$(s, crlfcrlf, crlf)` с необъявленной `crlfcrlf`); типы параметров объявлений Windows API.
+- `rapidq.inc` из `rapidq_ref/inc` (с его include) переводится без ошибок перевода за 0,3 с. fbc на результате: было около 300 ошибок, после добавления функций, QFONT и потоков — 243, после QRICHEDIT — 231, после QSTRINGLIST, QSTRINGGRID, QREGISTRY, QDIRTREE — 143, после имён с `~` — 120 (2026-10-07). Основные оставшиеся: вычитание строк RapidQ (`a$ - b$`); индекс строки `s[N]`; `x++`; `TYPE … EXTENDS QObject` с `PROPERTY SET`; нет QOPENDIALOG и записи из DIR (`FileRec.Size`); число вместо строки в параметре (`REPLACESUBSTR$(s, crlfcrlf, crlf)` с необъявленной `crlfcrlf`); типы параметров объявлений Windows API.
 
 ## Пока не сделано
 
-- CREATE … END CREATE, TYPE … EXTENDS, SUBI/FUNCTIONI, `$MACRO`, `$RESOURCE`, VARIANT, LPRINT, PRINT USING.
+- TYPE … EXTENDS (свои компоненты), SUBI/FUNCTIONI, `$MACRO`, `$RESOURCE`, VARIANT, LPRINT, PRINT USING.
+- CREATE внутри SUB: объект — локальная переменная SUB (в RQdebugger так не встречается).
+- Свойства и методы внутри CREATE только в начале оператора: в `IF x THEN Caption = "a"` Caption не получит имя объекта.
+- Классы RapidQ, которых ещё нет в RqLcl: QMENUITEM, QMAINMENU, QPOPUPMENU, QPANEL, QCOOLBTN, QCOMBOBOX, QCHECKBOX, QLISTBOX, QSPLITTER и др.
 - Функции RapidQ PARAMSTR$, GET$, VARPTR$, FORMAT$ и подобные; присваивание свойству объекта числа или строки — без преобразования.
 - Передача по ссылке через `@` при вызове (предупреждение, параметр получает копию).
