@@ -10839,7 +10839,13 @@ begin
       lblBuildTarget.Caption := lblBuildTarget.Caption + '  ' + FArdPort;
     lblBuildTarget.Hint := Target + #13#10 + 'Плата: ' + BoardText +
                            #13#10 + 'Порт: ' + PortText;
+    // Подписи над списками в режиме Arduino нет (файл - на вкладке, порт -
+    // в списке плат на USB): скетч, плата и порт - в подсказке списка
+    if cmbArdPort <> nil then
+      cmbArdPort.Hint := lblBuildTarget.Hint + #13#10 +
+        'Выбор платы на USB ставит её порт и FQBN';
   end;
+  lblBuildTarget.Visible := Kind <> bkArduino;
 end;
 
 // Выбор в переключателе: сборщик для файла вкладки, Auto - снова по файлу.
@@ -41215,8 +41221,7 @@ begin
     SendMessage(cmbArdPort.Handle, CB_SETDROPPEDWIDTH, MaxWidth + 30, 0);
   if FArdPort <> '' then
     cmbArdPort.Hint := 'Плата на USB: ' + cmbArdPort.Text + #13#10 +
-      'Порт для Upload и Serial Monitor. Плата (FQBN), для которой ' +
-      'собирается скетч, - меню Arduino - Board'
+      'Порт для Upload и Serial Monitor; выбор ставит и FQBN платы'
   else
     cmbArdPort.Hint := 'Плата на USB, с которой работать (порт для ' +
                        'Upload и Serial Monitor)';
