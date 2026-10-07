@@ -276,12 +276,16 @@ End Sub
 
 Type QFORM Extends QCONTROL
     OnShowProc As Sub(ByRef Sender As QFORM)
+    OnShowProcPlain As Sub()
     OnCloseProc As Sub(ByRef Sender As QFORM)
+    OnCloseProcPlain As Sub()
     Declare Constructor()
     Declare Property Caption() As String
     Declare Property Caption(ByRef Value As String)
     Declare Property OnShow(ByVal Handler As Sub(ByRef Sender As QFORM))
+    Declare Property OnShow(ByVal Handler As Sub())
     Declare Property OnClose(ByVal Handler As Sub(ByRef Sender As QFORM))
+    Declare Property OnClose(ByVal Handler As Sub())
     Declare Function ShowModal() As Long
     Declare Sub Close()
     Declare Sub Center()
@@ -290,11 +294,13 @@ End Type
 Private Sub QFORM_ShowEvent stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any Ptr)
     Dim FormPtr As QFORM Ptr = UserPtr
     If FormPtr->OnShowProc <> 0 Then FormPtr->OnShowProc(*FormPtr)
+    If FormPtr->OnShowProcPlain <> 0 Then FormPtr->OnShowProcPlain()
 End Sub
 
 Private Sub QFORM_CloseEvent stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any Ptr)
     Dim FormPtr As QFORM Ptr = UserPtr
     If FormPtr->OnCloseProc <> 0 Then FormPtr->OnCloseProc(*FormPtr)
+    If FormPtr->OnCloseProcPlain <> 0 Then FormPtr->OnCloseProcPlain()
 End Sub
 
 Constructor QFORM()
@@ -308,10 +314,24 @@ Property QFORM.Caption(ByRef Value As String)
 End Property
 Property QFORM.OnShow(ByVal Handler As Sub(ByRef Sender As QFORM))
     OnShowProc = Handler
+    OnShowProcPlain = 0
+    If RqSetEvent(Handle, "OnShow", @QFORM_ShowEvent) = 0 Then RqLclShowError("OnShow")
+End Property
+' Обработчик без параметра Sender - как SUB ShowHandler в RapidQ
+Property QFORM.OnShow(ByVal Handler As Sub())
+    OnShowProcPlain = Handler
+    OnShowProc = 0
     If RqSetEvent(Handle, "OnShow", @QFORM_ShowEvent) = 0 Then RqLclShowError("OnShow")
 End Property
 Property QFORM.OnClose(ByVal Handler As Sub(ByRef Sender As QFORM))
     OnCloseProc = Handler
+    OnCloseProcPlain = 0
+    If RqSetEvent(Handle, "OnClose", @QFORM_CloseEvent) = 0 Then RqLclShowError("OnClose")
+End Property
+' Обработчик без параметра Sender - как SUB CloseHandler в RapidQ
+Property QFORM.OnClose(ByVal Handler As Sub())
+    OnCloseProcPlain = Handler
+    OnCloseProc = 0
     If RqSetEvent(Handle, "OnClose", @QFORM_CloseEvent) = 0 Then RqLclShowError("OnClose")
 End Property
 Function QFORM.ShowModal() As Long
@@ -330,16 +350,19 @@ End Sub
 
 Type QBUTTON Extends QCONTROL
     OnClickProc As Sub(ByRef Sender As QBUTTON)
+    OnClickProcPlain As Sub()
     Declare Constructor()
     Declare Property Caption() As String
     Declare Property Caption(ByRef Value As String)
     Declare Property OnClick(ByVal Handler As Sub(ByRef Sender As QBUTTON))
+    Declare Property OnClick(ByVal Handler As Sub())
     Declare Sub Click()
 End Type
 
 Private Sub QBUTTON_ClickEvent stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any Ptr)
     Dim ButtonPtr As QBUTTON Ptr = UserPtr
     If ButtonPtr->OnClickProc <> 0 Then ButtonPtr->OnClickProc(*ButtonPtr)
+    If ButtonPtr->OnClickProcPlain <> 0 Then ButtonPtr->OnClickProcPlain()
 End Sub
 
 Constructor QBUTTON()
@@ -353,6 +376,13 @@ Property QBUTTON.Caption(ByRef Value As String)
 End Property
 Property QBUTTON.OnClick(ByVal Handler As Sub(ByRef Sender As QBUTTON))
     OnClickProc = Handler
+    OnClickProcPlain = 0
+    If RqSetEvent(Handle, "OnClick", @QBUTTON_ClickEvent) = 0 Then RqLclShowError("OnClick")
+End Property
+' Обработчик без параметра Sender - как SUB ClickHandler в RapidQ
+Property QBUTTON.OnClick(ByVal Handler As Sub())
+    OnClickProcPlain = Handler
+    OnClickProc = 0
     If RqSetEvent(Handle, "OnClick", @QBUTTON_ClickEvent) = 0 Then RqLclShowError("OnClick")
 End Property
 ' Нажатие из программы, как щелчок мышью
@@ -386,15 +416,18 @@ End Property
 
 Type QEDIT Extends QCONTROL
     OnChangeProc As Sub(ByRef Sender As QEDIT)
+    OnChangeProcPlain As Sub()
     Declare Constructor()
     Declare Property Text() As String
     Declare Property Text(ByRef Value As String)
     Declare Property OnChange(ByVal Handler As Sub(ByRef Sender As QEDIT))
+    Declare Property OnChange(ByVal Handler As Sub())
 End Type
 
 Private Sub QEDIT_ChangeEvent stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any Ptr)
     Dim EditPtr As QEDIT Ptr = UserPtr
     If EditPtr->OnChangeProc <> 0 Then EditPtr->OnChangeProc(*EditPtr)
+    If EditPtr->OnChangeProcPlain <> 0 Then EditPtr->OnChangeProcPlain()
 End Sub
 
 Constructor QEDIT()
@@ -408,5 +441,12 @@ Property QEDIT.Text(ByRef Value As String)
 End Property
 Property QEDIT.OnChange(ByVal Handler As Sub(ByRef Sender As QEDIT))
     OnChangeProc = Handler
+    OnChangeProcPlain = 0
+    If RqSetEvent(Handle, "OnChange", @QEDIT_ChangeEvent) = 0 Then RqLclShowError("OnChange")
+End Property
+' Обработчик без параметра Sender - как SUB ChangeHandler в RapidQ
+Property QEDIT.OnChange(ByVal Handler As Sub())
+    OnChangeProcPlain = Handler
+    OnChangeProc = 0
     If RqSetEvent(Handle, "OnChange", @QEDIT_ChangeEvent) = 0 Then RqLclShowError("OnChange")
 End Property

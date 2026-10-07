@@ -1,0 +1,7 @@
+info: debug on 101 7
+names: x[]
+tab:	end AB
+clicks ok
+Clicks: 3 many
+Hello 42
+end, Total=101

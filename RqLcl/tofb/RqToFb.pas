@@ -1,0 +1,2703 @@
+// ---------------------------------------------------------------------------
+//  RqToFb - перевод исходника RapidQ в FreeBASIC перед сборкой fbc
+//
+//  Без VCL: используется unIDE и консольной утилитой rqtofb.
+//
+//  Каждый файл программы (главный и $INCLUDE) переводится в отдельный
+//  файл в AOptions.OutDir; строки переводятся один к одному, перед ними -
+//  "#line 0 "исходный файл"", поэтому fbc сообщает об ошибках по файлу и
+//  строке исходника RapidQ. Длинная конструкция, собранная заново
+//  (DIM, заголовок SUB), сохраняет число строк продолжениями " _".
+//
+//  Два прохода по программе в порядке включения файлов: первый собирает
+//  объявления (DIM, DEFxxx, CONST, SUB/FUNCTION, DECLARE, TYPE, метки,
+//  REDIM) и необъявленные переменные; второй переписывает текст.
+//  $DEFINE и $IFDEF выполняет сам препроцессор (RapidQ меняет ими и
+//  ключевые слова), в FreeBASIC они не передаются.
+//
+//  Правила - RqLcl/RAPIDQ_RULES.md:
+//    - тип необъявленной переменной - по суффиксу, без суффикса DOUBLE
+//      ($OPTION DIM меняет); имена с суффиксом переименовываются
+//      (a$ -> a__s), FreeBASIC суффиксов у переменных не допускает;
+//    - переменные модуля - Dim Shared (видны в SUB, как в RapidQ);
+//      необъявленные - в заголовке главного файла; необъявленная внутри
+//      SUB, которой нет в модуле, - локальная (Dim в строке заголовка SUB);
+//    - присваивание переменной - правая часть в функции по типу слева
+//      (RqNum, RqLong, RqStr... из rqrt.bi), перегрузку выбирает fbc;
+//    - PRINT - каждый элемент в RqFmt, запятая как точка с запятой;
+//    - параметры по значению (ByVal), объекты, массивы и UDT - по ссылке;
+//    - обработчик события без @ (Button.OnClick = Proc) - с @.
+//
+//  Сообщения - строками "файл(строка) Warning: текст" и "... Error: текст",
+//  как у dcc32: unIDE красит ошибки и переходит к строке.
+// ---------------------------------------------------------------------------
+unit RqToFb;
+
+interface
+
+uses
+  SysUtils, Classes;
+
+type
+  TRqFbMode = (rfmSmart, rfmCompat);
+
+  TRqFbOptions = record
+    Mode: TRqFbMode;
+    IncDirs: string;     // папки поиска $INCLUDE через ';'
+    OutDir: string;      // куда писать переведённые файлы
+  end;
+
+  TRqFbResult = record
+    MainOut: string;     // переведённый главный файл - его собирает fbc
+    AppType: string;     // GUI или CONSOLE ($APPTYPE или по наличию QFORM...)
+    ErrorCount: Integer;
+    WarningCount: Integer;
+  end;
+
+// Перевести программу AMainFile. Сообщения - в AMessages. False - были
+// ошибки (переведённые файлы всё равно записаны).
+function RqToFbConvert(const AMainFile: string; const AOptions: TRqFbOptions;
+                       AMessages: TStrings; var AResult: TRqFbResult): Boolean;
+
+implementation
+
+const
+  // Ключевые слова и встроенные функции RapidQ (rapidq_ref/keyword.lst) и
+  // слова, которые переменной быть не могут
+  RqKeywordText =
+    'FILEEXISTS BYVAL BYREF EXECUTE CEIL FLOOR MEMCMP CALL DIM REDIM AS ' +
+    'CREATE IF THEN ELSE ELSEIF END EVENT INTEGER STRING SHORT LONG SINGLE ' +
+    'DOUBLE WORD DWORD VARIANT BYTE TYPE EXTENDS PRINT LPRINT LFLUSH SUB ' +
+    'MESSAGEBOX UNLOADLIBRARY LIBRARYINST FUNCTION SUBI FUNCTIONI ALIAS LIB ' +
+    'DECLARE BIND CALLFUNC FOR TO NEXT STEP DO LOOP UNTIL WHILE WEND EXIT ' +
+    'GOTO GOSUB RETURN SELECT CASE RANDOMIZE TIMER RND VAL CHR$ LEN RESTORE ' +
+    'KILL RENAME RMDIR INKEY$ TIME$ DATE$ STRING$ ASC SPACE$ INPUT$ PLAYWAV ' +
+    'ATN ATAN ASIN ACOS MID$ LEFT$ RIGHT$ INSERT$ REPLACE$ DELETE$ STR$ ' +
+    'RTRIM$ LTRIM$ INSTR COMMAND$ COMMANDCOUNT PARAMVALCOUNT PARAMSTRCOUNT ' +
+    'PARAMVAL PARAMSTR$ UCASE$ LCASE$ SOUND EXP LOG SGN GET$ CURDIR$ HEX$ ' +
+    'READ DATA AND OR XOR NOT MOD INV SHL SHR INT FIX FRAC CINT CLNG ROUND ' +
+    'SIN COS TAN ABS BIN$ REPLACESUBSTR$ CHDIR CONVBASE$ DEC INC DEFINT ' +
+    'DEFSTR DEFDBL DEFSNG DEFBYTE DEFWORD DEFDWORD DEFLNG DEFSHORT DIR$ ' +
+    'ENVIRON ENVIRON$ TALLY QUICKSORT CHDRIVE MKDIR DIREXISTS DOEVENTS ' +
+    'UBOUND LBOUND SWAP IIF RGB SQR SHELL RUN CODEPTR CALLBACK VARTYPE ' +
+    'SHOWMESSAGE MESSAGEDLG FIELD$ VARPTR VARPTR$ CONST SIZEOF IS WITH ' +
+    'CONSTRUCTOR CLS COLOR LOCATE INPUT INP OUT POKE PEEK CSRLIN POS PCOPY ' +
+    'SETCONSOLETITLE SLEEP MOUSEX MOUSEY ' +
+    'LET REM PUBLIC PRIVATE SHARED STATIC RESULT SUPER THIS OPEN CLOSE EOF ' +
+    'LOF FREEFILE SEEK APPEND OUTPUT BINARY RANDOM ACCESS LINE ON ERROR ' +
+    'RESUME STOP SYSTEM TAB SPC USING PRESERVE ERASE ERR TRIM$ LCASE UCASE ' +
+    'LEFT RIGHT MID CHR STR SPACE TRIM LTRIM RTRIM HEX OCT$ BIN';
+
+  // Функции со знаком $, которые есть и в FreeBASIC
+  FbStrFuncText =
+    'CHR$ STR$ LEFT$ RIGHT$ MID$ UCASE$ LCASE$ SPACE$ STRING$ LTRIM$ ' +
+    'RTRIM$ TRIM$ HEX$ OCT$ BIN$ DATE$ TIME$ COMMAND$ ENVIRON$ INKEY$ ' +
+    'INPUT$ MKI$ MKL$ MKS$ MKD$ CURDIR$ DIR$';
+
+  // Функции RapidQ со знаком $, которых в FreeBASIC нет
+  RqOnlyStrFuncText =
+    'INSERT$ REPLACE$ DELETE$ PARAMSTR$ GET$ REPLACESUBSTR$ CONVBASE$ ' +
+    'FIELD$ VARPTR$';
+
+  // Слова FreeBASIC, которыми переменная называться не может
+  FbReservedText =
+    'ACCESS ALIAS AND ANDALSO ANY APPEND AS ASM BASE BEEP BINARY BOOLEAN ' +
+    'BYREF BYTE BYVAL CALL CASE CAST CDECL CHAIN CHDIR CIRCLE CLASS CLEAR ' +
+    'CLOSE CLS COLOR COMMON CONST CONSTRUCTOR CONTINUE DATA DECLARE DEFINE ' +
+    'DELETE DESTRUCTOR DIM DO DOUBLE DRAW DYNAMIC ELSE ELSEIF END ENUM EQV ' +
+    'ERASE ERR ERROR EXIT EXPLICIT EXPORT EXTENDS EXTERN FALSE FIELD FOR ' +
+    'FUNCTION GET GOSUB GOTO IF IMP IMPORT INPUT INTEGER IS KILL LET LIB ' +
+    'LINE LOCAL LOCATE LOCK LONG LONGINT LOOP LPRINT MOD NAME NAMESPACE NEW ' +
+    'NEXT NOT OBJECT OPEN OPERATOR OPTION OR ORELSE OUTPUT OVERLOAD PAINT ' +
+    'PALETTE PASCAL PCOPY POINT POINTER POKE PRESET PRINT PRIVATE PROPERTY ' +
+    'PROTECTED PSET PTR PUBLIC PUT RANDOM READ REDIM REM RESTORE RESUME ' +
+    'RETURN SCOPE SCREEN SEEK SELECT SHARED SHL SHORT SHR SINGLE SLEEP ' +
+    'STATIC STDCALL STEP STOP STRING SUB SWAP SYSTEM THEN THIS TO TRUE TYPE ' +
+    'TYPEOF UBYTE UINTEGER ULONG ULONGINT UNION UNLOCK UNTIL USHORT USING ' +
+    'VAR VIEW WEND WHILE WIDTH WINDOW WITH WRITE WSTRING XOR ZSTRING ' +
+    'LEN VAL STR CHR ASC LEFT RIGHT MID INSTR ABS INT FIX SGN SQR TIMER RND';
+
+  // Классы RapidQ (объекты: передаются по ссылке, без преобразования)
+  RqObjectText =
+    'QFORM QBITMAP QCANVAS QBUTTON QCOOLBTN QSTRINGGRID QSTRINGLIST QLISTBOX ' +
+    'QCOMBOBOX QOBJECT QGAUGE QOVALBTN QMENUITEM QMAINMENU QTIMER QFONT ' +
+    'QIMAGE QPANEL QLABEL QRECT QRICHEDIT QEDIT QSTATUSBAR QCHECKBOX ' +
+    'QPOPUPMENU QDIRTREE QFILELISTBOX QFILESTREAM QFONTDIALOG QGROUPBOX ' +
+    'QIMAGELIST QSCROLLBOX QTABCONTROL QLISTVIEW QMEMORYSTREAM ' +
+    'QNOTIFYICONDATA QOPENDIALOG QOUTLINE QRADIOBUTTON QREGISTRY QSAVEDIALOG ' +
+    'QSCROLLBAR QSOCKET QTRACKBAR QGLASSFRAME QHEADER QSPLITTER QMYSQL ' +
+    'QTREEVIEW QOLEOBJECT QDXSCREEN QDXIMAGELIST QDXTIMER QD3DFRAME ' +
+    'QD3DLIGHT QD3DMESH QD3DMESHBUILDER QD3DVISUAL QD3DTEXTURE QD3DWRAP ' +
+    'QD3DANIMATION QD3DANIMATIONSET QD3DFACE QD3DVECTOR QCLIPBOARD QPRINTER ' +
+    'QAPPLICATION QCOMPORT';
+
+  // Классы, после которых программа - GUI ($APPTYPE не задан)
+  RqGuiObjectText =
+    'QFORM QBUTTON QCOOLBTN QLABEL QEDIT QPANEL QCANVAS QLISTBOX QCOMBOBOX ' +
+    'QRICHEDIT QSTRINGGRID QCHECKBOX QRADIOBUTTON QGROUPBOX QIMAGE ' +
+    'QTABCONTROL QLISTVIEW QTREEVIEW QSTATUSBAR QMAINMENU QPOPUPMENU';
+
+  CrLf = #13#10;
+  ContinueMark = ' _' + #13#10;   // перенос строки внутри собранного заново
+
+type
+  TTokKind = (tkSpace, tkIdent, tkNumber, tkString, tkComment, tkDirective,
+              tkOp);
+
+  TTok = record
+    Kind: TTokKind;
+    Text: string;       // исходный текст
+    Up: string;         // верхний регистр (слова, директивы)
+    OutText: string;    // что выводится вместо Text
+    Pre: string;        // вывод перед
+    Post: string;       // вывод после
+  end;
+
+  TToks = array of TTok;
+
+  TRqVar = class
+  public
+    Name: string;       // верхний регистр, с суффиксом
+    FbName: string;
+    RqType: string;     // DOUBLE, STRING, LONG, ... или имя класса / TYPE
+    Scope: string;      // '' - модуль, иначе имя SUB/FUNCTION
+    IsArray: Boolean;
+    IsConst: Boolean;
+    Explicit: Boolean;  // объявлена (DIM, DEF..., параметр, CONST)
+  end;
+
+  TRqProc = class
+  public
+    Name: string;       // верхний регистр, с суффиксом
+    FbName: string;
+    IsFunc: Boolean;
+    RetType: string;
+    DeclParams: string; // параметры FreeBASIC из DECLARE
+    Declared: Boolean;
+  end;
+
+  TCondRec = record
+    ParentActive: Boolean;
+    Active: Boolean;
+    ElseSeen: Boolean;
+  end;
+
+  TRqFbConv = class
+  private
+    FOpt: TRqFbOptions;
+    FMsgs: TStrings;
+    FPass: Integer;               // 1 - сбор, 2 - вывод
+    FMainFile: string;
+    FVars: TStringList;           // 'SCOPE|NAME' -> TRqVar
+    FProcs: TStringList;          // NAME -> TRqProc
+    FTypes: TStringList;          // имена TYPE
+    FLabels: TStringList;
+    FRedims: TStringList;         // имена, у которых есть REDIM
+    FDefines: TStringList;        // NAME=замена
+    FDoneFiles: TStringList;      // исходный файл (верхний регистр) -> вывод
+    FOutNames: TStringList;       // занятые имена файлов вывода
+    FWarnedNames: TStringList;    // о чём уже предупреждали
+    FKeywords: TStringList;
+    FFbStrFuncs: TStringList;
+    FRqStrFuncs: TStringList;
+    FFbReserved: TStringList;
+    FObjClasses: TStringList;
+    FGuiClasses: TStringList;
+    FCurFile: string;
+    FCurLine: Integer;
+    FCurProc: TRqProc;
+    FInType: Boolean;
+    FTypeExtends: Boolean;
+    FCreateDepth: Integer;
+    FTypeCheck: Boolean;
+    FEscape: Boolean;
+    FDefaultType: string;
+    FByRefDefault: Boolean;
+    FConds: array of TCondRec;
+    FAppType: string;
+    FHasGui: Boolean;
+    FErrors: Integer;
+    FWarnings: Integer;
+    FLostLines: Integer;          // переводы строк, убранные сборкой заново
+    FLineIsLabel: Boolean;
+
+    procedure Msg(const ALevel, AText: string);
+    procedure Warn(const AText: string);
+    procedure Error(const AText: string);
+    procedure WarnOnce(const AKey, AText: string);
+    function CondActive: Boolean;
+
+    // Разбор строки
+    procedure Lex(const AText: string; var AToks: TToks);
+    function NextSig(const AToks: TToks; AFrom, ATo: Integer): Integer;
+    function PrevSig(const AToks: TToks; AFrom: Integer): Integer;
+    function MatchParen(const AToks: TToks; AOpen, ATo: Integer): Integer;
+    function IsOp(const AToks: TToks; AIdx: Integer; const AOp: string): Boolean;
+    function IsWord(const AToks: TToks; AIdx: Integer; const AWord: string): Boolean;
+    function ApplyDefines(const AText: string): string;
+    function RangeText(const AToks: TToks; AFrom, ATo: Integer): string;
+    function RawText(const AToks: TToks; AFrom, ATo: Integer): string;
+    procedure ClearRange(var AToks: TToks; AFrom, ATo: Integer);
+    procedure Rebuild(var AToks: TToks; AFrom, ATo: Integer; const AText: string);
+    function CommentOut(const AText: string): string;
+
+    // Имена и типы
+    function SuffixOf(const AName: string): string;
+    function BaseOf(const AName: string): string;
+    function SuffixType(const ASuffix: string): string;
+    function Mangle(const ADisplay: string): string;
+    function NormType(const AUp: string): string;
+    function FbType(const ARqType: string): string;
+    function ConvFunc(const ARqType: string): string;
+    function IsObjectType(const ARqType: string): Boolean;
+    function IsNumericType(const ARqType: string): Boolean;
+    function ParseType(const AToks: TToks; var AIdx: Integer; ATo: Integer;
+                       var AStarLen: string): string;
+    function FindVar(const AUp: string): TRqVar;
+    function DeclareVar(const ADisplay, ARqType, AScope: string;
+                        AIsArray, AExplicit, AIsConst: Boolean): TRqVar;
+    function ResolveVar(const ADisplay: string; AIsArray: Boolean): TRqVar;
+    function FindProc(const AUp: string): TRqProc;
+    function GetProc(const ADisplay: string): TRqProc;
+    function ExprIsString(const AToks: TToks; AFrom, ATo: Integer): Boolean;
+    function ExprIsNumber(const AToks: TToks; AFrom, ATo: Integer): Boolean;
+    function EscapeString(const AText: string): string;
+
+    // Операторы
+    procedure ProcessLine(const AText: string; var AOut: string);
+    procedure ProcessStatement(var AToks: TToks; AFrom, ATo: Integer);
+    procedure ProcessExpr(var AToks: TToks; AFrom, ATo: Integer);
+    procedure ProcessIdent(var AToks: TToks; AIdx, ATo: Integer);
+    procedure ProcessAssignOrCall(var AToks: TToks; AFrom, ATo: Integer);
+    procedure ProcessDim(var AToks: TToks; AFrom, ATo: Integer);
+    procedure ProcessDef(var AToks: TToks; AFrom, ATo: Integer);
+    procedure ProcessConst(var AToks: TToks; AFrom, ATo: Integer);
+    procedure ProcessProcHeader(var AToks: TToks; AFrom, ATo: Integer);
+    procedure ProcessDeclare(var AToks: TToks; AFrom, ATo: Integer);
+    function ParseParams(var AToks: TToks; AFrom, ATo: Integer;
+                         const AScope: string): string;
+    procedure ProcessTypeHeader(var AToks: TToks; AFrom, ATo: Integer);
+    procedure ProcessField(var AToks: TToks; AFrom, ATo: Integer);
+    procedure ProcessPrint(var AToks: TToks; AFrom, ATo: Integer);
+    procedure ProcessIf(var AToks: TToks; AFrom, ATo: Integer);
+    procedure ProcessFor(var AToks: TToks; AFrom, ATo: Integer);
+    procedure ProcessIncDec(var AToks: TToks; AFrom, ATo: Integer);
+    function ProcessDirective(var AToks: TToks; AFrom, ATo: Integer;
+                              var AOut: string): Boolean;
+    function ResolveInclude(const AName: string; AAngle: Boolean): string;
+    function ProcessFile(const AFileName: string; AIsMain: Boolean): string;
+    function MainHeader: string;
+    procedure EndOfPass1;
+  public
+    constructor Create(const AOptions: TRqFbOptions; AMessages: TStrings);
+    destructor Destroy; override;
+    function Run(const AMainFile: string; var AResult: TRqFbResult): Boolean;
+  end;
+
+// ---------------------------------------------------------------------------
+//  Служебное
+// ---------------------------------------------------------------------------
+
+procedure FillWordList(AList: TStringList; const AText: string);
+var
+  Words: TStringList;
+  WordIdx: Integer;
+begin
+  AList.Sorted := True;
+  AList.Duplicates := dupIgnore;
+  Words := TStringList.Create;
+  try
+    Words.Text := StringReplace(Trim(AText), ' ', CrLf, [rfReplaceAll]);
+    for WordIdx := 0 to Words.Count - 1 do
+      if Trim(Words[WordIdx]) <> '' then
+        AList.Add(UpperCase(Trim(Words[WordIdx])));
+  finally
+    Words.Free;
+  end;
+end;
+
+function InList(AList: TStringList; const AUp: string): Boolean;
+var
+  Found: Integer;
+begin
+  Result := AList.Find(AUp, Found);
+end;
+
+// Файл без учёта регистра букв (для Linux; в Windows - как есть)
+function FindFileCI(const APath: string): string;
+var
+  Dir, NamePart: string;
+  Found: TSearchRec;
+begin
+  Result := '';
+  if FileExists(APath) then
+  begin
+    Result := ExpandFileName(APath);
+    Exit;
+  end;
+  Dir := ExtractFilePath(APath);
+  NamePart := ExtractFileName(APath);
+  if (Dir = '') or not DirectoryExists(Dir) then
+    Exit;
+  if FindFirst(IncludeTrailingPathDelimiter(Dir) + '*', faAnyFile, Found) = 0 then
+  try
+    repeat
+      if CompareText(Found.Name, NamePart) = 0 then
+      begin
+        Result := ExpandFileName(IncludeTrailingPathDelimiter(Dir) + Found.Name);
+        Exit;
+      end;
+    until FindNext(Found) <> 0;
+  finally
+    FindClose(Found);
+  end;
+end;
+
+// Строка оканчивается продолжением " _" (вне строки в кавычках и
+// комментария)
+function EndsWithContinue(const AText: string): Boolean;
+var
+  CharIdx: Integer;
+  InQuote: Boolean;
+  LastIdx: Integer;
+begin
+  Result := False;
+  InQuote := False;
+  LastIdx := Length(AText);
+  while (LastIdx > 0) and (AText[LastIdx] in [' ', #9]) do
+    Dec(LastIdx);
+  if (LastIdx < 1) or (AText[LastIdx] <> '_') then
+    Exit;
+  // перед "_" - не часть имени (пробел, кавычка, скобка...)
+  if (LastIdx > 1) and (AText[LastIdx - 1] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
+    Exit;
+  for CharIdx := 1 to LastIdx - 1 do
+  begin
+    if AText[CharIdx] = '"' then
+      InQuote := not InQuote
+    else if (AText[CharIdx] = '''') and not InQuote then
+      Exit;
+  end;
+  Result := not InQuote;
+end;
+
+function CountLineBreaks(const AText: string): Integer;
+var
+  CharIdx: Integer;
+begin
+  Result := 0;
+  for CharIdx := 1 to Length(AText) do
+    if AText[CharIdx] = #10 then
+      Inc(Result);
+end;
+
+function RepeatText(const AText: string; ACount: Integer): string;
+var
+  Idx: Integer;
+begin
+  Result := '';
+  for Idx := 1 to ACount do
+    Result := Result + AText;
+end;
+
+// ---------------------------------------------------------------------------
+//  TRqFbConv
+// ---------------------------------------------------------------------------
+
+constructor TRqFbConv.Create(const AOptions: TRqFbOptions; AMessages: TStrings);
+begin
+  inherited Create;
+  FOpt := AOptions;
+  FMsgs := AMessages;
+  FVars := TStringList.Create;
+  FVars.Sorted := True;
+  FProcs := TStringList.Create;
+  FProcs.Sorted := True;
+  FTypes := TStringList.Create;
+  FTypes.Sorted := True;
+  FTypes.Duplicates := dupIgnore;
+  FLabels := TStringList.Create;
+  FLabels.Sorted := True;
+  FLabels.Duplicates := dupIgnore;
+  FRedims := TStringList.Create;
+  FRedims.Sorted := True;
+  FRedims.Duplicates := dupIgnore;
+  FDefines := TStringList.Create;
+  FDoneFiles := TStringList.Create;
+  FOutNames := TStringList.Create;
+  FWarnedNames := TStringList.Create;
+  FWarnedNames.Sorted := True;
+  FKeywords := TStringList.Create;
+  FillWordList(FKeywords, RqKeywordText);
+  FFbStrFuncs := TStringList.Create;
+  FillWordList(FFbStrFuncs, FbStrFuncText);
+  FRqStrFuncs := TStringList.Create;
+  FillWordList(FRqStrFuncs, RqOnlyStrFuncText);
+  FFbReserved := TStringList.Create;
+  FillWordList(FFbReserved, FbReservedText);
+  FObjClasses := TStringList.Create;
+  FillWordList(FObjClasses, RqObjectText);
+  FGuiClasses := TStringList.Create;
+  FillWordList(FGuiClasses, RqGuiObjectText);
+end;
+
+destructor TRqFbConv.Destroy;
+var
+  ItemIdx: Integer;
+begin
+  for ItemIdx := 0 to FVars.Count - 1 do
+    FVars.Objects[ItemIdx].Free;
+  for ItemIdx := 0 to FProcs.Count - 1 do
+    FProcs.Objects[ItemIdx].Free;
+  FVars.Free;
+  FProcs.Free;
+  FTypes.Free;
+  FLabels.Free;
+  FRedims.Free;
+  FDefines.Free;
+  FDoneFiles.Free;
+  FOutNames.Free;
+  FWarnedNames.Free;
+  FKeywords.Free;
+  FFbStrFuncs.Free;
+  FRqStrFuncs.Free;
+  FFbReserved.Free;
+  FObjClasses.Free;
+  FGuiClasses.Free;
+  inherited Destroy;
+end;
+
+procedure TRqFbConv.Msg(const ALevel, AText: string);
+begin
+  if FPass <> 2 then
+    Exit;
+  if FMsgs <> nil then
+    FMsgs.Add(FCurFile + '(' + IntToStr(FCurLine) + ') ' + ALevel + ': ' +
+              AText);
+end;
+
+procedure TRqFbConv.Warn(const AText: string);
+begin
+  if FPass = 2 then
+    Inc(FWarnings);
+  Msg('Warning', AText);
+end;
+
+procedure TRqFbConv.Error(const AText: string);
+begin
+  if FPass = 2 then
+    Inc(FErrors);
+  Msg('Error', AText);
+end;
+
+// Предупреждение один раз на программу по ключу AKey
+procedure TRqFbConv.WarnOnce(const AKey, AText: string);
+var
+  Found: Integer;
+begin
+  if FPass <> 2 then
+    Exit;
+  if FWarnedNames.Find(AKey, Found) then
+    Exit;
+  FWarnedNames.Add(AKey);
+  Warn(AText);
+end;
+
+function TRqFbConv.CondActive: Boolean;
+begin
+  Result := (Length(FConds) = 0) or FConds[High(FConds)].Active;
+end;
+
+// ---------------------------------------------------------------------------
+//  Лексер: слова (с суффиксом типа), числа, строки, комментарии,
+//  директивы ($INCLUDE, #define), знаки. Пробелы и переводы строк
+//  (продолжение " _") - отдельные лексемы: вывод повторяет исходник.
+// ---------------------------------------------------------------------------
+
+procedure TRqFbConv.Lex(const AText: string; var AToks: TToks);
+var
+  Pos0, Pos1, TextLen, Count: Integer;
+  Ch: Char;
+
+  procedure Add(AKind: TTokKind; AStart, AEnd: Integer);
+  begin
+    if Count >= Length(AToks) then
+      SetLength(AToks, Count * 2 + 16);
+    AToks[Count].Kind := AKind;
+    AToks[Count].Text := Copy(AText, AStart, AEnd - AStart + 1);
+    if AKind in [tkIdent, tkDirective] then
+      AToks[Count].Up := UpperCase(AToks[Count].Text)
+    else
+      AToks[Count].Up := AToks[Count].Text;
+    AToks[Count].OutText := AToks[Count].Text;
+    AToks[Count].Pre := '';
+    AToks[Count].Post := '';
+    Inc(Count);
+  end;
+
+  function IsIdentStart(AChar: Char): Boolean;
+  begin
+    Result := AChar in ['A'..'Z', 'a'..'z', '_'];
+  end;
+
+  function IsIdentChar(AChar: Char): Boolean;
+  begin
+    Result := AChar in ['A'..'Z', 'a'..'z', '0'..'9', '_'];
+  end;
+
+begin
+  SetLength(AToks, 0);
+  Count := 0;
+  TextLen := Length(AText);
+  Pos0 := 1;
+  while Pos0 <= TextLen do
+  begin
+    Ch := AText[Pos0];
+    Pos1 := Pos0;
+    // Пробелы, табуляция, переводы строк, продолжение " _"
+    if Ch in [' ', #9, #13, #10] then
+    begin
+      while (Pos1 + 1 <= TextLen) and (AText[Pos1 + 1] in [' ', #9, #13, #10]) do
+        Inc(Pos1);
+      Add(tkSpace, Pos0, Pos1);
+    end
+    else if (Ch = '_') and ((Pos0 = TextLen) or
+            (AText[Pos0 + 1] in [' ', #9, #13, #10])) and
+            ((Pos0 = 1) or not (AText[Pos0 - 1] in ['A'..'Z', 'a'..'z',
+                                                    '0'..'9', '_'])) then
+    begin
+      // "_" продолжения со всем, что до конца физической строки
+      while (Pos1 + 1 <= TextLen) and (AText[Pos1 + 1] in [' ', #9, #13, #10]) do
+        Inc(Pos1);
+      Add(tkSpace, Pos0, Pos1);
+    end
+    else if Ch = '''' then
+    begin
+      // Комментарий до конца строки (физической)
+      while (Pos1 + 1 <= TextLen) and not (AText[Pos1 + 1] in [#13, #10]) do
+        Inc(Pos1);
+      Add(tkComment, Pos0, Pos1);
+      // '$INCLUDE в комментарии fbc принимает за метакоманду QBasic
+      if Copy(AToks[Count - 1].Text, 2, 1) = '$' then
+        AToks[Count - 1].OutText := ''' ' + Copy(AToks[Count - 1].Text, 2, MaxInt);
+    end
+    else if Ch = '"' then
+    begin
+      Inc(Pos1);
+      while Pos1 <= TextLen do
+      begin
+        if FEscape and (AText[Pos1] = '\') and (Pos1 < TextLen) then
+          Inc(Pos1, 2)
+        else if AText[Pos1] = '"' then
+          Break
+        else
+          Inc(Pos1);
+      end;
+      if Pos1 > TextLen then
+        Pos1 := TextLen;
+      Add(tkString, Pos0, Pos1);
+    end
+    else if ((Ch = '$') or (Ch = '#')) and (Pos0 < TextLen) and
+            IsIdentStart(AText[Pos0 + 1]) and
+            ((Count = 0) or ((Count = 1) and (AToks[0].Kind = tkSpace))) then
+    begin
+      // $INCLUDE, $DEFINE... в начале строки; #define - то же, что $DEFINE
+      Inc(Pos1);
+      while (Pos1 + 1 <= TextLen) and IsIdentChar(AText[Pos1 + 1]) do
+        Inc(Pos1);
+      Add(tkDirective, Pos0, Pos1);
+      AToks[Count - 1].Up := '$' + Copy(AToks[Count - 1].Up, 2, MaxInt);
+    end
+    else if IsIdentStart(Ch) then
+    begin
+      while (Pos1 + 1 <= TextLen) and IsIdentChar(AText[Pos1 + 1]) do
+        Inc(Pos1);
+      // Суффикс типа: $ % & ! # ? ?? ???
+      if (Pos1 + 1 <= TextLen) and (AText[Pos1 + 1] in ['$', '%', '!', '#']) then
+        Inc(Pos1)
+      else if (Pos1 + 1 <= TextLen) and (AText[Pos1 + 1] = '&') and
+              not ((Pos1 + 2 <= TextLen) and
+                   (UpCase(AText[Pos1 + 2]) in ['H', 'O', 'B'])) then
+        Inc(Pos1)
+      else if (Pos1 + 1 <= TextLen) and (AText[Pos1 + 1] = '?') then
+      begin
+        Inc(Pos1);
+        if (Pos1 + 1 <= TextLen) and (AText[Pos1 + 1] = '?') then
+          Inc(Pos1);
+        if (Pos1 + 1 <= TextLen) and (AText[Pos1 + 1] = '?') then
+          Inc(Pos1);
+      end;
+      Add(tkIdent, Pos0, Pos1);
+    end
+    else if (Ch in ['0'..'9']) or ((Ch = '.') and (Pos0 < TextLen) and
+            (AText[Pos0 + 1] in ['0'..'9'])) then
+    begin
+      while (Pos1 + 1 <= TextLen) and (AText[Pos1 + 1] in ['0'..'9', '.']) do
+        Inc(Pos1);
+      if (Pos1 + 1 <= TextLen) and (UpCase(AText[Pos1 + 1]) in ['E', 'D']) and
+         (Pos1 + 2 <= TextLen) and
+         (AText[Pos1 + 2] in ['0'..'9', '+', '-']) then
+      begin
+        Inc(Pos1, 2);
+        while (Pos1 + 1 <= TextLen) and (AText[Pos1 + 1] in ['0'..'9']) do
+          Inc(Pos1);
+      end;
+      if (Pos1 + 1 <= TextLen) and (AText[Pos1 + 1] in ['!', '#', '%', '&']) then
+        Inc(Pos1);
+      Add(tkNumber, Pos0, Pos1);
+    end
+    else if (Ch = '&') and (Pos0 < TextLen) and
+            (UpCase(AText[Pos0 + 1]) in ['H', 'O', 'B']) then
+    begin
+      Inc(Pos1);
+      while (Pos1 + 1 <= TextLen) and
+            (UpCase(AText[Pos1 + 1]) in ['0'..'9', 'A'..'F']) do
+        Inc(Pos1);
+      Add(tkNumber, Pos0, Pos1);
+    end
+    else
+    begin
+      if (Pos1 + 1 <= TextLen) and
+         (((Ch = '<') and (AText[Pos1 + 1] in ['>', '='])) or
+          ((Ch = '>') and (AText[Pos1 + 1] = '='))) then
+        Inc(Pos1);
+      Add(tkOp, Pos0, Pos1);
+    end;
+    Pos0 := Pos1 + 1;
+  end;
+  SetLength(AToks, Count);
+end;
+
+function TRqFbConv.NextSig(const AToks: TToks; AFrom, ATo: Integer): Integer;
+var
+  TokIdx: Integer;
+begin
+  Result := -1;
+  if AFrom < 0 then
+    Exit;
+  for TokIdx := AFrom to ATo do
+    if (TokIdx <= High(AToks)) and (AToks[TokIdx].Kind <> tkSpace) then
+    begin
+      Result := TokIdx;
+      Exit;
+    end;
+end;
+
+function TRqFbConv.PrevSig(const AToks: TToks; AFrom: Integer): Integer;
+var
+  TokIdx: Integer;
+begin
+  Result := -1;
+  for TokIdx := AFrom downto 0 do
+    if AToks[TokIdx].Kind <> tkSpace then
+    begin
+      Result := TokIdx;
+      Exit;
+    end;
+end;
+
+// Закрывающая скобка к открывающей AOpen; нет - -1
+function TRqFbConv.MatchParen(const AToks: TToks; AOpen, ATo: Integer): Integer;
+var
+  TokIdx, Depth: Integer;
+begin
+  Result := -1;
+  Depth := 0;
+  for TokIdx := AOpen to ATo do
+    if AToks[TokIdx].Kind = tkOp then
+    begin
+      if AToks[TokIdx].Text = '(' then
+        Inc(Depth)
+      else if AToks[TokIdx].Text = ')' then
+      begin
+        Dec(Depth);
+        if Depth = 0 then
+        begin
+          Result := TokIdx;
+          Exit;
+        end;
+      end;
+    end;
+end;
+
+function TRqFbConv.IsOp(const AToks: TToks; AIdx: Integer; const AOp: string): Boolean;
+begin
+  Result := (AIdx >= 0) and (AIdx <= High(AToks)) and
+            (AToks[AIdx].Kind = tkOp) and (AToks[AIdx].Text = AOp);
+end;
+
+function TRqFbConv.IsWord(const AToks: TToks; AIdx: Integer; const AWord: string): Boolean;
+begin
+  Result := (AIdx >= 0) and (AIdx <= High(AToks)) and
+            (AToks[AIdx].Kind = tkIdent) and (AToks[AIdx].Up = AWord);
+end;
+
+// $DEFINE: слово заменяется определением (один раз, без повторной замены)
+function TRqFbConv.ApplyDefines(const AText: string): string;
+var
+  Toks: TToks;
+  TokIdx, PrevIdx, FirstIdx, DefIdx: Integer;
+  FirstUp: string;
+begin
+  Result := AText;
+  if FDefines.Count = 0 then
+    Exit;
+  Lex(AText, Toks);
+  FirstIdx := NextSig(Toks, 0, High(Toks));
+  FirstUp := '';
+  if FirstIdx >= 0 then
+    FirstUp := Toks[FirstIdx].Up;
+  Result := '';
+  for TokIdx := 0 to High(Toks) do
+  begin
+    if (Toks[TokIdx].Kind = tkIdent) and
+       // в самих $DEFINE / $UNDEF / $IFDEF заменяется только первое слово
+       not (((FirstUp = '$DEFINE') or (FirstUp = '$UNDEF') or
+             (FirstUp = '$IFDEF') or (FirstUp = '$IFNDEF')) and
+            (TokIdx > FirstIdx)) then
+    begin
+      PrevIdx := PrevSig(Toks, TokIdx - 1);
+      if not IsOp(Toks, PrevIdx, '.') then
+      begin
+        DefIdx := FDefines.IndexOfName(Toks[TokIdx].Up);
+        if DefIdx >= 0 then
+        begin
+          Result := Result + FDefines.ValueFromIndex[DefIdx];
+          Continue;
+        end;
+      end;
+    end;
+    Result := Result + Toks[TokIdx].Text;
+  end;
+end;
+
+// Текст вывода лексем AFrom..ATo в одну строку: переводы строк -
+// пробелами, их число - в FLostLines (Rebuild вернёт их продолжениями)
+function TRqFbConv.RangeText(const AToks: TToks; AFrom, ATo: Integer): string;
+var
+  TokIdx: Integer;
+begin
+  Result := '';
+  for TokIdx := AFrom to ATo do
+  begin
+    if AToks[TokIdx].Kind = tkSpace then
+    begin
+      Inc(FLostLines, CountLineBreaks(AToks[TokIdx].OutText));
+      if AToks[TokIdx].OutText <> '' then
+        Result := Result + ' ';
+    end
+    else
+      Result := Result + AToks[TokIdx].Pre + AToks[TokIdx].OutText +
+                AToks[TokIdx].Post;
+  end;
+  Result := Trim(Result);
+end;
+
+// Исходный текст лексем (для сообщений)
+function TRqFbConv.RawText(const AToks: TToks; AFrom, ATo: Integer): string;
+var
+  TokIdx: Integer;
+begin
+  Result := '';
+  for TokIdx := AFrom to ATo do
+    if AToks[TokIdx].Kind = tkSpace then
+      Result := Result + ' '
+    else
+      Result := Result + AToks[TokIdx].Text;
+  Result := Trim(Result);
+end;
+
+procedure TRqFbConv.ClearRange(var AToks: TToks; AFrom, ATo: Integer);
+var
+  TokIdx: Integer;
+begin
+  for TokIdx := AFrom to ATo do
+  begin
+    if AToks[TokIdx].Kind = tkSpace then
+      Inc(FLostLines, CountLineBreaks(AToks[TokIdx].OutText));
+    AToks[TokIdx].OutText := '';
+    AToks[TokIdx].Pre := '';
+    AToks[TokIdx].Post := '';
+  end;
+end;
+
+// Оператор AFrom..ATo заменяется текстом AText; переводы строк, которые
+// в нём были, - продолжениями " _" в конце (число строк не меняется)
+procedure TRqFbConv.Rebuild(var AToks: TToks; AFrom, ATo: Integer; const AText: string);
+var
+  FirstIdx: Integer;
+begin
+  ClearRange(AToks, AFrom, ATo);
+  FirstIdx := NextSig(AToks, AFrom, ATo);
+  if FirstIdx < 0 then
+    FirstIdx := AFrom;
+  AToks[FirstIdx].OutText := AText + RepeatText(ContinueMark, FLostLines);
+  FLostLines := 0;
+end;
+
+// Строки текста - комментариями (число строк то же)
+function TRqFbConv.CommentOut(const AText: string): string;
+begin
+  Result := '''~ ' + StringReplace(AText, #10, #10 + '''~ ', [rfReplaceAll]);
+end;
+
+// ---------------------------------------------------------------------------
+//  Имена и типы
+// ---------------------------------------------------------------------------
+
+function TRqFbConv.SuffixOf(const AName: string): string;
+var
+  CharIdx: Integer;
+begin
+  CharIdx := Length(AName);
+  while (CharIdx > 0) and (AName[CharIdx] in ['$', '%', '&', '!', '#', '?']) do
+    Dec(CharIdx);
+  Result := Copy(AName, CharIdx + 1, MaxInt);
+end;
+
+function TRqFbConv.BaseOf(const AName: string): string;
+begin
+  Result := Copy(AName, 1, Length(AName) - Length(SuffixOf(AName)));
+end;
+
+function TRqFbConv.SuffixType(const ASuffix: string): string;
+begin
+  if ASuffix = '$' then
+    Result := 'STRING'
+  else if ASuffix = '%' then
+    Result := 'SHORT'
+  else if ASuffix = '&' then
+    Result := 'LONG'
+  else if ASuffix = '!' then
+    Result := 'SINGLE'
+  else if ASuffix = '#' then
+    Result := 'DOUBLE'
+  else if ASuffix = '?' then
+    Result := 'BYTE'
+  else if ASuffix = '??' then
+    Result := 'WORD'
+  else if ASuffix = '???' then
+    Result := 'DWORD'
+  else
+    Result := FDefaultType;
+end;
+
+// Имя для FreeBASIC: суффикс - частью имени (a$ -> a__s), слово
+// FreeBASIC - с _v
+function TRqFbConv.Mangle(const ADisplay: string): string;
+var
+  Suffix, Base: string;
+begin
+  Suffix := SuffixOf(ADisplay);
+  Base := BaseOf(ADisplay);
+  if Suffix = '$' then
+    Result := Base + '__s'
+  else if Suffix = '%' then
+    Result := Base + '__sh'
+  else if Suffix = '&' then
+    Result := Base + '__l'
+  else if Suffix = '!' then
+    Result := Base + '__f'
+  else if Suffix = '#' then
+    Result := Base + '__d'
+  else if Suffix = '?' then
+    Result := Base + '__b'
+  else if Suffix = '??' then
+    Result := Base + '__w'
+  else if Suffix = '???' then
+    Result := Base + '__dw'
+  else if InList(FFbReserved, UpperCase(Base)) then
+    Result := Base + '_v'
+  else
+    Result := Base;
+end;
+
+function TRqFbConv.NormType(const AUp: string): string;
+begin
+  if AUp = 'INTEGER' then
+    Result := 'LONG'
+  else
+    Result := AUp;
+end;
+
+function TRqFbConv.FbType(const ARqType: string): string;
+begin
+  if ARqType = 'DOUBLE' then
+    Result := 'Double'
+  else if ARqType = 'SINGLE' then
+    Result := 'Single'
+  else if ARqType = 'LONG' then
+    Result := 'Long'
+  else if ARqType = 'SHORT' then
+    Result := 'Short'
+  else if ARqType = 'BYTE' then
+    Result := 'UByte'
+  else if ARqType = 'WORD' then
+    Result := 'UShort'
+  else if ARqType = 'DWORD' then
+    Result := 'ULong'
+  else if ARqType = 'STRING' then
+    Result := 'String'
+  else
+    Result := ARqType;
+end;
+
+function TRqFbConv.ConvFunc(const ARqType: string): string;
+begin
+  if ARqType = 'DOUBLE' then
+    Result := 'RqNum'
+  else if ARqType = 'SINGLE' then
+    Result := 'RqSng'
+  else if ARqType = 'LONG' then
+    Result := 'RqLong'
+  else if ARqType = 'SHORT' then
+    Result := 'RqShort'
+  else if ARqType = 'BYTE' then
+    Result := 'RqByte'
+  else if ARqType = 'WORD' then
+    Result := 'RqWord'
+  else if ARqType = 'DWORD' then
+    Result := 'RqDword'
+  else if ARqType = 'STRING' then
+    Result := 'RqStr'
+  else
+    Result := '';
+end;
+
+function TRqFbConv.IsObjectType(const ARqType: string): Boolean;
+begin
+  Result := InList(FObjClasses, ARqType) or InList(FTypes, ARqType) or
+            (ARqType = 'VARIANT');
+end;
+
+function TRqFbConv.IsNumericType(const ARqType: string): Boolean;
+begin
+  Result := (ARqType <> 'STRING') and (ConvFunc(ARqType) <> '');
+end;
+
+// Тип после AS (AIdx - на слове типа; после разбора - на последней
+// лексеме типа). STRING * n - длина в AStarLen.
+function TRqFbConv.ParseType(const AToks: TToks; var AIdx: Integer; ATo: Integer;
+                             var AStarLen: string): string;
+var
+  StarIdx, LenIdx: Integer;
+begin
+  AStarLen := '';
+  Result := NormType(AToks[AIdx].Up);
+  if Result = 'STRING' then
+  begin
+    StarIdx := NextSig(AToks, AIdx + 1, ATo);
+    if IsOp(AToks, StarIdx, '*') then
+    begin
+      LenIdx := NextSig(AToks, StarIdx + 1, ATo);
+      if LenIdx >= 0 then
+      begin
+        AStarLen := AToks[LenIdx].Text;
+        AIdx := LenIdx;
+      end;
+    end;
+  end;
+  if Result = 'VARIANT' then
+    WarnOnce('VARIANT', 'тип VARIANT пока не поддержан');
+end;
+
+// Переменная по имени: сначала в текущей SUB/FUNCTION, потом в модуле
+function TRqFbConv.FindVar(const AUp: string): TRqVar;
+var
+  Found: Integer;
+begin
+  Result := nil;
+  if (FCurProc <> nil) and FVars.Find(FCurProc.Name + '|' + AUp, Found) then
+  begin
+    Result := TRqVar(FVars.Objects[Found]);
+    Exit;
+  end;
+  if FVars.Find('|' + AUp, Found) then
+    Result := TRqVar(FVars.Objects[Found]);
+end;
+
+function TRqFbConv.DeclareVar(const ADisplay, ARqType, AScope: string;
+                              AIsArray, AExplicit, AIsConst: Boolean): TRqVar;
+var
+  Key: string;
+  Found: Integer;
+begin
+  Key := AScope + '|' + UpperCase(ADisplay);
+  if FVars.Find(Key, Found) then
+  begin
+    Result := TRqVar(FVars.Objects[Found]);
+    if AExplicit then
+    begin
+      Result.Explicit := True;
+      Result.RqType := ARqType;
+      Result.IsArray := Result.IsArray or AIsArray;
+      Result.IsConst := AIsConst;
+    end;
+    Exit;
+  end;
+  Result := TRqVar.Create;
+  Result.Name := UpperCase(ADisplay);
+  Result.FbName := Mangle(ADisplay);
+  Result.RqType := ARqType;
+  Result.Scope := AScope;
+  Result.IsArray := AIsArray;
+  Result.Explicit := AExplicit;
+  Result.IsConst := AIsConst;
+  FVars.AddObject(Key, Result);
+end;
+
+// Переменная из выражения; не объявлена - неявная (тип по суффиксу)
+function TRqFbConv.ResolveVar(const ADisplay: string; AIsArray: Boolean): TRqVar;
+var
+  Scope: string;
+begin
+  Result := FindVar(UpperCase(ADisplay));
+  if Result = nil then
+  begin
+    Scope := '';
+    if FCurProc <> nil then
+      Scope := FCurProc.Name;
+    Result := DeclareVar(ADisplay, SuffixType(SuffixOf(ADisplay)), Scope,
+                         AIsArray, False, False);
+    if AIsArray then
+      WarnOnce('ARR|' + UpperCase(ADisplay), ADisplay + ': массив без DIM');
+  end;
+  if (FPass = 2) and FTypeCheck and not Result.Explicit then
+    Error(ADisplay + ': переменная не объявлена ($TYPECHECK ON)');
+end;
+
+function TRqFbConv.FindProc(const AUp: string): TRqProc;
+var
+  Found: Integer;
+begin
+  Result := nil;
+  if FProcs.Find(AUp, Found) then
+    Result := TRqProc(FProcs.Objects[Found]);
+end;
+
+function TRqFbConv.GetProc(const ADisplay: string): TRqProc;
+begin
+  Result := FindProc(UpperCase(ADisplay));
+  if Result <> nil then
+    Exit;
+  Result := TRqProc.Create;
+  Result.Name := UpperCase(ADisplay);
+  Result.FbName := Mangle(ADisplay);
+  FProcs.AddObject(Result.Name, Result);
+end;
+
+// Выражение - строковое: на верхнем уровне скобок есть строка в кавычках,
+// строковая переменная или функция со знаком $
+function TRqFbConv.ExprIsString(const AToks: TToks; AFrom, ATo: Integer): Boolean;
+var
+  TokIdx, Depth: Integer;
+  VarRec: TRqVar;
+  ProcRec: TRqProc;
+begin
+  Result := False;
+  Depth := 0;
+  for TokIdx := AFrom to ATo do
+  begin
+    if IsOp(AToks, TokIdx, '(') then
+      Inc(Depth)
+    else if IsOp(AToks, TokIdx, ')') then
+      Dec(Depth)
+    else if Depth = 0 then
+    begin
+      if AToks[TokIdx].Kind = tkString then
+        Result := True
+      else if (AToks[TokIdx].Kind = tkIdent) and
+              not IsOp(AToks, PrevSig(AToks, TokIdx - 1), '.') then
+      begin
+        if SuffixOf(AToks[TokIdx].Up) = '$' then
+          Result := True
+        else
+        begin
+          VarRec := FindVar(AToks[TokIdx].Up);
+          if (VarRec <> nil) and (VarRec.RqType = 'STRING') then
+            Result := True;
+          ProcRec := FindProc(AToks[TokIdx].Up);
+          if (ProcRec <> nil) and ProcRec.IsFunc and
+             (ProcRec.RetType = 'STRING') then
+            Result := True;
+        end;
+      end;
+      if Result then
+        Exit;
+    end;
+  end;
+end;
+
+// Выражение - явно числовое: на верхнем уровне только числа и числовые
+// переменные (свойства объектов и функции - тип неизвестен)
+function TRqFbConv.ExprIsNumber(const AToks: TToks; AFrom, ATo: Integer): Boolean;
+var
+  TokIdx, Depth: Integer;
+  VarRec: TRqVar;
+  HasOperand: Boolean;
+begin
+  Result := False;
+  HasOperand := False;
+  Depth := 0;
+  for TokIdx := AFrom to ATo do
+  begin
+    if IsOp(AToks, TokIdx, '(') then
+      Inc(Depth)
+    else if IsOp(AToks, TokIdx, ')') then
+      Dec(Depth)
+    else if Depth = 0 then
+      case AToks[TokIdx].Kind of
+        tkNumber:
+          HasOperand := True;
+        tkString:
+          Exit;
+        tkIdent:
+          begin
+            if InList(FKeywords, AToks[TokIdx].Up) and
+               ((AToks[TokIdx].Up = 'AND') or (AToks[TokIdx].Up = 'OR') or
+                (AToks[TokIdx].Up = 'MOD') or (AToks[TokIdx].Up = 'XOR') or
+                (AToks[TokIdx].Up = 'NOT')) then
+              Continue;
+            VarRec := FindVar(AToks[TokIdx].Up);
+            if (VarRec = nil) or not IsNumericType(VarRec.RqType) or
+               IsOp(AToks, NextSig(AToks, TokIdx + 1, ATo), '.') then
+              Exit;
+            HasOperand := True;
+          end;
+      end;
+  end;
+  Result := HasOperand;
+end;
+
+// Строка RapidQ при $ESCAPECHARS ON -> строка FreeBASIC !"..."
+// (\xHH -> \&hHH, \### -> \&hHH; остальные \a \b \f \n \r \t \v \\ \"
+// у FreeBASIC те же)
+function TRqFbConv.EscapeString(const AText: string): string;
+var
+  CharIdx, CodeValue, DigitCount: Integer;
+begin
+  Result := '!"';
+  CharIdx := 2;
+  while CharIdx < Length(AText) do
+  begin
+    if (AText[CharIdx] = '\') and (CharIdx + 1 < Length(AText)) then
+    begin
+      if (AText[CharIdx + 1] in ['x', 'X']) and (CharIdx + 3 < Length(AText)) then
+      begin
+        Result := Result + '\&h' + Copy(AText, CharIdx + 2, 2);
+        Inc(CharIdx, 4);
+        Continue;
+      end;
+      if AText[CharIdx + 1] in ['0'..'9'] then
+      begin
+        CodeValue := 0;
+        DigitCount := 0;
+        while (DigitCount < 3) and (CharIdx + 1 + DigitCount < Length(AText)) and
+              (AText[CharIdx + 1 + DigitCount] in ['0'..'9']) and
+              (CodeValue * 10 + Ord(AText[CharIdx + 1 + DigitCount]) - 48 <= 255) do
+        begin
+          CodeValue := CodeValue * 10 + Ord(AText[CharIdx + 1 + DigitCount]) - 48;
+          Inc(DigitCount);
+        end;
+        Result := Result + '\&h' + IntToHex(CodeValue, 2);
+        Inc(CharIdx, 1 + DigitCount);
+        Continue;
+      end;
+      Result := Result + AText[CharIdx] + AText[CharIdx + 1];
+      Inc(CharIdx, 2);
+      Continue;
+    end;
+    Result := Result + AText[CharIdx];
+    Inc(CharIdx);
+  end;
+  Result := Result + '"';
+end;
+
+// ---------------------------------------------------------------------------
+//  Строка: условная компиляция, директивы, разбиение на операторы по ":"
+// ---------------------------------------------------------------------------
+
+procedure TRqFbConv.ProcessLine(const AText: string; var AOut: string);
+var
+  Toks: TToks;
+  Text, FirstUp, CondName: string;
+  FirstIdx, TokIdx, StartIdx, Depth, LastIdx, NameIdx: Integer;
+  Cond: TCondRec;
+  IsDefined: Boolean;
+begin
+  Text := ApplyDefines(AText);
+  Lex(Text, Toks);
+  AOut := AText;
+  FirstIdx := NextSig(Toks, 0, High(Toks));
+  if FirstIdx < 0 then
+    Exit;
+  FirstUp := Toks[FirstIdx].Up;
+
+  // $IFDEF / $IFNDEF / $ELSE / $ENDIF выполняются здесь же
+  if (Toks[FirstIdx].Kind = tkDirective) and
+     ((FirstUp = '$IFDEF') or (FirstUp = '$IFNDEF') or (FirstUp = '$ELSE') or
+      (FirstUp = '$ENDIF')) then
+  begin
+    AOut := CommentOut(AText);
+    if (FirstUp = '$IFDEF') or (FirstUp = '$IFNDEF') then
+    begin
+      NameIdx := NextSig(Toks, FirstIdx + 1, High(Toks));
+      CondName := '';
+      if NameIdx >= 0 then
+        CondName := Toks[NameIdx].Up;
+      IsDefined := FDefines.IndexOfName(CondName) >= 0;
+      Cond.ParentActive := CondActive;
+      if FirstUp = '$IFDEF' then
+        Cond.Active := Cond.ParentActive and IsDefined
+      else
+        Cond.Active := Cond.ParentActive and not IsDefined;
+      Cond.ElseSeen := False;
+      SetLength(FConds, Length(FConds) + 1);
+      FConds[High(FConds)] := Cond;
+    end
+    else if FirstUp = '$ELSE' then
+    begin
+      if Length(FConds) = 0 then
+        Error('$ELSE без $IFDEF')
+      else
+        with FConds[High(FConds)] do
+        begin
+          Active := ParentActive and not Active and not ElseSeen;
+          ElseSeen := True;
+        end;
+    end
+    else
+    begin
+      if Length(FConds) = 0 then
+        Error('$ENDIF без $IFDEF')
+      else
+        SetLength(FConds, Length(FConds) - 1);
+    end;
+    Exit;
+  end;
+
+  if not CondActive then
+  begin
+    AOut := CommentOut(AText);
+    Exit;
+  end;
+
+  // Метка в начале строки: Имя:
+  FLineIsLabel := False;
+  StartIdx := 0;
+  if (Toks[FirstIdx].Kind = tkIdent) and
+     IsOp(Toks, NextSig(Toks, FirstIdx + 1, High(Toks)), ':') and
+     not InList(FKeywords, FirstUp) and (FindProc(FirstUp) = nil) then
+  begin
+    if FPass = 1 then
+      FLabels.Add(FirstUp);
+    StartIdx := NextSig(Toks, FirstIdx + 1, High(Toks)) + 1;
+  end;
+
+  // Директивы - строкой целиком
+  if Toks[FirstIdx].Kind = tkDirective then
+  begin
+    if ProcessDirective(Toks, FirstIdx, High(Toks), AOut) then
+      Exit;
+  end;
+
+  // Операторы через ":" на верхнем уровне скобок; комментарий - конец
+  Depth := 0;
+  LastIdx := High(Toks);
+  for TokIdx := StartIdx to High(Toks) do
+    if Toks[TokIdx].Kind = tkComment then
+    begin
+      LastIdx := TokIdx - 1;
+      Break;
+    end;
+  TokIdx := StartIdx;
+  while TokIdx <= LastIdx do
+  begin
+    if IsOp(Toks, TokIdx, '(') then
+      Inc(Depth)
+    else if IsOp(Toks, TokIdx, ')') then
+      Dec(Depth)
+    else if (Depth = 0) and IsOp(Toks, TokIdx, ':') then
+    begin
+      if TokIdx - 1 >= StartIdx then
+        ProcessStatement(Toks, StartIdx, TokIdx - 1);
+      StartIdx := TokIdx + 1;
+    end;
+    Inc(TokIdx);
+  end;
+  if StartIdx <= LastIdx then
+    ProcessStatement(Toks, StartIdx, LastIdx);
+
+  AOut := '';
+  for TokIdx := 0 to High(Toks) do
+    AOut := AOut + Toks[TokIdx].Pre + Toks[TokIdx].OutText + Toks[TokIdx].Post;
+end;
+
+// Директива в начале строки. True - строка выведена целиком (AOut).
+function TRqFbConv.ProcessDirective(var AToks: TToks; AFrom, ATo: Integer;
+                                    var AOut: string): Boolean;
+var
+  Name, Value, IncName, Found, OutPath, Original: string;
+  ArgIdx, CloseIdx, TokIdx, DefIdx: Integer;
+  Angle: Boolean;
+begin
+  Result := True;
+  Name := AToks[AFrom].Up;
+  Original := '';
+  for TokIdx := AFrom to ATo do
+    Original := Original + AToks[TokIdx].Text;
+  AOut := CommentOut(Original);
+  ArgIdx := NextSig(AToks, AFrom + 1, ATo);
+  Value := '';
+  if ArgIdx >= 0 then
+    Value := AToks[ArgIdx].Up;
+
+  if Name = '$INCLUDE' then
+  begin
+    IncName := '';
+    Angle := False;
+    if (ArgIdx >= 0) and (AToks[ArgIdx].Kind = tkString) then
+      IncName := Copy(AToks[ArgIdx].Text, 2, Length(AToks[ArgIdx].Text) - 2)
+    else if IsOp(AToks, ArgIdx, '<') then
+    begin
+      Angle := True;
+      CloseIdx := ArgIdx + 1;
+      while (CloseIdx <= ATo) and not IsOp(AToks, CloseIdx, '>') do
+      begin
+        IncName := IncName + AToks[CloseIdx].Text;
+        Inc(CloseIdx);
+      end;
+    end;
+    IncName := Trim(IncName);
+    if IncName = '' then
+    begin
+      Error('$INCLUDE: не указан файл');
+      Exit;
+    end;
+    Found := ResolveInclude(IncName, Angle);
+    if Found = '' then
+    begin
+      Error('$INCLUDE: файл не найден: ' + IncName);
+      Exit;
+    end;
+    // Полный путь: после #line fbc ищет относительные пути от папки
+    // исходника RapidQ, а не от папки переведённого файла
+    OutPath := ProcessFile(Found, False);
+    AOut := '#include once "' + OutPath + '"';
+    Exit;
+  end;
+
+  if Name = '$DEFINE' then
+  begin
+    if (ArgIdx >= 0) and (AToks[ArgIdx].Kind = tkIdent) then
+    begin
+      Value := '';
+      for TokIdx := ArgIdx + 1 to ATo do
+        if AToks[TokIdx].Kind <> tkComment then
+          Value := Value + AToks[TokIdx].Text;
+      Value := Trim(Value);
+      DefIdx := FDefines.IndexOfName(AToks[ArgIdx].Up);
+      if DefIdx >= 0 then
+        FDefines.Delete(DefIdx);
+      FDefines.Add(AToks[ArgIdx].Up + '=' + Value);
+    end
+    else if (ArgIdx >= 0) and (AToks[ArgIdx].Kind = tkDirective) and
+            (AToks[ArgIdx].Up = '$DEFINE') then
+      // $define #define $define - #define и так означает $DEFINE
+    else
+      WarnOnce('DEFINE|' + RawText(AToks, ArgIdx, ArgIdx),
+               '$DEFINE ' + RawText(AToks, ArgIdx, ArgIdx) +
+               ': переопределение знаков не поддержано');
+    Exit;
+  end;
+
+  if Name = '$UNDEF' then
+  begin
+    for TokIdx := ArgIdx to ATo do
+      if (TokIdx >= 0) and (AToks[TokIdx].Kind = tkIdent) then
+      begin
+        DefIdx := FDefines.IndexOfName(AToks[TokIdx].Up);
+        if DefIdx >= 0 then
+          FDefines.Delete(DefIdx);
+      end;
+    Exit;
+  end;
+
+  if Name = '$TYPECHECK' then
+  begin
+    FTypeCheck := Value = 'ON';
+    Exit;
+  end;
+
+  if Name = '$APPTYPE' then
+  begin
+    if (Value = 'CONSOLE') or (Value = 'GUI') then
+      FAppType := Value
+    else if Value = 'CGI' then
+    begin
+      FAppType := 'CONSOLE';
+      Warn('$APPTYPE CGI: собирается как CONSOLE');
+    end;
+    Exit;
+  end;
+
+  if Name = '$ESCAPECHARS' then
+  begin
+    FEscape := Value = 'ON';
+    Exit;
+  end;
+
+  if Name = '$OPTIMIZE' then
+    Exit;
+
+  if Name = '$OPTION' then
+  begin
+    TokIdx := NextSig(AToks, ArgIdx + 1, ATo);
+    if Value = 'DIM' then
+    begin
+      if TokIdx >= 0 then
+        FDefaultType := NormType(AToks[TokIdx].Up);
+    end
+    else if Value = 'EXPLICIT' then
+      FTypeCheck := True
+    else if Value = 'BYREF' then
+      FByRefDefault := True
+    else
+      Warn('$OPTION ' + Value + ': не поддержано, пропущено');
+    Exit;
+  end;
+
+  if (Name = '$RESOURCE') or (Name = '$MACRO') then
+  begin
+    Warn(AToks[AFrom].Text + ': пока не поддержано, строка пропущена');
+    Exit;
+  end;
+
+  Warn(AToks[AFrom].Text + ': неизвестная директива, строка пропущена');
+end;
+
+function TRqFbConv.ResolveInclude(const AName: string; AAngle: Boolean): string;
+var
+  Dirs: TStringList;
+  DirIdx: Integer;
+  NameFixed: string;
+begin
+  Result := '';
+  NameFixed := StringReplace(AName, '\', PathDelim, [rfReplaceAll]);
+  NameFixed := StringReplace(NameFixed, '/', PathDelim, [rfReplaceAll]);
+  if (ExtractFileDrive(NameFixed) <> '') or (Copy(NameFixed, 1, 1) = PathDelim) then
+  begin
+    Result := FindFileCI(NameFixed);
+    Exit;
+  end;
+  Dirs := TStringList.Create;
+  try
+    Dirs.Add(ExtractFilePath(FCurFile));
+    Dirs.Add(ExtractFilePath(FMainFile));
+    Dirs.Text := Dirs.Text + StringReplace(FOpt.IncDirs, ';', CrLf, [rfReplaceAll]);
+    if AAngle then
+      Dirs.Text := Dirs.Text + StringReplace(GetEnvironmentVariable('PATH'), ';',
+                                             CrLf, [rfReplaceAll]);
+    for DirIdx := 0 to Dirs.Count - 1 do
+      if Trim(Dirs[DirIdx]) <> '' then
+      begin
+        Result := FindFileCI(IncludeTrailingPathDelimiter(Trim(Dirs[DirIdx])) +
+                             NameFixed);
+        if Result <> '' then
+          Exit;
+      end;
+  finally
+    Dirs.Free;
+  end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Операторы
+// ---------------------------------------------------------------------------
+
+procedure TRqFbConv.ProcessStatement(var AToks: TToks; AFrom, ATo: Integer);
+var
+  FirstIdx, NextIdx: Integer;
+  Up: string;
+begin
+  FirstIdx := NextSig(AToks, AFrom, ATo);
+  if FirstIdx < 0 then
+    Exit;
+  if AToks[FirstIdx].Kind = tkDirective then
+  begin
+    Warn(AToks[FirstIdx].Text + ': директива не в начале строки, пропущена');
+    Exit;
+  end;
+  if IsOp(AToks, FirstIdx, '?') then
+  begin
+    ProcessPrint(AToks, FirstIdx, ATo);
+    Exit;
+  end;
+  if AToks[FirstIdx].Kind <> tkIdent then
+  begin
+    ProcessExpr(AToks, FirstIdx, ATo);
+    Exit;
+  end;
+  Up := AToks[FirstIdx].Up;
+  NextIdx := NextSig(AToks, FirstIdx + 1, ATo);
+
+  // Внутри TYPE ... EXTENDS - пока как есть
+  if FInType and FTypeExtends and not ((Up = 'END') and IsWord(AToks, NextIdx, 'TYPE')) then
+    Exit;
+
+  if Up = 'REM' then
+    Exit;
+  if (Up = 'DIM') or (Up = 'REDIM') then
+    ProcessDim(AToks, FirstIdx, ATo)
+  else if (Copy(Up, 1, 3) = 'DEF') and
+          ((Up = 'DEFINT') or (Up = 'DEFSTR') or (Up = 'DEFDBL') or
+           (Up = 'DEFSNG') or (Up = 'DEFBYTE') or (Up = 'DEFWORD') or
+           (Up = 'DEFDWORD') or (Up = 'DEFLNG') or (Up = 'DEFSHORT')) then
+    ProcessDef(AToks, FirstIdx, ATo)
+  else if ((Up = 'PUBLIC') or (Up = 'PRIVATE')) and
+          IsWord(AToks, NextIdx, 'CONST') then
+  begin
+    AToks[FirstIdx].OutText := '';
+    ProcessConst(AToks, NextIdx, ATo);
+  end
+  else if Up = 'CONST' then
+    ProcessConst(AToks, FirstIdx, ATo)
+  else if (Up = 'SUB') or (Up = 'FUNCTION') or (Up = 'SUBI') or
+          (Up = 'FUNCTIONI') then
+    ProcessProcHeader(AToks, FirstIdx, ATo)
+  else if Up = 'END' then
+  begin
+    if IsWord(AToks, NextIdx, 'SUB') or IsWord(AToks, NextIdx, 'FUNCTION') or
+       IsWord(AToks, NextIdx, 'SUBI') or IsWord(AToks, NextIdx, 'FUNCTIONI') then
+    begin
+      FCurProc := nil;
+      if IsWord(AToks, NextIdx, 'SUBI') then
+        AToks[NextIdx].OutText := 'Sub'
+      else if IsWord(AToks, NextIdx, 'FUNCTIONI') then
+        AToks[NextIdx].OutText := 'Function';
+    end
+    else if IsWord(AToks, NextIdx, 'TYPE') then
+    begin
+      FInType := False;
+      FTypeExtends := False;
+    end
+    else if IsWord(AToks, NextIdx, 'CREATE') then
+    begin
+      if FCreateDepth > 0 then
+        Dec(FCreateDepth);
+    end;
+  end
+  else if Up = 'DECLARE' then
+    ProcessDeclare(AToks, FirstIdx, ATo)
+  else if Up = 'TYPE' then
+    ProcessTypeHeader(AToks, FirstIdx, ATo)
+  else if Up = 'CREATE' then
+  begin
+    Inc(FCreateDepth);
+    WarnOnce('CREATE', 'CREATE ... END CREATE пока не поддержано');
+  end
+  else if (Up = 'PRINT') or (Up = 'LPRINT') then
+  begin
+    if Up = 'LPRINT' then
+      WarnOnce('LPRINT', 'LPRINT пока не поддержан');
+    ProcessPrint(AToks, FirstIdx, ATo);
+  end
+  else if (Up = 'IF') or (Up = 'ELSEIF') then
+    ProcessIf(AToks, FirstIdx, ATo)
+  else if Up = 'ELSE' then
+    ProcessStatement(AToks, FirstIdx + 1, ATo)
+  else if Up = 'FOR' then
+    ProcessFor(AToks, FirstIdx, ATo)
+  else if Up = 'CALL' then
+  begin
+    AToks[FirstIdx].OutText := '';
+    ProcessAssignOrCall(AToks, FirstIdx + 1, ATo);
+  end
+  else if Up = 'LET' then
+  begin
+    AToks[FirstIdx].OutText := '';
+    ProcessAssignOrCall(AToks, FirstIdx + 1, ATo);
+  end
+  else if (Up = 'GOTO') or (Up = 'GOSUB') then
+    // метка
+  else if (Up = 'INC') or (Up = 'DEC') then
+    ProcessIncDec(AToks, FirstIdx, ATo)
+  else if FInType then
+    ProcessField(AToks, FirstIdx, ATo)
+  else if InList(FKeywords, Up) and (FindProc(Up) = nil) and
+          not IsOp(AToks, NextIdx, '=') and not IsOp(AToks, NextIdx, '(') and
+          not IsOp(AToks, NextIdx, '.') then
+    // оператор RapidQ (SELECT CASE, DO, LOOP, NEXT, WHILE, RETURN...):
+    // дальше - выражения
+    ProcessExpr(AToks, FirstIdx + 1, ATo)
+  else
+    ProcessAssignOrCall(AToks, FirstIdx, ATo);
+end;
+
+// Выражение: переменные переименовываются, необъявленные заводятся
+procedure TRqFbConv.ProcessExpr(var AToks: TToks; AFrom, ATo: Integer);
+var
+  TokIdx, PrevIdx: Integer;
+begin
+  for TokIdx := AFrom to ATo do
+    case AToks[TokIdx].Kind of
+      tkIdent:
+        ProcessIdent(AToks, TokIdx, ATo);
+      tkString:
+        if FEscape then
+          AToks[TokIdx].OutText := EscapeString(AToks[TokIdx].Text);
+      tkOp:
+        if AToks[TokIdx].Text = '@' then
+        begin
+          // StrCat @A$ - передача по ссылке при вызове
+          PrevIdx := PrevSig(AToks, TokIdx - 1);
+          if (PrevIdx < AFrom) or IsOp(AToks, PrevIdx, ',') or
+             IsOp(AToks, PrevIdx, '(') or (AToks[PrevIdx].Kind = tkIdent) then
+          begin
+            AToks[TokIdx].OutText := '';
+            Warn('передача по ссылке через @ при вызове не поддержана - ' +
+                 'параметр получит копию (объявите его BYREF)');
+          end;
+        end;
+    end;
+end;
+
+procedure TRqFbConv.ProcessIdent(var AToks: TToks; AIdx, ATo: Integer);
+var
+  Up: string;
+  PrevIdx, NextIdx: Integer;
+  VarRec: TRqVar;
+  ProcRec: TRqProc;
+begin
+  Up := AToks[AIdx].Up;
+  PrevIdx := PrevSig(AToks, AIdx - 1);
+  if IsOp(AToks, PrevIdx, '.') then
+    Exit;                                   // свойство или метод объекта
+  NextIdx := NextSig(AToks, AIdx + 1, ATo);
+
+  ProcRec := FindProc(Up);
+  if ProcRec <> nil then
+  begin
+    AToks[AIdx].OutText := ProcRec.FbName;
+    Exit;
+  end;
+  if InList(FFbStrFuncs, Up) then
+    Exit;
+  if InList(FRqStrFuncs, Up) then
+  begin
+    WarnOnce('FN|' + Up, AToks[AIdx].Text + ': функция RapidQ пока не поддержана');
+    Exit;
+  end;
+  if InList(FKeywords, Up) or InList(FTypes, Up) or InList(FObjClasses, Up) or
+     InList(FLabels, Up) then
+    Exit;
+  if (Up = 'TRUE') or (Up = 'FALSE') then
+    Exit;
+
+  VarRec := FindVar(Up);
+  if IsOp(AToks, NextIdx, '(') then
+  begin
+    // Массив - если объявлен массивом; иначе вызов неизвестной функции
+    if (VarRec <> nil) and VarRec.IsArray then
+      AToks[AIdx].OutText := VarRec.FbName
+    else if VarRec = nil then
+    begin
+      if SuffixOf(Up) <> '' then
+        WarnOnce('FN|' + Up, AToks[AIdx].Text + ': неизвестная функция');
+    end
+    else
+      AToks[AIdx].OutText := VarRec.FbName;
+    Exit;
+  end;
+  VarRec := ResolveVar(AToks[AIdx].Text, False);
+  AToks[AIdx].OutText := VarRec.FbName;
+end;
+
+// Присваивание (Переменная = выражение, Объект.Свойство = выражение) или
+// вызов процедуры
+procedure TRqFbConv.ProcessAssignOrCall(var AToks: TToks; AFrom, ATo: Integer);
+var
+  FirstIdx, TokIdx, EqIdx, Depth, LhsEnd, RhsFirst, RhsLast, LastMember,
+    CloseIdx: Integer;
+  HasDot: Boolean;
+  Up, TargetType, Conv, Display: string;
+  VarRec: TRqVar;
+  ProcRec: TRqProc;
+begin
+  FirstIdx := NextSig(AToks, AFrom, ATo);
+  if FirstIdx < 0 then
+    Exit;
+  // "=" на верхнем уровне
+  EqIdx := -1;
+  Depth := 0;
+  HasDot := False;
+  LastMember := -1;
+  for TokIdx := FirstIdx to ATo do
+  begin
+    if IsOp(AToks, TokIdx, '(') then
+      Inc(Depth)
+    else if IsOp(AToks, TokIdx, ')') then
+      Dec(Depth)
+    else if (Depth = 0) and IsOp(AToks, TokIdx, '=') then
+    begin
+      EqIdx := TokIdx;
+      Break;
+    end
+    else if (Depth = 0) and IsOp(AToks, TokIdx, '.') then
+    begin
+      HasDot := True;
+      LastMember := NextSig(AToks, TokIdx + 1, ATo);
+    end;
+  end;
+
+  if (EqIdx < 0) or (AToks[FirstIdx].Kind <> tkIdent) then
+  begin
+    // Вызов: Proc арг, Объект.Метод арг. Первое слово - не переменная.
+    if (AToks[FirstIdx].Kind = tkIdent) and (FindVar(AToks[FirstIdx].Up) = nil) and
+       not IsOp(AToks, NextSig(AToks, FirstIdx + 1, ATo), '.') then
+    begin
+      ProcRec := FindProc(AToks[FirstIdx].Up);
+      if ProcRec <> nil then
+        AToks[FirstIdx].OutText := ProcRec.FbName;
+      ProcessExpr(AToks, FirstIdx + 1, ATo);
+    end
+    else
+      ProcessExpr(AToks, FirstIdx, ATo);
+    Exit;
+  end;
+
+  RhsFirst := NextSig(AToks, EqIdx + 1, ATo);
+  RhsLast := PrevSig(AToks, ATo);
+  if RhsFirst < 0 then
+  begin
+    ProcessExpr(AToks, FirstIdx, ATo);
+    Exit;
+  end;
+
+  if HasDot then
+  begin
+    // Объект.OnXxx = Процедура -> @Процедура
+    if (LastMember >= 0) and (Copy(AToks[LastMember].Up, 1, 2) = 'ON') and
+       (RhsFirst = RhsLast) and (AToks[RhsFirst].Kind = tkIdent) then
+    begin
+      ProcRec := FindProc(AToks[RhsFirst].Up);
+      if ProcRec <> nil then
+      begin
+        ProcessExpr(AToks, FirstIdx, EqIdx - 1);
+        AToks[RhsFirst].OutText := '@' + ProcRec.FbName;
+        Exit;
+      end;
+    end;
+    ProcessExpr(AToks, FirstIdx, ATo);
+    Exit;
+  end;
+
+  // Переменная (элемент массива) = выражение
+  Up := AToks[FirstIdx].Up;
+  Display := AToks[FirstIdx].Text;
+  LhsEnd := NextSig(AToks, FirstIdx + 1, EqIdx - 1);
+  TargetType := '';
+  if (FCurProc <> nil) and FCurProc.IsFunc and
+     ((Up = 'RESULT') or (Up = FCurProc.Name)) and (LhsEnd < 0) then
+  begin
+    // Возврат значения функции: Result = ... или Имя = ...
+    if Up = 'RESULT' then
+      AToks[FirstIdx].OutText := 'Function'
+    else
+      AToks[FirstIdx].OutText := FCurProc.FbName;
+    TargetType := FCurProc.RetType;
+  end
+  else if InList(FKeywords, Up) and (FindVar(Up) = nil) then
+  begin
+    // MID$(s, 1, 1) = "x" и подобное - как есть
+    ProcessExpr(AToks, FirstIdx + 1, ATo);
+    Exit;
+  end
+  else
+  begin
+    if IsOp(AToks, LhsEnd, '(') then
+    begin
+      CloseIdx := MatchParen(AToks, LhsEnd, EqIdx - 1);
+      VarRec := ResolveVar(Display, True);
+      if CloseIdx > 0 then
+        ProcessExpr(AToks, LhsEnd + 1, CloseIdx - 1);
+    end
+    else
+      VarRec := ResolveVar(Display, False);
+    AToks[FirstIdx].OutText := VarRec.FbName;
+    if not VarRec.IsConst then
+      TargetType := VarRec.RqType;
+  end;
+
+  ProcessExpr(AToks, RhsFirst, RhsLast);
+  Conv := ConvFunc(TargetType);
+  if Conv = '' then
+    Exit;
+  if IsNumericType(TargetType) and ExprIsString(AToks, RhsFirst, RhsLast) then
+    Warn(Display + ' = ' + RawText(AToks, RhsFirst, RhsLast) +
+         ': строка в числовую переменную - будет 0');
+  if (TargetType = 'STRING') and ExprIsNumber(AToks, RhsFirst, RhsLast) then
+    Warn(Display + ' = ' + RawText(AToks, RhsFirst, RhsLast) +
+         ': число в строковую переменную - будет пустая строка');
+  AToks[RhsFirst].Pre := Conv + '(' + AToks[RhsFirst].Pre;
+  AToks[RhsLast].Post := AToks[RhsLast].Post + ', "' +
+                         StringReplace(Display, '"', '', [rfReplaceAll]) +
+                         '", __FILE__, __LINE__)';
+end;
+
+// DIM / REDIM: имя[суффикс] [(размеры)] [AS тип], ...
+procedure TRqFbConv.ProcessDim(var AToks: TToks; AFrom, ATo: Integer);
+var
+  TokIdx, NameIdx, OpenIdx, CloseIdx, AsIdx, TypeIdx, ItemEnd, Depth: Integer;
+  IsRedim, Preserve, IsArray, Dynamic: Boolean;
+  Items, Extra, Scope, RqType, StarLen, DimsText, ItemText, InitText: string;
+  VarRec: TRqVar;
+begin
+  IsRedim := AToks[AFrom].Up = 'REDIM';
+  TokIdx := NextSig(AToks, AFrom + 1, ATo);
+  Preserve := IsWord(AToks, TokIdx, 'PRESERVE');
+  if Preserve then
+    TokIdx := NextSig(AToks, TokIdx + 1, ATo);
+  Scope := '';
+  if FCurProc <> nil then
+    Scope := FCurProc.Name;
+  Items := '';
+  Extra := '';
+  while (TokIdx >= 0) and (TokIdx <= ATo) do
+  begin
+    NameIdx := TokIdx;
+    if AToks[NameIdx].Kind <> tkIdent then
+    begin
+      Warn('DIM: ожидалось имя переменной: ' + RawText(AToks, AFrom, ATo));
+      Exit;
+    end;
+    // конец элемента - "," на верхнем уровне
+    ItemEnd := ATo;
+    Depth := 0;
+    for TokIdx := NameIdx to ATo do
+    begin
+      if IsOp(AToks, TokIdx, '(') then
+        Inc(Depth)
+      else if IsOp(AToks, TokIdx, ')') then
+        Dec(Depth)
+      else if (Depth = 0) and IsOp(AToks, TokIdx, ',') then
+      begin
+        ItemEnd := TokIdx - 1;
+        Break;
+      end;
+    end;
+    OpenIdx := NextSig(AToks, NameIdx + 1, ItemEnd);
+    IsArray := IsOp(AToks, OpenIdx, '(');
+    DimsText := '';
+    CloseIdx := NameIdx;
+    if IsArray then
+    begin
+      CloseIdx := MatchParen(AToks, OpenIdx, ItemEnd);
+      if CloseIdx < 0 then
+        CloseIdx := ItemEnd;
+      ProcessExpr(AToks, OpenIdx + 1, CloseIdx - 1);
+      DimsText := RangeText(AToks, OpenIdx, CloseIdx);
+    end;
+    AsIdx := NextSig(AToks, CloseIdx + 1, ItemEnd);
+    RqType := '';
+    StarLen := '';
+    InitText := '';
+    if IsWord(AToks, AsIdx, 'AS') then
+    begin
+      TypeIdx := NextSig(AToks, AsIdx + 1, ItemEnd);
+      if TypeIdx >= 0 then
+      begin
+        RqType := ParseType(AToks, TypeIdx, ItemEnd, StarLen);
+        AsIdx := TypeIdx;
+      end;
+    end
+    else
+      AsIdx := CloseIdx;
+    TokIdx := NextSig(AToks, AsIdx + 1, ItemEnd);
+    if IsOp(AToks, TokIdx, '=') then
+    begin
+      ProcessExpr(AToks, TokIdx + 1, ItemEnd);
+      InitText := ' = ' + RangeText(AToks, TokIdx + 1, ItemEnd);
+    end;
+
+    if IsRedim then
+    begin
+      VarRec := FindVar(AToks[NameIdx].Up);
+      if VarRec = nil then
+      begin
+        if RqType = '' then
+          RqType := SuffixType(SuffixOf(AToks[NameIdx].Up));
+        VarRec := DeclareVar(AToks[NameIdx].Text, RqType, Scope, True, True,
+                             False);
+      end;
+      if FPass = 1 then
+        FRedims.Add(VarRec.Scope + '|' + VarRec.Name);
+      ItemText := VarRec.FbName + DimsText;
+    end
+    else
+    begin
+      if RqType = '' then
+        RqType := SuffixType(SuffixOf(AToks[NameIdx].Up));
+      if InList(FGuiClasses, RqType) then
+        FHasGui := True;
+      VarRec := DeclareVar(AToks[NameIdx].Text, RqType, Scope, IsArray, True,
+                           False);
+      Dynamic := IsArray and (FRedims.IndexOf(Scope + '|' + VarRec.Name) >= 0);
+      if Dynamic then
+      begin
+        ItemText := VarRec.FbName + '()';
+        Extra := Extra + ' : ReDim ' + VarRec.FbName + DimsText;
+      end
+      else
+        ItemText := VarRec.FbName + DimsText;
+      ItemText := ItemText + ' As ' + FbType(RqType);
+      if StarLen <> '' then
+        ItemText := ItemText + ' * ' + StarLen;
+      // у FreeBASIC строку переменной длины нельзя инициализировать в Dim
+      if (InitText <> '') and (RqType = 'STRING') and (StarLen = '') and
+         not IsArray then
+        Extra := Extra + ' : ' + VarRec.FbName + InitText
+      else
+        ItemText := ItemText + InitText;
+    end;
+    if Items <> '' then
+      Items := Items + ', ';
+    Items := Items + ItemText;
+    TokIdx := NextSig(AToks, ItemEnd + 2, ATo);
+    if ItemEnd >= ATo then
+      Break;
+  end;
+
+  if IsRedim then
+  begin
+    if Preserve then
+      Rebuild(AToks, AFrom, ATo, 'ReDim Preserve ' + Items)
+    else
+      Rebuild(AToks, AFrom, ATo, 'ReDim ' + Items);
+  end
+  else if Scope = '' then
+    Rebuild(AToks, AFrom, ATo, 'Dim Shared ' + Items + Extra)
+  else
+    Rebuild(AToks, AFrom, ATo, 'Dim ' + Items + Extra);
+end;
+
+// DEFINT a, b = 5, c(3) = {1,2,3,4} - объявление переменных
+procedure TRqFbConv.ProcessDef(var AToks: TToks; AFrom, ATo: Integer);
+var
+  Up, RqType, Scope, Items, ItemText, DimsText, InitText, Extra: string;
+  TokIdx, NameIdx, ItemEnd, Depth, OpenIdx, CloseIdx: Integer;
+  IsArray: Boolean;
+  VarRec: TRqVar;
+begin
+  Up := AToks[AFrom].Up;
+  if Up = 'DEFSTR' then
+    RqType := 'STRING'
+  else if Up = 'DEFDBL' then
+    RqType := 'DOUBLE'
+  else if Up = 'DEFSNG' then
+    RqType := 'SINGLE'
+  else if Up = 'DEFBYTE' then
+    RqType := 'BYTE'
+  else if Up = 'DEFWORD' then
+    RqType := 'WORD'
+  else if Up = 'DEFDWORD' then
+    RqType := 'DWORD'
+  else if Up = 'DEFSHORT' then
+    RqType := 'SHORT'
+  else
+    RqType := 'LONG';
+  Scope := '';
+  if FCurProc <> nil then
+    Scope := FCurProc.Name;
+  Items := '';
+  Extra := '';
+  TokIdx := NextSig(AToks, AFrom + 1, ATo);
+  while (TokIdx >= 0) and (TokIdx <= ATo) do
+  begin
+    NameIdx := TokIdx;
+    ItemEnd := ATo;
+    Depth := 0;
+    for TokIdx := NameIdx to ATo do
+    begin
+      if IsOp(AToks, TokIdx, '(') or IsOp(AToks, TokIdx, '{') then
+        Inc(Depth)
+      else if IsOp(AToks, TokIdx, ')') or IsOp(AToks, TokIdx, '}') then
+        Dec(Depth)
+      else if (Depth = 0) and IsOp(AToks, TokIdx, ',') then
+      begin
+        ItemEnd := TokIdx - 1;
+        Break;
+      end;
+    end;
+    OpenIdx := NextSig(AToks, NameIdx + 1, ItemEnd);
+    IsArray := IsOp(AToks, OpenIdx, '(');
+    DimsText := '';
+    CloseIdx := NameIdx;
+    if IsArray then
+    begin
+      CloseIdx := MatchParen(AToks, OpenIdx, ItemEnd);
+      if CloseIdx < 0 then
+        CloseIdx := ItemEnd;
+      ProcessExpr(AToks, OpenIdx + 1, CloseIdx - 1);
+      DimsText := RangeText(AToks, OpenIdx, CloseIdx);
+    end;
+    InitText := '';
+    TokIdx := NextSig(AToks, CloseIdx + 1, ItemEnd);
+    if IsOp(AToks, TokIdx, '=') then
+    begin
+      ProcessExpr(AToks, TokIdx + 1, ItemEnd);
+      InitText := ' = ' + RangeText(AToks, TokIdx + 1, ItemEnd);
+    end;
+    VarRec := DeclareVar(AToks[NameIdx].Text, RqType, Scope, IsArray, True, False);
+    ItemText := VarRec.FbName + DimsText + ' As ' + FbType(RqType);
+    // у FreeBASIC строку переменной длины нельзя инициализировать в Dim
+    if (InitText <> '') and (RqType = 'STRING') and not IsArray then
+      Extra := Extra + ' : ' + VarRec.FbName + InitText
+    else
+      ItemText := ItemText + InitText;
+    if Items <> '' then
+      Items := Items + ', ';
+    Items := Items + ItemText;
+    if ItemEnd >= ATo then
+      Break;
+    TokIdx := NextSig(AToks, ItemEnd + 2, ATo);
+  end;
+  if Scope = '' then
+    Rebuild(AToks, AFrom, ATo, 'Dim Shared ' + Items + Extra)
+  else
+    Rebuild(AToks, AFrom, ATo, 'Dim ' + Items + Extra);
+end;
+
+// CONST Имя = значение
+procedure TRqFbConv.ProcessConst(var AToks: TToks; AFrom, ATo: Integer);
+var
+  NameIdx, EqIdx: Integer;
+  RqType, Scope: string;
+  VarRec: TRqVar;
+begin
+  NameIdx := NextSig(AToks, AFrom + 1, ATo);
+  if (NameIdx < 0) or (AToks[NameIdx].Kind <> tkIdent) then
+    Exit;
+  EqIdx := NextSig(AToks, NameIdx + 1, ATo);
+  RqType := SuffixType(SuffixOf(AToks[NameIdx].Up));
+  if (EqIdx >= 0) and ExprIsString(AToks, EqIdx + 1, ATo) then
+    RqType := 'STRING';
+  Scope := '';
+  if FCurProc <> nil then
+    Scope := FCurProc.Name;
+  VarRec := DeclareVar(AToks[NameIdx].Text, RqType, Scope, False, True, True);
+  AToks[NameIdx].OutText := VarRec.FbName;
+  if EqIdx >= 0 then
+    ProcessExpr(AToks, EqIdx + 1, ATo);
+end;
+
+// Параметры (текст FreeBASIC): [BYREF|BYVAL] имя[суффикс][()] [AS тип]
+function TRqFbConv.ParseParams(var AToks: TToks; AFrom, ATo: Integer;
+                               const AScope: string): string;
+var
+  TokIdx, ItemStart, ItemEnd, NameIdx, NextIdx, Depth, TypeIdx: Integer;
+  ByRefFlag, ByValFlag, IsArray: Boolean;
+  RqType, StarLen, ItemText: string;
+  VarRec: TRqVar;
+  SavedProc: TRqProc;
+begin
+  Result := '';
+  ItemStart := AFrom;
+  while ItemStart <= ATo do
+  begin
+    ItemEnd := ATo;
+    Depth := 0;
+    for TokIdx := ItemStart to ATo do
+    begin
+      if IsOp(AToks, TokIdx, '(') then
+        Inc(Depth)
+      else if IsOp(AToks, TokIdx, ')') then
+        Dec(Depth)
+      else if (Depth = 0) and IsOp(AToks, TokIdx, ',') then
+      begin
+        ItemEnd := TokIdx - 1;
+        Break;
+      end;
+    end;
+    NameIdx := NextSig(AToks, ItemStart, ItemEnd);
+    ByRefFlag := False;
+    ByValFlag := False;
+    if IsWord(AToks, NameIdx, 'BYREF') then
+    begin
+      ByRefFlag := True;
+      NameIdx := NextSig(AToks, NameIdx + 1, ItemEnd);
+    end
+    else if IsWord(AToks, NameIdx, 'BYVAL') then
+    begin
+      ByValFlag := True;
+      NameIdx := NextSig(AToks, NameIdx + 1, ItemEnd);
+    end;
+    if (NameIdx >= 0) and (AToks[NameIdx].Kind = tkIdent) then
+    begin
+      NextIdx := NextSig(AToks, NameIdx + 1, ItemEnd);
+      IsArray := IsOp(AToks, NextIdx, '(');
+      if IsArray then
+        NextIdx := NextSig(AToks, MatchParen(AToks, NextIdx, ItemEnd) + 1, ItemEnd);
+      RqType := SuffixType(SuffixOf(AToks[NameIdx].Up));
+      StarLen := '';
+      if IsWord(AToks, NextIdx, 'AS') then
+      begin
+        TypeIdx := NextSig(AToks, NextIdx + 1, ItemEnd);
+        if TypeIdx >= 0 then
+          RqType := ParseType(AToks, TypeIdx, ItemEnd, StarLen);
+      end;
+      SavedProc := FCurProc;
+      VarRec := DeclareVar(AToks[NameIdx].Text, RqType, AScope, IsArray, True,
+                           False);
+      FCurProc := SavedProc;
+      if IsArray then
+        ItemText := VarRec.FbName + '() As ' + FbType(RqType)
+      else
+      begin
+        if ByRefFlag or ((FByRefDefault or IsObjectType(RqType)) and
+                         not ByValFlag) then
+          ItemText := 'ByRef '
+        else
+          ItemText := 'ByVal ';
+        ItemText := ItemText + VarRec.FbName + ' As ' + FbType(RqType);
+      end;
+      if Result <> '' then
+        Result := Result + ', ';
+      Result := Result + ItemText;
+    end;
+    ItemStart := ItemEnd + 2;
+  end;
+end;
+
+// SUB Имя [(параметры)] / FUNCTION Имя[суффикс] [(параметры)] [AS тип]
+procedure TRqFbConv.ProcessProcHeader(var AToks: TToks; AFrom, ATo: Integer);
+var
+  Up, Params, Header, RetType, StarLen, Locals: string;
+  NameIdx, OpenIdx, CloseIdx, AsIdx, TypeIdx, VarIdx: Integer;
+  ProcRec: TRqProc;
+  VarRec: TRqVar;
+begin
+  Up := AToks[AFrom].Up;
+  if (Up = 'SUBI') or (Up = 'FUNCTIONI') then
+    WarnOnce('SUBI', 'SUBI/FUNCTIONI (переменное число параметров) пока не ' +
+             'поддержаны');
+  NameIdx := NextSig(AToks, AFrom + 1, ATo);
+  if (NameIdx < 0) or (AToks[NameIdx].Kind <> tkIdent) then
+    Exit;
+  ProcRec := GetProc(AToks[NameIdx].Text);
+  ProcRec.IsFunc := (Up = 'FUNCTION') or (Up = 'FUNCTIONI');
+  FCurProc := ProcRec;
+  OpenIdx := NextSig(AToks, NameIdx + 1, ATo);
+  Params := '';
+  CloseIdx := NameIdx;
+  if IsOp(AToks, OpenIdx, '(') then
+  begin
+    CloseIdx := MatchParen(AToks, OpenIdx, ATo);
+    if CloseIdx < 0 then
+      CloseIdx := ATo;
+    Params := ParseParams(AToks, OpenIdx + 1, CloseIdx - 1, ProcRec.Name);
+  end
+  else if ProcRec.Declared then
+    Params := ProcRec.DeclParams;
+  RetType := SuffixType(SuffixOf(ProcRec.Name));
+  AsIdx := NextSig(AToks, CloseIdx + 1, ATo);
+  if IsWord(AToks, AsIdx, 'AS') then
+  begin
+    TypeIdx := NextSig(AToks, AsIdx + 1, ATo);
+    if TypeIdx >= 0 then
+      RetType := ParseType(AToks, TypeIdx, ATo, StarLen);
+  end;
+  ProcRec.RetType := RetType;
+  if ProcRec.IsFunc then
+    Header := 'Function ' + ProcRec.FbName + '(' + Params + ') As ' +
+              FbType(RetType)
+  else
+    Header := 'Sub ' + ProcRec.FbName + '(' + Params + ')';
+  // Необъявленные переменные этой SUB, которых нет в модуле, - локальные
+  Locals := '';
+  if FPass = 2 then
+    for VarIdx := 0 to FVars.Count - 1 do
+    begin
+      VarRec := TRqVar(FVars.Objects[VarIdx]);
+      if (VarRec.Scope = ProcRec.Name) and not VarRec.Explicit then
+        Locals := Locals + ' : Dim ' + VarRec.FbName + ' As ' +
+                  FbType(VarRec.RqType);
+    end;
+  Rebuild(AToks, AFrom, ATo, Header + Locals);
+end;
+
+// DECLARE SUB|FUNCTION Имя [LIB "dll"] [ALIAS "имя"] [(параметры)] [AS тип]
+procedure TRqFbConv.ProcessDeclare(var AToks: TToks; AFrom, ATo: Integer);
+var
+  KindIdx, NameIdx, TokIdx, OpenIdx, CloseIdx, TypeIdx: Integer;
+  IsFunc: Boolean;
+  LibText, AliasText, Params, RetType, StarLen, Header: string;
+  ProcRec: TRqProc;
+  SavedProc: TRqProc;
+begin
+  KindIdx := NextSig(AToks, AFrom + 1, ATo);
+  if not (IsWord(AToks, KindIdx, 'SUB') or IsWord(AToks, KindIdx, 'FUNCTION')) then
+  begin
+    Warn('DECLARE ' + RawText(AToks, KindIdx, KindIdx) + ': не поддержано');
+    Exit;
+  end;
+  IsFunc := IsWord(AToks, KindIdx, 'FUNCTION');
+  NameIdx := NextSig(AToks, KindIdx + 1, ATo);
+  if (NameIdx < 0) or (AToks[NameIdx].Kind <> tkIdent) then
+    Exit;
+  ProcRec := GetProc(AToks[NameIdx].Text);
+  ProcRec.IsFunc := IsFunc;
+  ProcRec.Declared := True;
+  LibText := '';
+  AliasText := '';
+  TokIdx := NextSig(AToks, NameIdx + 1, ATo);
+  if IsWord(AToks, TokIdx, 'LIB') then
+  begin
+    TokIdx := NextSig(AToks, TokIdx + 1, ATo);
+    if TokIdx >= 0 then
+      LibText := ' Lib ' + AToks[TokIdx].Text;
+    TokIdx := NextSig(AToks, TokIdx + 1, ATo);
+  end;
+  if IsWord(AToks, TokIdx, 'ALIAS') then
+  begin
+    TokIdx := NextSig(AToks, TokIdx + 1, ATo);
+    if TokIdx >= 0 then
+      AliasText := ' Alias ' + AToks[TokIdx].Text;
+    TokIdx := NextSig(AToks, TokIdx + 1, ATo);
+  end;
+  Params := '';
+  OpenIdx := TokIdx;
+  CloseIdx := TokIdx - 1;
+  if IsOp(AToks, OpenIdx, '(') then
+  begin
+    CloseIdx := MatchParen(AToks, OpenIdx, ATo);
+    if CloseIdx < 0 then
+      CloseIdx := ATo;
+    SavedProc := FCurProc;
+    Params := ParseParams(AToks, OpenIdx + 1, CloseIdx - 1, ProcRec.Name);
+    FCurProc := SavedProc;
+  end;
+  ProcRec.DeclParams := Params;
+  RetType := SuffixType(SuffixOf(ProcRec.Name));
+  TokIdx := NextSig(AToks, CloseIdx + 1, ATo);
+  if IsWord(AToks, TokIdx, 'AS') then
+  begin
+    TypeIdx := NextSig(AToks, TokIdx + 1, ATo);
+    if TypeIdx >= 0 then
+      RetType := ParseType(AToks, TypeIdx, ATo, StarLen);
+  end;
+  ProcRec.RetType := RetType;
+  if IsFunc then
+    Header := 'Declare Function ' + ProcRec.FbName + LibText + AliasText +
+              '(' + Params + ') As ' + FbType(RetType)
+  else
+    Header := 'Declare Sub ' + ProcRec.FbName + LibText + AliasText +
+              '(' + Params + ')';
+  Rebuild(AToks, AFrom, ATo, Header);
+end;
+
+// TYPE Имя [EXTENDS Класс]
+procedure TRqFbConv.ProcessTypeHeader(var AToks: TToks; AFrom, ATo: Integer);
+var
+  NameIdx, ExtIdx: Integer;
+begin
+  NameIdx := NextSig(AToks, AFrom + 1, ATo);
+  if (NameIdx < 0) or (AToks[NameIdx].Kind <> tkIdent) then
+    Exit;
+  FTypes.Add(AToks[NameIdx].Up);
+  FInType := True;
+  ExtIdx := NextSig(AToks, NameIdx + 1, ATo);
+  FTypeExtends := IsWord(AToks, ExtIdx, 'EXTENDS');
+  if FTypeExtends then
+    Warn('TYPE ' + AToks[NameIdx].Text + ' EXTENDS: свои компоненты пока не ' +
+         'поддержаны, текст оставлен как есть');
+end;
+
+// Поле TYPE: имя [(размеры)] AS тип
+procedure TRqFbConv.ProcessField(var AToks: TToks; AFrom, ATo: Integer);
+var
+  NameIdx, OpenIdx, CloseIdx, AsIdx, TypeIdx: Integer;
+  RqType, StarLen: string;
+begin
+  NameIdx := NextSig(AToks, AFrom, ATo);
+  if (NameIdx < 0) or (AToks[NameIdx].Kind <> tkIdent) then
+    Exit;
+  if SuffixOf(AToks[NameIdx].Up) <> '' then
+  begin
+    Warn(AToks[NameIdx].Text + ': суффикс у поля TYPE не поддержан');
+    AToks[NameIdx].OutText := Mangle(AToks[NameIdx].Text);
+  end;
+  OpenIdx := NextSig(AToks, NameIdx + 1, ATo);
+  CloseIdx := NameIdx;
+  if IsOp(AToks, OpenIdx, '(') then
+  begin
+    CloseIdx := MatchParen(AToks, OpenIdx, ATo);
+    if CloseIdx < 0 then
+      Exit;
+    ProcessExpr(AToks, OpenIdx + 1, CloseIdx - 1);
+  end;
+  AsIdx := NextSig(AToks, CloseIdx + 1, ATo);
+  if IsWord(AToks, AsIdx, 'AS') then
+  begin
+    AToks[AsIdx].OutText := 'As';
+    TypeIdx := NextSig(AToks, AsIdx + 1, ATo);
+    if TypeIdx >= 0 then
+    begin
+      RqType := ParseType(AToks, TypeIdx, ATo, StarLen);
+      AToks[NextSig(AToks, AsIdx + 1, ATo)].OutText := FbType(RqType);
+    end;
+  end
+  else
+    AToks[CloseIdx].Post := ' As ' + FbType(SuffixType(SuffixOf(AToks[NameIdx].Up)));
+end;
+
+// PRINT элементы: каждый - RqFmt(...), "," -> ";"
+procedure TRqFbConv.ProcessPrint(var AToks: TToks; AFrom, ATo: Integer);
+var
+  TokIdx, ItemStart, ItemFirst, ItemLast, Depth, CommaIdx: Integer;
+
+  procedure FlushItem(AEnd: Integer);
+  begin
+    ItemFirst := NextSig(AToks, ItemStart, AEnd);
+    if (ItemFirst < 0) or (ItemFirst > AEnd) then
+      Exit;
+    ItemLast := PrevSig(AToks, AEnd);
+    ProcessExpr(AToks, ItemFirst, ItemLast);
+    if IsWord(AToks, ItemFirst, 'TAB') or IsWord(AToks, ItemFirst, 'SPC') then
+      Exit;
+    AToks[ItemFirst].Pre := 'RqFmt(' + AToks[ItemFirst].Pre;
+    AToks[ItemLast].Post := AToks[ItemLast].Post + ')';
+  end;
+
+begin
+  AToks[AFrom].OutText := 'Print';
+  // print"x" - у FreeBASIC нужен пробел после Print
+  if (AFrom + 1 <= High(AToks)) and (AToks[AFrom + 1].Kind <> tkSpace) then
+    AToks[AFrom].Post := ' ';
+  ItemStart := AFrom + 1;
+  TokIdx := NextSig(AToks, ItemStart, ATo);
+  if TokIdx < 0 then
+    Exit;
+  if IsOp(AToks, TokIdx, '#') then
+  begin
+    // PRINT #n, ...
+    CommaIdx := TokIdx;
+    while (CommaIdx <= ATo) and not IsOp(AToks, CommaIdx, ',') do
+      Inc(CommaIdx);
+    ProcessExpr(AToks, TokIdx + 1, CommaIdx - 1);
+    ItemStart := CommaIdx + 1;
+  end;
+  if IsWord(AToks, NextSig(AToks, ItemStart, ATo), 'USING') then
+  begin
+    WarnOnce('USING', 'PRINT USING пока не поддержан');
+    ProcessExpr(AToks, ItemStart, ATo);
+    Exit;
+  end;
+  Depth := 0;
+  for TokIdx := ItemStart to ATo do
+  begin
+    if IsOp(AToks, TokIdx, '(') then
+      Inc(Depth)
+    else if IsOp(AToks, TokIdx, ')') then
+      Dec(Depth)
+    else if (Depth = 0) and (IsOp(AToks, TokIdx, ';') or IsOp(AToks, TokIdx, ',')) then
+    begin
+      FlushItem(TokIdx - 1);
+      AToks[TokIdx].OutText := ';';
+      ItemStart := TokIdx + 1;
+    end;
+  end;
+  FlushItem(ATo);
+end;
+
+// IF усл THEN [оператор [ELSE оператор]]
+procedure TRqFbConv.ProcessIf(var AToks: TToks; AFrom, ATo: Integer);
+var
+  TokIdx, ThenIdx, ElseIdx, Depth: Integer;
+begin
+  ThenIdx := -1;
+  Depth := 0;
+  for TokIdx := AFrom + 1 to ATo do
+  begin
+    if IsOp(AToks, TokIdx, '(') then
+      Inc(Depth)
+    else if IsOp(AToks, TokIdx, ')') then
+      Dec(Depth)
+    else if (Depth = 0) and IsWord(AToks, TokIdx, 'THEN') then
+    begin
+      ThenIdx := TokIdx;
+      Break;
+    end;
+  end;
+  if ThenIdx < 0 then
+  begin
+    ProcessExpr(AToks, AFrom + 1, ATo);
+    Exit;
+  end;
+  ProcessExpr(AToks, AFrom + 1, ThenIdx - 1);
+  if NextSig(AToks, ThenIdx + 1, ATo) < 0 then
+    Exit;
+  ElseIdx := -1;
+  for TokIdx := ThenIdx + 1 to ATo do
+    if IsWord(AToks, TokIdx, 'ELSE') then
+    begin
+      ElseIdx := TokIdx;
+      Break;
+    end;
+  if ElseIdx < 0 then
+    ProcessStatement(AToks, ThenIdx + 1, ATo)
+  else
+  begin
+    ProcessStatement(AToks, ThenIdx + 1, ElseIdx - 1);
+    ProcessStatement(AToks, ElseIdx + 1, ATo);
+  end;
+end;
+
+// FOR перем = a TO b [STEP c]: переменная цикла - без преобразования
+procedure TRqFbConv.ProcessFor(var AToks: TToks; AFrom, ATo: Integer);
+var
+  VarIdx: Integer;
+  VarRec: TRqVar;
+begin
+  VarIdx := NextSig(AToks, AFrom + 1, ATo);
+  if (VarIdx >= 0) and (AToks[VarIdx].Kind = tkIdent) then
+  begin
+    VarRec := ResolveVar(AToks[VarIdx].Text, False);
+    AToks[VarIdx].OutText := VarRec.FbName;
+    ProcessExpr(AToks, VarIdx + 1, ATo);
+  end
+  else
+    ProcessExpr(AToks, AFrom + 1, ATo);
+end;
+
+// INC перем [, n] -> перем += n; DEC -> -=
+procedure TRqFbConv.ProcessIncDec(var AToks: TToks; AFrom, ATo: Integer);
+var
+  VarIdx, CommaIdx: Integer;
+  VarRec: TRqVar;
+  Step, OpText: string;
+begin
+  VarIdx := NextSig(AToks, AFrom + 1, ATo);
+  if (VarIdx < 0) or (AToks[VarIdx].Kind <> tkIdent) then
+    Exit;
+  VarRec := ResolveVar(AToks[VarIdx].Text, False);
+  CommaIdx := NextSig(AToks, VarIdx + 1, ATo);
+  Step := '1';
+  if IsOp(AToks, CommaIdx, ',') then
+  begin
+    ProcessExpr(AToks, CommaIdx + 1, ATo);
+    Step := '(' + RangeText(AToks, CommaIdx + 1, ATo) + ')';
+  end;
+  if AToks[AFrom].Up = 'INC' then
+    OpText := ' += '
+  else
+    OpText := ' -= ';
+  Rebuild(AToks, AFrom, ATo, VarRec.FbName + OpText + Step);
+end;
+
+// ---------------------------------------------------------------------------
+//  Файлы и проходы
+// ---------------------------------------------------------------------------
+
+// Заголовок главного файла: режим, рантайм, неявные переменные модуля
+function TRqFbConv.MainHeader: string;
+var
+  VarIdx: Integer;
+  VarRec: TRqVar;
+begin
+  Result := '''' + ' Переведено из RapidQ препроцессором RqToFb (unIDE). ' +
+            'Файл создаётся заново при каждой сборке.' + CrLf;
+  if FOpt.Mode = rfmCompat then
+    Result := Result + '#define RQ_COMPAT' + CrLf
+  else
+    Result := Result + '#define RQ_SMART' + CrLf;
+  if FAppType = 'CONSOLE' then
+    Result := Result + '#define RQ_CONSOLE' + CrLf;
+  Result := Result + '#include once "rqrt.bi"' + CrLf +
+            '#include once "rqlcl.bi"' + CrLf;
+  for VarIdx := 0 to FVars.Count - 1 do
+  begin
+    VarRec := TRqVar(FVars.Objects[VarIdx]);
+    if (VarRec.Scope = '') and not VarRec.Explicit then
+      Result := Result + 'Dim Shared ' + VarRec.FbName + ' As ' +
+                FbType(VarRec.RqType) + CrLf;
+  end;
+end;
+
+// После первого прохода: необъявленная в SUB переменная, которая есть в
+// модуле, - переменная модуля
+procedure TRqFbConv.EndOfPass1;
+var
+  VarIdx, Found: Integer;
+  VarRec: TRqVar;
+begin
+  for VarIdx := FVars.Count - 1 downto 0 do
+  begin
+    VarRec := TRqVar(FVars.Objects[VarIdx]);
+    if (VarRec.Scope <> '') and not VarRec.Explicit and
+       FVars.Find('|' + VarRec.Name, Found) then
+    begin
+      VarRec.Free;
+      FVars.Delete(VarIdx);
+    end;
+  end;
+end;
+
+function TRqFbConv.ProcessFile(const AFileName: string; AIsMain: Boolean): string;
+var
+  Lines, OutLines: TStringList;
+  LineIdx, StartIdx, DoneIdx, Suffix: Integer;
+  Text, OutText, OutName, SavedFile: string;
+  SavedLine: Integer;
+  SavedProc: TRqProc;
+begin
+  DoneIdx := FDoneFiles.IndexOfName(UpperCase(AFileName));
+  if DoneIdx >= 0 then
+  begin
+    Result := FDoneFiles.ValueFromIndex[DoneIdx];
+    Exit;
+  end;
+  // Имя файла вывода
+  OutName := ExtractFileName(AFileName);
+  if not AIsMain then
+    OutName := ChangeFileExt(OutName, '') + '_' +
+               Copy(ExtractFileExt(OutName), 2, MaxInt) + '.bi';
+  Suffix := 1;
+  while FOutNames.IndexOf(UpperCase(OutName)) >= 0 do
+  begin
+    Inc(Suffix);
+    OutName := ChangeFileExt(OutName, '') + IntToStr(Suffix) + ExtractFileExt(OutName);
+  end;
+  FOutNames.Add(UpperCase(OutName));
+  Result := IncludeTrailingPathDelimiter(FOpt.OutDir) + OutName;
+  if CompareText(ExpandFileName(Result), ExpandFileName(AFileName)) = 0 then
+  begin
+    Error('папка вывода совпадает с папкой исходника: ' + FOpt.OutDir);
+    Result := '';
+    Exit;
+  end;
+  FDoneFiles.Add(UpperCase(AFileName) + '=' + Result);
+
+  SavedFile := FCurFile;
+  SavedLine := FCurLine;
+  SavedProc := FCurProc;
+  FCurFile := AFileName;
+  FCurProc := nil;
+  Lines := TStringList.Create;
+  OutLines := TStringList.Create;
+  try
+    try
+      Lines.LoadFromFile(AFileName);
+    except
+      on E: Exception do
+      begin
+        Error('не удалось прочитать ' + AFileName + ': ' + E.Message);
+        Exit;
+      end;
+    end;
+    LineIdx := 0;
+    while LineIdx < Lines.Count do
+    begin
+      StartIdx := LineIdx;
+      Text := Lines[LineIdx];
+      while EndsWithContinue(Text) and (LineIdx + 1 < Lines.Count) do
+      begin
+        Inc(LineIdx);
+        Text := Text + CrLf + Lines[LineIdx];
+      end;
+      FCurFile := AFileName;
+      FCurLine := StartIdx + 1;
+      FLostLines := 0;
+      ProcessLine(Text, OutText);
+      OutLines.Add(OutText);
+      Inc(LineIdx);
+    end;
+    if FPass = 2 then
+    begin
+      if AIsMain then
+        OutLines.Insert(0, MainHeader + '#line 0 "' + AFileName + '"')
+      else
+        OutLines.Insert(0, '#line 0 "' + AFileName + '"');
+      try
+        ForceDirectories(FOpt.OutDir);
+        OutLines.SaveToFile(Result);
+      except
+        on E: Exception do
+          Error('не удалось записать ' + Result + ': ' + E.Message);
+      end;
+    end;
+  finally
+    OutLines.Free;
+    Lines.Free;
+    FCurFile := SavedFile;
+    FCurLine := SavedLine;
+    FCurProc := SavedProc;
+  end;
+end;
+
+function TRqFbConv.Run(const AMainFile: string; var AResult: TRqFbResult): Boolean;
+var
+  PassIdx: Integer;
+begin
+  FMainFile := ExpandFileName(AMainFile);
+  FOpt.OutDir := ExpandFileName(FOpt.OutDir);
+  for PassIdx := 1 to 2 do
+  begin
+    FPass := PassIdx;
+    FDoneFiles.Clear;
+    FOutNames.Clear;
+    FDefines.Clear;
+    SetLength(FConds, 0);
+    FCurProc := nil;
+    FInType := False;
+    FTypeExtends := False;
+    FCreateDepth := 0;
+    FTypeCheck := False;
+    FEscape := False;
+    FDefaultType := 'DOUBLE';
+    FByRefDefault := False;
+    if PassIdx = 1 then
+    begin
+      FAppType := '';
+      FHasGui := False;
+    end
+    else
+    begin
+      // $APPTYPE не задан - по классам из DIM
+      if FAppType = '' then
+      begin
+        if FHasGui then
+          FAppType := 'GUI'
+        else
+          FAppType := 'CONSOLE';
+      end;
+    end;
+    AResult.MainOut := ProcessFile(FMainFile, True);
+    if PassIdx = 1 then
+      EndOfPass1;
+  end;
+  if Length(FConds) > 0 then
+  begin
+    FCurFile := FMainFile;
+    Error('$IFDEF без $ENDIF');
+  end;
+  AResult.AppType := FAppType;
+  AResult.ErrorCount := FErrors;
+  AResult.WarningCount := FWarnings;
+  Result := FErrors = 0;
+end;
+
+function RqToFbConvert(const AMainFile: string; const AOptions: TRqFbOptions;
+                       AMessages: TStrings; var AResult: TRqFbResult): Boolean;
+var
+  Conv: TRqFbConv;
+begin
+  Conv := TRqFbConv.Create(AOptions, AMessages);
+  try
+    Result := Conv.Run(AMainFile, AResult);
+  finally
+    Conv.Free;
+  end;
+end;
+
+end.
