@@ -53,9 +53,11 @@ Function RqStr Overload (ByVal Value As Double) As String   ' число -> ""
 
 ## TRUE и FALSE
 
-- В RapidQ `TRUE` = 1, `FALSE` = 0 (сообщил пользователь, 2026-10-08); Boolean-свойства компонентов (Checked, Visible, Selected…) при чтении дают 1 / 0.
-- У FreeBASIC `True` в целом -1: `x = True` даёт -1, `IF x = True` при x = 1 ложно (проверено, fbc 1.10.1). Препроцессор заменяет `TRUE` на `1`, `FALSE` на `0`, если в программе нет своей переменной или константы с таким именем.
-- Значение сравнения в RapidQ -1: `PRINT (2 > 1)` → `-1` (тест пользователя 2026-10-08), как у FreeBASIC — замена не нужна. Отсюда `IF (a > b) = TRUE` ложно и в RapidQ (-1 ≠ 1), и после перевода.
+- `TRUE` = 1 и `FALSE` = 0 задаёт не компилятор, а `rapidq.inc` (строки 42–43: `$define False 0`, `$define True 1`); в других include бывает `CONST True = 1`, в примере CONST документации (otherdetail.html) — `CONST True AS LONG = NOT False`, то есть -1. Без таких определений `TRUE` в RapidQ, судя по документации, — обычное имя; что даёт `PRINT TRUE` без include — не проверено.
+- Boolean-свойства компонентов (Checked, Visible, Selected…) при чтении дают 1 / 0 (сообщил пользователь, 2026-10-08).
+- Результат сравнения даёт компилятор: -1 (operators.html: «You may assume that "true" equals -1»; тест пользователя `PRINT (2 > 1)` → `-1`).
+- У FreeBASIC `True` в целом -1: `x = True` даёт -1, `IF x = True` при x = 1 ложно (проверено, fbc 1.10.1). `$define True 1` из rapidq.inc препроцессор подставляет сам (как любой $DEFINE). Если определения нет, препроцессор тоже заменяет `TRUE` на `1`, `FALSE` на `0` (как с rapidq.inc), если в программе нет своей переменной или константы с таким именем.
+- Значение сравнения -1, как у FreeBASIC — замена не нужна. Отсюда `IF (a > b) = TRUE` ложно и в RapidQ (-1 ≠ 1), и после перевода.
 
 ## PRINT (по тесту)
 
