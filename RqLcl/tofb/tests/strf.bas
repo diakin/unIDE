@@ -1,0 +1,26 @@
+' STRF$ (FloatToStrF): 0 ffGeneral, 1 ffExponent, 2 ffFixed, 3 ffNumber.
+' Expected output follows Delphi FloatToStrF rules; not yet compared with
+' RapidQ itself (run this file with rc.exe and compare).
+$APPTYPE CONSOLE
+PRINT "doc1 "; STRF$(99.9934, 0, 4, 4)
+PRINT "doc2 "; STRF$(12345678, 3, 8, 0)
+PRINT "gen1 "; STRF$(0.0001, 0, 15, 0)
+PRINT "gen2 "; STRF$(0.00001, 0, 15, 0)
+PRINT "gen3 "; STRF$(1E20, 0, 15, 0)
+PRINT "gen4 "; STRF$(123456, 0, 4, 2)
+PRINT "gen5 "; STRF$(-2.5, 0, 15, 0)
+PRINT "gen6 "; STRF$(0, 0, 15, 0)
+PRINT "exp1 "; STRF$(12345, 1, 4, 2)
+PRINT "exp2 "; STRF$(0, 1, 4, 2)
+PRINT "exp3 "; STRF$(-0.000123, 1, 3, 0)
+PRINT "fix1 "; STRF$(3.14159, 2, 10, 1)
+PRINT "fix2 "; STRF$(3.14159, 2, 3, 4)
+PRINT "fix3 "; STRF$(0.006, 2, 15, 2)
+PRINT "fix4 "; STRF$(-0.001, 2, 15, 2)
+PRINT "fix5 "; STRF$(2.5, 2, 15, 0)
+PRINT "fix6 "; STRF$(1.5, 2, 11, 18)
+PRINT "fix7 "; STRF$(1234567, 2, 4, 2)
+PRINT "fix8 "; STRF$(999.996, 2, 15, 2)
+PRINT "num1 "; STRF$(-1234.5678, 3, 15, 2)
+PRINT "num2 "; STRF$(999, 3, 15, 0)
+PRINT "num3 "; STRF$(1000, 3, 15, 1)

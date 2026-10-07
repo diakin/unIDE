@@ -98,14 +98,14 @@ const
   // Функции RapidQ со знаком $, которых в FreeBASIC нет
   RqOnlyStrFuncText =
     'INSERT$ REPLACE$ DELETE$ PARAMSTR$ GET$ REPLACESUBSTR$ CONVBASE$ ' +
-    'FIELD$ VARPTR$ REVERSE$';
+    'FIELD$ VARPTR$ REVERSE$ STRF$';
 
   // Функции RapidQ со знаком $ -> функции rqrt.bi (у HEX$ RapidQ дополняет
   // до 8 знаков, у FreeBASIC - нет)
   RqFuncMapText =
     'INSERT$=RqInsert REPLACE$=RqReplace DELETE$=RqDelete ' +
     'REPLACESUBSTR$=RqReplaceSubStr CONVBASE$=RqConvBase FIELD$=RqField ' +
-    'REVERSE$=RqReverse HEX$=RqHex';
+    'REVERSE$=RqReverse HEX$=RqHex STRF$=RqStrF';
 
   // Свойства и методы RapidQ, имена которых в FreeBASIC - ключевые слова:
   // .Pointer (QMEMORYSTREAM) -> .PointerAddr (rqstream.bi)
@@ -305,6 +305,7 @@ type
     FLostLines: Integer;          // переводы строк, убранные сборкой заново
     FSourceMode: string;          // '$RQFB SMART|COMPAT из исходника
     FLineIsLabel: Boolean;
+    FLibParams: Boolean;          // параметры DECLARE ... LIB (STRING - указатель)
     FInlineIf: Boolean;           // в строке однострочный IF (после THEN есть оператор)
     FGosubSites: TStringList;     // GOSUB/RETURN: ОБЛАСТЬ=число GOSUB в ней
                                   // (первый проход; '*' - модуль)
@@ -2993,6 +2994,13 @@ begin
           ' As ' + OwnInfo.Display + ' = *Cast(' + OwnInfo.Display +
           ' Ptr, Cast(Any Ptr, @' + VarRec.FbName + '_RqB))';
       end
+      else if FLibParams and (RqType = 'STRING') then
+        // STRING у функции DLL: RapidQ передаёт указатель на строку
+        // (документация, глава 9), как ByVal As String у VB. В fbc 1.10
+        // ByVal As String - сама строка (12 байт на стеке, CreateEventA@24
+        // вместо @16 - проверено), поэтому ZString Ptr: String fbc
+        // передаёт в него сам
+        ItemText := 'ByVal ' + VarRec.FbName + ' As ZString Ptr'
       else
       begin
         if ByRefFlag or ((FByRefDefault or IsObjectType(RqType)) and
@@ -3133,7 +3141,12 @@ begin
     if CloseIdx < 0 then
       CloseIdx := ATo;
     SavedProc := FCurProc;
-    Params := ParseParams(AToks, OpenIdx + 1, CloseIdx - 1, ProcRec.Name);
+    FLibParams := LibText <> '';
+    try
+      Params := ParseParams(AToks, OpenIdx + 1, CloseIdx - 1, ProcRec.Name);
+    finally
+      FLibParams := False;
+    end;
     FCurProc := SavedProc;
   end;
   ProcRec.DeclParams := Params;

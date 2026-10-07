@@ -421,6 +421,176 @@ Function RqHex(ByVal Value As Double) As String
     Return Hex(CLng(RqRtWrap(Value, 32, 1)), 8)
 End Function
 
+' STRF$(значение, формат, точность, знаков) - как FloatToStrF Delphi.
+' Форматы (документация RapidQ): 0 ffGeneral, 1 ffExponent, 2 ffFixed,
+' 3 ffNumber. Точность - значащих цифр (1..18), знаков: у ffGeneral и
+' ffExponent - не меньше цифр в порядке (0..4), у ffFixed и ffNumber - цифр
+' после точки (0..18). Половина округляется от нуля. Точка и запятая между
+' тысячами - всегда такие (у Delphi они из настроек Windows; как у RapidQ -
+' не проверено). Больше 17 значащих цифр у Double нет - дальше нули.
+Declare Function RqRtSprintf Cdecl Alias "sprintf" ( _
+    ByVal Buffer As ZString Ptr, ByVal FormatText As ZString Ptr, ...) As Long
+
+' Цифры модуля значения: DigitText - значащие, без нулей в конце; значение =
+' 0.DigitText * 10^DotPos. Ноль - DigitText пустая, DotPos 0
+Sub RqRtDecimal(ByVal Value As Double, ByRef DigitText As String, _
+                ByRef DotPos As Long)
+    Dim Buffer As ZString * 64
+    DigitText = ""
+    DotPos = 0
+    If Value = 0 Then Exit Sub
+    RqRtSprintf(@Buffer, "%.16e", Abs(Value))
+    Dim NumText As String = Buffer
+    Dim ExpPos As Long = InStr(NumText, "e")
+    If ExpPos = 0 Then Exit Sub
+    DigitText = Left(NumText, 1) & Mid(NumText, 3, ExpPos - 3)
+    DotPos = ValInt(Mid(NumText, ExpPos + 1)) + 1
+End Sub
+
+' Округлить до NumDigits значащих цифр (половина - от нуля), убрать нули в
+' конце. NumDigits = 0 - остаётся 1 в разряде перед первой цифрой или ноль
+Sub RqRtRoundDigits(ByRef DigitText As String, ByRef DotPos As Long, _
+                    ByVal NumDigits As Long)
+    If DigitText = "" Then Exit Sub
+    If NumDigits < 0 Then
+        DigitText = ""
+        DotPos = 0
+        Exit Sub
+    End If
+    If NumDigits < Len(DigitText) Then
+        Dim RoundUp As Long = (DigitText[NumDigits] >= Asc("5"))
+        DigitText = Left(DigitText, NumDigits)
+        If RoundUp Then
+            Dim CharIdx As Long = NumDigits - 1
+            Do While CharIdx >= 0 AndAlso DigitText[CharIdx] = Asc("9")
+                DigitText[CharIdx] = Asc("0")
+                CharIdx -= 1
+            Loop
+            If CharIdx < 0 Then
+                DigitText = "1" & DigitText
+                DotPos += 1
+            Else
+                DigitText[CharIdx] += 1
+            End If
+        End If
+    End If
+    Dim TextLen As Long = Len(DigitText)
+    Do While TextLen > 0 AndAlso DigitText[TextLen - 1] = Asc("0")
+        TextLen -= 1
+    Loop
+    DigitText = Left(DigitText, TextLen)
+    If DigitText = "" Then DotPos = 0
+End Sub
+
+' Порядок: E, знак (минус всегда, плюс - если PlusSign), цифр не меньше
+' MinDigits
+Function RqRtExpText(ByVal ExpValue As Long, ByVal MinDigits As Long, _
+                     ByVal PlusSign As Long) As String
+    Dim ExpDigits As String = Str(Abs(ExpValue))
+    Do While Len(ExpDigits) < MinDigits
+        ExpDigits = "0" & ExpDigits
+    Loop
+    If ExpValue < 0 Then Return "E-" & ExpDigits
+    If PlusSign Then Return "E+" & ExpDigits
+    Return "E" & ExpDigits
+End Function
+
+' Запись с точкой: FracDigits цифр после точки; Thousands - запятые между
+' тысячами в целой части
+Function RqRtFixedText(ByRef DigitText As String, ByVal DotPos As Long, _
+                       ByVal FracDigits As Long, ByVal Thousands As Long) As String
+    Dim IntPart As String = "0"
+    Dim FracSource As String
+    If DotPos > 0 Then
+        IntPart = Left(DigitText, DotPos)
+        Do While Len(IntPart) < DotPos
+            IntPart &= "0"
+        Loop
+        FracSource = Mid(DigitText, DotPos + 1)
+    Else
+        FracSource = String(-DotPos, "0") & DigitText
+    End If
+    Dim FracPart As String = Left(FracSource, FracDigits)
+    Do While Len(FracPart) < FracDigits
+        FracPart &= "0"
+    Loop
+    If Thousands Then
+        Dim Grouped As String = ""
+        Dim CharIdx As Long = Len(IntPart)
+        Do While CharIdx > 3
+            Grouped = "," & Mid(IntPart, CharIdx - 2, 3) & Grouped
+            CharIdx -= 3
+        Loop
+        IntPart = Left(IntPart, CharIdx) & Grouped
+    End If
+    If FracDigits > 0 Then Return IntPart & "." & FracPart
+    Return IntPart
+End Function
+
+' ffGeneral: короче всего; с порядком, если цифр до точки больше Precision
+' или значение меньше 0.0001
+Function RqRtGeneralText(ByRef DigitText As String, ByVal DotPos As Long, _
+                         ByVal Precision As Long, ByVal ExpDigits As Long) As String
+    If DigitText = "" Then Return "0"
+    If (DotPos > Precision) Or (DotPos < -3) Then
+        Dim Mantissa As String = Left(DigitText, 1)
+        If Len(DigitText) > 1 Then Mantissa &= "." & Mid(DigitText, 2)
+        Return Mantissa & RqRtExpText(DotPos - 1, ExpDigits, 0)
+    End If
+    Dim FracDigits As Long = Len(DigitText) - DotPos
+    If FracDigits < 0 Then FracDigits = 0
+    Return RqRtFixedText(DigitText, DotPos, FracDigits, 0)
+End Function
+
+Function RqStrF(ByVal Value As Double, ByVal FormatNum As Long, _
+                ByVal Precision As Long, ByVal Digits As Long) As String
+    If Value <> Value Then Return "NAN"
+    If Value > 1.7976931348623157e+308 Then Return "INF"
+    If Value < -1.7976931348623157e+308 Then Return "-INF"
+    If Precision > 18 Then Precision = 18
+    If Precision < 1 Then Precision = 1
+    If Digits < 0 Then Digits = 0
+    Dim DigitText As String
+    Dim DotPos As Long
+    Dim ResultText As String
+    RqRtDecimal(Value, DigitText, DotPos)
+    Select Case FormatNum
+    Case 1   ' ffExponent: -d.ddd...E+dd, всего Precision цифр
+        If Digits > 4 Then Digits = 4
+        RqRtRoundDigits(DigitText, DotPos, Precision)
+        Dim Mantissa As String = DigitText
+        Do While Len(Mantissa) < Precision
+            Mantissa &= "0"
+        Loop
+        ResultText = Left(Mantissa, 1)
+        If Precision > 1 Then ResultText &= "." & Mid(Mantissa, 2)
+        If DigitText = "" Then
+            ResultText &= RqRtExpText(0, Digits, 1)
+        Else
+            ResultText &= RqRtExpText(DotPos - 1, Digits, 1)
+        End If
+    Case 2, 3   ' ffFixed, ffNumber: Digits цифр после точки
+        If Digits > 18 Then Digits = 18
+        Dim NumDigits As Long = DotPos + Digits
+        If NumDigits > Precision Then NumDigits = Precision
+        RqRtRoundDigits(DigitText, DotPos, NumDigits)
+        If DotPos > Precision Then
+            ' цифр до точки больше Precision - как ffGeneral
+            If Digits > 4 Then Digits = 4
+            ResultText = RqRtGeneralText(DigitText, DotPos, Precision, Digits)
+        Else
+            ResultText = RqRtFixedText(DigitText, DotPos, Digits, FormatNum = 3)
+        End If
+    Case Else   ' ffGeneral
+        If Digits > 4 Then Digits = 4
+        RqRtRoundDigits(DigitText, DotPos, Precision)
+        ResultText = RqRtGeneralText(DigitText, DotPos, Precision, Digits)
+    End Select
+    ' минус - если после округления осталось не ноль
+    If (Value < 0) And (DigitText <> "") Then ResultText = "-" & ResultText
+    Return ResultText
+End Function
+
 ' RINSTR([start,] строка, искомое) - поиск справа налево; 0 - нет
 Function Rinstr Overload (ByRef Source As String, ByRef Find As String) As Long
     Return InStrRev(Source, Find)
