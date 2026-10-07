@@ -1035,6 +1035,28 @@ object Form1: TForm1
             Visible = False
             OnChange = cmbArdPortChange
           end
+          object cmbFbKind: TUiComboBox
+            Left = 110
+            Top = 24
+            Width = 76
+            Height = 21
+            Style = csDropDownList
+            ShowHint = True
+            Hint = 'Вид результата FreeBASIC: GUI, Console, DLL'
+            Visible = False
+            OnChange = cmbFbBuildChange
+          end
+          object cmbFbBits: TUiComboBox
+            Left = 190
+            Top = 24
+            Width = 44
+            Height = 21
+            Style = csDropDownList
+            ShowHint = True
+            Hint = 'Разрядность FreeBASIC: 32 или 64 бит'
+            Visible = False
+            OnChange = cmbFbBuildChange
+          end
         end
       end
       object pnlToolbarIn: TPanel

@@ -553,6 +553,9 @@ type
     pnlBuildKind: TPanel;
     cmbBuildKind: TUiComboBox;
     cmbArdPort: TUiComboBox;
+    // FreeBASIC: вид результата (GUI, Console, DLL) и разрядность
+    cmbFbKind: TUiComboBox;
+    cmbFbBits: TUiComboBox;
     lblBuildTarget: TUiLabel;
     btnCompileRun: TUiIconButton;
     grpSearch: TUiGroupBox;
@@ -758,6 +761,7 @@ type
     procedure btnCompileRunClick(Sender: TObject);
     procedure cmbBuildKindChange(Sender: TObject);
     procedure cmbArdPortChange(Sender: TObject);
+    procedure cmbFbBuildChange(Sender: TObject);
     procedure TabsMouseDown(Sender: TObject; Button: TMouseButton;
                             Shift: TShiftState; X, Y: Integer);
     procedure ShowModulesClick(Sender: TObject);
@@ -1199,6 +1203,11 @@ type
     // Сборщик, выбранный вручную в cmbBuildKind: путь (строчными) = имя
     // сборщика; editor.ini, раздел [BuildKind]
     FBuildKindManual: TStringList;
+    // Сборка FreeBASIC главного .bas: путь (строчными) = "вид разрядность"
+    // (FbOutName); editor.ini, раздел [FreeBASIC.Build]
+    FFbBuild: TStringList;
+    // RunCompiler без перевода вывода из OEM (fbc пишет пути в ANSI)
+    FCompNoOem: Boolean;
     FBuildBarBusy: Boolean;     // UpdateBuildBar ставит пункт списка сам
     FLangModeKey: string;
     FRunRowLefts: array of Integer;
@@ -2595,6 +2604,12 @@ type
     procedure DelphiRenameOtherDprs(ADprs: TStrings; const AKeep: string);
     function  CompileProject: Boolean;
     function  RapidQTargetBas(ARemember: Boolean): string;
+    function  FbTargetBas(ARemember: Boolean): string;
+    procedure FbBuildOf(const AMain: string; var AOutKind, ABits: Integer);
+    procedure SetFbBuild(const AMain: string; AOutKind, ABits: Integer);
+    function  FbCompilerExe(ABits: Integer; var AProblem: string): string;
+    function  FbOutFileOf(const AMain: string): string;
+    function  FbIncDirs(var AUserInc: string): string;
     function  RapidQFindSourceLine(const AFile, AText,
                                    ASection: string): Integer;
     function  RapidQReportErrors(AOutput: TStrings;
@@ -2602,6 +2617,7 @@ type
                                  var AFirstFile: string;
                                  var AFirstLine: Integer): Boolean;
     function  CompileRapidQ: Boolean;
+    function  CompileFreeBasic: Boolean;
     procedure CheckUnitPath(const AList: string);
     // Папка UiLib рядом с программой: свои компоненты (Ui*.pas) для сборки
     // проектов пользователя. '' - модулей нет.
@@ -3145,6 +3161,10 @@ const
   bkRapidQ = 1;
   bkFreeBasic = 2;
   bkArduino = 3;
+  // FreeBASIC: вид результата (cmbFbKind, FbBuildOf)
+  fbOutGui = 0;       // -s gui
+  fbOutConsole = 1;   // -s console
+  fbOutDll = 2;       // -dll
 
 var
   // msftedit.dll загружена, и окна TRichEdit создаются классом RICHEDIT50W
@@ -10383,6 +10403,228 @@ begin
     Result := bkNone;
 end;
 
+// ---------------------------------------------------------------------------
+//  FreeBASIC: общие функции для сборки (CompileFreeBasic), вкладки Includes
+//  и разбора сообщений fbc
+// ---------------------------------------------------------------------------
+
+// Вид результата - имя для списка, editor.ini и лога
+function FbOutName(AOutKind: Integer): string;
+begin
+  case AOutKind of
+    fbOutGui: Result := 'GUI';
+    fbOutDll: Result := 'DLL';
+  else
+    Result := 'Console';
+  end;
+end;
+
+// Исходник FreeBASIC, который может быть главным файлом
+function IsFbSource(const AFile: string): Boolean;
+begin
+  Result := LowerCase(ExtractFileExt(AFile)) = '.bas';
+end;
+
+// Имя файла из строки #include "файл" или #include once "файл";
+// не #include - пусто. Косые - обратные.
+function FbIncludeName(const ALine: string): string;
+const
+  IncTag = '#include';
+  OnceTag = 'once';
+var
+  Txt: string;
+  NameEnd: Integer;
+begin
+  Result := '';
+  Txt := TrimLeft(ALine);
+  if LowerCase(Copy(Txt, 1, Length(IncTag))) <> IncTag then
+    Exit;
+  Txt := TrimLeft(Copy(Txt, Length(IncTag) + 1, MaxInt));
+  if LowerCase(Copy(Txt, 1, Length(OnceTag))) = OnceTag then
+    Txt := TrimLeft(Copy(Txt, Length(OnceTag) + 1, MaxInt));
+  if (Txt = '') or (Txt[1] <> '"') then
+    Exit;
+  NameEnd := 2;
+  while (NameEnd <= Length(Txt)) and (Txt[NameEnd] <> '"') do
+    Inc(NameEnd);
+  if NameEnd > Length(Txt) then
+    Exit;
+  Result := Trim(Copy(Txt, 2, NameEnd - 2));
+  Result := StringReplace(Result, '/', '\', [rfReplaceAll]);
+end;
+
+// Где лежит файл из #include. Порядок, как у fbc: путь полный - как есть;
+// папка подключающего файла; папка главного файла; папки AIncDirs (через
+// точку с запятой). '' - не найден.
+function FbResolveInclude(const AName, AFromDir, AMainDir,
+                          AIncDirs: string): string;
+var
+  Dirs: TStringList;
+  DirIdx: Integer;
+  Candidate: string;
+begin
+  Result := '';
+  if AName = '' then
+    Exit;
+  if (ExtractFileDrive(AName) <> '') or (Copy(AName, 1, 2) = '\\') then
+  begin
+    if FileExists(AName) then
+      Result := AName;
+    Exit;
+  end;
+  Dirs := TStringList.Create;
+  try
+    if AFromDir <> '' then
+      Dirs.Add(AFromDir);
+    if AMainDir <> '' then
+      Dirs.Add(AMainDir);
+    Dirs.Text := Dirs.Text + StringReplace(AIncDirs, ';', #13#10,
+                                           [rfReplaceAll]);
+    for DirIdx := 0 to Dirs.Count - 1 do
+    begin
+      if Trim(Dirs[DirIdx]) = '' then
+        Continue;
+      Candidate := IncludeTrailingPathDelimiter(Trim(Dirs[DirIdx])) + AName;
+      if FileExists(Candidate) then
+      begin
+        Result := ExpandFileName(Candidate);
+        Exit;
+      end;
+    end;
+  finally
+    Dirs.Free;
+  end;
+end;
+
+// Подключает ли AMain файл AFile через #include - сам или во вложенных
+// #include (файлы ищутся от папки подключающего). Сравниваются полные пути.
+function FbIncludes(const AMain, AFile: string): Boolean;
+const
+  MaxDepth = 20;
+var
+  Visited: TStringList;
+  Target: string;
+
+  function Scan(const AFrom: string; ALevel: Integer): Boolean;
+  var
+    Source: TStringList;
+    LineIdx: Integer;
+    IncName, Full: string;
+  begin
+    Result := False;
+    if ALevel > MaxDepth then
+      Exit;
+    Source := TStringList.Create;
+    try
+      try
+        Source.LoadFromFile(AFrom);
+      except
+        Exit;
+      end;
+      for LineIdx := 0 to Source.Count - 1 do
+      begin
+        IncName := FbIncludeName(Source[LineIdx]);
+        if IncName = '' then
+          Continue;
+        Full := FbResolveInclude(IncName, ExtractFilePath(AFrom),
+                                 ExtractFilePath(AMain), '');
+        if Full = '' then
+          Continue;
+        if CompareText(ExpandFileName(Full), Target) = 0 then
+        begin
+          Result := True;
+          Exit;
+        end;
+        if Visited.IndexOf(UpperCase(Full)) >= 0 then
+          Continue;
+        Visited.Add(UpperCase(Full));
+        if Scan(Full, ALevel + 1) then
+        begin
+          Result := True;
+          Exit;
+        end;
+      end;
+    finally
+      Source.Free;
+    end;
+  end;
+
+begin
+  Result := False;
+  if (AMain = '') or (AFile = '') or not FileExists(AMain) then
+    Exit;
+  Target := ExpandFileName(AFile);
+  Visited := TStringList.Create;
+  try
+    Visited.Add(UpperCase(ExpandFileName(AMain)));
+    Result := Scan(AMain, 0);
+  finally
+    Visited.Free;
+  end;
+end;
+
+// Строка сообщения fbc о месте в исходнике:
+//   C:\путь\файл.bas(12) error 41: Variable not declared, x in 'x = 1'
+//   C:\путь\файл.bi(7) warning 4(1): Suspicious pointer assignment
+// Ищется ") error N" или ") warning N" - путь может сам содержать скобки
+// (Program Files (x86)), поэтому номер строки берётся у скобки перед ними.
+// AIsError - ошибка, а не предупреждение.
+function FbParseErrorLine(const S: string; var AFile: string;
+                          var ALine: Integer; var AIsError: Boolean): Boolean;
+var
+  LowText, Tail: string;
+  ClosePos, OpenPos, TagLen: Integer;
+begin
+  Result := False;
+  AFile := '';
+  ALine := 0;
+  AIsError := False;
+  LowText := LowerCase(S);
+  ClosePos := Pos(') error ', LowText);
+  if ClosePos > 0 then
+  begin
+    AIsError := True;
+    TagLen := Length(') error ');
+  end
+  else
+  begin
+    ClosePos := Pos(') warning ', LowText);
+    TagLen := Length(') warning ');
+  end;
+  if ClosePos < 3 then
+    Exit;
+  Tail := Copy(S, ClosePos + TagLen, 1);
+  if (Tail = '') or not (Tail[1] in ['0'..'9']) then
+    Exit;
+  OpenPos := ClosePos - 1;
+  while (OpenPos > 0) and (S[OpenPos] in ['0'..'9']) do
+    Dec(OpenPos);
+  if (OpenPos < 2) or (S[OpenPos] <> '(') or (OpenPos = ClosePos - 1) then
+    Exit;
+  ALine := StrToIntDef(Copy(S, OpenPos + 1, ClosePos - OpenPos - 1), 0);
+  AFile := Trim(Copy(S, 1, OpenPos - 1));
+  Result := (AFile <> '') and (ALine > 0);
+end;
+
+// Ошибка fbc или его компоновщика - для красного цвета и окна ошибок
+function FbIsErrorLine(const S: string): Boolean;
+var
+  ErrFile, LowText: string;
+  ErrLine: Integer;
+  IsError: Boolean;
+begin
+  Result := FbParseErrorLine(S, ErrFile, ErrLine, IsError) and IsError;
+  if Result then
+    Exit;
+  LowText := LowerCase(TrimLeft(S));
+  Result := (Copy(LowText, 1, 14) = 'linking failed') or
+            (Copy(LowText, 1, 17) = 'assembling failed') or
+            (Copy(LowText, 1, 18) = 'compiling c failed') or
+            (Copy(LowText, 1, 19) = 'compiling rc failed') or
+            (Pos('ld.exe: cannot find', LowText) > 0) or
+            (Pos('undefined reference to', LowText) > 0);
+end;
+
 // Папка - скетч Arduino: в ней <имя папки>.ino (или .pde)
 function IsSketchFolder(const ADir: string): Boolean;
 var
@@ -10537,18 +10779,31 @@ begin
   end
   else if Ext = '.bas' then
   begin
-    Result := BasDialectOf(FileNm);
-    if Result <> bkNone then
-      FBuildReason := 'по тексту файла'
-    else if (PrjKind = bkRapidQ) or (PrjKind = bkFreeBasic) then
+    // .bas, подключённый в главный файл (вкладка из Includes), - по
+    // главному: у подключаемого .bas FreeBASIC #-директив часто нет
+    Result := bkNone;
+    Owner := CurIncOwner;
+    if Owner <> '' then
     begin
-      Result := PrjKind;
-      FBuildReason := 'признаков в тексте нет, ' + PrjNote;
-    end
-    else
+      Result := BasDialectOf(Owner);
+      if Result <> bkNone then
+        FBuildReason := 'подключён в ' + ExtractFileName(Owner);
+    end;
+    if Result = bkNone then
     begin
-      Result := bkRapidQ;
-      FBuildReason := 'признаков в тексте нет, по умолчанию';
+      Result := BasDialectOf(FileNm);
+      if Result <> bkNone then
+        FBuildReason := 'по тексту файла'
+      else if (PrjKind = bkRapidQ) or (PrjKind = bkFreeBasic) then
+      begin
+        Result := PrjKind;
+        FBuildReason := 'признаков в тексте нет, ' + PrjNote;
+      end
+      else
+      begin
+        Result := bkRapidQ;
+        FBuildReason := 'признаков в тексте нет, по умолчанию';
+      end;
     end;
   end
   else if (Ext = '.inc') or (Ext = '.bi') then
@@ -10813,9 +11068,7 @@ begin
     bkRapidQ:
       Result := RapidQTargetBas(False);
     bkFreeBasic:
-      // Главный файл по #include - вместе со сборкой FreeBASIC
-      if Ext = '.bas' then
-        Result := FCurrentFileName;
+      Result := FbTargetBas(False);
     bkArduino:
       begin
         // arduino-cli собирает папку скетча: <папка>\<папка>.ino
@@ -10836,7 +11089,7 @@ end;
 // (BuildTargetOf), подсказки - почему выбран и полный путь цели
 procedure TForm1.UpdateBuildBar;
 var
-  Kind: Integer;
+  Kind, OutKind, Bits: Integer;
   Target, Why, Fqbn, BoardName, BoardText, PortText, ManualMark: string;
 begin
   if (cmbBuildKind = nil) or (lblBuildTarget = nil) then
@@ -10912,6 +11165,70 @@ begin
         'Выбор платы на USB ставит её порт и FQBN';
   end;
   lblBuildTarget.Visible := Kind <> bkArduino;
+
+  // FreeBASIC: вид результата и разрядность главного файла
+  if (Kind = bkFreeBasic) and (cmbFbKind <> nil) and (cmbFbBits <> nil) then
+  begin
+    FbBuildOf(Target, OutKind, Bits);
+    FBuildBarBusy := True;
+    try
+      cmbFbKind.ItemIndex := OutKind;
+      if Bits = 64 then
+        cmbFbBits.ItemIndex := 1
+      else
+        cmbFbBits.ItemIndex := 0;
+    finally
+      FBuildBarBusy := False;
+    end;
+    cmbFbKind.Enabled := Target <> '';
+    cmbFbBits.Enabled := Target <> '';
+    if Target <> '' then
+    begin
+      lblBuildTarget.Hint := Target + #13#10 + 'Результат: ' +
+                             FbOutFileOf(Target) + ' (' + FbOutName(OutKind) +
+                             ', ' + IntToStr(Bits) + ' бит)';
+      cmbFbKind.Hint := 'Вид результата для ' + ExtractFileName(Target) +
+        ': GUI (-s gui), Console (-s console), DLL (-dll). Запоминается ' +
+        'для главного файла';
+      cmbFbBits.Hint := 'Разрядность для ' + ExtractFileName(Target) +
+        ': 32 - fbc32.exe, 64 - fbc64.exe (IDE Options - Compilers - ' +
+        'FreeBASIC)';
+    end;
+  end;
+end;
+
+// Вид результата или разрядность FreeBASIC выбраны в рамке Project:
+// запоминаются для главного файла (editor.ini [FreeBASIC.Build])
+procedure TForm1.cmbFbBuildChange(Sender: TObject);
+var
+  MainBas: string;
+  OutKind, Bits: Integer;
+begin
+  if FBuildBarBusy or (cmbFbKind = nil) or (cmbFbBits = nil) then
+    Exit;
+  MainBas := FbTargetBas(False);
+  if MainBas = '' then
+  begin
+    UpdateBuildBar;
+    Exit;
+  end;
+  OutKind := cmbFbKind.ItemIndex;
+  if (OutKind < fbOutGui) or (OutKind > fbOutDll) then
+    OutKind := fbOutConsole;
+  if cmbFbBits.ItemIndex = 1 then
+    Bits := 64
+  else
+    Bits := 32;
+  SetFbBuild(MainBas, OutKind, Bits);
+  Dbg('FreeBASIC ' + ExtractFileName(MainBas) + ': ' + FbOutName(OutKind) +
+      ', ' + IntToStr(Bits) + ' бит (editor.ini [FreeBASIC.Build])', clGray);
+  FRunExeKey := '';   // у DLL запускать нечего, exe другой
+  UpdateBuildBar;
+  // Фокус - в редактор, как у переключателя сборщика: иначе колесо мыши и
+  // буквы меняли бы пункт и записывали это как выбор
+  if (Sender is TUiComboBox) and not TUiComboBox(Sender).DroppedDown and
+     RichEdit1.CanFocus then
+    RichEdit1.SetFocus;
 end;
 
 // Выбор в переключателе: сборщик для файла вкладки, Auto - снова по файлу.
@@ -18098,6 +18415,20 @@ begin
   cmbBuildKind.Items.Add('FreeBASIC');
   cmbBuildKind.Items.Add('Arduino');
   cmbBuildKind.Items.Add('Auto');
+  // FreeBASIC: номер пункта - fbOutGui..fbOutDll; 32 и 64 бит
+  if cmbFbKind <> nil then
+  begin
+    cmbFbKind.Items.Clear;
+    cmbFbKind.Items.Add(FbOutName(fbOutGui));
+    cmbFbKind.Items.Add(FbOutName(fbOutConsole));
+    cmbFbKind.Items.Add(FbOutName(fbOutDll));
+  end;
+  if cmbFbBits <> nil then
+  begin
+    cmbFbBits.Items.Clear;
+    cmbFbBits.Items.Add('32');
+    cmbFbBits.Items.Add('64');
+  end;
 
   // Точки останова: щелчок по полосе номеров строк
   FBreakMarks := TList.Create;
@@ -18585,6 +18916,7 @@ begin
   FreeAndNil(FProjectReg);
   FreeAndNil(FBasDialects);
   FreeAndNil(FBuildKindManual);
+  FreeAndNil(FFbBuild);
   FreeAndNil(FSplitLineBrush);
   // Схема подсветки (её списки и группы) освобождается в Destroy формы,
   // после FormDestroy
@@ -36160,7 +36492,8 @@ begin
   T := TrimLeft(T);
   Result := (AnsiCompareText(Copy(T, 1, 5), 'Error') = 0) or
             (AnsiCompareText(Copy(T, 1, 5), 'Fatal') = 0) or
-            ArdIsGccError(S);   // gcc: "файл:строка:столбец: error: ..."
+            ArdIsGccError(S) or   // gcc: "файл:строка:столбец: error: ..."
+            FbIsErrorLine(S);     // fbc: "файл(строка) error N: ..."
 end;
 
 // Строка в окно компиляции. Панель могла ещё не строиться (сообщение до
@@ -39053,6 +39386,7 @@ function TForm1.ParseCompilerLine(const S: string; var AFile: string;
                                   var ALine: Integer): Boolean;
 var
   ColNo: Integer;
+  FbError: Boolean;
 
   function ParseBorland: Boolean;
   var
@@ -39085,7 +39419,11 @@ var
   end;
 
 begin
-  Result := ArdParseGccLine(S, AFile, ALine, ColNo);
+  // fbc: "файл(строка) error N: ..." - первым: путь может содержать скобки,
+  // а ParseBorland берёт первую
+  Result := FbParseErrorLine(S, AFile, ALine, FbError);
+  if not Result then
+    Result := ArdParseGccLine(S, AFile, ALine, ColNo);
   if not Result then
     Result := ParseBorland;
 end;
@@ -39752,6 +40090,9 @@ begin
       Ini.Free;
     end;
   end;
+  // fbc пишет имена файлов так, как их получил, - в ANSI
+  if FCompNoOem then
+    Oem := False;
 
   FillChar(SecAttr, SizeOf(SecAttr), 0);
   SecAttr.nLength := SizeOf(SecAttr);
@@ -41234,6 +41575,11 @@ begin
         Result := CompileRapidQ;
         UpdateBuildBar;   // и записаться в проект
       end;
+    bkFreeBasic:
+      begin
+        Result := CompileFreeBasic;
+        UpdateBuildBar;   // цель могла записаться в проект
+      end;
     bkArduino:
       Result := CompileArduino(False);   // Verify
   else
@@ -42562,6 +42908,491 @@ begin
           Exit;
   // Как в RQdebugger: сразу к первой ошибке
           if (FirstLine > 0) and (FirstFile <> '') and FileExists(FirstFile) then
+  begin
+    OpenNamedFile(FirstFile);
+    GotoLine(FirstLine - 1);
+  end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Сборка FreeBASIC (fbc)
+//
+//  Главный .bas - как у RapidQ (FbTargetBas): вкладка, открытая из
+//  Includes, собирает свой главный файл (IncOwner); активный .bas,
+//  подключённый в цель проекта через #include, - цель; иначе сам файл
+//  вкладки, он же записывается целью проекта FreeBASIC.
+//  Вид результата (GUI, Console, DLL) и разрядность (32, 64) - списки в
+//  рамке Project, запоминаются для главного файла: editor.ini, раздел
+//  [FreeBASIC.Build], строка "путь=вид разрядность". Не выбраны - Console и
+//  32 бит (64, если есть только 64-битный компилятор).
+//  Компилятор - IDE Options - Compilers - FreeBASIC: FBCompPath (32 бит:
+//  fbc32.exe, иначе fbc.exe), FBComp64Path (64 бит: fbc64.exe, иначе
+//  fbc.exe; пустой - fbc64.exe в папке 32). IncPath - ключ -i, LibPath - -p.
+//  Результат - рядом с главным файлом: <имя>.exe или <имя>.dll (-x).
+//  Вывод fbc - в Compilation log; ошибки "файл(строка) error N: текст" -
+//  красным и в окно ошибок, двойной щелчок - к строке (FbParseErrorLine в
+//  ParseCompilerLine). Перекодировки из OEM нет: fbc пишет пути как получил.
+// ---------------------------------------------------------------------------
+
+function TForm1.FbTargetBas(ARemember: Boolean): string;
+var
+  BuildPrj, Stored, Active: string;
+begin
+  Result := '';
+  Stored := '';
+  BuildPrj := BuildProject;
+  // Проект другого типа: его цель не берётся и не перезаписывается
+  if (BuildPrj <> '') and
+     (CompareText(ProjectTypeOf(BuildPrj), 'FreeBASIC') <> 0) then
+    BuildPrj := '';
+  if BuildPrj <> '' then
+    Stored := ProjectTargetFind(BuildPrj);
+
+  Active := '';
+  if CurIncOwner <> '' then
+  begin
+    Active := CurIncOwner;
+    if ARemember then
+      LogComp('Собирается ' + ExtractFileName(Active) + ': ' +
+              ExtractFileName(FCurrentFileName) + ' подключён в него через ' +
+              '#include (вкладка открыта из Includes)');
+  end
+  else if (FCurrentFileName <> '') and IsFbSource(FCurrentFileName) and
+          FileExists(FCurrentFileName) then
+    Active := FCurrentFileName;
+
+  // Цель проекта - .bas, который есть на диске
+  if (Stored <> '') and IsFbSource(Stored) and FileExists(Stored) then
+  begin
+    if (Active = '') or
+       (CompareText(ExpandFileName(Active), ExpandFileName(Stored)) = 0) then
+    begin
+      Result := Stored;
+      Exit;
+    end;
+    if FbIncludes(Stored, Active) then
+    begin
+      Result := Stored;
+      if ARemember then
+        LogComp('Собирается цель проекта ' + ExtractFileName(Stored) + ': ' +
+                ExtractFileName(Active) + ' подключён в неё через #include');
+      Exit;
+    end;
+  end;
+
+  if Active = '' then
+    Exit;
+  Result := Active;
+
+  if ARemember and (BuildPrj <> '') and
+     ((Stored = '') or IsFbSource(Stored)) and
+     (CompareText(ExpandFileName(Stored), ExpandFileName(Result)) <> 0) then
+  begin
+    SetProjectTarget(BuildPrj, Result);
+    if Stored = '' then
+      LogComp('Цель сборки проекта: ' + Result)
+    else
+      LogComp('Цель сборки проекта: ' + Result + ' (была ' +
+              ExtractFileName(Stored) + ')');
+  end;
+end;
+
+// Вид результата и разрядность главного файла AMain. Не выбирались -
+// Console и 32 бит; 64, если 32-битного компилятора нет, а 64-битный есть.
+procedure TForm1.FbBuildOf(const AMain: string; var AOutKind, ABits: Integer);
+var
+  Ini: TIniFile;
+  Value, Problem: string;
+  Gap: Integer;
+begin
+  AOutKind := fbOutConsole;
+  ABits := 0;
+  if FFbBuild = nil then
+  begin
+    FFbBuild := TStringList.Create;
+    if FileExists(SettingsFileName) then
+    begin
+      Ini := TIniFile.Create(SettingsFileName);
+      try
+        Ini.ReadSectionValues('FreeBASIC.Build', FFbBuild);
+      finally
+        Ini.Free;
+      end;
+    end;
+  end;
+  Value := '';
+  if AMain <> '' then
+    Value := Trim(FFbBuild.Values[LowerCase(ExpandFileName(AMain))]);
+  if Value <> '' then
+  begin
+    Gap := Pos(' ', Value);
+    if Gap = 0 then
+      Gap := Length(Value) + 1;
+    if CompareText(Copy(Value, 1, Gap - 1), FbOutName(fbOutGui)) = 0 then
+      AOutKind := fbOutGui
+    else if CompareText(Copy(Value, 1, Gap - 1), FbOutName(fbOutDll)) = 0 then
+      AOutKind := fbOutDll;
+    ABits := StrToIntDef(Trim(Copy(Value, Gap + 1, MaxInt)), 0);
+  end;
+  if (ABits <> 32) and (ABits <> 64) then
+  begin
+    ABits := 32;
+    if (FbCompilerExe(32, Problem) = '') and
+       (FbCompilerExe(64, Problem) <> '') then
+      ABits := 64;
+  end;
+end;
+
+procedure TForm1.SetFbBuild(const AMain: string; AOutKind, ABits: Integer);
+var
+  Ini: TIniFile;
+  Key, Value: string;
+  OldKind, OldBits: Integer;
+begin
+  if AMain = '' then
+    Exit;
+  FbBuildOf(AMain, OldKind, OldBits);   // список прочитан
+  Key := LowerCase(ExpandFileName(AMain));
+  Value := FbOutName(AOutKind) + ' ' + IntToStr(ABits);
+  FFbBuild.Values[Key] := Value;
+  if not FileExists(AMain) then
+    Exit;
+  Ini := TIniFile.Create(SettingsFileName);
+  try
+    Ini.WriteString('FreeBASIC.Build', Key, Value);
+  finally
+    Ini.Free;
+  end;
+end;
+
+// fbc для разрядности ABits. Не найден - пусто, причина в AProblem.
+function TForm1.FbCompilerExe(ABits: Integer; var AProblem: string): string;
+var
+  Ini: TIniFile;
+  Sect, Dir32, Dir64, Tried: string;
+
+  // Поле - файл: он; папка - первый из имён ANames, который в ней есть
+  function Pick(const AValue: string; const ANames: array of string): string;
+  var
+    NameIdx: Integer;
+    Candidate: string;
+  begin
+    Result := '';
+    if AValue = '' then
+      Exit;
+    if FileExists(AValue) and not DirectoryExists(AValue) then
+    begin
+      Result := AValue;
+      Exit;
+    end;
+    for NameIdx := 0 to High(ANames) do
+    begin
+      Candidate := IncludeTrailingPathDelimiter(AValue) + ANames[NameIdx];
+      if Tried <> '' then
+        Tried := Tried + ', ';
+      Tried := Tried + Candidate;
+      if FileExists(Candidate) then
+      begin
+        Result := Candidate;
+        Exit;
+      end;
+    end;
+  end;
+
+begin
+  Result := '';
+  AProblem := '';
+  Tried := '';
+  Sect := CompilerSection('FreeBASIC');
+  Dir32 := '';
+  Dir64 := '';
+  if FileExists(SettingsFileName) then
+  begin
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      Dir32 := Trim(Ini.ReadString(Sect, 'FBCompPath', ''));
+      Dir64 := Trim(Ini.ReadString(Sect, 'FBComp64Path', ''));
+    finally
+      Ini.Free;
+    end;
+  end;
+
+  if ABits = 64 then
+  begin
+    if Dir64 <> '' then
+      Result := Pick(Dir64, ['fbc64.exe', 'fbc.exe'])
+    else if Dir32 <> '' then
+      Result := Pick(Dir32, ['fbc64.exe']);
+    if (Result = '') and (Dir64 = '') and (Dir32 = '') then
+      AProblem := 'не задана папка компилятора [' + Sect + ']. IDE Options ' +
+                  '- Compilers - FreeBASIC, поле FB compiler 64: папка с ' +
+                  'fbc64.exe'
+    else if Result = '' then
+      AProblem := '64-битный компилятор не найден (' + Tried + '). IDE ' +
+                  'Options - Compilers - FreeBASIC, поле FB compiler 64';
+  end
+  else
+  begin
+    Result := Pick(Dir32, ['fbc32.exe', 'fbc.exe']);
+    if Dir32 = '' then
+      AProblem := 'не задана папка компилятора [' + Sect + ']. IDE Options ' +
+                  '- Compilers - FreeBASIC, поле FB compiler 32: папка с ' +
+                  'fbc32.exe или fbc.exe'
+    else if Result = '' then
+      AProblem := '32-битный компилятор не найден (' + Tried + '). IDE ' +
+                  'Options - Compilers - FreeBASIC, поле FB compiler 32';
+  end;
+end;
+
+// Что получится из главного файла: <имя>.dll у DLL, иначе <имя>.exe
+function TForm1.FbOutFileOf(const AMain: string): string;
+var
+  OutKind, Bits: Integer;
+begin
+  Result := '';
+  if AMain = '' then
+    Exit;
+  FbBuildOf(AMain, OutKind, Bits);
+  if OutKind = fbOutDll then
+    Result := ChangeFileExt(AMain, '.dll')
+  else
+    Result := ChangeFileExt(AMain, '.exe');
+end;
+
+// Папки поиска #include для вкладки Includes: Include из настроек и inc
+// рядом с компилятором (32 бит, иначе 64), через точку с запятой.
+// AUserInc - только Include из настроек.
+function TForm1.FbIncDirs(var AUserInc: string): string;
+var
+  Ini: TIniFile;
+  FbcExe, Problem, CompInc: string;
+begin
+  AUserInc := '';
+  if FileExists(SettingsFileName) then
+  begin
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      AUserInc := Trim(Ini.ReadString(CompilerSection('FreeBASIC'), 'IncPath',
+                                      ''));
+    finally
+      Ini.Free;
+    end;
+  end;
+  Result := AUserInc;
+  FbcExe := FbCompilerExe(32, Problem);
+  if FbcExe = '' then
+    FbcExe := FbCompilerExe(64, Problem);
+  if FbcExe <> '' then
+  begin
+    CompInc := ExtractFilePath(FbcExe) + 'inc';
+    if DirectoryExists(CompInc) then
+    begin
+      if Result <> '' then
+        Result := Result + ';';
+      Result := Result + CompInc;
+    end;
+  end;
+end;
+
+// Сборка главного .bas компилятором fbc. True - собрано, результат на месте.
+function TForm1.CompileFreeBasic: Boolean;
+var
+  Ini: TIniFile;
+  Sect, IncDir, LibDir, FbcExe, Problem, MainBas, OutFile, Dir: string;
+  Params, LogLine, ErrFile, FirstFile, ShortName: string;
+  OutKind, Bits, Code, LogStart, LineIdx, ErrLine, FirstLine: Integer;
+  ErrCount, WarnCount: Integer;
+  StartTick: Cardinal;
+  Built, IsError: Boolean;
+begin
+  Result := False;
+  ShowCompLog;
+  if CompLogEdit <> nil then
+    CompLogEdit.Lines.Clear;
+  if ErrLogEdit <> nil then
+    ErrLogEdit.Lines.Clear;
+  if FBuildReason <> '' then
+    LogComp('Сборщик: FreeBASIC (' + FBuildReason + ')');
+
+  if not CheckDiskChanges(-1) then
+  begin
+    LogComp('Компиляция отменена: файлы на диске изменены снаружи, ' +
+            'разберитесь с ними и соберите снова');
+    Exit;
+  end;
+
+  // fbc читает файлы с диска: несохранённые правки он не увидит. Исходники
+  // те же, что у RapidQ: .bas, .bi, .inc
+  if RichEdit1.Modified then
+    if not SaveCurrentFile then
+      Exit;
+  FBuildRapidQ := True;
+  try
+    if not SaveSourcesBeforeBuild then
+      Exit;
+  finally
+    FBuildRapidQ := False;
+  end;
+
+  MainBas := FbTargetBas(True);
+  if MainBas = '' then
+  begin
+    LogComp('Сборка FreeBASIC: главный файл не найден. Откройте главный ' +
+            '.bas - он запомнится как цель сборки');
+    Exit;
+  end;
+
+  FbBuildOf(MainBas, OutKind, Bits);
+  FbcExe := FbCompilerExe(Bits, Problem);
+  if FbcExe = '' then
+  begin
+    LogComp('Сборка FreeBASIC: ' + Problem);
+    Exit;
+  end;
+
+  Sect := CompilerSection('FreeBASIC');
+  IncDir := '';
+  LibDir := '';
+  if FileExists(SettingsFileName) then
+  begin
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      IncDir := Trim(Ini.ReadString(Sect, 'IncPath', ''));
+      LibDir := Trim(Ini.ReadString(Sect, 'LibPath', ''));
+    finally
+      Ini.Free;
+    end;
+  end;
+
+  case OutKind of
+    fbOutGui: Params := '-s gui';
+    fbOutDll: Params := '-dll';
+  else
+    Params := '-s console';
+  end;
+  // Обратная косая перед закрывающей кавычкой экранировала бы её - папки
+  // передаются без неё
+  if IncDir <> '' then
+  begin
+    if DirectoryExists(IncDir) then
+      Params := Params + ' -i "' + ExcludeTrailingPathDelimiter(IncDir) + '"'
+    else
+      LogComp('Сборка FreeBASIC: папка Include не найдена, -i не ' +
+              'передаётся: ' + IncDir);
+  end;
+  if LibDir <> '' then
+  begin
+    if DirectoryExists(LibDir) then
+      Params := Params + ' -p "' + ExcludeTrailingPathDelimiter(LibDir) + '"'
+    else
+      LogComp('Сборка FreeBASIC: папка Library не найдена, -p не ' +
+              'передаётся: ' + LibDir);
+  end;
+
+  OutFile := FbOutFileOf(MainBas);
+  Dir := ExtractFilePath(MainBas);
+  ShortName := ExtractFileName(MainBas);
+  Params := Params + ' -x "' + OutFile + '" "' + MainBas + '"';
+
+  // Запущенный exe переименовывается в .old (как у Delphi и RapidQ),
+  // прежний результат удаляется: по его появлению видно, что сборка прошла
+  if (OutKind <> fbOutDll) and not FreeBusyExe(OutFile) then
+    Exit;
+  if FileExists(OutFile) and not DeleteFile(OutFile) then
+  begin
+    LogComp('Сборка FreeBASIC: не удалось удалить прежний ' + OutFile + ' (' +
+            SysErrorMessage(GetLastError) + ')');
+    if OutKind = fbOutDll then
+      LogComp('  DLL, вероятно, загружена работающей программой');
+    Exit;
+  end;
+
+  LogComp('--- Компиляция: ' + ShortName + '   [' + Sect + ']   ' +
+          FbOutName(OutKind) + ', ' + IntToStr(Bits) + ' бит');
+  LogComp('"' + FbcExe + '" ' + Params);
+  WriteCompileBat(FbcExe, Params, Dir, MainBas);
+
+  if CompLogEdit <> nil then
+    LogStart := CompLogEdit.Lines.Count
+  else
+    LogStart := -1;
+  StartTick := GetTickCount;
+  Code := -1;
+  Built := False;
+  ErrCount := 0;
+  WarnCount := 0;
+  FirstFile := '';
+  FirstLine := 0;
+  BusyBegin('Компиляция ' + ShortName);
+  try
+    FCompNoOem := True;
+    try
+      Code := RunCompiler(FbcExe, Params, Dir);
+    finally
+      FCompNoOem := False;
+    end;
+    if Code = -1 then
+      Exit;   // не запустился - причина уже в логе
+
+    // Ошибки и предупреждения - по строкам, которые fbc напечатал
+    if LogStart >= 0 then
+      for LineIdx := LogStart to CompLogEdit.Lines.Count - 1 do
+      begin
+        LogLine := StripLogTime(CompLogEdit.Lines[LineIdx]);
+        if not FbParseErrorLine(LogLine, ErrFile, ErrLine, IsError) then
+          Continue;
+        if not IsError then
+        begin
+          Inc(WarnCount);
+          Continue;
+        end;
+        Inc(ErrCount);
+        if FirstFile = '' then
+        begin
+          if (ExtractFileDrive(ErrFile) = '') and
+             (Copy(ErrFile, 1, 2) <> '\\') then
+            ErrFile := ExpandFileName(Dir + ErrFile);
+          FirstFile := ErrFile;
+          FirstLine := ErrLine;
+        end;
+      end;
+    Built := (Code = 0) and FileExists(OutFile);
+  finally
+    if Built then
+      BusyEnd('Компиляция: готово', True)
+    else
+      BusyEnd('Компиляция: ошибки', False);
+  end;
+  Result := Built;
+
+  if Built then
+  begin
+    if WarnCount > 0 then
+      LogComp(Format('--- Готово, %d мс, предупреждений: %d: %s',
+                     [GetTickCount - StartTick, WarnCount, OutFile]))
+    else
+      LogComp(Format('--- Готово, %d мс: %s',
+                     [GetTickCount - StartTick, OutFile]));
+    Exit;
+  end;
+
+  if ErrCount = 0 then
+  begin
+    LogComp(Format('--- %s не появился. Код завершения fbc %d',
+                   [OutFile, Code]));
+    SaveCompileLog(ChangeFileExt(MainBas, '') + '_compile.log');
+    if (ErrLogEdit <> nil) and (ErrLogEdit.Lines.Count > 0) then
+      ShowErrLog;
+    Exit;
+  end;
+
+  LogComp(Format('--- Ошибок: %d. Двойной щелчок по строке с ошибкой ' +
+                 'открывает файл на нужной строке', [ErrCount]));
+  SaveCompileLog(ChangeFileExt(MainBas, '') + '_compile.log');
+  if (ErrLogEdit <> nil) and (ErrLogEdit.Lines.Count > 0) then
+    ShowErrLog;
+  // Как у RapidQ: сразу к первой ошибке
+  if (FirstLine > 0) and (FirstFile <> '') and FileExists(FirstFile) then
   begin
     OpenNamedFile(FirstFile);
     GotoLine(FirstLine - 1);
@@ -44144,21 +44975,27 @@ end;
 function TForm1.IncludesApply: Boolean;
 var
   Ext: string;
+  Kind: Integer;
 begin
   Ext := LowerCase(ExtractFileExt(FCurrentFileName));
-  Result := (IsRapidQSource(FCurrentFileName) or (Ext = '.bi') or
-             (Ext = '.inc')) and BuildIsRapidQ;
+  Result := IsRapidQSource(FCurrentFileName) or (Ext = '.bi') or
+            (Ext = '.inc');
+  if not Result then
+    Exit;
+  Kind := CurBuildKind;
+  Result := (Kind = bkRapidQ) or (Kind = bkFreeBasic);
 end;
 
 procedure TForm1.RefreshIncludes;
 const
   MaxDepth = 20;   // защита от зацикливания через разные имена одного файла
 var
-  MainBas, MainDir, IncDir, CurFile: string;
+  MainBas, MainDir, IncDir, CurFile, UserInc: string;
   Ini: TIniFile;
   Visited: TStringList;
   Source: TStringList;
   Root: TTreeNode;
+  FbMode: Boolean;
 
   // Узел дерева. AFull - найденный файл ('' - не найден), AFrom и ALine -
   // где стоит $INCLUDE (для двойного щелчка по ненайденному).
@@ -44181,12 +45018,20 @@ var
   begin
     for LineIdx := 0 to ALines.Count - 1 do
     begin
-      IncName := RapidQIncludeName(ALines[LineIdx]);
+      // FreeBASIC: #include "файл", ищется от папки подключающего файла
+      if FbMode then
+        IncName := FbIncludeName(ALines[LineIdx])
+      else
+        IncName := RapidQIncludeName(ALines[LineIdx]);
       if IncName = '' then
         Continue;
       // Номер строки с $INCLUDE в подключающем файле
       LineTag := '   [' + IntToStr(LineIdx + 1) + ']';
-      Full := RapidQResolveInclude(IncName, MainDir, IncDir);
+      if FbMode then
+        Full := FbResolveInclude(IncName, ExtractFilePath(AFile), MainDir,
+                                 IncDir)
+      else
+        Full := RapidQResolveInclude(IncName, MainDir, IncDir);
       if Full = '' then
       begin
         AddNode(AParent, IncName + LineTag + '  не найден', '', AFile,
@@ -44230,19 +45075,27 @@ begin
 
     if (FCurrentFileName = '') or not IncludesApply then
     begin
-      AddNode(nil, 'Список строится для файлов RapidQ', '', '', 0);
+      AddNode(nil, 'Список строится для файлов RapidQ и FreeBASIC', '', '',
+              0);
       Exit;
     end;
 
     // Папка поиска - папка главного .bas (у вкладки .inc - цели проекта)
-    MainBas := RapidQTargetBas(False);
+    FbMode := CurBuildKind = bkFreeBasic;
+    if FbMode then
+      MainBas := FbTargetBas(False)
+    else
+      MainBas := RapidQTargetBas(False);
     if MainBas <> '' then
       MainDir := ExtractFilePath(MainBas)
     else
       MainDir := ExtractFilePath(FCurrentFileName);
 
     IncDir := '';
-    if FileExists(SettingsFileName) then
+    if FbMode then
+      // Include из настроек и inc рядом с fbc, через точку с запятой
+      IncDir := FbIncDirs(UserInc)
+    else if FileExists(SettingsFileName) then
     begin
       Ini := TIniFile.Create(SettingsFileName);
       try
@@ -44264,7 +45117,10 @@ begin
       Source.Text := GetEditorTextCR;
       AddIncludesOf(Source, CurFile, Root, 1);
       if not Root.HasChildren then
-        AddNode(Root, '$INCLUDE в файле нет', '', '', 0);
+        if FbMode then
+          AddNode(Root, '#include в файле нет', '', '', 0)
+        else
+          AddNode(Root, '$INCLUDE в файле нет', '', '', 0);
       // Раскрыто целиком, как в RQdebugger
       FIncTree.FullExpand;
       Root.MakeVisible;
@@ -44310,7 +45166,10 @@ begin
   begin
     // Главный .bas дерева - программа активной вкладки (для вкладки .inc -
     // её главный), иначе сам файл-корень, если он .bas
-    OwnerBas := RapidQTargetBas(False);
+    if CurBuildKind = bkFreeBasic then
+      OwnerBas := FbTargetBas(False)
+    else
+      OwnerBas := RapidQTargetBas(False);
     if (OwnerBas = '') and IsRapidQSource(FCurrentFileName) then
       OwnerBas := FCurrentFileName;
     OpenNamedFile(Full);
@@ -45263,6 +46122,14 @@ begin
     TargetSrc := DelphiTargetDpr;
     if TargetSrc <> '' then
       Result := DelphiRunExeOf(TargetSrc);
+  end
+  else if Kind = bkFreeBasic then
+  begin
+    // У DLL запускать нечего
+    TargetSrc := FbTargetBas(False);
+    if (TargetSrc <> '') and
+       (LowerCase(ExtractFileExt(FbOutFileOf(TargetSrc))) = '.exe') then
+      Result := ChangeFileExt(TargetSrc, '.exe');
   end;
   if Result <> '' then
     Result := ExpandFileName(Result);
@@ -45493,7 +46360,7 @@ const
   RunRowCount = 8;
 var
   ModeKey: string;
-  Basic, RqMode, CanStep, ArdRow: Boolean;
+  Basic, RqMode, CanStep, ArdRow, FbRow: Boolean;
   Kind: Integer;
   RunRow: array[0..RunRowCount - 1] of TControl;
   RowIdx, SlotIdx, PageIdx: Integer;
@@ -45539,8 +46406,8 @@ begin
   mPrjRelease.Visible := not Basic;
   mPrjReleaseFiles.Visible := not Basic;
   ShowTab(FTabCode, not Basic);
-  // Только RapidQ
-  ShowTab(FTabIncludes, RqMode);
+  // RapidQ ($INCLUDE) и FreeBASIC (#include)
+  ShowTab(FTabIncludes, RqMode or (Kind = bkFreeBasic));
 
   // Ряд кнопок Project: видимые - подряд, на места кнопок из .dfm
   RunRow[0] := btnCompileRun;
@@ -45577,6 +46444,12 @@ begin
     btnArdUpload.Visible := ArdRow;
   if cmbArdPort <> nil then
     cmbArdPort.Visible := ArdRow;
+  // FreeBASIC: вид результата и разрядность
+  FbRow := Kind = bkFreeBasic;
+  if cmbFbKind <> nil then
+    cmbFbKind.Visible := FbRow;
+  if cmbFbBits <> nil then
+    cmbFbBits.Visible := FbRow;
   if ArdRow and (btnArdVerify <> nil) and (btnArdUpload <> nil) then
   begin
     btnArdVerify.Left := FRunRowLefts[1];        // места View Unit,
@@ -45600,6 +46473,10 @@ begin
     bkDelphi:
       btnCompileRun.Hint := 'Собрать проект dcc32 и запустить, если без ' +
                             'ошибок';
+    bkFreeBasic:
+      btnCompileRun.Hint := 'Собрать программу FreeBASIC (fbc) и ' +
+                            'запустить, если без ошибок. DLL только ' +
+                            'собирается';
     bkArduino:
       btnCompileRun.Hint := 'Собрать скетч (arduino-cli compile) и ' +
                             'загрузить в плату (Upload). Плата и порт - ' +
@@ -47756,13 +48633,13 @@ var
   SI: TStartupInfo;
   PI: TProcessInformation;
   RapidQ: Boolean;
-  Kind: Integer;
+  Kind, OutKind, Bits: Integer;
 begin
   ShowCompLog;
   AutoSaveEditorFiles;
 
   Kind := CurBuildKind;
-  if (Kind <> bkDelphi) and (Kind <> bkRapidQ) then
+  if (Kind <> bkDelphi) and (Kind <> bkRapidQ) and (Kind <> bkFreeBasic) then
   begin
     LogComp('Запуск: сборщик ' + BuildKindName(Kind) + ' (' + FBuildReason +
             ') здесь пока не подключён');
@@ -47770,7 +48647,26 @@ begin
   end;
   // RapidQ: exe рядом с главным .bas, отладчика Delphi для него нет
   RapidQ := Kind = bkRapidQ;
-  if RapidQ then
+  if Kind = bkFreeBasic then
+  begin
+    // FreeBASIC: exe рядом с главным .bas; отладчика пока нет
+    Dpr := FbTargetBas(False);
+    if Dpr = '' then
+    begin
+      LogComp('Запуск: главный .bas не найден. Откройте его и соберите ' +
+              'программу');
+      Exit;
+    end;
+    FbBuildOf(Dpr, OutKind, Bits);
+    if OutKind = fbOutDll then
+    begin
+      LogComp('Запуск: ' + ExtractFileName(Dpr) + ' собирается как DLL - ' +
+              'запускать нечего. Вид результата - в рамке Project');
+      Exit;
+    end;
+    Exe := ChangeFileExt(Dpr, '.exe');
+  end
+  else if RapidQ then
   begin
     Dpr := RapidQTargetBas(False);
     if Dpr = '' then
@@ -47803,7 +48699,7 @@ begin
 
   // Есть точки останова - под отладчиком. Не вышло (нет .map, нет строк в
   // нём) - обычный запуск, причина уже в логе.
-  if not RapidQ and DbgWanted then
+  if (Kind = bkDelphi) and DbgWanted then
     if DbgStart(Exe, Dir) then
       Exit;
 
@@ -48526,6 +49422,15 @@ begin
   begin
     LogComp('Отладчик RapidQ: уже отлаживается ' + ExtractFileName(FRqDbgExe) +
             ' - сначала Program reset (Ctrl+F2)');
+    Exit;
+  end;
+  // F7, F8, F4 у FreeBASIC: отладчика пока нет, иначе это был бы обычный
+  // Compile & Run
+  if CurBuildKind = bkFreeBasic then
+  begin
+    ShowCompLog;
+    LogComp('Отладчик FreeBASIC пока не подключён: шаги и Run to cursor ' +
+            'недоступны. Сборка и запуск - кнопка Compile & Run');
     Exit;
   end;
   FDbgStartMode := AMode;

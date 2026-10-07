@@ -3616,7 +3616,11 @@ begin
     end
     else if AType = 'FreeBASIC' then
     begin
-      Fields.Add('FBCompPath|FB compiler');
+      // Папки компилятора: 32 бит - fbc32.exe (или fbc.exe), 64 бит -
+      // fbc64.exe; папка 64 пустая - fbc64.exe ищется в папке 32
+      // (CompileFreeBasic в Unit1)
+      Fields.Add('FBCompPath|FB compiler 32');
+      Fields.Add('FBComp64Path|FB compiler 64');
       Fields.Add('IncPath|Include');
       Fields.Add('LibPath|Library');
     end
@@ -3812,6 +3816,26 @@ begin
       'Папки, которых нет на этом компьютере, в списках остаются (они могут ' +
       'быть с другого компьютера) и при сборке пропускаются; удалить их - ' +
       'кнопка ... и Delete invalid.';
+  end;
+
+  if AType = 'FreeBASIC' then
+  begin
+    L := TLabel.Create(Self);
+    L.Parent := pnlCompPage;
+    L.Left := 12;
+    L.Top := Y + 8;
+    L.AutoSize := False;
+    L.WordWrap := True;
+    L.Width := pnlCompPage.ClientWidth - 24;
+    L.Height := 120;
+    L.Anchors := [akLeft, akTop, akRight];
+    L.Caption :=
+      'FB compiler 32 - папка с fbc32.exe (или fbc.exe), FB compiler 64 - ' +
+      'папка с fbc64.exe (или fbc.exe). Если оба компилятора в одной папке, ' +
+      'достаточно заполнить FB compiler 32.' + #13#10#13#10 +
+      'Include передаётся компилятору ключом -i, Library - ключом -p. ' +
+      'Вид результата (GUI, Console, DLL) и разрядность выбираются в рамке ' +
+      'Project и запоминаются для главного .bas.';
   end;
 
   // Значения из editor.ini приводим в порядок сразу, не дожидаясь, пока
