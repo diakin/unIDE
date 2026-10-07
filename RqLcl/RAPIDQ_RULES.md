@@ -53,11 +53,11 @@ Function RqStr Overload (ByVal Value As Double) As String   ' число -> ""
 
 ## TRUE и FALSE
 
-- `TRUE` = 1 и `FALSE` = 0 задаёт не компилятор, а `rapidq.inc` (строки 42–43: `$define False 0`, `$define True 1`); в других include бывает `CONST True = 1`, в примере CONST документации (otherdetail.html) — `CONST True AS LONG = NOT False`, то есть -1. Без таких определений `TRUE` в RapidQ, судя по документации, — обычное имя; что даёт `PRINT TRUE` без include — не проверено.
+- `TRUE` и `FALSE` — не слова RapidQ. Значение задаёт `rapidq.inc` (строки 42–43: `$define False 0`, `$define True 1`); в других include бывает `CONST True = 1`, в примере CONST документации (otherdetail.html) — `CONST True AS LONG = NOT False`, то есть -1.
+- Без определения это необъявленная переменная со значением 0. Тест в RapidQ (2026-10-08), файл без include: `TRUE` → `0`, `(Not TRUE)` → `-1`, `Not TRUE` → `-1`, `False` → `0`, `Not False` → `-1`. NOT — побитовый.
+- Результат сравнения даёт компилятор: -1 (operators.html: «You may assume that "true" equals -1»; тест `PRINT (2 > 1)` → `-1`). Отсюда при `$define True 1` условие `IF (a > b) = TRUE` ложно (-1 ≠ 1), а `NOT TRUE` = -2, то есть не ноль (вывод из побитового NOT; в RapidQ с rapidq.inc не проверено).
 - Boolean-свойства компонентов (Checked, Visible, Selected…) при чтении дают 1 / 0 (сообщил пользователь, 2026-10-08).
-- Результат сравнения даёт компилятор: -1 (operators.html: «You may assume that "true" equals -1»; тест пользователя `PRINT (2 > 1)` → `-1`).
-- У FreeBASIC `True` в целом -1: `x = True` даёт -1, `IF x = True` при x = 1 ложно (проверено, fbc 1.10.1). `$define True 1` из rapidq.inc препроцессор подставляет сам (как любой $DEFINE). Если определения нет, препроцессор тоже заменяет `TRUE` на `1`, `FALSE` на `0` (как с rapidq.inc), если в программе нет своей переменной или константы с таким именем.
-- Значение сравнения -1, как у FreeBASIC — замена не нужна. Отсюда `IF (a > b) = TRUE` ложно и в RapidQ (-1 ≠ 1), и после перевода.
+- Перевод: `$define True 1` препроцессор подставляет при чтении строки, как любой $DEFINE; `CONST True = …` — константа `TRUE_v` (True у FreeBASIC — слово языка, равно -1). Без определения `TRUE`/`FALSE` — неявная переменная `TRUE_v`/`False_v` (0) и предупреждение при переводе, в обоих режимах. Сравнение у FreeBASIC тоже -1 — замена не нужна.
 
 ## PRINT (по тесту)
 

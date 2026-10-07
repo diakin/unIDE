@@ -2446,14 +2446,20 @@ begin
     AToks[AIdx].OutText := 'Base';
     Exit;
   end;
-  // TRUE / FALSE RapidQ - 1 / 0 (у FreeBASIC True в целом -1); своя
-  // переменная или константа с таким именем не заменяется
-  if ((Up = 'TRUE') or (Up = 'FALSE')) and (FindVar(Up) = nil) then
+  // TRUE / FALSE - не слова RapidQ: значение задаёт rapidq.inc ($define
+  // True 1 - подставляется ещё при чтении строки) или CONST программы.
+  // Без определения - необъявленная переменная, 0 (тест в RapidQ
+  // 2026-10-08: PRINT TRUE -> 0, NOT TRUE -> -1). В FreeBASIC True -
+  // слово языка, имя переменной - TRUE_v (Mangle).
+  if (Up = 'TRUE') or (Up = 'FALSE') then
   begin
-    if Up = 'TRUE' then
-      AToks[AIdx].OutText := '1'
-    else
-      AToks[AIdx].OutText := '0';
+    VarRec := ResolveVar(AToks[AIdx].Text, False);
+    AToks[AIdx].OutText := VarRec.FbName;
+    if not VarRec.Explicit then
+      WarnOnce('TF|' + Up, AToks[AIdx].Text + ': не определено (нет $INCLUDE ' +
+        '"RAPIDQ.INC" или CONST) - в RapidQ это необъявленная переменная, 0')
+    else if (VarRec.Scope = '') then
+      GlobalQualify(AToks, AIdx);
     Exit;
   end;
 
@@ -2538,9 +2544,6 @@ begin
   if InList(FKeywords, Up) or InList(FTypes, Up) or InList(FObjClasses, Up) or
      InList(FLabels, Up) then
     Exit;
-  if (Up = 'TRUE') or (Up = 'FALSE') then
-    Exit;
-
   VarRec := FindVar(Up);
   if IsOp(AToks, NextIdx, '(') then
   begin

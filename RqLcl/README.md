@@ -121,7 +121,7 @@ demo.exe
 
 - Синтаксис RapidQ (`Button1.OnClick = Button1Click` без `@`, `CREATE … END CREATE`, `TYPE … EXTENDS`, `$INCLUDE` и т. д.) переводит препроцессор `tofb/RqToFb.pas` — что сделано и что нет, в `tofb/README.md`.
 - Остальные классы RapidQ и события с параметрами (OnKeyPress, OnMouseDown…).
-- Font, свойства-объекты кроме Parent. Boolean-свойства при чтении дают 1 / 0, как в RapidQ (`TRUE` = 1; `TRUE`/`FALSE` в исходнике препроцессор заменяет на 1 / 0).
+- Font, свойства-объекты кроме Parent. Boolean-свойства при чтении дают 1 / 0, как в RapidQ (о TRUE/FALSE — RAPIDQ_RULES.md).
 
 ## Лицензия LCL
 
