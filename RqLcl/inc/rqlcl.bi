@@ -629,6 +629,14 @@ Const RqEvDblClick = 11
 Const RqEvChange = 12
 Const RqEvPopup = 13
 Const RqEvMoved = 14
+' QTREEVIEW: номер пункта; Changing/Expanding/Collapsing - и разрешение
+Const RqEvTreeChange = 15
+Const RqEvChanging = 16
+Const RqEvExpand = 17
+Const RqEvCollapse = 18
+Const RqEvExpanding = 19
+Const RqEvCollapsing = 20
+Const RqEvResize = 21
 
 ' Виды обработчиков для вызова (Sender - как QCONTROL: у элемента любого
 ' класса QCONTROL лежит в начале)
@@ -652,6 +660,10 @@ Type RqEvProcSetEditText As Sub(ByVal As Long, ByVal As Long, ByVal As String)
 Type RqEvProcSetEditTextS As Sub(ByVal As Long, ByVal As Long, ByVal As String, ByRef As QCONTROL)
 Type RqEvProcDrawItem As Sub(ByVal As Long, ByVal As Long, ByRef As QRECT)
 Type RqEvProcDrawItemS As Sub(ByVal As Long, ByVal As Long, ByRef As QRECT, ByRef As QCONTROL)
+Type RqEvProcIndex As Sub(ByVal As Long)
+Type RqEvProcIndexS As Sub(ByVal As Long, ByRef As QCONTROL)
+Type RqEvProcAllow As Sub(ByVal As Long, ByRef As Long)
+Type RqEvProcAllowS As Sub(ByVal As Long, ByRef As Long, ByRef As QCONTROL)
 Type RqEvProcPlain As Sub()
 Type RqEvProcSender As Sub(ByRef As QCONTROL)
 
@@ -731,6 +743,18 @@ Private Sub RqLclEventEx stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any 
             Cast(RqEvProcSetEditText, HandlerPtr)(ArgList[0], ArgList[1], EditText)
         Else
             Cast(RqEvProcSetEditTextS, HandlerPtr)(ArgList[0], ArgList[1], EditText, *CtlPtr)
+        End If
+    Case RqEvTreeChange, RqEvExpand, RqEvCollapse
+        If HandlerKind = 1 Then
+            Cast(RqEvProcIndex, HandlerPtr)(ArgList[0])
+        Else
+            Cast(RqEvProcIndexS, HandlerPtr)(ArgList[0], *CtlPtr)
+        End If
+    Case RqEvChanging, RqEvExpanding, RqEvCollapsing
+        If HandlerKind = 1 Then
+            Cast(RqEvProcAllow, HandlerPtr)(ArgList[0], ArgList[1])
+        Else
+            Cast(RqEvProcAllowS, HandlerPtr)(ArgList[0], ArgList[1], *CtlPtr)
         End If
     Case RqEvDrawItem
         Dim ItemRect As QRECT
@@ -3927,4 +3951,1656 @@ Property QSPLITTER.OnMoved(ByVal Handler As Sub())
 End Property
 Property QSPLITTER.OnMoved(ByVal Handler As Sub(ByRef Sender As QSPLITTER))
     SetEventEx(14, "OnMoved", Cast(Any Ptr, Handler), 3)
+End Property
+
+' Строка по номеру; ошибка (номер вне списка) - как у QSTRINGLIST
+Function RqLclGetItemEx(ByVal ObjPtr As Any Ptr, ByRef PropName As String, _
+        ByVal ItemNum As Long, ByRef What As String) As String
+    Dim TextLen As Long = RqGetItemStr(ObjPtr, StrPtr(PropName), ItemNum, 0, 0)
+    If TextLen < 0 Then
+        RqLclClassError(What)
+        Return ""
+    End If
+    If TextLen = 0 Then Return ""
+    Dim TextValue As String = Space(TextLen)
+    RqGetItemStr(ObjPtr, StrPtr(PropName), ItemNum, StrPtr(TextValue), TextLen + 1)
+    Return TextValue
+End Function
+
+' Целое по номеру; ошибка - как у QSTRINGLIST (DLL очищает текст ошибки
+' в начале RqGetItemInt)
+Function RqLclGetItemIntEx(ByVal ObjPtr As Any Ptr, ByRef PropName As String, _
+        ByVal ItemNum As Long, ByRef What As String) As Long
+    Dim ItemValue As Long = RqGetItemInt(ObjPtr, StrPtr(PropName), ItemNum)
+    If RqLclLastError() <> "" Then RqLclClassError(What)
+    Return ItemValue
+End Function
+
+' ---------------------------------------------------------------------------
+'  QGAUGE - полоса хода (свой элемент DLL, как TGauge Delphi): ForeColor - заполненная часть,
+'  BackColor - фон, ShowText - процент, Kind 0 текст, 1 гориз., 2 верт., 3 круг, 4 стрелка
+' ---------------------------------------------------------------------------
+
+Type QGAUGE Extends QCONTROL
+    Declare Constructor()
+    Declare Property Align() As Long
+    Declare Property Align(ByVal Value As Long)
+    Declare Property BackColor() As Long
+    Declare Property BackColor(ByVal Value As Long)
+    Declare Property BorderStyle() As Long
+    Declare Property BorderStyle(ByVal Value As Long)
+    Declare Property ForeColor() As Long
+    Declare Property ForeColor(ByVal Value As Long)
+    Declare Property Kind() As Long
+    Declare Property Kind(ByVal Value As Long)
+    Declare Property Max() As Long
+    Declare Property Max(ByVal Value As Long)
+    Declare Property Min() As Long
+    Declare Property Min(ByVal Value As Long)
+    Declare Property Position() As Long
+    Declare Property Position(ByVal Value As Long)
+    Declare Property ShowText() As Long
+    Declare Property ShowText(ByVal Value As Long)
+    Declare Property Tag() As Long
+    Declare Property Tag(ByVal Value As Long)
+    Declare Property OnClick(ByVal Handler As Sub())
+    Declare Property OnClick(ByVal Handler As Sub(ByRef Sender As QGAUGE))
+    Declare Property OnDblClick(ByVal Handler As Sub())
+    Declare Property OnDblClick(ByVal Handler As Sub(ByRef Sender As QGAUGE))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QGAUGE))
+    Declare Property OnMouseDown(ByVal Handler As Sub())
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByRef Sender As QGAUGE))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QGAUGE))
+    Declare Property OnMouseUp(ByVal Handler As Sub())
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByRef Sender As QGAUGE))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QGAUGE))
+    Declare Property OnMouseMove(ByVal Handler As Sub())
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByRef Sender As QGAUGE))
+End Type
+
+Constructor QGAUGE()
+    RqObj = RqLclNew("QGAUGE", @This)
+End Constructor
+Property QGAUGE.Align() As Long
+    Return RqGetInt(RqObj, "Align")
+End Property
+Property QGAUGE.Align(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Align", Value)
+End Property
+Property QGAUGE.BackColor() As Long
+    Return RqGetInt(RqObj, "BackColor")
+End Property
+Property QGAUGE.BackColor(ByVal Value As Long)
+    RqLclSetInt(RqObj, "BackColor", Value)
+End Property
+Property QGAUGE.BorderStyle() As Long
+    Return RqGetInt(RqObj, "BorderStyle")
+End Property
+Property QGAUGE.BorderStyle(ByVal Value As Long)
+    RqLclSetInt(RqObj, "BorderStyle", Value)
+End Property
+Property QGAUGE.ForeColor() As Long
+    Return RqGetInt(RqObj, "ForeColor")
+End Property
+Property QGAUGE.ForeColor(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ForeColor", Value)
+End Property
+Property QGAUGE.Kind() As Long
+    Return RqGetInt(RqObj, "Kind")
+End Property
+Property QGAUGE.Kind(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Kind", Value)
+End Property
+Property QGAUGE.Max() As Long
+    Return RqGetInt(RqObj, "Max")
+End Property
+Property QGAUGE.Max(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Max", Value)
+End Property
+Property QGAUGE.Min() As Long
+    Return RqGetInt(RqObj, "Min")
+End Property
+Property QGAUGE.Min(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Min", Value)
+End Property
+Property QGAUGE.Position() As Long
+    Return RqGetInt(RqObj, "Position")
+End Property
+Property QGAUGE.Position(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Position", Value)
+End Property
+Property QGAUGE.ShowText() As Long
+    Return RqGetInt(RqObj, "ShowText")
+End Property
+Property QGAUGE.ShowText(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ShowText", Value)
+End Property
+Property QGAUGE.Tag() As Long
+    Return RqGetInt(RqObj, "Tag")
+End Property
+Property QGAUGE.Tag(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Tag", Value)
+End Property
+Property QGAUGE.OnClick(ByVal Handler As Sub())
+    SetEventEx(10, "OnClick", Cast(Any Ptr, Handler), 0)
+End Property
+Property QGAUGE.OnClick(ByVal Handler As Sub(ByRef Sender As QGAUGE))
+    SetEventEx(10, "OnClick", Cast(Any Ptr, Handler), 3)
+End Property
+Property QGAUGE.OnDblClick(ByVal Handler As Sub())
+    SetEventEx(11, "OnDblClick", Cast(Any Ptr, Handler), 0)
+End Property
+Property QGAUGE.OnDblClick(ByVal Handler As Sub(ByRef Sender As QGAUGE))
+    SetEventEx(11, "OnDblClick", Cast(Any Ptr, Handler), 3)
+End Property
+Property QGAUGE.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QGAUGE.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QGAUGE))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QGAUGE.OnMouseDown(ByVal Handler As Sub())
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QGAUGE.OnMouseDown(ByVal Handler As Sub(ByRef Sender As QGAUGE))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 3)
+End Property
+Property QGAUGE.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 1)
+End Property
+Property QGAUGE.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QGAUGE))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 2)
+End Property
+Property QGAUGE.OnMouseUp(ByVal Handler As Sub())
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 0)
+End Property
+Property QGAUGE.OnMouseUp(ByVal Handler As Sub(ByRef Sender As QGAUGE))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 3)
+End Property
+Property QGAUGE.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 1)
+End Property
+Property QGAUGE.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QGAUGE))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 2)
+End Property
+Property QGAUGE.OnMouseMove(ByVal Handler As Sub())
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 0)
+End Property
+Property QGAUGE.OnMouseMove(ByVal Handler As Sub(ByRef Sender As QGAUGE))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 3)
+End Property
+
+' ---------------------------------------------------------------------------
+'  QTABCONTROL - закладки (TTabControl); элементы на нём - через Parent, видимость по
+'  TabIndex меняет программа (OnChange)
+' ---------------------------------------------------------------------------
+
+Type QTABCONTROL Extends QCONTROL
+    InactiveColor As Long
+    Declare Constructor()
+    Declare Property Align() As Long
+    Declare Property Align(ByVal Value As Long)
+    Declare Property ButtonStyle() As Long
+    Declare Property ButtonStyle(ByVal Value As Long)
+    Declare Property FlatButtons() As Long
+    Declare Property FlatButtons(ByVal Value As Long)
+    Declare Property FlatSeperators() As Long
+    Declare Property FlatSeperators(ByVal Value As Long)
+    Declare Property FocusButtons() As Long
+    Declare Property FocusButtons(ByVal Value As Long)
+    Declare Property HotTrack() As Long
+    Declare Property HotTrack(ByVal Value As Long)
+    Declare Property MultiLine() As Long
+    Declare Property MultiLine(ByVal Value As Long)
+    Declare Property ScrollOpposite() As Long
+    Declare Property ScrollOpposite(ByVal Value As Long)
+    Declare Property TabCount() As Long
+    Declare Property TabHeight() As Long
+    Declare Property TabHeight(ByVal Value As Long)
+    Declare Property TabIndex() As Long
+    Declare Property TabIndex(ByVal Value As Long)
+    Declare Property TabOrder() As Long
+    Declare Property TabOrder(ByVal Value As Long)
+    Declare Property TabPosition() As Long
+    Declare Property TabPosition(ByVal Value As Long)
+    Declare Property TabWidth() As Long
+    Declare Property TabWidth(ByVal Value As Long)
+    Declare Property Tag() As Long
+    Declare Property Tag(ByVal Value As Long)
+    Declare Property VerticalTabs() As Long
+    Declare Property VerticalTabs(ByVal Value As Long)
+    Declare Sub StrCall(ByRef MethodName As String, ByRef Text1 As String, ByVal IntArg1 As Long = 0, ByVal IntArg2 As Long = 0)
+    Declare Property Tab(ByVal ItemNum As Long) As String
+    Declare Property Tab(ByVal ItemNum As Long, ByRef Value As String)
+    Declare Sub AddTabs Overload (ByRef Text1 As String)
+    Declare Sub AddTabs Overload (ByRef Text1 As String, ByRef Text2 As String)
+    Declare Sub AddTabs Overload (ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String)
+    Declare Sub AddTabs Overload (ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String)
+    Declare Sub AddTabs Overload (ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String, ByRef Text5 As String)
+    Declare Sub AddTabs Overload (ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String, ByRef Text5 As String, ByRef Text6 As String)
+    Declare Sub DelTabs(ByVal Num1 As Long, ByVal Num2 As Long = -1, ByVal Num3 As Long = -1, ByVal Num4 As Long = -1)
+    Declare Sub DeleteTabs(ByVal Num1 As Long, ByVal Num2 As Long = -1, ByVal Num3 As Long = -1, ByVal Num4 As Long = -1)
+    Declare Sub InsertTab(ByVal ItemNum As Long, ByRef Text1 As String)
+    Declare Sub Clear()
+    Declare Property TabInactiveColor() As Long
+    Declare Property TabInactiveColor(ByVal Value As Long)
+    Declare Property TabInactiveFont(ByRef Value As QFONT)
+    Declare Property OnChange(ByVal Handler As Sub())
+    Declare Property OnChange(ByVal Handler As Sub(ByRef Sender As QTABCONTROL))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QTABCONTROL))
+    Declare Property OnMouseDown(ByVal Handler As Sub())
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByRef Sender As QTABCONTROL))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QTABCONTROL))
+    Declare Property OnMouseUp(ByVal Handler As Sub())
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByRef Sender As QTABCONTROL))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QTABCONTROL))
+    Declare Property OnMouseMove(ByVal Handler As Sub())
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByRef Sender As QTABCONTROL))
+End Type
+
+Constructor QTABCONTROL()
+    RqObj = RqLclNew("QTABCONTROL", @This)
+End Constructor
+Property QTABCONTROL.Align() As Long
+    Return RqGetInt(RqObj, "Align")
+End Property
+Property QTABCONTROL.Align(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Align", Value)
+End Property
+Property QTABCONTROL.ButtonStyle() As Long
+    Return RqGetInt(RqObj, "ButtonStyle")
+End Property
+Property QTABCONTROL.ButtonStyle(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ButtonStyle", Value)
+End Property
+Property QTABCONTROL.FlatButtons() As Long
+    Return RqGetInt(RqObj, "FlatButtons")
+End Property
+Property QTABCONTROL.FlatButtons(ByVal Value As Long)
+    RqLclSetInt(RqObj, "FlatButtons", Value)
+End Property
+Property QTABCONTROL.FlatSeperators() As Long
+    Return RqGetInt(RqObj, "FlatSeperators")
+End Property
+Property QTABCONTROL.FlatSeperators(ByVal Value As Long)
+    RqLclSetInt(RqObj, "FlatSeperators", Value)
+End Property
+Property QTABCONTROL.FocusButtons() As Long
+    Return RqGetInt(RqObj, "FocusButtons")
+End Property
+Property QTABCONTROL.FocusButtons(ByVal Value As Long)
+    RqLclSetInt(RqObj, "FocusButtons", Value)
+End Property
+Property QTABCONTROL.HotTrack() As Long
+    Return RqGetInt(RqObj, "HotTrack")
+End Property
+Property QTABCONTROL.HotTrack(ByVal Value As Long)
+    RqLclSetInt(RqObj, "HotTrack", Value)
+End Property
+Property QTABCONTROL.MultiLine() As Long
+    Return RqGetInt(RqObj, "MultiLine")
+End Property
+Property QTABCONTROL.MultiLine(ByVal Value As Long)
+    RqLclSetInt(RqObj, "MultiLine", Value)
+End Property
+Property QTABCONTROL.ScrollOpposite() As Long
+    Return RqGetInt(RqObj, "ScrollOpposite")
+End Property
+Property QTABCONTROL.ScrollOpposite(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ScrollOpposite", Value)
+End Property
+Property QTABCONTROL.TabCount() As Long
+    Return RqGetInt(RqObj, "TabCount")
+End Property
+Property QTABCONTROL.TabHeight() As Long
+    Return RqGetInt(RqObj, "TabHeight")
+End Property
+Property QTABCONTROL.TabHeight(ByVal Value As Long)
+    RqLclSetInt(RqObj, "TabHeight", Value)
+End Property
+Property QTABCONTROL.TabIndex() As Long
+    Return RqGetInt(RqObj, "TabIndex")
+End Property
+Property QTABCONTROL.TabIndex(ByVal Value As Long)
+    RqLclSetInt(RqObj, "TabIndex", Value)
+End Property
+Property QTABCONTROL.TabOrder() As Long
+    Return RqGetInt(RqObj, "TabOrder")
+End Property
+Property QTABCONTROL.TabOrder(ByVal Value As Long)
+    RqLclSetInt(RqObj, "TabOrder", Value)
+End Property
+Property QTABCONTROL.TabPosition() As Long
+    Return RqGetInt(RqObj, "TabPosition")
+End Property
+Property QTABCONTROL.TabPosition(ByVal Value As Long)
+    RqLclSetInt(RqObj, "TabPosition", Value)
+End Property
+Property QTABCONTROL.TabWidth() As Long
+    Return RqGetInt(RqObj, "TabWidth")
+End Property
+Property QTABCONTROL.TabWidth(ByVal Value As Long)
+    RqLclSetInt(RqObj, "TabWidth", Value)
+End Property
+Property QTABCONTROL.Tag() As Long
+    Return RqGetInt(RqObj, "Tag")
+End Property
+Property QTABCONTROL.Tag(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Tag", Value)
+End Property
+Property QTABCONTROL.VerticalTabs() As Long
+    Return RqGetInt(RqObj, "VerticalTabs")
+End Property
+Property QTABCONTROL.VerticalTabs(ByVal Value As Long)
+    RqLclSetInt(RqObj, "VerticalTabs", Value)
+End Property
+Sub QTABCONTROL.StrCall(ByRef MethodName As String, ByRef Text1 As String, ByVal IntArg1 As Long = 0, ByVal IntArg2 As Long = 0)
+    If RqCallEx(RqObj, MethodName, StrPtr(Text1), IntArg1, IntArg2, 0, 0, 0) = 0 Then
+        RqLclClassError("QTABCONTROL." & MethodName)
+    End If
+End Sub
+Property QTABCONTROL.Tab(ByVal ItemNum As Long) As String
+    Return RqLclGetItemEx(RqObj, "Tab", ItemNum, "QTABCONTROL.Tab")
+End Property
+Property QTABCONTROL.Tab(ByVal ItemNum As Long, ByRef Value As String)
+    If RqSetItemStr(RqObj, "Tab", ItemNum, StrPtr(Value)) = 0 Then RqLclClassError("QTABCONTROL.Tab")
+End Property
+Sub QTABCONTROL.AddTabs(ByRef Text1 As String)
+    StrCall("AddTabs", Text1)
+End Sub
+Sub QTABCONTROL.AddTabs(ByRef Text1 As String, ByRef Text2 As String)
+    StrCall("AddTabs", Text1) : StrCall("AddTabs", Text2)
+End Sub
+Sub QTABCONTROL.AddTabs(ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String)
+    StrCall("AddTabs", Text1) : StrCall("AddTabs", Text2) : StrCall("AddTabs", Text3)
+End Sub
+Sub QTABCONTROL.AddTabs(ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String)
+    StrCall("AddTabs", Text1) : StrCall("AddTabs", Text2) : StrCall("AddTabs", Text3) : StrCall("AddTabs", Text4)
+End Sub
+Sub QTABCONTROL.AddTabs(ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String, ByRef Text5 As String)
+    StrCall("AddTabs", Text1) : StrCall("AddTabs", Text2) : StrCall("AddTabs", Text3) : StrCall("AddTabs", Text4) : StrCall("AddTabs", Text5)
+End Sub
+Sub QTABCONTROL.AddTabs(ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String, ByRef Text5 As String, ByRef Text6 As String)
+    StrCall("AddTabs", Text1) : StrCall("AddTabs", Text2) : StrCall("AddTabs", Text3) : StrCall("AddTabs", Text4) : StrCall("AddTabs", Text5) : StrCall("AddTabs", Text6)
+End Sub
+Sub QTABCONTROL.DelTabs(ByVal Num1 As Long, ByVal Num2 As Long = -1, ByVal Num3 As Long = -1, ByVal Num4 As Long = -1)
+    Dim NumList(1 To 4) As Long = {Num1, Num2, Num3, Num4}
+    For ArgIdx As Long = 1 To 4
+        If (ArgIdx > 1) AndAlso (NumList(ArgIdx) = -1) Then Exit For
+        StrCall("DelTabs", "", NumList(ArgIdx))
+    Next
+End Sub
+Sub QTABCONTROL.DeleteTabs(ByVal Num1 As Long, ByVal Num2 As Long = -1, ByVal Num3 As Long = -1, ByVal Num4 As Long = -1)
+    Dim NumList(1 To 4) As Long = {Num1, Num2, Num3, Num4}
+    For ArgIdx As Long = 1 To 4
+        If (ArgIdx > 1) AndAlso (NumList(ArgIdx) = -1) Then Exit For
+        StrCall("DelTabs", "", NumList(ArgIdx))
+    Next
+End Sub
+Sub QTABCONTROL.InsertTab(ByVal ItemNum As Long, ByRef Text1 As String)
+    StrCall("InsertTab", Text1, ItemNum)
+End Sub
+Sub QTABCONTROL.Clear()
+    StrCall("Clear", "")
+End Sub
+' Цвет и шрифт неактивных закладок: у LCL их нет - значения запоминаются
+Property QTABCONTROL.TabInactiveColor() As Long
+    Return InactiveColor
+End Property
+Property QTABCONTROL.TabInactiveColor(ByVal Value As Long)
+    InactiveColor = Value
+End Property
+Property QTABCONTROL.TabInactiveFont(ByRef Value As QFONT)
+End Property
+Property QTABCONTROL.OnChange(ByVal Handler As Sub())
+    SetEventEx(12, "OnChange", Cast(Any Ptr, Handler), 0)
+End Property
+Property QTABCONTROL.OnChange(ByVal Handler As Sub(ByRef Sender As QTABCONTROL))
+    SetEventEx(12, "OnChange", Cast(Any Ptr, Handler), 3)
+End Property
+Property QTABCONTROL.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QTABCONTROL.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QTABCONTROL))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QTABCONTROL.OnMouseDown(ByVal Handler As Sub())
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QTABCONTROL.OnMouseDown(ByVal Handler As Sub(ByRef Sender As QTABCONTROL))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 3)
+End Property
+Property QTABCONTROL.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 1)
+End Property
+Property QTABCONTROL.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QTABCONTROL))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 2)
+End Property
+Property QTABCONTROL.OnMouseUp(ByVal Handler As Sub())
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 0)
+End Property
+Property QTABCONTROL.OnMouseUp(ByVal Handler As Sub(ByRef Sender As QTABCONTROL))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 3)
+End Property
+Property QTABCONTROL.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 1)
+End Property
+Property QTABCONTROL.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QTABCONTROL))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 2)
+End Property
+Property QTABCONTROL.OnMouseMove(ByVal Handler As Sub())
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 0)
+End Property
+Property QTABCONTROL.OnMouseMove(ByVal Handler As Sub(ByRef Sender As QTABCONTROL))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 3)
+End Property
+
+' ---------------------------------------------------------------------------
+'  QRADIOBUTTON - переключатель (TRadioButton); группа - элементы одного Parent
+' ---------------------------------------------------------------------------
+
+Type QRADIOBUTTON Extends QCONTROL
+    Declare Constructor()
+    Declare Property Caption() As String
+    Declare Property Caption(ByRef Value As String)
+    Declare Property Checked() As Long
+    Declare Property Checked(ByVal Value As Long)
+    Declare Property Align() As Long
+    Declare Property Align(ByVal Value As Long)
+    Declare Property TabOrder() As Long
+    Declare Property TabOrder(ByVal Value As Long)
+    Declare Property Tag() As Long
+    Declare Property Tag(ByVal Value As Long)
+    Declare Property OnClick(ByVal Handler As Sub())
+    Declare Property OnClick(ByVal Handler As Sub(ByRef Sender As QRADIOBUTTON))
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QRADIOBUTTON))
+    Declare Property OnKeyDown(ByVal Handler As Sub())
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Sender As QRADIOBUTTON))
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QRADIOBUTTON))
+    Declare Property OnKeyUp(ByVal Handler As Sub())
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Sender As QRADIOBUTTON))
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Key As Long))
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Key As Long, ByRef Sender As QRADIOBUTTON))
+    Declare Property OnKeyPress(ByVal Handler As Sub())
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Sender As QRADIOBUTTON))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QRADIOBUTTON))
+    Declare Property OnMouseDown(ByVal Handler As Sub())
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByRef Sender As QRADIOBUTTON))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QRADIOBUTTON))
+    Declare Property OnMouseUp(ByVal Handler As Sub())
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByRef Sender As QRADIOBUTTON))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QRADIOBUTTON))
+    Declare Property OnMouseMove(ByVal Handler As Sub())
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByRef Sender As QRADIOBUTTON))
+End Type
+
+Constructor QRADIOBUTTON()
+    RqObj = RqLclNew("QRADIOBUTTON", @This)
+End Constructor
+Property QRADIOBUTTON.Caption() As String
+    Return RqLclGetStr(RqObj, "Caption")
+End Property
+Property QRADIOBUTTON.Caption(ByRef Value As String)
+    RqLclSetStr(RqObj, "Caption", Value)
+End Property
+Property QRADIOBUTTON.Checked() As Long
+    Return RqGetInt(RqObj, "Checked")
+End Property
+Property QRADIOBUTTON.Checked(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Checked", Value)
+End Property
+Property QRADIOBUTTON.Align() As Long
+    Return RqGetInt(RqObj, "Align")
+End Property
+Property QRADIOBUTTON.Align(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Align", Value)
+End Property
+Property QRADIOBUTTON.TabOrder() As Long
+    Return RqGetInt(RqObj, "TabOrder")
+End Property
+Property QRADIOBUTTON.TabOrder(ByVal Value As Long)
+    RqLclSetInt(RqObj, "TabOrder", Value)
+End Property
+Property QRADIOBUTTON.Tag() As Long
+    Return RqGetInt(RqObj, "Tag")
+End Property
+Property QRADIOBUTTON.Tag(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Tag", Value)
+End Property
+Property QRADIOBUTTON.OnClick(ByVal Handler As Sub())
+    SetEventEx(10, "OnClick", Cast(Any Ptr, Handler), 0)
+End Property
+Property QRADIOBUTTON.OnClick(ByVal Handler As Sub(ByRef Sender As QRADIOBUTTON))
+    SetEventEx(10, "OnClick", Cast(Any Ptr, Handler), 3)
+End Property
+Property QRADIOBUTTON.OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    SetEventEx(0, "OnKeyDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QRADIOBUTTON.OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QRADIOBUTTON))
+    SetEventEx(0, "OnKeyDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QRADIOBUTTON.OnKeyDown(ByVal Handler As Sub())
+    SetEventEx(0, "OnKeyDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QRADIOBUTTON.OnKeyDown(ByVal Handler As Sub(ByRef Sender As QRADIOBUTTON))
+    SetEventEx(0, "OnKeyDown", Cast(Any Ptr, Handler), 3)
+End Property
+Property QRADIOBUTTON.OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    SetEventEx(1, "OnKeyUp", Cast(Any Ptr, Handler), 1)
+End Property
+Property QRADIOBUTTON.OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QRADIOBUTTON))
+    SetEventEx(1, "OnKeyUp", Cast(Any Ptr, Handler), 2)
+End Property
+Property QRADIOBUTTON.OnKeyUp(ByVal Handler As Sub())
+    SetEventEx(1, "OnKeyUp", Cast(Any Ptr, Handler), 0)
+End Property
+Property QRADIOBUTTON.OnKeyUp(ByVal Handler As Sub(ByRef Sender As QRADIOBUTTON))
+    SetEventEx(1, "OnKeyUp", Cast(Any Ptr, Handler), 3)
+End Property
+Property QRADIOBUTTON.OnKeyPress(ByVal Handler As Sub(ByRef Key As Long))
+    SetEventEx(2, "OnKeyPress", Cast(Any Ptr, Handler), 1)
+End Property
+Property QRADIOBUTTON.OnKeyPress(ByVal Handler As Sub(ByRef Key As Long, ByRef Sender As QRADIOBUTTON))
+    SetEventEx(2, "OnKeyPress", Cast(Any Ptr, Handler), 2)
+End Property
+Property QRADIOBUTTON.OnKeyPress(ByVal Handler As Sub())
+    SetEventEx(2, "OnKeyPress", Cast(Any Ptr, Handler), 0)
+End Property
+Property QRADIOBUTTON.OnKeyPress(ByVal Handler As Sub(ByRef Sender As QRADIOBUTTON))
+    SetEventEx(2, "OnKeyPress", Cast(Any Ptr, Handler), 3)
+End Property
+Property QRADIOBUTTON.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QRADIOBUTTON.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QRADIOBUTTON))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QRADIOBUTTON.OnMouseDown(ByVal Handler As Sub())
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QRADIOBUTTON.OnMouseDown(ByVal Handler As Sub(ByRef Sender As QRADIOBUTTON))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 3)
+End Property
+Property QRADIOBUTTON.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 1)
+End Property
+Property QRADIOBUTTON.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QRADIOBUTTON))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 2)
+End Property
+Property QRADIOBUTTON.OnMouseUp(ByVal Handler As Sub())
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 0)
+End Property
+Property QRADIOBUTTON.OnMouseUp(ByVal Handler As Sub(ByRef Sender As QRADIOBUTTON))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 3)
+End Property
+Property QRADIOBUTTON.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 1)
+End Property
+Property QRADIOBUTTON.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QRADIOBUTTON))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 2)
+End Property
+Property QRADIOBUTTON.OnMouseMove(ByVal Handler As Sub())
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 0)
+End Property
+Property QRADIOBUTTON.OnMouseMove(ByVal Handler As Sub(ByRef Sender As QRADIOBUTTON))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 3)
+End Property
+
+' ---------------------------------------------------------------------------
+'  QGROUPBOX - рамка с заголовком (TGroupBox)
+' ---------------------------------------------------------------------------
+
+Type QGROUPBOX Extends QCONTROL
+    Declare Constructor()
+    Declare Property Caption() As String
+    Declare Property Caption(ByRef Value As String)
+    Declare Property Align() As Long
+    Declare Property Align(ByVal Value As Long)
+    Declare Property TabOrder() As Long
+    Declare Property TabOrder(ByVal Value As Long)
+    Declare Property Tag() As Long
+    Declare Property Tag(ByVal Value As Long)
+    Declare Property OnClick(ByVal Handler As Sub())
+    Declare Property OnClick(ByVal Handler As Sub(ByRef Sender As QGROUPBOX))
+    Declare Property OnDblClick(ByVal Handler As Sub())
+    Declare Property OnDblClick(ByVal Handler As Sub(ByRef Sender As QGROUPBOX))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QGROUPBOX))
+    Declare Property OnMouseDown(ByVal Handler As Sub())
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByRef Sender As QGROUPBOX))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QGROUPBOX))
+    Declare Property OnMouseUp(ByVal Handler As Sub())
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByRef Sender As QGROUPBOX))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QGROUPBOX))
+    Declare Property OnMouseMove(ByVal Handler As Sub())
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByRef Sender As QGROUPBOX))
+End Type
+
+Constructor QGROUPBOX()
+    RqObj = RqLclNew("QGROUPBOX", @This)
+End Constructor
+Property QGROUPBOX.Caption() As String
+    Return RqLclGetStr(RqObj, "Caption")
+End Property
+Property QGROUPBOX.Caption(ByRef Value As String)
+    RqLclSetStr(RqObj, "Caption", Value)
+End Property
+Property QGROUPBOX.Align() As Long
+    Return RqGetInt(RqObj, "Align")
+End Property
+Property QGROUPBOX.Align(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Align", Value)
+End Property
+Property QGROUPBOX.TabOrder() As Long
+    Return RqGetInt(RqObj, "TabOrder")
+End Property
+Property QGROUPBOX.TabOrder(ByVal Value As Long)
+    RqLclSetInt(RqObj, "TabOrder", Value)
+End Property
+Property QGROUPBOX.Tag() As Long
+    Return RqGetInt(RqObj, "Tag")
+End Property
+Property QGROUPBOX.Tag(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Tag", Value)
+End Property
+Property QGROUPBOX.OnClick(ByVal Handler As Sub())
+    SetEventEx(10, "OnClick", Cast(Any Ptr, Handler), 0)
+End Property
+Property QGROUPBOX.OnClick(ByVal Handler As Sub(ByRef Sender As QGROUPBOX))
+    SetEventEx(10, "OnClick", Cast(Any Ptr, Handler), 3)
+End Property
+Property QGROUPBOX.OnDblClick(ByVal Handler As Sub())
+    SetEventEx(11, "OnDblClick", Cast(Any Ptr, Handler), 0)
+End Property
+Property QGROUPBOX.OnDblClick(ByVal Handler As Sub(ByRef Sender As QGROUPBOX))
+    SetEventEx(11, "OnDblClick", Cast(Any Ptr, Handler), 3)
+End Property
+Property QGROUPBOX.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QGROUPBOX.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QGROUPBOX))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QGROUPBOX.OnMouseDown(ByVal Handler As Sub())
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QGROUPBOX.OnMouseDown(ByVal Handler As Sub(ByRef Sender As QGROUPBOX))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 3)
+End Property
+Property QGROUPBOX.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 1)
+End Property
+Property QGROUPBOX.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QGROUPBOX))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 2)
+End Property
+Property QGROUPBOX.OnMouseUp(ByVal Handler As Sub())
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 0)
+End Property
+Property QGROUPBOX.OnMouseUp(ByVal Handler As Sub(ByRef Sender As QGROUPBOX))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 3)
+End Property
+Property QGROUPBOX.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 1)
+End Property
+Property QGROUPBOX.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QGROUPBOX))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 2)
+End Property
+Property QGROUPBOX.OnMouseMove(ByVal Handler As Sub())
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 0)
+End Property
+Property QGROUPBOX.OnMouseMove(ByVal Handler As Sub(ByRef Sender As QGROUPBOX))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 3)
+End Property
+
+' ---------------------------------------------------------------------------
+'  QTREENODE - пункт QTREEVIEW по сквозному номеру: Tree.Item(i).Text
+'  (TreeNodeType RapidQ). Объект-посредник: значения читаются и пишутся
+'  в дереве сразу.
+' ---------------------------------------------------------------------------
+
+Type QTREENODE
+    TreeObj As Any Ptr
+    NodeNum As Long
+    Declare Property Text() As String
+    Declare Property Text(ByRef Value As String)
+    Declare Property ImageIndex() As Long
+    Declare Property ImageIndex(ByVal Value As Long)
+    Declare Property StateIndex() As Long
+    Declare Property StateIndex(ByVal Value As Long)
+    Declare Property SelectedIndex() As Long
+    Declare Property SelectedIndex(ByVal Value As Long)
+    Declare Property HasChildren() As Long
+    Declare Property HasChildren(ByVal Value As Long)
+    Declare Property Selected() As Long
+    Declare Property Selected(ByVal Value As Long)
+    Declare Property Count() As Long
+    Declare Property Level() As Long
+    Declare Property IsVisible() As Long
+    Declare Property Handle() As Long
+    Declare Property Parent() As Long
+End Type
+
+' Parent - номер родительского пункта, -1 - пункт верхнего уровня
+Property QTREENODE.Text() As String
+    Return RqLclGetItemEx(TreeObj, "Item.Text", NodeNum, "QTREEVIEW.Item(Text)")
+End Property
+Property QTREENODE.Text(ByRef Value As String)
+    If RqSetItemStr(TreeObj, "Item.Text", NodeNum, StrPtr(Value)) = 0 Then RqLclClassError("QTREEVIEW.Item.Text")
+End Property
+Property QTREENODE.ImageIndex() As Long
+    Return RqLclGetItemIntEx(TreeObj, "Item.ImageIndex", NodeNum, "QTREEVIEW.Item.ImageIndex")
+End Property
+Property QTREENODE.ImageIndex(ByVal Value As Long)
+    If RqSetItemInt(TreeObj, "Item.ImageIndex", NodeNum, Value) = 0 Then RqLclClassError("QTREEVIEW.Item.ImageIndex")
+End Property
+Property QTREENODE.StateIndex() As Long
+    Return RqLclGetItemIntEx(TreeObj, "Item.StateIndex", NodeNum, "QTREEVIEW.Item.StateIndex")
+End Property
+Property QTREENODE.StateIndex(ByVal Value As Long)
+    If RqSetItemInt(TreeObj, "Item.StateIndex", NodeNum, Value) = 0 Then RqLclClassError("QTREEVIEW.Item.StateIndex")
+End Property
+Property QTREENODE.SelectedIndex() As Long
+    Return RqLclGetItemIntEx(TreeObj, "Item.SelectedIndex", NodeNum, "QTREEVIEW.Item.SelectedIndex")
+End Property
+Property QTREENODE.SelectedIndex(ByVal Value As Long)
+    If RqSetItemInt(TreeObj, "Item.SelectedIndex", NodeNum, Value) = 0 Then RqLclClassError("QTREEVIEW.Item.SelectedIndex")
+End Property
+Property QTREENODE.HasChildren() As Long
+    Return RqLclGetItemIntEx(TreeObj, "Item.HasChildren", NodeNum, "QTREEVIEW.Item.HasChildren")
+End Property
+Property QTREENODE.HasChildren(ByVal Value As Long)
+    If RqSetItemInt(TreeObj, "Item.HasChildren", NodeNum, Value) = 0 Then RqLclClassError("QTREEVIEW.Item.HasChildren")
+End Property
+Property QTREENODE.Selected() As Long
+    Return RqLclGetItemIntEx(TreeObj, "Item.Selected", NodeNum, "QTREEVIEW.Item.Selected")
+End Property
+Property QTREENODE.Selected(ByVal Value As Long)
+    If RqSetItemInt(TreeObj, "Item.Selected", NodeNum, Value) = 0 Then RqLclClassError("QTREEVIEW.Item.Selected")
+End Property
+Property QTREENODE.Count() As Long
+    Return RqLclGetItemIntEx(TreeObj, "Item.Count", NodeNum, "QTREEVIEW.Item.Count")
+End Property
+Property QTREENODE.Level() As Long
+    Return RqLclGetItemIntEx(TreeObj, "Item.Level", NodeNum, "QTREEVIEW.Item.Level")
+End Property
+Property QTREENODE.IsVisible() As Long
+    Return RqLclGetItemIntEx(TreeObj, "Item.IsVisible", NodeNum, "QTREEVIEW.Item.IsVisible")
+End Property
+Property QTREENODE.Handle() As Long
+    Return RqLclGetItemIntEx(TreeObj, "Item.Handle", NodeNum, "QTREEVIEW.Item.Handle")
+End Property
+Property QTREENODE.Parent() As Long
+    Return RqLclGetItemIntEx(TreeObj, "Item.Parent", NodeNum, "QTREEVIEW.Item.Parent")
+End Property
+
+' ---------------------------------------------------------------------------
+'  QTREEVIEW - дерево (TTreeView); номер пункта - сквозной (AbsoluteIndex); OnChange,
+'  OnExpand, OnCollapse - SUB (Index%), OnChanging, OnExpanding,
+'  OnCollapsing - SUB (Index%, Allow%): Allow = 0 - запретить
+' ---------------------------------------------------------------------------
+
+Type QTREEVIEW Extends QCONTROL
+    NodeWrap As QTREENODE
+    Declare Constructor()
+    Declare Property Align() As Long
+    Declare Property Align(ByVal Value As Long)
+    Declare Property BorderStyle() As Long
+    Declare Property BorderStyle(ByVal Value As Long)
+    Declare Property HideSelection() As Long
+    Declare Property HideSelection(ByVal Value As Long)
+    Declare Property Indent() As Long
+    Declare Property Indent(ByVal Value As Long)
+    Declare Property ItemCount() As Long
+    Declare Property ItemIndex() As Long
+    Declare Property ItemIndex(ByVal Value As Long)
+    Declare Property ReadOnly() As Long
+    Declare Property ReadOnly(ByVal Value As Long)
+    Declare Property ShowButtons() As Long
+    Declare Property ShowButtons(ByVal Value As Long)
+    Declare Property ShowLines() As Long
+    Declare Property ShowLines(ByVal Value As Long)
+    Declare Property ShowRoot() As Long
+    Declare Property ShowRoot(ByVal Value As Long)
+    Declare Property SortType() As Long
+    Declare Property SortType(ByVal Value As Long)
+    Declare Property TabOrder() As Long
+    Declare Property TabOrder(ByVal Value As Long)
+    Declare Property Tag() As Long
+    Declare Property Tag(ByVal Value As Long)
+    Declare Property TopIndex() As Long
+    Declare Property TopIndex(ByVal Value As Long)
+    Declare Sub StrCall(ByRef MethodName As String, ByRef Text1 As String, ByVal IntArg1 As Long = 0, ByVal IntArg2 As Long = 0)
+    Declare Function Item(ByVal ItemNum As Long) ByRef As QTREENODE
+    Declare Sub AddItems Overload (ByRef Text1 As String)
+    Declare Sub AddItems Overload (ByRef Text1 As String, ByRef Text2 As String)
+    Declare Sub AddItems Overload (ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String)
+    Declare Sub AddItems Overload (ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String)
+    Declare Sub AddItems Overload (ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String, ByRef Text5 As String)
+    Declare Sub AddItems Overload (ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String, ByRef Text5 As String, ByRef Text6 As String)
+    Declare Sub AddChildItems Overload (ByVal ItemNum As Long, ByRef Text1 As String)
+    Declare Sub AddChildItems Overload (ByVal ItemNum As Long, ByRef Text1 As String, ByRef Text2 As String)
+    Declare Sub AddChildItems Overload (ByVal ItemNum As Long, ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String)
+    Declare Sub AddChildItems Overload (ByVal ItemNum As Long, ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String)
+    Declare Sub DelItems(ByVal Num1 As Long, ByVal Num2 As Long = -1, ByVal Num3 As Long = -1, ByVal Num4 As Long = -1)
+    Declare Sub Clear()
+    Declare Sub Collapse(ByVal ItemNum As Long, ByVal Recurse As Long = 0)
+    Declare Sub Expand(ByVal ItemNum As Long, ByVal Recurse As Long = 0)
+    Declare Sub FullCollapse()
+    Declare Sub FullExpand()
+    Declare Function GetItemAt(ByVal X As Long, ByVal Y As Long) As Long
+    Declare Sub InsertItem(ByVal ItemNum As Long, ByRef Text1 As String)
+    Declare Sub LoadFromFile(ByRef FileName As String)
+    Declare Sub SaveToFile(ByRef FileName As String)
+    Declare Sub Sort()
+    Declare Property OnClick(ByVal Handler As Sub())
+    Declare Property OnClick(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    Declare Property OnDblClick(ByVal Handler As Sub())
+    Declare Property OnDblClick(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    Declare Property OnChange(ByVal Handler As Sub(ByVal Index As Long))
+    Declare Property OnChange(ByVal Handler As Sub(ByVal Index As Long, ByRef Sender As QTREEVIEW))
+    Declare Property OnChange(ByVal Handler As Sub())
+    Declare Property OnChange(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    Declare Property OnChanging(ByVal Handler As Sub(ByVal Index As Long, ByRef AllowChange As Long))
+    Declare Property OnChanging(ByVal Handler As Sub(ByVal Index As Long, ByRef AllowChange As Long, ByRef Sender As QTREEVIEW))
+    Declare Property OnChanging(ByVal Handler As Sub())
+    Declare Property OnChanging(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    Declare Property OnExpand(ByVal Handler As Sub(ByVal Index As Long))
+    Declare Property OnExpand(ByVal Handler As Sub(ByVal Index As Long, ByRef Sender As QTREEVIEW))
+    Declare Property OnExpand(ByVal Handler As Sub())
+    Declare Property OnExpand(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    Declare Property OnCollapse(ByVal Handler As Sub(ByVal Index As Long))
+    Declare Property OnCollapse(ByVal Handler As Sub(ByVal Index As Long, ByRef Sender As QTREEVIEW))
+    Declare Property OnCollapse(ByVal Handler As Sub())
+    Declare Property OnCollapse(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    Declare Property OnExpanding(ByVal Handler As Sub(ByVal Index As Long, ByRef AllowExpansion As Long))
+    Declare Property OnExpanding(ByVal Handler As Sub(ByVal Index As Long, ByRef AllowExpansion As Long, ByRef Sender As QTREEVIEW))
+    Declare Property OnExpanding(ByVal Handler As Sub())
+    Declare Property OnExpanding(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    Declare Property OnCollapsing(ByVal Handler As Sub(ByVal Index As Long, ByRef AllowCollapse As Long))
+    Declare Property OnCollapsing(ByVal Handler As Sub(ByVal Index As Long, ByRef AllowCollapse As Long, ByRef Sender As QTREEVIEW))
+    Declare Property OnCollapsing(ByVal Handler As Sub())
+    Declare Property OnCollapsing(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QTREEVIEW))
+    Declare Property OnKeyDown(ByVal Handler As Sub())
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QTREEVIEW))
+    Declare Property OnKeyUp(ByVal Handler As Sub())
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Key As Long))
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Key As Long, ByRef Sender As QTREEVIEW))
+    Declare Property OnKeyPress(ByVal Handler As Sub())
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QTREEVIEW))
+    Declare Property OnMouseDown(ByVal Handler As Sub())
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QTREEVIEW))
+    Declare Property OnMouseUp(ByVal Handler As Sub())
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QTREEVIEW))
+    Declare Property OnMouseMove(ByVal Handler As Sub())
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+End Type
+
+Constructor QTREEVIEW()
+    RqObj = RqLclNew("QTREEVIEW", @This)
+End Constructor
+Property QTREEVIEW.Align() As Long
+    Return RqGetInt(RqObj, "Align")
+End Property
+Property QTREEVIEW.Align(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Align", Value)
+End Property
+Property QTREEVIEW.BorderStyle() As Long
+    Return RqGetInt(RqObj, "BorderStyle")
+End Property
+Property QTREEVIEW.BorderStyle(ByVal Value As Long)
+    RqLclSetInt(RqObj, "BorderStyle", Value)
+End Property
+Property QTREEVIEW.HideSelection() As Long
+    Return RqGetInt(RqObj, "HideSelection")
+End Property
+Property QTREEVIEW.HideSelection(ByVal Value As Long)
+    RqLclSetInt(RqObj, "HideSelection", Value)
+End Property
+Property QTREEVIEW.Indent() As Long
+    Return RqGetInt(RqObj, "Indent")
+End Property
+Property QTREEVIEW.Indent(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Indent", Value)
+End Property
+Property QTREEVIEW.ItemCount() As Long
+    Return RqGetInt(RqObj, "ItemCount")
+End Property
+Property QTREEVIEW.ItemIndex() As Long
+    Return RqGetInt(RqObj, "ItemIndex")
+End Property
+Property QTREEVIEW.ItemIndex(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ItemIndex", Value)
+End Property
+Property QTREEVIEW.ReadOnly() As Long
+    Return RqGetInt(RqObj, "ReadOnly")
+End Property
+Property QTREEVIEW.ReadOnly(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ReadOnly", Value)
+End Property
+Property QTREEVIEW.ShowButtons() As Long
+    Return RqGetInt(RqObj, "ShowButtons")
+End Property
+Property QTREEVIEW.ShowButtons(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ShowButtons", Value)
+End Property
+Property QTREEVIEW.ShowLines() As Long
+    Return RqGetInt(RqObj, "ShowLines")
+End Property
+Property QTREEVIEW.ShowLines(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ShowLines", Value)
+End Property
+Property QTREEVIEW.ShowRoot() As Long
+    Return RqGetInt(RqObj, "ShowRoot")
+End Property
+Property QTREEVIEW.ShowRoot(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ShowRoot", Value)
+End Property
+Property QTREEVIEW.SortType() As Long
+    Return RqGetInt(RqObj, "SortType")
+End Property
+Property QTREEVIEW.SortType(ByVal Value As Long)
+    RqLclSetInt(RqObj, "SortType", Value)
+End Property
+Property QTREEVIEW.TabOrder() As Long
+    Return RqGetInt(RqObj, "TabOrder")
+End Property
+Property QTREEVIEW.TabOrder(ByVal Value As Long)
+    RqLclSetInt(RqObj, "TabOrder", Value)
+End Property
+Property QTREEVIEW.Tag() As Long
+    Return RqGetInt(RqObj, "Tag")
+End Property
+Property QTREEVIEW.Tag(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Tag", Value)
+End Property
+Property QTREEVIEW.TopIndex() As Long
+    Return RqGetInt(RqObj, "TopIndex")
+End Property
+Property QTREEVIEW.TopIndex(ByVal Value As Long)
+    RqLclSetInt(RqObj, "TopIndex", Value)
+End Property
+Sub QTREEVIEW.StrCall(ByRef MethodName As String, ByRef Text1 As String, ByVal IntArg1 As Long = 0, ByVal IntArg2 As Long = 0)
+    If RqCallEx(RqObj, MethodName, StrPtr(Text1), IntArg1, IntArg2, 0, 0, 0) = 0 Then
+        RqLclClassError("QTREEVIEW." & MethodName)
+    End If
+End Sub
+' Пункт по сквозному номеру (с 0): Tree.Item(i).Text = "..."
+Function QTREEVIEW.Item(ByVal ItemNum As Long) ByRef As QTREENODE
+    NodeWrap.TreeObj = RqObj
+    NodeWrap.NodeNum = ItemNum
+    Return NodeWrap
+End Function
+Sub QTREEVIEW.AddItems(ByRef Text1 As String)
+    StrCall("AddItems", Text1)
+End Sub
+Sub QTREEVIEW.AddItems(ByRef Text1 As String, ByRef Text2 As String)
+    StrCall("AddItems", Text1) : StrCall("AddItems", Text2)
+End Sub
+Sub QTREEVIEW.AddItems(ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String)
+    StrCall("AddItems", Text1) : StrCall("AddItems", Text2) : StrCall("AddItems", Text3)
+End Sub
+Sub QTREEVIEW.AddItems(ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String)
+    StrCall("AddItems", Text1) : StrCall("AddItems", Text2) : StrCall("AddItems", Text3) : StrCall("AddItems", Text4)
+End Sub
+Sub QTREEVIEW.AddItems(ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String, ByRef Text5 As String)
+    StrCall("AddItems", Text1) : StrCall("AddItems", Text2) : StrCall("AddItems", Text3) : StrCall("AddItems", Text4) : StrCall("AddItems", Text5)
+End Sub
+Sub QTREEVIEW.AddItems(ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String, ByRef Text5 As String, ByRef Text6 As String)
+    StrCall("AddItems", Text1) : StrCall("AddItems", Text2) : StrCall("AddItems", Text3) : StrCall("AddItems", Text4) : StrCall("AddItems", Text5) : StrCall("AddItems", Text6)
+End Sub
+Sub QTREEVIEW.AddChildItems(ByVal ItemNum As Long, ByRef Text1 As String)
+    StrCall("AddChildItems", Text1, ItemNum)
+End Sub
+Sub QTREEVIEW.AddChildItems(ByVal ItemNum As Long, ByRef Text1 As String, ByRef Text2 As String)
+    StrCall("AddChildItems", Text1, ItemNum) : StrCall("AddChildItems", Text2, ItemNum)
+End Sub
+Sub QTREEVIEW.AddChildItems(ByVal ItemNum As Long, ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String)
+    StrCall("AddChildItems", Text1, ItemNum) : StrCall("AddChildItems", Text2, ItemNum) : StrCall("AddChildItems", Text3, ItemNum)
+End Sub
+Sub QTREEVIEW.AddChildItems(ByVal ItemNum As Long, ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String)
+    StrCall("AddChildItems", Text1, ItemNum) : StrCall("AddChildItems", Text2, ItemNum) : StrCall("AddChildItems", Text3, ItemNum) : StrCall("AddChildItems", Text4, ItemNum)
+End Sub
+Sub QTREEVIEW.DelItems(ByVal Num1 As Long, ByVal Num2 As Long = -1, ByVal Num3 As Long = -1, ByVal Num4 As Long = -1)
+    Dim NumList(1 To 4) As Long = {Num1, Num2, Num3, Num4}
+    For ArgIdx As Long = 1 To 4
+        If (ArgIdx > 1) AndAlso (NumList(ArgIdx) = -1) Then Exit For
+        StrCall("DelItems", "", NumList(ArgIdx))
+    Next
+End Sub
+Sub QTREEVIEW.Clear()
+    StrCall("Clear", "")
+End Sub
+Sub QTREEVIEW.Collapse(ByVal ItemNum As Long, ByVal Recurse As Long = 0)
+    StrCall("Collapse", "", ItemNum, Recurse)
+End Sub
+Sub QTREEVIEW.Expand(ByVal ItemNum As Long, ByVal Recurse As Long = 0)
+    StrCall("Expand", "", ItemNum, Recurse)
+End Sub
+Sub QTREEVIEW.FullCollapse()
+    StrCall("FullCollapse", "")
+End Sub
+Sub QTREEVIEW.FullExpand()
+    StrCall("FullExpand", "")
+End Sub
+' Номер пункта в точке (X, Y) окна дерева; нет - -1
+Function QTREEVIEW.GetItemAt(ByVal X As Long, ByVal Y As Long) As Long
+    Return RqCallEx(RqObj, "GetItemAt", 0, X, Y, 0, 0, 0)
+End Function
+Sub QTREEVIEW.InsertItem(ByVal ItemNum As Long, ByRef Text1 As String)
+    StrCall("InsertItem", Text1, ItemNum)
+End Sub
+' Файл в кодировке Windows; уровень пункта - отступ табуляцией
+Sub QTREEVIEW.LoadFromFile(ByRef FileName As String)
+    StrCall("LoadFromFile", FileName)
+End Sub
+Sub QTREEVIEW.SaveToFile(ByRef FileName As String)
+    StrCall("SaveToFile", FileName)
+End Sub
+Sub QTREEVIEW.Sort()
+    StrCall("Sort", "")
+End Sub
+Property QTREEVIEW.OnClick(ByVal Handler As Sub())
+    SetEventEx(10, "OnClick", Cast(Any Ptr, Handler), 0)
+End Property
+Property QTREEVIEW.OnClick(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    SetEventEx(10, "OnClick", Cast(Any Ptr, Handler), 3)
+End Property
+Property QTREEVIEW.OnDblClick(ByVal Handler As Sub())
+    SetEventEx(11, "OnDblClick", Cast(Any Ptr, Handler), 0)
+End Property
+Property QTREEVIEW.OnDblClick(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    SetEventEx(11, "OnDblClick", Cast(Any Ptr, Handler), 3)
+End Property
+Property QTREEVIEW.OnChange(ByVal Handler As Sub(ByVal Index As Long))
+    SetEventEx(15, "OnChange", Cast(Any Ptr, Handler), 1)
+End Property
+Property QTREEVIEW.OnChange(ByVal Handler As Sub(ByVal Index As Long, ByRef Sender As QTREEVIEW))
+    SetEventEx(15, "OnChange", Cast(Any Ptr, Handler), 2)
+End Property
+Property QTREEVIEW.OnChange(ByVal Handler As Sub())
+    SetEventEx(15, "OnChange", Cast(Any Ptr, Handler), 0)
+End Property
+Property QTREEVIEW.OnChange(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    SetEventEx(15, "OnChange", Cast(Any Ptr, Handler), 3)
+End Property
+Property QTREEVIEW.OnChanging(ByVal Handler As Sub(ByVal Index As Long, ByRef AllowChange As Long))
+    SetEventEx(16, "OnChanging", Cast(Any Ptr, Handler), 1)
+End Property
+Property QTREEVIEW.OnChanging(ByVal Handler As Sub(ByVal Index As Long, ByRef AllowChange As Long, ByRef Sender As QTREEVIEW))
+    SetEventEx(16, "OnChanging", Cast(Any Ptr, Handler), 2)
+End Property
+Property QTREEVIEW.OnChanging(ByVal Handler As Sub())
+    SetEventEx(16, "OnChanging", Cast(Any Ptr, Handler), 0)
+End Property
+Property QTREEVIEW.OnChanging(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    SetEventEx(16, "OnChanging", Cast(Any Ptr, Handler), 3)
+End Property
+Property QTREEVIEW.OnExpand(ByVal Handler As Sub(ByVal Index As Long))
+    SetEventEx(17, "OnExpand", Cast(Any Ptr, Handler), 1)
+End Property
+Property QTREEVIEW.OnExpand(ByVal Handler As Sub(ByVal Index As Long, ByRef Sender As QTREEVIEW))
+    SetEventEx(17, "OnExpand", Cast(Any Ptr, Handler), 2)
+End Property
+Property QTREEVIEW.OnExpand(ByVal Handler As Sub())
+    SetEventEx(17, "OnExpand", Cast(Any Ptr, Handler), 0)
+End Property
+Property QTREEVIEW.OnExpand(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    SetEventEx(17, "OnExpand", Cast(Any Ptr, Handler), 3)
+End Property
+Property QTREEVIEW.OnCollapse(ByVal Handler As Sub(ByVal Index As Long))
+    SetEventEx(18, "OnCollapse", Cast(Any Ptr, Handler), 1)
+End Property
+Property QTREEVIEW.OnCollapse(ByVal Handler As Sub(ByVal Index As Long, ByRef Sender As QTREEVIEW))
+    SetEventEx(18, "OnCollapse", Cast(Any Ptr, Handler), 2)
+End Property
+Property QTREEVIEW.OnCollapse(ByVal Handler As Sub())
+    SetEventEx(18, "OnCollapse", Cast(Any Ptr, Handler), 0)
+End Property
+Property QTREEVIEW.OnCollapse(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    SetEventEx(18, "OnCollapse", Cast(Any Ptr, Handler), 3)
+End Property
+Property QTREEVIEW.OnExpanding(ByVal Handler As Sub(ByVal Index As Long, ByRef AllowExpansion As Long))
+    SetEventEx(19, "OnExpanding", Cast(Any Ptr, Handler), 1)
+End Property
+Property QTREEVIEW.OnExpanding(ByVal Handler As Sub(ByVal Index As Long, ByRef AllowExpansion As Long, ByRef Sender As QTREEVIEW))
+    SetEventEx(19, "OnExpanding", Cast(Any Ptr, Handler), 2)
+End Property
+Property QTREEVIEW.OnExpanding(ByVal Handler As Sub())
+    SetEventEx(19, "OnExpanding", Cast(Any Ptr, Handler), 0)
+End Property
+Property QTREEVIEW.OnExpanding(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    SetEventEx(19, "OnExpanding", Cast(Any Ptr, Handler), 3)
+End Property
+Property QTREEVIEW.OnCollapsing(ByVal Handler As Sub(ByVal Index As Long, ByRef AllowCollapse As Long))
+    SetEventEx(20, "OnCollapsing", Cast(Any Ptr, Handler), 1)
+End Property
+Property QTREEVIEW.OnCollapsing(ByVal Handler As Sub(ByVal Index As Long, ByRef AllowCollapse As Long, ByRef Sender As QTREEVIEW))
+    SetEventEx(20, "OnCollapsing", Cast(Any Ptr, Handler), 2)
+End Property
+Property QTREEVIEW.OnCollapsing(ByVal Handler As Sub())
+    SetEventEx(20, "OnCollapsing", Cast(Any Ptr, Handler), 0)
+End Property
+Property QTREEVIEW.OnCollapsing(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    SetEventEx(20, "OnCollapsing", Cast(Any Ptr, Handler), 3)
+End Property
+Property QTREEVIEW.OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    SetEventEx(0, "OnKeyDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QTREEVIEW.OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QTREEVIEW))
+    SetEventEx(0, "OnKeyDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QTREEVIEW.OnKeyDown(ByVal Handler As Sub())
+    SetEventEx(0, "OnKeyDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QTREEVIEW.OnKeyDown(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    SetEventEx(0, "OnKeyDown", Cast(Any Ptr, Handler), 3)
+End Property
+Property QTREEVIEW.OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    SetEventEx(1, "OnKeyUp", Cast(Any Ptr, Handler), 1)
+End Property
+Property QTREEVIEW.OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QTREEVIEW))
+    SetEventEx(1, "OnKeyUp", Cast(Any Ptr, Handler), 2)
+End Property
+Property QTREEVIEW.OnKeyUp(ByVal Handler As Sub())
+    SetEventEx(1, "OnKeyUp", Cast(Any Ptr, Handler), 0)
+End Property
+Property QTREEVIEW.OnKeyUp(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    SetEventEx(1, "OnKeyUp", Cast(Any Ptr, Handler), 3)
+End Property
+Property QTREEVIEW.OnKeyPress(ByVal Handler As Sub(ByRef Key As Long))
+    SetEventEx(2, "OnKeyPress", Cast(Any Ptr, Handler), 1)
+End Property
+Property QTREEVIEW.OnKeyPress(ByVal Handler As Sub(ByRef Key As Long, ByRef Sender As QTREEVIEW))
+    SetEventEx(2, "OnKeyPress", Cast(Any Ptr, Handler), 2)
+End Property
+Property QTREEVIEW.OnKeyPress(ByVal Handler As Sub())
+    SetEventEx(2, "OnKeyPress", Cast(Any Ptr, Handler), 0)
+End Property
+Property QTREEVIEW.OnKeyPress(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    SetEventEx(2, "OnKeyPress", Cast(Any Ptr, Handler), 3)
+End Property
+Property QTREEVIEW.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QTREEVIEW.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QTREEVIEW))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QTREEVIEW.OnMouseDown(ByVal Handler As Sub())
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QTREEVIEW.OnMouseDown(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 3)
+End Property
+Property QTREEVIEW.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 1)
+End Property
+Property QTREEVIEW.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QTREEVIEW))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 2)
+End Property
+Property QTREEVIEW.OnMouseUp(ByVal Handler As Sub())
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 0)
+End Property
+Property QTREEVIEW.OnMouseUp(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 3)
+End Property
+Property QTREEVIEW.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 1)
+End Property
+Property QTREEVIEW.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QTREEVIEW))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 2)
+End Property
+Property QTREEVIEW.OnMouseMove(ByVal Handler As Sub())
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 0)
+End Property
+Property QTREEVIEW.OnMouseMove(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 3)
+End Property
+
+' ---------------------------------------------------------------------------
+'  QFILELISTBOX - файлы папки (TFileListBox); папки - "[имя]"; FileName - полный путь
+'  выбранного; AddFileTypes(ftDirectory, ftHidden...) - номера как в RapidQ
+' ---------------------------------------------------------------------------
+
+Type QFILELISTBOX Extends QCONTROL
+    Declare Constructor()
+    Declare Property Directory() As String
+    Declare Property Directory(ByRef Value As String)
+    Declare Property Drive() As String
+    Declare Property Drive(ByRef Value As String)
+    Declare Property FileName() As String
+    Declare Property Mask() As String
+    Declare Property Mask(ByRef Value As String)
+    Declare Property Align() As Long
+    Declare Property Align(ByVal Value As Long)
+    Declare Property ExtendedSelect() As Long
+    Declare Property ExtendedSelect(ByVal Value As Long)
+    Declare Property ItemCount() As Long
+    Declare Property ItemHeight() As Long
+    Declare Property ItemHeight(ByVal Value As Long)
+    Declare Property ItemIndex() As Long
+    Declare Property ItemIndex(ByVal Value As Long)
+    Declare Property MultiSelect() As Long
+    Declare Property MultiSelect(ByVal Value As Long)
+    Declare Property SelCount() As Long
+    Declare Property ShowIcons() As Long
+    Declare Property ShowIcons(ByVal Value As Long)
+    Declare Property TabOrder() As Long
+    Declare Property TabOrder(ByVal Value As Long)
+    Declare Property Tag() As Long
+    Declare Property Tag(ByVal Value As Long)
+    Declare Property TopIndex() As Long
+    Declare Property TopIndex(ByVal Value As Long)
+    Declare Sub StrCall(ByRef MethodName As String, ByRef Text1 As String, ByVal IntArg1 As Long = 0, ByVal IntArg2 As Long = 0)
+    Declare Property Item(ByVal ItemNum As Long) As String
+    Declare Property Item(ByVal ItemNum As Long, ByRef Value As String)
+    Declare Property Selected(ByVal ItemNum As Long) As Long
+    Declare Property Selected(ByVal ItemNum As Long, ByVal Value As Long)
+    Declare Sub Update()
+    Declare Sub AddFileTypes(ByVal Num1 As Long, ByVal Num2 As Long = -1, ByVal Num3 As Long = -1, ByVal Num4 As Long = -1)
+    Declare Sub DelFileTypes(ByVal Num1 As Long, ByVal Num2 As Long = -1, ByVal Num3 As Long = -1, ByVal Num4 As Long = -1)
+    Declare Property OnChange(ByVal Handler As Sub())
+    Declare Property OnChange(ByVal Handler As Sub(ByRef Sender As QFILELISTBOX))
+    Declare Property OnClick(ByVal Handler As Sub())
+    Declare Property OnClick(ByVal Handler As Sub(ByRef Sender As QFILELISTBOX))
+    Declare Property OnDblClick(ByVal Handler As Sub())
+    Declare Property OnDblClick(ByVal Handler As Sub(ByRef Sender As QFILELISTBOX))
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QFILELISTBOX))
+    Declare Property OnKeyDown(ByVal Handler As Sub())
+    Declare Property OnKeyDown(ByVal Handler As Sub(ByRef Sender As QFILELISTBOX))
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QFILELISTBOX))
+    Declare Property OnKeyUp(ByVal Handler As Sub())
+    Declare Property OnKeyUp(ByVal Handler As Sub(ByRef Sender As QFILELISTBOX))
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Key As Long))
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Key As Long, ByRef Sender As QFILELISTBOX))
+    Declare Property OnKeyPress(ByVal Handler As Sub())
+    Declare Property OnKeyPress(ByVal Handler As Sub(ByRef Sender As QFILELISTBOX))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QFILELISTBOX))
+    Declare Property OnMouseDown(ByVal Handler As Sub())
+    Declare Property OnMouseDown(ByVal Handler As Sub(ByRef Sender As QFILELISTBOX))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QFILELISTBOX))
+    Declare Property OnMouseUp(ByVal Handler As Sub())
+    Declare Property OnMouseUp(ByVal Handler As Sub(ByRef Sender As QFILELISTBOX))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QFILELISTBOX))
+    Declare Property OnMouseMove(ByVal Handler As Sub())
+    Declare Property OnMouseMove(ByVal Handler As Sub(ByRef Sender As QFILELISTBOX))
+End Type
+
+Constructor QFILELISTBOX()
+    RqObj = RqLclNew("QFILELISTBOX", @This)
+End Constructor
+Property QFILELISTBOX.Directory() As String
+    Return RqLclGetStr(RqObj, "Directory")
+End Property
+Property QFILELISTBOX.Directory(ByRef Value As String)
+    RqLclSetStr(RqObj, "Directory", Value)
+End Property
+Property QFILELISTBOX.Drive() As String
+    Return RqLclGetStr(RqObj, "Drive")
+End Property
+Property QFILELISTBOX.Drive(ByRef Value As String)
+    RqLclSetStr(RqObj, "Drive", Value)
+End Property
+Property QFILELISTBOX.FileName() As String
+    Return RqLclGetStr(RqObj, "FileName")
+End Property
+Property QFILELISTBOX.Mask() As String
+    Return RqLclGetStr(RqObj, "Mask")
+End Property
+Property QFILELISTBOX.Mask(ByRef Value As String)
+    RqLclSetStr(RqObj, "Mask", Value)
+End Property
+Property QFILELISTBOX.Align() As Long
+    Return RqGetInt(RqObj, "Align")
+End Property
+Property QFILELISTBOX.Align(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Align", Value)
+End Property
+Property QFILELISTBOX.ExtendedSelect() As Long
+    Return RqGetInt(RqObj, "ExtendedSelect")
+End Property
+Property QFILELISTBOX.ExtendedSelect(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ExtendedSelect", Value)
+End Property
+Property QFILELISTBOX.ItemCount() As Long
+    Return RqGetInt(RqObj, "ItemCount")
+End Property
+Property QFILELISTBOX.ItemHeight() As Long
+    Return RqGetInt(RqObj, "ItemHeight")
+End Property
+Property QFILELISTBOX.ItemHeight(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ItemHeight", Value)
+End Property
+Property QFILELISTBOX.ItemIndex() As Long
+    Return RqGetInt(RqObj, "ItemIndex")
+End Property
+Property QFILELISTBOX.ItemIndex(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ItemIndex", Value)
+End Property
+Property QFILELISTBOX.MultiSelect() As Long
+    Return RqGetInt(RqObj, "MultiSelect")
+End Property
+Property QFILELISTBOX.MultiSelect(ByVal Value As Long)
+    RqLclSetInt(RqObj, "MultiSelect", Value)
+End Property
+Property QFILELISTBOX.SelCount() As Long
+    Return RqGetInt(RqObj, "SelCount")
+End Property
+Property QFILELISTBOX.ShowIcons() As Long
+    Return RqGetInt(RqObj, "ShowIcons")
+End Property
+Property QFILELISTBOX.ShowIcons(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ShowIcons", Value)
+End Property
+Property QFILELISTBOX.TabOrder() As Long
+    Return RqGetInt(RqObj, "TabOrder")
+End Property
+Property QFILELISTBOX.TabOrder(ByVal Value As Long)
+    RqLclSetInt(RqObj, "TabOrder", Value)
+End Property
+Property QFILELISTBOX.Tag() As Long
+    Return RqGetInt(RqObj, "Tag")
+End Property
+Property QFILELISTBOX.Tag(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Tag", Value)
+End Property
+Property QFILELISTBOX.TopIndex() As Long
+    Return RqGetInt(RqObj, "TopIndex")
+End Property
+Property QFILELISTBOX.TopIndex(ByVal Value As Long)
+    RqLclSetInt(RqObj, "TopIndex", Value)
+End Property
+Sub QFILELISTBOX.StrCall(ByRef MethodName As String, ByRef Text1 As String, ByVal IntArg1 As Long = 0, ByVal IntArg2 As Long = 0)
+    If RqCallEx(RqObj, MethodName, StrPtr(Text1), IntArg1, IntArg2, 0, 0, 0) = 0 Then
+        RqLclClassError("QFILELISTBOX." & MethodName)
+    End If
+End Sub
+Property QFILELISTBOX.Item(ByVal ItemNum As Long) As String
+    Return RqLclGetItemEx(RqObj, "Item", ItemNum, "QFILELISTBOX.Item")
+End Property
+Property QFILELISTBOX.Item(ByVal ItemNum As Long, ByRef Value As String)
+    If RqSetItemStr(RqObj, "Item", ItemNum, StrPtr(Value)) = 0 Then RqLclClassError("QFILELISTBOX.Item")
+End Property
+Property QFILELISTBOX.Selected(ByVal ItemNum As Long) As Long
+    Return RqLclGetItemIntEx(RqObj, "Selected", ItemNum, "QFILELISTBOX.Selected")
+End Property
+Property QFILELISTBOX.Selected(ByVal ItemNum As Long, ByVal Value As Long)
+    If RqSetItemInt(RqObj, "Selected", ItemNum, Value) = 0 Then RqLclClassError("QFILELISTBOX.Selected")
+End Property
+' Перечитать папку
+Sub QFILELISTBOX.Update()
+    StrCall("Update", "")
+End Sub
+Sub QFILELISTBOX.AddFileTypes(ByVal Num1 As Long, ByVal Num2 As Long = -1, ByVal Num3 As Long = -1, ByVal Num4 As Long = -1)
+    Dim NumList(1 To 4) As Long = {Num1, Num2, Num3, Num4}
+    For ArgIdx As Long = 1 To 4
+        If (ArgIdx > 1) AndAlso (NumList(ArgIdx) = -1) Then Exit For
+        StrCall("AddFileTypes", "", NumList(ArgIdx))
+    Next
+End Sub
+Sub QFILELISTBOX.DelFileTypes(ByVal Num1 As Long, ByVal Num2 As Long = -1, ByVal Num3 As Long = -1, ByVal Num4 As Long = -1)
+    Dim NumList(1 To 4) As Long = {Num1, Num2, Num3, Num4}
+    For ArgIdx As Long = 1 To 4
+        If (ArgIdx > 1) AndAlso (NumList(ArgIdx) = -1) Then Exit For
+        StrCall("DelFileTypes", "", NumList(ArgIdx))
+    Next
+End Sub
+Property QFILELISTBOX.OnChange(ByVal Handler As Sub())
+    SetEventEx(12, "OnChange", Cast(Any Ptr, Handler), 0)
+End Property
+Property QFILELISTBOX.OnChange(ByVal Handler As Sub(ByRef Sender As QFILELISTBOX))
+    SetEventEx(12, "OnChange", Cast(Any Ptr, Handler), 3)
+End Property
+Property QFILELISTBOX.OnClick(ByVal Handler As Sub())
+    SetEventEx(10, "OnClick", Cast(Any Ptr, Handler), 0)
+End Property
+Property QFILELISTBOX.OnClick(ByVal Handler As Sub(ByRef Sender As QFILELISTBOX))
+    SetEventEx(10, "OnClick", Cast(Any Ptr, Handler), 3)
+End Property
+Property QFILELISTBOX.OnDblClick(ByVal Handler As Sub())
+    SetEventEx(11, "OnDblClick", Cast(Any Ptr, Handler), 0)
+End Property
+Property QFILELISTBOX.OnDblClick(ByVal Handler As Sub(ByRef Sender As QFILELISTBOX))
+    SetEventEx(11, "OnDblClick", Cast(Any Ptr, Handler), 3)
+End Property
+Property QFILELISTBOX.OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    SetEventEx(0, "OnKeyDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QFILELISTBOX.OnKeyDown(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QFILELISTBOX))
+    SetEventEx(0, "OnKeyDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QFILELISTBOX.OnKeyDown(ByVal Handler As Sub())
+    SetEventEx(0, "OnKeyDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QFILELISTBOX.OnKeyDown(ByVal Handler As Sub(ByRef Sender As QFILELISTBOX))
+    SetEventEx(0, "OnKeyDown", Cast(Any Ptr, Handler), 3)
+End Property
+Property QFILELISTBOX.OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long))
+    SetEventEx(1, "OnKeyUp", Cast(Any Ptr, Handler), 1)
+End Property
+Property QFILELISTBOX.OnKeyUp(ByVal Handler As Sub(ByRef Key As Long, ByVal Shift As Long, ByRef Sender As QFILELISTBOX))
+    SetEventEx(1, "OnKeyUp", Cast(Any Ptr, Handler), 2)
+End Property
+Property QFILELISTBOX.OnKeyUp(ByVal Handler As Sub())
+    SetEventEx(1, "OnKeyUp", Cast(Any Ptr, Handler), 0)
+End Property
+Property QFILELISTBOX.OnKeyUp(ByVal Handler As Sub(ByRef Sender As QFILELISTBOX))
+    SetEventEx(1, "OnKeyUp", Cast(Any Ptr, Handler), 3)
+End Property
+Property QFILELISTBOX.OnKeyPress(ByVal Handler As Sub(ByRef Key As Long))
+    SetEventEx(2, "OnKeyPress", Cast(Any Ptr, Handler), 1)
+End Property
+Property QFILELISTBOX.OnKeyPress(ByVal Handler As Sub(ByRef Key As Long, ByRef Sender As QFILELISTBOX))
+    SetEventEx(2, "OnKeyPress", Cast(Any Ptr, Handler), 2)
+End Property
+Property QFILELISTBOX.OnKeyPress(ByVal Handler As Sub())
+    SetEventEx(2, "OnKeyPress", Cast(Any Ptr, Handler), 0)
+End Property
+Property QFILELISTBOX.OnKeyPress(ByVal Handler As Sub(ByRef Sender As QFILELISTBOX))
+    SetEventEx(2, "OnKeyPress", Cast(Any Ptr, Handler), 3)
+End Property
+Property QFILELISTBOX.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QFILELISTBOX.OnMouseDown(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QFILELISTBOX))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QFILELISTBOX.OnMouseDown(ByVal Handler As Sub())
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QFILELISTBOX.OnMouseDown(ByVal Handler As Sub(ByRef Sender As QFILELISTBOX))
+    SetEventEx(3, "OnMouseDown", Cast(Any Ptr, Handler), 3)
+End Property
+Property QFILELISTBOX.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 1)
+End Property
+Property QFILELISTBOX.OnMouseUp(ByVal Handler As Sub(ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QFILELISTBOX))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 2)
+End Property
+Property QFILELISTBOX.OnMouseUp(ByVal Handler As Sub())
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 0)
+End Property
+Property QFILELISTBOX.OnMouseUp(ByVal Handler As Sub(ByRef Sender As QFILELISTBOX))
+    SetEventEx(4, "OnMouseUp", Cast(Any Ptr, Handler), 3)
+End Property
+Property QFILELISTBOX.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 1)
+End Property
+Property QFILELISTBOX.OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QFILELISTBOX))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 2)
+End Property
+Property QFILELISTBOX.OnMouseMove(ByVal Handler As Sub())
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 0)
+End Property
+Property QFILELISTBOX.OnMouseMove(ByVal Handler As Sub(ByRef Sender As QFILELISTBOX))
+    SetEventEx(5, "OnMouseMove", Cast(Any Ptr, Handler), 3)
+End Property
+
+' ---------------------------------------------------------------------------
+'  QSTATUSPANEL - панель QSTATUSBAR по номеру: Bar.Panel(0).Caption
+'  (PanelType RapidQ)
+' ---------------------------------------------------------------------------
+
+Type QSTATUSPANEL
+    BarObj As Any Ptr
+    PanelNum As Long
+    Declare Property Caption() As String
+    Declare Property Caption(ByRef Value As String)
+    Declare Property Width() As Long
+    Declare Property Width(ByVal Value As Long)
+    Declare Property Alignment() As Long
+    Declare Property Alignment(ByVal Value As Long)
+End Type
+
+Property QSTATUSPANEL.Caption() As String
+    Return RqLclGetItemEx(BarObj, "Panel.Caption", PanelNum, "QSTATUSBAR.Panel.Caption")
+End Property
+Property QSTATUSPANEL.Caption(ByRef Value As String)
+    If RqSetItemStr(BarObj, "Panel.Caption", PanelNum, StrPtr(Value)) = 0 Then RqLclClassError("QSTATUSBAR.Panel.Caption")
+End Property
+Property QSTATUSPANEL.Width() As Long
+    Return RqLclGetItemIntEx(BarObj, "Panel.Width", PanelNum, "QSTATUSBAR.Panel.Width")
+End Property
+Property QSTATUSPANEL.Width(ByVal Value As Long)
+    If RqSetItemInt(BarObj, "Panel.Width", PanelNum, Value) = 0 Then RqLclClassError("QSTATUSBAR.Panel.Width")
+End Property
+Property QSTATUSPANEL.Alignment() As Long
+    Return RqLclGetItemIntEx(BarObj, "Panel.Alignment", PanelNum, "QSTATUSBAR.Panel.Alignment")
+End Property
+Property QSTATUSPANEL.Alignment(ByVal Value As Long)
+    If RqSetItemInt(BarObj, "Panel.Alignment", PanelNum, Value) = 0 Then RqLclClassError("QSTATUSBAR.Panel.Alignment")
+End Property
+
+' ---------------------------------------------------------------------------
+'  QSTATUSBAR - строка состояния (TStatusBar); AddPanels "текст" - новая панель
+' ---------------------------------------------------------------------------
+
+Type QSTATUSBAR Extends QCONTROL
+    PanelWrap As QSTATUSPANEL
+    Declare Constructor()
+    Declare Property Align() As Long
+    Declare Property Align(ByVal Value As Long)
+    Declare Property PanelCount() As Long
+    Declare Property SimplePanel() As Long
+    Declare Property SimplePanel(ByVal Value As Long)
+    Declare Property SimpleText() As String
+    Declare Property SimpleText(ByRef Value As String)
+    Declare Property SizeGrip() As Long
+    Declare Property SizeGrip(ByVal Value As Long)
+    Declare Property Tag() As Long
+    Declare Property Tag(ByVal Value As Long)
+    Declare Sub StrCall(ByRef MethodName As String, ByRef Text1 As String, ByVal IntArg1 As Long = 0, ByVal IntArg2 As Long = 0)
+    Declare Function Panel(ByVal PanelNum As Long) ByRef As QSTATUSPANEL
+    Declare Sub Clear()
+    Declare Sub AddPanels Overload (ByRef Text1 As String)
+    Declare Sub AddPanels Overload (ByRef Text1 As String, ByRef Text2 As String)
+    Declare Sub AddPanels Overload (ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String)
+    Declare Sub AddPanels Overload (ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String)
+    Declare Sub AddPanels Overload (ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String, ByRef Text5 As String)
+    Declare Sub AddPanels Overload (ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String, ByRef Text5 As String, ByRef Text6 As String)
+    Declare Property OnResize(ByVal Handler As Sub())
+    Declare Property OnResize(ByVal Handler As Sub(ByRef Sender As QSTATUSBAR))
+End Type
+
+Constructor QSTATUSBAR()
+    RqObj = RqLclNew("QSTATUSBAR", @This)
+End Constructor
+Property QSTATUSBAR.Align() As Long
+    Return RqGetInt(RqObj, "Align")
+End Property
+Property QSTATUSBAR.Align(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Align", Value)
+End Property
+Property QSTATUSBAR.PanelCount() As Long
+    Return RqGetInt(RqObj, "PanelCount")
+End Property
+Property QSTATUSBAR.SimplePanel() As Long
+    Return RqGetInt(RqObj, "SimplePanel")
+End Property
+Property QSTATUSBAR.SimplePanel(ByVal Value As Long)
+    RqLclSetInt(RqObj, "SimplePanel", Value)
+End Property
+Property QSTATUSBAR.SimpleText() As String
+    Return RqLclGetStr(RqObj, "SimpleText")
+End Property
+Property QSTATUSBAR.SimpleText(ByRef Value As String)
+    RqLclSetStr(RqObj, "SimpleText", Value)
+End Property
+Property QSTATUSBAR.SizeGrip() As Long
+    Return RqGetInt(RqObj, "SizeGrip")
+End Property
+Property QSTATUSBAR.SizeGrip(ByVal Value As Long)
+    RqLclSetInt(RqObj, "SizeGrip", Value)
+End Property
+Property QSTATUSBAR.Tag() As Long
+    Return RqGetInt(RqObj, "Tag")
+End Property
+Property QSTATUSBAR.Tag(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Tag", Value)
+End Property
+Sub QSTATUSBAR.StrCall(ByRef MethodName As String, ByRef Text1 As String, ByVal IntArg1 As Long = 0, ByVal IntArg2 As Long = 0)
+    If RqCallEx(RqObj, MethodName, StrPtr(Text1), IntArg1, IntArg2, 0, 0, 0) = 0 Then
+        RqLclClassError("QSTATUSBAR." & MethodName)
+    End If
+End Sub
+' Панель по номеру (с 0): Bar.Panel(0).Caption = "..."
+Function QSTATUSBAR.Panel(ByVal PanelNum As Long) ByRef As QSTATUSPANEL
+    PanelWrap.BarObj = RqObj
+    PanelWrap.PanelNum = PanelNum
+    Return PanelWrap
+End Function
+Sub QSTATUSBAR.Clear()
+    StrCall("Clear", "")
+End Sub
+Sub QSTATUSBAR.AddPanels(ByRef Text1 As String)
+    StrCall("AddPanels", Text1)
+End Sub
+Sub QSTATUSBAR.AddPanels(ByRef Text1 As String, ByRef Text2 As String)
+    StrCall("AddPanels", Text1) : StrCall("AddPanels", Text2)
+End Sub
+Sub QSTATUSBAR.AddPanels(ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String)
+    StrCall("AddPanels", Text1) : StrCall("AddPanels", Text2) : StrCall("AddPanels", Text3)
+End Sub
+Sub QSTATUSBAR.AddPanels(ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String)
+    StrCall("AddPanels", Text1) : StrCall("AddPanels", Text2) : StrCall("AddPanels", Text3) : StrCall("AddPanels", Text4)
+End Sub
+Sub QSTATUSBAR.AddPanels(ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String, ByRef Text5 As String)
+    StrCall("AddPanels", Text1) : StrCall("AddPanels", Text2) : StrCall("AddPanels", Text3) : StrCall("AddPanels", Text4) : StrCall("AddPanels", Text5)
+End Sub
+Sub QSTATUSBAR.AddPanels(ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String, ByRef Text4 As String, ByRef Text5 As String, ByRef Text6 As String)
+    StrCall("AddPanels", Text1) : StrCall("AddPanels", Text2) : StrCall("AddPanels", Text3) : StrCall("AddPanels", Text4) : StrCall("AddPanels", Text5) : StrCall("AddPanels", Text6)
+End Sub
+Property QSTATUSBAR.OnResize(ByVal Handler As Sub())
+    SetEventEx(21, "OnResize", Cast(Any Ptr, Handler), 0)
+End Property
+Property QSTATUSBAR.OnResize(ByVal Handler As Sub(ByRef Sender As QSTATUSBAR))
+    SetEventEx(21, "OnResize", Cast(Any Ptr, Handler), 3)
 End Property

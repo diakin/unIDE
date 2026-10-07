@@ -132,6 +132,17 @@ begin
     AValue := Items.Count;
     Result := True;
   end
+  // ItemIndex не у всех списков published (TFileListBox)
+  else if (AObj is TCustomListBox) and (Prop = 'ITEMINDEX') then
+  begin
+    AValue := TCustomListBox(AObj).ItemIndex;
+    Result := True;
+  end
+  else if (AObj is TCustomComboBox) and (Prop = 'ITEMINDEX') then
+  begin
+    AValue := TCustomComboBox(AObj).ItemIndex;
+    Result := True;
+  end
   else if (AObj is TCustomListBox) and (Prop = 'SELCOUNT') then
   begin
     AValue := TCustomListBox(AObj).SelCount;
@@ -167,6 +178,12 @@ begin
     AValue := TControl(AObj).ClientWidth;
     Result := True;
   end
+  // Color есть у всех элементов, но не везде published (TTabControl)
+  else if (AObj is TControl) and (Prop = 'COLOR') then
+  begin
+    AValue := Integer(TControl(AObj).Color);
+    Result := True;
+  end
   else if (AObj is TControl) and (Prop = 'CLIENTHEIGHT') then
   begin
     AValue := TControl(AObj).ClientHeight;
@@ -182,7 +199,17 @@ var
 begin
   Result := False;
   Prop := UpperCase(AProp);
-  if (AObj is TCustomListBox) and (Prop = 'TOPINDEX') then
+  if (AObj is TCustomListBox) and (Prop = 'ITEMINDEX') then
+  begin
+    TCustomListBox(AObj).ItemIndex := AValue;
+    Result := True;
+  end
+  else if (AObj is TCustomComboBox) and (Prop = 'ITEMINDEX') then
+  begin
+    TCustomComboBox(AObj).ItemIndex := AValue;
+    Result := True;
+  end
+  else if (AObj is TCustomListBox) and (Prop = 'TOPINDEX') then
   begin
     TCustomListBox(AObj).TopIndex := AValue;
     Result := True;
@@ -212,6 +239,11 @@ begin
   else if (AObj is TControl) and (Prop = 'CLIENTWIDTH') then
   begin
     TControl(AObj).ClientWidth := AValue;
+    Result := True;
+  end
+  else if (AObj is TControl) and (Prop = 'COLOR') then
+  begin
+    TControl(AObj).Color := TColor(AValue);
     Result := True;
   end
   else if (AObj is TControl) and (Prop = 'CLIENTHEIGHT') then

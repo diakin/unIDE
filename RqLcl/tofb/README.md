@@ -48,6 +48,7 @@ FIELD$, REPLACESUBSTR$, INSERT$, DELETE$, REPLACE$, REVERSE$, CONVBASE$, HEX$ (8
 - `tests/types16.bas` — вывод совпадает с RapidQ построчно.
 - `tests/b_eq_a.bas` — `b=a` (a — STRING) даёт 0, как в RapidQ, с предупреждением при переводе.
 - `tests/gui1.bas` + `mylib.inc` — QFORM/QLABEL/QEDIT/QBUTTON, обработчики без Sender, DECLARE, FUNCTION с `Result` и с именем, CONST, DEFINT, массив, SELECT CASE, FOR, однострочный IF/ELSE, неявные переменные модуля и локальные, `$INCLUDE`, `$DEFINE`, `$IFDEF`/`$IFNDEF`, `$ESCAPECHARS`.
+- `tests/classes2.bas` — QGAUGE, QTABCONTROL, QGROUPBOX с QRADIOBUTTON, QTREEVIEW (AddChildItems, Item(i).Text, OnChange с Index% и Sender), QFILELISTBOX, QSTATUSBAR (Panel(i).Caption) через CREATE.
 - `tests/classes.bas` — меню через CREATE (глава 5.8 документации), QPOPUPMENU и `POPUPMENU = Pop`, QPANEL с QCOOLBTN, QCOMBOBOX с `AddItems` в CREATE, QCHECKBOX, QLISTBOX, QSPLITTER.
 - `tests/createev.bas` — CREATE с вложенными CREATE, свойства, `AddOptions = a, b`, `Cell(c, r) = x` внутри CREATE; события OnKeyDown с Sender, OnKeyPress, OnMouseDown без параметров, OnSelectCell с `CanSelect% = 0`, OnDrawCell с FillRect/TextOut.
 - `tests/lists.bas` — QSTRINGLIST (пример из документации), QSTRINGGRID (`Cell = …` в SUB с Sender и в однострочном IF), QREGISTRY, QDIRTREE.
@@ -60,6 +61,6 @@ FIELD$, REPLACESUBSTR$, INSERT$, DELETE$, REPLACE$, REVERSE$, CONVBASE$, HEX$ (8
 - TYPE … EXTENDS (свои компоненты), SUBI/FUNCTIONI, `$MACRO`, `$RESOURCE`, VARIANT, LPRINT, PRINT USING.
 - CREATE внутри SUB: объект — локальная переменная SUB (в RQdebugger так не встречается).
 - Свойства и методы внутри CREATE только в начале оператора: в `IF x THEN Caption = "a"` Caption не получит имя объекта.
-- Классы RapidQ, которых ещё нет в RqLcl: QGAUGE, QSTATUSBAR, QFILELISTBOX, QTABCONTROL, QRADIOBUTTON, QGROUPBOX, QTREEVIEW, QIMAGE, QCANVAS, QTIMER, диалоги и др.
+- Классы RapidQ, которых ещё нет в RqLcl: QIMAGE, QCANVAS, QBITMAP, QTIMER, QLISTVIEW, QSCROLLBAR, QTRACKBAR, QHEADER, диалоги и др.
 - Функции RapidQ PARAMSTR$, GET$, VARPTR$, FORMAT$ и подобные; присваивание свойству объекта числа или строки — без преобразования.
 - Передача по ссылке через `@` при вызове (предупреждение, параметр получает копию).

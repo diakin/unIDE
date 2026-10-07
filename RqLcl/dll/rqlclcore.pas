@@ -27,7 +27,7 @@ interface
 uses
   Classes, SysUtils, TypInfo, Math, Controls, StdCtrls, Forms, Graphics,
   LazUTF8, LCLType, ComCtrls, Grids, ShellCtrls, ExtCtrls, Buttons, Menus,
-  RichMemo, rqlclrich, rqlclgrid, rqlclmisc;
+  FileCtrl, RichMemo, rqlclrich, rqlclgrid, rqlclmisc, rqlclmore;
 
 const
   RqLclVersion = 2;   // меняется при несовместимой смене набора функций
@@ -127,6 +127,8 @@ type
                               const Value: string);
     procedure FireDrawItem(Control: TWinControl; Index: Integer; ARect: TRect;
                            State: TOwnerDrawState);
+    procedure FireTreeNode(Sender: TObject; Node: TTreeNode);
+    procedure FireTreeAllow(Sender: TObject; Node: TTreeNode; var Allow: Boolean);
     procedure FireCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure FireTreeChange(Sender: TObject; Node: TTreeNode);
   end;
@@ -144,8 +146,8 @@ type
   end;
 
 var
-  RqClassTable: array[0..15] of TRqClassRec;
-  RqPropTable: array[0..1] of TRqPropRec;
+  RqClassTable: array[0..22] of TRqClassRec;
+  RqPropTable: array[0..3] of TRqPropRec;
   RqLastErrorText: string = '';
   RqInitDone: Boolean = False;
 
@@ -187,6 +189,20 @@ begin
   RqClassTable[14].LclClass := TListBox;
   RqClassTable[15].RqName := 'QSPLITTER';
   RqClassTable[15].LclClass := TSplitter;
+  RqClassTable[16].RqName := 'QGAUGE';
+  RqClassTable[16].LclClass := TRqGauge;
+  RqClassTable[17].RqName := 'QTABCONTROL';
+  RqClassTable[17].LclClass := TTabControl;
+  RqClassTable[18].RqName := 'QRADIOBUTTON';
+  RqClassTable[18].LclClass := TRadioButton;
+  RqClassTable[19].RqName := 'QGROUPBOX';
+  RqClassTable[19].LclClass := TGroupBox;
+  RqClassTable[20].RqName := 'QTREEVIEW';
+  RqClassTable[20].LclClass := TTreeView;
+  RqClassTable[21].RqName := 'QFILELISTBOX';
+  RqClassTable[21].LclClass := TFileListBox;
+  RqClassTable[22].RqName := 'QSTATUSBAR';
+  RqClassTable[22].LclClass := TStatusBar;
   // У RapidQ OnClose формы - сигнал о закрытии без параметров; в LCL ему
   // ближе всего OnCloseQuery (FireCloseQuery разрешает закрытие)
   RqPropTable[0].RqName := 'ONCLOSE';
@@ -194,6 +210,11 @@ begin
   // Буквы не только ASCII (кириллица) LCL сообщает в OnUTF8KeyPress
   RqPropTable[1].RqName := 'ONKEYPRESS';
   RqPropTable[1].LclName := 'OnUTF8KeyPress';
+  // QTREEVIEW: OnExpand / OnCollapse RapidQ - после раскрытия
+  RqPropTable[2].RqName := 'ONEXPAND';
+  RqPropTable[2].LclName := 'OnExpanded';
+  RqPropTable[3].RqName := 'ONCOLLAPSE';
+  RqPropTable[3].LclName := 'OnCollapsed';
 end;
 
 procedure SetError(const AText: string);
@@ -454,6 +475,39 @@ begin
   ProcEx(User, Owner, EventId, @Args);
 end;
 
+// QTREEVIEW: OnChange, OnExpand, OnCollapse - номер пункта (сквозной)
+procedure TRqEventLink.FireTreeNode(Sender: TObject; Node: TTreeNode);
+var
+  Args: TRqEventArgs;
+begin
+  if not Assigned(ProcEx) then
+    Exit;
+  FillChar(Args, SizeOf(Args), 0);
+  if Node = nil then
+    Args.IntArgs[0] := -1
+  else
+    Args.IntArgs[0] := Node.AbsoluteIndex;
+  ProcEx(User, Owner, EventId, @Args);
+end;
+
+// QTREEVIEW: OnChanging, OnExpanding, OnCollapsing - номер и разрешение
+procedure TRqEventLink.FireTreeAllow(Sender: TObject; Node: TTreeNode;
+                                     var Allow: Boolean);
+var
+  Args: TRqEventArgs;
+begin
+  if not Assigned(ProcEx) then
+    Exit;
+  FillChar(Args, SizeOf(Args), 0);
+  if Node = nil then
+    Args.IntArgs[0] := -1
+  else
+    Args.IntArgs[0] := Node.AbsoluteIndex;
+  Args.IntArgs[1] := Ord(Allow);
+  ProcEx(User, Owner, EventId, @Args);
+  Allow := Args.IntArgs[1] <> 0;
+end;
+
 // OnChange дерева (QDIRTREE): выбрана другая папка
 procedure TRqEventLink.FireTreeChange(Sender: TObject; Node: TTreeNode);
 begin
@@ -553,6 +607,7 @@ begin
     Data := TRqData.Create(Comp);
     Data.User := AUser;
     GridInitNew(Comp);
+    MoreInitNew(Comp);
     if (AParent <> nil) and (Comp is TControl) and
        (TObject(AParent) is TWinControl) then
       TControl(Comp).Parent := TWinControl(AParent);
@@ -589,7 +644,8 @@ begin
   try
     if EditSetInt(TObject(AObj), string(AProp), AValue) or
        GridSetInt(TObject(AObj), string(AProp), AValue) or
-       MiscSetInt(TObject(AObj), string(AProp), AValue) then
+       MiscSetInt(TObject(AObj), string(AProp), AValue) or
+       MoreSetInt(TObject(AObj), string(AProp), AValue) then
     begin
       Result := 1;
       Exit;
@@ -623,7 +679,8 @@ begin
   try
     if EditGetInt(TObject(AObj), string(AProp), Result) or
        GridGetInt(TObject(AObj), string(AProp), Result) or
-       MiscGetInt(TObject(AObj), string(AProp), Result) then
+       MiscGetInt(TObject(AObj), string(AProp), Result) or
+       MoreGetInt(TObject(AObj), string(AProp), Result) then
       Exit;
     Info := FindProp(TObject(AObj), string(AProp));
     if Info = nil then
@@ -644,7 +701,8 @@ begin
   try
     if EditSetStr(TObject(AObj), string(AProp), string(AValue)) or
        GridSetStr(TObject(AObj), string(AProp), string(AValue)) or
-       MiscSetStr(TObject(AObj), string(AProp), string(AValue)) then
+       MiscSetStr(TObject(AObj), string(AProp), string(AValue)) or
+       MoreSetStr(TObject(AObj), string(AProp), string(AValue)) then
     begin
       Result := 1;
       Exit;
@@ -681,7 +739,8 @@ begin
       ABuf^ := #0;
     if not EditGetStr(TObject(AObj), string(AProp), Value) and
        not GridGetStr(TObject(AObj), string(AProp), Value) and
-       not MiscGetStr(TObject(AObj), string(AProp), Value) then
+       not MiscGetStr(TObject(AObj), string(AProp), Value) and
+       not MoreGetStr(TObject(AObj), string(AProp), Value) then
     begin
       Info := FindProp(TObject(AObj), string(AProp));
       if Info = nil then
@@ -722,7 +781,9 @@ begin
         SetError('Parent: parent cannot contain controls');
         Exit;
       end;
+      MoreBeforeParent(TObject(AObj), TObject(AValue));
       TControl(AObj).Parent := TWinControl(AValue);
+      MoreAfterParent(TObject(AObj));
       Result := 1;
       Exit;
     end;
@@ -860,6 +921,8 @@ var
   SetEditProc: TSetEditEvent;
   NotifyExProc: TNotifyEvent;
   DrawItemProc: TDrawItemEvent;
+  TreeNodeProc: TTVChangedEvent;
+  TreeAllowProc: TTVChangingEvent;
 begin
   Result := 0;
   try
@@ -908,6 +971,16 @@ begin
     begin
       DrawItemProc := @Link.FireDrawItem;
       Handler := TMethod(DrawItemProc);
+    end
+    else if (TypeName = 'TTVChangedEvent') or (TypeName = 'TTVExpandedEvent') then
+    begin
+      TreeNodeProc := @Link.FireTreeNode;
+      Handler := TMethod(TreeNodeProc);
+    end
+    else if (TypeName = 'TTVChangingEvent') or (TypeName = 'TTVExpandingEvent') then
+    begin
+      TreeAllowProc := @Link.FireTreeAllow;
+      Handler := TMethod(TreeAllowProc);
     end
     else if TypeName = 'TKeyEvent' then
     begin
@@ -1191,7 +1264,8 @@ begin
     Found := False;
     Value := '';
     if EditGetItem(TObject(AObj), Prop, AIndex, Value) or
-       MiscGetItem(TObject(AObj), Prop, AIndex, Value) then
+       MiscGetItem(TObject(AObj), Prop, AIndex, Value) or
+       MoreGetItem(TObject(AObj), Prop, AIndex, Value) then
       Found := True
     else if (TObject(AObj) is TFont) and (Prop = 'FONTNAME') then
     begin
@@ -1233,7 +1307,8 @@ begin
   Result := 0;
   try
     if EditSetItem(TObject(AObj), string(AProp), AIndex, string(AValue)) or
-       MiscSetItem(TObject(AObj), string(AProp), AIndex, string(AValue)) then
+       MiscSetItem(TObject(AObj), string(AProp), AIndex, string(AValue)) or
+       MoreSetItem(TObject(AObj), string(AProp), AIndex, string(AValue)) then
       Result := 1
     else if AObj = nil then
       SetError('RqSetItemStr ' + string(AProp) + ': no object')
@@ -1316,7 +1391,8 @@ begin
   RqLastErrorText := '';
   try
     if not GridGetItemInt(TObject(AObj), string(AProp), AIndex, Result) and
-       not MiscGetItemInt(TObject(AObj), string(AProp), AIndex, Result) then
+       not MiscGetItemInt(TObject(AObj), string(AProp), AIndex, Result) and
+       not MoreGetItemInt(TObject(AObj), string(AProp), AIndex, Result) then
       SetError('RqGetItemInt: no list ' + string(AProp));
   except
     on E: Exception do
@@ -1330,7 +1406,8 @@ begin
   Result := 0;
   try
     if GridSetItemInt(TObject(AObj), string(AProp), AIndex, AValue) or
-       MiscSetItemInt(TObject(AObj), string(AProp), AIndex, AValue) then
+       MiscSetItemInt(TObject(AObj), string(AProp), AIndex, AValue) or
+       MoreSetItemInt(TObject(AObj), string(AProp), AIndex, AValue) then
       Result := 1
     else
       SetError('RqSetItemInt: no list ' + string(AProp));
@@ -1365,6 +1442,8 @@ begin
         Result := IntResult;
     end
     else if MiscCallEx(TObject(AObj), string(AMethod), string(AStr), AInt1,
+                       AInt2, AInt3, IntResult) or
+            MoreCallEx(TObject(AObj), string(AMethod), string(AStr), AInt1,
                        AInt2, AInt3, IntResult) then
       Result := IntResult
     else if AObj = nil then
