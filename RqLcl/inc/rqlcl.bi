@@ -101,6 +101,9 @@ Type RqCallIntsFn As Function stdcall (ByVal ObjPtr As Any Ptr, _
     ByVal IntList As Long Ptr, ByVal IntCount As Long) As Long
 Type RqCallObjFn As Function stdcall (ByVal ObjPtr As Any Ptr, _
     ByVal MethodName As ZString Ptr, ByVal OtherPtr As Any Ptr, ByVal IntArg As Long) As Long
+Type RqCallObjIntsFn As Function stdcall (ByVal ObjPtr As Any Ptr, _
+    ByVal MethodName As ZString Ptr, ByVal OtherPtr As Any Ptr, _
+    ByVal IntList As Long Ptr, ByVal IntCount As Long) As Long
 Type RqDoEventsFn As Sub stdcall ()
 Type RqLastErrorFn As Function stdcall (ByVal Buffer As ZString Ptr, _
     ByVal BufferLen As Long) As Long
@@ -131,6 +134,7 @@ Dim Shared RqCallEx As RqCallExFn
 Dim Shared RqSetEventEx As RqSetEventExFn
 Dim Shared RqCallInts As RqCallIntsFn
 Dim Shared RqCallObj As RqCallObjFn
+Dim Shared RqCallObjInts As RqCallObjIntsFn
 Dim Shared RqDoEventsProc As RqDoEventsFn
 Dim Shared RqLastError As RqLastErrorFn
 
@@ -184,6 +188,7 @@ Sub RqLclEnsure()
     RqSetEventEx = Cast(RqSetEventExFn, DyLibSymbol(RqLclLib, "RqSetEventEx"))
     RqCallInts = Cast(RqCallIntsFn, DyLibSymbol(RqLclLib, "RqCallInts"))
     RqCallObj = Cast(RqCallObjFn, DyLibSymbol(RqLclLib, "RqCallObj"))
+    RqCallObjInts = Cast(RqCallObjIntsFn, DyLibSymbol(RqLclLib, "RqCallObjInts"))
     RqDoEventsProc = Cast(RqDoEventsFn, DyLibSymbol(RqLclLib, "RqDoEvents"))
     RqLastError = Cast(RqLastErrorFn, DyLibSymbol(RqLclLib, "RqLastError"))
     If (RqInit = 0) Or (RqCreate = 0) Or (RqSetInt = 0) Or (RqGetInt = 0) _
@@ -194,7 +199,7 @@ Sub RqLclEnsure()
        Or (RqGetItemStr = 0) Or (RqSetItemStr = 0) Or (RqCallStr = 0) _
        Or (RqGetCell = 0) Or (RqSetCell = 0) Or (RqGetItemInt = 0) _
        Or (RqSetItemInt = 0) Or (RqCallEx = 0) Or (RqSetEventEx = 0) _
-       Or (RqCallInts = 0) Or (RqCallObj = 0) Then
+       Or (RqCallInts = 0) Or (RqCallObj = 0) Or (RqCallObjInts = 0) Then
         RqLclMessageBox(0, "В " & RQLCL_DLL & " нет нужных функций " & _
             "(другая версия DLL?)", "RqLcl", &h10)
         End 1
@@ -842,6 +847,9 @@ Type QFORM Extends QCONTROL
     Declare Property KeyPreview(ByVal Value As Long)
     ' ICOHandle = ресурс $RESOURCE с файлом .ico (значок окна)
     Declare Property ICOHandle(ByVal Value As Long)
+    ' Icon = файл .ico или "" (кэш картинок); чтение кладёт значок в кэш
+    Declare Property Icon() As String
+    Declare Property Icon(ByRef Value As String)
     Declare Property ModalResult() As Long
     Declare Property ModalResult(ByVal Value As Long)
     Declare Property OnResize(ByVal Handler As Sub())
@@ -930,6 +938,12 @@ Property QFORM.WindowState(ByVal Value As Long)
 End Property
 Property QFORM.KeyPreview() As Long
     Return RqGetInt(RqObj, "KeyPreview")
+End Property
+Property QFORM.Icon() As String
+    Return RqLclGetStr(RqObj, "Icon")
+End Property
+Property QFORM.Icon(ByRef Value As String)
+    RqLclSetStr(RqObj, "Icon", Value)
 End Property
 Property QFORM.ICOHandle(ByVal Value As Long)
     RqLclSetInt(RqObj, "ICOHandle", Value)
@@ -5907,4 +5921,5 @@ Property QSTATUSBAR.OnResize(ByVal Handler As Sub(ByRef Sender As QSTATUSBAR))
 End Property
 
 #include once "rqsys.bi"
+#include once "rqimage.bi"
 #include once "rqview.bi"

@@ -28,7 +28,7 @@ uses
   Classes, SysUtils, TypInfo, Math, Controls, StdCtrls, Forms, Graphics,
   LazUTF8, LCLType, ComCtrls, Grids, ShellCtrls, ExtCtrls, Buttons, Menus,
   FileCtrl, Dialogs, RichMemo, rqlclrich, rqlclgrid, rqlclmisc, rqlclmore,
-  rqlclsys, rqlclview;
+  rqlclsys, rqlclview, rqlclimage, ImgList;
 
 const
   RqLclVersion = 2;   // меняется при несовместимой смене набора функций
@@ -71,6 +71,8 @@ function RqCallInts(AObj: Pointer; AMethod: PChar; AStr: PChar;
 function RqCallObj(AObj: Pointer; AMethod: PChar; AOther: Pointer;
                    AInt: Integer): Integer; stdcall;
 function RqCall(AObj: Pointer; AMethod: PChar): Integer; stdcall;
+function RqCallObjInts(AObj: Pointer; AMethod: PChar; AOther: Pointer;
+                       AInts: PInteger; ACount: Integer): Integer; stdcall;
 function RqCallInt(AObj: Pointer; AMethod: PChar; AValue: Integer): Integer;
   stdcall;
 function RqGetObj(AObj: Pointer; AProp: PChar): Pointer; stdcall;
@@ -150,7 +152,7 @@ type
   end;
 
 var
-  RqClassTable: array[0..26] of TRqClassRec;
+  RqClassTable: array[0..28] of TRqClassRec;
   RqPropTable: array[0..4] of TRqPropRec;
   RqLastErrorText: string = '';
   RqInitDone: Boolean = False;
@@ -216,6 +218,10 @@ begin
   RqClassTable[25].LclClass := TListView;
   RqClassTable[26].RqName := 'QFONTDIALOG';
   RqClassTable[26].LclClass := TFontDialog;
+  RqClassTable[27].RqName := 'QIMAGE';
+  RqClassTable[27].LclClass := TImage;
+  RqClassTable[28].RqName := 'QIMAGELIST';
+  RqClassTable[28].LclClass := TImageList;
   // У RapidQ OnClose формы - сигнал о закрытии без параметров; в LCL ему
   // ближе всего OnCloseQuery (FireCloseQuery разрешает закрытие)
   RqPropTable[0].RqName := 'ONCLOSE';
@@ -701,7 +707,8 @@ begin
        MiscSetInt(TObject(AObj), string(AProp), AValue) or
        MoreSetInt(TObject(AObj), string(AProp), AValue) or
        SysSetInt(TObject(AObj), string(AProp), AValue) or
-       ViewSetInt(TObject(AObj), string(AProp), AValue) then
+       ViewSetInt(TObject(AObj), string(AProp), AValue) or
+       ImgSetInt(TObject(AObj), string(AProp), AValue) then
     begin
       Result := 1;
       Exit;
@@ -738,7 +745,8 @@ begin
        MiscGetInt(TObject(AObj), string(AProp), Result) or
        MoreGetInt(TObject(AObj), string(AProp), Result) or
        SysGetInt(TObject(AObj), string(AProp), Result) or
-       ViewGetInt(TObject(AObj), string(AProp), Result) then
+       ViewGetInt(TObject(AObj), string(AProp), Result) or
+       ImgGetInt(TObject(AObj), string(AProp), Result) then
       Exit;
     Info := FindProp(TObject(AObj), string(AProp));
     if Info = nil then
@@ -762,7 +770,8 @@ begin
        MiscSetStr(TObject(AObj), string(AProp), string(AValue)) or
        MoreSetStr(TObject(AObj), string(AProp), string(AValue)) or
        SysSetStr(TObject(AObj), string(AProp), string(AValue)) or
-       ViewSetStr(TObject(AObj), string(AProp), string(AValue)) then
+       ViewSetStr(TObject(AObj), string(AProp), string(AValue)) or
+       ImgSetStr(TObject(AObj), string(AProp), string(AValue)) then
     begin
       Result := 1;
       Exit;
@@ -802,7 +811,8 @@ begin
        not MiscGetStr(TObject(AObj), string(AProp), Value) and
        not MoreGetStr(TObject(AObj), string(AProp), Value) and
        not SysGetStr(TObject(AObj), string(AProp), Value) and
-       not ViewGetStr(TObject(AObj), string(AProp), Value) then
+       not ViewGetStr(TObject(AObj), string(AProp), Value) and
+       not ImgGetStr(TObject(AObj), string(AProp), Value) then
     begin
       Info := FindProp(TObject(AObj), string(AProp));
       if Info = nil then
@@ -1117,7 +1127,8 @@ begin
     SetLength(IntList, ACount);
     for IntIdx := 0 to ACount - 1 do
       IntList[IntIdx] := PInteger(PtrUInt(AInts) + PtrUInt(IntIdx * SizeOf(Integer)))^;
-    if GridDraw(TObject(AObj), string(AMethod), string(AStr), IntList, Result) then
+    if GridDraw(TObject(AObj), string(AMethod), string(AStr), IntList, Result) or
+       ImgDraw(TObject(AObj), string(AMethod), string(AStr), IntList, Result) then
       Exit;
     if AObj = nil then
       SetError('RqCallInts ' + string(AMethod) + ': no object')
@@ -1148,6 +1159,36 @@ begin
   except
     on E: Exception do
       SetError(string(AMethod) + ': ' + E.Message);
+  end;
+end;
+
+// Метод с другим объектом и списком целых: QIMAGELIST.Draw(Image, X, Y, i),
+// QIMAGE.CopyRect(D, Image, S). Результат - как у RqCallInts.
+function RqCallObjInts(AObj: Pointer; AMethod: PChar; AOther: Pointer;
+                       AInts: PInteger; ACount: Integer): Integer; stdcall;
+var
+  IntList: array of Integer;
+  IntIdx: Integer;
+begin
+  Result := 0;
+  try
+    SetLength(IntList, ACount);
+    for IntIdx := 0 to ACount - 1 do
+      IntList[IntIdx] := PInteger(PtrUInt(AInts) + PtrUInt(IntIdx * SizeOf(Integer)))^;
+    if ImgCallObjInts(TObject(AObj), string(AMethod), TObject(AOther), IntList,
+                      Result) then
+      Exit;
+    Result := 0;
+    if AObj = nil then
+      SetError('RqCallObjInts ' + string(AMethod) + ': no object')
+    else
+      SetError(TObject(AObj).ClassName + ': no method ' + string(AMethod));
+  except
+    on E: Exception do
+    begin
+      SetError(string(AMethod) + ': ' + E.Message);
+      Result := 0;
+    end;
   end;
 end;
 
@@ -1538,7 +1579,9 @@ begin
             MoreCallEx(TObject(AObj), string(AMethod), string(AStr), AInt1,
                        AInt2, AInt3, IntResult) or
             ViewCallEx(TObject(AObj), string(AMethod), string(AStr), AInt1,
-                       AInt2, AInt3, IntResult) then
+                       AInt2, AInt3, IntResult) or
+            ImgCallEx(TObject(AObj), string(AMethod), string(AStr), AInt1,
+                      AInt2, AInt3, IntResult) then
       Result := IntResult
     else if AObj = nil then
       SetError('RqCallEx ' + string(AMethod) + ': no object')

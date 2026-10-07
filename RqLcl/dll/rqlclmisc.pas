@@ -19,6 +19,10 @@ uses
 // Ресурс $RESOURCE программы (RCDATA с номером в exe, содержимое - файл
 // как есть) - поток; нет такого ресурса - nil
 function MiscResourceStream(AResId: Integer): TStream;
+// Кэш картинок RapidQ (глава 8): GetBMP / чтение BMP кладут сюда,
+// BMP = "" берёт отсюда
+function MiscBmpCache: TBitmap;
+function MiscIcoCache: TIcon;
 
 function MiscGetInt(AObj: TObject; const AProp: string;
                     out AValue: Integer): Boolean;
@@ -52,6 +56,24 @@ implementation
 
 uses
   Grids;
+
+var
+  BmpCacheObj: TBitmap = nil;
+  IcoCacheObj: TIcon = nil;
+
+function MiscBmpCache: TBitmap;
+begin
+  if BmpCacheObj = nil then
+    BmpCacheObj := TBitmap.Create;
+  Result := BmpCacheObj;
+end;
+
+function MiscIcoCache: TIcon;
+begin
+  if IcoCacheObj = nil then
+    IcoCacheObj := TIcon.Create;
+  Result := IcoCacheObj;
+end;
 
 function MiscResourceStream(AResId: Integer): TStream;
 var
@@ -122,7 +144,10 @@ begin
   else if AObj is TCustomComboBox then
     Result := TCustomComboBox(AObj).Canvas
   else if AObj is TCustomForm then
-    Result := TCustomForm(AObj).Canvas;
+    Result := TCustomForm(AObj).Canvas
+  // QIMAGE: холст картинки (LCL создаёт картинку размером с элемент)
+  else if AObj is TImage then
+    Result := TImage(AObj).Canvas;
 end;
 
 procedure CheckIndex(const AWhat: string; AIndex, ACount: Integer);
@@ -409,8 +434,11 @@ begin
   end
   else if (GlyphOf(AObj) <> nil) and (Prop = 'BMP') then
   begin
-    // файл .bmp - картинка кнопки (имя - в кодировке Windows)
-    GlyphOf(AObj).LoadFromFile(WinCPToUTF8(AValue));
+    // файл .bmp - картинка кнопки (имя - в кодировке Windows); "" - кэш
+    if AValue = '' then
+      GlyphOf(AObj).Assign(MiscBmpCache)
+    else
+      GlyphOf(AObj).LoadFromFile(WinCPToUTF8(AValue));
     Result := True;
   end;
 end;
@@ -590,4 +618,7 @@ begin
   end;
 end;
 
+finalization
+  FreeAndNil(BmpCacheObj);
+  FreeAndNil(IcoCacheObj);
 end.

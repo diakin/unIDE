@@ -143,6 +143,9 @@ Type QLISTVIEW Extends QCONTROL
     Declare Property Selected(ByVal ItemNum As Long, ByVal Value As Long)
     Declare Function SubItem(ByVal ItemNum As Long, ByVal SubNum As Long) As String
     Declare Sub SetSubItem(ByVal ItemNum As Long, ByVal SubNum As Long, ByRef Value As String)
+    Declare Property LargeImages(ByRef Value As QIMAGELIST)
+    Declare Property SmallImages(ByRef Value As QIMAGELIST)
+    Declare Property StateImages(ByRef Value As QIMAGELIST)
     Declare Sub AddColumns Overload (ByRef Text1 As String)
     Declare Sub AddColumns Overload (ByRef Text1 As String, ByRef Text2 As String)
     Declare Sub AddColumns Overload (ByRef Text1 As String, ByRef Text2 As String, ByRef Text3 As String)
@@ -321,6 +324,15 @@ Sub QLISTVIEW.StrCall(ByRef MethodName As String, ByRef Text1 As String, ByVal I
         RqLclClassError("QLISTVIEW." & MethodName)
     End If
 End Sub
+Property QLISTVIEW.LargeImages(ByRef Value As QIMAGELIST)
+    If RqSetObj(RqObj, "LargeImages", Value.RqObj) = 0 Then RqLclShowError("QLISTVIEW.LargeImages")
+End Property
+Property QLISTVIEW.SmallImages(ByRef Value As QIMAGELIST)
+    If RqSetObj(RqObj, "SmallImages", Value.RqObj) = 0 Then RqLclShowError("QLISTVIEW.SmallImages")
+End Property
+Property QLISTVIEW.StateImages(ByRef Value As QIMAGELIST)
+    If RqSetObj(RqObj, "StateImages", Value.RqObj) = 0 Then RqLclShowError("QLISTVIEW.StateImages")
+End Property
 ' Пункт по номеру (с 0): List.Item(i).Caption = "..."
 Function QLISTVIEW.Item(ByVal ItemNum As Long) ByRef As QLISTITEM
     ItemWrap.ListObj = RqObj

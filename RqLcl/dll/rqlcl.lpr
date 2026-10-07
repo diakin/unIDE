@@ -35,6 +35,7 @@ exports
   RqSetEventEx,
   RqCallInts,
   RqCallObj,
+  RqCallObjInts,
   RqDoEvents,
   RqLastError;
 
