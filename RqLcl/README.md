@@ -6,11 +6,15 @@
 
 | Класс | Свойства | События, методы |
 |---|---|---|
-| общее (QCONTROL) | Left, Top, Width, Height, Visible, Enabled, Color, Hint, ShowHint, Parent | Show, Hide, Repaint, SetFocus |
+| общее (QCONTROL) | Left, Top, Width, Height, Visible, Enabled, Color, Hint, ShowHint, Parent, Font, Handle (HWND, чтение) | Show, Hide, Repaint, SetFocus |
 | QFORM | Caption | OnShow, OnClose; ShowModal, Close, Center |
 | QBUTTON | Caption | OnClick; Click |
 | QLABEL | Caption | — |
 | QEDIT | Text | OnChange |
+| QFONT | Name, Size, Color, Charset, Pitch, Handle (HFONT), FontCount, FontName(i) | AddStyles, DelStyles (до четырёх стилей за вызов) |
+| QMEMORYSTREAM, QFILESTREAM | Position, Size, LineCount; у памяти `Pointer` (в FreeBASIC — `PointerAddr`, препроцессор переименовывает) | Read/Write, ReadNum/WriteNum, ReadStr/WriteStr, ReadLine/WriteLine, CopyFrom, Seek; у файла Open, Close — в `inc/rqstream.bi`, без DLL |
+
+`Label.Font = Font` копирует значения шрифта в элемент, как в RapidQ. `Label.Font` при чтении — QFONT поверх шрифта самого элемента: `Label.Font.Size = 20` меняет элемент.
 
 Свойства в DLL ищутся по имени через RTTI LCL, поэтому новое свойство с тем же именем, что в LCL, добавляется в `rqlcl.bi` двумя строками, без правки DLL. Где имя у RapidQ другое — таблица `RqPropTable` в `dll/rqlclcore.pas`.
 
@@ -19,6 +23,8 @@
 - `bin/rqlcl32.dll`, `bin/rqlcl64.dll` — собранные DLL (FPC 3.2.2, Lazarus 3.8, LCL win32 widgetset). Около 1,9 и 2,5 МБ.
 - `inc/rqlcl.bi` — обёртка для FreeBASIC. DLL выбирается по разрядности программы и загружается при создании первого объекта.
 - `demo/demo.bas` — форма с надписью, полем ввода и кнопкой.
+- `inc/rqstream.bi` — QMEMORYSTREAM и QFILESTREAM на FreeBASIC (без DLL).
+- `demo/fonttest.bas` — проверка QFONT без пользователя.
 - `demo/selftest.bas` — проверка без пользователя: форма открывается, OnShow нажимает кнопку три раза, сверяет свойства и закрывает форму; итог в консоль и в код завершения.
 - `dll/rqlclcore.pas`, `dll/rqlcl.lpr` — исходники DLL; `dll/build.bat` — сборка своим Lazarus.
 
@@ -35,7 +41,7 @@ demo.exe
 
 ## Как устроено
 
-- DLL (`stdcall`): `RqInit`, `RqDone`, `RqCreate(класс, родитель, указатель вызывающего)`, `RqSetInt` / `RqGetInt`, `RqSetStr` / `RqGetStr`, `RqSetObj` (Parent), `RqSetEvent`, `RqCall` (ShowModal, Show, Close, Click…), `RqDoEvents`, `RqLastError`, `RqFree`.
+- DLL (`stdcall`): `RqInit`, `RqDone`, `RqCreate(класс, родитель, указатель вызывающего)`, `RqSetInt` / `RqGetInt`, `RqSetStr` / `RqGetStr`, `RqSetObj` (Parent, Font), `RqGetObj` (Font), `RqSetEvent`, `RqCall` (ShowModal, Show, Close, Click…), `RqCallInt` (метод с целым параметром: AddStyle, DelStyle, FontCount, SetHandle), `RqGetHandle` (HWND, HFONT), `RqGetItemStr` (строка списка по номеру: FontName), `RqDoEvents`, `RqLastError`, `RqFree`. QFONT в DLL — `TFont` LCL.
 - Событие: в DLL у объекта свой переходник на каждое событие; LCL вызывает его метод, он — процедуру программы с адресом объекта FreeBASIC. В `rqlcl.bi` эта процедура вызывает обработчик пользователя `Sub Xxx(ByRef Sender As QBUTTON)`.
 - Строки с обеих сторон — в кодировке Windows (CP1251 у исходников RapidQ); внутри DLL — UTF-8 LCL.
 - Исключения через границу DLL не идут: функция возвращает 0, текст — `RqLastError`; `rqlcl.bi` показывает его окном.

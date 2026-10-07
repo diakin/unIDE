@@ -21,6 +21,10 @@ exports
   RqSetObj,
   RqSetEvent,
   RqCall,
+  RqCallInt,
+  RqGetObj,
+  RqGetHandle,
+  RqGetItemStr,
   RqDoEvents,
   RqLastError;
 

@@ -19,6 +19,7 @@
 '
 '  Объекты объявляются глобально (Dim Shared) и живут до конца программы:
 '  элементы уничтожает их форма, деструкторов у типов нет.
+'  Поле RqObj - объект в DLL; Handle - окно Windows (как в RapidQ).
 '  Строки - в кодировке Windows (CP1251), как в исходниках RapidQ.
 '  Ошибка (нет свойства, нет DLL) - окно с текстом от DLL.
 ' ---------------------------------------------------------------------------
@@ -55,6 +56,14 @@ Type RqSetEventFn As Function stdcall (ByVal ObjPtr As Any Ptr, _
     ByVal EventName As ZString Ptr, ByVal Handler As RqEventProc) As Long
 Type RqCallFn As Function stdcall (ByVal ObjPtr As Any Ptr, _
     ByVal MethodName As ZString Ptr) As Long
+Type RqCallIntFn As Function stdcall (ByVal ObjPtr As Any Ptr, _
+    ByVal MethodName As ZString Ptr, ByVal Value As Long) As Long
+Type RqGetObjFn As Function stdcall (ByVal ObjPtr As Any Ptr, _
+    ByVal PropName As ZString Ptr) As Any Ptr
+Type RqGetHandleFn As Function stdcall (ByVal ObjPtr As Any Ptr) As Integer
+Type RqGetItemStrFn As Function stdcall (ByVal ObjPtr As Any Ptr, _
+    ByVal PropName As ZString Ptr, ByVal ItemIndex As Long, _
+    ByVal Buffer As ZString Ptr, ByVal BufferLen As Long) As Long
 Type RqDoEventsFn As Sub stdcall ()
 Type RqLastErrorFn As Function stdcall (ByVal Buffer As ZString Ptr, _
     ByVal BufferLen As Long) As Long
@@ -71,6 +80,10 @@ Dim Shared RqGetStr As RqGetStrFn
 Dim Shared RqSetObj As RqSetObjFn
 Dim Shared RqSetEvent As RqSetEventFn
 Dim Shared RqCall As RqCallFn
+Dim Shared RqCallInt As RqCallIntFn
+Dim Shared RqGetObj As RqGetObjFn
+Dim Shared RqGetHandle As RqGetHandleFn
+Dim Shared RqGetItemStr As RqGetItemStrFn
 Dim Shared RqDoEventsProc As RqDoEventsFn
 Dim Shared RqLastError As RqLastErrorFn
 
@@ -110,12 +123,18 @@ Sub RqLclEnsure()
     RqSetObj = Cast(RqSetObjFn, DyLibSymbol(RqLclLib, "RqSetObj"))
     RqSetEvent = Cast(RqSetEventFn, DyLibSymbol(RqLclLib, "RqSetEvent"))
     RqCall = Cast(RqCallFn, DyLibSymbol(RqLclLib, "RqCall"))
+    RqCallInt = Cast(RqCallIntFn, DyLibSymbol(RqLclLib, "RqCallInt"))
+    RqGetObj = Cast(RqGetObjFn, DyLibSymbol(RqLclLib, "RqGetObj"))
+    RqGetHandle = Cast(RqGetHandleFn, DyLibSymbol(RqLclLib, "RqGetHandle"))
+    RqGetItemStr = Cast(RqGetItemStrFn, DyLibSymbol(RqLclLib, "RqGetItemStr"))
     RqDoEventsProc = Cast(RqDoEventsFn, DyLibSymbol(RqLclLib, "RqDoEvents"))
     RqLastError = Cast(RqLastErrorFn, DyLibSymbol(RqLclLib, "RqLastError"))
     If (RqInit = 0) Or (RqCreate = 0) Or (RqSetInt = 0) Or (RqGetInt = 0) _
        Or (RqSetStr = 0) Or (RqGetStr = 0) Or (RqSetObj = 0) _
        Or (RqSetEvent = 0) Or (RqCall = 0) Or (RqDoEventsProc = 0) _
-       Or (RqLastError = 0) Or (RqFree = 0) Or (RqDone = 0) Then
+       Or (RqLastError = 0) Or (RqFree = 0) Or (RqDone = 0) _
+       Or (RqCallInt = 0) Or (RqGetObj = 0) Or (RqGetHandle = 0) _
+       Or (RqGetItemStr = 0) Then
         RqLclMessageBox(0, "В " & RQLCL_DLL & " нет нужных функций " & _
             "(другая версия DLL?)", "RqLcl", &h10)
         End 1
@@ -170,11 +189,127 @@ Sub DoEvents()
 End Sub
 
 ' ---------------------------------------------------------------------------
+'  QFONT - шрифт: имя, размер, цвет, стили. Присваивается элементу:
+'      Label.Font = Font
+'  Элемент копирует значения шрифта, сам QFONT остаётся отдельным.
+'  Control.Font (чтение) - QFONT поверх шрифта элемента: его изменения
+'  сразу видны на элементе.
+' ---------------------------------------------------------------------------
+
+Type QFONT
+    RqObj As Any Ptr
+    Declare Constructor()
+    Declare Constructor(ByVal Existing As Any Ptr)
+    Declare Property Name() As String
+    Declare Property Name(ByRef Value As String)
+    Declare Property Size() As Long
+    Declare Property Size(ByVal Value As Long)
+    Declare Property Color() As Long
+    Declare Property Color(ByVal Value As Long)
+    Declare Property Charset() As Long
+    Declare Property Charset(ByVal Value As Long)
+    Declare Property Pitch() As Long
+    Declare Property Pitch(ByVal Value As Long)
+    Declare Property Handle() As Integer
+    Declare Property Handle(ByVal Value As Integer)
+    Declare Property FontCount() As Long
+    Declare Property FontName(ByVal ItemIndex As Long) As String
+    Declare Sub AddStyles(ByVal Style1 As Long, ByVal Style2 As Long = -1, _
+        ByVal Style3 As Long = -1, ByVal Style4 As Long = -1)
+    Declare Sub DelStyles(ByVal Style1 As Long, ByVal Style2 As Long = -1, _
+        ByVal Style3 As Long = -1, ByVal Style4 As Long = -1)
+End Type
+
+Constructor QFONT()
+    RqObj = RqLclNew("QFONT", @This)
+End Constructor
+' Обёртка над готовым шрифтом из DLL (Font элемента)
+Constructor QFONT(ByVal Existing As Any Ptr)
+    RqObj = Existing
+End Constructor
+Property QFONT.Name() As String
+    Return RqLclGetStr(RqObj, "Name")
+End Property
+Property QFONT.Name(ByRef Value As String)
+    RqLclSetStr(RqObj, "Name", Value)
+End Property
+Property QFONT.Size() As Long
+    Return RqGetInt(RqObj, "Size")
+End Property
+Property QFONT.Size(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Size", Value)
+End Property
+Property QFONT.Color() As Long
+    Return RqGetInt(RqObj, "Color")
+End Property
+Property QFONT.Color(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Color", Value)
+End Property
+Property QFONT.Charset() As Long
+    Return RqGetInt(RqObj, "Charset")
+End Property
+Property QFONT.Charset(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Charset", Value)
+End Property
+Property QFONT.Pitch() As Long
+    Return RqGetInt(RqObj, "Pitch")
+End Property
+Property QFONT.Pitch(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Pitch", Value)
+End Property
+' HFONT Windows
+Property QFONT.Handle() As Integer
+    Return RqGetHandle(RqObj)
+End Property
+Property QFONT.Handle(ByVal Value As Integer)
+    If RqCallInt(RqObj, "SetHandle", Value) = 0 Then RqLclShowError("Handle")
+End Property
+' Число шрифтов в системе
+Property QFONT.FontCount() As Long
+    RqLclEnsure()
+    Return RqCallInt(RqObj, "FontCount", 0)
+End Property
+' Имя шрифта системы по номеру, с 0
+Property QFONT.FontName(ByVal ItemIndex As Long) As String
+    Dim TextLen As Long
+    Dim TextValue As String
+    TextLen = RqGetItemStr(RqObj, "FontName", ItemIndex, 0, 0)
+    If TextLen < 0 Then
+        RqLclShowError("FontName(" & ItemIndex & ")")
+        Return ""
+    End If
+    If TextLen = 0 Then Return ""
+    TextValue = Space(TextLen)
+    RqGetItemStr(RqObj, "FontName", ItemIndex, StrPtr(TextValue), TextLen + 1)
+    Return TextValue
+End Property
+' Стили: fsBold 0, fsItalic 1, fsUnderline 2, fsStrikeOut 3. В RapidQ
+' число параметров не ограничено, здесь - до четырёх (стилей всего четыре)
+Sub QFONT.AddStyles(ByVal Style1 As Long, ByVal Style2 As Long = -1, _
+        ByVal Style3 As Long = -1, ByVal Style4 As Long = -1)
+    Dim StyleList(1 To 4) As Long = {Style1, Style2, Style3, Style4}
+    For StyleIdx As Long = 1 To 4
+        If StyleList(StyleIdx) >= 0 Then
+            If RqCallInt(RqObj, "AddStyle", StyleList(StyleIdx)) = 0 Then RqLclShowError("AddStyles")
+        End If
+    Next
+End Sub
+Sub QFONT.DelStyles(ByVal Style1 As Long, ByVal Style2 As Long = -1, _
+        ByVal Style3 As Long = -1, ByVal Style4 As Long = -1)
+    Dim StyleList(1 To 4) As Long = {Style1, Style2, Style3, Style4}
+    For StyleIdx As Long = 1 To 4
+        If StyleList(StyleIdx) >= 0 Then
+            If RqCallInt(RqObj, "DelStyle", StyleList(StyleIdx)) = 0 Then RqLclShowError("DelStyles")
+        End If
+    Next
+End Sub
+
+' ---------------------------------------------------------------------------
 '  QCONTROL - общее у всех элементов: положение, размер, видимость, Parent
 ' ---------------------------------------------------------------------------
 
 Type QCONTROL
-    Handle As Any Ptr
+    RqObj As Any Ptr
     Declare Property Left() As Long
     Declare Property Left(ByVal Value As Long)
     Declare Property Top() As Long
@@ -194,6 +329,9 @@ Type QCONTROL
     Declare Property ShowHint() As Long
     Declare Property ShowHint(ByVal Value As Long)
     Declare Property Parent(ByRef Value As QCONTROL)
+    Declare Property Font() As QFONT
+    Declare Property Font(ByRef Value As QFONT)
+    Declare Property Handle() As Integer
     Declare Sub Show()
     Declare Sub Hide()
     Declare Sub Repaint()
@@ -201,73 +339,86 @@ Type QCONTROL
 End Type
 
 Property QCONTROL.Left() As Long
-    Return RqGetInt(Handle, "Left")
+    Return RqGetInt(RqObj, "Left")
 End Property
 Property QCONTROL.Left(ByVal Value As Long)
-    RqLclSetInt(Handle, "Left", Value)
+    RqLclSetInt(RqObj, "Left", Value)
 End Property
 Property QCONTROL.Top() As Long
-    Return RqGetInt(Handle, "Top")
+    Return RqGetInt(RqObj, "Top")
 End Property
 Property QCONTROL.Top(ByVal Value As Long)
-    RqLclSetInt(Handle, "Top", Value)
+    RqLclSetInt(RqObj, "Top", Value)
 End Property
 Property QCONTROL.Width() As Long
-    Return RqGetInt(Handle, "Width")
+    Return RqGetInt(RqObj, "Width")
 End Property
 Property QCONTROL.Width(ByVal Value As Long)
-    RqLclSetInt(Handle, "Width", Value)
+    RqLclSetInt(RqObj, "Width", Value)
 End Property
 Property QCONTROL.Height() As Long
-    Return RqGetInt(Handle, "Height")
+    Return RqGetInt(RqObj, "Height")
 End Property
 Property QCONTROL.Height(ByVal Value As Long)
-    RqLclSetInt(Handle, "Height", Value)
+    RqLclSetInt(RqObj, "Height", Value)
 End Property
 Property QCONTROL.Visible() As Long
-    Return RqGetInt(Handle, "Visible")
+    Return RqGetInt(RqObj, "Visible")
 End Property
 Property QCONTROL.Visible(ByVal Value As Long)
-    RqLclSetInt(Handle, "Visible", Value)
+    RqLclSetInt(RqObj, "Visible", Value)
 End Property
 Property QCONTROL.Enabled() As Long
-    Return RqGetInt(Handle, "Enabled")
+    Return RqGetInt(RqObj, "Enabled")
 End Property
 Property QCONTROL.Enabled(ByVal Value As Long)
-    RqLclSetInt(Handle, "Enabled", Value)
+    RqLclSetInt(RqObj, "Enabled", Value)
 End Property
 Property QCONTROL.Color() As Long
-    Return RqGetInt(Handle, "Color")
+    Return RqGetInt(RqObj, "Color")
 End Property
 Property QCONTROL.Color(ByVal Value As Long)
-    RqLclSetInt(Handle, "Color", Value)
+    RqLclSetInt(RqObj, "Color", Value)
 End Property
 Property QCONTROL.Hint() As String
-    Return RqLclGetStr(Handle, "Hint")
+    Return RqLclGetStr(RqObj, "Hint")
 End Property
 Property QCONTROL.Hint(ByRef Value As String)
-    RqLclSetStr(Handle, "Hint", Value)
+    RqLclSetStr(RqObj, "Hint", Value)
 End Property
 Property QCONTROL.ShowHint() As Long
-    Return RqGetInt(Handle, "ShowHint")
+    Return RqGetInt(RqObj, "ShowHint")
 End Property
 Property QCONTROL.ShowHint(ByVal Value As Long)
-    RqLclSetInt(Handle, "ShowHint", Value)
+    RqLclSetInt(RqObj, "ShowHint", Value)
 End Property
 Property QCONTROL.Parent(ByRef Value As QCONTROL)
-    If RqSetObj(Handle, "Parent", Value.Handle) = 0 Then RqLclShowError("Parent")
+    If RqSetObj(RqObj, "Parent", Value.RqObj) = 0 Then RqLclShowError("Parent")
+End Property
+Property QCONTROL.Font() As QFONT
+    Dim FontObj As Any Ptr = RqGetObj(RqObj, "Font")
+    If FontObj = 0 Then RqLclShowError("Font")
+    Return QFONT(FontObj)
+End Property
+' Элемент копирует значения шрифта
+Property QCONTROL.Font(ByRef Value As QFONT)
+    If RqSetObj(RqObj, "Font", Value.RqObj) = 0 Then RqLclShowError("Font")
+End Property
+' Окно Windows (HWND)
+Property QCONTROL.Handle() As Integer
+    Return RqGetHandle(RqObj)
 End Property
 Sub QCONTROL.Show()
-    RqLclCall(Handle, "Show")
+    RqLclCall(RqObj, "Show")
 End Sub
 Sub QCONTROL.Hide()
-    RqLclCall(Handle, "Hide")
+    RqLclCall(RqObj, "Hide")
 End Sub
 Sub QCONTROL.Repaint()
-    RqLclCall(Handle, "Repaint")
+    RqLclCall(RqObj, "Repaint")
 End Sub
 Sub QCONTROL.SetFocus()
-    RqLclCall(Handle, "SetFocus")
+    RqLclCall(RqObj, "SetFocus")
 End Sub
 
 ' ---------------------------------------------------------------------------
@@ -304,44 +455,44 @@ Private Sub QFORM_CloseEvent stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As 
 End Sub
 
 Constructor QFORM()
-    Handle = RqLclNew("QFORM", @This)
+    RqObj = RqLclNew("QFORM", @This)
 End Constructor
 Property QFORM.Caption() As String
-    Return RqLclGetStr(Handle, "Caption")
+    Return RqLclGetStr(RqObj, "Caption")
 End Property
 Property QFORM.Caption(ByRef Value As String)
-    RqLclSetStr(Handle, "Caption", Value)
+    RqLclSetStr(RqObj, "Caption", Value)
 End Property
 Property QFORM.OnShow(ByVal Handler As Sub(ByRef Sender As QFORM))
     OnShowProc = Handler
     OnShowProcPlain = 0
-    If RqSetEvent(Handle, "OnShow", @QFORM_ShowEvent) = 0 Then RqLclShowError("OnShow")
+    If RqSetEvent(RqObj, "OnShow", @QFORM_ShowEvent) = 0 Then RqLclShowError("OnShow")
 End Property
 ' Обработчик без параметра Sender - как SUB ShowHandler в RapidQ
 Property QFORM.OnShow(ByVal Handler As Sub())
     OnShowProcPlain = Handler
     OnShowProc = 0
-    If RqSetEvent(Handle, "OnShow", @QFORM_ShowEvent) = 0 Then RqLclShowError("OnShow")
+    If RqSetEvent(RqObj, "OnShow", @QFORM_ShowEvent) = 0 Then RqLclShowError("OnShow")
 End Property
 Property QFORM.OnClose(ByVal Handler As Sub(ByRef Sender As QFORM))
     OnCloseProc = Handler
     OnCloseProcPlain = 0
-    If RqSetEvent(Handle, "OnClose", @QFORM_CloseEvent) = 0 Then RqLclShowError("OnClose")
+    If RqSetEvent(RqObj, "OnClose", @QFORM_CloseEvent) = 0 Then RqLclShowError("OnClose")
 End Property
 ' Обработчик без параметра Sender - как SUB CloseHandler в RapidQ
 Property QFORM.OnClose(ByVal Handler As Sub())
     OnCloseProcPlain = Handler
     OnCloseProc = 0
-    If RqSetEvent(Handle, "OnClose", @QFORM_CloseEvent) = 0 Then RqLclShowError("OnClose")
+    If RqSetEvent(RqObj, "OnClose", @QFORM_CloseEvent) = 0 Then RqLclShowError("OnClose")
 End Property
 Function QFORM.ShowModal() As Long
-    Return RqCall(Handle, "ShowModal")
+    Return RqCall(RqObj, "ShowModal")
 End Function
 Sub QFORM.Close()
-    RqLclCall(Handle, "Close")
+    RqLclCall(RqObj, "Close")
 End Sub
 Sub QFORM.Center()
-    RqLclCall(Handle, "Center")
+    RqLclCall(RqObj, "Center")
 End Sub
 
 ' ---------------------------------------------------------------------------
@@ -366,28 +517,28 @@ Private Sub QBUTTON_ClickEvent stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr A
 End Sub
 
 Constructor QBUTTON()
-    Handle = RqLclNew("QBUTTON", @This)
+    RqObj = RqLclNew("QBUTTON", @This)
 End Constructor
 Property QBUTTON.Caption() As String
-    Return RqLclGetStr(Handle, "Caption")
+    Return RqLclGetStr(RqObj, "Caption")
 End Property
 Property QBUTTON.Caption(ByRef Value As String)
-    RqLclSetStr(Handle, "Caption", Value)
+    RqLclSetStr(RqObj, "Caption", Value)
 End Property
 Property QBUTTON.OnClick(ByVal Handler As Sub(ByRef Sender As QBUTTON))
     OnClickProc = Handler
     OnClickProcPlain = 0
-    If RqSetEvent(Handle, "OnClick", @QBUTTON_ClickEvent) = 0 Then RqLclShowError("OnClick")
+    If RqSetEvent(RqObj, "OnClick", @QBUTTON_ClickEvent) = 0 Then RqLclShowError("OnClick")
 End Property
 ' Обработчик без параметра Sender - как SUB ClickHandler в RapidQ
 Property QBUTTON.OnClick(ByVal Handler As Sub())
     OnClickProcPlain = Handler
     OnClickProc = 0
-    If RqSetEvent(Handle, "OnClick", @QBUTTON_ClickEvent) = 0 Then RqLclShowError("OnClick")
+    If RqSetEvent(RqObj, "OnClick", @QBUTTON_ClickEvent) = 0 Then RqLclShowError("OnClick")
 End Property
 ' Нажатие из программы, как щелчок мышью
 Sub QBUTTON.Click()
-    RqLclCall(Handle, "Click")
+    RqLclCall(RqObj, "Click")
 End Sub
 
 ' ---------------------------------------------------------------------------
@@ -401,13 +552,13 @@ Type QLABEL Extends QCONTROL
 End Type
 
 Constructor QLABEL()
-    Handle = RqLclNew("QLABEL", @This)
+    RqObj = RqLclNew("QLABEL", @This)
 End Constructor
 Property QLABEL.Caption() As String
-    Return RqLclGetStr(Handle, "Caption")
+    Return RqLclGetStr(RqObj, "Caption")
 End Property
 Property QLABEL.Caption(ByRef Value As String)
-    RqLclSetStr(Handle, "Caption", Value)
+    RqLclSetStr(RqObj, "Caption", Value)
 End Property
 
 ' ---------------------------------------------------------------------------
@@ -431,22 +582,22 @@ Private Sub QEDIT_ChangeEvent stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As
 End Sub
 
 Constructor QEDIT()
-    Handle = RqLclNew("QEDIT", @This)
+    RqObj = RqLclNew("QEDIT", @This)
 End Constructor
 Property QEDIT.Text() As String
-    Return RqLclGetStr(Handle, "Text")
+    Return RqLclGetStr(RqObj, "Text")
 End Property
 Property QEDIT.Text(ByRef Value As String)
-    RqLclSetStr(Handle, "Text", Value)
+    RqLclSetStr(RqObj, "Text", Value)
 End Property
 Property QEDIT.OnChange(ByVal Handler As Sub(ByRef Sender As QEDIT))
     OnChangeProc = Handler
     OnChangeProcPlain = 0
-    If RqSetEvent(Handle, "OnChange", @QEDIT_ChangeEvent) = 0 Then RqLclShowError("OnChange")
+    If RqSetEvent(RqObj, "OnChange", @QEDIT_ChangeEvent) = 0 Then RqLclShowError("OnChange")
 End Property
 ' Обработчик без параметра Sender - как SUB ChangeHandler в RapidQ
 Property QEDIT.OnChange(ByVal Handler As Sub())
     OnChangeProcPlain = Handler
     OnChangeProc = 0
-    If RqSetEvent(Handle, "OnChange", @QEDIT_ChangeEvent) = 0 Then RqLclShowError("OnChange")
+    If RqSetEvent(RqObj, "OnChange", @QEDIT_ChangeEvent) = 0 Then RqLclShowError("OnChange")
 End Property

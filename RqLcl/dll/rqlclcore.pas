@@ -25,7 +25,7 @@ interface
 
 uses
   Classes, SysUtils, TypInfo, Math, Controls, StdCtrls, Forms, Graphics,
-  LazUTF8;
+  LazUTF8, LCLType;
 
 const
   RqLclVersion = 1;   // меняется при несовместимой смене набора функций
@@ -52,6 +52,12 @@ function RqSetObj(AObj: Pointer; AProp: PChar; AValue: Pointer): Integer;
 function RqSetEvent(AObj: Pointer; AEvent: PChar;
                     AProc: TRqEventProc): Integer; stdcall;
 function RqCall(AObj: Pointer; AMethod: PChar): Integer; stdcall;
+function RqCallInt(AObj: Pointer; AMethod: PChar; AValue: Integer): Integer;
+  stdcall;
+function RqGetObj(AObj: Pointer; AProp: PChar): Pointer; stdcall;
+function RqGetHandle(AObj: Pointer): PtrInt; stdcall;
+function RqGetItemStr(AObj: Pointer; AProp: PChar; AIndex: Integer;
+                      ABuf: PChar; ABufLen: Integer): Integer; stdcall;
 procedure RqDoEvents; stdcall;
 function RqLastError(ABuf: PChar; ABufLen: Integer): Integer; stdcall;
 
@@ -264,6 +270,12 @@ begin
   try
     if not RqInitDone then
       RqInit;
+    // QFONT - не компонент: TFont, без родителя и событий
+    if CompareText(string(AClassName), 'QFONT') = 0 then
+    begin
+      Result := TFont.Create;
+      Exit;
+    end;
     ClassIdx := FindClassRec(string(AClassName));
     if ClassIdx < 0 then
     begin
@@ -568,6 +580,152 @@ begin
   except
     on E: Exception do
       SetError('RqCall ' + string(AMethod) + ': ' + E.Message);
+  end;
+end;
+
+// Метод с одним целым параметром: у QFONT AddStyle / DelStyle (номер
+// стиля fsBold 0, fsItalic 1, fsUnderline 2, fsStrikeOut 3)
+function RqCallInt(AObj: Pointer; AMethod: PChar; AValue: Integer): Integer;
+  stdcall;
+var
+  Method: string;
+  Obj: TObject;
+begin
+  Result := 0;
+  try
+    Obj := TObject(AObj);
+    Method := UpperCase(string(AMethod));
+    if (Obj is TFont) and ((Method = 'ADDSTYLE') or (Method = 'DELSTYLE')) then
+    begin
+      if (AValue < Ord(Low(TFontStyle))) or (AValue > Ord(High(TFontStyle))) then
+      begin
+        SetError(string(AMethod) + ': no font style ' + IntToStr(AValue));
+        Exit;
+      end;
+      if Method = 'ADDSTYLE' then
+      begin
+        TFont(Obj).Style := TFont(Obj).Style + [TFontStyle(AValue)];
+        Result := 1;
+        Exit;
+      end;
+      if Method = 'DELSTYLE' then
+      begin
+        TFont(Obj).Style := TFont(Obj).Style - [TFontStyle(AValue)];
+        Result := 1;
+        Exit;
+      end;
+    end;
+    if Obj is TFont then
+    begin
+      // Число шрифтов в системе (QFONT.FontCount)
+      if Method = 'FONTCOUNT' then
+      begin
+        Result := Screen.Fonts.Count;
+        Exit;
+      end;
+      // QFONT.Handle = h. HFONT - 32-битное значение и в Win64
+      if Method = 'SETHANDLE' then
+      begin
+        TFont(Obj).Handle := HFONT(PtrInt(AValue));
+        Result := 1;
+        Exit;
+      end;
+    end;
+    if Obj = nil then
+      SetError('RqCallInt ' + string(AMethod) + ': no object')
+    else
+      SetError(Obj.ClassName + ': no method ' + string(AMethod));
+  except
+    on E: Exception do
+      SetError('RqCallInt ' + string(AMethod) + ': ' + E.Message);
+  end;
+end;
+
+// Свойство-объект (Font у элемента) - сам объект LCL; nil - нет
+function RqGetObj(AObj: Pointer; AProp: PChar): Pointer; stdcall;
+var
+  Info: PPropInfo;
+begin
+  Result := nil;
+  try
+    Info := FindProp(TObject(AObj), string(AProp));
+    if Info = nil then
+      Exit;
+    if Info^.PropType^.Kind <> tkClass then
+    begin
+      SetError(string(AProp) + ': not an object property');
+      Exit;
+    end;
+    Result := GetObjectProp(TObject(AObj), Info);
+  except
+    on E: Exception do
+      SetError('RqGetObj ' + string(AProp) + ': ' + E.Message);
+  end;
+end;
+
+// Handle Windows: окно элемента, HFONT шрифта; 0 - нет
+function RqGetHandle(AObj: Pointer): PtrInt; stdcall;
+begin
+  Result := 0;
+  try
+    if TObject(AObj) is TWinControl then
+      Result := PtrInt(TWinControl(AObj).Handle)
+    else if TObject(AObj) is TFont then
+      Result := PtrInt(TFont(AObj).Handle)
+    else
+      SetError('RqGetHandle: object has no handle');
+  except
+    on E: Exception do
+      SetError('RqGetHandle: ' + E.Message);
+  end;
+end;
+
+// Строка из списка по номеру (с 0): у QFONT FontName(i) - имя шрифта
+// системы. Буфер и результат - как у RqGetStr.
+function RqGetItemStr(AObj: Pointer; AProp: PChar; AIndex: Integer;
+                      ABuf: PChar; ABufLen: Integer): Integer; stdcall;
+var
+  Prop: string;
+  Value: string;
+  Found: Boolean;
+begin
+  Result := 0;
+  try
+    if (ABuf <> nil) and (ABufLen > 0) then
+      ABuf^ := #0;
+    Prop := UpperCase(string(AProp));
+    Found := False;
+    Value := '';
+    if (TObject(AObj) is TFont) and (Prop = 'FONTNAME') then
+    begin
+      Found := True;
+      if (AIndex < 0) or (AIndex >= Screen.Fonts.Count) then
+      begin
+        SetError('FontName: index ' + IntToStr(AIndex) + ' out of 0..' +
+                 IntToStr(Screen.Fonts.Count - 1));
+        Result := -1;
+        Exit;
+      end;
+      Value := UTF8ToWinCP(Screen.Fonts[AIndex]);
+    end;
+    if not Found then
+    begin
+      if AObj = nil then
+        SetError('RqGetItemStr ' + string(AProp) + ': no object')
+      else
+        SetError(TObject(AObj).ClassName + ': no list ' + string(AProp));
+      Result := -1;
+      Exit;
+    end;
+    Result := Length(Value);
+    if (ABuf <> nil) and (ABufLen > 0) then
+      StrPLCopy(ABuf, Value, ABufLen - 1);
+  except
+    on E: Exception do
+    begin
+      SetError('RqGetItemStr ' + string(AProp) + ': ' + E.Message);
+      Result := -1;
+    end;
   end;
 end;
 

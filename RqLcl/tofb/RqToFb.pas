@@ -107,6 +107,11 @@ const
     'REPLACESUBSTR$=RqReplaceSubStr CONVBASE$=RqConvBase FIELD$=RqField ' +
     'REVERSE$=RqReverse HEX$=RqHex';
 
+  // Свойства и методы RapidQ, имена которых в FreeBASIC - ключевые слова:
+  // .Pointer (QMEMORYSTREAM) -> .PointerAddr (rqstream.bi)
+  RqMemberMapText =
+    'POINTER=PointerAddr';
+
   // Слова FreeBASIC, которыми переменная называться не может
   FbReservedText =
     'ACCESS ALIAS AND ANDALSO ANY APPEND AS ASM BASE BEEP BINARY BOOLEAN ' +
@@ -212,6 +217,7 @@ type
     FObjClasses: TStringList;
     FGuiClasses: TStringList;
     FFuncMap: TStringList;        // ИМЯ$=функция rqrt.bi
+    FMemberMap: TStringList;      // СВОЙСТВО=имя в .bi
     FCurFile: string;
     FCurLine: Integer;
     FCurProc: TRqProc;
@@ -451,6 +457,8 @@ begin
   FillWordList(FGuiClasses, RqGuiObjectText);
   FFuncMap := TStringList.Create;
   FFuncMap.Text := StringReplace(RqFuncMapText, ' ', CrLf, [rfReplaceAll]);
+  FMemberMap := TStringList.Create;
+  FMemberMap.Text := StringReplace(RqMemberMapText, ' ', CrLf, [rfReplaceAll]);
 end;
 
 destructor TRqFbConv.Destroy;
@@ -477,6 +485,7 @@ begin
   FObjClasses.Free;
   FGuiClasses.Free;
   FFuncMap.Free;
+  FMemberMap.Free;
   inherited Destroy;
 end;
 
@@ -590,9 +599,10 @@ begin
       while (Pos1 + 1 <= TextLen) and not (AText[Pos1 + 1] in [#13, #10]) do
         Inc(Pos1);
       Add(tkComment, Pos0, Pos1);
-      // '$INCLUDE в комментарии fbc принимает за метакоманду QBasic
-      if Copy(AToks[Count - 1].Text, 2, 1) = '$' then
-        AToks[Count - 1].OutText := ''' ' + Copy(AToks[Count - 1].Text, 2, MaxInt);
+      // '$INCLUDE и ' $INCLUDE в комментарии fbc принимает за метакоманду
+      // QBasic; ''$INCLUDE - обычный комментарий
+      if Copy(TrimLeft(Copy(AToks[Count - 1].Text, 2, MaxInt)), 1, 1) = '$' then
+        AToks[Count - 1].OutText := '''' + AToks[Count - 1].Text;
     end
     else if Ch = '"' then
     begin
@@ -1697,7 +1707,12 @@ begin
   Up := AToks[AIdx].Up;
   PrevIdx := PrevSig(AToks, AIdx - 1);
   if IsOp(AToks, PrevIdx, '.') then
-    Exit;                                   // свойство или метод объекта
+  begin
+    // свойство или метод объекта
+    if FMemberMap.IndexOfName(Up) >= 0 then
+      AToks[AIdx].OutText := FMemberMap.Values[Up];
+    Exit;
+  end;
   NextIdx := NextSig(AToks, AIdx + 1, ATo);
 
   ProcRec := FindProc(Up);
@@ -2544,6 +2559,7 @@ begin
   if FAppType = 'CONSOLE' then
     Result := Result + '#define RQ_CONSOLE' + CrLf;
   Result := Result + '#include once "rqrt.bi"' + CrLf +
+            '#include once "rqstream.bi"' + CrLf +
             '#include once "rqlcl.bi"' + CrLf;
   for VarIdx := 0 to FVars.Count - 1 do
   begin
