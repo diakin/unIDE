@@ -1,0 +1,598 @@
+// ---------------------------------------------------------------------------
+//  RqLcl - компоненты RapidQ поверх LCL для программ на FreeBASIC
+//
+//  Прототип. DLL отдаёт плоский набор функций (stdcall): создать компонент
+//  по имени класса RapidQ, читать и ставить свойства, назначать события,
+//  вызывать методы. Сопоставление классов RapidQ и LCL - в RqClassTable,
+//  имён свойств - в RqPropTable (что совпадает по имени, берётся как есть).
+//
+//  Объект для вызывающей стороны - указатель на компонент LCL. Свой
+//  указатель вызывающего (адрес переменной QFORM, QBUTTON в программе
+//  FreeBASIC) хранится в TRqData, дочернем компоненте объекта, и
+//  передаётся в обработчик события первым параметром.
+//
+//  Строки - в кодировке Windows (ANSI, у RapidQ - CP1251) с обеих
+//  сторон; LCL работает в UTF-8, перевод - WinCPToUTF8 / UTF8ToWinCP.
+//
+//  Исключения через границу DLL не идут: каждая функция ловит их сама,
+//  текст - в RqLastError.
+// ---------------------------------------------------------------------------
+unit rqlclcore;
+
+{$mode objfpc}{$H+}
+
+interface
+
+uses
+  Classes, SysUtils, TypInfo, Math, Controls, StdCtrls, Forms, Graphics,
+  LazUTF8;
+
+const
+  RqLclVersion = 1;   // меняется при несовместимой смене набора функций
+
+type
+  // Обработчик события на стороне вызывающего:
+  //   AUser - указатель, переданный в RqCreate; AObj - сам объект
+  TRqEventProc = procedure(AUser: Pointer; AObj: Pointer); stdcall;
+
+function RqInit: Integer; stdcall;
+procedure RqDone; stdcall;
+function RqCreate(AClassName: PChar; AParent: Pointer;
+                  AUser: Pointer): Pointer; stdcall;
+procedure RqFree(AObj: Pointer); stdcall;
+function RqSetInt(AObj: Pointer; AProp: PChar; AValue: Integer): Integer;
+  stdcall;
+function RqGetInt(AObj: Pointer; AProp: PChar): Integer; stdcall;
+function RqSetStr(AObj: Pointer; AProp: PChar; AValue: PChar): Integer;
+  stdcall;
+function RqGetStr(AObj: Pointer; AProp: PChar; ABuf: PChar;
+                  ABufLen: Integer): Integer; stdcall;
+function RqSetObj(AObj: Pointer; AProp: PChar; AValue: Pointer): Integer;
+  stdcall;
+function RqSetEvent(AObj: Pointer; AEvent: PChar;
+                    AProc: TRqEventProc): Integer; stdcall;
+function RqCall(AObj: Pointer; AMethod: PChar): Integer; stdcall;
+procedure RqDoEvents; stdcall;
+function RqLastError(ABuf: PChar; ABufLen: Integer): Integer; stdcall;
+
+implementation
+
+type
+  // Привязка объекта к вызывающему: его указатель. Дочерний компонент
+  // объекта - уничтожается вместе с ним.
+  TRqData = class(TComponent)
+  public
+    User: Pointer;
+  end;
+
+  // Переходник одного события: LCL зовёт его метод, он - обработчик
+  // вызывающего. Тоже дочерний компонент объекта, по одному на событие.
+  TRqEventLink = class(TComponent)
+  public
+    User: Pointer;
+    EventName: string;
+    Proc: TRqEventProc;
+    procedure FireNotify(Sender: TObject);
+    procedure FireCloseQuery(Sender: TObject; var CanClose: Boolean);
+  end;
+
+  // Класс RapidQ -> класс LCL
+  TRqClassRec = record
+    RqName: string;
+    LclClass: TComponentClass;
+  end;
+
+  // Свойство RapidQ -> свойство LCL (только где имена расходятся)
+  TRqPropRec = record
+    RqName: string;
+    LclName: string;
+  end;
+
+var
+  RqClassTable: array[0..3] of TRqClassRec;
+  RqPropTable: array[0..0] of TRqPropRec;
+  RqLastErrorText: string = '';
+  RqInitDone: Boolean = False;
+
+// ---------------------------------------------------------------------------
+//  Служебное
+// ---------------------------------------------------------------------------
+
+procedure FillTables;
+begin
+  RqClassTable[0].RqName := 'QFORM';
+  RqClassTable[0].LclClass := TForm;
+  RqClassTable[1].RqName := 'QBUTTON';
+  RqClassTable[1].LclClass := TButton;
+  RqClassTable[2].RqName := 'QLABEL';
+  RqClassTable[2].LclClass := TLabel;
+  RqClassTable[3].RqName := 'QEDIT';
+  RqClassTable[3].LclClass := TEdit;
+  // У RapidQ OnClose формы - сигнал о закрытии без параметров; в LCL ему
+  // ближе всего OnCloseQuery (FireCloseQuery разрешает закрытие)
+  RqPropTable[0].RqName := 'ONCLOSE';
+  RqPropTable[0].LclName := 'OnCloseQuery';
+end;
+
+procedure SetError(const AText: string);
+begin
+  RqLastErrorText := AText;
+end;
+
+// Имя свойства LCL по имени RapidQ
+function LclPropName(const ARqName: string): string;
+var
+  PropIdx: Integer;
+begin
+  Result := ARqName;
+  for PropIdx := Low(RqPropTable) to High(RqPropTable) do
+    if CompareText(RqPropTable[PropIdx].RqName, ARqName) = 0 then
+    begin
+      Result := RqPropTable[PropIdx].LclName;
+      Exit;
+    end;
+end;
+
+function FindClassRec(const ARqName: string): Integer;
+var
+  ClassIdx: Integer;
+begin
+  Result := -1;
+  for ClassIdx := Low(RqClassTable) to High(RqClassTable) do
+    if CompareText(RqClassTable[ClassIdx].RqName, ARqName) = 0 then
+    begin
+      Result := ClassIdx;
+      Exit;
+    end;
+end;
+
+function DataOf(AComp: TComponent): TRqData;
+var
+  CompIdx: Integer;
+begin
+  Result := nil;
+  if AComp = nil then
+    Exit;
+  for CompIdx := 0 to AComp.ComponentCount - 1 do
+    if AComp.Components[CompIdx] is TRqData then
+    begin
+      Result := TRqData(AComp.Components[CompIdx]);
+      Exit;
+    end;
+end;
+
+// Свойство по имени RapidQ; нет - nil и текст ошибки
+function FindProp(AObj: TObject; const ARqName: string): PPropInfo;
+begin
+  Result := nil;
+  if AObj = nil then
+  begin
+    SetError('no object');
+    Exit;
+  end;
+  Result := GetPropInfo(AObj, LclPropName(ARqName));
+  if Result = nil then
+    SetError(AObj.ClassName + ': no property ' + ARqName);
+end;
+
+// ---------------------------------------------------------------------------
+//  TRqEventLink
+// ---------------------------------------------------------------------------
+
+procedure TRqEventLink.FireNotify(Sender: TObject);
+begin
+  if Assigned(Proc) then
+    Proc(User, Owner);
+end;
+
+// OnClose RapidQ: сигнал, закрытие разрешено
+procedure TRqEventLink.FireCloseQuery(Sender: TObject; var CanClose: Boolean);
+begin
+  CanClose := True;
+  FireNotify(Sender);
+end;
+
+// Переходник события AEvent у объекта; нет - nil
+function LinkOf(AComp: TComponent; const AEvent: string): TRqEventLink;
+var
+  CompIdx: Integer;
+begin
+  Result := nil;
+  for CompIdx := 0 to AComp.ComponentCount - 1 do
+    if (AComp.Components[CompIdx] is TRqEventLink) and
+       (CompareText(TRqEventLink(AComp.Components[CompIdx]).EventName,
+                    AEvent) = 0) then
+    begin
+      Result := TRqEventLink(AComp.Components[CompIdx]);
+      Exit;
+    end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Функции DLL
+// ---------------------------------------------------------------------------
+
+// Один раз до работы с компонентами. Возвращает RqLclVersion.
+function RqInit: Integer; stdcall;
+begin
+  Result := RqLclVersion;
+  try
+    if RqInitDone then
+      Exit;
+    // Вызывающая программа (FreeBASIC, C) ждёт замаскированных исключений
+    // FPU, как принято в Windows; RTL FPC их размаскирует
+    SetExceptionMask([exInvalidOp, exDenormalized, exZeroDivide, exOverflow,
+                      exUnderflow, exPrecision]);
+    Application.Initialize;
+    RqInitDone := True;
+  except
+    on E: Exception do
+    begin
+      SetError('RqInit: ' + E.Message);
+      Result := 0;
+    end;
+  end;
+end;
+
+// Конец работы: формы, Application и widgetset освобождаются здесь, пока
+// программа жива. Иначе это делает finalization LCL при выгрузке DLL, уже
+// в конце процесса, когда окна разрушать поздно.
+procedure RqDone; stdcall;
+begin
+  try
+    if not RqInitDone then
+      Exit;
+    RqInitDone := False;
+    FreeWidgetSet;
+  except
+    on E: Exception do
+      SetError('RqDone: ' + E.Message);
+  end;
+end;
+
+// Новый объект класса RapidQ AClassName. AParent - объект-родитель для
+// элемента управления (nil - без родителя, у формы всегда nil). AUser -
+// указатель вызывающего, приходит в обработчики событий. nil - ошибка.
+function RqCreate(AClassName: PChar; AParent: Pointer;
+                  AUser: Pointer): Pointer; stdcall;
+var
+  ClassIdx: Integer;
+  Comp: TComponent;
+  Data: TRqData;
+begin
+  Result := nil;
+  try
+    if not RqInitDone then
+      RqInit;
+    ClassIdx := FindClassRec(string(AClassName));
+    if ClassIdx < 0 then
+    begin
+      SetError('unknown class ' + string(AClassName));
+      Exit;
+    end;
+    if RqClassTable[ClassIdx].LclClass.InheritsFrom(TCustomForm) then
+      // Форма без .lfm: CreateNew, владелец - Application
+      Comp := TCustomFormClass(RqClassTable[ClassIdx].LclClass).CreateNew(
+                Application)
+    else
+      Comp := RqClassTable[ClassIdx].LclClass.Create(nil);
+    Data := TRqData.Create(Comp);
+    Data.User := AUser;
+    if (AParent <> nil) and (Comp is TControl) and
+       (TObject(AParent) is TWinControl) then
+      TControl(Comp).Parent := TWinControl(AParent);
+    // Значения по умолчанию RapidQ (документация, Appendix A)
+    if Comp is TCustomForm then
+    begin
+      TCustomForm(Comp).Position := poDesigned;
+      TCustomForm(Comp).SetBounds(0, 0, 320, 240);
+    end;
+    Result := Comp;
+  except
+    on E: Exception do
+      SetError('RqCreate ' + string(AClassName) + ': ' + E.Message);
+  end;
+end;
+
+procedure RqFree(AObj: Pointer); stdcall;
+begin
+  try
+    TObject(AObj).Free;
+  except
+    on E: Exception do
+      SetError('RqFree: ' + E.Message);
+  end;
+end;
+
+// Целое свойство (числа, Boolean, перечисления по номеру). 1 - поставлено.
+function RqSetInt(AObj: Pointer; AProp: PChar; AValue: Integer): Integer;
+  stdcall;
+var
+  Info: PPropInfo;
+begin
+  Result := 0;
+  try
+    Info := FindProp(TObject(AObj), string(AProp));
+    if Info = nil then
+      Exit;
+    if not (Info^.PropType^.Kind in [tkInteger, tkChar, tkEnumeration, tkBool,
+                                     tkSet, tkWChar, tkInt64, tkQWord]) then
+    begin
+      SetError(string(AProp) + ': not an integer property');
+      Exit;
+    end;
+    // Boolean: любое ненулевое - True (у FreeBASIC True = -1)
+    if Info^.PropType^.Kind = tkBool then
+      SetOrdProp(TObject(AObj), Info, Ord(AValue <> 0))
+    else
+      SetOrdProp(TObject(AObj), Info, AValue);
+    Result := 1;
+  except
+    on E: Exception do
+      SetError('RqSetInt ' + string(AProp) + ': ' + E.Message);
+  end;
+end;
+
+function RqGetInt(AObj: Pointer; AProp: PChar): Integer; stdcall;
+var
+  Info: PPropInfo;
+begin
+  Result := 0;
+  try
+    Info := FindProp(TObject(AObj), string(AProp));
+    if Info = nil then
+      Exit;
+    Result := Integer(GetOrdProp(TObject(AObj), Info));
+  except
+    on E: Exception do
+      SetError('RqGetInt ' + string(AProp) + ': ' + E.Message);
+  end;
+end;
+
+function RqSetStr(AObj: Pointer; AProp: PChar; AValue: PChar): Integer;
+  stdcall;
+var
+  Info: PPropInfo;
+begin
+  Result := 0;
+  try
+    Info := FindProp(TObject(AObj), string(AProp));
+    if Info = nil then
+      Exit;
+    if not (Info^.PropType^.Kind in [tkSString, tkLString, tkAString,
+                                     tkUString, tkWString]) then
+    begin
+      SetError(string(AProp) + ': not a string property');
+      Exit;
+    end;
+    SetStrProp(TObject(AObj), Info, WinCPToUTF8(string(AValue)));
+    Result := 1;
+  except
+    on E: Exception do
+      SetError('RqSetStr ' + string(AProp) + ': ' + E.Message);
+  end;
+end;
+
+// Строковое свойство в буфер ABuf (ABufLen байт вместе с нулём в конце).
+// Возвращает длину строки без нуля: больше ABufLen - 1 - буфер мал, в нём
+// начало строки.
+function RqGetStr(AObj: Pointer; AProp: PChar; ABuf: PChar;
+                  ABufLen: Integer): Integer; stdcall;
+var
+  Info: PPropInfo;
+  Value: string;
+begin
+  Result := 0;
+  try
+    if (ABuf <> nil) and (ABufLen > 0) then
+      ABuf^ := #0;
+    Info := FindProp(TObject(AObj), string(AProp));
+    if Info = nil then
+      Exit;
+    Value := UTF8ToWinCP(GetStrProp(TObject(AObj), Info));
+    Result := Length(Value);
+    if (ABuf <> nil) and (ABufLen > 0) then
+      StrPLCopy(ABuf, Value, ABufLen - 1);
+  except
+    on E: Exception do
+      SetError('RqGetStr ' + string(AProp) + ': ' + E.Message);
+  end;
+end;
+
+// Свойство-объект. Parent у LCL не published - ставится напрямую.
+function RqSetObj(AObj: Pointer; AProp: PChar; AValue: Pointer): Integer;
+  stdcall;
+var
+  Info: PPropInfo;
+begin
+  Result := 0;
+  try
+    if CompareText(string(AProp), 'PARENT') = 0 then
+    begin
+      if not (TObject(AObj) is TControl) then
+      begin
+        SetError('Parent: object is not a control');
+        Exit;
+      end;
+      if (AValue <> nil) and not (TObject(AValue) is TWinControl) then
+      begin
+        SetError('Parent: parent cannot contain controls');
+        Exit;
+      end;
+      TControl(AObj).Parent := TWinControl(AValue);
+      Result := 1;
+      Exit;
+    end;
+    Info := FindProp(TObject(AObj), string(AProp));
+    if Info = nil then
+      Exit;
+    SetObjectProp(TObject(AObj), Info, TObject(AValue));
+    Result := 1;
+  except
+    on E: Exception do
+      SetError('RqSetObj ' + string(AProp) + ': ' + E.Message);
+  end;
+end;
+
+// Обработчик события AEvent (OnClick, OnChange, OnShow, OnClose...).
+// nil - снять. 1 - назначено.
+function RqSetEvent(AObj: Pointer; AEvent: PChar;
+                    AProc: TRqEventProc): Integer; stdcall;
+var
+  Info: PPropInfo;
+  Comp: TComponent;
+  Data: TRqData;
+  Link: TRqEventLink;
+  Handler: TMethod;
+  NotifyProc: TNotifyEvent;
+  CloseQueryProc: TCloseQueryEvent;
+  TypeName: string;
+begin
+  Result := 0;
+  try
+    if not (TObject(AObj) is TComponent) then
+    begin
+      SetError('RqSetEvent: no object');
+      Exit;
+    end;
+    Comp := TComponent(AObj);
+    Info := FindProp(Comp, string(AEvent));
+    if Info = nil then
+      Exit;
+    if Info^.PropType^.Kind <> tkMethod then
+    begin
+      SetError(string(AEvent) + ': not an event');
+      Exit;
+    end;
+    Link := LinkOf(Comp, string(AEvent));
+    if not Assigned(AProc) then
+    begin
+      // Снять: свойство пустое, переходник не нужен
+      Handler.Code := nil;
+      Handler.Data := nil;
+      SetMethodProp(Comp, Info, Handler);
+      Link.Free;
+      Result := 1;
+      Exit;
+    end;
+    TypeName := Info^.PropType^.Name;
+    if (TypeName <> 'TNotifyEvent') and (TypeName <> 'TCloseQueryEvent') then
+    begin
+      SetError(string(AEvent) + ': event type ' + TypeName +
+               ' is not supported yet');
+      Exit;
+    end;
+    if Link = nil then
+    begin
+      Link := TRqEventLink.Create(Comp);
+      Link.EventName := string(AEvent);
+    end;
+    Data := DataOf(Comp);
+    if Data <> nil then
+      Link.User := Data.User;
+    Link.Proc := AProc;
+    if TypeName = 'TNotifyEvent' then
+    begin
+      NotifyProc := @Link.FireNotify;
+      Handler := TMethod(NotifyProc);
+    end
+    else
+    begin
+      CloseQueryProc := @Link.FireCloseQuery;
+      Handler := TMethod(CloseQueryProc);
+    end;
+    SetMethodProp(Comp, Info, Handler);
+    Result := 1;
+  except
+    on E: Exception do
+      SetError('RqSetEvent ' + string(AEvent) + ': ' + E.Message);
+  end;
+end;
+
+// Метод без параметров: ShowModal (возвращает ModalResult), Show, Hide,
+// Close, Center, SetFocus, Repaint, BringToFront; Click у кнопки
+function RqCall(AObj: Pointer; AMethod: PChar): Integer; stdcall;
+var
+  Method: string;
+  Obj: TObject;
+begin
+  Result := 0;
+  try
+    Obj := TObject(AObj);
+    Method := UpperCase(string(AMethod));
+    if Obj is TCustomForm then
+    begin
+      if Method = 'SHOWMODAL' then
+      begin
+        Result := TCustomForm(Obj).ShowModal;
+        Exit;
+      end
+      else if Method = 'CLOSE' then
+      begin
+        TCustomForm(Obj).Close;
+        Result := 1;
+        Exit;
+      end
+      else if Method = 'CENTER' then
+      begin
+        TCustomForm(Obj).Position := poScreenCenter;
+        Result := 1;
+        Exit;
+      end;
+    end;
+    if Obj is TControl then
+    begin
+      if Method = 'SHOW' then
+        TControl(Obj).Show
+      else if Method = 'HIDE' then
+        TControl(Obj).Hide
+      else if Method = 'REPAINT' then
+        TControl(Obj).Repaint
+      else if Method = 'BRINGTOFRONT' then
+        TControl(Obj).BringToFront
+      else if (Method = 'SETFOCUS') and (Obj is TWinControl) then
+        TWinControl(Obj).SetFocus
+      // Нажатие кнопки из программы (как щелчок мышью) - для проверки
+      // событий без пользователя
+      else if (Method = 'CLICK') and (Obj is TButton) then
+        TButton(Obj).Click
+      else
+      begin
+        SetError(Obj.ClassName + ': no method ' + string(AMethod));
+        Exit;
+      end;
+      Result := 1;
+      Exit;
+    end;
+    SetError('RqCall ' + string(AMethod) + ': no object');
+  except
+    on E: Exception do
+      SetError('RqCall ' + string(AMethod) + ': ' + E.Message);
+  end;
+end;
+
+// DoEvents RapidQ
+procedure RqDoEvents; stdcall;
+begin
+  try
+    Application.ProcessMessages;
+  except
+    on E: Exception do
+      SetError('RqDoEvents: ' + E.Message);
+  end;
+end;
+
+// Текст последней ошибки (ANSI) в буфер; возвращает его длину
+function RqLastError(ABuf: PChar; ABufLen: Integer): Integer; stdcall;
+var
+  Value: string;
+begin
+  Value := UTF8ToWinCP(RqLastErrorText);
+  Result := Length(Value);
+  if (ABuf <> nil) and (ABufLen > 0) then
+    StrPLCopy(ABuf, Value, ABufLen - 1);
+end;
+
+initialization
+  FillTables;
+end.

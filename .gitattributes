@@ -4,6 +4,7 @@
 *.dpr  text eol=crlf working-tree-encoding=windows-1251
 *.inc  text eol=crlf working-tree-encoding=windows-1251
 *.bas  text eol=crlf working-tree-encoding=windows-1251
+*.bi   text eol=crlf working-tree-encoding=windows-1251
 *.ini  text eol=crlf working-tree-encoding=windows-1251
 *.clr  text eol=crlf working-tree-encoding=windows-1251
 *.bat  text eol=crlf working-tree-encoding=windows-1251
