@@ -1094,6 +1094,8 @@ type
     FArdUploading: Boolean;     // идёт загрузка: события портов не меняют
                                 // выбранный порт
     FArdHwScanned: Boolean;     // платы с диска прочитаны (FArdHw.Scan)
+    FStartupDone: Boolean;      // был первый простой программы (AppIdle):
+                                // запуск прошёл, см. OwnPromoteTrial
     FArdPortComboBusy: Boolean; // список плат на USB заполняется из кода
     FWatchList: TStringList;
     // Условия строк Watch ("=10", "<5"): выражение и условие. Отладчик
@@ -2621,6 +2623,9 @@ type
     procedure NewFormTestProject(Sender: TObject);
     function  BuildProject: string;
     function  DelphiExeOf(const ADpr: string): string;
+    function  DelphiRunExeOf(const ADpr: string): string;
+    function  OwnTrialInstall(const AStageDir, AExeDir,
+                              ABase: string): Boolean;
     // Папка, куда dcc32 кладёт exe проекта ADpr (ключ -E). ARoot - папка
     // Delphi для $(DELPHI) в ExePath настроек; '' - без подстановки.
     function  DelphiOutputDir(const ADpr, ARoot: string): string;
@@ -3071,6 +3076,67 @@ var
   {$R *.dfm}
   {$R formsnapshot_src.res} // FormSnapshot.pas для пробного запуска - ProbeRun
   {$R toolbar_icons.res} // ЭТА СТРОЧКА ЗАСТАВИТ DELPHI ИЗ RC-ФАЙЛА СДЕЛАТЬ ВШИТЫЙ РЕСУРС!
+
+// ---------------------------------------------------------------------------
+//  Пробная сборка самого редактора
+//
+//  Редактор, собранный из самого себя, не заменяет SyntaxHLClaude.exe
+//  сразу: dcc32 собирает его в подпапку OwnStageDir папки вывода, оттуда он
+//  переносится рядом с рабочим под именем SyntaxHLClaude_new.exe (в той же
+//  папке - там его editor.ini, IDE.clr, schemes). Run запускает его.
+//  Пробный exe, который запустился (первый простой программы, AppIdle) и
+//  закрылся обычным образом, делает себя рабочим: SyntaxHLClaude.exe ->
+//  SyntaxHLClaude.exe.old, сам -> SyntaxHLClaude.exe (OwnPromoteTrial).
+//  Упал при запуске - SyntaxHLClaude.exe остаётся прежним.
+// ---------------------------------------------------------------------------
+
+const
+  OwnTrialSuffix = '_new';      // SyntaxHLClaude_new.exe
+  OwnStageDir = '_newbuild';    // папка сборки внутри папки вывода
+
+// Имя редактора без расширения и без OwnTrialSuffix: SyntaxHLClaude и у
+// рабочего, и у пробного exe. С ним сравнивается имя .dpr, чтобы узнать
+// проект самого редактора.
+function OwnExeBase: string;
+begin
+  Result := ChangeFileExt(ExtractFileName(Application.ExeName), '');
+  if (Length(Result) > Length(OwnTrialSuffix)) and
+     (CompareText(Copy(Result, Length(Result) - Length(OwnTrialSuffix) + 1,
+                       MaxInt), OwnTrialSuffix) = 0) then
+    SetLength(Result, Length(Result) - Length(OwnTrialSuffix));
+end;
+
+// Запущен пробный exe (имя оканчивается на OwnTrialSuffix)
+function OwnIsTrial: Boolean;
+begin
+  Result := CompareText(ChangeFileExt(ExtractFileName(Application.ExeName),
+                                      ''), OwnExeBase) <> 0;
+end;
+
+// Пробный exe рядом с рабочим AMainExe: <папка>\<имя>_new.exe
+function OwnTrialExeOf(const AMainExe: string): string;
+begin
+  Result := ExtractFilePath(AMainExe) +
+            ChangeFileExt(ExtractFileName(AMainExe), '') + OwnTrialSuffix +
+            '.exe';
+end;
+
+// Свободное имя для прежнего файла: AFile.old, .old1, .old2 ...
+function OwnOldName(const AFile: string): string;
+var
+  OldNum: Integer;
+begin
+  Result := AFile + '.old';
+  OldNum := 1;
+  while FileExists(Result) and (OldNum <= 20) do
+  begin
+    // Прежний .old, чья программа закрыта, удаляется; занятый - остаётся
+    if DeleteFile(Result) then
+      Exit;
+    Result := AFile + '.old' + IntToStr(OldNum);
+    Inc(OldNum);
+  end;
+end;
 
 const
   // Сборщик активной вкладки (CurBuildKind) и режим среды (FLangMode)
@@ -18442,6 +18508,53 @@ OpenDialog1.FilterIndex := 1; // по умолчанию показываем в
   WndWatchTrace(Self);
 end;
 
+// Пробная сборка редактора закрывается обычным образом после удачного
+// запуска - она становится рабочей: <имя>.exe -> <имя>.exe.old (или .old1
+// ...), сама <имя>_new.exe -> <имя>.exe, .map так же. Переименовать
+// запущенный exe Windows позволяет - и этот, и рабочий, если он ещё открыт.
+// Не вышло - сообщение, файлы остаются как были.
+procedure OwnPromoteTrial;
+var
+  TrialExe, MainExe, OldMain, TrialMap, MainMap: string;
+begin
+  TrialExe := Application.ExeName;
+  MainExe := ExtractFilePath(TrialExe) + OwnExeBase + '.exe';
+  OldMain := '';
+  if FileExists(MainExe) then
+  begin
+    OldMain := OwnOldName(MainExe);
+    if not MoveFile(PChar(MainExe), PChar(OldMain)) then
+    begin
+      MessageBox(0, PChar('Не удалось переименовать ' + MainExe + ' в ' +
+                 ExtractFileName(OldMain) + ': ' +
+                 SysErrorMessage(GetLastError) + #13#10 +
+                 'Пробная сборка остаётся под именем ' +
+                 ExtractFileName(TrialExe)), 'unIDE',
+                 MB_OK or MB_ICONWARNING);
+      Exit;
+    end;
+  end;
+  if not MoveFile(PChar(TrialExe), PChar(MainExe)) then
+  begin
+    MessageBox(0, PChar('Не удалось переименовать ' + TrialExe + ' в ' +
+               ExtractFileName(MainExe) + ': ' +
+               SysErrorMessage(GetLastError)), 'unIDE',
+               MB_OK or MB_ICONWARNING);
+    // Прежний рабочий - на место
+    if OldMain <> '' then
+      MoveFile(PChar(OldMain), PChar(MainExe));
+    Exit;
+  end;
+  TrialMap := ChangeFileExt(TrialExe, '.map');
+  MainMap := ChangeFileExt(MainExe, '.map');
+  if FileExists(TrialMap) then
+  begin
+    if FileExists(MainMap) and not DeleteFile(MainMap) then
+      MoveFile(PChar(MainMap), PChar(OwnOldName(MainMap)));
+    MoveFile(PChar(TrialMap), PChar(MainMap));
+  end;
+end;
+
 procedure TForm1.FormDestroy(Sender: TObject);
 var
   I: Integer;
@@ -18450,6 +18563,9 @@ begin
   // зависание
   HangWatchStop;
   WndWatchStop;
+  // Пробная сборка редактора запустилась и закрывается - она рабочая
+  if OwnIsTrial and FStartupDone then
+    OwnPromoteTrial;
   ArdFreeAll;
   FreeAndNil(FEnvOverrides);
   CiFreeAll;
@@ -24622,8 +24738,7 @@ begin
   Dpr := ProjectTargetOf(FCurrentProject);
   Result := (Dpr <> '') and
             (CompareText(ChangeFileExt(ExtractFileName(Dpr), ''),
-                         ChangeFileExt(ExtractFileName(Application.ExeName),
-  '')) = 0);
+                         OwnExeBase) = 0);
                                        FOwnPrjName := FCurrentProject;
                                        FOwnPrjAge := PrjAge;
                                        FOwnPrjResult := Result;
@@ -40584,6 +40699,8 @@ var
   Root, Exe, Dpr, Dir, Params: string;
   LibDir, UnitPath, ExeDir, DcuDir, Sect: string;
   OrigDpr, DofSearch, DofDefines: string;
+  OutDir: string;       // куда dcc32 кладёт exe (-E)
+  OwnBuild: Boolean;    // собирается сам редактор - пробной сборкой
   UiDir: string;
   Code: Integer;
   T0: Cardinal;
@@ -40793,6 +40910,14 @@ begin
   // Папка exe: см. DelphiOutputDir (не задана - папка .dpr). По настоящему
   // .dpr, не по копии с зондом.
   ExeDir := DelphiOutputDir(OrigDpr, Root);
+  // Сам редактор - в папку OwnStageDir, потом пробным exe рядом с рабочим
+  // (OwnTrialInstall); рабочий SyntaxHLClaude.exe не трогается
+  OwnBuild := not FProbeActive and
+              (CompareText(ChangeFileExt(ExtractFileName(OrigDpr), ''),
+                           OwnExeBase) = 0);
+  OutDir := ExeDir;
+  if OwnBuild then
+    OutDir := IncludeTrailingPathDelimiter(ExeDir) + OwnStageDir + '';
 
   if LibDir = '' then
     if DirectoryExists(Root + 'Lib') then
@@ -40891,7 +41016,7 @@ begin
       Params := Params + ' -D"' + DofDefines + '"'
     else
       Params := Params + ' -D' + DofDefines;
-  Params := Params + ' -E"' + ExcludeTrailingPathDelimiter(ExeDir) + '"';
+  Params := Params + ' -E"' + ExcludeTrailingPathDelimiter(OutDir) + '"';
   Params := Params + ' -N"' + ExcludeTrailingPathDelimiter(DcuDir) + '"';
 
   // Папки exe ещё нет (первая сборка в Output) - dcc32 сам её не создаёт.
@@ -40913,12 +41038,19 @@ begin
       Exit;
     end;
   end;
+  if OwnBuild and not DirectoryExists(OutDir) and
+     not ForceDirectories(ExcludeTrailingPathDelimiter(OutDir)) then
+  begin
+    LogComp('Компиляция: не удалось создать папку пробной сборки: ' + OutDir);
+    Exit;
+  end;
 
   // exe занят - запущен (например, сам редактор из папки вывода): файл
   // запущенной программы Windows перезаписать не даёт, и dcc32 отвечает
   // "Could not create output file". Переименовать его можно - прежний уходит
   // в <имя>.exe.old, новый собирается под своим именем.
-  if not FProbeActive then
+  // Сам редактор собирается в OwnStageDir - рабочий exe не перезаписывается
+  if not FProbeActive and not OwnBuild then
     if not FreeBusyExe(IncludeTrailingPathDelimiter(ExeDir) +
                        ChangeFileExt(ExtractFileName(Dpr), '.exe')) then
       Exit;
@@ -40946,15 +41078,33 @@ begin
   end;
   Result := Code = 0;
 
-  if Code = 0 then
-  begin
+  // Сам редактор: из папки сборки - пробным exe рядом с рабочим
+  if (Code = 0) and OwnBuild then
+    if not OwnTrialInstall(OutDir, IncludeTrailingPathDelimiter(ExeDir),
+                           OwnExeBase) then
+    begin
+      Result := False;
+      Exit;
+    end;
+
+  if (Code = 0) and OwnBuild then
+    LogComp(Format('--- Готово, %d мс: пробная сборка %s. Рабочий %s не ' +
+                   'изменён; пробная станет рабочей, если запустится и ' +
+                   'закроется обычным образом',
+                   [GetTickCount - T0,
+                    OwnTrialExeOf(IncludeTrailingPathDelimiter(ExeDir) +
+                                  OwnExeBase + '.exe'),
+                    OwnExeBase + '.exe']))
+  else if Code = 0 then
     LogComp(Format('--- Готово, %d мс: %s', [GetTickCount - T0,
                    IncludeTrailingPathDelimiter(ExeDir) +
                    ChangeFileExt(ExtractFileName(Dpr), '.exe')]));
+  if Code = 0 then
+  begin
     // Собран сам редактор - его файлы рядом с новым exe
     if not FProbeActive and
        (CompareText(ChangeFileExt(ExtractFileName(OrigDpr), ''),
-                    ChangeFileExt(ExtractFileName(Application.ExeName), '')) = 0) then
+                    OwnExeBase) = 0) then
       CopyOwnRunFiles(Dir, ExeDir);
   end
   else if Code > 0 then
@@ -44240,8 +44390,7 @@ begin
       SrcFile := ProjectTargetOf(FProjectReg.Names[Index]);
       if (SrcFile <> '') and
          (CompareText(ChangeFileExt(ExtractFileName(SrcFile), ''),
-                      ChangeFileExt(ExtractFileName(Application.ExeName),
-      '')) = 0) and
+                      OwnExeBase) = 0) and
                                     FileExists(ExtractFilePath(SrcFile) + 'UiTheme.pas') then
       begin
         SourceDir := ExtractFilePath(SrcFile);
@@ -45113,7 +45262,7 @@ begin
   begin
     TargetSrc := DelphiTargetDpr;
     if TargetSrc <> '' then
-      Result := DelphiExeOf(TargetSrc);
+      Result := DelphiRunExeOf(TargetSrc);
   end;
   if Result <> '' then
     Result := ExpandFileName(Result);
@@ -45229,6 +45378,8 @@ end;
 // значения, так что частые вызовы не мигают.
 procedure TForm1.AppIdle(Sender: TObject; var Done: Boolean);
 begin
+  // Первый простой: окно показано, запуск прошёл (OwnPromoteTrial)
+  FStartupDone := True;
   UpdateToolbarState;
 end;
 
@@ -46929,7 +47080,7 @@ begin
   // IsOwnProject). Форму можно вписать и в него, но для пробы обычно
   // нужен отдельный проект - спрашиваем.
   if CompareText(ChangeFileExt(ExtractFileName(Dpr), ''),
-                 ChangeFileExt(ExtractFileName(Application.ExeName), '')) = 0 then
+                 OwnExeBase) = 0 then
   case MessageDlg('27238:New Form: текущий проект - сам редактор (' +
                   ExtractFileName(Dpr) + ').'#13#10#13#10 +
     'Да - создать отдельный тестовый проект с новой ' +
@@ -47331,7 +47482,7 @@ begin
 
   // 3. Сам редактор - в Output
   if CompareText(ChangeFileExt(ExtractFileName(ADpr), ''),
-                 ChangeFileExt(ExtractFileName(Application.ExeName), '')) = 0 then
+                 OwnExeBase) = 0 then
   begin
     Result := IncludeTrailingPathDelimiter(DprDir + 'Output');
     Exit;
@@ -47348,6 +47499,75 @@ begin
     Exit;
   Result := DelphiOutputDir(ADpr, '') +
             ChangeFileExt(ExtractFileName(ADpr), '.exe');
+end;
+
+// exe, который запускает Run: DelphiExeOf, а у самого редактора - пробная
+// сборка, если она есть (OwnTrialInstall)
+function TForm1.DelphiRunExeOf(const ADpr: string): string;
+var
+  TrialExe: string;
+begin
+  Result := DelphiExeOf(ADpr);
+  if (Result = '') or
+     (CompareText(ChangeFileExt(ExtractFileName(ADpr), ''), OwnExeBase) <> 0) then
+    Exit;
+  TrialExe := OwnTrialExeOf(Result);
+  if FileExists(TrialExe) then
+    Result := TrialExe;
+end;
+
+// Редактор, собранный в AStageDir, - пробным exe <ABase>_new.exe в
+// AExeDir, его .map - рядом под тем же именем (по нему ищут адреса
+// HangWatch и отладчик). Папка сборки удаляется. False - не вышло,
+// причина в логе.
+function TForm1.OwnTrialInstall(const AStageDir, AExeDir,
+                                ABase: string): Boolean;
+var
+  StageExe, TrialExe, StageMap, TrialMap: string;
+  Found: TSearchRec;
+begin
+  Result := False;
+  StageExe := AStageDir + ABase + '.exe';
+  TrialExe := AExeDir + ABase + OwnTrialSuffix + '.exe';
+  if not FileExists(StageExe) then
+  begin
+    LogComp('Пробная сборка: dcc32 не создал ' + StageExe);
+    Exit;
+  end;
+  // Прежняя пробная сборка ещё запущена - она уходит в .old
+  if not FreeBusyExe(TrialExe) then
+    Exit;
+  if FileExists(TrialExe) and not DeleteFile(TrialExe) then
+  begin
+    LogComp('Пробная сборка: не удалось заменить ' + TrialExe + ' (' +
+            SysErrorMessage(GetLastError) + ')');
+    Exit;
+  end;
+  if not MoveFile(PChar(StageExe), PChar(TrialExe)) then
+  begin
+    LogComp('Пробная сборка: не удалось перенести ' + StageExe + ' в ' +
+            TrialExe + ' (' + SysErrorMessage(GetLastError) + ')');
+    Exit;
+  end;
+  StageMap := ChangeFileExt(StageExe, '.map');
+  TrialMap := ChangeFileExt(TrialExe, '.map');
+  if FileExists(StageMap) then
+  begin
+    DeleteFile(TrialMap);
+    if not MoveFile(PChar(StageMap), PChar(TrialMap)) then
+      LogComp('Пробная сборка: .map не перенесён - ' + TrialMap);
+  end;
+  // Остальное в папке сборки (.drc и т. п.) - убрать, и саму папку
+  if FindFirst(AStageDir + '*.*', faAnyFile and not faDirectory, Found) = 0 then
+  try
+    repeat
+      DeleteFile(AStageDir + Found.Name);
+    until FindNext(Found) <> 0;
+  finally
+    FindClose(Found);
+  end;
+  RemoveDir(ExcludeTrailingPathDelimiter(AStageDir));
+  Result := True;
 end;
 
 // Собранный редактор запускается из папки вывода и ищет свои файлы рядом с
@@ -47568,7 +47788,7 @@ begin
       LogComp('Запуск: цель не задана. Откройте .dpr проекта или соберите его');
       Exit;
     end;
-    Exe := DelphiExeOf(Dpr);
+    Exe := DelphiRunExeOf(Dpr);   // у самого редактора - пробная сборка
   end;
 
   if not FileExists(Exe) then
