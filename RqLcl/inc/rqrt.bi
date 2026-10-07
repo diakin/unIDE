@@ -92,6 +92,35 @@ Sub RqRtClassError(ByRef Msg As String)
 #endif
 End Sub
 
+' GOSUB/RETURN (в FreeBASIC -lang fb их нет). Препроцессор переводит
+'   GOSUB Метка -> RqGosubPush(стек(), вершина, N): Goto Метка, а на новой
+'                  строке - метка возврата rqgs_retN:
+'   RETURN      -> On RqGosubPop(стек(), вершина, __FILE__, __LINE__) Goto
+'                  rqgs_ret1, rqgs_ret2, ...
+' Стек свой у модуля и у каждой SUB/FUNCTION (в рекурсии - у каждого вызова).
+Sub RqGosubPush(Stk() As Long, ByRef Sp As Long, ByVal Site As Long)
+    Sp += 1
+    If Sp > UBound(Stk) Then ReDim Preserve Stk(1 To Sp * 2)
+    Stk(Sp) = Site
+End Sub
+
+' Номер GOSUB, к которому вернуться. RETURN без GOSUB - 0 (On 0 Goto никуда
+' не переходит): Smart - предупреждение, программа идёт дальше со следующего
+' оператора; Compat - конец программы. Что делает RapidQ - не проверено.
+Function RqGosubPop(Stk() As Long, ByRef Sp As Long, _
+                    ByRef FileName As String, ByVal LineNum As Long) As Long
+    If Sp <= 0 Then
+#ifdef RQ_COMPAT
+        RqRtFatal("RETURN без GOSUB", FileName, LineNum)
+#else
+        RqRtWarn("RETURN без GOSUB, программа идёт дальше", FileName, LineNum)
+#endif
+        Return 0
+    End If
+    Sp -= 1
+    Return Stk(Sp + 1)
+End Function
+
 ' Int и Fix без перевода в целое: у FreeBASIC они для чисел больше 2^63
 ' переполняются; от 2^52 Double и так целое
 Function RqRtFloor(ByVal Value As Double) As Double

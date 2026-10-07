@@ -36,6 +36,7 @@
 - Внутри CREATE `Font.Name = "Arial"` (свойство-объект класса) → `Объект.Font.Name = "Arial"`; у своего класса (TYPE … EXTENDS, `$DEFINE QRICHEDIT QMAXEDIT`) вид слова берётся по всем классам из списка. QPOPUPMENU внутри CREATE формы — без Parent (элемент получает меню через `PopupMenu = Имя`); невидимые компоненты — без Parent.
 - `~` в именах RapidQ (`~SrcD`, `~tmp$`) → `_T_` (`_T_SrcD`).
 - `.Pointer` → `.PointerAddr` (`Pointer` в FreeBASIC — ключевое слово); таблица `RqMemberMapText`.
+- GOSUB/RETURN (в FreeBASIC `-lang fb` GOSUB нет): `GOSUB Метка` → `RqGosubPush(стек(), вершина, N): Goto Метка`, на новой строке — метка возврата `rqgs_retN:` (перед ней `#line`, номера строк исходника не сдвигаются; оператор после `:` в той же строке идёт сразу за меткой возврата); `RETURN` → `On RqGosubPop(стек(), вершина, __FILE__, __LINE__) Goto rqgs_ret1, rqgs_ret2, …` — все GOSUB этой SUB или модуля. Стек номеров свой у модуля (`rqgs_mstk`, в заголовке главного файла) и у каждой SUB/FUNCTION (`rqgs_stk`, локальный: в рекурсии у каждого вызова свой); функции — в `rqrt.bi`. RETURN без GOSUB во время работы: Smart — предупреждение, программа идёт дальше со следующего оператора; Compat — сообщение и конец программы (как в RapidQ — не проверено). RETURN в SUB, где нет GOSUB, — предупреждение при переводе.
 - В заголовке главного файла: `#include once "rqrt.bi"`, `"rqstream.bi"`, `"rqlcl.bi"`.
 
 ## Функции RapidQ (rqrt.bi)
@@ -54,6 +55,7 @@ FIELD$, REPLACESUBSTR$, INSERT$, DELETE$, REPLACE$, REVERSE$, CONVBASE$, HEX$ (8
 - `tests/lists.bas` — QSTRINGLIST (пример из документации), QSTRINGGRID (`Cell = …` в SUB с Sender и в однострочном IF), QREGISTRY, QDIRTREE.
 - `tests/richedit.bas` — QRICHEDIT как в `AddClrString` из rapidq.inc (Sender, SelAttributes.Color, AddStrings), `SelAttributes = Font`, `RichEdit.Font.Size`.
 - `tests/fontstream.bas` — QFONT (Label.Font = Font, Label.Font.Name) и QMEMORYSTREAM (WriteLine, WriteNum, ReadLine, ReadNum, Size, Pointer).
+- `tests/gosub.bas` — GOSUB на уровне модуля, в SUB (параметры, локальные, массив) и FUNCTION, из FOR внутри IF, рекурсия, одна метка в двух SUB, вложенный GOSUB, однострочный IF и IF … ELSE GOSUB, `GOSUB Метка : PRINT …`; 32 и 64 бит, Smart и Compat. `tests/RqDbg/RqDbgT1_Gosub.bas` собирается и даёт значения из строк «expect» (2026-10-07).
 - `rapidq.inc` из `rapidq_ref/inc` (с его include) переводится без ошибок перевода за 0,3 с. fbc на результате: было около 300 ошибок, после добавления функций, QFONT и потоков — 243, после QRICHEDIT — 231, после QSTRINGLIST, QSTRINGGRID, QREGISTRY, QDIRTREE — 143, после имён с `~` — 120 (2026-10-07). Основные оставшиеся: вычитание строк RapidQ (`a$ - b$`); индекс строки `s[N]`; `x++`; `TYPE … EXTENDS QObject` с `PROPERTY SET`; нет QOPENDIALOG и записи из DIR (`FileRec.Size`); число вместо строки в параметре (`REPLACESUBSTR$(s, crlfcrlf, crlf)` с необъявленной `crlfcrlf`); типы параметров объявлений Windows API.
 
 ## Пока не сделано
@@ -64,3 +66,4 @@ FIELD$, REPLACESUBSTR$, INSERT$, DELETE$, REPLACE$, REVERSE$, CONVBASE$, HEX$ (8
 - Классы RapidQ, которых ещё нет в RqLcl: QIMAGE, QCANVAS, QBITMAP, QTIMER, QLISTVIEW, QSCROLLBAR, QTRACKBAR, QHEADER, диалоги и др.
 - Функции RapidQ PARAMSTR$, GET$, VARPTR$, FORMAT$ и подобные; присваивание свойству объекта числа или строки — без преобразования.
 - Передача по ссылке через `@` при вызове (предупреждение, параметр получает копию).
+- Числовые метки (`100 PRINT …`, `GOTO 100`, `GOSUB 100`): fbc `-lang fb` их не принимает (error 146, проверено). `ON … GOSUB`, `RETURN Метка`. GOSUB в однострочном IF не последним оператором (`IF x THEN GOSUB A : y = 1`, `IF x THEN GOSUB A ELSE …`) — ошибка перевода: метка возврата встаёт на новую строку, и остаток строки оказался бы вне IF.

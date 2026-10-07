@@ -263,6 +263,11 @@ type
     FLostLines: Integer;          // переводы строк, убранные сборкой заново
     FSourceMode: string;          // '$RQFB SMART|COMPAT из исходника
     FLineIsLabel: Boolean;
+    FInlineIf: Boolean;           // в строке однострочный IF (после THEN есть оператор)
+    FGosubSites: TStringList;     // GOSUB/RETURN: ОБЛАСТЬ=число GOSUB в ней
+                                  // (первый проход; '*' - модуль)
+    FGosubProcNum: Integer;       // номер GOSUB в текущей SUB/FUNCTION
+    FGosubModNum: Integer;        // номер GOSUB на уровне модуля
 
     procedure Msg(const ALevel, AText: string);
     procedure Warn(const AText: string);
@@ -328,6 +333,10 @@ type
     procedure ProcessPrint(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessIf(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessFor(var AToks: TToks; AFrom, ATo: Integer);
+    function GosubScope: string;
+    procedure GosubVarNames(const AScope: string; var ASpName, AStkName: string);
+    procedure ProcessGosub(var AToks: TToks; AFrom, ATo: Integer);
+    procedure ProcessReturn(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessIncDec(var AToks: TToks; AFrom, ATo: Integer);
     function ProcessDirective(var AToks: TToks; AFrom, ATo: Integer;
                               var AOut: string): Boolean;
@@ -649,6 +658,7 @@ begin
   FLabels := TStringList.Create;
   FLabels.Sorted := True;
   FLabels.Duplicates := dupIgnore;
+  FGosubSites := TStringList.Create;
   FRedims := TStringList.Create;
   FRedims.Sorted := True;
   FRedims.Duplicates := dupIgnore;
@@ -707,6 +717,7 @@ begin
   FProcs.Free;
   FTypes.Free;
   FLabels.Free;
+  FGosubSites.Free;
   FRedims.Free;
   FDefines.Free;
   FDoneFiles.Free;
@@ -1572,6 +1583,7 @@ begin
 
   // Метка в начале строки: Имя:
   FLineIsLabel := False;
+  FInlineIf := False;
   StartIdx := 0;
   if (Toks[FirstIdx].Kind = tkIdent) and
      IsOp(Toks, NextSig(Toks, FirstIdx + 1, High(Toks)), ':') and
@@ -2115,8 +2127,12 @@ begin
     AToks[FirstIdx].OutText := '';
     ProcessAssignOrCall(AToks, FirstIdx + 1, ATo);
   end
-  else if (Up = 'GOTO') or (Up = 'GOSUB') then
+  else if Up = 'GOTO' then
     // метка
+  else if Up = 'GOSUB' then
+    ProcessGosub(AToks, FirstIdx, ATo)
+  else if Up = 'RETURN' then
+    ProcessReturn(AToks, FirstIdx, ATo)
   else if (Up = 'INC') or (Up = 'DEC') then
     ProcessIncDec(AToks, FirstIdx, ATo)
   else if FInType then
@@ -2763,6 +2779,7 @@ begin
   ProcRec := GetProc(AToks[NameIdx].Text);
   ProcRec.IsFunc := (Up = 'FUNCTION') or (Up = 'FUNCTIONI');
   FCurProc := ProcRec;
+  FGosubProcNum := 0;
   OpenIdx := NextSig(AToks, NameIdx + 1, ATo);
   Params := '';
   CloseIdx := NameIdx;
@@ -2799,6 +2816,9 @@ begin
         Locals := Locals + ' : Dim ' + VarRec.FbName + ' As ' +
                   FbType(VarRec.RqType);
     end;
+  // GOSUB/RETURN в этой SUB - свой стек возврата (у каждого вызова)
+  if (FPass = 2) and (FGosubSites.IndexOfName(ProcRec.Name) >= 0) then
+    Locals := Locals + ' : Dim rqgs_sp As Long : ReDim rqgs_stk(1 To 16) As Long';
   Rebuild(AToks, AFrom, ATo, Header + Locals);
 end;
 
@@ -3013,6 +3033,7 @@ begin
   ProcessExpr(AToks, AFrom + 1, ThenIdx - 1);
   if NextSig(AToks, ThenIdx + 1, ATo) < 0 then
     Exit;
+  FInlineIf := True;
   ElseIdx := -1;
   for TokIdx := ThenIdx + 1 to ATo do
     if IsWord(AToks, TokIdx, 'ELSE') then
@@ -3044,6 +3065,145 @@ begin
   end
   else
     ProcessExpr(AToks, AFrom + 1, ATo);
+end;
+
+// GOSUB/RETURN. В FreeBASIC -lang fb GOSUB нет; переход и возврат - через
+// Goto и стек номеров (RqGosubPush/RqGosubPop в rqrt.bi):
+//   GOSUB Метка -> RqGosubPush(стек(), вершина, N): Goto Метка
+//                  (новая строка) rqgs_retN:
+//   RETURN      -> On RqGosubPop(стек(), вершина, __FILE__, __LINE__)
+//                  Goto rqgs_ret1, rqgs_ret2, ...
+// Стек свой у модуля (rqgs_mstk, Dim Shared в заголовке главного файла) и
+// у каждой SUB/FUNCTION (rqgs_stk, локальный - в рекурсии у каждого вызова
+// свой). Метка возврата - на отдельной строке, перед ней #line, чтобы
+// номера строк исходника RapidQ не сдвинулись. Первый проход считает GOSUB
+// в каждой области (FGosubSites), второй - нумерует их в том же порядке.
+
+// Область GOSUB: '*' - модуль, иначе имя SUB/FUNCTION
+function TRqFbConv.GosubScope: string;
+begin
+  if FCurProc = nil then
+    Result := '*'
+  else
+    Result := FCurProc.Name;
+end;
+
+procedure TRqFbConv.GosubVarNames(const AScope: string; var ASpName, AStkName: string);
+begin
+  if AScope = '*' then
+  begin
+    ASpName := 'rqgs_msp';
+    AStkName := 'rqgs_mstk';
+  end
+  else
+  begin
+    ASpName := 'rqgs_sp';
+    AStkName := 'rqgs_stk';
+  end;
+end;
+
+procedure TRqFbConv.ProcessGosub(var AToks: TToks; AFrom, ATo: Integer);
+var
+  LabelIdx, AfterIdx, TokIdx, SiteNum, LineNum: Integer;
+  Scope, SpName, StkName, RetLabel: string;
+begin
+  LabelIdx := NextSig(AToks, AFrom + 1, ATo);
+  if (LabelIdx < 0) or not (AToks[LabelIdx].Kind in [tkIdent, tkNumber]) then
+  begin
+    Error('GOSUB: нет метки');
+    Exit;
+  end;
+  if NextSig(AToks, LabelIdx + 1, ATo) >= 0 then
+  begin
+    Error('GOSUB ' + AToks[LabelIdx].Text + ': после метки лишний текст');
+    Exit;
+  end;
+  Scope := GosubScope;
+  if Scope = '*' then
+  begin
+    Inc(FGosubModNum);
+    SiteNum := FGosubModNum;
+  end
+  else
+  begin
+    Inc(FGosubProcNum);
+    SiteNum := FGosubProcNum;
+  end;
+  if FPass = 1 then
+  begin
+    FGosubSites.Values[Scope] := IntToStr(SiteNum);
+    Exit;
+  end;
+
+  // Что в строке после GOSUB (комментарий не в счёт)
+  AfterIdx := NextSig(AToks, ATo + 1, High(AToks));
+  if (AfterIdx >= 0) and (AToks[AfterIdx].Kind = tkComment) then
+    AfterIdx := -1;
+  // Метка возврата встаёт в начало следующей строки: в однострочном IF
+  // то, что после GOSUB, оказалось бы вне IF
+  if FInlineIf and (AfterIdx >= 0) then
+  begin
+    Error('GOSUB в однострочном IF не последним оператором (после него ' +
+          AToks[AfterIdx].Text + ') пока не поддержан: замените на ' +
+          'IF ... END IF');
+    Exit;
+  end;
+
+  GosubVarNames(Scope, SpName, StkName);
+  // Строка исходника, где стоит метка GOSUB (у строки с продолжениями " _"
+  // - не первая)
+  LineNum := FCurLine;
+  for TokIdx := 0 to LabelIdx do
+    Inc(LineNum, CountLineBreaks(AToks[TokIdx].Text));
+  RetLabel := 'rqgs_ret' + IntToStr(SiteNum);
+  AToks[AFrom].OutText := 'RqGosubPush(' + StkName + '(), ' + SpName + ', ' +
+                          IntToStr(SiteNum) + '): Goto';
+  AToks[LabelIdx].Post := AToks[LabelIdx].Post + CrLf + '#line ' +
+                          IntToStr(LineNum - 1) + ' "' + FCurFile + '"' +
+                          CrLf + RetLabel + ':';
+  // Следующий оператор через ":" - сразу после метки возврата
+  if (AfterIdx >= 0) and IsOp(AToks, AfterIdx, ':') then
+    AToks[AfterIdx].OutText := '';
+end;
+
+procedure TRqFbConv.ProcessReturn(var AToks: TToks; AFrom, ATo: Integer);
+var
+  Scope, SpName, StkName, Targets: string;
+  SiteCount, SiteIdx: Integer;
+begin
+  Scope := GosubScope;
+  if FPass = 1 then
+  begin
+    if FGosubSites.IndexOfName(Scope) < 0 then
+      FGosubSites.Values[Scope] := '0';
+    Exit;
+  end;
+  if NextSig(AToks, AFrom + 1, ATo) >= 0 then
+  begin
+    Error('RETURN с меткой или значением пока не поддержан');
+    Exit;
+  end;
+  GosubVarNames(Scope, SpName, StkName);
+  SiteCount := StrToIntDef(FGosubSites.Values[Scope], 0);
+  if SiteCount = 0 then
+  begin
+    if Scope = '*' then
+      Warn('RETURN, а GOSUB на уровне модуля нет')
+    else
+      Warn('RETURN, а GOSUB в ' + FCurProc.Name + ' нет');
+    AToks[AFrom].OutText := 'RqGosubPop(' + StkName + '(), ' + SpName +
+                            ', __FILE__, __LINE__)';
+    Exit;
+  end;
+  Targets := '';
+  for SiteIdx := 1 to SiteCount do
+  begin
+    if SiteIdx > 1 then
+      Targets := Targets + ', ';
+    Targets := Targets + 'rqgs_ret' + IntToStr(SiteIdx);
+  end;
+  AToks[AFrom].OutText := 'On RqGosubPop(' + StkName + '(), ' + SpName +
+                          ', __FILE__, __LINE__) Goto ' + Targets;
 end;
 
 // INC перем [, n] -> перем += n; DEC -> -=
@@ -3099,6 +3259,9 @@ begin
       Result := Result + 'Dim Shared ' + VarRec.FbName + ' As ' +
                 FbType(VarRec.RqType) + CrLf;
   end;
+  if FGosubSites.IndexOfName('*') >= 0 then
+    Result := Result + 'Dim Shared rqgs_msp As Long' + CrLf +
+              'ReDim Shared rqgs_mstk(1 To 16) As Long' + CrLf;
 end;
 
 // После первого прохода: необъявленная в SUB переменная, которая есть в
@@ -3244,10 +3407,13 @@ begin
     FEscape := False;
     FDefaultType := 'DOUBLE';
     FByRefDefault := False;
+    FGosubProcNum := 0;
+    FGosubModNum := 0;
     if PassIdx = 1 then
     begin
       FAppType := '';
       FHasGui := False;
+      FGosubSites.Clear;
     end
     else
     begin
