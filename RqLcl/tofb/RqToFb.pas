@@ -126,12 +126,15 @@ const
     // QTREEVIEW; у остальных классов OnChange без параметров - обработчик
     // без параметров (или только с Sender) этим не меняется
     'ONCHANGE=VLONG ONEXPAND=VLONG ONCOLLAPSE=VLONG ' +
-    'ONCHANGING=VLONG;RLONG ONEXPANDING=VLONG;RLONG ONCOLLAPSING=VLONG;RLONG';
+    'ONCHANGING=VLONG;RLONG ONEXPANDING=VLONG;RLONG ONCOLLAPSING=VLONG;RLONG ' +
+    // QLISTVIEW: OnChange (Index, Change) - под именем LVONCHANGE (у
+    // QTREEVIEW параметр один), OnColumnClick (Column), OnKeyPressed (Key)
+    'LVONCHANGE=VLONG;VLONG ONCOLUMNCLICK=VLONG ONKEYPRESSED=RLONG';
 
   // Запись в массив-свойство с двумя индексами: у свойства FreeBASIC
   // индекс один, поэтому Grid.Cell(c, r) = x -> Grid.SetCell(c, r, x)
   RqIndexedSetText =
-    'CELL=SetCell';
+    'CELL=SetCell SUBITEM=SetSubItem';
 
   // Слова FreeBASIC, которыми переменная называться не может
   FbReservedText =
@@ -418,6 +421,7 @@ type
     procedure GlobalQualify(var AToks: TToks; AIdx: Integer);
     procedure FixMemberClash(AVar: TRqVar; const AScope: string);
     function EventSigFor(const AClassUp, AEventUp: string): string;
+    function HandlerEventKey(const AToks: TToks; AFirst, AEventIdx: Integer): string;
     function SigParams(const ASig: string; ANames: TStrings;
                        const AScope: string; out ACount: Integer): string;
     function LocalsText(const AScope: string): string;
@@ -661,7 +665,8 @@ const
     'QFILESTREAM:CLOSE=M,COPYFROM=M,EOF=P,EXTRACTRES=M,HANDLE=P,LINECOUNT=P,OPEN=M,POSITION=P,READ=M,READBINSTR=M,READLINE=M,READNUM=M,READSTR=M,SEEK=M,SIZE=P,WRITE=M,WRITEBINSTR=M,WRIT' +
     'ELINE=M,WRITENUM=M,WRITESTR=M|' +
     'QFONT:ADDSTYLES=M,BOLD=P,CHARSET=P,COLOR=P,DELSTYLES=M,FONTCOUNT=P,FONTNAME=P,HANDLE=P,HASSTYLE=M,ITALIC=P,NAME=P,PITCH=P,SETSTYLE=M,SIZE=P,STRIKEOUT=P,UNDERLINE=P|' +
-    'QFONTDIALOG:ADDOPTIONS=M,ADDSTYLES=M,COLOR=P,DELOPTIONS=M,DELSTYLES=M,EXECUTE=M,FONTCOUNT=P,FONTNAME=P,GETFONT=M,MAXFONTSIZE=P,MINFONTSIZE=P,NAME=P,ONAPPLY=E,SETFONT=M,SIZE=P|' +
+    'QFONTDIALOG:ADDOPTIONS=M,ADDSTYLES=M,COLOR=P,DELOPTIONS=M,DELSTYLES=M,EXECUTE=M,FONTCOUNT=P,FONTNAME=P,GETFONT=M,MAXFONTSIZE=P,MINFONTSIZE=P,NAME=P,ONAPPLY=E,SETFONT=M,SIZE=P,STRCA' +
+    'LL=M|' +
     'QFORM:ADDBORDERICONS=M,ALIGN=P,AUTOSCROLL=P,BORDERSTYLE=P,CAPTION=P,CENTER=M,CIRCLE=M,CLIENTHEIGHT=P,CLIENTWIDTH=P,CLOSE=M,COLOR=P,COPYRECT=M,CURSOR=P,DELBORDERICONS=M,DRAW=M,ENABL' +
     'ED=P,FILLRECT=M,FONT=P,FORMSTYLE=P,HANDLE=P,HEIGHT=P,HIDE=M,HIDETITLEBAR=M,HINT=P,ICOHANDLE=P,ICON=P,KEYPREVIEW=P,LEFT=P,LINE=M,MODALRESULT=P,ONCLICK=E,ONCLOSE=E,ONHINT=E,ONKEYDOWN' +
     '=E,ONKEYPRESS=E,ONKEYUP=E,ONMOUSEDOWN=E,ONMOUSEMOVE=E,ONMOUSEUP=E,ONPAINT=E,ONRESIZE=E,ONSHOW=E,PAINT=M,PARENT=P,POPUPMENU=P,PSET=M,RECTANGLE=M,REPAINT=M,ROUNDRECT=M,SETFOCUS=M,SHA' +
@@ -688,10 +693,13 @@ const
     'ICK=E,ONDRAWITEM=E,ONENTER=E,ONKEYDOWN=E,ONKEYPRESS=E,ONKEYUP=E,ONMEASUREITEM=E,ONMOUSEDOWN=E,ONMOUSEMOVE=E,ONMOUSEUP=E,PAINT=M,PARENT=P,POPUPMENU=P,PSET=M,RECTANGLE=M,REPAINT=M,RO' +
     'UNDRECT=M,SAVETOFILE=M,SELCOUNT=P,SELECTED=P,SETFOCUS=M,SHOW=M,SHOWHINT=P,SORTED=P,STRETCHDRAW=M,STYLE=P,TABORDER=P,TABWIDTH=P,TAG=P,TEXT=P,TEXTHEIGHT=M,TEXTOUT=M,TEXTRECT=M,TEXTWI' +
     'DTH=M,TOP=P,TOPINDEX=P,VISIBLE=P,WIDTH=P,WNDPROC=E|' +
-    'QLISTVIEW:ADDCOLUMNS=M,ADDITEMS=M,ADDSUBITEM=M,ALIGN=P,BORDERSTYLE=P,CHECKBOXES=P,CLEAR=M,CLEARCOLUMNS=M,COLOR=P,COLUMN=P,COLUMNCLICK=P,COLUMNSCOUNT=P,CURSOR=P,DELITEMS=M,DELSUBITE' +
-    'M=M,ENABLED=P,FONT=P,GRIDLINES=P,HANDLE=P,HEIGHT=P,HIDESELECTION=P,HINT=P,HOTTRACK=P,INSERTITEM=M,INSERTSUBITEM=M,ITEM=P,ITEMCOUNT=P,ITEMINDEX=P,LARGEIMAGES=P,LEFT=P,MULTISELECT=P,' +
-    'ONCHANGE=E,ONCLICK=E,ONCOLUMNCLICK=E,ONDBLCLICK=E,ONKEYPRESSED=E,PARENT=P,POPUPMENU=P,READONLY=P,ROWSELECT=P,SELCOUNT=P,SELECTED=P,SHOWCOLUMNHEADERS=P,SHOWHINT=P,SMALLIMAGES=P,SORT' +
-    'TYPE=P,STATEIMAGES=P,SUBITEM=P,SWAPITEM=M,TABORDER=P,TAG=P,TOP=P,VIEWSTYLE=P,VISIBLE=P,WIDTH=P|' +
+    'QLISTCOLUMN:CAPTION=P,WIDTH=P|' +
+    'QLISTITEM:CAPTION=P,CHECKED=P,HANDLE=P,IMAGEINDEX=P,INDEX=P,SELECTED=P,STATEINDEX=P|' +
+    'QLISTVIEW:ADDCOLUMNS=M,ADDITEMS=M,ADDSUBITEM=M,ALIGN=P,BORDERSTYLE=P,CHECKBOXES=P,CLEAR=M,CLEARCOLUMNS=M,CLIENTHEIGHT=P,CLIENTWIDTH=P,COLOR=P,COLUMN=P,COLUMNCLICK=P,COLUMNSCOUNT=P,' +
+    'CURSOR=P,DELITEMS=M,DELSUBITEM=M,ENABLED=P,FONT=P,GRIDLINES=P,HANDLE=P,HEIGHT=P,HIDE=M,HIDESELECTION=P,HINT=P,HOTTRACK=P,INSERTITEM=M,INSERTSUBITEM=M,ITEM=P,ITEMCOUNT=P,ITEMINDEX=P' +
+    ',LARGEIMAGES=P,LEFT=P,MULTISELECT=P,ONCHANGE=E,ONCLICK=E,ONCOLUMNCLICK=E,ONDBLCLICK=E,ONKEYDOWN=E,ONKEYPRESS=E,ONKEYPRESSED=E,ONKEYUP=E,ONMOUSEDOWN=E,ONMOUSEMOVE=E,ONMOUSEUP=E,PARE' +
+    'NT=P,POPUPMENU=P,READONLY=P,REPAINT=M,ROWSELECT=P,SELCOUNT=P,SELECTED=P,SETFOCUS=M,SETSUBITEM=M,SHOW=M,SHOWCOLUMNHEADERS=P,SHOWHINT=P,SMALLIMAGES=P,SORTTYPE=P,STATEIMAGES=P,STRCALL' +
+    '=M,SUBITEM=P,SWAPITEM=M,TABORDER=P,TAG=P,TOP=P,VIEWSTYLE=P,VISIBLE=P,WIDTH=P|' +
     'QMAINMENU:ADDITEMS=M,ALIGN=P,CLIENTHEIGHT=P,CLIENTWIDTH=P,COLOR=P,CURSOR=P,DELINDEX=M,DELITEMS=M,ENABLED=P,FONT=M,HANDLE=P,HEIGHT=P,HIDE=M,HINT=P,INSERT=M,LEFT=P,MENUCALL=M,PARENT=' +
     'P,POPUPMENU=P,REPAINT=M,SETFOCUS=M,SHOW=M,SHOWHINT=P,TABORDER=P,TAG=P,TOP=P,VISIBLE=P,WIDTH=P|' +
     'QMEMORYSTREAM:CLOSE=M,COPYFROM=M,EOF=P,EXTRACTRES=M,LINECOUNT=P,LOADARRAY=M,MEMCOPYFROM=M,MEMCOPYTO=M,POINTER=P,POINTERADDR=P,POSITION=P,READ=M,READBINSTR=M,READLINE=M,READNUM=M,RE' +
@@ -2553,7 +2561,7 @@ var
   FirstIdx, TokIdx, EqIdx, Depth, LhsEnd, RhsFirst, RhsLast, LastMember,
     CloseIdx: Integer;
   HasDot: Boolean;
-  Up, TargetType, Conv, Display: string;
+  Up, TargetType, Conv, Display, EventKey: string;
   VarRec: TRqVar;
   ProcRec: TRqProc;
 begin
@@ -2648,15 +2656,16 @@ begin
       if FPass = 1 then
         FHandlerProcs.Add(AToks[RhsFirst].Up);
       // Обработчик события с параметрами - типы его параметров по событию
-      if FEventSigs.IndexOfName(AToks[LastMember].Up) >= 0 then
+      EventKey := HandlerEventKey(AToks, FirstIdx, LastMember);
+      if FEventSigs.IndexOfName(EventKey) >= 0 then
       begin
         Up := FHandlerEvents.Values[AToks[RhsFirst].Up];
         if Up = '' then
-          FHandlerEvents.Values[AToks[RhsFirst].Up] := AToks[LastMember].Up
-        else if (Up <> AToks[LastMember].Up) and
-                (FEventSigs.Values[Up] <> FEventSigs.Values[AToks[LastMember].Up]) then
+          FHandlerEvents.Values[AToks[RhsFirst].Up] := EventKey
+        else if (Up <> EventKey) and
+                (FEventSigs.Values[Up] <> FEventSigs.Values[EventKey]) then
           WarnOnce('HE|' + AToks[RhsFirst].Up, AToks[RhsFirst].Text +
-            ': обработчик событий ' + Up + ' и ' + AToks[LastMember].Up +
+            ': обработчик событий ' + Up + ' и ' + EventKey +
             ' с разными параметрами - типы взяты по ' + Up);
       end;
       ProcRec := FindProc(AToks[RhsFirst].Up);
@@ -3729,8 +3738,9 @@ begin
 end;
 
 // Объект.AddItems a, b, c, d, e... - у методов rqlcl.bi с переменным
-// числом параметров перегрузки только до 4 (меню) или 6 (списки) -
-// вызов делится на несколько по 4 параметра
+// числом параметров перегрузки только до 4 (меню, номера) или 6 (строки) -
+// вызов делится на несколько по 4 параметра (AddItems, AddTabs,
+// AddPanels, AddColumns, DelItems, Add/DelStyles, Add/DelOptions)
 procedure TRqFbConv.SplitVariadicCall(var AToks: TToks; AFirst, ATo: Integer);
 const
   ChunkSize = 4;
@@ -3756,8 +3766,8 @@ begin
   end;
   if (LastMember < 0) or (AToks[LastMember].Kind <> tkIdent) then
     Exit;
-  if not ((AToks[LastMember].Up = 'ADDITEMS') or (AToks[LastMember].Up = 'ADDTABS') or
-          (AToks[LastMember].Up = 'ADDPANELS')) then
+  if Pos(' ' + AToks[LastMember].Up + ' ', ' ADDITEMS ADDTABS ADDPANELS ' +
+         'ADDCOLUMNS DELITEMS ADDSTYLES DELSTYLES ADDOPTIONS DELOPTIONS ') = 0 then
     Exit;
   ArgsFrom := NextSig(AToks, LastMember + 1, ATo);
   if ArgsFrom < 0 then
@@ -3959,12 +3969,33 @@ end;
 // пунктов параметры только у QTREEVIEW
 function TRqFbConv.EventSigFor(const AClassUp, AEventUp: string): string;
 begin
+  if (AClassUp = 'QLISTVIEW') and (AEventUp = 'ONCHANGE') then
+  begin
+    Result := FEventSigs.Values['LVONCHANGE'];
+    Exit;
+  end;
   Result := FEventSigs.Values[AEventUp];
   if (AClassUp <> 'QTREEVIEW') and
      ((AEventUp = 'ONCHANGE') or (AEventUp = 'ONEXPAND') or
       (AEventUp = 'ONCOLLAPSE') or (AEventUp = 'ONCHANGING') or
       (AEventUp = 'ONEXPANDING') or (AEventUp = 'ONCOLLAPSING')) then
     Result := '';
+end;
+
+// Имя события для типов параметров обработчика (Объект.OnXxx = Процедура):
+// OnChange у QLISTVIEW - LVONCHANGE, иначе имя события
+function TRqFbConv.HandlerEventKey(const AToks: TToks; AFirst,
+                                   AEventIdx: Integer): string;
+var
+  VarRec: TRqVar;
+begin
+  Result := AToks[AEventIdx].Up;
+  if (Result = 'ONCHANGE') and (AToks[AFirst].Kind = tkIdent) then
+  begin
+    VarRec := FindVar(AToks[AFirst].Up);
+    if (VarRec <> nil) and (UpperCase(VarRec.RqType) = 'QLISTVIEW') then
+      Result := 'LVONCHANGE';
+  end;
 end;
 
 // Параметры FreeBASIC по типам события ("VLONG;RLONG"). Имена - из ANames

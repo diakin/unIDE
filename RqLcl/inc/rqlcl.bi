@@ -675,6 +675,9 @@ Const RqEvCollapse = 18
 Const RqEvExpanding = 19
 Const RqEvCollapsing = 20
 Const RqEvResize = 21
+' QLISTVIEW: OnChange (Index, Change), OnColumnClick (Column)
+Const RqEvListChange = 22
+Const RqEvColumnClick = 23
 
 ' Виды обработчиков для вызова (Sender - как QCONTROL: у элемента любого
 ' класса QCONTROL лежит в начале)
@@ -702,6 +705,8 @@ Type RqEvProcIndex As Sub(ByVal As Long)
 Type RqEvProcIndexS As Sub(ByVal As Long, ByRef As QCONTROL)
 Type RqEvProcAllow As Sub(ByVal As Long, ByRef As Long)
 Type RqEvProcAllowS As Sub(ByVal As Long, ByRef As Long, ByRef As QCONTROL)
+Type RqEvProcListChange As Sub(ByVal As Long, ByVal As Long)
+Type RqEvProcListChangeS As Sub(ByVal As Long, ByVal As Long, ByRef As QCONTROL)
 Type RqEvProcPlain As Sub()
 Type RqEvProcSender As Sub(ByRef As QCONTROL)
 
@@ -782,7 +787,13 @@ Private Sub RqLclEventEx stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any 
         Else
             Cast(RqEvProcSetEditTextS, HandlerPtr)(ArgList[0], ArgList[1], EditText, *CtlPtr)
         End If
-    Case RqEvTreeChange, RqEvExpand, RqEvCollapse
+    Case RqEvListChange
+        If HandlerKind = 1 Then
+            Cast(RqEvProcListChange, HandlerPtr)(ArgList[0], ArgList[1])
+        Else
+            Cast(RqEvProcListChangeS, HandlerPtr)(ArgList[0], ArgList[1], *CtlPtr)
+        End If
+    Case RqEvTreeChange, RqEvExpand, RqEvCollapse, RqEvColumnClick
         If HandlerKind = 1 Then
             Cast(RqEvProcIndex, HandlerPtr)(ArgList[0])
         Else
@@ -5866,3 +5877,4 @@ Property QSTATUSBAR.OnResize(ByVal Handler As Sub(ByRef Sender As QSTATUSBAR))
 End Property
 
 #include once "rqsys.bi"
+#include once "rqview.bi"

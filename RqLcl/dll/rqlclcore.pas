@@ -28,7 +28,7 @@ uses
   Classes, SysUtils, TypInfo, Math, Controls, StdCtrls, Forms, Graphics,
   LazUTF8, LCLType, ComCtrls, Grids, ShellCtrls, ExtCtrls, Buttons, Menus,
   FileCtrl, Dialogs, RichMemo, rqlclrich, rqlclgrid, rqlclmisc, rqlclmore,
-  rqlclsys;
+  rqlclsys, rqlclview;
 
 const
   RqLclVersion = 2;   // меняется при несовместимой смене набора функций
@@ -132,6 +132,9 @@ type
     procedure FireTreeAllow(Sender: TObject; Node: TTreeNode; var Allow: Boolean);
     procedure FireCloseQuery(Sender: TObject; var CanClose: Boolean);
     procedure FireTreeChange(Sender: TObject; Node: TTreeNode);
+    procedure FireListChange(Sender: TObject; Item: TListItem;
+                             Change: TItemChange);
+    procedure FireColumnClick(Sender: TObject; Column: TListColumn);
   end;
 
   // Класс RapidQ -> класс LCL
@@ -147,8 +150,8 @@ type
   end;
 
 var
-  RqClassTable: array[0..24] of TRqClassRec;
-  RqPropTable: array[0..3] of TRqPropRec;
+  RqClassTable: array[0..26] of TRqClassRec;
+  RqPropTable: array[0..4] of TRqPropRec;
   RqLastErrorText: string = '';
   RqInitDone: Boolean = False;
 
@@ -208,6 +211,10 @@ begin
   RqClassTable[23].LclClass := TOpenDialog;
   RqClassTable[24].RqName := 'QSAVEDIALOG';
   RqClassTable[24].LclClass := TSaveDialog;
+  RqClassTable[25].RqName := 'QLISTVIEW';
+  RqClassTable[25].LclClass := TListView;
+  RqClassTable[26].RqName := 'QFONTDIALOG';
+  RqClassTable[26].LclClass := TFontDialog;
   // У RapidQ OnClose формы - сигнал о закрытии без параметров; в LCL ему
   // ближе всего OnCloseQuery (FireCloseQuery разрешает закрытие)
   RqPropTable[0].RqName := 'ONCLOSE';
@@ -220,6 +227,9 @@ begin
   RqPropTable[2].LclName := 'OnExpanded';
   RqPropTable[3].RqName := 'ONCOLLAPSE';
   RqPropTable[3].LclName := 'OnCollapsed';
+  // QFONTDIALOG: кнопка Apply
+  RqPropTable[4].RqName := 'ONAPPLY';
+  RqPropTable[4].LclName := 'OnApplyClicked';
 end;
 
 procedure SetError(const AText: string);
@@ -519,6 +529,39 @@ begin
   FireNotify(Sender);
 end;
 
+// QLISTVIEW: OnChange - номер пункта и что изменилось (ctText 0,
+// ctImage 1, ctState 2)
+procedure TRqEventLink.FireListChange(Sender: TObject; Item: TListItem;
+                                      Change: TItemChange);
+var
+  Args: TRqEventArgs;
+begin
+  if not Assigned(ProcEx) then
+    Exit;
+  FillChar(Args, SizeOf(Args), 0);
+  if Item = nil then
+    Args.IntArgs[0] := -1
+  else
+    Args.IntArgs[0] := Item.Index;
+  Args.IntArgs[1] := Ord(Change);
+  ProcEx(User, Owner, EventId, @Args);
+end;
+
+// QLISTVIEW: OnColumnClick - номер столбца
+procedure TRqEventLink.FireColumnClick(Sender: TObject; Column: TListColumn);
+var
+  Args: TRqEventArgs;
+begin
+  if not Assigned(ProcEx) then
+    Exit;
+  FillChar(Args, SizeOf(Args), 0);
+  if Column = nil then
+    Args.IntArgs[0] := -1
+  else
+    Args.IntArgs[0] := Column.Index;
+  ProcEx(User, Owner, EventId, @Args);
+end;
+
 // Переходник события AEvent у объекта; нет - nil
 function LinkOf(AComp: TComponent; const AEvent: string): TRqEventLink;
 var
@@ -656,7 +699,8 @@ begin
        GridSetInt(TObject(AObj), string(AProp), AValue) or
        MiscSetInt(TObject(AObj), string(AProp), AValue) or
        MoreSetInt(TObject(AObj), string(AProp), AValue) or
-       SysSetInt(TObject(AObj), string(AProp), AValue) then
+       SysSetInt(TObject(AObj), string(AProp), AValue) or
+       ViewSetInt(TObject(AObj), string(AProp), AValue) then
     begin
       Result := 1;
       Exit;
@@ -692,7 +736,8 @@ begin
        GridGetInt(TObject(AObj), string(AProp), Result) or
        MiscGetInt(TObject(AObj), string(AProp), Result) or
        MoreGetInt(TObject(AObj), string(AProp), Result) or
-       SysGetInt(TObject(AObj), string(AProp), Result) then
+       SysGetInt(TObject(AObj), string(AProp), Result) or
+       ViewGetInt(TObject(AObj), string(AProp), Result) then
       Exit;
     Info := FindProp(TObject(AObj), string(AProp));
     if Info = nil then
@@ -715,7 +760,8 @@ begin
        GridSetStr(TObject(AObj), string(AProp), string(AValue)) or
        MiscSetStr(TObject(AObj), string(AProp), string(AValue)) or
        MoreSetStr(TObject(AObj), string(AProp), string(AValue)) or
-       SysSetStr(TObject(AObj), string(AProp), string(AValue)) then
+       SysSetStr(TObject(AObj), string(AProp), string(AValue)) or
+       ViewSetStr(TObject(AObj), string(AProp), string(AValue)) then
     begin
       Result := 1;
       Exit;
@@ -754,7 +800,8 @@ begin
        not GridGetStr(TObject(AObj), string(AProp), Value) and
        not MiscGetStr(TObject(AObj), string(AProp), Value) and
        not MoreGetStr(TObject(AObj), string(AProp), Value) and
-       not SysGetStr(TObject(AObj), string(AProp), Value) then
+       not SysGetStr(TObject(AObj), string(AProp), Value) and
+       not ViewGetStr(TObject(AObj), string(AProp), Value) then
     begin
       Info := FindProp(TObject(AObj), string(AProp));
       if Info = nil then
@@ -937,6 +984,8 @@ var
   DrawItemProc: TDrawItemEvent;
   TreeNodeProc: TTVChangedEvent;
   TreeAllowProc: TTVChangingEvent;
+  ListChangeProc: TLVChangeEvent;
+  ColumnClickProc: TLVColumnClickEvent;
 begin
   Result := 0;
   try
@@ -995,6 +1044,16 @@ begin
     begin
       TreeAllowProc := @Link.FireTreeAllow;
       Handler := TMethod(TreeAllowProc);
+    end
+    else if TypeName = 'TLVChangeEvent' then
+    begin
+      ListChangeProc := @Link.FireListChange;
+      Handler := TMethod(ListChangeProc);
+    end
+    else if TypeName = 'TLVColumnClickEvent' then
+    begin
+      ColumnClickProc := @Link.FireColumnClick;
+      Handler := TMethod(ColumnClickProc);
     end
     else if TypeName = 'TKeyEvent' then
     begin
@@ -1291,7 +1350,8 @@ begin
     Value := '';
     if EditGetItem(TObject(AObj), Prop, AIndex, Value) or
        MiscGetItem(TObject(AObj), Prop, AIndex, Value) or
-       MoreGetItem(TObject(AObj), Prop, AIndex, Value) then
+       MoreGetItem(TObject(AObj), Prop, AIndex, Value) or
+       ViewGetItem(TObject(AObj), Prop, AIndex, Value) then
       Found := True
     else if (TObject(AObj) is TFont) and (Prop = 'FONTNAME') then
     begin
@@ -1334,7 +1394,8 @@ begin
   try
     if EditSetItem(TObject(AObj), string(AProp), AIndex, string(AValue)) or
        MiscSetItem(TObject(AObj), string(AProp), AIndex, string(AValue)) or
-       MoreSetItem(TObject(AObj), string(AProp), AIndex, string(AValue)) then
+       MoreSetItem(TObject(AObj), string(AProp), AIndex, string(AValue)) or
+       ViewSetItem(TObject(AObj), string(AProp), AIndex, string(AValue)) then
       Result := 1
     else if AObj = nil then
       SetError('RqSetItemStr ' + string(AProp) + ': no object')
@@ -1383,7 +1444,8 @@ begin
   try
     if (ABuf <> nil) and (ABufLen > 0) then
       ABuf^ := #0;
-    if GridGetCell(TObject(AObj), ACol, ARow, Value) then
+    if GridGetCell(TObject(AObj), ACol, ARow, Value) or
+       ViewGetCell(TObject(AObj), ACol, ARow, Value) then
       Result := CopyOut(Value, ABuf, ABufLen)
     else
       SetError('RqGetCell: object has no cells');
@@ -1398,7 +1460,8 @@ function RqSetCell(AObj: Pointer; ACol, ARow: Integer;
 begin
   Result := 0;
   try
-    if GridSetCell(TObject(AObj), ACol, ARow, string(AValue)) then
+    if GridSetCell(TObject(AObj), ACol, ARow, string(AValue)) or
+       ViewSetCell(TObject(AObj), ACol, ARow, string(AValue)) then
       Result := 1
     else
       SetError('RqSetCell: object has no cells');
@@ -1418,7 +1481,8 @@ begin
   try
     if not GridGetItemInt(TObject(AObj), string(AProp), AIndex, Result) and
        not MiscGetItemInt(TObject(AObj), string(AProp), AIndex, Result) and
-       not MoreGetItemInt(TObject(AObj), string(AProp), AIndex, Result) then
+       not MoreGetItemInt(TObject(AObj), string(AProp), AIndex, Result) and
+       not ViewGetItemInt(TObject(AObj), string(AProp), AIndex, Result) then
       SetError('RqGetItemInt: no list ' + string(AProp));
   except
     on E: Exception do
@@ -1433,7 +1497,8 @@ begin
   try
     if GridSetItemInt(TObject(AObj), string(AProp), AIndex, AValue) or
        MiscSetItemInt(TObject(AObj), string(AProp), AIndex, AValue) or
-       MoreSetItemInt(TObject(AObj), string(AProp), AIndex, AValue) then
+       MoreSetItemInt(TObject(AObj), string(AProp), AIndex, AValue) or
+       ViewSetItemInt(TObject(AObj), string(AProp), AIndex, AValue) then
       Result := 1
     else
       SetError('RqSetItemInt: no list ' + string(AProp));
@@ -1470,6 +1535,8 @@ begin
     else if MiscCallEx(TObject(AObj), string(AMethod), string(AStr), AInt1,
                        AInt2, AInt3, IntResult) or
             MoreCallEx(TObject(AObj), string(AMethod), string(AStr), AInt1,
+                       AInt2, AInt3, IntResult) or
+            ViewCallEx(TObject(AObj), string(AMethod), string(AStr), AInt1,
                        AInt2, AInt3, IntResult) then
       Result := IntResult
     else if AObj = nil then
