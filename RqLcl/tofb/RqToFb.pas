@@ -372,6 +372,11 @@ type
                         AIsArray, AExplicit, AIsConst: Boolean): TRqVar;
     function ResolveVar(const ADisplay: string; AIsArray: Boolean): TRqVar;
     function DefaultValueText(const ARqType: string): string;
+    function MatchBracket(const AToks: TToks; AOpen, ATo: Integer): Integer;
+    procedure WrapStrIndex(var AToks: TToks; AIdx, ATo: Integer; AVar: TRqVar);
+    procedure RewriteStrSub(var AToks: TToks; AFrom, ATo: Integer);
+    procedure FinishStrSub(var AToks: TToks; AFrom, ATo: Integer);
+    function ProcessPlusPlus(var AToks: TToks; AFirst, ATo: Integer): Boolean;
     function FindProc(const AUp: string): TRqProc;
     function GetProc(const ADisplay: string): TRqProc;
     function ExprIsString(const AToks: TToks; AFrom, ATo: Integer): Boolean;
@@ -1522,6 +1527,219 @@ begin
   FVars.AddObject(Key, Result);
 end;
 
+// Пара для '[' (s$[N]); нет - -1
+function TRqFbConv.MatchBracket(const AToks: TToks; AOpen, ATo: Integer): Integer;
+var
+  TokIdx, Depth: Integer;
+begin
+  Result := -1;
+  Depth := 0;
+  for TokIdx := AOpen to ATo do
+    if AToks[TokIdx].Kind = tkOp then
+    begin
+      if AToks[TokIdx].Text = '[' then
+        Inc(Depth)
+      else if AToks[TokIdx].Text = ']' then
+      begin
+        Dec(Depth);
+        if Depth = 0 then
+        begin
+          Result := TokIdx;
+          Exit;
+        end;
+      end;
+    end;
+end;
+
+// s$[N] - символ строки с 1; вне строки (0, за концом) - "" (тест в
+// RapidQ 2026-10-08: "123456"[0] -> "", [1] -> "1", [8] -> ""):
+// s$[N] -> RqStrIdx(s$, N). Только чтение.
+procedure TRqFbConv.WrapStrIndex(var AToks: TToks; AIdx, ATo: Integer; AVar: TRqVar);
+var
+  OpenIdx, CloseIdx, InsPos: Integer;
+  PreText: string;
+begin
+  if (AVar = nil) or AVar.IsArray or
+     ((UpperCase(AVar.RqType) <> 'STRING') and (SuffixOf(AVar.Name) <> '$')) then
+    Exit;
+  OpenIdx := NextSig(AToks, AIdx + 1, ATo);
+  if not IsOp(AToks, OpenIdx, '[') then
+    Exit;
+  CloseIdx := MatchBracket(AToks, OpenIdx, ATo);
+  if CloseIdx < 0 then
+    Exit;
+  // RqStrSub( из RewriteStrSub - снаружи
+  PreText := AToks[AIdx].Pre;
+  InsPos := 1;
+  while Copy(PreText, InsPos, 9) = 'RqStrSub(' do
+    Inc(InsPos, 9);
+  Insert('RqStrIdx(', PreText, InsPos);
+  AToks[AIdx].Pre := PreText;
+  AToks[OpenIdx].OutText := ', ';
+  AToks[CloseIdx].OutText := ')';
+end;
+
+// Вычитание строк RapidQ: "jello" - "l" -> "jeo" (все вхождения;
+// документация, operators.html). В цепочке + - & одного уровня скобок, где
+// есть строка, a - b -> RqStrSub(a, b): a + b - c -> RqStrSub(a + b, c).
+procedure TRqFbConv.RewriteStrSub(var AToks: TToks; AFrom, ATo: Integer);
+var
+  TokIdx, ChainStart, CloseIdx: Integer;
+  IsDelim: Boolean;
+begin
+  ChainStart := -1;
+  TokIdx := AFrom;
+  while TokIdx <= ATo do
+  begin
+    if AToks[TokIdx].Kind in [tkSpace, tkComment] then
+    begin
+      Inc(TokIdx);
+      Continue;
+    end;
+    if IsOp(AToks, TokIdx, '(') or IsOp(AToks, TokIdx, '[') then
+    begin
+      if IsOp(AToks, TokIdx, '(') then
+        CloseIdx := MatchParen(AToks, TokIdx, ATo)
+      else
+        CloseIdx := MatchBracket(AToks, TokIdx, ATo);
+      if CloseIdx < 0 then
+        CloseIdx := ATo;
+      if ChainStart < 0 then
+        ChainStart := TokIdx;
+      RewriteStrSub(AToks, TokIdx + 1, CloseIdx - 1);
+      TokIdx := CloseIdx + 1;
+      Continue;
+    end;
+    IsDelim := False;
+    if AToks[TokIdx].Kind = tkOp then
+      IsDelim := Pos(' ' + AToks[TokIdx].Text + ' ', ' , ; = < > <> <= >= : ) ] ') > 0
+    else if AToks[TokIdx].Kind = tkIdent then
+      IsDelim := Pos(' ' + AToks[TokIdx].Up + ' ',
+        ' AND OR XOR NOT THEN ELSE TO STEP ANDALSO ORELSE IMP EQV ') > 0;
+    if IsDelim then
+    begin
+      if ChainStart >= 0 then
+        FinishStrSub(AToks, ChainStart, PrevSig(AToks, TokIdx - 1));
+      ChainStart := -1;
+    end
+    else if ChainStart < 0 then
+      ChainStart := TokIdx;
+    Inc(TokIdx);
+  end;
+  if ChainStart >= 0 then
+    FinishStrSub(AToks, ChainStart, PrevSig(AToks, ATo));
+end;
+
+procedure TRqFbConv.FinishStrSub(var AToks: TToks; AFrom, ATo: Integer);
+var
+  TokIdx, PrevIdx, OperandStart, CloseIdx, MinusCount, OpIdx: Integer;
+  Ops: array of Integer;   // бинарные + - & цепочки
+  HasString: Boolean;
+  PrefixText: string;
+begin
+  if (AFrom < 0) or (ATo < AFrom) then
+    Exit;
+  SetLength(Ops, 0);
+  MinusCount := 0;
+  TokIdx := AFrom;
+  while TokIdx <= ATo do
+  begin
+    if IsOp(AToks, TokIdx, '(') or IsOp(AToks, TokIdx, '[') then
+    begin
+      if IsOp(AToks, TokIdx, '(') then
+        CloseIdx := MatchParen(AToks, TokIdx, ATo)
+      else
+        CloseIdx := MatchBracket(AToks, TokIdx, ATo);
+      if CloseIdx < 0 then
+        Exit;
+      TokIdx := CloseIdx + 1;
+      Continue;
+    end;
+    if (AToks[TokIdx].Kind = tkOp) and
+       ((AToks[TokIdx].Text = '+') or (AToks[TokIdx].Text = '-') or
+        (AToks[TokIdx].Text = '&')) then
+    begin
+      // бинарный - слева конец операнда; уже переписанный '-' - пропустить
+      PrevIdx := PrevSig(AToks, TokIdx - 1);
+      if (PrevIdx >= AFrom) and
+         ((AToks[PrevIdx].Kind in [tkIdent, tkNumber, tkString]) or
+          IsOp(AToks, PrevIdx, ')') or IsOp(AToks, PrevIdx, ']')) then
+      begin
+        if (AToks[TokIdx].Text = '-') and (AToks[TokIdx].OutText <> '-') then
+          Exit;
+        SetLength(Ops, Length(Ops) + 1);
+        Ops[High(Ops)] := TokIdx;
+        if AToks[TokIdx].Text = '-' then
+          Inc(MinusCount);
+      end;
+    end;
+    Inc(TokIdx);
+  end;
+  if MinusCount = 0 then
+    Exit;
+  // есть ли строка среди операндов
+  HasString := False;
+  OperandStart := AFrom;
+  for OpIdx := 0 to High(Ops) + 1 do
+  begin
+    if OpIdx <= High(Ops) then
+      TokIdx := Ops[OpIdx] - 1
+    else
+      TokIdx := ATo;
+    if ExprIsString(AToks, OperandStart, TokIdx) then
+      HasString := True;
+    if OpIdx <= High(Ops) then
+      OperandStart := Ops[OpIdx] + 1;
+  end;
+  if not HasString then
+    Exit;
+  PrefixText := '';
+  for OpIdx := 1 to MinusCount do
+    PrefixText := PrefixText + 'RqStrSub(';
+  TokIdx := NextSig(AToks, AFrom, ATo);
+  AToks[TokIdx].Pre := PrefixText + AToks[TokIdx].Pre;
+  for OpIdx := 0 to High(Ops) do
+    if AToks[Ops[OpIdx]].Text = '-' then
+    begin
+      AToks[Ops[OpIdx]].OutText := ',';
+      // ')' - после правого операнда
+      if OpIdx < High(Ops) then
+        TokIdx := PrevSig(AToks, Ops[OpIdx + 1] - 1)
+      else
+        TokIdx := ATo;
+      AToks[TokIdx].Post := AToks[TokIdx].Post + ')';
+    end;
+end;
+
+// Перем ++ (оператор RapidQ, loops.html: I++) -> Перем += 1
+function TRqFbConv.ProcessPlusPlus(var AToks: TToks; AFirst, ATo: Integer): Boolean;
+var
+  LastIdx, PlusIdx, TargetEnd: Integer;
+  VarRec: TRqVar;
+begin
+  Result := False;
+  LastIdx := PrevSig(AToks, ATo);
+  if not IsOp(AToks, LastIdx, '+') then
+    Exit;
+  PlusIdx := PrevSig(AToks, LastIdx - 1);
+  if not IsOp(AToks, PlusIdx, '+') or (PlusIdx <= AFirst) then
+    Exit;
+  TargetEnd := PrevSig(AToks, PlusIdx - 1);
+  if not ((AToks[TargetEnd].Kind = tkIdent) or IsOp(AToks, TargetEnd, ')')) then
+    Exit;
+  ProcessExpr(AToks, AFirst, TargetEnd);
+  VarRec := FindVar(AToks[AFirst].Up);
+  if VarRec <> nil then
+    VarRec.Assigned := True;
+  AToks[PlusIdx].OutText := '+= 1';
+  AToks[LastIdx].OutText := '';
+  if PlusIdx + 1 < LastIdx then
+    ClearRange(AToks, PlusIdx + 1, LastIdx - 1);
+  if AToks[PlusIdx - 1].Kind <> tkSpace then
+    AToks[PlusIdx].Pre := ' ' + AToks[PlusIdx].Pre;
+  Result := True;
+end;
+
 // Значение необъявленной переменной в тексте предупреждения
 function TRqFbConv.DefaultValueText(const ARqType: string): string;
 begin
@@ -2281,6 +2499,10 @@ begin
   Up := AToks[FirstIdx].Up;
   NextIdx := NextSig(AToks, FirstIdx + 1, ATo);
 
+  // Перем ++
+  if not InList(FKeywords, Up) and ProcessPlusPlus(AToks, FirstIdx, ATo) then
+    Exit;
+
   // Внутри TYPE ... EXTENDS: заголовки и концы методов, поля
   if (FCurType <> nil) and TypeStatement(AToks, FirstIdx, ATo) then
     Exit;
@@ -2387,6 +2609,7 @@ procedure TRqFbConv.ProcessExpr(var AToks: TToks; AFrom, ATo: Integer);
 var
   TokIdx, PrevIdx: Integer;
 begin
+  RewriteStrSub(AToks, AFrom, ATo);
   for TokIdx := AFrom to ATo do
     case AToks[TokIdx].Kind of
       tkIdent:
@@ -2543,6 +2766,7 @@ begin
        not IsOp(AToks, NextIdx, '(') then
     begin
       AToks[AIdx].OutText := VarRec.FbName;
+      WrapStrIndex(AToks, AIdx, ATo, VarRec);
       Exit;
     end;
   end;
@@ -2576,6 +2800,7 @@ begin
   AToks[AIdx].OutText := VarRec.FbName;
   if (VarRec.Scope = '') and VarRec.Explicit then
     GlobalQualify(AToks, AIdx);
+  WrapStrIndex(AToks, AIdx, ATo, VarRec);
   // Необъявленная переменная, которой нигде не присваивается значение, -
   // всегда 0 / "" (так RapidQ молча и работает); чаще всего опечатка:
   // REPLACESUBSTR$(s, crlfcrlf, crlf) вместо crlf+crlf
@@ -2748,6 +2973,13 @@ begin
   end
   else
   begin
+    // s$[N] = x: RapidQ не компилирует (тест пользователя 2026-10-08)
+    if IsOp(AToks, LhsEnd, '[') then
+    begin
+      Error(Display + '[...] = ...: запись в символ строки RapidQ не допускает ' +
+            '(ошибка компилятора RapidQ); MID$(s, N, 1) = x');
+      Exit;
+    end;
     if IsOp(AToks, LhsEnd, '(') then
     begin
       CloseIdx := MatchParen(AToks, LhsEnd, EqIdx - 1);

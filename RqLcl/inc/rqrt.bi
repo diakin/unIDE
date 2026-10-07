@@ -880,3 +880,25 @@ End Function
 Sub RqSleep(ByVal Seconds As Double)
     If Seconds > 0 Then Sleep CLng(Seconds * 1000), 1
 End Sub
+
+' s$[N] RapidQ - символ строки с 1; вне строки (0, за концом) - ""
+' (тест в RapidQ 2026-10-08). Только чтение: s$[N] = x RapidQ не компилирует.
+Function RqStrIdx(ByRef Source As String, ByVal CharNum As Long) As String
+    If (CharNum < 1) OrElse (CharNum > Len(Source)) Then Return ""
+    Return Chr(Source[CharNum - 1])
+End Function
+
+' a$ - b$ RapidQ: из a$ убираются все вхождения b$ ("jello" - "l" ->
+' "jeo", operators.html); b$ = "" - a$ без изменений
+Function RqStrSub(ByRef Source As String, ByRef Part As String) As String
+    If Len(Part) = 0 Then Return Source
+    Dim ResultText As String
+    Dim StartPos As Long = 1
+    Dim FoundPos As Long = InStr(StartPos, Source, Part)
+    While FoundPos > 0
+        ResultText &= Mid(Source, StartPos, FoundPos - StartPos)
+        StartPos = FoundPos + Len(Part)
+        FoundPos = InStr(StartPos, Source, Part)
+    Wend
+    Return ResultText & Mid(Source, StartPos)
+End Function
