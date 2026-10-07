@@ -8844,7 +8844,7 @@ case 305
 case 306
 	
 case 307
-	if CreateDirIfNotExists (IcoPathEdit.text)>0 then  DirBox.text=IcoPathEdit.text
+	if CreateDirIfNotExists (IcoFileEdit.text)>0 then  DirBox.text=IcoFileEdit.text
 	
 	
 case 308 
@@ -8857,7 +8857,7 @@ case 310
 case 311
 	if CreateDirIfNotExists (FBIcoFileEdit.text)>0 then  DirBox.text=FBIcoFileEdit.text
 case 312
-	if CreateDirIfNotExists (ArdCmpPathEdit.text)>0 then  DirBox.text=ArdCmpPathEdit.text
+'	if CreateDirIfNotExists (ArdCmpPathEdit.text)>0 then  DirBox.text=ArdCmpPathEdit.text
 case 313
 	'DirBox.text=FBLibPathEdit.text
 case 314
