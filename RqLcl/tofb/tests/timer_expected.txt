@@ -1,0 +1,6 @@
+defaults 1 1000
+a tick 1
+a tick 2
+a tick 3
+b tag 7 a enabled 0 ticks 3
+end 3

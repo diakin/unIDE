@@ -29,6 +29,7 @@
 #include once "rqstream.bi"
 #include once "rqstrlist.bi"
 #include once "rqreg.bi"
+#include once "rqtimer.bi"
 
 #ifdef __FB_64BIT__
     #define RQLCL_DLL "rqlcl64.dll"
