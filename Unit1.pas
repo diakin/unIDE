@@ -2609,7 +2609,7 @@ type
     procedure SetFbBuild(const AMain: string; AOutKind, ABits: Integer);
     function  FbCompilerExe(ABits: Integer; var AProblem: string): string;
     function  FbOutFileOf(const AMain: string): string;
-    function  FbIncDirs(var AUserInc: string): string;
+    function  FbIncDirs(ABits: Integer; var AUserInc: string): string;
     function  RapidQFindSourceLine(const AFile, AText,
                                    ASection: string): Integer;
     function  RapidQReportErrors(AOutput: TStrings;
@@ -10417,6 +10417,31 @@ begin
   else
     Result := 'Console';
   end;
+end;
+
+// Папки самого компилятора: inc и lib рядом с fbc (lib\win32 или
+// lib\win64 - по разрядности, если такая подпапка есть). fbc ищет в них
+// сам, без ключей; здесь они нужны для лога и вкладки Includes.
+procedure FbDefaultDirs(const AFbcExe: string; ABits: Integer;
+                        var AIncDir, ALibDir: string);
+var
+  BaseDir, SubDir: string;
+begin
+  AIncDir := '';
+  ALibDir := '';
+  if AFbcExe = '' then
+    Exit;
+  BaseDir := ExtractFilePath(AFbcExe);
+  if DirectoryExists(BaseDir + 'inc') then
+    AIncDir := BaseDir + 'inc';
+  if ABits = 64 then
+    SubDir := 'win64'
+  else
+    SubDir := 'win32';
+  if DirectoryExists(BaseDir + 'lib\' + SubDir) then
+    ALibDir := BaseDir + 'lib\' + SubDir
+  else if DirectoryExists(BaseDir + 'lib') then
+    ALibDir := BaseDir + 'lib';
 end;
 
 // Исходник FreeBASIC, который может быть главным файлом
@@ -42928,7 +42953,8 @@ end;
 //  32 бит (64, если есть только 64-битный компилятор).
 //  Компилятор - IDE Options - Compilers - FreeBASIC: FBCompPath (32 бит:
 //  fbc32.exe, иначе fbc.exe), FBComp64Path (64 бит: fbc64.exe, иначе
-//  fbc.exe; пустой - fbc64.exe в папке 32). IncPath - ключ -i, LibPath - -p.
+//  fbc.exe; пустой - fbc64.exe в папке 32). IncPath - ключ -i, LibPath - -p;
+//  пустые - ключей нет, fbc берёт свои inc и lib (у 32 и 64 они разные).
 //  Результат - рядом с главным файлом: <имя>.exe или <имя>.dll (-x).
 //  Вывод fbc - в Compilation log; ошибки "файл(строка) error N: текст" -
 //  красным и в окно ошибок, двойной щелчок - к строке (FbParseErrorLine в
@@ -43160,13 +43186,13 @@ begin
     Result := ChangeFileExt(AMain, '.exe');
 end;
 
-// Папки поиска #include для вкладки Includes: Include из настроек и inc
-// рядом с компилятором (32 бит, иначе 64), через точку с запятой.
+// Папки поиска #include для вкладки Includes: Include из настроек, а он
+// пустой - inc рядом с компилятором разрядности ABits (как ищет сам fbc).
 // AUserInc - только Include из настроек.
-function TForm1.FbIncDirs(var AUserInc: string): string;
+function TForm1.FbIncDirs(ABits: Integer; var AUserInc: string): string;
 var
   Ini: TIniFile;
-  FbcExe, Problem, CompInc: string;
+  FbcExe, Problem, DefInc, DefLib: string;
 begin
   AUserInc := '';
   if FileExists(SettingsFileName) then
@@ -43180,19 +43206,11 @@ begin
     end;
   end;
   Result := AUserInc;
-  FbcExe := FbCompilerExe(32, Problem);
-  if FbcExe = '' then
-    FbcExe := FbCompilerExe(64, Problem);
-  if FbcExe <> '' then
-  begin
-    CompInc := ExtractFilePath(FbcExe) + 'inc';
-    if DirectoryExists(CompInc) then
-    begin
-      if Result <> '' then
-        Result := Result + ';';
-      Result := Result + CompInc;
-    end;
-  end;
+  if Result <> '' then
+    Exit;
+  FbcExe := FbCompilerExe(ABits, Problem);
+  FbDefaultDirs(FbcExe, ABits, DefInc, DefLib);
+  Result := DefInc;
 end;
 
 // Сборка главного .bas компилятором fbc. True - собрано, результат на месте.
@@ -43200,7 +43218,7 @@ function TForm1.CompileFreeBasic: Boolean;
 var
   Ini: TIniFile;
   Sect, IncDir, LibDir, FbcExe, Problem, MainBas, OutFile, Dir: string;
-  Params, LogLine, ErrFile, FirstFile, ShortName: string;
+  Params, LogLine, ErrFile, FirstFile, ShortName, DefInc, DefLib: string;
   OutKind, Bits, Code, LogStart, LineIdx, ErrLine, FirstLine: Integer;
   ErrCount, WarnCount: Integer;
   StartTick: Cardinal;
@@ -43273,22 +43291,35 @@ begin
   end;
   // Обратная косая перед закрывающей кавычкой экранировала бы её - папки
   // передаются без неё
-  if IncDir <> '' then
+  // Пустые Include и Library - папки самого компилятора: у fbc 32 и 64
+  // свои inc и lib, и находит он их сам, ключи не нужны
+  FbDefaultDirs(FbcExe, Bits, DefInc, DefLib);
+  if IncDir = '' then
   begin
-    if DirectoryExists(IncDir) then
-      Params := Params + ' -i "' + ExcludeTrailingPathDelimiter(IncDir) + '"'
+    if DefInc <> '' then
+      LogComp('Include: папка компилятора ' + DefInc)
     else
-      LogComp('Сборка FreeBASIC: папка Include не найдена, -i не ' +
-              'передаётся: ' + IncDir);
-  end;
-  if LibDir <> '' then
+      LogComp('Include: папка компилятора (inc рядом с ' +
+              ExtractFileName(FbcExe) + ' не найдена)');
+  end
+  else if DirectoryExists(IncDir) then
+    Params := Params + ' -i "' + ExcludeTrailingPathDelimiter(IncDir) + '"'
+  else
+    LogComp('Сборка FreeBASIC: папка Include не найдена, -i не ' +
+            'передаётся: ' + IncDir);
+  if LibDir = '' then
   begin
-    if DirectoryExists(LibDir) then
-      Params := Params + ' -p "' + ExcludeTrailingPathDelimiter(LibDir) + '"'
+    if DefLib <> '' then
+      LogComp('Library: папка компилятора ' + DefLib)
     else
-      LogComp('Сборка FreeBASIC: папка Library не найдена, -p не ' +
-              'передаётся: ' + LibDir);
-  end;
+      LogComp('Library: папка компилятора (lib рядом с ' +
+              ExtractFileName(FbcExe) + ' не найдена)');
+  end
+  else if DirectoryExists(LibDir) then
+    Params := Params + ' -p "' + ExcludeTrailingPathDelimiter(LibDir) + '"'
+  else
+    LogComp('Сборка FreeBASIC: папка Library не найдена, -p не ' +
+            'передаётся: ' + LibDir);
 
   OutFile := FbOutFileOf(MainBas);
   Dir := ExtractFilePath(MainBas);
@@ -44997,6 +45028,7 @@ var
   Source: TStringList;
   Root: TTreeNode;
   FbMode: Boolean;
+  FbOutKind, FbBits: Integer;
 
   // Узел дерева. AFull - найденный файл ('' - не найден), AFrom и ALine -
   // где стоит $INCLUDE (для двойного щелчка по ненайденному).
@@ -45094,8 +45126,12 @@ begin
 
     IncDir := '';
     if FbMode then
-      // Include из настроек и inc рядом с fbc, через точку с запятой
-      IncDir := FbIncDirs(UserInc)
+    begin
+      // Include из настроек, пустой - inc компилятора разрядности главного
+      // файла
+      FbBuildOf(MainBas, FbOutKind, FbBits);
+      IncDir := FbIncDirs(FbBits, UserInc);
+    end
     else if FileExists(SettingsFileName) then
     begin
       Ini := TIniFile.Create(SettingsFileName);
