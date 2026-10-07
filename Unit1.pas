@@ -41174,11 +41174,14 @@ end;
 // смене вкладки, подключении и отключении (UpdateBuildBar).
 procedure TForm1.ArdFillPortCombo;
 var
-  PortIdx, SelIdx, TextWidth, MaxWidth: Integer;
-  ItemText: string;
+  PortIdx, SelIdx, TextWidth, MaxWidth, BoardIdx: Integer;
+  ItemText, CurFqbn, CurBoardName, PortFqbn: string;
 begin
   if (cmbArdPort = nil) or (FArdPorts = nil) or (FArdHw = nil) then
     Exit;
+  // FQBN в каждом пункте: у выбранного порта - тот, с которым будет
+  // сборка (ArdReadBoard); у остальных - по VID/PID из boards.txt
+  ArdReadBoard(CurFqbn, CurBoardName);
   FArdPortComboBusy := True;
   try
     cmbArdPort.Items.BeginUpdate;
@@ -41190,18 +41193,44 @@ begin
       for PortIdx := 0 to FArdPorts.Count - 1 do
       begin
         ItemText := ArdPortCaption(FArdPorts[PortIdx]);
-        cmbArdPort.Items.Add(ItemText);
         if CompareText(FArdPorts[PortIdx].Name, FArdPort) = 0 then
+        begin
           SelIdx := PortIdx;
+          PortFqbn := CurFqbn;
+          if PortFqbn = '' then
+            PortFqbn := 'FQBN не выбран';
+        end
+        else
+        begin
+          BoardIdx := FArdHw.BoardByVidPid(FArdPorts[PortIdx].Vid,
+                                           FArdPorts[PortIdx].Pid);
+          if BoardIdx >= 0 then
+            PortFqbn := FArdHw.Boards[BoardIdx].Fqbn
+          else
+            PortFqbn := '';
+        end;
+        if PortFqbn <> '' then
+          ItemText := ItemText + '  ' + PortFqbn;
+        cmbArdPort.Items.Add(ItemText);
         TextWidth := cmbArdPort.Canvas.TextWidth(ItemText);
         if TextWidth > MaxWidth then
           MaxWidth := TextWidth;
       end;
       // Выбранный порт отключён - он остаётся в списке с пометкой
       if (SelIdx < 0) and (FArdPort <> '') then
-        SelIdx := cmbArdPort.Items.Add(FArdPort + ' (отключён)');
+      begin
+        ItemText := FArdPort + ' (отключён)';
+        if CurFqbn <> '' then
+          ItemText := ItemText + '  ' + CurFqbn;
+        SelIdx := cmbArdPort.Items.Add(ItemText);
+      end;
       if cmbArdPort.Items.Count = 0 then
-        SelIdx := cmbArdPort.Items.Add('(плат на USB нет)');
+      begin
+        ItemText := '(плат на USB нет)';
+        if CurFqbn <> '' then
+          ItemText := ItemText + '  ' + CurFqbn;
+        SelIdx := cmbArdPort.Items.Add(ItemText);
+      end;
     finally
       cmbArdPort.Items.EndUpdate;
     end;
