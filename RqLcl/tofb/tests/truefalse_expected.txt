@@ -4,6 +4,7 @@
 3:False=0
 4: Not False=-1
 cmp -1 0
+const false 0
 true 1 false 0 flag 1 not true -2
 checked = true
 checked = false

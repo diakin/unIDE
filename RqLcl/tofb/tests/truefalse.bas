@@ -11,6 +11,9 @@ print"4: Not False=";Not  False
 PRINT "cmp "; (2 > 1); " "; (2 < 1)
 $define  False  0
 $define True  1
+' CONST after $define (RapidQ test 2026-10-08: PRINT False -> 0)
+CONST False = 0: CONST True = 1
+PRINT "const false "; False
 DIM Flag AS INTEGER
 DIM Box AS QCHECKBOX
 Flag = TRUE

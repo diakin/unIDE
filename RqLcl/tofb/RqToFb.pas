@@ -3246,6 +3246,20 @@ var
   VarRec: TRqVar;
 begin
   NameIdx := NextSig(AToks, AFrom + 1, ATo);
+  // $define False 0 ... CONST False = 0: имя уже заменено числом. RapidQ
+  // такое компилирует, False дальше - 0 (тест пользователя 2026-10-08) -
+  // CONST пропускается; другое значение - предупреждение
+  if (NameIdx >= 0) and (AToks[NameIdx].Kind = tkNumber) then
+  begin
+    EqIdx := NextSig(AToks, NameIdx + 1, ATo);
+    if IsOp(AToks, EqIdx, '=') and
+       (CompareText(Trim(RawText(AToks, EqIdx + 1, ATo)), AToks[NameIdx].Text) <> 0) then
+      Warn('CONST ' + AToks[NameIdx].Text + ' = ' + Trim(RawText(AToks, EqIdx + 1, ATo)) +
+           ': имя константы заменено $DEFINE на ' + AToks[NameIdx].Text +
+           ', значение константы не используется');
+    Rebuild(AToks, AFrom, ATo, '');
+    Exit;
+  end;
   if (NameIdx < 0) or (AToks[NameIdx].Kind <> tkIdent) then
     Exit;
   EqIdx := NextSig(AToks, NameIdx + 1, ATo);
