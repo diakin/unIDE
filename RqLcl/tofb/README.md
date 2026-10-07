@@ -29,6 +29,7 @@
 - Параметры — `ByVal`, кроме `BYREF`, `$OPTION BYREF`, объектов, массивов и TYPE; `SUB` без параметров после `DECLARE SUB` с параметрами берёт их из DECLARE.
 - `Объект.OnXxx = Процедура` → `@Процедура`; в `rqlcl.bi` обработчики и с `Sender`, и без него.
 - `Result =` в функции → `Function =`; `INC x[, n]` / `DEC` → `x += n` / `x -= n`; `CALL`, `LET` убираются; `'$...` и `' $...` в комментарии → `''$...` (иначе fbc принимает за метакоманду; `' $` fbc тоже читает как метакоманду, проверено).
+- Параметр или локальная переменная с именем константы модуля (`CONST clR` и параметр `Clr` в rapidq.inc) — с `_p`: в RapidQ параметр перекрывает константу, в FreeBASIC это ошибка.
 - `.Pointer` → `.PointerAddr` (`Pointer` в FreeBASIC — ключевое слово); таблица `RqMemberMapText`.
 - В заголовке главного файла: `#include once "rqrt.bi"`, `"rqstream.bi"`, `"rqlcl.bi"`.
 
@@ -42,8 +43,9 @@ FIELD$, REPLACESUBSTR$, INSERT$, DELETE$, REPLACE$, REVERSE$, CONVBASE$, HEX$ (8
 - `tests/types16.bas` — вывод совпадает с RapidQ построчно.
 - `tests/b_eq_a.bas` — `b=a` (a — STRING) даёт 0, как в RapidQ, с предупреждением при переводе.
 - `tests/gui1.bas` + `mylib.inc` — QFORM/QLABEL/QEDIT/QBUTTON, обработчики без Sender, DECLARE, FUNCTION с `Result` и с именем, CONST, DEFINT, массив, SELECT CASE, FOR, однострочный IF/ELSE, неявные переменные модуля и локальные, `$INCLUDE`, `$DEFINE`, `$IFDEF`/`$IFNDEF`, `$ESCAPECHARS`.
+- `tests/richedit.bas` — QRICHEDIT как в `AddClrString` из rapidq.inc (Sender, SelAttributes.Color, AddStrings), `SelAttributes = Font`, `RichEdit.Font.Size`.
 - `tests/fontstream.bas` — QFONT (Label.Font = Font, Label.Font.Name) и QMEMORYSTREAM (WriteLine, WriteNum, ReadLine, ReadNum, Size, Pointer).
-- `rapidq.inc` из `rapidq_ref/inc` (с его include) переводится без ошибок перевода за 0,3 с. fbc на результате: было около 300 ошибок, после добавления функций, QFONT и потоков — 243 (2026-10-07). Основные оставшиеся: нет классов QSTRINGLIST, QRICHEDIT, QSTRINGGRID, QREGISTRY, QDIRTREE; `TYPE … EXTENDS QObject` с `PROPERTY SET`; индекс строки `s[N]`, `x++`, имена с `~`; число вместо строки в параметре (`REPLACESUBSTR$(s, crlfcrlf, crlf)` с необъявленной `crlfcrlf`).
+- `rapidq.inc` из `rapidq_ref/inc` (с его include) переводится без ошибок перевода за 0,3 с. fbc на результате: было около 300 ошибок, после добавления функций, QFONT и потоков — 243, после QRICHEDIT — 231 (2026-10-07). Основные оставшиеся: нет классов QSTRINGLIST, QSTRINGGRID, QREGISTRY, QDIRTREE; `TYPE … EXTENDS QObject` с `PROPERTY SET`; индекс строки `s[N]`, `x++`, имена с `~`; число вместо строки в параметре (`REPLACESUBSTR$(s, crlfcrlf, crlf)` с необъявленной `crlfcrlf`).
 
 ## Пока не сделано
 

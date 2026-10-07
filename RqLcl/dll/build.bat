@@ -9,6 +9,8 @@ rem
 rem Set LAZDIR and FPCVER below to your Lazarus installation.
 rem fpc.cfg is not used (-n): it lists every FPC package, and the "menus"
 rem unit of Free Vision would hide the LCL one.
+rem QRICHEDIT uses the RichMemo package (Lazarus CCR, modified LGPL like
+rem the LCL); its Windows units are in the richmemo folder next to this file.
 
 set LAZDIR=C:\lazarus
 set FPCVER=3.2.2
@@ -49,6 +51,7 @@ for %%P in (rtl rtl-objpas rtl-extra rtl-unicode rtl-generics rtl-console fcl-ba
   -Fu"%LAZDIR%\lcl" -Fi"%LAZDIR%\lcl\include" -Fu"%LAZDIR%\lcl\widgetset" ^
   -Fu"%LAZDIR%\lcl\interfaces\win32" -Fi"%LAZDIR%\lcl\interfaces\win32" ^
   -Fu"%LAZDIR%\lcl\forms" -Fu"%LAZDIR%\components\freetype" ^
+  -Fu"%~dp0richmemo" -Fu"%~dp0richmemo\win32" ^
   -dLCL -dLCLwin32 -dDisableUTF8RTL ^
   -FU"%OUT%\units" -FE"%OUT%" -o"%~dp0..\bin\rqlcl%SUFFIX%.dll" ^
   "%~dp0rqlcl.lpr"

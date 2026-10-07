@@ -3,7 +3,8 @@
 //
 //  Прототип. DLL отдаёт плоский набор функций (stdcall): создать компонент
 //  по имени класса RapidQ, читать и ставить свойства, назначать события,
-//  вызывать методы. Сопоставление классов RapidQ и LCL - в RqClassTable,
+//  вызывать методы. Сопоставление классов RapidQ и LCL - в RqClassTable
+//  (QRICHEDIT - TRichMemo из пакета RichMemo, папка richmemo),
 //  имён свойств - в RqPropTable (что совпадает по имени, берётся как есть).
 //
 //  Объект для вызывающей стороны - указатель на компонент LCL. Свой
@@ -25,10 +26,10 @@ interface
 
 uses
   Classes, SysUtils, TypInfo, Math, Controls, StdCtrls, Forms, Graphics,
-  LazUTF8, LCLType;
+  LazUTF8, LCLType, RichMemo, rqlclrich;
 
 const
-  RqLclVersion = 1;   // меняется при несовместимой смене набора функций
+  RqLclVersion = 2;   // меняется при несовместимой смене набора функций
 
 type
   // Обработчик события на стороне вызывающего:
@@ -58,6 +59,10 @@ function RqGetObj(AObj: Pointer; AProp: PChar): Pointer; stdcall;
 function RqGetHandle(AObj: Pointer): PtrInt; stdcall;
 function RqGetItemStr(AObj: Pointer; AProp: PChar; AIndex: Integer;
                       ABuf: PChar; ABufLen: Integer): Integer; stdcall;
+function RqSetItemStr(AObj: Pointer; AProp: PChar; AIndex: Integer;
+                      AValue: PChar): Integer; stdcall;
+function RqCallStr(AObj: Pointer; AMethod: PChar; AValue: PChar): Integer;
+  stdcall;
 procedure RqDoEvents; stdcall;
 function RqLastError(ABuf: PChar; ABufLen: Integer): Integer; stdcall;
 
@@ -95,7 +100,7 @@ type
   end;
 
 var
-  RqClassTable: array[0..3] of TRqClassRec;
+  RqClassTable: array[0..4] of TRqClassRec;
   RqPropTable: array[0..0] of TRqPropRec;
   RqLastErrorText: string = '';
   RqInitDone: Boolean = False;
@@ -114,6 +119,8 @@ begin
   RqClassTable[2].LclClass := TLabel;
   RqClassTable[3].RqName := 'QEDIT';
   RqClassTable[3].LclClass := TEdit;
+  RqClassTable[4].RqName := 'QRICHEDIT';
+  RqClassTable[4].LclClass := TRichMemo;
   // У RapidQ OnClose формы - сигнал о закрытии без параметров; в LCL ему
   // ближе всего OnCloseQuery (FireCloseQuery разрешает закрытие)
   RqPropTable[0].RqName := 'ONCLOSE';
@@ -324,6 +331,11 @@ var
 begin
   Result := 0;
   try
+    if EditSetInt(TObject(AObj), string(AProp), AValue) then
+    begin
+      Result := 1;
+      Exit;
+    end;
     Info := FindProp(TObject(AObj), string(AProp));
     if Info = nil then
       Exit;
@@ -351,6 +363,8 @@ var
 begin
   Result := 0;
   try
+    if EditGetInt(TObject(AObj), string(AProp), Result) then
+      Exit;
     Info := FindProp(TObject(AObj), string(AProp));
     if Info = nil then
       Exit;
@@ -368,6 +382,11 @@ var
 begin
   Result := 0;
   try
+    if EditSetStr(TObject(AObj), string(AProp), string(AValue)) then
+    begin
+      Result := 1;
+      Exit;
+    end;
     Info := FindProp(TObject(AObj), string(AProp));
     if Info = nil then
       Exit;
@@ -398,10 +417,13 @@ begin
   try
     if (ABuf <> nil) and (ABufLen > 0) then
       ABuf^ := #0;
-    Info := FindProp(TObject(AObj), string(AProp));
-    if Info = nil then
-      Exit;
-    Value := UTF8ToWinCP(GetStrProp(TObject(AObj), Info));
+    if not EditGetStr(TObject(AObj), string(AProp), Value) then
+    begin
+      Info := FindProp(TObject(AObj), string(AProp));
+      if Info = nil then
+        Exit;
+      Value := UTF8ToWinCP(GetStrProp(TObject(AObj), Info));
+    end;
     Result := Length(Value);
     if (ABuf <> nil) and (ABufLen > 0) then
       StrPLCopy(ABuf, Value, ABufLen - 1);
@@ -432,6 +454,24 @@ begin
         Exit;
       end;
       TControl(AObj).Parent := TWinControl(AValue);
+      Result := 1;
+      Exit;
+    end;
+    // Font2 = Font1 (QFONT): значения копируются
+    if CompareText(string(AProp), 'ASSIGN') = 0 then
+    begin
+      if not (TObject(AObj) is TPersistent) or
+         not (TObject(AValue) is TPersistent) then
+      begin
+        SetError('Assign: no object');
+        Exit;
+      end;
+      TPersistent(AObj).Assign(TPersistent(AValue));
+      Result := 1;
+      Exit;
+    end;
+    if EditSetObj(TObject(AObj), string(AProp), TObject(AValue)) then
+    begin
       Result := 1;
       Exit;
     end;
@@ -532,6 +572,11 @@ begin
   try
     Obj := TObject(AObj);
     Method := UpperCase(string(AMethod));
+    if EditCall(Obj, Method) then
+    begin
+      Result := 1;
+      Exit;
+    end;
     if Obj is TCustomForm then
     begin
       if Method = 'SHOWMODAL' then
@@ -645,9 +690,15 @@ end;
 function RqGetObj(AObj: Pointer; AProp: PChar): Pointer; stdcall;
 var
   Info: PPropInfo;
+  Found: TObject;
 begin
   Result := nil;
   try
+    if EditGetObj(TObject(AObj), string(AProp), Found) then
+    begin
+      Result := Found;
+      Exit;
+    end;
     Info := FindProp(TObject(AObj), string(AProp));
     if Info = nil then
       Exit;
@@ -696,7 +747,9 @@ begin
     Prop := UpperCase(string(AProp));
     Found := False;
     Value := '';
-    if (TObject(AObj) is TFont) and (Prop = 'FONTNAME') then
+    if EditGetItem(TObject(AObj), Prop, AIndex, Value) then
+      Found := True
+    else if (TObject(AObj) is TFont) and (Prop = 'FONTNAME') then
     begin
       Found := True;
       if (AIndex < 0) or (AIndex >= Screen.Fonts.Count) then
@@ -726,6 +779,43 @@ begin
       SetError('RqGetItemStr ' + string(AProp) + ': ' + E.Message);
       Result := -1;
     end;
+  end;
+end;
+
+// Записать строку списка по номеру (с 0): Line(i) у QRICHEDIT
+function RqSetItemStr(AObj: Pointer; AProp: PChar; AIndex: Integer;
+                      AValue: PChar): Integer; stdcall;
+begin
+  Result := 0;
+  try
+    if EditSetItem(TObject(AObj), string(AProp), AIndex, string(AValue)) then
+      Result := 1
+    else if AObj = nil then
+      SetError('RqSetItemStr ' + string(AProp) + ': no object')
+    else
+      SetError(TObject(AObj).ClassName + ': no list ' + string(AProp));
+  except
+    on E: Exception do
+      SetError('RqSetItemStr ' + string(AProp) + ': ' + E.Message);
+  end;
+end;
+
+// Метод с одним строковым параметром: AddStrings, LoadFromFile,
+// SaveToFile. 1 - выполнен.
+function RqCallStr(AObj: Pointer; AMethod: PChar; AValue: PChar): Integer;
+  stdcall;
+begin
+  Result := 0;
+  try
+    if EditCallStr(TObject(AObj), string(AMethod), string(AValue)) then
+      Result := 1
+    else if AObj = nil then
+      SetError('RqCallStr ' + string(AMethod) + ': no object')
+    else
+      SetError(TObject(AObj).ClassName + ': no method ' + string(AMethod));
+  except
+    on E: Exception do
+      SetError('RqCallStr ' + string(AMethod) + ': ' + E.Message);
   end;
 end;
 

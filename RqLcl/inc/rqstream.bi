@@ -14,6 +14,8 @@
 
 #pragma once
 
+#include once "rqrt.bi"   ' RqRtWarn
+
 ' Открытие и закрытие файла - вне типа: внутри методов QFILESTREAM слова
 ' Open и Close означали бы его же методы
 Function RqRtFileOpen(ByRef FileName As String, ByVal Method As Long) As Long

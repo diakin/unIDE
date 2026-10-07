@@ -1061,6 +1061,12 @@ begin
   Result := TRqVar.Create;
   Result.Name := UpperCase(ADisplay);
   Result.FbName := Mangle(ADisplay);
+  // Параметр или локальная с именем константы модуля: в RapidQ она
+  // перекрывает константу, в FreeBASIC - ошибка "Duplicated definition"
+  // (rapidq.inc: CONST clR и параметр Clr)
+  if (AScope <> '') and FVars.Find('|' + UpperCase(ADisplay), Found) and
+     TRqVar(FVars.Objects[Found]).IsConst then
+    Result.FbName := Result.FbName + '_p';
   Result.RqType := ARqType;
   Result.Scope := AScope;
   Result.IsArray := AIsArray;

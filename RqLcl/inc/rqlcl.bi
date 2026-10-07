@@ -26,6 +26,8 @@
 
 #pragma once
 
+#include once "rqstream.bi"
+
 #ifdef __FB_64BIT__
     #define RQLCL_DLL "rqlcl64.dll"
 #else
@@ -64,6 +66,11 @@ Type RqGetHandleFn As Function stdcall (ByVal ObjPtr As Any Ptr) As Integer
 Type RqGetItemStrFn As Function stdcall (ByVal ObjPtr As Any Ptr, _
     ByVal PropName As ZString Ptr, ByVal ItemIndex As Long, _
     ByVal Buffer As ZString Ptr, ByVal BufferLen As Long) As Long
+Type RqSetItemStrFn As Function stdcall (ByVal ObjPtr As Any Ptr, _
+    ByVal PropName As ZString Ptr, ByVal ItemIndex As Long, _
+    ByVal Value As ZString Ptr) As Long
+Type RqCallStrFn As Function stdcall (ByVal ObjPtr As Any Ptr, _
+    ByVal MethodName As ZString Ptr, ByVal Value As ZString Ptr) As Long
 Type RqDoEventsFn As Sub stdcall ()
 Type RqLastErrorFn As Function stdcall (ByVal Buffer As ZString Ptr, _
     ByVal BufferLen As Long) As Long
@@ -84,6 +91,8 @@ Dim Shared RqCallInt As RqCallIntFn
 Dim Shared RqGetObj As RqGetObjFn
 Dim Shared RqGetHandle As RqGetHandleFn
 Dim Shared RqGetItemStr As RqGetItemStrFn
+Dim Shared RqSetItemStr As RqSetItemStrFn
+Dim Shared RqCallStr As RqCallStrFn
 Dim Shared RqDoEventsProc As RqDoEventsFn
 Dim Shared RqLastError As RqLastErrorFn
 
@@ -127,6 +136,8 @@ Sub RqLclEnsure()
     RqGetObj = Cast(RqGetObjFn, DyLibSymbol(RqLclLib, "RqGetObj"))
     RqGetHandle = Cast(RqGetHandleFn, DyLibSymbol(RqLclLib, "RqGetHandle"))
     RqGetItemStr = Cast(RqGetItemStrFn, DyLibSymbol(RqLclLib, "RqGetItemStr"))
+    RqSetItemStr = Cast(RqSetItemStrFn, DyLibSymbol(RqLclLib, "RqSetItemStr"))
+    RqCallStr = Cast(RqCallStrFn, DyLibSymbol(RqLclLib, "RqCallStr"))
     RqDoEventsProc = Cast(RqDoEventsFn, DyLibSymbol(RqLclLib, "RqDoEvents"))
     RqLastError = Cast(RqLastErrorFn, DyLibSymbol(RqLclLib, "RqLastError"))
     If (RqInit = 0) Or (RqCreate = 0) Or (RqSetInt = 0) Or (RqGetInt = 0) _
@@ -134,7 +145,7 @@ Sub RqLclEnsure()
        Or (RqSetEvent = 0) Or (RqCall = 0) Or (RqDoEventsProc = 0) _
        Or (RqLastError = 0) Or (RqFree = 0) Or (RqDone = 0) _
        Or (RqCallInt = 0) Or (RqGetObj = 0) Or (RqGetHandle = 0) _
-       Or (RqGetItemStr = 0) Then
+       Or (RqGetItemStr = 0) Or (RqSetItemStr = 0) Or (RqCallStr = 0) Then
         RqLclMessageBox(0, "В " & RQLCL_DLL & " нет нужных функций " & _
             "(другая версия DLL?)", "RqLcl", &h10)
         End 1
@@ -182,6 +193,25 @@ Sub RqLclCall(ByVal ObjPtr As Any Ptr, ByRef MethodName As String)
     If RqCall(ObjPtr, StrPtr(MethodName)) = 0 Then RqLclShowError(MethodName)
 End Sub
 
+Sub RqLclCallStr(ByVal ObjPtr As Any Ptr, ByRef MethodName As String, ByRef Value As String)
+    If RqCallStr(ObjPtr, StrPtr(MethodName), StrPtr(Value)) = 0 Then RqLclShowError(MethodName)
+End Sub
+
+' Строка списка по номеру (с 0); ошибка - окно и ""
+Function RqLclGetItem(ByVal ObjPtr As Any Ptr, ByRef PropName As String, ByVal ItemIndex As Long) As String
+    Dim TextLen As Long
+    Dim TextValue As String
+    TextLen = RqGetItemStr(ObjPtr, StrPtr(PropName), ItemIndex, 0, 0)
+    If TextLen < 0 Then
+        RqLclShowError(PropName & "(" & ItemIndex & ")")
+        Return ""
+    End If
+    If TextLen = 0 Then Return ""
+    TextValue = Space(TextLen)
+    RqGetItemStr(ObjPtr, StrPtr(PropName), ItemIndex, StrPtr(TextValue), TextLen + 1)
+    Return TextValue
+End Function
+
 ' DoEvents RapidQ
 Sub DoEvents()
     RqLclEnsure()
@@ -192,14 +222,17 @@ End Sub
 '  QFONT - шрифт: имя, размер, цвет, стили. Присваивается элементу:
 '      Label.Font = Font
 '  Элемент копирует значения шрифта, сам QFONT остаётся отдельным.
-'  Control.Font (чтение) - QFONT поверх шрифта элемента: его изменения
-'  сразу видны на элементе.
+'  Control.Font - QFONT поверх шрифта элемента: Label.Font.Size = 12
+'  сразу меняет элемент.
+'  Font у элемента - функция ByRef, не свойство: у свойства FreeBASIC с
+'  парой get/set нельзя писать Label.Font.Size = 12 (проверено, fbc 1.10.1).
 ' ---------------------------------------------------------------------------
 
 Type QFONT
     RqObj As Any Ptr
     Declare Constructor()
     Declare Constructor(ByVal Existing As Any Ptr)
+    Declare Operator Let(ByRef Value As QFONT)
     Declare Property Name() As String
     Declare Property Name(ByRef Value As String)
     Declare Property Size() As Long
@@ -227,6 +260,15 @@ End Constructor
 Constructor QFONT(ByVal Existing As Any Ptr)
     RqObj = Existing
 End Constructor
+' Font2 = Font1, Label.Font = Font1: значения копируются в шрифт слева
+Operator QFONT.Let(ByRef Value As QFONT)
+    If (@Value = @This) OrElse (Value.RqObj = RqObj) Then Exit Operator
+    If RqObj = 0 Then
+        RqObj = Value.RqObj
+        Exit Operator
+    End If
+    If RqSetObj(RqObj, "Assign", Value.RqObj) = 0 Then RqLclShowError("QFONT =")
+End Operator
 Property QFONT.Name() As String
     Return RqLclGetStr(RqObj, "Name")
 End Property
@@ -271,17 +313,7 @@ Property QFONT.FontCount() As Long
 End Property
 ' Имя шрифта системы по номеру, с 0
 Property QFONT.FontName(ByVal ItemIndex As Long) As String
-    Dim TextLen As Long
-    Dim TextValue As String
-    TextLen = RqGetItemStr(RqObj, "FontName", ItemIndex, 0, 0)
-    If TextLen < 0 Then
-        RqLclShowError("FontName(" & ItemIndex & ")")
-        Return ""
-    End If
-    If TextLen = 0 Then Return ""
-    TextValue = Space(TextLen)
-    RqGetItemStr(RqObj, "FontName", ItemIndex, StrPtr(TextValue), TextLen + 1)
-    Return TextValue
+    Return RqLclGetItem(RqObj, "FontName", ItemIndex)
 End Property
 ' Стили: fsBold 0, fsItalic 1, fsUnderline 2, fsStrikeOut 3. В RapidQ
 ' число параметров не ограничено, здесь - до четырёх (стилей всего четыре)
@@ -310,6 +342,7 @@ End Sub
 
 Type QCONTROL
     RqObj As Any Ptr
+    FontWrap As QFONT = QFONT(0)
     Declare Property Left() As Long
     Declare Property Left(ByVal Value As Long)
     Declare Property Top() As Long
@@ -329,8 +362,7 @@ Type QCONTROL
     Declare Property ShowHint() As Long
     Declare Property ShowHint(ByVal Value As Long)
     Declare Property Parent(ByRef Value As QCONTROL)
-    Declare Property Font() As QFONT
-    Declare Property Font(ByRef Value As QFONT)
+    Declare Function Font() ByRef As QFONT
     Declare Property Handle() As Integer
     Declare Sub Show()
     Declare Sub Hide()
@@ -395,15 +427,12 @@ End Property
 Property QCONTROL.Parent(ByRef Value As QCONTROL)
     If RqSetObj(RqObj, "Parent", Value.RqObj) = 0 Then RqLclShowError("Parent")
 End Property
-Property QCONTROL.Font() As QFONT
-    Dim FontObj As Any Ptr = RqGetObj(RqObj, "Font")
-    If FontObj = 0 Then RqLclShowError("Font")
-    Return QFONT(FontObj)
-End Property
-' Элемент копирует значения шрифта
-Property QCONTROL.Font(ByRef Value As QFONT)
-    If RqSetObj(RqObj, "Font", Value.RqObj) = 0 Then RqLclShowError("Font")
-End Property
+' Шрифт элемента; Label.Font = Font копирует значения (QFONT.Let)
+Function QCONTROL.Font() ByRef As QFONT
+    FontWrap.RqObj = RqGetObj(RqObj, "Font")
+    If FontWrap.RqObj = 0 Then RqLclShowError("Font")
+    Return FontWrap
+End Function
 ' Окно Windows (HWND)
 Property QCONTROL.Handle() As Integer
     Return RqGetHandle(RqObj)
@@ -601,3 +630,296 @@ Property QEDIT.OnChange(ByVal Handler As Sub())
     OnChangeProc = 0
     If RqSetEvent(RqObj, "OnChange", @QEDIT_ChangeEvent) = 0 Then RqLclShowError("OnChange")
 End Property
+
+' ---------------------------------------------------------------------------
+'  QRICHEDIT - многострочный текст с форматированием (RichMemo LCL поверх
+'  окна RichEdit Windows)
+'      RichEdit.SelStart = Len(RichEdit.Text)
+'      RichEdit.SelAttributes.Color = &hFF     ' атрибуты точки ввода
+'      RichEdit.AddStrings "красная строка"
+'  Позиции SelStart / SelLength - в символах окна RichEdit: перевод строки
+'  в нём один символ, а в Text - два (CR LF).
+' ---------------------------------------------------------------------------
+
+Type QRICHEDIT Extends QCONTROL
+    SelAttrWrap As QFONT = QFONT(0)
+    OnChangeProc As Sub(ByRef Sender As QRICHEDIT)
+    OnChangeProcPlain As Sub()
+    Declare Constructor()
+    Declare Property Text() As String
+    Declare Property Text(ByRef Value As String)
+    Declare Property Align() As Long
+    Declare Property Align(ByVal Value As Long)
+    Declare Property Alignment() As Long
+    Declare Property Alignment(ByVal Value As Long)
+    Declare Property BorderStyle() As Long
+    Declare Property BorderStyle(ByVal Value As Long)
+    Declare Property HideScrollBars() As Long
+    Declare Property HideScrollBars(ByVal Value As Long)
+    Declare Property HideSelection() As Long
+    Declare Property HideSelection(ByVal Value As Long)
+    Declare Property Line(ByVal LineIndex As Long) As String
+    Declare Property Line(ByVal LineIndex As Long, ByRef Value As String)
+    Declare Property LineCount() As Long
+    Declare Property Modified() As Long
+    Declare Property Modified(ByVal Value As Long)
+    Declare Property PlainText() As Long
+    Declare Property PlainText(ByVal Value As Long)
+    Declare Property ReadOnly() As Long
+    Declare Property ReadOnly(ByVal Value As Long)
+    Declare Property ScrollBars() As Long
+    Declare Property ScrollBars(ByVal Value As Long)
+    Declare Function SelAttributes() ByRef As QFONT
+    Declare Property SelLength() As Long
+    Declare Property SelLength(ByVal Value As Long)
+    Declare Property SelStart() As Long
+    Declare Property SelStart(ByVal Value As Long)
+    Declare Property SelText() As String
+    Declare Property SelText(ByRef Value As String)
+    Declare Property TabOrder() As Long
+    Declare Property TabOrder(ByVal Value As Long)
+    Declare Property Tag() As Long
+    Declare Property Tag(ByVal Value As Long)
+    Declare Property WantTabs() As Long
+    Declare Property WantTabs(ByVal Value As Long)
+    Declare Property WhereX() As Long
+    Declare Property WhereY() As Long
+    Declare Property WordWrap() As Long
+    Declare Property WordWrap(ByVal Value As Long)
+    Declare Property OnChange(ByVal Handler As Sub(ByRef Sender As QRICHEDIT))
+    Declare Property OnChange(ByVal Handler As Sub())
+    Declare Sub AddStrings Overload (ByRef Text1 As String)
+    Declare Sub AddStrings Overload (ByRef Text1 As String, ByRef Text2 As String)
+    Declare Sub AddStrings Overload (ByRef Text1 As String, ByRef Text2 As String, _
+        ByRef Text3 As String)
+    Declare Sub AddStrings Overload (ByRef Text1 As String, ByRef Text2 As String, _
+        ByRef Text3 As String, ByRef Text4 As String)
+    Declare Sub AddString(ByRef Text1 As String)
+    Declare Sub Clear()
+    Declare Sub CopyToClipboard()
+    Declare Sub CutToClipboard()
+    Declare Sub PasteFromClipboard()
+    Declare Sub SelectAll()
+    Declare Sub LoadFromFile(ByRef FileName As String)
+    Declare Sub SaveToFile(ByRef FileName As String)
+    Declare Sub LoadFromStream(ByRef Stream As RqStream)
+    Declare Sub SaveToStream(ByRef Stream As RqStream)
+End Type
+
+Private Sub QRICHEDIT_ChangeEvent stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any Ptr)
+    Dim EditPtr As QRICHEDIT Ptr = UserPtr
+    If EditPtr->OnChangeProc <> 0 Then EditPtr->OnChangeProc(*EditPtr)
+    If EditPtr->OnChangeProcPlain <> 0 Then EditPtr->OnChangeProcPlain()
+End Sub
+
+Constructor QRICHEDIT()
+    RqObj = RqLclNew("QRICHEDIT", @This)
+End Constructor
+Property QRICHEDIT.Text() As String
+    Return RqLclGetStr(RqObj, "Text")
+End Property
+Property QRICHEDIT.Text(ByRef Value As String)
+    RqLclSetStr(RqObj, "Text", Value)
+End Property
+Property QRICHEDIT.Align() As Long
+    Return RqGetInt(RqObj, "Align")
+End Property
+Property QRICHEDIT.Align(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Align", Value)
+End Property
+Property QRICHEDIT.Alignment() As Long
+    Return RqGetInt(RqObj, "Alignment")
+End Property
+Property QRICHEDIT.Alignment(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Alignment", Value)
+End Property
+Property QRICHEDIT.BorderStyle() As Long
+    Return RqGetInt(RqObj, "BorderStyle")
+End Property
+Property QRICHEDIT.BorderStyle(ByVal Value As Long)
+    RqLclSetInt(RqObj, "BorderStyle", Value)
+End Property
+Property QRICHEDIT.HideScrollBars() As Long
+    Return RqGetInt(RqObj, "HideScrollBars")
+End Property
+Property QRICHEDIT.HideScrollBars(ByVal Value As Long)
+    RqLclSetInt(RqObj, "HideScrollBars", Value)
+End Property
+Property QRICHEDIT.HideSelection() As Long
+    Return RqGetInt(RqObj, "HideSelection")
+End Property
+Property QRICHEDIT.HideSelection(ByVal Value As Long)
+    RqLclSetInt(RqObj, "HideSelection", Value)
+End Property
+' Строка с номером LineIndex (с 0)
+Property QRICHEDIT.Line(ByVal LineIndex As Long) As String
+    Return RqLclGetItem(RqObj, "Line", LineIndex)
+End Property
+Property QRICHEDIT.Line(ByVal LineIndex As Long, ByRef Value As String)
+    If RqSetItemStr(RqObj, "Line", LineIndex, StrPtr(Value)) = 0 Then
+        RqLclShowError("Line(" & LineIndex & ")")
+    End If
+End Property
+Property QRICHEDIT.LineCount() As Long
+    Return RqGetInt(RqObj, "LineCount")
+End Property
+Property QRICHEDIT.Modified() As Long
+    Return RqGetInt(RqObj, "Modified")
+End Property
+Property QRICHEDIT.Modified(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Modified", Value)
+End Property
+' 1 - LoadFromFile / SaveToFile и потоки - обычный текст, не RTF
+Property QRICHEDIT.PlainText() As Long
+    Return RqGetInt(RqObj, "PlainText")
+End Property
+Property QRICHEDIT.PlainText(ByVal Value As Long)
+    RqLclSetInt(RqObj, "PlainText", Value)
+End Property
+Property QRICHEDIT.ReadOnly() As Long
+    Return RqGetInt(RqObj, "ReadOnly")
+End Property
+Property QRICHEDIT.ReadOnly(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ReadOnly", Value)
+End Property
+Property QRICHEDIT.ScrollBars() As Long
+    Return RqGetInt(RqObj, "ScrollBars")
+End Property
+Property QRICHEDIT.ScrollBars(ByVal Value As Long)
+    RqLclSetInt(RqObj, "ScrollBars", Value)
+End Property
+' Атрибуты выделения: изменение свойств - сразу на выделение (только
+' изменённое свойство; без выделения - точка ввода)
+' RichEdit.SelAttributes = Font - значения шрифта выделению (QFONT.Let)
+Function QRICHEDIT.SelAttributes() ByRef As QFONT
+    SelAttrWrap.RqObj = RqGetObj(RqObj, "SelAttributes")
+    If SelAttrWrap.RqObj = 0 Then RqLclShowError("SelAttributes")
+    Return SelAttrWrap
+End Function
+Property QRICHEDIT.SelLength() As Long
+    Return RqGetInt(RqObj, "SelLength")
+End Property
+Property QRICHEDIT.SelLength(ByVal Value As Long)
+    RqLclSetInt(RqObj, "SelLength", Value)
+End Property
+Property QRICHEDIT.SelStart() As Long
+    Return RqGetInt(RqObj, "SelStart")
+End Property
+Property QRICHEDIT.SelStart(ByVal Value As Long)
+    RqLclSetInt(RqObj, "SelStart", Value)
+End Property
+Property QRICHEDIT.SelText() As String
+    Return RqLclGetStr(RqObj, "SelText")
+End Property
+' Замена выделения; курсор - после вставленного
+Property QRICHEDIT.SelText(ByRef Value As String)
+    RqLclSetStr(RqObj, "SelText", Value)
+End Property
+Property QRICHEDIT.TabOrder() As Long
+    Return RqGetInt(RqObj, "TabOrder")
+End Property
+Property QRICHEDIT.TabOrder(ByVal Value As Long)
+    RqLclSetInt(RqObj, "TabOrder", Value)
+End Property
+Property QRICHEDIT.Tag() As Long
+    Return RqGetInt(RqObj, "Tag")
+End Property
+Property QRICHEDIT.Tag(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Tag", Value)
+End Property
+Property QRICHEDIT.WantTabs() As Long
+    Return RqGetInt(RqObj, "WantTabs")
+End Property
+Property QRICHEDIT.WantTabs(ByVal Value As Long)
+    RqLclSetInt(RqObj, "WantTabs", Value)
+End Property
+' Позиция курсора: столбец и строка (с 0)
+Property QRICHEDIT.WhereX() As Long
+    Return RqGetInt(RqObj, "WhereX")
+End Property
+Property QRICHEDIT.WhereY() As Long
+    Return RqGetInt(RqObj, "WhereY")
+End Property
+Property QRICHEDIT.WordWrap() As Long
+    Return RqGetInt(RqObj, "WordWrap")
+End Property
+Property QRICHEDIT.WordWrap(ByVal Value As Long)
+    RqLclSetInt(RqObj, "WordWrap", Value)
+End Property
+Property QRICHEDIT.OnChange(ByVal Handler As Sub(ByRef Sender As QRICHEDIT))
+    OnChangeProc = Handler
+    OnChangeProcPlain = 0
+    If RqSetEvent(RqObj, "OnChange", @QRICHEDIT_ChangeEvent) = 0 Then RqLclShowError("OnChange")
+End Property
+' Обработчик без параметра Sender
+Property QRICHEDIT.OnChange(ByVal Handler As Sub())
+    OnChangeProcPlain = Handler
+    OnChangeProc = 0
+    If RqSetEvent(RqObj, "OnChange", @QRICHEDIT_ChangeEvent) = 0 Then RqLclShowError("OnChange")
+End Property
+' Строки в конец, каждая - новой строкой. В RapidQ число параметров не
+' ограничено, здесь - до четырёх
+Sub QRICHEDIT.AddStrings(ByRef Text1 As String)
+    RqLclCallStr(RqObj, "AddStrings", Text1)
+End Sub
+Sub QRICHEDIT.AddStrings(ByRef Text1 As String, ByRef Text2 As String)
+    RqLclCallStr(RqObj, "AddStrings", Text1)
+    RqLclCallStr(RqObj, "AddStrings", Text2)
+End Sub
+Sub QRICHEDIT.AddStrings(ByRef Text1 As String, ByRef Text2 As String, _
+        ByRef Text3 As String)
+    RqLclCallStr(RqObj, "AddStrings", Text1)
+    RqLclCallStr(RqObj, "AddStrings", Text2)
+    RqLclCallStr(RqObj, "AddStrings", Text3)
+End Sub
+Sub QRICHEDIT.AddStrings(ByRef Text1 As String, ByRef Text2 As String, _
+        ByRef Text3 As String, ByRef Text4 As String)
+    RqLclCallStr(RqObj, "AddStrings", Text1)
+    RqLclCallStr(RqObj, "AddStrings", Text2)
+    RqLclCallStr(RqObj, "AddStrings", Text3)
+    RqLclCallStr(RqObj, "AddStrings", Text4)
+End Sub
+' Как в примере документации RapidQ
+Sub QRICHEDIT.AddString(ByRef Text1 As String)
+    RqLclCallStr(RqObj, "AddStrings", Text1)
+End Sub
+Sub QRICHEDIT.Clear()
+    RqLclCall(RqObj, "Clear")
+End Sub
+Sub QRICHEDIT.CopyToClipboard()
+    RqLclCall(RqObj, "CopyToClipboard")
+End Sub
+Sub QRICHEDIT.CutToClipboard()
+    RqLclCall(RqObj, "CutToClipboard")
+End Sub
+Sub QRICHEDIT.PasteFromClipboard()
+    RqLclCall(RqObj, "PasteFromClipboard")
+End Sub
+Sub QRICHEDIT.SelectAll()
+    RqLclCall(RqObj, "SelectAll")
+End Sub
+' RTF (файл начинается с {\rtf) или обычный текст; PlainText = 1 - всегда
+' обычный текст
+Sub QRICHEDIT.LoadFromFile(ByRef FileName As String)
+    RqLclCallStr(RqObj, "LoadFromFile", FileName)
+End Sub
+' RTF; PlainText = 1 - обычный текст
+Sub QRICHEDIT.SaveToFile(ByRef FileName As String)
+    RqLclCallStr(RqObj, "SaveToFile", FileName)
+End Sub
+' Из потока - от текущей позиции до конца
+Sub QRICHEDIT.LoadFromStream(ByRef Stream As RqStream)
+    Dim DataLen As Long = Stream.Size - Stream.Position
+    Dim StreamText As String
+    If DataLen > 0 Then
+        StreamText = Space(DataLen)
+        DataLen = Stream.ReadBuf(StrPtr(StreamText), DataLen)
+        StreamText = Mid(StreamText, 1, DataLen)   ' Left - свойство QCONTROL
+    End If
+    RqLclSetStr(RqObj, "RichText", StreamText)
+End Sub
+' В поток с текущей позиции
+Sub QRICHEDIT.SaveToStream(ByRef Stream As RqStream)
+    Dim StreamText As String = RqLclGetStr(RqObj, "RichText")
+    If Len(StreamText) > 0 Then Stream.WriteBuf(StrPtr(StreamText), Len(StreamText))
+End Sub
