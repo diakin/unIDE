@@ -2516,11 +2516,17 @@ begin
            (Up = 'DEFSNG') or (Up = 'DEFBYTE') or (Up = 'DEFWORD') or
            (Up = 'DEFDWORD') or (Up = 'DEFLNG') or (Up = 'DEFSHORT')) then
     ProcessDef(AToks, FirstIdx, ATo)
-  else if ((Up = 'PUBLIC') or (Up = 'PRIVATE')) and
-          IsWord(AToks, NextIdx, 'CONST') then
+  // PRIVATE / PUBLIC перед CONST, TYPE, DECLARE, SUB, FUNCTION, DIM (как в
+  // VB; Form.inc: Private Type POINTAPI, Private Declare Function ...) -
+  // слово убирается, остальное - обычный оператор
+  else if ((Up = 'PUBLIC') or (Up = 'PRIVATE')) and (NextIdx >= 0) and
+          (Pos(' ' + AToks[NextIdx].Up + ' ',
+               ' CONST TYPE DECLARE SUB FUNCTION SUBI FUNCTIONI DIM ') > 0) then
   begin
     AToks[FirstIdx].OutText := '';
-    ProcessConst(AToks, NextIdx, ATo);
+    if (FirstIdx + 1 < NextIdx) and (AToks[FirstIdx + 1].Kind = tkSpace) then
+      AToks[FirstIdx + 1].OutText := '';
+    ProcessStatement(AToks, NextIdx, ATo);
   end
   else if Up = 'CONST' then
     ProcessConst(AToks, FirstIdx, ATo)
