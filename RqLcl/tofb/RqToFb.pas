@@ -2600,6 +2600,19 @@ begin
   end
   else if FInType then
     ProcessField(AToks, FirstIdx, ATo)
+  // CASE = x - как CASE x (тест пользователя 2026-10-08: x = 0, CASE = 0
+  // совпало). CASE > x и др. в RapidQ - не сравнение (x = 7, CASE > 5 не
+  // совпало, ушло в CASE ELSE); что это значит, не выяснено - ошибка перевода
+  else if (Up = 'CASE') and IsOp(AToks, NextIdx, '=') then
+  begin
+    AToks[NextIdx].OutText := '';
+    ProcessExpr(AToks, NextIdx + 1, ATo);
+  end
+  else if (Up = 'CASE') and (NextIdx >= 0) and (AToks[NextIdx].Kind = tkOp) and
+          (Pos(' ' + AToks[NextIdx].Text + ' ', ' < > <= >= <> ') > 0) then
+    Error('CASE ' + AToks[NextIdx].Text + ' ...: в RapidQ это не сравнение ' +
+          '(тест: x = 7, CASE > 5 не совпало); смысл не выяснен - перепишите ' +
+          'через IF или CASE значение')
   else if InList(FKeywords, Up) and (FindProc(Up) = nil) and
           not IsOp(AToks, NextIdx, '=') and not IsOp(AToks, NextIdx, '(') and
           not IsOp(AToks, NextIdx, '.') then

@@ -59,6 +59,11 @@ Function RqStr Overload (ByVal Value As Double) As String   ' число -> ""
 - `a$ - b$` — из `a$` убираются все вхождения `b$`: `"jello" - "l"` → `"jeo"` (operators.html). У `-` и `+` один приоритет, слева направо: `a + b - c` = `(a + b) - c`. Перевод: в цепочке `+ - &`, где есть строка, `a - b` → `RqStrSub(a, b)`. Вычитание с пустой строкой и числа в такой цепочке в RapidQ не проверены.
 - `Перем ++` — увеличение на 1, отдельным оператором (loops.html: `I++`); перевод — `Перем += 1`. `++` внутри выражения и `--` в документации нет — не переводятся.
 
+## SELECT CASE
+
+- `CASE = x` — как `CASE x` (тест пользователя 2026-10-08: `x = 0`, `CASE = 0` → совпало). Так в Math.inc, QFileDialog.inc, rapidq2.inc (`CASE = "MOUS"`).
+- `CASE > 5` при `x = 7` не совпало — ушло в `CASE ELSE` (тот же тест): в RapidQ это не сравнение, что именно — не выяснено. Препроцессор на `CASE <`, `>`, `<=`, `>=`, `<>` даёт ошибку перевода.
+
 ## TRUE и FALSE
 
 - `TRUE` и `FALSE` — не слова RapidQ. Значение задаёт `rapidq.inc` (строки 42–43: `$define False 0`, `$define True 1`); в других include бывает `CONST True = 1`, в примере CONST документации (otherdetail.html) — `CONST True AS LONG = NOT False`, то есть -1.
