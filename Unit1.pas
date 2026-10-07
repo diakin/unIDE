@@ -782,6 +782,9 @@ type
                                 Shift: TShiftState; X, Y: Integer);
     procedure SplitBarMouseMove(Sender: TObject; Shift: TShiftState;
                                 X, Y: Integer);
+    procedure SplitLineDraw;
+    procedure SplitDragEnd(AApply: Boolean);
+    procedure ApplyRightPanelWidth(ANewWidth: Integer);
     procedure SplitBarMouseUp(Sender: TObject; Button: TMouseButton;
                               Shift: TShiftState; X, Y: Integer);
     procedure ObjSourceClick(Sender: TObject);
@@ -918,6 +921,11 @@ type
     FSplitDrag: Boolean;    // её тянут мышью
     FSplitStartX: Integer;  // экранный X в начале перетаскивания
     FSplitStartW: Integer;  // ширина панели в начале перетаскивания
+    FSplitNewW: Integer;    // ширина, которая встанет при отпускании
+    FSplitLineX: Integer;   // X линии-следа в клиентских координатах формы
+    FSplitLineDC: HDC;      // DC формы, на котором рисуется след
+    FSplitLineBrush: TBrush;// кисть следа: шахматка, как у TSplitter
+    FSplitLineOld: HBRUSH;  // кисть DC до выбора узора
     // Вкладка Code: дерево всех компонентов, которые создаёт код открытого
     // модуля, - со служебными окнами и диалогами. Щелчок - к строке создания.
     // Инспектор объектов на вкладке Objects: дерево компонентов .dfm и
@@ -18426,6 +18434,7 @@ begin
   FreeAndNil(FProjectReg);
   FreeAndNil(FBasDialects);
   FreeAndNil(FBuildKindManual);
+  FreeAndNil(FSplitLineBrush);
   // Схема подсветки (её списки и группы) освобождается в Destroy формы,
   // после FormDestroy
   ClearDfmNodes;
@@ -18870,6 +18879,16 @@ begin
   BuildObjectInspector;
 end;
 
+// Перетаскивание разделителя правой панели.
+//
+// Пока кнопка мыши нажата, ширина панели не меняется: на форме рисуется
+// только линия-след (узор PATINVERT, как у TSplitter с ResizeStyle =
+// rsPattern). Ширина ставится один раз при отпускании (ApplyRightPanelWidth).
+// Живое изменение ширины на каждом движении мыши заставляло заново
+// раскладывать всё содержимое панели (вкладки, дерево, список свойств) и
+// редактор; Windows при сдвиге окна переносит его старое изображение, и
+// дочерние окна с двойной буферизацией не успевали перерисоваться - на
+// экране оставались полосы и куски прежней картинки.
 procedure TForm1.SplitBarMouseDown(Sender: TObject; Button: TMouseButton;
                                    Shift: TShiftState; X, Y: Integer);
 var
@@ -18881,8 +18900,73 @@ begin
   FSplitDrag := True;
   FSplitStartX := P.X;
   FSplitStartW := FRightPanel.Width;
+  FSplitNewW := FSplitStartW;
+  FSplitLineX := FRightPanel.Left;
+  // DC формы без DCX_CLIPCHILDREN: линия видна и поверх дочерних окон
+  FSplitLineDC := GetDCEx(Handle, 0, DCX_CACHE or DCX_CLIPSIBLINGS or
+                                     DCX_LOCKWINDOWUPDATE);
+  if FSplitLineDC <> 0 then
+  begin
+    if FSplitLineBrush = nil then
+    begin
+      FSplitLineBrush := TBrush.Create;
+      // Узор - общий объект Graphics, освобождать его не нужно
+      FSplitLineBrush.Bitmap := AllocPatternBitmap(clBlack, clWhite);
+    end;
+    FSplitLineOld := SelectObject(FSplitLineDC, FSplitLineBrush.Handle);
+    SplitLineDraw;
+  end;
   // Мышь ловим сами: свойство MouseCapture у TControl защищённое
   SetCapture(FSplitBar.Handle);
+end;
+
+// Линия-след на месте будущего левого края панели. PATINVERT: второй
+// вызов на том же месте стирает линию.
+procedure TForm1.SplitLineDraw;
+begin
+  if FSplitLineDC = 0 then
+    Exit;
+  PatBlt(FSplitLineDC, FSplitLineX, FRightPanel.Top, FSplitBar.Width,
+         FRightPanel.Height, PATINVERT);
+end;
+
+// Конец перетаскивания: линию стереть, DC отдать, захват мыши снять.
+// AApply - поставить новую ширину.
+procedure TForm1.SplitDragEnd(AApply: Boolean);
+begin
+  if not FSplitDrag then
+    Exit;
+  FSplitDrag := False;
+  if FSplitLineDC <> 0 then
+  begin
+    SplitLineDraw;
+    SelectObject(FSplitLineDC, FSplitLineOld);
+    ReleaseDC(Handle, FSplitLineDC);
+    FSplitLineDC := 0;
+  end;
+  if GetCapture = FSplitBar.Handle then
+    ReleaseCapture;
+  if AApply and (FSplitNewW <> FRightPanel.Width) then
+    ApplyRightPanelWidth(FSplitNewW);
+end;
+
+// Новая ширина правой панели. Перерисовка на время раскладки выключена,
+// потом форма перерисовывается целиком, со всеми дочерними окнами: иначе
+// части, которые Windows перенесла при сдвиге панели, оставались на экране
+// в прежнем виде.
+procedure TForm1.ApplyRightPanelWidth(ANewWidth: Integer);
+begin
+  SendMessage(Handle, WM_SETREDRAW, 0, 0);
+  try
+    FRightPanel.Width := ANewWidth;
+    FRightPanelWidth := ANewWidth;
+    // Видимая область редактора стала другой - полосы прокрутки заново
+    FormResizeEvent(Self);
+  finally
+    SendMessage(Handle, WM_SETREDRAW, 1, 0);
+    RedrawWindow(Handle, nil, 0, RDW_ERASE or RDW_FRAME or RDW_INVALIDATE or
+                 RDW_ALLCHILDREN or RDW_UPDATENOW);
+  end;
 end;
 
 // Панель тянется влево - шире, вправо - уже. Уже RightPanelMinWidth и шире,
@@ -18895,6 +18979,12 @@ var
 begin
   if not FSplitDrag then
     Exit;
+  // Кнопку отпустили, а MouseUp не пришёл (захват мыши забрало другое окно)
+  if not (ssLeft in Shift) then
+  begin
+    SplitDragEnd(True);
+    Exit;
+  end;
   GetCursorPos(P);
   NewW := FSplitStartW + (FSplitStartX - P.X);
   MaxW := ClientWidth - RightPanelMinLeft;
@@ -18904,23 +18994,20 @@ begin
     NewW := MaxW;
   if NewW < RightPanelMinWidth then
     NewW := RightPanelMinWidth;
-  if NewW = FRightPanel.Width then
+  if NewW = FSplitNewW then
     Exit;
 
-  FRightPanel.Width := NewW;
-  FRightPanelWidth := NewW;
-  // Видимая область редактора стала другой - полосы прокрутки заново
-  FormResizeEvent(Sender);
+  SplitLineDraw;     // стереть прежнюю
+  FSplitNewW := NewW;
+  // Правый край панели на месте, левый - на ширину левее
+  FSplitLineX := FRightPanel.Left + FRightPanel.Width - NewW;
+  SplitLineDraw;
 end;
 
 procedure TForm1.SplitBarMouseUp(Sender: TObject; Button: TMouseButton;
                                  Shift: TShiftState; X, Y: Integer);
 begin
-  if not FSplitDrag then
-    Exit;
-  FSplitDrag := False;
-  ReleaseCapture;
-  RichEdit1.Invalidate;
+  SplitDragEnd(True);
 end;
 
 // Список подпрограмм файла для правой панели.
