@@ -103,6 +103,7 @@ STRF$(значение, формат, точность, знаков) → `RqStr
 - `tests/truefalse.bas` — TRUE/FALSE без определения (первые пять строк совпадают с выводом RapidQ 2026-10-08), `(2 > 1)` = -1, затем `$define True 1` как в rapidq.inc: присваивание, PRINT, сравнение со свойством QCHECKBOX.Checked.
 - `tests/strops.bas` — `s$[0]`, `s$[1]`, `s$[8]` (как в тесте RapidQ), `T[Num]` у `AS STRING`, `ASC(T[2])`, `"jello" - "l"`, `Path$ - "[" - "]"`, `"x" + "aab" - "a"`, числовое вычитание рядом, функция подсчёта символа из otherdetail.html (TALLY) с `iCharCounter ++` в однострочном IF, `Count ++` и `Count++`.
 - `tests/private.bas` — `Private Type`, `Public Const`, `Private Declare Function … Lib`, `Private Sub`.
+- `tests/caseis.bas` — `CASE 1 TO 4, 10 TO 20`, `CASE IS > 200` из conditions.html.
 - `tests/caseeq.bas` — `CASE = 0` в одной строке с оператором, `CASE = 1` блоком, `CASE = "KEYB"` со строкой.
 - `tests/strf.bas` — STRF$ во всех четырёх форматах (ожидаемое — по правилам Delphi, см. выше).
 - `tests/dllstr.bas` — параметры STRING у DECLARE … LIB: литерал, переменная, выражение, буфер `SPACE$(10)`, в который пишет функция DLL (`lstrcpyA`). `tests/RqDbg/RqDbgT3_Speed.bas` (CreateEventA с именем события, STRF$) собирается и работает.

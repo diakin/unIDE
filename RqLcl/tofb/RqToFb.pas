@@ -2611,8 +2611,8 @@ begin
   else if (Up = 'CASE') and (NextIdx >= 0) and (AToks[NextIdx].Kind = tkOp) and
           (Pos(' ' + AToks[NextIdx].Text + ' ', ' < > <= >= <> ') > 0) then
     Error('CASE ' + AToks[NextIdx].Text + ' ...: в RapidQ это не сравнение ' +
-          '(тест: x = 7, CASE > 5 не совпало); смысл не выяснен - перепишите ' +
-          'через IF или CASE значение')
+          '(тест: x = 7, CASE > 5 не совпало); сравнение в RapidQ - CASE IS ' +
+          AToks[NextIdx].Text + ' ... (conditions.html)')
   else if InList(FKeywords, Up) and (FindProc(Up) = nil) and
           not IsOp(AToks, NextIdx, '=') and not IsOp(AToks, NextIdx, '(') and
           not IsOp(AToks, NextIdx, '.') then
