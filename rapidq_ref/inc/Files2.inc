@@ -1071,7 +1071,7 @@ if fileexists (io$)=0 then showmessage ("io2RndInter File not found "+io$): exit
 if FileSize(io$)<1 then showmessage ("io2RndInter Zero size file "+io$): LostP=-99: exit sub
 
 io2RndList.LoadFromFile (io$)
-io2RndList.text=replacesubstr$(io2RndList.text,crlfcrlf,crlf)
+io2RndList.text=replacesubstr$(io2RndList.text,crlf+crlf,crlf)
 
 ArgName$=FullPathNoExt(rndf$)+"Arg"+STRIPFILEEXT(rndf$)
 ioutName$=FullPathNoExt(rndf$)+".io2"

@@ -851,20 +851,20 @@ string1$=REPLACESUBSTR$(string1$,"&lt;" , "<"  )
 string1$=REPLACESUBSTR$(string1$,"&nbsp;" , " "  )
 
 
-string1$=REPLACESUBSTR$(string1$,crlfcrlfcrlfcrlfcrlf , crlf  )
-string1$=REPLACESUBSTR$(string1$,crlfcrlfcrlfcrlf , crlf  )
-string1$=REPLACESUBSTR$(string1$,crlfcrlfcrlf , crlf  )
-string1$=REPLACESUBSTR$(string1$,crlfcrlf , crlf  )
+string1$=REPLACESUBSTR$(string1$,crlf+crlf+crlf+crlf+crlf , crlf  )
+string1$=REPLACESUBSTR$(string1$,crlf+crlf+crlf+crlf , crlf  )
+string1$=REPLACESUBSTR$(string1$,crlf+crlf+crlf , crlf  )
+string1$=REPLACESUBSTR$(string1$,crlf+crlf , crlf  )
 
-string1$=REPLACESUBSTR$(string1$,crcrcrcrcr , cr  )
-string1$=REPLACESUBSTR$(string1$,crcrcrcr , cr  )
-string1$=REPLACESUBSTR$(string1$,crcrcr , cr  )
-string1$=REPLACESUBSTR$(string1$,crcr , cr  )
+string1$=REPLACESUBSTR$(string1$,cr+cr+cr+cr+cr , cr  )
+string1$=REPLACESUBSTR$(string1$,cr+cr+cr+cr , cr  )
+string1$=REPLACESUBSTR$(string1$,cr+cr+cr , cr  )
+string1$=REPLACESUBSTR$(string1$,cr+cr , cr  )
 
-string1$=REPLACESUBSTR$(string1$,lflflflflf , lf  )
-string1$=REPLACESUBSTR$(string1$,lflflflf , lf  )
-string1$=REPLACESUBSTR$(string1$,lflflf, lf  )
-string1$=REPLACESUBSTR$(string1$,lflf, lf  )
+string1$=REPLACESUBSTR$(string1$,lf+lf+lf+lf+lf , lf  )
+string1$=REPLACESUBSTR$(string1$,lf+lf+lf+lf , lf  )
+string1$=REPLACESUBSTR$(string1$,lf+lf+lf, lf  )
+string1$=REPLACESUBSTR$(string1$,lf+lf, lf  )
 
 result=string1$
 

@@ -222,6 +222,7 @@ type
     IsArray: Boolean;
     IsConst: Boolean;
     Explicit: Boolean;  // объявлена (DIM, DEF..., параметр, CONST)
+    Assigned: Boolean;  // получает значение: Перем = ..., FOR, INC/DEC
   end;
 
   TRqProc = class
@@ -370,6 +371,7 @@ type
     function DeclareVar(const ADisplay, ARqType, AScope: string;
                         AIsArray, AExplicit, AIsConst: Boolean): TRqVar;
     function ResolveVar(const ADisplay: string; AIsArray: Boolean): TRqVar;
+    function DefaultValueText(const ARqType: string): string;
     function FindProc(const AUp: string): TRqProc;
     function GetProc(const ADisplay: string): TRqProc;
     function ExprIsString(const AToks: TToks; AFrom, ATo: Integer): Boolean;
@@ -1520,6 +1522,15 @@ begin
   FVars.AddObject(Key, Result);
 end;
 
+// Значение необъявленной переменной в тексте предупреждения
+function TRqFbConv.DefaultValueText(const ARqType: string): string;
+begin
+  if UpperCase(ARqType) = 'STRING' then
+    Result := '""'
+  else
+    Result := '0';
+end;
+
 // Переменная из выражения; не объявлена - неявная (тип по суффиксу)
 function TRqFbConv.ResolveVar(const ADisplay: string; AIsArray: Boolean): TRqVar;
 var
@@ -2565,6 +2576,13 @@ begin
   AToks[AIdx].OutText := VarRec.FbName;
   if (VarRec.Scope = '') and VarRec.Explicit then
     GlobalQualify(AToks, AIdx);
+  // Необъявленная переменная, которой нигде не присваивается значение, -
+  // всегда 0 / "" (так RapidQ молча и работает); чаще всего опечатка:
+  // REPLACESUBSTR$(s, crlfcrlf, crlf) вместо crlf+crlf
+  if (FPass = 2) and not VarRec.Explicit and not VarRec.Assigned then
+    WarnOnce('NA|' + VarRec.Scope + '|' + VarRec.Name, AToks[AIdx].Text +
+      ': не объявлена и нигде не получает значение - в RapidQ всегда ' +
+      DefaultValueText(VarRec.RqType) + ' (опечатка или объявлена в файле, которого нет?)');
 end;
 
 // Присваивание (Переменная = выражение, Объект.Свойство = выражение) или
@@ -2734,11 +2752,13 @@ begin
     begin
       CloseIdx := MatchParen(AToks, LhsEnd, EqIdx - 1);
       VarRec := ResolveVar(Display, True);
+      VarRec.Assigned := True;
       if CloseIdx > 0 then
         ProcessExpr(AToks, LhsEnd + 1, CloseIdx - 1);
     end
     else
       VarRec := ResolveVar(Display, False);
+    VarRec.Assigned := True;
     AToks[FirstIdx].OutText := VarRec.FbName;
     if (VarRec.Scope = '') and VarRec.Explicit then
       GlobalQualify(AToks, FirstIdx);
@@ -3536,6 +3556,7 @@ begin
   if (VarIdx >= 0) and (AToks[VarIdx].Kind = tkIdent) then
   begin
     VarRec := ResolveVar(AToks[VarIdx].Text, False);
+    VarRec.Assigned := True;
     AToks[VarIdx].OutText := VarRec.FbName;
     ProcessExpr(AToks, VarIdx + 1, ATo);
   end
@@ -3851,6 +3872,7 @@ var
   OpenIdx, CloseIdx, ArgFrom, ArgTo, CommaIdx, TargetIdx, TokIdx,
     Depth: Integer;
   Target, Step, OpText: string;
+  VarRec: TRqVar;
 begin
   ArgFrom := AFrom + 1;
   ArgTo := ATo;
@@ -3882,6 +3904,9 @@ begin
   if (TargetIdx < 0) or (AToks[TargetIdx].Kind <> tkIdent) then
     Exit;
   ProcessExpr(AToks, TargetIdx, CommaIdx - 1);
+  VarRec := FindVar(AToks[TargetIdx].Up);
+  if VarRec <> nil then
+    VarRec.Assigned := True;
   Target := RangeText(AToks, TargetIdx, CommaIdx - 1);
   Step := '1';
   if CommaIdx < ArgTo then
