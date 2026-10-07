@@ -9,3 +9,5 @@ IF Box.Checked = TRUE THEN PRINT "checked = true" ELSE PRINT "checked <> true"
 Box.Checked = FALSE
 IF Box.Checked = FALSE THEN PRINT "checked = false"
 PRINT "sum "; TRUE + TRUE
+PRINT (2 > 1); " "; (2 < 1)
+IF (2 > 1) = TRUE THEN PRINT "cmp = true" ELSE PRINT "cmp <> true"

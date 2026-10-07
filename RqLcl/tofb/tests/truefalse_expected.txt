@@ -2,3 +2,5 @@ true 1 false 0 flag 1
 checked = true
 checked = false
 sum 2
+-1 0
+cmp <> true
