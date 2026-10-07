@@ -2328,6 +2328,7 @@ type
     procedure ArdBuildLine(const ALine: string);
     procedure ArdBuildButtons;
     procedure ArdFillPortCombo;
+    procedure ArdBoardFromPort(APortIdx: Integer);
     procedure ArdBuildIdle(var ACancel: Boolean);
     function  ArdSaveSketchFiles(const ASketchDir: string;
                                  ASave: Boolean): Boolean;
@@ -41163,8 +41164,7 @@ begin
 end;
 
 // Список плат на USB в рамке Project (как BoardComboBox в RQdebugger):
-// пункт - порт и плата на нём (имя по VID/PID из boards.txt, иначе имя
-// устройства, ArdPortCaption). Выбранный пункт - FArdPort. Заполняется при
+// пункт - порт и имя устройства из Диспетчера устройств (ArdPortCaption). Выбранный пункт - FArdPort. Заполняется при
 // смене вкладки, подключении и отключении (UpdateBuildBar).
 procedure TForm1.ArdFillPortCombo;
 var
@@ -41222,8 +41222,113 @@ begin
                        'Upload и Serial Monitor)';
 end;
 
+// FQBN платы на порту APortIdx (выбор в списке плат на USB):
+//  1) VID/PID порта есть в boards.txt установленных платформ - эта плата;
+//  2) иначе arduino-cli board list: его строка с этим портом и FQBN;
+//  3) не нашлось - FQBN не меняется, строка в лог (плата - меню Arduino -
+//     Board).
+// Платформа найденной платы может быть не установлена: тогда сборка
+// скажет об этом, и CompileArduino предложит core install.
+procedure TForm1.ArdBoardFromPort(APortIdx: Integer);
+
+  function FirstWordOf(const AText: string): string;
+  var
+    SpacePos: Integer;
+  begin
+    Result := Trim(AText);
+    SpacePos := Pos(' ', Result);
+    if SpacePos > 0 then
+      SetLength(Result, SpacePos - 1);
+  end;
+
+var
+  Port: TArdPortInfo;
+  BoardIdx, ExitCode, RowIdx: Integer;
+  Settings: TArdSettings;
+  Output, Rows: TStringList;
+  ErrText, RowPort, RowBoard, RowFqbn: string;
+begin
+  if (FArdPorts = nil) or (FArdHw = nil) or (APortIdx < 0) or
+     (APortIdx >= FArdPorts.Count) then
+    Exit;
+  Port := FArdPorts[APortIdx];
+  if Port.Vid = '' then
+  begin
+    Dbg('Arduino: ' + Port.Name + ' - не USB, плата по нему не ' +
+        'определяется (меню Arduino - Board)', clGray);
+    Exit;
+  end;
+
+  if not FArdHwScanned then
+  begin
+    FArdHw.Scan(ArdCurSettings);
+    FArdHwScanned := True;
+  end;
+  BoardIdx := FArdHw.BoardByVidPid(Port.Vid, Port.Pid);
+  if BoardIdx >= 0 then
+  begin
+    Dbg('Arduino: VID ' + Port.Vid + ' PID ' + Port.Pid + ' - ' +
+        FArdHw.Boards[BoardIdx].Name + ' (boards.txt)', clGray);
+    ArdSetBoard(FArdHw.Boards[BoardIdx].Fqbn, FArdHw.Boards[BoardIdx].Name);
+    Exit;
+  end;
+
+  // В установленных платформах такого VID/PID нет - спросить arduino-cli
+  if FArdBuilding or FArdBusy then
+    Exit;
+  Settings := ArdCurSettings;
+  if not ArdCheckCli(Settings, ErrText) then
+  begin
+    Dbg('Arduino: VID ' + Port.Vid + ' PID ' + Port.Pid + ' нет в ' +
+        'установленных платформах; arduino-cli не задан - FQBN не ' +
+        'изменён', clGray);
+    Exit;
+  end;
+  FArdBusy := True;
+  Output := TStringList.Create;
+  Rows := TStringList.Create;
+  Screen.Cursor := crHourGlass;
+  try
+    ExitCode := ArdRunCli(Settings, 'board list', Output, nil, ArdCliIdle);
+    RowFqbn := '';
+    RowBoard := '';
+    if (ExitCode = 0) and
+       ArdParseTable(Output, ['Port', 'Board', 'FQBN'], Rows) then
+      for RowIdx := 0 to Rows.Count - 1 do
+      begin
+        // Колонка тянется до следующей из запрошенных: в Port попадает и
+        // Type, в FQBN - и Core. Порт и FQBN без пробелов - первое слово.
+        RowPort := FirstWordOf(ArdRowField(Rows[RowIdx], 0));
+        if CompareText(RowPort, Port.Name) <> 0 then
+          Continue;
+        RowBoard := Trim(ArdRowField(Rows[RowIdx], 1));
+        RowFqbn := FirstWordOf(ArdRowField(Rows[RowIdx], 2));
+        Break;
+      end;
+    if RowFqbn <> '' then
+    begin
+      Dbg('Arduino: ' + Port.Name + ' - ' + RowBoard + ' (' + RowFqbn +
+          ', arduino-cli board list)', clGray);
+      ArdSetBoard(RowFqbn, RowBoard);
+    end
+    else
+    begin
+      Dbg('Arduino: плата на ' + Port.Name + ' (VID ' + Port.Vid + ' PID ' +
+          Port.Pid + ') не распознана ни по boards.txt, ни arduino-cli ' +
+          'board list - FQBN не изменён (меню Arduino - Board)', clGray);
+      for RowIdx := 0 to Output.Count - 1 do
+        Dbg('  ' + Output[RowIdx], clGray);
+    end;
+  finally
+    Screen.Cursor := crDefault;
+    Rows.Free;
+    Output.Free;
+    FArdBusy := False;
+  end;
+end;
+
 // Выбор платы на USB: её порт - текущий, открытый монитор переходит на
-// него (как Arduino - Port). Фокус - обратно в редактор, чтобы колесо мыши
+// него (как Arduino - Port), FQBN - по плате на порту (ArdBoardFromPort). Фокус - обратно в редактор, чтобы колесо мыши
 // и клавиши не меняли выбор дальше.
 procedure TForm1.cmbArdPortChange(Sender: TObject);
 var
@@ -41240,6 +41345,8 @@ begin
     if (FArdMonitorWnd <> nil) and FArdMonitorWnd.Visible and
        (CompareText(FArdMonitorWnd.PortName, FArdPort) <> 0) then
       FArdMonitorWnd.OpenPort(FArdPort);
+    // Плата на этом порту - её FQBN для сборки
+    ArdBoardFromPort(ItemIdx);
   end;
   UpdateBuildBar;
   if not cmbArdPort.DroppedDown and RichEdit1.CanFocus then
@@ -50473,22 +50580,17 @@ end;
 //  Port и Get Board Info
 // ---------------------------------------------------------------------------
 
-// Подпись порта: имя платы по VID/PID из boards.txt, иначе имя устройства
+// Подпись порта: порт и имя устройства, как в Диспетчере устройств, -
+// то, что реально подключено. Имя платы из boards.txt здесь не берётся:
+// по VID/PID ищется только FQBN (ArdBoardFromPort).
 function TForm1.ArdPortCaption(const APort: TArdPortInfo): string;
 var
-  BoardIdx: Integer;
   DeviceName: string;
 begin
   Result := APort.Name;
-  BoardIdx := FArdHw.BoardByVidPid(APort.Vid, APort.Pid);
-  if BoardIdx >= 0 then
-    Result := Result + ' (' + FArdHw.Boards[BoardIdx].Name + ')'
-  else
-  begin
-    DeviceName := ArdPortDeviceName(APort);
-    if DeviceName <> '' then
-      Result := Result + ' (' + DeviceName + ')';
-  end;
+  DeviceName := ArdPortDeviceName(APort);
+  if DeviceName <> '' then
+    Result := Result + ' (' + DeviceName + ')';
 end;
 
 // Порт не выбран - первый, чей VID/PID есть в boards.txt; если таких нет и
@@ -50550,6 +50652,8 @@ begin
   if (FArdMonitorWnd <> nil) and FArdMonitorWnd.Visible and
      (CompareText(FArdMonitorWnd.PortName, FArdPort) <> 0) then
     FArdMonitorWnd.OpenPort(FArdPort);
+  // Плата на этом порту - её FQBN, как при выборе в списке плат на USB
+  ArdBoardFromPort(PortIdx);
   UpdateBuildBar;
 end;
 
