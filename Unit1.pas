@@ -43636,18 +43636,29 @@ begin
     end;
   end;
   if Setting <> '' then
-    Candidate := IncludeTrailingPathDelimiter(Setting)
-  else
-    Candidate := ExtractFilePath(Application.ExeName) + 'RqLcl\';
+  begin
+    Candidate := IncludeTrailingPathDelimiter(Setting);
+    if FileExists(Candidate + 'inc\rqrt.bi') and
+       FileExists(Candidate + 'inc\rqlcl.bi') then
+    begin
+      Result := Candidate;
+      Exit;
+    end;
+    AProblem := 'папка RqLcl не найдена (нужны inc\rqrt.bi и inc\rqlcl.bi): ' +
+                Candidate + '. Проверьте путь в IDE Options - Compilers ' +
+                '(RapidQ Basic) - RqLcl folder';
+    Exit;
+  end;
+  // Поле пустое: RqLcl рядом с exe редактора, если она там есть
+  Candidate := ExtractFilePath(Application.ExeName) + 'RqLcl\';
   if FileExists(Candidate + 'inc\rqrt.bi') and
      FileExists(Candidate + 'inc\rqlcl.bi') then
   begin
     Result := Candidate;
     Exit;
   end;
-  AProblem := 'папка RqLcl не найдена (нужны inc\rqrt.bi и inc\rqlcl.bi): ' +
-              Candidate + '. IDE Options - Compilers - RapidQ Basic, поле ' +
-              'RqLcl folder - папка RqLcl из исходников unIDE';
+  AProblem := 'не указан путь к папке RqLcl в IDE Options - Compilers ' +
+              '(RapidQ Basic) - RqLcl folder (папка RqLcl из исходников unIDE)';
 end;
 
 // Перевод RqToFb и сборка fbc. True - собрано, exe на месте.
