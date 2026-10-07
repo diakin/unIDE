@@ -33,6 +33,22 @@
 - Объектам (QFORM и т. д.) число или строку присвоить нельзя — единственная строгая проверка (документация).
 - `/` — деление с плавающей точкой (тест 2: 7/2 → 3.5).
 
+### Как препроцессор делает присваивание
+
+Тип выражения справа препроцессор не вычисляет: правая часть оборачивается в функцию преобразования по типу переменной слева, а нужную перегрузку по типу выражения выбирает сам fbc при компиляции (проверено на fbc 1.10.1):
+
+```
+Function RqNum Overload (ByVal Value As Double) As Double   ' число -> как есть
+Function RqNum Overload (ByRef Value As String) As Double   ' строка -> 0
+Function RqLong Overload (ByVal Value As Double) As Long    ' Fix: 5.7 -> 5, -5.7 -> -5
+Function RqLong Overload (ByRef Value As String) As Long    ' 0
+Function RqShort Overload (ByVal Value As Double) As Short   ' перенос: 70000 -> 4464
+Function RqStr Overload (ByRef Value As String) As String
+Function RqStr Overload (ByVal Value As Double) As String   ' число -> ""
+```
+
+`b=a` (b — DOUBLE, a — STRING, объявлена хоть за тысячу строк) → `b = RqNum(a)` → 0. Препроцессору нужен только тип переменной слева: первый проход по всем файлам программы собирает объявления (DIM, суффиксы, `$OPTION DIM`, поля TYPE, параметры и локальные DIM в SUB/FUNCTION — со своей областью видимости), второй проход переписывает присваивания.
+
 ## PRINT (по тесту)
 
 - Целое значение (в пределах LONG) — без дробной части: `5`, `3.0` → `3`.
