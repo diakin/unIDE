@@ -27,7 +27,8 @@ interface
 uses
   Classes, SysUtils, TypInfo, Math, Controls, StdCtrls, Forms, Graphics,
   LazUTF8, LCLType, ComCtrls, Grids, ShellCtrls, ExtCtrls, Buttons, Menus,
-  FileCtrl, RichMemo, rqlclrich, rqlclgrid, rqlclmisc, rqlclmore;
+  FileCtrl, Dialogs, RichMemo, rqlclrich, rqlclgrid, rqlclmisc, rqlclmore,
+  rqlclsys;
 
 const
   RqLclVersion = 2;   // меняется при несовместимой смене набора функций
@@ -146,7 +147,7 @@ type
   end;
 
 var
-  RqClassTable: array[0..22] of TRqClassRec;
+  RqClassTable: array[0..24] of TRqClassRec;
   RqPropTable: array[0..3] of TRqPropRec;
   RqLastErrorText: string = '';
   RqInitDone: Boolean = False;
@@ -203,6 +204,10 @@ begin
   RqClassTable[21].LclClass := TFileListBox;
   RqClassTable[22].RqName := 'QSTATUSBAR';
   RqClassTable[22].LclClass := TStatusBar;
+  RqClassTable[23].RqName := 'QOPENDIALOG';
+  RqClassTable[23].LclClass := TOpenDialog;
+  RqClassTable[24].RqName := 'QSAVEDIALOG';
+  RqClassTable[24].LclClass := TSaveDialog;
   // У RapidQ OnClose формы - сигнал о закрытии без параметров; в LCL ему
   // ближе всего OnCloseQuery (FireCloseQuery разрешает закрытие)
   RqPropTable[0].RqName := 'ONCLOSE';
@@ -592,6 +597,10 @@ begin
       Result := TFont.Create;
       Exit;
     end;
+    // Application, Screen, Clipboard - объекты LCL, не создаются
+    Result := SysGlobalObject(string(AClassName));
+    if Result <> nil then
+      Exit;
     ClassIdx := FindClassRec(string(AClassName));
     if ClassIdx < 0 then
     begin
@@ -627,7 +636,8 @@ end;
 procedure RqFree(AObj: Pointer); stdcall;
 begin
   try
-    TObject(AObj).Free;
+    if not SysIsGlobal(TObject(AObj)) then
+      TObject(AObj).Free;
   except
     on E: Exception do
       SetError('RqFree: ' + E.Message);
@@ -645,7 +655,8 @@ begin
     if EditSetInt(TObject(AObj), string(AProp), AValue) or
        GridSetInt(TObject(AObj), string(AProp), AValue) or
        MiscSetInt(TObject(AObj), string(AProp), AValue) or
-       MoreSetInt(TObject(AObj), string(AProp), AValue) then
+       MoreSetInt(TObject(AObj), string(AProp), AValue) or
+       SysSetInt(TObject(AObj), string(AProp), AValue) then
     begin
       Result := 1;
       Exit;
@@ -680,7 +691,8 @@ begin
     if EditGetInt(TObject(AObj), string(AProp), Result) or
        GridGetInt(TObject(AObj), string(AProp), Result) or
        MiscGetInt(TObject(AObj), string(AProp), Result) or
-       MoreGetInt(TObject(AObj), string(AProp), Result) then
+       MoreGetInt(TObject(AObj), string(AProp), Result) or
+       SysGetInt(TObject(AObj), string(AProp), Result) then
       Exit;
     Info := FindProp(TObject(AObj), string(AProp));
     if Info = nil then
@@ -702,7 +714,8 @@ begin
     if EditSetStr(TObject(AObj), string(AProp), string(AValue)) or
        GridSetStr(TObject(AObj), string(AProp), string(AValue)) or
        MiscSetStr(TObject(AObj), string(AProp), string(AValue)) or
-       MoreSetStr(TObject(AObj), string(AProp), string(AValue)) then
+       MoreSetStr(TObject(AObj), string(AProp), string(AValue)) or
+       SysSetStr(TObject(AObj), string(AProp), string(AValue)) then
     begin
       Result := 1;
       Exit;
@@ -740,7 +753,8 @@ begin
     if not EditGetStr(TObject(AObj), string(AProp), Value) and
        not GridGetStr(TObject(AObj), string(AProp), Value) and
        not MiscGetStr(TObject(AObj), string(AProp), Value) and
-       not MoreGetStr(TObject(AObj), string(AProp), Value) then
+       not MoreGetStr(TObject(AObj), string(AProp), Value) and
+       not SysGetStr(TObject(AObj), string(AProp), Value) then
     begin
       Info := FindProp(TObject(AObj), string(AProp));
       if Info = nil then
@@ -1083,11 +1097,17 @@ function RqCall(AObj: Pointer; AMethod: PChar): Integer; stdcall;
 var
   Method: string;
   Obj: TObject;
+  CallResult: Integer;
 begin
   Result := 0;
   try
     Obj := TObject(AObj);
     Method := UpperCase(string(AMethod));
+    if SysCall(Obj, Method, CallResult) then
+    begin
+      Result := CallResult;
+      Exit;
+    end;
     if EditCall(Obj, Method) then
     begin
       Result := 1;
@@ -1151,11 +1171,17 @@ function RqCallInt(AObj: Pointer; AMethod: PChar; AValue: Integer): Integer;
 var
   Method: string;
   Obj: TObject;
+  CallResult: Integer;
 begin
   Result := 0;
   try
     Obj := TObject(AObj);
     Method := UpperCase(string(AMethod));
+    if SysCallInt(Obj, Method, AValue, CallResult) then
+    begin
+      Result := CallResult;
+      Exit;
+    end;
     if (Obj is TFont) and ((Method = 'ADDSTYLE') or (Method = 'DELSTYLE')) then
     begin
       if (AValue < Ord(Low(TFontStyle))) or (AValue > Ord(High(TFontStyle))) then

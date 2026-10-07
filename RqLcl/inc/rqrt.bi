@@ -747,3 +747,136 @@ Function MessageDlg(ByRef Text As String, ByVal MsgType As Long, _
     End Select
     Return RqRtMessageBox(0, Text, Caption, Flags)
 End Function
+
+' ---------------------------------------------------------------------------
+'  DIR$ и FileRec (otherdetail.html): DIR$(маска, атрибуты) - первый файл,
+'  DIR$ без параметров - следующий, "" - больше нет. Найденный файл
+'  описывает FileRec: FileName, ShortName, Date, Time, Size, FileTime.
+'  Атрибуты - как у FindFirst Delphi, на котором RapidQ: обычные файлы
+'  (и только для чтения, архивные) - всегда, скрытые, системные и папки -
+'  если их бит есть в атрибутах (&H2, &H4, &H10). Date - "MM-DD-YYYY",
+'  Time - "HH:MM:SS" (местное время; формат RapidQ не проверен), FileTime -
+'  дата и время DOS одним числом (новее - больше).
+' ---------------------------------------------------------------------------
+
+Type RqRtFindData
+    FileAttributes As ULong
+    CreationLow As ULong
+    CreationHigh As ULong
+    AccessLow As ULong
+    AccessHigh As ULong
+    WriteLow As ULong
+    WriteHigh As ULong
+    SizeHigh As ULong
+    SizeLow As ULong
+    Reserved0 As ULong
+    Reserved1 As ULong
+    FileName As ZString * 260
+    AlternateName As ZString * 14
+End Type
+
+Type RqRtSystemTime
+    Year As UShort
+    Month As UShort
+    DayOfWeek As UShort
+    Day As UShort
+    Hour As UShort
+    Minute As UShort
+    Second As UShort
+    Milliseconds As UShort
+End Type
+
+Declare Function RqRtFindFirstFile Lib "kernel32" Alias "FindFirstFileA" ( _
+    ByVal FileName As ZString Ptr, ByVal FindData As RqRtFindData Ptr) As Any Ptr
+Declare Function RqRtFindNextFile Lib "kernel32" Alias "FindNextFileA" ( _
+    ByVal FindHandle As Any Ptr, ByVal FindData As RqRtFindData Ptr) As Long
+Declare Function RqRtFindClose Lib "kernel32" Alias "FindClose" ( _
+    ByVal FindHandle As Any Ptr) As Long
+Declare Function RqRtFileTimeToLocal Lib "kernel32" Alias "FileTimeToLocalFileTime" ( _
+    ByVal FileTime As ULong Ptr, ByVal LocalTime As ULong Ptr) As Long
+Declare Function RqRtFileTimeToSystemTime Lib "kernel32" Alias "FileTimeToSystemTime" ( _
+    ByVal FileTime As ULong Ptr, ByVal SysTime As RqRtSystemTime Ptr) As Long
+Declare Function RqRtFileTimeToDos Lib "kernel32" Alias "FileTimeToDosDateTime" ( _
+    ByVal FileTime As ULong Ptr, ByVal DosDate As UShort Ptr, _
+    ByVal DosTime As UShort Ptr) As Long
+
+Type RqFileRecType
+    FileName As String
+    ShortName As String
+    Date As String
+    Time As String
+    Size As LongInt
+    FileTime As Long
+End Type
+
+Dim Shared FileRec As RqFileRecType
+Dim Shared RqRtDirHandle As Any Ptr
+Dim Shared RqRtDirAttr As Long
+
+' Подходит ли найденный файл к атрибутам (как FindFirst Delphi)
+Private Function RqRtDirMatch(ByRef FindData As RqRtFindData) As Long
+    ' &H2 скрытый, &H4 системный, &H8 метка тома, &H10 папка
+    Return ((FindData.FileAttributes And Not RqRtDirAttr) And &H1E) = 0
+End Function
+
+Private Sub RqRtDirFill(ByRef FindData As RqRtFindData)
+    Dim LocalTime(1) As ULong
+    Dim SysTime As RqRtSystemTime
+    Dim DosDate As UShort, DosTime As UShort
+    FileRec.FileName = FindData.FileName
+    FileRec.ShortName = FindData.AlternateName
+    If FileRec.ShortName = "" Then FileRec.ShortName = FileRec.FileName
+    FileRec.Size = (CLngInt(FindData.SizeHigh) Shl 32) Or FindData.SizeLow
+    RqRtFileTimeToLocal(@FindData.WriteLow, @LocalTime(0))
+    RqRtFileTimeToSystemTime(@LocalTime(0), @SysTime)
+    FileRec.Date = Right("0" & SysTime.Month, 2) & "-" & Right("0" & SysTime.Day, 2) & _
+                   "-" & SysTime.Year
+    FileRec.Time = Right("0" & SysTime.Hour, 2) & ":" & Right("0" & SysTime.Minute, 2) & _
+                   ":" & Right("0" & SysTime.Second, 2)
+    RqRtFileTimeToDos(@LocalTime(0), @DosDate, @DosTime)
+    FileRec.FileTime = (CLng(DosDate) Shl 16) Or DosTime
+End Sub
+
+' Следующий подходящий файл после FindFirst / FindNext; нет - ""
+Private Function RqRtDirNext(ByRef FindData As RqRtFindData, ByVal HaveOne As Long) As String
+    Do
+        If HaveOne = 0 Then
+            If RqRtDirHandle = 0 Then Return ""
+            If RqRtFindNextFile(RqRtDirHandle, @FindData) = 0 Then
+                RqRtFindClose(RqRtDirHandle)
+                RqRtDirHandle = 0
+                Return ""
+            End If
+        End If
+        HaveOne = 0
+        If RqRtDirMatch(FindData) Then
+            RqRtDirFill(FindData)
+            Return FileRec.FileName
+        End If
+    Loop
+End Function
+
+Function RqDir Overload (ByRef FileSpec As String, ByVal Attributes As Long = 0) As String
+    Dim FindData As RqRtFindData
+    If RqRtDirHandle <> 0 Then
+        RqRtFindClose(RqRtDirHandle)
+        RqRtDirHandle = 0
+    End If
+    RqRtDirAttr = Attributes
+    RqRtDirHandle = RqRtFindFirstFile(StrPtr(FileSpec), @FindData)
+    If (RqRtDirHandle = 0) OrElse (RqRtDirHandle = Cast(Any Ptr, -1)) Then
+        RqRtDirHandle = 0
+        Return ""
+    End If
+    Return RqRtDirNext(FindData, 1)
+End Function
+
+Function RqDir Overload () As String
+    Dim FindData As RqRtFindData
+    Return RqRtDirNext(FindData, 0)
+End Function
+
+' SLEEP секунды (consoledetail.html: можно дробь, клавишей не прерывается)
+Sub RqSleep(ByVal Seconds As Double)
+    If Seconds > 0 Then Sleep CLng(Seconds * 1000), 1
+End Sub

@@ -35,6 +35,10 @@
 | QREGISTRY | RootKey, CurrentKey, CurrentPath, HasSubKeys, KeyItemCount, ValueItemCount; GetDataSize(имя), GetDataType(имя) | CloseKey, CreateKey, DeleteKey (с подключами), DeleteValue, KeyExists, KeyItem, MoveKey, OpenKey, ReadBinary, ReadFloat, ReadInteger, ReadString, RegistryConnect, RenameValue, ValueExists, ValueItem, WriteBinary, WriteFloat, WriteInteger, WriteString — в `inc/rqreg.bi`, без DLL, функции advapi32 |
 | QTIMER | Enabled (по умолчанию 1), Interval (мс, по умолчанию 1000), Tag | OnTimer (Sub() или с Sender) — в `inc/rqtimer.bi`, без DLL: таймер Windows `SetTimer`, срабатывает из цикла сообщений формы, как в RapidQ |
 | QOBJECT | — | пустой объект: основа своих невидимых компонентов (`TYPE Имя EXTENDS QOBJECT`) |
+| QOPENDIALOG, QSAVEDIALOG | Caption, FileName, Filter (`"Текст\|*.txt\|Все\|*.*"`), FilterIndex (с 1), InitialDir | Execute (1 — выбрано, 0 — отмена) — TOpenDialog / TSaveDialog LCL |
+| Application (глобальный) | ExeName (без пути), Title, HelpFile, Icon (файл, запись), HintColor, HintPause, HintHidePause, HintShortPause, ShowHint, Handle (hInstance) | Terminate (окна закрываются, следующий DoEvents заканчивает программу), Minimize, Restore — `inc/rqsys.bi` |
+| Screen (глобальный; в FreeBASIC `Screen_v`, препроцессор переименовывает) | Width, Height, MouseX, MouseY, Cursor | — |
+| Clipboard (глобальный) | Text, FormatCount | Clear, Open, Close, HasFormat(формат Windows), GetAsText, SetAsText |
 | QMEMORYSTREAM, QFILESTREAM | Position, Size, LineCount; у памяти `Pointer` (в FreeBASIC — `PointerAddr`, препроцессор переименовывает) | Read/Write, ReadNum/WriteNum, ReadStr/WriteStr, ReadLine/WriteLine, CopyFrom, Seek; у файла Open, Close — в `inc/rqstream.bi`, без DLL |
 
 `Label.Font = Font` копирует значения шрифта в элемент, как в RapidQ. `Label.Font` при чтении — QFONT поверх шрифта самого элемента: `Label.Font.Size = 20` меняет элемент. `Font` и `SelAttributes` в `rqlcl.bi` — функции `ByRef`, а не свойства: у свойства FreeBASIC с парой get/set запись `Label.Font.Size = 20` не компилируется (fbc 1.10.1); присваивание `Label.Font = Font` идёт через `Operator Let` у QFONT.
@@ -82,6 +86,7 @@ QRICHEDIT — `TRichMemo` из пакета RichMemo (на Windows — окно 
 - `demo/evtest.bas` — события с параметрами (клавиатура и мышь через SendMessage, OnSelectCell, OnDrawCell с FillRect/TextOut), 32 и 64 бит.
 - `demo/richtest.bas`, `gridtest.bas`, `listtest.bas`, `regtest.bas` — проверки QRICHEDIT, QSTRINGGRID + QDIRTREE, QSTRINGLIST, QREGISTRY без пользователя.
 - `inc/rqstrlist.bi`, `inc/rqreg.bi`, `inc/rqtimer.bi` — QSTRINGLIST, QREGISTRY и QTIMER (без DLL).
+- `inc/rqsys.bi` — QOPENDIALOG, QSAVEDIALOG, глобальные Application, Screen_v, Clipboard (подключается из rqlcl.bi; в DLL — `dll/rqlclsys.pas`).
 - `dll/richmemo/` — нужная часть пакета RichMemo (источник и лицензия — в его README).
 - `demo/selftest.bas` — проверка без пользователя: форма открывается, OnShow нажимает кнопку три раза, сверяет свойства и закрывает форму; итог в консоль и в код завершения.
 - `dll/rqlclcore.pas`, `dll/rqlcl.lpr` — исходники DLL; `dll/build.bat` — сборка своим Lazarus.

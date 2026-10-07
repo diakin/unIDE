@@ -280,10 +280,14 @@ Function RqLclGetItem(ByVal ObjPtr As Any Ptr, ByRef PropName As String, ByVal I
     Return TextValue
 End Function
 
+' Application.Terminate был: следующий DoEvents заканчивает программу
+Dim Shared RqLclTerminated As Long
+
 ' DoEvents RapidQ
 Sub DoEvents()
     RqLclEnsure()
     RqDoEventsProc()
+    If RqLclTerminated Then End 0
 End Sub
 
 ' ---------------------------------------------------------------------------
@@ -5860,3 +5864,5 @@ End Property
 Property QSTATUSBAR.OnResize(ByVal Handler As Sub(ByRef Sender As QSTATUSBAR))
     SetEventEx(21, "OnResize", Cast(Any Ptr, Handler), 3)
 End Property
+
+#include once "rqsys.bi"
