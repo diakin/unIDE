@@ -32,6 +32,7 @@ uses
   PrjStore in 'PrjStore.pas',
   RqComponents in 'RqComponents.pas',
   RqDesign in 'RqDesign.pas',
+  RqHelp in 'RqHelp.pas',
   HangWatch in 'HangWatch.pas',
   WndWatch in 'WndWatch.pas',
   DbgEngine in 'DbgEngine.pas',

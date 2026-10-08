@@ -583,6 +583,15 @@ type
     mArdCli: TMenuItem;
     mOptions: TMenuItem;
     mHelp: TMenuItem;
+    mHelpRq: TMenuItem;
+    mHelpRqContents: TMenuItem;
+    mHelpRqComps: TMenuItem;
+    mHelpRqCustom: TMenuItem;
+    mHelpRqIndex: TMenuItem;
+    mHelpRqSep: TMenuItem;
+    mHelpRqHtml: TMenuItem;
+    mHelpSep: TMenuItem;
+    mHelpAbout: TMenuItem;
     FMenuBar: TUiMenuBar;
     FStatus2: TUiStatusBar;
     FLeftHost: TPanel;
@@ -785,6 +794,7 @@ type
     procedure mArdLibsClick(Sender: TObject);
     procedure mArdCliClick(Sender: TObject);
     procedure mHelpClick(Sender: TObject);
+    procedure mHelpRqClick(Sender: TObject);
     procedure Status2MouseDown(Sender: TObject; Button: TMouseButton;
                                Shift: TShiftState; X, Y: Integer);
     procedure SplitBarMouseDown(Sender: TObject; Button: TMouseButton;
@@ -2387,6 +2397,8 @@ type
     procedure DbgRepaint;
     function  DbgKey(AKey: Word): Boolean;
     function  FindKey(AKey: Word): Boolean;
+    function  HelpKey(AKey: Word): Boolean;
+    function  HelpWordAtCaret: string;
     procedure DbgLinesPre(const Message: TMessage; AWhole: Boolean);
     procedure DbgLinesPost;
     procedure WMDbgDone(var Msg: TMessage); message WM_USER + 321;
@@ -3076,6 +3088,7 @@ var
     DelphiProj,   // .dpr (модули из uses), .dof (ключи dcc32), $(DELPHI)
     ObjParse,     // разбор формы для инспектора: узлы, .dfm, код, кэш
     RqToFb,       // перевод RapidQ -> FreeBASIC (RqLcl\tofb)
+    RqHelp,       // справка RapidQ: rapidq_ref\help\rapidq.chm, html_doc
     RqComponents, // описание компонентов RapidQ (Component.data)
     RqDesign,     // конструктор форм RapidQ: заглушки компонентов
     TextMerge,    // слияние трёх версий текста (файл изменён снаружи)
@@ -18374,9 +18387,11 @@ begin
   // кареткой, F7 - Trace into, F8 - Step over, F4 - Run to cursor. Только
   // в главном окне: у конструктора и диалогов свои клавиши.
   // F3 / Shift+F3 в редакторе - поиск, см. FindKey
+  // F1 в файле RapidQ - справка по слову под кареткой, см. HelpKey
   if (Msg.message = WM_KEYDOWN) and (Screen.ActiveForm = Self) then
   begin
-    if DbgKey(Word(Msg.wParam)) or FindKey(Word(Msg.wParam)) then
+    if DbgKey(Word(Msg.wParam)) or FindKey(Word(Msg.wParam)) or
+       HelpKey(Word(Msg.wParam)) then
       Handled := True;
     Exit;
   end;
@@ -19029,6 +19044,7 @@ begin
   ArdFreeAll;
   FreeAndNil(FEnvOverrides);
   CiFreeAll;
+  RqHelpCloseAll;   // окна справки CHM - до выхода программы
   // Возвращаем старую процедуру на место. Если FormShow не отработал,
   // сабклассинга не было и присваивать nil нельзя.
   if Assigned(OldRichEditProc) then
@@ -49053,6 +49069,9 @@ begin
   CopyIfNewer('rapidq_ref\ComponentAll.data');
   CopyIfMissing('rapidq_ref\Component.data');
   CopyIfMissing('rapidq_ref\Component1.data');
+  // Справка RapidQ (Help - RapidQ, F1): CHM и слова для F1 (RqHelp)
+  CopyIfNewer('rapidq_ref\help\rapidq.chm');
+  CopyIfNewer('rapidq_ref\help\keywords.txt');
   if Copied > 0 then
     LogComp(Format('Рядом с exe скопировано файлов: %d (editor.ini, IDE.clr, ' +
     'schemes, rapidq_ref\Component*.data - которых там не было или ' +
@@ -59636,6 +59655,94 @@ end;
 procedure TForm1.mHelpClick(Sender: TObject);
 begin
   ShowMessage('31290:Simple Code Editor v1.0' + #13#10 + 'Created with Delphi 7 & WinAPI.');
+end;
+
+// Help - RapidQ: пункт по Tag (Unit1.dfm). 1 - оглавление, 2 - Appendix A
+// (компоненты RapidQ), 3 - Appendix B (свои компоненты из rapidq_ref\inc),
+// 4 - указатель, 5 - HTML-страницы html_doc в браузере
+procedure TForm1.mHelpRqClick(Sender: TObject);
+var
+  Done: Boolean;
+begin
+  case TComponent(Sender).Tag of
+    1: Done := RqHelpShowTopic('contents.html');
+    2: Done := RqHelpShowTopic('contents.html#appa');
+    3: Done := RqHelpShowTopic('custom.html');
+    4: Done := RqHelpShowIndex('');
+    5: Done := RqHelpOpenHtml;
+  else
+    Done := True;
+  end;
+  if not Done then
+    ShowMessage('Справка RapidQ: ' + RqHelpLastError);
+end;
+
+// F1 в редакторе файла RapidQ - справка по слову под кареткой: страница
+// из rapidq_ref\help\keywords.txt, иначе указатель CHM с этим словом
+function TForm1.HelpKey(AKey: Word): Boolean;
+begin
+  Result := False;
+  if (AKey <> VK_F1) or (GetKeyState(VK_CONTROL) < 0) or
+     (GetKeyState(VK_SHIFT) < 0) or (GetKeyState(VK_MENU) < 0) or
+     (ActiveControl <> RichEdit1) or (CurBuildKind <> bkRapidQ) then
+    Exit;
+  Result := True;
+  if not RqHelpKeyword(HelpWordAtCaret) then
+    ShowMessage('Справка RapidQ: ' + RqHelpLastError);
+end;
+
+// Слово для F1: выделение в пределах строки, иначе имя под кареткой (или
+// перед ней) вместе с суффиксом типа ($ % & ! # ?) и знаком $ директивы
+// в начале ($INCLUDE)
+function TForm1.HelpWordAtCaret: string;
+const
+  NameChars = ['A'..'Z', 'a'..'z', '0'..'9', '_'];
+var
+  LineText, SelText: string;
+  LineIdx, LineStart, CharPos, StartCol, EndCol: Integer;
+begin
+  Result := '';
+  if not RichEdit1.HandleAllocated then
+    Exit;
+  if RichEdit1.SelLength > 0 then
+  begin
+    // Не RichEdit1.SelText: его чтение портит память (см. SelTextA)
+    SelText := Trim(SelTextA(100));
+    if (SelText <> '') and (Pos(#13, SelText) = 0) and
+       (Pos(#10, SelText) = 0) then
+    begin
+      Result := SelText;
+      Exit;
+    end;
+  end;
+  LineText := CiLineOf(RichEdit1.SelStart, LineIdx, LineStart);
+  CharPos := RichEdit1.SelStart - LineStart + 1;
+  if (CharPos > Length(LineText)) or
+     ((CharPos >= 1) and not (LineText[CharPos] in NameChars)) then
+  begin
+    // каретка сразу за именем (или за его суффиксом: STRF$|)
+    Dec(CharPos);
+    while (CharPos > 1) and (CharPos <= Length(LineText)) and
+          (LineText[CharPos] in ['$', '%', '&', '!', '#', '?']) do
+      Dec(CharPos);
+  end;
+  if (CharPos < 1) or (CharPos > Length(LineText)) or
+     not (LineText[CharPos] in NameChars) then
+    Exit;
+  StartCol := CharPos;
+  EndCol := CharPos;
+  while (StartCol > 1) and (LineText[StartCol - 1] in NameChars) do
+    Dec(StartCol);
+  while (EndCol < Length(LineText)) and (LineText[EndCol + 1] in NameChars) do
+    Inc(EndCol);
+  if (StartCol > 1) and (LineText[StartCol - 1] = '$') then
+    Dec(StartCol);
+  while (EndCol < Length(LineText)) and
+        (LineText[EndCol + 1] in ['$', '%', '&', '!', '#', '?']) do
+    Inc(EndCol);
+  Result := Copy(LineText, StartCol, EndCol - StartCol + 1);
+  if (Result <> '') and (Result[1] in ['0'..'9']) then
+    Result := '';   // число, а не имя
 end;
 
 // Меняет шрифт и базовые цвета редактора, не трогая флаг "файл изменён".

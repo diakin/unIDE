@@ -697,7 +697,47 @@ object Form1: TForm1
     end
     object mHelp: TMenuItem
       Caption = '&Help'
-      OnClick = mHelpClick
+      object mHelpRq: TMenuItem
+        Caption = '&RapidQ'
+        Hint = 'Справка RapidQ: rapidq_ref\help\rapidq.chm (F1 - по слову под кареткой)'
+        object mHelpRqContents: TMenuItem
+          Tag = 1
+          Caption = '&Contents'
+          OnClick = mHelpRqClick
+        end
+        object mHelpRqComps: TMenuItem
+          Tag = 2
+          Caption = 'Components (Appendix &A)'
+          OnClick = mHelpRqClick
+        end
+        object mHelpRqCustom: TMenuItem
+          Tag = 3
+          Caption = 'Custom components (Appendix &B)'
+          OnClick = mHelpRqClick
+          Hint = 'Компоненты из rapidq_ref\inc (TYPE ... EXTENDS)'
+        end
+        object mHelpRqIndex: TMenuItem
+          Tag = 4
+          Caption = 'Keyword &index'
+          OnClick = mHelpRqClick
+        end
+        object mHelpRqSep: TMenuItem
+          Caption = '-'
+        end
+        object mHelpRqHtml: TMenuItem
+          Tag = 5
+          Caption = '&HTML pages in browser'
+          OnClick = mHelpRqClick
+          Hint = 'rapidq_ref\html_doc\contents.html - та же справка страницами HTML'
+        end
+      end
+      object mHelpSep: TMenuItem
+        Caption = '-'
+      end
+      object mHelpAbout: TMenuItem
+        Caption = '&About...'
+        OnClick = mHelpClick
+      end
     end
   end
   object FontDialog1: TFontDialog
