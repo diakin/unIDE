@@ -292,6 +292,9 @@ type
     // R - число ByRef, S - STRING (ZString Ptr), O - остальное. По нему
     // вызов приводит аргументы к тому, что ждёт функция DLL (WrapLibArgs).
     LibKinds: string;
+    // FUNCTION читает RESULT (result = result & ...): значение функции
+    // FreeBASIC прочитать нельзя, оно ведётся в локальной rq_result
+    ResultRead: Boolean;
   end;
 
   // Таблица ИМЯ -> значение с поиском делением пополам. Заменяет списки
@@ -3124,6 +3127,18 @@ begin
     end;
     Exit;
   end;
+  // RESULT в выражении функции: значение функции FreeBASIC прочитать
+  // нельзя (Function = только запись), поэтому функция, которая читает
+  // RESULT, ведёт его в локальной rq_result (объявление - в заголовке,
+  // LocalsText; запись - rq_result = ... : Function = rq_result,
+  // ProcessAssignOrCall). Признак собирается в первом проходе.
+  if (Up = 'RESULT') and (FCurProc <> nil) and FCurProc.IsFunc and
+     (FindVar(Up) = nil) then
+  begin
+    FCurProc.ResultRead := True;
+    AToks[AIdx].OutText := 'rq_result';
+    Exit;
+  end;
   NextIdx := NextSig(AToks, AIdx + 1, ATo);
   // Super.x внутри TYPE ... EXTENDS -> Base.x
   if (Up = 'SUPER') and (FCurType <> nil) and IsOp(AToks, NextIdx, '.') then
@@ -3353,7 +3368,9 @@ var
   Up, TargetType, Conv, Display, EventKey: string;
   VarRec: TRqVar;
   ProcRec: TRqProc;
+  ResultCopy: Boolean;
 begin
+  ResultCopy := False;
   FirstIdx := NextSig(AToks, AFrom, ATo);
   if FirstIdx < 0 then
     Exit;
@@ -3511,7 +3528,13 @@ begin
       ((FCurType <> nil) and (Up = FCurMethodUp))) and (LhsEnd < 0) then
   begin
     // Возврат значения функции: Result = ... или Имя = ...
-    if (Up = 'RESULT') or (FCurType <> nil) then
+    if FCurProc.ResultRead then
+    begin
+      // функция читает RESULT - значение в rq_result, копия в Function
+      AToks[FirstIdx].OutText := 'rq_result';
+      ResultCopy := True;
+    end
+    else if (Up = 'RESULT') or (FCurType <> nil) then
       AToks[FirstIdx].OutText := 'Function'
     else
       AToks[FirstIdx].OutText := FCurProc.FbName;
@@ -3553,7 +3576,11 @@ begin
   ProcessExpr(AToks, RhsFirst, RhsLast);
   Conv := ConvFunc(TargetType);
   if Conv = '' then
+  begin
+    if ResultCopy then
+      AToks[RhsLast].Post := AToks[RhsLast].Post + ' : Function = rq_result';
     Exit;
+  end;
   if IsNumericType(TargetType) and ExprIsString(AToks, RhsFirst, RhsLast) then
     Warn(Display + ' = ' + RawText(AToks, RhsFirst, RhsLast) +
          ': строка в числовую переменную - будет 0');
@@ -3564,6 +3591,8 @@ begin
   AToks[RhsLast].Post := AToks[RhsLast].Post + ', "' +
                          StringReplace(Display, '"', '', [rfReplaceAll]) +
                          '", __FILE__, __LINE__)';
+  if ResultCopy then
+    AToks[RhsLast].Post := AToks[RhsLast].Post + ' : Function = rq_result';
 end;
 
 // DIM / REDIM: имя[суффикс] [(размеры)] [AS тип], ...
@@ -4056,6 +4085,9 @@ begin
         Locals := Locals + ' : Dim ' + VarRec.FbName + ' As ' +
                   FbType(VarRec.RqType);
     end;
+  // Функция читает RESULT - его локальная копия (ProcessIdent)
+  if (FPass = 2) and ProcRec.IsFunc and ProcRec.ResultRead then
+    Locals := Locals + ' : Dim rq_result As ' + FbType(ProcRec.RetType);
   // GOSUB/RETURN в этой SUB - свой стек возврата (у каждого вызова)
   if (FPass = 2) and (FGosubSites.IndexOfName(ProcRec.Name) >= 0) then
     Locals := Locals + ' : Dim rqgs_sp As Long : ReDim rqgs_stk(1 To 16) As Long';
@@ -5626,6 +5658,7 @@ function TRqFbConv.LocalsText(const AScope: string): string;
 var
   VarIdx: Integer;
   VarRec: TRqVar;
+  ProcRec: TRqProc;
 begin
   Result := '';
   if FPass <> 2 then
@@ -5637,6 +5670,10 @@ begin
       Result := Result + ' : Dim ' + VarRec.FbName + ' As ' +
                 FbType(VarRec.RqType);
   end;
+  // Функция читает RESULT - его локальная копия (ProcessIdent)
+  ProcRec := FindProc(AScope);
+  if (ProcRec <> nil) and ProcRec.IsFunc and ProcRec.ResultRead then
+    Result := Result + ' : Dim rq_result As ' + FbType(ProcRec.RetType);
   // GOSUB/RETURN в методе - свой стек возврата, как в SUB
   if FGosubSites.IndexOfName(AScope) >= 0 then
     Result := Result + ' : Dim rqgs_sp As Long : ReDim rqgs_stk(1 To 16) As Long';
