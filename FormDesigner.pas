@@ -2529,9 +2529,15 @@ begin
         if Depth = 1 then
         begin
           Lead := LeadSpaces(SL[I]);
+          // BorderIcons и BorderStyle = bsNone - тоже правила запущенной
+          // программы: окно конструктора всегда с заголовком и крестиком,
+          // иначе его нечем закрыть (как и в конструкторе Delphi). В .dfm
+          // значения остаются
           if (Lead = 2) and ((Copy(T, 1, 12) = 'FormStyle = ') or
                              (Copy(T, 1, 10) = 'Visible = ') or
-                             (Copy(T, 1, 14) = 'WindowState = ')) then
+                             (Copy(T, 1, 14) = 'WindowState = ') or
+                             (Copy(T, 1, 14) = 'BorderIcons = ') or
+                             (CompareText(T, 'BorderStyle = bsNone') = 0)) then
           begin
             SL.Delete(I);
             Continue;
@@ -3935,7 +3941,10 @@ begin
      ((CompareText(AProp, 'FormStyle') = 0) or
       (CompareText(AProp, 'Visible') = 0) or
       (CompareText(AProp, 'WindowState') = 0) or
-      (CompareText(AProp, 'Position') = 0)) then
+      (CompareText(AProp, 'Position') = 0) or
+      (CompareText(AProp, 'BorderIcons') = 0) or
+      ((CompareText(AProp, 'BorderStyle') = 0) and
+       (CompareText(Trim(AValue), 'bsNone') = 0))) then
     Exit;
 
   // Скрытый контрол остаётся видимым, с красной рамкой (FHidden). TTabSheet
