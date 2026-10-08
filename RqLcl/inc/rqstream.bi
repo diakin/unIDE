@@ -397,10 +397,13 @@ Type QMEMORYSTREAM Extends RqStream
     Declare Sub SetSize(ByVal NewSize As Long) Override
     Declare Sub Close() Override
     ' Pointer RapidQ (слово Pointer у FreeBASIC занято; препроцессор
-    ' переводит .Pointer в .PointerAddr)
-    Declare Property PointerAddr() As Any Ptr
-    Declare Sub MemCopyFrom(ByVal Address As Any Ptr, ByVal Count As Long)
-    Declare Sub MemCopyTo(ByVal Address As Any Ptr, ByVal Count As Long)
+    ' переводит .Pointer в .PointerAddr). Адрес - число, как у RapidQ:
+    ' его присваивают LONG-переменной (sadd = Mem.Pointer в conversion.inc)
+    ' и передают в функции Windows параметром LONG. Integer - размер
+    ' указателя: в 32 бит он помещается в LONG, в 64 бит - нет.
+    Declare Property PointerAddr() As Integer
+    Declare Sub MemCopyFrom(ByVal Address As Integer, ByVal Count As Long)
+    Declare Sub MemCopyTo(ByVal Address As Integer, ByVal Count As Long)
 End Type
 
 Function QMEMORYSTREAM.ReadBuf(ByVal Dest As Any Ptr, ByVal Count As Long) As Long
@@ -448,16 +451,16 @@ Sub QMEMORYSTREAM.Close()
     StreamPos = 0
 End Sub
 
-Property QMEMORYSTREAM.PointerAddr() As Any Ptr
-    Return StrPtr(StreamData)
+Property QMEMORYSTREAM.PointerAddr() As Integer
+    Return Cast(Integer, StrPtr(StreamData))
 End Property
 
-Sub QMEMORYSTREAM.MemCopyFrom(ByVal Address As Any Ptr, ByVal Count As Long)
-    WriteBuf(Address, Count)
+Sub QMEMORYSTREAM.MemCopyFrom(ByVal Address As Integer, ByVal Count As Long)
+    WriteBuf(Cast(Any Ptr, Address), Count)
 End Sub
 
-Sub QMEMORYSTREAM.MemCopyTo(ByVal Address As Any Ptr, ByVal Count As Long)
-    ReadBuf(Address, Count)
+Sub QMEMORYSTREAM.MemCopyTo(ByVal Address As Integer, ByVal Count As Long)
+    ReadBuf(Cast(Any Ptr, Address), Count)
 End Sub
 
 ' ---------------------------------------------------------------------------
