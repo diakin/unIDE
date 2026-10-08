@@ -52,6 +52,7 @@ Type QIMAGE Extends QCONTROL
     Declare Sub Draw(ByVal X1 As Long, ByVal Y1 As Long, ByRef BmpText As String)
     Declare Sub StretchDraw(ByRef DstRect As QRECT, ByRef BmpText As String)
     Declare Sub TextRect(ByRef ClipRect As QRECT, ByVal X1 As Long, ByVal Y1 As Long, ByRef Text1 As String, ByVal TextColor As Long, ByVal BackColor As Long = -1)
+    Declare Sub CopyRectPtr(ByRef DstRect As QRECT, ByVal SourcePtr As Any Ptr, ByRef SrcRect As QRECT)
     Declare Sub CopyRect(ByRef DstRect As QRECT, ByRef Source As QCONTROL, ByRef SrcRect As QRECT)
     Declare Sub Rotate(ByVal X1 As Long, ByVal Y1 As Long, ByVal Angle As Long)
     Declare Function TextWidth(ByRef Text1 As String) As Long
@@ -201,12 +202,16 @@ Sub QIMAGE.TextRect(ByRef ClipRect As QRECT, ByVal X1 As Long, ByVal Y1 As Long,
     Dim IntList(0 To 7) As Long = {ClipRect.Left, ClipRect.Top, ClipRect.Right, ClipRect.Bottom, X1, Y1, TextColor, BackColor}
     DrawInts("TextRect", Text1, IntList())
 End Sub
-' Source - QIMAGE или QFORM (у кого есть холст)
-Sub QIMAGE.CopyRect(ByRef DstRect As QRECT, ByRef Source As QCONTROL, ByRef SrcRect As QRECT)
+Sub QIMAGE.CopyRectPtr(ByRef DstRect As QRECT, ByVal SourcePtr As Any Ptr, ByRef SrcRect As QRECT)
     Dim IntList(0 To 7) As Long = {DstRect.Left, DstRect.Top, DstRect.Right, DstRect.Bottom, _
         SrcRect.Left, SrcRect.Top, SrcRect.Right, SrcRect.Bottom}
-    If RqCallObjInts(RqObj, "CopyRect", Source.RqObj, @IntList(0), 8) = 0 Then RqLclClassError("QIMAGE.CopyRect")
+    If RqCallObjInts(RqObj, "CopyRect", SourcePtr, @IntList(0), 8) = 0 Then RqLclClassError("QIMAGE.CopyRect")
 End Sub
+' Source - QIMAGE, QCANVAS, QBITMAP, QFORM (у кого есть холст)
+Sub QIMAGE.CopyRect(ByRef DstRect As QRECT, ByRef Source As QCONTROL, ByRef SrcRect As QRECT)
+    CopyRectPtr(DstRect, Source.RqObj, SrcRect)
+End Sub
+
 ' Поворот пока не сделан - ошибка
 Sub QIMAGE.Rotate(ByVal X1 As Long, ByVal Y1 As Long, ByVal Angle As Long)
     If RqCallEx(RqObj, "Rotate", 0, X1, Y1, Angle, 0, 0) = 0 Then RqLclClassError("QIMAGE.Rotate")
@@ -304,6 +309,7 @@ Type QIMAGELIST
     Declare Sub Delete_v(ByVal ItemNum As Long)
     Declare Function GetBMP(ByVal ItemNum As Long) As String
     Declare Function GetICO(ByVal ItemNum As Long) As String
+    Declare Sub DrawPtr(ByVal TargetPtr As Any Ptr, ByVal X As Long, ByVal Y As Long, ByVal ItemNum As Long)
     Declare Sub Draw(ByRef Target As QCONTROL, ByVal X As Long, ByVal Y As Long, ByVal ItemNum As Long)
 End Type
 
@@ -400,8 +406,11 @@ Function QIMAGELIST.GetICO(ByVal ItemNum As Long) As String
     ListCall("GetICO", "", ItemNum)
     Return ""
 End Function
-' Target - QIMAGE или QFORM
-Sub QIMAGELIST.Draw(ByRef Target As QCONTROL, ByVal X As Long, ByVal Y As Long, ByVal ItemNum As Long)
+Sub QIMAGELIST.DrawPtr(ByVal TargetPtr As Any Ptr, ByVal X As Long, ByVal Y As Long, ByVal ItemNum As Long)
     Dim IntList(0 To 2) As Long = {X, Y, ItemNum}
-    If RqCallObjInts(RqObj, "Draw", Target.RqObj, @IntList(0), 3) = 0 Then RqLclClassError("QIMAGELIST.Draw")
+    If RqCallObjInts(RqObj, "Draw", TargetPtr, @IntList(0), 3) = 0 Then RqLclClassError("QIMAGELIST.Draw")
+End Sub
+' Target - QIMAGE, QCANVAS, QBITMAP, QFORM (у кого есть холст)
+Sub QIMAGELIST.Draw(ByRef Target As QCONTROL, ByVal X As Long, ByVal Y As Long, ByVal ItemNum As Long)
+    DrawPtr(Target.RqObj, X, Y, ItemNum)
 End Sub

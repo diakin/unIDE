@@ -683,6 +683,15 @@ Const RqEvResize = 21
 ' QLISTVIEW: OnChange (Index, Change), OnColumnClick (Column)
 Const RqEvListChange = 22
 Const RqEvColumnClick = 23
+' QSCROLLBAR OnScroll (ScrollCode, ScrollPos); QCANVAS OnPaint
+Const RqEvScroll = 24
+Const RqEvPaint = 25
+' QHEADER: OnDrawSection (Index, Pressed, Rect), OnSectionClick (Index),
+' OnSectionResize (Index), OnSectionTrack (Index, Width, State)
+Const RqEvDrawSection = 26
+Const RqEvSectionClick = 27
+Const RqEvSectionResize = 28
+Const RqEvSectionTrack = 29
 
 ' Виды обработчиков для вызова (Sender - как QCONTROL: у элемента любого
 ' класса QCONTROL лежит в начале)
@@ -712,6 +721,8 @@ Type RqEvProcAllow As Sub(ByVal As Long, ByRef As Long)
 Type RqEvProcAllowS As Sub(ByVal As Long, ByRef As Long, ByRef As QCONTROL)
 Type RqEvProcListChange As Sub(ByVal As Long, ByVal As Long)
 Type RqEvProcListChangeS As Sub(ByVal As Long, ByVal As Long, ByRef As QCONTROL)
+Type RqEvProcTrack As Sub(ByVal As Long, ByVal As Long, ByVal As Long)
+Type RqEvProcTrackS As Sub(ByVal As Long, ByVal As Long, ByVal As Long, ByRef As QCONTROL)
 Type RqEvProcPlain As Sub()
 Type RqEvProcSender As Sub(ByRef As QCONTROL)
 
@@ -792,13 +803,14 @@ Private Sub RqLclEventEx stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any 
         Else
             Cast(RqEvProcSetEditTextS, HandlerPtr)(ArgList[0], ArgList[1], EditText, *CtlPtr)
         End If
-    Case RqEvListChange
+    Case RqEvListChange, RqEvScroll
         If HandlerKind = 1 Then
             Cast(RqEvProcListChange, HandlerPtr)(ArgList[0], ArgList[1])
         Else
             Cast(RqEvProcListChangeS, HandlerPtr)(ArgList[0], ArgList[1], *CtlPtr)
         End If
-    Case RqEvTreeChange, RqEvExpand, RqEvCollapse, RqEvColumnClick
+    Case RqEvTreeChange, RqEvExpand, RqEvCollapse, RqEvColumnClick, _
+            RqEvSectionClick, RqEvSectionResize
         If HandlerKind = 1 Then
             Cast(RqEvProcIndex, HandlerPtr)(ArgList[0])
         Else
@@ -810,7 +822,13 @@ Private Sub RqLclEventEx stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any 
         Else
             Cast(RqEvProcAllowS, HandlerPtr)(ArgList[0], ArgList[1], *CtlPtr)
         End If
-    Case RqEvDrawItem
+    Case RqEvSectionTrack
+        If HandlerKind = 1 Then
+            Cast(RqEvProcTrack, HandlerPtr)(ArgList[0], ArgList[1], ArgList[2])
+        Else
+            Cast(RqEvProcTrackS, HandlerPtr)(ArgList[0], ArgList[1], ArgList[2], *CtlPtr)
+        End If
+    Case RqEvDrawItem, RqEvDrawSection
         Dim ItemRect As QRECT
         ItemRect.Left = ArgList[2] : ItemRect.Top = ArgList[3]
         ItemRect.Right = ArgList[4] : ItemRect.Bottom = ArgList[5]
@@ -894,6 +912,30 @@ Type QFORM Extends QCONTROL
     Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QFORM))
     Declare Property OnMouseMove(ByVal Handler As Sub())
     Declare Property OnMouseMove(ByVal Handler As Sub(ByRef Sender As QFORM))
+    ' Рисование на форме (как у QIMAGE); OnPaint - перерисовка
+    Declare Property CopyMode() As Long
+    Declare Property CopyMode(ByVal Value As Long)
+    Declare Function Pixel(ByVal X As Long, ByVal Y As Long) As Long
+    Declare Sub SetPixel(ByVal X As Long, ByVal Y As Long, ByVal PixelColor As Long)
+    Declare Sub DrawInts(ByRef MethodName As String, ByRef Text1 As String, IntList() As Long)
+    Declare Sub FillRect(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal FillColor As Long)
+    Declare Sub TextOut(ByVal X1 As Long, ByVal Y1 As Long, ByRef Text1 As String, ByVal TextColor As Long, ByVal BackColor As Long = -1)
+    Declare Sub Line(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal LineColor As Long)
+    Declare Sub Rectangle(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal LineColor As Long)
+    Declare Sub RoundRect(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal X3 As Long, ByVal Y3 As Long, ByVal FillColor As Long)
+    Declare Sub Circle(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal LineColor As Long, ByVal FillFlag As Long)
+    Declare Sub Pset(ByVal X1 As Long, ByVal Y1 As Long, ByVal PixelColor As Long)
+    Declare Sub Paint(ByVal X1 As Long, ByVal Y1 As Long, ByVal FillColor As Long, ByVal BorderColor As Long)
+    Declare Sub Draw(ByVal X1 As Long, ByVal Y1 As Long, ByRef BmpText As String)
+    Declare Sub StretchDraw(ByRef DstRect As QRECT, ByRef BmpText As String)
+    Declare Sub TextRect(ByRef ClipRect As QRECT, ByVal X1 As Long, ByVal Y1 As Long, ByRef Text1 As String, ByVal TextColor As Long, ByVal BackColor As Long = -1)
+    Declare Sub CopyRectPtr(ByRef DstRect As QRECT, ByVal SourcePtr As Any Ptr, ByRef SrcRect As QRECT)
+    Declare Sub CopyRect Overload (ByRef DstRect As QRECT, ByRef Source As QCONTROL, ByRef SrcRect As QRECT)
+    Declare Sub Rotate(ByVal X1 As Long, ByVal Y1 As Long, ByVal Angle As Long)
+    Declare Function TextWidth(ByRef Text1 As String) As Long
+    Declare Function TextHeight(ByRef Text1 As String) As Long
+    Declare Property OnPaint(ByVal Handler As Sub())
+    Declare Property OnPaint(ByVal Handler As Sub(ByRef Sender As QFORM))
 End Type
 
 Private Sub QFORM_ShowEvent stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any Ptr)
@@ -1081,6 +1123,97 @@ End Sub
 Sub QFORM.Center()
     RqLclCall(RqObj, "Center")
 End Sub
+
+' QFORM: рисование
+Property QFORM.CopyMode() As Long
+    Return RqGetInt(RqObj, "CopyMode")
+End Property
+Property QFORM.CopyMode(ByVal Value As Long)
+    RqLclSetInt(RqObj, "CopyMode", Value)
+End Property
+' Pixel(x, y) - цвет точки; Obj.Pixel(x, y) = c - препроцессор: SetPixel
+Function QFORM.Pixel(ByVal X As Long, ByVal Y As Long) As Long
+    Return RqCallEx(RqObj, "GetPixel", 0, X, Y, 0, 0, 0)
+End Function
+Sub QFORM.SetPixel(ByVal X As Long, ByVal Y As Long, ByVal PixelColor As Long)
+    If RqCallEx(RqObj, "SetPixel", 0, X, Y, PixelColor, 0, 0) = 0 Then RqLclClassError("QFORM.Pixel")
+End Sub
+Sub QFORM.DrawInts(ByRef MethodName As String, ByRef Text1 As String, IntList() As Long)
+    If RqCallInts(RqObj, MethodName, StrPtr(Text1), @IntList(0), UBound(IntList) + 1) = 0 Then
+        RqLclClassError("QFORM." & MethodName)
+    End If
+End Sub
+' BackColor = -1 - фон прозрачный
+Sub QFORM.TextOut(ByVal X1 As Long, ByVal Y1 As Long, ByRef Text1 As String, ByVal TextColor As Long, ByVal BackColor As Long = -1)
+    Dim IntList(0 To 3) As Long = {X1, Y1, TextColor, BackColor}
+    DrawInts("TextOut", Text1, IntList())
+End Sub
+Sub QFORM.FillRect(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal FillColor As Long)
+    Dim IntList(0 To 4) As Long = {X1, Y1, X2, Y2, FillColor}
+    DrawInts("FillRect", "", IntList())
+End Sub
+Sub QFORM.Line(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal LineColor As Long)
+    Dim IntList(0 To 4) As Long = {X1, Y1, X2, Y2, LineColor}
+    DrawInts("Line", "", IntList())
+End Sub
+Sub QFORM.Rectangle(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal LineColor As Long)
+    Dim IntList(0 To 4) As Long = {X1, Y1, X2, Y2, LineColor}
+    DrawInts("Rectangle", "", IntList())
+End Sub
+Sub QFORM.RoundRect(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal X3 As Long, ByVal Y3 As Long, ByVal FillColor As Long)
+    Dim IntList(0 To 6) As Long = {X1, Y1, X2, Y2, X3, Y3, FillColor}
+    DrawInts("RoundRect", "", IntList())
+End Sub
+Sub QFORM.Circle(ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal LineColor As Long, ByVal FillFlag As Long)
+    Dim IntList(0 To 5) As Long = {X1, Y1, X2, Y2, LineColor, FillFlag}
+    DrawInts("Circle", "", IntList())
+End Sub
+Sub QFORM.Pset(ByVal X1 As Long, ByVal Y1 As Long, ByVal PixelColor As Long)
+    Dim IntList(0 To 2) As Long = {X1, Y1, PixelColor}
+    DrawInts("Pset", "", IntList())
+End Sub
+Sub QFORM.Paint(ByVal X1 As Long, ByVal Y1 As Long, ByVal FillColor As Long, ByVal BorderColor As Long)
+    Dim IntList(0 To 3) As Long = {X1, Y1, FillColor, BorderColor}
+    DrawInts("Paint", "", IntList())
+End Sub
+' Картинка - файл .bmp или "" (кэш: Obj.Draw(0, 0, Bitmap.BMP))
+Sub QFORM.Draw(ByVal X1 As Long, ByVal Y1 As Long, ByRef BmpText As String)
+    Dim IntList(0 To 1) As Long = {X1, Y1}
+    DrawInts("Draw", BmpText, IntList())
+End Sub
+Sub QFORM.StretchDraw(ByRef DstRect As QRECT, ByRef BmpText As String)
+    Dim IntList(0 To 3) As Long = {DstRect.Left, DstRect.Top, DstRect.Right, DstRect.Bottom}
+    DrawInts("StretchDraw", BmpText, IntList())
+End Sub
+Sub QFORM.TextRect(ByRef ClipRect As QRECT, ByVal X1 As Long, ByVal Y1 As Long, ByRef Text1 As String, ByVal TextColor As Long, ByVal BackColor As Long = -1)
+    Dim IntList(0 To 7) As Long = {ClipRect.Left, ClipRect.Top, ClipRect.Right, ClipRect.Bottom, X1, Y1, TextColor, BackColor}
+    DrawInts("TextRect", Text1, IntList())
+End Sub
+Sub QFORM.CopyRectPtr(ByRef DstRect As QRECT, ByVal SourcePtr As Any Ptr, ByRef SrcRect As QRECT)
+    Dim IntList(0 To 7) As Long = {DstRect.Left, DstRect.Top, DstRect.Right, DstRect.Bottom, _
+        SrcRect.Left, SrcRect.Top, SrcRect.Right, SrcRect.Bottom}
+    If RqCallObjInts(RqObj, "CopyRect", SourcePtr, @IntList(0), 8) = 0 Then RqLclClassError("QFORM.CopyRect")
+End Sub
+' Source - QIMAGE, QCANVAS, QBITMAP, QFORM (у кого есть холст)
+Sub QFORM.CopyRect(ByRef DstRect As QRECT, ByRef Source As QCONTROL, ByRef SrcRect As QRECT)
+    CopyRectPtr(DstRect, Source.RqObj, SrcRect)
+End Sub
+' Поворот пока не сделан - ошибка
+Sub QFORM.Rotate(ByVal X1 As Long, ByVal Y1 As Long, ByVal Angle As Long)
+    If RqCallEx(RqObj, "Rotate", 0, X1, Y1, Angle, 0, 0) = 0 Then RqLclClassError("QFORM.Rotate")
+End Sub
+Function QFORM.TextWidth(ByRef Text1 As String) As Long
+    Return RqCallEx(RqObj, "TextWidth", StrPtr(Text1), 0, 0, 0, 0, 0)
+End Function
+Function QFORM.TextHeight(ByRef Text1 As String) As Long
+    Return RqCallEx(RqObj, "TextHeight", StrPtr(Text1), 0, 0, 0, 0, 0)
+End Function
+Property QFORM.OnPaint(ByVal Handler As Sub())
+    SetEventEx(25, "OnPaint", Cast(Any Ptr, Handler), 0)
+End Property
+Property QFORM.OnPaint(ByVal Handler As Sub(ByRef Sender As QFORM))
+    SetEventEx(25, "OnPaint", Cast(Any Ptr, Handler), 3)
+End Property
 
 ' ---------------------------------------------------------------------------
 '  QBUTTON
@@ -5921,5 +6054,8 @@ Property QSTATUSBAR.OnResize(ByVal Handler As Sub(ByRef Sender As QSTATUSBAR))
 End Property
 
 #include once "rqsys.bi"
+#include once "rqbitmap.bi"
 #include once "rqimage.bi"
 #include once "rqview.bi"
+#include once "rqextra.bi"
+#include once "rqsocket.bi"

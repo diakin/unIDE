@@ -51,11 +51,43 @@ function MiscCallObj(AObj: TObject; const AMethod: string; AOther: TObject;
                      AInt: Integer): Boolean;
 // Холст элемента для рисования (таблица, список, комбобокс); nil - нет
 function CanvasOf(AObj: TObject): TCanvas;
+// CopyMode RapidQ - номер (cmBlackness 0 ... cmWhiteness 14, документация
+// QBITMAP); у LCL - код растровой операции
+function MiscCopyModeToLcl(AIndex: Integer): TCopyMode;
+function MiscCopyModeFromLcl(AMode: TCopyMode): Integer;
 
 implementation
 
 uses
-  Grids;
+  Grids, rqlclextra;
+
+const
+  CopyModeTable: array[0..14] of TCopyMode = (
+    cmBlackness, cmDstInvert, cmMergeCopy, cmMergePaint, cmNotSrcCopy,
+    cmNotSrcErase, cmPatCopy, cmPatInvert, cmPatPaint, cmSrcAnd, cmSrcCopy,
+    cmSrcErase, cmSrcInvert, cmSrcPaint, cmWhiteness);
+
+function MiscCopyModeToLcl(AIndex: Integer): TCopyMode;
+begin
+  if (AIndex < Low(CopyModeTable)) or (AIndex > High(CopyModeTable)) then
+    raise Exception.Create('CopyMode: no mode ' + IntToStr(AIndex) +
+                           ' (0..14)');
+  Result := CopyModeTable[AIndex];
+end;
+
+// Код LCL не из таблицы - -1
+function MiscCopyModeFromLcl(AMode: TCopyMode): Integer;
+var
+  ModeIdx: Integer;
+begin
+  Result := -1;
+  for ModeIdx := Low(CopyModeTable) to High(CopyModeTable) do
+    if CopyModeTable[ModeIdx] = AMode then
+    begin
+      Result := ModeIdx;
+      Exit;
+    end;
+end;
 
 var
   BmpCacheObj: TBitmap = nil;
@@ -147,7 +179,10 @@ begin
     Result := TCustomForm(AObj).Canvas
   // QIMAGE: холст картинки (LCL создаёт картинку размером с элемент)
   else if AObj is TImage then
-    Result := TImage(AObj).Canvas;
+    Result := TImage(AObj).Canvas
+  // QCANVAS, QBITMAP, QHEADER, Printer
+  else
+    Result := ExtraCanvasOf(AObj);
 end;
 
 procedure CheckIndex(const AWhat: string; AIndex, ACount: Integer);

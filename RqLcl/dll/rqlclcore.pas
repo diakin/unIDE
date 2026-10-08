@@ -28,7 +28,7 @@ uses
   Classes, SysUtils, TypInfo, Math, Controls, StdCtrls, Forms, Graphics,
   LazUTF8, LCLType, ComCtrls, Grids, ShellCtrls, ExtCtrls, Buttons, Menus,
   FileCtrl, Dialogs, RichMemo, rqlclrich, rqlclgrid, rqlclmisc, rqlclmore,
-  rqlclsys, rqlclview, rqlclimage, ImgList;
+  rqlclsys, rqlclview, rqlclimage, ImgList, rqlclextra;
 
 const
   RqLclVersion = 2;   // меняется при несовместимой смене набора функций
@@ -137,6 +137,15 @@ type
     procedure FireListChange(Sender: TObject; Item: TListItem;
                              Change: TItemChange);
     procedure FireColumnClick(Sender: TObject; Column: TListColumn);
+    procedure FireScroll(Sender: TObject; ScrollCode: TScrollCode;
+                         var ScrollPos: Integer);
+    procedure FireDrawSection(Sender: TObject; AIndex, APressed: Integer;
+                              ARect: TRect);
+    procedure FireSectionNotify(HeaderControl: TCustomHeaderControl;
+                                Section: THeaderSection);
+    procedure FireSectionTrack(HeaderControl: TCustomHeaderControl;
+                               Section: THeaderSection; Width: Integer;
+                               State: TSectionTrackState);
   end;
 
   // Класс RapidQ -> класс LCL
@@ -152,7 +161,7 @@ type
   end;
 
 var
-  RqClassTable: array[0..28] of TRqClassRec;
+  RqClassTable: array[0..36] of TRqClassRec;
   RqPropTable: array[0..4] of TRqPropRec;
   RqLastErrorText: string = '';
   RqInitDone: Boolean = False;
@@ -222,6 +231,22 @@ begin
   RqClassTable[27].LclClass := TImage;
   RqClassTable[28].RqName := 'QIMAGELIST';
   RqClassTable[28].LclClass := TImageList;
+  RqClassTable[29].RqName := 'QCANVAS';
+  RqClassTable[29].LclClass := TPaintBox;
+  RqClassTable[30].RqName := 'QBITMAP';
+  RqClassTable[30].LclClass := TRqBitmap;
+  RqClassTable[31].RqName := 'QSCROLLBAR';
+  RqClassTable[31].LclClass := TScrollBar;
+  RqClassTable[32].RqName := 'QTRACKBAR';
+  RqClassTable[32].LclClass := TTrackBar;
+  RqClassTable[33].RqName := 'QSCROLLBOX';
+  RqClassTable[33].LclClass := TScrollBox;
+  RqClassTable[34].RqName := 'QOVALBTN';
+  RqClassTable[34].LclClass := TRqOvalBtn;
+  RqClassTable[35].RqName := 'QOUTLINE';
+  RqClassTable[35].LclClass := TRqOutline;
+  RqClassTable[36].RqName := 'QHEADER';
+  RqClassTable[36].LclClass := TRqHeader;
   // У RapidQ OnClose формы - сигнал о закрытии без параметров; в LCL ему
   // ближе всего OnCloseQuery (FireCloseQuery разрешает закрытие)
   RqPropTable[0].RqName := 'ONCLOSE';
@@ -569,6 +594,70 @@ begin
   ProcEx(User, Owner, EventId, @Args);
 end;
 
+// QSCROLLBAR: OnScroll - ScrollCode (scLineUp 0 ... scEndScroll 8) и
+// позиция (обработчик может её изменить)
+procedure TRqEventLink.FireScroll(Sender: TObject; ScrollCode: TScrollCode;
+                                  var ScrollPos: Integer);
+var
+  Args: TRqEventArgs;
+begin
+  if not Assigned(ProcEx) then
+    Exit;
+  FillChar(Args, SizeOf(Args), 0);
+  Args.IntArgs[0] := Ord(ScrollCode);
+  Args.IntArgs[1] := ScrollPos;
+  ProcEx(User, Owner, EventId, @Args);
+  ScrollPos := Args.IntArgs[1];
+end;
+
+// QHEADER: OnDrawSection - номер секции, нажата (1/0), прямоугольник
+procedure TRqEventLink.FireDrawSection(Sender: TObject; AIndex,
+                                       APressed: Integer; ARect: TRect);
+var
+  Args: TRqEventArgs;
+begin
+  if not Assigned(ProcEx) then
+    Exit;
+  FillChar(Args, SizeOf(Args), 0);
+  Args.IntArgs[0] := AIndex;
+  Args.IntArgs[1] := APressed;
+  Args.IntArgs[2] := ARect.Left;
+  Args.IntArgs[3] := ARect.Top;
+  Args.IntArgs[4] := ARect.Right;
+  Args.IntArgs[5] := ARect.Bottom;
+  ProcEx(User, Owner, EventId, @Args);
+end;
+
+// QHEADER: OnSectionClick, OnSectionResize - номер секции
+procedure TRqEventLink.FireSectionNotify(HeaderControl: TCustomHeaderControl;
+                                         Section: THeaderSection);
+var
+  Args: TRqEventArgs;
+begin
+  if not Assigned(ProcEx) then
+    Exit;
+  FillChar(Args, SizeOf(Args), 0);
+  Args.IntArgs[0] := Section.Index;
+  ProcEx(User, Owner, EventId, @Args);
+end;
+
+// QHEADER: OnSectionTrack - номер, ширина, состояние (tsTrackBegin 0,
+// tsTrackMove 1, tsTrackEnd 2)
+procedure TRqEventLink.FireSectionTrack(HeaderControl: TCustomHeaderControl;
+                                        Section: THeaderSection; Width: Integer;
+                                        State: TSectionTrackState);
+var
+  Args: TRqEventArgs;
+begin
+  if not Assigned(ProcEx) then
+    Exit;
+  FillChar(Args, SizeOf(Args), 0);
+  Args.IntArgs[0] := Section.Index;
+  Args.IntArgs[1] := Width;
+  Args.IntArgs[2] := Ord(State);
+  ProcEx(User, Owner, EventId, @Args);
+end;
+
 // Переходник события AEvent у объекта; нет - nil
 function LinkOf(AComp: TComponent; const AEvent: string): TRqEventLink;
 var
@@ -651,6 +740,10 @@ begin
     Result := SysGlobalObject(string(AClassName));
     if Result <> nil then
       Exit;
+    // Printer
+    Result := ExtraGlobalObject(string(AClassName));
+    if Result <> nil then
+      Exit;
     ClassIdx := FindClassRec(string(AClassName));
     if ClassIdx < 0 then
     begin
@@ -667,6 +760,7 @@ begin
     Data.User := AUser;
     GridInitNew(Comp);
     MoreInitNew(Comp);
+    ExtraInitNew(Comp);
     if (AParent <> nil) and (Comp is TControl) and
        (TObject(AParent) is TWinControl) then
       TControl(Comp).Parent := TWinControl(AParent);
@@ -686,7 +780,7 @@ end;
 procedure RqFree(AObj: Pointer); stdcall;
 begin
   try
-    if not SysIsGlobal(TObject(AObj)) then
+    if not SysIsGlobal(TObject(AObj)) and not ExtraIsGlobal(TObject(AObj)) then
       TObject(AObj).Free;
   except
     on E: Exception do
@@ -708,6 +802,7 @@ begin
        MoreSetInt(TObject(AObj), string(AProp), AValue) or
        SysSetInt(TObject(AObj), string(AProp), AValue) or
        ViewSetInt(TObject(AObj), string(AProp), AValue) or
+       ExtraSetInt(TObject(AObj), string(AProp), AValue) or
        ImgSetInt(TObject(AObj), string(AProp), AValue) then
     begin
       Result := 1;
@@ -746,6 +841,7 @@ begin
        MoreGetInt(TObject(AObj), string(AProp), Result) or
        SysGetInt(TObject(AObj), string(AProp), Result) or
        ViewGetInt(TObject(AObj), string(AProp), Result) or
+       ExtraGetInt(TObject(AObj), string(AProp), Result) or
        ImgGetInt(TObject(AObj), string(AProp), Result) then
       Exit;
     Info := FindProp(TObject(AObj), string(AProp));
@@ -771,6 +867,7 @@ begin
        MoreSetStr(TObject(AObj), string(AProp), string(AValue)) or
        SysSetStr(TObject(AObj), string(AProp), string(AValue)) or
        ViewSetStr(TObject(AObj), string(AProp), string(AValue)) or
+       ExtraSetStr(TObject(AObj), string(AProp), string(AValue)) or
        ImgSetStr(TObject(AObj), string(AProp), string(AValue)) then
     begin
       Result := 1;
@@ -812,6 +909,7 @@ begin
        not MoreGetStr(TObject(AObj), string(AProp), Value) and
        not SysGetStr(TObject(AObj), string(AProp), Value) and
        not ViewGetStr(TObject(AObj), string(AProp), Value) and
+       not ExtraGetStr(TObject(AObj), string(AProp), Value) and
        not ImgGetStr(TObject(AObj), string(AProp), Value) then
     begin
       Info := FindProp(TObject(AObj), string(AProp));
@@ -997,6 +1095,10 @@ var
   TreeAllowProc: TTVChangingEvent;
   ListChangeProc: TLVChangeEvent;
   ColumnClickProc: TLVColumnClickEvent;
+  ScrollProc: TScrollEvent;
+  DrawSectionProc: TRqDrawSectionEvent;
+  SectionNotifyProc: TCustomSectionNotifyEvent;
+  SectionTrackProc: TCustomSectionTrackEvent;
 begin
   Result := 0;
   try
@@ -1065,6 +1167,26 @@ begin
     begin
       ColumnClickProc := @Link.FireColumnClick;
       Handler := TMethod(ColumnClickProc);
+    end
+    else if TypeName = 'TScrollEvent' then
+    begin
+      ScrollProc := @Link.FireScroll;
+      Handler := TMethod(ScrollProc);
+    end
+    else if TypeName = 'TRqDrawSectionEvent' then
+    begin
+      DrawSectionProc := @Link.FireDrawSection;
+      Handler := TMethod(DrawSectionProc);
+    end
+    else if TypeName = 'TCustomSectionNotifyEvent' then
+    begin
+      SectionNotifyProc := @Link.FireSectionNotify;
+      Handler := TMethod(SectionNotifyProc);
+    end
+    else if TypeName = 'TCustomSectionTrackEvent' then
+    begin
+      SectionTrackProc := @Link.FireSectionTrack;
+      Handler := TMethod(SectionTrackProc);
     end
     else if TypeName = 'TKeyEvent' then
     begin
@@ -1393,7 +1515,8 @@ begin
     if EditGetItem(TObject(AObj), Prop, AIndex, Value) or
        MiscGetItem(TObject(AObj), Prop, AIndex, Value) or
        MoreGetItem(TObject(AObj), Prop, AIndex, Value) or
-       ViewGetItem(TObject(AObj), Prop, AIndex, Value) then
+       ViewGetItem(TObject(AObj), Prop, AIndex, Value) or
+       ExtraGetItem(TObject(AObj), Prop, AIndex, Value) then
       Found := True
     else if (TObject(AObj) is TFont) and (Prop = 'FONTNAME') then
     begin
@@ -1437,7 +1560,8 @@ begin
     if EditSetItem(TObject(AObj), string(AProp), AIndex, string(AValue)) or
        MiscSetItem(TObject(AObj), string(AProp), AIndex, string(AValue)) or
        MoreSetItem(TObject(AObj), string(AProp), AIndex, string(AValue)) or
-       ViewSetItem(TObject(AObj), string(AProp), AIndex, string(AValue)) then
+       ViewSetItem(TObject(AObj), string(AProp), AIndex, string(AValue)) or
+       ExtraSetItem(TObject(AObj), string(AProp), AIndex, string(AValue)) then
       Result := 1
     else if AObj = nil then
       SetError('RqSetItemStr ' + string(AProp) + ': no object')
@@ -1524,7 +1648,8 @@ begin
     if not GridGetItemInt(TObject(AObj), string(AProp), AIndex, Result) and
        not MiscGetItemInt(TObject(AObj), string(AProp), AIndex, Result) and
        not MoreGetItemInt(TObject(AObj), string(AProp), AIndex, Result) and
-       not ViewGetItemInt(TObject(AObj), string(AProp), AIndex, Result) then
+       not ViewGetItemInt(TObject(AObj), string(AProp), AIndex, Result) and
+       not ExtraGetItemInt(TObject(AObj), string(AProp), AIndex, Result) then
       SetError('RqGetItemInt: no list ' + string(AProp));
   except
     on E: Exception do
@@ -1540,7 +1665,8 @@ begin
     if GridSetItemInt(TObject(AObj), string(AProp), AIndex, AValue) or
        MiscSetItemInt(TObject(AObj), string(AProp), AIndex, AValue) or
        MoreSetItemInt(TObject(AObj), string(AProp), AIndex, AValue) or
-       ViewSetItemInt(TObject(AObj), string(AProp), AIndex, AValue) then
+       ViewSetItemInt(TObject(AObj), string(AProp), AIndex, AValue) or
+       ExtraSetItemInt(TObject(AObj), string(AProp), AIndex, AValue) then
       Result := 1
     else
       SetError('RqSetItemInt: no list ' + string(AProp));
@@ -1580,6 +1706,8 @@ begin
                        AInt2, AInt3, IntResult) or
             ViewCallEx(TObject(AObj), string(AMethod), string(AStr), AInt1,
                        AInt2, AInt3, IntResult) or
+            ExtraCallEx(TObject(AObj), string(AMethod), string(AStr), AInt1,
+                        AInt2, AInt3, IntResult) or
             ImgCallEx(TObject(AObj), string(AMethod), string(AStr), AInt1,
                       AInt2, AInt3, IntResult) then
       Result := IntResult

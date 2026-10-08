@@ -112,16 +112,26 @@ function ImgGetInt(AObj: TObject; const AProp: string;
                    out AValue: Integer): Boolean;
 var
   Prop: string;
+  DrawCanvas: TCanvas;
 begin
   Result := False;
   AValue := 0;
   Prop := UpperCase(AProp);
+  // CopyMode - у всех, у кого есть холст (QIMAGE, QCANVAS, QBITMAP...)
+  if Prop = 'COPYMODE' then
+  begin
+    DrawCanvas := CanvasOf(AObj);
+    if DrawCanvas <> nil then
+    begin
+      AValue := MiscCopyModeFromLcl(DrawCanvas.CopyMode);
+      Result := True;
+      Exit;
+    end;
+  end;
   if AObj is TImage then
   begin
     Result := True;
-    if Prop = 'COPYMODE' then
-      AValue := Integer(TImage(AObj).Canvas.CopyMode)
-    else if Prop = 'INCREMENTALDISPLAY' then
+    if Prop = 'INCREMENTALDISPLAY' then
       AValue := 0
     else
       Result := False;
@@ -141,9 +151,20 @@ function ImgSetInt(AObj: TObject; const AProp: string;
 var
   Prop: string;
   NewIcon: TIcon;
+  DrawCanvas: TCanvas;
 begin
   Result := False;
   Prop := UpperCase(AProp);
+  if Prop = 'COPYMODE' then
+  begin
+    DrawCanvas := CanvasOf(AObj);
+    if DrawCanvas <> nil then
+    begin
+      DrawCanvas.CopyMode := MiscCopyModeToLcl(AValue);
+      Result := True;
+      Exit;
+    end;
+  end;
   if not (AObj is TImage) then
     Exit;
   Result := True;
@@ -159,8 +180,6 @@ begin
       NewIcon.Free;
     end;
   end
-  else if Prop = 'COPYMODE' then
-    TImage(AObj).Canvas.CopyMode := TCopyMode(AValue)
   // в LCL нет; рисование и так сразу целиком
   else if Prop = 'INCREMENTALDISPLAY' then
   else
@@ -336,9 +355,10 @@ begin
                               AInt2, AInt3);
     Exit;
   end;
-  if not (AObj is TImage) then
+  // Pixel, TextWidth... - у всех, у кого есть холст
+  ImageCanvas := CanvasOf(AObj);
+  if ImageCanvas = nil then
     Exit;
-  ImageCanvas := TImage(AObj).Canvas;
   Result := True;
   if Method = 'GETPIXEL' then
     AIntResult := Integer(ImageCanvas.Pixels[AInt1, AInt2])
