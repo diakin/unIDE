@@ -1,0 +1,24 @@
+200.5
+10199.5
+VType0=0
+VType1=1
+VType2=2 undefined=0
+long 99 str 99.5
+gt
+eq
+inc 102.5
+half 51.25
+byref changed
+mix changed5 107.5
+[Location: Any 1234 55.39     ]
+10 20 10 20
+FF 00FF -007    ab|ab   |
+3.14 2.500 1,234,567.89 1.23450000000000E+003
+100%
+init 55 234 45 99 0
+names abc[]
+grid 1.500000000 4.500000000
+spin +2
+spin +2.5
+spin +10
+end

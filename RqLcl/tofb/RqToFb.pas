@@ -131,7 +131,8 @@ const
     // отдельно (RqVarPtr(@x), см. ProcessIdent)
     'VARPTR$=RqVarPtrStr MEMCPY=RqMemCpy MEMSET=RqMemSet MEMCMP=RqMemCmp ' +
     'SENDMESSAGE=RqSendMessage POSTMESSAGE=RqPostMessage ' +
-    'KILLMESSAGE=RqKillMessage SHELL=RqShell QUICKSORT=RqQuickSort';
+    'KILLMESSAGE=RqKillMessage SHELL=RqShell QUICKSORT=RqQuickSort ' +
+    'VARTYPE=RqVarType';
 
   // Свойства и методы RapidQ, имена которых в FreeBASIC - ключевые слова:
   // .Pointer (QMEMORYSTREAM) -> .PointerAddr (rqstream.bi), .Type и .Peek
@@ -531,7 +532,9 @@ type
     procedure ProcessReturn(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessIncDec(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessQuickSort(var AToks: TToks; AFrom, ATo: Integer);
+    procedure ProcessInitArray(var AToks: TToks; AFrom, ATo: Integer);
     function ArgIsRecord(const AToks: TToks; AFrom, ATo: Integer): Boolean;
+    function TopComma(const AToks: TToks; AFrom, ATo: Integer): Integer;
     procedure MemRecordArgs(var AToks: TToks; AHeadIdx, ATo: Integer);
     procedure SplitVariadicCall(var AToks: TToks; AFirst, ATo: Integer);
     procedure WrapVariadicArgs(var AToks: TToks; AFrom, ATo, ANameIdx: Integer;
@@ -1398,9 +1401,18 @@ begin
     begin
       if (Pos1 + 1 <= TextLen) and
          (((Ch = '<') and (AText[Pos1 + 1] in ['>', '='])) or
-          ((Ch = '>') and (AText[Pos1 + 1] = '='))) then
+          ((Ch = '>') and (AText[Pos1 + 1] = '=')) or
+          ((Ch = '=') and (AText[Pos1 + 1] in ['>', '<']))) then
         Inc(Pos1);
       Add(tkOp, Pos0, Pos1);
+      // => и =< - как >= и <= (так в QSpinEdit.inc: IF .Value => .MaxValue;
+      // в operators.html - только >= и <=)
+      if (AToks[Count - 1].Text = '=>') or (AToks[Count - 1].Text = '=<') then
+      begin
+        AToks[Count - 1].Text := AToks[Count - 1].Text[2] + '=';
+        AToks[Count - 1].Up := AToks[Count - 1].Text;
+        AToks[Count - 1].OutText := AToks[Count - 1].Text;
+      end;
     end;
     Pos0 := Pos1 + 1;
   end;
@@ -1680,6 +1692,8 @@ begin
     Result := 'ULong'
   else if ARqType = 'STRING' then
     Result := 'String'
+  else if ARqType = 'VARIANT' then
+    Result := 'RqVariant'   // rqrt.bi: число, дробное или строка
   else
     Result := ARqType;
 end;
@@ -1739,8 +1753,6 @@ begin
       end;
     end;
   end;
-  if Result = 'VARIANT' then
-    WarnOnce('VARIANT', 'тип VARIANT пока не поддержан');
 end;
 
 // Переменная по имени: сначала в текущей SUB/FUNCTION, потом в модуле
@@ -2891,6 +2903,8 @@ begin
     ProcessCallFuncStmt(AToks, FirstIdx, ATo)
   else if (Up = 'QUICKSORT') and (FindProc(Up) = nil) then
     ProcessQuickSort(AToks, FirstIdx, ATo)
+  else if (Up = 'INITARRAY') and (FindProc(Up) = nil) then
+    ProcessInitArray(AToks, FirstIdx, ATo)
   else if (Up = 'SLEEP') and (FindProc(Up) = nil) then
   begin
     // SLEEP секунды (RapidQ, можно дробь) -> RqSleep; Sleep FreeBASIC - в
@@ -3125,6 +3139,18 @@ begin
        (FindVar(AToks[TypeIdx].Up) = nil) and
        IsNumericType(NormType(AToks[TypeIdx].Up)) then
       AToks[TypeIdx].OutText := FbType(NormType(AToks[TypeIdx].Up));
+  end;
+  // FORMAT$(формат, a, b, ...) -> RqFormat(формат, RqPList().Arg(a).Arg(b)):
+  // значения разных типов по порядку (rqrt.bi)
+  if (Up = 'FORMAT$') and (FindProc(Up) = nil) and IsOp(AToks, NextIdx, '(') and
+     (MatchParen(AToks, NextIdx, ATo) > 0) then
+  begin
+    AToks[AIdx].OutText := 'RqFormat';
+    TypeIdx := TopComma(AToks, NextIdx + 1, MatchParen(AToks, NextIdx, ATo) - 1);
+    if TypeIdx > 0 then
+      WrapVariadicArgs(AToks, TypeIdx + 1, MatchParen(AToks, NextIdx, ATo) - 1,
+                       AIdx, True);
+    Exit;
   end;
   // MEMCPY(Запись, ...) - адрес записи (см. MemRecordArgs)
   if (FFuncMap.IndexOf(Up) >= 0) and IsOp(AToks, NextIdx, '(') then
@@ -5078,6 +5104,74 @@ begin
           AToks[ArgStart[1]].Text + ': элементы разных массивов ("span ' +
           'sort") - в FreeBASIC массивы не лежат в памяти подряд');
   ProcessExpr(AToks, FirstIdx + 1, ATo);
+end;
+
+// Первая запятая верхнего уровня в [AFrom..ATo]; нет - -1
+function TRqFbConv.TopComma(const AToks: TToks; AFrom, ATo: Integer): Integer;
+var
+  TokIdx, Depth: Integer;
+begin
+  Result := -1;
+  Depth := 0;
+  for TokIdx := AFrom to ATo do
+    if IsOp(AToks, TokIdx, '(') then
+      Inc(Depth)
+    else if IsOp(AToks, TokIdx, ')') then
+      Dec(Depth)
+    else if (Depth = 0) and IsOp(AToks, TokIdx, ',') then
+    begin
+      Result := TokIdx;
+      Exit;
+    end;
+end;
+
+// INITARRAY(Массив, значение, ...) и без скобок ->
+// RqInitArray(Массив(), RqPList().Arg(значение)...) (rqrt.bi): первые
+// элементы массива по порядку в памяти
+procedure TRqFbConv.ProcessInitArray(var AToks: TToks; AFrom, ATo: Integer);
+var
+  FirstIdx, OpenIdx, ArgFrom, ArgTo, NameIdx, CommaIdx: Integer;
+  VarRec: TRqVar;
+begin
+  FirstIdx := NextSig(AToks, AFrom, ATo);
+  AToks[FirstIdx].OutText := 'RqInitArray';
+  OpenIdx := NextSig(AToks, FirstIdx + 1, ATo);
+  if IsOp(AToks, OpenIdx, '(') and
+     (MatchParen(AToks, OpenIdx, ATo) = PrevSig(AToks, ATo)) then
+  begin
+    ArgFrom := OpenIdx + 1;
+    ArgTo := MatchParen(AToks, OpenIdx, ATo) - 1;
+  end
+  else
+  begin
+    ArgFrom := FirstIdx + 1;
+    ArgTo := ATo;
+    AToks[FirstIdx].Post := AToks[FirstIdx].Post + '(';
+    AToks[PrevSig(AToks, ATo)].Post := AToks[PrevSig(AToks, ATo)].Post + ')';
+  end;
+  NameIdx := NextSig(AToks, ArgFrom, ArgTo);
+  CommaIdx := TopComma(AToks, ArgFrom, ArgTo);
+  VarRec := nil;
+  if (NameIdx >= 0) and (AToks[NameIdx].Kind = tkIdent) then
+    VarRec := FindVar(AToks[NameIdx].Up);
+  if (VarRec = nil) or not VarRec.IsArray or
+     ((CommaIdx > 0) and (NextSig(AToks, NameIdx + 1, ArgTo) <> CommaIdx)) then
+  begin
+    Error('INITARRAY: первым параметром ожидалось имя массива: ' +
+          RawText(AToks, ArgFrom, ArgTo));
+    Exit;
+  end;
+  AToks[NameIdx].OutText := VarRec.FbName;
+  AToks[NameIdx].Post := AToks[NameIdx].Post + '()';
+  if (VarRec.Scope = '') and VarRec.Explicit then
+    GlobalQualify(AToks, NameIdx);
+  if CommaIdx > 0 then
+  begin
+    WrapVariadicArgs(AToks, CommaIdx + 1, ArgTo, FirstIdx, True);
+    ProcessExpr(AToks, CommaIdx + 1, ArgTo);
+  end
+  else
+    AToks[NameIdx].Post := AToks[NameIdx].Post + ', RqPList()';
 end;
 
 // Параметр - переменная-запись (TYPE без EXTENDS), её элемент массива или

@@ -151,6 +151,14 @@ Function RqStr Overload (ByVal Value As Double) As String   ' число -> ""
 - Имя установщика можно присвоить как процедуру с параметром: `Set_Popup = 1` в RichEdPopUp.inc.
 - Параметры `EVENT OnXxx(...)` могут быть указаны не все (`EVENT Canvas.OnMouseMove(X AS LONG, Y AS LONG)`).
 
+## VARIANT, FORMAT$, INITARRAY (datatypes.html, otherdetail.html)
+
+- VARIANT хранит число, дробное или строку; VARTYPE: 0 — число (Byte … Long), 1 — дробное (Single, Double), 2 — строка; не присвоенный — число. Пример VARTYPE в документации: `Number1=77.0 : TstNum=Number1` → 0, `Number1=77.01` → 1 — значит, вид задаёт значение, а не тип переменной справа.
+- В сложении вид выбирает левый операнд: `V1 = 101 : V2 = "99.5" : PRINT V1+V2` → `200.5`; `V1 = "101" : V2 = 99.5` → `10199.5` (datatypes.html). Другие операции, сравнения и присваивание VARIANT переменной другого типа в документации не описаны — препроцессор делает их по тому же правилу (числа — через Val, строки — через Str); с RapidQ не сверялось. PRINT VARIANT в примере — `200.5`, а не `200.500000000`, как печатается DOUBLE.
+- Параметры VARIANT передаются по ссылке (глава 3.5: «except for objects, variants, udts, and arrays»).
+- FORMAT$ — Format Delphi (описание типов d, e, f, g, n, m, s, x и индекса `%0:d` — в otherdetail.html). Порог научной записи у `g`: в описании — «value is greater than or equal to 0.00001», препроцессор берёт правило FloatToStrF Delphi, как у STRF$ (научная запись меньше 0.0001); с RapidQ не сверялось. Разделители, валюта у `m` — у Delphi из настроек Windows; здесь точка, запятая между тысячами и без знака валюты.
+- INITARRAY(Массив, значения…) — «equivalently: `DEFINT A(1 TO 100) = {55, 234, 45, 99}`»; что с остальными элементами и с лишними значениями — не сказано.
+
 ## Адреса, память, сообщения, SHELL, QUICKSORT (otherdetail.html)
 
 - `VARPTR(переменная)` — адрес переменной. У строки — адрес её символов: так его используют include пользователя (`MEMCPY(VARPTR(QFILEDIALOG.tmpFileName), …)` в QFileDialog.inc пишет в саму строку; `varptr(str1)` в conversion.inc — буфер для MultiByteToWideChar). `VARPTR$(адрес)` — строка по адресу (в conversion.inc: `Len(varptr$(SourseStringPtr))`), то есть до нулевого байта.

@@ -131,6 +131,9 @@ Type RqPList
     Vals(Any) As Double
     StrCount As Long
     ValCount As Long
+    ' порядок значений (FORMAT$, INITARRAY): > 0 - номер в Vals, < 0 - в Strs
+    ArgPos(Any) As Long
+    ArgCount As Long
     Declare Function Arg Overload (ByRef Value As Const String) ByRef As RqPList
     Declare Function Arg Overload (ByVal Value As Double) ByRef As RqPList
 End Type
@@ -139,6 +142,9 @@ Function RqPList.Arg(ByRef Value As Const String) ByRef As RqPList
     StrCount += 1
     ReDim Preserve Strs(1 To StrCount)
     Strs(StrCount) = Value
+    ArgCount += 1
+    ReDim Preserve ArgPos(1 To ArgCount)
+    ArgPos(ArgCount) = -StrCount
     Return This
 End Function
 
@@ -146,6 +152,9 @@ Function RqPList.Arg(ByVal Value As Double) ByRef As RqPList
     ValCount += 1
     ReDim Preserve Vals(1 To ValCount)
     Vals(ValCount) = Value
+    ArgCount += 1
+    ReDim Preserve ArgPos(1 To ArgCount)
+    ArgPos(ArgCount) = ValCount
     Return This
 End Function
 
@@ -1272,3 +1281,494 @@ RQ_QUICKSORT(ULongInt)
 RQ_QUICKSORT(Single)
 RQ_QUICKSORT(Double)
 RQ_QUICKSORT(String)
+
+' ---------------------------------------------------------------------------
+'  VARIANT (datatypes.html, otherdetail.html: VARTYPE). Хранит число (целое),
+'  дробное или строку; VARTYPE: 0 - число, 1 - дробное, 2 - строка. Тип
+'  меняется при присваивании: дробное с целым значением - число (пример
+'  VARTYPE: 77.0 -> 0, 77.01 -> 1). Не присвоенный - число 0.
+'  В операции тип выбирает левый операнд (datatypes.html): 101 + "99.5" ->
+'  200.5, "101" + 99.5 -> "10199.5". Строка в числе - Val, число в строке -
+'  Str ("99.5"); как RapidQ переводит здесь числа вроде 1e20 - не проверено.
+' ---------------------------------------------------------------------------
+Type RqVariant
+    Kind As Long        ' 0 - число, 1 - дробное, 2 - строка (как VARTYPE)
+    NumVal As Double
+    StrVal As String
+    Declare Constructor()
+    Declare Constructor(ByVal Value As Double)
+    Declare Constructor(ByRef Value As Const String)
+    Declare Operator Let(ByVal Value As Double)
+    Declare Operator Let(ByRef Value As Const String)
+    Declare Operator Cast() As Double
+    Declare Operator Cast() As String
+    Declare Operator += (ByRef Value As RqVariant)
+    Declare Operator += (ByVal Value As Double)
+    Declare Operator += (ByRef Value As Const String)
+    Declare Operator -= (ByRef Value As RqVariant)
+    Declare Operator -= (ByVal Value As Double)
+    Declare Operator *= (ByVal Value As Double)
+    Declare Operator /= (ByVal Value As Double)
+End Type
+
+Function RqVarNum(ByRef Value As RqVariant) As Double
+    If Value.Kind = 2 Then Return Val(Value.StrVal)
+    Return Value.NumVal
+End Function
+Function RqVarText(ByRef Value As RqVariant) As String
+    If Value.Kind = 2 Then Return Value.StrVal
+    Return Str(Value.NumVal)
+End Function
+
+Constructor RqVariant()
+End Constructor
+Constructor RqVariant(ByVal Value As Double)
+    This = Value
+End Constructor
+Constructor RqVariant(ByRef Value As Const String)
+    This = Value
+End Constructor
+Operator RqVariant.Let(ByVal Value As Double)
+    NumVal = Value
+    StrVal = ""
+    If Value = Int(Value) Then Kind = 0 Else Kind = 1
+End Operator
+Operator RqVariant.Let(ByRef Value As Const String)
+    Kind = 2
+    StrVal = Value
+    NumVal = 0
+End Operator
+Operator RqVariant.Cast() As Double
+    Return RqVarNum(This)
+End Operator
+Operator RqVariant.Cast() As String
+    Return RqVarText(This)
+End Operator
+
+' + : левая строка - склейка, иначе сложение чисел
+Operator + (ByRef LeftV As RqVariant, ByRef RightV As RqVariant) As RqVariant
+    If LeftV.Kind = 2 Then Return RqVariant(LeftV.StrVal & RqVarText(RightV))
+    Return RqVariant(LeftV.NumVal + RqVarNum(RightV))
+End Operator
+Operator + (ByRef LeftV As RqVariant, ByVal RightN As Double) As RqVariant
+    If LeftV.Kind = 2 Then Return RqVariant(LeftV.StrVal & Str(RightN))
+    Return RqVariant(LeftV.NumVal + RightN)
+End Operator
+Operator + (ByVal LeftN As Double, ByRef RightV As RqVariant) As RqVariant
+    Return RqVariant(LeftN + RqVarNum(RightV))
+End Operator
+Operator + (ByRef LeftV As RqVariant, ByRef RightS As String) As RqVariant
+    If LeftV.Kind = 2 Then Return RqVariant(LeftV.StrVal & RightS)
+    Return RqVariant(LeftV.NumVal + Val(RightS))
+End Operator
+Operator + (ByRef LeftS As String, ByRef RightV As RqVariant) As RqVariant
+    Return RqVariant(LeftS & RqVarText(RightV))
+End Operator
+
+' - * / ^ \ MOD - всегда числа
+#macro RQ_VAR_NUMOP(OpSym)
+Operator OpSym (ByRef LeftV As RqVariant, ByRef RightV As RqVariant) As RqVariant
+    Return RqVariant(RqVarNum(LeftV) OpSym RqVarNum(RightV))
+End Operator
+Operator OpSym (ByRef LeftV As RqVariant, ByVal RightN As Double) As RqVariant
+    Return RqVariant(RqVarNum(LeftV) OpSym RightN)
+End Operator
+Operator OpSym (ByVal LeftN As Double, ByRef RightV As RqVariant) As RqVariant
+    Return RqVariant(LeftN OpSym RqVarNum(RightV))
+End Operator
+Operator OpSym (ByRef LeftV As RqVariant, ByRef RightS As String) As RqVariant
+    Return RqVariant(RqVarNum(LeftV) OpSym Val(RightS))
+End Operator
+Operator OpSym (ByRef LeftS As String, ByRef RightV As RqVariant) As RqVariant
+    Return RqVariant(Val(LeftS) OpSym RqVarNum(RightV))
+End Operator
+#endmacro
+RQ_VAR_NUMOP(-)
+RQ_VAR_NUMOP(*)
+RQ_VAR_NUMOP(/)
+RQ_VAR_NUMOP(^)
+RQ_VAR_NUMOP(\)
+RQ_VAR_NUMOP(Mod)
+
+' AND OR XOR - побитово, над целыми
+#macro RQ_VAR_BITOP(OpSym)
+Operator OpSym (ByRef LeftV As RqVariant, ByRef RightV As RqVariant) As RqVariant
+    Return RqVariant(CLngInt(RqVarNum(LeftV)) OpSym CLngInt(RqVarNum(RightV)))
+End Operator
+Operator OpSym (ByRef LeftV As RqVariant, ByVal RightN As Double) As RqVariant
+    Return RqVariant(CLngInt(RqVarNum(LeftV)) OpSym CLngInt(RightN))
+End Operator
+Operator OpSym (ByVal LeftN As Double, ByRef RightV As RqVariant) As RqVariant
+    Return RqVariant(CLngInt(LeftN) OpSym CLngInt(RqVarNum(RightV)))
+End Operator
+#endmacro
+RQ_VAR_BITOP(And)
+RQ_VAR_BITOP(Or)
+RQ_VAR_BITOP(Xor)
+
+Operator - (ByRef Value As RqVariant) As RqVariant
+    Return RqVariant(-RqVarNum(Value))
+End Operator
+Operator Not (ByRef Value As RqVariant) As RqVariant
+    Return RqVariant(Not CLngInt(RqVarNum(Value)))
+End Operator
+
+' Сравнение: левая строка - сравнение строк, иначе чисел (-1 / 0)
+#macro RQ_VAR_CMPOP(OpSym)
+Operator OpSym (ByRef LeftV As RqVariant, ByRef RightV As RqVariant) As Integer
+    If LeftV.Kind = 2 Then Return LeftV.StrVal OpSym RqVarText(RightV)
+    Return LeftV.NumVal OpSym RqVarNum(RightV)
+End Operator
+Operator OpSym (ByRef LeftV As RqVariant, ByVal RightN As Double) As Integer
+    If LeftV.Kind = 2 Then Return LeftV.StrVal OpSym Str(RightN)
+    Return LeftV.NumVal OpSym RightN
+End Operator
+Operator OpSym (ByVal LeftN As Double, ByRef RightV As RqVariant) As Integer
+    Return LeftN OpSym RqVarNum(RightV)
+End Operator
+Operator OpSym (ByRef LeftV As RqVariant, ByRef RightS As String) As Integer
+    If LeftV.Kind = 2 Then Return LeftV.StrVal OpSym RightS
+    Return LeftV.NumVal OpSym Val(RightS)
+End Operator
+Operator OpSym (ByRef LeftS As String, ByRef RightV As RqVariant) As Integer
+    Return LeftS OpSym RqVarText(RightV)
+End Operator
+#endmacro
+RQ_VAR_CMPOP(=)
+RQ_VAR_CMPOP(<>)
+RQ_VAR_CMPOP(<)
+RQ_VAR_CMPOP(>)
+RQ_VAR_CMPOP(<=)
+RQ_VAR_CMPOP(>=)
+
+' & - склейка строк
+Operator & (ByRef LeftV As RqVariant, ByRef RightV As RqVariant) As String
+    Return RqVarText(LeftV) & RqVarText(RightV)
+End Operator
+Operator & (ByRef LeftV As RqVariant, ByRef RightS As String) As String
+    Return RqVarText(LeftV) & RightS
+End Operator
+Operator & (ByRef LeftS As String, ByRef RightV As RqVariant) As String
+    Return LeftS & RqVarText(RightV)
+End Operator
+
+Operator RqVariant.+= (ByRef Value As RqVariant)
+    This = This + Value
+End Operator
+Operator RqVariant.+= (ByVal Value As Double)
+    This = This + Value
+End Operator
+Operator RqVariant.+= (ByRef Value As Const String)
+    This = This + Cast(String, Value)
+End Operator
+Operator RqVariant.-= (ByRef Value As RqVariant)
+    This = RqVarNum(This) - RqVarNum(Value)
+End Operator
+Operator RqVariant.-= (ByVal Value As Double)
+    This = RqVarNum(This) - Value
+End Operator
+Operator RqVariant.*= (ByVal Value As Double)
+    This = RqVarNum(This) * Value
+End Operator
+Operator RqVariant./= (ByVal Value As Double)
+    This = RqVarNum(This) / Value
+End Operator
+
+' VARTYPE(x): 0 - число, 1 - дробное, 2 - строка
+Function RqVarType Overload (ByRef Value As RqVariant) As Long
+    Return Value.Kind
+End Function
+Function RqVarType Overload (ByVal Value As Double) As Long
+    If Value = Int(Value) Then Return 0
+    Return 1
+End Function
+Function RqVarType Overload (ByRef Value As String) As Long
+    Return 2
+End Function
+
+' Присваивание VARIANT переменной другого типа: строка в числе - Val,
+' число в строке - Str (у VARIANT тип меняется по месту; что делает здесь
+' RapidQ - не проверено)
+Function RqNum Overload (ByRef Value As RqVariant, ByRef VarName As String, _
+                         ByRef FileName As String, ByVal LineNum As Long) As Double
+    Return RqVarNum(Value)
+End Function
+Function RqSng Overload (ByRef Value As RqVariant, ByRef VarName As String, _
+                         ByRef FileName As String, ByVal LineNum As Long) As Single
+    Return CSng(RqVarNum(Value))
+End Function
+Function RqLong Overload (ByRef Value As RqVariant, ByRef VarName As String, _
+                          ByRef FileName As String, ByVal LineNum As Long) As Long
+    Return RqLong(RqVarNum(Value), VarName, FileName, LineNum)
+End Function
+Function RqShort Overload (ByRef Value As RqVariant, ByRef VarName As String, _
+                           ByRef FileName As String, ByVal LineNum As Long) As Short
+    Return RqShort(RqVarNum(Value), VarName, FileName, LineNum)
+End Function
+Function RqByte Overload (ByRef Value As RqVariant, ByRef VarName As String, _
+                          ByRef FileName As String, ByVal LineNum As Long) As UByte
+    Return RqByte(RqVarNum(Value), VarName, FileName, LineNum)
+End Function
+Function RqWord Overload (ByRef Value As RqVariant, ByRef VarName As String, _
+                          ByRef FileName As String, ByVal LineNum As Long) As UShort
+    Return RqWord(RqVarNum(Value), VarName, FileName, LineNum)
+End Function
+Function RqDword Overload (ByRef Value As RqVariant, ByRef VarName As String, _
+                           ByRef FileName As String, ByVal LineNum As Long) As ULong
+    Return RqDword(RqVarNum(Value), VarName, FileName, LineNum)
+End Function
+Function RqStr Overload (ByRef Value As RqVariant, ByRef VarName As String, _
+                         ByRef FileName As String, ByVal LineNum As Long) As String
+    Return RqVarText(Value)
+End Function
+' PRINT: строка - как есть, число - кратко, как в примере datatypes.html
+' (PRINT V1+V2 -> 200.5; у DOUBLE PRINT дал бы 200.500000000 - не проверено)
+Function RqFmt Overload (ByRef Value As RqVariant) As String
+    Return RqVarText(Value)
+End Function
+
+' ---------------------------------------------------------------------------
+'  INITARRAY(Массив, значение, ...) (otherdetail.html): первые элементы
+'  массива по порядку в памяти (у многомерного - весь блок), остальные не
+'  меняются. Перевод: RqInitArray(Массив(), RqPList().Arg(...)...).
+'  Значений больше, чем элементов, - лишние не пишутся (Smart -
+'  предупреждение). Строки в числовой массив и числа в строковый не идут
+'  (0 / ""), как присваивание RapidQ.
+' ---------------------------------------------------------------------------
+Type RqRtArrayInfo
+    IndexPtr As Any Ptr
+    BasePtr As Any Ptr
+    ByteSize As UInteger
+    ElemLen As UInteger
+End Type
+Extern "rtlib"
+    Declare Function RqRtArrayDesc Alias "fb_ArrayGetDesc" (Arr() As Any) As RqRtArrayInfo Ptr
+End Extern
+
+Private Function RqRtArrayCount(ByVal Info As RqRtArrayInfo Ptr, ByVal ArgCount As Long) As Integer
+    If (Info = 0) OrElse (Info->ElemLen = 0) OrElse (Info->BasePtr = 0) Then Return 0
+    Dim ElemCount As Integer = Info->ByteSize \ Info->ElemLen
+    If ArgCount > ElemCount Then
+#ifndef RQ_COMPAT
+        RqRtClassError("INITARRAY: " & ArgCount & " values, array has " & ElemCount & " elements")
+#endif
+        Return ElemCount
+    End If
+    Return ArgCount
+End Function
+
+#macro RQ_INITARRAY(ElemType, IsInt)
+Sub RqInitArray Overload (Arr() As ElemType, ByRef List As RqPList)
+    Dim FirstPtr As ElemType Ptr = RqRtArrayDesc(Arr())->BasePtr
+    Dim FillCount As Integer = RqRtArrayCount(RqRtArrayDesc(Arr()), List.ArgCount)
+    Dim ArgIdx As Integer
+    For ArgIdx = 1 To FillCount
+        If List.ArgPos(ArgIdx) > 0 Then
+            If IsInt Then
+                FirstPtr[ArgIdx - 1] = RqRtTrunc(List.Vals(List.ArgPos(ArgIdx)))
+            Else
+                FirstPtr[ArgIdx - 1] = List.Vals(List.ArgPos(ArgIdx))
+            End If
+        Else
+            FirstPtr[ArgIdx - 1] = 0
+        End If
+    Next
+End Sub
+#endmacro
+RQ_INITARRAY(Byte, 1)
+RQ_INITARRAY(UByte, 1)
+RQ_INITARRAY(Short, 1)
+RQ_INITARRAY(UShort, 1)
+RQ_INITARRAY(Long, 1)
+RQ_INITARRAY(ULong, 1)
+RQ_INITARRAY(Integer, 1)
+RQ_INITARRAY(UInteger, 1)
+RQ_INITARRAY(LongInt, 1)
+RQ_INITARRAY(ULongInt, 1)
+RQ_INITARRAY(Single, 0)
+RQ_INITARRAY(Double, 0)
+
+Sub RqInitArray Overload (Arr() As String, ByRef List As RqPList)
+    Dim FirstPtr As String Ptr = RqRtArrayDesc(Arr())->BasePtr
+    Dim FillCount As Integer = RqRtArrayCount(RqRtArrayDesc(Arr()), List.ArgCount)
+    Dim ArgIdx As Integer
+    For ArgIdx = 1 To FillCount
+        If List.ArgPos(ArgIdx) < 0 Then
+            FirstPtr[ArgIdx - 1] = List.Strs(-List.ArgPos(ArgIdx))
+        Else
+            FirstPtr[ArgIdx - 1] = ""
+        End If
+    Next
+End Sub
+
+Sub RqInitArray Overload (Arr() As RqVariant, ByRef List As RqPList)
+    Dim FirstPtr As RqVariant Ptr = RqRtArrayDesc(Arr())->BasePtr
+    Dim FillCount As Integer = RqRtArrayCount(RqRtArrayDesc(Arr()), List.ArgCount)
+    Dim ArgIdx As Integer
+    For ArgIdx = 1 To FillCount
+        If List.ArgPos(ArgIdx) < 0 Then
+            FirstPtr[ArgIdx - 1] = List.Strs(-List.ArgPos(ArgIdx))
+        Else
+            FirstPtr[ArgIdx - 1] = List.Vals(List.ArgPos(ArgIdx))
+        End If
+    Next
+End Sub
+
+' ---------------------------------------------------------------------------
+'  FORMAT$(формат, значения...) (otherdetail.html) - Format Delphi:
+'  "%" [индекс ":"] ["-"] [ширина] ["." точность] тип; ширина и точность
+'  могут быть "*" (берутся из значений). Типы: d, u, x (целые), e, f, g,
+'  n, m (дробные), s (строка), p (адрес); "%%" - знак процента.
+'  e, f, g, n - те же правила, что у STRF$ (FloatToStrF Delphi). m - как n
+'  (знак валюты и формат Windows не подставляются; у RapidQ - по настройкам
+'  Windows, не проверено). Разделители - точка и запятая между тысячами.
+'  Неверный формат, нет значения, строка вместо числа и наоборот: у Delphi
+'  - ошибка EConvertError; Compat - ошибка и конец программы, Smart -
+'  предупреждение: строка вместо числа - Val, число вместо строки - Str.
+' ---------------------------------------------------------------------------
+Private Function RqRtFormatError(ByRef FormatText As String, ByRef Spec As String) As Long
+    RqRtClassError("FORMAT$: format '" & Spec & "' invalid or incompatible with argument (" & FormatText & ")")
+    Return 0
+End Function
+
+Function RqFormat Overload (ByRef FormatText As String, ByRef List As RqPList) As String
+    Dim ResultText As String
+    Dim CharPos As Long = 1
+    Dim TextLen As Long = Len(FormatText)
+    Dim NextArg As Long = 0          ' номер значения с 0, как в Delphi
+    Do While CharPos <= TextLen
+        Dim CurChar As String = Mid(FormatText, CharPos, 1)
+        If CurChar <> "%" Then
+            ResultText &= CurChar
+            CharPos += 1
+            Continue Do
+        End If
+        Dim SpecStart As Long = CharPos
+        CharPos += 1
+        If Mid(FormatText, CharPos, 1) = "%" Then
+            ResultText &= "%"
+            CharPos += 1
+            Continue Do
+        End If
+        ' число или "*" (индекс или ширина)
+        Dim LeftAlign As Long = 0
+        Dim WidthVal As Long = -1
+        Dim PrecVal As Long = -1
+        Dim NumText As String
+        Dim Pass As Long
+        For Pass = 0 To 2
+            ' Pass 0 - индекс или ширина, 1 - ширина после "-", 2 - точность
+            If Pass = 1 Then
+                If Mid(FormatText, CharPos, 1) = "-" Then
+                    LeftAlign = 1
+                    CharPos += 1
+                End If
+                If WidthVal >= 0 Then Continue For
+            End If
+            If Pass = 2 Then
+                If Mid(FormatText, CharPos, 1) <> "." Then Exit For
+                CharPos += 1
+            End If
+            Dim FieldVal As Long = -1
+            If Mid(FormatText, CharPos, 1) = "*" Then
+                CharPos += 1
+                If (NextArg < List.ArgCount) AndAlso (List.ArgPos(NextArg + 1) > 0) Then
+                    FieldVal = CLng(List.Vals(List.ArgPos(NextArg + 1)))
+                Else
+                    RqRtFormatError(FormatText, Mid(FormatText, SpecStart, CharPos - SpecStart))
+                    FieldVal = 0
+                End If
+                NextArg += 1
+            Else
+                NumText = ""
+                Do While (CharPos <= TextLen) AndAlso (InStr("0123456789", Mid(FormatText, CharPos, 1)) > 0)
+                    NumText &= Mid(FormatText, CharPos, 1)
+                    CharPos += 1
+                Loop
+                If NumText <> "" Then FieldVal = ValInt(NumText)
+            End If
+            If Pass = 0 Then
+                If (FieldVal >= 0) AndAlso (Mid(FormatText, CharPos, 1) = ":") Then
+                    NextArg = FieldVal
+                    CharPos += 1
+                Else
+                    WidthVal = FieldVal
+                End If
+            ElseIf Pass = 1 Then
+                WidthVal = FieldVal
+            Else
+                PrecVal = FieldVal
+                If PrecVal < 0 Then PrecVal = 0
+            End If
+        Next
+        Dim TypeCh As String = LCase(Mid(FormatText, CharPos, 1))
+        CharPos += 1
+        Dim Spec As String = Mid(FormatText, SpecStart, CharPos - SpecStart)
+        Dim ArgPos As Long = 0
+        If NextArg < List.ArgCount Then ArgPos = List.ArgPos(NextArg + 1)
+        NextArg += 1
+        Dim NumVal As Double = 0
+        Dim TextVal As String = ""
+        If ArgPos > 0 Then
+            NumVal = List.Vals(ArgPos)
+            TextVal = Str(NumVal)
+        ElseIf ArgPos < 0 Then
+            TextVal = List.Strs(-ArgPos)
+            NumVal = Val(TextVal)
+        End If
+        Dim Piece As String
+        Select Case TypeCh
+        Case "d", "u", "x", "p"
+            If ArgPos <= 0 Then RqRtFormatError(FormatText, Spec)
+            Dim IntVal As LongInt = CLngInt(RqRtTrunc(NumVal))
+            If NumVal <> RqRtTrunc(NumVal) Then RqRtFormatError(FormatText, Spec)
+            If TypeCh = "d" Then
+                Piece = Str(Abs(IntVal))
+            ElseIf TypeCh = "u" Then
+                Piece = Str(CULng(IntVal And &hFFFFFFFF))
+            Else
+                Piece = Hex(CULng(IntVal And &hFFFFFFFF))
+                If TypeCh = "p" Then PrecVal = 8
+            End If
+            Do While Len(Piece) < PrecVal
+                Piece = "0" & Piece
+            Loop
+            If (TypeCh = "d") AndAlso (IntVal < 0) Then Piece = "-" & Piece
+        Case "e", "f", "g", "n", "m"
+            If ArgPos <= 0 Then RqRtFormatError(FormatText, Spec)
+            Select Case TypeCh
+            Case "e"
+                If (PrecVal < 0) OrElse (PrecVal > 18) Then PrecVal = 15
+                Piece = RqStrF(NumVal, 1, PrecVal, 3)
+            Case "g"
+                If (PrecVal < 0) OrElse (PrecVal > 18) Then PrecVal = 15
+                Piece = RqStrF(NumVal, 0, PrecVal, 3)
+            Case "f"
+                If PrecVal < 0 Then PrecVal = 2
+                Piece = RqStrF(NumVal, 2, 18, PrecVal)
+            Case Else
+                If PrecVal < 0 Then PrecVal = 2
+                Piece = RqStrF(NumVal, 3, 18, PrecVal)
+            End Select
+        Case "s"
+            If ArgPos >= 0 Then RqRtFormatError(FormatText, Spec)
+            Piece = TextVal
+            If (PrecVal >= 0) AndAlso (Len(Piece) > PrecVal) Then Piece = Left(Piece, PrecVal)
+        Case Else
+            RqRtFormatError(FormatText, Spec)
+            Piece = ""
+        End Select
+        If Len(Piece) < WidthVal Then
+            If LeftAlign Then
+                Piece &= Space(WidthVal - Len(Piece))
+            Else
+                Piece = Space(WidthVal - Len(Piece)) & Piece
+            End If
+        End If
+        ResultText &= Piece
+    Loop
+    Return ResultText
+End Function
+Function RqFormat Overload (ByRef FormatText As String) As String
+    Return RqFormat(FormatText, RqPList())
+End Function
