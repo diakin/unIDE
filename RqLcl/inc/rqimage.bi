@@ -73,11 +73,19 @@ Type QIMAGE Extends QCONTROL
     Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QIMAGE))
     Declare Property OnMouseMove(ByVal Handler As Sub())
     Declare Property OnMouseMove(ByVal Handler As Sub(ByRef Sender As QIMAGE))
+    Declare Sub CenterImage()
 End Type
 
 Constructor QIMAGE()
     RqObj = RqLclNew("QIMAGE", @This)
 End Constructor
+' Метод Center RapidQ ("Centers image"); у типа FreeBASIC свойство и
+' метод не могут называться одинаково: препроцессор пишет Image.Center без
+' присваивания как Image.CenterImage. Здесь - картинка по центру
+' (Center = 1)
+Sub QIMAGE.CenterImage()
+    RqLclSetInt(RqObj, "Center", 1)
+End Sub
 Property QIMAGE.Align() As Long
     Return RqGetInt(RqObj, "Align")
 End Property
@@ -311,11 +319,21 @@ Type QIMAGELIST
     Declare Function GetICO(ByVal ItemNum As Long) As String
     Declare Sub DrawPtr(ByVal TargetPtr As Any Ptr, ByVal X As Long, ByVal Y As Long, ByVal ItemNum As Long)
     Declare Sub Draw(ByRef Target As QCONTROL, ByVal X As Long, ByVal Y As Long, ByVal ItemNum As Long)
+    Declare Property Handle() As Long
+    Declare Operator Cast() As Any Ptr
 End Type
 
 Constructor QIMAGELIST()
     RqObj = RqLclNew("QIMAGELIST", @This)
 End Constructor
+' HIMAGELIST (только чтение)
+Property QIMAGELIST.Handle() As Long
+    Return RqGetInt(RqObj, "Handle")
+End Property
+' Images = ImageList у QTREEVIEW
+Operator QIMAGELIST.Cast() As Any Ptr
+    Return RqObj
+End Operator
 Property QIMAGELIST.BkColor() As Long
     Return RqGetInt(RqObj, "BkColor")
 End Property

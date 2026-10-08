@@ -266,6 +266,11 @@ Sub RqLclClassError(ByRef What As String)
     RqRtClassError(What & ": " & RqLclLastError())
 End Sub
 
+' 0 из RqGetItemInt - и значение, и ошибка: ошибка, если у DLL есть текст
+Sub RqLclCheckError(ByRef What As String)
+    If RqLclLastError() <> "" Then RqLclClassError(What)
+End Sub
+
 Sub RqLclCallStr(ByVal ObjPtr As Any Ptr, ByRef MethodName As String, ByRef Value As String)
     If RqCallStr(ObjPtr, StrPtr(MethodName), StrPtr(Value)) = 0 Then RqLclShowError(MethodName)
 End Sub
@@ -487,8 +492,8 @@ Type QCONTROL
     ' События с параметрами: обработчик и его вид по номеру события
     ' (RqEv...): 0 - Sub(), 1 - с параметрами, 2 - с параметрами и Sender,
     ' 3 - только Sender
-    EventProcs(0 To 31) As Any Ptr
-    EventKinds(0 To 31) As Long
+    EventProcs(0 To 47) As Any Ptr
+    EventKinds(0 To 47) As Long
     Declare Sub SetEventEx(ByVal EventId As Long, ByRef EventName As String, _
         ByVal Handler As Any Ptr, ByVal HandlerKind As Long)
     Declare Property Left() As Long
@@ -694,6 +699,21 @@ Const RqEvSectionResize = 28
 Const RqEvSectionTrack = 29
 ' WndProc (QFORM, QEDIT, QLISTBOX, QLABEL): Hwnd, Msg, wParam, lParam
 Const RqEvWndProc = 30
+' QFORM OnHint (Hint); QLISTBOX, QCOMBOBOX OnMeasureItem (Index, Height);
+' QLISTBOX OnEnter - клавиша Enter
+Const RqEvHint = 31
+Const RqEvMeasureItem = 32
+Const RqEvEnter = 33
+' QSTRINGGRID: OnEllipsisClick (Col, Row), OnListDropDown (Col, Row, S)
+Const RqEvEllipsisClick = 34
+Const RqEvListDropDown = 35
+' QTREEVIEW: OnDeletion, OnGetImageIndex, OnGetSelectedIndex (Index),
+' OnEdited (Index, S), OnEditing (Index, AllowEdit)
+Const RqEvDeletion = 36
+Const RqEvEdited = 37
+Const RqEvEditing = 38
+Const RqEvGetImageIndex = 39
+Const RqEvGetSelectedIndex = 40
 
 ' Виды обработчиков для вызова (Sender - как QCONTROL: у элемента любого
 ' класса QCONTROL лежит в начале)
@@ -727,6 +747,12 @@ Type RqEvProcTrack As Sub(ByVal As Long, ByVal As Long, ByVal As Long)
 Type RqEvProcTrackS As Sub(ByVal As Long, ByVal As Long, ByVal As Long, ByRef As QCONTROL)
 Type RqEvProcWnd As Sub(ByVal As Long, ByVal As Long, ByVal As Long, ByVal As Long)
 Type RqEvProcWndS As Sub(ByVal As Long, ByVal As Long, ByVal As Long, ByVal As Long, ByRef As QCONTROL)
+Type RqEvProcStr As Sub(ByVal As String)
+Type RqEvProcStrS As Sub(ByVal As String, ByRef As QCONTROL)
+Type RqEvProcIndexStr As Sub(ByVal As Long, ByRef As String)
+Type RqEvProcIndexStrS As Sub(ByVal As Long, ByRef As String, ByRef As QCONTROL)
+Type RqEvProcColRowStr As Sub(ByVal As Long, ByVal As Long, ByRef As String)
+Type RqEvProcColRowStrS As Sub(ByVal As Long, ByVal As Long, ByRef As String, ByRef As QCONTROL)
 Type RqEvProcPlain As Sub()
 Type RqEvProcSender As Sub(ByRef As QCONTROL)
 
@@ -734,7 +760,7 @@ Type RqEvProcSender As Sub(ByRef As QCONTROL)
 Private Sub RqLclEventEx stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any Ptr, _
         ByVal EventId As Long, ByVal Args As RqEventArgs Ptr)
     Dim CtlPtr As QCONTROL Ptr = UserPtr
-    If (EventId < 0) OrElse (EventId > 31) Then Exit Sub
+    If (EventId < 0) OrElse (EventId > 47) Then Exit Sub
     Dim HandlerPtr As Any Ptr = CtlPtr->EventProcs(EventId)
     Dim HandlerKind As Long = CtlPtr->EventKinds(EventId)
     If HandlerPtr = 0 Then Exit Sub
@@ -747,6 +773,11 @@ Private Sub RqLclEventEx stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any 
         Exit Sub
     End If
     Dim ArgList As Long Ptr = @(Args->IntArgs(0))
+    ' строка BYREF (OnEdited, OnListDropDown): новое значение - в StrArg,
+    ' строка живёт до следующего такого события
+    Static ResultText As String
+    Dim EventText As String
+    If Args->StrArg <> 0 Then EventText = *Args->StrArg
     Select Case EventId
     Case RqEvKeyDown
         If HandlerKind = 1 Then
@@ -820,7 +851,41 @@ Private Sub RqLclEventEx stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any 
         Else
             Cast(RqEvProcIndexS, HandlerPtr)(ArgList[0], *CtlPtr)
         End If
-    Case RqEvChanging, RqEvExpanding, RqEvCollapsing
+    Case RqEvHint
+        If HandlerKind = 1 Then
+            Cast(RqEvProcStr, HandlerPtr)(EventText)
+        Else
+            Cast(RqEvProcStrS, HandlerPtr)(EventText, *CtlPtr)
+        End If
+    Case RqEvEdited
+        If HandlerKind = 1 Then
+            Cast(RqEvProcIndexStr, HandlerPtr)(ArgList[0], EventText)
+        Else
+            Cast(RqEvProcIndexStrS, HandlerPtr)(ArgList[0], EventText, *CtlPtr)
+        End If
+        ResultText = EventText
+        Args->StrArg = StrPtr(ResultText)
+    Case RqEvListDropDown
+        If HandlerKind = 1 Then
+            Cast(RqEvProcColRowStr, HandlerPtr)(ArgList[0], ArgList[1], EventText)
+        Else
+            Cast(RqEvProcColRowStrS, HandlerPtr)(ArgList[0], ArgList[1], EventText, *CtlPtr)
+        End If
+        ResultText = EventText
+        Args->StrArg = StrPtr(ResultText)
+    Case RqEvEllipsisClick
+        If HandlerKind = 1 Then
+            Cast(RqEvProcListChange, HandlerPtr)(ArgList[0], ArgList[1])
+        Else
+            Cast(RqEvProcListChangeS, HandlerPtr)(ArgList[0], ArgList[1], *CtlPtr)
+        End If
+    Case RqEvDeletion, RqEvGetImageIndex, RqEvGetSelectedIndex
+        If HandlerKind = 1 Then
+            Cast(RqEvProcIndex, HandlerPtr)(ArgList[0])
+        Else
+            Cast(RqEvProcIndexS, HandlerPtr)(ArgList[0], *CtlPtr)
+        End If
+    Case RqEvChanging, RqEvExpanding, RqEvCollapsing, RqEvEditing, RqEvMeasureItem
         If HandlerKind = 1 Then
             Cast(RqEvProcAllow, HandlerPtr)(ArgList[0], ArgList[1])
         Else
@@ -950,6 +1015,16 @@ Type QFORM Extends QCONTROL
     Declare Property WndProc(ByVal Handler As Sub(ByVal Hwnd As Long, ByVal Msg As Long, ByVal WParam As Long, ByVal LParam As Long, ByRef Sender As QFORM))
     Declare Property WndProc(ByVal Handler As Sub())
     Declare Property WndProc(ByVal Handler As Sub(ByRef Sender As QFORM))
+    Declare Sub AddBorderIcons(ByVal Icon1 As Long, ByVal Icon2 As Long = -1, ByVal Icon3 As Long = -1, ByVal Icon4 As Long = -1)
+    Declare Sub DelBorderIcons(ByVal Icon1 As Long, ByVal Icon2 As Long = -1, ByVal Icon3 As Long = -1, ByVal Icon4 As Long = -1)
+    Declare Sub HideTitleBar()
+    Declare Sub ShowTitleBar()
+    Declare Sub ShapeForm Overload (ByRef FileName As String, ByVal TransColor As Long)
+    Declare Sub ShapeForm Overload (ByVal ResHandle As Long, ByVal TransColor As Long)
+    Declare Property OnHint(ByVal Handler As Sub(ByVal HintText As String))
+    Declare Property OnHint(ByVal Handler As Sub(ByVal HintText As String, ByRef Sender As QFORM))
+    Declare Property OnHint(ByVal Handler As Sub())
+    Declare Property OnHint(ByVal Handler As Sub(ByRef Sender As QFORM))
 End Type
 
 Private Sub QFORM_ShowEvent stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any Ptr)
@@ -967,6 +1042,48 @@ End Sub
 Constructor QFORM()
     RqObj = RqLclNew("QFORM", @This)
 End Constructor
+' Значки заголовка: biSystemMenu 0, biMinimize 1, biMaximize 2, biHelp 3;
+' до четырёх за вызов
+Sub QFORM.AddBorderIcons(ByVal Icon1 As Long, ByVal Icon2 As Long = -1, ByVal Icon3 As Long = -1, ByVal Icon4 As Long = -1)
+    Dim IconList(1 To 4) As Long = {Icon1, Icon2, Icon3, Icon4}
+    For ArgIdx As Long = 1 To 4
+        If (ArgIdx > 1) AndAlso (IconList(ArgIdx) = -1) Then Exit For
+        If RqCallEx(RqObj, "AddBorderIcon", 0, IconList(ArgIdx), 0, 0, 0, 0) = 0 Then RqLclClassError("QFORM.AddBorderIcons")
+    Next
+End Sub
+Sub QFORM.DelBorderIcons(ByVal Icon1 As Long, ByVal Icon2 As Long = -1, ByVal Icon3 As Long = -1, ByVal Icon4 As Long = -1)
+    Dim IconList(1 To 4) As Long = {Icon1, Icon2, Icon3, Icon4}
+    For ArgIdx As Long = 1 To 4
+        If (ArgIdx > 1) AndAlso (IconList(ArgIdx) = -1) Then Exit For
+        If RqCallEx(RqObj, "DelBorderIcon", 0, IconList(ArgIdx), 0, 0, 0, 0) = 0 Then RqLclClassError("QFORM.DelBorderIcons")
+    Next
+End Sub
+Sub QFORM.HideTitleBar()
+    If RqCallEx(RqObj, "HideTitleBar", 0, 0, 0, 0, 0, 0) = 0 Then RqLclClassError("QFORM.HideTitleBar")
+End Sub
+Sub QFORM.ShowTitleBar()
+    If RqCallEx(RqObj, "ShowTitleBar", 0, 0, 0, 0, 0, 0) = 0 Then RqLclClassError("QFORM.ShowTitleBar")
+End Sub
+' Форма по контуру картинки: файл .bmp или ресурс $RESOURCE; точки цвета
+' TransColor - вне окна
+Sub QFORM.ShapeForm(ByRef FileName As String, ByVal TransColor As Long)
+    If RqCallEx(RqObj, "ShapeForm", StrPtr(FileName), 0, TransColor, 0, 0, 0) = 0 Then RqLclClassError("QFORM.ShapeForm")
+End Sub
+Sub QFORM.ShapeForm(ByVal ResHandle As Long, ByVal TransColor As Long)
+    If RqCallEx(RqObj, "ShapeForm", 0, ResHandle, TransColor, 0, 0, 0) = 0 Then RqLclClassError("QFORM.ShapeForm")
+End Sub
+Property QFORM.OnHint(ByVal Handler As Sub(ByVal HintText As String))
+    SetEventEx(31, "OnHint", Cast(Any Ptr, Handler), 1)
+End Property
+Property QFORM.OnHint(ByVal Handler As Sub(ByVal HintText As String, ByRef Sender As QFORM))
+    SetEventEx(31, "OnHint", Cast(Any Ptr, Handler), 2)
+End Property
+Property QFORM.OnHint(ByVal Handler As Sub())
+    SetEventEx(31, "OnHint", Cast(Any Ptr, Handler), 0)
+End Property
+Property QFORM.OnHint(ByVal Handler As Sub(ByRef Sender As QFORM))
+    SetEventEx(31, "OnHint", Cast(Any Ptr, Handler), 3)
+End Property
 
 Property QFORM.BorderStyle() As Long
     Return RqGetInt(RqObj, "BorderStyle")
@@ -1280,6 +1397,11 @@ Type QBUTTON Extends QCONTROL
     Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QBUTTON))
     Declare Property OnMouseMove(ByVal Handler As Sub())
     Declare Property OnMouseMove(ByVal Handler As Sub(ByRef Sender As QBUTTON))
+    Declare Property Kind() As Long
+    Declare Property Kind(ByVal Value As Long)
+    Declare Property Layout() As Long
+    Declare Property Layout(ByVal Value As Long)
+    Declare Sub StartDrag()
 End Type
 
 Private Sub QBUTTON_ClickEvent stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any Ptr)
@@ -1291,6 +1413,21 @@ End Sub
 Constructor QBUTTON()
     RqObj = RqLclNew("QBUTTON", @This)
 End Constructor
+Property QBUTTON.Kind() As Long
+    Return RqGetInt(RqObj, "Kind")
+End Property
+Property QBUTTON.Kind(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Kind", Value)
+End Property
+Property QBUTTON.Layout() As Long
+    Return RqGetInt(RqObj, "Layout")
+End Property
+Property QBUTTON.Layout(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Layout", Value)
+End Property
+Sub QBUTTON.StartDrag()
+    If RqCallEx(RqObj, "StartDrag", 0, 0, 0, 0, 0, 0) = 0 Then RqLclClassError("QBUTTON.StartDrag")
+End Sub
 
 Property QBUTTON.ModalResult() As Long
     Return RqGetInt(RqObj, "ModalResult")
@@ -1464,11 +1601,43 @@ Type QLABEL Extends QCONTROL
     Declare Property WndProc(ByVal Handler As Sub(ByVal Hwnd As Long, ByVal Msg As Long, ByVal WParam As Long, ByVal LParam As Long, ByRef Sender As QLABEL))
     Declare Property WndProc(ByVal Handler As Sub())
     Declare Property WndProc(ByVal Handler As Sub(ByRef Sender As QLABEL))
+    Declare Property Angle() As Long
+    Declare Property Angle(ByVal Value As Long)
+    Declare Property LabelStyle() As Long
+    Declare Property LabelStyle(ByVal Value As Long)
+    Declare Property UpperColor() As Long
+    Declare Property UpperColor(ByVal Value As Long)
+    Declare Property LowerColor() As Long
+    Declare Property LowerColor(ByVal Value As Long)
 End Type
 
 Constructor QLABEL()
     RqObj = RqLclNew("QLABEL", @This)
 End Constructor
+Property QLABEL.Angle() As Long
+    Return RqGetInt(RqObj, "Angle")
+End Property
+Property QLABEL.Angle(ByVal Value As Long)
+    RqLclSetInt(RqObj, "Angle", Value)
+End Property
+Property QLABEL.LabelStyle() As Long
+    Return RqGetInt(RqObj, "LabelStyle")
+End Property
+Property QLABEL.LabelStyle(ByVal Value As Long)
+    RqLclSetInt(RqObj, "LabelStyle", Value)
+End Property
+Property QLABEL.UpperColor() As Long
+    Return RqGetInt(RqObj, "UpperColor")
+End Property
+Property QLABEL.UpperColor(ByVal Value As Long)
+    RqLclSetInt(RqObj, "UpperColor", Value)
+End Property
+Property QLABEL.LowerColor() As Long
+    Return RqGetInt(RqObj, "LowerColor")
+End Property
+Property QLABEL.LowerColor(ByVal Value As Long)
+    RqLclSetInt(RqObj, "LowerColor", Value)
+End Property
 
 Property QLABEL.Transparent() As Long
     Return RqGetInt(RqObj, "Transparent")
@@ -1616,6 +1785,13 @@ Type QEDIT Extends QCONTROL
     Declare Property WndProc(ByVal Handler As Sub(ByVal Hwnd As Long, ByVal Msg As Long, ByVal WParam As Long, ByVal LParam As Long, ByRef Sender As QEDIT))
     Declare Property WndProc(ByVal Handler As Sub())
     Declare Property WndProc(ByVal Handler As Sub(ByRef Sender As QEDIT))
+    Declare Property PasswordChar() As String
+    Declare Property PasswordChar(ByRef Value As String)
+    Declare Property InputMask() As String
+    Declare Property InputMask(ByRef Value As String)
+    Declare Property IsMasked() As Long
+    Declare Property EditText() As String
+    Declare Property EditText(ByRef Value As String)
 End Type
 
 Private Sub QEDIT_ChangeEvent stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any Ptr)
@@ -1627,6 +1803,27 @@ End Sub
 Constructor QEDIT()
     RqObj = RqLclNew("QEDIT", @This)
 End Constructor
+Property QEDIT.PasswordChar() As String
+    Return RqLclGetStr(RqObj, "PasswordChar")
+End Property
+Property QEDIT.PasswordChar(ByRef Value As String)
+    RqLclSetStr(RqObj, "PasswordChar", Value)
+End Property
+Property QEDIT.InputMask() As String
+    Return RqLclGetStr(RqObj, "InputMask")
+End Property
+Property QEDIT.InputMask(ByRef Value As String)
+    RqLclSetStr(RqObj, "InputMask", Value)
+End Property
+Property QEDIT.IsMasked() As Long
+    Return RqGetInt(RqObj, "IsMasked")
+End Property
+Property QEDIT.EditText() As String
+    Return RqLclGetStr(RqObj, "EditText")
+End Property
+Property QEDIT.EditText(ByRef Value As String)
+    RqLclSetStr(RqObj, "EditText", Value)
+End Property
 
 Property QEDIT.AutoSize() As Long
     Return RqGetInt(RqObj, "AutoSize")
@@ -2309,11 +2506,107 @@ Type QSTRINGGRID Extends QCONTROL
     Declare Property OnSetEditText(ByVal Handler As Sub(ByVal Col As Long, ByVal Row As Long, ByVal Value As String, ByRef Sender As QSTRINGGRID))
     Declare Property OnSetEditText(ByVal Handler As Sub())
     Declare Property OnSetEditText(ByVal Handler As Sub(ByRef Sender As QSTRINGGRID))
+    Declare Property ColumnStyle(ByVal ColIdx As Long) As Long
+    Declare Property ColumnStyle(ByVal ColIdx As Long, ByVal Value As Long)
+    Declare Property TabStops(ByVal ColIdx As Long) As Long
+    Declare Property TabStops(ByVal ColIdx As Long, ByVal Value As Long)
+    Declare Property ColumnList(ByVal ColIdx As Long) As String
+    Declare Property ColumnList(ByVal ColIdx As Long, ByRef Value As String)
+    Declare Sub Draw(ByVal X1 As Long, ByVal Y1 As Long, ByRef BmpText As String)
+    Declare Sub StretchDraw(ByRef DstRect As QRECT, ByRef BmpText As String)
+    Declare Sub TextRect(ByRef ClipRect As QRECT, ByVal X1 As Long, ByVal Y1 As Long, ByRef Text1 As String, ByVal TextColor As Long, ByVal BackColor As Long = -1)
+    Declare Sub CopyRectPtr(ByRef DstRect As QRECT, ByVal SourcePtr As Any Ptr, ByRef SrcRect As QRECT)
+    Declare Sub CopyRect(ByRef DstRect As QRECT, ByRef Source As QCONTROL, ByRef SrcRect As QRECT)
+    Declare Property OnEllipsisClick(ByVal Handler As Sub(ByVal Col As Long, ByVal Row As Long))
+    Declare Property OnEllipsisClick(ByVal Handler As Sub(ByVal Col As Long, ByVal Row As Long, ByRef Sender As QSTRINGGRID))
+    Declare Property OnEllipsisClick(ByVal Handler As Sub())
+    Declare Property OnEllipsisClick(ByVal Handler As Sub(ByRef Sender As QSTRINGGRID))
+    Declare Property OnListDropDown(ByVal Handler As Sub(ByVal Col As Long, ByVal Row As Long, ByRef ListText As String))
+    Declare Property OnListDropDown(ByVal Handler As Sub(ByVal Col As Long, ByVal Row As Long, ByRef ListText As String, ByRef Sender As QSTRINGGRID))
+    Declare Property OnListDropDown(ByVal Handler As Sub())
+    Declare Property OnListDropDown(ByVal Handler As Sub(ByRef Sender As QSTRINGGRID))
 End Type
 
 Constructor QSTRINGGRID()
     RqObj = RqLclNew("QSTRINGGRID", @This)
 End Constructor
+Property QSTRINGGRID.ColumnStyle(ByVal ColIdx As Long) As Long
+    Dim ItemValue As Long = RqGetItemInt(RqObj, "ColumnStyle", ColIdx)
+    If ItemValue = 0 Then RqLclCheckError("QSTRINGGRID.ColumnStyle")
+    Return ItemValue
+End Property
+Property QSTRINGGRID.ColumnStyle(ByVal ColIdx As Long, ByVal Value As Long)
+    If RqSetItemInt(RqObj, "ColumnStyle", ColIdx, Value) = 0 Then RqLclClassError("QSTRINGGRID.ColumnStyle")
+End Property
+Property QSTRINGGRID.TabStops(ByVal ColIdx As Long) As Long
+    Dim ItemValue As Long = RqGetItemInt(RqObj, "TabStops", ColIdx)
+    If ItemValue = 0 Then RqLclCheckError("QSTRINGGRID.TabStops")
+    Return ItemValue
+End Property
+Property QSTRINGGRID.TabStops(ByVal ColIdx As Long, ByVal Value As Long)
+    If RqSetItemInt(RqObj, "TabStops", ColIdx, Value) = 0 Then RqLclClassError("QSTRINGGRID.TabStops")
+End Property
+' Пункты списка столбца gcsList через LF (Chr(10))
+Property QSTRINGGRID.ColumnList(ByVal ColIdx As Long) As String
+    Dim TextLen As Long = RqGetItemStr(RqObj, "ColumnList", ColIdx, 0, 0)
+    If TextLen < 0 Then
+        RqLclClassError("QSTRINGGRID.ColumnList")
+        Return ""
+    End If
+    If TextLen = 0 Then Return ""
+    Dim TextValue As String = Space(TextLen)
+    RqGetItemStr(RqObj, "ColumnList", ColIdx, StrPtr(TextValue), TextLen + 1)
+    Return TextValue
+End Property
+Property QSTRINGGRID.ColumnList(ByVal ColIdx As Long, ByRef Value As String)
+    If RqSetItemStr(RqObj, "ColumnList", ColIdx, StrPtr(Value)) = 0 Then RqLclClassError("QSTRINGGRID.ColumnList")
+End Property
+' Картинка - файл .bmp или "" (кэш: Obj.Draw(0, 0, Bitmap.BMP))
+Sub QSTRINGGRID.Draw(ByVal X1 As Long, ByVal Y1 As Long, ByRef BmpText As String)
+    Dim IntList(0 To 1) As Long = {X1, Y1}
+    DrawInts("Draw", BmpText, IntList())
+End Sub
+Sub QSTRINGGRID.StretchDraw(ByRef DstRect As QRECT, ByRef BmpText As String)
+    Dim IntList(0 To 3) As Long = {DstRect.Left, DstRect.Top, DstRect.Right, DstRect.Bottom}
+    DrawInts("StretchDraw", BmpText, IntList())
+End Sub
+Sub QSTRINGGRID.TextRect(ByRef ClipRect As QRECT, ByVal X1 As Long, ByVal Y1 As Long, ByRef Text1 As String, ByVal TextColor As Long, ByVal BackColor As Long = -1)
+    Dim IntList(0 To 7) As Long = {ClipRect.Left, ClipRect.Top, ClipRect.Right, ClipRect.Bottom, X1, Y1, TextColor, BackColor}
+    DrawInts("TextRect", Text1, IntList())
+End Sub
+Sub QSTRINGGRID.CopyRectPtr(ByRef DstRect As QRECT, ByVal SourcePtr As Any Ptr, ByRef SrcRect As QRECT)
+    Dim IntList(0 To 7) As Long = {DstRect.Left, DstRect.Top, DstRect.Right, DstRect.Bottom, _
+        SrcRect.Left, SrcRect.Top, SrcRect.Right, SrcRect.Bottom}
+    If RqCallObjInts(RqObj, "CopyRect", SourcePtr, @IntList(0), 8) = 0 Then RqLclClassError("QSTRINGGRID.CopyRect")
+End Sub
+' Source - QIMAGE, QCANVAS, QFORM (у кого есть холст); QBITMAP - CopyRectPtr
+Sub QSTRINGGRID.CopyRect(ByRef DstRect As QRECT, ByRef Source As QCONTROL, ByRef SrcRect As QRECT)
+    CopyRectPtr(DstRect, Source.RqObj, SrcRect)
+End Sub
+Property QSTRINGGRID.OnEllipsisClick(ByVal Handler As Sub(ByVal Col As Long, ByVal Row As Long))
+    SetEventEx(34, "OnEllipsisClick", Cast(Any Ptr, Handler), 1)
+End Property
+Property QSTRINGGRID.OnEllipsisClick(ByVal Handler As Sub(ByVal Col As Long, ByVal Row As Long, ByRef Sender As QSTRINGGRID))
+    SetEventEx(34, "OnEllipsisClick", Cast(Any Ptr, Handler), 2)
+End Property
+Property QSTRINGGRID.OnEllipsisClick(ByVal Handler As Sub())
+    SetEventEx(34, "OnEllipsisClick", Cast(Any Ptr, Handler), 0)
+End Property
+Property QSTRINGGRID.OnEllipsisClick(ByVal Handler As Sub(ByRef Sender As QSTRINGGRID))
+    SetEventEx(34, "OnEllipsisClick", Cast(Any Ptr, Handler), 3)
+End Property
+Property QSTRINGGRID.OnListDropDown(ByVal Handler As Sub(ByVal Col As Long, ByVal Row As Long, ByRef ListText As String))
+    SetEventEx(35, "OnListDropDown", Cast(Any Ptr, Handler), 1)
+End Property
+Property QSTRINGGRID.OnListDropDown(ByVal Handler As Sub(ByVal Col As Long, ByVal Row As Long, ByRef ListText As String, ByRef Sender As QSTRINGGRID))
+    SetEventEx(35, "OnListDropDown", Cast(Any Ptr, Handler), 2)
+End Property
+Property QSTRINGGRID.OnListDropDown(ByVal Handler As Sub())
+    SetEventEx(35, "OnListDropDown", Cast(Any Ptr, Handler), 0)
+End Property
+Property QSTRINGGRID.OnListDropDown(ByVal Handler As Sub(ByRef Sender As QSTRINGGRID))
+    SetEventEx(35, "OnListDropDown", Cast(Any Ptr, Handler), 3)
+End Property
 
 ' События с параметрами QSTRINGGRID: обработчик с параметрами, с ними и Sender
 ' последним, только с Sender или без параметров
@@ -3169,11 +3462,19 @@ Type QPOPUPMENU Extends QCONTROL
     Declare Sub Popup(ByVal X As Long, ByVal Y As Long)
     Declare Property OnPopup(ByVal Handler As Sub())
     Declare Property OnPopup(ByVal Handler As Sub(ByRef Sender As QPOPUPMENU))
+    Declare Property WindowHandle() As Long
+    Declare Property WindowHandle(ByVal Value As Long)
 End Type
 
 Constructor QPOPUPMENU()
     RqObj = RqLclNew("QPOPUPMENU", @This)
 End Constructor
+Property QPOPUPMENU.WindowHandle() As Long
+    Return RqGetInt(RqObj, "WindowHandle")
+End Property
+Property QPOPUPMENU.WindowHandle(ByVal Value As Long)
+    RqLclSetInt(RqObj, "WindowHandle", Value)
+End Property
 Property QPOPUPMENU.Alignment() As Long
     Return RqGetInt(RqObj, "Alignment")
 End Property
@@ -3422,11 +3723,15 @@ Type QCOOLBTN Extends QCONTROL
     Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QCOOLBTN))
     Declare Property OnMouseMove(ByVal Handler As Sub())
     Declare Property OnMouseMove(ByVal Handler As Sub(ByRef Sender As QCOOLBTN))
+    Declare Sub StartDrag()
 End Type
 
 Constructor QCOOLBTN()
     RqObj = RqLclNew("QCOOLBTN", @This)
 End Constructor
+Sub QCOOLBTN.StartDrag()
+    If RqCallEx(RqObj, "StartDrag", 0, 0, 0, 0, 0, 0) = 0 Then RqLclClassError("QCOOLBTN.StartDrag")
+End Sub
 Property QCOOLBTN.Caption() As String
     Return RqLclGetStr(RqObj, "Caption")
 End Property
@@ -3604,11 +3909,62 @@ Type QCOMBOBOX Extends QCONTROL
     Declare Property OnDrawItem(ByVal Handler As Sub(ByVal Index As Long, ByVal State As Long, ByRef R As QRECT, ByRef Sender As QCOMBOBOX))
     Declare Property OnDrawItem(ByVal Handler As Sub())
     Declare Property OnDrawItem(ByVal Handler As Sub(ByRef Sender As QCOMBOBOX))
+    Declare Property CopyMode() As Long
+    Declare Property CopyMode(ByVal Value As Long)
+    Declare Sub Draw(ByVal X1 As Long, ByVal Y1 As Long, ByRef BmpText As String)
+    Declare Sub StretchDraw(ByRef DstRect As QRECT, ByRef BmpText As String)
+    Declare Sub TextRect(ByRef ClipRect As QRECT, ByVal X1 As Long, ByVal Y1 As Long, ByRef Text1 As String, ByVal TextColor As Long, ByVal BackColor As Long = -1)
+    Declare Sub CopyRectPtr(ByRef DstRect As QRECT, ByVal SourcePtr As Any Ptr, ByRef SrcRect As QRECT)
+    Declare Sub CopyRect(ByRef DstRect As QRECT, ByRef Source As QCONTROL, ByRef SrcRect As QRECT)
+    Declare Property OnMeasureItem(ByVal Handler As Sub(ByVal Index As Long, ByRef ItemHeight As Long))
+    Declare Property OnMeasureItem(ByVal Handler As Sub(ByVal Index As Long, ByRef ItemHeight As Long, ByRef Sender As QCOMBOBOX))
+    Declare Property OnMeasureItem(ByVal Handler As Sub())
+    Declare Property OnMeasureItem(ByVal Handler As Sub(ByRef Sender As QCOMBOBOX))
 End Type
 
 Constructor QCOMBOBOX()
     RqObj = RqLclNew("QCOMBOBOX", @This)
 End Constructor
+Property QCOMBOBOX.CopyMode() As Long
+    Return RqGetInt(RqObj, "CopyMode")
+End Property
+Property QCOMBOBOX.CopyMode(ByVal Value As Long)
+    RqLclSetInt(RqObj, "CopyMode", Value)
+End Property
+' Картинка - файл .bmp или "" (кэш: Obj.Draw(0, 0, Bitmap.BMP))
+Sub QCOMBOBOX.Draw(ByVal X1 As Long, ByVal Y1 As Long, ByRef BmpText As String)
+    Dim IntList(0 To 1) As Long = {X1, Y1}
+    DrawInts("Draw", BmpText, IntList())
+End Sub
+Sub QCOMBOBOX.StretchDraw(ByRef DstRect As QRECT, ByRef BmpText As String)
+    Dim IntList(0 To 3) As Long = {DstRect.Left, DstRect.Top, DstRect.Right, DstRect.Bottom}
+    DrawInts("StretchDraw", BmpText, IntList())
+End Sub
+Sub QCOMBOBOX.TextRect(ByRef ClipRect As QRECT, ByVal X1 As Long, ByVal Y1 As Long, ByRef Text1 As String, ByVal TextColor As Long, ByVal BackColor As Long = -1)
+    Dim IntList(0 To 7) As Long = {ClipRect.Left, ClipRect.Top, ClipRect.Right, ClipRect.Bottom, X1, Y1, TextColor, BackColor}
+    DrawInts("TextRect", Text1, IntList())
+End Sub
+Sub QCOMBOBOX.CopyRectPtr(ByRef DstRect As QRECT, ByVal SourcePtr As Any Ptr, ByRef SrcRect As QRECT)
+    Dim IntList(0 To 7) As Long = {DstRect.Left, DstRect.Top, DstRect.Right, DstRect.Bottom, _
+        SrcRect.Left, SrcRect.Top, SrcRect.Right, SrcRect.Bottom}
+    If RqCallObjInts(RqObj, "CopyRect", SourcePtr, @IntList(0), 8) = 0 Then RqLclClassError("QCOMBOBOX.CopyRect")
+End Sub
+' Source - QIMAGE, QCANVAS, QFORM (у кого есть холст); QBITMAP - CopyRectPtr
+Sub QCOMBOBOX.CopyRect(ByRef DstRect As QRECT, ByRef Source As QCONTROL, ByRef SrcRect As QRECT)
+    CopyRectPtr(DstRect, Source.RqObj, SrcRect)
+End Sub
+Property QCOMBOBOX.OnMeasureItem(ByVal Handler As Sub(ByVal Index As Long, ByRef ItemHeight As Long))
+    SetEventEx(32, "OnMeasureItem", Cast(Any Ptr, Handler), 1)
+End Property
+Property QCOMBOBOX.OnMeasureItem(ByVal Handler As Sub(ByVal Index As Long, ByRef ItemHeight As Long, ByRef Sender As QCOMBOBOX))
+    SetEventEx(32, "OnMeasureItem", Cast(Any Ptr, Handler), 2)
+End Property
+Property QCOMBOBOX.OnMeasureItem(ByVal Handler As Sub())
+    SetEventEx(32, "OnMeasureItem", Cast(Any Ptr, Handler), 0)
+End Property
+Property QCOMBOBOX.OnMeasureItem(ByVal Handler As Sub(ByRef Sender As QCOMBOBOX))
+    SetEventEx(32, "OnMeasureItem", Cast(Any Ptr, Handler), 3)
+End Property
 Property QCOMBOBOX.Text() As String
     Return RqLclGetStr(RqObj, "Text")
 End Property
@@ -4077,11 +4433,78 @@ Type QLISTBOX Extends QCONTROL
     Declare Property WndProc(ByVal Handler As Sub(ByVal Hwnd As Long, ByVal Msg As Long, ByVal WParam As Long, ByVal LParam As Long, ByRef Sender As QLISTBOX))
     Declare Property WndProc(ByVal Handler As Sub())
     Declare Property WndProc(ByVal Handler As Sub(ByRef Sender As QLISTBOX))
+    Declare Property TabWidth() As Long
+    Declare Property TabWidth(ByVal Value As Long)
+    Declare Property CopyMode() As Long
+    Declare Property CopyMode(ByVal Value As Long)
+    Declare Sub Draw(ByVal X1 As Long, ByVal Y1 As Long, ByRef BmpText As String)
+    Declare Sub StretchDraw(ByRef DstRect As QRECT, ByRef BmpText As String)
+    Declare Sub TextRect(ByRef ClipRect As QRECT, ByVal X1 As Long, ByVal Y1 As Long, ByRef Text1 As String, ByVal TextColor As Long, ByVal BackColor As Long = -1)
+    Declare Sub CopyRectPtr(ByRef DstRect As QRECT, ByVal SourcePtr As Any Ptr, ByRef SrcRect As QRECT)
+    Declare Sub CopyRect(ByRef DstRect As QRECT, ByRef Source As QCONTROL, ByRef SrcRect As QRECT)
+    Declare Property OnEnter(ByVal Handler As Sub())
+    Declare Property OnEnter(ByVal Handler As Sub(ByRef Sender As QLISTBOX))
+    Declare Property OnMeasureItem(ByVal Handler As Sub(ByVal Index As Long, ByRef ItemHeight As Long))
+    Declare Property OnMeasureItem(ByVal Handler As Sub(ByVal Index As Long, ByRef ItemHeight As Long, ByRef Sender As QLISTBOX))
+    Declare Property OnMeasureItem(ByVal Handler As Sub())
+    Declare Property OnMeasureItem(ByVal Handler As Sub(ByRef Sender As QLISTBOX))
 End Type
 
 Constructor QLISTBOX()
     RqObj = RqLclNew("QLISTBOX", @This)
 End Constructor
+Property QLISTBOX.TabWidth() As Long
+    Return RqGetInt(RqObj, "TabWidth")
+End Property
+Property QLISTBOX.TabWidth(ByVal Value As Long)
+    RqLclSetInt(RqObj, "TabWidth", Value)
+End Property
+Property QLISTBOX.CopyMode() As Long
+    Return RqGetInt(RqObj, "CopyMode")
+End Property
+Property QLISTBOX.CopyMode(ByVal Value As Long)
+    RqLclSetInt(RqObj, "CopyMode", Value)
+End Property
+' Картинка - файл .bmp или "" (кэш: Obj.Draw(0, 0, Bitmap.BMP))
+Sub QLISTBOX.Draw(ByVal X1 As Long, ByVal Y1 As Long, ByRef BmpText As String)
+    Dim IntList(0 To 1) As Long = {X1, Y1}
+    DrawInts("Draw", BmpText, IntList())
+End Sub
+Sub QLISTBOX.StretchDraw(ByRef DstRect As QRECT, ByRef BmpText As String)
+    Dim IntList(0 To 3) As Long = {DstRect.Left, DstRect.Top, DstRect.Right, DstRect.Bottom}
+    DrawInts("StretchDraw", BmpText, IntList())
+End Sub
+Sub QLISTBOX.TextRect(ByRef ClipRect As QRECT, ByVal X1 As Long, ByVal Y1 As Long, ByRef Text1 As String, ByVal TextColor As Long, ByVal BackColor As Long = -1)
+    Dim IntList(0 To 7) As Long = {ClipRect.Left, ClipRect.Top, ClipRect.Right, ClipRect.Bottom, X1, Y1, TextColor, BackColor}
+    DrawInts("TextRect", Text1, IntList())
+End Sub
+Sub QLISTBOX.CopyRectPtr(ByRef DstRect As QRECT, ByVal SourcePtr As Any Ptr, ByRef SrcRect As QRECT)
+    Dim IntList(0 To 7) As Long = {DstRect.Left, DstRect.Top, DstRect.Right, DstRect.Bottom, _
+        SrcRect.Left, SrcRect.Top, SrcRect.Right, SrcRect.Bottom}
+    If RqCallObjInts(RqObj, "CopyRect", SourcePtr, @IntList(0), 8) = 0 Then RqLclClassError("QLISTBOX.CopyRect")
+End Sub
+' Source - QIMAGE, QCANVAS, QFORM (у кого есть холст); QBITMAP - CopyRectPtr
+Sub QLISTBOX.CopyRect(ByRef DstRect As QRECT, ByRef Source As QCONTROL, ByRef SrcRect As QRECT)
+    CopyRectPtr(DstRect, Source.RqObj, SrcRect)
+End Sub
+Property QLISTBOX.OnEnter(ByVal Handler As Sub())
+    SetEventEx(33, "OnEnter", Cast(Any Ptr, Handler), 0)
+End Property
+Property QLISTBOX.OnEnter(ByVal Handler As Sub(ByRef Sender As QLISTBOX))
+    SetEventEx(33, "OnEnter", Cast(Any Ptr, Handler), 3)
+End Property
+Property QLISTBOX.OnMeasureItem(ByVal Handler As Sub(ByVal Index As Long, ByRef ItemHeight As Long))
+    SetEventEx(32, "OnMeasureItem", Cast(Any Ptr, Handler), 1)
+End Property
+Property QLISTBOX.OnMeasureItem(ByVal Handler As Sub(ByVal Index As Long, ByRef ItemHeight As Long, ByRef Sender As QLISTBOX))
+    SetEventEx(32, "OnMeasureItem", Cast(Any Ptr, Handler), 2)
+End Property
+Property QLISTBOX.OnMeasureItem(ByVal Handler As Sub())
+    SetEventEx(32, "OnMeasureItem", Cast(Any Ptr, Handler), 0)
+End Property
+Property QLISTBOX.OnMeasureItem(ByVal Handler As Sub(ByRef Sender As QLISTBOX))
+    SetEventEx(32, "OnMeasureItem", Cast(Any Ptr, Handler), 3)
+End Property
 Property QLISTBOX.Text() As String
     Return RqLclGetStr(RqObj, "Text")
 End Property
@@ -5331,11 +5754,100 @@ Type QTREEVIEW Extends QCONTROL
     Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QTREEVIEW))
     Declare Property OnMouseMove(ByVal Handler As Sub())
     Declare Property OnMouseMove(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    ' QIMAGELIST (rqimage.bi: Cast в указатель объекта DLL)
+    Declare Property Images(ByVal ListPtr As Any Ptr)
+    Declare Property StateImages(ByVal ListPtr As Any Ptr)
+    Declare Property OnDeletion(ByVal Handler As Sub(ByVal Index As Long))
+    Declare Property OnDeletion(ByVal Handler As Sub(ByVal Index As Long, ByRef Sender As QTREEVIEW))
+    Declare Property OnDeletion(ByVal Handler As Sub())
+    Declare Property OnDeletion(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    Declare Property OnEdited(ByVal Handler As Sub(ByVal Index As Long, ByRef NodeText As String))
+    Declare Property OnEdited(ByVal Handler As Sub(ByVal Index As Long, ByRef NodeText As String, ByRef Sender As QTREEVIEW))
+    Declare Property OnEdited(ByVal Handler As Sub())
+    Declare Property OnEdited(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    Declare Property OnEditing(ByVal Handler As Sub(ByVal Index As Long, ByRef AllowEdit As Long))
+    Declare Property OnEditing(ByVal Handler As Sub(ByVal Index As Long, ByRef AllowEdit As Long, ByRef Sender As QTREEVIEW))
+    Declare Property OnEditing(ByVal Handler As Sub())
+    Declare Property OnEditing(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    Declare Property OnGetImageIndex(ByVal Handler As Sub(ByVal Index As Long))
+    Declare Property OnGetImageIndex(ByVal Handler As Sub(ByVal Index As Long, ByRef Sender As QTREEVIEW))
+    Declare Property OnGetImageIndex(ByVal Handler As Sub())
+    Declare Property OnGetImageIndex(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    Declare Property OnGetSelectedIndex(ByVal Handler As Sub(ByVal Index As Long))
+    Declare Property OnGetSelectedIndex(ByVal Handler As Sub(ByVal Index As Long, ByRef Sender As QTREEVIEW))
+    Declare Property OnGetSelectedIndex(ByVal Handler As Sub())
+    Declare Property OnGetSelectedIndex(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
 End Type
 
 Constructor QTREEVIEW()
     RqObj = RqLclNew("QTREEVIEW", @This)
 End Constructor
+Property QTREEVIEW.Images(ByVal ListPtr As Any Ptr)
+    If RqSetObj(RqObj, "Images", ListPtr) = 0 Then RqLclClassError("QTREEVIEW.Images")
+End Property
+Property QTREEVIEW.StateImages(ByVal ListPtr As Any Ptr)
+    If RqSetObj(RqObj, "StateImages", ListPtr) = 0 Then RqLclClassError("QTREEVIEW.StateImages")
+End Property
+Property QTREEVIEW.OnDeletion(ByVal Handler As Sub(ByVal Index As Long))
+    SetEventEx(36, "OnDeletion", Cast(Any Ptr, Handler), 1)
+End Property
+Property QTREEVIEW.OnDeletion(ByVal Handler As Sub(ByVal Index As Long, ByRef Sender As QTREEVIEW))
+    SetEventEx(36, "OnDeletion", Cast(Any Ptr, Handler), 2)
+End Property
+Property QTREEVIEW.OnDeletion(ByVal Handler As Sub())
+    SetEventEx(36, "OnDeletion", Cast(Any Ptr, Handler), 0)
+End Property
+Property QTREEVIEW.OnDeletion(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    SetEventEx(36, "OnDeletion", Cast(Any Ptr, Handler), 3)
+End Property
+Property QTREEVIEW.OnEdited(ByVal Handler As Sub(ByVal Index As Long, ByRef NodeText As String))
+    SetEventEx(37, "OnEdited", Cast(Any Ptr, Handler), 1)
+End Property
+Property QTREEVIEW.OnEdited(ByVal Handler As Sub(ByVal Index As Long, ByRef NodeText As String, ByRef Sender As QTREEVIEW))
+    SetEventEx(37, "OnEdited", Cast(Any Ptr, Handler), 2)
+End Property
+Property QTREEVIEW.OnEdited(ByVal Handler As Sub())
+    SetEventEx(37, "OnEdited", Cast(Any Ptr, Handler), 0)
+End Property
+Property QTREEVIEW.OnEdited(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    SetEventEx(37, "OnEdited", Cast(Any Ptr, Handler), 3)
+End Property
+Property QTREEVIEW.OnEditing(ByVal Handler As Sub(ByVal Index As Long, ByRef AllowEdit As Long))
+    SetEventEx(38, "OnEditing", Cast(Any Ptr, Handler), 1)
+End Property
+Property QTREEVIEW.OnEditing(ByVal Handler As Sub(ByVal Index As Long, ByRef AllowEdit As Long, ByRef Sender As QTREEVIEW))
+    SetEventEx(38, "OnEditing", Cast(Any Ptr, Handler), 2)
+End Property
+Property QTREEVIEW.OnEditing(ByVal Handler As Sub())
+    SetEventEx(38, "OnEditing", Cast(Any Ptr, Handler), 0)
+End Property
+Property QTREEVIEW.OnEditing(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    SetEventEx(38, "OnEditing", Cast(Any Ptr, Handler), 3)
+End Property
+Property QTREEVIEW.OnGetImageIndex(ByVal Handler As Sub(ByVal Index As Long))
+    SetEventEx(39, "OnGetImageIndex", Cast(Any Ptr, Handler), 1)
+End Property
+Property QTREEVIEW.OnGetImageIndex(ByVal Handler As Sub(ByVal Index As Long, ByRef Sender As QTREEVIEW))
+    SetEventEx(39, "OnGetImageIndex", Cast(Any Ptr, Handler), 2)
+End Property
+Property QTREEVIEW.OnGetImageIndex(ByVal Handler As Sub())
+    SetEventEx(39, "OnGetImageIndex", Cast(Any Ptr, Handler), 0)
+End Property
+Property QTREEVIEW.OnGetImageIndex(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    SetEventEx(39, "OnGetImageIndex", Cast(Any Ptr, Handler), 3)
+End Property
+Property QTREEVIEW.OnGetSelectedIndex(ByVal Handler As Sub(ByVal Index As Long))
+    SetEventEx(40, "OnGetSelectedIndex", Cast(Any Ptr, Handler), 1)
+End Property
+Property QTREEVIEW.OnGetSelectedIndex(ByVal Handler As Sub(ByVal Index As Long, ByRef Sender As QTREEVIEW))
+    SetEventEx(40, "OnGetSelectedIndex", Cast(Any Ptr, Handler), 2)
+End Property
+Property QTREEVIEW.OnGetSelectedIndex(ByVal Handler As Sub())
+    SetEventEx(40, "OnGetSelectedIndex", Cast(Any Ptr, Handler), 0)
+End Property
+Property QTREEVIEW.OnGetSelectedIndex(ByVal Handler As Sub(ByRef Sender As QTREEVIEW))
+    SetEventEx(40, "OnGetSelectedIndex", Cast(Any Ptr, Handler), 3)
+End Property
 Property QTREEVIEW.Align() As Long
     Return RqGetInt(RqObj, "Align")
 End Property

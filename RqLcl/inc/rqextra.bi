@@ -698,11 +698,15 @@ Type QOVALBTN Extends QCONTROL
     Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QOVALBTN))
     Declare Property OnMouseMove(ByVal Handler As Sub())
     Declare Property OnMouseMove(ByVal Handler As Sub(ByRef Sender As QOVALBTN))
+    Declare Sub StartDrag()
 End Type
 
 Constructor QOVALBTN()
     RqObj = RqLclNew("QOVALBTN", @This)
 End Constructor
+Sub QOVALBTN.StartDrag()
+    If RqCallEx(RqObj, "StartDrag", 0, 0, 0, 0, 0, 0) = 0 Then RqLclClassError("QOVALBTN.StartDrag")
+End Sub
 Property QOVALBTN.Caption() As String
     Return RqLclGetStr(RqObj, "Caption")
 End Property

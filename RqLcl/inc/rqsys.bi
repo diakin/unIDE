@@ -159,12 +159,31 @@ Type QAPPLICATION
     Declare Sub Terminate()
     Declare Sub Minimize()
     Declare Sub Restore()
+    Declare Property IcoHandle(ByVal Value As Long)
+    Declare Sub HelpCommand(ByVal Command As Long, ByVal HelpData As Long)
+    Declare Sub HelpContext(ByVal Context As Long)
+    Declare Sub HelpJump(ByRef JumpID As String)
 End Type
 
 Function QAPPLICATION.Obj() As Any Ptr
     If RqObj = 0 Then RqObj = RqLclNew("QAPPLICATION", 0)
     Return RqObj
 End Function
+' Значок программы - ресурс $RESOURCE с файлом .ico
+Property QAPPLICATION.IcoHandle(ByVal Value As Long)
+    RqLclSetInt(Obj(), "IcoHandle", Value)
+End Property
+' Справка HelpFile: HelpCommand - WinHelp (команда, данные); HelpContext и
+' HelpJump - у файла .chm через HtmlHelp, у остальных через WinHelp
+Sub QAPPLICATION.HelpCommand(ByVal Command As Long, ByVal HelpData As Long)
+    If RqCallEx(Obj(), "HelpCommand", 0, Command, HelpData, 0, 0, 0) = 0 Then RqLclClassError("Application.HelpCommand")
+End Sub
+Sub QAPPLICATION.HelpContext(ByVal Context As Long)
+    If RqCallEx(Obj(), "HelpContext", 0, Context, 0, 0, 0, 0) = 0 Then RqLclClassError("Application.HelpContext")
+End Sub
+Sub QAPPLICATION.HelpJump(ByRef JumpID As String)
+    If RqCallEx(Obj(), "HelpJump", StrPtr(JumpID), 0, 0, 0, 0, 0) = 0 Then RqLclClassError("Application.HelpJump")
+End Sub
 Property QAPPLICATION.Icon(ByRef Value As String)
     RqLclSetStr(Obj(), "Icon", Value)
 End Property
@@ -284,12 +303,29 @@ Type QCLIPBOARD
     Declare Function HasFormat(ByVal FormatNum As Long) As Long
     Declare Function GetAsText(ByVal TextLen As Long = -1) As String
     Declare Sub SetAsText(ByRef Value As String)
+    Declare Property Format(ByVal FormatIdx As Long) As Long
+    Declare Function GetAsHandle(ByVal FormatNum As Long) As Long
+    Declare Sub SetAsHandle(ByVal FormatNum As Long, ByVal DataHandle As Long)
 End Type
 
 Function QCLIPBOARD.Obj() As Any Ptr
     If RqObj = 0 Then RqObj = RqLclNew("QCLIPBOARD", 0)
     Return RqObj
 End Function
+' Format(i) - номер i-го формата в буфере (0 .. FormatCount - 1)
+Property QCLIPBOARD.Format(ByVal FormatIdx As Long) As Long
+    Dim FormatNum As Long = RqGetItemInt(Obj(), "Format", FormatIdx)
+    If FormatNum = 0 Then RqLclCheckError("Clipboard.Format")
+    Return FormatNum
+End Property
+' Данные формата - описатель Windows (GetClipboardData); 0 - нет
+Function QCLIPBOARD.GetAsHandle(ByVal FormatNum As Long) As Long
+    Return RqCallEx(Obj(), "GetAsHandle", 0, FormatNum, 0, 0, 0, 0)
+End Function
+' Буфер очищается, описатель переходит Windows (SetClipboardData)
+Sub QCLIPBOARD.SetAsHandle(ByVal FormatNum As Long, ByVal DataHandle As Long)
+    If RqCallEx(Obj(), "SetAsHandle", 0, FormatNum, DataHandle, 0, 0, 0) = 0 Then RqLclClassError("Clipboard.SetAsHandle")
+End Sub
 Sub QCLIPBOARD.Clear()
     RqLclCall(Obj(), "Clear")
 End Sub

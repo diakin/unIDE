@@ -14,8 +14,8 @@ unit rqlclimage;
 interface
 
 uses
-  Classes, SysUtils, Types, Controls, ExtCtrls, Graphics, ImgList, Forms,
-  LazUTF8, rqlclmisc;
+  Windows, Classes, SysUtils, Types, Controls, ExtCtrls, Graphics, ImgList,
+  Forms, LazUTF8, rqlclmisc, rqlclextra;
 
 function ImgGetInt(AObj: TObject; const AProp: string;
                    out AValue: Integer): Boolean;
@@ -339,6 +339,78 @@ begin
     Result := False;
 end;
 
+// Размер поверхности рисования: картинка QIMAGE / QBITMAP, окно элемента,
+// у принтера - страница
+function CanvasSize(AObj: TObject; ACanvas: TCanvas): TSize;
+begin
+  if AObj is TImage then
+  begin
+    Result.cx := TImage(AObj).Picture.Bitmap.Width;
+    Result.cy := TImage(AObj).Picture.Bitmap.Height;
+  end
+  else if AObj is TRqBitmap then
+  begin
+    Result.cx := TRqBitmap(AObj).Bitmap.Width;
+    Result.cy := TRqBitmap(AObj).Bitmap.Height;
+  end
+  else if AObj is TControl then
+  begin
+    Result.cx := TControl(AObj).ClientWidth;
+    Result.cy := TControl(AObj).ClientHeight;
+  end
+  else
+  begin
+    Result.cx := GetDeviceCaps(ACanvas.Handle, HORZRES);
+    Result.cy := GetDeviceCaps(ACanvas.Handle, VERTRES);
+  end;
+end;
+
+// Rotate (xOrigin, yOrigin, Angle): всё нарисованное поворачивается на
+// Angle градусов против часовой стрелки вокруг точки (xOrigin, yOrigin);
+// открывшиеся места заливаются кистью холста (Brush.Color)
+procedure RotateCanvas(AObj: TObject; ACanvas: TCanvas; AOriginX, AOriginY,
+                       AAngle: Integer);
+var
+  SurfaceSize: TSize;
+  SurfaceCopy: TBitmap;
+  Corners: array[0..2] of Windows.TPoint;
+  AngleRad, AngleSin, AngleCos: Double;
+
+  procedure Turn(AIndex, APointX, APointY: Integer);
+  begin
+    Corners[AIndex].X := Round(AOriginX + (APointX - AOriginX) * AngleCos +
+                               (APointY - AOriginY) * AngleSin);
+    Corners[AIndex].Y := Round(AOriginY - (APointX - AOriginX) * AngleSin +
+                               (APointY - AOriginY) * AngleCos);
+  end;
+
+begin
+  SurfaceSize := CanvasSize(AObj, ACanvas);
+  if (SurfaceSize.cx <= 0) or (SurfaceSize.cy <= 0) then
+    Exit;
+  AngleRad := AAngle * Pi / 180;
+  AngleSin := Sin(AngleRad);
+  AngleCos := Cos(AngleRad);
+  SurfaceCopy := TBitmap.Create;
+  try
+    SurfaceCopy.SetSize(SurfaceSize.cx, SurfaceSize.cy);
+    Windows.BitBlt(SurfaceCopy.Canvas.Handle, 0, 0, SurfaceSize.cx, SurfaceSize.cy,
+                   ACanvas.Handle, 0, 0, SRCCOPY);
+    Turn(0, 0, 0);
+    Turn(1, SurfaceSize.cx, 0);
+    Turn(2, 0, SurfaceSize.cy);
+    ACanvas.Brush.Style := bsSolid;
+    ACanvas.FillRect(Rect(0, 0, SurfaceSize.cx, SurfaceSize.cy));
+    if not Windows.PlgBlt(ACanvas.Handle, Corners[0], SurfaceCopy.Canvas.Handle, 0, 0,
+                          SurfaceSize.cx, SurfaceSize.cy, 0, 0, 0) then
+      raise Exception.Create('Rotate: PlgBlt failed');
+  finally
+    SurfaceCopy.Free;
+  end;
+  if AObj is TControl then
+    TControl(AObj).Invalidate;
+end;
+
 function ImgCallEx(AObj: TObject; const AMethod, AStr: string;
                    AInt1, AInt2, AInt3: Integer;
                    out AIntResult: Integer): Boolean;
@@ -369,7 +441,7 @@ begin
   else if Method = 'TEXTHEIGHT' then
     AIntResult := ImageCanvas.TextHeight(WinCPToUTF8(AStr))
   else if Method = 'ROTATE' then
-    raise Exception.Create('Rotate is not supported yet')
+    RotateCanvas(AObj, ImageCanvas, AInt1, AInt2, AInt3)
   else
     Result := False;
 end;

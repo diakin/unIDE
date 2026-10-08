@@ -9,7 +9,10 @@
 '  Типы RapidQ: BYTE - UByte, SHORT - Short, WORD - UShort, INTEGER/LONG -
 '  Long, DWORD - ULong, SINGLE, DOUBLE, STRING. Целое FreeBASIC (Integer,
 '  у литералов) пишется как LONG (4 байта, как INTEGER RapidQ).
-'  Не сделано: ReadUDT/WriteUDT, LoadArray/SaveArray, ExtractRes.
+'  ReadUDT/WriteUDT (@запись, SizeOf(запись)) - байты записи как в памяти
+'  FreeBASIC (препроцессор добавляет @ и SizeOf); SaveArray/LoadArray (первый
+'  элемент, число элементов) - перегрузки по типу элемента; ExtractRes -
+'  ресурс $RESOURCE (номер из Resource(i)) в поток.
 ' ---------------------------------------------------------------------------
 
 #pragma once
@@ -88,6 +91,23 @@ Type RqStream Extends Object
     Declare Function ReadLine() As String
     Declare Sub WriteLine(ByRef Text As String)
     Declare Sub CopyFrom(ByRef Source As RqStream, ByVal Count As Long)
+    Declare Sub SaveArray Overload (ByRef FirstItem As UByte, ByVal ItemCount As Long)
+    Declare Sub SaveArray Overload (ByRef FirstItem As Short, ByVal ItemCount As Long)
+    Declare Sub SaveArray Overload (ByRef FirstItem As UShort, ByVal ItemCount As Long)
+    Declare Sub SaveArray Overload (ByRef FirstItem As Long, ByVal ItemCount As Long)
+    Declare Sub SaveArray Overload (ByRef FirstItem As ULong, ByVal ItemCount As Long)
+    Declare Sub SaveArray Overload (ByRef FirstItem As Single, ByVal ItemCount As Long)
+    Declare Sub SaveArray Overload (ByRef FirstItem As Double, ByVal ItemCount As Long)
+    Declare Sub LoadArray Overload (ByRef FirstItem As UByte, ByVal ItemCount As Long)
+    Declare Sub LoadArray Overload (ByRef FirstItem As Short, ByVal ItemCount As Long)
+    Declare Sub LoadArray Overload (ByRef FirstItem As UShort, ByVal ItemCount As Long)
+    Declare Sub LoadArray Overload (ByRef FirstItem As Long, ByVal ItemCount As Long)
+    Declare Sub LoadArray Overload (ByRef FirstItem As ULong, ByVal ItemCount As Long)
+    Declare Sub LoadArray Overload (ByRef FirstItem As Single, ByVal ItemCount As Long)
+    Declare Sub LoadArray Overload (ByRef FirstItem As Double, ByVal ItemCount As Long)
+    Declare Sub WriteUDT(ByVal RecordPtr As Any Ptr, ByVal RecordSize As Long)
+    Declare Sub ReadUDT(ByVal RecordPtr As Any Ptr, ByVal RecordSize As Long)
+    Declare Sub ExtractRes(ByVal ResId As Long)
 End Type
 
 Function RqStream.ReadBuf(ByVal Dest As Any Ptr, ByVal Count As Long) As Long
@@ -286,6 +306,71 @@ End Function
 Sub RqStream.WriteLine(ByRef Text As String)
     Dim LineText As String = Text & Chr(13, 10)
     WriteBuf(StrPtr(LineText), Len(LineText))
+End Sub
+
+' SaveArray(A(1), 100) - 100 элементов с A(1) подряд (как в памяти);
+' LoadArray - обратно. Препроцессор пишет A() как A(LBound(A))
+Sub RqStream.SaveArray(ByRef FirstItem As UByte, ByVal ItemCount As Long)
+    If ItemCount > 0 Then WriteBuf(@FirstItem, ItemCount * SizeOf(UByte))
+End Sub
+Sub RqStream.LoadArray(ByRef FirstItem As UByte, ByVal ItemCount As Long)
+    If ItemCount > 0 Then ReadBuf(@FirstItem, ItemCount * SizeOf(UByte))
+End Sub
+Sub RqStream.SaveArray(ByRef FirstItem As Short, ByVal ItemCount As Long)
+    If ItemCount > 0 Then WriteBuf(@FirstItem, ItemCount * SizeOf(Short))
+End Sub
+Sub RqStream.LoadArray(ByRef FirstItem As Short, ByVal ItemCount As Long)
+    If ItemCount > 0 Then ReadBuf(@FirstItem, ItemCount * SizeOf(Short))
+End Sub
+Sub RqStream.SaveArray(ByRef FirstItem As UShort, ByVal ItemCount As Long)
+    If ItemCount > 0 Then WriteBuf(@FirstItem, ItemCount * SizeOf(UShort))
+End Sub
+Sub RqStream.LoadArray(ByRef FirstItem As UShort, ByVal ItemCount As Long)
+    If ItemCount > 0 Then ReadBuf(@FirstItem, ItemCount * SizeOf(UShort))
+End Sub
+Sub RqStream.SaveArray(ByRef FirstItem As Long, ByVal ItemCount As Long)
+    If ItemCount > 0 Then WriteBuf(@FirstItem, ItemCount * SizeOf(Long))
+End Sub
+Sub RqStream.LoadArray(ByRef FirstItem As Long, ByVal ItemCount As Long)
+    If ItemCount > 0 Then ReadBuf(@FirstItem, ItemCount * SizeOf(Long))
+End Sub
+Sub RqStream.SaveArray(ByRef FirstItem As ULong, ByVal ItemCount As Long)
+    If ItemCount > 0 Then WriteBuf(@FirstItem, ItemCount * SizeOf(ULong))
+End Sub
+Sub RqStream.LoadArray(ByRef FirstItem As ULong, ByVal ItemCount As Long)
+    If ItemCount > 0 Then ReadBuf(@FirstItem, ItemCount * SizeOf(ULong))
+End Sub
+Sub RqStream.SaveArray(ByRef FirstItem As Single, ByVal ItemCount As Long)
+    If ItemCount > 0 Then WriteBuf(@FirstItem, ItemCount * SizeOf(Single))
+End Sub
+Sub RqStream.LoadArray(ByRef FirstItem As Single, ByVal ItemCount As Long)
+    If ItemCount > 0 Then ReadBuf(@FirstItem, ItemCount * SizeOf(Single))
+End Sub
+Sub RqStream.SaveArray(ByRef FirstItem As Double, ByVal ItemCount As Long)
+    If ItemCount > 0 Then WriteBuf(@FirstItem, ItemCount * SizeOf(Double))
+End Sub
+Sub RqStream.LoadArray(ByRef FirstItem As Double, ByVal ItemCount As Long)
+    If ItemCount > 0 Then ReadBuf(@FirstItem, ItemCount * SizeOf(Double))
+End Sub
+' Запись TYPE - байтами, как она лежит в памяти FreeBASIC (препроцессор:
+' Stream.WriteUDT(x) -> Stream.WriteUDT(@x, SizeOf(x)))
+Sub RqStream.WriteUDT(ByVal RecordPtr As Any Ptr, ByVal RecordSize As Long)
+    If RecordSize > 0 Then WriteBuf(RecordPtr, RecordSize)
+End Sub
+Sub RqStream.ReadUDT(ByVal RecordPtr As Any Ptr, ByVal RecordSize As Long)
+    If RecordSize > 0 Then ReadBuf(RecordPtr, RecordSize)
+End Sub
+' ExtractRes(Resource(i)) - данные ресурса $RESOURCE в поток (с текущего места)
+Sub RqStream.ExtractRes(ByVal ResId As Long)
+    Dim ResInfo As Any Ptr = RqRtResInfo(ResId)
+    If ResInfo = 0 Then
+        RqRtClassError("ExtractRes: no resource " & ResId)
+        Exit Sub
+    End If
+    Dim ExeModule As Any Ptr = RqRtGetModuleHandle(0)
+    Dim ResSize As ULong = RqRtSizeofResource(ExeModule, ResInfo)
+    Dim ResData As Any Ptr = RqRtLockResource(RqRtLoadResource(ExeModule, ResInfo))
+    If (ResData <> 0) AndAlso (ResSize > 0) Then WriteBuf(ResData, ResSize)
 End Sub
 
 ' Count = 0 - весь Source с начала

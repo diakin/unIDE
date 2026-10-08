@@ -1,0 +1,23 @@
+caption bit 0
+caption bit -1
+label 901 80000014
+password * masked 01
+mask 00-00;1;_ 12-34 12-34
+password 0
+button 12
+drag 040
+list measures -1 tab 40
+enters 1
+copymode 12
+grid 02 501
+tab to col 3
+deleted 12
+popup 123 imagelist -1
+clipboard 1-1
+array size 20
+array 102030
+udt abc77
+res resource text 123
+rotate 00FFFFFF 000000FF 00FFFFFF
+center 1
+shaped

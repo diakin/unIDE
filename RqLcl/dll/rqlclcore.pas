@@ -28,7 +28,8 @@ uses
   Classes, SysUtils, TypInfo, Math, Controls, StdCtrls, Forms, Graphics,
   LazUTF8, LCLType, ComCtrls, Grids, ShellCtrls, ExtCtrls, Buttons, Menus,
   FileCtrl, Dialogs, RichMemo, rqlclrich, rqlclgrid, rqlclmisc, rqlclmore,
-  rqlclsys, rqlclview, rqlclimage, ImgList, rqlclextra, rqlclwnd;
+  rqlclsys, rqlclview, rqlclimage, ImgList, rqlclextra, rqlclwnd, MaskEdit,
+  rqlcladd;
 
 const
   RqLclVersion = 2;   // меняется при несовместимой смене набора функций
@@ -116,6 +117,8 @@ type
     Proc: TRqEventProc;
     ProcEx: TRqEventProcEx;
     EventId: Integer;
+    // OnHint: последняя подсказка, отданная обработчику
+    LastHint: string;
     procedure FireNotify(Sender: TObject);
     procedure FireKey(Sender: TObject; var Key: Word; Shift: TShiftState);
     procedure FireUTF8KeyPress(Sender: TObject; var UTF8Key: TUTF8Char);
@@ -148,6 +151,13 @@ type
                                State: TSectionTrackState);
     procedure FireWndProc(Sender: TObject; AWnd: HWND; AMsg: UINT;
                           AWParam: WPARAM; ALParam: LPARAM);
+    procedure FireMeasureItem(Control: TWinControl; Index: Integer;
+                              var AHeight: Integer);
+    procedure FireColRow(Sender: TObject; aCol, aRow: Integer);
+    procedure FireListDropDown(Sender: TObject; ACol, ARow: Integer;
+                               var AList: string);
+    procedure FireTreeEdited(Sender: TObject; Node: TTreeNode; var S: string);
+    procedure FireHint(Sender: TObject);
     destructor Destroy; override;
   end;
 
@@ -165,7 +175,7 @@ type
 
 var
   RqClassTable: array[0..36] of TRqClassRec;
-  RqPropTable: array[0..4] of TRqPropRec;
+  RqPropTable: array[0..5] of TRqPropRec;
   RqLastErrorText: string = '';
   RqInitDone: Boolean = False;
 
@@ -181,13 +191,14 @@ begin
   // TBitBtn, как у RapidQ (QBUTTON: BMP, BMPHandle, NumBMPs, Kind)
   RqClassTable[1].LclClass := TBitBtn;
   RqClassTable[2].RqName := 'QLABEL';
-  RqClassTable[2].LclClass := TLabel;
+  RqClassTable[2].LclClass := TRqLabel;
   RqClassTable[3].RqName := 'QEDIT';
-  RqClassTable[3].LclClass := TEdit;
+  // TMaskEdit: InputMask, IsMasked, EditText; без маски - как TEdit
+  RqClassTable[3].LclClass := TMaskEdit;
   RqClassTable[4].RqName := 'QRICHEDIT';
   RqClassTable[4].LclClass := TRichMemo;
   RqClassTable[5].RqName := 'QSTRINGGRID';
-  RqClassTable[5].LclClass := TStringGrid;
+  RqClassTable[5].LclClass := TRqStringGrid;
   RqClassTable[6].RqName := 'QDIRTREE';
   RqClassTable[6].LclClass := TShellTreeView;
   RqClassTable[7].RqName := 'QMAINMENU';
@@ -205,7 +216,7 @@ begin
   RqClassTable[13].RqName := 'QCHECKBOX';
   RqClassTable[13].LclClass := TCheckBox;
   RqClassTable[14].RqName := 'QLISTBOX';
-  RqClassTable[14].LclClass := TListBox;
+  RqClassTable[14].LclClass := TRqListBox;
   RqClassTable[15].RqName := 'QSPLITTER';
   RqClassTable[15].LclClass := TSplitter;
   RqClassTable[16].RqName := 'QGAUGE';
@@ -265,6 +276,9 @@ begin
   // QFONTDIALOG: кнопка Apply
   RqPropTable[4].RqName := 'ONAPPLY';
   RqPropTable[4].LclName := 'OnApplyClicked';
+  // QEDIT: маска ввода
+  RqPropTable[5].RqName := 'INPUTMASK';
+  RqPropTable[5].LclName := 'EditMask';
 end;
 
 procedure SetError(const AText: string);
@@ -530,7 +544,8 @@ procedure TRqEventLink.FireTreeNode(Sender: TObject; Node: TTreeNode);
 var
   Args: TRqEventArgs;
 begin
-  if not Assigned(ProcEx) then
+  // OnDeletion при уничтожении дерева - не обработчику
+  if not Assigned(ProcEx) or (csDestroying in Owner.ComponentState) then
     Exit;
   FillChar(Args, SizeOf(Args), 0);
   if Node = nil then
@@ -678,11 +693,119 @@ begin
   ProcEx(User, Owner, EventId, @Args);
 end;
 
+// QLISTBOX, QCOMBOBOX: OnMeasureItem - номер пункта и высота (обработчик
+// её меняет; стиль lbOwnerDrawVariable / csOwnerDrawVariable)
+procedure TRqEventLink.FireMeasureItem(Control: TWinControl; Index: Integer;
+                                       var AHeight: Integer);
+var
+  Args: TRqEventArgs;
+begin
+  if not Assigned(ProcEx) then
+    Exit;
+  FillChar(Args, SizeOf(Args), 0);
+  Args.IntArgs[0] := Index;
+  Args.IntArgs[1] := AHeight;
+  ProcEx(User, Owner, EventId, @Args);
+  AHeight := Args.IntArgs[1];
+end;
+
+// QSTRINGGRID: OnEllipsisClick - столбец и строка
+procedure TRqEventLink.FireColRow(Sender: TObject; aCol, aRow: Integer);
+var
+  Args: TRqEventArgs;
+begin
+  if not Assigned(ProcEx) then
+    Exit;
+  FillChar(Args, SizeOf(Args), 0);
+  Args.IntArgs[0] := aCol;
+  Args.IntArgs[1] := aRow;
+  ProcEx(User, Owner, EventId, @Args);
+end;
+
+// Строка BYREF: обработчик получает StrArg; вызывающий кладёт в StrArg
+// новое значение (его строка жива до следующего события)
+function EventStrResult(const AArgs: TRqEventArgs; const AOld: string): string;
+begin
+  if AArgs.StrArg = nil then
+    Result := AOld
+  else
+    Result := string(AArgs.StrArg);
+end;
+
+// QSTRINGGRID: OnListDropDown - столбец, строка, пункты списка через LF
+// (строки в кодировке Windows, как ColumnList)
+procedure TRqEventLink.FireListDropDown(Sender: TObject; ACol, ARow: Integer;
+                                        var AList: string);
+var
+  Args: TRqEventArgs;
+  ListText: string;
+begin
+  if not Assigned(ProcEx) then
+    Exit;
+  FillChar(Args, SizeOf(Args), 0);
+  Args.IntArgs[0] := ACol;
+  Args.IntArgs[1] := ARow;
+  ListText := AList;
+  Args.StrArg := PChar(ListText);
+  ProcEx(User, Owner, EventId, @Args);
+  AList := EventStrResult(Args, ListText);
+end;
+
+// QTREEVIEW: OnEdited - номер пункта и новый текст (обработчик может
+// заменить)
+procedure TRqEventLink.FireTreeEdited(Sender: TObject; Node: TTreeNode;
+                                      var S: string);
+var
+  Args: TRqEventArgs;
+  AnsiText: string;
+begin
+  if not Assigned(ProcEx) then
+    Exit;
+  FillChar(Args, SizeOf(Args), 0);
+  if Node = nil then
+    Args.IntArgs[0] := -1
+  else
+    Args.IntArgs[0] := Node.AbsoluteIndex;
+  AnsiText := UTF8ToWinCP(S);
+  Args.StrArg := PChar(AnsiText);
+  ProcEx(User, Owner, EventId, @Args);
+  S := WinCPToUTF8(EventStrResult(Args, AnsiText));
+end;
+
+// QFORM: OnHint - подсказка (длинная часть Hint) элемента под мышью на
+// этой форме; ушла мышь с формы - "" один раз
+procedure TRqEventLink.FireHint(Sender: TObject);
+var
+  Args: TRqEventArgs;
+  MouseControl: TControl;
+  HintText: string;
+begin
+  if not Assigned(ProcEx) or (csDestroying in Owner.ComponentState) then
+    Exit;
+  HintText := UTF8ToWinCP(Application.Hint);
+  // элемент, по которому LCL взяла подсказку
+  MouseControl := Application.MouseControl;
+  if (MouseControl = nil) or (GetParentForm(MouseControl) <> Owner) then
+  begin
+    if LastHint = '' then
+      Exit;
+    HintText := '';
+  end;
+  if HintText = LastHint then
+    Exit;
+  LastHint := HintText;
+  FillChar(Args, SizeOf(Args), 0);
+  Args.StrArg := PChar(HintText);
+  ProcEx(User, Owner, EventId, @Args);
+end;
+
 // Переходник WndProc снимается вместе с подменой окна
 destructor TRqEventLink.Destroy;
 begin
   if (CompareText(EventName, 'WndProc') = 0) and (Owner is TControl) then
     WndHookSet(TControl(Owner), nil);
+  if (CompareText(EventName, 'OnHint') = 0) and (Application <> nil) then
+    Application.RemoveOnHintHandler(@FireHint);
   inherited Destroy;
 end;
 
@@ -734,6 +857,41 @@ begin
   Link.Proc := nil;
   Link.EventId := AEventId;
   WndHookSet(TControl(AComp), @Link.FireWndProc);
+  Result := 1;
+end;
+
+// QFORM.OnHint - не свойство формы LCL: обработчик подсказок Application
+function SetHintEvent(AComp: TComponent; AEventId: Integer;
+                      AProc: TRqEventProcEx): Integer;
+var
+  Link: TRqEventLink;
+  Data: TRqData;
+begin
+  Result := 0;
+  if not (AComp is TCustomForm) then
+  begin
+    SetError('OnHint: object is not a form');
+    Exit;
+  end;
+  Link := LinkOf(AComp, 'OnHint');
+  if not Assigned(AProc) then
+  begin
+    Link.Free;
+    Result := 1;
+    Exit;
+  end;
+  if Link = nil then
+  begin
+    Link := TRqEventLink.Create(AComp);
+    Link.EventName := 'OnHint';
+    Application.AddOnHintHandler(@Link.FireHint);
+  end;
+  Data := DataOf(AComp);
+  if Data <> nil then
+    Link.User := Data.User;
+  Link.ProcEx := AProc;
+  Link.Proc := nil;
+  Link.EventId := AEventId;
   Result := 1;
 end;
 
@@ -866,7 +1024,8 @@ begin
        SysSetInt(TObject(AObj), string(AProp), AValue) or
        ViewSetInt(TObject(AObj), string(AProp), AValue) or
        ExtraSetInt(TObject(AObj), string(AProp), AValue) or
-       ImgSetInt(TObject(AObj), string(AProp), AValue) then
+       ImgSetInt(TObject(AObj), string(AProp), AValue) or
+       AddSetInt(TObject(AObj), string(AProp), AValue) then
     begin
       Result := 1;
       Exit;
@@ -905,7 +1064,8 @@ begin
        SysGetInt(TObject(AObj), string(AProp), Result) or
        ViewGetInt(TObject(AObj), string(AProp), Result) or
        ExtraGetInt(TObject(AObj), string(AProp), Result) or
-       ImgGetInt(TObject(AObj), string(AProp), Result) then
+       ImgGetInt(TObject(AObj), string(AProp), Result) or
+       AddGetInt(TObject(AObj), string(AProp), Result) then
       Exit;
     Info := FindProp(TObject(AObj), string(AProp));
     if Info = nil then
@@ -931,7 +1091,8 @@ begin
        SysSetStr(TObject(AObj), string(AProp), string(AValue)) or
        ViewSetStr(TObject(AObj), string(AProp), string(AValue)) or
        ExtraSetStr(TObject(AObj), string(AProp), string(AValue)) or
-       ImgSetStr(TObject(AObj), string(AProp), string(AValue)) then
+       ImgSetStr(TObject(AObj), string(AProp), string(AValue)) or
+       AddSetStr(TObject(AObj), string(AProp), string(AValue)) then
     begin
       Result := 1;
       Exit;
@@ -973,7 +1134,8 @@ begin
        not SysGetStr(TObject(AObj), string(AProp), Value) and
        not ViewGetStr(TObject(AObj), string(AProp), Value) and
        not ExtraGetStr(TObject(AObj), string(AProp), Value) and
-       not ImgGetStr(TObject(AObj), string(AProp), Value) then
+       not ImgGetStr(TObject(AObj), string(AProp), Value) and
+       not AddGetStr(TObject(AObj), string(AProp), Value) then
     begin
       Info := FindProp(TObject(AObj), string(AProp));
       if Info = nil then
@@ -1162,6 +1324,10 @@ var
   DrawSectionProc: TRqDrawSectionEvent;
   SectionNotifyProc: TCustomSectionNotifyEvent;
   SectionTrackProc: TCustomSectionTrackEvent;
+  MeasureItemProc: TMeasureItemEvent;
+  ColRowProc: TOnSelectEvent;
+  ListDropDownProc: TRqListDropDownEvent;
+  TreeEditedProc: TTVEditedEvent;
 begin
   Result := 0;
   try
@@ -1174,6 +1340,11 @@ begin
     if CompareText(string(AEvent), 'WndProc') = 0 then
     begin
       Result := SetWndProcEvent(Comp, AEventId, AProc);
+      Exit;
+    end;
+    if (CompareText(string(AEvent), 'OnHint') = 0) and (Comp is TCustomForm) then
+    begin
+      Result := SetHintEvent(Comp, AEventId, AProc);
       Exit;
     end;
     Info := FindProp(Comp, string(AEvent));
@@ -1221,10 +1392,31 @@ begin
       TreeNodeProc := @Link.FireTreeNode;
       Handler := TMethod(TreeNodeProc);
     end
-    else if (TypeName = 'TTVChangingEvent') or (TypeName = 'TTVExpandingEvent') then
+    else if (TypeName = 'TTVChangingEvent') or (TypeName = 'TTVExpandingEvent') or
+            (TypeName = 'TTVEditingEvent') then
     begin
       TreeAllowProc := @Link.FireTreeAllow;
       Handler := TMethod(TreeAllowProc);
+    end
+    else if TypeName = 'TTVEditedEvent' then
+    begin
+      TreeEditedProc := @Link.FireTreeEdited;
+      Handler := TMethod(TreeEditedProc);
+    end
+    else if TypeName = 'TMeasureItemEvent' then
+    begin
+      MeasureItemProc := @Link.FireMeasureItem;
+      Handler := TMethod(MeasureItemProc);
+    end
+    else if TypeName = 'TOnSelectEvent' then
+    begin
+      ColRowProc := @Link.FireColRow;
+      Handler := TMethod(ColRowProc);
+    end
+    else if TypeName = 'TRqListDropDownEvent' then
+    begin
+      ListDropDownProc := @Link.FireListDropDown;
+      Handler := TMethod(ListDropDownProc);
     end
     else if TypeName = 'TLVChangeEvent' then
     begin
@@ -1584,7 +1776,8 @@ begin
        MiscGetItem(TObject(AObj), Prop, AIndex, Value) or
        MoreGetItem(TObject(AObj), Prop, AIndex, Value) or
        ViewGetItem(TObject(AObj), Prop, AIndex, Value) or
-       ExtraGetItem(TObject(AObj), Prop, AIndex, Value) then
+       ExtraGetItem(TObject(AObj), Prop, AIndex, Value) or
+       AddGetItem(TObject(AObj), Prop, AIndex, Value) then
       Found := True
     else if (TObject(AObj) is TFont) and (Prop = 'FONTNAME') then
     begin
@@ -1629,7 +1822,8 @@ begin
        MiscSetItem(TObject(AObj), string(AProp), AIndex, string(AValue)) or
        MoreSetItem(TObject(AObj), string(AProp), AIndex, string(AValue)) or
        ViewSetItem(TObject(AObj), string(AProp), AIndex, string(AValue)) or
-       ExtraSetItem(TObject(AObj), string(AProp), AIndex, string(AValue)) then
+       ExtraSetItem(TObject(AObj), string(AProp), AIndex, string(AValue)) or
+       AddSetItem(TObject(AObj), string(AProp), AIndex, string(AValue)) then
       Result := 1
     else if AObj = nil then
       SetError('RqSetItemStr ' + string(AProp) + ': no object')
@@ -1717,7 +1911,8 @@ begin
        not MiscGetItemInt(TObject(AObj), string(AProp), AIndex, Result) and
        not MoreGetItemInt(TObject(AObj), string(AProp), AIndex, Result) and
        not ViewGetItemInt(TObject(AObj), string(AProp), AIndex, Result) and
-       not ExtraGetItemInt(TObject(AObj), string(AProp), AIndex, Result) then
+       not ExtraGetItemInt(TObject(AObj), string(AProp), AIndex, Result) and
+       not AddGetItemInt(TObject(AObj), string(AProp), AIndex, Result) then
       SetError('RqGetItemInt: no list ' + string(AProp));
   except
     on E: Exception do
@@ -1734,7 +1929,8 @@ begin
        MiscSetItemInt(TObject(AObj), string(AProp), AIndex, AValue) or
        MoreSetItemInt(TObject(AObj), string(AProp), AIndex, AValue) or
        ViewSetItemInt(TObject(AObj), string(AProp), AIndex, AValue) or
-       ExtraSetItemInt(TObject(AObj), string(AProp), AIndex, AValue) then
+       ExtraSetItemInt(TObject(AObj), string(AProp), AIndex, AValue) or
+       AddSetItemInt(TObject(AObj), string(AProp), AIndex, AValue) then
       Result := 1
     else
       SetError('RqSetItemInt: no list ' + string(AProp));
@@ -1777,6 +1973,8 @@ begin
             ExtraCallEx(TObject(AObj), string(AMethod), string(AStr), AInt1,
                         AInt2, AInt3, IntResult) or
             ImgCallEx(TObject(AObj), string(AMethod), string(AStr), AInt1,
+                      AInt2, AInt3, IntResult) or
+            AddCallEx(TObject(AObj), string(AMethod), string(AStr), AInt1,
                       AInt2, AInt3, IntResult) then
       Result := IntResult
     else if AObj = nil then
