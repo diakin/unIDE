@@ -57,10 +57,26 @@ type
     ResourceFile: string;
   end;
 
+  // Ход перевода. Перевод идёт в два прохода по всем файлам программы
+  // (главный и $INCLUDE): APass - 1 или 2, AFile - файл, который сейчас
+  // читается, ALinesDone - строк пройдено в этом проходе, ALinesTotal -
+  // строк всего (известно только во втором проходе, в первом 0).
+  // Вызывается в начале каждого файла, через каждые 200 строк и в конце
+  // прохода. Вернуть False - остановить перевод (результат - ошибка
+  // "перевод остановлен").
+  TRqFbProgress = function(APass: Integer; const AFile: string;
+                           ALinesDone, ALinesTotal: Integer): Boolean of object;
+
 // Перевести программу AMainFile. Сообщения - в AMessages. False - были
 // ошибки (переведённые файлы всё равно записаны).
 function RqToFbConvert(const AMainFile: string; const AOptions: TRqFbOptions;
                        AMessages: TStrings; var AResult: TRqFbResult): Boolean;
+
+// То же с сообщениями о ходе перевода (окно хода сборки в unIDE).
+// AProgress = nil - как RqToFbConvert.
+function RqToFbConvertEx(const AMainFile: string; const AOptions: TRqFbOptions;
+                         AMessages: TStrings; var AResult: TRqFbResult;
+                         AProgress: TRqFbProgress): Boolean;
 
 implementation
 
@@ -328,6 +344,14 @@ type
     FHandlerProcs: TStringList;   // процедуры - обработчики событий
     FBinds: TStringList;          // ПЕРЕМЕННАЯ=процедура (BIND ... TO)
     FSkipBody: Boolean;           // тело функции-обхода RapidQ пропускается
+    // Ход перевода (RqToFbConvertEx): строк пройдено в этом проходе, строк
+    // в первом проходе, значение FPassLines при последнем сообщении;
+    // FAborted - получатель вернул False
+    FProgress: TRqFbProgress;
+    FPassLines: Integer;
+    FPass1Lines: Integer;
+    FProgLast: Integer;
+    FAborted: Boolean;
     FParamAliases: string;        // от ParseParams: " : Dim ByRef ..."
     FClassMembers: TStringList;   // КЛАСС.ИМЯ=P|M|E (RqClassMembersText)
     FAllMembers: TStringList;     // ИМЯ=P|M|E по всем классам
@@ -464,6 +488,7 @@ type
                               const AOriginal: string; var AOut: string);
     function ResolveInclude(const AName: string; AAngle: Boolean): string;
     function ProcessFile(const AFileName: string; AIsMain: Boolean): string;
+    procedure Report(const AFile: string);
     function MainHeader: string;
     procedure EndOfPass1;
 
@@ -6013,6 +6038,7 @@ begin
         Exit;
       end;
     end;
+    Report(AFileName);
     LineIdx := 0;
     CreateBase := FCreateStack.Count;
     while LineIdx < Lines.Count do
@@ -6030,7 +6056,17 @@ begin
       ProcessLine(Text, OutText);
       OutLines.Add(OutText);
       Inc(LineIdx);
+      // Строки продолжения (_) - тоже строки файла
+      Inc(FPassLines, LineIdx - StartIdx);
+      if FPassLines - FProgLast >= 200 then
+        Report(AFileName);
+      if FAborted then
+        Break;
     end;
+    // Перевод остановлен: файл не дописан, проверки конца файла и запись
+    // вывода не нужны
+    if FAborted then
+      Exit;
     // TYPE ... EXTENDS без END TYPE
     if FCurType <> nil then
     begin
@@ -6071,6 +6107,16 @@ begin
   end;
 end;
 
+// Сообщение о ходе перевода получателю (RqToFbConvertEx). Получатель
+// вернул False - перевод останавливается (FAborted).
+procedure TRqFbConv.Report(const AFile: string);
+begin
+  FProgLast := FPassLines;
+  if Assigned(FProgress) and not FAborted then
+    if not FProgress(FPass, AFile, FPassLines, FPass1Lines) then
+      FAborted := True;
+end;
+
 function TRqFbConv.Run(const AMainFile: string; var AResult: TRqFbResult): Boolean;
 var
   PassIdx: Integer;
@@ -6078,9 +6124,14 @@ begin
   FMainFile := ExpandFileName(AMainFile);
   FOpt.OutDir := ExpandFileName(FOpt.OutDir);
   FSourceMode := '';
+  FPass1Lines := 0;
   for PassIdx := 1 to 2 do
   begin
+    if FAborted then
+      Break;
     FPass := PassIdx;
+    FPassLines := 0;
+    FProgLast := 0;
     FDoneFiles.Clear;
     FOutNames.Clear;
     FDefines.Clear;
@@ -6119,8 +6170,11 @@ begin
       end;
     end;
     AResult.MainOut := ProcessFile(FMainFile, True);
+    // Конец прохода: полоса хода - до конца прохода
+    Report(FMainFile);
     if PassIdx = 1 then
     begin
+      FPass1Lines := FPassLines;
       EndOfPass1;
       // режим из исходника - сильнее настройки
       if FSourceMode = 'SMART' then
@@ -6129,7 +6183,15 @@ begin
         FOpt.Mode := rfmCompat;
     end;
   end;
-  if Length(FConds) > 0 then
+  if FAborted then
+  begin
+    // Сообщения пишутся только во втором проходе - остановить могли в первом
+    FPass := 2;
+    FCurFile := FMainFile;
+    FCurLine := 0;
+    Error('перевод остановлен');
+  end
+  else if Length(FConds) > 0 then
   begin
     FCurFile := FMainFile;
     Error('$IFDEF без $ENDIF');
@@ -6260,11 +6322,19 @@ end;
 
 function RqToFbConvert(const AMainFile: string; const AOptions: TRqFbOptions;
                        AMessages: TStrings; var AResult: TRqFbResult): Boolean;
+begin
+  Result := RqToFbConvertEx(AMainFile, AOptions, AMessages, AResult, nil);
+end;
+
+function RqToFbConvertEx(const AMainFile: string; const AOptions: TRqFbOptions;
+                         AMessages: TStrings; var AResult: TRqFbResult;
+                         AProgress: TRqFbProgress): Boolean;
 var
   Conv: TRqFbConv;
 begin
   Conv := TRqFbConv.Create(AOptions, AMessages);
   try
+    Conv.FProgress := AProgress;
     Result := Conv.Run(AMainFile, AResult);
   finally
     Conv.Free;

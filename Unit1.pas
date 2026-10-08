@@ -25,6 +25,7 @@ uses
   DbgSymbols,     // отладочная информация TD32: значения переменных (Watch)
   RqDbgInstr,     // отладчик RapidQ: копия программы с проверками точек
   DlgWatch,       // окно Watch
+  DlgCompProgress, // окно хода сборки (этапы, полоса) - CompDlgOpen
   DlgArdBoards,   // Arduino: Board Manager
   DlgArdLibs,     // Arduino: Library Manager
   DlgArdCli,      // Arduino: Arduino CLI Help
@@ -2681,6 +2682,13 @@ type
     procedure SetRqComp(const AMain: string; AComp: Integer);
     function  RqLclDir(var AProblem: string): string;
     function  CompileRapidQFb: Boolean;
+    function  CompileRapidQFbRun: Boolean;
+    function  RqFbConvProgress(APass: Integer; const AFile: string;
+                               ALinesDone, ALinesTotal: Integer): Boolean;
+    procedure RqFbFbcLine(const ALine: string);
+    function  RqFbTimeGet(const AMain, AName: string): Cardinal;
+    procedure RqFbTimeSet(const AMain: string; const ANames: array of string;
+                          const AValues: array of Cardinal);
     procedure CheckUnitPath(const AList: string);
     // Папка UiLib рядом с программой: свои компоненты (Ui*.pas) для сборки
     // проектов пользователя. '' - модулей нет.
@@ -2845,17 +2853,22 @@ type
     FEnvOverrides: TStringList;
     FRunMinimized: Boolean;       // Minimize on run свернул среду
     FRqDsgHiddenForRun: Boolean;  // запуск спрятал конструктор RapidQ
-    // Окно хода сборки (Show compiler progress)
-    FCompProgForm: TForm;
-    FCompProgProject: TLabel;
-    FCompProgStatus: TLabel;
-    FCompProgLine: TLabel;
-    FCompProgCounts: TLabel;
-    FCompProgOk: TUiButton;
-    FCompProgTick: Cardinal;
+    // Окно хода сборки (DlgCompProgress). Сборка RapidQ через FreeBASIC
+    // открывает его всегда и сама ведёт этапы (FCompDlgOwned); остальные
+    // сборки - по Preferences - Show compiler progress, одним этапом
+    // FCompDlgStage (CompProgressStart). Счётчики - строки вывода
+    // компилятора (CompProgressLine).
+    FCompDlg: TDlgCompProgress;
+    FCompDlgOwned: Boolean;
+    FCompDlgStage: Integer;
     FCompProgHints: Integer;
     FCompProgWarns: Integer;
     FCompProgErrors: Integer;
+    // Ход перевода RqToFb (RqFbConvProgress): строк в прошлой сборке, время
+    // последнего обновления окна
+    FRqFbPrevLines: Integer;
+    FRqFbConvLines: Integer;
+    FRqFbProgTick: Cardinal;
     // Editor Options - Margin and gutter, Code Insight (EnvOptions,
     // CodeInsight). См. EdInsightChanged и CiBeforeMessage.
     FEdIns: TEdInsightOptions;
@@ -3021,7 +3034,9 @@ type
     procedure EnvOptionsChanged;
     procedure EnvOverridesChanged;
     procedure AutoSaveEditorFiles;
-    procedure CompProgressOkClick(Sender: TObject);
+    function  CompDlgOpen(const AProgram: string): TDlgCompProgress;
+    procedure CompDlgAutoCloseClick(Sender: TObject);
+    function  CompAbortWanted: Boolean;
     procedure CompProgressStart(const AExe, AParams: string);
     procedure CompProgressLine(const ALine: string);
     procedure CompProgressDone(AExitCode: Integer);
@@ -37238,6 +37253,11 @@ begin
   // выдаёт сотнями, и ошибка среди них теряется.
   if C = clRed then
     LogErr(S);
+
+  // Окно хода сборки: последняя строка лога - что сейчас происходит (или,
+  // после неудачи, почему сборка не прошла)
+  if (FCompDlg <> nil) and FCompDlg.Building and (Trim(S) <> '') then
+    FCompDlg.ShowLine(Trim(S));
 end;
 
 procedure TForm1.LogErr(const S: string);
@@ -40792,10 +40812,11 @@ var
   NL: Integer;
   Cmd: string;
   Ini: TIniFile;
-  Oem, Ended: Boolean;
+  Oem, Ended, Killed: Boolean;
   Avail, Want: DWORD;
 begin
   Result := -1;
+  Killed := False;
 
   // Консольная программа пишет в OEM-кодировке (866), а лог и редактор
   // работают в ANSI (1251): без перевода кириллица в сообщениях и путях
@@ -40853,6 +40874,14 @@ begin
     Acc := '';
     Ended := False;
     repeat
+      // Стоп в окне хода сборки: компилятор снимается, канал закрывается,
+      // чтение кончается само
+      if not Killed and CompAbortWanted then
+      begin
+        Killed := True;
+        TerminateProcess(PI.hProcess, 1);
+        LogComp('Сборка остановлена: компилятор снят кнопкой Стоп');
+      end;
       Avail := 0;
       if not PeekNamedPipe(hRead, nil, 0, nil, @Avail, nil) then
         Break;
@@ -44252,8 +44281,200 @@ begin
               '(RapidQ Basic) - RqLcl folder (папка RqLcl из исходников unIDE)';
 end;
 
-// Перевод RqToFb и сборка fbc. True - собрано, exe на месте.
+// Этапы окна хода сборки RapidQ через FreeBASIC (CompileRapidQFb)
+const
+  fbsCheck = 0;    // проверка настроек, сохранение файлов
+  fbsConv = 1;     // перевод RqToFb
+  fbsFbc = 2;      // fbc
+  fbsResult = 3;   // разбор вывода fbc
+  fbsDll = 4;      // rqlcl32.dll / rqlcl64.dll рядом с exe
+
+  RqFbTimeSect = 'RapidQ.BuildTime';
+
+// Время прошлой удачной сборки главного файла: editor.ini, раздел
+// [RapidQ.BuildTime], ключ - путь .bas, значение "conv=350 fb32=4200
+// lines=12000" (мс перевода, мс fbc 32/64 бит, строк в переводе). По нему -
+// доли этапов и оценка в окне хода сборки. Нет записи - 0.
+function TForm1.RqFbTimeGet(const AMain, AName: string): Cardinal;
+var
+  Ini: TIniFile;
+  Parts: TStringList;
+  Value: string;
+begin
+  Result := 0;
+  if (AMain = '') or not FileExists(SettingsFileName) then
+    Exit;
+  Ini := TIniFile.Create(SettingsFileName);
+  try
+    Value := Ini.ReadString(RqFbTimeSect, LowerCase(ExpandFileName(AMain)), '');
+  finally
+    Ini.Free;
+  end;
+  Parts := TStringList.Create;
+  try
+    Parts.Delimiter := ' ';
+    Parts.DelimitedText := Value;
+    Result := Cardinal(StrToIntDef(Parts.Values[AName], 0));
+  finally
+    Parts.Free;
+  end;
+end;
+
+procedure TForm1.RqFbTimeSet(const AMain: string; const ANames: array of string;
+                             const AValues: array of Cardinal);
+var
+  Ini: TIniFile;
+  Parts: TStringList;
+  Key: string;
+  NameIdx: Integer;
+begin
+  if AMain = '' then
+    Exit;
+  Key := LowerCase(ExpandFileName(AMain));
+  Ini := TIniFile.Create(SettingsFileName);
+  Parts := TStringList.Create;
+  try
+    Parts.Delimiter := ' ';
+    Parts.DelimitedText := Ini.ReadString(RqFbTimeSect, Key, '');
+    for NameIdx := 0 to High(ANames) do
+      if NameIdx <= High(AValues) then
+        Parts.Values[ANames[NameIdx]] := IntToStr(Int64(AValues[NameIdx]));
+    Ini.WriteString(RqFbTimeSect, Key, Parts.DelimitedText);
+  finally
+    Parts.Free;
+    Ini.Free;
+  end;
+end;
+
+// Ход перевода RqToFb -> доля этапа "Перевод" в окне. Первый проход - до
+// половины этапа (по числу строк прошлой сборки, если оно известно),
+// второй - вторая половина по точному числу строк. Окно обновляется не
+// чаще раза в 100 мс; между обновлениями окно и кнопка Стоп живут через
+// ProcessMessages. False - нажали Стоп, перевод останавливается.
+function TForm1.RqFbConvProgress(APass: Integer; const AFile: string;
+                                 ALinesDone, ALinesTotal: Integer): Boolean;
+var
+  Share: Double;
+  NowTick: Cardinal;
+  Note: string;
+begin
+  Result := not CompAbortWanted;
+  if not Result or (FCompDlg = nil) then
+    Exit;
+  if APass = 2 then
+    FRqFbConvLines := ALinesTotal;
+  NowTick := GetTickCount;
+  if NowTick - FRqFbProgTick < 100 then
+    Exit;
+  FRqFbProgTick := NowTick;
+  if APass = 1 then
+  begin
+    if FRqFbPrevLines > 0 then
+      Share := 0.5 * ALinesDone / FRqFbPrevLines
+    else
+      Share := 0.5 * ALinesDone / (ALinesDone + 20000.0);
+    if Share > 0.5 then
+      Share := 0.5;
+    Note := Format('проход 1 из 2: %s, строк %d',
+                   [ExtractFileName(AFile), ALinesDone]);
+  end
+  else
+  begin
+    Share := 0.5;
+    if ALinesTotal > 0 then
+      Share := 0.5 + 0.5 * ALinesDone / ALinesTotal;
+    Note := Format('проход 2 из 2: %s, строк %d из %d',
+                   [ExtractFileName(AFile), ALinesDone, ALinesTotal]);
+  end;
+  FCompDlg.StageFraction(fbsConv, Share, True, Note);
+  BusyTick;
+  Application.ProcessMessages;
+  Result := not CompAbortWanted;
+end;
+
+// Строка fbc -v - шаг сборки: "compiling:" (перевод в ассемблер),
+// "assembling:", "compiling rc:" (ресурсы), "linking:". Шаг даёт нижнюю
+// границу доли этапа fbc; внутри шага доля идёт по времени прошлой сборки.
+procedure TForm1.RqFbFbcLine(const ALine: string);
+var
+  LowLine: string;
+begin
+  if FCompDlg = nil then
+    Exit;
+  LowLine := LowerCase(TrimLeft(ALine));
+  if Copy(LowLine, 1, 13) = 'compiling rc:' then
+    FCompDlg.StageFraction(fbsFbc, 0.75, False, 'ресурсы (GoRC)')
+  else if Copy(LowLine, 1, 10) = 'compiling:' then
+    FCompDlg.StageFraction(fbsFbc, 0.02, False, 'перевод в ассемблер')
+  else if Copy(LowLine, 1, 11) = 'assembling:' then
+    FCompDlg.StageFraction(fbsFbc, 0.55, False, 'ассемблер (as)')
+  else if Copy(LowLine, 1, 8) = 'linking:' then
+    FCompDlg.StageFraction(fbsFbc, 0.8, False, 'компоновка (ld)');
+end;
+
+// Сборка RapidQ через FreeBASIC с окном хода (DlgCompProgress): этапы,
+// полоса, Стоп. Доли этапов перевода и fbc - по времени прошлой удачной
+// сборки этого .bas (RqFbTimeGet), если оно записано.
 function TForm1.CompileRapidQFb: Boolean;
+var
+  MainBas, ProgText, ModeText: string;
+  OutKind, Bits, ConvWeight: Integer;
+  ConvMs, FbcMs: Cardinal;
+begin
+  Result := False;
+  MainBas := RapidQTargetBas(False);
+  ProgText := 'RapidQ через FreeBASIC';
+  ConvWeight := 10;
+  if MainBas <> '' then
+  begin
+    FbBuildOf(MainBas, OutKind, Bits);
+    if RqCompOf(MainBas) = rqcFbCompat then
+      ModeText := 'FB Compat'
+    else
+      ModeText := 'FB Smart';
+    ProgText := ExtractFileName(MainBas) + '   ' + ModeText + ', ' +
+                IntToStr(Bits) + ' бит';
+    ConvMs := RqFbTimeGet(MainBas, 'conv');
+    FbcMs := RqFbTimeGet(MainBas, 'fb' + IntToStr(Bits));
+    if (ConvMs > 0) and (FbcMs > 0) then
+    begin
+      ConvWeight := Round(95.0 * ConvMs / (ConvMs + FbcMs));
+      if ConvWeight < 3 then
+        ConvWeight := 3;
+      if ConvWeight > 60 then
+        ConvWeight := 60;
+    end;
+  end;
+
+  CompDlgOpen(ProgText);
+  FCompDlg.Caption := 'Сборка RapidQ через FreeBASIC';
+  FCompDlg.AddStage('Проверка настроек и сохранение файлов', 2);
+  FCompDlg.AddStage('Перевод RapidQ -> FreeBASIC', ConvWeight);
+  FCompDlg.AddStage('Компиляция fbc', 95 - ConvWeight);
+  FCompDlg.AddStage('Разбор вывода fbc', 1);
+  FCompDlg.AddStage('Библиотека компонентов рядом с exe', 2);
+  FCompDlgOwned := True;
+  BusyBegin('Сборка ' + ExtractFileName(MainBas));
+  try
+    Result := CompileRapidQFbRun;
+  finally
+    FCompDlgOwned := False;
+    if Result then
+      BusyEnd('Сборка: готово', True)
+    else
+      BusyEnd('Сборка: не собрано', False);
+    if FCompDlg.AbortRequested then
+      FCompDlg.FinishBuild(False, 'Остановлено')
+    else if Result then
+      FCompDlg.FinishBuild(True, 'Готово')
+    else
+      FCompDlg.FinishBuild(False, 'Не собрано, подробности - Compilation log');
+  end;
+end;
+
+// Перевод RqToFb и сборка fbc. True - собрано, exe на месте. Этапы - в
+// окне хода сборки (CompileRapidQFb открыл его, FCompDlg).
+function TForm1.CompileRapidQFbRun: Boolean;
 var
   Ini: TIniFile;
   Sect, IncDir, LclDir, Problem, MainBas, OutDir, FbcExe, Exe, Dir: string;
@@ -44264,10 +44485,11 @@ var
   RqComp, OutKind, Bits, Code, LogStart, LineIdx, ErrLine, FirstLine: Integer;
   ErrCount, WarnCount, MsgIdx: Integer;
   ModeName: string;
-  StartTick: Cardinal;
+  StartTick, ConvMs, FbcMs: Cardinal;
   Built, IsError, Converted: Boolean;
 begin
   Result := False;
+  FCompDlg.StartStage(fbsCheck, 0, '');
   ShowCompLog;
   if CompLogEdit <> nil then
     CompLogEdit.Lines.Clear;
@@ -44329,6 +44551,7 @@ begin
       Ini.Free;
     end;
   end;
+  FCompDlg.EndStage(fbsCheck, True, '');
 
   // Перевод
   OutDir := Dir + '_rqfb';
@@ -44342,8 +44565,14 @@ begin
   try
     LogComp('--- Перевод RapidQ -> FreeBASIC: ' + ShortName + ' -> ' +
             OutDir + '\');
+    FRqFbPrevLines := RqFbTimeGet(MainBas, 'lines');
+    FRqFbConvLines := 0;
+    FRqFbProgTick := 0;
+    FCompDlg.StartStage(fbsConv, 0, '');
+    BusyStage('Перевод ' + ShortName);
     StartTick := GetTickCount;
-    Converted := RqToFbConvert(MainBas, Options, ConvMessages, ConvResult);
+    Converted := RqToFbConvertEx(MainBas, Options, ConvMessages, ConvResult,
+                                 RqFbConvProgress);
     for MsgIdx := 0 to ConvMessages.Count - 1 do
       LogComp(ConvMessages[MsgIdx]);
     if not Converted then
@@ -44351,6 +44580,9 @@ begin
       LogComp(Format('--- Перевод: ошибок %d, предупреждений %d. Двойной ' +
                      'щелчок по строке открывает исходник',
                      [ConvResult.ErrorCount, ConvResult.WarningCount]));
+      FCompDlg.SetCounts(ConvResult.ErrorCount, ConvResult.WarningCount, 0);
+      FCompDlg.EndStage(fbsConv, False,
+                        Format('ошибок %d', [ConvResult.ErrorCount]));
       if (ErrLogEdit <> nil) and (ErrLogEdit.Lines.Count > 0) then
         ShowErrLog;
       Exit;
@@ -44362,17 +44594,23 @@ begin
     LogComp(Format('--- Перевод: %d мс, предупреждений %d, %s, режим %s',
                    [GetTickCount - StartTick, ConvResult.WarningCount,
                     ConvResult.AppType, ModeName]));
+    FCompDlg.EndStage(fbsConv, True,
+                      Format('строк %d, предупреждений %d, %s, режим %s',
+                             [FRqFbConvLines, ConvResult.WarningCount,
+                              ConvResult.AppType, ModeName]));
   finally
     ConvMessages.Free;
   end;
 
-  // Сборка fbc
+  // Сборка fbc. -v: fbc пишет шаги (compiling, assembling, linking) - по
+  // ним идёт полоса этапа (RqFbFbcLine)
   if ConvResult.AppType = 'CONSOLE' then
     Params := '-s console'
   else
     Params := '-s gui';
   if ConvResult.Mode = rfmSmart then
     Params := Params + ' -exx';
+  Params := Params + ' -v';
   Params := Params + ' -i "' + LclDir + 'inc"';
   Exe := ChangeFileExt(MainBas, '.exe');
   Params := Params + ' -x "' + Exe + '" "' + ConvResult.MainOut + '"';
@@ -44403,7 +44641,10 @@ begin
   WarnCount := 0;
   FirstFile := '';
   FirstLine := 0;
+  FCompDlg.StartStage(fbsFbc, RqFbTimeGet(MainBas, 'fb' + IntToStr(Bits)),
+                      IntToStr(Bits) + ' бит');
   BusyBegin('Компиляция ' + ShortName);
+  BusyStage('Компиляция fbc ' + ShortName);
   try
     FCompNoOem := True;
     try
@@ -44413,6 +44654,8 @@ begin
     end;
     if Code = -1 then
       Exit;
+    FCompDlg.EndStage(fbsFbc, Code = 0, 'код завершения ' + IntToStr(Code));
+    FCompDlg.StartStage(fbsResult, 0, '');
     if LogStart >= 0 then
       for LineIdx := LogStart to CompLogEdit.Lines.Count - 1 do
       begin
@@ -44432,6 +44675,9 @@ begin
         end;
       end;
     Built := (Code = 0) and FileExists(Exe);
+    FCompDlg.SetCounts(ErrCount, WarnCount, 0);
+    FCompDlg.EndStage(fbsResult, Built,
+                      Format('ошибок %d, предупреждений %d', [ErrCount, WarnCount]));
   finally
     if Built then
       BusyEnd('Компиляция: готово', True)
@@ -44449,17 +44695,36 @@ begin
       DllName := 'rqlcl32.dll';
     DllSrc := LclDir + 'bin\' + DllName;
     DllDst := Dir + DllName;
+    FCompDlg.StartStage(fbsDll, 0, DllName);
     if not FileExists(DllSrc) then
+    begin
       LogComp('Нет ' + DllSrc + ' - программе с компонентами (QFORM и ' +
-              'другие) она нужна рядом с exe')
+              'другие) она нужна рядом с exe');
+      FCompDlg.EndStage(fbsDll, False, DllName + ' нет в ' + LclDir + 'bin');
+    end
     else if not FileExists(DllDst) or (FileAge(DllSrc) > FileAge(DllDst)) then
     begin
       if CopyFile(PChar(DllSrc), PChar(DllDst), False) then
-        LogComp('Скопирован ' + DllName + ' рядом с exe')
+      begin
+        LogComp('Скопирован ' + DllName + ' рядом с exe');
+        FCompDlg.EndStage(fbsDll, True, DllName + ' скопирован');
+      end
       else
+      begin
         LogComp('Не удалось скопировать ' + DllSrc + ' в ' + DllDst + ' (' +
                 SysErrorMessage(GetLastError) + ')');
-    end;
+        FCompDlg.EndStage(fbsDll, False, DllName + ' не скопирован');
+      end;
+    end
+    else
+      FCompDlg.EndStage(fbsDll, True, DllName + ' уже на месте');
+
+    // Время этапов - оценка для следующей сборки
+    ConvMs := FCompDlg.StageMs(fbsConv);
+    FbcMs := FCompDlg.StageMs(fbsFbc);
+    RqFbTimeSet(MainBas, ['conv', 'fb' + IntToStr(Bits), 'lines'],
+                [ConvMs, FbcMs, Cardinal(FRqFbConvLines)]);
+
     if WarnCount > 0 then
       LogComp(Format('--- Готово, %d мс, предупреждений fbc: %d: %s',
                      [GetTickCount - StartTick, WarnCount, Exe]))
@@ -44467,6 +44732,7 @@ begin
       LogComp(Format('--- Готово, %d мс: %s', [GetTickCount - StartTick, Exe]));
     Exit;
   end;
+  FCompDlg.SkipStage(fbsDll, 'exe нет');
 
   SaveCompileLog(ChangeFileExt(MainBas, '') + '_compile.log');
   if ErrCount = 0 then
@@ -53439,10 +53705,16 @@ begin
 end;
 
 // ---------------------------------------------------------------------------
-//  Окно хода сборки (Preferences - Show compiler progress): программа и
-//  проект, последняя строка вывода, число подсказок, предупреждений и
-//  ошибок. Сборка без ошибок - окно закрывается само; с ошибками -
-//  остаётся до OK, как в Delphi.
+//  Окно хода сборки (DlgCompProgress): что собирается, этапы, текущая
+//  строка вывода, полоса, число ошибок и предупреждений, кнопка Стоп.
+//
+//  Сборка RapidQ через FreeBASIC (CompileRapidQFb) открывает окно всегда и
+//  ведёт этапы сама - FCompDlgOwned. Остальные сборки (Delphi, FreeBASIC,
+//  RapidQ rc.exe) - по Preferences - Show compiler progress: окно на время
+//  работы компилятора, один этап (CompProgressStart ... CompProgressDone).
+//  Удачная сборка - окно закрывается само, если стоит флажок "Закрывать
+//  окно после удачной сборки" (editor.ini, [Preferences]
+//  CompProgressAutoClose); с ошибками - остаётся до "Закрыть".
 // ---------------------------------------------------------------------------
 
 // Файл проекта в параметрах (.dpr, .bas ...): последнее слово, не ключ
@@ -53474,70 +53746,85 @@ begin
   Result := ExtractFileName(Result);
 end;
 
-procedure TForm1.CompProgressOkClick(Sender: TObject);
+// Окно создаётся один раз; здесь - новая сборка в нём и показ
+function TForm1.CompDlgOpen(const AProgram: string): TDlgCompProgress;
+var
+  Ini: TIniFile;
 begin
-  if FCompProgForm <> nil then
-    FCompProgForm.Hide;
-end;
-
-procedure TForm1.CompProgressStart(const AExe, AParams: string);
-
-  function AddLabel(ATop: Integer; ABold: Boolean): TLabel;
+  if FCompDlg = nil then
   begin
-    Result := TLabel.Create(FCompProgForm);
-    Result.Parent := FCompProgForm;
-    Result.AutoSize := False;
-    Result.ShowAccelChar := False;
-    Result.SetBounds(12, ATop, 396, 18);
-    if ABold then
-      Result.Font.Style := [fsBold];
+    FCompDlg := TDlgCompProgress.Create(Self);
+    if FileExists(SettingsFileName) then
+    begin
+      Ini := TIniFile.Create(SettingsFileName);
+      try
+        FCompDlg.chkAutoClose.Checked :=
+          Ini.ReadBool('Preferences', 'CompProgressAutoClose', True);
+      finally
+        Ini.Free;
+      end;
+    end;
+    FCompDlg.chkAutoClose.OnClick := CompDlgAutoCloseClick;
+    UiApplyForm(FCompDlg);
   end;
-
-begin
-  if not FEnv.ShowCompileProgress then
-    Exit;
-  if FCompProgForm = nil then
-  begin
-    FCompProgForm := TForm.CreateNew(Self);
-    FCompProgForm.Caption := 'Compiling';
-    FCompProgForm.BorderStyle := bsDialog;
-    FCompProgForm.Position := poMainFormCenter;
-    FCompProgForm.ClientWidth := 420;
-    FCompProgForm.ClientHeight := 150;
-    FCompProgForm.Font.Assign(Font);
-    FCompProgProject := AddLabel(12, True);
-    FCompProgStatus := AddLabel(36, False);
-    FCompProgLine := AddLabel(60, False);
-    FCompProgCounts := AddLabel(84, False);
-    FCompProgOk := TUiButton.Create(FCompProgForm);
-    FCompProgOk.Parent := FCompProgForm;
-    FCompProgOk.Caption := 'OK';
-    FCompProgOk.SetBounds(165, 112, 90, 28);
-    FCompProgOk.OnClick := CompProgressOkClick;
-    UiApplyForm(FCompProgForm);
-  end;
-  FCompProgTick := GetTickCount;
+  Result := FCompDlg;
+  FCompDlgStage := -1;
   FCompProgHints := 0;
   FCompProgWarns := 0;
   FCompProgErrors := 0;
-  FCompProgProject.Caption := 'Project: ' + CompProjectOf(AParams) + '  (' +
-                              ExtractFileName(AExe) + ')';
-  FCompProgStatus.Caption := 'Compiling...';
-  FCompProgLine.Caption := '';
-  FCompProgCounts.Caption := 'Hints: 0    Warnings: 0    Errors: 0';
-  FCompProgOk.Enabled := False;
-  if not FCompProgForm.Visible then
+  Result.BeginBuild(AProgram);
+  if not Result.Visible then
   begin
-    FCompProgForm.Show;
+    Result.Show;
     // Над главным окном, как окна Arduino
-    SetWindowLong(FCompProgForm.Handle, GWL_HWNDPARENT, Integer(Handle));
+    SetWindowLong(Result.Handle, GWL_HWNDPARENT, Integer(Handle));
   end;
-  FCompProgForm.Update;
+  Result.Update;
 end;
 
+procedure TForm1.CompDlgAutoCloseClick(Sender: TObject);
+var
+  Ini: TIniFile;
+begin
+  if FCompDlg = nil then
+    Exit;
+  Ini := TIniFile.Create(SettingsFileName);
+  try
+    Ini.WriteBool('Preferences', 'CompProgressAutoClose',
+                  FCompDlg.chkAutoClose.Checked);
+  finally
+    Ini.Free;
+  end;
+end;
+
+// В окне хода нажали Стоп
+function TForm1.CompAbortWanted: Boolean;
+begin
+  Result := (FCompDlg <> nil) and FCompDlg.Building and
+            FCompDlg.AbortRequested;
+end;
+
+procedure TForm1.CompProgressStart(const AExe, AParams: string);
+begin
+  if FCompDlgOwned then
+    Exit;   // этапы ведёт сама сборка
+  FCompDlgStage := -1;
+  if not FEnv.ShowCompileProgress then
+    Exit;
+  CompDlgOpen(CompProjectOf(AParams) + '  (' + ExtractFileName(AExe) + ')');
+  FCompDlg.Caption := 'Ход сборки';
+  FCompDlgStage := FCompDlg.AddStage('Компиляция: ' + ExtractFileName(AExe), 1);
+  FCompDlg.StartStage(FCompDlgStage, 0, '');
+end;
+
+// Строка вывода компилятора: счётчики ошибок и предупреждений; у fbc со
+// сборкой RapidQ - ещё и шаг fbc (RqFbFbcLine). Саму строку окно уже
+// показало (LogComp).
 procedure TForm1.CompProgressLine(const ALine: string);
 var
-  LowLine: string;
+  LowLine, ErrFile: string;
+  ErrLine: Integer;
+  IsError: Boolean;
 
   // Метка сообщения компилятора: "Unit1.pas(12) Error: ..." или в начале
   function HasTag(const ATag: string): Boolean;
@@ -53547,36 +53834,44 @@ var
   end;
 
 begin
-  if (FCompProgForm = nil) or not FCompProgForm.Visible then
+  if (FCompDlg = nil) or not FCompDlg.Building then
     Exit;
   LowLine := LowerCase(ALine);
-  if HasTag('error:') or HasTag('fatal:') then
+  // fbc: "файл(строка) error N: ..." и "файл(строка) warning N(M): ..."
+  if FbParseErrorLine(ALine, ErrFile, ErrLine, IsError) then
+  begin
+    if IsError then
+      Inc(FCompProgErrors)
+    else
+      Inc(FCompProgWarns);
+  end
+  else if HasTag('error:') or HasTag('fatal:') or FbIsErrorLine(ALine) then
     Inc(FCompProgErrors)
   else if HasTag('warning:') then
     Inc(FCompProgWarns)
   else if HasTag('hint:') then
     Inc(FCompProgHints);
-  FCompProgLine.Caption := ALine;
-  FCompProgCounts.Caption := Format('Hints: %d    Warnings: %d    Errors: %d',
-    [FCompProgHints, FCompProgWarns, FCompProgErrors]);
-  FCompProgStatus.Caption := Format('Compiling... %d s',
-    [(GetTickCount - FCompProgTick) div 1000]);
+  FCompDlg.SetCounts(FCompProgErrors, FCompProgWarns, FCompProgHints);
+  if FCompDlgOwned then
+    RqFbFbcLine(ALine);
 end;
 
 procedure TForm1.CompProgressDone(AExitCode: Integer);
+var
+  Built: Boolean;
 begin
-  if (FCompProgForm = nil) or not FCompProgForm.Visible then
+  if FCompDlgOwned or (FCompDlg = nil) or not FCompDlg.Building or
+     (FCompDlgStage < 0) then
     Exit;
-  if (AExitCode = 0) and (FCompProgErrors = 0) then
-  begin
-    FCompProgForm.Hide;
-    Exit;
-  end;
-  if FCompProgErrors > 0 then
-    FCompProgStatus.Caption := 'Done: There are errors.'
+  Built := (AExitCode = 0) and (FCompProgErrors = 0);
+  FCompDlg.EndStage(FCompDlgStage, Built, '');
+  if Built then
+    FCompDlg.FinishBuild(True, 'Готово')
+  else if FCompProgErrors > 0 then
+    FCompDlg.FinishBuild(False, 'Есть ошибки - Error log')
   else
-    FCompProgStatus.Caption := 'Done: exit code ' + IntToStr(AExitCode) + '.';
-  FCompProgOk.Enabled := True;
+    FCompDlg.FinishBuild(False, 'Код завершения ' + IntToStr(AExitCode));
+  FCompDlgStage := -1;
 end;
 
 // ---------------------------------------------------------------------------

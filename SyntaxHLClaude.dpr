@@ -10,6 +10,7 @@ uses
   DlgPickFolder in 'DlgPickFolder.pas' {DlgPickFolder},
   FolderDlg in 'FolderDlg.pas',
   DlgProgress in 'DlgProgress.pas' {DlgProgress},
+  DlgCompProgress in 'DlgCompProgress.pas' {DlgCompProgress},
   DlgMatchList in 'DlgMatchList.pas' {DlgMatchList},
   DlgListWnd in 'DlgListWnd.pas' {DlgListWnd},
   DlgHotFolders in 'DlgHotFolders.pas' {DlgHotFolders},

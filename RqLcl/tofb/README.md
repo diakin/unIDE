@@ -5,6 +5,7 @@
 ## Файлы
 
 - `RqToFb.pas` — модуль без VCL (Delphi 7 / FPC `-Mdelphi`): `RqToFbConvert(главный файл, опции, сообщения, результат)`. Подключён в unIDE: рамка Project, список rc.exe / FB Smart / FB Compat для программы RapidQ (`CompileRapidQFb` в Unit1).
+- `RqToFbConvertEx(..., AProgress)` — то же с сообщениями о ходе: проход 1/2, файл, строк пройдено и строк всего (известно во втором проходе); получатель возвращает False — перевод останавливается с ошибкой «перевод остановлен». unIDE по нему двигает полосу этапа «Перевод» в окне хода сборки и обрабатывает кнопку Стоп.
 - `rqtofbcli.dpr` — консольная утилита: `rqtofbcli <главный.bas> <папка вывода> [smart|compat] [папки include через ;]`. Пишет сообщения, затем `APPTYPE=`, `MODE=`, `OUT=`, `ERRORS=`/`WARNINGS=`; код 1 — были ошибки.
 - Строка `'$RQFB SMART` или `'$RQFB COMPAT` в исходнике (комментарий — rc.exe её пропускает) задаёт режим сильнее настройки.
 - `../inc/rqrt.bi` — функции, которые вставляет перевод: `RqNum`/`RqLong`/`RqShort`/`RqByte`/`RqWord`/`RqDword`/`RqSng`/`RqStr` (присваивание), `RqFmt` (PRINT), сообщения об ошибках (окно, stderr, `<программа>_error.log`), режимы `RQ_SMART`/`RQ_COMPAT`.
