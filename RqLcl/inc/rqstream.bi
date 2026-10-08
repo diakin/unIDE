@@ -390,7 +390,12 @@ End Sub
 ' ---------------------------------------------------------------------------
 
 Type QMEMORYSTREAM Extends RqStream
+    ' Память - блоками по 8192 байт, как TMemoryStream Delphi (MemoryDelta):
+    ' StreamData - выделенный блок, DataSize - размер данных. Пока данные
+    ' помещаются в блок, адрес (Pointer) не меняется: тест пользователя
+    ' 2026-10-09 - поток 4, затем 8 байт, Mem.Pointer тот же
     StreamData As String
+    DataSize As Long
     Declare Function ReadBuf(ByVal Dest As Any Ptr, ByVal Count As Long) As Long Override
     Declare Sub WriteBuf(ByVal Source As Any Ptr, ByVal Count As Long) Override
     Declare Function StreamSize() As Long Override
@@ -407,7 +412,7 @@ Type QMEMORYSTREAM Extends RqStream
 End Type
 
 Function QMEMORYSTREAM.ReadBuf(ByVal Dest As Any Ptr, ByVal Count As Long) As Long
-    Dim Remain As Long = Len(StreamData) - StreamPos
+    Dim Remain As Long = DataSize - StreamPos
     If Count > Remain Then Count = Remain
     If Count <= 0 Then Return 0
     Dim DestBytes As UByte Ptr = Dest
@@ -421,9 +426,7 @@ End Function
 
 Sub QMEMORYSTREAM.WriteBuf(ByVal Source As Any Ptr, ByVal Count As Long)
     If Count <= 0 Then Exit Sub
-    If StreamPos + Count > Len(StreamData) Then
-        StreamData &= String(StreamPos + Count - Len(StreamData), 0)
-    End If
+    If StreamPos + Count > DataSize Then SetSize(StreamPos + Count)
     Dim SourceBytes As UByte Ptr = Source
     Dim ByteIdx As Long
     For ByteIdx = 0 To Count - 1
@@ -433,21 +436,31 @@ Sub QMEMORYSTREAM.WriteBuf(ByVal Source As Any Ptr, ByVal Count As Long)
 End Sub
 
 Function QMEMORYSTREAM.StreamSize() As Long
-    Return Len(StreamData)
+    Return DataSize
 End Function
 
 Sub QMEMORYSTREAM.SetSize(ByVal NewSize As Long)
     If NewSize < 0 Then NewSize = 0
-    If NewSize < Len(StreamData) Then
-        StreamData = Left(StreamData, NewSize)
-    Else
-        StreamData &= String(NewSize - Len(StreamData), 0)
+    Dim NewCap As Long = (NewSize + 8191) And Not 8191
+    If NewCap <> Len(StreamData) Then
+        If NewCap < Len(StreamData) Then
+            StreamData = Left(StreamData, NewCap)
+        Else
+            StreamData &= String(NewCap - Len(StreamData), 0)
+        End If
     End If
+    ' новые байты - нули (у Delphi там прежнее содержимое памяти)
+    Dim ByteIdx As Long
+    For ByteIdx = DataSize To NewSize - 1
+        StreamData[ByteIdx] = 0
+    Next
+    DataSize = NewSize
     If StreamPos > NewSize Then StreamPos = NewSize
 End Sub
 
 Sub QMEMORYSTREAM.Close()
     StreamData = ""
+    DataSize = 0
     StreamPos = 0
 End Sub
 

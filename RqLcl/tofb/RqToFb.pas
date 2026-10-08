@@ -3822,6 +3822,7 @@ var
   TokIdx, NameIdx, OpenIdx, CloseIdx, AsIdx, TypeIdx, ItemEnd, Depth: Integer;
   IsRedim, Preserve, IsArray, Dynamic: Boolean;
   Items, Extra, Scope, RqType, StarLen, DimsText, ItemText, InitText: string;
+  StaticItems: string;
   VarRec: TRqVar;
 begin
   IsRedim := AToks[AFrom].Up = 'REDIM';
@@ -3833,6 +3834,7 @@ begin
   if FCurProc <> nil then
     Scope := FCurProc.Name;
   Items := '';
+  StaticItems := '';
   Extra := '';
   while (TokIdx >= 0) and (TokIdx <= ATo) do
   begin
@@ -3932,9 +3934,25 @@ begin
       else
         ItemText := ItemText + InitText;
     end;
-    if Items <> '' then
-      Items := Items + ', ';
-    Items := Items + ItemText;
+    // Объект (класс RapidQ или свой компонент), объявленный DIM внутри
+    // SUB/FUNCTION, у RapidQ создаётся один раз и хранит содержимое между
+    // вызовами (тест пользователя 2026-10-09: QMemoryStream.Size на входе
+    // 0, 4, 8, QStringList.ItemCount 0, 1, 2; адрес Mem.Pointer тот же) -
+    // Static. Массив объектов - как раньше (у Static FreeBASIC границы
+    // должны быть константами)
+    if not IsRedim and (Scope <> '') and not IsArray and
+       (InList(FObjClasses, RqType) or (FindTypeInfo(RqType) <> nil)) then
+    begin
+      if StaticItems <> '' then
+        StaticItems := StaticItems + ', ';
+      StaticItems := StaticItems + ItemText;
+    end
+    else
+    begin
+      if Items <> '' then
+        Items := Items + ', ';
+      Items := Items + ItemText;
+    end;
     TokIdx := NextSig(AToks, ItemEnd + 2, ATo);
     if ItemEnd >= ATo then
       Break;
@@ -3949,8 +3967,12 @@ begin
   end
   else if Scope = '' then
     Rebuild(AToks, AFrom, ATo, 'Dim Shared ' + Items + Extra)
+  else if StaticItems = '' then
+    Rebuild(AToks, AFrom, ATo, 'Dim ' + Items + Extra)
+  else if Items = '' then
+    Rebuild(AToks, AFrom, ATo, 'Static ' + StaticItems + Extra)
   else
-    Rebuild(AToks, AFrom, ATo, 'Dim ' + Items + Extra);
+    Rebuild(AToks, AFrom, ATo, 'Static ' + StaticItems + ' : Dim ' + Items + Extra);
 end;
 
 // DEFINT a, b = 5, c(3) = {1,2,3,4} - объявление переменных

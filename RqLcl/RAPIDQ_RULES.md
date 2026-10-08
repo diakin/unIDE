@@ -151,6 +151,13 @@ Function RqStr Overload (ByVal Value As Double) As String   ' число -> ""
 - Имя установщика можно присвоить как процедуру с параметром: `Set_Popup = 1` в RichEdPopUp.inc.
 - Параметры `EVENT OnXxx(...)` могут быть указаны не все (`EVENT Canvas.OnMouseMove(X AS LONG, Y AS LONG)`).
 
+## Объекты внутри SUB/FUNCTION (тест пользователя 2026-10-09)
+
+- Объект, объявленный DIM внутри FUNCTION, создаётся один раз и хранит содержимое между вызовами. Функция с `DIM Mem AS QMemoryStream`, `DIM Lst AS QStringList`, `DIM N AS LONG`, три вызова с текстами `AAAA`, `BBBBBBBB`, `CC`; на входе: `Mem.Size` — 0, 4, 8; `Mem.Position` — 0, 0, 0; `Lst.ItemCount` — 0, 1, 2; `Mem.Pointer` — один и тот же адрес; после третьего вызова по адресу `CCBBBBBB`. Препроцессор: такой объект — `Static`.
+- `N AS LONG` на входе — 0, 9, 9: число не сохраняется (было бы 0, 1, 2) и после первого вызова не 0. Откуда 9 — не выяснено. В переводе локальные числа, как в FreeBASIC, — 0.
+- `sadd` из conversion.inc (`Mem.Write InpStr : Mem.Position = 0 : sadd = Mem.Pointer`) возвращает адрес копии строки в потоке, не `VARPTR` переменной; текст по адресу остаётся и после вызова, и после выделения других строк, до следующего вызова `sadd`, который пишет в тот же поток.
+- После 4 байт данных в потоке RapidQ — не нули (`AAAA[192][6][1]`): память блока не очищается.
+
 ## VARIANT, FORMAT$, INITARRAY (datatypes.html, otherdetail.html)
 
 - VARIANT хранит число, дробное или строку; VARTYPE: 0 — число (Byte … Long), 1 — дробное (Single, Double), 2 — строка; не присвоенный — число. Пример VARTYPE в документации: `Number1=77.0 : TstNum=Number1` → 0, `Number1=77.01` → 1 — значит, вид задаёт значение, а не тип переменной справа.
