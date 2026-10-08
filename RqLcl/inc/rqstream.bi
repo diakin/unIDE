@@ -474,7 +474,7 @@ Type QFILESTREAM Extends RqStream
     Declare Function StreamSize() As Long Override
     Declare Sub SetSize(ByVal NewSize As Long) Override
     Declare Sub Close() Override
-    Declare Sub Open(ByRef FileName As String, ByVal Method As Long)
+    Declare Function Open(ByRef FileName As String, ByVal Method As Long) As Long
     Declare Property Handle() As Long
     Declare Destructor()
 End Type
@@ -482,14 +482,20 @@ End Type
 ' Method: fmCreate 65535 - создать (стереть прежний), fmOpenRead 0,
 ' fmOpenWrite 1, fmOpenReadWrite 2 (младшие биты; флаги доступа fmShare...
 ' не учитываются)
-Sub QFILESTREAM.Open(ByRef FileName As String, ByVal Method As Long)
+' Результат: -1 - открыт, 0 - нет. В документации RapidQ Open - SUB, но
+' программы проверяют результат: IF f.Open(...) = -1 (Files.inc), = 0 -
+' нет файла (Wad3.inc), = FALSE (DBT.INC), IF f.Open(...) THEN
+' (debugWindow35.bas). Вызов оператором (f.Open ...) - как раньше.
+Function QFILESTREAM.Open(ByRef FileName As String, ByVal Method As Long) As Long
     Close()
     FileNum = RqRtFileOpen(FileName, Method)
+    StreamPos = 0
     If FileNum = 0 Then
         RqRtWarn("QFILESTREAM.Open: не удалось открыть " & FileName, __FILE__, __LINE__)
+        Return 0
     End If
-    StreamPos = 0
-End Sub
+    Return -1
+End Function
 
 Function QFILESTREAM.ReadBuf(ByVal Dest As Any Ptr, ByVal Count As Long) As Long
     If (FileNum = 0) Or (Count <= 0) Then Return 0
