@@ -17,9 +17,10 @@ unit FormPreview;
 //      этому окну - так стандартные элементы рисуют себя в чужой DC.
 //  Место элемента - по его окну (GetWindowRect, клиентская часть - по
 //  ClientToScreen), дети - поверх родителя в порядке Controls.
-//  Прежние способы не годились: PaintTo - стандартные элементы WM_PAINT с
-//  чужим DC не понимают; копия из прозрачного окна и WM_PRINT форме с
-//  PRF_CHILDREN на Windows 7 у пользователя давали пустую картинку.
+//  Канва картинки на время рисования запирается (Lock): иначе VCL по ходу
+//  освобождает её DC (FreeMemoryContexts), и картинка остаётся одним фоном
+//  - так было в первых вариантах превью (журнал: окна нарисованы, а
+//  картинка одного цвета).
 //  Окна у элементов есть, только когда форма показана. Поэтому форма без
 //  рамки вкладывается в AHost (панель превью) и ставится далеко за его
 //  край: окна созданы и видимы, на экране их нет, фокус не уходит.
@@ -488,13 +489,23 @@ begin
       Full.Canvas.Brush.Style := bsSolid;
       Full.Canvas.Brush.Color := Form.Color;
       Full.Canvas.FillRect(Rect(0, PreviewCaptionHeight, FullW, FullH));
-      if (AHost <> nil) and AHost.HandleAllocated then
-        Painted := CaptureByWalk(Form, AHost, Full.Canvas.Handle,
-                                 PreviewCaptionHeight, ClientW, ClientH)
-      else
-      begin
-        Form.PaintTo(Full.Canvas.Handle, 0, PreviewCaptionHeight);
-        Painted := -1;
+      // Канва картинки - запертой, пока её DC отдан элементам: пока они
+      // рисуются, VCL создаёт другие картинки (буферы кнопок, значки) и
+      // освобождает DC незапертых канв (FreeMemoryContexts) - всё
+      // нарисованное после этого уходило в удалённый DC, и картинка
+      // оставалась одним фоном
+      Full.Canvas.Lock;
+      try
+        if (AHost <> nil) and AHost.HandleAllocated then
+          Painted := CaptureByWalk(Form, AHost, Full.Canvas.Handle,
+                                   PreviewCaptionHeight, ClientW, ClientH)
+        else
+        begin
+          Form.PaintTo(Full.Canvas.Handle, 0, PreviewCaptionHeight);
+          Painted := -1;
+        end;
+      finally
+        Full.Canvas.Unlock;
       end;
       // для журнала: что вышло (AError при успехе - заметка)
       AError := 'компонентов ' + IntToStr(Form.ComponentCount) +
@@ -517,10 +528,17 @@ begin
       ABitmap.PixelFormat := pf24bit;
       ABitmap.Width := DstW;
       ABitmap.Height := DstH;
-      SetStretchBltMode(ABitmap.Canvas.Handle, HALFTONE);
-      SetBrushOrgEx(ABitmap.Canvas.Handle, 0, 0, nil);
-      StretchBlt(ABitmap.Canvas.Handle, 0, 0, DstW, DstH,
-                 Full.Canvas.Handle, 0, 0, FullW, FullH, SRCCOPY);
+      ABitmap.Canvas.Lock;
+      Full.Canvas.Lock;
+      try
+        SetStretchBltMode(ABitmap.Canvas.Handle, HALFTONE);
+        SetBrushOrgEx(ABitmap.Canvas.Handle, 0, 0, nil);
+        StretchBlt(ABitmap.Canvas.Handle, 0, 0, DstW, DstH,
+                   Full.Canvas.Handle, 0, 0, FullW, FullH, SRCCOPY);
+      finally
+        Full.Canvas.Unlock;
+        ABitmap.Canvas.Unlock;
+      end;
       // Рамка окна
       ABitmap.Canvas.Brush.Color := clGray;
       ABitmap.Canvas.FrameRect(Rect(0, 0, DstW, DstH));
