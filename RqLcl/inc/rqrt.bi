@@ -1003,3 +1003,272 @@ Function RqSetWndProc(ByVal Wnd As Integer, ByVal NewProc As Integer) As Integer
     End If
     Return SetWndLong(Cast(Any Ptr, Wnd), -4, NewProc)
 End Function
+
+' ---------------------------------------------------------------------------
+'  Адреса и память (otherdetail.html): VARPTR, VARPTR$, MEMCPY, MEMSET,
+'  MEMCMP. Адрес - число Integer: в 32 бит он помещается в LONG, как у
+'  RapidQ; в 64 бит в LONG-переменную адрес не помещается.
+' ---------------------------------------------------------------------------
+
+' VARPTR(x) -> RqVarPtr(@x): перегрузка - по типу указателя. У строки -
+' адрес её символов: RapidQ-программы пишут через него в саму строку
+' (MEMCPY(VARPTR(s$), ...) в QFileDialog.inc, буфер MultiByteToWideChar в
+' conversion.inc); @ FreeBASIC у строки - адрес дескриптора, поэтому
+' StrPtr. У остального (числа, элементы массивов, записи TYPE) - сам адрес.
+Function RqVarPtr Overload (ByVal Address As String Ptr) As Integer
+    Return Cast(Integer, StrPtr(*Address))
+End Function
+Function RqVarPtr Overload (ByVal Address As Any Ptr) As Integer
+    Return Cast(Integer, Address)
+End Function
+
+' VARPTR$(адрес) - строка по адресу, до нулевого байта (RQConvertCodePage1
+' в conversion.inc: Len(VARPTR$(SourseStringPtr)))
+Function RqVarPtrStr(ByVal Address As Integer) As String
+    If Address = 0 Then Return ""
+    Return *Cast(ZString Ptr, Address)
+End Function
+
+' Нулевой адрес у MEMCPY / MEMSET / MEMCMP: Smart - предупреждение и
+' ничего не делается; Compat - ошибка и конец программы (у RapidQ, видимо,
+' падение - не проверено)
+Private Function RqRtNullAddr(ByRef FuncName As String, ByVal Address1 As Integer, _
+                              ByVal Address2 As Integer, ByVal ByteCount As Integer) As Long
+    If ByteCount <= 0 Then Return 1
+    If (Address1 <> 0) And (Address2 <> 0) Then Return 0
+    RqRtClassError(FuncName & ": address 0 (" & ByteCount & " bytes)")
+    Return 1
+End Function
+
+' MEMCPY(куда, откуда, байт). Области могут перекрываться - копируется так,
+' что результат как у копии через промежуточный буфер.
+Sub RqMemCpy(ByVal Dest As Integer, ByVal Source As Integer, ByVal ByteCount As Integer)
+    If RqRtNullAddr("MEMCPY", Dest, Source, ByteCount) Then Exit Sub
+    Dim DestPtr As UByte Ptr = Cast(UByte Ptr, Dest)
+    Dim SrcPtr As UByte Ptr = Cast(UByte Ptr, Source)
+    Dim ByteIdx As Integer
+    If DestPtr < SrcPtr Then
+        For ByteIdx = 0 To ByteCount - 1
+            DestPtr[ByteIdx] = SrcPtr[ByteIdx]
+        Next
+    ElseIf DestPtr > SrcPtr Then
+        For ByteIdx = ByteCount - 1 To 0 Step -1
+            DestPtr[ByteIdx] = SrcPtr[ByteIdx]
+        Next
+    End If
+End Sub
+
+' MEMSET(адрес, байт, сколько)
+Sub RqMemSet(ByVal Address As Integer, ByVal FillByte As Long, ByVal ByteCount As Integer)
+    If RqRtNullAddr("MEMSET", Address, Address, ByteCount) Then Exit Sub
+    Dim DestPtr As UByte Ptr = Cast(UByte Ptr, Address)
+    Dim ByteIdx As Integer
+    For ByteIdx = 0 To ByteCount - 1
+        DestPtr[ByteIdx] = FillByte And &hFF
+    Next
+End Sub
+
+' MEMCMP(адрес1, адрес2, сколько): по документации - 0, если содержимое
+' НЕ совпадает, иначе не 0 (здесь 1; какое именно не 0 у RapidQ - не
+' проверено)
+Function RqMemCmp(ByVal Address1 As Integer, ByVal Address2 As Integer, _
+                  ByVal ByteCount As Integer) As Long
+    If ByteCount <= 0 Then Return 1
+    If RqRtNullAddr("MEMCMP", Address1, Address2, ByteCount) Then Return 0
+    Dim Ptr1 As UByte Ptr = Cast(UByte Ptr, Address1)
+    Dim Ptr2 As UByte Ptr = Cast(UByte Ptr, Address2)
+    Dim ByteIdx As Integer
+    For ByteIdx = 0 To ByteCount - 1
+        If Ptr1[ByteIdx] <> Ptr2[ByteIdx] Then Return 0
+    Next
+    Return 1
+End Function
+
+' ---------------------------------------------------------------------------
+'  SENDMESSAGE, POSTMESSAGE, KILLMESSAGE (otherdetail.html). Функции Windows -
+'  через DyLibSymbol, как SetWindowLongA ниже: программа может сама объявить
+'  SendMessageA с другими типами параметров (constants.inc, RQSV...inc).
+' ---------------------------------------------------------------------------
+Type RqRtSendMsgFn As Function (ByVal Wnd As Any Ptr, ByVal Msg As ULong, _
+    ByVal WParam As UInteger, ByVal LParam As Integer) As Integer
+Type RqRtPostMsgFn As Function (ByVal Wnd As Any Ptr, ByVal Msg As ULong, _
+    ByVal WParam As UInteger, ByVal LParam As Integer) As Long
+Type RqRtPeekMsgFn As Function (ByVal MsgBuf As Any Ptr, ByVal Wnd As Any Ptr, _
+    ByVal MsgFirst As ULong, ByVal MsgLast As ULong, ByVal RemoveFlag As ULong) As Long
+
+Private Function RqRtUser32(ByRef ProcName As String) As Any Ptr
+    Static User32 As Any Ptr
+    If User32 = 0 Then User32 = DyLibLoad("user32")
+    Return DyLibSymbol(User32, ProcName)
+End Function
+
+' SENDMESSAGE hWnd, uMsg, wParam, lParam - как оператор и как функция.
+' lParam-строка - адрес её символов, как параметр STRING у DECLARE ... LIB
+' (глава 9; что делает RapidQ со строкой здесь - не проверено)
+Function RqSendMessage Overload (ByVal Wnd As Integer, ByVal Msg As Long, _
+                                 ByVal WParam As Integer, ByVal LParam As Integer) As Integer
+    Static SendMsg As RqRtSendMsgFn
+    If SendMsg = 0 Then SendMsg = Cast(RqRtSendMsgFn, RqRtUser32("SendMessageA"))
+    Return SendMsg(Cast(Any Ptr, Wnd), Msg, WParam, LParam)
+End Function
+Function RqSendMessage Overload (ByVal Wnd As Integer, ByVal Msg As Long, _
+                                 ByVal WParam As Integer, ByRef LParam As String) As Integer
+    Return RqSendMessage(Wnd, Msg, WParam, Cast(Integer, StrPtr(LParam)))
+End Function
+
+' POSTMESSAGE hWnd, uMsg, wParam, lParam - не ждёт обработки
+Function RqPostMessage(ByVal Wnd As Integer, ByVal Msg As Long, _
+                       ByVal WParam As Integer, ByVal LParam As Integer) As Long
+    Static PostMsg As RqRtPostMsgFn
+    If PostMsg = 0 Then PostMsg = Cast(RqRtPostMsgFn, RqRtUser32("PostMessageA"))
+    Return PostMsg(Cast(Any Ptr, Wnd), Msg, WParam, LParam)
+End Function
+
+' KILLMESSAGE hWnd, Message - убрать из очереди окна все такие сообщения
+' (PeekMessage с PM_REMOVE)
+Sub RqKillMessage(ByVal Wnd As Integer, ByVal Msg As Long)
+    Static PeekMsg As RqRtPeekMsgFn
+    If PeekMsg = 0 Then PeekMsg = Cast(RqRtPeekMsgFn, RqRtUser32("PeekMessageA"))
+    Dim MsgBuf(0 To 15) As Integer   ' MSG - 28 байт (48 в 64 бит), с запасом
+    While PeekMsg(@MsgBuf(0), Cast(Any Ptr, Wnd), Msg, Msg, 1) <> 0
+    Wend
+End Sub
+
+' ---------------------------------------------------------------------------
+'  SHELL (otherdetail.html). SHELL команда - ждёт конца программы; так и
+'  Shell FreeBASIC (через cmd). SHELL(команда, showCMD) - функция: не ждёт,
+'  результат - номер процесса (PID). Программа запускается CreateProcessA с
+'  этим showCMD; не запустилась (команда cmd вроде "Start файл") - в Smart
+'  ещё раз через cmd /c, в Compat - результат 0 (что делает RapidQ - не
+'  проверено).
+' ---------------------------------------------------------------------------
+Type RqRtStartupInfo
+    cb As ULong
+    lpReserved As ZString Ptr
+    lpDesktop As ZString Ptr
+    lpTitle As ZString Ptr
+    dwX As ULong
+    dwY As ULong
+    dwXSize As ULong
+    dwYSize As ULong
+    dwXCountChars As ULong
+    dwYCountChars As ULong
+    dwFillAttribute As ULong
+    dwFlags As ULong
+    wShowWindow As UShort
+    cbReserved2 As UShort
+    lpReserved2 As UByte Ptr
+    hStdInput As Any Ptr
+    hStdOutput As Any Ptr
+    hStdError As Any Ptr
+End Type
+Type RqRtProcessInfo
+    hProcess As Any Ptr
+    hThread As Any Ptr
+    dwProcessId As ULong
+    dwThreadId As ULong
+End Type
+Type RqRtCreateProcFn As Function (ByVal AppName As ZString Ptr, _
+    ByVal CmdLine As ZString Ptr, ByVal ProcAttr As Any Ptr, _
+    ByVal ThreadAttr As Any Ptr, ByVal InheritHandles As Long, _
+    ByVal CreationFlags As ULong, ByVal Environment As Any Ptr, _
+    ByVal CurDir As ZString Ptr, ByVal StartInfo As RqRtStartupInfo Ptr, _
+    ByVal ProcInfo As RqRtProcessInfo Ptr) As Long
+Type RqRtCloseHandleFn As Function (ByVal Handle As Any Ptr) As Long
+
+Private Function RqRtStartProcess(ByRef CmdLine As String, ByVal ShowCmd As Long) As Long
+    Static CreateProc As RqRtCreateProcFn
+    Static CloseHnd As RqRtCloseHandleFn
+    If CreateProc = 0 Then
+        Dim Kernel32 As Any Ptr = DyLibLoad("kernel32")
+        CreateProc = Cast(RqRtCreateProcFn, DyLibSymbol(Kernel32, "CreateProcessA"))
+        CloseHnd = Cast(RqRtCloseHandleFn, DyLibSymbol(Kernel32, "CloseHandle"))
+    End If
+    Dim StartInfo As RqRtStartupInfo
+    Dim ProcInfo As RqRtProcessInfo
+    StartInfo.cb = SizeOf(RqRtStartupInfo)
+    StartInfo.dwFlags = 1                  ' STARTF_USESHOWWINDOW
+    StartInfo.wShowWindow = ShowCmd
+    ' строку команды CreateProcessA может менять - своя копия
+    Dim CmdBuf As String = CmdLine & Chr(0)
+    If CreateProc(0, StrPtr(CmdBuf), 0, 0, 0, 0, 0, 0, @StartInfo, @ProcInfo) = 0 Then
+        Return 0
+    End If
+    CloseHnd(ProcInfo.hThread)
+    CloseHnd(ProcInfo.hProcess)
+    Return ProcInfo.dwProcessId
+End Function
+
+Function RqShell Overload (ByRef CmdLine As String) As Long
+    Return Shell(CmdLine)
+End Function
+Function RqShell Overload (ByRef CmdLine As String, ByVal ShowCmd As Long) As Long
+    Dim ProcId As Long = RqRtStartProcess(CmdLine, ShowCmd)
+#ifndef RQ_COMPAT
+    If ProcId = 0 Then
+        Dim ComSpec As String = Environ("COMSPEC")
+        If ComSpec = "" Then ComSpec = "cmd.exe"
+        ProcId = RqRtStartProcess("""" & ComSpec & """ /c " & CmdLine, ShowCmd)
+    End If
+#endif
+    Return ProcId
+End Function
+
+' ---------------------------------------------------------------------------
+'  QUICKSORT(первый, последний, ASCEND|DESCEND) (otherdetail.html): сортирует
+'  элементы массива от первого до последнего по адресам в памяти. Перевод:
+'  ASCEND -> 0, DESCEND -> 1. Массивы FreeBASIC лежат в памяти каждый
+'  отдельно - сортировка через границу двух массивов ("span sort")
+'  препроцессор не переводит.
+' ---------------------------------------------------------------------------
+#macro RQ_QUICKSORT(ElemType)
+Private Sub RqRtQSort_##ElemType(ByVal Arr As ElemType Ptr, ByVal LowIdx As Integer, _
+                                 ByVal HighIdx As Integer, ByVal Descend As Long)
+    While LowIdx < HighIdx
+        Dim Pivot As ElemType = Arr[(LowIdx + HighIdx) \ 2]
+        Dim LeftIdx As Integer = LowIdx
+        Dim RightIdx As Integer = HighIdx
+        Do While LeftIdx <= RightIdx
+            If Descend Then
+                Do While Arr[LeftIdx] > Pivot : LeftIdx += 1 : Loop
+                Do While Arr[RightIdx] < Pivot : RightIdx -= 1 : Loop
+            Else
+                Do While Arr[LeftIdx] < Pivot : LeftIdx += 1 : Loop
+                Do While Arr[RightIdx] > Pivot : RightIdx -= 1 : Loop
+            End If
+            If LeftIdx <= RightIdx Then
+                Swap Arr[LeftIdx], Arr[RightIdx]
+                LeftIdx += 1
+                RightIdx -= 1
+            End If
+        Loop
+        ' меньшую часть - рекурсией, большую - в цикле (глубина стека - log n)
+        If RightIdx - LowIdx < HighIdx - LeftIdx Then
+            RqRtQSort_##ElemType(Arr, LowIdx, RightIdx, Descend)
+            LowIdx = LeftIdx
+        Else
+            RqRtQSort_##ElemType(Arr, LeftIdx, HighIdx, Descend)
+            HighIdx = RightIdx
+        End If
+    Wend
+End Sub
+Sub RqQuickSort Overload (ByRef First As ElemType, ByRef Last As ElemType, _
+                          ByVal Direction As Long)
+    Dim ElemCount As Integer = (@Last - @First) + 1
+    If ElemCount < 2 Then Exit Sub
+    RqRtQSort_##ElemType(@First, 0, ElemCount - 1, Direction <> 0)
+End Sub
+#endmacro
+RQ_QUICKSORT(Byte)
+RQ_QUICKSORT(UByte)
+RQ_QUICKSORT(Short)
+RQ_QUICKSORT(UShort)
+RQ_QUICKSORT(Long)
+RQ_QUICKSORT(ULong)
+RQ_QUICKSORT(Integer)
+RQ_QUICKSORT(UInteger)
+RQ_QUICKSORT(LongInt)
+RQ_QUICKSORT(ULongInt)
+RQ_QUICKSORT(Single)
+RQ_QUICKSORT(Double)
+RQ_QUICKSORT(String)

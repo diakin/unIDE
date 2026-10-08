@@ -102,6 +102,7 @@ const
     'SHOWMESSAGE MESSAGEDLG FIELD$ VARPTR VARPTR$ CONST SIZEOF IS WITH ' +
     'CONSTRUCTOR CLS COLOR LOCATE INPUT INP OUT POKE PEEK CSRLIN POS PCOPY ' +
     'SETCONSOLETITLE SLEEP MOUSEX MOUSEY ' +
+    'SENDMESSAGE POSTMESSAGE KILLMESSAGE MEMCPY MEMSET ' +
     'LET REM PUBLIC PRIVATE SHARED STATIC RESULT SUPER THIS OPEN CLOSE EOF ' +
     'LOF FREEFILE SEEK APPEND OUTPUT BINARY RANDOM ACCESS LINE ON ERROR ' +
     'RESUME STOP SYSTEM TAB SPC USING PRESERVE ERASE ERR TRIM$ LCASE UCASE ' +
@@ -125,7 +126,12 @@ const
     'REPLACESUBSTR$=RqReplaceSubStr CONVBASE$=RqConvBase FIELD$=RqField ' +
     'REVERSE$=RqReverse HEX$=RqHex DIR$=RqDir STRF$=RqStrF ' +
     'RESOURCE=RqResource RESOURCECOUNT=RqResourceCount ' +
-    'EXTRACTRESOURCE=RqExtractResource';
+    'EXTRACTRESOURCE=RqExtractResource ' +
+    // память, сообщения Windows, SHELL, QUICKSORT (rqrt.bi); VARPTR -
+    // отдельно (RqVarPtr(@x), см. ProcessIdent)
+    'VARPTR$=RqVarPtrStr MEMCPY=RqMemCpy MEMSET=RqMemSet MEMCMP=RqMemCmp ' +
+    'SENDMESSAGE=RqSendMessage POSTMESSAGE=RqPostMessage ' +
+    'KILLMESSAGE=RqKillMessage SHELL=RqShell QUICKSORT=RqQuickSort';
 
   // Свойства и методы RapidQ, имена которых в FreeBASIC - ключевые слова:
   // .Pointer (QMEMORYSTREAM) -> .PointerAddr (rqstream.bi), .Type и .Peek
@@ -476,6 +482,9 @@ type
     procedure ProcessGosub(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessReturn(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessIncDec(var AToks: TToks; AFrom, ATo: Integer);
+    procedure ProcessQuickSort(var AToks: TToks; AFrom, ATo: Integer);
+    function ArgIsRecord(const AToks: TToks; AFrom, ATo: Integer): Boolean;
+    procedure MemRecordArgs(var AToks: TToks; AHeadIdx, ATo: Integer);
     procedure SplitVariadicCall(var AToks: TToks; AFirst, ATo: Integer);
     procedure WrapVariadicArgs(var AToks: TToks; AFrom, ATo, ANameIdx: Integer;
                                AInParens: Boolean);
@@ -2721,6 +2730,8 @@ begin
   else if (Up = 'CALLFUNC') and (FindProc(Up) = nil) and
           ((FCurType = nil) or (FTypeBody = 0)) then
     ProcessCallFuncStmt(AToks, FirstIdx, ATo)
+  else if (Up = 'QUICKSORT') and (FindProc(Up) = nil) then
+    ProcessQuickSort(AToks, FirstIdx, ATo)
   else if (Up = 'SLEEP') and (FindProc(Up) = nil) then
   begin
     // SLEEP секунды (RapidQ, можно дробь) -> RqSleep; Sleep FreeBASIC - в
@@ -2746,9 +2757,17 @@ begin
   else if InList(FKeywords, Up) and (FindProc(Up) = nil) and
           not IsOp(AToks, NextIdx, '=') and not IsOp(AToks, NextIdx, '(') and
           not IsOp(AToks, NextIdx, '.') then
+  begin
     // оператор RapidQ (SELECT CASE, DO, LOOP, NEXT, WHILE, RETURN...):
-    // дальше - выражения
-    ProcessExpr(AToks, FirstIdx + 1, ATo)
+    // дальше - выражения. Оператор из rqrt.bi (SENDMESSAGE h, m, w, l;
+    // SHELL "команда") - под своим именем там
+    if FFuncMap.IndexOfName(Up) >= 0 then
+    begin
+      AToks[FirstIdx].OutText := FFuncMap.Values[Up];
+      MemRecordArgs(AToks, FirstIdx, ATo);
+    end;
+    ProcessExpr(AToks, FirstIdx + 1, ATo);
+  end
   else
     ProcessAssignOrCall(AToks, FirstIdx, ATo);
 end;
@@ -2785,7 +2804,7 @@ end;
 procedure TRqFbConv.ProcessIdent(var AToks: TToks; AIdx, ATo: Integer);
 var
   Up: string;
-  PrevIdx, NextIdx: Integer;
+  PrevIdx, NextIdx, TypeIdx: Integer;
   VarRec: TRqVar;
   ProcRec: TRqProc;
 begin
@@ -2844,6 +2863,21 @@ begin
     else if (VarRec.Scope = '') then
       GlobalQualify(AToks, AIdx);
     Exit;
+  end;
+  // ASCEND / DESCEND - направление QUICKSORT, слова RapidQ (ни в одном
+  // include не объявлены): 0 и 1 для RqQuickSort. Своя переменная или
+  // CONST с таким именем - как есть
+  if ((Up = 'ASCEND') or (Up = 'DESCEND')) and (FindProc(Up) = nil) then
+  begin
+    VarRec := FindVar(Up);
+    if (VarRec = nil) or not VarRec.Explicit then
+    begin
+      if Up = 'ASCEND' then
+        AToks[AIdx].OutText := '0'
+      else
+        AToks[AIdx].OutText := '1';
+      Exit;
+    end;
   end;
 
   // ParamStrCount, ParamValCount, ParamStr$(i), ParamVal(i) в SUBI /
@@ -2919,6 +2953,30 @@ begin
       else
         AToks[AIdx].Post := AToks[AIdx].Post + '(RqPList())';
     end;
+    Exit;
+  end;
+  // SIZEOF(INTEGER) и другие типы RapidQ - тип FreeBASIC: INTEGER у
+  // RapidQ - 4 байта, Integer FreeBASIC в 64 бит - 8; WORD и DWORD в
+  // FreeBASIC нет
+  if (Up = 'SIZEOF') and IsOp(AToks, NextIdx, '(') then
+  begin
+    TypeIdx := NextSig(AToks, NextIdx + 1, ATo);
+    if (TypeIdx >= 0) and (AToks[TypeIdx].Kind = tkIdent) and
+       IsOp(AToks, NextSig(AToks, TypeIdx + 1, ATo), ')') and
+       (FindVar(AToks[TypeIdx].Up) = nil) and
+       IsNumericType(NormType(AToks[TypeIdx].Up)) then
+      AToks[TypeIdx].OutText := FbType(NormType(AToks[TypeIdx].Up));
+  end;
+  // MEMCPY(Запись, ...) - адрес записи (см. MemRecordArgs)
+  if (FFuncMap.IndexOfName(Up) >= 0) and IsOp(AToks, NextIdx, '(') then
+    MemRecordArgs(AToks, AIdx, ATo);
+  // VARPTR(x) -> RqVarPtr(@x): у строки - адрес символов (StrPtr), у
+  // остального - адрес; перегрузку выбирает fbc по типу указателя (rqrt.bi)
+  if (Up = 'VARPTR') and IsOp(AToks, NextIdx, '(') and
+     (MatchParen(AToks, NextIdx, ATo) > 0) then
+  begin
+    AToks[AIdx].OutText := 'RqVarPtr';
+    AToks[NextIdx].Post := AToks[NextIdx].Post + '@';
     Exit;
   end;
   if FFuncMap.IndexOfName(Up) >= 0 then
@@ -3042,7 +3100,10 @@ begin
       end
       // процедура RapidQ из rqrt.bi (EXTRACTRESOURCE)
       else if FFuncMap.IndexOfName(AToks[FirstIdx].Up) >= 0 then
+      begin
         AToks[FirstIdx].OutText := FFuncMap.Values[AToks[FirstIdx].Up];
+        MemRecordArgs(AToks, FirstIdx, ATo);
+      end;
       ProcessExpr(AToks, FirstIdx + 1, ATo);
       // SUBI Имя a, b / Имя(a, b) -> Имя(RqPList().Arg(a).Arg(b))
       if (ProcRec <> nil) and ProcRec.IsVariadic then
@@ -4802,6 +4863,153 @@ end;
 
 // INC перем [, n] / INC(перем [, n]) -> перем += n; DEC -> -=.
 // Перем - и элемент массива, и поле (INC(This.RowNum, h) в rapidq.inc)
+// QUICKSORT(первый, последний, ASCEND|DESCEND) и без скобок ->
+// RqQuickSort (rqrt.bi). Первый и последний элемент - одного массива:
+// "span sort" через границу соседних массивов (otherdetail.html) в
+// FreeBASIC не работает - массивы лежат в памяти каждый отдельно.
+procedure TRqFbConv.ProcessQuickSort(var AToks: TToks; AFrom, ATo: Integer);
+var
+  FirstIdx, ArgFrom, ArgTo, OpenIdx, TokIdx, Depth, ArgCount: Integer;
+  ArgStart: array[0..2] of Integer;
+begin
+  FirstIdx := NextSig(AToks, AFrom, ATo);
+  AToks[FirstIdx].OutText := 'RqQuickSort';
+  ArgFrom := FirstIdx + 1;
+  ArgTo := ATo;
+  OpenIdx := NextSig(AToks, FirstIdx + 1, ATo);
+  if IsOp(AToks, OpenIdx, '(') and
+     (MatchParen(AToks, OpenIdx, ATo) = PrevSig(AToks, ATo)) then
+  begin
+    ArgFrom := OpenIdx + 1;
+    ArgTo := MatchParen(AToks, OpenIdx, ATo) - 1;
+  end;
+
+  // начала параметров
+  ArgCount := 0;
+  Depth := 0;
+  TokIdx := NextSig(AToks, ArgFrom, ArgTo);
+  if TokIdx >= 0 then
+  begin
+    ArgStart[0] := TokIdx;
+    ArgCount := 1;
+  end;
+  while (TokIdx >= 0) and (TokIdx <= ArgTo) do
+  begin
+    if IsOp(AToks, TokIdx, '(') then
+      Inc(Depth)
+    else if IsOp(AToks, TokIdx, ')') then
+      Dec(Depth)
+    else if (Depth = 0) and IsOp(AToks, TokIdx, ',') then
+    begin
+      if ArgCount < 3 then
+        ArgStart[ArgCount] := NextSig(AToks, TokIdx + 1, ArgTo);
+      Inc(ArgCount);
+    end;
+    TokIdx := NextSig(AToks, TokIdx + 1, ArgTo);
+  end;
+
+  if ArgCount <> 3 then
+    Error('QUICKSORT: ожидалось три параметра - первый и последний ' +
+          'элемент массива и ASCEND или DESCEND')
+  else if (ArgStart[0] >= 0) and (ArgStart[1] >= 0) and
+          (AToks[ArgStart[0]].Kind = tkIdent) and
+          (AToks[ArgStart[1]].Kind = tkIdent) and
+          (AToks[ArgStart[0]].Up <> AToks[ArgStart[1]].Up) then
+    Error('QUICKSORT ' + AToks[ArgStart[0]].Text + ' ... ' +
+          AToks[ArgStart[1]].Text + ': элементы разных массивов ("span ' +
+          'sort") - в FreeBASIC массивы не лежат в памяти подряд');
+  ProcessExpr(AToks, FirstIdx + 1, ATo);
+end;
+
+// Параметр - переменная-запись (TYPE без EXTENDS), её элемент массива или
+// поле-запись своего компонента (This.Поле): ничего, кроме этого имени
+function TRqFbConv.ArgIsRecord(const AToks: TToks; AFrom, ATo: Integer): Boolean;
+var
+  FirstIdx, NextIdx, FieldIdx, CloseIdx: Integer;
+  TypeUp: string;
+  VarRec: TRqVar;
+begin
+  Result := False;
+  FirstIdx := NextSig(AToks, AFrom, ATo);
+  if (FirstIdx < 0) or (AToks[FirstIdx].Kind <> tkIdent) then
+    Exit;
+  NextIdx := NextSig(AToks, FirstIdx + 1, ATo);
+  if IsOp(AToks, NextIdx, '.') and (FCurType <> nil) and
+     ((AToks[FirstIdx].Up = 'THIS') or (AToks[FirstIdx].Up = FCurType.Name)) then
+  begin
+    FieldIdx := NextSig(AToks, NextIdx + 1, ATo);
+    if (FieldIdx < 0) or (AToks[FieldIdx].Kind <> tkIdent) then
+      Exit;
+    TypeUp := UpperCase(FCurType.MemberType.Values[AToks[FieldIdx].Up]);
+    NextIdx := NextSig(AToks, FieldIdx + 1, ATo);
+  end
+  else
+  begin
+    VarRec := FindVar(AToks[FirstIdx].Up);
+    if VarRec = nil then
+      Exit;
+    TypeUp := UpperCase(VarRec.RqType);
+    if VarRec.IsArray and IsOp(AToks, NextIdx, '(') then
+    begin
+      CloseIdx := MatchParen(AToks, NextIdx, ATo);
+      if CloseIdx < 0 then
+        Exit;
+      NextIdx := NextSig(AToks, CloseIdx + 1, ATo);
+    end;
+  end;
+  Result := (NextIdx < 0) and (TypeUp <> '') and InList(FTypes, TypeUp) and
+            (FindTypeInfo(TypeUp) = nil);
+end;
+
+// MEMCPY, MEMSET, MEMCMP с переменной-записью вместо адреса - адрес
+// записи: так в rapidq2.inc (MEMCPY(gRQ2_MeasureItem, lParam, SIZEOF(...)),
+// MEMSET(DevM, 0, SIZEOF(DevM))) и RapidFRM.inc (MEMSET(This.CC, ...)).
+// Число (адрес в LONG, VARPTR(...)) - как есть.
+procedure TRqFbConv.MemRecordArgs(var AToks: TToks; AHeadIdx, ATo: Integer);
+var
+  Up: string;
+  OpenIdx, ArgFrom, ArgTo, TokIdx, Depth, StartIdx: Integer;
+
+  procedure CheckArg(AArgFrom, AArgTo: Integer);
+  var
+    FirstTok, LastTok: Integer;
+  begin
+    if not ArgIsRecord(AToks, AArgFrom, AArgTo) then
+      Exit;
+    FirstTok := NextSig(AToks, AArgFrom, AArgTo);
+    LastTok := PrevSig(AToks, AArgTo);
+    AToks[FirstTok].Pre := 'Cast(Integer, @' + AToks[FirstTok].Pre;
+    AToks[LastTok].Post := AToks[LastTok].Post + ')';
+  end;
+
+begin
+  Up := AToks[AHeadIdx].Up;
+  if (Up <> 'MEMCPY') and (Up <> 'MEMSET') and (Up <> 'MEMCMP') then
+    Exit;
+  ArgFrom := AHeadIdx + 1;
+  ArgTo := ATo;
+  OpenIdx := NextSig(AToks, AHeadIdx + 1, ATo);
+  if IsOp(AToks, OpenIdx, '(') and (MatchParen(AToks, OpenIdx, ATo) > 0) then
+  begin
+    ArgFrom := OpenIdx + 1;
+    ArgTo := MatchParen(AToks, OpenIdx, ATo) - 1;
+  end;
+  Depth := 0;
+  StartIdx := ArgFrom;
+  for TokIdx := ArgFrom to ArgTo do
+    if IsOp(AToks, TokIdx, '(') then
+      Inc(Depth)
+    else if IsOp(AToks, TokIdx, ')') then
+      Dec(Depth)
+    else if (Depth = 0) and IsOp(AToks, TokIdx, ',') then
+    begin
+      CheckArg(StartIdx, TokIdx - 1);
+      StartIdx := TokIdx + 1;
+    end;
+  if StartIdx <= ArgTo then
+    CheckArg(StartIdx, ArgTo);
+end;
+
 procedure TRqFbConv.ProcessIncDec(var AToks: TToks; AFrom, ATo: Integer);
 var
   OpenIdx, CloseIdx, ArgFrom, ArgTo, CommaIdx, TargetIdx, TokIdx,

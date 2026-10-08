@@ -151,6 +151,15 @@ Function RqStr Overload (ByVal Value As Double) As String   ' число -> ""
 - Имя установщика можно присвоить как процедуру с параметром: `Set_Popup = 1` в RichEdPopUp.inc.
 - Параметры `EVENT OnXxx(...)` могут быть указаны не все (`EVENT Canvas.OnMouseMove(X AS LONG, Y AS LONG)`).
 
+## Адреса, память, сообщения, SHELL, QUICKSORT (otherdetail.html)
+
+- `VARPTR(переменная)` — адрес переменной. У строки — адрес её символов: так его используют include пользователя (`MEMCPY(VARPTR(QFILEDIALOG.tmpFileName), …)` в QFileDialog.inc пишет в саму строку; `varptr(str1)` в conversion.inc — буфер для MultiByteToWideChar). `VARPTR$(адрес)` — строка по адресу (в conversion.inc: `Len(varptr$(SourseStringPtr))`), то есть до нулевого байта.
+- `MEMCPY(куда, откуда, n)`, `MEMSET(адрес, байт, n)`, `MEMCMP(a, b, n)`. MEMCMP по документации возвращает 0, если содержимое **не** совпадает, иначе не 0. В rapidq2.inc и RapidFRM.inc параметром передаётся сама переменная-запись (`MEMCPY(gRQ2_MeasureItem, lParam, SIZEOF(gRQ2_MeasureItem))`, `MEMSET(DevM, 0, sizeof(DevM))`) — значит, у записи RapidQ берёт её адрес (вывод из кода, в RapidQ не проверялось).
+- `SENDMESSAGE`, `POSTMESSAGE` — вызовы Windows (документация отсылает к WinAPI). `KILLMESSAGE hWnd, Message` — убрать сообщение из очереди.
+- `SHELL команда` ждёт конца программы; `SHELL(команда, showCMD)` — функция, не ждёт, результат — номер процесса. Как RapidQ запускает команду (напрямую или через command.com / cmd) — в документации не сказано; в RQSV105b2023-13Inc-4.inc есть `SHELL("Start "+helppath$, 0)` — Start есть только как команда cmd (в Windows 9x — Start.exe).
+- `QUICKSORT(первый, последний, ASCEND|DESCEND)` — элементы между двумя адресами; «span sort» через соседние массивы документация допускает, но не рекомендует. ASCEND и DESCEND ни в одном include не объявлены — слова RapidQ; их числовые значения неизвестны.
+- `ROUND` — по документации один параметр. `ROUND(x, n)` нет ни в документации, ни в исходниках `rapidq_ref` (проверено 2026-10-08).
+
 ## Вывод теста (RapidQ, 2026-10-07)
 
 ```

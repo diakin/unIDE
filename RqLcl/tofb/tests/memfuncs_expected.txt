@@ -1,0 +1,22 @@
+memcpy 10
+memset 0 0
+memcmp 1 0
+str [hello]
+varptr$ hello
+varptr$ long hello
+record 77
+string element two
+settext abc
+length 3
+gettext abc
+post [A]
+kill [A]
+shell pid ok
+shell wait 1
+words Banana apple fig kiwi pear
+desc 9 8 7 6 5 4 3 2 1 0 
+part 9 8 3 4 5 6 7 2 1 0 
+double -1 0 2.500000000 3.250000000
+grid 123456
+sizeof 4 4 2 4 1 2 8
+end
