@@ -47012,15 +47012,15 @@ begin
 end;
 
 // Файл превью на диске: dsgcache\<имя .dfm>_<crc пути>_<crc времени и
-// размера и номера способа снимка ('|2' - WM_PRINT; превью прежнего
-// способа не подходят)>.preview.jpg. Изменился .dfm - другое имя, прежний файл
+// размера и номера способа снимка ('|3' - обход элементов; превью
+// прежних способов не подходят)>.preview.jpg. Изменился .dfm - другое имя, прежний файл
 // удаляется при записи нового (ModPreviewSaveDisk)
 function ModPreviewDiskName(const AFile, AStamp: string): string;
 begin
   Result := ExtractFilePath(Application.ExeName) + 'dsgcache\' +
             ChangeFileExt(ExtractFileName(AFile), '') + '_' +
             IntToHex(Crc32Of(AnsiLowerCase(AFile)), 8) + '_' +
-            IntToHex(Crc32Of(AStamp + '|2'), 8) + '.preview.jpg';
+            IntToHex(Crc32Of(AStamp + '|3'), 8) + '.preview.jpg';
 end;
 
 function ModPreviewLoadDisk(const AName: string; ABitmap: TBitmap): Boolean;
@@ -47177,11 +47177,13 @@ begin
           Src.Free;
           FModPreview.Picture.Assign(nil);
           FModPreviewNote.Caption := 'превью не построено: ' + Err;
+          LogRaw('Превью ' + FormRef + ': не построено - ' + Err);
           Exit;
         end;
       finally
         Screen.Cursor := crDefault;
       end;
+      LogRaw('Превью ' + FormRef + ': ' + Err);
       ModPreviewSaveDisk(FormRef, DiskName, Src);
     end;
     // старые картинки - вон, чтобы память не росла без конца

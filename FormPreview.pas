@@ -8,16 +8,18 @@ unit FormPreview;
 //  картинку (PaintTo) и уменьшается. Сверху рисуется полоса заголовка с
 //  Caption формы - окно без рамки было бы трудно узнать.
 //
-//  Как рисуется картинка. Стандартные элементы Windows (поля, кнопки,
-//  списки) WM_PAINT с чужим DC не понимают - PaintTo давал фон и часть
-//  элементов. Копия из окна, показанного прозрачным (layered), на
-//  Windows 7 оказалась пустой. Поэтому - WM_PRINT, сообщение для
-//  рисования окна в чужой DC: окно рисует себя и, с PRF_CHILDREN, все
-//  вложенные окна, каждое через WM_PRINTCLIENT. Стандартные элементы его
-//  понимают, а элементы, которые рисует VCL (панели, рамки групп,
-//  вкладки, формы - и метки, фигуры, картинки на них), в Delphi 7 - нет:
-//  им на время снимка подставляется обработчик (TPrintHook), который
-//  рисует их тем же WM_PAINT с DC, что и PaintTo.
+//  Как рисуется картинка. Обход элементов формы по одному
+//  (CaptureByWalk), каждый - в своё место картинки:
+//    - элемент, который рисует VCL (панель, рамка группы, вкладка, сама
+//      форма - с метками, фигурами, картинками на них): WM_ERASEBKGND и
+//      WM_PAINT с DC картинки, как в PaintTo;
+//    - стандартное окно Windows (поле, список, кнопка, вкладки): WM_PRINT
+//      этому окну - так стандартные элементы рисуют себя в чужой DC.
+//  Место элемента - по его окну (GetWindowRect, клиентская часть - по
+//  ClientToScreen), дети - поверх родителя в порядке Controls.
+//  Прежние способы не годились: PaintTo - стандартные элементы WM_PAINT с
+//  чужим DC не понимают; копия из прозрачного окна и WM_PRINT форме с
+//  PRF_CHILDREN на Windows 7 у пользователя давали пустую картинку.
 //  Окна у элементов есть, только когда форма показана. Поэтому форма без
 //  рамки вкладывается в AHost (панель превью) и ставится далеко за его
 //  край: окна созданы и видимы, на экране их нет, фокус не уходит.
@@ -49,7 +51,8 @@ type
 // AMaxW x AMaxH; меньшая не растягивается. AMap - аналоги сторонних
 // классов (может быть nil). AHost - видимое окно, в которое форма
 // вкладывается на время снимка (панель превью). False - форму построить
-// не удалось, причина - в AError.
+// не удалось, причина - в AError; True - в AError заметка для журнала
+// (сколько компонентов и окон, не вышла ли картинка одним цветом).
 function FormPreviewMake(const ADfmFile: string; AMaxW, AMaxH: Integer;
                          AMap: TFormPreviewMap; AHost: TWinControl;
                          ABitmap: TBitmap; var AError: string): Boolean;
@@ -324,17 +327,8 @@ begin
   end;
 end;
 
-type
-  // WM_PRINTCLIENT для элемента, который рисует VCL: на время снимка
-  TPrintHook = class
-  public
-    Ctl: TWinControl;
-    OldProc: TWndMethod;
-    procedure WndProc(var Message: TMessage);
-  end;
-
 // Элемент рисует VCL (не стандартное окно Windows): WM_PAINT с DC в
-// wParam он понимает (PaintHandler), WM_PRINTCLIENT в Delphi 7 - нет
+// wParam он понимает (PaintHandler)
 function VclPainted(ACtl: TWinControl): Boolean;
 begin
   Result := (ACtl is TCustomControl) or (ACtl is TScrollingWinControl) or
@@ -342,71 +336,106 @@ begin
             (CompareText(ACtl.ClassName, 'TTabSheet') = 0);
 end;
 
-procedure TPrintHook.WndProc(var Message: TMessage);
+// Элемент ACtl и его вложенные окна - в ADC. AOrigin - экранная точка,
+// которая в картинке стоит в (0, ATop) (левый верхний угол клиентской
+// части формы)
+procedure WalkPaint(ACtl: TWinControl; ADC: HDC; const AOrigin: TPoint;
+                    ATop: Integer; var ACount: Integer);
 var
-  DC: HDC;
+  WinRect: TRect;
+  ClientPt: TPoint;
+  SaveIdx, CtlIdx: Integer;
+  Child: TControl;
 begin
-  if Message.Msg = WM_PRINTCLIENT then
-  begin
-    DC := HDC(Message.WParam);
-    Ctl.Perform(WM_ERASEBKGND, Integer(DC), Integer(DC));
-    Ctl.Perform(WM_PAINT, Integer(DC), 0);
-    Message.Result := 0;
+  if not ACtl.HandleAllocated then
     Exit;
+  GetWindowRect(ACtl.Handle, WinRect);
+  ClientPt := Point(0, 0);
+  Windows.ClientToScreen(ACtl.Handle, ClientPt);
+  SaveIdx := SaveDC(ADC);
+  try
+    if VclPainted(ACtl) then
+    begin
+      // клиентская часть: фон и рисунок VCL вместе с метками и фигурами
+      SetViewportOrgEx(ADC, ClientPt.X - AOrigin.X, ClientPt.Y - AOrigin.Y +
+                       ATop, nil);
+      IntersectClipRect(ADC, 0, 0, ACtl.ClientWidth, ACtl.ClientHeight);
+      ACtl.Perform(WM_ERASEBKGND, Integer(ADC), Integer(ADC));
+      ACtl.Perform(WM_PAINT, Integer(ADC), 0);
+    end
+    else
+    begin
+      // стандартное окно - целиком, с рамкой
+      SetViewportOrgEx(ADC, WinRect.Left - AOrigin.X, WinRect.Top - AOrigin.Y +
+                       ATop, nil);
+      IntersectClipRect(ADC, 0, 0, WinRect.Right - WinRect.Left,
+                        WinRect.Bottom - WinRect.Top);
+      SendMessage(ACtl.Handle, WM_PRINT, Integer(ADC), PRF_NONCLIENT or
+                  PRF_CLIENT or PRF_ERASEBKGND);
+    end;
+    Inc(ACount);
+  finally
+    RestoreDC(ADC, SaveIdx);
   end;
-  OldProc(Message);
-end;
-
-// Обработчики WM_PRINTCLIENT - всем элементам VCL формы
-procedure HookAll(AParent: TWinControl; AHooks: TList);
-var
-  CtlIdx: Integer;
-  Hook: TPrintHook;
-begin
-  if VclPainted(AParent) then
+  // вложенные окна - поверх, в порядке Controls (нижние раньше)
+  for CtlIdx := 0 to ACtl.ControlCount - 1 do
   begin
-    Hook := TPrintHook.Create;
-    Hook.Ctl := AParent;
-    Hook.OldProc := AParent.WindowProc;
-    AParent.WindowProc := Hook.WndProc;
-    AHooks.Add(Hook);
+    Child := ACtl.Controls[CtlIdx];
+    if (Child is TWinControl) and Child.Visible then
+      WalkPaint(TWinControl(Child), ADC, AOrigin, ATop, ACount);
   end;
-  for CtlIdx := 0 to AParent.ControlCount - 1 do
-    if AParent.Controls[CtlIdx] is TWinControl then
-      HookAll(TWinControl(AParent.Controls[CtlIdx]), AHooks);
 end;
 
-// Форма - в AHost за его край, видима; снимок - WM_PRINT в ADC с отступом
-// сверху ATop; обработчики снимаются, форма прячется
-procedure CaptureByPrint(AForm: TForm; AHost: TWinControl; ADC: HDC;
-                         ATop, AWidth, AHeight: Integer);
+// Форма - в AHost за его край, видима (окна элементов созданы); обход
+// элементов в ADC с отступом сверху ATop; форма прячется. Число
+// нарисованных окон - в результат
+function CaptureByWalk(AForm: TForm; AHost: TWinControl; ADC: HDC;
+                       ATop, AWidth, AHeight: Integer): Integer;
 var
-  Hooks: TList;
-  HookIdx: Integer;
-  OldOrg: TPoint;
+  Origin: TPoint;
 begin
+  Result := 0;
   AForm.Parent := AHost;
   AForm.SetBounds(-30000, -30000, AWidth, AHeight);
   AForm.Visible := True;
-  Hooks := TList.Create;
   try
-    HookAll(AForm, Hooks);
-    SetViewportOrgEx(ADC, 0, ATop, @OldOrg);
-    try
-      SendMessage(AForm.Handle, WM_PRINT, Integer(ADC), PRF_CLIENT or
-                  PRF_CHILDREN or PRF_NONCLIENT or PRF_ERASEBKGND);
-    finally
-      SetViewportOrgEx(ADC, OldOrg.X, OldOrg.Y, nil);
-    end;
+    Origin := Point(0, 0);
+    Windows.ClientToScreen(AForm.Handle, Origin);
+    WalkPaint(AForm, ADC, Origin, ATop, Result);
   finally
-    for HookIdx := Hooks.Count - 1 downto 0 do
-    begin
-      TPrintHook(Hooks[HookIdx]).Ctl.WindowProc :=
-        TPrintHook(Hooks[HookIdx]).OldProc;
-      TPrintHook(Hooks[HookIdx]).Free;
-    end;
-    Hooks.Free;
     AForm.Visible := False;
+  end;
+end;
+
+// Сколько разных цветов в клиентской части картинки (до 3) - для
+// записи в журнал: один цвет - на картинке только фон
+function ColorsIn(ABitmap: TBitmap; ATop: Integer): Integer;
+var
+  PosX, PosY, StepX, StepY: Integer;
+  First, Pixel: TColor;
+begin
+  Result := 0;
+  if (ABitmap.Width < 2) or (ABitmap.Height <= ATop + 1) then
+    Exit;
+  First := ABitmap.Canvas.Pixels[1, ATop + 1];
+  Result := 1;
+  StepX := ABitmap.Width div 40 + 1;
+  StepY := (ABitmap.Height - ATop) div 40 + 1;
+  PosY := ATop + 1;
+  while PosY < ABitmap.Height do
+  begin
+    PosX := 1;
+    while PosX < ABitmap.Width do
+    begin
+      Pixel := ABitmap.Canvas.Pixels[PosX, PosY];
+      if Pixel <> First then
+      begin
+        Result := 2;
+        Exit;
+      end;
+      Inc(PosX, StepX);
+    end;
+    Inc(PosY, StepY);
   end;
 end;
 
@@ -417,7 +446,7 @@ var
   Form: TForm;
   Boxes: TStringList;
   Full: TBitmap;
-  FullW, FullH, ClientW, ClientH, DstW, DstH: Integer;
+  FullW, FullH, ClientW, ClientH, DstW, DstH, Painted: Integer;
   Scale: Double;
   CapRect: TRect;
 begin
@@ -460,10 +489,18 @@ begin
       Full.Canvas.Brush.Color := Form.Color;
       Full.Canvas.FillRect(Rect(0, PreviewCaptionHeight, FullW, FullH));
       if (AHost <> nil) and AHost.HandleAllocated then
-        CaptureByPrint(Form, AHost, Full.Canvas.Handle, PreviewCaptionHeight,
-                       ClientW, ClientH)
+        Painted := CaptureByWalk(Form, AHost, Full.Canvas.Handle,
+                                 PreviewCaptionHeight, ClientW, ClientH)
       else
+      begin
         Form.PaintTo(Full.Canvas.Handle, 0, PreviewCaptionHeight);
+        Painted := -1;
+      end;
+      // для журнала: что вышло (AError при успехе - заметка)
+      AError := 'компонентов ' + IntToStr(Form.ComponentCount) +
+                ', нарисовано окон ' + IntToStr(Painted);
+      if ColorsIn(Full, PreviewCaptionHeight) < 2 then
+        AError := AError + ', картинка одного цвета';
 
       // Уменьшение до места справа; больше своего размера - нет
       Scale := 1;
