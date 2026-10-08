@@ -448,6 +448,7 @@ var
   Boxes: TStringList;
   Full: TBitmap;
   FullW, FullH, ClientW, ClientH, DstW, DstH, Painted: Integer;
+  StartTick, BuildMs: Cardinal;
   Scale: Double;
   CapRect: TRect;
 begin
@@ -458,7 +459,10 @@ begin
   Full := TBitmap.Create;
   try
     try
+      StartTick := GetTickCount;
       Form := BuildForm(DfmText(ADfmFile), AMap, Boxes);
+      BuildMs := GetTickCount - StartTick;
+      StartTick := GetTickCount;
       ClientW := Form.ClientWidth;
       ClientH := Form.ClientHeight;
       if (ClientW <= 0) or (ClientH <= 0) then
@@ -507,9 +511,14 @@ begin
       finally
         Full.Canvas.Unlock;
       end;
-      // для журнала: что вышло (AError при успехе - заметка)
+      // для журнала: что вышло и сколько заняло (AError при успехе -
+      // заметка). Окна - элементы со своим окном Windows (панели, поля,
+      // кнопки), каждое рисуется в картинку один раз; метки и фигуры -
+      // вместе со своим окном-родителем
       AError := 'компонентов ' + IntToStr(Form.ComponentCount) +
-                ', нарисовано окон ' + IntToStr(Painted);
+                ', окон ' + IntToStr(Painted) + '; чтение .dfm и создание ' +
+                IntToStr(BuildMs) + ' мс, снимок ' +
+                IntToStr(GetTickCount - StartTick) + ' мс';
       if ColorsIn(Full, PreviewCaptionHeight) < 2 then
         AError := AError + ', картинка одного цвета';
 

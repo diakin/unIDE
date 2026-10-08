@@ -47125,6 +47125,7 @@ var
   FormRef, Stamp, Key, DiskName, Err: string;
   CacheIdx, Count: Integer;
   Src, Shown: TBitmap;
+  SaveTick: Cardinal;
 begin
   FModPreviewTimer.Enabled := False;
   if (FModPreview = nil) or (FModLV = nil) or (FModPreviewItem = nil) then
@@ -47190,8 +47191,10 @@ begin
       finally
         Screen.Cursor := crDefault;
       end;
-      LogRaw('Превью ' + FormRef + ': ' + Err);
+      SaveTick := GetTickCount;
       ModPreviewSaveDisk(FormRef, DiskName, Src);
+      LogRaw('Превью ' + FormRef + ': ' + Err + ', запись на диск ' +
+             IntToStr(GetTickCount - SaveTick) + ' мс');
     end;
     // старые картинки - вон, чтобы память не росла без конца
     if FModPreviewCache.Count >= MaxCache then
