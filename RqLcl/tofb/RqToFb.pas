@@ -195,7 +195,11 @@ const
     'TYPEOF UBYTE UINTEGER ULONG ULONGINT UNION UNLOCK UNTIL USHORT USING ' +
     'VAR VIEW WEND WHILE WIDTH WINDOW WITH WRITE WSTRING XOR ZSTRING ' +
     'LEN VAL STR CHR ASC LEFT RIGHT MID INSTR ABS INT FIX SGN SQR TIMER RND ' +
-    'POS';
+    'POS ' +
+    // встроенные функции FreeBASIC с именами, которые в RapidQ свободны
+    // (sadd в conversion.inc: fbc - "Duplicated definition"; переменная
+    // strptr в RQdebugger)
+    'SADD STRPTR PROCPTR';
 
   // Слова, которыми член Type FreeBASIC называться не может (Delete, Swap,
   // Type, Select, Case, New, Return проверены, fbc 1.10.1: "Duplicated
