@@ -8,16 +8,19 @@ unit FormPreview;
 //  картинку (PaintTo) и уменьшается. Сверху рисуется полоса заголовка с
 //  Caption формы - окно без рамки было бы трудно узнать.
 //
-//  Стандартные элементы Windows (кнопки, поля, рамки групп, списки)
-//  рисуют себя только в своё окно: WM_PAINT с чужим DC они не понимают, и
-//  PaintTo невидимой формы давал один фон формы и часть своих элементов
-//  VCL. Поэтому форма на время снимка показывается по-настоящему, но
-//  прозрачной (layered, альфа 0 - так же показывает форму конструктор):
-//  такое окно рисуется целиком в свой буфер, а на экране его нет. Окно
-//  без рамки, не активируется (WS_EX_NOACTIVATE) и не попадает на панель
-//  задач (WS_EX_TOOLWINDOW). Всё нарисовано (RedrawWindow с UPDATENOW) -
-//  картинка берётся из буфера окна (BitBlt), окно прячется, активным
-//  снова делается прежнее окно.
+//  Как рисуется картинка. Стандартные элементы Windows (поля, кнопки,
+//  списки) WM_PAINT с чужим DC не понимают - PaintTo давал фон и часть
+//  элементов. Копия из окна, показанного прозрачным (layered), на
+//  Windows 7 оказалась пустой. Поэтому - WM_PRINT, сообщение для
+//  рисования окна в чужой DC: окно рисует себя и, с PRF_CHILDREN, все
+//  вложенные окна, каждое через WM_PRINTCLIENT. Стандартные элементы его
+//  понимают, а элементы, которые рисует VCL (панели, рамки групп,
+//  вкладки, формы - и метки, фигуры, картинки на них), в Delphi 7 - нет:
+//  им на время снимка подставляется обработчик (TPrintHook), который
+//  рисует их тем же WM_PAINT с DC, что и PaintTo.
+//  Окна у элементов есть, только когда форма показана. Поэтому форма без
+//  рамки вкладывается в AHost (панель превью) и ставится далеко за его
+//  край: окна созданы и видимы, на экране их нет, фокус не уходит.
 //
 //  Что делается, чтобы чтение не мешало программе:
 //    - код формы не выполняется: обработчики событий не подключаются
@@ -44,11 +47,11 @@ type
 
 // Картинка формы из файла ADfmFile (текстового или двоичного), не больше
 // AMaxW x AMaxH; меньшая не растягивается. AMap - аналоги сторонних
-// классов (может быть nil). AAt - экранная точка, где форма на время
-// снимка показывается прозрачной (обычно угол окна списка). False -
-// форму построить не удалось, причина - в AError.
+// классов (может быть nil). AHost - видимое окно, в которое форма
+// вкладывается на время снимка (панель превью). False - форму построить
+// не удалось, причина - в AError.
 function FormPreviewMake(const ADfmFile: string; AMaxW, AMaxH: Integer;
-                         AMap: TFormPreviewMap; const AAt: TPoint;
+                         AMap: TFormPreviewMap; AHost: TWinControl;
                          ABitmap: TBitmap; var AError: string): Boolean;
 
 implementation
@@ -321,43 +324,94 @@ begin
   end;
 end;
 
-// Форма показывается прозрачной и не активной, рисуется полностью;
-// содержимое окна - в ADC с отступом сверху ATop
-procedure CaptureLive(AForm: TForm; ADC: HDC; ATop, AWidth, AHeight: Integer;
-                      const AAt: TPoint);
-var
-  PrevActive: HWND;
-  WinDC: HDC;
+type
+  // WM_PRINTCLIENT для элемента, который рисует VCL: на время снимка
+  TPrintHook = class
+  public
+    Ctl: TWinControl;
+    OldProc: TWndMethod;
+    procedure WndProc(var Message: TMessage);
+  end;
+
+// Элемент рисует VCL (не стандартное окно Windows): WM_PAINT с DC в
+// wParam он понимает (PaintHandler), WM_PRINTCLIENT в Delphi 7 - нет
+function VclPainted(ACtl: TWinControl): Boolean;
 begin
-  PrevActive := GetActiveWindow;
-  AForm.Position := poDesigned;
-  AForm.SetBounds(AAt.X, AAt.Y, AWidth, AHeight);
-  AForm.AlphaBlendValue := 0;
-  AForm.AlphaBlend := True;
-  AForm.HandleNeeded;
-  SetWindowLong(AForm.Handle, GWL_EXSTYLE,
-                GetWindowLong(AForm.Handle, GWL_EXSTYLE) or
-                WS_EX_NOACTIVATE or WS_EX_TOOLWINDOW);
+  Result := (ACtl is TCustomControl) or (ACtl is TScrollingWinControl) or
+            (ACtl.ClassType = TWinControl) or
+            (CompareText(ACtl.ClassName, 'TTabSheet') = 0);
+end;
+
+procedure TPrintHook.WndProc(var Message: TMessage);
+var
+  DC: HDC;
+begin
+  if Message.Msg = WM_PRINTCLIENT then
+  begin
+    DC := HDC(Message.WParam);
+    Ctl.Perform(WM_ERASEBKGND, Integer(DC), Integer(DC));
+    Ctl.Perform(WM_PAINT, Integer(DC), 0);
+    Message.Result := 0;
+    Exit;
+  end;
+  OldProc(Message);
+end;
+
+// Обработчики WM_PRINTCLIENT - всем элементам VCL формы
+procedure HookAll(AParent: TWinControl; AHooks: TList);
+var
+  CtlIdx: Integer;
+  Hook: TPrintHook;
+begin
+  if VclPainted(AParent) then
+  begin
+    Hook := TPrintHook.Create;
+    Hook.Ctl := AParent;
+    Hook.OldProc := AParent.WindowProc;
+    AParent.WindowProc := Hook.WndProc;
+    AHooks.Add(Hook);
+  end;
+  for CtlIdx := 0 to AParent.ControlCount - 1 do
+    if AParent.Controls[CtlIdx] is TWinControl then
+      HookAll(TWinControl(AParent.Controls[CtlIdx]), AHooks);
+end;
+
+// Форма - в AHost за его край, видима; снимок - WM_PRINT в ADC с отступом
+// сверху ATop; обработчики снимаются, форма прячется
+procedure CaptureByPrint(AForm: TForm; AHost: TWinControl; ADC: HDC;
+                         ATop, AWidth, AHeight: Integer);
+var
+  Hooks: TList;
+  HookIdx: Integer;
+  OldOrg: TPoint;
+begin
+  AForm.Parent := AHost;
+  AForm.SetBounds(-30000, -30000, AWidth, AHeight);
+  AForm.Visible := True;
+  Hooks := TList.Create;
   try
-    AForm.Visible := True;
-    RedrawWindow(AForm.Handle, nil, 0, RDW_INVALIDATE or RDW_ERASE or
-                 RDW_FRAME or RDW_UPDATENOW or RDW_ALLCHILDREN);
-    WinDC := GetDC(AForm.Handle);
+    HookAll(AForm, Hooks);
+    SetViewportOrgEx(ADC, 0, ATop, @OldOrg);
     try
-      BitBlt(ADC, 0, ATop, AWidth, AHeight, WinDC, 0, 0, SRCCOPY);
+      SendMessage(AForm.Handle, WM_PRINT, Integer(ADC), PRF_CLIENT or
+                  PRF_CHILDREN or PRF_NONCLIENT or PRF_ERASEBKGND);
     finally
-      ReleaseDC(AForm.Handle, WinDC);
+      SetViewportOrgEx(ADC, OldOrg.X, OldOrg.Y, nil);
     end;
   finally
+    for HookIdx := Hooks.Count - 1 downto 0 do
+    begin
+      TPrintHook(Hooks[HookIdx]).Ctl.WindowProc :=
+        TPrintHook(Hooks[HookIdx]).OldProc;
+      TPrintHook(Hooks[HookIdx]).Free;
+    end;
+    Hooks.Free;
     AForm.Visible := False;
-    if (PrevActive <> 0) and (GetActiveWindow <> PrevActive) and
-       IsWindowVisible(PrevActive) then
-      SetActiveWindow(PrevActive);
   end;
 end;
 
 function FormPreviewMake(const ADfmFile: string; AMaxW, AMaxH: Integer;
-                         AMap: TFormPreviewMap; const AAt: TPoint;
+                         AMap: TFormPreviewMap; AHost: TWinControl;
                          ABitmap: TBitmap; var AError: string): Boolean;
 var
   Form: TForm;
@@ -405,8 +459,11 @@ begin
       Full.Canvas.Brush.Style := bsSolid;
       Full.Canvas.Brush.Color := Form.Color;
       Full.Canvas.FillRect(Rect(0, PreviewCaptionHeight, FullW, FullH));
-      CaptureLive(Form, Full.Canvas.Handle, PreviewCaptionHeight, ClientW,
-                  ClientH, AAt);
+      if (AHost <> nil) and AHost.HandleAllocated then
+        CaptureByPrint(Form, AHost, Full.Canvas.Handle, PreviewCaptionHeight,
+                       ClientW, ClientH)
+      else
+        Form.PaintTo(Full.Canvas.Handle, 0, PreviewCaptionHeight);
 
       // Уменьшение до места справа; больше своего размера - нет
       Scale := 1;

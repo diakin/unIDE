@@ -47012,14 +47012,15 @@ begin
 end;
 
 // Файл превью на диске: dsgcache\<имя .dfm>_<crc пути>_<crc времени и
-// размера>.preview.jpg. Изменился .dfm - другое имя, прежний файл
+// размера и номера способа снимка ('|2' - WM_PRINT; превью прежнего
+// способа не подходят)>.preview.jpg. Изменился .dfm - другое имя, прежний файл
 // удаляется при записи нового (ModPreviewSaveDisk)
 function ModPreviewDiskName(const AFile, AStamp: string): string;
 begin
   Result := ExtractFilePath(Application.ExeName) + 'dsgcache\' +
             ChangeFileExt(ExtractFileName(AFile), '') + '_' +
             IntToHex(Crc32Of(AnsiLowerCase(AFile)), 8) + '_' +
-            IntToHex(Crc32Of(AStamp), 8) + '.preview.jpg';
+            IntToHex(Crc32Of(AStamp + '|2'), 8) + '.preview.jpg';
 end;
 
 function ModPreviewLoadDisk(const AName: string; ABitmap: TBitmap): Boolean;
@@ -47171,8 +47172,7 @@ begin
       Screen.Cursor := crHourGlass;
       try
         if not FormPreviewMake(FormRef, BuildSize, BuildSize, DsgMapClass,
-                               Point(FModList.Left, FModList.Top), Src,
-                               Err) then
+                               FModPreview.Parent, Src, Err) then
         begin
           Src.Free;
           FModPreview.Picture.Assign(nil);
