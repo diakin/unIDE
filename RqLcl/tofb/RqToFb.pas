@@ -2431,6 +2431,16 @@ begin
       if TokIdx - 1 >= StartIdx then
         ProcessStatement(Toks, StartIdx, TokIdx - 1);
       StartIdx := TokIdx + 1;
+    end
+    // Однострочный IF, ELSE после ":" (IF c THEN a = 1 : b = "" ELSE
+    // a = 2, Files.inc): ELSE заканчивает оператор THEN-части. FInlineIf
+    // ставит ProcessIf первого оператора; ELSE в первом операторе
+    // (IF c THEN a ELSE b) разбирает сам ProcessIf
+    else if (Depth = 0) and FInlineIf and IsWord(Toks, TokIdx, 'ELSE') then
+    begin
+      if TokIdx - 1 >= StartIdx then
+        ProcessStatement(Toks, StartIdx, TokIdx - 1);
+      StartIdx := TokIdx + 1;
     end;
     Inc(TokIdx);
   end;
