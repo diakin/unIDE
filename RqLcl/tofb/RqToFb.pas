@@ -199,8 +199,20 @@ const
     'POS ' +
     // встроенные функции FreeBASIC с именами, которые в RapidQ свободны
     // (sadd в conversion.inc: fbc - "Duplicated definition"; переменная
-    // strptr в RQdebugger)
-    'SADD STRPTR PROCPTR';
+    // strptr в RQdebugger; параметр dir у SysDir в Files.inc). У RapidQ
+    // DIR$, CURDIR$, COMMAND$, DATE$, TIME$ - только с "$" (keyword.lst),
+    // без "$" это обычные имена. FileCopy, FileLen, FileAttr,
+    // FileDateTime у FreeBASIC - из file.bi, его rqrt.bi не подключает, -
+    // не нужны. ExePath - нет: демо cls2test.bas пользуется им как ExePath
+    // FreeBASIC
+    'SADD STRPTR PROCPTR DIR CURDIR COMMAND DATE TIME INSTRREV ' +
+    'WAIT ERL ERFN ERMN ASSERT ALLOCATE DEALLOCATE CALLOCATE REALLOCATE ' +
+    'EXEC RESET LSET RSET WSTR WCHR ' +
+    'WSPACE VALINT VALLNG VALUINT VALULNG CDBL CSNG CBYTE CUBYTE CSHORT ' +
+    'CUSHORT CUINT CULNG CLNGINT CULNGINT CSIGN CUNSG CPTR ATAN2 LOC GETKEY ' +
+    'MULTIKEY GETMOUSE SETMOUSE WINDOWTITLE SCREENRES SCREENSET BSAVE BLOAD ' +
+    'IMAGECREATE IMAGEDESTROY PMAP DYLIBLOAD DYLIBSYMBOL DYLIBFREE OFFSETOF ' +
+    'THREADCREATE MUTEXCREATE';
 
   // Слова, которыми член Type FreeBASIC называться не может (Delete, Swap,
   // Type, Select, Case, New, Return проверены, fbc 1.10.1: "Duplicated
