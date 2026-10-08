@@ -1895,6 +1895,8 @@ type
     function  HotFoldersDialog(const APreselect, ACaption: string;
                                APick: Boolean; var ADir: string): Boolean;
     procedure HfListClick(Sender: TObject);
+    procedure HfListCheck(Sender: TObject);
+    procedure HfSaveList;
     procedure HfSelectPath(const APath: string);
     function  ParentOfExeDir: string;
     function  SuggestDir: string;
@@ -1927,6 +1929,7 @@ type
                             var ASubDirs: Boolean): Boolean;
     procedure FifProgress(const ADir: string; ACount: Integer;
                           var ACancel: Boolean);
+    function  ProgressPathLine(const APrefix, APath: string): string;
     procedure FifCollectDirs(const ADirs, AMasks: string; ASubDirs: Boolean;
                              AList: TStrings; var ACancel: Boolean);
     procedure FifCollectDir(const ADir, AMasks: string; ASubDirs: Boolean;
@@ -11882,6 +11885,7 @@ begin
   I := FHfList.Items.Add(S);
   FHfList.Checked[I] := True; // только что добавили - значит она и нужна
   FHfList.ItemIndex := I;
+  HfSaveList;
 end;
 
 procedure TForm1.HfDelClick(Sender: TObject);
@@ -11897,6 +11901,7 @@ begin
   if I > FHfList.Items.Count - 1 then
     I := FHfList.Items.Count - 1;
   FHfList.ItemIndex := I;
+  HfSaveList;
 end;
 
 // Открывает список горячих папок (Directory Tree).
@@ -11941,6 +11946,7 @@ begin
     FHfTree.OnChange := HfTreeChange;
     FHfTree.OnDblClick := HfTreeDblClick;
     FHfList.OnClick := HfListClick;
+    FHfList.OnClickCheck := HfListCheck;
 
     HfFillDrives;
 
@@ -12007,19 +12013,7 @@ begin
     end;
     ADir := Picked;
     Result := True;
-
-    // Забираем обратно. Objects хранит только признак галочки, поэтому
-    // кладём туда Self - любое ненулевое значение.
-    if FHotFolders = nil then
-      FHotFolders := TStringList.Create;
-    FHotFolders.Clear;
-    for I := 0 to FHfList.Items.Count - 1 do
-      if FHfList.Checked[I] then
-        FHotFolders.AddObject(FHfList.Items[I], Self)
-      else
-        FHotFolders.AddObject(FHfList.Items[I], nil);
-
-    SaveSettings;
+    HfSaveList;
   finally
     // Ссылки на контролы уничтожаемой формы держать нельзя
     FHfTree := nil;
@@ -12027,6 +12021,49 @@ begin
     FHfPath := nil;
     Dlg.Free;
   end;
+end;
+
+// Список горячих папок - в FHotFolders и сразу в editor.ini, [HotFolders]
+// (Dir1=1 <папка>, 1 - галка). Вызывается на каждое изменение списка
+// (добавить, удалить, галка), поэтому список сохраняется и при Отмене.
+// Objects хранит только признак галочки - Self или nil.
+procedure TForm1.HfSaveList;
+var
+  Ini: TIniFile;
+  ItemIdx: Integer;
+begin
+  if FHfList = nil then
+    Exit;
+  if FHotFolders = nil then
+    FHotFolders := TStringList.Create;
+  FHotFolders.Clear;
+  for ItemIdx := 0 to FHfList.Items.Count - 1 do
+    if FHfList.Checked[ItemIdx] then
+      FHotFolders.AddObject(FHfList.Items[ItemIdx], Self)
+    else
+      FHotFolders.AddObject(FHfList.Items[ItemIdx], nil);
+  try
+    Ini := TIniFile.Create(SettingsFileName);
+    try
+      Ini.EraseSection('HotFolders');
+      for ItemIdx := 0 to FHotFolders.Count - 1 do
+        if FHotFolders.Objects[ItemIdx] <> nil then
+          Ini.WriteString('HotFolders', 'Dir' + IntToStr(ItemIdx + 1),
+                          '1 ' + FHotFolders[ItemIdx])
+        else
+          Ini.WriteString('HotFolders', 'Dir' + IntToStr(ItemIdx + 1),
+                          '0 ' + FHotFolders[ItemIdx]);
+    finally
+      Ini.Free;
+    end;
+  except
+    // папка программы только для чтения - список остаётся в памяти
+  end;
+end;
+
+procedure TForm1.HfListCheck(Sender: TObject);
+begin
+  HfSaveList;
 end;
 
 // Щелчок по папке в списке - она в строке пути (её вернёт выбор папки)
@@ -16330,8 +16367,6 @@ begin
     FProgLabel := Dlg.lblStage;
     FProgBar := Dlg.barProgress;
     Dlg.btnStop.OnClick := ProgAbortClick;
-    // шрифт подписи - для MinimizeName (длинный путь в одну строку)
-    FProgForm.Canvas.Font.Assign(FProgLabel.Font);
   end;
 
   FProgForm.Caption := ACaption;
@@ -16372,7 +16407,9 @@ begin
     FProgBar.Position := Pct;
   end;
 
-  FProgLabel.Caption := AText;
+  // Та же подпись - не трогаем: каждая смена Caption - перерисовка
+  if FProgLabel.Caption <> AText then
+    FProgLabel.Caption := AText;
 
   Application.ProcessMessages;
   Result := not FProgAbort; // Стоп могли нажать прямо сейчас
@@ -17642,6 +17679,19 @@ begin
   end;
 end;
 
+// Строка окна хода "<приставка><путь>": путь сокращается (MinimizeName)
+// так, чтобы строка целиком влезла в ширину подписи и не переносилась
+function TForm1.ProgressPathLine(const APrefix, APath: string): string;
+var
+  Room: Integer;
+begin
+  FProgForm.Canvas.Font.Assign(FProgLabel.Font);
+  Room := FProgLabel.Width - FProgForm.Canvas.TextWidth(APrefix) - 8;
+  if Room < 40 then
+    Room := 40;
+  Result := APrefix + MinimizeName(APath, FProgForm.Canvas, Room);
+end;
+
 // Ход обхода: папка и сколько файлов подошло под маски - в окно хода
 // (не чаще раза в 100 мс); Стоп или Esc - прервать
 procedure TForm1.FifProgress(const ADir: string; ACount: Integer;
@@ -17653,8 +17703,7 @@ begin
     Exit;
   if GetTickCount - FProgLastTick < 100 then
     Exit;
-  if not ProgressStep(0, 0, 'Папка: ' +
-                      MinimizeName(ADir, FProgForm.Canvas, FProgLabel.Width) +
+  if not ProgressStep(0, 0, ProgressPathLine('Папка: ', ADir) +
                       #13#10'Найдено файлов по маскам: ' + IntToStr(ACount)) then
     ACancel := True;
 end;
@@ -17808,8 +17857,8 @@ begin
       // его пора показать (ProgressStep - не чаще раза в 100 мс)
       if (FProgForm <> nil) and FProgForm.Visible and
          (GetTickCount - FProgLastTick >= 100) then
-        if not ProgressStep(I, AList.Count, 'Файл: ' +
-             MinimizeName(AList[I], FProgForm.Canvas, FProgLabel.Width) +
+        if not ProgressStep(I, AList.Count,
+             ProgressPathLine('Файл: ', AList[I]) +
              #13#10'Проверено файлов: ' + IntToStr(I) + ' из ' +
              IntToStr(AList.Count) + #13#10'Найдено: ' + IntToStr(ATotal) +
              ' совпадений в ' + IntToStr(AFiles) + ' файлах') then

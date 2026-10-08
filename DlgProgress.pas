@@ -1,7 +1,8 @@
 unit DlgProgress;
 
 // Ход долгой операции (замена по всему файлу, Find In Files по проекту и
-// на диске): подпись этапа до трёх строк, полоса и кнопка "Стоп".
+// на диске): подпись этапа до трёх строк, полоса и кнопка "Стоп". Окно
+// рисуется через буфер, подпись при смене не моргает.
 //
 // Окно описано в DlgProgress.dfm и правится в конструкторе форм.
 // Окно создаётся один раз и дальше только показывается и прячется - см.
@@ -27,6 +28,9 @@ type
   private
     // $0128 - WM_UPDATEUISTATE, в Messages.pas Delphi 7 этой константы нет
     procedure WMUpdateUIState(var Message: TMessage); message $0128;
+    procedure WMEraseBkgnd(var Message: TWMEraseBkgnd); message WM_ERASEBKGND;
+  public
+    constructor Create(AOwner: TComponent); override;
   end;
 
 implementation
@@ -40,6 +44,26 @@ implementation
 procedure TDlgProgress.WMUpdateUIState(var Message: TMessage);
 begin
   Message.Result := 0;
+end;
+
+// Подпись меняется раз в 100 мс (файл, счётчики). Без буфера каждая смена
+// - стирание фона и рисование текста заново, текст моргает. С
+// DoubleBuffered окно рисуется в памяти и выводится целиком
+constructor TDlgProgress.Create(AOwner: TComponent);
+begin
+  inherited Create(AOwner);
+  DoubleBuffered := True;
+end;
+
+// Фон стирается только при рисовании в буфер (VCL передаёт его DC и в
+// wParam, и в lParam); стирание прямо на экране пропускается - его потом
+// всё равно закрывает картинка из буфера
+procedure TDlgProgress.WMEraseBkgnd(var Message: TWMEraseBkgnd);
+begin
+  if TMessage(Message).WParam = TMessage(Message).LParam then
+    inherited
+  else
+    Message.Result := 1;
 end;
 
 end.

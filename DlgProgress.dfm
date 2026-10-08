@@ -5,7 +5,7 @@ object DlgProgress: TDlgProgress
   BorderStyle = bsDialog
   Caption = 'Выполняется'
   ClientHeight = 132
-  ClientWidth = 520
+  ClientWidth = 760
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
   Font.Color = clWindowText
@@ -19,21 +19,20 @@ object DlgProgress: TDlgProgress
   object lblStage: TLabel
     Left = 12
     Top = 10
-    Width = 496
+    Width = 736
     Height = 44
     AutoSize = False
     Caption = 'Подготовка...'
-    WordWrap = True
   end
   object barProgress: TProgressBar
     Left = 12
     Top = 62
-    Width = 496
+    Width = 736
     Height = 18
     TabOrder = 0
   end
   object btnStop: TUiButton
-    Left = 418
+    Left = 658
     Top = 92
     Width = 90
     Height = 25
