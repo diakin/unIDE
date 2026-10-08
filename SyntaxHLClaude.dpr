@@ -33,6 +33,7 @@ uses
   RqComponents in 'RqComponents.pas',
   RqDesign in 'RqDesign.pas',
   RqHelp in 'RqHelp.pas',
+  IniTidy in 'IniTidy.pas',
   HangWatch in 'HangWatch.pas',
   WndWatch in 'WndWatch.pas',
   DbgEngine in 'DbgEngine.pas',

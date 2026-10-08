@@ -545,6 +545,7 @@ type
     mPrjManage: TMenuItem;
     mPrjScan: TMenuItem;
     mPrjDeleteWrong: TMenuItem;
+    mPrjTidyIni: TMenuItem;
     FToolbar: TPanel;
     FLeftPanel: TPanel;
     grpCompiler: TUiGroupBox;
@@ -782,6 +783,7 @@ type
     procedure mProjectClick(Sender: TObject);
     procedure ScanProjectsFolderClick(Sender: TObject);
     procedure DeleteWrongProjectsClick(Sender: TObject);
+    procedure TidyIniClick(Sender: TObject);
     procedure mFormatTextClick(Sender: TObject);
     procedure CloseCurrentWindowClick(Sender: TObject);
     procedure CheckWrongNamesClick(Sender: TObject);
@@ -3089,6 +3091,7 @@ var
     ObjParse,     // разбор формы для инспектора: узлы, .dfm, код, кэш
     RqToFb,       // перевод RapidQ -> FreeBASIC (RqLcl\tofb)
     RqHelp,       // справка RapidQ: rapidq_ref\help\rapidq.chm, html_doc
+    IniTidy,      // Tidy editor.ini: editorNew.ini, editorN.ini, editorOLD.ini
     RqComponents, // описание компонентов RapidQ (Component.data)
     RqDesign,     // конструктор форм RapidQ: заглушки компонентов
     TextMerge,    // слияние трёх версий текста (файл изменён снаружи)
@@ -8054,63 +8057,29 @@ begin
     end;
 end;
 
-// Текст раздела для сравнения: строки "Имя=значение" по алфавиту, чтобы
-// другой порядок ключей не считался другим содержимым
-function IniSortedText(AValues: TStrings): string;
-var
-  Sorted: TStringList;
-begin
-  Sorted := TStringList.Create;
-  try
-    Sorted.Assign(AValues);
-    Sorted.Sort;
-    Result := Sorted.Text;
-  finally
-    Sorted.Free;
-  end;
-end;
-
-// Имя раздела, копией которого является AName ("ProjectsOld2" -> "Projects")
-function IniOldBaseName(const AName: string): string;
-var
-  Pos1: Integer;
-begin
-  Pos1 := Length(AName);
-  while (Pos1 > 0) and (AName[Pos1] in ['0'..'9']) do
-    Dec(Pos1);
-  Result := Copy(AName, 1, Pos1 - 3);
-end;
-
 // editor.ini при сборке самого редактора: ASrc - из папки .dpr, ADst -
 // рядом с собранным exe, его правила запущенная копия.
 //
 // Настройки запущенной копии не затираются. Из ASrc:
-//   - раздела, которого в ADst нет, - копируется целиком;
-//   - раздел есть, но содержимое другое - ключи, которых в ADst нет и
-//     значение которых не путь (новые параметры), дописываются; сам раздел
-//     ASrc сохраняется копией [<Раздел>Old<N>], если такой же копии ещё
-//     нет. Какие пути брать - решает при запуске CheckIniPaths: в разделе
-//     путь, которого нет на диске, - берётся из копии, где он есть;
-//   - копии [<Раздел>Old<N>] из ASrc - тоже копиями, под своими номерами
-//     ADst, если такой же копии там нет;
-//   - разделы без данных не переносятся.
-// Возвращает число изменённых разделов ADst.
+//   - раздел, которого в ADst нет, - копируется целиком;
+//   - раздел есть - дописываются ключи, которых в ADst нет и значение
+//     которых не путь (новые параметры). Копии [<Раздел>Old<N>] больше не
+//     создаются: они копились годами; разобрать прежние - Tidy editor.ini
+//     (IniTidy);
+//   - копии [<Раздел>Old<N>] из ASrc и разделы без данных не переносятся.
+// Возвращает число изменений в ADst.
 function TForm1.MergeOwnSettings(const ASrc, ADst: string): Integer;
 var
   SrcIni, DstIni: TMemIniFile;
-  SrcSects, DstSects, SrcValues, DstValues, OldValues: TStringList;
-  SectIdx, KeyIdx, OldIdx, OldNum, MaxNum, PathExist, PathTotal: Integer;
-  Sect, BaseSect, KeyName, Value, CopyName, SrcText: string;
-  HasCopy: Boolean;
+  SrcSects, SrcValues: TStringList;
+  SectIdx, KeyIdx, PathExist, PathTotal: Integer;
+  Sect, KeyName, Value: string;
 begin
   Result := 0;
   SrcIni := TMemIniFile.Create(ASrc);
   DstIni := TMemIniFile.Create(ADst);
   SrcSects := TStringList.Create;
-  DstSects := TStringList.Create;
   SrcValues := TStringList.Create;
-  DstValues := TStringList.Create;
-  OldValues := TStringList.Create;
   try
     SrcIni.ReadSections(SrcSects);
     for SectIdx := 0 to SrcSects.Count - 1 do
@@ -8121,20 +8090,15 @@ begin
       if (CompareText(Sect, IniPathSection) = 0) or
          (CompareText(Copy(Sect, 1, 8), 'Projects') = 0) or
          (CompareText(Copy(Sect, 1, Length(ProjectSectionPrefix)),
-                      ProjectSectionPrefix) = 0) then
+                      ProjectSectionPrefix) = 0) or
+         IniIsOldSection(Sect) then
         Continue;
       SrcIni.ReadSectionValues(Sect, SrcValues);
       if IniSectionEmpty(SrcValues) then
         Continue;
-      SrcText := IniSortedText(SrcValues);
 
-      if IniIsOldSection(Sect) then
-        BaseSect := IniOldBaseName(Sect)
-      else
-        BaseSect := Sect;
-
-      // Раздела в ADst нет - целиком, под тем же именем
-      if not IniIsOldSection(Sect) and not DstIni.SectionExists(Sect) then
+      // Раздела в ADst нет - целиком
+      if not DstIni.SectionExists(Sect) then
       begin
         for KeyIdx := 0 to SrcValues.Count - 1 do
           DstIni.WriteString(Sect, SrcValues.Names[KeyIdx],
@@ -8144,100 +8108,54 @@ begin
         Continue;
       end;
 
-      // Совпадает с разделом ADst или с одной из его копий - ничего не нужно
-      DstIni.ReadSections(DstSects);
-      HasCopy := False;
-      MaxNum := 0;
-      if DstIni.SectionExists(BaseSect) then
-      begin
-        DstIni.ReadSectionValues(BaseSect, DstValues);
-        HasCopy := IniSortedText(DstValues) = SrcText;
-      end;
-      for OldIdx := 0 to DstSects.Count - 1 do
-        if IniIsOldSection(DstSects[OldIdx]) and
-           (CompareText(IniOldBaseName(DstSects[OldIdx]), BaseSect) = 0) then
-        begin
-          OldNum := StrToIntDef(Copy(DstSects[OldIdx], Length(BaseSect) + 4,
-                                     MaxInt), 0);
-          if OldNum > MaxNum then
-            MaxNum := OldNum;
-          if not HasCopy then
-          begin
-            DstIni.ReadSectionValues(DstSects[OldIdx], OldValues);
-            HasCopy := IniSortedText(OldValues) = SrcText;
-          end;
-        end;
-      if HasCopy then
-        Continue;
-
-      // Новые параметры (не пути) - в сам раздел
-      if not IniIsOldSection(Sect) then
-        for KeyIdx := 0 to SrcValues.Count - 1 do
-        begin
-          KeyName := SrcValues.Names[KeyIdx];
-          Value := IniValueOf(SrcValues[KeyIdx]);
-          if DstIni.ValueExists(Sect, KeyName) or (Trim(Value) = '') then
-            Continue;
-          IniPathCount(Value, PathExist, PathTotal);
-          if PathTotal > 0 then
-            Continue;
-          DstIni.WriteString(Sect, KeyName, Value);
-          LogComp('editor.ini рядом с exe: [' + Sect + '] добавлен ключ ' +
-                  KeyName);
-        end;
-
-      // Сам раздел из ASrc - копией
-      CopyName := BaseSect + 'Old' + IntToStr(MaxNum + 1);
+      // Новые параметры (не пути) - в тот же раздел
       for KeyIdx := 0 to SrcValues.Count - 1 do
-        DstIni.WriteString(CopyName, SrcValues.Names[KeyIdx],
-                           IniValueOf(SrcValues[KeyIdx]));
-      if IniIsOldSection(Sect) then
-        LogComp('editor.ini рядом с exe: копия [' + Sect + '] из папки ' +
-        'проекта перенесена как [' + CopyName + ']')
-      else
-        LogComp('editor.ini рядом с exe: [' + Sect + '] в папке проекта ' +
-        'другой - сохранён как [' + CopyName + ']');
-                Inc(Result);
+      begin
+        KeyName := SrcValues.Names[KeyIdx];
+        Value := IniValueOf(SrcValues[KeyIdx]);
+        if (KeyName = '') or DstIni.ValueExists(Sect, KeyName) or
+           (Trim(Value) = '') then
+          Continue;
+        IniPathCount(Value, PathExist, PathTotal);
+        if PathTotal > 0 then
+          Continue;
+        DstIni.WriteString(Sect, KeyName, Value);
+        Inc(Result);
+        LogComp('editor.ini рядом с exe: [' + Sect + '] добавлен ключ ' +
+                KeyName);
+      end;
     end;
 
     if Result > 0 then
       DstIni.UpdateFile;
   finally
-    OldValues.Free;
-    DstValues.Free;
     SrcValues.Free;
-    DstSects.Free;
     SrcSects.Free;
     DstIni.Free;
     SrcIni.Free;
   end;
 end;
 
-// При запуске, до чтения настроек. Для каждого раздела editor.ini (кроме
-// сохранённых копий):
-//   1. Есть значения-пути, которых нет на диске (из списка через ";" - хотя
-//      бы один) - раздел целиком сохраняется копией [<Раздел>Old<N>]. Такая
-//      же копия уже есть - новая не пишется: при каждом запуске на той же
-//      машине копии не множатся.
-//   2. Для каждого такого значения ищется в копиях (от новой к старой) то
-//      же значение, в котором путей на диске больше, чем в текущем; лучшее
-//      из найденных возвращается в раздел.
-//   3. Значение, которого в разделе нет совсем, а в копии оно есть и все
-//      его пути на диске, возвращается в раздел (проект, который на другой
-//      машине убрали из списка).
-// Так при переносе между машинами настройки каждой машины хранятся в
-// копиях и возвращаются, когда программа снова запущена на ней. Копии без
-// данных (все значения пустые) удаляются. Что сделано
-// - в FIniPathLog, в HiLite log при показе окна.
-// TMemIniFile, а не TIniFile: TIniFile.ReadString читает не больше 2047
-// знаков, BrowsePath к этому близок.
+// Раз за запуск, до чтения настроек. Для каждого раздела editor.ini, у
+// которого остались копии [<Раздел>Old<N>] (их делали прежние версии;
+// новые копии не создаются, разобрать прежние - Tidy editor.ini):
+//   1. Значение-путь, которого нет на диске (из списка через ";" - хотя бы
+//      один путь), заменяется значением из копии, где путей на диске
+//      больше; копии - от новых к старым.
+//   2. Ключи, которых в разделе нет, а в копии они есть и все их пути
+//      на диске, дописываются в раздел.
+// Пустые копии (все значения пустые) удаляются. Что сделано - в
+// FIniPathLog, в HiLite log при старте окна.
+// TMemIniFile, а не TIniFile: TIniFile.ReadString режет на длине 2047
+// знаков, BrowsePath и длиннее.
 procedure TForm1.CheckIniPaths;
 var
   Ini: TMemIniFile;
-  Sects, Cur, Old, Olds, Keys: TStringList;
-  I, J, K, N, MaxN, Ex, Tot, BestEx, OEx, OTot: Integer;
-  S, Key, V, OV, Best, BestFrom: string;
-  Missing, Changed, Same: Boolean;
+  Sects, Cur, Olds, Keys: TStringList;
+  SectIdx, OldIdx, KeyIdx, SortIdx, OldNum, PathExist, PathTotal, BestExist,
+  OldExist, OldTotal: Integer;
+  Sect, Key, Value, OldValue, Best, BestFrom: string;
+  Changed: Boolean;
 begin
   if not FileExists(SettingsFileName) then
     Exit;
@@ -8245,138 +8163,97 @@ begin
   Ini := TMemIniFile.Create(SettingsFileName);
   Sects := TStringList.Create;
   Cur := TStringList.Create;
-  Old := TStringList.Create;
   Olds := TStringList.Create;
   Keys := TStringList.Create;
   try
     Ini.ReadSections(Sects);
-    for I := 0 to Sects.Count - 1 do
+    for SectIdx := 0 to Sects.Count - 1 do
     begin
-      S := Sects[I];
-      if IniIsOldSection(S) then
+      Sect := Sects[SectIdx];
+      if IniIsOldSection(Sect) then
       begin
-        // Копия без данных ничего не вернёт - убираем
-        Ini.ReadSectionValues(S, Cur);
+        // Копия без единого значения - удаляется
+        Ini.ReadSectionValues(Sect, Cur);
         if IniSectionEmpty(Cur) then
         begin
-          Ini.EraseSection(S);
+          Ini.EraseSection(Sect);
           Changed := True;
-          FIniPathLog.Add('editor.ini [' + S + ']: копия без данных удалена');
+          FIniPathLog.Add('editor.ini [' + Sect + ']: пустая копия удалена');
         end;
         Continue;
       end;
-      Ini.ReadSectionValues(S, Cur);
+      Ini.ReadSectionValues(Sect, Cur);
 
-      // Копии этого раздела, от новой к старой
+      // копии этого раздела, от новых к старым
       Olds.Clear;
-      MaxN := 0;
-      for J := 0 to Sects.Count - 1 do
-        if (CompareText(Copy(Sects[J], 1, Length(S) + 3), S + 'Old') = 0) and
-           (Length(Sects[J]) > Length(S) + 3) then
+      for OldIdx := 0 to Sects.Count - 1 do
+        if (CompareText(Copy(Sects[OldIdx], 1, Length(Sect) + 3),
+                        Sect + 'Old') = 0) and
+           (Length(Sects[OldIdx]) > Length(Sect) + 3) then
         begin
-          N := StrToIntDef(Copy(Sects[J], Length(S) + 4, MaxInt), 0);
-          if N > 0 then
+          OldNum := StrToIntDef(Copy(Sects[OldIdx], Length(Sect) + 4,
+                                     MaxInt), 0);
+          if OldNum > 0 then
+            Olds.AddObject(Sects[OldIdx], TObject(OldNum));
+        end;
+      if Olds.Count = 0 then
+        Continue;
+      for OldIdx := 0 to Olds.Count - 1 do
+        for SortIdx := 0 to Olds.Count - 2 - OldIdx do
+          if Integer(Olds.Objects[SortIdx]) <
+             Integer(Olds.Objects[SortIdx + 1]) then
+            Olds.Exchange(SortIdx, SortIdx + 1);
+
+      // 1. пути, которых нет, - из копии, где их на диске больше
+      for KeyIdx := 0 to Cur.Count - 1 do
+      begin
+        Key := Cur.Names[KeyIdx];
+        Value := IniValueOf(Cur[KeyIdx]);
+        IniPathCount(Value, PathExist, PathTotal);
+        if (PathTotal = 0) or (PathExist = PathTotal) then
+          Continue;
+        BestExist := PathExist;
+        Best := '';
+        BestFrom := '';
+        for OldIdx := 0 to Olds.Count - 1 do
+        begin
+          OldValue := Ini.ReadString(Olds[OldIdx], Key, '');
+          if OldValue = '' then
+            Continue;
+          IniPathCount(OldValue, OldExist, OldTotal);
+          if OldExist > BestExist then
           begin
-            Olds.AddObject(Sects[J], TObject(N));
-            if N > MaxN then
-              MaxN := N;
+            BestExist := OldExist;
+            Best := OldValue;
+            BestFrom := Olds[OldIdx];
           end;
         end;
-      // сортировка по номеру вниз: пузырёк, копий единицы
-      for J := 0 to Olds.Count - 1 do
-        for K := 0 to Olds.Count - 2 - J do
-          if Integer(Olds.Objects[K]) < Integer(Olds.Objects[K + 1]) then
-            Olds.Exchange(K, K + 1);
-
-      // 1. Есть ли ненайденные пути
-      Missing := False;
-      for J := 0 to Cur.Count - 1 do
-      begin
-        IniPathCount(IniValueOf(Cur[J]), Ex, Tot);
-        if Ex < Tot then
+        if Best <> '' then
         begin
-          Missing := True;
-          Break;
-        end;
-      end;
-
-      if Missing then
-      begin
-        // Такая копия уже есть?
-        Same := False;
-        for J := 0 to Olds.Count - 1 do
-        begin
-          Ini.ReadSectionValues(Olds[J], Old);
-          if Old.Text = Cur.Text then
-          begin
-            Same := True;
-            Break;
-          end;
-        end;
-        if not Same then
-        begin
-          Inc(MaxN);
-          for J := 0 to Cur.Count - 1 do
-            Ini.WriteString(S + 'Old' + IntToStr(MaxN), Cur.Names[J],
-                            IniValueOf(Cur[J]));
-          Olds.InsertObject(0, S + 'Old' + IntToStr(MaxN), TObject(MaxN));
+          Ini.WriteString(Sect, Key, Best);
           Changed := True;
-          FIniPathLog.Add('editor.ini [' + S + ']: есть пути, которых нет на ' +
-          'диске; раздел сохранён как [' + S + 'Old' +
-                          IntToStr(MaxN) + ']');
-        end;
-
-        // 2. Лучшее значение из копий для ненайденных
-        for J := 0 to Cur.Count - 1 do
-        begin
-          Key := Cur.Names[J];
-          V := IniValueOf(Cur[J]);
-          IniPathCount(V, Ex, Tot);
-          if (Tot = 0) or (Ex = Tot) then
-            Continue;
-          BestEx := Ex;
-          Best := '';
-          BestFrom := '';
-          for K := 0 to Olds.Count - 1 do
-          begin
-            OV := Ini.ReadString(Olds[K], Key, '');
-            if OV = '' then
-              Continue;
-            IniPathCount(OV, OEx, OTot);
-            if OEx > BestEx then
-            begin
-              BestEx := OEx;
-              Best := OV;
-              BestFrom := Olds[K];
-            end;
-          end;
-          if Best <> '' then
-          begin
-            Ini.WriteString(S, Key, Best);
-            Changed := True;
-            FIniPathLog.Add('editor.ini [' + S + '] ' + Key +
-            ': путь восстановлен из [' + BestFrom + ']');
-          end;
+          FIniPathLog.Add('editor.ini [' + Sect + '] ' + Key +
+          ': путь восстановлен из [' + BestFrom + ']');
         end;
       end;
 
-      // 3. Значения, которых в разделе нет, а в копии они есть и на месте
-      for K := 0 to Olds.Count - 1 do
+      // 2. ключи, которых в разделе нет, а в копии они есть и на диске
+      for OldIdx := 0 to Olds.Count - 1 do
       begin
-        Ini.ReadSection(Olds[K], Keys);
-        for J := 0 to Keys.Count - 1 do
+        Ini.ReadSection(Olds[OldIdx], Keys);
+        for KeyIdx := 0 to Keys.Count - 1 do
         begin
-          Key := Keys[J];
-          if Ini.ValueExists(S, Key) then
+          Key := Keys[KeyIdx];
+          if Ini.ValueExists(Sect, Key) then
             Continue;
-          OV := Ini.ReadString(Olds[K], Key, '');
-          IniPathCount(OV, OEx, OTot);
-          if (OTot > 0) and (OEx = OTot) then
+          OldValue := Ini.ReadString(Olds[OldIdx], Key, '');
+          IniPathCount(OldValue, OldExist, OldTotal);
+          if (OldTotal > 0) and (OldExist = OldTotal) then
           begin
-            Ini.WriteString(S, Key, OV);
+            Ini.WriteString(Sect, Key, OldValue);
             Changed := True;
-            FIniPathLog.Add('editor.ini [' + S + '] ' + Key +
-            ': возвращено из [' + Olds[K] + ']');
+            FIniPathLog.Add('editor.ini [' + Sect + '] ' + Key +
+            ': дописан из [' + Olds[OldIdx] + ']');
           end;
         end;
       end;
@@ -8387,7 +8264,6 @@ begin
   finally
     Keys.Free;
     Olds.Free;
-    Old.Free;
     Cur.Free;
     Sects.Free;
     Ini.Free;
@@ -8776,6 +8652,49 @@ begin
   SaveProjectReg;
   RebuildProjectsMenu;
   LogRaw(Format('Delete wrong projects names: убрано записей %d', [N]));
+end;
+
+// Tidy editor.ini (Project - Manage Projects): editor.ini разбирается на
+// editorNew.ini (этот компьютер), editorN.ini (другие компьютеры) и
+// editorOLD.ini (записи с ненайденными путями), см. IniTidy. Сначала
+// текущие настройки пишутся в editor.ini. Сам editor.ini не меняется:
+// программа держит его данные в памяти и пишет их при выходе, поэтому
+// заменить файл можно только после закрытия.
+procedure TForm1.TidyIniClick(Sender: TObject);
+var
+  Notes: TStringList;
+  NoteIdx: Integer;
+  OldMode: UINT;
+  Done: Boolean;
+begin
+  SaveSettings;
+  Notes := TStringList.Create;
+  try
+    // диск или флешка, которых нет, - без системного окна об ошибке
+    OldMode := SetErrorMode(SEM_FAILCRITICALERRORS);
+    Screen.Cursor := crHourGlass;
+    try
+      Done := TidyEditorIni(SettingsFileName, Notes);
+    finally
+      Screen.Cursor := crDefault;
+      SetErrorMode(OldMode);
+    end;
+    LogRaw('Tidy editor.ini:');
+    for NoteIdx := 0 to Notes.Count - 1 do
+      LogRaw('  ' + Notes[NoteIdx]);
+    if Done then
+      ShowMessage('Записан ' + TidyNewName + ' - настройки этого ' +
+        'компьютера; другие файлы и подробности - в журнале.'#13#10#13#10 +
+        'editor.ini не изменён. Чтобы перейти на новый файл: закрыть unIDE, ' +
+        'переименовать editor.ini (например, в editor_prev.ini), затем ' +
+        TidyNewName + ' - в editor.ini. Изменения, сделанные после этой ' +
+        'команды (открытые файлы, закладки), в ' + TidyNewName +
+        ' не попадут - лучше закрыть unIDE сразу.')
+    else
+      ShowMessage(TidyNewName + ' не записан, причина - в журнале.');
+  finally
+    Notes.Free;
+  end;
 end;
 
 // Раздел настроек компилятора для типа проекта. У типа может быть

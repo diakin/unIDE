@@ -533,6 +533,10 @@ object Form1: TForm1
           Caption = 'Delete wrong projects names'
           OnClick = DeleteWrongProjectsClick
         end
+        object mPrjTidyIni: TMenuItem
+          Caption = 'Tidy editor.ini...'
+          OnClick = TidyIniClick
+        end
       end
       object mProjectLine1: TMenuItem
         Caption = '-'
