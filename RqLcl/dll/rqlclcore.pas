@@ -28,7 +28,7 @@ uses
   Classes, SysUtils, TypInfo, Math, Controls, StdCtrls, Forms, Graphics,
   LazUTF8, LCLType, ComCtrls, Grids, ShellCtrls, ExtCtrls, Buttons, Menus,
   FileCtrl, Dialogs, RichMemo, rqlclrich, rqlclgrid, rqlclmisc, rqlclmore,
-  rqlclsys, rqlclview, rqlclimage, ImgList, rqlclextra;
+  rqlclsys, rqlclview, rqlclimage, ImgList, rqlclextra, rqlclwnd;
 
 const
   RqLclVersion = 2;   // меняется при несовместимой смене набора функций
@@ -146,6 +146,9 @@ type
     procedure FireSectionTrack(HeaderControl: TCustomHeaderControl;
                                Section: THeaderSection; Width: Integer;
                                State: TSectionTrackState);
+    procedure FireWndProc(Sender: TObject; AWnd: HWND; AMsg: UINT;
+                          AWParam: WPARAM; ALParam: LPARAM);
+    destructor Destroy; override;
   end;
 
   // Класс RapidQ -> класс LCL
@@ -658,6 +661,31 @@ begin
   ProcEx(User, Owner, EventId, @Args);
 end;
 
+// WndProc (QFORM, QEDIT, QLISTBOX, QLABEL): окно, номер сообщения,
+// wParam, lParam (32 бита, как у RapidQ)
+procedure TRqEventLink.FireWndProc(Sender: TObject; AWnd: HWND; AMsg: UINT;
+                                   AWParam: WPARAM; ALParam: LPARAM);
+var
+  Args: TRqEventArgs;
+begin
+  if not Assigned(ProcEx) then
+    Exit;
+  FillChar(Args, SizeOf(Args), 0);
+  Args.IntArgs[0] := Integer(PtrInt(AWnd));
+  Args.IntArgs[1] := Integer(AMsg);
+  Args.IntArgs[2] := Integer(PtrInt(AWParam));
+  Args.IntArgs[3] := Integer(PtrInt(ALParam));
+  ProcEx(User, Owner, EventId, @Args);
+end;
+
+// Переходник WndProc снимается вместе с подменой окна
+destructor TRqEventLink.Destroy;
+begin
+  if (CompareText(EventName, 'WndProc') = 0) and (Owner is TControl) then
+    WndHookSet(TControl(Owner), nil);
+  inherited Destroy;
+end;
+
 // Переходник события AEvent у объекта; нет - nil
 function LinkOf(AComp: TComponent; const AEvent: string): TRqEventLink;
 var
@@ -672,6 +700,41 @@ begin
       Result := TRqEventLink(AComp.Components[CompIdx]);
       Exit;
     end;
+end;
+
+// WndProc - не свойство LCL: подмена оконной процедуры (rqlclwnd)
+function SetWndProcEvent(AComp: TComponent; AEventId: Integer;
+                         AProc: TRqEventProcEx): Integer;
+var
+  Link: TRqEventLink;
+  Data: TRqData;
+begin
+  Result := 0;
+  if not (AComp is TControl) then
+  begin
+    SetError('WndProc: object is not a control');
+    Exit;
+  end;
+  Link := LinkOf(AComp, 'WndProc');
+  if not Assigned(AProc) then
+  begin
+    Link.Free;
+    Result := 1;
+    Exit;
+  end;
+  if Link = nil then
+  begin
+    Link := TRqEventLink.Create(AComp);
+    Link.EventName := 'WndProc';
+  end;
+  Data := DataOf(AComp);
+  if Data <> nil then
+    Link.User := Data.User;
+  Link.ProcEx := AProc;
+  Link.Proc := nil;
+  Link.EventId := AEventId;
+  WndHookSet(TControl(AComp), @Link.FireWndProc);
+  Result := 1;
 end;
 
 // ---------------------------------------------------------------------------
@@ -1108,6 +1171,11 @@ begin
       Exit;
     end;
     Comp := TComponent(AObj);
+    if CompareText(string(AEvent), 'WndProc') = 0 then
+    begin
+      Result := SetWndProcEvent(Comp, AEventId, AProc);
+      Exit;
+    end;
     Info := FindProp(Comp, string(AEvent));
     if Info = nil then
       Exit;

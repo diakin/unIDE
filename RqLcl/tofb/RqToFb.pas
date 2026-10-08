@@ -140,7 +140,9 @@ const
     // OnSectionTrack (Index, Width, State)
     'ONSCROLL=VLONG;VLONG ONDRAWSECTION=VLONG;VLONG;RQRECT ' +
     'ONSECTIONCLICK=VLONG ONSECTIONRESIZE=VLONG ' +
-    'ONSECTIONTRACK=VLONG;VLONG;VLONG';
+    'ONSECTIONTRACK=VLONG;VLONG;VLONG ' +
+    // WndProc (QFORM, QEDIT, QLISTBOX, QLABEL): Hwnd, Msg, wParam, lParam
+    'WNDPROC=VLONG;VLONG;VLONG;VLONG';
 
   // Запись в массив-свойство с двумя индексами: у свойства FreeBASIC
   // индекс один, поэтому Grid.Cell(c, r) = x -> Grid.SetCell(c, r, x)
@@ -489,6 +491,12 @@ begin
   finally
     Words.Free;
   end;
+end;
+
+// Событие RapidQ: OnXxx и WndProc (QFORM, QEDIT, QLISTBOX, QLABEL)
+function IsEventName(const AUp: string): Boolean;
+begin
+  Result := (Copy(AUp, 1, 2) = 'ON') or (AUp = 'WNDPROC');
 end;
 
 function InList(AList: TStringList; const AUp: string): Boolean;
@@ -2968,8 +2976,8 @@ begin
     // This.Установщик = x, This.OnXxx = This.Метод внутри TYPE ... EXTENDS
     if (FCurType <> nil) and TypeAssign(AToks, FirstIdx, EqIdx, ATo) then
       Exit;
-    // Объект.OnXxx = Процедура -> @Процедура
-    if (LastMember >= 0) and (Copy(AToks[LastMember].Up, 1, 2) = 'ON') and
+    // Объект.OnXxx = Процедура -> @Процедура (и Объект.WndProc)
+    if (LastMember >= 0) and IsEventName(AToks[LastMember].Up) and
        (RhsFirst = RhsLast) and (AToks[RhsFirst].Kind = tkIdent) then
     begin
       if FPass = 1 then
@@ -5208,7 +5216,7 @@ begin
     end;
   end;
   // OnXxx = This.Метод
-  if Copy(MemberUp, 1, 2) <> 'ON' then
+  if not IsEventName(MemberUp) then
     Exit;
   RhsDot := NextSig(AToks, RhsFirst + 1, ATo);
   MethIdx := NextSig(AToks, RhsDot + 1, ATo);

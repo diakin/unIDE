@@ -692,6 +692,8 @@ Const RqEvDrawSection = 26
 Const RqEvSectionClick = 27
 Const RqEvSectionResize = 28
 Const RqEvSectionTrack = 29
+' WndProc (QFORM, QEDIT, QLISTBOX, QLABEL): Hwnd, Msg, wParam, lParam
+Const RqEvWndProc = 30
 
 ' Виды обработчиков для вызова (Sender - как QCONTROL: у элемента любого
 ' класса QCONTROL лежит в начале)
@@ -723,6 +725,8 @@ Type RqEvProcListChange As Sub(ByVal As Long, ByVal As Long)
 Type RqEvProcListChangeS As Sub(ByVal As Long, ByVal As Long, ByRef As QCONTROL)
 Type RqEvProcTrack As Sub(ByVal As Long, ByVal As Long, ByVal As Long)
 Type RqEvProcTrackS As Sub(ByVal As Long, ByVal As Long, ByVal As Long, ByRef As QCONTROL)
+Type RqEvProcWnd As Sub(ByVal As Long, ByVal As Long, ByVal As Long, ByVal As Long)
+Type RqEvProcWndS As Sub(ByVal As Long, ByVal As Long, ByVal As Long, ByVal As Long, ByRef As QCONTROL)
 Type RqEvProcPlain As Sub()
 Type RqEvProcSender As Sub(ByRef As QCONTROL)
 
@@ -821,6 +825,12 @@ Private Sub RqLclEventEx stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any 
             Cast(RqEvProcAllow, HandlerPtr)(ArgList[0], ArgList[1])
         Else
             Cast(RqEvProcAllowS, HandlerPtr)(ArgList[0], ArgList[1], *CtlPtr)
+        End If
+    Case RqEvWndProc
+        If HandlerKind = 1 Then
+            Cast(RqEvProcWnd, HandlerPtr)(ArgList[0], ArgList[1], ArgList[2], ArgList[3])
+        Else
+            Cast(RqEvProcWndS, HandlerPtr)(ArgList[0], ArgList[1], ArgList[2], ArgList[3], *CtlPtr)
         End If
     Case RqEvSectionTrack
         If HandlerKind = 1 Then
@@ -936,6 +946,10 @@ Type QFORM Extends QCONTROL
     Declare Function TextHeight(ByRef Text1 As String) As Long
     Declare Property OnPaint(ByVal Handler As Sub())
     Declare Property OnPaint(ByVal Handler As Sub(ByRef Sender As QFORM))
+    Declare Property WndProc(ByVal Handler As Sub(ByVal Hwnd As Long, ByVal Msg As Long, ByVal WParam As Long, ByVal LParam As Long))
+    Declare Property WndProc(ByVal Handler As Sub(ByVal Hwnd As Long, ByVal Msg As Long, ByVal WParam As Long, ByVal LParam As Long, ByRef Sender As QFORM))
+    Declare Property WndProc(ByVal Handler As Sub())
+    Declare Property WndProc(ByVal Handler As Sub(ByRef Sender As QFORM))
 End Type
 
 Private Sub QFORM_ShowEvent stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any Ptr)
@@ -1446,6 +1460,10 @@ Type QLABEL Extends QCONTROL
     Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QLABEL))
     Declare Property OnMouseMove(ByVal Handler As Sub())
     Declare Property OnMouseMove(ByVal Handler As Sub(ByRef Sender As QLABEL))
+    Declare Property WndProc(ByVal Handler As Sub(ByVal Hwnd As Long, ByVal Msg As Long, ByVal WParam As Long, ByVal LParam As Long))
+    Declare Property WndProc(ByVal Handler As Sub(ByVal Hwnd As Long, ByVal Msg As Long, ByVal WParam As Long, ByVal LParam As Long, ByRef Sender As QLABEL))
+    Declare Property WndProc(ByVal Handler As Sub())
+    Declare Property WndProc(ByVal Handler As Sub(ByRef Sender As QLABEL))
 End Type
 
 Constructor QLABEL()
@@ -1594,6 +1612,10 @@ Type QEDIT Extends QCONTROL
     Declare Property OnMouseMove(ByVal Handler As Sub(ByVal X As Long, ByVal Y As Long, ByVal Shift As Long, ByRef Sender As QEDIT))
     Declare Property OnMouseMove(ByVal Handler As Sub())
     Declare Property OnMouseMove(ByVal Handler As Sub(ByRef Sender As QEDIT))
+    Declare Property WndProc(ByVal Handler As Sub(ByVal Hwnd As Long, ByVal Msg As Long, ByVal WParam As Long, ByVal LParam As Long))
+    Declare Property WndProc(ByVal Handler As Sub(ByVal Hwnd As Long, ByVal Msg As Long, ByVal WParam As Long, ByVal LParam As Long, ByRef Sender As QEDIT))
+    Declare Property WndProc(ByVal Handler As Sub())
+    Declare Property WndProc(ByVal Handler As Sub(ByRef Sender As QEDIT))
 End Type
 
 Private Sub QEDIT_ChangeEvent stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any Ptr)
@@ -4051,6 +4073,10 @@ Type QLISTBOX Extends QCONTROL
     Declare Property OnDrawItem(ByVal Handler As Sub(ByVal Index As Long, ByVal State As Long, ByRef R As QRECT, ByRef Sender As QLISTBOX))
     Declare Property OnDrawItem(ByVal Handler As Sub())
     Declare Property OnDrawItem(ByVal Handler As Sub(ByRef Sender As QLISTBOX))
+    Declare Property WndProc(ByVal Handler As Sub(ByVal Hwnd As Long, ByVal Msg As Long, ByVal WParam As Long, ByVal LParam As Long))
+    Declare Property WndProc(ByVal Handler As Sub(ByVal Hwnd As Long, ByVal Msg As Long, ByVal WParam As Long, ByVal LParam As Long, ByRef Sender As QLISTBOX))
+    Declare Property WndProc(ByVal Handler As Sub())
+    Declare Property WndProc(ByVal Handler As Sub(ByRef Sender As QLISTBOX))
 End Type
 
 Constructor QLISTBOX()
@@ -6051,6 +6077,58 @@ Property QSTATUSBAR.OnResize(ByVal Handler As Sub())
 End Property
 Property QSTATUSBAR.OnResize(ByVal Handler As Sub(ByRef Sender As QSTATUSBAR))
     SetEventEx(21, "OnResize", Cast(Any Ptr, Handler), 3)
+End Property
+
+
+' WndProc RapidQ: сообщения Windows элемента (окно, номер, wParam, lParam);
+' обработчик вызывается до обработки сообщения LCL, результат не меняет
+Property QFORM.WndProc(ByVal Handler As Sub(ByVal Hwnd As Long, ByVal Msg As Long, ByVal WParam As Long, ByVal LParam As Long))
+    SetEventEx(RqEvWndProc, "WndProc", Cast(Any Ptr, Handler), 1)
+End Property
+Property QFORM.WndProc(ByVal Handler As Sub(ByVal Hwnd As Long, ByVal Msg As Long, ByVal WParam As Long, ByVal LParam As Long, ByRef Sender As QFORM))
+    SetEventEx(RqEvWndProc, "WndProc", Cast(Any Ptr, Handler), 2)
+End Property
+Property QFORM.WndProc(ByVal Handler As Sub())
+    SetEventEx(RqEvWndProc, "WndProc", Cast(Any Ptr, Handler), 0)
+End Property
+Property QFORM.WndProc(ByVal Handler As Sub(ByRef Sender As QFORM))
+    SetEventEx(RqEvWndProc, "WndProc", Cast(Any Ptr, Handler), 3)
+End Property
+Property QEDIT.WndProc(ByVal Handler As Sub(ByVal Hwnd As Long, ByVal Msg As Long, ByVal WParam As Long, ByVal LParam As Long))
+    SetEventEx(RqEvWndProc, "WndProc", Cast(Any Ptr, Handler), 1)
+End Property
+Property QEDIT.WndProc(ByVal Handler As Sub(ByVal Hwnd As Long, ByVal Msg As Long, ByVal WParam As Long, ByVal LParam As Long, ByRef Sender As QEDIT))
+    SetEventEx(RqEvWndProc, "WndProc", Cast(Any Ptr, Handler), 2)
+End Property
+Property QEDIT.WndProc(ByVal Handler As Sub())
+    SetEventEx(RqEvWndProc, "WndProc", Cast(Any Ptr, Handler), 0)
+End Property
+Property QEDIT.WndProc(ByVal Handler As Sub(ByRef Sender As QEDIT))
+    SetEventEx(RqEvWndProc, "WndProc", Cast(Any Ptr, Handler), 3)
+End Property
+Property QLABEL.WndProc(ByVal Handler As Sub(ByVal Hwnd As Long, ByVal Msg As Long, ByVal WParam As Long, ByVal LParam As Long))
+    SetEventEx(RqEvWndProc, "WndProc", Cast(Any Ptr, Handler), 1)
+End Property
+Property QLABEL.WndProc(ByVal Handler As Sub(ByVal Hwnd As Long, ByVal Msg As Long, ByVal WParam As Long, ByVal LParam As Long, ByRef Sender As QLABEL))
+    SetEventEx(RqEvWndProc, "WndProc", Cast(Any Ptr, Handler), 2)
+End Property
+Property QLABEL.WndProc(ByVal Handler As Sub())
+    SetEventEx(RqEvWndProc, "WndProc", Cast(Any Ptr, Handler), 0)
+End Property
+Property QLABEL.WndProc(ByVal Handler As Sub(ByRef Sender As QLABEL))
+    SetEventEx(RqEvWndProc, "WndProc", Cast(Any Ptr, Handler), 3)
+End Property
+Property QLISTBOX.WndProc(ByVal Handler As Sub(ByVal Hwnd As Long, ByVal Msg As Long, ByVal WParam As Long, ByVal LParam As Long))
+    SetEventEx(RqEvWndProc, "WndProc", Cast(Any Ptr, Handler), 1)
+End Property
+Property QLISTBOX.WndProc(ByVal Handler As Sub(ByVal Hwnd As Long, ByVal Msg As Long, ByVal WParam As Long, ByVal LParam As Long, ByRef Sender As QLISTBOX))
+    SetEventEx(RqEvWndProc, "WndProc", Cast(Any Ptr, Handler), 2)
+End Property
+Property QLISTBOX.WndProc(ByVal Handler As Sub())
+    SetEventEx(RqEvWndProc, "WndProc", Cast(Any Ptr, Handler), 0)
+End Property
+Property QLISTBOX.WndProc(ByVal Handler As Sub(ByRef Sender As QLISTBOX))
+    SetEventEx(RqEvWndProc, "WndProc", Cast(Any Ptr, Handler), 3)
 End Property
 
 #include once "rqsys.bi"
