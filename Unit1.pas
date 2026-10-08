@@ -1927,6 +1927,8 @@ type
                             var ASubDirs: Boolean): Boolean;
     procedure FifProgress(const ADir: string; ACount: Integer;
                           var ACancel: Boolean);
+    procedure FifCollectDirs(const ADirs, AMasks: string; ASubDirs: Boolean;
+                             AList: TStrings; var ACancel: Boolean);
     procedure FifCollectDir(const ADir, AMasks: string; ASubDirs: Boolean;
                             AList: TStrings; var ACancel: Boolean);
     function  FifProjectFiles(AList: TStrings; var ANote: string): Boolean;
@@ -11910,11 +11912,12 @@ begin
 end;
 
 // Окно Directory Tree. APick = False - список горячих папок (ShowHotFolders).
-// APick = True - выбор папки (Find In Files на диске, кнопка "..."):
-// APreselect раскрывается в дереве, но в список не добавляется; OK
-// возвращает в ADir папку из строки над деревом - выбранную в дереве или
-// щелчком в списке. Список горячих папок по OK записывается в обоих
-// случаях. ACaption - заголовок окна ('' - из .dfm).
+// APick = True - выбор папок (Find In Files на диске, кнопка "..."):
+// APreselect раскрывается в дереве (из списка через ";" - первая), но в
+// список не добавляется; OK возвращает в ADir все отмеченные в списке
+// папки через ";", а если отмеченных нет - папку из строки над деревом
+// (выбранную в дереве или щелчком в списке). Список горячих папок по OK
+// записывается в обоих случаях. ACaption - заголовок окна ('' - из .dfm).
 function TForm1.HotFoldersDialog(const APreselect, ACaption: string;
                                  APick: Boolean; var ADir: string): Boolean;
 var
@@ -11951,11 +11954,14 @@ begin
 
     if APick then
     begin
-      // Выбор папки: стартовая - только в дереве и в строке пути
-      if APreselect <> '' then
+      // Выбор папок: стартовая - только в дереве и в строке пути
+      Picked := Trim(APreselect);
+      if Pos(';', Picked) > 0 then
+        Picked := Trim(Copy(Picked, 1, Pos(';', Picked) - 1));
+      if Picked <> '' then
       begin
-        HfSelectPath(APreselect);
-        FHfPath.Caption := '  ' + IncludeTrailingPathDelimiter(APreselect);
+        HfSelectPath(Picked);
+        FHfPath.Caption := '  ' + IncludeTrailingPathDelimiter(Picked);
       end;
     end
     // Подсказанная папка: в списке она должна быть отмечена, а в дереве -
@@ -11981,10 +11987,22 @@ begin
     if Dlg.ShowModal <> mrOk then
       Exit;
 
-    Picked := Trim(FHfPath.Caption);
-    if APick and ((Picked = '') or not DirectoryExists(Picked)) then
+    // Выбор папок: отмеченные в списке, иначе - из строки пути
+    Picked := '';
+    if APick then
+      for I := 0 to FHfList.Items.Count - 1 do
+        if FHfList.Checked[I] and DirectoryExists(FHfList.Items[I]) then
+        begin
+          if Picked <> '' then
+            Picked := Picked + ';';
+          Picked := Picked + ExcludeTrailingPathDelimiter(FHfList.Items[I]);
+        end;
+    if Picked = '' then
+      Picked := Trim(FHfPath.Caption);
+    if APick and (Picked = '') then
     begin
-      ShowMessage('Папка не выбрана или её нет: ' + Picked);
+      ShowMessage('Папка не выбрана: отметьте папки в списке или выберите ' +
+                  'папку в дереве');
       Exit;
     end;
     ADir := Picked;
@@ -17341,8 +17359,7 @@ begin
       end;
     end
     else if cmbScope.ItemIndex = 3 then
-      FifCollectDir(IncludeTrailingPathDelimiter(DiskDir), DiskMasks, SubDirs,
-                    List, Cancel);
+      FifCollectDirs(DiskDir, DiskMasks, SubDirs, List, Cancel);
 
     EnsureMatchForm;
     FMatchPattern := S;
@@ -17408,8 +17425,13 @@ begin
   if Note <> '' then
     FMatchForm.Caption := FMatchForm.Caption + ' - ' + Note;
   if cmbScope.ItemIndex = 3 then
-    FMatchForm.Caption := FMatchForm.Caption + ' - ' + DiskDir + ' ' +
-                          DiskMasks;
+    if Pos(';', DiskDir) > 0 then
+      FMatchForm.Caption := FMatchForm.Caption + ' - папок: ' +
+        IntToStr(Length(DiskDir) - Length(StringReplace(DiskDir, ';', '',
+        [rfReplaceAll])) + 1) + ' ' + DiskMasks
+    else
+      FMatchForm.Caption := FMatchForm.Caption + ' - ' + DiskDir + ' ' +
+                            DiskMasks;
 
   PlaceMatchForm;
   FMatchForm.Show;
@@ -17436,7 +17458,30 @@ begin
             ((GetAsyncKeyState(VK_ESCAPE) and $8000) <> 0);
 end;
 
-// Окно выбора папки и масок для поиска на диске. Значения прошлого поиска
+// Папки поиска на диске - строка через ";" (кнопка "..." подставляет все
+// отмеченные в Directory Tree). Пустые убираются, \ в конце - тоже.
+procedure FifSplitDirs(const AText: string; ADirs: TStrings);
+var
+  Rest, Item: string;
+  SemiAt: Integer;
+begin
+  ADirs.Clear;
+  Rest := AText;
+  while Rest <> '' do
+  begin
+    SemiAt := Pos(';', Rest);
+    if SemiAt = 0 then
+      SemiAt := Length(Rest) + 1;
+    Item := Trim(Copy(Rest, 1, SemiAt - 1));
+    Delete(Rest, 1, SemiAt);
+    if Length(Item) > 3 then
+      Item := ExcludeTrailingPathDelimiter(Item);
+    if Item <> '' then
+      ADirs.Add(Item);
+  end;
+end;
+
+// Окно выбора папок и масок для поиска на диске. Значения прошлого поиска
 // лежат в editor.ini, [FindInFiles].
 function TForm1.FifDiskDialog(var ADir, AMasks: string;
                               var ASubDirs: Boolean): Boolean;
@@ -17444,6 +17489,8 @@ var
   Dlg: TDlgFifDisk;
   Ini: TIniFile;
   D: string;
+  Dirs: TStringList;
+  DirIdx: Integer;
 begin
   Result := False;
 
@@ -17482,17 +17529,29 @@ begin
         begin
           // Directory Tree: дерево папок и список горячих папок
           D := Trim(Dlg.edDir.Text);
-          if HotFoldersDialog(D, 'Directory Tree - папка для поиска', True,
-                              D) then
-            Dlg.edDir.Text := ExcludeTrailingPathDelimiter(D);
+          if HotFoldersDialog(D, 'Directory Tree - отмеченные папки для ' +
+                              'поиска', True, D) then
+            Dlg.edDir.Text := D;
           Continue;
         end;
         mrOk:
         begin
-          D := Trim(Dlg.edDir.Text);
-          if not DirectoryExists(D) then
+          // Папки через ";" - каждая должна быть на диске
+          Dirs := TStringList.Create;
+          try
+            FifSplitDirs(Trim(Dlg.edDir.Text), Dirs);
+            D := '';
+            for DirIdx := 0 to Dirs.Count - 1 do
+              if not DirectoryExists(Dirs[DirIdx]) then
+                D := D + #13#10 + Dirs[DirIdx];
+            if Dirs.Count = 0 then
+              D := #13#10 + '(папка не указана)';
+          finally
+            Dirs.Free;
+          end;
+          if D <> '' then
           begin
-            ShowMessage('12274:Папка не найдена:'#13#10 + D);
+            ShowMessage('12274:Папка не найдена:' + D);
             Continue;
           end;
           Break;
@@ -17502,7 +17561,19 @@ begin
       end;
     until False;
 
-    ADir := ExcludeTrailingPathDelimiter(Trim(Dlg.edDir.Text));
+    Dirs := TStringList.Create;
+    try
+      FifSplitDirs(Trim(Dlg.edDir.Text), Dirs);
+      ADir := '';
+      for DirIdx := 0 to Dirs.Count - 1 do
+      begin
+        if ADir <> '' then
+          ADir := ADir + ';';
+        ADir := ADir + Dirs[DirIdx];
+      end;
+    finally
+      Dirs.Free;
+    end;
     AMasks := Trim(Dlg.edMask.Text);
     if AMasks = '' then
       AMasks := '*.*';
@@ -17528,6 +17599,47 @@ procedure TForm1.FifCollectDir(const ADir, AMasks: string; ASubDirs: Boolean;
                                AList: TStrings; var ACancel: Boolean);
 begin
   FifCollectFiles(ADir, AMasks, ASubDirs, AList, ACancel, FifProgress);
+end;
+
+// Несколько папок через ";" (FifSplitDirs). Папка внутри другой
+// отмеченной даёт те же файлы ещё раз - повторы убираются, порядок
+// остаётся
+procedure TForm1.FifCollectDirs(const ADirs, AMasks: string;
+                                ASubDirs: Boolean; AList: TStrings;
+                                var ACancel: Boolean);
+var
+  Dirs, Seen: TStringList;
+  DirIdx, FileIdx, Found: Integer;
+begin
+  Dirs := TStringList.Create;
+  Seen := TStringList.Create;
+  try
+    FifSplitDirs(ADirs, Dirs);
+    for DirIdx := 0 to Dirs.Count - 1 do
+    begin
+      FifCollectDir(IncludeTrailingPathDelimiter(Dirs[DirIdx]), AMasks,
+                    ASubDirs, AList, ACancel);
+      if ACancel then
+        Break;
+    end;
+    if Dirs.Count > 1 then
+    begin
+      // первое вхождение каждого имени остаётся
+      Seen.Sorted := True;
+      FileIdx := 0;
+      while FileIdx < AList.Count do
+        if Seen.Find(AnsiLowerCase(AList[FileIdx]), Found) then
+          AList.Delete(FileIdx)
+        else
+        begin
+          Seen.Add(AnsiLowerCase(AList[FileIdx]));
+          Inc(FileIdx);
+        end;
+    end;
+  finally
+    Seen.Free;
+    Dirs.Free;
+  end;
 end;
 
 // Ход обхода: папка и сколько файлов подошло под маски - в окно хода

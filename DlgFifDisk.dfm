@@ -20,7 +20,7 @@ object DlgFifDisk: TDlgFifDisk
     Top = 16
     Width = 60
     Height = 18
-    Caption = 'Папка'
+    Caption = 'Папки'
   end
   object lblMask: TLabel
     Left = 12
