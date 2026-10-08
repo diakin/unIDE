@@ -2566,6 +2566,8 @@ type
     function  ViewWidth: Integer;
     procedure UpdateScrollBars;
     procedure FitEditRect(AVisLines: Integer);
+    function  EditViewHeight: Integer;
+    procedure EditHostResize(Sender: TObject);
     procedure SetScrollX(AValue: Integer);
     procedure SetHScrollVisible(AVisible: Boolean);
     function  LineAtY(AY: Integer): Integer;
@@ -19891,6 +19893,10 @@ begin
   FVScroll.Width := GetSystemMetrics(SM_CXVSCROLL);
   FVScroll.OnChange := VScrollChange;
 
+  // Сплиттер лога и рамка окна меняют высоту панели редактора - пересчёт
+  // полосы и области текста RichEdit, см. EditHostResize
+  FEditHost.OnResize := EditHostResize;
+
   LayoutScrollBars;
 end;
 
@@ -21890,7 +21896,7 @@ begin
   // поставил бы EM_SCROLLCARET
   VisLines := 1;
   if LineHeight > 0 then
-    VisLines := RichEdit1.ClientHeight div LineHeight;
+    VisLines := EditViewHeight div LineHeight;
   Target := FSubs[K].BeginLine - VisLines div 2;
   if Target < 0 then
     Target := 0;
@@ -35758,7 +35764,7 @@ begin
     // --- вертикаль: считаем в СТРОКАХ, их число контрол отдаёт мгновенно
     Lines := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
     if LineHeight > 0 then
-      VisLines := RichEdit1.ClientHeight div LineHeight
+      VisLines := EditViewHeight div LineHeight
     else
       VisLines := 1;
     if VisLines < 1 then
@@ -35814,6 +35820,53 @@ begin
   end;
 end;
 
+// Высота видимой части редактора, пиксели.
+//
+// RichEdit1 лежит на панели FEditHost, и видно только то, что внутри
+// панели. Окно редактора может оказаться выше панели - тогда низ окна
+// обрезан, и считать видимые строки по RichEdit1.ClientHeight нельзя:
+// полоса и RichEdit решат, что на экране строк больше, чем есть.
+function TForm1.EditViewHeight: Integer;
+var
+  HostHeight: Integer;
+begin
+  Result := RichEdit1.ClientHeight;
+  if (FEditHost <> nil) and (RichEdit1.Parent = FEditHost) then
+  begin
+    HostHeight := FEditHost.ClientHeight - RichEdit1.Top;
+    if HostHeight < Result then
+      Result := HostHeight;
+  end;
+  if Result < 0 then
+    Result := 0;
+end;
+
+// Панель редактора сменила размер (сплиттер лога, рамка окна).
+//
+// У класса окна RichEdit нет CS_VREDRAW: при уменьшении высоты кадр не
+// перерисовывается, а UpdateScrollBars зовётся только в конце кадра, и
+// полоса с областью текста RichEdit могли остаться по прежней высоте.
+// Здесь их пересчитываем сразу и заказываем кадр.
+//
+// Если окно редактора по высоте не совпало с панелью (выравнивание alLeft
+// должно было это сделать), в HiLite log пишется строка с размерами.
+procedure TForm1.EditHostResize(Sender: TObject);
+var
+  HostHeight: Integer;
+begin
+  if (FEditHost = nil) or (RichEdit1.Parent <> FEditHost) or
+     not RichEdit1.HandleAllocated then
+    Exit;
+  HostHeight := FEditHost.ClientHeight - RichEdit1.Top;
+  if (HostHeight > 0) and (RichEdit1.Height <> HostHeight) then
+    LogDiag(Format('Редактор по высоте не совпал с панелью: окно %d ' +
+      '(клиент %d), панель %d, Top %d, Align %d',
+      [RichEdit1.Height, RichEdit1.ClientHeight, FEditHost.ClientHeight,
+       RichEdit1.Top, Ord(RichEdit1.Align)]));
+  UpdateScrollBars;
+  InvalidateRect(RichEdit1.Handle, nil, False);
+end;
+
 // Область текста RichEdit (EM_GETRECT) - на AVisLines строк.
 //
 // Прокрутку вниз (колесо - EM_LINESCROLL, полоса, клавиши) ограничивает
@@ -35824,8 +35877,8 @@ end;
 // строки файла остаются ниже видимой части (ConvertToTruePath.inc: первая
 // видимая не дальше 13-й из 40 при 23 видимых). Нижний край области - на
 // AVisLines строк по шагу строк самого RichEdit (EM_POSFROMCHAR двух
-// соседних строк), не ниже окна. Верх и ширина области не меняются: клик
-// мышью и каретка считаются от верха, как раньше.
+// соседних строк), не ниже видимой части (EditViewHeight). Верх и ширина
+// области не меняются: клик мышью и каретка считаются от верха, как раньше.
 //
 // Новое значение пишется в HiLite log, если область уменьшилась больше,
 // чем на строку: по нему видно, сколько строк RichEdit считал видимыми.
@@ -35853,14 +35906,14 @@ begin
 
   SendMessageA(RichEdit1.Handle, EM_GETRECT, 0, Integer(@TextRect));
   WantBottom := TextRect.Top + AVisLines * RichPitch;
-  if WantBottom > RichEdit1.ClientHeight then
-    WantBottom := RichEdit1.ClientHeight;
+  if WantBottom > EditViewHeight then
+    WantBottom := EditViewHeight;
   if (WantBottom <= TextRect.Top) or (TextRect.Bottom = WantBottom) then
     Exit;
   if TextRect.Bottom - WantBottom > RichPitch then
     LogDiag(Format('Область текста редактора: низ %d -> %d (окно %d, ' +
       'видно строк %d, LineHeight %d, шаг строк RichEdit %d)',
-      [TextRect.Bottom, WantBottom, RichEdit1.ClientHeight, AVisLines,
+      [TextRect.Bottom, WantBottom, EditViewHeight, AVisLines,
        LineHeight, RichPitch]));
   TextRect.Bottom := WantBottom;
   // Без перерисовки: кадр рисуем мы, а этот вызов идёт из его конца
