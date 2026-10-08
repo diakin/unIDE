@@ -896,6 +896,7 @@ type
     // любой колонке строки с формой открывает форму в конструкторе, как в
     // Delphi (ProjectListDblClick). View Unit - по колонкам, как было.
     FModFormsMode: Boolean;
+    FModHintItem: TListItem;  // строка, для которой показана подсказка
 
     // Пункты контекстного меню
     // Как в меню редактора RQdebugger: отладочная строка, очистка, регистр
@@ -2773,6 +2774,8 @@ type
                              ACols: string): Boolean;
     procedure FillModuleList;
     procedure ProjectListDblClick(Sender: TObject);
+    procedure ProjectListMouseMove(Sender: TObject; Shift: TShiftState;
+                                   X, Y: Integer);
     procedure ProjectListSelect(Sender: TObject; Item: TListItem;
                                 Change: TItemChange);
     procedure mWindowsClick(Sender: TObject);
@@ -46513,6 +46516,8 @@ begin
   AForm.Caption := ACaption;
   ALV.OnDblClick := ProjectListDblClick;
   ALV.OnChange := ProjectListSelect;
+  ALV.OnMouseMove := ProjectListMouseMove;
+  ALV.ShowHint := True;
 
   Rest := ACols;
   while Rest <> '' do
@@ -46545,15 +46550,13 @@ begin
 end;
 
 // Модули и формы проекта - один список. Колонки (см. ShowModulesClick):
-// модуль, тип, файл формы, размер модуля, размер формы, дата модуля, дата
-// формы, проект; дальше две скрытые - путь к форме и путь к модулю (им
-// пользуются подпись внизу окна и двойной щелчок). Форма у модуля есть,
-// если она указана в .dpr ({Form1}) или рядом с модулем лежит .dfm.
-// Тип модуля с формой - "Unit (FormIzm1)": имя формы из .dpr, а если там
-// его нет - из первой строки .dfm.
+// модуль и форма - "UnitIzm1.dfm (FormIzm1)"; дальше две скрытые - путь к
+// форме и путь к модулю (им пользуются подпись внизу окна, двойной щелчок
+// и подсказка с размерами и датами файлов - ProjectListMouseMove). Форма
+// у модуля есть, если она указана в .dpr ({Form1}) или рядом с модулем
+// лежит .dfm. Имя формы - из .dpr, а если там его нет - из первой строки
+// .dfm.
 procedure TForm1.FillModuleList;
-const
-  DateFmt = 'yyyy-mm-dd hh:nn:ss';
 var
   Units: TStringList;
   Dpr, Dir, PrjName, Rec, UnitNm, FileNm, FormNm, FormCls, Full, Tp,
@@ -46561,22 +46564,6 @@ var
   I, P, FormTotal: Integer;
   HasForm: Boolean;
   It: TListItem;
-
-  function SizeText(const AFile: string): string;
-  begin
-    if FileExists(AFile) then
-      Result := IntToStr(FileSizeOf(AFile))
-    else
-      Result := 'файла нет';
-  end;
-
-  function DateText(const AFile: string): string;
-  begin
-    if FileExists(AFile) then
-      Result := FormatDateTime(DateFmt, FileDateToDateTime(FileAge(AFile)))
-    else
-      Result := 'файла нет';
-  end;
 
 // Имя формы из начала .dfm. Текстовый: "object FormIzm1: TFormIzm1"
 // (или inherited). Двоичный: 'TPF0', байт флагов (если старшие четыре
@@ -46630,9 +46617,10 @@ var
 
   // Проект RapidQ (цель - .bas): модули - сам .bas и файлы $INCLUDE из его
   // папки (библиотечные, из IncPath, не показываются), формы - блоки
-  // CREATE ... AS QFORM (и классов от QFORM) в каждом из них. Строка на
-  // форму; у файла без форм - одна строка. Скрытая колонка формы -
-  // "rqform:" + имя формы (ProjectListDblClick).
+  // CREATE ... AS QFORM (и классов от QFORM) в каждом из них, в колонке
+  // формы - "Form1 (QFORM)". Строка на форму; у файла без форм - одна
+  // строка. Скрытая колонка формы - "rqform:" + имя формы
+  // (ProjectListDblClick).
   procedure FillRapidQ(const AMain: string);
   const
     MaxFiles = 200;
@@ -46640,23 +46628,17 @@ var
     Files, Lines: TStringList;
     Nodes, Roots: TList;
     Ini: TIniFile;
-    MainDir, IncDir, FileText, IncName, IncFull, ModName, KindText: string;
+    MainDir, IncDir, FileText, IncName, IncFull: string;
     FileIdx, LineIdx, NodeIdx, FormCount: Integer;
     FormNode: TDfmNode;
 
-    procedure AddRow(const AFile, AType, AForm, AMarker: string);
+    procedure AddRow(const AFile, AForm, AMarker: string);
     var
       Row: TListItem;
     begin
       Row := FModLV.Items.Add;
       Row.Caption := ChangeFileExt(ExtractFileName(AFile), '');
-      Row.SubItems.Add(AType);
       Row.SubItems.Add(AForm);
-      Row.SubItems.Add(SizeText(AFile));
-      Row.SubItems.Add('');
-      Row.SubItems.Add(DateText(AFile));
-      Row.SubItems.Add('');
-      Row.SubItems.Add(PrjName);
       Row.SubItems.Add(AMarker);
       Row.SubItems.Add(AFile);
     end;
@@ -46710,10 +46692,6 @@ var
               Files.Add(IncFull);
           end;
 
-        if FileIdx = 0 then
-          ModName := 'Project'
-        else
-          ModName := 'Include';
         FormCount := 0;
         RapidQCreateNodes(Lines, Nodes, Roots);
         try
@@ -46724,10 +46702,8 @@ var
                not RqDsgNameOk(FormNode.Name) then
               Continue;
             Inc(FormCount);
-            KindText := ModName + ' (' + FormNode.Name + ': ' +
-                        FormNode.ClassNm + ')';
-            AddRow(Files[FileIdx], KindText, FormNode.Name,
-                   'rqform:' + FormNode.Name);
+            AddRow(Files[FileIdx], FormNode.Name + ' (' + FormNode.ClassNm +
+                   ')', 'rqform:' + FormNode.Name);
           end;
         finally
           for NodeIdx := 0 to Nodes.Count - 1 do
@@ -46736,7 +46712,7 @@ var
           Roots.Clear;
         end;
         if FormCount = 0 then
-          AddRow(Files[FileIdx], ModName, '', '');
+          AddRow(Files[FileIdx], '', '');
         Inc(FormTotal, FormCount);
         Inc(FileIdx);
       end;
@@ -46788,13 +46764,7 @@ begin
       // него нет.
       It := FModLV.Items.Add;
       It.Caption := ChangeFileExt(PrjName, '');
-      It.SubItems.Add('Project');
       It.SubItems.Add('');
-      It.SubItems.Add(SizeText(Dpr));
-      It.SubItems.Add('');
-      It.SubItems.Add(DateText(Dpr));
-      It.SubItems.Add('');
-      It.SubItems.Add(PrjName);
       It.SubItems.Add('');
       It.SubItems.Add(Dpr);
 
@@ -46822,33 +46792,22 @@ begin
         else
           Dfm := '';
 
-        // Unit, Unit (FormIzm1), Unit (DataModule1: TDataModule)
+        // Форма: UnitIzm1.dfm (FormIzm1), Unit1.dfm (DataModule1:
+        // TDataModule)
         if FormNm = '' then
           FormNm := DfmFormName(Dfm);
         if not HasForm then
-          Tp := 'Unit'
+          Tp := ''
         else if FormNm = '' then
-          Tp := 'Unit (Form)'
+          Tp := ExtractFileName(Dfm)
         else if FormCls <> '' then
-          Tp := 'Unit (' + FormNm + ': ' + FormCls + ')'
+          Tp := ExtractFileName(Dfm) + ' (' + FormNm + ': ' + FormCls + ')'
         else
-          Tp := 'Unit (' + FormNm + ')';
+          Tp := ExtractFileName(Dfm) + ' (' + FormNm + ')';
 
         It := FModLV.Items.Add;
         It.Caption := UnitNm;
         It.SubItems.Add(Tp);
-        It.SubItems.Add(ExtractFileName(Dfm));
-        It.SubItems.Add(SizeText(Full));
-        if HasForm then
-          It.SubItems.Add(SizeText(Dfm))
-        else
-          It.SubItems.Add('');
-        It.SubItems.Add(DateText(Full));
-        if HasForm then
-          It.SubItems.Add(DateText(Dfm))
-        else
-          It.SubItems.Add('');
-        It.SubItems.Add(PrjName);
         It.SubItems.Add(Dfm);
         It.SubItems.Add(Full);
       end;
@@ -46865,15 +46824,16 @@ begin
 end;
 
 // View Unit и View Form - одно окно: модули и их формы в одном списке.
-// Последняя колонка без заголовка и ширины - путь к форме; путь к модулю
-// MakeListWindow добавляет скрытой колонкой сама.
+// Колонки - модуль и форма; размеры и даты файлов - в подсказке над
+// строкой (ProjectListMouseMove). Последняя колонка без заголовка и
+// ширины - путь к форме; путь к модулю MakeListWindow добавляет скрытой
+// колонкой сама.
 procedure TForm1.ShowModulesClick(Sender: TObject);
 begin
   FModFormsMode := False;
+  FModHintItem := nil;
   MakeListWindow(FModList, FModLV, FModPath, 'Модули и формы проекта',
-  'Модуль|130;Тип|150;Форма|120;Размер модуля|95;' +
-  'Размер формы|90;Дата модуля|130;Дата формы|130;' +
-  'Проект|150;|0');
+  'Модуль|200;Форма|380;|0');
                  FillModuleList;
                  FModList.Show;
                  FModList.BringToFront;
@@ -46887,6 +46847,54 @@ begin
   FModFormsMode := True;
   FModList.Caption := 'View Form: ' + FModList.Caption +
   '   - двойной щелчок открывает форму в конструкторе';
+end;
+
+// Размер и время изменения файла для подсказки списка модулей
+function ModFileInfo(const AFile: string): string;
+begin
+  if not FileExists(AFile) then
+    Result := 'файла нет'
+  else
+    Result := IntToStr(FileSizeOf(AFile)) + ' байт, изменён ' +
+              FormatDateTime('yyyy-mm-dd hh:nn:ss',
+                             FileDateToDateTime(FileAge(AFile)));
+end;
+
+// Подсказка над строкой списка модулей: размер и дата модуля и формы
+// (раньше - отдельные колонки). Пути - в двух скрытых колонках строки.
+// Строка под мышью сменилась - подсказка гасится и появится заново уже
+// с текстом новой строки
+procedure TForm1.ProjectListMouseMove(Sender: TObject; Shift: TShiftState;
+                                      X, Y: Integer);
+var
+  LV: TListView;
+  Item: TListItem;
+  Tip, FormRef, ModFile: string;
+  Count: Integer;
+begin
+  if not (Sender is TListView) then
+    Exit;
+  LV := TListView(Sender);
+  Item := LV.GetItemAt(X, Y);
+  if Item = FModHintItem then
+    Exit;
+  FModHintItem := Item;
+  Tip := '';
+  if (Item <> nil) and (Item.SubItems.Count >= 2) then
+  begin
+    Count := Item.SubItems.Count;
+    ModFile := Item.SubItems[Count - 1];
+    FormRef := Item.SubItems[Count - 2];
+    Tip := ExtractFileName(ModFile) + ': ' + ModFileInfo(ModFile);
+    if Copy(FormRef, 1, 7) = 'rqform:' then
+      Tip := Tip + #13#10 + 'Форма ' + Copy(FormRef, 8, MaxInt) +
+             ' - в том же файле'
+    else if FormRef <> '' then
+      Tip := Tip + #13#10 + ExtractFileName(FormRef) + ': ' +
+             ModFileInfo(FormRef);
+  end;
+  LV.Hint := Tip;
+  Application.CancelHint;
 end;
 
 // Путь выбранной строки - в подпись внизу окна, как в среде Delphi. У
@@ -46918,7 +46926,7 @@ begin
 end;
 
 // Двойной щелчок открывает файл строки: модуль (у первой строки - .dpr).
-// Щелчок по колонке формы - Форма, Размер формы, Дата формы, а в окне,
+// Щелчок по колонке Форма, а в окне,
 // открытом как View Form, - по любой колонке строки с формой - как View
 // Form в Delphi: модуль формы во вкладке и сама форма в конструкторе
 // (DesignFormClick; текст .dfm он открывает во вкладке рядом). Колонка -
@@ -46926,10 +46934,8 @@ end;
 procedure TForm1.ProjectListDblClick(Sender: TObject);
 const
   UiLVM_SUBITEMHITTEST = $1000 + 57;
-  // Номера колонок формы: 2 - Форма, 4 - Размер формы, 6 - Дата формы
-  ColForm = 2;
-  ColFormSize = 4;
-  ColFormDate = 6;
+  // Номер колонки Форма
+  ColForm = 1;
 type
   // LVHITTESTINFO (commctrl.h) - своё описание, чтобы не подключать
   // CommCtrl. Group - поле новых версий Windows, здесь только запас.
@@ -46962,8 +46968,7 @@ begin
   SendMessage(LV.Handle, UiLVM_SUBITEMHITTEST, 0, Integer(@Hit));
   // Колонка формы - или окно открыто как View Form: тогда любая колонка
   // строки с формой
-  if (FModFormsMode or (Hit.SubItem = ColForm) or
-      (Hit.SubItem = ColFormSize) or (Hit.SubItem = ColFormDate)) and
+  if (FModFormsMode or (Hit.SubItem = ColForm)) and
      (LV.Selected.SubItems[N - 2] <> '') then
   begin
     Dfm := LV.Selected.SubItems[N - 2];
