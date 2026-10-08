@@ -1892,6 +1892,9 @@ type
 
     // Горячие папки и поиск потерянных файлов
     procedure ShowHotFolders(const APreselect: string);
+    function  HotFoldersDialog(const APreselect, ACaption: string;
+                               APick: Boolean; var ADir: string): Boolean;
+    procedure HfListClick(Sender: TObject);
     procedure HfSelectPath(const APath: string);
     function  ParentOfExeDir: string;
     function  SuggestDir: string;
@@ -1922,7 +1925,8 @@ type
     // Поиск в файлах
     function  FifDiskDialog(var ADir, AMasks: string;
                             var ASubDirs: Boolean): Boolean;
-    procedure FifProgress(ACount: Integer; var ACancel: Boolean);
+    procedure FifProgress(const ADir: string; ACount: Integer;
+                          var ACancel: Boolean);
     procedure FifCollectDir(const ADir, AMasks: string; ASubDirs: Boolean;
                             AList: TStrings; var ACancel: Boolean);
     function  FifProjectFiles(AList: TStrings; var ANote: string): Boolean;
@@ -11893,20 +11897,38 @@ begin
   FHfList.ItemIndex := I;
 end;
 
-// Открывает список горячих папок.
+// Открывает список горячих папок (Directory Tree).
 //
 // APreselect - папка, которую надо показать сразу: она добавляется в список
 // справа с уже поставленной галочкой и раскрывается в дереве слева. Так после
 // неудачного поиска пользователю не приходится искать её руками.
 procedure TForm1.ShowHotFolders(const APreselect: string);
 var
+  Dummy: string;
+begin
+  HotFoldersDialog(APreselect, '', False, Dummy);
+end;
+
+// Окно Directory Tree. APick = False - список горячих папок (ShowHotFolders).
+// APick = True - выбор папки (Find In Files на диске, кнопка "..."):
+// APreselect раскрывается в дереве, но в список не добавляется; OK
+// возвращает в ADir папку из строки над деревом - выбранную в дереве или
+// щелчком в списке. Список горячих папок по OK записывается в обоих
+// случаях. ACaption - заголовок окна ('' - из .dfm).
+function TForm1.HotFoldersDialog(const APreselect, ACaption: string;
+                                 APick: Boolean; var ADir: string): Boolean;
+var
   Dlg: TDlgHotFolders;
   I, K: Integer;
+  Picked: string;
 begin
+  Result := False;
   // Окно описано в DlgHotFolders.dfm; здесь - обработчики, заполнение и
   // сохранение списка
   Dlg := TDlgHotFolders.Create(Self);
   try
+    if ACaption <> '' then
+      Dlg.Caption := ACaption;
     FHfPath := Dlg.pnlPath;
     FHfTree := Dlg.tvFolders;
     FHfList := Dlg.lstFolders;
@@ -11915,6 +11937,7 @@ begin
     FHfTree.OnExpanding := HfTreeExpanding;
     FHfTree.OnChange := HfTreeChange;
     FHfTree.OnDblClick := HfTreeDblClick;
+    FHfList.OnClick := HfListClick;
 
     HfFillDrives;
 
@@ -11926,9 +11949,18 @@ begin
         FHfList.Checked[I] := FHotFolders.Objects[I] <> nil;
       end;
 
+    if APick then
+    begin
+      // Выбор папки: стартовая - только в дереве и в строке пути
+      if APreselect <> '' then
+      begin
+        HfSelectPath(APreselect);
+        FHfPath.Caption := '  ' + IncludeTrailingPathDelimiter(APreselect);
+      end;
+    end
     // Подсказанная папка: в списке она должна быть отмечена, а в дереве -
     // раскрыта, чтобы сразу было видно, о каком месте речь
-    if APreselect <> '' then
+    else if APreselect <> '' then
     begin
       I := -1;
       for K := 0 to FHfList.Items.Count - 1 do
@@ -11949,6 +11981,15 @@ begin
     if Dlg.ShowModal <> mrOk then
       Exit;
 
+    Picked := Trim(FHfPath.Caption);
+    if APick and ((Picked = '') or not DirectoryExists(Picked)) then
+    begin
+      ShowMessage('Папка не выбрана или её нет: ' + Picked);
+      Exit;
+    end;
+    ADir := Picked;
+    Result := True;
+
     // Забираем обратно. Objects хранит только признак галочки, поэтому
     // кладём туда Self - любое ненулевое значение.
     if FHotFolders = nil then
@@ -11968,6 +12009,13 @@ begin
     FHfPath := nil;
     Dlg.Free;
   end;
+end;
+
+// Щелчок по папке в списке - она в строке пути (её вернёт выбор папки)
+procedure TForm1.HfListClick(Sender: TObject);
+begin
+  if (FHfPath <> nil) and (FHfList <> nil) and (FHfList.ItemIndex >= 0) then
+    FHfPath.Caption := '  ' + FHfList.Items[FHfList.ItemIndex];
 end;
 
 // Пункт меню Search folders... - тот же список, но без подсказанной папки
@@ -16264,6 +16312,8 @@ begin
     FProgLabel := Dlg.lblStage;
     FProgBar := Dlg.barProgress;
     Dlg.btnStop.OnClick := ProgAbortClick;
+    // шрифт подписи - для MinimizeName (длинный путь в одну строку)
+    FProgForm.Canvas.Font.Assign(FProgLabel.Font);
   end;
 
   FProgForm.Caption := ACaption;
@@ -17272,6 +17322,11 @@ begin
 
   List := TStringList.Create;
   Screen.Cursor := crHourGlass;
+  // Проект и диск: окно хода поиска - папка или файл, счётчики, Стоп
+  if cmbScope.ItemIndex = 2 then
+    ProgressStart('Find In Files - файлы проекта')
+  else if cmbScope.ItemIndex = 3 then
+    ProgressStart('Find In Files - на диске');
   try
     // Список файлов для областей 2 и 3 - до окна результатов: проекта
     // может не быть, и пустой список показывать незачем
@@ -17280,6 +17335,7 @@ begin
       if not FifProjectFiles(List, Note) then
       begin
         Screen.Cursor := crDefault;
+        ProgressStop;
         ShowMessage('12071:Проект не открыт.');
         Exit;
       end;
@@ -17334,6 +17390,8 @@ begin
     end;
   finally
     Screen.Cursor := crDefault;
+    if (cmbScope.ItemIndex = 2) or (cmbScope.ItemIndex = 3) then
+      ProgressStop;
     List.Free;
     RefreshStatusBar;
   end;
@@ -17365,7 +17423,9 @@ end;
 //  есть, в кодировке Windows: UTF-8 не перекодируется, русский образец в
 //  файле UTF-8 не найдётся.
 //  Пропускаются: файлы больше 32 МБ и двоичные (нулевой байт в первых 4 КБ).
-//  Esc во время поиска прерывает его; найденное к этому моменту
+//  Во время поиска открыто окно хода (ProgressStart): папка или файл,
+//  которые сейчас просматриваются, сколько файлов проверено и сколько
+//  найдено. Стоп в нём или Esc прерывает поиск; найденное к этому моменту
 //  показывается.
 // ---------------------------------------------------------------------------
 
@@ -17420,9 +17480,11 @@ begin
       case Dlg.ShowModal of
         mrRetry:
         begin
+          // Directory Tree: дерево папок и список горячих папок
           D := Trim(Dlg.edDir.Text);
-          if PickFolderDialog('Папка для поиска', D, D) then
-            Dlg.edDir.Text := D;
+          if HotFoldersDialog(D, 'Directory Tree - папка для поиска', True,
+                              D) then
+            Dlg.edDir.Text := ExcludeTrailingPathDelimiter(D);
           Continue;
         end;
         mrOk:
@@ -17468,17 +17530,21 @@ begin
   FifCollectFiles(ADir, AMasks, ASubDirs, AList, ACancel, FifProgress);
 end;
 
-// Ход обхода: сколько файлов найдено; Esc - прервать
-procedure TForm1.FifProgress(ACount: Integer; var ACancel: Boolean);
+// Ход обхода: папка и сколько файлов подошло под маски - в окно хода
+// (не чаще раза в 100 мс); Стоп или Esc - прервать
+procedure TForm1.FifProgress(const ADir: string; ACount: Integer;
+                             var ACancel: Boolean);
 begin
-  if FifEscPressed then
+  if FifEscPressed or FProgAbort then
     ACancel := True;
-  if StatusBar1.Panels.Count > 0 then
-  begin
-    StatusBar1.Panels[0].Text := 'Файлов: ' + IntToStr(ACount) +
-    '  (Esc - прервать)';
-StatusBar1.Update;
-  end;
+  if ACancel or (FProgForm = nil) or not FProgForm.Visible then
+    Exit;
+  if GetTickCount - FProgLastTick < 100 then
+    Exit;
+  if not ProgressStep(0, 0, 'Папка: ' +
+                      MinimizeName(ADir, FProgForm.Canvas, FProgLabel.Width) +
+                      #13#10'Найдено файлов по маскам: ' + IntToStr(ACount)) then
+    ACancel := True;
 end;
 
 // Все файлы текущего проекта. False - проект не открыт.
@@ -17621,21 +17687,24 @@ begin
 
     for I := 0 to AList.Count - 1 do
     begin
-      if (I mod 20 = 0) then
+      if (I mod 20 = 0) and (FifEscPressed or FProgAbort) then
       begin
-        if FifEscPressed then
+        ACancel := True;
+        Exit;
+      end;
+      // Окно хода: текущий файл и счётчики. Текст собирается, только когда
+      // его пора показать (ProgressStep - не чаще раза в 100 мс)
+      if (FProgForm <> nil) and FProgForm.Visible and
+         (GetTickCount - FProgLastTick >= 100) then
+        if not ProgressStep(I, AList.Count, 'Файл: ' +
+             MinimizeName(AList[I], FProgForm.Canvas, FProgLabel.Width) +
+             #13#10'Проверено файлов: ' + IntToStr(I) + ' из ' +
+             IntToStr(AList.Count) + #13#10'Найдено: ' + IntToStr(ATotal) +
+             ' совпадений в ' + IntToStr(AFiles) + ' файлах') then
         begin
           ACancel := True;
           Exit;
         end;
-        if StatusBar1.Panels.Count > 0 then
-        begin
-          StatusBar1.Panels[0].Text := 'Поиск: ' + IntToStr(I) + ' из ' +
-                                       IntToStr(AList.Count) +
-          '  (Esc - прервать)';
-StatusBar1.Update;
-        end;
-      end;
 
       W := -1;
       if Open.Find(ExpandFileName(AList[I]), K) then

@@ -20,8 +20,10 @@ const
   FifMaxHits = 50000;   // дальше грид результатов становится бесполезен
 
 type
-  // Ход обхода: сколько файлов найдено; ACancel := True - прервать
-  TFifProgress = procedure(ACount: Integer; var ACancel: Boolean) of object;
+  // Ход обхода: папка, которую сейчас просматривают, и сколько файлов
+  // найдено; ACancel := True - прервать
+  TFifProgress = procedure(const ADir: string; ACount: Integer;
+                           var ACancel: Boolean) of object;
 
 // Подходит ли имя под одну из масок через ';' (*.pas;*.dpr)
 function FifMatchMasks(const AName, AMasks: string): Boolean;
@@ -116,7 +118,7 @@ begin
     Exit;
   // Перед папкой - спросить, не прервали ли (Esc)
   if Assigned(AProgress) then
-    AProgress(AList.Count, ACancel);
+    AProgress(ADir, AList.Count, ACancel);
   if ACancel then
     Exit;
 
@@ -143,7 +145,7 @@ begin
 
     // После папки - сколько найдено (строка состояния у вызывающего)
     if Assigned(AProgress) then
-      AProgress(AList.Count, ACancel);
+      AProgress(ADir, AList.Count, ACancel);
     if ACancel then
       Exit;
 
