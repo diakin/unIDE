@@ -5,8 +5,9 @@ unit DlgListWnd;
 //
 // Окно описано в DlgListWnd.dfm и правится в конструкторе форм.
 // Колонки, заголовок и обработчики списка (ProjectListSelect,
-// ProjectListDblClick) выставляет TForm1.MakeListWindow, строки
-// заполняет TForm1.FillModuleList (Unit1).
+// ProjectListDblClick, ProjectListMouseMove) выставляет
+// TForm1.MakeListWindow, строки заполняет TForm1.FillModuleList (Unit1).
+// Справа - превью формы строки под мышью (imgPreview, ModPreviewTick).
 //
 // Форма создаётся по месту, в .dpr её автосоздания нет.
 
@@ -14,13 +15,17 @@ interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
-  StdCtrls, ComCtrls,
+  StdCtrls, ComCtrls, ExtCtrls,
   UiComCtrls;   // TUiListView
 
 type
   TDlgListWnd = class(TForm)
     lvList: TUiListView;
     lblPath: TLabel;
+    pnlPreview: TPanel;
+    imgPreview: TImage;
+    lblPreview: TLabel;
+    splPreview: TSplitter;
   private
     // $0128 - WM_UPDATEUISTATE, в Messages.pas Delphi 7 этой константы нет
     procedure WMUpdateUIState(var Message: TMessage); message $0128;

@@ -897,6 +897,12 @@ type
     // Delphi (ProjectListDblClick). View Unit - по колонкам, как было.
     FModFormsMode: Boolean;
     FModHintItem: TListItem;  // строка, для которой показана подсказка
+    FModPreview: TImage;      // превью формы справа в окне модулей
+    FModPreviewNote: TLabel;  // подпись под превью
+    FModPreviewTimer: TTimer; // задержка перед построением превью
+    FModPreviewItem: TListItem; // строка, чьё превью ждёт таймера
+    FModPreviewShown: string; // файл формы, чьё превью сейчас показано
+    FModPreviewCache: TStringList; // файл|время|размер|ширина|высота -> TBitmap
     FModDpr: string;          // .dpr (.bas), по которому заполнен список
     FModDprStamp: string;     // его время и размер при заполнении
 
@@ -2778,6 +2784,9 @@ type
     procedure FillModuleListOf(const ADpr: string);
     procedure ModListCheckDpr;
     procedure ProjectListDblClick(Sender: TObject);
+    procedure ModPreviewSchedule(AItem: TListItem);
+    procedure ModPreviewTick(Sender: TObject);
+    procedure ModPreviewFreeCache;
     procedure ProjectListMouseMove(Sender: TObject; Shift: TShiftState;
                                    X, Y: Integer);
     procedure ProjectListSelect(Sender: TObject; Item: TListItem;
@@ -3126,6 +3135,7 @@ var
     RqToFb,       // перевод RapidQ -> FreeBASIC (RqLcl\tofb)
     RqHelp,       // справка RapidQ: rapidq_ref\help\rapidq.chm, html_doc
     IniTidy,      // Tidy editor.ini: editorNew.ini, editorN.ini, editorOLD.ini
+    FormPreview,  // превью формы по .dfm - список модулей и форм
     RqComponents, // описание компонентов RapidQ (Component.data)
     RqDesign,     // конструктор форм RapidQ: заглушки компонентов
     TextMerge,    // слияние трёх версий текста (файл изменён снаружи)
@@ -19664,6 +19674,8 @@ begin
   SaveSettings;
   FRecentFiles.Free;
   FHotFolders.Free;
+  ModPreviewFreeCache;
+  FreeAndNil(FModPreviewCache);
   FBrokenGlyph.Free;
 
   for I := 0 to High(FScheme.KeywordGroups) do
@@ -46540,6 +46552,8 @@ begin
   ALV.OnChange := ProjectListSelect;
   ALV.OnMouseMove := ProjectListMouseMove;
   ALV.ShowHint := True;
+  FModPreview := Wnd.imgPreview;
+  FModPreviewNote := Wnd.lblPreview;
 
   Rest := ACols;
   while Rest <> '' do
@@ -46754,6 +46768,8 @@ begin
   FModDpr := Dpr;
   FModDprStamp := ModFileStamp(Dpr);
   FModHintItem := nil;
+  FModPreviewItem := nil;
+  FModPreviewShown := '';
 
   Dir := ExtractFilePath(Dpr);
   PrjName := ExtractFileName(Dpr);
@@ -46969,6 +46985,125 @@ begin
   end;
   LV.Hint := Tip;
   Application.CancelHint;
+  ModPreviewSchedule(Item);
+end;
+
+// Превью формы строки - не сразу: построение формы занимает время, и при
+// быстром движении мыши по списку строились бы все формы подряд. Через
+// 250 мс после того, как строка под мышью перестала меняться
+// (ModPreviewTick). Строка без формы - превью сразу убирается.
+procedure TForm1.ModPreviewSchedule(AItem: TListItem);
+begin
+  if FModPreview = nil then
+    Exit;
+  if FModPreviewTimer = nil then
+  begin
+    FModPreviewTimer := TTimer.Create(Self);
+    FModPreviewTimer.Enabled := False;
+    FModPreviewTimer.Interval := 250;
+    FModPreviewTimer.OnTimer := ModPreviewTick;
+  end;
+  FModPreviewTimer.Enabled := False;
+  if AItem = nil then
+    Exit;    // мышь ушла со строк - остаётся последнее превью
+  FModPreviewItem := AItem;
+  FModPreviewTimer.Enabled := True;
+end;
+
+// Превью формы строки FModPreviewItem: форма строится из .dfm невидимой и
+// рисуется в картинку (FormPreviewMake). Готовые картинки хранятся по
+// файлу, его времени и размеру и размеру места: повторное наведение - без
+// построения, изменённый .dfm - построится заново.
+procedure TForm1.ModPreviewTick(Sender: TObject);
+const
+  MaxCache = 60;
+var
+  Item: TListItem;
+  FormRef, Key, Err: string;
+  CacheIdx, Count: Integer;
+  Bmp: TBitmap;
+begin
+  FModPreviewTimer.Enabled := False;
+  if (FModPreview = nil) or (FModLV = nil) or (FModPreviewItem = nil) then
+    Exit;
+  Item := FModPreviewItem;
+  FModPreviewItem := nil;
+  // строку могли убрать (список перестроен)
+  if FModLV.Items.IndexOf(Item) < 0 then
+    Exit;
+  Count := Item.SubItems.Count;
+  if Count < 2 then
+    Exit;
+  FormRef := Item.SubItems[Count - 2];
+  if FormRef = FModPreviewShown then
+    Exit;
+  FModPreviewShown := FormRef;
+  if FormRef = '' then
+  begin
+    FModPreview.Picture.Assign(nil);
+    FModPreviewNote.Caption := 'у модуля нет формы';
+    Exit;
+  end;
+  if Copy(FormRef, 1, 7) = 'rqform:' then
+  begin
+    FModPreview.Picture.Assign(nil);
+    FModPreviewNote.Caption := 'превью форм RapidQ пока нет';
+    Exit;
+  end;
+  if not FileExists(FormRef) then
+  begin
+    FModPreview.Picture.Assign(nil);
+    FModPreviewNote.Caption := 'файла формы нет';
+    Exit;
+  end;
+
+  if FModPreviewCache = nil then
+  begin
+    FModPreviewCache := TStringList.Create;
+    FModPreviewCache.Sorted := True;
+  end;
+  Key := AnsiLowerCase(FormRef) + '|' + ModFileStamp(FormRef) + '|' +
+         IntToStr(FModPreview.Width) + '|' + IntToStr(FModPreview.Height);
+  CacheIdx := FModPreviewCache.IndexOf(Key);
+  if CacheIdx >= 0 then
+  begin
+    FModPreview.Picture.Assign(TBitmap(FModPreviewCache.Objects[CacheIdx]));
+    FModPreviewNote.Caption := ExtractFileName(FormRef);
+    Exit;
+  end;
+
+  Bmp := TBitmap.Create;
+  Screen.Cursor := crHourGlass;
+  try
+    if not FormPreviewMake(FormRef, FModPreview.Width - 8,
+                           FModPreview.Height - 8, DsgMapClass, Bmp,
+                           Err) then
+    begin
+      Bmp.Free;
+      FModPreview.Picture.Assign(nil);
+      FModPreviewNote.Caption := 'превью не построено: ' + Err;
+      Exit;
+    end;
+  finally
+    Screen.Cursor := crDefault;
+  end;
+  // старые картинки - вон, чтобы кэш не рос без конца
+  if FModPreviewCache.Count >= MaxCache then
+    ModPreviewFreeCache;
+  FModPreviewCache.AddObject(Key, Bmp);
+  FModPreview.Picture.Assign(Bmp);
+  FModPreviewNote.Caption := ExtractFileName(FormRef);
+end;
+
+procedure TForm1.ModPreviewFreeCache;
+var
+  CacheIdx: Integer;
+begin
+  if FModPreviewCache = nil then
+    Exit;
+  for CacheIdx := 0 to FModPreviewCache.Count - 1 do
+    FModPreviewCache.Objects[CacheIdx].Free;
+  FModPreviewCache.Clear;
 end;
 
 // Путь выбранной строки - в подпись внизу окна, как в среде Delphi. У
@@ -46990,6 +47125,7 @@ begin
     Exit;
   end;
 
+  ModPreviewSchedule(LV.Selected);
   N := LV.Selected.SubItems.Count;
   S := '  ' + LV.Selected.SubItems[N - 1];
   if Copy(LV.Selected.SubItems[N - 2], 1, 7) = 'rqform:' then
