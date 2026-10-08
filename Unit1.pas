@@ -897,6 +897,8 @@ type
     // Delphi (ProjectListDblClick). View Unit - по колонкам, как было.
     FModFormsMode: Boolean;
     FModHintItem: TListItem;  // строка, для которой показана подсказка
+    FModDpr: string;          // .dpr (.bas), по которому заполнен список
+    FModDprStamp: string;     // его время и размер при заполнении
 
     // Пункты контекстного меню
     // Как в меню редактора RQdebugger: отладочная строка, очистка, регистр
@@ -2773,6 +2775,8 @@ type
                              var APath: TLabel; const ACaption,
                              ACols: string): Boolean;
     procedure FillModuleList;
+    procedure FillModuleListOf(const ADpr: string);
+    procedure ModListCheckDpr;
     procedure ProjectListDblClick(Sender: TObject);
     procedure ProjectListMouseMove(Sender: TObject; Shift: TShiftState;
                                    X, Y: Integer);
@@ -6584,6 +6588,9 @@ end;
 // читается, только если время изменилось.
 procedure TForm1.DiskTimerTick(Sender: TObject);
 begin
+  // Окно модулей и форм - и когда активно оно само, а не главное
+  if not FDiskCheckBusy and (FBusyDepth = 0) and Application.Active then
+    ModListCheckDpr;
   if FDiskCheckBusy or (FBusyDepth > 0) or not Application.Active or
      (Screen.ActiveForm <> Self) then
     Exit;
@@ -46488,6 +46495,21 @@ begin
   end;
 end;
 
+// Время и размер файла - по ним список модулей видит, что .dpr изменился
+function ModFileStamp(const AFile: string): string;
+var
+  Found: TSearchRec;
+begin
+  Result := '';
+  if FindFirst(AFile, faAnyFile, Found) <> 0 then
+    Exit;
+  try
+    Result := IntToStr(Found.Time) + ':' + IntToStr(Found.Size);
+  finally
+    FindClose(Found);
+  end;
+end;
+
 // Окно со списком. Создаётся один раз; ACols - описание колонок вида
 // "Модуль|200;Тип|110". Последняя колонка добавляется скрытой: в ней лежит
 // полный путь к файлу строки, по нему работают щелчок и подпись внизу.
@@ -46556,7 +46578,7 @@ end;
 // у модуля есть, если она указана в .dpr ({Form1}) или рядом с модулем
 // лежит .dfm. Имя формы - из .dpr, а если там его нет - из первой строки
 // .dfm.
-procedure TForm1.FillModuleList;
+procedure TForm1.FillModuleListOf(const ADpr: string);
 var
   Units: TStringList;
   Dpr, Dir, PrjName, Rec, UnitNm, FileNm, FormNm, FormCls, Full, Tp,
@@ -46728,12 +46750,10 @@ var
   end;
 
 begin
-  Dpr := DelphiTargetDpr;
-  if Dpr = '' then
-  begin
-    ShowMessage('26766:Цель сборки не задана. Откройте .dpr проекта.');
-    Exit;
-  end;
+  Dpr := ADpr;
+  FModDpr := Dpr;
+  FModDprStamp := ModFileStamp(Dpr);
+  FModHintItem := nil;
 
   Dir := ExtractFilePath(Dpr);
   PrjName := ExtractFileName(Dpr);
@@ -46821,6 +46841,54 @@ begin
   finally
     Units.Free;
   end;
+end;
+
+// Список модулей по цели сборки (DelphiTargetDpr)
+procedure TForm1.FillModuleList;
+var
+  Dpr: string;
+begin
+  Dpr := DelphiTargetDpr;
+  if Dpr = '' then
+  begin
+    ShowMessage('26766:Цель сборки не задана. Откройте .dpr проекта.');
+    Exit;
+  end;
+  FillModuleListOf(Dpr);
+end;
+
+// Окно модулей открыто, а .dpr (у RapidQ - главный .bas), по которому
+// заполнен список, изменился на диске - добавили или убрали форму,
+// поправили uses: список заполняется заново по тому же файлу (не по цели
+// активной вкладки - она могла смениться). Выбранная строка остаётся
+// выбранной, если такой модуль есть. Вызывается из DiskTimerTick, раз в
+// две секунды.
+procedure TForm1.ModListCheckDpr;
+var
+  Stamp, Picked: string;
+  ItemIdx: Integer;
+begin
+  if (FModList = nil) or not FModList.Visible or (FModLV = nil) or
+     (FModDpr = '') or not FileExists(FModDpr) then
+    Exit;
+  Stamp := ModFileStamp(FModDpr);
+  if Stamp = FModDprStamp then
+    Exit;
+  Picked := '';
+  if FModLV.Selected <> nil then
+    Picked := FModLV.Selected.Caption;
+  FillModuleListOf(FModDpr);
+  if FModFormsMode then
+    FModList.Caption := 'View Form: ' + FModList.Caption +
+    '   - двойной щелчок открывает форму в конструкторе';
+  if Picked <> '' then
+    for ItemIdx := 0 to FModLV.Items.Count - 1 do
+      if CompareText(FModLV.Items[ItemIdx].Caption, Picked) = 0 then
+      begin
+        FModLV.Items[ItemIdx].Selected := True;
+        FModLV.Items[ItemIdx].MakeVisible(False);
+        Break;
+      end;
 end;
 
 // View Unit и View Form - одно окно: модули и их формы в одном списке.
