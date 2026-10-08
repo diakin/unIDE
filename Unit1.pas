@@ -902,7 +902,7 @@ type
     FModPreviewTimer: TTimer; // задержка перед построением превью
     FModPreviewItem: TListItem; // строка, чьё превью ждёт таймера
     FModPreviewShown: string; // файл формы, чьё превью сейчас показано
-    FModPreviewCache: TStringList; // файл|время|размер|ширина|высота -> TBitmap
+    FModPreviewCache: TStringList; // файл|время и размер -> TBitmap (до 640 точек)
     FModDpr: string;          // .dpr (.bas), по которому заполнен список
     FModDprStamp: string;     // его время и размер при заполнении
 
@@ -3136,6 +3136,7 @@ var
     RqHelp,       // справка RapidQ: rapidq_ref\help\rapidq.chm, html_doc
     IniTidy,      // Tidy editor.ini: editorNew.ini, editorN.ini, editorOLD.ini
     FormPreview,  // превью формы по .dfm - список модулей и форм
+    jpeg,         // превью форм на диске - dsgcache\*.preview.jpg
     RqComponents, // описание компонентов RapidQ (Component.data)
     RqDesign,     // конструктор форм RapidQ: заглушки компонентов
     TextMerge,    // слияние трёх версий текста (файл изменён снаружи)
@@ -47010,18 +47011,112 @@ begin
   FModPreviewTimer.Enabled := True;
 end;
 
-// Превью формы строки FModPreviewItem: форма строится из .dfm невидимой и
-// рисуется в картинку (FormPreviewMake). Готовые картинки хранятся по
-// файлу, его времени и размеру и размеру места: повторное наведение - без
-// построения, изменённый .dfm - построится заново.
+// Файл превью на диске: dsgcache\<имя .dfm>_<crc пути>_<crc времени и
+// размера>.preview.jpg. Изменился .dfm - другое имя, прежний файл
+// удаляется при записи нового (ModPreviewSaveDisk)
+function ModPreviewDiskName(const AFile, AStamp: string): string;
+begin
+  Result := ExtractFilePath(Application.ExeName) + 'dsgcache\' +
+            ChangeFileExt(ExtractFileName(AFile), '') + '_' +
+            IntToHex(Crc32Of(AnsiLowerCase(AFile)), 8) + '_' +
+            IntToHex(Crc32Of(AStamp), 8) + '.preview.jpg';
+end;
+
+function ModPreviewLoadDisk(const AName: string; ABitmap: TBitmap): Boolean;
+var
+  Jpg: TJPEGImage;
+begin
+  Result := False;
+  if not FileExists(AName) then
+    Exit;
+  Jpg := TJPEGImage.Create;
+  try
+    try
+      Jpg.LoadFromFile(AName);
+      ABitmap.Assign(Jpg);
+      Result := True;
+    except
+      Result := False;
+    end;
+  finally
+    Jpg.Free;
+  end;
+end;
+
+// Запись превью; прежние превью того же .dfm (другое время) удаляются
+procedure ModPreviewSaveDisk(const AFile, AName: string; ABitmap: TBitmap);
+var
+  Jpg: TJPEGImage;
+  Found: TSearchRec;
+  Dir, Prefix: string;
+begin
+  Dir := ExtractFilePath(AName);
+  Prefix := ChangeFileExt(ExtractFileName(AFile), '') + '_' +
+            IntToHex(Crc32Of(AnsiLowerCase(AFile)), 8) + '_';
+  try
+    ForceDirectories(Dir);
+    if FindFirst(Dir + Prefix + '*.preview.jpg', faAnyFile, Found) = 0 then
+    try
+      repeat
+        DeleteFile(Dir + Found.Name);
+      until FindNext(Found) <> 0;
+    finally
+      FindClose(Found);
+    end;
+    Jpg := TJPEGImage.Create;
+    try
+      Jpg.CompressionQuality := 90;
+      Jpg.Assign(ABitmap);
+      Jpg.SaveToFile(AName);
+    finally
+      Jpg.Free;
+    end;
+  except
+    // папка только для чтения - превью остаётся в памяти
+  end;
+end;
+
+// Картинка ASrc, уменьшенная под место AWidth x AHeight (HALFTONE);
+// больше своего размера не растягивается
+procedure ModPreviewFit(ASrc, ADst: TBitmap; AWidth, AHeight: Integer);
+var
+  Scale: Double;
+  DstW, DstH: Integer;
+begin
+  Scale := 1;
+  if (AWidth > 0) and (ASrc.Width > AWidth) then
+    Scale := AWidth / ASrc.Width;
+  if (AHeight > 0) and (ASrc.Height * Scale > AHeight) then
+    Scale := AHeight / ASrc.Height;
+  DstW := Round(ASrc.Width * Scale);
+  DstH := Round(ASrc.Height * Scale);
+  if DstW < 1 then
+    DstW := 1;
+  if DstH < 1 then
+    DstH := 1;
+  ADst.PixelFormat := pf24bit;
+  ADst.Width := DstW;
+  ADst.Height := DstH;
+  SetStretchBltMode(ADst.Canvas.Handle, HALFTONE);
+  SetBrushOrgEx(ADst.Canvas.Handle, 0, 0, nil);
+  StretchBlt(ADst.Canvas.Handle, 0, 0, DstW, DstH, ASrc.Canvas.Handle, 0, 0,
+             ASrc.Width, ASrc.Height, SRCCOPY);
+end;
+
+// Превью формы строки FModPreviewItem. Картинка строится один раз на
+// версию .dfm (FormPreviewMake, до 640 точек) и хранится в памяти и на
+// диске (dsgcache, ModPreviewDiskName): после перезапуска unIDE превью
+// берётся с диска, изменённый .dfm строится заново. На панель картинка
+// уменьшается под её размер.
 procedure TForm1.ModPreviewTick(Sender: TObject);
 const
   MaxCache = 60;
+  BuildSize = 640;
 var
   Item: TListItem;
-  FormRef, Key, Err: string;
+  FormRef, Stamp, Key, DiskName, Err: string;
   CacheIdx, Count: Integer;
-  Bmp: TBitmap;
+  Src, Shown: TBitmap;
 begin
   FModPreviewTimer.Enabled := False;
   if (FModPreview = nil) or (FModLV = nil) or (FModPreviewItem = nil) then
@@ -47062,36 +47157,46 @@ begin
     FModPreviewCache := TStringList.Create;
     FModPreviewCache.Sorted := True;
   end;
-  Key := AnsiLowerCase(FormRef) + '|' + ModFileStamp(FormRef) + '|' +
-         IntToStr(FModPreview.Width) + '|' + IntToStr(FModPreview.Height);
+  Stamp := ModFileStamp(FormRef);
+  Key := AnsiLowerCase(FormRef) + '|' + Stamp;
   CacheIdx := FModPreviewCache.IndexOf(Key);
   if CacheIdx >= 0 then
+    Src := TBitmap(FModPreviewCache.Objects[CacheIdx])
+  else
   begin
-    FModPreview.Picture.Assign(TBitmap(FModPreviewCache.Objects[CacheIdx]));
-    FModPreviewNote.Caption := ExtractFileName(FormRef);
-    Exit;
+    Src := TBitmap.Create;
+    DiskName := ModPreviewDiskName(FormRef, Stamp);
+    if not ModPreviewLoadDisk(DiskName, Src) then
+    begin
+      Screen.Cursor := crHourGlass;
+      try
+        if not FormPreviewMake(FormRef, BuildSize, BuildSize, DsgMapClass,
+                               Point(FModList.Left, FModList.Top), Src,
+                               Err) then
+        begin
+          Src.Free;
+          FModPreview.Picture.Assign(nil);
+          FModPreviewNote.Caption := 'превью не построено: ' + Err;
+          Exit;
+        end;
+      finally
+        Screen.Cursor := crDefault;
+      end;
+      ModPreviewSaveDisk(FormRef, DiskName, Src);
+    end;
+    // старые картинки - вон, чтобы память не росла без конца
+    if FModPreviewCache.Count >= MaxCache then
+      ModPreviewFreeCache;
+    FModPreviewCache.AddObject(Key, Src);
   end;
 
-  Bmp := TBitmap.Create;
-  Screen.Cursor := crHourGlass;
+  Shown := TBitmap.Create;
   try
-    if not FormPreviewMake(FormRef, FModPreview.Width - 8,
-                           FModPreview.Height - 8, DsgMapClass,
-                           FModPreview.Parent, Bmp, Err) then
-    begin
-      Bmp.Free;
-      FModPreview.Picture.Assign(nil);
-      FModPreviewNote.Caption := 'превью не построено: ' + Err;
-      Exit;
-    end;
+    ModPreviewFit(Src, Shown, FModPreview.Width - 8, FModPreview.Height - 8);
+    FModPreview.Picture.Assign(Shown);
   finally
-    Screen.Cursor := crDefault;
+    Shown.Free;
   end;
-  // старые картинки - вон, чтобы кэш не рос без конца
-  if FModPreviewCache.Count >= MaxCache then
-    ModPreviewFreeCache;
-  FModPreviewCache.AddObject(Key, Bmp);
-  FModPreview.Picture.Assign(Bmp);
   FModPreviewNote.Caption := ExtractFileName(FormRef);
 end;
 

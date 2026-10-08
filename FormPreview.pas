@@ -8,11 +8,16 @@ unit FormPreview;
 //  картинку (PaintTo) и уменьшается. Сверху рисуется полоса заголовка с
 //  Caption формы - окно без рамки было бы трудно узнать.
 //
-//  Стандартные элементы Windows (кнопки, поля, списки) рисуют себя только
-//  в своё окно: у невидимой формы их окон нет, и в картинке оставался
-//  один фон формы. Поэтому форма на время снимка вкладывается без рамки в
-//  AHost (панель превью) и ставится далеко за его край: окна всех
-//  элементов созданы и видимы, на экране их нет, фокус не уходит.
+//  Стандартные элементы Windows (кнопки, поля, рамки групп, списки)
+//  рисуют себя только в своё окно: WM_PAINT с чужим DC они не понимают, и
+//  PaintTo невидимой формы давал один фон формы и часть своих элементов
+//  VCL. Поэтому форма на время снимка показывается по-настоящему, но
+//  прозрачной (layered, альфа 0 - так же показывает форму конструктор):
+//  такое окно рисуется целиком в свой буфер, а на экране его нет. Окно
+//  без рамки, не активируется (WS_EX_NOACTIVATE) и не попадает на панель
+//  задач (WS_EX_TOOLWINDOW). Всё нарисовано (RedrawWindow с UPDATENOW) -
+//  картинка берётся из буфера окна (BitBlt), окно прячется, активным
+//  снова делается прежнее окно.
 //
 //  Что делается, чтобы чтение не мешало программе:
 //    - код формы не выполняется: обработчики событий не подключаются
@@ -39,12 +44,11 @@ type
 
 // Картинка формы из файла ADfmFile (текстового или двоичного), не больше
 // AMaxW x AMaxH; меньшая не растягивается. AMap - аналоги сторонних
-// классов (может быть nil). AHost - видимое окно, в которое форма
-// вкладывается на время снимка (nil - снимок невидимой формы, без
-// стандартных элементов Windows). False - форму построить не удалось,
-// причина - в AError.
+// классов (может быть nil). AAt - экранная точка, где форма на время
+// снимка показывается прозрачной (обычно угол окна списка). False -
+// форму построить не удалось, причина - в AError.
 function FormPreviewMake(const ADfmFile: string; AMaxW, AMaxH: Integer;
-                         AMap: TFormPreviewMap; AHost: TWinControl;
+                         AMap: TFormPreviewMap; const AAt: TPoint;
                          ABitmap: TBitmap; var AError: string): Boolean;
 
 implementation
@@ -317,8 +321,43 @@ begin
   end;
 end;
 
+// Форма показывается прозрачной и не активной, рисуется полностью;
+// содержимое окна - в ADC с отступом сверху ATop
+procedure CaptureLive(AForm: TForm; ADC: HDC; ATop, AWidth, AHeight: Integer;
+                      const AAt: TPoint);
+var
+  PrevActive: HWND;
+  WinDC: HDC;
+begin
+  PrevActive := GetActiveWindow;
+  AForm.Position := poDesigned;
+  AForm.SetBounds(AAt.X, AAt.Y, AWidth, AHeight);
+  AForm.AlphaBlendValue := 0;
+  AForm.AlphaBlend := True;
+  AForm.HandleNeeded;
+  SetWindowLong(AForm.Handle, GWL_EXSTYLE,
+                GetWindowLong(AForm.Handle, GWL_EXSTYLE) or
+                WS_EX_NOACTIVATE or WS_EX_TOOLWINDOW);
+  try
+    AForm.Visible := True;
+    RedrawWindow(AForm.Handle, nil, 0, RDW_INVALIDATE or RDW_ERASE or
+                 RDW_FRAME or RDW_UPDATENOW or RDW_ALLCHILDREN);
+    WinDC := GetDC(AForm.Handle);
+    try
+      BitBlt(ADC, 0, ATop, AWidth, AHeight, WinDC, 0, 0, SRCCOPY);
+    finally
+      ReleaseDC(AForm.Handle, WinDC);
+    end;
+  finally
+    AForm.Visible := False;
+    if (PrevActive <> 0) and (GetActiveWindow <> PrevActive) and
+       IsWindowVisible(PrevActive) then
+      SetActiveWindow(PrevActive);
+  end;
+end;
+
 function FormPreviewMake(const ADfmFile: string; AMaxW, AMaxH: Integer;
-                         AMap: TFormPreviewMap; AHost: TWinControl;
+                         AMap: TFormPreviewMap; const AAt: TPoint;
                          ABitmap: TBitmap; var AError: string): Boolean;
 var
   Form: TForm;
@@ -346,14 +385,8 @@ begin
       FullW := ClientW;
       FullH := ClientH + PreviewCaptionHeight;
 
-      // Окна элементов: форма - внутри AHost, за его краем
-      if (AHost <> nil) and AHost.HandleAllocated then
-      begin
-        Form.BorderStyle := bsNone;
-        Form.Parent := AHost;
-        Form.SetBounds(-30000, -30000, ClientW, ClientH);
-        Form.Visible := True;
-      end;
+      // Без рамки: окно - ровно клиентская часть формы
+      Form.BorderStyle := bsNone;
 
       // Во весь размер: полоса заголовка и клиентская часть формы
       Full.PixelFormat := pf24bit;
@@ -372,7 +405,8 @@ begin
       Full.Canvas.Brush.Style := bsSolid;
       Full.Canvas.Brush.Color := Form.Color;
       Full.Canvas.FillRect(Rect(0, PreviewCaptionHeight, FullW, FullH));
-      Form.PaintTo(Full.Canvas.Handle, 0, PreviewCaptionHeight);
+      CaptureLive(Form, Full.Canvas.Handle, PreviewCaptionHeight, ClientW,
+                  ClientH, AAt);
 
       // Уменьшение до места справа; больше своего размера - нет
       Scale := 1;
