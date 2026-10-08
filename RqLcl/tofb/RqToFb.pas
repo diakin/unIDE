@@ -285,6 +285,50 @@ type
     HasBody: Boolean;   // есть SUB/FUNCTION с телом (или DECLARE ... LIB)
   end;
 
+  // Таблица ИМЯ -> значение с поиском делением пополам. Заменяет списки
+  // "ИМЯ=значение" с IndexOfName там, где поиск идёт на каждое слово
+  // программы ($DEFINE, члены классов): IndexOfName перебирает список
+  // целиком и сравнивает строки без учёта регистра, а в Delphi 7 под
+  // Windows это вызов CompareString на каждую строку списка. Имена - в
+  // верхнем регистре, сравнение с учётом регистра.
+  TRqNameValue = class
+  public
+    Value: string;
+  end;
+
+  // Сортированный список, сравнение по кодам символов (CompareStr), а не
+  // AnsiCompareText: имена уже в верхнем регистре, а сравнение без учёта
+  // регистра с языковыми правилами в Delphi 7 под Windows - вызов
+  // CompareString на каждое сравнение
+  TRqOrdList = class(TStringList)
+  protected
+{$IFDEF FPC}
+    function DoCompareText(const AText1, AText2: string): PtrInt; override;
+{$ELSE}
+    function CompareStrings(const AText1, AText2: string): Integer; override;
+{$ENDIF}
+  end;
+
+  TRqNameMap = class
+  private
+    FNames: TRqOrdList;   // Sorted; Objects - TRqNameValue
+  public
+    constructor Create;
+    destructor Destroy; override;
+    procedure Clear;
+    function Count: Integer;
+    // Номер имени, -1 - нет
+    function IndexOf(const AName: string): Integer;
+    function ValueAt(AIdx: Integer): string;
+    // Значение по имени; нет имени - ''
+    function Get(const AName: string): string;
+    // Добавить или заменить значение
+    procedure Put(const AName, AValue: string);
+    procedure Remove(const AName: string);
+    // Пары "ИМЯ=значение" через пробел (RqFuncMapText и подобные)
+    procedure LoadPairs(const APairs: string);
+  end;
+
   // Свой компонент RapidQ: TYPE Имя EXTENDS Класс (документация RapidQ,
   // глава 10). Собирается в первом проходе; во втором по нему выводится
   // Type FreeBASIC (в строке TYPE) и переходники событий (в строке
@@ -331,7 +375,7 @@ type
     FTypes: TStringList;          // имена TYPE
     FLabels: TStringList;
     FRedims: TStringList;         // имена, у которых есть REDIM
-    FDefines: TStringList;        // NAME=замена
+    FDefines: TRqNameMap;         // NAME -> замена
     FResources: TStringList;      // $RESOURCE: ИМЯ=полный путь ('' - не найден)
     FDoneFiles: TStringList;      // исходный файл (верхний регистр) -> вывод
     FOutNames: TStringList;       // занятые имена файлов вывода
@@ -342,8 +386,8 @@ type
     FFbReserved: TStringList;
     FObjClasses: TStringList;
     FGuiClasses: TStringList;
-    FFuncMap: TStringList;        // ИМЯ$=функция rqrt.bi
-    FMemberMap: TStringList;      // СВОЙСТВО=имя в .bi
+    FFuncMap: TRqNameMap;         // ИМЯ$ -> функция rqrt.bi
+    FMemberMap: TRqNameMap;       // СВОЙСТВО -> имя в .bi
     FIndexedSet: TStringList;     // СВОЙСТВО=метод записи
     FEventSigs: TStringList;      // СОБЫТИЕ=типы параметров обработчика
     FHandlerEvents: TStringList;  // ПРОЦЕДУРА=СОБЫТИЕ (из Объект.OnXxx = Процедура)
@@ -360,7 +404,7 @@ type
     FAborted: Boolean;
     FParamAliases: string;        // от ParseParams: " : Dim ByRef ..."
     FClassMembers: TStringList;   // КЛАСС.ИМЯ=P|M|E (RqClassMembersText)
-    FAllMembers: TStringList;     // ИМЯ=P|M|E по всем классам
+    FAllMembers: TRqNameMap;      // ИМЯ -> P|M|E по всем классам
     FCreateStack: TStringList;    // CREATE: ИмяОбъекта=КЛАСС, внутренний - последний
     FCurFile: string;
     FCurLine: Integer;
@@ -563,6 +607,122 @@ var
   Found: Integer;
 begin
   Result := AList.Find(AUp, Found);
+end;
+
+// ---------------------------------------------------------------------------
+//  TRqNameMap
+
+{$IFDEF FPC}
+function TRqOrdList.DoCompareText(const AText1, AText2: string): PtrInt;
+begin
+  Result := CompareStr(AText1, AText2);
+end;
+{$ELSE}
+function TRqOrdList.CompareStrings(const AText1, AText2: string): Integer;
+begin
+  Result := CompareStr(AText1, AText2);
+end;
+{$ENDIF}
+
+constructor TRqNameMap.Create;
+begin
+  inherited Create;
+  FNames := TRqOrdList.Create;
+  FNames.CaseSensitive := True;
+  FNames.Sorted := True;
+  FNames.Duplicates := dupIgnore;
+end;
+
+destructor TRqNameMap.Destroy;
+begin
+  Clear;
+  FNames.Free;
+  inherited Destroy;
+end;
+
+procedure TRqNameMap.Clear;
+var
+  ItemIdx: Integer;
+begin
+  for ItemIdx := 0 to FNames.Count - 1 do
+    FNames.Objects[ItemIdx].Free;
+  FNames.Clear;
+end;
+
+function TRqNameMap.Count: Integer;
+begin
+  Result := FNames.Count;
+end;
+
+function TRqNameMap.IndexOf(const AName: string): Integer;
+begin
+  if not FNames.Find(AName, Result) then
+    Result := -1;
+end;
+
+function TRqNameMap.ValueAt(AIdx: Integer): string;
+begin
+  Result := TRqNameValue(FNames.Objects[AIdx]).Value;
+end;
+
+function TRqNameMap.Get(const AName: string): string;
+var
+  ItemIdx: Integer;
+begin
+  Result := '';
+  if FNames.Find(AName, ItemIdx) then
+    Result := TRqNameValue(FNames.Objects[ItemIdx]).Value;
+end;
+
+procedure TRqNameMap.LoadPairs(const APairs: string);
+var
+  Rest, Pair: string;
+  SpacePos, EqPos: Integer;
+begin
+  Rest := Trim(APairs);
+  while Rest <> '' do
+  begin
+    SpacePos := Pos(' ', Rest);
+    if SpacePos = 0 then
+    begin
+      Pair := Rest;
+      Rest := '';
+    end
+    else
+    begin
+      Pair := Copy(Rest, 1, SpacePos - 1);
+      Rest := TrimLeft(Copy(Rest, SpacePos + 1, MaxInt));
+    end;
+    EqPos := Pos('=', Pair);
+    if EqPos > 1 then
+      Put(Copy(Pair, 1, EqPos - 1), Copy(Pair, EqPos + 1, MaxInt));
+  end;
+end;
+
+procedure TRqNameMap.Put(const AName, AValue: string);
+var
+  ItemIdx: Integer;
+  Holder: TRqNameValue;
+begin
+  if FNames.Find(AName, ItemIdx) then
+    TRqNameValue(FNames.Objects[ItemIdx]).Value := AValue
+  else
+  begin
+    Holder := TRqNameValue.Create;
+    Holder.Value := AValue;
+    FNames.AddObject(AName, Holder);
+  end;
+end;
+
+procedure TRqNameMap.Remove(const AName: string);
+var
+  ItemIdx: Integer;
+begin
+  if FNames.Find(AName, ItemIdx) then
+  begin
+    FNames.Objects[ItemIdx].Free;
+    FNames.Delete(ItemIdx);
+  end;
 end;
 
 constructor TRqTypeInfo.Create;
@@ -914,7 +1074,7 @@ end;
 constructor TRqFbConv.Create(const AOptions: TRqFbOptions; AMessages: TStrings);
 var
   ClassIdx: Integer;
-  MemberText: string;
+  MemberText, MemberName: string;
 begin
   inherited Create;
   FOpt := AOptions;
@@ -933,7 +1093,7 @@ begin
   FRedims := TStringList.Create;
   FRedims.Sorted := True;
   FRedims.Duplicates := dupIgnore;
-  FDefines := TStringList.Create;
+  FDefines := TRqNameMap.Create;
   FResources := TStringList.Create;
   FDoneFiles := TStringList.Create;
   FOutNames := TStringList.Create;
@@ -951,8 +1111,8 @@ begin
   FillWordList(FObjClasses, RqObjectText);
   FGuiClasses := TStringList.Create;
   FillWordList(FGuiClasses, RqGuiObjectText);
-  FFuncMap := TStringList.Create;
-  FFuncMap.Text := StringReplace(RqFuncMapText, ' ', CrLf, [rfReplaceAll]);
+  FFuncMap := TRqNameMap.Create;
+  FFuncMap.LoadPairs(RqFuncMapText);
   FEventSigs := TStringList.Create;
   FEventSigs.Text := StringReplace(RqEventSigText, ' ', CrLf, [rfReplaceAll]);
   FHandlerEvents := TStringList.Create;
@@ -963,22 +1123,22 @@ begin
   FCreateStack := TStringList.Create;
   FClassMembers := TStringList.Create;
   FillClassMembers(FClassMembers);
-  FAllMembers := TStringList.Create;
+  FAllMembers := TRqNameMap.Create;
   for ClassIdx := 0 to FClassMembers.Count - 1 do
   begin
     MemberText := FClassMembers[ClassIdx];
     MemberText := Copy(MemberText, Pos('.', MemberText) + 1, MaxInt);
-    if FAllMembers.IndexOfName(Copy(MemberText, 1, Pos('=', MemberText) - 1)) < 0 then
-      FAllMembers.Add(MemberText)
+    MemberName := Copy(MemberText, 1, Pos('=', MemberText) - 1);
+    if FAllMembers.IndexOf(MemberName) < 0 then
+      FAllMembers.Put(MemberName, Copy(MemberText, Pos('=', MemberText) + 1, MaxInt))
     else if Copy(MemberText, Length(MemberText), 1) = 'P' then
       // свойство важнее метода с тем же именем
-      FAllMembers.Values[Copy(MemberText, 1, Pos('=', MemberText) - 1)] := 'P';
+      FAllMembers.Put(MemberName, 'P');
   end;
-  FAllMembers.Sorted := True;
   FIndexedSet := TStringList.Create;
   FIndexedSet.Text := StringReplace(RqIndexedSetText, ' ', CrLf, [rfReplaceAll]);
-  FMemberMap := TStringList.Create;
-  FMemberMap.Text := StringReplace(RqMemberMapText, ' ', CrLf, [rfReplaceAll]);
+  FMemberMap := TRqNameMap.Create;
+  FMemberMap.LoadPairs(RqMemberMapText);
   FTypeInfos := TStringList.Create;
   FTypeInfos.Sorted := True;
   FBadMembers := TStringList.Create;
@@ -1334,10 +1494,10 @@ begin
       PrevIdx := PrevSig(Toks, TokIdx - 1);
       if not IsOp(Toks, PrevIdx, '.') then
       begin
-        DefIdx := FDefines.IndexOfName(Toks[TokIdx].Up);
+        DefIdx := FDefines.IndexOf(Toks[TokIdx].Up);
         if DefIdx >= 0 then
         begin
-          Result := Result + FDefines.ValueFromIndex[DefIdx];
+          Result := Result + FDefines.ValueAt(DefIdx);
           Continue;
         end;
       end;
@@ -2070,7 +2230,7 @@ begin
       CondName := '';
       if NameIdx >= 0 then
         CondName := Toks[NameIdx].Up;
-      IsDefined := FDefines.IndexOfName(CondName) >= 0;
+      IsDefined := FDefines.IndexOf(CondName) >= 0;
       Cond.ParentActive := CondActive;
       if FirstUp = '$IFDEF' then
         Cond.Active := Cond.ParentActive and IsDefined
@@ -2190,11 +2350,11 @@ function TRqFbConv.AnyMemberKind(const AMemberUp: string): Char;
 var
   ItemIdx: Integer;
 begin
-  ItemIdx := FAllMembers.IndexOfName(AMemberUp);
+  ItemIdx := FAllMembers.IndexOf(AMemberUp);
   if ItemIdx < 0 then
     Result := #0
   else
-    Result := FAllMembers.ValueFromIndex[ItemIdx][1];
+    Result := FAllMembers.ValueAt(ItemIdx)[1];
 end;
 
 function TRqFbConv.MemberKind(const AClassUp, AMemberUp: string): Char;
@@ -2409,7 +2569,7 @@ function TRqFbConv.ProcessDirective(var AToks: TToks; AFrom, ATo: Integer;
                                     var AOut: string): Boolean;
 var
   Name, Value, IncName, Found, OutPath, Original: string;
-  ArgIdx, CloseIdx, TokIdx, DefIdx: Integer;
+  ArgIdx, CloseIdx, TokIdx: Integer;
   Angle: Boolean;
 begin
   Result := True;
@@ -2467,10 +2627,7 @@ begin
         if AToks[TokIdx].Kind <> tkComment then
           Value := Value + AToks[TokIdx].Text;
       Value := Trim(Value);
-      DefIdx := FDefines.IndexOfName(AToks[ArgIdx].Up);
-      if DefIdx >= 0 then
-        FDefines.Delete(DefIdx);
-      FDefines.Add(AToks[ArgIdx].Up + '=' + Value);
+      FDefines.Put(AToks[ArgIdx].Up, Value);
     end
     else if (ArgIdx >= 0) and (AToks[ArgIdx].Kind = tkDirective) and
             (AToks[ArgIdx].Up = '$DEFINE') then
@@ -2487,9 +2644,7 @@ begin
     for TokIdx := ArgIdx to ATo do
       if (TokIdx >= 0) and (AToks[TokIdx].Kind = tkIdent) then
       begin
-        DefIdx := FDefines.IndexOfName(AToks[TokIdx].Up);
-        if DefIdx >= 0 then
-          FDefines.Delete(DefIdx);
+        FDefines.Remove(AToks[TokIdx].Up);
       end;
     Exit;
   end;
@@ -2761,9 +2916,9 @@ begin
     // оператор RapidQ (SELECT CASE, DO, LOOP, NEXT, WHILE, RETURN...):
     // дальше - выражения. Оператор из rqrt.bi (SENDMESSAGE h, m, w, l;
     // SHELL "команда") - под своим именем там
-    if FFuncMap.IndexOfName(Up) >= 0 then
+    if FFuncMap.IndexOf(Up) >= 0 then
     begin
-      AToks[FirstIdx].OutText := FFuncMap.Values[Up];
+      AToks[FirstIdx].OutText := FFuncMap.Get(Up);
       MemRecordArgs(AToks, FirstIdx, ATo);
     end;
     ProcessExpr(AToks, FirstIdx + 1, ATo);
@@ -2823,8 +2978,8 @@ begin
         AToks[AIdx].OutText := FCurType.MemberFb.Values[Up];
     end
     // свойство или метод объекта
-    else if FMemberMap.IndexOfName(Up) >= 0 then
-      AToks[AIdx].OutText := FMemberMap.Values[Up];
+    else if FMemberMap.IndexOf(Up) >= 0 then
+      AToks[AIdx].OutText := FMemberMap.Get(Up);
     // метод SUBI / FUNCTIONI своего компонента
     if VariadicMember(AToks, AIdx) then
     begin
@@ -2968,7 +3123,7 @@ begin
       AToks[TypeIdx].OutText := FbType(NormType(AToks[TypeIdx].Up));
   end;
   // MEMCPY(Запись, ...) - адрес записи (см. MemRecordArgs)
-  if (FFuncMap.IndexOfName(Up) >= 0) and IsOp(AToks, NextIdx, '(') then
+  if (FFuncMap.IndexOf(Up) >= 0) and IsOp(AToks, NextIdx, '(') then
     MemRecordArgs(AToks, AIdx, ATo);
   // VARPTR(x) -> RqVarPtr(@x): у строки - адрес символов (StrPtr), у
   // остального - адрес; перегрузку выбирает fbc по типу указателя (rqrt.bi)
@@ -2979,9 +3134,9 @@ begin
     AToks[NextIdx].Post := AToks[NextIdx].Post + '@';
     Exit;
   end;
-  if FFuncMap.IndexOfName(Up) >= 0 then
+  if FFuncMap.IndexOf(Up) >= 0 then
   begin
-    AToks[AIdx].OutText := FFuncMap.Values[Up];
+    AToks[AIdx].OutText := FFuncMap.Get(Up);
     Exit;
   end;
   if InList(FFbStrFuncs, Up) then
@@ -3099,9 +3254,9 @@ begin
         GlobalQualify(AToks, FirstIdx);
       end
       // процедура RapidQ из rqrt.bi (EXTRACTRESOURCE)
-      else if FFuncMap.IndexOfName(AToks[FirstIdx].Up) >= 0 then
+      else if FFuncMap.IndexOf(AToks[FirstIdx].Up) >= 0 then
       begin
-        AToks[FirstIdx].OutText := FFuncMap.Values[AToks[FirstIdx].Up];
+        AToks[FirstIdx].OutText := FFuncMap.Get(AToks[FirstIdx].Up);
         MemRecordArgs(AToks, FirstIdx, ATo);
       end;
       ProcessExpr(AToks, FirstIdx + 1, ATo);
@@ -5626,7 +5781,7 @@ begin
       end;
       // Объект.Delete, Объект.Err$ снаружи - тем же именем
       if FbName <> Display then
-        FMemberMap.Values[NameUp] := FbName;
+        FMemberMap.Put(NameUp, FbName);
     end;
   end;
   SpacePos := Pos(' ', DeclText);
@@ -5853,7 +6008,7 @@ begin
     FCurType.MemberFb.Add(NameUp + '=' + FbName);
     FCurType.MemberType.Add(NameUp + '=' + RqType);
     if FbName <> Display then
-      FMemberMap.Values[NameUp] := FbName;
+      FMemberMap.Put(NameUp, FbName);
     case Kind of
       'E':
         begin
