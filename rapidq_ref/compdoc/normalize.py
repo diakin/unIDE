@@ -42,11 +42,15 @@ def normalize(text, name):
     if not body_match:
         raise ValueError('no <body> in ' + name)
     rest = text[body_match.end():]
-    head = ('<html>\n<head>\n' + MARK + '\n'
+    # DOCTYPE и X-UA-Compatible: окно CHM (движок IE) без них показывает
+    # страницу в режиме IE7/quirks - без селекторов атрибутов и inherit в CSS,
+    # шрифт в таблицах не наследуется
+    head = ('<!DOCTYPE html>\n<html>\n<head>\n'
+            '<meta http-equiv="X-UA-Compatible" content="IE=edge">\n' + MARK + '\n'
             '<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">\n'
             '<title>' + title + '</title>\n'
             '<link rel="stylesheet" type="text/css" href="rq.css">\n'
-            '</head>\n<body class="rqdoc">\n')
+            '</head>\n<body class="%s">\n' % ('rqdoc rq-index' if name == 'indexa.html' else 'rqdoc'))
     head_table = HEAD_TABLE_RE.search(rest[:3000])
     first_row = FIRST_ROW_RE.search(head_table.group(1)) if head_table else None
     if first_row and 'Rapid-Q' in inner_text(first_row.group(1)) + inner_text(first_row.group(2)):
@@ -58,6 +62,9 @@ def normalize(text, name):
         bar = ('<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation</span>'
                '<span class="rq-section">' + inner_text(title) + '</span></div>\n')
         rest = bar + NAV + '\n' + rest
+    # TARGET="doc" - кадр старой справки с фреймами; в окне CHM и в
+    # браузере такой ссылке открыться негде
+    rest = re.sub(r'\s+target\s*=\s*"doc"', '', rest, flags=re.I)
     return head + rest
 
 

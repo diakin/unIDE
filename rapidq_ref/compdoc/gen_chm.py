@@ -136,7 +136,8 @@ def collect_index():
         if href not in targets:
             targets.append(href)
 
-    text = read('indexa.html')
+    # только строки указателя (clean_index.py), без строки навигации
+    text = ''.join(re.findall(r'<p class="rq-ix">.*?</p>', read('indexa.html'), re.S))
     for href, label in re.findall(r'<a[^>]*href="([^"]+)"[^>]*>(.*?)</a>', text, re.I | re.S):
         label = html.unescape(re.sub(r'<[^>]+>', '', label)).strip()
         if len(label) > 1 and label.lower() not in ('up',) and not re.fullmatch(r'\[\d+\]', label):
@@ -185,7 +186,7 @@ def main():
         project = ('[OPTIONS]\r\nCompatibility=1.1 or later\r\nCompiled file=rapidq.chm\r\n'
                    'Contents file=rapidq.hhc\r\nIndex file=rapidq.hhk\r\nDefault topic=contents.html\r\n'
                    'Default Window=main\r\nDisplay compile progress=No\r\nFull-text search=Yes\r\n'
-                   'Binary Index=Yes\r\nLanguage=0x409 English (United States)\r\nTitle=%s\r\n\r\n'
+                   'Binary Index=No\r\nLanguage=0x409 English (United States)\r\nTitle=%s\r\n\r\n'
                    '[WINDOWS]\r\nmain="%s","rapidq.hhc","rapidq.hhk","contents.html","contents.html",,,,,'
                    '0x63520,220,0x10384e,[40,40,1240,900],,,,,,,0\r\n\r\n'
                    '[FILES]\r\n%s\r\n' % (TITLE, TITLE, '\r\n'.join(files)))

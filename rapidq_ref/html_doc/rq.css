@@ -1,4 +1,6 @@
 /* Rapid-Q documentation - one look for all pages (rapidq_ref/html_doc).
+   Pages start with <!DOCTYPE html> and X-UA-Compatible IE=edge: the CHM
+   window (IE engine) then uses its newest mode, not IE7/quirks.
    Pages keep their original markup; this file only sets fonts, colours,
    tables and the header/navigation bar added to every page. Plain CSS
    without variables, so old browsers show it too. */
@@ -42,8 +44,8 @@ body.rqdoc font[face*="ono"], body.rqdoc font[face*="ixedsys"] {
   border-bottom: 1px solid #d8ccb8;
   font-size: 13px;
 }
-body.rqdoc .rq-nav a[href] { margin-right: 18px; color: #5b2a1e; text-decoration: none; }
-body.rqdoc .rq-nav a[href]:hover { text-decoration: underline; }
+body.rqdoc .rq-nav a:link, body.rqdoc .rq-nav a:visited { margin-right: 18px; color: #5b2a1e; text-decoration: none; }
+body.rqdoc .rq-nav a:hover { text-decoration: underline; }
 
 body.rqdoc h1 {
   font-size: 26px;
@@ -61,8 +63,8 @@ body.rqdoc h2 {
 }
 body.rqdoc h3, body.rqdoc h4 { color: #3a1d14; }
 
-body.rqdoc a[href] { color: #1d4f91; }
-body.rqdoc a[href]:visited { color: #4b3a8f; }
+body.rqdoc a:link { color: #1d4f91; }
+body.rqdoc a:visited { color: #4b3a8f; }
 
 body.rqdoc pre, body.rqdoc code, body.rqdoc tt {
   font-family: Consolas, "Courier New", monospace;
@@ -108,4 +110,12 @@ table.rq-ref tr.rq-internal td { color: #777064; }
 .rq-meta { color: #5c544a; font-size: 13.5px; margin: 0 0 12px 0; }
 .rq-note { background: #fbf3e2; border-left: 3px solid #c98f3a; padding: 6px 10px; margin: 8px 0; }
 .rq-foot { margin-top: 28px; padding-top: 8px; border-top: 1px solid #d8ccb8; font-size: 13px; color: #5c544a; }
-body.rqdoc .rq-foot a[href] { margin-right: 18px; }
+body.rqdoc .rq-foot a:link, body.rqdoc .rq-foot a:visited { margin-right: 18px; }
+
+/* Alphabetic index (indexa.html, written by compdoc/clean_index.py) */
+body.rq-index p.rq-letters { font-size: 16px; margin: 6px 0 14px 0; }
+body.rq-index p.rq-letters a { margin-right: 8px; }
+body.rq-index h2 { font-size: 17px; margin: 18px 0 6px 0; }
+body.rq-index p.rq-ix { margin: 2px 0; }
+body.rq-index p.rq-up { margin: 4px 0 0 0; font-size: 13px; }
+body.rq-index .rq-missing { color: #8a8378; }

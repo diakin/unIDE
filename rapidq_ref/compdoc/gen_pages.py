@@ -43,7 +43,8 @@ def esc(text):
 
 
 def page_start(title, section):
-    return ('<html>\n<head>\n<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->\n'
+    return ('<!DOCTYPE html>\n<html>\n<head>\n<meta http-equiv="X-UA-Compatible" content="IE=edge">\n'
+            '<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->\n'
             '<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">\n'
             '<title>%s</title>\n<link rel="stylesheet" type="text/css" href="rq.css">\n'
             '</head>\n<body class="rqdoc">\n'

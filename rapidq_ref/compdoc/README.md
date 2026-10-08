@@ -23,7 +23,8 @@
 - `gen_pages.py`: страницы `c_*.html`, `custom.html`, раздел Appendix B в `contents.html`. Он же заменяет ссылки `../custom/…` в `indexa.html` на эти страницы.
 - `gen_list.py`: `rapidq_ref/inc/COMPONENTS.md`.
 - `gen_chm.py`: `rapidq_ref/help/rapidq.chm` (компилятор `chmcmd` из Free Pascal) и `rapidq_ref/help/keywords.txt` (слово → страница, для F1 в unIDE). Оглавление строится из `contents.html` (с Appendix B), указатель — из ссылок `indexa.html` и имён компонентов. Компиляция идёт во временной копии `html_doc`, файлы `.hhp`/`.hhc`/`.hhk` в репозиторий не пишутся.
-- `normalize.py`: приводит старые страницы `html_doc` к единому виду. Подключает `rq.css`, заменяет заголовочную таблицу на полосу заголовка, добавляет строку навигации. Текст страниц не меняет; повторный запуск ничего не делает.
+- `clean_index.py`: переписывает `indexa.html` (алфавитный указатель) одним видом: «ИМЯ – описание» по буквам. Записи берутся из исходного указателя; ссылки на страницы, которых нет в `html_doc`, становятся серым текстом; `TARGET="doc"` (кадр старой справки) убран.
+- `normalize.py`: приводит старые страницы `html_doc` к единому виду. Ставит `<!DOCTYPE html>` и `X-UA-Compatible: IE=edge` (иначе окно CHM показывает страницы в режиме IE7), подключает `rq.css`, заменяет заголовочную таблицу на полосу заголовка, добавляет строку навигации, убирает `TARGET="doc"`. Текст страниц не меняет; повторный запуск ничего не делает.
 
 ## Пересборка
 
@@ -33,6 +34,7 @@
 python3 -I inventory.py ../inc inv.json
 python3 -I catalog.py inv.json ../html_doc catalog.json batches 8
 python3 -I gen_pages.py ../..
+python3 -I clean_index.py ../..
 python3 -I gen_list.py ../..
 python3 -I gen_chm.py ../..
 ```
