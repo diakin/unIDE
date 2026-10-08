@@ -46989,28 +46989,6 @@ begin
   ModPreviewSchedule(Item);
 end;
 
-// Превью формы строки - не сразу: построение формы занимает время, и при
-// быстром движении мыши по списку строились бы все формы подряд. Через
-// 250 мс после того, как строка под мышью перестала меняться
-// (ModPreviewTick). Строка без формы - превью сразу убирается.
-procedure TForm1.ModPreviewSchedule(AItem: TListItem);
-begin
-  if FModPreview = nil then
-    Exit;
-  if FModPreviewTimer = nil then
-  begin
-    FModPreviewTimer := TTimer.Create(Self);
-    FModPreviewTimer.Enabled := False;
-    FModPreviewTimer.Interval := 250;
-    FModPreviewTimer.OnTimer := ModPreviewTick;
-  end;
-  FModPreviewTimer.Enabled := False;
-  if AItem = nil then
-    Exit;    // мышь ушла со строк - остаётся последнее превью
-  FModPreviewItem := AItem;
-  FModPreviewTimer.Enabled := True;
-end;
-
 // Файл превью на диске: dsgcache\<имя .dfm>_<crc пути>_<crc времени и
 // размера и номера способа снимка ('|4' - обход элементов, канва
 // заперта; превью прежних способов не подходят)>.preview.jpg. Изменился .dfm - другое имя, прежний файл
@@ -47109,6 +47087,52 @@ begin
     ASrc.Canvas.Unlock;
     ADst.Canvas.Unlock;
   end;
+end;
+
+// Превью формы строки. Готовое (в памяти или в dsgcache) и строка без
+// формы - сразу. Построение - через 150 мс после того, как строка под
+// мышью перестала меняться (ModPreviewTick): при быстром движении мыши по
+// списку иначе строились бы все формы подряд. По журналу построение
+// формы занимает 20-130 мс.
+procedure TForm1.ModPreviewSchedule(AItem: TListItem);
+var
+  FormRef, Stamp: string;
+  Count: Integer;
+  Ready: Boolean;
+begin
+  if FModPreview = nil then
+    Exit;
+  if FModPreviewTimer = nil then
+  begin
+    FModPreviewTimer := TTimer.Create(Self);
+    FModPreviewTimer.Enabled := False;
+    FModPreviewTimer.Interval := 150;
+    FModPreviewTimer.OnTimer := ModPreviewTick;
+  end;
+  FModPreviewTimer.Enabled := False;
+  if AItem = nil then
+    Exit;    // мышь ушла со строк - остаётся последнее превью
+  FModPreviewItem := AItem;
+
+  Ready := True;
+  Count := AItem.SubItems.Count;
+  if Count >= 2 then
+  begin
+    FormRef := AItem.SubItems[Count - 2];
+    if (FormRef <> '') and (Copy(FormRef, 1, 7) <> 'rqform:') and
+       FileExists(FormRef) then
+    begin
+      Stamp := ModFileStamp(FormRef);
+      Ready := ((FModPreviewCache <> nil) and
+                (FModPreviewCache.IndexOf(AnsiLowerCase(FormRef) + '|' +
+                                          Stamp) >= 0)) or
+               FileExists(ModPreviewDiskName(FormRef, Stamp));
+    end;
+  end;
+  if Ready then
+    ModPreviewTick(nil)
+  else
+    FModPreviewTimer.Enabled := True;
 end;
 
 // Превью формы строки FModPreviewItem. Картинка строится один раз на
