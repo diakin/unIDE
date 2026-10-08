@@ -46919,13 +46919,19 @@ end;
 
 // Размер и время изменения файла для подсказки списка модулей
 function ModFileInfo(const AFile: string): string;
+var
+  Found: TSearchRec;
 begin
-  if not FileExists(AFile) then
-    Result := 'файла нет'
-  else
-    Result := IntToStr(FileSizeOf(AFile)) + ' байт, изменён ' +
+  Result := 'файла нет';
+  if FindFirst(AFile, faAnyFile, Found) <> 0 then
+    Exit;
+  try
+    Result := IntToStr(Found.Size) + ' байт, изменён ' +
               FormatDateTime('yyyy-mm-dd hh:nn:ss',
-                             FileDateToDateTime(FileAge(AFile)));
+                             FileDateToDateTime(Found.Time));
+  finally
+    FindClose(Found);
+  end;
 end;
 
 // Подсказка над строкой списка модулей: размер и дата модуля и формы
