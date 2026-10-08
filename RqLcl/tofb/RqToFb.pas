@@ -420,6 +420,8 @@ type
     function CallFuncTarget(const AToks: TToks; AFrom, ATo: Integer;
                             out AProc: TRqProc): Boolean;
     function ProcPtrType(AProc: TRqProc): string;
+    procedure UseDeclareParamNames(ANameIdx: Integer; AProc: TRqProc;
+                                   var AParams, AAliases: string);
     procedure CallFuncExpr(var AToks: TToks; AIdx, AOpen, AClose: Integer);
     function CallbackShimBody(AProc: TRqProc; const AParams: string): string;
     procedure ProcessDeclare(var AToks: TToks; AFrom, ATo: Integer);
@@ -3586,6 +3588,8 @@ begin
     begin
       Params := ParseParams(AToks, OpenIdx + 1, CloseIdx - 1, ProcRec.Name);
       Aliases := FParamAliases;
+      if ProcRec.Declared then
+        UseDeclareParamNames(NameIdx, ProcRec, Params, Aliases);
     end;
   end
   else if ProcRec.IsVariadic then
@@ -3635,6 +3639,77 @@ begin
         'годится для Windows');
   end;
   Rebuild(AToks, AFrom, ATo, Header + Aliases + Locals);
+end;
+
+// Имена параметров FreeBASIC из "ByVal Имя As Тип, ..." (верхний регистр)
+function ParamNameList(const AParams: string): TStringList;
+var
+  Rest, Item: string;
+  CommaPos, SpacePos: Integer;
+begin
+  Result := TStringList.Create;
+  Rest := AParams + ',';
+  while Rest <> '' do
+  begin
+    CommaPos := Pos(',', Rest);
+    Item := Trim(Copy(Rest, 1, CommaPos - 1));
+    Delete(Rest, 1, CommaPos);
+    if Item = '' then
+      Continue;
+    if (UpperCase(Copy(Item, 1, 6)) = 'BYVAL ') or
+       (UpperCase(Copy(Item, 1, 6)) = 'BYREF ') then
+      Item := Trim(Copy(Item, 7, MaxInt));
+    SpacePos := Pos(' ', Item);
+    if SpacePos > 0 then
+      Item := Copy(Item, 1, SpacePos - 1);
+    Result.Add(UpperCase(Item));
+  end;
+end;
+
+// Имена параметров в DECLARE и в заголовке SUB/FUNCTION разные: в теле
+// RapidQ видит имена из DECLARE, имя из заголовка - необъявленная
+// переменная (тест пользователя 2026-10-08: DECLARE SUB T (A AS LONG),
+// SUB T (B AS LONG) PRINT A, B; T 5 -> 5 и 0). Заголовок FreeBASIC - с
+// параметрами DECLARE, имена из заголовка - локальные переменные.
+procedure TRqFbConv.UseDeclareParamNames(ANameIdx: Integer; AProc: TRqProc;
+                                         var AParams, AAliases: string);
+var
+  DefNames, DeclNames: TStringList;
+  NameIdx: Integer;
+  Differ: Boolean;
+  VarRec: TRqVar;
+  Found: Integer;
+begin
+  DefNames := ParamNameList(AParams);
+  DeclNames := ParamNameList(AProc.DeclParams);
+  try
+    if DefNames.Count <> DeclNames.Count then
+      Exit;
+    Differ := False;
+    for NameIdx := 0 to DefNames.Count - 1 do
+      if DefNames[NameIdx] <> DeclNames[NameIdx] then
+        Differ := True;
+    if not Differ then
+      Exit;
+    AParams := AProc.DeclParams;
+    AAliases := AProc.DeclAliases;
+    for NameIdx := 0 to DefNames.Count - 1 do
+      if DeclNames.IndexOf(DefNames[NameIdx]) < 0 then
+        for Found := 0 to FVars.Count - 1 do
+        begin
+          VarRec := TRqVar(FVars.Objects[Found]);
+          if (VarRec.Scope = AProc.Name) and
+             (UpperCase(VarRec.FbName) = DefNames[NameIdx]) then
+            VarRec.Explicit := False;
+        end;
+    Warn(AProc.Name + ': имена параметров в DECLARE (' + DeclNames.CommaText +
+         ') и в заголовке (' + DefNames.CommaText + ') разные - как в ' +
+         'RapidQ, в теле действуют имена из DECLARE, имена из заголовка - ' +
+         'необъявленные переменные (0)');
+  finally
+    DefNames.Free;
+    DeclNames.Free;
+  end;
 end;
 
 // Функции из NewWndProc.inc, CallBack_N.inc, CallBackForwarder.inc и
