@@ -931,6 +931,23 @@ Private Function RqRtResInfo(ByVal ResId As Long) As Any Ptr
                             Cast(Any Ptr, CInt(RqRtRcData)))
 End Function
 
+' Поле записи STRING*N (препроцессор: N байт Имя_rqfix и свойство Имя):
+' чтение - все N символов, запись - дополняется пробелами, лишнее
+' отрезается (как у RapidQ, тест пользователя 2026-10-08)
+Function RqFixGet(ByVal Source As UByte Ptr, ByVal ByteCount As Long) As String
+    Dim Result As String = Space(ByteCount)
+    For ByteIdx As Long = 0 To ByteCount - 1
+        Result[ByteIdx] = Source[ByteIdx]
+    Next
+    Return Result
+End Function
+Sub RqFixSet(ByVal Dest As UByte Ptr, ByVal ByteCount As Long, ByRef Value As String)
+    Dim ValueLen As Long = Len(Value)
+    For ByteIdx As Long = 0 To ByteCount - 1
+        If ByteIdx < ValueLen Then Dest[ByteIdx] = Value[ByteIdx] Else Dest[ByteIdx] = 32
+    Next
+End Sub
+
 ' RESOURCE(n) - номер n-го ресурса (с 0)
 Function RqResource(ByVal ResNum As Long) As Long
     Return RqResourceBase + ResNum

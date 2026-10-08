@@ -336,6 +336,8 @@ type
     FCurLine: Integer;
     FCurProc: TRqProc;
     FInType: Boolean;
+    FPlainType: string;           // запись TYPE (не свой компонент) - имя
+    FFixBodies: string;           // свойства полей STRING*N - после END TYPE
     FCreateDepth: Integer;
     FTypeCheck: Boolean;
     FEscape: Boolean;
@@ -440,6 +442,8 @@ type
     function AnyMemberKind(const AMemberUp: string): Char;
     procedure ProcessTypeHeader(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessField(var AToks: TToks; AFrom, ATo: Integer);
+    procedure FixedStringField(var AToks: TToks; AFrom, ATo, ANameIdx,
+      AOpenIdx, ACloseIdx: Integer; const AStarLen: string);
     procedure ProcessPrint(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessIf(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessFor(var AToks: TToks; AFrom, ATo: Integer);
@@ -2634,7 +2638,14 @@ begin
         AToks[NextIdx].OutText := 'Function';
     end
     else if IsWord(AToks, NextIdx, 'TYPE') then
-      FInType := False
+    begin
+      // свойства полей STRING*N - той же строкой
+      if FInType and (FFixBodies <> '') then
+        AToks[NextIdx].OutText := AToks[NextIdx].OutText + FFixBodies;
+      FFixBodies := '';
+      FPlainType := '';
+      FInType := False;
+    end
     else if IsWord(AToks, NextIdx, 'CREATE') then
     begin
       if FCreateDepth > 0 then
@@ -4067,6 +4078,7 @@ begin
   begin
     Warn('TYPE ' + AToks[NameIdx].Text + '<...>: шаблоны TYPE пока не ' +
          'поддержаны, текст оставлен как есть');
+    FPlainType := '';
     FInType := True;
     Exit;
   end;
@@ -4075,6 +4087,8 @@ begin
   begin
     // запись RapidQ - поля подряд, без выравнивания (тест пользователя
     // 2026-10-08: TYPE с STRING*5 и INTEGER - SIZEOF 9)
+    FPlainType := AToks[NameIdx].OutText;
+    FFixBodies := '';
     AToks[NameIdx].OutText := AToks[NameIdx].OutText + ' Field = 1';
     FInType := True;
     Exit;
@@ -4147,7 +4161,9 @@ begin
     if CloseIdx < 0 then
       Exit;
     ProcessExpr(AToks, OpenIdx + 1, CloseIdx - 1);
-  end;
+  end
+  else
+    OpenIdx := -1;
   AsIdx := NextSig(AToks, CloseIdx + 1, ATo);
   if IsWord(AToks, AsIdx, 'AS') then
   begin
@@ -4157,10 +4173,83 @@ begin
     begin
       RqType := ParseType(AToks, TypeIdx, ATo, StarLen);
       AToks[NextSig(AToks, AsIdx + 1, ATo)].OutText := FbType(RqType);
+      if (RqType = 'STRING') and (StarLen <> '') and (FPlainType <> '') then
+        FixedStringField(AToks, AFrom, ATo, NameIdx, OpenIdx, CloseIdx, StarLen);
     end;
   end
   else
     AToks[CloseIdx].Post := ' As ' + FbType(SuffixType(SuffixOf(AToks[NameIdx].Up)));
+end;
+
+// Поле записи STRING*N: у RapidQ - ровно N байт (тест пользователя
+// 2026-10-08: SIZEOF 9 у STRING*5 + INTEGER), запись дополняется
+// пробелами и обрезается до N, чтение даёт все N символов. У FreeBASIC
+// String*N - N + 1 байт, поэтому поле - N байт (Имя_rqfix) и свойство Имя
+// (RqFixGet / RqFixSet в rqrt.bi); тела свойств - после END TYPE.
+// Массив таких полей (одно измерение) - свойство с номером.
+procedure TRqFbConv.FixedStringField(var AToks: TToks; AFrom, ATo, ANameIdx,
+  AOpenIdx, ACloseIdx: Integer; const AStarLen: string);
+var
+  FieldName, StoreName, LowText, HighText, CountText, DimText: string;
+  TokIdx, Depth, ToIdx: Integer;
+  SavedLost: Integer;
+begin
+  FieldName := AToks[ANameIdx].OutText;
+  StoreName := FieldName + '_rqfix';
+  if AOpenIdx < 0 then
+  begin
+    Rebuild(AToks, AFrom, ATo, StoreName + '(0 To ' + AStarLen +
+      ' - 1) As UByte : Declare Property ' + FieldName +
+      '() As String : Declare Property ' + FieldName + '(ByRef Value As String)');
+    FFixBodies := FFixBodies + ' : Property ' + FPlainType + '.' + FieldName +
+      '() As String : Return RqFixGet(@' + StoreName + '(0), ' + AStarLen +
+      ') : End Property : Property ' + FPlainType + '.' + FieldName +
+      '(ByRef Value As String) : RqFixSet(@' + StoreName + '(0), ' + AStarLen +
+      ', Value) : End Property';
+    Exit;
+  end;
+  // границы массива: (hi) или (lo TO hi); несколько измерений - как было
+  Depth := 0;
+  ToIdx := -1;
+  for TokIdx := AOpenIdx + 1 to ACloseIdx - 1 do
+  begin
+    if IsOp(AToks, TokIdx, '(') then
+      Inc(Depth)
+    else if IsOp(AToks, TokIdx, ')') then
+      Dec(Depth)
+    else if (Depth = 0) and IsOp(AToks, TokIdx, ',') then
+    begin
+      Warn(AToks[ANameIdx].Text + ': массив STRING*N в TYPE с несколькими ' +
+           'измерениями - String*N FreeBASIC (на байт длиннее)');
+      Exit;
+    end
+    else if (Depth = 0) and IsWord(AToks, TokIdx, 'TO') then
+      ToIdx := TokIdx;
+  end;
+  SavedLost := FLostLines;
+  if ToIdx >= 0 then
+  begin
+    LowText := RangeText(AToks, AOpenIdx + 1, ToIdx - 1);
+    HighText := RangeText(AToks, ToIdx + 1, ACloseIdx - 1);
+  end
+  else
+  begin
+    LowText := '0';
+    HighText := RangeText(AToks, AOpenIdx + 1, ACloseIdx - 1);
+  end;
+  FLostLines := SavedLost;
+  CountText := '((' + HighText + ') - (' + LowText + ') + 1)';
+  DimText := '(RqFixIdx - (' + LowText + ')) * ' + AStarLen;
+  Rebuild(AToks, AFrom, ATo, StoreName + '(0 To ' + CountText + ' * ' +
+    AStarLen + ' - 1) As UByte : Declare Property ' + FieldName +
+    '(ByVal RqFixIdx As Long) As String : Declare Property ' + FieldName +
+    '(ByVal RqFixIdx As Long, ByRef Value As String)');
+  FFixBodies := FFixBodies + ' : Property ' + FPlainType + '.' + FieldName +
+    '(ByVal RqFixIdx As Long) As String : Return RqFixGet(@' + StoreName +
+    '(' + DimText + '), ' + AStarLen + ') : End Property : Property ' +
+    FPlainType + '.' + FieldName +
+    '(ByVal RqFixIdx As Long, ByRef Value As String) : RqFixSet(@' + StoreName +
+    '(' + DimText + '), ' + AStarLen + ', Value) : End Property';
 end;
 
 // PRINT элементы: каждый - RqFmt(...), "," -> ";"
@@ -5999,6 +6088,8 @@ begin
     SetLength(FConds, 0);
     FCurProc := nil;
     FInType := False;
+    FPlainType := '';
+    FFixBodies := '';
     FCurType := nil;
     FTypeBody := 0;
     FTypeWith := '';
