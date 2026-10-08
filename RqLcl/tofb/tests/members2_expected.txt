@@ -16,7 +16,7 @@ popup 123 imagelist -1
 clipboard 1-1
 array size 20
 array 102030
-udt abc77
+udt abc77 packed 7
 res resource text 123
 rotate 00FFFFFF 000000FF 00FFFFFF
 center 1

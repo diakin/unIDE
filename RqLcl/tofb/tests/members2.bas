@@ -18,6 +18,13 @@ TYPE TTest
   S AS STRING*8
   N AS INTEGER
 END TYPE
+' RapidQ: fields without alignment (user test: STRING*5 + INTEGER -> SIZEOF 9)
+TYPE TPack
+  B AS BYTE
+  L AS LONG
+  W AS WORD
+END TYPE
+DIM Pack AS TPack
 DIM Enters AS INTEGER, Measures AS INTEGER, LastDeleted AS INTEGER
 LastDeleted = -1
 
@@ -153,7 +160,7 @@ Mem.Position = 0
 Mem.WriteUDT(T1)
 Mem.Position = 0
 Mem.ReadUDT(T2)
-PRINT "udt "; RTRIM$(T2.S); T2.N
+PRINT "udt "; RTRIM$(T2.S); T2.N; " packed "; SIZEOF(Pack)
 Mem.Position = 0
 Mem.Size = 0
 Mem.ExtractRes(Resource(2))

@@ -4073,6 +4073,9 @@ begin
   if not ((IsWord(AToks, ExtIdx, 'EXTENDS') or IsWord(AToks, ExtIdx, 'AS')) and
           (BaseIdx >= 0) and (AToks[BaseIdx].Kind = tkIdent)) then
   begin
+    // запись RapidQ - поля подряд, без выравнивания (тест пользователя
+    // 2026-10-08: TYPE с STRING*5 и INTEGER - SIZEOF 9)
+    AToks[NameIdx].OutText := AToks[NameIdx].OutText + ' Field = 1';
     FInType := True;
     Exit;
   end;
