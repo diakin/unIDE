@@ -2556,6 +2556,9 @@ type
     procedure IncludesDblClick(Sender: TObject);
     function  SubAtLine(ALine: Integer): Integer;
     function  IsSubBeginLine(ALine: Integer): Boolean;
+    function  FmtSuspectAt(ALineIdx: Integer): Boolean;
+    procedure FmtSuspectCheck;
+    procedure FmtSuspectClear;
     procedure LayoutScrollBars;
     function  ViewWidth: Integer;
     procedure UpdateScrollBars;
@@ -2918,6 +2921,17 @@ type
     // Строка, на которую перешли из списка подпрограмм: подсвечивается
     // цветом LineMark, пока не перейдём к другой; -1 - нет такой
     FFoundLine: Integer;
+
+    // Format text: строки, код которых кончается точкой ("Output." без
+    // имени после неё). Компилятор склеит такую строку со следующей, и
+    // форматер считает следующую продолжением. Отмечаются цветом
+    // Format.SuspectBG, пока текст строки не изменится; число строк файла
+    // сменилось или открыт другой файл - отметки снимаются все.
+    // FFmtSusText - текст строки на момент отметки.
+    FFmtSusLine: array of Integer;
+    FFmtSusText: array of string;
+    FFmtSusFile: string;
+    FFmtSusLines: Integer;
 
 
 
@@ -3927,6 +3941,10 @@ begin
   UiDefault('Debug.NoCodeBG', $00A0A0A0, $00505050);
   UiDefault('Debug.ExecBG', clNavy, $00904818);
   UiDefault('Debug.ExecText', clWhite, $00F0F0F0);
+  // Format text: строка, код которой кончается точкой - см. FFmtSusLine.
+  // Текст clNone - остаётся цветом подсветки.
+  UiDefault('Format.SuspectBG', $00C8C8FF, $00303078);
+  UiDefault('Format.SuspectText', clNone, clNone);
   // Полоса меток: закладка (квадратик с номером) и стрелка строки остановки
   UiDefault('Gutter.MarksBG', clDefault, clDefault);
   UiDefault('Gutter.BmBG', $0080FFFF, $00406060);
@@ -4238,6 +4256,10 @@ begin
     Result := 'Меню Bookmarks: фон номера текущей закладки (на строке с кареткой)'
   else if AKey = 'Gutter.BmCurText' then
     Result := 'Меню Bookmarks: номер текущей закладки'
+  else if AKey = 'Format.SuspectBG' then
+    Result := 'Format text: фон строки, которая кончается точкой'
+  else if AKey = 'Format.SuspectText' then
+    Result := 'Format text: текст такой строки (clNone - цвет подсветки)'
   else if AKey = 'Gutter.BreakDot' then
     Result := 'Полоса меток: кружок точки останова'
   else if AKey = 'Gutter.ExecArrow' then
@@ -21753,6 +21775,46 @@ end;
 // Строка ALine (от нуля) - объявление подпрограммы из списка SubList?
 // Список построен по возрастанию строк, поэтому поиск двоичный: он идёт
 // на каждую видимую строку кадра.
+// Отметки Format text (FFmtSusLine): отмечена ли строка ALineIdx. Строка
+// должна быть той же, что при отметке, - исправленная гаснет сама.
+function TForm1.FmtSuspectAt(ALineIdx: Integer): Boolean;
+var
+  K, LineStart, LineLen: Integer;
+begin
+  Result := False;
+  for K := 0 to High(FFmtSusLine) do
+    if FFmtSusLine[K] = ALineIdx then
+    begin
+      LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, ALineIdx, 0);
+      if LineStart < 0 then
+        Exit;
+      LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+      Result := (K <= High(FFmtSusText)) and
+                (LineLen = Length(FFmtSusText[K])) and
+                (TextRange(LineStart, LineLen) = FFmtSusText[K]);
+      Exit;
+    end;
+end;
+
+// Перед отрисовкой кадра: другой файл или строк стало больше/меньше -
+// номера отметок уже не те, снимаем все
+procedure TForm1.FmtSuspectCheck;
+begin
+  if Length(FFmtSusLine) = 0 then
+    Exit;
+  if (FFmtSusFile <> FCurrentFileName) or
+     (FFmtSusLines <> SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0)) then
+    FmtSuspectClear;
+end;
+
+procedure TForm1.FmtSuspectClear;
+begin
+  SetLength(FFmtSusLine, 0);
+  SetLength(FFmtSusText, 0);
+  FFmtSusFile := '';
+  FFmtSusLines := 0;
+end;
+
 function TForm1.IsSubBeginLine(ALine: Integer): Boolean;
 var
   Lo, Hi, Mid: Integer;
@@ -58600,6 +58662,9 @@ begin
 
     UpdateVisibleBounds;
 
+    // Отметки Format text - снять, если номера строк уже не те
+    FmtSuspectCheck;
+
     // Копим заново на каждый кадр: видимые строки сменились
     FMaxVisW := 0;
 
@@ -58789,6 +58854,14 @@ begin
       begin
         MarkFG := FScheme.MarkGroups[MarkIdx].FgColor;
         MarkBG := FScheme.MarkGroups[MarkIdx].BgColor;
+      end;
+
+      // Format text: строка, код которой кончается точкой (FFmtSusLine)
+      if (Length(FFmtSusLine) > 0) and FmtSuspectAt(CurrentLineIdx) then
+      begin
+        LineMarked := True;
+        MarkBG := UiColor('Format.SuspectBG');
+        MarkFG := UiColor('Format.SuspectText');
       end;
 
       // Точка останова и строка остановки - поверх отметок, своими цветами
@@ -59942,6 +60015,39 @@ var
   PrevCode: string;
   OrigText, Expanded: string;
   ExpandCount, VtCount: Integer;
+  // Строки, код которых кончается точкой: номер строки и её новый текст
+  SusLines: array of Integer;
+  SusTexts: array of string;
+  SusNote, SusPlace: string;
+
+  // Код строки кончается точкой: "Output." - имя после точки не дописано,
+  // и компилятор прочтёт это вместе со следующей строкой. Не считаются:
+  // "end." в конце модуля, ".." (диапазон, перенесённый на другую строку),
+  // число с точкой.
+  function EndsWithDot(const ACode: string): Boolean;
+  var
+    EndPos: Integer;
+    PrevW: string;
+  begin
+    Result := False;
+    EndPos := Length(ACode);
+    while (EndPos >= 1) and (ACode[EndPos] in [' ', #9]) do
+      Dec(EndPos);
+    if (EndPos < 2) or (ACode[EndPos] <> '.') then
+      Exit;
+    if ACode[EndPos - 1] = '.' then
+      Exit;
+    PrevW := LastToken(Copy(ACode, 1, EndPos - 1));
+    if PrevW = '' then
+      Exit;
+    if PrevW[1] in ['0'..'9'] then
+      Exit;
+    if SameText(PrevW, 'end') or
+       ((FScheme.FSubEndWords <> nil) and
+        (FScheme.FSubEndWords.IndexOf(PrevW) >= 0)) then
+      Exit;
+    Result := True;
+  end;
 
   // Закончен ли оператор строкой S
   function EndsStatement(const S: string): Boolean;
@@ -60059,6 +60165,8 @@ begin
     Changed := 0;
     PrevInside := False;
     LineStart := 1;
+    SetLength(SusLines, 0);
+    SetLength(SusTexts, 0);
 
     I := 1;
     while I <= Len + 1 do
@@ -60213,6 +60321,17 @@ begin
           if Raw <> Pad + Body then
             Inc(Changed);
 
+          // Язык без знака переноса (Паскаль, C): строка не должна
+          // кончаться точкой
+          if (FScheme.FFmtContinue.Count = 0) and not FScheme.FSubTags and
+             EndsWithDot(L.Code) then
+          begin
+            SetLength(SusLines, Length(SusLines) + 1);
+            SetLength(SusTexts, Length(SusTexts) + 1);
+            SusLines[High(SusLines)] := SL.Count - 1;
+            SusTexts[High(SusTexts)] := Pad + Body;
+          end;
+
           // Скобки строки: открытая - колонка первого непробельного символа
           // после неё (при пробельном отступе колонка = отступ + позиция в
           // коде); скобка в конце строки - на шаг правее начала оператора.
@@ -60265,10 +60384,54 @@ begin
       Inc(I);
     end;
 
+    // Строки с точкой в конце - в Compilation log и в окно ошибок, строкой
+    // "файл(строка) ...": двойной щелчок переходит к ней. В редакторе -
+    // фоном Format.SuspectBG (FFmtSusLine). Номера строк после
+    // форматирования те же: строк оно не добавляет и не убирает.
+    FmtSuspectClear;
+    SusNote := '';
+    if Length(SusLines) > 0 then
+    begin
+      // Поля и локальные массивы - разные типы, присвоить целиком нельзя
+      SetLength(FFmtSusLine, Length(SusLines));
+      SetLength(FFmtSusText, Length(SusTexts));
+      FFmtSusFile := FCurrentFileName;
+      // Текст уже тот, что будет после форматирования, по числу строк:
+      // развёртка CREATE и замена #11 сделаны выше, а форматирование
+      // строк не добавляет
+      FFmtSusLines := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+      for K := 0 to High(SusLines) do
+      begin
+        FFmtSusLine[K] := SusLines[K];
+        FFmtSusText[K] := SusTexts[K];
+        if FCurrentFileName <> '' then
+          SusPlace := ReleaseLogPlace(FCurrentFileName, SusLines[K] + 1)
+        else
+          SusPlace := 'Строка ' + IntToStr(SusLines[K] + 1);
+        SusPlace := SusPlace + ' Format text: строка кончается точкой, ' +
+          'следующая строка считается её продолжением: ' +
+          Trim(SusTexts[K]);
+        if CompLogEdit <> nil then
+          LogTo(CompLogEdit, SusPlace, clRed)
+        else
+          LogTo(LogEdit, SusPlace, clRed);
+        LogErr(SusPlace);
+      end;
+      SusNote := Format(' Строк, которые кончаются точкой: %d - отмечены ' +
+        'красным, список в Compilation log.', [Length(SusLines)]);
+    end;
+
     if (Changed = 0) and (ExpandCount = 0) and (VtCount = 0) then
     begin
-      StatusBar1.SimpleText := 'Format text: отступы уже расставлены';
+      StatusBar1.SimpleText := 'Format text: отступы уже расставлены.' +
+        SusNote;
       StatusBar1.SimplePanel := True;
+      if SusNote <> '' then
+      begin
+        RichEdit1.Invalidate;
+        if PaintBox1 <> nil then
+          PaintBox1.Invalidate;
+      end;
       Exit;
     end;
 
@@ -60330,6 +60493,7 @@ begin
       StatusBar1.SimpleText :=
         Format('Format text: строк изменено %d. Откат - Edit, Отменить массовую замену.',
                [Changed]);
+    StatusBar1.SimpleText := StatusBar1.SimpleText + SusNote;
     StatusBar1.SimplePanel := True;
   finally
     SL.Free;
