@@ -24,9 +24,9 @@ NAV = ('<div class="rq-nav"><a href="contents.html">Contents</a>'
        '<a href="indexa.html">Alphabetic index</a></div>')
 MARK = '<!-- rq-normalized -->'
 
-HEAD_TABLE_RE = re.compile(
-    r'<TABLE[^>]*>\s*<TR>\s*<TD[^>]*>(.*?)</TD>\s*<TD[^>]*ALIGN\s*=\s*"?RIGHT"?[^>]*>(.*?)</TD>\s*</TR>\s*</TABLE>',
-    re.I | re.S)
+HEAD_TABLE_RE = re.compile(r'<TABLE[^>]*>(.*?)</TABLE>', re.I | re.S)
+FIRST_ROW_RE = re.compile(
+    r'<TR[^>]*>\s*<TD[^>]*>(.*?)</TD>\s*<TD[^>]*ALIGN\s*=\s*"?RIGHT"?[^>]*>(.*?)</TD>', re.I | re.S)
 
 
 def inner_text(fragment):
@@ -48,9 +48,11 @@ def normalize(text, name):
             '<link rel="stylesheet" type="text/css" href="rq.css">\n'
             '</head>\n<body class="rqdoc">\n')
     head_table = HEAD_TABLE_RE.search(rest[:3000])
-    if head_table and 'Rapid-Q' in inner_text(head_table.group(1)) + inner_text(head_table.group(2)):
-        bar = ('<div class="rq-head"><span class="rq-brand">' + head_table.group(1).strip() +
-               '</span><span class="rq-section">' + head_table.group(2).strip() + '</span></div>\n')
+    first_row = FIRST_ROW_RE.search(head_table.group(1)) if head_table else None
+    if first_row and 'Rapid-Q' in inner_text(first_row.group(1)) + inner_text(first_row.group(2)):
+        # the whole header table (with its HR row, if any) becomes the bar
+        bar = ('<div class="rq-head"><span class="rq-brand">' + first_row.group(1).strip() +
+               '</span><span class="rq-section">' + first_row.group(2).strip() + '</span></div>\n')
         rest = rest[:head_table.start()] + bar + NAV + '\n' + rest[head_table.end():]
     else:
         bar = ('<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation</span>'
