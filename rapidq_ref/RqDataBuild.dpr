@@ -61,7 +61,11 @@ begin
         if (Found.Name = '.') or (Found.Name = '..') then
           Continue;
         if (Found.Attr and faDirectory) <> 0 then
-          Subdirs.Add(Found.Name)
+        begin
+          // old - старые версии компонентов (COMPONENTS.md), в описание не идут
+          if CompareText(Found.Name, 'old') <> 0 then
+            Subdirs.Add(Found.Name);
+        end
         else
         begin
           Ext := LowerCase(ExtractFileExt(Found.Name));
