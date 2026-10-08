@@ -1,0 +1,93 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QVIDEO</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QVIDEO</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QVIDEO Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QVideo.inc</code>, line 44 &middot; version: 1.3</p>
+<p><b>A video player object that plays media files through MCI string commands.</b></p>
+<p>QVideo extends QObject and controls a media file with mciSendString from winmm.dll. The file is opened under the fixed MCI alias MEDIA, either as a child window of a given window handle (Parent) or as its own popup or overlapped window. After opening, the length is read in milliseconds and in frames, the source size is read, and the MCI window handle is stored in Handle.</p>
+<p>Use Open to load a file, then Play, Pause, Stop and Close. An internal QTimer with a 1000 ms interval polls the position while playing and raises OnChange with the current frame and time in seconds. Volume sets the wave output volume with waveOutSetVolume.</p>
+<p>QVIDEO inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QVideo Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr class="rq-internal"><td class="rq-name">Timer</td><td class="rq-type">QTIMER</td><td>RW</td><td></td><td>Internal: QTimer (interval 1000 ms) enabled while playing; on each tick it reads the position and mode and raises OnChange.</td></tr>
+<tr><td class="rq-name">Lenght</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Length of the open media in frames (spelled Lenght in the source); 0 when closed.</td></tr>
+<tr><td class="rq-name">LenghtTime</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Length of the open media in seconds (spelled LenghtTime in the source); 0 when closed.</td></tr>
+<tr><td class="rq-name">State</td><td class="rq-type">INTEGER</td><td>RW</td><td>VD_CLOSE</td><td>Current state: VD_CLOSE (0), VD_PLAY (1), VD_PAUSE (2) or VD_STOP (3).</td></tr>
+<tr><td class="rq-name">Handle</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Window handle of the MCI video window, read after Open.</td></tr>
+<tr><td class="rq-name">FileOpen</td><td class="rq-type">BOOLEAN</td><td>RW</td><td></td><td>True while a media file is open.</td></tr>
+<tr><td class="rq-name">Error</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>MCI error text set when Open fails to open the file.</td></tr>
+<tr><td class="rq-name">Parent</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Window handle to play in. If nonzero when Open is called, the video window is created as a child of this window; if 0, a separate window is used.</td></tr>
+<tr><td class="rq-name">BorderStyle</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Used by Open when Parent is 0: 0 opens a popup window, any other value an overlapped window.</td></tr>
+<tr><td class="rq-name">ImgWidth</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>Width of the video source, read with the MCI where source command at Open.</td></tr>
+<tr><td class="rq-name">ImgHeight</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>Height of the video source, read with the MCI where source command at Open.</td></tr>
+<tr><td class="rq-name">Left</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>X position of the video window. Assigning it moves the window with MoveWindow (and brings a separate window to the front); it is ignored while no file is open.</td></tr>
+<tr><td class="rq-name">Top</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>Y position of the video window. Assigning it moves the window with MoveWindow; it is ignored while no file is open.</td></tr>
+<tr><td class="rq-name">Width</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>Width of the video window. Assigning it resizes the window with MoveWindow; it is ignored while no file is open.</td></tr>
+<tr><td class="rq-name">Height</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>Height of the video window. Assigning it resizes the window with MoveWindow; it is ignored while no file is open.</td></tr>
+<tr><td class="rq-name">CurrentFrame</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Current frame. When stopped or paused, assigning it seeks to that frame, clamped between 0 and Lenght; otherwise the assignment is ignored. Play starts from this frame.</td></tr>
+<tr><td class="rq-name">AudioOff</td><td class="rq-type">BOOLEAN</td><td>RW</td><td></td><td>Assigning true turns the sound off and false turns it on (MCI set audio all off/on) while a file is open.</td></tr>
+<tr><td class="rq-name">Caption</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Title of the separate video window. Assigning it stores the text and, when a file is open and Parent is 0, sets the window text.</td></tr>
+<tr><td class="rq-name">WindowState</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>State of the separate video window: 0 normal, 1 minimized, 2 maximized (ShowWindow 1, 2 or 3). Only applied when a file is open and Parent is 0; other values set it to 0.</td></tr>
+<tr><td class="rq-name">Volume</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Volume from 0 to 100. Assigning it sets the volume of wave output device 0 with waveOutSetVolume for both channels; values above 100 are ignored.</td></tr>
+</table>
+<a name="2"></a><h2>QVideo Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Close</td><td class="rq-type">SUB</td><td>Stops and closes the media and resets the length, size, position and state fields to 0 / VD_CLOSE.</td></tr>
+<tr><td class="rq-name">Open</td><td class="rq-type">FUNCTION(FileName as string) AS BOOLEAN</td><td>Open(FileName) opens the file under the alias MEDIA and fills the length, size and Handle fields. Returns true on success; on failure it sets Error (when MCI cannot open the file) and calls Close.</td></tr>
+<tr><td class="rq-name">Show</td><td class="rq-type">SUB</td><td>Shows the video window (MCI window state show).</td></tr>
+<tr><td class="rq-name">Play</td><td class="rq-type">SUB</td><td>Plays from CurrentFrame and starts the position timer.</td></tr>
+<tr><td class="rq-name">Stop</td><td class="rq-type">SUB</td><td>Stops playback, stops the timer, sets CurrentFrame to 0 and seeks to the start.</td></tr>
+<tr><td class="rq-name">Pause</td><td class="rq-type">SUB</td><td>Pauses playback when playing and stores the current position in CurrentFrame.</td></tr>
+</table>
+<a name="3"></a><h2>QVideo Events</h2>
+<table class="rq-ref">
+<tr><th>Event</th><th>Type</th><th>Occurs when...</th></tr>
+<tr><td class="rq-name">OnChange</td><td class="rq-type">SUB(position as long,timePos as long)</td><td>Raised every timer tick while playing, with the current frame (position) and the current time in seconds (timePos).</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>Timer.OnTimer</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>All instances use the same fixed MCI alias MEDIA, so only one file can be open at a time.</li>
+<li>The file name is inserted into the MCI open command without quotes, so names containing spaces are not handled.</li>
+<li>The AudioOff setter does not store the assigned value, so reading AudioOff does not reflect the sound state.</li>
+<li>Volume sets wave output device 0, not only this media; negative values are not rejected.</li>
+<li>Left, Top, Width and Height assignments are ignored (not stored) while no file is open.</li>
+<li>Lenght and LenghtTime are misspelled in the source and must be used with that spelling.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/object/QVideo.inc</code> &mdash; older version (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QVideo Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QVideo.inc&quot;
+DIM Video AS QVideo
+
+CREATE Form AS QFORM
+  Width = 400
+  Height = 340
+  CREATE Panel AS QPANEL
+    Align = alClient
+  END CREATE
+END CREATE
+
+Video.Parent = Panel.Handle
+IF Video.Open(&quot;clip.avi&quot;) THEN
+  Video.Play
+ELSE
+  ShowMessage Video.Error
+END IF
+Form.ShowModal
+Video.Close</pre>
+<div class="rq-foot"><a href="c_qtreeviewex.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qvolumeinfo.html">Next component</a></div>
+</body>
+</html>

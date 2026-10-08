@@ -1,0 +1,64 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QFLATBUTTON</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QFLATBUTTON</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QFLATBUTTON Component</h1>
+<p class="rq-meta">Extends <a href="qimage.html">QIMAGE</a> &middot; source: <code>inc/QFlatButton.inc</code>, line 3</p>
+<p><b>A flat image button derived from QImage that draws a raised border when the mouse is over it and a sunken border while it is pressed.</b></p>
+<p>QFlatButton draws its 3D edges directly on the image with Line, using light (115%) and dark (30%) shades of the system button face color. The color is read from the registry key \Control Panel\Colors, value ButtonFace (default &quot;150 150 150&quot;), and split into the R, G and B fields.</p>
+<p>OnMouseMove raises the button while the mouse is more than 3 pixels inside its edges and flattens it otherwise; OnMouseDown depresses it and OnMouseUp flattens it. CurrState uses the constants fbFlattened (0), fbRaised (1) and fbDepressed (2). The header refers to &quot;Appendix A QFLATBUTTON.htm&quot; for usage and thanks Erlend Rovik for the OnMouseDown/Up suggestion.</p>
+<p>QFLATBUTTON inherits the properties, methods and events of <a href="qimage.html">QIMAGE</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>Appendix A QFLATBUTTON.htm (usage documentation referred to in the header)</li>
+</ul>
+<a name="1"></a><h2>QFlatButton Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">b</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Blue component of the system ButtonFace color, set by GetColors.</td></tr>
+<tr><td class="rq-name">CurrState</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Current drawing state: fbFlattened (0), fbRaised (1) or fbDepressed (2).</td></tr>
+<tr class="rq-internal"><td class="rq-name">FlatBMPHandle</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Internal: copy of BMPHandle saved by Depress and restored by Flatten.</td></tr>
+<tr><td class="rq-name">G</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Green component of the system ButtonFace color, set by GetColors.</td></tr>
+<tr><td class="rq-name">R</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Red component of the system ButtonFace color, set by GetColors.</td></tr>
+</table>
+<a name="2"></a><h2>QFlatButton Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">GetColors</td><td class="rq-type">SUB</td><td>Reads the ButtonFace color from the registry and stores it in R, G and B.</td></tr>
+<tr><td class="rq-name">Depress</td><td class="rq-type">SUB</td><td>Draws the sunken border (dark top and left, light bottom and right) and sets CurrState to 2.</td></tr>
+<tr><td class="rq-name">Flatten</td><td class="rq-type">SUB</td><td>Restores the saved image without border and sets CurrState to 0.</td></tr>
+<tr><td class="rq-name">Raise</td><td class="rq-type">SUB</td><td>Draws the raised border (light top and left, dark bottom and right) and sets CurrState to 1.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>OnMouseDown</code>, <code>OnMouseMove</code>, <code>OnMouseUp</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>In Depress the light bottom line ends at x = Height - 1 instead of Width - 1, so it is too short on buttons wider than they are high.</li>
+<li>FlatBMPHandle is only saved in Depress; Flatten after a Raise without an earlier Depress restores an empty value.</li>
+<li>The source contains a stray comment &quot;Forgot to delete ling 16 :)&quot;.</li>
+</ul>
+<a name="4"></a><h2>QFlatButton Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QFlatButton.inc&quot;
+
+SUB BtnClick
+  ShowMessage &quot;Clicked&quot;
+END SUB
+
+CREATE Form AS QFORM
+  CREATE Btn AS QFLATBUTTON
+    Left = 10
+    Top = 10
+    BMP = &quot;open.bmp&quot;
+    OnClick = BtnClick
+  END CREATE
+END CREATE
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qflashlabel.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qfocus.html">Next component</a></div>
+</body>
+</html>

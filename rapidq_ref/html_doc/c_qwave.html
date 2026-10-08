@@ -1,0 +1,87 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QWAVE</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QWAVE</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QWAVE Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QWave.inc</code>, line 36 &middot; version: 1.2</p>
+<p><b>A non-visual object that plays, records, edits and saves WAV files through MCI string commands.</b></p>
+<p>QWave sends MCI commands with mciSendStringA from winmm.dll to a waveaudio device opened under the alias &quot;sound&quot;, with the time format set to milliseconds. Open loads a file and reads its length, bits per sample, sample rate and channels; New opens an empty recording buffer. Play, Pause, Stop, Record, Save and Delete map to the MCI commands of the same names.</p>
+<p>An internal QTIMER (Timer, interval 1000 ms) runs while playing or recording: on each tick it updates CurrentPos and State, calls Stop when the device reports &quot;stopped&quot;, and fires OnChange with the current position. State uses the constants WV_CLOSE, WV_PLAY, WV_PAUSE, WV_STOP and WV_RECORD. Volume is set for wave output device 0 with waveOutSetVolume.</p>
+<p>QWAVE inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QWave Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr class="rq-internal"><td class="rq-name">Timer</td><td class="rq-type">QTIMER</td><td>RW</td><td></td><td>Internal QTIMER (interval 1000 ms) that polls the position and state while playing or recording and fires OnChange.</td></tr>
+<tr><td class="rq-name">Lenght</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Length of the open sound in milliseconds (spelled Lenght in the source); read on Open, Stop and Delete.</td></tr>
+<tr><td class="rq-name">State</td><td class="rq-type">INTEGER</td><td>RW</td><td>WV_CLOSE</td><td>Current state: WV_CLOSE, WV_PLAY, WV_PAUSE, WV_STOP or WV_RECORD.</td></tr>
+<tr><td class="rq-name">FileOpen</td><td class="rq-type">BOOLEAN</td><td>RW</td><td></td><td>True while a file (or a new buffer) is open.</td></tr>
+<tr><td class="rq-name">Error</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>MCI error text set when Open fails.</td></tr>
+<tr><td class="rq-name">CurrentPos</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Current position in milliseconds. Assigning it while stopped or paused clamps the value to 0..Lenght and seeks the device there.</td></tr>
+<tr><td class="rq-name">Bits</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Bits per sample. Assigning WV_BIT8 or WV_BIT16 while a file is open and stopped or paused sends a set command with the new format (bits, channels, sample rate, alignment, bytes per second).</td></tr>
+<tr><td class="rq-name">Frequence</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Sample rate in Hz. Assigning WV_KHZ8, WV_KHZ11 or WV_KHZ44 while a file is open and stopped or paused changes the wave format.</td></tr>
+<tr><td class="rq-name">Mode</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>Number of channels. Assigning WV_MONO or WV_STEREO while a file is open and stopped or paused changes the wave format.</td></tr>
+<tr><td class="rq-name">Volume</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Output volume 0-100. Assigning it calls waveOutSetVolume for device 0 with the same value for both channels; values above 100 are ignored.</td></tr>
+</table>
+<a name="2"></a><h2>QWave Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Close</td><td class="rq-type">SUB</td><td>Stops and closes the MCI device and resets FileOpen, Lenght, CurrentPos and State.</td></tr>
+<tr><td class="rq-name">Open</td><td class="rq-type">FUNCTION(FileName as string) AS BOOLEAN</td><td>Opens a WAV file, reads its length and format and returns True on success; on failure sets Error and closes the device.</td></tr>
+<tr><td class="rq-name">Play</td><td class="rq-type">SUB</td><td>Starts playback from CurrentPos and starts the timer.</td></tr>
+<tr><td class="rq-name">Stop</td><td class="rq-type">SUB</td><td>Stops playback or recording, re-reads the length, stops the timer and seeks to the start.</td></tr>
+<tr><td class="rq-name">Pause</td><td class="rq-type">SUB</td><td>Pauses playback and stores the current position.</td></tr>
+<tr><td class="rq-name">New</td><td class="rq-type">SUB</td><td>Opens a new empty waveaudio buffer for recording, if no file is open.</td></tr>
+<tr><td class="rq-name">Record</td><td class="rq-type">SUB</td><td>Starts recording (MCI &#x27;record sound to&#x27; Lenght) when a file is open and stopped or paused, and starts the timer.</td></tr>
+<tr><td class="rq-name">Save</td><td class="rq-type">FUNCTION(FileName as string) AS BOOLEAN</td><td>Saves the sound to a file when it is stopped and returns True on success.</td></tr>
+<tr><td class="rq-name">Delete</td><td class="rq-type">SUB(pos1 as long,pos2 as long)</td><td>Deletes the part between pos1 and pos2 (milliseconds) when stopped, then re-reads the length.</td></tr>
+</table>
+<a name="3"></a><h2>QWave Events</h2>
+<table class="rq-ref">
+<tr><th>Event</th><th>Type</th><th>Occurs when...</th></tr>
+<tr><td class="rq-name">OnChange</td><td class="rq-type">SUB(position as long)</td><td>Event fired on every timer tick with the current position in milliseconds.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>Timer.OnTimer</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>The private GetPosition function tests Wave.FileOpen instead of QWave.FileOpen, so it only works when the instance is named Wave.</li>
+<li>SetFrequence accepts 8000, 11025 and 44100 but not 22050, although the constant WV_KHZ22 is defined.</li>
+<li>All instances use the same MCI alias &quot;sound&quot;, so only one QWave can have a file open at a time.</li>
+<li>File names are not quoted in the open and save commands, so names with spaces may fail.</li>
+<li>Record records &#x27;to&#x27; the current Lenght; for a buffer created with New, Lenght is 0.</li>
+<li>Volume always targets wave output device 0; values from 51 to 99 are computed as negative numbers before being passed to waveOutSetVolume.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/object/QWave.inc</code> &mdash; identical copy (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QWave Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QWave.inc&quot;
+
+DIM Wave AS QWave
+
+CREATE Form AS QFORM
+END CREATE
+
+SUB WaveChange(position AS LONG)
+  Form.Caption = STR$(position) + &quot; / &quot; + STR$(Wave.Lenght)
+END SUB
+
+Wave.OnChange = WaveChange
+IF Wave.Open(&quot;test.wav&quot;) THEN
+  Wave.Volume = 80
+  Wave.Play
+ELSE
+  ShowMessage Wave.Error
+END IF
+Form.ShowModal
+Wave.Close</pre>
+<div class="rq-foot"><a href="c_qvumeter.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qwebcam_vfw.html">Next component</a></div>
+</body>
+</html>

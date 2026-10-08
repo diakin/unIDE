@@ -1,0 +1,90 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QAVI</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QAVI</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QAVI Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QAVI.inc</code>, line 326 &middot; author: JohnK (John Kelly); code contributions by Ray Mercer &middot; version: 1.0</p>
+<p><b>Non-visual component that reads frames from AVI video files into bitmaps and writes bitmaps as frames into new AVI files, using the Video for Windows AVIFile API.</b></p>
+<p>QAVI wraps functions of avifil32.dll (AVIFileOpen, AVIFileGetStream, AVIStreamGetFrame, AVIFileCreateStream, AVIStreamWrite, AVIMakeCompressedStream, AVISaveOptions and others). GetAVIFileInfo opens a file and fills the frame count, size, frame rate and stream rectangle. AVItoBMP extracts one frame into a QBITMAP: 24 bits per pixel for uncompressed &quot;DIB &quot; streams, otherwise 8 bits, letting the API choose the decompressor. The pixel data is copied straight into the bitmap memory, whose address is found with GetCurrentObject and GetObject.</p>
+<p>To write a video, call CreateAVIFile with the file name, size, bit depth (8 or 24) and frame rate, then call BMPtoAVIFile once per frame with a QBITMAP of that size, and finish with CloseAVIFile. Setting UseCompression makes an RLE compressed stream, and ShowDialog shows the Windows compression options dialog.</p>
+<p>Errors returned by the AVI functions are turned into text in Error (and shown with ShowMessage when ShowError is set); on error the streams and the library are released. The file defines its own TBITMAP and BITMAPINFOHEADER types and constants unless RapidQ2.inc or Windows.inc have already been loaded.</p>
+<p>QAVI inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QAVI Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">NumFrames</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Number of frames in the video stream, set by GetAVIFileInfo and AVItoBMP. When creating a file, its value is written into the stream header length.</td></tr>
+<tr><td class="rq-name">FirstFrame</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Start position of the video stream (AVIStreamStart), set by GetAVIFileInfo and AVItoBMP.</td></tr>
+<tr><td class="rq-name">Error</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Text of the last AVI error, prefixed with &quot;AVI Function: &quot;.</td></tr>
+<tr><td class="rq-name">ShowError</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>When non-zero, error texts are also shown with ShowMessage. Default 0.</td></tr>
+<tr><td class="rq-name">Width</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Frame width in pixels, read from the file or set by CreateAVIFile.</td></tr>
+<tr><td class="rq-name">Height</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Frame height in pixels, read from the file or set by CreateAVIFile.</td></tr>
+<tr><td class="rq-name">Left</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Left of the stream rectangle, read by GetAVIFileInfo. When creating, a non-zero value is written to the stream header, otherwise 0 is used.</td></tr>
+<tr><td class="rq-name">Right</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Right of the stream rectangle, read by GetAVIFileInfo. When creating, a non-zero value is written to the stream header, otherwise the frame width is used.</td></tr>
+<tr><td class="rq-name">Top</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Top of the stream rectangle, read by GetAVIFileInfo. When creating, a non-zero value is written to the stream header, otherwise 0 is used.</td></tr>
+<tr><td class="rq-name">Bottom</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Bottom of the stream rectangle, read by GetAVIFileInfo. When creating, a non-zero value is written to the stream header, otherwise the frame height is used.</td></tr>
+<tr><td class="rq-name">FPS</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Frames per second read by GetAVIFileInfo (dwRate \ dwScale).</td></tr>
+<tr><td class="rq-name">FileType</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>File type text from the AVI file information (szFileType), set by GetAVIFileInfo.</td></tr>
+<tr><td class="rq-name">Quality</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Compression quality written into the stream header and the compression options; default 10000. Read from the file by GetAVIFileInfo.</td></tr>
+<tr><td class="rq-name">bpp</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Bits per pixel, 8 or 24; default 24. Set by CreateAVIFile and by AVItoBMP.</td></tr>
+<tr><td class="rq-name">SampleSize</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Frame size in bytes from the stream information, set by GetAVIFileInfo.</td></tr>
+<tr><td class="rq-name">FramesWritten</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Number of frames written since CreateAVIFile; it is also the stream position of the next frame.</td></tr>
+<tr><td class="rq-name">BytesWritten</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Number of bytes written by the last BMPtoAVIFile call.</td></tr>
+<tr><td class="rq-name">ShowDialog</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>When non-zero, CreateAVIFile shows the Windows compression options dialog (AVISaveOptions) and uses the chosen compressor.</td></tr>
+<tr><td class="rq-name">UseCompression</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>When non-zero, CreateAVIFile creates an RLE compressed stream; frames are then written to that stream.</td></tr>
+</table>
+<a name="2"></a><h2>QAVI Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">CloseAVIFile</td><td class="rq-type">FUNCTION AS LONG</td><td>Releases the streams and the file, calls AVIFileExit and clears the internal pointers. Returns 1. Call it when you have finished reading or writing.</td></tr>
+<tr><td class="rq-name">CreateAVIFile</td><td class="rq-type">FUNCTION(szFile As STRING, TheWidth AS INTEGER, TheHeight AS INTEGER, Bpp AS INTEGER, fps AS INTEGER) AS LONG</td><td>CreateAVIFile(FileName, Width, Height, Bpp, Fps): opens the AVIFile library, creates the file for writing and a &quot;DIB &quot; video stream with the given format. Returns 1 on success and 0 on error.</td></tr>
+<tr><td class="rq-name">GetAVIFileInfo</td><td class="rq-type">FUNCTION(szFile As STRING) AS LONG</td><td>GetAVIFileInfo(FileName): opens the file and its first video stream and fills NumFrames, FirstFrame, Width, Height, FileType, FPS, Quality, the stream rectangle and SampleSize. Returns 1 on success and 0 on error; the file stays open.</td></tr>
+<tr><td class="rq-name">AVItoBMP</td><td class="rq-type">FUNCTION(szFile AS STRING, TheBMP AS QBITMAP, FrameNum AS INTEGER) AS LONG</td><td>AVItoBMP(FileName, Bitmap, FrameNum): reads frame FrameNum of the file into the QBITMAP, setting its size and PixelFormat (24 or 8 bit). Opens the file first if needed.</td></tr>
+<tr><td class="rq-name">BMPtoAVIFile</td><td class="rq-type">FUNCTION(TheBmp As QBITMAP) AS LONG</td><td>BMPtoAVIFile(Bitmap): writes the QBITMAP as the next key frame of the stream created by CreateAVIFile. The bitmap should have the Width, Height and Bpp given to CreateAVIFile. Returns 1 on success and 0 on error.</td></tr>
+<tr><td class="rq-name">New</td><td class="rq-type">SUB</td><td>Resets the internal pointers and the public properties to their defaults (Quality 10000, Bpp 24, everything else 0 or empty). The constructor calls it.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>The compression part of CreateAVIFile is marked &quot;this part is tricky, work in progress&quot;, and the line after AVIMakeCompressedStream carries the comment &quot;crashes&quot;.</li>
+<li>CreateAVIFile limits the FPS property to 60, but the stream uses the fps parameter, so the limit has no effect.</li>
+<li>The comments give two ranges for Quality: 0 - 100000 (with 10000 = best) and 0 - 10000.</li>
+<li>If the user cancels the compression dialog, the error handler releases the file and streams, but CreateAVIFile continues and can still return 1.</li>
+<li>AVItoBMP opens the file again when a file is already open, without releasing the earlier handles, and it never calls AVIStreamGetFrameClose.</li>
+<li>AVItoBMP accepts FrameNum from 0 to NumFrames inclusive (one past the last frame) and does not add FirstFrame. It returns 1 even after reporting a bad frame number.</li>
+<li>AVItoBMP copies Height * Width * Bpp / 8 bytes, without the DWORD row padding it computes for biSizeImage. For 8-bit frames the 1024-byte palette is skipped and not copied to the bitmap.</li>
+<li>CheckAVIError, CreateAVIFile, GetAVIFileInfo and AVItoBMP start with FUNCTION but end with END SUB.</li>
+</ul>
+<a name="4"></a><h2>QAVI Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QAVI.inc&quot;
+DIM Avi AS QAVI
+DIM Bmp AS QBITMAP
+Avi.ShowError = 1
+&#x27; read the first frame of a video
+IF Avi.GetAVIFileInfo(&quot;clip.avi&quot;) THEN
+  ShowMessage &quot;Frames: &quot; &amp; STR$(Avi.NumFrames) &amp; &quot;  Size: &quot; &amp; STR$(Avi.Width) &amp; &quot; x &quot; &amp; STR$(Avi.Height)
+  Avi.AVItoBMP(&quot;clip.avi&quot;, Bmp, 0)
+  Bmp.SaveToFile(&quot;frame0.bmp&quot;)
+  Avi.CloseAVIFile
+END IF
+&#x27; write 30 frames of 320 x 240, 24 bits, 15 frames per second
+DIM i AS INTEGER
+Bmp.PixelFormat = 6   &#x27; 24 bit
+Bmp.Width = 320
+Bmp.Height = 240
+IF Avi.CreateAVIFile(&quot;out.avi&quot;, 320, 240, 24, 15) THEN
+  FOR i = 1 TO 30
+    Bmp.FillRect(0, 0, 320, 240, &amp;HFFFFFF)
+    Bmp.Circle(i * 8, 100, i * 8 + 40, 140, &amp;HFF0000, &amp;HFF0000)
+    Avi.BMPtoAVIFile(Bmp)
+  NEXT
+  Avi.CloseAVIFile
+END IF</pre>
+<div class="rq-foot"><a href="c_qanimate.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qbevel.html">Next component</a></div>
+</body>
+</html>

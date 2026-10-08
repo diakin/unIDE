@@ -1,0 +1,95 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QFTPDIRLISTVIEW</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QFTPDIRLISTVIEW</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QFTPDIRLISTVIEW Component</h1>
+<p class="rq-meta">Extends <a href="qlistview.html">QLISTVIEW</a> &middot; source: <code>inc/qftpdirlistview.inc</code>, line 39 &middot; author: Andrew Shelkovenko</p>
+<p><b>QFTPDirListView is an unfinished QListView-based file list meant to browse FTP directories; the code present lists folders and files of a local directory.</b></p>
+<p>The header says the component is by Andrew Shelkovenko and is based on QFTPCLIENT.INC by Jacques Philippe and QDirListView.inc by Rene Saarsoo. Host, User and Password properties exist, but their setters are empty and no FTP connection is made by the component: LoadDirectories contains a pasted QFtpClient sample with a hard-coded server, followed by a local Dir$ listing.</p>
+<p>Refresh clears the list, adds sub-folders (LoadDirectories) and files matching Mask (LoadFiles) of Directory, creates the Name, Size, Type and Date Modified columns on first use, and repaints the control. Icons for folders and unknown files come from four $RESOURCE .ico files loaded into SmallImageList and LargeImageList. Double-clicking or pressing Enter on a folder opens it; on a file it fires OnFileSelect. Backspace goes to the parent folder (hidden popup-menu items provide the shortcuts).</p>
+<p>QFTPDIRLISTVIEW inherits the properties, methods and events of <a href="qlistview.html">QLISTVIEW</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>$INCLUDE &quot;QFTPCLIENT.INC&quot;</li>
+<li>$RESOURCE ICO_DIR_SMALL from C:\bas\RapidQ\inc\dir_XP_small.ico</li>
+<li>$RESOURCE ICO_DIR_LARGE from C:\bas\RapidQ\inc\dir_XP_large.ico</li>
+<li>$RESOURCE ICO_DEFAULTFILE_SMALL from C:\bas\RapidQ\inc\default_small.ico</li>
+<li>$RESOURCE ICO_DEFAULTFILE_LARGE from C:\bas\RapidQ\inc\default_large.ico</li>
+<li>FileRec record and vidnum$ function, used but not defined in this file (vidnum$ is only present as a commented-out copy)</li>
+</ul>
+<a name="1"></a><h2>QFTPDirListView Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Host</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Intended FTP host name; its setter Set_Host is empty, so assigning it has no effect and the value is not used.</td></tr>
+<tr><td class="rq-name">User</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Intended FTP user name; its setter Set_User is empty, so assigning it has no effect and the value is not used.</td></tr>
+<tr><td class="rq-name">Password</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Intended FTP password; its setter Set_Password is empty, so assigning it has no effect and the value is not used.</td></tr>
+<tr><td class="rq-name">Directory</td><td class="rq-type">STRING</td><td>RW</td><td>left$(Command$(0), len(Command$(0)) - len(APPLICATION.ExeName) )</td><td>Folder that is listed. Assigning it adds a trailing backslash if missing and calls Refresh. The constructor sets it to the program&#x27;s folder.</td></tr>
+<tr><td class="rq-name">Filename</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;&quot;</td><td>Full path (Directory + caption) of the selected item, updated in OnChange; empty when nothing is selected.</td></tr>
+<tr><td class="rq-name">Mask</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;*.*&quot;</td><td>File mask used by LoadFiles (default &quot;*.*&quot;). Assigning it stores the value and calls Refresh.</td></tr>
+<tr><td class="rq-name">ShowRoot</td><td class="rq-type">INTEGER</td><td>RW</td><td>FALSE</td><td>Whether the &quot;..&quot; entry is shown in the folder list (default FALSE). Assigning it stores the value and calls Refresh.</td></tr>
+<tr><td class="rq-name">LargeImageList</td><td class="rq-type">QIMAGELIST</td><td>RW</td><td></td><td>QImageList (32 x 32) with the large folder and default-file icons; assigned to LargeImages in the constructor.</td></tr>
+<tr><td class="rq-name">SmallImageList</td><td class="rq-type">QIMAGELIST</td><td>RW</td><td></td><td>QImageList with the small folder and default-file icons; assigned to SmallImages in the constructor.</td></tr>
+<tr><td class="rq-name">ExtensionsList</td><td class="rq-type">QSTRINGLIST</td><td>RW</td><td></td><td>QStringList of file extensions whose position is used as the image index; the constructor adds &quot;&lt;dir&gt;&quot; twice for the two built-in icons, and SetItemImage searches from index 2.</td></tr>
+<tr class="rq-internal"><td class="rq-name">dlw_PopupMenu</td><td class="rq-type">QPOPUPMENU</td><td>RW</td><td></td><td>Internal: popup menu assigned to PopupMenu that holds the hidden Enter and Backspace shortcut items.</td></tr>
+<tr class="rq-internal"><td class="rq-name">dlw_Enter</td><td class="rq-type">QMENUITEM</td><td>RW</td><td></td><td>Internal: hidden menu item with the Enter shortcut; its OnClick opens the selected folder or fires OnFileSelect.</td></tr>
+<tr class="rq-internal"><td class="rq-name">dlw_BackSpace</td><td class="rq-type">QMENUITEM</td><td>RW</td><td></td><td>Internal: hidden menu item with the Backspace shortcut; its OnClick goes to the parent folder.</td></tr>
+<tr class="rq-internal"><td class="rq-name">ColumnsInitialized</td><td class="rq-type">INTEGER</td><td>RW</td><td>FALSE</td><td>Internal: flag set to TRUE once Refresh has created the columns; columns are only built while it is FALSE.</td></tr>
+<tr><td class="rq-name">FilenameSize</td><td class="rq-type">INTEGER</td><td>RW</td><td>1</td><td>When 1 at the first Refresh, a &quot;Size&quot; column is added (default 1). Assigning it through the setter just stores the value.</td></tr>
+<tr><td class="rq-name">FilenameType</td><td class="rq-type">INTEGER</td><td>RW</td><td>1</td><td>When 1 at the first Refresh, a &quot;Type&quot; column is added (default 1).</td></tr>
+<tr><td class="rq-name">FilenameDate</td><td class="rq-type">INTEGER</td><td>RW</td><td>1</td><td>When 1 at the first Refresh, a &quot;Date Modified&quot; column is added (default 1).</td></tr>
+</table>
+<a name="2"></a><h2>QFTPDirListView Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">FilenameProp</td><td class="rq-type">SUB</td><td>Empty SUB; it does nothing.</td></tr>
+<tr class="rq-internal"><td class="rq-name">SetItemImage</td><td class="rq-type">SUB(Extension as string)</td><td>Internal: SetItemImage(Extension) sets the icon of the last added item to the ExtensionsList index matching the extension, or 1 (default file icon).</td></tr>
+<tr class="rq-internal"><td class="rq-name">AddFileProperties</td><td class="rq-type">SUB(Extension as string)</td><td>Internal: AddFileProperties(Extension) adds size, type and date sub-items to the last added item from the FileRec record.</td></tr>
+<tr class="rq-internal"><td class="rq-name">LoadDirectories</td><td class="rq-type">SUB</td><td>Internal: adds the sub-folders of Directory to the list. It begins with a pasted QFtpClient demo (hard-coded host and printouts) before the Dir$ loop.</td></tr>
+<tr class="rq-internal"><td class="rq-name">LoadFiles</td><td class="rq-type">SUB</td><td>Internal: adds the files of Directory matching Mask, sets their icons and adds their properties.</td></tr>
+<tr><td class="rq-name">Refresh</td><td class="rq-type">SUB</td><td>Clears and reloads the list, creates the columns on first call, forces a repaint by toggling ViewStyle and Visible, and restores focus and the Checkboxes setting.</td></tr>
+<tr><td class="rq-name">ChangeDirUp</td><td class="rq-type">SUB</td><td>Sets Directory to the parent folder and refreshes the list.</td></tr>
+<tr><td class="rq-name">ChangeDir</td><td class="rq-type">SUB</td><td>Opens the selected folder, or goes to the parent folder when the selected item is &quot;..&quot;.</td></tr>
+<tr class="rq-internal"><td class="rq-name">TryToChangeDirOrMakeEvent</td><td class="rq-type">SUB</td><td>Internal: if FileName is a folder calls ChangeDir, otherwise fires OnFileSelect.</td></tr>
+</table>
+<a name="3"></a><h2>QFTPDirListView Events</h2>
+<table class="rq-ref">
+<tr><th>Event</th><th>Type</th><th>Occurs when...</th></tr>
+<tr><td class="rq-name">OnFileSelect</td><td class="rq-type">SUB(Tag as integer)</td><td>Event FileSelect_EventTemplate(Tag AS INTEGER), fired with Tag 0 when a file (not a folder) is double-clicked or Enter is pressed on it.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>dlw_BackSpace.OnClick</code>, <code>dlw_Enter.OnClick</code>, <code>OnChange</code>, <code>OnDblClick</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>Work in progress: LoadDirectories contains a pasted QFtpClient sample with a hard-coded host (&quot;www.bigftp.com&quot;), user and password and PRINT statements, followed by a line of exclamation marks (&quot;!!!!!!!!!!!!&quot;) that is not valid code.</li>
+<li>No FTP access is implemented: Host, User and Password have empty setters and listing uses the local Dir$ and DirExists functions.</li>
+<li>The $RESOURCE lines use absolute paths (C:\bas\RapidQ\inc\...); the comment says the full path to the resources has to be set.</li>
+<li>AddFileProperties uses FileRec and vidnum$, which are not defined in this file (vidnum$ is commented out).</li>
+<li>Set_FilenameProp is defined three times with the same name; only FilenameSize is declared with a setter, the setters of FilenameType and FilenameDate are commented out.</li>
+<li>Refresh uses an undeclared variable QFTPDirListViewcheckboxes, and LoadFiles declares PontPlace but uses PointPlace.</li>
+<li>The file declares SetFocus from user32; the comment says to remove it if the program already declares it.</li>
+</ul>
+<a name="4"></a><h2>QFTPDirListView Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;qftpdirlistview.inc&quot;
+DECLARE SUB FileChosen(Tag AS INTEGER)
+CREATE Form AS QFORM
+  Caption = &quot;Files&quot;
+  CREATE FileList AS QFTPDirListView
+    Parent = Form
+    OnFileSelect = FileChosen
+  END CREATE
+END CREATE
+FileList.Directory = &quot;C:\&quot;
+Form.ShowModal
+
+SUB FileChosen(Tag AS INTEGER)
+  ShowMessage FileList.FileName
+END SUB</pre>
+<div class="rq-foot"><a href="c_qftpclient.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qgl.html">Next component</a></div>
+</body>
+</html>

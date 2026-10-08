@@ -1,0 +1,54 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QVUMETER</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QVUMETER</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QVUMETER Component</h1>
+<p class="rq-meta">Extends <a href="qcanvas.html">QCANVAS</a> &middot; source: <code>inc/QVuMeter.inc</code>, line 17 &middot; version: 1.0</p>
+<p><b>A vertical bar-graph level meter (VU meter) drawn on a QCanvas.</b></p>
+<p>QVuMeter extends QCanvas. In OnPaint it divides the height into horizontal bars of Thickness pixels separated by Interval pixels and fills them from the bottom: the bars up to the level of Value (scaled between Min and Max) in LightColor, the rest in DarkColor.</p>
+<p>Assigning Value repaints the meter. Defaults: Min 0, Max 100, Thickness 2, Interval 1, DarkColor black, LightColor white. The file comments are in French (property interval, thickness, VU meter value, VU meter paint event).</p>
+<p>QVUMETER inherits the properties, methods and events of <a href="qcanvas.html">QCANVAS</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QVuMeter Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Max</td><td class="rq-type">INTEGER</td><td>RW</td><td>100</td><td>Value that lights all bars (default 100).</td></tr>
+<tr><td class="rq-name">Min</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Value that lights no bars (default 0).</td></tr>
+<tr><td class="rq-name">DarkColor</td><td class="rq-type">LONG</td><td>RW</td><td>&amp;h0</td><td>Color of unlit bars (default &amp;H0, black).</td></tr>
+<tr><td class="rq-name">LightColor</td><td class="rq-type">LONG</td><td>RW</td><td>&amp;hffffff</td><td>Color of lit bars (default &amp;HFFFFFF, white).</td></tr>
+<tr><td class="rq-name">Thickness</td><td class="rq-type">SHORT</td><td>RW</td><td>2</td><td>Height of each bar in pixels (default 2). Assigning it stores the value as an integer; it does not repaint.</td></tr>
+<tr><td class="rq-name">Interval</td><td class="rq-type">SHORT</td><td>RW</td><td>1</td><td>Gap between bars in pixels (default 1). Assigning it stores the value as an integer; it does not repaint.</td></tr>
+<tr><td class="rq-name">Value</td><td class="rq-type">LONG</td><td>RW</td><td>0</td><td>Current level between Min and Max. Assigning it stores the value and repaints the meter.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>OnPaint</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>If Max equals Min, OnPaint divides by zero.</li>
+<li>Changing Min, Max, DarkColor, LightColor, Thickness or Interval does not repaint; assign Value or call Repaint afterwards.</li>
+<li>The file defines True, False and boolean with $DEFINE if they are not already defined.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/object/QVuMeter.inc</code> &mdash; identical copy (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QVuMeter Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QVuMeter.inc&quot;
+CREATE Form AS QFORM
+  Caption = &quot;VU&quot;
+  CREATE Vu AS QVuMeter
+    Left = 10: Top = 10
+    Width = 20: Height = 120
+    LightColor = &amp;H00FF00
+  END CREATE
+END CREATE
+Vu.Value = 60
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qvolumeinfo.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qwave.html">Next component</a></div>
+</body>
+</html>

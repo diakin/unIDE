@@ -1,0 +1,43 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QRC4</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QRC4</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QRC4 Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/RC4crypt.inc</code>, line 63 &middot; author: Martin Wehner &middot; date: 2003-10-04</p>
+<p><b>Non-visual RC4 stream cipher that encrypts and decrypts strings with a key.</b></p>
+<p>QRC4 is an adaptation of the RC4 algorithm to RapidQ Basic. Init(key) sets up the 256-byte state table from a key of any length, and Pipe(s) returns s XORed with the next bytes of the key stream. Because RC4 is symmetric, decoding is the same operation: call Init with the same key again and pass the encoded string to Pipe.</p>
+<p>The state continues from one Pipe call to the next, so data can be processed in pieces of any size: Pipe(s) &amp; Pipe(t) is always equal to Pipe(s &amp; t).</p>
+<p>QRC4 inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="2"></a><h2>QRC4 Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Reset</td><td class="rq-type">SUB</td><td>Sets the state table back to 0..255 in order and clears the indexes. Init and the constructor call it.</td></tr>
+<tr><td class="rq-name">Init</td><td class="rq-type">SUB(key AS STRING)</td><td>Init(Key): resets the state and runs the RC4 key setup with Key. With an empty key only the reset is done.</td></tr>
+<tr><td class="rq-name">Pipe</td><td class="rq-type">FUNCTION(str AS STRING) AS STRING</td><td>Pipe(Str): encodes or decodes Str with the key stream and returns the result, continuing the stream state.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>Init must be called again with the same key before decoding, because Pipe continues the key stream.</li>
+<li>Init with an empty key gives no error; the object keeps the unkeyed state.</li>
+</ul>
+<a name="4"></a><h2>QRC4 Examples</h2>
+<p class="rq-meta">Example from the comments in the source file.</p>
+<pre>$INCLUDE &quot;RC4crypt.inc&quot;
+DEFSTR k = &quot;1234567890&quot;   &#x27; This is the key
+DEFSTR s = &quot;abcdefghijklmnopqrstuvwxyz&quot;
+DEFSTR t = &quot;ABCDEFGHIJKLMNOPQRSTUVWXYZ&quot;
+DIM rc4 AS QRC4
+rc4.Init(k)   &#x27; Initialize RC4 object with the key
+s = rc4.Pipe(s)   &#x27; Encode stream element s
+t = rc4.Pipe(t)   &#x27; Encode stream element t
+rc4.Init(k)   &#x27; Initialize RC4 object with the key again
+ShowMessage(rc4.Pipe(s &amp; t))   &#x27; Concatenate and decode</pre>
+<div class="rq-foot"><a href="c_qprogressbar.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qredex.html">Next component</a></div>
+</body>
+</html>

@@ -1,0 +1,53 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QTABCONTROLEX</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QTABCONTROLEX</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QTABCONTROLEX Component</h1>
+<p class="rq-meta">Extends <a href="qtabcontrol.html">QTABCONTROL</a> &middot; source: <code>inc/QtabControlEx.inc</code>, line 6 &middot; version: 1.0</p>
+<p><b>A QTabControl that keeps a count of its tabs and adds methods to delete tabs and clear all tabs.</b></p>
+<p>QTabControlEx extends QTabControl. It redefines AddTabs and InsertTab so that they also update TabCount, and adds DeleteTabs and Clear. The comments are in French and describe each method (tab count property, delete, add, redefined add, redefined insert, delete all tabs).</p>
+<p class="rq-note">Original documentation: <a href="QTabControlEx.html">QTabControlEx documentation by D. Glodt (2004)</a>.</p>
+<p>QTABCONTROLEX inherits the properties, methods and events of <a href="qtabcontrol.html">QTABCONTROL</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QTabControlEx Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">TabCount</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Number of tabs, maintained by AddTabs, InsertTab, DeleteTabs and Clear. Its setter is empty and marked read only, so assigning it does nothing.</td></tr>
+</table>
+<a name="2"></a><h2>QTabControlEx Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">DeleteTabs</td><td class="rq-type">SUB(index as integer)</td><td>DeleteTabs(index) removes the tab at index (through DelTabs) and decreases TabCount, if TabCount is greater than 0.</td></tr>
+<tr><td class="rq-name">Add</td><td class="rq-type">SUB(s as string)</td><td>Add(s) adds one tab by calling the inherited AddTabs; it does not change TabCount.</td></tr>
+<tr><td class="rq-name">AddTabs</td><td class="rq-type">SUBI(...)</td><td>AddTabs(caption1, caption2, ...) adds one tab per argument and increases TabCount for each.</td></tr>
+<tr><td class="rq-name">InsertTab</td><td class="rq-type">SUB(index as integer,s as string)</td><td>InsertTab(index, s) inserts a tab at index with the inherited InsertTab and increases TabCount.</td></tr>
+<tr><td class="rq-name">Clear</td><td class="rq-type">SUB</td><td>Removes all tabs by deleting tab 0 TabCount times and sets TabCount to 0.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>Add does not update TabCount, so adding tabs with Add leaves the count wrong; use AddTabs.</li>
+<li>DeleteTabs does not check that index is within range.</li>
+<li>Tabs added with the inherited methods before or outside these overrides are not counted.</li>
+</ul>
+<a name="4"></a><h2>QTabControlEx Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QtabControlEx.inc&quot;
+CREATE Form AS QFORM
+  Caption = &quot;Tabs&quot;
+  CREATE Tabs AS QTabControlEx
+    Align = 5
+  END CREATE
+END CREATE
+Tabs.AddTabs &quot;One&quot;, &quot;Two&quot;, &quot;Three&quot;
+Tabs.InsertTab 1, &quot;New&quot;
+Tabs.DeleteTabs 0
+Form.Caption = &quot;Tabs: &quot; + STR$(Tabs.TabCount)
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qsystem.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qtbutton.html">Next component</a></div>
+</body>
+</html>

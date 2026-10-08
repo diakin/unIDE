@@ -1,0 +1,65 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QFILEDIALOG</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QFILEDIALOG</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QFILEDIALOG Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QFileDialog.inc</code>, line 103 &middot; author: JohnK &middot; version: 1.0 &middot; date: 11/2004</p>
+<p><b>Open or Save file dialog object using the Windows common dialog (GetOpenFileName/GetSaveFileName), with overwrite warning and multiple selection.</b></p>
+<p>QFILEDIALOG fills an OPENFILENAME structure from its properties and calls GetOpenFileName or GetSaveFileName from comdlg32, depending on Mode (fdOpen = 0, fdSave = 1). Filter uses &#x27;|&#x27; between descriptions and masks; it is converted to the null-separated form the API expects. The read-only check box is always hidden, and the overwrite prompt is added when WarnIfOverWrite is set.</p>
+<p>After Execute returns nonzero, FileName holds the selected path and FileTitle the name without the path. With MultiSelect, Files(0) holds the folder and Files(1) to Files(SelCount) the selected file names.</p>
+<p>The source says the code was adapted from RQDIALOG.INC by Bill K (1-2003).</p>
+<p>QFILEDIALOG inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QFILEDIALOG Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Parent</td><td class="rq-type">LONG</td><td>RW</td><td>0</td><td>Handle of the owner form, or 0 for no owner.</td></tr>
+<tr><td class="rq-name">Caption</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;Open&quot; + STRING$(243, 0)</td><td>Dialog title (default &quot;Open&quot;).</td></tr>
+<tr><td class="rq-name">Filter</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;All Files|*.*&quot; + STRING$(243, 0)</td><td>File filter as &#x27;description|mask|...&#x27; (default &quot;All Files|*.*&quot;).</td></tr>
+<tr><td class="rq-name">FilterIndex</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Index of the initially selected filter, passed as nFilterIndex (the source comment says 0 based).</td></tr>
+<tr><td class="rq-name">InitialDir</td><td class="rq-type">STRING</td><td>RW</td><td>STRING$(256, 0)</td><td>Folder shown first; if empty, the system default is used.</td></tr>
+<tr><td class="rq-name">Mode</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>fdOpen (0) for an Open dialog or fdSave (1) for a Save dialog.</td></tr>
+<tr><td class="rq-name">WarnIfOverWrite</td><td class="rq-type">INTEGER</td><td>RW</td><td>1</td><td>When nonzero (default), the dialog asks before overwriting an existing file.</td></tr>
+<tr><td class="rq-name">Filename</td><td class="rq-type">STRING</td><td>RW</td><td>STRING$(1024, 0)</td><td>Initial file name before Execute; the selected full path after Execute.</td></tr>
+<tr><td class="rq-name">FileTitle</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>File name and extension without the path, set by Execute.</td></tr>
+<tr><td class="rq-name">DefaultExt</td><td class="rq-type">STRING</td><td>RW</td><td>STRING$(256,  0)</td><td>Extension appended when the user types a name without one.</td></tr>
+<tr><td class="rq-name">MultiSelect</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>When nonzero, allows selecting several files (explorer-style dialog).</td></tr>
+<tr><td class="rq-name">SelCount</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Number of files selected in multiselect mode.</td></tr>
+<tr><td class="rq-name">NoChangeDir</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>When nonzero, the current directory is restored after the dialog closes.</td></tr>
+<tr><td class="rq-name">Files</td><td class="rq-type">ARRAY(fdMaxFiles) OF STRING</td><td>RW</td><td></td><td>Array filled in multiselect mode: Files(0) is the folder (ending with &#x27;\&#x27;), Files(1) to Files(SelCount) are the file names.</td></tr>
+</table>
+<a name="2"></a><h2>QFILEDIALOG Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Execute</td><td class="rq-type">FUNCTION AS LONG</td><td>Shows the dialog; returns nonzero if the user chose a file, 0 on Cancel.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>Execute checks and appends pdfStrTerm$, which is not defined (the constant is fdStrTerm$), so the filter terminator check has no effect.</li>
+<li>The USAGE and EXAMPLE comments in the header describe the older RQShowDialog function, not this object.</li>
+<li>Buffers are fixed: 1024 characters for the file name and at most fdMaxFiles (256) selected files.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/rapidq2.inc</code> (line 5877) contains its own edition of QFILEDIALOG.</li>
+<li><code>inc/old/QFileDialogDoc.inc</code> &mdash; older version (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QFILEDIALOG Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QFileDialog.inc&quot;
+DIM Form AS QFORM
+DIM Dlg AS QFILEDIALOG
+Dlg.Parent = Form.Handle
+Dlg.Mode = fdSave
+Dlg.Caption = &quot;Save File&quot;
+Dlg.Filter = &quot;RQ Files|*.bas;*.rqb&quot;
+Dlg.InitialDir = &quot;C:\RapidQ&quot;
+IF Dlg.Execute THEN ShowMessage Dlg.FileName</pre>
+<div class="rq-foot"><a href="c_qdrivecombobox.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qfilelistview.html">Next component</a></div>
+</body>
+</html>

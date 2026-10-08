@@ -1,0 +1,97 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QTBUTTON</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QTBUTTON</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QTBUTTON Component</h1>
+<p class="rq-meta">Extends <a href="qbutton.html">QBUTTON</a> &middot; source: <code>inc/QTButton95.inc</code>, line 400 &middot; author: D-evolution &middot; date: 2004 - 2005</p>
+<p><b>A skinnable push button derived from QButton that draws its face from a bitmap skin or from Windows XP visual styles, with hover effect, icon, multi-line caption and button groups.</b></p>
+<p>QTButton replaces the face of a QButton with a picture it builds itself. Without XP themes it stretches a skin bitmap (the global QTBtnBMP, loaded from a resource named btn_BMP) piece by piece (center, corners, edges) for up to 4 states. When XPThemeEnabled is on and the program runs on Windows XP, it draws the states with uxtheme.dll (OpenThemeData/DrawThemeBackground) using the Button, Toolbar or Tab theme class. The state images are laid out side by side in the order normal, disabled, pressed, hot; the hover image is shown with TransparentBlt from msimg32.dll while the mouse is captured.</p>
+<p>The caption is drawn with DrawText; &amp; underlines the next letter and chr$(10) or \n starts a new line. An icon in ICOBMP (possibly holding NumICOBMPs images side by side) can be placed left, right, above or below the caption with Layout and Spacing. Buttons with the same GroupIndex and the same parent act as a group: clicking one sets its Down state and releases the others. Arrow keys and Tab move the focus to the next or previous control (the constructor sets OnKeyDown to QTButton_KeyDown).</p>
+<p>The header comments say: set Left and Top first, then NumBMPs (if greater than 1), then Height and Width; call ReDraw after changing the font. Full usage is described in QTButton.html, which the header refers to.</p>
+<p>QTBUTTON inherits the properties, methods and events of <a href="qbutton.html">QBUTTON</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>A bitmap resource named btn_BMP declared before the include (the source has the commented line &#x27;$REsource btn_BMP As &quot;_RES\Boutons.bmp&quot;&#x27;); alternatively assign QTBtnBMP.BMP from a bitmap object as the comments explain</li>
+<li>msimg32.dll (TransparentBlt, Windows 98 and later)</li>
+<li>uxtheme.dll (XP visual styles)</li>
+<li>QTButton.html documentation (referred to in the header)</li>
+</ul>
+<a name="1"></a><h2>QTButton Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">ICOBMP</td><td class="rq-type">QBITMAP</td><td>RW</td><td></td><td>QBitmap holding the small icon drawn on the button; it may contain NumICOBMPs images side by side, one per state. On the first ReDraw of a button with Kind = 0 the current BMP is copied into it.</td></tr>
+<tr><td class="rq-name">XPThemeBtnType</td><td class="rq-type">STRING</td><td>RW</td><td>xpt_PushBtn</td><td>XP theme class used to draw the button: &quot;Button&quot;, &quot;Toolbar&quot; or &quot;Tab&quot; (constants xpt_PushBtn, xpt_ToolBarBtn, xpt_TabBtn). Assigning a different value redraws the button when XPThemeEnabled is True.</td></tr>
+<tr><td class="rq-name">XPThemeEnabled</td><td class="rq-type">INTEGER</td><td>RW</td><td>True</td><td>When True (default) the button is drawn with Windows XP visual styles, when the program runs on Windows XP. Assigning a value different from the previous one redraws the button.</td></tr>
+<tr><td class="rq-name">Align</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Alignment of the button; FixBtnSize does nothing when it is non-zero. Its setter SetAlign is commented out in the source and the TODO list says the Align property still needs fixing.</td></tr>
+<tr><td class="rq-name">Caption</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Button text. Assigning it replaces \n with chr$(10) for multi-line drawing, gives the inherited QButton caption the text without line breaks (so the &amp; accelerator works), and redraws the button.</td></tr>
+<tr><td class="rq-name">Enabled</td><td class="rq-type">INTEGER</td><td>RW</td><td>True</td><td>Enables or disables the button. Assigning it sets the inherited Enabled and redraws the caption; disabled buttons use the disabled image and clGrayText for the caption.</td></tr>
+<tr><td class="rq-name">Down</td><td class="rq-type">INTEGER</td><td>RW</td><td>False</td><td>Pressed state. Assigning it redraws the button using the pressed image (only when NumBMPs is 3 or more); used by button groups.</td></tr>
+<tr><td class="rq-name">GroupIndex</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Group number; buttons with the same value greater than 0 and the same parent window behave as a radio group. Assigning it adds the button handle and index to the global lists AllQTBtnsHandle and AllQTBtnsGrouped.</td></tr>
+<tr><td class="rq-name">Kind</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Inherited QButton Kind. Assigning a value greater than 0 sets Kind, sets NumICOBMPs to 2 and copies the button&#x27;s BMP into ICOBMP as the icon, then restores NumBMPs and redraws; assigning 0 does not change Kind.</td></tr>
+<tr><td class="rq-name">Layout</td><td class="rq-type">INTEGER</td><td>RW</td><td>False</td><td>Position of the icon relative to the caption, as computed in DrawCaption: 0 left (default), 1 right, 2 above, 3 below. Assigning it redraws the caption.</td></tr>
+<tr><td class="rq-name">Spacing</td><td class="rq-type">INTEGER</td><td>RW</td><td>maxNumBMPs_QTBtn</td><td>Distance in pixels between the icon and the caption (default 4). Assigning it redraws the caption.</td></tr>
+<tr><td class="rq-name">Height</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Button height. Assigning it sets the inherited Height as well and redraws the button.</td></tr>
+<tr><td class="rq-name">Width</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Button width. Assigning it sets the inherited Width as well and redraws the button.</td></tr>
+<tr><td class="rq-name">NumBMPs</td><td class="rq-type">INTEGER</td><td>RW</td><td>True</td><td>Number of state images in the skin (normal, disabled, pressed, hot), capped at 4. Assigning it sets the inherited NumBMPs and redraws; the hover effect needs 4.</td></tr>
+<tr><td class="rq-name">NumICOBMPs</td><td class="rq-type">INTEGER</td><td>RW</td><td>True</td><td>Number of images stored side by side in ICOBMP (default 1). Assigning it redraws the button or its caption.</td></tr>
+<tr><td class="rq-name">FlickeringTrick</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>When set to a value greater than 0, clips the button window with a region 2 pixels inside its border (HideBevelTrick_QTBtn) to hide the bevel and reduce flicker.</td></tr>
+<tr><td class="rq-name">HideFocusRect</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>When set to a value greater than 0, clips the button window with a region 5 pixels inside its border so the focus rectangle is not visible.</td></tr>
+</table>
+<a name="2"></a><h2>QTButton Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">TextWidth</td><td class="rq-type">FUNCTION(text as string) AS INTEGER</td><td>Returns the width in pixels of a text in the font of the internal button bitmap.</td></tr>
+<tr><td class="rq-name">TextHeight</td><td class="rq-type">FUNCTION(text as string) AS INTEGER</td><td>Returns the height in pixels of a text in the font of the internal button bitmap.</td></tr>
+<tr><td class="rq-name">ReDraw</td><td class="rq-type">SUB</td><td>Rebuilds the button picture (skin or theme, caption and icon). The comments say to call it after changing the font, and in some cases before the form is shown.</td></tr>
+</table>
+<a name="3"></a><h2>QTButton Events</h2>
+<table class="rq-ref">
+<tr><th>Event</th><th>Type</th><th>Occurs when...</th></tr>
+<tr><td class="rq-name">OnMouseLeave</td><td class="rq-type">SUB(X As Integer, Y As Integer, Shift As Integer, Sender As QButton)</td><td>Event fired from OnMouseMove when the mouse leaves the button; parameters X, Y, Shift and Sender (the QButton).</td></tr>
+<tr><td class="rq-name">OnMouseEnter</td><td class="rq-type">SUB(X As Integer, Y As Integer, Shift As Integer, Sender As QButton)</td><td>Event fired from OnMouseMove when the mouse enters the button and it captures the mouse; parameters X, Y, Shift and Sender.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>HotTimer.OnTimer</code>, <code>OnMouseDown</code>, <code>OnMouseMove</code>, <code>OnMouseUp</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>The skin bitmap comes from a resource named btn_BMP that the include does not declare; the $RESOURCE line is commented out.</li>
+<li>XP theme drawing is used only when GetVersionEx reports exactly Windows NT 5.1 (Windows XP); on other Windows versions the classic skin bitmap is used.</li>
+<li>TODO list: when Kind is not 0 and Caption is empty the button is drawn badly; the Align property needs fixing; Visible is not handled; changing the font requires ReDraw.</li>
+<li>Known problems listed in the source: the order of property assignments matters (Left, Top, then NumBMPs, then Height, Width), otherwise the button may not be drawn; with several forms a not yet visible button can draw strangely (workaround: Dim DummyBtn As QTButton and DummyBtn.ReDraw); the button image may get lost in memory and disturb owner-drawn controls; setting Height or Width on the first button can draw it badly (workaround: call ReDraw before showing the form).</li>
+<li>Each GroupIndex assignment appends to the global handle lists; entries are never removed, although a comment says they should be cleaned when GroupIndex is 0.</li>
+<li>In ReDraw, the copy of BMP into ICOBMP is guarded by a STATIC variable, so it happens only for the first button that is redrawn.</li>
+<li>CloseThemeData is called twice on the same theme handle in BMPStretch_Property.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/QTButton.inc</code> &mdash; identical copy (moved; the reason is in COMPONENTS.md).</li>
+<li><code>inc/old/QTButton72.inc</code> &mdash; older version (moved; the reason is in COMPONENTS.md).</li>
+<li><code>inc/old/QTButton85b.inc</code> &mdash; older version (moved; the reason is in COMPONENTS.md).</li>
+<li><code>inc/old/QTButton94.inc</code> &mdash; older version (moved; the reason is in COMPONENTS.md).</li>
+<li><code>inc/old/QTButton94b.inc</code> &mdash; older version (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QTButton Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$RESOURCE btn_BMP AS &quot;_RES\Boutons.bmp&quot;
+$INCLUDE &quot;QTButton95.inc&quot;
+
+CREATE Form AS QFORM
+  Caption = &quot;QTButton demo&quot;
+  CREATE Btn AS QTBUTTON
+    Left = 10
+    Top = 10
+    NumBMPs = 4
+    Height = 25
+    Width = 75
+    Caption = &quot;&amp;OK&quot;
+  END CREATE
+END CREATE
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qtabcontrolex.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qtextbtn.html">Next component</a></div>
+</body>
+</html>

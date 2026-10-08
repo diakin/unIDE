@@ -1,0 +1,80 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QHTML</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QHTML</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QHTML Component</h1>
+<p class="rq-meta">Extends <a href="qpanel.html">QPANEL</a> &middot; source: <code>inc/QHTML.inc</code>, line 73 &middot; author: Pascal Delcombel &middot; version: 1.0 &middot; date: 2003-2008</p>
+<p><b>A read-only viewer for simplified HTML pages, drawn on a panel in pure RapidQ code.</b></p>
+<p>QHTML extends QPanel and shows HTML text without any Windows API call or DLL; the header says this was done so the class could be ported to the Linux version. It parses the markup into fixed-size element arrays (htmlMaxElements = 200000) and paints them on an internal QImage with a vertical scroll bar and a status bar that shows the URL of the hovered link.</p>
+<p>Supported tags include A, AREA, B, BIG, BR, BLOCKQUOTE, BODY (BGCOLOR, TEXT, LINK, BACKGROUND), CENTER, EM, FONT (FACE, COLOR), H1-H6, I, IMG, MAP, P, PRE/KBD, SMALL, S/STRIKE, STRONG, TITLE and U. A page that contains FRAMESET is replaced by an error page. Named HTML colors are taken from a built-in table.</p>
+<p>Load a page with OpenFile or by assigning HTMLText. Images and the BODY background are drawn only when an OnLoadImage handler loads the file into the QImage it receives; otherwise the image source text is shown. OnTagClick gives the HREF of a clicked link, so the program can open the next page itself. PrintPreview opens a maximized preview window with print, page navigation, save-as-bitmap and printer selection; SearchText finds and highlights text.</p>
+<p>QHTML inherits the properties, methods and events of <a href="qpanel.html">QPANEL</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QHTML Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">HTMLText</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>HTML source of the page. Assigning it parses the text and starts a repaint with the scroll bar recalculated; the setter does not store the value in HTMLText.</td></tr>
+<tr><td class="rq-name">DocumentTitle</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Page title taken from the TITLE tag during parsing. Read only: assigning it does nothing.</td></tr>
+<tr><td class="rq-name">DefaultFontName</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;Arial&quot;</td><td>Font name used for text that has no FONT FACE (default &quot;Arial&quot;). Assigning it only stores the value; it is applied the next time a page is parsed.</td></tr>
+<tr><td class="rq-name">DefaultFontSize</td><td class="rq-type">INTEGER</td><td>RW</td><td>12</td><td>Font size used for text that has no explicit size (default 12). Assigning it only stores the value; it is applied the next time a page is parsed.</td></tr>
+</table>
+<a name="2"></a><h2>QHTML Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">OpenFile</td><td class="rq-type">SUB(FileName as String)</td><td>OpenFile(FileName) reads the whole file with a QFileStream, parses it and repaints. FileName is a local file, not a URL.</td></tr>
+<tr><td class="rq-name">Repaint</td><td class="rq-type">SUB</td><td>Redraws the current page and recalculates the scroll bar without parsing it again.</td></tr>
+<tr><td class="rq-name">PrintPreview</td><td class="rq-type">SUB</td><td>Opens a maximized preview window of the page split into printer pages, with buttons for print current page, print all pages, first/previous/next/last page, save current page as a bitmap, a With background check box and a printer selection combo box.</td></tr>
+<tr><td class="rq-name">SearchText</td><td class="rq-type">FUNCTION(Text as String, Popupwindow as integer) AS INTEGER</td><td>SearchText(Text, Popupwindow) searches the page for Text and highlights the match; the next call continues after the previous match. With Popupwindow true, or an empty Text, it opens a modal Search dialog with Next and Cancel buttons. Returns true if a match was found.</td></tr>
+</table>
+<a name="3"></a><h2>QHTML Events</h2>
+<table class="rq-ref">
+<tr><th>Event</th><th>Type</th><th>Occurs when...</th></tr>
+<tr><td class="rq-name">OnHover</td><td class="rq-type">SUB(TypeObject as String, URL as string)</td><td>Raised when the mouse moves over the page, with TypeObject (&quot;HREF&quot; for a link, otherwise the element type or an empty string) and URL (the link HREF or the hovered element text).</td></tr>
+<tr><td class="rq-name">OnTagClick</td><td class="rq-type">SUB(URL as string)</td><td>Raised on mouse up over a hovered element, with HoveredTag as the only parameter: the HREF (URL or file name) for a link, the element text for other elements.</td></tr>
+<tr><td class="rq-name">OnLoadImage</td><td class="rq-type">SUB(Image as QImage, FileName as String)</td><td>Raised when an image or background file is needed, with an invisible QImage and the file name; the handler must load the picture into that QImage (for example JPEG or GIF through an external routine). If the QImage width stays 0, the image is treated as not drawable.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>bar.OnChange</code>, <code>Image.OnMouseMove</code>, <code>Image.OnMouseUp</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>The header lists the limits: only a few tags are supported (tables are named as not included), no frames, no form controls, no download, and at most 200000 elements because the arrays cannot be resized inside a QObject; the limit is the constant htmlMaxElements.</li>
+<li>The header documents OnHover and OnTagClick with extra x, y and shift parameters, but the event templates and the CALLFUNC calls pass only TypeObject and URL (OnHover) and URL (OnTagClick).</li>
+<li>The HTMLText setter never stores the assigned text, so reading HTMLText back does not return the page source.</li>
+<li>Without an OnLoadImage handler no image or background picture is drawn; only the image source text is shown.</li>
+<li>The function AdjustCompletePath is defined but never called, so image and link paths are passed on exactly as written in the page.</li>
+<li>Until a page is loaded, a built-in copyright page (QHTML v0.1 2002) is shown.</li>
+<li>Mouse hover detection only handles anchor areas with the RECT shape.</li>
+</ul>
+<a name="4"></a><h2>QHTML Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QHTML.inc&quot;
+DECLARE SUB LinkClick(URL AS STRING)
+DECLARE SUB LoadImg(Image AS QImage, FileName AS STRING)
+
+CREATE Form AS QFORM
+  Width = 640
+  Height = 480
+  CREATE Html AS QHTML
+    Align = alClient
+    OnTagClick = LinkClick
+    OnLoadImage = LoadImg
+  END CREATE
+END CREATE
+
+SUB LinkClick(URL AS STRING)
+  Html.OpenFile URL
+END SUB
+
+SUB LoadImg(Image AS QImage, FileName AS STRING)
+  IF FileExists(FileName) THEN Image.BMP = FileName
+END SUB
+
+Html.OpenFile &quot;index.htm&quot;
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qhead.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qicmp.html">Next component</a></div>
+</body>
+</html>

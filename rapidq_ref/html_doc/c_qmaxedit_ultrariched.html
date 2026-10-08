@@ -1,0 +1,72 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QMAXEDIT</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QMAXEDIT</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QMAXEDIT Component</h1>
+<p class="rq-meta">Extends <a href="qrichedit.html">QRICHEDIT</a> &middot; source: <code>inc/ultraRichEd.inc</code>, line 11 &middot; author: Psyclops</p>
+<p><b>A QRichEdit with a Windows-style edit popup menu (Undo, Cut, Copy, Paste, Delete, Select All) and simple keyword highlighting.</b></p>
+<p>QMAXEDIT extends QRichEdit. Its constructor builds a popup menu like the default Windows edit menu and assigns it to PopupMenu; before the menu opens, items are enabled according to the selection, the clipboard and EM_CANUNDO. Undo sends EM_UNDO and Delete sends WM_KEYDOWN with VK_DELETE.</p>
+<p>It also contains the keyword highlighting code of QREdit (HiLight.inc): keywords added with AddSyntaxes are drawn bold in HiLightColor by HiLight, and OnKeyUp re-highlights the word at the caret. The control is set to PlainText with the &quot;MS Sans Serif&quot; font.</p>
+<p>After the TYPE the file redefines QRICHEDIT as QMAXEDIT, so later code that creates a QRICHEDIT gets this component. The comments say: set UsePopup = 0 to turn off the popup, or set PopupMenu to use another one.</p>
+<p>QMAXEDIT inherits the properties, methods and events of <a href="qrichedit.html">QRICHEDIT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>A SendMessage declaration from elsewhere (Undo and Delete call SendMessage; the file declares only SendMessageA)</li>
+</ul>
+<a name="1"></a><h2>QMAXEDIT Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">RichFont</td><td class="rq-type">QFONT</td><td>RW</td><td></td><td>QFont used for normal text and as the base for highlighted keywords (default name &quot;MS Sans Serif&quot;).</td></tr>
+<tr><td class="rq-name">Syntaxes</td><td class="rq-type">ARRAY(100) OF STRING</td><td>RW</td><td></td><td>Array Syntaxes(100) of keywords to highlight, filled from index 1 by AddSyntaxes.</td></tr>
+<tr><td class="rq-name">MaxSyntax</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Number of keywords stored in Syntaxes.</td></tr>
+<tr><td class="rq-name">HiLightColor</td><td class="rq-type">INTEGER</td><td>RW</td><td>&amp;H0000bb</td><td>Color of highlighted keywords (default &amp;H0000BB).</td></tr>
+<tr><td class="rq-name">UsePopup</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Turns the built-in popup menu on or off. Assigning it sets AutoPopup of the internal menu; the constructor sets it to 1.</td></tr>
+</table>
+<a name="2"></a><h2>QMAXEDIT Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Undo</td><td class="rq-type">SUB</td><td>Undoes the last edit (sends EM_UNDO).</td></tr>
+<tr><td class="rq-name">Cut</td><td class="rq-type">SUB</td><td>Cuts the selection to the clipboard.</td></tr>
+<tr><td class="rq-name">Copy</td><td class="rq-type">SUB</td><td>Copies the selection to the clipboard.</td></tr>
+<tr><td class="rq-name">Paste</td><td class="rq-type">SUB</td><td>Pastes from the clipboard.</td></tr>
+<tr><td class="rq-name">Delete</td><td class="rq-type">SUB</td><td>Deletes the selection or the character at the caret by sending a Delete key-down message.</td></tr>
+<tr><td class="rq-name">SelectAl</td><td class="rq-type">SUB</td><td>Selects all text (calls SelectAll).</td></tr>
+<tr><td class="rq-name">HiLight</td><td class="rq-type">SUB</td><td>Highlights all keywords: resets the whole text to RichFont, then finds every occurrence of each keyword (case-insensitive substring search) and makes it bold in HiLightColor. Call it after loading a file or inserting lines.</td></tr>
+<tr><td class="rq-name">AddSyntaxes</td><td class="rq-type">SUBI(...)</td><td>AddSyntaxes(word1, word2, ...) appends keywords to the Syntaxes array.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>MaxMenu.OnPopup</code>, <code>OnKeyUp</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>Undo and Delete call SendMessage, which this file does not declare.</li>
+<li>Syntaxes has a fixed size of 100 and AddSyntaxes does not check the limit.</li>
+<li>HiLight matches substrings, not whole words, so a keyword inside a longer word is also highlighted.</li>
+<li>The OnKeyUp comments say the event may be skipped when typing fast and that splitting a word with a space is not handled.</li>
+<li>The file redefines QRICHEDIT as QMAXEDIT after the TYPE, which affects every later QRICHEDIT in the program.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/cREdit.inc</code> &mdash; identical copy (moved; the reason is in COMPONENTS.md).</li>
+<li><code>inc/old/qREdit.inc</code> &mdash; identical copy (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QMAXEDIT Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;ultraRichEd.inc&quot;
+CREATE Form AS QFORM
+  Caption = &quot;Editor&quot;
+  CREATE Editor AS QRICHEDIT  &#x27; becomes QMAXEDIT
+    Align = 5
+  END CREATE
+END CREATE
+Editor.AddSyntaxes &quot;IF&quot;, &quot;THEN&quot;, &quot;ELSE&quot;, &quot;END&quot;
+Editor.Text = &quot;IF a THEN b ELSE c&quot;
+Editor.HiLight
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qmaxedit_richedpopup.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qmaxsplitter.html">Next component</a></div>
+</body>
+</html>

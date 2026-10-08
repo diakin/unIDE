@@ -1,0 +1,7 @@
+inv.json
+catalog.json
+catalog.prev.json
+refs.json
+batches/
+batches_unused/
+__pycache__/

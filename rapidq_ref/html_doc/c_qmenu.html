@@ -1,0 +1,75 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QMENU</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QMENU</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QMENU Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/qmenu.inc</code>, line 3</p>
+<p><b>A helper object that makes form menu items owner-drawn with icons and shows item descriptions in a status bar.</b></p>
+<p>QMenu extends QOBJECT. Set subclasses the window procedure of a form and handles WM_MEASUREITEM, WM_DRAWITEM and WM_MENUSELECT. OwnerDraw turns a menu item into an owner-drawn item with SetMenuItemInfo and remembers an image index from imgs and a description text for its command ID.</p>
+<p>Owner-drawn items are drawn with the image on the left, a raised frame and a dark blue highlight when selected, and the caption with its &amp; accelerator underlined. When Descrip is nonzero, the description of the selected item is shown in panel Panel of a status bar named StatusBar. Call Close to restore the original window procedure.</p>
+<p>The code uses the global variables mii, DrawItem, MeasureItem and Mem and the API declarations from API.INC.</p>
+<p>QMENU inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>API.INC</li>
+<li>A QStatusBar named StatusBar (used when Descrip is nonzero)</li>
+</ul>
+<a name="1"></a><h2>QMenu Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Descrip</td><td class="rq-type">WORD</td><td>RW</td><td>0</td><td>When nonzero, the description of the selected menu item is shown in the status bar (default 0).</td></tr>
+<tr><td class="rq-name">Panel</td><td class="rq-type">WORD</td><td>RW</td><td>0</td><td>Index of the StatusBar panel used for descriptions (default 0).</td></tr>
+<tr><td class="rq-name">Font</td><td class="rq-type">QFONT</td><td>RW</td><td></td><td>Font used for item captions; the caption accelerator letter is drawn with this font plus underline.</td></tr>
+<tr><td class="rq-name">imgs</td><td class="rq-type">QIMAGELIST</td><td>RW</td><td></td><td>Image list holding the menu item images; OwnerDraw stores an index into it for each item.</td></tr>
+</table>
+<a name="2"></a><h2>QMenu Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Set</td><td class="rq-type">SUB(form AS QFORM)</td><td>Set(form) subclasses the window procedure of the form so the menu items can be owner-drawn and described.</td></tr>
+<tr><td class="rq-name">Close</td><td class="rq-type">SUB</td><td>Restores the original window procedure of the form.</td></tr>
+<tr><td class="rq-name">OwnerDraw</td><td class="rq-type">SUB(ParentItem AS QMENUITEM, MenuItem AS QMENUITEM, dibu AS LONG, descripcion AS STRING)</td><td>OwnerDraw(ParentItem, MenuItem, dibu, descripcion) makes MenuItem (a child of ParentItem) owner-drawn, with image index dibu from imgs and the status bar text descripcion.</td></tr>
+<tr><td class="rq-name">Description</td><td class="rq-type">SUB(MenuItem AS QMENUITEM, descripcion AS STRING)</td><td>Description(MenuItem, descripcion) sets the status bar text of a menu item without making it owner-drawn.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>OwnerDraw contains the typo &#x27;.dwItemData = = VARPTR(S)&#x27;.</li>
+<li>In ShowDescription the END IF and END WITH blocks cross each other.</li>
+<li>Item size is fixed at 60 x 19 pixels in WM_MEASUREITEM; the comment says it should be big enough to fit your items.</li>
+<li>The status bar must be a global object named StatusBar; the name is hard-coded.</li>
+<li>The arrays bitmap() and descp() are declared without a size and indexed by menu command ID.</li>
+</ul>
+<a name="4"></a><h2>QMenu Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;qmenu.inc&quot;
+DIM Menu AS QMenu
+
+CREATE Form AS QFORM
+  CREATE StatusBar AS QSTATUSBAR
+    AddPanels &quot;&quot;
+  END CREATE
+  CREATE MainMenu AS QMAINMENU
+    CREATE FileMenu AS QMENUITEM
+      Caption = &quot;&amp;File&quot;
+      CREATE OpenItem AS QMENUITEM
+        Caption = &quot;&amp;Open&quot;
+      END CREATE
+    END CREATE
+  END CREATE
+END CREATE
+
+Menu.imgs.AddBMPFile &quot;open.bmp&quot;, 0
+Menu.Set Form
+Menu.Descrip = 1
+Menu.Panel = 0
+Menu.OwnerDraw FileMenu, OpenItem, 0, &quot;Open a file&quot;
+Form.ShowModal
+Menu.Close</pre>
+<div class="rq-foot"><a href="c_qmd2model.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qmenuex.html">Next component</a></div>
+</body>
+</html>

@@ -1,0 +1,56 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QINIFILE</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QINIFILE</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QINIFILE Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QLibrary.Inc</code>, line 137</p>
+<p><b>A simple INI file reader and writer that reads and writes single entries or whole sections of a text INI file.</b></p>
+<p>QIniFile extends QObject and works on the text file named in Name using the QStringList Lines. ReadEntry returns the value of a key in a section, ReadSection loads all lines of a section into Lines, WriteEntry replaces or adds a key (creating the section if needed) and saves the file, and WriteSection replaces or appends a whole section from a QStringList. Section and key names are compared without regard to case or surrounding blanks.</p>
+<p>Edit opens the INI file in an external editor whose command line is read from the key TextEditor in section [QIniFile] of QLibrary.Ini. The type uses the helper functions Trim$, CatStr$ and Equ$ defined at the top of QLibrary.Inc.</p>
+<p>QINIFILE inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>Helper functions Trim$, CatStr$ and Equ$ from the same file QLibrary.Inc</li>
+<li>QLibrary.Ini with key TextEditor in section [QIniFile] (for Edit)</li>
+</ul>
+<a name="1"></a><h2>QIniFile Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Name</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Path of the INI file the methods read and write.</td></tr>
+<tr><td class="rq-name">Lines</td><td class="rq-type">QSTRINGLIST</td><td>RW</td><td></td><td>QStringList holding the file lines after ReadEntry or WriteEntry, or the lines of one section after ReadSection.</td></tr>
+<tr><td class="rq-name">LineCount</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Number of items in Lines after the last operation (set to 0 by Edit).</td></tr>
+</table>
+<a name="2"></a><h2>QIniFile Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr class="rq-internal"><td class="rq-name">ClearEnding</td><td class="rq-type">SUB</td><td>Internal: deletes empty lines from the end of Lines.</td></tr>
+<tr class="rq-internal"><td class="rq-name">AddBrackets$</td><td class="rq-type">FUNCTION(Datum As String) AS STRING</td><td>Internal: puts square brackets around a section name.</td></tr>
+<tr><td class="rq-name">ReadEntry</td><td class="rq-type">FUNCTION(Section As String, KeyWord As String) AS STRING</td><td>ReadEntry(Section, KeyWord) returns the text after &quot;=&quot; for KeyWord in Section, or an empty string if not found; the whole file is left in Lines.</td></tr>
+<tr><td class="rq-name">ReadSection</td><td class="rq-type">SUB(Section As String)</td><td>ReadSection(Section) clears Lines and fills it with the lines of Section (without the header), up to the next line starting with &quot;[&quot;.</td></tr>
+<tr><td class="rq-name">WriteEntry</td><td class="rq-type">SUB(Section As String, KeyWord As String, KeyEntry As String)</td><td>WriteEntry(Section, KeyWord, KeyEntry) sets KeyWord = KeyEntry in Section, adding the key or the whole section if missing, and saves the file.</td></tr>
+<tr><td class="rq-name">WriteSection</td><td class="rq-type">SUB(Section As String,SectionList As QStringList)</td><td>WriteSection(Section, SectionList) replaces Section with the lines of SectionList (or appends it at the end if it does not exist) and saves the file; the section header is inserted at the start of SectionList.</td></tr>
+<tr><td class="rq-name">Edit</td><td class="rq-type">SUB</td><td>Opens the INI file with the editor command taken from TextEditor in section [QIniFile] of QLibrary.Ini (run with SHELL).</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>AddBrackets$ only works for names without brackets: if the name already contains &quot;[&quot; the result is not initialized, so passing &quot;[Section]&quot; yields &quot;]&quot; or an empty string instead of the section name.</li>
+<li>WriteSection keeps the section position in a Byte variable (Point), so a section starting after line 255 is not placed correctly, and a section on the very first line (index 0) is treated as not found and appended again.</li>
+<li>Several methods store string positions in Byte variables (Point), which overflow for lines longer than 255 characters.</li>
+<li>WriteSection modifies the passed SectionList by inserting the section header at index 0.</li>
+<li>The code uses True and False, which QLibrary.Inc does not define.</li>
+</ul>
+<a name="4"></a><h2>QIniFile Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>DIM Ini AS QIniFile
+Ini.Name = &quot;settings.ini&quot;
+Ini.WriteEntry(&quot;Window&quot;, &quot;Left&quot;, &quot;100&quot;)
+ShowMessage Ini.ReadEntry(&quot;Window&quot;, &quot;Left&quot;)</pre>
+<div class="rq-foot"><a href="c_qinifile_qinifile.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qinputbox.html">Next component</a></div>
+</body>
+</html>

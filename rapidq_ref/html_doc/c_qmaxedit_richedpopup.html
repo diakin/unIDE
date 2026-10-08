@@ -1,0 +1,64 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QMAXEDIT</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QMAXEDIT</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QMAXEDIT Component</h1>
+<p class="rq-meta">Extends <a href="qrichedit.html">QRICHEDIT</a> &middot; source: <code>inc/RichEdPopUp.inc</code>, line 26 &middot; author: Psyclops</p>
+<p><b>QRichEdit extension with a popup menu like the standard Windows edit context menu (Undo, Cut, Copy, Paste, Delete, Select All) and line-position helpers.</b></p>
+<p>QMAXEDIT assigns its own QPopupMenu to PopupMenu. When it pops up, items are enabled from the editor state: undo availability (message &amp;HC6), selection length, clipboard text and whether all text is already selected.</p>
+<p>Line helpers send rich edit messages: LINEINDEX and GetLINEIdx use EM_LINEINDEX (187) to get the position of the first character of a line, and LINEFROMCHAR and LINEFROMPos use EM_LINEFROMCHAR (201) to get the line containing a character. GoToLineBegin and GoToLineEnd move the cursor within the current line.</p>
+<p>At the end of the file, QRICHEDIT is redefined as QMAXEDIT, so a QRICHEDIT declared after the include becomes a QMAXEDIT. The comments say: set UsePopup = 0 to turn the popup off, or assign another menu to PopupMenu.</p>
+<p>QMAXEDIT inherits the properties, methods and events of <a href="qrichedit.html">QRICHEDIT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QMAXEDIT Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">RichFont</td><td class="rq-type">QFONT</td><td>RW</td><td></td><td>Purpose not clear from the source.</td></tr>
+<tr><td class="rq-name">UsePopup</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Assigning it sets AutoPopup of the built-in menu; 0 turns the popup off.</td></tr>
+</table>
+<a name="2"></a><h2>QMAXEDIT Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">LINEINDEX</td><td class="rq-type">FUNCTION AS LONG</td><td>Returns the character position of the first character of the current line (WhereY).</td></tr>
+<tr><td class="rq-name">GetLINEIdx</td><td class="rq-type">FUNCTION(line as long) AS LONG</td><td>GetLINEIdx(line) returns the character position of the first character of the given line.</td></tr>
+<tr><td class="rq-name">LINEFROMCHAR</td><td class="rq-type">FUNCTION AS LONG</td><td>Returns the number of the line that contains the start of the selection (SelStart).</td></tr>
+<tr><td class="rq-name">LINEFROMPos</td><td class="rq-type">FUNCTION(chrpos as long) AS LONG</td><td>LINEFROMPos(chrpos) returns the number of the line that contains the character at the given position.</td></tr>
+<tr><td class="rq-name">GoToLineEnd</td><td class="rq-type">FUNCTION AS LONG</td><td>Moves the cursor to the end of the current line.</td></tr>
+<tr><td class="rq-name">GoToLineBegin</td><td class="rq-type">FUNCTION AS LONG</td><td>Moves the cursor to the beginning of the current line.</td></tr>
+<tr><td class="rq-name">Undo</td><td class="rq-type">SUB</td><td>Undoes the last change (message &amp;HC7).</td></tr>
+<tr><td class="rq-name">Cut</td><td class="rq-type">SUB</td><td>Cuts the selection to the clipboard.</td></tr>
+<tr><td class="rq-name">Copy</td><td class="rq-type">SUB</td><td>Copies the selection to the clipboard.</td></tr>
+<tr><td class="rq-name">Paste</td><td class="rq-type">SUB</td><td>Pastes from the clipboard.</td></tr>
+<tr><td class="rq-name">Delete</td><td class="rq-type">SUB</td><td>Deletes the selection by sending a Delete key-down message (&amp;H100 with &amp;H2E) to the control.</td></tr>
+<tr><td class="rq-name">SelectAl</td><td class="rq-type">SUB</td><td>Selects all text.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>MaxMenu.OnPopup</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>The include redefines QRICHEDIT as QMAXEDIT for all code that follows it.</li>
+<li>RichFont is declared but never used.</li>
+<li>GoToLineEnd and GoToLineBegin are declared as functions returning LONG but return no value.</li>
+<li>The Set_Popup setter does not store the value in UsePopup.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/RichEdPopUp1.inc</code> &mdash; older version (moved; the reason is in COMPONENTS.md).</li>
+<li><code>inc/old/RichEdPopUpold.inc</code> &mdash; older version (moved; the reason is in COMPONENTS.md).</li>
+<li><code>inc/old/qmaxedit.inc</code> &mdash; older version (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QMAXEDIT Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;RichEdPopUp.inc&quot;
+DIM Form AS QFORM
+DIM Edit AS QRICHEDIT   &#x27; becomes QMAXEDIT
+Edit.Parent = Form
+Edit.Align = 5
+Edit.UsePopup = 0       &#x27; turn the popup off</pre>
+<div class="rq-foot"><a href="c_qmarker.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qmaxedit_ultrariched.html">Next component</a></div>
+</body>
+</html>

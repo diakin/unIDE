@@ -1,0 +1,111 @@
+/* Rapid-Q documentation - one look for all pages (rapidq_ref/html_doc).
+   Pages keep their original markup; this file only sets fonts, colours,
+   tables and the header/navigation bar added to every page. Plain CSS
+   without variables, so old browsers show it too. */
+
+body.rqdoc {
+  margin: 0 auto;
+  padding: 0 20px 24px 20px;
+  max-width: 980px;
+  background: #fbfaf7;
+  color: #222222;
+  font-family: "Segoe UI", Tahoma, Arial, Helvetica, sans-serif;
+  font-size: 15px;
+  line-height: 1.45;
+}
+
+/* <FONT FACE=...> of the old pages: one family everywhere, but monospace
+   stays monospace (inline code is written as <font face="courier">) */
+body.rqdoc font { font-family: inherit; }
+body.rqdoc font[face*="ourier"], body.rqdoc font[face*="OURIER"],
+body.rqdoc font[face*="ono"], body.rqdoc font[face*="ixedsys"] {
+  font-family: Consolas, "Courier New", monospace;
+}
+
+/* header bar: source of the page on the left, section on the right */
+.rq-head {
+  margin: 0 -20px;
+  padding: 10px 20px;
+  background: #5b2a1e;
+  color: #f6efe6;
+  overflow: hidden;
+  font-size: 13px;
+}
+.rq-head .rq-brand { float: left; }
+.rq-head .rq-section { float: right; font-weight: bold; }
+.rq-head font { color: inherit; }
+
+.rq-nav {
+  margin: 0 -20px 18px -20px;
+  padding: 6px 20px;
+  background: #efe8dc;
+  border-bottom: 1px solid #d8ccb8;
+  font-size: 13px;
+}
+body.rqdoc .rq-nav a[href] { margin-right: 18px; color: #5b2a1e; text-decoration: none; }
+body.rqdoc .rq-nav a[href]:hover { text-decoration: underline; }
+
+body.rqdoc h1 {
+  font-size: 26px;
+  font-weight: 600;
+  color: #3a1d14;
+  margin: 18px 0 10px 0;
+}
+body.rqdoc h2 {
+  font-size: 18px;
+  font-weight: 600;
+  color: #3a1d14;
+  margin: 26px 0 8px 0;
+  padding-bottom: 3px;
+  border-bottom: 1px solid #d8ccb8;
+}
+body.rqdoc h3, body.rqdoc h4 { color: #3a1d14; }
+
+body.rqdoc a[href] { color: #1d4f91; }
+body.rqdoc a[href]:visited { color: #4b3a8f; }
+
+body.rqdoc pre, body.rqdoc code, body.rqdoc tt {
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 13.5px;
+}
+body.rqdoc pre {
+  background: #f3efe7;
+  border: 1px solid #ddd3c2;
+  padding: 8px 10px;
+  overflow: auto;
+  line-height: 1.35;
+}
+
+/* reference tables (Properties / Methods / Events): the old pages colour
+   rows with bgcolor; here the same rows get calmer colours */
+body.rqdoc table[border] {
+  border-collapse: collapse;
+  background: #ffffff;
+}
+body.rqdoc table[border] td, body.rqdoc table[border] th {
+  border: 1px solid #cdbfa8;
+  padding: 4px 7px;
+  vertical-align: top;
+}
+body.rqdoc tr[bgcolor] { background-color: #f6f3ee !important; }
+body.rqdoc td[bgcolor] { background-color: #fbf6e9 !important; }
+
+body.rqdoc hr { border: 0; border-top: 1px solid #d8ccb8; height: 0; }
+
+/* pages written for this collection (Appendix B) */
+table.rq-ref { width: 100%; border-collapse: collapse; background: #ffffff; margin: 4px 0 6px 0; }
+table.rq-ref th {
+  text-align: left;
+  background: #efe8dc;
+  border: 1px solid #cdbfa8;
+  padding: 4px 7px;
+  font-weight: 600;
+}
+table.rq-ref td { border: 1px solid #cdbfa8; padding: 4px 7px; vertical-align: top; }
+table.rq-ref td.rq-name { white-space: nowrap; font-weight: 600; }
+table.rq-ref td.rq-type { white-space: nowrap; }
+table.rq-ref tr.rq-internal td { color: #777064; }
+.rq-meta { color: #5c544a; font-size: 13.5px; margin: 0 0 12px 0; }
+.rq-note { background: #fbf3e2; border-left: 3px solid #c98f3a; padding: 6px 10px; margin: 8px 0; }
+.rq-foot { margin-top: 28px; padding-top: 8px; border-top: 1px solid #d8ccb8; font-size: 13px; color: #5c544a; }
+body.rqdoc .rq-foot a[href] { margin-right: 18px; }

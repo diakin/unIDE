@@ -1,0 +1,60 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QPAGESETUP</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QPAGESETUP</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QPAGESETUP Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QPageSetup.inc</code>, line 70 &middot; version: 1.2</p>
+<p><b>A page setup dialog object based on the Windows PageSetupDlg common dialog that returns paper size, orientation and margins.</b></p>
+<p>QPageSetup extends QOBJECT and wraps PageSetupDlgA from COMDLG32. Execute shows the dialog with the PSD_MARGINS and PSD_MINMARGINS flags, using the margins already set as initial values. The DisablePrinter, DisablePaper, DisableOrient and DisableMargins switches add the matching PSD_DISABLE flags.</p>
+<p>After OK, PageWidth and PageHeight receive the paper size and the four Margin properties receive the margins, each as the dialog value divided by 100; Orientation becomes True when the page is wider than high (landscape). No unit flag (PSD_INHUNDREDTHSOFMILLIMETERS or PSD_INTHOUSANDTHSOFINCHES) is set, so the unit follows the system measurement setting. When Caption is not empty, a hook centers the dialog and sets its title. Comments in the source are in French.</p>
+<p>QPAGESETUP inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QPageSetup Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Caption</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;&quot;</td><td>Dialog title. When not empty, a hook procedure is installed that sets this title and centers the dialog on the screen.</td></tr>
+<tr><td class="rq-name">DisablePrinter</td><td class="rq-type">BOOLEAN</td><td>RW</td><td>false</td><td>When True, Execute adds PSD_DISABLEPRINTER (the Printer button is disabled).</td></tr>
+<tr><td class="rq-name">DisablePaper</td><td class="rq-type">BOOLEAN</td><td>RW</td><td>false</td><td>When True, Execute adds PSD_DISABLEPAPER (paper size and source cannot be changed).</td></tr>
+<tr><td class="rq-name">DisableOrient</td><td class="rq-type">BOOLEAN</td><td>RW</td><td>false</td><td>When True, Execute adds PSD_DISABLEORIENTATION (orientation cannot be changed).</td></tr>
+<tr><td class="rq-name">DisableMargins</td><td class="rq-type">BOOLEAN</td><td>RW</td><td>false</td><td>When True, Execute adds PSD_DISABLEMARGINS (margins cannot be changed).</td></tr>
+<tr><td class="rq-name">Orientation</td><td class="rq-type">BOOLEAN</td><td>RW</td><td></td><td>Read only (the setter is empty): after Execute, True when the paper width is greater than its height (landscape), otherwise False.</td></tr>
+<tr><td class="rq-name">MarginLeft</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Left margin. Assigning it stores value * 100 in the dialog structure as the initial margin; after Execute it holds the chosen margin divided by 100.</td></tr>
+<tr><td class="rq-name">MarginTop</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Top margin. Assigning it stores value * 100 in the dialog structure as the initial margin; after Execute it holds the chosen margin divided by 100.</td></tr>
+<tr><td class="rq-name">MarginRight</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Right margin. Assigning it stores value * 100 in the dialog structure as the initial margin; after Execute it holds the chosen margin divided by 100.</td></tr>
+<tr><td class="rq-name">MarginBottom</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Bottom margin. Assigning it stores value * 100 in the dialog structure as the initial margin; after Execute it holds the chosen margin divided by 100.</td></tr>
+<tr><td class="rq-name">PageWidth</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Read only (the setter is empty): after Execute, the paper width divided by 100 and rounded.</td></tr>
+<tr><td class="rq-name">PageHeight</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Read only (the setter is empty): after Execute, the paper height divided by 100 and rounded.</td></tr>
+</table>
+<a name="2"></a><h2>QPageSetup Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Execute</td><td class="rq-type">FUNCTION AS BOOLEAN</td><td>Shows the page setup dialog; returns True and updates the size, orientation and margin properties if the user pressed OK, otherwise returns False.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>The unit of sizes and margins is not fixed by the code: values are the dialog&#x27;s own units divided by 100, and those units depend on the system measurement setting.</li>
+<li>Orientation, PageWidth and PageHeight have empty setters (read only); SetPageWidth and SetPageHeight are declared with a boolean parameter although the properties are long.</li>
+<li>The margin values written by the setters stay in the structure between calls; there is no way to reset them other than assigning new values.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/rapidq2.inc</code> (line 7139) contains its own edition of QPAGESETUP; it has members that are not in this file: BINDINDEX, COLLATE, COPIES, DEFAULTSOURCE, DUPLEX, MYWNDPROC, PAPERSIZE, PRINTCOLOR, PRINTQUALITY.</li>
+<li><code>inc/old/object/QPageSetup.inc</code> &mdash; identical copy (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QPageSetup Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>DIM PageDlg AS QPageSetup
+PageDlg.Caption = &quot;Page setup&quot;
+PageDlg.DisablePrinter = 1
+PageDlg.MarginLeft = 20
+IF PageDlg.Execute THEN
+  ShowMessage &quot;Page: &quot; + STR$(PageDlg.PageWidth) + &quot; x &quot; + STR$(PageDlg.PageHeight)
+END IF</pre>
+<div class="rq-foot"><a href="c_qodbc.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qpanelux.html">Next component</a></div>
+</body>
+</html>

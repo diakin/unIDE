@@ -1,0 +1,82 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QD3DCLONEMESH</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QD3DCLONEMESH</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QD3DCLONEMESH Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/RapidQ_D3D.inc</code>, line 844 &middot; author: JohnK &middot; version: 1.0 &middot; date: 10/2004</p>
+<p><b>A non-visual helper that shows one QD3DMESHBUILDER (loaded from an X or 3DS file) in up to 100 QD3DFRAMEs, so the same model appears many times in a RapidQ Direct3D scene.</b></p>
+<p>QD3DCloneMesh makes multiple objects from the same mesh. The source notes that arrays of custom objects cannot be made, so this component holds arrays of frames, positions and orientations itself (MaxD3DClones = 100).</p>
+<p>Set File, CloneNum, the positions (Pos array, or RandPos with a Range) and Scale, then call Init with your QDXSCREEN. Init creates the mesh builder, loads File, scales the mesh, creates a frame for each clone 1 to CloneNum, adds the mesh to it and moves it to Pos(i).</p>
+<p>Assigning Visible later adds the mesh to all frames (True) or removes it (False).</p>
+<p>QD3DCLONEMESH inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>QDXSCREEN (RapidQ DirectX screen) passed to Init</li>
+<li>QD3DMESHBUILDER and QD3DFrame (RapidQ Direct3D objects)</li>
+<li>an X or 3DS model file named in File</li>
+<li>a definition of null: New assigns null to File and TextureFile, but RapidQ_D3D.inc only $UNDEFs null at the end and never defines it</li>
+<li>d3drm.dll (Direct3D Retained Mode); RapidQ_D3D.inc DECLAREs D3DRMVectorCrossProduct, D3DRMVectorDotProduct and D3DRMVectorNormalize from it, although the component itself does not call them</li>
+</ul>
+<a name="1"></a><h2>QD3DCloneMesh Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Visible</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Assigning 1 adds the mesh to frames 1 to CloneNum (shows the message &#x27;Initialize CloneObject first&#x27; if Init has not run); assigning any other value removes the mesh from the frames if Init has run.</td></tr>
+<tr><td class="rq-name">CloneNum</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Number of clones. Assigning a value up to MaxD3DClones (100) stores it; larger values are ignored. Set it before Init.</td></tr>
+<tr><td class="rq-name">File</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>File name of the X or 3DS model loaded by Init.</td></tr>
+<tr><td class="rq-name">Mesh</td><td class="rq-type">QD3DMESHBUILDER</td><td>RW</td><td></td><td>The single QD3DMESHBUILDER shared by all clones; Init creates it with the QDXSCREEN.</td></tr>
+<tr><td class="rq-name">Frame</td><td class="rq-type">ARRAY(MaxD3DClones) OF QD3DFRAME</td><td>RW</td><td></td><td>Array Frame(0 to 100) of QD3DFrame; Init creates and uses elements 1 to CloneNum.</td></tr>
+<tr><td class="rq-name">Range</td><td class="rq-type">QRECT</td><td>RW</td><td></td><td>QRECT giving the area used by RandPos: Left to Right for x and Bottom to Top for z. Default -1 to 1 in both directions.</td></tr>
+<tr><td class="rq-name">RandPos</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Assigning a non-zero value fills Pos(1 to CloneNum) with random positions: x within Range.Left..Range.Right, y between 0 and 1, z within Range.Bottom..Range.Top. Set CloneNum and Range first, and assign it before Init, which applies the positions.</td></tr>
+<tr><td class="rq-name">Pos</td><td class="rq-type">ARRAY(MaxD3DClones) OF QD3DVECTOR</td><td>RW</td><td></td><td>Array Pos(0 to 100) of QD3DVECTOR positions; Init moves frame i to Pos(i).</td></tr>
+<tr><td class="rq-name">Orient</td><td class="rq-type">ARRAY(MaxD3DClones) OF QD3DORIENTVECTOR</td><td>RW</td><td></td><td>Array Orient(0 to 100) of QD3DOrientVector orientations, initialised by New. No method uses it.</td></tr>
+<tr><td class="rq-name">RandScale</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Assigning a non-zero value sets Scale.x and Scale.y to random values (0 to 1) and Scale.z equal to Scale.x; assigning 0 resets Scale to 1, 1, 1. Takes effect at the next Init.</td></tr>
+<tr><td class="rq-name">Scale</td><td class="rq-type">QD3DVECTOR</td><td>RW</td><td></td><td>QD3DVECTOR scale applied to the shared mesh by Init with Mesh.Scale; all clones get the same scale.</td></tr>
+<tr><td class="rq-name">TextureFile</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Texture file name (.bmp or .ppm, per the comment). Only stored; no method uses it.</td></tr>
+<tr><td class="rq-name">TexOriginX</td><td class="rq-type">SINGLE</td><td>RW</td><td></td><td>X of the texture origin in model space. Only stored; no method uses it.</td></tr>
+<tr><td class="rq-name">TexOriginY</td><td class="rq-type">SINGLE</td><td>RW</td><td></td><td>Y of the texture origin in model space. Only stored; no method uses it.</td></tr>
+<tr><td class="rq-name">TexOriginZ</td><td class="rq-type">SINGLE</td><td>RW</td><td></td><td>Z of the texture origin in model space. Only stored; no method uses it.</td></tr>
+<tr><td class="rq-name">TexOriginU</td><td class="rq-type">SINGLE</td><td>RW</td><td></td><td>U texture origin. Only stored; no method uses it.</td></tr>
+<tr><td class="rq-name">TexOriginV</td><td class="rq-type">SINGLE</td><td>RW</td><td></td><td>V texture origin. Only stored; no method uses it.</td></tr>
+<tr><td class="rq-name">TexScaleU</td><td class="rq-type">SINGLE</td><td>RW</td><td></td><td>U texture scale (New sets 0). Only stored; no method uses it.</td></tr>
+<tr><td class="rq-name">TexScaleV</td><td class="rq-type">SINGLE</td><td>RW</td><td></td><td>V texture scale (New sets 0). Only stored; no method uses it.</td></tr>
+<tr><td class="rq-name">TexWrapType</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>D3DRM texture wrapping code, default D3DRMWRAP_SPHERE. Only stored; no method uses it.</td></tr>
+<tr><td class="rq-name">Color</td><td class="rq-type">QD3DRGBA</td><td>RW</td><td></td><td>QD3DRGBA colour for the whole mesh (0 to 1; the comment says values below 0 mean do not modify, and that if you set alpha you must set RGB). Only stored; no method uses it.</td></tr>
+</table>
+<a name="2"></a><h2>QD3DCloneMesh Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Init</td><td class="rq-type">SUB(DXscreen AS QDXSCREEN)</td><td>Init(DXscreen) removes the mesh from old frames if already initialised, creates the mesh builder, loads File, scales the mesh by Scale, then creates frames 1 to CloneNum, adds the mesh to each and positions them at Pos(i).</td></tr>
+<tr><td class="rq-name">New</td><td class="rq-type">FUNCTION AS INTEGER</td><td>Resets all settings to defaults (not initialised, CloneNum 0, Range -1..1, Scale 1, positions 0, sphere wrap, colour 0). Called by the constructor.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>Per-frame scaling is not possible: a commented-out AddScale call in Init is marked &#x27;this crashes&#x27;, and New has the comment &#x27;can&#x27;t scale each frame! Bug in program?&#x27;. All clones share the mesh scale.</li>
+<li>Init&#x27;s comment says the mesh scale &#x27;works on each new load..but you can&#x27;t remove them&#x27;.</li>
+<li>TextureFile, the TexOrigin/TexScale/TexWrapType fields, Color and the Orient array are only stored; no method uses them.</li>
+<li>New assigns null to File and TextureFile, but null is not defined in RapidQ_D3D.inc.</li>
+<li>Frame(0), Pos(0) and Orient(0) exist but are never used; clones are numbered 1 to CloneNum.</li>
+</ul>
+<a name="4"></a><h2>QD3DCloneMesh Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;RapidQ_D3D.inc&quot;
+DIM Trees AS QD3DCloneMesh
+&#x27; DXScreen is a QDXSCREEN on your form; call this after it is initialised
+SUB PlantTrees
+  Trees.File = &quot;tree.x&quot;
+  Trees.CloneNum = 20
+  Trees.Range.Left = -10
+  Trees.Range.Right = 10
+  Trees.Range.Bottom = -10
+  Trees.Range.Top = 10
+  Trees.RandPos = 1
+  Trees.Init(DXScreen)
+END SUB</pre>
+<div class="rq-foot"><a href="c_qd3dcamera.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qd3dprimitive.html">Next component</a></div>
+</body>
+</html>

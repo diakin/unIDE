@@ -1,0 +1,48 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QFLASHLABEL</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QFLASHLABEL</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QFLASHLABEL Component</h1>
+<p class="rq-meta">Extends <a href="qlabel.html">QLABEL</a> &middot; source: <code>inc/QFlashLabel.inc</code>, line 17 &middot; version: 1.0</p>
+<p><b>QLabel that can flash its text by switching the font color between a dark and a light color on a timer.</b></p>
+<p>QFlashLabel uses an internal QTimer. While Flash is True, each timer tick toggles State and sets the font color to LightColor or DarkColor. Speed sets the timer interval in milliseconds. The label is transparent and auto-sized by default.</p>
+<p>Set LightColor and DarkColor (both default to black, &amp;h0), then set Flash = True.</p>
+<p>QFLASHLABEL inherits the properties, methods and events of <a href="qlabel.html">QLABEL</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QFlashLabel Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">LightColor</td><td class="rq-type">LONG</td><td>RW</td><td>&amp;h0</td><td>Font color used in the &#x27;on&#x27; state (default &amp;h0).</td></tr>
+<tr><td class="rq-name">DarkColor</td><td class="rq-type">LONG</td><td>RW</td><td>&amp;h0</td><td>Font color used in the &#x27;off&#x27; state; assigning it also sets the current font color (default &amp;h0).</td></tr>
+<tr><td class="rq-name">Flash</td><td class="rq-type">BOOLEAN</td><td>RW</td><td></td><td>Assigning True starts flashing; assigning False stops it, sets State to 0 and restores DarkColor.</td></tr>
+<tr><td class="rq-name">State</td><td class="rq-type">SHORT</td><td>RW</td><td>0</td><td>Current color state; assigning 1 shows LightColor, any other value shows DarkColor.</td></tr>
+<tr><td class="rq-name">Speed</td><td class="rq-type">LONG</td><td>RW</td><td>1000</td><td>Flash interval in milliseconds; assigning it sets the timer interval (default 1000).</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>Timer.OnTimer</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>LightColor and DarkColor both default to black, so flashing is not visible until LightColor is changed.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/object/QFlashLabel.inc</code> &mdash; identical copy (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QFlashLabel Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>DIM Form AS QFORM
+DIM Lbl AS QFlashLabel
+Lbl.Parent = Form
+Lbl.Caption = &quot;Alarm!&quot;
+Lbl.LightColor = &amp;HFF
+Lbl.DarkColor = &amp;H0
+Lbl.Speed = 500
+Lbl.Flash = True
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qfilelistview.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qflatbutton.html">Next component</a></div>
+</body>
+</html>

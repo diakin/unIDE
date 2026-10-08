@@ -1,0 +1,88 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>COMPORT</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: COMPORT</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>COMPORT Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/ComPort.cmp</code>, line 262 &middot; author: Pete Kleinschmidt &middot; version: 0.9 &middot; date: December 13, 2001</p>
+<p><b>Comport is a non-visual serial (COM) port component that opens, configures, writes to and reads from a port through the Win32 file and communications API.</b></p>
+<p>Open calls CreateFile on Port, sets the driver buffers with SetupComm, purges them with PurgeComm, sets time-outs with SetCommTimeouts, reads the current DCB with GetCommState and writes BaudRate, DataBits, Parity and StopBits back with SetCommState. Settings that are not exposed keep their current values. All calls are synchronous (no overlapped I/O).</p>
+<p>WriteString and ReadString use WriteFile and ReadFile, then wait the given number of milliseconds with kernel32 Sleep and update BytesNotWritten and BytesNotRead through ClearCommError. Every failure raises OnComError with a message that includes the system error text from FormatMessage. The header says the code is loosely based on VB code by David M. Hitchner (thescarms.com).</p>
+<p>COMPORT inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>FILE_ATTRIBUTE_NORMAL constant defined elsewhere (its CONST is commented out in this file)</li>
+</ul>
+<a name="1"></a><h2>Comport Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Handle</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Win32 handle of the open port returned by CreateFile in Open; -1 when opening failed.</td></tr>
+<tr><td class="rq-name">Port</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;COM1&quot;</td><td>Name of the device to open; default &quot;COM1&quot;.</td></tr>
+<tr><td class="rq-name">BaudRate</td><td class="rq-type">DWORD</td><td>RW</td><td>9600</td><td>Baud rate written to the DCB by Open; default 9600.</td></tr>
+<tr><td class="rq-name">DataBits</td><td class="rq-type">BYTE</td><td>RW</td><td>8</td><td>Number of data bits (DCB ByteSize) written by Open; default 8.</td></tr>
+<tr><td class="rq-name">Parity</td><td class="rq-type">BYTE</td><td>RW</td><td>NOPARITY</td><td>Parity written to the DCB by Open: NOPARITY (0), ODDPARITY (1), EVENPARITY (2), MARKPARITY (3) or SPACEPARITY (4); default NOPARITY.</td></tr>
+<tr><td class="rq-name">StopBits</td><td class="rq-type">BYTE</td><td>RW</td><td>1</td><td>Value written to DCB StopBits by Open; the file&#x27;s constants are ONESTOPBIT = 0, ONE5STOPBITS = 1, TWOSTOPBITS = 2. Default 1.</td></tr>
+<tr><td class="rq-name">ReadBufSize</td><td class="rq-type">DWORD</td><td>RW</td><td>1024</td><td>Input buffer size passed to SetupComm (default 1024); ReadString also allocates its read buffer with this size.</td></tr>
+<tr><td class="rq-name">WriteBufSize</td><td class="rq-type">DWORD</td><td>RW</td><td>1024</td><td>Output buffer size passed to SetupComm; default 1024.</td></tr>
+<tr><td class="rq-name">BytesNotRead</td><td class="rq-type">DWORD</td><td>RW</td><td>0</td><td>Number of received bytes not yet read (cbInQue), updated after each ReadString and WriteString.</td></tr>
+<tr><td class="rq-name">BytesNotWritten</td><td class="rq-type">DWORD</td><td>RW</td><td>0</td><td>Number of bytes still waiting to be sent (cbOutQue), updated after each ReadString and WriteString.</td></tr>
+<tr><td class="rq-name">Connected</td><td class="rq-type">BYTE</td><td>RW</td><td>FALSE</td><td>TRUE after Open succeeds, FALSE after Close succeeds (initially FALSE).</td></tr>
+</table>
+<a name="2"></a><h2>Comport Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Open</td><td class="rq-type">SUB</td><td>Opens Port and applies buffer sizes, time-outs (ReadIntervalTimeout -1, ReadTotalTimeoutConstant 1000) and BaudRate, DataBits, Parity and StopBits; sets Connected and raises OnOpen, or raises OnComError and exits at the first failing step.</td></tr>
+<tr><td class="rq-name">Close</td><td class="rq-type">SUB</td><td>Closes the port handle with CloseHandle, sets Connected to FALSE and raises OnClose, or raises OnComError on failure.</td></tr>
+<tr><td class="rq-name">WriteString</td><td class="rq-type">SUB(strData AS STRING, intWait AS INTEGER)</td><td>WriteString(strData, intWait) writes the string to the port, sleeps intWait milliseconds, then raises OnWriteString if the output queue is empty or OnComError (&quot;Could not send all the data in time specified...&quot;) if not.</td></tr>
+<tr><td class="rq-name">ReadString</td><td class="rq-type">FUNCTION(dwRdSize AS DWORD, intWait AS INTEGER) AS STRING</td><td>ReadString(dwRdSize, intWait) reads up to dwRdSize bytes and returns them as a string, then sleeps intWait milliseconds, updates BytesNotRead and raises OnReadString.</td></tr>
+</table>
+<a name="3"></a><h2>Comport Events</h2>
+<table class="rq-ref">
+<tr><th>Event</th><th>Type</th><th>Occurs when...</th></tr>
+<tr><td class="rq-name">OnComError</td><td class="rq-type">SUB(strErrorMessage AS STRING)</td><td>Event OnComError_EventTemplate(strErrorMessage AS STRING), raised when an API call fails or not all data was sent; the message is a fixed text followed by the system error text.</td></tr>
+<tr><td class="rq-name">OnOpen</td><td class="rq-type">SUB</td><td>Event without parameters raised when Open has applied the port settings successfully.</td></tr>
+<tr><td class="rq-name">OnClose</td><td class="rq-type">SUB</td><td>Event without parameters raised when Close has closed the handle successfully.</td></tr>
+<tr><td class="rq-name">OnWriteString</td><td class="rq-type">SUB</td><td>Event without parameters raised by WriteString when, after the wait, no bytes remain in the output queue.</td></tr>
+<tr><td class="rq-name">OnReadString</td><td class="rq-type">SUB</td><td>Event without parameters raised by ReadString after a successful read.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>ReadString calls ReadFile with MyPort.Handle instead of ComPort.Handle, so it only works when the instance is named MyPort.</li>
+<li>In Open, WriteTotalTimeoutMultiplier is assigned twice (0, then 1000) and WriteTotalTimeoutConstant is never set.</li>
+<li>StopBits defaults to 1, which by the file&#x27;s own constants is ONE5STOPBITS (1.5 stop bits), not one stop bit.</li>
+<li>ReadString allocates a buffer of ReadBufSize bytes but asks ReadFile for dwRdSize bytes; dwRdSize larger than ReadBufSize is not checked.</li>
+<li>When ClearCommError fails, the error message uses ERROR_CHANGING_PORTSETTINGS instead of ERROR_GETTING_PORT_STATUS.</li>
+<li>FILE_ATTRIBUTE_NORMAL is used in Open but its CONST is commented out in the file.</li>
+<li>The file declares kernel32 Sleep (milliseconds), CreateFile, ReadFile, WriteFile, CloseHandle, GetLastError, FormatMessage and many constants and types (DCB, OVERLAPPED, CREATE_NEW, OPEN_EXISTING and others) at global level, without $IFNDEF guards.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/rapidq2.inc</code> (line 5177) contains its own edition of COMPORT; it has members that are not in this file: DCBFLAGS, INQUE, OUTQUE, PURGEIN, PURGEOUT, WRITE.</li>
+</ul>
+<a name="4"></a><h2>Comport Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;ComPort.cmp&quot;
+DECLARE SUB PortError(Msg AS STRING)
+DIM MyPort AS Comport   &#x27; ReadString uses the name MyPort, see caveats
+MyPort.Port = &quot;COM2&quot;
+MyPort.BaudRate = 19200
+MyPort.StopBits = ONESTOPBIT
+MyPort.OnComError = PortError
+MyPort.Open
+IF MyPort.Connected THEN
+  MyPort.WriteString(&quot;AT&quot; + CHR$(13), 100)
+  ShowMessage MyPort.ReadString(64, 200)
+  MyPort.Close
+END IF
+
+SUB PortError(Msg AS STRING)
+  ShowMessage Msg
+END SUB</pre>
+<div class="rq-foot"><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_mycom_port.html">Next component</a></div>
+</body>
+</html>

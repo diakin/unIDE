@@ -1,0 +1,77 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QWEBCAM</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QWEBCAM</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QWEBCAM Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/WebCam.inc</code>, line 78 &middot; author: John White (webcam.dll); wrapped as a component by JohnK</p>
+<p><b>A non-visual wrapper around webcam.dll for showing a webcam preview in a form, capturing video, opening driver dialogs and grabbing frames.</b></p>
+<p>QWebCam extends QObject and calls functions of webcam.dll, a DLL written by John White. When the include file is loaded it calls WEBCAM_AbortCapturing to load the library and checks it with LIBRARYINST; if the DLL is missing it shows &quot;webCam.DLL not found, video capture disabled&quot; and sets WebCamDLLPresent to 0.</p>
+<p>CamInit opens a capture child window on a form, connects the driver and turns on hardware overlay if the camera supports it, or software preview otherwise. Other methods start and stop capturing, switch preview, open the driver dialogs, copy a frame to the clipboard or save it as a DIB file, and CleanUp closes everything in the reverse order.</p>
+<p>QWEBCAM inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>webcam.dll (by John White)</li>
+<li>Declarations from elsewhere for GetObject, TBITMAP and CF_BITMAP (used in GrabFrameToClipBoard)</li>
+</ul>
+<a name="1"></a><h2>QWebCam Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">ImageHeight</td><td class="rq-type">LONG</td><td>RW</td><td>0</td><td>Set to 0 by the constructor; the comment says it is set by GetStatus, but no such method exists and nothing updates it.</td></tr>
+<tr><td class="rq-name">ImageWidth</td><td class="rq-type">LONG</td><td>RW</td><td>0</td><td>Set to 0 by the constructor; the comment says it is set by GetStatus, but no such method exists and nothing updates it.</td></tr>
+<tr><td class="rq-name">FramesDropped</td><td class="rq-type">LONG</td><td>RW</td><td>0</td><td>Set to 0 by the constructor and not used anywhere else.</td></tr>
+<tr><td class="rq-name">Preview</td><td class="rq-type">LONG</td><td>RW</td><td>True</td><td>Set to True by the constructor and not used anywhere else.</td></tr>
+<tr><td class="rq-name">Tag</td><td class="rq-type">LONG</td><td>RW</td><td>0</td><td>Commented as being for a createWindow function; set to 0 and not used.</td></tr>
+<tr><td class="rq-name">sts</td><td class="rq-type">BYTE</td><td>RW</td><td>0</td><td>Status flag: 0 = nothing open, 1 = capture window open, 2 = driver connected, 3 = software preview on, 4 = overlay on. CamInit sets it and CleanUp uses it.</td></tr>
+<tr><td class="rq-name">OnFrame</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>A LONG field; the comment says the frame event (OnFrame_EventTemplate) does not work, and it is not used.</td></tr>
+</table>
+<a name="2"></a><h2>QWebCam Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">CamInit</td><td class="rq-type">FUNCTION(Form AS QFORM) AS LONG</td><td>CamInit(Form AS QFORM) opens the capture window on Form, connects the camera and starts overlay or preview; returns 1 on success. It runs only once (exits if Sts is set) and shows &quot;Could not connect to Camera&quot; on failure.</td></tr>
+<tr><td class="rq-name">ShowDialogBox</td><td class="rq-type">SUB(TheBoxNum)</td><td>ShowDialogBox(n) stops capturing and opens a driver dialog: 1 = video compression, 2 = video display, 3 = video format, 4 = video source.</td></tr>
+<tr><td class="rq-name">StartCapture</td><td class="rq-type">SUB</td><td>Starts capturing if not already capturing, and turns overlay on if the camera supports it.</td></tr>
+<tr><td class="rq-name">PreviewOff</td><td class="rq-type">SUB</td><td>Turns preview scaling and preview off.</td></tr>
+<tr><td class="rq-name">PreviewOn</td><td class="rq-type">SUB</td><td>Turns preview on.</td></tr>
+<tr><td class="rq-name">StopCapture</td><td class="rq-type">SUB</td><td>If capturing, turns preview off and stops capturing.</td></tr>
+<tr><td class="rq-name">CleanUp</td><td class="rq-type">SUB</td><td>Turns off overlay or preview, disconnects the driver and closes the capture window, depending on Sts. Call it before the program ends.</td></tr>
+<tr><td class="rq-name">SelectSource</td><td class="rq-type">SUB</td><td>Opens the video source dialog.</td></tr>
+<tr><td class="rq-name">GrabFrameToClipBoard</td><td class="rq-type">FUNCTION AS LONG</td><td>Turns preview off, grabs a frame, copies it to the clipboard, reads the bitmap handle back and calls GetObject on it, then turns preview on again. Returns the GetObject result, not the image.</td></tr>
+<tr><td class="rq-name">CopyFrameToFile</td><td class="rq-type">FUNCTION(TheFileName AS STRING) AS LONG</td><td>CopyFrameToFile(FileName) turns preview off, grabs a frame and saves it with FRAME_CopyToDIB; returns the DLL result.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>In CamInit the IF WebCamDLLPresent THEN block has no matching END IF in the source.</li>
+<li>ImageHeight, ImageWidth, FramesDropped, Preview, Tag and OnFrame are never updated or used; the OnFrame comment says the event does not work.</li>
+<li>GrabFrameToClipBoard calls GetObject first on an empty local QBITMAP and then on the clipboard bitmap into a local TBITMAP that is discarded; GetObject, TBITMAP and CF_BITMAP are not declared in this file.</li>
+<li>CopyFrameToFile turns preview off and does not turn it back on.</li>
+<li>CleanUp does not reset Sts, so CamInit cannot be called again afterwards.</li>
+<li>The component never sets a capture file name (WEBCAM_SetCaptureFilename is declared but not used).</li>
+<li>Including the file shows a message box at startup when webcam.dll is missing.</li>
+</ul>
+<a name="4"></a><h2>QWebCam Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;WebCam.inc&quot;
+DIM Cam AS QWebCam
+DECLARE SUB FormClose
+CREATE Form AS QFORM
+  Caption = &quot;Webcam&quot;
+  Width = 360: Height = 300
+  OnClose = FormClose
+END CREATE
+SUB FormClose
+  Cam.CleanUp
+END SUB
+Form.Show
+IF Cam.CamInit(Form) = 1 THEN Cam.CopyFrameToFile(&quot;C:\frame.bmp&quot;)
+DO
+  DoEvents
+LOOP UNTIL Form.Visible = 0</pre>
+<div class="rq-foot"><a href="c_qwebcam_vfw.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qxedit.html">Next component</a></div>
+</body>
+</html>

@@ -1,0 +1,656 @@
+{
+ "QMarker@QMarker.inc": {
+  "summary_en": "A panel that shows a vertical column of colored row strips, used to mark individual rows with a color or a bitmap.",
+  "summary_ru": "Панель с вертикальным столбцом цветных полос-строк, позволяющая выделять отдельные строки цветом или картинкой.",
+  "description_en": [
+   "QMarker extends QPanel and owns an array of 201 child QPanel objects (Row(0) to Row(200)). Draw lays them out one under another, each RowHeight pixels high and as wide as the marker, and paints them with RowColor (default &HC0C0C0).",
+   "SetMark changes the color of one row. SetImage places the Mark QImage inside a row and shows the bitmap compiled in from the resource Bit_Res (file Mark.bmp), aligned to fill the row, stretched and transparent. A typical use is a margin next to a list or editor that highlights the current or marked lines."
+  ],
+  "requires": [
+   "$RESOURCE Bit_Res AS \"Mark.bmp\" (the file Mark.bmp must exist at compile time)"
+  ],
+  "members": {
+   "MARKCOLOR": "Integer field declared for a mark color, but no code in the component reads or writes it.",
+   "ROWHEIGHT": "Height of each row strip in pixels, used by Draw. It has no default value (the default assignment in the constructor is commented out).",
+   "ROW": "Array Row(0 TO 200) of QPanel objects that form the row strips; Draw sets their parent, color, size and position.",
+   "ROWCOLOR": "Background color given to every row by Draw; the constructor sets it to &HC0C0C0 (light gray).",
+   "MARK": "QImage used by SetImage to show the Mark.bmp resource bitmap inside a row.",
+   "DRAW": "Creates the layout: for each row index it sets Parent, Color (RowColor), Width (the marker width), Height (RowHeight) and Top (index * RowHeight). Call it again after changing Height or RowHeight.",
+   "SETMARK": "SetMark(ARow, AColor) sets the background color of row ARow to AColor.",
+   "SETIMAGE": "SetImage(ARow) moves the Mark image into row ARow and shows the Bit_Res bitmap there, transparent, stretched and aligned to fill the row (Align = 5)."
+  },
+  "example": "DIM Marker AS QMarker\nMarker.Parent = Form\nMarker.Width = 20\nMarker.Height = 180\nMarker.RowHeight = 18\nMarker.Draw\nMarker.SetMark(2, &H0000FF)\nMarker.SetImage(4)",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "Draw loops FOR i = 0 TO .Height instead of using the computed row count NoRow (which is calculated but never used), so it touches one Row per pixel of height; a marker taller than 200 pixels indexes past the end of the Row(200) array.",
+   "The constructor calls Draw while RowHeight is still 0 (its default assignment is commented out), so the first Draw divides by zero and stacks all rows at Top = 0.",
+   "MarkColor is declared but never used.",
+   "The bitmap is fixed at compile time by $RESOURCE Bit_Res AS \"Mark.bmp\"; there is no property to change it."
+  ]
+ },
+ "QTextBtn@QTextBtn.inc": {
+  "summary_en": "A label that acts as a text-only button by changing its font color when pressed, with momentary, latching and toggle modes.",
+  "summary_ru": "Метка, работающая как текстовая кнопка: при нажатии меняет цвет шрифта; есть режимы обычной, фиксируемой и переключаемой кнопки.",
+  "description_en": [
+   "QTextBtn extends QLabel. It is transparent and auto-sized, shows a hand cursor (Cursor = -21) and uses the font color to show its state: DownColor while pressed or down, UpColor when released.",
+   "The component handles OnMouseDown and OnMouseUp itself. Mode 0 (default) is a normal push button: the color returns to UpColor on mouse up and Down becomes False. Mode 1 sets Down to True on mouse up and keeps the down color. Mode 2 is a toggle: each click switches Down between True and False and restores UpColor when it is switched off. Comments in the source are in French."
+  ],
+  "requires": [],
+  "members": {
+   "DOWNCOLOR": "Font color used while the button is pressed or down (default &H0).",
+   "UPCOLOR": "Font color of the released button. Assigning it stores the value and immediately sets the label's font color to it (default &H0).",
+   "MODE": "Operating mode read by the mouse-up handler: 0 = push button, 1 = stays down after release, 2 = toggle on each click. Assigning it only stores the value.",
+   "DOWN": "True when the button is in the down state. Assigning it (only when the label is enabled) sets the state and changes the font color to DownColor or UpColor.",
+   "ENABLED": "Declared with PROPERTY SET SetEnabled, but no SetEnabled setter exists in the type; SetDown checks the inherited Super.Enabled instead."
+  },
+  "example": "CREATE TxtBtn AS QTextBtn\n  Parent = Form\n  Caption = \"Bold\"\n  UpColor = &H000000\n  DownColor = &H0000FF\n  Mode = 2\nEND CREATE",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.0",
+  "date": "",
+  "caveats_en": [
+   "Enabled is declared as \"enabled as boolean property set SetEnabled\" but the type defines no SetEnabled, so this declaration refers to a missing setter.",
+   "The type uses its own OnMouseDown and OnMouseUp event handlers to drive the button state.",
+   "The Mode values are not documented in the source; their meaning comes only from the OnMouseUp code."
+  ]
+ },
+ "QShutDown@QShutdown.inc": {
+  "summary_en": "A non-visual object that shuts down, force-shuts down, reboots Windows or logs off the current user.",
+  "summary_ru": "Невизуальный объект для выключения, принудительного выключения, перезагрузки Windows или выхода пользователя из системы.",
+  "description_en": [
+   "QShutDown extends QOBJECT. Each public method sets an ExitWindowsEx flag and calls the private DoShutDown, which first enables the SeShutdownPrivilege for the current process (OpenProcessToken, LookupPrivilegeValueA, AdjustTokenPrivileges from advapi32) and then calls ExitWindowsEx from user32. The privilege step is needed, per the source comment, or the reboot fails.",
+   "The LUID, LUID_AND_ATTRIBUTES and TOKEN_PRIVILEGES types and the advapi32 declarations are defined only when __WIN32API is not defined; ExitWindowsEx, GetCurrentProcess and the EWX_ constants are defined only when __RQINC2 is not defined, so with those include files the declarations come from them instead."
+  ],
+  "requires": [],
+  "members": {
+   "SHUTDOWN": "Shuts Windows down (ExitWindowsEx with EWX_SHUTDOWN) after enabling the shutdown privilege.",
+   "SHUTDOWNFORCE": "Shuts Windows down with EWX_FORCE OR EWX_SHUTDOWN, which forces applications to close.",
+   "LOGOFF": "Logs off the current user (EWX_LOGOFF).",
+   "REBOOT": "Restarts Windows (EWX_REBOOT) after enabling the shutdown privilege."
+  },
+  "example": "DIM Sd AS QShutDown\nIF MessageDlg(\"Restart the computer now?\", mtConfirmation, mbYes OR mbNo, 0) = mrYes THEN\n  Sd.Reboot\nEND IF",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "Feb, 2006",
+  "caveats_en": [
+   "The source says it comes from a RapidQ Yahoo Groups posting; no author is named.",
+   "Return values of OpenProcessToken, LookupPrivilegeValue, AdjustTokenPrivileges and ExitWindowsEx are ignored, so the methods give no indication of failure.",
+   "TOKEN_PRIVILEGES is flattened (the LUID_AND_ATTRIBUTES array is replaced by LowPart, HighPart and Attributes fields) and only supports one privilege."
+  ]
+ },
+ "QInputBox@QInputBox.inc": {
+  "summary_en": "A non-visual object that shows a modal input dialog and returns the text the user typed.",
+  "summary_ru": "Невизуальный объект, показывающий модальный диалог ввода и возвращающий введённый пользователем текст.",
+  "description_en": [
+   "QInputBox extends QObject and builds a small dialog (QForm with a prompt QLabel, a QEdit and OK and Cancel buttons) inside the object. Show(Prompt, Title, Default) takes up to three optional string arguments: the prompt text (shown followed by \" :\", or \"Prompt :\" when empty), the window title (Application.Title when empty) and the initial text of the edit box.",
+   "The dialog is centered, uses the dialog border style and is shown with ShowModal. OK returns the edited text; Cancel, closing the window, or OK with an empty edit box returns the Default text."
+  ],
+  "requires": [
+   "A DECLARE for SetFocus (user32) must exist elsewhere: Show calls SetFocus, but its declaration in this file is commented out."
+  ],
+  "members": {
+   "SHOW": "Show([Prompt], [Title], [Default]) displays the modal input dialog and returns the entered string; on Cancel or close it returns the Default text."
+  },
+  "example": "DIM Name AS QInputBox\nDIM retStr AS STRING\nretStr = Name.Show(\"Your name\", \"Input\", \"John\")",
+  "example_origin": "source",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "SetFocus is called but its DECLARE at the top of the file is commented out.",
+   "An empty answer cannot be returned: if the user clears the box and presses OK, the OnClose handler replaces the empty result with the Default text.",
+   "Dialog size and control positions are hard-coded (form 249 x 117 pixels, edit box 209 pixels wide)."
+  ]
+ },
+ "QCOLORDIALOG@object/QColorDialog.inc": {
+  "summary_en": "A color selection dialog object based on the Windows ChooseColor common dialog, with a custom caption, 16 custom colors and full-open options.",
+  "summary_ru": "Объект диалога выбора цвета на основе стандартного диалога Windows ChooseColor, с собственным заголовком, 16 пользовательскими цветами и вариантами раскрытия.",
+  "description_en": [
+   "QCOLORDIALOG extends QOBJECT and wraps ChooseColorA from COMDLG32. Execute fills a TCHOOSECOLOR structure with the current Color and the 16 custom Colors, shows the dialog owned by the application window and, when the user presses OK, copies the chosen color and the custom colors back and returns True.",
+   "When Caption is not empty, a hook procedure is installed (CC_ENABLEHOOK) that centers the dialog on the screen and sets its title on WM_INITDIALOG. Style selects the layout: cdNormal (0), cdFullOpen (1, custom color section opened) or cdNoFullOpen (2, the Define Custom Colors button disabled). Comments in the source are in French."
+  ],
+  "requires": [],
+  "members": {
+   "CAPTION": "Dialog title. When not empty, the hook procedure is installed, sets this title and centers the dialog on the screen.",
+   "COLOR": "Initial color shown in the dialog and, after Execute returns True, the color the user chose.",
+   "COLORS": "Array Colors(1 TO 16) of custom colors passed to the dialog and updated after OK; the constructor fills it with 16 basic colors.",
+   "STYLE": "Dialog layout: cdNormal (0), cdFullOpen (1) adds CC_FULLOPEN, cdNoFullOpen (2) adds CC_PREVENTFULLOPEN.",
+   "HOOKPROC": "Internal: dialog hook procedure; on WM_INITDIALOG it centers the dialog on the screen and sets Caption as its title.",
+   "EXECUTE": "Shows the color dialog; returns True and updates Color and Colors if the user pressed OK, otherwise returns False."
+  },
+  "example": "DIM ColorDlg AS QCOLORDIALOG\nColorDlg.Caption = \"Pick a background color\"\nColorDlg.Style = cdFullOpen\nColorDlg.Color = Form.Color\nIF ColorDlg.Execute THEN Form.Color = ColorDlg.Color",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.1",
+  "date": "",
+  "caveats_en": [
+   "The dialog is centered only when Caption is not empty, because the centering code is in the hook that is installed only in that case."
+  ]
+ },
+ "QPageSetup@QPageSetup.inc": {
+  "summary_en": "A page setup dialog object based on the Windows PageSetupDlg common dialog that returns paper size, orientation and margins.",
+  "summary_ru": "Объект диалога параметров страницы на основе стандартного диалога Windows PageSetupDlg, возвращающий размер бумаги, ориентацию и поля.",
+  "description_en": [
+   "QPageSetup extends QOBJECT and wraps PageSetupDlgA from COMDLG32. Execute shows the dialog with the PSD_MARGINS and PSD_MINMARGINS flags, using the margins already set as initial values. The DisablePrinter, DisablePaper, DisableOrient and DisableMargins switches add the matching PSD_DISABLE flags.",
+   "After OK, PageWidth and PageHeight receive the paper size and the four Margin properties receive the margins, each as the dialog value divided by 100; Orientation becomes True when the page is wider than high (landscape). No unit flag (PSD_INHUNDREDTHSOFMILLIMETERS or PSD_INTHOUSANDTHSOFINCHES) is set, so the unit follows the system measurement setting. When Caption is not empty, a hook centers the dialog and sets its title. Comments in the source are in French."
+  ],
+  "requires": [],
+  "members": {
+   "CAPTION": "Dialog title. When not empty, a hook procedure is installed that sets this title and centers the dialog on the screen.",
+   "DISABLEPRINTER": "When True, Execute adds PSD_DISABLEPRINTER (the Printer button is disabled).",
+   "DISABLEPAPER": "When True, Execute adds PSD_DISABLEPAPER (paper size and source cannot be changed).",
+   "DISABLEORIENT": "When True, Execute adds PSD_DISABLEORIENTATION (orientation cannot be changed).",
+   "DISABLEMARGINS": "When True, Execute adds PSD_DISABLEMARGINS (margins cannot be changed).",
+   "ORIENTATION": "Read only (the setter is empty): after Execute, True when the paper width is greater than its height (landscape), otherwise False.",
+   "MARGINLEFT": "Left margin. Assigning it stores value * 100 in the dialog structure as the initial margin; after Execute it holds the chosen margin divided by 100.",
+   "MARGINTOP": "Top margin. Assigning it stores value * 100 in the dialog structure as the initial margin; after Execute it holds the chosen margin divided by 100.",
+   "MARGINRIGHT": "Right margin. Assigning it stores value * 100 in the dialog structure as the initial margin; after Execute it holds the chosen margin divided by 100.",
+   "MARGINBOTTOM": "Bottom margin. Assigning it stores value * 100 in the dialog structure as the initial margin; after Execute it holds the chosen margin divided by 100.",
+   "PAGEWIDTH": "Read only (the setter is empty): after Execute, the paper width divided by 100 and rounded.",
+   "PAGEHEIGHT": "Read only (the setter is empty): after Execute, the paper height divided by 100 and rounded.",
+   "EXECUTE": "Shows the page setup dialog; returns True and updates the size, orientation and margin properties if the user pressed OK, otherwise returns False."
+  },
+  "example": "DIM PageDlg AS QPageSetup\nPageDlg.Caption = \"Page setup\"\nPageDlg.DisablePrinter = 1\nPageDlg.MarginLeft = 20\nIF PageDlg.Execute THEN\n  ShowMessage \"Page: \" + STR$(PageDlg.PageWidth) + \" x \" + STR$(PageDlg.PageHeight)\nEND IF",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.2",
+  "date": "",
+  "caveats_en": [
+   "The unit of sizes and margins is not fixed by the code: values are the dialog's own units divided by 100, and those units depend on the system measurement setting.",
+   "Orientation, PageWidth and PageHeight have empty setters (read only); SetPageWidth and SetPageHeight are declared with a boolean parameter although the properties are long.",
+   "The margin values written by the setters stay in the structure between calls; there is no way to reset them other than assigning new values."
+  ]
+ },
+ "QSaveplus@QSavePlus.inc": {
+  "summary_en": "A save file dialog extended with file name checks: missing path, invalid name, missing extension and overwrite confirmation.",
+  "summary_ru": "Диалог сохранения файла с дополнительными проверками имени: несуществующий путь, недопустимое имя, отсутствие расширения и подтверждение перезаписи.",
+  "description_en": [
+   "QSaveplus extends QSaveDialog and adds the method Execute2, which runs the normal Execute in a loop until the user cancels or picks an acceptable name. If the directory of FileName does not exist, a warning is shown and the dialog reopens. If the name contains \">\", it is reported as invalid. If the name has no extension, or an extension that is not in the selected filter, the user is asked whether to add the first extension of the selected filter. If the file already exists, the user must confirm replacing it.",
+   "The extension logic reads the Filter string: item i is field i*2 of the \"|\"-separated filter and its extensions are separated by \";\". Per the comments, filter 1 must be \"All Files |*.*|\" (no extension check is done for it), each entry must end with \"|\" and no blanks or tabs may follow an extension. The file also defines a helper function delMark$ and the constants dot, Quo$, false and true."
+  ],
+  "requires": [],
+  "members": {
+   "EXECUTE2": "Shows the save dialog repeatedly until the user cancels or gives a valid, confirmed file name; returns the result of the last Execute (1 when a file was accepted, 0 on Cancel). The final name is in FileName."
+  },
+  "example": "CREATE saveDlg AS QSaveplus\n  Filter = \"All Files (*.*)|*.*|JavaScript (*.js)|*.js|Text (*.txt)|*.txt|\"\nEND CREATE\n\nIF saveDlg.Execute2 = 1 THEN\n  ShowMessage \"Save File.. \" + saveDlg.FileName\nELSE\n  ShowMessage \"No Save\"\nEND IF",
+  "example_origin": "source",
+  "author": "Suchart Chokphichitchai",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "The source says it was tested only on Windows 98.",
+   "The file contains a complete demo program after the TYPE (a form, a QRichEdit, a QSaveplus instance and form.ShowModal at the end); it runs if the file is included as is.",
+   "It defines global constants false = 0 and true = 1 and turns $ESCAPECHARS ON, which can conflict with other code.",
+   "The name check only rejects \">\"; other invalid file name characters are not checked.",
+   "Filter index 1 is always treated as \"All Files\", so the first filter entry must be *.* for the extension logic to work."
+  ]
+ },
+ "QImageBox@QImageBox.inc": {
+  "summary_en": "A scroll box that displays an image file (BMP, ICO, CUR, ANI, and GIF, JPG, PCX, TGA and others through Nviewlib.dll), scaled down to fit and centered.",
+  "summary_ru": "Контейнер с прокруткой для показа файла изображения (BMP, ICO, CUR, ANI, а через Nviewlib.dll также GIF, JPG, PCX, TGA и др.), уменьшенного по размеру и отцентрированного.",
+  "description_en": [
+   "QImageBox extends QScrollbox and contains a stretched QImage. Assigning FileName loads the file into an internal QBitmap and shows it: .bmp files are loaded directly, .ico files with LoadImageA, and .ani and .cur files with ExtractIconA (drawn at 32 x 32 on the box color). GIF, JPG, JIF, DIB, RLE, TGA and PCX files are loaded with the NViewLibLoad function of Nviewlib.dll, which must be in the program folder or the Windows system folder.",
+   "An image larger than the box (minus 10 pixels) is reduced by the same percentage in both directions to fit; smaller images are shown at their own size. The image is centered and redrawn when the box is resized. ImgWidth and ImgHeight give the original size of the loaded image. Comments in the source are in French."
+  ],
+  "requires": [
+   "NVIEWLIB.DLL (Nviewlib.dll) for GIF, JPG, JIF, DIB, RLE, TGA and PCX files; it must be in the program folder or the Windows system folder"
+  ],
+  "members": {
+   "LANGUAGE": "String passed to NViewLibSetLanguage before a file is loaded through Nviewlib.dll (only when not empty); the source does not say which values are accepted.",
+   "PROGRESS": "Passed as the Progress argument of NViewLibLoad when a file is loaded through Nviewlib.dll; the source does not say what it changes.",
+   "FILENAME": "Image file to display. Assigning it loads and shows the file according to its extension; for an unsupported extension, or a DLL format when Nviewlib.dll is missing, the image is hidden and ImgWidth and ImgHeight are set to 0.",
+   "IMGWIDTH": "Read only (the setter is empty): width in pixels of the loaded image before scaling.",
+   "IMGHEIGHT": "Read only (the setter is empty): height in pixels of the loaded image before scaling."
+  },
+  "example": "CREATE ImgBox AS QImageBox\n  Parent = Form\n  Width = 320\n  Height = 240\nEND CREATE\n\nImgBox.FileName = \"photo.jpg\"\nShowMessage STR$(ImgBox.ImgWidth) + \" x \" + STR$(ImgBox.ImgHeight)",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.0",
+  "date": "",
+  "caveats_en": [
+   "The file type is chosen with INSTR on the lowercase name, so the extension text anywhere in the name matches (for example \"a.bmp.jpg\" is treated as BMP).",
+   "Images are only reduced to fit, never enlarged.",
+   "Nviewlib.dll is looked for only in the folder of the executable and in the Windows system folder.",
+   "Icons other than .ico (.ani, .cur) are always drawn at 32 x 32."
+  ]
+ },
+ "Qposic@Qposic1.inc": {
+  "summary_en": "A square two-axis position control made of a vertical and a horizontal scroll bar plus reset, undo, redo and diagonal step buttons.",
+  "summary_ru": "Квадратный элемент управления положением по двум осям: вертикальная и горизонтальная полосы прокрутки и кнопки сброса, отмены, повтора и шага по диагонали.",
+  "description_en": [
+   "Qposic extends QPanel (100 x 100 pixels by default). It places a vertical and a horizontal QScrollBar in a cross shape and five bitmap buttons in the center and corners: reset (center), undo (top left), all-down (bottom left), all-up (top right) and redo (bottom right). Moving a scroll bar updates ValueH or ValueV and raises OnChange; the vertical bar is inverted so that up increases ValueV.",
+   "Set MinH, MaxH, MinV and MaxV and then call Initial to apply the ranges and rebuild the layout. The reset button sets both values to 1; the all-down button decreases ValueH and ValueV by one step and the all-up button (on mouse down) increases both. The undo and redo buttons only raise OnChange. Per the header, it is based on the QSpinText component by Mesut Akcan."
+  ],
+  "requires": [
+   "$RESOURCE files reset.bmp, Undo1.bmp, Redo1.bmp, AllUp.bmp and AllDn.bmp (referenced with absolute paths C:\\_F\\bas\\rapidq\\RQIDE\\inc\\...)"
+  ],
+  "members": {
+   "MAXV": "Upper limit of the vertical value; applied to the vertical scroll bar (as -MaxV) when Initial is called.",
+   "MINV": "Lower limit of the vertical value; applied to the vertical scroll bar (as -MinV) when Initial is called.",
+   "VALUEV": "Current vertical value, set from the vertical scroll bar position with the sign inverted. Assigning it does not move the scroll bar.",
+   "MAXH": "Upper limit of the horizontal value; applied to the horizontal scroll bar when Initial is called.",
+   "MINH": "Lower limit of the horizontal value; applied to the horizontal scroll bar when Initial is called.",
+   "VALUEH": "Current horizontal value, set from the horizontal scroll bar position. Assigning it does not move the scroll bar.",
+   "ONCHANGE": "Event OnChange(a AS SINGLE), raised when a scroll bar moves and when the reset, undo or redo button is clicked; the argument is always 1.",
+   "INITIAL": "Applies MinH, MaxH, MinV and MaxV to the scroll bars and recalculates the size and position of all parts from the panel Height. Call it after setting the ranges or resizing."
+  },
+  "example": "DECLARE SUB PosChanged (a AS SINGLE)\n\nCREATE Pos AS Qposic\n  Parent = Form\n  MinH = -50: MaxH = 50\n  MinV = -50: MaxV = 50\n  OnChange = PosChanged\nEND CREATE\nPos.Initial\n\nSUB PosChanged (a AS SINGLE)\n  Form.Caption = STR$(Pos.ValueH) + \", \" + STR$(Pos.ValueV)\nEND SUB",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.00",
+  "date": "22.02.2004",
+  "caveats_en": [
+   "The $RESOURCE lines use absolute paths (C:\\_F\\bas\\rapidq\\RQIDE\\inc\\reset.bmp and others); they must be changed to compile on another machine.",
+   "OnChange always receives 1, so the handler cannot tell which part caused the change; the undo and redo buttons do nothing except raise OnChange.",
+   "The reset button sets the vertical scroll bar position to 1 although that bar stores the value with inverted sign.",
+   "The all-up button acts in OnMouseDown; its OnClick handler is empty (the code is commented out).",
+   "The layout is computed from Height only and assumes a square panel; the constructor fixes Width and Height at 100.",
+   "The ranges are not applied until Initial is called."
+  ]
+ },
+ "RSocket@RSocket.INC": {
+  "summary_en": "A QSocket extension that adds Winsock helpers: host name and address lookup, peer address, raw connect with timeout check, blocking mode, shutdown and readable error messages.",
+  "summary_ru": "Расширение QSocket с функциями Winsock: поиск имени и адреса хоста, адрес собеседника, прямое подключение с проверкой по тайм-ауту, режим блокировки, завершение соединения и текст ошибок.",
+  "description_en": [
+   "RSocket extends QSocket and calls wsock32.dll directly. S creates a socket from the inherited Family, Type and Protocol values; Connect connects it to a dotted IP address and port; IsConnected uses select() with a timeout to check whether a connection attempt succeeded. NonBlock and Block switch the socket mode with ioctlsocket(FIONBIO).",
+   "AddrByName and NameByAddr convert between host names and IP strings (gethostbyname, gethostbyaddr, inet_ntoa), GetPeerName returns the remote IP of a connected socket, WriteLine sends a string followed by CR LF, EndConnection calls shutdown() and LastError turns WSAGetLastError into a text message."
+  ],
+  "requires": [],
+  "members": {
+   "GETPEERNAME": "GetPeerName(S) returns the IP address of the remote end of socket S as a dotted string, or an empty string on error.",
+   "ADDRBYNAME": "AddrByName(strName) resolves a host name and returns its first IP address as a dotted string, or an empty string if it cannot be resolved or is not an IP address.",
+   "NAMEBYADDR": "NameByAddr(strIP) returns the host name for a dotted IP address, or an empty string if it cannot be found.",
+   "S": "Creates a new socket with socket(Family, Type, Protocol) using the component's inherited values and returns its handle.",
+   "CLOSE": "Close(S) closes socket S with closesocket and returns its result.",
+   "NONBLOCK": "NonBlock(S) puts socket S into non-blocking mode (ioctlsocket FIONBIO = 1).",
+   "BLOCK": "Block(S) puts socket S into blocking mode (ioctlsocket FIONBIO = 0).",
+   "CONNECT": "Connect(S, Remote, Port) connects socket S to the dotted IP address Remote and Port; returns -1 if the address is invalid, otherwise the result of connect().",
+   "ISCONNECTED": "IsConnected(S, Secs) waits up to Secs seconds: returns -1 if select() reports an error on the socket, otherwise the select() result for writability (1 when connected, 0 on timeout).",
+   "ENDCONNECTION": "EndConnection(S) calls shutdown(S, 2) to stop both sending and receiving.",
+   "LASTERROR": "Returns the last Winsock error as text: the error number followed by a description.",
+   "WRITELINE": "WriteLine(S, str) sends str followed by CR LF on socket S and returns the result of send()."
+  },
+  "example": "DIM Sock AS RSocket\nDIM hSock AS LONG\nDIM ip AS STRING\nip = Sock.AddrByName(\"example.com\")\nhSock = Sock.S\nIF Sock.Connect(hSock, ip, 80) <> 0 THEN\n  ShowMessage Sock.LastError\nELSE\n  Sock.WriteLine(hSock, \"HEAD / HTTP/1.0\")\n  Sock.WriteLine(hSock, \"\")\nEND IF\nSock.Close(hSock)",
+  "example_origin": "written",
+  "author": "doctorelectron@cwdom.dm (Global Services)",
+  "version": "",
+  "date": "June 6,2003",
+  "caveats_en": [
+   "Working variables (arg, num, ptr1, ptr2, bs, struc, FD_SET, TimeType, str1) are global DIMs outside the TYPE, and the Winsock functions are declared under their plain names (send, recv, socket, shutdown and others); these names can clash with the user's code.",
+   "Connect accepts only a dotted IP address (inet_addr); use AddrByName first for host names.",
+   "AddrByName decides that an IP address was returned by checking that HEX$ of a structure field ends in \"02\"."
+  ]
+ },
+ "QSocketEx@QSocketEx.inc": {
+  "summary_en": "A QSocket extension with Winsock helpers: corrected GetPeerName, host name and address lookup, connection check, CR LF line writing, write with error code, shutdown, blocking mode and error text.",
+  "summary_ru": "Расширение QSocket с функциями Winsock: исправленный GetPeerName, поиск имени и адреса хоста, проверка соединения, запись строки с CR LF, запись с кодом ошибки, завершение, режим блокировки и текст ошибок.",
+  "description_en": [
+   "QSocketEx extends QSocket and is a cleaned-up version of RSocket.inc. It overrides GetPeerName (described as a bug fix for QSocket), adds NameByAddr and AddrByName lookups, IsConnected (select() with a timeout), NonBlock and Block (ioctlsocket FIONBIO), ShutDown (shutdown with both directions) and LastError (WSAGetLastError as text, with 0 reported as Success).",
+   "WriteLine overrides the QSocket method so that every line ends with CR LF, and WriteEx calls the inherited Write and returns WSAGetLastError (0 when the write succeeded). The file is guarded by $IFNDEF QSOCKET_INC; the comments explain that the lookup functions copy a 16-byte Winsock structure into a byte or long array to extract the data."
+  ],
+  "requires": [],
+  "members": {
+   "GETPEERNAME": "GetPeerName(SockNum) returns the IP address of the remote end of the socket as a dotted string, or an empty string on error; replaces the QSocket version.",
+   "NAMEBYADDR": "NameByAddr(strIP) returns the host name for a dotted IP address, or an empty string if the address is invalid or no name is found.",
+   "ADDRBYNAME": "AddrByName(strName) resolves a host name and returns its IP address as a dotted string, or an empty string on failure.",
+   "ISCONNECTED": "IsConnected(SockNum, TimeOutSecs) returns -1 if select() reports an error on the socket within the timeout, otherwise the select() result for writability (1 when connected, 0 on timeout).",
+   "WRITELINE": "WriteLine(SockNum, Str) writes Str followed by CR LF with the inherited Write; it replaces the QSocket method.",
+   "WRITEEX": "WriteEx(SockNum, Message, NumBytes) writes NumBytes of Message with the inherited Write and returns WSAGetLastError (0 if OK).",
+   "SHUTDOWN": "ShutDown(SockNum) calls Winsock shutdown with how = 2 (no more sends or receives) and returns its result.",
+   "NONBLOCK": "NonBlock(hSocket) sets the socket to non-blocking mode: per the comment, Read then returns an empty string when no data is waiting.",
+   "BLOCK": "Block(hSocket) sets the socket to blocking mode: per the comment, Read waits until data arrives, possibly forever.",
+   "LASTERROR": "Returns the last Winsock error as \"number: description\"; per the comment, the value may not be reliable when several connections are open."
+  },
+  "example": "DIM Sock AS QSocketEx\nDIM hSock AS INTEGER\nhSock = Sock.Connect(Sock.AddrByName(\"example.com\"), 80)\nIF Sock.IsConnected(hSock, 5) = 1 THEN\n  IF Sock.WriteEx(hSock, \"HEAD / HTTP/1.0\" + CHR$(13) + CHR$(10) + CHR$(13) + CHR$(10), 19) <> 0 THEN ShowMessage Sock.LastError\nEND IF\nSock.ShutDown(hSock)",
+  "example_origin": "written",
+  "author": "d_homans, JohnK",
+  "version": "",
+  "date": "03/06/2007",
+  "caveats_en": [
+   "The CONSTRUCTOR block has no END CONSTRUCTOR: the line \"Tag =0\" is followed directly by END TYPE.",
+   "LastError starts with DEFSTR tstr = \"' which is an unterminated string literal.",
+   "WriteLine is written as a SUB with an \"As LONG\" return type and returns nothing.",
+   "NameByAddr passes QSocketEx.Protocol as the address-type argument of gethostbyaddr, where RSocket.inc passes 2 (AF_INET).",
+   "The header mentions a new function WriteBinData&(), but the function in the code is named WriteEx; IsConnected still uses EXIT FUNCTION although the notes say those calls were removed.",
+   "The Winsock functions are declared under plain names (shutdown, gethostbyname, inet_addr and others), which can clash with other include files."
+  ]
+ },
+ "QIniFile@QLibrary.Inc": {
+  "summary_en": "A simple INI file reader and writer that reads and writes single entries or whole sections of a text INI file.",
+  "summary_ru": "Простой объект для чтения и записи INI-файла: отдельных значений или целых секций текстового INI-файла.",
+  "description_en": [
+   "QIniFile extends QObject and works on the text file named in Name using the QStringList Lines. ReadEntry returns the value of a key in a section, ReadSection loads all lines of a section into Lines, WriteEntry replaces or adds a key (creating the section if needed) and saves the file, and WriteSection replaces or appends a whole section from a QStringList. Section and key names are compared without regard to case or surrounding blanks.",
+   "Edit opens the INI file in an external editor whose command line is read from the key TextEditor in section [QIniFile] of QLibrary.Ini. The type uses the helper functions Trim$, CatStr$ and Equ$ defined at the top of QLibrary.Inc."
+  ],
+  "requires": [
+   "Helper functions Trim$, CatStr$ and Equ$ from the same file QLibrary.Inc",
+   "QLibrary.Ini with key TextEditor in section [QIniFile] (for Edit)"
+  ],
+  "members": {
+   "NAME": "Path of the INI file the methods read and write.",
+   "LINES": "QStringList holding the file lines after ReadEntry or WriteEntry, or the lines of one section after ReadSection.",
+   "LINECOUNT": "Number of items in Lines after the last operation (set to 0 by Edit).",
+   "CLEARENDING": "Internal: deletes empty lines from the end of Lines.",
+   "ADDBRACKETS$": "Internal: puts square brackets around a section name.",
+   "READENTRY": "ReadEntry(Section, KeyWord) returns the text after \"=\" for KeyWord in Section, or an empty string if not found; the whole file is left in Lines.",
+   "READSECTION": "ReadSection(Section) clears Lines and fills it with the lines of Section (without the header), up to the next line starting with \"[\".",
+   "WRITEENTRY": "WriteEntry(Section, KeyWord, KeyEntry) sets KeyWord = KeyEntry in Section, adding the key or the whole section if missing, and saves the file.",
+   "WRITESECTION": "WriteSection(Section, SectionList) replaces Section with the lines of SectionList (or appends it at the end if it does not exist) and saves the file; the section header is inserted at the start of SectionList.",
+   "EDIT": "Opens the INI file with the editor command taken from TextEditor in section [QIniFile] of QLibrary.Ini (run with SHELL)."
+  },
+  "example": "DIM Ini AS QIniFile\nIni.Name = \"settings.ini\"\nIni.WriteEntry(\"Window\", \"Left\", \"100\")\nShowMessage Ini.ReadEntry(\"Window\", \"Left\")",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "AddBrackets$ only works for names without brackets: if the name already contains \"[\" the result is not initialized, so passing \"[Section]\" yields \"]\" or an empty string instead of the section name.",
+   "WriteSection keeps the section position in a Byte variable (Point), so a section starting after line 255 is not placed correctly, and a section on the very first line (index 0) is treated as not found and appended again.",
+   "Several methods store string positions in Byte variables (Point), which overflow for lines longer than 255 characters.",
+   "WriteSection modifies the passed SectionList by inserting the section header at index 0.",
+   "The code uses True and False, which QLibrary.Inc does not define."
+  ]
+ },
+ "RQConst@QLibrary.Inc": {
+  "summary_en": "A string list that loads CONST definitions from a RapidQ include file and returns the numeric value of a constant by name.",
+  "summary_ru": "Список строк, загружающий определения CONST из include-файла RapidQ и возвращающий числовое значение константы по имени.",
+  "description_en": [
+   "RQConst extends QStringList. Initialize reads the file named in FileId (default \"RapidQ.Inc\") and, for every line that contains CONST and does not start with a comment, stores an item \"NAME;value\". Trailing comments are removed, &H hexadecimal values are converted to decimal and RGB(r,g,b) expressions are converted to their color number.",
+   "ValueOf(Entry) calls Initialize on first use and returns the value of the constant whose name matches Entry, ignoring case and surrounding blanks. It is described in the file as a \"RapidQ Keyword Extension\" and uses the helper functions Trim$ and Equ$ from QLibrary.Inc."
+  ],
+  "requires": [
+   "Helper functions Trim$ and Equ$ from the same file QLibrary.Inc",
+   "RapidQ.Inc (or the file named in FileId) at run time"
+  ],
+  "members": {
+   "FILEID": "Name of the include file to parse; the constructor sets \"RapidQ.Inc\".",
+   "INITIALIZED": "Set to True by Initialize; ValueOf calls Initialize while it is False.",
+   "INITIALIZE": "Clears the list and loads all CONST definitions from FileId as \"NAME;value\" items, converting &H hex values and RGB() expressions to decimal numbers.",
+   "VALUEOF": "ValueOf(Entry) returns the numeric value of the constant named Entry (case-insensitive), loading the file first if needed."
+  },
+  "example": "DIM Consts AS RQConst\nConsts.FileId = \"RapidQ.Inc\"\nShowMessage STR$(Consts.ValueOf(\"clRed\"))",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "Initialize stops at ItemCount-1, so the last line of the file is never parsed.",
+   "A line is treated as a constant when it contains \"CONST\" anywhere (case-sensitive), not only at the start.",
+   "ValueOf returns 0 when the name is not found, which cannot be told apart from a constant whose value is 0.",
+   "Positions are kept in a Byte variable (Point), so lines longer than 255 characters are parsed incorrectly."
+  ]
+ },
+ "MyCom_Port@COMPORTxp.CMP": {
+  "summary_en": "A serial (COM) port object that opens, configures, writes to and reads from a communications port through the Win32 file API, with events for errors and completed operations.",
+  "summary_ru": "Объект последовательного (COM) порта: открытие, настройка, запись и чтение через Win32 API файлов, с событиями ошибок и завершения операций.",
+  "description_en": [
+   "MyCom_Port extends QObject. Open calls CreateFile on Port (default \"COM1\"), sets the buffer sizes with SetupComm, purges the buffers, sets the timeouts and then changes BaudRate, DataBits, Parity and StopBits in the current DCB (other settings keep their current values). On success Connected becomes True and OnOpen is raised; every failing step raises OnComError with a message plus the system error text from FormatMessage.",
+   "WriteString(strData, intWait) writes the string with WriteFile, sleeps intWait milliseconds and raises OnWriteString if no bytes are left in the output queue (otherwise OnComError). ReadString(dwRdSize, intWait) reads up to dwRdSize bytes with ReadFile, sleeps intWait milliseconds, updates BytesNotRead and raises OnReadString. Close closes the handle, clears Connected and raises OnClose. Per the header, it is loosely based on VB code by David M. Hitchner."
+  ],
+  "requires": [
+   "Constants FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING and FILE_ATTRIBUTE_NORMAL (commented out in this file, must be defined elsewhere)"
+  ],
+  "members": {
+   "HANDLE": "Win32 file handle of the open port, returned by CreateFile (-1 if opening failed).",
+   "PORT": "Name of the port to open, default \"COM1\".",
+   "BAUDRATE": "Baud rate written to the DCB by Open, default 9600.",
+   "DATABITS": "Number of data bits (DCB ByteSize, 4 to 8) written by Open, default 8.",
+   "PARITY": "Parity written by Open: NOPARITY (0), ODDPARITY (1), EVENPARITY (2), MARKPARITY (3) or SPACEPARITY (4); default NOPARITY.",
+   "STOPBITS": "DCB StopBits value written by Open: ONESTOPBIT (0), ONE5STOPBITS (1) or TWOSTOPBITS (2); the constructor sets 1.",
+   "READBUFSIZE": "Input buffer size passed to SetupComm, and the size of the read buffer used by ReadString; default 1024.",
+   "WRITEBUFSIZE": "Output buffer size passed to SetupComm; default 1024.",
+   "BYTESNOTREAD": "Number of received bytes not yet read (cbInQue), updated after ReadString and WriteString.",
+   "BYTESNOTWRITTEN": "Number of bytes still waiting to be sent (cbOutQue), updated after ReadString and WriteString.",
+   "CONNECTED": "True after a successful Open, False after Close.",
+   "ONCOMERROR": "Event OnComError(strErrorMessage AS STRING), raised when a port operation fails; the message includes the system error text.",
+   "ONOPEN": "Event raised when Open has configured the port successfully.",
+   "ONCLOSE": "Event raised when Close has closed the port handle successfully.",
+   "ONWRITESTRING": "Event raised by WriteString when all data has left the output queue after the wait.",
+   "ONREADSTRING": "Event raised by ReadString after a successful read and wait.",
+   "OPEN": "Opens and configures the port using Port, ReadBufSize, WriteBufSize, BaudRate, DataBits, Parity and StopBits.",
+   "CLOSE": "Closes the port handle, sets Connected to False and raises OnClose.",
+   "WRITESTRING": "WriteString(strData, intWait) writes strData to the port, waits intWait milliseconds and checks that the output queue is empty.",
+   "READSTRING": "ReadString(dwRdSize, intWait) reads up to dwRdSize bytes and returns them as a string, then waits intWait milliseconds and updates BytesNotRead."
+  },
+  "example": "DECLARE SUB PortError (strErrorMessage AS STRING)\n\nCREATE MyPort AS MyCom_Port\n  Port = \"COM2\"\n  BaudRate = 19200\n  StopBits = ONESTOPBIT\n  OnComError = PortError\nEND CREATE\n\nSUB PortError (strErrorMessage AS STRING)\n  ShowMessage strErrorMessage\nEND SUB\n\nMyPort.Open\nIF MyPort.Connected THEN\n  MyPort.WriteString(\"AT\" + CHR$(13), 100)\n  ShowMessage MyPort.ReadString(64, 100)\n  MyPort.Close\nEND IF",
+  "example_origin": "written",
+  "author": "Pete Kleinschmidt",
+  "version": "0.9",
+  "date": "December 13, 2001",
+  "caveats_en": [
+   "ReadString calls ReadFile with MyPort.Handle instead of MyCom_Port.Handle, so it only works when the instance is named MyPort.",
+   "The constructor sets StopBits = 1, which in the DCB means ONE5STOPBITS (1.5 stop bits); use ONESTOPBIT (0) for one stop bit.",
+   "In Open, WriteTotalTimeoutMultiplier is assigned twice (0, then 1000) and WriteTotalTimeoutConstant is never set.",
+   "When ClearCommError fails, the error message used is ERROR_CHANGING_PORTSETTINGS instead of ERROR_GETTING_PORT_STATUS.",
+   "ReadString allocates a buffer of ReadBufSize bytes but reads dwRdSize bytes into it; dwRdSize must not exceed ReadBufSize.",
+   "If Open fails after CreateFile succeeded, the handle is left open and Connected stays False.",
+   "The header names the file ComPort.cmp; the file is COMPORTxp.CMP."
+  ]
+ },
+ "QFtpClient@QFTPCLIENT.INC": {
+  "summary_en": "An FTP client object based on wininet.dll that connects to a server, manages directories, uploads, downloads, renames and deletes files, and lists files with their size, date and attributes.",
+  "summary_ru": "Объект FTP-клиента на основе wininet.dll: подключение к серверу, работа с каталогами, загрузка, скачивание, переименование и удаление файлов, список файлов с размером, датой и атрибутами.",
+  "description_en": [
+   "QFtpClient extends QObject and wraps the WinINet FTP functions. Connect opens an Internet session (InternetOpenA with Agent, OpenType, ProxyName, ProxyByPass and Open_dwFlags) and connects to the server (InternetConnectA, passive mode for the FTP service). Most methods return the WinINet result (non-zero on success) and put a status text in ErrorMsg that includes the server's last response from ReadMessage.",
+   "FindFirstFile and FindNextFile enumerate remote files matching a filter; after each call the properties FileName, DosFileName, FileSize, FileTime, FileTimems, FileDate, FileDateEU, FileDateTime, FileAttributes and FileAttributesAsString describe the current file. The last-write time is converted to local time and formatted as strings. Close closes the find, FTP and Internet handles."
+  ],
+  "requires": [],
+  "members": {
+   "FTPHANDLE": "Read only (the setter is empty): handle of the FTP connection returned by InternetConnectA, 0 if the connection failed.",
+   "ERRORMSG": "Read only (the setter is empty): status or error text of the last operation, beginning with \"*** OK\" or \"*** Error\" and including the server response.",
+   "AGENT": "Application name passed to InternetOpenA; default \"FTP Object for RAPIDQ\".",
+   "OPENTYPE": "Access type for InternetOpenA: QFTP_INTERNET_OPEN_TYPE_PRECONFIG (0, default), _DIRECT (1), _PROXY (3) or _PRECONFIG_WITH_NO_AUTOPROXY (4).",
+   "PROXYNAME": "Proxy server name passed to InternetOpenA; default empty.",
+   "PROXYBYPASS": "Proxy bypass list passed to InternetOpenA; default empty.",
+   "OPEN_DWFLAGS": "dwFlags argument of InternetOpenA; default 0.",
+   "FTPPORT": "Server port passed to InternetConnectA; default 21.",
+   "INTERNETSERVICE": "Service type passed to InternetConnectA; default QFTP_INTERNET_SERVICE_FTP (1).",
+   "INTERNETFLAG": "Connection flags for InternetConnectA; Connect overwrites it with QFTP_INTERNET_FLAG_PASSIVE for the FTP service, otherwise 0.",
+   "CONNECT_DWCONTEXT": "Context value passed to InternetConnectA; default 0.",
+   "FTPTRANSFERTYPE": "Transfer type flag used by PutFile and GetFile: QFTP_TRANSFER_TYPE_UNKNOWN (0, default), _ASCII (1) or _BINARY (2).",
+   "PUT_DWCONTEXT": "Context value passed to FtpPutFileA; default 0.",
+   "FLAGSANDATTRIBUTES": "File attributes for the local file created by GetFile (QFTP_FILE_ATTRIBUTE_* values); default 0.",
+   "GET_DWCONTEXT": "Context value passed to FtpGetFileA; default 0.",
+   "FINDFIRST_DWFLAGS": "dwFlags argument of FtpFindFirstFileA; default 0.",
+   "FINDFIRST_DWCONTEXT": "Context value passed to FtpFindFirstFileA; default 0.",
+   "WIN32_FIND_DATA": "QFTP_WIN32_FIND_DATA structure filled by FindFirstFile and FindNextFile with the raw data of the current file.",
+   "HFIND": "Search handle returned by FtpFindFirstFileA and used by FindNextFile; the comment says it allows recursive search.",
+   "FILENAME": "Name of the file found by the last FindFirstFile or FindNextFile.",
+   "DOSFILENAME": "Short (8.3) alternate name of the file found last.",
+   "FILESIZE": "Size in bytes of the file found last, as a Double (64-bit size).",
+   "FILETIME": "Local last-write time of the file found last, as \"HH:MM:SS\".",
+   "FILETIMEMS": "Local last-write time of the file found last, as \"HH:MM:SS.mmm\".",
+   "FILEDATE": "Local last-write date of the file found last, as \"mm/dd/yyyy\".",
+   "FILEDATEEU": "Local last-write date of the file found last, as \"dd/mm/yyyy\".",
+   "FILEDATETIME": "Raw 64-bit last-write FILETIME of the file found last (not converted to local time), as a Double.",
+   "FILEATTRIBUTES": "Attribute bits of the file found last (QFTP_FILE_ATTRIBUTE_* values).",
+   "FILEATTRIBUTESASSTRING": "Attributes of the file found last as letters: A (archive), D (directory), H (hidden), N (normal), R (read only), S (system), T (temporary), C (compressed).",
+   "READMESSAGE": "Returns the last response text from the server (InternetGetLastResponseInfoA), or an empty string.",
+   "CONNECT": "Connect(sRemoteServer, sLogin, sPassword) opens the Internet session and connects to the FTP server; returns the FTP handle, or 0 on failure.",
+   "CLOSE": "Closes the FTP, Internet and find handles and returns the product of the two close results; ErrorMsg reports the outcome.",
+   "GETDIR": "Returns the current remote directory, or an empty string on error.",
+   "MAKEDIR": "MakeDir(sNewDirectory) creates a remote directory; returns non-zero on success.",
+   "SETDIR": "SetDir(sNewDirectory) changes the current remote directory; returns non-zero on success.",
+   "REMOVEDIR": "RemoveDir(sDelDirectory) removes a remote directory; returns non-zero on success.",
+   "PUTFILE": "PutFile(sLocalFileName, sRemoteFileName) uploads a local file using FtpTransferType; if the remote name is empty the local name is used. Returns non-zero on success.",
+   "GETFILE": "GetFile(sRemoteFileName, sLocalFileName, iflagOverwrite) downloads a file; when iflagOverwrite is non-zero an existing local file is overwritten, otherwise the download fails if it exists.",
+   "RENAME": "Rename(sOldName, sNewName) renames or moves a remote file (no overwrite); returns non-zero on success.",
+   "DELETE": "Delete(sRemoteFileName) deletes a remote file; returns non-zero on success.",
+   "FINDFIRSTFILE": "FindFirstFile(sFilter) starts a search of the current remote directory and returns the first matching file name (empty if none), filling the File* properties.",
+   "FINDNEXTFILE": "Returns the next matching file name and fills the File* properties; returns an empty string and closes the search handle when there are no more files."
+  },
+  "example": "DIM Ftp AS QFtpClient\nDIM f AS STRING\nIF Ftp.Connect(\"ftp.example.com\", \"anonymous\", \"me@example.com\") THEN\n  Ftp.FtpTransferType = QFTP_TRANSFER_TYPE_BINARY\n  Ftp.SetDir(\"/pub\")\n  f = Ftp.FindFirstFile(\"*.*\")\n  WHILE f <> \"\"\n    PRINT f; \" \"; Ftp.FileSize; \" \"; Ftp.FileDate\n    f = Ftp.FindNextFile\n  WEND\n  Ftp.GetFile(\"readme.txt\", \"readme.txt\", 1)\n  Ftp.Close\nELSE\n  ShowMessage Ftp.ErrorMsg\nEND IF",
+  "example_origin": "written",
+  "author": "Jacques Philippe",
+  "version": "",
+  "date": "January 2001",
+  "caveats_en": [
+   "A comment in GetFile says FtpGetFileA \"always returns ZERO ????\", so its return value and ErrorMsg may not reflect the real result.",
+   "Delete is marked \"(dont work)\" in the source.",
+   "Close returns ftpHandle * hOpen with the comment \"???? must equal 1 ????\"; after Close, ftpHandle holds the InternetCloseHandle result (1 on success) instead of 0.",
+   "FindNextFile closes hFind when the list ends but does not reset it to 0, so a later Close calls InternetCloseHandle on the already closed handle.",
+   "FileDateTime is taken from the raw UTC FILETIME, while FileDate and FileTime use local time.",
+   "The constant QFTP_PassiveConnection is declared but not used; the FILETIME fields are flattened into separate longs because of a RapidQ bug with nested types, as the source notes."
+  ]
+ },
+ "QFormMDI@object/QFormMDI.inc": {
+  "summary_en": "An MDI parent form that creates MDI child windows around existing controls and offers properties, methods and events to manage the child windows.",
+  "summary_ru": "Родительская MDI-форма, которая создаёт дочерние MDI-окна вокруг существующих компонентов и даёт свойства, методы и события для управления ими.",
+  "description_en": [
+   "QFormMDI extends QFORM and sets FormStyle = 2 (MDI parent) with the application workspace color. On the first AddChild it registers a window class \"MDIChild\" whose window procedure is ChildProc and finds the MDICLIENT window. AddChild(handle, Title, index, Left, Top, Width, Height, DefaultSize) creates an MDI child window and moves the control with the given handle into it; the control is resized to fill the child's client area, and the index number is stored with the window so events can report which control it holds.",
+   "The Child* properties describe the active child window and assigning them moves, resizes, renames, minimizes, maximizes or restores it. Methods cascade, tile, arrange, minimize, maximize, restore, close and activate children, and the events OnChildClose, OnChildActive and OnChildResize receive the child handle, the control index and the title. When a child is destroyed its control is hidden and given back to the MDI form. Comments in the source are in French."
+  ],
+  "requires": [],
+  "members": {
+   "CHILDCAPTION": "Title of the active child window. Assigning it (when at least one child exists) changes that window's title.",
+   "CHILDHANDLE": "Read only (the setter is empty): window handle of the active MDI child.",
+   "COMPONENTINDEX": "Read only (the setter is empty): index number, given to AddChild, of the control in the current child window.",
+   "CHILDTOP": "Top of the active child within the MDI client area. Assigning it moves the active child.",
+   "CHILDLEFT": "Left of the active child within the MDI client area. Assigning it moves the active child.",
+   "CHILDWIDTH": "Width of the active child window. Assigning it resizes the active child.",
+   "CHILDHEIGHT": "Height of the active child window. Assigning it resizes the active child.",
+   "MDIMENU": "Menu handle sent to the MDI client with WM_MDISETMENU when a child is created (the window menu). Assigning it stores the handle only if it is greater than 0.",
+   "CHILDMAX": "Maximum number of child windows AddChild will create; assignments above 1024 are ignored. Default 1024.",
+   "CHILDCOUNT": "Read only (the setter is empty): current number of MDI child windows.",
+   "CHILDSTATE": "State of the active child: 0 = normal, 1 = minimized, 2 = maximized. Assigning it minimizes, maximizes or restores the active child and gives focus to its control.",
+   "CHILDICON": "Icon for child windows. Assigning it before any child exists sets the icon of the child window class; afterwards it calls SetClassLong on the active child, which changes the class icon.",
+   "CHILDRESULT": "Set to True before OnChildClose is raised; set it to 0 in the OnChildClose handler to stop the child from closing.",
+   "ONCHILDCLOSE": "Event OnChildClose(handleChild, index, titleChild), raised before a child window closes; set ChildResult = 0 to cancel.",
+   "ONCHILDACTIVE": "Event OnChildActive(handleChild, index, titleChild), raised when a child window is activated.",
+   "ONCHILDRESIZE": "Event OnChildResize(handleChild, index, titleChild), raised when a child window is resized.",
+   "CHILDPROC": "Internal: window procedure of the MDI child windows; handles create, size, activate, close, destroy and move messages and raises the events.",
+   "ADDCHILD": "AddChild(handle, Title, index, Left, Top, Width, Height, DefaultSize) creates a child window titled Title holding the control handle; when DefaultSize is True Windows chooses position and size.",
+   "CLOSECHILD": "Closes the active child window after raising OnChildClose (unless ChildResult is set to 0), then updates the Child* properties for the new active child.",
+   "CLOSEALLCHILD": "Closes all child windows, raising OnChildClose for each one.",
+   "CASCADECHILD": "Arranges the child windows in a cascade (WM_MDICASCADE).",
+   "SETHORZCHILD": "Tiles the child windows horizontally (WM_MDITILE with MDITILE_HORIZONTAL).",
+   "SETVERTCHILD": "Tiles the child windows vertically (WM_MDITILE with MDITILE_VERTICAL).",
+   "ICONARRANGECHILD": "Arranges minimized child windows (WM_MDIICONARRANGE).",
+   "MINIMIZEALLCHILD": "Minimizes all child windows.",
+   "MAXIMIZEALLCHILD": "Sends WM_MDIMAXIMIZE for every child window.",
+   "RESTORECHILD": "Restores all child windows to normal size.",
+   "ACTIVENEXTCHILD": "Activates the next child window (WM_MDINEXT).",
+   "ACTIVEPREVIOUSCHILD": "Activates the previous child window (WM_MDINEXT with the previous flag).",
+   "GETCHILD": "GetChild(title) returns the index in the internal child list of the window with this title, or 0 if none matches.",
+   "CHILDEXIST": "ChildExist(title) returns True if a child window with this title exists.",
+   "ACTIVECHILD": "ActiveChild(index) activates the child window at this position in the internal child list.",
+   "FREECHILD": "FreeChild(handle) returns True if the control with this handle is a direct child of the MDI form, that is, not placed in an MDI child window.",
+   "SETDESKBAR": "Changes window ownership (SetWindowLong GWL_HWNDPARENT) so that the form, not the hidden application window, is the owner; per the comment, this makes the application appear in the taskbar when minimized."
+  },
+  "example": "CREATE Main AS QFormMDI\n  Caption = \"MDI demo\"\n  Width = 640\n  Height = 480\nEND CREATE\n\nCREATE Edit1 AS QRichEdit\n  Parent = Main\nEND CREATE\n\nMain.AddChild(Edit1.Handle, \"Document 1\", 0, 10, 10, 300, 200, 0)\nMain.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.0",
+  "date": "",
+  "caveats_en": [
+   "GetChild returns 0 both for the first window and when no title matches.",
+   "ActiveChild and the index returned by GetChild use the internal hChild list, which is only rebuilt by CloseAllChild, the minimize, maximize and restore methods, GetChild and ChildExist.",
+   "Assigning ChildIcon after children exist uses SetClassLong, so it changes the icon of all windows of the child class.",
+   "The child window class is registered with hInstance left at 0 (the line setting application.hinstance is commented out).",
+   "The internal child list is fixed at hChild(1024), which is why ChildMax is limited to 1024."
+  ]
+ },
+ "myXPSkinnedForm@XPSkinMetallic_2.11_Res.inc": {
+  "summary_en": "A skinned form that replaces the Windows title bar and borders with Windows XP Metallic style bitmaps, its own title buttons, a system popup menu, rounded corners and a default button.",
+  "summary_ru": "Форма со скином: заменяет заголовок и рамку Windows картинками в стиле Windows XP Metallic, своими кнопками заголовка, системным всплывающим меню, скруглёнными углами и кнопкой по умолчанию.",
+  "description_en": [
+   "myXPSkinnedForm extends QForm. In OnShow it hides the real title bar, cuts the window to a rounded rectangle (CreateRoundRectRgn, SetWindowRgn) and builds the frame from QImage pieces (title left, middle and right, side borders, bottom pieces) loaded from bitmap resources, plus close, maximize, minimize and help buttons, an icon, a caption and a default button MainBtn (caption \"Fermer\", closes the form). Dragging the title moves the window; clicking the icon or right-clicking the title shows an XP-style popup menu (a borderless QForm) with Always on top, Move, Minimize, Maximize and Close items, with French captions.",
+   "The skin switches between active and inactive bitmaps; ActiveInactive installs a replacement window procedure (SetWindowLong GWL_WNDPROC) that does this on WM_NCPAINT and WM_ACTIVATE. The first instance is the main form; every later instance is treated as a dialog (PopupBox): it is centered, has no minimize and maximize buttons and disables the main window while shown. Closing the main form terminates the application. TweakSkin draws simple colored lines instead of border bitmaps. All comments are in French."
+  ],
+  "requires": [
+   "Bitmap and icon resources declared by the user with $RESOURCE (the file declares none): ICO, TITLE_LEFT, TITLE_MID, TITLE_RIGHT, TITLE_LDIS, TITLE_MDIS, TITLE_RDIS, TITLE_CAP, TITLE_CAPDIS, TITLE_ICO, BOT_LEFT, BOT_MID, BOT_RIGHT, BOT_LDIS, BOT_MDIS, BOT_RDIS, BORDER_LEFT, BORDER_RIGHT, BORDER_LDIS, BORDER_RDIS, TCLOSE_BMP, TCLOSEON_BMP, TCLOSEPRS_BMP, TCLOSEDIS_BMP, TFIX_BMP, TFIXON_BMP, TFIXPRS_BMP, TFIXDIS_BMP, TRED_BMP, TREDON_BMP, TREDPRS_BMP, TREDDIS_BMP, TAIDE_BMP, TAIDEON_BMP, TAIDEPRS_BMP, TAIDEDIS_BMP, BNORM_BMP, BSEL_BMP, BOVER_BMP, BPRES_BMP, ItmOnTop_BMP, ItmReduire_BMP, ItmRestaurer_BMP, ItmAgrandir_BMP, ItmFermer_BMP",
+   "CONST myMainFormName (the main window caption) defined before the $INCLUDE",
+   "The main form instance must be named MainForm",
+   "The global QBitmap array TitleBtnsBg(0 TO 1) (title button background, inactive and active) must be loaded by the user; the file declares it but never loads it"
+  ],
+  "members": {
+   "TITLEBARHIDE": "Set to 1 by OnShow after the real title bar is hidden and the height is increased by the caption height; reset to 0 when the window is maximized.",
+   "POLDPROC": "Internal: address of the original window procedure saved by ActiveInactive.",
+   "FLAGWINPROC": "Internal: True while the replacement window procedure should handle messages; also used with a global flagWinProc variable.",
+   "XPPOPUPMENU": "Borderless QForm used as the XP-style system popup menu.",
+   "ITMOPTIONS": "QLabel menu item \"Options...\" in the popup menu; its click action is empty.",
+   "ITMONTOP": "QLabel menu item \"Toujours Visible\" (always on top) in the popup menu.",
+   "ITMONTOP_ICO": "QImage check mark next to the always-on-top item, shown while ToujoursVisible is set.",
+   "ITMDEPLACE": "QLabel menu item \"Deplacement\" (move) in the popup menu.",
+   "ITMREDUIRE": "QLabel menu item \"Reduire\" (minimize), or \"Restaurer\" when the window is cropped.",
+   "ITMREDUIRE_ICO": "QImage icon of the minimize menu item.",
+   "ITMAGRANDIR": "QLabel menu item \"Agrandissement\" (maximize), or \"Restauration\" when maximized.",
+   "ITMAGRANDIR_ICO": "QImage icon of the maximize menu item.",
+   "ITMFERMER": "QLabel menu item \"Fermeture Alt+F4\" (close) in the popup menu.",
+   "ITMFERMER_ICO": "QImage icon of the close menu item.",
+   "HILIGHT": "QPanel that highlights the popup menu item under the mouse; clicking it runs that item's action.",
+   "QFREGION": "Handle of the rounded window region created in OnShow and deleted in OnClose.",
+   "RND": "Corner radius used for the rounded window region; the constructor sets 15.",
+   "TOUJOURSVISIBLE": "1 while the window is always on top (FormStyle 3); toggled by OnTop.",
+   "ISINBACKGROUND": "Internal paint state read by ActiveOrInactive: 1 = draw inactive skin, 2 = draw active skin; OnPaint resets it to 0.",
+   "MAXIMIZED": "Internal: non-zero while the window is maximized (values 1 to 3 are set at different stages by OnResize and OnPaint).",
+   "MINIMIZED": "Declared for the minimized state, but only commented-out code sets it.",
+   "CROPED": "1 while the window is cropped (rolled up to its title bar); the window height and CropHeight are swapped when this changes.",
+   "CROPHEIGHT": "Height swapped with Height when the window is cropped or restored; OnTop initializes it to the title plus bottom border height.",
+   "SCRWIDTH": "Desktop width from GetSystemMetrics(SM_CXFULLSCREEN), updated in OnResize and on title double-click.",
+   "SCRHEIGHT": "Desktop height from GetSystemMetrics (SM_CYSCREEN or SM_CYFULLSCREEN), updated in OnResize and on title double-click.",
+   "POPUPBOX": "1 when this form is a dialog rather than the main form: minimize and maximize are removed, menu items are grayed and Close only closes this form.",
+   "TITLE_LEFT": "QImage for the left part of the title bar.",
+   "TITLE_MID": "QImage for the stretched middle part of the title bar.",
+   "TITLE_RIGHT": "QImage for the right part of the title bar.",
+   "TITLE_ICO": "16 x 16 QImage showing the window icon in the title bar; clicking it opens the popup menu.",
+   "TITLEBTNSBG": "QImage background behind the title buttons, taken from the global TitleBtnsBg bitmaps.",
+   "ICOASBMP": "When non-zero, the title icon shows the TITLE_ICO bitmap resource instead of the icon from icoList.",
+   "ICOLIST": "16 x 16 QImageList holding the ICO resource icon; its first image is shown as the title icon.",
+   "TITLE_CAP": "QImage showing the caption as a bitmap (TITLE_CAP resource) when TitleAsBMP is set.",
+   "TITLE_CAPTION": "QLabel showing the form Caption in the title bar (Tahoma, bold, transparent) when TitleAsBMP is 0.",
+   "TITLEASBMP": "When non-zero, the title text is the TITLE_CAP bitmap instead of the Title_Caption label.",
+   "TITLE_HOT": "Transparent QImage over the whole title bar that handles dragging, double-click and the right-click menu.",
+   "BOT_LEFT": "QImage for the bottom-left border piece.",
+   "BOT_MID": "QImage for the stretched bottom border.",
+   "BOT_RIGHT": "QImage for the bottom-right border piece.",
+   "BORDER_LEFT": "QImage for the stretched left border.",
+   "BORDER_RIGHT": "QImage for the stretched right border.",
+   "MAINBTN": "QImage used as the default button (caption in MainBtn.Caption, default \"Fermer\"); clicking it closes the form.",
+   "MAINBTNISON": "Internal: 1 while the mouse is over MainBtn and the hover bitmap is shown.",
+   "MAINBTNIS1ST": "When non-zero (default 1), MainBtn is drawn as the selected default button (BSEL_BMP) instead of a normal one (BNORM_BMP).",
+   "MAINBTNCENTERED": "When non-zero (default 1), MainBtn is centered horizontally and placed 34 pixels above the bottom.",
+   "POPUPL": "Screen X position where the popup menu is shown.",
+   "POPUPT": "Screen Y position where the popup menu is shown.",
+   "CLICKHOLD": "Set to 1 when the title icon opens the popup menu; no active code reads it (the reset code is commented out).",
+   "TITLEDBLCLICK": "Action of a double-click on the title bar: ttNothing (0), ttDefault (1, maximize or restore, the default) or ttCrop (2, roll the window up to the title bar or back).",
+   "TWEAKSKIN": "When non-zero, the bottom and side border bitmaps are not used and a few colored lines (TwkColor) are drawn instead; per the comment, this speeds up the skin and reduces the EXE size.",
+   "MAINBTNTIMER": "Internal QTimer that restores the MainBtn bitmap after the mouse leaves it.",
+   "ACTIVETIMER": "Internal QTimer (200 ms) that checks whether the window is active and redraws the active or inactive skin; used for dialog forms.",
+   "MENUTIMER": "Internal QTimer that closes the popup menu when it is no longer the active window.",
+   "DELTITLEICONS": "DelTitleIcons(...) hides the title buttons and menu items given as ti constants (tiSystemMenu, tiMinimize, tiMaximize, tiHelp, tiOnTop) and calls DelBorderIcons with the same values; use it instead of DelBorderIcons.",
+   "ADDTITLEICONS": "AddTitleIcons(...) shows the title buttons and menu items given as ti constants and calls AddBorderIcons with the same values; use it instead of AddBorderIcons.",
+   "ACTIVEORINACTIVE": "Internal: switches all skin bitmaps to the active or inactive set according to IsInBackGround and re-positions the frame pieces.",
+   "WINDOWPROC": "Internal: replacement window procedure installed by ActiveInactive; on WM_NCPAINT and WM_ACTIVATE it redraws the active or inactive skin, other messages go to the original procedure.",
+   "ACTIVEINACTIVE": "ActiveInactive(Value) installs the replacement window procedure the first time it is called, so the skin follows activation changes; it returns no value.",
+   "MBUTOUT": "Internal: draws MainBtn.Caption centered on the MainBtn image.",
+   "ONTOP": "Toggles always-on-top mode (FormStyle 3 or 0) and ToujoursVisible; when turning it off a cropped window gets its height back.",
+   "ITMOPTIONS_CLICK": "Action of the Options menu item; the SUB is empty.",
+   "ITMONTOP_CLICK": "Action of the always-on-top menu item; calls OnTop.",
+   "ITMDEPLACE_CLICK": "Action of the Move menu item: closes the menu and starts a window move with WM_SYSCOMMAND SC_MOVE.",
+   "ITMREDUIRE_CLICK": "Action of the minimize menu item: an always-on-top window is cropped to its title bar (or restored if already cropped); otherwise the window is minimized.",
+   "ITMAGRANDIR_CLICK": "Action of the maximize menu item and the maximize button: toggles WindowState between maximized and normal.",
+   "ITMFERMER_CLICK": "Action of the Close menu item: a dialog form (PopupBox) is closed; the main form calls Application.Terminate."
+  },
+  "example": "CONST myMainFormName = \"Form style WinXP\"\n' $RESOURCE lines for ICO, TITLE_LEFT, TITLE_MID, ... (see requires)\n$INCLUDE \"XPSkinMetallic_2.11_Res.inc\"\n\nCREATE MainForm AS myXPSkinnedForm\n  Caption = myMainFormName\n  Width = 320\n  Height = 240\nEND CREATE\n\nMainForm.AddTitleIcons(tiMinimize, tiMaximize)\nMainForm.ActiveInactive(True)\nMainForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "2.13",
+  "date": "28 juin, 2003",
+  "caveats_en": [
+   "The file name says 2.11 but the header says Windows XP Metallic Skin v2.13.",
+   "The main form must be named MainForm and myMainFormName must be defined before the include; if it is missing or the main window is not found, OnShow shows a French warning message. At include time the code also uses FindWindow with myMainFormName to bring an already running copy to the front and END the new one.",
+   "No $RESOURCE lines are included: all skin bitmaps and the ICO icon must be provided by the program, and the global TitleBtnsBg bitmaps are never loaded by this file.",
+   "In OnShow, EnableWindow(mhWnd,) is called with an empty second argument.",
+   "In WindowProc the CASE list is \"WM_NCPAINT, WM_ACTIVATE, .XPPopupMenu.Visible=0\", so the boolean expression is compared with the message number.",
+   "Known problems listed in the header: menu images are not redrawn when an item is hovered; bottom borders are drawn incorrectly with ActiveInactive(True); a second window tries to appear in the taskbar; external dialog boxes are hidden behind the main window in always-on-top mode (the header suggests CTRL+ALT+F4); some bitmap formats crash the program and should be re-saved from Internet Explorer.",
+   "The header says WM_NCACTIVATE causes problems, and that after always-on-top mode is used the inactive colors still have a bug.",
+   "ActiveInactive never sets its return value; the Options item and the help button have no action; Minimized is never set by active code.",
+   "The constructor fixes the size at 400 x 400 and the popup menu width at 123 pixels; button positions are hard-coded offsets from the right edge (27, 50, 73, 98 pixels)."
+  ]
+ }
+}

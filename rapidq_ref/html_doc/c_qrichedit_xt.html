@@ -1,0 +1,70 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QRICHEDIT_XT</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QRICHEDIT_XT</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QRICHEDIT_XT Component</h1>
+<p class="rq-meta">Extends <a href="qrichedit.html">QRICHEDIT</a> &middot; source: <code>inc/QRichEditXt.inc</code>, line 193</p>
+<p><b>A QRichEdit extension that adds automatic URL detection, a text limit, a scroll position property, auto-font control and experimental keyword syntax highlighting painted over the control.</b></p>
+<p>QRichEdit_xt starts a one-shot QTIMER (interval 1) in its constructor. When the timer fires it applies the settings: scroll position (EM_SETSCROLLPOS), loading the keyword list file when HiLight is 1, clearing the auto-font language option, enabling EM_AUTOURLDETECT when AutoURLDetect is 1, the text limit (EM_EXLIMITTEXT), getting a device context with GetDC, and subclassing the control&#x27;s window procedure with SetWindowLong so that Proc receives its messages.</p>
+<p>When HiLight is not 0, Proc lets the original window procedure paint on WM_PAINT and then draws over the visible lines with TextOut on HandleDC: quoted strings, comments, keywords found in the keyword list, operators and brackets each get their own colour. The tokenizer is adapted from a BASIC-to-HTML converter (the HTML output lines are left commented out). Comments in the code are in Russian.</p>
+<p>The file defines many EM_*, SES_* and IMF_* rich edit constants and its own Point type.</p>
+<p>QRICHEDIT_XT inherits the properties, methods and events of <a href="qrichedit.html">QRICHEDIT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>a global QRichEdit (or QRichEdit_xt) object named RichEdit: Proc reads RichEdit.Handle and RichEdit.Line() instead of the component itself</li>
+<li>a global QFont named HiLiteFont used as the highlight font</li>
+<li>constants not defined in this file: WM_PAINT, TRANSPARENT, GWL_WNDPROC, clOrange, clDGreen, clPurple, clDRed (clGreen and clBlue are standard RapidQ colours)</li>
+<li>a keyword list text file named in KeyListName</li>
+</ul>
+<a name="1"></a><h2>QRichEdit_xt Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">HandleDC</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Device context of the control obtained with GetDC when the initialisation timer fires; Proc paints the highlighting on it.</td></tr>
+<tr><td class="rq-name">HiLight</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>1 turns keyword highlighting on. Assigning it only stores the value (and prints it); the keyword list is loaded only if it is 1 when the initialisation timer fires, and Proc paints only while it is not 0.</td></tr>
+<tr><td class="rq-name">KeyListName</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>File name of the keyword list loaded into the private KeyList when the initialisation timer fires (only if HiLight is 1). Assigning it only stores and prints the value.</td></tr>
+<tr><td class="rq-name">AUTOURLDETECT</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>1 enables automatic URL detection (EM_AUTOURLDETECT) when the initialisation timer fires. Assigning it only stores and prints the value; later changes have no effect.</td></tr>
+<tr><td class="rq-name">LIMITTEXT</td><td class="rq-type">INTEGER</td><td>RW</td><td>65535*32</td><td>Maximum text length sent with EM_EXLIMITTEXT when the initialisation timer fires. Assigning it caps the value at 65535*32 and stores it (default 65535*32).</td></tr>
+<tr><td class="rq-name">AUTOFONT</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>When 0 (default), the timer clears the IMF_AUTOFONT language option with EM_SETLANGOPTIONS. Assigning it only stores the value.</td></tr>
+<tr><td class="rq-name">SCROLLPOS</td><td class="rq-type">INTEGER</td><td>RW</td><td>1</td><td>Vertical scroll position. Assigning it stores the value, prints debug output and sends EM_SETSCROLLPOS with that value as the top coordinate; the timer also applies it at start-up (default 1).</td></tr>
+</table>
+<a name="2"></a><h2>QRichEdit_xt Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr class="rq-internal"><td class="rq-name">Proc</td><td class="rq-type">FUNCTION(hWnd AS LONG, uMsg AS LONG, wParam AS LONG, lParam AS LONG) AS LONG</td><td>Internal: subclassed window procedure installed with SetWindowLong. It calls the original procedure, paints the highlighting on WM_PAINT when HiLight is on, and then calls the private WndProc event if one is set.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>Tmr.OnTimer</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>Proc uses the global names RichEdit and HiLiteFont instead of the component itself, so highlighting only works if the instance is named RichEdit and a QFont named HiLiteFont exists.</li>
+<li>The setters and Proc contain PRINT debug statements (for example &quot;SCROLLPOS=&quot;, &quot;RichEdit WM_PAINT=&quot;, &quot;end bas2Html&quot;).</li>
+<li>AutoURLDetect, LimitText, AutoFont, KeyListName and the loading of the keyword list take effect only once, when the initialisation timer fires; changing them later has no effect.</li>
+<li>The auto-font option is cleared with the expression &#x27;... &amp; -IMF_AUTOFONT&#x27;; -IMF_AUTOFONT is -2, which is not the bitwise complement of IMF_AUTOFONT (that would be -3).</li>
+<li>The device context from GetDC is kept for the life of the control and never released.</li>
+<li>Keywords are matched with INSTR against the whole keyword list text in upper case, so any substring of the list counts as a keyword.</li>
+<li>Highlight colours are hard-coded, and several colour constants (clOrange, clDGreen, clPurple, clDRed) and API constants are not defined in the file.</li>
+<li>The file declares its own TYPE Point with fields Left and Top, which can conflict with a Point type from Windows API include files.</li>
+</ul>
+<a name="4"></a><h2>QRichEdit_xt Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QRichEditXt.inc&quot;
+DIM HiLiteFont AS QFONT
+CREATE Form AS QFORM
+  Width = 500
+  Height = 400
+  CREATE RichEdit AS QRichEdit_xt
+    Align = 5
+    AutoURLDetect = 1
+    KeyListName = &quot;keywords.txt&quot;
+    HiLight = 1
+  END CREATE
+END CREATE
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qrichedit_api_apire.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qrpanel.html">Next component</a></div>
+</body>
+</html>

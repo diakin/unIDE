@@ -1,0 +1,60 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QINIFILE</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QINIFILE</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QINIFILE Component</h1>
+<p class="rq-meta">Extends <a href="qstringlist.html">QSTRINGLIST</a> &middot; source: <code>inc/QIniFile.inc</code>, line 11 &middot; author: Nastase Eodor &middot; date: 2008</p>
+<p><b>A QStringList-based INI file reader and writer with section and key lookup and typed read/write methods.</b></p>
+<p>QIniFile extends QStringList and keeps the whole INI file in its items. CreateFile picks the file, loads it if it exists or creates it empty. Sections are lines starting with &quot;[&quot;, keys are matched case-insensitively on the text before &quot;=&quot;.</p>
+<p>WriteInteger, WriteFloat and WriteString replace an existing key, insert a new key at the end of its section, or append a new section; every write saves the file immediately. ReadInteger, ReadFloat and ReadString return the value or the given default. ReadSection and ReadSections copy lines into another QStringList. The Windows folder is found with GetWindowsDirectory from kernel32.</p>
+<p>QINIFILE inherits the properties, methods and events of <a href="qstringlist.html">QSTRINGLIST</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>$Include &quot;SysUtils.inc&quot; (ExtractFileName, ExtractFilePath, ChangeFileExt), unless __RQSYSUTILS is already defined</li>
+</ul>
+<a name="1"></a><h2>QIniFile Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">File</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Full path of the INI file, set by CreateFile and used by every write.</td></tr>
+</table>
+<a name="2"></a><h2>QIniFile Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">CreateFile</td><td class="rq-type">SUB(Dir As String)</td><td>CreateFile(Dir) sets File: a bare file name is placed in the Windows folder, a path is used as given. The file is loaded if it exists, otherwise an empty file is created.</td></tr>
+<tr><td class="rq-name">SectionExists</td><td class="rq-type">FUNCTION(Section$) AS INTEGER</td><td>SectionExists(Section$) returns the line index of the [Section] header (case-insensitive) or -1.</td></tr>
+<tr><td class="rq-name">KeyExists</td><td class="rq-type">FUNCTION(Section$,Key$) AS INTEGER</td><td>KeyExists(Section$, Key$) returns the line index of the key inside the section or -1.</td></tr>
+<tr><td class="rq-name">WriteInteger</td><td class="rq-type">SUB(Section$,Key$,Value&amp;)</td><td>WriteInteger(Section$, Key$, Value&amp;) writes Key=Value (formatted with %d) and saves the file.</td></tr>
+<tr><td class="rq-name">WriteFloat</td><td class="rq-type">SUB(Section$,Key$,Value#)</td><td>WriteFloat(Section$, Key$, Value#) writes Key=Value (formatted with %g) and saves the file.</td></tr>
+<tr><td class="rq-name">WriteString</td><td class="rq-type">SUB(Section$,Key$,Value$)</td><td>WriteString(Section$, Key$, Value$) writes Key=Value and saves the file.</td></tr>
+<tr><td class="rq-name">ReadInteger</td><td class="rq-type">FUNCTION(Section$,Key$,Inplace&amp;) AS INTEGER</td><td>ReadInteger(Section$, Key$, Default&amp;) returns the key value as an integer, or Default if the key is missing.</td></tr>
+<tr><td class="rq-name">ReadFloat</td><td class="rq-type">FUNCTION(Section$,Key$,Inplace#) AS DOUBLE</td><td>ReadFloat(Section$, Key$, Default#) returns the key value as a double, or Default if the key is missing.</td></tr>
+<tr><td class="rq-name">ReadString</td><td class="rq-type">FUNCTION(Section$,Key$,Inplace$) AS STRING</td><td>ReadString(Section$, Key$, Default$) returns the text after &quot;=&quot;, or Default if the key is missing.</td></tr>
+<tr><td class="rq-name">ReadSection</td><td class="rq-type">SUB(Section$,Buffer As QStringList)</td><td>ReadSection(Section$, Buffer AS QStringList) clears Buffer and copies all lines of the section into it; Buffer is untouched if the section does not exist.</td></tr>
+<tr><td class="rq-name">ReadSections</td><td class="rq-type">SUB(Buffer As QStringList)</td><td>ReadSections(Buffer AS QStringList) clears Buffer and adds every section header line (with brackets).</td></tr>
+<tr class="rq-internal"><td class="rq-name">GetWindowsDir</td><td class="rq-type">SUB</td><td>Internal: stores the Windows folder (with a trailing backslash) in a private field; called by the constructor.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>The constructor sets a default name (program name with .ini), but CreateFile overwrites it before use, so it is never used; passing only a folder path makes File equal to the folder.</li>
+<li>CreateFile must be called before writing, otherwise File is empty when the file is saved.</li>
+<li>ReadString returns only the text between the first and second &quot;=&quot;, so values that contain &quot;=&quot; are cut.</li>
+<li>SectionExists removes every &quot;[&quot; and &quot;]&quot; from the line before comparing; spaces around keys are not trimmed.</li>
+<li>ReadInteger is declared As Integer although the default and write value are Long.</li>
+</ul>
+<a name="4"></a><h2>QIniFile Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QIniFile.inc&quot;
+DIM Ini AS QIniFile
+Ini.CreateFile &quot;C:\MyApp\settings.ini&quot;
+Ini.WriteString &quot;Main&quot;, &quot;User&quot;, &quot;Bob&quot;
+Ini.WriteInteger &quot;Main&quot;, &quot;Count&quot;, 5
+ShowMessage Ini.ReadString(&quot;Main&quot;, &quot;User&quot;, &quot;none&quot;) + STR$(Ini.ReadInteger(&quot;Main&quot;, &quot;Count&quot;, 0))</pre>
+<div class="rq-foot"><a href="c_qini_qwinini.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qinifile_qlibrary.html">Next component</a></div>
+</body>
+</html>

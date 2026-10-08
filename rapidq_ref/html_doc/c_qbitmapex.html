@@ -1,0 +1,76 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QBITMAPEX</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QBITMAPEX</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QBITMAPEX Component</h1>
+<p class="rq-meta">Extends <a href="qbitmap.html">QBITMAP</a> &middot; source: <code>inc/QBitmapEx.inc</code>, line 88 &middot; version: 1.4</p>
+<p><b>An extended QBITMAP with GDI drawing methods, clipboard support and JPEG/GIF loading and JPEG saving through NViewLib.dll.</b></p>
+<p>QBitmapEx extends QBITMAP with drawing methods that call GDI directly on the bitmap handle: outlined and filled circles, rectangles and rounded rectangles, lines, flood fill, color inversion, horizontal mirror and vertical flip. Outlines use the PenStyle (PS_SOLID_BMP ... PS_INSIDEFRAME_BMP) and PenSize fields.</p>
+<p>It can copy the bitmap to the clipboard as CF_BITMAP, paste a clipboard bitmap at a position, and report the clipboard bitmap size. DrawIco draws an icon handle with DrawIconEx.</p>
+<p>LoadOtherImage and SaveAsJpg use the external NViewLib.dll to load other image formats and to save the bitmap as a JPEG file.</p>
+<p>QBITMAPEX inherits the properties, methods and events of <a href="qbitmap.html">QBITMAP</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>NViewLib.dll (for LoadOtherImage and SaveAsJpg)</li>
+</ul>
+<a name="1"></a><h2>QBitmapEx Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">PenStyle</td><td class="rq-type">LONG</td><td>RW</td><td>PS_SOLID_BMP</td><td>Pen style for outlines and lines, one of the PS_*_BMP constants (default PS_SOLID_BMP).</td></tr>
+<tr><td class="rq-name">PenSize</td><td class="rq-type">INTEGER</td><td>RW</td><td>1</td><td>Pen width in pixels for outlines and lines (default 1).</td></tr>
+</table>
+<a name="2"></a><h2>QBitmapEx Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">DrawIco</td><td class="rq-type">SUB(left as integer,top as integer,width as integer,height as integer,handle as long)</td><td>DrawIco(left, top, width, height, handle) draws the icon with the given handle at that position and size using DrawIconEx.</td></tr>
+<tr><td class="rq-name">CopyToClipboard</td><td class="rq-type">SUB</td><td>Copies the bitmap to the clipboard in CF_BITMAP format.</td></tr>
+<tr><td class="rq-name">PasteFromClipboard</td><td class="rq-type">SUB(x as short,y as short)</td><td>PasteFromClipboard(x, y) draws the clipboard bitmap onto this bitmap at x, y if the clipboard holds a bitmap; the bitmap is not resized.</td></tr>
+<tr><td class="rq-name">GetWidthClipboard</td><td class="rq-type">FUNCTION AS INTEGER</td><td>Returns the width of the bitmap on the clipboard (0 if there is none).</td></tr>
+<tr><td class="rq-name">GetHeightClipboard</td><td class="rq-type">FUNCTION AS INTEGER</td><td>Returns the height of the bitmap on the clipboard (0 if there is none).</td></tr>
+<tr><td class="rq-name">CanPaste</td><td class="rq-type">FUNCTION AS BOOLEAN</td><td>Returns true if the clipboard contains a bitmap.</td></tr>
+<tr><td class="rq-name">circle</td><td class="rq-type">SUB(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long)</td><td>Circle(x1, y1, x2, y2, c) draws an outlined ellipse in the given bounding rectangle with color c.</td></tr>
+<tr><td class="rq-name">circleFilled</td><td class="rq-type">SUB(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long,fill as long)</td><td>CircleFilled(x1, y1, x2, y2, c, fill) draws an ellipse with outline color c filled with color fill.</td></tr>
+<tr><td class="rq-name">rectangle</td><td class="rq-type">SUB(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long)</td><td>Rectangle(x1, y1, x2, y2, c) draws an outlined rectangle with color c.</td></tr>
+<tr><td class="rq-name">RoundRect</td><td class="rq-type">SUB(x1 as integer,y1 as integer,x2 as integer,y2 as integer,x3 as integer,y3 as integer,c as long)</td><td>RoundRect(x1, y1, x2, y2, x3, y3, c) draws an outlined rectangle with rounded corners; x3 and y3 are the corner ellipse size.</td></tr>
+<tr><td class="rq-name">RoundRectFilled</td><td class="rq-type">SUB(x1 as integer,y1 as integer,x2 as integer,y2 as integer,x3 as integer,y3 as integer,c as long,fill as long)</td><td>RoundRectFilled(x1, y1, x2, y2, x3, y3, c, fill) draws a rounded rectangle with outline color c filled with color fill.</td></tr>
+<tr><td class="rq-name">rectangleFilled</td><td class="rq-type">SUB(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long,fill as long)</td><td>RectangleFilled(x1, y1, x2, y2, c, fill) draws a rectangle with outline color c filled with color fill.</td></tr>
+<tr><td class="rq-name">line</td><td class="rq-type">SUB(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long)</td><td>Line(x1, y1, x2, y2, c) draws a line with color c using the current pen style and size.</td></tr>
+<tr><td class="rq-name">FillSurface</td><td class="rq-type">SUB(x as integer,y as integer,c as long)</td><td>FillSurface(x, y, c) flood-fills the area of the same color as the pixel at x, y with color c.</td></tr>
+<tr><td class="rq-name">InvertColor</td><td class="rq-type">SUB(x as integer,y as integer,width as integer,height as integer)</td><td>InvertColor(x, y, width, height) inverts the colors of the given area.</td></tr>
+<tr><td class="rq-name">mirror</td><td class="rq-type">SUB(x as integer,y as integer,width as integer,height as integer)</td><td>Mirror(x, y, width, height) mirrors the given area horizontally.</td></tr>
+<tr><td class="rq-name">flip</td><td class="rq-type">SUB(x as integer,y as integer,width as integer,height as integer)</td><td>Flip(x, y, width, height) mirrors the given area vertically.</td></tr>
+<tr><td class="rq-name">LoadOtherImage</td><td class="rq-type">SUB(FileName as string,Progress as boolean,Language as string)</td><td>LoadOtherImage(FileName, Progress, Language) loads an image file through NViewLib.dll (with optional progress display and language), sets PixelFormat to 6 and resizes the bitmap to the image size.</td></tr>
+<tr><td class="rq-name">SaveAsJpg</td><td class="rq-type">SUB(FileName as string,Quality as Integer)</td><td>SaveAsJpg(FileName, Quality) saves the bitmap as a JPEG file with the given quality through NViewLib.dll, using a temporary temp.bmp in the target folder.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>SaveAsJpg does nothing unless FileName contains a path to an existing folder; it writes temp.bmp into that folder and deletes it afterwards.</li>
+<li>CopyToClipboard puts the handle of a local temporary QBitmap on the clipboard.</li>
+<li>Load_JPGBmp and Load_GIFBmp are declared from NViewLib.dll but never used.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/rapidq2.inc</code> (line 4366) contains its own edition of QBITMAPEX; it has members that are not in this file: ALPHABLEND, POINTER.</li>
+<li><code>inc/old/object/QBitmapEx.inc</code> &mdash; identical copy (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QBitmapEx Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QBitmapEx.inc&quot;
+DIM Bmp AS QBitmapEx
+Bmp.Width = 200
+Bmp.Height = 100
+Bmp.PenSize = 2
+Bmp.RectangleFilled(10, 10, 190, 90, &amp;H000000, &amp;HFFFFFF)
+Bmp.Circle(50, 20, 110, 80, &amp;HFF0000)
+Bmp.Line(10, 50, 190, 50, &amp;H0000FF)
+Bmp.CopyToClipboard
+Bmp.SaveAsJpg(&quot;C:\Temp\picture.jpg&quot;, 80)</pre>
+<div class="rq-foot"><a href="c_qbevel.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qbrowsedialog.html">Next component</a></div>
+</body>
+</html>

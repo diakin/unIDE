@@ -1,0 +1,72 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QSPINTEXT</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QSPINTEXT</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QSPINTEXT Component</h1>
+<p class="rq-meta">Extends <a href="qpanel.html">QPANEL</a> &middot; source: <code>inc/qspintext.inc</code>, line 16 &middot; author: Mesut Akcan; OnChange event added by Andrew Shelkovenko &middot; version: 1.01 &middot; date: 7 July 2000, update 7 Sept. 2000; updated 20.04.04</p>
+<p><b>A spin edit: a panel with a QEdit and a vertical QScrollBar for entering a number between Min and Max, with an OnChange event.</b></p>
+<p>Qspintext extends QPanel and contains an edit box (Ed) and a vertical scroll bar (Sb). The scroll bar works with negated values so that the up arrow increases the number. After setting Min, Max, Value and the colors, call Initial to apply them and place the child controls.</p>
+<p>Clicking the scroll bar updates Value and the edit box and fires OnChange. In the edit box the Up and Down arrow keys move the value, and Enter takes the typed number. While other keys are typed the panel turns red as a sign that the value is not confirmed yet; Enter or Down restores BgColor.</p>
+<p>QSPINTEXT inherits the properties, methods and events of <a href="qpanel.html">QPANEL</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>Qspintext Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">max</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Largest value; applied by Initial.</td></tr>
+<tr><td class="rq-name">min</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Smallest value; applied by Initial.</td></tr>
+<tr><td class="rq-name">value</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Current value; updated when the scroll bar changes. Assigning it directly does not update the controls until Initial is called.</td></tr>
+<tr><td class="rq-name">bgcolor</td><td class="rq-type">LONG</td><td>RW</td><td>-2147483643</td><td>Background color of the edit box (and of the panel after confirming input); applied by Initial.</td></tr>
+<tr><td class="rq-name">fontcolor</td><td class="rq-type">LONG</td><td>RW</td><td>0</td><td>Text color of the edit box; applied by Initial.</td></tr>
+<tr><td class="rq-name">ed</td><td class="rq-type">QEDIT</td><td>RW</td><td></td><td>The QEdit that shows and accepts the number.</td></tr>
+<tr><td class="rq-name">sb</td><td class="rq-type">QSCROLLBAR</td><td>RW</td><td></td><td>The vertical QScrollBar used as the spin buttons (works with negated values).</td></tr>
+</table>
+<a name="2"></a><h2>Qspintext Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">initial</td><td class="rq-type">SUB</td><td>Applies Min, Max, Value, BgColor and FontColor to the child controls and lays them out to the panel width. Call it after setting these fields.</td></tr>
+</table>
+<a name="3"></a><h2>Qspintext Events</h2>
+<table class="rq-ref">
+<tr><th>Event</th><th>Type</th><th>Occurs when...</th></tr>
+<tr><td class="rq-name">OnChange</td><td class="rq-type">SUB(vl AS long)</td><td>Event OnChange(vl AS LONG), fired with the new value when the scroll bar changes or Enter is pressed in the edit box.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>ed.onchange</code>, <code>ed.onkeydown</code>, <code>sb.onchange</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>The events use a variable vl that is not declared in the type; on Enter OnChange is called with vl as left by the last scroll-bar change.</li>
+<li>On Enter the code sets the scroll-bar position and then calls OnChange directly, so if the scroll bar&#x27;s own OnChange also runs, the handler can be called twice.</li>
+<li>The Ed.OnChange handler is empty (its code is commented out), so typing alone does not change Value.</li>
+<li>The Up arrow key does not restore the panel color after it was turned red.</li>
+<li>Typed values are not checked against Min and Max.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/qspintextOld.inc</code> &mdash; older version (moved; the reason is in COMPONENTS.md).</li>
+<li><code>inc/old/qspintextev.inc</code> &mdash; older version (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>Qspintext Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;qspintext.inc&quot;
+DECLARE SUB SpinChange(vl AS LONG)
+CREATE Form AS QFORM
+  Caption = &quot;Spin&quot;
+  CREATE Spin AS Qspintext
+    Left = 10: Top = 10
+    Width = 80
+    Min = 0: Max = 100: Value = 10
+    OnChange = SpinChange
+  END CREATE
+END CREATE
+SUB SpinChange(vl AS LONG)
+  Form.Caption = STR$(vl)
+END SUB
+Spin.Initial
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qspinbutton.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qsplash.html">Next component</a></div>
+</body>
+</html>

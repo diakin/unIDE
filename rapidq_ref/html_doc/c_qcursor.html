@@ -1,0 +1,52 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QCURSOR</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QCURSOR</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QCURSOR Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QCursor.inc</code>, line 22 &middot; version: 1.0</p>
+<p><b>An object that loads mouse cursors from files or resources and shows, hides or moves the mouse cursor.</b></p>
+<p>QCursor extends QObject. LoadFromFile and LoadFromResource load a .cur file with LoadCursorFromFile and put it into Screen.Cursors at the next index (1, 2, ...); Count holds the last index used, so a control can use it with Cursor = index.</p>
+<p>LoadFromResource extracts a resource added with $RESOURCE to a temporary file temp.cur next to the executable, loads it and deletes the file. Visible calls ShowCursor and Move calls SetCursorPos.</p>
+<p>QCURSOR inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QCursor Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Count</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Number of cursors loaded, which is also the Screen.Cursors index of the last one. Read only: assigning it does nothing.</td></tr>
+<tr><td class="rq-name">Visible</td><td class="rq-type">BOOLEAN</td><td>RW</td><td>true</td><td>Assigning it stores the value and calls ShowCursor with it to show or hide the mouse cursor (default true).</td></tr>
+</table>
+<a name="2"></a><h2>QCursor Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">LoadFromResource</td><td class="rq-type">SUB(Res as long)</td><td>LoadFromResource(Res) loads the cursor stored in resource number Res (0 to RESOURCECOUNT()-1) into the next Screen.Cursors index; invalid numbers are ignored.</td></tr>
+<tr><td class="rq-name">LoadFromFile</td><td class="rq-type">SUB(FileName as string)</td><td>LoadFromFile(FileName) loads a cursor file into the next Screen.Cursors index if the file exists.</td></tr>
+<tr><td class="rq-name">Move</td><td class="rq-type">SUB(x as long,y as long)</td><td>Move(x, y) moves the mouse cursor to screen coordinates x, y.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>LoadFromResource writes the temporary file temp.cur into the folder of the executable.</li>
+<li>LoadFromFile and LoadFromResource give no error when the file or resource is missing.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/object/QCursor.inc</code> &mdash; identical copy (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QCursor Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QCursor.inc&quot;
+DIM Cur AS QCursor
+CREATE Form AS QFORM
+  Caption = &quot;Cursor test&quot;
+END CREATE
+Cur.LoadFromFile(&quot;hand.cur&quot;)
+Form.Cursor = Cur.Count
+Cur.Move(100, 100)
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qcoolbarxp.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qd3dcamera.html">Next component</a></div>
+</body>
+</html>

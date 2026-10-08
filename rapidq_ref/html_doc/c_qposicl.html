@@ -1,0 +1,74 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QPOSICL</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QPOSICL</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QPOSICL Component</h1>
+<p class="rq-meta">Extends <a href="qpanel.html">QPANEL</a> &middot; source: <code>inc/QPosicL.inc</code>, line 11 &middot; version: 1.00 &middot; date: 22.02.2004</p>
+<p><b>A panel with a vertical and a horizontal scroll bar and five buttons for adjusting a two-dimensional position (X/Y values).</b></p>
+<p>QPosicL is a QPanel containing two QSCROLLBARs and five QBUTTONs with bitmaps (reset in the center, Undo, Redo, AllUp and AllDn in the corners). ValueH follows the horizontal scroll bar; ValueV is the vertical scroll bar position with the sign reversed, so its range is MinV..MaxV. Every change fires OnChange.</p>
+<p>Set MinV, MaxV, ValueV, MinH, MaxH, ValueH and the size, then call Initial to apply the ranges and lay out the parts. The center button resets both values to 1; AllDn and AllUp move both scroll bars by one step in opposite directions. The header says it is based on the QSpinText component by Mesut Akcan and refers to the Rapid-Q documentation project at http://www.diakin.narod.ru/RQDP/index.html.</p>
+<p>QPOSICL inherits the properties, methods and events of <a href="qpanel.html">QPANEL</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>Bitmap files reset.bmp, Undo1.bmp, Redo1.bmp, AllUp.bmp and AllDn.bmp in the folder BmpPath (C:\BAS\RAPIDQ\inc\), and MaxFast.bmp in the current folder (used by Initial)</li>
+</ul>
+<a name="1"></a><h2>QPosicL Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">maxv</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>Upper limit of the vertical value; applied by Initial.</td></tr>
+<tr><td class="rq-name">minv</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>Lower limit of the vertical value; applied by Initial.</td></tr>
+<tr><td class="rq-name">valuev</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>Vertical value (negated position of the vertical scroll bar); set it before Initial to choose the start position.</td></tr>
+<tr><td class="rq-name">maxh</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>Upper limit of the horizontal value; applied by Initial.</td></tr>
+<tr><td class="rq-name">minh</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>Lower limit of the horizontal value; applied by Initial.</td></tr>
+<tr><td class="rq-name">valueh</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>Horizontal value (position of the horizontal scroll bar); set it before Initial to choose the start position.</td></tr>
+</table>
+<a name="2"></a><h2>QPosicL Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">initial</td><td class="rq-type">SUB</td><td>Applies the Min, Max and Value settings to the scroll bars, sets the parents of the child controls and lays them out according to the panel height.</td></tr>
+</table>
+<a name="3"></a><h2>QPosicL Events</h2>
+<table class="rq-ref">
+<tr><th>Event</th><th>Type</th><th>Occurs when...</th></tr>
+<tr><td class="rq-name">OnChange</td><td class="rq-type">SUB(a as single)</td><td>Event fired when a scroll bar moves or a button is clicked; its single parameter is always 1, so read ValueH and ValueV in the handler.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>btn.onclick</code>, <code>btnAllDn.onclick</code>, <code>btnAllUp.onclick</code>, <code>btnAllUp.OnMouseDown</code>, <code>btnRedo.onclick</code>, <code>btnUndo.onclick</code>, <code>sbh.onchange</code>, <code>sbv.onchange</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>Button bitmaps are loaded from the absolute path C:\BAS\RAPIDQ\inc\ (BmpPath); Initial loads MaxFast.bmp from the current folder instead of reset.bmp.</li>
+<li>The constructor and Initial lay out the parts differently (the constructor makes the vertical scroll bar vertical with Kind = 1, Initial sets Kind = 0).</li>
+<li>The Undo and Redo buttons only fire OnChange and do not change any value.</li>
+<li>AllUp does its work in OnMouseDown; its OnClick handler is empty (the code there is commented out).</li>
+<li>OnChange is called with CALLFUNC without checking that a handler is assigned.</li>
+</ul>
+<a name="4"></a><h2>QPosicL Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QPosicL.inc&quot;
+
+DECLARE SUB PosChange(a AS SINGLE)
+
+CREATE Form AS QFORM
+  CREATE PosCtl AS QPOSICL
+    Left = 10
+    Top = 10
+    MinH = 0: MaxH = 100: ValueH = 50
+    MinV = 0: MaxV = 100: ValueV = 50
+    OnChange = PosChange
+  END CREATE
+END CREATE
+
+SUB PosChange(a AS SINGLE)
+  Form.Caption = STR$(PosCtl.ValueH) + &quot;, &quot; + STR$(PosCtl.ValueV)
+END SUB
+
+PosCtl.Initial
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qposic.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qprinterinfo.html">Next component</a></div>
+</body>
+</html>

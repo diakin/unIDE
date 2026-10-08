@@ -1,0 +1,73 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QODBC</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QODBC</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QODBC Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/odbc.inc</code>, line 46</p>
+<p><b>Simple ODBC client object that lists drivers, connects with a connection string, lists tables, runs SQL queries and fetches rows as text.</b></p>
+<p>qODBC calls the ODBC API in odbc32.dll directly. ODBCInit allocates the environment and connection handles and fills Driver with the installed driver names. Connect(sConn) connects with SQLDriverConnect, allocates a statement handle and fills Table with the table names.</p>
+<p>Query runs an SQL statement with SQLExecDirect and fills Field.Name, Field.TypeNum, Field.TypeStr, Field.Size, Field.DecDigits and Field.Nullav for each result column. GetRecord fetches the next row into Field.Data (as text) and returns 1, or 0 when there are no more rows. Errors are shown with MESSAGEBOX. The file comments follow the numbered steps of an ODBC session (allocate, connect, execute, fetch, free, disconnect).</p>
+<p>Including the file also creates a global object myDB AS qODBC and calls myDB.ODBCInit.</p>
+<p>QODBC inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>ODBC driver for the target database</li>
+</ul>
+<a name="1"></a><h2>qODBC Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">glEnv</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>ODBC environment handle allocated by ODBCInit.</td></tr>
+<tr><td class="rq-name">glDbc</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>ODBC connection handle allocated by ODBCInit.</td></tr>
+<tr><td class="rq-name">glStmt</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>ODBC statement handle allocated by Connect.</td></tr>
+<tr><td class="rq-name">sSQL</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>The last SQL string passed to Query.</td></tr>
+<tr><td class="rq-name">SQLRet</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>Return code of the last ODBC call.</td></tr>
+<tr><td class="rq-name">sConnect</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Connection string passed to Connect.</td></tr>
+<tr><td class="rq-name">DriverCount</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Counter of driver entries filled by ODBCInit.</td></tr>
+<tr><td class="rq-name">Driver</td><td class="rq-type">ARRAY(100) OF STRING</td><td>RW</td><td></td><td>Array (1-100) of ODBC driver descriptions filled by ODBCInit.</td></tr>
+<tr><td class="rq-name">TableCount</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Number of tables found by Connect.</td></tr>
+<tr><td class="rq-name">Table</td><td class="rq-type">ARRAY(100) OF STRING</td><td>RW</td><td></td><td>Array (1-100) of table names filled by Connect.</td></tr>
+<tr><td class="rq-name">FieldCount</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Number of columns in the last Query result.</td></tr>
+</table>
+<a name="2"></a><h2>qODBC Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">ODBCInit</td><td class="rq-type">SUB</td><td>Allocates the ODBC environment and connection handles and lists the installed drivers into Driver.</td></tr>
+<tr><td class="rq-name">Connect</td><td class="rq-type">SUB(sConn AS STRING)</td><td>Connect(sConn) connects using an ODBC connection string, allocates a statement handle and lists the tables (type TABLE) into Table.</td></tr>
+<tr><td class="rq-name">Query</td><td class="rq-type">SUB(sSQL AS STRING)</td><td>Query(SQL) executes an SQL statement and reads the column descriptions into the Field arrays (indexed from 1).</td></tr>
+<tr><td class="rq-name">CloseQuery</td><td class="rq-type">SUB</td><td>Closes the cursor of the last query.</td></tr>
+<tr><td class="rq-name">GetRecord</td><td class="rq-type">FUNCTION AS INTEGER</td><td>Fetches the next row into Field.Data (indexed from 1); returns 1 if a row was read, 0 otherwise.</td></tr>
+<tr><td class="rq-name">CloseDB</td><td class="rq-type">SUB</td><td>Frees the statement handle and disconnects from the database.</td></tr>
+<tr><td class="rq-name">CloseODBC</td><td class="rq-type">SUB</td><td>Frees the connection and environment handles.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>The include creates the global variables myDB and sSQL and calls myDB.ODBCInit, so the file cannot be included without that side effect.</li>
+<li>DriverCount is incremented before each SQLDrivers call, including the last one that fails, so it counts one more than the number of drivers and the last entry holds stale text.</li>
+<li>Query&#x27;s error message shows the ODBC state and error text, but SQLError is never called, so those parts are empty.</li>
+<li>Arrays are fixed at 100 drivers, tables and fields, and values are read into a 255-byte buffer.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/qodbc.inc</code> &mdash; older version (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>qODBC Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;odbc.inc&quot;
+&#x27; myDB is created and initialized by the include
+myDB.Connect(&quot;DRIVER={Microsoft Access Driver (*.mdb)};DBQ=C:\data\test.mdb;&quot;)
+myDB.Query(&quot;SELECT * FROM Customers&quot;)
+WHILE myDB.GetRecord
+  PRINT myDB.Field.Data(1)
+WEND
+myDB.CloseQuery
+myDB.CloseDB
+myDB.CloseODBC</pre>
+<div class="rq-foot"><a href="c_qmp3.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qpagesetup.html">Next component</a></div>
+</body>
+</html>

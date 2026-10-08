@@ -1,0 +1,56 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QPROGRESS</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QPROGRESS</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QPROGRESS Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/object/QProgress.inc</code>, line 28</p>
+<p><b>A progress bar component that creates a Windows msctls_progress32 control on a parent window given by handle.</b></p>
+<p>Assigning Parent (a window handle, for example Form.Handle) creates the progress bar with CreateWindowExA, class msctls_progress32, at the current Left, Top, Width and Height. The range is set to 0..20500 (&amp;H5014) with PBM_SETRANGE.</p>
+<p>Assigning Value scales it by 205 (Range / 100) and sends PBM_SETPOS, so Value is effectively a percentage from 0 to 100. Left, Top, Width, Height and Visible move, resize, show or hide the window.</p>
+<p>QPROGRESS inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>SendMessage, which this file does not declare</li>
+</ul>
+<a name="1"></a><h2>QProgress Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Parent</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Window handle of the parent. Assigning it creates the progress bar window in that parent at the current position and size, sets Visible to 1 and sets the range and step.</td></tr>
+<tr><td class="rq-name">value</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Assigning a percentage (0 to 100) stores the value multiplied by 205 and sends it with PBM_SETPOS. Reading it returns the scaled value, not the percentage.</td></tr>
+<tr><td class="rq-name">left</td><td class="rq-type">SHORT</td><td>RW</td><td>0</td><td>Left position (default 0); assigning it moves the window with MoveWindow.</td></tr>
+<tr><td class="rq-name">Top</td><td class="rq-type">SHORT</td><td>RW</td><td>0</td><td>Top position (default 0); assigning it moves the window with MoveWindow.</td></tr>
+<tr><td class="rq-name">Width</td><td class="rq-type">SHORT</td><td>RW</td><td>100</td><td>Width (default 100); assigning it resizes the window with MoveWindow.</td></tr>
+<tr><td class="rq-name">Height</td><td class="rq-type">SHORT</td><td>RW</td><td>20</td><td>Height (default 20); assigning it resizes the window with MoveWindow.</td></tr>
+<tr><td class="rq-name">Visible</td><td class="rq-type">BOOLEAN</td><td>RW</td><td></td><td>Assigning 0 hides the window and any other value shows it (ShowWindow).</td></tr>
+<tr><td class="rq-name">Handle</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Window handle of the progress bar, set when Parent is assigned.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>Each assignment to Parent creates a new progress bar window; the old one is not destroyed.</li>
+<li>Reading Value returns the scaled value (percentage x 205), not the number that was assigned.</li>
+<li>The range is fixed at 0..20500 and the step value set with PBM_SETSTEP is never used (there is no step method).</li>
+<li>Assigning Left, Top, Width or Height before Parent calls MoveWindow with a zero handle.</li>
+<li>CreateWindowExA is called with hInstance 0; the line passing Application.hInstance is commented out.</li>
+</ul>
+<a name="4"></a><h2>QProgress Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;object/QProgress.inc&quot;
+CREATE Form AS QFORM
+  Caption = &quot;Progress&quot;
+END CREATE
+DIM Bar AS QProgress
+Bar.Left = 10
+Bar.Top = 10
+Bar.Width = 200
+Bar.Parent = Form.Handle
+Bar.Value = 50
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qprocess.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qprogress_qprogress.html">Next component</a></div>
+</body>
+</html>

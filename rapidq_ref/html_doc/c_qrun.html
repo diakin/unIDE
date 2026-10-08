@@ -1,0 +1,72 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QRUN</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QRUN</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QRUN Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QRun.inc</code>, line 56 &middot; version: 1.1</p>
+<p><b>A non-visual object for starting programs and documents and for finding and controlling other windows (enumerate, close, minimize, maximize, restore, focus, topmost).</b></p>
+<p>QRun wraps shell32.dll and user32.dll calls. FindApplication returns the program associated with a file (FindExecutableA); FileRun and ExeRun start a file or a program with ShellExecuteA and a SW_ show command. EnumWindow walks all top-level windows with GetWindow and fires OnEnumWindows for each one that has a title; EnumFromPoint does the same for the window at a screen point and fires OnEnumFromPoint.</p>
+<p>The window commands take a window handle and send messages to it: Close sends WM_CLOSE, Minimize, Maximize and Restore send WM_SYSCOMMAND, SetFocus sends WM_SETFOCUS, and SetTopMost calls SetWindowPos with HWND_TOPMOST or HWND_NOTOPMOST. The SW_ constants are defined in the file unless __WIN32API is defined.</p>
+<p>QRUN inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="2"></a><h2>QRun Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">FindApplication</td><td class="rq-type">FUNCTION(FileName as string) AS STRING</td><td>Returns the full name of the program associated with a file, or an empty string if none is found.</td></tr>
+<tr><td class="rq-name">FileRun</td><td class="rq-type">SUB(FileName as string,cmdShow as short)</td><td>Opens a file or program with ShellExecute (&#x27;open&#x27;) using the given show command (SW_ constant).</td></tr>
+<tr><td class="rq-name">ExeRun</td><td class="rq-type">SUB(ExeName as string,Param as string,cmdShow as short)</td><td>Starts a program with a parameter string and show command; the working folder is the folder part of ExeName.</td></tr>
+<tr><td class="rq-name">EnumWindow</td><td class="rq-type">FUNCTION(All as boolean) AS BOOLEAN</td><td>Enumerates top-level windows and fires OnEnumWindows for each; with All = False only visible windows are reported. Returns True if any window was found.</td></tr>
+<tr><td class="rq-name">FindChild</td><td class="rq-type">FUNCTION(handle as long,class as string,name as string) AS LONG</td><td>Returns the handle of a child window of handle with the given class and title (FindWindowEx).</td></tr>
+<tr><td class="rq-name">EnumFromPoint</td><td class="rq-type">FUNCTION(x as long,y as long) AS BOOLEAN</td><td>Finds the window at screen point x, y and fires OnEnumFromPoint for it; returns True if a window was found.</td></tr>
+<tr><td class="rq-name">Close</td><td class="rq-type">SUB(handle as long)</td><td>Sends WM_CLOSE to the window.</td></tr>
+<tr><td class="rq-name">Minimize</td><td class="rq-type">SUB(handle as long)</td><td>Minimizes the window (WM_SYSCOMMAND, SC_MINIMIZE).</td></tr>
+<tr><td class="rq-name">Maximize</td><td class="rq-type">SUB(handle as long)</td><td>Maximizes the window (WM_SYSCOMMAND, SC_MAXIMIZE).</td></tr>
+<tr><td class="rq-name">Restore</td><td class="rq-type">SUB(handle as long)</td><td>Restores the window to its normal size (WM_SYSCOMMAND, SC_RESTORE).</td></tr>
+<tr><td class="rq-name">SetFocus</td><td class="rq-type">SUB(handle as long)</td><td>Sends WM_SETFOCUS to the window.</td></tr>
+<tr><td class="rq-name">SetTopMost</td><td class="rq-type">SUB(handle as long,flag as boolean)</td><td>Makes the window stay on top of others when flag is True, or removes that state when False, without moving or resizing it.</td></tr>
+</table>
+<a name="3"></a><h2>QRun Events</h2>
+<table class="rq-ref">
+<tr><th>Event</th><th>Type</th><th>Occurs when...</th></tr>
+<tr><td class="rq-name">OnEnumWindows</td><td class="rq-type">SUB(handle as Long,name as string,ClassName as string)</td><td>Event fired by EnumWindow for each window with a non-empty title; parameters handle, name (window title) and ClassName.</td></tr>
+<tr><td class="rq-name">OnEnumFromPoint</td><td class="rq-type">SUB(handle as Long,name as string,ClassName as string)</td><td>Event fired by EnumFromPoint for the window at the given point if it has a title; parameters handle, name and ClassName.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>OnEnumFromPoint is declared with OnEnumWindows_eventTemplate instead of OnEnumFromPoint_eventTemplate (the signatures are the same).</li>
+<li>SetFocus only sends the WM_SETFOCUS notification message; it does not call the SetFocus or SetForegroundWindow API.</li>
+<li>ExeRun takes LEFT$(ExeName, RINSTR(ExeName, &quot;\&quot;) - 1) as the folder, which is wrong when ExeName has no backslash.</li>
+<li>Windows without a title are skipped by both enumerations.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/object/QRun.inc</code> &mdash; older version (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QRun Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QRun.inc&quot;
+
+DIM Run AS QRun
+
+CREATE Form AS QFORM
+  CREATE List AS QLISTBOX
+    Align = 5
+  END CREATE
+END CREATE
+
+SUB ListWindow(handle AS LONG, name AS STRING, ClassName AS STRING)
+  List.AddItems name + &quot; [&quot; + ClassName + &quot;]&quot;
+END SUB
+
+Run.OnEnumWindows = ListWindow
+Run.EnumWindow(False)
+Run.FileRun(&quot;readme.txt&quot;, SW_SHOWNORMAL)
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qrpanel.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qsaveplus.html">Next component</a></div>
+</body>
+</html>

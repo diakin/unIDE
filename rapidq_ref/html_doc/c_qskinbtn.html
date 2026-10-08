@@ -1,0 +1,54 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QSKINBTN</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QSKINBTN</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QSKINBTN Component</h1>
+<p class="rq-meta">Extends <a href="qimage.html">QIMAGE</a> &middot; source: <code>inc/QSkinBtn.inc</code>, line 17 &middot; version: 1.0</p>
+<p><b>A skinnable button based on QIMAGE that shows different bitmaps for the up, down and disabled states, with push, latch and toggle modes.</b></p>
+<p>QSkinBtn is a QIMAGE (AutoSize on) that switches its BMP between the bitmaps btUp, btDown and btEnable. Pressing the mouse shows btDown; on release the behaviour depends on Mode.</p>
+<p>A hidden QCANVAS is used once to select the right picture on the first paint and is then made invisible. Clicks can be handled with the inherited QIMAGE events. The source comments are in French.</p>
+<p>QSKINBTN inherits the properties, methods and events of <a href="qimage.html">QIMAGE</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QSkinBtn Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">btUp</td><td class="rq-type">QBITMAP</td><td>RW</td><td></td><td>QBitmap shown when the button is up.</td></tr>
+<tr><td class="rq-name">btDown</td><td class="rq-type">QBITMAP</td><td>RW</td><td></td><td>QBitmap shown when the button is pressed or down.</td></tr>
+<tr><td class="rq-name">btEnable</td><td class="rq-type">QBITMAP</td><td>RW</td><td></td><td>QBitmap shown when the button is disabled (despite its name).</td></tr>
+<tr><td class="rq-name">mode</td><td class="rq-type">SHORT</td><td>RW</td><td>0</td><td>Button behaviour on mouse release: 0 returns to the up image (push button), 1 stays down, 2 toggles between down and up on each click. Assigning it only stores the value.</td></tr>
+<tr><td class="rq-name">down</td><td class="rq-type">BOOLEAN</td><td>RW</td><td>false</td><td>Assigning it while the button is enabled sets the down state and shows btDown (True) or btUp (False); ignored when disabled.</td></tr>
+<tr><td class="rq-name">enabled</td><td class="rq-type">BOOLEAN</td><td>RW</td><td>true</td><td>Assigning it shows the btEnable bitmap, repaints, and enables or disables the underlying QIMAGE.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>OnMouseDown</code>, <code>OnMouseUp</code>, <code>Show.OnPaint</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>Assigning Enabled always switches to the btEnable (disabled) picture, even when enabling; the up or down picture comes back only on a later paint or mouse action.</li>
+<li>The constructor sets show.Parent = qform, which names the QFORM class rather than a form instance.</li>
+<li>With Mode 1 the button stays down after the first click and the mouse alone never releases it; assign Down = False to release it.</li>
+<li>There is no dedicated click or change event; use the inherited QIMAGE events.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/object/QSkinBtn.inc</code> &mdash; identical copy (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QSkinBtn Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QSkinBtn.inc&quot;
+CREATE Form AS QFORM
+  Caption = &quot;Skin button&quot;
+END CREATE
+DIM Btn AS QSkinBtn
+Btn.btUp.BMP = &quot;up.bmp&quot;
+Btn.btDown.BMP = &quot;down.bmp&quot;
+Btn.btEnable.BMP = &quot;disabled.bmp&quot;
+Btn.Mode = 2
+Btn.Parent = Form
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qskin.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qsocketex.html">Next component</a></div>
+</body>
+</html>

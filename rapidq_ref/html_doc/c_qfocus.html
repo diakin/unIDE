@@ -1,0 +1,68 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QFOCUS</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QFOCUS</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QFOCUS Component</h1>
+<p class="rq-meta">Extends <a href="qcanvas.html">QCANVAS</a> &middot; source: <code>inc/qfocus.inc</code>, line 63 &middot; author: John Graves aka laddie@bellsouth.net</p>
+<p><b>A canvas that can be moved and resized with the mouse and can draw a blinking dotted focus frame around itself.</b></p>
+<p>QFocus extends QCanvas. An internal QTimer with a 1 ms interval drives it: when Show is 1 it draws a dotted rectangle around the canvas, alternating between color &amp;H0000F and white, and while the mouse is held down inside it the canvas follows the cursor, positioned relative to the client area of the active window.</p>
+<p>Pressing the mouse near the right or bottom edge (within 7 pixels) changes the cursor and lets the user resize the canvas; OnSize is called with the new width and height. CopyToClipboard copies the canvas pixels to the clipboard as a bitmap. The component uses global variables and GDI calls declared in the file and includes rapidq2.inc.</p>
+<p>QFOCUS inherits the properties, methods and events of <a href="qcanvas.html">QCANVAS</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>rapidq2.inc</li>
+</ul>
+<a name="1"></a><h2>QFocus Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">transparent</td><td class="rq-type">LONG</td><td>RW</td><td>1</td><td>Copied by the timer to the Transparent property of the global QImage focusimage (default 1); focusimage is not shown on any form in this file.</td></tr>
+<tr><td class="rq-name">transparentcolor</td><td class="rq-type">LONG</td><td>RW</td><td>&amp;hffffff</td><td>Copied by the timer to the TransparentColor property of the global QBitmap focusbitmap (default &amp;HFFFFFF).</td></tr>
+<tr class="rq-internal"><td class="rq-name">objectfocustimer</td><td class="rq-type">QTIMER</td><td>RW</td><td></td><td>Internal: QTimer (interval 1 ms, always enabled) that draws the blinking frame and moves the canvas while it is dragged.</td></tr>
+<tr><td class="rq-name">show</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>When 1, the timer draws the blinking dotted frame around the canvas. CopyToClipboard sets it to 1.</td></tr>
+</table>
+<a name="2"></a><h2>QFocus Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">CopyToClipboard</td><td class="rq-type">SUB</td><td>Repaints the canvas, copies its pixels to the clipboard as a bitmap (format 2) and sets Show to 1.</td></tr>
+<tr><td class="rq-name">PasteFromClipboard</td><td class="rq-type">SUB</td><td>If the clipboard has a bitmap, loads it into the global focusimage and focusbitmap; it does not draw it on the canvas.</td></tr>
+<tr><td class="rq-name">dragme</td><td class="rq-type">SUB</td><td>Moves the canvas so that its center is at the mouse cursor, relative to the client area of the active window.</td></tr>
+</table>
+<a name="3"></a><h2>QFocus Events</h2>
+<table class="rq-ref">
+<tr><th>Event</th><th>Type</th><th>Occurs when...</th></tr>
+<tr><td class="rq-name">OnSize</td><td class="rq-type">SUB(width,height)</td><td>Raised while the canvas is resized with the mouse, with the new width and height.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>objectfocustimer.ontimer</code>, <code>OnMouseDown</code>, <code>OnMouseMove</code>, <code>onmouseup</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>OnMouseMove contains two debug ShowMessage calls (the active window handle and &quot;2&quot;), so a message box appears on every mouse move over the canvas.</li>
+<li>The timer handler has mismatched blocks (&#x27;with qfocus&#x27; closed by &#x27;end if&#x27;), and the test &#x27;x&gt;6 or x&lt;.width-6&#x27; is always true.</li>
+<li>State is kept in global variables (dragenable, rectangledrag?, focusbitmap, focusimage, wrct, crct), so several QFocus objects share it; an unused global &#x27;drag as qbutton&#x27; is also declared.</li>
+<li>OnSize is called with CALLFUNC without checking that a handler is assigned.</li>
+<li>CopyToClipboard deletes the bitmap handle right after passing it to the clipboard.</li>
+<li>The timer runs every 1 ms for as long as the object exists.</li>
+</ul>
+<a name="4"></a><h2>QFocus Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;qfocus.inc&quot;
+CREATE Form AS QFORM
+  Width = 400
+  Height = 300
+  CREATE Focus AS QFocus
+    Left = 20
+    Top = 20
+    Width = 100
+    Height = 60
+  END CREATE
+END CREATE
+Focus.Show = 1
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qflatbutton.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qformex.html">Next component</a></div>
+</body>
+</html>

@@ -1,0 +1,72 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QLEDSCROLL</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QLEDSCROLL</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QLEDSCROLL Component</h1>
+<p class="rq-meta">Extends <a href="qcanvas.html">QCANVAS</a> &middot; source: <code>inc/QLedScroll.inc</code>, line 1</p>
+<p><b>A scrolling text banner on a QCanvas, with an optional grid overlay that gives an LED display look.</b></p>
+<p>QLEDSCROLL extends QCanvas. Paint fills the canvas with BgColor and draws Text at position X, Y in TextColor; when Raster is non-zero it then draws vertical and horizontal lines in BgColor every RasterLen pixels, so the text looks made of dots.</p>
+<p>The component does not move by itself: call Move from a timer to shift the text left, then Repaint, and call Rewind when the text has left the area. SetString sets new text and rewinds. Default size is 200x32 with RasterLen 2.</p>
+<p>QLEDSCROLL inherits the properties, methods and events of <a href="qcanvas.html">QCANVAS</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QLEDSCROLL Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">TextColor</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Color of the text.</td></tr>
+<tr><td class="rq-name">BgColor</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Background color, also used for the raster lines.</td></tr>
+<tr><td class="rq-name">X</td><td class="rq-type">SINGLE</td><td>RW</td><td></td><td>Current horizontal position of the text (SINGLE); Move decreases it and Rewind resets it.</td></tr>
+<tr><td class="rq-name">Y</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Vertical position of the text.</td></tr>
+<tr><td class="rq-name">Text</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Text to display.</td></tr>
+<tr><td class="rq-name">Raster</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>When non-zero, a grid of lines in BgColor is drawn over the text.</td></tr>
+<tr><td class="rq-name">RasterLen</td><td class="rq-type">INTEGER</td><td>RW</td><td>2</td><td>Spacing of the raster lines in pixels (default 2).</td></tr>
+<tr><td class="rq-name">Font</td><td class="rq-type">QFONT</td><td>RW</td><td></td><td>A QFONT field; SetColor sets its Color, but the component code does not otherwise use it.</td></tr>
+</table>
+<a name="2"></a><h2>QLEDSCROLL Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Rewind</td><td class="rq-type">SUB</td><td>Sets X to Width + TextWidth(Text) + 1, which places the text to the right of the visible area.</td></tr>
+<tr><td class="rq-name">Paint</td><td class="rq-type">SUB</td><td>Draws the background, the text at X, Y and, if Raster is set, the grid. Also called from OnPaint.</td></tr>
+<tr><td class="rq-name">Repaint</td><td class="rq-type">SUB</td><td>Calls Paint.</td></tr>
+<tr><td class="rq-name">Move</td><td class="rq-type">SUB(p AS SINGLE)</td><td>Move(p) moves the text p pixels to the left (decreases X); it does not repaint.</td></tr>
+<tr><td class="rq-name">SetString</td><td class="rq-type">SUB(s$)</td><td>SetString(s$) sets Text and calls Rewind.</td></tr>
+<tr><td class="rq-name">SetColor</td><td class="rq-type">SUB(c AS LONG)</td><td>SetColor(c) sets TextColor and Font.Color.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>OnPaint</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>Rewind starts the text TextWidth(Text)+1 pixels beyond the right edge, so there is a delay before it appears.</li>
+<li>Move does not repaint and nothing rewinds the text automatically when it has scrolled out.</li>
+<li>The Font field is separate from what TextOut uses; text color comes from TextColor.</li>
+</ul>
+<a name="4"></a><h2>QLEDSCROLL Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QLedScroll.inc&quot;
+DECLARE SUB TmrTimer
+CREATE Form AS QFORM
+  Caption = &quot;LED&quot;
+  CREATE Led AS QLEDSCROLL
+    Left = 10: Top = 10
+    TextColor = &amp;H00FF00
+    BgColor = &amp;H000000
+    Raster = 1
+  END CREATE
+  CREATE Tmr AS QTIMER
+    Interval = 30
+    OnTimer = TmrTimer
+  END CREATE
+END CREATE
+SUB TmrTimer
+  Led.Move 2
+  IF Led.X &lt; -Led.TextWidth(Led.Text) THEN Led.Rewind
+  Led.Repaint
+END SUB
+Led.SetString &quot;Hello from RapidQ&quot;
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qled.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qline.html">Next component</a></div>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QTEXTBTN</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QTEXTBTN</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QTEXTBTN Component</h1>
+<p class="rq-meta">Extends <a href="qlabel.html">QLABEL</a> &middot; source: <code>inc/QTextBtn.inc</code>, line 18 &middot; version: 1.0</p>
+<p><b>A label that acts as a text-only button by changing its font color when pressed, with momentary, latching and toggle modes.</b></p>
+<p>QTextBtn extends QLabel. It is transparent and auto-sized, shows a hand cursor (Cursor = -21) and uses the font color to show its state: DownColor while pressed or down, UpColor when released.</p>
+<p>The component handles OnMouseDown and OnMouseUp itself. Mode 0 (default) is a normal push button: the color returns to UpColor on mouse up and Down becomes False. Mode 1 sets Down to True on mouse up and keeps the down color. Mode 2 is a toggle: each click switches Down between True and False and restores UpColor when it is switched off. Comments in the source are in French.</p>
+<p>QTEXTBTN inherits the properties, methods and events of <a href="qlabel.html">QLABEL</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QTextBtn Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">DownColor</td><td class="rq-type">LONG</td><td>RW</td><td>&amp;h0</td><td>Font color used while the button is pressed or down (default &amp;H0).</td></tr>
+<tr><td class="rq-name">UpColor</td><td class="rq-type">LONG</td><td>RW</td><td>&amp;h0</td><td>Font color of the released button. Assigning it stores the value and immediately sets the label&#x27;s font color to it (default &amp;H0).</td></tr>
+<tr><td class="rq-name">mode</td><td class="rq-type">SHORT</td><td>RW</td><td>0</td><td>Operating mode read by the mouse-up handler: 0 = push button, 1 = stays down after release, 2 = toggle on each click. Assigning it only stores the value.</td></tr>
+<tr><td class="rq-name">down</td><td class="rq-type">BOOLEAN</td><td>RW</td><td>false</td><td>True when the button is in the down state. Assigning it (only when the label is enabled) sets the state and changes the font color to DownColor or UpColor.</td></tr>
+<tr><td class="rq-name">enabled</td><td class="rq-type">BOOLEAN</td><td>RW</td><td></td><td>Declared with PROPERTY SET SetEnabled, but no SetEnabled setter exists in the type; SetDown checks the inherited Super.Enabled instead.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>OnMouseDown</code>, <code>OnMouseUp</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>Enabled is declared as &quot;enabled as boolean property set SetEnabled&quot; but the type defines no SetEnabled, so this declaration refers to a missing setter.</li>
+<li>The type uses its own OnMouseDown and OnMouseUp event handlers to drive the button state.</li>
+<li>The Mode values are not documented in the source; their meaning comes only from the OnMouseUp code.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/object/QTextBtn.inc</code> &mdash; identical copy (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QTextBtn Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>CREATE TxtBtn AS QTextBtn
+  Parent = Form
+  Caption = &quot;Bold&quot;
+  UpColor = &amp;H000000
+  DownColor = &amp;H0000FF
+  Mode = 2
+END CREATE</pre>
+<div class="rq-foot"><a href="c_qtbutton.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qtextedit.html">Next component</a></div>
+</body>
+</html>

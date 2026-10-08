@@ -1,0 +1,67 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QTEXTEDIT</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QTEXTEDIT</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QTEXTEDIT Component</h1>
+<p class="rq-meta">Extends <a href="qrichedit.html">QRICHEDIT</a> &middot; source: <code>inc/QTextEdit.inc</code>, line 19</p>
+<p><b>QRichEdit extension with a built-in Undo/Cut/Copy/Paste/Select All popup menu and extra editing methods (undo, text limit, replace selection, find).</b></p>
+<p>QTEXTEDIT adds a QPopupMenu with Undo, Cut, Copy, Paste and Select All items and shortcuts. Before the menu pops up, each item is enabled or disabled from the editor state: undo availability (EM_CANUNDO), current selection, clipboard text and editor text.</p>
+<p>The extra methods send edit-control messages to the window: Undo (EM_UNDO, &amp;HC7), Limit (EM_LIMITTEXT, &amp;HC5) and ReplaceSel (EM_REPLACESEL, &amp;HC2). Find searches the text with INSTR and selects the match. The menu captions can be changed for translation.</p>
+<p>At the end of the file, QRICHEDIT is redefined as QTEXTEDIT ($UNDEF/$DEFINE), so every QRICHEDIT declared after the include becomes a QTEXTEDIT.</p>
+<p>QTEXTEDIT inherits the properties, methods and events of <a href="qrichedit.html">QRICHEDIT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QTEXTEDIT Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">UsePopup</td><td class="rq-type">BOOLEAN</td><td>RW</td><td>1</td><td>Assigning it sets AutoPopup of the built-in menu (1 = show on right click, 0 = do not show); default 1.</td></tr>
+<tr><td class="rq-name">UndoCaption</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Assigning it changes the caption of the Undo menu item.</td></tr>
+<tr><td class="rq-name">CutCaption</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Assigning it changes the caption of the Cut menu item.</td></tr>
+<tr><td class="rq-name">CopyCaption</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Assigning it changes the caption of the Copy menu item.</td></tr>
+<tr><td class="rq-name">PasteCaption</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Assigning it changes the caption of the Paste menu item.</td></tr>
+<tr><td class="rq-name">SelectAllCaption</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Assigning it changes the caption of the Select All menu item.</td></tr>
+</table>
+<a name="2"></a><h2>QTEXTEDIT Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Undo</td><td class="rq-type">SUB</td><td>Undoes the last change (EM_UNDO).</td></tr>
+<tr><td class="rq-name">Cut</td><td class="rq-type">SUB</td><td>Cuts the selection to the clipboard.</td></tr>
+<tr><td class="rq-name">Copy</td><td class="rq-type">SUB</td><td>Copies the selection to the clipboard.</td></tr>
+<tr><td class="rq-name">Paste</td><td class="rq-type">SUB</td><td>Pastes from the clipboard.</td></tr>
+<tr><td class="rq-name">SelectAl</td><td class="rq-type">SUB</td><td>Selects all text (named SelectAl to avoid clashing with SelectAll).</td></tr>
+<tr><td class="rq-name">Limit</td><td class="rq-type">SUB(value as long)</td><td>Limit(value) sets the maximum number of characters the user can enter (EM_LIMITTEXT).</td></tr>
+<tr><td class="rq-name">ReplaceSel</td><td class="rq-type">SUB(text as string)</td><td>ReplaceSel(text) replaces the current selection with text; does nothing if nothing is selected.</td></tr>
+<tr><td class="rq-name">Find</td><td class="rq-type">FUNCTION(start as long,text as string,case as boolean) AS LONG</td><td>Find(start, text, case) searches from the 1-based position start, case sensitive if case is True; selects the match and returns its 1-based position, or 0 if not found.</td></tr>
+<tr><td class="rq-name">LinesScroll</td><td class="rq-type">SUB(number as long)</td><td>LinesScroll(number) moves the cursor to the start of the given 1-based line, counting 2 characters for each line break.</td></tr>
+<tr><td class="rq-name">CanUndo</td><td class="rq-type">FUNCTION AS BOOLEAN</td><td>Returns nonzero if the last change can be undone (EM_CANUNDO).</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>MaxMenu.OnPopup</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>The include redefines QRICHEDIT as QTEXTEDIT for all code that follows it.</li>
+<li>The caption and UsePopup setters do not store the assigned value in the property field, so reading these properties does not return what was assigned.</li>
+<li>LinesScroll assumes every line ends with a 2-character CR+LF.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/QTextEditTest.inc</code> &mdash; older version (moved; the reason is in COMPONENTS.md).</li>
+<li><code>inc/old/object/QTextEdit.inc</code> &mdash; identical copy (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QTEXTEDIT Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QTextEdit.inc&quot;
+DIM Form AS QFORM
+DIM Edit AS QTEXTEDIT
+Edit.Parent = Form
+Edit.Align = 5
+Edit.UndoCaption = &quot;&amp;Annuler&quot;
+Edit.Limit(10000)
+IF Edit.Find(1, &quot;hello&quot;, 0) THEN Edit.ReplaceSel(&quot;world&quot;)
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qtextbtn.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qtoolbar.html">Next component</a></div>
+</body>
+</html>

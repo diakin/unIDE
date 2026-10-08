@@ -1,0 +1,73 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QMAXSPLITTER</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QMAXSPLITTER</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QMAXSPLITTER Component</h1>
+<p class="rq-meta">Extends <a href="qpanel.html">QPANEL</a> &middot; source: <code>inc/QMaxSplitter.inc</code>, line 75 &middot; author: Psyclops</p>
+<p><b>Splitter control based on QPANEL that emulates the Delphi 6 splitter styles: dragging it resizes the neighboring aligned control.</b></p>
+<p>QMAXSPLITTER is a thin aligned panel (default 5 x 5, Align = 1, cursor -15). Shortly after it becomes visible, an internal timer finds its parent window (Owner) and the control just outside it on its aligned side (Mover) with ChildWindowFromPoint. While the mouse is dragged, an 8 x 8 pattern brush bar is drawn on the screen with PatBlt and PATINVERT; when the button is released, the Mover is resized with MoveWindow and the parent receives WM_SIZE. With Style = 3 the Mover is resized continuously during the drag.</p>
+<p>Place it after the control to resize, with the same Align (1 top, 2 bottom, 3 left, 4 right). The author&#x27;s header notes that it is based on a QPanel rather than a QCanvas to get a window handle and better drawing and aligning. Style constants: rsNone (0), rsSolid (1), rsPattern (2), rsUpdate (3).</p>
+<p>QMAXSPLITTER inherits the properties, methods and events of <a href="qpanel.html">QPANEL</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QMAXSPLITTER Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr class="rq-internal"><td class="rq-name">Owner</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Internal: window handle of the parent, found by the timer.</td></tr>
+<tr class="rq-internal"><td class="rq-name">Tmr</td><td class="rq-type">QTIMER</td><td>RW</td><td></td><td>Internal: QTIMER (1 ms) that, once the splitter is visible, finds Owner and Mover and then disables itself.</td></tr>
+<tr><td class="rq-name">MinSize</td><td class="rq-type">LONG</td><td>RW</td><td>30</td><td>Minimum distance in pixels from the parent&#x27;s edge that the splitter can be dragged to. Default 30.</td></tr>
+<tr><td class="rq-name">Beveled</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Assigning stores the value, shows or hides the Canvas and repaints it; when shown, three-line 3D edges are drawn on both long sides. Default 0.</td></tr>
+<tr class="rq-internal"><td class="rq-name">Mover</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Internal: window handle of the control that is resized, found next to the splitter on its aligned side.</td></tr>
+<tr class="rq-internal"><td class="rq-name">MoverRect</td><td class="rq-type">QRECT</td><td>RW</td><td></td><td>Internal: client rectangle of Mover used while resizing it.</td></tr>
+<tr><td class="rq-name">Style</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Assigning sets the drag bar pattern and stores the value: 1 (rsSolid) a solid pattern, 2 (rsPattern, default) a checkered pattern, 0 (rsNone) and 3 (rsUpdate) an empty pattern. With 3 the neighboring control is also resized during the drag.</td></tr>
+<tr class="rq-internal"><td class="rq-name">Pattern</td><td class="rq-type">ARRAY(7) OF WORD</td><td>RW</td><td></td><td>Internal: the eight WORDs of the 8 x 8 monochrome pattern for the drag bar, set by Style.</td></tr>
+<tr><td class="rq-name">Canvas</td><td class="rq-type">QCANVAS</td><td>RW</td><td></td><td>QCANVAS filling the splitter. It receives the mouse events and, when Beveled is set, draws the bevel lines.</td></tr>
+</table>
+<a name="2"></a><h2>QMAXSPLITTER Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr class="rq-internal"><td class="rq-name">MoveChild</td><td class="rq-type">SUB(Where AS POINTAPI)</td><td>Internal: MoveChild(Where AS POINTAPI) resizes Mover to the given screen position and sends WM_SIZE to Owner.</td></tr>
+<tr class="rq-internal"><td class="rq-name">DrawSplitter</td><td class="rq-type">SUB(Split AS POINTAPI)</td><td>Internal: DrawSplitter(Split AS POINTAPI) draws or erases the drag bar on the screen at the given position (XOR with PATINVERT).</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>Canvas.OnMouseDown</code>, <code>Canvas.OnMouseMove</code>, <code>Canvas.OnMouseUp</code>, <code>Canvas.OnPaint</code>, <code>Tmr.OnTimer</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>Known issue from the header: if the mouse moves too fast it leaves the splitter behind; SetCapture did not solve it.</li>
+<li>Known issue from the header: setting MinSize to 0 sometimes causes resizing problems.</li>
+<li>Known issue from the header: the creation order of aligned controls and the order in which properties are assigned to sibling windows matter; in the author&#x27;s demo (Rich3 and Split3, not included) the problem goes away when Rich3 is created after Split3.</li>
+<li>Canvas.OnMouseMove calls GetClientRect(.Owner, R) with an undeclared R, while the limits and MoveChild use the global Rect1, which is never filled.</li>
+<li>Moving, SplitPos, OldSplitPos, OldWhere, Org and Rect1 are global variables shared by all splitters.</li>
+<li>The global variables of type POINTAPI are declared before the POINTAPI type, which is defined only inside $IFNDEF __WIN32API.</li>
+<li>The header apologizes for the lack of comments.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/QMaxSplitter.inc.txt</code> &mdash; identical copy (moved; the reason is in COMPONENTS.md).</li>
+<li><code>inc/old/QSplitter.inc</code> &mdash; older version (moved; the reason is in COMPONENTS.md).</li>
+<li><code>inc/old/QSplitter.inc.txt</code> &mdash; identical copy (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QMAXSPLITTER Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QMaxSplitter.inc&quot;
+CREATE Form AS QFORM
+  Width = 500
+  Height = 350
+  CREATE LeftPanel AS QPANEL
+    Align = 3
+    Width = 150
+  END CREATE
+END CREATE
+DIM Split AS QMAXSPLITTER
+Split.Parent = Form
+Split.Align = 3
+Split.Style = 1
+Split.Beveled = 1
+Split.MinSize = 50
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qmaxedit_ultrariched.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qmd2model.html">Next component</a></div>
+</body>
+</html>

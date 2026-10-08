@@ -1,0 +1,55 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QDIGDISPLAY</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QDIGDISPLAY</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QDIGDISPLAY Component</h1>
+<p class="rq-meta">Extends <a href="qcanvas.html">QCANVAS</a> &middot; source: <code>inc/QDigDisplay.inc</code>, line 8 &middot; author: Peter Molloy &middot; version: 1.00 &middot; date: 13 April 2001</p>
+<p><b>A canvas that shows a text string as digital display characters drawn from bitmap files.</b></p>
+<p>QDigDisplay extends QCanvas. The constructor loads 33 bitmaps, 32.bmp to 64.bmp, into a private QImageList of 12 x 24 pixel images; each file is the image of the character with that ASCII code (space to @, including the digits and the colon).</p>
+<p>Set Display to the text to show. On each paint, DrawDisplay sizes the canvas to the image height and to the image width times the text length, then draws one image per character.</p>
+<p>QDIGDISPLAY inherits the properties, methods and events of <a href="qcanvas.html">QCANVAS</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>Bitmap files 32.bmp to 64.bmp (12 x 24 pixels, one per character), loaded from the current folder</li>
+</ul>
+<a name="1"></a><h2>QDigDisplay Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Left</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Declared as a LONG field of the type; DrawDisplay uses it as the X offset of the first character inside the canvas.</td></tr>
+<tr><td class="rq-name">Top</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Declared as a LONG field of the type; DrawDisplay uses it as the Y offset of the characters inside the canvas.</td></tr>
+<tr><td class="rq-name">Width</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Declared as a LONG field of the type; DrawDisplay sets it to the image width times the length of Display.</td></tr>
+<tr><td class="rq-name">Height</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Declared as a LONG field of the type; DrawDisplay sets it to the image height (24).</td></tr>
+<tr><td class="rq-name">Display</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;0&quot;</td><td>Text to show (default &quot;0&quot;). Only characters with ASCII codes 32 to 64 have images.</td></tr>
+</table>
+<a name="2"></a><h2>QDigDisplay Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">DrawDisplay</td><td class="rq-type">SUB</td><td>Resizes the canvas to fit Display and draws its characters; called from OnPaint.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>OnPaint</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>The 33 bitmap files are loaded by relative file name, so they must be in the current folder at run time.</li>
+<li>Characters outside ASCII 32 to 64 (for example letters) give an image index outside the loaded list.</li>
+<li>Left, Top, Width and Height are redeclared as plain LONG fields in the type, which may hide the QCanvas properties of the same names.</li>
+</ul>
+<a name="4"></a><h2>QDigDisplay Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QDigDisplay.inc&quot;
+CREATE Form AS QFORM
+  Width = 200
+  Height = 100
+  CREATE Clock AS QDigDisplay
+    Display = &quot;12:45&quot;
+  END CREATE
+END CREATE
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qdfpanel.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qdir.html">Next component</a></div>
+</body>
+</html>

@@ -1,0 +1,52 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QBUTTONXP</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QBUTTONXP</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QBUTTONXP Component</h1>
+<p class="rq-meta">Extends <a href="qbutton.html">QBUTTON</a> &middot; source: <code>inc/QButtonXP.INC</code>, line 13 &middot; author: Nicolas Tillet, modified by Nastase Eodor &middot; date: 10/2003, modified 6/2005</p>
+<p><b>A QButton that resets its window style so it can be drawn with Windows XP visual styles when used together with QXPTheme.inc.</b></p>
+<p>Assigning Xp calls SetWindowLongA with GWL_STYLE (-16) and the style &amp;H54010010 plus the button&#x27;s Default value, then hides and shows the button to repaint it. The constructor sets Xp = 3, so the style is applied when the button is created. SetFocus gives the keyboard focus to the button with the SetFocus API.</p>
+<p>The header note says to use it together with QXPTheme.inc for the effect.</p>
+<p>QBUTTONXP inherits the properties, methods and events of <a href="qbutton.html">QBUTTON</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>QXPTheme.inc (named in the header note as required for the effect)</li>
+</ul>
+<a name="1"></a><h2>QButtonXP Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Xp</td><td class="rq-type">INTEGER</td><td>RW</td><td>3</td><td>Assigning any value stores it and resets the button window style to &amp;H54010010 + Default, then repaints the button; the stored value is not used otherwise.</td></tr>
+</table>
+<a name="2"></a><h2>QButtonXP Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">SetFocus</td><td class="rq-type">SUB</td><td>Gives the keyboard focus to the button (SetFocus API).</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>The check that skips the update when the value has not changed is commented out, so every assignment resets the style and repaints.</li>
+<li>The constructor contains commented-out settings (BevelWidth, BorderColor, CaptionColor, LunaDetect, Canvas) that do nothing.</li>
+</ul>
+<a name="4"></a><h2>QButtonXP Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QXPTheme.inc&quot;
+$INCLUDE &quot;QButtonXP.INC&quot;
+
+CREATE Form AS QFORM
+  CREATE Btn AS QBUTTONXP
+    Left = 10
+    Top = 10
+    Caption = &quot;OK&quot;
+  END CREATE
+END CREATE
+Btn.SetFocus
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qbrowsedialog.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qcalendar.html">Next component</a></div>
+</body>
+</html>

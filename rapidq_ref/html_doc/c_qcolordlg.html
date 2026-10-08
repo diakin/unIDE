@@ -1,0 +1,61 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QCOLORDLG</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QCOLORDLG</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QCOLORDLG Component</h1>
+<p class="rq-meta">Extends <a href="qform.html">QFORM</a> &middot; source: <code>inc/RapidFRM.inc</code>, line 92 &middot; author: D. Glodt (original version)</p>
+<p><b>QColorDlg is a color selection dialog wrapping the Windows ChooseColor dialog, with selectable style, screen position, caption and custom colors.</b></p>
+<p>The file comments describe it as a bug-fixed version of the QCOLORDIALOG component of RapidQ2.inc, originally by D. Glodt. Execute fills a CHOOSECOLOR structure (owner Application.Handle, initial Color, the 16 custom Colors, a hook procedure) and calls ChooseColorDlg. The hook handles WM_INITDIALOG to move the dialog to Left and Top (or center it when they are negative) and set the caption.</p>
+<p>Style chooses the dialog form: cdNormal (compact but expandable, default), cdFullOpen (custom-color part open) or cdNoFullOpen (compact, no custom-color part). The custom colors are written back to Colors on exit. RapidFRM.inc also contains other helpers of the RapidFRM program (a mouse hook, QTabControl functions, QOvalBtn code and component $DEFINEs) that are not part of this component.</p>
+<p>QCOLORDLG inherits the properties, methods and events of <a href="qform.html">QFORM</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>Declarations from rapidq2.inc or an equivalent Windows API include: CHOOSECOLOR type, ChooseColorDlg, CC_RGBINIT, CC_SHOWHELP, CC_ENABLEHOOK, CC_FULLOPEN, CC_PREVENTFULLOPEN, WM_INITDIALOG, GetWindowRect, MoveWindow, SetWindowText</li>
+</ul>
+<a name="1"></a><h2>QColorDlg Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Width</td><td class="rq-type">LONG</td><td>RW</td><td>CC_WIDTH_STD</td><td>Read-only (its setter is empty, assigning has no effect): the nominal dialog width, 225 for compact styles or 460 for cdFullOpen, updated when Style is set. Execute does not use it.</td></tr>
+<tr><td class="rq-name">Height</td><td class="rq-type">LONG</td><td>RW</td><td>CC_HEIGHT</td><td>Read-only (its setter is empty, assigning has no effect): the nominal dialog height, 335. Execute does not use it.</td></tr>
+<tr><td class="rq-name">Style</td><td class="rq-type">LONG</td><td>RW</td><td>cdNormal</td><td>Dialog style: cdNormal (0), cdFullOpen (1) or cdNoFullOpen (2). Assigning it stores the value and sets Width to the matching width; Execute adds CC_FULLOPEN or CC_PREVENTFULLOPEN accordingly.</td></tr>
+<tr><td class="rq-name">Left</td><td class="rq-type">LONG</td><td>RW</td><td>-1</td><td>Screen X position of the dialog; a negative value (default -1) centers it horizontally.</td></tr>
+<tr><td class="rq-name">Top</td><td class="rq-type">LONG</td><td>RW</td><td>-1</td><td>Screen Y position of the dialog; a negative value (default -1) centers it vertically.</td></tr>
+<tr><td class="rq-name">Caption</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;&quot;</td><td>Dialog title; when empty the system default caption is kept.</td></tr>
+<tr><td class="rq-name">Color</td><td class="rq-type">LONG</td><td>RW</td><td>0</td><td>Initial color shown when Execute is called, and the selected color after the user presses OK.</td></tr>
+<tr><td class="rq-name">Colors</td><td class="rq-type">ARRAY(1 TO 16) OF LONG</td><td>RW</td><td></td><td>Array (1 to 16) of custom colors passed to the dialog and updated when it closes; all set to light grey (&amp;HC0C0C0) by the constructor.</td></tr>
+<tr><td class="rq-name">WindowHandle</td><td class="rq-type">LONG</td><td>RW</td><td>0</td><td>Not used; the comment says &quot;Not used ATT&quot;.</td></tr>
+</table>
+<a name="2"></a><h2>QColorDlg Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Execute</td><td class="rq-type">FUNCTION AS INTEGER</td><td>Shows the color dialog; returns True and updates Color when the user presses OK, otherwise returns False.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>Width, Height and WindowHandle have no effect on the dialog; the comment marks WindowHandle as not used.</li>
+<li>Execute always sets CC_SHOWHELP, so the dialog shows a Help button; the file contains no code handling it.</li>
+<li>The hook moves the window with a width and height one pixel larger than its current rectangle (Right - Left + 1).</li>
+<li>The comment says focus is captured until the dialog is closed and only one instance should be used.</li>
+</ul>
+<a name="4"></a><h2>QColorDlg Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;RapidQ2.inc&quot;
+$INCLUDE &quot;RapidFRM.inc&quot;
+DIM ColorDlg AS QColorDlg
+CREATE Form AS QFORM
+  Caption = &quot;Color test&quot;
+END CREATE
+ColorDlg.Style = cdFullOpen
+ColorDlg.Caption = &quot;Pick a color&quot;
+ColorDlg.Color = Form.Color
+IF ColorDlg.Execute THEN Form.Color = ColorDlg.Color
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qcolordialog_qcolordialog.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qcoolbarxp.html">Next component</a></div>
+</body>
+</html>

@@ -1,0 +1,81 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QDATABASE</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QDATABASE</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QDATABASE Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QDataBase.inc</code>, line 31 &middot; version: 1.0</p>
+<p><b>A non-visual component for a simple flat-file database of fixed-size text records, with field lookup and search functions.</b></p>
+<p>QDataBase stores records in one file. The file starts with a 16-byte header (the record count and the length of the format string, each as an 8-character string), followed by the record format string and then the records, each RecordSize bytes long. The record format is a comma-separated list of name:size entries, for example &quot;Name:20,City:15,Age:3&quot;; RecordSize is the sum of the sizes.</p>
+<p>Create makes a new database file, Open reads an existing one and Close only clears the in-memory state. Every record operation opens the file with a QFileStream, does its work and closes it again. Records are numbered from 1 and can be passed as strings of exactly RecordSize characters, or as a pointer to a user-defined type (the ...Udt methods copy RecordSize bytes through a QMemoryStream).</p>
+<p>The search methods (SearchByRecord, SearchByField, SearchByRequest) scan all records and fire OnSearch once for each matching record index. Methods return True on success; on failure the Error property holds one of the constants ErrDbCreate (1), ErrDbOpen (2), ErrDbFile (3), ErrDbIndex (4), ErrDbRecordEmpty (5) or ErrDbRecordSize (6).</p>
+<p>QDATABASE inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QDataBase Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">FileName</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Name of the open database file, set by Create and Open and cleared by Close. Read-only: the property setter is empty (commented &#x27;read only&#x27;), so assigning it from user code does nothing.</td></tr>
+<tr><td class="rq-name">RecordSize</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Size of one record in bytes (sum of the field sizes in the record format). Read-only: the property setter is empty (commented &#x27;read only&#x27;), so assigning it from user code does nothing.</td></tr>
+<tr><td class="rq-name">RecordCount</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Number of records in the database. Read-only: the property setter is empty (commented &#x27;read only&#x27;), so assigning it from user code does nothing.</td></tr>
+<tr><td class="rq-name">FieldCount</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Number of fields in the record format. Read-only: the property setter is empty (commented &#x27;read only&#x27;), so assigning it from user code does nothing.</td></tr>
+<tr><td class="rq-name">Error</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Error code of the last operation: 0 on success, otherwise ErrDbCreate, ErrDbOpen, ErrDbFile, ErrDbIndex, ErrDbRecordEmpty or ErrDbRecordSize. Read-only: the property setter is empty (commented &#x27;read only&#x27;), so assigning it from user code does nothing.</td></tr>
+</table>
+<a name="2"></a><h2>QDataBase Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">GetFieldName</td><td class="rq-type">FUNCTION(index as long) AS STRING</td><td>GetFieldName(index) returns the name of field number index (from 1), or an empty string if the index is out of range.</td></tr>
+<tr><td class="rq-name">GetFieldIndex</td><td class="rq-type">FUNCTION(name as string) AS LONG</td><td>GetFieldIndex(name) returns the number of the field whose format entry contains name (case-insensitive substring match; the last match wins), or 0 if none.</td></tr>
+<tr><td class="rq-name">GetFieldSize</td><td class="rq-type">FUNCTION(index as long) AS LONG</td><td>GetFieldSize(index) returns the size in bytes of field number index, or 0 if the index is out of range.</td></tr>
+<tr><td class="rq-name">IsOpen</td><td class="rq-type">FUNCTION AS BOOLEAN</td><td>Returns True if FileName is not empty and the file exists.</td></tr>
+<tr><td class="rq-name">Create</td><td class="rq-type">FUNCTION(FileName as string,RecordFormat as string) AS BOOLEAN</td><td>Create(FileName, RecordFormat) creates (overwrites) a database file with an empty record list and the given name:size,... format, and makes it the current database. Returns False with ErrDbRecordEmpty for an empty format or ErrDbCreate if the file cannot be created.</td></tr>
+<tr><td class="rq-name">Open</td><td class="rq-type">FUNCTION(FileName as string) AS BOOLEAN</td><td>Open(FileName) reads the header and record format of an existing database and makes it current. Returns False with ErrDbFile if the file does not exist or ErrDbOpen if it cannot be opened.</td></tr>
+<tr><td class="rq-name">Close</td><td class="rq-type">SUB</td><td>Clears the current database state (FileName, counts, format, sizes, Error). No file is held open, so nothing is written.</td></tr>
+<tr><td class="rq-name">AddRecord</td><td class="rq-type">FUNCTION(record as string) AS BOOLEAN</td><td>AddRecord(record) appends a record string that must be exactly RecordSize characters long and updates the record count in the header. Returns False with ErrDbOpen, ErrDbRecordEmpty or ErrDbRecordSize on error.</td></tr>
+<tr><td class="rq-name">AddRecordUdt</td><td class="rq-type">FUNCTION(record as long) AS BOOLEAN</td><td>AddRecordUdt(record) appends a record copied from the memory address record (for example VARPTR of a user-defined type), RecordSize bytes long. Returns False if the database is not open or the address is 0.</td></tr>
+<tr><td class="rq-name">SaveRecord</td><td class="rq-type">FUNCTION(index as long,record as string) AS BOOLEAN</td><td>SaveRecord(index, record) overwrites record number index with a string of exactly RecordSize characters. Returns False with ErrDbIndex if index is out of range.</td></tr>
+<tr><td class="rq-name">SaveRecordUdt</td><td class="rq-type">FUNCTION(index as long,record as long) AS BOOLEAN</td><td>SaveRecordUdt(index, record) overwrites record number index with RecordSize bytes copied from the memory address record.</td></tr>
+<tr><td class="rq-name">GetRecord</td><td class="rq-type">FUNCTION(index as long,byref record as string) AS BOOLEAN</td><td>GetRecord(index, record) reads record number index into the string variable record (passed BYREF). Returns False with ErrDbIndex if index is out of range.</td></tr>
+<tr><td class="rq-name">GetRecordUdt</td><td class="rq-type">FUNCTION(index as long,record as long) AS BOOLEAN</td><td>GetRecordUdt(index, record) reads record number index and copies its RecordSize bytes to the memory address record (for example VARPTR of a user-defined type).</td></tr>
+<tr><td class="rq-name">DelRecord</td><td class="rq-type">FUNCTION(index as long) AS BOOLEAN</td><td>DelRecord(index) removes record number index by rewriting the whole file without it, and decrements RecordCount.</td></tr>
+<tr><td class="rq-name">SearchByRecord</td><td class="rq-type">FUNCTION(name as string) AS BOOLEAN</td><td>SearchByRecord(name) searches every whole record for the text name (case-insensitive) and fires OnSearch for each match. Returns True if at least one record matched.</td></tr>
+<tr><td class="rq-name">SearchByField</td><td class="rq-type">FUNCTION(name as string,fieldIndex as long) AS BOOLEAN</td><td>SearchByField(name, fieldIndex) searches only the given field of every record for the text name (case-insensitive) and fires OnSearch for each match. Returns True if at least one record matched.</td></tr>
+<tr><td class="rq-name">SearchByRequest</td><td class="rq-type">FUNCTION(operator as string,value as string,bNum as boolean,fieldIndex as long) AS BOOLEAN</td><td>SearchByRequest(operator, value, bNum, fieldIndex) compares the trimmed field fieldIndex of each record with value using one of the operators &lt;, &gt;, =, &lt;=, &gt;=, &lt;&gt;; when bNum is True the comparison is numeric (VAL), otherwise it is a string comparison. Fires OnSearch for each match and returns True if any matched.</td></tr>
+</table>
+<a name="3"></a><h2>QDataBase Events</h2>
+<table class="rq-ref">
+<tr><th>Event</th><th>Type</th><th>Occurs when...</th></tr>
+<tr><td class="rq-name">OnSearch</td><td class="rq-type">SUB(index as long)</td><td>Event OnSearch(index AS LONG) fired by the search methods once for each matching record number.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>GetRecord and GetRecordUdt are opened with FUNCTION but closed with END SUB.</li>
+<li>GetFieldCount only counts fields when the format contains a comma, so a format with a single field gives FieldCount 0 and GetFieldName/GetFieldSize then return nothing.</li>
+<li>SearchByField and SearchByRequest compute the field offset starting at 0 (sum of the previous field sizes) but pass it to MID$, whose positions start at 1, so the extracted field text starts one character early.</li>
+<li>GetFieldIndex matches name as a substring of the whole name:size entry, so a short name can match a longer field name or a size.</li>
+<li>IsOpen only checks that FileName is set and the file exists; the file is not kept open between calls.</li>
+<li>The ...Udt methods trust the caller: they copy RecordSize bytes from or to the given address without checking the size of the type.</li>
+<li>The source comments are in French.</li>
+</ul>
+<a name="4"></a><h2>QDataBase Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QDataBase.inc&quot;
+DIM Db AS QDataBase
+DIM rec AS STRING
+
+SUB Found(index AS LONG)
+  Db.GetRecord(index, rec)
+  PRINT index, rec
+END SUB
+
+Db.OnSearch = Found
+IF Db.Create(&quot;people.db&quot;, &quot;Name:20,City:15&quot;) THEN
+  Db.AddRecord(LEFT$(&quot;John&quot; + SPACE$(20), 20) + LEFT$(&quot;Paris&quot; + SPACE$(15), 15))
+  Db.SearchByField(&quot;paris&quot;, 2)
+END IF</pre>
+<div class="rq-foot"><a href="c_qd3dprimitive.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qdatabase_qdatabasesql.html">Next component</a></div>
+</body>
+</html>

@@ -1,0 +1,48 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QRPANEL</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QRPANEL</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QRPANEL Component</h1>
+<p class="rq-meta">Extends <a href="qpanel.html">QPANEL</a> &middot; source: <code>inc/QrPanel.inc</code>, line 17 &middot; date: 1st of April 2004</p>
+<p><b>A QPanel with rounded corners, made by applying a rounded-rectangle window region.</b></p>
+<p>QrPanel is described in its header as a sister component to QRFORM. Assigning rBorder = 1 creates a rounded-rectangle region with CreateRoundRectRgn from the panel&#x27;s current Width and Height and the corner sizes RndX and RndY, and applies it with SetWindowRgn.</p>
+<p>RndX and RndY control how round the corners are (default 20); per the comments, values large enough make a completely round panel. Set the size and RndX/RndY first, then assign rBorder.</p>
+<p>QRPANEL inherits the properties, methods and events of <a href="qpanel.html">QPANEL</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QrPanel Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">RndX</td><td class="rq-type">LONG</td><td>RW</td><td>20</td><td>Width of the ellipse used for the rounded corners (default 20). Used the next time rBorder is assigned.</td></tr>
+<tr><td class="rq-name">RndY</td><td class="rq-type">LONG</td><td>RW</td><td>20</td><td>Height of the ellipse used for the rounded corners (default 20). Used the next time rBorder is assigned.</td></tr>
+<tr><td class="rq-name">rBorder</td><td class="rq-type">BYTE</td><td>RW</td><td>0</td><td>Assigning a value greater than 0 rounds the panel corners by applying a rounded-rectangle region built from the current Width, Height, RndX and RndY; assigning 0 only stores the value.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>The region is computed once from the size at the time rBorder is assigned; resizing the panel later does not update it.</li>
+<li>Assigning rBorder = 0 does not remove an existing region.</li>
+<li>DeleteObject is declared but not used.</li>
+</ul>
+<a name="4"></a><h2>QrPanel Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QrPanel.inc&quot;
+CREATE Form AS QFORM
+  Caption = &quot;Rounded panel&quot;
+END CREATE
+DIM Panel AS QrPanel
+Panel.Parent = Form
+Panel.Left = 20
+Panel.Top = 20
+Panel.Width = 150
+Panel.Height = 100
+Panel.RndX = 30
+Panel.RndY = 30
+Panel.rBorder = 1
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qrichedit_xt.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qrun.html">Next component</a></div>
+</body>
+</html>

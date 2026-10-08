@@ -1,0 +1,52 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QBROWSEDIALOG</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QBROWSEDIALOG</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QBROWSEDIALOG Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QBrowseDialog.inc</code>, line 55 &middot; author: Psyclops</p>
+<p><b>QBROWSEDIALOG shows the Windows &quot;Browse for folder&quot; dialog and returns the selected folder.</b></p>
+<p>The header describes it as easier to use than QDirTree when only a folder name is needed. Like QOpenDialog it is created with DIM or CREATE and shown with Execute, which returns 1 when the user presses OK and 0 on Cancel or close.</p>
+<p>Execute calls SHBrowseForFolder from shell32 with a BROWSEINFO structure and converts the result with SHGetPathFromIDList, freeing it with CoTaskMemFree. The callback BrowseHook centers the dialog, selects InitialDir and sets Caption. Virtual folders such as the Recycle Bin or Fonts can be chosen too, but only their display name is returned, not a usable path.</p>
+<p>QBROWSEDIALOG inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>MAX_PATH constant defined elsewhere, for example in WINDOWS.INC or WIN32API.INC (its CONST is commented out in this file)</li>
+</ul>
+<a name="1"></a><h2>QBROWSEDIALOG Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Caption</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Text for the dialog&#x27;s title bar; when empty the default (&quot;Browse for folder&quot;) is kept.</td></tr>
+<tr><td class="rq-name">Title</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Text shown above the folder tree.</td></tr>
+<tr><td class="rq-name">InitialDir</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Folder highlighted when the dialog opens.</td></tr>
+<tr><td class="rq-name">Directory</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Selected folder after Execute returns 1; for a virtual folder it holds only the folder&#x27;s display name.</td></tr>
+<tr><td class="rq-name">X</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Purpose not clear from the source; the field is never used.</td></tr>
+</table>
+<a name="2"></a><h2>QBROWSEDIALOG Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr class="rq-internal"><td class="rq-name">BrowseHook</td><td class="rq-type">FUNCTION(hWnd AS LONG, uMsg AS LONG, lParam AS LONG, lpData AS LONG) AS LONG</td><td>Internal: callback passed to SHBrowseForFolder; on initialization it centers the dialog, selects InitialDir and sets Caption.</td></tr>
+<tr><td class="rq-name">Execute</td><td class="rq-type">FUNCTION AS LONG</td><td>Shows the dialog; returns 1 and sets Directory when the user presses OK, 0 when the dialog is cancelled or closed.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>Execute appends CHR$(0) to InitialDir every time it is called, so the property grows with repeated calls.</li>
+<li>ulFlags of BROWSEINFO is never set, so the defined BIF_RETURNONLYFSDIRS constant is not used and virtual folders can be selected.</li>
+<li>The MAX_PATH constant is commented out and must come from another include.</li>
+</ul>
+<a name="4"></a><h2>QBROWSEDIALOG Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QBrowseDialog.inc&quot;
+DIM Browse AS QBROWSEDIALOG
+Browse.Caption = &quot;Select folder&quot;
+Browse.Title = &quot;Choose the output folder:&quot;
+Browse.InitialDir = &quot;C:\&quot;
+IF Browse.Execute THEN ShowMessage Browse.Directory</pre>
+<div class="rq-foot"><a href="c_qbitmapex.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qbuttonxp.html">Next component</a></div>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QHEAD</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QHEAD</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QHEAD Component</h1>
+<p class="rq-meta">Extends <a href="qcanvas.html">QCANVAS</a> &middot; source: <code>inc/QHead.inc</code>, line 1</p>
+<p><b>Header bar drawn on a QCanvas, aligned to the top of its parent, with left and right caption texts, an optional icon and a color gradient line.</b></p>
+<p>QHead paints itself in OnPaint with DrawComponent. It fills the background with Color, draws a 2-pixel line under the caption whose color changes by Increment from StartColor toward EndColor every 3 pixels, and draws LeftText and RightText with a grey shadow and white text. If ShowIcon is set, the Icon bitmap is drawn (transparent) at IconX, IconY, or under the caption line when AutoCenter is set.</p>
+<p>DrawComponent always sets Align to 1 (top) and gives CaptionSize, CaptionX and CaptionY default values when they are 0. Most property setters store the value and redraw.</p>
+<p>QHEAD inherits the properties, methods and events of <a href="qcanvas.html">QCANVAS</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QHead Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Icon</td><td class="rq-type">QBITMAP</td><td>RW</td><td></td><td>QBitmap drawn as the icon when ShowIcon is set.</td></tr>
+<tr><td class="rq-name">AutoCenter</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>When nonzero, the icon is drawn just below the caption line instead of at IconY.</td></tr>
+<tr><td class="rq-name">IconX</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>X position of the icon.</td></tr>
+<tr><td class="rq-name">IconY</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Y position of the icon (when AutoCenter is 0).</td></tr>
+<tr><td class="rq-name">CaptionX</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Horizontal margin of the texts (12 if 0).</td></tr>
+<tr><td class="rq-name">CaptionY</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Vertical position of the texts (4 if 0).</td></tr>
+<tr><td class="rq-name">StartColor</td><td class="rq-type">INTEGER</td><td>RW</td><td>&amp;H000044</td><td>Start color of the gradient line; assigning it redraws the header (default &amp;H000044).</td></tr>
+<tr><td class="rq-name">EndColor</td><td class="rq-type">INTEGER</td><td>RW</td><td>&amp;H0000FF</td><td>Target color of the gradient line; assigning it redraws the header (default &amp;H0000FF).</td></tr>
+<tr><td class="rq-name">Increment</td><td class="rq-type">INTEGER</td><td>RW</td><td>&amp;H0000001</td><td>Color step added every 3 pixels of the gradient line; assigning it redraws the header (default 1).</td></tr>
+<tr><td class="rq-name">LeftText</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;QHead&quot;</td><td>Text drawn on the left; assigning it redraws the header (default &quot;QHead&quot;).</td></tr>
+<tr><td class="rq-name">RightText</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;Test Component&quot;</td><td>Text drawn on the right; assigning it redraws the header (default &quot;Test Component&quot;).</td></tr>
+<tr><td class="rq-name">CaptionSize</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Font size of the texts (12 if 0); assigning it redraws the header.</td></tr>
+<tr><td class="rq-name">ShowLeftText</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>When nonzero, LeftText is drawn; assigning it redraws the header.</td></tr>
+<tr><td class="rq-name">ShowRightText</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>When nonzero, RightText is drawn; assigning it redraws the header.</td></tr>
+<tr><td class="rq-name">ShowIcon</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>When nonzero, the icon is drawn and LeftText is moved right of it; assigning it redraws the header.</td></tr>
+</table>
+<a name="2"></a><h2>QHead Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">DrawComponent</td><td class="rq-type">SUB</td><td>Paints the whole header; called from OnPaint and from the property setters.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>OnPaint</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>The setter names are swapped: ShowLeftText uses SetShowRightText and ShowRightText uses SetShowLeftText, but each setter writes the matching field, so the result is correct.</li>
+<li>With ShowIcon on, the white LeftText is offset by IconY instead of IconX, so the text and its shadow can be misaligned.</li>
+<li>Align is forced to 1 (top) on every redraw.</li>
+<li>Once the gradient color reaches EndColor it moves back and forth around it by Increment.</li>
+</ul>
+<a name="4"></a><h2>QHead Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>DIM Form AS QFORM
+DIM Head AS QHead
+Head.Parent = Form
+Head.Height = 40
+Head.LeftText = &quot;Settings&quot;
+Head.RightText = &quot;v1.0&quot;
+Head.ShowLeftText = 1
+Head.ShowRightText = 1
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qgroupboxux.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qhtml.html">Next component</a></div>
+</body>
+</html>

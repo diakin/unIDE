@@ -1,0 +1,48 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>RQCONST</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: RQCONST</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>RQCONST Component</h1>
+<p class="rq-meta">Extends <a href="qstringlist.html">QSTRINGLIST</a> &middot; source: <code>inc/QLibrary.Inc</code>, line 49</p>
+<p><b>A string list that loads CONST definitions from a RapidQ include file and returns the numeric value of a constant by name.</b></p>
+<p>RQConst extends QStringList. Initialize reads the file named in FileId (default &quot;RapidQ.Inc&quot;) and, for every line that contains CONST and does not start with a comment, stores an item &quot;NAME;value&quot;. Trailing comments are removed, &amp;H hexadecimal values are converted to decimal and RGB(r,g,b) expressions are converted to their color number.</p>
+<p>ValueOf(Entry) calls Initialize on first use and returns the value of the constant whose name matches Entry, ignoring case and surrounding blanks. It is described in the file as a &quot;RapidQ Keyword Extension&quot; and uses the helper functions Trim$ and Equ$ from QLibrary.Inc.</p>
+<p>RQCONST inherits the properties, methods and events of <a href="qstringlist.html">QSTRINGLIST</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>Helper functions Trim$ and Equ$ from the same file QLibrary.Inc</li>
+<li>RapidQ.Inc (or the file named in FileId) at run time</li>
+</ul>
+<a name="1"></a><h2>RQConst Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">FileId</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;RapidQ.Inc&quot;</td><td>Name of the include file to parse; the constructor sets &quot;RapidQ.Inc&quot;.</td></tr>
+<tr><td class="rq-name">Initialized</td><td class="rq-type">BYTE</td><td>RW</td><td>False</td><td>Set to True by Initialize; ValueOf calls Initialize while it is False.</td></tr>
+</table>
+<a name="2"></a><h2>RQConst Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Initialize</td><td class="rq-type">SUB</td><td>Clears the list and loads all CONST definitions from FileId as &quot;NAME;value&quot; items, converting &amp;H hex values and RGB() expressions to decimal numbers.</td></tr>
+<tr><td class="rq-name">ValueOf</td><td class="rq-type">FUNCTION(Entry As String) AS LONG</td><td>ValueOf(Entry) returns the numeric value of the constant named Entry (case-insensitive), loading the file first if needed.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>Initialize stops at ItemCount-1, so the last line of the file is never parsed.</li>
+<li>A line is treated as a constant when it contains &quot;CONST&quot; anywhere (case-sensitive), not only at the start.</li>
+<li>ValueOf returns 0 when the name is not found, which cannot be told apart from a constant whose value is 0.</li>
+<li>Positions are kept in a Byte variable (Point), so lines longer than 255 characters are parsed incorrectly.</li>
+</ul>
+<a name="4"></a><h2>RQConst Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>DIM Consts AS RQConst
+Consts.FileId = &quot;RapidQ.Inc&quot;
+ShowMessage STR$(Consts.ValueOf(&quot;clRed&quot;))</pre>
+<div class="rq-foot"><a href="c_qxpbutton.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_rsocket.html">Next component</a></div>
+</body>
+</html>

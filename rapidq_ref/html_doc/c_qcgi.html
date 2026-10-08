@@ -1,0 +1,76 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QCGI</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QCGI</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QCGI Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/qcgi.inc</code>, line 40 &middot; author: Chris Warrington (with modifications by C. Baker) &middot; version: 1.6 &middot; date: 2005-Feb-22</p>
+<p><b>Non-visual CGI helper that reads the CGI environment variables and parses GET or POST form data into name/value pairs.</b></p>
+<p>The constructor reads the standard CGI environment variables (HTTP_ACCEPT, CONTENT_LENGTH, QUERY_STRING, REMOTE_ADDR, HTTP_USER_AGENT and so on) with ENVIRON$; each is returned by a method of the same name.</p>
+<p>Parse reads the form data: for REQUEST_METHOD POST it reads CONTENT_LENGTH characters (at most MaxInput) from standard input with GET$, for GET it uses QUERY_STRING. The data is split at &quot;&amp;&quot; and &quot;=&quot;; with AutoConvert on, %XX codes and &quot;+&quot; are decoded. Names are stored in upper case in a table kept in alphabetical order, so Get finds them by binary search and the lookup is not case-sensitive.</p>
+<p>Use it in a console program run by a web server: create a QCGI object and call Get(name, value) for each form field. Get calls Parse automatically the first time.</p>
+<p>QCGI inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QCGI Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">MaxInput</td><td class="rq-type">INTEGER</td><td>RW</td><td>CGI_INPUT_DEFAULT</td><td>Maximum number of characters of form data that Parse reads. Default CGI_INPUT_DEFAULT (32767); the file also defines CGI_INPUT_LARGE (65535) and CGI_INPUT_SMALL (255). Assigning 0 or a negative value is ignored.</td></tr>
+<tr><td class="rq-name">AutoConvert</td><td class="rq-type">BYTE</td><td>RW</td><td>1</td><td>When 1 (default), Parse decodes %XX codes and turns &quot;+&quot; into a space. Assigning 1 sets it to 1; any other value sets 0.</td></tr>
+</table>
+<a name="2"></a><h2>QCGI Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Accept</td><td class="rq-type">FUNCTION AS STRING</td><td>Returns the HTTP_ACCEPT environment variable.</td></tr>
+<tr><td class="rq-name">AuthType</td><td class="rq-type">FUNCTION AS STRING</td><td>Returns the AUTH_TYPE environment variable.</td></tr>
+<tr><td class="rq-name">ContentLength</td><td class="rq-type">FUNCTION AS INTEGER</td><td>Returns CONTENT_LENGTH as an integer.</td></tr>
+<tr><td class="rq-name">ContentType</td><td class="rq-type">FUNCTION AS STRING</td><td>Returns the CONTENT_TYPE environment variable.</td></tr>
+<tr><td class="rq-name">Cookie</td><td class="rq-type">FUNCTION AS STRING</td><td>Returns the raw HTTP_COOKIE string; it is not split into cookies.</td></tr>
+<tr><td class="rq-name">GatewayInterface</td><td class="rq-type">FUNCTION AS STRING</td><td>Returns the GATEWAY_INTERFACE environment variable.</td></tr>
+<tr><td class="rq-name">PathInfo</td><td class="rq-type">FUNCTION AS STRING</td><td>Returns the PATH_INFO environment variable.</td></tr>
+<tr><td class="rq-name">PathTranslated</td><td class="rq-type">FUNCTION AS STRING</td><td>Returns the PATH_TRANSLATED environment variable.</td></tr>
+<tr><td class="rq-name">Referer</td><td class="rq-type">FUNCTION AS STRING</td><td>Returns the HTTP_REFERER environment variable.</td></tr>
+<tr><td class="rq-name">RemoteAddr</td><td class="rq-type">FUNCTION AS STRING</td><td>Returns the REMOTE_ADDR environment variable (client IP address).</td></tr>
+<tr><td class="rq-name">RemoteHost</td><td class="rq-type">FUNCTION AS STRING</td><td>Returns the REMOTE_HOST environment variable.</td></tr>
+<tr><td class="rq-name">RemoteIdent</td><td class="rq-type">FUNCTION AS STRING</td><td>Returns the REMOTE_IDENT environment variable.</td></tr>
+<tr><td class="rq-name">RemoteUser</td><td class="rq-type">FUNCTION AS STRING</td><td>Returns the REMOTE_USER environment variable.</td></tr>
+<tr><td class="rq-name">RequestMethod</td><td class="rq-type">FUNCTION AS STRING</td><td>Returns the REQUEST_METHOD environment variable, for example GET or POST.</td></tr>
+<tr><td class="rq-name">ScriptName</td><td class="rq-type">FUNCTION AS STRING</td><td>Returns the SCRIPT_NAME environment variable.</td></tr>
+<tr><td class="rq-name">ServerSoftware</td><td class="rq-type">FUNCTION AS STRING</td><td>Returns the SERVER_SOFTWARE environment variable.</td></tr>
+<tr><td class="rq-name">ServerName</td><td class="rq-type">FUNCTION AS STRING</td><td>Returns the SERVER_NAME environment variable.</td></tr>
+<tr><td class="rq-name">ServerPort</td><td class="rq-type">FUNCTION AS INTEGER</td><td>Returns SERVER_PORT as an integer.</td></tr>
+<tr><td class="rq-name">ServerProtocol</td><td class="rq-type">FUNCTION AS STRING</td><td>Returns the SERVER_PROTOCOL environment variable.</td></tr>
+<tr><td class="rq-name">QueryString</td><td class="rq-type">FUNCTION AS STRING</td><td>Returns the raw QUERY_STRING environment variable, not decoded.</td></tr>
+<tr><td class="rq-name">UserAgent</td><td class="rq-type">FUNCTION AS STRING</td><td>Returns the HTTP_USER_AGENT environment variable.</td></tr>
+<tr><td class="rq-name">Parse</td><td class="rq-type">SUB</td><td>Reads the GET or POST form data and stores the name/value pairs. It runs only once; later calls do nothing.</td></tr>
+<tr><td class="rq-name">Get</td><td class="rq-type">FUNCTION(name AS STRING, BYREF value AS STRING) AS INTEGER</td><td>Get(Name, BYREF Value): calls Parse if needed, looks up Name (case-insensitive) and puts its value into Value. Returns 1 when the name is found, 0 otherwise.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>At most CGI_MAX_PAIRS (256) name/value pairs are stored; parsing stops when the table is full.</li>
+<li>%XX codes are decoded only when they give a printable ASCII character (space to &quot;~&quot;); other codes, such as line breaks or non-ASCII bytes, stay in the text as &quot;%XX&quot;.</li>
+<li>A &quot;+&quot; followed by another &quot;+&quot; or a space is kept as &quot;+&quot; instead of being turned into a space.</li>
+<li>When a name occurs more than once, only the last value is kept.</li>
+<li>POST data is always parsed as name=value pairs; the content type is not checked.</li>
+<li>Parse runs only once, so changing MaxInput or AutoConvert after the first Get has no effect.</li>
+<li>The library is released under the GNU GPL version 2 or later; the header says programs that use it must release their source code.</li>
+</ul>
+<a name="4"></a><h2>QCGI Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$APPTYPE CONSOLE
+$INCLUDE &quot;qcgi.inc&quot;
+DIM Cgi AS QCGI
+DIM UserName AS STRING
+PRINT &quot;Content-type: text/plain&quot;
+PRINT &quot;&quot;
+IF Cgi.Get(&quot;name&quot;, UserName) THEN
+  PRINT &quot;Hello, &quot; &amp; UserName
+ELSE
+  PRINT &quot;No name given. Request method: &quot; &amp; Cgi.RequestMethod
+END IF</pre>
+<div class="rq-foot"><a href="c_qcdaudio.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qchart.html">Next component</a></div>
+</body>
+</html>

@@ -1,0 +1,73 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QPROGRESSBAR</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QPROGRESSBAR</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QPROGRESSBAR Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QProgressBar.inc</code>, line 95 &middot; author: Johnk (derived from code by Benjamin Maggi and David Burkley)</p>
+<p><b>Progress bar component that creates a real Windows progress bar control (msctls_progress32) with colors, smooth, vertical and marquee styles and a state setting.</b></p>
+<p>QProgressBar creates a msctls_progress32 window with CreateWindowEx as a child of the window whose handle is assigned to Parent. Most property setters store the value and call ReDraw, which creates the window if needed, sets the range (PBM_SETRANGE), step, bar and background colors and position, or starts the marquee animation with the update Interval for the marquee style.</p>
+<p>Kind selects the style: PBS_OLD (0), PBS_SMOOTH (1), PBS_VERTICAL (4) or PBS_MARQUEE (8). Changing it destroys the window and creates a new one. Setting Visible to False destroys the window, and setting it to True creates it again. The header says it replaces QProgress.inc and uses the real Windows progress bar from comctl32.dll.</p>
+<p>Assign Parent (for example Form.Handle), then set Min, Max and Position.</p>
+<p>QPROGRESSBAR inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QProgressBar Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Parent</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Handle of the parent window; assigning it creates the progress bar window (or moves it to the new parent) and redraws it.</td></tr>
+<tr><td class="rq-name">Handle</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Window handle of the progress bar control, 0 if not created.</td></tr>
+<tr><td class="rq-name">Interval</td><td class="rq-type">INTEGER</td><td>RW</td><td>40</td><td>Marquee animation update interval in milliseconds (default 40).</td></tr>
+<tr><td class="rq-name">Increment</td><td class="rq-type">INTEGER</td><td>RW</td><td>1</td><td>Step value sent with PBM_SETSTEP (default 1).</td></tr>
+<tr><td class="rq-name">Visible</td><td class="rq-type">INTEGER</td><td>RW</td><td>True</td><td>Assigning False destroys the control window; assigning True creates it again and redraws it.</td></tr>
+<tr><td class="rq-name">Max</td><td class="rq-type">INTEGER</td><td>RW</td><td>100</td><td>Maximum of the range; assigning it redraws the bar (values above 65535 are cut to 65535).</td></tr>
+<tr><td class="rq-name">Min</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Minimum of the range; assigning it redraws the bar.</td></tr>
+<tr><td class="rq-name">Color</td><td class="rq-type">INTEGER</td><td>RW</td><td>RGB(128 , 128 , 128)</td><td>Bar color; assigning it sends PBM_SETBARCOLOR on redraw (default grey).</td></tr>
+<tr><td class="rq-name">BackColor</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Background color; assigning it sends PBM_SETBKCOLOR on redraw (default 0).</td></tr>
+<tr><td class="rq-name">Position</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Current position; assigning it sends PBM_SETPOS on redraw.</td></tr>
+<tr><td class="rq-name">Kind</td><td class="rq-type">INTEGER</td><td>RW</td><td>PBS_OLD</td><td>Style of the bar: PBS_OLD, PBS_SMOOTH, PBS_VERTICAL or PBS_MARQUEE; assigning a new value destroys and recreates the control, and for PBS_VERTICAL swaps Width and Height if the bar is wider than tall.</td></tr>
+<tr><td class="rq-name">Top</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Top position; assigning it redraws the bar.</td></tr>
+<tr><td class="rq-name">Left</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Left position; assigning it redraws the bar.</td></tr>
+<tr><td class="rq-name">Height</td><td class="rq-type">INTEGER</td><td>RW</td><td>18</td><td>Height of the bar; assigning it redraws the bar (default 18).</td></tr>
+<tr><td class="rq-name">Width</td><td class="rq-type">INTEGER</td><td>RW</td><td>100</td><td>Width of the bar; assigning it redraws the bar (default 100).</td></tr>
+<tr><td class="rq-name">State</td><td class="rq-type">INTEGER</td><td>RW</td><td>0</td><td>Assigning 0 or 1 sets the normal state, 2 the error state and 3 the paused state (PBM_SETSTATE).</td></tr>
+</table>
+<a name="2"></a><h2>QProgressBar Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Create</td><td class="rq-type">SUB</td><td>Creates the progress bar window with the current Kind, position and size.</td></tr>
+<tr><td class="rq-name">Close</td><td class="rq-type">SUB</td><td>Stops the marquee, destroys the control window and sets Visible to False.</td></tr>
+<tr><td class="rq-name">SetRange</td><td class="rq-type">SUB</td><td>Sends Min and Max to the control (PBM_SETRANGE) if Max is greater than Min.</td></tr>
+<tr><td class="rq-name">ReDraw</td><td class="rq-type">SUB</td><td>Creates the window if needed and applies the range, step, colors and position (or marquee), then moves the window to Left, Top.</td></tr>
+<tr class="rq-internal"><td class="rq-name">SetParent</td><td class="rq-type">SUB(TheParent AS INTEGER)</td><td>Internal: setter for Parent.</td></tr>
+<tr class="rq-internal"><td class="rq-name">SetMax</td><td class="rq-type">SUB(TheValue)</td><td>Internal: setter for Max.</td></tr>
+<tr class="rq-internal"><td class="rq-name">SetMin</td><td class="rq-type">SUB(TheValue)</td><td>Internal: setter for Min.</td></tr>
+<tr class="rq-internal"><td class="rq-name">SetPosition</td><td class="rq-type">SUB(TheValue AS INTEGER)</td><td>Internal: setter for Position.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>Create passes Top and Left to CreateWindowEx in the x, y order swapped (x = Top, y = Left).</li>
+<li>ReDraw calls SetWindowPos with SWP_NOSIZE, so Width and Height changes are not applied to an existing control.</li>
+<li>The range is limited to 16 bits (Max is cut to 65535).</li>
+<li>A source comment says the PBM_* messages are available only with comctl32.dll newer than 4.70 (IE3 and later).</li>
+</ul>
+<a name="4"></a><h2>QProgressBar Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QProgressBar.inc&quot;
+DIM Form AS QFORM
+DIM PB AS QProgressBar
+PB.Left = 10
+PB.Top = 10
+PB.Width = 200
+PB.Kind = PBS_SMOOTH
+PB.Parent = Form.Handle
+PB.Max = 100
+PB.Position = 50
+Form.ShowModal
+PB.Close</pre>
+<div class="rq-foot"><a href="c_qprogress_qprogress.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qrc4.html">Next component</a></div>
+</body>
+</html>

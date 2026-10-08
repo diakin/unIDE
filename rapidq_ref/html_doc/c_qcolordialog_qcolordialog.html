@@ -1,0 +1,58 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QCOLORDIALOG</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QCOLORDIALOG</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QCOLORDIALOG Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QColorDialog.inc</code>, line 37</p>
+<p><b>A non-visual wrapper for the Windows color selection dialog (ChooseColor) that returns the color as an RGB value and as an HTML #RRGGBB string.</b></p>
+<p>Execute fills a CHOOSECOLOR structure and calls ChooseColorA from comdlg32. The dialog starts with DefColor selected and the 16 custom colors from Customer; with Full set it opens with the custom color panel expanded (CC_FULLOPEN). When the user presses OK, Customer receives the edited custom colors, RgbColor the chosen color and HtmlColor the same color as &quot;#RRGGBB&quot;, and Execute returns True.</p>
+<p>Init (called by the constructor) sets DefColor and all custom colors to white. The comments are in French (Properties, color dialog display method, custom color init method).</p>
+<p>QCOLORDIALOG inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QColorDialog Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Customer</td><td class="rq-type">ARRAY(16) OF LONG</td><td>RW</td><td></td><td>Array of the 16 custom colors (indexes 1 to 16) shown in the dialog and updated when the user presses OK.</td></tr>
+<tr><td class="rq-name">RgbColor</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Color chosen in the last successful Execute, as a Windows RGB value.</td></tr>
+<tr><td class="rq-name">full</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>When non-zero the dialog opens with the custom color panel expanded.</td></tr>
+<tr><td class="rq-name">DefColor</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Color selected when the dialog opens (white after Init).</td></tr>
+<tr><td class="rq-name">HtmlColor</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Chosen color as an HTML string &quot;#RRGGBB&quot;; empty if the dialog was cancelled.</td></tr>
+</table>
+<a name="2"></a><h2>QColorDialog Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Execute</td><td class="rq-type">FUNCTION(form as QFORM) AS INTEGER</td><td>Shows the color dialog owned by the given form and returns True if the user pressed OK, False otherwise.</td></tr>
+<tr><td class="rq-name">Init</td><td class="rq-type">SUB</td><td>Resets DefColor and all 16 custom colors to white (&amp;HFFFFFF).</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>HtmlColor is built from characters 3 to 8 of HEX$(RgbColor), which assumes an 8-digit hex string; if HEX$ returns fewer digits (no leading zeros) the HTML string is wrong.</li>
+<li>DefColor is declared AS INTEGER while RGB colors are LONG values.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/rapidq2.inc</code> (line 6050) contains its own edition of QCOLORDIALOG; it has members that are not in this file: CAPTION, COLOR, COLORS, HEIGHT, STYLE, WIDTH, WINDOWHANDLE.</li>
+</ul>
+<a name="4"></a><h2>QColorDialog Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QColorDialog.inc&quot;
+
+CREATE Form AS QFORM
+END CREATE
+
+DIM ColorDlg AS QColorDialog
+ColorDlg.Full = 1
+ColorDlg.DefColor = Form.Color
+IF ColorDlg.Execute(Form) THEN
+  Form.Color = ColorDlg.RgbColor
+  Form.Caption = ColorDlg.HtmlColor
+END IF
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qcolordialog_object_qcolordialog.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qcolordlg.html">Next component</a></div>
+</body>
+</html>

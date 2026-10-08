@@ -1,0 +1,63 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QPROCESS</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QPROCESS</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QPROCESS Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QProcess.inc</code>, line 48 &middot; author: D. Glodt (original code), modified by JohnK &middot; version: 1.1 &middot; date: 12/06</p>
+<p><b>A non-visual component that runs its OnProcess event handler in a separate Windows thread, with priority, suspend, resume and terminate.</b></p>
+<p>Despite its name, QProcess works with threads: Open calls CreateThread (kernel32) with the address of an internal SUB that calls the OnProcess handler, then sets the thread priority. Close ends the thread with TerminateThread, and Suspend/Resume call SuspendThread and ResumeThread.</p>
+<p>Priority uses SetThreadPriority values; the file defines ProcessIdle (-15), ProcessLow (-2), ProcessBelowNormal (-1), ProcessNormal (0), ProcessAboveNormal (1), ProcessHight (2) and ProcessTimeCritical (15). The file is protected against being included twice (__QPROCESS_INC). Original code by D. Glodt, modified by JohnK; the source comments are in French.</p>
+<p>QPROCESS inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QProcess Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Priority</td><td class="rq-type">LONG</td><td>RW</td><td>0</td><td>Thread priority (default 0, ProcessNormal). Assigning it stores the value and, if a thread exists, applies it with SetThreadPriority.</td></tr>
+</table>
+<a name="2"></a><h2>QProcess Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Suspend</td><td class="rq-type">SUB</td><td>Suspends the thread with SuspendThread.</td></tr>
+<tr><td class="rq-name">Resume</td><td class="rq-type">SUB</td><td>Resumes a suspended thread with ResumeThread.</td></tr>
+<tr><td class="rq-name">Open</td><td class="rq-type">SUB</td><td>Terminates any previous thread, starts a new thread that calls the OnProcess handler, and applies Priority.</td></tr>
+<tr><td class="rq-name">Close</td><td class="rq-type">SUB</td><td>Terminates the thread with TerminateThread if one was started.</td></tr>
+</table>
+<a name="3"></a><h2>QProcess Events</h2>
+<table class="rq-ref">
+<tr><th>Event</th><th>Type</th><th>Occurs when...</th></tr>
+<tr><td class="rq-name">OnProcess</td><td class="rq-type">SUB</td><td>Event OnProcess (no parameters); its handler runs in the new thread started by Open.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>Close and Open end threads with TerminateThread, which stops the thread immediately without cleanup.</li>
+<li>The thread handle is never closed (CloseHandle is declared but not used) and is not reset to 0 after Close.</li>
+<li>Suspend and Resume do not check that a thread exists.</li>
+<li>The constant for high priority is spelled ProcessHight.</li>
+<li>CREATE_SUSPENDED is defined but not used.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/object/QProcess.inc</code> &mdash; older version (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QProcess Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QProcess.inc&quot;
+DIM Worker AS QProcess
+
+SUB DoWork
+  DIM i AS LONG
+  FOR i = 1 TO 1000000
+  NEXT i
+END SUB
+
+Worker.OnProcess = DoWork
+Worker.Priority = ProcessBelowNormal
+Worker.Open</pre>
+<div class="rq-foot"><a href="c_qprinterinfo.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qprogress_object_qprogress.html">Next component</a></div>
+</body>
+</html>

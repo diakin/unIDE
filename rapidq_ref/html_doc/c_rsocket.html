@@ -1,0 +1,55 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>RSOCKET</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: RSOCKET</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>RSOCKET Component</h1>
+<p class="rq-meta">Extends <a href="qsocket.html">QSOCKET</a> &middot; source: <code>inc/RSocket.INC</code>, line 55 &middot; author: doctorelectron@cwdom.dm (Global Services) &middot; date: June 6,2003</p>
+<p><b>A QSocket extension that adds Winsock helpers: host name and address lookup, peer address, raw connect with timeout check, blocking mode, shutdown and readable error messages.</b></p>
+<p>RSocket extends QSocket and calls wsock32.dll directly. S creates a socket from the inherited Family, Type and Protocol values; Connect connects it to a dotted IP address and port; IsConnected uses select() with a timeout to check whether a connection attempt succeeded. NonBlock and Block switch the socket mode with ioctlsocket(FIONBIO).</p>
+<p>AddrByName and NameByAddr convert between host names and IP strings (gethostbyname, gethostbyaddr, inet_ntoa), GetPeerName returns the remote IP of a connected socket, WriteLine sends a string followed by CR LF, EndConnection calls shutdown() and LastError turns WSAGetLastError into a text message.</p>
+<p>RSOCKET inherits the properties, methods and events of <a href="qsocket.html">QSOCKET</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="2"></a><h2>RSocket Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">GetPeerName</td><td class="rq-type">FUNCTION(S As LONG) AS STRING</td><td>GetPeerName(S) returns the IP address of the remote end of socket S as a dotted string, or an empty string on error.</td></tr>
+<tr><td class="rq-name">AddrByName</td><td class="rq-type">FUNCTION(strName As STRING) AS STRING</td><td>AddrByName(strName) resolves a host name and returns its first IP address as a dotted string, or an empty string if it cannot be resolved or is not an IP address.</td></tr>
+<tr><td class="rq-name">NameByAddr</td><td class="rq-type">FUNCTION(strIP As STRING) AS STRING</td><td>NameByAddr(strIP) returns the host name for a dotted IP address, or an empty string if it cannot be found.</td></tr>
+<tr><td class="rq-name">S</td><td class="rq-type">FUNCTION AS LONG</td><td>Creates a new socket with socket(Family, Type, Protocol) using the component&#x27;s inherited values and returns its handle.</td></tr>
+<tr><td class="rq-name">Close</td><td class="rq-type">FUNCTION(S As LONG) AS LONG</td><td>Close(S) closes socket S with closesocket and returns its result.</td></tr>
+<tr><td class="rq-name">NonBlock</td><td class="rq-type">FUNCTION(S As LONG) AS LONG</td><td>NonBlock(S) puts socket S into non-blocking mode (ioctlsocket FIONBIO = 1).</td></tr>
+<tr><td class="rq-name">Block</td><td class="rq-type">FUNCTION(S As LONG) AS LONG</td><td>Block(S) puts socket S into blocking mode (ioctlsocket FIONBIO = 0).</td></tr>
+<tr><td class="rq-name">Connect</td><td class="rq-type">FUNCTION(S As LONG,Remote As STRING,Port As INTEGER) AS LONG</td><td>Connect(S, Remote, Port) connects socket S to the dotted IP address Remote and Port; returns -1 if the address is invalid, otherwise the result of connect().</td></tr>
+<tr><td class="rq-name">IsConnected</td><td class="rq-type">FUNCTION(S As LONG,Secs As LONG) AS LONG</td><td>IsConnected(S, Secs) waits up to Secs seconds: returns -1 if select() reports an error on the socket, otherwise the select() result for writability (1 when connected, 0 on timeout).</td></tr>
+<tr><td class="rq-name">EndConnection</td><td class="rq-type">FUNCTION(S As LONG) AS LONG</td><td>EndConnection(S) calls shutdown(S, 2) to stop both sending and receiving.</td></tr>
+<tr><td class="rq-name">LastError</td><td class="rq-type">FUNCTION AS STRING</td><td>Returns the last Winsock error as text: the error number followed by a description.</td></tr>
+<tr><td class="rq-name">WriteLine</td><td class="rq-type">FUNCTION(S As LONG,str As STRING) AS LONG</td><td>WriteLine(S, str) sends str followed by CR LF on socket S and returns the result of send().</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>Working variables (arg, num, ptr1, ptr2, bs, struc, FD_SET, TimeType, str1) are global DIMs outside the TYPE, and the Winsock functions are declared under their plain names (send, recv, socket, shutdown and others); these names can clash with the user&#x27;s code.</li>
+<li>Connect accepts only a dotted IP address (inet_addr); use AddrByName first for host names.</li>
+<li>AddrByName decides that an IP address was returned by checking that HEX$ of a structure field ends in &quot;02&quot;.</li>
+</ul>
+<a name="4"></a><h2>RSocket Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>DIM Sock AS RSocket
+DIM hSock AS LONG
+DIM ip AS STRING
+ip = Sock.AddrByName(&quot;example.com&quot;)
+hSock = Sock.S
+IF Sock.Connect(hSock, ip, 80) &lt;&gt; 0 THEN
+  ShowMessage Sock.LastError
+ELSE
+  Sock.WriteLine(hSock, &quot;HEAD / HTTP/1.0&quot;)
+  Sock.WriteLine(hSock, &quot;&quot;)
+END IF
+Sock.Close(hSock)</pre>
+<div class="rq-foot"><a href="c_rqconst.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_testedit.html">Next component</a></div>
+</body>
+</html>

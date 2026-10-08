@@ -1,0 +1,72 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QPOSIC</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QPOSIC</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QPOSIC Component</h1>
+<p class="rq-meta">Extends <a href="qpanel.html">QPANEL</a> &middot; source: <code>inc/Qposic1.inc</code>, line 16 &middot; version: 1.00 &middot; date: 22.02.2004</p>
+<p><b>A square two-axis position control made of a vertical and a horizontal scroll bar plus reset, undo, redo and diagonal step buttons.</b></p>
+<p>Qposic extends QPanel (100 x 100 pixels by default). It places a vertical and a horizontal QScrollBar in a cross shape and five bitmap buttons in the center and corners: reset (center), undo (top left), all-down (bottom left), all-up (top right) and redo (bottom right). Moving a scroll bar updates ValueH or ValueV and raises OnChange; the vertical bar is inverted so that up increases ValueV.</p>
+<p>Set MinH, MaxH, MinV and MaxV and then call Initial to apply the ranges and rebuild the layout. The reset button sets both values to 1; the all-down button decreases ValueH and ValueV by one step and the all-up button (on mouse down) increases both. The undo and redo buttons only raise OnChange. Per the header, it is based on the QSpinText component by Mesut Akcan.</p>
+<p>QPOSIC inherits the properties, methods and events of <a href="qpanel.html">QPANEL</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>$RESOURCE files reset.bmp, Undo1.bmp, Redo1.bmp, AllUp.bmp and AllDn.bmp (referenced with absolute paths C:\_F\bas\rapidq\RQIDE\inc\...)</li>
+</ul>
+<a name="1"></a><h2>Qposic Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">maxv</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>Upper limit of the vertical value; applied to the vertical scroll bar (as -MaxV) when Initial is called.</td></tr>
+<tr><td class="rq-name">minv</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>Lower limit of the vertical value; applied to the vertical scroll bar (as -MinV) when Initial is called.</td></tr>
+<tr><td class="rq-name">valuev</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>Current vertical value, set from the vertical scroll bar position with the sign inverted. Assigning it does not move the scroll bar.</td></tr>
+<tr><td class="rq-name">maxh</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>Upper limit of the horizontal value; applied to the horizontal scroll bar when Initial is called.</td></tr>
+<tr><td class="rq-name">minh</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>Lower limit of the horizontal value; applied to the horizontal scroll bar when Initial is called.</td></tr>
+<tr><td class="rq-name">valueh</td><td class="rq-type">SHORT</td><td>RW</td><td></td><td>Current horizontal value, set from the horizontal scroll bar position. Assigning it does not move the scroll bar.</td></tr>
+</table>
+<a name="2"></a><h2>Qposic Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">initial</td><td class="rq-type">SUB</td><td>Applies MinH, MaxH, MinV and MaxV to the scroll bars and recalculates the size and position of all parts from the panel Height. Call it after setting the ranges or resizing.</td></tr>
+</table>
+<a name="3"></a><h2>Qposic Events</h2>
+<table class="rq-ref">
+<tr><th>Event</th><th>Type</th><th>Occurs when...</th></tr>
+<tr><td class="rq-name">OnChange</td><td class="rq-type">SUB(a as single)</td><td>Event OnChange(a AS SINGLE), raised when a scroll bar moves and when the reset, undo or redo button is clicked; the argument is always 1.</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>btn.onclick</code>, <code>btnAllDn.onclick</code>, <code>btnAllUp.onclick</code>, <code>btnAllUp.OnMouseDown</code>, <code>btnRedo.onclick</code>, <code>btnUndo.onclick</code>, <code>sbh.onchange</code>, <code>sbv.onchange</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>The $RESOURCE lines use absolute paths (C:\_F\bas\rapidq\RQIDE\inc\reset.bmp and others); they must be changed to compile on another machine.</li>
+<li>OnChange always receives 1, so the handler cannot tell which part caused the change; the undo and redo buttons do nothing except raise OnChange.</li>
+<li>The reset button sets the vertical scroll bar position to 1 although that bar stores the value with inverted sign.</li>
+<li>The all-up button acts in OnMouseDown; its OnClick handler is empty (the code is commented out).</li>
+<li>The layout is computed from Height only and assumes a square panel; the constructor fixes Width and Height at 100.</li>
+<li>The ranges are not applied until Initial is called.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/qposic.inc</code> &mdash; older version (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>Qposic Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>DECLARE SUB PosChanged (a AS SINGLE)
+
+CREATE Pos AS Qposic
+  Parent = Form
+  MinH = -50: MaxH = 50
+  MinV = -50: MaxV = 50
+  OnChange = PosChanged
+END CREATE
+Pos.Initial
+
+SUB PosChanged (a AS SINGLE)
+  Form.Caption = STR$(Pos.ValueH) + &quot;, &quot; + STR$(Pos.ValueV)
+END SUB</pre>
+<div class="rq-foot"><a href="c_qpanelux.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qposicl.html">Next component</a></div>
+</body>
+</html>

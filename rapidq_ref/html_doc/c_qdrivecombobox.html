@@ -1,0 +1,48 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QDRIVECOMBOBOX</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QDRIVECOMBOBOX</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QDRIVECOMBOBOX Component</h1>
+<p class="rq-meta">Extends <a href="qcombobox.html">QCOMBOBOX</a> &middot; source: <code>inc/QDriveCombobox.inc</code>, line 10</p>
+<p><b>QDriveComboBox is a QComboBox meant to list the drive letters present on the computer.</b></p>
+<p>GetDrives checks the letters A to Z with GetDriveType from kernel32 and adds every root (such as &quot;C:\&quot;) whose type is not 1 (no root directory), then selects the first item. The list is not filled automatically; call GetDrives yourself.</p>
+<p>The whole type is inside $IFNDEF __RQINC2; the comment says the component was added to RapidQ2.inc, so this definition is skipped when that file is included. The file&#x27;s comments are in French.</p>
+<p>QDRIVECOMBOBOX inherits the properties, methods and events of <a href="qcombobox.html">QCOMBOBOX</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="2"></a><h2>QDriveComboBox Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">GetDrives</td><td class="rq-type">SUB</td><td>Adds the root of every existing drive (A:\ to Z:\) to the list using AddItems and sets ItemIndex to 0.</td></tr>
+<tr><td class="rq-name">AddItems</td><td class="rq-type">SUB</td><td>Declared as an empty SUB in this type; it has no code of its own.</td></tr>
+<tr><td class="rq-name">DelItems</td><td class="rq-type">SUB</td><td>Declared as an empty SUB in this type; it has no code of its own.</td></tr>
+<tr><td class="rq-name">Clear</td><td class="rq-type">SUB</td><td>Declared as an empty SUB in this type; it has no code of its own.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>AddItems, DelItems and Clear are declared as empty SUBs, replacing the QComboBox methods of the same names, and GetDrives calls QDriveComboBox.AddItems; the source does not show whether the inherited methods are still reached.</li>
+<li>GetDriveType is declared only when __WIN32API is not defined.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/rapidq2.inc</code> (line 6168) contains its own edition of QDRIVECOMBOBOX.</li>
+<li><code>inc/old/object/QDriveCombobox.inc</code> &mdash; identical copy (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QDriveComboBox Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QDriveCombobox.inc&quot;
+CREATE Form AS QFORM
+  Caption = &quot;Drives&quot;
+  CREATE Drives AS QDriveComboBox
+    Parent = Form
+  END CREATE
+END CREATE
+Drives.GetDrives
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qdrive.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qfiledialog.html">Next component</a></div>
+</body>
+</html>

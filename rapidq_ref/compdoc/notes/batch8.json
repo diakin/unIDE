@@ -1,0 +1,744 @@
+{
+ "QD3DCamera@RapidQ_D3D.inc": {
+  "summary_en": "A non-visual camera helper for RapidQ Direct3D (QDXSCREEN) programs that keeps a camera position and orientation and applies them to a QDXSCREEN.",
+  "summary_ru": "Невизуальный помощник-камера для Direct3D-программ RapidQ (QDXSCREEN): хранит положение и ориентацию камеры и передаёт их в QDXSCREEN.",
+  "description_en": [
+   "QD3DCamera is described in the source as a useful alternative to calling DXSCREEN.SetCameraXXXX directly. It stores the camera position (Pos) and a 6-element orientation vector (Orient: the view direction X, Y, Z plus the up vector DVX, DVY, DVZ) and offers methods to move, zoom and reset the camera.",
+   "Nothing is sent to Direct3D until you call Update with your QDXSCREEN; Update calls SetCameraPosition and SetCameraOrientation on that screen. Rendering and flipping are left to the caller (the Render/Flip calls are commented out).",
+   "The component also has fields for mouse-driven zooming (MouseDownButton, MouseDownX, MouseDownY, MouseZooming) and SaveMouse/RestoreMouse, which store a mouse position and later move the cursor back with the Windows API SetCursorPos."
+  ],
+  "requires": [
+   "QDXSCREEN (RapidQ DirectX screen) passed to Update",
+   "SetCursorPos (user32) must be declared by the program; RestoreMouse calls it but RapidQ_D3D.inc does not declare it",
+   "the constant MouseNotDown, used in the constructor but not defined in RapidQ_D3D.inc",
+   "QD3DVECTOR and QD3DOrientVector types (QD3DOrientVector is defined in RapidQ_D3D.inc)",
+   "d3drm.dll (Direct3D Retained Mode); RapidQ_D3D.inc DECLAREs D3DRMVectorCrossProduct, D3DRMVectorDotProduct and D3DRMVectorNormalize from it, although the component itself does not call them"
+  ],
+  "members": {
+   "POS": "Camera position as a QD3DVECTOR (x, y, z); starts at the origin.",
+   "ORIENT": "Camera orientation as a QD3DOrientVector: X, Y, Z is the view direction and DVX, DVY, DVZ the up vector; starts looking down the z-axis with up = (0, 1, 0).",
+   "HEIGHT": "Offset of the camera in the up (y) direction, default 1.0. It is only stored; no method of the component uses it.",
+   "ZOOMFACTOR": "Zoom amount, default 1.0. It is only stored; no method of the component uses it.",
+   "ANGLEX": "Integer angle index meant for sin/cos look-up tables (per the comment). Only stored and reset to 0 by ResetView.",
+   "ANGLEY": "Integer angle index for sin/cos look-up tables, also used for the up/down vector (per the comment). Only stored and reset to 0 by ResetView.",
+   "MOUSEDOWNBUTTON": "Signals which mouse button is down for dynamic zooming; initialised to MouseNotDown. Not used by the component's methods.",
+   "MOUSEDOWNX": "X coordinate where the mouse was pressed for dynamic zooming; SaveMouse copies it into private storage.",
+   "MOUSEDOWNY": "Y coordinate where the mouse was pressed for dynamic zooming; SaveMouse copies it into private storage.",
+   "MOUSEZOOMING": "Flag that the mouse was used for zooming; initialised to False. Not used by the component's methods.",
+   "GETRADIUS": "Returns the distance of the camera from the origin, SQR(x*x + y*y + z*z) of Pos.",
+   "GETXZRADIUS": "Returns the distance of the camera from the origin in the x-z plane, SQR(x*x + z*z).",
+   "GETXYRADIUS": "Returns the distance of the camera from the origin in the x-y plane, SQR(x*x + y*y).",
+   "TRANSLATE": "Translate(dx, dy, dz) adds the given offsets to Pos.",
+   "ZOOMXZ": "ZoomXZ(Mag) moves the camera forward or back along its orientation in the x-z plane only (Pos.x and Pos.z change by Orient.x*Mag and Orient.z*Mag).",
+   "ZOOM": "Zoom(Mag) moves the camera forward or back along its full orientation vector (x, y and z).",
+   "RESETVIEW": "Resets Orient to look straight down the z-axis with up vector (0, 1, 0) and sets AngleX and AngleY to 0; Pos is not changed.",
+   "FACECAMERA": "FaceCamera(Orient, ObjPosX, ObjPosY, ObjPosZ) fills the given orientation vector so that an object at that position faces along the line from the camera to the object (billboarding). The up vector is copied from the camera; if the object is closer than 0.01 the direction is left unchanged.",
+   "UPDATE": "Update(DxScrn) sends Pos and Orient to the QDXSCREEN with SetCameraPosition and SetCameraOrientation. It does not render or flip.",
+   "SAVEMOUSE": "Stores the current MouseDownX and MouseDownY values in private fields.",
+   "RESTOREMOUSE": "Moves the mouse cursor back to the position stored by SaveMouse using the Windows API SetCursorPos."
+  },
+  "example": "$INCLUDE \"RapidQ_D3D.inc\"\nDIM Camera AS QD3DCamera\n' DXScreen is a QDXSCREEN on your form\nSUB MoveForward\n  Camera.Zoom(0.5)\n  Camera.Update(DXScreen)\n  DXScreen.Render\n  DXScreen.Flip\nEND SUB\nCamera.Pos.z = -5\nCamera.ResetView",
+  "example_origin": "written",
+  "author": "JohnK",
+  "version": "1.1",
+  "date": "10/2004",
+  "caveats_en": [
+   "The constructor uses the constant MouseNotDown and RestoreMouse calls SetCursorPos; neither is defined or declared in RapidQ_D3D.inc, so the program must provide them.",
+   "Height, ZoomFactor, MouseDownButton and MouseZooming are only stored; no method uses them.",
+   "The comment on GetXYRadius says x-z plane, but the code computes the radius in the x-y plane.",
+   "Update does not call Render or Flip (they are commented out with the note 'may not want these')."
+  ]
+ },
+ "QD3DPrimitive@RapidQ_D3D.inc": {
+  "summary_en": "A non-visual helper that builds simple polygon meshes (planes, box, pyramid, sphere, cylinder, cone) into a QD3DMESHBUILDER for RapidQ Direct3D programs.",
+  "summary_ru": "Невизуальный помощник для Direct3D-программ RapidQ: строит простые полигональные сетки (плоскости, куб, пирамиду, сферу, цилиндр, конус) в QD3DMESHBUILDER.",
+  "description_en": [
+   "QD3DPrimitive holds a QD3DMESHBUILDER (Mesh) and a QD3DFRAME (Frame) and has Make... methods that add faces to the mesh. The source says it is meant for floors, sky boxes, clouds, boxes, pyramids and similar objects, and that it exists because a QD3DMeshbuilder cannot be extended.",
+   "Each Make method takes the QDXSCREEN (needed to create QD3DFace objects with CreateFace), adds the faces with Face.AddVertex and Mesh.AddFace, and sets Visible to True. DrawCenter shifts the shape, and ViewFromOutside chooses the vertex order so faces are seen from outside (True) or from inside (False), for example for a sky box.",
+   "You must create Mesh and Frame yourself with the QDXSCREEN (CreateMeshBuilder, CreateFrame) and attach the mesh to a frame. LoadTextureFile loads a .bmp texture into the mesh, asking for a file with a QOPENDIALOG when TextureFile is empty."
+  ],
+  "requires": [
+   "QDXSCREEN (RapidQ DirectX screen) passed to the Make methods",
+   "QD3DMESHBUILDER, QD3DFRAME and QD3DFace (RapidQ Direct3D objects)",
+   "QD3DRGBA type and D3DRMRENDER_* / D3DRMWRAP_* constants defined in RapidQ_D3D.inc",
+   "a definition of null: New assigns null to TextureFile, but RapidQ_D3D.inc only $UNDEFs null at the end and never defines it",
+   "d3drm.dll (Direct3D Retained Mode); RapidQ_D3D.inc DECLAREs D3DRMVectorCrossProduct, D3DRMVectorDotProduct and D3DRMVectorNormalize from it, although the component itself does not call them"
+  ],
+  "members": {
+   "MESH": "QD3DMESHBUILDER that receives all generated faces; it must be created by the program with the QDXSCREEN before calling the Make methods.",
+   "FRAME": "QD3DFRAME for independent orientation and position of the object. The component does not create it or attach the mesh to it.",
+   "RENDERQUALITY": "Rendering quality code for the mesh (for example D3DRMRENDER_GOURAUD); New sets D3DRMRENDER_FLAT. No method applies it to the mesh.",
+   "TEXTUREFILE": "Path of the bitmap used by LoadTextureFile; if empty, LoadTextureFile asks for a file.",
+   "TEXORIGINX": "X of the texture origin in model space (first argument of the D3D wrap function, per the comment). Only stored; no method uses it.",
+   "TEXORIGINY": "Y of the texture origin in model space. Only stored; no method uses it.",
+   "TEXORIGINZ": "Z of the texture origin in model space. Only stored; no method uses it.",
+   "TEXORIGINU": "U coordinate on the bitmap for the texture origin. Only stored; no method uses it.",
+   "TEXORIGINV": "V coordinate on the bitmap for the texture origin. Only stored; no method uses it.",
+   "TEXSCALEU": "U texture scale (1/size of the mesh to cover the whole mesh, per the comment); default 1.0. Only stored; no method uses it.",
+   "TEXSCALEV": "V texture scale; default 1.0. Only stored; no method uses it.",
+   "TEXWRAPTYPE": "Texture wrap type code (D3DRMWRAP_FLAT, D3DRMWRAP_CYLINDER, D3DRMWRAP_SPHERE ...); default D3DRMWRAP_SPHERE. Only stored; no method uses it.",
+   "COLOR": "QD3DRGBA colour and alpha (R, G, B, A from 0 to 1), default white and opaque. Only stored; no method uses it.",
+   "DRAWCENTER": "QD3DVector offset added to the vertices of the next primitive; it can be changed before each Make call.",
+   "BOXSIDES": "Number of sides MakeBox draws: 4 walls always, the ceiling when greater than 4 and the floor when greater than 5. Default 5 (no bottom).",
+   "VIEWFROMOUTSIDE": "True (default) orders vertices so faces are visible from outside the shape; False makes them visible from inside, as for a sky box.",
+   "VISIBLE": "Flag set to True by every Make method once faces have been added; New sets it to False. It does not show or hide anything by itself.",
+   "NEW": "Resets all public settings to their defaults (flat render quality, sphere wrap, white colour, DrawCenter at the origin, BoxSides 5, ViewFromOutside True, Visible False). Called by the constructor; it does not clear the mesh.",
+   "LOADTEXTUREFILE": "Loads TextureFile into the mesh with Mesh.LoadTexture. If TextureFile is empty it first shows a QOPENDIALOG filtered to *.bmp and shows the message 'Texture file does not exist' if the chosen file is missing.",
+   "MAKEHORIZPLANE": "MakeHorizPlane(DXScreen) adds one horizontal square face 2 units wide at height DrawCenter.y, shifted by DrawCenter.x.",
+   "MAKEVERTZPLANE": "MakeVertZPlane(DXScreen) adds one vertical face along the z-axis (x = DrawCenter.x), 1 unit high and 2 units long.",
+   "MAKEVERTXPLANE": "MakeVertXPlane(DXScreen) adds one vertical face along the x-axis (z = DrawCenter.z), 1 unit high and 2 units wide.",
+   "MAKEBOX": "MakeBox(DXScreen) builds a box from the plane methods: back, front, left and right walls, then the ceiling and floor depending on BoxSides. DrawCenter and ViewFromOutside are restored afterwards.",
+   "MAKEPYRAMID": "MakePyramid(DXScreen) adds four triangular faces from the apex (0, 0, 0) to the corners (+-1, +-1, 1). When ViewFromOutside is False an extra vertex is added to each face to avoid culling, per the comment.",
+   "MAKESPHERE": "MakeSphere(DXScreen, NumFaces) adds a sphere of radius 1 around DrawCenter built from quads; the step angle is pi/SQR(NumFaces).",
+   "MAKECYLINDER": "MakeCylinder(DXScreen, NumFaces) adds the side wall of a cylinder of radius 1 from y = -1 to y = 1 around DrawCenter, using NumFaces quads; no end caps are made.",
+   "MAKECONE": "MakeCone(DXScreen, NumFaces) adds a cone of radius 1 with its base at y = -1 and apex at y = 1 around DrawCenter, using NumFaces triangles; no base cap is made."
+  },
+  "example": "$INCLUDE \"RapidQ_D3D.inc\"\nDIM Room AS QD3DPrimitive\n' DXScreen is a QDXSCREEN on your form; call this after it is initialised\nSUB BuildRoom\n  DXScreen.CreateMeshBuilder(Room.Mesh)\n  DXScreen.CreateFrame(Room.Frame)\n  Room.ViewFromOutside = False\n  Room.BoxSides = 6\n  Room.MakeBox(DXScreen)\n  Room.TextureFile = \"wall.bmp\"\n  Room.LoadTextureFile\n  Room.Frame.AddVisual(Room.Mesh)\nEND SUB",
+  "example_origin": "written",
+  "author": "JohnK",
+  "version": "1.1",
+  "date": "9/2005",
+  "caveats_en": [
+   "New assigns null to TextureFile, but null is not defined in RapidQ_D3D.inc (the file only $UNDEFs it at the end).",
+   "RenderQuality, the TexOrigin/TexScale/TexWrapType fields and Color are only stored; no method applies them to the mesh.",
+   "MakeHorizPlane ignores DrawCenter.z (the z coordinates are fixed at -1 and 1).",
+   "MakePyramid ignores DrawCenter and calls CreateFace only once, then adds the vertices of all four faces to the same Face object.",
+   "MakeBox declares a Face variable that it never uses.",
+   "The comments of MakeCylinder and MakeCone say 'simple sphere from center' (copied comment)."
+  ]
+ },
+ "QD3DCloneMesh@RapidQ_D3D.inc": {
+  "summary_en": "A non-visual helper that shows one QD3DMESHBUILDER (loaded from an X or 3DS file) in up to 100 QD3DFRAMEs, so the same model appears many times in a RapidQ Direct3D scene.",
+  "summary_ru": "Невизуальный помощник для Direct3D-программ RapidQ: показывает одну сетку QD3DMESHBUILDER (из файла X или 3DS) в нескольких кадрах QD3DFRAME (до 100), чтобы одна модель появлялась в сцене многократно.",
+  "description_en": [
+   "QD3DCloneMesh makes multiple objects from the same mesh. The source notes that arrays of custom objects cannot be made, so this component holds arrays of frames, positions and orientations itself (MaxD3DClones = 100).",
+   "Set File, CloneNum, the positions (Pos array, or RandPos with a Range) and Scale, then call Init with your QDXSCREEN. Init creates the mesh builder, loads File, scales the mesh, creates a frame for each clone 1 to CloneNum, adds the mesh to it and moves it to Pos(i).",
+   "Assigning Visible later adds the mesh to all frames (True) or removes it (False)."
+  ],
+  "requires": [
+   "QDXSCREEN (RapidQ DirectX screen) passed to Init",
+   "QD3DMESHBUILDER and QD3DFrame (RapidQ Direct3D objects)",
+   "an X or 3DS model file named in File",
+   "a definition of null: New assigns null to File and TextureFile, but RapidQ_D3D.inc only $UNDEFs null at the end and never defines it",
+   "d3drm.dll (Direct3D Retained Mode); RapidQ_D3D.inc DECLAREs D3DRMVectorCrossProduct, D3DRMVectorDotProduct and D3DRMVectorNormalize from it, although the component itself does not call them"
+  ],
+  "members": {
+   "VISIBLE": "Assigning 1 adds the mesh to frames 1 to CloneNum (shows the message 'Initialize CloneObject first' if Init has not run); assigning any other value removes the mesh from the frames if Init has run.",
+   "CLONENUM": "Number of clones. Assigning a value up to MaxD3DClones (100) stores it; larger values are ignored. Set it before Init.",
+   "FILE": "File name of the X or 3DS model loaded by Init.",
+   "MESH": "The single QD3DMESHBUILDER shared by all clones; Init creates it with the QDXSCREEN.",
+   "FRAME": "Array Frame(0 to 100) of QD3DFrame; Init creates and uses elements 1 to CloneNum.",
+   "RANGE": "QRECT giving the area used by RandPos: Left to Right for x and Bottom to Top for z. Default -1 to 1 in both directions.",
+   "RANDPOS": "Assigning a non-zero value fills Pos(1 to CloneNum) with random positions: x within Range.Left..Range.Right, y between 0 and 1, z within Range.Bottom..Range.Top. Set CloneNum and Range first, and assign it before Init, which applies the positions.",
+   "POS": "Array Pos(0 to 100) of QD3DVECTOR positions; Init moves frame i to Pos(i).",
+   "ORIENT": "Array Orient(0 to 100) of QD3DOrientVector orientations, initialised by New. No method uses it.",
+   "RANDSCALE": "Assigning a non-zero value sets Scale.x and Scale.y to random values (0 to 1) and Scale.z equal to Scale.x; assigning 0 resets Scale to 1, 1, 1. Takes effect at the next Init.",
+   "SCALE": "QD3DVECTOR scale applied to the shared mesh by Init with Mesh.Scale; all clones get the same scale.",
+   "TEXTUREFILE": "Texture file name (.bmp or .ppm, per the comment). Only stored; no method uses it.",
+   "TEXORIGINX": "X of the texture origin in model space. Only stored; no method uses it.",
+   "TEXORIGINY": "Y of the texture origin in model space. Only stored; no method uses it.",
+   "TEXORIGINZ": "Z of the texture origin in model space. Only stored; no method uses it.",
+   "TEXORIGINU": "U texture origin. Only stored; no method uses it.",
+   "TEXORIGINV": "V texture origin. Only stored; no method uses it.",
+   "TEXSCALEU": "U texture scale (New sets 0). Only stored; no method uses it.",
+   "TEXSCALEV": "V texture scale (New sets 0). Only stored; no method uses it.",
+   "TEXWRAPTYPE": "D3DRM texture wrapping code, default D3DRMWRAP_SPHERE. Only stored; no method uses it.",
+   "COLOR": "QD3DRGBA colour for the whole mesh (0 to 1; the comment says values below 0 mean do not modify, and that if you set alpha you must set RGB). Only stored; no method uses it.",
+   "INIT": "Init(DXscreen) removes the mesh from old frames if already initialised, creates the mesh builder, loads File, scales the mesh by Scale, then creates frames 1 to CloneNum, adds the mesh to each and positions them at Pos(i).",
+   "NEW": "Resets all settings to defaults (not initialised, CloneNum 0, Range -1..1, Scale 1, positions 0, sphere wrap, colour 0). Called by the constructor."
+  },
+  "example": "$INCLUDE \"RapidQ_D3D.inc\"\nDIM Trees AS QD3DCloneMesh\n' DXScreen is a QDXSCREEN on your form; call this after it is initialised\nSUB PlantTrees\n  Trees.File = \"tree.x\"\n  Trees.CloneNum = 20\n  Trees.Range.Left = -10\n  Trees.Range.Right = 10\n  Trees.Range.Bottom = -10\n  Trees.Range.Top = 10\n  Trees.RandPos = 1\n  Trees.Init(DXScreen)\nEND SUB",
+  "example_origin": "written",
+  "author": "JohnK",
+  "version": "1.0",
+  "date": "10/2004",
+  "caveats_en": [
+   "Per-frame scaling is not possible: a commented-out AddScale call in Init is marked 'this crashes', and New has the comment 'can't scale each frame! Bug in program?'. All clones share the mesh scale.",
+   "Init's comment says the mesh scale 'works on each new load..but you can't remove them'.",
+   "TextureFile, the TexOrigin/TexScale/TexWrapType fields, Color and the Orient array are only stored; no method uses them.",
+   "New assigns null to File and TextureFile, but null is not defined in RapidQ_D3D.inc.",
+   "Frame(0), Pos(0) and Orient(0) exist but are never used; clones are numbered 1 to CloneNum."
+  ]
+ },
+ "QDataBase@QDataBase.inc": {
+  "summary_en": "A non-visual component for a simple flat-file database of fixed-size text records, with field lookup and search functions.",
+  "summary_ru": "Невизуальный компонент простой файловой базы данных с записями фиксированной длины, с доступом к полям и функциями поиска.",
+  "description_en": [
+   "QDataBase stores records in one file. The file starts with a 16-byte header (the record count and the length of the format string, each as an 8-character string), followed by the record format string and then the records, each RecordSize bytes long. The record format is a comma-separated list of name:size entries, for example \"Name:20,City:15,Age:3\"; RecordSize is the sum of the sizes.",
+   "Create makes a new database file, Open reads an existing one and Close only clears the in-memory state. Every record operation opens the file with a QFileStream, does its work and closes it again. Records are numbered from 1 and can be passed as strings of exactly RecordSize characters, or as a pointer to a user-defined type (the ...Udt methods copy RecordSize bytes through a QMemoryStream).",
+   "The search methods (SearchByRecord, SearchByField, SearchByRequest) scan all records and fire OnSearch once for each matching record index. Methods return True on success; on failure the Error property holds one of the constants ErrDbCreate (1), ErrDbOpen (2), ErrDbFile (3), ErrDbIndex (4), ErrDbRecordEmpty (5) or ErrDbRecordSize (6)."
+  ],
+  "requires": [],
+  "members": {
+   "FILENAME": "Name of the open database file, set by Create and Open and cleared by Close. Read-only: the property setter is empty (commented 'read only'), so assigning it from user code does nothing.",
+   "RECORDSIZE": "Size of one record in bytes (sum of the field sizes in the record format). Read-only: the property setter is empty (commented 'read only'), so assigning it from user code does nothing.",
+   "RECORDCOUNT": "Number of records in the database. Read-only: the property setter is empty (commented 'read only'), so assigning it from user code does nothing.",
+   "FIELDCOUNT": "Number of fields in the record format. Read-only: the property setter is empty (commented 'read only'), so assigning it from user code does nothing.",
+   "ERROR": "Error code of the last operation: 0 on success, otherwise ErrDbCreate, ErrDbOpen, ErrDbFile, ErrDbIndex, ErrDbRecordEmpty or ErrDbRecordSize. Read-only: the property setter is empty (commented 'read only'), so assigning it from user code does nothing.",
+   "ONSEARCH": "Event OnSearch(index AS LONG) fired by the search methods once for each matching record number.",
+   "GETFIELDNAME": "GetFieldName(index) returns the name of field number index (from 1), or an empty string if the index is out of range.",
+   "GETFIELDINDEX": "GetFieldIndex(name) returns the number of the field whose format entry contains name (case-insensitive substring match; the last match wins), or 0 if none.",
+   "GETFIELDSIZE": "GetFieldSize(index) returns the size in bytes of field number index, or 0 if the index is out of range.",
+   "ISOPEN": "Returns True if FileName is not empty and the file exists.",
+   "CREATE": "Create(FileName, RecordFormat) creates (overwrites) a database file with an empty record list and the given name:size,... format, and makes it the current database. Returns False with ErrDbRecordEmpty for an empty format or ErrDbCreate if the file cannot be created.",
+   "OPEN": "Open(FileName) reads the header and record format of an existing database and makes it current. Returns False with ErrDbFile if the file does not exist or ErrDbOpen if it cannot be opened.",
+   "CLOSE": "Clears the current database state (FileName, counts, format, sizes, Error). No file is held open, so nothing is written.",
+   "ADDRECORD": "AddRecord(record) appends a record string that must be exactly RecordSize characters long and updates the record count in the header. Returns False with ErrDbOpen, ErrDbRecordEmpty or ErrDbRecordSize on error.",
+   "ADDRECORDUDT": "AddRecordUdt(record) appends a record copied from the memory address record (for example VARPTR of a user-defined type), RecordSize bytes long. Returns False if the database is not open or the address is 0.",
+   "SAVERECORD": "SaveRecord(index, record) overwrites record number index with a string of exactly RecordSize characters. Returns False with ErrDbIndex if index is out of range.",
+   "SAVERECORDUDT": "SaveRecordUdt(index, record) overwrites record number index with RecordSize bytes copied from the memory address record.",
+   "GETRECORD": "GetRecord(index, record) reads record number index into the string variable record (passed BYREF). Returns False with ErrDbIndex if index is out of range.",
+   "GETRECORDUDT": "GetRecordUdt(index, record) reads record number index and copies its RecordSize bytes to the memory address record (for example VARPTR of a user-defined type).",
+   "DELRECORD": "DelRecord(index) removes record number index by rewriting the whole file without it, and decrements RecordCount.",
+   "SEARCHBYRECORD": "SearchByRecord(name) searches every whole record for the text name (case-insensitive) and fires OnSearch for each match. Returns True if at least one record matched.",
+   "SEARCHBYFIELD": "SearchByField(name, fieldIndex) searches only the given field of every record for the text name (case-insensitive) and fires OnSearch for each match. Returns True if at least one record matched.",
+   "SEARCHBYREQUEST": "SearchByRequest(operator, value, bNum, fieldIndex) compares the trimmed field fieldIndex of each record with value using one of the operators <, >, =, <=, >=, <>; when bNum is True the comparison is numeric (VAL), otherwise it is a string comparison. Fires OnSearch for each match and returns True if any matched."
+  },
+  "example": "$INCLUDE \"QDataBase.inc\"\nDIM Db AS QDataBase\nDIM rec AS STRING\n\nSUB Found(index AS LONG)\n  Db.GetRecord(index, rec)\n  PRINT index, rec\nEND SUB\n\nDb.OnSearch = Found\nIF Db.Create(\"people.db\", \"Name:20,City:15\") THEN\n  Db.AddRecord(LEFT$(\"John\" + SPACE$(20), 20) + LEFT$(\"Paris\" + SPACE$(15), 15))\n  Db.SearchByField(\"paris\", 2)\nEND IF",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.0",
+  "date": "",
+  "caveats_en": [
+   "GetRecord and GetRecordUdt are opened with FUNCTION but closed with END SUB.",
+   "GetFieldCount only counts fields when the format contains a comma, so a format with a single field gives FieldCount 0 and GetFieldName/GetFieldSize then return nothing.",
+   "SearchByField and SearchByRequest compute the field offset starting at 0 (sum of the previous field sizes) but pass it to MID$, whose positions start at 1, so the extracted field text starts one character early.",
+   "GetFieldIndex matches name as a substring of the whole name:size entry, so a short name can match a longer field name or a size.",
+   "IsOpen only checks that FileName is set and the file exists; the file is not kept open between calls.",
+   "The ...Udt methods trust the caller: they copy RecordSize bytes from or to the given address without checking the size of the type.",
+   "The source comments are in French."
+  ]
+ },
+ "QToolBar@QToolBar.inc": {
+  "summary_en": "A toolbar component that wraps the Windows common-controls toolbar (ToolBarWindow32) with image lists, check and drop-down buttons, tooltips and a context menu.",
+  "summary_ru": "Компонент панели инструментов на основе стандартного элемента Windows ToolBarWindow32: списки изображений, кнопки-переключатели и с выпадающим меню, подсказки и контекстное меню.",
+  "description_en": [
+   "QToolBar registers its own window class \"QToolBar\" as a subclass of the common-controls class ToolBarWindow32 and creates the window with CreateWindowEx when you assign Parent (a QForm) or Parent2 (a QPanel). It also subclasses the parent window procedure so it can handle WM_COMMAND (button clicks) and WM_NOTIFY (tooltip text and drop-down arrows).",
+   "Buttons are added with AddButton, InsButton and AddSeparator; the style can be tbsButton, tbsCheck, tbsCheckGroup or tbsDropDown. Each button's TBBUTTON structure and extra data (down, enabled, visible, hint, show hint, drop-down menu) are kept in memory blocks allocated with the Memory.inc helpers, so RecreateWnd can rebuild the toolbar when style properties change. Buttons are addressed by a 0-based index.",
+   "Clicks fire OnButtonClick with the button index. A right click shows PopupMenu, and drop-down buttons show the QPopupMenu set with SetButtonDropDown; WM_COMMAND messages sent to the toolbar window, such as those from these menus, fire OnCommand."
+  ],
+  "requires": [
+   "Memory.inc ($INCLUDE, unless __RQMEMORY is already defined): NewPtr, NewZStr, StrFromPtr, PtrFree, MemCpy",
+   "Windows API declarations, structures and constants that this file does not declare, such as CreateWindowEx, SendMessage, SetWindowLong, CallWindowProc, InitCommonControls, TBBUTTON, NMHDR, TOOLTIPTEXT, TBNOTIFY, LOGFONT and the TBSTYLE_*/TB_*/TBN_* constants",
+   "SetNewCallBack_4, used by Register to create callback addresses (defined for example in rapidq2.inc)"
+  ],
+  "members": {
+   "HANDLE": "Window handle of the toolbar; 0 until the window is created by assigning Parent or Parent2.",
+   "PARENT": "Assigning a QForm stores its handle as the parent window, creates the toolbar window if it does not exist yet (or re-parents it), and subclasses the form's window procedure so button clicks and notifications reach the toolbar.",
+   "PARENT2": "Same as Parent but for a QPanel: creates or re-parents the toolbar on the panel and subclasses the panel's window procedure.",
+   "LEFT": "Left position; assigning it moves the window with MoveWindow if it exists.",
+   "TOP": "Top position; assigning it moves the window with MoveWindow if it exists.",
+   "WIDTH": "Width (default 221); assigning it resizes the window with MoveWindow if it exists.",
+   "HEIGHT": "Height (default 26); assigning it resizes the window with MoveWindow if it exists.",
+   "ENABLED": "Assigning it enables or disables the toolbar window with EnableWindow.",
+   "VISIBLE": "Assigning it shows or hides the toolbar window (default 1).",
+   "AUTOSIZE": "Assigning it recreates the window and sends TB_AUTOSIZE so the toolbar sizes itself to its parent (default 1).",
+   "FLAT": "Assigning it switches the TBSTYLE_FLAT style and recreates the window.",
+   "TRANSPARENT": "Assigning it switches the TBSTYLE_TRANSPARENT style and recreates the window (default 1).",
+   "WRAPABLE": "Assigning it switches the TBSTYLE_WRAPABLE style (buttons wrap to several rows) and recreates the window.",
+   "DIVIDER": "Assigning it switches the divider line at the top of the toolbar (CCS_NODIVIDER when 0) and recreates the window.",
+   "BUTTONWIDTH": "Button width; read from the first button when the window is created. Assigning it sends TB_SETBUTTONSIZE with ButtonWidth and ButtonHeight.",
+   "BUTTONHEIGHT": "Button height; read from the first button when the window is created. Assigning it sends TB_SETBUTTONSIZE with ButtonWidth and ButtonHeight.",
+   "FONT": "Assigning a QFont copies its name, size, charset and bold/italic/underline/strikeout styles and sends WM_SETFONT to the toolbar.",
+   "POPUPMENU": "QPopupMenu shown at the mouse position when the toolbar is right-clicked.",
+   "IMAGES": "QImageList with the button images, attached to the toolbar when the window is created.",
+   "HOTIMAGES": "QImageList used for buttons under the mouse; attached when the window is created or by Refresh, if it contains images.",
+   "DISABLEDIMAGES": "QImageList used for disabled buttons; attached when the window is created or by Refresh, if it contains images.",
+   "ONBUTTONCLICK": "Event OnButtonClick(ButtonIndex&) fired when a button is clicked, with its 0-based index. For check buttons the stored down state is updated first.",
+   "ONCOMMAND": "Event OnCommand(NotifyCode&, CommandID&, hwndCtrl&) fired when the toolbar window receives WM_COMMAND, for example from the context or drop-down menus it displays.",
+   "BUTTON": "Internal: Button(Index&) returns the pointer to the stored TBBUTTON copy of a button.",
+   "BUTTONCOUNT": "Returns the number of buttons and separators added.",
+   "CREATEWND": "Internal: creates the toolbar window if it does not exist, applying the style properties, image lists, font and visibility. Called when Parent or Parent2 is assigned.",
+   "RECREATEWND": "Destroys and recreates the toolbar window and adds all stored buttons again, restoring the checked state of check buttons. Called by the style property setters.",
+   "INVALIDATE": "Invalidates the toolbar window so it is repainted later.",
+   "UPDATE": "Calls UpdateWindow on the toolbar so pending painting is done immediately.",
+   "REPAINT": "Erases and invalidates the toolbar with RedrawWindow and updates it immediately.",
+   "REFRESH": "Re-attaches HotImages and DisabledImages to the toolbar if they contain images.",
+   "GETCOMMANDID": "GetCommandID(Index&) returns the command ID of the button at Index&, or -1 if the index is out of range.",
+   "GETINDEX": "GetIndex(CommandID&) returns the index of the button with the given command ID, or -1.",
+   "SETBUTTONIMAGEINDEX": "SetButtonImageIndex(Index&, ImageIndex&) changes the image of a button (TB_CHANGEBITMAP).",
+   "GETBUTTONIMAGEINDEX": "GetButtonImageIndex(Index&) returns the image index of a button.",
+   "SETBUTTONCAPTION": "SetButtonCaption(Index&, Caption$) changes the caption of a button and recreates the window; it only works for buttons that already had a caption.",
+   "GETBUTTONCAPTION": "GetButtonCaption(Index&) returns the caption of a button.",
+   "SETBUTTONDROPDOWN": "SetButtonDropDown(Index&, DropDown) stores the QPopupMenu shown when the drop-down arrow of a tbsDropDown button is clicked.",
+   "GETBUTTONDROPDOWN": "GetButtonDropDown(Index&) returns the handle of the drop-down menu stored for a button, or 0.",
+   "SETBUTTONHINT": "SetButtonHint(Index&, Hint$) sets the tooltip text of a button; it is shown only if SetButtonShowHint is on.",
+   "GETBUTTONHINT": "GetButtonHint(Index&) returns the tooltip text of a button.",
+   "SETBUTTONSHOWHINT": "SetButtonShowHint(Index&, ShowHint&) turns the tooltip of a button on or off.",
+   "GETBUTTONSHOWHINT": "GetButtonShowHint(Index&) returns whether the tooltip of a button is on.",
+   "SETBUTTONDOWN": "SetButtonDown(Index&, Down&) checks or unchecks a button (TB_CHECKBUTTON) and stores the state.",
+   "GETBUTTONDOWN": "GetButtonDown(Index&) returns whether a button is checked, from the window if it exists, otherwise from the stored state.",
+   "SETBUTTONENABLED": "SetButtonEnabled(Index&, Enabled&) enables or disables a button (TB_ENABLEBUTTON) and stores the state.",
+   "GETBUTTONENABLED": "GetButtonEnabled(Index&) returns whether a button is enabled, from the window if it exists, otherwise from the stored state.",
+   "SETBUTTONVISIBLE": "SetButtonVisible(Index&, Visible&) sends TB_HIDEBUTTON with Visible& as the hide flag and stores the value.",
+   "GETBUTTONVISIBLE": "GetButtonVisible(Index&) returns TB_ISBUTTONHIDDEN from the window if it exists (non-zero means hidden), otherwise the stored value.",
+   "ADDBUTTON": "AddButton(ImageIndex&, Caption$, Style&) appends a button with the given image, caption (may be empty) and style (0 means tbsButton) and gives it the next command ID.",
+   "ADDSEPARATOR": "Appends a separator.",
+   "INSBUTTON": "InsButton(Index&, ImageIndex&, Caption$, Style&) inserts a button before position Index&.",
+   "DELBUTTON": "DelButton(Index&) frees the stored data of a button and removes it from the toolbar.",
+   "PARENTWNDPROC": "Internal: replacement window procedure for the parent form or panel; handles WM_COMMAND (fires OnButtonClick), tooltip requests and drop-down menus, then calls the original procedure.",
+   "WNDPROC": "Internal: window procedure of the toolbar window; shows PopupMenu on right click and fires OnCommand on WM_COMMAND.",
+   "REGISTER": "Internal: creates the callbacks, calls InitCommonControls and registers the \"QToolBar\" window class. Called by the constructor."
+  },
+  "example": "$INCLUDE \"QToolBar.inc\"\n\nSUB ToolClick(ButtonIndex&)\n  ShowMessage \"Button \" + STR$(ButtonIndex&)\nEND SUB\n\nCREATE Form AS QFORM\n  Caption = \"QToolBar demo\"\n  Width = 400\nEND CREATE\n\nDIM Tool AS QToolBar\nTool.Parent = Form\nTool.AddButton(0, \"New\", tbsButton)\nTool.AddButton(1, \"Open\", tbsButton)\nTool.AddSeparator\nTool.AddButton(2, \"Bold\", tbsCheck)\nTool.OnButtonClick = ToolClick\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "Nastase Eodor",
+  "version": "1.2 (stable)",
+  "date": "",
+  "caveats_en": [
+   "AddButton, InsButton and AddSeparator store a button only if TB_ADDBUTTONS/TB_INSERTBUTTON succeeds, so Parent (or Parent2) must be assigned before buttons are added.",
+   "Images is attached only when the window is created (CreateWnd); Refresh re-attaches only HotImages and DisabledImages.",
+   "DelButton checks Index& < ButtonCount - 1, so the last button can never be deleted.",
+   "SetButtonVisible passes Visible& directly as the TB_HIDEBUTTON hide flag, so a non-zero value hides the button; GetButtonVisible likewise returns the hidden state when the window exists.",
+   "SetButtonDown, SetButtonEnabled and SetButtonVisible send messages to Handle without checking that the window exists.",
+   "SetButtonHint allocates a new string each time without freeing the previous one.",
+   "SetButtonCaption does nothing for a button that was added without a caption."
+  ]
+ },
+ "Qmp3@Qmp3.inc": {
+  "summary_en": "A non-visual component that reads MP3 frame header information, reads and writes ID3 v1.x tags, and plays or stops an MP3 file through MCI.",
+  "summary_ru": "Невизуальный компонент для чтения заголовка MP3, чтения и записи тегов ID3 v1.x и воспроизведения/остановки MP3 через MCI.",
+  "description_en": [
+   "Qmp3 works on the file named in FileName. ReadHeader looks for the MPEG frame header, decodes its bits and fills Version, Layer, Protection, Bitrate, Frequency, Padding, Channels, IntensityStereo, MS_Stereo, Copyright, Original and Emphasis as text or numbers.",
+   "ReadTags and WriteTags handle the 128-byte ID3 v1.x tag at the end of the file (Title, Artist, Album, Year, Comment, Track and the genre number). GenresList holds the standard genre names; LoadList copies them into the GenresCB combo box, and picking a genre there sets GenreID.",
+   "Play opens the file with the Windows MCI function mciSendString (winmm.dll) under an alias made from the file name and starts playback; Stop stops and closes it. The source credits the info.bas file by grog and an MP3 example by sm0oth2003, and thanks Tamas Szekeres for a binary-header bug fix; it also says to see the help file for details."
+  ],
+  "requires": [
+   "a global Qmp3 variable named mp3: HeaderStart and ReadHeader open mp3.filename instead of the component's own FileName"
+  ],
+  "members": {
+   "FILENAME": "Full path of the MP3 file to read, tag or play.",
+   "TITLE": "ID3 title (up to 30 characters), filled by ReadTags and written by WriteTags.",
+   "ARTIST": "ID3 artist (up to 30 characters), filled by ReadTags and written by WriteTags.",
+   "ALBUM": "ID3 album (up to 30 characters), filled by ReadTags and written by WriteTags.",
+   "YEAR": "ID3 year (4 characters), filled by ReadTags and written by WriteTags.",
+   "COMMENT": "ID3 comment (up to 29 characters), filled by ReadTags and written by WriteTags.",
+   "TRACK": "ID3 v1.1 track number (byte), filled by ReadTags and written by WriteTags.",
+   "GENRE": "Genre name looked up in GenresList from the genre number by ReadTags. WriteTags writes GenreID, not this text.",
+   "GENREID": "ID3 genre number (byte); filled by ReadTags, set by SelectGenre from the combo box, and written by WriteTags.",
+   "VERSION": "MPEG version from ReadHeader: \"Mpeg 1\", \"Mpeg 2\", \"Mpeg 2.5\" or \"???\".",
+   "LAYER": "MPEG layer from ReadHeader: \"I\", \"II\", \"III\" or \"???\".",
+   "PROTECTION": "\"Yes\" or \"No\" from the protection bit, set by ReadHeader.",
+   "BITRATE": "Bitrate in kbit/s from ReadHeader; 0 for the free format and 999 for an invalid value or unknown layer.",
+   "FREQUENCY": "Sampling frequency in Hz from ReadHeader (for example 44100); 0 if reserved.",
+   "PADDING": "\"Yes\" or \"No\" from the padding bit, set by ReadHeader.",
+   "CHANNELS": "Channel mode from ReadHeader: \"Stereo\", \"Joint Stereo\", \"Dual Channel\" or \"Mono\".",
+   "INTENSITYSTEREO": "\"On\" or \"Off\" from the mode extension bits, set by ReadHeader.",
+   "MS_STEREO": "\"On\" or \"Off\" (mid/side stereo) from the mode extension bits, set by ReadHeader.",
+   "COPYRIGHT": "\"Yes\" or \"No\" from the copyright bit, set by ReadHeader.",
+   "ORIGINAL": "\"Yes\" or \"No\" from the original bit, set by ReadHeader.",
+   "EMPHASIS": "Emphasis from ReadHeader: \"None\", \"50/15 ms\", \"???\" or \"CCIT J.17\".",
+   "ALIAS": "MCI alias used by Play and Stop; Play sets it to the file name without path and extension.",
+   "GENRESLIST": "QStringList filled by the constructor with the ID3 genre names, indexed by genre number.",
+   "GENRESCB": "QComboBox (drop-down list style, 20 visible items) for choosing a genre; fill it with LoadList and give it a Parent to show it. Changing the selection calls SelectGenre.",
+   "HEADERSTART": "Internal: searches the first 3071 bytes of the file for the frame sync and returns its offset; used by ReadHeader.",
+   "READHEADER": "Reads the 4-byte MPEG frame header and fills the header properties. Shows a message if FileName is empty.",
+   "ISTAGGED": "IsTagged(stream) returns 1 if the last 128 bytes of the open QFileStream start with \"TAG\", otherwise 0.",
+   "SELECTGENRE": "Internal: OnChange handler of GenresCB; sets GenreID to the selected item index.",
+   "LOADLIST": "Copies all names from GenresList into the GenresCB combo box.",
+   "READTAGS": "Reads the ID3 v1 tag into Title, Artist, Album, Year, Comment, Track, GenreID and Genre. Shows a message if FileName is empty or the file has no tag.",
+   "WRITETAGS": "Writes Title, Artist, Album, Year, Comment, Track and GenreID into the ID3 v1 tag, padding or cutting each text to its field size.",
+   "STOP": "Sends the MCI commands \"Stop\" and \"Close\" for Alias.",
+   "PLAY": "Stops any current playback, opens FileName through MCI with an alias derived from the file name and plays it."
+  },
+  "example": "$INCLUDE \"Qmp3.inc\"\nDIM mp3 AS Qmp3\nmp3.FileName = \"C:\\Music\\song.mp3\"\nmp3.ReadHeader\nmp3.ReadTags\nPRINT mp3.Artist, mp3.Title, mp3.Bitrate, mp3.Frequency\nmp3.Play",
+  "example_origin": "written",
+  "author": "Dreadsoft Corporation (dreadsoft@yahoo.it)",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "HeaderStart and ReadHeader open mp3.filename, a global variable named mp3, instead of the component's own FileName; they only work when the instance is named mp3.",
+   "HeaderStart compares a BYTE with 256, which a byte can never equal, so the frame-sync search never matches and the function's result is never assigned.",
+   "WriteTags refers to tagstream, a variable that belongs to ReadTags, when it checks for an existing tag and computes the tag position.",
+   "ReadTags removes CHR$(0) characters from each text field and then also cuts off its last character.",
+   "Play builds the MCI alias from the file name without quoting it, so file names containing spaces will not form a valid alias.",
+   "Play, Stop and ReadTags/ReadHeader report errors only through ShowMessage; MCI return codes are ignored."
+  ]
+ },
+ "QRichEdit_xt@QRichEditXt.inc": {
+  "summary_en": "A QRichEdit extension that adds automatic URL detection, a text limit, a scroll position property, auto-font control and experimental keyword syntax highlighting painted over the control.",
+  "summary_ru": "Расширение QRichEdit: автоопределение URL, ограничение длины текста, позиция прокрутки, управление авто-шрифтом и экспериментальная подсветка ключевых слов поверх текста.",
+  "description_en": [
+   "QRichEdit_xt starts a one-shot QTIMER (interval 1) in its constructor. When the timer fires it applies the settings: scroll position (EM_SETSCROLLPOS), loading the keyword list file when HiLight is 1, clearing the auto-font language option, enabling EM_AUTOURLDETECT when AutoURLDetect is 1, the text limit (EM_EXLIMITTEXT), getting a device context with GetDC, and subclassing the control's window procedure with SetWindowLong so that Proc receives its messages.",
+   "When HiLight is not 0, Proc lets the original window procedure paint on WM_PAINT and then draws over the visible lines with TextOut on HandleDC: quoted strings, comments, keywords found in the keyword list, operators and brackets each get their own colour. The tokenizer is adapted from a BASIC-to-HTML converter (the HTML output lines are left commented out). Comments in the code are in Russian.",
+   "The file defines many EM_*, SES_* and IMF_* rich edit constants and its own Point type."
+  ],
+  "requires": [
+   "a global QRichEdit (or QRichEdit_xt) object named RichEdit: Proc reads RichEdit.Handle and RichEdit.Line() instead of the component itself",
+   "a global QFont named HiLiteFont used as the highlight font",
+   "constants not defined in this file: WM_PAINT, TRANSPARENT, GWL_WNDPROC, clOrange, clDGreen, clPurple, clDRed (clGreen and clBlue are standard RapidQ colours)",
+   "a keyword list text file named in KeyListName"
+  ],
+  "members": {
+   "HANDLEDC": "Device context of the control obtained with GetDC when the initialisation timer fires; Proc paints the highlighting on it.",
+   "HILIGHT": "1 turns keyword highlighting on. Assigning it only stores the value (and prints it); the keyword list is loaded only if it is 1 when the initialisation timer fires, and Proc paints only while it is not 0.",
+   "KEYLISTNAME": "File name of the keyword list loaded into the private KeyList when the initialisation timer fires (only if HiLight is 1). Assigning it only stores and prints the value.",
+   "AUTOURLDETECT": "1 enables automatic URL detection (EM_AUTOURLDETECT) when the initialisation timer fires. Assigning it only stores and prints the value; later changes have no effect.",
+   "LIMITTEXT": "Maximum text length sent with EM_EXLIMITTEXT when the initialisation timer fires. Assigning it caps the value at 65535*32 and stores it (default 65535*32).",
+   "AUTOFONT": "When 0 (default), the timer clears the IMF_AUTOFONT language option with EM_SETLANGOPTIONS. Assigning it only stores the value.",
+   "SCROLLPOS": "Vertical scroll position. Assigning it stores the value, prints debug output and sends EM_SETSCROLLPOS with that value as the top coordinate; the timer also applies it at start-up (default 1).",
+   "PROC": "Internal: subclassed window procedure installed with SetWindowLong. It calls the original procedure, paints the highlighting on WM_PAINT when HiLight is on, and then calls the private WndProc event if one is set."
+  },
+  "example": "$INCLUDE \"QRichEditXt.inc\"\nDIM HiLiteFont AS QFONT\nCREATE Form AS QFORM\n  Width = 500\n  Height = 400\n  CREATE RichEdit AS QRichEdit_xt\n    Align = 5\n    AutoURLDetect = 1\n    KeyListName = \"keywords.txt\"\n    HiLight = 1\n  END CREATE\nEND CREATE\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "Proc uses the global names RichEdit and HiLiteFont instead of the component itself, so highlighting only works if the instance is named RichEdit and a QFont named HiLiteFont exists.",
+   "The setters and Proc contain PRINT debug statements (for example \"SCROLLPOS=\", \"RichEdit WM_PAINT=\", \"end bas2Html\").",
+   "AutoURLDetect, LimitText, AutoFont, KeyListName and the loading of the keyword list take effect only once, when the initialisation timer fires; changing them later has no effect.",
+   "The auto-font option is cleared with the expression '... & -IMF_AUTOFONT'; -IMF_AUTOFONT is -2, which is not the bitwise complement of IMF_AUTOFONT (that would be -3).",
+   "The device context from GetDC is kept for the life of the control and never released.",
+   "Keywords are matched with INSTR against the whole keyword list text in upper case, so any substring of the list counts as a keyword.",
+   "Highlight colours are hard-coded, and several colour constants (clOrange, clDGreen, clPurple, clDRed) and API constants are not defined in the file.",
+   "The file declares its own TYPE Point with fields Left and Top, which can conflict with a Point type from Windows API include files."
+  ]
+ },
+ "QToolBarEX@QToolBarEX.inc": {
+  "summary_en": "A toolbar built from a QPanel and an array of flat QCOOLBTN buttons whose images are cut from one horizontal bitmap strip.",
+  "summary_ru": "Панель инструментов на основе QPanel с массивом плоских кнопок QCOOLBTN, картинки которых вырезаются из одной горизонтальной полосы-битмапа.",
+  "description_en": [
+   "QToolBarEX is a QPanel aligned to an edge of its parent (alTop by default). It owns an array tbButtons(0 to MAXTOOLBTNS) of QCOOLBTN (MAXTOOLBTNS is 64 unless you $DEFINE it before the $INCLUDE). The buttons are public so that other code, such as the RapidFRM application mentioned in the header, can copy their bitmaps.",
+   "Set BtnCount (and optionally NumBMPs, Align, Width or Height, Cursor, GroupIndex, BtnSpacer, BtnMask) first, then assign BMP (a bitmap file) or BMPHandle (a resource). The bitmap strip is split into BtnCount images by the global QImageListEX ButtonImages; the toolbar then sizes, places and shows BtnCount buttons and hides the rest.",
+   "A click on a button fires OnSelect with the button index (from 0). Hint takes a comma-separated list with one hint per button."
+  ],
+  "requires": [
+   "QImageListEX.inc ($INCLUDE) for the QImageListEX component",
+   "the global QImageListEX variable ButtonImages declared by this file (comment: MUST be global)",
+   "a $RESOURCE bitmap when BMPHandle is used"
+  ],
+  "members": {
+   "BMP": "Assigning a bitmap file name loads the button strip and creates the buttons. Shows a message and does nothing if the file does not exist or BtnCount is 0; Align alClient or alNone is changed to alTop.",
+   "BMPHANDLE": "Assigning a resource index loads the button strip from that resource (through ButtonImages.ExtractRes) and creates the buttons. Shows a message if BtnCount is 0.",
+   "BTNCOUNT": "Number of button images in the bitmap strip. Assigning a value from 1 to MAXTOOLBTNS stores it; other values are ignored. Must be set before BMP or BMPHandle.",
+   "BTNSPACER": "Gap in pixels between buttons (default 1). Assigning a negative value is ignored. Used when the buttons are created.",
+   "BTNMASK": "Transparent colour passed to the image list when the strip is loaded (default &hFFFFFF). Assigning it only stores the value.",
+   "CURSOR": "Cursor for all buttons. Assigning a value from -21 to 0 stores it; others are ignored. Applied when the buttons are created.",
+   "ENABLED": "Assigning it enables or disables all buttons and turns their hints on or off accordingly.",
+   "GROUPINDEX": "Assigning a value stores it and sets it on all buttons when it is 0 or when NumBMPs is 4, so a button in the group can stay down.",
+   "HEIGHT": "Toolbar height; assigning a positive value sets the panel height and the button height (value - 2), but only when Align is alTop or alBottom.",
+   "HINT": "Comma-separated hints, one per button. Assigning it sets each button's Hint and turns ShowHint on for buttons that get a hint; an empty string clears all hints.",
+   "NUMBMPS": "Number of images per button in the strip (1 to 4, as for a QCOOLBTN). Assigning other values is ignored. Set it before BMP or BMPHandle.",
+   "WIDTH": "Toolbar width; assigning a positive value sets the panel width and the button width (value - 2), but only when Align is alLeft or alRight.",
+   "TBBUTTONS": "Array tbButtons(0 to MAXTOOLBTNS) of QCOOLBTN holding the toolbar buttons; it cannot be resized at run time.",
+   "ONSELECT": "Event OnSelect(Index AS INTEGER) fired when a button is clicked, with the button's index (its Tag, from 0)."
+  },
+  "example": "$INCLUDE \"QToolBarEX.inc\"\n\nSUB ToolClick(Index AS INTEGER)\n  ShowMessage \"Button \" + STR$(Index)\nEND SUB\n\nCREATE Form AS QFORM\n  Caption = \"QToolBarEX demo\"\n  Width = 400\nEND CREATE\n\nDIM Tool AS QToolBarEX\nTool.Parent = Form\nTool.BtnCount = 4\nTool.Hint = \"New,Open,Save,Print\"\nTool.OnSelect = ToolClick\nTool.BMP = \"toolbar.bmp\"\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "d_homans@yahoo.com.au",
+  "version": "1.1",
+  "date": "1 Mar 2011",
+  "caveats_en": [
+   "The button images are held in the single global ButtonImages, so several QToolBarEX instances share and overwrite the same image list.",
+   "The BtnMask comment says it defaults to the bottom-left pixel of each image, but the constructor sets &hFFFFFF and the setter has a 'FIXME: Override default?' comment.",
+   "The button array has a fixed size (MAXTOOLBTNS, default 64); the comment notes it cannot be changed with REDIM at run time.",
+   "Width is only applied for alLeft/alRight and Height only for alTop/alBottom; otherwise assignments are ignored.",
+   "Loading from a resource goes through a temporary file __tmp.bmp in the current directory (see QImageListEX).",
+   "Errors are reported with ShowMessage (\"File error! Cannot load bitmap\", \"Button count not set! Cannot load bitmap\", \"Unknown error! Failed to load bitmap\")."
+  ]
+ },
+ "QMidi@QMidi.inc": {
+  "summary_en": "A non-visual MIDI file player built on the Windows MCI sequencer, with play, pause, stop, seeking, volume and a position-change event.",
+  "summary_ru": "Невизуальный проигрыватель MIDI-файлов на основе MCI-секвенсора Windows: воспроизведение, пауза, стоп, перемотка, громкость и событие изменения позиции.",
+  "description_en": [
+   "QMidi sends MCI command strings with mciSendStringA (winmm.dll). Open opens the file as a \"sequencer\" device under the alias MEDIA, sets the time format to milliseconds and reads the length. Play, Pause and Stop send the matching MCI commands, and CurrentFrame lets you seek while stopped or paused.",
+   "While playing, an internal QTIMER (1000 ms) reads the current position and mode, calls Stop when playback has finished, and fires OnChange with the position in milliseconds.",
+   "State holds MD_CLOSE (0), MD_PLAY (1), MD_PAUSE (2) or MD_STOP (3). Volume uses waveOutSetVolume. The source comments are in French."
+  ],
+  "requires": [],
+  "members": {
+   "TIMER": "QTIMER (interval 1000 ms) that polls the position and mode during playback and fires OnChange; enabled by Play and disabled by Pause, Stop and Close.",
+   "LENGHT": "Length of the open file in milliseconds (the name is spelled Lenght in the source); 0 when closed.",
+   "STATE": "Current state: MD_CLOSE (0), MD_PLAY (1), MD_PAUSE (2) or MD_STOP (3).",
+   "FILEOPEN": "True while a file is open.",
+   "ERROR": "Text of the MCI error when Open fails (from mciGetErrorStringA).",
+   "CURRENTFRAME": "Current position in milliseconds. Assigning it while a file is open and stopped or paused clamps the value to 0..Lenght and seeks there; Play then starts from this position. In other states the assignment is ignored.",
+   "VOLUME": "Volume from 0 to 100. Assigning a value up to 100 stores it and sets the left and right volume of wave output device 0 with waveOutSetVolume; values above 100 are ignored.",
+   "ONCHANGE": "Event OnChange(position AS LONG) fired every timer tick during playback with the current position in milliseconds.",
+   "CLOSE": "Stops the timer, sends \"stop\" and \"close\" for the MEDIA alias and resets FileOpen, Lenght, CurrentFrame and State.",
+   "OPEN": "Open(FileName) opens a MIDI file through MCI and returns True on success; on failure it sets Error and closes the device.",
+   "PLAY": "Starts playback from CurrentFrame and enables the timer.",
+   "STOP": "Stops playback, disables the timer, sets State to MD_STOP and seeks back to the start.",
+   "PAUSE": "Pauses playback if playing, disables the timer and stores the current position in CurrentFrame."
+  },
+  "example": "$INCLUDE \"QMidi.inc\"\nDIM Midi AS QMidi\n\nSUB MidiChange(position AS LONG)\n  PRINT position; \" of \"; Midi.Lenght\nEND SUB\n\nMidi.OnChange = MidiChange\nIF Midi.Open(\"C:\\music\\song.mid\") THEN\n  Midi.Volume = 80\n  Midi.Play\nELSE\n  ShowMessage Midi.Error\nEND IF",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.2",
+  "date": "",
+  "caveats_en": [
+   "Open puts the file name into the MCI command without quotes, so paths containing spaces will fail to open.",
+   "All instances use the fixed MCI alias MEDIA, so only one QMidi (or any other code using that alias) can be open at a time.",
+   "Volume calls waveOutSetVolume on device 0 (declared as MidiSetVolume), which sets the wave output volume rather than a MIDI device volume.",
+   "The length property is spelled Lenght.",
+   "Error is set only by Open; other MCI failures are not reported."
+  ]
+ },
+ "QXPBUTTON@QXPButton.inc": {
+  "summary_en": "A QBUTTON extension that shows a bitmap on a Windows XP visual-style button by giving the button an image list with BCM_SETIMAGELIST.",
+  "summary_ru": "Расширение QBUTTON, которое выводит картинку на кнопке в стиле Windows XP, передавая кнопке список изображений через BCM_SETIMAGELIST.",
+  "description_en": [
+   "A normal QBUTTON with a bitmap is owner-drawn and therefore cannot use the XP visual style. XPStyle copies the button's BMP into an internal QBitmap, adds it to the button's own QImageList with ImageList_AddMasked, removes the BS_OWNERDRAW style and sends BCM_SETIMAGELIST with the image list, margins and alignment. Windows then draws the image for the button states.",
+   "The best bitmap is one strip of six equal images, in order NORMAL, HOT, PRESSED, DISABLED, DEFAULTED and STYLUSHOT (the comments say all six must be present, but they may be the same picture). A bitmap whose width is more than 3 times its height is treated as such a strip of square images. The transparent colour is taken from pixel (0, 0).",
+   "Each button needs its own QImageList, which this component provides. The program needs a manifest for the XP visual styles; the source says to create one after building the executable. The code is derived from Button_BMP_XP_Style by David Burkley (July 15th, 2010) and edited by JohnK."
+  ],
+  "requires": [
+   "a Windows XP (comctl32 version 6) manifest for the executable",
+   "a bitmap set with BMP or BMPHandle, typically a $RESOURCE (the examples use btn_states.bmp)",
+   "SendMessage, which this file does not declare; the examples include Rapidq2.inc or RapidQ.inc"
+  ],
+  "members": {
+   "IMAGELEFT": "Left margin around the image. Assigning it stores the value and calls UpdateBtnBmp to apply it.",
+   "IMAGETOP": "Top margin around the image. Assigning it stores the value (also remembered as the original top margin) and calls UpdateBtnBmp.",
+   "IMAGERIGHT": "Right margin around the image. Assigning it stores the value (also remembered as the original right margin) and calls UpdateBtnBmp.",
+   "IMAGEBOTTOM": "Bottom margin around the image. Assigning it stores the value and calls UpdateBtnBmp.",
+   "IMAGEALIGN": "Image position: BUTTON_IMAGELIST_ALIGN_LEFT (0), _RIGHT (1), _TOP (2), _BOTTOM (3) or _CENTER (4). Assigning it adjusts ImageTop or ImageRight for some alignments, stores the value and calls UpdateBtnBmp.",
+   "IMAGELIST": "QImageList that receives the button bitmap and is passed to the button; one per button.",
+   "XPSTYLE": "Applies the bitmap in XP style: copies BMP (or creates a 6x1 white bitmap if there is none), sizes the image list, adds the bitmap to it, removes BS_OWNERDRAW and sends BCM_SETIMAGELIST, briefly hiding and showing the button.",
+   "UPDATEBTNBMP": "Calls XPStyle; used by the property setters to re-apply margins and alignment."
+  },
+  "example": "$INCLUDE <Rapidq2.inc>\n$INCLUDE <QXPButton.inc>\n$Resource btn_states As \"btn_states.bmp\"\n\nCREATE MainForm AS QFORM\n    Center\n    CREATE Button AS QXPButton\n        Width = 90\n        Height = 30\n        Left = (MainForm.ClientWidth \\ 2) - (Button.Width \\ 2)\n        Top  = (MainForm.ClientHeight \\ 2) - (Button.Height \\ 2)\n        BMPHandle = btn_states\n        XPStyle\n        Caption = \"Click Me\"\n    END CREATE\nEND CREATE\n\nMainForm.ShowModal",
+  "example_origin": "source",
+  "author": "David Burkley (original Button_BMP_XP_Style code), edited by JohnK",
+  "version": "",
+  "date": "July 15th, 2010",
+  "caveats_en": [
+   "The header carries David Burkley's licence terms: no redistribution of the source without his permission, free use only in non-profit programs, and credit to the author is requested.",
+   "XP visual styles work only when the executable has a manifest; the source says to create it after building the executable.",
+   "Every call to XPStyle (and therefore every margin or alignment assignment) adds the bitmap to ImageList again with ImageList_AddMasked; the list is never cleared.",
+   "The comment says the background colour is the bottom-left pixel, but the code reads Pixel(0, 0).",
+   "The alignment adjustments in Set_AlignImage are marked in comments as needing refinement, because under some conditions the bitmap is not displayed where expected; an operating-system version check there is commented out.",
+   "A multi-image strip is detected only when width / height > 3, and each image is then assumed to be square.",
+   "Example code #3 in the file uses the type name QBtnBmpXP instead of QXPButton."
+  ]
+ },
+ "QdrawMenu@QDrawMenu.inc": {
+  "summary_en": "A non-visual helper that makes menu items owner-drawn so they show a bitmap next to the caption, optionally with a raised button frame.",
+  "summary_ru": "Невизуальный помощник, делающий пункты меню самоотрисовываемыми, чтобы рядом с текстом показывалась картинка, по желанию в рамке-кнопке.",
+  "description_en": [
+   "AddBitmap changes a QMenuItem to an owner-drawn item with the Windows API ModifyMenu and stores the picture for its command number. The form's WndProc must be set to the component's MenuProc; it answers WM_MEASUREITEM with a size that fits the picture and caption, and on WM_DRAWITEM paints the background, the picture and the caption with system menu colours (highlighted, grayed or normal).",
+   "The character after & in a caption is drawn with an extra font style to mark the accelerator. When the button option is used, the selection highlight leaves the picture area out and a raised 3D frame is drawn around the picture of the selected item.",
+   "DelBitmap turns the item back into a normal text item. The source comments are in French."
+  ],
+  "requires": [
+   "the form's WndProc set to MenuProc",
+   "when __RQINC2 is not defined, the file declares the TMEASUREITEMSTRUCT/TDRAWITEMSTRUCT types, the global MeasureItem, DrawItem and Mem variables, the menu constants, GetSysColor and ModifyMenu itself; when __RQINC2 is defined (RapidQ2.inc included) this block is skipped",
+   "$RESOURCE bitmaps: the demo code in the file uses \\rapidQ\\icon\\play.bmp"
+  ],
+  "members": {
+   "MENUPROC": "Window procedure to assign to the form's WndProc. Handles WM_MEASUREITEM and WM_DRAWITEM for owner-drawn menu items: measures the item from the picture and caption and draws the picture, caption and highlight.",
+   "ADDBITMAP": "AddBitmap(SubMenu, item, picture, button, backcolor) makes item (in SubMenu) owner-drawn, keeps its disabled state, stores a copy of picture for the item's command number with backcolor as its transparent colour, and when button is True draws it with a raised frame.",
+   "DELBITMAP": "DelBitmap(SubMenu, item) changes item back to a normal string menu item (keeping its disabled state) and clears the transparent flag of its stored picture."
+  },
+  "example": "$RESOURCE Open_bmp as \"\\rapidQ\\icon\\play.bmp\"\ndeclare SUB Show\ndim menu as qdrawmenu\ndim picture as qbitmap\n\nCREATE Form AS QForm\n  Center\n  Caption = \"Ownerdraw Menus\"\n  OnShow=show\n  WndProc=menu.MenuProc\n  CREATE MainMenu AS QMainMenu\n    CREATE FileMenu AS QMenuItem\n      Caption = \"&File\"\n      CREATE OpenItem AS QMenuItem\n        Caption = \"&Open\"\n      END CREATE\n    END CREATE\n  END CREATE\nEND CREATE\nForm.ShowModal\n\nSub Show\n  picture.bmpHandle=Open_bmp\n  menu.AddBitmap(FileMenu,OpenItem,picture,true,&hC0C0C0)\nEnd Sub",
+  "example_origin": "source",
+  "author": "",
+  "version": "1.3",
+  "date": "",
+  "caveats_en": [
+   "The demo program after END TYPE (eight $RESOURCE lines, the form and its SUBs) is not commented out, so including QDrawMenu.inc compiles and runs the demo; it must be removed before using the file as a library.",
+   "The demo's $RESOURCE lines use the absolute path \\rapidQ\\icon\\play.bmp for all eight bitmaps.",
+   "Pictures and button flags are stored in arrays image(10000) and button(10000) indexed by the menu item's command number, so 10001 QBitmap objects are allocated and items with command numbers above 10000 cannot be used.",
+   "MenuProc handles only menu messages and is meant to be the form's WndProc; it does not call any other handler."
+  ]
+ },
+ "QSpinButton@QSpinEdit.inc": {
+  "summary_en": "A spin control built from a QPanel with two QCOOLBTN buttons (+ and -) and an optional QEDIT showing the value.",
+  "summary_ru": "Счётчик (spin) на основе QPanel с двумя кнопками QCOOLBTN (+ и -) и необязательным полем QEDIT со значением.",
+  "description_en": [
+   "QSpinButton places a \"+\" and a \"-\" QCOOLBTN on the left of the panel and, when ShowEdit is True, a QEDIT aligned to the right that shows the value. Clicking + or - changes Value by IncrementBy within MinValue..MaxValue and updates the text; typing in the edit box sets Value to VAL of the text.",
+   "The layout is built by Draw, which the constructor calls and which runs again after each click or edit. After changing Width, Height, Style, ShowEdit, Font or Text yourself, call Draw. Style can be st3d (0) or stFlat (1), which are global variables defined in the file."
+  ],
+  "requires": [],
+  "members": {
+   "FONT": "QFont applied to the + and - buttons by Draw.",
+   "VALUE": "Current value (VARIANT, default 0). Changed by the buttons and by typing in the edit box.",
+   "INCREMENTBY": "Step added or subtracted by the buttons (VARIANT, default 0.1).",
+   "MAXVALUE": "Upper limit (default 10). If MaxValue and MinValue are both 0, the buttons do nothing.",
+   "MINVALUE": "Lower limit (default -10).",
+   "SHOWEDIT": "True (default) shows the edit box and makes each button a quarter of the width; False hides it and the buttons take the full width. Applied by Draw.",
+   "STYLE": "st3d (0, default) for raised buttons and a bordered edit box, or stFlat (1) for flat buttons and no border. Applied by Draw.",
+   "TEXT": "Text shown in the edit box; updated after each click or edit, and copied into the edit box by Draw.",
+   "DRAW": "Lays out and configures the buttons and the edit box from the current size, Font, ShowEdit, Style, Text and ShowHint.",
+   "CLICK": "Internal: OnClick handler of the + and - buttons; clamps Value to the limits, adds or subtracts IncrementBy, formats the text and calls Draw.",
+   "CHANGE": "Internal: OnChange handler of the edit box; sets Value to VAL of the text, copies the text and calls Draw."
+  },
+  "example": "$INCLUDE \"QSpinEdit.inc\"\nCREATE Form AS QFORM\n  Caption = \"Spin demo\"\nEND CREATE\nDIM Spin AS QSpinButton\nSpin.Parent = Form\nSpin.Left = 10\nSpin.Top = 10\nSpin.Width = 80\nSpin.MinValue = 0\nSpin.MaxValue = 100\nSpin.IncrementBy = 5\nSpin.Draw\nForm.ShowModal\nPRINT Spin.Value",
+  "example_origin": "written",
+  "author": "Nastase Eodor <eodor@idilis.ro>",
+  "version": "1.0.0",
+  "date": "2004",
+  "caveats_en": [
+   "There is no event to tell the program that Value changed.",
+   "Click clamps Value to MinValue..MaxValue before adding or subtracting IncrementBy, so Value can go one step past a limit; the next click brings it back.",
+   "For negative values the text is built as \"-\" + STR$(Value) (or STRF$), although the number string already contains a minus sign.",
+   "Values typed into the edit box are not checked against MinValue and MaxValue.",
+   "st3d and stFlat are global DEFINT variables, not constants.",
+   "Properties have no setters; Draw must be called to apply changes."
+  ]
+ },
+ "QSkinBtn@QSkinBtn.inc": {
+  "summary_en": "A skinnable button based on QIMAGE that shows different bitmaps for the up, down and disabled states, with push, latch and toggle modes.",
+  "summary_ru": "Кнопка со скином на основе QIMAGE: разные картинки для отжатого, нажатого и недоступного состояния, режимы обычной кнопки, фиксации и переключателя.",
+  "description_en": [
+   "QSkinBtn is a QIMAGE (AutoSize on) that switches its BMP between the bitmaps btUp, btDown and btEnable. Pressing the mouse shows btDown; on release the behaviour depends on Mode.",
+   "A hidden QCANVAS is used once to select the right picture on the first paint and is then made invisible. Clicks can be handled with the inherited QIMAGE events. The source comments are in French."
+  ],
+  "requires": [],
+  "members": {
+   "BTUP": "QBitmap shown when the button is up.",
+   "BTDOWN": "QBitmap shown when the button is pressed or down.",
+   "BTENABLE": "QBitmap shown when the button is disabled (despite its name).",
+   "MODE": "Button behaviour on mouse release: 0 returns to the up image (push button), 1 stays down, 2 toggles between down and up on each click. Assigning it only stores the value.",
+   "DOWN": "Assigning it while the button is enabled sets the down state and shows btDown (True) or btUp (False); ignored when disabled.",
+   "ENABLED": "Assigning it shows the btEnable bitmap, repaints, and enables or disables the underlying QIMAGE."
+  },
+  "example": "$INCLUDE \"QSkinBtn.inc\"\nCREATE Form AS QFORM\n  Caption = \"Skin button\"\nEND CREATE\nDIM Btn AS QSkinBtn\nBtn.btUp.BMP = \"up.bmp\"\nBtn.btDown.BMP = \"down.bmp\"\nBtn.btEnable.BMP = \"disabled.bmp\"\nBtn.Mode = 2\nBtn.Parent = Form\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.0",
+  "date": "",
+  "caveats_en": [
+   "Assigning Enabled always switches to the btEnable (disabled) picture, even when enabling; the up or down picture comes back only on a later paint or mouse action.",
+   "The constructor sets show.Parent = qform, which names the QFORM class rather than a form instance.",
+   "With Mode 1 the button stays down after the first click and the mouse alone never releases it; assign Down = False to release it.",
+   "There is no dedicated click or change event; use the inherited QIMAGE events."
+  ]
+ },
+ "QImageListEX@QImageListEx.inc": {
+  "summary_en": "A QImageList extension that fills the list from one horizontal bitmap strip, from a file or a resource, optionally stretching the images.",
+  "summary_ru": "Расширение QImageList, которое заполняет список из одной горизонтальной полосы-битмапа (из файла или ресурса), при необходимости растягивая картинки.",
+  "description_en": [
+   "ExtractFile loads a bitmap, divides its width by NumImages to get the image size (or uses FixWidth and FixHeight when they are greater than 0, stretching the strip), and adds each image to the list with AddBMPFile and the given transparent colour.",
+   "Each image is copied into a temporary QBitmap, saved as __tmp.bmp in the current directory, added to the list and the file is deleted. ExtractRes first writes a $RESOURCE bitmap to __tmp.bmp and then calls ExtractFile. The strip must be laid out horizontally.",
+   "QToolBarEX uses this component to build its button images."
+  ],
+  "requires": [
+   "a $RESOURCE bitmap for ExtractRes",
+   "write access to the current directory for the temporary file __tmp.bmp"
+  ],
+  "members": {
+   "FIXWIDTH": "If greater than 0, the width of each image; the strip is stretched to fit. 0 (default) uses the bitmap width divided by the number of images.",
+   "FIXHEIGHT": "If greater than 0, the height of each image; the strip is stretched to fit. 0 (default) uses the bitmap height.",
+   "EXTRACTFILE": "ExtractFile(filename, NumImages, ColorMask) clears the list and fills it with NumImages images cut from the horizontal strip in the bitmap file, using ColorMask as the transparent colour. Does nothing if the file does not exist or NumImages <= 0.",
+   "EXTRACTRES": "ExtractRes(ResIndex, NumImages, ColorMask) writes the resource RESOURCE(ResIndex) to __tmp.bmp and calls ExtractFile on it."
+  },
+  "example": "$INCLUDE \"QImageListEx.inc\"\n$RESOURCE Strip AS \"buttons.bmp\"\nDIM Images AS QImageListEX\nImages.ExtractRes(Strip, 6, &HFF00FF)\nPRINT Images.Count",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "A temporary file named __tmp.bmp is written to and deleted from the current directory; an existing file with that name is overwritten and deleted.",
+   "LoadImageList deletes __tmp.bmp after each image and then calls KILL \"__tmp.bmp\" once more after the loop, when the file no longer exists.",
+   "Only horizontal strips are supported."
+  ]
+ },
+ "QProgress@object/QProgress.inc": {
+  "summary_en": "A progress bar component that creates a Windows msctls_progress32 control on a parent window given by handle.",
+  "summary_ru": "Индикатор выполнения: создаёт стандартный элемент Windows msctls_progress32 в родительском окне, заданном дескриптором.",
+  "description_en": [
+   "Assigning Parent (a window handle, for example Form.Handle) creates the progress bar with CreateWindowExA, class msctls_progress32, at the current Left, Top, Width and Height. The range is set to 0..20500 (&H5014) with PBM_SETRANGE.",
+   "Assigning Value scales it by 205 (Range / 100) and sends PBM_SETPOS, so Value is effectively a percentage from 0 to 100. Left, Top, Width, Height and Visible move, resize, show or hide the window."
+  ],
+  "requires": [
+   "SendMessage, which this file does not declare"
+  ],
+  "members": {
+   "PARENT": "Window handle of the parent. Assigning it creates the progress bar window in that parent at the current position and size, sets Visible to 1 and sets the range and step.",
+   "VALUE": "Assigning a percentage (0 to 100) stores the value multiplied by 205 and sends it with PBM_SETPOS. Reading it returns the scaled value, not the percentage.",
+   "LEFT": "Left position (default 0); assigning it moves the window with MoveWindow.",
+   "TOP": "Top position (default 0); assigning it moves the window with MoveWindow.",
+   "WIDTH": "Width (default 100); assigning it resizes the window with MoveWindow.",
+   "HEIGHT": "Height (default 20); assigning it resizes the window with MoveWindow.",
+   "VISIBLE": "Assigning 0 hides the window and any other value shows it (ShowWindow).",
+   "HANDLE": "Window handle of the progress bar, set when Parent is assigned."
+  },
+  "example": "$INCLUDE \"object/QProgress.inc\"\nCREATE Form AS QFORM\n  Caption = \"Progress\"\nEND CREATE\nDIM Bar AS QProgress\nBar.Left = 10\nBar.Top = 10\nBar.Width = 200\nBar.Parent = Form.Handle\nBar.Value = 50\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "",
+  "caveats_en": [
+   "Each assignment to Parent creates a new progress bar window; the old one is not destroyed.",
+   "Reading Value returns the scaled value (percentage x 205), not the number that was assigned.",
+   "The range is fixed at 0..20500 and the step value set with PBM_SETSTEP is never used (there is no step method).",
+   "Assigning Left, Top, Width or Height before Parent calls MoveWindow with a zero handle.",
+   "CreateWindowExA is called with hInstance 0; the line passing Application.hInstance is commented out."
+  ]
+ },
+ "QProcess@QProcess.inc": {
+  "summary_en": "A non-visual component that runs its OnProcess event handler in a separate Windows thread, with priority, suspend, resume and terminate.",
+  "summary_ru": "Невизуальный компонент, который выполняет обработчик события OnProcess в отдельном потоке Windows, с приоритетом, приостановкой, возобновлением и завершением.",
+  "description_en": [
+   "Despite its name, QProcess works with threads: Open calls CreateThread (kernel32) with the address of an internal SUB that calls the OnProcess handler, then sets the thread priority. Close ends the thread with TerminateThread, and Suspend/Resume call SuspendThread and ResumeThread.",
+   "Priority uses SetThreadPriority values; the file defines ProcessIdle (-15), ProcessLow (-2), ProcessBelowNormal (-1), ProcessNormal (0), ProcessAboveNormal (1), ProcessHight (2) and ProcessTimeCritical (15). The file is protected against being included twice (__QPROCESS_INC). Original code by D. Glodt, modified by JohnK; the source comments are in French."
+  ],
+  "requires": [],
+  "members": {
+   "PRIORITY": "Thread priority (default 0, ProcessNormal). Assigning it stores the value and, if a thread exists, applies it with SetThreadPriority.",
+   "ONPROCESS": "Event OnProcess (no parameters); its handler runs in the new thread started by Open.",
+   "SUSPEND": "Suspends the thread with SuspendThread.",
+   "RESUME": "Resumes a suspended thread with ResumeThread.",
+   "OPEN": "Terminates any previous thread, starts a new thread that calls the OnProcess handler, and applies Priority.",
+   "CLOSE": "Terminates the thread with TerminateThread if one was started."
+  },
+  "example": "$INCLUDE \"QProcess.inc\"\nDIM Worker AS QProcess\n\nSUB DoWork\n  DIM i AS LONG\n  FOR i = 1 TO 1000000\n  NEXT i\nEND SUB\n\nWorker.OnProcess = DoWork\nWorker.Priority = ProcessBelowNormal\nWorker.Open",
+  "example_origin": "written",
+  "author": "D. Glodt (original code), modified by JohnK",
+  "version": "1.1",
+  "date": "12/06",
+  "caveats_en": [
+   "Close and Open end threads with TerminateThread, which stops the thread immediately without cleanup.",
+   "The thread handle is never closed (CloseHandle is declared but not used) and is not reset to 0 after Close.",
+   "Suspend and Resume do not check that a thread exists.",
+   "The constant for high priority is spelled ProcessHight.",
+   "CREATE_SUSPENDED is defined but not used."
+  ]
+ },
+ "QrPanel@QrPanel.inc": {
+  "summary_en": "A QPanel with rounded corners, made by applying a rounded-rectangle window region.",
+  "summary_ru": "QPanel со скруглёнными углами, получаемыми наложением скруглённой оконной области (region).",
+  "description_en": [
+   "QrPanel is described in its header as a sister component to QRFORM. Assigning rBorder = 1 creates a rounded-rectangle region with CreateRoundRectRgn from the panel's current Width and Height and the corner sizes RndX and RndY, and applies it with SetWindowRgn.",
+   "RndX and RndY control how round the corners are (default 20); per the comments, values large enough make a completely round panel. Set the size and RndX/RndY first, then assign rBorder."
+  ],
+  "requires": [],
+  "members": {
+   "RNDX": "Width of the ellipse used for the rounded corners (default 20). Used the next time rBorder is assigned.",
+   "RNDY": "Height of the ellipse used for the rounded corners (default 20). Used the next time rBorder is assigned.",
+   "RBORDER": "Assigning a value greater than 0 rounds the panel corners by applying a rounded-rectangle region built from the current Width, Height, RndX and RndY; assigning 0 only stores the value."
+  },
+  "example": "$INCLUDE \"QrPanel.inc\"\nCREATE Form AS QFORM\n  Caption = \"Rounded panel\"\nEND CREATE\nDIM Panel AS QrPanel\nPanel.Parent = Form\nPanel.Left = 20\nPanel.Top = 20\nPanel.Width = 150\nPanel.Height = 100\nPanel.RndX = 30\nPanel.RndY = 30\nPanel.rBorder = 1\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "",
+  "date": "1st of April 2004",
+  "caveats_en": [
+   "The region is computed once from the size at the time rBorder is assigned; resizing the panel later does not update it.",
+   "Assigning rBorder = 0 does not remove an existing region.",
+   "DeleteObject is declared but not used."
+  ]
+ },
+ "QStatusBarEx@object/QStatusBarEx.inc": {
+  "summary_en": "A QSTATUSBAR extension that can place a QPanel (and the controls on it) inside one of its status bar panels.",
+  "summary_ru": "Расширение QSTATUSBAR, позволяющее разместить QPanel (с элементами на ней) внутри одной из панелей строки состояния.",
+  "description_en": [
+   "AddOptPanel(panel, index) removes the panel's bevels, fits its height and width into status bar panel number index, positions it horizontally after the preceding panels and centres it vertically, then makes it a child of the status bar with the Windows API SetParent and shows it."
+  ],
+  "requires": [],
+  "members": {
+   "ADDOPTPANEL": "AddOptPanel(panel, index) places the QPanel inside status bar panel index (from 0): removes its bevels, limits its height to the bar height - 4 and its width to the panel width - 4, positions it, re-parents it to the status bar and makes it visible."
+  },
+  "example": "$INCLUDE \"object/QStatusBarEx.inc\"\nCREATE Form AS QFORM\n  Caption = \"Status bar\"\n  CREATE Status AS QStatusBarEx\n    AddPanels \"Ready\", \"\"\n  END CREATE\n  CREATE Box AS QPanel\n    Width = 100\n    Height = 14\n  END CREATE\nEND CREATE\nStatus.Panel(0).Width = 150\nStatus.AddOptPanel(Box, 1)\nForm.ShowModal",
+  "example_origin": "written",
+  "author": "",
+  "version": "1.0",
+  "date": "",
+  "caveats_en": [
+   "The panel is positioned once; it does not follow later changes of the status bar panel widths or of the bar height.",
+   "The header comment calls the class QStatusBar rather than QStatusBarEx."
+  ]
+ }
+}

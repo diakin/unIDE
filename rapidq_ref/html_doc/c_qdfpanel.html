@@ -1,0 +1,34 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QDFPANEL</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QDFPANEL</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QDFPANEL Component</h1>
+<p class="rq-meta">Extends <a href="qpanel.html">QPANEL</a> &middot; source: <code>inc/QDOCKFORM.inc</code>, line 39</p>
+<p><b>Helper panel type used inside QDOCKFORM: a QPANEL whose appearance properties are hidden by redeclaring them as private.</b></p>
+<p>QDFPANEL extends QPANEL and redeclares Alignment, BevelInner, BevelOuter, BevelWidth, BorderStyle, Caption, ClientHeight, ClientWidth, Color, Cursor, Hint, ShowHint and Visible as private BYTE fields, following the source comment &quot;Disable old methods / functions by overriding them and making them private&quot;. It adds no members of its own.</p>
+<p>QDOCKFORM uses it for its Panel (the movable inner panel that holds the title canvas and the Client panel) and for its private AltPanel (the alternative docking place). It is not meant to be used on its own.</p>
+<p>QDFPANEL inherits the properties, methods and events of <a href="qpanel.html">QPANEL</a>; the tables below list only what the component adds or redefines (public members).</p>
+<p>The component adds no public members of its own.</p>
+<h2>Notes</h2>
+<ul>
+<li>QDOCKFORM still assigns Visible on its AltPanel, although QDFPANEL redeclares Visible as private.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/rapidq2.inc</code> (line 3343) contains its own edition of QDFPANEL.</li>
+</ul>
+<a name="4"></a><h2>QDFPANEL Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QDOCKFORM.inc&quot;
+&#x27; QDFPANEL is created by QDOCKFORM; it is reached through the Panel field
+DIM Dock AS QDOCKFORM
+Dock.Panel.Width = 200</pre>
+<div class="rq-foot"><a href="c_qdesktop.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qdigdisplay.html">Next component</a></div>
+</body>
+</html>

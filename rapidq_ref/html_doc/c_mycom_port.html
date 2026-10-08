@@ -1,0 +1,86 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>MYCOM_PORT</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: MYCOM_PORT</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>MYCOM_PORT Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/COMPORTxp.CMP</code>, line 262 &middot; author: Pete Kleinschmidt &middot; version: 0.9 &middot; date: December 13, 2001</p>
+<p><b>A serial (COM) port object that opens, configures, writes to and reads from a communications port through the Win32 file API, with events for errors and completed operations.</b></p>
+<p>MyCom_Port extends QObject. Open calls CreateFile on Port (default &quot;COM1&quot;), sets the buffer sizes with SetupComm, purges the buffers, sets the timeouts and then changes BaudRate, DataBits, Parity and StopBits in the current DCB (other settings keep their current values). On success Connected becomes True and OnOpen is raised; every failing step raises OnComError with a message plus the system error text from FormatMessage.</p>
+<p>WriteString(strData, intWait) writes the string with WriteFile, sleeps intWait milliseconds and raises OnWriteString if no bytes are left in the output queue (otherwise OnComError). ReadString(dwRdSize, intWait) reads up to dwRdSize bytes with ReadFile, sleeps intWait milliseconds, updates BytesNotRead and raises OnReadString. Close closes the handle, clears Connected and raises OnClose. Per the header, it is loosely based on VB code by David M. Hitchner.</p>
+<p>MYCOM_PORT inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<h2>Requires</h2>
+<ul>
+<li>Constants FILE_SHARE_READ, FILE_SHARE_WRITE, OPEN_EXISTING and FILE_ATTRIBUTE_NORMAL (commented out in this file, must be defined elsewhere)</li>
+</ul>
+<a name="1"></a><h2>MyCom_Port Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">Handle</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Win32 file handle of the open port, returned by CreateFile (-1 if opening failed).</td></tr>
+<tr><td class="rq-name">Port</td><td class="rq-type">STRING</td><td>RW</td><td>&quot;COM1&quot;</td><td>Name of the port to open, default &quot;COM1&quot;.</td></tr>
+<tr><td class="rq-name">BaudRate</td><td class="rq-type">DWORD</td><td>RW</td><td>9600</td><td>Baud rate written to the DCB by Open, default 9600.</td></tr>
+<tr><td class="rq-name">DataBits</td><td class="rq-type">BYTE</td><td>RW</td><td>8</td><td>Number of data bits (DCB ByteSize, 4 to 8) written by Open, default 8.</td></tr>
+<tr><td class="rq-name">Parity</td><td class="rq-type">BYTE</td><td>RW</td><td>NOPARITY</td><td>Parity written by Open: NOPARITY (0), ODDPARITY (1), EVENPARITY (2), MARKPARITY (3) or SPACEPARITY (4); default NOPARITY.</td></tr>
+<tr><td class="rq-name">StopBits</td><td class="rq-type">BYTE</td><td>RW</td><td>1</td><td>DCB StopBits value written by Open: ONESTOPBIT (0), ONE5STOPBITS (1) or TWOSTOPBITS (2); the constructor sets 1.</td></tr>
+<tr><td class="rq-name">ReadBufSize</td><td class="rq-type">DWORD</td><td>RW</td><td>1024</td><td>Input buffer size passed to SetupComm, and the size of the read buffer used by ReadString; default 1024.</td></tr>
+<tr><td class="rq-name">WriteBufSize</td><td class="rq-type">DWORD</td><td>RW</td><td>1024</td><td>Output buffer size passed to SetupComm; default 1024.</td></tr>
+<tr><td class="rq-name">BytesNotRead</td><td class="rq-type">DWORD</td><td>RW</td><td>0</td><td>Number of received bytes not yet read (cbInQue), updated after ReadString and WriteString.</td></tr>
+<tr><td class="rq-name">BytesNotWritten</td><td class="rq-type">DWORD</td><td>RW</td><td>0</td><td>Number of bytes still waiting to be sent (cbOutQue), updated after ReadString and WriteString.</td></tr>
+<tr><td class="rq-name">Connected</td><td class="rq-type">BYTE</td><td>RW</td><td>FALSE</td><td>True after a successful Open, False after Close.</td></tr>
+</table>
+<a name="2"></a><h2>MyCom_Port Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Open</td><td class="rq-type">SUB</td><td>Opens and configures the port using Port, ReadBufSize, WriteBufSize, BaudRate, DataBits, Parity and StopBits.</td></tr>
+<tr><td class="rq-name">Close</td><td class="rq-type">SUB</td><td>Closes the port handle, sets Connected to False and raises OnClose.</td></tr>
+<tr><td class="rq-name">WriteString</td><td class="rq-type">SUB(strData AS STRING, intWait AS INTEGER)</td><td>WriteString(strData, intWait) writes strData to the port, waits intWait milliseconds and checks that the output queue is empty.</td></tr>
+<tr><td class="rq-name">ReadString</td><td class="rq-type">FUNCTION(dwRdSize AS DWORD, intWait AS INTEGER) AS STRING</td><td>ReadString(dwRdSize, intWait) reads up to dwRdSize bytes and returns them as a string, then waits intWait milliseconds and updates BytesNotRead.</td></tr>
+</table>
+<a name="3"></a><h2>MyCom_Port Events</h2>
+<table class="rq-ref">
+<tr><th>Event</th><th>Type</th><th>Occurs when...</th></tr>
+<tr><td class="rq-name">OnComError</td><td class="rq-type">SUB(strErrorMessage AS STRING)</td><td>Event OnComError(strErrorMessage AS STRING), raised when a port operation fails; the message includes the system error text.</td></tr>
+<tr><td class="rq-name">OnOpen</td><td class="rq-type">SUB</td><td>Event raised when Open has configured the port successfully.</td></tr>
+<tr><td class="rq-name">OnClose</td><td class="rq-type">SUB</td><td>Event raised when Close has closed the port handle successfully.</td></tr>
+<tr><td class="rq-name">OnWriteString</td><td class="rq-type">SUB</td><td>Event raised by WriteString when all data has left the output queue after the wait.</td></tr>
+<tr><td class="rq-name">OnReadString</td><td class="rq-type">SUB</td><td>Event raised by ReadString after a successful read and wait.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>ReadString calls ReadFile with MyPort.Handle instead of MyCom_Port.Handle, so it only works when the instance is named MyPort.</li>
+<li>The constructor sets StopBits = 1, which in the DCB means ONE5STOPBITS (1.5 stop bits); use ONESTOPBIT (0) for one stop bit.</li>
+<li>In Open, WriteTotalTimeoutMultiplier is assigned twice (0, then 1000) and WriteTotalTimeoutConstant is never set.</li>
+<li>When ClearCommError fails, the error message used is ERROR_CHANGING_PORTSETTINGS instead of ERROR_GETTING_PORT_STATUS.</li>
+<li>ReadString allocates a buffer of ReadBufSize bytes but reads dwRdSize bytes into it; dwRdSize must not exceed ReadBufSize.</li>
+<li>If Open fails after CreateFile succeeded, the handle is left open and Connected stays False.</li>
+<li>The header names the file ComPort.cmp; the file is COMPORTxp.CMP.</li>
+</ul>
+<a name="4"></a><h2>MyCom_Port Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>DECLARE SUB PortError (strErrorMessage AS STRING)
+
+CREATE MyPort AS MyCom_Port
+  Port = &quot;COM2&quot;
+  BaudRate = 19200
+  StopBits = ONESTOPBIT
+  OnComError = PortError
+END CREATE
+
+SUB PortError (strErrorMessage AS STRING)
+  ShowMessage strErrorMessage
+END SUB
+
+MyPort.Open
+IF MyPort.Connected THEN
+  MyPort.WriteString(&quot;AT&quot; + CHR$(13), 100)
+  ShowMessage MyPort.ReadString(64, 100)
+  MyPort.Close
+END IF</pre>
+<div class="rq-foot"><a href="c_comport.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_myxpskinnedform.html">Next component</a></div>
+</body>
+</html>

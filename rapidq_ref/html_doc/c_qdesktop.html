@@ -1,0 +1,48 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QDESKTOP</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QDESKTOP</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QDESKTOP Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/QDesktop.inc</code>, line 18 &middot; version: 1.0</p>
+<p><b>Object with desktop helpers: copy the screen or the wallpaper into a device context, read a screen pixel and change the wallpaper.</b></p>
+<p>QDesktop wraps a few Windows API calls. Copy gets the screen DC with GetDC(0) and copies an area starting at the screen&#x27;s top-left corner into another device context with BitBlt. CopyWallPaper draws the desktop pattern or wallpaper into a DC with PaintDesktop. GetPixel reads the color of a screen pixel. ChangeWallPaper sets a new wallpaper with SystemParametersInfo(SPI_SETDESKWALLPAPER), saving it to the user profile and notifying other programs.</p>
+<p>The handle arguments are device context handles, for example the Handle of a QCanvas or QBitmap.</p>
+<p>QDESKTOP inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="2"></a><h2>QDesktop Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">Copy</td><td class="rq-type">SUB(handle as long,x as integer,y as integer,width as integer,height as integer)</td><td>Copy(handle, x, y, width, height) copies the screen area from the top-left corner, limited to the screen size, into the DC handle at position x, y.</td></tr>
+<tr><td class="rq-name">CopyWallPaper</td><td class="rq-type">SUB(handle as long)</td><td>CopyWallPaper(handle) draws the desktop wallpaper into the DC handle.</td></tr>
+<tr><td class="rq-name">GetPixel</td><td class="rq-type">FUNCTION(x as integer,y as integer) AS LONG</td><td>GetPixel(x, y) returns the color of the screen pixel at x, y.</td></tr>
+<tr><td class="rq-name">ChangeWallPaper</td><td class="rq-type">SUB(FileName as string)</td><td>ChangeWallPaper(FileName) sets the given image file as the desktop wallpaper.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>SetActiveDesktop is declared (as an alias of SetActiveWindow) but its only use is commented out.</li>
+<li>Copy always reads from the screen&#x27;s top-left corner (0, 0).</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/object/QDesktop.inc</code> &mdash; identical copy (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QDesktop Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>DIM Form AS QFORM
+DIM Canvas AS QCANVAS
+DIM Desk AS QDesktop
+Canvas.Parent = Form
+Canvas.Align = 5
+SUB CanvasPaint
+  Desk.Copy(Canvas.Handle, 0, 0, Canvas.Width, Canvas.Height)
+END SUB
+Canvas.OnPaint = CanvasPaint
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qdebug.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qdfpanel.html">Next component</a></div>
+</body>
+</html>

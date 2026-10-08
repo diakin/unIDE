@@ -1,0 +1,65 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QXEDIT</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QXEDIT</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QXEDIT Component</h1>
+<p class="rq-meta">Extends <a href="qedit.html">QEDIT</a> &middot; source: <code>inc/QxEdit.inc</code>, line 28 &middot; author: psyclops420 &lt;psyclops420@yahoo.com&gt; &middot; version: 1.1</p>
+<p><b>QEdit replacement that subclasses the edit window to add OnGetFocus and OnLoseFocus events, a WndProc event and an option to make Enter move to the next control.</b></p>
+<p>Shortly after creation, an internal timer (Interval 1) replaces the edit&#x27;s window procedure with Proc using SetWindowLong(GWL_WNDPROC) and CODEPTR. Proc passes each message to the original procedure with CallWindowProc, then fires OnGetFocus on WM_SETFOCUS (&amp;H7), OnLoseFocus on WM_KILLFOCUS (&amp;H8), and the WndProc event for every message.</p>
+<p>When EnterKey is nonzero, pressing Enter removes the WM_CHAR message for the parent with KillMessage and sends WM_NEXTDLGCTL (&amp;H28) to the parent, moving focus as Tab does. The constants ekNormal (0) and ekTab (1) are defined for it.</p>
+<p>At the end of the file, QEDIT is redefined as QxEDIT, so every QEDIT declared after the include becomes a QxEDIT. The comments say focus event handlers must take the Sender parameter.</p>
+<p>QXEDIT inherits the properties, methods and events of <a href="qedit.html">QEDIT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>QxEDIT Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr class="rq-internal"><td class="rq-name">Tmr</td><td class="rq-type">QTIMER</td><td>RW</td><td></td><td>Internal: one-shot timer that installs the window procedure after the control is created.</td></tr>
+<tr class="rq-internal"><td class="rq-name">OldWndProc</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>Internal: address of the original window procedure, used by Proc.</td></tr>
+<tr><td class="rq-name">EnterKey</td><td class="rq-type">LONG</td><td>RW</td><td></td><td>When nonzero (ekTab), Enter moves focus to the next control; ekNormal (0) keeps normal behavior.</td></tr>
+</table>
+<a name="2"></a><h2>QxEDIT Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr class="rq-internal"><td class="rq-name">Proc</td><td class="rq-type">FUNCTION(hWnd AS LONG, uMsg AS LONG, wParam AS LONG, lParam AS LONG) AS LONG</td><td>Internal: the replacement window procedure installed by the timer.</td></tr>
+</table>
+<a name="3"></a><h2>QxEDIT Events</h2>
+<table class="rq-ref">
+<tr><th>Event</th><th>Type</th><th>Occurs when...</th></tr>
+<tr><td class="rq-name">OnGetFocus</td><td class="rq-type">SUB(Sender AS QEDIT)</td><td>Event fired when the edit receives focus; handler: SUB (Sender AS QEDIT).</td></tr>
+<tr><td class="rq-name">OnLoseFocus</td><td class="rq-type">SUB(Sender AS QEDIT)</td><td>Event fired when the edit loses focus; handler: SUB (Sender AS QEDIT).</td></tr>
+<tr><td class="rq-name">WndProc</td><td class="rq-type">SUB(hWnd AS LONG, uMsg AS LONG, wParam AS LONG, lParam AS LONG)</td><td>Event fired for every window message after the original procedure handled it; handler: SUB (hWnd AS LONG, uMsg AS LONG, wParam AS LONG, lParam AS LONG).</td></tr>
+</table>
+<p>The component handles these events itself (EVENT blocks in the TYPE): <code>Tmr.OnTimer</code>.</p>
+<h2>Notes</h2>
+<ul>
+<li>The include redefines QEDIT as QxEDIT for all code that follows it.</li>
+<li>The comments say custom events must have at least one parameter, and the author had not found a way around this.</li>
+<li>The window procedure is installed by a 1 ms timer after creation, so messages sent before the timer fires do not reach the new events.</li>
+</ul>
+<h2>Other versions</h2>
+<ul>
+<li><code>inc/old/qEditEx.inc</code> &mdash; identical copy (moved; the reason is in COMPONENTS.md).</li>
+</ul>
+<a name="4"></a><h2>QxEDIT Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;QxEdit.inc&quot;
+DIM Form AS QFORM
+DIM Edit1 AS QEDIT   &#x27; becomes QxEDIT
+DIM Edit2 AS QEDIT
+SUB EditFocus(Sender AS QEDIT)
+  Form.Caption = &quot;Editing &quot; + Sender.Text
+END SUB
+Edit1.Parent = Form
+Edit2.Parent = Form
+Edit2.Top = 30
+Edit1.EnterKey = ekTab
+Edit1.OnGetFocus = EditFocus
+Form.ShowModal</pre>
+<div class="rq-foot"><a href="c_qwebcam_webcam.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qxpbutton.html">Next component</a></div>
+</body>
+</html>

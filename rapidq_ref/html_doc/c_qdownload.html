@@ -1,0 +1,67 @@
+<html>
+<head>
+<!-- rq-generated: rapidq_ref/inc sources, see COMPONENTS.md -->
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>QDOWNLOAD</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; custom components</span><span class="rq-section">Appendix B: QDOWNLOAD</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>QDOWNLOAD Component</h1>
+<p class="rq-meta">Extends <a href="chapter10.html">QOBJECT</a> &middot; source: <code>inc/qdownload.inc</code>, line 4 &middot; version: v2</p>
+<p><b>A non-visual object that downloads a file from an HTTP server with a QSocket and returns it in a string or saves it to a file, with progress and speed reporting.</b></p>
+<p>Qdownload extends QObject. Set Server, Port (default 80) and File, choose the output with OutDevice (1 = OutVar string, 2 = OutFile on disk) and call LeechFile. It connects with QSocket, sends &quot;GET /&quot; + File + &quot; HTTP/1.0&quot; and an empty line, reads the header lines until an empty one, takes the size from Content-Length, then reads the body in 32000-byte blocks until nothing more is transferred.</p>
+<p>Progress is written to State (percent) or, when StateDevice is 2, to the StateGauge QGauge and the SpeedLbl QLabel (bytes per second); you must set the Parent and other properties of these controls yourself. On failure LeechFile returns False and sets LastError and LastStringError: 1 no server, 2 no port, 3 no file, 4 no output file, 5 cannot connect to host, 6 not connected to the internet, 7 connection closed by peer, 8 unknown error, 9 size unknown or 0 bytes, 10 transmission error (received size differs), 11 file not found (404).</p>
+<p>QDOWNLOAD inherits the properties, methods and events of <a href="chapter10.html">QOBJECT</a>; the tables below list only what the component adds or redefines (public members).</p>
+<a name="1"></a><h2>Qdownload Properties</h2>
+<table class="rq-ref">
+<tr><th>Field</th><th>Type</th><th>R/W</th><th>Default</th><th>Description</th></tr>
+<tr><td class="rq-name">file</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Path of the file on the server; LeechFile requests &quot;/&quot; + File.</td></tr>
+<tr><td class="rq-name">server</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Host name of the HTTP server, for example www.server.dom.</td></tr>
+<tr><td class="rq-name">port</td><td class="rq-type">INTEGER</td><td>RW</td><td>80</td><td>Server port; default 80.</td></tr>
+<tr><td class="rq-name">outdevice</td><td class="rq-type">INTEGER</td><td>RW</td><td>1</td><td>Where the data goes: 1 (default) = OutVar, 2 = the file named in OutFile.</td></tr>
+<tr><td class="rq-name">statedevice</td><td class="rq-type">INTEGER</td><td>RW</td><td>1</td><td>How progress is reported: 1 (default) = State, 2 = StateGauge and SpeedLbl.</td></tr>
+<tr><td class="rq-name">outvar</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>String that receives the downloaded data when OutDevice is 1.</td></tr>
+<tr><td class="rq-name">outfile</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Path and file name where the data is saved when OutDevice is 2.</td></tr>
+<tr><td class="rq-name">state</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Download progress in percent when StateDevice is 1.</td></tr>
+<tr><td class="rq-name">stategauge</td><td class="rq-type">QGAUGE</td><td>RW</td><td></td><td>QGauge updated with the percentage when StateDevice is 2 (default size 200x20); set its Parent yourself.</td></tr>
+<tr><td class="rq-name">speedlbl</td><td class="rq-type">QLABEL</td><td>RW</td><td></td><td>QLabel that shows the speed in B/s when StateDevice is 2; set its Parent yourself.</td></tr>
+<tr><td class="rq-name">laststringerror</td><td class="rq-type">STRING</td><td>RW</td><td></td><td>Text of the last error.</td></tr>
+<tr><td class="rq-name">lasterror</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>Number of the last error (1-11).</td></tr>
+<tr><td class="rq-name">size</td><td class="rq-type">INTEGER</td><td>RW</td><td></td><td>File size taken from the Content-Length header during the download.</td></tr>
+</table>
+<a name="2"></a><h2>Qdownload Methods</h2>
+<table class="rq-ref">
+<tr><th>Method</th><th>Type</th><th>Description</th></tr>
+<tr><td class="rq-name">check</td><td class="rq-type">FUNCTION AS LONG</td><td>Returns True if the registry value &quot;Remote Connection&quot; under HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\RemoteAccess is 1, otherwise False. LeechFile uses it to choose the error message.</td></tr>
+<tr><td class="rq-name">percent</td><td class="rq-type">FUNCTION(now as long, complete as long) AS INTEGER</td><td>Percent(now, complete) returns now*100/complete rounded.</td></tr>
+<tr><td class="rq-name">speed</td><td class="rq-type">FUNCTION(now$ as string, before$ as string, complete as long) AS INTEGER</td><td>Speed(now$, before$, complete) returns complete divided by the seconds between two TIME$ strings (hh:mm:ss), rounded.</td></tr>
+<tr><td class="rq-name">leechfile</td><td class="rq-type">FUNCTION AS LONG</td><td>Downloads the file and returns True on success or False with LastError set; the call blocks until the download ends.</td></tr>
+</table>
+<h2>Notes</h2>
+<ul>
+<li>The request is HTTP/1.0 without a Host header, and only 404 status lines are recognized; redirects and other errors are not handled.</li>
+<li>The comment shows File as &quot;/Path/File.ext&quot;, but the code adds its own leading slash.</li>
+<li>The download needs a Content-Length header (matched case-sensitively); without it Size stays 0, Percent divides by zero and the size check fails.</li>
+<li>Speed divides by the elapsed seconds, which can be 0, and does not handle midnight.</li>
+<li>Check only reads a Remote Access (dial-up) registry value; it does not test the network.</li>
+<li>LeechFile runs in a loop with no DoEvents, so the program does not respond during the download; LastError is not cleared on success.</li>
+<li>The OutDevice comment mentions qdownload.filestream, but the code saves to OutFile through a local QFileStream.</li>
+</ul>
+<a name="4"></a><h2>Qdownload Examples</h2>
+<p class="rq-meta">Example written for this page from the members above; not run.</p>
+<pre>$INCLUDE &quot;qdownload.inc&quot;
+DIM Dl AS Qdownload
+Dl.Server = &quot;www.example.com&quot;
+Dl.File = &quot;index.html&quot;
+Dl.OutDevice = 2
+Dl.OutFile = &quot;C:\index.html&quot;
+IF Dl.LeechFile THEN
+  ShowMessage &quot;Downloaded &quot; + STR$(Dl.Size) + &quot; bytes&quot;
+ELSE
+  ShowMessage Dl.LastStringError
+END IF</pre>
+<div class="rq-foot"><a href="c_qdockform.html">Prev component</a><a href="custom.html">Custom components</a><a href="contents.html">Contents</a><a href="c_qdrawfocus.html">Next component</a></div>
+</body>
+</html>
