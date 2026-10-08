@@ -1526,6 +1526,8 @@ type
 
     // Последняя строка диагностики, записанная в LogEdit - см. LogDiag
     FLastDiag: string;
+    FTidyRestart: Boolean;    // Tidy editor.ini: при выходе - перезапуск (TidyRestart)
+    FRestartExe: string;      // exe для перезапуска: рабочий, после OwnPromoteTrial
     FIniPathLog: TStringList; // что проверка путей editor.ini сделала при запуске
     // Цвета самой IDE - вкладки, дерево объектов и прочее оформление, не
     // относящееся к подсветке синтаксиса. Ключ - "элемент.роль", значение -
@@ -1947,6 +1949,8 @@ type
     procedure LoadProjectReg;
     procedure RelocateMissingProjects;
     procedure CheckIniPaths;
+    procedure TidySwapAtStart;
+    procedure TidyRestart;
     function  MergeOwnSettings(const ASrc, ADst: string): Integer;
     procedure SaveProjectReg;
     procedure RegisterProject(const AName, APath: string);
@@ -8654,20 +8658,45 @@ begin
   LogRaw(Format('Delete wrong projects names: убрано записей %d', [N]));
 end;
 
-// Tidy editor.ini (Project - Manage Projects): editor.ini разбирается на
-// editorNew.ini (этот компьютер), editorN.ini (другие компьютеры) и
-// editorOLD.ini (записи с ненайденными путями), см. IniTidy. Сначала
-// текущие настройки пишутся в editor.ini. Сам editor.ini не меняется:
-// программа держит его данные в памяти и пишет их при выходе, поэтому
-// заменить файл можно только после закрытия.
+// Tidy editor.ini (Project - Manage Projects). Сначала вопрос: unIDE будет
+// перезапущена. Да - текущий проект и изменённые файлы сохраняются (те же
+// вопросы, что при выходе), настройки пишутся в editor.ini, editor.ini
+// разбирается на editorNew.ini (этот компьютер), editorN.ini (другие
+// компьютеры) и editorOLD.ini (записи с ненайденными путями), см. IniTidy.
+// Затем программа закрывается и запускает себя заново (TidyRestart);
+// новый экземпляр ждёт, пока прежний закроется, и ставит editorNew.ini
+// на место editor.ini (TidySwapAtStart). Прежний editor.ini остаётся как
+// editor_prev.ini.
 procedure TForm1.TidyIniClick(Sender: TObject);
 var
   Notes: TStringList;
   NoteIdx: Integer;
   OldMode: UINT;
-  Done: Boolean;
+  Done, CanGo: Boolean;
 begin
+  if MessageDlg('Tidy editor.ini: unIDE будет перезапущена с новыми ' +
+                'настройками.'#13#10#13#10 +
+                'Проект и файлы сохраняются, editor.ini разбирается: ' +
+                'editorNew.ini - этот компьютер, editorN.ini - другие, ' +
+                'editorOLD.ini - записи с путями, которых нет. Прежний ' +
+                'editor.ini останется как editor_prev.ini.'#13#10#13#10 +
+                'Продолжить?', mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
+    Exit;
+
+  // Проект - без вопроса; изменённые файлы и схема - те же вопросы, что
+  // при выходе. Отказ - команда отменяется
+  if FCurrentProject <> '' then
+    SaveProjectTo(FCurrentProject);
+  CanGo := True;
+  FormCloseQuery(Self, CanGo);
+  if not CanGo then
+  begin
+    LogRaw('Tidy editor.ini: отменено');
+    Exit;
+  end;
   SaveSettings;
+
+  Done := False;
   Notes := TStringList.Create;
   try
     // диск или флешка, которых нет, - без системного окна об ошибке
@@ -8682,18 +8711,79 @@ begin
     LogRaw('Tidy editor.ini:');
     for NoteIdx := 0 to Notes.Count - 1 do
       LogRaw('  ' + Notes[NoteIdx]);
-    if Done then
-      ShowMessage('Записан ' + TidyNewName + ' - настройки этого ' +
-        'компьютера; другие файлы и подробности - в журнале.'#13#10#13#10 +
-        'editor.ini не изменён. Чтобы перейти на новый файл: закрыть unIDE, ' +
-        'переименовать editor.ini (например, в editor_prev.ini), затем ' +
-        TidyNewName + ' - в editor.ini. Изменения, сделанные после этой ' +
-        'команды (открытые файлы, закладки), в ' + TidyNewName +
-        ' не попадут - лучше закрыть unIDE сразу.')
-    else
-      ShowMessage(TidyNewName + ' не записан, причина - в журнале.');
   finally
     Notes.Free;
+  end;
+  if not Done then
+  begin
+    ShowMessage(TidyNewName + ' не записан, причина - в журнале. editor.ini ' +
+                'не изменён.');
+    Exit;
+  end;
+  FTidyRestart := True;
+  Close;
+end;
+
+// Перезапуск после Tidy editor.ini - в конце FormDestroy, когда настройки
+// уже записаны. Новому экземпляру передаётся номер этого процесса: он
+// ждёт его выхода и только потом меняет editor.ini. Не запустился -
+// editorNew.ini ставится сразу, unIDE запускается вручную.
+procedure TForm1.TidyRestart;
+var
+  Notes: TStringList;
+  Params: string;
+begin
+  Params := '/tidyswap:' + IntToStr(GetCurrentProcessId);
+  if ShellExecute(0, 'open', PChar(FRestartExe), PChar(Params),
+                  PChar(ExtractFilePath(FRestartExe)), SW_SHOWNORMAL) > 32 then
+    Exit;
+  Notes := TStringList.Create;
+  try
+    TidyApplyNew(ExtractFilePath(FRestartExe), Notes);
+    MessageBox(0, PChar('Не удалось запустить ' + FRestartExe + #13#10 +
+               Notes.Text + 'Запустите unIDE вручную.'), 'unIDE',
+               MB_OK or MB_ICONWARNING);
+  finally
+    Notes.Free;
+  end;
+end;
+
+// Запуск после Tidy editor.ini: в командной строке /tidyswap:<номер
+// процесса прежнего экземпляра>. Он при выходе ещё пишет editor.ini -
+// ждём, пока закроется (до 30 секунд), затем editor.ini ->
+// editor_prev.ini, editorNew.ini -> editor.ini (TidyApplyNew). Не
+// дождались - файлы не трогаются, запись в журнал. До SelectEditorIni:
+// editor.ini ещё никто не читал.
+procedure TForm1.TidySwapAtStart;
+var
+  ParamIdx, OldPid: Integer;
+  Param: string;
+  OldProc: THandle;
+begin
+  for ParamIdx := 1 to ParamCount do
+  begin
+    Param := ParamStr(ParamIdx);
+    if CompareText(Copy(Param, 1, 10), '/tidyswap:') <> 0 then
+      Continue;
+    OldPid := StrToIntDef(Copy(Param, 11, MaxInt), 0);
+    if OldPid <> 0 then
+    begin
+      OldProc := OpenProcess(SYNCHRONIZE, False, OldPid);
+      if OldProc <> 0 then
+      try
+        if WaitForSingleObject(OldProc, 30000) <> WAIT_OBJECT_0 then
+        begin
+          FIniPathLog.Add('Tidy editor.ini: прежний экземпляр unIDE не ' +
+                          'закрылся за 30 секунд - editor.ini не заменён, ' +
+                          TidyNewName + ' остаётся рядом');
+          Exit;
+        end;
+      finally
+        CloseHandle(OldProc);
+      end;
+    end;
+    TidyApplyNew(ExtractFilePath(Application.ExeName), FIniPathLog);
+    Exit;
   end;
 end;
 
@@ -18520,6 +18610,7 @@ begin
   // проекты из описаний .prj - в editor.ini. До того, как editor.ini
   // кто-нибудь прочитает; что сделано - в FIniPathLog, в HiLite log.
   FIniPathLog := TStringList.Create;
+  TidySwapAtStart;   // перезапуск после Tidy editor.ini
   SelectEditorIni(ExtractFilePath(Application.ExeName), FIniPathLog);
   MigratePrjProjects(FIniPathLog);
 
@@ -18906,11 +18997,12 @@ end;
 // запуска - она становится рабочей: <имя>.exe -> <имя>.exe.old (или .old1
 // ...), сама <имя>_new.exe -> <имя>.exe, .map так же. Переименовать
 // запущенный exe Windows позволяет - и этот, и рабочий, если он ещё открыт.
-// Не вышло - сообщение, файлы остаются как были.
-procedure OwnPromoteTrial;
+// Не вышло - сообщение, файлы остаются как были, результат False.
+function OwnPromoteTrial: Boolean;
 var
   TrialExe, MainExe, OldMain, TrialMap, MainMap: string;
 begin
+  Result := False;
   TrialExe := Application.ExeName;
   MainExe := ExtractFilePath(TrialExe) + OwnExeBase + '.exe';
   OldMain := '';
@@ -18947,6 +19039,7 @@ begin
       MoveFile(PChar(MainMap), PChar(OwnOldName(MainMap)));
     MoveFile(PChar(TrialMap), PChar(MainMap));
   end;
+  Result := True;
 end;
 
 procedure TForm1.FormDestroy(Sender: TObject);
@@ -18957,9 +19050,12 @@ begin
   // зависание
   HangWatchStop;
   WndWatchStop;
-  // Пробная сборка редактора запустилась и закрывается - она рабочая
+  // Пробная сборка редактора запустилась и закрывается - она рабочая.
+  // Перезапуск после Tidy editor.ini - уже рабочим exe
+  FRestartExe := Application.ExeName;
   if OwnIsTrial and FStartupDone then
-    OwnPromoteTrial;
+    if OwnPromoteTrial then
+      FRestartExe := ExtractFilePath(Application.ExeName) + OwnExeBase + '.exe';
   ArdFreeAll;
   FreeAndNil(FEnvOverrides);
   CiFreeAll;
@@ -19093,6 +19189,10 @@ begin
     if FScheme.KeywordGroups[I].Words <> nil then
       FScheme.KeywordGroups[I].Words.Free;
   SetLength(FScheme.KeywordGroups, 0);
+
+  // Tidy editor.ini: настройки записаны - новый экземпляр
+  if FTidyRestart then
+    TidyRestart;
 end;
 
 // Маркер на вкладке должен следить за флагом изменений. Перерисовываем панель
@@ -58789,6 +58889,9 @@ begin
   // Разбор текста окон - на диск: при следующем запуске не строить заново
   if CanClose then
     SaveAllMapCaches;
+  // Выход отменён - перезапуска после Tidy editor.ini тоже не будет
+  if not CanClose then
+    FTidyRestart := False;
 end;
 
 procedure TForm1.EditClickEvent(Sender: TObject);

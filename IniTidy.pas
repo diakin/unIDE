@@ -40,6 +40,10 @@ unit IniTidy;
 //
 //  Строки в UTF-8 (так их записывал другой редактор) переводятся в
 //  кодировку Windows, если все символы в ней есть.
+//
+//  TidyApplyNew ставит editorNew.ini на место editor.ini (editor.ini ->
+//  editor_prev.ini). Вызывает его новый экземпляр unIDE при перезапуске
+//  после команды, когда прежний уже закрылся и больше не пишет editor.ini.
 // ---------------------------------------------------------------------------
 
 interface
@@ -64,6 +68,11 @@ var
 // AIniFile - editor.ini; файлы пишутся в его папку. ANotes - отчёт.
 // False - editor.ini не прочитан или editorNew.ini не записан.
 function TidyEditorIni(const AIniFile: string; ANotes: TStrings): Boolean;
+
+// В папке ADir: editor.ini -> editor_prev.ini (занято - editor_prev1.ini
+// ...), editorNew.ini -> editor.ini. False - editorNew.ini нет или
+// переименовать не удалось (тогда editor.ini остаётся прежним).
+function TidyApplyNew(const ADir: string; ANotes: TStrings): Boolean;
 
 implementation
 
@@ -2158,6 +2167,55 @@ begin
       GroupDoc.Free;
     end;
   end;
+end;
+
+function TidyApplyNew(const ADir: string; ANotes: TStrings): Boolean;
+var
+  Dir, NewFile, MainFile, PrevFile: string;
+  Num: Integer;
+begin
+  Result := False;
+  Dir := AddSlash(ADir);
+  NewFile := Dir + TidyNewName;
+  MainFile := Dir + 'editor.ini';
+  if not FileExists(NewFile) then
+  begin
+    ANotes.Add('Tidy editor.ini: ' + TidyNewName + ' не найден, editor.ini ' +
+               'не заменён');
+    Exit;
+  end;
+  PrevFile := '';
+  if FileExists(MainFile) then
+  begin
+    PrevFile := Dir + 'editor_prev.ini';
+    Num := 1;
+    while FileExists(PrevFile) do
+    begin
+      PrevFile := Dir + 'editor_prev' + IntToStr(Num) + '.ini';
+      Inc(Num);
+    end;
+    if not RenameFile(MainFile, PrevFile) then
+    begin
+      ANotes.Add('Tidy editor.ini: не удалось переименовать editor.ini в ' +
+                 ExtractFileName(PrevFile) + ', editor.ini не заменён');
+      Exit;
+    end;
+  end;
+  if not RenameFile(NewFile, MainFile) then
+  begin
+    ANotes.Add('Tidy editor.ini: не удалось переименовать ' + TidyNewName +
+               ' в editor.ini, прежний editor.ini возвращён');
+    if PrevFile <> '' then
+      RenameFile(PrevFile, MainFile);
+    Exit;
+  end;
+  if PrevFile <> '' then
+    ANotes.Add('Tidy editor.ini: прежний editor.ini сохранён как ' +
+               ExtractFileName(PrevFile) + ', ' + TidyNewName +
+               ' стал editor.ini')
+  else
+    ANotes.Add('Tidy editor.ini: ' + TidyNewName + ' стал editor.ini');
+  Result := True;
 end;
 
 function TidyEditorIni(const AIniFile: string; ANotes: TStrings): Boolean;
