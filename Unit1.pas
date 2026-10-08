@@ -697,6 +697,8 @@ type
     FLogPopupItem6: TMenuItem;
     FLogPopupItem7: TMenuItem;
     FLogPopupItem8: TMenuItem;
+    FLogPopupItem9: TMenuItem;
+    FLogPopupItem10: TMenuItem;
     mNewItem1: TMenuItem;
     mNewItem2: TMenuItem;
     mNewItem3: TMenuItem;
@@ -2629,6 +2631,8 @@ type
     procedure LogEditDblClick(Sender: TObject);
     procedure LogEditClick(Sender: TObject);
     procedure SaveCompileLog(const AFile: string);
+    procedure SaveAllLogs;
+    function  AnyLogFilled: Boolean;
     function  LogPopupEdit: TRichEdit;
     procedure BuildDeclPanel;
     procedure SubLabelShow(const AName: string);
@@ -37340,6 +37344,7 @@ begin
     5: FLogPopup.Items[I].Enabled := HasSel and CanEdit;
     6: FLogPopup.Items[I].Enabled := (E <> nil) and E.HandleAllocated and
                                      (GetWindowTextLength(E.Handle) > 0);
+    7: FLogPopup.Items[I].Enabled := AnyLogFilled;
   end;
 end;
 
@@ -37351,6 +37356,12 @@ procedure TForm1.LogPopupClick(Sender: TObject);
 var
   E: TRichEdit;
 begin
+  // Все логи сразу - не зависит от окна, над которым открыто меню
+  if TMenuItem(Sender).Tag = 7 then
+  begin
+    SaveAllLogs;
+    Exit;
+  end;
   E := LogPopupEdit;
   if (E = nil) or not E.HandleAllocated then
     Exit;
@@ -56525,6 +56536,92 @@ begin
     LogLines.Free;
   end;
   LogComp(LogSavedTag + AFile);
+end;
+
+// Окна логов в порядке вкладок и окончания имён их файлов (SaveAllLogs)
+const
+  LogFileCount = 4;
+  LogFileSuffix: array[0..LogFileCount - 1] of string =
+    ('_compile.log', '_error.log', '_hilite.log', '_runtime.log');
+
+// Есть ли в каком-нибудь логе текст - пункт меню Save all logs
+function TForm1.AnyLogFilled: Boolean;
+var
+  LogBoxes: array[0..LogFileCount - 1] of TRichEdit;
+  LogIdx: Integer;
+begin
+  Result := False;
+  LogBoxes[0] := CompLogEdit;
+  LogBoxes[1] := ErrLogEdit;
+  LogBoxes[2] := LogEdit;
+  LogBoxes[3] := RuntimeLog;
+  for LogIdx := 0 to LogFileCount - 1 do
+    if (LogBoxes[LogIdx] <> nil) and LogBoxes[LogIdx].HandleAllocated and
+       (GetWindowTextLength(LogBoxes[LogIdx].Handle) > 0) then
+    begin
+      Result := True;
+      Exit;
+    end;
+end;
+
+// Меню логов - Save all logs: каждый непустой лог (Compilation, Error,
+// HiLite, Runtime) - своим файлом рядом с файлом активной вкладки:
+// <имя>_compile.log, <имя>_error.log, <имя>_hilite.log, <имя>_runtime.log.
+// Нет открытого файла - в папке редактора, unide_*.log. Лог из одних
+// пробелов и пустых строк пустым и считается. Файлы перезаписываются.
+// Итог - строками "Лог сохранён: путь" в Compilation log (щелчок по
+// строке - путь в буфер обмена); пишутся после записи всех файлов, в
+// файл Compilation log они не попадают.
+procedure TForm1.SaveAllLogs;
+var
+  LogBoxes: array[0..LogFileCount - 1] of TRichEdit;
+  BaseName, LogFile: string;
+  LogLines, SavedFiles, FailedFiles: TStringList;
+  LogIdx, FileIdx: Integer;
+begin
+  LogBoxes[0] := CompLogEdit;
+  LogBoxes[1] := ErrLogEdit;
+  LogBoxes[2] := LogEdit;
+  LogBoxes[3] := RuntimeLog;
+  if FCurrentFileName <> '' then
+    BaseName := ChangeFileExt(FCurrentFileName, '')
+  else
+    BaseName := ExtractFilePath(Application.ExeName) + 'unide';
+
+  LogLines := TStringList.Create;
+  SavedFiles := TStringList.Create;
+  FailedFiles := TStringList.Create;
+  try
+    for LogIdx := 0 to LogFileCount - 1 do
+    begin
+      if LogBoxes[LogIdx] = nil then
+        Continue;
+      LogLines.Text := LogBoxes[LogIdx].Text;
+      if Trim(LogLines.Text) = '' then
+        Continue;
+      LogFile := BaseName + LogFileSuffix[LogIdx];
+      try
+        ForceDirectories(ExtractFilePath(LogFile));
+        LogLines.SaveToFile(LogFile);
+        SavedFiles.Add(LogFile);
+      except
+        on ErrInfo: Exception do
+          FailedFiles.Add(LogFile + ' (' + ErrInfo.Message + ')');
+      end;
+    end;
+
+    ShowCompLog;
+    if (SavedFiles.Count = 0) and (FailedFiles.Count = 0) then
+      LogComp('Save all logs: все логи пустые, сохранять нечего');
+    for FileIdx := 0 to SavedFiles.Count - 1 do
+      LogComp(LogSavedTag + SavedFiles[FileIdx]);
+    for FileIdx := 0 to FailedFiles.Count - 1 do
+      LogComp('Лог не сохранён: ' + FailedFiles[FileIdx]);
+  finally
+    FailedFiles.Free;
+    SavedFiles.Free;
+    LogLines.Free;
+  end;
 end;
 
 // Щелчок по строке "Лог сохранён: путь" - путь в буфер обмена

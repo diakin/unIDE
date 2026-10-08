@@ -932,6 +932,15 @@ object Form1: TForm1
       Tag = 6
       OnClick = LogPopupClick
     end
+    object FLogPopupItem9: TMenuItem
+      Caption = '-'
+      Tag = 0
+    end
+    object FLogPopupItem10: TMenuItem
+      Caption = 'Sa&ve all logs'
+      Tag = 7
+      OnClick = LogPopupClick
+    end
   end
   object FToolbar: TPanel
     Align = alTop
