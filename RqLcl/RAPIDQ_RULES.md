@@ -132,7 +132,7 @@ Function RqStr Overload (ByVal Value As Double) As String   ' число -> ""
 ## Параметры
 
 - По умолчанию RapidQ передаёт по значению (документация, `$OPTION BYREF`). В FreeBASIC `-lang fb` строки по умолчанию передаются по ссылке (проверено) — препроцессор ставит `ByVal` явно.
-- Имена параметров в DECLARE и в заголовке SUB/FUNCTION разные: в теле действуют имена из DECLARE, имя из заголовка — необъявленная переменная (0). Тест пользователя 2026-10-08: `DECLARE SUB T (A AS LONG)`, `SUB T (B AS LONG)`, `PRINT A, B`, `T 5` → `50` (запятая в PRINT RapidQ ничего не вставляет, см. «PRINT»: A = 5, B = 0). Препроцессор: заголовок FreeBASIC — с параметрами DECLARE, имена из заголовка — локальные переменные, предупреждение. Так у CallBack_2.Inc (`hFunction` / `cbIndex`), а в RQSV105b2023-13Inc-4.inc и RQdebugger — у `FileNameParse$` (`cFileName` / `FileName$`), `StrCrp`, `CrpStr1`, `CrpStr` (`key` / `keys`), `ListGridDrawCell` (`R` / `Rect`).
+- Имена параметров в DECLARE и в заголовке SUB/FUNCTION разные: в теле действуют имена из DECLARE, имя из заголовка — необъявленная переменная (0). Тест пользователя 2026-10-08: `DECLARE SUB T (A AS LONG)`, `SUB T (B AS LONG)`, `PRINT A, B`, `T 5` → `50` (запятая в PRINT RapidQ ничего не вставляет, см. «PRINT»: A = 5, B = 0). Препроцессор: заголовок FreeBASIC — с параметрами DECLARE, имена из заголовка — локальные переменные, предупреждение. Так в обоих режимах, Smart и Compat (решение пользователя 2026-10-08: не делать имена синонимами одного параметра). Так у CallBack_2.Inc (`hFunction` / `cbIndex`), а в RQSV105b2023-13Inc-4.inc и RQdebugger — у `FileNameParse$` (`cFileName` / `FileName$`), `StrCrp`, `CrpStr1`, `CrpStr` (`key` / `keys`), `ListGridDrawCell` (`R` / `Rect`).
 
 ## Свои компоненты (TYPE … EXTENDS)
 
