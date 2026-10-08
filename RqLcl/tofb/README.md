@@ -29,6 +29,7 @@
 - `PRINT a; b, c` → `Print RqFmt(a); RqFmt(b); RqFmt(c)`; `?` — то же.
 - Параметры — `ByVal`, кроме `BYREF`, `$OPTION BYREF`, объектов, массивов и TYPE; `SUB` без параметров после `DECLARE SUB` с параметрами берёт их из DECLARE.
 - `Объект.OnXxx = Процедура` → `@Процедура`; в `rqlcl.bi` обработчики и с `Sender`, и без него.
+- Продолжение строки `_`, приклеенное к слову типа или ключевому слову в конце строки (`lFlags As Long_` в Files.inc, DECLARE InternetOpen и InternetReadFile), — тоже продолжение. После других слов `_` остаётся частью имени.
 - `Result =` в функции → `Function =`; `INC x[, n]` / `DEC` → `x += n` / `x -= n`; `CALL`, `LET` убираются; `'$...` и `' $...` в комментарии → `''$...` (иначе fbc принимает за метакоманду; `' $` fbc тоже читает как метакоманду, проверено).
 - Функция, которая читает `Result` (`result = result & …`, `Имя = Result`; RC4 и ChangeFileExt в conversion.inc): значение функции FreeBASIC прочитать нельзя, поэтому в заголовке `Dim rq_result As тип`, чтение `Result` → `rq_result`, запись `Result =` и `Имя =` → `rq_result = … : Function = rq_result`. Функции, которые `Result` только присваивают, — как раньше, `Function =`.
 - Параметр или локальная переменная с именем константы модуля (`CONST clR` и параметр `Clr` в rapidq.inc) — с `_p`: в RapidQ параметр перекрывает константу, в FreeBASIC это ошибка.

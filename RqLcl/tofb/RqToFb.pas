@@ -827,9 +827,42 @@ end;
 
 // Строка оканчивается продолжением " _" (вне строки в кавычках и
 // комментария)
+// Продолжение строки, приклеенное к слову: "lFlags As Long_" (Files.inc,
+// DECLARE InternetOpen). Обычно "_" после буквы - часть имени, поэтому
+// продолжением считается только "_" после слова типа или ключевого слова,
+// которыми переменная называться не может, и только в конце строки.
+function IsGlueWord(const AWord: string): Boolean;
+const
+  GlueWords = ' BYTE SHORT WORD INTEGER LONG DWORD SINGLE DOUBLE STRING ' +
+              'VARIANT AS AND OR XOR NOT MOD THEN ELSE TO STEP BYVAL BYREF ';
+begin
+  Result := (AWord <> '') and (Pos(' ' + UpperCase(AWord) + ' ', GlueWords) > 0);
+end;
+
+// После позиции AFrom до конца физической строки - только пробелы или
+// комментарий
+function LineRestBlank(const AText: string; AFrom: Integer): Boolean;
+var
+  CharIdx: Integer;
+begin
+  Result := True;
+  for CharIdx := AFrom to Length(AText) do
+    case AText[CharIdx] of
+      ' ', #9:
+        ;
+      #13, #10, '''':
+        Exit;
+    else
+      begin
+        Result := False;
+        Exit;
+      end;
+    end;
+end;
+
 function EndsWithContinue(const AText: string): Boolean;
 var
-  CharIdx, LineStart, LastIdx: Integer;
+  CharIdx, LineStart, LastIdx, WordStart: Integer;
   InQuote: Boolean;
 begin
   Result := False;
@@ -858,10 +891,18 @@ begin
     Dec(LastIdx);
   if (LastIdx < LineStart) or (AText[LastIdx] <> '_') then
     Exit;
-  // перед "_" - не часть имени (пробел, кавычка, скобка...)
+  // перед "_" - не часть имени (пробел, кавычка, скобка...); или "_"
+  // приклеен к слову типа / ключевому слову (Long_)
   if (LastIdx > LineStart) and
      (AText[LastIdx - 1] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) then
-    Exit;
+  begin
+    WordStart := LastIdx - 1;
+    while (WordStart > LineStart) and
+          (AText[WordStart - 1] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+      Dec(WordStart);
+    if not IsGlueWord(Copy(AText, WordStart, LastIdx - WordStart)) then
+      Exit;
+  end;
   Result := True;
 end;
 
@@ -1289,6 +1330,25 @@ var
     Result := AChar in ['A'..'Z', 'a'..'z', '0'..'9', '_', '~'];
   end;
 
+  // Слово с Pos0 кончается на "_", без "_" - слово типа или ключевое
+  // (IsGlueWord), дальше до конца строки пусто: Pos1 - на этом "_"
+  function GluedEnd: Boolean;
+  var
+    WordEnd: Integer;
+  begin
+    Result := False;
+    WordEnd := Pos0;
+    while (WordEnd + 1 <= TextLen) and IsIdentChar(AText[WordEnd + 1]) do
+      Inc(WordEnd);
+    if (WordEnd > Pos0) and (AText[WordEnd] = '_') and
+       IsGlueWord(Copy(AText, Pos0, WordEnd - Pos0)) and
+       LineRestBlank(AText, WordEnd + 1) then
+    begin
+      Pos1 := WordEnd;
+      Result := True;
+    end;
+  end;
+
 begin
   SetLength(AToks, 0);
   Count := 0;
@@ -1359,6 +1419,15 @@ begin
         Inc(Pos1);
       Add(tkDirective, Pos0, Pos1);
       AToks[Count - 1].Up := '$' + Copy(AToks[Count - 1].Up, 2, MaxInt);
+    end
+    else if IsIdentStart(Ch) and GluedEnd then
+    begin
+      // "Long_" в конце строки: слово, затем продолжение (IsGlueWord)
+      Add(tkIdent, Pos0, Pos1 - 1);
+      Pos0 := Pos1;
+      while (Pos1 + 1 <= TextLen) and (AText[Pos1 + 1] in [' ', #9, #13, #10]) do
+        Inc(Pos1);
+      Add(tkSpace, Pos0, Pos1);
     end
     else if IsIdentStart(Ch) then
     begin
