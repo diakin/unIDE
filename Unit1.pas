@@ -47076,8 +47076,8 @@ begin
   Screen.Cursor := crHourGlass;
   try
     if not FormPreviewMake(FormRef, FModPreview.Width - 8,
-                           FModPreview.Height - 8, DsgMapClass, Bmp,
-                           Err) then
+                           FModPreview.Height - 8, DsgMapClass,
+                           FModPreview.Parent, Bmp, Err) then
     begin
       Bmp.Free;
       FModPreview.Picture.Assign(nil);

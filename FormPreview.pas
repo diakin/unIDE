@@ -4,17 +4,23 @@ unit FormPreview;
 //  Превью формы по файлу .dfm - для списка модулей и форм (View Unit /
 //  View Form): при наведении мыши на строку справа показывается вид формы.
 //
-//  Форма строится из .dfm невидимой (TReader, как в конструкторе форм),
-//  рисуется в картинку (PaintTo) и уменьшается. Сверху рисуется полоса
-//  заголовка с Caption формы - окно без рамки было бы трудно узнать.
+//  Форма строится из .dfm (TReader, как в конструкторе форм), рисуется в
+//  картинку (PaintTo) и уменьшается. Сверху рисуется полоса заголовка с
+//  Caption формы - окно без рамки было бы трудно узнать.
+//
+//  Стандартные элементы Windows (кнопки, поля, списки) рисуют себя только
+//  в своё окно: у невидимой формы их окон нет, и в картинке оставался
+//  один фон формы. Поэтому форма на время снимка вкладывается без рамки в
+//  AHost (панель превью) и ставится далеко за его край: окна всех
+//  элементов созданы и видимы, на экране их нет, фокус не уходит.
 //
 //  Что делается, чтобы чтение не мешало программе:
 //    - код формы не выполняется: обработчики событий не подключаются
 //      (OnFindMethod), ошибки свойств пропускаются (OnError);
 //    - Active = True и Connected = True (наборы данных, соединения) из
 //      текста убираются - иначе превью открывало бы базы и порты;
-//      Visible, FormStyle, WindowState и Position формы - тоже: окно не
-//      должно показываться;
+//      Visible, FormStyle, WindowState, Position и ActiveControl формы -
+//      тоже: окно не должно показываться и забирать фокус;
 //    - класс, которого в программе нет: сначала AMap (у unIDE -
 //      DsgMapClass, аналог стороннего компонента, как в конструкторе),
 //      иначе визуальный (в его тексте есть Width) - панель с именем
@@ -33,11 +39,13 @@ type
 
 // Картинка формы из файла ADfmFile (текстового или двоичного), не больше
 // AMaxW x AMaxH; меньшая не растягивается. AMap - аналоги сторонних
-// классов (может быть nil). False - форму построить не удалось, причина -
-// в AError.
+// классов (может быть nil). AHost - видимое окно, в которое форма
+// вкладывается на время снимка (nil - снимок невидимой формы, без
+// стандартных элементов Windows). False - форму построить не удалось,
+// причина - в AError.
 function FormPreviewMake(const ADfmFile: string; AMaxW, AMaxH: Integer;
-                         AMap: TFormPreviewMap; ABitmap: TBitmap;
-                         var AError: string): Boolean;
+                         AMap: TFormPreviewMap; AHost: TWinControl;
+                         ABitmap: TBitmap; var AError: string): Boolean;
 
 implementation
 
@@ -223,7 +231,8 @@ begin
            ((Copy(Txt, 1, 10) = 'Visible = ') or
             (Copy(Txt, 1, 12) = 'FormStyle = ') or
             (Copy(Txt, 1, 14) = 'WindowState = ') or
-            (Copy(Txt, 1, 11) = 'Position = ')) then
+            (Copy(Txt, 1, 11) = 'Position = ') or
+            (Copy(Txt, 1, 16) = 'ActiveControl = ')) then
         begin
           Lines.Delete(LineIdx);
           Continue;
@@ -309,8 +318,8 @@ begin
 end;
 
 function FormPreviewMake(const ADfmFile: string; AMaxW, AMaxH: Integer;
-                         AMap: TFormPreviewMap; ABitmap: TBitmap;
-                         var AError: string): Boolean;
+                         AMap: TFormPreviewMap; AHost: TWinControl;
+                         ABitmap: TBitmap; var AError: string): Boolean;
 var
   Form: TForm;
   Boxes: TStringList;
@@ -336,6 +345,15 @@ begin
       end;
       FullW := ClientW;
       FullH := ClientH + PreviewCaptionHeight;
+
+      // Окна элементов: форма - внутри AHost, за его краем
+      if (AHost <> nil) and AHost.HandleAllocated then
+      begin
+        Form.BorderStyle := bsNone;
+        Form.Parent := AHost;
+        Form.SetBounds(-30000, -30000, ClientW, ClientH);
+        Form.Visible := True;
+      end;
 
       // Во весь размер: полоса заголовка и клиентская часть формы
       Full.PixelFormat := pf24bit;
