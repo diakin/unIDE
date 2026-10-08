@@ -450,6 +450,14 @@ type
     FLostLines: Integer;          // переводы строк, убранные сборкой заново
     FSourceMode: string;          // '$RQFB SMART|COMPAT из исходника
     FLineIsLabel: Boolean;
+    // В начало программы (MainHeader): DECLARE ... LIB и CONST с числом
+    // или строкой (HoistLine). RapidQ позволяет обратиться к ним раньше
+    // объявления (QDebug в RAPIDQ.INC - FormatMessage и FORMAT_MESSAGE_
+    // FROM_SYSTEM из ComPort.cmp, подключённого позже); FreeBASIC - нет.
+    // Текст - из первого прохода, на своём месте строка - комментарий.
+    FHoistKeys: TRqNameMap;       // 'C|ИМЯ' / 'D|ИМЯ' - уже вынесенные
+    FHoistConsts: TStringList;
+    FHoistDecls: TStringList;
     FLibParams: Boolean;          // параметры DECLARE ... LIB (STRING - указатель)
     FInlineIf: Boolean;           // в строке однострочный IF (после THEN есть оператор)
     FGosubSites: TStringList;     // GOSUB/RETURN: ОБЛАСТЬ=число GOSUB в ней
@@ -572,6 +580,8 @@ type
     function ProcessFile(const AFileName: string; AIsMain: Boolean): string;
     procedure Report(const AFile: string);
     function MainHeader: string;
+    procedure HoistLine(const AToks: TToks; AFirstIdx: Integer;
+                        const ASource: string; var AOut: string);
     procedure EndOfPass1;
 
     // TYPE ... EXTENDS
@@ -1164,6 +1174,9 @@ begin
   FRedims.Sorted := True;
   FRedims.Duplicates := dupIgnore;
   FDefines := TRqNameMap.Create;
+  FHoistKeys := TRqNameMap.Create;
+  FHoistConsts := TStringList.Create;
+  FHoistDecls := TStringList.Create;
   FResources := TStringList.Create;
   FDoneFiles := TStringList.Create;
   FOutNames := TStringList.Create;
@@ -1236,6 +1249,9 @@ begin
   FGosubSites.Free;
   FRedims.Free;
   FDefines.Free;
+  FHoistKeys.Free;
+  FHoistConsts.Free;
+  FHoistDecls.Free;
   FResources.Free;
   FDoneFiles.Free;
   FOutNames.Free;
@@ -2450,6 +2466,120 @@ begin
   AOut := '';
   for TokIdx := 0 to High(Toks) do
     AOut := AOut + Toks[TokIdx].Pre + Toks[TokIdx].OutText + Toks[TokIdx].Post;
+
+  // DECLARE ... LIB и CONST с числом или строкой - в начало программы
+  HoistLine(Toks, FirstIdx, AText, AOut);
+end;
+
+// Строка - один оператор DECLARE ... LIB (параметры и результат - числа и
+// строки) или CONST Имя = число / строка вне SUB, FUNCTION и TYPE: в
+// первом проходе её перевод запоминается для начала программы
+// (MainHeader), во втором на её месте - комментарий. Одно имя выносится
+// один раз: повтор того же DECLARE или CONST в другом файле - тоже
+// комментарий.
+procedure TRqFbConv.HoistLine(const AToks: TToks; AFirstIdx: Integer;
+                              const ASource: string; var AOut: string);
+var
+  KeyIdx, NameIdx, EqIdx, TokIdx, Depth, BreakPos, ValueCount: Integer;
+  HoistKey, HoistText, KindUp: string;
+  ProcRec: TRqProc;
+begin
+  if (FCurProc <> nil) or (FCurType <> nil) or FInType or FLineIsLabel then
+    Exit;
+  KeyIdx := AFirstIdx;
+  if IsWord(AToks, KeyIdx, 'PRIVATE') or IsWord(AToks, KeyIdx, 'PUBLIC') then
+    KeyIdx := NextSig(AToks, KeyIdx + 1, High(AToks));
+  if (KeyIdx < 0) or (AToks[KeyIdx].Kind <> tkIdent) then
+    Exit;
+  // один оператор в строке
+  Depth := 0;
+  for TokIdx := KeyIdx to High(AToks) do
+  begin
+    if AToks[TokIdx].Kind = tkComment then
+      Break;
+    if IsOp(AToks, TokIdx, '(') then
+      Inc(Depth)
+    else if IsOp(AToks, TokIdx, ')') then
+      Dec(Depth)
+    else if (Depth = 0) and IsOp(AToks, TokIdx, ':') then
+      Exit;
+  end;
+
+  if AToks[KeyIdx].Up = 'DECLARE' then
+  begin
+    TokIdx := NextSig(AToks, KeyIdx + 1, High(AToks));
+    if TokIdx < 0 then
+      Exit;
+    KindUp := AToks[TokIdx].Up;
+    if (KindUp <> 'SUB') and (KindUp <> 'FUNCTION') then
+      Exit;
+    NameIdx := NextSig(AToks, TokIdx + 1, High(AToks));
+    if (NameIdx < 0) or (AToks[NameIdx].Kind <> tkIdent) or
+       not IsWord(AToks, NextSig(AToks, NameIdx + 1, High(AToks)), 'LIB') then
+      Exit;
+    ProcRec := FindProc(AToks[NameIdx].Up);
+    if (ProcRec = nil) or ProcRec.IsVariadic or
+       (Pos('O', ProcRec.LibKinds) > 0) then
+      Exit;
+    if ProcRec.IsFunc and not ((ProcRec.RetType = 'STRING') or
+                               IsNumericType(ProcRec.RetType)) then
+      Exit;
+    HoistKey := 'D|' + ProcRec.Name;
+  end
+  else if AToks[KeyIdx].Up = 'CONST' then
+  begin
+    NameIdx := NextSig(AToks, KeyIdx + 1, High(AToks));
+    if (NameIdx < 0) or (AToks[NameIdx].Kind <> tkIdent) then
+      Exit;
+    EqIdx := NextSig(AToks, NameIdx + 1, High(AToks));
+    if not IsOp(AToks, EqIdx, '=') then
+      Exit;
+    // значение - число или строка (знак перед числом можно)
+    ValueCount := 0;
+    for TokIdx := EqIdx + 1 to High(AToks) do
+      case AToks[TokIdx].Kind of
+        tkSpace:
+          ;
+        tkComment:
+          Break;
+        tkNumber, tkString:
+          Inc(ValueCount);
+        tkOp:
+          if (AToks[TokIdx].Text <> '-') and (AToks[TokIdx].Text <> '+') then
+            Exit;
+      else
+        Exit;
+      end;
+    if ValueCount <> 1 then
+      Exit;
+    HoistKey := 'C|' + AToks[NameIdx].Up;
+  end
+  else
+    Exit;
+
+  if FPass = 1 then
+  begin
+    if FHoistKeys.IndexOf(HoistKey) >= 0 then
+      Exit;
+    // перевод - первой физической строкой, без " _" продолжения
+    HoistText := AOut;
+    BreakPos := Pos(#10, HoistText);
+    if BreakPos > 0 then
+      HoistText := Copy(HoistText, 1, BreakPos - 1);
+    HoistText := TrimRight(StringReplace(HoistText, #13, '', [rfReplaceAll]));
+    if Copy(HoistText, Length(HoistText) - 1, 2) = ' _' then
+      HoistText := TrimRight(Copy(HoistText, 1, Length(HoistText) - 2));
+    FHoistKeys.Put(HoistKey, HoistText);
+    // сообщения fbc об этой строке - с файлом и строкой исходника RapidQ
+    HoistText := '#line ' + IntToStr(FCurLine - 1) + ' "' + FCurFile + '"' +
+                 CrLf + HoistText;
+    if HoistKey[1] = 'C' then
+      FHoistConsts.Add(HoistText)
+    else
+      FHoistDecls.Add(HoistText);
+  end
+  else if FHoistKeys.IndexOf(HoistKey) >= 0 then
+    AOut := CommentOut(ASource);
 end;
 
 // Класс есть в rqmembers.inc
@@ -6687,6 +6817,12 @@ begin
   Result := Result + '#include once "rqrt.bi"' + CrLf +
             '#include once "rqstream.bi"' + CrLf +
             '#include once "rqlcl.bi"' + CrLf;
+  // CONST и DECLARE ... LIB со всей программы - до первого обращения
+  // (HoistLine); на своих местах они - комментарии
+  for VarIdx := 0 to FHoistConsts.Count - 1 do
+    Result := Result + FHoistConsts[VarIdx] + CrLf;
+  for VarIdx := 0 to FHoistDecls.Count - 1 do
+    Result := Result + FHoistDecls[VarIdx] + CrLf;
   for VarIdx := 0 to FVars.Count - 1 do
   begin
     VarRec := TRqVar(FVars.Objects[VarIdx]);
@@ -6857,6 +6993,9 @@ begin
   FOpt.OutDir := ExpandFileName(FOpt.OutDir);
   FSourceMode := '';
   FPass1Lines := 0;
+  FHoistKeys.Clear;
+  FHoistConsts.Clear;
+  FHoistDecls.Clear;
   for PassIdx := 1 to 2 do
   begin
     if FAborted then
