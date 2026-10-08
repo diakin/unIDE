@@ -57260,6 +57260,20 @@ begin
     Message.LParam := Integer(MakeLong(Word(MouseX), HiWord(Message.LParam)));
   end;
 
+  // Shift+Enter: RichEdit пишет вместо перевода строки символ #11 (VT,
+  // мягкий перенос). На экране это новая строка, но для текста её нет:
+  // Format text, поиск и сборка видят продолжение предыдущей строки, и
+  // отступ после #11 не исправляется. Вместо него - обычный перевод
+  // строки, через EM_REPLACESEL (снимок для отмены и EN_CHANGE - как при
+  // вводе)
+  if (Message.Msg = WM_CHAR) and (Message.WParam = 13) and
+     (GetKeyState(VK_SHIFT) < 0) and not RichEdit1.ReadOnly then
+  begin
+    SendMessage(RichEdit1.Handle, EM_REPLACESEL, 1, Integer(PChar(#13)));
+    Message.Result := 0;
+    Exit;
+  end;
+
   // Снимок ДО того, как сообщение уйдёт в контрол. EN_CHANGE придёт ВНУТРИ
   // обработки этого же сообщения, вложенным вызовом, - там снимок и понадобится.
   if (Message.Msg = WM_CHAR) or (Message.Msg = WM_KEYDOWN) or
@@ -59927,7 +59941,7 @@ var
   L: TLineScan;
   PrevCode: string;
   OrigText, Expanded: string;
-  ExpandCount: Integer;
+  ExpandCount, VtCount: Integer;
 
   // Закончен ли оператор строкой S
   function EndsStatement(const S: string): Boolean;
@@ -59997,6 +60011,27 @@ begin
       end;
       FMapStale := True;
     end;
+  end;
+
+  // Мягкие переносы #11 (вставлял Shift+Enter) - обычными переводами
+  // строки: иначе текст после #11 считается той же строкой, и его отступ
+  // не трогается
+  VtCount := 0;
+  Expanded := GetEditorText;
+  for K := 1 to Length(Expanded) do
+    if Expanded[K] = #11 then
+      Inc(VtCount);
+  if VtCount > 0 then
+  begin
+    if OrigText = '' then
+      OrigText := Expanded;
+    FLockHighlight := True;
+    try
+      SetEditorText(StringReplace(Expanded, #11, #13#10, [rfReplaceAll]));
+    finally
+      FLockHighlight := False;
+    end;
+    FMapStale := True;
   end;
 
   // Карта комментариев и литералов должна быть по текущему тексту: по ней
@@ -60230,7 +60265,7 @@ begin
       Inc(I);
     end;
 
-    if (Changed = 0) and (ExpandCount = 0) then
+    if (Changed = 0) and (ExpandCount = 0) and (VtCount = 0) then
     begin
       StatusBar1.SimpleText := 'Format text: отступы уже расставлены';
       StatusBar1.SimplePanel := True;
@@ -60239,7 +60274,7 @@ begin
 
     // Текст до форматирования - в ту же копию, что и у массовой замены;
     // были развёрнуты блоки CREATE - текст до развёртки
-    if ExpandCount > 0 then
+    if OrigText <> '' then
       FReplaceBackup := OrigText
     else
       FReplaceBackup := GetEditorText;
@@ -60286,6 +60321,11 @@ begin
         Format('Format text: развёрнуто блоков CREATE в одну строку %d, ' +
       'строк с новым отступом %d. Откат - Edit, Отменить массовую замену.',
                [ExpandCount, Changed])
+    else if VtCount > 0 then
+      StatusBar1.SimpleText :=
+        Format('Format text: мягких переносов (#11) заменено на перевод ' +
+      'строки %d, строк с новым отступом %d. Откат - Edit, Отменить ' +
+      'массовую замену.', [VtCount, Changed])
     else
       StatusBar1.SimpleText :=
         Format('Format text: строк изменено %d. Откат - Edit, Отменить массовую замену.',
