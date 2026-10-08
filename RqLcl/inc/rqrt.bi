@@ -965,3 +965,24 @@ Sub RqExtractResource(ByVal ResId As Long, ByRef FileName As String)
     Put #FileNum, 1, *ResData, ResSize
     Close #FileNum
 End Sub
+
+' ---------------------------------------------------------------------------
+'  SetNewWndProc из NewWndProc.inc (препроцессор заменяет её тело): окну -
+'  новая оконная процедура, результат - прежняя. У RapidQ здесь строился
+'  переходник x86 (CODEPTR RapidQ не даёт процедуру, годную для Windows);
+'  процедура FreeBASIC годится сама. SetWindowLongA / SetWindowLongPtrA -
+'  через DyLibSymbol, чтобы не спорить с DECLARE программы (другие типы
+'  параметров у того же имени gcc в 64 бит не принимает).
+' ---------------------------------------------------------------------------
+Type RqRtSetWndLongFn As Function (ByVal Wnd As Any Ptr, ByVal Index As Long, ByVal NewLong As Integer) As Integer
+Function RqSetWndProc(ByVal Wnd As Integer, ByVal NewProc As Integer) As Integer
+    Static SetWndLong As RqRtSetWndLongFn
+    If SetWndLong = 0 Then
+#ifdef __FB_64BIT__
+        SetWndLong = Cast(RqRtSetWndLongFn, DyLibSymbol(DyLibLoad("user32"), "SetWindowLongPtrA"))
+#else
+        SetWndLong = Cast(RqRtSetWndLongFn, DyLibSymbol(DyLibLoad("user32"), "SetWindowLongA"))
+#endif
+    End If
+    Return SetWndLong(Cast(Any Ptr, Wnd), -4, NewProc)
+End Function

@@ -113,6 +113,7 @@ QRICHEDIT — `TRichMemo` из пакета RichMemo (на Windows — окно 
 - Кэш картинок RapidQ (глава 8): `Button.BMP = ImageList.GetBMP(0)`, `Image.Icon = Form.Icon` — чтение BMP/Icon и GetBMP/GetICO кладут картинку в кэш DLL и возвращают "", запись `BMP = ""` / `Icon = ""` берёт её оттуда (одна картинка и один значок, как в RapidQ). В DLL — `RqCallObjInts` (метод с другим объектом и списком целых: `ImageList.Draw`, `Image.CopyRect`).
 - `inc/rqimage.bi` — QIMAGE и QIMAGELIST (подключается из rqlcl.bi до rqview.bi; в DLL — `dll/rqlclimage.pas`).
 - `dll/rqlclwnd.pas` — событие WndProc (подмена оконной процедуры).
+- `inc/rqrt.bi`: `RqSetWndProc(окно, адрес)` — замена тела `SetNewWndProc` из NewWndProc.Inc (препроцессор), SetWindowLong(Ptr)A через DyLibSymbol.
 - `inc/rqbitmap.bi` — QBITMAP; `inc/rqextra.bi` — QCANVAS, QSCROLLBAR, QTRACKBAR, QSCROLLBOX, QOVALBTN, QOUTLINE, QHEADER, Printer, QNOTIFYICONDATA (в DLL — `dll/rqlclextra.pas`); `inc/rqsocket.bi` — QSOCKET (без DLL). CopyMode у всех холстов — номер RapidQ (cmBlackness 0, cmDstInvert 1, cmMergeCopy 2, cmMergePaint 3, cmNotSrcCopy 4, cmNotSrcErase 5, cmPatCopy 6, cmPatInvert 7, cmPatPaint 8, cmSrcAnd 9, cmSrcCopy 10, cmSrcErase 11, cmSrcInvert 12, cmSrcPaint 13, cmWhiteness 14; по документации QBITMAP), в DLL переводится в код LCL; Pixel, TextWidth, TextHeight — у всех холстов.
 - `inc/rqview.bi` — QLISTVIEW (с посредниками QLISTITEM, QLISTCOLUMN) и QFONTDIALOG (подключается из rqlcl.bi; в DLL — `dll/rqlclview.pas`).
 - `dll/richmemo/` — нужная часть пакета RichMemo (источник и лицензия — в его README).

@@ -252,6 +252,8 @@ type
     DeclAliases: string; // " : Dim ByRef ..." для параметров из DECLARE
     IsVariadic: Boolean; // SUBI / FUNCTIONI
     Declared: Boolean;
+    FbParams: string;   // параметры FreeBASIC (DECLARE или заголовок)
+    HasBody: Boolean;   // есть SUB/FUNCTION с телом (или DECLARE ... LIB)
   end;
 
   // Свой компонент RapidQ: TYPE Имя EXTENDS Класс (документация RapidQ,
@@ -317,6 +319,8 @@ type
     FEventSigs: TStringList;      // СОБЫТИЕ=типы параметров обработчика
     FHandlerEvents: TStringList;  // ПРОЦЕДУРА=СОБЫТИЕ (из Объект.OnXxx = Процедура)
     FHandlerProcs: TStringList;   // процедуры - обработчики событий
+    FBinds: TStringList;          // ПЕРЕМЕННАЯ=процедура (BIND ... TO)
+    FSkipBody: Boolean;           // тело функции-обхода RapidQ пропускается
     FParamAliases: string;        // от ParseParams: " : Dim ByRef ..."
     FClassMembers: TStringList;   // КЛАСС.ИМЯ=P|M|E (RqClassMembersText)
     FAllMembers: TStringList;     // ИМЯ=P|M|E по всем классам
@@ -411,6 +415,13 @@ type
     procedure ProcessDef(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessConst(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessProcHeader(var AToks: TToks; AFrom, ATo: Integer);
+    procedure ProcessBind(var AToks: TToks; AFrom, ATo: Integer);
+    procedure ProcessCallFuncStmt(var AToks: TToks; AFrom, ATo: Integer);
+    function CallFuncTarget(const AToks: TToks; AFrom, ATo: Integer;
+                            out AProc: TRqProc): Boolean;
+    function ProcPtrType(AProc: TRqProc): string;
+    procedure CallFuncExpr(var AToks: TToks; AIdx, AOpen, AClose: Integer);
+    function CallbackShimBody(AProc: TRqProc; const AParams: string): string;
     procedure ProcessDeclare(var AToks: TToks; AFrom, ATo: Integer);
     function ParseParams(var AToks: TToks; AFrom, ATo: Integer;
                          const AScope: string): string;
@@ -897,6 +908,7 @@ begin
   FEventSigs.Text := StringReplace(RqEventSigText, ' ', CrLf, [rfReplaceAll]);
   FHandlerEvents := TStringList.Create;
   FHandlerProcs := TStringList.Create;
+  FBinds := TStringList.Create;
   FHandlerProcs.Sorted := True;
   FHandlerProcs.Duplicates := dupIgnore;
   FCreateStack := TStringList.Create;
@@ -961,6 +973,7 @@ begin
   FEventSigs.Free;
   FHandlerEvents.Free;
   FHandlerProcs.Free;
+  FBinds.Free;
   FCreateStack.Free;
   FClassMembers.Free;
   FAllMembers.Free;
@@ -2045,6 +2058,22 @@ begin
     Exit;
   end;
 
+  // Тело функции-обхода RapidQ (SetNewWndProc и др.) - заменено в
+  // заголовке (CallbackShimBody), до END FUNCTION строки - комментарии
+  if FSkipBody then
+  begin
+    if (FirstUp = 'END') and IsWord(Toks, NextSig(Toks, FirstIdx + 1, High(Toks)),
+                                    'FUNCTION') then
+    begin
+      FSkipBody := False;
+      FCurProc := nil;
+      AOut := 'End Function';
+    end
+    else
+      AOut := CommentOut(AText);
+    Exit;
+  end;
+
   // Метка в начале строки: Имя:
   FLineIsLabel := False;
   FInlineIf := False;
@@ -2640,6 +2669,11 @@ begin
     ProcessReturn(AToks, FirstIdx, ATo)
   else if (Up = 'INC') or (Up = 'DEC') then
     ProcessIncDec(AToks, FirstIdx, ATo)
+  else if (Up = 'BIND') and (FindProc(Up) = nil) then
+    ProcessBind(AToks, FirstIdx, ATo)
+  else if (Up = 'CALLFUNC') and (FindProc(Up) = nil) and
+          ((FCurType = nil) or (FTypeBody = 0)) then
+    ProcessCallFuncStmt(AToks, FirstIdx, ATo)
   else if (Up = 'SLEEP') and (FindProc(Up) = nil) then
   begin
     // SLEEP секунды (RapidQ, можно дробь) -> RqSleep; Sleep FreeBASIC - в
@@ -2791,6 +2825,37 @@ begin
         AToks[MatchParen(AToks, NextIdx, ATo)].Pre;
       Exit;
     end;
+  end;
+
+  // CODEPTR(процедура), CALLBACK(процедура) -> Cast(Integer, @процедура):
+  // адрес процедуры FreeBASIC (stdcall) годится для Windows как есть
+  if ((Up = 'CODEPTR') or (Up = 'CALLBACK')) and (FindProc(Up) = nil) and
+     IsOp(AToks, NextIdx, '(') and (MatchParen(AToks, NextIdx, ATo) > 0) then
+  begin
+    ProcRec := nil;
+    if NextSig(AToks, NextIdx + 1, ATo) >= 0 then
+      ProcRec := FindProc(AToks[NextSig(AToks, NextIdx + 1, ATo)].Up);
+    if (ProcRec = nil) or
+       (NextSig(AToks, NextSig(AToks, NextIdx + 1, ATo) + 1, ATo) <>
+        MatchParen(AToks, NextIdx, ATo)) then
+      Error(AToks[AIdx].Text + RawText(AToks, NextIdx, MatchParen(AToks, NextIdx, ATo)) +
+            ': ожидалось имя SUB или FUNCTION (метод своего компонента пока ' +
+            'не поддержан)')
+    else
+    begin
+      AToks[AIdx].OutText := 'Cast';
+      AToks[NextIdx].Post := AToks[NextIdx].Post + 'Integer, @';
+    end;
+    Exit;
+  end;
+  // CALLFUNC(указатель, параметры) в выражении ->
+  // Cast(тип процедуры, указатель)(параметры); у событий своих компонентов
+  // (EVENT внутри TYPE) - как раньше (TypeCallFunc)
+  if (Up = 'CALLFUNC') and (FindProc(Up) = nil) and IsOp(AToks, NextIdx, '(') and
+     (MatchParen(AToks, NextIdx, ATo) > 0) then
+  begin
+    CallFuncExpr(AToks, AIdx, NextIdx, MatchParen(AToks, NextIdx, ATo));
+    Exit;
   end;
 
   ProcRec := FindProc(Up);
@@ -3539,6 +3604,8 @@ begin
       RetType := ParseType(AToks, TypeIdx, ATo, StarLen);
   end;
   ProcRec.RetType := RetType;
+  ProcRec.FbParams := Params;
+  ProcRec.HasBody := True;
   if ProcRec.IsFunc then
     Header := 'Function ' + ProcRec.FbName + '(' + Params + ') As ' +
               FbType(RetType)
@@ -3557,7 +3624,255 @@ begin
   // GOSUB/RETURN в этой SUB - свой стек возврата (у каждого вызова)
   if (FPass = 2) and (FGosubSites.IndexOfName(ProcRec.Name) >= 0) then
     Locals := Locals + ' : Dim rqgs_sp As Long : ReDim rqgs_stk(1 To 16) As Long';
+  // Обход ограничения CODEPTR RapidQ (NewWndProc.inc, CallBack_N.inc):
+  // тело - одной строкой, остальное до END FUNCTION пропускается
+  if ProcRec.IsFunc and (CallbackShimBody(ProcRec, Params) <> '') then
+  begin
+    Locals := Locals + ' : ' + CallbackShimBody(ProcRec, Params);
+    FSkipBody := True;
+    Msg('Info', AToks[NameIdx].Text + ': переходник для CODEPTR RapidQ ' +
+        '(машинный код) заменён - в FreeBASIC процедура программы сама ' +
+        'годится для Windows');
+  end;
   Rebuild(AToks, AFrom, ATo, Header + Aliases + Locals);
+end;
+
+// Функции из NewWndProc.inc, CallBack_N.inc, CallBackForwarder.inc и
+// rapidq2.inc строят в памяти переходник x86 к MasterCallBack_N (у RapidQ
+// процедура не может быть оконной процедурой Windows напрямую). В
+// FreeBASIC адрес из BIND - уже настоящая процедура stdcall: переходник
+// не нужен. "" - не такая функция.
+function TRqFbConv.CallbackShimBody(AProc: TRqProc; const AParams: string): string;
+var
+  Names: TStringList;
+  Rest, Item: string;
+  CommaPos, SpacePos: Integer;
+begin
+  Result := '';
+  if (AProc.Name <> 'SETNEWWNDPROC') and (AProc.Name <> 'SETNEWFWTOCALLBACK') and
+     not ((Copy(AProc.Name, 1, 13) = 'SETNEWCALLBACK') and
+          (Length(AProc.Name) = 16) and (AProc.Name[15] = '_') and
+          (AProc.Name[16] in ['0'..'8'])) then
+    Exit;
+  Names := TStringList.Create;
+  try
+    // имена параметров FreeBASIC: "ByVal Имя As Тип, ..."
+    Rest := AParams + ',';
+    while Rest <> '' do
+    begin
+      CommaPos := Pos(',', Rest);
+      Item := Trim(Copy(Rest, 1, CommaPos - 1));
+      Delete(Rest, 1, CommaPos);
+      if Item = '' then
+        Continue;
+      if (UpperCase(Copy(Item, 1, 6)) = 'BYVAL ') or
+         (UpperCase(Copy(Item, 1, 6)) = 'BYREF ') then
+        Item := Trim(Copy(Item, 7, MaxInt));
+      SpacePos := Pos(' ', Item);
+      if SpacePos > 0 then
+        Item := Copy(Item, 1, SpacePos - 1);
+      Names.Add(Item);
+    end;
+    if (AProc.Name = 'SETNEWWNDPROC') and (Names.Count = 2) then
+      Result := 'Function = RqSetWndProc(' + Names[0] + ', ' + Names[1] + ')'
+    else if (AProc.Name = 'SETNEWFWTOCALLBACK') and (Names.Count = 2) then
+      Result := 'Function = ' + Names[1]
+    else if (Copy(AProc.Name, 1, 13) = 'SETNEWCALLBAC') and (Names.Count = 1) then
+      Result := 'Function = ' + Names[0];
+  finally
+    Names.Free;
+  end;
+end;
+
+// CALLFUNC(указатель, параметры) -> Cast(тип, Cast(Integer, указатель))(параметры)
+procedure TRqFbConv.CallFuncExpr(var AToks: TToks; AIdx, AOpen, AClose: Integer);
+var
+  TokIdx, Depth, CommaIdx: Integer;
+  ProcRec: TRqProc;
+begin
+  CommaIdx := -1;
+  Depth := 0;
+  for TokIdx := AOpen + 1 to AClose - 1 do
+    if IsOp(AToks, TokIdx, '(') then
+      Inc(Depth)
+    else if IsOp(AToks, TokIdx, ')') then
+      Dec(Depth)
+    else if (Depth = 0) and IsOp(AToks, TokIdx, ',') then
+    begin
+      CommaIdx := TokIdx;
+      Break;
+    end;
+  if CommaIdx > 0 then
+    CallFuncTarget(AToks, AOpen + 1, CommaIdx - 1, ProcRec)
+  else
+    CallFuncTarget(AToks, AOpen + 1, AClose - 1, ProcRec);
+  if ProcRec = nil then
+  begin
+    if FCurType = nil then
+      Error('CALLFUNC' + RawText(AToks, AOpen, AClose) + ': переменная не ' +
+            'привязана к процедуре через BIND');
+    Exit;
+  end;
+  // указатель - через Integer: в 64 бит Long в указатель не приводится
+  AToks[AIdx].OutText := 'Cast';
+  AToks[AOpen].Post := AToks[AOpen].Post + ProcPtrType(ProcRec) + ', Cast(Integer, ';
+  if CommaIdx > 0 then
+    AToks[CommaIdx].OutText := '))('
+  else
+    AToks[AClose].OutText := '))()';
+end;
+
+// Тип указателя FreeBASIC на процедуру: Function(параметры) As тип
+function TRqFbConv.ProcPtrType(AProc: TRqProc): string;
+begin
+  if AProc.IsFunc then
+    Result := 'Function(' + AProc.FbParams + ') As ' + FbType(AProc.RetType)
+  else
+    Result := 'Sub(' + AProc.FbParams + ')';
+end;
+
+// Процедура, к которой BIND привязал переменную первого параметра CALLFUNC
+// (AFrom..ATo - этот параметр). Ключ - имя переменной (у Объект.Поле -
+// имя поля), массив - по имени.
+function TRqFbConv.CallFuncTarget(const AToks: TToks; AFrom, ATo: Integer;
+                                  out AProc: TRqProc): Boolean;
+var
+  TokIdx, Depth: Integer;
+  KeyUp: string;
+begin
+  AProc := nil;
+  KeyUp := '';
+  Depth := 0;
+  for TokIdx := AFrom to ATo do
+    if IsOp(AToks, TokIdx, '(') then
+      Inc(Depth)
+    else if IsOp(AToks, TokIdx, ')') then
+      Dec(Depth)
+    else if (Depth = 0) and (AToks[TokIdx].Kind = tkIdent) then
+      KeyUp := AToks[TokIdx].Up;
+  if (KeyUp <> '') and (FBinds.IndexOfName(KeyUp) >= 0) then
+    AProc := FindProc(FBinds.Values[KeyUp]);
+  Result := AProc <> nil;
+end;
+
+// BIND переменная TO процедура -> переменная = Cast(Integer, @процедура);
+// переменная запоминает процедуру - по ней CALLFUNC знает параметры
+// (документация RapidQ, глава 11). Процедура без тела (только DECLARE -
+// шаблон, как FuncBind_4 в CallBack_4.inc) - адреса нет, только шаблон.
+procedure TRqFbConv.ProcessBind(var AToks: TToks; AFrom, ATo: Integer);
+var
+  TokIdx, ToIdx, NameIdx, Depth: Integer;
+  KeyUp: string;
+  ProcRec: TRqProc;
+begin
+  ToIdx := -1;
+  Depth := 0;
+  KeyUp := '';
+  for TokIdx := AFrom + 1 to ATo do
+  begin
+    if IsOp(AToks, TokIdx, '(') then
+      Inc(Depth)
+    else if IsOp(AToks, TokIdx, ')') then
+      Dec(Depth)
+    else if (Depth = 0) and (IsWord(AToks, TokIdx, 'TO') or
+                             IsWord(AToks, TokIdx, 'AS')) then
+    begin
+      ToIdx := TokIdx;
+      Break;
+    end
+    else if (Depth = 0) and (AToks[TokIdx].Kind = tkIdent) then
+      KeyUp := AToks[TokIdx].Up;
+  end;
+  NameIdx := -1;
+  if ToIdx > 0 then
+    NameIdx := NextSig(AToks, ToIdx + 1, ATo);
+  if (KeyUp = '') or (NameIdx < 0) or (AToks[NameIdx].Kind <> tkIdent) then
+  begin
+    Error('BIND: ожидалось BIND переменная TO процедура');
+    Exit;
+  end;
+  if IsOp(AToks, NextSig(AToks, NameIdx + 1, ATo), '.') then
+  begin
+    Error('BIND ... TO ' + RawText(AToks, NameIdx, ATo) + ': метод своего ' +
+          'компонента как указатель на процедуру пока не поддержан');
+    Exit;
+  end;
+  ProcRec := FindProc(AToks[NameIdx].Up);
+  if ProcRec = nil then
+  begin
+    Error('BIND ... TO ' + AToks[NameIdx].Text + ': нет такой SUB или FUNCTION');
+    Exit;
+  end;
+  FBinds.Values[KeyUp] := ProcRec.Name;
+  AToks[AFrom].OutText := '';
+  if (AFrom + 1 <= ATo) and (AToks[AFrom + 1].Kind = tkSpace) then
+    AToks[AFrom + 1].OutText := '';
+  ProcessExpr(AToks, AFrom + 1, ToIdx - 1);
+  if ProcRec.HasBody or (FPass = 1) then
+  begin
+    AToks[ToIdx].OutText := '= Cast(Integer, @';
+    AToks[NameIdx].OutText := ProcRec.FbName;
+    GlobalQualify(AToks, NameIdx);
+    AToks[NameIdx].Post := AToks[NameIdx].Post + ')';
+  end
+  else
+  begin
+    // только шаблон (у процедуры нет тела): оператор не нужен
+    ClearRange(AToks, AFrom, ATo);
+  end;
+end;
+
+// CALLFUNC указатель, параметры (оператор без скобок) ->
+// Cast(тип процедуры, указатель)(параметры)
+procedure TRqFbConv.ProcessCallFuncStmt(var AToks: TToks; AFrom, ATo: Integer);
+var
+  TokIdx, Depth, CommaIdx, LastIdx, ArgFrom: Integer;
+  ProcRec: TRqProc;
+begin
+  ArgFrom := NextSig(AToks, AFrom + 1, ATo);
+  LastIdx := PrevSig(AToks, ATo);
+  // CALLFUNC(указатель, ...) целиком в скобках - как в выражении
+  if IsOp(AToks, ArgFrom, '(') and (MatchParen(AToks, ArgFrom, ATo) = LastIdx) then
+  begin
+    ProcessExpr(AToks, AFrom, ATo);
+    Exit;
+  end;
+  if ArgFrom < 0 then
+  begin
+    Error('CALLFUNC: нет указателя');
+    Exit;
+  end;
+  CommaIdx := -1;
+  Depth := 0;
+  for TokIdx := ArgFrom to ATo do
+    if IsOp(AToks, TokIdx, '(') then
+      Inc(Depth)
+    else if IsOp(AToks, TokIdx, ')') then
+      Dec(Depth)
+    else if (Depth = 0) and IsOp(AToks, TokIdx, ',') then
+    begin
+      CommaIdx := TokIdx;
+      Break;
+    end;
+  if CommaIdx > 0 then
+    CallFuncTarget(AToks, ArgFrom, CommaIdx - 1, ProcRec)
+  else
+    CallFuncTarget(AToks, ArgFrom, LastIdx, ProcRec);
+  if ProcRec = nil then
+  begin
+    Error('CALLFUNC ' + RawText(AToks, ArgFrom, ATo) + ': переменная не ' +
+          'привязана к процедуре через BIND');
+    Exit;
+  end;
+  AToks[AFrom].OutText := 'Cast(' + ProcPtrType(ProcRec) + ', Cast(Integer,';
+  if CommaIdx > 0 then
+  begin
+    AToks[CommaIdx].OutText := '))(';
+    AToks[LastIdx].Post := AToks[LastIdx].Post + ')';
+  end
+  else
+    AToks[LastIdx].Post := AToks[LastIdx].Post + '))()';
+  ProcessExpr(AToks, ArgFrom, ATo);
 end;
 
 // DECLARE SUB|FUNCTION Имя [LIB "dll"] [ALIAS "имя"] [(параметры)] [AS тип]
@@ -3626,6 +3941,9 @@ begin
     Params := VariadicParam;
   ProcRec.DeclParams := Params;
   ProcRec.DeclAliases := FParamAliases;
+  ProcRec.FbParams := Params;
+  if LibText <> '' then
+    ProcRec.HasBody := True;
   RetType := SuffixType(SuffixOf(ProcRec.Name));
   TokIdx := NextSig(AToks, CloseIdx + 1, ATo);
   if IsWord(AToks, TokIdx, 'AS') then
