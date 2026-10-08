@@ -2565,6 +2565,7 @@ type
     procedure LayoutScrollBars;
     function  ViewWidth: Integer;
     procedure UpdateScrollBars;
+    procedure FitEditRect(AVisLines: Integer);
     procedure SetScrollX(AValue: Integer);
     procedure SetHScrollVisible(AVisible: Boolean);
     function  LineAtY(AY: Integer): Integer;
@@ -35771,6 +35772,9 @@ begin
     FVScroll.LargeChange := VisLines;
     FVScroll.Position := SendMessageA(RichEdit1.Handle,
                                       EM_GETFIRSTVISIBLELINE, 0, 0);
+    // Нижний край области текста RichEdit - по видимым строкам, иначе
+    // последние строки файла прокруткой не достать
+    FitEditRect(VisLines);
 
     // --- горизонталь: по самой длинной ВИДИМОЙ строке.
     //
@@ -35808,6 +35812,59 @@ begin
   finally
     FLockScroll := False;
   end;
+end;
+
+// Область текста RichEdit (EM_GETRECT) - на AVisLines строк.
+//
+// Прокрутку вниз (колесо - EM_LINESCROLL, полоса, клавиши) ограничивает
+// сам RichEdit: дальше, чем до последней строки у нижнего края его области
+// текста, он не прокручивает. Показываем мы VisLines строк (высота по
+// LineHeight, UpdateScrollBars). Если в область текста RichEdit помещается
+// больше строк, чем видно, прокрутка останавливается раньше, и последние
+// строки файла остаются ниже видимой части (ConvertToTruePath.inc: первая
+// видимая не дальше 13-й из 40 при 23 видимых). Нижний край области - на
+// AVisLines строк по шагу строк самого RichEdit (EM_POSFROMCHAR двух
+// соседних строк), не ниже окна. Верх и ширина области не меняются: клик
+// мышью и каретка считаются от верха, как раньше.
+//
+// Новое значение пишется в HiLite log, если область уменьшилась больше,
+// чем на строку: по нему видно, сколько строк RichEdit считал видимыми.
+procedure TForm1.FitEditRect(AVisLines: Integer);
+var
+  TextRect: TRect;
+  FirstPt, NextPt: TPoint;
+  FirstLine, LineStart, NextStart, RichPitch, WantBottom: Integer;
+begin
+  if not RichEdit1.HandleAllocated or (AVisLines < 1) or (LineHeight <= 0) then
+    Exit;
+  // Шаг строк RichEdit - по двум соседним строкам; одна строка в файле -
+  // наш LineHeight
+  RichPitch := LineHeight;
+  FirstLine := SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
+  LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, FirstLine, 0);
+  NextStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, FirstLine + 1, 0);
+  if (LineStart >= 0) and (NextStart > LineStart) then
+  begin
+    SendMessageA(RichEdit1.Handle, EM_POSFROMCHAR, Integer(@FirstPt), LineStart);
+    SendMessageA(RichEdit1.Handle, EM_POSFROMCHAR, Integer(@NextPt), NextStart);
+    if NextPt.Y > FirstPt.Y then
+      RichPitch := NextPt.Y - FirstPt.Y;
+  end;
+
+  SendMessageA(RichEdit1.Handle, EM_GETRECT, 0, Integer(@TextRect));
+  WantBottom := TextRect.Top + AVisLines * RichPitch;
+  if WantBottom > RichEdit1.ClientHeight then
+    WantBottom := RichEdit1.ClientHeight;
+  if (WantBottom <= TextRect.Top) or (TextRect.Bottom = WantBottom) then
+    Exit;
+  if TextRect.Bottom - WantBottom > RichPitch then
+    LogDiag(Format('Область текста редактора: низ %d -> %d (окно %d, ' +
+      'видно строк %d, LineHeight %d, шаг строк RichEdit %d)',
+      [TextRect.Bottom, WantBottom, RichEdit1.ClientHeight, AVisLines,
+       LineHeight, RichPitch]));
+  TextRect.Bottom := WantBottom;
+  // Без перерисовки: кадр рисуем мы, а этот вызов идёт из его конца
+  SendMessageA(RichEdit1.Handle, EM_SETRECTNP, 0, Integer(@TextRect));
 end;
 
 // Показывает или прячет горизонтальную полосу.
