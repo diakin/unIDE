@@ -288,6 +288,10 @@ type
     Declared: Boolean;
     FbParams: string;   // параметры FreeBASIC (DECLARE или заголовок)
     HasBody: Boolean;   // есть SUB/FUNCTION с телом (или DECLARE ... LIB)
+    // DECLARE ... LIB: вид каждого параметра, по символу: N - число ByVal,
+    // R - число ByRef, S - STRING (ZString Ptr), O - остальное. По нему
+    // вызов приводит аргументы к тому, что ждёт функция DLL (WrapLibArgs).
+    LibKinds: string;
   end;
 
   // Таблица ИМЯ -> значение с поиском делением пополам. Заменяет списки
@@ -408,6 +412,7 @@ type
     FProgLast: Integer;
     FAborted: Boolean;
     FParamAliases: string;        // от ParseParams: " : Dim ByRef ..."
+    FLibKinds: string;            // от ParseParams: виды параметров DECLARE ... LIB
     FClassMembers: TStringList;   // КЛАСС.ИМЯ=P|M|E (RqClassMembersText)
     FAllMembers: TRqNameMap;      // ИМЯ -> P|M|E по всем классам
     FCreateStack: TStringList;    // CREATE: ИмяОбъекта=КЛАСС, внутренний - последний
@@ -497,6 +502,8 @@ type
     procedure ProcessLine(const AText: string; var AOut: string);
     procedure ProcessStatement(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessExpr(var AToks: TToks; AFrom, ATo: Integer);
+    procedure WrapLibArgs(var AToks: TToks; AFrom, ATo: Integer; AProc: TRqProc);
+    function IsStrVarRef(const AToks: TToks; AFrom, ATo: Integer): Boolean;
     procedure ProcessIdent(var AToks: TToks; AIdx, ATo: Integer);
     procedure ProcessAssignOrCall(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessDim(var AToks: TToks; AFrom, ATo: Integer);
@@ -2948,7 +2955,8 @@ end;
 // Выражение: переменные переименовываются, необъявленные заводятся
 procedure TRqFbConv.ProcessExpr(var AToks: TToks; AFrom, ATo: Integer);
 var
-  TokIdx, PrevIdx: Integer;
+  TokIdx, PrevIdx, OpenIdx, CloseIdx: Integer;
+  LibProc: TRqProc;
 begin
   RewriteStrSub(AToks, AFrom, ATo);
   for TokIdx := AFrom to ATo do
@@ -2972,6 +2980,108 @@ begin
           end;
         end;
     end;
+
+  // Вызовы функций DLL со скобками: аргументы - к тому, что ждёт функция
+  // (WrapLibArgs). После разбора всех слов: обёртки - снаружи того, что
+  // разбор уже дописал к аргументам.
+  for TokIdx := AFrom to ATo do
+    if (AToks[TokIdx].Kind = tkIdent) and
+       not IsOp(AToks, PrevSig(AToks, TokIdx - 1), '.') and
+       (FindVar(AToks[TokIdx].Up) = nil) then
+    begin
+      LibProc := FindProc(AToks[TokIdx].Up);
+      if (LibProc = nil) or (LibProc.LibKinds = '') then
+        Continue;
+      OpenIdx := NextSig(AToks, TokIdx + 1, ATo);
+      if not IsOp(AToks, OpenIdx, '(') then
+        Continue;
+      CloseIdx := MatchParen(AToks, OpenIdx, ATo);
+      if CloseIdx > OpenIdx + 1 then
+        WrapLibArgs(AToks, OpenIdx + 1, CloseIdx - 1, LibProc);
+    end;
+end;
+
+// Аргумент - сама строковая переменная (элемент массива, поле записи):
+// у неё есть постоянный адрес символов
+function TRqFbConv.IsStrVarRef(const AToks: TToks; AFrom, ATo: Integer): Boolean;
+var
+  TokIdx, FirstIdx, Depth: Integer;
+begin
+  Result := False;
+  FirstIdx := NextSig(AToks, AFrom, ATo);
+  if (FirstIdx < 0) or (AToks[FirstIdx].Kind <> tkIdent) or
+     (FindVar(AToks[FirstIdx].Up) = nil) then
+    Exit;
+  Depth := 0;
+  for TokIdx := FirstIdx to ATo do
+  begin
+    if IsOp(AToks, TokIdx, '(') then
+      Inc(Depth)
+    else if IsOp(AToks, TokIdx, ')') then
+      Dec(Depth)
+    else if (Depth = 0) and not (AToks[TokIdx].Kind in [tkIdent, tkSpace]) and
+            not IsOp(AToks, TokIdx, '.') then
+      Exit;
+  end;
+  Result := Depth = 0;
+end;
+
+// Аргументы вызова функции DLL (DECLARE ... LIB): что передать, решает
+// объявление параметра, как у функции Windows:
+//   параметр - число ByVal (LONG, адрес), а передана строка - адрес её
+//     символов: переменная - RqVarPtr(@s), выражение - RqStrTmpAddr(...);
+//   параметр STRING (ZString Ptr), а передано число (адрес, 0&) -
+//     Cast(ZString Ptr, число).
+// Остальные аргументы - как есть.
+procedure TRqFbConv.WrapLibArgs(var AToks: TToks; AFrom, ATo: Integer;
+                                AProc: TRqProc);
+var
+  TokIdx, ArgStart, ArgEnd, ArgNo, FirstIdx, LastIdx, Depth: Integer;
+  ParamKind: Char;
+begin
+  ArgStart := AFrom;
+  ArgNo := 0;
+  while ArgStart <= ATo do
+  begin
+    ArgEnd := ATo;
+    Depth := 0;
+    for TokIdx := ArgStart to ATo do
+    begin
+      if IsOp(AToks, TokIdx, '(') then
+        Inc(Depth)
+      else if IsOp(AToks, TokIdx, ')') then
+        Dec(Depth)
+      else if (Depth = 0) and IsOp(AToks, TokIdx, ',') then
+      begin
+        ArgEnd := TokIdx - 1;
+        Break;
+      end;
+    end;
+    Inc(ArgNo);
+    if ArgNo > Length(AProc.LibKinds) then
+      Exit;
+    ParamKind := AProc.LibKinds[ArgNo];
+    FirstIdx := NextSig(AToks, ArgStart, ArgEnd);
+    LastIdx := PrevSig(AToks, ArgEnd);
+    if (FirstIdx >= 0) and (LastIdx >= FirstIdx) and
+       not IsWord(AToks, FirstIdx, 'BYVAL') then
+    begin
+      if (ParamKind = 'N') and ExprIsString(AToks, FirstIdx, LastIdx) then
+      begin
+        if IsStrVarRef(AToks, FirstIdx, LastIdx) then
+          AToks[FirstIdx].Pre := 'RqVarPtr(@' + AToks[FirstIdx].Pre
+        else
+          AToks[FirstIdx].Pre := 'RqStrTmpAddr(' + AToks[FirstIdx].Pre;
+        AToks[LastIdx].Post := AToks[LastIdx].Post + ')';
+      end
+      else if (ParamKind = 'S') and ExprIsNumber(AToks, FirstIdx, LastIdx) then
+      begin
+        AToks[FirstIdx].Pre := 'Cast(ZString Ptr, ' + AToks[FirstIdx].Pre;
+        AToks[LastIdx].Post := AToks[LastIdx].Post + ')';
+      end;
+    end;
+    ArgStart := ArgEnd + 2;
+  end;
 end;
 
 procedure TRqFbConv.ProcessIdent(var AToks: TToks; AIdx, ATo: Integer);
@@ -3290,6 +3400,18 @@ begin
         MemRecordArgs(AToks, FirstIdx, ATo);
       end;
       ProcessExpr(AToks, FirstIdx + 1, ATo);
+      // Вызов процедуры DLL оператором: Имя a, b или Имя(a, b)
+      if (ProcRec <> nil) and (ProcRec.LibKinds <> '') then
+      begin
+        TokIdx := NextSig(AToks, FirstIdx + 1, ATo);
+        if IsOp(AToks, TokIdx, '(') and (MatchParen(AToks, TokIdx, ATo) = PrevSig(AToks, ATo)) then
+        begin
+          if MatchParen(AToks, TokIdx, ATo) > TokIdx + 1 then
+            WrapLibArgs(AToks, TokIdx + 1, MatchParen(AToks, TokIdx, ATo) - 1, ProcRec);
+        end
+        else if TokIdx >= 0 then
+          WrapLibArgs(AToks, FirstIdx + 1, ATo, ProcRec);
+      end;
       // SUBI Имя a, b / Имя(a, b) -> Имя(RqPList().Arg(a).Arg(b))
       if (ProcRec <> nil) and ProcRec.IsVariadic then
       begin
@@ -3720,6 +3842,7 @@ var
 begin
   Result := '';
   FParamAliases := '';
+  FLibKinds := '';
   ItemStart := AFrom;
   ParamIdx := 0;
   // Обработчик события с параметрами: типы по событию (RqEventSigText)
@@ -3817,12 +3940,14 @@ begin
           ' Ptr, Cast(Any Ptr, @' + VarRec.FbName + '_RqB))';
       end
       else if FLibParams and (RqType = 'STRING') then
+      begin
         // STRING у функции DLL: RapidQ передаёт указатель на строку
         // (документация, глава 9), как ByVal As String у VB. В fbc 1.10
         // ByVal As String - сама строка (12 байт на стеке, CreateEventA@24
         // вместо @16 - проверено), поэтому ZString Ptr: String fbc
         // передаёт в него сам
-        ItemText := 'ByVal ' + VarRec.FbName + ' As ZString Ptr'
+        ItemText := 'ByVal ' + VarRec.FbName + ' As ZString Ptr';
+      end
       else
       begin
         if ByRefFlag or ((FByRefDefault or IsObjectType(RqType)) and
@@ -3831,6 +3956,20 @@ begin
         else
           ItemText := 'ByVal ';
         ItemText := ItemText + VarRec.FbName + ' As ' + FbType(RqType);
+      end;
+      // Вид параметра функции DLL - для вызовов (WrapLibArgs)
+      if FLibParams then
+      begin
+        if IsArray then
+          FLibKinds := FLibKinds + 'O'
+        else if RqType = 'STRING' then
+          FLibKinds := FLibKinds + 'S'
+        else if not IsNumericType(RqType) then
+          FLibKinds := FLibKinds + 'O'
+        else if Copy(ItemText, 1, 6) = 'ByRef ' then
+          FLibKinds := FLibKinds + 'R'
+        else
+          FLibKinds := FLibKinds + 'N';
       end;
       if Result <> '' then
         Result := Result + ', ';
@@ -4308,6 +4447,10 @@ begin
     Params := VariadicParam;
   ProcRec.DeclParams := Params;
   ProcRec.DeclAliases := FParamAliases;
+  if (LibText <> '') and not ProcRec.IsVariadic then
+    ProcRec.LibKinds := FLibKinds
+  else
+    ProcRec.LibKinds := '';
   ProcRec.FbParams := Params;
   if LibText <> '' then
     ProcRec.HasBody := True;

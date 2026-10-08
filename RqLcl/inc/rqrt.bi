@@ -1038,6 +1038,20 @@ Function RqVarPtrStr(ByVal Address As Integer) As String
     Return *Cast(ZString Ptr, Address)
 End Function
 
+' Строка в параметре-числе функции DLL (DECLARE ... LIB, параметр AS LONG,
+' а передаётся строка): функции Windows ждут там адрес символов. Строка -
+' переменная: RqVarPtr(@s); выражение (литерал, s + t, LEFT$(...)) - адрес
+' копии. Копии живут в кольце из 16 строк: адрес верен на время вызова и
+' ещё 15 таких вызовов; запись функции в эту память до программы не дойдёт
+' (у выражения её и некуда вернуть).
+Function RqStrTmpAddr(ByRef Text As String) As Integer
+    Static TmpBuf(0 To 15) As String
+    Static TmpIdx As Long
+    TmpIdx = (TmpIdx + 1) And 15
+    TmpBuf(TmpIdx) = Text
+    Return Cast(Integer, StrPtr(TmpBuf(TmpIdx)))
+End Function
+
 ' Нулевой адрес у MEMCPY / MEMSET / MEMCMP: Smart - предупреждение и
 ' ничего не делается; Compat - ошибка и конец программы (у RapidQ, видимо,
 ' падение - не проверено)
