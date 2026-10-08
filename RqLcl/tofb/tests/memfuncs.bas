@@ -43,6 +43,25 @@ DIM Names(3) AS STRING
 Names(2) = "two"
 PRINT "string element "; VARPTR$(VARPTR(Names(2)))
 
+' QMEMORYSTREAM.Pointer - an address in a LONG (sadd in conversion.inc)
+FUNCTION sadd(InpStr AS STRING) AS LONG
+  DIM Mem AS QMemoryStream
+  Mem.Write InpStr
+  Mem.Position = 0
+  sadd = Mem.Pointer
+END FUNCTION
+DIM Ms AS QMEMORYSTREAM
+Ms.Write "stream"
+PtrL& = Ms.Pointer
+PRINT "pointer "; VARPTR$(PtrL&); " "; (sadd("x") <> 0)
+Ms.Position = 0
+Ms.MemCopyTo VARPTR(S$), 3
+PRINT "memcopyto "; S$
+Ms.Position = 0
+Ms.MemCopyFrom VARPTR(T$), 5
+Ms.Position = 0
+PRINT "memcopyfrom "; Ms.ReadStr(6)
+
 ' SENDMESSAGE / POSTMESSAGE / KILLMESSAGE
 CREATE Form AS QFORM
   Caption = "mem"

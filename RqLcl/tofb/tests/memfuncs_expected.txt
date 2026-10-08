@@ -6,6 +6,9 @@ varptr$ hello
 varptr$ long hello
 record 77
 string element two
+pointer stream -1
+memcopyto strlo
+memcopyfrom hellom
 settext abc
 length 3
 gettext abc
