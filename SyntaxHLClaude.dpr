@@ -14,6 +14,7 @@ uses
   DlgListWnd in 'DlgListWnd.pas' {DlgListWnd},
   DlgHotFolders in 'DlgHotFolders.pas' {DlgHotFolders},
   DlgDelPrj in 'DlgDelPrj.pas' {DlgDelPrj},
+  DlgTidyIni in 'DlgTidyIni.pas' {DlgTidyIni},
   DlgWinList in 'DlgWinList.pas' {DlgWinList},
   DlgNewPrj in 'DlgNewPrj.pas' {DlgNewPrj},
   DlgRelease in 'DlgRelease.pas' {DlgRelease},

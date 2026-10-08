@@ -41,6 +41,12 @@ unit IniTidy;
 //  Строки в UTF-8 (так их записывал другой редактор) переводятся в
 //  кодировку Windows, если все символы в ней есть.
 //
+//  TidyScanProjects ищет проекты в выбранной папке и подпапках - в файлах
+//  editor*.ini (editor.ini других копий программы, editorN.ini,
+//  editorOLD.ini...) и *.prj - и отбирает те, которых в активном
+//  editor.ini нет, а папка и цель сборки есть на диске. Так проекты,
+//  разбросанные по копиям программы, собираются в один editor.ini.
+//
 //  TidyApplyNew ставит editorNew.ini на место editor.ini (editor.ini ->
 //  editor_prev.ini). Вызывает его новый экземпляр unIDE при перезапуске
 //  после команды, когда прежний уже закрылся и больше не пишет editor.ini.
@@ -60,6 +66,23 @@ const
 type
   TTidyExistsFunc = function(const APath: string): Boolean;
 
+  // Проект, найденный TidyScanProjects
+  TTidyFound = class
+  public
+    Name: string;        // имя для editor.ini; занято - "Имя (Папка)"
+    Folder: string;      // папка проекта, с \ в конце
+    Target: string;      // цель сборки, полный путь ('' - не указана)
+    Source: string;      // где найден: .prj или editor*.ini
+    Body: TStringList;   // строки раздела [Project.<имя>]
+    constructor Create;
+    destructor Destroy; override;
+  end;
+
+  // Ход поиска: папка, которую сейчас просматривают. AStop := True -
+  // прервать
+  TTidyScanProgress = procedure(const AFolder: string;
+                                var AStop: Boolean) of object;
+
 var
   // Есть ли файл или папка. nil - FileExists/DirectoryExists; тест
   // подставляет свою проверку
@@ -68,6 +91,16 @@ var
 // AIniFile - editor.ini; файлы пишутся в его папку. ANotes - отчёт.
 // False - editor.ini не прочитан или editorNew.ini не записан.
 function TidyEditorIni(const AIniFile: string; ANotes: TStrings): Boolean;
+
+// Проекты в ARoot и подпапках: файлы editor*.ini (кроме AIniFile -
+// активного) и *.prj. В AFound (объекты TTidyFound, освобождает
+// вызывающий) - проекты, которых в AIniFile нет, папка есть и цель сборки
+// (если указана) есть. Порядок: сначала из editor*.ini, потом из .prj,
+// новые файлы раньше старых; один проект - один раз. Итоги - в ANotes.
+// False - поиск прерван (AFound - то, что найдено до этого).
+function TidyScanProjects(const ARoot, AIniFile: string; AFound: TList;
+                          ANotes: TStrings;
+                          AProgress: TTidyScanProgress): Boolean;
 
 // В папке ADir: editor.ini -> editor_prev.ini (занято - editor_prev1.ini
 // ...), editorNew.ini -> editor.ini. False - editorNew.ini нет или
@@ -551,6 +584,18 @@ begin
   end;
 end;
 
+// Имя для обращения к диску. Пути в модуле - вида Windows (\); проверка
+// модуля вне Windows (FPC под Linux) идёт на дереве папок D:/..., там \
+// меняется на /
+function DiskName(const APath: string): string;
+begin
+  {$IFDEF MSWINDOWS}
+  Result := APath;
+  {$ELSE}
+  Result := StringReplace(APath, '\', '/', [rfReplaceAll]);
+  {$ENDIF}
+end;
+
 function PathExists(const APath: string): Boolean;
 var
   Txt: string;
@@ -963,8 +1008,6 @@ type
     procedure DoSettings;
     procedure DoSettingsSection(const ABase: string);
     procedure Renumber(ALines: TStrings; ARemoved: TStrings);
-    function ImportPrj(const APrjFile: string; ABody: TStrings;
-                       var AFolder, ATarget: string): Boolean;
     procedure DoProjects;
     procedure DoRecent;
     procedure DoOrphans;
@@ -1532,8 +1575,10 @@ end;
 // пути C:\ и DelphiPath из [Compiler] не переносятся. AFolder - папка
 // проекта: папка .prj, а для .prj в папке projects программы (старое
 // хранение) - папка цели сборки.
-function TTidyWork.ImportPrj(const APrjFile: string; ABody: TStrings;
-                             var AFolder, ATarget: string): Boolean;
+// False - файл не прочитан или в нём нет раздела [Project] (не описание
+// проекта unIDE)
+function PrjToBody(const APrjFile: string; ABody: TStrings;
+                   var AFolder, ATarget: string): Boolean;
 var
   Lines: TStringList;
   Doc: TTidyDoc;
@@ -1548,7 +1593,7 @@ begin
   Doc := TTidyDoc.Create;
   try
     try
-      Lines.LoadFromFile(APrjFile);
+      Lines.LoadFromFile(DiskName(APrjFile));
     except
       Exit;
     end;
@@ -1557,9 +1602,10 @@ begin
     PrjDir := DirOf(APrjFile);
     ATarget := '';
     PrjSect := Doc.Find('Project');
-    if PrjSect <> nil then
-      ATarget := PathFromBase(PrjDir,
-                   StripComment(KeyValue(PrjSect.Lines, 'Target', Found)));
+    if PrjSect = nil then
+      Exit;
+    ATarget := PathFromBase(PrjDir,
+                 StripComment(KeyValue(PrjSect.Lines, 'Target', Found)));
     AFolder := PrjDir;
     if (CompareText(NameOf(PrjDir), 'projects') = 0) and (ATarget <> '') and
        (NormPath(DirOf(ATarget)) <> NormPath(PrjDir)) then
@@ -1659,7 +1705,7 @@ begin
           // старый вид: путь к .prj
           case StateOf(Raw, False, Group) of
             tsExists:
-              if ImportPrj(Raw, Body, Folder, Target) then
+              if PrjToBody(Raw, Body, Folder, Target) then
               begin
                 Added := FNewPrj.Add(Name, AddSlash(Folder), Folder, Target,
                                      Body);
@@ -2166,6 +2212,334 @@ begin
     finally
       GroupDoc.Free;
     end;
+  end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Поиск проектов в папке
+// ---------------------------------------------------------------------------
+
+constructor TTidyFound.Create;
+begin
+  inherited Create;
+  Body := TStringList.Create;
+end;
+
+destructor TTidyFound.Destroy;
+begin
+  Body.Free;
+  inherited Destroy;
+end;
+
+// Папки, где проектов не бывает или обход не нужен
+function SkipScanDir(const AName: string): Boolean;
+begin
+  Result := (AName = '') or (AName[1] = '$') or (AName[1] = '.') or
+            (CompareText(AName, '__history') = 0) or
+            (CompareText(AName, '__recovery') = 0) or
+            (CompareText(AName, 'System Volume Information') = 0);
+end;
+
+function IsEditorIniName(const AName: string): Boolean;
+begin
+  Result := (CompareText(Copy(NameOf(AName), 1, 6), 'editor') = 0) and
+            (ExtOf(AName) = 'ini');
+end;
+
+// Обход папки ADir (с \ в конце) и подпапок. Objects - время файла
+procedure ScanFolder(const ADir: string; AIniFiles, APrjFiles: TStrings;
+                     AProgress: TTidyScanProgress; var AFolders: Integer;
+                     var AStop: Boolean);
+var
+  Rec: TSearchRec;
+begin
+  if AStop then
+    Exit;
+  Inc(AFolders);
+  if Assigned(AProgress) then
+    AProgress(ADir, AStop);
+  if AStop then
+    Exit;
+  if FindFirst(DiskName(ADir + '*'), faAnyFile, Rec) <> 0 then
+    Exit;
+  try
+    repeat
+      if (Rec.Name = '.') or (Rec.Name = '..') then
+        Continue;
+      if (Rec.Attr and faDirectory) <> 0 then
+      begin
+        // $400 - точка повторной обработки (ссылка на папку): по ней обход
+        // может пойти по кругу
+        if not SkipScanDir(Rec.Name) and ((Rec.Attr and $400) = 0) then
+          ScanFolder(ADir + Rec.Name + '\', AIniFiles, APrjFiles, AProgress,
+                     AFolders, AStop);
+        if AStop then
+          Exit;
+      end
+      else if IsEditorIniName(Rec.Name) then
+        AIniFiles.AddObject(ADir + Rec.Name, TObject(Rec.Time))
+      else if ExtOf(Rec.Name) = 'prj' then
+        APrjFiles.AddObject(ADir + Rec.Name, TObject(Rec.Time));
+    until FindNext(Rec) <> 0;
+  finally
+    FindClose(Rec);
+  end;
+end;
+
+// Новые файлы - раньше
+function CompareNewerFirst(AList: TStringList; AIndexA,
+                           AIndexB: Integer): Integer;
+var
+  TimeA, TimeB: Integer;
+begin
+  TimeA := Integer(AList.Objects[AIndexA]);
+  TimeB := Integer(AList.Objects[AIndexB]);
+  if TimeA > TimeB then
+    Result := -1
+  else if TimeA < TimeB then
+    Result := 1
+  else
+    Result := CompareText(AList[AIndexA], AList[AIndexB]);
+end;
+
+type
+  // Отбор найденного: проекты активного editor.ini и уже взятые
+  TTidyScan = class
+  private
+    FTaken: TTidyPrjList;
+    FFound: TList;
+    FAdded, FKnown, FMissing: Integer;
+    function TargetOk(const AFolder, ATarget: string): Boolean;
+  public
+    constructor Create(AFound: TList);
+    destructor Destroy; override;
+    procedure LoadActive(const AIniFile: string);
+    procedure Offer(const AName, AFolder, ATarget, ASource: string;
+                    ABody: TStrings);
+    procedure OfferPrj(const AName, APrjFile, ASource: string);
+  end;
+
+constructor TTidyScan.Create(AFound: TList);
+begin
+  inherited Create;
+  FTaken := TTidyPrjList.Create;
+  FFound := AFound;
+end;
+
+destructor TTidyScan.Destroy;
+begin
+  FTaken.Free;
+  inherited Destroy;
+end;
+
+function TTidyScan.TargetOk(const AFolder, ATarget: string): Boolean;
+begin
+  Result := PathExists(AFolder) and ((ATarget = '') or PathExists(ATarget));
+end;
+
+// Проекты активного editor.ini - чтобы не предлагать их снова и не брать
+// их имена
+procedure TTidyScan.LoadActive(const AIniFile: string);
+var
+  Lines: TStringList;
+  Doc: TTidyDoc;
+  Sect, PrjSect: TTidySect;
+  LineIdx: Integer;
+  Name, Raw, Folder, Target: string;
+  Found: Boolean;
+begin
+  Lines := TStringList.Create;
+  Doc := TTidyDoc.Create;
+  try
+    try
+      Lines.LoadFromFile(DiskName(AIniFile));
+    except
+      Exit;
+    end;
+    Doc.LoadLines(Lines);
+    Sect := Doc.Find('Projects');
+    if Sect = nil then
+      Exit;
+    for LineIdx := 0 to Sect.Lines.Count - 1 do
+    begin
+      Name := LineKey(Sect.Lines[LineIdx]);
+      Raw := StripComment(LineValue(Sect.Lines[LineIdx]));
+      if (Name = '') or (Raw = '') then
+        Continue;
+      if ExtOf(Raw) = 'prj' then
+        FTaken.Add(Name, Raw, DirOf(Raw), '', nil)
+      else
+      begin
+        Folder := AddSlash(Raw);
+        Target := '';
+        PrjSect := Doc.Find('Project.' + Name);
+        if PrjSect <> nil then
+          Target := TargetFromStore(Folder,
+                      KeyValue(PrjSect.Lines, 'Target', Found));
+        FTaken.Add(Name, Folder, Folder, Target, nil);
+      end;
+    end;
+  finally
+    Doc.Free;
+    Lines.Free;
+  end;
+end;
+
+procedure TTidyScan.Offer(const AName, AFolder, ATarget, ASource: string;
+                          ABody: TStrings);
+var
+  Added: string;
+  Item: TTidyFound;
+begin
+  if not TargetOk(AFolder, ATarget) then
+  begin
+    Inc(FMissing);
+    Exit;
+  end;
+  Added := FTaken.Add(AName, AddSlash(AFolder), AFolder, ATarget, nil);
+  if Added = '' then
+  begin
+    Inc(FKnown);
+    Exit;
+  end;
+  Item := TTidyFound.Create;
+  Item.Name := Added;
+  Item.Folder := AddSlash(AFolder);
+  Item.Target := ATarget;
+  Item.Source := ASource;
+  if ABody <> nil then
+    Item.Body.Assign(ABody);
+  FFound.Add(Item);
+  Inc(FAdded);
+end;
+
+// .prj: имя проекта - AName или имя файла
+procedure TTidyScan.OfferPrj(const AName, APrjFile, ASource: string);
+var
+  Body: TStringList;
+  Folder, Target, Name: string;
+begin
+  Body := TStringList.Create;
+  try
+    if not PrjToBody(APrjFile, Body, Folder, Target) then
+      Exit;
+    Name := AName;
+    if Name = '' then
+      Name := ChangeFileExt(NameOf(APrjFile), '');
+    Offer(Name, Folder, Target, ASource, Body);
+  finally
+    Body.Free;
+  end;
+end;
+
+function TidyScanProjects(const ARoot, AIniFile: string; AFound: TList;
+                          ANotes: TStrings;
+                          AProgress: TTidyScanProgress): Boolean;
+var
+  IniFiles, PrjFiles, Lines, Sources: TStringList;
+  Scan: TTidyScan;
+  Doc: TTidyDoc;
+  Sect, PrjSect: TTidySect;
+  FileIdx, SectIdx, SrcIdx, LineIdx, Num, Folders, NotPrj: Integer;
+  Name, Raw, Folder, Target, Source: string;
+  Stop, Found: Boolean;
+begin
+  IniFiles := TStringList.Create;
+  PrjFiles := TStringList.Create;
+  Lines := TStringList.Create;
+  Sources := TStringList.Create;
+  Scan := TTidyScan.Create(AFound);
+  try
+    Scan.LoadActive(AIniFile);
+    Folders := 0;
+    Stop := False;
+    ScanFolder(AddSlash(ARoot), IniFiles, PrjFiles, AProgress, Folders, Stop);
+    Result := not Stop;
+    IniFiles.CustomSort(CompareNewerFirst);
+    PrjFiles.CustomSort(CompareNewerFirst);
+
+    // editor*.ini: [Projects], потом копии [ProjectsOld<N>] от новых
+    for FileIdx := 0 to IniFiles.Count - 1 do
+    begin
+      if NormPath(IniFiles[FileIdx]) = NormPath(AIniFile) then
+        Continue;
+      try
+        Lines.LoadFromFile(DiskName(IniFiles[FileIdx]));
+      except
+        Continue;
+      end;
+      FixUtf8Lines(Lines);
+      Doc := TTidyDoc.Create;
+      try
+        Doc.LoadLines(Lines);
+        Sources.Clear;
+        if Doc.Find('Projects') <> nil then
+          Sources.AddObject('Projects', TObject(MaxInt));
+        for SectIdx := 0 to Doc.Count - 1 do
+        begin
+          Num := CopyNumber(Doc[SectIdx].Name, 'Projects');
+          if Num > 0 then
+            Sources.AddObject(Doc[SectIdx].Name, TObject(Num));
+        end;
+        Sources.CustomSort(CompareNewerFirst);
+        Source := IniFiles[FileIdx];
+        for SrcIdx := 0 to Sources.Count - 1 do
+        begin
+          Sect := Doc.Find(Sources[SrcIdx]);
+          for LineIdx := 0 to Sect.Lines.Count - 1 do
+          begin
+            Name := LineKey(Sect.Lines[LineIdx]);
+            Raw := StripComment(LineValue(Sect.Lines[LineIdx]));
+            if (Name = '') or (Raw = '') or not IsAbsPath(Raw) then
+              Continue;
+            if ExtOf(Raw) = 'prj' then
+            begin
+              if PathExists(Raw) then
+                Scan.OfferPrj(Name, Raw, Source)
+              else
+                Inc(Scan.FMissing);
+              Continue;
+            end;
+            // новый вид: нужен раздел проекта из того же файла
+            Folder := AddSlash(Raw);
+            PrjSect := Doc.Find('Project.' + Name);
+            if PrjSect = nil then
+              Continue;
+            Target := TargetFromStore(Folder,
+                        KeyValue(PrjSect.Lines, 'Target', Found));
+            Scan.Offer(Name, Folder, Target, Source, PrjSect.Lines);
+          end;
+        end;
+      finally
+        Doc.Free;
+      end;
+    end;
+
+    // *.prj: имя проекта - имя файла
+    NotPrj := 0;
+    for FileIdx := 0 to PrjFiles.Count - 1 do
+    begin
+      Num := AFound.Count + Scan.FKnown + Scan.FMissing;
+      Scan.OfferPrj('', PrjFiles[FileIdx], PrjFiles[FileIdx]);
+      if AFound.Count + Scan.FKnown + Scan.FMissing = Num then
+        Inc(NotPrj);
+    end;
+
+    if not Result then
+      ANotes.Add('Поиск прерван');
+    ANotes.Add('Просмотрено папок: ' + IntToStr(Folders) + '; файлов ' +
+               'editor*.ini: ' + IntToStr(IniFiles.Count) + ', .prj: ' +
+               IntToStr(PrjFiles.Count) + ' (не описания проекта unIDE: ' +
+               IntToStr(NotPrj) + ')');
+    ANotes.Add('Новых проектов: ' + IntToStr(Scan.FAdded) + '; уже в ' +
+               'editor.ini или найдены повторно: ' + IntToStr(Scan.FKnown) +
+               '; папки или цели сборки нет: ' + IntToStr(Scan.FMissing));
+  finally
+    Scan.Free;
+    Sources.Free;
+    Lines.Free;
+    PrjFiles.Free;
+    IniFiles.Free;
   end;
 end;
 

@@ -29,6 +29,7 @@ uses
   DlgArdLibs,     // Arduino: Library Manager
   DlgArdCli,      // Arduino: Arduino CLI Help
   DlgArdSerial,   // Arduino: Serial Monitor
+  DlgTidyIni,     // Tidy editor.ini: поиск проектов, разбор editor.ini
   ArduinoCli,     // Arduino: настройки, запуск arduino-cli
   ArduinoHw,      // Arduino: платформы, платы, библиотеки, скетчи с диска
   ArduinoPorts,   // Arduino: COM-порты и событие подключения устройства
@@ -1526,6 +1527,11 @@ type
 
     // Последняя строка диагностики, записанная в LogEdit - см. LogDiag
     FLastDiag: string;
+    FTidyDlg: TDlgTidyIni;    // окно Tidy editor.ini, пока открыто
+    FTidyFound: TList;        // TTidyFound - найденное Scan, по строкам lstFound
+    FTidyScanning: Boolean;   // идёт поиск (Scan); кнопка Scan - Stop
+    FTidyStop: Boolean;       // Stop нажата - поиск прерывается
+    FTidyTick: Cardinal;      // когда последний раз показана папка поиска
     FTidyRestart: Boolean;    // Tidy editor.ini: при выходе - перезапуск (TidyRestart)
     FRestartExe: string;      // exe для перезапуска: рабочий, после OwnPromoteTrial
     FIniPathLog: TStringList; // что проверка путей editor.ini сделала при запуске
@@ -1951,6 +1957,14 @@ type
     procedure CheckIniPaths;
     procedure TidySwapAtStart;
     procedure TidyRestart;
+    procedure TidyRun;
+    procedure TidyClearFound;
+    procedure TidyDirChange(Sender: TObject);
+    procedure TidyScanClick(Sender: TObject);
+    procedure TidyScanStep(const AFolder: string; var AStop: Boolean);
+    procedure TidyMarkClick(Sender: TObject);
+    procedure TidyAddClick(Sender: TObject);
+    procedure TidyDlgCloseQuery(Sender: TObject; var CanClose: Boolean);
     function  MergeOwnSettings(const ASrc, ADst: string): Integer;
     procedure SaveProjectReg;
     procedure RegisterProject(const AName, APath: string);
@@ -8658,31 +8672,258 @@ begin
   LogRaw(Format('Delete wrong projects names: убрано записей %d', [N]));
 end;
 
-// Tidy editor.ini (Project - Manage Projects). Сначала вопрос: unIDE будет
-// перезапущена. Да - текущий проект и изменённые файлы сохраняются (те же
-// вопросы, что при выходе), настройки пишутся в editor.ini, editor.ini
-// разбирается на editorNew.ini (этот компьютер), editorN.ini (другие
-// компьютеры) и editorOLD.ini (записи с ненайденными путями), см. IniTidy.
-// Затем программа закрывается и запускает себя заново (TidyRestart);
-// новый экземпляр ждёт, пока прежний закроется, и ставит editorNew.ini
-// на место editor.ini (TidySwapAtStart). Прежний editor.ini остаётся как
-// editor_prev.ini.
+// Tidy editor.ini (Project - Manage Projects): окно DlgTidyIni.
+//   - Scan (TidyScanClick): в выбранной папке и подпапках ищутся
+//     editor*.ini и *.prj; проекты, которых в editor.ini нет, - в список;
+//     Add to editor.ini (TidyAddClick) переносит отмеченные.
+//   - Tidy and restart: разбор editor.ini и перезапуск (TidyRun).
+// Папка поиска запоминается в editor.ini, [Tidy] ScanDir.
 procedure TForm1.TidyIniClick(Sender: TObject);
+var
+  Dlg: TDlgTidyIni;
+  Ini: TIniFile;
+  Start: string;
+  Res: Integer;
+begin
+  if FProjectReg = nil then
+    LoadProjectReg;
+  Ini := TIniFile.Create(SettingsFileName);
+  try
+    Start := Trim(Ini.ReadString('Tidy', 'ScanDir', ''));
+  finally
+    Ini.Free;
+  end;
+  if (Start = '') or not DirectoryExists(Start) then
+    Start := ExtractFilePath(Application.ExeName);
+  if Length(Start) > 3 then
+    Start := ExcludeTrailingPathDelimiter(Start);
+
+  Res := mrNone;
+  Dlg := TDlgTidyIni.Create(Self);
+  FTidyDlg := Dlg;
+  FTidyFound := TList.Create;
+  try
+    Dlg.lstDirs.OnChange := TidyDirChange;
+    Dlg.btnScan.OnClick := TidyScanClick;
+    Dlg.btnMark.OnClick := TidyMarkClick;
+    Dlg.btnUnmark.OnClick := TidyMarkClick;
+    Dlg.btnAdd.OnClick := TidyAddClick;
+    Dlg.btnAdd.Enabled := False;
+    Dlg.OnCloseQuery := TidyDlgCloseQuery;
+    try
+      Dlg.lstDirs.Directory := Start;
+      // Диск - по папке, после неё: смена диска не сбросит папку
+      Dlg.cmbDrive.Drive := Dlg.lstDirs.Drive;
+    except
+      // папка недоступна - список остаётся там, где встал сам
+    end;
+    TidyDirChange(nil);
+    Res := Dlg.ShowModal;
+  finally
+    TidyClearFound;
+    FreeAndNil(FTidyFound);
+    FTidyDlg := nil;
+    Dlg.Free;
+  end;
+  if Res = mrOk then
+    TidyRun;
+end;
+
+procedure TForm1.TidyClearFound;
+var
+  ItemIdx: Integer;
+begin
+  if FTidyFound = nil then
+    Exit;
+  for ItemIdx := 0 to FTidyFound.Count - 1 do
+    TTidyFound(FTidyFound[ItemIdx]).Free;
+  FTidyFound.Clear;
+end;
+
+// Папку выбрали в дереве - путь в поле; поле можно и править руками
+procedure TForm1.TidyDirChange(Sender: TObject);
+begin
+  if FTidyDlg <> nil then
+    FTidyDlg.edPath.Text := FTidyDlg.lstDirs.Directory;
+end;
+
+// Пока идёт поиск, окно не закрывается: поиск работает внутри его
+// обработчика
+procedure TForm1.TidyDlgCloseQuery(Sender: TObject; var CanClose: Boolean);
+begin
+  CanClose := not FTidyScanning;
+end;
+
+// Scan - поиск проектов (TidyScanProjects); во время поиска та же кнопка -
+// Stop. Сравнение идёт с файлом editor.ini, поэтому список проектов
+// сначала записывается
+procedure TForm1.TidyScanClick(Sender: TObject);
+var
+  Notes: TStringList;
+  Ini: TIniFile;
+  Root, Line: string;
+  ItemIdx: Integer;
+  OldMode: UINT;
+begin
+  if FTidyDlg = nil then
+    Exit;
+  if FTidyScanning then
+  begin
+    FTidyStop := True;
+    Exit;
+  end;
+  Root := Trim(FTidyDlg.edPath.Text);
+  if (Root = '') or not DirectoryExists(Root) then
+  begin
+    ShowMessage('Папки нет: ' + Root);
+    Exit;
+  end;
+  Ini := TIniFile.Create(SettingsFileName);
+  try
+    Ini.WriteString('Tidy', 'ScanDir', Root);
+  finally
+    Ini.Free;
+  end;
+  SaveProjectReg;
+
+  TidyClearFound;
+  FTidyDlg.lstFound.Items.Clear;
+  FTidyDlg.btnScan.Caption := 'Stop';
+  FTidyDlg.btnAdd.Enabled := False;
+  FTidyDlg.btnTidy.Enabled := False;
+  FTidyDlg.btnClose.Enabled := False;
+  FTidyStop := False;
+  FTidyTick := 0;
+  FTidyScanning := True;
+  Notes := TStringList.Create;
+  try
+    // диск или флешка, которых нет, - без системного окна об ошибке
+    OldMode := SetErrorMode(SEM_FAILCRITICALERRORS);
+    Screen.Cursor := crAppStart;
+    try
+      TidyScanProjects(Root, SettingsFileName, FTidyFound, Notes,
+                       TidyScanStep);
+    finally
+      Screen.Cursor := crDefault;
+      SetErrorMode(OldMode);
+      FTidyScanning := False;
+      FTidyDlg.btnScan.Caption := 'Scan';
+      FTidyDlg.btnTidy.Enabled := True;
+      FTidyDlg.btnClose.Enabled := True;
+    end;
+
+    for ItemIdx := 0 to FTidyFound.Count - 1 do
+      with TTidyFound(FTidyFound[ItemIdx]) do
+      begin
+        FTidyDlg.lstFound.Items.Add(Name + '   ' + #149 + '   ' + Folder +
+                                    '   (' + Source + ')');
+        FTidyDlg.lstFound.Checked[ItemIdx] := True;
+      end;
+    FTidyDlg.btnAdd.Enabled := FTidyFound.Count > 0;
+    Line := '';
+    for ItemIdx := 0 to Notes.Count - 1 do
+      Line := Line + Notes[ItemIdx] + '. ';
+    FTidyDlg.lblScan.Caption := Line;
+    LogRaw('Tidy editor.ini, поиск в ' + Root + ':');
+    for ItemIdx := 0 to Notes.Count - 1 do
+      LogRaw('  ' + Notes[ItemIdx]);
+  finally
+    Notes.Free;
+  end;
+end;
+
+// Ход поиска: папка - в строку под списком, не чаще раза в 150 мс;
+// заодно обрабатываются нажатия (Stop)
+procedure TForm1.TidyScanStep(const AFolder: string; var AStop: Boolean);
+begin
+  if (FTidyDlg <> nil) and (GetTickCount - FTidyTick > 150) then
+  begin
+    FTidyTick := GetTickCount;
+    FTidyDlg.lblScan.Caption := 'Поиск: ' + AFolder;
+    Application.ProcessMessages;
+  end;
+  AStop := FTidyStop or (FTidyDlg = nil);
+end;
+
+procedure TForm1.TidyMarkClick(Sender: TObject);
+var
+  ItemIdx: Integer;
+begin
+  if FTidyDlg = nil then
+    Exit;
+  for ItemIdx := 0 to FTidyDlg.lstFound.Items.Count - 1 do
+    FTidyDlg.lstFound.Checked[ItemIdx] := TUiButton(Sender).Tag = 1;
+end;
+
+// Add to editor.ini: отмеченные проекты - раздел [Project.<имя>] и запись
+// в [Projects]; из списка они убираются
+procedure TForm1.TidyAddClick(Sender: TObject);
+var
+  ItemIdx, Added: Integer;
+  Item: TTidyFound;
+  Lst: TCheckListBox;
+begin
+  if (FTidyDlg = nil) or (FTidyFound = nil) then
+    Exit;
+  if FProjectReg = nil then
+    LoadProjectReg;
+  Lst := FTidyDlg.lstFound;
+  Added := 0;
+  LogRaw('Tidy editor.ini, добавление проектов:');
+  for ItemIdx := 0 to Lst.Items.Count - 1 do
+  begin
+    if not Lst.Checked[ItemIdx] then
+      Continue;
+    Item := TTidyFound(FTidyFound[ItemIdx]);
+    // имя заняли после поиска - не трогаем чужой раздел
+    if FProjectReg.IndexOfName(Item.Name) >= 0 then
+    begin
+      LogRaw('  ' + Item.Name + ': такое имя уже есть, не добавлен');
+      Continue;
+    end;
+    IniReplaceSection(SettingsFileName, ProjectSectionPrefix + Item.Name,
+                      Item.Body);
+    FProjectReg.Values[Item.Name] := Item.Folder;
+    LogRaw('  ' + Item.Name + '  ' + #149 + '  ' + Item.Folder + '  (из ' +
+           Item.Source + ')');
+    Inc(Added);
+  end;
+  SaveProjectReg;
+  RebuildProjectsMenu;
+
+  // добавленные - из списка (с конца: номера строк не сдвигаются)
+  for ItemIdx := Lst.Items.Count - 1 downto 0 do
+  begin
+    Item := TTidyFound(FTidyFound[ItemIdx]);
+    if Lst.Checked[ItemIdx] and
+       (CompareText(FProjectReg.Values[Item.Name], Item.Folder) = 0) then
+    begin
+      Item.Free;
+      FTidyFound.Delete(ItemIdx);
+      Lst.Items.Delete(ItemIdx);
+    end;
+  end;
+  FTidyDlg.btnAdd.Enabled := Lst.Items.Count > 0;
+  FTidyDlg.lblScan.Caption := 'Добавлено в editor.ini проектов: ' +
+                              IntToStr(Added);
+  LogRaw('  добавлено: ' + IntToStr(Added));
+end;
+
+// Tidy and restart. Проект и изменённые файлы сохраняются (проект - без
+// вопроса; файлы и схема - те же вопросы, что при выходе), настройки
+// пишутся в editor.ini, editor.ini разбирается на editorNew.ini (этот
+// компьютер), editorN.ini (другие компьютеры) и editorOLD.ini (записи с
+// ненайденными путями), см. IniTidy. Затем программа закрывается и
+// запускает себя заново (TidyRestart); новый экземпляр ждёт, пока прежний
+// закроется, и ставит editorNew.ini на место editor.ini
+// (TidySwapAtStart). Прежний editor.ini остаётся как editor_prev.ini.
+procedure TForm1.TidyRun;
 var
   Notes: TStringList;
   NoteIdx: Integer;
   OldMode: UINT;
   Done, CanGo: Boolean;
 begin
-  if MessageDlg('Tidy editor.ini: unIDE будет перезапущена с новыми ' +
-                'настройками.'#13#10#13#10 +
-                'Проект и файлы сохраняются, editor.ini разбирается: ' +
-                'editorNew.ini - этот компьютер, editorN.ini - другие, ' +
-                'editorOLD.ini - записи с путями, которых нет. Прежний ' +
-                'editor.ini останется как editor_prev.ini.'#13#10#13#10 +
-                'Продолжить?', mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
-    Exit;
-
   // Проект - без вопроса; изменённые файлы и схема - те же вопросы, что
   // при выходе. Отказ - команда отменяется
   if FCurrentProject <> '' then
