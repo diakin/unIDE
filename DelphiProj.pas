@@ -169,6 +169,10 @@ end;
 //                 UnsafeType, UnsafeCode, UnsafeCast = 0 -> -w-UNSAFE_...
 //   [Linker]      MapFile 1/2/3 -> -GS/-GP/-GD (карта: сегменты, имена,
 //                 подробная с номерами строк)
+//                 DebugInfo=1   -> -V, RemoteSymbols=1 -> -VR
+//                 MinStackSize, MaxStackSize -> -$M<min>,<max>
+//                 ImageBase (если не $00400000) -> -K$<адрес>
+//   [Directories] UsePackages=1 и Packages -> -LU<пакеты>
 //   [Directories] Conditionals  -> ADefines (ключ -D ставит вызывающий)
 //                 SearchPath    -> ASearch, пути абсолютные
 // Выходные папки (OutputDir, UnitOutputDir) не берутся: их задают
@@ -309,6 +313,29 @@ begin
       Result := Result + ' -GP'
     else if V = '3' then
       Result := Result + ' -GD';
+
+    // Остальное с вкладки Linker - так же, как в <проект>.cfg, который
+    // пишет среда Delphi: отладочная информация TD32 в exe (-V), символы
+    // удалённой отладки (-VR), размеры стека (-$M), базовый адрес (-K)
+    if Trim(Ini.ReadString('Linker', 'DebugInfo', '')) = '1' then
+      Result := Result + ' -V';
+    if Trim(Ini.ReadString('Linker', 'RemoteSymbols', '')) = '1' then
+      Result := Result + ' -VR';
+    S := Trim(Ini.ReadString('Linker', 'MinStackSize', ''));
+    V := Trim(Ini.ReadString('Linker', 'MaxStackSize', ''));
+    if (StrToIntDef(S, 0) > 0) and (StrToIntDef(V, 0) > 0) then
+      Result := Result + ' -$M' + S + ',' + V;
+    V := Trim(Ini.ReadString('Linker', 'ImageBase', ''));
+    if (StrToInt64Def(V, 0) > 0) and (StrToInt64Def(V, 0) <> 4194304) then
+      Result := Result + ' -K$' + IntToHex(StrToInt64Def(V, 0), 8);
+
+    // Runtime packages: Build with runtime packages и список пакетов
+    if Trim(Ini.ReadString('Directories', 'UsePackages', '')) = '1' then
+    begin
+      V := Trim(Ini.ReadString('Directories', 'Packages', ''));
+      if V <> '' then
+        Result := Result + ' -LU' + Quoted(V);
+    end;
 
     ADefines := Trim(Ini.ReadString('Directories', 'Conditionals', ''));
 

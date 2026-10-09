@@ -45,6 +45,8 @@ uses
   TextMerge in 'TextMerge.pas',
   FileSearch in 'FileSearch.pas',
   DelphiProj in 'DelphiProj.pas',
+  DelphiOpts in 'DelphiOpts.pas',
+  ResFile in 'ResFile.pas',
   ClrScheme in 'ClrScheme.pas',
   RqToFb in 'RqLcl\tofb\RqToFb.pas',
   UiScroll in 'UiScroll.pas';

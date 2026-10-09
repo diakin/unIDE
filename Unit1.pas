@@ -3177,6 +3177,7 @@ var
     Registry,     // поиск установленных Delphi, когда dcc32 не на месте
     FileSearch,   // Find In Files: маски, чтение файлов, обход папок
     DelphiProj,   // .dpr (модули из uses), .dof (ключи dcc32), $(DELPHI)
+    DelphiOpts,   // Project options Delphi: номер сборки и версия в .res
     ObjParse,     // разбор формы для инспектора: узлы, .dfm, код, кэш
     RqToFb,       // перевод RapidQ -> FreeBASIC (RqLcl\tofb)
     RqHelp,       // справка RapidQ: rapidq_ref\help\rapidq.chm, html_doc
@@ -9527,15 +9528,20 @@ end;
 //     в папке проекта заново (PickExistingMain).
 // Перед правкой - вопросы о несохранённом (ConfirmSaveAll,
 // ConfirmSaveProject), после - проект загружается заново.
+//
+// У проекта Delphi есть ещё вкладка Project options - страницы окна
+// Project Options среды Delphi 7 (DlgNewPrj, DelphiOpts). Её настройки
+// записываются в .dof, .dpr и .res главного файла проекта сразу после OK,
+// независимо от имени, папки и типа.
 procedure TForm1.ProjectPropsClick(Sender: TObject);
 var
   Dlg: TDlgNewPrj;
   Prj: TProjectIni;
-  Keys: TStringList;
+  Keys, OptLog: TStringList;
   OldName, OldDir, OldType, OldTarget: string;
   NewName, NewDir, NewType, NewTarget, Dir, Val, SectName: string;
-  K, SectIdx, KeyIdx, FoundAt: Integer;
-  DirChanged: Boolean;
+  K, SectIdx, KeyIdx, FoundAt, LogIdx: Integer;
+  DirChanged, OptionsChanged: Boolean;
 begin
   if FCurrentProject = '' then
   begin
@@ -9573,6 +9579,16 @@ begin
     if K < 0 then
       K := Dlg.cbType.Items.Add(OldType);
     Dlg.cbType.ItemIndex := K;
+
+    // Проект Delphi с главным .dpr - вкладка Project options
+    if (CompareText(OldType, 'Delphi') = 0) and
+       (CompareText(ExtractFileExt(OldTarget), '.dpr') = 0) and
+       FileExists(OldTarget) then
+      Dlg.LoadDelphiOptions(OldTarget)
+    else if CompareText(OldType, 'Delphi') = 0 then
+      LogRaw('Project Properties: вкладки Project options нет - не задан ' +
+             'главный .dpr проекта (Target). Откройте .dpr и соберите ' +
+             'проект - он запомнится как цель.');
 
     // Кнопка "..." закрывает окно с mrRetry (как в New Project): папка
     // выбирается, и окно показывается снова
@@ -9627,10 +9643,29 @@ begin
 
     DirChanged := CompareText(NewDir, OldDir) <> 0;
 
-    // Ничего не поменялось - писать нечего
+    // Project options - в .dof, .dpr, .res
+    OptionsChanged := False;
+    if Dlg.DelphiDpr <> '' then
+    begin
+      OptLog := TStringList.Create;
+      try
+        Dlg.SaveDelphiOptions(OptLog, OptionsChanged);
+        for LogIdx := 0 to OptLog.Count - 1 do
+          LogRaw('Project options: ' + OptLog[LogIdx]);
+      finally
+        OptLog.Free;
+      end;
+    end;
+
+    // Имя, папка и тип не поменялись - писать в editor.ini нечего. Если
+    // .dpr переписан (Title, формы), открытые вкладки перечитываются.
     if (NewName = OldName) and not DirChanged and
        (CompareText(NewType, OldType) = 0) then
+    begin
+      if OptionsChanged then
+        LoadProject(OldName);
       Exit;
+    end;
 
     // Главный файл: в новой папке, если в неё перенесли проект; другой,
     // если прежний новому типу не подходит
@@ -42269,6 +42304,18 @@ begin
   try
     Params := Params + DofCompilerParams(OrigDpr, Root, DofSearch, DofDefines,
                                          DofLog);
+    for DL := 0 to DofLog.Count - 1 do
+      LogComp(DofLog[DL]);
+  finally
+    DofLog.Free;
+  end;
+
+  // Version Info: номер сборки (Auto-increment build number) и VERSIONINFO
+  // в <проект>.res - перед каждой сборкой, как в среде Delphi. dcc32 сам
+  // .res не меняет, он только подключает его по {$R *.res}.
+  DofLog := TStringList.Create;
+  try
+    DofPrepareBuild(OrigDpr, DofLog);
     for DL := 0 to DofLog.Count - 1 do
       LogComp(DofLog[DL]);
   finally
