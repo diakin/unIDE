@@ -46,7 +46,7 @@ $IFNDEF _CALLBACK_2
     Declare Function FuncBind_2 (Arg1 As Long, Arg2 As Long) As Long
     DefInt lpCallBack_2  = CodePtr(MasterCallBack_2)
 
-    Function MasterCallBack_2 (hFunction As Long, Arg1 As Long, Arg2 As Long) As Long ' inc2026: hFunction вместо cbIndex: в DECLARE (строка 45) и в теле (строка 52) - hFunction, как в CallBack_0/1/3/4; RapidQ берёт имена из DECLARE, так что поведение не меняется, cbIndex нигде не используется
+    Function MasterCallBack_2 (hFunction As Long, Arg1 As Long, Arg2 As Long) As Long ' inc2026: hFunction РІРјРµСЃС‚Рѕ cbIndex: РІ DECLARE (СЃС‚СЂРѕРєР° 45) Рё РІ С‚РµР»Рµ (СЃС‚СЂРѕРєР° 52) - hFunction, РєР°Рє РІ CallBack_0/1/3/4; RapidQ Р±РµСЂС‘С‚ РёРјРµРЅР° РёР· DECLARE, С‚Р°Рє С‡С‚Рѕ РїРѕРІРµРґРµРЅРёРµ РЅРµ РјРµРЅСЏРµС‚СЃСЏ, cbIndex РЅРёРіРґРµ РЅРµ РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ
         DefInt hBind
         Bind hBind To FuncBind_2
         hBind = hFunction

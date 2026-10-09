@@ -144,7 +144,7 @@ Type QDir Extends QObject
     PUBLIC:
         ' Event - Truely Read Write
         OnFileFound As EVENT (OnFileFound_EventTemplate)  ' RW
-        ' Find Files PРґrameters - Should Be Read Only
+        ' Find Files PР Т‘rameters - Should Be Read Only
         fileName As string
         dosFileName As string
         path As String
@@ -646,7 +646,7 @@ PRIVATE:
             ' -------------
             iHandle = QDIR_CreateFile(pathFileName, QDIR_GENERIC_WRITE, (QDIR_FILE_SHARE_READ Or QDIR_FILE_SHARE_WRITE), _
                                 0, QDIR_OPEN_EXISTING, 0, 0)
-            If iHandle = QDIR_INVALID_HANDLE_VALUE Then cftErr = "File Not Found":Goto cftError ' inc2026: QDIR_INVALID_HANDLE_VALUE вместо 0: CreateFile при ошибке возвращает INVALID_HANDLE_VALUE = -1, а не 0 (константа объявлена в строке 20 и не использовалась), иначе ненайденный файл не обнаруживался
+            If iHandle = QDIR_INVALID_HANDLE_VALUE Then cftErr = "File Not Found":Goto cftError ' inc2026: QDIR_INVALID_HANDLE_VALUE РІРјРµСЃС‚Рѕ 0: CreateFile РїСЂРё РѕС€РёР±РєРµ РІРѕР·РІСЂР°С‰Р°РµС‚ INVALID_HANDLE_VALUE = -1, Р° РЅРµ 0 (РєРѕРЅСЃС‚Р°РЅС‚Р° РѕР±СЉСЏРІР»РµРЅР° РІ СЃС‚СЂРѕРєРµ 20 Рё РЅРµ РёСЃРїРѕР»СЊР·РѕРІР°Р»Р°СЃСЊ), РёРЅР°С‡Рµ РЅРµРЅР°Р№РґРµРЅРЅС‹Р№ С„Р°Р№Р» РЅРµ РѕР±РЅР°СЂСѓР¶РёРІР°Р»СЃСЏ
             '
             ' Get Numeric Parameters of the Functioni
             ' ---------------------------------------
