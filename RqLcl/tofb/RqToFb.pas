@@ -178,23 +178,27 @@ const
     'ONCLOSE=RLONG';
 
   // Свойства, которые во всех классах rapidq_ref\ComponentAll.data -
-  // STRING (тип неявной переменной Имя_Свойство, см. ProcessIdent)
+  // STRING или массив STRING (Cell, ColumnCaption...: тип неявной
+  // переменной Имя_Свойство, см. ProcessIdent; строка ли член объекта,
+  // MemberIsString)
   RqStrPropText =
     'ADDCOLUMNS ADDLINES ADDPANELS ADDSECTIONS AGENT ALBUM ALIAS APPNAME APPVERSION ' +
     'ARTIST ATTRIBUTESASSTRING BMP BMPCLOSED BMPLEAF BMPMINUS BMPOPEN BMPPLUS ' +
-    'CAPTION CHANNELS CHILDCAPTION COMMENT COPYCAPTION COPYRIGHT CSVFILE CURRENTPATH ' +
-    'CUTCAPTION DATE DATEALPHA DATEALPHAEU DATEEU DEFAULTEXT DEFAULTFONTNAME ' +
-    'DIRECTORY DISPLAY DOCUMENTTITLE DOSFILENAME DRIVE DRIVEROOT DRIVETYPESTRING ' +
-    'ECHOSTRING EDITTEXT EMAIL EMPHASIS ERRORLANGUAGE ERRORMSG FILE ' +
-    'FILEATTRIBUTESASSTRING FILEDATE FILEDATEEU FILEID FILENAME FILESYTEM FILETIME ' +
-    'FILETIMEMS FILETITLE FILETYPE FLATBMPHANDLE FREESPACE GENRE HINT HOST HTMLTEXT ' +
+    'CAPTION CELL CHANNELS CHILDCAPTION COLUMNCAPTION COLUMNLIST COMMENT COPYCAPTION ' +
+    'COPYRIGHT CSVFILE CURRENTPATH CUTCAPTION DATE DATEALPHA DATEALPHAEU DATEEU DAYS ' +
+    'DB DEFAULTEXT DEFAULTFONTNAME DIRECTORY DISPLAY DLGCAPTION DOCUMENTTITLE ' +
+    'DOSFILENAME DRIVE DRIVER DRIVEROOT DRIVETYPESTRING ECHOSTRING EDITTEXT EMAIL ' +
+    'EMPHASIS ERRORLANGUAGE ERRORMSG FIELDNAME FILE FILEATTRIBUTESASSTRING FILEDATE ' +
+    'FILEDATEEU FILEID FILENAME FILES FILESYTEM FILETIME FILETIMEMS FILETITLE ' +
+    'FILETYPE FLATBMPHANDLE FONTNAME FRAME_NAME FREESPACE GENRE HINT HOST HTMLTEXT ' +
     'INITIALDIR INPUTMASK INTENSITYSTEREO ITEMSEPARATOR KEYLISTNAME LANGUAGE ' +
-    'LASTSTRINGERROR LAYER LEFTTEXT MASK MS_STEREO ORIGINAL OUTFILE OUTVAR PADDING ' +
-    'PASSWORD PASSWORDCHAR PASTECAPTION PATH PATHFILENAME PROTECTION PROXYBYPASS ' +
-    'PROXYNAME PTPOINT RIGHTTEXT SCONNECT SECTION SELECTALLCAPTION SELTEXT SEPARATOR ' +
-    'SERIAL SERVER SHORTCUT SIMPLETEXT SSQL STRCONNECT STRDAYOFWEEK STRMONTHOFYEAR ' +
-    'STRSQL SYSTEMDIR TEMPDIR TEXT TEXTUREFILE TIME TIMEMS TIMEPOSITION TITLE ' +
-    'TOTALSPACE TRACKTIME UNDOCAPTION USER VERSION WEB WINDIR YEAR';
+    'LASTSTRINGERROR LAYER LEFTTEXT MASK MONTHS MS_STEREO NAME ORIGINAL OUTFILE ' +
+    'OUTVAR PADDING PASSWORD PASSWORDCHAR PASTECAPTION PATH PATHFILENAME PROTECTION ' +
+    'PROXYBYPASS PROXYNAME PTPOINT RIGHTTEXT SCONNECT SECTION SELECTALLCAPTION ' +
+    'SELTEXT SEPARATOR SERIAL SERVER SHORTCUT SIMPLETEXT SSQL STRCONNECT STRDATA ' +
+    'STRDAYOFWEEK STRMONTHOFYEAR STRSQL SUBITEM SYNTAXES SYSTEMDIR TAB TABLE TEMPDIR ' +
+    'TEXT TEXTUREFILE TIME TIMEMS TIMEPOSITION TITLE TOTALSPACE TRACKTIME ' +
+    'UNDOCAPTION USER VERSION WEB WINDIR YEAR';
 
   // Запись в массив-свойство с двумя индексами: у свойства FreeBASIC
   // индекс один, поэтому Grid.Cell(c, r) = x -> Grid.SetCell(c, r, x)
@@ -560,6 +564,9 @@ type
     function  HasChrZero(const AToks: TToks; AFrom, ATo: Integer): Boolean;
     procedure TrackModBlock(const AToks: TToks; AFirst, ATo: Integer);
     function  MemberIsString(const AToks: TToks; AIdx: Integer): Boolean;
+    procedure WrapMemberStrIndex(var AToks: TToks; AIdx, ATo: Integer);
+    function  ProcessSwap(var AToks: TToks; AFirst, ATo: Integer): Boolean;
+    function  TranslateFragment(const AText: string): string;
     function  DottedImplicit(var AToks: TToks; AIdx, ADotIdx, ATo: Integer): Boolean;
     procedure ProcessAssignOrCall(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessDim(var AToks: TToks; AFrom, ATo: Integer);
@@ -3203,6 +3210,10 @@ begin
      ProcessPlusPlus(AToks, FirstIdx, ATo) then
     Exit;
 
+  // SWAP со свойством объекта - через временную переменную
+  if (Up = 'SWAP') and ProcessSwap(AToks, FirstIdx, ATo) then
+    Exit;
+
   // Внутри TYPE ... EXTENDS: заголовки и концы методов, поля
   if (FCurType <> nil) and TypeStatement(AToks, FirstIdx, ATo) then
     Exit;
@@ -3515,6 +3526,154 @@ begin
   end;
 end;
 
+// Объект.Свойство[N] (RQdebugger: TplPathEdit.text[len(TplPathEdit.text)])
+// - символ строки, как s$[N] у переменной (WrapStrIndex): RqStrIdx(
+// Объект.Свойство, N). Только простая форма Владелец.Свойство со
+// строковым свойством (MemberIsString)
+procedure TRqFbConv.WrapMemberStrIndex(var AToks: TToks; AIdx, ATo: Integer);
+var
+  OpenIdx, CloseIdx, DotIdx, OwnerIdx, InsPos: Integer;
+  PreText: string;
+begin
+  OpenIdx := NextSig(AToks, AIdx + 1, ATo);
+  if not IsOp(AToks, OpenIdx, '[') then
+    Exit;
+  CloseIdx := MatchBracket(AToks, OpenIdx, ATo);
+  if CloseIdx < 0 then
+    Exit;
+  DotIdx := PrevSig(AToks, AIdx - 1);
+  OwnerIdx := PrevSig(AToks, DotIdx - 1);
+  if (OwnerIdx < 0) or (AToks[OwnerIdx].Kind <> tkIdent) or
+     IsOp(AToks, PrevSig(AToks, OwnerIdx - 1), '.') or
+     not MemberIsString(AToks, AIdx) then
+    Exit;
+  PreText := AToks[OwnerIdx].Pre;
+  InsPos := 1;
+  while Copy(PreText, InsPos, 9) = 'RqStrSub(' do
+    Inc(InsPos, 9);
+  Insert('RqStrIdx(', PreText, InsPos);
+  AToks[OwnerIdx].Pre := PreText;
+  AToks[OpenIdx].OutText := ', ';
+  AToks[CloseIdx].OutText := ')';
+end;
+
+// Текст RapidQ из нескольких операторов через ":" - перевод (для
+// операторов, которые переписываются через другие: ProcessSwap)
+function TRqFbConv.TranslateFragment(const AText: string): string;
+var
+  Toks: TToks;
+  TokIdx, StartIdx, Depth: Integer;
+  SavedInlineIf, SavedLabel: Boolean;
+  SavedLost: Integer;
+begin
+  SavedInlineIf := FInlineIf;
+  SavedLabel := FLineIsLabel;
+  SavedLost := FLostLines;
+  try
+    FInlineIf := False;
+    FLostLines := 0;
+    Lex(AText, Toks);
+    StartIdx := 0;
+    Depth := 0;
+    for TokIdx := 0 to High(Toks) do
+      if IsOp(Toks, TokIdx, '(') then
+        Inc(Depth)
+      else if IsOp(Toks, TokIdx, ')') then
+        Dec(Depth)
+      else if (Depth = 0) and IsOp(Toks, TokIdx, ':') then
+      begin
+        if TokIdx - 1 >= StartIdx then
+          ProcessStatement(Toks, StartIdx, TokIdx - 1);
+        StartIdx := TokIdx + 1;
+      end;
+    if StartIdx <= High(Toks) then
+      ProcessStatement(Toks, StartIdx, High(Toks));
+    Result := '';
+    for TokIdx := 0 to High(Toks) do
+      Result := Result + Toks[TokIdx].Pre + Toks[TokIdx].OutText + Toks[TokIdx].Post;
+  finally
+    FInlineIf := SavedInlineIf;
+    FLineIsLabel := SavedLabel;
+    FLostLines := SavedLost;
+  end;
+end;
+
+// SWAP a, b, где a или b - свойство объекта (RQdebugger: SWAP
+// LangGrid1.cell(c, r), LangGrid1.cell(3, r)). Swap FreeBASIC меняет
+// только переменные; свойство - через временную переменную и три
+// присваивания, каждое переводится как обычно (Grid.Cell(c, r) = x ->
+// SetCell). False - не тот случай, SWAP остаётся как есть.
+function TRqFbConv.ProcessSwap(var AToks: TToks; AFirst, ATo: Integer): Boolean;
+var
+  TokIdx, CommaIdx, Depth: Integer;
+  LeftText, RightText, TempName: string;
+
+  // В операнде есть "." на верхнем уровне и владелец - объект
+  function IsProp(AFrom, AUntil: Integer): Boolean;
+  var
+    FirstIdx, ScanIdx, ScanDepth: Integer;
+    VarRec: TRqVar;
+    OwnerType: string;
+  begin
+    Result := False;
+    FirstIdx := NextSig(AToks, AFrom, AUntil);
+    if (FirstIdx < 0) or (AToks[FirstIdx].Kind <> tkIdent) then
+      Exit;
+    if AToks[FirstIdx].Up = 'THIS' then
+      OwnerType := 'THIS'
+    else
+    begin
+      VarRec := FindVar(AToks[FirstIdx].Up);
+      if VarRec = nil then
+        Exit;
+      OwnerType := UpperCase(VarRec.RqType);
+      if not (InList(FObjClasses, OwnerType) or (FindTypeInfo(OwnerType) <> nil)) then
+        Exit;
+    end;
+    ScanDepth := 0;
+    for ScanIdx := FirstIdx to AUntil do
+      if IsOp(AToks, ScanIdx, '(') then
+        Inc(ScanDepth)
+      else if IsOp(AToks, ScanIdx, ')') then
+        Dec(ScanDepth)
+      else if (ScanDepth = 0) and IsOp(AToks, ScanIdx, '.') then
+      begin
+        Result := True;
+        Exit;
+      end;
+  end;
+
+begin
+  Result := False;
+  CommaIdx := -1;
+  Depth := 0;
+  for TokIdx := AFirst + 1 to ATo do
+    if IsOp(AToks, TokIdx, '(') then
+      Inc(Depth)
+    else if IsOp(AToks, TokIdx, ')') then
+      Dec(Depth)
+    else if (Depth = 0) and IsOp(AToks, TokIdx, ',') then
+    begin
+      CommaIdx := TokIdx;
+      Break;
+    end;
+  if CommaIdx < 0 then
+    Exit;
+  if not IsProp(AFirst + 1, CommaIdx - 1) and not IsProp(CommaIdx + 1, ATo) then
+    Exit;
+  LeftText := Trim(RawText(AToks, AFirst + 1, CommaIdx - 1));
+  RightText := Trim(RawText(AToks, CommaIdx + 1, ATo));
+  if ExprIsString(AToks, AFirst + 1, CommaIdx - 1) or
+     ExprIsString(AToks, CommaIdx + 1, ATo) then
+    TempName := 'rq_swap$'
+  else
+    TempName := 'rq_swap#';
+  Rebuild(AToks, AFirst, ATo, TranslateFragment(
+    TempName + ' = ' + LeftText + ' : ' + LeftText + ' = ' + RightText +
+    ' : ' + RightText + ' = ' + TempName));
+  Result := True;
+end;
+
 // Имя.Свойство, где Имя не объявлено ни переменной, ни объектом: одна
 // неявная переменная Имя_Свойство (см. ProcessIdent). Только простая
 // форма: за свойством не "(" и не ".", свойство - не метод и не событие
@@ -3605,6 +3764,8 @@ begin
     // свойство или метод объекта
     else if FMemberMap.IndexOf(Up) >= 0 then
       AToks[AIdx].OutText := FMemberMap.Get(Up);
+    // Объект.Свойство[N] - символ строки-свойства
+    WrapMemberStrIndex(AToks, AIdx, ATo);
     // метод SUBI / FUNCTIONI своего компонента
     if VariadicMember(AToks, AIdx) then
     begin
