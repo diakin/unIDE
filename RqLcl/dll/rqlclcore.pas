@@ -1041,9 +1041,28 @@ function RqSetInt(AObj: Pointer; AProp: PChar; AValue: Integer): Integer;
   stdcall;
 var
   Info: PPropInfo;
+  ItemCount: Integer;
 begin
   Result := 0;
   try
+    // ItemIndex вне списка (ListBox.ItemIndex = 0 у пустого списка): LCL
+    // поднимает исключение "Index out of bounds", а в RapidQ та же
+    // программа идёт без ошибки (RQdebugger); TListBox Delphi VCL в этом
+    // случае шлёт LB_SETCURSEL, и выделение просто снимается. Так же и
+    // здесь: -1, без ошибки
+    if SameText(string(AProp), 'ItemIndex') and
+       ((TObject(AObj) is TCustomListBox) or (TObject(AObj) is TCustomComboBox) or
+        (TObject(AObj) is TCustomRadioGroup)) then
+    begin
+      if TObject(AObj) is TCustomListBox then
+        ItemCount := TCustomListBox(AObj).Items.Count
+      else if TObject(AObj) is TCustomComboBox then
+        ItemCount := TCustomComboBox(AObj).Items.Count
+      else
+        ItemCount := TCustomRadioGroup(AObj).Items.Count;
+      if (AValue < -1) or (AValue >= ItemCount) then
+        AValue := -1;
+    end;
     if EditSetInt(TObject(AObj), string(AProp), AValue) or
        GridSetInt(TObject(AObj), string(AProp), AValue) or
        MiscSetInt(TObject(AObj), string(AProp), AValue) or
