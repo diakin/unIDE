@@ -53,6 +53,10 @@ type
     Mode: TRqFbMode;     // режим с учётом строки '$RQFB в исходнике
     ErrorCount: Integer;
     WarningCount: Integer;
+    // Подозрения на ошибку в самой программе (уровень Suspect): тело
+    // процедуры не найдено, опечатка в имени, строка в число... Сборка
+    // идёт, но программа, скорее всего, работает не так, как задумано
+    SuspectCount: Integer;
     // файл ресурсов ($RESOURCE) для fbc; '' - ресурсов нет
     ResourceFile: string;
   end;
@@ -496,6 +500,7 @@ type
     FHasGui: Boolean;
     FErrors: Integer;
     FWarnings: Integer;
+    FSuspects: Integer;
     FLostLines: Integer;          // переводы строк, убранные сборкой заново
     FSourceMode: string;          // '$RQFB SMART|COMPAT из исходника
     FLineIsLabel: Boolean;
@@ -531,6 +536,8 @@ type
     procedure Error(const AText: string);
     procedure WarnOnce(const AKey, AText: string);
     procedure ErrorOnce(const AKey, AText: string);
+    procedure Suspect(const AText: string);
+    procedure SuspectOnce(const AKey, AText: string);
     function CondActive: Boolean;
 
     // Разбор строки
@@ -1407,6 +1414,29 @@ begin
     Exit;
   FWarnedNames.Add(AKey);
   Warn(AText);
+end;
+
+// Подозрение на ошибку в программе RapidQ (не в переводе): перевод и
+// сборка идут, но место, скорее всего, - баг программы. Свой уровень,
+// "Suspect", чтобы unIDE показал такие строки отдельно от обычных
+// предупреждений
+procedure TRqFbConv.Suspect(const AText: string);
+begin
+  if FPass = 2 then
+    Inc(FSuspects);
+  Msg('Suspect', AText);
+end;
+
+procedure TRqFbConv.SuspectOnce(const AKey, AText: string);
+var
+  Found: Integer;
+begin
+  if FPass <> 2 then
+    Exit;
+  if FWarnedNames.Find(AKey, Found) then
+    Exit;
+  FWarnedNames.Add(AKey);
+  Suspect(AText);
 end;
 
 // Ошибка один раз по ключу AKey
@@ -3826,7 +3856,7 @@ begin
   if FPass = 2 then
   begin
     DefaultText := DefaultValueText(VarRec.RqType);
-    WarnOnce('DI|' + VarRec.Scope + '|' + VarRec.Name,
+    SuspectOnce('DI|' + VarRec.Scope + '|' + VarRec.Name,
       SrcText + ': ' + Copy(SrcText, 1, Pos('.', SrcText) - 1) + ' не объявлен - ' +
       'переведено как неявная переменная ' + VarRec.FbName + ' (' +
       DefaultText + ', если ей нигде не присваивается)');
@@ -3917,7 +3947,7 @@ begin
     VarRec := ResolveVar(AToks[AIdx].Text, False);
     AToks[AIdx].OutText := VarRec.FbName;
     if not VarRec.Explicit then
-      WarnOnce('TF|' + Up, AToks[AIdx].Text + ': не определено (нет $INCLUDE ' +
+      SuspectOnce('TF|' + Up, AToks[AIdx].Text + ': не определено (нет $INCLUDE ' +
         '"RAPIDQ.INC" или CONST) - в RapidQ это необъявленная переменная, 0')
     else if (VarRec.Scope = '') then
       GlobalQualify(AToks, AIdx);
@@ -4141,7 +4171,7 @@ begin
   // всегда 0 / "" (так RapidQ молча и работает); чаще всего опечатка:
   // REPLACESUBSTR$(s, crlfcrlf, crlf) вместо crlf+crlf
   if (FPass = 2) and not VarRec.Explicit and not VarRec.Assigned then
-    WarnOnce('NA|' + VarRec.Scope + '|' + VarRec.Name, AToks[AIdx].Text +
+    SuspectOnce('NA|' + VarRec.Scope + '|' + VarRec.Name, AToks[AIdx].Text +
       ': не объявлена и нигде не получает значение - в RapidQ всегда ' +
       DefaultValueText(VarRec.RqType) + ' (опечатка или объявлена в файле, которого нет?)');
 end;
@@ -4386,10 +4416,10 @@ begin
     Exit;
   end;
   if IsNumericType(TargetType) and ExprIsString(AToks, RhsFirst, RhsLast) then
-    Warn(Display + ' = ' + RawText(AToks, RhsFirst, RhsLast) +
+    Suspect(Display + ' = ' + RawText(AToks, RhsFirst, RhsLast) +
          ': строка в числовую переменную - будет 0');
   if (TargetType = 'STRING') and ExprIsNumber(AToks, RhsFirst, RhsLast) then
-    Warn(Display + ' = ' + RawText(AToks, RhsFirst, RhsLast) +
+    Suspect(Display + ' = ' + RawText(AToks, RhsFirst, RhsLast) +
          ': число в строковую переменную - будет пустая строка');
   AToks[RhsFirst].Pre := Conv + '(' + AToks[RhsFirst].Pre;
   AToks[RhsLast].Post := AToks[RhsLast].Post + ', "' +
@@ -5070,7 +5100,7 @@ begin
              (UpperCase(VarRec.FbName) = DefNames[NameIdx]) then
             VarRec.Explicit := False;
         end;
-    Warn(AProc.Name + ': параметры в DECLARE (' + DeclNames.CommaText +
+    Suspect(AProc.Name + ': параметры в DECLARE (' + DeclNames.CommaText +
          ') и в заголовке (' + DefNames.CommaText + ') разные - как в ' +
          'RapidQ, в теле действуют параметры из DECLARE, лишние имена из ' +
          'заголовка - необъявленные переменные (0)');
@@ -5416,7 +5446,7 @@ begin
   end;
   ProcRec.RetType := RetType;
   if (FPass = 2) and (LibText = '') and not ProcRec.HasBody and ProcRec.Used then
-    WarnOnce('NB|' + ProcRec.Name, AToks[KindIdx].Text + ' ' + AToks[NameIdx].Text +
+    SuspectOnce('NB|' + ProcRec.Name, AToks[KindIdx].Text + ' ' + AToks[NameIdx].Text +
       ': объявлен (DECLARE), но тела в программе нет - в переводе пустое ' +
       'тело (MissingBodies), вызов ничего не делает');
   ProcRec.DynLib := (LibText <> '') and not ProcRec.IsVariadic and
@@ -7886,6 +7916,7 @@ begin
   AResult.Mode := FOpt.Mode;
   AResult.ErrorCount := FErrors;
   AResult.WarningCount := FWarnings;
+  AResult.SuspectCount := FSuspects;
   AResult.ResourceFile := WriteResources;
   Result := FErrors = 0;
 end;

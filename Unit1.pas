@@ -2592,6 +2592,7 @@ type
     procedure LogDiag(const S: string);
     procedure LogRaw(const S: string);
     procedure LogComp(const S: string);
+    procedure LogSuspects(AMessages: TStringList; ACount: Integer);
     procedure LogErr(const S: string);
     procedure WriteCompileBat(const AExe, AParams, ADir, ADpr: string);
     procedure LogTo(AEdit: TRichEdit; const S: string;
@@ -37491,6 +37492,19 @@ begin
             FbIsErrorLine(S);     // fbc: "файл(строка) error N: ..."
 end;
 
+// Подозрение на ошибку в самой программе - строка перевода RqToFb уровня
+// Suspect: "файл(строка) Suspect: ..." (тело процедуры не найдено,
+// опечатка в имени, строка в числовую переменную...)
+function IsSuspectLine(const S: string): Boolean;
+begin
+  Result := Pos(') Suspect:', S) > 0;
+end;
+
+const
+  // Цвет подозрений в логах: тёмно-оранжевый, читается и на светлом, и на
+  // тёмном фоне; отличается и от красного ошибок, и от обычного текста
+  SuspectLogColor = TColor($000066CC);
+
 // Строка в окно компиляции. Панель могла ещё не строиться (сообщение до
 // FormCreate) - тогда пишем в прежнее окно, терять строку нельзя.
 procedure TForm1.LogComp(const S: string);
@@ -37500,6 +37514,8 @@ begin
   FLastDiag := '';
   if IsCompilerError(S) then
     C := clRed
+  else if IsSuspectLine(S) then
+    C := SuspectLogColor
   else
     C := clNone;
 
@@ -37517,6 +37533,31 @@ begin
   // после неудачи, почему сборка не прошла)
   if (FCompDlg <> nil) and FCompDlg.Building and (Trim(S) <> '') then
     FCompDlg.ShowLine(Trim(S));
+end;
+
+// Подозрения на ошибки в программе (уровень Suspect перевода RqToFb) -
+// отдельным списком после итога перевода: среди сотни обычных
+// предупреждений они теряются, а это, скорее всего, баги программы. Ещё раз
+// - в Error log, тем же цветом.
+procedure TForm1.LogSuspects(AMessages: TStringList; ACount: Integer);
+var
+  MsgIdx: Integer;
+begin
+  if ACount <= 0 then
+    Exit;
+  LogComp(Format('--- Подозрения на ошибки в программе: %d (не ошибки ' +
+                 'перевода, сборка продолжается; двойной щелчок - к строке)',
+                 [ACount]));
+  if ErrLogEdit <> nil then
+    LogTo(ErrLogEdit, Format('--- Подозрения на ошибки в программе: %d',
+                             [ACount]), SuspectLogColor);
+  for MsgIdx := 0 to AMessages.Count - 1 do
+    if IsSuspectLine(AMessages[MsgIdx]) then
+    begin
+      LogComp(AMessages[MsgIdx]);
+      if ErrLogEdit <> nil then
+        LogTo(ErrLogEdit, AMessages[MsgIdx], SuspectLogColor);
+    end;
 end;
 
 procedure TForm1.LogErr(const S: string);
@@ -44843,9 +44884,11 @@ begin
       LogComp(ConvMessages[MsgIdx]);
     if not Converted then
     begin
-      LogComp(Format('--- Перевод: ошибок %d, предупреждений %d. Двойной ' +
-                     'щелчок по строке открывает исходник',
-                     [ConvResult.ErrorCount, ConvResult.WarningCount]));
+      LogComp(Format('--- Перевод: ошибок %d, предупреждений %d, подозрений ' +
+                     '%d. Двойной щелчок по строке открывает исходник',
+                     [ConvResult.ErrorCount, ConvResult.WarningCount,
+                      ConvResult.SuspectCount]));
+      LogSuspects(ConvMessages, ConvResult.SuspectCount);
       FCompDlg.SetCounts(ConvResult.ErrorCount, ConvResult.WarningCount, 0);
       FCompDlg.EndStage(fbsConv, False,
                         Format('ошибок %d', [ConvResult.ErrorCount]));
@@ -44857,9 +44900,11 @@ begin
       ModeName := 'Compat'
     else
       ModeName := 'Smart';
-    LogComp(Format('--- Перевод: %d мс, предупреждений %d, %s, режим %s',
+    LogComp(Format('--- Перевод: %d мс, предупреждений %d, подозрений %d, ' +
+                   '%s, режим %s',
                    [GetTickCount - StartTick, ConvResult.WarningCount,
-                    ConvResult.AppType, ModeName]));
+                    ConvResult.SuspectCount, ConvResult.AppType, ModeName]));
+    LogSuspects(ConvMessages, ConvResult.SuspectCount);
     FCompDlg.EndStage(fbsConv, True,
                       Format('строк %d, предупреждений %d, %s, режим %s',
                              [FRqFbConvLines, ConvResult.WarningCount,

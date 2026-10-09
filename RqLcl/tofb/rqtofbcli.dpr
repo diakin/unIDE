@@ -44,7 +44,8 @@ begin
     // ресурсы $RESOURCE: файл .rc - вторым файлом в командной строке fbc
     if ConvResult.ResourceFile <> '' then
       Writeln('RC=', ConvResult.ResourceFile);
-    Writeln('ERRORS=', ConvResult.ErrorCount, ' WARNINGS=', ConvResult.WarningCount);
+    Writeln('ERRORS=', ConvResult.ErrorCount, ' WARNINGS=', ConvResult.WarningCount,
+            ' SUSPECTS=', ConvResult.SuspectCount);
   finally
     Messages.Free;
   end;
