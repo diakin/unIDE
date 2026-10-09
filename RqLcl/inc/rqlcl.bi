@@ -714,6 +714,9 @@ Const RqEvEdited = 37
 Const RqEvEditing = 38
 Const RqEvGetImageIndex = 39
 Const RqEvGetSelectedIndex = 40
+' QFORM OnClose (Action): caNone 0 - не закрывать, caHide 1, caFree 2,
+' caMinimize 3; DLL: OnCloseQuery, FireCloseQueryEx
+Const RqEvClose = 41
 
 ' Виды обработчиков для вызова (Sender - как QCONTROL: у элемента любого
 ' класса QCONTROL лежит в начале)
@@ -791,7 +794,7 @@ Private Sub RqLclEventEx stdcall (ByVal UserPtr As Any Ptr, ByVal ObjPtr As Any 
         Else
             Cast(RqEvProcKeyUpS, HandlerPtr)(ArgList[0], ArgList[1], *CtlPtr)
         End If
-    Case RqEvKeyPress
+    Case RqEvKeyPress, RqEvClose
         If HandlerKind = 1 Then
             Cast(RqEvProcKeyPress, HandlerPtr)(ArgList[0])
         Else
@@ -960,6 +963,8 @@ Type QFORM Extends QCONTROL
     Declare Property OnShow(ByVal Handler As Sub())
     Declare Property OnClose(ByVal Handler As Sub(ByRef Sender As QFORM))
     Declare Property OnClose(ByVal Handler As Sub())
+    Declare Property OnClose(ByVal Handler As Sub(ByRef Action As Long))
+    Declare Property OnClose(ByVal Handler As Sub(ByRef Action As Long, ByRef Sender As QFORM))
     Declare Function ShowModal() As Long
     Declare Sub Close()
     Declare Sub Center()
@@ -1244,6 +1249,18 @@ Property QFORM.OnClose(ByVal Handler As Sub())
     OnCloseProcPlain = Handler
     OnCloseProc = 0
     If RqSetEvent(RqObj, "OnClose", @QFORM_CloseEvent) = 0 Then RqLclShowError("OnClose")
+End Property
+' SUB CloseHandler (Action AS INTEGER) в RapidQ: Action = caNone (0) - форма
+' не закрывается, caMinimize (3) - сворачивается
+Property QFORM.OnClose(ByVal Handler As Sub(ByRef Action As Long))
+    OnCloseProcPlain = 0
+    OnCloseProc = 0
+    SetEventEx(RqEvClose, "OnClose", Cast(Any Ptr, Handler), 1)
+End Property
+Property QFORM.OnClose(ByVal Handler As Sub(ByRef Action As Long, ByRef Sender As QFORM))
+    OnCloseProcPlain = 0
+    OnCloseProc = 0
+    SetEventEx(RqEvClose, "OnClose", Cast(Any Ptr, Handler), 2)
 End Property
 Function QFORM.ShowModal() As Long
     Return RqCall(RqObj, "ShowModal")

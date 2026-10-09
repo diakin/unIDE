@@ -172,7 +172,10 @@ const
     // (Index), OnEdited (Index, S), OnEditing (Index, AllowEdit)
     'ONHINT=VSTRING ONMEASUREITEM=VLONG;RLONG ONELLIPSISCLICK=VLONG;VLONG ' +
     'ONLISTDROPDOWN=VLONG;VLONG;RSTRING ONDELETION=VLONG ONEDITED=VLONG;RSTRING ' +
-    'ONEDITING=VLONG;RLONG ONGETIMAGEINDEX=VLONG ONGETSELECTEDINDEX=VLONG';
+    'ONEDITING=VLONG;RLONG ONGETIMAGEINDEX=VLONG ONGETSELECTEDINDEX=VLONG ' +
+    // QFORM OnClose (Action): caNone 0 - не закрывать, caHide 1, caFree 2,
+    // caMinimize 3 (qform.html); у остальных классов OnClose без параметров
+    'ONCLOSE=RLONG';
 
   // Свойства, которые во всех классах rapidq_ref\ComponentAll.data -
   // STRING (тип неявной переменной Имя_Свойство, см. ProcessIdent)
@@ -4714,14 +4717,26 @@ begin
   DefNames := ParamNameList(AParams);
   DeclNames := ParamNameList(AProc.DeclParams);
   try
-    if DefNames.Count <> DeclNames.Count then
-      Exit;
-    Differ := False;
-    for NameIdx := 0 to DefNames.Count - 1 do
-      if DefNames[NameIdx] <> DeclNames[NameIdx] then
-        Differ := True;
+    Differ := DefNames.Count <> DeclNames.Count;
     if not Differ then
+      for NameIdx := 0 to DefNames.Count - 1 do
+        if DefNames[NameIdx] <> DeclNames[NameIdx] then
+          Differ := True;
+    if not Differ then
+    begin
+      // Имена те же, типы разные (form.bas: DECLARE SUB MainClose(Action
+      // AS integer), SUB MainClose(Action) - DOUBLE по умолчанию): у
+      // FreeBASIC объявление и заголовок должны совпадать - по DECLARE
+      if CompareText(AParams, AProc.DeclParams) <> 0 then
+      begin
+        AParams := AProc.DeclParams;
+        AAliases := AProc.DeclAliases;
+      end;
       Exit;
+    end;
+    // Число параметров разное (RQdebugger: DECLARE SUB FrmClose без
+    // параметров, SUB FrmClose (Action as integer)) или имена разные -
+    // заголовок по DECLARE, лишние имена заголовка - локальные
     AParams := AProc.DeclParams;
     AAliases := AProc.DeclAliases;
     for NameIdx := 0 to DefNames.Count - 1 do
@@ -4733,10 +4748,10 @@ begin
              (UpperCase(VarRec.FbName) = DefNames[NameIdx]) then
             VarRec.Explicit := False;
         end;
-    Warn(AProc.Name + ': имена параметров в DECLARE (' + DeclNames.CommaText +
+    Warn(AProc.Name + ': параметры в DECLARE (' + DeclNames.CommaText +
          ') и в заголовке (' + DefNames.CommaText + ') разные - как в ' +
-         'RapidQ, в теле действуют имена из DECLARE, имена из заголовка - ' +
-         'необъявленные переменные (0)');
+         'RapidQ, в теле действуют параметры из DECLARE, лишние имена из ' +
+         'заголовка - необъявленные переменные (0)');
   finally
     DefNames.Free;
     DeclNames.Free;

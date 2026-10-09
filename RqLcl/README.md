@@ -64,6 +64,7 @@
 |---|---|---|
 | OnKeyDown, OnKeyUp | `ByRef Key As Long, ByVal Shift As Long` | QFORM, QBUTTON, QEDIT, QRICHEDIT, QSTRINGGRID, QDIRTREE |
 | OnKeyPress | `ByRef Key As Long` (код символа в CP1251, кириллица тоже) | те же |
+| OnClose | `ByRef Action As Long`: на входе caHide (1, как у VCL); после обработчика caNone (0) — форма не закрывается, caMinimize (3) — сворачивается, остальное — закрывается (LCL OnCloseQuery) | QFORM |
 | OnMouseDown, OnMouseUp | `ByVal Button As Long, ByVal X As Long, ByVal Y As Long, ByVal Shift As Long` | те же и QLABEL |
 | OnMouseMove | `ByVal X As Long, ByVal Y As Long, ByVal Shift As Long` | те же и QLABEL |
 | OnSelectCell | `ByVal Col As Long, ByVal Row As Long, ByRef CanSelect As Long` | QSTRINGGRID |

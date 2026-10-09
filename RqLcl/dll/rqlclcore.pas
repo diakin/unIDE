@@ -136,6 +136,7 @@ type
     procedure FireTreeNode(Sender: TObject; Node: TTreeNode);
     procedure FireTreeAllow(Sender: TObject; Node: TTreeNode; var Allow: Boolean);
     procedure FireCloseQuery(Sender: TObject; var CanClose: Boolean);
+    procedure FireCloseQueryEx(Sender: TObject; var CanClose: Boolean);
     procedure FireTreeChange(Sender: TObject; Node: TTreeNode);
     procedure FireListChange(Sender: TObject; Item: TListItem;
                              Change: TItemChange);
@@ -396,6 +397,32 @@ procedure TRqEventLink.FireCloseQuery(Sender: TObject; var CanClose: Boolean);
 begin
   CanClose := True;
   FireNotify(Sender);
+end;
+
+// OnClose RapidQ с параметром Action (SUB Handler (Action AS INTEGER),
+// qform.html): IntArgs[0] - Action, на входе caHide (1, как у
+// TCustomForm.Close в VCL); после обработчика caNone (0) - не закрывать,
+// caMinimize (3) - свернуть вместо закрытия, остальное - закрыть
+procedure TRqEventLink.FireCloseQueryEx(Sender: TObject; var CanClose: Boolean);
+var
+  Args: TRqEventArgs;
+begin
+  CanClose := True;
+  if not Assigned(ProcEx) then
+    Exit;
+  FillChar(Args, SizeOf(Args), 0);
+  Args.IntArgs[0] := 1;
+  ProcEx(User, Owner, EventId, @Args);
+  case Args.IntArgs[0] of
+    0:
+      CanClose := False;
+    3:
+      begin
+        CanClose := False;
+        if Sender is TCustomForm then
+          TCustomForm(Sender).WindowState := wsMinimized;
+      end;
+  end;
 end;
 
 // Shift RapidQ (как TShiftState Delphi): Shift 1, Alt 2, Ctrl 4, кнопки
@@ -1328,6 +1355,7 @@ var
   ColRowProc: TOnSelectEvent;
   ListDropDownProc: TRqListDropDownEvent;
   TreeEditedProc: TTVEditedEvent;
+  CloseQueryExProc: TCloseQueryEvent;
 begin
   Result := 0;
   try
@@ -1482,6 +1510,11 @@ begin
     begin
       SetEditProc := @Link.FireSetEditText;
       Handler := TMethod(SetEditProc);
+    end
+    else if TypeName = 'TCloseQueryEvent' then
+    begin
+      CloseQueryExProc := @Link.FireCloseQueryEx;
+      Handler := TMethod(CloseQueryExProc);
     end
     else
     begin
