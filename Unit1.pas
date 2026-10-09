@@ -2032,11 +2032,11 @@ type
     procedure LoadProject(const AName: string);
     procedure SaveProjectTo(const AName: string);
     function  CopyDirTree(const ASrc, ADst: string): Boolean;
-    function  CopyProjectFiles(const AOldDir, ANewDir,
+    function  CopyProjectFiles(const AOldDir, ANewDir, AOldTarget,
                                AOldName, ANewName: string;
                                AOnlyNamed: Boolean): Integer;
     procedure FixProjectTarget(const AProject, ADir, AName: string);
-    procedure RepointWindows(const AOldDir, ANewDir,
+    procedure RepointWindows(const AOldDir, ANewDir, AOldTarget,
                              AOldName, ANewName: string);
     procedure ProjectItemClick(Sender: TObject);
     procedure DelPrjCheckAll(Sender: TObject);
@@ -13927,13 +13927,16 @@ end;
 // Копирование файлов проекта в новую папку. Файл, названный по проекту,
 // переезжает под новым именем: Old.dpr -> New.dpr, Old.res -> New.res,
 // Old.prj -> New.prj. Остальные сохраняют имена.
+// AOldTarget - имя .dpr без расширения, если оно не совпадает с именем
+// проекта: его .dpr, .res, .dof, .cfg тоже получают новое имя, как при
+// Save Project As в среде Delphi. Пусто - не нужно.
 //
 // AOnlyNamed - для старой раскладки, где .prj лежал прямо в projects:
 // копировать оттуда всё нельзя, там файлы чужих проектов, поэтому берём
 // только файлы с именем проекта.
 //
 // Возвращает число скопированных файлов или -1 при ошибке.
-function TForm1.CopyProjectFiles(const AOldDir, ANewDir,
+function TForm1.CopyProjectFiles(const AOldDir, ANewDir, AOldTarget,
                                  AOldName, ANewName: string;
                                  AOnlyNamed: Boolean): Integer;
 var
@@ -13967,7 +13970,8 @@ begin
       if AOnlyNamed and (CompareText(Base, AOldName) <> 0) then
         Continue;
 
-      if CompareText(Base, AOldName) = 0 then
+      if (CompareText(Base, AOldName) = 0) or
+         ((AOldTarget <> '') and (CompareText(Base, AOldTarget) = 0)) then
         Dst := ANewDir + ANewName + ExtractFileExt(SR.Name)
       else
         Dst := ANewDir + SR.Name;
@@ -14005,7 +14009,7 @@ end;
 // ищем под новым именем.
 //
 // Окна из других папок не трогаем - к проекту они отношения не имеют.
-procedure TForm1.RepointWindows(const AOldDir, ANewDir,
+procedure TForm1.RepointWindows(const AOldDir, ANewDir, AOldTarget,
                                 AOldName, ANewName: string);
 var
   I: Integer;
@@ -14025,7 +14029,8 @@ begin
 
     NewFN := ANewDir + Copy(FN, Length(AOldDir) + 1, Length(FN));
     Base := ChangeFileExt(ExtractFileName(FN), '');
-    if CompareText(Base, AOldName) = 0 then
+    if (CompareText(Base, AOldName) = 0) or
+       ((AOldTarget <> '') and (CompareText(Base, AOldTarget) = 0)) then
       NewFN := ExtractFilePath(NewFN) + ANewName + ExtractFileExt(FN);
 
     if not FileExists(NewFN) then
@@ -14046,6 +14051,7 @@ procedure TForm1.SaveProjectAsClick(Sender: TObject);
 var
   S, OldName, OldDir, NewDir: string;
   Cnt: Integer;
+  OldTarget, NewDpr, OldPrgName, FixErr: string;
 begin
   S := FCurrentProject;
   if not InputQuery('Save Project As', 'Имя проекта:', S) then
@@ -14073,6 +14079,31 @@ begin
 
   NewDir := IncludeTrailingPathDelimiter(ProjectsDir + S);
 
+  // Проект Delphi: .dpr переименовывается вместе с проектом, и новое имя
+  // попадёт в строку program - оно должно быть идентификатором. OldTarget -
+  // имя .dpr, если оно не совпадает с именем проекта (файлы с именем
+  // проекта CopyProjectFiles переименовывает и так).
+  OldTarget := '';
+  if (FCurrentProject <> '') and
+     (ProjectBuildKind(FCurrentProject) = bkDelphi) and
+     (CompareText(ExtractFileExt(ProjectTargetOf(FCurrentProject)),
+                  '.dpr') = 0) then
+  begin
+    if not IsPascalIdent(S) then
+    begin
+      ShowMessage('9197:Имя проекта Delphi станет именем .dpr и программы ' +
+                  '(program). Допустимы латинские буквы, цифры и _, ' +
+                  'первой не цифра.');
+      Exit;
+    end;
+    if CompareText(ExtractFilePath(ProjectTargetOf(FCurrentProject)),
+                   ProjectDir(FCurrentProject)) = 0 then
+      OldTarget := ChangeFileExt(ExtractFileName(
+                     ProjectTargetOf(FCurrentProject)), '');
+    if CompareText(OldTarget, FCurrentProject) = 0 then
+      OldTarget := '';
+  end;
+
   if ProjectExists(S) then
   begin
     ShowMessage('9196:Проект с таким именем уже есть в списке:'#13#10 +
@@ -14093,7 +14124,7 @@ begin
     OldDir := ProjectDir(OldName);
     if DirectoryExists(OldDir) then
     begin
-      Cnt := CopyProjectFiles(OldDir, NewDir, OldName, S,
+      Cnt := CopyProjectFiles(OldDir, NewDir, OldTarget, OldName, S,
                               CompareText(OldDir, ProjectsDir) = 0);
       if Cnt < 0 then
       begin
@@ -14113,7 +14144,17 @@ begin
                    ProjectSectionPrefix + S);
   // Цель сборки теперь в новой папке
   FixProjectTarget(S, NewDir, S);
-  RepointWindows(OldDir, NewDir, OldName, S);
+  // Строка program в новом .dpr - по новому имени
+  NewDpr := NewDir + S + '.dpr';
+  if FileExists(NewDpr) then
+  begin
+    if not DprFixProgramName(NewDpr, OldPrgName, FixErr) then
+      LogRaw('Save Project As: имя в строке program не исправлено: ' + FixErr)
+    else if OldPrgName <> '' then
+      LogRaw('Save Project As: program ' + OldPrgName + ' заменено на ' +
+             'program ' + S);
+  end;
+  RepointWindows(OldDir, NewDir, OldTarget, OldName, S);
   SaveProjectTo(S);
   RebuildProjectsMenu;
 end;
@@ -42140,6 +42181,7 @@ var
   DofLog: TStringList;
   DL: Integer;
   BuildPrj: string;
+  OldPrgName, FixErr: string;
 begin
   Result := False;   // любой ранний выход - сборки не было
   ShowCompLog;
@@ -42233,6 +42275,22 @@ begin
   // Полный путь: дальше от него считаются папки exe и .dcu
   Dpr := ExpandFileName(Dpr);
   LogComp('Цель: ' + Dpr);
+
+  // Имя в строке program - по имени .dpr: dcc32 берёт имя для {$R *.res}
+  // из program, и после переименования .dpr в exe попадал бы старый .res
+  if DprFixProgramName(Dpr, OldPrgName, FixErr) then
+  begin
+    if OldPrgName <> '' then
+    begin
+      LogComp(ExtractFileName(Dpr) + ': program ' + OldPrgName +
+              ' заменено на program ' + ChangeFileExt(ExtractFileName(Dpr), '') +
+              ' (по имени файла)');
+      // Окно с .dpr - перечитать; правок в окнах нет, всё записано выше
+      CheckDiskChanges(-1);
+    end;
+  end
+  else
+    LogComp('Внимание: имя в строке program не исправлено: ' + FixErr);
 
   // Настройки проекта (.dof) - по настоящему .dpr, не по копии с зондом
   OrigDpr := Dpr;

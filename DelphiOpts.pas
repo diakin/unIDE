@@ -93,6 +93,15 @@ procedure DprFormList(const ADpr: string; AForms: TStrings);
 // текст изменился. AChanged - был ли он переписан.
 function DprWriteApp(const ADpr, ATitle, AHelpFile: string; ACreated: TStrings;
                      out AChanged: Boolean; out AError: string): Boolean;
+// Имя в строке program - по имени файла .dpr. dcc32 подставляет в
+// {$R *.res} имя программы, а не файла, и после переименования .dpr в exe
+// попадал бы .res со старым именем. AOldName - прежнее имя, если файл
+// переписан, иначе пусто. False - файл не тронут, причина в AError.
+function DprFixProgramName(const ADpr: string; out AOldName: string;
+                           out AError: string): Boolean;
+// Годится ли AName в идентификатор Delphi 7: латинские буквы, цифры, _,
+// первой не цифра
+function IsPascalIdent(const AName: string): Boolean;
 
 implementation
 
@@ -686,6 +695,148 @@ begin
     NewLines.Free;
     OldLines.Free;
   end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Имя программы
+// ---------------------------------------------------------------------------
+
+const
+  IdentChars = ['A'..'Z', 'a'..'z', '0'..'9', '_'];
+
+function IsPascalIdent(const AName: string): Boolean;
+var
+  CharIdx: Integer;
+begin
+  Result := (AName <> '') and (AName[1] in ['A'..'Z', 'a'..'z', '_']);
+  if Result then
+    for CharIdx := 2 to Length(AName) do
+      if not (AName[CharIdx] in IdentChars) then
+      begin
+        Result := False;
+        Exit;
+      end;
+end;
+
+// Пробелы и комментарии ({ }, (* *), //) с позиции APos - первая позиция
+// после них
+function SkipBlanks(const AText: string; APos: Integer): Integer;
+var
+  TextLen: Integer;
+begin
+  TextLen := Length(AText);
+  Result := APos;
+  while Result <= TextLen do
+  begin
+    if AText[Result] <= ' ' then
+      Inc(Result)
+    else if AText[Result] = '{' then
+    begin
+      while (Result <= TextLen) and (AText[Result] <> '}') do
+        Inc(Result);
+      Inc(Result);
+    end
+    else if (AText[Result] = '(') and (Result < TextLen) and
+            (AText[Result + 1] = '*') then
+    begin
+      Inc(Result, 2);
+      while (Result < TextLen) and
+            not ((AText[Result] = '*') and (AText[Result + 1] = ')')) do
+        Inc(Result);
+      Inc(Result, 2);
+    end
+    else if (AText[Result] = '/') and (Result < TextLen) and
+            (AText[Result + 1] = '/') then
+    begin
+      while (Result <= TextLen) and not (AText[Result] in [#10, #13]) do
+        Inc(Result);
+    end
+    else
+      Exit;
+  end;
+end;
+
+function DprFixProgramName(const ADpr: string; out AOldName: string;
+                           out AError: string): Boolean;
+var
+  FileText, BaseName: string;
+  KeyPos, NameStart, NameEnd: Integer;
+  Stream: TFileStream;
+begin
+  Result := False;
+  AOldName := '';
+  AError := '';
+  BaseName := ChangeFileExt(ExtractFileName(ADpr), '');
+  if not IsPascalIdent(BaseName) then
+  begin
+    AError := 'имя файла "' + BaseName + '" не годится в имя программы ' +
+              '(латинские буквы, цифры и _, первой не цифра)';
+    Exit;
+  end;
+
+  // Файл - как есть, байт в байт: меняется только имя
+  try
+    Stream := TFileStream.Create(ADpr, fmOpenRead or fmShareDenyWrite);
+    try
+      SetLength(FileText, Stream.Size);
+      if Stream.Size > 0 then
+        Stream.ReadBuffer(FileText[1], Stream.Size);
+    finally
+      Stream.Free;
+    end;
+  except
+    on E: Exception do
+    begin
+      AError := 'не прочитан ' + ADpr + ': ' + E.Message;
+      Exit;
+    end;
+  end;
+
+  KeyPos := SkipBlanks(FileText, 1);
+  if (CompareText(Copy(FileText, KeyPos, 7), 'program') <> 0) or
+     ((KeyPos + 7 <= Length(FileText)) and
+      (FileText[KeyPos + 7] in IdentChars)) then
+  begin
+    AError := 'в начале ' + ExtractFileName(ADpr) + ' нет строки program';
+    Exit;
+  end;
+  NameStart := SkipBlanks(FileText, KeyPos + 7);
+  NameEnd := NameStart;
+  while (NameEnd <= Length(FileText)) and (FileText[NameEnd] in IdentChars) do
+    Inc(NameEnd);
+  if NameEnd = NameStart then
+  begin
+    AError := 'в ' + ExtractFileName(ADpr) + ' после program нет имени';
+    Exit;
+  end;
+
+  // Регистр букв компилятору и Windows не важен
+  if CompareText(Copy(FileText, NameStart, NameEnd - NameStart),
+                 BaseName) = 0 then
+  begin
+    Result := True;
+    Exit;
+  end;
+
+  AOldName := Copy(FileText, NameStart, NameEnd - NameStart);
+  FileText := Copy(FileText, 1, NameStart - 1) + BaseName +
+              Copy(FileText, NameEnd, MaxInt);
+  try
+    Stream := TFileStream.Create(ADpr, fmCreate);
+    try
+      Stream.WriteBuffer(FileText[1], Length(FileText));
+    finally
+      Stream.Free;
+    end;
+  except
+    on E: Exception do
+    begin
+      AError := 'не записан ' + ADpr + ': ' + E.Message;
+      AOldName := '';
+      Exit;
+    end;
+  end;
+  Result := True;
 end;
 
 end.
