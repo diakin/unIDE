@@ -490,6 +490,8 @@ end;
 
 procedure TDlgNewPrj.chkReferenceInfoClick(Sender: TObject);
 begin
+  if (csLoading in ComponentState) or (chkDefinitionsOnly = nil) then
+    Exit;
   chkDefinitionsOnly.Enabled := chkReferenceInfo.Checked;
 end;
 
@@ -848,6 +850,8 @@ var
   LocaleId: Integer;
   PageBuf: array[0..15] of Char;
 begin
+  if csLoading in ComponentState then
+    Exit;
   if cbLocale.ItemIndex < 0 then
     Exit;
   LocaleId := Integer(cbLocale.Items.Objects[cbLocale.ItemIndex]);
@@ -899,7 +903,10 @@ end;
 
 procedure TDlgNewPrj.edVerNumberChange(Sender: TObject);
 begin
-  if FLoading then
+  // Обработчик срабатывает и при загрузке формы из .dfm: стрелки счётчика
+  // (Associate) пишут в поле своё число раньше FormCreate, когда FVerKeys
+  // ещё не создан
+  if FLoading or (FVerKeys = nil) or (csLoading in ComponentState) then
     Exit;
   // FileVersion среда Delphi ведёт по номеру версии
   SetVerKey('FileVersion', Format('%d.%d.%d.%d',
@@ -910,6 +917,8 @@ end;
 
 procedure TDlgNewPrj.chkIncludeVerClick(Sender: TObject);
 begin
+  if csLoading in ComponentState then
+    Exit;
   EnableVersionControls;
 end;
 
