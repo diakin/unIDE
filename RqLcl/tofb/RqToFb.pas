@@ -174,6 +174,25 @@ const
     'ONLISTDROPDOWN=VLONG;VLONG;RSTRING ONDELETION=VLONG ONEDITED=VLONG;RSTRING ' +
     'ONEDITING=VLONG;RLONG ONGETIMAGEINDEX=VLONG ONGETSELECTEDINDEX=VLONG';
 
+  // Свойства, которые во всех классах rapidq_ref\ComponentAll.data -
+  // STRING (тип неявной переменной Имя_Свойство, см. ProcessIdent)
+  RqStrPropText =
+    'ADDCOLUMNS ADDLINES ADDPANELS ADDSECTIONS AGENT ALBUM ALIAS APPNAME APPVERSION ' +
+    'ARTIST ATTRIBUTESASSTRING BMP BMPCLOSED BMPLEAF BMPMINUS BMPOPEN BMPPLUS ' +
+    'CAPTION CHANNELS CHILDCAPTION COMMENT COPYCAPTION COPYRIGHT CSVFILE CURRENTPATH ' +
+    'CUTCAPTION DATE DATEALPHA DATEALPHAEU DATEEU DEFAULTEXT DEFAULTFONTNAME ' +
+    'DIRECTORY DISPLAY DOCUMENTTITLE DOSFILENAME DRIVE DRIVEROOT DRIVETYPESTRING ' +
+    'ECHOSTRING EDITTEXT EMAIL EMPHASIS ERRORLANGUAGE ERRORMSG FILE ' +
+    'FILEATTRIBUTESASSTRING FILEDATE FILEDATEEU FILEID FILENAME FILESYTEM FILETIME ' +
+    'FILETIMEMS FILETITLE FILETYPE FLATBMPHANDLE FREESPACE GENRE HINT HOST HTMLTEXT ' +
+    'INITIALDIR INPUTMASK INTENSITYSTEREO ITEMSEPARATOR KEYLISTNAME LANGUAGE ' +
+    'LASTSTRINGERROR LAYER LEFTTEXT MASK MS_STEREO ORIGINAL OUTFILE OUTVAR PADDING ' +
+    'PASSWORD PASSWORDCHAR PASTECAPTION PATH PATHFILENAME PROTECTION PROXYBYPASS ' +
+    'PROXYNAME PTPOINT RIGHTTEXT SCONNECT SECTION SELECTALLCAPTION SELTEXT SEPARATOR ' +
+    'SERIAL SERVER SHORTCUT SIMPLETEXT SSQL STRCONNECT STRDAYOFWEEK STRMONTHOFYEAR ' +
+    'STRSQL SYSTEMDIR TEMPDIR TEXT TEXTUREFILE TIME TIMEMS TIMEPOSITION TITLE ' +
+    'TOTALSPACE TRACKTIME UNDOCAPTION USER VERSION WEB WINDIR YEAR';
+
   // Запись в массив-свойство с двумя индексами: у свойства FreeBASIC
   // индекс один, поэтому Grid.Cell(c, r) = x -> Grid.SetCell(c, r, x)
   RqIndexedSetText =
@@ -528,6 +547,7 @@ type
     procedure WrapLibArgs(var AToks: TToks; AFrom, ATo: Integer; AProc: TRqProc);
     function IsStrVarRef(const AToks: TToks; AFrom, ATo: Integer): Boolean;
     procedure ProcessIdent(var AToks: TToks; AIdx, ATo: Integer);
+    function  DottedImplicit(var AToks: TToks; AIdx, ADotIdx, ATo: Integer): Boolean;
     procedure ProcessAssignOrCall(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessDim(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessDef(var AToks: TToks; AFrom, ATo: Integer);
@@ -3308,6 +3328,66 @@ begin
   end;
 end;
 
+// Имя.Свойство, где Имя не объявлено ни переменной, ни объектом: одна
+// неявная переменная Имя_Свойство (см. ProcessIdent). Только простая
+// форма: за свойством не "(" и не ".". True - токены переписаны.
+function TRqFbConv.DottedImplicit(var AToks: TToks; AIdx, ADotIdx,
+  ATo: Integer): Boolean;
+var
+  MemberIdx, AfterIdx: Integer;
+  DotName, MemberUp, RqType, Scope, DefaultText, SrcText: string;
+  VarRec: TRqVar;
+begin
+  Result := False;
+  MemberIdx := NextSig(AToks, ADotIdx + 1, ATo);
+  if (MemberIdx < 0) or (AToks[MemberIdx].Kind <> tkIdent) then
+    Exit;
+  AfterIdx := NextSig(AToks, MemberIdx + 1, ATo);
+  if IsOp(AToks, AfterIdx, '(') or IsOp(AToks, AfterIdx, '.') then
+    Exit;
+  MemberUp := AToks[MemberIdx].Up;
+  if SuffixOf(MemberUp) <> '' then
+    RqType := SuffixType(SuffixOf(MemberUp))
+  else if Pos(' ' + MemberUp + ' ', ' ' + RqStrPropText + ' ') > 0 then
+    RqType := 'STRING'
+  else
+    RqType := SuffixType('');
+  SrcText := AToks[AIdx].Text + '.' + AToks[MemberIdx].Text;
+  DotName := BaseOf(AToks[AIdx].Text) + '_' + AToks[MemberIdx].Text;
+
+  VarRec := FindVar(UpperCase(DotName));
+  if VarRec = nil then
+  begin
+    Scope := '';
+    if FCurProc <> nil then
+      Scope := FCurProc.Name;
+    VarRec := DeclareVar(DotName, RqType, Scope, False, False, False);
+  end;
+  if (FPass = 2) and FTypeCheck and not VarRec.Explicit then
+    Error(AToks[AIdx].Text + ': переменная не объявлена ($TYPECHECK ON)');
+
+  AToks[AIdx].OutText := VarRec.FbName;
+  if (VarRec.Scope = '') and VarRec.Explicit then
+    GlobalQualify(AToks, AIdx);
+  // Точку и свойство - из вывода и из разбора: дальше по строке они
+  // не идентификатор и не оператор
+  ClearRange(AToks, ADotIdx, MemberIdx);
+  AToks[ADotIdx].Kind := tkSpace;
+  AToks[MemberIdx].Kind := tkSpace;
+  AToks[AIdx].Text := DotName;
+  AToks[AIdx].Up := UpperCase(DotName);
+
+  if FPass = 2 then
+  begin
+    DefaultText := DefaultValueText(VarRec.RqType);
+    WarnOnce('DI|' + VarRec.Scope + '|' + VarRec.Name,
+      SrcText + ': ' + Copy(SrcText, 1, Pos('.', SrcText) - 1) + ' не объявлен - ' +
+      'переведено как неявная переменная ' + VarRec.FbName + ' (' +
+      DefaultText + ', если ей нигде не присваивается)');
+  end;
+  Result := True;
+end;
+
 procedure TRqFbConv.ProcessIdent(var AToks: TToks; AIdx, ATo: Integer);
 var
   Up: string;
@@ -3565,6 +3645,14 @@ begin
       GlobalQualify(AToks, AIdx);
     Exit;
   end;
+  // Необъявленное.Свойство (constants.inc: Val(StartIndent.Text), а
+  // StartIndent нигде не объявлен) - одна неявная переменная
+  // Имя_Свойство: строковая, если свойство во всех классах STRING
+  // (RqStrPropText) или у него суффикс $, иначе по суффиксу. Без этого
+  // имя заводилось числом, и fbc на StartIndent.Text давал error 265.
+  if ((VarRec = nil) or not VarRec.Explicit) and IsOp(AToks, NextIdx, '.') and
+     DottedImplicit(AToks, AIdx, NextIdx, ATo) then
+    Exit;
   VarRec := ResolveVar(AToks[AIdx].Text, False);
   AToks[AIdx].OutText := VarRec.FbName;
   if (VarRec.Scope = '') and VarRec.Explicit then
