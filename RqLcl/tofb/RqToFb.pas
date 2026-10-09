@@ -3038,10 +3038,12 @@ begin
     ProcessPrint(AToks, FirstIdx, ATo);
     Exit;
   end;
-  // .Свойство = x внутри WITH Объект - как Объект.Свойство = x
+  // .Свойство = x внутри WITH Объект - как Объект.Свойство = x;
+  // .Свойство++ (QFILEDIALOG.INC: .SelCount++) - как Перем ++
   if IsOp(AToks, FirstIdx, '.') then
   begin
-    ProcessAssignOrCall(AToks, FirstIdx, ATo);
+    if not ProcessPlusPlus(AToks, FirstIdx, ATo) then
+      ProcessAssignOrCall(AToks, FirstIdx, ATo);
     Exit;
   end;
   if AToks[FirstIdx].Kind <> tkIdent then
@@ -3052,8 +3054,11 @@ begin
   Up := AToks[FirstIdx].Up;
   NextIdx := NextSig(AToks, FirstIdx + 1, ATo);
 
-  // Перем ++
-  if not InList(FKeywords, Up) and ProcessPlusPlus(AToks, FirstIdx, ATo) then
+  // Перем ++; This.Член++ (в методе TYPE ... EXTENDS: QFILEDIALOG.INC
+  // .SelCount++ внутри WITH This, RewriteTypeText делает из него
+  // This.SelCount++)
+  if (not InList(FKeywords, Up) or ((Up = 'THIS') and IsOp(AToks, NextIdx, '.'))) and
+     ProcessPlusPlus(AToks, FirstIdx, ATo) then
     Exit;
 
   // Внутри TYPE ... EXTENDS: заголовки и концы методов, поля
