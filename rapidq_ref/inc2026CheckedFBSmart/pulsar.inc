@@ -82,7 +82,7 @@ sub crea_pulsar_db
 
     IF LEFT$(RetFunction$,2)<>"ok" THEN
         Msg$="OPERATION IS NOT COMPLETED: "+LTRIM$(RTRIM$(RetFunction$))
-        MESSAGEBOX(Msg$, "Púlsar 3.0 in RapidQ", mbOK)
+        MESSAGEBOX(Msg$, "PÑŠlsar 3.0 in RapidQ", mbOK)
     ELSE
     END IF
 end sub
@@ -140,14 +140,14 @@ ShowMessage "selezionato item " + str$(Edit_nome.text)
 
         'If record is saved, the packed function return "ok".
         'If error occur, function return error code in string
-        'format: "ERROR CODE:xxx...." (xxx is error code -see púlsar manual-)
+        'format: "ERROR CODE:xxx...." (xxx is error code -see pÑŠlsar manual-)
         Msg$="OPERATION IS NOT COMPLETED: "+LTRIM$(RTRIM$(RetFunction$))
-        MESSAGEBOX(Msg$, "Púlsar 3.0 in RapidQ", mbOK)
+        MESSAGEBOX(Msg$, "PÑŠlsar 3.0 in RapidQ", mbOK)
 
     ELSE
 
         'record is saved
-        MESSAGEBOX("OPERACION OK.", "Púlsar 3.0 in RapidQ", mbOK)
+        MESSAGEBOX("OPERACION OK.", "PÑŠlsar 3.0 in RapidQ", mbOK)
 
     END IF
 
@@ -163,7 +163,7 @@ sub visualizza_tutti_da_pulsar_db
 
 
          Msg$="OPERATION IS NOT COMPLETED: "+LTRIM$(RTRIM$(RetFunction$))
-         MESSAGEBOX(Msg$, "Púlsar 3.0 in RapidQ", mbOK)
+         MESSAGEBOX(Msg$, "PÑŠlsar 3.0 in RapidQ", mbOK)
          END
 
     END IF
@@ -177,7 +177,7 @@ sub visualizza_tutti_da_pulsar_db
        IF LCASE$(LEFT$(RetFunction$,5))="error" THEN
 
             Msg$="Error reading record number:"+ LTRIM$ ( RTRIM$ ( STR$ ( Reading% ) ) )
-            MESSAGEBOX(Msg$, "Púlsar 3.0 in RapidQ", mbOK)
+            MESSAGEBOX(Msg$, "PÑŠlsar 3.0 in RapidQ", mbOK)
             END
 
         ELSE
@@ -205,7 +205,7 @@ sub visualizza_tutti_da_pulsar_db
             Msg1$=Msg$+"E-MAIL: "+DatabaseRecord.Articolo_Immagine+CHR$(10)+CHR$(13)
             Msg1$=Msg$+"WEB: "+DatabaseRecord.Articolo_Categoria
 
-            MESSAGEBOX(Msg1$, "Púlsar 3.0 in RapidQ", mbOK)
+            MESSAGEBOX(Msg1$, "PÑŠlsar 3.0 in RapidQ", mbOK)
 
          END IF
 

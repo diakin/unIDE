@@ -43,7 +43,7 @@ const VD_STOP=3
 
 Type QVideo extends Qobject
   '================================
-  ' champs et proprietés
+  ' champs et proprietÐ¹s
   '================================
   Timer as QTIMER
   Lenght as long
@@ -68,7 +68,7 @@ Type QVideo extends Qobject
   OnChange as EVENT(event_change) 
 
   '====================================
-  ' proprieté volume du media
+  ' proprietÐ¹ volume du media
   '====================================
   Property Set SetVolume(volume as integer)
     dim vol as long
@@ -90,7 +90,7 @@ Type QVideo extends Qobject
   End Property
 
   '====================================
-  ' proprieté affichage image du media
+  ' proprietÐ¹ affichage image du media
   '====================================
   Property Set SetCurrentFrame(frame as long)
     dim Retval as integer
@@ -114,7 +114,7 @@ Type QVideo extends Qobject
   End Property
 
   '====================================
-  ' proprieté position x image du media
+  ' proprietÐ¹ position x image du media
   '====================================
   Property Set SetLeft(left as short)
     if QVideo.FileOpen=True and QVideo.handle<>0 then
@@ -125,7 +125,7 @@ Type QVideo extends Qobject
   End Property
 
   '====================================
-  ' proprieté position y image du media
+  ' proprietÐ¹ position y image du media
   '====================================
   Property Set SetTop(top as short)
     if QVideo.FileOpen=True and QVideo.handle<>0 then
@@ -136,7 +136,7 @@ Type QVideo extends Qobject
   End Property
 
   '====================================
-  ' proprieté largeur image du media
+  ' proprietÐ¹ largeur image du media
   '====================================
   Property Set SetWidth(width as short)
     if QVideo.FileOpen=True and QVideo.handle<>0 then
@@ -147,7 +147,7 @@ Type QVideo extends Qobject
   End Property
 
   '====================================
-  ' proprieté hauteur image du media
+  ' proprietÐ¹ hauteur image du media
   '====================================
   Property Set SetHeight(height as short)
     if QVideo.FileOpen=True and QVideo.handle<>0 then
@@ -158,7 +158,7 @@ Type QVideo extends Qobject
   End Property
 
   '====================================
-  ' proprieté sans son du media
+  ' proprietÐ¹ sans son du media
   '====================================
   PROPERTY SET SetAudioOff(audio as boolean)
     dim Retval as integer
@@ -175,7 +175,7 @@ Type QVideo extends Qobject
   End Property
 
   '====================================
-  ' proprieté caption du media
+  ' proprietÐ¹ caption du media
   '====================================
   PROPERTY SET SetCaption(caption as string)
     dim Retval as integer
@@ -189,7 +189,7 @@ Type QVideo extends Qobject
   END PROPERTY
  
   '====================================
-  ' proprieté etat fenetre du media
+  ' proprietÐ¹ etat fenetre du media
   '====================================
   PROPERTY SET SetWindowState(WindowState as integer)
     dim state as short
@@ -210,7 +210,7 @@ Type QVideo extends Qobject
 PRIVATE:
 
   '========================================
-  ' Méthode retourne le texte de l'erreur
+  ' MÐ¹thode retourne le texte de l'erreur
   '========================================
   Function GetMciDescription(McierrNr As Long) As String
     dim Retval as Long
@@ -226,7 +226,7 @@ PRIVATE:
   End Function
 
   '========================================
-  ' Méthode dimension du média
+  ' MÐ¹thode dimension du mÐ¹dia
   '========================================
   Sub GetDimension
     dim rect as QRECT
@@ -237,7 +237,7 @@ PRIVATE:
   End Sub
 
   '==================================
-  ' méthode position du media
+  ' mÐ¹thode position du media
   '==================================
   Function GetPosition as long
     dim Retval as integer
@@ -251,7 +251,7 @@ PRIVATE:
   End Function
 
   '========================================
-  ' Méthode dimension du média
+  ' MÐ¹thode dimension du mÐ¹dia
   '========================================
   Sub GetImgDimension(mediadim as string)
     dim sPos As long
@@ -272,7 +272,7 @@ PRIVATE:
   End Sub
 
   '====================================
-  ' méthode lecture mode du media
+  ' mÐ¹thode lecture mode du media
   '====================================
   Function GetMode as integer
     dim Retval as integer
@@ -290,7 +290,7 @@ PRIVATE:
 PUBLIC:
 
   '=================================
-  ' méthode fermeture fichier media
+  ' mÐ¹thode fermeture fichier media
   '=================================
   Sub Close
     dim Retval as integer
@@ -315,7 +315,7 @@ PUBLIC:
   End Sub
 
   '=================================
-  ' méthode ouverture fichier media
+  ' mÐ¹thode ouverture fichier media
   '=================================
   Function Open(FileName as string) as boolean
     Dim Retval as Integer
@@ -384,7 +384,7 @@ PUBLIC:
   End Function
 
   '=================================
-  ' méthode affichage media
+  ' mÐ¹thode affichage media
   '=================================
   Sub Show
     dim Retval as integer
@@ -398,7 +398,7 @@ PUBLIC:
   End Sub
 
   '==================================
-  ' méthode lecture du media
+  ' mÐ¹thode lecture du media
   '==================================
   Sub Play
     dim Retval as integer
@@ -414,7 +414,7 @@ PUBLIC:
   End Sub
 
   '==================================
-  ' méthode arret du media
+  ' mÐ¹thode arret du media
   '==================================
   Sub Stop
     dim Retval as integer
@@ -434,7 +434,7 @@ PUBLIC:
   End Sub
 
   '==================================
-  ' méthode pause du media
+  ' mÐ¹thode pause du media
   '==================================
   Sub Pause
     dim Retval as integer
@@ -452,7 +452,7 @@ PUBLIC:
   End Sub
 
   '=======================================
-  ' évenement changementposition du media
+  ' Ð¹venement changementposition du media
   '=======================================
   Event Timer.OnTimer
     dim currentTime as long

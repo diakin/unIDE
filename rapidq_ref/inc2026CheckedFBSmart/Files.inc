@@ -643,7 +643,7 @@ end sub
 function fSubDirCopy (DirSrc$, DirDst$, mask$) as long '- -----------------------------------'
   'Andrew Shelkovenko dec 2003
   'Copy DirSrc$ directory with full subdir structure and files (by mask$) to DirDst$
-  'DiaMsg$="Начало копирования.."
+  'DiaMsg$="РќР°С‡Р°Р»Рѕ РєРѕРїРёСЂРѕРІР°РЅРёСЏ.."
 
   dim FileSrc as QFileStream
   dim FileDst as QFileStream
@@ -676,7 +676,7 @@ function fSubDirCopy (DirSrc$, DirDst$, mask$) as long '- ----------------------
         If (attr And FILE_ATTRIBUTE_DIRECTORY)=0 Then goto fSubDirCopynodir1
         inc adddir
         inc NumDir 'add subdir'
-        if NumDir=ArrNumDir then ArrNumDir=ArrNumDir+300: redim SubDir(ArrNumDir) as string:'DiaMsg$="‘Є ­ЁагҐ¬ Ї®¤¤ЁаҐЄв®аЁЁ "+SubDir(NumDir) 'SubDirname$
+        if NumDir=ArrNumDir then ArrNumDir=ArrNumDir+300: redim SubDir(ArrNumDir) as string:'DiaMsg$="вЂР„В В­РЃР°РіТђВ¬ Р‡В®В¤В¤РЃР°ТђР„РІВ®Р°РЃРЃ "+SubDir(NumDir) 'SubDirname$
         SubDir(NumDir)=SubDir(i)+SubDirname$+"\"
       else
       end if
@@ -685,7 +685,7 @@ function fSubDirCopy (DirSrc$, DirDst$, mask$) as long '- ----------------------
       doevents:if stops1=1 then stops1=0: exit function
     wend
 
-    'DiaMsg$="Всего поддиректорий " +str$(NumDir)
+    'DiaMsg$="Р’СЃРµРіРѕ РїРѕРґРґРёСЂРµРєС‚РѕСЂРёР№ " +str$(NumDir)
 
     'search files in current subdirectory
     Fn$=dir$(SubDir(i)+mask$,faAnyFile-faDirectory) ':-)
@@ -697,7 +697,7 @@ function fSubDirCopy (DirSrc$, DirDst$, mask$) as long '- ----------------------
         if NumFiles=ArrNumFil then ArrNumFil=ArrNumFil+300: redim FileNames(ArrNumFil) as string:'DiaMsg$=str$(NumFiles)
         FileNames(NumFiles)=SubDir(i)+Fn$
         'print "FileNames(",NumFiles,")=" ,FileNames(NumFiles)
-        'DiaMsg$="Сканируем файлы "+FileNames(NumFiles)
+        'DiaMsg$="РЎРєР°РЅРёСЂСѓРµРј С„Р°Р№Р»С‹ "+FileNames(NumFiles)
       else
       end if
       Fn$=dir$
@@ -1245,7 +1245,7 @@ SUB io2RndInter1 (io$, rndf$, LostP)
   print"io2RndInter1 iend=";iend
 
   if iend> 10* bzz then
-    showmessage "Некорректные данные в архиве "+FullPathNoExt(rndf$)
+    showmessage "РќРµРєРѕСЂСЂРµРєС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ РІ Р°СЂС…РёРІРµ "+FullPathNoExt(rndf$)
     iend= bzz
   end if
 
@@ -1255,7 +1255,7 @@ SUB io2RndInter1 (io$, rndf$, LostP)
     io2stp=-1
   else
     'showmessage ("io2RndInter Begin point= EndPoint")
-    showmessage "Некорректные данные в архиве "+FullPathNoExt(rndf$)
+    showmessage "РќРµРєРѕСЂСЂРµРєС‚РЅС‹Рµ РґР°РЅРЅС‹Рµ РІ Р°СЂС…РёРІРµ "+FullPathNoExt(rndf$)
   end if
 
   for k=0 to io2RndList.ItemCount-1
@@ -1272,7 +1272,7 @@ SUB io2RndInter1 (io$, rndf$, LostP)
       if needtoWrite=1 then
         io2RndFile2.Position=io2RndFile2.Position-4 ' 4 byte for single type
         io2RndArg.Position=io2RndArg.Position-4
-        io2RndFile2.WriteNum(AdatOld!,Num_SINGLE ) ' усредняем
+        io2RndFile2.WriteNum(AdatOld!,Num_SINGLE ) ' СѓСЃСЂРµРґРЅСЏРµРј
         io2RndArg.WriteNum (pntOld,Num_SINGLE)
         io2io.WriteLine (str$(pntOld)+","+str$(AdatOld!))
 
@@ -1358,7 +1358,7 @@ END SUB
 
 '***********************************************
 sub ioAverage (io$, outf$, bpnt as integer)
-  ' процедура обработки файла формата точка, данные, когда на каждую точку приходится несколько отсчетов
+  ' РїСЂРѕС†РµРґСѓСЂР° РѕР±СЂР°Р±РѕС‚РєРё С„Р°Р№Р»Р° С„РѕСЂРјР°С‚Р° С‚РѕС‡РєР°, РґР°РЅРЅС‹Рµ, РєРѕРіРґР° РЅР° РєР°Р¶РґСѓСЋ С‚РѕС‡РєСѓ РїСЂРёС…РѕРґРёС‚СЃСЏ РЅРµСЃРєРѕР»СЊРєРѕ РѕС‚СЃС‡РµС‚РѕРІ
   dim InputList as QSTRINGLIST
   dim OutPutList as QSTRINGLIST
   InputList.clear
@@ -1388,11 +1388,11 @@ sub ioAverage (io$, outf$, bpnt as integer)
     if k=0 then pntOld=pnt:bpnt=pnt
 
     if pnt=pntOld then
-      Aver=Aver+Adat!:'RQDebug("строка 37",0,"k", k, "pnt",pnt,"Adat!",Adat!,"ep",ep,"Aver",Aver)
+      Aver=Aver+Adat!:'RQDebug("СЃС‚СЂРѕРєР° 37",0,"k", k, "pnt",pnt,"Adat!",Adat!,"ep",ep,"Aver",Aver)
       inc ep
     else
       if ep=0 then ep=1
-      Aver=Aver/ep:'RQDebug("строка 41",0,"k", k, "pnt",pnt,"Adat!",Adat!,"ep",ep,"Aver",Aver)
+      Aver=Aver/ep:'RQDebug("СЃС‚СЂРѕРєР° 41",0,"k", k, "pnt",pnt,"Adat!",Adat!,"ep",ep,"Aver",Aver)
       OutPutList.AddItems  str$(pntOld)+","+str$(Aver)
       inc newpnt
       'RQDebug("k", k, "pnt",pnt,"Adat!",Adat!,"Aver",Aver)
@@ -1402,7 +1402,7 @@ sub ioAverage (io$, outf$, bpnt as integer)
     end if
 
   next k
-  Aver=Aver/ep:'RQDebug("строка 41",0,"k", k, "pnt",pnt,"Adat!",Adat!,"ep",ep,"Aver",Aver)
+  Aver=Aver/ep:'RQDebug("СЃС‚СЂРѕРєР° 41",0,"k", k, "pnt",pnt,"Adat!",Adat!,"ep",ep,"Aver",Aver)
   OutPutList.AddItems  str$(pntOld)+","+str$(Aver)
 
   OutPutList.SaveToFile (outf$)
@@ -1440,8 +1440,8 @@ end function
 '*****************************************
 function DownLoadURL (sUrl as string, dFileName as string) as long
   'print"sUrl=";sUrl
-  ' скачивает файл с заданного sURL и сохраняет под именем dFileName
-  'возвращает число скачанных байт TotalReadBytes или -1 в случае ошибки
+  ' СЃРєР°С‡РёРІР°РµС‚ С„Р°Р№Р» СЃ Р·Р°РґР°РЅРЅРѕРіРѕ sURL Рё СЃРѕС…СЂР°РЅСЏРµС‚ РїРѕРґ РёРјРµРЅРµРј dFileName
+  'РІРѕР·РІСЂР°С‰Р°РµС‚ С‡РёСЃР»Рѕ СЃРєР°С‡Р°РЅРЅС‹С… Р±Р°Р№С‚ TotalReadBytes РёР»Рё -1 РІ СЃР»СѓС‡Р°Рµ РѕС€РёР±РєРё
 
   Dim hOpen As Long, hFile As Long, sBuffer As String, ReadBytes As Long, TotalReadBytes As Long
   defint sBufferSize=2048

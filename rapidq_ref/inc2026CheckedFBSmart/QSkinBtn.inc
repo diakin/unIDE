@@ -30,7 +30,7 @@ Type QSkinBtn extends qimage
     enabled as boolean property set SetEnabled
   
   '=========================================
-  ' Proprieté enable
+  ' ProprietÐ¹ enable
   '=========================================  
   Property Set SetEnabled(value as boolean)
     QSkinBtn.bmp=QSkinBtn.btEnable.bmp
@@ -40,7 +40,7 @@ Type QSkinBtn extends qimage
   End Property
     
   '=========================================
-  ' Proprieté enfoncement bouton
+  ' ProprietÐ¹ enfoncement bouton
   '=========================================  
   Property Set SetDown(value as boolean)
     if super.Enabled then
@@ -55,7 +55,7 @@ Type QSkinBtn extends qimage
   End Property
   
   '=========================================
-  ' Proprieté mode de fonctionnement
+  ' ProprietÐ¹ mode de fonctionnement
   '=========================================  
   Property Set SetMode(value as short)
     QSkinBtn.mode=value

@@ -31,7 +31,7 @@ $ENDIF
 
 TYPE QINI EXTENDS QObject
   '===========================================
-  ' champs et proprietés
+  ' champs et proprietÐ¹s
   '===========================================
   FileName as String PROPERTY SET SetFileName
   Exist as boolean
@@ -41,25 +41,25 @@ TYPE QINI EXTENDS QObject
   TempDir as string PROPERTY SET SetTempDir
 
   '=========================================
-  ' Proprieté WinDir en lecture seule
+  ' ProprietÐ¹ WinDir en lecture seule
   '=========================================
   PROPERTY SET SetWinDir(name as string)
   END PROPERTY
 
   '=========================================
-  ' Proprieté SystemDir en lecture seule
+  ' ProprietÐ¹ SystemDir en lecture seule
   '=========================================
   PROPERTY SET SetSystemDir(name as string)
   END PROPERTY
 
   '=========================================
-  ' Proprieté TempDir en lecture seule
+  ' ProprietÐ¹ TempDir en lecture seule
   '=========================================
   PROPERTY SET SetTempDir(name as string)
   END PROPERTY
 
   '=========================================
-  ' Proprieté nom du fichier init
+  ' ProprietÐ¹ nom du fichier init
   '=========================================
   PROPERTY SET SetFileName(name as string)
     QINI.FileName=name
@@ -71,7 +71,7 @@ TYPE QINI EXTENDS QObject
   END PROPERTY
 
   '=========================================
-  ' Méthode recevoir valeur du fichier init
+  ' MÐ¹thode recevoir valeur du fichier init
   '=========================================
   Function Get(Key as string,Default as string) as String
     dim LpBuffer as string
@@ -89,7 +89,7 @@ TYPE QINI EXTENDS QObject
   End Function
  
   '=========================================
-  ' Méthode écrire valeur dans fichier init
+  ' MÐ¹thode Ð¹crire valeur dans fichier init
   '=========================================
   Function Write(Key as string,Value as string) as long
     if QINI.FileName<>"" and QINI.Section<>"" then
@@ -98,7 +98,7 @@ TYPE QINI EXTENDS QObject
   end Function
 
   '====================================================
-  ' Méthode trouve les repertoires window+systeme+temp
+  ' MÐ¹thode trouve les repertoires window+systeme+temp
   '====================================================
   Sub GetIniPath()
     dim lpBuffer as string

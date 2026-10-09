@@ -19,7 +19,7 @@ $RESOURCE TITLE_CAP	AS "../_RES/SKIN/LunaMettalic/SkinTitle_Caption.bmp"'	Window
 $RESOURCE BOT_LEFT	AS "../_RES/SKIN/LunaMettalic/SkinBottom_Left.bmp"'	Windows XP Bottom Window Skin
 $RESOURCE BOT_MID		AS "../_RES/SKIN/LunaMettalic/SkinBottom_Mid.bmp"'	Windows XP Bottom Window Skin
 $RESOURCE BOT_RIGHT	AS "../_RES/SKIN/LunaMettalic/SkinBottom_Right.bmp"'	Windows XP Bottom Window Skin
-' --	Partie Désactivée
+' --	Partie DÐ¹sactivÐ¹e
 $RESOURCE BORDER_LDIS	AS "../_RES/SKIN/LunaMettalic/SkinDisBorder_Left.bmp"'	Windows XP Left Window Skin
 $RESOURCE BORDER_RDIS	AS "../_RES/SKIN/LunaMettalic/SkinDisBorder_Right.bmp"'	Windows XP Right Window Skin
 $RESOURCE TITLE_LDIS	AS "../_RES/SKIN/LunaMettalic/SkinDisTitle_Left.bmp"'	Windows XP Left Window Skin

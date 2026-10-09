@@ -19,7 +19,7 @@ FirstRem=instr(Oper$, "'")
 FirstQT=instr(Oper$, qt)
 'print"FirstQT=";FirstQT
 
-if FirstRem < FirstQT and FirstRem >0 then ' есть комментарий - его отбрасываем
+if FirstRem < FirstQT and FirstRem >0 then ' РµСЃС‚СЊ РєРѕРјРјРµРЅС‚Р°СЂРёР№ - РµРіРѕ РѕС‚Р±СЂР°СЃС‹РІР°РµРј
 	Oper$=left$(Oper$,FirstRem)
 	result=tally(Oper$,getC)
 	exit function
@@ -30,9 +30,9 @@ end if
 for ~i=1 to Len(Oper$)
 	chrs$=Oper$[~i]
 	if chrs$=qt and QTNum=0 then 
-		QTNum=1 'следующий char  находится после первого вхождения qt
+		QTNum=1 'СЃР»РµРґСѓСЋС‰РёР№ char  РЅР°С…РѕРґРёС‚СЃСЏ РїРѕСЃР»Рµ РїРµСЂРІРѕРіРѕ РІС…РѕР¶РґРµРЅРёСЏ qt
 	elseif chrs$=qt and QTNum=1 then
-		QTNum=0 'следующий char находимся после второго вхождения qt
+		QTNum=0 'СЃР»РµРґСѓСЋС‰РёР№ char РЅР°С…РѕРґРёРјСЃСЏ РїРѕСЃР»Рµ РІС‚РѕСЂРѕРіРѕ РІС…РѕР¶РґРµРЅРёСЏ qt
 	elseif chrs$=ch and QTNum=0 then
 		inc tmpres
 		'print"tmpres=";tmpres
@@ -192,7 +192,7 @@ PQT2=0
 PRem=0
 for i=0 to NQT+1 
 	PQT1=instr(PQT2+1,STxt$, qt)
-	if PQT1=0 and PQT2>0 then ' больше кавычек нет
+	if PQT1=0 and PQT2>0 then ' Р±РѕР»СЊС€Рµ РєР°РІС‹С‡РµРє РЅРµС‚
 		i=NQT+1
 	else
 		PQT2=instr(PQT1+1,STxt$, qt)
@@ -243,9 +243,9 @@ k=0
 for ~i=1 to Len(SrcTxt$)
 	chrs$=SrcTxt$[~i]
 	if chrs$=qt and QTNum=0 then 
-		QTNum=1 'следующий char  находится после первого вхождения qt
+		QTNum=1 'СЃР»РµРґСѓСЋС‰РёР№ char  РЅР°С…РѕРґРёС‚СЃСЏ РїРѕСЃР»Рµ РїРµСЂРІРѕРіРѕ РІС…РѕР¶РґРµРЅРёСЏ qt
 	elseif chrs$=qt and QTNum=1 then
-		QTNum=0 'следующий char находимся после второго вхождения qt
+		QTNum=0 'СЃР»РµРґСѓСЋС‰РёР№ char РЅР°С…РѕРґРёРјСЃСЏ РїРѕСЃР»Рµ РІС‚РѕСЂРѕРіРѕ РІС…РѕР¶РґРµРЅРёСЏ qt
 	elseif chrs$=ch$ and QTNum=0 then
 		eop=~i
 		~tmp$=trim$(mid$(SrcTxt$,bop,eop-bop))

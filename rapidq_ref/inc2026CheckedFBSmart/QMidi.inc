@@ -26,7 +26,7 @@ Declare Sub event_change(position as long)
 
 Type QMidi extends Qobject
   '================================
-  ' champs et proprietés
+  ' champs et proprietÐ¹s
   '================================
   Timer as QTIMER
   Lenght as long
@@ -38,7 +38,7 @@ Type QMidi extends Qobject
   OnChange as EVENT(event_change) 
 
   '====================================
-  ' proprieté volume du media
+  ' proprietÐ¹ volume du media
   '====================================
   Property Set SetVolume(volume as integer)
     dim vol as long
@@ -60,7 +60,7 @@ Type QMidi extends Qobject
   End Property
 
   '====================================
-  ' proprieté position séquence
+  ' proprietÐ¹ position sÐ¹quence
   '====================================
   Property Set SetCurrentFrame(frame as long)
     dim Retval as integer
@@ -86,7 +86,7 @@ Type QMidi extends Qobject
 PRIVATE:
 
   '========================================
-  ' Méthode retourne le texte de l'erreur
+  ' MÐ¹thode retourne le texte de l'erreur
   '========================================
   Function GetMciDescription(McierrNr As Long) As String
     dim Retval as Long
@@ -102,7 +102,7 @@ PRIVATE:
   End Function
 
   '====================================
-  ' méthode lecture position séquence
+  ' mÐ¹thode lecture position sÐ¹quence
   '====================================
   Function GetPosition as long
     dim Retval as integer
@@ -116,7 +116,7 @@ PRIVATE:
   End Function
 
   '====================================
-  ' méthode lecture mode du media
+  ' mÐ¹thode lecture mode du media
   '====================================
   Function GetMode as integer
     dim Retval as integer
@@ -134,7 +134,7 @@ PRIVATE:
 PUBLIC:
 
   '=================================
-  ' méthode fermeture fichier midi
+  ' mÐ¹thode fermeture fichier midi
   '=================================
   Sub Close
     dim Retval as integer
@@ -152,7 +152,7 @@ PUBLIC:
   End Sub
 
   '====================================
-  ' méthode ouverture fichier midi
+  ' mÐ¹thode ouverture fichier midi
   '====================================
   Function Open(FileName as string) as boolean
     Dim Retval as Integer
@@ -183,7 +183,7 @@ PUBLIC:
   End Function
 
   '==================================
-  ' méthode lecture fichier midi
+  ' mÐ¹thode lecture fichier midi
   '==================================
   Sub Play
     dim Retval as integer
@@ -198,7 +198,7 @@ PUBLIC:
   End Sub
 
   '==================================
-  ' méthode arret fichier midi
+  ' mÐ¹thode arret fichier midi
   '==================================
   Sub Stop
     dim Retval as integer
@@ -218,7 +218,7 @@ PUBLIC:
   End Sub
 
   '==================================
-  ' méthode pause 
+  ' mÐ¹thode pause 
   '==================================
   Sub Pause
     dim Retval as integer
@@ -236,7 +236,7 @@ PUBLIC:
   End Sub
 
   '===============================================
-  ' évenement changementposition du fichier midi
+  ' Ð¹venement changementposition du fichier midi
   '===============================================
   Event Timer.OnTimer
     QMidi.currentFrame=QMidi.GetPosition

@@ -136,8 +136,8 @@ SUB SelectAll 'Selects all text from Richedit 0 WXG
 '!!!-------aQRichedit  Additional  Methods ------------------------
 
 sub FINDTEXT (Text as string,WHOLEWORD as integer, MATCHCASE as integer)
-sub REPLACESEL (Text as string) 'Заменяет выделенный текст'
-sub SCROLLCARET  'Прокручивает текст до тех пор, пока не станет, видна строка с курсором'
+sub REPLACESEL (Text as string) 'тАб┬а┬м╥Р┬н╨┐╥Р╨▓ ╤Ю╨╗┬д╥Р┬л╥Р┬н┬н╨╗┬й ╨▓╥Р╨Д╨▒╨▓'
+sub SCROLLCARET  '╨П╨░┬о╨Д╨░╨│╨╖╨Б╤Ю┬а╥Р╨▓ ╨▓╥Р╨Д╨▒╨▓ ┬д┬о ╨▓╥Р╨╡ ╨З┬о╨░, ╨З┬о╨Д┬а ┬н╥Р ╨▒╨▓┬а┬н╥Р╨▓, ╤Ю╨Б┬д┬н┬а ╨▒╨▓╨░┬о╨Д┬а ╨▒ ╨Д╨│╨░╨▒┬о╨░┬о┬м'
 
 
 '!!!---------------------------------------------------------------

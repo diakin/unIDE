@@ -332,7 +332,7 @@ TYPE qcalendar EXTENDS Qpanel
                 bntupy.Align = 4
                 btnnext.parent=qcalendar.panel1
                 'BMP = "C:\RapidQ\cdx.bmp"
-                btnnext.caption="è"
+                btnnext.caption="Ð¸"
                 btnnext.font.name="Wingdings"            
                 btnnext.Left = 148
                 btnnext.Top = 1
@@ -344,7 +344,7 @@ TYPE qcalendar EXTENDS Qpanel
                 'btnnext.onclick=btnnextc            
                 BTNprev.parent=qcalendar.panel1
                 'BMP = "C:\RapidQ\csx.bmp"
-                BTNprev.caption="ç"
+                BTNprev.caption="Ð·"
                 BTNprev.font.name="Wingdings"
                 BTNprev.Left = 2
                 BTNprev.Top = 1

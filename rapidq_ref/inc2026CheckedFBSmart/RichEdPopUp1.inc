@@ -7,8 +7,8 @@
 Declare Function SendMessageA Lib "user32" Alias "SendMessageA" (hwnd _
 As Long, wMsg As Long, wParam As Long, lParam As Long) As Long
 
-Declare Function LINEINDEX as long ' позиция первого символа в строке
-Declare Function LINEFROMCHAR as long  'номер строки содержащей символ в данной позиции
+Declare Function LINEINDEX as long ' РїРѕР·РёС†РёСЏ РїРµСЂРІРѕРіРѕ СЃРёРјРІРѕР»Р° РІ СЃС‚СЂРѕРєРµ
+Declare Function LINEFROMCHAR as long  'РЅРѕРјРµСЂ СЃС‚СЂРѕРєРё СЃРѕРґРµСЂР¶Р°С‰РµР№ СЃРёРјРІРѕР» РІ РґР°РЅРЅРѕР№ РїРѕР·РёС†РёРё
 
 Declare Function GoToLineEnd as long 
 Declare Function GoToLineBegin as long 
@@ -47,7 +47,7 @@ Function LINEINDEX as long
 	result=SendMessageA (.handle,rEM_LINEINDEX,.WhereY,0)'posFirstCharOf Current Line
 end function
 
-Function GetLINEIdx(line as long) as long ' позиция первого символа строки N line в тексте
+Function GetLINEIdx(line as long) as long ' РїРѕР·РёС†РёСЏ РїРµСЂРІРѕРіРѕ СЃРёРјРІРѕР»Р° СЃС‚СЂРѕРєРё N line РІ С‚РµРєСЃС‚Рµ
 	result=SendMessageA (.handle,rEM_LINEINDEX,line,0)'.LINEINDEX
 end function
 

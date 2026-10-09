@@ -9,7 +9,7 @@ $ENDIF
 
 TYPE QDriveComboBox EXTENDS QComboBox
   '=========================================
-  ' méthode reception des lecteurs présents
+  ' mÐ¹thode reception des lecteurs prÐ¹sents
   '=========================================
   SUB GetDrives
    dim ASC_A as integer

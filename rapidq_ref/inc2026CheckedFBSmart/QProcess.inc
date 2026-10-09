@@ -54,7 +54,7 @@ Type QProcess extends QObject
     Priority as long Property set SetPriority
   
     '==========================================
-    ' proprieté priorité process
+    ' proprietÐ¹ prioritÐ¹ process
     '==========================================  
     Property set SetPriority(priority as long)
       this.priority=priority
@@ -72,7 +72,7 @@ Type QProcess extends QObject
 
   Private:
     '==========================================
-    ' méthode appelle process
+    ' mÐ¹thode appelle process
     '==========================================  
     Sub Process
       if This.OnProcess<>0 then CALLFUNC this.OnProcess
@@ -80,7 +80,7 @@ Type QProcess extends QObject
     
   Public:
     '==========================================
-    ' méthode exécution process
+    ' mÐ¹thode exÐ¹cution process
     '==========================================  
     Sub Open
       dim PtVar as long
@@ -95,7 +95,7 @@ Type QProcess extends QObject
     End Sub
 
     '==========================================
-    ' méthode fin process
+    ' mÐ¹thode fin process
     '==========================================  
     Sub Close
       if this.hProcess<>0 then TerminateThread(this.hProcess,0)

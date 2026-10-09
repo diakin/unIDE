@@ -12,7 +12,7 @@ LangIni.Section="Language"
 
 LangFileName$=Langini.get("default","english")+".lng"
 'print"LangFileName$=";LangFileName$
-'!!! --- считываем данные из файла языка ---
+'!!! --- СЃС‡РёС‚С‹РІР°РµРј РґР°РЅРЅС‹Рµ РёР· С„Р°Р№Р»Р° СЏР·С‹РєР° ---
 
 LangIni.FileName="lang\"+LangFileName$
 LangIni.Section="Language" '!!! -------------

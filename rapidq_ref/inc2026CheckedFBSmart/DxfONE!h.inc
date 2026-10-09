@@ -22,12 +22,12 @@ SUB About
    Top = 10
   END CREATE
   CREATE About1Label AS QLabel
-   Caption = "Questo programma, compilato con RapidQ, appartiene al software freeware e non può essere venduto."
+   Caption = "Questo programma, compilato con RapidQ, appartiene al software freeware e non puÑ‚ essere venduto."
    Left = 55
    Top = 36
   END CREATE
   CREATE About2Label AS QLabel
-   Caption = "Dell'uso del programmma e di ogni conseguenza è responsabile esclusivamente l'utilizzatore."
+   Caption = "Dell'uso del programmma e di ogni conseguenza Ð¸ responsabile esclusivamente l'utilizzatore."
    Left = 55
    Top = 50
   END CREATE

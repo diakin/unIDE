@@ -88,7 +88,7 @@ Type QPageSetup EXTENDS QOBJECT
   Private:
 
   '=============================================
-  ' Procédure boite de dialogue
+  ' ProcÐ¹dure boite de dialogue
   '============================================= 
   Function HookProc(hWnd AS LONG, uMsg AS LONG, wParam AS LONG, lParam AS LONG) AS LONG
     dim R as QRECT
@@ -108,53 +108,53 @@ Type QPageSetup EXTENDS QOBJECT
   Public:
   
   '=============================================
-  ' Proprieté orientation page en lecture seule 
+  ' ProprietÐ¹ orientation page en lecture seule 
   '============================================= 
   PROPERTY SET SetOrientation(value as boolean)
   END PROPERTY
     
   '===============================================
-  ' Proprieté valeur marge gauche 
+  ' ProprietÐ¹ valeur marge gauche 
   '=============================================== 
   PROPERTY SET SetMarginLeft(value as long)
     QPageSetup.PSD.rtMarginLeft=value*100
   END PROPERTY
     
   '===============================================
-  ' Proprieté valeur marge haute 
+  ' ProprietÐ¹ valeur marge haute 
   '=============================================== 
   PROPERTY SET SetMarginTop(value as long)
     QPageSetup.PSD.rtMarginTop=value*100
   END PROPERTY
 
   '===============================================
-  ' Proprieté valeur marge droite 
+  ' ProprietÐ¹ valeur marge droite 
   '=============================================== 
   PROPERTY SET SetMarginRight(value as long)
     QPageSetup.PSD.rtMarginRight=value*100
   END PROPERTY
    
   '===============================================
-  ' Proprieté valeur marge basse 
+  ' ProprietÐ¹ valeur marge basse 
   '=============================================== 
   PROPERTY SET SetMarginBottom(value as long)
     QPageSetup.PSD.rtMarginBottom=value*100
   END PROPERTY
 
   '===============================================
-  ' Proprieté largeur page en lecture seule 
+  ' ProprietÐ¹ largeur page en lecture seule 
   '=============================================== 
   PROPERTY SET SetPageWidth(value as boolean)
   END PROPERTY
             
   '===============================================
-  ' Proprieté hauteur page en lecture seule 
+  ' ProprietÐ¹ hauteur page en lecture seule 
   '=============================================== 
   PROPERTY SET SetPageHeight(value as boolean)
   END PROPERTY
     
   '===========================================
-  ' Méthode affichage mise en page imprimante
+  ' MÐ¹thode affichage mise en page imprimante
   '===========================================
   Function Execute as boolean
     QPageSetup.PSD.lStructSize = SIZEOF(QPageSetup.PSD)

@@ -227,7 +227,7 @@ Result=-1&: sERR=""
 IF FILEEXISTS(file)<=0& THEN F.Open(file,fmCreate) ELSE F.Open(file,2&)
 IF FILEEXISTS("qxls.dat")<=0& THEN ExtractResource(Resource(1&),"qxls.dat"):DoEvents
 F2.Open("qxls.dat",0&)
-M(b).Position=0&: F.Position=0&
+M(b).Position=0&: F.Position=0&
 F.CopyFrom(F2,80&): FillFile(-1&,&H200) 'OLE header
 FAT(0&)=P(b,0&,1&)  'file length
 For i=0& to FAT(0&)-1& Step 8&
@@ -442,7 +442,7 @@ wr=row: wc=col: ws=s: wType=-1&: wLength=LEN(value)
 IF wLength=0 THEN wType=-2&: Goto MakeRecord  'null string->BLANK
 FOR i=1& to wLength: s$=MID$(value,i,1&)
 IF (s$>"9") OR (s$<"-") OR (s$="\") THEN Goto MakeRecord
-NEXT i
+NEXT i
 s$=value: i=TALLY(s$,".")
 IF i>1& THEN Goto MakeRecord
 j=TALLY(s$,"-")
@@ -632,7 +632,7 @@ NEXT i
 FOR i=0& to MaxSheets&
 SheetName(b,i)=""
 FOR j=0& to NumVars&: P(b,i,j)=0&: NEXT j
-NEXT i
+NEXT i
 END SUB
 
 'This uses OLE FAT to read file.  The code is not yet optimized.

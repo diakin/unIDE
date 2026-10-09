@@ -26,21 +26,21 @@ Type QVuMeter Extends QCanvas
   With QVuMeter
   
   '=========================================
-  ' Proprieté intervale
+  ' ProprietÐ¹ intervale
   '=========================================  
   Property Set SetInterval(value as short)
     .Interval=int(value)
   End property
 
   '=========================================
-  ' Proprieté épaisseur
+  ' ProprietÐ¹ Ð¹paisseur
   '=========================================  
   Property Set SetThickness(value as short)
     .Thickness=int(value)
   End property
     
   '=========================================
-  ' Proprieté valeur vu metre
+  ' ProprietÐ¹ valeur vu metre
   '=========================================  
   Property Set SetValue(value as long)
     .Value=value

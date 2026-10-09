@@ -28,13 +28,13 @@ TYPE QDrive EXTENDS QObject
   Count as integer PROPERTY SET SetCount
 
   '=========================================
-  ' proprieté nombre de lecteur(read only)
+  ' proprietÐ¹ nombre de lecteur(read only)
   '=========================================
   PROPERTY SET SetCount(value as integer)
   END PROPERTY
 
   '=========================================
-  ' méthode type de lecteur
+  ' mÐ¹thode type de lecteur
   '=========================================
   Function GetType(index as integer) as long
     if index<=QDrive.Count then
@@ -43,7 +43,7 @@ TYPE QDrive EXTENDS QObject
   End Function
 
   '=========================================
-  ' méthode espace libre d'un lecteur
+  ' mÐ¹thode espace libre d'un lecteur
   '=========================================
   Function GetFreeSpace(index as integer) as long
     dim SectorsPerCluster as integer
@@ -61,7 +61,7 @@ TYPE QDrive EXTENDS QObject
   End Function
 
   '=========================================
-  ' méthode taille d'un lecteur
+  ' mÐ¹thode taille d'un lecteur
   '=========================================
   Function GetSize(index as integer) as long
     dim SectorsPerCluster as integer
@@ -79,7 +79,7 @@ TYPE QDrive EXTENDS QObject
   End Function
 
   '=========================================
-  ' méthode reception des lecteurs présents
+  ' mÐ¹thode reception des lecteurs prÐ¹sents
   '=========================================
   SUB GetDrives
    dim ASC_A as integer

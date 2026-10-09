@@ -7,10 +7,10 @@
 Declare Function SendMessageA Lib "user32" Alias "SendMessageA" (hwnd _
 As Long, wMsg As Long, wParam As Long, lParam As Long) As Long
 
-Declare Function LINEINDEX as long ' позиция первого символа в строке
-Declare Function LINEFROMCHAR as long  'номер строки содержащей начало выделения
+Declare Function LINEINDEX as long ' РїРѕР·РёС†РёСЏ РїРµСЂРІРѕРіРѕ СЃРёРјРІРѕР»Р° РІ СЃС‚СЂРѕРєРµ
+Declare Function LINEFROMCHAR as long  'РЅРѕРјРµСЂ СЃС‚СЂРѕРєРё СЃРѕРґРµСЂР¶Р°С‰РµР№ РЅР°С‡Р°Р»Рѕ РІС‹РґРµР»РµРЅРёСЏ
 
-Declare Function LINEFROMPos (chrpos as long) as long  'номер строки содержащей символ в данной позиции
+Declare Function LINEFROMPos (chrpos as long) as long  'РЅРѕРјРµСЂ СЃС‚СЂРѕРєРё СЃРѕРґРµСЂР¶Р°С‰РµР№ СЃРёРјРІРѕР» РІ РґР°РЅРЅРѕР№ РїРѕР·РёС†РёРё
 
 
 Declare Function GoToLineEnd as long 
@@ -55,24 +55,24 @@ WITH QMAXEDIT
 	result=SendMessageA (.handle,rEM_LINEINDEX,.WhereY,0)'posFirstCharOf Current Line
 	end function
 	
-	Function GetLINEIdx(line as long) as long ' позиция первого символа строки N line в тексте
+	Function GetLINEIdx(line as long) as long ' РїРѕР·РёС†РёСЏ РїРµСЂРІРѕРіРѕ СЃРёРјРІРѕР»Р° СЃС‚СЂРѕРєРё N line РІ С‚РµРєСЃС‚Рµ
 	result=SendMessageA (.handle,rEM_LINEINDEX,line,0)'.LINEINDEX
 	end function
 	
 	Function LINEFROMCHAR as long
-	result=SendMessageA (.handle,rEM_LINEFROMCHAR,.SelStart,0)'.LINEINDEX текущей строки
+	result=SendMessageA (.handle,rEM_LINEFROMCHAR,.SelStart,0)'.LINEINDEX С‚РµРєСѓС‰РµР№ СЃС‚СЂРѕРєРё
 	end function
 	
 	Function LINEFROMPos (chrpos as long) as long
-	result=SendMessageA (.handle,rEM_LINEFROMCHAR,chrpos,0)'.LINEINDEX по заданной позиции курсора
+	result=SendMessageA (.handle,rEM_LINEFROMCHAR,chrpos,0)'.LINEINDEX РїРѕ Р·Р°РґР°РЅРЅРѕР№ РїРѕР·РёС†РёРё РєСѓСЂСЃРѕСЂР°
 	end function
 	
 	
 	Function GoToLineEnd as long
-	.selstart=.LINEINDEX+len(.line(.WhereY)) ' установить курсор в конец текущей строки
+	.selstart=.LINEINDEX+len(.line(.WhereY)) ' СѓСЃС‚Р°РЅРѕРІРёС‚СЊ РєСѓСЂСЃРѕСЂ РІ РєРѕРЅРµС† С‚РµРєСѓС‰РµР№ СЃС‚СЂРѕРєРё
 	end function
 	
-	Function GoToLineBegin as long  ' установить курсор в начало текущей строки
+	Function GoToLineBegin as long  ' СѓСЃС‚Р°РЅРѕРІРёС‚СЊ РєСѓСЂСЃРѕСЂ РІ РЅР°С‡Р°Р»Рѕ С‚РµРєСѓС‰РµР№ СЃС‚СЂРѕРєРё
 	.selstart=.LINEINDEX
 	end function
 	

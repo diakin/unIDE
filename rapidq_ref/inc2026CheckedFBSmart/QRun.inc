@@ -58,7 +58,7 @@ Type QRun EXTENDS QObject
   OnEnumFromPoint as EVENT(OnEnumWindows_eventTemplate)
 
   '=============================================================
-  ' Méthode trouvant le nom et chemin de l'application associé
+  ' MÐ¹thode trouvant le nom et chemin de l'application associÐ¹
   '=============================================================
   Function FindApplication(FileName as string) as string
     dim ExeName as string
@@ -74,14 +74,14 @@ Type QRun EXTENDS QObject
   End Function
   
   '=============================================================
-  ' Méthode éxecution d'un fichier associé ou application
+  ' MÐ¹thode Ð¹xecution d'un fichier associÐ¹ ou application
   '=============================================================
   Sub FileRun(FileName as string,cmdShow as short)
     Run_ShellExecute(0,"open",FileName,"","",cmdShow)
   End Sub
   
   '=============================================================
-  ' Méthode éxecution application avec ouverture fichier
+  ' MÐ¹thode Ð¹xecution application avec ouverture fichier
   '=============================================================
   Sub ExeRun(ExeName as string,Param as string,cmdShow as short)
     dim path as string
@@ -91,7 +91,7 @@ Type QRun EXTENDS QObject
   End Sub
   
   '=============================================================
-  ' Méthode énumeration de toutes les fenetres de l'ecran
+  ' MÐ¹thode Ð¹numeration de toutes les fenetres de l'ecran
   '=============================================================
   Function EnumWindow(All as boolean) as boolean
     dim size as integer
@@ -124,14 +124,14 @@ Type QRun EXTENDS QObject
   End Function
 
   '=============================================================
-  ' Méthode trouve le handle enfant par son nom et sa classe
+  ' MÐ¹thode trouve le handle enfant par son nom et sa classe
   '=============================================================
   Function FindChild(handle as long,class as string,name as string) as long
     result=Run_FindWindowEx(handle,0,class,name)
   End Function
 
   '=============================================================
-  ' Méthode énumeration de la fenetre a la position x,y
+  ' MÐ¹thode Ð¹numeration de la fenetre a la position x,y
   '=============================================================
   Function EnumFromPoint(x as long,y as long) as boolean
     dim size as integer
@@ -159,42 +159,42 @@ Type QRun EXTENDS QObject
   End Function
 
   '=============================================================
-  ' Méthode fermeture fenetre
+  ' MÐ¹thode fermeture fenetre
   '=============================================================
   Sub Close(handle as long)
     SendMessage handle,&H10,0,0
   End Sub
 
   '=============================================================
-  ' Méthode met la fenetre en icone
+  ' MÐ¹thode met la fenetre en icone
   '=============================================================
   Sub Minimize(handle as long)
     SendMessage handle,&H112,&HF020,0
   End Sub
 
   '=============================================================
-  ' Méthode met la fenetre en taille maxi
+  ' MÐ¹thode met la fenetre en taille maxi
   '=============================================================
   Sub Maximize(handle as long)
     SendMessage handle,&H112,&HF030,0
   End Sub
 
   '=============================================================
-  ' Méthode restore l'etat de la fenetre
+  ' MÐ¹thode restore l'etat de la fenetre
   '=============================================================
   Sub Restore(handle as long)
     SendMessage handle,&H112,&HF120,0
   End Sub
 
   '=============================================================
-  ' Méthode met le focus sur la fenetre
+  ' MÐ¹thode met le focus sur la fenetre
   '=============================================================
   Sub SetFocus(handle as long)
     SendMessage handle,&H7,0,0
   End Sub
 
   '=============================================================
-  ' Méthode met la fenetre en avant plan des autres
+  ' MÐ¹thode met la fenetre en avant plan des autres
   '=============================================================
   Sub SetTopMost(handle as long,flag as boolean)
     dim index as integer

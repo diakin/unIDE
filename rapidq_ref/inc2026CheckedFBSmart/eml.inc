@@ -152,7 +152,7 @@ dim MSGBody as qstringlist 'string
 dim MSG as qstringlist
 
 Source=replacesubstr$(Source,ht," ")
-Source=replacesubstr$(Source,crlf+" ","") ' îñíîâíîé 
+Source=replacesubstr$(Source,crlf+" ","") ' Ð¾ÑÐ½Ð¾Ð²Ð½Ð¾Ð¹ 
 Source=replacesubstr$(Source,";"+crlf,"; ")
 
 MSGBody.clear
@@ -175,73 +175,73 @@ end function
 
 '*****************************************
 Function isKOI8( Red$ As String) As long
-' ïðîâåðÿåò êîäèðîâêó ñòðîêè íà koi8
-'îÏ×ÏÅ ÓÏÏÂÝÅÎÉÅ × ÇÏÓÔÅ×ÏÊ ËÎÉÇÅ 'diakin-ðÒÏÇÒÁÍÍÁ RQ Search and Replace - ÐÏÉÓË É ÚÁÍÅÎÁ Ô'.
-'ïÔÏÐÌÅÎÉÅ, ×ÏÄÏÓÎÁÂÖÅÎÉÅ..
+' Ð¿Ñ€Ð¾Ð²ÐµÑ€ÑÐµÑ‚ ÐºÐ¾Ð´Ð¸Ñ€Ð¾Ð²ÐºÑƒ ÑÑ‚Ñ€Ð¾ÐºÐ¸ Ð½Ð° koi8
+'Ð¾ÐŸÐ§ÐŸÐ• Ð£ÐŸÐŸÐ’Ð­Ð•ÐžÐ™Ð• Ð§ Ð—ÐŸÐ£Ð¤Ð•Ð§ÐŸÐš Ð›ÐžÐ™Ð—Ð• 'diakin-Ñ€Ð¢ÐŸÐ—Ð¢Ð‘ÐÐÐ‘ RQ Search and Replace - Ð ÐŸÐ™Ð£Ð› Ð™ ÐªÐ‘ÐÐ•ÐžÐ‘ Ð¤'.
+'Ð¿Ð¤ÐŸÐ ÐœÐ•ÐžÐ™Ð•, Ð§ÐŸÐ”ÐŸÐ£ÐžÐ‘Ð’Ð¦Ð•ÐžÐ™Ð•..
 
 result=0
-'if instr(Red$, "Ï×")>0 then result=1 '"koi8-r"
-'if instr(Red$, "ÏÏ")>0 then result=1 '"koi8-r"
-'if instr(Red$, "ÂÝ")>0 then result=1 '"koi8-r"
-'if instr(Red$, "ÏÄ")>0 then result=1 '"koi8-r"
-'if instr(Red$, "Ï×")>0 then result=1 '"koi8-r"
-'if instr(Red$, "Ï×")>0 then result=1 '"koi8-r"
+'if instr(Red$, "ÐŸÐ§")>0 then result=1 '"koi8-r"
+'if instr(Red$, "ÐŸÐŸ")>0 then result=1 '"koi8-r"
+'if instr(Red$, "Ð’Ð­")>0 then result=1 '"koi8-r"
+'if instr(Red$, "ÐŸÐ”")>0 then result=1 '"koi8-r"
+'if instr(Red$, "ÐŸÐ§")>0 then result=1 '"koi8-r"
+'if instr(Red$, "ÐŸÐ§")>0 then result=1 '"koi8-r"
 
-if instr(Red$, " × ")>0 then result=1 '"koi8-r"
-'if instr(Red$, "ÏÇ")>0 then result=1 '"koi8-r"
+if instr(Red$, " Ð§ ")>0 then result=1 '"koi8-r"
+'if instr(Red$, "ÐŸÐ—")>0 then result=1 '"koi8-r"
 
-'if instr(Red$, "ÐÏ")>0 then result=1 '"koi8-r"
-if instr(Red$, "ÚÁ")>0 then result=1 '"koi8-r"
+'if instr(Red$, "Ð ÐŸ")>0 then result=1 '"koi8-r"
+if instr(Red$, "ÐªÐ‘")>0 then result=1 '"koi8-r"
 
 
-if instr(Red$, "ÄÙ")>0 then result=1 '"koi8-r"
-if instr(Red$, "×Ù")>0 then result=1 '"koi8-r"
-if instr(Red$, "ÔØ")>0 then result=1 '"koi8-r"
-if instr(Red$, "ïÔ")>0 then result=1 '"koi8-r"
+if instr(Red$, "Ð”Ð©")>0 then result=1 '"koi8-r"
+if instr(Red$, "Ð§Ð©")>0 then result=1 '"koi8-r"
+if instr(Red$, "Ð¤Ð¨")>0 then result=1 '"koi8-r"
+if instr(Red$, "Ð¿Ð¤")>0 then result=1 '"koi8-r"
 
-if instr(Red$, "ÂÉ")>0 then result=1 '"koi8-r"
-if instr(Red$, "ÄÉ")>0 then result=1
-if instr(Red$, "ÇÉ")>0 then result=1
-if instr(Red$, "ËÉ")>0 then result=1
-if instr(Red$, "ÌÉ")>0 then result=1
-if instr(Red$, "ÍÉ")>0 then result=1
-if instr(Red$, "ÐÉ")>0 then result=1
-if instr(Red$, "ÒÉ")>0 then result=1
-if instr(Red$, "ÔÉ")>0 then result=1
-if instr(Red$, "ÖÉ")>0 then result=1
-if instr(Red$, "ÏÉ")>0 then result=1 '"koi8-r"
-if instr(Red$, " É ")>0 then result=1 '"koi8-r"
+if instr(Red$, "Ð’Ð™")>0 then result=1 '"koi8-r"
+if instr(Red$, "Ð”Ð™")>0 then result=1
+if instr(Red$, "Ð—Ð™")>0 then result=1
+if instr(Red$, "Ð›Ð™")>0 then result=1
+if instr(Red$, "ÐœÐ™")>0 then result=1
+if instr(Red$, "ÐÐ™")>0 then result=1
+if instr(Red$, "Ð Ð™")>0 then result=1
+if instr(Red$, "Ð¢Ð™")>0 then result=1
+if instr(Red$, "Ð¤Ð™")>0 then result=1
+if instr(Red$, "Ð¦Ð™")>0 then result=1
+if instr(Red$, "ÐŸÐ™")>0 then result=1 '"koi8-r"
+if instr(Red$, " Ð™ ")>0 then result=1 '"koi8-r"
 
-if instr(Red$, " É")>0 then result=1
-if instr(Red$, " é ")>0 then result=1
+if instr(Red$, " Ð™")>0 then result=1
+if instr(Red$, " Ð¹ ")>0 then result=1
 
-if instr(Red$, "ÉÛ")>0 then result=1
+if instr(Red$, "Ð™Ð«")>0 then result=1
 
-if instr(Red$, "ÉÚ")>0 then result=1
-if instr(Red$, "éÚ")>0 then result=1
+if instr(Red$, "Ð™Ðª")>0 then result=1
+if instr(Red$, "Ð¹Ðª")>0 then result=1
 
-if instr(Red$, "áé")>0 then result=1
-if instr(Red$, "äé")>0 then result=1
-if instr(Red$, "éé")>0 then result=1
+if instr(Red$, "Ð±Ð¹")>0 then result=1
+if instr(Red$, "Ð´Ð¹")>0 then result=1
+if instr(Red$, "Ð¹Ð¹")>0 then result=1
 
-if instr(Red$, "pÉ")>0 then result=1
+if instr(Red$, "pÐ™")>0 then result=1
 
-if instr(Red$, "Ké")>0 then result=1
+if instr(Red$, "KÐ¹")>0 then result=1
 
-if instr(Red$, "ØÛ")>0 then result=1
-if instr(Red$, "ÅÛ")>0 then result=1
+if instr(Red$, "Ð¨Ð«")>0 then result=1
+if instr(Red$, "Ð•Ð«")>0 then result=1
 
-if instr(Red$, "úÄ")>0 then result=1
+if instr(Red$, "ÑŠÐ”")>0 then result=1
 
-if instr(Red$, "ÚÁ")>0 then result=1
-if instr(Red$, "ÚÕ")>0 then result=1
+if instr(Red$, "ÐªÐ‘")>0 then result=1
+if instr(Red$, "ÐªÐ¥")>0 then result=1
 
-if instr(Red$, "úÁ")>0 then result=1
-if instr(Red$, "ÚÙ")>0 then result=1
-if instr(Red$, "ÚÏ")>0 then result=1
-if instr(Red$, "ÚÉ")>0 then result=1
+if instr(Red$, "ÑŠÐ‘")>0 then result=1
+if instr(Red$, "ÐªÐ©")>0 then result=1
+if instr(Red$, "ÐªÐŸ")>0 then result=1
+if instr(Red$, "ÐªÐ™")>0 then result=1
 
-if instr(Red$, "ÚÒ")>0 then result=1
+if instr(Red$, "ÐªÐ¢")>0 then result=1
 
 end function
 
@@ -352,7 +352,7 @@ encodedword$=""
 pretext$=""
 decodedSubj$=""
 
-' åñëè çàãîëîâîê êîäèðîâàííûé - òî óäàëÿåì ïðîáåëû
+' ÐµÑÐ»Ð¸ Ð·Ð°Ð³Ð¾Ð»Ð¾Ð²Ð¾Ðº ÐºÐ¾Ð´Ð¸Ñ€Ð¾Ð²Ð°Ð½Ð½Ñ‹Ð¹ - Ñ‚Ð¾ ÑƒÐ´Ð°Ð»ÑÐµÐ¼ Ð¿Ñ€Ð¾Ð±ÐµÐ»Ñ‹
 if instr(Subject,"=?")>0 then 
 	Subject=replacesubstr$(Subject,ht,"")
 	Subject=replacesubstr$(Subject,crlf+" ","")
@@ -367,7 +367,7 @@ if instr(Subject,"=?")>0 then
 	Subject=replacesubstr$(Subject,"?= ","?=")
 	'Subject=Subject-" "
 else
-	if isKOI8(Subject)>0 then ' ïðîâåðêà íà koi8
+	if isKOI8(Subject)>0 then ' Ð¿Ñ€Ð¾Ð²ÐµÑ€ÐºÐ° Ð½Ð° koi8
 		Subject=RQConvertCodePage(Subject, cp_Koi, cp_Win)
 	end if
 	result=Subject
@@ -385,24 +385,24 @@ lensubj=len(Subject)
 
 while begpos>0 and begpos <lensubj
 	
-	spos1=instr(begpos+1,Subject,"?") ' 1 ïîçèöèÿ ? - íà÷àëî charset
-	spos2=instr(spos1+1,Subject,"?") ' 2 ïîçèöèÿ ? - íà÷àëî ìåòîäà êîäèðîâàíèÿ encoding
+	spos1=instr(begpos+1,Subject,"?") ' 1 Ð¿Ð¾Ð·Ð¸Ñ†Ð¸Ñ ? - Ð½Ð°Ñ‡Ð°Ð»Ð¾ charset
+	spos2=instr(spos1+1,Subject,"?") ' 2 Ð¿Ð¾Ð·Ð¸Ñ†Ð¸Ñ ? - Ð½Ð°Ñ‡Ð°Ð»Ð¾ Ð¼ÐµÑ‚Ð¾Ð´Ð° ÐºÐ¾Ð´Ð¸Ñ€Ð¾Ð²Ð°Ð½Ð¸Ñ encoding
 	if spos2=0 then spos2=len(Subject)
-	spos3=instr(spos2+1,Subject,"?") ' 3 ïîçèöèÿ ? - íà÷àëî encoded-text
+	spos3=instr(spos2+1,Subject,"?") ' 3 Ð¿Ð¾Ð·Ð¸Ñ†Ð¸Ñ ? - Ð½Ð°Ñ‡Ð°Ð»Ð¾ encoded-text
 	if spos3=0 then spos3=len(Subject)
-	spos4=instr(spos3+1,Subject,"?=") ' 4 ïîçèöèÿ ? - êîíåö encoded-text
+	spos4=instr(spos3+1,Subject,"?=") ' 4 Ð¿Ð¾Ð·Ð¸Ñ†Ð¸Ñ ? - ÐºÐ¾Ð½ÐµÑ† encoded-text
 	if spos4=0 then spos4=len(Subject)
 	
 	pretext$=mid$(Subject,textpos,begpos-textpos)
 	codepage$=lcase$(mid$(Subject,spos1+1,spos2-spos1-1))
 	codeMode$=lcase$(mid$(Subject,spos2+1,1))
 	
-	begpos=instr(spos4,Subject,"=?") ' ñëåäóþùåå encodedword$
+	begpos=instr(spos4,Subject,"=?") ' ÑÐ»ÐµÐ´ÑƒÑŽÑ‰ÐµÐµ encodedword$
 	if begpos=0 then begpos=len(Subject)
 	
 	textpos=spos4+2 'instr(spos4,Subject,"=?")
 	
-	encodedword$=mid$(Subject,spos3+1,spos4-spos3-1) ' äåêîäèðóåìàÿ ÷àñòü
+	encodedword$=mid$(Subject,spos3+1,spos4-spos3-1) ' Ð´ÐµÐºÐ¾Ð´Ð¸Ñ€ÑƒÐµÐ¼Ð°Ñ Ñ‡Ð°ÑÑ‚ÑŒ
 	encodedword$=replacesubstr$(encodedword$,"_","=20") ' replace white spaces
 	headerTxtConv$=""
 	headerTxtConv$=field$(encodedword$,"=",1) '""
@@ -484,7 +484,7 @@ End If
 
 '--- split ---
 DotCount=tally(wabMail, ".")
-'diakin@narod.ru - 2 ÷àñòè 
+'diakin@narod.ru - 2 Ñ‡Ð°ÑÑ‚Ð¸ 
 redim Cdot(DotCount) As String '0,1
 
 for i=0 to DotCount
@@ -547,17 +547,17 @@ Pos1 = 1
 wabPos=1
 
 for ie5=0 to SObCount-1
-	' íàõîäèì ñîáàêó @
+	' Ð½Ð°Ñ…Ð¾Ð´Ð¸Ð¼ ÑÐ¾Ð±Ð°ÐºÑƒ @
 	WABDog = InStr(wabPos, WABData, Chr$(0) & Chr$(64) & Chr$(0)) 
-	' îò ñîáàêè íàõîäèì äâà Chr(0) ñïðàâà è ñëåâà
+	' Ð¾Ñ‚ ÑÐ¾Ð±Ð°ÐºÐ¸ Ð½Ð°Ñ…Ð¾Ð´Ð¸Ð¼ Ð´Ð²Ð° Chr(0) ÑÐ¿Ñ€Ð°Ð²Ð° Ð¸ ÑÐ»ÐµÐ²Ð°
 	WABLeft = RInStr(WABDog,WABData, Chr$(0) & Chr$(0))
 	WABRight = InStr(WABDog, WABData, Chr$(0) & Chr$(0)) 
 	
-	'âûðåçàåì e-mail àäðåñ
+	'Ð²Ñ‹Ñ€ÐµÐ·Ð°ÐµÐ¼ e-mail Ð°Ð´Ñ€ÐµÑ
 	WABTemp = Mid$(WABData, WABLeft, WABRight - WABLeft)
 	WABTemp = replaceSubStr$(WABTemp , Chr(0), "") 
 	
-	for i95=1 to 31 ' åñëè ñîäåðæàòñÿ íåïå÷àòíûå ñèìâîëû
+	for i95=1 to 31 ' ÐµÑÐ»Ð¸ ÑÐ¾Ð´ÐµÑ€Ð¶Ð°Ñ‚ÑÑ Ð½ÐµÐ¿ÐµÑ‡Ð°Ñ‚Ð½Ñ‹Ðµ ÑÐ¸Ð¼Ð²Ð¾Ð»Ñ‹
 		if instr(WABTemp, chr$(i95))>0 then
 			'print"i95=";i95
 			exit for

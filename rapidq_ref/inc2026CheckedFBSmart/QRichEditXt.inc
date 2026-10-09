@@ -326,8 +326,8 @@ DEFINT useEscapes = FALSE
     DIM ch      AS STRING * 1
     DIM token   AS STRING
 '----------	
-dim CurPos  AS LONG  '-- позиция текущего символа относительно начала файла
-dim StrPos  AS LONG  '-- позиция первого символа текущей строки относительно начала файла
+dim CurPos  AS LONG  '-- РїРѕР·РёС†РёСЏ С‚РµРєСѓС‰РµРіРѕ СЃРёРјРІРѕР»Р° РѕС‚РЅРѕСЃРёС‚РµР»СЊРЅРѕ РЅР°С‡Р°Р»Р° С„Р°Р№Р»Р°
+dim StrPos  AS LONG  '-- РїРѕР·РёС†РёСЏ РїРµСЂРІРѕРіРѕ СЃРёРјРІРѕР»Р° С‚РµРєСѓС‰РµР№ СЃС‚СЂРѕРєРё РѕС‚РЅРѕСЃРёС‚РµР»СЊРЅРѕ РЅР°С‡Р°Р»Р° С„Р°Р№Р»Р°
 
 StrPos=FirstChar
 CurPos=0
@@ -336,15 +336,15 @@ i=0
 
 RhWnd=RichEdit.Handle 
 'print "RhWnd=" ,RhWnd
-'-- файл уже считан в richedit. Используем массив richedit.line()    
-FOR i =FIRSTVISIBLELINE  TO  LastVISIBLELINE  '- перебираем по строкам
+'-- С„Р°Р№Р» СѓР¶Рµ СЃС‡РёС‚Р°РЅ РІ richedit. РСЃРїРѕР»СЊР·СѓРµРј РјР°СЃСЃРёРІ richedit.line()    
+FOR i =FIRSTVISIBLELINE  TO  LastVISIBLELINE  '- РїРµСЂРµР±РёСЂР°РµРј РїРѕ СЃС‚СЂРѕРєР°Рј
 	quote = FALSE
 	token = ""
-	FOR j = 1 TO len(richedit.line(i)) '- разбираем строку посимвольно
-		CurPos=j +StrPos   '- текущий символ от начала первой видимой строки.
-		ch = richedit.line(i)[j]       '- массив символов строки 
-		IF instr("+-=<>()\/^&*[]:;?,' "+chr$(34)+chr$(9), ch) THEN  '- символ - знак
-        	IF ch = chr$(34) THEN        '--- ------- если кавычка -----------
+	FOR j = 1 TO len(richedit.line(i)) '- СЂР°Р·Р±РёСЂР°РµРј СЃС‚СЂРѕРєСѓ РїРѕСЃРёРјРІРѕР»СЊРЅРѕ
+		CurPos=j +StrPos   '- С‚РµРєСѓС‰РёР№ СЃРёРјРІРѕР» РѕС‚ РЅР°С‡Р°Р»Р° РїРµСЂРІРѕР№ РІРёРґРёРјРѕР№ СЃС‚СЂРѕРєРё.
+		ch = richedit.line(i)[j]       '- РјР°СЃСЃРёРІ СЃРёРјРІРѕР»РѕРІ СЃС‚СЂРѕРєРё 
+		IF instr("+-=<>()\/^&*[]:;?,' "+chr$(34)+chr$(9), ch) THEN  '- СЃРёРјРІРѕР» - Р·РЅР°Рє
+        	IF ch = chr$(34) THEN        '--- ------- РµСЃР»Рё РєР°РІС‹С‡РєР° -----------
 				token = ""
 				kk=0
 '-------------------------
@@ -352,10 +352,10 @@ SendMessageAPI (rhWnd,EM_POSFROMCHAR, VisPoint1,CurPos-1)
 rgbPrev = SetTextColor(hdc, clGreen)
 TextOut(hdc, VisPoint1.left, VisPoint1.top, ch, len(ch))
 '-------------------------
-                FOR j = j+1 TO len(richedit.line(i)) '---   начало строкового
+                FOR j = j+1 TO len(richedit.line(i)) '---   РЅР°С‡Р°Р»Рѕ СЃС‚СЂРѕРєРѕРІРѕРіРѕ
 					CurPos=j +StrPos
                     ch = richedit.line(i)[j] 
-					IF ch = chr$(34) THEN  '--- ------- если кавычка -----------
+					IF ch = chr$(34) THEN  '--- ------- РµСЃР»Рё РєР°РІС‹С‡РєР° -----------
 						
 '-------------------------
 SendMessageAPI (rhWnd,EM_POSFROMCHAR, VisPoint1,CurPos-1)
@@ -370,13 +370,13 @@ TextOut(hdc, VisPoint1.left, VisPoint1.top, ch, len(ch))
 					exit for
 					else
                     	IF ch = "<" THEN
-							token = token +ch'' "&lt;" '- левая угловая скобка
+							token = token +ch'' "&lt;" '- Р»РµРІР°СЏ СѓРіР»РѕРІР°СЏ СЃРєРѕР±РєР°
 						ELSE
 							token = token + ch
 						END IF
                 	END IF
                 NEXT
-            	'--- конец определения строкового
+            	'--- РєРѕРЅРµС† РѕРїСЂРµРґРµР»РµРЅРёСЏ СЃС‚СЂРѕРєРѕРІРѕРіРѕ
 '-------------------------
 SendMessageAPI (rhWnd,EM_POSFROMCHAR,VisPoint1,CurPos-len(token)-kk)
 rgbPrev = SetTextColor(hdc, clOrange)
@@ -385,32 +385,32 @@ TextOut(hdc, VisPoint1.left, VisPoint1.top, token, len(token))
 '-------------------------
 if RemFlg=1 then RemFlg=0 : goto RemF
 
-'*                	fOut.write("<font color=\"990000\">"+token+"</font>") '--- записываем строковое
+'*                	fOut.write("<font color=\"990000\">"+token+"</font>") '--- Р·Р°РїРёСЃС‹РІР°РµРј СЃС‚СЂРѕРєРѕРІРѕРµ
                 
-                ELSEIF ch = "'" THEN '-- комментарий ---------------
+                ELSEIF ch = "'" THEN '-- РєРѕРјРјРµРЅС‚Р°СЂРёР№ ---------------
                 	RemF:
-                	'--- запоминаем позицию начала комментария'
+                	'--- Р·Р°РїРѕРјРёРЅР°РµРј РїРѕР·РёС†РёСЋ РЅР°С‡Р°Р»Р° РєРѕРјРјРµРЅС‚Р°СЂРёСЏ'
                 	RemPos=CurPos-1 
 ''                	print "RemPos=" ,RemPos
-                	IF token <> "" THEN '- если перед комментарием был токен, то проверяем, является ли он ключевым словом
+                	IF token <> "" THEN '- РµСЃР»Рё РїРµСЂРµРґ РєРѕРјРјРµРЅС‚Р°СЂРёРµРј Р±С‹Р» С‚РѕРєРµРЅ, С‚Рѕ РїСЂРѕРІРµСЂСЏРµРј, СЏРІР»СЏРµС‚СЃСЏ Р»Рё РѕРЅ РєР»СЋС‡РµРІС‹Рј СЃР»РѕРІРѕРј
                         if instr(.keyList.Text,ucase$(token))>0 then
-'*                        	fOut.write("<font color=\"aa00AA\"><b>"+token+"</b></font>")'- подсвечиваем
+'*                        	fOut.write("<font color=\"aa00AA\"><b>"+token+"</b></font>")'- РїРѕРґСЃРІРµС‡РёРІР°РµРј
 '-------------------------
 SendMessageAPI (rhWnd,EM_POSFROMCHAR,VisPoint1,CurPos-len(token)-1)
 rgbPrev = SetTextColor(hdc, clPurple)
 TextOut(hdc, VisPoint1.left, VisPoint1.top, token, len(token))
 '-------------------------
                         ELSE
-'*                        	fOut.write(token)  '- не подсвечиваем
+'*                        	fOut.write(token)  '- РЅРµ РїРѕРґСЃРІРµС‡РёРІР°РµРј
                     	END IF
                 	END IF
-                	token = ""   '- начинаем новый токен - комментарий
+                	token = ""   '- РЅР°С‡РёРЅР°РµРј РЅРѕРІС‹Р№ С‚РѕРєРµРЅ - РєРѕРјРјРµРЅС‚Р°СЂРёР№
                 	rempos1=instr(richedit.line(i),"'")
 					token =mid$(richedit.line(i),RemPos1, len(richedit.line(i))-RemPos1+1) 
 '					print "token=" ,token
 					j=j+len(token)
 					CurPos=j +StrPos
-'---- комментарий ---------------
+'---- РєРѕРјРјРµРЅС‚Р°СЂРёР№ ---------------
 '*                	fOut.write("<font color=\"007700\"><i>"+token+"</i></font>")
 '-------------------------
 SendMessageAPI (rhWnd,EM_POSFROMCHAR,VisPoint1,RemPos)
@@ -478,7 +478,7 @@ TextOut(hdc, VisPoint1.left, VisPoint1.top, token, len(token))
 print "end bas2Html"
 END SELECT
 noHiLi:                
-IF .WndProc>0 THEN CALLFUNC(.WndProc, hWnd, uMsg, wParam, lParam) '- если есть пользовательская функция, то вызывается и она
+IF .WndProc>0 THEN CALLFUNC(.WndProc, hWnd, uMsg, wParam, lParam) '- РµСЃР»Рё РµСЃС‚СЊ РїРѕР»СЊР·РѕРІР°С‚РµР»СЊСЃРєР°СЏ С„СѓРЅРєС†РёСЏ, С‚Рѕ РІС‹Р·С‹РІР°РµС‚СЃСЏ Рё РѕРЅР°
             
 
   END IF

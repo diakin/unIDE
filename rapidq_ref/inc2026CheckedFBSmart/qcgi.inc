@@ -1,5 +1,5 @@
 'QCGI.INC
-'©2001-2005 Chris Warrington
+'Â©2001-2005 Chris Warrington
 '    rapidq.basic.c45207@spamgourmet.com
 '
 'Version: 1.6

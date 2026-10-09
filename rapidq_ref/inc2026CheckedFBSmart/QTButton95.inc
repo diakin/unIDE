@@ -1,7 +1,7 @@
-' Créé par D-évolution / Created by D-evolution -=@=- 2004 - 2005
+' CrÐ¹Ð¹ par D-Ð¹volution / Created by D-evolution -=@=- 2004 - 2005
 
-' Pour plus de détail sur l'utilisation de ce composant reportez vous
-' à la documentation fournise... (QTButton.html)
+' Pour plus de dÐ¹tail sur l'utilisation de ce composant reportez vous
+' Ð° la documentation fournise... (QTButton.html)
 ' For more details on using this component please refer to the doc
 ' (QTButton.html)
 
@@ -9,9 +9,9 @@
 $Option Explicit
 
 
-' Vous pouvez tricher ce composante par la même astuce utilisé ici
+' Vous pouvez tricher ce composante par la mÐºme astuce utilisÐ¹ ici
 
-$IFNDEF __RQINC' ==(corrigé! doh!)
+$IFNDEF __RQINC' ==(corrigÐ¹! doh!)
 $IFNDEF __RQINCTMP
 $DEFINE __RQINCTMP
 CONST False = 0
@@ -27,7 +27,7 @@ CONST pf15bit	= 4
 $ENDIF ' __RQINCTMP
 $ENDIF ' __RQINC
 
-'Liste de tous les btns de type QTButton créés lors du chargement
+'Liste de tous les btns de type QTButton crÐ¹Ð¹s lors du chargement
 Dim AllQTBtnsHandle As QStringList, AllQTBtnsGrouped As QStringList
 '
 Dim AllQTBtnsRequester As Long, AllQTBtnsRequesterParent As Long
@@ -43,12 +43,12 @@ Const rqSL		= CHR$(10)
 
 Const DefPixelFormat = 4
 
-'Accélère l'affichage des btns à l'écran maintenant jusqu'à 97% avec un affichage 
-'parfait de 60% dans le cas où certains btns ont des dimensions différentes sinon 
-'ça grimpe jusqu'à 100%
-'Dans l'événement OnShow de votre fenêtre ajoutez ShowMessage STR$(DrawCount)
-'pour afficher le nombre de fois où les btns ont eus à être RePaint 
-'Note :  certains btns auront toute fois besoin d'être redessinés...
+'AccÐ¹lÐ¸re l'affichage des btns Ð° l'Ð¹cran maintenant jusqu'Ð° 97% avec un affichage 
+'parfait de 60% dans le cas oÑ‰ certains btns ont des dimensions diffÐ¹rentes sinon 
+'Ð·a grimpe jusqu'Ð° 100%
+'Dans l'Ð¹vÐ¹nement OnShow de votre fenÐºtre ajoutez ShowMessage STR$(DrawCount)
+'pour afficher le nombre de fois oÑ‰ les btns ont eus Ð° Ðºtre RePaint 
+'Note :  certains btns auront toute fois besoin d'Ðºtre redessinÐ¹s...
 Dim QTBtnOptimize As Integer
 	QTBtnOptimize = False
 
@@ -92,7 +92,7 @@ Declare Function BitBlt_QTBtn Lib "gdi32" _
 		nXSrc As Integer, nYSrc As Integer, _
 		dwRop As Integer) As Integer
 
-' Pour Win98 et supérieur
+' Pour Win98 et supÐ¹rieur
 Declare Function TransparentBlt_QTBtn Lib "msimg32" _
 		Alias "TransparentBlt" ( _
 		ByVal hdcDest As Long, _
@@ -105,7 +105,7 @@ Declare Function TransparentBlt_QTBtn Lib "msimg32" _
 $ENDIF ' __QTBTNSHARED
 
 
-' -- Retiré 31déc
+' -- RetirÐ¹ 31dÐ¹c
 'Const BM_SETSTATE_QTBtn = &HF3
 'Const WM_LBUTTONDOWN_QTBtn = &H201
 ' //--
@@ -151,7 +151,7 @@ Declare Function DrawText_QTBtn Lib "user32" Alias "DrawTextA" ( _
 		lpRect As RECT_QTBtn, _
 		ByVal wFormat As Long) As Long
 
-' Ajouté 6fév
+' AjoutÐ¹ 6fÐ¹v
 'Declare Function GetDC_QTBtn Lib "user32" _
 '		Alias "GetDC" _
 '		(ByVal hwnd As Long) As Long
@@ -170,7 +170,7 @@ Declare Function SetBkMode_QTBtn Lib "gdi32" _
 'Declare Function SetTextColor_QTBtn Lib "gdi32" Alias "SetTextColor" _
 '		(ByVal hdc As Long, ByVal crColor As Long) As Long
 
-' -- (Ajouté 11janv) Les Nouveaux API pour le suport des Thèmes de Bureau XP
+' -- (AjoutÐ¹ 11janv) Les Nouveaux API pour le suport des ThÐ¸mes de Bureau XP
 Declare Function OpenThemeData_QTBtn Lib "uxtheme.dll" Alias "OpenThemeData" ( _
 		ByVal hwnd As Long, _
 		ByVal pszClassList As Long) As Long
@@ -247,7 +247,7 @@ Sub NextDlg_QTBtn(NextPrevTab As Long)'(CtrlHwnd As Long)
 	Call SetFocus_QTBtn(hwnd5)
 End Sub
 
-' Ajouté 6fév
+' AjoutÐ¹ 6fÐ¹v
 Declare Function DrawFocusRect_QTBtn Lib "user32" _
 		Alias "DrawFocusRect" ( _
 		ByVal hdc As Long, _
@@ -262,7 +262,7 @@ Declare Function DrawFocusRect_QTBtn Lib "user32" _
 '	(ByVal nIndex As Long) As Long
 
 
-' --	Redessine la région d'un contrôle (ComboBox)
+' --	Redessine la rÐ¹gion d'un contrÑ„le (ComboBox)
 'Const RGN_AND	= 1
 'Const RGN_OR	= 2
 'Const RGN_XOR	= 3
@@ -284,7 +284,7 @@ Sub HideBevelTrick_QTBtn(Sender As QButton, BevelWidth As Integer)
 	' Ajouter RndRgn
 	Dim rectRgn As Long
 
-	' Création des régions temporaires
+	' CrÐ¹ation des rÐ¹gions temporaires
 	rectRgn	= CreateRectRgn_QTBtn(	BevelWidth, _
 									BevelWidth, _
 									Sender.Width -BevelWidth, _
@@ -297,8 +297,8 @@ End Sub
 ' //--
 
 
-' -- Restauré 11janv (Retiré 31déc)
-' Vérifie la version de Windows puisque certains problèmes sont identifiés
+' -- RestaurÐ¹ 11janv (RetirÐ¹ 31dÐ¹c)
+' VÐ¹rifie la version de Windows puisque certains problÐ¸mes sont identifiÐ¹s
 ' sur l'un ou l'autre
 $IFNDEF __RQGETVERSION
 $DEFINE __RQGETVERSION
@@ -365,10 +365,10 @@ End Sub
 
 'Dim RequestRelease As Integer
 
-' Event Template pour les nouveaux événements MouseLeave et MouseEnter
+' Event Template pour les nouveaux Ð¹vÐ¹nements MouseLeave et MouseEnter
 DECLARE SUB QTBtnOnMouseEnterLeave_EventTemplate (X As Integer, Y As Integer, Shift As Integer, Sender As QButton)
 
-' Lorsque GroupIndex = 0 il doit être nettoyé s'il est présent dans la liste
+' Lorsque GroupIndex = 0 il doit Ðºtre nettoyÐ¹ s'il est prÐ¹sent dans la liste
 Sub SetIndex_QTBtn (Index As Integer, Hwnd As Long)
 	AllQTBtnsHandle.AddItems STR$(Hwnd)
 	AllQTBtnsGrouped.AddItems STR$(Index)
@@ -376,7 +376,7 @@ Sub SetIndex_QTBtn (Index As Integer, Hwnd As Long)
 '	If AllQTBtnsGrouped.ItemCount <> AllQTBtnsHandle.ItemCount Then ShowMessage "Erreur"
 End Sub
 
-' Déplacé 12janv afin de réduire le code
+' DÐ¹placÐ¹ 12janv afin de rÐ¹duire le code
 Sub	QTButton_KeyDown (Key AS Word, Shift AS INTEGER)
 	If RequestRelease = False Then
 		Select Case Key
@@ -399,80 +399,80 @@ rHeight = 25
 
 Type QTButton Extends QButton
   'YRESTE/TODO
-	'!Fonction spécial transforme QButton en QTButton appelle un SUB qui applique les mêmes
-	' propriétés que QTButton à QButton, utile pour les tableaux
-	'-Corriger: Lorsque Kind n'est pas Faux et que Caption = "" le btn est mal dessiné
-	'!Ajouté: Propriété de XPThemeBtnType (Sélectionnez entre 3 type de bouton; classic, barre d'outil, onglet)
-	'!Corrigé: problèmes positionnement et de transparence pour certains thèmes de bureau
-	'!Ajouté/Corrigé: Propriété de XPThemeEnabled (Active et désactive le theme)
-	'!Ajouté/Amélioré: support des thèmes de bureau XP (Passé de Resource à l'API OpenThemeData)
-	'!Remplacé certains CopyRect par StretchDraw c'est le cas pour l'effet Survole
-	'!Corrigé: problème lorsque l'option Down d'un btn est vrai, l'icône est dessinée deux fois
-	'Ajouter annuler l'effet enfoncé de l'icône
-	'Ajouter réagit en tant que btn de barre d'outil (le focus est restauré à son ancien propriétaire)
-	'!-Corriger: Effet de rafraîchissement causé par GroupIndex
-	'!Ajouté: Icon/BMP
-	'!Ajouté: Propriété de NumBMPs
-	'!Ajouté: Propriété de NumICOBMPs (indique le nombre d'image dans l'icone)
-	'!Ajouté: Propriété de Layout
-	'!Ajouté: Propriété de Spacing
-	'Ajouter: Evénement Default (onshow la souris pointe le btn... setfocus)
-	'	Peut-être ajouter une méthode pour automatiser le procèssuce
-	'!Réparé: Caption
-	'!Ajouté: Sous-lignage de la lettre dans BMPBtn; ex: "Dé&faut"
-	'!Amélioré/ReCorrigé: & et && dans le caption; 1 souligne, 2 donnent & sans souligner
-	'!Corrigé: Un API vient corriger le problème avec TextRect et TextOut _
+	'!Fonction spÐ¹cial transforme QButton en QTButton appelle un SUB qui applique les mÐºmes
+	' propriÐ¹tÐ¹s que QTButton Ð° QButton, utile pour les tableaux
+	'-Corriger: Lorsque Kind n'est pas Faux et que Caption = "" le btn est mal dessinÐ¹
+	'!AjoutÐ¹: PropriÐ¹tÐ¹ de XPThemeBtnType (SÐ¹lectionnez entre 3 type de bouton; classic, barre d'outil, onglet)
+	'!CorrigÐ¹: problÐ¸mes positionnement et de transparence pour certains thÐ¸mes de bureau
+	'!AjoutÐ¹/CorrigÐ¹: PropriÐ¹tÐ¹ de XPThemeEnabled (Active et dÐ¹sactive le theme)
+	'!AjoutÐ¹/AmÐ¹liorÐ¹: support des thÐ¸mes de bureau XP (PassÐ¹ de Resource Ð° l'API OpenThemeData)
+	'!RemplacÐ¹ certains CopyRect par StretchDraw c'est le cas pour l'effet Survole
+	'!CorrigÐ¹: problÐ¸me lorsque l'option Down d'un btn est vrai, l'icÑ„ne est dessinÐ¹e deux fois
+	'Ajouter annuler l'effet enfoncÐ¹ de l'icÑ„ne
+	'Ajouter rÐ¹agit en tant que btn de barre d'outil (le focus est restaurÐ¹ Ð° son ancien propriÐ¹taire)
+	'!-Corriger: Effet de rafraÐ¾chissement causÐ¹ par GroupIndex
+	'!AjoutÐ¹: Icon/BMP
+	'!AjoutÐ¹: PropriÐ¹tÐ¹ de NumBMPs
+	'!AjoutÐ¹: PropriÐ¹tÐ¹ de NumICOBMPs (indique le nombre d'image dans l'icone)
+	'!AjoutÐ¹: PropriÐ¹tÐ¹ de Layout
+	'!AjoutÐ¹: PropriÐ¹tÐ¹ de Spacing
+	'Ajouter: EvÐ¹nement Default (onshow la souris pointe le btn... setfocus)
+	'	Peut-Ðºtre ajouter une mÐ¹thode pour automatiser le procÐ¸ssuce
+	'!RÐ¹parÐ¹: Caption
+	'!AjoutÐ¹: Sous-lignage de la lettre dans BMPBtn; ex: "DÐ¹&faut"
+	'!AmÐ¹liorÐ¹/ReCorrigÐ¹: & et && dans le caption; 1 souligne, 2 donnent & sans souligner
+	'!CorrigÐ¹: Un API vient corriger le problÐ¸me avec TextRect et TextOut _
 	'   (TextRect n'aime pas les bounds)
-	'!Corrigé: Effet de Sous-lignage appuyer sur Alt+ChrSouligné = clic
-	'!Corrigé: Propriété de Height et Width
-	'!Corrigé: Survole lorsque le nombre de btn est inférieur à 4
-	'!Corrigé: Survole lors d'un clique
-	'-Inverser: Enfoncé et Désactivé dans le fichier BMP
-	'!Corrigé: Lorsque le nombre de btns excède 4 (NumBMPs)
-	'!Amélioré/Ajouté: Lignes Multiples basique (insèrez chr$(10) ou "\n" pour créer une nouvelle ligne)
-	'-Ajouter: HideCaption, pour afficher une icône et masquer le texte (coolbtn like)
-	'Corriger/Ajouter: propriété de police (comment?)
-	'	pour l'instant vous devrez utiliser ReDraw après avoir changé la police
-	'	sinon je pourrais faire en sorte que QTBtn vérifie l'état de la police
-	'	à chque action...
-	'!Corrigé: lorsque la souris pointe le btn, le clavier ne répond plus
-	'!Corrigé: Petit problème de positionement du texte
-	'!Corrigé: Problème avec Enabled et la police lors de l'exécution
-	'Corriger/Ajouter: Propriété de Visible (éviter de trop dessiner lorsqu'invisible)
-	'Ajouter: AutoSize lorsque la taille du texte en pixel excède celle du bouton
-	'Ajouter: Propriété de Parent pour être sure que l'enjolivure sera dessinée
-	'Corriger: Propriété d'Align
-	'!Ajouté: Groupe de bouton
-	'Ajouter: AllowAllUp (si on clique sur un btn enfoncé du groupe, ils seront tous rétablis à la normal)
-	'Ajouter: AllowDown (permet a un btn de garder son état enfoncé)
+	'!CorrigÐ¹: Effet de Sous-lignage appuyer sur Alt+ChrSoulignÐ¹ = clic
+	'!CorrigÐ¹: PropriÐ¹tÐ¹ de Height et Width
+	'!CorrigÐ¹: Survole lorsque le nombre de btn est infÐ¹rieur Ð° 4
+	'!CorrigÐ¹: Survole lors d'un clique
+	'-Inverser: EnfoncÐ¹ et DÐ¹sactivÐ¹ dans le fichier BMP
+	'!CorrigÐ¹: Lorsque le nombre de btns excÐ¸de 4 (NumBMPs)
+	'!AmÐ¹liorÐ¹/AjoutÐ¹: Lignes Multiples basique (insÐ¸rez chr$(10) ou "\n" pour crÐ¹er une nouvelle ligne)
+	'-Ajouter: HideCaption, pour afficher une icÑ„ne et masquer le texte (coolbtn like)
+	'Corriger/Ajouter: propriÐ¹tÐ¹ de police (comment?)
+	'	pour l'instant vous devrez utiliser ReDraw aprÐ¸s avoir changÐ¹ la police
+	'	sinon je pourrais faire en sorte que QTBtn vÐ¹rifie l'Ð¹tat de la police
+	'	Ð° chque action...
+	'!CorrigÐ¹: lorsque la souris pointe le btn, le clavier ne rÐ¹pond plus
+	'!CorrigÐ¹: Petit problÐ¸me de positionement du texte
+	'!CorrigÐ¹: ProblÐ¸me avec Enabled et la police lors de l'exÐ¹cution
+	'Corriger/Ajouter: PropriÐ¹tÐ¹ de Visible (Ð¹viter de trop dessiner lorsqu'invisible)
+	'Ajouter: AutoSize lorsque la taille du texte en pixel excÐ¸de celle du bouton
+	'Ajouter: PropriÐ¹tÐ¹ de Parent pour Ðºtre sure que l'enjolivure sera dessinÐ¹e
+	'Corriger: PropriÐ¹tÐ¹ d'Align
+	'!AjoutÐ¹: Groupe de bouton
+	'Ajouter: AllowAllUp (si on clique sur un btn enfoncÐ¹ du groupe, ils seront tous rÐ¹tablis Ð° la normal)
+	'Ajouter: AllowDown (permet a un btn de garder son Ð¹tat enfoncÐ¹)
 	'Ajouter: Lorsque GroupIndex > Faux et qu'on appuie sur une touche QTBtn tente de rejoindre
 	'	le btn suivant (comme TabControl) 
 	'
-	'Quelques problèmes identifiés :
-	'		 1) Problème introduit... lorsque la souris quitte le contrôle, il est mal redessiné... arrrg!
-	'			Le problème vient de l'ordre dans lequel NumBMPs est introduit.
-	'			Résolution: l'insèrer après les	paramètres de positionnement.
-	'			(Semble être corrigé)
-	'		 2) Lorsque le titre du btn est trop long, le reste du texte apparaît sur les divers
-	'			effets, à savoir désactivé ,enfoncé, survollé. 	Ce problème vient du fait que je 
-	'			n'arrive toujours pas à utiliser TextRect.
-	'			Résolution: un API est utilisé pour corrigé ce problème
-	'		 3) Parfois le btn n'est pas dessiné lorsque NumBMPs n'est pas spécifié, donc ne pas
+	'Quelques problÐ¸mes identifiÐ¹s :
+	'		 1) ProblÐ¸me introduit... lorsque la souris quitte le contrÑ„le, il est mal redessinÐ¹... arrrg!
+	'			Le problÐ¸me vient de l'ordre dans lequel NumBMPs est introduit.
+	'			RÐ¹solution: l'insÐ¸rer aprÐ¸s les	paramÐ¸tres de positionnement.
+	'			(Semble Ðºtre corrigÐ¹)
+	'		 2) Lorsque le titre du btn est trop long, le reste du texte apparaÐ¾t sur les divers
+	'			effets, Ð° savoir dÐ¹sactivÐ¹ ,enfoncÐ¹, survollÐ¹. 	Ce problÐ¸me vient du fait que je 
+	'			n'arrive toujours pas Ð° utiliser TextRect.
+	'			RÐ¹solution: un API est utilisÐ¹ pour corrigÐ¹ ce problÐ¸me
+	'		 3) Parfois le btn n'est pas dessinÐ¹ lorsque NumBMPs n'est pas spÐ¹cifiÐ¹, donc ne pas
 	'			oublier de l'ajouter.
-	'			Résolution: Left et Top devrait toujours être les premiers champs déclarés ensuit
-	'						vient NumBMPs si le nombre est supérieur à 1, puis vient Height et Width
+	'			RÐ¹solution: Left et Top devrait toujours Ðºtre les premiers champs dÐ¹clarÐ¹s ensuit
+	'						vient NumBMPs si le nombre est supÐ¹rieur Ð° 1, puis vient Height et Width
 	'						etc...
-	'		 4) Plus d'une fenêtre alors qu'un btn n'est toujours pas visible, aura d'étranges 
-	'			résultats d'affichage pour ce btn, surtout en utilisant ShapeForm.
-	'			Résolution: Dim DummyBtn As QTButton juste après la fenêtre
+	'		 4) Plus d'une fenÐºtre alors qu'un btn n'est toujours pas visible, aura d'Ð¹tranges 
+	'			rÐ¹sultats d'affichage pour ce btn, surtout en utilisant ShapeForm.
+	'			RÐ¹solution: Dim DummyBtn As QTButton juste aprÐ¸s la fenÐºtre
 	'						DummyBtn.ReDraw durant le chargement de la form peut aussi aider
-	'		 5) Problème de mémoire relié à l'image du btn, il semble que l'image se pert en mémoire
-	'			et peut se retrouver n'import où, les contrôles utilisant le mode OwnerDraw en
-	'			seront grandement irrités...
-	'						(J'essaie d'identifier le problème...)
+	'		 5) ProblÐ¸me de mÐ¹moire reliÐ¹ Ð° l'image du btn, il semble que l'image se pert en mÐ¹moire
+	'			et peut se retrouver n'import oÑ‰, les contrÑ„les utilisant le mode OwnerDraw en
+	'			seront grandement irritÐ¹s...
+	'						(J'essaie d'identifier le problÐ¸me...)
 	'						DummyBtn.ReDraw durant le chargement de la form peut aussi aider
-	'		 6) Lorsque l'on définie Height ou Width sur le premier bouton il est mal dessiné
-	'			Résolution: Placer temporairement btn.Redraw avant ou pendant l'affichage de la fenêtre 
+	'		 6) Lorsque l'on dÐ¹finie Height ou Width sur le premier bouton il est mal dessinÐ¹
+	'			RÐ¹solution: Placer temporairement btn.Redraw avant ou pendant l'affichage de la fenÐºtre 
 
   With This 'QTButton
    PRIVATE:
@@ -481,21 +481,21 @@ Type QTButton Extends QButton
 	Dest	As QRECT
 	Source	As QRECT
 	BMPBtnClean As QBitmap	' Copie de l'image du bouton sans aucune modification
-							' BMPtmp pourrait être ramplacé par BMPBtnClean
+							' BMPtmp pourrait Ðºtre ramplacÐ¹ par BMPBtnClean
 	BMPBtn	As QBitmap
-	BMPtmp	As QBitmap		' Devrait reflété un seul btn, celui à réintégrer (normal, survole)
+	BMPtmp	As QBitmap		' Devrait reflÐ¹tÐ¹ un seul btn, celui Ð° rÐ¹intÐ¹grer (normal, survole)
 	BMPHot	As QBitmap		' ...
 	HotTimer As QTimer		' ...
 	hDC		As Long
 	Pushed	As Integer		' ...
    PUBLIC:
-	ICOBMP	As QBitmap		' la petite icône à afficher sur le btn
+	ICOBMP	As QBitmap		' la petite icÑ„ne Ð° afficher sur le btn
 
    PRIVATE:
 	PropID		As Integer	' Qui appelle ReDraw
-	BtnNeedDraw	As Integer	' Détermine si le btn doit être totallement redessiné
+	BtnNeedDraw	As Integer	' DÐ¹termine si le btn doit Ðºtre totallement redessinÐ¹
 							' ou dans les cas de Caption, Layout, Spacing seule
-							' la partie text doit être mise à jour...
+							' la partie text doit Ðºtre mise Ð° jour...
 	ActAsToolBar As Integer
 	PrevFocus	As Long
 
@@ -521,7 +521,7 @@ Type QTButton Extends QButton
 	NumBMPs		As Integer	Property Set SetNumBMPs
 	NumICOBMPs	As Integer	Property Set SetNumICOBMPs
 
-	' 14/15 déc
+	' 14/15 dÐ¹c
 	FlickeringTrick As Integer	Property Set SetNewBtnRegion
 	HideFocusRect As Integer Property Set SetHideFocusRect
 
@@ -529,7 +529,7 @@ Type QTButton Extends QButton
 	OnMouseLeave AS EVENT(QTBtnOnMouseEnterLeave_EventTemplate)
 	OnMouseEnter AS EVENT(QTBtnOnMouseEnterLeave_EventTemplate)
 
-	'Nouvelles propriétés
+	'Nouvelles propriÐ¹tÐ¹s
 	'qqchose as qqchose Property Set SetQqChose
 
 	Function TextWidth(text as string) As Integer:	Result = .BMPBtn.TextWidth(text)
@@ -630,14 +630,14 @@ Type QTButton Extends QButton
 		End If
 		' Fix Bug in Win9x where caption are draw in white color
 		If .ICOBMP.Empty = False Then
-			' -- déplacé
+			' -- dÐ¹placÐ¹
 			Dim ICOtmp As QBitmap
 			ICOtmp.Width = .ICOBMP.Width \.NumICOBMPs
 			ICOtmp.Height = .ICOBMP.Height
 			WITH Dest: .Left = False: .Right = ICOtmp.Width
 						.Top = False: .Bottom = ICOtmp.Height
 			END WITH
-			' //-- déplacé
+			' //-- dÐ¹placÐ¹
 			For I = startFrom To endTo step 2
 				If I = maxNumBMPs_QTBtn Then I = 3
 				left = iif(.Layout > True, .Width \2, capwidth)
@@ -661,8 +661,8 @@ Type QTButton Extends QButton
 				END WITH
 				ICOtmp.CopyRect(This.Dest, This.ICOBMP, This.Source)
 
-				ICOtmp.Transparent = True	' Corrige un problème de transparence sous 9x
-											' le problème de dessin mal positionné est ici
+				ICOtmp.Transparent = True	' Corrige un problÐ¸me de transparence sous 9x
+											' le problÐ¸me de dessin mal positionnÐ¹ est ici
 				.BMPBtn.Draw ( left, _
 							   top, _
 							   ICOtmp.BMP)
@@ -726,8 +726,8 @@ Type QTButton Extends QButton
 			.BMPBtn.TransparentColor = .BMPBtn.Pixel(True, True)
 		End If
 		.BMPBtn.PixelFormat = DefPixelFormat' == (add)
-		.BMPBtn.TransparentColor = .BMPBtn.Pixel(True, True)' Ajouté 13janv (résou un problème de tranparence
-															'				 avec certains thème de bureau
+		.BMPBtn.TransparentColor = .BMPBtn.Pixel(True, True)' AjoutÐ¹ 13janv (rÐ¹sou un problÐ¸me de tranparence
+															'				 avec certains thÐ¸me de bureau
 		If .Caption = "" Then
 			  Super.Layout = 0 '1
 		Else: .BMPBtn.Height = .BMPBtn.Height +.TextHeight(.Caption) +2
@@ -737,7 +737,7 @@ Type QTButton Extends QButton
 		.BMPtmp.Height = .BMPBtn.Height
 		If FastDraw = False Then _
 			.BMPBtnClean.Height = .BMPBtn.Height
-		.DrawCaption ' // -- déplacé
+		.DrawCaption ' // -- dÐ¹placÐ¹
 		If .NumBMPs >= maxNumBMPs_QTBtn Then
 			WITH Dest: .Left = False: .Right = (This.BMPBtn.Width -True) \This.NumBMPs
 						.Top = False: .Bottom = This.BMPBtn.Height
@@ -763,10 +763,10 @@ Type QTButton Extends QButton
 			'WITH Source: .Top = False: .Bottom = This.BMPBtn.Height
 			'END WITH
 			If .Down = True Then
-				' Btn enfoncé
+				' Btn enfoncÐ¹
 				WITH Source: .Left = (This.Dest.Right -True) *2
 							.Right = .Left +This.Dest.Right -True
-						  	.Top = False: .Bottom = This.BMPBtn.Height  ' // -- Stretché lorsque Groupé
+						  	.Top = False: .Bottom = This.BMPBtn.Height  ' // -- StretchÐ¹ lorsque GroupÐ¹
 				END WITH
 				.BMPBtn.CopyRect(This.Dest, This.BMPBtnClean, This.Source)
 			Else
@@ -782,18 +782,18 @@ Type QTButton Extends QButton
 		End If
 	End Sub
 
-	' Retiré 8fév
+	' RetirÐ¹ 8fÐ¹v
 	'Sub ReleaseHotTrack
-	'	' le pseudo-evénement MOUSELEAVE
+	'	' le pseudo-evÐ¹nement MOUSELEAVE
 	'	ReleaseCapture_QTBtn
-	'	' on retourne le caption à la normal
+	'	' on retourne le caption Ð° la normal
 	'	'.Font.Bold = False
-	'	' -- Retirer 6fév (test flickering)
+	'	' -- Retirer 6fÐ¹v (test flickering)
 	'	'.Font.Color = clBtnText
 	'	' //--
 	'	'.caption = "Dehors..."
 	'	'LockWindowUpdate_QTBtn(This.Handle)
-	'	' -- Retirer 6fév (test flickering)
+	'	' -- Retirer 6fÐ¹v (test flickering)
 	'	'If .NumBMPs => maxNumBMPs_QTBtn and .Down = False Then
 	'	'	WITH Dest: .Left = False: .Right = (This.BMPBtn.Width -True) \This.NumBMPs
 	'	'				.Top = False: .Bottom = This.BMPBtn.Height
@@ -878,7 +878,7 @@ Type QTButton Extends QButton
 	End Event
    PUBLIC:
 	Event OnMouseDown(btn As Integer, X As Integer, Y As Integer, Shift As Integer)
-	'	' Doit être hérité si ActAsToolBar est vrai
+	'	' Doit Ðºtre hÐ¹ritÐ¹ si ActAsToolBar est vrai
 	'	If .ActAsToolBar = True and .PrevFocus <> False and _
 	'		.PrevFocus <> .Handle and GetFocus_QTBtn() <> .PrevFocus Then
 	'		$TypeCheck Off
@@ -892,7 +892,7 @@ Type QTButton Extends QButton
 			.Pushed = False
 	End Event
 	'Event OnClick'(btn As Integer, X As Integer, Y As Integer, Shift As Integer)
-	'	' Doit être hérité si ActAsToolBar est vrai
+	'	' Doit Ðºtre hÐ¹ritÐ¹ si ActAsToolBar est vrai
 	'	If .ActAsToolBar = True and .PrevFocus <> False and _
 	'		.PrevFocus <> .Handle and GetFocus_QTBtn() <> .PrevFocus Then
 	'		$TypeCheck Off
@@ -904,7 +904,7 @@ Type QTButton Extends QButton
 	Event OnMouseUp(btn As Integer, X As Integer, Y As Integer, Shift As Integer)
 		'If Btn = False Then _
 			.Pushed = False
-		' Remplacé .ReleaseHotTrack par ReleaseCapture puisque le SUB est vide
+		' RemplacÐ¹ .ReleaseHotTrack par ReleaseCapture puisque le SUB est vide
 		If Btn <> True Then _
 			ReleaseCapture_QTBtn '.ReleaseHotTrack
 		.DrawNormal
@@ -920,9 +920,9 @@ Type QTButton Extends QButton
 				Dim I As Integer
 				' identifie le button qui appelle tous les autres
 				AllQTBtnsRequester = .Handle
-				' identifie le Parent du groupe appellé, comme ça si deux groupes ont le même
-				' indentifiant mais pas le même parent, seul les btns du groupe ayant le parent 
-				' conrrespondant seront appelés.
+				' identifie le Parent du groupe appellÐ¹, comme Ð·a si deux groupes ont le mÐºme
+				' indentifiant mais pas le mÐºme parent, seul les btns du groupe ayant le parent 
+				' conrrespondant seront appelÐ¹s.
 				If AllQTBtnsRequesterParent = False Then _
 					AllQTBtnsRequesterParent = GetParent_QTBtn(This.Handle)
 				'ShowMessage STR$(AllQTBtnsRequesterParent)
@@ -939,11 +939,11 @@ Type QTButton Extends QButton
 							If currHwnd <> .Handle Then
 
 								$TypeCheck Off
-								' restaure le dernier état du btn à la normal
+								' restaure le dernier Ð¹tat du btn Ð° la normal
 								' restore the last button state to normal
 								'Call SendMessage_QTBtn(.Handle, WM_LBUTTONDOWN_QTBtn, False, ByVal 0&)
-								' et envoit les msgs enfoncé/terminé de la souris pour lancer
-								' l'événement clic du btn, et indique visiblement sont état enfoncé
+								' et envoit les msgs enfoncÐ¹/terminÐ¹ de la souris pour lancer
+								' l'Ð¹vÐ¹nement clic du btn, et indique visiblement sont Ð¹tat enfoncÐ¹
 								' and send mouse down and up messages to fire its click event, 
 								' and visibly indicate its pressed state.
 								'Call SendMessage_QTBtn(currHwnd, WM_LBUTTONDOWN_QTBtn, False, ByVal 0&)
@@ -992,7 +992,7 @@ Type QTButton Extends QButton
 			If .ActAsToolBar = True and GetFocus_QTBtn() <> .Handle Then _
 				.PrevFocus = GetFocus_QTBtn()
 
-			' Retiré 6fév
+			' RetirÐ¹ 6fÐ¹v
 			'WITH Dest: .Left = False: .Right = (This.BMPBtn.Width -True) \This.NumBMPs
 			'			.Top = False: .Bottom = This.BMPBtn.Height
 			'END WITH
@@ -1015,30 +1015,30 @@ Type QTButton Extends QButton
 				PosY = -True
 				.Pushed = False
 				.DrawNormal
-				' Inversé 6fév pour accepter les changements dans la police
-				' Remplacé .ReleaseHotTrack par ReleaseCapture puisque le SUB est vide
+				' InversÐ¹ 6fÐ¹v pour accepter les changements dans la police
+				' RemplacÐ¹ .ReleaseHotTrack par ReleaseCapture puisque le SUB est vide
 				ReleaseCapture_QTBtn '.ReleaseHotTrack
 			ElseIf GetCapture_QTBtn() = .Handle and RequestRelease = False Then
 				This.DrawHot(False)
 
 			ElseIf GetCapture_QTBtn() <> .Handle and (RequestRelease = False _
 				 and PosX <> X and PosY <> Y) Then
-				' Verifie si la requete de relâcher la capture d'un QTBtn est 0
+				' Verifie si la requete de relÐ²cher la capture d'un QTBtn est 0
 				' Check if the release capture request for QTBtn is 0
 				' 
-				' Ce qui va aussi empêcher le btn de reprendre son état initial
+				' Ce qui va aussi empÐºcher le btn de reprendre son Ð¹tat initial
 				' lors d'une action...
 				PosX = X
 				PosY = Y
 
 				'LockWindowUpdate_QTBtn(This.Handle)
-				' le pseudo-evénement MOUSEENTER
+				' le pseudo-evÐ¹nement MOUSEENTER
 				SetCapture_QTBtn .Handle
 				' on met le caption en gras
 				'.Font.Bold = True
 				'.Font.Color = clHilight
 				'.caption = "Dessus..."
-				' -- Retiré 6fév (test flickering)
+				' -- RetirÐ¹ 6fÐ¹v (test flickering)
 				'If .NumBMPs => maxNumBMPs_QTBtn and .Down = False Then
 				'	WITH Source: .Left = This.Dest.Right *(This.NumBMPs -True)
 				'				.Right = .Left +This.Dest.Right
@@ -1050,19 +1050,19 @@ Type QTButton Extends QButton
 
 				'LockWindowUpdate_QTBtn(False)
 				CALLFUNC(.OnMouseEnter, X, Y, Shift, This)
-				' -- Retiré 6fév (test flickering)
-				' Inversé 6fév pour accepter les changements dans la police
+				' -- RetirÐ¹ 6fÐ¹v (test flickering)
+				' InversÐ¹ 6fÐ¹v pour accepter les changements dans la police
 				'.DrawCaption
 				' //--
 				If .Pushed >= False Then _
 					This.DrawHot(True)
 
-			ElseIf RequestRelease = True Then	' Corrige l'état survolle du btn
+			ElseIf RequestRelease = True Then	' Corrige l'Ð¹tat survolle du btn
 												' Fix Hot state of btn
-				PosX = -True	' < - corrige le problème de survole
+				PosX = -True	' < - corrige le problÐ¸me de survole
 				PosY = -True
 				.Pushed = False
-				' Remplacé .ReleaseHotTrack par ReleaseCapture puisque le SUB est vide
+				' RemplacÐ¹ .ReleaseHotTrack par ReleaseCapture puisque le SUB est vide
 				ReleaseCapture_QTBtn '.ReleaseHotTrack
 				.DrawNormal
 				'BitBlt_QTBtn(This.hDC, False, False, This.Width, This.Height, This.BMPBtn.Handle, True, True, SrcCopy_QTBtn)
@@ -1071,7 +1071,7 @@ Type QTButton Extends QButton
 				If X >= False and Y >= False and _
 					X <= .Width and Y <= .Height Then _
 						This.DrawHot(False)
-				RequestRelease = False	' Restaure la requête à 0
+				RequestRelease = False	' Restaure la requÐºte Ð° 0
 						  				' Reset release request
 			End If
 			ReleaseDC_QTBtn (This.Handle, This.hDC)
@@ -1079,7 +1079,7 @@ Type QTButton Extends QButton
 		End If
 	End Event
    PUBLIC:
-	' -- 12 janv (déplacé)
+	' -- 12 janv (dÐ¹placÐ¹)
 	'Event OnKeyDown(Key AS Word, Shift AS INTEGER)
 	'	'.ReleaseHotTrack
 	'	If RequestRelease = False Then
@@ -1247,7 +1247,7 @@ Sub BMPStretch_Property
 	Dim Dest As QRect, Source As QRect
 	Dim Bitmap1 As QBitmap, _
 		XPBitmap1 As QBitmap
-	Dim XPBtnType As String ' Ajouté 19jan corrige un problème où les types sont différents
+	Dim XPBtnType As String ' AjoutÐ¹ 19jan corrige un problÐ¸me oÑ‰ les types sont diffÐ¹rents
 	Dim Width1 As Integer, Height1 As Integer
 	Dim Width2 As Integer, Height2 As Integer
 	Dim btnCount As Integer
@@ -1261,7 +1261,7 @@ Sub BMPStretch_Property
 	Width1 = ((Sender.Width +3) *btnCount) +True
 	Height1 = Sender.Height +3
 	'DoEvents
-	' Si l'image à déjà la même dimension elle ne sera pas redimensionnée
+	' Si l'image Ð° dÐ¹jÐ° la mÐºme dimension elle ne sera pas redimensionnÐ¹e
 	'If QTBtnOptimize <> True or (Width2 <> Width1 and Height2 <> Height1) Then
 	If QTBtnOptimize <> True or _
 		(XPThemeEnabled <> XPThemeWasEnabled) or _
@@ -1274,20 +1274,20 @@ Sub BMPStretch_Property
 		With Bitmap1
 			.Width = Width1		'== (mod)
 			.Height = Height1	'== (mod)
-			.FillRect(False, False, .Width, .Height, clBtnFace)'==(mod) (13janv remplacé clPurple par clBtnFace)
+			.FillRect(False, False, .Width, .Height, clBtnFace)'==(mod) (13janv remplacÐ¹ clPurple par clBtnFace)
 			'.PixelFormat = DefPixelFormat
 		End With
 		With XPBitmap1
 			.Width = Width1		'== (mod)
 			.Height = Height1	'== (mod)
-			.FillRect(False, False, .Width, .Height, clBtnFace)'==(mod) (13janv remplacé clPurple par clBtnFace)
+			.FillRect(False, False, .Width, .Height, clBtnFace)'==(mod) (13janv remplacÐ¹ clPurple par clBtnFace)
 			'.PixelFormat = DefPixelFormat
 		End With
 		Width1 = Sender.Width *btnCount
 		Height1 = Sender.Height
 
 		If XPThemeEnabled = False or isXP_QTBtn = False Then
-			' Thème non activé ou ce n'est pas Windows XP
+			' ThÐ¸me non activÐ¹ ou ce n'est pas Windows XP
 
 			Dim J As Integer, I As Integer
 			For J = False To btnCount -True
@@ -1361,12 +1361,12 @@ Sub BMPStretch_Property
 			Next J
 			Bitmap1.PixelFormat = DefPixelFormat
 		Else
-			' Thème activé (Windows XP)
+			' ThÐ¸me activÐ¹ (Windows XP)
 			' --
 			Dim hTheme As Long
 			'On Error Resume Next
 
-			' Ouverture du thème
+			' Ouverture du thÐ¸me
 			Dim rtButton As String
 			rtButton = ""
 			' Format unicode ?!?
@@ -1393,8 +1393,8 @@ Sub BMPStretch_Property
 				Dim tR As RECT_QTBtn
 
 				' m_hDC est le DC pour dessiner
-				' m_lPartId et m_lStateId sont la class + l'état à dessiner
-				' tR est un RECT spécifiant la zone dans laquelle dessiner
+				' m_lPartId et m_lStateId sont la class + l'Ð¹tat Ð° dessiner
+				' tR est un RECT spÐ¹cifiant la zone dans laquelle dessiner
 				m_hDC = XPBitmap1.Handle
 				m_lPartId = True 'BP_PUSHBUTTON
 				For I = False To 2 Step 2
@@ -1410,7 +1410,7 @@ Sub BMPStretch_Property
 											 m_lStateId, _
 											 tR, tR)
 				Next I
-				' Inverse Survolle et Désactivé
+				' Inverse Survolle et DÐ¹sactivÐ¹
 				For I = True To 3 Step 2
 					m_lStateId = I +True 'PBS_NORMAL
 					tR.Left = (((I +iif(I = True, 2, -2)) *(Sender.Width +3)) +True) +HideBevelSize
@@ -1426,7 +1426,7 @@ Sub BMPStretch_Property
 				Next I
 			End If
 
-			' Session de dessin terminée
+			' Session de dessin terminÐ¹e
 			CloseThemeData_QTBtn hTheme
 			CloseThemeData_QTBtn hTheme
 			'//--

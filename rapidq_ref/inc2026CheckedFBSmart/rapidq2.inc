@@ -30,7 +30,7 @@ $define  int integer
 defstr vbNullString=""
 $define #define $define
 
-' ‚‡Ë‡ÌÚ ÍÓÏÏÂÌÚ‡Ëˇ
+' –≤–∞—Ä–∏–∞–Ω—Ç –∫–æ–º–º–µ–Ω—Ç–∞—Ä–∏—è
 $define !!! rem
 $define !!!! '
 $define !! '
@@ -2505,7 +2505,7 @@ TYPE QFormEx EXTENDS QFORM
   
 
   '============================================
-  ' ProprietÈ Acceptation de dÈpose fichier
+  ' Propriet–π Acceptation de d–πpose fichier
   '============================================
   PROPERTY SET SetDragEnable(flag as boolean)
     DragAcceptFiles(QFormEx.Handle,flag)
@@ -2514,7 +2514,7 @@ TYPE QFormEx EXTENDS QFORM
 
 
   '=============================================
-  ' MÈthode AddTrayIcon
+  ' M–πthode AddTrayIcon
   '=============================================
   Sub AddTrayIcon
     .TrayIcon.hWnd=QFormEx.Handle
@@ -2534,7 +2534,7 @@ TYPE QFormEx EXTENDS QFORM
   End Sub
 
   '=============================================
-  ' MÈthode DelTrayIcon
+  ' M–πthode DelTrayIcon
   '=============================================
   Sub DelTrayIcon
     Shell_NotifyIcon(NIM_DELETE,QFormEx.TrayIcon)
@@ -2542,7 +2542,7 @@ TYPE QFormEx EXTENDS QFORM
   End Sub  
 
   '=============================================
-  ' MÈthode ModifyTrayIcon
+  ' M–πthode ModifyTrayIcon
   '=============================================
   Sub ModifyTrayIcon
     Shell_NotifyIcon(NIM_MODIFY,QFormEx.TrayIcon)
@@ -2887,14 +2887,14 @@ public:
   Public:
 
   '========================================================
-  ' ProprietÈ nombre max fenetre fille MDI
+  ' Propriet–π nombre max fenetre fille MDI
   '========================================================
   Property Set SetChildMax(number as integer)
     if number<=1024 then QFormMDI.ChildMax=number
   End Property
 
   '========================================================
-  ' ProprietÈ icon fenetre fille MDI
+  ' Propriet–π icon fenetre fille MDI
   '========================================================
   Property Set SetChildIcon(handle as long)
     if QFormMDI.ChildCount>0 then
@@ -2906,7 +2906,7 @@ public:
   End Property
 
   '========================================================
-  ' ProprietÈ caption fenetre fille MDI active
+  ' Propriet–π caption fenetre fille MDI active
   '========================================================
   Property Set SetChildCaption(caption as string)
     if QFormMDI.ChildCount>0 then
@@ -2916,21 +2916,21 @@ public:
   End Property  
 
   '========================================================
-  ' ProprietÈ handle fenetre fille MDI active
+  ' Propriet–π handle fenetre fille MDI active
   '========================================================
   Property Set SetChildHandle(handle as long)
     'lecture uniquement
   End Property  
 
   '========================================================
-  ' ProprietÈ index composant fenetre fille MDI active
+  ' Propriet–π index composant fenetre fille MDI active
   '========================================================
   Property Set SetComponentIndex(index as integer)
     'lecture uniquement
   End Property  
 
   '========================================================
-  ' ProprietÈ top fenetre fille MDI active
+  ' Propriet–π top fenetre fille MDI active
   '========================================================
   Property Set SetChildTop(top as short)
     if QFormMDI.ChildCount>0 then
@@ -2940,7 +2940,7 @@ public:
   End Property  
 
   '========================================================
-  ' ProprietÈ left fenetre fille MDI active
+  ' Propriet–π left fenetre fille MDI active
   '========================================================
   Property Set SetChildLeft(left as short)
     if QFormMDI.ChildCount>0 then
@@ -2950,7 +2950,7 @@ public:
   End Property  
 
   '========================================================
-  ' ProprietÈ width fenetre fille MDI active
+  ' Propriet–π width fenetre fille MDI active
   '========================================================
   Property Set SetChildWidth(width as short)
     if QFormMDI.ChildCount>0 then
@@ -2960,7 +2960,7 @@ public:
   End Property  
 
   '========================================================
-  ' ProprietÈ height fenetre fille MDI active
+  ' Propriet–π height fenetre fille MDI active
   '========================================================
   Property Set SetChildHeight(height as short)
     if QFormMDI.ChildCount>0 then
@@ -2970,21 +2970,21 @@ public:
   End Property  
 
   '========================================================
-  ' ProprietÈ handle menu fenetre fille MDI
+  ' Propriet–π handle menu fenetre fille MDI
   '========================================================
   Property Set SetMdiMenu(MenuHandle as long)
       if MenuHandle>0 then QFormMDI.MdiMenu=MenuHandle
   End Property  
 
   '========================================================
-  ' ProprietÈ nombre fenetre fille MDI
+  ' Propriet–π nombre fenetre fille MDI
   '========================================================
   Property Set SetChildCount(index as integer)
     'lecture uniquement
   End Property  
 
   '========================================================
-  ' ProprietÈ etat fenetre fille MDI active
+  ' Propriet–π etat fenetre fille MDI active
   '========================================================
   Property Set SetChildState(state as integer)
     if QFormMDI.ChildCount>0 then
@@ -3002,7 +3002,7 @@ public:
   End Property  
   
   '========================================================
-  ' MÈthode addition d'une fenetre fille MDI
+  ' M–πthode addition d'une fenetre fille MDI
   '========================================================
   Sub AddChild(handle as long,Title as string,index as integer,Left as short,Top as short,Width as short,Height as short,DefaultSize as boolean)
     dim lpEnumChild as long     'callback address (redirected)
@@ -3038,7 +3038,7 @@ public:
   End Sub
 
   '========================================================
-  ' MÈthode fermeture fenetre fille MDI active
+  ' M–πthode fermeture fenetre fille MDI active
   '========================================================
   Sub CloseChild
     if QFormMDI.ChildCount>0 then
@@ -3062,7 +3062,7 @@ public:
   End Sub
 
   '========================================================
-  ' MÈthode fermeture fenetres fille MDI
+  ' M–πthode fermeture fenetres fille MDI
   '========================================================
   Sub CloseAllChild 
     dim i as integer
@@ -3104,7 +3104,7 @@ public:
   End Sub
 
   '========================================================
-  ' MÈthode mise en cascade des fenetres fille MDI
+  ' M–πthode mise en cascade des fenetres fille MDI
   '========================================================
   Sub CascadeChild
     if QFormMDI.ChildCount>0 then
@@ -3113,7 +3113,7 @@ public:
   End Sub
 
   '========================================================
-  ' MÈthode mise en horizontale fenetres fille MDI
+  ' M–πthode mise en horizontale fenetres fille MDI
   '========================================================
   Sub SetHorzChild
     if QFormMDI.ChildCount>0 then
@@ -3122,7 +3122,7 @@ public:
   End Sub
 
   '========================================================
-  ' MÈthode mise en verticale fenetres fille MDI
+  ' M–πthode mise en verticale fenetres fille MDI
   '========================================================
   Sub SetVertChild
     if QFormMDI.ChildCount>0 then
@@ -3131,7 +3131,7 @@ public:
   End Sub
 
   '========================================================
-  ' MÈthode arrangement des fenetres fille MDI en icone
+  ' M–πthode arrangement des fenetres fille MDI en icone
   '========================================================
   Sub IconArrangeChild
     if QFormMDI.ChildCount>0 then
@@ -3140,7 +3140,7 @@ public:
   End Sub
 
   '========================================================
-  ' MÈthode reduit en icone les fenetres fille MDI
+  ' M–πthode reduit en icone les fenetres fille MDI
   '========================================================
   Sub MinimizeAllChild
     dim i as integer
@@ -3164,7 +3164,7 @@ public:
   End Sub
 
   '========================================================
-  ' MÈthode met en taille maxi les fenetres fille MDI
+  ' M–πthode met en taille maxi les fenetres fille MDI
   '========================================================
   Sub MaximizeAllChild
     dim i as integer
@@ -3188,7 +3188,7 @@ public:
   End Sub
 
   '========================================================
-  ' MÈthode restauration taille des fenetres fille MDI
+  ' M–πthode restauration taille des fenetres fille MDI
   '========================================================
   Sub RestoreChild
     dim i as integer
@@ -3212,7 +3212,7 @@ public:
   End Sub
 
   '========================================================
-  ' MÈthode active la fenetre fille MDI suivante
+  ' M–πthode active la fenetre fille MDI suivante
   '========================================================
   Sub ActiveNextChild
     if QFormMDI.ChildCount>0 then
@@ -3221,7 +3221,7 @@ public:
   End Sub
 
   '========================================================
-  ' MÈthode active la fenetre fille MDI prÈcedente
+  ' M–πthode active la fenetre fille MDI pr–πcedente
   '========================================================
   Sub ActivePreviousChild
     if QFormMDI.ChildCount>0 then
@@ -3230,7 +3230,7 @@ public:
   End Sub
 
   '========================================================
-  ' MÈthode retourne index titre fenetre fille MDI 
+  ' M–πthode retourne index titre fenetre fille MDI 
   '========================================================
   Function GetChild(title as string) as integer
     dim i as integer
@@ -3251,7 +3251,7 @@ public:
   End Function
 
   '========================================================
-  ' MÈthode retourne l'existence titre fenetre fille MDI 
+  ' M–πthode retourne l'existence titre fenetre fille MDI 
   '========================================================
   Function ChildExist(title as string) as boolean
     dim i as integer
@@ -3273,7 +3273,7 @@ public:
 
 
   '========================================================
-  ' MÈthode active la fenetre fille MDI par index
+  ' M–πthode active la fenetre fille MDI par index
   '========================================================
   Sub ActiveChild(index as integer)
     if QFormMDI.ChildCount>0 then
@@ -3282,7 +3282,7 @@ public:
   End Sub
 
   '========================================================
-  ' MÈthode retourne etat associÈ MDI d'un composant 
+  ' M–πthode retourne etat associ–π MDI d'un composant 
   '========================================================
   Function FreeChild(handle as long) as boolean
     if GetParent(handle)=QFormMDI.handle then
@@ -3293,7 +3293,7 @@ public:
   End Function
   
   '=============================================================================
-  ' mÈthode application dans barre outil bureau lors de la reduction fenetre
+  ' m–πthode application dans barre outil bureau lors de la reduction fenetre
   '=============================================================================
   Sub SetDeskBar
     SetWindowLong(QFormMDI.handle,MDI_HWNDPARENT,MDI_HWND_DESKTOP)
@@ -4376,14 +4376,14 @@ Type QBitmapEx EXTENDS QBITMAP
   
 
   '========================================
-  ' mÈthode dessin d'icones
+  ' m–πthode dessin d'icones
   '========================================
   Sub DrawIco(left as integer,top as integer,width as integer,height as integer,handle as long)
     DrawIconEx(QBitmapEx.handle,left,top,handle,width,height,0,0,DI_NORMAL)
   End Sub
 
   '================================================
-  ' mÈthode copie le contenu dans le presse papier
+  ' m–πthode copie le contenu dans le presse papier
   '================================================
   Sub CopyToClipboard
     dim hBitmap as integer
@@ -4399,7 +4399,7 @@ Type QBitmapEx EXTENDS QBITMAP
   End Sub
 
   '=============================================
-  ' mÈthode colle une image du le presse papier
+  ' m–πthode colle une image du le presse papier
   '=============================================
   Sub PasteFromClipboard(x as short,y as short)
     dim hDC as integer
@@ -4424,7 +4424,7 @@ Type QBitmapEx EXTENDS QBITMAP
 
 
   '===============================================
-  ' mÈthode info largeur image du presse papier
+  ' m–πthode info largeur image du presse papier
   '===============================================
   Function GetWidthClipboard as integer
     dim hBitmap as integer
@@ -4439,7 +4439,7 @@ Type QBitmapEx EXTENDS QBITMAP
   End Function
 
   '===============================================
-  ' mÈthode info hauteur image du presse papier
+  ' m–πthode info hauteur image du presse papier
   '===============================================
   Function GetHeightClipboard as integer
     dim hBitmap as integer
@@ -4454,7 +4454,7 @@ Type QBitmapEx EXTENDS QBITMAP
   End Function
 
   '===============================================
-  ' mÈthode info image presente dans presse papier
+  ' m–πthode info image presente dans presse papier
   '===============================================
   Function CanPaste() as long
     result=clipboard.hasformat(CF_BITMAP)
@@ -4484,7 +4484,7 @@ Type QBitmapEx EXTENDS QBITMAP
 
 
   '========================================
-  ' mÈthode trace un cercle vide
+  ' m–πthode trace un cercle vide
   '========================================
   Sub circle(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long)
     QBitmapEx.hbrush=GetStockObject(NULL_BRUSH)
@@ -4498,7 +4498,7 @@ Type QBitmapEx EXTENDS QBITMAP
   End Sub
 
   '========================================
-  ' mÈthode trace un cercle plein
+  ' m–πthode trace un cercle plein
   '========================================
   Sub circleFilled(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long,fill as long)
     QBitmapEx.hpen=CreatePen(QBitmapEx.PenStyle,QBitmapEx.PenSize,c)
@@ -4513,7 +4513,7 @@ Type QBitmapEx EXTENDS QBITMAP
   End Sub
 
   '========================================
-  ' mÈthode trace un rectangle vide
+  ' m–πthode trace un rectangle vide
   '========================================
   Sub rectangle(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long)
     QBitmapEx.hbrush=GetStockObject(NULL_BRUSH)
@@ -4527,7 +4527,7 @@ Type QBitmapEx EXTENDS QBITMAP
   End Sub
   
   '==================================================
-  ' mÈthode trace un rectangle vide au coins arrondi
+  ' m–πthode trace un rectangle vide au coins arrondi
   '==================================================
   Sub RoundRect(x1 as integer,y1 as integer,x2 as integer,y2 as integer,x3 as integer,y3 as integer,c as long)
     QBitmapEx.hbrush=GetStockObject(NULL_BRUSH)
@@ -4541,7 +4541,7 @@ Type QBitmapEx EXTENDS QBITMAP
   End Sub
 
   '==================================================
-  ' mÈthode trace un rectangle plein au coins arrondi
+  ' m–πthode trace un rectangle plein au coins arrondi
   '==================================================
   Sub RoundRectFilled(x1 as integer,y1 as integer,x2 as integer,y2 as integer,x3 as integer,y3 as integer,c as long,fill as long)
     QBitmapEx.hpen=CreatePen(QBitmapEx.PenStyle,QBitmapEx.PenSize,c)
@@ -4556,7 +4556,7 @@ Type QBitmapEx EXTENDS QBITMAP
   End Sub
     
   '==================================================
-  ' mÈthode trace un rectangle plein
+  ' m–πthode trace un rectangle plein
   '==================================================
   Sub rectangleFilled(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long,fill as long)
     QBitmapEx.hpen=CreatePen(QBitmapEx.PenStyle,QBitmapEx.PenSize,c)
@@ -4571,7 +4571,7 @@ Type QBitmapEx EXTENDS QBITMAP
   End Sub
   
   '==================================================
-  ' mÈthode trace une ligne
+  ' m–πthode trace une ligne
   '==================================================
   Sub line(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long)
     QBitmapEx.hpen=CreatePen(QBitmapEx.PenStyle,QBitmapEx.PenSize,c)
@@ -4583,7 +4583,7 @@ Type QBitmapEx EXTENDS QBITMAP
   End Sub
 
   '==================================================
-  ' mÈthode rempli une surface
+  ' m–πthode rempli une surface
   '==================================================
   Sub FillSurface(x as integer,y as integer,c as long)
     QBitmapEx.hbrush=CreateSolidBrush(c)
@@ -4594,21 +4594,21 @@ Type QBitmapEx EXTENDS QBITMAP
   End Sub
     
   '==================================================
-  ' mÈthode inverse les couleurs
+  ' m–πthode inverse les couleurs
   '==================================================
   Sub InvertColor(x as integer,y as integer,width as integer,height as integer)
     PatBlt(QBitmapEx.handle,x,y,Width,Height,DSTINVERT)
   End Sub
 
   '==================================================
-  ' mÈthode effectue un miroir en x
+  ' m–πthode effectue un miroir en x
   '==================================================
   Sub mirror(x as integer,y as integer,width as integer,height as integer)
     StretchBlt(QBitmapEx.handle,x+width,y,-Width,Height,QBitmapEx.handle,x,y,Width,Height,SRCCOPY)
   End Sub
 
   '==================================================
-  ' mÈthode effectue un miroir en y
+  ' m–πthode effectue un miroir en y
   '==================================================
   Sub flip(x as integer,y as integer,width as integer,height as integer)
     StretchBlt(QBitmapEx.handle,x,y+height,Width,-Height,QBitmapEx.handle,x,y,Width,Height,SRCCOPY)
@@ -4659,7 +4659,7 @@ Type QBitmapEx EXTENDS QBITMAP
 
 
   '==================================================
-  ' mÈthode sauve le bitmap au format Jpg
+  ' m–πthode sauve le bitmap au format Jpg
   '==================================================
   Sub SaveAsJpg(FileName as string,Quality as Integer)
     dim hBitmap as integer
@@ -4791,7 +4791,7 @@ TYPE QImageEx EXTENDS QIMAGE
 
   PUBLIC:  
   '===================================================
-  ' MÈthode copie image dans presse papier
+  ' M–πthode copie image dans presse papier
   '===================================================
   Sub CopyToClipboard(rect as QRECT)
     dim hDC as integer
@@ -4816,7 +4816,7 @@ TYPE QImageEx EXTENDS QIMAGE
   End Sub
   
   '===================================================
-  ' MÈthode colle image du presse papier
+  ' M–πthode colle image du presse papier
   '===================================================
   Sub PasteFromClipboard
     if clipboard.hasformat(CF_BITMAP) then
@@ -4827,7 +4827,7 @@ TYPE QImageEx EXTENDS QIMAGE
   End Sub
 
   '===================================================
-  ' MÈthode charge et affiche un fichier bitmap
+  ' M–πthode charge et affiche un fichier bitmap
   '===================================================
   Sub LoadFromFile(FileName as string,width as short,height as short,real as boolean)
     if real then
@@ -4839,14 +4839,14 @@ TYPE QImageEx EXTENDS QIMAGE
   End Sub
 
   '===================================================
-  ' MÈthode info image prÈsente dans presse papier
+  ' M–πthode info image pr–πsente dans presse papier
   '===================================================
   FUNCTION CanPaste as boolean
     result=clipboard.hasformat(CF_BITMAP)
   END FUNCTION
 
   '==================================================
-  ' mÈthode charge les formats dll
+  ' m–πthode charge les formats dll
   '==================================================
   Sub LoadOtherImage(FileName as string,Progress as boolean,Language as string)
      DIM i   AS INTEGER
@@ -4897,14 +4897,14 @@ TYPE QCanvasEx EXTENDS QCANVAS
     PenSize as integer
 
   '========================================
-  ' mÈthode dessin d'icones
+  ' m–πthode dessin d'icones
   '========================================
   Sub DrawIco(left as integer,top as integer,width as integer,height as integer,handle as long)
     DrawIconEx(QCanvasEx.handle,left,top,handle,width,height,0,0,DI_NORMAL)
   End Sub
  
   '================================================
-  ' mÈthode copie le contenu dans le presse papier
+  ' m–πthode copie le contenu dans le presse papier
   '================================================
   Sub CopyToClipboard(rect as QRECT)
     dim hDC as integer
@@ -4929,7 +4929,7 @@ TYPE QCanvasEx EXTENDS QCANVAS
   End Sub
   
   '=============================================
-  ' mÈthode colle une image du le presse papier
+  ' m–πthode colle une image du le presse papier
   '=============================================
   Sub PasteFromClipboard(x as short,y as short)
     dim hDC as integer
@@ -4950,7 +4950,7 @@ TYPE QCanvasEx EXTENDS QCANVAS
   End Sub
 
   '===============================================
-  ' mÈthode info largeur image du presse papier
+  ' m–πthode info largeur image du presse papier
   '===============================================
   Function GetWidthClipboard as integer
     dim hBitmap as integer
@@ -4965,7 +4965,7 @@ TYPE QCanvasEx EXTENDS QCANVAS
   End Function
 
   '===============================================
-  ' mÈthode info hauteur image du presse papier
+  ' m–πthode info hauteur image du presse papier
   '===============================================
   Function GetHeightClipboard as integer
     dim hBitmap as integer
@@ -4980,14 +4980,14 @@ TYPE QCanvasEx EXTENDS QCANVAS
   End Function
 
   '===============================================
-  ' mÈthode info image presente dans presse papier
+  ' m–πthode info image presente dans presse papier
   '===============================================
   Function CanPaste as boolean
     result=clipboard.hasformat(CF_BITMAP)
   End Function
 
   '========================================
-  ' mÈthode trace un cercle vide
+  ' m–πthode trace un cercle vide
   '========================================
   Sub circle(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long)
     QCanvasEx.hbrush=GetStockObject(NULL_BRUSH)
@@ -5002,7 +5002,7 @@ TYPE QCanvasEx EXTENDS QCANVAS
   End Sub
 
   '========================================
-  ' mÈthode trace un cercle plein
+  ' m–πthode trace un cercle plein
   '========================================
   Sub circleFilled(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long,fill as long)
     QCanvasEx.hpen=CreatePen(QCanvasEx.PenStyle,QCanvasEx.PenSize,c)
@@ -5018,7 +5018,7 @@ TYPE QCanvasEx EXTENDS QCANVAS
   End Sub
 
   '========================================
-  ' mÈthode trace un rectangle vide
+  ' m–πthode trace un rectangle vide
   '========================================
   Sub rectangle(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long)
     QCanvasEx.hbrush=GetStockObject(NULL_BRUSH)
@@ -5033,7 +5033,7 @@ TYPE QCanvasEx EXTENDS QCANVAS
   End Sub
   
   '==================================================
-  ' mÈthode trace un rectangle vide au coins arrondi
+  ' m–πthode trace un rectangle vide au coins arrondi
   '==================================================
   Sub RoundRect(x1 as integer,y1 as integer,x2 as integer,y2 as integer,x3 as integer,y3 as integer,c as long)
     QCanvasEx.hbrush=GetStockObject(NULL_BRUSH)
@@ -5048,7 +5048,7 @@ TYPE QCanvasEx EXTENDS QCANVAS
   End Sub
 
   '==================================================
-  ' mÈthode trace un rectangle plein au coins arrondi
+  ' m–πthode trace un rectangle plein au coins arrondi
   '==================================================
   Sub RoundRectFilled(x1 as integer,y1 as integer,x2 as integer,y2 as integer,x3 as integer,y3 as integer,c as long,fill as long)
     QCanvasEx.hpen=CreatePen(QCanvasEx.PenStyle,QCanvasEx.PenSize,c)
@@ -5064,7 +5064,7 @@ TYPE QCanvasEx EXTENDS QCANVAS
   End Sub
     
   '==================================================
-  ' mÈthode trace un rectangle plein
+  ' m–πthode trace un rectangle plein
   '==================================================
   Sub rectangleFilled(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long,fill as long)
     QCanvasEx.hpen=CreatePen(QCanvasEx.PenStyle,QCanvasEx.PenSize,c)
@@ -5080,7 +5080,7 @@ TYPE QCanvasEx EXTENDS QCANVAS
   End Sub
   
   '==================================================
-  ' mÈthode trace une ligne
+  ' m–πthode trace une ligne
   '==================================================
   Sub line(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long)
     QCanvasEx.hpen=CreatePen(QCanvasEx.PenStyle,QCanvasEx.PenSize,c)
@@ -5093,7 +5093,7 @@ TYPE QCanvasEx EXTENDS QCANVAS
   End Sub
 
   '==================================================
-  ' mÈthode rempli une surface
+  ' m–πthode rempli une surface
   '==================================================
   Sub FillSurface(x as integer,y as integer,c as long)
     QCanvasEx.hbrush=CreateSolidBrush(c)
@@ -5104,7 +5104,7 @@ TYPE QCanvasEx EXTENDS QCANVAS
   End Sub
   
   '==================================================
-  ' mÈthode affiche du texte, taken out of latest version???
+  ' m–πthode affiche du texte, taken out of latest version???
   '==================================================
   Sub TextOut(x as integer,y as integer,s as string,fc as long,bc as long)
     SetBkMode(QCanvasEx.handle,TRANSPARENT)
@@ -5113,21 +5113,21 @@ TYPE QCanvasEx EXTENDS QCANVAS
   End Sub
   
   '==================================================
-  ' mÈthode inverse les couleurs
+  ' m–πthode inverse les couleurs
   '==================================================
   Sub InvertColor(x as integer,y as integer,width as integer,height as integer)
     PatBlt(QCanvasEx.handle,x,y,Width,Height,DSTINVERT)
   End Sub
 
   '==================================================
-  ' mÈthode effectue un miroir en x
+  ' m–πthode effectue un miroir en x
   '==================================================
   Sub mirror(x as integer,y as integer,width as integer,height as integer)
     StretchBlt(QCanvasEx.handle,x+width,y,-Width,Height,QCanvasEx.handle,x,y,Width,Height,SRCCOPY)
   End Sub
 
   '==================================================
-  ' mÈthode effectue un miroir en y
+  ' m–πthode effectue un miroir en y
   '==================================================
   Sub flip(x as integer,y as integer,width as integer,height as integer)
     StretchBlt(QCanvasEx.handle,x,y+height,Width,-Height,QCanvasEx.handle,x,y,Width,Height,SRCCOPY)
@@ -5790,7 +5790,7 @@ WITH QmenuEx
 
 
     '==============================================
-    ' MÈthode ajoute un bitmap a l'item menu 
+    ' M–πthode ajoute un bitmap a l'item menu 
     '==============================================
     FUNCTION MenuModify(item as Qmenuitem, picture as QIMAGE, descripcion AS STRING) AS LONG
           dim capn as string
@@ -5817,7 +5817,7 @@ WITH QmenuEx
 
 
       '==============================================
-      ' MÈthode supprime un bitmap de l'item menu 
+      ' M–πthode supprime un bitmap de l'item menu 
       '==============================================
       Sub DelBitmap(item as Qmenuitem)
         dim s as string
@@ -6167,7 +6167,7 @@ END TYPE
 
 TYPE QDriveComboBox EXTENDS QComboBox
   '=========================================
-  ' mÈthode reception des lecteurs prÈsents
+  ' m–πthode reception des lecteurs pr–πsents
   '=========================================
   SUB GetDrives
    dim ASC_A as integer
@@ -6237,7 +6237,7 @@ Type QAbout EXTENDS QOBJECT
     WebFont as QFont
      
   '==================================
-  ' MÈthode affichage boite dialogue
+  ' M–πthode affichage boite dialogue
   '==================================
   Sub Show
     with QAbout
@@ -6700,7 +6700,7 @@ END TYPE
 ' |                               |
 ' |   QlistviewEx Component by    |
 ' |                               |
-' | DreadsoftÆ Corporation        |
+' | Dreadsoft¬Æ Corporation        |
 ' | (manco un diritto riservato)  |
 ' | http://dreadsoft.too.it       |
 ' | dreadsoft@yahoo.it            |
@@ -7167,7 +7167,7 @@ Type QPageSetup EXTENDS QOBJECT
   Private:
 
   '=============================================
-  ' ProcÈdure boite de dialogue, 5 parameters to handle new WndProc
+  ' Proc–πdure boite de dialogue, 5 parameters to handle new WndProc
   '============================================= 
   Function HookProc(hWnd AS LONG, uMsg AS LONG, wParam AS LONG, lParam AS LONG, tmp as long) AS LONG
     dim R as QRECT
@@ -7187,7 +7187,7 @@ Type QPageSetup EXTENDS QOBJECT
   Public:
   
   '=============================================
-  ' ProprietÈ orientation page en lecture seule 
+  ' Propriet–π orientation page en lecture seule 
   ' 1 = Portrait
   ' 2 = Landscape
   '============================================= 
@@ -7197,7 +7197,7 @@ Type QPageSetup EXTENDS QOBJECT
   END PROPERTY
 
   '=============================================
-  ' ProprietÈ PaperSize page en lecture seule 
+  ' Propriet–π PaperSize page en lecture seule 
   ' A3 = 8
   ' A4 = 9
   ' A5 = 11
@@ -7208,7 +7208,7 @@ Type QPageSetup EXTENDS QOBJECT
   END PROPERTY
   
   '=============================================
-  ' ProprietÈ DUPLEX page en lecture seule 
+  ' Propriet–π DUPLEX page en lecture seule 
   ' 1 = DUPLEX = OFF
   ' 2 = Vertical
   ' 3 = Horizontal
@@ -7218,14 +7218,14 @@ Type QPageSetup EXTENDS QOBJECT
   END PROPERTY
 
   '=============================================
-  ' ProprietÈ COPIES page en lecture seule 
+  ' Propriet–π COPIES page en lecture seule 
   '============================================= 
   PROPERTY SET SetCopies(value as Short)
     IF value > 0 THEN This.Copies = value
   END PROPERTY    
   
   '=============================================
-  ' ProprietÈ DefaultSource = Tray 
+  ' Propriet–π DefaultSource = Tray 
     ' It completly depends on the printer optins
   '============================================= 
   PROPERTY SET SetDefaultSource (value as Short)  
@@ -7233,7 +7233,7 @@ Type QPageSetup EXTENDS QOBJECT
   END PROPERTY    
 
   '=============================================
-  ' ProprietÈ PrintQuality 
+  ' Propriet–π PrintQuality 
     '   DMRES_DRAFT = (-1)
   ' DMRES_HIGH = (-4)
   ' DMRES_LOW = (-2)
@@ -7244,7 +7244,7 @@ Type QPageSetup EXTENDS QOBJECT
   END PROPERTY       
  
   '=============================================
-  ' ProprietÈ Collate
+  ' Propriet–π Collate
     ' 0 = False
     ' 1 = True
    '============================================= 
@@ -7253,7 +7253,7 @@ Type QPageSetup EXTENDS QOBJECT
   END PROPERTY  
   
   '=============================================
-  ' ProprietÈ PrintColour
+  ' Propriet–π PrintColour
     ' 1 = False
     ' 2= True
    '============================================= 
@@ -7262,48 +7262,48 @@ Type QPageSetup EXTENDS QOBJECT
   END PROPERTY  
 
   '===============================================
-  ' ProprietÈ valeur marge gauche 
+  ' Propriet–π valeur marge gauche 
   '=============================================== 
   PROPERTY SET SetMarginLeft(value as long)
     QPageSetup.PSD.rtMarginLeft=value*100
   END PROPERTY
     
   '===============================================
-  ' ProprietÈ valeur marge haute 
+  ' Propriet–π valeur marge haute 
   '=============================================== 
   PROPERTY SET SetMarginTop(value as long)
     QPageSetup.PSD.rtMarginTop=value*100
   END PROPERTY
 
   '===============================================
-  ' ProprietÈ valeur marge droite 
+  ' Propriet–π valeur marge droite 
   '=============================================== 
   PROPERTY SET SetMarginRight(value as long)
     QPageSetup.PSD.rtMarginRight=value*100
   END PROPERTY
    
   '===============================================
-  ' ProprietÈ valeur marge basse 
+  ' Propriet–π valeur marge basse 
   '=============================================== 
   PROPERTY SET SetMarginBottom(value as long)
     QPageSetup.PSD.rtMarginBottom=value*100
   END PROPERTY
 
   '===============================================
-  ' ProprietÈ largeur page en lecture seule 
+  ' Propriet–π largeur page en lecture seule 
   '=============================================== 
   PROPERTY SET SetPageWidth(value as boolean)
   END PROPERTY
             
   '===============================================
-  ' ProprietÈ hauteur page en lecture seule 
+  ' Propriet–π hauteur page en lecture seule 
   '=============================================== 
   PROPERTY SET SetPageHeight(value as boolean)
   END PROPERTY
 
     
   '===========================================
-  ' MÈthode affichage mise en page imprimante
+  ' M–πthode affichage mise en page imprimante
   '===========================================
   Function Execute as boolean
 

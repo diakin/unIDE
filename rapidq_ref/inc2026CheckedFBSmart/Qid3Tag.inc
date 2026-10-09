@@ -1,6 +1,6 @@
 'Qid3tag component. See help file for details
 '|~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
-'|Dreadsoft® Corporation      |
+'|DreadsoftÂ® Corporation      |
 '|(manco un diritto riservato)|
 '|http://dreadsoft.too.it     |
 '|dreadsoft@yahoo.it          |

@@ -2,7 +2,7 @@ const rEM_LINEINDEX = 187
 Declare Function SendMessageA Lib "user32" Alias "SendMessageA" (hwnd _
 As Long, wMsg As Long, wParam As Long, lParam As Long) As Long
 
-Declare Function LINEINDEX as long ' позиция первого символа в строке
+Declare Function LINEINDEX as long ' РїРѕР·РёС†РёСЏ РїРµСЂРІРѕРіРѕ СЃРёРјРІРѕР»Р° РІ СЃС‚СЂРѕРєРµ
 TYPE TestEDIT EXTENDS QRICHEDIT
     WITH TestEDIT
 		Function LINEINDEX as long

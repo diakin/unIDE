@@ -1,7 +1,7 @@
 
 '===== From Message #27265 Thu Sep 8, 2005 9:53 am ======
 'Michel Jose Facen
-'I'm designing a Internet Coin Mechanism program for Intenet Cafès ,
+'I'm designing a Internet Coin Mechanism program for Intenet CafÐ¸s ,
 'I'm using the wonderful RapidQ for programming it, I got a Visual
 'Basic copy a couple of years ago and still prefer to do it with rq !
 'I need to kill another process before exiting the program, I'm using

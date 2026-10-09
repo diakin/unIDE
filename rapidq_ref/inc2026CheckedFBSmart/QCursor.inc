@@ -27,14 +27,14 @@ Type QCursor Extends QObject
     Visible as  boolean Property Set SetShow
      
   '==============================
-  ' proprieté nombre de curseur
+  ' proprietÐ¹ nombre de curseur
   '==============================
   Property Set SetCount(count as integer)
     'Read only
   End Property
 
   '==============================
-  ' proprieté visibilité curseur
+  ' proprietÐ¹ visibilitÐ¹ curseur
   '==============================
   Property Set SetShow(visible as boolean)
     This.Visible=visible
@@ -42,7 +42,7 @@ Type QCursor Extends QObject
   End Property
 
   '==============================
-  ' méthode chargement curseur
+  ' mÐ¹thode chargement curseur
   '==============================
   Sub LoadFromResource(Res as long)    
     if Res<RESOURCECOUNT() and Res>-1 then
@@ -54,7 +54,7 @@ Type QCursor Extends QObject
   End Sub
 
   '==============================
-  ' méthode chargement curseur
+  ' mÐ¹thode chargement curseur
   '==============================
   Sub LoadFromFile(FileName as string)    
     if FileExists(FileName) then
@@ -64,7 +64,7 @@ Type QCursor Extends QObject
   End Sub
 
   '==============================
-  ' méthode déplacement curseur
+  ' mÐ¹thode dÐ¹placement curseur
   '==============================
   Sub Move(x as long,y as long)
     SetCursorPos(x,y)

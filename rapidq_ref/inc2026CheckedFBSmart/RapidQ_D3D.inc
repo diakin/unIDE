@@ -213,7 +213,7 @@ CONST D3DRMCOMBINE_AFTER = 2		'in matrix is multiplied with the frame's current 
 'DIM ANI AS QD3DANIMATION
 'QDXSCREEN.CREATEANIMATION(ANI)
 'ANI.PARENT = QDXscreen `-- no effect?
-'ANI.PARENT = QD3Dframe `—causes strange things and changes the
+'ANI.PARENT = QD3Dframe `â€”causes strange things and changes the
 'QD3Dframe settings!)
 '--------------------------------------------------------------------
 
@@ -224,7 +224,7 @@ CONST D3DRMCOMBINE_AFTER = 2		'in matrix is multiplied with the frame's current 
 'DIM AniSet AS QD3DANIMATIONSET
 'QDXSCREEN.CREATEANIMATIONSET(AniSet)
 'AniSet.PARENT = QDXscreen
-'AniSet.Parent = QD3Dframe`—causes strange things and changes the
+'AniSet.Parent = QD3Dframe`â€”causes strange things and changes the
 'QD3Dframe settings!)
 '
 '--------------------------------------------------------------------

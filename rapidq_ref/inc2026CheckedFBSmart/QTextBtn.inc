@@ -23,7 +23,7 @@ Type QTextBtn extends QLabel
   enabled as boolean property set SetEnabled
 
   '=========================================
-  ' Proprieté couleur bouton relaché
+  ' ProprietÐ¹ couleur bouton relachÐ¹
   '=========================================  
   Property Set SetUpColor(value as long)
     QTextBtn.UpColor=value
@@ -31,7 +31,7 @@ Type QTextBtn extends QLabel
   End Property
       
   '=========================================
-  ' Proprieté enfoncement bouton
+  ' ProprietÐ¹ enfoncement bouton
   '=========================================  
   Property Set SetDown(value as boolean)
     if super.Enabled then
@@ -45,7 +45,7 @@ Type QTextBtn extends QLabel
   End Property
   
   '=========================================
-  ' Proprieté mode de fonctionnement
+  ' ProprietÐ¹ mode de fonctionnement
   '=========================================  
   Property Set SetMode(value as short)
     QTextBtn.mode=value

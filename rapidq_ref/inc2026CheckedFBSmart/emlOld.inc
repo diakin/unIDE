@@ -152,7 +152,7 @@ dim MSGBody as qstringlist 'string
 dim MSG as qstringlist
 
 Source=replacesubstr$(Source,ht," ")
-Source=replacesubstr$(Source,crlf+" "," ") ' îñíîâíîé 
+Source=replacesubstr$(Source,crlf+" "," ") ' Ð¾ÑÐ½Ð¾Ð²Ð½Ð¾Ð¹ 
 Source=replacesubstr$(Source,";"+crlf,"; ")
 
 MSGBody.text=""
@@ -179,54 +179,54 @@ end function
 
 '*****************************************
 Function isKOI8( Red$ As String) As long
-' ïðîâåðÿåò êîäèðîâêó ñòðîêè íà koi8
+' Ð¿Ñ€Ð¾Ð²ÐµÑ€ÑÐµÑ‚ ÐºÐ¾Ð´Ð¸Ñ€Ð¾Ð²ÐºÑƒ ÑÑ‚Ñ€Ð¾ÐºÐ¸ Ð½Ð° koi8
 result=0
-if instr(Red$, "ÄÙ")>0 then result=1 '"koi8-r"
-if instr(Red$, "×Ù")>0 then result=1 '"koi8-r"
-if instr(Red$, "ÔØ")>0 then result=1 '"koi8-r"
-if instr(Red$, "ÄÙ")>0 then result=1 '"koi8-r"
+if instr(Red$, "Ð”Ð©")>0 then result=1 '"koi8-r"
+if instr(Red$, "Ð§Ð©")>0 then result=1 '"koi8-r"
+if instr(Red$, "Ð¤Ð¨")>0 then result=1 '"koi8-r"
+if instr(Red$, "Ð”Ð©")>0 then result=1 '"koi8-r"
 
-if instr(Red$, "ÂÉ")>0 then result=1 '"koi8-r"
-if instr(Red$, "ÄÉ")>0 then result=1
-if instr(Red$, "ÇÉ")>0 then result=1
-if instr(Red$, "ËÉ")>0 then result=1
-if instr(Red$, "ÌÉ")>0 then result=1
-if instr(Red$, "ÍÉ")>0 then result=1
-if instr(Red$, "ÐÉ")>0 then result=1
-if instr(Red$, "ÒÉ")>0 then result=1
-if instr(Red$, "ÔÉ")>0 then result=1
-if instr(Red$, "ÖÉ")>0 then result=1
+if instr(Red$, "Ð’Ð™")>0 then result=1 '"koi8-r"
+if instr(Red$, "Ð”Ð™")>0 then result=1
+if instr(Red$, "Ð—Ð™")>0 then result=1
+if instr(Red$, "Ð›Ð™")>0 then result=1
+if instr(Red$, "ÐœÐ™")>0 then result=1
+if instr(Red$, "ÐÐ™")>0 then result=1
+if instr(Red$, "Ð Ð™")>0 then result=1
+if instr(Red$, "Ð¢Ð™")>0 then result=1
+if instr(Red$, "Ð¤Ð™")>0 then result=1
+if instr(Red$, "Ð¦Ð™")>0 then result=1
 
-if instr(Red$, " É")>0 then result=1
-if instr(Red$, " é ")>0 then result=1
+if instr(Red$, " Ð™")>0 then result=1
+if instr(Red$, " Ð¹ ")>0 then result=1
 
-if instr(Red$, "ÚÉ")>0 then result=1
-if instr(Red$, "ÉÛ")>0 then result=1
+if instr(Red$, "ÐªÐ™")>0 then result=1
+if instr(Red$, "Ð™Ð«")>0 then result=1
 
-if instr(Red$, "ÉÚ")>0 then result=1
-if instr(Red$, "éÚ")>0 then result=1
+if instr(Red$, "Ð™Ðª")>0 then result=1
+if instr(Red$, "Ð¹Ðª")>0 then result=1
 
-if instr(Red$, "áé")>0 then result=1
-if instr(Red$, "äé")>0 then result=1
-if instr(Red$, "éé")>0 then result=1
+if instr(Red$, "Ð±Ð¹")>0 then result=1
+if instr(Red$, "Ð´Ð¹")>0 then result=1
+if instr(Red$, "Ð¹Ð¹")>0 then result=1
 
-if instr(Red$, "pÉ")>0 then result=1
+if instr(Red$, "pÐ™")>0 then result=1
 
-if instr(Red$, "Ké")>0 then result=1
+if instr(Red$, "KÐ¹")>0 then result=1
 
-if instr(Red$, "ØÛ")>0 then result=1
-if instr(Red$, "ÅÛ")>0 then result=1
+if instr(Red$, "Ð¨Ð«")>0 then result=1
+if instr(Red$, "Ð•Ð«")>0 then result=1
 
-if instr(Red$, "úÄ")>0 then result=1
+if instr(Red$, "ÑŠÐ”")>0 then result=1
 
-if instr(Red$, "ÚÁ")>0 then result=1
-if instr(Red$, "ÚÕ")>0 then result=1
+if instr(Red$, "ÐªÐ‘")>0 then result=1
+if instr(Red$, "ÐªÐ¥")>0 then result=1
 
-if instr(Red$, "úÁ")>0 then result=1
-if instr(Red$, "ÚÙ")>0 then result=1
-if instr(Red$, "ÚÏ")>0 then result=1
+if instr(Red$, "ÑŠÐ‘")>0 then result=1
+if instr(Red$, "ÐªÐ©")>0 then result=1
+if instr(Red$, "ÐªÐŸ")>0 then result=1
 
-if instr(Red$, "ÚÒ")>0 then result=1
+if instr(Red$, "ÐªÐ¢")>0 then result=1
 
 end function
 
@@ -334,25 +334,25 @@ headerTxtConv$=""
 result=""
 
 if instr(MSubject,"=?")>0 then
-	begcount=tally(MSubject,"=?") ' ÷èñëî äåêîäèðóåìûõ ÷àñòåé
+	begcount=tally(MSubject,"=?") ' Ñ‡Ð¸ÑÐ»Ð¾ Ð´ÐµÐºÐ¾Ð´Ð¸Ñ€ÑƒÐµÐ¼Ñ‹Ñ… Ñ‡Ð°ÑÑ‚ÐµÐ¹
 	begpos=instr(MSubject,"=?")
 	headerTxtConv$=mid$(MSubject,1,begpos-1)
 	
 	for j=1 to begcount ' "=?"
 		' get encoded-words
 		'headerTxtConv$=""
-		spos1=instr(begpos+1,MSubject,"?") ' 1 ïîçèöèÿ ? - íà÷àëî charset
-		spos2=instr(spos1+1,MSubject,"?") ' 2 ïîçèöèÿ ? - íà÷àëî ìåòîäà êîäèðîâàíèÿ encoding
-		spos3=instr(spos2+1,MSubject,"?") ' 3 ïîçèöèÿ ? - íà÷àëî encoded-text
-		spos4=instr(spos3+2,MSubject,"?=") ' 4 ïîçèöèÿ ? - êîíåö encoded-text
-		' íåêîäèðîâàííàÿ ÷àñòü
-		' íà÷àëî spos4+2
+		spos1=instr(begpos+1,MSubject,"?") ' 1 Ð¿Ð¾Ð·Ð¸Ñ†Ð¸Ñ ? - Ð½Ð°Ñ‡Ð°Ð»Ð¾ charset
+		spos2=instr(spos1+1,MSubject,"?") ' 2 Ð¿Ð¾Ð·Ð¸Ñ†Ð¸Ñ ? - Ð½Ð°Ñ‡Ð°Ð»Ð¾ Ð¼ÐµÑ‚Ð¾Ð´Ð° ÐºÐ¾Ð´Ð¸Ñ€Ð¾Ð²Ð°Ð½Ð¸Ñ encoding
+		spos3=instr(spos2+1,MSubject,"?") ' 3 Ð¿Ð¾Ð·Ð¸Ñ†Ð¸Ñ ? - Ð½Ð°Ñ‡Ð°Ð»Ð¾ encoded-text
+		spos4=instr(spos3+2,MSubject,"?=") ' 4 Ð¿Ð¾Ð·Ð¸Ñ†Ð¸Ñ ? - ÐºÐ¾Ð½ÐµÑ† encoded-text
+		' Ð½ÐµÐºÐ¾Ð´Ð¸Ñ€Ð¾Ð²Ð°Ð½Ð½Ð°Ñ Ñ‡Ð°ÑÑ‚ÑŒ
+		' Ð½Ð°Ñ‡Ð°Ð»Ð¾ spos4+2
 		begpos2=instr(spos4+1,MSubject,"=?") ' next =?
 		if begpos2=0 then begpos2=len(MSubject)+1
 		posttext$=mid$(MSubject,spos4+2,begpos2-(spos4+2))
 		
-		' êîíåö  begpos2-1
-		encodedword$=mid$(MSubject,begpos,spos4-begpos) ' äåêîäèðóåìàÿ ÷àñòü
+		' ÐºÐ¾Ð½ÐµÑ†  begpos2-1
+		encodedword$=mid$(MSubject,begpos,spos4-begpos) ' Ð´ÐµÐºÐ¾Ð´Ð¸Ñ€ÑƒÐµÐ¼Ð°Ñ Ñ‡Ð°ÑÑ‚ÑŒ
 		
 		' decode encoded-words
 		codepage$=lcase$(field$(encodedword$,"?",2)) ' windows-1251
@@ -387,7 +387,7 @@ else
 	decodedSubj$  =MSubject 'decodedSubj$ 
 end if
 
-' ïðèâîäèì êîäèðîâêó ê Windows
+' Ð¿Ñ€Ð¸Ð²Ð¾Ð´Ð¸Ð¼ ÐºÐ¾Ð´Ð¸Ñ€Ð¾Ð²ÐºÑƒ Ðº Windows
 'Function RQConvertCodePage(SourseString As String, inPage As long, outPage As long) As String
 '$define cp_Win  1251
 '$define cp_Dos  866
@@ -458,27 +458,27 @@ begpos=instr(Subject,"=?")
 textpos=1
 
 if begpos>0 then  Subject=Subject-" "
-begpos=instr(Subject,"=?") ' ïîâòîðíî ïîñëå óäàëåíèÿ ïîáåëîâ
+begpos=instr(Subject,"=?") ' Ð¿Ð¾Ð²Ñ‚Ð¾Ñ€Ð½Ð¾ Ð¿Ð¾ÑÐ»Ðµ ÑƒÐ´Ð°Ð»ÐµÐ½Ð¸Ñ Ð¿Ð¾Ð±ÐµÐ»Ð¾Ð²
 
 while begpos>0 and begpos<len(Subject)
 	
-	spos1=instr(begpos+1,Subject,"?") ' 1 ïîçèöèÿ ? - íà÷àëî charset
-	spos2=instr(spos1+1,Subject,"?") ' 2 ïîçèöèÿ ? - íà÷àëî ìåòîäà êîäèðîâàíèÿ encoding
-	spos3=instr(spos2+1,Subject,"?") ' 3 ïîçèöèÿ ? - íà÷àëî encoded-text
-	'spos4=instr(spos3+2,Subject,"?=") ' 4 ïîçèöèÿ ? - êîíåö encoded-text
-	spos4=instr(spos3+1,Subject,"?=") ' 4 ïîçèöèÿ ? - êîíåö encoded-text
+	spos1=instr(begpos+1,Subject,"?") ' 1 Ð¿Ð¾Ð·Ð¸Ñ†Ð¸Ñ ? - Ð½Ð°Ñ‡Ð°Ð»Ð¾ charset
+	spos2=instr(spos1+1,Subject,"?") ' 2 Ð¿Ð¾Ð·Ð¸Ñ†Ð¸Ñ ? - Ð½Ð°Ñ‡Ð°Ð»Ð¾ Ð¼ÐµÑ‚Ð¾Ð´Ð° ÐºÐ¾Ð´Ð¸Ñ€Ð¾Ð²Ð°Ð½Ð¸Ñ encoding
+	spos3=instr(spos2+1,Subject,"?") ' 3 Ð¿Ð¾Ð·Ð¸Ñ†Ð¸Ñ ? - Ð½Ð°Ñ‡Ð°Ð»Ð¾ encoded-text
+	'spos4=instr(spos3+2,Subject,"?=") ' 4 Ð¿Ð¾Ð·Ð¸Ñ†Ð¸Ñ ? - ÐºÐ¾Ð½ÐµÑ† encoded-text
+	spos4=instr(spos3+1,Subject,"?=") ' 4 Ð¿Ð¾Ð·Ð¸Ñ†Ð¸Ñ ? - ÐºÐ¾Ð½ÐµÑ† encoded-text
 	
 	pretext$=mid$(Subject,textpos,begpos-textpos)
 	codepage$=lcase$(mid$(Subject,spos1+1,spos2-spos1-1))
 	codeMode$=lcase$(mid$(Subject,spos2+1,1))
 	
-	begpos=instr(spos4,Subject,"=?") ' ñëåäóþùåå encodedword$
+	begpos=instr(spos4,Subject,"=?") ' ÑÐ»ÐµÐ´ÑƒÑŽÑ‰ÐµÐµ encodedword$
 	
 	if begpos=0 then begpos=len(Subject) ' !!! 
 	
 	textpos=spos4+2 'instr(spos4,Subject,"=?")
 	
-	encodedword$=mid$(Subject,spos3+1,spos4-spos3-1) ' äåêîäèðóåìàÿ ÷àñòü
+	encodedword$=mid$(Subject,spos3+1,spos4-spos3-1) ' Ð´ÐµÐºÐ¾Ð´Ð¸Ñ€ÑƒÐµÐ¼Ð°Ñ Ñ‡Ð°ÑÑ‚ÑŒ
 	
 	encodedword$=replacesubstr$(encodedword$,"_","=20") ' replace white spaces
 	headerTxtConv$=""
@@ -569,26 +569,26 @@ begpos=instr(Subject,"=?")
 textpos=1
 
 if begpos>0 then  Subject=Subject-" "
-begpos=instr(Subject,"=?") ' ïîâòîðíî ïîñëå óäàëåíèÿ ïîáåëîâ
+begpos=instr(Subject,"=?") ' Ð¿Ð¾Ð²Ñ‚Ð¾Ñ€Ð½Ð¾ Ð¿Ð¾ÑÐ»Ðµ ÑƒÐ´Ð°Ð»ÐµÐ½Ð¸Ñ Ð¿Ð¾Ð±ÐµÐ»Ð¾Ð²
 
 while begpos>0 and begpos<len(Subject)
 	
-	spos1=instr(begpos+1,Subject,"?") ' 1 ïîçèöèÿ ? - íà÷àëî charset
-	spos2=instr(spos1+1,Subject,"?") ' 2 ïîçèöèÿ ? - íà÷àëî ìåòîäà êîäèðîâàíèÿ encoding
-	spos3=instr(spos2+1,Subject,"?") ' 3 ïîçèöèÿ ? - íà÷àëî encoded-text
-	spos4=instr(spos3+2,Subject,"?=") ' 4 ïîçèöèÿ ? - êîíåö encoded-text
+	spos1=instr(begpos+1,Subject,"?") ' 1 Ð¿Ð¾Ð·Ð¸Ñ†Ð¸Ñ ? - Ð½Ð°Ñ‡Ð°Ð»Ð¾ charset
+	spos2=instr(spos1+1,Subject,"?") ' 2 Ð¿Ð¾Ð·Ð¸Ñ†Ð¸Ñ ? - Ð½Ð°Ñ‡Ð°Ð»Ð¾ Ð¼ÐµÑ‚Ð¾Ð´Ð° ÐºÐ¾Ð´Ð¸Ñ€Ð¾Ð²Ð°Ð½Ð¸Ñ encoding
+	spos3=instr(spos2+1,Subject,"?") ' 3 Ð¿Ð¾Ð·Ð¸Ñ†Ð¸Ñ ? - Ð½Ð°Ñ‡Ð°Ð»Ð¾ encoded-text
+	spos4=instr(spos3+2,Subject,"?=") ' 4 Ð¿Ð¾Ð·Ð¸Ñ†Ð¸Ñ ? - ÐºÐ¾Ð½ÐµÑ† encoded-text
 	
 	pretext$=mid$(Subject,textpos,begpos-textpos)
 	codepage$=lcase$(mid$(Subject,spos1+1,spos2-spos1-1))
 	codeMode$=lcase$(mid$(Subject,spos2+1,1))
 	
-	begpos=instr(spos4,Subject,"=?") ' ñëåäóþùåå encodedword$
+	begpos=instr(spos4,Subject,"=?") ' ÑÐ»ÐµÐ´ÑƒÑŽÑ‰ÐµÐµ encodedword$
 	
 	'if begpos=0 then begpos=len(Subject) ' !!! 
 	
 	textpos=spos4+2 'instr(spos4,Subject,"=?")
 	
-	encodedword$=mid$(Subject,spos3+1,spos4-spos3-1) ' äåêîäèðóåìàÿ ÷àñòü
+	encodedword$=mid$(Subject,spos3+1,spos4-spos3-1) ' Ð´ÐµÐºÐ¾Ð´Ð¸Ñ€ÑƒÐµÐ¼Ð°Ñ Ñ‡Ð°ÑÑ‚ÑŒ
 	
 	encodedword$=replacesubstr$(encodedword$,"_","=20") ' replace white spaces
 	headerTxtConv$=""
@@ -665,7 +665,7 @@ encodedword$=""
 pretext$=""
 decodedSubj$=""
 
-' åñëè çàãîëîâîê êîäèðîâàííûé - òî óäàëÿåì ïðîáåëû
+' ÐµÑÐ»Ð¸ Ð·Ð°Ð³Ð¾Ð»Ð¾Ð²Ð¾Ðº ÐºÐ¾Ð´Ð¸Ñ€Ð¾Ð²Ð°Ð½Ð½Ñ‹Ð¹ - Ñ‚Ð¾ ÑƒÐ´Ð°Ð»ÑÐµÐ¼ Ð¿Ñ€Ð¾Ð±ÐµÐ»Ñ‹
 if instr(Subject,"=?")>0 then 
 	Subject=replacesubstr$(Subject,ht," ")
 	Subject=replacesubstr$(Subject,crlf+" "," ")
@@ -687,23 +687,23 @@ lensubj=len(Subject)
 
 while begpos>0 and begpos <lensubj
 	
-	spos1=instr(begpos+1,Subject,"?") ' 1 ïîçèöèÿ ? - íà÷àëî charset
-	spos2=instr(spos1+1,Subject,"?") ' 2 ïîçèöèÿ ? - íà÷àëî ìåòîäà êîäèðîâàíèÿ encoding
-	spos3=instr(spos2+1,Subject,"?") ' 3 ïîçèöèÿ ? - íà÷àëî encoded-text
-	'spos4=instr(spos3+2,Subject,"?=") ' 4 ïîçèöèÿ ? - êîíåö encoded-text
-	spos4=instr(spos3+1,Subject,"?=") ' 4 ïîçèöèÿ ? - êîíåö encoded-text
+	spos1=instr(begpos+1,Subject,"?") ' 1 Ð¿Ð¾Ð·Ð¸Ñ†Ð¸Ñ ? - Ð½Ð°Ñ‡Ð°Ð»Ð¾ charset
+	spos2=instr(spos1+1,Subject,"?") ' 2 Ð¿Ð¾Ð·Ð¸Ñ†Ð¸Ñ ? - Ð½Ð°Ñ‡Ð°Ð»Ð¾ Ð¼ÐµÑ‚Ð¾Ð´Ð° ÐºÐ¾Ð´Ð¸Ñ€Ð¾Ð²Ð°Ð½Ð¸Ñ encoding
+	spos3=instr(spos2+1,Subject,"?") ' 3 Ð¿Ð¾Ð·Ð¸Ñ†Ð¸Ñ ? - Ð½Ð°Ñ‡Ð°Ð»Ð¾ encoded-text
+	'spos4=instr(spos3+2,Subject,"?=") ' 4 Ð¿Ð¾Ð·Ð¸Ñ†Ð¸Ñ ? - ÐºÐ¾Ð½ÐµÑ† encoded-text
+	spos4=instr(spos3+1,Subject,"?=") ' 4 Ð¿Ð¾Ð·Ð¸Ñ†Ð¸Ñ ? - ÐºÐ¾Ð½ÐµÑ† encoded-text
 	
 	pretext$=mid$(Subject,textpos,begpos-textpos)
 	codepage$=lcase$(mid$(Subject,spos1+1,spos2-spos1-1))
 	codeMode$=lcase$(mid$(Subject,spos2+1,1))
 	
-	begpos=instr(spos4,Subject,"=?") ' ñëåäóþùåå encodedword$
+	begpos=instr(spos4,Subject,"=?") ' ÑÐ»ÐµÐ´ÑƒÑŽÑ‰ÐµÐµ encodedword$
 	
 	if begpos=0 then begpos=len(Subject)
 	
 	textpos=spos4+2 'instr(spos4,Subject,"=?")
 	
-	encodedword$=mid$(Subject,spos3+1,spos4-spos3-1) ' äåêîäèðóåìàÿ ÷àñòü
+	encodedword$=mid$(Subject,spos3+1,spos4-spos3-1) ' Ð´ÐµÐºÐ¾Ð´Ð¸Ñ€ÑƒÐµÐ¼Ð°Ñ Ñ‡Ð°ÑÑ‚ÑŒ
 	
 	encodedword$=replacesubstr$(encodedword$,"_","=20") ' replace white spaces
 	headerTxtConv$=""

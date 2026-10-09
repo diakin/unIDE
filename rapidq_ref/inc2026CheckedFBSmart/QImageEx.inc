@@ -32,7 +32,7 @@ Type QImageEx EXTENDS QIMAGE
 
   PUBLIC:  
   '===================================================
-  ' Méthode copie image dans presse papier
+  ' MÐ¹thode copie image dans presse papier
   '===================================================
   Sub CopyToClipboard(rect as QRECT)
     dim hDC as integer
@@ -57,7 +57,7 @@ Type QImageEx EXTENDS QIMAGE
   End Sub
   
   '===================================================
-  ' Méthode colle image du presse papier
+  ' MÐ¹thode colle image du presse papier
   '===================================================
   Sub PasteFromClipboard
     if clipboard.hasformat(CF_BITMAP_IMG) then
@@ -68,7 +68,7 @@ Type QImageEx EXTENDS QIMAGE
   End Sub
 
   '===================================================
-  ' Méthode charge et affiche un fichier bitmap
+  ' MÐ¹thode charge et affiche un fichier bitmap
   '===================================================
   Sub LoadFromFile(FileName as string,width as short,height as short,real as boolean)
     if real then
@@ -80,7 +80,7 @@ Type QImageEx EXTENDS QIMAGE
   End Sub
 
   '===================================================
-  ' Méthode info image présente dans presse papier
+  ' MÐ¹thode info image prÐ¹sente dans presse papier
   '===================================================
   Function CanPaste as boolean
     result=clipboard.hasformat(CF_BITMAP_IMG)

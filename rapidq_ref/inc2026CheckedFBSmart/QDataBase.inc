@@ -67,7 +67,7 @@ Type QDataBase extends QObject
   End Property
 
   '=====================================================
-  ' méthode retourne la taille en byte d'un record
+  ' mÐ¹thode retourne la taille en byte d'un record
   '=====================================================
   Function GetRecordSize(Record as string) as long
     defstr buffer=space$(1)
@@ -83,7 +83,7 @@ Type QDataBase extends QObject
   End Function
 
   '=====================================================
-  ' méthode retourne le nombre de champs
+  ' mÐ¹thode retourne le nombre de champs
   '=====================================================
   Function GetFieldCount(Record as string) as long
     if tally(Record,",")<>0 then result=tally(Record,",")+1
@@ -92,7 +92,7 @@ Type QDataBase extends QObject
   Public:
 
   '=====================================================
-  ' méthode retourne le nom d'un champ par son index
+  ' mÐ¹thode retourne le nom d'un champ par son index
   '=====================================================
   Function GetFieldName(index as long) as string
     dim buffer as string
@@ -104,7 +104,7 @@ Type QDataBase extends QObject
   End Function
   
   '=====================================================
-  ' méthode retourne l'index champ par son nom
+  ' mÐ¹thode retourne l'index champ par son nom
   '=====================================================
   Function GetFieldIndex(name as string) as long
     defstr buffer=space$(1)
@@ -118,7 +118,7 @@ Type QDataBase extends QObject
   End Function
  
   '=====================================================
-  ' méthode retourne la taille d'un champ par son index
+  ' mÐ¹thode retourne la taille d'un champ par son index
   '=====================================================      
   Function GetFieldSize(index as long) as long
     dim buffer as string
@@ -130,7 +130,7 @@ Type QDataBase extends QObject
   End Function
   
   '=====================================================
-  ' méthode retourne état ouvert de la base
+  ' mÐ¹thode retourne Ð¹tat ouvert de la base
   '=====================================================      
   Function IsOpen() as boolean
     if this.FileName<>"" then
@@ -145,7 +145,7 @@ Type QDataBase extends QObject
   End Function
 
   '=====================================================
-  ' méthode création base
+  ' mÐ¹thode crÐ¹ation base
   '=====================================================      
   Function Create(FileName as string,RecordFormat as string) as boolean
     if Len(RecordFormat)=0 then
@@ -176,7 +176,7 @@ Type QDataBase extends QObject
   End Function
   
   '=====================================================
-  ' méthode ouverture base
+  ' mÐ¹thode ouverture base
   '=====================================================      
   Function Open(FileName as string) as boolean
     if FileExists(FileName) then
@@ -202,7 +202,7 @@ Type QDataBase extends QObject
   End Function
   
   '=====================================================
-  ' méthode fermeture base
+  ' mÐ¹thode fermeture base
   '=====================================================
   Sub Close
     this.error=0
@@ -216,7 +216,7 @@ Type QDataBase extends QObject
   End Sub
 
   '=====================================================
-  ' méthode ajout record
+  ' mÐ¹thode ajout record
   '=====================================================
   Function AddRecord(record as string) as boolean    
     if this.IsOpen=false or Len(record)=0 or Len(record)<>this.RecordSize then
@@ -243,7 +243,7 @@ Type QDataBase extends QObject
   End Function
   
   '=====================================================
-  ' méthode ajout record udt
+  ' mÐ¹thode ajout record udt
   '=====================================================
   Function AddRecordUdt(record as long) as boolean
     dim buffer as string
@@ -278,7 +278,7 @@ Type QDataBase extends QObject
   End Function
 
   '=====================================================
-  ' méthode modifie record
+  ' mÐ¹thode modifie record
   '=====================================================
   Function SaveRecord(index as long,record as string) as boolean
     dim pointer as long
@@ -309,7 +309,7 @@ Type QDataBase extends QObject
   End Function
 
   '=====================================================
-  ' méthode modifie record udt
+  ' mÐ¹thode modifie record udt
   '=====================================================
   Function SaveRecordUdt(index as long,record as long) as boolean
     dim pointer as long
@@ -347,7 +347,7 @@ Type QDataBase extends QObject
   End Function
     
   '=====================================================
-  ' méthode lit record
+  ' mÐ¹thode lit record
   '=====================================================
   Function GetRecord(index as long,byref record as string) as boolean
     dim pointer as long
@@ -378,7 +378,7 @@ Type QDataBase extends QObject
   End Sub
 
   '=====================================================
-  ' méthode lit record udt
+  ' mÐ¹thode lit record udt
   '=====================================================
   Function GetRecordUdt(index as long,record as long) as boolean
     dim pointer as long
@@ -417,7 +417,7 @@ Type QDataBase extends QObject
   End Sub
 
   '=====================================================
-  ' méthode supprime record par son index
+  ' mÐ¹thode supprime record par son index
   '=====================================================
   Function DelRecord(index as long) as boolean
     dim i as integer    
@@ -467,7 +467,7 @@ Type QDataBase extends QObject
   End Function
 
   '=====================================================
-  ' méthode recherche chaine dans record
+  ' mÐ¹thode recherche chaine dans record
   '=====================================================
   Function SearchByRecord(name as string) as boolean
     dim i as integer    
@@ -510,7 +510,7 @@ Type QDataBase extends QObject
   End Function
 
   '=====================================================
-  ' méthode recherche chaine dans champs
+  ' mÐ¹thode recherche chaine dans champs
   '=====================================================
   Function SearchByField(name as string,fieldIndex as long) as boolean
     dim i as integer    
@@ -563,7 +563,7 @@ Type QDataBase extends QObject
   End Function
 
   '=====================================================
-  ' méthode recherche par opérateur dans champs
+  ' mÐ¹thode recherche par opÐ¹rateur dans champs
   '=====================================================
   Function SearchByRequest(operator as string,value as string,bNum as boolean,fieldIndex as long) as boolean
     dim i as integer    

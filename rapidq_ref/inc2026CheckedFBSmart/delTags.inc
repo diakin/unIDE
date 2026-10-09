@@ -1,29 +1,29 @@
 '-- ************************************************************************'
-' HTML -> текст (кодировка Windows-1251)
+' HTML -> С‚РµРєСЃС‚ (РєРѕРґРёСЂРѕРІРєР° Windows-1251)
 '
 ' delTags(HTMLtext):
-'  - теги убираются, имена тегов - в любом регистре (<BR>, <br/>, <br />);
-'  - комментарии <!-- ... -->, <!DOCTYPE>, <?xml ?> убираются;
-'  - <script> и <style> убираются вместе с содержимым;
-'  - пробелы, табуляции и переносы строк самого HTML сжимаются в один
-'    пробел, как в браузере; внутри <pre> остаются как есть;
-'  - переносы строк - по тегам:
-'      <br> - всегда новый перенос (несколько <br> подряд - пустые строки);
-'      tr, li, div, dt, dd, title, caption, option... - с новой строки;
-'      p, h1..h6, table, ul, ol, pre, blockquote, hr... - отдельным
-'      абзацем (пустая строка до и после);
-'  - ячейки таблицы (td, th) в строке разделяются табуляцией;
-'  - сущности: &nbsp; &amp; &lt; &gt; &quot; &laquo; &mdash; ... и
-'    числовые &#1040; &#x410; - символами Windows-1251; символа нет в
-'    кодировке - "?";
-'  - подряд не больше одной пустой строки, пробелы в концах строк и
-'    переносы в начале и конце текста убираются.
+'  - С‚РµРіРё СѓР±РёСЂР°СЋС‚СЃСЏ, РёРјРµРЅР° С‚РµРіРѕРІ - РІ Р»СЋР±РѕРј СЂРµРіРёСЃС‚СЂРµ (<BR>, <br/>, <br />);
+'  - РєРѕРјРјРµРЅС‚Р°СЂРёРё <!-- ... -->, <!DOCTYPE>, <?xml ?> СѓР±РёСЂР°СЋС‚СЃСЏ;
+'  - <script> Рё <style> СѓР±РёСЂР°СЋС‚СЃСЏ РІРјРµСЃС‚Рµ СЃ СЃРѕРґРµСЂР¶РёРјС‹Рј;
+'  - РїСЂРѕР±РµР»С‹, С‚Р°Р±СѓР»СЏС†РёРё Рё РїРµСЂРµРЅРѕСЃС‹ СЃС‚СЂРѕРє СЃР°РјРѕРіРѕ HTML СЃР¶РёРјР°СЋС‚СЃСЏ РІ РѕРґРёРЅ
+'    РїСЂРѕР±РµР», РєР°Рє РІ Р±СЂР°СѓР·РµСЂРµ; РІРЅСѓС‚СЂРё <pre> РѕСЃС‚Р°СЋС‚СЃСЏ РєР°Рє РµСЃС‚СЊ;
+'  - РїРµСЂРµРЅРѕСЃС‹ СЃС‚СЂРѕРє - РїРѕ С‚РµРіР°Рј:
+'      <br> - РІСЃРµРіРґР° РЅРѕРІС‹Р№ РїРµСЂРµРЅРѕСЃ (РЅРµСЃРєРѕР»СЊРєРѕ <br> РїРѕРґСЂСЏРґ - РїСѓСЃС‚С‹Рµ СЃС‚СЂРѕРєРё);
+'      tr, li, div, dt, dd, title, caption, option... - СЃ РЅРѕРІРѕР№ СЃС‚СЂРѕРєРё;
+'      p, h1..h6, table, ul, ol, pre, blockquote, hr... - РѕС‚РґРµР»СЊРЅС‹Рј
+'      Р°Р±Р·Р°С†РµРј (РїСѓСЃС‚Р°СЏ СЃС‚СЂРѕРєР° РґРѕ Рё РїРѕСЃР»Рµ);
+'  - СЏС‡РµР№РєРё С‚Р°Р±Р»РёС†С‹ (td, th) РІ СЃС‚СЂРѕРєРµ СЂР°Р·РґРµР»СЏСЋС‚СЃСЏ С‚Р°Р±СѓР»СЏС†РёРµР№;
+'  - СЃСѓС‰РЅРѕСЃС‚Рё: &nbsp; &amp; &lt; &gt; &quot; &laquo; &mdash; ... Рё
+'    С‡РёСЃР»РѕРІС‹Рµ &#1040; &#x410; - СЃРёРјРІРѕР»Р°РјРё Windows-1251; СЃРёРјРІРѕР»Р° РЅРµС‚ РІ
+'    РєРѕРґРёСЂРѕРІРєРµ - "?";
+'  - РїРѕРґСЂСЏРґ РЅРµ Р±РѕР»СЊС€Рµ РѕРґРЅРѕР№ РїСѓСЃС‚РѕР№ СЃС‚СЂРѕРєРё, РїСЂРѕР±РµР»С‹ РІ РєРѕРЅС†Р°С… СЃС‚СЂРѕРє Рё
+'    РїРµСЂРµРЅРѕСЃС‹ РІ РЅР°С‡Р°Р»Рµ Рё РєРѕРЅС†Рµ С‚РµРєСЃС‚Р° СѓР±РёСЂР°СЋС‚СЃСЏ.
 '
-' Страница в UTF-8 (<meta charset="utf-8">) сначала переводится в
-' Windows-1251, иначе русские буквы самого текста будут неверными.
+' РЎС‚СЂР°РЅРёС†Р° РІ UTF-8 (<meta charset="utf-8">) СЃРЅР°С‡Р°Р»Р° РїРµСЂРµРІРѕРґРёС‚СЃСЏ РІ
+' Windows-1251, РёРЅР°С‡Рµ СЂСѓСЃСЃРєРёРµ Р±СѓРєРІС‹ СЃР°РјРѕРіРѕ С‚РµРєСЃС‚Р° Р±СѓРґСѓС‚ РЅРµРІРµСЂРЅС‹РјРё.
 '-- ************************************************************************'
 
-' Число из таблицы "|имя=число|имя=число|" по имени; нет имени - -1
+' Р§РёСЃР»Рѕ РёР· С‚Р°Р±Р»РёС†С‹ "|РёРјСЏ=С‡РёСЃР»Рѕ|РёРјСЏ=С‡РёСЃР»Рѕ|" РїРѕ РёРјРµРЅРё; РЅРµС‚ РёРјРµРЅРё - -1
 FUNCTION HtmTableValue(TableText AS STRING, KeyText AS STRING) AS LONG
   DIM KeyPos AS LONG, ValueStart AS LONG, ValueEnd AS LONG, FoundValue AS LONG
   FoundValue = -1
@@ -36,7 +36,7 @@ FUNCTION HtmTableValue(TableText AS STRING, KeyText AS STRING) AS LONG
   HtmTableValue = FoundValue
 END FUNCTION
 
-' Десятичное число из цифр; пусто или не цифра - -1
+' Р”РµСЃСЏС‚РёС‡РЅРѕРµ С‡РёСЃР»Рѕ РёР· С†РёС„СЂ; РїСѓСЃС‚Рѕ РёР»Рё РЅРµ С†РёС„СЂР° - -1
 FUNCTION HtmDecValue(DigitText AS STRING) AS LONG
   DIM CharIdx AS LONG, DigitNum AS LONG, NumValue AS LONG
   NumValue = -1
@@ -54,7 +54,7 @@ FUNCTION HtmDecValue(DigitText AS STRING) AS LONG
   HtmDecValue = NumValue
 END FUNCTION
 
-' Шестнадцатеричное число; пусто или не цифра - -1
+' РЁРµСЃС‚РЅР°РґС†Р°С‚РµСЂРёС‡РЅРѕРµ С‡РёСЃР»Рѕ; РїСѓСЃС‚Рѕ РёР»Рё РЅРµ С†РёС„СЂР° - -1
 FUNCTION HtmHexValue(HexText AS STRING) AS LONG
   DIM CharIdx AS LONG, DigitNum AS LONG, NumValue AS LONG
   NumValue = -1
@@ -72,10 +72,10 @@ FUNCTION HtmHexValue(HexText AS STRING) AS LONG
   HtmHexValue = NumValue
 END FUNCTION
 
-' Символ по коду Unicode - в Windows-1251; нет в кодировке - "?"
+' РЎРёРјРІРѕР» РїРѕ РєРѕРґСѓ Unicode - РІ Windows-1251; РЅРµС‚ РІ РєРѕРґРёСЂРѕРІРєРµ - "?"
 FUNCTION HtmCodeToChar(CodeNum AS LONG) AS STRING
   DIM CharText AS STRING, AnsiTable AS STRING, AnsiCode AS LONG
-  ' Unicode=код Windows-1251 для символов вне А..я
+  ' Unicode=РєРѕРґ Windows-1251 РґР»СЏ СЃРёРјРІРѕР»РѕРІ РІРЅРµ Рђ..СЏ
   AnsiTable = "|160=32|164=164|166=166|167=167|169=169|171=171|172=172" + _
               "|174=174|176=176|177=177|181=181|182=182|183=183|187=187" + _
               "|1025=168|1105=184|1028=170|1108=186|1030=178|1110=179" + _
@@ -94,9 +94,9 @@ FUNCTION HtmCodeToChar(CodeNum AS LONG) AS STRING
   ELSEIF CodeNum < 128 THEN
     CharText = CHR$(CodeNum)
   ELSEIF CodeNum = 173 THEN
-    CharText = ""            ' мягкий перенос
+    CharText = ""            ' РјСЏРіРєРёР№ РїРµСЂРµРЅРѕСЃ
   ELSEIF CodeNum >= 1040 AND CodeNum <= 1103 THEN
-    CharText = CHR$(CodeNum - 848)     ' А..я
+    CharText = CHR$(CodeNum - 848)     ' Рђ..СЏ
   ELSE
     AnsiCode = HtmTableValue(AnsiTable, LTRIM$(STR$(CodeNum)))
     IF AnsiCode >= 0 THEN
@@ -106,8 +106,8 @@ FUNCTION HtmCodeToChar(CodeNum AS LONG) AS STRING
   HtmCodeToChar = CharText
 END FUNCTION
 
-' Сущности (&amp; &#1040; &#x410;) - символами. Неизвестная сущность или
-' одиночный & остаются как есть.
+' РЎСѓС‰РЅРѕСЃС‚Рё (&amp; &#1040; &#x410;) - СЃРёРјРІРѕР»Р°РјРё. РќРµРёР·РІРµСЃС‚РЅР°СЏ СЃСѓС‰РЅРѕСЃС‚СЊ РёР»Рё
+' РѕРґРёРЅРѕС‡РЅС‹Р№ & РѕСЃС‚Р°СЋС‚СЃСЏ РєР°Рє РµСЃС‚СЊ.
 FUNCTION HtmDecodeEntities(TextRun AS STRING) AS STRING
   DIM OutText AS STRING, EntityName AS STRING, EntityTable AS STRING
   DIM StartPos AS LONG, AmpPos AS LONG, SemiPos AS LONG, CodeNum AS LONG
@@ -117,7 +117,7 @@ FUNCTION HtmDecodeEntities(TextRun AS STRING) AS STRING
     EXIT FUNCTION
   END IF
 
-  ' Имя сущности=код Unicode
+  ' РРјСЏ СЃСѓС‰РЅРѕСЃС‚Рё=РєРѕРґ Unicode
   EntityTable = "|nbsp=160|amp=38|lt=60|gt=62|quot=34|apos=39" + _
                 "|laquo=171|raquo=187|mdash=8212|ndash=8211|hellip=8230" + _
                 "|copy=169|reg=174|trade=8482|deg=176|plusmn=177" + _
@@ -170,26 +170,26 @@ FUNCTION delTags(HTMLtext AS STRING) AS STRING
 
   LineBreak = CHR$(13) + CHR$(10)
   CellSep = CHR$(9)
-  ' С новой строки
+  ' РЎ РЅРѕРІРѕР№ СЃС‚СЂРѕРєРё
   LineTags = " tr li div dt dd title caption option address center form " + _
              "fieldset legend menu dir figcaption details summary "
-  ' Отдельным абзацем: пустая строка до и после
+  ' РћС‚РґРµР»СЊРЅС‹Рј Р°Р±Р·Р°С†РµРј: РїСѓСЃС‚Р°СЏ СЃС‚СЂРѕРєР° РґРѕ Рё РїРѕСЃР»Рµ
   ParaTags = " p h1 h2 h3 h4 h5 h6 table ul ol dl pre blockquote hr " + _
              "section article header footer nav aside figure main "
   TagStartChars = "abcdefghijklmnopqrstuvwxyz/!?"
   NameChars = "abcdefghijklmnopqrstuvwxyz0123456789"
 
-  LowHtml = LCASE$(HTMLtext)      ' имена тегов ищутся в нижнем регистре
+  LowHtml = LCASE$(HTMLtext)      ' РёРјРµРЅР° С‚РµРіРѕРІ РёС‰СѓС‚СЃСЏ РІ РЅРёР¶РЅРµРј СЂРµРіРёСЃС‚СЂРµ
   TextLen = LEN(HTMLtext)
   OutText = ""
-  BreakCount = 1       ' начало текста - как начало строки: пробелы не нужны
+  BreakCount = 1       ' РЅР°С‡Р°Р»Рѕ С‚РµРєСЃС‚Р° - РєР°Рє РЅР°С‡Р°Р»Рѕ СЃС‚СЂРѕРєРё: РїСЂРѕР±РµР»С‹ РЅРµ РЅСѓР¶РЅС‹
   EndsWithSpace = 0
   PreDepth = 0
   ScanPos = 1
 
   WHILE ScanPos <= TextLen
-    ' Следующий тег. "<" без буквы, "/", "!" или "?" за ним ("a < b") -
-    ' это текст, ищем дальше.
+    ' РЎР»РµРґСѓСЋС‰РёР№ С‚РµРі. "<" Р±РµР· Р±СѓРєРІС‹, "/", "!" РёР»Рё "?" Р·Р° РЅРёРј ("a < b") -
+    ' СЌС‚Рѕ С‚РµРєСЃС‚, РёС‰РµРј РґР°Р»СЊС€Рµ.
     TagOpen = INSTR(ScanPos, HTMLtext, "<")
     WHILE TagOpen > 0
       NextChar = MID$(LowHtml, TagOpen + 1, 1)
@@ -200,11 +200,11 @@ FUNCTION delTags(HTMLtext AS STRING) AS STRING
     WEND
     IF TagOpen = 0 THEN TagOpen = TextLen + 1
 
-    '--- Текст до тега
+    '--- РўРµРєСЃС‚ РґРѕ С‚РµРіР°
     IF TagOpen > ScanPos THEN
       TextRun = MID$(HTMLtext, ScanPos, TagOpen - ScanPos)
       IF PreDepth > 0 THEN
-        ' <pre>: переносы и пробелы как в исходнике, переносы - CR+LF
+        ' <pre>: РїРµСЂРµРЅРѕСЃС‹ Рё РїСЂРѕР±РµР»С‹ РєР°Рє РІ РёСЃС…РѕРґРЅРёРєРµ, РїРµСЂРµРЅРѕСЃС‹ - CR+LF
         TextRun = REPLACESUBSTR$(TextRun, LineBreak, CHR$(10))
         TextRun = REPLACESUBSTR$(TextRun, CHR$(13), CHR$(10))
         TextRun = REPLACESUBSTR$(TextRun, CHR$(10), LineBreak)
@@ -221,7 +221,7 @@ FUNCTION delTags(HTMLtext AS STRING) AS STRING
         WHILE INSTR(TextRun, "  ") > 0
           TextRun = REPLACESUBSTR$(TextRun, "  ", " ")
         WEND
-        ' Сущности - после сжатия: несколько &nbsp; подряд остаются
+        ' РЎСѓС‰РЅРѕСЃС‚Рё - РїРѕСЃР»Рµ СЃР¶Р°С‚РёСЏ: РЅРµСЃРєРѕР»СЊРєРѕ &nbsp; РїРѕРґСЂСЏРґ РѕСЃС‚Р°СЋС‚СЃСЏ
         TextRun = HtmDecodeEntities(TextRun)
         IF LEFT$(TextRun, 1) = " " THEN
           IF BreakCount > 0 OR EndsWithSpace <> 0 THEN
@@ -238,7 +238,7 @@ FUNCTION delTags(HTMLtext AS STRING) AS STRING
     ScanPos = TagOpen
     IF ScanPos > TextLen THEN EXIT WHILE
 
-    '--- Тег
+    '--- РўРµРі
     NeedBreaks = 0
     IF MID$(HTMLtext, TagOpen, 4) = "<!--" THEN
       TagClose = INSTR(TagOpen + 4, HTMLtext, "-->")
@@ -246,7 +246,7 @@ FUNCTION delTags(HTMLtext AS STRING) AS STRING
     ELSE
       TagClose = INSTR(TagOpen + 1, HTMLtext, ">")
       IF TagClose = 0 THEN
-        ScanPos = TextLen + 1          ' тег без ">" в конце текста
+        ScanPos = TextLen + 1          ' С‚РµРі Р±РµР· ">" РІ РєРѕРЅС†Рµ С‚РµРєСЃС‚Р°
       ELSE
         ScanPos = TagClose + 1
         NameStart = TagOpen + 1
@@ -263,7 +263,7 @@ FUNCTION delTags(HTMLtext AS STRING) AS STRING
         TagName = MID$(LowHtml, NameStart, NameEnd - NameStart)
 
         IF IsEndTag = 0 AND (TagName = "script" OR TagName = "style") THEN
-          ' Содержимое - до закрывающего тега
+          ' РЎРѕРґРµСЂР¶РёРјРѕРµ - РґРѕ Р·Р°РєСЂС‹РІР°СЋС‰РµРіРѕ С‚РµРіР°
           SkipEnd = INSTR(ScanPos, LowHtml, "</" + TagName)
           IF SkipEnd = 0 THEN
             ScanPos = TextLen + 1
@@ -277,7 +277,7 @@ FUNCTION delTags(HTMLtext AS STRING) AS STRING
           BreakCount = BreakCount + 1
           EndsWithSpace = 0
         ELSEIF TagName = "td" OR TagName = "th" THEN
-          ' Ячейка не первая в строке - табуляция перед ней
+          ' РЇС‡РµР№РєР° РЅРµ РїРµСЂРІР°СЏ РІ СЃС‚СЂРѕРєРµ - С‚Р°Р±СѓР»СЏС†РёСЏ РїРµСЂРµРґ РЅРµР№
           IF IsEndTag = 0 AND BreakCount = 0 THEN
             IF EndsWithSpace <> 0 THEN OutText = LEFT$(OutText, LEN(OutText) - 1)
             OutText = OutText + CellSep
@@ -297,7 +297,7 @@ FUNCTION delTags(HTMLtext AS STRING) AS STRING
       END IF
     END IF
 
-    ' Перенос перед блоком или после него - если его ещё нет
+    ' РџРµСЂРµРЅРѕСЃ РїРµСЂРµРґ Р±Р»РѕРєРѕРј РёР»Рё РїРѕСЃР»Рµ РЅРµРіРѕ - РµСЃР»Рё РµРіРѕ РµС‰С‘ РЅРµС‚
     IF NeedBreaks > 0 AND OutText <> "" THEN
       IF EndsWithSpace <> 0 THEN OutText = LEFT$(OutText, LEN(OutText) - 1)
       WHILE BreakCount < NeedBreaks
@@ -308,18 +308,18 @@ FUNCTION delTags(HTMLtext AS STRING) AS STRING
     END IF
   WEND
 
-  ' Не больше одной пустой строки подряд (несколько <br>, текст <pre>)
+  ' РќРµ Р±РѕР»СЊС€Рµ РѕРґРЅРѕР№ РїСѓСЃС‚РѕР№ СЃС‚СЂРѕРєРё РїРѕРґСЂСЏРґ (РЅРµСЃРєРѕР»СЊРєРѕ <br>, С‚РµРєСЃС‚ <pre>)
   WHILE INSTR(OutText, LineBreak + LineBreak + LineBreak) > 0
     OutText = REPLACESUBSTR$(OutText, LineBreak + LineBreak + LineBreak, LineBreak + LineBreak)
   WEND
-  ' Пробелы и табуляции в концах строк
+  ' РџСЂРѕР±РµР»С‹ Рё С‚Р°Р±СѓР»СЏС†РёРё РІ РєРѕРЅС†Р°С… СЃС‚СЂРѕРє
   WHILE INSTR(OutText, " " + LineBreak) > 0
     OutText = REPLACESUBSTR$(OutText, " " + LineBreak, LineBreak)
   WEND
   WHILE INSTR(OutText, CellSep + LineBreak) > 0
     OutText = REPLACESUBSTR$(OutText, CellSep + LineBreak, LineBreak)
   WEND
-  ' Переносы и пробелы в начале и в конце текста
+  ' РџРµСЂРµРЅРѕСЃС‹ Рё РїСЂРѕР±РµР»С‹ РІ РЅР°С‡Р°Р»Рµ Рё РІ РєРѕРЅС†Рµ С‚РµРєСЃС‚Р°
   WHILE LEFT$(OutText, 2) = LineBreak
     OutText = MID$(OutText, 3, LEN(OutText) - 2)
   WEND

@@ -4,7 +4,7 @@
 
 
 ' v1.0:
-' Fixed WndProc (actually, wrote it from scratch ·)
+' Fixed WndProc (actually, wrote it from scratch Â·)
 ' Two new events, OnGetFocus and OnLoseFocus
 ' When using the new events, you MUST use the Sender parameter
 ' Custom events MUST have at least one paramater, haven't found

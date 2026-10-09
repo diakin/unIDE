@@ -541,7 +541,7 @@ SecMnt=round((obor*360-Grad)*3600)
 
 if sgn(SecFull)=-1 then zn$="-" else zn$=""
 
-Ugl$=zn$+str$(abs(Grad))+"°"+str$(abs(Mint))+"'"+str$(abs(Sec))+qt
+Ugl$=zn$+str$(abs(Grad))+"Â°"+str$(abs(Mint))+"'"+str$(abs(Sec))+qt
 
 end sub
 '*********************************************************************

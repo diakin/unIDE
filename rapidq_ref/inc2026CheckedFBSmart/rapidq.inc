@@ -18,7 +18,7 @@ $define  int integer
 defstr vbNullString=""
 $define #define $define
 
-' вариант комментария
+' РІР°СЂРёР°РЅС‚ РєРѕРјРјРµРЅС‚Р°СЂРёСЏ
 $define !!! rem
 $define !!!! '
 $define !! '

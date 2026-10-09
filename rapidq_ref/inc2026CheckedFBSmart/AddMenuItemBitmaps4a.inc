@@ -1,5 +1,5 @@
-' Attention!  Si l'item est masqué (.Visible = False)
-' l'icône devra être appliquée à nouveau une fois 
+' Attention!  Si l'item est masquÐ¹ (.Visible = False)
+' l'icÑ„ne devra Ðºtre appliquÐ¹e Ð° nouveau une fois 
 ' visible (.Visible = True)
 
 '
@@ -80,16 +80,16 @@ Sub CreateMenuBitmap (mPopup As QPopupMenu, mItem As Integer, flag_mItem As Long
 	If flag_mItem <> MF_BYPOSITION_AMIB Then _
 		flag_mItem = MF_BYCOMMAND_AMIB
 
-	' Crée un DC compatible avec l'image en cours.
+	' CrÐ¹e un DC compatible avec l'image en cours.
 	hdcMem_AMIB		= CreateCompatibleDC_AMIB	(Me.Handle)
-	' Détermine la taille de l'image requise.
+	' DÐ¹termine la taille de l'image requise.
 	size.cx			= GetSystemMetrics_AMIB		(SM_CXMENUCHECK_AMIB)
 	size.cy			= GetSystemMetrics_AMIB		(SM_CYMENUCHECK_AMIB)
-	' Crée un bitmap et le sélectionne.
+	' CrÐ¹e un bitmap et le sÐ¹lectionne.
 	hbm_AMIB		= CreateCompatibleBitmap_AMIB (Me.Handle, Me.Width, Me.Height)
 	hbmOld_AMIB		= SelectObject_AMIB			(hdcMem_AMIB, hbm_AMIB)
 
-	' Définie la transparence du DC.
+	' DÐ¹finie la transparence du DC.
 	SetBkMode_AMIB	hdcMem_AMIB, TRANSPARENT_AMIB
 	' Efface le fond du DC.
 	PatBlt_AMIB		(hdcMem_AMIB, 0, 0, size.cx, size.cy, WHITENESS_AMIB)
@@ -104,7 +104,7 @@ Sub CreateMenuBitmap (mPopup As QPopupMenu, mItem As Integer, flag_mItem As Long
 	' Place l'image dans l'item du menu
 	If hbm_AMIB <> 0 Then
 		Ret = SetMenuItemBitmaps_AMIB (mPopup.Handle, mItem, flag_mItem, hbm_AMIB, hbm_AMIB)
-		If Ret = 0 Then ShowMessage "Erreur:: imposible de définir l'handle, mnuindex%" +STR$(mItem)
+		If Ret = 0 Then ShowMessage "Erreur:: imposible de dÐ¹finir l'handle, mnuindex%" +STR$(mItem)
 	Else
 		ShowMessage "Erreur:: bitmap invalide, mnuindex%" +STR$(mItem)
 	End If

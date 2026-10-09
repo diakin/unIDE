@@ -1,7 +1,7 @@
 '$REsource btn_BMP As "_RES\Boutons.bmp"
 $Option Explicit
 
-' Vous pouvez tricher ce composante par la mÍme astuce utilisÈ ici 
+' Vous pouvez tricher ce composante par la m–∫me astuce utilis–π ici 
 
 
 $IFNDEF __RQNINC
@@ -15,7 +15,7 @@ Const DefPixelFormat = 4
 Const CharAnd	= "&"
 Const ChardAnd	= "&&"
 
-'Liste de tous les btns de type QTButton crÈÈs lors du chargement
+'Liste de tous les btns de type QTButton cr–π–πs lors du chargement
 Dim AllQTBtnsHandle As QStringList, AllQTBtnsGrouped As QStringList
 '
 Dim AllQTBtnsRequester As Long, AllQTBtnsRequesterParent As Long
@@ -69,7 +69,7 @@ Sub NextDlg_QTBtn(NextPrevTab As Long)'(CtrlHwnd As Long)
 	Call SetFocus_QTBtn(hwnd5)
 End Sub
 
-' VÈrifie la version de Windows puisque certains problËmes sont identifiÈs
+' V–πrifie la version de Windows puisque certains probl–∏mes sont identifi–πs
 ' sur l'un ou l'autre
 TYPE OSVERSIONINFO_QTBtn
 	dwOSVersionInfoSize As Long
@@ -109,7 +109,7 @@ End Sub
 
 Dim RequestRelease As Integer
 
-' Event Template pour les nouveaux ÈvÈnements MouseLeave et MouseEnter
+' Event Template pour les nouveaux –πv–πnements MouseLeave et MouseEnter
 DECLARE SUB OnMouseEnterLeave_EventTemplate (X As Integer, Y As Integer, Shift As Integer, Sender As QButton)
 
 ' When Group = 0 it should be clean if present
@@ -122,52 +122,52 @@ End Sub
 
 Type QTButton Extends QButton
   'YRESTE/TODO
-	'!AjoutÈ: Icon/BMP
-	'!AjoutÈ: PropriÈtÈ de NumBMPs
-	'!AjoutÈ: PropriÈtÈ de NumICOBMPs (indique le nombre d'image dans l'icone)
-	'!AjoutÈ: PropriÈtÈ de Layout
-	'Ajouter: PropriÈtÈ de Spacing
-	'Ajouter: EvÈnement Default (onshow la souris pointe le btn... setfocus)
-	'!RÈparÈ: Caption
-	'!AjoutÈ: Souslignage de la lettre dans BMPBtn; ex: "DÈ&faut"
-	'!ReCorrigÈ: & et && dans le caption; 1 souligne, 2 donnent & sans souligner
+	'!Ajout–π: Icon/BMP
+	'!Ajout–π: Propri–πt–π de NumBMPs
+	'!Ajout–π: Propri–πt–π de NumICOBMPs (indique le nombre d'image dans l'icone)
+	'!Ajout–π: Propri–πt–π de Layout
+	'Ajouter: Propri–πt–π de Spacing
+	'Ajouter: Ev–πnement Default (onshow la souris pointe le btn... setfocus)
+	'!R–πpar–π: Caption
+	'!Ajout–π: Souslignage de la lettre dans BMPBtn; ex: "D–π&faut"
+	'!ReCorrig–π: & et && dans le caption; 1 souligne, 2 donnent & sans souligner
 	'?Utiliser: TextRect plutot que TextOut (n'aime pas les bounds) utiliser une API
-	'!CorrigÈ: Effet de Souslignage appuyer sur Alt+ChrSoulignÈ = clique
-	'!CorrigÈ: PropriÈtÈ de Height et Width
-	'!CorrigÈ: Survole lorsque le nombre de btn est infÈrieur ‡ 4
-	'!CorrigÈ: Survole lors d'un clique
-	'-Inverser: EnfoncÈ et DÈsactivÈ dans le fichier BMP
-	'!CorrigÈ: Lorsque le nombre de btns excËde 4 (NumBMPs)
-	'!AjoutÈ: Lignes Multiples basique (insËrez chr$(10) pour crÈer une nouvelle ligne)
-	'-Ajouter: HideCaption, pour afficher une icÙne et masquer le texte (coolbtn like)
-	'Corriger/Ajouter: propriÈtÈ de police (comment?)
-	'		pour l'instant vous devrez utiliser ReDraw aprËs avoir changÈ la police
-	'!CorrigÈ: lorsque la souris pointe le btn, le clavier de rÈpond plus
-	'!CorrigÈ: Petit problËme de positinement du texte
-	'!CorrigÈ: ProblËme avec Enabled et la police en live
-	'Corriger/Ajouter: PropriÈtÈ de Visible (Èviter de trop dessiner lorsqu'invisible)
-	'Ajouter: AutoSize lorsque la taille du texte en pixel excËde celle du bouton
-	'Ajouter: PropriÈtÈ de Parent pour Ítre sure que l'enjolivure sera dessinÈe
-	'Corriger: PropriÈtÈ d'Align
-	'!AjoutÈ: Groupe de bouton
-	'IndentifiÈ: 1) ProblËme introduit... lorsque la souris quitte le contrÙle, il est mal redessinÈ... arrrg!
-	'			    Le problËme vient de l'ordre dans lequel NumBMPs est introduit.
-	'				RÈsolution: l'insËrer aprËs les	paramËtres de positionnement et de taille.
-	'			 2) Lorsque le caption du btn est trop long, le reste du texte apparaÓt sur les divers
-	'				effets, ‡ savoir dÈsactivÈ ,enfoncÈ, survollÈ. 	Ce problËme vient du fait que je 
-	'				n'arrive toujours pas ‡ utiliser TextRect.
-	'			 3) Parfois le btn n'est pas dessinÈ lorsque NumBMPs n'est pas spÈcifiÈ, donc ne pas
+	'!Corrig–π: Effet de Souslignage appuyer sur Alt+ChrSoulign–π = clique
+	'!Corrig–π: Propri–πt–π de Height et Width
+	'!Corrig–π: Survole lorsque le nombre de btn est inf–πrieur –∞ 4
+	'!Corrig–π: Survole lors d'un clique
+	'-Inverser: Enfonc–π et D–πsactiv–π dans le fichier BMP
+	'!Corrig–π: Lorsque le nombre de btns exc–∏de 4 (NumBMPs)
+	'!Ajout–π: Lignes Multiples basique (ins–∏rez chr$(10) pour cr–πer une nouvelle ligne)
+	'-Ajouter: HideCaption, pour afficher une ic—Ñne et masquer le texte (coolbtn like)
+	'Corriger/Ajouter: propri–πt–π de police (comment?)
+	'		pour l'instant vous devrez utiliser ReDraw apr–∏s avoir chang–π la police
+	'!Corrig–π: lorsque la souris pointe le btn, le clavier de r–πpond plus
+	'!Corrig–π: Petit probl–∏me de positinement du texte
+	'!Corrig–π: Probl–∏me avec Enabled et la police en live
+	'Corriger/Ajouter: Propri–πt–π de Visible (–πviter de trop dessiner lorsqu'invisible)
+	'Ajouter: AutoSize lorsque la taille du texte en pixel exc–∏de celle du bouton
+	'Ajouter: Propri–πt–π de Parent pour –∫tre sure que l'enjolivure sera dessin–πe
+	'Corriger: Propri–πt–π d'Align
+	'!Ajout–π: Groupe de bouton
+	'Indentifi–π: 1) Probl–∏me introduit... lorsque la souris quitte le contr—Ñle, il est mal redessin–π... arrrg!
+	'			    Le probl–∏me vient de l'ordre dans lequel NumBMPs est introduit.
+	'				R–πsolution: l'ins–∏rer apr–∏s les	param–∏tres de positionnement et de taille.
+	'			 2) Lorsque le caption du btn est trop long, le reste du texte appara–æt sur les divers
+	'				effets, –∞ savoir d–πsactiv–π ,enfonc–π, survoll–π. 	Ce probl–∏me vient du fait que je 
+	'				n'arrive toujours pas –∞ utiliser TextRect.
+	'			 3) Parfois le btn n'est pas dessin–π lorsque NumBMPs n'est pas sp–πcifi–π, donc ne pas
 	'			    oublier de l'ajouter.
-	'			 4) Plus d'une fenÍtre alors qu'un btn n'est toujours pas visible, aura d'Ètranges 
-	'			    rÈsultats d'affiche pour ce btn, surtout en utilisant ShapeForm.
-	'			    RÈsolution: Dim DummyBtn As QTButton juste aprËs la fenÍtre
+	'			 4) Plus d'une fen–∫tre alors qu'un btn n'est toujours pas visible, aura d'–πtranges 
+	'			    r–πsultats d'affiche pour ce btn, surtout en utilisant ShapeForm.
+	'			    R–πsolution: Dim DummyBtn As QTButton juste apr–∏s la fen–∫tre
 
   With QTButton
 	Dest As QRECT
 	Source As QRECT
 	BMPBtn As QBitmap
-	BMPtmp As QBitmap' Devrait reflÈtÈ un seul btn, celui ‡ rÈintÈgrer (normal, survole)
-	ICOBMP As QBitmap' la petite icÙne ‡ afficher sur le btn
+	BMPtmp As QBitmap' Devrait refl–πt–π un seul btn, celui –∞ r–πint–πgrer (normal, survole)
+	ICOBMP As QBitmap' la petite ic—Ñne –∞ afficher sur le btn
 	Align as Integer Property Set SetAlign
 	Caption as String Property Set SetCaption
 	Enabled as Integer Property Set SetEnabled
@@ -183,7 +183,7 @@ Type QTButton Extends QButton
 	OnMouseLeave AS EVENT(OnMouseEnterLeave_EventTemplate)
 	OnMouseEnter AS EVENT(OnMouseEnterLeave_EventTemplate)
 
-	'Nouvelles propriÈtÈs
+	'Nouvelles propri–πt–πs
 	'qqchose as Integer Property Set SetQqChose
 
 	Function TextWidth(text as string) As Integer:	Result = .BMPBtn.TextWidth(text)
@@ -368,7 +368,7 @@ Type QTButton Extends QButton
 			WITH Source: .Top = False: .Bottom = QTButton.BMPBtn.Height
 			END WITH
 			If .Down = True Then
-				' Btn enfoncÈ
+				' Btn enfonc–π
 				WITH Source: .Left = (QTButton.Dest.Right -True) *2
 							.Right = .Left +QTButton.Dest.Right -True
 				END WITH
@@ -387,9 +387,9 @@ Type QTButton Extends QButton
 
 	Sub ReleaseHotTrack
 		LockWindowUpdate_QTBtn(GetParent_QTBtn(QTButton.Handle))
-		' le pseudo-evÈnement MOUSELEAVE
+		' le pseudo-ev–πnement MOUSELEAVE
 		ReleaseCapture_QTBtn
-		' on retourne le caption ‡ la normal
+		' on retourne le caption –∞ la normal
 		'.Font.Bold = False
 		.Font.Color = -2147483630
 		'.caption = "Dehors..."
@@ -418,9 +418,9 @@ Type QTButton Extends QButton
 				Dim I As Integer
 				' identifie le button qui appelle tous les autres
 				AllQTBtnsRequester = .Handle
-				' identifie le Parent du groupe appellÈ, comme Áa si deux groupes ont le mÍme
-				' indentifiant mais pas le mÍme parent, seul les btns du groupe ayant le parent 
-				' conrrespondant seront appelÈs.
+				' identifie le Parent du groupe appell–π, comme –∑a si deux groupes ont le m–∫me
+				' indentifiant mais pas le m–∫me parent, seul les btns du groupe ayant le parent 
+				' conrrespondant seront appel–πs.
 				If AllQTBtnsRequesterParent = False Then _
 					AllQTBtnsRequesterParent = GetParent_QTBtn(QTButton.Handle)
 
@@ -436,11 +436,11 @@ Type QTButton Extends QButton
 							If currHwnd <> .Handle Then
 
 								$TypeCheck Off
-								' restaure le dernier Ètat du btn ‡ la normal
+								' restaure le dernier –πtat du btn –∞ la normal
 								' restore the last button state to normal
 								'Call SendMessage_QTBtn(.Handle, WM_LBUTTONDOWN_QTBtn, False, ByVal 0&)
-								' et envoit les msgs enfoncÈ/terminÈ de la souris pour lancer
-								' l'ÈvÈnement clic du btn, et indique visiblement sont Ètat enfoncÈ
+								' et envoit les msgs enfonc–π/termin–π de la souris pour lancer
+								' l'–πv–πnement clic du btn, et indique visiblement sont –πtat enfonc–π
 								' and send mouse down and up messages to fire its click event, 
 								' and visibly indicate its pressed state.
 								'Call SendMessage_QTBtn(currHwnd, WM_LBUTTONDOWN_QTBtn, False, ByVal 0&)
@@ -486,15 +486,15 @@ Type QTButton Extends QButton
 			CALLFUNC(.OnMouseLeave, X, Y, Shift, QTButton)
 		ElseIf (GetCapture_QTBtn() <> .Handle) and (RequestRelease = False _
 			 and PosX <> X and PosY <> Y) Then
-			' Verifie si la requete de rel‚cher la capture d'un QTBtn est 0
+			' Verifie si la requete de rel–≤cher la capture d'un QTBtn est 0
 			' Check if the release capture request for QTBtn is 0
 			' 
-			' Ce qui va aussi empÍcher le btn de reprendre son Ètat initial
+			' Ce qui va aussi emp–∫cher le btn de reprendre son –πtat initial
 			' lors d'une action...
 			PosX = X
 			PosY = Y
 
-			' le pseudo-evÈnement MOUSEENTER
+			' le pseudo-ev–πnement MOUSEENTER
 			SetCapture_QTBtn .Handle
 			' on met le caption en gras
 			'.Font.Bold = True
@@ -510,11 +510,11 @@ Type QTButton Extends QButton
 
 			.DrawCaption
 			CALLFUNC(.OnMouseEnter, X, Y, Shift, QTButton)
-		ElseIf RequestRelease = True Then' Corrige l'Ètat survolle du btn
+		ElseIf RequestRelease = True Then' Corrige l'–πtat survolle du btn
 										 ' Fix Hot state of btn
 			.ReleaseHotTrack
 		End If
-		If (PosX <> X and PosY <> Y) Then RequestRelease = False' Restaure la requÍte ‡ 0
+		If (PosX <> X and PosY <> Y) Then RequestRelease = False' Restaure la requ–∫te –∞ 0
 							  									' Reset release request
 	End Event
 	Event OnKeyDown(Key AS Word, Shift AS INTEGER)

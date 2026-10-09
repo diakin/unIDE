@@ -83,7 +83,7 @@ Type QdrawMenu extends QOBJECT
     button(10000) as boolean
 
   '=======================================
-  ' Méthode affiche le texte de menu
+  ' MÐ¹thode affiche le texte de menu
   '=======================================
   Sub DrawText(cl as integer)
     dim S as string
@@ -118,7 +118,7 @@ Type QdrawMenu extends QOBJECT
   End Sub
 
   '=======================================
-  ' Méthode affiche le bouton de menu
+  ' MÐ¹thode affiche le bouton de menu
   '=======================================
   Sub DrawButton()
     dim width as integer
@@ -195,7 +195,7 @@ Type QdrawMenu extends QOBJECT
 
     
   '==============================================
-  ' Méthode ajoute un bitmap a l'item menu 
+  ' MÐ¹thode ajoute un bitmap a l'item menu 
   '==============================================
   Sub AddBitmap(SubMenu as Qmenuitem,item as Qmenuitem,picture as Qbitmap,button as boolean,backcolor as long)
     dim s as string
@@ -211,7 +211,7 @@ Type QdrawMenu extends QOBJECT
   End Sub
   
   '==============================================
-  ' Méthode supprime un bitmap de l'item menu 
+  ' MÐ¹thode supprime un bitmap de l'item menu 
   '==============================================
   Sub DelBitmap(SubMenu as Qmenuitem,item as Qmenuitem)
     dim s as string

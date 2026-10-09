@@ -9,7 +9,7 @@ Type QLine extends QCanvas
     r as QRECT
 
     '==============================
-    ' Méthode affichage ligne
+    ' MÐ¹thode affichage ligne
     '==============================
     Sub draw
       if (QLine.Align=0 and QLine.Height>QLine.width) or (QLine.Align=3) or (QLine.Align=4) then
@@ -29,7 +29,7 @@ Type QLine extends QCanvas
     end sub
 
     '==============================
-    ' Evénement OnPaint
+    ' EvÐ¹nement OnPaint
     '==============================
     Event OnPaint
       QLine.draw

@@ -740,19 +740,19 @@ if sgn(SecFull)=-1 then zn$="-" else zn$=""
 SecFull=abs(SecFull)
 'print"SecFull=";SecFull
 
-Grad=SecFull\3600 ' число целых градусов
+Grad=SecFull\3600 ' С‡РёСЃР»Рѕ С†РµР»С‹С… РіСЂР°РґСѓСЃРѕРІ
 'print"Grad=";Grad
-gradSec=Grad*3600 ' число секунд в целых градусах
+gradSec=Grad*3600 ' С‡РёСЃР»Рѕ СЃРµРєСѓРЅРґ РІ С†РµР»С‹С… РіСЂР°РґСѓСЃР°С…
 'print"gradSec=";gradSec
 
-ostminSec=SecFull-gradSec ' число сек в дробной части градусов - минутах и сек
+ostminSec=SecFull-gradSec ' С‡РёСЃР»Рѕ СЃРµРє РІ РґСЂРѕР±РЅРѕР№ С‡Р°СЃС‚Рё РіСЂР°РґСѓСЃРѕРІ - РјРёРЅСѓС‚Р°С… Рё СЃРµРє
 'print"ostminSec=";ostminSec
 
-mint=ostminSec\60 ' целое число минут
+mint=ostminSec\60 ' С†РµР»РѕРµ С‡РёСЃР»Рѕ РјРёРЅСѓС‚
 'print"mint=";mint
-mintsec=mint*60 ' число секунд в целых минутах
+mintsec=mint*60 ' С‡РёСЃР»Рѕ СЃРµРєСѓРЅРґ РІ С†РµР»С‹С… РјРёРЅСѓС‚Р°С…
 'print"mintsec=";mintsec
-sec1 =ostminSec- mintsec ' остаток чистых секунд
+sec1 =ostminSec- mintsec ' РѕСЃС‚Р°С‚РѕРє С‡РёСЃС‚С‹С… СЃРµРєСѓРЅРґ
 'print"sec1=";sec1
 
 
@@ -1043,7 +1043,7 @@ STRL$ = field$(STRF$(value, ffFixed, 11, 18),decSep$,1)
 END FUNCTION
 
 brem 0
---- кодовые страницы -------
+--- РєРѕРґРѕРІС‹Рµ СЃС‚СЂР°РЅРёС†С‹ -------
       037 IBM EBCDIC - U.S./Canada 
       437 OEM - United States 
       500 IBM EBCDIC - International 

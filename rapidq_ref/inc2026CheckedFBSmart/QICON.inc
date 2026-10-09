@@ -46,7 +46,7 @@ Type QICON EXTENDS QOBJECT
     
 
   '========================================
-  ' proprieté nom fichier icone
+  ' proprietÐ¹ nom fichier icone
   '========================================
   PROPERTY SET SetFileName(name as string)
     dim lpIcon as long
@@ -77,7 +77,7 @@ Type QICON EXTENDS QOBJECT
   END PROPERTY
   
   '========================================
-  ' proprieté index icone
+  ' proprietÐ¹ index icone
   '========================================
   PROPERTY SET SetIndex(value as integer)
     if Qicon.handle<>0 then
@@ -90,14 +90,14 @@ Type QICON EXTENDS QOBJECT
 
 Private:
   '==========================================
-  ' méthode transforme binaire en decimal
+  ' mÐ¹thode transforme binaire en decimal
   '==========================================
   function BinToDec(bin as string)as long
     result=val(CONVBASE$(bin,2,10))
   end function
 
   '=============================================
-  ' méthode transforme hexadecimal en decimal
+  ' mÐ¹thode transforme hexadecimal en decimal
   '=============================================
   function HexToDec(hex as string)as long
     hex=UCase$(hex)
@@ -105,7 +105,7 @@ Private:
   end function
 
   '=============================================
-  ' méthode création format icon 16 couleur
+  ' mÐ¹thode crÐ¹ation format icon 16 couleur
   '=============================================
   Sub CreateFormat16(bitmap as QBitmap,convert as integer)
     dim i as integer
@@ -126,7 +126,7 @@ Private:
     This.IconMem.size=0
     bitmap.savetostream(This.IconMem)
     This.IconMem.position=0
-    'lecture données bitmap
+    'lecture donnÐ¹es bitmap
     Qicon.databmp=This.IconMem.readStr(630)
     This.IconMem.close
     Qicon.head=""
@@ -140,7 +140,7 @@ Private:
   End Sub
 
   '=============================================
-  ' méthode création format icon 256 couleur
+  ' mÐ¹thode crÐ¹ation format icon 256 couleur
   '=============================================
   Sub CreateFormat256(bitmap as QBitmap,convert as integer)
     dim i as integer
@@ -162,7 +162,7 @@ Private:
     This.IconMem.size=0
     bitmap.savetostream(This.IconMem)
     This.IconMem.position=0
-    'lecture données asci du bitmap
+    'lecture donnÐ¹es asci du bitmap
     Qicon.databmp=This.IconMem.readStr(2102)
     This.IconMem.close
     Qicon.head=""
@@ -177,7 +177,7 @@ Private:
   End Sub
 
   '=================================================
-  ' méthode création mask transparence 256 couleur
+  ' mÐ¹thode crÐ¹ation mask transparence 256 couleur
   '=================================================
   Sub CreateMask256
     dim i as integer
@@ -211,7 +211,7 @@ Private:
   End Sub
 
   '=================================================
-  ' méthode création mask transparence 16 couleur
+  ' mÐ¹thode crÐ¹ation mask transparence 16 couleur
   '=================================================
   Sub CreateMask16
     dim i as integer
@@ -248,7 +248,7 @@ Private:
   End Sub
 
   '=================================================
-  ' méthode création mask opaque
+  ' mÐ¹thode crÐ¹ation mask opaque
   '=================================================
   Sub CreateMaskOpaque
     dim i as integer
@@ -262,7 +262,7 @@ Private:
 Public:
 
   '=================================================
-  ' méthode sauvegarde icone
+  ' mÐ¹thode sauvegarde icone
   '=================================================
   Sub SaveToFile(FileName as string,pixelFormat as integer,mask as integer)
     dim file as qfilestream
@@ -296,7 +296,7 @@ Public:
   End Sub
 
   '=================================================
-  ' méthode sauvegarde bitmap au format icone
+  ' mÐ¹thode sauvegarde bitmap au format icone
   '=================================================
   Sub SaveBmpToFile(bitmap as QBitmap,FileName as string,pixelFormat as integer,mask as integer)
     dim file as qfilestream
@@ -330,7 +330,7 @@ Public:
   End Sub
   
   '=================================================
-  ' méthode conversion icone en curseur
+  ' mÐ¹thode conversion icone en curseur
   '=================================================
   Sub ConvertAsCursor(FileName as string,XHotSpot as byte,YHotSpot as byte)
     dim file as qfilestream

@@ -69,14 +69,14 @@ Type QImageBox Extends QScrollbox
 
   Private:  
   '=================================================
-  ' Méthode retourne le rapport en pourcentage
+  ' MÐ¹thode retourne le rapport en pourcentage
   '=================================================
   function Ratio(Value1 as double,Value2 as double) as double
     Result=((Value1-Value2)*100)/Value1
   end function
   
   '=================================================
-  ' Méthode affiche l'image avec la réduction
+  ' MÐ¹thode affiche l'image avec la rÐ¹duction
   '=================================================
   Sub ShowImage
     defint reduction=100
@@ -108,7 +108,7 @@ Type QImageBox Extends QScrollbox
   End Sub
       
   '=================================================
-  ' Méthode retourne la présence de la dll
+  ' MÐ¹thode retourne la prÐ¹sence de la dll
   '=================================================
   Function DllExist() as boolean
     dim lpBuffer as string
@@ -130,7 +130,7 @@ Type QImageBox Extends QScrollbox
   End Function
   
   '==================================================
-  ' Méthode ouvre les fichiers au format graphique
+  ' MÐ¹thode ouvre les fichiers au format graphique
   ' de la dll
   '==================================================
   Sub LoadOtherImage(FileName as string)
@@ -153,7 +153,7 @@ Type QImageBox Extends QScrollbox
   End Sub
 
   '=================================================
-  ' Méthode ouvre les fichiers icone et curseur
+  ' MÐ¹thode ouvre les fichiers icone et curseur
   '=================================================
   Sub LoadIcon(FileName as string)
     dim hIcon as long
@@ -184,7 +184,7 @@ Type QImageBox Extends QScrollbox
   End Sub
   
   '=================================================
-  ' Méthode Retourne l'extension valide d'un
+  ' MÐ¹thode Retourne l'extension valide d'un
   ' fichier prise en compte par la dll
   '=================================================
   Function DllFormat(FileName as string) as boolean
@@ -209,21 +209,21 @@ Type QImageBox Extends QScrollbox
         
   Public:              
   '=================================================
-  ' Proprieté largeur image
+  ' ProprietÐ¹ largeur image
   '=================================================
   Property Set SetImgWidth(width as integer)
   'read only
   End Property
   
   '=================================================
-  ' Proprieté hauteur image
+  ' ProprietÐ¹ hauteur image
   '=================================================
   Property Set SetImgHeight(height as integer)
   'read only
   End Property
   
   '=================================================
-  ' Proprieté nom fichier image
+  ' ProprietÐ¹ nom fichier image
   '=================================================
   Property Set SetFileName(filename as string)
     if filename<>"" then

@@ -28,7 +28,7 @@ Type QSplash Extends QObject
     TextTransparent as boolean
   
   '=======================
-  ' Méthode Show 
+  ' MÐ¹thode Show 
   '=======================
   Sub Show(Time as short)
 

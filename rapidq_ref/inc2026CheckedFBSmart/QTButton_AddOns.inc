@@ -1,14 +1,14 @@
-' CrÈÈ par D-Èvolution / Created by D-evolution -=@=- 2005
+' Cr–π–π par D-–πvolution / Created by D-evolution -=@=- 2005
 
-' Pour plus de dÈtail sur l'utilisation de ce composant reportez vous
-' ‡ la documentation fournise... (QTButton.html)
+' Pour plus de d–πtail sur l'utilisation de ce composant reportez vous
+' –∞ la documentation fournise... (QTButton.html)
 ' For more details on using this component please refer to the doc
 ' (QTButton.html)
 
-' AjoutÈ ceci aprËs avoir inclus QTButton.inc (QTButtonXX.inc)
+' Ajout–π ceci apr–∏s avoir inclus QTButton.inc (QTButtonXX.inc)
 ' Contient 2 SUBs vous permettant de transformer vos BUTTONs et COOLBTNs en TBUTTONs
-' Cette mÈthode rÈduite, n'offre pas toutes les fonctionnalitÈes de QTButton, mais seulement la fonction
-' enjolivure, elle rÈduit grandement votre code, et permet l'utilisation de tableaux d'objet...
+' Cette m–πthode r–πduite, n'offre pas toutes les fonctionnalit–πes de QTButton, mais seulement la fonction
+' enjolivure, elle r–πduit grandement votre code, et permet l'utilisation de tableaux d'objet...
 
 ' Add this once you have include QTButton.inc (QTButtonXX.inc)
 ' Contain 2 SUBs that will allow you to transform your BUTTONs et COOLBTNs en TBUTTONs
@@ -18,11 +18,11 @@
 ' IMPORTANT vous devez avoir au minimum la version (.94) de QTButton pour que cela fonctionne
 ' IMPORTANT you'll need at least version .94 of QTButton to make it work
 
-' ¿ FAIRE / TODO
-' -Support icÙne sur le btn
+' –ê FAIRE / TODO
+' -Support ic—Ñne sur le btn
 $Option Explicit
 
-$IFNDEF __RQINC' ==(corrigÈ! doh!)
+$IFNDEF __RQINC' ==(corrig–π! doh!)
 $IFNDEF __RQINCTMP
 $DEFINE __RQINCTMP
 CONST False = 0
@@ -46,12 +46,12 @@ Const rqSL		= CHR$(10)
 
 Const DefPixelFormat = 4
 
-'AccÈlËre l'affichage des btns ‡ l'Ècran maintenant jusqu'‡ 97% avec un affichage 
-'parfait de 60% dans le cas o˘ certains btns ont des dimensions diffÈrentes sinon 
-'Áa grimpe jusqu'‡ 100%
-'Dans l'ÈvÈnement OnShow de votre fenÍtre ajoutez ShowMessage STR$(DrawCount)
-'pour afficher le nombre de fois o˘ les btns ont eus ‡ Ítre RePaint 
-'Note :  certains btns auront toute fois besoin d'Ítre redessinÈs...
+'Acc–πl–∏re l'affichage des btns –∞ l'–πcran maintenant jusqu'–∞ 97% avec un affichage 
+'parfait de 60% dans le cas o—â certains btns ont des dimensions diff–πrentes sinon 
+'–∑a grimpe jusqu'–∞ 100%
+'Dans l'–πv–πnement OnShow de votre fen–∫tre ajoutez ShowMessage STR$(DrawCount)
+'pour afficher le nombre de fois o—â les btns ont eus –∞ –∫tre RePaint 
+'Note :  certains btns auront toute fois besoin d'–∫tre redessin–πs...
 Dim QTBtnOptimize As Integer
 	QTBtnOptimize = False
 
@@ -91,7 +91,7 @@ Declare Function BitBlt_QTBtn Lib "gdi32" _
 		nXSrc As Integer, nYSrc As Integer, _
 		dwRop As Integer) As Integer
 
-' Pour Win98 et supÈrieur
+' Pour Win98 et sup–πrieur
 Declare Function TransparentBlt_QTBtn Lib "msimg32" _
 		Alias "TransparentBlt" ( _
 		ByVal hdcDest As Long, _
@@ -133,7 +133,7 @@ Declare Function SetBkMode_QTBtn Lib "gdi32" Alias "SetBkMode" _
 'Declare Function SetTextColor Lib "gdi32" Alias "SetTextColor" _
 '		(ByVal hdc As Long, ByVal crColor As Long) As Long
 
-' -- (AjoutÈ 11janv) Les Nouveaux API pour le suport des ThËmes de Bureau XP
+' -- (Ajout–π 11janv) Les Nouveaux API pour le suport des Th–∏mes de Bureau XP
 Declare Function OpenThemeData_QTBtn Lib "uxtheme.dll" Alias "OpenThemeData" ( _
 		ByVal hwnd As Long, _
 		ByVal pszClassList As Long) As Long
@@ -192,8 +192,8 @@ Const xpt_TabBtn		= "Tab"
 $ENDIF ' __RQOBJDRAWING
 
 
-' -- RestaurÈ 11janv (RetirÈ 31dÈc)
-' VÈrifie la version de Windows puisque certains problËmes sont identifiÈs
+' -- Restaur–π 11janv (Retir–π 31d–πc)
+' V–πrifie la version de Windows puisque certains probl–∏mes sont identifi–πs
 ' sur l'un ou l'autre
 $IFNDEF __RQGETVERSION
 $DEFINE __RQGETVERSION
@@ -300,7 +300,7 @@ SUB	Fast_QBtnToQTBtn_MouseMove(X As Integer, Y As Integer, Shift As Integer, Me 
 		Dim BMPBtn As QBitmap, _
 			BMPHot As QBitmap
 
-		' RetirÈ 6fÈv
+		' Retir–π 6f–πv
 		'WITH Dest: .Left = False: .Right = (This.BMPBtn.Width -True) \This.NumBMPs
 		'			.Top = False: .Bottom = This.BMPBtn.Height
 		'END WITH
@@ -338,8 +338,8 @@ SUB	Fast_QBtnToQTBtn_MouseMove(X As Integer, Y As Integer, Shift As Integer, Me 
 				 BMPHot.Handle, _
 				 False, False, _
 				 SrcCopy_QTBtn)
-			' InversÈ 6fÈv pour accepter les changements dans la police
-			' RemplacÈ .ReleaseHotTrack par ReleaseCapture puisque le SUB est vide
+			' Invers–π 6f–πv pour accepter les changements dans la police
+			' Remplac–π .ReleaseHotTrack par ReleaseCapture puisque le SUB est vide
 			ReleaseCapture_QTBtn '.ReleaseHotTrack
 		ElseIf GetCapture_QTBtn() = Me.Handle and RequestRelease = False Then
 			'This.DrawHot(False)
@@ -365,22 +365,22 @@ SUB	Fast_QBtnToQTBtn_MouseMove(X As Integer, Y As Integer, Shift As Integer, Me 
 
 		ElseIf GetCapture_QTBtn() <> Me.Handle and (RequestRelease = False _
 			 and PosX <> X and PosY <> Y) Then
-			' Verifie si la requete de rel‚cher la capture d'un QTBtn est 0
+			' Verifie si la requete de rel–≤cher la capture d'un QTBtn est 0
 			' Check if the release capture request for QTBtn is 0
 			' 
-			' Ce qui va aussi empÍcher le btn de reprendre son Ètat initial
+			' Ce qui va aussi emp–∫cher le btn de reprendre son –πtat initial
 			' lors d'une action...
 			PosX = X
 			PosY = Y
 
 			'LockWindowUpdate_QTBtn(This.Handle)
-			' le pseudo-evÈnement MOUSEENTER
+			' le pseudo-ev–πnement MOUSEENTER
 			SetCapture_QTBtn Me.Handle
 			' on met le caption en gras
 			'.Font.Bold = True
 			'.Font.Color = clHilight
 			'.caption = "Dessus..."
-			' -- RetirÈ 6fÈv (test flickering)
+			' -- Retir–π 6f–πv (test flickering)
 			'If .NumBMPs => maxNumBMPs_QTBtn and .Down = False Then
 			'	WITH Source: .Left = This.Dest.Right *(This.NumBMPs -True)
 			'				.Right = .Left +This.Dest.Right
@@ -392,8 +392,8 @@ SUB	Fast_QBtnToQTBtn_MouseMove(X As Integer, Y As Integer, Shift As Integer, Me 
 
 			'LockWindowUpdate_QTBtn(False)
 			'CALLFUNC(.OnMouseEnter, X, Y, Shift, This)
-			' -- RetirÈ 6fÈv (test flickering)
-			' InversÈ 6fÈv pour accepter les changements dans la police
+			' -- Retir–π 6f–πv (test flickering)
+			' Invers–π 6f–πv pour accepter les changements dans la police
 			'.DrawCaption
 			' //--
 			'If .Pushed >= False Then _
@@ -418,12 +418,12 @@ SUB	Fast_QBtnToQTBtn_MouseMove(X As Integer, Y As Integer, Shift As Integer, Me 
 			'.HotTimer.Interval = 50
 		'End If
 
-		ElseIf RequestRelease = True Then	' Corrige l'Ètat survolle du btn
+		ElseIf RequestRelease = True Then	' Corrige l'–πtat survolle du btn
 											' Fix Hot state of btn
-			PosX = -True	' < - corrige le problËme de survole
+			PosX = -True	' < - corrige le probl–∏me de survole
 			PosY = -True
 			'.Pushed = False
-			' RemplacÈ .ReleaseHotTrack par ReleaseCapture puisque le SUB est vide
+			' Remplac–π .ReleaseHotTrack par ReleaseCapture puisque le SUB est vide
 			ReleaseCapture_QTBtn '.ReleaseHotTrack
 			'.DrawNormal
 	TransparentBlt_QTBtn(BMPHot.Handle, _
@@ -467,7 +467,7 @@ SUB	Fast_QBtnToQTBtn_MouseMove(X As Integer, Y As Integer, Shift As Integer, Me 
 			'.HotTimer.Interval = 50
 		'End If
 		End If
-			RequestRelease = False	' Restaure la requÍte ‡ 0
+			RequestRelease = False	' Restaure la requ–∫te –∞ 0
 					  				' Reset release request
 		End If
 		ReleaseDC_QTBtn (Me.Handle, hDC)
@@ -499,7 +499,7 @@ Sub Fast_QBtnToQTBtn( _
 	Dim tmpBitmap1 As QBitmap, _
 		NBitmap1 As QBitmap, _
 		XPBitmap1 As QBitmap
-	Dim XPBtnType As String ' AjoutÈ 19jan corrige un problËme o˘ les types sont diffÈrents
+	Dim XPBtnType As String ' Ajout–π 19jan corrige un probl–∏me o—â les types sont diff–πrents
 	Dim XPPartID As Integer
 	'Dim oldCaption As String
 	'	oldCaption = Me.Caption
@@ -540,7 +540,7 @@ Sub Fast_QBtnToQTBtn( _
 	Width1 = ((Me.Width +3) *btnCount) +True
 	Height1 = Me.Height +3
 
-	' Si l'image ‡ dÈj‡ la mÍme dimension elle ne sera pas redimensionnÈe
+	' Si l'image –∞ d–πj–∞ la m–∫me dimension elle ne sera pas redimensionn–πe
 	'If QTBtnOptimize <> True or _
 	'	(isXP_QTBtn = True and (XPBtnType <> BtnType or PartID <> XPPartID)) or _
 	'	((rWidth > False or rHeight > False) and _
@@ -549,13 +549,13 @@ Sub Fast_QBtnToQTBtn( _
 		With NBitmap1
 			.Width = Width1		'== (mod)
 			.Height = Height1	'== (mod)
-			.FillRect(False, False, .Width, .Height, clBtnFace)'==(mod) (13janv remplacÈ clPurple par clBtnFace)
+			.FillRect(False, False, .Width, .Height, clBtnFace)'==(mod) (13janv remplac–π clPurple par clBtnFace)
 			'.PixelFormat = DefPixelFormat
 		End With
 		With XPBitmap1
 			.Width = Width1		'== (mod)
 			.Height = Height1	'== (mod)
-			.FillRect(False, False, .Width, .Height, clBtnFace)'==(mod) (13janv remplacÈ clPurple par clBtnFace)
+			.FillRect(False, False, .Width, .Height, clBtnFace)'==(mod) (13janv remplac–π clPurple par clBtnFace)
 			'.PixelFormat = DefPixelFormat
 		End With
 		Width1 = Me.Width *btnCount
@@ -569,7 +569,7 @@ Sub Fast_QBtnToQTBtn( _
 		tmpBitmap1.Font.Underline = Me.Font.Underline
 
 		If isXP_QTBtn = False Then
-			' ThËme non activÈ ou ce n'est pas Windows XP
+			' Th–∏me non activ–π ou ce n'est pas Windows XP
 
 			Dim J As Integer, I As Integer
 			For J = False To btnCount -True
@@ -643,12 +643,12 @@ Sub Fast_QBtnToQTBtn( _
 			Next J
 			NBitmap1.PixelFormat = DefPixelFormat
 		Else
-			' ThËme activÈ (Windows XP)
+			' Th–∏me activ–π (Windows XP)
 			' --
 			Dim hTheme As Long
 			'On Error Resume Next
 
-			' Ouverture du thËme
+			' Ouverture du th–∏me
 			Dim rtButton As String
 			rtButton = ""
 			' Format unicode ?!?
@@ -670,8 +670,8 @@ Sub Fast_QBtnToQTBtn( _
 				'Dim tR As RECT_QTBtn
 
 				' m_hDC est le DC pour dessiner
-				' m_lPartId et m_lStateId sont la class + l'Ètat ‡ dessiner
-				' tR est un RECT spÈcifiant la zone dans laquelle dessiner
+				' m_lPartId et m_lStateId sont la class + l'–πtat –∞ dessiner
+				' tR est un RECT sp–πcifiant la zone dans laquelle dessiner
 				m_hDC = XPBitmap1.Handle
 				If PartID > True Then _
 					m_lPartId = PartID _
@@ -690,7 +690,7 @@ Sub Fast_QBtnToQTBtn( _
 											 m_lStateId, _
 											 tR, tR)
 				Next I
-				' Inverse Survolle et DÈsactivÈ
+				' Inverse Survolle et D–πsactiv–π
 				For I = True To 3 Step 2
 					m_lStateId = I +True 'PBS_NORMAL
 					tR.Left = (((I +iif(I = True, 2, -2)) *(Me.Width +3)) +True)
@@ -706,7 +706,7 @@ Sub Fast_QBtnToQTBtn( _
 				Next I
 			End If
 
-			' Session de dessin terminÈe
+			' Session de dessin termin–πe
 			CloseThemeData_QTBtn hTheme
 			CloseThemeData_QTBtn hTheme
 			'//--
@@ -754,7 +754,7 @@ Sub Fast_QBtnToQTBtn( _
 			DrawText_QTBtn (tmpBitmap1.Handle, Me.Caption, Len(Me.Caption), _
 							tR, DT_CENTER_QTBtn OR DT_SINGLELINE_QTBtn OR DT_VCENTER_QTBtn)
 		Next I
-		' Inverse Survolle et DÈsactivÈ
+		' Inverse Survolle et D–πsactiv–π
 		For I = True To 3 Step 2
 			tR.Left = (((I +iif(I = True, 2, -2)) *(Me.Width +3)) +True)
 			tR.Top = True 'False
@@ -794,7 +794,7 @@ Sub Fast_QBtnToQTBtn( _
 
 	' Fix Bug in Win9x where caption are draw in white color
 	If ICOCount > False Then
-		' -- dÈplacÈ
+		' -- d–πplac–π
 		Dim ICOtmp As QBitmap
 		Dim Left As Integer
 		Dim Top As Integer
@@ -803,7 +803,7 @@ Sub Fast_QBtnToQTBtn( _
 		WITH Dest: .Left = False: .Right = ICOtmp.Width
 					.Top = False: .Bottom = ICOtmp.Height
 		END WITH
-		' //-- dÈplacÈ
+		' //-- d–πplac–π
 		Dim StartFrom As Integer
 		For I = False To NumBMPs -True 'step 2
 			If Me.Kind > False Then ' and ICOIndex = 0
@@ -835,8 +835,8 @@ Sub Fast_QBtnToQTBtn( _
 			END WITH
 			ICOtmp.CopyRect(Dest, ICOBMP, Source)
 
-			ICOtmp.Transparent = True	' Corrige un problËme de transparence sous 9x
-										' le problËme de dessin mal positionnÈ est ici
+			ICOtmp.Transparent = True	' Corrige un probl–∏me de transparence sous 9x
+										' le probl–∏me de dessin mal positionn–π est ici
 			tmpBitmap1.Draw ( left, _
 							   top, _
 							   ICOtmp.BMP)
@@ -855,7 +855,7 @@ Sub Fast_QCBtnToQTBtn( _
 	Dim tmpBitmap1 As QBitmap, _
 		NBitmap1 As QBitmap, _
 		XPBitmap1 As QBitmap
-	Dim XPBtnType As String ' AjoutÈ 19jan corrige un problËme o˘ les types sont diffÈrents
+	Dim XPBtnType As String ' Ajout–π 19jan corrige un probl–∏me o—â les types sont diff–πrents
 	Dim XPPartID As Integer
 	'Dim oldCaption As String
 	'	oldCaption = Me.Caption
@@ -864,7 +864,7 @@ Sub Fast_QCBtnToQTBtn( _
 	Dim tR As RECT_QTBtn
 	Dim btnCount As Integer
 
-	'Me.Flat = False ' RetirÈ 14fÈv (test)
+	'Me.Flat = False ' Retir–π 14f–πv (test)
     'Me.NumBMPs = maxNumBMPs_QTBtn
     Me.Spacing = False
 	btnCount = NumBMPs 'Me.NumBMPs
@@ -882,7 +882,7 @@ Sub Fast_QCBtnToQTBtn( _
 	Width1 = ((Me.Width +3) *btnCount) +True
 	Height1 = Me.Height +3
 
-	' Si l'image ‡ dÈj‡ la mÍme dimension elle ne sera pas redimensionnÈe
+	' Si l'image –∞ d–πj–∞ la m–∫me dimension elle ne sera pas redimensionn–πe
 	'If QTBtnOptimize <> True or _
 	'	(isXP_QTBtn = True and (XPBtnType <> BtnType or PartID <> XPPartID)) or _
 	'	((rWidth > False or rHeight > False) and _
@@ -891,13 +891,13 @@ Sub Fast_QCBtnToQTBtn( _
 		With NBitmap1
 			.Width = Width1		'== (mod)
 			.Height = Height1	'== (mod)
-			.FillRect(False, False, .Width, .Height, clBtnFace)'==(mod) (13janv remplacÈ clPurple par clBtnFace)
+			.FillRect(False, False, .Width, .Height, clBtnFace)'==(mod) (13janv remplac–π clPurple par clBtnFace)
 			'.PixelFormat = DefPixelFormat
 		End With
 		With XPBitmap1
 			.Width = Width1		'== (mod)
 			.Height = Height1	'== (mod)
-			.FillRect(False, False, .Width, .Height, clBtnFace)'==(mod) (13janv remplacÈ clPurple par clBtnFace)
+			.FillRect(False, False, .Width, .Height, clBtnFace)'==(mod) (13janv remplac–π clPurple par clBtnFace)
 			'.PixelFormat = DefPixelFormat
 		End With
 		Width1 = Me.Width *btnCount
@@ -911,7 +911,7 @@ Sub Fast_QCBtnToQTBtn( _
 		tmpBitmap1.Font.Underline = Me.Font.Underline
 
 		If isXP_QTBtn = False Then
-			' ThËme non activÈ ou ce n'est pas Windows XP
+			' Th–∏me non activ–π ou ce n'est pas Windows XP
 
 			Dim sFrom As Integer
 			sFrom = IIf(Me.Flat = True, True, False)
@@ -987,12 +987,12 @@ Sub Fast_QCBtnToQTBtn( _
 			Next J
 			NBitmap1.PixelFormat = DefPixelFormat
 		Else
-			' ThËme activÈ (Windows XP)
+			' Th–∏me activ–π (Windows XP)
 			' --
 			Dim hTheme As Long
 			'On Error Resume Next
 
-			' Ouverture du thËme
+			' Ouverture du th–∏me
 			Dim rtButton As String
 			rtButton = ""
 			' Format unicode ?!?
@@ -1014,8 +1014,8 @@ Sub Fast_QCBtnToQTBtn( _
 				'Dim tR As RECT_QTBtn
 
 				' m_hDC est le DC pour dessiner
-				' m_lPartId et m_lStateId sont la class + l'Ètat ‡ dessiner
-				' tR est un RECT spÈcifiant la zone dans laquelle dessiner
+				' m_lPartId et m_lStateId sont la class + l'–πtat –∞ dessiner
+				' tR est un RECT sp–πcifiant la zone dans laquelle dessiner
 				m_hDC = XPBitmap1.Handle
 				If PartID > True Then _
 					m_lPartId = PartID _
@@ -1034,7 +1034,7 @@ Sub Fast_QCBtnToQTBtn( _
 											 m_lStateId, _
 											 tR, tR)
 				Next I
-				' Inverse SÈlectionnÈ et DÈsactivÈ (Survolle est remplacÈ par SÈlectionnÈ)
+				' Inverse S–πlectionn–π et D–πsactiv–π (Survolle est remplac–π par S–πlectionn–π)
 				For I = True To 3 Step 2
 					m_lStateId = (I +True) +iif(I = True, True, False)'PBS_NORMAL
 					'tR.Left = (((I +iif(I = True, 2, -2)) *(Me.Width +3)) +True)
@@ -1052,7 +1052,7 @@ Sub Fast_QCBtnToQTBtn( _
 				Next I
 			End If
 
-			' Session de dessin terminÈe
+			' Session de dessin termin–πe
 			CloseThemeData_QTBtn hTheme
 			CloseThemeData_QTBtn hTheme
 			'//--
@@ -1083,7 +1083,7 @@ Sub Fast_QCBtnToQTBtn( _
 			DrawText_QTBtn (tmpBitmap1.Handle, Me.Caption, Len(Me.Caption), _
 							tR, DT_CENTER_QTBtn OR DT_SINGLELINE_QTBtn OR DT_VCENTER_QTBtn)
 		Next I
-		' Inverse Survolle et DÈsactivÈ
+		' Inverse Survolle et D–πsactiv–π
 		For I = True To 3 Step 2
 			'tR.Left = (((I +iif(I = True, 2, -2)) *(Me.Width +3)) +True)
 			'tR.Top = True
@@ -1105,7 +1105,7 @@ Sub Fast_QCBtnToQTBtn( _
 	If PartID <> True Then PartID = True
 	XPPartID = True
 	'tmpBitmap1.Transparent = True
-	' PrÈvient l'apparission du rectangle de survole de CoolBtn
+	' Pr–πvient l'apparission du rectangle de survole de CoolBtn
 	'tmpBitmap1.Pixel(True, True) = clPurple
 	'tmpBitmap1.TransparentColor = clPurple
 	tmpBitmap1.TransparentColor = tmpBitmap1.Pixel(True, True)

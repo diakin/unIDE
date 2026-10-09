@@ -101,8 +101,8 @@ Declare Function WindowFromPoint_mOD Lib "user32" Alias "WindowFromPoint" ( _
 
 Declare Function GetActiveWindow_mOD Lib "user32.dll" Alias "GetActiveWindow" () As Long
 
-' Vérifie la version de Windows puisque certains problèmes sont identifiés sur l'un ou l'autre
-' Cette version a été modifiée pour supporter win 2000...
+' VÐ¹rifie la version de Windows puisque certains problÐ¸mes sont identifiÐ¹s sur l'un ou l'autre
+' Cette version a Ð¹tÐ¹ modifiÐ¹e pour supporter win 2000...
 $IFNDEF __RQGETVERSION2
 $DEFINE __RQGETVERSION2
 Dim isXP_mOD	As Integer
@@ -362,7 +362,7 @@ Const SC_PREVWINDOW_mOD	= &HF050
 Const SC_CLOSE_mOD		= &HF060
 Const SC_RESTORE_mOD	= &HF120
 
-'en vlà queques unes pour jouer
+'en vlÐ° queques unes pour jouer
 Const WM_LBUTTONDOWN_mOD	= &H201
 Const WM_RBUTTONDOWN_mOD	= &H204
 'Const WM_NCLBUTTONUP		= &HA2
@@ -400,7 +400,7 @@ Dim Add_MyProc As Long
 	Add_MyProc = CODEPTR(pSubclassWndProc_mOD) 'instruction rapidQ (adressof en VB)
 
 
-' Corrige le menu de la barre de tâches et ajoute aussi le support OwnerDraw
+' Corrige le menu de la barre de tÐ²ches et ajoute aussi le support OwnerDraw
 Sub FixTaskBarMenu (hWnd As Long)
 	SetWindowLong_mOD ( hWnd, GWL_HWNDPARENT_mOD, HWND_DESKTOP_mOD )
 	SetWindowLong_mOD ( Application.Handle, GWL_HWNDPARENT_mOD, hWnd )
@@ -433,11 +433,11 @@ Sub SetODMenuHookEnabled(hWnd As Long, Enabled As Integer, AltHook As Integer)
 									CodePtr(pHookCallWndProc_mOD), _
 									False, _
 									m_ThreadID_mOD)
-				'GetInfoFromMenu("Hook Installé " +STR$(m_HookID_mOD))
+				'GetInfoFromMenu("Hook InstallÐ¹ " +STR$(m_HookID_mOD))
 			End If
-		'	GetInfoFromMenu("Hook Installé")
+		'	GetInfoFromMenu("Hook InstallÐ¹")
 		'Else
-		'	GetInfoFromMenu("Alternative Hook Installé")
+		'	GetInfoFromMenu("Alternative Hook InstallÐ¹")
 		End If
 
 		' on lance et on prend en note l'adresse de la procedure
@@ -450,7 +450,7 @@ Sub SetODMenuHookEnabled(hWnd As Long, Enabled As Integer, AltHook As Integer)
 		CheckMenuBarForItems(fhWnd_mOD)
 	Else
 		If GetProp_mOD (hWnd, "OldWndProc") <> False Then
-			' on arrête la procedure
+			' on arrÐºte la procedure
 			lRet = GetProp_mOD(hwnd, "OldWndProc")
 			' - UnSubclass the window... 
 			RemoveProp_mOD hwnd, "OldWndProc"
@@ -815,7 +815,7 @@ Sub DrawMenuShadow '( _
 	'	(bdrEmpty(2) = 1 and hWnd = hMenuOpen3) Then
 	If bdrEmpty(mnuIndex) = 1 Then
 		bdrEmpty(mnuIndex) = 0
-		' Supérieure
+		' SupÐ¹rieure
 		rBorder(mnuIndex).Width = 4
 		rBorder(mnuIndex).Height = winH
 		BitBlt_mOD ( rBorder(mnuIndex).Handle, _
@@ -827,7 +827,7 @@ Sub DrawMenuShadow '( _
 		SetRect_mOD(rRestore(mnuIndex), Rec.Right -4, Rec.Top, Rec.Right, Rec.Bottom +4)
 		rBorder(mnuIndex).Width = 4
 		rBorder(mnuIndex).Height = winH
-		' Inférieure
+		' InfÐ¹rieure
 		bBorder(mnuIndex).Width = winW -4
 		bBorder(mnuIndex).Height = 4
 		BitBlt_mOD ( bBorder(mnuIndex).Handle, _
@@ -845,7 +845,7 @@ Sub DrawMenuShadow '( _
 		bBufLast(mnuIndex).Width = winW -4
 		bBufLast(mnuIndex).Height = 4
 
-		' - Ombre à droite...
+		' - Ombre Ð° droite...
 		Dim rwinW As Long
 		Dim rwinH As Long
 		rwinW	= 4
@@ -853,7 +853,7 @@ Sub DrawMenuShadow '( _
 		For X = 1 To 4
 			For Y = 0 To 3
 				c = GetPixel_mOD	(rBorder(mnuIndex).Handle, rwinW - X, Y)
-				SetPixel_mOD		rBufLast(mnuIndex).Handle, rwinW - X, Y, c ' winW problème ?
+				SetPixel_mOD		rBufLast(mnuIndex).Handle, rwinW - X, Y, c ' winW problÐ¸me ?
 			Next Y
 			For Y = 4 To 7
 				c = GetPixel_mOD	(rBorder(mnuIndex).Handle, rwinW - X, Y)
@@ -873,7 +873,7 @@ Sub DrawMenuShadow '( _
 		For Y = 1 To 4
 			For X = 0 To 3
 				c = GetPixel_mOD	(bBorder(mnuIndex).Handle, X, rwinH - Y)
-				SetPixel_mOD		bBufLast(mnuIndex).Handle, X, 4 - Y, c ' winH problème ?
+				SetPixel_mOD		bBufLast(mnuIndex).Handle, X, 4 - Y, c ' winH problÐ¸me ?
 			Next X
 			For X = 4 To 7
 				c = GetPixel_mOD	(bBorder(mnuIndex).Handle, X, rwinH - Y)
@@ -900,7 +900,7 @@ Sub DrawMenuShadow '( _
 				   0, 0, _
 				   SrcCopy_mOD )
 
-	' - Relâche le DC du bureau
+	' - RelÐ²che le DC du bureau
 	ReleaseDC_mOD GetDesktopWindow_mOD, hDcDsk
 
 End Sub
@@ -971,22 +971,22 @@ Dim mnuSysMainForm		As Long
 
 Type ODCouleur
 	MainMenuTxt			As Integer	' Couleur du texte
-	MainMenuTxtSel		As Integer	' Couleur du texte sélectionné
+	MainMenuTxtSel		As Integer	' Couleur du texte sÐ¹lectionnÐ¹
 	MainMenuTxtInactif	As Integer	' Couleur du texte inactif
 	MenuFond			As Integer	' Couleur du menu
 	MenuCont			As Integer	' Couleur de la bordure, si plat
 	ItemFond1			As Integer	' Couleur de l'item
-	ItemFond2			As Integer	' Couleur de l'item sous l'icône
-	ItemFondSel1		As Integer	' Couleur de l'item sélectionné
-	ItemFondSel2		As Integer	' Couleur de l'item sous l'icône sélectionnée
+	ItemFond2			As Integer	' Couleur de l'item sous l'icÑ„ne
+	ItemFondSel1		As Integer	' Couleur de l'item sÐ¹lectionnÐ¹
+	ItemFondSel2		As Integer	' Couleur de l'item sous l'icÑ„ne sÐ¹lectionnÐ¹e
 	ItemFondInact1		As Integer	' Couleur de l'item inactif
-	ItemFondInact2		As Integer	' Couleur de l'item sous l'icône inactive
-	ItemFondSelInact1	As Integer	' Couleur de l'item inactif sélectionné
-	ItemFondSelInact2	As Integer	' Couleur de l'item sous l'icône inactive sélectionnée
+	ItemFondInact2		As Integer	' Couleur de l'item sous l'icÑ„ne inactive
+	ItemFondSelInact1	As Integer	' Couleur de l'item inactif sÐ¹lectionnÐ¹
+	ItemFondSelInact2	As Integer	' Couleur de l'item sous l'icÑ„ne inactive sÐ¹lectionnÐ¹e
 	ItemContSel			As Integer	' Couleur de la bordue, si plat
 	ItemContSelInactif	As Integer	' Couleur de la bordure inactive, si plat
 	ItemTxt				As Integer	' Couleur du texte
-	ItemTxtSel			As Integer	' Couleur du texte sélectionné
+	ItemTxtSel			As Integer	' Couleur du texte sÐ¹lectionnÐ¹
 	ItemTxtInactif		As Integer	' Couleur du texte inactif
 End Type
 
@@ -995,15 +995,15 @@ Dim mnuODCouleurs		As ODCouleur
 Dim mnuODDefCouleurs	As ODCouleur
 Dim mnuODMesCouleurs	As ODCouleur
 
-' Je dois évaluer la plus longue chaîne avant de retirer les
-' espace supplémentaires
+' Je dois Ð¹valuer la plus longue chaÐ¾ne avant de retirer les
+' espace supplÐ¹mentaires
 CREATE pNewSysMenu AS QPOPUPMENU
 	CREATE pSysRestore AS QMENUITEM
 		Caption = "Restaurer"
 		'ShortCut = ""
 	END CREATE
 	CREATE pSysMove AS QMENUITEM
-		Caption = "Déplacer"
+		Caption = "DÐ¹placer"
 		'ShortCut = ""
 	END CREATE
 	CREATE pSysResize AS QMENUITEM
@@ -1011,7 +1011,7 @@ CREATE pNewSysMenu AS QPOPUPMENU
 		'ShortCut = ""
 	END CREATE
 	CREATE pSysMinimize AS QMENUITEM
-		Caption = "Réduire"
+		Caption = "RÐ¹duire"
 		'ShortCut = ""
 	END CREATE
 	CREATE pSysMaximize AS QMENUITEM
@@ -1029,15 +1029,15 @@ END CREATE
 
 
 
-' Ce SUB va être appellé chaque fois qu'un élément est sélectionné, 
-' donc remplissez ce SUB avec vos paramêtres...
-' moCaption   = Le titre du menue propriétaire, si null considérez 
-'               que c'est votre fenêtre
-' iCaption    = Le titre de l'élément sélectionné
+' Ce SUB va Ðºtre appellÐ¹ chaque fois qu'un Ð¹lÐ¹ment est sÐ¹lectionnÐ¹, 
+' donc remplissez ce SUB avec vos paramÐºtres...
+' moCaption   = Le titre du menue propriÐ¹taire, si null considÐ¹rez 
+'               que c'est votre fenÐºtre
+' iCaption    = Le titre de l'Ð¹lÐ¹ment sÐ¹lectionnÐ¹
 'Declare Sub GetInfoFromMenu (iCaption As String) '(moCaption As String, iCaption As String)
 
 '=======================================
-' Méthode affiche le texte de menu
+' MÐ¹thode affiche le texte de menu
 '=======================================
 Const ODCOLOR_SCROLLBAR					As Long = -1
 Const ODCOLOR_BACKGROUND				As Long = -2
@@ -1378,7 +1378,7 @@ Sub DrawMenuText (lColor As Long, lExtra As Integer)
 				DT_SINGLELINE_mOD OR DT_VCENTER_mOD OR DT_RIGHT_mOD)
 		End If
 	Else
-		' Rempli le rectangle avec une couleur système
+		' Rempli le rectangle avec une couleur systÐ¸me
 		SetRect_mOD	(lItemRect, DrawItem.Left +31, DrawItem.Top +2, DrawItem.Right -3, DrawItem.Top +3)
 		FillRect_mOD	(DrawItem.hDC, lItemRect, GetSysColorBrush_mOD(COLOR_GRAYTEXT_mOD))
 	End If
@@ -1429,7 +1429,7 @@ Const PS_SOLID_mOD As Long = 0
 Dim hRPen As Long
 Dim hSRBr As Long
 
-' Crée un pinceau ou un crayon réutilisable
+' CrÐ¹e un pinceau ou un crayon rÐ¹utilisable
 Declare Function CreateBrushIndirect_mOD Lib "gdi32" Alias "CreateBrushIndirect" ( _
 		lpLogBrush As LOGBRUSH_mOD ) As Long
 Declare Function CreatePenIndirect_mOD Lib "gdi32" Alias "CreatePenIndirect" ( _
@@ -1440,31 +1440,31 @@ Sub ChangeBrush (nColor As Integer)
 	hSRBr	= CreateSolidBrush_mOD (nColor)
 End Sub
 Sub ChangePen (nSize As Integer, nColor As Integer)
-	' Il semblerait que si nSize est supérieur à 1
-	' que le crayon créé soit de 3 à 10 plus lent
-	If nSize > 2 Then nSize = 2 ' Bug étrange
+	' Il semblerait que si nSize est supÐ¹rieur Ð° 1
+	' que le crayon crÐ¹Ð¹ soit de 3 Ð° 10 plus lent
+	If nSize > 2 Then nSize = 2 ' Bug Ð¹trange
 	'DeleteObject_mOD hRPen
 	hRPen	= CreatePen_mOD (PS_SOLID_mOD, nSize, nColor)
 End Sub
 
 WiTH mnuODDefCouleurs
 	.MainMenuTxt		= GetSysColor_mOD(COLOR_MENUTEXT_mOD)	' Couleur du texte de la barre de menu
-	.MainMenuTxtSel		= GetSysColor_mOD(COLOR_HIGHLIGHTTEXT_mOD)	' Couleur du texte sélectionné de la barre de menu
+	.MainMenuTxtSel		= GetSysColor_mOD(COLOR_HIGHLIGHTTEXT_mOD)	' Couleur du texte sÐ¹lectionnÐ¹ de la barre de menu
 	.MainMenuTxtInactif	= GetSysColor_mOD(COLOR_GRAYTEXT_mOD)	' Couleur du texte inactif de la barre de menu
 	.MenuFond			= &HFFFFFF	' Couleur du menu
 	.MenuCont			= GetSysColor_mOD(COLOR_BTNSHADOW_mOD)	' Couleur de la bordure, si plat
 	.ItemFond1			= &HFFFFFF	' Couleur de l'item
-	.ItemFond2			= &HEFE7E0	' Couleur de l'item sous l'icône
-	.ItemFondSel1		= &HFFDFBF	' Couleur de l'item sélectionné
-	.ItemFondSel2		= &HFFDFBF	' Couleur de l'item sous l'icône sélectionnée
+	.ItemFond2			= &HEFE7E0	' Couleur de l'item sous l'icÑ„ne
+	.ItemFondSel1		= &HFFDFBF	' Couleur de l'item sÐ¹lectionnÐ¹
+	.ItemFondSel2		= &HFFDFBF	' Couleur de l'item sous l'icÑ„ne sÐ¹lectionnÐ¹e
 	.ItemFondInact1		= &HFFFFFF	' Couleur de l'item inactif
-	.ItemFondInact2		= &HEFE7E0	' Couleur de l'item sous l'icône inactive
-	.ItemFondSelInact1	= &HFFFFFF	' Couleur de l'item inactif sélectionné
-	.ItemFondSelInact2	= &HFFFFFF	' Couleur de l'item sous l'icône inactive sélectionnée
+	.ItemFondInact2		= &HEFE7E0	' Couleur de l'item sous l'icÑ„ne inactive
+	.ItemFondSelInact1	= &HFFFFFF	' Couleur de l'item inactif sÐ¹lectionnÐ¹
+	.ItemFondSelInact2	= &HFFFFFF	' Couleur de l'item sous l'icÑ„ne inactive sÐ¹lectionnÐ¹e
 	.ItemContSel		= &H903F00	' Couleur de la bordue, si plat
 	.ItemContSelInactif	= GetSysColor_mOD(COLOR_BTNSHADOW_mOD)	' Couleur de la bordure inactive, si plat
 	.ItemTxt			= GetSysColor_mOD(COLOR_MENUTEXT_mOD)	' Couleur du texte
-	.ItemTxtSel			= &H903F00	' Couleur du texte sélectionné
+	.ItemTxtSel			= &H903F00	' Couleur du texte sÐ¹lectionnÐ¹
 	.ItemTxtInactif		= GetSysColor_mOD(COLOR_GRAYTEXT_mOD)	' Couleur du texte inactif
 End WiTH
 mnuODMesCouleurs = mnuODDefCouleurs
@@ -1475,7 +1475,7 @@ Function CheckIfSYSColor (lColor As Integer) As Integer
 		' Retourne la couleur correspondante
 		Result = GetSysColor_mOD((lColor *-True) -True)
 	ElseIf lColor =< -2147483624 and lColor => -2147483648 Then
-		' Conversion des couleurs systèmes RapidQ pour être utilisées par les APIs
+		' Conversion des couleurs systÐ¸mes RapidQ pour Ðºtre utilisÐ¹es par les APIs
 		Select Case lColor
 			Case -2147483648: lColor = GetSysColor_mOD(False)		' clScrollBar
 			Case -2147483647: lColor = GetSysColor_mOD(True)		' clBackGround
@@ -1511,7 +1511,7 @@ Function CheckIfSYSColor (lColor As Integer) As Integer
 		' Retourne la couleur correspondante
 		Result = lColor
 	Else
-		' Retourne la couleur non modifiée
+		' Retourne la couleur non modifiÐ¹e
 		Result = lColor
 	End If
 End Function
@@ -1561,7 +1561,7 @@ Sub LoadNewColors
 	Call UpdateColors
 End Sub
 Sub LoadDefaultColors
-	' // Attention ceci va remplacer nos couleurs par les couleurs prédéfinies
+	' // Attention ceci va remplacer nos couleurs par les couleurs prÐ¹dÐ¹finies
 	mnuODCouleurs = mnuODDefCouleurs
 	Call UpdateColors
 End Sub
@@ -1580,15 +1580,15 @@ Sub DrawMenuRectangle( Left, Top, Right, Bottom, lColor1 As Long, lColor2 As Lon
 		iBrush = 12
 		ChangeBrush (lColor1)
 	Else
-		' Crée un nouveau pinceau
+		' CrÐ¹e un nouveau pinceau
 		'hHBr = CreateSolidBrush_mOD(lColor2)
 		ChangeBrush (lColor2)
 	End If
-	' Sélectionne le nouveau pinceau dans le DC et supprime l'ancien
+	' SÐ¹lectionne le nouveau pinceau dans le DC et supprime l'ancien
 	hBr = SelectObject_mOD(DrawItem.hDC, hSRBr) 'hHBr)
-	' Crée un nouveau crayon
+	' CrÐ¹e un nouveau crayon
 	ChangePen (True, lColor1)
-	' Sélectionne le nouveau crayon dans le DC et supprime l'ancien
+	' SÐ¹lectionne le nouveau crayon dans le DC et supprime l'ancien
 	hPen = SelectObject_mOD(DrawItem.hDC, hRPen) 'hRPen)
 
 	Rectangle_mOD ( _
@@ -1600,9 +1600,9 @@ Sub DrawMenuRectangle( Left, Top, Right, Bottom, lColor1 As Long, lColor2 As Lon
 End Sub
 
 '=======================================
-' Méthode affiche le bouton de menu
+' MÐ¹thode affiche le bouton de menu
 '=======================================
-' Pour Win98 et supérieur
+' Pour Win98 et supÐ¹rieur
 Declare Function TransparentBlt_mOD Lib "msimg32" _
 		Alias "TransparentBlt" ( _
 		ByVal hdcDest As Long, _
@@ -1972,7 +1972,7 @@ End Sub
 
 
 '==============================================
-' Méthode ajoute un bitmap a l'item menu 
+' MÐ¹thode ajoute un bitmap a l'item menu 
 '==============================================
 
 Declare Function ModifyMenu_mOD Lib "user32" Alias "ModifyMenuA" ( _
@@ -1992,7 +1992,7 @@ Sub MakeODItem (ParentHnd As Long, mItem As QMenuItem, bmpIndex As Long)
 	Dim wID As Long, lpData As Long
 	Dim nCaption As String
 
-	' Cette partie est pour le menu système
+	' Cette partie est pour le menu systÐ¸me
 	If ParentHnd = pNewSysMenu.Handle and (fhWnd_mOD <> False) Then
 		Dim iSysPos As Long
 		Select Case mItem.Command
@@ -2035,19 +2035,19 @@ Sub MakeODItem (ParentHnd As Long, mItem As QMenuItem, bmpIndex As Long)
 	'GetInfoFromMenu mnString +", " +STR$(Len(mnString))
 
 	lpData = lpItemInfo.fType Or lpItemInfo.fState
-	' On empêche d'appliquer le style ownerdraw une seconde fois
+	' On empÐºche d'appliquer le style ownerdraw une seconde fois
 	If (lpData and MFT_OWNERDRAW) = False Then
 		If mnString = "" Then
 		'		lpData = lpData Or MFT_SEPARATOR
 		Else
-			' Permet le survole d'un item désactivé
+			' Permet le survole d'un item dÐ¹sactivÐ¹
 			If (lpData and MFS_GRAYED) <> False Then _
 				lpData = lpData And Not MFS_GRAYED Or MFS_DISABLED
 		End If
 		ModifyMenu_mOD(ParentHnd, wID, lpData Or MFT_OWNERDRAW, wID, mnString & chr$(False))
 	End If
 
-	' L'option est décoché, -2 vas résoudre le problème d'initialisation...
+	' L'option est dÐ¹cochÐ¹, -2 vas rÐ¹soudre le problÐ¸me d'initialisation...
 	If mItem.Checked = False and mItem.RadioItem <> True Then _
 		mItem.Checked = -2
 
@@ -2088,8 +2088,8 @@ Declare Function GetMenuItemCount_mOD Lib "user32" Alias "GetMenuItemCount" ( _
 
 
 Sub MakeODMenu (hSrcMenu As Long)
-	' Parcours les menus de la fenêtre donnée en paramètre et les affiche
-	' dans le contrôle ListBox passé en paramètre.
+	' Parcours les menus de la fenÐºtre donnÐ¹e en paramÐ¸tre et les affiche
+	' dans le contrÑ„le ListBox passÐ¹ en paramÐ¸tre.
 	Dim hMenu As Long, lgNbMenu As Long
 	Dim hSubMenu As Long, lgNbSousMenu As Long
 	Dim lgRet As Long
@@ -2101,14 +2101,14 @@ Sub MakeODMenu (hSrcMenu As Long)
 	'Dim chara As String
 	'Dim K As Integer
 
-	' Récupère un pointeur vers le menu courant
+	' RÐ¹cupÐ¸re un pointeur vers le menu courant
 	hMenu = hSrcMenu 'GetMenu_mOD(hSrcMenu)
-	' Récupère le nombre d'élément de premier niveau
+	' RÐ¹cupÐ¸re le nombre d'Ð¹lÐ¹ment de premier niveau
 	lgNbMenu = GetMenuItemCount_mOD(hMenu)
-	' Parcours les éléments de premier niveau
+	' Parcours les Ð¹lÐ¹ments de premier niveau
 	If lgNbMenu > False Then
 		For I = False To (lgNbMenu - True)
-			' Mise à jour de la structure
+			' Mise Ð° jour de la structure
 			'stBuffer = Space$(80)
 			WiTH lpItemInfo
 				.cbSize = SizeOf(lpItemInfo) '44
@@ -2118,7 +2118,7 @@ Sub MakeODMenu (hSrcMenu As Long)
 				'.fState = MFS_DEFAULT
 				.fMask = MIIM_ID Or MIIM_STATE Or MIIM_TYPE Or MIIM_DATA Or MIIM_SUBMENU
 			End WiTH
-			' Récupère le contenu du menu
+			' RÐ¹cupÐ¸re le contenu du menu
 			lgRet = GetMenuItemInfo_mOD(hMenu, I, MF_BYPOSITION, lpItemInfo)
 			wID = lpItemInfo.wID
 			If UBound(mnuMain) < wID Then
@@ -2139,7 +2139,7 @@ Sub MakeODMenu (hSrcMenu As Long)
 			'NExt K
 			'showmessage chara
 
-			' On empêche d'appliquer le style ownerdraw une seconde fois
+			' On empÐºche d'appliquer le style ownerdraw une seconde fois
 			lpData = lpItemInfo.fType Or lpItemInfo.fState
 			'If (lpData and MFS_DISABLED) <> False Then _
 			'	lpData = lpData Or MFS_GRAYED 'MFS_DISABLED
@@ -2147,7 +2147,7 @@ Sub MakeODMenu (hSrcMenu As Long)
 				If mnString = "" Then
 				'	lpData = lpData Or MFT_SEPARATOR
 				Else
-					' Permet le survole d'un item désactivé
+					' Permet le survole d'un item dÐ¹sactivÐ¹
 					If (lpData and MFS_GRAYED) <> False Then _
 						lpData = lpData And Not MFS_GRAYED Or MFS_DISABLED
 				End If
@@ -2157,14 +2157,14 @@ Sub MakeODMenu (hSrcMenu As Long)
 				'lgRet = SetMenuItemInfo_mOD(hMenu, wID, MF_BYCOMMAND, lpItemInfo)
 				'GetInfoFromMenu mnString +", " +STR$(lpData) +", " + STR$(lgRet)
 			End If
-			' Récupère un pointeur vers le sous-menu
+			' RÐ¹cupÐ¸re un pointeur vers le sous-menu
 			hSubMenu = GetSubMenu_mOD(hMenu, I)
-			' Récupère le nombre de sous-menus
+			' RÐ¹cupÐ¸re le nombre de sous-menus
 			lgNbSousMenu = GetMenuItemCount_mOD(hSubMenu)
-			' Parcours des éléments de second niveau
+			' Parcours des Ð¹lÐ¹ments de second niveau
 			If lgNbSousMenu > False Then
 				MakeODMenu(hSubMenu)
-				mnuSubMenu(wID) = True		' -1 aucun sous-menu, 0 n'a pas été vérifié
+				mnuSubMenu(wID) = True		' -1 aucun sous-menu, 0 n'a pas Ð¹tÐ¹ vÐ¹rifiÐ¹
 			Else
 				mnuSubMenu(wID) = -True	' 1 a un sous-menu
 			End If
@@ -2176,11 +2176,11 @@ End Sub
 Sub CheckMenuBarForItems(frmTmp As Long)
 	Dim hMenu As Long, lgNbMenu As Long
 
-	' Récupère un pointeur vers le menu courant
+	' RÐ¹cupÐ¸re un pointeur vers le menu courant
 	hMenu = GetMenu_mOD(frmTmp)
-	' Récupère le nombre d'élément de premier niveau
+	' RÐ¹cupÐ¸re le nombre d'Ð¹lÐ¹ment de premier niveau
 	lgNbMenu = GetMenuItemCount_mOD(hMenu)
-	' Parcours les éléments de premier niveau
+	' Parcours les Ð¹lÐ¹ments de premier niveau
 	hMainMenu = hMenu
 	If lgNbMenu > False Then _
 		MakeODMenu(hMenu)
@@ -2222,9 +2222,9 @@ Sub pShowSysPopup (FromIcon As Integer, X As Integer, Y As Integer)
     Dim sMenu As Long
     Dim sStyle As Long
 		sStyle = TPM_RETURNCMD or TPM_RIGHTBUTTON
-	' Détermine quels items sont innactifs (gris)
+	' DÐ¹termine quels items sont innactifs (gris)
 	pFixItemState
-	' Détermine quel item est par défaut (gras)
+	' DÐ¹termine quel item est par dÐ¹faut (gras)
 	DefSysItem
 	If FromIcon Then
 		Dim mRect As RECT_mOD
@@ -2263,8 +2263,8 @@ Sub FindFirstMenu '(Me As QTimer)
 
     If hMenu <> False Then
        'Me.Enabled = False
-       If hMenu <> 144 Then ' Désolé mais 144 est un menu instable
-			' Force le menu à ce repeindre
+       If hMenu <> 144 Then ' DÐ¹solÐ¹ mais 144 est un menu instable
+			' Force le menu Ð° ce repeindre
 			hMenuFound = hMenu
 			lTimer_mOD.Enabled = False
 			Dim empRect As RECT_mOD
@@ -2280,7 +2280,7 @@ Sub FindFirstMenu '(Me As QTimer)
 				SetProp_mOD (hMenu, "OldWndProc", SetWindowLong_mOD(hMenu, GWL_WNDPROC_mOD, Add_MyProc))
 			End If
 
-       Else ' Arrgh! sous win9x ça peut arriver souvant, alors on utilisera un timer
+       Else ' Arrgh! sous win9x Ð·a peut arriver souvant, alors on utilisera un timer
 			lTimer_mOD.Enabled = False
 			hMenuFound = False
 			hMenuCount = False
@@ -2314,22 +2314,22 @@ Sub pDrawBorder '(hMenu As Long)
 				Dim hPen As Long
 				Dim hBr As Long
 
-				' Sélectionne le nouveau pinceau dans le DC et supprime l'ancien
+				' SÐ¹lectionne le nouveau pinceau dans le DC et supprime l'ancien
 				hBr = SelectObject_mOD(hDC, GetStockObject_mOD(NULL_BRUSH_mOD)) 'hHBr(False))
-				' Crée un nouveau crayon
+				' CrÐ¹e un nouveau crayon
 				ChangePen (True, GetSysColor_mOD(16))
-				' Sélectionne le nouveau crayon dans le DC et supprime l'ancien
+				' SÐ¹lectionne le nouveau crayon dans le DC et supprime l'ancien
 				hPen = SelectObject_mOD(hDC, hRPen)
 
 				Rectangle_mOD ( _
 								  hDC, .left, .top, .right, .bottom )
 
-				' Puisqu'il semblerait qu'un crayon de taille supérieure à 1 soit
-				' de 3 à 10 plus lent, 1 sera sélectionné et le rectangle sera
-				' resdessiné 1 fois de plus...
-				' Crée un nouveau crayon
+				' Puisqu'il semblerait qu'un crayon de taille supÐ¹rieure Ð° 1 soit
+				' de 3 Ð° 10 plus lent, 1 sera sÐ¹lectionnÐ¹ et le rectangle sera
+				' resdessinÐ¹ 1 fois de plus...
+				' CrÐ¹e un nouveau crayon
 				ChangePen (True, GetSysColor_mOD(4)) '&HFFFFFF
-				' Sélectionne le nouveau crayon dans le DC et supprime l'ancien
+				' SÐ¹lectionne le nouveau crayon dans le DC et supprime l'ancien
 				DeleteObject_mOD SelectObject_mOD(hDC, hRPen)
 
 				Rectangle_mOD ( _
@@ -2360,16 +2360,16 @@ End Sub
 
 ' AVERTISSMENT !!!
 ' Il y a un erreur ici, wParam ne retourne pas correctement l'ID de l'item
-' sélectionné, ce que peut causer des ennuis...
-' Puisque que l'item est redessiné .wID dans MII est rempli, mais peut être 
+' sÐ¹lectionnÐ¹, ce que peut causer des ennuis...
+' Puisque que l'item est redessinÐ¹ .wID dans MII est rempli, mais peut Ðºtre 
 ' dangereux, puisque si l'.wID ne correspont pas, le msg n'aura aucun sens.
 SUB ShowDescription (wParam As Long, lParam As Long, hWnd As Long)
 	Dim a As String
 	Dim TabPos As Integer
 	a = LEFT$(hex$(wParam), 4)
-	If lParam = False And a = "FFFF" Then	' Le système a fermé le menu
+	If lParam = False And a = "FFFF" Then	' Le systÐ¸me a fermÐ¹ le menu
 		GetInfoFromMenu(" ")  
-	Else									' Recherche le titre de l'item sélectionné
+	Else									' Recherche le titre de l'item sÐ¹lectionnÐ¹
 		If lParam = DrawItem.hwnditem Then
 			WiTH MII
         		.cbSize = SizeOf (MII)
@@ -2399,7 +2399,7 @@ Function pSubclassWndProc_mOD '( _
 
 	lRet = GetProp_mOD(hwnd, "OldWndProc")
 
-    ' On doit déterminer si, c'est bien un menu où la fenêtre
+    ' On doit dÐ¹terminer si, c'est bien un menu oÑ‰ la fenÐºtre
 	'If hMenuCount > False and pGetClassName_mOD(hwnd) = "#32768" Then
 	If hMenuCount > False and GetProp_mOD(hwnd, "isPopup") = True Then
 
@@ -2421,7 +2421,7 @@ Function pSubclassWndProc_mOD '( _
 			 
 				'SetWindowLong_mOD hwnd, GWL_EXSTYLE_mOD, lTmp 
 
-				'GetInfoFromMenu ("Création du menu " +STR$(hWnd))
+				'GetInfoFromMenu ("CrÐ¹ation du menu " +STR$(hWnd))
 			Case WM_DESTROY_mOD 
 				If mnuIntercepted = True Then _
 					mnuIntercepted = False
@@ -2436,15 +2436,15 @@ Function pSubclassWndProc_mOD '( _
 					' - UnSubclass the window... 
 					RemoveProp_mOD hwnd, "OldWndProc"
 					SetWindowLong_mOD (hwnd, GWL_WNDPROC_mOD, lRet)
-					'GetInfoFromMenu ("Arrêt de la procédure :  " +STR$(SetWindowLong_mOD (CWP.hwnd, GWL_WNDPROC_mOD, lRet)))
+					'GetInfoFromMenu ("ArrÐºt de la procÐ¹dure :  " +STR$(SetWindowLong_mOD (CWP.hwnd, GWL_WNDPROC_mOD, lRet)))
 				End If
 				' - UnSubclass the window...
 				'RemoveProp_mOD hwnd, "OldWndProc"
-				'GetInfoFromMenu ("Arrêt de la procédure :  " +STR$(SetWindowLong_mOD (hwnd, GWL_WNDPROC_mOD, lRet)))
+				'GetInfoFromMenu ("ArrÐºt de la procÐ¹dure :  " +STR$(SetWindowLong_mOD (hwnd, GWL_WNDPROC_mOD, lRet)))
 
 				'GetInfoFromMenu ("Destruction du menu " +STR$(hWnd))
 			'Case WM_UNDOC_1EB
-				'GetInfoFromMenu ("DebugInfo:: Je peins dans la fenêtre..." +STR$(WPARAM), "")
+				'GetInfoFromMenu ("DebugInfo:: Je peins dans la fenÐºtre..." +STR$(WPARAM), "")
 				'pDrawBorder (hWnd)
 				'Result = False
 			'Case WM_UNDOC_1E5 
@@ -2452,7 +2452,7 @@ Function pSubclassWndProc_mOD '( _
 			Case WM_PAINT_mOD
 				pDrawBorder (hWnd)
 			Case WM_NCPAINT_mOD
-				'GetInfoFromMenu ("DebugInfo:: Je peins sur la fenêtre...", "")
+				'GetInfoFromMenu ("DebugInfo:: Je peins sur la fenÐºtre...", "")
 				pDrawBorder (hWnd)
 				'Result = False
 			Case Else
@@ -2460,7 +2460,7 @@ Function pSubclassWndProc_mOD '( _
 
 		End Select
 	Else
-		' et là c'est la fenêtre
+		' et lÐ° c'est la fenÐºtre
 		'PrevProc = GetProp_mOD(hwnd, "OldWndProc")
 		Select Case uMsg
 			Case WM_NCACTIVATE_mOD
@@ -2521,14 +2521,14 @@ Function pSubclassWndProc_mOD '( _
 						iDC = ReleaseDC_mOD (hWnd, iDC)
 
 						If  mnuMain(MeasureItem.ItemID) = False Then
-							INC(MeasureItem.itemWidth, 33)							'-- Doit être assez grand
+							INC(MeasureItem.itemWidth, 33)							'-- Doit Ðºtre assez grand
 							If mnuSystem(MeasureItem.ItemID) = True Then _
 								INC(MeasureItem.itemWidth, 40)
 						Else
 							If mnuBitmap(MeasureItem.ItemID) > False Then
-								INC(MeasureItem.itemWidth, 17)						'-- Doit être assez grand
+								INC(MeasureItem.itemWidth, 17)						'-- Doit Ðºtre assez grand
 							'Else
-							'	'INC(MeasureItem.itemWidth, 25)						'-- Doit être assez grand
+							'	'INC(MeasureItem.itemWidth, 25)						'-- Doit Ðºtre assez grand
 							End If
 
 						End If
@@ -2554,9 +2554,9 @@ Function pSubclassWndProc_mOD '( _
 
 					SetBkMode_mOD(DrawItem.hDC, TRANSPARENT_mOD)
 
-					' HotLight est supporté à partir de Windows 98 mais semble inactif...
-					' il y sûrement une chose qui manque, peut-être reste-t-il un message
-					' à envoyer au MainMenu ... ?!?
+					' HotLight est supportÐ¹ Ð° partir de Windows 98 mais semble inactif...
+					' il y sÑ‹rement une chose qui manque, peut-Ðºtre reste-t-il un message
+					' Ð° envoyer au MainMenu ... ?!?
                     'GetInfoFromMenu (VarPTR$(DrawItem.itemData))
 					IF ((ODS_SELECTED Or ODS_HOTLIGHT) And DrawItem.itemState) <> False And _
 						VarPTR$(DrawItem.itemData) <> "-" THEN
@@ -2609,7 +2609,7 @@ Function pSubclassWndProc_mOD '( _
 											IIf(m_bActive = -True, mnuODCouleurs.MainMenuTxt, mnuODCouleurs.MainMenuTxtInactif), _
 											mnuODCouleurs.ItemTxt), False)
 					END IF
-					' Empêche la flèche de sous-menu de se dessiner
+					' EmpÐºche la flÐ¸che de sous-menu de se dessiner
 					If mnuSubMenu(DrawItem.ItemID) = True Then
 						ExcludeClipRect_mOD ( _
 							DrawItem.hDC, _
@@ -2653,7 +2653,7 @@ Function pSubclassWndProc_mOD '( _
 			'		'EndMenu_mOD
 			'		SendMessage_mOD(hWnd, WM_NCRBUTTONDOWN_mOD, HTCAPTION_mOD, 0&)
 			'	End If
-            Case WM_INITMENUPOPUP_mOD			' Menu popup initialisé
+            Case WM_INITMENUPOPUP_mOD			' Menu popup initialisÐ¹
                 If wParam = GetSystemMenu_mOD(hWnd, False) Then
 					mnuSysMainForm = hWnd
 					If mnuReplaceSysMenu = True Then
@@ -2661,25 +2661,25 @@ Function pSubclassWndProc_mOD '( _
                 		EndMenu_mOD
                 	End If
                 End If
-				' Désactive l'animation pour corriger le problème d'actualisation du menu
+				' DÐ¹sactive l'animation pour corriger le problÐ¸me d'actualisation du menu
 				SystemParametersInfo_mOD (SPI_SETMENUANIMATION_mOD, False, False, False)
                 'If hMenuFound = False Then
                     'hMenuFound = False
-                    'GetInfoFromMenu ("DebugInfo:: Menu popup initialisé...", "")
+                    'GetInfoFromMenu ("DebugInfo:: Menu popup initialisÐ¹...", "")
                     If mnuAltHook = True Then
     	                lTimer_mOD.Interval = True
 	                    lTimer_mOD.Enabled = True
                     End If
                    'FindFirstMenu (lTimer_mOD)
                 'End If
-            Case WM_UNINITMENUPOPUP_mOD		' Menu popup fermé
+            Case WM_UNINITMENUPOPUP_mOD		' Menu popup fermÐ¹
 				SystemParametersInfo_mOD (SPI_SETMENUANIMATION_mOD, False, True, False)
 				If mnuReplaceSysMenu = True and wParam <> GetSystemMenu_mOD(hWnd, False) Then _
 					mnuSysFromIcon = False
 				'GetInfoFromMenu ("DebugInfo:: Fermeture du menu popup...")
 '			Case WM_MOUSEMOVE_mOD
 '			Case WM_NCMOUSEMOVE_mOD
-				' Ici le code va service à détecter le survole du menu pour win9x uniquement
+				' Ici le code va service Ð° dÐ¹tecter le survole du menu pour win9x uniquement
 				'GetInfoFromMenu (STR$(Screen.MouseX) +", " +STR$(Screen.MouseY) +", " +STR$(wPAram))
 				'If wParam = HTMENU_mOD and hMainMenu <> False and isXP_mOD = False Then
 				'	mnuPoint.X = Screen.MouseX
@@ -2702,7 +2702,7 @@ Function pSubclassWndProc_mOD '( _
 					'pFixItemState
 					pShowSysPopup ( True, False, _
 									False)
-					'GetInfoFromMenu ("Menu intercepté et remplacé")
+					'GetInfoFromMenu ("Menu interceptÐ¹ et remplacÐ¹")
 '				Else
 '					mnuSysFromIcon = False
 				End If
@@ -2821,7 +2821,7 @@ Function pHookCallWndProc_mOD '( _
 					' - Store the old windowproc... 
 					SetProp_mOD CWP.hwnd, "OldWndProc", lRet
 
-					'GetInfoFromMenu ("Création d'un menu dans le hook " +STR$(CWP.hwnd))
+					'GetInfoFromMenu ("CrÐ¹ation d'un menu dans le hook " +STR$(CWP.hwnd))
 				End If
 			Case WM_DESTROY_mOD
 				If CWP.hwnd <> 144 and pGetClassName_mOD(CWP.hwnd) = "#32768" Then
@@ -2836,7 +2836,7 @@ Function pHookCallWndProc_mOD '( _
 						' - UnSubclass the window... 
 						RemoveProp_mOD CWP.hwnd, "OldWndProc"
 						SetWindowLong_mOD (CWP.hwnd, GWL_WNDPROC_mOD, lRet)
-						'GetInfoFromMenu ("Arrêt de la procédure :  " +STR$(SetWindowLong_mOD (CWP.hwnd, GWL_WNDPROC_mOD, lRet)))
+						'GetInfoFromMenu ("ArrÐºt de la procÐ¹dure :  " +STR$(SetWindowLong_mOD (CWP.hwnd, GWL_WNDPROC_mOD, lRet)))
 					End If
 
 					'GetInfoFromMenu ("Destruction du menu " +STR$(CWP.hwnd))
@@ -2857,7 +2857,7 @@ Function pHookCallWndProc_mOD '( _
 
 End Function
 
-' TEST Menu sytème
+' TEST Menu sytÐ¸me
 'Declare Function GetMenuItemCount_mOD Lib "user32" Alias "GetMenuItemCount" ( _
 '		ByVal hMenu As Long ) As Long
 

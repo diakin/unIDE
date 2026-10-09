@@ -30,10 +30,10 @@ const rEM_SCROLLCARET = 183
 Declare Function SendMessageA Lib "user32" Alias "SendMessageA" (hwnd _
 As Long, wMsg As Long, wParam As Long, lParam As Long) As Long
 
-Declare Function LINEINDEX as long ' позиция первого символа в строке
-Declare Function LINEFROMCHAR as long  'номер строки содержащей символ в данной позиции
-Declare Function GoToLineEnd as long  'установить курсор в конец строки
-Declare Function GoToLineBegin as long  'установить курсор в начало строки
+Declare Function LINEINDEX as long ' РїРѕР·РёС†РёСЏ РїРµСЂРІРѕРіРѕ СЃРёРјРІРѕР»Р° РІ СЃС‚СЂРѕРєРµ
+Declare Function LINEFROMCHAR as long  'РЅРѕРјРµСЂ СЃС‚СЂРѕРєРё СЃРѕРґРµСЂР¶Р°С‰РµР№ СЃРёРјРІРѕР» РІ РґР°РЅРЅРѕР№ РїРѕР·РёС†РёРё
+Declare Function GoToLineEnd as long  'СѓСЃС‚Р°РЅРѕРІРёС‚СЊ РєСѓСЂСЃРѕСЂ РІ РєРѕРЅРµС† СЃС‚СЂРѕРєРё
+Declare Function GoToLineBegin as long  'СѓСЃС‚Р°РЅРѕРІРёС‚СЊ РєСѓСЂСЃРѕСЂ РІ РЅР°С‡Р°Р»Рѕ СЃС‚СЂРѕРєРё
 
 
 TYPE QMAXEDIT EXTENDS QRICHEDIT
@@ -67,9 +67,9 @@ TYPE QMAXEDIT EXTENDS QRICHEDIT
 		'LINEFROMCHAR as long
 
             PROPERTY SET SetLimitText(LimText as long)
-'LimText - это значение, которое задает пользователь
-'QMAXEDIT.LimitText - это свойство, которое можно потом считать (read)
-' при изменении свойства .LimitText выполняется операция
+'LimText - СЌС‚Рѕ Р·РЅР°С‡РµРЅРёРµ, РєРѕС‚РѕСЂРѕРµ Р·Р°РґР°РµС‚ РїРѕР»СЊР·РѕРІР°С‚РµР»СЊ
+'QMAXEDIT.LimitText - СЌС‚Рѕ СЃРІРѕР№СЃС‚РІРѕ, РєРѕС‚РѕСЂРѕРµ РјРѕР¶РЅРѕ РїРѕС‚РѕРј СЃС‡РёС‚Р°С‚СЊ (read)
+' РїСЂРё РёР·РјРµРЅРµРЅРёРё СЃРІРѕР№СЃС‚РІР° .LimitText РІС‹РїРѕР»РЅСЏРµС‚СЃСЏ РѕРїРµСЂР°С†РёСЏ
 .LimitText=LimText
 result= SendMessageA (.handle,rEM_EXLIMITTEXT,0,.LimitText)
             END PROPERTY

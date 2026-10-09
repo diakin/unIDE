@@ -321,7 +321,7 @@ end type
 ' |                               |
 
 ' ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
-' | Dreadsoft® Corporation        |
+' | DreadsoftÂ® Corporation        |
 ' | (manco un diritto riservato)  |
 ' | http://dreadsoft.too.it       |
 ' | dreadsoft@yahoo.it            |

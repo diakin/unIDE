@@ -28,7 +28,7 @@ Type QAnim Extends QImage
     Move as boolean property set SetMove
 
   '=====================================
-  ' proprieté start/stop animation
+  ' proprietĞ¹ start/stop animation
   '=====================================
   Property Set SetMove(move as boolean)
     if move then
@@ -44,7 +44,7 @@ Type QAnim Extends QImage
   End Property  
     
   '=====================================
-  ' proprieté couleur de fond
+  ' proprietĞ¹ couleur de fond
   '=====================================
   Property Set SetBackColor(backcolor as long)
     QAnim.ImageList.bkcolor=backcolor
@@ -56,7 +56,7 @@ Type QAnim Extends QImage
   End Property  
 
   '=========================================
-  ' proprieté utilisation du masque image
+  ' proprietĞ¹ utilisation du masque image
   '=========================================
   Property Set SetMasked(masked as boolean)
     QAnim.ImageList.masked=masked
@@ -68,7 +68,7 @@ Type QAnim Extends QImage
   End Property  
     
   '=====================================
-  ' proprieté largeur image
+  ' proprietĞ¹ largeur image
   '=====================================
   Property Set SetWidth(width as short)
     super.width=width
@@ -76,7 +76,7 @@ Type QAnim Extends QImage
   End Property  
   
   '=====================================
-  ' proprieté hauteur image
+  ' proprietĞ¹ hauteur image
   '=====================================
   Property Set SetHeight(height as short)
     super.height=height
@@ -84,14 +84,14 @@ Type QAnim Extends QImage
   End Property  
     
   '=====================================
-  ' proprieté vitesse animation
+  ' proprietĞ¹ vitesse animation
   '=====================================
   Property Set SetSpeed(speed as long)
     QAnim.Timer.Interval=speed
   End Property  
 
   '=====================================
-  ' proprieté index image
+  ' proprietĞ¹ index image
   '=====================================
   Property Set SetIndex(index as short)
     if QAnim.ImageList.Count>0 then

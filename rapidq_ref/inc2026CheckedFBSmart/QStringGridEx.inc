@@ -13,7 +13,7 @@ Type QStringGridEx<Size> extends QStringGrid
   Private:
   
   '==================================
-  ' Méthode style rangé
+  ' MÐ¹thode style rangÐ¹
   '==================================
   Sub SetStyle(Col as integer,Row as integer)
     if QStringGridEx.RowStyle(Row)<>0 then
@@ -29,14 +29,14 @@ Type QStringGridEx<Size> extends QStringGrid
   End Sub
   
   '==================================
-  ' Evénement sélection cellule
+  ' EvÐ¹nement sÐ¹lection cellule
   '==================================
   Event OnSelectCell(Col as integer,Row as integer,CanSelect as integer)
     QStringGridEx.SetStyle Col,Row
   End Event
   
   '==================================
-  ' Evénement dessin cellule
+  ' EvÐ¹nement dessin cellule
   '==================================
   Event OnDrawCell(Col as integer,Row as integer,State as integer,Rect as QRect)
     if Row=QStringGridEx.Row then QStringGridEx.SetStyle Col,Row

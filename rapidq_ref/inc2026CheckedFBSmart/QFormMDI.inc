@@ -280,14 +280,14 @@ public:
   Public:
 
   '========================================================
-  ' Proprieté nombre max fenetre fille MDI
+  ' ProprietÐ¹ nombre max fenetre fille MDI
   '========================================================
   Property Set SetChildMax(number as integer)
     if number<=1024 then QFormMDI.ChildMax=number
   End Property
 
   '========================================================
-  ' Proprieté icon fenetre fille MDI
+  ' ProprietÐ¹ icon fenetre fille MDI
   '========================================================
   Property Set SetChildIcon(handle as long)
     if QFormMDI.ChildCount>0 then
@@ -299,7 +299,7 @@ public:
   End Property
 
   '========================================================
-  ' Proprieté caption fenetre fille MDI active
+  ' ProprietÐ¹ caption fenetre fille MDI active
   '========================================================
   Property Set SetChildCaption(caption as string)
     if QFormMDI.ChildCount>0 then
@@ -309,21 +309,21 @@ public:
   End Property  
 
   '========================================================
-  ' Proprieté handle fenetre fille MDI active
+  ' ProprietÐ¹ handle fenetre fille MDI active
   '========================================================
   Property Set SetChildHandle(handle as long)
     'lecture uniquement
   End Property  
 
   '========================================================
-  ' Proprieté index composant fenetre fille MDI active
+  ' ProprietÐ¹ index composant fenetre fille MDI active
   '========================================================
   Property Set SetComponentIndex(index as integer)
     'lecture uniquement
   End Property  
 
   '========================================================
-  ' Proprieté top fenetre fille MDI active
+  ' ProprietÐ¹ top fenetre fille MDI active
   '========================================================
   Property Set SetChildTop(top as short)
     if QFormMDI.ChildCount>0 then
@@ -333,7 +333,7 @@ public:
   End Property  
 
   '========================================================
-  ' Proprieté left fenetre fille MDI active
+  ' ProprietÐ¹ left fenetre fille MDI active
   '========================================================
   Property Set SetChildLeft(left as short)
     if QFormMDI.ChildCount>0 then
@@ -343,7 +343,7 @@ public:
   End Property  
 
   '========================================================
-  ' Proprieté width fenetre fille MDI active
+  ' ProprietÐ¹ width fenetre fille MDI active
   '========================================================
   Property Set SetChildWidth(width as short)
     if QFormMDI.ChildCount>0 then
@@ -353,7 +353,7 @@ public:
   End Property  
 
   '========================================================
-  ' Proprieté height fenetre fille MDI active
+  ' ProprietÐ¹ height fenetre fille MDI active
   '========================================================
   Property Set SetChildHeight(height as short)
     if QFormMDI.ChildCount>0 then
@@ -363,21 +363,21 @@ public:
   End Property  
 
   '========================================================
-  ' Proprieté handle menu fenetre fille MDI
+  ' ProprietÐ¹ handle menu fenetre fille MDI
   '========================================================
   Property Set SetMdiMenu(MenuHandle as long)
       if MenuHandle>0 then QFormMDI.MdiMenu=MenuHandle
   End Property  
 
   '========================================================
-  ' Proprieté nombre fenetre fille MDI
+  ' ProprietÐ¹ nombre fenetre fille MDI
   '========================================================
   Property Set SetChildCount(index as integer)
     'lecture uniquement
   End Property  
 
   '========================================================
-  ' Proprieté etat fenetre fille MDI active
+  ' ProprietÐ¹ etat fenetre fille MDI active
   '========================================================
   Property Set SetChildState(state as integer)
     if QFormMDI.ChildCount>0 then
@@ -395,7 +395,7 @@ public:
   End Property  
   
   '========================================================
-  ' Méthode addition d'une fenetre fille MDI
+  ' MÐ¹thode addition d'une fenetre fille MDI
   '========================================================
   Sub AddChild(handle as long,Title as string,index as integer,Left as short,Top as short,Width as short,Height as short,DefaultSize as boolean)
     'init client MDI
@@ -421,7 +421,7 @@ public:
   End Sub
 
   '========================================================
-  ' Méthode fermeture fenetre fille MDI active
+  ' MÐ¹thode fermeture fenetre fille MDI active
   '========================================================
   Sub CloseChild
     if QFormMDI.ChildCount>0 then
@@ -445,7 +445,7 @@ public:
   End Sub
 
   '========================================================
-  ' Méthode fermeture fenetres fille MDI
+  ' MÐ¹thode fermeture fenetres fille MDI
   '========================================================
   Sub CloseAllChild 
     dim i as integer
@@ -486,7 +486,7 @@ public:
   End Sub
 
   '========================================================
-  ' Méthode mise en cascade des fenetres fille MDI
+  ' MÐ¹thode mise en cascade des fenetres fille MDI
   '========================================================
   Sub CascadeChild
     if QFormMDI.ChildCount>0 then
@@ -495,7 +495,7 @@ public:
   End Sub
 
   '========================================================
-  ' Méthode mise en horizontale fenetres fille MDI
+  ' MÐ¹thode mise en horizontale fenetres fille MDI
   '========================================================
   Sub SetHorzChild
     if QFormMDI.ChildCount>0 then
@@ -504,7 +504,7 @@ public:
   End Sub
 
   '========================================================
-  ' Méthode mise en verticale fenetres fille MDI
+  ' MÐ¹thode mise en verticale fenetres fille MDI
   '========================================================
   Sub SetVertChild
     if QFormMDI.ChildCount>0 then
@@ -513,7 +513,7 @@ public:
   End Sub
 
   '========================================================
-  ' Méthode arrangement des fenetres fille MDI en icone
+  ' MÐ¹thode arrangement des fenetres fille MDI en icone
   '========================================================
   Sub IconArrangeChild
     if QFormMDI.ChildCount>0 then
@@ -522,7 +522,7 @@ public:
   End Sub
 
   '========================================================
-  ' Méthode reduit en icone les fenetres fille MDI
+  ' MÐ¹thode reduit en icone les fenetres fille MDI
   '========================================================
   Sub MinimizeAllChild
     dim i as integer
@@ -545,7 +545,7 @@ public:
   End Sub
 
   '========================================================
-  ' Méthode met en taille maxi les fenetres fille MDI
+  ' MÐ¹thode met en taille maxi les fenetres fille MDI
   '========================================================
   Sub MaximizeAllChild
     dim i as integer
@@ -568,7 +568,7 @@ public:
   End Sub
 
   '========================================================
-  ' Méthode restauration taille des fenetres fille MDI
+  ' MÐ¹thode restauration taille des fenetres fille MDI
   '========================================================
   Sub RestoreChild
     dim i as integer
@@ -591,7 +591,7 @@ public:
   End Sub
 
   '========================================================
-  ' Méthode active la fenetre fille MDI suivante
+  ' MÐ¹thode active la fenetre fille MDI suivante
   '========================================================
   Sub ActiveNextChild
     if QFormMDI.ChildCount>0 then
@@ -600,7 +600,7 @@ public:
   End Sub
 
   '========================================================
-  ' Méthode active la fenetre fille MDI précedente
+  ' MÐ¹thode active la fenetre fille MDI prÐ¹cedente
   '========================================================
   Sub ActivePreviousChild
     if QFormMDI.ChildCount>0 then
@@ -609,7 +609,7 @@ public:
   End Sub
 
   '========================================================
-  ' Méthode retourne index titre fenetre fille MDI 
+  ' MÐ¹thode retourne index titre fenetre fille MDI 
   '========================================================
   Function GetChild(title as string) as integer
     dim i as integer
@@ -629,7 +629,7 @@ public:
   End Function
 
   '========================================================
-  ' Méthode retourne l'existence titre fenetre fille MDI 
+  ' MÐ¹thode retourne l'existence titre fenetre fille MDI 
   '========================================================
   Function ChildExist(title as string) as boolean
     dim i as integer
@@ -650,7 +650,7 @@ public:
 
 
   '========================================================
-  ' Méthode active la fenetre fille MDI par index
+  ' MÐ¹thode active la fenetre fille MDI par index
   '========================================================
   Sub ActiveChild(index as integer)
     if QFormMDI.ChildCount>0 then
@@ -659,7 +659,7 @@ public:
   End Sub
 
   '========================================================
-  ' Méthode retourne etat associé MDI d'un composant 
+  ' MÐ¹thode retourne etat associÐ¹ MDI d'un composant 
   '========================================================
   Function FreeChild(handle as long) as boolean
     if MDI_GetParent(handle)=QFormMDI.handle then
@@ -670,7 +670,7 @@ public:
   End Function
   
   '=============================================================================
-  ' méthode application dans barre outil bureau lors de la reduction fenetre
+  ' mÐ¹thode application dans barre outil bureau lors de la reduction fenetre
   '=============================================================================
   Sub SetDeskBar
     MDI_SetLong(QFormMDI.handle,MDI_HWNDPARENT,MDI_HWND_DESKTOP)

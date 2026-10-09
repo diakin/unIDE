@@ -269,7 +269,7 @@ taskHandle as long) as long
 '!!!*****************************************
 Declare Function DAQmxCreateTask  Lib "nicaiu.dll"  Alias "DAQmxCreateTask" ( _
 taskName As string, byref taskHandle as long ) As long
-'======  начало программы ========   !!!
+'======  РЅР°С‡Р°Р»Рѕ РїСЂРѕРіСЂР°РјРјС‹ ========   !!!
 'dim timer6210 as QTimer
 'timer6210.ontimer=timer6210Over
 'timer6210.interval=50'100
@@ -304,13 +304,13 @@ ScaleName$=""
 nameToAssignToChannel$=""
 
 defdbl rate ' 
-'defdbl CountVal ' единичный отсчет со счетчика канала 1
-deflng CountVal ' единичный отсчет со счетчика канала 1
+'defdbl CountVal ' РµРґРёРЅРёС‡РЅС‹Р№ РѕС‚СЃС‡РµС‚ СЃРѕ СЃС‡РµС‚С‡РёРєР° РєР°РЅР°Р»Р° 1
+deflng CountVal ' РµРґРёРЅРёС‡РЅС‹Р№ РѕС‚СЃС‡РµС‚ СЃРѕ СЃС‡РµС‚С‡РёРєР° РєР°РЅР°Р»Р° 1
 Countval=111
 defint lpCountval=varptr(Countval)
 
-'defdbl CountVal2 ' единичный отсчет со счетчика  канала 2
-deflng CountVal2 ' единичный отсчет со счетчика  канала 2
+'defdbl CountVal2 ' РµРґРёРЅРёС‡РЅС‹Р№ РѕС‚СЃС‡РµС‚ СЃРѕ СЃС‡РµС‚С‡РёРєР°  РєР°РЅР°Р»Р° 2
+deflng CountVal2 ' РµРґРёРЅРёС‡РЅС‹Р№ РѕС‚СЃС‡РµС‚ СЃРѕ СЃС‡РµС‚С‡РёРєР°  РєР°РЅР°Р»Р° 2
 Countva2l=222
 defint lpCountval2=varptr(Countval2)
 
@@ -333,14 +333,14 @@ defint initval
 
 ZidxEnable=0
 
-'-------- вспомогательные переменные ---------
+'-------- РІСЃРїРѕРјРѕРіР°С‚РµР»СЊРЅС‹Рµ РїРµСЂРµРјРµРЅРЅС‹Рµ ---------
 dim memdataLong as qmemorystream
 
 defint arraysize=1024 '4096 '65535
 dim dataLong(arraysize) as Long
 dim dataDbl(arraysize) as Double
 
-' канал 2 
+' РєР°РЅР°Р» 2 
 dim memdataLong2 as qmemorystream
 
 dim dataLong2(arraysize) as Long
@@ -353,7 +353,7 @@ DefInt _initialPos(0 To 1)
 
 DefInt _rate(0 To 1)
 
-rate=10000000 ' максимальная частота сигнала с датчика 100000 Гц
+rate=10000000 ' РјР°РєСЃРёРјР°Р»СЊРЅР°СЏ С‡Р°СЃС‚РѕС‚Р° СЃРёРіРЅР°Р»Р° СЃ РґР°С‚С‡РёРєР° 100000 Р“С†
 
 MemCpy (VarPtr(_rate(0)), VarPtr(rate), 8)
 
@@ -361,7 +361,7 @@ MemCpy (VarPtr(_ZidxVal(0)), VarPtr(ZidxVal), 8)
 MemCpy (VarPtr(_distPerPulse(0)), VarPtr(distPerPulse), 8)
 MemCpy (VarPtr(_initialPos(0)), VarPtr(initialPos), 8)
 
-defdbl timeout=DAQmx_Val_WaitInfinitely '10 ' интервал ожидание чтения, по умолчанию 10 сек, DAQmx_Val_WaitInfinitely - непрерывное ожидание.
+defdbl timeout=DAQmx_Val_WaitInfinitely '10 ' РёРЅС‚РµСЂРІР°Р» РѕР¶РёРґР°РЅРёРµ С‡С‚РµРЅРёСЏ, РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ 10 СЃРµРє, DAQmx_Val_WaitInfinitely - РЅРµРїСЂРµСЂС‹РІРЅРѕРµ РѕР¶РёРґР°РЅРёРµ.
 MemCpy (VarPtr(_timeout(0)), VarPtr(timeout), 8)
 
 defint sampsPerChanRead,sampsPerChanRead2, reserved,reserved2, errDAQmxReadCounterU32
@@ -374,8 +374,8 @@ arraysize=ubound(dataLong)-1 '1024
 
 numSampsPerChan=DAQmx_Val_Auto
 
-defint pulsesPerRev=225000 ' число штрихов датчика !!!
-defint pulsesPerRev2=225000 ' число штрихов датчика !!!
+defint pulsesPerRev=225000 ' С‡РёСЃР»Рѕ С€С‚СЂРёС…РѕРІ РґР°С‚С‡РёРєР° !!!
+defint pulsesPerRev2=225000 ' С‡РёСЃР»Рѕ С€С‚СЂРёС…РѕРІ РґР°С‚С‡РёРєР° !!!
 
 memdataLong.savearray(dataLong(0),ubound(dataLong))
 memdataLong.position=0

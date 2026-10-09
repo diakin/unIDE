@@ -8,7 +8,7 @@ Type QTabControlEx Extends QTabControl
   TabCount as integer Property Set SetTabCount
 
   '============================================
-  ' proprieté nombre onglets
+  ' proprietÐ¹ nombre onglets
   '============================================
   Property Set SetTabCount(count as integer)
   'read only
@@ -16,7 +16,7 @@ End Property
 
 Private:
 '============================================
-' Méthode suppression
+' MÐ¹thode suppression
 '============================================
 Sub Delete(n as integer,sender as qtabcontrol)
   sender.DelTabs n
@@ -24,7 +24,7 @@ End Sub
 
 Public:
 '============================================
-' Méthode suppression onglet
+' MÐ¹thode suppression onglet
 '============================================
 Sub DeleteTabs(index as integer)
   if this.TabCount>0 then
@@ -34,14 +34,14 @@ Sub DeleteTabs(index as integer)
 End Sub
 
 '============================================
-' Méthode ajout onglet
+' MÐ¹thode ajout onglet
 '============================================
 Sub Add(s as string)
   super.AddTabs s
 End Sub
 
 '============================================
-' Méthode ajout onglet redefini
+' MÐ¹thode ajout onglet redefini
 '============================================
 Subi AddTabs(...)
 dim i as integer
@@ -53,7 +53,7 @@ next i
 End Subi
 
 '============================================
-' Méthode insertion onglet redefini
+' MÐ¹thode insertion onglet redefini
 '============================================
 Sub InsertTab(index as integer,s as string)
   super.InsertTab index,s
@@ -61,7 +61,7 @@ Sub InsertTab(index as integer,s as string)
 End Sub
 
 '============================================
-' Méthode suppression total des onglets
+' MÐ¹thode suppression total des onglets
 '============================================
 Sub Clear
   dim i as integer

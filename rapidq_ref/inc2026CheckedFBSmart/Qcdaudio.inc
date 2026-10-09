@@ -26,7 +26,7 @@ $ENDIF
 
 Type Qcdaudio extends Qobject
   '================================
-  ' champs et proprietés
+  ' champs et proprietÐ¹s
   '================================
   Timer as QTIMER
   Time as string
@@ -43,7 +43,7 @@ Type Qcdaudio extends Qobject
 
 
   '====================================
-  ' proprieté position track
+  ' proprietÐ¹ position track
   '====================================
   Property Set SetCurrentTrack(track as integer)
     dim Retval as integer
@@ -72,7 +72,7 @@ Type Qcdaudio extends Qobject
 PRIVATE:
 
   '========================================
-  ' Méthode retourne le texte de l'erreur
+  ' MÐ¹thode retourne le texte de l'erreur
   '========================================
   Function GetMciDescription(McierrNr As Long) As String
     dim Retval as Long
@@ -88,7 +88,7 @@ PRIVATE:
   End Function
 
   '====================================
-  ' méthode lecture position track
+  ' mÐ¹thode lecture position track
   '====================================
   Function GetTrack as integer
     dim Retval as integer
@@ -102,7 +102,7 @@ PRIVATE:
   End Function
 
   '====================================
-  ' méthode lecture position temps cd
+  ' mÐ¹thode lecture position temps cd
   '====================================
   Function GetTimePosition as string
     dim Retval as integer
@@ -116,7 +116,7 @@ PRIVATE:
   End Function
 
   '====================================
-  ' méthode lecture position ms cd
+  ' mÐ¹thode lecture position ms cd
   '====================================
   Function GetPosition as long
     dim Retval as integer
@@ -134,7 +134,7 @@ PRIVATE:
   End Function
 
   '====================================
-  ' méthode lecture mode cd
+  ' mÐ¹thode lecture mode cd
   '====================================
   Function GetMode as integer
     dim Retval as integer
@@ -152,7 +152,7 @@ PRIVATE:
 PUBLIC:
 
   '=================================
-  ' méthode fermeture media cd
+  ' mÐ¹thode fermeture media cd
   '=================================
   Sub Close
     dim Retval as integer
@@ -174,7 +174,7 @@ PUBLIC:
   End Sub
 
   '====================================
-  ' méthode ouverture cd
+  ' mÐ¹thode ouverture cd
   '====================================
   Function Open as boolean
     Dim Retval as Integer
@@ -214,7 +214,7 @@ PUBLIC:
   End Function
 
   '==================================
-  ' méthode lecture cdaudio
+  ' mÐ¹thode lecture cdaudio
   '==================================
   Sub Play
     dim Retval as integer
@@ -233,7 +233,7 @@ PUBLIC:
   End Sub
 
   '==================================
-  ' méthode arret lecture cd
+  ' mÐ¹thode arret lecture cd
   '==================================
   Sub Stop
     dim Retval as integer
@@ -253,7 +253,7 @@ PUBLIC:
   End Sub
 
   '==================================
-  ' méthode pause lecture cd
+  ' mÐ¹thode pause lecture cd
   '==================================
   Sub Pause
     dim Retval as integer
@@ -272,7 +272,7 @@ PUBLIC:
   End Sub
 
   '====================================
-  ' méthode ejection cd
+  ' mÐ¹thode ejection cd
   '====================================
   Sub Eject
     dim Retval as integer
@@ -286,7 +286,7 @@ PUBLIC:
   End Sub  
 
   '===============================================
-  ' évenement changementposition du cd
+  ' Ð¹venement changementposition du cd
   '===============================================
   Event Timer.OnTimer
     Qcdaudio.currentTrack=Qcdaudio.GetTrack

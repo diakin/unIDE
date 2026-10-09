@@ -97,14 +97,14 @@ Type QBitmapEx EXTENDS QBITMAP
     PenSize as integer
       
   '========================================
-  ' méthode dessin d'icones
+  ' mÐ¹thode dessin d'icones
   '========================================
   Sub DrawIco(left as integer,top as integer,width as integer,height as integer,handle as long)
     DrawIconExBmp(QBitmapEx.handle,left,top,handle,width,height,0,0,DI_NORMAL_BMP)
   End Sub
 
   '================================================
-  ' méthode copie le contenu dans le presse papier
+  ' mÐ¹thode copie le contenu dans le presse papier
   '================================================
   Sub CopyToClipboard
     dim hBitmap as integer
@@ -120,7 +120,7 @@ Type QBitmapEx EXTENDS QBITMAP
   End Sub
 
   '=============================================
-  ' méthode colle une image du le presse papier
+  ' mÐ¹thode colle une image du le presse papier
   '=============================================
   Sub PasteFromClipboard(x as short,y as short)
     dim hDC as integer
@@ -141,7 +141,7 @@ Type QBitmapEx EXTENDS QBITMAP
   End Sub
 
   '===============================================
-  ' méthode info largeur image du presse papier
+  ' mÐ¹thode info largeur image du presse papier
   '===============================================
   Function GetWidthClipboard as integer
     dim hBitmap as integer
@@ -156,7 +156,7 @@ Type QBitmapEx EXTENDS QBITMAP
   End Function
 
   '===============================================
-  ' méthode info hauteur image du presse papier
+  ' mÐ¹thode info hauteur image du presse papier
   '===============================================
   Function GetHeightClipboard as integer
     dim hBitmap as integer
@@ -171,14 +171,14 @@ Type QBitmapEx EXTENDS QBITMAP
   End Function
 
   '===============================================
-  ' méthode info image presente dans presse papier
+  ' mÐ¹thode info image presente dans presse papier
   '===============================================
   Function CanPaste as boolean
     result=clipboard.hasformat(CF_BITMAP_BMP)
   End Function
 
   '========================================
-  ' méthode trace un cercle vide
+  ' mÐ¹thode trace un cercle vide
   '========================================
   Sub circle(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long)
     QBitmapEx.hbrush=GetStockObjectBmp(NULL_BRUSH_BMP)
@@ -192,7 +192,7 @@ Type QBitmapEx EXTENDS QBITMAP
   End Sub
 
   '========================================
-  ' méthode trace un cercle plein
+  ' mÐ¹thode trace un cercle plein
   '========================================
   Sub circleFilled(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long,fill as long)
     QBitmapEx.hpen=CreatePenBmp(QBitmapEx.PenStyle,QBitmapEx.PenSize,c)
@@ -207,7 +207,7 @@ Type QBitmapEx EXTENDS QBITMAP
   End Sub
 
   '========================================
-  ' méthode trace un rectangle vide
+  ' mÐ¹thode trace un rectangle vide
   '========================================
   Sub rectangle(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long)
     QBitmapEx.hbrush=GetStockObjectBmp(NULL_BRUSH_BMP)
@@ -221,7 +221,7 @@ Type QBitmapEx EXTENDS QBITMAP
   End Sub
   
   '==================================================
-  ' méthode trace un rectangle vide au coins arrondi
+  ' mÐ¹thode trace un rectangle vide au coins arrondi
   '==================================================
   Sub RoundRect(x1 as integer,y1 as integer,x2 as integer,y2 as integer,x3 as integer,y3 as integer,c as long)
     QBitmapEx.hbrush=GetStockObjectBmp(NULL_BRUSH_BMP)
@@ -235,7 +235,7 @@ Type QBitmapEx EXTENDS QBITMAP
   End Sub
 
   '==================================================
-  ' méthode trace un rectangle plein au coins arrondi
+  ' mÐ¹thode trace un rectangle plein au coins arrondi
   '==================================================
   Sub RoundRectFilled(x1 as integer,y1 as integer,x2 as integer,y2 as integer,x3 as integer,y3 as integer,c as long,fill as long)
     QBitmapEx.hpen=CreatePenBmp(QBitmapEx.PenStyle,QBitmapEx.PenSize,c)
@@ -250,7 +250,7 @@ Type QBitmapEx EXTENDS QBITMAP
   End Sub
     
   '==================================================
-  ' méthode trace un rectangle plein
+  ' mÐ¹thode trace un rectangle plein
   '==================================================
   Sub rectangleFilled(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long,fill as long)
     QBitmapEx.hpen=CreatePenBmp(QBitmapEx.PenStyle,QBitmapEx.PenSize,c)
@@ -265,7 +265,7 @@ Type QBitmapEx EXTENDS QBITMAP
   End Sub
   
   '==================================================
-  ' méthode trace une ligne
+  ' mÐ¹thode trace une ligne
   '==================================================
   Sub line(x1 as integer,y1 as integer,x2 as integer,y2 as integer,c as long)
     QBitmapEx.hpen=CreatePenBmp(QBitmapEx.PenStyle,QBitmapEx.PenSize,c)
@@ -277,7 +277,7 @@ Type QBitmapEx EXTENDS QBITMAP
   End Sub
 
   '==================================================
-  ' méthode rempli une surface
+  ' mÐ¹thode rempli une surface
   '==================================================
   Sub FillSurface(x as integer,y as integer,c as long)
     QBitmapEx.hbrush=CreateSolidBrushBmp(c)
@@ -288,28 +288,28 @@ Type QBitmapEx EXTENDS QBITMAP
   End Sub
     
   '==================================================
-  ' méthode inverse les couleurs
+  ' mÐ¹thode inverse les couleurs
   '==================================================
   Sub InvertColor(x as integer,y as integer,width as integer,height as integer)
     PatBltBmp(QBitmapEx.handle,x,y,Width,Height,DSTINVERT_BMP)
   End Sub
 
   '==================================================
-  ' méthode effectue un miroir en x
+  ' mÐ¹thode effectue un miroir en x
   '==================================================
   Sub mirror(x as integer,y as integer,width as integer,height as integer)
     StretchBltBmp(QBitmapEx.handle,x+width,y,-Width,Height,QBitmapEx.handle,x,y,Width,Height,SRCCOPY_BMP)
   End Sub
 
   '==================================================
-  ' méthode effectue un miroir en y
+  ' mÐ¹thode effectue un miroir en y
   '==================================================
   Sub flip(x as integer,y as integer,width as integer,height as integer)
     StretchBltBmp(QBitmapEx.handle,x,y+height,Width,-Height,QBitmapEx.handle,x,y,Width,Height,SRCCOPY_BMP)
   End Sub
 
   '==================================================
-  ' méthode charge les formats dll
+  ' mÐ¹thode charge les formats dll
   '==================================================
   Sub LoadOtherImage(FileName as string,Progress as boolean,Language as string)
     dim hDC as integer
@@ -332,7 +332,7 @@ Type QBitmapEx EXTENDS QBITMAP
   End Sub
 
   '==================================================
-  ' méthode sauve le bitmap au format Jpg
+  ' mÐ¹thode sauve le bitmap au format Jpg
   '==================================================
   Sub SaveAsJpg(FileName as string,Quality as Integer)
     dim hBitmap as integer

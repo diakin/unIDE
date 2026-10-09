@@ -25,7 +25,7 @@ Type QFlashLabel extends QLabel
     Speed as long property set SetSpeed
 
   '=========================================
-  ' Proprieté couleur texte label
+  ' ProprietÐ¹ couleur texte label
   '=========================================  
   Property Set SetDarkColor(color as long)
     QFlashLabel.DarkColor=color
@@ -33,7 +33,7 @@ Type QFlashLabel extends QLabel
   End Property
       
   '=========================================
-  ' Proprieté état couleur texte label
+  ' ProprietÐ¹ Ð¹tat couleur texte label
   '=========================================  
   Property Set SetState(state as short)
     QFlashLabel.State=state
@@ -45,7 +45,7 @@ Type QFlashLabel extends QLabel
   End Property
 
   '=========================================
-  ' Proprieté clignotement texte label
+  ' ProprietÐ¹ clignotement texte label
   '=========================================  
   Property Set SetFlash(flash as boolean)
     QFlashLabel.Flash=flash
@@ -59,7 +59,7 @@ Type QFlashLabel extends QLabel
   End Property
   
   '=====================================
-  ' proprieté vitesse clignotement
+  ' proprietÐ¹ vitesse clignotement
   '=====================================
   Property Set SetSpeed(speed as long)
     QFlashLabel.Timer.Interval=speed

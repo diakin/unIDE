@@ -267,7 +267,7 @@ Sub SetODMenuHookEnabled(hWnd As Long, Enabled As Integer)
 		' on lance et on prend en note l'adresse de la procedure
 		precedent_adresse_mainfrm = SetWindowLong (hWnd, GWL_WNDPROC, adresse_mafonction)
 	ElseIf precedent_adresse_mainfrm <> 0 Then
-		' on arrÍte la procedure
+		' on arr–∫te la procedure
 		Call SetWindowLong(hWnd, GWL_WNDPROC, precedent_adresse_mainfrm)
 	End If
 End Sub
@@ -897,7 +897,7 @@ FUNCTION WindowProc '(ByVal hwnd AS Long, ByVal uMsg AS Long,ByVal wParam AS Lon
             Dim hRgn As Long
 			GetWindowRect(hWnd, r_Skin)
 			dc_Skin = GetWindowDC(hWnd)
-			GetInfoFromMenu ("Souris activÈe :  " +STR$(hWnd) +", " +STR$(lParam) +", " +STR$(wParam))
+			GetInfoFromMenu ("Souris activ–πe :  " +STR$(hWnd) +", " +STR$(lParam) +", " +STR$(wParam))
 			hRgn = CreateRectRgn(r_Skin.Left, r_Skin.Top +20, r_Skin.Right, r_Skin.Bottom) 'CreateRectRgnIndirect(0&)
             ValidateRgn(hWnd, hRgn)
 			Select Case wParam
@@ -939,7 +939,7 @@ FUNCTION WindowProc '(ByVal hwnd AS Long, ByVal uMsg AS Long,ByVal wParam AS Lon
 		'			'SendMessageAPI (hWnd, WM_NCLBUTTONDOWN, m_wParam2, 0&)
 				Case Else
 		'			If wParam <> 0 and wParam <> 4 Then _
-		'				GetInfoFromMenu ("Souris activÈe :  " +STR$(hWnd) +", " +STR$(lParam) +", " +STR$(wParam))
+		'				GetInfoFromMenu ("Souris activ–πe :  " +STR$(hWnd) +", " +STR$(lParam) +", " +STR$(wParam))
 		'			WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
 			End Select
 			
@@ -1032,8 +1032,8 @@ FUNCTION WindowProc '(ByVal hwnd AS Long, ByVal uMsg AS Long,ByVal wParam AS Lon
 				Select Case HtPlus
 					Case 0, 10 To 18
 						' Sans ceci, Windows redessine la zone de la barre de titre
-						' ainsi que les btns rÈduire/agrandir/fermer chaque fois que
-						' la souris est rel‚chÈe suivant un ÈvÈnement appuyÈ NC.
+						' ainsi que les btns r–πduire/agrandir/fermer chaque fois que
+						' la souris est rel–≤ch–πe suivant un –πv–πnement appuy–π NC.
 
 	    				lStyle = GetWindowLong(hWnd, GWL_STYLE)
 						lNewStyle = lStyle And Not WS_VISIBLE

@@ -1,7 +1,7 @@
 '-----------------------------------------------------------------------------|
 ' This file is a translation of the original C/C++ header file                |
 '-----------------------------------------------------------------------------|
-'   Dreadsoft® Corporation                                                    |
+'   DreadsoftÂ® Corporation                                                    |
 '(manco un diritto riservato)                                                 |
 '    dreadsoft@yahoo.it                                                       |
 '-----------------------------------------------------------------------------|
@@ -9,8 +9,8 @@
 
 '-----------------------------------------------------------------------------|
 ' CodeMax/CodeSense Code Editor Control                                       |
-' Original Copyright © 1997-2003 WinMain Software                             |
-' Portions Copyright © 2000-2003 Nathan Lewis                                 |
+' Original Copyright Â© 1997-2003 WinMain Software                             |
+' Portions Copyright Â© 2000-2003 Nathan Lewis                                 |
 '                                                                             |
 ' This header file declares all exported functionality of the CodeMax         |
 ' custom control. For a complete description of all declarations below,       |

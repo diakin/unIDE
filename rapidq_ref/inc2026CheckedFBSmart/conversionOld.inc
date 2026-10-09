@@ -701,19 +701,19 @@ if sgn(SecFull)=-1 then zn$="-" else zn$=""
 SecFull=abs(SecFull)
 'print"SecFull=";SecFull
 
-Grad=SecFull\3600 ' число целых градусов
+Grad=SecFull\3600 ' С‡РёСЃР»Рѕ С†РµР»С‹С… РіСЂР°РґСѓСЃРѕРІ
 'print"Grad=";Grad
-gradSec=Grad*3600 ' число секунд в целых градусах
+gradSec=Grad*3600 ' С‡РёСЃР»Рѕ СЃРµРєСѓРЅРґ РІ С†РµР»С‹С… РіСЂР°РґСѓСЃР°С…
 'print"gradSec=";gradSec
 
-ostminSec=SecFull-gradSec ' число сек в дробной части градусов - минутах и сек
+ostminSec=SecFull-gradSec ' С‡РёСЃР»Рѕ СЃРµРє РІ РґСЂРѕР±РЅРѕР№ С‡Р°СЃС‚Рё РіСЂР°РґСѓСЃРѕРІ - РјРёРЅСѓС‚Р°С… Рё СЃРµРє
 'print"ostminSec=";ostminSec
 
-mint=ostminSec\60 ' целое число минут
+mint=ostminSec\60 ' С†РµР»РѕРµ С‡РёСЃР»Рѕ РјРёРЅСѓС‚
 'print"mint=";mint
-mintsec=mint*60 ' число секунд в целых минутах
+mintsec=mint*60 ' С‡РёСЃР»Рѕ СЃРµРєСѓРЅРґ РІ С†РµР»С‹С… РјРёРЅСѓС‚Р°С…
 'print"mintsec=";mintsec
-sec1 =ostminSec- mintsec ' остаток чистых секунд
+sec1 =ostminSec- mintsec ' РѕСЃС‚Р°С‚РѕРє С‡РёСЃС‚С‹С… СЃРµРєСѓРЅРґ
 'print"sec1=";sec1
 
 
@@ -762,7 +762,7 @@ if instr(Source,"=?")>0 then
 	endcount=tally(Source,"?=")
 	'print"endcount=";endcount
 	
-	' если есть первая часть - добавляем ее
+	' РµСЃР»Рё РµСЃС‚СЊ РїРµСЂРІР°СЏ С‡Р°СЃС‚СЊ - РґРѕР±Р°РІР»СЏРµРј РµРµ
 	begpos=instr(Source,"=?")
 	result=mid$(Source,1,begpos-1)
 	'print"result=";result
@@ -771,9 +771,9 @@ if instr(Source,"=?")>0 then
 '=?windows-1251?Q?=D2=E5=EA=F3=F9=E8=E5_?==?windows-1251?Q?=F1=E4=E5=EB=EA=E8?=:  EUR GBP JPY- =?windows-1251?Q?=E2=ED=E5_?==?windows-1251?Q?=F0=FB=ED=EA=E0?= 
 '1                                        2                                                    3                            4                                  
 	for j=1 to begcount
-		' выделяем encoded-words
+		' РІС‹РґРµР»СЏРµРј encoded-words
 		headerTxtConv$=""
-		begpos2=instr(begpos+1,Source,"=?") ' следующее вхождение =?
+		begpos2=instr(begpos+1,Source,"=?") ' СЃР»РµРґСѓСЋС‰РµРµ РІС…РѕР¶РґРµРЅРёРµ =?
 		'print"begpos=";begpos2
 		endpos2=instr(begpos+1,Source,"?=")
 		'print"endpos2=";endpos2
@@ -782,7 +782,7 @@ if instr(Source,"=?")>0 then
 		if begpos2=0 then begpos2=len(Source)
 		encodedword$=mid$(Source,begpos,begpos2-begpos)
 		print"encodedword$=";encodedword$
-		' раскодируем encoded-words
+		' СЂР°СЃРєРѕРґРёСЂСѓРµРј encoded-words
 		codepage$=field$(encodedword$,"?",2) ' windows-1251
 		print"codepage$=";codepage$
 		
@@ -793,7 +793,7 @@ if instr(Source,"=?")>0 then
 			exit function
 		end if
 		headerTxt$=field$(encodedword$,"?",4) '
-		headerTxt$=replacesubstr$(headerTxt$,"_","=20") ' заменяем пробелы
+		headerTxt$=replacesubstr$(headerTxt$,"_","=20") ' Р·Р°РјРµРЅСЏРµРј РїСЂРѕР±РµР»С‹
 		
 		print"headerTxt$=";headerTxt$
 		lastpartHeader$=field$(encodedword$,"?=",3)
@@ -1083,7 +1083,7 @@ if instr(Source,"=?")>0 then
 	endcount=tally(Source,"?=")
 	print"endcount=";endcount
 	
-	' если есть первая часть - добавляем ее
+	' РµСЃР»Рё РµСЃС‚СЊ РїРµСЂРІР°СЏ С‡Р°СЃС‚СЊ - РґРѕР±Р°РІР»СЏРµРј РµРµ
 	begpos=instr(Source,"=?")
 	result=mid$(Source,1,begpos-1)
 	print"result=";result
@@ -1249,7 +1249,7 @@ End Function
 
 
 brem 0
---- кодовые страницы -------
+--- РєРѕРґРѕРІС‹Рµ СЃС‚СЂР°РЅРёС†С‹ -------
 037 IBM EBCDIC - U.S./Canada 
       437 OEM - United States 
       500 IBM EBCDIC - International 

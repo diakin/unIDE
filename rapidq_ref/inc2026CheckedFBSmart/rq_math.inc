@@ -2,7 +2,7 @@
 '>>>>>>   rq-math.inc   Version 1.1 (09-2000)<<<<<<<<<<<<<<<<<<<<
 '------------------------------------------------------------------
 '                Rapid-Q Mathematics $Includes                              
-'   written by Bruno Sch‰fer <bup.schaefer@planet-interkom.de>
+'   written by Bruno Sch–¥fer <bup.schaefer@planet-interkom.de>
 '------------------------------------------------------------------
 '  !!!!    All angles are in radiant !!!   ... but not in function DEG2RAD  :-)
 ' If an ERROR occurs in some functions there will be a Messagebox

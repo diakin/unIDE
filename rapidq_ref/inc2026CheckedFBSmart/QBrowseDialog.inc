@@ -19,7 +19,7 @@
 ' although in name only (you can't access these folders
 ' by path). Use it in good health!
 
-' Psyclops ·)
+' Psyclops Â·)
 
 
 

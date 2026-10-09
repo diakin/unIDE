@@ -67,7 +67,7 @@ Type QFormEx extends QFORM
 
   PRIVATE:
   '============================================
-  ' Procédure winproc de la fenetre
+  ' ProcÐ¹dure winproc de la fenetre
   '============================================
   FUNCTION WindowProc (hwnd AS LONG, uMsg AS LONG, wParam AS LONG, lParam AS LONG) AS LONG
     dim Point AS TPOINT
@@ -111,7 +111,7 @@ Type QFormEx extends QFORM
 
   PUBLIC:
   '============================================
-  ' Proprieté Acceptation de dépose fichier
+  ' ProprietÐ¹ Acceptation de dÐ¹pose fichier
   '============================================
   PROPERTY SET SetDragEnable(flag as boolean)
     DragAcceptFiles(QFormEx.Handle,flag)
@@ -122,7 +122,7 @@ Type QFormEx extends QFORM
   END PROPERTY
 
   '=============================================================================
-  ' Proprieté Application dans barre outil bureau lors de la reduction fenetre
+  ' ProprietÐ¹ Application dans barre outil bureau lors de la reduction fenetre
   '=============================================================================
   PROPERTY SET SetDeskBar(flag as boolean)
     if flag then
@@ -132,7 +132,7 @@ Type QFormEx extends QFORM
   END PROPERTY
 
   '=============================================
-  ' Méthode AddTrayIcon
+  ' MÐ¹thode AddTrayIcon
   '=============================================
   Sub AddTrayIcon
     QFormEx.TrayIcon.hWnd=QFormEx.Handle
@@ -150,7 +150,7 @@ Type QFormEx extends QFORM
   End Sub
 
   '=============================================
-  ' Méthode DelTrayIcon
+  ' MÐ¹thode DelTrayIcon
   '=============================================
   Sub DelTrayIcon
     Shell_NotifyIcon(NIM_DELETE,QFormEx.TrayIcon)

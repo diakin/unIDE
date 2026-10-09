@@ -1,17 +1,17 @@
-' Créé par D-évolution / Created by D-evolution -=@=- 2003 - 2005
+' CrÐ¹Ð¹ par D-Ð¹volution / Created by D-evolution -=@=- 2003 - 2005
 
-' [Français]
-' Dans la série des objets persos, voici QCoolBarXPv1 -- Immitation d'une Barre d'outil
+' [FranÐ·ais]
+' Dans la sÐ¹rie des objets persos, voici QCoolBarXPv1 -- Immitation d'une Barre d'outil
 
-' CoolBarXPv1 est une toute nouvelle version, complètement revue de ma CoolBar, version 
-' optimisée afin de réduire le scintillement lors du redimensionnement de la barre 
+' CoolBarXPv1 est une toute nouvelle version, complÐ¸tement revue de ma CoolBar, version 
+' optimisÐ¹e afin de rÐ¹duire le scintillement lors du redimensionnement de la barre 
 ' d'outil...
-' Tout ça est possible via une modification de l'Add-On fournis avec QTButton
-' Voyez-les posibilités !!! 
-' Il ne reste plus qu'a gérer l'effet Survole, placer une image de fond et on obtient 
-' une Barre d'outil casi identique à celles de WinXP (sous XP)
+' Tout Ð·a est possible via une modification de l'Add-On fournis avec QTButton
+' Voyez-les posibilitÐ¹s !!! 
+' Il ne reste plus qu'a gÐ¹rer l'effet Survole, placer une image de fond et on obtient 
+' une Barre d'outil casi identique Ð° celles de WinXP (sous XP)
 
-' Pour plus de détail sur l'utilisation de ce composant reportez vous à la documentation 
+' Pour plus de dÐ¹tail sur l'utilisation de ce composant reportez vous Ð° la documentation 
 ' fournise... (QCoolBarXP.html)
 
 ' Si la doc n'est pas disponible actuellement elle le sera sous peu...
@@ -35,7 +35,7 @@ Dim custGrip	As QBitmap
 ' ===
 ' Extrait de QTButton
 
-$IFNDEF __RQINC' ==(corrigé! doh!)
+$IFNDEF __RQINC' ==(corrigÐ¹! doh!)
 $IFNDEF __RQINCTMP
 $DEFINE __RQINCTMP
 	CONST False = 0
@@ -81,7 +81,7 @@ Declare Function BitBlt_QTBtn Lib "gdi32" _
 		nXSrc As Integer, nYSrc As Integer, _
 		dwRop As Integer) As Integer
 
-' Pour Win98 et supérieur
+' Pour Win98 et supÐ¹rieur
 Declare Function TransparentBlt_QTBtn Lib "msimg32" _
 		Alias "TransparentBlt" ( _
 		ByVal hdcDest As Long, _
@@ -118,7 +118,7 @@ Declare Function DrawText_QTBtn Lib "user32" Alias "DrawTextA" ( _
 		lpRect As RECT_QTBtn, _
 		ByVal wFormat As Long) As Long
 
-' Ajouté 6fév
+' AjoutÐ¹ 6fÐ¹v
 'Declare Function GetDC_QTBtn Lib "user32" _
 '		Alias "GetDC" _
 '		(ByVal hwnd As Long) As Long
@@ -137,7 +137,7 @@ Declare Function SetBkMode_QTBtn Lib "gdi32" _
 'Declare Function SetTextColor_QTBtn Lib "gdi32" Alias "SetTextColor" _
 '		(ByVal hdc As Long, ByVal crColor As Long) As Long
 
-' -- (Ajouté 11janv) Les Nouveaux API pour le suport des Thèmes de Bureau XP
+' -- (AjoutÐ¹ 11janv) Les Nouveaux API pour le suport des ThÐ¸mes de Bureau XP
 Declare Function OpenThemeData_QTBtn Lib "uxtheme.dll" Alias "OpenThemeData" ( _
 		ByVal hwnd As Long, _
 		ByVal pszClassList As Long) As Long
@@ -294,7 +294,7 @@ Sub Fast_CBar( _
 			PartID = True
 	End If
 
-	Me.FillRect(False, False, Me.Width, Me.Height, clBtnFace)'==(mod) (13janv remplacé clPurple par clBtnFace)
+	Me.FillRect(False, False, Me.Width, Me.Height, clBtnFace)'==(mod) (13janv remplacÐ¹ clPurple par clBtnFace)
 
 	If FontName <> "" Then _
 		SWAP (Me.Font.Name, FontName)' == (add)
@@ -389,11 +389,11 @@ Sub Fast_CBar( _
 			SWAP (Me.Font.Name, bFont)
 		End If
 	Else
-		' Thème activé (Windows XP)
+		' ThÐ¸me activÐ¹ (Windows XP)
 		' --
 		Dim hTheme As Long
 
-		' Ouverture du thème
+		' Ouverture du thÐ¸me
 		Dim rtButton As String ', _
 			rtButton = ""
 
@@ -414,8 +414,8 @@ Sub Fast_CBar( _
 			' Styles XP disponible
 
 			' m_hDC est le DC pour dessiner
-			' m_lPartId et m_lStateId sont la class + l'état à dessiner
-			' tR est un RECT spécifiant la zone dans laquelle dessiner
+			' m_lPartId et m_lStateId sont la class + l'Ð¹tat Ð° dessiner
+			' tR est un RECT spÐ¹cifiant la zone dans laquelle dessiner
 			m_hDC = Me.Handle
 			Dim mLeft As Integer
 				mLeft = False
@@ -460,7 +460,7 @@ Sub Fast_CBar( _
 			End If
 		End If
 
-		' Session de dessin terminée
+		' Session de dessin terminÐ¹e
 		CloseThemeData_QTBtn hTheme
 		CloseThemeData_QTBtn hTheme
 		'//--
@@ -508,14 +508,14 @@ Sub XPPart ( _
 			 Me As QBitmap, _
 			 hWnd As Long)
 	If isXP_QTBtn Then
-		' Thème activé (Windows XP)
+		' ThÐ¸me activÐ¹ (Windows XP)
 		' --
 		If DisableXPThemeBG or PartID <> 6 Then _
 			Me.FillRect(False, False, Me.Width, Me.Height, Color)
 
 		Dim hTheme As Long
 
-		' Ouverture du thème
+		' Ouverture du thÐ¸me
 		Dim rtButton As String
 			rtButton = ""
 		' Format unicode ?!?
@@ -535,8 +535,8 @@ Sub XPPart ( _
 			Dim tR As RECT_QTBtn
 
 			' m_hDC est le DC pour dessiner
-			' m_lPartId et m_lStateId sont la classe + l'état à dessiner
-			' tR est une structure RECT spécifiant la zone dans laquelle dessiner
+			' m_lPartId et m_lStateId sont la classe + l'Ð¹tat Ð° dessiner
+			' tR est une structure RECT spÐ¹cifiant la zone dans laquelle dessiner
 			m_hDC = Me.Handle
 			If PartID > True Then _
 				m_lPartId = PartID _
@@ -561,7 +561,7 @@ Sub XPPart ( _
 
 		End If
 
-		' Session de dessin terminée
+		' Session de dessin terminÐ¹e
 		CloseThemeData_QTBtn hTheme
 		CloseThemeData_QTBtn hTheme
 		'//--
@@ -610,7 +610,7 @@ Declare Function PtInRect_CBar Lib "user32" Alias "PtInRect" ( _
         ByVal x As Long, ByVal y As Long ) As Long 
 
 
-' Gère les menus popup
+' GÐ¸re les menus popup
 'Const TPM_HORIZONTAL		As Long = &H0&
 'Const TPM_LEFTALIGN			As Long = &H0&
 Const TPM_LEFTBUTTON_CBar			= &H0				'&H0&
@@ -636,9 +636,9 @@ Declare Function TrackPopupMenuEx_CBar Lib "user32" Alias "TrackPopupMenuEx" ( _
 		ByVal x As Long, ByVal y As Long, _
 		ByVal hWnd As Long, _
 		ByVal lptpm As Long) As Long
-' // Fin - Gère les menus popup
+' // Fin - GÐ¸re les menus popup
 
-' Gère les boîtes de texte et les comboboxes
+' GÐ¸re les boÐ¾tes de texte et les comboboxes
 'Const HWND_TOPMOST			= -1
 'Const HWND_NOTOPMOST		= -2
 Const SWP_NOSIZE_CBar		= &H1
@@ -653,9 +653,9 @@ Declare Sub SetWindowPos_CBar Lib "user32" Alias "SetWindowPos" ( _
 		ByVal X As Long, ByVal Y As Long, _
 		ByVal cx As Long, ByVal cy As Long, _
 		ByVal wFlags As Long)
-' // Fin - Gère les boîtes de texte et les comboboxes
+' // Fin - GÐ¸re les boÐ¾tes de texte et les comboboxes
 
-' Méthode pour ajouter une icône à l'item d'un menu
+' MÐ¹thode pour ajouter une icÑ„ne Ð° l'item d'un menu
 ' //Fin
 
 
@@ -689,14 +689,14 @@ Dim CB_ItemCount As Integer
 
 Sub RedimCBItems
 	' Redimensionne les objets
-	' cette méthode devrait permettre de réduire les reources utilisées
+	' cette mÐ¹thode devrait permettre de rÐ¹duire les reources utilisÐ¹es
 	' par la barre d'outil et augmenter le nombre de btns possibles...
 	ReDim mnuItemExceed(CB_ItemCount)		As QMenuItem
 End Sub
 
 'Declare Sub GetInfo (iIndex As String) 'Integer)
 
-' Event Template pour les nouveaux événements MouseLeave et MouseEnter
+' Event Template pour les nouveaux Ð¹vÐ¹nements MouseLeave et MouseEnter
 DECLARE SUB CBarOnMouseEnter_EventTemplate (X As Integer, Y As Integer, Shift As Integer, ItemIndex As Integer, Me As QPanel)
 DECLARE SUB CBarOnMouseLeave_EventTemplate (X As Integer, Y As Integer, Shift As Integer, Me As QPanel)
 DECLARE SUB CBarOnChange_EventTemplate (ItemIndex As Integer, Me As QPanel)
@@ -714,23 +714,23 @@ Type QCoolBarXP Extends QPanel
 
 	imgLA			AS QImageList		' ImgLst des btns Actifs
 	'imgLD			AS QImageList		' ImgLst des btns Inactifs
-	'imgLS			AS QImageList		' ImgLst des btns Sélectionnés
-	'imgLH			AS QImageList		' ImgLst des btns Survollés
+	'imgLS			AS QImageList		' ImgLst des btns SÐ¹lectionnÐ¹s
+	'imgLH			AS QImageList		' ImgLst des btns SurvollÐ¹s
 	'CollectionBMP	AS QBitmap			' Une collection d'image de tous les btns
 
    PRIVATE:
 	DragTimer			As QTimer
 	FreePanelL			As QPanel		' Paneau sur lequel repose l'image de la barre d'outil
 	FreePanelM			As QPanel		' ...
-	FreePanelR			As QPanel		' Paneau sur lequel repose l'image du menu lorsque la taille est réduite
-	BtnCache			As QBitmap		' Garde en mémoire l'image de la barre pour un affichage plus rapide
-	CanvasL				As QCanvas		' Gestion de de l'événement OnPaint
-	CanvasR				As QCanvas		' Gestion de de l'événement OnPaint
+	FreePanelR			As QPanel		' Paneau sur lequel repose l'image du menu lorsque la taille est rÐ¹duite
+	BtnCache			As QBitmap		' Garde en mÐ¹moire l'image de la barre pour un affichage plus rapide
+	CanvasL				As QCanvas		' Gestion de de l'Ð¹vÐ¹nement OnPaint
+	CanvasR				As QCanvas		' Gestion de de l'Ð¹vÐ¹nement OnPaint
 	CanvasLMsg			As Integer
-	ImageL				As QImage		' Image sur laquelle est dessiné la barre d'outil
-	ImageR				As QImage		' Image sur laquelle est dessiné le menu lorsque la taille est réduite
-	ImageLH				As QImage		' Image affichée lorsqu'un item est survolé ou sélectionné
-	ImageRH				As QImage		' Image affichée lorsque le menu est survolé ou sélectionné
+	ImageL				As QImage		' Image sur laquelle est dessinÐ¹ la barre d'outil
+	ImageR				As QImage		' Image sur laquelle est dessinÐ¹ le menu lorsque la taille est rÐ¹duite
+	ImageLH				As QImage		' Image affichÐ¹e lorsqu'un item est survolÐ¹ ou sÐ¹lectionnÐ¹
+	ImageRH				As QImage		' Image affichÐ¹e lorsque le menu est survolÐ¹ ou sÐ¹lectionnÐ¹
 	'Fond				As QImage
 	CoolBtnBMP			As QBitmap
 	CoolBtnBMPE			As QBitmap
@@ -741,15 +741,15 @@ Type QCoolBarXP Extends QPanel
 	LastItemLeft		As Integer
 	LastItemTop			As Integer
 	ItemGroup(6)		As Integer
-	GroupAllowAllUp(6)	As Integer		' Ici ce n'est pas l'item, mais l'index du group qui est passé comme argument
+	GroupAllowAllUp(6)	As Integer		' Ici ce n'est pas l'item, mais l'index du group qui est passÐ¹ comme argument
 	ItemEnabled(6)		As Integer
 	ItemDown(6)			As Integer
-	wasHideGrip			As Integer		' Je crois que c'est complètement obselèt maintenant
-	wasHideCaption		As Integer		' Je crois que c'est complètement obselèt maintenant
+	wasHideGrip			As Integer		' Je crois que c'est complÐ¸tement obselÐ¸t maintenant
+	wasHideCaption		As Integer		' Je crois que c'est complÐ¸tement obselÐ¸t maintenant
 	GripWidth			As Integer		' Largeur de la "Grippe"
 	GripHeight			As Integer		' Hauteur de la "Grippe"
 	CaptionWidth		As Integer		' Largeur du titre de la barre
-	CaptionHeight		As Integer		' Hauteur du titre de la barre (En réalité il sagit de la position suppérieur)
+	CaptionHeight		As Integer		' Hauteur du titre de la barre (En rÐ¹alitÐ¹ il sagit de la position suppÐ¹rieur)
 	isExceedWidth		As Integer
 	isExceedHeight		As Integer
 	isPaintReady		As Integer
@@ -760,14 +760,14 @@ Type QCoolBarXP Extends QPanel
 	mnuExceed			As QPopupMenu	' ...
 	mnuItemExceedIndex(6) As Integer
 	mnuItemCount		As Integer		' ...
-	ED_Count			As Integer		' Nombre de contrôle Edit
+	ED_Count			As Integer		' Nombre de contrÑ„le Edit
 	ED_Ctrl(6)			As Long
 	ED_AfterIndex(6)	As Integer
 	ED_Left(6)			As Integer
 	ED_Width(6)			As Integer
 	ED_Height(6)		As Integer
 	'ED_BG(6)			As QImage
-	CB_Count			As Integer		' Nombre de contrôle ComboBox
+	CB_Count			As Integer		' Nombre de contrÑ„le ComboBox
 	CB_Ctrl(6)			As Long
 	CB_AfterIndex(6)	As Integer
 	CB_Left(6)			As Integer
@@ -778,10 +778,10 @@ Type QCoolBarXP Extends QPanel
    PUBLIC:
 	'Height				As Integer	PROPERTY SET SetHeight
 	'Width				As Integer	PROPERTY SET SetWidth
-	DisableXPTheme		As Integer	' Propriété					' Désactive le Thème XP
-	DisableXPThemeBG	As Integer	' Propriété					' Désactive le fond XP
-	DisableBG			As Integer	' Propriété					' Désactive le fond si custBG.Empty = False
-	Style				As Integer	' Propriété
+	DisableXPTheme		As Integer	' PropriÐ¹tÐ¹					' DÐ¹sactive le ThÐ¸me XP
+	DisableXPThemeBG	As Integer	' PropriÐ¹tÐ¹					' DÐ¹sactive le fond XP
+	DisableBG			As Integer	' PropriÐ¹tÐ¹					' DÐ¹sactive le fond si custBG.Empty = False
+	Style				As Integer	' PropriÐ¹tÐ¹
 	'BtnsSpacing		As Integer								' Espace entre les items
 	HideGrip			As Integer	PROPERTY SET SetHideGrip	' Affiche/Masque la "Grippe"
 	HideCaption			As Integer	PROPERTY SET SetHideCaption	' Affiche/Masque le titre de la barre
@@ -793,9 +793,9 @@ Type QCoolBarXP Extends QPanel
 	BorderStyle			As Integer PROPERTY SET SetBorderStyle	' ...
 
 	'OnMouseLeave	AS EVENT(CBarOnMouseLeave_EventTemplate)	' La souris quitte la barre
-	'OnMouseEnter	AS EVENT(CBarOnMouseEnter_EventTemplate)	' La souris entre et se déplace sur la barre
-	OnChange		AS EVENT(CBarOnChange_EventTemplate)		' Un btn est cliqué
-	'Nouvelles propriétés
+	'OnMouseEnter	AS EVENT(CBarOnMouseEnter_EventTemplate)	' La souris entre et se dÐ¹place sur la barre
+	OnChange		AS EVENT(CBarOnChange_EventTemplate)		' Un btn est cliquÐ¹
+	'Nouvelles propriÐ¹tÐ¹s
 	'qqchose as qqchose Property Set SetQqChose
 	
 	With This
@@ -809,7 +809,7 @@ Type QCoolBarXP Extends QPanel
 		Dim sMenu As Long
 		Dim sStyle As Long
 		sStyle = TPM_RETURNCMD_CBar
-		' Si ODMenuXP est détecté
+		' Si ODMenuXP est dÐ¹tectÐ¹
 		$IFNDEF __RQGETVERSION2
 			'If isXP_QTBtn = False Then _
 				sStyle = sStyle or TPM_LEFTBUTTON_CBar or TPM_RIGHTBUTTON_CBar
@@ -1021,7 +1021,7 @@ Type QCoolBarXP Extends QPanel
 				Else
 					.CaptionHeight		= (.ClientHeight -.TextHeight(.Caption)) \2
 					'.CaptionWidth		= .TextWidth(.Caption) +4
-					' Il y a un bug avec win9x où le texte du titre est invisible... ???
+					' Il y a un bug avec win9x oÑ‰ le texte du titre est invisible... ???
 					If isXP_QTBtn Then
 						.BMPCache2.TextOut	(.GripWidth +2, .CaptionHeight, .Caption, .Font.Color, -True)
 					Else
@@ -1140,7 +1140,7 @@ Type QCoolBarXP Extends QPanel
 	SUB CanvasPaint (Me As QCanvas)
 		Static fixHotUp As Integer
 		' Corrige l'optimisation d'oh! 
-		' et voilà aucun scintillement et le redimensionnment est constant
+		' et voilÐ° aucun scintillement et le redimensionnment est constant
 		If .isPaintReady = False Then _
 			.isPaintReady = True
 		If .CanvasL.Width = 2 Then
@@ -1151,8 +1151,8 @@ Type QCoolBarXP Extends QPanel
 			.ImageLH.Visible = False
 			fixHotUp = False
 		End If
-		'wasBtn = -True ' devra être une propriété de la barre pour résoudre le problème d'apparission
-						' lorsque la fenêtre a perdue le focus et que l'ont tente de sélectionner le même
+		'wasBtn = -True ' devra Ðºtre une propriÐ¹tÐ¹ de la barre pour rÐ¹soudre le problÐ¸me d'apparission
+						' lorsque la fenÐºtre a perdue le focus et que l'ont tente de sÐ¹lectionner le mÐºme
 						' item
 		' Dessine le fond de la barre
 		'BMPCache.Transparent = False
@@ -1296,9 +1296,9 @@ Type QCoolBarXP Extends QPanel
 				.Style, _
 				.DisableXPTheme, _
 				This.Handle)
-			.CoolBtnBMPE.TextOut(((12 -.CoolBtnBMPE.TextWidth("»")) \2) +True, _
+			.CoolBtnBMPE.TextOut(((12 -.CoolBtnBMPE.TextWidth("Â»")) \2) +True, _
 				-6, _
-				"»", _
+				"Â»", _
 				.Font.Color, _
 				-True)
 
@@ -1360,11 +1360,11 @@ Type QCoolBarXP Extends QPanel
 	END SUB
 
    PUBLIC:
-	' == Ajout d'items à la barre ==
+	' == Ajout d'items Ð° la barre ==
 	SUBI AddItems (...)
 		If ParamStrCount > False Then
 			DIM I AS INTEGER
-			.ItemCount = .ItemCount +ParamStrCount	' Devrait être .ItemCount +ParamStrCount
+			.ItemCount = .ItemCount +ParamStrCount	' Devrait Ðºtre .ItemCount +ParamStrCount
 			If .ItemsWidth = False Then
 				If .Orientation Then
 					  .ItemsWidth = .FreePanelL.Width -2
@@ -1382,8 +1382,8 @@ Type QCoolBarXP Extends QPanel
 			ReDim .ItemPopupHnd(.ItemCount -True)		As Long
 			ReDim .mnuItemExceedIndex(.ItemCount -True)	As Integer
 
-			.ItemLeft(False)	= False	' Devrait être .ItemLeft(.ItemCount -ParamStrCount)
-			.ItemWidth(False)	= False	' Devrait être .ItemWidth(.ItemCount -ParamStrCount)
+			.ItemLeft(False)	= False	' Devrait Ðºtre .ItemLeft(.ItemCount -ParamStrCount)
+			.ItemWidth(False)	= False	' Devrait Ðºtre .ItemWidth(.ItemCount -ParamStrCount)
 			FOR I = True TO ParamStrCount
 				.mnuItemExceedIndex(I -True)		= CB_ItemCount
 				mnuItemExceed(CB_ItemCount).Caption	= IIf(ParamStr$(I) = "", "...", ParamStr$(I))
@@ -1431,7 +1431,7 @@ Type QCoolBarXP Extends QPanel
 			.ItemPopupHnd(iIndex) = Me.Handle
 		Else
 			ShowMessage "Avertissement: vous tentez d'asigner un menu popup " +CHR$(10) +_
-						"               à un item..."
+						"               Ð° un item..."
 		End If
 		.ForceEvalPos = True
 		Call This.EvalBtnPos
@@ -1446,7 +1446,7 @@ Type QCoolBarXP Extends QPanel
 	Sub InsertED_Ctrl (iAfter As Integer, Me As QEdit)
 
 		If .Orientation = True Then
-			ShowMessage "Orientation = True n'est pas supporté !"
+			ShowMessage "Orientation = True n'est pas supportÐ¹ !"
 			Exit Sub
 		End If
 			
@@ -1485,7 +1485,7 @@ Type QCoolBarXP Extends QPanel
 	Sub InsertCB_Ctrl (iAfter As Integer, Me As QComboBox)
 
 		If .Orientation = True Then
-			ShowMessage "Orientation = True n'est pas supporté !"
+			ShowMessage "Orientation = True n'est pas supportÐ¹ !"
 			Exit Sub
 		End If
 		ReDim .CB_Ctrl(.CB_Count)		As Long
@@ -1541,11 +1541,11 @@ Type QCoolBarXP Extends QPanel
 				End If
 			Next I
 		Else
-			ShowMessage "Erreur: paramètre(s) manquant(s) ou incorrect(s)"
+			ShowMessage "Erreur: paramÐ¸tre(s) manquant(s) ou incorrect(s)"
 		End If
 		If modSepState Then _
-			ShowMessage "Avertissement: vous tentez de redéfinir le " +CHR$(10) +_
-						"               groupe d'un séparateur..."
+			ShowMessage "Avertissement: vous tentez de redÐ¹finir le " +CHR$(10) +_
+						"               groupe d'un sÐ¹parateur..."
 		If .isPaintReady = 2 Then _
 			Call This.RePaint
 	END SUBI
@@ -1576,11 +1576,11 @@ Type QCoolBarXP Extends QPanel
 				End If
 			Next I
 		Else
-			ShowMessage "Erreur: paramètre(s) manquant(s) ou incorrect(s)"
+			ShowMessage "Erreur: paramÐ¸tre(s) manquant(s) ou incorrect(s)"
 		End If
 		If modSepState Then _
-			ShowMessage "Avertissement: vous tentez de modifier l'état " +CHR$(10) +_
-						"               enfoncé d'un séparateur..."
+			ShowMessage "Avertissement: vous tentez de modifier l'Ð¹tat " +CHR$(10) +_
+						"               enfoncÐ¹ d'un sÐ¹parateur..."
 		If .isPaintReady = 2 Then _
 			Call This.RePaint
 	END SUBI
@@ -1605,11 +1605,11 @@ Type QCoolBarXP Extends QPanel
 				End If
 			Next I
 		Else
-			ShowMessage "Erreur: paramètre(s) manquant(s) ou incorrect(s)"
+			ShowMessage "Erreur: paramÐ¸tre(s) manquant(s) ou incorrect(s)"
 		End If
 		If modSepState Then _
-			ShowMessage "Avertissement: vous tentez de modifier l'état " +CHR$(10) +_
-						"               enfoncé d'un séparateur..."
+			ShowMessage "Avertissement: vous tentez de modifier l'Ð¹tat " +CHR$(10) +_
+						"               enfoncÐ¹ d'un sÐ¹parateur..."
 		If .isPaintReady = 2 Then _
 			Call This.RePaint
 	END SUBI
@@ -1671,8 +1671,8 @@ Type QCoolBarXP Extends QPanel
 		.ImageLH.Visible = False
 
 		If iIndex = -True Then
-			'.CoolBtnBMPE.Width		= .FreePanelL.Width		' Devrait être FreePanelR.Width n'est pas dimensionné correctement
-			'.CoolBtnBMPE.Height	= .FreePanelL.Height	' Devrait être FreePanelR.Height n'est pas dimensionné correctement
+			'.CoolBtnBMPE.Width		= .FreePanelL.Width		' Devrait Ðºtre FreePanelR.Width n'est pas dimensionnÐ¹ correctement
+			'.CoolBtnBMPE.Height	= .FreePanelL.Height	' Devrait Ðºtre FreePanelR.Height n'est pas dimensionnÐ¹ correctement
 
 			' Exceed Btn
 			Fast_CBar( xpt_ToolBarBtn, _
@@ -1687,9 +1687,9 @@ Type QCoolBarXP Extends QPanel
 				.Style, _
 				.DisableXPTheme, _
 				This.Handle)
-			.CoolBtnBMPE.TextOut(((12 -.CoolBtnBMPE.TextWidth("»")) \2) +True, _
+			.CoolBtnBMPE.TextOut(((12 -.CoolBtnBMPE.TextWidth("Â»")) \2) +True, _
 				-6, _
-				"»", _
+				"Â»", _
 				.Font.Color, _
 				-True)
 
@@ -1759,7 +1759,7 @@ Type QCoolBarXP Extends QPanel
 				.ImageLH.Left	= .ItemLeft(iIndex)
 				.ImageLH.Top	= False
 			End If
-			.CoolBtnBMP.TransparentColor	= .CoolBtnBMP.Pixel(False, False) ' Couleur par défaut  48163823
+			.CoolBtnBMP.TransparentColor	= .CoolBtnBMP.Pixel(False, False) ' Couleur par dÐ¹faut  48163823
 			.CoolBtnBMP.Transparent			= True
 			.ImageLH.BMP					= .CoolBtnBMP.BMP
 			.ImageLH.Transparent			= True
@@ -1789,18 +1789,18 @@ Type QCoolBarXP Extends QPanel
 
 			.ImageLH.Visible = False
 			.ImageRH.Visible = False
-			' le pseudo-evénement MOUSELEAVE
+			' le pseudo-evÐ¹nement MOUSELEAVE
 			'CALLFUNC(.OnMouseLeave, X, Y, Shift, This)
 		ElseIf (GetCapture_QTBtn() <> This.Handle) and _
 				(PosX <> X and PosY <> Y) Then
-			' Verifie si la requete de relâcher la capture d'un QCBar est False
+			' Verifie si la requete de relÐ²cher la capture d'un QCBar est False
 			' 
-			' Ce qui va aussi empêcher le btn de reprendre son état initial
+			' Ce qui va aussi empÐºcher le btn de reprendre son Ð¹tat initial
 			' lors d'une action...
 			PosX = X
 			PosY = Y
 
-			' le pseudo-evénement MOUSEENTER
+			' le pseudo-evÐ¹nement MOUSEENTER
 			SetCapture_QTBtn This.Handle
 		ElseIf .FreePanelR.Visible and .Orientation and _
 			(Y => .ClientHeight -12 and Y =< .ClientHeight) Then
@@ -2028,9 +2028,9 @@ Type QCoolBarXP Extends QPanel
 							.DrawHotItemState (curBtn, True, False)
 						End If
 						CALLFUNC(.OnChange, curBtn, This)
-						' Si la position du curseur n'est pas celle mémorisée, 
-						' on suppose que la fenêtre a perdu son focus et on
-						' masque l'item sélectionné
+						' Si la position du curseur n'est pas celle mÐ¹morisÐ¹e, 
+						' on suppose que la fenÐºtre a perdu son focus et on
+						' masque l'item sÐ¹lectionnÐ¹
 						If oldX <> Screen.MouseX and oldY <> Screen.MouseY Then _
 							.ImageLH.Visible = False
 					End If
@@ -2194,11 +2194,11 @@ Type QCoolBarXP Extends QPanel
 				End If
 			Next I
 		Else
-			ShowMessage "Erreur: paramètre(s) manquant(s) ou incorrect(s)"
+			ShowMessage "Erreur: paramÐ¸tre(s) manquant(s) ou incorrect(s)"
 		End If
 		If modSepState Then _
 			ShowMessage "Avertissement: vous tentez de modifier " +CHR$(10) +_
-						"               un séparateur..."
+						"               un sÐ¹parateur..."
 		If .ItemCount > False Then
 			.ForceEvalPos = True
 			Call This.EvalBtnPos
@@ -2258,10 +2258,10 @@ Type QCoolBarXP Extends QPanel
 		GripWidth				= 5
 		'mnuExceed.Alignment	= True
 		DragTimer.Enabled		= False
-		OnChange				= CBarOnChange_EventTemplate	' Définie temporairement l'adresse, sinon il y 
+		OnChange				= CBarOnChange_EventTemplate	' DÐ¹finie temporairement l'adresse, sinon il y 
 																' a risque de complications... !
 																' Ex: L'appelle de OnChange pourrait une autre 
-																' Function... j'ai déjà vu ça qqpart !!!
+																' Function... j'ai dÐ¹jÐ° vu Ð·a qqpart !!!
 		CanvasLMsg				= False
 		ImgLA.BkColor			= clPurple
 	End Constructor

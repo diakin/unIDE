@@ -35,7 +35,7 @@ Declare Sub event_change(position as long)
 
 Type QWave extends Qobject
   '================================
-  ' champs et proprietés
+  ' champs et proprietÐ¹s
   '================================
   Timer as QTIMER
   Lenght as long
@@ -50,7 +50,7 @@ Type QWave extends Qobject
   OnChange as EVENT(event_change) 
 
   '====================================
-  ' proprieté volume du média
+  ' proprietÐ¹ volume du mÐ¹dia
   '====================================
   Property Set SetVolume(volume as integer)
     dim vol as long
@@ -72,7 +72,7 @@ Type QWave extends Qobject
   End Property
 
   '====================================
-  ' proprieté position Wave
+  ' proprietÐ¹ position Wave
   '====================================
   Property Set SetCurrentPos(Position as long)
     dim Retval as integer
@@ -96,7 +96,7 @@ Type QWave extends Qobject
   End Property
 
   '=========================================
-  ' proprieté nombre de bit du fichier Wave
+  ' proprietÐ¹ nombre de bit du fichier Wave
   '=========================================
   Property Set SetBits(number as integer)
     dim Retval as integer
@@ -118,7 +118,7 @@ Type QWave extends Qobject
   End Property
   
   '=========================================
-  ' proprieté frequence du fichier Wave
+  ' proprietÐ¹ frequence du fichier Wave
   '=========================================
   Property Set SetFrequence(freq as integer)
     dim Retval as integer
@@ -140,7 +140,7 @@ Type QWave extends Qobject
   End Property
 
   '=========================================
-  ' proprieté mode de sortie du fichier Wave
+  ' proprietÐ¹ mode de sortie du fichier Wave
   '=========================================
   Property Set SetMode(number as short)
     dim Retval as integer
@@ -164,7 +164,7 @@ Type QWave extends Qobject
 PRIVATE:
 
   '========================================
-  ' Méthode retourne le texte de l'erreur
+  ' MÐ¹thode retourne le texte de l'erreur
   '========================================
   Function GetMciDescription(McierrNr As Long) As String
     dim Retval as Long
@@ -180,7 +180,7 @@ PRIVATE:
   End Function
 
   '====================================
-  ' méthode lecture position Wave
+  ' mÐ¹thode lecture position Wave
   '====================================
   Function GetPosition as long
     dim Retval as integer
@@ -194,7 +194,7 @@ PRIVATE:
   End Function
 
   '====================================
-  ' méthode lecture mode du media
+  ' mÐ¹thode lecture mode du media
   '====================================
   Function GetState as integer
     dim Retval as integer
@@ -212,7 +212,7 @@ PRIVATE:
 PUBLIC:
 
   '=================================
-  ' méthode fermeture fichier Wave
+  ' mÐ¹thode fermeture fichier Wave
   '=================================
   Sub Close
     dim Retval as integer
@@ -230,7 +230,7 @@ PUBLIC:
   End Sub
 
   '====================================
-  ' méthode ouverture fichier Wave
+  ' mÐ¹thode ouverture fichier Wave
   '====================================
   Function Open(FileName as string) as boolean
     Dim Retval as Integer
@@ -270,7 +270,7 @@ PUBLIC:
   End Function
 
   '==================================
-  ' méthode lecture fichier Wave
+  ' mÐ¹thode lecture fichier Wave
   '==================================
   Sub Play
     dim Retval as integer
@@ -285,7 +285,7 @@ PUBLIC:
   End Sub
 
   '==================================
-  ' méthode arret fichier Wave
+  ' mÐ¹thode arret fichier Wave
   '==================================
   Sub Stop
     dim Retval as integer
@@ -308,7 +308,7 @@ PUBLIC:
   End Sub
 
   '==================================
-  ' méthode pause 
+  ' mÐ¹thode pause 
   '==================================
   Sub Pause
     dim Retval as integer
@@ -326,7 +326,7 @@ PUBLIC:
   End Sub
 
   '==================================
-  ' méthode new,nouveau fichier wave
+  ' mÐ¹thode new,nouveau fichier wave
   '==================================
   Sub New
     dim Retval as integer
@@ -359,7 +359,7 @@ PUBLIC:
   End Sub
 
   '==================================
-  ' méthode record 
+  ' mÐ¹thode record 
   '==================================
   Sub Record
     dim Retval as integer
@@ -376,7 +376,7 @@ PUBLIC:
   End Sub
 
   '==================================
-  ' méthode save
+  ' mÐ¹thode save
   '==================================
   Function Save(FileName as string) as boolean
     dim Retval as integer
@@ -392,7 +392,7 @@ PUBLIC:
   End Function
 
   '==================================
-  ' méthode delete 
+  ' mÐ¹thode delete 
   '==================================
   Sub Delete(pos1 as long,pos2 as long)
     dim Retval as integer
@@ -412,7 +412,7 @@ PUBLIC:
   End Sub
 
   '===============================================
-  ' évenement changementposition du fichier Wave
+  ' Ð¹venement changementposition du fichier Wave
   '===============================================
   Event Timer.OnTimer
     QWave.CurrentPos=QWave.GetPosition

@@ -38,7 +38,7 @@ Type QAbout EXTENDS QOBJECT
     WebFont as QFont
      
   '==================================
-  ' Méthode affichage boite dialogue
+  ' MÐ¹thode affichage boite dialogue
   '==================================
   Sub Show
     with QAbout

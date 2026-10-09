@@ -40,7 +40,7 @@ TYPE QColorDialog extends QOBJECT
     CC as TCHOOSECOLOR
   Public:
     '==============================
-    ' Proprietés
+    ' ProprietÐ¹s
     '==============================
     Customer(16) as long
     RgbColor as long
@@ -48,7 +48,7 @@ TYPE QColorDialog extends QOBJECT
     DefColor as integer
     HtmlColor as string
     '==========================================
-    ' Méthode affichage boite dialogue couleur
+    ' MÐ¹thode affichage boite dialogue couleur
     '==========================================
     Function Execute(form as QFORM) as integer
       dim i as integer
@@ -87,7 +87,7 @@ TYPE QColorDialog extends QOBJECT
 
 
     '==========================================
-    ' Méthode init couleur perso
+    ' MÐ¹thode init couleur perso
     '==========================================
     Sub Init
       dim i as integer

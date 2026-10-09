@@ -40,7 +40,7 @@ Type QSkin extends QForm
   End Event
   
   '=================================================
-  ' méthode réduction applcaton dans barre de tache
+  ' mÐ¹thode rÐ¹duction applcaton dans barre de tache
   '=================================================
   Sub SetDeskBar
     SkinSetLong(QSkin.handle,SKIN_HWNDPARENT,SKIN_HWNDDESKTOP)
@@ -48,7 +48,7 @@ Type QSkin extends QForm
   End Sub
 
   '=================================================
-  ' méthode redimensionnement application
+  ' mÐ¹thode redimensionnement application
   '=================================================
   Sub Resize
     QSkin.Width=QSkin.Skin.Width+QSkin.OffsWidth

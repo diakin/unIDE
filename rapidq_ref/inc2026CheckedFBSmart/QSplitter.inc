@@ -23,7 +23,7 @@
 ' what I mean? Now place the code for Rich3 AFTER
 ' the code for Split3. Problem solved!)
 ' Anyway, I had fun with it, I hope you will too.
-' Psyclops ·)
+' Psyclops Â·)
 ' P.S. Sorry for the lack of comments, maybe in the
 ' next release...
 

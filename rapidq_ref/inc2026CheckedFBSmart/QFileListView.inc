@@ -65,7 +65,7 @@ Type QFileListView extends QListView
   Private:
   
   '=================================================
-  ' Méthode retourne le repertoire formaté
+  ' MÐ¹thode retourne le repertoire formatÐ¹
   '=================================================
   Function GetFormatDir(directory as string) as string
     if rinstr(directory,"\")=len(directory) then
@@ -76,7 +76,7 @@ Type QFileListView extends QListView
   End Function      
 
   '========================================
-  ' Méthode retourne le nombre d'extension
+  ' MÐ¹thode retourne le nombre d'extension
   '========================================
   Function ExtCount(Extension as string) as integer
     dim count as integer
@@ -92,7 +92,7 @@ Type QFileListView extends QListView
   End Function
 
   '========================================
-  ' Méthode ajout détails de fichier
+  ' MÐ¹thode ajout dÐ¹tails de fichier
   '========================================
   Sub AddFileProperties
     dim SizeString as string
@@ -122,7 +122,7 @@ Type QFileListView extends QListView
   End Sub
 
   '================================================
-  ' Méthode affichage des fichiers type du masque
+  ' MÐ¹thode affichage des fichiers type du masque
   '================================================
   Sub LoadFiles(Mask as string)
     dim File as string
@@ -153,7 +153,7 @@ Type QFileListView extends QListView
   End Sub
 
   '========================================
-  ' Méthode affichage fichier
+  ' MÐ¹thode affichage fichier
   '========================================
   Sub Load
     dim count as integer
@@ -174,7 +174,7 @@ Type QFileListView extends QListView
   Public:
 
   '========================================
-  ' Méthode actualisation de la liste
+  ' MÐ¹thode actualisation de la liste
   '========================================
   Sub Refresh
     dim himlLarge as dword
@@ -200,7 +200,7 @@ Type QFileListView extends QListView
   End Sub
 
   '========================================
-  ' Méthode focus sur controle
+  ' MÐ¹thode focus sur controle
   '========================================
   Sub SetFocus
     SetFocusFileListView(this.Handle)
@@ -235,7 +235,7 @@ Type QFileListView extends QListView
   End Event
       
   '========================================
-  ' Proprieté repertoire
+  ' ProprietÐ¹ repertoire
   '========================================
   property set SetDirectory (Dir as string)
     if DirExists(Dir) then
@@ -245,7 +245,7 @@ Type QFileListView extends QListView
   end property
 
   '========================================
-  ' Proprieté masque extension fichier
+  ' ProprietÐ¹ masque extension fichier
   '========================================
   Property set SetMask(MaskSet as string)
     this.Mask=MaskSet
@@ -253,7 +253,7 @@ Type QFileListView extends QListView
   End Property
   
   '========================================
-  ' Proprieté nom fichier
+  ' ProprietÐ¹ nom fichier
   '========================================
   Property set SetFileName(filename as string)
     'read only

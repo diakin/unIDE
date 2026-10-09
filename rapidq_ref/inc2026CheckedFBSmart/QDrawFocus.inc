@@ -67,43 +67,43 @@ TYPE QDrawFocus EXTENDS QOBJECT
 
   PUBLIC:
   '==========================================
-  ' Proprieté left en lecture seule
+  ' ProprietÐ¹ left en lecture seule
   '==========================================
   PROPERTY SET SetLeft(value as short)
   END PROPERTY
 
   '==========================================
-  ' Proprieté top en lecture seule
+  ' ProprietÐ¹ top en lecture seule
   '==========================================
   PROPERTY SET SetTop(value as short)
   END PROPERTY
 
   '==========================================
-  ' Proprieté width en lecture seule
+  ' ProprietÐ¹ width en lecture seule
   '==========================================
   PROPERTY SET SetWidth(value as short)
   END PROPERTY
 
   '==========================================
-  ' Proprieté height en lecture seule
+  ' ProprietÐ¹ height en lecture seule
   '==========================================
   PROPERTY SET SetHeight(value as short)
   END PROPERTY
 
   '==========================================
-  ' Proprieté move en lecture seule
+  ' ProprietÐ¹ move en lecture seule
   '==========================================
   PROPERTY SET SetMove(value as boolean)
   END PROPERTY
 
   '==========================================
-  ' Proprieté inside en lecture seule
+  ' ProprietÐ¹ inside en lecture seule
   '==========================================
   PROPERTY SET SetInside(value as boolean)
   END PROPERTY
 
   '==========================================
-  ' Méthode:supprime le focus
+  ' MÐ¹thode:supprime le focus
   ' Parametres:
   ' handle:(handle DC)
   '==========================================
@@ -117,7 +117,7 @@ TYPE QDrawFocus EXTENDS QOBJECT
   End Sub
 
   '============================================
-  ' Méthode:debut du focus
+  ' MÐ¹thode:debut du focus
   ' Parametres:
   ' handle:(handle DC)
   ' x,y:(position x,y)
@@ -167,7 +167,7 @@ TYPE QDrawFocus EXTENDS QOBJECT
   End Sub
 
   '==========================================
-  ' Méthode:dessine le focus
+  ' MÐ¹thode:dessine le focus
   ' Parametres:
   ' handle:(handle DC)
   ' x,y:(position x,y)
@@ -268,7 +268,7 @@ TYPE QDrawFocus EXTENDS QOBJECT
   End Sub
 
   '==========================================
-  ' Méthode:arrete le dessin du focus
+  ' MÐ¹thode:arrete le dessin du focus
   ' Parametres:
   ' handle:(handle DC)
   ' flagRemove:(suppression focus)

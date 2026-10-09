@@ -144,7 +144,7 @@ Type QDir Extends QObject
     PUBLIC:
         ' Event - Truely Read Write
         OnFileFound As EVENT (OnFileFound_EventTemplate)  ' RW
-        ' Find Files Pärameters - Should Be Read Only
+        ' Find Files PÐ´rameters - Should Be Read Only
         fileName As string
         dosFileName As string
         path As String

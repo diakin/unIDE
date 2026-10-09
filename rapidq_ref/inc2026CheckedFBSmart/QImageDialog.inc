@@ -90,7 +90,7 @@ Type QImageDialog Extends QObject
 
   Private:
   '======================================================
-  ' Méthode retourne le nombre de filtre type de fichier
+  ' MÐ¹thode retourne le nombre de filtre type de fichier
   '======================================================
   Function FilterCount(Filter as string) as integer
     dim count as integer
@@ -106,7 +106,7 @@ Type QImageDialog Extends QObject
   End Function
 
   '=================================================
-  ' Méthode retourne l'index champs
+  ' MÐ¹thode retourne l'index champs
   '=================================================
   Function GetField(name as string,Filter as string) as integer
     dim i as integer
@@ -124,7 +124,7 @@ Type QImageDialog Extends QObject
   End Function
 
   '=================================================
-  ' Méthode initialise les lecteurs présents
+  ' MÐ¹thode initialise les lecteurs prÐ¹sents
   '=================================================
   Sub GetDrives
    dim ASC_A as integer
@@ -150,14 +150,14 @@ Type QImageDialog Extends QObject
   End Sub
 
   '=================================================
-  ' Méthode retourne le rapport en pourcentage
+  ' MÐ¹thode retourne le rapport en pourcentage
   '=================================================
   function Ratio(Value1 as double,Value2 as double) as double
     Result=((Value1-Value2)*100)/Value1
   end function
   
   '=================================================
-  ' Méthode affiche l'image avec la réduction
+  ' MÐ¹thode affiche l'image avec la rÐ¹duction
   '=================================================
   Sub ShowImage
     defint reduction=100
@@ -187,7 +187,7 @@ Type QImageDialog Extends QObject
   End Sub
       
   '=================================================
-  ' Méthode retourne la présence de la dll
+  ' MÐ¹thode retourne la prÐ¹sence de la dll
   '=================================================
   Function DllExist() as boolean
     dim lpBuffer as string
@@ -209,7 +209,7 @@ Type QImageDialog Extends QObject
   End Function
   
   '=================================================
-  ' Méthode retourne le repertoire formaté
+  ' MÐ¹thode retourne le repertoire formatÐ¹
   '=================================================
   Function GetFormatDir(directory as string) as string
     if rinstr(directory,"\")=len(directory) then
@@ -220,7 +220,7 @@ Type QImageDialog Extends QObject
   End Function      
 
   '==================================================
-  ' Méthode ouvre les fichiers au format graphique
+  ' MÐ¹thode ouvre les fichiers au format graphique
   ' de la dll
   '==================================================
   Sub LoadOtherImage(FileName as string)
@@ -243,7 +243,7 @@ Type QImageDialog Extends QObject
   End Sub
 
   '=================================================
-  ' Méthode ouvre les fichiers icone et curseur
+  ' MÐ¹thode ouvre les fichiers icone et curseur
   '=================================================
   Sub LoadIcon(FileName as string)
     dim hIcon as long
@@ -274,7 +274,7 @@ Type QImageDialog Extends QObject
   End Sub
   
   '=================================================
-  ' Méthode Retourne l'extension valide d'un
+  ' MÐ¹thode Retourne l'extension valide d'un
   ' fichier prise en compte par la dll
   '=================================================
   Function DllFormat(FileName as string) as boolean
@@ -298,7 +298,7 @@ Type QImageDialog Extends QObject
   End Function
   
   '=================================================
-  ' Méthode change l'etat curseur
+  ' MÐ¹thode change l'etat curseur
   '=================================================
   Sub WaitCursor(flag as boolean)
     dim value as integer
@@ -321,7 +321,7 @@ Type QImageDialog Extends QObject
       
   Public:
   '=================================================
-  ' Proprieté définition filtre type de fichier
+  ' ProprietÐ¹ dÐ¹finition filtre type de fichier
   '=================================================
   Property Set SetFilter(filter as string)
     dim i as integer
@@ -336,7 +336,7 @@ Type QImageDialog Extends QObject
   End Property
 
   '=================================================
-  ' Proprieté index filtre type de fichier
+  ' ProprietÐ¹ index filtre type de fichier
   '=================================================
   Property Set SetFilterIndex(FilterIndex as integer)
     dim i as integer
@@ -348,7 +348,7 @@ Type QImageDialog Extends QObject
   End Property
         
   '=================================================
-  ' Proprieté titre boite de dialogue
+  ' ProprietÐ¹ titre boite de dialogue
   '=================================================
   Property Set SetCaption(caption as string)
     This.Caption=caption
@@ -356,7 +356,7 @@ Type QImageDialog Extends QObject
   End Property
   
   '=================================================
-  ' Proprieté sélection multiple fichiers
+  ' ProprietÐ¹ sÐ¹lection multiple fichiers
   '=================================================
   Property Set SetMultiSelect(select as boolean)
     This.FileList.MultiSelect=select
@@ -364,14 +364,14 @@ Type QImageDialog Extends QObject
   End Property
 
   '=================================================
-  ' Proprieté nombre de fichiers sélectionnés
+  ' ProprietÐ¹ nombre de fichiers sÐ¹lectionnÐ¹s
   '=================================================
   Property Set SetSelCount(count as integer)
     'Read only
   End Property
   
   '=================================================
-  ' Proprieté nom fichier
+  ' ProprietÐ¹ nom fichier
   '=================================================
   Property Set SetFileName(filename as string)
    if instr(filename,"\")>0 then
@@ -386,7 +386,7 @@ Type QImageDialog Extends QObject
   End Property
     
   '=================================================
-  ' Méthode ouverture boite de dialogue
+  ' MÐ¹thode ouverture boite de dialogue
   '=================================================
   Function Execute() as boolean
     This.Label1.Caption=this.DlgCaption(1)
@@ -425,7 +425,7 @@ Type QImageDialog Extends QObject
   End Event
 
   '=================================================
-  ' Evenement changement sélection lecteurs
+  ' Evenement changement sÐ¹lection lecteurs
   '=================================================
   Event Drive.OnChange
     this.DirList.Directory=this.Drive.item(this.Drive.itemindex)
@@ -435,7 +435,7 @@ Type QImageDialog Extends QObject
   End Event
 
   '=================================================
-  ' Evenement changement sélection type de fichiers
+  ' Evenement changement sÐ¹lection type de fichiers
   '=================================================
   Event FileType.OnChange
     This.FilterIndex=This.FileType.ItemIndex+1

@@ -1,6 +1,6 @@
 '$REsource btn_BMP As "../_res/Boutons.bmp"
 $Option Explicit
-' Vous pouvez tricher ce composante par la même astuce utilisé ici 
+' Vous pouvez tricher ce composante par la mÐºme astuce utilisÐ¹ ici 
 
 
 'Si vous voulez, vous pouver remplacer la resource par un objet bitmap
@@ -26,7 +26,7 @@ Type QTButton Extends QButton
 	Source As QRECT
 	BMPBtn As QBitmap
 	BMPtmp As QBitmap
-	ICOBMP As QBitmap' la petite icône à afficher sur le btn
+	ICOBMP As QBitmap' la petite icÑ„ne Ð° afficher sur le btn
 	Align as Integer Property Set SetAlign
 	Caption as String Property Set SetCaption
 	Enabled as Integer Property Set SetEnabled
@@ -38,7 +38,7 @@ Type QTButton Extends QButton
 	Kind as Integer Property Set SetKind
 	PixelFormat as Integer Property Set SetPixelFormat
 	
-	'Nouvelles propriétés
+	'Nouvelles propriÐ¹tÐ¹s
 	'qqchose as Integer Property Set SetQqChose
 
 	Function TextWidth(text as string) As Integer:	Result = .BMPBtn.TextWidth(text)
@@ -142,9 +142,9 @@ Type QTButton Extends QButton
 	End Sub
 
 	Sub ReleaseHotTrack
-		' le pseudo-evénement MOUSELEAVE
+		' le pseudo-evÐ¹nement MOUSELEAVE
 		ReleaseCapture_QTBtn
-		' dans cet example, on retourne le caption à la normal
+		' dans cet example, on retourne le caption Ð° la normal
 		'.Font.Bold = 0
 		.Font.Color = -2147483630
 		'.caption = "Dehors..."
@@ -171,7 +171,7 @@ Type QTButton Extends QButton
 			Or (Y > .Height) Then
 			.ReleaseHotTrack
 		ElseIf GetCapture_QTBtn() <> .Handle Then
-			' le pseudo-evénement MOUSEENTER
+			' le pseudo-evÐ¹nement MOUSEENTER
 			SetCapture_QTBtn .Handle
 			' dans cet example, on met le caption en gras
 			'.Font.Bold = 1

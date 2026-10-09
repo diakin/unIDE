@@ -57,91 +57,91 @@ TYPE QTEXTEDIT EXTENDS QRICHEDIT
     SelectAllCaption as string PROPERTY SET SetSelectAllCaption
     
     '========================================
-    ' Proprieté utilisation du menu popup
+    ' ProprietÐ¹ utilisation du menu popup
     '========================================          
     PROPERTY SET Set_Popup(Use as boolean)
       QTEXTEDIT.MaxMenu.AutoPopup=Use
     END PROPERTY
     
     '========================================
-    ' Proprieté libellé du menu annuler
+    ' ProprietÐ¹ libellÐ¹ du menu annuler
     '========================================          
     PROPERTY SET SetUndoCaption(caption as string)
       QTEXTEDIT.mnuUndo.Caption=caption
     END PROPERTY
      
     '========================================
-    ' Proprieté libellé du menu couper
+    ' ProprietÐ¹ libellÐ¹ du menu couper
     '========================================          
     PROPERTY SET SetCutCaption(caption as string)
       QTEXTEDIT.mnuCut.Caption=caption
     END PROPERTY
     
     '========================================
-    ' Proprieté libellé du menu copier
+    ' ProprietÐ¹ libellÐ¹ du menu copier
     '========================================          
     PROPERTY SET SetCopyCaption(caption as string)
       QTEXTEDIT.mnuCopy.Caption=caption
     END PROPERTY
     
     '========================================
-    ' Proprieté libellé du menu coller
+    ' ProprietÐ¹ libellÐ¹ du menu coller
     '========================================          
     PROPERTY SET SetPasteCaption(caption as string)
       QTEXTEDIT.mnuPaste.Caption=caption
     END PROPERTY
     
     '========================================
-    ' Proprieté libellé du menu selectionner
+    ' ProprietÐ¹ libellÐ¹ du menu selectionner
     '========================================          
     PROPERTY SET SetSelectAllCaption(caption as string)
       QTEXTEDIT.mnuSelectAll.Caption=caption
     END PROPERTY
         
     '========================================
-    ' Méthode annuler derniere modification
+    ' MÐ¹thode annuler derniere modification
     '========================================          
     SUB Undo
       SendMessage(QTEXTEDIT.Handle,&HC7,0,0)
     END SUB 
         
     '========================================
-    ' Méthode couper
+    ' MÐ¹thode couper
     '========================================          
     SUB Cut
       QTEXTEDIT.CutToClipBoard
     END SUB
         
     '========================================
-    ' Méthode copier
+    ' MÐ¹thode copier
     '========================================          
     SUB Copy
       QTEXTEDIT.CopyToClipboard
     END SUB
         
     '========================================
-    ' Méthode coller
+    ' MÐ¹thode coller
     '========================================          
     SUB Paste
       QTEXTEDIT.PasteFromClipboard
     END SUB
                 
     '========================================
-    ' Méthode selectionner tout
+    ' MÐ¹thode selectionner tout
     '========================================          
     SUB SelectAl
       QTEXTEDIT.SelectAll
     END SUB
         
     '========================================
-    ' Méthode limitation nombre de caractere
+    ' MÐ¹thode limitation nombre de caractere
     '========================================          
     SUB Limit(value as long)
       SendMessage(QTEXTEDIT.handle,&hc5,value,0)
     End Sub
 
     '========================================
-    ' Méthode remplace le texte selectionner
+    ' MÐ¹thode remplace le texte selectionner
     '========================================          
     SUB ReplaceSel(text as string)
       dim replace as string
@@ -153,7 +153,7 @@ TYPE QTEXTEDIT EXTENDS QRICHEDIT
     End Sub
     
     '========================================================================
-    ' Méthode recherche de chaine,retourne la position de la chaine trouvée
+    ' MÐ¹thode recherche de chaine,retourne la position de la chaine trouvÐ¹e
     '========================================================================
     Function Find(start as long,text as string,case as boolean) as long
       if case then
@@ -176,7 +176,7 @@ TYPE QTEXTEDIT EXTENDS QRICHEDIT
     End Function
     
     '=================================================
-    ' Méthode deplace le curseur a la ligne demandée
+    ' MÐ¹thode deplace le curseur a la ligne demandÐ¹e
     '=================================================          
     Sub LinesScroll(number as long)
       dim i as integer
@@ -191,7 +191,7 @@ TYPE QTEXTEDIT EXTENDS QRICHEDIT
     end sub
 
     '=================================================
-    ' Méthode retourne la possibilité d'annulation
+    ' MÐ¹thode retourne la possibilitÐ¹ d'annulation
     '=================================================
     Function CanUndo as boolean
       result=SendMessageA(QTEXTEDIT.Handle,&HC6,0,0)

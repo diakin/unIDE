@@ -1,80 +1,80 @@
 '===========================================================================
-'Windows XP Metallic Skin v2.13 * Fix le problème de taille et toujours visible *	modifié le 28 juin, 2003
+'Windows XP Metallic Skin v2.13 * Fix le problÐ¸me de taille et toujours visible *	modifiÐ¹ le 28 juin, 2003
 '===========================================================================
-'*[INSTALLATION/DERNIERS DÉTAILS] : ****
-' -Insèrez une resource nommée ICO dans laquelle sera inclus le chemin de l'icône à utiliser, sinon vous recevrez
+'*[INSTALLATION/DERNIERS DÐ™TAILS] : ****
+' -InsÐ¸rez une resource nommÐ¹e ICO dans laquelle sera inclus le chemin de l'icÑ„ne Ð° utiliser, sinon vous recevrez
 '  un msg d'erreur...
-' -La Form principale doit se nommer MainForm, sinon vous devrez aporter certains changements à l'intérieur de
-'  l'OBJET...  << J'vais créer un tutorial comme ceux de RapidQ! >>
+' -La Form principale doit se nommer MainForm, sinon vous devrez aporter certains changements Ð° l'intÐ¹rieur de
+'  l'OBJET...  << J'vais crÐ¹er un tutorial comme ceux de RapidQ! >>
 ' -N'utilisez plus AddBorderIcons/DelBorderIcons avec cet objet, utiliser plutot AddTitleIcons/DelTitleIcons...
 '
-'*[NOUVEAUTÉES & MISES À JOUR] : ****
-' -Corrigé un petit prob avec ActiveInactive, la fenêtre n'est plus redessinée comme ayant le focus lorsq'une
-'  autre fenêtre la recouvre puis est déplacée, ainsi qu'un petit prob avec les btns de la barre de titre.
-' -ActiveInactive déteste les msgboxs... Non c'est faux il n'aime simplement pas WM_NCACTIVATE vous n'avez
-'  plus à utiliser la commande .tmpInactive!
-' -Corrigé le bug lorque la barre de titre est caché, la taille de la fenêtre ce rétrécissait de la taille de la barre de
+'*[NOUVEAUTÐ™ES & MISES Ð JOUR] : ****
+' -CorrigÐ¹ un petit prob avec ActiveInactive, la fenÐºtre n'est plus redessinÐ¹e comme ayant le focus lorsq'une
+'  autre fenÐºtre la recouvre puis est dÐ¹placÐ¹e, ainsi qu'un petit prob avec les btns de la barre de titre.
+' -ActiveInactive dÐ¹teste les msgboxs... Non c'est faux il n'aime simplement pas WM_NCACTIVATE vous n'avez
+'  plus Ð° utiliser la commande .tmpInactive!
+' -CorrigÐ¹ le bug lorque la barre de titre est cachÐ¹, la taille de la fenÐºtre ce rÐ¹trÐ¹cissait de la taille de la barre de
 '  titre... et aussi lorsque croped!
-' -Lorsque le MenuPopup est affiché ActiveInactive est stopé temporairement...
-' -L'implantation du module de sélection d'Apparence est presque terminé...
-'  Note :  Certains format de bmp font planter le programme, pour résoudre ce 'tit prob ouvrez-les dans IE,
-'  sélectionnez "Enregistrer la cible sous" et écrivez par dessus l'image défectueuse.
+' -Lorsque le MenuPopup est affichÐ¹ ActiveInactive est stopÐ¹ temporairement...
+' -L'implantation du module de sÐ¹lection d'Apparence est presque terminÐ¹...
+'  Note :  Certains format de bmp font planter le programme, pour rÐ¹soudre ce 'tit prob ouvrez-les dans IE,
+'  sÐ¹lectionnez "Enregistrer la cible sous" et Ð¹crivez par dessus l'image dÐ¹fectueuse.
 ' -Moins de WiTH/END WiTH.
 ' -Agrandir et Restaurer devrait plutot bien fonctionner...
-' -La fenêtre se reduit normallement et sans alternative, même lorsque ToujoursVisible est actif.  La fenêtre
-'  pourra être croped sur demande. Aussi double-cliquer reduira ou restaurera la taille de la fenêtre si croped...
+' -La fenÐºtre se reduit normallement et sans alternative, mÐºme lorsque ToujoursVisible est actif.  La fenÐºtre
+'  pourra Ðºtre croped sur demande. Aussi double-cliquer reduira ou restaurera la taille de la fenÐºtre si croped...
 ' -Peut maintenant se passer de Alternative
-' -Aussi l'affichage de boîte de dialogue devrait fonctionner correctement via un petit truc qui peut être encore
-'  amélioré...
-' -Wouhou! J'ai finallement réussi à intégrer SetWindowLong qui permet la fermeture de la fenêtre via la barre
-'  d'outils. Les fonctions Réduire/Agrandir/Restaurer/Déplacer fonctionnent comme ils devraient...
-' -ReDésactive MainForm lorsqu'une PopupBox s'affiche... (oublier!)
-' -Btn Aide maintenant actif et peut l'être sur commande aussi...
+' -Aussi l'affichage de boÐ¾te de dialogue devrait fonctionner correctement via un petit truc qui peut Ðºtre encore
+'  amÐ¹liorÐ¹...
+' -Wouhou! J'ai finallement rÐ¹ussi Ð° intÐ¹grer SetWindowLong qui permet la fermeture de la fenÐºtre via la barre
+'  d'outils. Les fonctions RÐ¹duire/Agrandir/Restaurer/DÐ¹placer fonctionnent comme ils devraient...
+' -ReDÐ¹sactive MainForm lorsqu'une PopupBox s'affiche... (oublier!)
+' -Btn Aide maintenant actif et peut l'Ðºtre sur commande aussi...
 ' -TweakColor et MenuColor en array...
-' -Maintenant un bouton est aussi ajouté par défaut à la Form lors de la création.
-' -Ajouté Timer aux boutons, une fois la souris sortie les éléments sont restaurés. Le Timer est stopé lorsqu'il a
-'  fini son action pour éviter les flickings.
-' -Finallement venu à bout de ToujoursVisible... Yessss! Pas parfait encore...!
+' -Maintenant un bouton est aussi ajoutÐ¹ par dÐ¹faut Ð° la Form lors de la crÐ¹ation.
+' -AjoutÐ¹ Timer aux boutons, une fois la souris sortie les Ð¹lÐ¹ments sont restaurÐ¹s. Le Timer est stopÐ¹ lorsqu'il a
+'  fini son action pour Ð¹viter les flickings.
+' -Finallement venu Ð° bout de ToujoursVisible... Yessss! Pas parfait encore...!
 ' -Meilleur rendu des images servant de "SKIN".
-' -Lorsque la fenêtre est en arrière plan, elle change de couleur et reprend sa couleur une fois le focus retrouvé...
-'  (Y'a toujours un bug après le passage en mode ToujoursVisible!) GRRR!!!
-' -Lorsqu'on clique sur la barre d'outil et que la fenêtre est en arrière plan, elle est maintenant redessinée avant
-'  de la déplacer...
-' -Ajouté un menu à l'icône de la barre de titre, celui-ci manquait ainsi que lorsqu'on clique sur la barre de titre
+' -Lorsque la fenÐºtre est en arriÐ¸re plan, elle change de couleur et reprend sa couleur une fois le focus retrouvÐ¹...
+'  (Y'a toujours un bug aprÐ¸s le passage en mode ToujoursVisible!) GRRR!!!
+' -Lorsqu'on clique sur la barre d'outil et que la fenÐºtre est en arriÐ¸re plan, elle est maintenant redessinÐ¹e avant
+'  de la dÐ¹placer...
+' -AjoutÐ¹ un menu Ð° l'icÑ„ne de la barre de titre, celui-ci manquait ainsi que lorsqu'on clique sur la barre de titre
 '  (Title_Hot)... J'utilise maintenant un Form qui me permet de le personnaliser pour qu'il ressemble le plus
-'  possible à celui de XP...
-' -Le PopupMenu se retaille proprement si la taille d'un élément est plus grand que la sienne...
-' -La largeur est automatiquement corrigée sans avoir à ajouter 1 à Width...
+'  possible Ð° celui de XP...
+' -Le PopupMenu se retaille proprement si la taille d'un Ð¹lÐ¹ment est plus grand que la sienne...
+' -La largeur est automatiquement corrigÐ¹e sans avoir Ð° ajouter 1 Ð° Width...
 '
-'*[PROBLÈMES QUI PEUVENT SURVENIR ET AVANCEMENT] : ****
-' -Les Imgs du Menu ne sont pas redessinées lorsqu'un itm est survolé...
-' -Lorsque ActiveInactive(True) les bordures du bas ne sont pas dessinées correctement, mais pas lorsque
+'*[PROBLÐ˜MES QUI PEUVENT SURVENIR ET AVANCEMENT] : ****
+' -Les Imgs du Menu ne sont pas redessinÐ¹es lorsqu'un itm est survolÐ¹...
+' -Lorsque ActiveInactive(True) les bordures du bas ne sont pas dessinÐ¹es correctement, mais pas lorsque
 '  ActiveInactive(False)... ?
-' -Permettre de dés/activer l'apparence de la fenêtre.
-' -Petit problème avec la seconde fenêtre elle cherche à s'afficher sur la barre d'outils.
-' -MainForm sera bientot du passé, vous pourrez utiliser n'importe quel nom.
+' -Permettre de dÐ¹s/activer l'apparence de la fenÐºtre.
+' -Petit problÐ¸me avec la seconde fenÐºtre elle cherche Ð° s'afficher sur la barre d'outils.
+' -MainForm sera bientot du passÐ¹, vous pourrez utiliser n'importe quel nom.
 ' -Permettre le CliqueDroit sur les items des MenuPopups.
-' -???Pour Corriger le contour bleu utiliser un appelle API pour remplacer temporairement  la couleur du système
-'  qui y corresponds. Pas question de retourner à l'ancien modèle!
-' -On pourrait sûrement bénificier de EXIT EVENT ou EXIT SUB
-' -Les Boîtes de Dialogue externent sont masquées derrière la fenêtre principale lorsque ToujoursVisible est
-'  activé... hmmm... l'alternative est de les créer/simuler à l'aide de cet OBJET...
-'  (Quand ça arrive appuyer sur CTRL+ALT+F4)
+' -???Pour Corriger le contour bleu utiliser un appelle API pour remplacer temporairement  la couleur du systÐ¸me
+'  qui y corresponds. Pas question de retourner Ð° l'ancien modÐ¸le!
+' -On pourrait sÑ‹rement bÐ¹nificier de EXIT EVENT ou EXIT SUB
+' -Les BoÐ¾tes de Dialogue externent sont masquÐ¹es derriÐ¸re la fenÐºtre principale lorsque ToujoursVisible est
+'  activÐ¹... hmmm... l'alternative est de les crÐ¹er/simuler Ð° l'aide de cet OBJET...
+'  (Quand Ð·a arrive appuyer sur CTRL+ALT+F4)
 ' -Comme j'suis nouveau, il peut y avoir des erreurs ou de mauvaises appellation dans la programmation de cet
 '  OBJET.
-' -Reste à faire un peu le ménage... puis optimiser un peu le code avec quelques chose du genre de :
-'  (seulement à titre d'example, n'est pê pas ce dont il doit avoir l'air... !)
+' -Reste Ð° faire un peu le mÐ¹nage... puis optimiser un peu le code avec quelques chose du genre de :
+'  (seulement Ð° titre d'example, n'est pÐº pas ce dont il doit avoir l'air... !)
 '  dim objExample(5) as QObjExample
 '  for i = (1 To 5)
-'  i.parent=prntExample' Les 5 objets on le même parent... court et pratique... !
+'  i.parent=prntExample' Les 5 objets on le mÐºme parent... court et pratique... !
 '  i.ect=etc... etc... etc...
-' -*(IMPOSSIBLE) Les Images du Skin seront intégrées dans un imgList... pour facilitée et tweaker le fichier
-'  dans le cas de TweakSkin où elles sont remplacées par une méthode paint...  Mais la fenêtre ne se repaint
+' -*(IMPOSSIBLE) Les Images du Skin seront intÐ¹grÐ¹es dans un imgList... pour facilitÐ¹e et tweaker le fichier
+'  dans le cas de TweakSkin oÑ‰ elles sont remplacÐ¹es par une mÐ¹thode paint...  Mais la fenÐºtre ne se repaint
 '  pas correctement lorsqu'elle en a besoin...
-' -*Maintenant je sais que ToujoursVisible peut avoir l'effet de Perdre le Focus, le code doit être semi-intégré
-'  et doit être un peu modifié pour qu'il prenne en compte les popups...
-' -Lorsque Maximisée prevenir l'empêchement d'accèder au menu démarré soit en détectant si la barre est fix
-'  ou se masque automatiquement et laisser de la place en conséquence... Screen.Height+2 semble marcher!
+' -*Maintenant je sais que ToujoursVisible peut avoir l'effet de Perdre le Focus, le code doit Ðºtre semi-intÐ¹grÐ¹
+'  et doit Ðºtre un peu modifiÐ¹ pour qu'il prenne en compte les popups...
+' -Lorsque MaximisÐ¹e prevenir l'empÐºchement d'accÐ¸der au menu dÐ¹marrÐ¹ soit en dÐ¹tectant si la barre est fix
+'  ou se masque automatiquement et laisser de la place en consÐ¹quence... Screen.Height+2 semble marcher!
 
 $IFNDEF TRUE: $DEFINE True 1
 $ENDIF
@@ -88,10 +88,10 @@ $ENDIF
 ' -- Action de DoubleCliquer sur la Barre de Titre
 Const ttNothing		=0'	Aucune action
 Const ttDefault		=1'	Action maximize, restore
-Const ttCrop		=2'	Rétréssis la taille de la fenêtre à celle de la barre de titre...
+Const ttCrop		=2'	RÐ¹trÐ¹ssis la taille de la fenÐºtre Ð° celle de la barre de titre...
 ' -- Fin
 '
-'******  Quelques API... Fenêtre toujours visible, etc...  ******
+'******  Quelques API... FenÐºtre toujours visible, etc...  ******
 '{===
 'Const WS_CHILD		=&H40000000
 'Const WS_DISABLED		=&H8000000
@@ -121,27 +121,27 @@ CONST SWP_NOSIZE	= &H1
 ' -- Act/Inactive
 Const WM_ACTIVATE	=&H6'-6
 Const WM_NCPAINT	=&H85
-'Const WM_NCACTIVATE	=&H86' Cause certains problèmes...
+'Const WM_NCACTIVATE	=&H86' Cause certains problÐ¸mes...
 Const WA_INACTIVE	=0
 Const WA_ACTIVE	=1
 Const WA_CLICKACTIVE	=2
 ' -- Fin
 
 ' -- Constants pour TitleBtns
-Const tiSystemMenu	=0' Icône de l'application
-Const tiMinimize		=1' Btn Réduire
+Const tiSystemMenu	=0' IcÑ„ne de l'application
+Const tiMinimize		=1' Btn RÐ¹duire
 Const tiMaximize		=2' Btn Agrandire
 Const tiHelp		=3' Btn Aide
 Const tiOnTop		=4' Btn ToujoursVisible
-'Const tiSysTray		=5' Btn Réduit dans la barre d'outil
+'Const tiSysTray		=5' Btn RÐ¹duit dans la barre d'outil
 'Const tiUserBtns	=6' 6 et plus... sont des btns persos
 ' -- Fin
 '
-'-- Détecte si l'Application est déjà encours...
+'-- DÐ¹tecte si l'Application est dÐ¹jÐ° encours...
 'CONST rqMainFromClassName	= "TMainForm"
 CONST rqClassName		= "TForm"'	-- Classname pour tous les programmes Rapid-Q
 '-->	Copiez cette ligne dans votre code avant $INCLUDE "XPSkin***.inc" et inscrivez-y le
-'	nom que vous donneriez à votre fenêtre, puis dans votre forme principale inscrivez
+'	nom que vous donneriez Ð° votre fenÐºtre, puis dans votre forme principale inscrivez
 '	Caption=myMainFormName.
 '
 '	CONST myMainFormName="Form style WinXP"
@@ -159,12 +159,12 @@ $TYPECHECK Off
 If LEN(myMainFormName)>0 Then
 	DEFLNG hWnd=FindWindow(rqClassName, myMainFormName)
 	IF hWnd THEN
-'		ShowMessage ("Ce programme est déjà encours d'exécution!")
+'		ShowMessage ("Ce programme est dÐ¹jÐ° encours d'exÐ¹cution!")
 		SetForegroundWindow(hWnd): ShowWindow(hWnd,1): END
 	END IF
 End If
 $TYPECHECK On
-'-- Fin de la Détection
+'-- Fin de la DÐ¹tection
 '
 '-- Corrige le menu de la barre d'outil
 Declare Function SetWindowLong Lib "USER32" Alias "SetWindowLongA" _
@@ -179,7 +179,7 @@ Declare Function SetWindowLong Lib "USER32" Alias "SetWindowLongA" _
 '
 Declare Function GetActiveWindow Lib "USER32" Alias "GetActiveWindow" () As Long
 '*******************  Fin  ******************
-'*  Crée une fenêtre avec le haut arrondis  *
+'*  CrÐ¹e une fenÐºtre avec le haut arrondis  *
 Declare Function CreateRoundRectRgn Lib "GDI32" Alias "CreateRoundRectRgn" _
 	(X1 As Long, Y1 As Long, X2 As Long, Y2 As Long, X3 As Long, Y3 As Long) As Long
 Declare Function SetWindowRgn Lib "USER32" Alias "SetWindowRgn" _
@@ -188,11 +188,11 @@ Declare Function CreateRectRgn Lib "gdi32" Alias "CreateRectRgn" _
 	(X1 As Long, Y1 As Long, X2 As Long, Y2 As Long) As Long
 Declare Function DeleteObject Lib "GDI32" Alias "DeleteObject" _
 	(hObject As Long) As Long
-' -- Déplacer une fenêtre sans bordures
+' -- DÐ¹placer une fenÐºtre sans bordures
 Const WM_LBUTTONDOWN	= &H201
 Const WM_NCLBUTTONDOWN	=&HA1
 Const WM_SYSCOMMAND	=&H112
-' Valeurs des Commandes du Menu Système
+' Valeurs des Commandes du Menu SystÐ¸me
 Const SC_MOVE			=&HF010
 ' Mouse Position Codes
 Const HTCAPTION		=2
@@ -272,8 +272,8 @@ Declare Function GetSystemMetrics Lib "user32" Alias "GetSystemMetrics" _
 '****
 DEFLNG mhWnd
 
-DiM I AS Integer', DecacheSkin	AS Integer'	Empêche de recharger les imgs plus d'une fois
-'						lorsque plus d'une fenêtre...
+DiM I AS Integer', DecacheSkin	AS Integer'	EmpÐºche de recharger les imgs plus d'une fois
+'						lorsque plus d'une fenÐºtre...
 'If DecacheSkin=0 Then DecacheSkin=-1
 'DiM ApparencePath(0 TO 1)	AS String'	Chemin des Apparences
 'ApparencePath(0)=Command$()-Application.ExeName+"Apparences\"
@@ -434,7 +434,7 @@ MenuColor(6)=clBtnFace
 '	FOR I=0 TO 15
 '	   If ApparenceBMP(I).Empty Then: ApparenceBMP(I).Width=3: ApparenceBMP(I).Height=3
 '	   End If
-'	   ApparenceBMP(I).PixelFormat=4'3 lorsque indexées, 4 pour 16bit
+'	   ApparenceBMP(I).PixelFormat=4'3 lorsque indexÐ¹es, 4 pour 16bit
 '	NEXT
 '    End If
 'End Sub
@@ -459,14 +459,14 @@ dim flagWinProc		AS boolean
 
 Application.Title=IIF(LEN(myMainFormName)>0,myMainFormName,)'"Form style WinXP")
 
-TYPE myXPSkinnedForm EXTENDS QForm' Fenêtre avec Skin
+TYPE myXPSkinnedForm EXTENDS QForm' FenÐºtre avec Skin
   WiTH myXPSkinnedForm
 '    Caption		AS STRING	PROPERTY SET SetCaption
     TitleBarHide		AS Integer
-'    hWnd		AS LONG'	Ramplacé par mhWnd (mainWindowHandle)
+'    hWnd		AS LONG'	RamplacÐ¹ par mhWnd (mainWindowHandle)
     pOldProc		AS LONG
     flagWinProc		AS boolean
-'    Alternative		AS QForm'	Si j'utilise QFormEx ici, la fenêtre se réduira-t-elle correctement.... ? NON!
+'    Alternative		AS QForm'	Si j'utilise QFormEx ici, la fenÐºtre se rÐ¹duira-t-elle correctement.... ? NON!
     XPPopupMenu	AS QForm
     ItmOptions		AS QLabel'	Remplacer avec QCoolBtn et qq QBitmap et qq QCanvas ou QImage... OnMouseMove... BlaBlaBla
     ItmOnTop		AS QLabel
@@ -481,9 +481,9 @@ TYPE myXPSkinnedForm EXTENDS QForm' Fenêtre avec Skin
     ItmFermer_ICO	AS QImage
     HiLight		AS QPanel'Canvas
 '    HiLight_ICO		AS QImage
-    QfRegion		AS Long'	API qui donne la fenêtre ronde sans utiliser le ShapeMask
-    Rnd			AS Long'	Propriété de la fenêtre ronde
-'    RndY		AS Long'	Propriété de la fenêtre ronde
+    QfRegion		AS Long'	API qui donne la fenÐºtre ronde sans utiliser le ShapeMask
+    Rnd			AS Long'	PropriÐ¹tÐ¹ de la fenÐºtre ronde
+'    RndY		AS Long'	PropriÐ¹tÐ¹ de la fenÐºtre ronde
 '    ToujoursAct		AS Integer
 '    ReduireAct		AS Integer
 '    FermerAct		AS Interger'	Active le bouton si actif
@@ -500,13 +500,13 @@ TYPE myXPSkinnedForm EXTENDS QForm' Fenêtre avec Skin
 '    stdWidth		AS Integer'	Corrige la largeur
 '    stdHeight		AS Integer'	Corrige la hauteur
 '    AideAct		AS Integer
-    PopupBox		AS Integer'	PROPERTY SET SetPopupBox'	Une boîte de dialogue n'affiche que le bouton fermer
+    PopupBox		AS Integer'	PROPERTY SET SetPopupBox'	Une boÐ¾te de dialogue n'affiche que le bouton fermer
     Title_Left		AS QImage
     Title_Mid		AS QImage
     Title_Right		AS QImage
     Title_ICO		AS QImage
     TitleBtnsBg		AS QImage
-    ICOAsBMP		AS Integer'	Force l'icône à être une img de votre choix...
+    ICOAsBMP		AS Integer'	Force l'icÑ„ne Ð° Ðºtre une img de votre choix...
     icoList		AS QImageList
     Title_Cap		AS QImage
     Title_Caption		AS QLabel
@@ -541,9 +541,9 @@ TYPE myXPSkinnedForm EXTENDS QForm' Fenêtre avec Skin
 '    CenterT		AS Integer
     ClickHold		AS Integer
     TiTleDblClick		AS Integer
-    TweakSkin		AS Integer' Accélère le Skin et diminue la taille de l'.EXE, en ne peinturant que des lignes
-'			plutot que des images.  Ne pas oublier de spécifier les couleurs... !
-'			Utiliser imgListe, sera utile pour réellement réduire la taille du programme, puisqu'on aura
+    TweakSkin		AS Integer' AccÐ¹lÐ¸re le Skin et diminue la taille de l'.EXE, en ne peinturant que des lignes
+'			plutot que des images.  Ne pas oublier de spÐ¹cifier les couleurs... !
+'			Utiliser imgListe, sera utile pour rÐ¹ellement rÐ¹duire la taille du programme, puisqu'on aura
 '			simplement qu'a ajouter une imgRes vide plutot que de toutes les img requises pour le Skin...
     MainBtnTimer		AS QTimer
     ActiveTimer		AS QTimer
@@ -552,7 +552,7 @@ TYPE myXPSkinnedForm EXTENDS QForm' Fenêtre avec Skin
   SUBI DelTitleIcons (...)
 	FOR I = 1 TO ParamValCount
 	   SELECT CASE ParamVal(I)'+1
-	       CASE tiSystemMenu: .Title_ICO.Visible=0' et désactive le popup
+	       CASE tiSystemMenu: .Title_ICO.Visible=0' et dÐ¹sactive le popup
 	       CASE tiMinimize:	.btn_Reduire.Visible=0: .ItmReduire.Visible=0
 	       CASE tiMaximize:	.btn_Agrandir.Visible=0: .ItmAgrandir.Visible=0: .TiTleDblClick=IIf(.TiTleDblClick=ttDefault,ttNothing,.TiTleDblClick)
 	       CASE tiHelp:	.btn_Aide.Visible=0
@@ -686,7 +686,7 @@ TYPE myXPSkinnedForm EXTENDS QForm' Fenêtre avec Skin
 '	Result=CallWindowProc(.pOldProc,hwnd,uMsg,wParam,lParam)
 ''	.btn_Agrandir.Visible=0
 	.ActiveOrInactive
-       Else: .IsInBackGround=2' Utilisé pour rétablire la fenêtre lors d'un clique sur la barre de titre
+       Else: .IsInBackGround=2' UtilisÐ¹ pour rÐ¹tablire la fenÐºtre lors d'un clique sur la barre de titre
 '	-- Active
 ''	.btn_Agrandir.Visible=1
 	.ActiveOrInactive
@@ -732,9 +732,9 @@ TYPE myXPSkinnedForm EXTENDS QForm' Fenêtre avec Skin
 '  END SUB
 
   SUB OnTop
-'	-- SetWindowLong(...), Autrement la fenêtre disparaît..
+'	-- SetWindowLong(...), Autrement la fenÐºtre disparaÐ¾t..
 '	SetWindowLong(.Handle, GWL_HWNDPARENT, HWND_DESKTOP)
-'	-- Aumoins cette partie sinon la fenêtre disparaît...
+'	-- Aumoins cette partie sinon la fenÐºtre disparaÐ¾t...
 	SetWindowLong(Application.Handle, GWL_HWNDPARENT, mhWnd)
 	If .CropHeight=0 Then .CropHeight=.Title_Mid.Height+.Bot_Mid.Height
 	If .ToujoursVisible=0 Then
@@ -778,7 +778,7 @@ TYPE myXPSkinnedForm EXTENDS QForm' Fenêtre avec Skin
 		If .HiLight.Font.Color<>clWhite Then .HiLight.Font.Color=clWhite
 		If .Maximized Then .HiLight.Font.Color=&H7F7F7F
 		.HiLight.Visible=1: .HiLight.Top=.ItmDeplace.Top-2
-		.HiLight.Caption="    Dépla&cement": .HiLight.Font.DelStyles(0)
+		.HiLight.Caption="    DÐ¹pla&cement": .HiLight.Font.DelStyles(0)
 	End If
   END EVENT
   SUB ItmReduire_Click
@@ -795,7 +795,7 @@ TYPE myXPSkinnedForm EXTENDS QForm' Fenêtre avec Skin
 		If .HiLight.Font.Color<>clWhite Then .HiLight.Font.Color=clWhite
 		If .PopupBox Then .HiLight.Font.Color=&H7F7F7F
 		.HiLight.Visible=1: .HiLight.Top=.ItmReduire.Top-2
-		.HiLight.Caption="    &Réduire": .HiLight.Font.DelStyles(0)
+		.HiLight.Caption="    &RÐ¹duire": .HiLight.Font.DelStyles(0)
 	End If
   END EVENT
   SUB ItmAgrandir_Click: .WindowState=IIf(.WindowState=wsMaximized,wsNormal,wsMaximized)
@@ -843,14 +843,14 @@ TYPE myXPSkinnedForm EXTENDS QForm' Fenêtre avec Skin
 	.ItmOnTop_ICO.Visible=Iif(.ToujoursVisible,1,0)' Immediate If
 	If .Croped Then'or .Minimized Then
 		.ItmReduire_ICO.BMPHandle=ItmRestaurer_BMP': .ItmReduire.Caption="Re&staurer"
-	Else:	.ItmReduire_ICO.BMPHandle=ItmReduire_BMP': .ItmReduire.Caption="&Réduire"
+	Else:	.ItmReduire_ICO.BMPHandle=ItmReduire_BMP': .ItmReduire.Caption="&RÐ¹duire"
 	End If
 	If .Maximized Then: .ItmDeplace.Font.Color=&H7F7F7F
 	   .ItmAgrandir_ICO.BMPHandle=ItmRestaurer_BMP
 	Else: .ItmDeplace.Font.Color=0
 	   .ItmAgrandir_ICO.BMPHandle=ItmAgrandir_BMP
 	End If
-	.ItmReduire.Caption=IIf(.Croped and .ItmReduire.Caption<>"Re&staurer","Re&staurer","&Réduire")
+	.ItmReduire.Caption=IIf(.Croped and .ItmReduire.Caption<>"Re&staurer","Re&staurer","&RÐ¹duire")
 	.ItmAgrandir.Caption=IIf(.Maximized and .ItmAgrandir.Caption<>"Re&stauration","Re&stauration","&Agrandissement")
 '	SetForegroundWindow(.Handle)': ShowWindow(.Handle,1)
   END EVENT
@@ -876,14 +876,14 @@ TYPE myXPSkinnedForm EXTENDS QForm' Fenêtre avec Skin
 	IF .MainBtnIs1st<1 THEN
 	  IF (MouseX>2 and MouseX<(.MainBtn.Width-2)) and (MouseY>2 and MouseY<(.MainBtn.Height-2)) then
 	     .MainBtnTimer.Interval = 200
-	  ELSEIF .MainBtnIsOn THEN' Aide à résoudre les flickings
+	  ELSEIF .MainBtnIsOn THEN' Aide Ð° rÐ¹soudre les flickings
 	   .MainBtnTimer.Enabled=0: .MainBtn.BMPHandle=BNORM_BMP: .MainBtnIsOn=0': CloseWasOn=1
 	   .MButOut
 	  END IF
 	ELSEIF .MainBtnIs1st THEN
 	  IF (MouseX>2 and MouseX<(.MainBtn.Width-2)) and (MouseY>2 and MouseY<(.MainBtn.Height-2)) then
 	     .MainBtnTimer.Interval=200
-	  ELSEIF .MainBtnIsOn THEN' Aide à résoudre les flickings
+	  ELSEIF .MainBtnIsOn THEN' Aide Ð° rÐ¹soudre les flickings
 	     .MainBtnTimer.Enabled=0: .MainBtn.BMPHandle=BSEL_BMP: .MainBtnIsOn=0': CloseWasOn=1
 	     .MButOut
 	  END IF
@@ -929,18 +929,18 @@ TYPE myXPSkinnedForm EXTENDS QForm' Fenêtre avec Skin
 '	   .Visible=0: .Visible=1
 	End If
 '	.TextOut(10,.Height-50,"ActiveTimer Actif :      "+STR$(.ActiveTimer.Enabled),0,-1)
-'	.TextOut(10,.Height-60,"Taille Fenêtre :   "+STR$(.Width)+" x "+STR$(.Height),0,-1)
-'	.TextOut(10,.Height-70,"Taille Écran :      "+STR$(.scrWidth)+" x "+STR$(.scrHeight),0,-1)
+'	.TextOut(10,.Height-60,"Taille FenÐºtre :   "+STR$(.Width)+" x "+STR$(.Height),0,-1)
+'	.TextOut(10,.Height-70,"Taille Ð™cran :      "+STR$(.scrWidth)+" x "+STR$(.scrHeight),0,-1)
 '	.TextOut(10,.Height-80,"Title_Right.Left : "+STR$(.Title_Right.Left),0,-1)
 '	.TextOut(150,.Height-50,"PopupBox :      "+STR$(.PopupBox),0,-1)
 '	.TextOut(150,.Height-60,"hInst App :        "+STR$(Application.Handle),0,-1)
 '	.TextOut(150,.Height-70,"hInst Qform :     "+STR$(.Handle),0,-1)
 '	.TextOut(150,.Height-80,"hInst mhWnd :  "+STR$(mhWnd),0,-1)
-'	.TextOut(10,.Height-90,"mhWnd doit égaler l'Handle la forme principale",0,-1)
+'	.TextOut(10,.Height-90,"mhWnd doit Ð¹galer l'Handle la forme principale",0,-1)
 '	.TextOut(10,.Height-110,"frmCap   : "+.Caption,0,-1)
 '	.TextOut(10,.Height-120,"SupCap : "+Super.Caption,0,-1)
 '	.TextOut(10,.Height-130,"AppCap : "+Application.Title,0,-1)
-'	.TextOut(10,.Height-150,"Débogage :",0,-1)
+'	.TextOut(10,.Height-150,"DÐ¹bogage :",0,-1)
 	If .WindowState=wsMaximized and .Maximized=1 Then .Maximized=2
 	.IsInBackGround=0
   END EVENT
@@ -965,8 +965,8 @@ TYPE myXPSkinnedForm EXTENDS QForm' Fenêtre avec Skin
 '>	   .QfRegion=CreateRectRgn(0,0,.scrWidth+2,.scrHeight+2)
 '>	   SetWindowRgn .handle,.QfRegion,True
 	   .Visible=0: .Visible=1
-'	-- Cette ligne peut empêcher de restaurer la fenêtre à partir de la barre des tâches si utilisée
-'	   de cette façon :  .WindowState<>wsMaximized
+'	-- Cette ligne peut empÐºcher de restaurer la fenÐºtre Ð° partir de la barre des tÐ²ches si utilisÐ¹e
+'	   de cette faÐ·on :  .WindowState<>wsMaximized
 	ElseIf .WindowState=wsNormal and .Maximized Then: .Maximized=0: .Visible=0: .Visible=1
 '	ElseIf .WindowState<>wsMaximized and .Croped Then: .Croped=0: .Visible=0: .Visible=1
 	End If
@@ -985,17 +985,17 @@ TYPE myXPSkinnedForm EXTENDS QForm' Fenêtre avec Skin
 '	SetWindowLong(mhWnd, GWL_HWNDPARENT, HWND_DESKTOP)
 '	SetWindowLong(Application.Handle, GWL_HWNDPARENT, mhWnd)
 '	If .Height<.scrHEIGHT and .Width<.scrWIDTH Then: .oldWIDTH=.Width: .oldHEIGHT=.Height: End If
-'	-- Cette boîte ne sera pas affichée si $TYPECHECK est On
+'	-- Cette boÐ¾te ne sera pas affichÐ¹e si $TYPECHECK est On
 	If LEN(myMainFormName)=0 or mhWnd<=2 Then ShowMessage _
-	   "Attention une entrée est incorrecte... le programme va continuer à"+CHR$(13)+_
-	   "fonctionner, mais pour des raisons de compatibilité veuillez ajouter la"+CHR$(13)+_
+	   "Attention une entrÐ¹e est incorrecte... le programme va continuer Ð°"+CHR$(13)+_
+	   "fonctionner, mais pour des raisons de compatibilitÐ¹ veuillez ajouter la"+CHR$(13)+_
 	   "ligne CONST myMainFormName="+CHR$(34)+"Le nom de votre forme"+CHR$(34)+_
-	   +"et ajouter"+CHR$(13)+"à votre forme principale .Caption=myMainFormName."+_
+	   +"et ajouter"+CHR$(13)+"Ð° votre forme principale .Caption=myMainFormName."+_
 	   CHR$(13)+CHR$(13)+_
 	   "Ce faissant vous ne devriez plus recevoir ce message d'erreur."
 '	--
 '	If myMainFormName<>.Caption Then .PopupBox=1
-'	If MainForm.Caption<>.Caption Then .PopupBox=1' Tente de détecter si c'est une Bôite de dialogue et même aller jusqu'à ajouter .Parent=MainForm pourquoi pas
+'	If MainForm.Caption<>.Caption Then .PopupBox=1' Tente de dÐ¹tecter si c'est une BÑ„ite de dialogue et mÐºme aller jusqu'Ð° ajouter .Parent=MainForm pourquoi pas
 	If mhWnd<>.Handle Then: .PopupBox=1
 '	If .PopupBox Then
 '	   .CenterL=(Screen.Width-.Width)\2: .CenterT=(Screen.Height-.Height)\2
@@ -1009,32 +1009,32 @@ TYPE myXPSkinnedForm EXTENDS QForm' Fenêtre avec Skin
 '	   ShowMessage "Panic!"+NL+_
 '	   STR$(GetWindowLong(mhWnd,GWL_EXSTYLE))+NL+_
 '	   STR$(GetWindowLong(.handle,GWL_EXSTYLE))
-	   .Visible=1'	Prévient l'empèchement de la fermeture de la fenêtre
+	   .Visible=1'	PrÐ¹vient l'empÐ¸chement de la fermeture de la fenÐºtre
 	   If MainForm.TweakSkin and .TweakSkin=0 Then .TweakSkin=1
 '	   MainForm.Enabled=0
 	   EnableWindow(mhWnd,)
 	ElseIf mhWnd=.Handle and .PopupBox Then: .PopupBox=0
 	End If
-'	If .ToujoursVisible Then .Parent=.Alternative'	Ne pas déplacer, doit toujours être après FormStyle
-'	If .Croped=0 Then .Height=.Height+20' Corrige la hauteur lorsque la barre de titre est cachée
+'	If .ToujoursVisible Then .Parent=.Alternative'	Ne pas dÐ¹placer, doit toujours Ðºtre aprÐ¸s FormStyle
+'	If .Croped=0 Then .Height=.Height+20' Corrige la hauteur lorsque la barre de titre est cachÐ¹e
 '	If .stdHeight<>.Height Then .stdHeight=.Height
 '	If .stdWidth<>.Width Then .stdWidth=.Width+2
 	.ShowTitleBar: .HideTitleBar
 	If .TitleBarHide=0 Then: .Height=.Height+GetSystemMetrics(SM_CYCAPTION)
 	   .TitleBarHide=1
 	End If
-'	If .stdHeight<>.Height Then .Height=.stdHeight' Fix height appraît avoir masqué la barre de titre
+'	If .stdHeight<>.Height Then .Height=.stdHeight' Fix height appraÐ¾t avoir masquÐ¹ la barre de titre
 '	If .stdWidth<>.Width Then .Width=.stdWidth
 	.QfRegion=CreateRoundRectRgn(1,1,.Width,.Height+(.Rnd/3),.Rnd,.Rnd)
 	SetWindowRgn .handle,.QfRegion,True
-'	-- Affiche un bouton par défaut
+'	-- Affiche un bouton par dÐ¹faut
 	.MainBtn.Autosize=1
 	.MainBtn.Parent=myXPSkinnedForm
 	If .MainBtnCentered or .MainBtn.Top<30 Then .MainBtn.Top=.Height-34
 	If .MainBtnIs1st<1 Then .MainBtn.BMPHandle=BNORM_BMP Else .MainBtn.BMPHandle=BSEL_BMP
 '	.MainBtn.Font=Font
 	.MButOut
-'	-- Fin du bouton par défaut
+'	-- Fin du bouton par dÐ¹faut
 	.Title_Left.Parent=myXPSkinnedForm
 	.Title_Left.Autosize=1
 	.Title_Left.BMPHandle=TITLE_LEFT'BMP=ApparenceBMP(0).BMP
@@ -1118,7 +1118,7 @@ TYPE myXPSkinnedForm EXTENDS QForm' Fenêtre avec Skin
 	   .btn_Reduire.Top=.btn_Fermer.Top
 	   .btn_Reduire.Autosize=1
 	   .btn_Reduire.BMPHandle=TRED_BMP'BMP=ApparenceBMP(28).BMP
-	   .btn_Reduire.Hint="Réduire"
+	   .btn_Reduire.Hint="RÐ¹duire"
 	End If
 	If .btn_Agrandir.visible Then: .btn_Agrandir.Parent=myXPSkinnedForm' Title_Hot
 	   .btn_Agrandir.Left=.Width-50
@@ -1144,7 +1144,7 @@ TYPE myXPSkinnedForm EXTENDS QForm' Fenêtre avec Skin
 	   .Bot_Mid.Stretch=1
 	End If
 	If .MainBtnCentered Then .MainBtn.Left=(.Width-.MainBtn.Width)\2
-	.XPPopupMenu.Parent=myXPSkinnedForm'.Alternative' Empêche la disparition de la fenêtre lorsque le menu est affiché et que ToujoursVisible est activé
+	.XPPopupMenu.Parent=myXPSkinnedForm'.Alternative' EmpÐºche la disparition de la fenÐºtre lorsque le menu est affichÐ¹ et que ToujoursVisible est activÐ¹
 	.XPPopupMenu.FormStyle=3: .XPPopupMenu.BorderStyle=0
 	.XPPopupMenu.Width=123
 	.HiLight.Parent=.XPPopupMenu: .HiLight.BevelWidth=0: .HiLight.BorderStyle=0: .HiLight.Left=6: .HiLight.Top=2: .HiLight.Color=MenuColor(1)'RGB(180,189,199)
@@ -1166,13 +1166,13 @@ TYPE myXPSkinnedForm EXTENDS QForm' Fenêtre avec Skin
 	End If
 	.ItmDeplace.Parent=.XPPopupMenu: .ItmDeplace.AutoSize=1: .ItmDeplace.Transparent=1
 	.ItmDeplace.Left=18: .ItmDeplace.Top=3+(.ItmOnTop.Top+.ItmOnTop.Height)
-	.ItmDeplace.Caption="Dépla&cement"
+	.ItmDeplace.Caption="DÐ¹pla&cement"
 	.ItmDeplace.AutoSize=0: .ItmDeplace.Width=(.XPPopupMenu.Width-.ItmDeplace.Left)-4
 	.ItmReduire_ICO.Visible=IIf(.btn_Reduire.Visible,1,0)
 	If .btn_Reduire.Visible Then
 	   .ItmReduire.Parent=.XPPopupMenu: .ItmReduire.AutoSize=1: .ItmReduire.Transparent=1
 	   .ItmReduire.Left=18: .ItmReduire.Top=3+(.ItmDeplace.Top+.ItmDeplace.Height)
-	   .ItmReduire.Caption="Ré&duire"
+	   .ItmReduire.Caption="RÐ¹&duire"
 	   .ItmReduire.AutoSize=0: .ItmReduire.Width=(.XPPopupMenu.Width-.ItmReduire.Left)-4
 	   .ItmReduire.Visible=1
 	   .ItmReduire_ICO.Parent=.XPPopupMenu: .ItmReduire_ICO.AutoSize=1
@@ -1230,8 +1230,8 @@ TYPE myXPSkinnedForm EXTENDS QForm' Fenêtre avec Skin
 '	{===
 '	SetWindowLong .XPPopupMenu.Handle, Gwl_style, WS_GROUP
 '	}===
-'	-- Peut pê résoudre le problème où la barre des tâches est masquée derrière toutes les
-'	   fenêtres lorsque cette fenêtre est Maximizée...
+'	-- Peut pÐº rÐ¹soudre le problÐ¸me oÑ‰ la barre des tÐ²ches est masquÐ¹e derriÐ¸re toutes les
+'	   fenÐºtres lorsque cette fenÐºtre est MaximizÐ¹e...
 '	GetDesktopWindow
   END EVENT
 
@@ -1247,7 +1247,7 @@ TYPE myXPSkinnedForm EXTENDS QForm' Fenêtre avec Skin
 
 '*******  Now Fully Working Script  *******
   EVENT Title_Hot.OnMouseDown(b, x, y, shift)
-'	If .IsInBackGround>0 Then .Repaint' Force la fenêtre à se redessiner...
+'	If .IsInBackGround>0 Then .Repaint' Force la fenÐºtre Ð° se redessiner...
 '	If GetCursor()=2638 Then SendMessage(.Handle, WM_LBUTTONDOWN, HTCAPTION,0)
 	If b=1 Then
 	    If .PopupL<>(.Left+.Title_ICO.Left)-1 Then .XPPopupMenu.Close
@@ -1350,21 +1350,21 @@ TYPE myXPSkinnedForm EXTENDS QForm' Fenêtre avec Skin
 	.MainBtnTimer.Interval=100: .MainBtnTimer.Enabled=1
 	IF .MainBtnIs1st<1 THEN
 	  IF (MouseX>2 and MouseX<(.MainBtn.Width-2)) and (MouseY>2 and MouseY<(.MainBtn.Height-2)) then
-	   If .MainBtnIsOn<1 Then' Aide à résoudre les flickings
+	   If .MainBtnIsOn<1 Then' Aide Ð° rÐ¹soudre les flickings
 	      .MainBtn.BMPHandle=BOVER_BMP: .MainBtnIsOn=1': CloseWasOn=1
 	      .MButOut
 	   End If
-	  ELSEIF .MainBtnIsOn THEN' Aide à résoudre les flickings
+	  ELSEIF .MainBtnIsOn THEN' Aide Ð° rÐ¹soudre les flickings
 	      .MainBtn.BMPHandle=BNORM_BMP: .MainBtnIsOn=0': CloseWasOn=1
 	      .MButOut
 	  END IF
 	ELSEIF .MainBtnIs1st THEN
 	  IF (MouseX>2 and MouseX<(.MainBtn.Width-2)) and (MouseY>2 and MouseY<(.MainBtn.Height-2)) then
-	   If .MainBtnIsOn<1 Then' Aide à résoudre les flickings
+	   If .MainBtnIsOn<1 Then' Aide Ð° rÐ¹soudre les flickings
 	      .MainBtn.BMPHandle=BOVER_BMP: .MainBtnIsOn=1': CloseWasOn=1
 	      .MButOut
 	   End If
-	  ELSEIF .MainBtnIsOn THEN' Aide à résoudre les flickings
+	  ELSEIF .MainBtnIsOn THEN' Aide Ð° rÐ¹soudre les flickings
 	     .MainBtn.BMPHandle=BSEL_BMP: .MainBtnIsOn=0': CloseWasOn=1
 	     .MButOut
 	  END IF
@@ -1424,7 +1424,7 @@ TYPE myXPSkinnedForm EXTENDS QForm' Fenêtre avec Skin
   End Event' end sub
 '****************  Fin  *****************
 '
-'******  Actions du Bouton Réduire  *****
+'******  Actions du Bouton RÐ¹duire  *****
   Event btn_Reduire.OnMouseMove
 	If .BtnIsOn(2)<1 Then: .btn_Reduire.BMPHandle=TREDON_BMP: .BtnIsOn(2)=1: End If
 '	If .BtnIsOn(2)<1 Then: .btn_Reduire.BMP=ApparenceBMP(29).BMP: .BtnIsOn(2)=1: End If
@@ -1482,24 +1482,24 @@ TYPE myXPSkinnedForm EXTENDS QForm' Fenêtre avec Skin
 	mainHandle(.Handle)
 '	Center
 '	WndProc=.DummyProc
-'--	Doit ajouter 1px à la largeur des fenêtres et rammener de 1px les objets
-'--	alignés à droite, mais c'est cool j'ai plus besoin de ShapeMask...
+'--	Doit ajouter 1px Ð° la largeur des fenÐºtres et rammener de 1px les objets
+'--	alignÐ¹s Ð° droite, mais c'est cool j'ai plus besoin de ShapeMask...
 	Width=400: Height=400
-'	CropHeight=32' Pour la Taille Cropped (devrait être la taille de la Barre de titre + bordure du bas)
+'	CropHeight=32' Pour la Taille Cropped (devrait Ðºtre la taille de la Barre de titre + bordure du bas)
 '	scrWIDTH=GetSystemMetrics(SM_CXFULLSCREEN)'Screen.Width+7
 '	scrHEIGHT=GetSystemMetrics(SM_CYSCREEN)'Screen.Height+2
-'--	Rend la fenêtre toujours visible sans API ni rien de plus que ces 2 ligne
-	FormStyle=0'		Aide AlwaysOnTop à fonctionner vu que 3 = fsAlwaysOnTop
-'	Parent=.Alternative' Est nécessaire pour que Toujours Visible fonctionne
-	BorderStyle=1'		1 est parfait sauf l'étrange contour bleu.
+'--	Rend la fenÐºtre toujours visible sans API ni rien de plus que ces 2 ligne
+	FormStyle=0'		Aide AlwaysOnTop Ð° fonctionner vu que 3 = fsAlwaysOnTop
+'	Parent=.Alternative' Est nÐ¹cessaire pour que Toujours Visible fonctionne
+	BorderStyle=1'		1 est parfait sauf l'Ð¹trange contour bleu.
 '	DelBorderIcons(biMaximize)
 	Rnd=15': RndY=15': ShapeForm(FormMask,RGB(255,0,255))' Sans FormMask
-'	AutoScroll=0'				N'est pas nécessaire pour une forme sans bordure
-	Caption="Form style WinXP"'		Titre de la fenêtre & de la barre d'outils
-	ICOHandle=ICO'			Icône de la Barre de Titre & dans la barre d'outils
+'	AutoScroll=0'				N'est pas nÐ¹cessaire pour une forme sans bordure
+	Caption="Form style WinXP"'		Titre de la fenÐºtre & de la barre d'outils
+	ICOHandle=ICO'			IcÑ„ne de la Barre de Titre & dans la barre d'outils
 	Color=frmColor(0)'GetINIColor(0)'RGB(228,227,232)'&HE6DFE7
 '	BtnIsOn(0)=0: BtnIsOn(1)=0: ToujoursVisible=0: BtnIsOn(2)=0: BtnIsOn(3)=0: PopupBox=0' Defaut=0 donc inutile
-	MainBtnTimer.Enabled=0: MenuTimer.Enabled=0: ActiveTimer.Interval=200: ActiveTimer.Enabled=0' Quelques Timers certains devront être PRIVÉ
+	MainBtnTimer.Enabled=0: MenuTimer.Enabled=0: ActiveTimer.Interval=200: ActiveTimer.Enabled=0' Quelques Timers certains devront Ðºtre PRIVÐ™
 	MainBtnIs1st=1: MainBtnCentered=1
 	MainBtn.Caption="Fermer"
 	MainBtn.Font.Name="Tahoma"

@@ -520,7 +520,7 @@ end sub
 function fSubDirCopy (DirSrc$, DirDst$, mask$) as long '- -----------------------------------'
 'Andrew Shelkovenko dec 2003
 'Copy DirSrc$ directory with full subdir structure and files (by mask$) to DirDst$
-'DiaMsg$="Начало копирования.."
+'DiaMsg$="РќР°С‡Р°Р»Рѕ РєРѕРїРёСЂРѕРІР°РЅРёСЏ.."
 
 dim FileSrc as QFileStream
 dim FileDst as QFileStream
@@ -553,7 +553,7 @@ for i=NSD1 to Nsd2 'current level sudirs'
 			If (attr And FILE_ATTRIBUTE_DIRECTORY)=0 Then goto nodir1
 			inc adddir
 			inc NumDir 'add subdir'
-			if NumDir=ArrNumDir then ArrNumDir=ArrNumDir+300: redim SubDir(ArrNumDir) as string:'DiaMsg$="‘Є ­ЁагҐ¬ Ї®¤¤ЁаҐЄв®аЁЁ "+SubDir(NumDir) 'SubDirname$
+			if NumDir=ArrNumDir then ArrNumDir=ArrNumDir+300: redim SubDir(ArrNumDir) as string:'DiaMsg$="вЂР„В В­РЃР°РіТђВ¬ Р‡В®В¤В¤РЃР°ТђР„РІВ®Р°РЃРЃ "+SubDir(NumDir) 'SubDirname$
 			SubDir(NumDir)=SubDir(i)+SubDirname$+"\"
 		else
 		end if
@@ -562,7 +562,7 @@ for i=NSD1 to Nsd2 'current level sudirs'
 		doevents:if stops1=1 then stops1=0: exit function
 	wend
 	
-	'DiaMsg$="Всего поддиректорий " +str$(NumDir)
+	'DiaMsg$="Р’СЃРµРіРѕ РїРѕРґРґРёСЂРµРєС‚РѕСЂРёР№ " +str$(NumDir)
 	
 	'search files in current subdirectory
 	Fn$=dir$(SubDir(i)+mask$,faAnyFile-faDirectory) ':-)
@@ -574,7 +574,7 @@ for i=NSD1 to Nsd2 'current level sudirs'
 			if NumFiles=ArrNumFil then ArrNumFil=ArrNumFil+300: redim FileNames(ArrNumFil) as string:'DiaMsg$=str$(NumFiles)
 			FileNames(NumFiles)=SubDir(i)+Fn$
 			'print "FileNames(",NumFiles,")=" ,FileNames(NumFiles)
-			'DiaMsg$="Сканируем файлы "+FileNames(NumFiles)
+			'DiaMsg$="РЎРєР°РЅРёСЂСѓРµРј С„Р°Р№Р»С‹ "+FileNames(NumFiles)
 		else
 		end if
 		Fn$=dir$
@@ -593,23 +593,23 @@ end if
 ' got subdirs list in SubDir(i) array and file list with full path in FileNames(j)
 ' now create subdirs structure with new path
 
-'DiaMsg$="Создаем директории... "
+'DiaMsg$="РЎРѕР·РґР°РµРј РґРёСЂРµРєС‚РѕСЂРёРё... "
 for i1=0 to i-1
 	NewSubDir$=SubDir(i1)-DirSrc$
 	NewSubDir$=DirDst$+NewSubDir$
 	MKSubDir (NewSubDir$)
-	'DiaMsg$="Создали директорию "+NewSubDir$
+	'DiaMsg$="РЎРѕР·РґР°Р»Рё РґРёСЂРµРєС‚РѕСЂРёСЋ "+NewSubDir$
 next i1
 result=-3
 
-'DiaMsg$="Копируем файлы..."
+'DiaMsg$="РљРѕРїРёСЂСѓРµРј С„Р°Р№Р»С‹..."
 
 for j=1 to NumFiles
-	'DiaMsg$="Пытаемся открыть файл "+FileNames(j)
+	'DiaMsg$="РџС‹С‚Р°РµРјСЃСЏ РѕС‚РєСЂС‹С‚СЊ С„Р°Р№Р» "+FileNames(j)
 	'DiaMsg$="Try to open file "+NewFileName$
 	
 	FileSrc.Open(FileNames(j), fmOpenRead) 
-	'DiaMsg$="Открыли "+FileNames(j) +" размер=" +str$( FileSrc.size)
+	'DiaMsg$="РћС‚РєСЂС‹Р»Рё "+FileNames(j) +" СЂР°Р·РјРµСЂ=" +str$( FileSrc.size)
 	'print "opened " +FileNames(j)
 	
 	'print "FileSrc.size=" ,FileSrc.size
@@ -625,11 +625,11 @@ for j=1 to NumFiles
 	NewFileName$=DirDst$+NewFileName1$
 	
 	'print "NewFileName$=" ,NewFileName$
-	'DiaMsg$="Пытаемся создать файл "+NewFileName1$
+	'DiaMsg$="РџС‹С‚Р°РµРјСЃСЏ СЃРѕР·РґР°С‚СЊ С„Р°Р№Р» "+NewFileName1$
 	'DiaMsg$="Try to create file "+NewFileName$
 	
 	FileDst.Open(NewFileName$, fmCreate) 
-	'DiaMsg$="Пытаемся скопировать файл " +FileNames(j) +" в "+NewFileName1$
+	'DiaMsg$="РџС‹С‚Р°РµРјСЃСЏ СЃРєРѕРїРёСЂРѕРІР°С‚СЊ С„Р°Р№Р» " +FileNames(j) +" РІ "+NewFileName1$
 	'print "DiaMsg$=" ,DiaMsg$
 	'DiaMsg$="Try to copy "
 	
@@ -637,14 +637,14 @@ for j=1 to NumFiles
 	FileSrc.close''
 	FileDst.close
 	'DiaMsg$="Copied "+str$(j) + " from "+ str$(NumFiles)+" = "+ NewFileName$
-	DiaMsg$="Скопировано файлов "+str$(j)'FileNames(j) '+" в "+NewFileName$
+	DiaMsg$="РЎРєРѕРїРёСЂРѕРІР°РЅРѕ С„Р°Р№Р»РѕРІ "+str$(j)'FileNames(j) '+" РІ "+NewFileName$
 	
 	nextj:
 	doevents
 next j
 
 result=j-1
-'DiaMsg$="Всего скопировано файлов"+ str$(result) + " из "+ str$(NumFiles)
+'DiaMsg$="Р’СЃРµРіРѕ СЃРєРѕРїРёСЂРѕРІР°РЅРѕ С„Р°Р№Р»РѕРІ"+ str$(result) + " РёР· "+ str$(NumFiles)
 
 end function
 
@@ -733,7 +733,7 @@ end if
 result=-2
 FileSrc.Open(FileSrc$, fmOpenRead) 
 result=-3
-' проверка файлов на ReadOnly !!!!!
+' РїСЂРѕРІРµСЂРєР° С„Р°Р№Р»РѕРІ РЅР° ReadOnly !!!!!
 if fileexists(FileDst$)>0 then 
 	~Oldfa=GetFileAttributes (FileDst$) 
 	~zas=FILE_ATTRIBUTE_READONLY or FILE_ATTRIBUTE_HIDDEN or FILE_ATTRIBUTE_SYSTEM
@@ -1120,7 +1120,7 @@ for k=0 to io2RndList.ItemCount-1
 		if needtoWrite=1 then
 			io2RndFile2.Position=io2RndFile2.Position-4 ' 4 byte for single type
 			io2RndArg.Position=io2RndArg.Position-4
-			io2RndFile2.WriteNum(AdatOld!,Num_SINGLE ) ' усредняем
+			io2RndFile2.WriteNum(AdatOld!,Num_SINGLE ) ' СѓСЃСЂРµРґРЅСЏРµРј
 			io2RndArg.WriteNum (pntOld,Num_SINGLE)
 			io2io.WriteLine (str$(pntOld)+","+str$(AdatOld!))
 			
@@ -1201,7 +1201,7 @@ END SUB
 
 '***********************************************
 sub ioAverage (io$, outf$, bpnt as integer)
-' процедура обработки файла формата точка, данные, когда на каждую точку приходится несколько отсчетов
+' РїСЂРѕС†РµРґСѓСЂР° РѕР±СЂР°Р±РѕС‚РєРё С„Р°Р№Р»Р° С„РѕСЂРјР°С‚Р° С‚РѕС‡РєР°, РґР°РЅРЅС‹Рµ, РєРѕРіРґР° РЅР° РєР°Р¶РґСѓСЋ С‚РѕС‡РєСѓ РїСЂРёС…РѕРґРёС‚СЃСЏ РЅРµСЃРєРѕР»СЊРєРѕ РѕС‚СЃС‡РµС‚РѕРІ
 dim InputList as QSTRINGLIST 
 dim OutPutList as QSTRINGLIST 
 InputList.clear
@@ -1231,11 +1231,11 @@ for k=0 to InputList.ItemCount-1
 	if k=0 then pntOld=pnt:bpnt=pnt
 	
 	if pnt=pntOld then
-		Aver=Aver+Adat!:'RQDebug("строка 37",0,"k", k, "pnt",pnt,"Adat!",Adat!,"ep",ep,"Aver",Aver)
+		Aver=Aver+Adat!:'RQDebug("СЃС‚СЂРѕРєР° 37",0,"k", k, "pnt",pnt,"Adat!",Adat!,"ep",ep,"Aver",Aver)
 		inc ep
 	else
 		if ep=0 then ep=1
-		Aver=Aver/ep:'RQDebug("строка 41",0,"k", k, "pnt",pnt,"Adat!",Adat!,"ep",ep,"Aver",Aver)
+		Aver=Aver/ep:'RQDebug("СЃС‚СЂРѕРєР° 41",0,"k", k, "pnt",pnt,"Adat!",Adat!,"ep",ep,"Aver",Aver)
 		OutPutList.AddItems  str$(pntOld)+","+str$(Aver)
 		inc newpnt
 		'RQDebug("k", k, "pnt",pnt,"Adat!",Adat!,"Aver",Aver)
@@ -1245,7 +1245,7 @@ for k=0 to InputList.ItemCount-1
 	end if
 	
 next k
-Aver=Aver/ep:'RQDebug("строка 41",0,"k", k, "pnt",pnt,"Adat!",Adat!,"ep",ep,"Aver",Aver)
+Aver=Aver/ep:'RQDebug("СЃС‚СЂРѕРєР° 41",0,"k", k, "pnt",pnt,"Adat!",Adat!,"ep",ep,"Aver",Aver)
 OutPutList.AddItems  str$(pntOld)+","+str$(Aver)
 
 OutPutList.SaveToFile (outf$)

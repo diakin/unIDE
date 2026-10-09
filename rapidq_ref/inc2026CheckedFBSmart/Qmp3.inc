@@ -5,7 +5,7 @@
 ' Thanks to Tamas Szekeres for the binaryheader bugfix               |
 
 '|~~~~~~~~~~~~~~~~~~~~~~~~~~~~|
-'|Dreadsoft® Corporation      |
+'|DreadsoftÂ® Corporation      |
 '|(manco un diritto riservato)|
 '|http://dreadsoft.too.it     |
 '|dreadsoft@yahoo.it          |

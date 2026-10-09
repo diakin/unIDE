@@ -68,10 +68,10 @@ for irow=0 to  RowCount-1
 		inc cellk
 	next jcol
 next irow
-Labels(0,0).caption="Заданное"
+Labels(0,0).caption="Р—Р°РґР°РЅРЅРѕРµ"
 Labels(0,0).color=&H90D7FF
-Labels(0,2).caption="Измеренное"
-Labels(1,0).caption="Импульсов"
-Labels(1,1).caption="Uзп"
-Labels(1,2).caption="Uфп"
+Labels(0,2).caption="РР·РјРµСЂРµРЅРЅРѕРµ"
+Labels(1,0).caption="РРјРїСѓР»СЊСЃРѕРІ"
+Labels(1,1).caption="UР·Рї"
+Labels(1,2).caption="UС„Рї"
       

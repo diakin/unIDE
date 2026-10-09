@@ -20,7 +20,7 @@ declare function FBReplaceSubStrFunc lib "fbfunc2.dll" alias "FBREPLACESUBSTRFUN
 (byref SrcString as string, SString as string, RString as string ) as integer
 
 
-function fbReplaceSubStr$ (SrcString as string, SString as string, RString as string ) as string  ' обертка FBReplaceSubStrFunc
+function fbReplaceSubStr$ (SrcString as string, SString as string, RString as string ) as string  ' РѕР±РµСЂС‚РєР° FBReplaceSubStrFunc
 SrcString4$=SrcString
 fbReplaceSubStr$=varptr$(FBReplaceSubStrFunc (SrcString4$, SString, RString) )
 end function
