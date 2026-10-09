@@ -1682,6 +1682,9 @@ type
 
     // Мы сами двигаем Position - без этого флага OnChange ушёл бы в рекурсию
     FLockScroll: Boolean;
+    // Сколько раз RichEdit отказался прокрутиться (ScrollEditTo) - в лог
+    // пишутся только первые
+    FScrollRefusals: Integer;
 
     // Тулбар: слева панель с группами кнопок, справа группа поиска
     // Групбоксы дают рамку и подпись, а содержимое лежит на ВЛОЖЕННЫХ панелях.
@@ -2568,6 +2571,7 @@ type
     procedure FitEditRect(AVisLines: Integer);
     function  EditViewHeight: Integer;
     procedure EditHostResize(Sender: TObject);
+    function  ScrollEditTo(ATarget: Integer): Integer;
     procedure SetScrollX(AValue: Integer);
     procedure SetHScrollVisible(AVisible: Boolean);
     function  LineAtY(AY: Integer): Integer;
@@ -35820,6 +35824,100 @@ begin
   end;
 end;
 
+// Прокрутка редактора так, чтобы первой видимой стала строка ATarget
+// (колесо, вертикальная полоса). Возвращает первую видимую после прокрутки.
+//
+// ATarget ограничивается диапазоном нашей полосы: 0 .. строк - видимых
+// (видимые - по EditViewHeight). Прокручивает EM_LINESCROLL.
+//
+// Если RichEdit не сдвинулся туда, куда просили, хотя по нашему счёту
+// место есть, - по очереди пробуем заставить его пересчитать вид и
+// повторяем прокрутку:
+//   1. EM_SETRECT с текущей областью текста (с перерисовкой, в отличие от
+//      EM_SETRECTNP в FitEditRect);
+//   2. WM_SIZE с текущим размером клиентской области;
+//   3. EM_SETTARGETDEVICE(0, 1) - полная переразметка строк.
+// В HiLite log пишется строка с размерами до попыток и с тем, после какой
+// попытки прокрутка прошла (первые 20 случаев за сеанс).
+function TForm1.ScrollEditTo(ATarget: Integer): Integer;
+const
+  EM_SETTARGETDEVICE_ = WM_USER + 72;
+  EM_GETSCROLLPOS_ = WM_USER + 221;
+  StepNames: array[1..3] of string = ('EM_SETRECT', 'WM_SIZE',
+                                      'EM_SETTARGETDEVICE');
+var
+  StartLine, FirstLine, LineCount, VisLines, MaxFirst, StepIdx: Integer;
+  TextRect, ClientRc: TRect;
+  ScrollPt: TPoint;
+  Report: string;
+begin
+  Result := 0;
+  if not RichEdit1.HandleAllocated then
+    Exit;
+  StartLine := SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
+  Result := StartLine;
+
+  LineCount := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+  VisLines := 1;
+  if LineHeight > 0 then
+    VisLines := EditViewHeight div LineHeight;
+  if VisLines < 1 then
+    VisLines := 1;
+  MaxFirst := LineCount - VisLines;
+  if MaxFirst < 0 then
+    MaxFirst := 0;
+  if ATarget > MaxFirst then
+    ATarget := MaxFirst;
+  if ATarget < 0 then
+    ATarget := 0;
+  if ATarget = StartLine then
+    Exit;
+
+  SendMessageA(RichEdit1.Handle, EM_LINESCROLL, 0, ATarget - StartLine);
+  FirstLine := SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
+  Result := FirstLine;
+  if FirstLine = ATarget then
+    Exit;
+
+  // RichEdit не дошёл до нужной строки - снимок до попыток
+  Inc(FScrollRefusals);
+  Windows.GetClientRect(RichEdit1.Handle, ClientRc);
+  SendMessageA(RichEdit1.Handle, EM_GETRECT, 0, Integer(@TextRect));
+  ScrollPt := Point(0, 0);
+  SendMessageA(RichEdit1.Handle, EM_GETSCROLLPOS_, 0, Integer(@ScrollPt));
+  Report := Format('RichEdit не прокрутил: первая видимая %d, просили %d, ' +
+    'стала %d; строк %d, видно %d (LineHeight %d); клиент %dx%d, панель %d, ' +
+    'область текста %d..%d, scrollpos %d',
+    [StartLine, ATarget, FirstLine, LineCount, VisLines, LineHeight,
+     ClientRc.Right, ClientRc.Bottom, EditViewHeight, TextRect.Top,
+     TextRect.Bottom, ScrollPt.Y]);
+
+  for StepIdx := 1 to 3 do
+  begin
+    case StepIdx of
+      1: SendMessageA(RichEdit1.Handle, EM_SETRECT, 0, Integer(@TextRect));
+      2: SendMessageA(RichEdit1.Handle, WM_SIZE, SIZE_RESTORED,
+                      MakeLong(ClientRc.Right, ClientRc.Bottom));
+      3: SendMessageA(RichEdit1.Handle, EM_SETTARGETDEVICE_, 0, 1);
+    end;
+    FirstLine := SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
+    if FirstLine <> ATarget then
+    begin
+      SendMessageA(RichEdit1.Handle, EM_LINESCROLL, 0, ATarget - FirstLine);
+      FirstLine := SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
+    end;
+    Report := Report + Format('; после %s: %d', [StepNames[StepIdx], FirstLine]);
+    if FirstLine = ATarget then
+      Break;
+  end;
+  Result := FirstLine;
+
+  if FScrollRefusals <= 20 then
+    LogDiag(Report);
+  // Кадр - по новому положению, полоса - по нему же
+  InvalidateRect(RichEdit1.Handle, nil, False);
+end;
+
 // Высота видимой части редактора, пиксели.
 //
 // RichEdit1 лежит на панели FEditHost, и видно только то, что внутри
@@ -57344,17 +57442,11 @@ end;
 // WM_HSCROLL и WM_VSCROLL несут позицию в 16 битах, и VCL кладёт её в
 
 procedure TForm1.VScrollChange(Sender: TObject);
-var
-  Delta: Integer;
 begin
   if FLockScroll then
     Exit;
 
-  // EM_LINESCROLL двигает ОТНОСИТЕЛЬНО текущей позиции
-  Delta := FVScroll.Position -
-           SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
-  if Delta <> 0 then
-    SendMessageA(RichEdit1.Handle, EM_LINESCROLL, 0, Delta);
+  ScrollEditTo(FVScroll.Position);
 end;
 
 procedure TForm1.HScrollChange(Sender: TObject);
@@ -57712,7 +57804,8 @@ begin
     if WheelLines <> 0 then
       // Знак минус: колесо от себя даёт положительную дельту, а прокручивать
       // при этом надо ВВЕРХ, то есть к меньшим номерам строк
-      SendMessageA(RichEdit1.Handle, EM_LINESCROLL, 0, -WheelLines);
+      ScrollEditTo(SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE,
+                                0, 0) - WheelLines);
 
     Message.Result := 0;
     Exit;
