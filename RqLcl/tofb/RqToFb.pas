@@ -551,6 +551,7 @@ type
     function IsStrVarRef(const AToks: TToks; AFrom, ATo: Integer): Boolean;
     procedure ProcessIdent(var AToks: TToks; AIdx, ATo: Integer);
     function  HasChrZero(const AToks: TToks; AFrom, ATo: Integer): Boolean;
+    function  MemberIsString(const AToks: TToks; AIdx: Integer): Boolean;
     function  DottedImplicit(var AToks: TToks; AIdx, ADotIdx, ATo: Integer): Boolean;
     procedure ProcessAssignOrCall(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessDim(var AToks: TToks; AFrom, ATo: Integer);
@@ -2220,7 +2221,9 @@ begin
       if AToks[TokIdx].Kind = tkString then
         Result := True
       else if (AToks[TokIdx].Kind = tkIdent) and
-              not IsOp(AToks, PrevSig(AToks, TokIdx - 1), '.') then
+              IsOp(AToks, PrevSig(AToks, TokIdx - 1), '.') then
+        Result := MemberIsString(AToks, TokIdx)
+      else if AToks[TokIdx].Kind = tkIdent then
       begin
         if SuffixOf(AToks[TokIdx].Up) = '$' then
           Result := True
@@ -2239,6 +2242,57 @@ begin
         Exit;
     end;
   end;
+end;
+
+// Член объекта Владелец.Член (AIdx - на члене, перед ним "."): строковый?
+//   - суффикс $;
+//   - This.Член в методе своего компонента или Объект.Член, где Объект -
+//     свой компонент (TYPE ... EXTENDS): по типу члена из объявления
+//     (QFILEDIALOG.INC: .Files(0) = .FileName - .FileTitle, FileName AS
+//     STRING);
+//   - Объект класса RapidQ, а член - свойство, которое во всех классах
+//     STRING (RqStrPropText: Text, Caption, ...).
+// Иначе (запись TYPE, неизвестный владелец, цепочка a.b.c) - нет.
+function TRqFbConv.MemberIsString(const AToks: TToks; AIdx: Integer): Boolean;
+var
+  DotIdx, OwnerIdx: Integer;
+  MemberUp, OwnerType: string;
+  Info: TRqTypeInfo;
+  VarRec: TRqVar;
+begin
+  MemberUp := AToks[AIdx].Up;
+  Result := SuffixOf(MemberUp) = '$';
+  if Result then
+    Exit;
+  DotIdx := PrevSig(AToks, AIdx - 1);
+  OwnerIdx := PrevSig(AToks, DotIdx - 1);
+  if (OwnerIdx < 0) or (AToks[OwnerIdx].Kind <> tkIdent) or
+     IsOp(AToks, PrevSig(AToks, OwnerIdx - 1), '.') then
+    Exit;
+  Info := nil;
+  OwnerType := '';
+  if (AToks[OwnerIdx].Up = 'THIS') and (FCurType <> nil) then
+    Info := FCurType
+  else
+  begin
+    VarRec := FindVar(AToks[OwnerIdx].Up);
+    if VarRec = nil then
+      Exit;
+    OwnerType := UpperCase(VarRec.RqType);
+    Info := FindTypeInfo(OwnerType);
+  end;
+  if Info <> nil then
+  begin
+    if Info.MemberType.IndexOfName(MemberUp) >= 0 then
+    begin
+      Result := UpperCase(Info.MemberType.Values[MemberUp]) = 'STRING';
+      Exit;
+    end;
+    // член базового класса RapidQ
+    OwnerType := Info.BaseClass;
+  end;
+  if InList(FObjClasses, OwnerType) then
+    Result := Pos(' ' + MemberUp + ' ', ' ' + RqStrPropText + ' ') > 0;
 end;
 
 // Выражение - явно числовое: на верхнем уровне только числа и числовые
