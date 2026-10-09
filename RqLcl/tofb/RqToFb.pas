@@ -2365,6 +2365,11 @@ begin
             if (VarRec = nil) or not IsNumericType(VarRec.RqType) or
                IsOp(AToks, NextSig(AToks, TokIdx + 1, ATo), '.') then
               Exit;
+            // RESULT в FUNCTION - значение функции, а не неявная
+            // переменная result модуля
+            if (AToks[TokIdx].Up = 'RESULT') and not VarRec.Explicit and
+               (FCurProc <> nil) and FCurProc.IsFunc then
+              Exit;
             HasOperand := True;
           end;
       end;
@@ -3348,6 +3353,21 @@ var
   TokIdx, PrevIdx, OpenIdx, CloseIdx: Integer;
   LibProc: TRqProc;
 begin
+  // Унарный "+" (после знака, "(" или "," и в начале выражения) убирается:
+  // у числа он ничего не меняет, у строки FreeBASIC его не принимает
+  // (RQdebugger: sketchbookPathEdit.text++fname$-fext$+"")
+  for TokIdx := AFrom to ATo do
+    if IsOp(AToks, TokIdx, '+') then
+    begin
+      PrevIdx := PrevSig(AToks, TokIdx - 1);
+      if ((PrevIdx < AFrom) or ((AToks[PrevIdx].Kind = tkOp) and
+          (AToks[PrevIdx].Text <> ')') and (AToks[PrevIdx].Text <> ']'))) and
+         (NextSig(AToks, TokIdx + 1, ATo) >= 0) then
+      begin
+        AToks[TokIdx].OutText := '';
+        AToks[TokIdx].Kind := tkSpace;
+      end;
+    end;
   RewriteStrSub(AToks, AFrom, ATo);
   for TokIdx := AFrom to ATo do
     case AToks[TokIdx].Kind of
@@ -3606,11 +3626,23 @@ begin
   // RESULT, ведёт его в локальной rq_result (объявление - в заголовке,
   // LocalsText; запись - rq_result = ... : Function = rq_result,
   // ProcessAssignOrCall). Признак собирается в первом проходе.
+  // (неявная переменная result вне FUNCTION - не помеха: она в модуле)
   if (Up = 'RESULT') and (FCurProc <> nil) and FCurProc.IsFunc and
-     (FindVar(Up) = nil) then
+     ((FindVar(Up) = nil) or not FindVar(Up).Explicit) then
   begin
     FCurProc.ResultRead := True;
     AToks[AIdx].OutText := 'rq_result';
+    Exit;
+  end;
+  // RESULT вне FUNCTION (в SUB или в модуле: RQdebugger, result =
+  // SendMessageApi(...)) - значения функции нет, это обычная неявная
+  // переменная (слово RapidQ, но FreeBASIC о нём не знает)
+  if (Up = 'RESULT') and not ((FCurProc <> nil) and FCurProc.IsFunc) then
+  begin
+    VarRec := ResolveVar(AToks[AIdx].Text, False);
+    AToks[AIdx].OutText := VarRec.FbName;
+    if (VarRec.Scope = '') and VarRec.Explicit then
+      GlobalQualify(AToks, AIdx);
     Exit;
   end;
   NextIdx := NextSig(AToks, AIdx + 1, ATo);
@@ -4022,7 +4054,8 @@ begin
       AToks[FirstIdx].OutText := FCurProc.FbName;
     TargetType := FCurProc.RetType;
   end
-  else if InList(FKeywords, Up) and (FindVar(Up) = nil) then
+  else if InList(FKeywords, Up) and (FindVar(Up) = nil) and
+          not ((Up = 'RESULT') and (LhsEnd < 0)) then
   begin
     // MID$(s, 1, 1) = "x" и подобное - как есть
     ProcessExpr(AToks, FirstIdx + 1, ATo);
