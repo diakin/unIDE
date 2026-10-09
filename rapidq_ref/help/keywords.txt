@@ -356,6 +356,7 @@ RQCONST=c_rqconst.html
 RSOCKET=c_rsocket.html
 RTRIM$=otherdetail.html#rtrim$
 RUN=otherdetail.html#run
+SADD=f_sadd.html
 SCREEN=consoledetail.html#screen
 SENDMESSAGE=otherdetail.html#sendmessage
 SETCONSOLETITLE=consoledetail.html#setconsoletitle

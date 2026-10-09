@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>SADD</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; functions from include files</span><span class="rq-section">Appendix D: SADD</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>SADD Function</h1>
+<p class="rq-meta">Not a Rapid-Q keyword: a user function &middot; source: <code>inc/conversion.inc</code>, line 766 &middot; investigated with rc.exe on 2026-10-09</p>
+<p><b>Returns the address of a copy of a string, kept in a memory stream inside the function.</b></p>
+<pre>function sadd(InpStr as string) as long
+'Returns the memory offset of the string data in the string variable
+' use as pointer to the string variable
+DIM Mem AS QMemoryStream
+Mem.Write InpStr
+Mem.Position = 0
+sadd=Mem.Pointer
+end function</pre>
+<p>Syntax: <code>Addr&amp; = sadd(string-expression)</code></p>
+<p>The comment in the source says the function returns the address of the string data in the string variable. It does not: the parameter is passed by value, the function writes it into a QMEMORYSTREAM and returns <code>Mem.Pointer</code>, the address of the stream memory. The tests below show what this address is and how long it stays valid.</p>
+
+<a name="1"></a><h2>What the address is</h2>
+<ul>
+<li>It is not the address of the variable: <code>sadd(S1)</code> and <code>VARPTR(S1)</code> differ (test 1, step 1).</li>
+<li>It stays valid after the function returns: the text is there right after the call and also after 21 other strings and another QMEMORYSTREAM have been created (test 1, steps 2 and 4).</li>
+<li>It stays valid only until the next call of <code>sadd</code>. Every call writes to the same stream at position 0 and returns the same address, so the address from the previous call now shows the new text (test 1, step 3).</li>
+<li>The data is not followed by a zero byte. After the bytes of the string the stream memory holds whatever was there before (<code>AAAA[192][6][1]</code>, test 2, call 1), and after a shorter string the tail of a longer previous one remains (<code>CCBBBBBB</code>, test 2, call 3). Read exactly <code>LEN(string)</code> bytes from the address; <code>VARPTR$(sadd(s$))</code>, which reads up to a zero byte, can return extra characters.</li>
+</ul>
+
+<a name="2"></a><h2>Why: objects inside a SUB or FUNCTION</h2>
+<p>An object DIMmed inside a SUB or FUNCTION is created once and keeps its contents between calls; it is not created anew on each call (test 2):</p>
+<table class="rq-ref">
+<tr><th>Call</th><th>Text</th><th>Mem.Size on entry</th><th>Mem.Position on entry</th><th>Lst.ItemCount on entry</th><th>N on entry</th><th>Text at the address after the call (8 bytes)</th></tr>
+<tr><td>1</td><td>AAAA</td><td>0</td><td>0</td><td>0</td><td>0</td><td>AAAA[192][6][1]</td></tr>
+<tr><td>2</td><td>BBBBBBBB</td><td>4</td><td>0</td><td>1</td><td>9</td><td>BBBBBBBB</td></tr>
+<tr><td>3</td><td>CC</td><td>8</td><td>0</td><td>2</td><td>9</td><td>CCBBBBBB</td></tr>
+</table>
+<p>The address returned by <code>Mem.Pointer</code> was the same in all three calls (17281328), also when the stream grew from 4 to 8 bytes. <code>Mem</code> is a QMEMORYSTREAM, <code>Lst</code> a QSTRINGLIST, <code>N</code> a LONG, all DIMmed in the function.</p>
+<p>The numeric variable <code>N</code> behaves differently: on entry it was 0, 9, 9. It does not keep its value (that would be 0, 1, 2), and after the first call it is not 0 either. Where the 9 comes from was not found out.</p>
+
+<a name="3"></a><h2>Test 1 output (rc.exe)</h2>
+<pre>1. VARPTR(S1)   = 15030588
+   sadd(S1)     = 16421120
+   different address (copy)
+2. text at sadd = FIRST-STRING-1234
+3. second sadd  = 16421120
+   same address as first call
+   text at 1st  = SECOND-TEXT-ABCDE
+   text at 2nd  = SECOND-TEXT-ABCDE
+4. global stream = 16445744
+   text at 1st  = SECOND-TEXT-ABCDE
+   text at 2nd  = SECOND-TEXT-ABCDE
+   text at glob = OTHER-STREAM-XYZ!
+5. 20 bytes     = OTHER-STREAM-XYZ![0][0][0]
+end</pre>
+<p>Step 4 creates 21 strings of 17 characters and a global QMEMORYSTREAM before reading the addresses again. Step 5 reads 20 bytes of the global stream holding 17 bytes of data.</p>
+
+<a name="4"></a><h2>Using it</h2>
+<ul>
+<li>For the address of the characters of a string variable use <code>VARPTR(s$)</code>.</li>
+<li>If the address from <code>sadd</code> is passed on (for example to a Windows function), it must be used before the next call of <code>sadd</code>, together with the length of the string.</li>
+</ul>
+
+<a name="5"></a><h2>FreeBASIC (unIDE, RqToFb)</h2>
+<p>Before these tests the translation created the stream anew on every call and freed it on return, so the address pointed to freed memory: right after the call its first bytes were already overwritten. Now an object DIMmed inside a SUB or FUNCTION is translated as <code>Static</code>, and QMEMORYSTREAM keeps its data in a block of a multiple of 8192 bytes, as TMemoryStream of Delphi, so its address does not change while the data fits. The translated tests print the same as rc.exe except the addresses, the bytes after the data in the stream (zeros) and <code>N</code> (0 on every call). Regression test: <code>RqLcl/tofb/tests/localobj.bas</code>; the two test programs: <code>RqLcl/tofb/tests/research/sadd_test.bas</code>, <code>sadd_test2.bas</code>.</p>
+
+<div class="rq-foot"><a href="contents.html#appd">Appendix D</a><a href="contents.html">Contents</a><a href="indexa.html">Alphabetic index</a></div>
+</body>
+</html>

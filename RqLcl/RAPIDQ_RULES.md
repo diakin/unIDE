@@ -157,6 +157,7 @@ Function RqStr Overload (ByVal Value As Double) As String   ' число -> ""
 - `N AS LONG` на входе — 0, 9, 9: число не сохраняется (было бы 0, 1, 2) и после первого вызова не 0. Откуда 9 — не выяснено. В переводе локальные числа, как в FreeBASIC, — 0.
 - `sadd` из conversion.inc (`Mem.Write InpStr : Mem.Position = 0 : sadd = Mem.Pointer`) возвращает адрес копии строки в потоке, не `VARPTR` переменной; текст по адресу остаётся и после вызова, и после выделения других строк, до следующего вызова `sadd`, который пишет в тот же поток.
 - После 4 байт данных в потоке RapidQ — не нули (`AAAA[192][6][1]`): память блока не очищается.
+- Описание `sadd` и полный вывод обоих тестов — страница `rapidq_ref/html_doc/f_sadd.html` (Appendix D в contents.html, SADD в указателе и в rapidq.chm); сами тесты — `RqLcl/tofb/tests/research/sadd_test.bas`, `sadd_test2.bas`.
 
 ## VARIANT, FORMAT$, INITARRAY (datatypes.html, otherdetail.html)
 
