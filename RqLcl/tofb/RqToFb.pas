@@ -305,6 +305,9 @@ type
     IsConst: Boolean;
     Explicit: Boolean;  // объявлена (DIM, DEF..., параметр, CONST)
     Assigned: Boolean;  // получает значение: Перем = ..., FOR, INC/DEC
+    // Неявная Имя_Свойство из Имя.Свойство (DottedImplicit): Имя в
+    // верхнем регистре; иначе ''
+    DotBase: string;
   end;
 
   TRqProc = class
@@ -3330,7 +3333,8 @@ end;
 
 // Имя.Свойство, где Имя не объявлено ни переменной, ни объектом: одна
 // неявная переменная Имя_Свойство (см. ProcessIdent). Только простая
-// форма: за свойством не "(" и не ".". True - токены переписаны.
+// форма: за свойством не "(" и не ".", свойство - не метод и не событие
+// ни одного класса. True - токены переписаны.
 function TRqFbConv.DottedImplicit(var AToks: TToks; AIdx, ADotIdx,
   ATo: Integer): Boolean;
 var
@@ -3346,6 +3350,10 @@ begin
   if IsOp(AToks, AfterIdx, '(') or IsOp(AToks, AfterIdx, '.') then
     Exit;
   MemberUp := AToks[MemberIdx].Up;
+  // Метод или событие (MainForm.Show, X.OnClick = ...) - это обращение к
+  // объекту, переменной оно быть не может: как раньше, ошибкой fbc
+  if AnyMemberKind(MemberUp) in ['M', 'E'] then
+    Exit;
   if SuffixOf(MemberUp) <> '' then
     RqType := SuffixType(SuffixOf(MemberUp))
   else if Pos(' ' + MemberUp + ' ', ' ' + RqStrPropText + ' ') > 0 then
@@ -3362,6 +3370,7 @@ begin
     if FCurProc <> nil then
       Scope := FCurProc.Name;
     VarRec := DeclareVar(DotName, RqType, Scope, False, False, False);
+    VarRec.DotBase := AToks[AIdx].Up;
   end;
   if (FPass = 2) and FTypeCheck and not VarRec.Explicit then
     Error(AToks[AIdx].Text + ': переменная не объявлена ($TYPECHECK ON)');
@@ -6951,12 +6960,33 @@ procedure TRqFbConv.EndOfPass1;
 var
   VarIdx, Found: Integer;
   VarRec: TRqVar;
+
+  // Имя объявлено (в своей SUB или в модуле) - запись не нужна
+  function BaseDeclared(const AScope, ABase: string): Boolean;
+  var
+    BaseIdx: Integer;
+  begin
+    Result := (FVars.Find(AScope + '|' + ABase, BaseIdx) and
+               TRqVar(FVars.Objects[BaseIdx]).Explicit) or
+              (FVars.Find('|' + ABase, BaseIdx) and
+               TRqVar(FVars.Objects[BaseIdx]).Explicit);
+  end;
+
 begin
   for VarIdx := FVars.Count - 1 downto 0 do
   begin
     VarRec := TRqVar(FVars.Objects[VarIdx]);
     if (VarRec.Scope <> '') and not VarRec.Explicit and
        FVars.Find('|' + VarRec.Name, Found) then
+    begin
+      VarRec.Free;
+      FVars.Delete(VarIdx);
+    end
+    // Имя.Свойство, а Имя объявлено ниже по тексту (COMPORT.CMP:
+    // MyPort.Handle в методе, DIM MyPort AS COMPORT - в главном файле):
+    // в первом проходе оно было ещё неизвестно, во втором это объект
+    else if (VarRec.DotBase <> '') and not VarRec.Explicit and
+            BaseDeclared(VarRec.Scope, VarRec.DotBase) then
     begin
       VarRec.Free;
       FVars.Delete(VarIdx);
