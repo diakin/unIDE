@@ -13129,7 +13129,7 @@ end;
 function TForm1.ConfirmSaveSchema: Boolean;
 begin
   Result := True;
-  if (Form2 = nil) or (Form2.Grid = nil) then
+  if (Form2 = nil) or not Form2.IsBuilt then
     Exit;
   Result := Form2.ConfirmSaveSchema(True);
 end;
@@ -26586,12 +26586,12 @@ var
   OldCursor: TCursor;
 begin
   F := OwnLiveForm(AClass);
-  // Окно настроек строит свои контролы при первом открытии (InitOptions).
-  // Не открывалось - снимок показал бы одну заготовку из .dfm, и
-  // конструктор нарисовал бы её. Строим и заполняем, как перед показом, но
-  // окно не открываем. Уже построенное не трогаем: в открытом окне могут
-  // быть несохранённые правки.
-  if (F <> nil) and (F = Form2) and (Form2.Grid = nil) then
+  // Окно настроек заполняется данными при первом открытии (InitOptions):
+  // строки путей Arduino, страница Compilers, таблицы. Не открывалось -
+  // снимок показал бы пустые элементы из .dfm. Заполняем, как перед
+  // показом, но окно не открываем. Уже заполненное не трогаем: в открытом
+  // окне могут быть несохранённые правки.
+  if (F <> nil) and (F = Form2) and not Form2.IsBuilt then
     PrepareOptionsForm;
   // Формы этого класса в работающем редакторе нет (не создаётся при
   // запуске) - снимать нечего; чужую форму не снимаем
@@ -60659,13 +60659,14 @@ var
   FirstTime: Boolean;
 begin
   StartTick := GetTickCount;
-  FirstTime := (Form2 = nil) or (Form2.Grid = nil);
+  FirstTime := (Form2 = nil) or not Form2.IsBuilt;
   StageTick := GetTickCount;
   PrepareOptionsForm;
   TPrepare := GetTickCount - StageTick;
   Form2.Show;
   // Время открытия окна настроек - в HiLite log. Первый раз окно ещё и
-  // строится (InitOptions), поэтому дольше.
+  // заполняется (InitOptions: строки путей, страница Compilers, таблицы),
+  // поэтому дольше.
   if FirstTime then
     Dbg(Format('Options: открытие %d мс (построение и заполнение %d, ' +
     'показ %d) - первое', [GetTickCount - StartTick, TPrepare,
@@ -60688,9 +60689,9 @@ begin
   if Form2 = nil then
     Form2 := TForm2.Create(Application);
 
-  // Grid создаётся внутри InitOptions, поэтому его nil - надёжный признак того,
-  // что форма ещё не инициализирована (в том числе после автосоздания в .dpr)
-  if Form2.Grid = nil then
+  // Элементы окна - из Unit2.dfm, данными его заполняет InitOptions, один
+  // раз (в том числе после автосоздания в .dpr)
+  if not Form2.IsBuilt then
   begin
     Form2.InitOptions;
     UiApplyForm(Form2);
@@ -61241,7 +61242,7 @@ begin
     RefreshTabsModified;
 
     // Текст приведён к настройкам - подсказка в окне настроек больше не нужна
-    if (Form2 <> nil) and (Form2.Grid <> nil) then
+    if (Form2 <> nil) and Form2.IsBuilt then
       Form2.HideIndentHint;
 
     if ExpandCount > 0 then

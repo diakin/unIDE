@@ -30,6 +30,8 @@ uses
   EnvOptions in 'EnvOptions.pas',
   CodeInsight in 'CodeInsight.pas',
   DlgArdSerial in 'DlgArdSerial.pas' {DlgArdSerial},
+  DlgPathList in 'DlgPathList.pas' {DlgPathList},
+  DlgEnvVar in 'DlgEnvVar.pas' {DlgEnvVar},
   ReleaseBuild in 'ReleaseBuild.pas',
   ObjParse in 'ObjParse.pas',
   PrjStore in 'PrjStore.pas',
