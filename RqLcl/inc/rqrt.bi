@@ -1001,10 +1001,19 @@ End Sub
 '  по имени из ALIAS. Не нашлась DLL или функция - сообщение (лог, окно) и
 '  0; вызов такой функции программу остановит.
 ' ---------------------------------------------------------------------------
+Type RqRtLoadLibFn As Function stdcall (ByVal LibName As ZString Ptr) As Any Ptr
+Type RqRtLastErrFn As Function stdcall () As ULong
+Type RqRtFmtMsgFn As Function stdcall (ByVal Flags As ULong, ByVal Source As Any Ptr, _
+        ByVal MsgId As ULong, ByVal LangId As ULong, ByVal Buffer As ZString Ptr, _
+        ByVal BufSize As ULong, ByVal Args As Any Ptr) As ULong
 Function RqDllProc(ByRef DllName As String, ByRef ProcName As String, _
                    ByRef FileName As String, ByVal LineNum As Long) As Any Ptr
     Static LibNames() As String
     Static LibHandles() As Any Ptr
+    Static Kernel32 As Any Ptr
+    Static LoadLib As RqRtLoadLibFn
+    Static LastErr As RqRtLastErrFn
+    Static FmtMsg As RqRtFmtMsgFn
     Dim LibIdx As Long
     Dim LibHandle As Any Ptr = 0
     Dim Found As Long = 0
@@ -1016,15 +1025,40 @@ Function RqDllProc(ByRef DllName As String, ByRef ProcName As String, _
         End If
     Next
     If Found = 0 Then
-        LibHandle = DyLibLoad(DllName)
+        ' LoadLibraryA - напрямую, чтобы сразу после неё взять код ошибки
+        ' Windows (GetLastError): по нему видно, почему DLL не загрузилась.
+        ' Через DyLibSymbol, а не Declare: не спорить с DECLARE программы
+        If Kernel32 = 0 Then
+            Kernel32 = DyLibLoad("kernel32")
+            LoadLib = Cast(RqRtLoadLibFn, DyLibSymbol(Kernel32, "LoadLibraryA"))
+            LastErr = Cast(RqRtLastErrFn, DyLibSymbol(Kernel32, "GetLastError"))
+            FmtMsg = Cast(RqRtFmtMsgFn, DyLibSymbol(Kernel32, "FormatMessageA"))
+        End If
+        Dim ErrCode As ULong = 0
+        If LoadLib <> 0 Then
+            LibHandle = LoadLib(StrPtr(DllName))
+            If (LibHandle = 0) AndAlso (LastErr <> 0) Then ErrCode = LastErr()
+        Else
+            LibHandle = DyLibLoad(DllName)
+        End If
         LibIdx = UBound(LibNames) + 1
         ReDim Preserve LibNames(0 To LibIdx)
         ReDim Preserve LibHandles(0 To LibIdx)
         LibNames(LibIdx) = DllName
         LibHandles(LibIdx) = LibHandle
         If LibHandle = 0 Then
+            ' Текст ошибки - от Windows, на языке системы; 126 - не найден
+            ' файл DLL или DLL, от которой она зависит; 193 - DLL другой
+            ' разрядности (32/64)
+            Dim ErrText As ZString * 512
+            If (ErrCode <> 0) AndAlso (FmtMsg <> 0) Then
+                FmtMsg(&h1200, 0, ErrCode, 0, @ErrText, 511, 0)
+            End If
+            Dim ReasonText As String = RTrim(ErrText, Any !" \r\n")
             RqRtReport("Error", "не удалось загрузить " & DllName & _
-                       " (DECLARE ... LIB)", FileName, LineNum, 1)
+                       " (DECLARE ... LIB): ошибка Windows " & ErrCode & _
+                       IIf(ReasonText <> "", " - " & ReasonText, "") & _
+                       "; папка программы " & ExePath(), FileName, LineNum, 1)
         End If
     End If
     If LibHandle = 0 Then Return 0
