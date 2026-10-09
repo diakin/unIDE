@@ -482,6 +482,10 @@ type
     FHoistDecls: TStringList;
     FLibParams: Boolean;          // параметры DECLARE ... LIB (STRING - указатель)
     FInlineIf: Boolean;           // в строке однострочный IF (после THEN есть оператор)
+    // Вложенность блоков (WITH, FOR, DO, WHILE, SELECT, IF ... THEN) вне
+    // SUB/FUNCTION в текущем файле - DIM внутри них (TrackModBlock,
+    // ProcessDim)
+    FModBlocks: Integer;
     FGosubSites: TStringList;     // GOSUB/RETURN: ОБЛАСТЬ=число GOSUB в ней
                                   // (первый проход; '*' - модуль)
     FGosubProcNum: Integer;       // номер GOSUB в текущей SUB/FUNCTION
@@ -551,6 +555,7 @@ type
     function IsStrVarRef(const AToks: TToks; AFrom, ATo: Integer): Boolean;
     procedure ProcessIdent(var AToks: TToks; AIdx, ATo: Integer);
     function  HasChrZero(const AToks: TToks; AFrom, ATo: Integer): Boolean;
+    procedure TrackModBlock(const AToks: TToks; AFirst, ATo: Integer);
     function  MemberIsString(const AToks: TToks; AIdx: Integer): Boolean;
     function  DottedImplicit(var AToks: TToks; AIdx, ADotIdx, ATo: Integer): Boolean;
     procedure ProcessAssignOrCall(var AToks: TToks; AFrom, ATo: Integer);
@@ -3074,6 +3079,51 @@ end;
 //  Операторы
 // ---------------------------------------------------------------------------
 
+// Блоки вне SUB/FUNCTION: начало - +1, конец - -1 (FModBlocks). IF - только
+// блочный (после THEN ничего); NEXT i, j закрывает два FOR
+procedure TRqFbConv.TrackModBlock(const AToks: TToks; AFirst, ATo: Integer);
+var
+  Up: string;
+  NextIdx, TokIdx, ThenIdx, Depth: Integer;
+begin
+  Up := AToks[AFirst].Up;
+  NextIdx := NextSig(AToks, AFirst + 1, ATo);
+  if (Up = 'WITH') or (Up = 'FOR') or (Up = 'DO') or (Up = 'WHILE') or
+     (Up = 'SELECT') then
+    Inc(FModBlocks)
+  else if Up = 'IF' then
+  begin
+    ThenIdx := -1;
+    Depth := 0;
+    for TokIdx := AFirst + 1 to ATo do
+      if IsOp(AToks, TokIdx, '(') then
+        Inc(Depth)
+      else if IsOp(AToks, TokIdx, ')') then
+        Dec(Depth)
+      else if (Depth = 0) and IsWord(AToks, TokIdx, 'THEN') then
+      begin
+        ThenIdx := TokIdx;
+        Break;
+      end;
+    if (ThenIdx >= 0) and (NextSig(AToks, ThenIdx + 1, ATo) < 0) then
+      Inc(FModBlocks);
+  end
+  else if (Up = 'END') and (IsWord(AToks, NextIdx, 'WITH') or
+          IsWord(AToks, NextIdx, 'SELECT') or IsWord(AToks, NextIdx, 'IF')) then
+    Dec(FModBlocks)
+  else if (Up = 'LOOP') or (Up = 'WEND') then
+    Dec(FModBlocks)
+  else if Up = 'NEXT' then
+  begin
+    Dec(FModBlocks);
+    for TokIdx := AFirst + 1 to ATo do
+      if IsOp(AToks, TokIdx, ',') then
+        Dec(FModBlocks);
+  end;
+  if FModBlocks < 0 then
+    FModBlocks := 0;
+end;
+
 procedure TRqFbConv.ProcessStatement(var AToks: TToks; AFrom, ATo: Integer);
 var
   FirstIdx, NextIdx: Integer;
@@ -3087,6 +3137,8 @@ begin
     Warn(AToks[FirstIdx].Text + ': директива не в начале строки, пропущена');
     Exit;
   end;
+  if (FCurProc = nil) and (AToks[FirstIdx].Kind = tkIdent) then
+    TrackModBlock(AToks, FirstIdx, ATo);
   if IsOp(AToks, FirstIdx, '?') then
   begin
     ProcessPrint(AToks, FirstIdx, ATo);
@@ -4002,7 +4054,9 @@ var
   Items, Extra, Scope, RqType, StarLen, DimsText, ItemText, InitText: string;
   StaticItems: string;
   VarRec: TRqVar;
+  HasOwnType: Boolean;
 begin
+  HasOwnType := False;
   IsRedim := AToks[AFrom].Up = 'REDIM';
   TokIdx := NextSig(AToks, AFrom + 1, ATo);
   Preserve := IsWord(AToks, TokIdx, 'PRESERVE');
@@ -4089,6 +4143,9 @@ begin
     begin
       if RqType = '' then
         RqType := SuffixType(SuffixOf(AToks[NameIdx].Up));
+      // свой TYPE объявлен в программе - в начало файла его не перенести
+      if InList(FTypes, RqType) then
+        HasOwnType := True;
       if InList(FGuiClasses, RqType) then
         FHasGui := True;
       VarRec := DeclareVar(AToks[NameIdx].Text, RqType, Scope, IsArray, True,
@@ -4142,6 +4199,20 @@ begin
       Rebuild(AToks, AFrom, ATo, 'ReDim Preserve ' + Items)
     else
       Rebuild(AToks, AFrom, ATo, 'ReDim ' + Items);
+  end
+  else if (Scope = '') and (FModBlocks > 0) and (Extra = '') and
+          (Pos(' = ', Items) = 0) and not HasOwnType then
+  begin
+    // DIM внутри WITH, IF, FOR... вне SUB: в FreeBASIC Dim Shared внутри
+    // блока нельзя (error 96, RQdebugger: DIM CheckFont AS QFONT внутри
+    // WITH RQdbini). Переменная модуля - в начало главного файла, к
+    // перенесённым DECLARE (тип - число, строка или класс RapidQ из
+    // rqlcl.bi, он подключён раньше); на месте оператор убирается (в
+    // строке могут быть и другие операторы через ":")
+    if FPass = 1 then
+      FHoistDecls.Add('#line ' + IntToStr(FCurLine - 1) + ' "' + FCurFile + '"' +
+                      CrLf + 'Dim Shared ' + Items);
+    Rebuild(AToks, AFrom, ATo, '');
   end
   else if Scope = '' then
     Rebuild(AToks, AFrom, ATo, 'Dim Shared ' + Items + Extra)
@@ -7128,7 +7199,7 @@ var
   Lines, OutLines: TStringList;
   LineIdx, StartIdx, DoneIdx, Suffix, CreateBase: Integer;
   Text, OutText, OutName, SavedFile: string;
-  SavedLine: Integer;
+  SavedLine, SavedBlocks: Integer;
   SavedProc: TRqProc;
 begin
   DoneIdx := FDoneFiles.IndexOfName(UpperCase(AFileName));
@@ -7161,8 +7232,10 @@ begin
   SavedFile := FCurFile;
   SavedLine := FCurLine;
   SavedProc := FCurProc;
+  SavedBlocks := FModBlocks;
   FCurFile := AFileName;
   FCurProc := nil;
+  FModBlocks := 0;
   Lines := TStringList.Create;
   OutLines := TStringList.Create;
   try
@@ -7241,6 +7314,7 @@ begin
     FCurFile := SavedFile;
     FCurLine := SavedLine;
     FCurProc := SavedProc;
+    FModBlocks := SavedBlocks;
   end;
 end;
 
