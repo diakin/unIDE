@@ -3645,6 +3645,27 @@ begin
         AToks[FirstIdx].Pre := 'ByVal Cast(Any Ptr, ' + AToks[FirstIdx].Pre;
         AToks[LastIdx].Post := AToks[LastIdx].Post + ')';
       end;
+    end
+    // То же с BYVAL в вызове: CreateFile(..., ByVal 0&, ...) в RQdebugger.
+    // В 32 бит fbc принимает "ByVal 0&" как адрес, в 64 бит - нет (error
+    // 58: LONG не адрес): ByVal Cast(Any Ptr, 0&)
+    else if (FirstIdx >= 0) and IsWord(AToks, FirstIdx, 'BYVAL') and
+            (NextSig(AToks, FirstIdx + 1, LastIdx) >= 0) and
+            ExprIsNumber(AToks, NextSig(AToks, FirstIdx + 1, LastIdx), LastIdx) then
+    begin
+      if ParamKind = 'O' then
+      begin
+        AToks[NextSig(AToks, FirstIdx + 1, LastIdx)].Pre := 'Cast(Any Ptr, ' +
+          AToks[NextSig(AToks, FirstIdx + 1, LastIdx)].Pre;
+        AToks[LastIdx].Post := AToks[LastIdx].Post + ')';
+      end
+      else if ParamKind = 'S' then
+      begin
+        AToks[FirstIdx].OutText := '';
+        AToks[NextSig(AToks, FirstIdx + 1, LastIdx)].Pre := 'Cast(ZString Ptr, ' +
+          AToks[NextSig(AToks, FirstIdx + 1, LastIdx)].Pre;
+        AToks[LastIdx].Post := AToks[LastIdx].Post + ')';
+      end;
     end;
     ArgStart := ArgEnd + 2;
   end;
@@ -4679,6 +4700,18 @@ begin
     // у FreeBASIC строку переменной длины нельзя инициализировать в Dim
     if (InitText <> '') and (RqType = 'STRING') and not IsArray then
       Extra := Extra + ' : ' + VarRec.FbName + InitText
+    // DEFINT lpCallBack_4 = CODEPTR(MasterCallBack_4) (NewWndProc.Inc,
+    // CallBack_N.Inc): адрес процедуры - Integer (размер указателя) и
+    // присваивание отдельным оператором. "Dim Shared x As Long =
+    // Cast(Integer, @Proc)" fbc 64 бит отвергает (error 11, Expected
+    // constant): адрес в LONG не помещается
+    else if (InitText <> '') and not IsArray and
+            (IsWord(AToks, NextSig(AToks, TokIdx + 1, ItemEnd), 'CODEPTR') or
+             IsWord(AToks, NextSig(AToks, TokIdx + 1, ItemEnd), 'CALLBACK')) then
+    begin
+      ItemText := VarRec.FbName + ' As Integer';
+      Extra := Extra + ' : ' + VarRec.FbName + InitText;
+    end
     else
       ItemText := ItemText + InitText;
     if Items <> '' then
