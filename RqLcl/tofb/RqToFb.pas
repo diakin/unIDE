@@ -3278,7 +3278,9 @@ end;
 //   параметр - число ByVal (LONG, адрес), а передана строка - адрес её
 //     символов: переменная - RqVarPtr(@s), выражение - RqStrTmpAddr(...);
 //   параметр STRING (ZString Ptr), а передано число (адрес, 0&) -
-//     Cast(ZString Ptr, число).
+//     Cast(ZString Ptr, число);
+//   параметр - число ByVal, а передана запись (TYPE без EXTENDS) -
+//     Cast(Integer, @запись).
 // Остальные аргументы - как есть.
 procedure TRqFbConv.WrapLibArgs(var AToks: TToks; AFrom, ATo: Integer;
                                 AProc: TRqProc);
@@ -3313,7 +3315,16 @@ begin
     if (FirstIdx >= 0) and (LastIdx >= FirstIdx) and
        not IsWord(AToks, FirstIdx, 'BYVAL') then
     begin
-      if (ParamKind = 'N') and ExprIsString(AToks, FirstIdx, LastIdx) then
+      // Запись (TYPE без EXTENDS) в параметр-число: адрес записи, как в
+      // MEMCPY (MemRecordArgs). ConvertToTruePath.inc: SHGetFileInfo(...,
+      // SFI, SizeOf(SFI), ...) при ByVal psfi As Long - функция заполняет
+      // SFI, программа читает SFI.szDisplayName
+      if (ParamKind = 'N') and ArgIsRecord(AToks, FirstIdx, LastIdx) then
+      begin
+        AToks[FirstIdx].Pre := 'Cast(Integer, @' + AToks[FirstIdx].Pre;
+        AToks[LastIdx].Post := AToks[LastIdx].Post + ')';
+      end
+      else if (ParamKind = 'N') and ExprIsString(AToks, FirstIdx, LastIdx) then
       begin
         if IsStrVarRef(AToks, FirstIdx, LastIdx) then
           AToks[FirstIdx].Pre := 'RqVarPtr(@' + AToks[FirstIdx].Pre
