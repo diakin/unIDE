@@ -58,6 +58,7 @@
 - `CASE = x` → `CASE x`; `CASE > x` и другие сравнения — ошибка перевода (в RapidQ это не сравнение, см. RAPIDQ_RULES.md).
 - `PRIVATE` / `PUBLIC` перед CONST, TYPE, DECLARE, SUB, FUNCTION, DIM убираются (`Private Type POINTAPI`, `Private Declare Function …` в Form.inc).
 - `CONST Имя = …`, когда `Имя` уже заменено `$DEFINE` числом (`$define False 0` … `CONST False = 0`), пропускается, как это молча делает RapidQ; при другом значении — предупреждение.
+- `CONST Имя$ = …` со строкой, где есть `CHR$(0)` (QFILEDIALOG.INC: `CONST fdStrTerm$ = CHR$(0) + CHR$(0)`), — переменная: `Dim Shared fdStrTerm__s As String : fdStrTerm__s = CHR$(0) + CHR$(0)` (в SUB — `Dim`). Константа-строка FreeBASIC хранится с завершающим нулём, нулевой символ в неё не помещается, и fbc даёт error 11 «Expected constant». Предупреждение называет переменную.
 - `TRUE`/`FALSE` — как в RapidQ, где это не слова языка: `$define True 1` из rapidq.inc подставляется как любой $DEFINE; `CONST True` — константа `TRUE_v`; без определения — неявная переменная `TRUE_v` (0) и предупреждение. Слово FreeBASIC `True` (-1) в переводе не появляется.
 - `Объект.Delete` → `Объект.Delete_v` (Delete — слово FreeBASIC; QIMAGELIST.Delete), `Image.Pixel(x, y) = c` → `Image.SetPixel(x, y, c)`.
 - `List.SubItem(i, j) = s` (QLISTVIEW) → `List.SetSubItem(i, j, s)`, как `Cell` у таблицы (`RqIndexedSetText`).

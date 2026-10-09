@@ -550,6 +550,7 @@ type
     procedure WrapLibArgs(var AToks: TToks; AFrom, ATo: Integer; AProc: TRqProc);
     function IsStrVarRef(const AToks: TToks; AFrom, ATo: Integer): Boolean;
     procedure ProcessIdent(var AToks: TToks; AIdx, ATo: Integer);
+    function  HasChrZero(const AToks: TToks; AFrom, ATo: Integer): Boolean;
     function  DottedImplicit(var AToks: TToks; AIdx, ADotIdx, ATo: Integer): Boolean;
     procedure ProcessAssignOrCall(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessDim(var AToks: TToks; AFrom, ATo: Integer);
@@ -4213,8 +4214,56 @@ begin
     Scope := FCurProc.Name;
   VarRec := DeclareVar(AToks[NameIdx].Text, RqType, Scope, False, True, True);
   AToks[NameIdx].OutText := VarRec.FbName;
+  // Строка с нулевым символом (QFILEDIALOG.INC: CONST fdStrTerm$ =
+  // CHR$(0) + CHR$(0)): константа FreeBASIC - строка с завершающим нулём,
+  // нулевой символ в ней не помещается, fbc: error 11 "Expected constant".
+  // Вместо неё - переменная с тем же значением, присваивание на месте
+  // CONST
+  if IsOp(AToks, EqIdx, '=') and (RqType = 'STRING') and
+     HasChrZero(AToks, EqIdx + 1, ATo) then
+  begin
+    if Scope = '' then
+      AToks[AFrom].OutText := 'Dim Shared'
+    else
+      AToks[AFrom].OutText := 'Dim';
+    AToks[NameIdx].Post := AToks[NameIdx].Post + ' As String : ' + VarRec.FbName;
+    WarnOnce('CZ|' + Scope + '|' + VarRec.Name, 'CONST ' + AToks[NameIdx].Text +
+      ': в строке есть CHR$(0) - в FreeBASIC это переменная ' + VarRec.FbName);
+  end;
   if EqIdx >= 0 then
     ProcessExpr(AToks, EqIdx + 1, ATo);
+end;
+
+// В выражении есть CHR$(0) / CHR(0) (ноль - числом: 0, 0&, &H0)
+function TRqFbConv.HasChrZero(const AToks: TToks; AFrom, ATo: Integer): Boolean;
+var
+  TokIdx, OpenIdx, ArgIdx, CloseIdx: Integer;
+  ArgText: string;
+begin
+  Result := False;
+  for TokIdx := AFrom to ATo do
+    if (AToks[TokIdx].Kind = tkIdent) and
+       ((AToks[TokIdx].Up = 'CHR$') or (AToks[TokIdx].Up = 'CHR')) then
+    begin
+      OpenIdx := NextSig(AToks, TokIdx + 1, ATo);
+      if not IsOp(AToks, OpenIdx, '(') then
+        Continue;
+      ArgIdx := NextSig(AToks, OpenIdx + 1, ATo);
+      CloseIdx := NextSig(AToks, ArgIdx + 1, ATo);
+      if (ArgIdx < 0) or (AToks[ArgIdx].Kind <> tkNumber) or
+         not IsOp(AToks, CloseIdx, ')') then
+        Continue;
+      ArgText := UpperCase(AToks[ArgIdx].Text);
+      while (ArgText <> '') and (ArgText[Length(ArgText)] in ['&', '%', '!', '#']) do
+        Delete(ArgText, Length(ArgText), 1);
+      if Copy(ArgText, 1, 2) = '&H' then
+        ArgText := '$' + Copy(ArgText, 3, MaxInt);
+      if StrToIntDef(ArgText, -1) = 0 then
+      begin
+        Result := True;
+        Exit;
+      end;
+    end;
 end;
 
 // Параметры (текст FreeBASIC): [BYREF|BYVAL] имя[суффикс][()] [AS тип]
