@@ -348,6 +348,8 @@ type
     // DECLARE ... LIB библиотеки без библиотеки импорта FreeBASIC (своя
     // DLL программы): указатель Dim Shared, адрес - RqDllProc при запуске
     DynLib: Boolean;
+    // Есть обращение (вызов, адрес, обработчик события) - MissingBodies
+    Used: Boolean;
     // FUNCTION читает RESULT (result = result & ...): значение функции
     // FreeBASIC прочитать нельзя, оно ведётся в локальной rq_result
     ResultRead: Boolean;
@@ -641,6 +643,7 @@ type
     function ProcessFile(const AFileName: string; AIsMain: Boolean): string;
     procedure Report(const AFile: string);
     function MainHeader: string;
+    function MissingBodies: string;
     procedure HoistLine(const AToks: TToks; AFirstIdx: Integer;
                         const ASource: string; var AOut: string);
     procedure EndOfPass1;
@@ -3998,6 +4001,7 @@ begin
   ProcRec := FindProc(Up);
   if ProcRec <> nil then
   begin
+    ProcRec.Used := True;
     AToks[AIdx].OutText := ProcRec.FbName;
     GlobalQualify(AToks, AIdx);
     // Функция своей DLL - указатель: без скобок это был бы адрес, а не
@@ -4191,6 +4195,7 @@ begin
       ProcRec := FindProc(AToks[FirstIdx].Up);
       if ProcRec <> nil then
       begin
+        ProcRec.Used := True;
         AToks[FirstIdx].OutText := ProcRec.FbName;
         GlobalQualify(AToks, FirstIdx);
       end
@@ -4293,6 +4298,7 @@ begin
       ProcRec := FindProc(AToks[RhsFirst].Up);
       if ProcRec <> nil then
       begin
+        ProcRec.Used := True;
         ProcessExpr(AToks, FirstIdx, EqIdx - 1);
         AToks[RhsFirst].OutText := '@' + ProcRec.FbName;
         Exit;
@@ -5235,6 +5241,8 @@ begin
     Exit;
   end;
   ProcRec := FindProc(AToks[NameIdx].Up);
+  if ProcRec <> nil then
+    ProcRec.Used := True;
   if ProcRec = nil then
   begin
     Error('BIND ... TO ' + AToks[NameIdx].Text + ': нет такой SUB или FUNCTION');
@@ -5407,6 +5415,10 @@ begin
       RetType := ParseType(AToks, TypeIdx, ATo, StarLen);
   end;
   ProcRec.RetType := RetType;
+  if (FPass = 2) and (LibText = '') and not ProcRec.HasBody and ProcRec.Used then
+    WarnOnce('NB|' + ProcRec.Name, AToks[KindIdx].Text + ' ' + AToks[NameIdx].Text +
+      ': объявлен (DECLARE), но тела в программе нет - в переводе пустое ' +
+      'тело (MissingBodies), вызов ничего не делает');
   ProcRec.DynLib := (LibText <> '') and not ProcRec.IsVariadic and
                     not IsImportLib(LibName);
   if ProcRec.DynLib then
@@ -7521,6 +7533,42 @@ end;
 // ---------------------------------------------------------------------------
 
 // Заголовок главного файла: режим, рантайм, неявные переменные модуля
+// SUB/FUNCTION, объявленные DECLARE (не LIB), без тела нигде в программе,
+// но с обращением (вызов, обработчик события; без обращений fbc тело не
+// нужно) (RQdebugger: DECLARE SUB ComError, PortOpen, PortClosed,
+// StringWritten, StringRead - назначены событиями MyPort, тел нет). RapidQ
+// такое компилирует, у FreeBASIC - undefined reference при сборке. Здесь -
+// пустые тела в конце главного файла (FUNCTION возвращает 0 / ""),
+// предупреждение - в ProcessDeclare.
+function TRqFbConv.MissingBodies: string;
+var
+  ProcIdx: Integer;
+  ProcRec: TRqProc;
+begin
+  Result := '';
+  for ProcIdx := 0 to FProcs.Count - 1 do
+  begin
+    ProcRec := TRqProc(FProcs.Objects[ProcIdx]);
+    if not ProcRec.Declared or ProcRec.HasBody or not ProcRec.Used then
+      Continue;
+    if Result = '' then
+      Result := ''' Объявлены DECLARE, тела в программе нет - пустые (RqToFb)' + CrLf;
+    if ProcRec.IsFunc then
+    begin
+      Result := Result + 'Function ' + ProcRec.FbName + '(' + ProcRec.DeclParams +
+                ') As ' + FbType(ProcRec.RetType) + CrLf;
+      if UpperCase(ProcRec.RetType) = 'STRING' then
+        Result := Result + '    Function = ""' + CrLf
+      else if IsNumericType(ProcRec.RetType) then
+        Result := Result + '    Function = 0' + CrLf;
+      Result := Result + 'End Function' + CrLf;
+    end
+    else
+      Result := Result + 'Sub ' + ProcRec.FbName + '(' + ProcRec.DeclParams + ')' +
+                CrLf + 'End Sub' + CrLf;
+  end;
+end;
+
 function TRqFbConv.MainHeader: string;
 var
   VarIdx: Integer;
@@ -7718,7 +7766,10 @@ begin
     if FPass = 2 then
     begin
       if AIsMain then
-        OutLines.Insert(0, MainHeader + '#line 0 "' + AFileName + '"')
+      begin
+        OutLines.Insert(0, MainHeader + '#line 0 "' + AFileName + '"');
+        OutLines.Add(MissingBodies);
+      end
       else
         OutLines.Insert(0, '#line 0 "' + AFileName + '"');
       try
