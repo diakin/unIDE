@@ -433,6 +433,10 @@ var
   IconStream: TMemoryStream;
 begin
   edTitle.Text := FOldTitle;
+  // Title в .dpr не задан - по имени .dpr; по OK он запишется в .dpr
+  // (отличается от FOldTitle)
+  if (FOldTitle = '') and FHasApp then
+    edTitle.Text := ChangeFileExt(ExtractFileName(FDpr), '');
   edHelpFile.Text := FOldHelpFile;
   FNewIconFile := '';
   imgIcon.Picture := nil;
