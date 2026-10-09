@@ -129,6 +129,8 @@ Function RqStr Overload (ByVal Value As Double) As String   ' число -> ""
 - Препроцессор: в FreeBASIC SUB/FUNCTION программы — обычная процедура stdcall с параметрами ByVal, её адрес Windows принимает как есть. Поэтому `CODEPTR(Имя)` → `Cast(Integer, @Имя)`, `BIND v TO Имя` → `v = Cast(Integer, @Имя)` (у процедуры только с DECLARE — шаблон без оператора), `CALLFUNC(v, a, b)` → `Cast(Function(параметры Имя) As тип, Cast(Integer, v))(a, b)`. Тела `SetNewWndProc` (→ `RqSetWndProc`: SetWindowLong(окно, GWL_WNDPROC, адрес)), `SetNewCallBack_0…8` и `SetNewFwToCallBack` (→ возвращают сам адрес) заменяются, переходник не строится. Адреса хранятся в переменных LONG, как в RapidQ, поэтому это работает в 32-битной программе; в 64 бит адрес в LONG не помещается (fbc не собирает `Dim Shared lp As Long = Cast(Integer, @Proc)`).
 - Метод своего компонента (`BIND This.BindIndex TO This.WindowProc`, `CODEPTR(This.EnumChild)` в rapidq2.inc) — ошибка перевода: у метода FreeBASIC есть скрытый параметр This, Windows его не передаст.
 
+- Подробное описание приёма NewWndProc.Inc / CallBack_N.Inc, его ограничений и того, что делает перевод, — страница `rapidq_ref/html_doc/unide_callbacks.html` (Appendix E).
+
 ## Параметры
 
 - По умолчанию RapidQ передаёт по значению (документация, `$OPTION BYREF`). В FreeBASIC `-lang fb` строки по умолчанию передаются по ссылке (проверено) — препроцессор ставит `ByVal` явно.

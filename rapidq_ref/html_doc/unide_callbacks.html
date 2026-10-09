@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>Window procedures and callbacks</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; unIDE</span><span class="rq-section">Appendix E: window procedures and callbacks</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>Window procedures and callbacks: rc.exe and the FreeBASIC build</h1>
+<p class="rq-meta">Rapid-Q side: <a href="chapter11.html">chapter 11</a>, <code>inc/NewWndProc.Inc</code>, <code>inc/CallBack_0.Inc</code> &hellip; <code>CallBack_8.Inc</code>, <code>inc/CallBackForwarder.Inc</code>, <code>inc/rapidq2.inc</code>. FreeBASIC side (unIDE, RqToFb): <code>RqLcl/tofb/RqToFb.pas</code>, <code>RqLcl/inc/rqrt.bi</code> (<code>RqSetWndProc</code>), <code>RqLcl/dll/rqlclwnd.pas</code> (event WndProc), rules in <code>RqLcl/RAPIDQ_RULES.md</code>, &laquo;Function pointers&raquo;.</p>
+
+<a name="1"></a><h2>1. What Rapid-Q offers</h2>
+<ul>
+<li><b>BIND</b> <code>variable TO procedure</code> stores in a numeric variable a value for the procedure and binds the number of its parameters (the template). <b>CALLFUNC</b> <code>(variable, arguments)</code> calls it. A function pointer cannot be passed as an argument (chapter 11).</li>
+<li><b>CODEPTR</b> <code>(procedure)</code> (also <code>CALLBACK</code>) gives an address &laquo;for CALLBACK procedures&raquo;. The documentation adds: &laquo;Not all cases are implemented, results may vary depending on the CALLBACK and the type of parameters it receives&raquo;. Nothing more is said about the limit.</li>
+<li>The event <b>WndProc</b> <code>SUB (Hwnd%, Msg%, wParam%, lParam%)</code> exists only for <a href="qform.html">QFORM</a>, <a href="qedit.html">QEDIT</a>, <a href="qlabel.html">QLABEL</a> and <a href="qlistbox.html">QLISTBOX</a>. For QFORM the documentation says: &laquo;Only one WndProc per Form is allowed. So if you have multiple forms, only one may be able to receive messages at a time. (Future consideration to correct this)&raquo;. In RQdebugger and its include files <code>WndProc =</code> occurs only in lines that are commented out.</li>
+</ul>
+<p>So a program that wants to see the messages of another control (WM_PAINT of a QRICHEDIT, keys of a QSTRINGGRID) or of several forms has to give Windows a window procedure of its own with SetWindowLong(hWnd, GWL_WNDPROC, address) &mdash; and Rapid-Q does not give it a reliable address of a procedure for that.</p>
+
+<a name="2"></a><h2>2. The trick in NewWndProc.Inc and CallBack_N.Inc</h2>
+<p>The include files of the user (authors in the files: Jacques, JohnK, Paul, Warriant; 2005&ndash;2006) work around it with machine code built at run time:</p>
+<ol>
+<li>For each number of parameters there is one <i>master</i> function, for example <code>MasterCallBack_4 (hFunction, Arg1, Arg2, Arg3, Arg4)</code>. Its address is taken once with CODEPTR: <code>DefInt lpCallBack_4 = CodePtr(MasterCallBack_4)</code>. Inside, it binds a variable to the template <code>FuncBind_4</code>, assigns <code>hFunction</code> to it and calls <code>CALLFUNC(hBind, Arg1, Arg2, Arg3, Arg4)</code> &mdash; that is, the procedure of the program.</li>
+<li>For each window (each callback) the program allocates 14 bytes on the process heap (<code>HeapAlloc</code>) and writes x86 code into them through a QMEMORYSTREAM and MEMCPY:
+<pre>58                 pop  eax          ; return address
+68 xx xx xx xx     push hFunction    ; the procedure bound with BIND
+50                 push eax          ; return address back
+B8 xx xx xx xx     mov  eax, lpCallBack_4
+FF E0              jmp  eax</pre>
+When Windows calls this piece of code with (hWnd, uMsg, wParam, lParam), the master function receives one more first argument &mdash; <code>hFunction</code> &mdash; and passes the four others on to the procedure of the program.</li>
+<li><code>SetNewWndProc(ObjectHandle, hFunction)</code> (NewWndProc.Inc) builds such a forwarder and gives it to <code>SetWindowLong(hWnd, -4, forwarder)</code>; the result is the old window procedure, which the new one calls with CallWindowProc. <code>SetNewCallBack_N(hFunction)</code> and <code>SetNewFwToCallBack(ForwardTo, hFunction)</code> return the forwarder for other callbacks (SetTimer, EnumChildWindows, ...).</li>
+</ol>
+<p>Use in RQdebugger:</p>
+<pre>DefInt iTmpBind
+Bind iTmpBind To RichEditWndProc
+OldRichEditWndProc = SetNewWndProc (SrcEdit.Handle, iTmpBind)
+...
+FUNCTION RichEditWndProc (hWnd AS LONG, uMsg AS LONG, wParam AS LONG, lParam AS LONG) AS LONG
+  if NoPaint=1 and uMsg=WM_PAINT then exit function
+  Result = CallWindowProc(OldRichEditWndProc, hWnd, uMsg, wParam, lParam)
+END FUNCTION</pre>
+
+<a name="3"></a><h2>3. The limits of the trick</h2>
+<ul>
+<li><b>CODEPTR itself.</b> The trick exists because CODEPTR does not give a usable address in every case; only one CODEPTR per number of parameters is taken, for the master function. The comments of the include files point at the problem without describing it: &laquo;If you use threading you cannot include another CodePtr(SUB), address is used up&raquo; (QProgress.inc), &laquo;correct codeptr bug by redirecting window messaging&raquo; (rapidq2.inc), &laquo;Win9x bug&raquo; solved by a rewritten forwarder (CallBack_4.Inc). What exactly the limit is, was not found out.</li>
+<li><b>Fixed numbers of parameters.</b> A separate include and master function for 0 &hellip; 8 parameters (CallBack_0 &hellip; CallBack_8).</li>
+<li><b>Machine code in data memory.</b> The forwarder lies in memory from HeapAlloc. Windows with Data Execution Prevention for the program may refuse to execute such memory; whether it happens on the user's computers was not checked.</li>
+<li><b>32-bit x86 only</b>, and the 14 bytes per window are never freed.</li>
+<li><b>Methods of own components</b> are also used this way in rapidq2.inc (<code>BIND This.BindIndex TO This.WindowProc</code>, <code>CODEPTR(This.EnumChild)</code>).</li>
+</ul>
+
+<a name="4"></a><h2>4. What the FreeBASIC build does instead</h2>
+<p>In FreeBASIC a SUB or FUNCTION of the translated program is compiled to native code with the stdcall convention and parameters by value, which is what Windows expects from a window procedure or a callback. Its address can be given to Windows as is. RqToFb therefore translates (since commit ede0410):</p>
+<table class="rq-ref">
+<tr><th>Rapid-Q</th><th>FreeBASIC</th></tr>
+<tr><td class="rq-name">CODEPTR(Proc), CALLBACK(Proc)</td><td><code>Cast(Integer, @Proc)</code></td></tr>
+<tr><td class="rq-name">BIND v TO Proc</td><td><code>v = Cast(Integer, @Proc)</code>, and the template of <code>v</code> is remembered (collected in the first pass, so CALLFUNC may stand before BIND in the text)</td></tr>
+<tr><td class="rq-name">CALLFUNC(v, a, b)</td><td><code>Cast(Function(parameters of Proc) As type, Cast(Integer, v))(a, b)</code> &mdash; a direct call through a typed pointer</td></tr>
+<tr><td class="rq-name">SetNewWndProc (NewWndProc.Inc)</td><td>body replaced by <code>RqSetWndProc</code>: SetWindowLongA (SetWindowLongPtrA in 64 bit) with the address itself; the x86 code is not built (the old body stays in the output as a comment)</td></tr>
+<tr><td class="rq-name">SetNewCallBack_0 &hellip; 8, SetNewFwToCallBack</td><td>return the address itself</td></tr>
+<tr><td class="rq-name">Object.WndProc = Proc</td><td>the event WndProc of QFORM, QEDIT, QLISTBOX, QLABEL in RqLcl: the window procedure of the control is subclassed in the DLL, the handler gets every message before LCL, including WM_COPYDATA and WM_USER+ messages</td></tr>
+</table>
+<p>The program text stays as it is: in RQdebugger the lines with <code>$INCLUDE "NewWndProc.inc"</code>, <code>Bind iTmpBind To RichEditWndProc</code> and <code>SetNewWndProc(SrcEdit.Handle, iTmpBind)</code> are translated and compiled without changes to the source (the rich edit and two grids are subclassed this way).</p>
+<p>What this removes:</p>
+<ul>
+<li>no machine code at run time, no HeapAlloc, nothing that DEP could refuse;</li>
+<li>any number of window procedures and callbacks, with any number of parameters &mdash; no master function per parameter count;</li>
+<li>no CODEPTR limit: every procedure has its own real address;</li>
+<li>a window procedure of QFORM, QEDIT, QLISTBOX, QLABEL can be given without any API call, with <code>Object.WndProc = Proc</code>; RqLcl subclasses each window separately, so every form has its own (several forms at once were not tested).</li>
+</ul>
+<p>Checked with the tests (Wine, fbc 1.10.1, 32 bit): <code>tests/funcptr.bas</code> &mdash; the examples of chapter 11 (BIND/CALLFUNC as statement and function, arrays of pointers, the template from 11.4), CODEPTR in SetWindowLong (500 messages through the new window procedure with CallWindowProc) and in EnumChildWindows, a list subclassed exactly as in RQdebugger through NewWndProc.Inc, SetNewCallBack_4 for SetTimer; <code>tests/wndproc.bas</code> &mdash; the WndProc event of QFORM, QEDIT, QLISTBOX, QLABEL, also after the form window is recreated by LCL.</p>
+
+<a name="5"></a><h2>5. What is still limited</h2>
+<ul>
+<li><b>64 bit.</b> Rapid-Q programs keep addresses in LONG variables. In a 64-bit program an address does not fit in LONG (fbc refuses <code>Dim Shared lp As Long = Cast(Integer, @Proc)</code>), so BIND, CODEPTR and SetNewWndProc work in the 32-bit build only.</li>
+<li><b>Methods of own components</b> in BIND and CODEPTR (rapidq2.inc, RapidFRM.inc) are a translation error: a method of a FreeBASIC Type has a hidden parameter This, which Windows does not pass.</li>
+<li>The procedure must have the parameters Windows passes (for a window procedure four LONG values). In Rapid-Q only their number mattered for the template.</li>
+</ul>
+
+<a name="6"></a><h2>6. Later: syntax extensions for the FreeBASIC build</h2>
+<p>The FreeBASIC build can understand more than rc.exe. Extensions of the Rapid-Q syntax that use what FreeBASIC has are possible; none of them is made yet, and each needs a decision. Such a source would no longer compile with rc.exe, so an extension would be switched on per file, for example with a comment line like the existing <code>'$RQFB SMART</code> (rc.exe skips comments). Candidates:</p>
+<ul>
+<li><b>An address type</b> (for example <code>AS PTRINT</code>, an integer of pointer size) for BIND, CODEPTR, VARPTR, Mem.Pointer and handles, so that the same program also builds in 64 bit.</li>
+<li><b>Methods as callbacks</b> through a generated forwarder procedure (as is already done for event handlers of own components), so that <code>CODEPTR(This.EnumChild)</code> becomes possible.</li>
+<li><b>Function pointers as parameters</b> and typed procedure variables (<code>AS SUB (LONG, LONG)</code>), which chapter 11 says Rapid-Q cannot do.</li>
+<li><b>Calling convention</b> on DECLARE SUB/FUNCTION (CDECL for C callbacks such as qsort).</li>
+<li><b>FreeBASIC headers</b> (<code>#include "windows.bi"</code>) instead of hand-written DECLARE ... LIB, and a block of FreeBASIC code passed through unchanged.</li>
+<li><b>Language features</b>: optional parameters with default values, overloading, threads (ThreadCreate, MutexCreate), WSTRING.</li>
+</ul>
+
+<div class="rq-foot"><a href="contents.html#appe">Appendix E</a><a href="chapter11.html">Chapter 11</a><a href="contents.html">Contents</a><a href="indexa.html">Alphabetic index</a></div>
+</body>
+</html>
