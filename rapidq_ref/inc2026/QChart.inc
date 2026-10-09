@@ -1117,8 +1117,8 @@ PRIVATE:
             TicVal = 10^(i + .YAxis.Min)
           END IF
           .AxisLbl.Text =  FORMAT$("%-4.4g",TicVal)
-          .AxisLbl.Top = .YAxis.Ori - .YAxis.TicIntvl * i_
-                         - .Buffer.TextHeight(.AxisLbl.Text) / 2
+          .AxisLbl.Top = .YAxis.Ori - .YAxis.TicIntvl * i _
+                         - .Buffer.TextHeight(.AxisLbl.Text) / 2 ' inc2026: пробел перед _ строкой выше (было i_ - знак переноса слит с именем, в документации перенос через " _")
           .AxisLbl.Left = .XAxis.Ori - .Buffer.TextWidth(RTRIM$(.AxisLbl.Text))-_
                           .Buffer.TextWidth("8")
           .Buffer.TextOut (.AxisLbl.Left, .AxisLbl.Top,RTRIM$(.AxisLbl.Text),_
@@ -2022,8 +2022,8 @@ SUB DrawReal (Overlay AS INTEGER)
                        .Buffer.Font.COLOR, .bgColor)
 
       .AxisLbl.Text = .LabelList.Item(1)
-      .AxisLbl.Left = .XAxis.Ori + .XAxis.Len_
-                       - .Buffer.TextWidth(RTRIM$(.AxisLbl.Text)) / 2
+      .AxisLbl.Left = .XAxis.Ori + .XAxis.Len _
+                       - .Buffer.TextWidth(RTRIM$(.AxisLbl.Text)) / 2 ' inc2026: пробел перед _ строкой выше (было .Len_ - знак переноса слит с именем, в документации перенос через " _")
       .AxisLbl.Top = .YAxis.Ori + .Buffer.TextHeight(.AxisLbl.Text) / 2
       .Buffer.TextOut (.AxisLbl.Left, .AxisLbl.Top,RTRIM$(.AxisLbl.Text),_
                        .Buffer.Font.COLOR, .bgColor)
@@ -2146,8 +2146,8 @@ PUBLIC:
                                                           'Set page size
       Page.Top = Margin
       Page.Left = Margin
-      Page.Right = .Left + PRINTER.PageWidth - (Margin * 2)
-      Page.Bottom = .Top + PRINTER.PageHeight - (Margin * 2)
+      Page.Right = Page.Left + PRINTER.PageWidth - (Margin * 2) ' inc2026: Page.Left вместо .Left (это QCHART.Left - положение компонента на форме): правый край страницы от её левого поля, как Source.Right = Source.Left + ... ниже
+      Page.Bottom = Page.Top + PRINTER.PageHeight - (Margin * 2) ' inc2026: Page.Top вместо .Top (QCHART.Top) - так же, как строкой выше
 
       Source.Top = 0                                      'Set source size
       Source.Left = 0

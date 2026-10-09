@@ -6,7 +6,13 @@
 '$typecheck on
 
 declare sub OnChangePos (a as single)
-defstr BmpPath ="C:\BAS\RAPIDQ\inc\"
+defstr BmpPath ="C:\BAS\RAPIDQ\inc\"   ' inc2026: в компоненте больше не используется (картинки - ресурсы PosicL_*); оставлена на случай, если её использует программа
+$RESOURCE PosicL_reset AS "QPosicL\reset.bmp"     ' inc2026: ресурсы вместо загрузки файлов из C:\BAS\RAPIDQ\inc\ во время работы
+$RESOURCE PosicL_Undo1 AS "QPosicL\Undo1.bmp"
+$RESOURCE PosicL_Redo1 AS "QPosicL\Redo1.bmp"
+$RESOURCE PosicL_AllUp AS "QPosicL\AllUp.bmp"
+$RESOURCE PosicL_AllDn AS "QPosicL\AllDn.bmp"
+$RESOURCE PosicL_MaxFast AS "QPosicL\MaxFast.bmp"
 
 type QPosicL extends qpanel
 
@@ -78,14 +84,14 @@ OnChange AS EVENT (OnChangePos)
         .btn.width=.height/3+2
         .btn.height=.height/3+1
         .btn.color=&H0070FF
-        .btn.BMP  ="MaxFast.bmp"'' BmpPath+"reset.bmp"
+        .btn.BMPHandle = PosicL_MaxFast'' BmpPath+"reset.bmp" | inc2026: ресурс PosicL_MaxFast вместо файла "MaxFast.bmp" из текущей папки
 
         .btnUndo.top=0
         .btnUndo.left=0
         .btnUndo.width=.height/3
         .btnUndo.height=.height/3
         .btnUndo.color=&H0070FF
-        .btnUndo.BMP  =BmpPath+ "Undo1.bmp"
+        .btnUndo.BMPHandle = PosicL_Undo1   ' inc2026: картинка из ресурса (путь от папки inc2026) вместо файла BmpPath+"Undo1.bmp"
         .btnUndo.Tag=101
 
         .btnRedo.top=.height/3*2+1
@@ -93,7 +99,7 @@ OnChange AS EVENT (OnChangePos)
         .btnRedo.width=.height/3-1
         .btnRedo.height=.height/3
         .btnRedo.color=&H0070FF
-        .btnRedo.BMP  =BmpPath+ "Redo1.bmp"
+        .btnRedo.BMPHandle = PosicL_Redo1   ' inc2026: картинка из ресурса (путь от папки inc2026) вместо файла BmpPath+"Redo1.bmp"
         .btnRedo.Tag=102
 
         .btnAllUp.top=0
@@ -101,7 +107,7 @@ OnChange AS EVENT (OnChangePos)
         .btnAllUp.width=.height/3-1
         .btnAllUp.height=.height/3
         .btnAllUp.color=&H0070FF
-        .btnAllUp.BMP  =BmpPath+ "AllUp.bmp"
+        .btnAllUp.BMPHandle = PosicL_AllUp   ' inc2026: картинка из ресурса (путь от папки inc2026) вместо файла BmpPath+"AllUp.bmp"
         .btnAllUp.Spacing=0
         .btnAllUp.Tag=103
 
@@ -110,7 +116,7 @@ OnChange AS EVENT (OnChangePos)
         .btnAllDn.width=.height/3
         .btnAllDn.height=.height/3
         .btnAllDn.color=&H0070FF
-        .btnAllDn.BMP  =BmpPath+ "AllDn.bmp"
+        .btnAllDn.BMPHandle = PosicL_AllDn   ' inc2026: картинка из ресурса (путь от папки inc2026) вместо файла BmpPath+"AllDn.bmp"
         .btnAllDn.Tag=104
  
         end with
@@ -199,14 +205,14 @@ if .supress=0 then CALLFUNC(.OnChange,1)
         btn.width=QposicL.height/3+1
         btn.height=QposicL.height/3+1
         btn.color=&H0070FF
-        btn.BMP  =BmpPath+ "reset.bmp"
+        btn.BMPHandle = PosicL_reset   ' inc2026: картинка из ресурса (путь от папки inc2026) вместо файла BmpPath+"reset.bmp"
 
         btnUndo.top=0
         btnUndo.left=0
         btnUndo.width=QposicL.height/3
         btnUndo.height=QposicL.height/3
         btnUndo.color=&H0070FF
-        btnUndo.BMP  =BmpPath+ "Undo1.bmp"
+        btnUndo.BMPHandle = PosicL_Undo1   ' inc2026: картинка из ресурса (путь от папки inc2026) вместо файла BmpPath+"Undo1.bmp"
         btnUndo.Tag=101
 
         btnRedo.top=QposicL.height/3*2+1
@@ -214,7 +220,7 @@ if .supress=0 then CALLFUNC(.OnChange,1)
         btnRedo.width=QposicL.height/3-1
         btnRedo.height=QposicL.height/3
         btnRedo.color=&H0070FF
-        btnRedo.BMP  =BmpPath+ "Redo1.bmp"
+        btnRedo.BMPHandle = PosicL_Redo1   ' inc2026: картинка из ресурса (путь от папки inc2026) вместо файла BmpPath+"Redo1.bmp"
         btnRedo.Tag=102
 
         btnAllUp.top=0
@@ -222,7 +228,7 @@ if .supress=0 then CALLFUNC(.OnChange,1)
         btnAllUp.width=QposicL.height/3-1
         btnAllUp.height=QposicL.height/3
         btnAllUp.color=&H0070FF
-        btnAllUp.BMP  =BmpPath+ "AllUp.bmp"
+        btnAllUp.BMPHandle = PosicL_AllUp   ' inc2026: картинка из ресурса (путь от папки inc2026) вместо файла BmpPath+"AllUp.bmp"
         btnAllUp.Spacing=0
         btnAllUp.Tag=103
 
@@ -231,7 +237,7 @@ if .supress=0 then CALLFUNC(.OnChange,1)
         btnAllDn.width=QposicL.height/3
         btnAllDn.height=QposicL.height/3
         btnAllDn.color=&H0070FF
-        btnAllDn.BMP  =BmpPath+ "AllDn.bmp"
+        btnAllDn.BMPHandle = PosicL_AllDn   ' inc2026: картинка из ресурса (путь от папки inc2026) вместо файла BmpPath+"AllDn.bmp"
         btnAllDn.Tag=104
 
         bevelouter=1

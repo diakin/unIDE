@@ -2569,7 +2569,7 @@ TYPE QFormEx EXTENDS QFORM
   ' pick one of multiple tray icons
   '============================================
   SUB SetTrayIconIndex(TheIndex AS INTEGER)
-    IF TheIndex < = .TrayICO.Count THEN
+    IF TheIndex <= .TrayICO.Count THEN   ' inc2026: '< =' с пробелом -> документированный оператор '<='
         .Virtual.Icon = .TrayICO.GetICO(TheIndex - 1)    'need this to transfer right format
         .TrayIcon.hIcon = .Virtual.Icon                  'virtual is not shown, so use as temp storage
      IF QFormEx.flagTrayIcon THEN QFormEx.ModifyTrayIcon
@@ -5339,7 +5339,7 @@ PUBLIC:
        udtCommTimeOuts.ReadTotalTimeoutMultiplier  = 0
        udtCommTimeOuts.ReadTotalTimeoutConstant    = 1000
        udtCommTimeOuts.WriteTotalTimeoutMultiplier = 0
-       udtCommTimeOuts.WriteTotalTimeoutMultiplier = 1000
+       udtCommTimeOuts.WriteTotalTimeoutConstant = 1000   ' inc2026: было второе WriteTotalTimeoutMultiplier = 1000 (затирало 0 строкой выше); по образцу Read...Multiplier/Constant - Constant
 
 
        lngStatus = SetCommTimeouts(ComPort.Handle,_
@@ -5729,7 +5729,7 @@ WITH QmenuEx
 
     FUNCTION Close () AS LONG
         RESULT = SetWindowLong(QMenuEx.hWnd, GWL_WNDPROC, QMenuEx.pOldProc)
-    END SUB
+    END FUNCTION   ' inc2026: было END SUB у FUNCTION Close
 
     PROPERTY SET Set_FontSize(NewSize AS WORD)
         DIM nHeight AS LONG
@@ -5975,7 +5975,7 @@ TYPE QFILEDIALOG EXTENDS QOBJECT
         MEMCPY(VARPTR(QfileDialog.tmpFileName), QfileDialog.OFN.lpstrFile, QfileDialog.OFN.nMaxFile) 'get string
         StrLenth = INSTR(QfileDialog.tmpFileName, fdStrTerm$)  'find null terminator
         .FileTitle = STRING$(.OFN.nMaxFileTitle, 32)    'allocate
-        MEMCPY(VARPTR(QfileDialog.FileTitle), QfileDialog.OFN.lpstrFileTitle, QfileDialog.OFN.nMaxFile)
+        MEMCPY(VARPTR(QfileDialog.FileTitle), QfileDialog.OFN.lpstrFileTitle, QfileDialog.OFN.nMaxFileTitle)   ' inc2026: nMaxFile -> nMaxFileTitle: FileTitle выделен по nMaxFileTitle (строка выше)
         .FileTitle = LEFT$(.FileTitle, (INSTR(.FileTitle, fdStrTerm$))-1)
     
       IF .MultiSelect THEN
@@ -7707,12 +7707,12 @@ TYPE QSYSTEM EXTENDS QOBJECT
      CASE "DIAL", "TELE"
       PID = Shell("rundll32.exe shell32.dll,Control_RunDLL telephon.cpl @0,"+str$(index), 5)
      CASE "SYST"
-      PID = Shell("rundll32.exe shell32.dll,Control_RunDLL sysdm.cpl @0"+str$(index), 5)
+      PID = Shell("rundll32.exe shell32.dll,Control_RunDLL sysdm.cpl @0,"+str$(index), 5)   ' inc2026: нет запятой перед номером вкладки ("@0"+index давало "@01"); у остальных апплетов - "@0,"+str$(index)
      CASE "ADD "
-      IF (UCASE$(LEFT$(PanelName, 12) = "ADD NEW HARD")) THEN
+      IF (UCASE$(LEFT$(PanelName, 12)) = "ADD NEW HARD") THEN   ' inc2026: скобка: UCASE$ применялся к результату сравнения, а не к LEFT$
        PID = Shell("rundll32.exe shell32.dll,Control_RunDLL sysdm.cpl @1", 5)
       END IF
-      IF (UCASE$(LEFT$(PanelName, 12) = "ADD OR REMOV")) THEN
+      IF (UCASE$(LEFT$(PanelName, 12)) = "ADD OR REMOV") THEN   ' inc2026: скобка: UCASE$ применялся к результату сравнения, а не к LEFT$
        PID = Shell("rundll32.exe shell32.dll,Control_RunDLL appwiz.cpl @0,"+str$(index), 5)
       END IF
      CASE "SCAN"

@@ -7,11 +7,11 @@
 
 declare sub OnChangePos (a as single)
 
-$RESOURCE reset AS "C:\_F\bas\rapidq\RQIDE\inc\reset.bmp"   'full path for using $RESOURCE  
-$RESOURCE Undo1 AS "C:\_F\bas\rapidq\RQIDE\inc\Undo1.bmp"   ' C:\_F\bas\rapidq\RQIDE\inc\reset.bmp 
-$RESOURCE Redo1 AS "C:\_F\bas\rapidq\RQIDE\inc\Redo1.bmp"   
-$RESOURCE AllUp AS "C:\_F\bas\rapidq\RQIDE\inc\AllUp.bmp"   
-$RESOURCE AllDn AS "C:\_F\bas\rapidq\RQIDE\inc\AllDn.bmp"   
+$RESOURCE reset AS "Qposic1\reset.bmp"   'full path for using $RESOURCE   | inc2026: путь от папки inc2026 вместо C:\_F\bas\rapidq\RQIDE\inc\reset.bmp
+$RESOURCE Undo1 AS "Qposic1\Undo1.bmp"   ' C:\_F\bas\rapidq\RQIDE\inc\reset.bmp  | inc2026: путь от папки inc2026 вместо C:\_F\bas\rapidq\RQIDE\inc\Undo1.bmp
+$RESOURCE Redo1 AS "Qposic1\Redo1.bmp"   ' inc2026: путь от папки inc2026 вместо C:\_F\bas\rapidq\RQIDE\inc\Redo1.bmp
+$RESOURCE AllUp AS "Qposic1\AllUp.bmp"   ' inc2026: путь от папки inc2026 вместо C:\_F\bas\rapidq\RQIDE\inc\AllUp.bmp
+$RESOURCE AllDn AS "Qposic1\AllDn.bmp"   ' inc2026: путь от папки inc2026 вместо C:\_F\bas\rapidq\RQIDE\inc\AllDn.bmp
 
 type Qposic extends qpanel
 

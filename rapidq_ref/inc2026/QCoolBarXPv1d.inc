@@ -275,12 +275,12 @@ Sub Fast_CBar( _
 			   Me As QBitmap, _
 			   Caption As String, _
 			   IcoWidth As Integer, _
-			   FontName As Integer, _
+			   FontName As String, _
 			   wMenu As Integer, _
 			   Grouped As Integer, _
 			   Style As Integer, _
 			   DisableXPTheme As Integer, _
-			   Hwnd As Long)
+			   Hwnd As Long) ' inc2026: FontName As String вместо As Integer (строка 278): параметр сравнивается с "", меняется SWAP с Me.Font.Name, вызовы передают строку (.Font.Name или ""); в QCoolBarXP90.inc - nFontName As String
 	Dim Dest As QRect, Source As QRect
 	Dim tR As RECT_QTBtn
 
@@ -297,7 +297,7 @@ Sub Fast_CBar( _
 	Me.FillRect(False, False, Me.Width, Me.Height, clBtnFace)'==(mod) (13janv remplacй clPurple par clBtnFace)
 
 	If FontName <> "" Then _
-		SWAP (Me.Font.Name, FontName)' == (add)
+		SWAP Me.Font.Name, FontName' == (add) | inc2026: SWAP без скобок, как в документации (SWAP variable1, variable2)
 
 	If isXP_QTBtn = False or DisableXPTheme = True Then
 		' Temporairement indisponible
@@ -365,7 +365,7 @@ Sub Fast_CBar( _
 				DrawEdge_CBar (Me.Handle, tR, BDR_RAISEDINNER_CBar, BF_RECT_CBar)
 			End If
 
-			SWAP (Me.Font.Name, bFont)
+			SWAP Me.Font.Name, bFont ' inc2026: SWAP без скобок, как в документации (SWAP variable1, variable2)
 
 			tR.Left		= Me.Width -11 +iif(StateID +True >= 3 and wMenu < 2, True, False)
 			tR.Top		= False +iif(StateID +True >= 3 and wMenu < 2, True, False)
@@ -386,7 +386,7 @@ Sub Fast_CBar( _
 
 			DrawText_QTBtn (Me.Handle, "6", True, _
 				tR, DT_CENTER_QTBtn OR DT_SINGLELINE_QTBtn OR DT_VCENTER_QTBtn)
-			SWAP (Me.Font.Name, bFont)
+			SWAP Me.Font.Name, bFont ' inc2026: SWAP без скобок, как в документации (SWAP variable1, variable2)
 		End If
 	Else
 		' Thиme activй (Windows XP)
@@ -492,7 +492,7 @@ Sub Fast_CBar( _
 	'Me.PixelFormat = DefPixelFormat_CBar
 
 	If FontName <> "" Then _
-		SWAP (Me.Font.Name, FontName)' == (add)
+		SWAP Me.Font.Name, FontName' == (add) | inc2026: SWAP без скобок, как в документации (SWAP variable1, variable2)
 
 	If PartID <> True Then _
 		PartID = True
@@ -544,7 +544,7 @@ Sub XPPart ( _
 				m_lPartId = True 'BP_PUSHBUTTON
 
 			m_lStateId = True 'PBS_NORMAL
-			If PartID =< 2 Then
+			If PartID <= 2 Then ' inc2026: <= вместо =< (в документации только <=)
 				If Orientation Then _
 					SetRect_CBar (tR, True, False, Me.Width -True, 8) _
 				Else _
@@ -1489,7 +1489,7 @@ Type QCoolBarXP Extends QPanel
 			Exit Sub
 		End If
 		ReDim .CB_Ctrl(.CB_Count)		As Long
-		ReDim .CB_AfterIndex(.ED_Count)	As Integer
+		ReDim .CB_AfterIndex(.CB_Count)	As Integer ' inc2026: CB_Count вместо ED_Count: остальные массивы CB_ здесь по .CB_Count (копия из InsertED_Ctrl)
 		ReDim .CB_Left(.CB_Count)		As Integer
 		ReDim .CB_Width(.CB_Count)		As Integer
 		ReDim .CB_Height(.CB_Count)		As Integer
@@ -1503,7 +1503,7 @@ Type QCoolBarXP Extends QPanel
 		' Appelle EvalPos
 		Call This.EvalBtnPos
 		If iAfter = -True or (iAfter > -True and iAfter < (.ItemCount -True)) Then
-			Me.Left		= .CB_Left(.ED_Count -True)
+			Me.Left		= .CB_Left(.CB_Count -True) ' inc2026: CB_Count вместо ED_Count: позиция только что добавленного списка (копия из InsertED_Ctrl)
 		Else
 			Me.Left		= .ItemLeft(.ItemCount -True) +6
 		End If
@@ -1714,7 +1714,7 @@ Type QCoolBarXP Extends QPanel
 				imgLBK.BMP	= .imgLA.GetBMP(iIndex -sepBefore)
 
 			
-			.CoolBtnBMP.Font.Color = IIf (.ItemEnabled(I), This.Font.Color, clGrayText)
+			.CoolBtnBMP.Font.Color = IIf (.ItemEnabled(iIndex), This.Font.Color, clGrayText) ' inc2026: iIndex вместо I: I здесь - счётчик цикла выше, после него I = iIndex + 1; вся ветка про элемент iIndex
 
 			Fast_CBar( xpt_ToolBarBtn, _
 				True, _
@@ -1803,12 +1803,12 @@ Type QCoolBarXP Extends QPanel
 			' le pseudo-evйnement MOUSEENTER
 			SetCapture_QTBtn This.Handle
 		ElseIf .FreePanelR.Visible and .Orientation and _
-			(Y => .ClientHeight -12 and Y =< .ClientHeight) Then
+			(Y >= .ClientHeight -12 and Y <= .ClientHeight) Then ' inc2026: >= и <= вместо => и =< (в документации только >= и <=)
 			.DrawHotItemState (-True, True, False)
 			curBtn = -True
 			wasBtn = -True
 		ElseIf .FreePanelR.Visible and .Orientation = False and _
-			(X => .ClientWidth -12 and X =< .ClientWidth) Then
+			(X >= .ClientWidth -12 and X <= .ClientWidth) Then ' inc2026: >= и <= вместо => и =< (в документации только >= и <=)
 			.DrawHotItemState (-True, True, False)
 			curBtn = -True
 			wasBtn = -True
@@ -1927,9 +1927,9 @@ Type QCoolBarXP Extends QPanel
 		If btn = False Then
 			If .FreePanelR.Visible and _
 				((.Orientation and _
-				(Y => .ClientHeight -12 and Y =< .ClientHeight)) or _
+				(Y >= .ClientHeight -12 and Y <= .ClientHeight)) or _
 				(.Orientation = False and _
-				(X => .ClientWidth -12 and X =< .ClientWidth))) Then
+				(X >= .ClientWidth -12 and X <= .ClientWidth))) Then ' inc2026: >= и <= вместо => и =< здесь и строкой 1930 (в документации только >= и <=)
 				.DrawHotItemState (-True, 2, False)
 				.mnuExceed.Popup(Screen.MouseX +(.FreePanelR.Left -X), _
 								 Screen.MouseY +(.ClientHeight -Y))
@@ -1991,9 +1991,9 @@ Type QCoolBarXP Extends QPanel
 		If btn = False Then
 			If .FreePanelR.Visible and _
 				((.Orientation and _
-				(Y => .ClientHeight -12 and Y =< .ClientHeight)) or _
+				(Y >= .ClientHeight -12 and Y <= .ClientHeight)) or _
 				(.Orientation = False and _
-				(X => .ClientWidth -12 and X =< .ClientWidth))) Then
+				(X >= .ClientWidth -12 and X <= .ClientWidth))) Then ' inc2026: >= и <= вместо => и =< здесь и строкой 1994 (в документации только >= и <=)
 				.DrawHotItemState (-True, True, False)
 			Else
 				Dim I As Integer
