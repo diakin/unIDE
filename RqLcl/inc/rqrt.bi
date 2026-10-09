@@ -993,6 +993,50 @@ Sub RqExtractResource(ByVal ResId As Long, ByRef FileName As String)
 End Sub
 
 ' ---------------------------------------------------------------------------
+'  DECLARE ... LIB со своей DLL программы (fbsv.dll, fb_regex.dll...): у
+'  FreeBASIC Declare Lib требует библиотеку импорта при сборке (ld: cannot
+'  find -lfbsv.dll). Препроцессор делает из такого DECLARE указатель на
+'  функцию, а его значение берёт отсюда при запуске: DLL загружается один
+'  раз (поиск - как у LoadLibrary: папка exe, системные, PATH), функция -
+'  по имени из ALIAS. Не нашлась DLL или функция - сообщение (лог, окно) и
+'  0; вызов такой функции программу остановит.
+' ---------------------------------------------------------------------------
+Function RqDllProc(ByRef DllName As String, ByRef ProcName As String, _
+                   ByRef FileName As String, ByVal LineNum As Long) As Any Ptr
+    Static LibNames() As String
+    Static LibHandles() As Any Ptr
+    Dim LibIdx As Long
+    Dim LibHandle As Any Ptr = 0
+    Dim Found As Long = 0
+    For LibIdx = LBound(LibNames) To UBound(LibNames)
+        If LCase(LibNames(LibIdx)) = LCase(DllName) Then
+            LibHandle = LibHandles(LibIdx)
+            Found = 1
+            Exit For
+        End If
+    Next
+    If Found = 0 Then
+        LibHandle = DyLibLoad(DllName)
+        LibIdx = UBound(LibNames) + 1
+        ReDim Preserve LibNames(0 To LibIdx)
+        ReDim Preserve LibHandles(0 To LibIdx)
+        LibNames(LibIdx) = DllName
+        LibHandles(LibIdx) = LibHandle
+        If LibHandle = 0 Then
+            RqRtReport("Error", "не удалось загрузить " & DllName & _
+                       " (DECLARE ... LIB)", FileName, LineNum, 1)
+        End If
+    End If
+    If LibHandle = 0 Then Return 0
+    Dim ProcAddr As Any Ptr = DyLibSymbol(LibHandle, ProcName)
+    If ProcAddr = 0 Then
+        RqRtReport("Error", DllName & ": нет функции " & ProcName & _
+                   " (DECLARE ... LIB)", FileName, LineNum, 1)
+    End If
+    Return ProcAddr
+End Function
+
+' ---------------------------------------------------------------------------
 '  SetNewWndProc из NewWndProc.inc (препроцессор заменяет её тело): окну -
 '  новая оконная процедура, результат - прежняя. У RapidQ здесь строился
 '  переходник x86 (CODEPTR RapidQ не даёт процедуру, годную для Windows);

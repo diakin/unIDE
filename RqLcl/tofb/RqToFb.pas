@@ -177,6 +177,18 @@ const
     // caMinimize 3 (qform.html); у остальных классов OnClose без параметров
     'ONCLOSE=RLONG';
 
+  // Библиотеки Windows, для которых у FreeBASIC есть библиотека импорта
+  // (lib\win32, lib\win64: lib<имя>.dll.a): DECLARE ... LIB с ними -
+  // Declare Lib, как раньше. Остальные DLL (свои DLL программы: fbsv.dll,
+  // fb_regex.dll...) компоновщик ld не находит (cannot find -lfbsv.dll) -
+  // их функции берутся при запуске, RqDllProc (rqrt.bi)
+  RqImportLibText =
+    'KERNEL32 USER32 GDI32 ADVAPI32 SHELL32 COMDLG32 COMCTL32 WININET WINMM ' +
+    'WS2_32 WSOCK32 OLE32 OLEAUT32 SHLWAPI VERSION WINSPOOL MSVCRT NTDLL PSAPI ' +
+    'CRYPT32 URLMON IMM32 UXTHEME MPR NETAPI32 OPENGL32 GLU32 MSIMG32 SETUPAPI ' +
+    'IPHLPAPI WINHTTP RASAPI32 DWMAPI OLEDLG RPCRT4 SECUR32 USERENV WTSAPI32 ' +
+    'POWRPROF HID DBGHELP GDIPLUS AVIFIL32 MSVFW32 VFW32 DSOUND DINPUT8 ODBC32';
+
   // Свойства, которые во всех классах rapidq_ref\ComponentAll.data -
   // STRING или массив STRING (Cell, ColumnCaption...: тип неявной
   // переменной Имя_Свойство, см. ProcessIdent; строка ли член объекта,
@@ -333,6 +345,9 @@ type
     // R - число ByRef, S - STRING (ZString Ptr), O - остальное. По нему
     // вызов приводит аргументы к тому, что ждёт функция DLL (WrapLibArgs).
     LibKinds: string;
+    // DECLARE ... LIB библиотеки без библиотеки импорта FreeBASIC (своя
+    // DLL программы): указатель Dim Shared, адрес - RqDllProc при запуске
+    DynLib: Boolean;
     // FUNCTION читает RESULT (result = result & ...): значение функции
     // FreeBASIC прочитать нельзя, оно ведётся в локальной rq_result
     ResultRead: Boolean;
@@ -566,6 +581,7 @@ type
     function IsStrVarRef(const AToks: TToks; AFrom, ATo: Integer): Boolean;
     procedure ProcessIdent(var AToks: TToks; AIdx, ATo: Integer);
     function  HasChrZero(const AToks: TToks; AFrom, ATo: Integer): Boolean;
+    function  IsImportLib(const ALibName: string): Boolean;
     procedure TrackModBlock(const AToks: TToks; AFirst, ATo: Integer);
     procedure CheckLabel(const AToks: TToks; AFirst, ATo: Integer);
     function  MemberIsString(const AToks: TToks; AIdx: Integer): Boolean;
@@ -3984,6 +4000,11 @@ begin
   begin
     AToks[AIdx].OutText := ProcRec.FbName;
     GlobalQualify(AToks, AIdx);
+    // Функция своей DLL - указатель: без скобок это был бы адрес, а не
+    // вызов (x = GetVer у RapidQ - вызов)
+    if ProcRec.DynLib and not IsOp(AToks, NextIdx, '(') and
+       not IsOp(AToks, PrevSig(AToks, AIdx - 1), '@') then
+      AToks[AIdx].Post := AToks[AIdx].Post + '()';
     // вызов FUNCTIONI / SUBI в выражении: параметры - списком RqPList
     if ProcRec.IsVariadic then
     begin
@@ -4191,6 +4212,19 @@ begin
         end
         else if TokIdx >= 0 then
           WrapLibArgs(AToks, FirstIdx + 1, ATo, ProcRec);
+      end;
+      // Своя DLL - вызов через указатель, аргументы - в скобках
+      if (ProcRec <> nil) and ProcRec.DynLib then
+      begin
+        TokIdx := NextSig(AToks, FirstIdx + 1, ATo);
+        if TokIdx < 0 then
+          AToks[FirstIdx].Post := AToks[FirstIdx].Post + '()'
+        else if not (IsOp(AToks, TokIdx, '(') and
+                     (MatchParen(AToks, TokIdx, ATo) = PrevSig(AToks, ATo))) then
+        begin
+          AToks[FirstIdx].Post := AToks[FirstIdx].Post + '(';
+          AToks[PrevSig(AToks, ATo)].Post := AToks[PrevSig(AToks, ATo)].Post + ')';
+        end;
       end;
       // SUBI Имя a, b / Имя(a, b) -> Имя(RqPList().Arg(a).Arg(b))
       if (ProcRec <> nil) and ProcRec.IsVariadic then
@@ -5284,6 +5318,7 @@ var
   KindIdx, NameIdx, TokIdx, OpenIdx, CloseIdx, TypeIdx: Integer;
   IsFunc: Boolean;
   LibText, AliasText, Params, RetType, StarLen, Header: string;
+  LibName, AliasName: string;
   ProcRec: TRqProc;
   SavedProc: TRqProc;
 begin
@@ -5305,18 +5340,30 @@ begin
   LibText := '';
   AliasText := '';
   TokIdx := NextSig(AToks, NameIdx + 1, ATo);
+  LibName := '';
+  AliasName := '';
   if IsWord(AToks, TokIdx, 'LIB') then
   begin
     TokIdx := NextSig(AToks, TokIdx + 1, ATo);
     if TokIdx >= 0 then
+    begin
       LibText := ' Lib ' + AToks[TokIdx].Text;
+      LibName := AToks[TokIdx].Text;
+      if (Length(LibName) >= 2) and (LibName[1] = '"') then
+        LibName := Copy(LibName, 2, Length(LibName) - 2);
+    end;
     TokIdx := NextSig(AToks, TokIdx + 1, ATo);
   end;
   if IsWord(AToks, TokIdx, 'ALIAS') then
   begin
     TokIdx := NextSig(AToks, TokIdx + 1, ATo);
     if TokIdx >= 0 then
+    begin
       AliasText := ' Alias ' + AToks[TokIdx].Text;
+      AliasName := AToks[TokIdx].Text;
+      if (Length(AliasName) >= 2) and (AliasName[1] = '"') then
+        AliasName := Copy(AliasName, 2, Length(AliasName) - 2);
+    end;
     TokIdx := NextSig(AToks, TokIdx + 1, ATo);
   end;
   Params := '';
@@ -5360,13 +5407,42 @@ begin
       RetType := ParseType(AToks, TypeIdx, ATo, StarLen);
   end;
   ProcRec.RetType := RetType;
-  if IsFunc then
+  ProcRec.DynLib := (LibText <> '') and not ProcRec.IsVariadic and
+                    not IsImportLib(LibName);
+  if ProcRec.DynLib then
+  begin
+    // Своя DLL: указатель на функцию и его значение из DLL при запуске
+    // (строка DECLARE переносится в начало программы, HoistLine).
+    // Имя в DLL - из ALIAS, без него - имя из DECLARE без суффикса
+    if AliasName = '' then
+      AliasName := BaseOf(AToks[NameIdx].Text);
+    if IsFunc then
+      Header := 'Dim Shared ' + ProcRec.FbName + ' As Function stdcall (' +
+                Params + ') As ' + FbType(RetType)
+    else
+      Header := 'Dim Shared ' + ProcRec.FbName + ' As Sub stdcall (' + Params + ')';
+    Header := Header + ' : ' + ProcRec.FbName + ' = RqDllProc("' + LibName +
+              '", "' + AliasName + '", __FILE__, __LINE__)';
+  end
+  else if IsFunc then
     Header := 'Declare Function ' + ProcRec.FbName + LibText + AliasText +
               '(' + Params + ') As ' + FbType(RetType)
   else
     Header := 'Declare Sub ' + ProcRec.FbName + LibText + AliasText +
               '(' + Params + ')';
   Rebuild(AToks, AFrom, ATo, Header);
+end;
+
+// У библиотеки есть библиотека импорта FreeBASIC (RqImportLibText): имя
+// без пути и без .dll
+function TRqFbConv.IsImportLib(const ALibName: string): Boolean;
+var
+  NameUp: string;
+begin
+  NameUp := UpperCase(ExtractFileName(ALibName));
+  if (Length(NameUp) > 4) and (Copy(NameUp, Length(NameUp) - 3, 4) = '.DLL') then
+    Delete(NameUp, Length(NameUp) - 3, 4);
+  Result := Pos(' ' + NameUp + ' ', ' ' + RqImportLibText + ' ') > 0;
 end;
 
 // TYPE Имя [EXTENDS Класс]. Свой компонент (EXTENDS; TYPE Имя AS Класс в
