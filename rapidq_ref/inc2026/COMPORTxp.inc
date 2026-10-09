@@ -1,4 +1,4 @@
-'ComPort.cmp 
+'ComPort.cmp  ' inc2026: file renamed from COMPORTxp.CMP to COMPORTxp.inc (header keeps the original name ComPort.cmp)
 'Version 0.9
 'December 13, 2001
 'by Pete Kleinschmidt
