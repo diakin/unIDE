@@ -35951,6 +35951,7 @@ end;
 procedure TForm1.EditHostResize(Sender: TObject);
 var
   HostHeight: Integer;
+  TextRect: TRect;
 begin
   if (FEditHost = nil) or (RichEdit1.Parent <> FEditHost) or
      not RichEdit1.HandleAllocated then
@@ -35962,6 +35963,14 @@ begin
       [RichEdit1.Height, RichEdit1.ClientHeight, FEditHost.ClientHeight,
        RichEdit1.Top, Ord(RichEdit1.Align)]));
   UpdateScrollBars;
+  // После уменьшения высоты RichEdit не прокручивался, пока не получил
+  // EM_SETRECT с перерисовкой: HiLite log 09.10.2026 - область текста уже
+  // 0..345 при клиенте 349, EM_LINESCROLL на 3 строки не сдвинул, после
+  // EM_SETRECT с той же областью сдвинул. WM_SIZE и EM_SETRECTNP этого не
+  // делают. Шлём его здесь, сразу после смены размера, чтобы первая
+  // прокрутка не упиралась (ScrollEditTo остаётся запасным путём).
+  SendMessageA(RichEdit1.Handle, EM_GETRECT, 0, Integer(@TextRect));
+  SendMessageA(RichEdit1.Handle, EM_SETRECT, 0, Integer(@TextRect));
   InvalidateRect(RichEdit1.Handle, nil, False);
 end;
 
