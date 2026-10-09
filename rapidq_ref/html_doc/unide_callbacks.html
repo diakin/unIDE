@@ -81,7 +81,7 @@ END FUNCTION</pre>
 </ul>
 
 <a name="6"></a><h2>6. Later: syntax extensions for the FreeBASIC build</h2>
-<p>The FreeBASIC build can understand more than rc.exe. Extensions of the Rapid-Q syntax that use what FreeBASIC has are possible; none of them is made yet, and each needs a decision. Such a source would no longer compile with rc.exe, so an extension would be switched on per file, for example with a comment line like the existing <code>'$RQFB SMART</code> (rc.exe skips comments). Candidates:</p>
+<p>The aim of the FreeBASIC build is not compatibility with rc.exe: rc.exe is no longer needed. The aim is that Rapid-Q users keep writing in the syntax they know and get a modern compiler, 64 bit and the libraries of FreeBASIC without having to learn the FreeBASIC syntax first. Extensions of the Rapid-Q syntax that use what FreeBASIC has fit this aim: an extension adds a construct that Rapid-Q did not have, so existing programs are translated as before, and a user takes a new construct only when needing it. None of them is made yet; each needs a decision on its exact form. Candidates:</p>
 <ul>
 <li><b>An address type</b> (for example <code>AS PTRINT</code>, an integer of pointer size) for BIND, CODEPTR, VARPTR, Mem.Pointer and handles, so that the same program also builds in 64 bit.</li>
 <li><b>Methods as callbacks</b> through a generated forwarder procedure (as is already done for event handlers of own components), so that <code>CODEPTR(This.EnumChild)</code> becomes possible.</li>
