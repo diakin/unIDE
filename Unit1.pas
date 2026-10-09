@@ -57485,6 +57485,7 @@ var
   W, H: Integer;
   HadMarks: Boolean;
   FullDC: HDC;
+  TextRc: TRect;
 begin
   // Здесь НЕ НАДО вызывать InvalidateRect на всю клиентскую область.
   //
@@ -57576,7 +57577,26 @@ begin
           end;
         end
         else
+        begin
           BitBlt(ScreenDC, 0, 0, W, H, MemDC, 0, 0, SRCCOPY);
+          // Полоса под областью текста RichEdit (FitEditRect ставит её низ
+          // на целое число строк, остаток до низа окна - до LineHeight-1
+          // пикселей). При прокрутке RichEdit сдвигает и помечает грязной
+          // только свою область текста, полоса в область обновления не
+          // попадает, и в ней оставалась картинка прежнего кадра. Кладём её
+          // из буфера всегда, мимо отсечения по области обновления.
+          SendMessageA(RichEdit1.Handle, EM_GETRECT, 0, Integer(@TextRc));
+          if (TextRc.Bottom > 0) and (TextRc.Bottom < H) then
+          begin
+            FullDC := GetDC(RichEdit1.Handle);
+            try
+              BitBlt(FullDC, 0, TextRc.Bottom, W, H - TextRc.Bottom,
+                     MemDC, 0, TextRc.Bottom, SRCCOPY);
+            finally
+              ReleaseDC(RichEdit1.Handle, FullDC);
+            end;
+          end;
+        end;
       finally
         SelectObject(MemDC, OldBmp);
         DeleteObject(Bmp);
