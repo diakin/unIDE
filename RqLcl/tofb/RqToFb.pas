@@ -427,6 +427,9 @@ type
     FProcs: TStringList;          // NAME -> TRqProc
     FTypes: TStringList;          // имена TYPE
     FLabels: TStringList;
+    // Где метка: "ПРОЦЕДУРА|МЕТКА=файл(строка)" (процедура '' - модуль) -
+    // проверка GOTO/GOSUB, CheckLabel
+    FLabelPlaces: TStringList;
     FRedims: TStringList;         // имена, у которых есть REDIM
     FDefines: TRqNameMap;         // NAME -> замена
     FResources: TStringList;      // $RESOURCE: ИМЯ=полный путь ('' - не найден)
@@ -510,6 +513,7 @@ type
     procedure Warn(const AText: string);
     procedure Error(const AText: string);
     procedure WarnOnce(const AKey, AText: string);
+    procedure ErrorOnce(const AKey, AText: string);
     function CondActive: Boolean;
 
     // Разбор строки
@@ -563,6 +567,7 @@ type
     procedure ProcessIdent(var AToks: TToks; AIdx, ATo: Integer);
     function  HasChrZero(const AToks: TToks; AFrom, ATo: Integer): Boolean;
     procedure TrackModBlock(const AToks: TToks; AFirst, ATo: Integer);
+    procedure CheckLabel(const AToks: TToks; AFirst, ATo: Integer);
     function  MemberIsString(const AToks: TToks; AIdx: Integer): Boolean;
     procedure WrapMemberStrIndex(var AToks: TToks; AIdx, ATo: Integer);
     function  ProcessSwap(var AToks: TToks; AFirst, ATo: Integer): Boolean;
@@ -1237,6 +1242,7 @@ begin
   FLabels := TStringList.Create;
   FLabels.Sorted := True;
   FLabels.Duplicates := dupIgnore;
+  FLabelPlaces := TStringList.Create;
   FGosubSites := TStringList.Create;
   FRedims := TStringList.Create;
   FRedims.Sorted := True;
@@ -1314,6 +1320,7 @@ begin
   FProcs.Free;
   FTypes.Free;
   FLabels.Free;
+  FLabelPlaces.Free;
   FGosubSites.Free;
   FRedims.Free;
   FDefines.Free;
@@ -1381,6 +1388,19 @@ begin
     Exit;
   FWarnedNames.Add(AKey);
   Warn(AText);
+end;
+
+// Ошибка один раз по ключу AKey
+procedure TRqFbConv.ErrorOnce(const AKey, AText: string);
+var
+  Found: Integer;
+begin
+  if FPass <> 2 then
+    Exit;
+  if FWarnedNames.Find(AKey, Found) then
+    Exit;
+  FWarnedNames.Add(AKey);
+  Error(AText);
 end;
 
 function TRqFbConv.CondActive: Boolean;
@@ -2541,7 +2561,15 @@ begin
      not InList(FKeywords, FirstUp) and (FindProc(FirstUp) = nil) then
   begin
     if FPass = 1 then
+    begin
       FLabels.Add(FirstUp);
+      if FCurProc <> nil then
+        FLabelPlaces.Add(FCurProc.Name + '|' + FirstUp + '=' +
+                         ExtractFileName(FCurFile) + '(' + IntToStr(FCurLine) + ')')
+      else
+        FLabelPlaces.Add('|' + FirstUp + '=' +
+                         ExtractFileName(FCurFile) + '(' + IntToStr(FCurLine) + ')');
+    end;
     StartIdx := NextSig(Toks, FirstIdx + 1, High(Toks)) + 1;
   end;
 
@@ -3122,6 +3150,50 @@ end;
 //  Операторы
 // ---------------------------------------------------------------------------
 
+// GOTO / GOSUB Метка: метка должна быть в той же процедуре (или вне
+// процедур, если GOTO вне процедур). У FreeBASIC метка видна только внутри
+// своей SUB/FUNCTION, и fbc сообщает "Undefined label" без номера строки
+// (RQdebugger: goto w8file в двух процедурах, метка w8file: - в третьей,
+// у них самих метка w81file:). Здесь - ошибка с местом GOTO и местом метки.
+procedure TRqFbConv.CheckLabel(const AToks: TToks; AFirst, ATo: Integer);
+var
+  LabelIdx, PlaceIdx: Integer;
+  LabelUp, Scope, Places: string;
+begin
+  if FPass <> 2 then
+    Exit;
+  LabelIdx := NextSig(AToks, AFirst + 1, ATo);
+  if (LabelIdx < 0) or (AToks[LabelIdx].Kind <> tkIdent) then
+    Exit;
+  LabelUp := AToks[LabelIdx].Up;
+  Scope := '';
+  if FCurProc <> nil then
+    Scope := FCurProc.Name;
+  if FLabelPlaces.IndexOfName(Scope + '|' + LabelUp) >= 0 then
+    Exit;
+  Places := '';
+  for PlaceIdx := 0 to FLabelPlaces.Count - 1 do
+    if Copy(FLabelPlaces.Names[PlaceIdx], Pos('|', FLabelPlaces.Names[PlaceIdx]),
+            MaxInt) = '|' + LabelUp then
+    begin
+      if Places <> '' then
+        Places := Places + ', ';
+      Places := Places + FLabelPlaces.ValueFromIndex[PlaceIdx];
+      if Copy(FLabelPlaces.Names[PlaceIdx], 1, 1) <> '|' then
+        Places := Places + ' в ' + Copy(FLabelPlaces.Names[PlaceIdx], 1,
+                                        Pos('|', FLabelPlaces.Names[PlaceIdx]) - 1)
+      else
+        Places := Places + ' вне процедур';
+    end;
+  if Places <> '' then
+    Error(AToks[AFirst].Text + ' ' + AToks[LabelIdx].Text + ': метка в другой ' +
+          'процедуре (' + Places + ') - у FreeBASIC метка видна только в своей ' +
+          'SUB/FUNCTION')
+  else
+    Error(AToks[AFirst].Text + ' ' + AToks[LabelIdx].Text + ': метки ' +
+          AToks[LabelIdx].Text + ' нет');
+end;
+
 // Блоки вне SUB/FUNCTION: начало - +1, конец - -1 (FModBlocks). IF - только
 // блочный (после THEN ничего); NEXT i, j закрывает два FOR
 procedure TRqFbConv.TrackModBlock(const AToks: TToks; AFirst, ATo: Integer);
@@ -3302,9 +3374,12 @@ begin
     ProcessAssignOrCall(AToks, FirstIdx + 1, ATo);
   end
   else if Up = 'GOTO' then
-    // метка
+    CheckLabel(AToks, FirstIdx, ATo)
   else if Up = 'GOSUB' then
-    ProcessGosub(AToks, FirstIdx, ATo)
+  begin
+    CheckLabel(AToks, FirstIdx, ATo);
+    ProcessGosub(AToks, FirstIdx, ATo);
+  end
   else if Up = 'RETURN' then
     ProcessReturn(AToks, FirstIdx, ATo)
   else if (Up = 'INC') or (Up = 'DEC') then
@@ -4016,9 +4091,22 @@ begin
   // Имя_Свойство: строковая, если свойство во всех классах STRING
   // (RqStrPropText) или у него суффикс $, иначе по суффиксу. Без этого
   // имя заводилось числом, и fbc на StartIndent.Text давал error 265.
-  if ((VarRec = nil) or not VarRec.Explicit) and IsOp(AToks, NextIdx, '.') and
-     DottedImplicit(AToks, AIdx, NextIdx, ATo) then
-    Exit;
+  if ((VarRec = nil) or not VarRec.Explicit) and IsOp(AToks, NextIdx, '.') then
+  begin
+    if DottedImplicit(AToks, AIdx, NextIdx, ATo) then
+      Exit;
+    // Метод или свойство со скобками у необъявленного имени (RQdebugger:
+    // FileListBox.Item(ixx), MainForm.Show - объектов нет). Перевести не
+    // во что: что RapidQ даёт для них, не известно; вместо непонятной
+    // ошибки fbc - своя, с именем
+    if (FPass = 2) and (NextSig(AToks, NextIdx + 1, ATo) >= 0) and
+       (AToks[NextSig(AToks, NextIdx + 1, ATo)].Kind = tkIdent) then
+      // по разу на строку: одно имя в строке встречается и дважды
+      ErrorOnce('UO|' + AToks[AIdx].Up + '|' + FCurFile + '|' + IntToStr(FCurLine),
+        AToks[AIdx].Text + '.' +
+        AToks[NextSig(AToks, NextIdx + 1, ATo)].Text + ': ' + AToks[AIdx].Text +
+        ' не объявлен - ни переменной, ни объектом (DIM, CREATE)');
+  end;
   VarRec := ResolveVar(AToks[AIdx].Text, False);
   AToks[AIdx].OutText := VarRec.FbName;
   if (VarRec.Scope = '') and VarRec.Explicit then
