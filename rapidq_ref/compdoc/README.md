@@ -27,7 +27,7 @@
 - `normalize.py`: приводит старые страницы `html_doc` к единому виду. Ставит `<!DOCTYPE html>` и `X-UA-Compatible: IE=edge` (иначе окно CHM показывает страницы в режиме IE7), подключает `rq.css`, заменяет заголовочную таблицу на полосу заголовка, добавляет строку навигации, убирает `TARGET="doc"`. Текст страниц не меняет; повторный запуск ничего не делает.
 
 - Appendix D (функции из include-файлов, `f_*.html`) — страницы, написанные вручную; первая — `f_sadd.html` (функция `sadd` из conversion.inc и её проверка в RapidQ). Скрипты их не создают и не меняют: раздел Appendix D в `contents.html` стоит после метки `<!-- /rq-appendix-b -->`, запись SADD в `indexa.html` — обычная запись указателя.
-- Appendix E (unIDE) — `unide_debugger.html`, принципы работы отладчика unIDE для программ RapidQ; написана вручную, как страницы Appendix D. Раздел в `contents.html` стоит перед Appendix C, запись DEBUGGER — в `indexa.html`.
+- Appendix E (unIDE) — `unide_debugger.html` (отладчик) и `unide_designer.html` (конструктор форм, снимки живой формы, превью); принципы работы отладчика unIDE для программ RapidQ; написана вручную, как страницы Appendix D. Раздел в `contents.html` стоит перед Appendix C, запись DEBUGGER — в `indexa.html`.
 
 ## Пересборка
 
