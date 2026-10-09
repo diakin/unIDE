@@ -117,7 +117,7 @@ if destindex = y then
     .additems .item(i)
     .delitems(i)
 else
-    .insertitem (destindex + 1, .item(i).text)
+    .insertitem (destindex + 1, .item(i)) ' inc2026: .item(i) вместо .item(i).text: внутри WITH sl это QStringList, Item - массив строк (qstringlist.html), у строки нет .text; так же строки 117 и 212
     .delitems(i)
 end if
 inc(x)

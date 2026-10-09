@@ -148,7 +148,7 @@ if File = "" then
 else
 	dim Extension as string
 	Extension = ""
-	dim PontPlace as integer
+	dim PointPlace as integer ' inc2026: PointPlace вместо PontPlace: дальше (строки 155, 157) используется PointPlace, а объявлена другая переменная
 	
 	QDirListView.AddItems File
 	
@@ -178,7 +178,7 @@ QDirListView.ViewStyle = QDirListView.ViewStyle + 1   ' SomeHow we manage with
 QDirListView.ViewStyle = QDirListView.ViewStyle - 1   ' changing the style
 ' to make items fully wisible
 ' ( without "..." at the end )
-if ColumnsInitialized = FALSE then
+if QDirListView.ColumnsInitialized = FALSE then ' inc2026: QDirListView.ColumnsInitialized вместо ColumnsInitialized: без имени типа внутри TYPE это отдельная необъявленная переменная, а поле (строка 52) задаётся в CONSTRUCTOR (строка 317)
 	QDirListView.ClearColumns
 	QDirListView.AddColumns "Name"
 	
@@ -213,7 +213,7 @@ if ColumnsInitialized = FALSE then
 	end if
 	
 	
-	ColumnsInitialized = TRUE
+	QDirListView.ColumnsInitialized = TRUE ' inc2026: QDirListView.ColumnsInitialized - так же, как в строке 181
 end if
 QDirListView.Visible = false     ' Whith this we manage to repaint the control.
 QDirListView.Visible = true      ' Otherwise it would stay messed-up ( You can Try :) )

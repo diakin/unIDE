@@ -22,7 +22,7 @@ TYPE QDriveComboBox EXTENDS QComboBox
    for i=ASC_A to ASC_Z
      if GetDriveType(Chr$(i)&":\")<>1 then
        name=chr$(i)+":\"
-       QDriveComboBox.AddItems name
+       Super.AddItems name ' inc2026: Super.AddItems вместо QDriveComboBox.AddItems: в типе объявлен свой пустой SUB AddItems (строка 31), он скрывает унаследованный метод (глава 10.3: "you won't be able to access the inherited one... you must explicitly call the SUPER class"), и GetDrives ничего не добавлял; так же super.AddTabs в QtabControlEx.inc строка 40
      end if
    next i
    QDriveComboBox.ItemIndex=0

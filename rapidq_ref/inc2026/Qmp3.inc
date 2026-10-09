@@ -67,13 +67,13 @@ genrescb as qcombobox
 Function HeaderStart as integer
 dim bb as byte
 dim hs as qfilestream
-hs.open (mp3.filename, 2)
+hs.open (Qmp3.filename, 2)   ' inc2026: было mp3.filename - mp3 - имя экземпляра из примера (DIM mp3 AS Qmp3), работало только при этом имени; имя файла компонента - Qmp3.filename, как в строках 93, 381, 412
 hs.position = 0
 
 mp3x = 0
 do
 bb = hs.readbyte
- if bb =  256 then
+ if bb = 255 then   ' inc2026: было bb = 256: BYTE не бывает 256, синхронизация кадра mp3 - байт &HFF (255), затем байт > 223 (строка 78)
    bb = hs.readbyte
       if bb > 223 then
       hs.close
@@ -100,7 +100,7 @@ dim tempbin as string
 dim binaryheader as string
 
 dim hr as qfilestream
-hr.open (mp3.filename, 2)
+hr.open (Qmp3.filename, 2)   ' inc2026: было mp3.filename - mp3 - имя экземпляра из примера (DIM mp3 AS Qmp3), работало только при этом имени; имя файла компонента - Qmp3.filename (строка 93)
 hr.position = Qmp3.headerstart
 binaryheader = ""
 
@@ -168,7 +168,7 @@ if Qmp3.layer = "I" then bitseries.additems _
 
 If Qmp3.layer = "II" then bitseries.additems _
 "32", "48", "56", "64", "80", "96", "112", "128", _
-"160", "192", "224", "256", "320", "320", "384"
+"160", "192", "224", "256", "320", "384"   ' inc2026: было "320" дважды: в таблице MPEG-1 Layer II 14 значений (32 ... 320, 384), из-за повтора индекс 13 давал 320 вместо 384
 
 
 If Qmp3.layer = "III" or Qmp3.Layer = "???" then
@@ -417,8 +417,8 @@ end if
 dim wtagstream as qfilestream
 wtagstream.open (Qmp3.filename, 2)
 
-if Qmp3.Istagged(tagstream) = 0 then
-wtagstream.position = tagstream.size - 128
+if Qmp3.Istagged(wtagstream) = 0 then
+wtagstream.position = wtagstream.size - 128   ' inc2026: строки 420-421: было tagstream - это локальный поток SUB readtags; в writetags открыт wtagstream (строка 418)
 wtagstream.writestr("TAG", 3)
 end if
 

@@ -97,7 +97,7 @@ Type QSpinButton extends QPanel
      Sub Click(Sender as QCoolBtn)
      with QSpinButton
      ic = .IncrementBy
-     if .Value => .MaxValue then .Value = .MaxValue
+     if .Value >= .MaxValue then .Value = .MaxValue ' inc2026: >= вместо =>: в документации (operators.html) только >=, замена для единообразия, как в других inc
      if .Value <= .MinValue then .Value = .MinValue
      if .MaxValue = 0 and .MinValue = 0 then Exit Sub
      if Sender.Handle = .SpinUp.Handle then

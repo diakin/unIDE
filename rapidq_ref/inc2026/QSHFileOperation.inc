@@ -82,7 +82,7 @@ Type SHFILEOPSTRUCT
     wFunc As Long                      ' Value that indicates which operation to perform (foMove, foCopy, foDelete, foRename)
     pFrom As Long                      ' Address of a buffer to specify one or more source file names. These names must be fully qualified paths. Standard DOS wild cards, such as "*", are permitted in the file-name position
     pTo As Long                        ' Address of a buffer to contain the name of the destination file or directory. This parameter must be set to NULL if it is not used. Like pFrom, the pTo member is also a double-NULL terminated string and is handled in much the same way
-    fFlags As Integer                  ' Flags that control the file operation
+    fFlags As Word                     ' Flags that control the file operation | inc2026: As Word вместо As Integer - в SHFILEOPSTRUCT поле FILEOP_FLAGS 2 байта, в 32-битном shellapi.h структура упакована по 1 байту (pshpack1); INTEGER RapidQ 4 байта сдвигал fAnyOperationsAborted, hNameMappings, lpszProgressTitle на 2 байта (отсюда и 'Does not work' у lpszProgressTitle в строке 88)
     fAnyOperationsAborted As Long      ' Value that receives TRUE if the user aborted any file operations before they were completed, or FALSE otherwise
     hNameMappings As Long              ' A handle to a name mapping object containing the old and new names of the renamed files. This member is used only if the fFlags member includes the FOF_WANTMAPPINGHANDLE flag
     lpszProgressTitle As Long          ' Address of a string to use as the title of a progress dialog box. This member is used only if fFlags includes the FOF_SIMPLEPROGRESS flag. Does not work - don't know why... Tested almost everything :-(

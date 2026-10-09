@@ -39,7 +39,7 @@ Type QHead extends QCanvas
      If .ShowLeftText then
        If .ShowIcon then
           .TextOut(.CaptionX+.Icon.Width +.IconX +2,.CaptionY,.LeftText,&H777777,-1)
-          .TextOut(.CaptionX+.Icon.Width +.IconY +3,.CaptionY+1,.LeftText,&HFFFFFF,-1)
+          .TextOut(.CaptionX+.Icon.Width +.IconX +3,.CaptionY+1,.LeftText,&HFFFFFF,-1)   ' inc2026: было .IconY: белый текст - вторая половина тени к строке 41 (.IconX +2, .CaptionY), смещение по X на 1, как в строках 44-45; IconY к координате X не относится (копирование)
        Else
           .TextOut(.CaptionX,.CaptionY,.LeftText,&H777777,-1)
           .TextOut(.CaptionX+1,.CaptionY+1,.LeftText,&HFFFFFF,-1)

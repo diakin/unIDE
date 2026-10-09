@@ -46,7 +46,7 @@ $IFNDEF _CALLBACK_5
     Declare Function FuncBind_5 (Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As long, Arg5 As long) As Long
     DefInt lpCallBack_5  = CodePtr(MasterCallBack_5)
 
-    Function MasterCallBack_5 (hBind As Long, Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As Long, Arg5 As long) As Long
+    Function MasterCallBack_5 (hFunction As Long, Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As Long, Arg5 As long) As Long ' inc2026: hFunction вместо hBind: в заголовке было hBind - то же имя, что у локальной DefInt hBind (строка 50); в DECLARE (строка 45) и в теле (строка 52) - hFunction, как в CallBack_4/6/7/8
         DefInt hBind
         Bind hBind To FuncBind_5
         hBind = hFunction

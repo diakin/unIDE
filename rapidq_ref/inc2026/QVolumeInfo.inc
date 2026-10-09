@@ -110,7 +110,7 @@ type QVolumeInfo extends QObject
         case 1024^3 to 1024^4 -1
             result = format$("%.1f GB", Bytes/1024^3)
         
-        case is => 1024^4
+        case is >= 1024^4 ' inc2026: => заменено на >=, как в документации (operators.html)
             result = format$("%.1f TB", Bytes/1024^4)
             
         end select

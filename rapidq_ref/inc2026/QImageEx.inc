@@ -91,7 +91,7 @@ Type QImageEx EXTENDS QIMAGE
   '===================================================
   Function CanPaste as boolean
     result=clipboard.hasformat(CF_BITMAP_IMG)
-  End Sub
+  End Function ' inc2026: было End Sub у Function CanPaste (строка 92); в rapidq2.inc у QImageEx - END FUNCTION
 
   '==================================================
   ' mйthode charge les formats dll

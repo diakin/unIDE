@@ -383,7 +383,7 @@ FUNCTION CheckAVIError () AS LONG           'error handler, close file streams i
         CASE  AVIERR_MEMORY
             QAVI.Error ="out of memory"
         CASE  AVIERR_INTERNAL
-            QAVI.Error ="internal error'
+            QAVI.Error ="internal error" ' inc2026: строка закрывалась апострофом: было "internal error', стало "internal error"
         CASE  AVIERR_BADSIZE
             QAVI.Error ="bad size"
         CASE  AVIERR_BADHANDLE
@@ -402,7 +402,7 @@ FUNCTION CheckAVIError () AS LONG           'error handler, close file streams i
     QAVI.Error = "AVI Function: " + QAVI.Error
     IF QAVI.ShowError THEN SHOWMESSAGE QAVI.Error
   END IF
-END SUB
+END FUNCTION ' inc2026: было END SUB, стало END FUNCTION: закрывает FUNCTION CheckAVIError (строка 366)
 
 
     '====================================================================
@@ -466,7 +466,7 @@ FUNCTION CreateAVIFile(szFile As STRING, TheWidth AS INTEGER, TheHeight AS INTEG
      QAVI.Retrn = AVIFileOpen(QAVI.pAVIFile, szFile, OF_WRITE Or OF_CREATE, 0&)
          IF QAVI.CheckAVIError THEN EXIT FUNCTION
 
-    If QAVI.fps > 60 Then QAVI.fps = 60   'do some error checking
+    If fps > 60 Then fps = 60   'do some error checking | inc2026: было QAVI.fps, стало параметр fps: ограничение 60 должно действовать на параметр, который идёт в .dwRate (строка 475); поле QAVI.FPS здесь не используется
     '   Fill in the header for the video stream
     With QAVI.StreamInfo
         .fccType = streamtypeVIDEO  'mmioStringToFOURCC("vids", 0&)               ' stream type video
@@ -567,7 +567,7 @@ FUNCTION CreateAVIFile(szFile As STRING, TheWidth AS INTEGER, TheHeight AS INTEG
     QAVI.Height = TheHeight
     QAVI.bpp = bpp
     RESULT = 1
-END SUB
+END FUNCTION ' inc2026: было END SUB, стало END FUNCTION: закрывает FUNCTION CreateAVIFile (строка 453)
 
 
 
@@ -614,7 +614,7 @@ FUNCTION GetAVIFileInfo(szFile As STRING) AS LONG
 '    dwHeight, .dwScale , .dwRate , .dwLength, .dwEditCount
 ' With StreamInfo   .fccType,  .fccHandler, .dwFlags, .dwCaps, .wPriority, .wLanguage, .dwScale, .dwRate, .dwStart
 '     .dwLength, .dwInitialFrames, .dwSuggestedBufferSize, .dwQuality, .dwSampleSize    )
- END SUB
+ END FUNCTION ' inc2026: было END SUB, стало END FUNCTION: закрывает FUNCTION GetAVIFileInfo (строка 579)
 
 
 
@@ -715,7 +715,7 @@ FUNCTION AVItoBMP(szFile AS STRING, TheBMP AS QBITMAP, FrameNum AS INTEGER) AS L
 
     END WITH
     RESULT = 1
-END SUB    
+END FUNCTION ' inc2026: было END SUB, стало END FUNCTION: закрывает FUNCTION AVItoBMP (строка 626)
 
 
     '======================================================

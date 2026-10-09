@@ -342,7 +342,7 @@ udtCommStat)
 
 IF lngStatus = 0 THEN
 	IF ComPort.OnComError > 0 THEN
-		CALLFUNC (ComPort.OnComError, ERROR_CHANGING_PORTSETTINGS & ComPort.FormatError)
+		CALLFUNC (ComPort.OnComError, ERROR_GETTING_PORT_STATUS & ComPort.FormatError) ' inc2026: ERROR_GETTING_PORT_STATUS вместо ERROR_CHANGING_PORTSETTINGS: это ошибка ClearCommError в GetCommStatus; константа ERROR_GETTING_PORT_STATUS объявлена в строке 139 и больше нигде не используется, текст ERROR_CHANGING_PORTSETTINGS - для SetCommState (строка 447)
 	END IF 
 ELSE
 	'Set BytesNotWritten and BytesNotRead Property
@@ -407,7 +407,7 @@ udtCommTimeOuts.ReadIntervalTimeout         = -1
 udtCommTimeOuts.ReadTotalTimeoutMultiplier  = 0
 udtCommTimeOuts.ReadTotalTimeoutConstant    = 1000
 udtCommTimeOuts.WriteTotalTimeoutMultiplier = 0
-udtCommTimeOuts.WriteTotalTimeoutMultiplier = 1000
+udtCommTimeOuts.WriteTotalTimeoutConstant = 1000 ' inc2026: WriteTotalTimeoutConstant вместо WriteTotalTimeoutMultiplier: строкой выше Multiplier уже = 0, по образцу Read (строки 407-408) второе поле - Constant (поле объявлено в строке 16), иначе Multiplier = 1000 мс на каждый байт
 
 
 lngStatus = SetCommTimeouts(ComPort.Handle,_
@@ -539,11 +539,11 @@ DIM strReadBuffer AS STRING
 strReadBuffer=SPACE$(ComPort.ReadBufSize)
 
 'Read data from buffer
-lngStatus = ReadFile(MyPort.Handle, _
+lngStatus = ReadFile(ComPort.Handle, _
 strReadBuffer, _
 dwRdSize, _
 dwBytesRead, _
-0&)
+0&) ' inc2026: ComPort.Handle вместо MyPort.Handle в строке 542: MyPort - имя экземпляра из примера (DIM MyPort AS Comport), при другом имени ReadFile получал неверный дескриптор; во всех остальных вызовах - ComPort.Handle (строки 339, 469, 500)
 
 IF lngStatus = 0 THEN
 	IF ComPort.OnComError > 0 THEN

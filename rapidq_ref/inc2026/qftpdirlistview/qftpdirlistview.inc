@@ -198,7 +198,7 @@ if File = "" then
 else
 	dim Extension as string
 	Extension = ""
-	dim PontPlace as integer
+	dim PointPlace as integer ' inc2026: PointPlace вместо PontPlace: объявлена PontPlace, а присваивается и проверяется PointPlace (строки 205, 207); то же в inc/qdirlistview.inc
 	
 	QFTPDirListView.AddItems File
 	

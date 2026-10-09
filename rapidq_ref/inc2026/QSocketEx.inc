@@ -98,7 +98,7 @@ FUNCTION NameByAddr(strIP AS string) AS string
     Result=""
     IPval=inet_addr(strIP)                                          ' Convert strIP to a long
     IF IPval <> -1 THEN
-        lpStruc = gethostbyaddr(VARPTR(IPval), SIZEOF(long), QSocketEx.Protocol)
+        lpStruc = gethostbyaddr(VARPTR(IPval), SIZEOF(long), QSocketEx.Family) ' inc2026: Family вместо Protocol - третий параметр gethostbyaddr тип адреса AF_INET (2); Protocol по qsocket.html по умолчанию IPPROTO_IP (0), Family - AF_INET; в RSocket.INC строка 86 передаётся 2
         IF lpStruc<>0 THEN
             MEMCPY(VARPTR(buf(0)),lpStruc,16)                      ' Copy sock internal structure                     
             tstr=SPACE$(lstrlen(buf(0)))                            ' Local buffer for peer name
@@ -202,7 +202,7 @@ END FUNCTION
 ' With SINGLE connections, it probably tells the truth.
 '
 FUNCTION LastError() AS string
-    DEFSTR tstr = "'
+    DEFSTR tstr = "" ' inc2026: было "' - строка не закрыта (fbc: Missing closing quote); значение всё равно перезаписывается в SELECT CASE ниже
     DEFINT res = WSAGetLastError()                                  ' Call the function
     Select Case res                                                 ' Convert to error string
         Case 10004&: tstr="Interrupted system call."
@@ -288,8 +288,8 @@ END FUNCTION
 
     CONSTRUCTOR
         Tag =0
+    END CONSTRUCTOR ' inc2026: добавлен - CONSTRUCTOR не был закрыт, сразу шёл END TYPE (пустая строка после END TYPE занята этой строкой)
 END TYPE
-
 
 
 $ENDIF

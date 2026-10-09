@@ -276,8 +276,8 @@ function AddChrAfter(NumStr as string , Dlina as int, chr1 as string) as string
 
 diM kolvo as int
 kolvo =Dlina-Len(NumStr)
-if   kolvo<0 theN AddChrBefore="String too long"
-if   kolvo=0 theN AddChrBefore=NumStr: exit function
+if   kolvo<0 theN AddChrAfter="String too long" ' inc2026: в функции AddChrAfter было присваивание AddChrBefore (копия из AddChrBefore, строки 264-265), стало AddChrAfter - иначе результат функции не задаётся
+if   kolvo=0 theN AddChrAfter=NumStr: exit function ' inc2026: в функции AddChrAfter было присваивание AddChrBefore (копия из AddChrBefore, строки 264-265), стало AddChrAfter - иначе результат функции не задаётся
 AddChrAfter=  NumStr+STRING$(kolvo, chr1)
 end function
 
@@ -971,7 +971,7 @@ RetStrLong = MultiByteToWideChar(inPage, 0, tmp, RetStrLong, ptrstr1&, LenSourse
 RetStrLong2 = WideCharToMultiByte(outPage, 0, ptrstr1&, RetStrLong, str2, LenSourseString * 4, ByVal 0&, 0) ' str2
 'print"RetStrLong2 =";RetStrLong2 
 
-ConvertCodePage = Left$(str2, RetStrLong2)
+ConvertCodePage2 = Left$(str2, RetStrLong2) ' inc2026: было ConvertCodePage = ... (в conversion.inc такой функции нет, необъявленная переменная), стало ConvertCodePage2 - имя этой функции (строка 949), иначе она возвращает пустую строку
 End Function
 
 

@@ -171,7 +171,7 @@ Type QRedEx Extends QRichEdit
 '       mnu SEARCH
 '       ----------
         Sub OnClic_mnuSearch
-            if len(.seltext) <> "" then .edtsearchfor.text = .seltext
+            if len(.seltext) <> 0 then .edtsearchfor.text = .seltext   ' inc2026: было len(.seltext) <> "" - число сравнивалось со строкой; нужен 0 (есть выделенный текст)
             .frmSearch.Show
             QRDX_SetFocus (.edtSearchFor.Handle)
         End Sub
@@ -179,7 +179,7 @@ Type QRedEx Extends QRichEdit
 '       mnu REPLACE
 '       -----------
         Sub OnClic_mnuReplace
-             if len(.seltext) <> "" then .edttobereplaced.text = .seltext
+             if len(.seltext) <> 0 then .edttobereplaced.text = .seltext   ' inc2026: было len(.seltext) <> "" - число сравнивалось со строкой; нужен 0 (есть выделенный текст)
              .frmReplace.Show
              QRDX_SetFocus (.edtToBeReplaced.Handle)
         End Sub
@@ -372,7 +372,7 @@ Type QRedEx Extends QRichEdit
 
             .selstart = 0
 
-            QRDX_LockWindowUpdate ()
+            QRDX_LockWindowUpdate (0)   ' inc2026: было () без параметра: в DECLARE (строка 52) и в WinAPI у LockWindowUpdate один параметр, снятие блокировки - LockWindowUpdate(0) (блокировка - строка 364)
             .RestorePosition
 
             findreplaceallend:

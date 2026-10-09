@@ -138,7 +138,7 @@ Function SingleFromPtr(P&) As Double
        M.Position = 0
        M.MemCopyFrom(P&,4)
        M.Position = 0
-       F = M.ReadNum(4)
+       F = M.ReadNum(6) ' inc2026: ReadNum(6) вместо ReadNum(4): аргумент ReadNum - тип, а не размер; 4 = Num_LONG (целое), 6 = Num_SINGLE (rapidq.inc строки 370-376, qmemorystream.html); функция читает SINGLE
        M.Close
        Result = F
     Else

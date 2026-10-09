@@ -337,7 +337,7 @@ TYPE MyCom_Port EXTENDS QObject
                                
     IF lngStatus = 0 THEN
       IF MyCom_Port.OnComError > 0 THEN
-        CALLFUNC (MyCom_Port.OnComError, ERROR_CHANGING_PORTSETTINGS & MyCom_Port.FormatError)
+        CALLFUNC (MyCom_Port.OnComError, ERROR_GETTING_PORT_STATUS & MyCom_Port.FormatError) ' inc2026: было ERROR_CHANGING_PORTSETTINGS, стало ERROR_GETTING_PORT_STATUS: ошибка ClearCommError - это ошибка получения состояния порта; константа ERROR_GETTING_PORT_STATUS (строка 139) объявлена и больше нигде не используется
       END IF 
     ELSE
       'Set BytesNotWritten and BytesNotRead Property
@@ -399,7 +399,7 @@ TYPE MyCom_Port EXTENDS QObject
     udtCommTimeOuts.ReadTotalTimeoutMultiplier  = 0
     udtCommTimeOuts.ReadTotalTimeoutConstant    = 1000
     udtCommTimeOuts.WriteTotalTimeoutMultiplier = 0
-    udtCommTimeOuts.WriteTotalTimeoutMultiplier = 1000
+    udtCommTimeOuts.WriteTotalTimeoutConstant = 1000 ' inc2026: было второе присваивание WriteTotalTimeoutMultiplier = 1000 (строкой выше уже 0), стало WriteTotalTimeoutConstant = 1000: поле WriteTotalTimeoutConstant (строка 16) иначе не задаётся, по образцу ReadTotalTimeoutMultiplier/Constant (строки 399-400)
 
 
     lngStatus = SetCommTimeouts(MyCom_Port.Handle,_
@@ -526,11 +526,11 @@ TYPE MyCom_Port EXTENDS QObject
     strReadBuffer=SPACE$(MyCom_Port.ReadBufSize)
       
     'Read data from buffer
-    lngStatus = ReadFile(MyPort.Handle, _
+    lngStatus = ReadFile(MyCom_Port.Handle, _
                          strReadBuffer, _
                          dwRdSize, _
                          dwBytesRead, _
-                         0&)
+                         0&) ' inc2026: в строке 529 было MyPort.Handle (MyPort - имя экземпляра из примера в документации, работало только при CREATE MyPort AS MyCom_Port), стало MyCom_Port.Handle, как во всех остальных методах типа MyCom_Port
                          
     IF lngStatus = 0 THEN
       IF MyCom_Port.OnComError > 0 THEN

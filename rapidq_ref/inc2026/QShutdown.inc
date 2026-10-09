@@ -86,27 +86,27 @@ SUB DoShutDown
     ret = AdjustTokenPrivileges(Thndl, False, MyPriv, 4 + (12 * MyPriv.PrivilegeCount), MyNewPriv,@pdword)
 
     ' Do the required action
-    Ret = ExitWindowsEx(MyFlag, 0)
+    Ret = ExitWindowsEx(This.MyFlag, 0) ' inc2026: This.MyFlag вместо MyFlag: внутри метода поле пишется через This или имя типа (глава 10.3), без него MyFlag - другая (необъявленная) переменная, а поле MyFlag не используется; так в копии компонента в rapidq2.inc (строки 7777-7797)
 End Sub
 
 PUBLIC:
     SUB ShutDown
-        MyFlag = EWX_SHUTDOWN
+        This.MyFlag = EWX_SHUTDOWN ' inc2026: This.MyFlag вместо MyFlag: см. строку 89 (без This поле не меняется)
         This.DoShutDown
     END SUB
 
     SUB ShutDownForce
-        MyFlag = EWX_FORCE or EWX_SHUTDOWN
+        This.MyFlag = EWX_FORCE or EWX_SHUTDOWN ' inc2026: This.MyFlag вместо MyFlag: см. строку 89 (без This поле не меняется)
         This.DoShutDown
     END SUB
 
     SUB LogOff
-        MyFlag = EWX_LOGOFF
+        This.MyFlag = EWX_LOGOFF ' inc2026: This.MyFlag вместо MyFlag: см. строку 89 (без This поле не меняется)
         This.DoShutDown
     END SUB
 
     SUB Reboot
-        MyFlag = EWX_REBOOT
+        This.MyFlag = EWX_REBOOT ' inc2026: This.MyFlag вместо MyFlag: см. строку 89 (без This поле не меняется)
         This.DoShutDown
     END SUB
 

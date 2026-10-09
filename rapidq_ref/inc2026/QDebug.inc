@@ -29,6 +29,7 @@ TYPE QDebug EXTENDS QObject                         'Begin defining our QDebug o
   Enabled AS SHORT PROPERTY SET Set_Enabled
 
   PROPERTY SET Set_Enabled(EnabledValue AS SHORT)   'Property Set for Enabled property
+    QDebug.Enabled = EnabledValue ' inc2026: добавлено QDebug.Enabled = EnabledValue: PROPERTY SET сам значение не сохраняет (chapter10.html, пример Set_Focus), а Print (строка 45) проверяет QDebug.Enabled
     IF EnabledValue = True THEN                     'If Enabled property is set to True
       frmDebug.Show                                 'Then show our Debug window
     ELSE                                            'Otherwise

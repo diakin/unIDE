@@ -64,11 +64,11 @@ end function
 Function GetMsgBodyCodeMethod( MsgBody As String) As String
 'Content-Transfer-Encoding: 8bit
 dim i as long
-Msg=replacesubstr$(Msg,ht," ")
-Msg=replacesubstr$(Msg,crlf+" ","")
-Msg=replacesubstr$(Msg,";"+crlf,"; ")
+MsgBody=replacesubstr$(MsgBody,ht," ")
+MsgBody=replacesubstr$(MsgBody,crlf+" ","")
+MsgBody=replacesubstr$(MsgBody,";"+crlf,"; ")
 
-ContentTransferEncoding$=GetHeaderField(Msg,"Content-Transfer-Encoding")
+ContentTransferEncoding$=GetHeaderField(MsgBody,"Content-Transfer-Encoding") ' inc2026: MsgBody вместо Msg здесь и в строках 67-69: параметр называется MsgBody (заголовок, строка 64, и DECLARE в rapidq.inc), Msg - необъявленная переменная
 semicolCount=tally(ContentTransferEncoding$,";")
 for i=1 to semicolCount
 	valfield$=field$(ContentTransferEncoding$,";",i+1)

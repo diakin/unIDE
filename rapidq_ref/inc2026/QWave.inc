@@ -186,7 +186,7 @@ PRIVATE:
     dim Retval as integer
     dim RetString as string
 
-    if Wave.FileOpen then
+    if QWave.FileOpen then ' inc2026: QWave.FileOpen вместо Wave.FileOpen: Wave - имя экземпляра из примера (DIM Wave AS QWave), при другом имени GetPosition не читал позицию; везде в типе - QWave.FileOpen (строки 81, 108, 130, 203)
       RetString=Space$(128)
       Retval=mciSendWave("status sound position",varptr(RetString),128,0)
       if Retval=False then QWave.GetPosition=val(RetString)

@@ -229,7 +229,7 @@ Private:
                     'Now the value
                     tBegin = tEnd+1
                     while mid$(HTMLText,tBegin,1) = " "
-                        tBegin--
+                        tBegin++ ' inc2026: tBegin++ вместо tBegin--: цикл пропускает пробелы после "=" перед значением, идти нужно вперёд; с -- tBegin возвращался на "=" и значением атрибута вида name= "x" становилось "="
                     wend
                     tDelimiter = " "
                     select case mid$(HTMLText,tBegin,1)
@@ -375,7 +375,7 @@ Private:
             WorkString = replacesubstr$(WorkString,"&para;" ,"¶")
             WorkString = replacesubstr$(WorkString,"&middot;" ,"·")
             WorkString = replacesubstr$(WorkString,"&cedil;" ,"ё")
-            WorkString = replacesubstr$(WorkString,"&supl;" ,"№")
+            WorkString = replacesubstr$(WorkString,"&sup1;" ,"№") ' inc2026: &sup1; вместо &supl;: сущность HTML - sup1 (верхний индекс 1, байт B9), рядом &sup2; и &sup3;; с буквой l замена не срабатывала
             WorkString = replacesubstr$(WorkString,"&ordm;" ,"є")
             WorkString = replacesubstr$(WorkString,"&raquo;" ,"»")
             WorkString = replacesubstr$(WorkString,"&frac14;" ,"ј")
@@ -642,7 +642,7 @@ Private:
                                     select case this.AttributesName(tAttribute)
                                         case "SHAPE"
                                             this.ElementsAnchorsShape(tAnchor)    = this.AttributesValue(tAttribute)
-                                        case "COORD"
+                                        case "COORDS" ' inc2026: COORDS вместо COORD: у тега AREA атрибут называется COORDS (HTML 4.01), имя атрибута сравнивается целиком (строка 227), и координаты не читались
                                             this.ElementsAnchorsPosition(tAnchor) = this.AttributesValue(tAttribute)
                                         case "HREF"
                                             this.ElementsAnchorsHref(tAnchor)     = this.AttributesValue(tAttribute)

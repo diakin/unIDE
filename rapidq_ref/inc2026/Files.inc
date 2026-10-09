@@ -439,7 +439,7 @@ if mode=0 then
 	end if
 	
 elseif mode=1 or mode=2 then
-	if fileexists(FileName)=0 then md=65535:crl="" else md=2:crl$=crlf 'showmessage ("FUNCTION SaveString. Can't open File="+FileName):exit function
+	if fileexists(FileName)=0 then md=65535:crl$="" else md=2:crl$=crlf 'showmessage ("FUNCTION SaveString. Can't open File="+FileName):exit function | inc2026: crl$="" вместо crl="": в ветке else - crl$=crlf, ниже используется crl$ (строка 446); crl - другая, числовая переменная
 	if fileStr.open (FileName,md )=-1 then  'fmOpenReadWrite = 2
 		fileStr.Position=fileStr.size
 		result=-1
@@ -672,7 +672,7 @@ for i=NSD1 to Nsd2 'current level sudirs'
 	SubDirname$=dir$(SubDir(i)+mask, faDirectory)
 	while    SubDirname$ <>""
 		if FileRec.Size =0 and SubDirname$<> "." and SubDirname$<> ".." then ''
-			attr=GetFileAttributes(SubDir(d2)+SubDirname$) 
+			attr=GetFileAttributes(SubDir(i)+SubDirname$) ' inc2026: SubDir(i) вместо SubDir(d2): d2 нигде не получает значения (0), поэтому атрибуты брались для папки верхнего уровня, а не для текущей SubDir(i) (строка 672)
 			If (attr And FILE_ATTRIBUTE_DIRECTORY)=0 Then goto fSubDirCopynodir1
 			inc adddir
 			inc NumDir 'add subdir'
@@ -689,7 +689,7 @@ for i=NSD1 to Nsd2 'current level sudirs'
 	
 	'search files in current subdirectory
 	Fn$=dir$(SubDir(i)+mask$,faAnyFile-faDirectory) ':-)
-	attr=GetFileAttributes(SubDir(d2)+Fn$) 
+	attr=GetFileAttributes(SubDir(i)+Fn$) ' inc2026: SubDir(i) вместо SubDir(d2): d2 нигде не получает значения (0); текущая папка - SubDir(i) (строка 691)
 	
 	while Fn$ <>""
 		if  Fn$<> "." and Fn$<> ".."  then 'and FileRec.Size <>0'
@@ -787,7 +787,7 @@ while    FileName$ <>""
 	if (fOldfa and fzas) >0 then
 		if fdefaultChkAttr=0 then 
 			frzm24=MessageDlg("DirCopy "+fMsg35$+"  "+DirDst$+FileName$, mtWarning, mbYes OR mbNo OR mbAll, 0)
-			IF rzm24 = mrNo THEN
+			IF frzm24 = mrNo THEN ' inc2026: frzm24 вместо rzm24: ответ MessageDlg записан в frzm24 (строка 789), rzm24 нигде не получает значения - ответ "Нет" не обрабатывался
 				fAttrChg=0
 				goto DirCopyExitSub:
 			elseif frzm24 = mrYes then 
@@ -913,7 +913,7 @@ FName$ =StripPath (FileName$)+ DIR$(FileName$, 0 ) '-- Get first file
 while STRIPFILENAME (FName$) <>""
 	kill FName$
 	
-	if fileexists (StripPath (FileName$)+FName$)>0 then ShowMessage ("KillFiles Can't kill file "+FName$)
+	if fileexists (FName$)>0 then ShowMessage ("KillFiles Can't kill file "+FName$) ' inc2026: fileexists(FName$) вместо fileexists(StripPath(FileName$)+FName$): FName$ уже содержит путь (строки 911, 917), путь удваивался и проверка никогда не срабатывала
 	FName$ = StripPath (FileName$)+DIR$ '-- Get next file
 wend
 end sub
@@ -1298,7 +1298,7 @@ for k=0 to io2RndList.ItemCount-1
 					Adat1! = AdatOld! + ki!*io2stp
 					io2RndFile2.WriteNum(Adat1!,Num_SINGLE )
 					io2RndArg.WriteNum (j,Num_SINGLE)
-					io2io.WriteLine (str$(j)+","+str$(Adat!))
+					io2io.WriteLine (str$(j)+","+str$(Adat1!)) ' inc2026: Adat1! вместо Adat!: в цикле интерполяции пишется промежуточное значение Adat1! (строка 1299), так же в парной ветке (строка 1323)
 					AdatOld! = Adat1!
 				NEXT j
 				AdatOld! = Adat!: pntOld = pnt:
@@ -1447,7 +1447,7 @@ defint sBufferSize=2048
 filetxt$=""
 
 'Create a buffer for the file we're going to download
-sBuffer = Space(sBufferSize)+"<<<"
+sBuffer = Space$(sBufferSize)+"<<<" ' inc2026: Space$ вместо Space: в RapidQ есть только SPACE$ (indexa.html); в документации только SPACE$
 
 
 'Create an internet connection
@@ -1482,6 +1482,6 @@ zzj=savestring(filetxt$,dFileName)
 
 DownLoadURL=TotalReadBytes
 
-End Sub
+End Function ' inc2026: END FUNCTION вместо END SUB: процедура открыта как function DownLoadURL (строка 1440)
 
   

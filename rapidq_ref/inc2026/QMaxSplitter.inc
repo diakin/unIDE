@@ -208,7 +208,7 @@ TYPE QMAXSPLITTER EXTENDS QPANEL
             IF Moving = 1 THEN
                 GetCursorPos(SplitPos)
                 
-                GetClientRect(.Owner, R)
+                GetClientRect(.Owner, Rect1) ' inc2026: Rect1 вместо R: глобальная QRECT названа Rect1 (строка 42), её Bottom/Right читаются в строках 158, 162, 216, 220; R нигде не объявлена; в inc/old/QSplitter.inc строка 204 и старой версии везде R
                 OwnerOrg.X = 0
                 OwnerOrg.Y = 0
                 ClientToScreen(.Owner, OwnerOrg)

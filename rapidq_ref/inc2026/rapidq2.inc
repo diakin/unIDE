@@ -1345,7 +1345,7 @@ $DEFINE DM_DISPLAYFREQUENCY     &H00400000
 
 $DEFINE CDS_DYNAMIC     &H0
 $DEFINE CDS_UPDATEREGISTRY    &H1
-$DEFINE CDS_TEST      &H4
+$DEFINE CDS_TEST      &H2   ' inc2026: CDS_TEST было &H4 (это значение CDS_FULLSCREEN), в Windows SDK (winuser.h) CDS_TEST = &H2; Screen.SetResolution (строка 7860) вместо проверки режима сразу его включал
 $DEFINE CDS_FULLSCREEN     &H4
 $DEFINE CDS_GLOBAL      &H8
 $DEFINE CDS_SET_PRIMARY    &H10
@@ -4631,7 +4631,7 @@ Type QBitmapEx EXTENDS QBITMAP
     ' hDC = INSTR(LEN(FileName)-5, FileName, ".")    'reuse same var
     ' FilExts = UCASE$(MID$(FileName, hDC, 4))    'ok to go beyond string end in RapidQ
      FilExts = UCASE$(RIGHT$(FileName, LEN(FileName) - RINSTR(FileName, ".") + 1))
-     IF (NViewLibPresent AND 2) AND INSTR(".JPG.JPEG.JIF.ICO", FilExts) THEN  'use jpeg.dll
+     IF (NViewLibPresent AND 2) AND (INSTR(".JPG.JPEG.JIF.ICO", FilExts) > 0) THEN  'use jpeg.dll | inc2026: AND в RapidQ побитовый (operators.html: 5 AND 3 = 1): (NViewLibPresent AND 2) = 2, а INSTR для .JPG даёт 1, для .JPEG - 5, 2 AND 1 = 0 - jpeg.dll не использовался; добавлено сравнение INSTR(...) > 0 (-1), 2 AND -1 = 2
         THIS.PixelFormat = pf24bit
         hBitmap = JpegDLL_LoadImageFile(0&, FileName)
         THIS.width=JpegDLL_ImageWidth(hBitmap)
@@ -4856,7 +4856,7 @@ TYPE QImageEx EXTENDS QIMAGE
       if FileName<>"" and FileExists(FileName) then
           i = INSTR(LEN(FileName)-5, FileName, ".") 'find extension
           FilExts = UCASE$(MID$(FileName, i, 4))  'ok to go beyond string end in RapidQ
-          IF (NViewLibPresent AND 2) AND INSTR(".JPG.JPEG.JIF.ICO", FilExts) THEN  'use jpeg.dll
+          IF (NViewLibPresent AND 2) AND (INSTR(".JPG.JPEG.JIF.ICO", FilExts) > 0) THEN  'use jpeg.dll | inc2026: AND в RapidQ побитовый (operators.html: 5 AND 3 = 1): (NViewLibPresent AND 2) = 2, а INSTR для .JPG даёт 1, для .JPEG - 5, 2 AND 1 = 0 - jpeg.dll не использовался; добавлено сравнение INSTR(...) > 0 (-1), 2 AND -1 = 2; так же в QBitmapEx.LoadOtherImage, строка 4634
                THIS.handle = JpegDLL_LoadImageFile(0&, FileName)
                THIS.width = JpegDLL_ImageWidth(THIS.handle)
                THIS.height = JpegDLL_ImageHeight(THIS.handle)
@@ -6180,7 +6180,7 @@ TYPE QDriveComboBox EXTENDS QComboBox
    for i=ASC_A to ASC_Z
      if GetDriveType(Chr$(i)&":\")<>1 then
        name=chr$(i)+":\"
-       QDriveComboBox.AddItems name
+       Super.AddItems name ' inc2026: Super.AddItems вместо QDriveComboBox.AddItems: в типе объявлен свой пустой SUB AddItems (ниже), он скрывает унаследованный метод (глава 10.3: нужно явно вызывать SUPER), и GetDrives ничего не добавлял; так же исправлено в QDriveCombobox.inc
      end if
    next i
    QDriveComboBox.ItemIndex=0
@@ -7554,13 +7554,13 @@ TYPE QSYSTEM EXTENDS QOBJECT
      IF TheStatus > 0 THEN
           'you must use  SetSystemPowerState(x,y) for pre-win98
           IF TheStatus = sysHibernateAsk THEN 
-            IF MESSAGEDLG("Hibernate the compuer now (Save all data first)?", mtConfirmation, (mbYes OR mbNo), 0) = mrYes THEN THIS.rtn = SetSuspendState(0,0,0)  'last param disables wake if 1 !!
+            IF MESSAGEDLG("Hibernate the compuer now (Save all data first)?", mtConfirmation, (mbYes OR mbNo), 0) = mrYes THEN THIS.rtn = SetSuspendState(1,0,0)  'last param disables wake if 1 !! | inc2026: SetSuspendState(Hibernate, ...): первый параметр TRUE - гибернация, FALSE - сон (MSDN); у sysHibernate* стоял 0, у sysSleep* - 1, перепутано; было SetSuspendState(0,0,0), стало (1,0,0)
           END IF
-        IF TheStatus = sysHibernateForce THEN THIS.rtn = SetSuspendState(0,1,0)
+        IF TheStatus = sysHibernateForce THEN THIS.rtn = SetSuspendState(1,1,0)   ' inc2026: SetSuspendState(Hibernate, ...): первый параметр TRUE - гибернация, FALSE - сон (MSDN); у sysHibernate* стоял 0, у sysSleep* - 1, перепутано; было (0,1,0), стало (1,1,0)
         IF TheStatus = sysSleepAsk THEN 
-            IF MESSAGEDLG("Sleep the compuer now (Save all data first)?", mtConfirmation, (mbYes OR mbNo), 0) = mrYes THEN THIS.rtn = SetSuspendState(1,0, 0)
+            IF MESSAGEDLG("Sleep the compuer now (Save all data first)?", mtConfirmation, (mbYes OR mbNo), 0) = mrYes THEN THIS.rtn = SetSuspendState(0,0, 0)   ' inc2026: SetSuspendState(Hibernate, ...): первый параметр TRUE - гибернация, FALSE - сон (MSDN); у sysHibernate* стоял 0, у sysSleep* - 1, перепутано; было (1,0, 0), стало (0,0, 0)
         END IF
-        IF TheStatus = sysSleepForce THEN THIS.rtn = SetSuspendState(1,1,0)
+        IF TheStatus = sysSleepForce THEN THIS.rtn = SetSuspendState(0,1,0)   ' inc2026: SetSuspendState(Hibernate, ...): первый параметр TRUE - гибернация, FALSE - сон (MSDN); у sysHibernate* стоял 0, у sysSleep* - 1, перепутано; было (1,1,0), стало (0,1,0)
      ELSE
         THIS.rtn = GetSystemPowerStatus(powr)
          IF THIS.rtn = 0 THEN

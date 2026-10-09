@@ -375,7 +375,7 @@ Type QDataBase extends QObject
       this.error=ErrDbIndex
       result=false
     end if
-  End Sub
+  End Function ' inc2026: было End Sub у Function GetRecord (строка 352)
 
   '=====================================================
   ' mйthode lit record udt
@@ -414,7 +414,7 @@ Type QDataBase extends QObject
       this.error=ErrDbIndex
       result=false
     end if
-  End Sub
+  End Function ' inc2026: было End Sub у Function GetRecordUdt (строка 383)
 
   '=====================================================
   ' mйthode supprime record par son index
@@ -537,7 +537,7 @@ Type QDataBase extends QObject
       this.File.seek(this.offset,0)
       for i=1 to this.RecordCount
         buffer=this.File.readstr(this.RecordSize)
-        buffer=mid$(buffer,pointer,size)
+        buffer=mid$(buffer,pointer+1,size) ' inc2026: pointer+1 вместо pointer: pointer - сумма размеров предыдущих полей (строки 530-535, отсчёт с 0), а MID$ считает позицию с 1 (документация MID$: MID$("Hello",3,2) = "ll"); было - текст поля со сдвигом на символ влево, у первого поля MID$(...,0,...)
         if instr(LCase$(buffer),LCase$(name))>0 then
           found=found+str$(i)+","
           count++
@@ -590,7 +590,7 @@ Type QDataBase extends QObject
       this.File.seek(this.offset,0)
       for i=1 to this.RecordCount
         buffer=this.File.readstr(this.RecordSize)
-        buffer=mid$(buffer,pointer,size)
+        buffer=mid$(buffer,pointer+1,size) ' inc2026: pointer+1 вместо pointer: pointer - сумма размеров предыдущих полей (строки 583-588, отсчёт с 0), а MID$ считает позицию с 1 (документация MID$: MID$("Hello",3,2) = "ll"); было - текст поля со сдвигом на символ влево, у первого поля MID$(...,0,...)
         buffer=ltrim$(rtrim$(buffer))
         operator=ltrim$(rtrim$(operator))
         select case operator

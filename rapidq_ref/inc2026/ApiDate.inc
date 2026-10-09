@@ -33,7 +33,7 @@ Declare Function GetLocaleInfo Lib "kernel32" Alias "GetLocaleInfoA" _
    ByVal cchData As Long) As Long
 Declare function lastdayM(datum$ as string)as string
 declare function weekday(datum$ as string)as integer
-Function lastdayM(datum$ as string)
+Function lastdayM(datum$ as string)as string ' inc2026: заголовок приведён к DECLARE (строка 34): добавлено as string
     Dim pBuffer As String , last As SYSTEMTIME
     last.wYear=val(field$(datum$,"-",3))
     last.wmonth=val(field$(datum$,"-",1))

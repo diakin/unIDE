@@ -246,7 +246,7 @@ END SUB
 
 
 SUB Flip
-    SwapBuffers GL.hDC                   ' flip the screen
+    SwapBuffers QGL.hDC                   ' flip the screen | inc2026: QGL.hDC вместо GL.hDC: внутри TYPE QGL к своим полям везде обращение через QGL. (строки 147, 243); GL - имя переменной программы, работало только при DIM GL AS QGL (c_qgl.html, Notes)
     QGL.FrameCount++
     IF QGL.FrameCount > 32767 THEN QGL.FrameCount = 1
 END SUB
@@ -260,7 +260,7 @@ PROPERTY SET Set_FullScreen(GoFull AS INTEGER)
           SELECT CASE QGL.Width
                CASE IS < 641
                    Screen.SetResolution(640, 480, QGL.bpp, 0)
-               CASE < 801
+               CASE IS < 801 ' inc2026: CASE IS < вместо CASE <: сравнение в CASE по документации через IS (conditions.html), как в строке 261; CASE > 5 без IS RapidQ не считает сравнением (тест в RAPIDQ_RULES.md)
                    Screen.SetResolution(800, 600, QGL.bpp, 0)
                CASE ELSE
                    Screen.SetResolution(1024, 768, QGL.bpp, 0)
@@ -533,7 +533,7 @@ WITH THIS
     '-------------------------------------------------------------
 '    REDIM SMD2_skins(TheModel.num_skins)           'crashes
     IF .TheModel.num_skins > 0 THEN
-    TheFile.Seek(soFromBeginning, .TheModel.ofs_skins)   'position in the file with offset in .TheModel.ofs_skins
+    TheFile.Seek(.TheModel.ofs_skins, soFromBeginning)   'position in the file with offset in .TheModel.ofs_skins | inc2026: Seek(смещение, откуда): по документации QFILESTREAM.Seek (Position%, From%) (qfilestream.html) - аргументы были переставлены
          for i = 0 to .TheModel.num_skins - 1                    ' Load all texture files
              TempStr = TheFile.ReadStr(64)                      ' Read texture name
              TempStr = RTRIM$(REPLACESUBSTR$(TempStr, "/","\"))       'condition it
@@ -562,7 +562,7 @@ WITH THIS
     'get Texture coordinates (s, t)
     '-------------------------------------------------------------
     IF .TheModel.num_st > MD2_MAX_TEXT_COORD THEN         Showmessage "Err: Too many tex coords"
-    TheFile.Seek(soFromBeginning, .TheModel.ofs_st)      ' Seek to texture coordinates
+    TheFile.Seek(.TheModel.ofs_st, soFromBeginning)      ' Seek to texture coordinates | inc2026: Seek(смещение, откуда): по документации QFILESTREAM.Seek (Position%, From%) (qfilestream.html) - аргументы были переставлены
     for i = 0 to .TheModel.num_st - 1
         This.TexCoord(i, 0) = (TheFile.ReadNum(num_WORD))/(1.0* QGLinternalBMP.Width)
         This.TexCoord(i, 1) = (TheFile.ReadNum(num_WORD))/(-1.0 * QGLinternalBMP.Height)
@@ -572,7 +572,7 @@ WITH THIS
     'get model triangles, indexes to all vertices
     '-------------------------------------------------------------
     IF .TheModel.num_tris > MD2_MAX_TRIANGLES THEN Showmessage "Err: Too many triangles"
-    TheFile.Seek( soFromBeginning, .TheModel.ofs_tris)           ' Seek to triangles
+    TheFile.Seek(.TheModel.ofs_tris, soFromBeginning)           ' Seek to triangles | inc2026: Seek(смещение, откуда): по документации QFILESTREAM.Seek (Position%, From%) (qfilestream.html) - аргументы были переставлены
     for i = 0 to .TheModel.num_tris - 1          ' Load triangles
         TheFile.LoadArray(This.indexXYZ(i, 0), 3)
         TheFile.LoadArray(This.indexST(i, 0), 3)
@@ -590,7 +590,7 @@ WITH THIS
 
     IF .TheModel.num_xyz > MD2_MAX_VERTICES THEN Showmessage "Err: Too many verts"
     TempStr = ""
-    TheFile.Seek( soFromBeginning, .TheModel.ofs_frames)         ' Seek to frames
+    TheFile.Seek(.TheModel.ofs_frames, soFromBeginning)         ' Seek to frames | inc2026: Seek(смещение, откуда): по документации QFILESTREAM.Seek (Position%, From%) (qfilestream.html) - аргументы были переставлены
     for i = 0 to .TheModel.num_frames - 1                        ' Load each animation frame
         TheFile.LoadArray(This.Frame_Scale(i,0), 3)
         TheFile.LoadArray(This.Frame_Translate(i,0), 3)
@@ -771,7 +771,7 @@ END SUB
 
 SUB FPSTimerOver
     This.CurrentFrame++
-    if This.CurrentFrame => This.MaxAnimationFrame then This.CurrentFrame = This.StartFrame
+    if This.CurrentFrame >= This.MaxAnimationFrame then This.CurrentFrame = This.StartFrame ' inc2026: >= вместо => (в документации только >=, operators.html)
 END SUB
 
 

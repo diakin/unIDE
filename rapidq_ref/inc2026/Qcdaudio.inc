@@ -18,10 +18,10 @@ const CD_CLOSE=0
 const CD_PLAY=1
 const CD_PAUSE=2
 const CD_STOP=3
+    Declare Sub event_change(track as integer,time as string) ' inc2026: перенесено из-под $IFNDEF __WIN32API: шаблон события объявлен только здесь, а WINDOWS.INC (где __WIN32API определён) его не объявляет
 $IFNDEF __WIN32API				   'windows 32 definitions
     Declare Function mciSendCdaudio Lib "winmm.dll" Alias "mciSendStringA" (lpstrCommand As String, lpstrReturnString As long, uReturnLength As Long, hwndCallback As Long) As Long
     Declare Function mciGetErrorCdaudio Lib "winmm.dll" Alias "mciGetErrorStringA" (dwError As Long,Byref lpstrBuffer As String,uLength As Long) As Long
-    Declare Sub event_change(track as integer,time as string)
 $ENDIF
 
 Type Qcdaudio extends Qobject
@@ -96,7 +96,7 @@ PRIVATE:
 
     if Qcdaudio.AudioOpen then
       RetString=Space$(128)
-      Retval=mciSendCdaudio("status cdaudio current track"+,varptr(RetString),128,0)
+      Retval=mciSendCdaudio("status cdaudio current track",varptr(RetString),128,0) ' inc2026: убран лишний + перед запятой (было "..."+, - у оператора + нет второго операнда)
       if Retval=False then Qcdaudio.GetTrack=val(RetString)
     end if
   End Function
@@ -110,7 +110,7 @@ PRIVATE:
 
     if Qcdaudio.AudioOpen then
       RetString=Space$(128)
-      Retval=mciSendCdaudio("status cdaudio position"+,varptr(RetString),128,0)
+      Retval=mciSendCdaudio("status cdaudio position",varptr(RetString),128,0) ' inc2026: убран лишний + перед запятой (было "..."+, - у оператора + нет второго операнда)
       if Retval=False then Qcdaudio.GetTimePosition=rtrim$(RetString)
     end if
   End Function
@@ -126,7 +126,7 @@ PRIVATE:
       RetString=Space$(128)
       Retval=mciSendCdaudio("set cdaudio time format ms",varptr(RetString),128,0)
       RetString=Space$(128)
-      Retval=mciSendCdaudio("status cdaudio position"+,varptr(RetString),128,0)
+      Retval=mciSendCdaudio("status cdaudio position",varptr(RetString),128,0) ' inc2026: убран лишний + перед запятой (было "..."+, - у оператора + нет второго операнда)
       if Retval=False then Qcdaudio.GetPosition=val(RetString)
       RetString=Space$(128)
       Retval=mciSendCdaudio("set cdaudio time format tmsf",varptr(RetString),128,0)
@@ -281,7 +281,7 @@ PUBLIC:
     Qcdaudio.stop
     Qcdaudio.close
     RetString=Space$(128)
-    Retval=mciSendCdaudio("set cdaudio door open"+,varptr(RetString),128,0)
+    Retval=mciSendCdaudio("set cdaudio door open",varptr(RetString),128,0) ' inc2026: убран лишний + перед запятой (было "..."+, - у оператора + нет второго операнда)
     Qcdaudio.Present=False
   End Sub  
 
