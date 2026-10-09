@@ -42403,6 +42403,9 @@ begin
   begin
     ExeDir := FProbeDir;
     DcuDir := FProbeDir;
+    // -E берётся из OutDir: без этого exe пробной сборки ложился в папку
+    // проекта, а ProbeRun искал его в FProbeDir и не находил
+    OutDir := FProbeDir;
     if DofDefines <> '' then
       DofDefines := DofDefines + ';DSGPROBE'
     else
