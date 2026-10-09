@@ -3280,7 +3280,9 @@ end;
 //   параметр STRING (ZString Ptr), а передано число (адрес, 0&) -
 //     Cast(ZString Ptr, число);
 //   параметр - число ByVal, а передана запись (TYPE без EXTENDS) -
-//     Cast(Integer, @запись).
+//     Cast(Integer, @запись);
+//   параметр - запись, объект или массив, а передано число (адрес, 0&) -
+//     ByVal Cast(Any Ptr, число).
 // Остальные аргументы - как есть.
 procedure TRqFbConv.WrapLibArgs(var AToks: TToks; AFrom, ATo: Integer;
                                 AProc: TRqProc);
@@ -3335,6 +3337,14 @@ begin
       else if (ParamKind = 'S') and ExprIsNumber(AToks, FirstIdx, LastIdx) then
       begin
         AToks[FirstIdx].Pre := 'Cast(ZString Ptr, ' + AToks[FirstIdx].Pre;
+        AToks[LastIdx].Post := AToks[LastIdx].Post + ')';
+      end
+      // Параметр-запись (ByRef ... AS OVERLAPPED), а передано число - это
+      // адрес (0& - NULL, "не используется"): COMPORT.CMP, WriteFile(...,
+      // 0&). В FreeBASIC адрес в параметр ByRef передаётся через ByVal
+      else if (ParamKind = 'O') and ExprIsNumber(AToks, FirstIdx, LastIdx) then
+      begin
+        AToks[FirstIdx].Pre := 'ByVal Cast(Any Ptr, ' + AToks[FirstIdx].Pre;
         AToks[LastIdx].Post := AToks[LastIdx].Post + ')';
       end;
     end;
