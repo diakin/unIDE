@@ -6169,6 +6169,7 @@ End Property
 ' ---------------------------------------------------------------------------
 '  QFILELISTBOX - файлы папки (TFileListBox); папки - "[имя]"; FileName - полный путь
 '  выбранного; AddFileTypes(ftDirectory, ftHidden...) - номера как в RapidQ
+'  (SUBI в RapidQ - любое число; типов семь, 0..6 - до восьми параметров)
 ' ---------------------------------------------------------------------------
 
 Type QFILELISTBOX Extends QCONTROL
@@ -6206,8 +6207,10 @@ Type QFILELISTBOX Extends QCONTROL
     Declare Property Selected(ByVal ItemNum As Long) As Long
     Declare Property Selected(ByVal ItemNum As Long, ByVal Value As Long)
     Declare Sub Update()
-    Declare Sub AddFileTypes(ByVal Num1 As Long, ByVal Num2 As Long = -1, ByVal Num3 As Long = -1, ByVal Num4 As Long = -1)
-    Declare Sub DelFileTypes(ByVal Num1 As Long, ByVal Num2 As Long = -1, ByVal Num3 As Long = -1, ByVal Num4 As Long = -1)
+    Declare Sub AddFileTypes(ByVal Num1 As Long, ByVal Num2 As Long = -1, ByVal Num3 As Long = -1, ByVal Num4 As Long = -1, _
+        ByVal Num5 As Long = -1, ByVal Num6 As Long = -1, ByVal Num7 As Long = -1, ByVal Num8 As Long = -1)
+    Declare Sub DelFileTypes(ByVal Num1 As Long, ByVal Num2 As Long = -1, ByVal Num3 As Long = -1, ByVal Num4 As Long = -1, _
+        ByVal Num5 As Long = -1, ByVal Num6 As Long = -1, ByVal Num7 As Long = -1, ByVal Num8 As Long = -1)
     Declare Property OnChange(ByVal Handler As Sub())
     Declare Property OnChange(ByVal Handler As Sub(ByRef Sender As QFILELISTBOX))
     Declare Property OnClick(ByVal Handler As Sub())
@@ -6345,16 +6348,18 @@ End Property
 Sub QFILELISTBOX.Update()
     StrCall("Update", "")
 End Sub
-Sub QFILELISTBOX.AddFileTypes(ByVal Num1 As Long, ByVal Num2 As Long = -1, ByVal Num3 As Long = -1, ByVal Num4 As Long = -1)
-    Dim NumList(1 To 4) As Long = {Num1, Num2, Num3, Num4}
-    For ArgIdx As Long = 1 To 4
+Sub QFILELISTBOX.AddFileTypes(ByVal Num1 As Long, ByVal Num2 As Long = -1, ByVal Num3 As Long = -1, ByVal Num4 As Long = -1, _
+        ByVal Num5 As Long = -1, ByVal Num6 As Long = -1, ByVal Num7 As Long = -1, ByVal Num8 As Long = -1)
+    Dim NumList(1 To 8) As Long = {Num1, Num2, Num3, Num4, Num5, Num6, Num7, Num8}
+    For ArgIdx As Long = 1 To 8
         If (ArgIdx > 1) AndAlso (NumList(ArgIdx) = -1) Then Exit For
         StrCall("AddFileTypes", "", NumList(ArgIdx))
     Next
 End Sub
-Sub QFILELISTBOX.DelFileTypes(ByVal Num1 As Long, ByVal Num2 As Long = -1, ByVal Num3 As Long = -1, ByVal Num4 As Long = -1)
-    Dim NumList(1 To 4) As Long = {Num1, Num2, Num3, Num4}
-    For ArgIdx As Long = 1 To 4
+Sub QFILELISTBOX.DelFileTypes(ByVal Num1 As Long, ByVal Num2 As Long = -1, ByVal Num3 As Long = -1, ByVal Num4 As Long = -1, _
+        ByVal Num5 As Long = -1, ByVal Num6 As Long = -1, ByVal Num7 As Long = -1, ByVal Num8 As Long = -1)
+    Dim NumList(1 To 8) As Long = {Num1, Num2, Num3, Num4, Num5, Num6, Num7, Num8}
+    For ArgIdx As Long = 1 To 8
         If (ArgIdx > 1) AndAlso (NumList(ArgIdx) = -1) Then Exit For
         StrCall("DelFileTypes", "", NumList(ArgIdx))
     Next
