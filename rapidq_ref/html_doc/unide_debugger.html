@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta http-equiv="Content-Type" content="text/html; charset=windows-1252">
+<title>unIDE debugger</title>
+<link rel="stylesheet" type="text/css" href="rq.css">
+</head>
+<body class="rqdoc">
+<div class="rq-head"><span class="rq-brand">Rapid-Q Documentation &mdash; unIDE</span><span class="rq-section">Appendix E: debugger for Rapid-Q programs</span></div>
+<div class="rq-nav"><a href="contents.html">Contents</a><a href="contents.html#appa">Components (A)</a><a href="custom.html">Custom components (B)</a><a href="contents.html#appc">Keywords (C)</a><a href="indexa.html">Alphabetic index</a></div>
+<h1>How the unIDE debugger works</h1>
+<p class="rq-meta">Code: <code>RqDbgInstr.pas</code> (the instrumented copy and the code inserted into it) and the <code>RqDbg...</code> methods of <code>Unit1.pas</code> (build, session, editor, Watch). Test programs: <code>tests/RqDbg</code>. Applies to programs built with rc.exe; with the FreeBASIC build (RqToFb) the debugger does not work.</p>
+
+<a name="1"></a><h2>1. Why an instrumented copy</h2>
+<p>A Rapid-Q exe is the interpreter with the program appended as byte code. A breakpoint at a machine-code address would stop inside the interpreter, and there is no table that maps an address to a line of Basic. A native debugger (Win32 debug API, as unIDE uses for Delphi programs) therefore cannot stop on a Basic line.</p>
+<p>Instead, unIDE writes a copy of the program, <code>&lt;name&gt;_rqdbg.bas</code>, next to the main .bas. Before each statement the copy has a check with the number of that place (a <i>point</i>). The copy is compiled by rc.exe into the usual <code>&lt;name&gt;.exe</code>. unIDE keeps the table &laquo;point &rarr; file, line&raquo;; the program itself only knows the numbers.</p>
+<p>The copy is built when the program is started with a breakpoint set in its main .bas or in one of its $INCLUDE files, or with F7, F8 or F4. Without them the program is built and run as usual.</p>
+
+<a name="2"></a><h2>2. What is inserted</h2>
+<p>For this program</p>
+<pre>$APPTYPE CONSOLE
+DIM Total AS LONG
+SUB AddUp (Count AS LONG)
+  DIM LoopIdx AS LONG
+  FOR LoopIdx = 1 TO Count
+    Total = Total + LoopIdx
+  NEXT
+END SUB
+Total = 0
+AddUp 10
+PRINT Total</pre>
+<p>the copy looks like this (the debugger runtime after the first directives is left out; Watch has the expression <code>Total * 2</code>):</p>
+<pre>DIM Total AS LONG
+SUB AddUp (Count AS LONG)
+  DIM RqDbgLvl AS LONG
+  RqDbgDepth = RqDbgDepth + 1
+  RqDbgLvl = RqDbgDepth
+  DIM LoopIdx AS LONG
+  IF RqDbgBrk(1) THEN
+    RqDbg(1, RqDbgLvl, 5, 0)
+    IF RqDbgWant THEN GOSUB RqDbgVars0
+  END IF
+  FOR LoopIdx = 1 TO Count
+    IF RqDbgBrk(2) THEN
+      RqDbg(2, RqDbgLvl, 6, 0)
+      IF RqDbgWant THEN GOSUB RqDbgVars0
+    END IF
+    Total = Total + LoopIdx
+  NEXT
+  RqDbgDepth = RqDbgLvl - 1
+  EXIT SUB
+RqDbgVars0:
+  RqDbgVal("p", "Count", "LONG", STR$(Count))
+  RqDbgVal("l", "LoopIdx", "LONG", STR$(LoopIdx))
+  RqDbgHalt
+  RETURN
+END SUB
+IF RqDbgBrk(3) THEN RqDbg(3, 0, 9, 1)
+Total = 0
+IF RqDbgBrk(4) THEN RqDbg(4, 0, 10, 1)
+AddUp 10
+IF RqDbgBrk(5) THEN RqDbg(5, 0, 11, 1)
+PRINT Total
+' --- unIDE: global variables for the debugger ---
+SUB RqDbgGlobals
+  RqDbgVal("g", "Total", "LONG", STR$(Total))
+  RqDbgWV = Total * 2
+  RqDbgWT = RqDbgWS + RqDbgWV
+  RqDbgVal("w", "0", "", RqDbgWT)
+END SUB</pre>
+<ul>
+<li><b>The check.</b> <code>RqDbgBrk(N)</code> is an array of flags, one per point. While the flag is 0 the check costs one comparison; test <code>RqDbgT3_Speed.bas</code> gave a slowdown of about 1.7 times against the program without checks. The parameters of <code>RqDbg</code>: point number, call level, line key (the source line, for the &laquo;same line&raquo; rule), and 1 if the place has no dump block (main part, SUBI/FUNCTIONI).</li>
+<li><b>Call level.</b> At the start of each SUB/FUNCTION the local <code>RqDbgLvl</code> gets depth + 1; before <code>END SUB</code> and <code>EXIT SUB</code> the depth goes back. The level is what Step over needs. An <code>EXIT SUB</code> inside a one-line IF is not changed (an insertion there would change the line); the next point of the calling SUB corrects the depth.</li>
+<li><b>Names.</b> The inserted code uses names starting with <code>RqDbg</code>. If the program already contains a word with this beginning anywhere, even in a comment, another prefix is taken (<code>UniDbg</code>, <code>UnideDbg</code>, ...), otherwise rc.exe reports &laquo;identifier already in use&raquo;.</li>
+<li><b>Line map.</b> Every line of the copy remembers its source file and line, so rc.exe errors in the copy are shown at the line of the original file. The messages of a session are saved to <code>&lt;name&gt;_rqdbg.log</code>.</li>
+</ul>
+
+<a name="3"></a><h2>3. Stopping and going on</h2>
+<p>The program and unIDE communicate through two files next to the main .bas and two named Windows events:</p>
+<table class="rq-ref">
+<tr><th>Object</th><th>Written by</th><th>Contents</th></tr>
+<tr><td class="rq-name">&lt;name&gt;_rqdbg.cmd</td><td>unIDE</td><td>The command: <code>m mode</code> (0 Run, 1 Trace into, 2 Step over, 3 Run to cursor), <code>r point</code> (Run to cursor), <code>b point</code> for each breakpoint, <code>c point</code> for a conditional breakpoint, <code>k N</code> for an enabled Watch condition, <code>#end</code>.</td></tr>
+<tr><td class="rq-name">&lt;name&gt;_rqdbg.state</td><td>the program</td><td>Where it stopped: <code>s point level</code>, then one line per value <code>kind name|type=value</code> (kind: p parameter, l local, g global, w Watch expression), <code>#end</code>. Long values are cut at 300 characters, CR is written as CHR$(182).</td></tr>
+<tr><td class="rq-name">event &laquo;stop&raquo;</td><td>the program</td><td>Set when the state file is written and closed.</td></tr>
+<tr><td class="rq-name">event &laquo;go&raquo;</td><td>unIDE</td><td>Set when the command file is written.</td></tr>
+</table>
+<p>The event names are new for each build (<code>unIDE_RqDbg_&lt;process&gt;_&lt;tick&gt;_S</code> and <code>_G</code>), so a program left from an earlier build cannot set them. unIDE creates both events before it starts the exe; the program opens them by name with CreateEventA (declared in the copy through DECLARE ... LIB "kernel32").</p>
+<p>The order of a stop:</p>
+<ol>
+<li>The flag of the point is set, the program calls <code>RqDbg</code>. <code>RqDbg</code> decides whether to stop here (see the modes below). If not, it returns at once.</li>
+<li>If it stops, it opens the state file and writes <code>s point level</code>. In a SUB it then raises <code>RqDbgWant</code>, and the check jumps with GOSUB to the dump block of this SUB, which writes the parameters and locals. In the main part and in SUBI it goes on directly.</li>
+<li><code>RqDbgHalt</code> writes the globals and the Watch expressions (<code>RqDbgGlobals</code>), <code>#end</code>, closes the file, sets &laquo;stop&raquo; and waits for &laquo;go&raquo; with <code>WaitForSingleObject(..., -1)</code>.</li>
+<li>While it waits, the whole thread of the program stands still: its windows are not repainted and its timers and events do not run, as with a Delphi program stopped in a debugger. There is no DOEVENTS in the wait. This was checked with <code>RqDbgT2_Target.bas</code> / <code>RqDbgT2_Control.bas</code>.</li>
+<li>unIDE does not wait: a timer checks the &laquo;stop&raquo; event with zero timeout. When it is set, unIDE reads the state file, shows the line in its own editor, fills Locals and Watch and the value hint under the mouse.</li>
+<li>On F9, F7, F8 or F4 unIDE writes the command file and sets &laquo;go&raquo;. The program reads the command (<code>RqDbgReadCmd</code>), sets the flags for the new mode and continues.</li>
+</ol>
+<p>The command file is read only at a stop (and once at start). A breakpoint set or removed while the program runs takes effect after the next stop. If the program stops on a breakpoint that has been removed in the meantime, unIDE lets it go on at once with the same command.</p>
+
+<a name="4"></a><h2>4. Modes</h2>
+<table class="rq-ref">
+<tr><th>Mode</th><th>Flags set</th><th>Where RqDbg stops</th></tr>
+<tr><td class="rq-name">Run (F9)</td><td>breakpoints</td><td>at a breakpoint (a conditional one only when its condition holds)</td></tr>
+<tr><td class="rq-name">Trace into (F7)</td><td>all points</td><td>at the next point, also inside a called SUB; not again on the same line of the same level (<code>FOR ... : ... : NEXT</code> on one line)</td></tr>
+<tr><td class="rq-name">Step over (F8)</td><td>all points</td><td>at the next point of the same level or higher; deeper points stop only if they are breakpoints</td></tr>
+<tr><td class="rq-name">Run to cursor (F4)</td><td>breakpoints and the point of the cursor line</td><td>at the cursor line or at a breakpoint met before it</td></tr>
+</table>
+<p>While a stop is being handled (dump, Watch expressions that call a FUNCTION of the program), <code>RqDbgBusy</code> is set and all checks return at once, so the debugger does not stop inside its own work.</p>
+
+<a name="5"></a><h2>5. Values of variables</h2>
+<p>Rapid-Q has no reflection: a value can be read only by code compiled into the program. So the copy contains the reading code for every variable that can be shown:</p>
+<ul>
+<li><b>Parameters and locals</b> of a SUB/FUNCTION &mdash; in a dump block at the end of this SUB, after all its DIM, with the label <code>RqDbgVars&lt;N&gt;</code>. It is reached with GOSUB from the check and only when the program stops, so the check itself stays short. Test <code>RqDbgT1_Gosub.bas</code> showed that GOSUB to a label inside a SUB works and the parameters and locals are visible there; labels are common to the whole program, so each block gets its own number.</li>
+<li><b>Globals</b> &mdash; in <code>SUB RqDbgGlobals</code> at the end of the copy, after all declarations. Because both blocks stand after the declarations, there is no reference to a variable before its DIM.</li>
+<li>Shown are declared variables of simple types: DIM ... AS STRING, BYTE, WORD, DWORD, SHORT, INTEGER, LONG, SINGLE, DOUBLE, names with suffixes, DEFINT and the like, and parameters. Not shown: arrays, objects, VARIANT, own TYPEs, variables used without DIM, globals of $INCLUDE files that are not inserted into the copy.</li>
+</ul>
+
+<a name="6"></a><h2>6. Watch expressions</h2>
+<p>Rapid-Q cannot evaluate a text at run time, so the expressions in the Watch window at the moment of the build (<code>a(3)</code>, <code>Form.Caption</code>, <code>LimitVal + TotalVal</code>) are compiled into the copy:</p>
+<ul>
+<li>into the dump block of a SUB where all names of the expression are known and at least one of them is a parameter or local of this SUB;</li>
+<li>otherwise into <code>RqDbgGlobals</code>, if all names are global (DIM, CREATE, CONST, SUB and FUNCTION of the main file and inserted $INCLUDE files).</li>
+</ul>
+<p>Built-in functions (LEN, MID$, ...) and properties after a dot do not count as names. An element of an array or a variable of a known simple type is written through STR$ or as is; anything else through VARIANT: <code>RqDbgWV = expression</code>, <code>RqDbgWT = RqDbgWS + RqDbgWV</code>, where RqDbgWS is a VARIANT holding "" (string + number gives a string). An expression with <code>:</code> or <code>'</code> outside quotes is not inserted. A new expression is evaluated only after the next build; the log of the build says for every expression where it is evaluated or why it is not.</p>
+
+<a name="7"></a><h2>7. Conditions</h2>
+<ul>
+<li><b>Conditional breakpoint.</b> The condition (a Rapid-Q expression) is written into the copy before the call of <code>RqDbg</code> at the first point of the line and evaluated there, in the scope of that line. unIDE enables it with <code>c point</code>; the point stops only if the condition holds. <code>b point</code> enables the point without the condition. F7 and F8 do not look at conditions.</li>
+<li><b>Condition of a Watch line</b> (expression <code>LoopIdx</code>, condition <code>=10</code>). It applies to every breakpoint where the expression is evaluated: a breakpoint stops only if all such conditions hold. The conditions are checked in the dump block of the SUB (or in <code>SUB RqDbgWatchCond</code> for global names) before the state file is opened; if one fails, the program goes on. unIDE enables a condition with <code>k N</code>.</li>
+<li>A condition added or changed during a session works after the next build; removing it works at once.</li>
+</ul>
+
+<a name="8"></a><h2>8. Where no check is inserted</h2>
+<ul>
+<li>CREATE ... END CREATE and TYPE ... END TYPE (taken as a whole), DECLARE, DIM, CONST, DEF..., $ directives, comments;</li>
+<li>ELSE, ELSEIF, CASE, LOOP, NEXT, WEND, END IF / SELECT / WITH, SUB headers and ends, the place between SELECT CASE and the first CASE;</li>
+<li>a one-line IF (something after THEN) is one statement together with the rest of the line;</li>
+<li>lines continued with <code>_</code> are joined first;</li>
+<li>conditional compilation: <code>$IFDEF</code>, <code>$IFNDEF</code>, <code>$ELSE</code>, <code>$ENDIF</code> and their aliases through $DEFINE (<code>brem</code>/<code>erem</code> and <code>remb</code>/<code>reme</code> of RAPIDQ.INC). A name counts as defined only if its $DEFINE is in the file; a block of $IFDEF of an unknown name is copied as is, without checks.</li>
+</ul>
+
+<a name="9"></a><h2>9. $INCLUDE files</h2>
+<p>An $INCLUDE file is inserted into the copy as text in place of its $INCLUDE line, and instrumented with the main file, if it has a breakpoint, is open on a tab marked with this main .bas, is the file of F4, or lies on the include path to one of these. The inserted text is framed by two comments starting with <code>' unIDE:</code> (the $INCLUDE line and the end of the file); a repeated $INCLUDE of an inserted file becomes a comment. Other $INCLUDE lines stay as they are: rc.exe takes the original file, without checks, and F7 does not enter its SUBs.</p>
+
+<a name="10"></a><h2>10. Limits</h2>
+<ul>
+<li>No Pause: a running program can be stopped only at a point whose flag is set.</li>
+<li>One session at a time.</li>
+<li>Breakpoints set while the program runs work after the next stop; new Watch expressions and conditions after the next build.</li>
+<li>Breakpoints, conditions and the Watch list are not saved between runs of unIDE.</li>
+<li>If unIDE is closed and the program reaches a point, it waits for &laquo;go&raquo; for ever.</li>
+<li>A Watch condition with local names in a SUBI is not checked (a SUBI has no dump block).</li>
+<li>Not available with the FreeBASIC build of a Rapid-Q program.</li>
+</ul>
+
+<a name="11"></a><h2>11. What was checked</h2>
+<p>With rc.exe on the user's computer (tests in <code>tests/RqDbg</code>, see README.txt there): GOSUB to a label in a SUB with parameters and locals visible (test 1); stopping on WaitForSingleObject and continuing from another process, the program blocked while it stands (test 2); the cost of the checks (test 3); breakpoints, F7, F8, F4, F9, values of variables and Watch expressions through VARIANT (test 4, confirmed 2026-10-05). Conditional breakpoints, Watch conditions, $INCLUDE files under the debugger and the session log were built and checked with FPC only and are not yet confirmed with rc.exe. Not checked: <code>RETURN</code> inside a block IF (used in the dump block with Watch conditions).</p>
+
+<div class="rq-foot"><a href="contents.html#appe">Appendix E</a><a href="contents.html">Contents</a><a href="indexa.html">Alphabetic index</a></div>
+</body>
+</html>

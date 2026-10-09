@@ -49,6 +49,7 @@ COS=otherdetail.html#cos
 CSRLIN=consoledetail.html#csrlin
 CURDIR$=internal.html#
 DATE$=otherdetail.html#date$
+DEBUGGER=unide_debugger.html
 DEC=otherdetail.html#dec
 DECLARE=procs.html#
 DEFBYTE=otherdetail.html#def
