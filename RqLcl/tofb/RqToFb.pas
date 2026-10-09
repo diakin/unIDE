@@ -912,6 +912,34 @@ begin
     end;
 end;
 
+// Строка в кавычках не закрыта к концу текста и кончается на "_"
+// (RQdebugger: OpenDialog.Filter = "1.All Files *.*|*.*|_ с продолжением
+// на следующих строках). ACutPos - позиция этого "_". Кавычки считаются
+// с начала всего текста: он может быть уже собран из нескольких строк.
+function StrContinues(const AText: string; out ACutPos: Integer): Boolean;
+var
+  CharIdx, LastIdx: Integer;
+  InQuote: Boolean;
+begin
+  Result := False;
+  ACutPos := 0;
+  InQuote := False;
+  for CharIdx := 1 to Length(AText) do
+    if AText[CharIdx] = '"' then
+      InQuote := not InQuote
+    else if (AText[CharIdx] = '''') and not InQuote then
+      Exit;
+  if not InQuote then
+    Exit;
+  LastIdx := Length(AText);
+  while (LastIdx > 0) and (AText[LastIdx] in [' ', #9, #13, #10]) do
+    Dec(LastIdx);
+  if (LastIdx = 0) or (AText[LastIdx] <> '_') then
+    Exit;
+  ACutPos := LastIdx;
+  Result := True;
+end;
+
 function EndsWithContinue(const AText: string): Boolean;
 var
   CharIdx, LineStart, LastIdx, WordStart: Integer;
@@ -7201,6 +7229,7 @@ var
   Text, OutText, OutName, SavedFile: string;
   SavedLine, SavedBlocks: Integer;
   SavedProc: TRqProc;
+  StrJoins, CutPos, JoinIdx: Integer;
 begin
   DoneIdx := FDoneFiles.IndexOfName(UpperCase(AFileName));
   if DoneIdx >= 0 then
@@ -7255,15 +7284,34 @@ begin
     begin
       StartIdx := LineIdx;
       Text := Lines[LineIdx];
-      while EndsWithContinue(Text) and (LineIdx + 1 < Lines.Count) do
+      StrJoins := 0;
+      while LineIdx + 1 < Lines.Count do
       begin
-        Inc(LineIdx);
-        Text := Text + CrLf + Lines[LineIdx];
+        if EndsWithContinue(Text) then
+        begin
+          Inc(LineIdx);
+          Text := Text + CrLf + Lines[LineIdx];
+        end
+        // "_" в конце незакрытой строки в кавычках: строка продолжается
+        // на следующей, "_" и перевод строки в неё не входят. В
+        // FreeBASIC строка в кавычках - в одной строке файла, поэтому
+        // склеиваем здесь; число строк вывода - пустыми строками после
+        // оператора
+        else if StrContinues(Text, CutPos) then
+        begin
+          Inc(LineIdx);
+          Text := Copy(Text, 1, CutPos - 1) + Lines[LineIdx];
+          Inc(StrJoins);
+        end
+        else
+          Break;
       end;
       FCurFile := AFileName;
       FCurLine := StartIdx + 1;
       FLostLines := 0;
       ProcessLine(Text, OutText);
+      for JoinIdx := 1 to StrJoins do
+        OutText := OutText + CrLf;
       OutLines.Add(OutText);
       Inc(LineIdx);
       // Строки продолжения (_) - тоже строки файла
