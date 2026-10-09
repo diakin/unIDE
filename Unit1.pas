@@ -841,6 +841,8 @@ type
     procedure SaveProjectClick(Sender: TObject);
     procedure SaveProjectAsClick(Sender: TObject);
     procedure SubListDblClick(Sender: TObject);
+    procedure SubListResize(Sender: TObject);
+    procedure SubListFitColumns;
     procedure ObjEventsDblClick(Sender: TObject);
     procedure ObjPropsDblClick(Sender: TObject);
     procedure ObjPropsClick(Sender: TObject);
@@ -1685,6 +1687,9 @@ type
     // Сколько раз RichEdit отказался прокрутиться (ScrollEditTo) - в лог
     // пишутся только первые
     FScrollRefusals: Integer;
+    // SubListFitColumns уже идёт - смена ширины колонки может вызвать
+    // повторный OnResize (появилась или ушла полоса)
+    FSubListFitting: Boolean;
 
     // Тулбар: слева панель с группами кнопок, справа группа поиска
     // Групбоксы дают рамку и подпись, а содержимое лежит на ВЛОЖЕННЫХ панелях.
@@ -21799,6 +21804,39 @@ begin
     end;
   finally
     lvSubList.Items.EndUpdate;
+  end;
+  // Полоса прокрутки могла появиться или уйти - ширина Name по новой
+  SubListFitColumns;
+end;
+
+// SubList сменил размер - колонка Name по ширине, Begin и End у правого края
+procedure TForm1.SubListResize(Sender: TObject);
+begin
+  SubListFitColumns;
+end;
+
+// Колонка Name занимает всё, что осталось от Begin и End: они остаются
+// своей ширины (заданной в .dfm или перетащенной мышью) и стоят у правого
+// края. Ширина клиентской области уже без вертикальной полосы, поэтому
+// горизонтальная полоса не появляется. Name не уже 60 пикселей.
+procedure TForm1.SubListFitColumns;
+var
+  NameWidth: Integer;
+begin
+  if (lvSubList = nil) or not lvSubList.HandleAllocated or
+     (lvSubList.Columns.Count < 3) or FSubListFitting then
+    Exit;
+  NameWidth := lvSubList.ClientWidth - lvSubList.Columns[1].Width -
+               lvSubList.Columns[2].Width;
+  if NameWidth < 60 then
+    NameWidth := 60;
+  if lvSubList.Columns[0].Width = NameWidth then
+    Exit;
+  FSubListFitting := True;
+  try
+    lvSubList.Columns[0].Width := NameWidth;
+  finally
+    FSubListFitting := False;
   end;
 end;
 
@@ -59795,6 +59833,14 @@ begin
   // IDE (Light / Dark) - когда все элементы окна построены
   UiWrapListScrolls;
   UiApply;
+
+  // SubList: Name растягивается по ширине, Begin и End - у правого края.
+  // OnResize у TControl защищённый, отсюда TUiCtl
+  if lvSubList <> nil then
+  begin
+    TUiCtl(lvSubList).OnResize := SubListResize;
+    SubListFitColumns;
+  end;
 end;
 
 // Свои полосы (UiScroll, TUiListScroll) поверх полос списков и
