@@ -51,8 +51,12 @@ defstr infomsg$=""
 const WS_EX_LAYERED=&h80000
 
 '!!! ------------------------- Useful variables ------------
+$IFNDEF FALSE    ' inc2026: False и True могли уже определить файлы компонентов (QColorDialog10.inc: $IFNDEF TRUE / $DEFINE True 1), значения те же
 $define  False  0
+$ENDIF
+$IFNDEF TRUE
 $define True  1
+$ENDIF
 $define pi 3.14159
 
 $define ascb asc
@@ -1667,7 +1671,9 @@ TYPE OPENFILENAME
 END TYPE
 
 
+$IFNDEF __QCOLORDIALOG    ' inc2026: ChooseColorDlg объявляет и подключённая раньше версия QColorDialog
 DECLARE FUNCTION ChooseColorDlg LIB "COMDLG32" ALIAS "ChooseColorA" (CC AS CHOOSECOLOR) AS LONG
+$ENDIF
 DECLARE FUNCTION GetSaveFileName LIB "COMDLG32" ALIAS "GetSaveFileNameA" (pOpenfilename AS OPENFILENAME) AS LONG
 DECLARE FUNCTION GetOpenFileName LIB "COMDLG32" ALIAS "GetOpenFileNameA" (pOpenfilename AS OPENFILENAME) AS LONG
 
@@ -6025,6 +6031,7 @@ $ENDIF ' _RQDIALOGINC
 
 
 
+$IFNDEF __QCOLORDIALOG    ' inc2026: QColorDialog уже подключён другой версией (QColorDialog10.inc, QColorDialog11.inc подключены раньше RAPIDQ2.INC) - эта пропускается
 '================================================================================================
 ' Class QColorDialog version 1.3, original by D. Glodt?, updated for RQ2 by Don Homans
 '11/2009
@@ -6153,6 +6160,8 @@ Colors(16)=&HFF00FF
 END CONSTRUCTOR
 END WITH
 END TYPE
+$DEFINE __QCOLORDIALOG     ' inc2026: QColorDialog 1.3 объявлен - другие версии (QColorDialog10.inc, QColorDialog11.inc) пропустятся
+$ENDIF  ' inc2026: __QCOLORDIALOG
 
 
 
