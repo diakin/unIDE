@@ -781,6 +781,7 @@ type
     procedure cmbRqCompChange(Sender: TObject);
     procedure TabsMouseDown(Sender: TObject; Button: TMouseButton;
                             Shift: TShiftState; X, Y: Integer);
+    procedure TabsMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
     procedure ShowModulesClick(Sender: TObject);
     procedure ShowFormsClick(Sender: TObject);
     procedure SnapshotOwnFormClick(Sender: TObject);
@@ -1422,6 +1423,7 @@ type
     FInFitTabs: Boolean;
     FTabWin: array of Integer;
     FLockTabs: Boolean; // защита от рекурсии при программной смене вкладки
+    FTabHintIdx: Integer; // вкладка, для которой показана подсказка (TabsMouseMove)
     FTabsModShown: Boolean; // каким Modified был отрисован маркер
     // Переключение вкладки идёт в две половины: текст с подсветкой - сразу
     // (ActivateWindow), разборы для правой панели - после показа
@@ -1853,6 +1855,7 @@ type
     procedure TabsChanging(Sender: TObject; var AllowChange: Boolean);
     procedure TabsChange(Sender: TObject);
     function  TabCaptionFor(WinIdx: Integer): string;
+    function  TabHintFor(WinIdx: Integer): string;
     function  TabCloseWidth: Integer;
     procedure TabsDrawTab(ADC: HDC; const ARect: TRect; ATab: Integer;
                           AActive: Boolean);
@@ -7012,8 +7015,10 @@ var
   FN: string;
 begin
   // Путь мог прийти из .prj или из списка недавних и указывать на прежнее
-  // расположение папки - пробуем найти файл рядом с программой
-  FN := ResolveFileName(FileName);
+  // расположение папки - пробуем найти файл рядом с программой. Прямые
+  // косые (D:/папка/файл.inc из сообщения компилятора) - обратными: иначе
+  // имя на вкладке - весь путь, а тот же файл открылся бы второй раз
+  FN := ResolveFileName(StringReplace(FileName, '/', '\', [rfReplaceAll]));
 
   if not FileExists(FN) then
   begin
@@ -15454,6 +15459,20 @@ const
 // Подпись вкладки. Пробелы по краям - не украшение: ширину вкладки Windows
 // считает по тексту, а нам нужно место под маркер изменений слева и крестик
 // справа. Owner-draw поверх этого рисует настоящее содержимое.
+// Имя файла и папки и при прямых косых в пути (D:/папка/файл.inc - так путь
+// приходит из сообщений компилятора): ExtractFileName Delphi 7 делит путь
+// только по "\" и ":"
+function TabFileName(const APath: string): string;
+begin
+  Result := ExtractFileName(StringReplace(APath, '/', '\', [rfReplaceAll]));
+end;
+
+function TabDirName(const APath: string): string;
+begin
+  Result := ExtractFileName(ExcludeTrailingPathDelimiter(
+    ExtractFilePath(StringReplace(APath, '/', '\', [rfReplaceAll]))));
+end;
+
 function TForm1.TabCaptionFor(WinIdx: Integer): string;
 var
   I: Integer;
@@ -15467,7 +15486,7 @@ begin
   else
     IsMod := FWindows[WinIdx].Modified;
 
-  Nm := ExtractFileName(FWindows[WinIdx].FileName);
+  Nm := TabFileName(FWindows[WinIdx].FileName);
 
   // Если такое же имя занято другим окном, дописываем папку. Два разных
   // Unit1.pas на вкладках иначе неотличимы, и второй из них выглядит как
@@ -15475,7 +15494,7 @@ begin
   Dup := False;
   for I := 0 to WindowsItemCount - 1 do
     if (I <> WinIdx) and FWindows[I].Used and
-       (CompareText(ExtractFileName(FWindows[I].FileName), Nm) = 0) then
+       (CompareText(TabFileName(FWindows[I].FileName), Nm) = 0) then
     begin
       Dup := True;
       Break;
@@ -15483,17 +15502,13 @@ begin
 
   if Dup then
   begin
-    Dir := ExtractFileName(
-      ExcludeTrailingPathDelimiter(ExtractFilePath(FWindows[WinIdx].FileName)));
+    Dir := TabDirName(FWindows[WinIdx].FileName);
     if Dir <> '' then
       Nm := Nm + ' [' + Dir + ']';
   end;
 
-  // Файл подключён в главный .bas через $INCLUDE - имя главного после
-  // знака TabOwnerMark (TabsDrawTab рисует его приглушённо)
-  if FWindows[WinIdx].IncOwner <> '' then
-    Nm := Nm + TabOwnerMark + ExtractFileName(FWindows[WinIdx].IncOwner);
-
+  // Полный путь и главный .bas файла $INCLUDE - в подсказке (TabHintFor),
+  // на вкладке только имя: длинные подписи не помещаются
   Result := Nm;
   if IsMod then
     Result := '* ' + Result;
@@ -15501,6 +15516,44 @@ begin
   // Хвост под кнопку закрытия. Клик по ней ловится по координате X,
   // см. TabsMouseDown и TabCloseWidth.
   Result := Result + '   x';
+end;
+
+// Подсказка вкладки: полный путь, главный .bas (файл подключён через
+// $INCLUDE), признак несохранённых изменений
+function TForm1.TabHintFor(WinIdx: Integer): string;
+var
+  IsMod: Boolean;
+begin
+  Result := '';
+  if (WinIdx < 0) or (WinIdx > WindowsItemCount - 1) or not FWindows[WinIdx].Used then
+    Exit;
+  Result := StringReplace(FWindows[WinIdx].FileName, '/', '\', [rfReplaceAll]);
+  if FWindows[WinIdx].IncOwner <> '' then
+    Result := Result + #13#10'Подключён в ' +
+              StringReplace(FWindows[WinIdx].IncOwner, '/', '\', [rfReplaceAll]);
+  if WinIdx = FWindowsIndex then
+    IsMod := RichEdit1.Modified
+  else
+    IsMod := FWindows[WinIdx].Modified;
+  if IsMod then
+    Result := Result + #13#10'Изменён, не сохранён';
+end;
+
+// Подсказка - у вкладки под мышью. Сменилась вкладка - прежнюю подсказку
+// убираем (CancelHint), новая появится после обычной задержки
+procedure TForm1.TabsMouseMove(Sender: TObject; Shift: TShiftState; X, Y: Integer);
+var
+  Idx: Integer;
+begin
+  Idx := FTabs.IndexOfTabAt(X, Y);
+  if Idx = FTabHintIdx then
+    Exit;
+  FTabHintIdx := Idx;
+  if (Idx >= 0) and (Idx <= High(FTabWin)) then
+    FTabs.Hint := TabHintFor(FTabWin[Idx])
+  else
+    FTabs.Hint := '';
+  Application.CancelHint;
 end;
 
 // Подпись вкладки рисуем сами: у активной фон салатовый, хвост "x" -
@@ -19377,6 +19430,10 @@ begin
 
   FTabs.OnChanging := TabsChanging;
   FTabs.OnChange := TabsChange;
+  // Полный путь файла - в подсказке у вкладки (TabsMouseMove)
+  FTabHintIdx := -1;
+  FTabs.OnMouseMove := TabsMouseMove;
+  FTabs.ShowHint := True;
   FTabs.DoubleBuffered := True;
   // Смена ширины и удаление вкладок - см. FitTabsToWidth
   FTabsOldProc := FTabs.WindowProc;
