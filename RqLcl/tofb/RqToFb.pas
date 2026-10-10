@@ -1873,11 +1873,28 @@ end;
 // Не заменяется: объявление поля (первое слово строки, за ним AS или "(")
 // и имя, которое уже есть среди членов этого TYPE. Вне TYPE и в других
 // местах TYPE - как раньше; как RapidQ поступает там, не проверялось.
+// Внутри CREATE ... END CREATE не заменяется первое слово строки, если это
+// свойство или метод класса объекта (RQdebugger853-8RQ.bas: с $DEFINE
+// TRANSPARENT 1 из rapidq2.inc строка "Transparent = 1" у QLABEL давала
+// "1 = 1", fbc error 146). Что RapidQ делает здесь сам, не проверялось:
+// программа в RapidQ компилируется.
 function TRqFbConv.DefineKeptInType(const AToks: TToks; AIdx, AFirst: Integer): Boolean;
 var
   NextIdx: Integer;
+  ClassUp: string;
 begin
   Result := False;
+  if (AIdx = AFirst) and (FCreateStack <> nil) and (FCreateStack.Count > 0) then
+  begin
+    ClassUp := UpperCase(FCreateStack.ValueFromIndex[FCreateStack.Count - 1]);
+    if FindTypeInfo(ClassUp) <> nil then
+      ClassUp := FindTypeInfo(ClassUp).BaseClass;
+    if MemberKind(ClassUp, AToks[AIdx].Up) <> #0 then
+    begin
+      Result := True;
+      Exit;
+    end;
+  end;
   if (FCurType = nil) and not FInType then
     Exit;
   if AIdx = AFirst then
