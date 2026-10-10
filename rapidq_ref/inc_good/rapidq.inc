@@ -2,7 +2,7 @@
 '             -- attach a $INCLUDE "RAPIDQ.INC"
 '             -- to all your programs, or just extract what you need.
 
-
+  'ввввввв
 '$IFNDEF space
 $DEFINE space space$
 '$ENDIF
@@ -947,7 +947,7 @@ declare Function GetSubjCodePage( Subject As String) As String
 declare Function GetSubjCodeMethod( Subject As String) As String
 declare Function GetMsgBodyContentType ( Msg As String) As String
 declare Function GetMsgBodyCodePage ( Msg As String) As String
-declare Function GetMsgBodyCodeMethod( MsgBody As String) As String
+declare Function GetMsgBodyCodeMethod( Msg As String) As String
 declare Function GetHeaderField( Header As String, Field as string) As String
 declare Function GetMSGHeader( Source As String) As String
 declare Function GetMSGBody( Source As String) As String 
@@ -957,6 +957,7 @@ declare Function RQBASE64Decode (stxt As String) As String
 declare Function DecodeSubj( Subject As String) As String 
 declare Function RQConvertCodePage (SourseString As String, inPage As long, outPage As long) As String
 
+Declare Sub SetLastError Lib "kernel32" Alias "SetLastError" (ByVal dwErrCode As Long)
 
 DECLARE FUNCTION WaitForSingleObject Lib "kernel32" Alias "WaitForSingleObject" (ByVal hHandle As Long, ByVal dwMilliseconds As Long) As Long
 
