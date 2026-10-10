@@ -216,6 +216,9 @@ type
     FileName: string;
     Text: string;
     OnDisk: Boolean;    // файл не был открыт - перезаписан на диске
+    // Кодировка файла окна: окно закрыли - прежний текст пишется на диск
+    IsUtf8: Boolean;
+    HasBom: Boolean;
   end;
   TReplBackupArray = array of TReplBackup;
 
@@ -880,7 +883,10 @@ type
     procedure MultiReplace;
     function  ReplaceInText(const ASrc, APattern, AReplace: string;
                             var ACount: Integer): string;
-    procedure AddReplBackup(const AFile, AText: string; AOnDisk: Boolean);
+    procedure AddReplBackup(const AFile, AText: string; AOnDisk, AIsUtf8,
+                            AHasBom: Boolean);
+    procedure FinishReplFile(const AFile: string; AOpenedHere: Boolean;
+                             AReplaced: Integer; var ASaved: Integer);
     procedure SetWindowTextReplaced(AWinIdx: Integer; const AText: string);
     procedure MultiReplaceAll;
     procedure UndoMultiReplace;
@@ -16889,11 +16895,14 @@ end;
 //  Для трёх последних: Find-> - Match list по области и переход к первому
 //  вхождению, следующие нажатия - к следующему по списку (<-Find - к
 //  предыдущему); Replace - поиск заново и по одному вхождению с вопросом,
-//  файл открывается в редакторе; All - поиск заново, вопрос с числом
+//  файл открывается в редакторе; открытый для этого файл после своих
+//  вхождений сохраняется (если что-то заменено) и закрывается, Undo
+//  возвращает его с диска; All - поиск заново, вопрос с числом
 //  вхождений и файлов, замена во всех. Файлы, открытые в редакторе,
 //  меняются в редакторе (сохранять - как обычно); не открытые -
 //  перезаписываются на диске в своей кодировке. Undo возвращает всё, что
-//  поменял последний All, - и окна, и файлы на диске.
+//  поменял последний All, - и окна, и файлы на диске; окно, закрытое
+//  после замены, - прежним текстом в файл, в его кодировке.
 //  Режим Go to line - всегда в текущем файле.
 // ---------------------------------------------------------------------------
 
@@ -17122,8 +17131,9 @@ end;
 // следующих вхождений той же строки сдвигаются на разницу длин
 procedure TForm1.MultiReplace;
 var
-  Pattern, Replacement, FileName: string;
-  RowIdx, LaterIdx, Done, Skipped, Shift, LineNo: Integer;
+  Pattern, Replacement, FileName, CurFile: string;
+  RowIdx, LaterIdx, Done, Skipped, Shift, LineNo, FileDone, Saved: Integer;
+  CurOpenedHere: Boolean;
 begin
   Pattern := cmbFind.Text;
   if Pattern = '' then
@@ -17140,7 +17150,13 @@ begin
 
   Done := 0;
   Skipped := 0;
+  Saved := 0;
   Shift := Length(Replacement) - Length(Pattern);
+  // Файл, по которому идём: открыт ли здесь (вкладки до замены не было) и
+  // сколько в нём заменено - по ним он закрывается (FinishReplFile)
+  CurFile := '';
+  CurOpenedHere := False;
+  FileDone := 0;
   RowIdx := 0;
   while RowIdx <= High(FMatchRows) do
   begin
@@ -17149,9 +17165,16 @@ begin
       Inc(RowIdx);
       Continue;
     end;
+    FileName := FMatchRows[RowIdx].FileName;
+    if CompareText(FileName, CurFile) <> 0 then
+    begin
+      FinishReplFile(CurFile, CurOpenedHere, FileDone, Saved);
+      CurFile := FileName;
+      CurOpenedHere := IndexOfWindowByFile(FileName) < 0;
+      FileDone := 0;
+    end;
     ShowMatchRow(RowIdx);
     JumpToMatch(RowIdx);
-    FileName := FMatchRows[RowIdx].FileName;
     LineNo := FMatchRows[RowIdx].LineNo;
     // Файл не открылся или текст уже другой - вхождение пропускается
     if (CompareText(FCurrentFileName, FileName) <> 0) or
@@ -17170,6 +17193,7 @@ begin
       begin
         RichEdit1.SelText := Replacement;
         Inc(Done);
+        Inc(FileDone);
         if Shift <> 0 then
           for LaterIdx := RowIdx + 1 to High(FMatchRows) do
             if (FMatchRows[LaterIdx].Kind = mrkHit) and
@@ -17184,10 +17208,16 @@ begin
     end;
     Inc(RowIdx);
   end;
+  // Последний файл (и при Отмене - тот, на котором остановились)
+  FinishReplFile(CurFile, CurOpenedHere, FileDone, Saved);
 
   // Список - до замены: следующий Find-> ищет заново
   FMatchKey := '';
   StatusBar1.SimpleText := Format('Заменено: %d', [Done]);
+  if Saved > 0 then
+    StatusBar1.SimpleText := StatusBar1.SimpleText +
+      Format('; файлов, открытых для замены, сохранено и закрыто: %d ' +
+             '(Undo - вернуть их)', [Saved]);
   if Skipped > 0 then
     StatusBar1.SimpleText := StatusBar1.SimpleText +
       Format(', пропущено: %d (файл не открылся или текст изменился)', [Skipped]);
@@ -17270,51 +17300,6 @@ begin
   Result := Res;
 end;
 
-// Копия до замены All - для Undo
-procedure TForm1.AddReplBackup(const AFile, AText: string; AOnDisk: Boolean);
-var
-  BackupIdx: Integer;
-begin
-  BackupIdx := Length(FReplBackups);
-  SetLength(FReplBackups, BackupIdx + 1);
-  FReplBackups[BackupIdx].FileName := AFile;
-  FReplBackups[BackupIdx].Text := AText;
-  FReplBackups[BackupIdx].OnDisk := AOnDisk;
-end;
-
-// Новый текст окна AWinIdx: текущее - в редактор (одна карта, один раз),
-// остальные - в память окна
-procedure TForm1.SetWindowTextReplaced(AWinIdx: Integer; const AText: string);
-begin
-  if AWinIdx = FWindowsIndex then
-  begin
-    FLockHighlight := True;
-    try
-      SetEditorText(AText);
-    finally
-      FLockHighlight := False;
-    end;
-    RichEdit1.SelStart := 0;
-    RichEdit1.SelLength := 0;
-    RichEdit1.Modified := True;
-    RebuildCommentRangeMap;
-    RichEditLinesCount := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
-    UpdateVisibleBounds;
-    RichEdit1.Invalidate;
-  end
-  else
-  begin
-    FWindows[AWinIdx].Text := AText;
-    FWindows[AWinIdx].Modified := True;
-    FWindows[AWinIdx].MapValid := False;
-    SetLength(FWindows[AWinIdx].CommentRanges, 0);
-    SetLength(FWindows[AWinIdx].StringRanges, 0);
-    if FWindows[AWinIdx].CursorPos > Length(AText) then
-      FWindows[AWinIdx].CursorPos := 0;
-    UpdateTabCaption(AWinIdx);
-  end;
-end;
-
 // Прочитать файл с диска как есть (для Undo)
 function ReadRawFile(const AFile: string; var AText: string): Boolean;
 var
@@ -17353,6 +17338,89 @@ begin
     end;
     Result := True;
   except
+  end;
+end;
+
+// Копия до замены All - для Undo
+procedure TForm1.AddReplBackup(const AFile, AText: string; AOnDisk, AIsUtf8,
+                               AHasBom: Boolean);
+var
+  BackupIdx: Integer;
+begin
+  BackupIdx := Length(FReplBackups);
+  SetLength(FReplBackups, BackupIdx + 1);
+  FReplBackups[BackupIdx].FileName := AFile;
+  FReplBackups[BackupIdx].Text := AText;
+  FReplBackups[BackupIdx].OnDisk := AOnDisk;
+  FReplBackups[BackupIdx].IsUtf8 := AIsUtf8;
+  FReplBackups[BackupIdx].HasBom := AHasBom;
+end;
+
+// Replace по одному: файл AFile пройден. Открыт здесь (до замены вкладки
+// не было) - с заменами сохраняется (прежние байты - в копию для Undo) и
+// вкладка закрывается; без замен - просто закрывается. Был открыт раньше -
+// остаётся как есть, несохранённым. ASaved - сколько файлов записано
+procedure TForm1.FinishReplFile(const AFile: string; AOpenedHere: Boolean;
+                                AReplaced: Integer; var ASaved: Integer);
+var
+  WinIdx: Integer;
+  Raw: string;
+begin
+  if not AOpenedHere or (AFile = '') then
+    Exit;
+  WinIdx := IndexOfWindowByFile(AFile);
+  if WinIdx < 0 then
+    Exit;
+  if WinIdx <> FWindowsIndex then
+    ActivateWindow(WinIdx);
+  if AReplaced > 0 then
+  begin
+    if not ReadRawFile(AFile, Raw) then
+      Exit;   // прочитать не удалось - вкладка остаётся, сохранять вручную
+    if not SaveCurrentFile then
+      Exit;
+    // Первая запись этой серии - Undo теперь относится к ней
+    if ASaved = 0 then
+    begin
+      SetLength(FReplBackups, 0);
+      FReplaceBackup := '';
+    end;
+    AddReplBackup(AFile, Raw, True, False, False);
+    Inc(ASaved);
+  end;
+  CloseWindow(WinIdx);
+end;
+
+// Новый текст окна AWinIdx: текущее - в редактор (одна карта, один раз),
+// остальные - в память окна
+procedure TForm1.SetWindowTextReplaced(AWinIdx: Integer; const AText: string);
+begin
+  if AWinIdx = FWindowsIndex then
+  begin
+    FLockHighlight := True;
+    try
+      SetEditorText(AText);
+    finally
+      FLockHighlight := False;
+    end;
+    RichEdit1.SelStart := 0;
+    RichEdit1.SelLength := 0;
+    RichEdit1.Modified := True;
+    RebuildCommentRangeMap;
+    RichEditLinesCount := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+    UpdateVisibleBounds;
+    RichEdit1.Invalidate;
+  end
+  else
+  begin
+    FWindows[AWinIdx].Text := AText;
+    FWindows[AWinIdx].Modified := True;
+    FWindows[AWinIdx].MapValid := False;
+    SetLength(FWindows[AWinIdx].CommentRanges, 0);
+    SetLength(FWindows[AWinIdx].StringRanges, 0);
+    if FWindows[AWinIdx].CursorPos > Length(AText) then
+      FWindows[AWinIdx].CursorPos := 0;
+    UpdateTabCaption(AWinIdx);
   end;
 end;
 
@@ -17432,7 +17500,12 @@ begin
           Res := ReplaceInText(Src, Pattern, Replacement, Count);
           if Count = 0 then
             Continue;
-          AddReplBackup(FWindows[WinIdx].FileName, Src, False);
+          if WinIdx = FWindowsIndex then
+            AddReplBackup(FWindows[WinIdx].FileName, Src, False, FFileIsUtf8,
+                          FFileHasBom)
+          else
+            AddReplBackup(FWindows[WinIdx].FileName, Src, False,
+                          FWindows[WinIdx].IsUtf8, FWindows[WinIdx].HasBom);
           SetWindowTextReplaced(WinIdx, Res);
         end
         else
@@ -17452,7 +17525,7 @@ begin
           FFileHasBom := FileBom;
           try
             SaveTextFile(Files[FileIdx], Res);
-            AddReplBackup(Files[FileIdx], Raw, True);
+            AddReplBackup(Files[FileIdx], Raw, True, False, False);
           except
             Inc(Failed);
             Continue;
@@ -17487,6 +17560,7 @@ end;
 procedure TForm1.UndoMultiReplace;
 var
   BackupIdx, WinIdx, Restored, Failed: Integer;
+  SavedUtf8, SavedBom: Boolean;
 begin
   Restored := 0;
   Failed := 0;
@@ -17505,7 +17579,24 @@ begin
     WinIdx := IndexOfWindowByFile(FReplBackups[BackupIdx].FileName);
     if WinIdx < 0 then
     begin
-      Inc(Failed);   // окно закрыли
+      // Окно закрыли (сохранив замену или нет) - прежний текст на диск, в
+      // кодировке, в которой файл был открыт
+      SavedUtf8 := FFileIsUtf8;
+      SavedBom := FFileHasBom;
+      try
+        FFileIsUtf8 := FReplBackups[BackupIdx].IsUtf8;
+        FFileHasBom := FReplBackups[BackupIdx].HasBom;
+        try
+          SaveTextFile(FReplBackups[BackupIdx].FileName,
+                       FReplBackups[BackupIdx].Text);
+          Inc(Restored);
+        except
+          Inc(Failed);
+        end;
+      finally
+        FFileIsUtf8 := SavedUtf8;
+        FFileHasBom := SavedBom;
+      end;
       Continue;
     end;
     SetWindowTextReplaced(WinIdx, FReplBackups[BackupIdx].Text);
@@ -17516,7 +17607,7 @@ begin
   StatusBar1.SimpleText := Format('Отменена замена All: файлов %d', [Restored]);
   if Failed > 0 then
     StatusBar1.SimpleText := StatusBar1.SimpleText +
-      Format(', не вернуть: %d (окно закрыто или файл не записывается)', [Failed]);
+      Format(', не удалось записать: %d', [Failed]);
   StatusBar1.SimplePanel := True;
   UpdateStatusBarInfo;
 end;
