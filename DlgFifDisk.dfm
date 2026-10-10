@@ -2,8 +2,8 @@ object DlgFifDisk: TDlgFifDisk
   Left = 0
   Top = 0
   BorderStyle = bsDialog
-  Caption = 'Find In Files - на диске'
-  ClientHeight = 150
+  Caption = 'Find In Files'
+  ClientHeight = 300
   ClientWidth = 520
   Color = clBtnFace
   Font.Charset = DEFAULT_CHARSET
@@ -11,6 +11,7 @@ object DlgFifDisk: TDlgFifDisk
   Font.Height = -13
   Font.Name = 'Tahoma'
   Font.Style = []
+  FormStyle = fsStayOnTop
   OldCreateOrder = False
   Position = poMainFormCenter
   PixelsPerInch = 96
@@ -22,12 +23,27 @@ object DlgFifDisk: TDlgFifDisk
     Height = 18
     Caption = 'Папки'
   end
+  object lblExt: TLabel
+    Left = 12
+    Top = 48
+    Width = 64
+    Height = 18
+    Caption = 'Файлы'
+  end
   object lblMask: TLabel
     Left = 12
-    Top = 50
-    Width = 60
+    Top = 158
+    Width = 64
     Height = 18
     Caption = 'Маски'
+  end
+  object lblStatus: TLabel
+    Left = 12
+    Top = 214
+    Width = 496
+    Height = 40
+    AutoSize = False
+    WordWrap = True
   end
   object edDir: TUiEdit
     Left = 80
@@ -42,44 +58,72 @@ object DlgFifDisk: TDlgFifDisk
     Width = 32
     Height = 26
     Caption = '...'
-    ModalResult = 4
     TabOrder = 1
   end
-  object edMask: TUiEdit
+  object lstExt: TCheckListBox
     Left = 80
     Top = 46
     Width = 428
-    Height = 24
-    Hint = 'Через точку с запятой: *.pas;*.dpr;*.inc'
+    Height = 98
+    Hint = 'Расширения файлов, в которых искать'
+    Columns = 4
+    ItemHeight = 16
     ShowHint = True
     TabOrder = 2
   end
+  object btnExtAll: TUiButton
+    Left = 12
+    Top = 72
+    Width = 62
+    Height = 24
+    Hint = 'Отметить все расширения'
+    Caption = 'Все'
+    ShowHint = True
+    TabOrder = 3
+  end
+  object btnExtNone: TUiButton
+    Left = 12
+    Top = 100
+    Width = 62
+    Height = 24
+    Hint = 'Снять все отметки'
+    Caption = 'Снять'
+    ShowHint = True
+    TabOrder = 4
+  end
+  object edMask: TUiEdit
+    Left = 80
+    Top = 154
+    Width = 428
+    Height = 24
+    Hint = 'Другие маски через ";" (readme*;*.txt). Маска вида *.txt при поиске уходит в список расширений'
+    ShowHint = True
+    TabOrder = 5
+  end
   object chkSub: TUiCheckBox
     Left = 80
-    Top = 80
+    Top = 186
     Width = 300
     Height = 21
     Caption = 'Во вложенных папках'
-    TabOrder = 3
+    TabOrder = 6
   end
   object btnOk: TUiButton
     Left = 332
-    Top = 114
+    Top = 264
     Width = 84
     Height = 26
     Caption = 'Найти'
     Default = True
-    ModalResult = 1
-    TabOrder = 4
+    TabOrder = 7
   end
   object btnCancel: TUiButton
     Left = 424
-    Top = 114
+    Top = 264
     Width = 84
     Height = 26
     Cancel = True
-    Caption = 'Cancel'
-    ModalResult = 2
-    TabOrder = 5
+    Caption = 'Закрыть'
+    TabOrder = 8
   end
 end

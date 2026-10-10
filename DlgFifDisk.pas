@@ -1,21 +1,24 @@
 unit DlgFifDisk;
 
-// Find In Files на диске: папки (несколько - через ";"), маски файлов,
-// вложенные папки. Кнопка "..." - окно Directory Tree: отмеченные в его
-// списке папки подставляются все.
+// Find In Files - окно поиска в файлах проекта и на диске. Немодальное:
+// пока идёт поиск, найденное сразу появляется в Match list, и с ним можно
+// работать; кнопка "Найти" на время поиска становится "Стоп".
+//
+// Папки (несколько - через ";", только для поиска на диске), список
+// расширений с галками, другие маски, вложенные папки, строка хода
+// поиска. Кнопка "..." - окно Directory Tree: отмеченные в его списке
+// папки подставляются все.
 //
 // Окно описано в DlgFifDisk.dfm и правится в конструкторе форм.
-// Значения прошлого поиска подставляет и результат забирает
-// TForm1.FifDiskDialog (Unit1). Кнопка "..." закрывает окно с mrRetry:
-// папка выбирается после закрытия, и окно показывается снова.
-//
-// Форма создаётся по месту, в .dpr её автосоздания нет.
+// Значения подставляет, поиск ведёт и обработчики кнопок назначает
+// TForm1 (Unit1: FifShowWindow, FifRun). Окно создаётся один раз и
+// дальше только показывается и прячется; в .dpr его автосоздания нет.
 
 interface
 
 uses
   Windows, Messages, SysUtils, Classes, Graphics, Controls, Forms,
-  StdCtrls,
+  StdCtrls, CheckLst,
   UiButton,     // TUiButton
   UiStdCtrls,   // TUiCheckBox
   UiEditCtrls;  // TUiEdit
@@ -25,9 +28,14 @@ type
     lblDir: TLabel;
     edDir: TUiEdit;
     btnBrowse: TUiButton;
+    lblExt: TLabel;
+    lstExt: TCheckListBox;
+    btnExtAll: TUiButton;
+    btnExtNone: TUiButton;
     lblMask: TLabel;
     edMask: TUiEdit;
     chkSub: TUiCheckBox;
+    lblStatus: TLabel;
     btnOk: TUiButton;
     btnCancel: TUiButton;
   private

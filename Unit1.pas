@@ -1650,6 +1650,20 @@ type
     FProgAbort: Boolean;
     FProgLastTick: Cardinal;
 
+    // Find In Files: окно (TDlgFifDisk, DlgFifDisk - в uses раздела
+    // implementation) и ход поиска. Поиск немодальный: FifStep раз в
+    // 100 мс отдаёт управление очереди сообщений
+    FFifDlg: TForm;
+    FFifProject: Boolean;     // файлы проекта; False - диск
+    FFifRunning: Boolean;     // идёт поиск
+    FFifAbort: Boolean;       // Стоп, закрытие окна, новый список в Match list
+    FFifListTaken: Boolean;   // Match list занят другим списком - не трогать
+    FFifCloseAfter: Boolean;  // главное окно закрывают во время поиска
+    FFifLastTick: Cardinal;
+    FFifTotal: Integer;       // найдено совпадений
+    FFifFiles: Integer;       // в скольких файлах
+    FFifChecked: Integer;     // просмотрено файлов
+
     // Снимок состава проекта на момент последней загрузки или сохранения.
     // По расхождению с текущим видно, что проект пора сохранять.
     FProjectSig: string;
@@ -1961,11 +1975,25 @@ type
                                ACount: Integer);
 
     // Поиск в файлах
-    function  FifDiskDialog(var ADir, AMasks: string;
-                            var ASubDirs: Boolean): Boolean;
+    // Окно Find In Files (немодальное) - см. FifShowWindow, FifRun
+    procedure FifShowWindow(AProject: Boolean);
+    procedure FifFillExts;
+    function  FifCheckedExts: string;
+    procedure FifMasksToExts;
+    procedure FifSaveSettings;
+    procedure FifStatus(const AText: string);
+    function  FifPathLine(const APrefix, APath: string): string;
+    procedure FifGridGrow;
+    function  FifStep(const AText: string): Boolean;
+    procedure FifRun;
+    procedure FifFindClick(Sender: TObject);
+    procedure FifCloseClick(Sender: TObject);
+    procedure FifDlgClose(Sender: TObject; var Action: TCloseAction);
+    procedure FifBrowseClick(Sender: TObject);
+    procedure FifExtAllClick(Sender: TObject);
+    procedure FifExtNoneClick(Sender: TObject);
     procedure FifProgress(const ADir: string; ACount: Integer;
                           var ACancel: Boolean);
-    function  ProgressPathLine(const APrefix, APath: string): string;
     procedure FifCollectDirs(const ADirs, AMasks: string; ASubDirs: Boolean;
                              AList: TStrings; var ACancel: Boolean);
     procedure FifCollectDir(const ADir, AMasks: string; ASubDirs: Boolean;
@@ -3212,7 +3240,7 @@ var
     DlgAskDisk,   // окно "Файл изменён на диске" - см. AskDiskChange
     DlgChooseList, // выбор строки из списка - ChooseFromList
     DlgIconEdit,   // окно значков палитры (View - Palette Icons)
-    DlgFifDisk,   // Find In Files на диске - FifDiskDialog
+    DlgFifDisk,   // окно Find In Files - FifShowWindow, FifRun
     DlgPickFolder, // выбор папки - PickFolderDialog
     FolderDlg,    // выбор папки окном Проводника - BrowseFolderDialog
     DlgProgress,  // ход долгой операции - ProgressStart
@@ -17508,6 +17536,14 @@ begin
     Exit;
   AddHistory(cmbFind, S);
 
+  // Идёт Find In Files: Match list теперь под этот список, поиск
+  // останавливается и строки в список больше не добавляет
+  if FFifRunning then
+  begin
+    FFifAbort := True;
+    FFifListTaken := True;
+  end;
+
   EnsureMatchForm;
   FMatchPattern := S;
   ResetMatchRows;
@@ -17570,11 +17606,28 @@ end;
 
 procedure TForm1.FindInFilesClick(Sender: TObject);
 var
-  S, DiskDir, DiskMasks, Note: string;
+  S: string;
   I, W, Total, Files, N: Integer;
-  SubDirs, Cancel: Boolean;
-  List: TStringList;
 begin
+  // Идёт поиск в файлах (окно Find In Files): эта кнопка его
+  // останавливает. Новый поиск отсюда же - уже после остановки
+  if FFifRunning then
+  begin
+    FFifAbort := True;
+    Exit;
+  end;
+
+  // Файлы проекта и диск - окно Find In Files (немодальное): расширения,
+  // папки, ход поиска. Файлы проекта ищутся сразу, на диске - по кнопке
+  // "Найти" окна: сначала надо выбрать папки
+  if (cmbScope.ItemIndex = 2) or (cmbScope.ItemIndex = 3) then
+  begin
+    FifShowWindow(cmbScope.ItemIndex = 2);
+    if (cmbScope.ItemIndex = 2) and (cmbFind.Text <> '') then
+      FifRun;
+    Exit;
+  end;
+
   S := cmbFind.Text;
   if S = '' then
   begin
@@ -17583,52 +17636,24 @@ begin
   end;
   AddHistory(cmbFind, S);
 
-  // На диске: папку и маски спрашиваем до создания окна результатов
-  if cmbScope.ItemIndex = 3 then
-    if not FifDiskDialog(DiskDir, DiskMasks, SubDirs) then
-      Exit;
-
   // Текущее окно сначала сбрасываем в свой слот, иначе в памяти лежит текст
   // без последних правок, а ищем мы именно по памяти
   StoreCurrentWindow;
 
   Total := 0;
   Files := 0;
-  Cancel := False;
-  Note := '';
 
-  List := TStringList.Create;
   Screen.Cursor := crHourGlass;
-  // Проект и диск: окно хода поиска - папка или файл, счётчики, Стоп
-  if cmbScope.ItemIndex = 2 then
-    ProgressStart('Find In Files - файлы проекта')
-  else if cmbScope.ItemIndex = 3 then
-    ProgressStart('Find In Files - на диске');
   try
-    // Список файлов для областей 2 и 3 - до окна результатов: проекта
-    // может не быть, и пустой список показывать незачем
-    if cmbScope.ItemIndex = 2 then
-    begin
-      if not FifProjectFiles(List, Note) then
-      begin
-        Screen.Cursor := crDefault;
-        ProgressStop;
-        ShowMessage('12071:Проект не открыт.');
-        Exit;
-      end;
-    end
-    else if cmbScope.ItemIndex = 3 then
-      FifCollectDirs(DiskDir, DiskMasks, SubDirs, List, Cancel);
-
     EnsureMatchForm;
     FMatchPattern := S;
     ResetMatchRows;
 
-    case cmbScope.ItemIndex of
-      0:
+    if cmbScope.ItemIndex = 0 then
+    begin
       // Во вкладках - ровно то, что открыто вкладками, и в их порядке.
       // Окно без вкладки сюда не попадает, даже если его слот занят.
-        for I := 0 to High(FTabWin) do
+      for I := 0 to High(FTabWin) do
       begin
         W := FTabWin[I];
         if (W < 0) or (W > WindowsItemCount - 1) then
@@ -17643,10 +17668,12 @@ begin
           Inc(Files);
         end;
       end;
-      1:
+    end
+    else
+    begin
       // В окнах - по списку окон, то есть по тому же набору, что
       // показывает меню Windows: и файлы, открытые без вкладки
-        for I := 0 to WindowsItemCount - 1 do
+      for I := 0 to WindowsItemCount - 1 do
       begin
         if not FWindows[I].Used then
           Continue;
@@ -17658,17 +17685,9 @@ begin
           Inc(Files);
         end;
       end;
-    else
-      // Файлы проекта и файлы с диска - по списку; открытые берутся из
-      // памяти, остальные читаются с диска
-      if not Cancel then
-        FifScanList(List, S, Total, Files, Cancel);
     end;
   finally
     Screen.Cursor := crDefault;
-    if (cmbScope.ItemIndex = 2) or (cmbScope.ItemIndex = 3) then
-      ProgressStop;
-    List.Free;
     RefreshStatusBar;
   end;
 
@@ -17679,18 +17698,6 @@ begin
   else
     FMatchForm.Caption :=
       Format('Match list - %d в %d файлах', [Total, Files]);
-  if Cancel then
-    FMatchForm.Caption := FMatchForm.Caption + ' (поиск прерван)';
-  if Note <> '' then
-    FMatchForm.Caption := FMatchForm.Caption + ' - ' + Note;
-  if cmbScope.ItemIndex = 3 then
-    if Pos(';', DiskDir) > 0 then
-      FMatchForm.Caption := FMatchForm.Caption + ' - папок: ' +
-        IntToStr(Length(DiskDir) - Length(StringReplace(DiskDir, ';', '',
-        [rfReplaceAll])) + 1) + ' ' + DiskMasks
-    else
-      FMatchForm.Caption := FMatchForm.Caption + ' - ' + DiskDir + ' ' +
-                            DiskMasks;
 
   PlaceMatchForm;
   FMatchForm.Show;
@@ -17699,23 +17706,20 @@ end;
 // ---------------------------------------------------------------------------
 //  Find In Files: файлы проекта и файлы на диске
 //
+//  Окно Find In Files (DlgFifDisk) немодальное: главное окно и Match list
+//  во время поиска работают. Найденное попадает в Match list сразу, по
+//  мере просмотра файлов (FifStep, раз в 100 мс); кнопка "Найти" на время
+//  поиска - "Стоп", кнопка Find In Files главного окна - тоже стоп.
+//  Расширения - список с галками в окне: для файлов проекта - расширения
+//  файлов проекта (с числом файлов), для диска - свой список
+//  ([FindInFiles] DiskExts в editor.ini) плюс поле других масок.
+//
 //  Открытый в окне файл берётся из памяти (с несохранёнными правками), и
 //  строка результата сразу знает его окно. Остальные читаются с диска как
 //  есть, в кодировке Windows: UTF-8 не перекодируется, русский образец в
 //  файле UTF-8 не найдётся.
 //  Пропускаются: файлы больше 32 МБ и двоичные (нулевой байт в первых 4 КБ).
-//  Во время поиска открыто окно хода (ProgressStart): папка или файл,
-//  которые сейчас просматриваются, сколько файлов проверено и сколько
-//  найдено. Стоп в нём или Esc прерывает поиск; найденное к этому моменту
-//  показывается.
 // ---------------------------------------------------------------------------
-
-// Esc нажат, пока окно среды активно
-function FifEscPressed: Boolean;
-begin
-  Result := Application.Active and
-            ((GetAsyncKeyState(VK_ESCAPE) and $8000) <> 0);
-end;
 
 // Папки поиска на диске - строка через ";" (кнопка "..." подставляет все
 // отмеченные в Directory Tree). Пустые убираются, \ в конце - тоже.
@@ -17740,116 +17744,626 @@ begin
   end;
 end;
 
-// Окно выбора папок и масок для поиска на диске. Значения прошлого поиска
-// лежат в editor.ini, [FindInFiles].
-function TForm1.FifDiskDialog(var ADir, AMasks: string;
-                              var ASubDirs: Boolean): Boolean;
+// Расширение из строки списка ".pas  (12)" - до пробела, в нижнем регистре
+function FifExtOfItem(const AItem: string): string;
+var
+  SpaceAt: Integer;
+begin
+  Result := Trim(AItem);
+  SpaceAt := Pos(' ', Result);
+  if SpaceAt > 0 then
+    Result := Copy(Result, 1, SpaceAt - 1);
+  Result := LowerCase(Result);
+end;
+
+// Есть ли расширение AExt в списке через ";" (".pas;.inc")
+function FifExtInList(const AExt, AList: string): Boolean;
+begin
+  Result := (AExt <> '') and
+            (Pos(';' + LowerCase(AExt) + ';', ';' + LowerCase(AList) + ';') > 0);
+end;
+
+// Добавить расширение в список через ";", если его там нет
+procedure FifExtAdd(var AList: string; const AExt: string);
+begin
+  if (AExt = '') or FifExtInList(AExt, AList) then
+    Exit;
+  if AList <> '' then
+    AList := AList + ';';
+  AList := AList + LowerCase(AExt);
+end;
+
+// Окно Find In Files: создать (один раз), заполнить и показать. Во время
+// поиска - только показать
+procedure TForm1.FifShowWindow(AProject: Boolean);
 var
   Dlg: TDlgFifDisk;
   Ini: TIniFile;
-  D: string;
-  Dirs: TStringList;
-  DirIdx: Integer;
+  DirText, OtherMasks: string;
+  SubDirs: Boolean;
 begin
-  Result := False;
+  if FFifDlg = nil then
+  begin
+    Dlg := TDlgFifDisk.Create(Self);
+    FFifDlg := Dlg;
+    Dlg.btnOk.OnClick := FifFindClick;
+    Dlg.btnCancel.OnClick := FifCloseClick;
+    Dlg.btnBrowse.OnClick := FifBrowseClick;
+    Dlg.btnExtAll.OnClick := FifExtAllClick;
+    Dlg.btnExtNone.OnClick := FifExtNoneClick;
+    Dlg.OnClose := FifDlgClose;
+    UiApplyForm(Dlg);
+  end;
+  Dlg := TDlgFifDisk(FFifDlg);
+  if FFifRunning then
+  begin
+    Dlg.Show;
+    Exit;
+  end;
 
-  ADir := '';
-  AMasks := '';
-  ASubDirs := True;
+  FFifProject := AProject;
+  DirText := '';
+  OtherMasks := '';
+  SubDirs := True;
   if FileExists(SettingsFileName) then
   begin
     Ini := TIniFile.Create(SettingsFileName);
     try
-      ADir := Ini.ReadString('FindInFiles', 'Dir', '');
-      AMasks := Ini.ReadString('FindInFiles', 'Masks', '');
-      ASubDirs := Ini.ReadBool('FindInFiles', 'SubDirs', True);
+      DirText := Ini.ReadString('FindInFiles', 'Dir', '');
+      OtherMasks := Ini.ReadString('FindInFiles', 'OtherMasks', '');
+      SubDirs := Ini.ReadBool('FindInFiles', 'SubDirs', True);
     finally
       Ini.Free;
     end;
   end;
-  if ADir = '' then
-    if FCurrentFileName <> '' then
-      ADir := ExtractFilePath(FCurrentFileName)
-    else
-      ADir := ProjectsDir;
-  if AMasks = '' then
-    AMasks := '*.pas;*.dpr;*.inc;*.dfm';
 
-  // Окно описано в DlgFifDisk.dfm; здесь - значения прошлого поиска
-  Dlg := TDlgFifDisk.Create(Self);
-  try
-    Dlg.edDir.Text := ADir;
-    Dlg.edMask.Text := AMasks;
-    Dlg.chkSub.Checked := ASubDirs;
-
-    repeat
-      case Dlg.ShowModal of
-        mrRetry:
-        begin
-          // Directory Tree: дерево папок и список горячих папок
-          D := Trim(Dlg.edDir.Text);
-          if HotFoldersDialog(D, 'Directory Tree - отмеченные папки для ' +
-                              'поиска', True, D) then
-            Dlg.edDir.Text := D;
-          Continue;
-        end;
-        mrOk:
-        begin
-          // Папки через ";" - каждая должна быть на диске
-          Dirs := TStringList.Create;
-          try
-            FifSplitDirs(Trim(Dlg.edDir.Text), Dirs);
-            D := '';
-            for DirIdx := 0 to Dirs.Count - 1 do
-              if not DirectoryExists(Dirs[DirIdx]) then
-                D := D + #13#10 + Dirs[DirIdx];
-            if Dirs.Count = 0 then
-              D := #13#10 + '(папка не указана)';
-          finally
-            Dirs.Free;
-          end;
-          if D <> '' then
-          begin
-            ShowMessage('12274:Папка не найдена:' + D);
-            Continue;
-          end;
-          Break;
-        end;
+  if AProject then
+  begin
+    Dlg.Caption := 'Find In Files - файлы проекта';
+    Dlg.lblDir.Caption := 'Проект';
+    Dlg.edDir.Text := FCurrentProject;
+    Dlg.edDir.Enabled := False;
+    Dlg.btnBrowse.Enabled := False;
+    Dlg.lblMask.Enabled := False;
+    Dlg.edMask.Text := '';
+    Dlg.edMask.Enabled := False;
+    Dlg.chkSub.Enabled := False;
+  end
+  else
+  begin
+    Dlg.Caption := 'Find In Files - на диске';
+    Dlg.lblDir.Caption := 'Папки';
+    if DirText = '' then
+      if FCurrentFileName <> '' then
+        DirText := ExtractFilePath(FCurrentFileName)
       else
-        Exit;
-      end;
-    until False;
-
-    Dirs := TStringList.Create;
-    try
-      FifSplitDirs(Trim(Dlg.edDir.Text), Dirs);
-      ADir := '';
-      for DirIdx := 0 to Dirs.Count - 1 do
-      begin
-        if ADir <> '' then
-          ADir := ADir + ';';
-        ADir := ADir + Dirs[DirIdx];
-      end;
-    finally
-      Dirs.Free;
-    end;
-    AMasks := Trim(Dlg.edMask.Text);
-    if AMasks = '' then
-      AMasks := '*.*';
-    ASubDirs := Dlg.chkSub.Checked;
-  finally
-    Dlg.Free;
+        DirText := ProjectsDir;
+    Dlg.edDir.Text := DirText;
+    Dlg.edDir.Enabled := True;
+    Dlg.btnBrowse.Enabled := True;
+    Dlg.lblMask.Enabled := True;
+    Dlg.edMask.Text := OtherMasks;
+    Dlg.edMask.Enabled := True;
+    Dlg.chkSub.Enabled := True;
+    Dlg.chkSub.Checked := SubDirs;
   end;
 
-  Ini := TIniFile.Create(SettingsFileName);
+  FifFillExts;
+  if cmbFind.Text = '' then
+    FifStatus('Образец поиска - в поле Find главного окна')
+  else
+    FifStatus('Образец: ' + cmbFind.Text);
+  Dlg.btnOk.Caption := 'Найти';
+  Dlg.Show;
+end;
+
+// Список расширений с галками.
+//   Файлы проекта: расширения файлов проекта (FifProjectFiles) и число
+//     файлов; снятые галки - [FindInFiles] ProjExtsOff.
+//   Диск: [FindInFiles] DiskExts, отмеченные - DiskExtsOn. Без них (editor.ini
+//     прежней версии) - из прежних масок Masks: *.ext - в список, отмечены.
+procedure TForm1.FifFillExts;
+var
+  Dlg: TDlgFifDisk;
+  Ini: TIniFile;
+  Files, Exts: TStringList;
+  KnownExts, CheckedExts, OffExts, OldMasks, MaskItem, Ext, Note: string;
+  FileIdx, ExtIdx, Found, SemiAt: Integer;
+begin
+  Dlg := TDlgFifDisk(FFifDlg);
+  KnownExts := '';
+  CheckedExts := '';
+  OffExts := '';
+  OldMasks := '';
+  Ini := nil;
+  if FileExists(SettingsFileName) then
+    Ini := TIniFile.Create(SettingsFileName);
   try
-    Ini.WriteString('FindInFiles', 'Dir', ADir);
-    Ini.WriteString('FindInFiles', 'Masks', AMasks);
-    Ini.WriteBool('FindInFiles', 'SubDirs', ASubDirs);
+    if Ini <> nil then
+    begin
+      KnownExts := Ini.ReadString('FindInFiles', 'DiskExts', '');
+      CheckedExts := Ini.ReadString('FindInFiles', 'DiskExtsOn', '');
+      OffExts := Ini.ReadString('FindInFiles', 'ProjExtsOff', '');
+      OldMasks := Ini.ReadString('FindInFiles', 'Masks', '');
+    end;
   finally
     Ini.Free;
   end;
-  Result := True;
+
+  Dlg.lstExt.Items.BeginUpdate;
+  try
+    Dlg.lstExt.Items.Clear;
+    if FFifProject then
+    begin
+      Files := TStringList.Create;
+      Exts := TStringList.Create;
+      try
+        Exts.Sorted := True;
+        Exts.CaseSensitive := False;
+        FFifAbort := False;
+        if not FifProjectFiles(Files, Note) then
+        begin
+          Dlg.btnOk.Enabled := False;
+          FifStatus('Проект не открыт');
+          Exit;
+        end;
+        Dlg.btnOk.Enabled := True;
+        for FileIdx := 0 to Files.Count - 1 do
+        begin
+          Ext := LowerCase(ExtractFileExt(Files[FileIdx]));
+          if Ext = '' then
+            Continue;
+          if Exts.Find(Ext, Found) then
+            Exts.Objects[Found] := TObject(Integer(Exts.Objects[Found]) + 1)
+          else
+            Exts.AddObject(Ext, TObject(1));
+        end;
+        for ExtIdx := 0 to Exts.Count - 1 do
+        begin
+          Found := Dlg.lstExt.Items.Add(Exts[ExtIdx] + '  (' +
+                     IntToStr(Integer(Exts.Objects[ExtIdx])) + ')');
+          Dlg.lstExt.Checked[Found] := not FifExtInList(Exts[ExtIdx], OffExts);
+        end;
+      finally
+        Exts.Free;
+        Files.Free;
+      end;
+    end
+    else
+    begin
+      Dlg.btnOk.Enabled := True;
+      if KnownExts = '' then
+      begin
+        // Прежние маски: *.ext - в список расширений, отмеченными
+        if OldMasks = '' then
+          OldMasks := '*.pas;*.dpr;*.inc;*.dfm';
+        while OldMasks <> '' do
+        begin
+          SemiAt := Pos(';', OldMasks);
+          if SemiAt = 0 then
+            SemiAt := Length(OldMasks) + 1;
+          MaskItem := Trim(Copy(OldMasks, 1, SemiAt - 1));
+          Delete(OldMasks, 1, SemiAt);
+          if (Copy(MaskItem, 1, 2) = '*.') and (Pos('*', Copy(MaskItem, 3, MaxInt)) = 0) and
+             (Pos('?', MaskItem) = 0) then
+          begin
+            FifExtAdd(KnownExts, Copy(MaskItem, 2, MaxInt));
+            FifExtAdd(CheckedExts, Copy(MaskItem, 2, MaxInt));
+          end;
+        end;
+        // Частые расширения - в список без галок
+        FifExtAdd(KnownExts, '.bas');
+        FifExtAdd(KnownExts, '.bi');
+        FifExtAdd(KnownExts, '.rqb');
+        FifExtAdd(KnownExts, '.ino');
+        FifExtAdd(KnownExts, '.ini');
+        FifExtAdd(KnownExts, '.txt');
+      end;
+      while KnownExts <> '' do
+      begin
+        SemiAt := Pos(';', KnownExts);
+        if SemiAt = 0 then
+          SemiAt := Length(KnownExts) + 1;
+        Ext := LowerCase(Trim(Copy(KnownExts, 1, SemiAt - 1)));
+        Delete(KnownExts, 1, SemiAt);
+        if Ext = '' then
+          Continue;
+        Found := Dlg.lstExt.Items.Add(Ext);
+        Dlg.lstExt.Checked[Found] := FifExtInList(Ext, CheckedExts);
+      end;
+    end;
+  finally
+    Dlg.lstExt.Items.EndUpdate;
+  end;
+end;
+
+// Отмеченные расширения - через ";"
+function TForm1.FifCheckedExts: string;
+var
+  Dlg: TDlgFifDisk;
+  ItemIdx: Integer;
+begin
+  Result := '';
+  Dlg := TDlgFifDisk(FFifDlg);
+  for ItemIdx := 0 to Dlg.lstExt.Items.Count - 1 do
+    if Dlg.lstExt.Checked[ItemIdx] then
+      FifExtAdd(Result, FifExtOfItem(Dlg.lstExt.Items[ItemIdx]));
+end;
+
+// Маски вида *.ext из поля других масок - в список расширений, отмеченными;
+// в поле остаётся остальное
+procedure TForm1.FifMasksToExts;
+var
+  Dlg: TDlgFifDisk;
+  Rest, MaskItem, Kept, Ext: string;
+  SemiAt, ItemIdx, Found: Integer;
+begin
+  Dlg := TDlgFifDisk(FFifDlg);
+  Rest := Dlg.edMask.Text;
+  Kept := '';
+  while Rest <> '' do
+  begin
+    SemiAt := Pos(';', Rest);
+    if SemiAt = 0 then
+      SemiAt := Length(Rest) + 1;
+    MaskItem := Trim(Copy(Rest, 1, SemiAt - 1));
+    Delete(Rest, 1, SemiAt);
+    if MaskItem = '' then
+      Continue;
+    if (Copy(MaskItem, 1, 2) = '*.') and (Pos('*', Copy(MaskItem, 3, MaxInt)) = 0) and
+       (Pos('?', MaskItem) = 0) and (Length(MaskItem) > 2) then
+    begin
+      Ext := LowerCase(Copy(MaskItem, 2, MaxInt));
+      Found := -1;
+      for ItemIdx := 0 to Dlg.lstExt.Items.Count - 1 do
+        if FifExtOfItem(Dlg.lstExt.Items[ItemIdx]) = Ext then
+          Found := ItemIdx;
+      if Found < 0 then
+        Found := Dlg.lstExt.Items.Add(Ext);
+      Dlg.lstExt.Checked[Found] := True;
+      Continue;
+    end;
+    if Kept <> '' then
+      Kept := Kept + ';';
+    Kept := Kept + MaskItem;
+  end;
+  Dlg.edMask.Text := Kept;
+end;
+
+// Настройки окна - в editor.ini, [FindInFiles]
+procedure TForm1.FifSaveSettings;
+var
+  Dlg: TDlgFifDisk;
+  Ini: TIniFile;
+  AllExts, CheckedExts, OffExts, OldOff, Ext: string;
+  ItemIdx, SemiAt: Integer;
+  Present: string;
+begin
+  Dlg := TDlgFifDisk(FFifDlg);
+  Ini := TIniFile.Create(SettingsFileName);
+  try
+    if FFifProject then
+    begin
+      // Снятые галки этого проекта плюс прежние снятые расширения, которых
+      // в этом проекте нет
+      OldOff := Ini.ReadString('FindInFiles', 'ProjExtsOff', '');
+      Present := '';
+      OffExts := '';
+      for ItemIdx := 0 to Dlg.lstExt.Items.Count - 1 do
+      begin
+        Ext := FifExtOfItem(Dlg.lstExt.Items[ItemIdx]);
+        FifExtAdd(Present, Ext);
+        if not Dlg.lstExt.Checked[ItemIdx] then
+          FifExtAdd(OffExts, Ext);
+      end;
+      while OldOff <> '' do
+      begin
+        SemiAt := Pos(';', OldOff);
+        if SemiAt = 0 then
+          SemiAt := Length(OldOff) + 1;
+        Ext := Trim(Copy(OldOff, 1, SemiAt - 1));
+        Delete(OldOff, 1, SemiAt);
+        if not FifExtInList(Ext, Present) then
+          FifExtAdd(OffExts, Ext);
+      end;
+      Ini.WriteString('FindInFiles', 'ProjExtsOff', OffExts);
+    end
+    else
+    begin
+      AllExts := '';
+      CheckedExts := '';
+      for ItemIdx := 0 to Dlg.lstExt.Items.Count - 1 do
+      begin
+        Ext := FifExtOfItem(Dlg.lstExt.Items[ItemIdx]);
+        FifExtAdd(AllExts, Ext);
+        if Dlg.lstExt.Checked[ItemIdx] then
+          FifExtAdd(CheckedExts, Ext);
+      end;
+      Ini.WriteString('FindInFiles', 'Dir', Trim(Dlg.edDir.Text));
+      Ini.WriteString('FindInFiles', 'DiskExts', AllExts);
+      Ini.WriteString('FindInFiles', 'DiskExtsOn', CheckedExts);
+      Ini.WriteString('FindInFiles', 'OtherMasks', Trim(Dlg.edMask.Text));
+      Ini.WriteBool('FindInFiles', 'SubDirs', Dlg.chkSub.Checked);
+    end;
+  finally
+    Ini.Free;
+  end;
+end;
+
+// Строка хода поиска в окне Find In Files
+procedure TForm1.FifStatus(const AText: string);
+begin
+  if FFifDlg <> nil then
+    TDlgFifDisk(FFifDlg).lblStatus.Caption := AText;
+end;
+
+// "<приставка><путь>": путь сокращается (MinimizeName) так, чтобы строка
+// влезла в ширину строки хода
+function TForm1.FifPathLine(const APrefix, APath: string): string;
+var
+  Dlg: TDlgFifDisk;
+  Room: Integer;
+begin
+  Result := APrefix + APath;
+  if FFifDlg = nil then
+    Exit;
+  Dlg := TDlgFifDisk(FFifDlg);
+  Dlg.Canvas.Font.Assign(Dlg.lblStatus.Font);
+  Room := Dlg.lblStatus.Width - Dlg.Canvas.TextWidth(APrefix) - 8;
+  if Room < 40 then
+    Room := 40;
+  Result := APrefix + MinimizeName(APath, Dlg.Canvas, Room);
+end;
+
+// Новые строки Match list - в грид. Выделение и прокрутку не трогаем:
+// пользователь может уже работать со списком
+procedure TForm1.FifGridGrow;
+begin
+  if (FMatchGrid = nil) or FFifListTaken or (Length(FMatchRows) = 0) then
+    Exit;
+  if FMatchGrid.RowCount = Length(FMatchRows) + 1 then
+    Exit;
+  FMatchGrid.RowCount := Length(FMatchRows) + 1;
+  FMatchGrid.Invalidate;
+end;
+
+// Шаг поиска: раз в 100 мс - строка хода, новые строки Match list и
+// очередь сообщений (окно, Match list и редактор работают). False -
+// поиск остановлен
+function TForm1.FifStep(const AText: string): Boolean;
+begin
+  Result := not FFifAbort;
+  if not Result then
+    Exit;
+  if GetTickCount - FFifLastTick < 100 then
+    Exit;
+  FFifLastTick := GetTickCount;
+  FifStatus(AText);
+  FifGridGrow;
+  if (FMatchForm <> nil) and not FFifListTaken then
+    FMatchForm.Caption := Format('Match list - %d в %d файлах (поиск...)',
+                                 [FFifTotal, FFifFiles]);
+  Application.ProcessMessages;
+  Result := not FFifAbort;
+end;
+
+procedure TForm1.FifFindClick(Sender: TObject);
+begin
+  FifRun;
+end;
+
+procedure TForm1.FifCloseClick(Sender: TObject);
+begin
+  if FFifDlg <> nil then
+    FFifDlg.Close;
+end;
+
+// Закрытие окна останавливает поиск; окно прячется, не уничтожается
+procedure TForm1.FifDlgClose(Sender: TObject; var Action: TCloseAction);
+begin
+  Action := caHide;
+  if FFifRunning then
+    FFifAbort := True;
+end;
+
+// Directory Tree: дерево папок и список горячих папок
+procedure TForm1.FifBrowseClick(Sender: TObject);
+var
+  Dlg: TDlgFifDisk;
+  DirText: string;
+begin
+  Dlg := TDlgFifDisk(FFifDlg);
+  DirText := Trim(Dlg.edDir.Text);
+  if HotFoldersDialog(DirText, 'Directory Tree - отмеченные папки для ' +
+                      'поиска', True, DirText) then
+    Dlg.edDir.Text := DirText;
+end;
+
+procedure TForm1.FifExtAllClick(Sender: TObject);
+var
+  ItemIdx: Integer;
+begin
+  with TDlgFifDisk(FFifDlg) do
+    for ItemIdx := 0 to lstExt.Items.Count - 1 do
+      lstExt.Checked[ItemIdx] := True;
+end;
+
+procedure TForm1.FifExtNoneClick(Sender: TObject);
+var
+  ItemIdx: Integer;
+begin
+  with TDlgFifDisk(FFifDlg) do
+    for ItemIdx := 0 to lstExt.Items.Count - 1 do
+      lstExt.Checked[ItemIdx] := False;
+end;
+
+// Поиск по настройкам окна Find In Files. Уже идёт - остановить
+procedure TForm1.FifRun;
+var
+  Dlg: TDlgFifDisk;
+  Pattern, Exts, OtherMasks, Masks, DirText, Missing, Note, FinalText,
+    Rest, Ext: string;
+  List, Dirs: TStringList;
+  Total, Files, FileIdx, DirIdx, SemiAt: Integer;
+  Cancel: Boolean;
+begin
+  if FFifRunning then
+  begin
+    FFifAbort := True;
+    Exit;
+  end;
+  if FFifDlg = nil then
+    Exit;
+  Dlg := TDlgFifDisk(FFifDlg);
+
+  Pattern := cmbFind.Text; // без Trim: образец - как введён
+  if Pattern = '' then
+  begin
+    FifStatus('Образец поиска пуст: введите его в поле Find главного окна');
+    Exit;
+  end;
+  AddHistory(cmbFind, Pattern);
+
+  if not FFifProject then
+    FifMasksToExts;
+  Exts := FifCheckedExts;
+  OtherMasks := '';
+  if not FFifProject then
+    OtherMasks := Trim(Dlg.edMask.Text);
+  if (Exts = '') and (OtherMasks = '') then
+  begin
+    FifStatus('Не отмечено ни одного расширения');
+    Exit;
+  end;
+
+  // Диск: папки через ";" - каждая должна быть на диске
+  DirText := '';
+  if not FFifProject then
+  begin
+    Dirs := TStringList.Create;
+    try
+      FifSplitDirs(Trim(Dlg.edDir.Text), Dirs);
+      Missing := '';
+      for DirIdx := 0 to Dirs.Count - 1 do
+      begin
+        if not DirectoryExists(Dirs[DirIdx]) then
+          Missing := Missing + ' ' + Dirs[DirIdx];
+        if DirText <> '' then
+          DirText := DirText + ';';
+        DirText := DirText + Dirs[DirIdx];
+      end;
+      if Dirs.Count = 0 then
+        Missing := ' (папка не указана)';
+    finally
+      Dirs.Free;
+    end;
+    if Missing <> '' then
+    begin
+      FifStatus('Папка не найдена:' + Missing);
+      Exit;
+    end;
+    Dlg.edDir.Text := DirText;
+  end;
+  FifSaveSettings;
+
+  // Текущее окно - в свой слот: ищем по тексту в памяти
+  StoreCurrentWindow;
+
+  FFifRunning := True;
+  FFifAbort := False;
+  FFifListTaken := False;
+  FFifCloseAfter := False;
+  FFifTotal := 0;
+  FFifFiles := 0;
+  FFifChecked := 0;
+  FFifLastTick := 0;
+  Dlg.btnOk.Caption := 'Стоп';
+
+  EnsureMatchForm;
+  FMatchPattern := Pattern;
+  ResetMatchRows;
+  FillMatchGrid;
+  FMatchForm.Caption := 'Match list - поиск: ' + Pattern;
+  if not FMatchForm.Visible then
+    PlaceMatchForm;
+  FMatchForm.Show;
+
+  Total := 0;
+  Files := 0;
+  Cancel := False;
+  Note := '';
+  FinalText := '';
+  List := TStringList.Create;
+  try
+    if FFifProject then
+    begin
+      if not FifProjectFiles(List, Note) then
+      begin
+        FinalText := 'Проект не открыт';
+        Exit;
+      end;
+      // только отмеченные расширения
+      for FileIdx := List.Count - 1 downto 0 do
+        if not FifExtInList(LowerCase(ExtractFileExt(List[FileIdx])), Exts) then
+          List.Delete(FileIdx);
+    end
+    else
+    begin
+      Masks := '';
+      Rest := Exts;
+      while Rest <> '' do
+      begin
+        SemiAt := Pos(';', Rest);
+        if SemiAt = 0 then
+          SemiAt := Length(Rest) + 1;
+        Ext := Copy(Rest, 1, SemiAt - 1);
+        Delete(Rest, 1, SemiAt);
+        if Masks <> '' then
+          Masks := Masks + ';';
+        Masks := Masks + '*' + Ext;
+      end;
+      if OtherMasks <> '' then
+      begin
+        if Masks <> '' then
+          Masks := Masks + ';';
+        Masks := Masks + OtherMasks;
+      end;
+      FifCollectDirs(DirText, Masks, Dlg.chkSub.Checked, List, Cancel);
+    end;
+    if not Cancel and not FFifAbort then
+      FifScanList(List, Pattern, Total, Files, Cancel);
+  finally
+    FFifRunning := False;
+    Cancel := Cancel or FFifAbort;
+    List.Free;
+    Dlg.btnOk.Caption := 'Найти';
+    if not FFifListTaken then
+    begin
+      FifGridGrow;
+      if Total = 0 then
+        FMatchForm.Caption := 'Match list - ничего не найдено'
+      else
+        FMatchForm.Caption :=
+          Format('Match list - %d в %d файлах', [Total, Files]);
+      if Cancel then
+        FMatchForm.Caption := FMatchForm.Caption + ' (поиск прерван)';
+      if Note <> '' then
+        FMatchForm.Caption := FMatchForm.Caption + ' - ' + Note;
+      if not FFifProject then
+        FMatchForm.Caption := FMatchForm.Caption + ' - ' + DirText;
+    end;
+    if FinalText = '' then
+    begin
+      FinalText := Format('Найдено: %d в %d файлах, просмотрено файлов: %d',
+                          [Total, Files, FFifChecked]);
+      if Cancel then
+        FinalText := FinalText + ' (поиск прерван)';
+    end;
+    FifStatus(FinalText);
+    RefreshStatusBar;
+    if FFifCloseAfter then
+      Close;
+  end;
 end;
 
 // Обход папки для Find In Files - FifCollectFiles (FileSearch); здесь
@@ -17901,32 +18415,18 @@ begin
   end;
 end;
 
-// Строка окна хода "<приставка><путь>": путь сокращается (MinimizeName)
-// так, чтобы строка целиком влезла в ширину подписи и не переносилась
-function TForm1.ProgressPathLine(const APrefix, APath: string): string;
-var
-  Room: Integer;
-begin
-  FProgForm.Canvas.Font.Assign(FProgLabel.Font);
-  Room := FProgLabel.Width - FProgForm.Canvas.TextWidth(APrefix) - 8;
-  if Room < 40 then
-    Room := 40;
-  Result := APrefix + MinimizeName(APath, FProgForm.Canvas, Room);
-end;
-
-// Ход обхода: папка и сколько файлов подошло под маски - в окно хода
-// (не чаще раза в 100 мс); Стоп или Esc - прервать
+// Ход обхода папок: папка и сколько файлов подошло под маски - в строку
+// хода окна Find In Files; Стоп - прервать. Вне поиска (список расширений
+// проекта, FifFillExts) очередь сообщений не трогается
 procedure TForm1.FifProgress(const ADir: string; ACount: Integer;
                              var ACancel: Boolean);
 begin
-  if FifEscPressed or FProgAbort then
+  if FFifAbort then
     ACancel := True;
-  if ACancel or (FProgForm = nil) or not FProgForm.Visible then
+  if ACancel or not FFifRunning then
     Exit;
-  if GetTickCount - FProgLastTick < 100 then
-    Exit;
-  if not ProgressStep(0, 0, ProgressPathLine('Папка: ', ADir) +
-                      #13#10'Найдено файлов по маскам: ' + IntToStr(ACount)) then
+  if not FifStep(FifPathLine('Папка: ', ADir) +
+                 #13#10'Найдено файлов по маскам: ' + IntToStr(ACount)) then
     ACancel := True;
 end;
 
@@ -18052,11 +18552,12 @@ end;
 // Открытые окна сверяются по готовому списку полных имён, а не через
 // IndexOfWindowByFile: та на каждый вызов обращается к диску
 // (ExtractShortPathName) по всем окнам, и на тысячах файлов папки это
-// заметно.
+// заметно. Поиск немодальный (FifStep): окно из списка могли закрыть или
+// открыть в нём другой файл - перед чтением слот сверяется с именем.
 procedure TForm1.FifScanList(AList: TStrings; const APattern: string;
                              var ATotal, AFiles: Integer; var ACancel: Boolean);
 var
-  I, W, N, K: Integer;
+  FileIdx, WinIdx, MatchCount, Found: Integer;
   Txt: string;
   Open: TStringList;
 begin
@@ -18064,44 +18565,54 @@ begin
   try
     Open.Sorted := True;
     Open.Duplicates := dupIgnore;
-    for I := 0 to WindowsItemCount - 1 do
-      if FWindows[I].Used and (FWindows[I].FileName <> '') then
-        Open.AddObject(ExpandFileName(FWindows[I].FileName), TObject(I));
+    for WinIdx := 0 to WindowsItemCount - 1 do
+      if FWindows[WinIdx].Used and (FWindows[WinIdx].FileName <> '') then
+        Open.AddObject(ExpandFileName(FWindows[WinIdx].FileName), TObject(WinIdx));
 
-    for I := 0 to AList.Count - 1 do
+    for FileIdx := 0 to AList.Count - 1 do
     begin
-      if (I mod 20 = 0) and (FifEscPressed or FProgAbort) then
+      // Строка хода: текущий файл и счётчики. Текст собирается, только когда
+      // его пора показать (FifStep - не чаще раза в 100 мс)
+      if FFifAbort then
       begin
         ACancel := True;
         Exit;
       end;
-      // Окно хода: текущий файл и счётчики. Текст собирается, только когда
-      // его пора показать (ProgressStep - не чаще раза в 100 мс)
-      if (FProgForm <> nil) and FProgForm.Visible and
-         (GetTickCount - FProgLastTick >= 100) then
-        if not ProgressStep(I, AList.Count,
-             ProgressPathLine('Файл: ', AList[I]) +
-             #13#10'Проверено файлов: ' + IntToStr(I) + ' из ' +
-             IntToStr(AList.Count) + #13#10'Найдено: ' + IntToStr(ATotal) +
+      if GetTickCount - FFifLastTick >= 100 then
+        if not FifStep(FifPathLine('Файл: ', AList[FileIdx]) +
+             #13#10'Проверено файлов: ' + IntToStr(FileIdx) + ' из ' +
+             IntToStr(AList.Count) + '; найдено: ' + IntToStr(ATotal) +
              ' совпадений в ' + IntToStr(AFiles) + ' файлах') then
         begin
           ACancel := True;
           Exit;
         end;
 
-      W := -1;
-      if Open.Find(ExpandFileName(AList[I]), K) then
-        W := Integer(Open.Objects[K]);
-      if W >= 0 then
-        Txt := FWindows[W].Text
-      else if not FifReadFile(AList[I], Txt) then
-        Continue;
-
-      N := ScanTextForMatches(AList[I], W, Txt, APattern);
-      if N > 0 then
+      WinIdx := -1;
+      if Open.Find(ExpandFileName(AList[FileIdx]), Found) then
       begin
-        Inc(ATotal, N);
+        WinIdx := Integer(Open.Objects[Found]);
+        if (WinIdx > WindowsItemCount - 1) or not FWindows[WinIdx].Used or
+           (CompareText(ExpandFileName(FWindows[WinIdx].FileName),
+                        ExpandFileName(AList[FileIdx])) <> 0) then
+          WinIdx := -1;
+      end;
+      if WinIdx >= 0 then
+        Txt := FWindows[WinIdx].Text
+      else if not FifReadFile(AList[FileIdx], Txt) then
+      begin
+        FFifChecked := FileIdx + 1;
+        Continue;
+      end;
+
+      MatchCount := ScanTextForMatches(AList[FileIdx], WinIdx, Txt, APattern);
+      FFifChecked := FileIdx + 1;
+      if MatchCount > 0 then
+      begin
+        Inc(ATotal, MatchCount);
         Inc(AFiles);
+        FFifTotal := ATotal;
+        FFifFiles := AFiles;
       end;
       if ATotal >= FifMaxHits then
       begin
@@ -61084,6 +61595,15 @@ end;
 
 procedure TForm1.FormCloseQuery(Sender: TObject; var CanClose: Boolean);
 begin
+  // Идёт Find In Files: сначала остановить его (FifRun закроет окно, когда
+  // выйдет из цикла), иначе форма разрушилась бы под циклом поиска
+  if FFifRunning then
+  begin
+    FFifAbort := True;
+    FFifCloseAfter := True;
+    CanClose := False;
+    Exit;
+  end;
   // Сначала текст активного окна, потом сам проект, потом цветовая схема:
   // отказ на любом вопросе отменяет выход, и следующие задавать незачем.
   // Autosave Editor files - файлы с именем сохраняются без вопроса.
