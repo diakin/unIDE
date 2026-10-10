@@ -23,16 +23,6 @@ Public Const WPF_RESTORETOMAXIMIZED = &H2
 
 const Form_wsMinimized=1
 
-Private Type POINTAPI
-        x As Long
-        y As Long
-End Type
-Private Type RECT
-        Left As Long
-        Top As Long
-        Right As Long
-        Bottom As Long
-End Type
 Private Type WINDOWPLACEMENT
         Length As Long
         flags As Long

@@ -1,6 +1,6 @@
 '=======================================================
 ' Type Objet
-' Classe QColorDialog
+' Classe QColorDialog 1.0
 '=======================================================
 $IFNDEF TRUE
   $DEFINE True 1
