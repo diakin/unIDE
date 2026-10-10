@@ -133,6 +133,8 @@ unIDE пишет их тёмно-оранжевым цветом, после и�
 
 Повторное объявление имени — сообщение «… already defined — первое объявление: файл(строка)». TYPE — ошибка перевода (у типа одно описание, последнее; методы первого теряют свои поля; во FreeBASIC два Type с одним именем не собираются). Остальное — уровень Suspect (перевод не меняется): CONST, DIM/CREATE/DEFxxx в одной области, $RESOURCE, SUB/FUNCTION с телом (имя с точкой — `FUNCTION Screen.MouseSwap` — целиком), DECLARE, поле или метод внутри одного TYPE, метка внутри одной SUB/FUNCTION, $DEFINE имени, которое уже определено и не снято $UNDEF (в сообщении — прежнее значение). Область локальных имён — место заголовка процедуры. rc.exe на повторный CONST выдаёт «CONST variable … already defined»; при `$INCLUDE "RAPIDQ.INC"` (rapidq.inc подключает RAPIDQ2.INC) таких повторов сотни: CONST, $DEFINE, DECLARE, TYPE QDebug.
 
+SUB / FUNCTION с точкой в имени (rapidq2.inc: `FUNCTION Screen.MousePresent`, `FUNCTION Screen.EnumResolution(ListView AS QLISTBOX)`, `FUNCTION Application.Path`; так RapidQ добавляет «методы» встроенным объектам) — имя целиком, во FreeBASIC `Screen_MousePresent`. Слова `Имя . Имя` склеиваются в одно в заголовке SUB / FUNCTION / DECLARE, а в остальном тексте — если такая процедура объявлена: вызов в выражении, оператором (со скобками и без, CALL), присваивание имени внутри функции (`Screen.CaptureToBMP = retrn`) — результат. Встроенные свойства (`Screen.Width`) не затрагиваются. Тест `tests/dotproc.bas`.
+
 ## Функции RapidQ (rqrt.bi)
 
 По `rapidq_ref/html_doc/otherdetail.html`, проверено на примерах оттуда (`tests/funcs.bas`):

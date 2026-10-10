@@ -546,6 +546,7 @@ type
     procedure Suspect(const AText: string);
     procedure SuspectOnce(const AKey, AText: string);
     procedure NoteDef(const AKey, AWhat: string);
+    procedure MergeDottedProcs(var AToks: TToks);
     function DefScope(const AScope: string): string;
     function CondActive: Boolean;
 
@@ -1494,6 +1495,55 @@ begin
     Result := AScope + '@' + FCurProcPlace;
 end;
 
+// SUB / FUNCTION с точкой в имени (rapidq2.inc: FUNCTION Screen.MousePresent,
+// FUNCTION Application.Path, FUNCTION Screen.EnumResolution(ListView AS
+// QLISTBOX)) - так RapidQ добавляет "методы" встроенным объектам; имя -
+// целиком "Screen.MousePresent" (Screen.CaptureToBMP = retrn внутри -
+// результат функции). Слова Имя . Имя склеиваются в одно слово: в заголовке
+// SUB / FUNCTION / DECLARE - всегда, в остальном тексте - если такая
+// процедура есть. Дальше это обычная процедура (во FreeBASIC - Screen_MousePresent).
+procedure TRqFbConv.MergeDottedProcs(var AToks: TToks);
+var
+  TokIdx, DotIdx, NameIdx, FirstIdx, KindIdx: Integer;
+  JoinedUp: string;
+  IsHeader: Boolean;
+begin
+  FirstIdx := NextSig(AToks, 0, High(AToks));
+  if FirstIdx < 0 then
+    Exit;
+  KindIdx := FirstIdx;
+  if IsWord(AToks, FirstIdx, 'DECLARE') then
+    KindIdx := NextSig(AToks, FirstIdx + 1, High(AToks));
+  for TokIdx := 0 to High(AToks) - 2 do
+  begin
+    if AToks[TokIdx].Kind <> tkIdent then
+      Continue;
+    DotIdx := TokIdx + 1;
+    NameIdx := TokIdx + 2;
+    if not IsOp(AToks, DotIdx, '.') or (AToks[NameIdx].Kind <> tkIdent) then
+      Continue;
+    // перед словом - не точка (This.Form.Show не трогаем)
+    if (TokIdx > 0) and IsOp(AToks, TokIdx - 1, '.') then
+      Continue;
+    JoinedUp := AToks[TokIdx].Up + '.' + AToks[NameIdx].Up;
+    IsHeader := (KindIdx >= 0) and (NextSig(AToks, KindIdx + 1, High(AToks)) = TokIdx) and
+                (IsWord(AToks, KindIdx, 'SUB') or IsWord(AToks, KindIdx, 'FUNCTION') or
+                 IsWord(AToks, KindIdx, 'SUBI') or IsWord(AToks, KindIdx, 'FUNCTIONI')) and
+                (FCurType = nil);
+    if not IsHeader and (FindProc(JoinedUp) = nil) then
+      Continue;
+    AToks[TokIdx].Text := AToks[TokIdx].Text + '.' + AToks[NameIdx].Text;
+    AToks[TokIdx].Up := JoinedUp;
+    AToks[TokIdx].OutText := AToks[TokIdx].Text;
+    AToks[DotIdx].Kind := tkSpace;
+    AToks[DotIdx].Text := '';
+    AToks[DotIdx].OutText := '';
+    AToks[NameIdx].Kind := tkSpace;
+    AToks[NameIdx].Text := '';
+    AToks[NameIdx].OutText := '';
+  end;
+end;
+
 // Ошибка один раз по ключу AKey
 procedure TRqFbConv.ErrorOnce(const AKey, AText: string);
 var
@@ -1960,6 +2010,9 @@ begin
     Result := Base + '_v'
   else
     Result := Base;
+  // Screen.MousePresent (SUB / FUNCTION с точкой в имени) -> Screen_MousePresent
+  if Pos('.', Result) > 0 then
+    Result := StringReplace(Result, '.', '_', [rfReplaceAll]);
   // ~ в имени RapidQ: в FreeBASIC нельзя -> _T_ (~SrcD -> _T_SrcD)
   if Pos('~', Result) > 0 then
     Result := StringReplace(Result, '~', '_T_', [rfReplaceAll]);
@@ -2573,6 +2626,7 @@ begin
   else if CondActive then
     Text := RewriteCreate(Text);
   Lex(Text, Toks);
+  MergeDottedProcs(Toks);
   AOut := Text;
   // '$RQFB SMART / '$RQFB COMPAT - режим перевода из исходника (строка -
   // комментарий, rc.exe RapidQ её пропускает)
@@ -5061,15 +5115,7 @@ begin
     Exit;
   ProcRec := GetProc(AToks[NameIdx].Text);
   FCurProcPlace := FCurFile + '(' + IntToStr(FCurLine) + ')';
-  // FUNCTION Screen.MouseSwap - имя с точкой целиком
-  if IsOp(AToks, NextSig(AToks, NameIdx + 1, ATo), '.') and
-     (NextSig(AToks, NextSig(AToks, NameIdx + 1, ATo) + 1, ATo) >= 0) then
-    NoteDef('P||' + UpperCase(RawText(AToks, NameIdx,
-              NextSig(AToks, NextSig(AToks, NameIdx + 1, ATo) + 1, ATo))),
-            Up + ' ' + Trim(RawText(AToks, NameIdx,
-              NextSig(AToks, NextSig(AToks, NameIdx + 1, ATo) + 1, ATo))))
-  else
-    NoteDef('P||' + ProcRec.Name, Up + ' ' + AToks[NameIdx].Text);
+  NoteDef('P||' + ProcRec.Name, Up + ' ' + AToks[NameIdx].Text);
   ProcRec.IsFunc := (Up = 'FUNCTION') or (Up = 'FUNCTIONI');
   ProcRec.IsVariadic := (Up = 'SUBI') or (Up = 'FUNCTIONI');
   FCurProc := ProcRec;
