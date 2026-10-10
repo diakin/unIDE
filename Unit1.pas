@@ -778,6 +778,8 @@ type
     procedure DebugLineClick(Sender: TObject);
     procedure EditClickEvent(Sender: TObject);
     procedure PastePlainText;
+    function  EnterIndentText: string;
+    procedure ShiftDepthForEdit;
     procedure ClearAllClick(Sender: TObject);
     procedure CaseConvertClick(Sender: TObject);
     procedure LogPopupPopup(Sender: TObject);
@@ -1643,6 +1645,10 @@ type
     // Снимок до правки для сдвига кэша - см. CaptureWidthPre
     FCachePreValid: Boolean;
     FCachePreMin, FCachePreMax, FCachePreLen: Integer;
+    // Число строк и строка начала выделения до правки - по ним вложенность
+    // строк (FLineDepth, FLineTick) сдвигается сразу, до пересборки карты
+    // (ShiftDepthForEdit): иначе направляющие ниже вставленной строки рвутся
+    FCachePreLines, FCachePreLine: Integer;
     FDxBuf: TIntArray;
 
     // ДИАГНОСТИКА кэша длинных строк (статус-бар, панель 6):
@@ -38616,8 +38622,63 @@ begin
   FCachePreMin := Sel.cpMin;
   FCachePreMax := Sel.cpMax;
   FCachePreLen := TextLenInternal;
+  FCachePreLines := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+  FCachePreLine := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0, Sel.cpMin);
   FCachePreValid := True;
   FCacheDepth := FMsgDepth;
+end;
+
+// Правка изменила число строк: вложенность строк (FLineDepth) и засечки
+// разделов (FLineTick) сдвигаются сразу, как строки текста. Новые строки
+// получают вложенность строки, в которой правили (или следующей, если она
+// глубже: Enter после begin). Точная вложенность - после пересборки карты
+// по таймеру; до неё направляющие ниже правки не съезжают и не рвутся.
+procedure TForm1.ShiftDepthForEdit;
+var
+  NewLines, Delta, EditLine, LineIdx, NewDepth: Integer;
+begin
+  if not FCachePreValid or (FCachePreLines <= 0) then
+    Exit;
+  if Length(FLineDepth) <> FCachePreLines then
+    Exit;   // карта не по этому тексту - ждём пересборку
+  NewLines := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+  Delta := NewLines - FCachePreLines;
+  EditLine := FCachePreLine;
+  if (Delta = 0) or (EditLine < 0) or (EditLine >= FCachePreLines) then
+    Exit;
+  if Delta > 0 then
+  begin
+    NewDepth := FLineDepth[EditLine];
+    if (EditLine + 1 < FCachePreLines) and
+       (FLineDepth[EditLine + 1] > NewDepth) then
+      NewDepth := FLineDepth[EditLine + 1];
+    SetLength(FLineDepth, NewLines);
+    for LineIdx := NewLines - 1 downto EditLine + 1 + Delta do
+      FLineDepth[LineIdx] := FLineDepth[LineIdx - Delta];
+    for LineIdx := EditLine + 1 to EditLine + Delta do
+      FLineDepth[LineIdx] := NewDepth;
+    if Length(FLineTick) = FCachePreLines then
+    begin
+      SetLength(FLineTick, NewLines);
+      for LineIdx := NewLines - 1 downto EditLine + 1 + Delta do
+        FLineTick[LineIdx] := FLineTick[LineIdx - Delta];
+      for LineIdx := EditLine + 1 to EditLine + Delta do
+        FLineTick[LineIdx] := 0;
+    end;
+  end
+  else
+  begin
+    // Удалены строки после EditLine (её перевод строки и следующие)
+    for LineIdx := EditLine + 1 to NewLines - 1 do
+      FLineDepth[LineIdx] := FLineDepth[LineIdx - Delta];
+    SetLength(FLineDepth, NewLines);
+    if Length(FLineTick) = FCachePreLines then
+    begin
+      for LineIdx := EditLine + 1 to NewLines - 1 do
+        FLineTick[LineIdx] := FLineTick[LineIdx - Delta];
+      SetLength(FLineTick, NewLines);
+    end;
+  end;
 end;
 
 // Правка учитывается сразу после сообщения, которое её сделало.
@@ -38644,6 +38705,8 @@ begin
     Exit;
   Inc(FEditSerial);
 
+  // До ApplyWidthEdit: он гасит снимок (FCachePreValid)
+  ShiftDepthForEdit;
   ApplyWidthEdit;
 
   if RichEdit1.Modified then
@@ -59827,10 +59890,14 @@ begin
   // отступ после #11 не исправляется. Вместо него - обычный перевод
   // строки, через EM_REPLACESEL (снимок для отмены и EN_CHANGE - как при
   // вводе)
+  //
+  // Enter (и Shift+Enter): перевод строки и отступ новой строки - на
+  // уровне блока (EnterIndentText), тоже через EM_REPLACESEL
   if (Message.Msg = WM_CHAR) and (Message.WParam = 13) and
-     (GetKeyState(VK_SHIFT) < 0) and not RichEdit1.ReadOnly then
+     (GetKeyState(VK_CONTROL) >= 0) and not RichEdit1.ReadOnly then
   begin
-    SendMessage(RichEdit1.Handle, EM_REPLACESEL, 1, Integer(PChar(#13)));
+    SendMessage(RichEdit1.Handle, EM_REPLACESEL, 1,
+                Integer(PChar(#13 + EnterIndentText)));
     Message.Result := 0;
     Exit;
   end;
@@ -61018,7 +61085,9 @@ var
 
       // Правее текста полосу не ставим: строка с отступом меньше своей
       // вложенности получит столько полос, сколько влезло в отступ
-      if (LineLen > 0) and (C >= FirstCol) then
+      // Строка из одних пробелов (отступ, поставленный Enter) - как
+      // пустая: полосы по вложенности, без разрыва
+      if (FirstCol < LineLen) and (C >= FirstCol) then
         Break;
 
       GIdx := LineStartCharIdx + C;
@@ -62321,6 +62390,121 @@ begin
   // Выход отменён - перезапуска после Tidy editor.ini тоже не будет
   if not CanClose then
     FTidyRestart := False;
+end;
+
+// Отступ новой строки по Enter: пробелы и табуляции в начале строки с
+// кареткой (не дальше каретки); строка пустая - как у ближайшей непустой
+// выше. Строка до каретки кончается словом, открывающим блок, - ещё один
+// уровень (FIndentKind, FIndentSize): Паскаль - begin, try, repeat,
+// record, then, do, else, of, except, finally, var, const, type; Basic -
+// THEN, ELSE, DO, заголовки SUB, FUNCTION, TYPE, CREATE, WITH, FOR, WHILE,
+// SELECT CASE, CASE; C-подобные - "{" в конце.
+function TForm1.EnterIndentText: string;
+var
+  Sel: TCharRange;
+  LineNo, LineStart, LineLen, CharIdx, SpaceAt: Integer;
+  LineText, Before, LastWord, FirstWord, Ext, Unit_: string;
+  OpensBlock: Boolean;
+begin
+  Result := '';
+  if not RichEdit1.HandleAllocated then
+    Exit;
+  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
+  LineNo := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0, Sel.cpMin);
+  LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LineNo, 0);
+  if LineStart < 0 then
+    Exit;
+  LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+  LineText := TextRange(LineStart, LineLen);
+  Before := Copy(LineText, 1, Sel.cpMin - LineStart);
+
+  // До каретки только отступ: он и остаётся. Совсем пусто (каретка в
+  // начале строки) и строка пустая - отступ ближайшей непустой строки
+  // выше, с её словом, открывающим блок
+  if Trim(Before) = '' then
+  begin
+    if (Before <> '') or (Trim(LineText) <> '') then
+    begin
+      Result := Before;
+      Exit;
+    end;
+    CharIdx := LineNo - 1;
+    while CharIdx >= 0 do
+    begin
+      LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, CharIdx, 0);
+      LineLen := SendMessageA(RichEdit1.Handle, EM_LINELENGTH, LineStart, 0);
+      LineText := TextRange(LineStart, LineLen);
+      if Trim(LineText) <> '' then
+        Break;
+      Dec(CharIdx);
+    end;
+    if CharIdx < 0 then
+      Exit;
+    Before := LineText;
+  end;
+
+  CharIdx := 1;
+  while (CharIdx <= Length(Before)) and (Before[CharIdx] in [' ', #9]) do
+    Inc(CharIdx);
+  Result := Copy(Before, 1, CharIdx - 1);
+
+  // Последнее и первое слово текста до каретки (без комментария //)
+  Before := Trim(Before);
+  SpaceAt := Pos('//', Before);
+  if SpaceAt > 0 then
+    Before := TrimRight(Copy(Before, 1, SpaceAt - 1));
+  if Before = '' then
+    Exit;
+  LastWord := Before;
+  SpaceAt := Length(LastWord);
+  while (SpaceAt > 0) and not (LastWord[SpaceAt] in [' ', #9, ';', ')', '(']) do
+    Dec(SpaceAt);
+  LastWord := LowerCase(Copy(LastWord, SpaceAt + 1, MaxInt));
+  FirstWord := Before;
+  SpaceAt := 1;
+  while (SpaceAt <= Length(FirstWord)) and not (FirstWord[SpaceAt] in [' ', #9, '(']) do
+    Inc(SpaceAt);
+  FirstWord := LowerCase(Copy(FirstWord, 1, SpaceAt - 1));
+
+  Ext := '';
+  if (FWindowsIndex >= 0) and FWindows[FWindowsIndex].Used then
+    Ext := LowerCase(ExtractFileExt(FWindows[FWindowsIndex].FileName));
+  if Ext = '' then
+    Ext := LowerCase(ExtractFileExt(FCurrentFileName));
+  if Copy(Ext, Length(Ext), 1) = ')' then
+    Delete(Ext, Length(Ext), 1);   // '(без имени.pas)'
+
+  OpensBlock := False;
+  if (Ext = '.pas') or (Ext = '.pp') or (Ext = '.dpr') or (Ext = '.lpr') or
+     (Ext = '.dpk') or ((Ext = '.inc') and (CurBuildKind = bkDelphi)) then
+    OpensBlock := (LastWord = 'begin') or (LastWord = 'try') or
+                  (LastWord = 'repeat') or (LastWord = 'record') or
+                  (LastWord = 'then') or (LastWord = 'do') or
+                  (LastWord = 'else') or (LastWord = 'of') or
+                  (LastWord = 'except') or (LastWord = 'finally') or
+                  (LastWord = 'var') or (LastWord = 'const') or
+                  (LastWord = 'type')
+  else if (Ext = '.bas') or (Ext = '.rqb') or (Ext = '.rq') or (Ext = '.bi') or
+          (Ext = '.inc') then
+    OpensBlock := (LastWord = 'then') or (LastWord = 'else') or
+                  (LastWord = 'do') or (FirstWord = 'sub') or
+                  (FirstWord = 'function') or (FirstWord = 'subi') or
+                  (FirstWord = 'functioni') or (FirstWord = 'type') or
+                  (FirstWord = 'create') or (FirstWord = 'with') or
+                  (FirstWord = 'for') or (FirstWord = 'while') or
+                  (FirstWord = 'select') or (FirstWord = 'case') or
+                  (FirstWord = 'event') or (FirstWord = 'constructor')
+  else
+    OpensBlock := Copy(Before, Length(Before), 1) = '{';
+
+  if OpensBlock and (FIndentKind <> IndentNone) and (FIndentSize > 0) then
+  begin
+    if FIndentKind = IndentTabs then
+      Unit_ := StringOfChar(#9, FIndentSize)
+    else
+      Unit_ := StringOfChar(' ', FIndentSize);
+    Result := Result + Unit_;
+  end;
 end;
 
 // Вставка в редактор - только текстом: текст буфера обмена (CF_TEXT;
