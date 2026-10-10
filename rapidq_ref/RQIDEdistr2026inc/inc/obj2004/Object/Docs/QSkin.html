@@ -1,0 +1,262 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.51 [fr]C-CCK-MCD   (WinNT; I) [Netscape]">
+   <meta name="Author" content="dominique glodt">
+   <title>Appendix A: QSkin</title>
+</head>
+<body bgcolor="#FFFFFF" FONT FACE="Arial, Helvetica">
+&nbsp;
+<table CELLSPACING=0 CELLPADDING=0 WIDTH="100%" >
+<tr>
+<td><font face="Arial, Helvetica">Documentation composant par D.Glodt (c)2003</font></td>
+
+<td ALIGN=RIGHT><b><font face="Arial, Helvetica">Appendix A: QSkin</font></b></td>
+</tr>
+
+<tr>
+<td COLSPAN="2">
+<hr SIZE=1></td>
+</tr>
+</table>
+
+<h1>
+QSkin Composant</h1>
+
+<dd>
+QSkin est un composant h&eacute;rit&eacute; de QForm utilis&eacute; pour
+avoir des formes et des habillages de fichier bitmap.</dd>
+
+<dd>
+QSkin poss&eacute;de toutes les propriet&eacute;s , m&eacute;thodes et
+&eacute;v&eacute;nements de QForm.</dd>
+
+<dd>
+Les dimensions de QSkin sont celles de la taille du bitmap affect&eacute;
+a sa propriet&eacute; Skin.</dd>
+
+<p><br><a NAME="1"></a><b><font size=+1>QSkin Propriet&eacute;s</font></b>
+<table BORDER=0 WIDTH="100%" >
+<tr>
+<td><b>Champs</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>L/E</b></td>
+
+<td><b>D&eacute;faut</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Skin</td>
+
+<td>QIMAGE</td>
+
+<td>L/E</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Image bmp pour l'habillage de la fenetre</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>OffsWidth</td>
+
+<td>SHORT</td>
+
+<td>L/E</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Offset largeur pour r&eacute;duire ou augmenter la taille de la fenetre</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>OffsHeight</td>
+
+<td>SHORT</td>
+
+<td>L/E</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Offset hauteur pour r&eacute;duire ou augmenter la taille de la fenetre</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+</table>
+
+<p><a NAME="2"></a><b><font size=+1>QSkin Methodes</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Methode</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Description</b></td>
+
+<td><b>Parametres</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr VALIGN=TOP BGCOLOR="#CCFFFF">
+<td>SetDeskBar</td>
+
+<td>SUB</td>
+
+<td NOWRAP>L'application sera dans la barre de tache lors de sa r&eacute;duction</td>
+
+<td NOWRAP>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Resize</td>
+
+<td>SUB</td>
+
+<td>Redimensionne la fenetre apr&eacute;s changement d'habillage</td>
+
+<td>0</td>
+
+<td></td>
+</tr>
+</table>
+
+<p><a NAME="3"></a><b><font size=+1>QSkin Evenements</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Evenement</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Declenchement</b></td>
+
+<td><b>Parametres</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+</table>
+
+<p><a NAME="4"></a><b><font size=+1>QSkin Exemples</font></b>
+<br>$typecheck on
+<br>$optimize on
+<br>$include "Object\QSkin.inc"
+<br>$resource img as "clock.bmp" ' fichier bitmap d'habillage
+<br>declare sub showTime
+<br>dim tim as qtimer
+<br>tim.interval=1000
+<br>tim.OnTimer=ShowTime
+<p>CREATE Form AS QSkin
+<br>&nbsp;&nbsp;&nbsp; Center
+<br>&nbsp;&nbsp;&nbsp; skin.bmpHandle=img 'affectation du bitmap d'habillage
+<br>&nbsp;&nbsp;&nbsp; skin.top=-1 ' offset de position du bitmap
+<br>&nbsp;&nbsp;&nbsp; OffsWidth=-5 'offset largeur de Form
+<br>&nbsp;&nbsp;&nbsp; caption="Clock"
+<br>&nbsp;&nbsp;&nbsp; create clock as qlabel
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; top=60
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left=80
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font.bold=true
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font.size=24
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font.color=&amp;hff0000
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption=Time$
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; labelStyle=2
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; transparent=true
+<br>&nbsp;&nbsp;&nbsp; end create
+<br>&nbsp;&nbsp;&nbsp;&nbsp; Create b1 as qbutton
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; top=140
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left=120
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; kind=6
+<br>&nbsp;&nbsp;&nbsp;&nbsp; end create
+<br>END CREATE
+<br>form.shapeform(img,&amp;hffffff) ' affectation de la forme
+<br>form.setdeskbar
+<br>Form.ShowModal
+<p>sub showTime
+<br>&nbsp; clock.caption=Time$
+<br>end sub
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+</body>
+</html>

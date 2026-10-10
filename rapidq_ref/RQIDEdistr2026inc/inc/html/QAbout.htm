@@ -1,0 +1,96 @@
+<html>
+<head>
+<title>QAbout.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="007700"><i>' Type Objet</i></font> 
+<font color="007700"><i>' Classe QAbout</i></font> 
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="0000AA"><b>$IFNDEF</b></font> TRUE
+  <font color="0000AA"><b>$DEFINE</b></font> True 1
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> FALSE
+  <font color="0000AA"><b>$DEFINE</b></font> False 0
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>Type</b></font> QAbout <font color="0000AA"><b>EXTENDS</b></font> <font color="000099"><b>QOBJECT</b></font>
+  private:
+    form <font color="0000AA"><b>as</b></font> <font color="000099"><b>QFORM</b></font>
+    BtOk <font color="0000AA"><b>as</b></font> <font color="000099"><b>QBUTTON</b></font>
+    cadre <font color="0000AA"><b>as</b></font> <font color="000099"><b>QGROUPBOX</b></font>
+    label1 <font color="0000AA"><b>as</b></font> <font color="000099"><b>QLABEL</b></font>
+    label2 <font color="0000AA"><b>as</b></font> <font color="000099"><b>QLABEL</b></font>
+  public: 
+    image <font color="0000AA"><b>as</b></font> <font color="000099"><b>QIMAGE</b></font>
+    Caption <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+    AppName <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+    AppVersion <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+    text <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+     
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="007700"><i>' Méthode affichage boite dialogue</i></font> 
+  <font color="007700"><i>'==================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> Show
+    <font color="0000AA"><b>with</b></font> QAbout
+      <font color="007700"><i>'definition image</i></font> 
+      .image.parent=.cadre
+      .image.top=15
+      .image.left=10
+      .image.autosize=true
+      <font color="007700"><i>'definition label1</i></font> 
+      .label1.autosize=true
+      .label1.left=.image.left+.image.width+20
+      .label1.caption=.AppName
+      <font color="0000AA"><b>if</b></font> .AppVersion&lt;>"<font color="990000"></font>" <font color="000099"><b>then</b></font>
+        <font color="0000AA"><b>if</b></font> .AppName&lt;>"<font color="990000"></font>" <font color="0000AA"><b>then</b></font> .label1.caption=.label1.caption+<font color="0000AA"><b>chr$</b></font><b>(</b>13<b>)</b>
+        .label1.caption=.label1.caption+"<font color="990000">Version </font>"+.AppVersion
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      .label1.top=<font color="0000AA"><b>int</b></font><b>(</b><b>(</b>.image.height-.label1.height<b>)</b>/2<b>)</b>+.image.top
+      .label1.parent=.cadre
+      <font color="007700"><i>'definition label2</i></font> 
+      .label2.autosize=true
+      .label2.left=10
+      .label2.top=.image.top+.image.height+10
+      .label2.caption=.text
+      .label2.parent=.cadre
+      <font color="007700"><i>'definition cadre</i></font> 
+      .cadre.top=5
+      .cadre.left=10
+      <font color="0000AA"><b>if</b></font> <b>(</b>.label2.left+.label2.width<b>)</b>&lt;<b>(</b>.label1.left+.label1.width<b>)</b> <font color="000099"><b>then</b></font>
+        .cadre.width=.label1.left+.label1.width+20
+      <font color="000099"><b>else</b></font>
+        .cadre.width=.label2.left+.label2.width+20
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      .cadre.height=.label2.top+.label2.height+10
+      .cadre.parent=.form
+      <font color="007700"><i>'definition form</i></font> 
+      .form.width=.cadre.left+.cadre.width+15
+      .form.height=.cadre.top+.cadre.height+60
+      .form.borderstyle=3
+      .form.caption=.caption
+      .form.center
+      <font color="007700"><i>'definition bouton</i></font> 
+      .BtOk.parent=.form
+      .BtOk.caption="<font color="990000">Ok</font>"
+      .BtOk.default=1
+      .BtOk.top=.form.clientheight-.BtOk.height-5
+      .BtOk.left=<font color="0000AA"><b>int</b></font><b>(</b><b>(</b>.form.clientwidth-.BtOk.width<b>)</b>/2<b>)</b>
+      .form.showModal
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="0000AA"><b>Event</b></font> BtOk.OnClick
+    QAbout.form.modalresult=1
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Event</b></font>
+
+  <font color="000099"><b>Constructor</b></font>
+    image.transparent=true
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Constructor</b></font>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Type</b></font>
+ 
+</pre>
+</body>
+</html>

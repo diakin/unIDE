@@ -1,0 +1,449 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.51 [fr]C-CCK-MCD   (WinNT; I) [Netscape]">
+   <title>Appendix A: QMIDI</title>
+</head>
+<body bgcolor="#FFFFFF" FONT FACE="Arial, Helvetica">
+&nbsp;
+<table CELLSPACING=0 CELLPADDING=0 WIDTH="100%" >
+<tr>
+<td><font face="Arial, Helvetica">Documentation component by D.Glodt (c)2000-2002</font></td>
+
+<td ALIGN=RIGHT><b><font face="Arial, Helvetica">Appendix A: QMIDI</font></b></td>
+</tr>
+
+<tr>
+<td COLSPAN="2">
+<hr SIZE=1></td>
+</tr>
+</table>
+
+<h1>
+QMIDI Component</h1>
+
+<dd>
+QMIDI is a&nbsp; media component used to play midi sequences.</dd>
+
+<br>&nbsp;
+<p>&nbsp;
+<p><a NAME="1"></a><b><font size=+1>QMIDI Properties</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Field</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>R/W</b></td>
+
+<td><b>Default</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Timer</td>
+
+<td>QTIMER</td>
+
+<td>RW</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Control the fr&eacute;quency of event
+OnChange.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Lenght</td>
+
+<td>LONG</td>
+
+<td>R</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Lenght of&nbsp; midi sequence.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>State</td>
+
+<td>INTEGER</td>
+
+<td>R</td>
+
+<td>VD_CLOSE</td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">State of sequencer,can be MD_PLAY,MD_STOP,MD_PAUSE.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>FileOpen</td>
+
+<td>BOOLEAN</td>
+
+<td>R</td>
+
+<td>False</td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">True if&nbsp; a midi file is open.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>CurrentFrame</td>
+
+<td>LONG</td>
+
+<td>RW</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Position of midi sequence.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Error</td>
+
+<td>STRING</td>
+
+<td>R</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td BGCOLOR="#FFCCCC">Text error if the OPEN m&eacute;thod return FALSE</td>
+
+<td BGCOLOR="#FFCCCC"></td>
+
+<td BGCOLOR="#FFCCCC"></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Volume</td>
+
+<td>INTEGER</td>
+
+<td>RW</td>
+
+<td>0</td>
+</tr>
+</table>
+
+<p><a NAME="2"></a><b><font size=+1>QMIDI Methods</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Method</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Description</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Close</td>
+
+<td>SUB</td>
+
+<td NOWRAP>Close the midi file</td>
+
+<td NOWRAP>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Open</td>
+
+<td>FUNCTION(FileName as string)</td>
+
+<td NOWRAP>Open the midi file and return True if no error</td>
+
+<td NOWRAP>1</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Play</td>
+
+<td>SUB</td>
+
+<td NOWRAP>Play the midi sequence</td>
+
+<td NOWRAP>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Stop</td>
+
+<td>SUB</td>
+
+<td NOWRAP>Stop the midi sequence</td>
+
+<td NOWRAP>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Pause</td>
+
+<td>SUB</td>
+
+<td NOWRAP>Set the player in mode pause</td>
+
+<td NOWRAP>0</td>
+</tr>
+</table>
+
+<p><a NAME="3"></a><b><font size=+1>QMIDI Events</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Event</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Occurs when...</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>OnChange</td>
+
+<td>(position as long)</td>
+
+<td>Sequence position in mode play&nbsp;</td>
+
+<td>1</td>
+</tr>
+</table>
+
+<p><a NAME="4"></a><b><font size=+1>QMIDI Examples</font></b>
+<pre>'**************************************************************************
+'* application:player midi&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *
+'* auteur:D.Glodt&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *
+'* date:7-4-2001&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *
+'**************************************************************************
+$TYPECHECK ON
+$Include "Rapidq.inc"
+$include "Object\QMidi.inc"
+
+$RESOURCE PLAYBMP as "play.bmp"
+$RESOURCE STOPBMP as "Stop.bmp"
+$RESOURCE PAUSEBMP as "Pause.bmp"
+$RESOURCE MIDIICO as "midi.ico"
+
+Declare Sub Play
+Declare Sub Stop
+Declare Sub Pause
+Declare Sub Open
+Declare Sub Close
+Declare Sub Quitter
+Declare Sub TrackBarChange
+Declare Sub PostimerOnTimer(Position as long)
+
+Dim OpenDialog as QOpenDialog
+OpenDialog.Filter="Fichier midi|*.mid"
+OpenDialog.Caption= "Selectionner une s&eacute;quence"
+Dim midi as QMidi
+midi.OnChange=PostimerOnTimer
+midi.timer.interval=200
+
+
+CREATE Form AS QFORM
+&nbsp;&nbsp;&nbsp; Caption="Midi"
+&nbsp;&nbsp;&nbsp; Width=288
+&nbsp;&nbsp;&nbsp; Height=110
+&nbsp;&nbsp;&nbsp; Center
+&nbsp;&nbsp;&nbsp; BorderStyle=bsSingle
+&nbsp;&nbsp;&nbsp; icoHandle=MIDIICO
+&nbsp;&nbsp;&nbsp; OnClose=Quitter
+&nbsp;&nbsp;&nbsp; CREATE MENU AS QMAINMENU
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE FileMenu AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Fichier"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE Item1 AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Ouvrir"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Open
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE Item2 AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Fermer"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Close
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE Item3 AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="-"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE Item4 AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Quitter"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Quitter
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp; CREATE Panel1 AS QPANEL
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=0
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=0
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=281
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Height=60
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BevelOuter=bvNone
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE BtPlay AS QCOOLBTN
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BMPHandle=PLAYBMP
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=8
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=6
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=28
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Height=28
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Flat=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Hint="Play"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShowHint=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GroupIndex=1
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Play
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE BtStop AS QCOOLBTN
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BMPHandle=STOPBMP
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=46
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=6
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=28
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Height=28
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Down=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Flat=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Hint="Stop"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShowHint=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GroupIndex=1
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Stop
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE BtPause AS QCOOLBTN
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BMPHandle=PAUSEBMP
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=84
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=6
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=28
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Height=28
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Flat=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GroupIndex=1
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Hint="Pause"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShowHint=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Pause
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE TrackBar1 AS QTRACKBAR
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TickMarks=tmBoth
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; TickStyle=tsNone
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=2
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=36
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LineSize=0
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=272
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Height=21
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnChange=TrackBarChange
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp; END CREATE
+END CREATE
+
+Form.ShowModal
+
+Sub Open&nbsp;&nbsp;
+&nbsp; If OpenDialog.Execute Then
+&nbsp;&nbsp; midi.close
+&nbsp;&nbsp; if midi.open(OpenDialog.FileName) then
+&nbsp;&nbsp;&nbsp;&nbsp; TrackBar1.Max=midi.lenght
+&nbsp;&nbsp;&nbsp;&nbsp; TrackBar1.Position=0
+&nbsp;&nbsp; end if
+&nbsp; end if
+End Sub
+
+Sub Close
+&nbsp; midi.close
+End Sub
+
+Sub Play
+&nbsp; midi.play
+End Sub
+
+Sub Stop
+&nbsp; midi.stop
+&nbsp; TrackBar1.Position=0
+End Sub
+
+Sub Pause
+&nbsp; midi.pause
+End Sub
+
+Sub TrackBarChange
+&nbsp; midi.currentFrame=TrackBar1.Position
+End Sub
+
+Sub PostimerOnTimer(Position as long)
+&nbsp; TrackBar1.Position=Position
+&nbsp; If midi.state=MD_STOP then
+&nbsp;&nbsp;&nbsp; midi.stop
+&nbsp;&nbsp;&nbsp; TrackBar1.Position=0
+&nbsp;&nbsp;&nbsp; BtStop.Down=True
+&nbsp; end if
+End Sub
+
+Sub Quitter
+&nbsp; midi.close
+&nbsp; form.close
+End Sub
+
+</pre>
+
+</body>
+</html>

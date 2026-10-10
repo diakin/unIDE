@@ -1,0 +1,278 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+	<META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1252">
+	<TITLE>Appendix A: QTreeViewEx</TITLE>
+	<META NAME="GENERATOR" CONTENT="OpenOffice.org 1.1.0  (Win32)">
+	<META NAME="AUTHOR" CONTENT="dominique glodt">
+	<META NAME="CREATED" CONTENT="20041013;11045819">
+	<META NAME="CHANGED" CONTENT="20041112;20230340">
+	<STYLE>
+	<!--
+		@page { size: 21.59cm 27.94cm }
+	-->
+	</STYLE>
+</HEAD>
+<BODY LANG="fr-FR" BGCOLOR="#ffffff" DIR="LTR">
+<P STYLE="margin-bottom: 0cm">&nbsp; 
+</P>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+	<TR>
+		<TD>
+			<P><FONT FACE="Arial, Helvetica">Documentation component by
+			D.Glodt (c)2004</FONT></P>
+		</TD>
+		<TD>
+			<P ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A:
+			QTreeViewEx</B></FONT></P>
+		</TD>
+	</TR>
+	<TR>
+		<TD COLSPAN=2>
+			<HR SIZE=1>
+		</TD>
+	</TR>
+</TABLE>
+<H1>QTreeView Component</H1>
+<DL>
+	<DD STYLE="margin-bottom: 0.5cm">QTreeView is a component inherited
+	from QTreeView component with new methods. 
+	</DD></DL>
+<P STYLE="margin-bottom: 0cm">
+<A NAME="1"></A><BR><B><FONT SIZE=4>QTreeViewEx Properties</FONT></B></P>
+<TABLE WIDTH=100% BORDER=0 CELLPADDING=2 CELLSPACING=2>
+	<TR>
+		<TD>
+			<P><B>Field</B></P>
+		</TD>
+		<TD>
+			<P><B>Type</B></P>
+		</TD>
+		<TD>
+			<P><B>R/W</B></P>
+		</TD>
+		<TD>
+			<P><B>Default</B></P>
+		</TD>
+		<TD VALIGN=TOP></TD>
+	</TR>
+	<TR>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+	</TR>
+</TABLE>
+<P STYLE="margin-bottom: 0cm"><A NAME="2"></A><B><FONT SIZE=4>QTreeViewEx
+Methods</FONT></B> 
+</P>
+<TABLE WIDTH=100% BORDER=1 BORDERCOLOR="#ffffff" CELLPADDING=2 CELLSPACING=0 FRAME=VOID>
+	<COL WIDTH=35*>
+	<COL WIDTH=86*>
+	<COL WIDTH=103*>
+	<COL WIDTH=29*>
+	<COL WIDTH=4*>
+	<TR>
+		<TD WIDTH=14%>
+			<P><B>Method</B></P>
+		</TD>
+		<TD WIDTH=33%>
+			<P><B>Type</B></P>
+		</TD>
+		<TD WIDTH=40%>
+			<P><B>Description</B></P>
+		</TD>
+		<TD WIDTH=11%>
+			<P><B>Params</B></P>
+		</TD>
+		<TD WIDTH=2% VALIGN=TOP></TD>
+	</TR>
+	<TR>
+		<TD WIDTH=14%>
+			<HR>
+		</TD>
+		<TD WIDTH=33%>
+			<HR>
+		</TD>
+		<TD WIDTH=40%>
+			<HR>
+		</TD>
+		<TD WIDTH=11%>
+			<HR>
+		</TD>
+		<TD WIDTH=2%>
+			<HR>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff" VALIGN=TOP>
+		<TD WIDTH=14%>
+			<P>IndexOf</P>
+		</TD>
+		<TD WIDTH=33%>
+			<P>FUNCTION(name$) AS INTEGER</P>
+		</TD>
+		<TD WIDTH=40%>
+			<P>Return item index from text</P>
+		</TD>
+		<TD WIDTH=11%>
+			<P ALIGN=CENTER>1</P>
+		</TD>
+		<TD WIDTH=2%>
+			<P><BR>
+			</P>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>GetNameNode</P>
+		</TD>
+		<TD WIDTH=33%>
+			<P>FUNCTION(index&amp;) AS STRING</P>
+		</TD>
+		<TD WIDTH=40%>
+			<P>Return text node from index</P>
+		</TD>
+		<TD WIDTH=11%>
+			<P ALIGN=CENTER>1</P>
+		</TD>
+		<TD WIDTH=2%></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>GetIndexNode</P>
+		</TD>
+		<TD WIDTH=33%>
+			<P>FUNCTION(index&amp;) AS INTEGER</P>
+		</TD>
+		<TD WIDTH=40%>
+			<P>Return index node from index</P>
+		</TD>
+		<TD WIDTH=11%>
+			<P ALIGN=CENTER>1</P>
+		</TD>
+		<TD WIDTH=2%></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>IsNode</P>
+		</TD>
+		<TD WIDTH=33%>
+			<P>FUNCTION(index&amp;) AS BOOLEAN&nbsp;</P>
+		</TD>
+		<TD WIDTH=40%>
+			<P>Return true if item index is a node</P>
+		</TD>
+		<TD WIDTH=11%>
+			<P ALIGN=CENTER>1</P>
+		</TD>
+		<TD WIDTH=2%>
+			<P><BR>
+			</P>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>GetLevelCount</P>
+		</TD>
+		<TD WIDTH=33%>
+			<P>FUNCTION AS INTEGER</P>
+		</TD>
+		<TD WIDTH=40%>
+			<P>Return level count</P>
+		</TD>
+		<TD WIDTH=11% SDVAL="0" SDNUM="1036;">
+			<P ALIGN=CENTER>0</P>
+		</TD>
+		<TD WIDTH=2%></TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>EnumChildItems</P>
+		</TD>
+		<TD WIDTH=33%>
+			<P>SUB(index&amp;)</P>
+		</TD>
+		<TD WIDTH=40%>
+			<P>Enum child items from index by event OnEnumChildItems</P>
+		</TD>
+		<TD WIDTH=11% SDVAL="1" SDNUM="1036;">
+			<P ALIGN=CENTER>1</P>
+		</TD>
+		<TD WIDTH=2%></TD>
+	</TR>
+</TABLE>
+<P STYLE="margin-bottom: 0cm"><A NAME="3"></A><B><FONT SIZE=4>QTreeViewEx
+Event</FONT></B> 
+</P>
+<TABLE WIDTH=100% BORDER=0 CELLPADDING=0 CELLSPACING=0>
+	<COL WIDTH=65*>
+	<COL WIDTH=56*>
+	<COL WIDTH=103*>
+	<COL WIDTH=24*>
+	<COL WIDTH=8*>
+	<TR>
+		<TD WIDTH=25%>
+			<P><B>Evenement</B></P>
+		</TD>
+		<TD WIDTH=22%>
+			<P><B>Type</B></P>
+		</TD>
+		<TD WIDTH=40%>
+			<P><B>Occurs when...</B></P>
+		</TD>
+		<TD WIDTH=9%>
+			<P><B>Params</B></P>
+		</TD>
+		<TD WIDTH=3% VALIGN=TOP></TD>
+	</TR>
+	<TR>
+		<TD WIDTH=25%>
+			<HR>
+		</TD>
+		<TD WIDTH=22%>
+			<HR>
+		</TD>
+		<TD WIDTH=40%>
+			<HR>
+		</TD>
+		<TD WIDTH=9%>
+			<HR>
+		</TD>
+		<TD WIDTH=3%>
+			<HR>
+		</TD>
+	</TR>
+	<TR>
+		<TD WIDTH=25% BGCOLOR="#ccffff">
+			<P>OnEnumChildItems</P>
+		</TD>
+		<TD WIDTH=22% BGCOLOR="#ccffff">
+			<P><FONT SIZE=3>(index as integer,text as string,Node as integer)</FONT></P>
+		</TD>
+		<TD WIDTH=40% BGCOLOR="#ccffff">
+			<P>At running of method EnumChildItems</P>
+		</TD>
+		<TD WIDTH=9% BGCOLOR="#ccffff" SDVAL="3" SDNUM="1036;">
+			<P ALIGN=CENTER>3</P>
+		</TD>
+		<TD WIDTH=3% BGCOLOR="#ccffff">
+			<P><BR>
+			</P>
+		</TD>
+	</TR>
+</TABLE>
+<P><A NAME="4"></A><B><FONT SIZE=4>QTreeViewEx Example</FONT></B> <BR>&nbsp;
+</P>
+</BODY>
+</HTML>

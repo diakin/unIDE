@@ -1,0 +1,253 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.51 [fr]C-CCK-MCD   (WinNT; I) [Netscape]">
+   <title>Appendix A: QProgress</title>
+</head>
+<body bgcolor="#FFFFFF" FONT FACE="Arial, Helvetica">
+&nbsp;
+<table CELLSPACING=0 CELLPADDING=0 WIDTH="100%" >
+<tr>
+<td><font face="Arial, Helvetica">Documentation composant par D.Glodt (c)2000-2001</font></td>
+
+<td ALIGN=RIGHT><b><font face="Arial, Helvetica">Appendix A: QProgress</font></b></td>
+</tr>
+
+<tr>
+<td COLSPAN="2">
+<hr SIZE=1></td>
+</tr>
+</table>
+
+<h1>
+QProgress Composant</h1>
+
+<dd>
+QProgressBar est un controle visuel de barre de progression.</dd>
+
+<br>&nbsp;
+<p>&nbsp;
+<p><a NAME="1"></a><b><font size=+1>QProgress Propriet&eacute;s</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Champs</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>L/E</b></td>
+
+<td><b>D&eacute;faut</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Handle</td>
+
+<td>INTEGER</td>
+
+<td>LE</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Height</td>
+
+<td>INTEGER</td>
+
+<td>LE</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Left</td>
+
+<td>INTEGER</td>
+
+<td>LE</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Parent</td>
+
+<td>Handle QFORM/QPANEL/QTABCONTROL</td>
+
+<td>LE</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Top</td>
+
+<td>INTEGER</td>
+
+<td>LE</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Width</td>
+
+<td>INTEGER</td>
+
+<td>LE</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Visible</td>
+
+<td>INTEGER</td>
+
+<td>LE</td>
+
+<td>True</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Value</td>
+
+<td>INTEGER</td>
+
+<td>LE</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Valeur de progression.&nbsp;</td>
+</tr>
+</table>
+
+<p><a NAME="2"></a><b><font size=+1>QProgress Methodes</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Methode</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Description</b></td>
+
+<td><b>Parametres</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+</table>
+
+<p><a NAME="3"></a><b><font size=+1>QProgress Evenements</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Evenement</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Declenchement</b></td>
+
+<td><b>Parametres</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+</table>
+
+<p><a NAME="4"></a><b><font size=+1>QProgress Exemples</font></b>
+<p>$TYPECHECK ON
+<br>$Include "Rapidq.inc"
+<br>$include "Object\QProgress.inc"
+<p>Declare Sub Start
+<br>Declare Sub Display
+<p>dim pourcent as integer
+<br>dim tempo as QTIMER
+<br>tempo.interval=100
+<br>tempo.enabled=False
+<br>tempo.OnTimer=Display
+<br>dim Bar as QProgress
+<p>CREATE Form AS QFORM
+<br>&nbsp;&nbsp;&nbsp; Caption = "Progress Bar"
+<br>&nbsp;&nbsp;&nbsp; Width = 350
+<br>&nbsp;&nbsp;&nbsp; Height = 180
+<br>&nbsp;&nbsp;&nbsp; Center
+<br>&nbsp;&nbsp;&nbsp; CREATE Button1 AS QBUTTON
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption = "Start"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left = 125
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top = 100
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Start
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>END CREATE
+<br>Bar.parent=form.handle
+<br>Bar.left=10
+<br>Bar.Top=40
+<br>Bar.Width=305
+<br>Bar.Height=25
+<br>Form.ShowModal
+<p>Sub Display
+<br>&nbsp; if pourcent&lt;100 then
+<br>&nbsp;&nbsp;&nbsp; pourcent=pourcent+1
+<br>&nbsp;&nbsp;&nbsp; Bar.Value=pourcent
+<br>&nbsp; else
+<br>&nbsp;&nbsp;&nbsp; tempo.enabled=False
+<br>&nbsp; end if
+<br>End Sub
+<p>Sub Start
+<br>&nbsp; pourcent=0
+<br>&nbsp; Bar.Value=0
+<br>&nbsp; tempo.enabled=True
+<br>End Sub
+<br>&nbsp;
+<br>&nbsp;
+</body>
+</html>

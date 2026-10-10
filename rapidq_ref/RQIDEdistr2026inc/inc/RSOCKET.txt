@@ -1,0 +1,244 @@
+Last Updated: June 6, 2003
+>>variable/constant type matching added in source code.
+
+''''''RSOCKET.INC''''''Copyright 2002 Global Services
+
+RSocket Extends QSocket (RSocket.inc) with a proof-of-concept program
+(RSocket.bas).  RSocket.inc contains functions used by getname.bas and 
+by raw_sock.bas.  RSocket requires the free RapidQ Basic compiler and
+adds nine new functions to RapidQ's QSocket object:
+
+1. New .S function with ability to create an array of sockets!
+
+Substitute a dimensioned Socket(n) for S.  With several arrays storing data
+on n socket operations, such as Socket(n), time(n), Host(n), Port(n),
+Status(n), etc, -- whatever you need, you can be communicating with dozens
+of computers in the same time interval.  You just go 1 to n, check status,
+update time(n) at .Connect time or whenever, to later check how much time has
+passed (IF Timer - time(n) > MaxSecToWait THEN Goto ActionTimedOut), take
+appropriate action depending on Status(n) and connection status, etc.
+Be sure to include a DoEvents statement as you loop from socket to socket.
+A short Sleep 0.1 doesn't hurt either.  This is the concept of writing
+a multiple socket connection program.
+
+2. New .NonBlock funtion sets socket S to non-blocking mode.
+
+3. New .Block function sets socket S to blocking mode.
+
+These functions may be used to set any socket S (or Socket(n)) to blocking
+or nonblocking mode at a particular time.
+
+4. New .Connect function is similar to the QSocket .Connect except *you* have
+to create the socket first (see RSocket.bas) and the first argument is S,
+the socket number returned by the .S function.  At present, .Connect only
+accepts dotted IP addresses (like in scanner applications) -- a.b.c.d
+(use new .AddrByName function to get the IP address).
+
+[Note: The regular QSocket .Connect returns an error (-1) or a socket number
+(S), if the connection was successful, if you can wait that long to find out!]
+
+5. NEW .IsConnected function returns 1 if connected!  In actual fact, the
+function tests if a connection is ready for writing.  Whether or not you plan
+to write to the socket, this determination is basically synonymous with an
+established TCP connection.
+Three return values are 1 = connected, -1 = error, 0 = neither.
+
+6. NEW .LastError function returns a string with both WSA last socket error
+code and a text description of the error code.  See usage in RSocket.bas.
+
+7. NEW .AddrByName function takes a host name string and resolves it to a
+dotted IP address string (or null string if failure).  This can be used before
+calling .Connect if you need the IP address string.  Tip: If you don't know
+whether the remote host string is a name or a dotted IP address, try this:
+
+IF inet_addr(host$)=&HFFFFFFFF THEN
+  ip$ = Sock.AddrByName(host$) 
+  IF ip$ <> "" THEN Goto DoConnect ELSE Goto BadHostString
+ELSE
+  ip$=host$
+END IF
+DoConnect:
+ret = Sock.Connect(S,ip$,port%)
+
+.AddrByName is called "DNS lookup."
+
+8. NEW .NameByAddr function takes an IP address string like a.b.c.d and returns
+the Host Name associated with that address.  A sample program in this package,
+getname.bas, shows how it works.  To compile, type "rc getname" and then run it.
+
+.NameByAddr is called "reverse DNS lookup."
+
+9. NEW .EndConnection function implements the socket shutdown API by stopping
+both send and receive of data over the socket.  The regular .Close function
+completely disables a socket and frees system resources.  The .EndConnection
+function does a mode 2 shutdown and sends a FIN packet to indicate the program
+will send no more data.
+
+10. .WriteLine replaces the QSocket .WriteLine.  These append <cr><lf> or
+only <lf> respectively to the string sent.  This replacement is necessary
+since some servers require the full <cr><lf> syntax, instead of just <lf>.
+This replacement .WriteLine returns error or number of bytes written.
+
+11. .GetPeerName replaces the QSocket .GetPeerName which did not work. Usage
+is the same.
+
+=====USAGE (see examples in RSocket.bas & getname.bas):
+
+Dim Sock As RSocket           'creates Sock object
+S = Sock.S			      'creates socket handle & puts it in S
+ret = Sock.NonBlock(S)		'sets socket S to non-blocking mode
+ret = Sock.Block(S)		'sets socket S to default blocking mode
+ret = Sock.Connect(S,ip$,port%)	'initiates connection
+ret = Sock.IsConnected(S,Secs)	'returns 1 if you are connected.
+Error$ = Sock.LastError		'gets WSA last error code & description
+ip$ = Sock.AddrByName(host$)	'resolves host name to IP address
+host$= Sock.NameByAddr(ip$)	'finds host name for an IP address
+ret = Sock.EndConnection(S)	'stops socket I/O to free up socket
+ret = Sock.Writeline(S,m$)    'returns bytes written or error
+ip$ = Sock.GetPeerName(S)     'returns IP address of server client
+
+=====CONNECT DETAILS:
+
+RSocket .Connect works in either blocking or non-blocking mode depending on
+calls to .Block or .NonBlock beforehand (.Block is default if no prior call
+is made before a .Connect.  With Blocking (the default), .Connect in RSocket
+returns error (-1) or zero (connected).
+
+The "proof of concept" (RSocket.bas) prints out lots of stuff including timer
+values to prove to you that the .Connect call *does not* block!!
+The only essential PRINT statement is for the Sock.Read at the end.
+
+This "victory" in extending QSocket allows the writing of truly professional
+and fast scanning programs and other applications.  As far as I know, every
+regular QSocket operation that requires a socknum argument (S) works.  Please
+email me with any problems you find or other extensions you might want.... ;-)
+
+Now the .AddrByName function is done, so you can use a host name and get the
+IP address in the form a.b.c.d.
+
+[.GetPeerName returns an IP address but requires a connection first, as in a
+server application where one wants to know the IP address of the client
+computer connected to the server.]
+
+=====MORE ABOUT USAGE:
+
+Dim Sock as Rsocket
+Dim S as long, ret as long
+S=Sock.S			'This creates socket
+ret=Sock.NonBlock(S)		'ret = 0 if nonblocking worked
+ret=Sock.Connect(S,ip$,Port%)	'ret = -1 is error; ret = 0 is connected
+
+'In non-blocking mode, ret above is always -1 (it's non-blocking, right?)
+
+IF WSAGetLastError <> 10035 THEN Goto SomethingIsWrong
+
+The above test after a .Connect attempt is important.  If something is wrong,
+it may be a good idea to do a Sock.Close(S) to terminate the socket, and start
+fresh with a new socket handle (Sock.S).
+
+=====MONITORING CONNECTION STATUS:
+
+How to test if you are connected in non-blocking mode:
+
+Of course, you have to wait some time (several hundred msec or more).  Use the
+DoEvents statement especially if you are initiating multiple socket connect
+calls in a short interval.
+
+1. IF Sock.IsConnected(S, Secs) > 0 THEN Goto ThisSocketIsConnected
+
+where S is the socket handle and Secs is the timeout in seconds and fractional
+quantities are not implemented (i.e., Secs is an integer).
+
+Note: When Secs = 0, the Sock.IsConnected(S, 0) function returns with an answer
+immediately (is non-blocking).  However, if Secs is greater than 0, then
+.IsConnected will block until a connection outcome occurs or until the timeout
+has expired.  Generally, speaking, multi-socket applications will use a timeout
+of zero.
+
+The new twist on the .IsConnected function is that now it will return -1 if an
+error occurs.  Depending on your environment, the error return will indicate
+"connection refused" if sufficient time has passed (similar to what a regular
+TCP connection might require).  This is an important point since it means that
+the remote host has replied with an ACK and RST flag TCP packet indicating it
+is there, up and running.  Thus, this usage of the .IsConnected function acts
+as a sort of TCP ping which can reveal the presence of hosts behind firewalls
+that do not respond to ICMP pings.  Neat!
+
+2. The following code also works:
+ret=Sock.Connect(S,ip$,Port%)	'Do the original call again!!
+ret=WSAGetLastError		'if ret = 10056, you are connected!
+IF ret = 10056 THEN Goto Connected Else Goto ConnectFailed
+
+WSAError 10056 indicates a call failed *because* the socket is connected.
+In this context, IF WSAGetLastError = 10056, S is presently connected.
+
+On the other hand, if you are trying to establish a *new* connection with
+socket S and you get error 10056 in the above code, it means the *previous*
+connection is still established.  Either you did not do the .EndConnection
+and .Close OR wait long enough OR use DoEvents to allow the network layer to
+close the previous connection.  It is usually best to .Close the socket,
+create a new one and then proceed to the next connection.
+
+You can test for connection status at any time.  Some servers will drop
+connections.  Common sense suggests other methods.  E.g., if an attempt to
+write to the socket (Sock.Write...) returns an error, you may not have, or
+have lost, a connection.
+
+3. Just wait a little and go straight to your socket read/writes!  If they
+succeed, jeepers, you must be connected.  If not, well, guess!
+
+=====BE CAREFUL WITH READS (Remote computers can do funny stuff!):
+
+Always do this for Sock.Read or Sock.ReadLine if S is in Blocking mode:
+
+Time(n)=timer  'n is the index for S = Socket(n)
+ReadData:
+IF Sock.IsServerReady(S) > 0 THEN
+....Sock.Read .... etc.
+END IF
+IF timer - Time(n) < MaxSecToWait THEN Goto ReadData
+
+If you do not do the above, a server that maintains the connection but sends
+nothing will cause your program to hang and there is NO graceful exit.  Do not
+assume that the protocol says the server should send something and therefore
+it will.  Since most will behave themselves, you will have a program that
+appears to work just fine and then later just stops.  If you do a netstat -a -n
+you find there is an established connection there and your program is waiting
+for data that the particular server will not send.  Maybe after a long time,
+the remote host will close it for you.
+
+Be careful with use of any other Sock.Method with no S argument because it may
+not know what to do.  E.g., Sock.MySocket cannot be relied on unless you
+experiment with a specific context.  However, .GetHostName and .GetHostIP work
+(they do not require the S argument).  Just experiment to see what works.
+
+ALWAYS do Sock.EndConnection(S) when you are done with a connected S.  This is
+a graceful manner to shutdown a TCP connection.  Reads and writes are disabled
+and a FIN packet is sent to the peer indicating the inpending closure of the
+connection.
+
+To free system resources, do .Close(S) when you are done with a particular
+attempt to connect, whether or not a connection occurs.  This means another
+Sock.S will be done to get a new S handle.  Reliable sockets programming uses
+this procedure to insure that events in the last connect operation do not
+affect the results of a subsequent connection.
+
+For example, for n sockets in an array Socket(n), one can start a loop:
+
+DIM Socket(1 to MaxSockets) As LONG
+n = 1
+NextSock:
+IF Socket(n) <= 0 THEN Socket(n)=Sock.S: Flag(n) = 0
+S = Socket(n): Sleep 0.05
+
+'.Connect or .IsConnected depending on Flag(n), Timer-Time(n), status of S, etc
+'free the socket if you are done with it, else go to LoopSock
+Sock.EndConnection(S): Sock.Close(S): Socket(n) = 0
+
+LoopSock:
+IF n < MaxSockets THEN n = n + 1 ELSE n = 1
+DoEvents: Goto NextSock 
+
+IF all the files in this zip are put in one directory AND your RapidQ stuff is
+in C:\rapidq, then "rc rsocket" will compile the demo program.  You will have to
+edit RC.BAT if C:\rapidq is not the home directory for RapidQ.

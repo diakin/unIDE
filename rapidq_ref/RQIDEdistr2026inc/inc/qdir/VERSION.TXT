@@ -1,0 +1,54 @@
+Version 1.0.0
+-------------
+  Not BETA anymore ???
+  - the proprety .WithDotsDirs did not work under .DIR
+  - add .WithDotsDirs in documentation
+Beta Version 0.0.4    September 6th, 2003
+------------------
+  In Version 0.0.3, when a directory had an attibute other than "D" set,
+  it was erroneously rejected. This was due to this line of QDir code
+        .rejectedAttributes = "AHNRSTC0"  ' Reject All Except Dir
+  in Sub Dirs2, when listing only the Directories.
+  (Here only WIN95 directories have attributes different than "DIRECTORY"
+  set ????)
+
+  In version 0.0.4 the recursive directory scanning has been abandonned
+  and replaced by a QStringList. A first Directory Scan for directories
+  Inserts sub directories Path to that QStringList (respecting the usual
+  scan). A second Scan Searches for matching Files/Directories. Scanning
+  is finished when the last item of the QStringList is done.
+  
+  benefits
+  - QDir Version 0.0.4 is totally compatible with QDir Version 0.0.3
+  - it will correctly DIRS under Win95
+  - now you can specify to only scan directories
+    .MustAttributes = "D" is OK now. In version 0.0.3 it did not work.
+  - If you dont want the "." and ".." directiories to be returned,
+    just set the property QDir.WithDotsDirs = False . For compatibility
+    with Version 0.0.3 QDir.WithDotsDirs = True by Default.
+  - the code is far more clear :) and a little little bit faster ???
+
+Beta Version 0.0.3     October 28th, 2002
+------------------
+QDIR was buggy with $ESCAPECHARS OFF
+- $ESCAPECHAR$ ON/OFF removed from QDIR
+    - Const QDIR_RQCR and QDIR_BACKSLASH created
+      ??? There seems to be a bug using $ESCAPECHARS in QOBJECT ???
+- Commented $TYPECHECK ON/OFF too
+- Reworked QDirTest.Bas Examples
+
+Beta Version 0.0.2
+------------------
+    No Change on an User Point Of View
+    Renaming Constantes and Apis To avoid Double declaration in the User
+    code.
+    EX : Const FILE_ATTRIBUTE_ARCHIVE = &H20        ' "A" 
+         renamed Const QDIR_FILE_ATTRIBUTE_ARCHIVE = &H20        ' "A"
+    Ex : Declare Function FindClose Lib "kernel32" _
+                     Alias "FindClose" (ByVal hFindFile As Long) As Long
+         renamed Declare Function QDIR_FindClose Lib "kernel32" _
+                     Alias "FindClose" (ByVal hFindFile As Long) As Long 
+
+Beta Version 0.0.1
+------------------
+    First Version

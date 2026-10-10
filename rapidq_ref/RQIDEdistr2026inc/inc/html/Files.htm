@@ -1,0 +1,504 @@
+<html>
+<head>
+<title>Files.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'# QUOTE : Returns a quoted string</i></font> 
+<font color="0000AA"><b>function</b></font> Quote <b>(</b>StringToQuote <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+StringToQuote =  <font color="0000AA"><b>chr$</b></font><b>(</b>34<b>)</b> + StringToQuote + <font color="0000AA"><b>chr$</b></font><b>(</b>34<b>)</b>
+result = <font color="0000AA"><b>replacesubstr$</b></font><b>(</b>stringtoquote, <font color="0000AA"><b>chr$</b></font><b>(</b>34<b>)</b> + <font color="0000AA"><b>chr$</b></font><b>(</b>34<b>)</b>, <font color="0000AA"><b>chr$</b></font><b>(</b>34<b>)</b><b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'===============================================================================</i></font> 
+<font color="007700"><i>'# STRIPPATH : Returns file path (without file name)</i></font> 
+<font color="0000AA"><b>Function</b></font> StripPath <b>(</b>fullname <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+result = <font color="0000AA"><b>left$</b></font><b>(</b>fullname, rinstr<b>(</b>fullname, "<font color="990000">\</font>"<b>)</b><b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'===============================================================================</i></font> 
+<font color="007700"><i>'# STRIPFILENAME : Returns file name (without path)</i></font> 
+<font color="0000AA"><b>Function</b></font> StripFileName <b>(</b>fullname <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+result = <font color="0000AA"><b>right$</b></font><b>(</b>fullname, <font color="0000AA"><b>len</b></font><b>(</b>fullname<b>)</b> - rinstr<b>(</b>fullname, "<font color="990000">\</font>"<b>)</b><b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'===============================================================================</i></font> 
+<font color="007700"><i>'# STRIPFILEEXT : Returns file extension (like ".exe", ".html" etc.)</i></font> 
+<font color="0000AA"><b>Function</b></font> StripFileExt <b>(</b>fullname <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+result = <font color="0000AA"><b>right$</b></font><b>(</b>fullname, <font color="0000AA"><b>len</b></font><b>(</b>fullname<b>)</b> - rinstr<b>(</b>fullname, "<font color="990000">.</font>"<b>)</b> + 1<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'===============================================================================</i></font> 
+<font color="007700"><i>'# FILENAMENOEXT : Returns file name without extension</i></font> 
+<font color="0000AA"><b>function</b></font> FileNameNoExt<b>(</b>fullname <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+fullname = <font color="0000AA"><b>right$</b></font><b>(</b>fullname, <font color="0000AA"><b>len</b></font><b>(</b>fullname<b>)</b> - rinstr<b>(</b>fullname, "<font color="990000">\</font>"<b>)</b><b>)</b>
+result = <font color="0000AA"><b>left$</b></font><b>(</b>fullname, rinstr<b>(</b>fullname, "<font color="990000">.</font>"<b>)</b> - 1<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'===============================================================================</i></font> 
+<font color="007700"><i>'# FULLPATHNOEXT : Returns full path without file extension</i></font> 
+<font color="0000AA"><b>function</b></font> FullPathNoExt<b>(</b>fullname <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+result = <font color="0000AA"><b>left$</b></font><b>(</b>fullname, rinstr<b>(</b>fullname, "<font color="990000">.</font>"<b>)</b> - 1<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'===============================================================================</i></font> 
+<font color="007700"><i>'# C_Style : Returns "slashed" path from a "backslashed" one</i></font> 
+<font color="0000AA"><b>function</b></font> C_Style <b>(</b>fullname <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+fullname = <font color="0000AA"><b>replacesubstr$</b></font><b>(</b>fullname, "<font color="990000">\\</font>", "<font color="990000">\</font>"<b>)</b>
+result = <font color="0000AA"><b>replacesubstr$</b></font><b>(</b>fullname, "<font color="990000">\</font>", "<font color="990000">/</font>"<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'===============================================================================</i></font> 
+<font color="007700"><i>'# SYSDIR : Retrieves windows shell directories</i></font> 
+
+<font color="007700"><i>'-------------------------|</i></font> 
+<font color="007700"><i>' Allowed values for dir  |</i></font> 
+<font color="007700"><i>'-----------------------------------------------------------------------------|</i></font> 
+<font color="007700"><i>' Desktop                 | Templates               | AppData                 |</i></font> 
+<font color="007700"><i>' Start Menu              | Programs                | Startup                 |</i></font> 
+<font color="007700"><i>' Fonts                   | SendTo                  | Recent                  |</i></font> 
+<font color="007700"><i>' Favorites               | Cache                   | Cookies                 |</i></font> 
+<font color="007700"><i>' History                 | NetHood                 | Personal                |</i></font> 
+<font color="007700"><i>' PrintHood               | Local AppData           | My Pictures             |</i></font> 
+<font color="007700"><i>' Administrative Tools    |                         |                         |</i></font> 
+<font color="007700"><i>'-----------------------------------------------------------------------------|</i></font> 
+
+<font color="0000AA"><b>function</b></font> SysDir <b>(</b>dir <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+<font color="0000AA"><b>DIM</b></font> fo_reg <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QRegistry</b></font>
+fo_reg.RootKey = &H80000001
+fo_reg.openkey <b>(</b>"<font color="990000">Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders</font>", 0<b>)</b>
+result = fo_reg.readstring<b>(</b>dir<b>)</b> + "<font color="990000">\</font>"
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'===============================================================================</i></font> 
+<font color="007700"><i>'# HOMEDIR : The folder where the application is</i></font> 
+
+<font color="0000AA"><b>function</b></font> homedir<b>(</b><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+result = <font color="0000AA"><b>left$</b></font><b>(</b><font color="0000AA"><b>command$</b></font><b>(</b>0<b>)</b>, rinstr<b>(</b><font color="0000AA"><b>command$</b></font><b>(</b>0<b>)</b>, "<font color="990000">\</font>"<b>)</b><b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'===============================================================================</i></font> 
+<font color="007700"><i>'# BROWSEFORFOLDERS : Returns the selected folder</i></font> 
+
+<font color="0000AA"><b>function</b></font> BrowseForFolders <b>(</b>initialdir <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>, wincapt <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+<font color="0000AA"><b>dim</b></font> bff_form <font color="0000AA"><b>as</b></font> <font color="000099"><b>qform</b></font>
+<font color="0000AA"><b>with</b></font> bff_form
+.height = 400
+.center
+.caption = wincapt
+.delbordericons 2
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+<font color="0000AA"><b>dim</b></font> bff_tree <font color="0000AA"><b>as</b></font> <font color="000099"><b>qdirtree</b></font>
+<font color="0000AA"><b>with</b></font> bff_tree
+.parent = bff_form
+.align = 5
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+<font color="0000AA"><b>if</b></font> bff_form.caption = "<font color="990000"></font>" <font color="0000AA"><b>then</b></font> bff_form.caption = "<font color="990000">Select folder</font>"
+<font color="0000AA"><b>if</b></font> <font color="0000AA"><b>direxists</b></font><b>(</b>initialdir<b>)</b> <font color="000099"><b>then</b></font>
+bff_tree.directory = initialdir
+<font color="000099"><b>else</b></font>
+bff_tree.directory = <font color="000099"><b>curdir$</b></font>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+bff_form.showmodal
+result = bff_tree.directory
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'===============================================================================</i></font> 
+<font color="007700"><i>'# BROWSEFORFILE : Returns the selected folder</i></font> 
+
+<font color="0000AA"><b>Function</b></font> BrowseForFile <b>(</b>caption <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>, filter <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>, _
+initialdir <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+<font color="0000AA"><b>dim</b></font> bff_od <font color="0000AA"><b>as</b></font> <font color="000099"><b>qopendialog</b></font>
+<font color="0000AA"><b>with</b></font> bff_od
+.caption = caption
+.filter = filter
+.initialdir = initialdir
+
+<font color="0000AA"><b>if</b></font> .execute <font color="000099"><b>then</b></font>
+    result = .filename
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>with</b></font>
+
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'_=============================================================================</i></font> 
+
+<font color="0000AA"><b>$ESCAPECHARS</b></font> ON
+
+<font color="007700"><i>'ChangeFileExt:</i></font> 
+<font color="007700"><i>'Returns: String</i></font> 
+<font color="007700"><i>'Parameters:</i></font> 
+<font color="007700"><i>'FileName (String): Name of file with old extention</i></font> 
+<font color="007700"><i>'NewExt (String): New extention. This must include the leading ".".</i></font> 
+
+<font color="007700"><i>'Information:</i></font> 
+<font color="007700"><i>'Author: Taj Morton</i></font> 
+<font color="007700"><i>'Email: tmorton at linuxmail dot org.</i></font> 
+<font color="007700"><i>'License: Public Domain</i></font> 
+
+<font color="007700"><i>'Description:</i></font> 
+<font color="007700"><i>'Changes the extention of FileName to NewExt. For example:</i></font> 
+<font color="007700"><i>'ChangeFileExt("File.bas", ".inc")</i></font> 
+<font color="007700"><i>'returns File.inc. This function does not delete the old string,</i></font> 
+<font color="007700"><i>'instead, it simply returns a new one with the extention.</i></font> 
+<font color="007700"><i>'You must include the leading "." for it to be added, as it is not</i></font> 
+<font color="007700"><i>'done by the function.</i></font> 
+
+<font color="0000AA"><b>FUNCTION</b></font> ChangeFileExt<b>(</b>FileName <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>String</b></font>, NewExt <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>STRING</b></font>
+	<font color="0000AA"><b>DIM</b></font> Returns <font color="0000AA"><b>as</b></font> <font color="000099"><b>STRING</b></font>
+	<font color="0000AA"><b>DIM</b></font> CurrentExt <font color="0000AA"><b>as</b></font> <font color="000099"><b>String</b></font>
+	<font color="0000AA"><b>DIM</b></font> CurrentExtLoc <font color="0000AA"><b>as</b></font> <font color="000099"><b>INTEGER</b></font>
+	<font color="0000AA"><b>DIM</b></font> FileNoExt <font color="0000AA"><b>as</b></font> <font color="000099"><b>STRING</b></font>
+	
+	CurrentExtLoc = RInStr<b>(</b>FileName, "<font color="990000">.</font>"<b>)</b>
+	CurrentExt = <font color="0000AA"><b>MID$</b></font><b>(</b>FileName, CurrentExtLoc, <font color="0000AA"><b>LEN</b></font><b>(</b>FileName<b>)</b><b>)</b>
+	FileNoExt = <font color="0000AA"><b>DELETE$</b></font><b>(</b>FileName, CurrentExtLoc, <font color="0000AA"><b>LEN</b></font><b>(</b>FileName<b>)</b><b>)</b>
+	
+	Result = <font color="0000AA"><b>INSERT$</b></font><b>(</b>NewExt, FileNoExt, <font color="0000AA"><b>LEN</b></font><b>(</b>FileName<b>)</b><b>)</b>
+	ChangeFileExt = Result
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>FUNCTION</b></font>
+
+<font color="007700"><i>'ExtractFileName:</i></font> 
+<font color="007700"><i>'Returns: String</i></font> 
+<font color="007700"><i>'Parameters:</i></font> 
+<font color="007700"><i>'FileName (String): File with full path</i></font> 
+
+<font color="007700"><i>'Information:</i></font> 
+<font color="007700"><i>'Author: Taj Morton</i></font> 
+<font color="007700"><i>'Email: tmorton at linuxmail dot org.</i></font> 
+<font color="007700"><i>'License: Public Domain</i></font> 
+
+<font color="007700"><i>'Description:</i></font> 
+<font color="007700"><i>'ExtractFileName takes a file name with a path and returns only</i></font> 
+<font color="007700"><i>'the file name. For example:</i></font> 
+<font color="007700"><i>'ExtractFileName("C:\\Program Files\\AFile.bas")</i></font> 
+<font color="007700"><i>'returns AFile.bas. You can use either two back-slashes or a single</i></font> 
+<font color="007700"><i>'forward slash (/) for folder seperators.</i></font> 
+<font color="007700"><i>'Both forward and back-slashes are supported by Windows.</i></font> 
+<font color="007700"><i>'The back-slash takes procedure over the forward slash.</i></font> 
+<font color="007700"><i>'Note that ExtractFileName does _not_ check the validity of the path passed.</i></font> 
+<font color="007700"><i>'You must check yourself.</i></font> 
+
+<font color="0000AA"><b>FUNCTION</b></font> ExtractFileName<b>(</b>FileName <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+	<font color="0000AA"><b>DIM</b></font> Length <font color="0000AA"><b>as</b></font> <font color="000099"><b>INTEGER</b></font>
+	<font color="0000AA"><b>DIM</b></font> Result <font color="0000AA"><b>as</b></font> <font color="000099"><b>STRING</b></font>
+	
+	Length = RInStr<b>(</b>FileName, "<font color="990000">\\</font>"<b>)</b> <font color="0000AA"><b>OR</b></font> RInStr<b>(</b>FileName, "<font color="990000">/</font>"<b>)</b>
+	Result = <font color="0000AA"><b>MID$</b></font><b>(</b>FileName, Length+1, <font color="0000AA"><b>LEN</b></font><b>(</b>FileName<b>)</b> - Length + 1<b>)</b>
+	ExtractFileName = Result
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>FUNCTION</b></font>
+
+<font color="007700"><i>'ExtractFilePath</i></font> 
+<font color="007700"><i>'Returns: String</i></font> 
+<font color="007700"><i>'Parameters:</i></font> 
+<font color="007700"><i>'FileName (String): File with full path</i></font> 
+
+<font color="007700"><i>'Information:</i></font> 
+<font color="007700"><i>'Author: Taj Morton</i></font> 
+<font color="007700"><i>'Email: tmorton at linuxmail dot org.</i></font> 
+<font color="007700"><i>'License: Public Domain</i></font> 
+
+<font color="007700"><i>'Description:</i></font> 
+<font color="007700"><i>'ExtractFilePath takes string with full path and returns a string</i></font> 
+<font color="007700"><i>'with only the path. For example:</i></font> 
+<font color="007700"><i>'ExtractFilePath("C:\\Program Files\\AProgram.bas")</i></font> 
+<font color="007700"><i>'returns C:\Program Files (the \\'s are for RQ and back-slashes).</i></font> 
+<font color="007700"><i>'ExtractFilePath also takes forward-slashes (/). Window's supports</i></font> 
+<font color="007700"><i>'these as well. </i></font> 
+<font color="007700"><i>'The back-slash takes procedure over the forward slash.</i></font> 
+<font color="007700"><i>'Note that ExtractFilePath does _not_ test the validity</i></font> 
+<font color="007700"><i>'of the passed name. You must check it yourself. Even if the name is</i></font> 
+<font color="007700"><i>'invalid, the path will be returned. For example, if C:/ProgramErrorFiles/AFile.txt</i></font> 
+<font color="007700"><i>'is passed, C:/ProgramErrorFiles will be returned.</i></font> 
+
+<font color="007700"><i>'-- *****************************************************'</i></font> 
+<font color="0000AA"><b>FUNCTION</b></font> ExtractFilePath<b>(</b>FileName <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+	<font color="0000AA"><b>DIM</b></font> Length <font color="0000AA"><b>as</b></font> <font color="000099"><b>INTEGER</b></font>
+	<font color="0000AA"><b>DIM</b></font> Result <font color="0000AA"><b>as</b></font> <font color="000099"><b>STRING</b></font>
+	
+	Length = RInStr<b>(</b>FileName, "<font color="990000">\\</font>"<b>)</b> <font color="0000AA"><b>OR</b></font> RInStr<b>(</b>FileName, "<font color="990000">/</font>"<b>)</b>
+	Result = <font color="0000AA"><b>MID$</b></font><b>(</b>FileName, 0, Length<b>)</b>
+	ExtractFilePath = Result
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>FUNCTION</b></font>
+
+<font color="007700"><i>'ChangeFileName</i></font> 
+<font color="007700"><i>'Returns: String</i></font> 
+<font color="007700"><i>'Parameters:</i></font> 
+<font color="007700"><i>'FileName (String): File with full path</i></font> 
+<font color="007700"><i>'NewName (String): Text that will replace old file name</i></font> 
+
+<font color="007700"><i>'Information:</i></font> 
+<font color="007700"><i>'Author: Taj Morton</i></font> 
+<font color="007700"><i>'Email: tmorton at linuxmail dot org.</i></font> 
+<font color="007700"><i>'License: Public Domain</i></font> 
+
+<font color="007700"><i>'Description:</i></font> 
+<font color="007700"><i>'ChangeFileName takes a file name with full path and file and a new name.</i></font> 
+<font color="007700"><i>'It replaces the current filename (in FileName) and replaces it with NewName.</i></font> 
+<font color="007700"><i>'ChangeFileName does not actually change FileName, instead it returns a new</i></font> 
+<font color="007700"><i>'string which contains the new name.</i></font> 
+<font color="007700"><i>'Note that ChangeFileName does not check the validity of FileName</i></font> 
+<font color="007700"><i>'or the new result. You must do it yourself (if you want). ChangeFileName</i></font> 
+<font color="007700"><i>'takes both the back-slash and forward slash to serperate folder and file names.</i></font> 
+<font color="007700"><i>'You can use either \\ or /. Both are supported by Windows.</i></font> 
+<font color="007700"><i>'The back-slash takes procedure over the forward slash.</i></font> 
+
+<font color="007700"><i>'-- *****************************************************'</i></font> 
+<font color="0000AA"><b>FUNCTION</b></font> ChangeFileName<b>(</b>FileName <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>STRING</b></font>, NewName <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+	<font color="0000AA"><b>DIM</b></font> FileNameLoc <font color="0000AA"><b>as</b></font> <font color="000099"><b>INTEGER</b></font>
+	<font color="0000AA"><b>DIM</b></font> Result <font color="0000AA"><b>as</b></font> <font color="000099"><b>STRING</b></font>
+	<font color="0000AA"><b>DIM</b></font> PathNoName <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+	
+	PathNoName = ExtractFilePath<b>(</b>FileName<b>)</b>
+	Result = PathNoName+NewName
+	ChangeFileName = Result
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>FUNCTION</b></font>
+
+<font color="007700"><i>'ChangeFilePath</i></font> 
+<font color="007700"><i>'Returns: String</i></font> 
+<font color="007700"><i>'Parameters:</i></font> 
+<font color="007700"><i>'FileName (String): File with full path</i></font> 
+<font color="007700"><i>'NewPath (String): New path that will replace the path in FileName</i></font> 
+
+<font color="007700"><i>'Information:</i></font> 
+<font color="007700"><i>'Author: Taj Morton</i></font> 
+<font color="007700"><i>'Email: tmorton at linuxmail dot org.</i></font> 
+<font color="007700"><i>'License: Public Domain</i></font> 
+
+<font color="007700"><i>'Description:</i></font> 
+<font color="007700"><i>'ChangeFilePath takes FileName and replaces the path with NewPath.</i></font> 
+<font color="007700"><i>'It does not change FileName to have the new path, instead, it returns</i></font> 
+<font color="007700"><i>'a string which has the new path. It's up to you to take the correct</i></font> 
+<font color="007700"><i>'action. Also, old or new path and names' are not checked for validity,</i></font> 
+<font color="007700"><i>'you must do it yourself.</i></font> 
+<font color="007700"><i>'You may use either the \\ or the / to seperate your paths. Windows supports</i></font> 
+<font color="007700"><i>'both. </i></font> 
+
+<font color="007700"><i>'-- *****************************************************'</i></font> 
+<font color="0000AA"><b>FUNCTION</b></font> ChangeFilePath<b>(</b>FileName <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>STRING</b></font>, NewPath <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+	<font color="0000AA"><b>DIM</b></font> Result <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+	<font color="0000AA"><b>DIM</b></font> FileNoPath <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+	
+	FileNoPath = ExtractFileName<b>(</b>FileName<b>)</b>
+	
+	Result = NewPath+FileNoPath
+	ChangeFilePath = Result
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>FUNCTION</b></font>
+<font color="0000AA"><b>$ESCAPECHARS</b></font> Off
+
+<font color="007700"><i>'_==============================================================</i></font> 
+<font color="007700"><i>'-- *****************************************************'</i></font> 
+
+<font color="0000AA"><b>sub</b></font> MKSubDir <b>(</b>DirDst$<b>)</b>
+<font color="007700"><i>'Andrew Shelkovenko dec 2003</i></font> 
+<font color="007700"><i>'Create DirDst$ directory with full subdir structure</i></font> 
+z1=<font color="0000AA"><b>instr</b></font><b>(</b>DirDst$,"<font color="990000">\</font>"<b>)</b>
+z2=0
+<font color="0000AA"><b>while</b></font> z1>0
+SubDirDst$=<font color="0000AA"><b>left$</b></font><b>(</b>DirDst$,z1 <b>)</b>
+<font color="0000AA"><b>if</b></font> <font color="0000AA"><b>DIREXISTS</b></font><b>(</b>SubDirDst$<b>)</b>=0 <font color="0000AA"><b>then</b></font> <font color="0000AA"><b>MKDIR</b></font> SubDirDst$
+<font color="007700"><i>'print "SubDirDst$=" ,SubDirDst$</i></font> 
+z2=z1+1
+z1=<font color="0000AA"><b>instr</b></font><b>(</b>z2,DirDst$,"<font color="990000">\</font>"<b>)</b>
+
+<font color="000099"><b>wend</b></font>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="007700"><i>'-- *****************************************************'</i></font> 
+<font color="0000AA"><b>sub</b></font> SubDirCopy <b>(</b>DirSrc$, DirDst$, mask$<b>)</b> <font color="007700"><i>'- -----------------------------------'</i></font> 
+<font color="007700"><i>'Andrew Shelkovenko dec 2003</i></font> 
+<font color="007700"><i>'Copy DirSrc$ directory with full subdir structure and files (by mask$) to DirDst$</i></font> 
+<font color="0000AA"><b>dim</b></font> FileSrc <font color="0000AA"><b>as</b></font> <font color="000099"><b>QFileStream</b></font>
+<font color="0000AA"><b>dim</b></font> FileDst <font color="0000AA"><b>as</b></font> <font color="000099"><b>QFileStream</b></font>
+
+<font color="007700"><i>'Index=0</i></font> 
+NumFiles=0
+<font color="0000AA"><b>defint</b></font> nsd1, nsd2
+<font color="0000AA"><b>defstr</b></font> mask
+nsd1=0:nsd2=0
+NumDir=0
+ArrNumDir=500
+<font color="0000AA"><b>dim</b></font> SubDir<b>(</b>500<b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+ArrNumFil=500
+<font color="0000AA"><b>dim</b></font> FileNames <b>(</b>500<b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+mask="<font color="990000">*.*</font>"
+SubDir<b>(</b>0<b>)</b>=DirSrc$
+
+1
+<font color="0000AA"><b>for</b></font> i=NSD1 <font color="0000AA"><b>to</b></font> Nsd2 <font color="007700"><i>'current level sudirs'</i></font> 
+<font color="007700"><i>'print "SubDir(",i,")=",SubDir(i)</i></font> 
+SubDirname$=<font color="0000AA"><b>dir$</b></font><b>(</b>SubDir<b>(</b>i<b>)</b>+mask, faDirectory<b>)</b>
+
+<font color="0000AA"><b>while</b></font>    SubDirname$ &lt;>"<font color="990000"></font>"
+  <font color="0000AA"><b>if</b></font> FileRec.Size =0 <font color="0000AA"><b>and</b></font> SubDirname$&lt;> "<font color="990000">.</font>" <font color="0000AA"><b>and</b></font> SubDirname$&lt;> "<font color="990000">..</font>" <font color="0000AA"><b>then</b></font> <font color="007700"><i>''</i></font> 
+    <font color="0000AA"><b>inc</b></font> adddir
+    <font color="0000AA"><b>inc</b></font> NumDir <font color="007700"><i>'add subdir'</i></font> 
+<font color="0000AA"><b>if</b></font> NumDir=ArrNumDir <font color="0000AA"><b>then</b></font> ArrNumDir=ArrNumDir+300: <font color="0000AA"><b>redim</b></font> SubDir<b>(</b>ArrNumDir<b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+    SubDir<b>(</b>NumDir<b>)</b>=SubDir<b>(</b>i<b>)</b>+SubDirname$+"<font color="990000">\</font>"
+<font color="007700"><i>''    print "SubDir(", NumDir, ")=",SubDir(NumDir)</i></font> 
+<font color="000099"><b>else</b></font>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  SubDirname$=<font color="000099"><b>dir$</b></font>
+ <font color="0000AA"><b>doevents</b></font>:<font color="0000AA"><b>if</b></font> stops1=1 <font color="0000AA"><b>then</b></font> stops1=0: <font color="0000AA"><b>exit</b></font> <font color="000099"><b>sub</b></font>
+<font color="000099"><b>wend</b></font>
+<font color="007700"><i>'search files in current subdirectory</i></font> 
+    Fn$=<font color="0000AA"><b>dir$</b></font><b>(</b>SubDir<b>(</b>i<b>)</b>+mask$,faAnyFile-faDirectory<b>)</b> <font color="007700"><i>':-)</i></font> 
+     <font color="0000AA"><b>while</b></font> Fn$ &lt;>"<font color="990000"></font>"
+<font color="0000AA"><b>if</b></font>  Fn$&lt;> "<font color="990000">.</font>" <font color="0000AA"><b>and</b></font> Fn$&lt;> "<font color="990000">..</font>"  <font color="0000AA"><b>then</b></font> <font color="007700"><i>'and FileRec.Size &lt;>0'</i></font> 
+    <font color="0000AA"><b>inc</b></font> NumFiles
+<font color="0000AA"><b>if</b></font> NumFiles=ArrNumFil <font color="0000AA"><b>then</b></font> ArrNumFil=ArrNumFil+300: <font color="0000AA"><b>redim</b></font> FileNames<b>(</b>ArrNumFil<b>)</b> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>:<font color="0000AA"><b>print</b></font> "<font color="990000">redim FileNames</font>"
+ FileNames<b>(</b>NumFiles<b>)</b>=SubDir<b>(</b>i<b>)</b>+Fn$
+ <font color="0000AA"><b>print</b></font> "<font color="990000">FileNames(</font>",NumFiles,"<font color="990000">)=</font>" ,FileNames<b>(</b>NumFiles<b>)</b>
+ 
+<font color="000099"><b>else</b></font>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    Fn$=<font color="000099"><b>dir$</b></font>
+     <font color="000099"><b>wend</b></font>
+<font color="0000AA"><b>next</b></font> i
+
+<font color="0000AA"><b>if</b></font> adddir>0 <font color="000099"><b>then</b></font>
+NSD1=NSD2+1       
+NSD2=NSD2+adddir  
+adddir=0
+<font color="0000AA"><b>goto</b></font> 1 <font color="007700"><i>'repeat with new sub level </i></font> 
+<font color="000099"><b>else</b></font>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+
+<font color="007700"><i>' got subdirs list in SubDir(i) array and file list with full path in FileNames(j)</i></font> 
+<font color="007700"><i>' now create subdirs structure with new path</i></font> 
+
+<font color="0000AA"><b>for</b></font> i1=0 <font color="0000AA"><b>to</b></font> i-1
+NewSubDir$=SubDir<b>(</b>i1<b>)</b>-DirSrc$
+NewSubDir$=DirDst$+NewSubDir$
+MKSubDir <b>(</b>NewSubDir$<b>)</b>
+<font color="0000AA"><b>next</b></font> i1
+
+<font color="0000AA"><b>for</b></font> j=1 <font color="0000AA"><b>to</b></font> NumFiles
+FileSrc.Open<b>(</b>FileNames<b>(</b>j<b>)</b>, fmOpenRead<b>)</b> 
+NewFileName$=FileNames<b>(</b>j<b>)</b>-DirSrc$
+NewFileName$=DirDst$+NewFileName$
+<font color="007700"><i>'print "NewFileName$=" ,NewFileName$</i></font> 
+FileDst.Open<b>(</b>NewFileName$, fmCreate<b>)</b> 
+FileDst.CopyFrom  <b>(</b>FileSrc, 0<b>)</b><font color="007700"><i>''</i></font> 
+		FileSrc.close<font color="007700"><i>''</i></font> 
+		FileDst.close
+<font color="0000AA"><b>next</b></font> j
+
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="007700"><i>'-- ***********************************************************************'</i></font> 
+<font color="0000AA"><b>sub</b></font> DirCopy <b>(</b>DirSrc$, DirDst$, mask$<b>)</b> <font color="007700"><i>'- -----------------------------------'</i></font> 
+<font color="007700"><i>'Andrew Shelkovenko dec 2003</i></font> 
+<font color="007700"><i>'Copy files (by mask$) from DirSrc$ to DirDst$</i></font> 
+<font color="0000AA"><b>dim</b></font> FileSrc <font color="0000AA"><b>as</b></font> <font color="000099"><b>QFileStream</b></font>
+<font color="0000AA"><b>dim</b></font> FileDst <font color="0000AA"><b>as</b></font> <font color="000099"><b>QFileStream</b></font>
+<font color="0000AA"><b>MKDIR</b></font> DirDst$
+
+FileName$ = <font color="0000AA"><b>DIR$</b></font><b>(</b>DirSrc$+mask$, 0<b>)</b> <font color="007700"><i>'-- Get first file</i></font> 
+
+<font color="0000AA"><b>while</b></font>    FileName$ &lt;>"<font color="990000"></font>"
+
+FileSrc.Open<b>(</b>DirSrc$+filename$, fmOpenRead<b>)</b> 
+FileDst.Open<b>(</b>DirDst$ +"<font color="990000">\</font>"+filename$, fmCreate<b>)</b> 
+FileDst.CopyFrom  <b>(</b>FileSrc, 0<b>)</b>
+		FileSrc.close
+		FileDst.close
+
+FileName$ = <font color="0000AA"><b>DIR$</b></font> <font color="007700"><i>'-- Get next file</i></font> 
+
+<font color="007700"><i>'inc rest</i></font> 
+<font color="000099"><b>wend</b></font>
+<font color="007700"><i>'print "copied= "+str$(rest) +" files</i></font> 
+
+rest=0
+
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+<font color="007700"><i>'-- ***********************************************************************'</i></font> 
+<font color="0000AA"><b>SUB</b></font> io2Rnd <b>(</b>fsrc$, fdst$<b>)</b>
+<font color="007700"><i>'--------------------------------</i></font> 
+<font color="007700"><i>'convert text file with single value strings to binary</i></font> 
+<font color="007700"><i>' for example</i></font> 
+
+<font color="007700"><i>'17.78091</i></font> 
+<font color="007700"><i>'16.64166</i></font> 
+<font color="007700"><i>'19.87037</i></font> 
+<font color="007700"><i>'21.29429</i></font> 
+<font color="007700"><i>'15.64965</i></font> 
+
+<font color="007700"><i>'fsrc$ - source file  fdst$ - dest. file</i></font> 
+<font color="007700"><i>'data type - single</i></font> 
+
+<font color="007700"><i>'CONST fmCreate = 65535</i></font> 
+<font color="007700"><i>'CONST fmOpenRead = 0</i></font> 
+<font color="007700"><i>'CONST fmOpenWrite = 1</i></font> 
+<font color="007700"><i>'CONST fmOpenReadWrite = 2</i></font> 
+ 
+<font color="0000AA"><b>dim</b></font> FileSourse <font color="0000AA"><b>as</b></font> <font color="000099"><b>QFileStream</b></font>
+<font color="0000AA"><b>dim</b></font> FileDest <font color="0000AA"><b>as</b></font> <font color="000099"><b>QFileStream</b></font>
+<font color="0000AA"><b>defsng</b></font> ValSrc
+
+FileSourse.Open <b>(</b>fsrc$, 2 <b>)</b><font color="007700"><i>'fmOpenReadWrite'</i></font> 
+FileDest.Open   <b>(</b>fdst$, 65535 <b>)</b>  <font color="007700"><i>'fmOpenReadWrite'</i></font> 
+
+<font color="0000AA"><b>WHILE</b></font> <font color="0000AA"><b>NOT</b></font> FileSourse.EOF
+ValSrc$=FileSourse.ReadLine : <font color="007700"><i>'print "ValSrc$=" ,ValSrc$</i></font> 
+ValSrc=<font color="0000AA"><b>val</b></font><b>(</b>ValSrc$<b>)</b> :         <font color="007700"><i>'print "ValSrc=" ,ValSrc</i></font> 
+FileDest.Write <b>(</b>ValSrc<b>)</b>
+<font color="000099"><b>wend</b></font>
+
+FileSourse.CLOSE  
+FileDest.CLOSE 
+
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+
+<font color="007700"><i>'-- ***********************************************************************'</i></font> 
+<font color="0000AA"><b>SUB</b></font> Rnd2io <b>(</b>fsrc$, fdst$<b>)</b>
+<font color="007700"><i>'--------------------------------</i></font> 
+<font color="007700"><i>'convert  binary file with single type value data to  text file with single type value strings</i></font> 
+<font color="007700"><i>' for example</i></font> 
+
+<font color="007700"><i>'17.78091</i></font> 
+<font color="007700"><i>'16.64166</i></font> 
+<font color="007700"><i>'19.87037</i></font> 
+<font color="007700"><i>'21.29429</i></font> 
+<font color="007700"><i>'15.64965</i></font> 
+
+<font color="007700"><i>'CONST fmCreate = 65535</i></font> 
+<font color="007700"><i>'CONST fmOpenRead = 0</i></font> 
+<font color="007700"><i>'CONST fmOpenWrite = 1</i></font> 
+<font color="007700"><i>'CONST fmOpenReadWrite = 2</i></font> 
+
+<font color="007700"><i>'CONST Num_BYTE = 1 </i></font> 
+<font color="007700"><i>'CONST Num_SHORT = 2</i></font> 
+<font color="007700"><i>'CONST Num_WORD = 3</i></font> 
+<font color="007700"><i>'CONST Num_LONG = 4</i></font> 
+<font color="007700"><i>'CONST Num_DWORD = 5</i></font> 
+<font color="007700"><i>'CONST Num_SINGLE = 6</i></font> 
+<font color="007700"><i>'CONST Num_DOUBLE = 8</i></font> 
+
+<font color="0000AA"><b>dim</b></font> FileSourse <font color="0000AA"><b>as</b></font> <font color="000099"><b>QFileStream</b></font>
+<font color="0000AA"><b>dim</b></font> FileDest <font color="0000AA"><b>as</b></font> <font color="000099"><b>QFileStream</b></font>
+
+<font color="0000AA"><b>defsng</b></font> ValSrc
+
+FileSourse.Open <b>(</b>fsrc$, 2 <b>)</b>        <font color="007700"><i>'fmOpenReadWrite'</i></font> 
+FileDest.Open   <b>(</b>fdst$, 65535 <b>)</b>    <font color="007700"><i>'fmOpenCreate'</i></font> 
+
+ie = FileSourse.size/4: <font color="007700"><i>'print "ie=" ,ie</i></font> 
+
+<font color="0000AA"><b>for</b></font> i=0 <font color="0000AA"><b>to</b></font> ie-1
+ValSrc=FileSourse.ReadNum<b>(</b>6<b>)</b> :<font color="007700"><i>'print "ValSrc=" ,ValSrc</i></font> 
+ValSrc$=<font color="0000AA"><b>str$</b></font><b>(</b>ValSrc<b>)</b>:			<font color="007700"><i>'print "ValSrc$=" ,ValSrc$</i></font> 
+FileDest.WriteLine <b>(</b>ValSrc$<b>)</b>
+<font color="0000AA"><b>next</b></font> i
+
+FileSourse.CLOSE  
+FileDest.CLOSE 
+
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+ 
+</pre>
+</body>
+</html>

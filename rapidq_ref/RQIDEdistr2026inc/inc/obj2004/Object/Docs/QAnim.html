@@ -1,0 +1,388 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.51 [fr]C-CCK-MCD   (WinNT; I) [Netscape]">
+   <meta name="Author" content="dominique glodt">
+   <title>Appendix A: QAnim</title>
+</head>
+<body bgcolor="#FFFFFF" FONT FACE="Arial, Helvetica">
+&nbsp;
+<table CELLSPACING=0 CELLPADDING=0 WIDTH="100%" >
+<tr>
+<td><font face="Arial, Helvetica">Documentation composant par D.Glodt (c)2003</font></td>
+
+<td ALIGN=RIGHT><b><font face="Arial, Helvetica">Appendix A: QAnim</font></b></td>
+</tr>
+
+<tr>
+<td COLSPAN="2">
+<hr SIZE=1></td>
+</tr>
+</table>
+
+<h1>
+QAnim Composant</h1>
+
+<dd>
+QAnim est un composant d'animation h&eacute;rit&eacute; du composant QImage.</dd>
+
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Les dimensions
+Width et Height doivent etre fixes et identiques aux dimensions des images.
+<p><a NAME="1"></a><b><font size=+1>QAnim Propriet&eacute;s</font></b>
+<table BORDER=0 WIDTH="100%" >
+<tr>
+<td><b>Champs</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>L/E</b></td>
+
+<td><b>D&eacute;faut</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Width</td>
+
+<td>SHORT</td>
+
+<td>L/E</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Height</td>
+
+<td>SHORT</td>
+
+<td>L/E</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Left</td>
+
+<td>SHORT</td>
+
+<td>L/E</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Top</td>
+
+<td>SHORT</td>
+
+<td>L/E</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Visible</td>
+
+<td>INTEGER</td>
+
+<td>L/E</td>
+
+<td>False</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>ImageList</td>
+
+<td>QIMAGELIST</td>
+
+<td>L/E</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>images pour l'animation</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Index</td>
+
+<td>SHORT</td>
+
+<td>L/E</td>
+
+<td>0</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Index image et affichage de l'image</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>BackColor</td>
+
+<td>LONG</td>
+
+<td>L/E</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Couleur de fond utilis&eacute; pour les images si utilisation du maque
+d'image</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Masked</td>
+
+<td>BOOLEAN</td>
+
+<td>L/E</td>
+
+<td>False</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Utilisation du maque d'image</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Move</td>
+
+<td>BOOLEAN</td>
+
+<td>L/E</td>
+
+<td>False</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>D&eacute;marre ou arrete l'animation</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+</table>
+
+<p><a NAME="2"></a><b><font size=+1>QAnim Methodes</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Methode</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Description</b></td>
+
+<td><b>Parametres</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+</table>
+
+<p><a NAME="3"></a><b><font size=+1>QAnim Evenements</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Evenement</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Declenchement</b></td>
+
+<td><b>Parametres</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+</table>
+
+<p><a NAME="4"></a><b><font size=+1>QAnim Exemple</font></b>
+<br>$TypeCheck on
+<br>$include "rapidq.inc"
+<br>$include "object/qanim.inc"
+<br>$resource img1 as "earthspn_frame_000.bmp"
+<br>$resource img2 as "earthspn_frame_001.bmp"
+<br>$resource img3 as "earthspn_frame_002.bmp"
+<br>$resource img4 as "earthspn_frame_003.bmp"
+<br>$resource img5 as "earthspn_frame_004.bmp"
+<br>$resource img6 as "earthspn_frame_005.bmp"
+<br>$resource img7 as "earthspn_frame_006.bmp"
+<br>$resource img8 as "earthspn_frame_007.bmp"
+<br>$resource img9 as "earthspn_frame_008.bmp"
+<br>$resource img10 as "earthspn_frame_009.bmp"
+<p>declare sub anim
+<br>declare sub opaque
+<br>declare sub transparent
+<br>declare sub close
+<p>CREATE Form AS QFORM
+<br>&nbsp;&nbsp;&nbsp; Caption = "Form1"
+<br>&nbsp;&nbsp;&nbsp; Width = 220
+<br>&nbsp;&nbsp;&nbsp; Height = 170
+<br>&nbsp;&nbsp;&nbsp; Center
+<br>&nbsp;&nbsp;&nbsp; OnClose=close
+<br>&nbsp;&nbsp;&nbsp; CREATE bt1 as QBUTTON
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="Opaque"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left=120
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; top=10
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Opaque
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; CREATE bt2 as QBUTTON
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="Transparent"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left=120
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; top=40
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Transparent
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; CREATE bt3 as QBUTTON
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="Start/Stop"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left=120
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; top=70
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Anim
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; CREATE Image1 AS QAnim
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=10
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=10
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width=96
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; height=96
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BackColor=&amp;hff0000
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Masked=true
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Imagelist.AddBMPhandle img1,
+&amp;h0
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Imagelist.AddBMPhandle img2,
+&amp;h0
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Imagelist.AddBMPhandle img3,
+&amp;h0
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Imagelist.AddBMPhandle img4,
+&amp;h0
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Imagelist.AddBMPhandle img5,
+&amp;h0
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Imagelist.AddBMPhandle img6,
+&amp;h0
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Imagelist.AddBMPhandle img7,
+&amp;h0
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Imagelist.AddBMPhandle img8,
+&amp;h0
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Imagelist.AddBMPhandle img9,
+&amp;h0
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Imagelist.AddBMPhandle img10,
+&amp;h0
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; speed=100
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; index=0
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>END CREATE
+<br>Form.ShowModal
+<p>sub anim
+<br>&nbsp; if Image1.move then
+<br>&nbsp;&nbsp;&nbsp; Image1.Move=false
+<br>&nbsp; else
+<br>&nbsp;&nbsp;&nbsp; Image1.Move=true
+<br>&nbsp; end if
+<br>end sub
+<p>sub opaque
+<br>&nbsp; Image1.BackColor=&amp;haa0000
+<br>end sub
+<p>sub transparent
+<br>&nbsp; Image1.BackColor=form.color
+<br>end sub
+<p>sub close
+<br>&nbsp; Image1.Move=false
+<br>&nbsp; application.terminate
+<br>end sub
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+</body>
+</html>

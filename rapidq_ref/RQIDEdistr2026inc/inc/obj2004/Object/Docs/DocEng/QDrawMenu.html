@@ -1,0 +1,277 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.51 [fr]C-CCK-MCD   (WinNT; I) [Netscape]">
+   <meta name="Author" content="dominique glodt">
+   <title>Appendix A: QDrawMenu</title>
+</head>
+<body bgcolor="#FFFFFF" FONT FACE="Arial, Helvetica">
+&nbsp;
+<table CELLSPACING=0 CELLPADDING=0 WIDTH="100%" >
+<tr>
+<td><font face="Arial, Helvetica">Documentation component by D.Glodt (c)2001-2003</font></td>
+
+<td ALIGN=RIGHT><b><font face="Arial, Helvetica">Appendix A: QDrawMenu</font></b></td>
+</tr>
+
+<tr>
+<td COLSPAN="2">
+<hr SIZE=1></td>
+</tr>
+</table>
+
+<h1>
+QDrawMenu Component</h1>
+
+<dd>
+QDrawMenu is used to draw bitmap in an item of menu.</dd>
+
+<p><br><a NAME="1"></a><b><font size=+1>QDrawMenu Properties</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Field</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>R/W</b></td>
+
+<td><b>D&eacute;fault</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+</table>
+
+<p><a NAME="2"></a><b><font size=+1>QDrawMenu Methods</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Method</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Description</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr VALIGN=TOP BGCOLOR="#CCFFFF">
+<td>AddBitmap</td>
+
+<td>SUB(SubMenu as QMenuItem,Item as QMenuItem,Picture as Qbitmap,Button
+as boolean,Backcolor as long)</td>
+
+<td NOWRAP>Add a bitmap to item menu</td>
+
+<td NOWRAP>5</td>
+</tr>
+
+<tr BGCOLOR="#FFCC99">
+<td></td>
+
+<td>The Button parameter determines if it is necessary to reveal&nbsp;
+a button has the selection, the Backcolor parameter determines the&nbsp;
+color of transparency of the bitmap&nbsp;</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>DelBitmap</td>
+
+<td>SUB(SubMenu as QMenuItem,Item as QMenuItem)</td>
+
+<td>Delete a bitmap from item menu</td>
+
+<td>2</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>MenuProc</td>
+
+<td>SUB(hwnd&amp;,uMsg&amp;,wParam&amp;,lParam&amp;)</td>
+
+<td>Proc&eacute;dure de menu</td>
+
+<td>4</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCC99">
+<td></td>
+
+<td>This m&eacute;thod must be set to event WndProc from QForm component</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+</table>
+
+<p><a NAME="3"></a><b><font size=+1>QDrawMenu Events</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Event</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Occurs when...</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+</table>
+
+<p><a NAME="4"></a><b><font size=+1>QDrawMenu Examples</font></b>
+<p>$TYPECHECK ON
+<br>$INCLUDE "RAPIDQ.INC"
+<br>$INCLUDE "Object\QDrawMenu.INC"
+<br>$RESOURCE New_bmp as "New.bmp"
+<br>$RESOURCE Open_bmp as "Open.bmp"
+<br>$RESOURCE Save_bmp as "Save.bmp"
+<br>$RESOURCE Exit_bmp as "Exit.bmp"
+<br>$RESOURCE Cut_bmp as "Cut.bmp"
+<br>$RESOURCE Copy_bmp as "Copy.bmp"
+<br>$RESOURCE Paste_bmp as "Paste.bmp"
+<br>$RESOURCE Empty_bmp as "Empty.bmp"
+<p>declare SUB MenuItemClick (Sender AS QMENUITEM)
+<br>declare SUB Show
+<p>dim menu as qdrawmenu
+<br>dim picture as qbitmap
+<p>CREATE Form AS QForm
+<br>&nbsp; Center
+<br>&nbsp; Caption = "Ownerdraw Menus"
+<br>&nbsp; OnShow=show
+<br>&nbsp; WndProc=menu.MenuProc
+<br>&nbsp;CREATE MainMenu AS QMainMenu
+<br>&nbsp;&nbsp;&nbsp; CREATE FileMenu AS QMenuItem
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption = "&amp;File"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE OpenItem AS QMenuItem
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption = "&amp;Open"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=MenuItemClick
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE NewItem AS QMenuItem
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption = "&amp;New"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=MenuItemClick
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE BreakItem AS QMenuItem
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption = "-"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE ExitItem AS QMenuItem
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption = "E&amp;xit"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=MenuItemClick
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; CREATE EditMenu AS QMenuItem
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption = "&amp;Edit"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE CutItem AS QMenuItem
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption = "&amp;Cut&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Ctrl+X"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=MenuItemClick
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShortCut="CTRL+X"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE CopyItem AS QMenuItem
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption = "&amp;Copy&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Ctrl+C"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=MenuItemClick
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShortCut="CTRL+C"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE PasteItem AS QMenuItem
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption = "&amp;Paste&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+Ctrl+V"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=MenuItemClick
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShortCut="CTRL+V"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE SelectItem AS QMenuItem
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption = "&amp;Select all&nbsp;
+Ctrl+A"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=MenuItemClick
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShortCut="CTRL+A"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; CREATE Aff AS QMenuItem
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="show"
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp; END CREATE
+<br>END CREATE
+<br>Form.ShowModal
+<p>Sub Show
+<br>&nbsp; picture.bmpHandle=Open_bmp
+<br>&nbsp; menu.AddBitmap(FileMenu,OpenItem,picture,true,&amp;hC0C0C0)
+<br>&nbsp; picture.bmpHandle=New_bmp
+<br>&nbsp; menu.AddBitmap(FileMenu,NewItem,picture,true,&amp;hC0C0C0)
+<br>&nbsp; picture.bmpHandle=Exit_bmp
+<br>&nbsp; menu.AddBitmap(FileMenu,ExitItem,picture,true,&amp;hC0C0C0)
+<br>&nbsp; picture.bmpHandle=cut_bmp
+<br>&nbsp; menu.AddBitmap(EditMenu,CutItem,picture,true,&amp;hC0C0C0)
+<br>&nbsp; picture.bmpHandle=copy_bmp
+<br>&nbsp; menu.AddBitmap(EditMenu,copyItem,picture,true,&amp;hC0C0C0)
+<br>&nbsp; picture.bmpHandle=paste_bmp
+<br>&nbsp; menu.AddBitmap(EditMenu,pasteItem,picture,true,&amp;hC0C0C0)
+<br>&nbsp; picture.bmpHandle=empty_bmp
+<br>&nbsp; menu.AddBitmap(EditMenu,SelectItem,picture,false,&amp;hFFFFFF)
+<br>End Sub
+<p>SUB MenuItemClick (Sender AS QMENUITEM)
+<br>&nbsp; ShowMessage("Thanks for clicking " + Sender.Caption)
+<br>END SUB
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+</body>
+</html>

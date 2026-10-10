@@ -1,0 +1,300 @@
+<html>
+<head>
+<title>QBitmapEx.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="007700"><i>' Type Objet</i></font> 
+<font color="007700"><i>' Classe QBitmapEx Version 1.3</i></font> 
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="0000AA"><b>$IFNDEF</b></font> TRUE
+  <font color="0000AA"><b>$DEFINE</b></font> True 1
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> FALSE
+  <font color="0000AA"><b>$DEFINE</b></font> False 0
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> boolean
+  <font color="0000AA"><b>$DEFINE</b></font> boolean <font color="000099"><b>integer</b></font>
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>Type</b></font> TBITMAP_BMP
+  bmType <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+  bmWidth <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+  bmHeight <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+  bmWidthBytes <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+  bmPlanes <font color="0000AA"><b>As</b></font> <font color="000099"><b>Integer</b></font>
+  bmBitsPixel <font color="0000AA"><b>As</b></font> <font color="000099"><b>Integer</b></font>
+  bmBits <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Type</b></font>
+
+<font color="007700"><i>'pen styles</i></font> 
+<font color="0000AA"><b>Const</b></font> PS_SOLID_BMP=0
+<font color="0000AA"><b>Const</b></font> PS_DASH_BMP=1
+<font color="0000AA"><b>Const</b></font> PS_DOT_BMP=2
+<font color="0000AA"><b>Const</b></font> PS_DASHDOT_BMP=3
+<font color="0000AA"><b>Const</b></font> PS_DASHDOTDOT_BMP=4
+<font color="0000AA"><b>Const</b></font> PS_NULL_BMP=5
+<font color="0000AA"><b>Const</b></font> PS_INSIDEFRAME_BMP=6
+
+<font color="007700"><i>'copy modes</i></font> 
+<font color="0000AA"><b>Const</b></font> BLACKNESS_BMP=&H42
+<font color="0000AA"><b>Const</b></font> DSTINVERT_BMP=&H550009
+<font color="0000AA"><b>Const</b></font> MERGECOPY_BMP=&HC000CA
+<font color="0000AA"><b>Const</b></font> MERGEPAINT_BMP=&HBB0226
+<font color="0000AA"><b>Const</b></font> NOTSRCCOPY_BMP=&H330008
+<font color="0000AA"><b>Const</b></font> NOTSRCERASE_BMP=&H1100A6
+<font color="0000AA"><b>Const</b></font> PATCOPY_BMP=&HF00021
+<font color="0000AA"><b>Const</b></font> PATINVERT_BMP=&H5A0049
+<font color="0000AA"><b>Const</b></font> PATPAINT_BMP=&HFB0A09
+<font color="0000AA"><b>Const</b></font> SRCAND_BMP=&H8800C6
+<font color="0000AA"><b>Const</b></font> SRCCOPY_BMP=&HCC0020
+<font color="0000AA"><b>Const</b></font> SRCERASE_BMP=&H440328
+<font color="0000AA"><b>Const</b></font> SRCINVERT_BMP=&H660046
+<font color="0000AA"><b>Const</b></font> SRCPAINT_BMP=&HEE0086
+<font color="0000AA"><b>Const</b></font> WHITENESS_BMP=&HFF0062
+
+<font color="0000AA"><b>Const</b></font> NULL_BRUSH_BMP=5
+<font color="0000AA"><b>Const</b></font> CF_BITMAP_BMP=2
+<font color="0000AA"><b>Const</b></font> DI_MASK_BMP=&H1
+<font color="0000AA"><b>Const</b></font> DI_IMAGE_BMP=&H2
+<font color="0000AA"><b>Const</b></font> DI_NORMAL_BMP=DI_MASK_BMP <font color="0000AA"><b>Or</b></font> DI_IMAGE_BMP
+
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> DrawIconExBmp <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">DrawIconEx</font>" <b>(</b>hdc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,xLeft <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,yTop <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,hIcon <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,cxWidth <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,cyWidth <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,istepIfAniCur <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,hbrFlickerFreeDraw <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,diFlags <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> CreateDCBmp <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">CreateCompatibleDC</font>" <b>(</b>hdc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> SelectObjectBmp <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">SelectObject</font>" <b>(</b>hdc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,hObject <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> BitBltBmp <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">BitBlt</font>" <b>(</b>hDestDC <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,x <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,y <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,nWidth <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,nHeight <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,hSrcDC <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,xSrc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,ySrc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,dwRop <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> DeleteDCBmp <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">DeleteDC</font>" <b>(</b>hdc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> GetObjectBmp <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">GetObjectA</font>" <b>(</b>hObject <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,nCount <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, lpObject <font color="0000AA"><b>As</b></font> TBITMAP_BMP<b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> GetStockObjectBmp <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">GetStockObject</font>" <b>(</b>nIndex <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> LineToBmp <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">LineTo</font>" <b>(</b>hdc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,x <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,y <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> CreatePenBmp <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">CreatePen</font>" <b>(</b>nPenStyle <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, nWidth <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, crColor <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MoveToExBmp <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">MoveToEx</font>" <b>(</b>hdc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,x <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,y <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, lpPoint <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> RectangleBmp <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">Rectangle</font>" <b>(</b>hdc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,X1 <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,Y1 <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,X2 <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,Y2 <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> CreateSolidBrushBmp <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">CreateSolidBrush</font>" <b>(</b>crColor <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> ElipseBmp <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">Ellipse</font>" <b>(</b>hdc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,X1 <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,Y1 <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,X2 <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,Y2 <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> ExtFloodFillBmp <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">ExtFloodFill</font>" <b>(</b>hdc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,x <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,y <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,crColor <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,wFillType <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> RoundRectBmp <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">RoundRect</font>" <b>(</b>hdc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,X1 <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,Y1 <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,X2 <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,Y2 <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,X3 <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,Y3 <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> PatBltBmp <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">PatBlt</font>" <b>(</b>hdc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,x <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,y <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,nWidth <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,nHeight <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,dwRop <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> StretchBltBmp <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">StretchBlt</font>" <b>(</b>hdc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,x <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,y <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,nWidth <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,nHeight <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,hSrcDC <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,xSrc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,ySrc <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,nSrcWidth <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,nSrcHeight <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,dwRop <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> DeleteObjectBmp <font color="0000AA"><b>Lib</b></font> "<font color="990000">gdi32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">DeleteObject</font>" <b>(</b>hObject <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+
+
+<font color="0000AA"><b>Type</b></font> QBitmapEx <font color="0000AA"><b>EXTENDS</b></font> <font color="000099"><b>QBITMAP</b></font>
+  PRIVATE:
+    info <font color="0000AA"><b>as</b></font> TBITMAP_BMP
+    hpen <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+    hbrush <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+    oldpen <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+    oldbrush <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+  PUBLIC:
+    PenStyle <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+    PenSize <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+  
+  <font color="007700"><i>'========================================</i></font> 
+  <font color="007700"><i>' méthode dessin d'icones</i></font> 
+  <font color="007700"><i>'========================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> DrawIco<b>(</b>left <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,top <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,width <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,height <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,handle <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+    DrawIconExBmp<b>(</b>QBitmapEx.handle,left,top,handle,width,height,0,0,DI_NORMAL_BMP<b>)</b>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'=============================================</i></font> 
+  <font color="007700"><i>' méthode colle une image du le presse papier</i></font> 
+  <font color="007700"><i>'=============================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> PasteFromClipboard<b>(</b>x <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font>,y <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+    <font color="0000AA"><b>dim</b></font> hDC <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> hBitmap <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> hOldBitmap <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+
+    <font color="0000AA"><b>if</b></font> clipboard.hasformat<b>(</b>CF_BITMAP_BMP<b>)</b> <font color="000099"><b>then</b></font>
+      clipboard.open
+      hBitmap=clipboard.GetAsHandle<b>(</b>CF_BITMAP_BMP<b>)</b>
+      clipboard.close
+      GetObjectBmp<b>(</b>hBitmap,<font color="0000AA"><b>SIZEOF</b></font><b>(</b>QBitmapEx.info<b>)</b>,QBitmapEx.info<b>)</b>
+      hDC=CreateDCBmp<b>(</b>QBitmapEx.handle<b>)</b>
+      hOldBitmap=SelectObjectBmp<b>(</b>hDC,hBitmap<b>)</b>
+      BitBltBmp<b>(</b>QBitmapEx.handle,x,y,QBitmapEx.info.bmwidth,QBitmapEx.info.bmheight,hDC,0,0,SRCCOPY_BMP<b>)</b>
+      SelectObjectBmp<b>(</b>hDC,hOldBitmap<b>)</b>
+      DeleteDCBmp<b>(</b>hDC<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'===============================================</i></font> 
+  <font color="007700"><i>' méthode info largeur image du presse papier</i></font> 
+  <font color="007700"><i>'===============================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> GetWidthClipboard <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> hBitmap <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+
+    <font color="0000AA"><b>if</b></font> clipboard.hasformat<b>(</b>CF_BITMAP_BMP<b>)</b> <font color="000099"><b>then</b></font>
+      clipboard.open
+      hBitmap=clipboard.GetAsHandle<b>(</b>CF_BITMAP_BMP<b>)</b>
+      clipboard.close
+      GetObjectBmp<b>(</b>hBitmap,<font color="0000AA"><b>SIZEOF</b></font><b>(</b>QBitmapEx.info<b>)</b>,QBitmapEx.info<b>)</b>
+      result=QBitmapEx.info.bmwidth
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+  <font color="007700"><i>'===============================================</i></font> 
+  <font color="007700"><i>' méthode info hauteur image du presse papier</i></font> 
+  <font color="007700"><i>'===============================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> GetHeightClipboard <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> hBitmap <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+
+    <font color="0000AA"><b>if</b></font> clipboard.hasformat<b>(</b>CF_BITMAP_BMP<b>)</b> <font color="000099"><b>then</b></font>
+      clipboard.open
+      hBitmap=clipboard.GetAsHandle<b>(</b>CF_BITMAP_BMP<b>)</b>
+      clipboard.close
+      GetObjectBmp<b>(</b>hBitmap,<font color="0000AA"><b>SIZEOF</b></font><b>(</b>QBitmapEx.info<b>)</b>,QBitmapEx.info<b>)</b>
+      result=QBitmapEx.info.bmheight
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+  <font color="007700"><i>'===============================================</i></font> 
+  <font color="007700"><i>' méthode info image presente dans presse papier</i></font> 
+  <font color="007700"><i>'===============================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> CanPaste <font color="0000AA"><b>as</b></font> boolean
+    result=clipboard.hasformat<b>(</b>CF_BITMAP_BMP<b>)</b>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+  <font color="007700"><i>'========================================</i></font> 
+  <font color="007700"><i>' méthode trace un cercle vide</i></font> 
+  <font color="007700"><i>'========================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> circle<b>(</b>x1 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,y1 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,x2 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,y2 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,c <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+    QBitmapEx.hbrush=GetStockObjectBmp<b>(</b>NULL_BRUSH_BMP<b>)</b>
+    QBitmapEx.oldbrush=SelectObjectBmp<b>(</b>QBitmapEx.handle,QBitmapEx.hbrush<b>)</b>
+    QBitmapEx.hpen=CreatePenBmp<b>(</b>QBitmapEx.PenStyle,QBitmapEx.PenSize,c<b>)</b>
+    QBitmapEx.oldpen=SelectObjectBmp<b>(</b>QBitmapEx.handle,QBitmapEx.hpen<b>)</b>
+    ElipseBmp<b>(</b>QBitmapEx.handle,x1,y1,x2,y2<b>)</b>
+    SelectObjectBmp<b>(</b>QBitmapEx.handle,QBitmapEx.oldpen<b>)</b>
+    SelectObjectBmp<b>(</b>QBitmapEx.handle,QBitmapEx.oldbrush<b>)</b>
+    DeleteObjectBmp<b>(</b>QBitmapEx.hpen<b>)</b>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'========================================</i></font> 
+  <font color="007700"><i>' méthode trace un cercle plein</i></font> 
+  <font color="007700"><i>'========================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> circleFilled<b>(</b>x1 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,y1 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,x2 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,y2 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,c <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font>,fill <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+    QBitmapEx.hpen=CreatePenBmp<b>(</b>QBitmapEx.PenStyle,QBitmapEx.PenSize,c<b>)</b>
+    QBitmapEx.hbrush=CreateSolidBrushBmp<b>(</b>fill<b>)</b>
+    QBitmapEx.oldpen=SelectObjectBmp<b>(</b>QBitmapEx.handle,QBitmapEx.hpen<b>)</b>
+    QBitmapEx.oldbrush=SelectObjectBmp<b>(</b>QBitmapEx.handle,QBitmapEx.hbrush<b>)</b>
+    ElipseBmp<b>(</b>QBitmapEx.handle,x1,y1,x2,y2<b>)</b>
+    SelectObjectBmp<b>(</b>QBitmapEx.handle,QBitmapEx.oldpen<b>)</b>
+    SelectObjectBmp<b>(</b>QBitmapEx.handle,QBitmapEx.oldbrush<b>)</b>
+    DeleteObjectBmp<b>(</b>QBitmapEx.hpen<b>)</b>
+    DeleteObjectBmp<b>(</b>QBitmapEx.hbrush<b>)</b>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'========================================</i></font> 
+  <font color="007700"><i>' méthode trace un rectangle vide</i></font> 
+  <font color="007700"><i>'========================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> rectangle<b>(</b>x1 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,y1 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,x2 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,y2 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,c <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+    QBitmapEx.hbrush=GetStockObjectBmp<b>(</b>NULL_BRUSH_BMP<b>)</b>
+    QBitmapEx.oldbrush=SelectObjectBmp<b>(</b>QBitmapEx.handle,QBitmapEx.hbrush<b>)</b>
+    QBitmapEx.hpen=CreatePenBmp<b>(</b>QBitmapEx.PenStyle,QBitmapEx.PenSize,c<b>)</b>
+    QBitmapEx.oldpen=SelectObjectBmp<b>(</b>QBitmapEx.handle,QBitmapEx.hpen<b>)</b>
+    RectangleBmp<b>(</b>QBitmapEx.handle,x1,y1,x2,y2<b>)</b>
+    SelectObjectBmp<b>(</b>QBitmapEx.handle,QBitmapEx.oldpen<b>)</b>
+    SelectObjectBmp<b>(</b>QBitmapEx.handle,QBitmapEx.oldbrush<b>)</b>
+    DeleteObjectBmp<b>(</b>QBitmapEx.hpen<b>)</b>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+  
+  <font color="007700"><i>'==================================================</i></font> 
+  <font color="007700"><i>' méthode trace un rectangle vide au coins arrondi</i></font> 
+  <font color="007700"><i>'==================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> RoundRect<b>(</b>x1 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,y1 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,x2 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,y2 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,x3 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,y3 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,c <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+    QBitmapEx.hbrush=GetStockObjectBmp<b>(</b>NULL_BRUSH_BMP<b>)</b>
+    QBitmapEx.oldbrush=SelectObjectBmp<b>(</b>QBitmapEx.handle,QBitmapEx.hbrush<b>)</b>
+    QBitmapEx.hpen=CreatePenBmp<b>(</b>QBitmapEx.PenStyle,QBitmapEx.PenSize,c<b>)</b>
+    QBitmapEx.oldpen=SelectObjectBmp<b>(</b>QBitmapEx.handle,QBitmapEx.hpen<b>)</b>
+    RoundRectBmp<b>(</b>QBitmapEx.handle,x1,y1,x2,y2,x3,y3<b>)</b>
+    SelectObjectBmp<b>(</b>QBitmapEx.handle,QBitmapEx.oldpen<b>)</b>
+    SelectObjectBmp<b>(</b>QBitmapEx.handle,QBitmapEx.oldbrush<b>)</b>
+    DeleteObjectBmp<b>(</b>QBitmapEx.hpen<b>)</b>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'==================================================</i></font> 
+  <font color="007700"><i>' méthode trace un rectangle plein au coins arrondi</i></font> 
+  <font color="007700"><i>'==================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> RoundRectFilled<b>(</b>x1 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,y1 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,x2 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,y2 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,x3 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,y3 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,c <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font>,fill <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+    QBitmapEx.hpen=CreatePenBmp<b>(</b>QBitmapEx.PenStyle,QBitmapEx.PenSize,c<b>)</b>
+    QBitmapEx.hbrush=CreateSolidBrushBmp<b>(</b>fill<b>)</b>
+    QBitmapEx.oldpen=SelectObjectBmp<b>(</b>QBitmapEx.handle,QBitmapEx.hpen<b>)</b>
+    QBitmapEx.oldbrush=SelectObjectBmp<b>(</b>QBitmapEx.handle,QBitmapEx.hbrush<b>)</b>
+    RoundRectBmp<b>(</b>QBitmapEx.handle,x1,y1,x2,y2,x3,y3<b>)</b>
+    SelectObjectBmp<b>(</b>QBitmapEx.handle,QBitmapEx.oldpen<b>)</b>
+    SelectObjectBmp<b>(</b>QBitmapEx.handle,QBitmapEx.oldbrush<b>)</b>
+    DeleteObjectBmp<b>(</b>QBitmapEx.hpen<b>)</b>
+    DeleteObjectBmp<b>(</b>QBitmapEx.hbrush<b>)</b>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+    
+  <font color="007700"><i>'==================================================</i></font> 
+  <font color="007700"><i>' méthode trace un rectangle plein</i></font> 
+  <font color="007700"><i>'==================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> rectangleFilled<b>(</b>x1 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,y1 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,x2 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,y2 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,c <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font>,fill <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+    QBitmapEx.hpen=CreatePenBmp<b>(</b>QBitmapEx.PenStyle,QBitmapEx.PenSize,c<b>)</b>
+    QBitmapEx.hbrush=CreateSolidBrushBmp<b>(</b>fill<b>)</b>
+    QBitmapEx.oldpen=SelectObjectBmp<b>(</b>QBitmapEx.handle,QBitmapEx.hpen<b>)</b>
+    QBitmapEx.oldbrush=SelectObjectBmp<b>(</b>QBitmapEx.handle,QBitmapEx.hbrush<b>)</b>
+    RectangleBmp<b>(</b>QBitmapEx.handle,x1,y1,x2,y2<b>)</b>
+    SelectObjectBmp<b>(</b>QBitmapEx.handle,QBitmapEx.oldpen<b>)</b>
+    SelectObjectBmp<b>(</b>QBitmapEx.handle,QBitmapEx.oldbrush<b>)</b>
+    DeleteObjectBmp<b>(</b>QBitmapEx.hpen<b>)</b>
+    DeleteObjectBmp<b>(</b>QBitmapEx.hbrush<b>)</b>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+  
+  <font color="007700"><i>'==================================================</i></font> 
+  <font color="007700"><i>' méthode trace une ligne</i></font> 
+  <font color="007700"><i>'==================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> line<b>(</b>x1 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,y1 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,x2 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,y2 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,c <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+    QBitmapEx.hpen=CreatePenBmp<b>(</b>QBitmapEx.PenStyle,QBitmapEx.PenSize,c<b>)</b>
+    QBitmapEx.oldpen=SelectObjectBmp<b>(</b>QBitmapEx.handle,QBitmapEx.hpen<b>)</b>
+    MoveToExBmp<b>(</b>QBitmapEx.handle,x1,y1,0<b>)</b>
+    LineToBmp<b>(</b>QBitmapEx.handle,x2,y2<b>)</b>
+    SelectObjectBmp<b>(</b>QBitmapEx.handle,QBitmapEx.oldpen<b>)</b>
+    DeleteObjectBmp<b>(</b>QBitmapEx.hpen<b>)</b>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'==================================================</i></font> 
+  <font color="007700"><i>' méthode rempli une surface</i></font> 
+  <font color="007700"><i>'==================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> FillSurface<b>(</b>x <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,y <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,c <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+    QBitmapEx.hbrush=CreateSolidBrushBmp<b>(</b>c<b>)</b>
+    QBitmapEx.oldbrush=SelectObjectBmp<b>(</b>QBitmapEx.handle,QBitmapEx.hbrush<b>)</b>
+    ExtFloodFillBmp<b>(</b>QBitmapEx.handle,x,y,QBitmapEx.pixel<b>(</b>x,y<b>)</b>,1<b>)</b>
+    SelectObjectBmp<b>(</b>QBitmapEx.handle,QBitmapEx.oldbrush<b>)</b>
+    DeleteObjectBmp<b>(</b>QBitmapEx.hbrush<b>)</b>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+    
+  <font color="007700"><i>'==================================================</i></font> 
+  <font color="007700"><i>' méthode inverse les couleurs</i></font> 
+  <font color="007700"><i>'==================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> InvertColor<b>(</b>x <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,y <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,width <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,height <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font><b>)</b>
+    PatBltBmp<b>(</b>QBitmapEx.handle,x,y,Width,Height,DSTINVERT_BMP<b>)</b>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'==================================================</i></font> 
+  <font color="007700"><i>' méthode effectue un miroir en x</i></font> 
+  <font color="007700"><i>'==================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> mirror<b>(</b>x <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,y <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,width <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,height <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font><b>)</b>
+    StretchBltBmp<b>(</b>QBitmapEx.handle,x+width,y,-Width,Height,QBitmapEx.handle,x,y,Width,Height,SRCCOPY_BMP<b>)</b>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'==================================================</i></font> 
+  <font color="007700"><i>' méthode effectue un miroir en y</i></font> 
+  <font color="007700"><i>'==================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> flip<b>(</b>x <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,y <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,width <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,height <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font><b>)</b>
+    StretchBltBmp<b>(</b>QBitmapEx.handle,x,y+height,Width,-Height,QBitmapEx.handle,x,y,Width,Height,SRCCOPY_BMP<b>)</b>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+    
+  <font color="000099"><b>Constructor</b></font>
+    PenStyle=PS_SOLID_BMP
+    PenSize=1
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Constructor</b></font>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Type</b></font>
+ 
+</pre>
+</body>
+</html>

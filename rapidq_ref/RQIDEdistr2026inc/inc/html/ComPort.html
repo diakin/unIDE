@@ -1,0 +1,169 @@
+<html> <head> <title>
+'ComPort.cmp</title>
+<STYLE type=text/css>
+.epigraph {TEXT-ALIGN: right; FONT-STYLE:ITALIC; FONT-SIZE: 8pt}
+.default {FONT-SIZE: 12pt}
+.toc {FONT-FAMILY:Tahoma; TEXT-ALIGN: left; FONT-SIZE: 8pt}
+H1 {TEXT-ALIGN: center}
+H2 {TEXT-ALIGN: center}
+H3 {TEXT-ALIGN: left}
+P {TEXT-INDENT: 3em; TEXT-ALIGN: justify}
+</STYLE>
+<META http-equiv=Content-Type content="text/html">
+<META name="description" content="This text was converted by Txt2Html. http://alexey-pr.pisem.net"></head>
+<body bgcolor=#E2DDCD link=#0000FF vlink=#8B8B8B>
+<div align=left>
+<table border=0 cellspacing=0 cellpadding=0 width=80%>
+<tr><td valign=top><br><font size=2 face="Courier New" color=#080000>
+<H1>'ComPort.cmp</H1>
+'Version 0.9
+'December 13, 2001
+'by Pete Kleinschmidt
+'loosely based on VB code by David M. Hitchner
+'http://www.thescarms.com/vbasic/CommIO.asp
+'Win32 Communications User Defined Types
+'Structure containing time-out parameters for a communications device
+TYPE COMMTIMEOUTS
+</p><p>ReadIntervalTimeout AS DWORD
+</p><p>ReadTotalTimeoutMultiplier AS DWORD
+</p><p>ReadTotalTimeoutConstant AS DWORD
+</p><p>WriteTotalTimeoutMultiplier AS DWORD
+</p><p>WriteTotalTimeoutConstant AS DWORD
+END TYPE
+'Device Control Block
+'Structure that defines the control settings for a serial communications device
+TYPE DCB
+</p><p>DCBlength AS DWORD 'sizeof DCB
+</p><p>BaudRate AS DWORD 'current baud rate
+</p><p>DCBflags AS DWORD 'fBinary 1 bit binary mode, no EOF check
+</p><p>'fParity 1 bit enable parity checking
+</p><p>'fOutxCtsFlow 1 bit CTS output flow control (hardware flow control setting)
+</p><p>'fOutxDsrFlow 1 bit DSR output flow control (hardware flow control setting)
+</p><p>'fDtrControl 2 bit DTR flow control type (hardware flow control setting)
+</p><p>'fDsrSensitivity 1 bit DSR sensitivity (hardware flow control setting)
+</p><p>'fTXContinueOnXoff 1 bit XOFF continues Tx (software flow control setting)
+</p><p>'fOutX 1 bit XON/XOFF out flow control (software flow control setting)
+</p><p>'fInX 1 bit XON/XOFF in flow control (software flow control setting)
+</p><p>'fErrorChar 1 bit enable error replacement
+</p><p>'fNull 1 bit enable null stripping
+</p><p>'fRtsControl 2 bit RTS flow control (hardware flow control setting)
+</p><p>'fAbortOnError 1 bit abort on error (hardware flow control setting)
+</p><p>'fDummy2 17 bit reserved
+</p><p>wReserved AS WORD 'reserved
+</p><p>XonLim AS WORD 'transmit XON threshold (software flow control setting)
+</p><p>XoffLim AS WORD 'transmit XOFF threshold (software flow control setting)
+</p><p>ByteSize AS BYTE 'number of bits/byte, 4-8
+</p><p>Parity AS BYTE '0-4=no,odd,even,mark,space
+</p><p>StopBits AS BYTE '0,1,2=1,1.5,2
+</p><p>XonChar AS BYTE 'Tx and Rx XON character (software flow control setting)
+</p><p>XoffChar AS BYTE 'Tx and Rx XOFF character (software flow control setting)
+</p><p>ErrorChar AS BYTE 'error replacement character
+</p><p>EofChar AS BYTE 'end of input character
+</p><p>EvtChar AS BYTE 'received event character
+</p><p>wReserved1 AS WORD 'reserved; do not use
+END TYPE
+'Structure containing current Comm Port State
+Type COMSTAT
+</p><p>COMSTATflags AS DWORD 'fCtsHold 1 bit Specifies whether waiting for CTS signal
+</p><p>'fDsrHold 1 bit Specifies whether waiting for DSR signal
+</p><p>'fRlsHold 1 bit Specifies whether waiting for RLSD signal
+</p><p>'fXoffHold 1 bit Specifies whether waiting because XOFF character was received
+</p><p>'fXoffSent 1 bit Specifies whether waiting because XOFF character was transmitted
+</p><p>'fEof 1 bit Specifies whether EOF char has been received
+</p><p>'fTxim 1 bit character queued for transmission because of TransmitCommChar
+</p><p>'fReserved 25 bit Reserved
+</p><p>cbInQue As DWORD 'number of bytes received but not yet read
+</p><p>cbOutQue As DWORD 'number of bytes remaining to be transmitted
+END TYPE
+'Win32 File Handling User Defined Types
+'Structure that contains the security descriptor for an object
+'not currently used by us
+TYPE SECURITYATTRIBUTES
+</p><p>nLength AS DWORD
+</p><p>lpSecurityDescriptor AS LONG
+</p><p>bInheritHandle AS LONG
+END TYPE
+'Structure containing info used in Overlapped (asynchronous) I/O
+'not currently used by us
+TYPE OVERLAPPED
+</p><p>Internal AS LONG
+</p><p>InternalHigh AS LONG
+</p><p>offset AS DWORD
+</p><p>OffsetHigh As DWORD
+</p><p>hEvent AS LONG
+END TYPE
+'DCB Constants
+'Parity
+CONST NOPARITY = 0
+CONST ODDPARITY = 1
+CONST EVENPARITY = 2
+CONST MARKPARITY = 3
+CONST SPACEPARITY = 4
+'StopBits
+CONST ONESTOPBIT = 0
+CONST ONE5STOPBITS = 1
+CONST TWOSTOPBITS = 2
+'PurgeCOM constants
+'dwFlags
+CONST PURGE_RXABORT = &H2
+CONST PURGE_RXCLEAR = &H8
+CONST PURGE_TXABORT = &H1
+CONST PURGE_TXCLEAR = &H4
+'Win32 File Handling Constants
+'dwDesired Access Constants
+Const GENERIC_READ = &H80000000
+CONST GENERIC_WRITE = &H40000000
+'dwShareMode Constants
+CONST FILE_SHARE_READ = &H1
+CONST FILE_SHARE_WRITE = &H2
+'dwCreationDisposition Constants
+CONST CREATE_NEW = 1
+CONST CREATE_ALWAYS = 2
+CONST OPEN_EXISTING = 3
+CONST OPEN_ALWAYS = 4
+CONST TRUNCATE_EXISTING = 5
+'dwFlagsAndAttributes
+CONST FILE_ATTRIBUTE_NORMAL = &H80
+'Win32 Error Constants
+CONST FORMAT_MESSAGE_ALLOCATE_BUFFER = &H100
+CONST FORMAT_MESSAGE_FROM_SYSTEM = &H1000
+CONST LANG_NEUTRAL = &H0
+CONST SUBLANG_DEFAULT = &H1
+CONST ERROR_BAD_USERNAME = 2202&
+'Error Message Constants
+CONST ERROR_OPEN_PORT = "There was an error opening the Comm Port. "
+CONST ERROR_PORT_BUFFERS = "There was an error creating the Comm Port Buffers. "
+CONST ERROR_PURGE_BUFFERS = "There was an error purging old data from the Comm Port Buffers. "
+CONST ERROR_TIMEOUTS = "There was an error setting the Comm Port timeouts. "
+CONST ERROR_RETRIEVE_PORTSETTINGS = "There was an error retrieving the existing Comm Port settings. "
+CONST ERROR_CHANGING_PORTSETTINGS = "There was an error changing the Comm Port settings. "
+CONST ERROR_CLOSING_PORT = "There was an error closing the Comm Port. "
+CONST ERROR_WRITING_PORT = "There was an error writing data to the Comm Port. "
+CONST ERROR_SENDING_DATA = "Could not send all the data in time specified. Try increasing your wait time."
+CONST ERROR_GETTING_PORT_STATUS = "There was an error getting the Comm Ports current status. " 
+CONST ERROR_READING_PORT = "There was an error reading data from the Comm Port. "
+'Win32 Function Declarations
+'Suspends the execution of the current thread for the specified interval. 
+DECLARE SUB Sleep Lib "kernel32" ALIAS "Sleep" _
+</p><p>(dwMilliseconds AS DWORD)
+'Win32 Error Messages
+'Several Win32 functions set an error code if they fail. This retrieves them.
+'Note, If a function succeeds, it may not set this code. If you retrieve it
+'after a function succeeds, it may return an error code for a previous function that failed.
+DECLARE FUNCTION GetLastError Lib "kernel32" ALIAS "GetLastError" _
+</p><p>() _
+</p><p>AS DWORD 'Returns last error code value
+<p class="epigraph"> 'See http://msdn.microsoft.com/library/default.asp?url=/library/en-us/debug/errlist_7oz7.asp<br>
+ 'for what codes mean</p><p>
+'Converts GetLastError codes to string messages.
+Declare Function FormatMessage Lib "kernel32" Alias "FormatMessageA" _
+</p><p>(dwFlags AS DWORD, _ '[IN] Specifies aspects of the formatting process and how to interpret lpSource
+</p><p>BYREF lpSource As LONG, _ '[IN] Specifies the location of the message definition
+</p><p>dwMessageId AS DWORD, _ '[IN] Specifies the message identifier for the requested message
+</p><p>dwLanguageId AS DWORD, _ '[IN] Specifies the language identifier for the requested message
+</p><p>BYREF lpBuffer As STRING, _ '[OUT] Pointer to a buffer for the formatted message
+</p><p>nSize AS DWORD, _ '[IN] specifies the max number of c…
+<br><br><b>Sorry, unregistered version of Txt2Html does not support more than 7 kb of text.</b><br>
+</p><br><div align=right>This text was converted by <a href="http://alexey-pr.pisem.net">Txt2Html</a>.<div align=justify><br>
+</td></tr>
+</table></div></body></html>

@@ -1,0 +1,428 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.51 [fr]C-CCK-MCD   (WinNT; I) [Netscape]">
+   <title>Appendix A: QDrawFocus</title>
+</head>
+<body bgcolor="#FFFFFF" FONT FACE="Arial, Helvetica">
+&nbsp;
+<table CELLSPACING=0 CELLPADDING=0 WIDTH="100%" >
+<tr>
+<td><font face="Arial, Helvetica">Documentation component by D.Glodt (c)2000-2001</font></td>
+
+<td ALIGN=RIGHT><b><font face="Arial, Helvetica">Appendix A: QDrawFocus</font></b></td>
+</tr>
+
+<tr>
+<td COLSPAN="2">
+<hr SIZE=1></td>
+</tr>
+</table>
+
+<h1>
+QDrawFocus Component</h1>
+
+<dd>
+QDrawFocus is a focus to use as selection in graphic components.</dd>
+
+<br>&nbsp;
+<p>&nbsp;
+<p><a NAME="1"></a><b><font size=+1>QDrawFocus Properties</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Field</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>R/W</b></td>
+
+<td><b>D&eacute;fault</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Left</td>
+
+<td>SHORT</td>
+
+<td>R</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td>Position x of focus when it is visible</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Top</td>
+
+<td>SHORT</td>
+
+<td>R</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td>Position y of focus when it is visible&nbsp;</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Width</td>
+
+<td>SHORT</td>
+
+<td>R</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td>Width of focus when it is visible</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Height</td>
+
+<td>SHORT</td>
+
+<td>R</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td>Height of focus when it is visible</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Move</td>
+
+<td>BOOLEAN</td>
+
+<td>R</td>
+
+<td>FALSE</td>
+</tr>
+
+<tr>
+<td></td>
+
+<td>At true if focus has moved.</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Visible</td>
+
+<td>BOOLEAN</td>
+
+<td>RW</td>
+
+<td>FALSE</td>
+</tr>
+
+<tr>
+<td></td>
+
+<td>At true if focus is visible</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Inside</td>
+
+<td>BOOLEAN</td>
+
+<td>R</td>
+
+<td>FALSE</td>
+</tr>
+
+<tr>
+<td></td>
+
+<td>At true if cursor is inside the focus</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>NoResize</td>
+
+<td>BOOLEAN</td>
+
+<td>RW</td>
+
+<td>FALSE</td>
+</tr>
+
+<tr BGCOLOR="#EEEEEE">
+<td></td>
+
+<td>No resize when the value is true</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>ShowCursor</td>
+
+<td>BOOLEAN</td>
+
+<td>RW</td>
+
+<td>TRUE</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Change the cursor state following the actions on focus</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+</table>
+
+<p><a NAME="2"></a><b><font size=+1>QDrawFocus Methods</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Method</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Description</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr VALIGN=TOP BGCOLOR="#CCFFFF">
+<td>Remove</td>
+
+<td>SUB(handle&amp;)</td>
+
+<td NOWRAP>Remove the focus</td>
+
+<td NOWRAP>1</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Start</td>
+
+<td>SUB(handle&amp;,x%,y%)</td>
+
+<td>Start the drawing of focus</td>
+
+<td>3</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Draw</td>
+
+<td>SUB(handle&amp;,x%,y%,flagDraw%)</td>
+
+<td>Draw the focus</td>
+
+<td>4</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Stop</td>
+
+<td>SUB(handle&amp;,flagRemove%)</td>
+
+<td>Stop the drawing of focus</td>
+
+<td>2</td>
+
+<td></td>
+</tr>
+</table>
+
+<p><a NAME="3"></a><b><font size=+1>QDrawFocus Events</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Event</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Occurs when...</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+</table>
+
+<p><a NAME="4"></a><b><font size=+1>QDrawFocus Examples</font></b>
+<br>'==============================================================================================
+<br>' the Start method gives the starting point of focus
+<br>' the Draw method draws the focus , moves it or the resize if this
+one is already visible and if flagDraw is at true,
+<br>' if flagDraw is at false only the state of the cursor changes
+<br>' the Stop method gives the cursor at its state of origin after action
+on the focus and removes the focus if the flagRemove is at true.
+<br>'===============================================================================================
+<br>$TYPECHECK ON
+<br>$Include "Rapidq.inc"
+<br>$include "Object\QDrawFocus.inc"
+<p>declare sub StartFocus(button as short,x as short,y as short)
+<br>declare sub StopFocus(x as short,y as short)
+<br>declare sub DrawFocus(x as short,y as short)
+<br>declare sub paint
+<br>declare sub resize
+<br>dim focus as QDrawFocus
+<br>dim flag as byte
+<p>CREATE Form AS QFORM
+<br>&nbsp; Caption = "Form1"
+<br>&nbsp; Width = 686
+<br>&nbsp; Height = 452
+<br>&nbsp; Center
+<br>&nbsp; OnResize=resize
+<br>&nbsp; CREATE Canvas1 AS QCANVAS
+<br>&nbsp;&nbsp;&nbsp; Left = 0
+<br>&nbsp;&nbsp;&nbsp; Top = 0
+<br>&nbsp;&nbsp;&nbsp; Width = 678
+<br>&nbsp;&nbsp;&nbsp; Height = 425
+<br>&nbsp;&nbsp;&nbsp; OnPaint=paint
+<br>&nbsp;&nbsp;&nbsp; OnMouseDown=StartFocus
+<br>&nbsp;&nbsp;&nbsp; OnMouseUp=StopFocus
+<br>&nbsp;&nbsp;&nbsp; OnMouseMove=DrawFocus
+<br>&nbsp; END CREATE
+<br>END CREATE
+<p>Form.ShowModal
+<p>Sub StartFocus(button as short,x as short,y as short)
+<br>&nbsp; focus.start(Canvas1.handle,x,y)
+<br>&nbsp; flag=true
+<br>End Sub
+<p>Sub DrawFocus(x as short,y as short)
+<br>&nbsp; focus.draw(Canvas1.handle,x,y,flag)
+<br>End Sub
+<p>Sub StopFocus(x as short,y as short)
+<br>&nbsp; focus.stop(Canvas1.handle,false)
+<br>&nbsp; flag=false
+<br>End Sub
+<p>Sub paint
+<br>&nbsp; if focus.visible then
+<br>&nbsp;&nbsp;&nbsp; focus.visible=false
+<br>&nbsp;&nbsp;&nbsp; Canvas1.fillrect(0,0,1000,1000,&amp;HFFFFFF)
+<br>&nbsp;&nbsp;&nbsp; focus.start(Canvas1.handle,focus.left,focus.top)
+<br>&nbsp;&nbsp;&nbsp; focus.draw(Canvas1.handle,focus.left+focus.width,focus.top+focus.height,true)
+<br>&nbsp; else
+<br>&nbsp;&nbsp;&nbsp; Canvas1.fillrect(0,0,1000,1000,&amp;HFFFFFF)
+<br>&nbsp; end if
+<br>end sub
+<p>sub resize
+<br>&nbsp; canvas1.repaint
+<br>end sub
+<br>&nbsp;
+</body>
+</html>

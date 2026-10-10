@@ -1,0 +1,92 @@
+<html>
+<head>
+<title>msgdlg.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'============================================================================</i></font> 
+<font color="007700"><i>' Subject: STANDARD MESSAGE DIALOG FUNCTION     Date: 05-03-00 (21:33)</i></font> 
+<font color="007700"><i>' Author:  Jernej Simoncic                      Code: RAPIDQ</i></font> 
+<font color="007700"><i>' Origin:  jernej.simoncic@guest.arnes.si     Packet: RAPIDQ.ABC</i></font> 
+<font color="007700"><i>' .inc version and some modifications by Marcin Szafran, jm_sz@poczta.onet.pl</i></font> 
+<font color="007700"><i>'============================================================================</i></font> 
+
+<font color="007700"><i>'Shows standard Message Dialog, with buttons in local language (unlike RapidQ's</i></font> 
+<font color="007700"><i>'MessageDlg, which always shows English buttons)</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>'Usage: [button& =] MsgDlg text$, title$, buttons&</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' Thanks to RapidQ, you can use it as Sub or Function.</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' button&   Returns clicked button</i></font> 
+<font color="007700"><i>' text$     Text to display in message box</i></font> 
+<font color="007700"><i>' buttons&  Select which buttons and icons to display and which button is</i></font> 
+<font color="007700"><i>'           default.</i></font> 
+<font color="007700"><i>' title$    Message box title</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>'buttons& values (you can combine them):</i></font> 
+<font color="007700"><i>' value   description</i></font> 
+<font color="007700"><i>' 0       Display OK button only.</i></font> 
+<font color="007700"><i>' 1       Display OK and Cancel buttons.</i></font> 
+<font color="007700"><i>' 2       Display Abort, Retry, and Ignore buttons.</i></font> 
+<font color="007700"><i>' 3       Display Yes, No, and Cancel buttons.</i></font> 
+<font color="007700"><i>' 4       Display Yes and No buttons.</i></font> 
+<font color="007700"><i>' 5       Display Retry and Cancel buttons.</i></font> 
+<font color="007700"><i>' 16      Display Critical Message icon.</i></font> 
+<font color="007700"><i>' 32      Display Warning Query icon.</i></font> 
+<font color="007700"><i>' 48      Display Warning Message icon.</i></font> 
+<font color="007700"><i>' 64      Display Information Message icon.</i></font> 
+<font color="007700"><i>' 0       First button is default.</i></font> 
+<font color="007700"><i>' 256     Second button is default.</i></font> 
+<font color="007700"><i>' 512     Third button is default.</i></font> 
+<font color="007700"><i>' 768     Fourth button is default.</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>'So here are constans (if you'd like them)</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="0000AA"><b>const</b></font> bOK = 0 		<font color="007700"><i>' of course you do not need to use it</i></font> 
+<font color="0000AA"><b>const</b></font> bOKCan = 1
+<font color="0000AA"><b>const</b></font> bAbRetIg = 2
+<font color="0000AA"><b>const</b></font> bYesNoCan = 3
+<font color="0000AA"><b>const</b></font> bYesNo = 4
+<font color="0000AA"><b>const</b></font> bRetCan = 5
+<font color="0000AA"><b>const</b></font> iCritMsg = 16
+<font color="0000AA"><b>const</b></font> iWarnQuery = 32
+<font color="0000AA"><b>const</b></font> iWarnMsg = 48
+<font color="0000AA"><b>const</b></font> iInfMsg = 64
+<font color="0000AA"><b>const</b></font> dFst = 0		<font color="007700"><i>' of course you do not need to use it</i></font> 
+<font color="0000AA"><b>const</b></font> dSec = 256
+<font color="0000AA"><b>const</b></font> dTrd = 512
+<font color="0000AA"><b>const</b></font> dFth = 768
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>'button& values</i></font> 
+<font color="007700"><i>' 1   OK</i></font> 
+<font color="007700"><i>' 2   Cancel</i></font> 
+<font color="007700"><i>' 3   Abort</i></font> 
+<font color="007700"><i>' 4   Retry</i></font> 
+<font color="007700"><i>' 5   Ignore</i></font> 
+<font color="007700"><i>' 6   Yes</i></font> 
+<font color="007700"><i>' 7   No</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MsgDlg <b>(</b>MsgDlgText <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, MsgDlgTitle <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, MsgDlgButtons <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MDlg <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">MessageBoxA</font>" <b>(</b>ByVal hwnd <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, ByVal lpText <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, ByVal lpCaption <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, ByVal wType <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+
+<font color="0000AA"><b>Function</b></font> MsgDlg <b>(</b>MsgDlgText <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, MsgDlgTitle <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font>, MsgDlgButtons <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+    Result = MDlg <b>(</b>Form.Handle,MsgDlgText,MsgDlgTitle,MsgDlgButtons<b>)</b>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+<font color="007700"><i>' And here are exemples</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' MsgDlg ("Just example","",2)</i></font> 
+<font color="007700"><i>' MsgDlg ("Just example","",bAbRetIg)</i></font> 
+<font color="007700"><i>' MsgDlg ("It's just example","RapidQ",1+32+256)</i></font> 
+<font color="007700"><i>' MsgDlg ("It's just example","RapidQ",bOKCan+iWarnQuery+dSec)</i></font> 
+<font color="007700"><i>' MsgDlg ("Component 'MsgDlg', by Jernej Simoncic","About...",64)</i></font> 
+<font color="007700"><i>' MsgDlg ("'MsgDlg', by Jernej Simoncic + Marcin Szafran","About...",iInfMsg)</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' by Jernej Simoncic</i></font> 
+<font color="007700"><i>' .inc version + modifications by Marcin Szafran</i></font> 
+<font color="007700"><i>'</i></font> 
+ 
+</pre>
+</body>
+</html>

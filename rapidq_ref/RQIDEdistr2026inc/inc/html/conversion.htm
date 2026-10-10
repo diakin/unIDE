@@ -1,0 +1,240 @@
+<html>
+<head>
+<title>conversion.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'--------------------------- Custom functions --------------------------</i></font> 
+
+<font color="007700"><i>'-- **************************************************************************'</i></font> 
+<font color="0000AA"><b>FUNCTION</b></font> vidnum$ <b>(</b>Num, dig%<b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+<font color="007700"><i>'- returns the string representation of a rounded numeric</i></font> 
+ 
+Num$=<font color="0000AA"><b>str$</b></font><b>(</b>Num<b>)</b>
+
+pntPos=<font color="0000AA"><b>instr</b></font><b>(</b>Num$,"<font color="990000">.</font>"<b>)</b>
+
+<font color="0000AA"><b>if</b></font> pntPos=0 <font color="0000AA"><b>then</b></font> 
+digMax=0
+<font color="000099"><b>else</b></font>
+digMax=<font color="0000AA"><b>Len</b></font><b>(</b>Num$<b>)</b>-pntPos
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+ 
+<font color="0000AA"><b>if</b></font> dig%>digMax <font color="0000AA"><b>then</b></font> dig%=digMax 
+
+vidnum$ = <font color="0000AA"><b>STR$</b></font><b>(</b><b>(</b>  <font color="0000AA"><b>CLNG</b></font><b>(</b>  <font color="0000AA"><b>abs</b></font><b>(</b>Num<b>)</b> * 10 ^ dig%<b>)</b> / 10 ^ dig%<b>)</b>*<font color="0000AA"><b>sgn</b></font><b>(</b>Num<b>)</b><b>)</b>
+
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>FUNCTION</b></font>
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>'-- **************************************************************************'</i></font> 
+<font color="0000AA"><b>function</b></font>   Hex2Dec <b>(</b>HexStr <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+  
+  <font color="0000AA"><b>DEFdbl</b></font> numb
+  <font color="0000AA"><b>defdbl</b></font> number
+  <font color="0000AA"><b>DEFBYTE</b></font> x,length, y
+	number = 0
+    length = <font color="0000AA"><b>LEN</b></font><b>(</b>HexStr<b>)</b>
+    <font color="0000AA"><b>FOR</b></font> x = 1 <font color="0000AA"><b>TO</b></font> length
+      y = length - x
+
+      digit$ = <font color="0000AA"><b>UCASE$</b></font><b>(</b><font color="0000AA"><b>MID$</b></font><b>(</b>HexStr,x,1<b>)</b><b>)</b>
+      <font color="0000AA"><b>SELECT</b></font> <font color="0000AA"><b>CASE</b></font> digit$
+        <font color="0000AA"><b>CASE</b></font> "<font color="990000">A</font>"
+          numb = 10 * 16^y
+        <font color="0000AA"><b>CASE</b></font> "<font color="990000">B</font>"
+          numb = 11 * 16^y
+        <font color="0000AA"><b>CASE</b></font> "<font color="990000">C</font>"
+          numb = 12 * 16^y
+        <font color="0000AA"><b>CASE</b></font> "<font color="990000">D</font>"
+          numb = 13 * 16^y
+        <font color="0000AA"><b>CASE</b></font> "<font color="990000">E</font>"
+         numb = 14 * 16^y
+        <font color="0000AA"><b>CASE</b></font> "<font color="990000">F</font>"
+          numb = 15 * 16^y
+        <font color="0000AA"><b>CASE</b></font> <font color="000099"><b>ELSE</b></font>
+          numb = <font color="0000AA"><b>VAL</b></font><b>(</b><font color="0000AA"><b>LCASE$</b></font><b>(</b>digit$<b>)</b><b>)</b> * 16^y
+      <font color="0000AA"><b>END</b></font> <font color="000099"><b>SELECT</b></font>
+      number = number + numb
+    qw:
+    <font color="000099"><b>NEXT</b></font>
+
+<font color="0000AA"><b>if</b></font> number>10^6 <font color="0000AA"><b>then</b></font> 
+n1=<font color="0000AA"><b>fix</b></font><b>(</b>number/1000000<b>)</b> 
+n2=<b>(</b>number-n1*1000000<b>)</b>    
+NumNul=6-<font color="0000AA"><b>len</b></font><b>(</b><font color="0000AA"><b>str$</b></font><b>(</b>n2<b>)</b><b>)</b> 
+TrNul$=<font color="0000AA"><b>string$</b></font><b>(</b>NumNul, "<font color="990000">0</font>"<b>)</b>
+
+Dec$ = <font color="0000AA"><b>STR$</b></font><b>(</b>n1<b>)</b>+TrNul$+<font color="0000AA"><b>str$</b></font><b>(</b>n2<b>)</b>
+
+<font color="000099"><b>else</b></font>
+Dec$ = <font color="0000AA"><b>STR$</b></font><b>(</b>number<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+Hex2Dec=Dec$
+
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'-- **************************************************************************'</i></font> 
+<font color="0000AA"><b>function</b></font> dectoHex <b>(</b><font color="0000AA"><b>Dec</b></font> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+<font color="0000AA"><b>defdbl</b></font> ost, ch
+<font color="0000AA"><b>defstr</b></font> HexVal$
+HexVal$="<font color="990000"></font>"
+ost=0: ch=0
+Dec#=<font color="0000AA"><b>val</b></font><b>(</b><font color="0000AA"><b>Dec</b></font><b>)</b>
+sign=<font color="0000AA"><b>sgn</b></font><b>(</b>Dec#<b>)</b>
+Dec#=<font color="0000AA"><b>abs</b></font><b>(</b>Dec#<b>)</b>
+<font color="0000AA"><b>WHILE</b></font>  Dec# >= 16#
+ch=<font color="0000AA"><b>FIX</b></font><b>(</b>Dec# / 16#<b>)</b>
+ost = Dec#-ch*16#
+
+Dec#=ch
+<font color="0000AA"><b>select</b></font> <font color="0000AA"><b>case</b></font> ost
+<font color="0000AA"><b>case</b></font> <font color="0000AA"><b>is</b></font> &lt;10
+Hexdig$=<font color="0000AA"><b>str$</b></font><b>(</b>ost<b>)</b>
+<font color="0000AA"><b>case</b></font> 10
+Hexdig$="<font color="990000">A</font>"
+<font color="0000AA"><b>case</b></font> 11
+Hexdig$="<font color="990000">B</font>"
+<font color="0000AA"><b>case</b></font> 12
+Hexdig$="<font color="990000">C</font>"
+<font color="0000AA"><b>case</b></font> 13
+Hexdig$="<font color="990000">D</font>"
+<font color="0000AA"><b>case</b></font> 14
+Hexdig$="<font color="990000">E</font>"
+<font color="0000AA"><b>case</b></font> 15
+Hexdig$="<font color="990000">F</font>"
+<font color="0000AA"><b>case</b></font> 15
+Hexdig$="<font color="990000">10</font>"
+
+<font color="0000AA"><b>case</b></font> <font color="000099"><b>else</b></font>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>select</b></font>
+
+HexVal$ =Hexdig$  + HexVal$: 
+
+<font color="000099"><b>wend</b></font>
+
+<font color="0000AA"><b>select</b></font> <font color="0000AA"><b>case</b></font> Dec#
+
+<font color="0000AA"><b>case</b></font> <font color="0000AA"><b>is</b></font> &lt;10
+Hexdig$=<font color="0000AA"><b>str$</b></font><b>(</b>Dec#<b>)</b>
+<font color="0000AA"><b>case</b></font> 10
+Hexdig$="<font color="990000">A</font>"
+<font color="0000AA"><b>case</b></font> 11
+Hexdig$="<font color="990000">B</font>"
+<font color="0000AA"><b>case</b></font> 12
+Hexdig$="<font color="990000">C</font>"
+<font color="0000AA"><b>case</b></font> 13
+Hexdig$="<font color="990000">D</font>"
+<font color="0000AA"><b>case</b></font> 14
+Hexdig$="<font color="990000">E</font>"
+<font color="0000AA"><b>case</b></font> 15
+Hexdig$="<font color="990000">F</font>"
+<font color="0000AA"><b>case</b></font> 15
+Hexdig$="<font color="990000">10</font>"
+
+<font color="0000AA"><b>case</b></font> <font color="000099"><b>else</b></font>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>select</b></font>
+
+HexVal$ =Hexdig$  + HexVal$: 
+<font color="0000AA"><b>if</b></font> sign=-1 <font color="0000AA"><b>then</b></font> signn$="<font color="990000">-</font>" <font color="0000AA"><b>else</b></font> signn$="<font color="990000"></font>"
+<font color="0000AA"><b>if</b></font> HexVal$="<font color="990000">0</font>" <font color="0000AA"><b>then</b></font> HexVal$="<font color="990000">00</font>"
+dectoHex=signn$+ HexVal$
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>function</b></font>
+
+
+<font color="007700"><i>'-- **************************************************************************'</i></font> 
+<font color="0000AA"><b>function</b></font> Add0Before<b>(</b>NumStr <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font> , Dlina <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>int</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+<font color="007700"><i>' - A function that pre-padd string with 0's to required Length</i></font> 
+
+<font color="0000AA"><b>diM</b></font> kolvo <font color="0000AA"><b>as</b></font> <font color="000099"><b>int</b></font>
+kolvo =Dlina-<font color="0000AA"><b>Len</b></font><b>(</b>NumStr<b>)</b>
+<font color="0000AA"><b>if</b></font>   kolvo&lt;0 <font color="0000AA"><b>theN</b></font> Add0Before="<font color="990000">String too long</font>"
+<font color="0000AA"><b>if</b></font>   kolvo=0 <font color="0000AA"><b>theN</b></font> Add0Before=NumStr: <font color="0000AA"><b>exit</b></font> <font color="000099"><b>function</b></font>
+
+Add0Before	= <font color="0000AA"><b>STRING$</b></font><b>(</b>kolvo, "<font color="990000">0</font>"<b>)</b>+ NumStr
+
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'-- **************************************************************************'</i></font> 
+<font color="0000AA"><b>FUNCTION</b></font> ByteReOrder <b>(</b>ByteStr <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>,ReOrder <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font> <b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+<font color="007700"><i>'- A function that reorder bytes in string.</i></font> 
+
+<font color="0000AA"><b>defstr</b></font> tmpByteReOrder="<font color="990000"></font>", poz, byt
+<font color="007700"><i>'print "tmpByteReOrder=" ,tmpByteReOrder</i></font> 
+
+<font color="007700"><i>'print "ByteStr=" ,ByteStr</i></font> 
+<font color="007700"><i>'print "ReOrder=" ,ReOrder</i></font> 
+
+LenB=<font color="0000AA"><b>Len</b></font><b>(</b>ByteStr<b>)</b>
+LenR=<font color="0000AA"><b>Len</b></font><b>(</b>ReOrder<b>)</b>
+
+<font color="0000AA"><b>for</b></font> i=1 <font color="0000AA"><b>to</b></font> LenB
+poz=ReOrder[i]
+<font color="007700"><i>'print "poz=" ,poz</i></font> 
+
+<font color="0000AA"><b>if</b></font> <font color="0000AA"><b>val</b></font><b>(</b>poz<b>)</b>> LenB <font color="0000AA"><b>then</b></font> <font color="0000AA"><b>ShowMessage</b></font><b>(</b> "<font color="990000">ReOrder index outbound input string</font>"<b>)</b>:<font color="0000AA"><b>exit</b></font> <font color="000099"><b>FUNCTION</b></font>
+<font color="0000AA"><b>if</b></font> i&lt;= LenR <font color="000099"><b>then</b></font>
+byt=ByteStr[<font color="0000AA"><b>val</b></font><b>(</b>poz<b>)</b>]
+
+<font color="000099"><b>else</b></font>
+byt=ByteStr[i]
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+<font color="007700"><i>'print "byt=" ,byt</i></font> 
+
+tmpByteReOrder=tmpByteReOrder+byt
+<font color="000099"><b>next</b></font>
+ByteReOrder=tmpByteReOrder
+<font color="007700"><i>'print "tmpByteReOrder=" ,tmpByteReOrder</i></font> 
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>FUNCTION</b></font>
+
+<font color="007700"><i>'-- **************************************************************************'</i></font> 
+<font color="0000AA"><b>FUNCTION</b></font> CByteNum <b>(</b>ByteStr$,Num_Type <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font> <b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>variant</b></font>
+<font color="007700"><i>' - converts bytes sequence to number</i></font> 
+<font color="0000AA"><b>DIM</b></font> M <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMemoryStream</b></font>
+<font color="0000AA"><b>select</b></font> <font color="0000AA"><b>case</b></font> Num_Type
+<font color="0000AA"><b>case</b></font> Num_BYTE
+<font color="0000AA"><b>ShowMessage</b></font> "<font color="990000">Can't to write BYTE.Wrong parameter type - Num_BYTE</font>": <font color="0000AA"><b>exit</b></font> <font color="000099"><b>funCTION</b></font>
+<font color="0000AA"><b>case</b></font>  Num_SHORT: M.Write <b>(</b>ByteStr$<b>)</b>:m.Position=0:CByteNum=m.ReadNum<b>(</b>Num_SHORT<b>)</b>
+<font color="0000AA"><b>case</b></font>  Num_WORD:  M.Write <b>(</b>ByteStr$<b>)</b>:m.Position=0:CByteNum=m.ReadNum<b>(</b>Num_WORD<b>)</b>
+<font color="0000AA"><b>case</b></font>  Num_LONG:  M.Write <b>(</b>ByteStr$<b>)</b>:m.Position=0:CByteNum=m.ReadNum<b>(</b>Num_LONG<b>)</b>
+<font color="0000AA"><b>case</b></font>  Num_DWORD: M.Write <b>(</b>ByteStr$<b>)</b>:m.Position=0:CByteNum=m.ReadNum<b>(</b>Num_DWORD<b>)</b>
+<font color="0000AA"><b>case</b></font>  Num_SINGLE:M.Write <b>(</b>ByteStr$<b>)</b>:m.Position=0:CByteNum=m.ReadNum<b>(</b>Num_SINGLE<b>)</b>
+<font color="0000AA"><b>case</b></font>  Num_DOUBLE:M.Write <b>(</b>ByteStr$<b>)</b>:m.Position=0:CByteNum=m.ReadNum<b>(</b>Num_DOUBLE<b>)</b>
+
+<font color="0000AA"><b>case</b></font> <font color="000099"><b>else</b></font>
+M.Write <b>(</b>ByteStr$<b>)</b>:m.Position=0:CByteNum=m.ReadNum<b>(</b>Num_DOUBLE<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>select</b></font>
+
+M.Close
+
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>funCTION</b></font>
+
+<font color="007700"><i>'-- **************************************************************************'</i></font> 
+<font color="0000AA"><b>FUNCTION</b></font> CNumByte <b>(</b>Num, Num_Type <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+<font color="007700"><i>'' - converts number to bytes sequence</i></font> 
+
+<font color="0000AA"><b>DIM</b></font> M <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMemoryStream</b></font>
+
+<font color="0000AA"><b>select</b></font> <font color="0000AA"><b>case</b></font> Num_Type
+<font color="0000AA"><b>case</b></font> Num_BYTE
+<font color="0000AA"><b>dim</b></font> N1 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>BYTE</b></font> 
+<font color="0000AA"><b>ShowMessage</b></font> "<font color="990000">Can't to write BYTE.Wrong parameter type - Num_BYTE</font>": <font color="0000AA"><b>exit</b></font> <font color="000099"><b>funCTION</b></font>
+
+<font color="0000AA"><b>case</b></font>  Num_SHORT: <font color="0000AA"><b>DEFSHORT</b></font> N2:N2=Num:M.Write<b>(</b>N2<b>)</b>:M.Position=0:CNumByte=M.ReadBinStr<b>(</b><font color="0000AA"><b>sizeOf</b></font><b>(</b>N2<b>)</b><b>)</b>
+<font color="0000AA"><b>case</b></font>  Num_WORD:  <font color="0000AA"><b>DEFWORD</b></font>  N3:N3=Num:M.Write<b>(</b>N3<b>)</b>:M.Position=0:CNumByte=M.ReadBinStr<b>(</b><font color="0000AA"><b>sizeOf</b></font><b>(</b>N3<b>)</b><b>)</b>
+<font color="0000AA"><b>case</b></font>  Num_LONG:  <font color="0000AA"><b>DEFLNG</b></font>   N4:N4=Num:M.Write<b>(</b>N4<b>)</b>:M.Position=0:CNumByte=M.ReadBinStr<b>(</b><font color="0000AA"><b>sizeOf</b></font><b>(</b>N4<b>)</b><b>)</b>
+<font color="0000AA"><b>case</b></font>  Num_DWORD: <font color="0000AA"><b>DEFDWORD</b></font> N5:N5=Num:M.Write<b>(</b>N5<b>)</b>:M.Position=0:CNumByte=M.ReadBinStr<b>(</b><font color="0000AA"><b>sizeOf</b></font><b>(</b>N5<b>)</b><b>)</b>
+<font color="0000AA"><b>case</b></font>  Num_SINGLE:<font color="0000AA"><b>DEFSNG</b></font>   N6:N6=Num:M.Write<b>(</b>N6<b>)</b>:M.Position=0:CNumByte=M.ReadBinStr<b>(</b><font color="0000AA"><b>sizeOf</b></font><b>(</b>N6<b>)</b><b>)</b>
+<font color="0000AA"><b>case</b></font>  Num_DOUBLE:<font color="0000AA"><b>DEFDBL</b></font>   N7:N7=Num:M.Write<b>(</b>N7<b>)</b>:M.Position=0:CNumByte=M.ReadBinStr<b>(</b><font color="0000AA"><b>sizeOf</b></font><b>(</b>N7<b>)</b><b>)</b>
+
+<font color="0000AA"><b>case</b></font> <font color="000099"><b>else</b></font>
+<font color="0000AA"><b>dim</b></font> N8 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>DOUBLE</b></font>:N8=Num:
+M.Write<b>(</b>N8<b>)</b>:
+M.Position=0:CNumByte=M.ReadBinStr<b>(</b><font color="0000AA"><b>sizeOf</b></font><b>(</b>N8<b>)</b><b>)</b>:M.Close                                         
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>select</b></font>
+M.Close
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>funCTION</b></font>
+
+ 
+</pre>
+</body>
+</html>

@@ -1,0 +1,101 @@
+<html>
+<head>
+<title>qmaxedit.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'QMAXEDIT.INC by DHynes420@aol.com</i></font> 
+<font color="007700"><i>'Usage:</i></font> 
+<font color="007700"><i>'$INCLUDE "qmaxedit.inc"</i></font> 
+<font color="007700"><i>'DIM RichEdit AS QRICHEDIT</i></font> 
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> SendMessageA <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">SendMessageA</font>" <b>(</b>hwnd <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, wMsg <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, wParam <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, lParam <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+
+<font color="0000AA"><b>TYPE</b></font> QMAXEDIT <font color="0000AA"><b>EXTENDS</b></font> <font color="000099"><b>QRICHEDIT</b></font>
+
+    <font color="0000AA"><b>WITH</b></font> QMAXEDIT
+     
+        PRIVATE:
+
+            MaxMenu      <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QPOPUPMENU</b></font>
+            mnuUndo      <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMENUITEM</b></font>
+            mnuSep1      <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMENUITEM</b></font>
+            mnuCut       <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMENUITEM</b></font>
+            mnuCopy      <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMENUITEM</b></font>
+            mnuPaste     <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMENUITEM</b></font>
+            mnuDelete    <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMENUITEM</b></font>
+            mnuSep2      <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMENUITEM</b></font>
+            mnuSelectAll <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMENUITEM</b></font>
+    
+            <font color="0000AA"><b>EVENT</b></font> MaxMenu.OnPopup
+                .mnuUndo.Enabled = SendMessageA<b>(</b>.Handle, &HC6, 0, 0<b>)</b>
+                .mnuCut.Enabled = .SelLength
+                .mnuCopy.Enabled = .SelLength
+                .mnuPaste.Enabled = <font color="0000AA"><b>LEN</b></font><b>(</b>ClipBoard.Text<b>)</b> 
+                .mnuDelete.Enabled = .SelLength
+                .mnuSelectAll.Enabled = <b>(</b><font color="0000AA"><b>LEN</b></font><b>(</b>.Text<b>)</b> <font color="0000AA"><b>XOR</b></font> <font color="0000AA"><b>LEN</b></font> <b>(</b>.SelText<b>)</b><b>)</b> 
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>EVENT</b></font>
+        
+        PUBLIC:
+
+            UsePopup <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font> PROPERTY SET Set_Popup
+                
+            <font color="0000AA"><b>SUB</b></font> Undo
+                SendMessage<b>(</b>.Handle, &HC7, 0, 0<b>)</b>
+            <font color="0000AA"><b>END</b></font> <font color="0000AA"><b>SUB</b></font> 
+        
+            <font color="0000AA"><b>SUB</b></font> Cut
+                .CutToClipBoard
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+        
+            <font color="0000AA"><b>SUB</b></font> Copy
+                .CopyToClipboard
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+        
+            <font color="0000AA"><b>SUB</b></font> Paste
+                .PasteFromClipboard
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+        
+            <font color="0000AA"><b>SUB</b></font> Delete
+                SendMessage <b>(</b>.Handle, &H100, &H2E, 0<b>)</b>
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+        
+            <font color="0000AA"><b>SUB</b></font> SelectAl
+                .SelectAll
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+        
+            PROPERTY SET Set_Popup<b>(</b>Use <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+                .MaxMenu.AutoPopup = Use
+            <font color="0000AA"><b>END</b></font> PROPERTY
+            
+            <font color="000099"><b>CONSTRUCTOR</b></font>
+                mnuUndo.Caption = "<font color="990000">&Undo</font>"
+                mnuUndo.OnClick = QMAXEDIT.Undo
+                mnuSep1.Caption = "<font color="990000">-</font>"
+                mnuCut.Caption = "<font color="990000">Cu&t</font>"
+                mnuCut.OnClick = QMAXEDIT.Cut
+                mnuCopy.Caption = "<font color="990000">&Copy</font>"
+                mnuCopy.OnClick = QMAXEDIT.Copy
+                mnuPaste.Caption = "<font color="990000">&Paste</font>"
+                mnuPaste.OnClick = QMAXEDIT.Paste
+                mnuDelete.Caption = "<font color="990000">&Delete</font>"
+                mnuDelete.OnClick = QMAXEDIT.Delete
+                mnuSep2.Caption = "<font color="990000">-</font>"
+                mnuSelectAll.Caption = "<font color="990000">Select &All</font>"
+                mnuSelectAll.OnClick = QMAXEDIT.SelectAl
+                MaxMenu.AddItems QMAXEDIT.mnuUndo, QMAXEDIT.mnuSep1,_
+                                QMAXEDIT.mnuCut, QMAXEDIT.mnuCopy,_
+                                QMAXEDIT.mnuPaste, QMAXEDIT.mnuDelete,_
+                                QMAXEDIT.mnuSep2, QMAXEDIT.mnuSelectAll
+                PopupMenu = .MaxMenu
+                Set_Popup = 1
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>CONSTRUCTOR</b></font>
+            
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>WITH</b></font>
+    
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>TYPE</b></font>
+
+<font color="0000AA"><b>$UNDEF</b></font> <font color="000099"><b>QRICHEDIT</b></font>
+<font color="0000AA"><b>$DEFINE</b></font> <font color="0000AA"><b>QRICHEDIT</b></font> QMAXEDIT 
+</pre>
+</body>
+</html>

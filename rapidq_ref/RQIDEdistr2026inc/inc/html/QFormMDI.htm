@@ -1,0 +1,700 @@
+<html>
+<head>
+<title>QFormMDI.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="007700"><i>' Type Objet</i></font> 
+<font color="007700"><i>' Classe QFormMDI Version 1.0</i></font> 
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="0000AA"><b>$IFNDEF</b></font> TRUE
+  <font color="0000AA"><b>$DEFINE</b></font> True 1
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> FALSE
+  <font color="0000AA"><b>$DEFINE</b></font> False 0
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> boolean
+  <font color="0000AA"><b>$DEFINE</b></font> boolean <font color="000099"><b>integer</b></font>
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>TYPE</b></font> MDI_CLASS
+    cbSize <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+    style <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+    lpfnWndProc <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+    cbClsExtra <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+    cbWndExtra <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+    hInstance <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+    hIcon <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+    hCursor <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+    hbrBackground <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+    lpszMenuName <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+    lpszClassName <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+    hIconSm <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>TYPE</b></font>
+
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MDI_RegisterClass <font color="0000AA"><b>LIB</b></font> "<font color="990000">User32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">RegisterClassExA</font>" <b>(</b>pcWndClassEx <font color="0000AA"><b>AS</b></font> MDI_CLASS<b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MDI_EnumChild <font color="0000AA"><b>LIB</b></font> "<font color="990000">User32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">EnumChildWindows</font>" <b>(</b>hWndParent <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,lpEnumFunc <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,lParam <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MDI_CreateWindow <font color="0000AA"><b>LIB</b></font> "<font color="990000">User32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">CreateWindowExA</font>" <b>(</b>dwExStyle <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,lpClassName <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font>,lpWindowName <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font>,dwStyle <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,x <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,y <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,nWidth <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,nHeight <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,hWndParent <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,hMenu <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,hInstance <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,lpParam <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MDI_DefChildProc <font color="0000AA"><b>LIB</b></font> "<font color="990000">User32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">DefMDIChildProcA</font>" <b>(</b>hWnd <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,uMsg <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,wParam <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,lParam <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MDI_GetClassName <font color="0000AA"><b>LIB</b></font> "<font color="990000">User32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">GetClassNameA</font>" <b>(</b>hwnd <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,ByRef lpClassName <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font>,nMaxCount <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MDI_SetProp <font color="0000AA"><b>LIB</b></font> "<font color="990000">User32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">SetPropA</font>" <b>(</b>hwnd <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,lpString <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font>,hData <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MDI_GetProp <font color="0000AA"><b>LIB</b></font> "<font color="990000">User32</font>"  <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">GetPropA</font>" <b>(</b>hwnd <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,lpString <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MDI_GetClientRect <font color="0000AA"><b>LIB</b></font> "<font color="990000">User32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">GetClientRect</font>" <b>(</b>hwnd <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,lpRect <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>QRECT</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MDI_MoveWindow <font color="0000AA"><b>LIB</b></font> "<font color="990000">User32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">MoveWindow</font>" <b>(</b>hwnd <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,x <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,y <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,nWidth <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,nHeight <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,bRepaint <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MDI_SetLong <font color="0000AA"><b>LIB</b></font> "<font color="990000">User32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">SetWindowLongA</font>" <b>(</b>hwnd <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,nIndex <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,dwNewLong <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MDI_GetText <font color="0000AA"><b>LIB</b></font> "<font color="990000">User32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">GetWindowTextA</font>" <b>(</b>hwnd <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,ByRef lpString <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font>,cch <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MDI_SetText <font color="0000AA"><b>LIB</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">SetWindowTextA</font>" <b>(</b>hWnd <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>,lpString <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MDI_SetFocus <font color="0000AA"><b>LIB</b></font> "<font color="990000">User32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">SetFocus</font>" <b>(</b>hwnd <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MDI_SetParent <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">SetParent</font>" <b>(</b>hWndChild <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,hWndNewParent <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MDI_GetParent <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">GetParent</font>" <b>(</b>hwnd <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MDI_GetRect <font color="0000AA"><b>LIB</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">GetWindowRect</font>" <b>(</b>hwnd <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font>, lpRect <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>QRECT</b></font><b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MDI_isIconic <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">IsIconic</font>" <b>(</b>hwnd <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MDI_isZoomed <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">IsZoomed</font>" <b>(</b>hwnd <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MDI_GetTextLenght <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">GetWindowTextLengthA</font>" <b>(</b>hwnd <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MDI_SendMessage <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">SendMessageA</font>" <b>(</b>hwnd <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, wMsg <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, wParam <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, lParam <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MDI_SetClassLong <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">SetClassLongA</font>" <b>(</b>hwnd <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,nIndex <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,dwNewLong <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MDI_ShowWindow <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">ShowWindow</font>" <b>(</b>hwnd <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,nCmdShow <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+
+
+<font color="007700"><i>'styles</i></font> 
+<font color="0000AA"><b>Const</b></font> MDI_EX_MDICHILD=&H40
+<font color="0000AA"><b>Const</b></font> MDI_CHILD=&H40000000
+<font color="0000AA"><b>Const</b></font> MDI_VISIBLE=&H10000000
+<font color="0000AA"><b>Const</b></font> MDI_OVERLAPPED=&H0
+<font color="0000AA"><b>Const</b></font> MDI_CAPTION=&HC00000
+<font color="0000AA"><b>Const</b></font> MDI_SYSMENU=&H80000
+<font color="0000AA"><b>Const</b></font> MDI_THICKFRAME=&H40000
+<font color="0000AA"><b>Const</b></font> MDI_MINIMIZEBOX=&H20000
+<font color="0000AA"><b>Const</b></font> MDI_MAXIMIZEBOX=&H10000
+<font color="0000AA"><b>Const</b></font> MDI_OVERLAPPEDWINDOW=<b>(</b>MDI_OVERLAPPED <font color="0000AA"><b>OR</b></font> MDI_CAPTION <font color="0000AA"><b>OR</b></font> MDI_SYSMENU <font color="0000AA"><b>OR</b></font> MDI_THICKFRAME <font color="0000AA"><b>OR</b></font> MDI_MINIMIZEBOX <font color="0000AA"><b>OR</b></font> MDI_MAXIMIZEBOX<b>)</b>
+
+<font color="007700"><i>'messages</i></font> 
+<font color="0000AA"><b>Const</b></font> MDI_MOVE = &H3
+<font color="0000AA"><b>Const</b></font> MDI_CLOSE=&H10
+<font color="0000AA"><b>Const</b></font> MDI_CREATE=&H1
+<font color="0000AA"><b>Const</b></font> MDI_DESTROY=&H2
+<font color="0000AA"><b>Const</b></font> MDI_SIZE=&H5
+<font color="0000AA"><b>Const</b></font> MDI_SYSCOMMAND=&H112
+<font color="0000AA"><b>Const</b></font> MDI_MDIDESTROY=&H221
+<font color="0000AA"><b>Const</b></font> MDI_MDIRESTORE=&H223
+<font color="0000AA"><b>Const</b></font> MDI_MDIMAXIMIZE=&H225
+<font color="0000AA"><b>Const</b></font> MDI_MDITILE=&H226
+<font color="0000AA"><b>Const</b></font> MDI_MDICASCADE=&H227
+<font color="0000AA"><b>Const</b></font> MDI_MDIICONARRANGE=&H228
+<font color="0000AA"><b>Const</b></font> MDI_MDIACTIVATE=&H222
+<font color="0000AA"><b>Const</b></font> MDI_MDISETMENU=&H230
+<font color="0000AA"><b>Const</b></font> MDI_MDINEXT=&H224
+<font color="0000AA"><b>Const</b></font> MDI_MDIGETACTIVE = &H229
+<font color="0000AA"><b>Const</b></font> MDI_CHILDACTIVATE = &H22
+<font color="0000AA"><b>Const</b></font> MDI_TILE_VERTICAL=&H0
+<font color="0000AA"><b>Const</b></font> MDI_TILE_HORIZONTAL=&H1
+
+<font color="0000AA"><b>Const</b></font> MDI_HWND_DESKTOP=0
+<font color="0000AA"><b>Const</b></font> MDI_USEDEFAULT=&H80000000
+<font color="0000AA"><b>Const</b></font> MDI_MINIMIZE=&HF020
+<font color="0000AA"><b>Const</b></font> MDI_MAXIMIZE = &HF030
+<font color="0000AA"><b>Const</b></font> MDI_HWNDPARENT=-8
+<font color="0000AA"><b>Const</b></font> MDI_HICON=-14
+<font color="0000AA"><b>Const</b></font> MDI_COLOR_WINDOW=5
+<font color="0000AA"><b>Const</b></font> MDI_COLOR_BACKGROUND=1
+<font color="0000AA"><b>Const</b></font> MDI_COLOR_WINDOWFRAME=6
+<font color="0000AA"><b>Const</b></font> MDI_COLOR_APPWORKSPACE=12
+<font color="0000AA"><b>Const</b></font> MDI_COLOR_HIGHLIGHT=13
+
+<font color="007700"><i>'Events</i></font> 
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Sub</b></font> OnChildClose_eventTemplate<b>(</b>handleChild <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font>,index <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,titleChild <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Sub</b></font> OnChildActive_eventTemplate<b>(</b>handleChild <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font>,index <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,titleChild <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Sub</b></font> OnChildResize_eventTemplate<b>(</b>handleChild <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font>,index <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,titleChild <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b>
+
+
+<font color="0000AA"><b>TYPE</b></font> QFormMDI <font color="0000AA"><b>EXTENDS</b></font> <font color="000099"><b>QFORM</b></font>
+  Private:
+    hClient <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+    hChild<b>(</b>1024<b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+    hComponent <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+    ClassName <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+    ChildClass <font color="0000AA"><b>AS</b></font> MDI_CLASS
+    Rect <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QRECT</b></font>
+    style <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+  Public:
+    ChildCaption <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font> PROPERTY SET SetChildCaption
+    ChildHandle <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font> PROPERTY SET SetChildHandle
+    ComponentIndex <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font> PROPERTY SET SetComponentIndex
+    ChildTop <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font> PROPERTY SET SetChildTop
+    ChildLeft <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font> PROPERTY SET SetChildLeft
+    ChildWidth <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font> PROPERTY SET SetChildWidth
+    ChildHeight <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font> PROPERTY SET SetChildHeight
+    MdiMenu <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font> PROPERTY SET SetMdiMenu
+    ChildMax <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font> PROPERTY SET SetChildMax
+    ChildCount <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font> PROPERTY SET SetChildCount
+    ChildState <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font> PROPERTY SET SetChildState
+    ChildIcon <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font> PROPERTY SET SetChildIcon
+    ChildResult <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    OnChildClose <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>EVENT</b></font><b>(</b>OnChildClose_eventTemplate<b>)</b>
+    OnChildActive <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>EVENT</b></font><b>(</b>OnChildActive_eventTemplate<b>)</b>
+    OnChildResize <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>EVENT</b></font><b>(</b>OnChildResize_eventTemplate<b>)</b>
+  
+  Private:
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Fonction callback recherche handle fenetre client MDI</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> EnumClient<b>(</b>hWnd <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font>,lParam <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+    <font color="0000AA"><b>dim</b></font> Buffer <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    Buffer=<font color="0000AA"><b>Space$</b></font><b>(</b>255<b>)</b>
+    MDI_GetClassName<b>(</b>hWnd,Buffer,255<b>)</b>
+    <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>INSTR</b></font><b>(</b><font color="0000AA"><b>UCASE$</b></font><b>(</b>Buffer<b>)</b>,"<font color="990000">MDICLIENT</font>"<b>)</b> <font color="0000AA"><b>then</b></font> QFormMDI.hClient=hWnd
+    Result=True
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Fonction callback recherche handle fenetre fille MDI</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> EnumChild<b>(</b>hWnd <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font>,lParam <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+    <font color="0000AA"><b>dim</b></font> Buffer <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+
+    Buffer=<font color="0000AA"><b>Space$</b></font><b>(</b>255<b>)</b>
+    MDI_GetClassName<b>(</b>hWnd,Buffer,255<b>)</b>
+    <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>INSTR</b></font><b>(</b><font color="0000AA"><b>UCASE$</b></font><b>(</b>Buffer<b>)</b>,"<font color="990000">MDICHILD</font>"<b>)</b> <font color="000099"><b>then</b></font>
+      <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>0 <font color="000099"><b>then</b></font>
+        <font color="0000AA"><b>if</b></font> hwnd&lt;>QFormMDI.hChild<b>(</b>QFormMDI.ChildCount-1<b>)</b> <font color="000099"><b>then</b></font>
+          QFormMDI.hChild<b>(</b>QFormMDI.ChildCount<b>)</b>=hWnd
+          QFormMDI.ChildCount++
+        <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      <font color="000099"><b>else</b></font>
+        QFormMDI.hChild<b>(</b>QFormMDI.ChildCount<b>)</b>=hWnd
+        QFormMDI.ChildCount++
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    Result=true
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Procedure adaptation dimentions fenetre fille MDI</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> GetSizeChild<b>(</b>hwnd <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+    <font color="0000AA"><b>dim</b></font> Rc <font color="0000AA"><b>as</b></font> <font color="000099"><b>QRect</b></font>
+    <font color="0000AA"><b>dim</b></font> Rw <font color="0000AA"><b>as</b></font> <font color="000099"><b>QRect</b></font>
+    <font color="0000AA"><b>dim</b></font> borderX <font color="0000AA"><b>as</b></font> <font color="000099"><b>short</b></font>
+    <font color="0000AA"><b>dim</b></font> borderY <font color="0000AA"><b>as</b></font> <font color="000099"><b>short</b></font>
+    <font color="0000AA"><b>dim</b></font> top <font color="0000AA"><b>as</b></font> <font color="000099"><b>short</b></font>
+    <font color="0000AA"><b>dim</b></font> left <font color="0000AA"><b>as</b></font> <font color="000099"><b>short</b></font>
+
+    MDI_GetClientRect<b>(</b>QFormMDI.hClient,Rc<b>)</b>
+    MDI_GetRect<b>(</b>QFormMDI.hClient,Rw<b>)</b>
+    top=Rw.top
+    left=Rw.left
+    borderX=<b>(</b><b>(</b>Rw.Right-Rw.Left<b>)</b>-Rc.Right<b>)</b>/2
+    borderY=<b>(</b><b>(</b>Rw.Bottom-Rw.Top<b>)</b>-Rc.Bottom<b>)</b>/2
+    MDI_GetRect<b>(</b>hWnd,Rw<b>)</b>
+    QFormMDI.ChildLeft=Rw.Left-<b>(</b>left+borderX<b>)</b>
+    QFormMDI.ChildTop=Rw.Top-<b>(</b>top+borderY<b>)</b>
+    QFormMDI.ChildWidth=Rw.Right-Rw.Left
+    QFormMDI.ChildHeight=Rw.Bottom-Rw.Top
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Fonction retourne etat fenetre fille MDI</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> GetState<b>(</b>hwnd <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>short</b></font>
+    <font color="0000AA"><b>if</b></font> MDI_isIconic<b>(</b>hwnd<b>)</b> <font color="000099"><b>then</b></font>
+      result=1
+    <font color="0000AA"><b>elseif</b></font> MDI_isZoomed<b>(</b>hwnd<b>)</b> <font color="000099"><b>then</b></font>
+      result=2
+    <font color="000099"><b>else</b></font>
+      result=0
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Fonction retourne le texte caption d'une fenetre MDI</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> GetTextChild<b>(</b>hwnd <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+    <font color="0000AA"><b>dim</b></font> size <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> buffer <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>    
+
+    size=MDI_GetTextLenght<b>(</b>hwnd<b>)</b>
+    buffer=<font color="0000AA"><b>Space$</b></font><b>(</b>size<b>)</b>+<font color="0000AA"><b>chr$</b></font><b>(</b>0<b>)</b>
+    size=MDI_GetText<b>(</b>hwnd,buffer,<font color="0000AA"><b>Len</b></font><b>(</b>buffer<b>)</b><b>)</b>
+    result=<font color="0000AA"><b>Left$</b></font><b>(</b>buffer,size<b>)</b>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+  
+public:
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Procedure de fenetre enfant MDI</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> ChildProc<b>(</b>hWnd <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font>,uMsg <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font>,wParam <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font>,lParam <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+    <font color="0000AA"><b>Select</b></font> <font color="0000AA"><b>Case</b></font> uMsg
+    <font color="0000AA"><b>Case</b></font> MDI_CREATE
+      MDI_SetParent<b>(</b>QFormMDI.hComponent,hWnd<b>)</b>
+      MDI_ShowWindow<b>(</b>QFormMDI.hComponent,true<b>)</b>
+      MDI_SetProp<b>(</b>hWnd,"<font color="990000">EditHandle</font>",QFormMDI.hComponent<b>)</b>
+      MDI_SetProp<b>(</b>hWnd,"<font color="990000">EditIndex</font>",QFormMDI.ComponentIndex<b>)</b>
+      QFormMDI.ChildCount++
+      <font color="0000AA"><b>if</b></font> QFormMDI.MdiMenu>0 <font color="0000AA"><b>then</b></font> SendMessage<b>(</b>QFormMDI.hClient,MDI_MDISETMENU,0,QFormMDI.MdiMenu<b>)</b>
+      Result=MDI_DefChildProc<b>(</b>hWnd,uMsg,wParam,lParam<b>)</b>
+    <font color="0000AA"><b>Case</b></font> MDI_SIZE
+      QFormMDI.hComponent=MDI_GetProp<b>(</b>hWnd,"<font color="990000">EditHandle</font>"<b>)</b>
+      QFormMDI.ComponentIndex=MDI_GetProp<b>(</b>hWnd,"<font color="990000">EditIndex</font>"<b>)</b>
+      QFormMDI.ChildCaption=QFormMDI.GetTextChild<b>(</b>hwnd<b>)</b>
+      MDI_GetClientRect<b>(</b>hWnd,QFormMDI.Rect<b>)</b>
+      MDI_MoveWindow<b>(</b>QFormMDI.hComponent,0,0,QFormMDI.Rect.Right,QFormMDI.Rect.Bottom,True<b>)</b>
+      QFormMDI.GetSizeChild<b>(</b>hwnd<b>)</b>
+      <font color="0000AA"><b>if</b></font> QFormMDI.OnChildResize&lt;>0 <font color="0000AA"><b>then</b></font> <font color="0000AA"><b>CALLFUNC</b></font><b>(</b>QFormMDI.OnChildResize,hwnd,QFormMDI.ComponentIndex,QFormMDI.ChildCaption<b>)</b>
+      Result=MDI_DefChildProc<b>(</b>hWnd,uMsg,wParam,lParam<b>)</b>
+    <font color="0000AA"><b>Case</b></font> MDI_MDIACTIVATE
+      QFormMDI.ChildHandle=hWnd
+      QFormMDI.ChildCaption=QFormMDI.GetTextChild<b>(</b>hwnd<b>)</b>
+      QFormMDI.GetSizeChild<b>(</b>hwnd<b>)</b>
+      MDI_SetFocus<b>(</b>MDI_GetProp<b>(</b>lParam,"<font color="990000">EditHandle</font>"<b>)</b><b>)</b>
+      QFormMDI.ComponentIndex=MDI_GetProp<b>(</b>hWnd,"<font color="990000">EditIndex</font>"<b>)</b>
+      QFormMDI.ChildState=QFormMDI.GetState<b>(</b>hwnd<b>)</b>
+      <font color="0000AA"><b>if</b></font> QFormMDI.OnChildActive&lt;>0 <font color="0000AA"><b>then</b></font> <font color="0000AA"><b>CALLFUNC</b></font><b>(</b>QFormMDI.OnChildActive,hwnd,QFormMDI.ComponentIndex,QFormMDI.ChildCaption<b>)</b>
+      Result=MDI_DefChildProc<b>(</b>hWnd,uMsg,wParam,lParam<b>)</b>
+    <font color="0000AA"><b>Case</b></font> MDI_CLOSE
+      QFormMDI.ChildResult=True
+      QFormMDI.ChildCaption=QFormMDI.GetTextChild<b>(</b>hwnd<b>)</b>
+      QFormMDI.ComponentIndex=MDI_GetProp<b>(</b>hWnd,"<font color="990000">EditIndex</font>"<b>)</b>
+      <font color="0000AA"><b>if</b></font> QFormMDI.OnChildClose&lt;>0 <font color="0000AA"><b>then</b></font> <font color="0000AA"><b>CALLFUNC</b></font><b>(</b>QFormMDI.OnChildClose,hwnd,QFormMDI.ComponentIndex,QFormMDI.ChildCaption<b>)</b>
+      <font color="0000AA"><b>if</b></font> QFormMDI.ChildResult>0 <font color="000099"><b>then</b></font>
+        Result=MDI_DefChildProc<b>(</b>hWnd,uMsg,wParam,lParam<b>)</b>
+      <font color="000099"><b>else</b></font>
+        Result=False
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>Case</b></font> MDI_DESTROY
+      QFormMDI.hComponent=MDI_GetProp<b>(</b>hWnd,"<font color="990000">EditHandle</font>"<b>)</b>
+      MDI_MoveWindow<b>(</b>QFormMDI.hComponent,0,0,0,0,0<b>)</b>
+      MDI_ShowWindow<b>(</b>QFormMDI.hComponent,false<b>)</b>
+      MDI_SetParent<b>(</b>QFormMDI.hComponent,QFormMDI.handle<b>)</b>
+      QFormMDI.ChildCount--
+      Result=MDI_DefChildProc<b>(</b>hWnd,uMsg,wParam,lParam<b>)</b>
+    <font color="0000AA"><b>Case</b></font> MDI_MOVE
+      QFormMDI.GetSizeChild<b>(</b>hwnd<b>)</b>
+      Result=MDI_DefChildProc<b>(</b>hWnd,uMsg,wParam,lParam<b>)</b>
+    <font color="0000AA"><b>Case</b></font> <font color="000099"><b>else</b></font>
+      <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>0 <font color="000099"><b>then</b></font>
+        QFormMDI.ChildState=QFormMDI.GetState<b>(</b>hwnd<b>)</b>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      Result=MDI_DefChildProc<b>(</b>hWnd,uMsg,wParam,lParam<b>)</b>
+    <font color="0000AA"><b>End</b></font> <font color="000099"><b>Select</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+  Public:
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Proprieté nombre max fenetre fille MDI</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  Property Set SetChildMax<b>(</b>number <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font><b>)</b>
+    <font color="0000AA"><b>if</b></font> number&lt;=1024 <font color="0000AA"><b>then</b></font> QFormMDI.ChildMax=number
+  <font color="0000AA"><b>End</b></font> Property
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Proprieté icon fenetre fille MDI</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  Property Set SetChildIcon<b>(</b>handle <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+    <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>0 <font color="000099"><b>then</b></font>
+      MDI_SetClassLong<b>(</b>QFormMDI.ChildHandle,MDI_HICON,handle<b>)</b>
+    <font color="000099"><b>else</b></font>
+      QFormMDI.ChildClass.hIcon=handle
+      QFormMDI.ChildClass.hIconSm=handle
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> Property
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Proprieté caption fenetre fille MDI active</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  Property Set SetChildCaption<b>(</b>caption <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b>
+    <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>0 <font color="000099"><b>then</b></font>
+      QFormMDI.ChildCaption=caption
+      MDI_SetText<b>(</b>QFormMDI.ChildHandle,QFormMDI.ChildCaption<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> Property  
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Proprieté handle fenetre fille MDI active</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  Property Set SetChildHandle<b>(</b>handle <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+    <font color="007700"><i>'lecture uniquement</i></font> 
+  <font color="0000AA"><b>End</b></font> Property  
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Proprieté index composant fenetre fille MDI active</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  Property Set SetComponentIndex<b>(</b>index <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font><b>)</b>
+    <font color="007700"><i>'lecture uniquement</i></font> 
+  <font color="0000AA"><b>End</b></font> Property  
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Proprieté top fenetre fille MDI active</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  Property Set SetChildTop<b>(</b>top <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+    <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>0 <font color="000099"><b>then</b></font>
+      QFormMDI.ChildTop=top
+      MDI_MoveWindow<b>(</b>QFormMDI.ChildHandle,QFormMDI.ChildLeft,QFormMDI.ChildTop,QFormMDI.ChildWidth,QFormMDI.ChildHeight,True<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> Property  
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Proprieté left fenetre fille MDI active</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  Property Set SetChildLeft<b>(</b>left <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+    <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>0 <font color="000099"><b>then</b></font>
+      QFormMDI.ChildLeft=left
+      MDI_MoveWindow<b>(</b>QFormMDI.ChildHandle,QFormMDI.ChildLeft,QFormMDI.ChildTop,QFormMDI.ChildWidth,QFormMDI.ChildHeight,True<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> Property  
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Proprieté width fenetre fille MDI active</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  Property Set SetChildWidth<b>(</b>width <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+    <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>0 <font color="000099"><b>then</b></font>
+      QFormMDI.ChildWidth=width
+      MDI_MoveWindow<b>(</b>QFormMDI.ChildHandle,QFormMDI.ChildLeft,QFormMDI.ChildTop,QFormMDI.ChildWidth,QFormMDI.ChildHeight,True<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> Property  
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Proprieté height fenetre fille MDI active</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  Property Set SetChildHeight<b>(</b>height <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+    <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>0 <font color="000099"><b>then</b></font>
+      QFormMDI.ChildHeight=height
+      MDI_MoveWindow<b>(</b>QFormMDI.ChildHandle,QFormMDI.ChildLeft,QFormMDI.ChildTop,QFormMDI.ChildWidth,QFormMDI.ChildHeight,True<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> Property  
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Proprieté handle menu fenetre fille MDI</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  Property Set SetMdiMenu<b>(</b>MenuHandle <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+      <font color="0000AA"><b>if</b></font> MenuHandle>0 <font color="0000AA"><b>then</b></font> QFormMDI.MdiMenu=MenuHandle
+  <font color="0000AA"><b>End</b></font> Property  
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Proprieté nombre fenetre fille MDI</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  Property Set SetChildCount<b>(</b>index <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font><b>)</b>
+    <font color="007700"><i>'lecture uniquement</i></font> 
+  <font color="0000AA"><b>End</b></font> Property  
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Proprieté etat fenetre fille MDI active</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  Property Set SetChildState<b>(</b>state <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font><b>)</b>
+    <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>0 <font color="000099"><b>then</b></font>
+      QFormMDI.ChildState=state
+      <font color="0000AA"><b>if</b></font> state=1 <font color="000099"><b>then</b></font>
+        SendMessage<b>(</b>QFormMDI.ChildHandle,MDI_SYSCOMMAND,MDI_MINIMIZE,0<b>)</b>
+      <font color="0000AA"><b>elseif</b></font> state=2 <font color="000099"><b>then</b></font>
+        SendMessage<b>(</b>QFormMDI.hClient,MDI_MDIMAXIMIZE,QFormMDI.ChildHandle,0<b>)</b>
+        MDI_SetFocus<b>(</b>MDI_GetProp<b>(</b>QFormMDI.ChildHandle,"<font color="990000">EditHandle</font>"<b>)</b><b>)</b>
+      <font color="000099"><b>else</b></font>
+        SendMessage<b>(</b>QFormMDI.hClient,MDI_MDIRESTORE,QFormMDI.ChildHandle,0<b>)</b>
+        MDI_SetFocus<b>(</b>MDI_GetProp<b>(</b>QFormMDI.ChildHandle,"<font color="990000">EditHandle</font>"<b>)</b><b>)</b>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> Property  
+  
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Méthode addition d'une fenetre fille MDI</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> AddChild<b>(</b>handle <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font>,Title <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>,index <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,Left <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font>,Top <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font>,Width <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font>,Height <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font>,DefaultSize <font color="0000AA"><b>as</b></font> boolean<b>)</b>
+    <font color="007700"><i>'init client MDI</i></font> 
+    <font color="0000AA"><b>if</b></font> QFormMDI.hClient=0 <font color="000099"><b>then</b></font>
+      QFormMDI.ChildClass.cbSize=<font color="0000AA"><b>SIZEOF</b></font><b>(</b>QFormMDI.ChildClass<b>)</b>
+      QFormMDI.ChildClass.lpfnWndProc=<font color="0000AA"><b>CODEPTR</b></font><b>(</b>QFormMDI.ChildProc<b>)</b>
+      QFormMDI.ChildClass.hbrBackground=MDI_COLOR_WINDOWFRAME
+      QFormMDI.ChildClass.lpszClassName=<font color="0000AA"><b>VARPTR</b></font><b>(</b>QFormMDI.ClassName<b>)</b>
+      <font color="007700"><i>'QFormMDI.ChildClass.hinstance=application.hinstance</i></font> 
+      MDI_RegisterClass<b>(</b>QFormMDI.ChildClass<b>)</b>
+      MDI_EnumChild<b>(</b>QFormMDI.Handle,<font color="0000AA"><b>CODEPTR</b></font><b>(</b>QFormMDI.EnumClient<b>)</b>,0<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount&lt;QFormMDI.ChildMax <font color="0000AA"><b>and</b></font> handle&lt;>0 <font color="000099"><b>then</b></font>
+      QFormMDI.hComponent=handle
+      QFormMDI.ComponentIndex=index
+      QFormMDI.style=MDI_CHILD <font color="0000AA"><b>OR</b></font> MDI_VISIBLE <font color="0000AA"><b>OR</b></font> MDI_OVERLAPPEDWINDOW
+      <font color="0000AA"><b>if</b></font> DefaultSize=True <font color="000099"><b>then</b></font>
+        <font color="007700"><i>'QFormMDI.hChild(QFormMDI.ChildCount)=MDI_CreateWindow(MDI_EX_MDICHILD,QFormMDI.ClassName,Title,QFormMDI.style,MDI_USEDEFAULT,MDI_USEDEFAULT,MDI_USEDEFAULT,MDI_USEDEFAULT,QFormMDI.hClient,0,application.hinstance,0)</i></font> 
+        QFormMDI.hChild<b>(</b>QFormMDI.ChildCount<b>)</b>=MDI_CreateWindow<b>(</b>MDI_EX_MDICHILD,QFormMDI.ClassName,Title,QFormMDI.style,MDI_USEDEFAULT,MDI_USEDEFAULT,MDI_USEDEFAULT,MDI_USEDEFAULT,QFormMDI.hClient,0,0,0<b>)</b>
+      <font color="000099"><b>else</b></font>
+        <font color="007700"><i>'QFormMDI.hChild(QFormMDI.ChildCount)=MDI_CreateWindow(MDI_EX_MDICHILD,QFormMDI.ClassName,Title,QFormMDI.style,Left,Top,Width,Height,QFormMDI.hClient,0,application.hinstance,0)</i></font> 
+        QFormMDI.hChild<b>(</b>QFormMDI.ChildCount<b>)</b>=MDI_CreateWindow<b>(</b>MDI_EX_MDICHILD,QFormMDI.ClassName,Title,QFormMDI.style,Left,Top,Width,Height,QFormMDI.hClient,0,0,0<b>)</b>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Méthode fermeture fenetre fille MDI active</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> CloseChild
+    <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>0 <font color="000099"><b>then</b></font>
+      QFormMDI.ChildResult=True
+      QFormMDI.ChildHandle=MDI_SendMessage<b>(</b>QFormMDI.hClient,MDI_MDIGETACTIVE,0,0<b>)</b>
+      QFormMDI.ComponentIndex=MDI_GetProp<b>(</b>QFormMDI.ChildHandle,"<font color="990000">EditIndex</font>"<b>)</b>
+      QFormMDI.ChildCaption=QFormMDI.GetTextChild<b>(</b>QFormMDI.ChildHandle<b>)</b>
+      <font color="0000AA"><b>if</b></font> QFormMDI.OnChildClose&lt;>0 <font color="0000AA"><b>then</b></font> <font color="0000AA"><b>CALLFUNC</b></font><b>(</b>QFormMDI.OnChildClose,QFormMDI.CHildHandle,QFormMDI.ComponentIndex,QFormMDI.ChildCaption<b>)</b>
+      <font color="0000AA"><b>if</b></font> QFormMDI.ChildResult>0 <font color="000099"><b>then</b></font>
+        SendMessage<b>(</b>QFormMDI.hClient,MDI_MDIDESTROY,QFormMDI.ChildHandle,0<b>)</b>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>0 <font color="000099"><b>then</b></font>
+        QFormMDI.ChildHandle=MDI_SendMessage<b>(</b>QFormMDI.hClient,MDI_MDIGETACTIVE,0,0<b>)</b>
+        QFormMDI.ComponentIndex=MDI_GetProp<b>(</b>QFormMDI.ChildHandle,"<font color="990000">EditIndex</font>"<b>)</b>
+        QFormMDI.ChildCaption=QFormMDI.GetTextChild<b>(</b>QFormMDI.ChildHandle<b>)</b>
+        QFormMDI.ChildState=QFormMDI.GetState<b>(</b>QFormMDI.ChildHandle<b>)</b>
+        QFormMDI.GetSizeChild<b>(</b>QFormMDI.ChildHandle<b>)</b>
+        MDI_SetFocus<b>(</b>MDI_GetProp<b>(</b>QFormMDI.ChildHandle,"<font color="990000">EditHandle</font>"<b>)</b><b>)</b>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Méthode fermeture fenetres fille MDI</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> CloseAllChild 
+    <font color="0000AA"><b>dim</b></font> i <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+
+    <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>0 <font color="000099"><b>then</b></font>
+      QFormMDI.ChildCount=0
+      MDI_EnumChild<b>(</b>QFormMDI.hClient,<font color="0000AA"><b>CODEPTR</b></font><b>(</b>QFormMDI.EnumChild<b>)</b>,0<b>)</b>
+      <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>1 <font color="000099"><b>then</b></font>
+        <font color="0000AA"><b>for</b></font> i=0 <font color="0000AA"><b>to</b></font> QFormMDI.ChildCount-1
+          QFormMDI.ChildResult=True
+          QFormMDI.ComponentIndex=MDI_GetProp<b>(</b>QFormMDI.hChild<b>(</b>i<b>)</b>,"<font color="990000">EditIndex</font>"<b>)</b>
+          QFormMDI.ChildCaption=QFormMDI.GetTextChild<b>(</b>QFormMDI.hChild<b>(</b>i<b>)</b><b>)</b>
+          <font color="0000AA"><b>if</b></font> QFormMDI.OnChildClose&lt;>0 <font color="0000AA"><b>then</b></font> <font color="0000AA"><b>CALLFUNC</b></font><b>(</b>QFormMDI.OnChildClose,QFormMDI.hChild<b>(</b>i<b>)</b>,QFormMDI.ComponentIndex,QFormMDI.ChildCaption<b>)</b>
+          <font color="0000AA"><b>if</b></font> QFormMDI.ChildResult>0 <font color="000099"><b>then</b></font>
+            SendMessage<b>(</b>QFormMDI.hClient,MDI_MDIDESTROY,QFormMDI.hChild<b>(</b>i<b>)</b>,0<b>)</b>
+          <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+        <font color="0000AA"><b>next</b></font> i
+      <font color="000099"><b>else</b></font>
+        <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>0 <font color="000099"><b>then</b></font>
+          QFormMDI.ChildResult=True
+          QFormMDI.ComponentIndex=MDI_GetProp<b>(</b>QFormMDI.hChild<b>(</b>0<b>)</b>,"<font color="990000">EditIndex</font>"<b>)</b>
+          QFormMDI.ChildCaption=QFormMDI.GetTextChild<b>(</b>QFormMDI.hChild<b>(</b>0<b>)</b><b>)</b>
+          <font color="0000AA"><b>if</b></font> QFormMDI.OnChildClose&lt;>0 <font color="0000AA"><b>then</b></font> <font color="0000AA"><b>CALLFUNC</b></font><b>(</b>QFormMDI.OnChildClose,QFormMDI.hChild<b>(</b>0<b>)</b>,QFormMDI.ComponentIndex,QFormMDI.ChildCaption<b>)</b>
+          <font color="0000AA"><b>if</b></font> QFormMDI.ChildResult>0 <font color="000099"><b>then</b></font>
+            SendMessage<b>(</b>QFormMDI.hClient,MDI_MDIDESTROY,QFormMDI.hChild<b>(</b>0<b>)</b>,0<b>)</b>
+          <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+        <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>0 <font color="000099"><b>then</b></font>
+        QFormMDI.ChildHandle=MDI_SendMessage<b>(</b>QFormMDI.hClient,MDI_MDIGETACTIVE,0,0<b>)</b>
+        QFormMDI.ComponentIndex=MDI_GetProp<b>(</b>QFormMDI.ChildHandle,"<font color="990000">EditIndex</font>"<b>)</b>
+        QFormMDI.ChildCaption=QFormMDI.GetTextChild<b>(</b>QFormMDI.ChildHandle<b>)</b>
+        QFormMDI.ChildState=QFormMDI.GetState<b>(</b>QFormMDI.ChildHandle<b>)</b>
+        QFormMDI.GetSizeChild<b>(</b>QFormMDI.ChildHandle<b>)</b>
+        MDI_SetFocus<b>(</b>MDI_GetProp<b>(</b>QFormMDI.ChildHandle,"<font color="990000">EditHandle</font>"<b>)</b><b>)</b>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Méthode mise en cascade des fenetres fille MDI</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> CascadeChild
+    <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>0 <font color="000099"><b>then</b></font>
+      SendMessage<b>(</b>QFormMDI.hClient,MDI_MDICASCADE,0,0<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Méthode mise en horizontale fenetres fille MDI</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> SetHorzChild
+    <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>0 <font color="000099"><b>then</b></font>
+      SendMessage<b>(</b>QFormMDI.hClient,MDI_MDITILE,MDI_TILE_HORIZONTAL,0<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Méthode mise en verticale fenetres fille MDI</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> SetVertChild
+    <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>0 <font color="000099"><b>then</b></font>
+      SendMessage<b>(</b>QFormMDI.hClient,MDI_MDITILE,MDI_TILE_VERTICAL,0<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Méthode arrangement des fenetres fille MDI en icone</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> IconArrangeChild
+    <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>0 <font color="000099"><b>then</b></font>
+      SendMessage<b>(</b>QFormMDI.hClient,MDI_MDIICONARRANGE,0,0<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Méthode reduit en icone les fenetres fille MDI</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> MinimizeAllChild
+    <font color="0000AA"><b>dim</b></font> i <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+
+    <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>0 <font color="000099"><b>then</b></font>
+      QFormMDI.ChildCount=0
+      MDI_EnumChild<b>(</b>QFormMDI.hClient,<font color="0000AA"><b>CODEPTR</b></font><b>(</b>QFormMDI.EnumChild<b>)</b>,0<b>)</b>
+      <font color="0000AA"><b>for</b></font> i=0 <font color="0000AA"><b>to</b></font> QFormMDI.ChildCount-1
+        SendMessage<b>(</b>QFormMDI.hChild<b>(</b>i<b>)</b>,MDI_SYSCOMMAND,MDI_MINIMIZE,0<b>)</b>
+      <font color="0000AA"><b>next</b></font> i
+      <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>0 <font color="000099"><b>then</b></font>
+        QFormMDI.ChildHandle=MDI_SendMessage<b>(</b>QFormMDI.hClient,MDI_MDIGETACTIVE,0,0<b>)</b>
+        QFormMDI.ComponentIndex=MDI_GetProp<b>(</b>QFormMDI.ChildHandle,"<font color="990000">EditIndex</font>"<b>)</b>
+        QFormMDI.ChildCaption=QFormMDI.GetTextChild<b>(</b>QFormMDI.ChildHandle<b>)</b>
+        QFormMDI.ChildState=QFormMDI.GetState<b>(</b>QFormMDI.ChildHandle<b>)</b>
+        QFormMDI.GetSizeChild<b>(</b>QFormMDI.ChildHandle<b>)</b>
+        MDI_SetFocus<b>(</b>MDI_GetProp<b>(</b>QFormMDI.ChildHandle,"<font color="990000">EditHandle</font>"<b>)</b><b>)</b>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Méthode met en taille maxi les fenetres fille MDI</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> MaximizeAllChild
+    <font color="0000AA"><b>dim</b></font> i <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+
+    <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>0 <font color="000099"><b>then</b></font>
+      QFormMDI.ChildCount=0
+      MDI_EnumChild<b>(</b>QFormMDI.hClient,<font color="0000AA"><b>CODEPTR</b></font><b>(</b>QFormMDI.EnumChild<b>)</b>,0<b>)</b>
+      <font color="0000AA"><b>for</b></font> i=0 <font color="0000AA"><b>to</b></font> QFormMDI.ChildCount-1
+        SendMessage<b>(</b>QFormMDI.hClient,MDI_MDIMAXIMIZE,QFormMDI.hChild<b>(</b>i<b>)</b>,0<b>)</b>
+      <font color="0000AA"><b>next</b></font> i
+      <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>0 <font color="000099"><b>then</b></font>
+        QFormMDI.ChildHandle=MDI_SendMessage<b>(</b>QFormMDI.hClient,MDI_MDIGETACTIVE,0,0<b>)</b>
+        QFormMDI.ComponentIndex=MDI_GetProp<b>(</b>QFormMDI.ChildHandle,"<font color="990000">EditIndex</font>"<b>)</b>
+        QFormMDI.ChildCaption=QFormMDI.GetTextChild<b>(</b>QFormMDI.ChildHandle<b>)</b>
+        QFormMDI.ChildState=QFormMDI.GetState<b>(</b>QFormMDI.ChildHandle<b>)</b>
+        QFormMDI.GetSizeChild<b>(</b>QFormMDI.ChildHandle<b>)</b>
+        MDI_SetFocus<b>(</b>MDI_GetProp<b>(</b>QFormMDI.ChildHandle,"<font color="990000">EditHandle</font>"<b>)</b><b>)</b>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Méthode restauration taille des fenetres fille MDI</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> RestoreChild
+    <font color="0000AA"><b>dim</b></font> i <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+
+    <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>0 <font color="000099"><b>then</b></font>
+      QFormMDI.ChildCount=0
+      MDI_EnumChild<b>(</b>QFormMDI.hClient,<font color="0000AA"><b>CODEPTR</b></font><b>(</b>QFormMDI.EnumChild<b>)</b>,0<b>)</b>
+      <font color="0000AA"><b>for</b></font> i=0 <font color="0000AA"><b>to</b></font> QFormMDI.ChildCount-1
+        SendMessage<b>(</b>QFormMDI.hClient,MDI_MDIRESTORE,QFormMDI.hChild<b>(</b>i<b>)</b>,0<b>)</b>
+      <font color="0000AA"><b>next</b></font> i
+      <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>0 <font color="000099"><b>then</b></font>
+        QFormMDI.ChildHandle=MDI_SendMessage<b>(</b>QFormMDI.hClient,MDI_MDIGETACTIVE,0,0<b>)</b>
+        QFormMDI.ComponentIndex=MDI_GetProp<b>(</b>QFormMDI.ChildHandle,"<font color="990000">EditIndex</font>"<b>)</b>
+        QFormMDI.ChildCaption=QFormMDI.GetTextChild<b>(</b>QFormMDI.ChildHandle<b>)</b>
+        QFormMDI.ChildState=QFormMDI.GetState<b>(</b>QFormMDI.ChildHandle<b>)</b>
+        QFormMDI.GetSizeChild<b>(</b>QFormMDI.ChildHandle<b>)</b>
+        MDI_SetFocus<b>(</b>MDI_GetProp<b>(</b>QFormMDI.ChildHandle,"<font color="990000">EditHandle</font>"<b>)</b><b>)</b>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Méthode active la fenetre fille MDI suivante</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> ActiveNextChild
+    <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>0 <font color="000099"><b>then</b></font>
+      SendMessage<b>(</b>QFormMDI.hClient,MDI_MDINEXT,QFormMDI.ChildHandle,False<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Méthode active la fenetre fille MDI précedente</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> ActivePreviousChild
+    <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>0 <font color="000099"><b>then</b></font>
+      SendMessage<b>(</b>QFormMDI.hClient,MDI_MDINEXT,QFormMDI.ChildHandle,True<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Méthode retourne index titre fenetre fille MDI </i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> GetChild<b>(</b>title <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> i <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> index <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+
+    <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>0 <font color="000099"><b>then</b></font>
+      QFormMDI.ChildCount=0
+      MDI_EnumChild<b>(</b>QFormMDI.hClient,<font color="0000AA"><b>CODEPTR</b></font><b>(</b>QFormMDI.EnumChild<b>)</b>,0<b>)</b>
+      index=0
+      <font color="0000AA"><b>for</b></font> i=0 <font color="0000AA"><b>to</b></font> QFormMDI.ChildCount-1
+        <font color="0000AA"><b>if</b></font> title=QFormMDI.GetTextChild<b>(</b>QFormMDI.hChild<b>(</b>i<b>)</b><b>)</b> <font color="0000AA"><b>then</b></font> index=i
+      <font color="0000AA"><b>next</b></font> i
+      result=index
+    <font color="000099"><b>else</b></font>
+      result=0
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Méthode retourne l'existence titre fenetre fille MDI </i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> ChildExist<b>(</b>title <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> boolean
+    <font color="0000AA"><b>dim</b></font> i <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    <font color="0000AA"><b>dim</b></font> exist <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+
+    <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>0 <font color="000099"><b>then</b></font>
+      QFormMDI.ChildCount=0
+      MDI_EnumChild<b>(</b>QFormMDI.hClient,<font color="0000AA"><b>CODEPTR</b></font><b>(</b>QFormMDI.EnumChild<b>)</b>,0<b>)</b>
+      exist=False
+      <font color="0000AA"><b>for</b></font> i=0 <font color="0000AA"><b>to</b></font> QFormMDI.ChildCount-1
+        <font color="0000AA"><b>if</b></font> title=QFormMDI.GetTextChild<b>(</b>QFormMDI.hChild<b>(</b>i<b>)</b><b>)</b> <font color="0000AA"><b>then</b></font> exist=True
+      <font color="0000AA"><b>next</b></font> i
+      result=exist
+    <font color="000099"><b>else</b></font>
+      result=False
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Méthode active la fenetre fille MDI par index</i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> ActiveChild<b>(</b>index <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font><b>)</b>
+    <font color="0000AA"><b>if</b></font> QFormMDI.ChildCount>0 <font color="000099"><b>then</b></font>
+      SendMessage<b>(</b>QFormMDI.hClient,MDI_MDIACTIVATE,QFormMDI.hChild<b>(</b>index<b>)</b>,0<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="007700"><i>' Méthode retourne etat associé MDI d'un composant </i></font> 
+  <font color="007700"><i>'========================================================</i></font> 
+  <font color="0000AA"><b>Function</b></font> FreeChild<b>(</b>handle <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b> <font color="0000AA"><b>as</b></font> boolean
+    <font color="0000AA"><b>if</b></font> MDI_GetParent<b>(</b>handle<b>)</b>=QFormMDI.handle <font color="000099"><b>then</b></font>
+      result=True
+    <font color="000099"><b>else</b></font>
+      result=False
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+  
+  <font color="007700"><i>'=============================================================================</i></font> 
+  <font color="007700"><i>' méthode application dans barre outil bureau lors de la reduction fenetre</i></font> 
+  <font color="007700"><i>'=============================================================================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> SetDeskBar
+    MDI_SetLong<b>(</b>QFormMDI.handle,MDI_HWNDPARENT,MDI_HWND_DESKTOP<b>)</b>
+    MDI_SetLong<b>(</b>application.handle,MDI_HWNDPARENT,QFormMDI.handle<b>)</b>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+    
+  <font color="000099"><b>Constructor</b></font>
+    FormStyle=2
+    <font color="0000AA"><b>Color</b></font>=-2147483636
+    ChildMax=1024
+    ClassName="<font color="990000">MDIChild</font>"
+    hClient=0
+    ChildCount=0
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Constructor</b></font>
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>TYPE</b></font>
+ 
+</pre>
+</body>
+</html>

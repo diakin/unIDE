@@ -1,0 +1,50 @@
+<html>
+<head>
+<title>QDriveCombobox.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="007700"><i>' Type Objet</i></font> 
+<font color="007700"><i>' Classe QDriveCombobox</i></font> 
+<font color="007700"><i>'=======================================================</i></font> 
+
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> GetDriveType <font color="0000AA"><b>Lib</b></font> "<font color="990000">kernel32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">GetDriveTypeA</font>" <b>(</b>nDrive <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>String</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+
+<font color="0000AA"><b>TYPE</b></font> QDriveComboBox <font color="0000AA"><b>EXTENDS</b></font> <font color="000099"><b>QComboBox</b></font>
+  <font color="007700"><i>'=========================================</i></font> 
+  <font color="007700"><i>' méthode reception des lecteurs présents</i></font> 
+  <font color="007700"><i>'=========================================</i></font> 
+  <font color="0000AA"><b>SUB</b></font> GetDrives
+   <font color="0000AA"><b>dim</b></font> ASC_A <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+   <font color="0000AA"><b>dim</b></font> ASC_Z <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+   <font color="0000AA"><b>dim</b></font> i <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+   <font color="0000AA"><b>dim</b></font> name <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+   
+   ASC_A=65
+   ASC_Z=ASC_A+25
+   <font color="0000AA"><b>for</b></font> i=ASC_A <font color="0000AA"><b>to</b></font> ASC_Z
+     <font color="0000AA"><b>if</b></font> GetDriveType<b>(</b><font color="0000AA"><b>Chr$</b></font><b>(</b>i<b>)</b>&"<font color="990000">:\</font>"<b>)</b>&lt;>1 <font color="000099"><b>then</b></font>
+       name=<font color="0000AA"><b>chr$</b></font><b>(</b>i<b>)</b>+"<font color="990000">:\</font>"
+       QDriveComboBox.AddItems name
+     <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+   <font color="0000AA"><b>next</b></font> i
+   QDriveComboBox.ItemIndex=0
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+  
+  <font color="0000AA"><b>SUB</b></font> AddItems
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+  
+  <font color="0000AA"><b>SUB</b></font> DelItems
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+  
+  <font color="0000AA"><b>SUB</b></font> Clear
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+  <font color="007700"><i>'-- Default values</i></font> 
+  <font color="000099"><b>CONSTRUCTOR</b></font>
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>CONSTRUCTOR</b></font>
+<font color="0000AA"><b>END</b></font> <font color="0000AA"><b>TYPE</b></font>  
+ 
+</pre>
+</body>
+</html>

@@ -1,0 +1,769 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.51 [fr]C-CCK-MCD   (WinNT; I) [Netscape]">
+   <title>Appendix A: QCanvasEx</title>
+</head>
+<body bgcolor="#FFFFFF" FONT FACE="Arial, Helvetica">
+&nbsp;
+<table CELLSPACING=0 CELLPADDING=0 WIDTH="100%" >
+<tr>
+<td><font face="Arial, Helvetica">Documentation component by D.Glodt (c)2000-2002</font></td>
+
+<td ALIGN=RIGHT><b><font face="Arial, Helvetica">Appendix A: QCanvasEx</font></b></td>
+</tr>
+
+<tr>
+<td COLSPAN="2">
+<hr SIZE=1></td>
+</tr>
+</table>
+
+<h1>
+QCanvasEx Component</h1>
+
+<dd>
+QCanvasEx is a control as a Qcanvas with extensions of properties and m&eacute;thods.</dd>
+
+<br><a NAME="1"></a><b><font size=+1>QCanvasEx Properties</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Field</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>R/W</b></td>
+
+<td><b>Default</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>MixMode</td>
+
+<td>Long</td>
+
+<td>RW</td>
+
+<td>R2_COPYPEN_CAN</td>
+</tr>
+
+<tr BGCOLOR="#FFCC99">
+<td></td>
+
+<td>Set the foreground mix mode
+<br>The differents values are:
+<br>R2_BLACK_CAN=1
+<br>R2_NOTMERGEPEN_CAN=2
+<br>R2_MASKNOTPEN_CAN=3
+<br>R2_NOTCOPYPEN_CAN=4
+<br>R2_MASKPENNOT_CAN=5
+<br>R2_NOT_CAN=6
+<br>R2_XORPEN_CAN=7
+<br>R2_NOTMASKPEN_CAN=8
+<br>R2_MASKPEN_CAN=9
+<br>R2_NOTXORPEN_CAN=10
+<br>R2_NOP_CAN=11
+<br>R2_MERGENOTPEN_CAN=12
+<br>R2_COPYPEN_CAN=13
+<br>R2_MERGEPENNOT_CAN=14
+<br>R2_MERGEPEN_CAN=15
+<br>R2_WHITE_CAN=16</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>PenSize</td>
+
+<td>Long</td>
+
+<td>RW</td>
+
+<td>1</td>
+</tr>
+
+<tr BGCOLOR="#FFCC99">
+<td></td>
+
+<td>Pen size for draw&nbsp; line,rectangle and circle</td>
+
+<td>RW</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>PenStyle</td>
+
+<td>Long</td>
+
+<td>RW</td>
+
+<td>PS_SOLID_CAN</td>
+</tr>
+
+<tr BGCOLOR="#FFCC99">
+<td></td>
+
+<td>Pen style , the others values are:
+<br>PS_SOLID_CAN=0
+<br>PS_DASH_CAN=1
+<br>PS_DOT_CAN=2
+<br>PS_DASHDOT_CAN=3
+<br>PS_DASHDOTDOT_CAN=4
+<br>PS_NULL_CAN=5
+<br>PS_INSIDEFRAME_CAN=6</td>
+
+<td></td>
+
+<td></td>
+</tr>
+</table>
+
+<p><a NAME="2"></a><b><font size=+1>QCanvasEx Methods</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Method</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Description</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>DrawIco</td>
+
+<td>SUB(left%,top%,width%,height%,handle%)</td>
+
+<td NOWRAP>Draw an icon</td>
+
+<td NOWRAP>3</td>
+</tr>
+
+<tr BGCOLOR="#FFCC99">
+<td></td>
+
+<td>If&nbsp; parameters width and height are&nbsp; 0,the icon will show
+with his dimensions by d&eacute;fault.</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>CopyToClipboard</td>
+
+<td>SUB(rect as QRECT)</td>
+
+<td>Copy the image in the clipboard</td>
+
+<td>1</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>PasteFromClipboard</td>
+
+<td>SUB(x%,y%)</td>
+
+<td>Paste the image from clipboard</td>
+
+<td>2</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>GetWidthClipboard</td>
+
+<td>FUNCTION as INTEGER</td>
+
+<td>Return the image wiith from clipboard</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>GetHeightClipboard</td>
+
+<td>FUNCTION as INTEGER</td>
+
+<td>Return the image height from clipboard</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>CanPaste</td>
+
+<td>FUNCTON as BOOLEAN</td>
+
+<td>Return true if image pr&eacute;sent in the clipboard</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Circle</td>
+
+<td>SUB(x1%,y1%,x2%,y2%,c%)</td>
+
+<td>Draw a circle</td>
+
+<td>5</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>CircleFilled</td>
+
+<td>SUB(x1%,y1%,x2%,y2%,c%,Fill%)</td>
+
+<td>Draw a circle filled</td>
+
+<td>6</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Rectangle</td>
+
+<td>SUB(x1%,y1%,x2%,y2%,c%)</td>
+
+<td>Draw a rectangle</td>
+
+<td>5</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>RectangleFilled</td>
+
+<td>SUB(x1%,y1%,x2%,y2%,c%,Fill%)</td>
+
+<td>Draw a rectangle filled</td>
+
+<td>6</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>RoundRect</td>
+
+<td>SUB(x1%,y1%,x2%,y2%,x3%,y3%,c%)</td>
+
+<td>Draw a round rectangle</td>
+
+<td>7</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>RoundRectFilled</td>
+
+<td>SUB(x1%,y1%,x2%,y2%,x3%,y3%,c%,Fill%)</td>
+
+<td>Draw a round rectangle filled</td>
+
+<td>8</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Line</td>
+
+<td>SUB(x1%,y1%,x2%,y2%,c%)</td>
+
+<td>Draw a line</td>
+
+<td>5</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>FillSurface</td>
+
+<td>SUB(x%,y%,c%)</td>
+
+<td>Fill the surface pointed by the color of pixel x,y</td>
+
+<td>3</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>TextOut</td>
+
+<td>SUB(x%,y%,s$,fc%,bc%)</td>
+
+<td>Draw&nbsp; text</td>
+
+<td>5</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>InvertColor</td>
+
+<td>SUB(x%,y%,width%,height%)</td>
+
+<td>Invert color</td>
+
+<td>4</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Mirror</td>
+
+<td>SUB(x%,y%,width%,height%)</td>
+
+<td>Make a miror x</td>
+
+<td>4</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Flip</td>
+
+<td>SUB(x%,y%,width%,height%)</td>
+
+<td>Make a miror y</td>
+
+<td>4</td>
+</tr>
+</table>
+
+<p><a NAME="3"></a><b><font size=+1>QCanvasEx Events</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Event</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Occurs when...</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+</table>
+
+<p><a NAME="4"></a><b><font size=+1>QCanvasEx Example 1</font></b>
+<pre>&nbsp;$typecheck on
+&nbsp;$INCLUDE "Rapidq.inc"
+&nbsp;$INCLUDE "Object\QCanvasEx.inc"
+&nbsp;declare sub OuvrirClick
+&nbsp;declare sub FermerClick
+&nbsp;declare sub QuitterClick
+&nbsp;declare sub Copier
+&nbsp;declare sub Coller
+&nbsp;declare sub Present
+&nbsp;const title="Viewer picture"
+&nbsp;dim bitmap as QBITMAP
+&nbsp;dim source as QRECT</pre>
+
+<pre>&nbsp;CREATE Form AS QFORM
+&nbsp;&nbsp; Caption =title
+&nbsp;&nbsp; Width = 600
+&nbsp;&nbsp; Height = 600
+&nbsp;&nbsp; Center
+&nbsp;&nbsp; CREATE Menu AS QMAINMENU
+&nbsp;&nbsp;&nbsp;&nbsp; CREATE item1 AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Fichier"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE item2 AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Ouvrir"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=OuvrirClick
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE item4 AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Fermer"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=FermerClick
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE item5 AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="-"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE item6 AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Quitter"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=QuitterClick
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp; CREATE item11 as QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Edition"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Present
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE item12 as QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Copier"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Copier
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE item13 as QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Coller"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Coller
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Enabled=false
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp; CREATE ScrollBox1 AS QSCROLLBOX
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; AutoScroll = 1
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Align=5
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Color = &amp;HFFFFFF
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE image AS QCanvasEx
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width=1000
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; height=1000
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp; END CREATE
+&nbsp; bitmap.PixelFormat=6
+&nbsp; Form.ShowModal
+&nbsp;&nbsp;
+&nbsp; sub OuvrirClick
+&nbsp;&nbsp;&nbsp; dim file as QOPENDIALOG
+&nbsp;&nbsp;&nbsp;&nbsp;
+&nbsp;&nbsp;&nbsp; file.Filter="Fichiers bitmap(*.bmp)|*.bmp"
+&nbsp;&nbsp;&nbsp; file.InitialDir=CurDir$
+&nbsp;&nbsp;&nbsp; if file.Execute then
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; bitmap.Bmp=file.FileName
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; image.draw(0,0,bitmap.bmp)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Form.Caption=title+"-"+file.FileName
+&nbsp;&nbsp;&nbsp; end if
+&nbsp; end sub
+&nbsp;&nbsp;
+&nbsp; sub FermerClick
+&nbsp;&nbsp;&nbsp;&nbsp; image.repaint
+&nbsp;&nbsp;&nbsp;&nbsp; Form.Caption=title
+&nbsp; end sub
+&nbsp;&nbsp;
+&nbsp; sub QuitterClick
+&nbsp;&nbsp;&nbsp; Form.Close
+&nbsp; end sub
+&nbsp;&nbsp;
+&nbsp; sub Copier
+&nbsp;&nbsp;&nbsp; source.left=0
+&nbsp;&nbsp;&nbsp; source.top=0&nbsp;
+&nbsp;&nbsp;&nbsp; source.right=bitmap.width&nbsp;
+&nbsp;&nbsp;&nbsp; source.bottom=bitmap.height&nbsp;
+&nbsp;&nbsp;&nbsp; image.copyToClipboard(source)
+&nbsp; end sub
+&nbsp;&nbsp;
+&nbsp; sub coller
+&nbsp;&nbsp;&nbsp; image.pasteFromClipboard(20,20)
+&nbsp;&nbsp;&nbsp; form.caption=str$(image.GetWidthClipboard)+"*"+str$(image.GetHeightClipboard)
+&nbsp; end sub
+&nbsp;&nbsp;
+&nbsp; Sub Present
+&nbsp;&nbsp;&nbsp; if image.canpaste then
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; item13.enabled=true
+&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; item13.enabled=false
+&nbsp;&nbsp;&nbsp; end if
+&nbsp; End Sub</pre>
+<a NAME="4"></a><b><font size=+1>QCanvasEx Example 2</font></b>
+<pre>$typecheck on
+$INCLUDE "Rapidq.inc"&nbsp;
+$Include "Object\QCanvasEx.inc"
+$INCLUDE "OBJECT\QCOLORDIALOG.INC"
+
+declare sub selectdrawing(sender as qmenuitem)
+declare sub selectSize(sender as qmenuitem)
+declare sub move(x as integer,y as integer)
+declare sub start(bt as integer,x as integer,y as integer)
+declare sub stop
+declare sub ResetMenuDrawing
+declare sub ResetMenuSize
+declare sub SelectPenColor
+declare sub SelectBackColor
+declare sub New
+declare sub Quit
+
+dim TypeDraw as integer
+TypeDraw=1
+dim flag as integer
+dim orx as integer
+dim ory as integer
+dim ox as integer
+dim oy as integer
+dim pencolor as long
+dim backcolor as long
+dim Dial as QColorDialog
+
+CREATE Form AS QFORM
+&nbsp; Caption="Paint"
+&nbsp; Width=690
+&nbsp; Height=503
+&nbsp; Center
+&nbsp; CREATE MainMenu AS QMAINMENU
+&nbsp;&nbsp;&nbsp; CREATE MenuFile AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;File"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE MenuNew AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;New"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=New
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE separator AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="-"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE MenuExit AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Exit"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Quit
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp; CREATE MenuTool AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Tools"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE MenuPenColor AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Pen color"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=SelectPenColor
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE MenuPenSize AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Pen size"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE MenuSize1 AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Size 1"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Tag=1
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Checked=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=SelectSize
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE MenuSize2 AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Size 2"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Tag=2
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=SelectSize
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE MenuSize4 AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Size 4"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Tag=3
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=SelectSize
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE MenuSize8 AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Size 8"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Tag=4
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=SelectSize
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE MenuBackcolor AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Back color"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=SelectBackColor
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp; CREATE MenuDrawing AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="&amp;Drawing"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE MenuDraw AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Draw"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; tag=1
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Checked=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=SelectDrawing
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE MenuLine AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Line"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; tag=2
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=SelectDrawing
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE MenuRect AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Rectangle"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; tag=3
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=SelectDrawing
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE MenuRectFilled AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Rectangle filled"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; tag=4
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=SelectDrawing
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE MenuCircle AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Circle"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; tag=5
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=SelectDrawing
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE MenuCircleFilled AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Circle filled"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; tag=6
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=SelectDrawing
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE MenuFill AS QMENUITEM
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Fill"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; tag=7
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=SelectDrawing
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp; END CREATE
+&nbsp; CREATE ScrollBox1 AS QSCROLLBOX
+&nbsp;&nbsp;&nbsp; Align=alClient
+&nbsp;&nbsp;&nbsp; color=&amp;hffffff
+&nbsp;&nbsp;&nbsp; CREATE image AS QCanvasEx
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Align=alClient
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnMouseMove=move
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnMouseDown=start
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnMouseUp=stop
+&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp; END CREATE
+END CREATE
+
+Form.ShowModal
+
+sub New
+&nbsp; image.repaint
+end sub
+
+sub Quit
+&nbsp; Form.close
+&nbsp; Application.terminate
+end sub
+
+sub SelectDrawing(sender as qmenuitem)
+&nbsp; TypeDraw=sender.tag
+&nbsp; ResetMenuDrawing
+&nbsp; sender.checked=true
+end sub
+
+sub SelectSize(sender as qmenuitem)
+&nbsp; Select case sender.tag
+&nbsp; case 1
+&nbsp;&nbsp;&nbsp; image.pensize=1
+&nbsp; case 2
+&nbsp;&nbsp;&nbsp; image.pensize=2
+&nbsp; case 3
+&nbsp;&nbsp;&nbsp; image.pensize=4
+&nbsp; case 4
+&nbsp;&nbsp;&nbsp; image.pensize=8
+&nbsp; end select
+&nbsp; ResetMenuSize
+&nbsp; sender.checked=true
+end sub
+
+sub Start(bt as integer,x as integer,y as integer)&nbsp;&nbsp;
+&nbsp; flag=true
+&nbsp; orx=x
+&nbsp; ory=y
+&nbsp; ox=x
+&nbsp; oy=y
+&nbsp; select case typeDraw
+&nbsp; case 1
+&nbsp;&nbsp;&nbsp; image.line(x,y,x,y,PenColor)
+&nbsp; case 2
+&nbsp;&nbsp;&nbsp; image.mixmode=R2_NOTXORPEN_CAN
+&nbsp;&nbsp;&nbsp; image.line(x,y,x,y,PenColor)
+&nbsp; case 3
+&nbsp;&nbsp;&nbsp; image.mixmode=R2_NOTXORPEN_CAN
+&nbsp;&nbsp;&nbsp; image.rectangle(x,y,x,y,PenColor)
+&nbsp; case 4
+&nbsp;&nbsp;&nbsp; image.mixmode=R2_NOTXORPEN_CAN
+&nbsp;&nbsp;&nbsp; image.rectangleFilled(x,y,x,y,PenColor,backcolor)
+&nbsp; case 5
+&nbsp;&nbsp;&nbsp; image.mixmode=R2_NOTXORPEN_CAN
+&nbsp;&nbsp;&nbsp; image.circle(x,y,x,y,PenColor)
+&nbsp; case 6
+&nbsp;&nbsp;&nbsp; image.mixmode=R2_NOTXORPEN_CAN
+&nbsp;&nbsp;&nbsp; image.circleFilled(x,y,x,y,PenColor,backcolor)
+&nbsp; case 7
+&nbsp;&nbsp;&nbsp; image.fillSurface(x,y,pencolor)
+&nbsp; end select
+end sub&nbsp;
+
+sub Move(x as integer,y as integer)
+&nbsp; if flag then
+&nbsp;&nbsp;&nbsp; select case typeDraw
+&nbsp;&nbsp;&nbsp; case 1
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; image.line(ox,oy,x,y,PenColor)
+&nbsp;&nbsp;&nbsp; case 2
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; image.line(orx,ory,ox,oy,PenColor)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; image.line(orx,ory,x,y,PenColor)
+&nbsp;&nbsp;&nbsp; case 3
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; image.rectangle(orx,ory,ox,oy,PenColor)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; image.rectangle(orx,ory,x,y,PenColor)
+&nbsp;&nbsp;&nbsp; case 4
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; image.rectangleFilled(orx,ory,ox,oy,PenColor,backcolor)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; image.rectangleFilled(orx,ory,x,y,PenColor,backcolor)
+&nbsp;&nbsp;&nbsp; case 5
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; image.circle(orx,ory,ox,oy,PenColor)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; image.circle(orx,ory,x,y,PenColor)
+&nbsp;&nbsp;&nbsp; case 6
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; image.circleFilled(orx,ory,ox,oy,PenColor,backcolor)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; image.circleFilled(orx,ory,x,y,PenColor,backcolor)
+&nbsp;&nbsp;&nbsp; end select
+&nbsp;&nbsp;&nbsp; ox=x
+&nbsp;&nbsp;&nbsp; oy=y
+&nbsp; end if
+end sub&nbsp;
+&nbsp;&nbsp;&nbsp;&nbsp;
+sub Stop
+&nbsp;if&nbsp; flag then
+&nbsp;&nbsp; image.mixmode=R2_COPYPEN_CAN
+&nbsp;&nbsp; flag=0
+&nbsp;end if
+&nbsp;select case typeDraw
+&nbsp;case 2
+&nbsp;&nbsp; image.line(orx,ory,ox,oy,PenColor)
+&nbsp;case 3
+&nbsp;&nbsp; image.rectangle(orx,ory,ox,oy,PenColor)
+&nbsp;case 4
+&nbsp;&nbsp; image.rectangleFilled(orx,ory,ox,oy,PenColor,backcolor)
+&nbsp;case 5
+&nbsp;&nbsp; image.circle(orx,ory,ox,oy,PenColor)
+&nbsp;case 6
+&nbsp;&nbsp; image.circleFilled(orx,ory,ox,oy,PenColor,backcolor)
+&nbsp;end select
+end sub&nbsp;
+
+sub ResetMenuDrawing
+&nbsp; MenuDraw.checked=false
+&nbsp; MenuLine.checked=false
+&nbsp; MenuRect.checked=false
+&nbsp; MenuRectFilled.checked=false
+&nbsp; MenuCircle.checked=false
+&nbsp; MenuCircleFilled.checked=false
+&nbsp; MenuFill.checked=false
+end sub&nbsp;&nbsp;
+
+sub ResetMenuSize
+&nbsp; MenuSize1.checked=false
+&nbsp; MenuSize2.checked=false
+&nbsp; MenuSize4.checked=false
+&nbsp; MenuSize8.checked=false
+end sub&nbsp;&nbsp;
+&nbsp;&nbsp;
+sub SelectPenColor
+&nbsp; Dial.caption="Select pen color"
+&nbsp; if Dial.Execute then
+&nbsp;&nbsp;&nbsp; PenColor=Dial.Color
+&nbsp; end if
+end sub
+
+sub SelectBackColor
+&nbsp; Dial.caption="Select backcolor"
+&nbsp; if Dial.Execute then
+&nbsp;&nbsp;&nbsp; BackColor=Dial.Color
+&nbsp; end if
+end sub&nbsp;&nbsp;
+
+
+
+</pre>
+
+</body>
+</html>

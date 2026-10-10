@@ -1,0 +1,228 @@
+<html>
+<head>
+<title>qREdit.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'Just the other day I whipped up a little QRICHEDIT extension to pop </i></font> 
+<font color="007700"><i>'up a menu exactly like the default windows context menu. Here it is, </i></font> 
+<font color="007700"><i>'enjoy:</i></font> 
+
+<font color="007700"><i>'================== START NEW COMPONENT ============================</i></font> 
+
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> SendMessageA <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">SendMessageA</font>" <b>(</b>hwnd _
+<font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, wMsg <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, wParam <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>, lParam <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+
+
+<font color="0000AA"><b>TYPE</b></font> QMAXEDIT <font color="0000AA"><b>EXTENDS</b></font> <font color="000099"><b>QRICHEDIT</b></font>
+
+  RichFont <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QFont</b></font>
+  Syntaxes<b>(</b>100<b>)</b> <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font>       <font color="007700"><i>'-- Better way could be to use a ListBox</i></font> 
+  MaxSyntax <font color="0000AA"><b>AS</b></font> <font color="000099"><b>INTEGER</b></font>
+  HiLightColor <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>INTEGER</b></font><font color="007700"><i>'(16)'</i></font> 
+
+    <font color="0000AA"><b>WITH</b></font> QMAXEDIT
+     
+        PRIVATE:
+
+            MaxMenu      <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QPOPUPMENU</b></font>
+            mnuUndo      <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMENUITEM</b></font>
+            mnuSep1      <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMENUITEM</b></font>
+            mnuCut       <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMENUITEM</b></font>
+            mnuCopy      <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMENUITEM</b></font>
+            mnuPaste     <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMENUITEM</b></font>
+            mnuDelete    <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMENUITEM</b></font>
+            mnuSep2      <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMENUITEM</b></font>
+            mnuSelectAll <font color="0000AA"><b>AS</b></font> <font color="000099"><b>QMENUITEM</b></font>
+    
+            <font color="0000AA"><b>EVENT</b></font> MaxMenu.OnPopup
+                .mnuUndo.Enabled = SendMessageA<b>(</b>.Handle, &HC6, 0, 0<b>)</b>
+                .mnuCut.Enabled = .SelLength
+                .mnuCopy.Enabled = .SelLength
+                .mnuPaste.Enabled = <font color="0000AA"><b>LEN</b></font><b>(</b>ClipBoard.Text<b>)</b> 
+                .mnuDelete.Enabled = .SelLength
+                .mnuSelectAll.Enabled = <b>(</b><font color="0000AA"><b>LEN</b></font><b>(</b>.Text<b>)</b> <font color="0000AA"><b>XOR</b></font> <font color="0000AA"><b>LEN</b></font> <b>(</b>.SelText<b>)</b><b>)</b> 
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>EVENT</b></font>
+        
+        PUBLIC:
+
+            UsePopup <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font> PROPERTY SET Set_Popup
+                
+            <font color="0000AA"><b>SUB</b></font> Undo
+                SendMessage<b>(</b>.Handle, &HC7, 0, 0<b>)</b>
+            <font color="0000AA"><b>END</b></font> <font color="0000AA"><b>SUB</b></font> 
+        
+            <font color="0000AA"><b>SUB</b></font> Cut
+                .CutToClipBoard
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+        
+            <font color="0000AA"><b>SUB</b></font> Copy
+                .CopyToClipboard
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+        
+            <font color="0000AA"><b>SUB</b></font> Paste
+                .PasteFromClipboard
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+        
+            <font color="0000AA"><b>SUB</b></font> Delete
+                SendMessage <b>(</b>.Handle, &H100, &H2E, 0<b>)</b>
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+        
+            <font color="0000AA"><b>SUB</b></font> SelectAl
+                .SelectAll
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+        
+            PROPERTY SET Set_Popup<b>(</b>Use <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+                .MaxMenu.AutoPopup = Use
+            <font color="0000AA"><b>END</b></font> PROPERTY
+            
+  <font color="0000AA"><b>SUB</b></font> HiLight
+  <font color="007700"><i>'-- HiLight first time, call this whenever you insert line(s), or you</i></font> 
+  <font color="007700"><i>'-- load a file.</i></font> 
+
+    <font color="0000AA"><b>DIM</b></font> TempStart <font color="0000AA"><b>AS</b></font> <font color="000099"><b>INTEGER</b></font>
+    <font color="0000AA"><b>DIM</b></font> I <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>INTEGER</b></font>, N <font color="0000AA"><b>AS</b></font> <font color="000099"><b>INTEGER</b></font>
+    <font color="0000AA"><b>defstr</b></font> UText
+<font color="007700"><i>''    WITH QREdit</i></font> 
+      TempStart = .SelStart
+      .SelStart = 0
+      .SelLength = <font color="0000AA"><b>LEN</b></font><b>(</b>.Text<b>)</b>
+      .SelAttributes = .RichFont
+      UText=<font color="0000AA"><b>UCASE$</b></font><b>(</b>.Text<b>)</b>
+<font color="007700"><i>''      USynt$=</i></font> 
+      <font color="0000AA"><b>FOR</b></font> I = 1 <font color="0000AA"><b>TO</b></font> .MaxSyntax
+        N = <font color="0000AA"><b>INSTR</b></font><b>(</b>UText, <font color="0000AA"><b>UCASE$</b></font><b>(</b>.Syntaxes<b>(</b>I<b>)</b><b>)</b><b>)</b>-1
+        <font color="0000AA"><b>WHILE</b></font> N >= 0
+          .SelStart = N
+          .RichFont.AddStyles<b>(</b>fsBold<b>)</b>
+          .RichFont.Color = .HiLightColor
+          .SelLength = <font color="0000AA"><b>LEN</b></font><b>(</b>.Syntaxes<b>(</b>I<b>)</b><b>)</b>
+          .SelAttributes = .RichFont
+           N = <font color="0000AA"><b>INSTR</b></font><b>(</b>N+.SelLength, <font color="0000AA"><b>UCASE$</b></font><b>(</b>.Text<b>)</b>, <font color="0000AA"><b>UCASE$</b></font><b>(</b>QMAXEDIT.Syntaxes<b>(</b>I<b>)</b><b>)</b><b>)</b>-1
+        <font color="000099"><b>WEND</b></font>
+        .SelLength = 0
+        .RichFont.DelStyles<b>(</b>fsBold<b>)</b>
+        .RichFont.Color = 0
+        .Font = .RichFont
+        .SelStart = TempStart
+      <font color="0000AA"><b>NEXT</b></font> I
+ <font color="007700"><i>''   END WITH</i></font> 
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+
+  <font color="0000AA"><b>SUBI</b></font> AddSyntaxes<b>(</b>...<b>)</b>
+    <font color="0000AA"><b>DIM</b></font> I <font color="0000AA"><b>AS</b></font> <font color="000099"><b>INTEGER</b></font>
+
+<font color="007700"><i>''    WITH QMAXEDIT</i></font> 
+      <font color="0000AA"><b>FOR</b></font> I = 1 <font color="0000AA"><b>TO</b></font> <font color="000099"><b>ParamStrCount</b></font>
+        .Syntaxes<b>(</b>I+.MaxSyntax<b>)</b> = <font color="0000AA"><b>ParamStr$</b></font><b>(</b>I<b>)</b>
+      <font color="000099"><b>NEXT</b></font>
+      .MaxSyntax = .MaxSyntax + <font color="000099"><b>ParamStrCount</b></font>
+   <font color="007700"><i>'' END WITH</i></font> 
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>SUBI</b></font>
+
+  <font color="0000AA"><b>EVENT</b></font> OnKeyUp <b>(</b>Key <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>WORD</b></font>, Shift <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>INTEGER</b></font><b>)</b>
+    <font color="007700"><i>'' Don't want to re-hilight everything, try to isolate a keyword</i></font> 
+    <font color="007700"><i>'' If you type too fast, this event might be skipped :)</i></font> 
+    <font color="007700"><i>'' Also beware when the user splits up two words with a space,</i></font> 
+    <font color="007700"><i>'' that condition isn't handled here.</i></font> 
+
+    <font color="0000AA"><b>DIM</b></font> I <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>INTEGER</b></font>, EndStr <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>INTEGER</b></font>, StartStr <font color="0000AA"><b>AS</b></font> <font color="000099"><b>INTEGER</b></font>
+    <font color="0000AA"><b>DIM</b></font> TempStart <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>INTEGER</b></font>, N <font color="0000AA"><b>AS</b></font> <font color="000099"><b>INTEGER</b></font>
+    <font color="0000AA"><b>DIM</b></font> Token <font color="0000AA"><b>AS</b></font> <font color="000099"><b>STRING</b></font>
+    <font color="0000AA"><b>DIM</b></font> T1 <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>INTEGER</b></font>, T2 <font color="0000AA"><b>AS</b></font> <font color="000099"><b>INTEGER</b></font>
+
+    T1 = QMAXEDIT.SelStart
+    T2 = QMAXEDIT.SelLength
+
+    <font color="0000AA"><b>IF</b></font> Key &lt; 46 <font color="0000AA"><b>AND</b></font> Key &lt;> 8 <font color="0000AA"><b>THEN</b></font>     <font color="007700"><i>'' Ignore arrows, pageup/down, etc.</i></font> 
+      <font color="0000AA"><b>EXIT</b></font> <font color="000099"><b>EVENT</b></font>
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+
+ <font color="007700"><i>''   WITH QMAXEDIT</i></font> 
+      <font color="007700"><i>'' Isolate a token, separated by a space (but that's not always the case)</i></font> 
+      <font color="0000AA"><b>FOR</b></font> I = .SelStart <font color="0000AA"><b>TO</b></font> <font color="0000AA"><b>LEN</b></font><b>(</b>.Text<b>)</b>
+        <font color="0000AA"><b>IF</b></font> <font color="0000AA"><b>MID$</b></font><b>(</b>.Text, I, 1<b>)</b> = "<font color="990000"> </font>" <font color="0000AA"><b>OR</b></font> <font color="0000AA"><b>MID$</b></font><b>(</b>.Text, I, 1<b>)</b> = <font color="0000AA"><b>CHR$</b></font><b>(</b>13<b>)</b> <font color="0000AA"><b>OR</b></font> <font color="0000AA"><b>MID$</b></font><b>(</b>.Text, I, 1<b>)</b> = <font color="0000AA"><b>CHR$</b></font><b>(</b>10<b>)</b> <font color="000099"><b>THEN</b></font>
+          <font color="0000AA"><b>EXIT</b></font> <font color="000099"><b>FOR</b></font>
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+      <font color="0000AA"><b>NEXT</b></font> I
+      EndStr = I
+      <font color="0000AA"><b>FOR</b></font> I = .SelStart <font color="0000AA"><b>TO</b></font> 1 <font color="0000AA"><b>STEP</b></font> -1
+        <font color="0000AA"><b>IF</b></font> <font color="0000AA"><b>MID$</b></font><b>(</b>.Text, I, 1<b>)</b> = "<font color="990000"> </font>" <font color="0000AA"><b>OR</b></font> <font color="0000AA"><b>MID$</b></font><b>(</b>.Text, I, 1<b>)</b> = <font color="0000AA"><b>CHR$</b></font><b>(</b>10<b>)</b> <font color="0000AA"><b>OR</b></font> <font color="0000AA"><b>MID$</b></font><b>(</b>.Text, I, 1<b>)</b> = <font color="0000AA"><b>CHR$</b></font><b>(</b>13<b>)</b> <font color="000099"><b>THEN</b></font>
+          <font color="0000AA"><b>EXIT</b></font> <font color="000099"><b>FOR</b></font>
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+      <font color="0000AA"><b>NEXT</b></font> I
+      StartStr = I+1
+      Token = <font color="0000AA"><b>RTRIM$</b></font><b>(</b><font color="0000AA"><b>LTRIM$</b></font><b>(</b><font color="0000AA"><b>MID$</b></font><b>(</b>.Text, StartStr, EndStr - StartStr<b>)</b><b>)</b><b>)</b>
+
+      TempStart = .SelStart
+      .SelStart = StartStr-1
+      .SelLength = <font color="0000AA"><b>LEN</b></font><b>(</b>Token<b>)</b>
+      .SelAttributes = .RichFont
+      <font color="0000AA"><b>FOR</b></font> I = 1 <font color="0000AA"><b>TO</b></font> .MaxSyntax
+        <font color="0000AA"><b>IF</b></font> <font color="0000AA"><b>UCASE$</b></font><b>(</b>Token<b>)</b> = <font color="0000AA"><b>UCASE$</b></font><b>(</b>.Syntaxes<b>(</b>I<b>)</b><b>)</b> <font color="000099"><b>THEN</b></font>
+          .SelStart = StartStr-1
+          .RichFont.AddStyles<b>(</b>fsBold<b>)</b>
+          .RichFont.Color = .HiLightColor
+          .SelLength = <font color="0000AA"><b>LEN</b></font><b>(</b>.Syntaxes<b>(</b>I<b>)</b><b>)</b>
+          .SelAttributes = .RichFont
+        <font color="0000AA"><b>END</b></font> <font color="000099"><b>IF</b></font>
+      <font color="0000AA"><b>NEXT</b></font> I
+      .SelLength = 0
+      .SelStart = TempStart
+      .RichFont.DelStyles<b>(</b>fsBold<b>)</b>
+      .RichFont.Color = 0
+      .Font = .RichFont
+  <font color="007700"><i>''  END WITH</i></font> 
+
+    QMAXEDIT.SelStart = T1
+    QMAXEDIT.SelLength= T2
+  <font color="0000AA"><b>END</b></font> <font color="000099"><b>EVENT</b></font>
+
+            <font color="000099"><b>CONSTRUCTOR</b></font>
+                mnuUndo.Caption = "<font color="990000">&Undo</font>"
+                mnuUndo.OnClick = QMAXEDIT.Undo
+                mnuSep1.Caption = "<font color="990000">-</font>"
+                mnuCut.Caption = "<font color="990000">Cu&t</font>"
+                mnuCut.OnClick = QMAXEDIT.Cut
+                mnuCopy.Caption = "<font color="990000">&Copy</font>"
+                mnuCopy.OnClick = QMAXEDIT.Copy
+                mnuPaste.Caption = "<font color="990000">&Paste</font>"
+                mnuPaste.OnClick = QMAXEDIT.Paste
+                mnuDelete.Caption = "<font color="990000">&Delete</font>"
+                mnuDelete.OnClick = QMAXEDIT.Delete
+                mnuSep2.Caption = "<font color="990000">-</font>"
+                mnuSelectAll.Caption = "<font color="990000">Select &All</font>"
+                mnuSelectAll.OnClick = QMAXEDIT.SelectAl
+MaxMenu.AddItems QMAXEDIT.mnuUndo, QMAXEDIT.mnuSep1,_
+QMAXEDIT.mnuCut, QMAXEDIT.mnuCopy, QMAXEDIT.mnuPaste, QMAXEDIT.mnuDelete,_
+QMAXEDIT.mnuSep2, QMAXEDIT.mnuSelectAll
+                PopupMenu = .MaxMenu
+                Set_Popup = 1
+    PlainText = True
+    RichFont.Name = "<font color="990000">MS Sans Serif</font>"
+    MaxSyntax = 0
+    HiLightColor = &H0000bb
+    Font = QMAXEDIT.RichFont
+            <font color="0000AA"><b>END</b></font> <font color="000099"><b>CONSTRUCTOR</b></font>
+            
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>WITH</b></font>
+    
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>TYPE</b></font>
+
+<font color="0000AA"><b>$UNDEF</b></font> <font color="000099"><b>QRICHEDIT</b></font>
+<font color="0000AA"><b>$DEFINE</b></font> <font color="0000AA"><b>QRICHEDIT</b></font> QMAXEDIT
+
+<font color="007700"><i>'================= END NEW COMPONENT ========================</i></font> 
+
+
+<font color="007700"><i>'To turn off the popup, set UsePopup = 0</i></font> 
+<font color="007700"><i>'To use a different popup, just set Popupmenu = &lt;new popup></i></font> 
+
+<font color="007700"><i>'Create the new richedit as you would the old one, thanks to the </i></font> 
+<font color="007700"><i>'$UNDEF-$DEFINE Keywords...ain't RapidQ great?</i></font> 
+
+<font color="007700"><i>'Psyclops</i></font> 
+ 
+</pre>
+</body>
+</html>

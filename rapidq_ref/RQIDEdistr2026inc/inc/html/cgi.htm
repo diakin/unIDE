@@ -1,0 +1,149 @@
+<html>
+<head>
+<title>cgi.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>' ---------------------------------------------------------------------------------------------------------------</i></font> 
+<font color="007700"><i>' CGI.INC version 1.0  </i></font> 
+<font color="007700"><i>' By Nick Ruisi</i></font> 
+<font color="007700"><i>' Acknowledgements to Kevin O'Brien (Author of CGI4VB) for the idea</i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' </i></font> 
+<font color="007700"><i>'----------------------------------------------------------------------------------------------------------------------------------------------------------------------------</i></font> 
+<font color="0000AA"><b>dim</b></font> pairs <b>(</b>2,256<b>)</b> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>,CgiValue <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>,rawp<b>(</b>256<b>)</b> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>, strTitle <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>, newBlock$ <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>  
+<font color="0000AA"><b>dim</b></font> strpointer<b>(</b>256<b>)</b> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>, x <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font>,r <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+
+<font color="0000AA"><b>dim</b></font> CGI_Accept            <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+<font color="0000AA"><b>dim</b></font> CGI_AuthType          <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+<font color="0000AA"><b>dim</b></font> CGI_ContentLength     <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+<font color="0000AA"><b>dim</b></font> CGI_ContentType       <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+<font color="0000AA"><b>dim</b></font> CGI_Cookie            <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+<font color="0000AA"><b>dim</b></font> CGI_GatewayInterface  <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+<font color="0000AA"><b>dim</b></font> CGI_PathInfo          <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+<font color="0000AA"><b>dim</b></font> CGI_PathTranslated    <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+<font color="0000AA"><b>dim</b></font> CGI_QueryString       <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+<font color="0000AA"><b>dim</b></font> CGI_Referer           <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+<font color="0000AA"><b>dim</b></font> CGI_RemoteAddr        <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+<font color="0000AA"><b>dim</b></font> CGI_RemoteHost        <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+<font color="0000AA"><b>dim</b></font> CGI_RemoteIdent       <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+<font color="0000AA"><b>dim</b></font> CGI_RemoteUser        <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+<font color="0000AA"><b>dim</b></font> CGI_RequestMethod     <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+<font color="0000AA"><b>dim</b></font> CGI_ScriptName        <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+<font color="0000AA"><b>dim</b></font> CGI_ServerSoftware    <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+<font color="0000AA"><b>dim</b></font> CGI_ServerName        <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+<font color="0000AA"><b>dim</b></font> CGI_ServerPort        <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+<font color="0000AA"><b>dim</b></font> CGI_ServerProtocol    <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+<font color="0000AA"><b>dim</b></font> CGI_UserAgent         <font color="0000AA"><b>As</b></font> <font color="000099"><b>String</b></font>
+<font color="0000AA"><b>dim</b></font> lContentLength <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+
+<font color="0000AA"><b>defint</b></font> d
+
+<font color="007700"><i>'--------------------------------------------------------------------------------------------------------------------------------------------------------------------------</i></font> 
+<font color="0000AA"><b>sub</b></font> SendFooter <b>(</b>void<b>)</b>
+    <font color="0000AA"><b>print</b></font> "<font color="990000">&lt;/BODY>&lt;/HTML></font>"
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+<font color="007700"><i>'----------------------------------------------------------------------------------------------------------------------------------------------------------------------------</i></font> 
+<font color="0000AA"><b>sub</b></font> SendB <b>(</b>strData <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b>
+    <font color="0000AA"><b>print</b></font> strData;
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+<font color="007700"><i>'---------------------------------------------------------------------------------------------------------------------------------------------------------------------------</i></font> 
+<font color="0000AA"><b>sub</b></font> SendHeader<b>(</b>strTitle <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b>
+    <font color="0000AA"><b>print</b></font> "<font color="990000">Status: 200 OK</font>"
+    <font color="0000AA"><b>print</b></font> "<font color="990000">Content-Type:text/html</font>"
+    <font color="0000AA"><b>print</b></font> <font color="0000AA"><b>chr$</b></font><b>(</b>13<b>)</b>
+    <font color="0000AA"><b>print</b></font> "<font color="990000">&lt;!DOCTYPE HTML PUBLIC </font>";<font color="0000AA"><b>chr$</b></font><b>(</b>34<b>)</b>;"<font color="990000">-//IETF//DTD HTML//EN</font>";<font color="0000AA"><b>chr$</b></font><b>(</b>34<b>)</b>;"<font color="990000">></font>"
+    <font color="0000AA"><b>print</b></font> "<font color="990000">&lt;HTML></font>"
+    <font color="0000AA"><b>print</b></font> "<font color="990000">&lt;HEAD>&lt;TITLE></font>";strTitle;"<font color="990000">&lt;/TITLE>&lt;/HEAD></font>"
+    <font color="0000AA"><b>print</b></font> "<font color="990000">&lt;BODY></font>"
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+<font color="007700"><i>'-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------</i></font> 
+<font color="0000AA"><b>function</b></font> GetCgiValue <b>(</b>Param <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+  <font color="0000AA"><b>for</b></font> i = 1 <font color="0000AA"><b>to</b></font> 256
+    <font color="0000AA"><b>if</b></font> pairs<b>(</b>0, i<b>)</b> = Param <font color="000099"><b>then</b></font>
+      GetCgiValue = pairs<b>(</b>1, i<b>)</b>
+      <font color="0000AA"><b>exit</b></font> <font color="000099"><b>function</b></font>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>next</b></font> i
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+<font color="007700"><i>'------------------------------------------------------------------------------------------------------------------------------------------------------------------------------</i></font> 
+<font color="0000AA"><b>sub</b></font> InitCgi<b>(</b>void<b>)</b>
+
+CGI_Accept = <font color="0000AA"><b>ENVIRON$</b></font><b>(</b>"<font color="990000">HTTP_ACCEPT</font>"<b>)</b>
+CGI_AuthType = <font color="0000AA"><b>ENVIRON$</b></font><b>(</b>"<font color="990000">AUTH_TYPE</font>"<b>)</b>
+CGI_ContentLength = <font color="0000AA"><b>ENVIRON$</b></font><b>(</b>"<font color="990000">CONTENT_LENGTH</font>"<b>)</b>
+CGI_ContentType = <font color="0000AA"><b>ENVIRON$</b></font><b>(</b>"<font color="990000">CONTENT_TYPE</font>"<b>)</b>
+CGI_Cookie = <font color="0000AA"><b>ENVIRON$</b></font><b>(</b>"<font color="990000">HTTP_COOKIE</font>"<b>)</b>
+CGI_GatewayInterface = <font color="0000AA"><b>ENVIRON$</b></font><b>(</b>"<font color="990000">GATEWAY_INTERFACE</font>"<b>)</b>
+CGI_PathInfo = <font color="0000AA"><b>ENVIRON$</b></font><b>(</b>"<font color="990000">PATH_INFO</font>"<b>)</b>
+CGI_PathTranslated =<font color="0000AA"><b>ENVIRON$</b></font><b>(</b>"<font color="990000">PATH_TRANSLATED</font>"<b>)</b>
+CGI_QueryString = <font color="0000AA"><b>ENVIRON$</b></font><b>(</b>"<font color="990000">QUERY_STRING</font>"<b>)</b>
+CGI_Referer = <font color="0000AA"><b>ENVIRON$</b></font><b>(</b>"<font color="990000">HTTP_REFERER</font>"<b>)</b>
+CGI_RemoteAddr = <font color="0000AA"><b>ENVIRON$</b></font><b>(</b>"<font color="990000">REMOTE_ADDR</font>"<b>)</b>
+CGI_RemoteHost = <font color="0000AA"><b>ENVIRON$</b></font><b>(</b>"<font color="990000">REMOTE_HOST</font>"<b>)</b>
+CGI_RemoteIdent = <font color="0000AA"><b>ENVIRON$</b></font><b>(</b>"<font color="990000">REMOTE_IDENT</font>"<b>)</b>
+CGI_RemoteUser = <font color="0000AA"><b>ENVIRON$</b></font><b>(</b>"<font color="990000">REMOTE_USER</font>"<b>)</b>
+CGI_RequestMethod = <font color="0000AA"><b>ENVIRON$</b></font><b>(</b>"<font color="990000">REQUEST_METHOD</font>"<b>)</b>
+CGI_ScriptName = <font color="0000AA"><b>ENVIRON$</b></font><b>(</b>"<font color="990000">SCRIPT_NAME</font>"<b>)</b>
+CGI_ServerSoftware = <font color="0000AA"><b>ENVIRON$</b></font><b>(</b>"<font color="990000">SERVER_SOFTWARE</font>"<b>)</b>
+CGI_ServerName = <font color="0000AA"><b>ENVIRON$</b></font><b>(</b>"<font color="990000">SERVER_NAME</font>"<b>)</b>
+CGI_ServerPort = <font color="0000AA"><b>ENVIRON$</b></font><b>(</b>"<font color="990000">SERVER_PORT</font>"<b>)</b>
+CGI_ServerProtocol = <font color="0000AA"><b>ENVIRON$</b></font><b>(</b>"<font color="990000">SERVER_PROTOCOL</font>"<b>)</b>
+CGI_UserAgent = <font color="0000AA"><b>ENVIRON$</b></font><b>(</b>"<font color="990000">HTTP_USER_AGENT</font>"<b>)</b>
+lContentLength = <font color="0000AA"><b>VAL</b></font><b>(</b>CGI_ContentLength<b>)</b>
+<font color="007700"><i>'    </i></font> 
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' parse the data sent from the form, extracting fields from the & separator</i></font> 
+<font color="007700"><i>'</i></font> 
+  <font color="0000AA"><b>if</b></font> CGI_REQUESTMETHOD = "<font color="990000">POST</font>" <font color="000099"><b>then</b></font>
+    ContentLen = <font color="0000AA"><b>VAL</b></font><b>(</b><font color="0000AA"><b>ENVIRON$</b></font><b>(</b>"<font color="990000">CONTENT_LENGTH</font>"<b>)</b><b>)</b>
+    CGI_QUERYSTRING = <font color="0000AA"><b>GET$</b></font><b>(</b>ContentLen<b>)</b>
+  <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  qslength = <font color="0000AA"><b>len</b></font><b>(</b>CGI_QUERYSTRING<b>)</b>
+  x=1    
+  newBlock$ = "<font color="990000"></font>"
+  <font color="0000AA"><b>for</b></font> i = 1 <font color="0000AA"><b>to</b></font> qslength
+    kar$ = <font color="0000AA"><b>mid$</b></font><b>(</b>CGI_QUERYSTRING, i, 1<b>)</b>
+    <font color="0000AA"><b>select</b></font> <font color="0000AA"><b>case</b></font> kar$ 
+           <font color="0000AA"><b>case</b></font> "<font color="990000">&</font>"
+           rawp<b>(</b>x<b>)</b> = newBlock$
+           newBlock$ = "<font color="990000"></font>"
+           x = x + 1
+	<font color="0000AA"><b>case</b></font> "<font color="990000">+</font>"
+        newBlock$ = newBlock$ + "<font color="990000"> </font>"  <font color="007700"><i>' substitute space for the plus sign</i></font> 
+   <font color="0000AA"><b>case</b></font> "<font color="990000">%</font>"   
+<font color="0000AA"><b>if</b></font> <font color="0000AA"><b>mid$</b></font><b>(</b>CGI_QUERYSTRING,i,3<b>)</b>="<font color="990000">%3A</font>" <font color="000099"><b>then</b></font>
+        newBlock$ = newBlock$ + "<font color="990000">:</font>"
+	d=2
+	<font color="0000AA"><b>elseif</b></font> <font color="0000AA"><b>mid$</b></font><b>(</b>CGI_QUERYSTRING,i,3<b>)</b>="<font color="990000">%2F</font>" <font color="000099"><b>then</b></font>
+	newBlock$ = newBlock$ + "<font color="990000">/</font>"
+	d=2
+	<font color="0000AA"><b>end</b></font> <font color="0000AA"><b>if</b></font> 
+	<font color="0000AA"><b>case</b></font> <font color="000099"><b>else</b></font>
+	<font color="0000AA"><b>if</b></font> d>0 <font color="0000AA"><b>then</b></font> d=d-1:<font color="0000AA"><b>goto</b></font> 5
+       newBlock$ = newBlock$ + kar$
+5      <font color="0000AA"><b>end</b></font> <font color="000099"><b>select</b></font>
+<font color="0000AA"><b>next</b></font> i   
+rawp<b>(</b>x<b>)</b> = newBlock$
+<font color="007700"><i>'</i></font> 
+<font color="007700"><i>' plug both sides of the equal sign (name and value) into the pairs array</i></font> 
+<font color="007700"><i>'</i></font> 
+  <font color="0000AA"><b>for</b></font> r = 1 <font color="0000AA"><b>to</b></font> x
+    linelength = <font color="0000AA"><b>len</b></font><b>(</b>rawp<b>(</b>r<b>)</b><b>)</b>
+    <font color="0000AA"><b>for</b></font> g = 1 <font color="0000AA"><b>to</b></font> linelength 
+      kar$ = <font color="0000AA"><b>Mid$</b></font><b>(</b>rawp<b>(</b>r<b>)</b>, g, 1<b>)</b>
+      <font color="0000AA"><b>if</b></font> kar$ = "<font color="990000">=</font>" <font color="0000AA"><b>then</b></font> 
+        pairs<b>(</b>0, r<b>)</b> = <font color="0000AA"><b>Mid$</b></font><b>(</b>rawp<b>(</b>r<b>)</b>, 1, g-1<b>)</b>
+        pairs<b>(</b>1, r<b>)</b> = <font color="0000AA"><b>Mid$</b></font><b>(</b>rawp<b>(</b>r<b>)</b>, g+1, <font color="0000AA"><b>len</b></font><b>(</b>rawp<b>(</b>r<b>)</b><b>)</b>-g<b>)</b>
+	<font color="0000AA"><b>exit</b></font> <font color="000099"><b>for</b></font>
+      <font color="0000AA"><b>end</b></font> <font color="0000AA"><b>if</b></font> 
+    <font color="0000AA"><b>next</b></font> g 
+  <font color="0000AA"><b>next</b></font> r
+
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>sub</b></font>
+
+<font color="007700"><i>' ------------------------------------------------------------------------------------------------------------------------------------------------------------------</i></font> 
+ 
+</pre>
+</body>
+</html>

@@ -1,0 +1,58 @@
+Last Updated:  September 21, 2002
+
+'''''QICMP.INC'''''Copyright 2002 Global Services
+
+This package contains Qicmp.inc, QPing.bas and Qicmp.doc (this file).
+Qicmp.inc creates an object for use in RapidQ basic programs to send
+and receive icmp echo requests (pings) and replies using Window's
+icmp.dll, which implements a few functions in internet control message
+protocol (icmp).
+
+QPing.bas illustrates use of the Qicmp.inc file in a ping program.
+If the user program sets the TTL value in echo requests, a tracer
+route program could be implemented.
+
+RFCs 792, 1122, 1346 and 1812, among others, provide background.
+
+THE QICMP OBJECT provides RapidQ program use of icmp.dll
+
+PROPERTIES (Echo Request) Readable, Writable
+
+Value       Type    Description 
+EchoString  String  Echo data to send (defaults to "Echo This")
+Timout      Long    Echo time out (defaults to 3500 msec)
+ReqOpt(0)   Byte    Time-to-live (TTL) see RFC 792 (defaults to 255)
+ReqOpt(1)   Byte    Type of Service (TOS) see RFC 1346 (usually zero)
+ReqOpt(2)   Byte    Flags  see RFC 792 (usually zero)
+ReqOpt(3)   Byte    Number of Options  see RFC 792 (usually zero)
+ReqOpt(4)   Long    Pointer to Options list (usually zero)
+
+PROPERTIES (ICMP Reply) Readable, Writable (but why would you?)
+
+Value         Type  Description 
+Reply(0)      Long  Address that replied
+Reply(1)      Long  Status (0 = OK)
+Reply(2)      Long  Round Trip Time in msec
+Reply(3)      Long  Data Length (lower 16 bits); Reserved (upper 16 bits)
+Reply(4)      Long  Pointer to Data
+Reply(5)      Long  Options (lower byte is TTL of reply)
+Reply(6)      Long  Pointer to Options Data
+Reply(7-70)   Long  Data
+
+METHODS       Arguments   Returns
+
+Ping(ip$)     IP address  LONG msec for reply or -1 for Ping error.
+ReplyStatus   None        Reply status as string.
+ReplyAddress  None        String (a.b.c.d) of Reply(0), or null if = 0.
+ReplyData     None        Reply data as string; should = EchoString.
+ReplyTTL      None        TTL of reply packet.
+CloseHandle   None        Closes Icmp handle, do before program exit.
+
+Greater flexibility will be found in a raw sockets implementation of
+icmp and other protocols.
+
+IF all the files in this zip are put in one directory AND your 
+RapidQ stuff is in C:\rapidq, then "rc qping" will compile the
+program.  You will have to edit RC.BAT if C:\rapidq is not the
+home directory for RapidQ.
+

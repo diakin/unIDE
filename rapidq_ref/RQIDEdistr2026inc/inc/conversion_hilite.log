@@ -1,0 +1,77 @@
+00:02:30  3089: значок: btnOpen в pnlToolbarIn:TPanel - тёмный фон: поставлен тёмный значок
+00:02:30  3089: значок: btnSave в pnlToolbarIn:TPanel - тёмный фон: поставлен тёмный значок
+00:02:30  3089: значок: btnSavePrj в pnlToolbarIn:TPanel - тёмный фон: поставлен тёмный значок
+00:02:30  3089: значок: btnUndo в pnlToolbarIn:TPanel - тёмный фон: поставлен тёмный значок
+00:02:30  3089: значок: btnCut в pnlToolbarIn:TPanel - тёмный фон: поставлен тёмный значок
+00:02:30  3089: значок: btnCopy в pnlToolbarIn:TPanel - тёмный фон: поставлен тёмный значок
+00:02:30  3089: значок: btnPaste в pnlToolbarIn:TPanel - тёмный фон: поставлен тёмный значок
+00:02:30  3089: значок: btnCompileRun в pnlCompilerIn:TPanel - тёмный фон: поставлен тёмный значок
+00:02:30  3089: значок: btnViewUnit в pnlCompilerIn:TPanel - тёмный фон: поставлен тёмный значок
+00:02:30  3089: значок: btnViewForm в pnlCompilerIn:TPanel - тёмный фон: поставлен тёмный значок
+00:02:30  3089: значок: btnNewForm в pnlCompilerIn:TPanel - тёмный фон: поставлен тёмный значок
+00:02:30  3089: значок: btnPause в pnlCompilerIn:TPanel - тёмный фон: поставлен тёмный значок
+00:02:30  3089: значок: btnProgReset в pnlCompilerIn:TPanel - тёмный фон: поставлен тёмный значок
+00:02:30  3089: значок: btnTraceInto в pnlCompilerIn:TPanel - тёмный фон: поставлен тёмный значок
+00:02:30  3089: значок: btnStepOver в pnlCompilerIn:TPanel - тёмный фон: поставлен тёмный значок
+00:02:30  3089: значок: btnArdVerify в pnlCompilerIn:TPanel - тёмный фон: поставлен тёмный значок
+00:02:30  3089: значок: btnArdUpload в pnlCompilerIn:TPanel - тёмный фон: поставлен тёмный значок
+00:02:30  21880: палитра, сторонние: пакетов 14, модулей 420, страниц 11, компонентов 139
+00:02:30  21880: палитра, сторонние: страница AlphaStandard
+00:02:30  21880: палитра, сторонние: страница AlphaAdditional
+00:02:30  21880: палитра, сторонние: страница AlphaTools
+00:02:30  21880: палитра, сторонние: страница LS
+00:02:30  21880: палитра, сторонние: страница AlphaArcControls
+00:02:30  21880: палитра, сторонние: страница RichView
+00:02:30  21880: палитра, сторонние: страница RichView Misc
+00:02:30  21880: палитра, сторонние: страница RichView Spell
+00:02:30  21880: палитра, сторонние: страница RichView Interfaces
+00:02:30  21880: палитра, сторонние: страница CPortLib
+00:02:30  21880: палитра, сторонние: страница NAP
+00:02:30  21880: палитра, сторонние: из кэша, 0 мс
+00:02:30  21880: палитра, сторонние: 16 мс (список 0, пакеты значков 0, кнопки 16)
+00:02:30  21879: палитра: кнопок 114, 94 мс
+00:02:30  EM_SETTARGETDEVICE(0, 1) = 1, окно 0083069A
+00:02:30  RichEdit 4.1 (msftedit.dll, RICHEDIT50W)
+00:02:30  3305: editor.ini: тема Dark, фон $001A1A1A, текст clSilver
+00:02:30  EM_SETTARGETDEVICE(0, 1) = 1, окно 0084069A
+00:02:30  EN_CHANGE без снимка, внешнее сообщение $B033
+00:02:30  3326: схема: тема Dark, разделов с её цветами 13 из 13 строк тем в файлах
+00:02:30  3326: схема: тема Dark, разделов с её цветами 16 из 16 строк тем в файлах
+00:02:30  5364: вкладка conversion.inc: показ 31 мс (уход 0 (из них пересборка карты прежней вкладки), схема 0, текст 0, карта 31 разбор, табуляция 0 перенята, окно 0, отрисовка 0)
+00:02:30  Проект RQFormDsg2022: открытие 62 мс (закрытие прежних окон 15, чтение файлов 16 - 16 шт., закладки, вкладки; показ вкладки 31)
+00:02:30  2639: фон: UiApply, Ide.ListBG = $00654B4E, режим 1
+00:02:30  2639: фон: lvSubList:TUiListView в FTabSubList:TTabSheet - clWindow -> $00654B4E
+00:02:30  2639: фон: FObjTree:TUiTreeView в FTabObjects:TTabSheet - clWindow -> $00654B4E
+00:02:30  2639: фон: FObjProps:TUiListView в FObjPagesSheet1:TTabSheet - clWindow -> $00654B4E
+00:02:30  3187: сетка: таблица FObjProps - сетка Windows выключена, перехват NM_CUSTOMDRAW назначен
+00:02:30  2639: фон: FObjSetList:TCheckListBox в FObjProps:TUiListView - clWindow -> $00654B4E
+00:02:30  2639: фон: FObjEvents:TUiListView в FObjPagesSheet2:TTabSheet - clWindow -> $00654B4E
+00:02:30  3187: сетка: таблица FObjEvents - сетка Windows выключена, перехват NM_CUSTOMDRAW назначен
+00:02:30  2639: фон: FCodeTree:TUiTreeView в FTabCode:TTabSheet - clWindow -> $00654B4E
+00:02:30  2639: фон: FIncTree:TUiTreeView в FTabIncludes:TTabSheet - clWindow -> $00654B4E
+00:02:30  3091: тема: UiApply 78 мс (окна 78, элементы темы 0; тёмных значков построено 151)
+00:02:30  17160: главное окно - $B019 219 мс
+00:02:30  17160: главное окно - $B00B 250 мс
+00:02:30  19245: вкладка conversion.inc: после показа 0 мс (подпрограммы 0, инспектор 0, дерево кода 0)
+00:02:30  стр 337/1197 поз 0/58 | перенос пред текст след текст шир 464 | X кнт 1 наш 0 сдвиг 0 свой 0 | VW 1242 хост 1242 | DejaVu Sans Mono / DejaVu Sans Mono 10 | сбр 27 пр 0/0 en 0/1 гл 1/0
+00:02:31  Режим среды: RapidQ (подключён в RQFormDsg2026-7.bas)
+00:02:36  2639: фон: lvSubList:TUiListView в FTabSubList:TTabSheet - $00654B4E -> $00654B4E
+00:02:36  2639: фон: FObjTree:TUiTreeView в FTabObjects:TTabSheet - $00654B4E -> $00654B4E
+00:02:36  2639: фон: FObjProps:TUiListView в FObjPagesSheet1:TTabSheet - $00654B4E -> $00654B4E
+00:02:36  2639: фон: FObjSetList:TCheckListBox в FObjProps:TUiListView - $00654B4E -> $00654B4E
+00:02:36  2639: фон: FObjEvents:TUiListView в FObjPagesSheet2:TTabSheet - $00654B4E -> $00654B4E
+00:02:36  2639: фон: FCodeTree:TUiTreeView в FTabCode:TTabSheet - $00654B4E -> $00654B4E
+00:02:36  2639: фон: FIncTree:TUiTreeView в FTabIncludes:TTabSheet - $00654B4E -> $00654B4E
+00:02:37  RapidQ RQFormDsg2026-7.bas: FB Smart (editor.ini [RapidQ.Build])
+00:02:38  3326: схема: тема Dark, разделов с её цветами 16 из 16 строк тем в файлах
+00:02:38  17160: редактор - $00BA 31 мс
+00:02:38  17160: редактор - $BD11 31 мс
+00:02:38  17160: редактор - $000C 31 мс
+00:02:39  5364: вкладка RQdebugger853-7.bas: показ 390 мс (уход 0, схема 15, текст 31, карта 297 разбор, табуляция 31 перенята, окно 0, отрисовка 16)
+00:02:39  19245: вкладка RQdebugger853-7.bas: после показа 0 мс (подпрограммы 0, инспектор 0, дерево кода 0)
+00:02:39  стр 26/21649 поз 24/24 | перенос пред текст след текст шир 192 | X кнт 193 наш 192 сдвиг 0 свой 0 | VW 1242 хост 1242 | DejaVu Sans Mono / DejaVu Sans Mono 10 | сбр 38 пр 0/0 en 0/1 гл 1/0
+00:02:41  2639: фон: lstStages:TUiListBox в DlgCompProgress:TDlgCompProgress - $00654B4E -> $00654B4E
+00:02:43  3326: схема: тема Dark, разделов с её цветами 16 из 16 строк тем в файлах
+00:02:43  5364: вкладка conversion.inc: показ 62 мс (уход 0, схема 16, текст 0, карта 0 из памяти, табуляция 31 перенята, окно 0, отрисовка 15)
+00:02:43  19245: вкладка conversion.inc: после показа 0 мс (подпрограммы 0, инспектор 0, дерево кода 0)
+00:02:43  стр 337/1197 поз 0/58 | перенос пред текст след текст шир 464 | X кнт 1 наш 0 сдвиг 0 свой 0 | VW 1242 хост 1242 | DejaVu Sans Mono / DejaVu Sans Mono 10 | сбр 49 пр 0/0 en 0/1 гл 1/0

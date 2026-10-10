@@ -1,0 +1,316 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.51 [fr]C-CCK-MCD   (WinNT; I) [Netscape]">
+   <title>Appendix A: QFormEx</title>
+</head>
+<body bgcolor="#FFFFFF" FONT FACE="Arial, Helvetica">
+&nbsp;
+<table CELLSPACING=0 CELLPADDING=0 WIDTH="100%" >
+<tr>
+<td><font face="Arial, Helvetica">Documentation component by D.Glodt (c)2000-2001</font></td>
+
+<td ALIGN=RIGHT><b><font face="Arial, Helvetica">Appendix A: QFormEx</font></b></td>
+</tr>
+
+<tr>
+<td COLSPAN="2">
+<hr SIZE=1></td>
+</tr>
+</table>
+
+<h1>
+QFormEx Component</h1>
+
+<dd>
+QFormEx is a a component as QForm with&nbsp; Drag&amp;Drop of files and
+tray icon function.</dd>
+
+<p><br><a NAME="1"></a><b><font size=+1>QFormEx Properties</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Field</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>R/W</b></td>
+
+<td><b>Default</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>DragEnable</td>
+
+<td>BOOLEAN</td>
+
+<td>RW</td>
+
+<td>False</td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Accept drop file in the application window&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>DragZone</td>
+
+<td>QRECT</td>
+
+<td>RW</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Zone of drop file&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>DeskBar</td>
+
+<td>BOOLEAN</td>
+
+<td>RW</td>
+
+<td>False</td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>If true , application will inside the desk tool bar when the window
+will minimized.
+<br>Set to false if the &eacute;vent WndProc is use.</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>FormStyle</td>
+
+<td>INTEGER</td>
+
+<td>RW</td>
+
+<td>fsNormal</td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Style fsStayOnTop is now supported</td>
+
+<td></td>
+
+<td></td>
+</tr>
+</table>
+
+<p><a NAME="2"></a><b><font size=+1>QFormEx Methods</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Method</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Description</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>AddTrayIcon</td>
+
+<td>SUB</td>
+
+<td>Add&nbsp; an icon application inside the desk tool bar.</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>DelTrayIcon</td>
+
+<td>SUB</td>
+
+<td>Delete&nbsp; the icon application of desk&nbsp; tool bar.</td>
+
+<td>0</td>
+</tr>
+</table>
+
+<p><a NAME="3"></a><b><font size=+1>QFormEx Events</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Event</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Occurs when...</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>OnDrag</td>
+
+<td>(File$)</td>
+
+<td>Drop file</td>
+
+<td>1</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>OnTrayClick</td>
+
+<td></td>
+
+<td>Click right button on icon application of tool bar</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>OnTrayDblClick</td>
+
+<td></td>
+
+<td>Double click on left button on icon application of tool bar</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>OnMinimise</td>
+
+<td></td>
+
+<td>Window minimized</td>
+
+<td>0</td>
+</tr>
+</table>
+
+<p><a NAME="4"></a><b><font size=+1>QFormEx Example1</font></b>
+<p>$TYPECHECK ON
+<br>$INCLUDE "rapidq.inc"
+<br>$INCLUDE "Object\QFormEx.inc"
+<p>declare Sub depose(file as string)
+<p>CREATE Form AS QFormEx
+<br>&nbsp; width=300
+<br>&nbsp; Height=200
+<br>&nbsp; Caption="Drag and drop files"
+<br>&nbsp; center
+<br>&nbsp; DragEnable=true
+<br>&nbsp; OnDrag=Depose
+<br>&nbsp; CREATE Listbox as QLISTBOX
+<br>&nbsp;&nbsp;&nbsp; Width=150
+<br>&nbsp;&nbsp;&nbsp; height=100
+<br>&nbsp; END CREATE
+<br>END CREATE
+<p>form.DragZone.Left=listbox.left
+<br>form.DragZone.Top=listbox.Top
+<br>form.DragZone.Right=listbox.Width
+<br>form.DragZone.Bottom=listbox.Height
+<br>Form.ShowModal
+<p>Sub Depose(file as string)
+<br>&nbsp; ListBox.AddItems(file)
+<br>End Sub
+<p><a NAME="4"></a><b><font size=+1>QFormEx Example2</font></b>
+<p>$TYPECHECK ON
+<br>$INCLUDE "rapidq.inc"
+<br>$INCLUDE "Object\QFormEx.inc"
+<br>declare sub close
+<br>declare sub show
+<br>declare sub menu
+<br>declare sub hide
+<p>CREATE Form AS QFormEx
+<br>&nbsp; OnClose=Close
+<br>&nbsp; OnTrayDblClick=Show
+<br>&nbsp; OnTrayClick=Menu
+<br>&nbsp; OnMinimise=Hide
+<br>END CREATE
+<p>CREATE PopUpMenu AS QPOPUPMENU
+<br>&nbsp;&nbsp;&nbsp; Alignment = 1
+<br>&nbsp;&nbsp;&nbsp; CREATE Open AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption = "&amp;Open"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick =show
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; CREATE Seperator AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption = "-"
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; CREATE MeExit AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption = "&amp;Exit"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick =Close
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>END CREATE
+<br>form.addtrayicon
+<br>form.showmodal
+<p>sub close
+<br>&nbsp; form.deltrayicon
+<br>&nbsp; Application.terminate
+<br>end sub
+<p>sub show
+<br>&nbsp; form.visible=true
+<br>end sub
+<p>sub Hide
+<br>&nbsp; form.visible=false
+<br>end sub
+<p>sub menu
+<br>&nbsp; popupmenu.popup(screen.MouseX,screen.MouseY)
+<br>end sub
+<br>&nbsp;
+<br>&nbsp;
+</body>
+</html>

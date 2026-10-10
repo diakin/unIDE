@@ -1,0 +1,651 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.51 [fr]C-CCK-MCD   (WinNT; I) [Netscape]">
+   <meta name="Author" content="dominique glodt">
+   <title>Appendix A: QSkinBtn</title>
+</head>
+<body bgcolor="#FFFFFF" FONT FACE="Arial, Helvetica">
+&nbsp;
+<table CELLSPACING=0 CELLPADDING=0 WIDTH="100%" >
+<tr>
+<td><font face="Arial, Helvetica">Documentation component by D.Glodt (c)2003</font></td>
+
+<td ALIGN=RIGHT><b><font face="Arial, Helvetica">Appendix A: QSkinBtn</font></b></td>
+</tr>
+
+<tr>
+<td COLSPAN="2">
+<hr SIZE=1></td>
+</tr>
+</table>
+
+<h1>
+QSkinBtn Component</h1>
+
+<dd>
+QSkinBtn is button component of skin type.</dd>
+
+<p><br><a NAME="1"></a><b><font size=+1>QSkinBtn Properties</font></b>
+<table BORDER=0 WIDTH="100%" >
+<tr>
+<td><b>Field</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>R/W</b></td>
+
+<td><b>D&eacute;fault</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>btUp</td>
+
+<td>QBITMAP</td>
+
+<td><b>R/W</b></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Bitmap Image for up state.</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>btDown</td>
+
+<td>QBITMAP</td>
+
+<td>R/W</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Bitmap image for down state.</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>btEnable</td>
+
+<td>QBITMAP</td>
+
+<td>R/W</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Bitmap image for disable state.</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>mode</td>
+
+<td>SHORT</td>
+
+<td>R/W</td>
+
+<td>0</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Run mode button
+<br>Mode to 0:same to a QButton
+<br>Mode to 1:button stay a the down state after click.
+<br>Mode to 2:button change state after each click.</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>down</td>
+
+<td>BOOLEAN</td>
+
+<td>R/W</td>
+
+<td>FALSE</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>down state of button</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Enabled</td>
+
+<td>BOOLEAN</td>
+
+<td>R/W</td>
+
+<td>TRUE</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Parent</td>
+
+<td>QFORM,QPANEL,QTABCONTROL</td>
+
+<td>W</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Left</td>
+
+<td>INTEGER</td>
+
+<td>R/W</td>
+
+<td>0</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Top</td>
+
+<td>INTEGER</td>
+
+<td>R/W</td>
+
+<td>0</td>
+
+<td></td>
+</tr>
+</table>
+
+<p><a NAME="2"></a><b><font size=+1>QSkinBtn Methods</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Method</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Description</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+</table>
+
+<p><a NAME="3"></a><b><font size=+1>QSkinBtn Events</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Event</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Occurs when...</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>OnClick</td>
+
+<td></td>
+
+<td>Click on button</td>
+
+<td>0</td>
+
+<td></td>
+</tr>
+</table>
+
+<p><a NAME="4"></a><b><font size=+1>QSkinBtn Example</font></b>
+<br><b><font color="#0000A0">$typecheck</font></b> on
+<br><b><font color="#0000A0">$optimize</font></b> on
+<br><b><font color="#0000A0">$include</font></b> "<font color="#800000">Rapidq.inc</font>"
+<br><b><font color="#0000A0">$include</font></b> "<font color="#800000">QFuncLib.inc</font>"
+<br><b><font color="#0000A0">$include</font></b> "<font color="#800000">Object\QSkin.inc</font>"
+<br><b><font color="#0000A0">$include</font></b> "<font color="#800000">Object\QSkinBtn.inc</font>"
+<br><b><font color="#0000A0">$include</font></b> "<font color="#800000">Object\QTextBtn.inc</font>"
+<br><b><font color="#0000A0">$include</font></b> "<font color="#800000">Object\QFlashLabel.inc</font>"
+<br><b><font color="#0000A0">$include</font></b> "<font color="#800000">Object\QVuMeter.inc</font>"
+<br><b><font color="#0000A0">$include</font></b> "<font color="#800000">Object\QVideo.inc</font>"
+<p><b><font color="#0000A0">$resource</font></b> img <b><font color="#0000A0">as</font></b>
+"<font color="#800000">skin3.bmp</font>"
+<br><b><font color="#0000A0">$resource</font></b> play1 <b><font color="#0000A0">as</font></b>
+"<font color="#800000">play1.bmp</font>"
+<br><b><font color="#0000A0">$resource</font></b> play2 <b><font color="#0000A0">as</font></b>
+"<font color="#800000">play2.bmp</font>"
+<br><b><font color="#0000A0">$resource</font></b> stop1 <b><font color="#0000A0">as</font></b>
+"<font color="#800000">stop1.bmp</font>"
+<br><b><font color="#0000A0">$resource</font></b> stop2 <b><font color="#0000A0">as</font></b>
+"<font color="#800000">stop2.bmp</font>"
+<br><b><font color="#0000A0">$resource</font></b> pause1 <b><font color="#0000A0">as</font></b>
+"<font color="#800000">pause1.bmp</font>"
+<br><b><font color="#0000A0">$resource</font></b> pause2 <b><font color="#0000A0">as</font></b>
+"<font color="#800000">pause2.bmp</font>"
+<br><b><font color="#0000A0">$resource</font></b> back1 <b><font color="#0000A0">as</font></b>
+"<font color="#800000">back1.bmp</font>"
+<br><b><font color="#0000A0">$resource</font></b> back2 <b><font color="#0000A0">as</font></b>
+"<font color="#800000">back2.bmp</font>"
+<br><b><font color="#0000A0">$resource</font></b> fwd1 <b><font color="#0000A0">as</font></b>
+"<font color="#800000">foreward1.bmp</font>"
+<br><b><font color="#0000A0">$resource</font></b> fwd2 <b><font color="#0000A0">as</font></b>
+"<font color="#800000">foreward2.bmp</font>"
+<br><b><font color="#0000A0">$resource</font></b> power1 <b><font color="#0000A0">as</font></b>
+"<font color="#800000">power1.bmp</font>"
+<br><b><font color="#0000A0">$resource</font></b> power2 <b><font color="#0000A0">as</font></b>
+"<font color="#800000">power2.bmp</font>"
+<p><b><font color="#0000A0">declare</font></b> <b><font color="#0000A0">sub</font></b>
+quit
+<br><b><font color="#0000A0">declare</font></b> <b><font color="#0000A0">sub</font></b>
+volume
+<br><b><font color="#0000A0">declare</font></b> <b><font color="#0000A0">sub</font></b>
+SetVolume
+<br><b><font color="#0000A0">declare</font></b> <b><font color="#0000A0">sub</font></b>
+open
+<br><b><font color="#0000A0">declare</font></b> <b><font color="#0000A0">sub</font></b>
+play
+<br><b><font color="#0000A0">declare</font></b> <b><font color="#0000A0">sub</font></b>
+stop
+<br><b><font color="#0000A0">declare</font></b> <b><font color="#0000A0">sub</font></b>
+foreward
+<br><b><font color="#0000A0">declare</font></b> <b><font color="#0000A0">sub</font></b>
+backward
+<br><b><font color="#0000A0">declare</font></b> <b><font color="#0000A0">sub</font></b>
+pause
+<br><b><font color="#0000A0">Declare</font></b> <b><font color="#0000A0">Sub</font></b>
+ShowTime<b>(</b>Position <b><font color="#0000A0">as</font></b> <b><font color="#0000A0">long</font></b>,timePos
+<b><font color="#0000A0">aslong</font>)</b>
+<p><b><font color="#0000A0">const</font></b> color1=&amp;h660000
+<br><b><font color="#0000A0">const</font></b> color2=&amp;hff9900
+<br><b><font color="#0000A0">const</font></b> color3=&amp;h88FF66
+<br><b><font color="#0000A0">const</font></b> RazClock="<font color="#800000">00:00</font>"
+<p><b><font color="#0000A0">Dim</font></b> OpenDialog <b><font color="#0000A0">asQOpenDialog</font></b>
+<br>OpenDialog.Filter="<font color="#800000">Fichier vid&eacute;o(tout
+type)|*.avi;*.mpg;*.mpeg;*.mov|Fichier avi|*.avi|Fichier MPEG|*.mpg;*.mpeg|Fichier
+MOV|*.mov|</font>"
+<br>OpenDialog.Caption= "<font color="#800000">Selectionner une vid&eacute;o</font>"
+<p><b><font color="#0000A0">CREATE</font></b> Form <b><font color="#0000A0">ASQSkin</font></b>
+<br>&nbsp; Center
+<br>&nbsp; skin.bmpHandle=img
+<br>&nbsp; skin.top=-1
+<br>&nbsp; skin.left=-1
+<br>&nbsp; caption="<font color="#800000">Player</font>"
+<br>&nbsp; OffsWidth=-5
+<br>&nbsp; <b><font color="#0000A0">create</font></b> display <b><font color="#0000A0">asqpanel</font></b>
+<br>&nbsp;&nbsp;&nbsp; top=20
+<br>&nbsp;&nbsp;&nbsp; left=16
+<br>&nbsp;&nbsp;&nbsp; width=311
+<br>&nbsp;&nbsp;&nbsp; height=72
+<br>&nbsp;&nbsp;&nbsp; bevelinner=0
+<br>&nbsp;&nbsp;&nbsp; bevelouter=0
+<br>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">color</font></b>=&amp;h994400
+<br>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">create</font></b> bar <b><font color="#0000A0">asqpanel</font></b>
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; top=50
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left=0
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width=display.width
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; height=2
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; bevelinner=0
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; bevelouter=0
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">color</font></b>=color1
+<br>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">create</font></b>
+<br>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">create</font></b> FlashPlay
+<b><font color="#0000A0">as</font></b>
+<b><font color="#0000A0">QFlashlabel</font></b>
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DarkColor=color1
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LightColor=color3
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left=5
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; top=2
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="<font color="#800000">Play</font>"
+<br>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">create</font></b>
+<br>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">create</font></b> FlashStop
+<b><font color="#0000A0">as</font></b>
+<b><font color="#0000A0">QFlashlabel</font></b>
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DarkColor=color1
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LightColor=color3
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left=5
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; top=16
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="<font color="#800000">Stop</font>"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; state=true
+<br>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">create</font></b>
+<br>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">create</font></b> FlashPause
+<b><font color="#0000A0">as</font></b>
+<b><font color="#0000A0">QFlashlabel</font></b>
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DarkColor=color1
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LightColor=color3
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left=5
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; top=30
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="<font color="#800000">Pause</font>"
+<br>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">create</font></b>
+<br>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">create</font></b> FlashTime
+<b><font color="#0000A0">as</font></b>
+<b><font color="#0000A0">QFlashlabel</font></b>
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DarkColor=color1
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LightColor=color2
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left=150
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; top=6
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font.size=24
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption=RazClock
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; State=true
+<br>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">create</font></b>
+<br>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">create</font></b> vu <b><font color="#0000A0">asQVuMeter</font></b>
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; top=1
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left=290
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width=10
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; height=45
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DarkColor=color1
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; LightColor=color2
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; value=50
+<br>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">create</font></b>
+<br>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">create</font></b> btOpen
+<b><font color="#0000A0">as</font></b>
+<b><font color="#0000A0">QTextBtn</font></b>
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; UpColor=color1
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DownColor=color2
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left=5
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; top=55
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font.bold=true
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="<font color="#800000">Open</font>"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=open
+<br>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">create</font></b>
+<br>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">create</font></b> btVol
+<b><font color="#0000A0">as</font></b>
+<b><font color="#0000A0">QTextBtn</font></b>
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; UpColor=color1
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; DownColor=color2
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left=265
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; top=55
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; font.bold=true
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="<font color="#800000">Volume</font>"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Volume
+<br>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">create</font></b>
+<br>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">create</font></b>
+<br>&nbsp; <b><font color="#0000A0">create</font></b> btPlay <b><font color="#0000A0">asQskinBtn</font></b>
+<br>&nbsp;&nbsp;&nbsp; btUp.bmphandle=play1
+<br>&nbsp;&nbsp;&nbsp; btDown.bmphandle=play2
+<br>&nbsp;&nbsp;&nbsp; top=110
+<br>&nbsp;&nbsp;&nbsp; left=12
+<br>&nbsp;&nbsp;&nbsp; mode=1
+<br>&nbsp;&nbsp;&nbsp; OnClick=play
+<br>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">create</font></b>
+<br>&nbsp; <b><font color="#0000A0">create</font></b> btStop <b><font color="#0000A0">asQskinBtn</font></b>
+<br>&nbsp;&nbsp;&nbsp; btUp.bmphandle=stop1
+<br>&nbsp;&nbsp;&nbsp; btDown.bmphandle=stop2
+<br>&nbsp;&nbsp;&nbsp; top=110
+<br>&nbsp;&nbsp;&nbsp; left=44
+<br>&nbsp;&nbsp;&nbsp; OnClick=stop
+<br>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">create</font></b>
+<br>&nbsp; <b><font color="#0000A0">create</font></b> btPause <b><font color="#0000A0">asQskinBtn</font></b>
+<br>&nbsp;&nbsp;&nbsp; btUp.bmphandle=pause1
+<br>&nbsp;&nbsp;&nbsp; btDown.bmphandle=pause2
+<br>&nbsp;&nbsp;&nbsp; top=110
+<br>&nbsp;&nbsp;&nbsp; left=76
+<br>&nbsp;&nbsp;&nbsp; mode=1
+<br>&nbsp;&nbsp;&nbsp; OnClick=pause
+<br>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">create</font></b>
+<br>&nbsp; <b><font color="#0000A0">create</font></b> btBack <b><font color="#0000A0">asQskinBtn</font></b>
+<br>&nbsp;&nbsp;&nbsp; btUp.bmphandle=back1
+<br>&nbsp;&nbsp;&nbsp; btDown.bmphandle=back2
+<br>&nbsp;&nbsp;&nbsp; top=110
+<br>&nbsp;&nbsp;&nbsp; left=108
+<br>&nbsp;&nbsp;&nbsp; OnClick=backward
+<br>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">create</font></b>
+<br>&nbsp; <b><font color="#0000A0">create</font></b> btFwd <b><font color="#0000A0">asQskinBtn</font></b>
+<br>&nbsp;&nbsp;&nbsp; btUp.bmphandle=fwd1
+<br>&nbsp;&nbsp;&nbsp; btDown.bmphandle=fwd2
+<br>&nbsp;&nbsp;&nbsp; top=110
+<br>&nbsp;&nbsp;&nbsp; left=140
+<br>&nbsp;&nbsp;&nbsp; OnClick=foreward
+<br>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">create</font></b>
+<br>&nbsp; <b><font color="#0000A0">create</font></b> btPower <b><font color="#0000A0">asQskinBtn</font></b>
+<br>&nbsp;&nbsp;&nbsp; btUp.bmphandle=power1
+<br>&nbsp;&nbsp;&nbsp; btDown.bmphandle=power2
+<br>&nbsp;&nbsp;&nbsp; top=110
+<br>&nbsp;&nbsp;&nbsp; left=300
+<br>&nbsp;&nbsp;&nbsp; OnClick=quit
+<br>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">create</font></b>
+<br><b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE</font></b>
+<p><b><font color="#0000A0">CREATE</font></b> Form2 <b><font color="#0000A0">ASQFORM</font></b>
+<br>&nbsp; Caption="<font color="#800000">Volume</font>"
+<br>&nbsp; Width=60
+<br>&nbsp; Height=190
+<br>&nbsp; Center
+<br>&nbsp; borderStyle=bsToolWindow
+<br>&nbsp; <b><font color="#0000A0">CREATE</font></b> TbVol <b><font color="#0000A0">ASQTRACKBAR</font></b>
+<br>&nbsp;&nbsp;&nbsp; cursor=crHandPoint
+<br>&nbsp;&nbsp;&nbsp; Orientation=tbVertical
+<br>&nbsp;&nbsp;&nbsp; Frequency=5
+<br>&nbsp;&nbsp;&nbsp; TickMarks=tmBoth
+<br>&nbsp;&nbsp;&nbsp; TickStyle=tsAuto
+<br>&nbsp;&nbsp;&nbsp; Left=5
+<br>&nbsp;&nbsp;&nbsp; Top=5
+<br>&nbsp;&nbsp;&nbsp; Max=0
+<br>&nbsp;&nbsp;&nbsp; Min=-100
+<br>&nbsp;&nbsp;&nbsp; Width=45
+<br>&nbsp;&nbsp;&nbsp; Height=150
+<br>&nbsp;&nbsp;&nbsp; position=-50
+<br>&nbsp;&nbsp;&nbsp; OnChange=SetVolume
+<br>&nbsp; <b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE</font></b>
+<br><b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE</font></b>
+<p><b><font color="#0000A0">CREATE</font></b> video <b><font color="#0000A0">ASQVideo</font></b>
+<br>&nbsp; Parent=0
+<br>&nbsp; volume=50
+<br>&nbsp; OnChange=ShowTime
+<br>&nbsp; timer.interval=200
+<br>&nbsp; BorderStyle=bsSizeable
+<br><b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE</font></b>
+<p>form.shapeform<b>(</b>img,&amp;hffffff<b>)</b>
+<br>form.setdeskbar
+<br>Form.ShowModal
+<p><b><font color="#0000A0">Sub</font></b> quit
+<br>&nbsp; video.close
+<br>&nbsp; form2.close
+<br>&nbsp; application.terminate
+<br><b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub</font></b>
+<p><b><font color="#0000A0">Sub</font></b> volume
+<br>&nbsp; form2.show
+<br><b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub</font></b>
+<p><b><font color="#0000A0">Sub</font></b> SetVolume
+<br>&nbsp; vu.value=<b><font color="#0000A0">Abs</font>(</b>TbVol.position<b>)</b>
+<br>&nbsp; video.volume=<b><font color="#0000A0">Abs</font>(</b>TbVol.position<b>)</b>
+<br><b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub</font></b>
+<p><b><font color="#0000A0">Sub</font></b> open
+<br>&nbsp; <b><font color="#0000A0">If</font></b> OpenDialog.Execute <b><font color="#0000A0">Then</font></b>
+<br>&nbsp;&nbsp;&nbsp; video.close
+<br>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">if</font></b> video.open<b>(</b>OpenDialog.FileName<b>)<font color="#0000A0">then</font></b>
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; btPlay.down=false
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; FlashPlay.state=false
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; FlashStop.state=true
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; btPause.Down=false
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; FlashPause.flash=false
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; FlashTime.caption=RazClock
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; video.caption=GetFileName<b>(</b>OpenDialog.FileName<b>)</b>
+<br>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">else</font></b>
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">showmessage</font></b>
+video.error
+<br>&nbsp;&nbsp;&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if</font></b>
+<br>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if</font></b>
+<br><b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub</font></b>
+<p><b><font color="#0000A0">Sub</font></b> play
+<br>&nbsp; <b><font color="#0000A0">if</font></b> video.FileOpen=false
+<b><font color="#0000A0">then</font></b>
+<br>&nbsp;&nbsp;&nbsp; btPlay.Down=false
+<br>&nbsp; <b><font color="#0000A0">else</font></b>
+<br>&nbsp;&nbsp;&nbsp; FlashPause.flash=false
+<br>&nbsp;&nbsp;&nbsp; FlashStop.state=false
+<br>&nbsp;&nbsp;&nbsp; FlashPlay.state=true
+<br>&nbsp;&nbsp;&nbsp; btPause.Down=false
+<br>&nbsp;&nbsp;&nbsp; video.play
+<br>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if</font></b>
+<br><b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub</font></b>
+<p><b><font color="#0000A0">Sub</font></b> stop
+<br>&nbsp; video.stop
+<br>&nbsp; btPlay.down=false
+<br>&nbsp; FlashPlay.state=false
+<br>&nbsp; FlashStop.state=true
+<br>&nbsp; btPause.Down=false
+<br>&nbsp; FlashPause.flash=false
+<br>&nbsp; FlashTime.caption=RazClock
+<br><b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub</font></b>
+<p><b><font color="#0000A0">Function</font></b> GetMinutes<b>(</b>seconds
+<b><font color="#0000A0">aslong</font>)</b>
+<b><font color="#0000A0">asstring</font></b>
+<br>&nbsp; <b><font color="#0000A0">dim</font></b> min <b><font color="#0000A0">asinteger</font></b>
+<br>&nbsp; <b><font color="#0000A0">dim</font></b> sec <b><font color="#0000A0">asinteger</font></b>
+<br>&nbsp; <b><font color="#0000A0">dim</font></b> sMin <b><font color="#0000A0">asstring</font></b>
+<br>&nbsp; <b><font color="#0000A0">dim</font></b> sSec <b><font color="#0000A0">asstring</font></b>
+<p>&nbsp; min=seconds/60
+<br>&nbsp; sec=seconds <b><font color="#0000A0">mod</font></b> 60
+<br>&nbsp; <b><font color="#0000A0">if</font></b> min&lt;10 <b><font color="#0000A0">then</font></b>
+<br>&nbsp;&nbsp;&nbsp; sMin="<font color="#800000">0</font>"+<b><font color="#0000A0">str$</font>(</b>min<b>)</b>
+<br>&nbsp; <b><font color="#0000A0">else</font></b>
+<br>&nbsp;&nbsp;&nbsp; sMin=<b><font color="#0000A0">str$</font>(</b>min<b>)</b>
+<br>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if</font></b>
+<br>&nbsp; <b><font color="#0000A0">if</font></b> sec&lt;10 <b><font color="#0000A0">then</font></b>
+<br>&nbsp;&nbsp;&nbsp; sSec="<font color="#800000">0</font>"+<b><font color="#0000A0">str$</font>(</b>sec<b>)</b>
+<br>&nbsp; <b><font color="#0000A0">else</font></b>
+<br>&nbsp;&nbsp;&nbsp; sSec=<b><font color="#0000A0">str$</font>(</b>sec<b>)</b>
+<br>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if</font></b>
+<br>&nbsp; result=sMin+"<font color="#800000">:</font>"+sSec
+<br><b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Function</font></b>
+<p><b><font color="#0000A0">Sub</font></b> ShowTime<b>(</b>Position <b><font color="#0000A0">aslong</font></b>,timePos
+<b><font color="#0000A0">aslong</font>)</b>
+<br>&nbsp; FlashTime.caption=GetMinutes<b>(</b>timePos<b>)</b>
+<br>&nbsp; <b><font color="#0000A0">If</font></b> Video.State=VD_STOP <b><font color="#0000A0">then</font></b>
+<br>&nbsp;&nbsp;&nbsp; btPlay.down=false
+<br>&nbsp;&nbsp;&nbsp; FlashPlay.state=false
+<br>&nbsp;&nbsp;&nbsp; FlashStop.state=true
+<br>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if</font></b>
+<br><b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub</font></b>
+<p><b><font color="#0000A0">Sub</font></b> pause
+<br>&nbsp; <b><font color="#0000A0">if</font></b> video.state=VD_PLAY <b><font color="#0000A0">then</font></b>
+<br>&nbsp;&nbsp;&nbsp; video.pause
+<br>&nbsp;&nbsp;&nbsp; btPlay.down=false
+<br>&nbsp;&nbsp;&nbsp; FlashPlay.state=false
+<br>&nbsp;&nbsp;&nbsp; FlashPause.flash=true
+<br>&nbsp; <b><font color="#0000A0">else</font></b>
+<br>&nbsp; <b><font color="#0000A0">if</font></b> video.FileOpen=false
+<b><font color="#0000A0">then</font></b>
+btPause.Down=false
+<br>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if</font></b>
+<br><b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub</font></b>
+<p><b><font color="#0000A0">Sub</font></b> foreward
+<br>&nbsp; <b><font color="#0000A0">if</font></b> <b>(</b>video.currentFrame+1<b>)</b>&lt;video.lenght
+<b><font color="#0000A0">then</font></b>
+<br>&nbsp;&nbsp;&nbsp; video.currentFrame=video.currentFrame+1
+<br>&nbsp;&nbsp;&nbsp; FlashTime.caption=<b><font color="#0000A0">str$</font>(</b>video.currentFrame<b>)</b>
+<br>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if</font></b>
+<br><b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub</font></b>
+<p><b><font color="#0000A0">Sub</font></b> backward
+<br>&nbsp; <b><font color="#0000A0">if</font></b> video.currentFrame>0
+<b><font color="#0000A0">then</font></b>
+<br>&nbsp;&nbsp;&nbsp; video.currentFrame=video.currentFrame-1
+<br>&nbsp;&nbsp;&nbsp; FlashTime.caption=<b><font color="#0000A0">str$</font>(</b>video.currentFrame<b>)</b>
+<br>&nbsp; <b><font color="#0000A0">end</font></b> <b><font color="#0000A0">if</font></b>
+<br><b><font color="#0000A0">End</font></b> <b><font color="#0000A0">Sub</font></b>
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+</body>
+</html>

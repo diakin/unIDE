@@ -1,0 +1,110 @@
+<html>
+<head>
+<title>QProgress.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="007700"><i>' Type Objet</i></font> 
+<font color="007700"><i>' Classe QProgress</i></font> 
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="0000AA"><b>$IFNDEF</b></font> TRUE
+  <font color="0000AA"><b>$DEFINE</b></font> True 1
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> FALSE
+  <font color="0000AA"><b>$DEFINE</b></font> False 0
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> boolean
+  <font color="0000AA"><b>$DEFINE</b></font> boolean <font color="000099"><b>integer</b></font>
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>CONST</b></font> PG_CHILD=&H40000000
+<font color="0000AA"><b>CONST</b></font> PG_VISIBLE=&H10000000
+<font color="0000AA"><b>Const</b></font> PG_USER=&H400
+<font color="0000AA"><b>Const</b></font> PBM_SETRANGE=PG_USER + 1
+<font color="0000AA"><b>Const</b></font> PBM_SETPOS=PG_USER + 2
+<font color="0000AA"><b>Const</b></font> PBM_SETSTEP=PG_USER + 4
+ 
+<font color="0000AA"><b>DECLARE</b></font> <font color="0000AA"><b>FUNCTION</b></font> CreateBar <font color="0000AA"><b>LIB</b></font> "<font color="990000">USER32</font>" <font color="0000AA"><b>ALIAS</b></font> "<font color="990000">CreateWindowExA</font>" <b>(</b>ExStyle&,ClassName$,WindowName$,Style&,X&,Y&,Width&,Height&,WndParent&,hMenu&,hInstance&,Param&<b>)</b> <font color="0000AA"><b>AS</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> MoveBar <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">MoveWindow</font>" <b>(</b>hwnd <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,x <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>integer</b></font>,y <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>integer</b></font>,nWidth <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>integer</b></font>,nHeight <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>integer</b></font>,bRepaint <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>Function</b></font> ShowBar <font color="0000AA"><b>Lib</b></font> "<font color="990000">user32</font>" <font color="0000AA"><b>Alias</b></font> "<font color="990000">ShowWindow</font>" <b>(</b>hwnd <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font>,nCmdShow <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Long</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+
+<font color="0000AA"><b>Type</b></font> QProgress <font color="0000AA"><b>EXTENDS</b></font> <font color="000099"><b>QOBJECT</b></font>
+    PRIVATE:
+      Range <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+      Increment <font color="0000AA"><b>As</b></font> <font color="000099"><b>Long</b></font>
+      resolution <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    PUBLIC:
+      Parent <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font> PROPERTY SET SetParent
+      value <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font> PROPERTY SET SetValue
+      left <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font> PROPERTY SET SetLeft
+      Top <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font> PROPERTY SET SetTop
+      Width <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font> PROPERTY SET SetWidth
+      Height <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font> PROPERTY SET SetHeight
+      Visible <font color="0000AA"><b>as</b></font> boolean PROPERTY SET SetVisible
+      Handle <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+    
+    PROPERTY SET SetVisible<b>(</b>visible <font color="0000AA"><b>as</b></font> boolean<b>)</b>
+      QProgress.visible=visible
+      <font color="0000AA"><b>if</b></font> visible=0 <font color="000099"><b>then</b></font>
+        ShowBar<b>(</b>QProgress.Handle,0<b>)</b>
+      <font color="000099"><b>else</b></font>
+        ShowBar<b>(</b>QProgress.Handle,5<b>)</b>
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>END</b></font> PROPERTY
+
+    PROPERTY SET SetLeft<b>(</b>left <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+      QProgress.Left=left
+      MoveBar<b>(</b>QProgress.Handle,QProgress.Left,QProgress.Top,QProgress.Width,QProgress.Height,true<b>)</b>
+    <font color="0000AA"><b>END</b></font> PROPERTY
+
+    PROPERTY SET SetTop<b>(</b>top <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+      QProgress.Top=top
+      MoveBar<b>(</b>QProgress.Handle,QProgress.Left,QProgress.Top,QProgress.Width,QProgress.Height,true<b>)</b>
+    <font color="0000AA"><b>END</b></font> PROPERTY
+
+    PROPERTY SET SetWidth<b>(</b>width <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+      QProgress.Width=width
+      MoveBar<b>(</b>QProgress.Handle,QProgress.Left,QProgress.Top,QProgress.Width,QProgress.Height,true<b>)</b>
+    <font color="0000AA"><b>END</b></font> PROPERTY
+
+    PROPERTY SET SetHeight<b>(</b>height <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+      QProgress.Height=height
+      MoveBar<b>(</b>QProgress.Handle,QProgress.Left,QProgress.Top,QProgress.Width,QProgress.Height,true<b>)</b>
+    <font color="0000AA"><b>END</b></font> PROPERTY
+            
+    PROPERTY SET SetParent<b>(</b>parent <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font><b>)</b>
+      QProgress.Parent = parent
+      <font color="007700"><i>'QProgress.Handle = CreateBar(0,"msctls_progress32","",PG_CHILD Or PG_VISIBLE,QProgress.left,QProgress.top,QProgress.width,QProgress.height,QProgress.Parent,0,Application.hInstance,0)</i></font> 
+      QProgress.Handle = CreateBar<b>(</b>0,"<font color="990000">msctls_progress32</font>","<font color="990000"></font>",PG_CHILD <font color="0000AA"><b>Or</b></font> PG_VISIBLE,QProgress.left,QProgress.top,QProgress.width,QProgress.height,QProgress.Parent,0,0,0<b>)</b>
+      QProgress.visible=1
+      <font color="007700"><i>'Set the range of the progress bar.</i></font> 
+      <font color="007700"><i>'(Minimum range = low word, Maximum range = high word).</i></font> 
+      QProgress.Range = &H5014
+      SendMessage<b>(</b>QProgress.Handle, PBM_SETRANGE, 0, QProgress.Range * &H10000<b>)</b>
+      <font color="007700"><i>'Set the value of the highlight increment.</i></font> 
+      QProgress.Increment = QProgress.Range/100
+      SendMessage<b>(</b>QProgress.Handle, PBM_SETSTEP, QProgress.Increment, 0<b>)</b>
+      QProgress.resolution=QProgress.Range/100
+    <font color="0000AA"><b>END</b></font> PROPERTY
+
+    PROPERTY SET SetValue<b>(</b>value <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b>
+      QProgress.value =value*QProgress.resolution
+     <font color="007700"><i>'Set ProgressBar every Time this Sub Is called</i></font> 
+      SendMessage<b>(</b>QProgress.Handle,PBM_SETPOS,QProgress.value,0<b>)</b> 
+    <font color="0000AA"><b>END</b></font> PROPERTY
+    
+    <font color="000099"><b>CONSTRUCTOR</b></font>
+    Left=0
+    Top=0
+    Width=100
+    Height=20
+    <font color="0000AA"><b>END</b></font> <font color="000099"><b>CONSTRUCTOR</b></font>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Type</b></font>
+
+ 
+</pre>
+</body>
+</html>

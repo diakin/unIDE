@@ -1,0 +1,405 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.51 [fr]C-CCK-MCD   (WinNT; I) [Netscape]">
+   <meta name="Author" content="dominique glodt">
+   <title>Appendix A: QBitmapEx</title>
+</head>
+<body bgcolor="#FFFFFF" FONT FACE="Arial, Helvetica">
+&nbsp;
+<table CELLSPACING=0 CELLPADDING=0 WIDTH="100%" >
+<tr>
+<td><font face="Arial, Helvetica">Documentation composant par D.Glodt (c)2000-2002</font></td>
+
+<td ALIGN=RIGHT><b><font face="Arial, Helvetica">Appendix A: QBitmapEx</font></b></td>
+</tr>
+
+<tr>
+<td COLSPAN="2">
+<hr SIZE=1></td>
+</tr>
+</table>
+
+<h1>
+QB<b><font face="Arial, Helvetica">itmap</font></b>Ex Composant</h1>
+
+<dd>
+QBitmapEx est un controle identique a QBitmap avec extensions de fonctionnalit&eacute;s.</dd>
+
+<dd>
+Le chargement d'autres formats graphique ainsi que la sauvegarde au format
+Jpg sont possibles</dd>
+
+<dd>
+si la dll Nviewlib est pr&eacute;sente dans le systeme window ou dans le
+repertoire de l'application.</dd>
+
+<dd>
+</dd>
+
+<br><a NAME="1"></a><b><font size=+1>QBitmapEx Propriet&eacute;s</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Champs</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>L/E</b></td>
+
+<td><b>Defaut</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>PenSize</td>
+
+<td>Long</td>
+
+<td>LE</td>
+
+<td>1</td>
+</tr>
+
+<tr BGCOLOR="#FFCC99">
+<td></td>
+
+<td>Taille du crayon pour le dessin de ligne,rectangle et cercle</td>
+
+<td>LE</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>PenStyle</td>
+
+<td>Long</td>
+
+<td>LE</td>
+
+<td>PS_SOLID_BMP</td>
+</tr>
+
+<tr BGCOLOR="#FFCC99">
+<td></td>
+
+<td>Style du crayon , les autres valeurs sont:
+<br>PS_SOLID_BMP=0
+<br>PS_DASH_BMP=1
+<br>PS_DOT_BMP=2
+<br>PS_DASHDOT_BMP=3
+<br>PS_DASHDOTDOT_BMP=4
+<br>PS_NULL_BMP=5
+<br>PS_INSIDEFRAME_BMP=6</td>
+
+<td></td>
+
+<td></td>
+</tr>
+</table>
+
+<p><a NAME="2"></a><b><font size=+1>QBitmapEx Methodes</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Methode</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Description</b></td>
+
+<td><b>Parametres</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>DrawIco</td>
+
+<td>SUB(left%,top%,width%,height%,handle%)</td>
+
+<td NOWRAP>Dessine un icone</td>
+
+<td NOWRAP>3</td>
+</tr>
+
+<tr BGCOLOR="#FFCC99">
+<td></td>
+
+<td>Si les parametres width et height sont a 0,l'icone sera affich&eacute;
+avec ses dimensions par d&eacute;faut.</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>CopyToClipboard</td>
+
+<td>SUB</td>
+
+<td>Copie l'image dans le presse papier</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>PasteFromClipboard</td>
+
+<td>SUB(x%,y%)</td>
+
+<td>Colle l'image du presse papier</td>
+
+<td>2</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>GetWidthClipboard</td>
+
+<td>FUNCTION as INTEGER</td>
+
+<td>Retourne la largeur image du presse papier</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>GetHeightClipboard</td>
+
+<td>FUNCTION as INTEGER</td>
+
+<td>Retourne la hauteur image du presse papier</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>CanPaste</td>
+
+<td>FUNCTON as BOOLEAN</td>
+
+<td>Retourne true si image pr&eacute;sente dans le presse papier</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Circle</td>
+
+<td>SUB(x1%,y1%,x2%,y2%,c%)</td>
+
+<td>Dessine un cercle vide</td>
+
+<td>5</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>CircleFilled</td>
+
+<td>SUB(x1%,y1%,x2%,y2%,c%,Fill%)</td>
+
+<td>Dessine un cercle plein</td>
+
+<td>6</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Rectangle</td>
+
+<td>SUB(x1%,y1%,x2%,y2%,c%)</td>
+
+<td>Dessine un rectangle vide</td>
+
+<td>5</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>RectangleFilled</td>
+
+<td>SUB(x1%,y1%,x2%,y2%,c%,Fill%)</td>
+
+<td>Dessine un rectangle plein</td>
+
+<td>6</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>RoundRect</td>
+
+<td>SUB(x1%,y1%,x2%,y2%,x3%,y3%,c%)</td>
+
+<td>Dessine un rectangle vide avec coins arrondi</td>
+
+<td>7</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>RoundRectFilled</td>
+
+<td>SUB(x1%,y1%,x2%,y2%,x3%,y3%,c%,Fill%)</td>
+
+<td>Dessine un rectangle plein avec coins arrondi</td>
+
+<td>8</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Line</td>
+
+<td>SUB(x1%,y1%,x2%,y2%,c%)</td>
+
+<td>Dessine une ligne</td>
+
+<td>5</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>FillSurface</td>
+
+<td>SUB(x%,y%,c%)</td>
+
+<td>Rempli la surface point&eacute; par la couleur du pixel x,y</td>
+
+<td>3</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>TextOut</td>
+
+<td>SUB(x%,y%,s$,fc%,bc%)</td>
+
+<td>Affiche du texte</td>
+
+<td>5</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>InvertColor</td>
+
+<td>SUB(x%,y%,width%,height%)</td>
+
+<td>Inverse les couleurs</td>
+
+<td>4</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Mirror</td>
+
+<td>SUB(x%,y%,width%,height%)</td>
+
+<td>Effectue un miroir x</td>
+
+<td>4</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Flip</td>
+
+<td>SUB(x%,y%,width%,height%)</td>
+
+<td>Effectue un miroir y</td>
+
+<td>4</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>LoadOtherImage</td>
+
+<td>SUB(FileName$,Progress&amp;,Language$)</td>
+
+<td>Charge les images aux formats de la dll Nviewlib(jpg,gif,...).</td>
+
+<td>3</td>
+</tr>
+
+<tr BGCOLOR="#FFCC99">
+<td></td>
+
+<td>Le parametre progress permet d'afficher une barre de progression pendant
+le chargement du fichier.
+<br>Le parametres Language correspond au langage support&eacute; par la
+dll.</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>SaveAsJpg</td>
+
+<td>SUB(FileName$,Quality&amp;)</td>
+
+<td>Sauvegarde l'image au format jpg (n&eacute;cessite la dll Nviewlib)</td>
+
+<td>2</td>
+</tr>
+
+<tr BGCOLOR="#FFCC99">
+<td></td>
+
+<td>Le parametre Quality correspond a la qualit&eacute; de sauvegarde.</td>
+
+<td></td>
+
+<td></td>
+</tr>
+</table>
+
+<p><a NAME="3"></a><b><font size=+1>QBitmapEx Evenements</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Evenement</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>D&eacute;clenchement</b></td>
+
+<td><b>Parametres</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+</table>
+
+<p><a NAME="4"></a><b><font size=+1>QBitmapEx Exemple</font></b>
+</body>
+</html>

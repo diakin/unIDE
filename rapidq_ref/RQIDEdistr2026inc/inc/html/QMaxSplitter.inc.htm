@@ -1,0 +1,358 @@
+<HTML>
+<HEAD>
+<TITLE> Txt2Htm converter (c)1999 MiraSoft  ;)) </TITLE>
+<META http-equiv="Content-Type"content="text/html"> 
+</HEAD>
+<BODY BGCOLOR="silver" > 
+'================= QMAXSPLITTER ==================<br>
+'<br>
+' This one's a doozy. A splitter control that <br>
+' emulates all of Delphi 6's splitter styles.<br>
+' It's based on a QPanel rather than QCanvas<br>
+' like the original for two reasons:<br>
+' 1. To get a handle<br>
+' 2. To improve drawing and aligning<br>
+' There are still some issues with this<br>
+' component, and they are:<br>
+' 1. Mouse trapping - if you move the mouse too<br>
+' fast, you leave the splitter behind. SetCapture<br>
+' doesn't seem to solve the problem, maybe sub-<br>
+' classing in the next version...<br>
+' 2. Setting MinSize to 0 sometimes causes<br>
+' resizing problems, I'm sure this is an oversight<br>
+' in the math, but I can live with it for now.<br>
+' 3. There are stil problems with CREATE, most <br>
+' notably the order in which ALIGNed components<br>
+' are created, as well as the order in which <br>
+' properties are assigned to sibling windows<br>
+' (Uncomment the "Color" in Rich3 and run. See<br>
+' what I mean? Now place the code for Rich3 AFTER<br>
+' the code for Split3. Problem solved!)<br>
+' Anyway, I had fun with it, I hope you will too.<br>
+' Psyclops ·)<br>
+' P.S. Sorry for the lack of comments, maybe in the<br>
+' next release...<br>
+<br>
+<br>
+TYPE POINTAPI<br>
+    X AS LONG<br>
+    Y AS LONG<br>
+END TYPE<br>
+<br>
+DIM Moving      AS LONG<br>
+DIM SplitPos    AS POINTAPI<br>
+DIM OldSplitPos AS POINTAPI<br>
+DIM OldWhere    AS POINTAPI<br>
+DIM Org         AS POINTAPI<br>
+DIM R           AS QRECT<br>
+DEFWORD PatternPtn(7) = {&H00AA, &H0055, &H00AA, &H0055, &H00AA, &H0055, &H00AA, &H0055}<br>
+DEFWORD SolidPtn(7) = {&H00FF, &H00FF, &H00FF, &H00FF, &H00FF, &H00FF, &H00FF, &H00FF}<br>
+<br>
+CONST PATINVERT = &H5A0049<br>
+CONST rsNone    = 0<br>
+CONST rsSolid   = 1<br>
+CONST rsPattern = 2<br>
+CONST rsUpdate  = 3<br>
+<br>
+Declare Function GetParent Lib "user32" Alias "GetParent" (ByVal hwnd As Long) As Long<br>
+Declare Function ChildWindowFromPoint Lib "user32" ALIAS "ChildWindowFromPoint"(ByVal hWndParent As Long, ByVal X AS LONG, ByVal Y AS LONG) As Long<br>
+Declare Function GetDC Lib "user32" Alias "GetDC" (ByVal hwnd As Long) As Long<br>
+Declare Function CreateBitmap Lib "gdi32" ALIAS "CreateBitmap"(ByVal nWidth As Long, ByVal nHeight As Long, ByVal nPlanes As Long, ByVal nBitCount As Long, ByVal lpBits As LONG) As Long<br>
+Declare Function CreatePatternBrush Lib "gdi32" ALIAS "CreatePatternBrush"(ByVal hBitmap As Long) As Long<br>
+Declare Function SelectObject Lib "gdi32" Alias "SelectObject" (ByVal hdc As Long, ByVal hObject As Long) As Long<br>
+Declare Function SetBrushOrgEx Lib "gdi32" ALIAS "SetBrushOrgEx"(ByVal hdc As Long, ByVal nXOrg As Long, ByVal nYOrg As Long, lppt As POINTAPI) As Long<br>
+Declare Function ClientToScreen Lib "user32" Alias "ClientToScreen" (ByVal hwnd As Long, lpPoint As POINTAPI) As Long<br>
+Declare Function PatBlt Lib "gdi32" Alias "PatBlt" (ByVal hdc As Long, ByVal x As Long, ByVal y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal dwRop As Long) As Long<br>
+Declare Function DeleteObject Lib "gdi32" Alias "DeleteObject" (ByVal hObject As Long) As Long<br>
+Declare Function ReleaseDC Lib "user32" Alias "ReleaseDC" (ByVal hwnd As Long, ByVal hdc As Long) As Long<br>
+Declare Function GetCursorPos Lib "user32" ALIAS "GetCursorPos"(lpPoint As POINTAPI) As Long<br>
+Declare Function GetClientRect Lib "user32" Alias "GetClientRect" (ByVal hwnd As Long, lpRect As QRECT) As Long<br>
+Declare Function ScreenToClient Lib "user32" ALIAS "ScreenToClient"(ByVal hwnd As Long, lpPoint As POINTAPI) As Long<br>
+Declare Function OffsetRect Lib "user32" Alias "OffsetRect" (lpRect As QRECT, ByVal x As Long, ByVal y As Long) As Long<br>
+Declare Function MoveWindow Lib "user32" Alias "MoveWindow" (ByVal hwnd As Long, ByVal x As Long, ByVal y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal bRepaint As Long) As Long<br>
+<br>
+TYPE QMAXSPLITTER EXTENDS QPANEL<br>
+<br>
+    WITH QMAXSPLITTER<br>
+    <br>
+        Owner      AS LONG<br>
+        Tmr        AS QTIMER<br>
+        MinSize    AS LONG<br>
+        Beveled    AS LONG PROPERTY SET Set_Beveled<br>
+        Mover      AS LONG<br>
+        MoverRect  AS QRECT<br>
+        Style      AS LONG PROPERTY SET Set_Style<br>
+        Pattern(7) AS WORD<br>
+        Canvas     AS QCANVAS<br>
+        <br>
+        PROPERTY SET Set_Beveled(Bevel AS LONG)<br>
+            .Beveled = Bevel<br>
+            .Canvas.Visible = Bevel<br>
+            .Canvas.Repaint<br>
+        END PROPERTY        <br>
+        <br>
+        PROPERTY SET Set_Style(NewStyle AS LONG)<br>
+            DIM X AS LONG<br>
+            FOR X = 0 TO 7<br>
+                SELECT CASE NewStyle<br>
+                    CASE 0, 3<br>
+                        .Pattern(X) = 0<br>
+                    CASE 1<br>
+                        .Pattern(X) = SolidPtn(X)<br>
+                    CASE 2<br>
+                        .Pattern(X) = PatternPtn(X)<br>
+                END SELECT' CASE<br>
+            NEXT X   <br>
+            .Style = NewStyle<br>
+        END PROPERTY<br>
+        <br>
+        EVENT Tmr.OnTimer<br>
+            IF .Visible THEN<br>
+                .Owner = GetParent(.Handle)<br>
+                .Tmr.Enabled = 0<br>
+                Org.X = .Left<br>
+                Org.Y = .Top<br>
+                IF .Align = 1 THEN<br>
+                    DEC(Org.Y)<br>
+                ELSEIF .Align = 2 THEN<br>
+                    INC(Org.Y, .Height)<br>
+                ELSEIF .Align = 3 THEN<br>
+                    DEC(Org.X)<br>
+                ELSEIF .Align = 4 THEN<br>
+                    INC(Org.X, .Width)<br>
+                END IF<br>
+                .Mover = ChildWindowFromPoint(.Owner, Org.X, Org.Y)               <br>
+            END IF<br>
+        END EVENT<br>
+        <br>
+        EVENT Canvas.OnPaint<br>
+            SELECT CASE .Align<br>
+                CASE 1, 2<br>
+                    .Canvas.Line(0, 0, .Width, 0, &H808080)<br>
+                    .Canvas.Line(0, 1, .Width, 1, &HC8D0D8)<br>
+                    .Canvas.Line(0, 2, .Width, 2, &HFFFFFF)<br>
+                    .Canvas.Line(0, .Height-3, .Width, .Height-3, &H808080)<br>
+                    .Canvas.Line(0, .Height-2, .Width, .Height-2, &HC8D0D8)<br>
+                    .Canvas.Line(0, .Height-1, .Width, .Height-1, &HFFFFFF)                    <br>
+                CASE ELSE<br>
+                    .Canvas.Line(0, 0, 0, .Height, &H808080)<br>
+                    .Canvas.Line(1, 0, 1, .Height, &HC8D0D8)<br>
+                    .Canvas.Line(2, 0, 2, .Height, &HFFFFFF)<br>
+                    .Canvas.Line(.Width-3, 0, .Width-3, .Height, &H808080)<br>
+                    .Canvas.Line(.Width-2, 0, .Width-2, .Height, &HC8D0D8)<br>
+                    .Canvas.Line(.Width-1, 0, .Width-1, .Height, &HFFFFFF)<br>
+            END SELECT<br>
+        END EVENT<br>
+        <br>
+        SUB MoveChild(Where AS POINTAPI)<br>
+            ScreenToClient(.Mover, Where)<br>
+            GetClientRect(.Mover, This.MoverRect)<br>
+            OffsetRect(This.MoverRect, 1, 1)<br>
+            IF Where = OldWhere THEN EXIT SUB<br>
+            DIM Redraw AS LONG<br>
+            SELECT CASE .Align<br>
+                CASE 1<br>
+                    MoveWindow(.Mover, 0, 0, 0, .MoverRect.Top+Where.Y-1, 0)<br>
+                CASE 2<br>
+                    MoveWindow(.Mover, 0, R.Bottom-(Where.Y+.Height), 0, .MoverRect.Bottom-(Where.Y+.Height)+1, 0)<br>
+                CASE 3<br>
+                    MoveWindow(.Mover, 0, 0, .MoverRect.Left+Where.X+1, 0, 0)<br>
+                CASE 4<br>
+                    MoveWindow(.Mover, R.Right-(Where.X+.Width), 0, .MoverRect.Right-(Where.X+.Width)+1, 0, 0)<br>
+            END SELECT<br>
+            SendMessage(.Owner, &H5, 0, 0)<br>
+            DoEvents<br>
+            OldWhere = Where<br>
+        END SUB<br>
+        <br>
+        SUB DrawSplitter(Split AS POINTAPI)<br>
+            DIM hDC AS LONG<br>
+            DIM hBM AS LONG<br>
+            DIM hBr AS LONG<br>
+            DIM hOldBr AS LONG<br>
+            <br>
+            hDC = GetDC(0)<br>
+            hBm = CreateBitmap(8, 8, 1, 1, VARPTR(This.Pattern(0)))<br>
+            hBr = CreatePatternBrush(hBm)<br>
+            hOldBr = SelectObject(hDC, hBr)<br>
+            SetBrushOrgEx(hDC, Split.X, Split.Y, 0)<br>
+            <br>
+            Org.X = 0<br>
+            Org.Y = 0<br>
+            ClientToScreen(.Handle, Org)<br>
+            IF .Align = 1 OR .Align = 2 THEN<br>
+                PatBlt(hDC, Org.X, Split.Y, .Width, .Height, PATINVERT)<br>
+            ELSEIF .Align = 3 OR .Align = 4 THEN<br>
+                PatBlt(hDC, Split.X, Org.Y, .Width, .Height, PATINVERT)<br>
+            END IF<br>
+            SelectObject(hDC, hOldBr)<br>
+            DeleteObject(hBr)<br>
+            DeleteObject(hBm)<br>
+            ReleaseDC(0, hDC)<br>
+        END SUB<br>
+<br>
+        EVENT Canvas.OnMouseDown(Button AS LONG, X AS LONG, Y AS LONG)<br>
+            IF Button = 0 THEN<br>
+                Moving = 1<br>
+                SplitPos.X = 0<br>
+                SplitPos.Y = 0<br>
+                ClientToScreen(.Handle, SplitPos)<br>
+                .DrawSplitter(SplitPos)<br>
+                OldSplitPos = SplitPos<br>
+            END IF<br>
+        END EVENT<br>
+                <br>
+        EVENT Canvas.OnMouseMove(X AS LONG, Y AS LONG)<br>
+            DIM OwnerOrg AS POINTAPI<br>
+            IF Moving = 1 THEN<br>
+                GetCursorPos(SplitPos)<br>
+                <br>
+                GetClientRect(.Owner, R)<br>
+                OwnerOrg.X = 0<br>
+                OwnerOrg.Y = 0<br>
+                ClientToScreen(.Owner, OwnerOrg)<br>
+                IF .Align = 1 OR .Align = 2 THEN<br>
+                    IF SplitPos.Y < (OwnerOrg.Y+.MinSize) OR SplitPos.Y > (OwnerOrg.Y-.MinSize) + R.Bottom _<br>
+                     OR SplitPos.Y < (OwnerOrg.Y+(.Height/2)) THEN EXIT EVENT<br>
+                    SplitPos.Y = SplitPos.Y-(.Height/2)<br>
+                ELSEIF .Align = 3 OR .Align = 4 THEN<br>
+                    IF SplitPos.X < (OwnerOrg.X+.MinSize) OR SplitPos.X > (OwnerOrg.X-.MinSize) + R.Right _<br>
+                     OR SplitPos.X < (OwnerOrg.X+(.Width/2)) THEN EXIT EVENT<br>
+                    SplitPos.X = SplitPos.X-(.Width/2)<br>
+                ELSE<br>
+                    EXIT EVENT<br>
+                END IF<br>
+                <br>
+                .DrawSplitter(OldSplitPos)<br>
+                .DrawSplitter(SplitPos)<br>
+                OldSplitPos = SplitPos<br>
+                IF .Style = 3 THEN<br>
+                    .MoveChild(SplitPos)<br>
+                END IF<br>
+            END IF<br>
+        END EVENT<br>
+<br>
+        EVENT Canvas.OnMouseUp<br>
+            IF Moving = 1 THEN<br>
+                Moving = 0<br>
+                .DrawSplitter(OldSplitPos)<br>
+                .MoveChild(OldSplitPos)<br>
+            END IF<br>
+        END EVENT<br>
+<br>
+        CONSTRUCTOR<br>
+            Set_Style(2)<br>
+            Set_Beveled(0)<br>
+            Width = 5<br>
+            Height = 5<br>
+            Align = 1<br>
+            Tmr.Interval = 1<br>
+            MinSize = 30<br>
+            Cursor = -15<br>
+            Canvas.Parent = This<br>
+            Canvas.Align = 5<br>
+            BevelOuter = 0<br>
+            OnMouseDown = This.Canvas.InheritOnMouseDown<br>
+            OnMouseMove = This.Canvas.InheritOnMouseMove<br>
+            OnMouseUp = This.Canvas.InheritOnMouseUp<br>
+        END CONSTRUCTOR<br>
+        <br>
+    END WITH<br>
+END TYPE<br>
+<br>
+'====================================================<br>
+'            Sample program<br>
+'====================================================<br>
+<br>
+CREATE Form AS QFORM<br>
+    Caption = "Normal QSPLITTER - Blah!"<br>
+    Visible = 1<br>
+    Visible = 0<br>
+    CREATE Splitter AS QSPLITTER<br>
+        Align = 3<br>
+        Width  = 10<br>
+        Beveled = 1<br>
+    END CREATE<br>
+        CREATE RichEd1 AS QRichEdit<br>
+        Align = 3<br>
+    END CREATE<br>
+    CREATE RichEd2 AS QRICHEDIT<br>
+        Align = 5<br>
+    END CREATE<br>
+END CREATE<br>
+<br>
+CREATE Form2 AS QFORM<br>
+    Center<br>
+    Caption = "QMAXSPLITTER - Cool!"<br>
+    CREATE Pnl1 AS QPANEL<br>
+        Align = 1<br>
+        BevelOuter = 0<br>
+         CREATE Rich3 AS QRICHEDIT<br>
+            'Color = &HFF0000<br>
+            Align = 3<br>
+        END CREATE<br>
+        CREATE Split3 AS QMAXSPLITTER<br>
+            Style = rsNone<br>
+            Beveled = 1<br>
+            Align = 3<br>
+            Cursor = -14<br>
+            Hint = "Style: rsNone"<br>
+            ShowHint = 1<br>
+        END CREATE<br>
+        CREATE Rich5 AS QRICHEDIT<br>
+            Align = 5<br>
+        END CREATE     <br>
+     END CREATE<br>
+     CREATE Split1 AS QMAXSPLITTER<br>
+        Align = 1<br>
+        Style = rsSolid<br>
+        Hint = "Style: rsSolid"<br>
+        ShowHint = 1<br>
+        MinSize = 0<br>
+     END CREATE<br>
+     CREATE Pnl5 AS QPANEL<br>
+        Align = 5<br>
+        BevelOuter = 0<br>
+        CREATE Rich4 AS QRICHEDIT<br>
+            Align = 4<br>
+        END CREATE<br>
+        CREATE Split4 AS QMAXSPLITTER<br>
+            Align = 4<br>
+            Cursor = -21<br>
+            Width = 20<br>
+            Style = rsUpdate<br>
+            MinSize = 0<br>
+            Hint = "Style: rsUpdate"<br>
+            Beveled = 1<br>
+            ShowHint = 1<br>
+        END CREATE<br>
+        CREATE Panel55 AS QPANEL<br>
+            Align = 5<br>
+            BevelOuter = 0<br>
+            CREATE Rich55 AS QRICHEDIT<br>
+                Align = 5<br>
+            END CREATE<br>
+            CREATE Split2 AS QMAXSPLITTER<br>
+                Align = 2<br>
+                Hint = "Style: rsPattern"<br>
+                ShowHint = 1<br>
+                Height = 5<br>
+                MinSize = 0<br>
+            END CREATE<br>
+            CREATE Rich2 AS QRICHEDIT<br>
+                Align = 2<br>
+            END CREATE<br>
+        END CREATE<br>
+    END CREATE<br>
+END CREATE<br>
+<br>
+<br>
+<br>
+Form.Show<br>
+Form2.Show<br>
+<br>
+DO<br>
+    DoEvents<br>
+LOOP UNTIL Form2.Visible = 0<br>
+</BODY>
+</HTML>

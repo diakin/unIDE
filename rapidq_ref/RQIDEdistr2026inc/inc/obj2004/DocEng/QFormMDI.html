@@ -1,0 +1,1097 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.51 [fr]C-CCK-MCD   (WinNT; I) [Netscape]">
+   <meta name="Author" content="dominique glodt">
+   <title>Appendix A: QFormMDI</title>
+</head>
+<body bgcolor="#FFFFFF" FONT FACE="Arial, Helvetica">
+&nbsp;
+<table CELLSPACING=0 CELLPADDING=0 WIDTH="100%" >
+<tr>
+<td><font face="Arial, Helvetica">Documentation component by D.Glodt (c)2000-2003</font></td>
+
+<td ALIGN=RIGHT><b><font face="Arial, Helvetica">Appendix A: QFormMDI</font></b></td>
+</tr>
+
+<tr>
+<td COLSPAN="2">
+<hr SIZE=1></td>
+</tr>
+</table>
+
+<h1>
+QFormMDI Component</h1>
+&nbsp;&nbsp;&nbsp;&nbsp; QFormEx is identical as a QForm component with
+functionality&nbsp; MDI.
+<br>&nbsp;&nbsp;&nbsp;&nbsp; The standard components of rapidq having a
+handle control (Qpanel,&nbsp; QRichEdit, QScrollBox...) can be associated
+the windows child MDI,
+<br>&nbsp;&nbsp;&nbsp;&nbsp; they must be no visible and their parent property
+must be the object&nbsp; itself at the time of their declaration.
+<br>&nbsp;&nbsp;&nbsp;&nbsp; The components can be declared as variables
+array or to be of&nbsp; different type for each window child MDI.
+<p><a NAME="1"></a><b><font size=+1>QFormMDI Property</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Field</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>R/W</b></td>
+
+<td><b>Default</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>ChildCaption</td>
+
+<td>STRING</td>
+
+<td>R/W</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Text of title bar of&nbsp; active child
+window</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>ChildHandle</td>
+
+<td>LONG</td>
+
+<td>R</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Handle of&nbsp; active child window</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>ChildLeft</td>
+
+<td>SHORT</td>
+
+<td>R/W</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Left position of&nbsp; active child window</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>ChildTop</td>
+
+<td>SHORT</td>
+
+<td>R/W</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Top position of&nbsp; active child window</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>ChildWidth</td>
+
+<td>SHORT</td>
+
+<td>R/W</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Width of&nbsp; active child window</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>ChildHeight</td>
+
+<td>SHORT</td>
+
+<td>R/W</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Height of&nbsp; active child window</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>ChildMax</td>
+
+<td>INTEGER</td>
+
+<td>R/W</td>
+
+<td>1024</td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Maximum&nbsp; child window</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>ChildCount</td>
+
+<td>INTEGER</td>
+
+<td>R</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Child window number</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>ChildIcon</td>
+
+<td>LONG</td>
+
+<td>R/W</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>&nbsp;Icon handle for child window</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>ChildState</td>
+
+<td>INTEGER</td>
+
+<td>R/W</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>State of active child window,could be wsNormal,wsMinimized,wsMaximized</td>
+
+<td></td>
+
+<td>wsNormal</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>MDIMenu</td>
+
+<td>LONG</td>
+
+<td>R/W</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>&nbsp;Sub menu handle to insert the child window name</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>ComponentIndex</td>
+
+<td>INTEGER</td>
+
+<td>R</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Index of associated component to the active child window</td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>ChildResult</td>
+
+<td>INTEGER</td>
+
+<td>R/W</td>
+
+<td>False</td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Result of the action of closing of a child window, the value&nbsp;
+is has true during closing and can be put at false at the time of a&nbsp;
+OnChildClose event to cancel closing if the application requires a&nbsp;
+safeguard</td>
+
+<td></td>
+
+<td></td>
+</tr>
+</table>
+
+<p><a NAME="2"></a><b><font size=+1>QFormMDI Methods</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Method</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Description</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>AddChild</td>
+
+<td>SUB(handle&amp;,Title$,index&amp;,left%,
+<br>top%,width%,height%,DefaultSize&amp;)</td>
+
+<td>Add a child window , handle&amp; is the handle component&nbsp;
+<br>associated the child&nbsp; window , Title$ is the text of the title
+bar of&nbsp;
+<br>the child window , index&amp; is the number of the associated component,&nbsp;
+<br>DefaultSize&amp; indicates if one uses dimensions by default.</td>
+
+<td>8</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>CloseChild</td>
+
+<td>SUB</td>
+
+<td>Close the active child window</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>CloseAllChild</td>
+
+<td>SUB</td>
+
+<td>Close all the child window</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>CascadeChild</td>
+
+<td>SUB</td>
+
+<td>Resize all the child window on cascade</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>SetHorzChild</td>
+
+<td>SUB</td>
+
+<td>Resize all the child window on horizontal</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>SetVertChild</td>
+
+<td>SUB</td>
+
+<td>Resize all the child window on vertical</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>IconArrangeChild</td>
+
+<td>SUB</td>
+
+<td>Arrange all the child window on icon</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>MinimizeAllChild</td>
+
+<td>SUB</td>
+
+<td>Minimize all the child window</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>MaximizeAllChild</td>
+
+<td>SUB</td>
+
+<td>Maximize all the child window</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>RestoreChild</td>
+
+<td>SUB</td>
+
+<td>Restore the child window</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>ActiveNextChild</td>
+
+<td>SUB</td>
+
+<td>Activate the next child window</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>ActivePreviousChild</td>
+
+<td>SUB</td>
+
+<td>Activate the previous child window</td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>GetChild</td>
+
+<td>FUNCTION(Title$)&amp;</td>
+
+<td>Return the index of child window corresponding to the title Title$&nbsp;</td>
+
+<td>1</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>ChildExist</td>
+
+<td>FUNCTION(Title$)&amp;</td>
+
+<td>Return the existence of a child window by his title&nbsp;</td>
+
+<td>1</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>ActiveChild</td>
+
+<td>SUB(Index&amp;)</td>
+
+<td>Activate the child window identified by index&amp;&nbsp;</td>
+
+<td>1</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>FreeChild</td>
+
+<td>FUNCTION(handle&amp;)&amp;</td>
+
+<td>Return the state associated from a component to a child window, return
+True if&nbsp;
+<br>the component identified by handle&amp; is not associated to a child
+window&nbsp;</td>
+
+<td>1</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>SetDeskBar</td>
+
+<td>SUB</td>
+
+<td>The application will be in the task bar during its&nbsp; reduction&nbsp;</td>
+
+<td>0</td>
+</tr>
+</table>
+
+<p><a NAME="3"></a><b><font size=+1>QFormMDI Events</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Event</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Occurs when...</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>OnChildClose</td>
+
+<td>(handleChild&amp;,index&amp;,titleChild$)</td>
+
+<td>Closing child window, the parameter index&amp; is the index of&nbsp;
+the associated component&nbsp;</td>
+
+<td>3</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>OnChildActive</td>
+
+<td>(handleChild&amp;,index&amp;,titleChild$)</td>
+
+<td>Activation child window</td>
+
+<td>3</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>OnChildResize</td>
+
+<td>(handleChild&amp;,index&amp;,titleChild$)</td>
+
+<td>Resize&nbsp; child window</td>
+
+<td>3</td>
+</tr>
+</table>
+
+<p><a NAME="4"></a><b><font size=+1>QFormMDI Example1</font></b>
+<p>$TYPECHECK ON
+<p>$include "rapidq.inc"
+<br>$include "object\QformMDI.inc"
+<p>DECLARE SUB mnuNew_Click
+<br>DECLARE SUB mnuOpen_Click
+<br>DECLARE SUB mnuClose_Click
+<br>DECLARE SUB mnuCloseAll_Click
+<br>DECLARE SUB mnuNext_Click
+<br>DECLARE SUB mnuPrevious_Click
+<br>DECLARE SUB mnuCascade_Click
+<br>DECLARE SUB mnuTileHorz_Click
+<br>DECLARE SUB mnuTileVert_Click
+<br>DECLARE SUB mnuArrange_Click
+<br>DECLARE SUB mnuMinAll_Click
+<br>DECLARE SUB mnuMaxAll_Click
+<br>DECLARE SUB mnuRestAll_Click
+<br>DECLARE SUB mnuCut_Click
+<br>DECLARE SUB mnuCopy_Click
+<br>DECLARE SUB mnuPaste_Click
+<br>DECLARE SUB mnuSelectAll_Click
+<br>DECLARE SUB show
+<br>DECLARE SUB close
+<br>DECLARE SUB KeyDown(Key as word,Shift as integer)
+<br>DECLARE SUB infos(handleChild as long,index as integer,titleChild as
+string)
+<br>DECLARE SUB CloseMDI(handleChild as long,index as integer,titleChild
+as string)
+<p>dim j as integer
+<br>dim flag as integer
+<br>dim UntitledCount as integer
+<br>const VK_F6=117
+<p>CREATE Form AS QFormMDI
+<br>&nbsp; Caption = "MDI Parent"
+<br>&nbsp; Center
+<br>&nbsp; Width=Screen.Width/2*1.5
+<br>&nbsp; Height=Screen.Height/2*1.5
+<br>&nbsp; CREATE mnuMain AS QMAINMENU
+<br>&nbsp;&nbsp;&nbsp; CREATE mnuFile AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;File"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuNew AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;New"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuNew_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuOpen AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Open"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuOpen_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuClose AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Close"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuClose_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuCloseAll AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="Close &amp;All"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuCloseAll_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuNext AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="Next"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuNext_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuPrevious AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="Previous"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuPrevious_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; CREATE mnuEdit as QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Edit"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuCut as QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Cut"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShortCut="CTRL+X"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuCut_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuCopy as QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Copy"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShortCut="CTRL+C"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuCopy_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuPaste as QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Paste"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShortCut="CTRL+V"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuPaste_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE Sep2 as QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="-"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuSelectAll as QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Select all"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShortCut="CTRL+A"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuSelectAll_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; CREATE mnuWindows AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Windows"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuCascade AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Cascade"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuCascade_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuTileHorz AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="Tile &amp;Horizontally"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuTileHorz_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuTileVert AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="Tile &amp;Vertically"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuTileVert_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuArrange AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Arrange Icons"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuArrange_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuMinAll AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Minimize All"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuMinAll_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuMaxAll AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="Ma&amp;ximixe All"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuMaxAll_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuRestAll AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Restore All"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuRestAll_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp; END CREATE
+<br>&nbsp; CREATE Stat AS QSTATUSBAR
+<br>&nbsp; END CREATE
+<br>&nbsp; KeyPreview=true
+<br>&nbsp; MdiMenu=mnuWindows.handle
+<br>&nbsp; ChildMax=20
+<br>&nbsp; OnChildClose=CloseMDI
+<br>&nbsp; OnChildActive=infos
+<br>&nbsp; OnClose=Close
+<br>&nbsp; OnPaint=Show
+<br>&nbsp; OnKeyDown=KeyDown
+<br>END CREATE
+<p>' Components for MDI
+<br>dim edit(20) as qrichedit
+<br>dim handleControl as long
+<br>for j=0 to 20
+<br>&nbsp; edit(j).parent=form
+<br>&nbsp; edit(j).visible=false 'must be no visible
+<br>&nbsp; edit(j).ScrollBars=3
+<br>&nbsp; edit(j).WordWrap=false
+<br>next j
+<p>Form.SetDeskBar
+<br>Form.ShowModal
+<p>'Find free component for MDI
+<br>Function GetCtl() as integer
+<br>&nbsp; dim find as integer
+<br>&nbsp; dim h as integer
+<p>&nbsp; find=0
+<br>&nbsp; for j=0 to 20
+<br>&nbsp;&nbsp;&nbsp; if form.FreeChild(edit(j).handle) and find=0 then
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; h=j
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; find=1
+<br>&nbsp;&nbsp;&nbsp; end if
+<br>&nbsp; next j
+<br>&nbsp; result=h
+<br>End Function
+<p>SUB mnuNew_Click
+<br>&nbsp; dim index as integer
+<p>&nbsp; if form.ChildCount&lt;form.ChildMax then
+<br>&nbsp;&nbsp;&nbsp; index=GetCtl()
+<br>&nbsp;&nbsp;&nbsp; form.AddChild(edit(index).handle,"Untitled "+STR$(UntitledCount+1),index,0,0,0,0,true)
+<br>&nbsp;&nbsp;&nbsp; UntitledCount++
+<br>&nbsp; end if
+<br>END SUB
+<p>SUB mnuOpen_Click
+<br>&nbsp; dim index as integer
+<br>&nbsp; DIM OD AS QOPENDIALOG
+<p>&nbsp; OD.Filter="Text file(*.txt)|*.txt"
+<br>&nbsp; if form.ChildCount&lt;form.ChildMax then
+<br>&nbsp;&nbsp;&nbsp; IF OD.Execute THEN
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; IF form.ChildExist(OD.FileName) THEN
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; form.ActiveChild(form.GetChild(OD.FileName))
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; EXIT SUB
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END IF
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; index=GetCtl()
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; edit(index).loadfromfile(OD.FileName)
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; edit(index).modified=false
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; form.AddChild(edit(index).handle,OD.FileName,index,0,0,0,0,True)
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; UntitledCount++
+<br>&nbsp;&nbsp;&nbsp; END IF
+<br>&nbsp; end if
+<br>END SUB
+<p>SUB CloseMDI(handleChild as long,index as integer,titleChild as string)
+<br>&nbsp; dim msgButton as integer
+<p>&nbsp; if edit(index).modified then
+<br>&nbsp;&nbsp;&nbsp; msgButton=MessageBox("Fermer fenetre?",titleChild,36)
+<br>&nbsp;&nbsp;&nbsp; if msgButton=6 then
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; edit(index).modified=false
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; edit(index).clear
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; form.ChildResult=true
+<br>&nbsp;&nbsp;&nbsp; else
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; form.ChildResult=false
+<br>&nbsp;&nbsp;&nbsp; end if
+<br>&nbsp; else
+<br>&nbsp;&nbsp;&nbsp; edit(index).clear
+<br>&nbsp; end if
+<br>END SUB
+<p>SUB mnuClose_Click
+<br>&nbsp; form.CloseChild
+<br>&nbsp; if form.ChildCount=0 then stat.simpleText=""
+<br>END SUB
+<p>SUB mnuCloseAll_Click
+<br>&nbsp; form.CloseAllChild
+<br>&nbsp; if form.ChildCount=0 then stat.simpleText=""
+<br>END SUB
+<p>SUB mnuNext_Click
+<br>&nbsp; form.ActiveNextChild
+<br>END SUB
+<p>SUB mnuPrevious_Click
+<br>&nbsp; form.ActivePreviousChild
+<br>END SUB
+<p>SUB mnuCascade_Click
+<br>&nbsp; form.CascadeChild
+<br>END SUB
+<p>SUB mnuTileHorz_Click
+<br>&nbsp; form.SetHorzChild
+<br>END SUB
+<p>SUB mnuTileVert_Click
+<br>&nbsp; form.SetVertChild
+<br>END SUB
+<p>SUB mnuArrange_Click
+<br>&nbsp; form.IconArrangeChild
+<br>END SUB
+<p>SUB mnuMinAll_Click
+<br>&nbsp; form.MinimizeAllChild
+<br>END SUB
+<p>SUB mnuMaxAll_Click
+<br>&nbsp; form.MaximizeAllChild
+<br>END SUB
+<p>SUB mnuRestAll_Click
+<br>&nbsp; form.RestoreChild
+<br>END SUB
+<p>SUB mnuCut_Click
+<br>&nbsp; if form.ChildCount>0 then
+<br>&nbsp;&nbsp;&nbsp; edit(form.componentIndex).CutToClipBoard
+<br>&nbsp; end if
+<br>END SUB
+<p>SUB mnuCopy_Click
+<br>&nbsp; if form.ChildCount>0 then
+<br>&nbsp;&nbsp;&nbsp; edit(form.componentIndex).CopyToClipBoard
+<br>&nbsp; end if
+<br>END SUB
+<p>SUB mnuPaste_Click
+<br>&nbsp; if form.ChildCount>0 then
+<br>&nbsp;&nbsp;&nbsp; edit(form.componentIndex).PasteFromClipBoard
+<br>&nbsp; end if
+<br>END SUB
+<p>SUB mnuSelectAll_Click
+<br>&nbsp; if form.ChildCount>0 then
+<br>&nbsp;&nbsp;&nbsp; edit(form.componentIndex).SelectAll
+<br>&nbsp; end if
+<br>END SUB
+<p>SUB infos(handleChild as long,index as integer,titleChild as string)
+<br>&nbsp; stat.simpleText=titleChild
+<br>End Sub
+<p>SUB show
+<br>&nbsp; dim index as integer
+<p>&nbsp; if flag=false then
+<br>&nbsp;&nbsp;&nbsp; if form.ChildCount&lt;form.ChildMax then
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; index=GetCtl()
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; form.AddChild(edit(index).handle,"Untitled
+"+STR$(UntitledCount+1),index,0,0,0,0,true)
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; UntitledCount++
+<br>&nbsp;&nbsp;&nbsp; end if
+<br>&nbsp;&nbsp;&nbsp; flag=true
+<br>&nbsp; end if
+<br>END SUB
+<p>Sub Close
+<br>&nbsp; form.CloseAllChild
+<br>&nbsp; if form.ChildCount>0 then form.modalResult=false
+<br>End Sub
+<p>Sub KeyDown(key as word,shift as integer)
+<br>&nbsp; 'next child with Ctrl+F6
+<br>&nbsp; if shift=CtrlDown and key=VK_F6 then form.ActiveNextChild
+<br>end sub
+<br>&nbsp;
+<p><a NAME="4"></a><b><font size=+1>QFormMDI Example2</font></b>
+<p>$TYPECHECK ON
+<br>$OPTION ICON "photo.ico"
+<br>$include "rapidq.inc"
+<br>$Include "Object\QFormMDI.inc"
+<br>$Include "Object\QICON.inc"
+<p>DECLARE SUB mnuNew_Click
+<br>DECLARE SUB mnuOpen_Click
+<br>DECLARE SUB mnuClose_Click
+<br>DECLARE SUB mnuCloseAll_Click
+<br>DECLARE SUB mnuNext_Click
+<br>DECLARE SUB mnuPrevious_Click
+<br>DECLARE SUB mnuCascade_Click
+<br>DECLARE SUB mnuTileHorz_Click
+<br>DECLARE SUB mnuTileVert_Click
+<br>DECLARE SUB mnuArrange_Click
+<br>DECLARE SUB mnuMinAll_Click
+<br>DECLARE SUB mnuMaxAll_Click
+<br>DECLARE SUB mnuRestAll_Click
+<br>DECLARE SUB show
+<br>DECLARE SUB close
+<br>DECLARE SUB KeyDown(Key as word,Shift as integer)
+<br>DECLARE SUB infos(handleChild as long,index as integer,titleChild as
+string)
+<br>DECLARE SUB CloseMDI(handleChild as long,index as integer,titleChild
+as string)
+<p>dim j as integer
+<br>dim flag as integer
+<br>dim UntitledCount as integer
+<br>const VK_F6=117
+<br>dim icon as Qicon
+<br>&nbsp;&nbsp;&nbsp; icon.associated=true
+<br>&nbsp;&nbsp;&nbsp; icon.filename=command$(0)
+<p>CREATE Form AS QFormMDI
+<br>&nbsp; Caption="MDI Parent"
+<br>&nbsp; Center
+<br>&nbsp; Width=Screen.Width/2*1.5
+<br>&nbsp; Height=Screen.Height/2*1.5
+<br>&nbsp; ChildIcon=icon.handle
+<br>&nbsp; CREATE panel as QPANEL
+<br>&nbsp;&nbsp;&nbsp; align=1
+<br>&nbsp;&nbsp;&nbsp; height=35
+<br>&nbsp;&nbsp;&nbsp; bevelOuter=0
+<br>&nbsp;&nbsp;&nbsp; CREATE bt1 as QBUTTON
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; top=5
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left=5
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width=25
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Hint="Pr&eacute;vious"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShowHint=true
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption="&lt;&lt;"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuPrevious_Click
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; CREATE bt2 as QBUTTON
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; top=5
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; left=35
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; width=25
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Hint="Next"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShowHint=true
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; caption=">>"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuNext_Click
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp; END CREATE
+<br>&nbsp; CREATE mnuMain AS QMAINMENU
+<br>&nbsp;&nbsp;&nbsp; CREATE mnuFile AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;File"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuNew AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;New"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuNew_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuOpen AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Open"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuOpen_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuClose AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Close"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuClose_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuCloseAll AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="Close &amp;All"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuCloseAll_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuNext AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="Next"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuNext_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuPrevious AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="Previous"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuPrevious_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; CREATE mnuWindows AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Windows"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuCascade AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Cascade"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuCascade_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuTileHorz AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="Tile &amp;Horizontally"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuTileHorz_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuTileVert AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="Tile &amp;Vertically"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuTileVert_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuArrange AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Arrange Icons"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuArrange_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuMinAll AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Minimize All"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuMinAll_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuMaxAll AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="Ma&amp;ximixe All"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuMaxAll_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE mnuRestAll AS QMENUITEM
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Caption="&amp;Restore All"
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=mnuRestAll_Click
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp;&nbsp;&nbsp; END CREATE
+<br>&nbsp; END CREATE
+<br>&nbsp; CREATE Stat AS QSTATUSBAR
+<br>&nbsp; END CREATE
+<br>&nbsp; KeyPreview=true
+<br>&nbsp; MdiMenu=mnuWindows.handle
+<br>&nbsp; ChildMax=20
+<br>&nbsp; OnChildClose=CloseMDI
+<br>&nbsp; OnChildActive=infos
+<br>&nbsp; OnClose=Close
+<br>&nbsp; OnKeyDown=KeyDown
+<br>END CREATE
+<p>'components for MDI
+<br>dim edit(20) as qpanel
+<br>dim img(20) as qimage
+<br>for j=0 to 20
+<br>&nbsp; edit(j).parent=form
+<br>&nbsp; edit(j).visible=false 'must be no visible
+<br>&nbsp; edit(j).bevelOuter=0
+<br>&nbsp; edit(j).color=&amp;hffffff
+<br>&nbsp; img(j).AutoSize=1
+<br>&nbsp; img(j).Parent=edit(j)
+<br>next j
+<p>Form.SetDeskBar
+<br>Form.ShowModal
+<p>'Find free component for MDI
+<br>Function GetCtl() as integer
+<br>&nbsp; dim find as integer
+<br>&nbsp; dim h as integer
+<p>&nbsp; find=0
+<br>&nbsp; for j=0 to 20
+<br>&nbsp;&nbsp;&nbsp; if form.FreeChild(edit(j).handle) and find=0 then
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; h=j
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; find=1
+<br>&nbsp;&nbsp;&nbsp; end if
+<br>&nbsp; next j
+<br>&nbsp; result=h
+<br>End Function
+<p>SUB mnuNew_Click
+<br>&nbsp; dim index as integer
+<p>&nbsp; if form.ChildCount&lt;form.ChildMax then
+<br>&nbsp;&nbsp;&nbsp; index=GetCtl()
+<br>&nbsp;&nbsp;&nbsp; form.AddChild(edit(index).handle,"Untitled "+STR$(UntitledCount+1),index,0,0,0,0,true)
+<br>&nbsp;&nbsp;&nbsp; UntitledCount++
+<br>&nbsp; end if
+<br>END SUB
+<p>SUB mnuOpen_Click
+<br>&nbsp; dim index as integer
+<br>&nbsp; DIM OD AS QOPENDIALOG
+<p>&nbsp; OD.caption="Load image"
+<br>&nbsp; OD.Filter="Bitmap file(*.bmp)|*.bmp"
+<br>&nbsp; if form.ChildCount&lt;form.ChildMax then
+<br>&nbsp;&nbsp;&nbsp; IF OD.Execute THEN
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; IF form.ChildExist(OD.FileName) THEN
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; form.ActiveChild(form.GetChild(OD.FileName))
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; EXIT SUB
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END IF
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; index=GetCtl()
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; img(index).bmp=OD.FileName
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; form.AddChild(edit(index).handle,OD.FileName,index,0,0,img(index).width+8,img(index).height+27,False)
+<br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; UntitledCount++
+<br>&nbsp;&nbsp;&nbsp; END IF
+<br>&nbsp; end if
+<br>END SUB
+<p>SUB CloseMDI(handleChild as long,index as integer,titleChild as string)
+<br>&nbsp; img(index).handle=0
+<br>END SUB
+<p>SUB mnuClose_Click
+<br>&nbsp; form.CloseChild
+<br>&nbsp; if form.ChildCount=0 then stat.simpleText=""
+<br>END SUB
+<p>SUB mnuCloseAll_Click
+<br>&nbsp; form.CloseAllChild
+<br>&nbsp; if form.ChildCount=0 then stat.simpleText=""
+<br>END SUB
+<p>SUB mnuNext_Click
+<br>&nbsp; form.ActiveNextChild
+<br>END SUB
+<p>SUB mnuPrevious_Click
+<br>&nbsp; form.ActivePreviousChild
+<br>END SUB
+<p>SUB mnuCascade_Click
+<br>&nbsp; form.CascadeChild
+<br>END SUB
+<p>SUB mnuTileHorz_Click
+<br>&nbsp; form.SetHorzChild
+<br>END SUB
+<p>SUB mnuTileVert_Click
+<br>&nbsp; form.SetVertChild
+<br>END SUB
+<p>SUB mnuArrange_Click
+<br>&nbsp; form.IconArrangeChild
+<br>END SUB
+<p>SUB mnuMinAll_Click
+<br>&nbsp; form.MinimizeAllChild
+<br>END SUB
+<p>SUB mnuMaxAll_Click
+<br>&nbsp; form.MaximizeAllChild
+<br>END SUB
+<p>SUB mnuRestAll_Click
+<br>&nbsp; form.RestoreChild
+<br>END SUB
+<p>SUB infos(handleChild as long,index as integer,titleChild as string)
+<br>&nbsp; stat.simpleText=titleChild
+<br>End Sub
+<p>Sub Close
+<br>&nbsp; form.CloseAllChild
+<br>&nbsp; if form.ChildCount>0 then form.modalResult=false
+<br>&nbsp; if form.ChildCount=0 then icon.filename=""
+<br>End Sub
+<p>Sub KeyDown(key as word,shift as integer)
+<br>&nbsp; 'next child with Ctrl+F6
+<br>&nbsp; if shift=CtrlDown and key=VK_F6 then form.ActiveNextChild
+<br>end sub
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+</body>
+</html>

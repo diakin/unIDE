@@ -1,0 +1,135 @@
+<html>
+<head>
+<title>QFiles.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'QFILES.INC by Doctor Electron  Copyright 2002 Global Services</i></font> 
+<font color="007700"><i>'Last Modified: Dec 20, 2002    Comments to: doctorelectron@cwdom.dm</i></font> 
+
+<font color="007700"><i>'These routines were written to allow indexed access (fNum) to files.</i></font> 
+<font color="007700"><i>'Use GetFileNum Function first to get fNum to be used in all other calls.</i></font> 
+<font color="007700"><i>'If GetFileNum &lt; 0 then you don't have an available fNum "file handle."</i></font> 
+
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>SUB</b></font> fINITIALIZE
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>FUNCTION</b></font> GetFileNum<b>(</b><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>SUB</b></font> fOPEN<b>(</b>fNum <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>LONG</b></font>, fName$ <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font>, fHow <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>SUB</b></font> fCLOSE<b>(</b>fNum <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>SUB</b></font> fPOSITION<b>(</b>fNum <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>LONG</b></font>, fPosition <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>SUB</b></font> fWRITELINE<b>(</b>fNum <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>LONG</b></font>, fString <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>FUNCTION</b></font> fSIZE<b>(</b>fNum <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>Declare</b></font> <font color="0000AA"><b>FUNCTION</b></font> fREADBINSTR<b>(</b>fNum <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>LONG</b></font>, fBytes <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>STRING</b></font>
+
+<font color="0000AA"><b>CONST</b></font> MaxQFiles=8
+
+<font color="0000AA"><b>Dim</b></font> qf1 <font color="0000AA"><b>As</b></font> <font color="000099"><b>QFileStream</b></font>
+<font color="0000AA"><b>Dim</b></font> qf2 <font color="0000AA"><b>As</b></font> <font color="000099"><b>QFileStream</b></font>
+<font color="0000AA"><b>Dim</b></font> qf3 <font color="0000AA"><b>As</b></font> <font color="000099"><b>QFileStream</b></font>
+<font color="0000AA"><b>Dim</b></font> qf4 <font color="0000AA"><b>As</b></font> <font color="000099"><b>QFileStream</b></font>
+<font color="0000AA"><b>Dim</b></font> qf5 <font color="0000AA"><b>As</b></font> <font color="000099"><b>QFileStream</b></font>
+<font color="0000AA"><b>Dim</b></font> qf6 <font color="0000AA"><b>As</b></font> <font color="000099"><b>QFileStream</b></font>
+<font color="0000AA"><b>Dim</b></font> qf7 <font color="0000AA"><b>As</b></font> <font color="000099"><b>QFileStream</b></font>
+<font color="0000AA"><b>Dim</b></font> qf8 <font color="0000AA"><b>As</b></font> <font color="000099"><b>QFileStream</b></font>
+<font color="0000AA"><b>Dim</b></font> qfn<b>(</b>1 <font color="0000AA"><b>to</b></font> MaxQFiles<b>)</b> <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>Byte</b></font>  <font color="007700"><i>'keeps track of which qfiles are open</i></font> 
+<font color="0000AA"><b>DIM</b></font> qfi <font color="0000AA"><b>As</b></font> <font color="000099"><b>LONG</b></font>
+
+<font color="0000AA"><b>SUB</b></font> fINITIALIZE  <font color="007700"><i>'call this to initialize at program start</i></font> 
+<font color="0000AA"><b>For</b></font> qfi=1 <font color="0000AA"><b>to</b></font> MaxQFiles: qfn<b>(</b>qfi<b>)</b>=0: <font color="0000AA"><b>Next</b></font> qfi
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+
+<font color="0000AA"><b>FUNCTION</b></font> GetFileNum<b>(</b><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>LONG</b></font>
+Result=-1
+<font color="0000AA"><b>FOR</b></font> qfi=1 <font color="0000AA"><b>to</b></font> MaxQFiles
+<font color="0000AA"><b>IF</b></font> qfn<b>(</b>qfi<b>)</b>=0 <font color="0000AA"><b>THEN</b></font> Result=qfi: <font color="0000AA"><b>Exit</b></font> <font color="000099"><b>Function</b></font>
+<font color="0000AA"><b>NEXT</b></font> qfi
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>FUNCTION</b></font>
+
+<font color="0000AA"><b>SUB</b></font> fOPEN<b>(</b>fNum <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>LONG</b></font>, fName$ <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>STRING</b></font>, fHow <font color="0000AA"><b>AS</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b>
+qfi=fHow
+<font color="0000AA"><b>IF</b></font> <font color="0000AA"><b>FILEEXISTS</b></font><b>(</b>fName$<b>)</b>=0 <font color="0000AA"><b>THEN</b></font> qfi=fmcreate
+<font color="0000AA"><b>SELECT</b></font> <font color="0000AA"><b>CASE</b></font> fNum
+<font color="0000AA"><b>CASE</b></font> 1: qf1.OPEN<b>(</b>fName$,qfi<b>)</b>
+<font color="0000AA"><b>CASE</b></font> 2: qf2.OPEN<b>(</b>fName$,qfi<b>)</b>
+<font color="0000AA"><b>CASE</b></font> 3: qf3.OPEN<b>(</b>fName$,qfi<b>)</b>
+<font color="0000AA"><b>CASE</b></font> 4: qf4.OPEN<b>(</b>fName$,qfi<b>)</b>
+<font color="0000AA"><b>CASE</b></font> 5: qf5.OPEN<b>(</b>fName$,qfi<b>)</b>
+<font color="0000AA"><b>CASE</b></font> 6: qf6.OPEN<b>(</b>fName$,qfi<b>)</b>
+<font color="0000AA"><b>CASE</b></font> 7: qf7.OPEN<b>(</b>fName$,qfi<b>)</b>
+<font color="0000AA"><b>CASE</b></font> 8: qf8.OPEN<b>(</b>fName$,qfi<b>)</b>
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SELECT</b></font>
+qfn<b>(</b>fNum<b>)</b>=1
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+
+<font color="0000AA"><b>SUB</b></font> fCLOSE<b>(</b>fNum <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b>
+<font color="0000AA"><b>SELECT</b></font> <font color="0000AA"><b>CASE</b></font> fNum
+<font color="0000AA"><b>CASE</b></font> 1: qf1.CLOSE
+<font color="0000AA"><b>CASE</b></font> 2: qf2.CLOSE
+<font color="0000AA"><b>CASE</b></font> 3: qf3.CLOSE
+<font color="0000AA"><b>CASE</b></font> 4: qf4.CLOSE
+<font color="0000AA"><b>CASE</b></font> 5: qf5.CLOSE
+<font color="0000AA"><b>CASE</b></font> 6: qf6.CLOSE
+<font color="0000AA"><b>CASE</b></font> 7: qf7.CLOSE
+<font color="0000AA"><b>CASE</b></font> 8: qf8.CLOSE
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SELECT</b></font>
+qfn<b>(</b>fNum<b>)</b>=0: <font color="000099"><b>DoEvents</b></font>
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+
+<font color="0000AA"><b>SUB</b></font> fPOSITION<b>(</b>fNum <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>LONG</b></font>, fPosition <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b>
+<font color="0000AA"><b>SELECT</b></font> <font color="0000AA"><b>CASE</b></font> fNum
+<font color="0000AA"><b>CASE</b></font> 1: qf1.Position=fPosition
+<font color="0000AA"><b>CASE</b></font> 2: qf2.Position=fPosition
+<font color="0000AA"><b>CASE</b></font> 3: qf3.Position=fPosition
+<font color="0000AA"><b>CASE</b></font> 4: qf4.Position=fPosition
+<font color="0000AA"><b>CASE</b></font> 5: qf5.Position=fPosition
+<font color="0000AA"><b>CASE</b></font> 6: qf6.Position=fPosition
+<font color="0000AA"><b>CASE</b></font> 7: qf7.Position=fPosition
+<font color="0000AA"><b>CASE</b></font> 8: qf8.Position=fPosition
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SELECT</b></font>
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+
+<font color="0000AA"><b>FUNCTION</b></font> fSIZE<b>(</b>fNum <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>LONG</b></font>
+<font color="0000AA"><b>SELECT</b></font> <font color="0000AA"><b>CASE</b></font> fNum
+<font color="0000AA"><b>CASE</b></font> 1: Result=qf1.Size
+<font color="0000AA"><b>CASE</b></font> 2: Result=qf2.Size
+<font color="0000AA"><b>CASE</b></font> 3: Result=qf3.Size
+<font color="0000AA"><b>CASE</b></font> 4: Result=qf4.Size
+<font color="0000AA"><b>CASE</b></font> 5: Result=qf5.Size
+<font color="0000AA"><b>CASE</b></font> 6: Result=qf6.Size
+<font color="0000AA"><b>CASE</b></font> 7: Result=qf7.Size
+<font color="0000AA"><b>CASE</b></font> 8: Result=qf8.Size
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SELECT</b></font>
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>FUNCTION</b></font>
+
+<font color="0000AA"><b>FUNCTION</b></font> fReadBinStr<b>(</b>fNum <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>LONG</b></font>, fBytes <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>LONG</b></font><b>)</b> <font color="0000AA"><b>As</b></font> <font color="000099"><b>STRING</b></font>
+<font color="0000AA"><b>SELECT</b></font> <font color="0000AA"><b>CASE</b></font> fNum
+<font color="0000AA"><b>CASE</b></font> 1: Result=qf1.ReadBinStr<b>(</b>fBytes<b>)</b>
+<font color="0000AA"><b>CASE</b></font> 2: Result=qf2.ReadBinStr<b>(</b>fBytes<b>)</b>
+<font color="0000AA"><b>CASE</b></font> 3: Result=qf3.ReadBinStr<b>(</b>fBytes<b>)</b>
+<font color="0000AA"><b>CASE</b></font> 4: Result=qf4.ReadBinStr<b>(</b>fBytes<b>)</b>
+<font color="0000AA"><b>CASE</b></font> 5: Result=qf5.ReadBinStr<b>(</b>fBytes<b>)</b>
+<font color="0000AA"><b>CASE</b></font> 6: Result=qf6.ReadBinStr<b>(</b>fBytes<b>)</b>
+<font color="0000AA"><b>CASE</b></font> 7: Result=qf7.ReadBinStr<b>(</b>fBytes<b>)</b>
+<font color="0000AA"><b>CASE</b></font> 8: Result=qf8.ReadBinStr<b>(</b>fBytes<b>)</b>
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SELECT</b></font>
+<font color="000099"><b>DoEvents</b></font>
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>FUNCTION</b></font>
+
+<font color="0000AA"><b>SUB</b></font> fWriteLine<b>(</b>fNum <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>LONG</b></font>, fString <font color="0000AA"><b>As</b></font> <font color="0000AA"><b>STRING</b></font><b>)</b>
+<font color="0000AA"><b>SELECT</b></font> <font color="0000AA"><b>CASE</b></font> fNum
+<font color="0000AA"><b>CASE</b></font> 1: qf1.WriteLine<b>(</b>fString<b>)</b>
+<font color="0000AA"><b>CASE</b></font> 2: qf2.WriteLine<b>(</b>fString<b>)</b>
+<font color="0000AA"><b>CASE</b></font> 3: qf3.WriteLine<b>(</b>fString<b>)</b>
+<font color="0000AA"><b>CASE</b></font> 4: qf4.WriteLine<b>(</b>fString<b>)</b>
+<font color="0000AA"><b>CASE</b></font> 5: qf5.WriteLine<b>(</b>fString<b>)</b>
+<font color="0000AA"><b>CASE</b></font> 6: qf6.WriteLine<b>(</b>fString<b>)</b>
+<font color="0000AA"><b>CASE</b></font> 7: qf7.WriteLine<b>(</b>fString<b>)</b>
+<font color="0000AA"><b>CASE</b></font> 8: qf8.WriteLine<b>(</b>fString<b>)</b>
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SELECT</b></font>
+<font color="000099"><b>DoEvents</b></font>
+<font color="0000AA"><b>END</b></font> <font color="000099"><b>SUB</b></font>
+
+<font color="007700"><i>'Add other QFileStream properties and methods here as you need them.</i></font> 
+<font color="007700"><i>'These routines look ugly, but are a workaround to access files by index. </i></font> 
+</pre>
+</body>
+</html>

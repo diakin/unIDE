@@ -1,0 +1,214 @@
+<html>
+<head>
+<title>QFuncLib.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'===============================================</i></font> 
+<font color="007700"><i>' Functions library</i></font> 
+<font color="007700"><i>'===============================================</i></font> 
+<font color="0000AA"><b>Const</b></font> PI=<font color="0000AA"><b>acos</b></font><b>(</b>-1<b>)</b>
+
+
+<font color="007700"><i>'===============================================</i></font> 
+<font color="007700"><i>' Return the short name of file</i></font> 
+<font color="007700"><i>'===============================================</i></font> 
+<font color="0000AA"><b>Function</b></font> GetFileName<b>(</b>file <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+ result=<font color="0000AA"><b>RIGHT$</b></font><b>(</b>file,<font color="0000AA"><b>Len</b></font><b>(</b>file<b>)</b>-RINSTR<b>(</b>file,"<font color="990000">\</font>"<b>)</b><b>)</b>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+<font color="007700"><i>'===============================================</i></font> 
+<font color="007700"><i>' Return the path name of file</i></font> 
+<font color="007700"><i>'===============================================</i></font> 
+<font color="0000AA"><b>Function</b></font> GetPathName<b>(</b>file <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+  result=<font color="0000AA"><b>LEFT$</b></font><b>(</b>file,RINSTR<b>(</b>file,"<font color="990000">\</font>"<b>)</b>-1<b>)</b>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+<font color="007700"><i>'===============================================</i></font> 
+<font color="007700"><i>' Return the extension of file</i></font> 
+<font color="007700"><i>'===============================================</i></font> 
+<font color="0000AA"><b>Function</b></font> GetFileExt<b>(</b>file <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+  result=<font color="0000AA"><b>RIGHT$</b></font><b>(</b>file,<font color="0000AA"><b>Len</b></font><b>(</b>file<b>)</b>-RINSTR<b>(</b>file,"<font color="990000">.</font>"<b>)</b><b>)</b>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+<font color="007700"><i>'===============================================</i></font> 
+<font color="007700"><i>' Return the n word in a string expression</i></font> 
+<font color="007700"><i>'===============================================</i></font> 
+<font color="0000AA"><b>Function</b></font> Word$<b>(</b>s <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>,index <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>integer</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+  <font color="0000AA"><b>dim</b></font> stemp <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+  <font color="0000AA"><b>dim</b></font> i <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+  <font color="0000AA"><b>dim</b></font> flagSpace <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+  
+  stemp="<font color="990000"></font>"
+  <font color="0000AA"><b>for</b></font> i=1 <font color="0000AA"><b>to</b></font> <font color="0000AA"><b>len</b></font><b>(</b>s<b>)</b>
+    <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>mid$</b></font><b>(</b>s,i,1<b>)</b>&lt;><font color="0000AA"><b>space$</b></font><b>(</b>1<b>)</b> <font color="000099"><b>then</b></font>
+      stemp=stemp+<font color="0000AA"><b>mid$</b></font><b>(</b>s,i,1<b>)</b>
+      flagSpace=0
+    <font color="000099"><b>else</b></font>
+      <font color="0000AA"><b>if</b></font> flagSpace=0 <font color="0000AA"><b>then</b></font> stemp=stemp+<font color="0000AA"><b>space$</b></font><b>(</b>1<b>)</b>
+      flagSpace=1
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="0000AA"><b>next</b></font> i
+  stemp=<font color="0000AA"><b>ltrim$</b></font><b>(</b><font color="0000AA"><b>rtrim$</b></font><b>(</b>stemp<b>)</b><b>)</b>
+  result=<font color="0000AA"><b>Field$</b></font><b>(</b>stemp,"<font color="990000"> </font>",index<b>)</b>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+<font color="007700"><i>'==================================================</i></font> 
+<font color="007700"><i>' Return the number of word in a string</i></font> 
+<font color="007700"><i>'==================================================</i></font> 
+<font color="0000AA"><b>function</b></font> GetWordCount<b>(</b>s <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>String</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+  <font color="0000AA"><b>dim</b></font> flagStop <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+  <font color="0000AA"><b>dim</b></font> counter <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+
+  counter=1
+  flagStop=0
+  <font color="0000AA"><b>while</b></font> flagStop=0
+    <font color="0000AA"><b>if</b></font> Word$<b>(</b>s,counter<b>)</b>&lt;>"<font color="990000"></font>" <font color="000099"><b>then</b></font>
+      counter=counter+1
+    <font color="000099"><b>else</b></font>
+      flagStop=1
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+  <font color="000099"><b>wend</b></font>
+  result=counter-1
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'====================================================</i></font> 
+<font color="007700"><i>' Return a string with remove char</i></font> 
+<font color="007700"><i>'====================================================</i></font> 
+<font color="0000AA"><b>function</b></font> RemoveChar$<b>(</b>s <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>,char <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+  <font color="0000AA"><b>dim</b></font> source <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font>  
+
+  <font color="0000AA"><b>if</b></font> s&lt;>"<font color="990000"></font>" <font color="000099"><b>then</b></font>
+    source=s
+    <font color="0000AA"><b>while</b></font> <font color="0000AA"><b>instr</b></font><b>(</b>source,char<b>)</b>&lt;>0
+      source=<font color="0000AA"><b>left$</b></font><b>(</b>source,<font color="0000AA"><b>instr</b></font><b>(</b>source,char<b>)</b>-1<b>)</b>+<font color="0000AA"><b>mid$</b></font><b>(</b>source,<font color="0000AA"><b>instr</b></font><b>(</b>source,char<b>)</b>+<font color="0000AA"><b>len</b></font><b>(</b>char<b>)</b><b>)</b>
+    <font color="000099"><b>wend</b></font>
+    result=source
+  <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'====================================================</i></font> 
+<font color="007700"><i>' Return a string without space to start and to end</i></font> 
+<font color="007700"><i>'====================================================</i></font> 
+<font color="0000AA"><b>Function</b></font> Trim$<b>(</b>s <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+  Result=<font color="0000AA"><b>LTRIM$</b></font><b>(</b><font color="0000AA"><b>RTRIM$</b></font><b>(</b>s<b>)</b><b>)</b>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Function</b></font>
+
+<font color="007700"><i>'======================================================</i></font> 
+<font color="007700"><i>' Return ratio</i></font> 
+<font color="007700"><i>'======================================================</i></font> 
+<font color="0000AA"><b>function</b></font> Ratio<b>(</b>Value1 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>double</b></font>,Value2 <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>double</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>double</b></font>
+  Result=<b>(</b><b>(</b>Value1-Value2<b>)</b>*100<b>)</b>/Value1
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'========================================</i></font> 
+<font color="007700"><i>' Return radian value</i></font> 
+<font color="007700"><i>'========================================</i></font> 
+<font color="0000AA"><b>function</b></font> GetRadian<b>(</b>degrees <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>double</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>double</b></font>
+  Result=degrees*<b>(</b>Pi/180<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'==========================================</i></font> 
+<font color="007700"><i>' Return degrees value</i></font> 
+<font color="007700"><i>'==========================================</i></font> 
+<font color="0000AA"><b>function</b></font> GetDegrees<b>(</b>radian <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>double</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>double</b></font>
+  Result=radian*<b>(</b>180/Pi<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'===================================</i></font> 
+<font color="007700"><i>' Return distance</i></font> 
+<font color="007700"><i>'===================================</i></font> 
+<font color="0000AA"><b>function</b></font> Distance<b>(</b>x <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>double</b></font>,y <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>double</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>double</b></font>
+  Result=<font color="0000AA"><b>SQR</b></font><b>(</b>x^2+y^2<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'===================================</i></font> 
+<font color="007700"><i>' Return surface</i></font> 
+<font color="007700"><i>'===================================</i></font> 
+<font color="0000AA"><b>function</b></font> Surface<b>(</b>Width <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>double</b></font>,Height <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>double</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>double</b></font>
+  Result=Width*Height
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'===================================</i></font> 
+<font color="007700"><i>' Return blue value of color</i></font> 
+<font color="007700"><i>'===================================</i></font> 
+<font color="0000AA"><b>function</b></font> GetBlue<b>(</b><font color="0000AA"><b>Color</b></font> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+    Result=<font color="0000AA"><b>int</b></font><b>(</b><font color="0000AA"><b>Color</b></font>/65536<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'===================================</i></font> 
+<font color="007700"><i>' Return red value of color</i></font> 
+<font color="007700"><i>'===================================</i></font> 
+<font color="0000AA"><b>function</b></font> GetRed<b>(</b><font color="0000AA"><b>Color</b></font> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+    <font color="0000AA"><b>dim</b></font> blue <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+    <font color="0000AA"><b>dim</b></font> green <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font>     
+
+    blue=<font color="0000AA"><b>int</b></font><b>(</b><font color="0000AA"><b>Color</b></font>/65536<b>)</b>
+    green=<font color="0000AA"><b>int</b></font><b>(</b><b>(</b><font color="0000AA"><b>Color</b></font>-<b>(</b>blue*65536<b>)</b><b>)</b>/256<b>)</b>
+    Result=<font color="0000AA"><b>int</b></font><b>(</b><font color="0000AA"><b>Color</b></font>-<b>(</b>blue*65536<b>)</b>-<b>(</b>green*256<b>)</b><b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'===================================</i></font> 
+<font color="007700"><i>' Return green value of color</i></font> 
+<font color="007700"><i>'===================================</i></font> 
+<font color="0000AA"><b>function</b></font> GetGreen<b>(</b><font color="0000AA"><b>Color</b></font> <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>long</b></font><b>)</b> <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+    <font color="0000AA"><b>dim</b></font> blue <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+
+    blue=<font color="0000AA"><b>int</b></font><b>(</b><font color="0000AA"><b>Color</b></font>/65536<b>)</b>
+    Result=<font color="0000AA"><b>int</b></font><b>(</b><b>(</b><font color="0000AA"><b>Color</b></font>-<b>(</b>blue*65536<b>)</b><b>)</b>/256<b>)</b>
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'==========================================</i></font> 
+<font color="007700"><i>' Return Dec from bin</i></font> 
+<font color="007700"><i>'==========================================</i></font> 
+<font color="0000AA"><b>function</b></font> BinToDec<b>(</b>bin <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b><font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+  <font color="0000AA"><b>dim</b></font> bit <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+  <font color="0000AA"><b>dim</b></font> i <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+  <font color="0000AA"><b>dim</b></font> value <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+  
+  bin=REVERSE$<b>(</b>bin<b>)</b>
+  bit=1
+  value=0
+  <font color="0000AA"><b>for</b></font> i=1 <font color="0000AA"><b>to</b></font> <font color="0000AA"><b>len</b></font><b>(</b>bin<b>)</b>
+    <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>mid$</b></font><b>(</b>bin,i,1<b>)</b>="<font color="990000">1</font>" <font color="0000AA"><b>then</b></font> value=value+bit
+    bit=bit*2
+  <font color="0000AA"><b>next</b></font> i
+  result=value
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+
+<font color="007700"><i>'=============================================</i></font> 
+<font color="007700"><i>' Return Dec from hex</i></font> 
+<font color="007700"><i>'=============================================</i></font> 
+<font color="0000AA"><b>function</b></font> HexToDec<b>(</b>hex <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>string</b></font><b>)</b><font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+  <font color="0000AA"><b>dim</b></font> bit <font color="0000AA"><b>as</b></font> <font color="000099"><b>long</b></font>
+  <font color="0000AA"><b>dim</b></font> valbit <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+  <font color="0000AA"><b>dim</b></font> i <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+  <font color="0000AA"><b>dim</b></font> value <font color="0000AA"><b>as</b></font> <font color="000099"><b>integer</b></font>
+  
+  hex=REVERSE$<b>(</b>hex<b>)</b>
+  bit=1
+  value=0
+  <font color="0000AA"><b>for</b></font> i=1 <font color="0000AA"><b>to</b></font> <font color="0000AA"><b>len</b></font><b>(</b>hex<b>)</b>
+    <font color="0000AA"><b>if</b></font> <font color="0000AA"><b>mid$</b></font><b>(</b>hex,i,1<b>)</b>="<font color="990000">A</font>" <font color="000099"><b>then</b></font>
+      value=value+<b>(</b>10*bit<b>)</b>
+    <font color="0000AA"><b>elseif</b></font> <font color="0000AA"><b>mid$</b></font><b>(</b>hex,i,1<b>)</b>="<font color="990000">B</font>" <font color="000099"><b>then</b></font>
+      value=value+<b>(</b>11*bit<b>)</b>
+    <font color="0000AA"><b>elseif</b></font> <font color="0000AA"><b>mid$</b></font><b>(</b>hex,i,1<b>)</b>="<font color="990000">C</font>" <font color="000099"><b>then</b></font>
+      value=value+<b>(</b>12*bit<b>)</b>
+    <font color="0000AA"><b>elseif</b></font> <font color="0000AA"><b>mid$</b></font><b>(</b>hex,i,1<b>)</b>="<font color="990000">D</font>" <font color="000099"><b>then</b></font>
+      value=value+<b>(</b>13*bit<b>)</b>
+    <font color="0000AA"><b>elseif</b></font> <font color="0000AA"><b>mid$</b></font><b>(</b>hex,i,1<b>)</b>="<font color="990000">E</font>" <font color="000099"><b>then</b></font>
+      value=value+<b>(</b>14*bit<b>)</b>
+    <font color="0000AA"><b>elseif</b></font> <font color="0000AA"><b>mid$</b></font><b>(</b>hex,i,1<b>)</b>="<font color="990000">F</font>" <font color="000099"><b>then</b></font>
+      value=value+<b>(</b>15*bit<b>)</b>
+    <font color="000099"><b>else</b></font>
+      value=value+<b>(</b><font color="0000AA"><b>val</b></font><b>(</b><font color="0000AA"><b>mid$</b></font><b>(</b>hex,i,1<b>)</b><b>)</b>*bit<b>)</b>
+    <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+    <font color="0000AA"><b>if</b></font> <b>(</b>bit*16<b>)</b>&lt;2147483647 <font color="0000AA"><b>then</b></font> bit=bit*16
+  <font color="0000AA"><b>next</b></font> i
+  result=value
+<font color="0000AA"><b>end</b></font> <font color="000099"><b>function</b></font>
+ 
+</pre>
+</body>
+</html>

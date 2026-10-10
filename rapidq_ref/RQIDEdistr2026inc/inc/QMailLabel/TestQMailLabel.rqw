@@ -1,0 +1,28 @@
+$Include "Rapidq.inc"
+$Include "QMailLabel.inc"
+ 
+Create MainForm as QForm
+      Caption = "MainForm"
+      Top     = 184
+      Left    = 379
+      Width   = 351
+      Height  = 194
+End Create
+Create MailLabel as QMailLabel
+      Parent  = MainForm
+      Top     = 64
+      Left    = 128
+      Width   = 81
+      Height  = 13
+      Color   = &HD8E9EC
+      Font.Name = "Lucida Console"
+      Font.Color = 16711680
+      Font.Size = 10
+      Font.AddStyles fsBold,fsUnderline
+      Subject = "Test QMailLabel"
+      MailTo = "rqwork@4x.ro"
+End Create
+$Include "Minimize.inc"
+
+SetMinimize(MainForm)
+MainForm.ShowModal

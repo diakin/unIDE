@@ -1,0 +1,87 @@
+<html>
+<head>
+<title>QSplash.inc</title>
+</head>
+<body bgcolor="c0ccc0">
+<pre>
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="007700"><i>' Type Objet</i></font> 
+<font color="007700"><i>' Classe QSplash version 1.1</i></font> 
+<font color="007700"><i>'=======================================================</i></font> 
+<font color="0000AA"><b>$IFNDEF</b></font> TRUE
+  <font color="0000AA"><b>$DEFINE</b></font> True 1
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> FALSE
+  <font color="0000AA"><b>$DEFINE</b></font> False 0
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>$IFNDEF</b></font> boolean
+  <font color="0000AA"><b>$DEFINE</b></font> boolean <font color="000099"><b>integer</b></font>
+<font color="000099"><b>$ENDIF</b></font>
+
+<font color="0000AA"><b>Type</b></font> QSplash <font color="0000AA"><b>Extends</b></font> <font color="000099"><b>QObject</b></font>
+  PRIVATE:
+    form <font color="0000AA"><b>as</b></font> <font color="000099"><b>QForm</b></font>
+    label1 <font color="0000AA"><b>as</b></font> <font color="000099"><b>QLABEL</b></font>
+  PUBLIC:
+    Image <font color="0000AA"><b>as</b></font> <font color="000099"><b>Qimage</b></font>
+    Text <font color="0000AA"><b>as</b></font> <font color="000099"><b>string</b></font>
+    TextCenter <font color="0000AA"><b>as</b></font> boolean
+    TextTop <font color="0000AA"><b>as</b></font> <font color="000099"><b>Short</b></font>
+    TextLeft <font color="0000AA"><b>as</b></font> <font color="000099"><b>Short</b></font>
+    TextFont <font color="0000AA"><b>as</b></font> <font color="000099"><b>QFont</b></font>
+    TextTransparent <font color="0000AA"><b>as</b></font> boolean
+  
+  <font color="007700"><i>'=======================</i></font> 
+  <font color="007700"><i>' Méthode Show </i></font> 
+  <font color="007700"><i>'=======================</i></font> 
+  <font color="0000AA"><b>Sub</b></font> Show<b>(</b>Time <font color="0000AA"><b>as</b></font> <font color="0000AA"><b>short</b></font><b>)</b>
+    <font color="0000AA"><b>With</b></font> QSplash
+      <font color="0000AA"><b>if</b></font> .text&lt;>"<font color="990000"></font>" <font color="000099"><b>then</b></font>
+        .label1.Transparent=false
+        .label1.autosize=true
+        .label1.font=.TextFont
+        .label1.caption=.text
+        .label1.parent=.form
+        <font color="0000AA"><b>if</b></font> .textCenter <font color="000099"><b>then</b></font>
+          .label1.left=<b>(</b>.form.ClientWidth-.label1.Width<b>)</b>/2
+        <font color="000099"><b>else</b></font>
+          .label1.left=.textLeft
+        <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+        <font color="0000AA"><b>if</b></font> .TextTransparent <font color="000099"><b>then</b></font>
+          .form.ClientHeight=.Image.Height 
+          .label1.top=.TextTop
+          .label1.Transparent=true
+        <font color="000099"><b>else</b></font>
+          .label1.top=.Image.Height+10
+          .form.ClientHeight=.label1.top+.label1.height+10
+        <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      <font color="000099"><b>else</b></font>
+        .form.ClientHeight=.Image.Height 
+      <font color="0000AA"><b>end</b></font> <font color="000099"><b>if</b></font>
+      .form.ClientWidth=.Image.Width 
+      .form.HideTitleBar
+      .form.Show 
+      .form.Repaint 
+      <font color="0000AA"><b>SLEEP</b></font> Time 
+      .form.Close 
+    <font color="0000AA"><b>End</b></font> <font color="000099"><b>With</b></font>
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Sub</b></font>
+  
+  <font color="000099"><b>Constructor</b></font>
+    form.BorderStyle=3 
+    form.Center 
+    Image.parent=QSplash.form
+    Image.autosize=true
+    Image.left=0
+    Image.top=0
+    Text="<font color="990000"></font>"
+    TextLeft=5
+    TextCenter=False
+  <font color="0000AA"><b>End</b></font> <font color="000099"><b>Constructor</b></font>
+<font color="0000AA"><b>End</b></font> <font color="000099"><b>Type</b></font>
+ 
+</pre>
+</body>
+</html>

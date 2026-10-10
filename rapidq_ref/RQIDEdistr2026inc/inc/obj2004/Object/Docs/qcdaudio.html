@@ -1,0 +1,545 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.51 [fr]C-CCK-MCD   (WinNT; I) [Netscape]">
+   <title>Appendix A: QCDAUDIO</title>
+</head>
+<body bgcolor="#FFFFFF" FONT FACE="Arial, Helvetica">
+&nbsp;
+<table CELLSPACING=0 CELLPADDING=0 WIDTH="100%" >
+<tr>
+<td><font face="Arial, Helvetica">Documentation composant par D.Glodt (c)2000-2001</font></td>
+
+<td ALIGN=RIGHT><b><font face="Arial, Helvetica">Appendix A: QCDAUDIO</font></b></td>
+</tr>
+
+<tr>
+<td COLSPAN="2">
+<hr SIZE=1></td>
+</tr>
+</table>
+
+<h1>
+QCDAUDIO Composant</h1>
+
+<dd>
+QCDAUDIO est un controle media utilis&eacute; pour la lecture des cd audio.</dd>
+
+<p><br><a NAME="1"></a><b><font size=+1>QCDAUDIO Propriet&eacute;s</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Champs</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>L/E</b></td>
+
+<td><b>Defaut</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Timer</td>
+
+<td>QTIMER</td>
+
+<td>LE</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Controle la fr&eacute;quence de l'&eacute;venement
+OnChange.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Time</td>
+
+<td>STRING</td>
+
+<td>L</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Temps total du cd.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>TrackTime</td>
+
+<td>STRING</td>
+
+<td>L</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Temps total du morceau.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>TrackNumber</td>
+
+<td>INTEGER</td>
+
+<td>L</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Nombre de morceaux du cd.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>TimePosition</td>
+
+<td>STRING</td>
+
+<td>L</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Position tmsf(track,minutes,secondes,frame)
+du cd.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>State</td>
+
+<td>INTEGER</td>
+
+<td>L</td>
+
+<td>CD_CLOSE</td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Etat du lecteur cd,peut etre CD_PLAY,CD_PAUSE,CD_STOP.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>AudioOpen</td>
+
+<td>Boolean</td>
+
+<td>L</td>
+
+<td>FALSE</td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Indique que le media cd est ouvert.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Present</td>
+
+<td>Boolean</td>
+
+<td>L</td>
+
+<td>FALSE</td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Indique l'etat present d'un cd dans le
+lecteur.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>CurrentTrack</td>
+
+<td>INTEGER</td>
+
+<td>LE</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td COLSPAN="3" BGCOLOR="#FFDDDD">Morceau courrant du cd.&nbsp;</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Error</td>
+
+<td>STRING</td>
+
+<td>L</td>
+
+<td></td>
+</tr>
+
+<tr>
+<td></td>
+
+<td BGCOLOR="#FFCCCC">Texte d'erreur si &eacute;chec de la m&eacute;thode
+OPEN</td>
+
+<td BGCOLOR="#FFCCCC"></td>
+
+<td BGCOLOR="#FFCCCC"></td>
+</tr>
+</table>
+
+<p><a NAME="2"></a><b><font size=+1>QCDAUDIO Methodes</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Methode</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Description</b></td>
+
+<td><b>Parametres</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Open</td>
+
+<td>FUNCTION</td>
+
+<td NOWRAP>Ouvre le cd audio pour lecture et retourne TRUE</td>
+
+<td NOWRAP>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Close</td>
+
+<td>SUB</td>
+
+<td NOWRAP>Ferme le cd audio</td>
+
+<td NOWRAP>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Play</td>
+
+<td>SUB</td>
+
+<td NOWRAP>Lit le cd audio</td>
+
+<td NOWRAP>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Stop</td>
+
+<td>SUB</td>
+
+<td NOWRAP>Arrete la lecture du cd audio</td>
+
+<td NOWRAP>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Pause</td>
+
+<td>SUB</td>
+
+<td NOWRAP>Met le cd audio en mode pause</td>
+
+<td NOWRAP>0</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Eject</td>
+
+<td>SUB</td>
+
+<td NOWRAP>Ejecte le cd audio de son lecteur</td>
+
+<td NOWRAP>0</td>
+</tr>
+</table>
+
+<p><a NAME="3"></a><b><font size=+1>QCDAUDIO Evenements</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Evenement</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>D&eacute;clenchement</b></td>
+
+<td><b>Parametres</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>OnChange</td>
+
+<td>(track as integer,time as string)</td>
+
+<td>Changement de position du cd en lecture</td>
+
+<td>2</td>
+</tr>
+</table>
+
+<p><a NAME="4"></a><b><font size=+1>QCDAUDIO Exemples</font></b>
+<pre>'**************************************************************************
+'* application:player cd&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *
+'* auteur:D.Glodt&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *
+'* date:7-4-2001&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; *
+'**************************************************************************
+$TYPECHECK ON
+$Include "Rapidq.inc"
+$include "Object\Qcdaudio.inc"
+
+$RESOURCE PLAYBMP as "play.bmp"
+$RESOURCE STOPBMP as "Stop.bmp"
+$RESOURCE PAUSEBMP as "Pause.bmp"
+$RESOURCE BACKBMP as "back.bmp"
+$RESOURCE FORWARDBMP as "forward.bmp"
+$RESOURCE EJECTBMP as "eject.bmp"
+$RESOURCE CDICO as "cdaudio.ico"
+
+Declare Sub Play
+Declare Sub Stop
+Declare Sub Pause
+Declare Sub Back
+Declare Sub Forward
+Declare Sub Eject
+Declare Sub Open
+Declare Sub Close
+Declare Sub Quitter
+Declare Sub PostimerOnTimer(track as integer,time as string)
+
+Dim cd as Qcdaudio
+cd.OnChange=PostimerOnTimer
+cd.timer.interval=200
+
+
+CREATE Form AS QFORM
+&nbsp;&nbsp;&nbsp; Caption="CD Audio"
+&nbsp;&nbsp;&nbsp; Width=288
+&nbsp;&nbsp;&nbsp; Height=110
+&nbsp;&nbsp;&nbsp; Center
+&nbsp;&nbsp;&nbsp; BorderStyle=bsSingle
+&nbsp;&nbsp;&nbsp; icoHandle=CDICO
+&nbsp;&nbsp;&nbsp; OnClose=Quitter
+&nbsp;&nbsp;&nbsp; OnShow=Open
+&nbsp;&nbsp;&nbsp; CREATE Panel1 AS QPANEL
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=0
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=0
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=281
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Height=80
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BevelOuter=bvNone
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE BtPlay AS QCOOLBTN
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BMPHandle=PLAYBMP
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=8
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=6
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=28
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Height=28
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Flat=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Hint="Play"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShowHint=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GroupIndex=1
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Play
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE BtStop AS QCOOLBTN
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BMPHandle=STOPBMP
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=46
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=6
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=28
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Height=28
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Down=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Flat=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Hint="Stop"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShowHint=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GroupIndex=1
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Stop
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE BtPause AS QCOOLBTN
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BMPHandle=PAUSEBMP
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=84
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=6
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=28
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Height=28
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Flat=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GroupIndex=1
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Hint="Pause"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShowHint=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Pause
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE BtBack AS QCOOLBTN
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BMPHandle=BACKBMP
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=114
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=6
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=28
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Height=28
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Flat=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GroupIndex=0
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Hint="Back"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShowHint=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Back
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE BtForward AS QCOOLBTN
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BMPHandle=FORWARDBMP
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=144
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=6
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=28
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Height=28
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Flat=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GroupIndex=0
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Hint="Forward"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShowHint=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Forward
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE BtEject AS QCOOLBTN
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; BMPHandle=EJECTBMP
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Left=174
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Top=6
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Width=28
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Height=28
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Flat=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; GroupIndex=0
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Hint="Eject"
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; ShowHint=true
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; OnClick=Eject
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; CREATE Infos AS QSTATUSBAR
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; AddPanels "Track:",""
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; Panel(0).width=100
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; END CREATE
+&nbsp;&nbsp;&nbsp; END CREATE
+END CREATE
+
+Form.ShowModal
+
+Sub Open&nbsp;&nbsp;
+&nbsp; if cd.open then
+&nbsp;&nbsp;&nbsp; infos.panel(0).caption="Track:"+str$(cd.tracknumber)
+&nbsp;&nbsp;&nbsp; infos.panel(1).caption=cd.time
+&nbsp; end if
+End Sub
+
+Sub Close
+&nbsp; cd.close
+End Sub
+
+Sub Play
+&nbsp; if cd.audioOpen=false then
+&nbsp;&nbsp;&nbsp; if cd.open then
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; infos.panel(0).caption="Track:"+str$(cd.tracknumber)
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; infos.panel(1).caption=cd.time
+&nbsp;&nbsp;&nbsp; else
+&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; btStop.down=true
+&nbsp;&nbsp;&nbsp; end if
+&nbsp; end if
+&nbsp; cd.play
+End Sub
+
+Sub Stop
+&nbsp; cd.stop
+End Sub
+
+Sub Pause
+&nbsp; cd.pause
+End Sub
+
+Sub Back
+&nbsp; cd.currentTrack=cd.currentTrack-1
+&nbsp; infos.panel(0).caption="Track:"+str$(cd.currentTrack)
+&nbsp; infos.panel(1).caption=cd.tracktime
+&nbsp; if cd.state=CD_PLAY then cd.play
+End Sub
+
+Sub Forward
+&nbsp; cd.currentTrack=cd.currentTrack+1
+&nbsp; infos.panel(0).caption="Track:"+str$(cd.currentTrack)
+&nbsp; infos.panel(1).caption=cd.tracktime
+&nbsp; if cd.state=CD_PLAY then cd.play
+End Sub
+
+Sub Eject
+&nbsp; cd.eject
+&nbsp; btStop.down=true
+End Sub
+
+Sub PostimerOnTimer(track as integer,time as string)
+&nbsp; infos.panel(0).caption="Track:"+str$(track)
+&nbsp; infos.panel(1).caption=time
+&nbsp; if cd.state=CD_STOP then
+&nbsp;&nbsp;&nbsp; btStop.down=true
+&nbsp; end if
+End Sub
+
+Sub Quitter
+&nbsp; cd.close
+&nbsp; form.close
+End Sub
+
+</pre>
+
+</body>
+</html>

@@ -1,0 +1,12 @@
+
+D:\_F\bas\rapidq\RQIDE\inc>D:\_F\bas\rapidq\RQIDE\Arduino15\arduino-cli\arduino-cli.exe  config init --overwrite --dest-dir D:\_F\bas\rapidq\RQIDE\Arduino15\arduino-cli\ 
+Config file written to: D:\_F\bas\rapidq\RQIDE\Arduino15\arduino-cli\arduino-cli.yaml
+
+D:\_F\bas\rapidq\RQIDE\inc>D:\_F\bas\rapidq\RQIDE\Arduino15\arduino-cli\arduino-cli.exe  config init --overwrite --config-file D:\_F\bas\rapidq\RQIDE\Arduino15\arduino-cli\arduino-cli.yaml 
+Config file written to: C:\Users\Andrei\AppData\Local\Arduino15\arduino-cli.yaml
+
+D:\_F\bas\rapidq\RQIDE\inc>D:\_F\bas\rapidq\RQIDE\Arduino15\arduino-cli\arduino-cli.exe  config set directories.data D:\_F\bas\rapidq\RQIDE\Arduino15\ --config-file D:\_F\bas\rapidq\RQIDE\Arduino15\arduino-cli\arduino-cli.yaml 
+
+D:\_F\bas\rapidq\RQIDE\inc>D:\_F\bas\rapidq\RQIDE\Arduino15\arduino-cli\arduino-cli.exe  config set directories.downloads D:\_F\bas\rapidq\RQIDE\Arduino15\staging\ --config-file D:\_F\bas\rapidq\RQIDE\Arduino15\arduino-cli\arduino-cli.yaml 
+
+D:\_F\bas\rapidq\RQIDE\inc>D:\_F\bas\rapidq\RQIDE\Arduino15\arduino-cli\arduino-cli.exe  config set directories.user D:\_F\bas\rapidq\RQIDE\Arduino15\sketchbook\ --config-file D:\_F\bas\rapidq\RQIDE\Arduino15\arduino-cli\arduino-cli.yaml 

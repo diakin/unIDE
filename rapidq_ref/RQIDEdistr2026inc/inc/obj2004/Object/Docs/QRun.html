@@ -1,0 +1,456 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.0 Transitional//EN">
+<HTML>
+<HEAD>
+	<META HTTP-EQUIV="CONTENT-TYPE" CONTENT="text/html; charset=windows-1252">
+	<TITLE>Appendix A: QRun</TITLE>
+	<META NAME="GENERATOR" CONTENT="OpenOffice.org 1.1.0  (Win32)">
+	<META NAME="AUTHOR" CONTENT="dominique glodt">
+	<META NAME="CREATED" CONTENT="20041019;20412884">
+	<META NAME="CHANGED" CONTENT="20041112;20162778">
+	<STYLE>
+	<!--
+		@page { size: 29.7cm 21cm }
+	-->
+	</STYLE>
+</HEAD>
+<BODY LANG="fr-FR" BGCOLOR="#ffffff" DIR="LTR">
+<P STYLE="margin-bottom: 0cm">&nbsp; 
+</P>
+<TABLE WIDTH=100% CELLPADDING=0 CELLSPACING=0>
+	<TR>
+		<TD>
+			<P><FONT FACE="Arial, Helvetica">Documentation composant par
+			D.Glodt (c)2001-2004</FONT></P>
+		</TD>
+		<TD>
+			<P ALIGN=RIGHT><FONT FACE="Arial, Helvetica"><B>Appendix A: QRun</B></FONT></P>
+		</TD>
+	</TR>
+	<TR>
+		<TD COLSPAN=2>
+			<HR SIZE=1>
+		</TD>
+	</TR>
+</TABLE>
+<H1>QRun Composant</H1>
+<DL>
+	<DD STYLE="margin-bottom: 0.5cm">QRun est un controle non visible
+	pour &eacute;xecuter des applications ou fichiers associ&eacute;s.
+	Il peut aussi lister l'ensemble des applications du bureau et en
+	prendre le contr&ocirc;le.</DD></DL>
+<P STYLE="margin-bottom: 0cm">
+<A NAME="1"></A><BR><B><FONT SIZE=4>QRun Propriet&eacute;s</FONT></B>
+</P>
+<TABLE WIDTH=100% CELLPADDING=2 CELLSPACING=2>
+	<TR>
+		<TD>
+			<P><B>Champs</B></P>
+		</TD>
+		<TD>
+			<P><B>Type</B></P>
+		</TD>
+		<TD>
+			<P><B>L/E</B></P>
+		</TD>
+		<TD>
+			<P><B>Defaut</B></P>
+		</TD>
+	</TR>
+	<TR>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+		<TD>
+			<HR>
+		</TD>
+	</TR>
+</TABLE>
+<P STYLE="margin-bottom: 0cm"><A NAME="2"></A><B><FONT SIZE=4>QRun
+Methodes</FONT></B> 
+</P>
+<TABLE WIDTH=100% BORDER=1 BORDERCOLOR="#ffffff" CELLPADDING=2 CELLSPACING=0 FRAME=VOID>
+	<COL WIDTH=35*>
+	<COL WIDTH=85*>
+	<COL WIDTH=106*>
+	<COL WIDTH=30*>
+	<TR>
+		<TD WIDTH=14%>
+			<P><B>Methode</B></P>
+		</TD>
+		<TD WIDTH=33%>
+			<P><B>Type</B></P>
+		</TD>
+		<TD WIDTH=41%>
+			<P><B>Description</B></P>
+		</TD>
+		<TD WIDTH=12%>
+			<P><B>Parametres</B></P>
+		</TD>
+	</TR>
+	<TR>
+		<TD WIDTH=14%>
+			<HR>
+		</TD>
+		<TD WIDTH=33%>
+			<HR>
+		</TD>
+		<TD WIDTH=41%>
+			<HR>
+		</TD>
+		<TD WIDTH=12%>
+			<HR>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>FindApplication</P>
+		</TD>
+		<TD WIDTH=33%>
+			<P>FUNCTION(FileName$) AS STRING</P>
+		</TD>
+		<TD WIDTH=41%>
+			<P>Retourne le nom et chemin de l'application associ&eacute;.</P>
+		</TD>
+		<TD WIDTH=12%>
+			<P>1</P>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>FileRun</P>
+		</TD>
+		<TD WIDTH=33%>
+			<P>SUB(FileName$,cmdShow%)</P>
+		</TD>
+		<TD WIDTH=41%>
+			<P>Lance un fichier associ&eacute; ou une application. <BR>cmdShow
+			peut etre <BR>SW_HIDE <BR>SW_SHOWNORMAL <BR>SW_NORMAL
+			<BR>SW_SHOWMINIMIZED <BR>SW_SHOWMAXIMIZED <BR>SW_MAXIMIZE
+			<BR>SW_SHOWNOACTIVATE <BR>SW_SHOW <BR>SW_MINIMIZE
+			<BR>SW_SHOWMINNOACTIVE <BR>SW_SHOWNA <BR>SW_RESTORE
+			<BR>SW_SHOWDEFAULT <BR>SW_MAX</P>
+		</TD>
+		<TD WIDTH=12%>
+			<P>2</P>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>ExeRun</P>
+		</TD>
+		<TD WIDTH=33%>
+			<P>SUB(ExeName$,Param$,cmdShow%)</P>
+		</TD>
+		<TD WIDTH=41%>
+			<P>Lance une application avec parametre.</P>
+		</TD>
+		<TD WIDTH=12%>
+			<P>3</P>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>EnumWindow</P>
+		</TD>
+		<TD WIDTH=33%>
+			<P>FUNCTION(All&amp;) As Boolean</P>
+		</TD>
+		<TD WIDTH=41%>
+			<P>Enumere les fenetres du bureau via l'&eacute;venement
+			OnEnumWindows si le parametre All est a false , seules les
+			fenetres visibles seront &eacute;numer&eacute;.La m&eacute;thode
+			retourne true si il y a des fenetres trouv&eacute;es.</P>
+		</TD>
+		<TD WIDTH=12% SDVAL="1" SDNUM="1036;">
+			<P ALIGN=LEFT>1</P>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>FindChild</P>
+		</TD>
+		<TD WIDTH=33%>
+			<P>FUNCTION(handle&amp;,class$,name$) As Boolean</P>
+		</TD>
+		<TD WIDTH=41%>
+			<P>Retourne le handle d'un control enfant en fonction des
+			arguments suivant:</P>
+			<P>handle&amp; est le handle du parent , class$ est le nom de la
+			classe du contr&ocirc;le recherch&eacute; , name$ est le titre du
+			contr&ocirc;le. 
+			</P>
+		</TD>
+		<TD WIDTH=12% SDVAL="3" SDNUM="1036;">
+			<P ALIGN=LEFT>3</P>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>EnumFromPoint</P>
+		</TD>
+		<TD WIDTH=33%>
+			<P>FUNCTION(X&amp;,Y&amp;) As Boolean</P>
+		</TD>
+		<TD WIDTH=41%>
+			<P>Enum&eacute;re la fenetre a la position x,y via l'&eacute;venement
+			OnEnumFromPoint. La m&eacute;thode retourne true si il y a une
+			fenetre trouv&eacute;e.</P>
+		</TD>
+		<TD WIDTH=12% SDVAL="1" SDNUM="1036;">
+			<P ALIGN=LEFT>1</P>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>Close</P>
+		</TD>
+		<TD WIDTH=33%>
+			<P>SUB(handle&amp;)</P>
+		</TD>
+		<TD WIDTH=41%>
+			<P>Ferme la fenetre identifi&eacute; par le parametre handle.</P>
+		</TD>
+		<TD WIDTH=12% SDVAL="1" SDNUM="1036;">
+			<P ALIGN=LEFT>1</P>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>Minimize</P>
+		</TD>
+		<TD WIDTH=33%>
+			<P>SUB(handle&amp;)</P>
+		</TD>
+		<TD WIDTH=41%>
+			<P>Met en taille r&eacute;duite la fenetre identifi&eacute; par le
+			parametre handle.</P>
+		</TD>
+		<TD WIDTH=12% SDVAL="1" SDNUM="1036;">
+			<P ALIGN=LEFT>1</P>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>Maximize</P>
+		</TD>
+		<TD WIDTH=33%>
+			<P>SUB(handle&amp;)</P>
+		</TD>
+		<TD WIDTH=41%>
+			<P>Met en taille maxi la fenetre identifi&eacute; par le parametre
+			handle.</P>
+		</TD>
+		<TD WIDTH=12% SDVAL="1" SDNUM="1036;">
+			<P ALIGN=LEFT>1</P>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>Restore</P>
+		</TD>
+		<TD WIDTH=33%>
+			<P>SUB(handle&amp;)</P>
+		</TD>
+		<TD WIDTH=41%>
+			<P>Restaure l'&eacute;tat de la fenetre identifi&eacute; par le
+			parametre handle.</P>
+		</TD>
+		<TD WIDTH=12% SDVAL="1" SDNUM="1036;">
+			<P ALIGN=LEFT>1</P>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>SetFocus</P>
+		</TD>
+		<TD WIDTH=33%>
+			<P>SUB(handle&amp;)</P>
+		</TD>
+		<TD WIDTH=41%>
+			<P>Met le focus sur le control identifi&eacute; par le parametre
+			handle</P>
+		</TD>
+		<TD WIDTH=12% SDVAL="1" SDNUM="1036;">
+			<P ALIGN=LEFT>1</P>
+		</TD>
+	</TR>
+	<TR BGCOLOR="#ccffff">
+		<TD WIDTH=14%>
+			<P>SetTopMost</P>
+		</TD>
+		<TD WIDTH=33%>
+			<P>SUB(handle&amp;,flag&amp;)</P>
+		</TD>
+		<TD WIDTH=41%>
+			<P>Met la fenetre identifi&eacute; par le parametre handle au plus
+			haut niveau si le parametre flag est a true.</P>
+		</TD>
+		<TD WIDTH=12% SDVAL="2" SDNUM="1036;">
+			<P ALIGN=LEFT>2</P>
+		</TD>
+	</TR>
+</TABLE>
+<P STYLE="margin-bottom: 0cm"><B><FONT SIZE=4>QRun Evenements</FONT></B>
+</P>
+<TABLE WIDTH=100% BORDER=1 BORDERCOLOR="#ffffff" CELLPADDING=2 CELLSPACING=0 FRAME=VOID>
+	<COL WIDTH=66*>
+	<COL WIDTH=54*>
+	<COL WIDTH=106*>
+	<COL WIDTH=30*>
+	<TR>
+		<TD WIDTH=26%>
+			<P><B>Evenement</B></P>
+		</TD>
+		<TD WIDTH=21%>
+			<P><B>Type</B></P>
+		</TD>
+		<TD WIDTH=41%>
+			<P><B>D&eacute;clenchement</B></P>
+		</TD>
+		<TD WIDTH=12%>
+			<P><B>Parametres</B></P>
+		</TD>
+	</TR>
+	<TR>
+		<TD WIDTH=26%>
+			<HR>
+		</TD>
+		<TD WIDTH=21%>
+			<HR>
+		</TD>
+		<TD WIDTH=41%>
+			<HR>
+		</TD>
+		<TD WIDTH=12%>
+			<HR>
+		</TD>
+	</TR>
+	<TR>
+		<TD WIDTH=26% BGCOLOR="#ccffff">
+			<P>OnEnumWindows</P>
+		</TD>
+		<TD WIDTH=21% BGCOLOR="#ccffff">
+			<P>(handle&amp;,name$,ClassName$)</P>
+		</TD>
+		<TD WIDTH=41% BGCOLOR="#ccffff">
+			<P>Sur ex&eacute;cution de la m&eacute;thode EnumWindow.</P>
+		</TD>
+		<TD WIDTH=12% BGCOLOR="#ccffff" SDVAL="3" SDNUM="1036;">
+			<P ALIGN=LEFT>3</P>
+		</TD>
+	</TR>
+	<TR>
+		<TD WIDTH=26% BGCOLOR="#ccffff">
+			<P>OnEnumFromPoint</P>
+		</TD>
+		<TD WIDTH=21% BGCOLOR="#ccffff">
+			<P><A NAME="4"></A>(handle&amp;,name$,ClassName$)</P>
+		</TD>
+		<TD WIDTH=41% BGCOLOR="#ccffff">
+			<P>Sur ex&eacute;cution de la m&eacute;thode EnumFromPoint.</P>
+		</TD>
+		<TD WIDTH=12% BGCOLOR="#ccffff" SDVAL="3" SDNUM="1036;">
+			<P ALIGN=LEFT>3</P>
+		</TD>
+	</TR>
+</TABLE>
+<P><FONT SIZE=4><B>QRun Exemple 1</B></FONT></P>
+<PRE><B><FONT COLOR="#0000a0">$typecheck</FONT></B> on
+<B><FONT COLOR="#0000a0">$INCLUDE</FONT></B> &quot;<FONT COLOR="#800000">Rapidq.inc</FONT>&quot;
+<B><FONT COLOR="#0000a0">$INCLUDE</FONT></B> &quot;<FONT COLOR="#800000">Object\QRun.inc</FONT>&quot;
+
+<B><FONT COLOR="#0000a0">declare</FONT></B> <B><FONT COLOR="#0000a0">sub</FONT></B> OuvrirClick
+<B><FONT COLOR="#0000a0">declare</FONT></B> <B><FONT COLOR="#0000a0">sub</FONT></B> QuitterClick
+
+<B><FONT COLOR="#0000a0">dim</FONT></B> App <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">QRun</FONT></B>
+
+<B><FONT COLOR="#0000a0">CREATE</FONT></B> Form <B><FONT COLOR="#0000a0">AS</FONT></B> <B><FONT COLOR="#0000a0">QFORM</FONT></B>
+  Caption =&quot;<FONT COLOR="#800000">Execute</FONT>&quot;
+  Width = 200
+  Height = 200
+  Center
+  <B><FONT COLOR="#0000a0">CREATE</FONT></B> Menu <B><FONT COLOR="#0000a0">AS</FONT></B> <B><FONT COLOR="#0000a0">QMAINMENU</FONT></B>
+    <B><FONT COLOR="#0000a0">CREATE</FONT></B> item1 <B><FONT COLOR="#0000a0">AS</FONT></B> <B><FONT COLOR="#0000a0">QMENUITEM</FONT></B>
+      Caption=&quot;<FONT COLOR="#800000">&amp;Fichier</FONT>&quot;
+      <B><FONT COLOR="#0000a0">CREATE</FONT></B> item2 <B><FONT COLOR="#0000a0">AS</FONT></B> <B><FONT COLOR="#0000a0">QMENUITEM</FONT></B>
+        Caption=&quot;<FONT COLOR="#800000">&amp;Ouvrir</FONT>&quot;
+        OnClick=OuvrirClick
+      <B><FONT COLOR="#0000a0">END</FONT></B> <B><FONT COLOR="#0000a0">CREATE</FONT></B>
+      <B><FONT COLOR="#0000a0">CREATE</FONT></B> item5 <B><FONT COLOR="#0000a0">AS</FONT></B> <B><FONT COLOR="#0000a0">QMENUITEM</FONT></B>
+        Caption=&quot;<FONT COLOR="#800000">-</FONT>&quot;
+      <B><FONT COLOR="#0000a0">END</FONT></B> <B><FONT COLOR="#0000a0">CREATE</FONT></B>
+      <B><FONT COLOR="#0000a0">CREATE</FONT></B> item6 <B><FONT COLOR="#0000a0">AS</FONT></B> <B><FONT COLOR="#0000a0">QMENUITEM</FONT></B>
+        Caption=&quot;<FONT COLOR="#800000">&amp;Quitter</FONT>&quot;
+        OnClick=QuitterClick
+      <B><FONT COLOR="#0000a0">END</FONT></B> <B><FONT COLOR="#0000a0">CREATE</FONT></B>
+   <B><FONT COLOR="#0000a0">END</FONT></B> <B><FONT COLOR="#0000a0">CREATE</FONT></B>
+ <B><FONT COLOR="#0000a0">END</FONT></B> <B><FONT COLOR="#0000a0">CREATE</FONT></B>
+<B><FONT COLOR="#0000a0">END</FONT></B> <B><FONT COLOR="#0000a0">CREATE</FONT></B>
+
+Form.ShowModal
+
+<B><FONT COLOR="#0000a0">sub</FONT></B> OuvrirClick
+ <B><FONT COLOR="#0000a0">dim</FONT></B> file <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">QOPENDIALOG</FONT></B>
+
+ file.Filter=&quot;<FONT COLOR="#800000">Fichiers(*.*)|*.*</FONT>&quot;
+ file.InitialDir=<B><FONT COLOR="#0000a0">CurDir$</FONT></B>
+ <B><FONT COLOR="#0000a0">if</FONT></B> file.Execute <B><FONT COLOR="#0000a0">then</FONT></B>
+ <B><FONT COLOR="#0000a0">if</FONT></B> App.FindApplication<B>(</B>file.fileName<B>)</B>&lt;&gt;&quot;&quot; <B><FONT COLOR="#0000a0">then</FONT></B>
+ App.fileRun<B>(</B>file.fileName,SW_SHOW<B>)</B>
+ <B><FONT COLOR="#0000a0">end</FONT></B> <B><FONT COLOR="#0000a0">if</FONT></B>
+ <B><FONT COLOR="#0000a0">end</FONT></B> <B><FONT COLOR="#0000a0">if</FONT></B>
+<B><FONT COLOR="#0000a0">end</FONT></B> <B><FONT COLOR="#0000a0">sub</FONT></B>
+
+<B><FONT COLOR="#0000a0">sub</FONT></B> QuitterClick
+ Form.Close
+<B><FONT COLOR="#0000a0">end</FONT></B> <B><FONT COLOR="#0000a0">sub</FONT></B></PRE><P>
+<FONT SIZE=4><B>QRun Exemple 2</B></FONT></P>
+<PRE><B><FONT COLOR="#0000a0">$typecheck</FONT></B> on
+<B><FONT COLOR="#0000a0">$include</FONT></B> &quot;<FONT COLOR="#800000">rapidq.inc</FONT>&quot;
+<B><FONT COLOR="#0000a0">$include</FONT></B> &quot;<FONT COLOR="#800000">QFuncLib.inc</FONT>&quot;
+<B><FONT COLOR="#0000a0">$include</FONT></B> &quot;<FONT COLOR="#800000">Object\QRun.inc</FONT>&quot;
+
+<B><FONT COLOR="#0000a0">declare</FONT></B> <B><FONT COLOR="#0000a0">sub</FONT></B> rout1
+<B><FONT COLOR="#0000a0">declare</FONT></B> <B><FONT COLOR="#0000a0">sub</FONT></B> rout2<B>(</B>handle <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">Long</FONT></B>,name <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">string</FONT></B>,ClassName <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">string</FONT>)</B>
+
+<B><FONT COLOR="#0000a0">dim</FONT></B> app <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">QRun</FONT></B>
+    app.OnEnumWindows=rout2
+
+<B><FONT COLOR="#0000a0">create</FONT></B> form <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">qform</FONT></B>
+  center
+  caption=&quot;<FONT COLOR="#800000">Enum windows</FONT>&quot;
+  width=600
+  height=400
+  <B><FONT COLOR="#0000a0">create</FONT></B> lb <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">qlistbox</FONT></B>
+    width=300
+    height=200
+  <B><FONT COLOR="#0000a0">end</FONT></B> <B><FONT COLOR="#0000a0">create</FONT></B>
+  <B><FONT COLOR="#0000a0">create</FONT></B> bt <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">qbutton</FONT></B>
+    caption=&quot;<FONT COLOR="#800000">Enum</FONT>&quot;
+    onclick=rout1
+    left=340
+  <B><FONT COLOR="#0000a0">end</FONT></B> <B><FONT COLOR="#0000a0">create</FONT></B>
+<B><FONT COLOR="#0000a0">end</FONT></B> <B><FONT COLOR="#0000a0">create</FONT></B>
+
+form.showmodal
+
+<B><FONT COLOR="#0000a0">sub</FONT></B> rout1
+  lb.clear
+  app.enumWindow false
+<B><FONT COLOR="#0000a0">end</FONT></B> <B><FONT COLOR="#0000a0">sub</FONT></B>
+
+<B><FONT COLOR="#0000a0">sub</FONT></B> rout2<B>(</B>handle <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">Long</FONT></B>,name <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">string</FONT></B>,ClassName <B><FONT COLOR="#0000a0">as</FONT></B> <B><FONT COLOR="#0000a0">string</FONT>)</B>
+  <B><FONT COLOR="#0000a0">if</FONT></B> handle&lt;&gt;form.handle <B><FONT COLOR="#0000a0">and</FONT></B> handle&lt;&gt;application.handle <B><FONT COLOR="#0000a0">then</FONT></B>
+    lb.additems name
+    lb.additems ClassName
+  <B><FONT COLOR="#0000a0">end</FONT></B> <B><FONT COLOR="#0000a0">if</FONT></B>
+<B><FONT COLOR="#0000a0">end</FONT></B> <B><FONT COLOR="#0000a0">sub</FONT></B>
+ </PRE>
+</BODY>
+</HTML>

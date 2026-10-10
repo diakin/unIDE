@@ -1,0 +1,219 @@
+<!doctype html public "-//w3c//dtd html 4.0 transitional//en">
+<html>
+<head>
+   <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+   <meta name="GENERATOR" content="Mozilla/4.51 [fr]C-CCK-MCD   (WinNT; I) [Netscape]">
+   <meta name="Author" content="dominique glodt">
+   <title>Appendix A: QCursor</title>
+</head>
+<body bgcolor="#FFFFFF" FONT FACE="Arial, Helvetica">
+&nbsp;
+<table CELLSPACING=0 CELLPADDING=0 WIDTH="100%" >
+<tr>
+<td><font face="Arial, Helvetica">Documentation component by D.Glodt (c)2003</font></td>
+
+<td ALIGN=RIGHT><b><font face="Arial, Helvetica">Appendix A: QCursor</font></b></td>
+</tr>
+
+<tr>
+<td COLSPAN="2">
+<hr SIZE=1></td>
+</tr>
+</table>
+
+<h1>
+QCursor Component</h1>
+
+<dd>
+QCursor is component used to load cursor from resource or file.</dd>
+
+<dd>
+After loading , the cursors are using by set value(1 to n) to Cursor property
+of each component.</dd>
+
+<p><br><a NAME="1"></a><b><font size=+1>QCursor Properties</font></b>
+<table BORDER=0 WIDTH="100%" >
+<tr>
+<td><b>Field</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>R/W</b></td>
+
+<td><b>D&eacute;fault</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Count</td>
+
+<td>INTEGER</td>
+
+<td><b>R</b></td>
+
+<td>0</td>
+</tr>
+
+<tr BGCOLOR="#FFCCCC">
+<td></td>
+
+<td>Number of cursor loaded by the component.</td>
+
+<td></td>
+
+<td></td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Visible</td>
+
+<td>BOOLEAN</td>
+
+<td>R/W</td>
+
+<td>True</td>
+
+<td></td>
+</tr>
+</table>
+
+<p><a NAME="2"></a><b><font size=+1>QCursor Methods</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Method</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Description</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+
+<tr VALIGN=TOP BGCOLOR="#CCFFFF">
+<td>LoadFromResource</td>
+
+<td>SUB(Resource&amp;)</td>
+
+<td NOWRAP>Load cursor from resource, Resource parameter is the resource
+number(0 to n)</td>
+
+<td NOWRAP>1</td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>LoadFromFile</td>
+
+<td>SUB(FileName$)</td>
+
+<td>Load cursor from file</td>
+
+<td>1</td>
+
+<td></td>
+</tr>
+
+<tr BGCOLOR="#CCFFFF">
+<td>Move</td>
+
+<td>SUB(X&amp;,Y&amp;)</td>
+
+<td>Move cursor at position x, y of screen.</td>
+
+<td>2</td>
+
+<td></td>
+</tr>
+</table>
+
+<p><a NAME="3"></a><b><font size=+1>QCursor Events</font></b>
+<table WIDTH="100%" >
+<tr>
+<td><b>Event</b></td>
+
+<td><b>Type</b></td>
+
+<td><b>Occurs when...</b></td>
+
+<td><b>Params</b></td>
+</tr>
+
+<tr>
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+
+<td>
+<hr></td>
+</tr>
+</table>
+
+<p><a NAME="4"></a><b><font size=+1>QCursor Example</font></b>
+<br><b><font color="#0000A0">$TypeCheck</font></b> On
+<br><b><font color="#0000A0">$include</font></b> "<font color="#800000">Object/QCursor.inc</font>"
+<p><b><font color="#0000A0">$resource</font></b> cur1 <b><font color="#0000A0">as</font></b>
+"<font color="#800000">Pen.cur</font>"
+<br><b><font color="#0000A0">$resource</font></b> cur2 <b><font color="#0000A0">as</font></b>
+"<font color="#800000">Paint.cur</font>"
+<p><b><font color="#0000A0">dim</font></b> curseur <b><font color="#0000A0">asQCursor</font></b>
+<br>&nbsp;&nbsp;&nbsp; curseur.loadfromResource(0)<b> </b><i><font color="#008000">'loading
+cursor cur1</font></i>
+<br>&nbsp;&nbsp;&nbsp; curseur.loadfromResource(1) <i><font color="#008000">'loading
+cursor cur2</font></i>
+<br>&nbsp;&nbsp;&nbsp; curseur.loadfromfile("<font color="#800000">M_Busy.ani</font>")
+<i><font color="#008000">'loading
+from file</font></i>
+<p><b><font color="#0000A0">CREATE</font></b> Form <b><font color="#0000A0">ASQFORM</font></b>
+<br>&nbsp;&nbsp;&nbsp; Center
+<br>&nbsp;&nbsp;&nbsp; caption=<b><font color="#0000A0">str$</font>(</b>curseur.count<b>)</b>
+<br>&nbsp;&nbsp;&nbsp; Cursor=2 <i><font color="#008000">'using cursor
+cur2</font></i>
+<br>&nbsp;&nbsp;&nbsp; ShowModal
+<br><b><font color="#0000A0">END</font></b> <b><font color="#0000A0">CREATE</font></b>
+<br>&nbsp;
+<br>&nbsp;
+<br>&nbsp;
+</body>
+</html>
