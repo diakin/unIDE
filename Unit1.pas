@@ -51161,6 +51161,9 @@ end;
 //  $INCLUDE-файлах по порядку подключения - первое найденное. После
 //  точки (Obj.Имя, .Имя в WITH) -
 //  сначала члены TYPE, потом остальное.
+//  Не нашлось - неявная переменная (без DIM): первое присваивание вне
+//  процедур, иначе первое в своей процедуре; в панели - её тип по
+//  суффиксу или $OPTION DIM.
 // ---------------------------------------------------------------------------
 
 // Вкладка - исходник RapidQ: .bas, .rqb, .rq; .inc и .bi - когда вкладка
@@ -51248,11 +51251,59 @@ var
   Line, LineStart, CharPos, WordStart, WordEnd, LineIdx: Integer;
   FileIdx, Found, PassIdx: Integer;
   SrcLines, Files, FileLines: TStringList;
-  LineText, CleanText, WordUp, OwnerType, FoundFile: string;
-  InBrem, AfterDot, OwnIndex: Boolean;
+  LineText, CleanText, WordUp, OwnerType, FoundFile, Suffix, DefType: string;
+  InBrem, AfterDot, OwnIndex, IsImplicit: Boolean;
   CurIndex, FileIndex, FoundIndex: TRqDeclIndex;
   Kinds: array[0..1] of TRqDeclKind;
   Item: TRqDeclItem;
+
+  // Объявление вида AKind: в этом файле, затем в файлах Files по порядку.
+  // Нашлось - FoundIndex, Found, FoundFile ('' - этот файл), OwnIndex.
+  function SearchKind(AKind: TRqDeclKind): Boolean;
+  var
+    SearchIdx: Integer;
+  begin
+    Result := True;
+    Found := CurIndex.Find(WordUp, AKind, Line, '');
+    if Found >= 0 then
+    begin
+      FoundIndex := CurIndex;
+      Exit;
+    end;
+    for SearchIdx := 0 to Files.Count - 1 do
+    begin
+      // Открытый на вкладке - по тексту вкладки, остальные - из кэша
+      if IndexOfWindowByFile(Files[SearchIdx]) >= 0 then
+      begin
+        if not RqDeclLoadLines(Files[SearchIdx], FileLines) then
+          Continue;
+        FileIndex := TRqDeclIndex.Create;
+        FileIndex.Build(FileLines);
+        Found := FileIndex.Find(WordUp, AKind, 0, '');
+        if Found < 0 then
+        begin
+          FileIndex.Free;
+          Continue;
+        end;
+        // Этот разбор создан здесь - освобождается в конце
+        OwnIndex := True;
+      end
+      else
+      begin
+        FileIndex := FRqDeclCache.IndexOfFile(Files[SearchIdx]);
+        if FileIndex = nil then
+          Continue;
+        Found := FileIndex.Find(WordUp, AKind, 0, '');
+        if Found < 0 then
+          Continue;
+      end;
+      FoundIndex := FileIndex;
+      FoundFile := Files[SearchIdx];
+      Exit;
+    end;
+    Result := False;
+  end;
+
 begin
   SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
   Line := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0, Sel.cpMin);
@@ -51340,6 +51391,10 @@ begin
       if OwnerType <> '' then
         Found := CurIndex.Find(WordUp, rdkMember, Line, OwnerType);
     end;
+    IsImplicit := False;
+    RqDeclFileList(Files);
+    if FRqDeclCache = nil then
+      FRqDeclCache := TRqDeclCache.Create;
     if Found >= 0 then
       FoundIndex := CurIndex
     else
@@ -51354,50 +51409,25 @@ begin
         Kinds[0] := rdkGlobal;
         Kinds[1] := rdkMember;
       end;
-      RqDeclFileList(Files);
-      if FRqDeclCache = nil then
-        FRqDeclCache := TRqDeclCache.Create;
       for PassIdx := 0 to 1 do
+        if SearchKind(Kinds[PassIdx]) then
+          Break;
+    end;
+
+    // Без DIM - неявная переменная: первое присваивание вне процедур (в
+    // этом файле, главном .bas, $INCLUDE), иначе первое в своей процедуре
+    if (FoundIndex = nil) and not AfterDot then
+    begin
+      if SearchKind(rdkImplicitGlobal) then
+        IsImplicit := True
+      else
       begin
-        Found := CurIndex.Find(WordUp, Kinds[PassIdx], Line, '');
+        Found := CurIndex.Find(WordUp, rdkImplicitLocal, Line, '');
         if Found >= 0 then
         begin
           FoundIndex := CurIndex;
-          Break;
+          IsImplicit := True;
         end;
-        for FileIdx := 0 to Files.Count - 1 do
-        begin
-          // Открытый на вкладке - по тексту вкладки, остальные - из кэша
-          if IndexOfWindowByFile(Files[FileIdx]) >= 0 then
-          begin
-            if not RqDeclLoadLines(Files[FileIdx], FileLines) then
-              Continue;
-            FileIndex := TRqDeclIndex.Create;
-            FileIndex.Build(FileLines);
-            Found := FileIndex.Find(WordUp, Kinds[PassIdx], 0, '');
-            if Found < 0 then
-            begin
-              FileIndex.Free;
-              Continue;
-            end;
-            // Этот разбор создан здесь - освобождается в конце
-            OwnIndex := True;
-          end
-          else
-          begin
-            FileIndex := FRqDeclCache.IndexOfFile(Files[FileIdx]);
-            if FileIndex = nil then
-              Continue;
-            Found := FileIndex.Find(WordUp, Kinds[PassIdx], 0, '');
-            if Found < 0 then
-              Continue;
-          end;
-          FoundIndex := FileIndex;
-          FoundFile := Files[FileIdx];
-          Break;
-        end;
-        if FoundIndex <> nil then
-          Break;
       end;
     end;
 
@@ -51430,6 +51460,25 @@ begin
                                         [rfReplaceAll]))
       else
         FDeclText := '';
+    end;
+    // Неявной - тип: по суффиксу (как в щелчке, иначе как в присваивании),
+    // без суффикса - $OPTION DIM (этот файл, затем остальные по порядку)
+    if IsImplicit then
+    begin
+      Suffix := RqDeclSuffixOf(FDeclWord);
+      if Suffix = '' then
+        Suffix := Item.Suffix;
+      DefType := CurIndex.OptionDim;
+      FileIdx := 0;
+      while (DefType = '') and (FileIdx < Files.Count) do
+      begin
+        FileIndex := FRqDeclCache.IndexOfFile(Files[FileIdx]);
+        if FileIndex <> nil then
+          DefType := FileIndex.OptionDim;
+        Inc(FileIdx);
+      end;
+      FDeclText := '[без DIM, ' + RqDeclSuffixType(Suffix, DefType) + '] ' +
+                   FDeclText;
     end;
     FDeclMode := 2;
   finally

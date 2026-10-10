@@ -13,6 +13,13 @@ unit RqDeclFind;
 //   $DEFINE / #define, $RESOURCE, метки "Имя:" в начале строки;
 //   параметры и DIM внутри процедуры - локальные, видны только в ней.
 // Суффикс типа ($ % & ! # ?) у имён отбрасывается: a$ и a - одно имя.
+//
+// Неявные переменные (без DIM): первое присваивание "Имя = ..." (в начале
+// оператора, после THEN/ELSE) или "FOR Имя = ...". В процедуре - её
+// локальная, вне процедур - переменная модуля (так же считает RqToFb,
+// ResolveVar). Присваивания внутри CREATE ... END CREATE и CONSTRUCTOR -
+// свойства объекта, не переменные. Тип - по суффиксу, без суффикса -
+// $OPTION DIM (по умолчанию DOUBLE, html_doc/chapter3.html).
 
 interface
 
@@ -20,7 +27,8 @@ uses
   SysUtils, Classes;
 
 type
-  TRqDeclKind = (rdkLocal, rdkGlobal, rdkMember);
+  TRqDeclKind = (rdkLocal, rdkGlobal, rdkMember, rdkImplicitGlobal,
+                 rdkImplicitLocal);
 
   TRqDeclItem = record
     Name: string;       // в верхнем регистре, без суффикса; Тип.Метод - целиком
@@ -31,6 +39,7 @@ type
     Owner: string;      // у члена - TYPE, в верхнем регистре
     ScopeFirst: Integer; // у локального - строки процедуры, от нуля
     ScopeLast: Integer;
+    Suffix: string;     // суффикс типа, как записан ('' - нет)
   end;
 
   // Блок TYPE ... END TYPE: строки от нуля
@@ -47,6 +56,7 @@ type
     FTypes: array of TRqTypeRange;
     FTypeCount: Integer;
     FAge: Integer;      // дата файла (TRqDeclCache)
+    FOptionDim: string; // тип из $OPTION DIM (первый в файле); '' - нет
     procedure AddItem(const AName: string; AKind: TRqDeclKind;
                       ALine, ACol: Integer; const AOwner: string;
                       AScopeFirst: Integer);
@@ -62,6 +72,7 @@ type
     function TypeAt(ALine: Integer): string;
     function Item(AIndex: Integer): TRqDeclItem;
     property Count: Integer read FCount;
+    property OptionDim: string read FOptionDim;
   end;
 
   // Разобранные файлы с диска: заново, когда сменилась дата файла
@@ -87,6 +98,11 @@ function RqDeclCleanLine(const ALine: string; var AInBrem: Boolean): string;
 function RqDeclIdStart(ACh: Char): Boolean;
 function RqDeclIdChar(ACh: Char): Boolean;
 function RqDeclSuffix(ACh: Char): Boolean;
+// Тип неявной переменной по суффиксу ($ - STRING, % - SHORT...); без
+// суффикса - ADefault ('' - DOUBLE)
+function RqDeclSuffixType(const ASuffix, ADefault: string): string;
+// Суффикс в конце имени ('' - нет)
+function RqDeclSuffixOf(const AName: string): string;
 
 implementation
 
@@ -106,6 +122,40 @@ end;
 function RqDeclSuffix(ACh: Char): Boolean;
 begin
   Result := ACh in SuffixChars;
+end;
+
+function RqDeclSuffixOf(const AName: string): string;
+var
+  Pos1: Integer;
+begin
+  Pos1 := Length(AName);
+  while (Pos1 > 0) and (AName[Pos1] in SuffixChars) do
+    Dec(Pos1);
+  Result := Copy(AName, Pos1 + 1, MaxInt);
+end;
+
+function RqDeclSuffixType(const ASuffix, ADefault: string): string;
+begin
+  if ASuffix = '$' then
+    Result := 'STRING'
+  else if ASuffix = '%' then
+    Result := 'SHORT'
+  else if ASuffix = '&' then
+    Result := 'LONG'
+  else if ASuffix = '!' then
+    Result := 'SINGLE'
+  else if ASuffix = '#' then
+    Result := 'DOUBLE'
+  else if ASuffix = '?' then
+    Result := 'BYTE'
+  else if ASuffix = '??' then
+    Result := 'WORD'
+  else if ASuffix = '???' then
+    Result := 'DWORD'
+  else if ADefault <> '' then
+    Result := ADefault
+  else
+    Result := 'DOUBLE';
 end;
 
 function RqDeclStrip(const AName: string): string;
@@ -313,6 +363,7 @@ begin
   FItems[FCount].Owner := AOwner;
   FItems[FCount].ScopeFirst := AScopeFirst;
   FItems[FCount].ScopeLast := MaxInt;
+  FItems[FCount].Suffix := RqDeclSuffixOf(AName);
   Inc(FCount);
 end;
 
@@ -357,7 +408,8 @@ begin
         Continue;
       if (Name <> AWord) and (ShortName <> AWord) then
         Continue;
-      if (AKind = rdkLocal) and ((ALine < ScopeFirst) or (ALine > ScopeLast)) then
+      if (AKind in [rdkLocal, rdkImplicitLocal]) and
+         ((ALine < ScopeFirst) or (ALine > ScopeLast)) then
         Continue;
       if (AKind = rdkMember) and (AOwner <> '') and (Owner <> AOwner) then
         Continue;
@@ -371,7 +423,8 @@ procedure TRqDeclIndex.Build(ALines: TStrings);
 var
   LineIdx, CurLine, StmtFrom, StmtTo, TokCount, FirstLocal, ProcLine: Integer;
   Clean, CurType: string;
-  InBrem, InProc: Boolean;
+  InBrem, InProc, InCtor: Boolean;
+  CreateDepth: Integer;   // вложенность CREATE ... END CREATE
   Toks: TRqToks;
   // Продолжение списка на следующей строке (строка кончается на " _"):
   // 0 - нет, 1 - список DIM/CONST/DEF*, 2 - параметры процедуры.
@@ -394,7 +447,7 @@ var
       Exit;
     if AKind = rdkMember then
       AddItem(Toks[ATokIdx].Text, AKind, CurLine, Toks[ATokIdx].Col, CurType, 0)
-    else if AKind = rdkLocal then
+    else if AKind in [rdkLocal, rdkImplicitLocal] then
       AddItem(Toks[ATokIdx].Text, AKind, CurLine, Toks[ATokIdx].Col, '',
               ProcLine)
     else
@@ -457,14 +510,16 @@ var
     ItemIdx: Integer;
   begin
     for ItemIdx := FirstLocal to FCount - 1 do
-      if FItems[ItemIdx].Kind = rdkLocal then
+      if FItems[ItemIdx].Kind in [rdkLocal, rdkImplicitLocal] then
         FItems[ItemIdx].ScopeLast := CurLine;
     InProc := False;
+    InCtor := False;
   end;
 
   procedure BeginProc;
   begin
     InProc := True;
+    InCtor := False;
     ProcLine := CurLine;
     FirstLocal := FCount;
   end;
@@ -507,6 +562,11 @@ var
       Add(1, rdkGlobal);
       Exit;
     end;
+    if (Head = '$OPTION') and (Tok(1) = 'DIM') and (FOptionDim = '') then
+    begin
+      FOptionDim := Tok(2);
+      Exit;
+    end;
     if Head[1] in ['$', '#'] then
       Exit;
 
@@ -521,7 +581,9 @@ var
       end
       else if InProc and (IsProcHead(Tok(1)) or (Tok(1) = 'EVENT') or
               (Tok(1) = 'PROPERTY') or (Tok(1) = 'CONSTRUCTOR')) then
-        EndProc;
+        EndProc
+      else if (Tok(1) = 'CREATE') and (CreateDepth > 0) then
+        Dec(CreateDepth);
       Exit;
     end;
 
@@ -575,6 +637,7 @@ var
     if (Head = 'CONSTRUCTOR') and (CurType <> '') then
     begin
       BeginProc;
+      InCtor := True;
       Exit;
     end;
 
@@ -600,11 +663,13 @@ var
     if Head = 'CREATE' then
     begin
       Add(StartIdx + 1, LocalKind);
+      Inc(CreateDepth);
       Exit;
     end;
 
     // Поле записи или класса: "Имя AS тип", "Имя(10) AS тип"
-    if (CurType <> '') and not InProc and Toks[StartIdx].IsName then
+    if (CurType <> '') and not InProc and (StartIdx < TokCount) and
+       Toks[StartIdx].IsName then
     begin
       TokIdx := StartIdx + 1;
       if Tok(TokIdx) = '(' then
@@ -615,6 +680,25 @@ var
       end;
       if Tok(TokIdx) = 'AS' then
         Add(StartIdx, rdkMember);
+      Exit;
+    end;
+
+    // Неявная переменная: "Имя = ..." в начале оператора или после
+    // THEN/ELSE, "FOR Имя = ...". В CREATE и CONSTRUCTOR это свойства.
+    if InCtor or ((CreateDepth > 0) and not InProc) then
+      Exit;
+    for TokIdx := StartIdx to TokCount - 2 do
+    begin
+      if (TokIdx > StartIdx) and (Tok(TokIdx - 1) <> 'THEN') and
+         (Tok(TokIdx - 1) <> 'ELSE') and (Tok(TokIdx - 1) <> 'FOR') then
+        Continue;
+      if not Toks[TokIdx].IsName or (Pos('.', Toks[TokIdx].Text) > 0) or
+         (Tok(TokIdx + 1) <> '=') then
+        Continue;
+      if InProc then
+        Add(TokIdx, rdkImplicitLocal)
+      else
+        Add(TokIdx, rdkImplicitGlobal);
     end;
   end;
 
@@ -627,6 +711,9 @@ begin
   CurType := '';
   InBrem := False;
   InProc := False;
+  InCtor := False;
+  CreateDepth := 0;
+  FOptionDim := '';
   ProcLine := 0;
   FirstLocal := 0;
   ContMode := 0;
