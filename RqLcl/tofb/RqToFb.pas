@@ -450,6 +450,10 @@ type
     FProcs: TStringList;          // NAME -> TRqProc
     FTypes: TStringList;          // имена TYPE
     FTypeDefs: TStringList;       // ИМЯ=файл(строка) первого объявления TYPE
+    FDefPlaces: TRqNameMap;       // вид|область|ИМЯ -> файл(строка) первого объявления
+    FDefinePlaces: TRqNameMap;    // $DEFINE ИМЯ -> файл(строка), в текущем проходе
+    FCurTypePlace: string;        // файл(строка) строки TYPE текущего компонента
+    FCurProcPlace: string;        // файл(строка) заголовка текущей SUB/FUNCTION/метода
     FLabels: TStringList;
     // Где метка: "ПРОЦЕДУРА|МЕТКА=файл(строка)" (процедура '' - модуль) -
     // проверка GOTO/GOSUB, CheckLabel
@@ -541,6 +545,8 @@ type
     procedure ErrorOnce(const AKey, AText: string);
     procedure Suspect(const AText: string);
     procedure SuspectOnce(const AKey, AText: string);
+    procedure NoteDef(const AKey, AWhat: string);
+    function DefScope(const AScope: string): string;
     function CondActive: Boolean;
 
     // Разбор строки
@@ -1275,6 +1281,8 @@ begin
   FProcs.Sorted := True;
   FTypes := TStringList.Create;
   FTypeDefs := TStringList.Create;
+  FDefPlaces := TRqNameMap.Create;
+  FDefinePlaces := TRqNameMap.Create;
   FTypes.Sorted := True;
   FTypes.Duplicates := dupIgnore;
   FLabels := TStringList.Create;
@@ -1358,6 +1366,8 @@ begin
   FProcs.Free;
   FTypes.Free;
   FTypeDefs.Free;
+  FDefPlaces.Free;
+  FDefinePlaces.Free;
   FLabels.Free;
   FLabelPlaces.Free;
   FGosubSites.Free;
@@ -1450,6 +1460,38 @@ begin
     Exit;
   FWarnedNames.Add(AKey);
   Suspect(AText);
+end;
+
+// Объявление имени (AKey - вид|область|ИМЯ). Первый проход запоминает место
+// первого объявления, второй - на повторном объявлении в другом месте
+// пишет "already defined" с местом первого (rc.exe на повторный CONST
+// выдаёт "CONST variable ... already defined"). Уровень Suspect: перевод
+// идёт дальше, но это, скорее всего, ошибка программы.
+procedure TRqFbConv.NoteDef(const AKey, AWhat: string);
+var
+  Here, First: string;
+begin
+  Here := FCurFile + '(' + IntToStr(FCurLine) + ')';
+  if FPass = 1 then
+  begin
+    if FDefPlaces.IndexOf(AKey) < 0 then
+      FDefPlaces.Put(AKey, Here);
+    Exit;
+  end;
+  First := FDefPlaces.Get(AKey);
+  if (First <> '') and (First <> Here) then
+    Suspect(AWhat + ' already defined - первое объявление: ' + First);
+end;
+
+// Область имени для NoteDef: у локальных - место заголовка процедуры, а не
+// её имя (FUNCTION Screen.MouseSwap и Screen.MouseButtons в rapidq2.inc
+// переводчик ведёт под одним именем SCREEN; одноимённые методы двух TYPE)
+function TRqFbConv.DefScope(const AScope: string): string;
+begin
+  if AScope = '' then
+    Result := ''
+  else
+    Result := AScope + '@' + FCurProcPlace;
 end;
 
 // Ошибка один раз по ключу AKey
@@ -2622,6 +2664,10 @@ begin
      IsOp(Toks, NextSig(Toks, FirstIdx + 1, High(Toks)), ':') and
      not InList(FKeywords, FirstUp) and (FindProc(FirstUp) = nil) then
   begin
+    if FCurProc <> nil then
+      NoteDef('L|' + DefScope(FCurProc.Name) + '|' + FirstUp, 'Метка ' + Toks[FirstIdx].Text)
+    else
+      NoteDef('L||' + FirstUp, 'Метка ' + Toks[FirstIdx].Text);
     if FPass = 1 then
     begin
       FLabels.Add(FirstUp);
@@ -3090,7 +3136,13 @@ begin
         if AToks[TokIdx].Kind <> tkComment then
           Value := Value + AToks[TokIdx].Text;
       Value := Trim(Value);
+      // $DEFINE имени, которое уже определено и не снято $UNDEF
+      if FDefines.IndexOf(AToks[ArgIdx].Up) >= 0 then
+        Suspect('$DEFINE ' + AToks[ArgIdx].Text + ' already defined - уже определён в ' +
+                FDefinePlaces.Get(AToks[ArgIdx].Up) + ' как "' +
+                FDefines.Get(AToks[ArgIdx].Up) + '"');
       FDefines.Put(AToks[ArgIdx].Up, Value);
+      FDefinePlaces.Put(AToks[ArgIdx].Up, FCurFile + '(' + IntToStr(FCurLine) + ')');
     end
     else if (ArgIdx >= 0) and (AToks[ArgIdx].Kind = tkDirective) and
             (AToks[ArgIdx].Up = '$DEFINE') then
@@ -3108,6 +3160,7 @@ begin
       if (TokIdx >= 0) and (AToks[TokIdx].Kind = tkIdent) then
       begin
         FDefines.Remove(AToks[TokIdx].Up);
+        FDefinePlaces.Remove(AToks[TokIdx].Up);
       end;
     Exit;
   end;
@@ -4573,6 +4626,7 @@ begin
         FHasGui := True;
       VarRec := DeclareVar(AToks[NameIdx].Text, RqType, Scope, IsArray, True,
                            False);
+      NoteDef('V|' + DefScope(Scope) + '|' + VarRec.Name, AToks[NameIdx].Text);
       FixMemberClash(VarRec, Scope);
       Dynamic := IsArray and (FRedims.IndexOf(Scope + '|' + VarRec.Name) >= 0);
       if Dynamic then
@@ -4715,6 +4769,7 @@ begin
       InitText := ' = ' + RangeText(AToks, TokIdx + 1, ItemEnd);
     end;
     VarRec := DeclareVar(AToks[NameIdx].Text, RqType, Scope, IsArray, True, False);
+    NoteDef('V|' + DefScope(Scope) + '|' + VarRec.Name, AToks[NameIdx].Text);
     ItemText := VarRec.FbName + DimsText + ' As ' + FbType(RqType);
     // у FreeBASIC строку переменной длины нельзя инициализировать в Dim
     if (InitText <> '') and (RqType = 'STRING') and not IsArray then
@@ -4778,6 +4833,7 @@ begin
   if FCurProc <> nil then
     Scope := FCurProc.Name;
   VarRec := DeclareVar(AToks[NameIdx].Text, RqType, Scope, False, True, True);
+  NoteDef('V|' + DefScope(Scope) + '|' + VarRec.Name, 'CONST ' + AToks[NameIdx].Text);
   AToks[NameIdx].OutText := VarRec.FbName;
   // Строка с нулевым символом (QFILEDIALOG.INC: CONST fdStrTerm$ =
   // CHR$(0) + CHR$(0)): константа FreeBASIC - строка с завершающим нулём,
@@ -5004,9 +5060,20 @@ begin
   if (NameIdx < 0) or (AToks[NameIdx].Kind <> tkIdent) then
     Exit;
   ProcRec := GetProc(AToks[NameIdx].Text);
+  FCurProcPlace := FCurFile + '(' + IntToStr(FCurLine) + ')';
+  // FUNCTION Screen.MouseSwap - имя с точкой целиком
+  if IsOp(AToks, NextSig(AToks, NameIdx + 1, ATo), '.') and
+     (NextSig(AToks, NextSig(AToks, NameIdx + 1, ATo) + 1, ATo) >= 0) then
+    NoteDef('P||' + UpperCase(RawText(AToks, NameIdx,
+              NextSig(AToks, NextSig(AToks, NameIdx + 1, ATo) + 1, ATo))),
+            Up + ' ' + Trim(RawText(AToks, NameIdx,
+              NextSig(AToks, NextSig(AToks, NameIdx + 1, ATo) + 1, ATo))))
+  else
+    NoteDef('P||' + ProcRec.Name, Up + ' ' + AToks[NameIdx].Text);
   ProcRec.IsFunc := (Up = 'FUNCTION') or (Up = 'FUNCTIONI');
   ProcRec.IsVariadic := (Up = 'SUBI') or (Up = 'FUNCTIONI');
   FCurProc := ProcRec;
+  FCurProcPlace := FCurFile + '(' + IntToStr(FCurLine) + ')';
   FGosubProcNum := 0;
   OpenIdx := NextSig(AToks, NameIdx + 1, ATo);
   Params := '';
@@ -5428,6 +5495,7 @@ begin
   if (NameIdx < 0) or (AToks[NameIdx].Kind <> tkIdent) then
     Exit;
   ProcRec := GetProc(AToks[NameIdx].Text);
+  NoteDef('D||' + ProcRec.Name, 'DECLARE ' + AToks[NameIdx].Text);
   ProcRec.IsFunc := IsFunc;
   ProcRec.IsVariadic := IsWord(AToks, KindIdx, 'SUBI') or IsWord(AToks, KindIdx, 'FUNCTIONI');
   ProcRec.Declared := True;
@@ -5563,6 +5631,7 @@ begin
   // и методы первого теряют свои поля; во FreeBASIC два Type с одним
   // именем не собираются. Место первого объявления - в сообщении.
   Here := FCurFile + '(' + IntToStr(FCurLine) + ')';
+  FCurTypePlace := Here;
   if FPass = 1 then
   begin
     if FTypeDefs.IndexOfName(AToks[NameIdx].Up) < 0 then
@@ -7059,9 +7128,12 @@ begin
   NameUp := AToks[NameIdx].Up;
   FbName := MemberFbName(Display);
   ProcRec := GetProc(FCurType.Name + '.' + NameUp);
+  NoteDef('M|' + FCurTypePlace + '|' + NameUp, FCurType.Display + '.' + Display);
+  FCurProcPlace := FCurFile + '(' + IntToStr(FCurLine) + ')';
   ProcRec.IsFunc := IsFunc;
   ProcRec.IsVariadic := (KindUp = 'SUBI') or (KindUp = 'FUNCTIONI');
   FCurProc := ProcRec;
+  FCurProcPlace := FCurFile + '(' + IntToStr(FCurLine) + ')';
   FCurMethodUp := NameUp;
   FGosubProcNum := 0;
   OpenIdx := NextSig(AToks, NameIdx + 1, ATo);
@@ -7179,6 +7251,7 @@ begin
   ProcRec := GetProc(FCurType.Name + '.' + MethUp);
   ProcRec.IsFunc := False;
   FCurProc := ProcRec;
+  FCurProcPlace := FCurFile + '(' + IntToStr(FCurLine) + ')';
   FCurMethodUp := MethUp;
   FGosubProcNum := 0;
   Names := TStringList.Create;
@@ -7248,6 +7321,7 @@ begin
   ProcRec := GetProc(FCurType.Name + '.$CTOR');
   ProcRec.IsFunc := False;
   FCurProc := ProcRec;
+  FCurProcPlace := FCurFile + '(' + IntToStr(FCurLine) + ')';
   FCurMethodUp := '';
   FGosubProcNum := 0;
   if FPass = 1 then
@@ -7277,6 +7351,7 @@ begin
   end;
   Display := AToks[NameIdx].Text;
   NameUp := AToks[NameIdx].Up;
+  NoteDef('M|' + FCurTypePlace + '|' + NameUp, FCurType.Display + '.' + Display);
   FbName := MemberFbName(Display);
   OpenIdx := NextSig(AToks, NameIdx + 1, ATo);
   DimsText := '';
@@ -8135,6 +8210,7 @@ begin
     FDoneFiles.Clear;
     FOutNames.Clear;
     FDefines.Clear;
+    FDefinePlaces.Clear;
     FResources.Clear;
     SetLength(FConds, 0);
     FCurProc := nil;
@@ -8265,6 +8341,7 @@ begin
          '" не найден - ресурс будет пустым');
   FResources.Add(ResName + '=' + Found);
   VarRec := DeclareVar(AToks[NameIdx].Text, 'LONG', '', False, True, True);
+  NoteDef('V||' + VarRec.Name, '$RESOURCE ' + AToks[NameIdx].Text);
   AOut := 'Const ' + VarRec.FbName + ' = ' +
           IntToStr(RqResourceBase + FResources.Count - 1) + ' ' + CommentOut(AOriginal);
 end;
