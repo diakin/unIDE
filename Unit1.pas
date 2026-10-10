@@ -809,6 +809,7 @@ type
     procedure TryFindDisabledClick(Sender: TObject);
     procedure HotFoldersClick(Sender: TObject);
     procedure DelWinListClick(Sender: TObject);
+    procedure RemoveMissingClick(Sender: TObject);
     procedure LastBMClick(Sender: TObject);
     procedure mOptionsClick(Sender: TObject);
     procedure mArdBoardsClick(Sender: TObject);
@@ -7985,6 +7986,7 @@ begin
 
   // Подписи здесь - это пути к файлам, ускорители в них только мешают
 mWindows.AutoHotkeys := maManual;
+  mWinDeleteDisabled.OnClick := RemoveMissingClick;
 
   RebuildWindowsMenu;
 end;
@@ -13157,8 +13159,8 @@ begin
       else
       begin
         // Файла нет - окно остаётся в списке, но помечается нерабочим.
-        // Разбираться с такими будут пункты Delete disabled Windows и
-        // Find lost files...
+        // Разбираться с такими будут пункты Remove missing files from list
+        // и Find lost files...
         FWindows[I].Text := '';
         FWindows[I].Broken := True;
       end;
@@ -16212,6 +16214,8 @@ begin
         SetLength(Map, Length(Map) + 1);
         Map[High(Map)] := I;
         Lst.Items.Add(Format('%d  %s', [Length(Map), FWindows[I].FileName]));
+        // Файла на диске нет (красный крестик в меню) - отмечен сразу
+        Lst.Checked[Lst.Items.Count - 1] := FWindows[I].Broken;
       end;
 
     // Размер окна подгоняем под содержимое: ширину по самому длинному пути,
@@ -16313,6 +16317,27 @@ begin
   end;
 end;
 
+
+// Windows -> Remove missing files from list: закрывает окна, файлов которых
+// нет на диске (Broken - красный крестик в меню Windows)
+procedure TForm1.RemoveMissingClick(Sender: TObject);
+var
+  WinIdx, Removed: Integer;
+begin
+  Removed := 0;
+  for WinIdx := WindowsItemCount - 1 downto 0 do
+    if FWindows[WinIdx].Used and FWindows[WinIdx].Broken then
+    begin
+      CloseWindow(WinIdx);
+      if not FWindows[WinIdx].Used then
+        Inc(Removed);
+    end;
+  RebuildWindowsMenu;
+  StatusBar1.SimpleText := Format('Windows: убрано из списка окон без ' +
+    'файла на диске: %d. Открыто окон: %d из %d.',
+    [Removed, WindowsInUse, WindowsItemCount]);
+  StatusBar1.SimplePanel := True;
+end;
 
 // ---------------------------------------------------------------------------
 //  Поиск

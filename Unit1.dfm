@@ -604,7 +604,8 @@ object Form1: TForm1
         OnClick = CloseCurrentWindowClick
       end
       object mWinDeleteDisabled: TMenuItem
-        Caption = 'Delete disabled Windows'
+        Caption = 'Remove missing files from list'
+        Hint = 'Убрать из списка окна, файлов которых нет на диске (с красным крестиком)'
       end
       object mWinCheckNames: TMenuItem
         Caption = 'Check wrong file names'
