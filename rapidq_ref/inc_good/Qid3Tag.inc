@@ -90,7 +90,7 @@ end constructor
 
 
 sub readtags
-if filename = "" then
+if Qid3tag.filename = "" then ' inc2026: было filename без имени типа — необъявленная переменная (всегда ""), стало Qid3tag.filename, как в строках 98 и 122 (chapter10.html)
 showmessage "Please, give me a file name"
 exit sub
 end if
@@ -114,7 +114,7 @@ tagstream.close
 end sub
 
 sub writetags
-if filename = "" then
+if Qid3tag.filename = "" then ' inc2026: было filename без имени типа — необъявленная переменная (всегда ""), стало Qid3tag.filename, как в строках 98 и 122 (chapter10.html)
 showmessage "Please, give me a file name"
 exit sub
 end if

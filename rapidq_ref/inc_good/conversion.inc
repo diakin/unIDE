@@ -276,8 +276,8 @@ function AddChrAfter(NumStr as string , Dlina as int, chr1 as string) as string
 
 diM kolvo as int
 kolvo =Dlina-Len(NumStr)
-if   kolvo<0 theN AddChrAfter="String too long"
-if   kolvo=0 theN AddChrAfter=NumStr: exit function
+if   kolvo<0 theN AddChrAfter="String too long" ' inc2026: в функции AddChrAfter было присваивание AddChrBefore (копия из AddChrBefore, строки 264-265), стало AddChrAfter - иначе результат функции не задаётся
+if   kolvo=0 theN AddChrAfter=NumStr: exit function ' inc2026: в функции AddChrAfter было присваивание AddChrBefore (копия из AddChrBefore, строки 264-265), стало AddChrAfter - иначе результат функции не задаётся
 AddChrAfter=  NumStr+STRING$(kolvo, chr1)
 end function
 
@@ -784,10 +784,6 @@ function CutRight(a as string, n as long)  as string
 result= mid$(a,1,len(a)-n)
 end function
 
-$include "delTags.inc"
-
-brem 0
-/*
 '-- ************************************************************************'
 function delTags (HTMLtext as string) as string 
 string1$=HTMLtext
@@ -855,26 +851,24 @@ string1$=REPLACESUBSTR$(string1$,"&lt;" , "<"  )
 string1$=REPLACESUBSTR$(string1$,"&nbsp;" , " "  )
 
 
-string1$=REPLACESUBSTR$(string1$,crlfcrlfcrlfcrlfcrlf , crlf  )
-string1$=REPLACESUBSTR$(string1$,crlfcrlfcrlfcrlf , crlf  )
-string1$=REPLACESUBSTR$(string1$,crlfcrlfcrlf , crlf  )
-string1$=REPLACESUBSTR$(string1$,crlfcrlf , crlf  )
+string1$=REPLACESUBSTR$(string1$,crlf+crlf+crlf+crlf+crlf , crlf  )
+string1$=REPLACESUBSTR$(string1$,crlf+crlf+crlf+crlf , crlf  )
+string1$=REPLACESUBSTR$(string1$,crlf+crlf+crlf , crlf  )
+string1$=REPLACESUBSTR$(string1$,crlf+crlf , crlf  )
 
-string1$=REPLACESUBSTR$(string1$,crcrcrcrcr , cr  )
-string1$=REPLACESUBSTR$(string1$,crcrcrcr , cr  )
-string1$=REPLACESUBSTR$(string1$,crcrcr , cr  )
-string1$=REPLACESUBSTR$(string1$,crcr , cr  )
+string1$=REPLACESUBSTR$(string1$,cr+cr+cr+cr+cr , cr  )
+string1$=REPLACESUBSTR$(string1$,cr+cr+cr+cr , cr  )
+string1$=REPLACESUBSTR$(string1$,cr+cr+cr , cr  )
+string1$=REPLACESUBSTR$(string1$,cr+cr , cr  )
 
-string1$=REPLACESUBSTR$(string1$,lflflflflf , lf  )
-string1$=REPLACESUBSTR$(string1$,lflflflf , lf  )
-string1$=REPLACESUBSTR$(string1$,lflflf, lf  )
-string1$=REPLACESUBSTR$(string1$,lflf, lf  )
+string1$=REPLACESUBSTR$(string1$,lf+lf+lf+lf+lf , lf  )
+string1$=REPLACESUBSTR$(string1$,lf+lf+lf+lf , lf  )
+string1$=REPLACESUBSTR$(string1$,lf+lf+lf, lf  )
+string1$=REPLACESUBSTR$(string1$,lf+lf, lf  )
 
 result=string1$
 
 end function
-// */
-erem
 
 '*****************************************
 Function RQConvertCodePage (SourseString As String, inPage As long, outPage As long) As String
@@ -977,7 +971,7 @@ RetStrLong = MultiByteToWideChar(inPage, 0, tmp, RetStrLong, ptrstr1&, LenSourse
 RetStrLong2 = WideCharToMultiByte(outPage, 0, ptrstr1&, RetStrLong, str2, LenSourseString * 4, ByVal 0&, 0) ' str2
 'print"RetStrLong2 =";RetStrLong2 
 
-ConvertCodePage = Left$(str2, RetStrLong2)
+ConvertCodePage2 = Left$(str2, RetStrLong2) ' inc2026: было ConvertCodePage = ... (в conversion.inc такой функции нет, необъявленная переменная), стало ConvertCodePage2 - имя этой функции (строка 949), иначе она возвращает пустую строку
 End Function
 
 

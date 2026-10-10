@@ -784,7 +784,7 @@ TYPE myXPSkinnedForm EXTENDS QForm' Fenкtre avec Skin
   SUB ItmReduire_Click
 	If (.Croped=0 and .ToujoursVisible) Then
 	   SWAP .CropHeight,.Height: .Croped=1: .Visible=0: .Visible=1': Application.Minimize
-	ElseIf .Croped (.ToujoursVisible or .ToujoursVisible=0) Then
+	ElseIf .Croped and (.ToujoursVisible or .ToujoursVisible=0) Then ' inc2026: было «.Croped (.ToujoursVisible or ...)» без оператора между условиями, стало «.Croped and (...)»: ветка восстанавливает свёрнутую форму (строка 788 ставит .Croped=0), так же как строки 1269 и 1452
 	   SWAP .CropHeight,.Height: .Visible=0: .Visible=1: .WindowState=wsNormal: .Croped=0
 	ElseIf .ToujoursVisible=0 Then
 	   .XPPopupMenu.Close: .WindowState=wsMinimized': .Minimized=1: .RePaint': Application.Minimize
@@ -956,8 +956,8 @@ TYPE myXPSkinnedForm EXTENDS QForm' Fenкtre avec Skin
   END EVENT
 
   EVENT OnResize
-	.scrHeight=GetSystemMetrics(IIf(Screen.Height-GetSystemMetrics(SM_CYFULLSCREEN)=<GetSystemMetrics(SM_CYCAPTION),_
-	SM_CYSCREEN,SM_CYFULLSCREEN))
+	.scrHeight=GetSystemMetrics(IIf(Screen.Height-GetSystemMetrics(SM_CYFULLSCREEN)<=GetSystemMetrics(SM_CYCAPTION),_
+	SM_CYSCREEN,SM_CYFULLSCREEN)) ' inc2026: =< заменено на <= в строке 959 (строкой выше), как в документации (operators.html)
 	.scrWidth=GetSystemMetrics(SM_CXFULLSCREEN)
 	If .WindowState=wsMaximized and .Maximized=0 Then: .Maximized=1: .TitleBarHide=0
 '	   DeleteObject .QfRegion
@@ -1269,8 +1269,8 @@ TYPE myXPSkinnedForm EXTENDS QForm' Fenкtre avec Skin
 	   Else:	SWAP .CropHeight,.Height: .Visible=0: .WindowState=wsNormal: .Visible=1: .Croped=0
 	   End If
 	ElseIf .TiTleDblClick=ttDefault Then
-	   .scrHeight=GetSystemMetrics(IIf(Screen.Height-GetSystemMetrics(SM_CYFULLSCREEN)=<GetSystemMetrics(SM_CYCAPTION),_
-	   SM_CYSCREEN,SM_CYFULLSCREEN))
+	   .scrHeight=GetSystemMetrics(IIf(Screen.Height-GetSystemMetrics(SM_CYFULLSCREEN)<=GetSystemMetrics(SM_CYCAPTION),_
+	   SM_CYSCREEN,SM_CYFULLSCREEN)) ' inc2026: =< заменено на <= в строке 1272 (строкой выше), как в документации (operators.html)
 	   .scrWidth=GetSystemMetrics(SM_CXFULLSCREEN)
 	   If .WindowState=wsNormal Then
 '	   If (.Height=.oldHeight and .Width=.oldWidth) Then

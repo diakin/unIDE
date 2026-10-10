@@ -1,6 +1,6 @@
 '=======================================================
 ' Type Objet
-' Classe QWave Version 1.3
+' Classe QWave Version 1.2
 '=======================================================
 $IFNDEF TRUE
   $DEFINE True 1
@@ -31,7 +31,6 @@ const WV_KHZ44=44100
 Declare Function mciSendWave Lib "winmm.dll" Alias "mciSendStringA" (lpstrCommand As String, lpstrReturnString As long, uReturnLength As Long, hwndCallback As Long) As Long
 Declare Function mciGetErrorWave Lib "winmm.dll" Alias "mciGetErrorStringA" (dwError As Long,Byref lpstrBuffer As String,uLength As Long) As Long
 Declare Function WaveSetVolume Lib "Winmm" Alias "waveOutSetVolume" (wDeviceID as short,dwVolume as Long) as Short
-Declare Function GetShortPathWave Lib "kernel32" Alias "GetShortPathNameA" (lpszLongPath As String,lpszShortPath As long,lBuffer As Long) As Long
 Declare Sub event_change(position as long)
 
 Type QWave extends Qobject
@@ -48,7 +47,6 @@ Type QWave extends Qobject
   Frequence as integer PROPERTY SET SetFrequence
   Mode as short PROPERTY SET SetMode
   Volume as integer PROPERTY SET SetVolume
-  DeviceType as string
   OnChange as EVENT(event_change) 
 
   '====================================
@@ -188,7 +186,7 @@ PRIVATE:
     dim Retval as integer
     dim RetString as string
 
-    if Wave.FileOpen then
+    if QWave.FileOpen then ' inc2026: QWave.FileOpen вместо Wave.FileOpen: Wave - имя экземпляра из примера (DIM Wave AS QWave), при другом имени GetPosition не читал позицию; везде в типе - QWave.FileOpen (строки 81, 108, 130, 203)
       RetString=Space$(128)
       Retval=mciSendWave("status sound position",varptr(RetString),128,0)
       if Retval=False then QWave.GetPosition=val(RetString)
@@ -238,19 +236,10 @@ PUBLIC:
     Dim Retval as Integer
     Dim RetString as String
     Dim FlagOpen as boolean
-    Dim lenFilename as Integer
-    Dim filePath as string
 
     if FileName<>"" then
-      filePath=STRING$(256,0)
-      lenFilename=GetShortPathWave(FileName,VARPTR(filePath),255)
-      FileName=LEFT$(filePath,lenFilename)
       RetString=Space$(128)
-      if QWave.DeviceType<>"" then
-        Retval=mciSendWave("open "+FileName+" type "+QWave.DeviceType+" alias sound",varptr(RetString),128,0)
-      else
-        Retval=mciSendWave("open "+FileName+" type waveaudio alias sound",varptr(RetString),128,0)
-      end if
+      Retval=mciSendWave("open "+FileName+" type waveaudio alias sound",varptr(RetString),128,0)
       if Retval=False then
         RetString=Space$(128)
         Retval=mciSendWave("set sound time format milliseconds",varptr(RetString),128,0)
@@ -438,3 +427,4 @@ PUBLIC:
     Timer.enabled=False
   End Constructor
 End Type
+      

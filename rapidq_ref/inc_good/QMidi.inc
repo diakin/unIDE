@@ -1,6 +1,6 @@
 '=======================================================
 ' Type Objet
-' Classe QMidi Version 1.3
+' Classe QMidi Version 1.2
 '=======================================================
 $IFNDEF TRUE
   $DEFINE True 1
@@ -22,7 +22,6 @@ const MD_STOP=3
 Declare Function mciSendMidi Lib "winmm.dll" Alias "mciSendStringA" (lpstrCommand As String, lpstrReturnString As long, uReturnLength As Long, hwndCallback As Long) As Long
 Declare Function mciGetErrorMidi Lib "winmm.dll" Alias "mciGetErrorStringA" (dwError As Long,Byref lpstrBuffer As String,uLength As Long) As Long
 Declare Function MidiSetVolume Lib "Winmm" Alias "waveOutSetVolume" (wDeviceID as short,dwVolume as Long) as Short
-Declare Function GetShortPathMidi Lib "kernel32" Alias "GetShortPathNameA" (lpszLongPath As String,lpszShortPath As long,lBuffer As Long) As Long
 Declare Sub event_change(position as long)
 
 Type QMidi extends Qobject
@@ -159,13 +158,8 @@ PUBLIC:
     Dim Retval as Integer
     Dim RetString as String
     Dim FlagOpen as boolean
-    Dim lenFilename as Integer
-    Dim filePath as string
 
     if FileName<>"" then
-      filePath=STRING$(256,0)
-      lenFilename=GetShortPathMidi(FileName,VARPTR(filePath),255)
-      FileName=LEFT$(filePath,lenFilename)
       RetString=Space$(128)
       Retval=mciSendMidi("open "+FileName+" type sequencer alias MEDIA",varptr(RetString),128,0)
       if Retval=False then
@@ -257,3 +251,4 @@ PUBLIC:
     Timer.enabled=False
   End Constructor
 End Type
+      

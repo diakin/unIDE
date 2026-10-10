@@ -27,7 +27,8 @@ Declare Function shutdown Lib "wsock32.dll" Alias "shutdown"_
   (S As LONG,how As LONG) As LONG
 Declare Function socket Lib "wsock32.dll" Alias "socket" (af As LONG,_
   type_specification As LONG,protocol As LONG) As LONG
-
+Declare Function WSAGetLastError Lib "wsock32.dll" Alias "WSAGetLastError"_
+  () As LONG
 Declare Function send Lib "wsock32.dll" Alias "send" (S As LONG,_
   buf As STRING,len As LONG,flags As LONG) As LONG
 Declare Function recv Lib "wsock32.dll" Alias "recv" (S As LONG,_
@@ -40,22 +41,10 @@ DECLARE FUNCTION recvfrom Lib "wsock32.dll" Alias "recvfrom" (S As LONG,_
   ptrAddress As LONG,LenAddr As LONG) As LONG
 Declare Sub CopyMemory Lib "kernel32.dll" Alias "RtlMoveMemory"_
   (hpvDest As LONG,hpvSource As LONG,cbCopy As LONG)
-
-
-
-
-$IFNDEF __WIN32API 
 Declare Function lstrlen Lib "kernel32.dll" Alias "lstrlenA"_
   (ByVal lpString As LONG) As LONG
 Declare Function lstrcpy Lib "kernel32.dll" Alias "lstrcpyA"_
   (ByVal lpString1 As LONG,ByVal lpString2 As LONG) As LONG
-
-$IFNDEF __RQINC2
-Declare Function WSAGetLastError Lib "wsock32.dll" Alias "WSAGetLastError"_
-  () As LONG
-
-$ENDIF
-$ENDIF
 
 DIM arg As LONG,num As LONG,ptr1 As LONG,ptr2 As LONG
 DIM bs(15&) As BYTE

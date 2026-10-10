@@ -38,4 +38,3 @@ TYPE QStatusBarEx EXTENDS QSTATUSBAR
     if panel.visible=False then panel.visible=true
   END SUB
 END TYPE
-      

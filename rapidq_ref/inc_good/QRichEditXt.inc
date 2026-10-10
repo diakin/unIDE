@@ -493,7 +493,7 @@ SendMessageApi .handle, EM_SETSCROLLPOS, 0, .ScrollPoint
                 .KeyList.LoadFromFile(.KeyListName)
                 end if
 
-                if AUTOFONT=0 then
+                if .AUTOFONT=0 then ' inc2026: .AUTOFONT вместо AUTOFONT: без точки внутри WITH THIS это необъявленная переменная (0), условие всегда истинно; соседние проверки - .HiLight, .AUTOURLDETECT (строки 492, 501)
 SendMessageApi .handle, EM_SETLANGOPTIONS, 0, SendMessageApi(.handle, EM_GETLANGOPTIONS, 0, 0) & -IMF_AUTOFONT 
 
                 end if

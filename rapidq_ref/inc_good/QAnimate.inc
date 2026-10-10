@@ -94,7 +94,7 @@ Type QAnimate Extends QObject
             If PResource Then
                ReDim P(Size) As Byte
                MemCpy VarPTR(P(0)),PResource,Size
-               FreeResource(iResource)
+               FreeResource(iGlobal) ' inc2026: FreeResource(iGlobal) вместо FreeResource(iResource): по WinAPI FreeResource принимает дескриптор из LoadResource (строка 91), а не из FindResource
                MemCpy VarPTR(Buff(0)),VarPTR(P(0)),18*SizeOf(Integer)
                .FrameCount  = Buff(12)
                .FrameWidth  = Buff(16)

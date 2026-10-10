@@ -10,15 +10,15 @@
 ' explanatory...
 
 
-CONST bsLowered    = 0
-CONST bsRaised     = 1
-CONST bsSpacer     = 0
-CONST bsBox        = 1
-CONST bsTopLine    = 2
-CONST bsBottomLine = 3
-CONST bsLeftLine   = 4
-CONST bsRightLine  = 5
-CONST bsFrame      = 6   
+const bsLowered    = 0
+const bsRaised     = 1
+const bsSpacer     = 0
+const bsBox        = 1
+const bsTopLine    = 2
+const bsBottomLine = 3
+const bsLeftLine   = 4
+const bsRightLine  = 5
+const bsFrame      = 6   
 
 
 TYPE QBEVEL EXTENDS QPANEL
@@ -82,63 +82,13 @@ TYPE QBEVEL EXTENDS QPANEL
             END SELECT
         END PROPERTY
        
-        CONSTRUCTOR
+        constRUCTOR
             Set_Shape(0)
             Set_Style(0)
             Canvas.Parent = This
             Canvas.Width = 2
             Canvas.Height = 2
-        END CONSTRUCTOR
+        END constRUCTOR
     END WITH
 END TYPE
-
-'=================================================
-'        Sample program
-'=================================================
-
-DECLARE SUB ChangeStyle
-DECLARE SUB ChangeShape
-
-CREATE Form AS QFORM
-    CREATE Menu AS QMAINMENU
-        CREATE Item AS QMENUITEM
-            Caption = "Menu"
-        END CREATE
-    END CREATE
-    CREATE ToolBar AS QBEVEL
-        Align = 1
-        Height = 50
-        Shape = bsTopLine
-        Caption = "ToolBar"
-    END CREATE
-    CREATE Bevel AS QBEVEL
-        Top = 80
-        Left = 30
-        Width = 130
-        Height = 30
-    END CREATE
-    CREATE Style AS QCOMBOBOX
-        Top = 150
-        Left = 10
-        AddItems "bsLowered", "bsRaised"
-        ItemIndex = 0
-        OnChange = ChangeStyle
-    END CREATE
-    CREATE Shape AS QCOMBOBOX
-        Top = 150
-        Left = 160
-        AddItems "bsSpacer", "bsBox", "bsTopLine", "bsBottomLine", "bsLeftLine", "bsRightLine", "bsFrame"
-        ItemIndex = 0
-        OnChange = ChangeShape
-    END CREATE
-END CREATE
-
-Form.ShowModal
-
-SUB ChangeStyle
-    Bevel.Style = Style.ItemIndex
-END SUB
-
-SUB ChangeShape
-    Bevel.Shape = Shape.ItemIndex
-END SUB
+  

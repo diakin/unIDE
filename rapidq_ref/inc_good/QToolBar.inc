@@ -485,7 +485,7 @@ Type QToolBar Extends QObject
      End Sub
      
      Sub DelButton(Index&)
-         If Index& > -1 And Index& < .ButtonCount -1 Then
+         If Index& > -1 And Index& < .ButtonCount Then ' inc2026: < .ButtonCount вместо < .ButtonCount -1: иначе последнюю кнопку удалить нельзя; допустимые индексы 0..ButtonCount-1, как проверка в GetCommandID (строка 143)
             DefInt Ptr = .Button(Index&)
             PtrFree(Ptr)
             .Buttons.DelItems Index&

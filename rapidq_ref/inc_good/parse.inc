@@ -38,7 +38,7 @@ for ~i=1 to Len(Oper$)
 		'print"tmpres=";tmpres
 	else
 	end if
-next ~i
+next ~i ' inc2026: next ~i вместо next i: счётчик цикла строки 30 - ~i (так же в GetOperators, строка 261); i здесь нигде не присваивается
 result=tmpres
 
 end function 'sub '

@@ -227,7 +227,7 @@ TYPE QDrawFocus EXTENDS QOBJECT
             END IF
             .width = ABS(x-.StartX)
 
-            IF y < .Top THEN        'moving upward
+            IF y < .StartY THEN        'moving upward | inc2026: было y < .Top, стало y < .StartY: как для X в строке 219 (x < .StartX); .Top меняется в строке 231, и при обратном движении рамка получала Bottom < Top
                 .Top = y
                 .Rect.Top = y
                 .Rect.Bottom = .StartY

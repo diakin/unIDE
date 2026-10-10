@@ -2,8 +2,6 @@
 ' Type Objet
 ' Classe QINI
 '=======================================================
-$IFNDEF __QINI_INC
-$DEFINE __QINI_INC
 $IFNDEF TRUE
   $DEFINE True 1
 $ENDIF
@@ -16,18 +14,17 @@ $IFNDEF boolean
   $DEFINE boolean integer
 $ENDIF
 
-$IFNDEF __WIN32API				   'windows 32 definitions
-    Declare Function GetPrivateProfileString Lib "Kernel32" Alias "GetPrivateProfileStringA" _ 
-    (lpApplicationName As String,lpKeyName As String, _ 
-    lpDefault As String,lpReturnedString As long,nSize As Long,lpFileName As String) As Long 
-    
-    Declare Function WritePrivateProfileString Lib "Kernel32" Alias "WritePrivateProfileStringA" _ 
-    (lpApplicationName as string,lpKeyName As String,lpString As String,lpFileName as string) As Long 
-    
-    Declare Function GetWindowsDirectory Lib "kernel32.dll" Alias "GetWindowsDirectoryA" (lpBuffer As long,nSize As Long) As Long
-    Declare Function GetSystemDirectory Lib "kernel32" Alias "GetSystemDirectoryA" (lpBuffer As long,nSize As Long) As Long
-    Declare Function GetTempPath Lib "kernel32" Alias "GetTempPathA" (nBufferLength As Long,lpBuffer As Long) As Long
-$ENDIF
+Declare Function GetPrivateProfileString Lib "Kernel32" Alias "GetPrivateProfileStringA" _ 
+(lpApplicationName As String,lpKeyName As String, _ 
+lpDefault As String,lpReturnedString As long,nSize As Long,lpFileName As String) As Long 
+
+Declare Function WritePrivateProfileString Lib "Kernel32" Alias "WritePrivateProfileStringA" _ 
+(lpApplicationName as string,lpKeyName As String,lpString As String,lpFileName as string) As Long 
+
+Declare Function GetWindowsDirectory Lib "kernel32.dll" Alias "GetWindowsDirectoryA" (lpBuffer As long,nSize As Long) As Long
+Declare Function GetSystemDirectory Lib "kernel32" Alias "GetSystemDirectoryA" (lpBuffer As long,nSize As Long) As Long
+Declare Function GetTempPath Lib "kernel32" Alias "GetTempPathA" (nBufferLength As Long,lpBuffer As Long) As Long
+
 
 TYPE QINI EXTENDS QObject
   '===========================================
@@ -115,13 +112,11 @@ TYPE QINI EXTENDS QObject
     QINI.TempDir=Left$(lpBuffer,size)
   End Sub
 
-  constRUCTOR
+  CONSTRUCTOR
     FileName = ""
     Section = ""
     Exist=false
     GetIniPath
-  END constRUCTOR
+  END CONSTRUCTOR
 End TYPE
 
-      
-$ENDIF

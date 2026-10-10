@@ -404,7 +404,7 @@ public:
       QFormMDI.ChildClass.lpfnWndProc=CODEPTR(QFormMDI.ChildProc)
       QFormMDI.ChildClass.hbrBackground=MDI_COLOR_WINDOWFRAME
       QFormMDI.ChildClass.lpszClassName=VARPTR(QFormMDI.ClassName)
-      QFormMDI.ChildClass.hinstance=application.hinstance
+      'QFormMDI.ChildClass.hinstance=application.hinstance
       MDI_RegisterClass(QFormMDI.ChildClass)
       MDI_EnumChild(QFormMDI.Handle,CODEPTR(QFormMDI.EnumClient),0)
     end if
@@ -413,9 +413,11 @@ public:
       QFormMDI.ComponentIndex=index
       QFormMDI.style=MDI_CHILD OR MDI_VISIBLE OR MDI_OVERLAPPEDWINDOW
       if DefaultSize=True then
-        QFormMDI.hChild(QFormMDI.ChildCount)=MDI_CreateWindow(MDI_EX_MDICHILD,QFormMDI.ClassName,Title,QFormMDI.style,MDI_USEDEFAULT,MDI_USEDEFAULT,MDI_USEDEFAULT,MDI_USEDEFAULT,QFormMDI.hClient,0,application.hinstance,0)
+        'QFormMDI.hChild(QFormMDI.ChildCount)=MDI_CreateWindow(MDI_EX_MDICHILD,QFormMDI.ClassName,Title,QFormMDI.style,MDI_USEDEFAULT,MDI_USEDEFAULT,MDI_USEDEFAULT,MDI_USEDEFAULT,QFormMDI.hClient,0,application.hinstance,0)
+        QFormMDI.hChild(QFormMDI.ChildCount)=MDI_CreateWindow(MDI_EX_MDICHILD,QFormMDI.ClassName,Title,QFormMDI.style,MDI_USEDEFAULT,MDI_USEDEFAULT,MDI_USEDEFAULT,MDI_USEDEFAULT,QFormMDI.hClient,0,0,0)
       else
-        QFormMDI.hChild(QFormMDI.ChildCount)=MDI_CreateWindow(MDI_EX_MDICHILD,QFormMDI.ClassName,Title,QFormMDI.style,Left,Top,Width,Height,QFormMDI.hClient,0,application.hinstance,0)
+        'QFormMDI.hChild(QFormMDI.ChildCount)=MDI_CreateWindow(MDI_EX_MDICHILD,QFormMDI.ClassName,Title,QFormMDI.style,Left,Top,Width,Height,QFormMDI.hClient,0,application.hinstance,0)
+        QFormMDI.hChild(QFormMDI.ChildCount)=MDI_CreateWindow(MDI_EX_MDICHILD,QFormMDI.ClassName,Title,QFormMDI.style,Left,Top,Width,Height,QFormMDI.hClient,0,0,0)
       end if
     end if
   End Sub
@@ -686,4 +688,3 @@ public:
     ChildCount=0
   End Constructor
 END TYPE
-      

@@ -197,7 +197,7 @@ TYPE QTEXTEDIT EXTENDS QRICHEDIT
       result=SendMessageA(QTEXTEDIT.Handle,&HC6,0,0)
     End Function          
                         
-    CONSTRUCTOR
+    constRUCTOR
       mnuUndo.Caption="&Undo"
       mnuUndo.OnClick=QTEXTEDIT.Undo
       mnuUndo.ShortCut="CTRL+Z"
@@ -218,5 +218,9 @@ TYPE QTEXTEDIT EXTENDS QRICHEDIT
       MaxMenu.AddItems QTEXTEDIT.mnuUndo,QTEXTEDIT.mnuSep1,QTEXTEDIT.mnuCut,QTEXTEDIT.mnuCopy,QTEXTEDIT.mnuPaste,QTEXTEDIT.mnuSep2,QTEXTEDIT.mnuSelectAll
       PopupMenu=QTEXTEDIT.MaxMenu
       UsePopup=1
-    END CONSTRUCTOR
+    END constRUCTOR
 END TYPE
+
+$UNDEF QRICHEDIT
+$DEFINE QRICHEDIT QTEXTEDIT
+      

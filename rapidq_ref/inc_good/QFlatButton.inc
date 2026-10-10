@@ -41,7 +41,7 @@
 				QFlatButton.FlatBMPHandle = QFlatButton.BMPHandle
 				'Light
 				QFlatButton.Line( (QFlatButton.Width - 1), 1, (QFlatButton.Width - 1), (QFlatButton.Height - 1), rgb( round(QFlatButton.R * 1.15), round(QFlatButton.G * 1.15), round(QFlatButton.B * 1.15) ) )
-				QFlatButton.Line( 1, (QFlatButton.Height - 1), (QFlatButton.Height - 1), (QFlatButton.Height - 1), rgb( round(QFlatButton.R * 1.15), round(QFlatButton.G * 1.15), round(QFlatButton.B * 1.15) ) )
+				QFlatButton.Line( 1, (QFlatButton.Height - 1), (QFlatButton.Width - 1), (QFlatButton.Height - 1), rgb( round(QFlatButton.R * 1.15), round(QFlatButton.G * 1.15), round(QFlatButton.B * 1.15) ) ) ' inc2026: было (QFlatButton.Height - 1) третьим параметром (x2), стало (QFlatButton.Width - 1): нижняя светлая линия должна идти по ширине кнопки, как тёмная линия в Raise (строка 67)
 				'Dark
 				QFlatButton.Line( 1, 1, 1, (QFlatButton.Height - 1), rgb( round(QFlatButton.R * .3), round(QFlatButton.G * .3), round(QFlatButton.B * .3) ) )
 				QFlatButton.Line( 1, 1,(QFlatButton.Width - 1), 1, rgb( round(QFlatButton.R * .3), round(QFlatButton.G * .3), round(QFlatButton.B * .3) ) )

@@ -14,7 +14,7 @@ $IFNDEF boolean
   $DEFINE boolean integer
 $ENDIF
 
-$IFNDEF __WIN32API
+'$IFNDEF __WIN32API ' inc2026: перенесено в строку 30 - объявления Run_* (свои имена) нигде больше нет, при определённом __WIN32API методы QRun ссылались на необъявленные функции; под условием остаются только константы SW_
 
 Declare Function Run_FindExecutable Lib "shell32.dll" Alias "FindExecutableA" (lpFile As String,lpDirectory As String, ByRef lpResult As String) As Long
 Declare Function Run_ShellExecute Lib "shell32.dll" Alias "ShellExecuteA" (hwnd As Long,lpOperation As String,lpFile As String,lpParameters As String,lpDirectory As String,nShowCmd As Long) As Long
@@ -27,7 +27,7 @@ Declare Function Run_GetWindow Lib "user32" Alias "GetWindow" (hwnd As Long,wCmd
 Declare Function Run_FindWindowEx Lib "user32" Alias "FindWindowExA" (hWnd1 As Long,hWnd2 As Long,lpsz1 As String,lpsz2 As String) As Long
 Declare Function Run_WindowFromPoint Lib "user32" Alias "WindowFromPoint" (xPoint As long,yPoint As long) As Long
 Declare Function Run_SetWindowPos Lib "user32" Alias "SetWindowPos" (hwnd As Long,hWndInsertAfter As Long,x As Long,y As Long,cx As Long,cy As Long,wFlags As Long) As Long
-
+$IFNDEF __WIN32API ' inc2026: перенесено со строки 17 - условие только для констант SW_, объявления Run_* выше нужны всегда
 
 ' ShowWindow() Commands
 $DEFINE SW_HIDE      0

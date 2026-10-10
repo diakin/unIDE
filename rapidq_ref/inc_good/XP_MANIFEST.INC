@@ -54,7 +54,7 @@ DIM rtn     AS LONG
 DIM OSV  AS OSVERSIONINFO
 OSV.dwOSVersionInfoSize = SIZEOF(OSV)  
 GetVersionEx(OSV)
-IF (OSV.dwMajorVersion => 5 AND OSV.dwMinorVersion > 0 ) THEN
+IF (OSV.dwMajorVersion >= 5 AND OSV.dwMinorVersion > 0 ) THEN ' inc2026: >= вместо => (в документации только >=)
 	IF FILEEXISTS(Command$(0)+".manifest")=0 THEN     'no manifest file, so generate it
 		CREATE gRQ2_manifest AS QSTRINGLIST  
 			additems "<?xml version="+CHR$(34)+"1.0"+CHR$(34)+" encoding="+CHR$(34)+"UTF-8"+CHR$(34)+" standalone="+CHR$(34)+"yes"+CHR$(34)+"?>"

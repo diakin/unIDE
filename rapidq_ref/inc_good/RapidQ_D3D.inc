@@ -255,7 +255,7 @@ Declare Sub D3DRMVectorCrossProduct Lib "d3drm.dll" ALIAS "D3DRMVectorCrossProdu
 	'returns result in d
 
 DECLARE SUB CrossProduct(BYREF Norm AS QD3DVECTOR, BYREF a AS QD3DVECTOR, BYREF b AS QD3DVECTOR)
-SUB CrossProduct(BYREF a AS QD3DVECTOR, BYREF b AS QD3DVECTOR, BYREF Norm AS QD3DVECTOR)
+SUB CrossProduct(BYREF Norm AS QD3DVECTOR, BYREF a AS QD3DVECTOR, BYREF b AS QD3DVECTOR)   ' inc2026: было (a, b, Norm), в DECLARE (строка 257) - (Norm, a, b); RapidQ берёт параметры из DECLARE, поэтому работа не меняется, заголовок приведён к DECLARE (результат первым, как у D3DRMVectorCrossProduct)
 	'returns the Normal
 	Norm.x = a.y * b.z - a.z * b.y 
 	Norm.y = a.z * b.x - a.x * b.z 
@@ -480,7 +480,7 @@ TYPE QD3DPrimitive EXTENDS QOBJECT		'use for floor, sky box, clouds, boxes, pyra
 	FUNCTION New() AS INTEGER
 		WITH QD3DPrimitive
 		.RenderQuality	= D3DRMRENDER_FLAT
-		.TextureFile	= null
+		.TextureFile	= ""   ' inc2026: было null - не объявлен (файл только делает $UNDEF null в конце), при $TYPECHECK ON (строка 16) - ошибка; поле STRING, нужна пустая строка
 		.TexOriginX		= 0.0
 		.TexOriginY		= 0.0
 		.TexOriginZ		= 0.0
@@ -892,7 +892,7 @@ PUBLIC:
 
 
 	PROPERTY SET Set_CloneNum(TheCloneNum AS INTEGER)
-		IF TheCloneNum < = MaxD3DClones THEN
+		IF TheCloneNum <= MaxD3DClones THEN   ' inc2026: '< =' с пробелом -> документированный оператор '<='
 			This.CloneNum = TheCloneNum		'it needs to be set!
 		END IF
 	END PROPERTY
@@ -961,7 +961,7 @@ PUBLIC:
 		WITH QD3DCloneMesh
 		.Initialized	= False	'need to setup with QDXScreen
 		.Visible 		= True
-		.File			= null
+		.File			= ""   ' inc2026: было null - не объявлен (файл только делает $UNDEF null в конце), при $TYPECHECK ON (строка 16) - ошибка; поле STRING, нужна пустая строка
 		.CloneNum		= 0
 		.RandPos		= False
 		.Range.Left		= -1
@@ -987,7 +987,7 @@ PUBLIC:
 			.Orient(i).dvz 	= 0.0!
 		NEXT i
 
-		.TextureFile	= null
+		.TextureFile	= ""   ' inc2026: было null - не объявлен (файл только делает $UNDEF null в конце), при $TYPECHECK ON (строка 16) - ошибка; поле STRING, нужна пустая строка
 		.TexOriginX		= 0.0!
 		.TexOriginY		= 0.0!
 		.TexOriginZ		= 0.0!

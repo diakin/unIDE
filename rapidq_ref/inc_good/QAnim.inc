@@ -122,3 +122,4 @@ Type QAnim Extends QImage
     ImageList.masked=false
   End Constructor
 End Type
+      

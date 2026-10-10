@@ -101,11 +101,11 @@ Type QLineGraph extends qobject
         '''''''''' write title ''''''''''''''
         .image.textout(int(0.5*.image.width)-int(.image.textwidth(rtrim$(.Title))/2),int(0.02*.image.height), rtrim$(.Title),.TextColour,.BackColour)
         '''''''''' write axis titles ''''''''
-        .image.textout(int(0.52*.image.width)-int(.image.textwidth(rtrim$(.YTitle))/2),int(0.93*.image.height),rtrim$(.XTitle),.TextColour,.BackColour)
+        .image.textout(int(0.52*.image.width)-int(.image.textwidth(rtrim$(.XTitle))/2),int(0.93*.image.height),rtrim$(.XTitle),.TextColour,.BackColour) ' inc2026: было textwidth(.YTitle), стало .XTitle: строка выводит XTitle и центрируется по его ширине, как заголовок в строке 102
         .image.textout(int(0.02*.image.width),int(0.45*.image.height),rtrim$(.YTitle),.TextColour,.BackColour)
         '''''''''' draw the axes ''''''''''''
-        .image.line(int(0.15*.image.width), int(0.85*.image.height), int(0.9*.image.width), int(0.85*.image.height),AxisColour)
-        .image.line(int(0.15*.image.width), int(0.1*.image.height), int(0.15*.image.width), int(0.85*.image.height),AxisColour)
+        .image.line(int(0.15*.image.width), int(0.85*.image.height), int(0.9*.image.width), int(0.85*.image.height),.AxisColour) ' inc2026: было AxisColour без точки — необъявленная переменная (0), стало .AxisColour — поле типа (строка 47); в методах поля пишутся через имя типа или WITH (chapter10.html)
+        .image.line(int(0.15*.image.width), int(0.1*.image.height), int(0.15*.image.width), int(0.85*.image.height),.AxisColour) ' inc2026: было AxisColour без точки — необъявленная переменная (0), стало .AxisColour — поле типа (строка 47); в методах поля пишутся через имя типа или WITH (chapter10.html)
         '''''''''' calculate scale ''''''''''
         for i=0 to .Data.RowCount
             if val(.Data.Cell(0,i))>.maxX then .maxX=int(val(.Data.Cell(0,i)))+1
@@ -132,19 +132,19 @@ Type QLineGraph extends qobject
         
         ''''''''' Draw scale ''''''''''''''
         for i=0 to .roundedupX step 10^(.powerX-1)   ''''''''''' X
-            .image.pset(int(0.15*.image.width)+(i/.roundedupX*int(0.74*.image.width)),int(0.85*.image.height)+2,AxisColour)
-            .image.pset(int(0.15*.image.width)+(i/.roundedupX*int(0.74*.image.width)),int(0.85*.image.height)+1,AxisColour)
+            .image.pset(int(0.15*.image.width)+(i/.roundedupX*int(0.74*.image.width)),int(0.85*.image.height)+2,.AxisColour) ' inc2026: было AxisColour без точки — необъявленная переменная (0), стало .AxisColour — поле типа (строка 47); в методах поля пишутся через имя типа или WITH (chapter10.html)
+            .image.pset(int(0.15*.image.width)+(i/.roundedupX*int(0.74*.image.width)),int(0.85*.image.height)+1,.AxisColour) ' inc2026: было AxisColour без точки — необъявленная переменная (0), стало .AxisColour — поле типа (строка 47); в методах поля пишутся через имя типа или WITH (chapter10.html)
             .image.textout(int(0.15*.image.width)+(i/.roundedupX*int(0.74*.image.width))-.image.textwidth(str$(i))/2,int(0.85*.image.height)+5,str$(i),.TextColour,.BackColour)
         next
         for i=0 to .roundedupY step 10^(.powerY-1)   ''''''''''' Y
-            .image.pset(int(0.15*.image.width)-1,int(0.85*.image.height)-(i/.roundedupY*int(0.74*.image.height)),AxisColour)
-            .image.pset(int(0.15*.image.width)-2,int(0.85*.image.height)-(i/.roundedupY*int(0.74*.image.height)),AxisColour)
+            .image.pset(int(0.15*.image.width)-1,int(0.85*.image.height)-(i/.roundedupY*int(0.74*.image.height)),.AxisColour) ' inc2026: было AxisColour без точки — необъявленная переменная (0), стало .AxisColour — поле типа (строка 47); в методах поля пишутся через имя типа или WITH (chapter10.html)
+            .image.pset(int(0.15*.image.width)-2,int(0.85*.image.height)-(i/.roundedupY*int(0.74*.image.height)),.AxisColour) ' inc2026: было AxisColour без точки — необъявленная переменная (0), стало .AxisColour — поле типа (строка 47); в методах поля пишутся через имя типа или WITH (chapter10.html)
             .image.textout(int(0.15*.image.width)-5-.image.textwidth(str$(i)),int(0.85*.image.height)-(i/.roundedupY*int(0.74*.image.height))-int(.image.textheight(str$(i))/2),str$(i),.TextColour,.BackColour)
         next
         '''''''''' plot points ''''''''''''
-        if ExtrapolateToZero then
+        if .ExtrapolateToZero then ' inc2026: было ExtrapolateToZero без точки — необъявленная переменная (0), стало .ExtrapolateToZero — поле типа (строка 46, по умолчанию 1)
             .image.line(int(0.15*.image.width),int(0.85*.image.height), _
-             int(0.15*.image.width)+(val(.Data.Cell(0,i))/.roundedupX*int(0.74*.image.width)),int(0.85*.image.height)-(val(.Data.Cell(1,i))/.roundedupY*int(0.74*.image.height)),.LineColour)
+             int(0.15*.image.width)+(val(.Data.Cell(0,0))/.roundedupX*int(0.74*.image.width)),int(0.85*.image.height)-(val(.Data.Cell(1,0))/.roundedupY*int(0.74*.image.height)),.LineColour) ' inc2026: в строке 147 было Cell(0,i) и Cell(1,i) — i осталось после цикла по шкале Y (строка 139), стало строка 0: линия от начала координат к первой точке
         end if
         for i=1 to .Data.RowCount-1
             .image.line(int(0.15*.image.width)+(val(.Data.Cell(0,i-1))/.roundedupX*int(0.74*.image.width)),int(0.85*.image.height)-(val(.Data.Cell(1,i-1))/.roundedupY*int(0.74*.image.height)), _

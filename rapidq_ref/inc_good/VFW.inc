@@ -925,7 +925,7 @@ FUNCTION SetImageHeight (TheImageHeight AS LONG) AS LONG
 END FUNCTION
 
 
-SUB SetImageWidth (TheImageWidth AS LONG) AS LONG
+FUNCTION SetImageWidth (TheImageWidth AS LONG) AS LONG ' inc2026: было SUB ... AS LONG с RESULT внутри и END SUB (строка 945); стало FUNCTION, как SetImageHeight (строка 902): результат используется в конструкторе, строка 1128
 	DIM VideoFormat AS BITMAPINFO
 	DIM SzbmpInfo AS DWORD: SzbmpInfo = SIZEOF(VideoFormat)
 
@@ -933,7 +933,7 @@ SUB SetImageWidth (TheImageWidth AS LONG) AS LONG
 		.ImageWidth =  TheImageWidth
 		IF .Init THEN
 			SzbmpInfo = capGetVideoFormat(This.hCapWnd, VideoFormat, SzbmpInfo)
-			IF SzbmpInfo = 0 THEN RESULT = 0: EXIT SUB		'crashed!
+			IF SzbmpInfo = 0 THEN RESULT = 0: EXIT FUNCTION		'crashed! | inc2026: было EXIT SUB, стало EXIT FUNCTION: SetImageWidth - FUNCTION (строка 928)
 			VideoFormat.bmiHeader_biSize = SzbmpInfo
 			VideoFormat.bmiHeader_biWidth = TheImageWidth
 			IF capSetVideoFormat(This.hCapWnd, VideoFormat, SzbmpInfo) THEN
@@ -942,7 +942,7 @@ SUB SetImageWidth (TheImageWidth AS LONG) AS LONG
 			END IF
 		END IF
 	END IF
-END SUB
+END FUNCTION ' inc2026: было END SUB, стало END FUNCTION: SetImageWidth - FUNCTION (строка 928)
 
 
 
@@ -996,7 +996,7 @@ FUNCTION ShowDialogBox(TheBoxNum) AS LONG
 		END SELECT
        IF WasCapturing THEN .Capture = True
 	END IF
-END SUB
+END FUNCTION ' inc2026: было END SUB, стало END FUNCTION: блок открыт FUNCTION ShowDialogBox (строка 975)
 
 
 

@@ -1,6 +1,6 @@
 '=======================================================
 ' Type Objet
-' Classe QFormEx version 1.3
+' Classe QFormEx version 1.2
 '=======================================================
 $IFNDEF TRUE
   $DEFINE True 1
@@ -13,11 +13,6 @@ $ENDIF
 $IFNDEF boolean
   $DEFINE boolean integer
 $ENDIF
-
-CONST SWP_NOMOVE=&H2
-CONST FE_SWP_NOSIZE=&H1
-CONST HWND_TOPMOST=-1
-CONST HWND_NOTOPMOST=-2
 
 CONST WM_DROPFILES=&H233
 CONST GWL_HWNDPARENT=-8
@@ -41,7 +36,7 @@ TYPE TPOINT
   Y AS LONG
 END TYPE
 
-Declare Function SetWindowPos Lib "user32" Alias "SetWindowPos" (hwnd As Long,hWndInsertAfter As Long,x As Long,y As Long,cx As Long,cy As Long,wFlags As Long) As Long
+
 Declare Function CallWindowProc Lib "user32.dll" Alias "CallWindowProcA" (lpPrevWndFunc As Long, hwnd As Long, Msg As Long, wParam As Long, lParam As Long) As Long
 Declare Function SetWindowLong Lib "user32" Alias "SetWindowLongA" (hwnd As Long,nIndex As Long,dwNewLong As Long) As Long
 DECLARE SUB DragAcceptFiles LIB "SHELL32" ALIAS "DragAcceptFiles" (hWnd AS LONG,Accept AS LONG)
@@ -61,6 +56,7 @@ Type QFormEx extends QFORM
     pOldProc AS LONG
     flagWinProc as boolean
     flagTrayIcon as boolean
+    virtual as qform
   PUBLIC:
     DragZone as QRect
     DragEnable as boolean PROPERTY SET SetDragEnable
@@ -121,10 +117,10 @@ Type QFormEx extends QFORM
   '============================================
   Property Set SetFormStyle(FormStyle as integer)
     if FormStyle=3 then
-      QFormEx.formStyle=3      
-      SetWindowPos This.Handle,HWND_TOPMOST,0,0,0,0,SWP_NOMOVE OR FE_SWP_NOSIZE 
+      Super.formStyle=3
+      QFormEx.formStyle=3
+      QFormEx.parent=QFormEx.virtual 
     else
-      SetWindowPos This.Handle,HWND_NOTOPMOST,0,0,0,0,SWP_NOMOVE OR FE_SWP_NOSIZE
       Super.formStyle=formStyle
       QFormEx.formStyle=formStyle
     end if

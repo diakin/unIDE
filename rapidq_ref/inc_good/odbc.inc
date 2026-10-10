@@ -204,7 +204,7 @@
          CASE 1
           tipo$= "CHAR"
          CASE 2
-          tipo$=" NUMERIC"
+          tipo$="NUMERIC" ' inc2026: убран пробел в начале (было " NUMERIC"; остальные названия типов в этом SELECT без пробела)
          CASE 3
           tipo$="DECIMAL"
          CASE 4

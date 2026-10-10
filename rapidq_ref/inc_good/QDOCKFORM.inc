@@ -4,7 +4,7 @@ $DEFINE __QDF_INC
 DECLARE SUB QDF_ClientToScreen LIB "USER32" ALIAS "ClientToScreen" (hwnd AS LONG, lpPoint AS LONG)
 DECLARE FUNCTION QDF_ReleaseCapture LIB "user32" ALIAS "ReleaseCapture" () AS LONG
 DECLARE FUNCTION QDF_SetCapture LIB "USER32" ALIAS "SetCapture" (hwnd AS LONG) AS LONG
-DECLARE FUNCTION QDF_DefWindowProc LIB "USER32" ALIAS "DefWindowProc" (hwnd AS LONG, msg as long, wparam as long, lparam as long) AS LONG
+DECLARE FUNCTION QDF_DefWindowProc LIB "USER32" ALIAS "DefWindowProcA" (hwnd AS LONG, msg as long, wparam as long, lparam as long) AS LONG ' inc2026: ALIAS "DefWindowProcA" вместо "DefWindowProc": user32.dll экспортирует только DefWindowProcA/DefWindowProcW (функция в файле не вызывается)
 DECLARE FUNCTION QDF_GetCapture LIB "USER32" ALIAS "GetCapture" () AS LONG
 'DECLARE FUNCTION QDF_GetParent LIB "USER32" ALIAS "GetParent" (hwnd AS LONG) AS LONG
 'DECLARE FUNCTION QDF_ShowWindow LIB "USER32" ALIAS "ShowWindow" (hwnd AS LONG, ntype AS LONG) AS LONG
@@ -14,7 +14,7 @@ DECLARE FUNCTION QDF_DrawFrameControl LIB "USER32" ALIAS "DrawFrameControl" (hdc
 DECLARE FUNCTION QDF_DrawCaption LIB "USER32" ALIAS "DrawCaption" (hwnd AS LONG, hdc AS LONG, qrc AS QRECT, uFlags AS LONG) AS LONG
 DECLARE FUNCTION QDF_SetWindowLong LIB "USER32" ALIAS "SetWindowLongA" (hwnd AS LONG, type AS LONG, nstyle AS LONG) AS LONG
 DECLARE FUNCTION QDF_GetWindowLong LIB "USER32" ALIAS "GetWindowLongA" (hwnd AS LONG, type AS LONG) AS LONG
-DECLARE FUNCTION QDF_CallWindowProc LIB "USER32" ALIAS "CallWindowProc" (proc AS LONG, hwnd AS LONG, msg as long, wparam as long, lparam as long) AS LONG
+DECLARE FUNCTION QDF_CallWindowProc LIB "USER32" ALIAS "CallWindowProcA" (proc AS LONG, hwnd AS LONG, msg as long, wparam as long, lparam as long) AS LONG ' inc2026: ALIAS "CallWindowProcA" вместо "CallWindowProc": user32.dll экспортирует только CallWindowProcA/CallWindowProcW, как в rapidq.inc строка 1320 (функция в файле не вызывается)
 
 CONST QDF_wm_syscommand=&h112
 CONST QDF_sc_rsize=&hF002
@@ -168,8 +168,8 @@ TYPE QDOCKFORM EXTENDS QPANEL
             .AltPanel.Visible = 0
             .UndockedForm.Width = .UndockedWidth
             .UndockedForm.Height = .UndockedHeight
-            .UndockedForm.Left = (Screen.Width - UndockedForm.Width)/ 2
-            .UndockedForm.Top = (Screen.Height - UndockedForm.Height)/ 2
+            .UndockedForm.Left = (Screen.Width - .UndockedForm.Width)/ 2 ' inc2026: .UndockedForm.Width вместо UndockedForm.Width: без точки внутри WITH THIS это необъявленная переменная (0), форма не центрируется; в inc/rapidq2.inc строка 3476 - .UndockedForm.Width
+            .UndockedForm.Top = (Screen.Height - .UndockedForm.Height)/ 2 ' inc2026: .UndockedForm.Height вместо UndockedForm.Height - так же, как строкой выше (inc/rapidq2.inc строка 3477)
             'Center loses the parent - which is annoying to get back again!
             .UndockedForm.Show
             .Panel.Parent = .UndockedForm

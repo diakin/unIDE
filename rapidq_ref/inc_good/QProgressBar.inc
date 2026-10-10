@@ -119,7 +119,7 @@ TYPE QProgressBar EXTENDS QOBJECT
         DEFINT NewStyle = WS_CHILD OR WS_VISIBLE
         IF .Kind <> PBS_OLD THEN NewStyle = NewStyle OR .Kind
         .Handle = CreateWindowEx(0, "msctls_progress32", "", NewStyle, _
-                    .Top, .Left, .Width, .Height, .Parent, 0, Application.hInstance, 0)
+                    .Left, .Top, .Width, .Height, .Parent, 0, Application.hInstance, 0) ' inc2026: в строке 122 было .Top, .Left, стало .Left, .Top: у CreateWindowEx сначала x, потом y
     END SUB
 
 

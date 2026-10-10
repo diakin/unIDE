@@ -2,7 +2,7 @@
 '    QCalendar Control by Pasquale P.C.B.        4-2001
 '    Dedicated to my beautiful wife Ana 
 '-------------------------------------------------------------------------------------------
-$include "apidate.bas"
+$include "ApiDate.inc" ' inc2026: было "apidate.bas" — такого файла нет, функции weekday, lastdaym, SYSTEMTIME, GetDateFormat, GetLocaleInfo есть в ApiDate.inc того же автора (inc2026)
 TYPE qcalendar EXTENDS Qpanel
     PUBLIC:
     M AS INTEGER
@@ -156,7 +156,7 @@ TYPE qcalendar EXTENDS Qpanel
             getlocaleinfo(ByVal 0&, i+48  ,varptr(b),len(b))    
             week(i)=b
         next
-        for i=1 to qcalendar.grid.colcount+1
+        for i=1 to 7 ' inc2026: было до grid.colcount+1 (=9 при ColCount=8, строка 378), стало до 7: массив week(1 TO 7) (строка 153), дней в неделе 7, столбцы 0..6
             qcalendar.grid.cell(i-1,0)=week(i)
         next
         ST.wDay = val(field$(date$,"-",2))

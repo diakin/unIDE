@@ -43,7 +43,7 @@ Type QLed extends QCanvas
      Property Set SetColor(Value as byte)
      This.LedColor = Value
      This.Draw
-     End Sub
+     End Property ' inc2026: END PROPERTY вместо END SUB: процедура открыта как PROPERTY SET SetColor (строка 43); SetState закрыта END PROPERTY (строка 51), так же в документации (chapter10.html, 10.8)
      
      Property Set SetState(Value as integer)
      This.LedState = Value

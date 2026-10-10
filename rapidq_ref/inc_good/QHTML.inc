@@ -169,7 +169,7 @@ TYPE QHTML EXTENDS QPanel
         ElementsImgHeight(htmlMaxElements)       as Long           ' Height
         ElementsImgHSpace(htmlMaxElements)       as Long           ' Horizontal space
         ElementsImgVSpace(htmlMaxElements)       as Long           ' Vertical space
-        ElementsImgUseMap(htmlMaxElements)       as Long           ' Map for reactive areas
+        ElementsImgUseMap(htmlMaxElements)       as String         ' Map for reactive areas | inc2026: As String вместо As Long: поле получает строку - значение атрибута USEMAP (строка 758, имя карты); строка в числовое поле даёт 0; больше поле нигде не читается
         
         'Fonts 
         ElementsFontName(htmlMaxElements)        as String         ' Font Name
@@ -229,7 +229,7 @@ Private:
                     'Now the value
                     tBegin = tEnd+1
                     while mid$(HTMLText,tBegin,1) = " "
-                        tBegin--
+                        tBegin++ ' inc2026: tBegin++ вместо tBegin--: цикл пропускает пробелы после "=" перед значением, идти нужно вперёд; с -- tBegin возвращался на "=" и значением атрибута вида name= "x" становилось "="
                     wend
                     tDelimiter = " "
                     select case mid$(HTMLText,tBegin,1)
@@ -306,9 +306,9 @@ Private:
             
             hCol = ucase$(replacesubstr$(AttributeTExt,"#",""))
             if len(hCol) = 6 and _
-               this.HexaToLong(left$(hCol,2))  >= 0  and this.HexaToLong(left$(hCol,2)) <= 255 _ 
-               this.HexaToLong(mid$(hCol,3,2)) >= 0 and this.HexaToLong(mid$(hCol,3,2)) <= 255 _ 
-               this.HexaToLong(right$(hCol,2)) >= 0 and this.HexaToLong(right$(hCol,2)) <= 255 then
+               this.HexaToLong(left$(hCol,2))  >= 0  and this.HexaToLong(left$(hCol,2)) <= 255 and _ 
+               this.HexaToLong(mid$(hCol,3,2)) >= 0 and this.HexaToLong(mid$(hCol,3,2)) <= 255 and _ 
+               this.HexaToLong(right$(hCol,2)) >= 0 and this.HexaToLong(right$(hCol,2)) <= 255 then ' inc2026: добавлено and в конце строк 309 и 310: между условиями не было оператора, все остальные условия этого IF соединены and
                 this.ColorValue = rgb(this.HexaToLong(left$(hCol,2)),this.HexaToLong(mid$(hCol,3,2)),this.HexaToLong(right$(hCol,2)))
             else
                 showmessage(AttributeTExt)
@@ -375,7 +375,7 @@ Private:
             WorkString = replacesubstr$(WorkString,"&para;" ,"¶")
             WorkString = replacesubstr$(WorkString,"&middot;" ,"·")
             WorkString = replacesubstr$(WorkString,"&cedil;" ,"ё")
-            WorkString = replacesubstr$(WorkString,"&supl;" ,"№")
+            WorkString = replacesubstr$(WorkString,"&sup1;" ,"№") ' inc2026: &sup1; вместо &supl;: сущность HTML - sup1 (верхний индекс 1, байт B9), рядом &sup2; и &sup3;; с буквой l замена не срабатывала
             WorkString = replacesubstr$(WorkString,"&ordm;" ,"є")
             WorkString = replacesubstr$(WorkString,"&raquo;" ,"»")
             WorkString = replacesubstr$(WorkString,"&frac14;" ,"ј")
@@ -642,7 +642,7 @@ Private:
                                     select case this.AttributesName(tAttribute)
                                         case "SHAPE"
                                             this.ElementsAnchorsShape(tAnchor)    = this.AttributesValue(tAttribute)
-                                        case "COORD"
+                                        case "COORDS" ' inc2026: COORDS вместо COORD: у тега AREA атрибут называется COORDS (HTML 4.01), имя атрибута сравнивается целиком (строка 227), и координаты не читались
                                             this.ElementsAnchorsPosition(tAnchor) = this.AttributesValue(tAttribute)
                                         case "HREF"
                                             this.ElementsAnchorsHref(tAnchor)     = this.AttributesValue(tAttribute)
@@ -809,7 +809,7 @@ Private:
                                     select case this.AttributesName(tAttribute)
                                         case "WIDTH"
                                             if instr(this.AttributesValue(tAttribute),"%") > 0 then
-                                               this.ElementsTableWidth(tElement) = MaxWidth * val(replace$(this.AttributesValue(tAttribute),"%","")) / 100
+                                               this.ElementsTableWidth(tElement) = MaxWidth * val(replacesubstr$(this.AttributesValue(tAttribute),"%","")) / 100 ' inc2026: replacesubstr$ вместо replace$: нужно убрать "%", а у REPLACE$ третий параметр - позиция (число), не строка замены
                                             else
                                                 this.ElementsTableWidth(tElement) = val(this.AttributesValue(tAttribute))
                                                 if this.ElementsTableWidth(tElement) > tWidth then tWidth = this.ElementsTableWidth(tElement)
@@ -838,12 +838,12 @@ Private:
                                     select case this.AttributesName(tAttribute)
                                         case "WIDTH"
                                             if instr(this.AttributesValue(tAttribute),"%") > 0 then
-                                                this.ElementsCellWidth(tElement) = val(replace$(this.AttributesValue(tAttribute),"%","")) / 100
+                                                this.ElementsCellWidth(tElement) = val(replacesubstr$(this.AttributesValue(tAttribute),"%","")) / 100 ' inc2026: replacesubstr$ вместо replace$: нужно убрать "%", а у REPLACE$ третий параметр - позиция (число), не строка замены
                                             else
                                                 this.ElementsCellWidth(tElement) = val(this.AttributesValue(tAttribute))
                                             end if    
                                         case "COLSPAN"
-                                            this.ElementsBorderWidth(tElement) = val(this.AttributesValue(tAttribute))
+                                            this.ElementsColSpan(tElement) = val(this.AttributesValue(tAttribute)) ' inc2026: ElementsColSpan вместо ElementsBorderWidth: атрибут COLSPAN, поле ElementsColSpan объявлено для него ("column span") и задаётся строкой 833
                                         case "ALIGN"
                                             if ucase$(this.AttributesValue(tAttribute)) = "CENTER" then 
                                                 this.ElementsCenter(tElement) = true
@@ -1417,19 +1417,19 @@ Public:
        '=============
         Property Set Set_DocumentTitle(NewDocumentTitle As String)
             'Nothing !
-        End Property Set
+        End Property ' inc2026: END PROPERTY вместо End Property Set (так в документации, глава 10.8)
        
         'DefaultFontName
         '===============
         Property Set Set_DefaultFontName(NewDefaultFontName As String)
             this.DefaultFontName = NewDefaultFontName
-        End Property Set
+        End Property ' inc2026: END PROPERTY вместо End Property Set (так в документации, глава 10.8)
 
         'DefaultFontSize
         '===============
         Property Set Set_DefaultFontSize(NewDefaultFontSize As Integer)
             this.DefaultFontSize = NewDefaultFontSize
-        End Property Set
+        End Property ' inc2026: END PROPERTY вместо End Property Set (так в документации, глава 10.8)
 
 
     'Methods and functions
@@ -1492,7 +1492,7 @@ Private:
             
             Printer.Begindoc
             Printer.title = this.DocumentTitle
-            Printer.StretchDraw(rect,this.zoom)
+            Printer.StretchDraw(rect,this.zoom.BMP) ' inc2026: this.zoom.BMP вместо this.zoom: у StretchDraw второй параметр - BMP (qprinter.html: StretchDraw (Rect AS QRECT, BMP)), так же в других inc: .StretchDraw(rect, tmpBitmap.BMP)
             Printer.textout(Rect.left,Rect.bottom-30, "Page "+str$(this.ZoomPage)+"/"+str$(this.ZoomPages),0,-1)
             printer.Enddoc
         end sub        
@@ -1516,7 +1516,7 @@ Private:
                     doevents
                 wend
                 if i > 1 then Printer.Newpage
-                Printer.StretchDraw(rect,this.zoom)
+                Printer.StretchDraw(rect,this.zoom.BMP) ' inc2026: this.zoom.BMP вместо this.zoom: у StretchDraw второй параметр - BMP (qprinter.html)
                 Printer.textout(rect.left,Rect.bottom-30,  "Page "+str$(this.ZoomPage)+"/"+str$(this.ZoomPages),0,-1)
             next
             printer.Enddoc
@@ -1936,7 +1936,7 @@ Public:
         HTMLColorsName(037)   = "darkturquoise":         HTMLColorsCode(037) = "00CED1"
         HTMLColorsName(038)   = "darkviolet":            HTMLColorsCode(038) = "9400D3"
         HTMLColorsName(039)   = "deeppink":              HTMLColorsCode(039) = "FF1493"
-        HTMLColorsName(030)   = "deepskyblue":           HTMLColorsCode(040) = "00BFFF"
+        HTMLColorsName(040)   = "deepskyblue":           HTMLColorsCode(040) = "00BFFF" ' inc2026: 040 вместо 030: имя и код цвета в паре, 030 - darkorange строкой 1929, 040 иначе пустое
         HTMLColorsName(041)   = "dimgray":               HTMLColorsCode(041) = "696969"
         HTMLColorsName(042)   = "dodgerblue":            HTMLColorsCode(042) = "1E90FF"
         HTMLColorsName(043)   = "feldspar":              HTMLColorsCode(043) = "D19275"
@@ -2006,7 +2006,7 @@ Public:
         HTMLColorsName(107)   = "paleturquoise":         HTMLColorsCode(107) = "AFEEEE"
         HTMLColorsName(108)   = "palevioletred":         HTMLColorsCode(108) = "D87093"
         HTMLColorsName(109)   = "papayawhip":            HTMLColorsCode(109) = "FFEFD5"
-        HTMLColorsName(100)   = "peachpuff":             HTMLColorsCode(100) = "FFDAB9"
+        HTMLColorsName(110)   = "peachpuff":             HTMLColorsCode(110) = "FFDAB9" ' inc2026: 110 вместо 100 (оба): между 109 и 111, 100 - olive строкой 1999, 110 иначе пустое
         HTMLColorsName(111)   = "peru":                  HTMLColorsCode(111) = "CD853F"
         HTMLColorsName(112)   = "pink":                  HTMLColorsCode(112) = "FFC0CB"
         HTMLColorsName(113)   = "plum":                  HTMLColorsCode(113) = "DDA0DD"

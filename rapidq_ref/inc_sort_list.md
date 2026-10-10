@@ -300,3 +300,147 @@
 | xpskinmetallic_2.11_res.inc | XPSkinMetallic_2.11_Res.inc (2005-11-10 12:10) |  |
 | xpthemes.inc | XPThemes.inc (2009-06-15 22:50) |  |
 | zlib.inc | zlib.inc (2006-10-04 21:27) |  |
+
+## Шаг 2: inc2026 (исправленные файлы, считаются новее)
+
+Побайтное сравнение с inc_good. «заменён» — версия inc2026 отличается, она в inc_good, прежняя — в inc_bad/<её путь>. «совпадает» — копия из inc2026 в inc_bad/inc2026. Файлы с ресурсами — в inc_good/<имя>/ вместе с ресурсами.
+
+| Файл inc2026 | Результат | Прежний файл inc_good |
+|---|---|---|
+| Api.inc | совпадает | RQIDEdistr2026inc/Api.inc |
+| ApiDate.inc | заменён | RQIDEdistr2026inc/ApiDate.inc 2005-11-10 12:07 |
+| apiRe.inc | совпадает | RQIDEdistr2026inc/apiRe.inc |
+| CallBack_0.Inc | заменён | RQIDEdistr2026inc/CallBack_0.Inc 2006-08-18 20:23 |
+| CallBack_1.Inc | заменён | RQIDEdistr2026inc/CallBack_1.Inc 2006-08-18 20:23 |
+| CallBack_2.Inc | заменён | RQIDEdistr2026inc/CallBack_2.Inc 2006-08-18 20:23 |
+| CallBack_3.Inc | заменён | RQIDEdistr2026inc/CallBack_3.Inc 2006-08-18 20:23 |
+| CallBack_4.Inc | заменён | RQIDEdistr2026inc/CallBack_4.Inc 2006-08-18 20:23 |
+| CallBack_5.Inc | заменён | RQIDEdistr2026inc/CallBack_5.Inc 2006-08-18 20:23 |
+| CallBack_6.Inc | заменён | RQIDEdistr2026inc/CallBack_6.Inc 2006-08-18 20:23 |
+| CallBack_7.Inc | заменён | RQIDEdistr2026inc/CallBack_7.Inc 2006-08-18 20:23 |
+| CallBack_8.Inc | заменён | RQIDEdistr2026inc/CallBack_8.Inc 2006-08-18 20:23 |
+| CallBacks.Inc | заменён | RQIDEdistr2026inc/CallBacks.Inc 2008-09-18 20:22 |
+| ComPort.inc | новый |  |
+| COMPORTxp.inc | новый |  |
+| conversion.inc | заменён | RQIDEdistr2026inc/conversion.inc 2026-10-08 23:01 |
+| eml.inc | заменён | RQIDEdistr2026inc/eml.inc 2026-10-09 01:03 |
+| fbscancodes.inc | совпадает | RQIDEdistr2026inc/fbscancodes.inc |
+| fileops.inc | совпадает | RQIDEdistr2026inc/fileops.inc |
+| Files.inc | заменён | RQIDEdistr2026inc/Files.inc 2026-10-09 01:08 |
+| func_array.inc | совпадает | RQIDEdistr2026inc/func_array.inc |
+| HiLight.inc | совпадает | RQIDEdistr2026inc/HiLight.inc |
+| Memory.inc | заменён | RQIDEdistr2026inc/Memory.inc 2009-02-06 21:09 |
+| odbc.inc | заменён | RQIDEdistr2026inc/odbc.inc 2003-12-05 18:54 |
+| parse.inc | заменён | RQIDEdistr2026inc/parse.inc 2026-10-09 01:09 |
+| QAbout.inc | совпадает | RQIDEdistr2026inc/newinc/QAbout.inc |
+| QAnim.inc | заменён | RQIDEdistr2026inc/newinc/QAnim.inc 2008-07-09 16:09 |
+| QAnimate.inc | заменён | RQIDEdistr2026inc/QAnimate.inc 2009-02-10 09:31 |
+| QAVI.inc | заменён | RQIDEdistr2026inc/QAVI.inc 2009-12-20 16:15 |
+| QBevel.inc | заменён | RQIDEdistr2026inc/newinc/QBevel.inc 2008-07-09 16:09 |
+| QBitmapEx.inc | заменён | RQIDEdistr2026inc/object/QBitmapEx.inc 2011-05-19 10:01 |
+| QBrowseDialog.inc | совпадает | RQIDEdistr2026inc/QBrowseDialog.inc |
+| QButtonXP.INC | заменён | RQIDEdistr2026inc/QButtonXP.INC 2021-04-10 11:54 |
+| qcalendar.inc | заменён | RQIDEdistr2026inc/newinc/qcalendar.inc 2008-07-09 16:10 |
+| QCanvasEx.inc | совпадает | RQIDEdistr2026inc/QCanvasEx.inc |
+| Qcdaudio.inc | заменён | RQIDEdistr2026inc/newinc/Qcdaudio.inc 2008-07-09 16:09 |
+| qcgi.inc | совпадает | RQIDEdistr2026inc/newinc/qcgi.inc |
+| QChart.inc | заменён | RQIDEdistr2026inc/QChart.inc 2016-10-10 01:35 |
+| qciccio.inc | совпадает | RQIDEdistr2026inc/qciccio.inc |
+| QColorButton.inc | совпадает | RQIDEdistr2026inc/newinc/QColorButton.inc |
+| QColorDialog.inc | заменён | RQIDEdistr2026inc/QColorDialog.inc 2005-05-27 19:53 |
+| QCoolBarXPv1d.inc | заменён | RQIDEdistr2026inc/QCoolBarXPv1d.inc 2005-11-10 12:08 |
+| QCursor.inc | совпадает | RQIDEdistr2026inc/QCursor.inc |
+| QDataBase.inc | заменён | RQIDEdistr2026inc/QDataBase.inc 2008-07-09 16:09 |
+| QDebug.inc | заменён | RQIDEdistr2026inc/QDebug.inc 2005-11-10 12:08 |
+| QDesktop.inc | совпадает | RQIDEdistr2026inc/QDesktop.inc |
+| QDigDisplay.inc | совпадает | RQIDEdistr2026inc/QDigDisplay.inc |
+| QDir.Inc | заменён | RQIDEdistr2026inc/newinc/QDir.Inc 2008-07-09 16:09 |
+| qdirlistview/qdirlistview.inc | заменён | RQIDEdistr2026inc/qdirlistview.inc 2021-03-12 00:14 |
+| QDOCKFORM.inc | заменён | RQIDEdistr2026inc/QDOCKFORM.inc 2004-03-11 06:19 |
+| qdownload.inc | заменён | RQIDEdistr2026inc/newinc/Qdownload.inc 2008-07-09 16:09 |
+| QDrawFocus.inc | заменён | RQIDEdistr2026inc/newinc/QDrawFocus.inc 2008-07-09 16:09 |
+| QDrawMenu.inc | совпадает | RQIDEdistr2026inc/QDrawMenu.inc |
+| QDrive.inc | совпадает | RQIDEdistr2026inc/QDrive.inc |
+| QDriveCombobox.inc | заменён | RQIDEdistr2026inc/QDriveCombobox.inc 2008-07-09 16:09 |
+| QFileDialog.inc | заменён | RQIDEdistr2026inc/QFileDialog.inc 2021-04-29 07:46 |
+| QFileListView.inc | совпадает | RQIDEdistr2026inc/QFileListView.inc |
+| QFlashLabel.inc | совпадает | RQIDEdistr2026inc/QFlashLabel.inc |
+| QFlatButton.inc | заменён | RQIDEdistr2026inc/newinc/QFlatButton.inc 2008-07-09 16:09 |
+| qfocus.inc | совпадает | RQIDEdistr2026inc/newinc/qfocus.inc |
+| QFormEx.inc | заменён | RQIDEdistr2026inc/obj2004/QFormEx.inc 2006-05-23 10:30 |
+| QFormMDI.inc | заменён | RQIDEdistr2026inc/QFormMDI.inc 2004-03-17 17:59 |
+| QFTPCLIENT.INC | совпадает | RQIDEdistr2026inc/newinc/QFTPCLIENT.INC |
+| qftpdirlistview/qftpdirlistview.inc | заменён | RQIDEdistr2026inc/qftpdirlistview.inc 2009-03-25 13:43 |
+| QGL.inc | заменён | RQIDEdistr2026inc/QGL.inc 2008-07-09 16:10 |
+| qgraph.inc | заменён | RQIDEdistr2026inc/newinc/qgraph.inc 2008-07-09 16:10 |
+| QGridColor.inc | совпадает | RQIDEdistr2026inc/QGridColor.inc |
+| QHead.inc | заменён | RQIDEdistr2026inc/QHead.inc 2005-11-10 12:08 |
+| QHTML.inc | заменён | RQIDEdistr2026inc/QHTML.inc 2008-07-09 16:09 |
+| QICMP.INC | совпадает | RQIDEdistr2026inc/newinc/QICMP.INC |
+| QICON.inc | совпадает | RQIDEdistr2026inc/QICON.inc |
+| Qid3Tag.inc | заменён | RQIDEdistr2026inc/Qid3Tag.inc 2003-02-06 10:57 |
+| QImageBox.inc | совпадает | RQIDEdistr2026inc/QImageBox.inc |
+| QImageDialog.inc | совпадает | RQIDEdistr2026inc/QImageDialog.inc |
+| QImageEx.inc | заменён | RQIDEdistr2026inc/QImageEx.inc 2004-03-17 17:59 |
+| QImageListEx.inc | совпадает | RQIDEdistr2026inc/QImageListEx.inc |
+| QIni.inc | заменён | RQIDEdistr2026inc/newinc/QIni.inc 2008-07-09 16:09 |
+| QIniFile.inc | совпадает | RQIDEdistr2026inc/QIniFile.inc |
+| QInputBox.inc | совпадает | RQIDEdistr2026inc/QInputBox.inc |
+| QLed.inc | заменён | RQIDEdistr2026inc/QLed.inc 2005-11-10 12:08 |
+| QLedScroll.inc | совпадает | RQIDEdistr2026inc/QLedScroll.inc |
+| QLine.inc | совпадает | RQIDEdistr2026inc/newinc/QLine.inc |
+| QListBoxEx.inc | совпадает | RQIDEdistr2026inc/QListBoxEx.inc |
+| QListviewEx.inc | совпадает | RQIDEdistr2026inc/QListviewEx.inc |
+| QMarker.inc | совпадает | RQIDEdistr2026inc/QMarker.inc |
+| QMaxSplitter.inc | заменён | RQIDEdistr2026inc/newinc/QMaxSplitter.inc 2008-07-09 16:09 |
+| qmenu.inc | заменён | RQIDEdistr2026inc/qmenu.inc 2004-03-17 17:59 |
+| QMidi.inc | заменён | RQIDEdistr2026inc/newinc/QMidi.inc 2008-07-09 16:09 |
+| Qmp3.inc | заменён | RQIDEdistr2026inc/newinc/Qmp3.inc 2008-07-09 16:09 |
+| QPageSetup.inc | совпадает | RQIDEdistr2026inc/newinc/QPageSetup.inc |
+| Qposic1/Qposic1.inc | заменён | RQIDEdistr2026inc/Qposic1.inc 2021-04-01 10:30 |
+| QPosicL/QPosicL.inc | заменён | RQIDEdistr2026inc/QPosicL.inc 2004-04-11 21:29 |
+| QPrinterInfo.inc | заменён | RQIDEdistr2026inc/newinc/QPrinterInfo.inc 2008-07-09 16:09 |
+| QProcess.inc | заменён | RQIDEdistr2026inc/newinc/QProcess.inc 2008-07-09 16:09 |
+| QProgress.inc | совпадает | RQIDEdistr2026inc/QProgress.inc |
+| QProgressBar.inc | заменён | RQIDEdistr2026inc/QProgressBar.inc 2010-11-10 20:21 |
+| QRedEx.Inc | заменён | RQIDEdistr2026inc/QRedEx.Inc 2006-08-12 21:23 |
+| QRichEditXt.inc | заменён | RQIDEdistr2026inc/newinc/QRichEditXt.inc 2008-07-09 16:09 |
+| QrPanel.inc | совпадает | RQIDEdistr2026inc/QrPanel.inc |
+| QRun.inc | заменён | RQIDEdistr2026inc/QRun.inc 2009-06-15 22:15 |
+| QSavePlus.inc | совпадает | RQIDEdistr2026inc/QSavePlus.inc |
+| QSHFileOperation.inc | заменён | RQIDEdistr2026inc/newinc/QSHFileOperation.inc 2008-07-09 16:09 |
+| QShutdown.inc | заменён | RQIDEdistr2026inc/QShutdown.inc 2008-07-09 16:09 |
+| QSkin.inc | совпадает | RQIDEdistr2026inc/QSkin.inc |
+| QSkinBtn.inc | совпадает | RQIDEdistr2026inc/QSkinBtn.inc |
+| QSocketEx.inc | заменён | RQIDEdistr2026inc/QSocketEx.inc 2008-07-09 16:09 |
+| QSpinEdit.inc | заменён | RQIDEdistr2026inc/newinc/QSpinEdit.inc 2008-07-09 16:09 |
+| qspintext.inc | совпадает | RQIDEdistr2026inc/qspintext.inc |
+| QSplash.inc | совпадает | RQIDEdistr2026inc/QSplash.inc |
+| QStatusBarEx.inc | заменён | RQIDEdistr2026inc/newinc/QStatusBarEx.inc 2008-07-09 16:09 |
+| QStringGridEx.inc | совпадает | RQIDEdistr2026inc/QStringGridEx.inc |
+| QtabControlEx.inc | заменён | RQIDEdistr2026inc/QtabControlEx.inc 2026-10-04 07:06 |
+| QTButton95.inc | совпадает | RQIDEdistr2026inc/QTButton95.inc |
+| QTextBtn.inc | совпадает | RQIDEdistr2026inc/QTextBtn.inc |
+| QTextEdit.inc | заменён | RQIDEdistr2026inc/newinc/QTextEdit.inc 2008-07-09 16:09 |
+| QToolBar.inc | заменён | RQIDEdistr2026inc/QToolBar.inc 2009-06-15 23:17 |
+| QToolBarEX.inc | совпадает | RQIDEdistr2026inc/QToolBarEX.inc |
+| QTreeviewEx.inc | заменён | RQIDEdistr2026inc/newinc/QTreeviewEx.inc 2008-07-09 16:09 |
+| QVideo.inc | совпадает | RQIDEdistr2026inc/newinc/QVideo.inc |
+| QVolumeInfo.inc | заменён | RQIDEdistr2026inc/QVolumeInfo.inc 2012-09-09 19:26 |
+| QVuMeter.inc | совпадает | RQIDEdistr2026inc/QVuMeter.inc |
+| QWave.inc | заменён | RQIDEdistr2026inc/newinc/QWave.inc 2008-07-09 16:09 |
+| QxEdit.inc | совпадает | RQIDEdistr2026inc/QxEdit.inc |
+| QXPButton.inc | совпадает | RQIDEdistr2026inc/QXPButton.inc |
+| RapidFRM.inc | совпадает | RQIDEdistr2026inc/RapidFRM.inc |
+| rapidq.inc | заменён | RQIDEdistr2026inc/rapidq.inc 2026-10-09 01:14 |
+| rapidq2.inc | заменён | RQIDEdistr2026inc/rapidq2.inc 2021-12-15 21:40 |
+| RapidQ_D3D.inc | заменён | RQIDEdistr2026inc/RapidQ_D3D.inc 2011-02-05 17:01 |
+| RC4crypt.inc | совпадает | RQIDEdistr2026inc/RC4crypt.inc |
+| RichEdPopUp.inc | совпадает | RQIDEdistr2026inc/RichEdPopUp.inc |
+| RSocket.INC | заменён | RQIDEdistr2026inc/inc2/RSocket.INC 2005-01-06 08:44 |
+| SysUtils.inc | заменён | RQIDEdistr2026inc/SysUtils.inc 2008-11-11 23:03 |
+| TstRichEd.inc | совпадает | RQIDEdistr2026inc/TstRichEd.inc |
+| VFW.inc | заменён | RQIDEdistr2026inc/VFW.inc 2008-07-09 16:09 |
+| XP_MANIFEST.INC | заменён | RQIDEdistr2026inc/XP_MANIFEST.INC 2009-04-02 14:08 |
+| XPSkinMetallic_2.11_Res.inc | заменён | RQIDEdistr2026inc/XPSkinMetallic_2.11_Res.inc 2005-11-10 12:10 |
+| XPThemes.inc | совпадает | RQIDEdistr2026inc/XPThemes.inc |

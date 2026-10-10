@@ -32,7 +32,7 @@ FUNCTION SetNewFwToCallBack (ForwardTo AS LONG, hFunction AS LONG) AS LONG
         .WriteNum(hFunction   , 4)    ' ... hRqFunction
         .WriteNum(&H50        , 1)    ' push eax
         .WriteNum(&HB8        , 1)    ' mov  eax, ...
-        .WriteNum(&Forwardto  , 4)    ' ... ForwardTo
+        .WriteNum(Forwardto   , 4)    ' ... ForwardTo | inc2026: Forwardto вместо &Forwardto: адрес мастер-функции пишется в машинный код (mov eax, ...), "&" перед именем - не взятие адреса (operators.html: & - сложение, как +); во всех CallBack_1...8.Inc и inc/CallBackForwarder.Inc строка 72 - WriteNum(Forwardto, 4)
         .WriteNum(&HE0FF      , 2)    ' jmp eax
         memcpy (ptrForwarder, .Pointer, 14)
     END WITH
@@ -48,7 +48,7 @@ $IFNDEF _CALLBACK_0
 
     Function MasterCallBack_0 (hFunction As Long) As Long
         DefInt hBind = hFunction
-        Bind hBind To FuncBind_0
+        Bind hBind To FuncBind_0 : hBind = hFunction ' inc2026: добавлено : hBind = hFunction после Bind: BIND записывает в hBind адрес FuncBind_0 (глава 11) и затирает hFunction из строки выше, а у FuncBind_0 тела нет; в CallBack_1...8.Inc порядок такой же - DefInt hBind, Bind, hBind = hFunction
         Result = CallFunc (hBind, hBind)
     End Function
 

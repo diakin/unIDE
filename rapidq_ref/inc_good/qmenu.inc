@@ -49,8 +49,8 @@ TYPE QMenu EXTENDS QOBJECT
                   .fMask = MIIM_ID
                   QMenu.retval = GetMenuItemInfo(lParam, wParam MOD &H10000, MF_BYCOMMAND, mii)
                   StatusBar.Panel(QMenu.Panel).Caption = QMenu.descp(.wID)
+              END WITH   ' inc2026: строки 52-53 переставлены: было END IF, затем END WITH - WITH mii открыт внутри ELSE (строка 48) и должен закрыться до END IF
               END IF
-              END WITH
           END IF
        END SUB
            
@@ -161,7 +161,7 @@ TYPE QMenu EXTENDS QOBJECT
             .wID = MenuItem.Command
             ' The text to place in the menu item.
             S = MenuItem.Caption
-            .dwItemData = = VARPTR(S)
+            .dwItemData = VARPTR(S)   ' inc2026: было '= =' - лишний знак равенства
             .cch = Len(S)
          END WITH
          WITH QMenu

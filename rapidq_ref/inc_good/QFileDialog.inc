@@ -152,7 +152,7 @@ TYPE QFILEDIALOG EXTENDS QOBJECT
      .OFN.hwndOwner = .Parent
      .OFN.hInstance = 0
      'file filter string, ends wtih 2 null chars
-     IF RIGHT$(.Filter, 2) <> pdfStrTerm$ THEN .Filter = .Filter + pdfStrTerm$
+     IF RIGHT$(.Filter, 2) <> fdStrTerm$ THEN .Filter = .Filter + fdStrTerm$ ' inc2026: было pdfStrTerm$ (нигде не объявлена, пустая строка), стало fdStrTerm$ (CONST в строке 100); в старой версии inc/old/QFileDialogDoc.inc константа называлась pdfStrTerm$, при переименовании эта строка осталась прежней
      .tmpFilter = REPLACESUBSTR$(.Filter, "|", CHR$(0)) 'set up for API delimiter
      .OFN.lpstrFilter = VARPTR(QFILEDIALOG.tmpFilter) 'use temp filter for conditioning
      .OFN.nFilterIndex = .FilterIndex
@@ -201,7 +201,7 @@ TYPE QFILEDIALOG EXTENDS QOBJECT
         MEMCPY(VARPTR(QFILEDIALOG.tmpFileName), .OFN.lpstrFile, .OFN.nMaxFile) 'get string
         StrLenth = INSTR(QFILEDIALOG.tmpFileName, fdStrTerm$)  'find null terminator
         .FileTitle = STRING$(.OFN.nMaxFileTitle, 32)    'allocate
-        MEMCPY(VARPTR(QFILEDIALOG.FileTitle), .OFN.lpstrFileTitle, .OFN.nMaxFile)
+        MEMCPY(VARPTR(QFILEDIALOG.FileTitle), .OFN.lpstrFileTitle, .OFN.nMaxFileTitle) ' inc2026: было .OFN.nMaxFile, стало .OFN.nMaxFileTitle: копируется буфер имени без пути (lpstrFileTitle), его размер nMaxFileTitle (строки 170-171, 203); nMaxFile - размер другого буфера (строка 169)
         .FileTitle = LEFT$(QFILEDIALOG.FileTitle, (INSTR(QFILEDIALOG.FileTitle, fdStrTerm$))-1)
     
       IF .MultiSelect THEN

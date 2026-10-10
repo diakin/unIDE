@@ -107,7 +107,7 @@ Function HiWord(Value As Long) As Integer
 End Function
 
 Function MakeLong(a As Word, b As Word) As Long
-   Result = (a or b) shl 16
+   Result = a or (b shl 16) ' inc2026: было (a or b) shl 16 - младшее слово тоже сдвигалось и смешивалось со старшим; MAKELONG Windows: a - младшее слово, b - старшее (так вызывается в QAnimate.inc: MakeLong(.StartFrame,.StopFrame) для ACM_PLAY)
 End Function
 
 Function SysErrorMessage(Error As Integer) As String

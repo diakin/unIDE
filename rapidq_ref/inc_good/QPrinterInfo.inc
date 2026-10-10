@@ -2,16 +2,16 @@
 ' Type Objet
 ' Classe QPrinterInfo version 1.0
 '=======================================================
-CONST PI_HORZSIZE=4           '  Horizontal size in millimeters
-CONST PI_VERTSIZE=6           '  Vertical size in millimeters
-CONST PI_HORZRES=8            '  Horizontal width in pixels
-CONST PI_VERTRES=10           '  Vertical width in pixels
-CONST PI_LOGPIXELSX=88        '  Logical pixels/inch in X
-CONST PI_LOGPIXELSY=90        '  Logical pixels/inch in Y
-CONST PI_PHYSICALWIDTH=110 '  Physical Width in device units
-CONST PI_PHYSICALHEIGHT=111 '  Physical Height in device units
-CONST PI_PHYSICALOFFSETX=112 '  Physical Printable Area x margin
-CONST PI_PHYSICALOFFSETY=113 '  Physical Printable Area y margin
+const PI_HORZSIZE=4           '  Horizontal size in millimeters
+const PI_VERTSIZE=6           '  Vertical size in millimeters
+const PI_HORZRES=8            '  Horizontal width in pixels
+const PI_VERTRES=10           '  Vertical width in pixels
+const PI_LOGPIXELSX=88        '  Logical pixels/inch in X
+const PI_LOGPIXELSY=90        '  Logical pixels/inch in Y
+const PI_PHYSICALWIDTH=110 '  Physical Width in device units
+const PI_PHYSICALHEIGHT=111 '  Physical Height in device units
+const PI_PHYSICALOFFSETX=112 '  Physical Printable Area x margin
+const PI_PHYSICALOFFSETY=113 '  Physical Printable Area y margin
       
 DECLARE FUNCTION PiGetDeviceCaps LIB "gdi32" ALIAS "GetDeviceCaps" (hdc AS LONG,nIndex AS LONG) AS LONG
 DECLARE FUNCTION PiGetDC LIB "user32" ALIAS "GetDC" (ByVal hwnd AS LONG) AS LONG
@@ -155,3 +155,4 @@ Type QPrinterInfo Extends QObject
     result=PiGetDeviceCaps(printer.handle,PI_PHYSICALOFFSETY)
   End Function
 End Type
+      
