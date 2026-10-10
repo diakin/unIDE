@@ -38,25 +38,6 @@ DECLARE FUNCTION GetCdRect LIB "user32" ALIAS "GetWindowRect" (hwnd AS LONG, lpR
 DECLARE FUNCTION MoveCd LIB "user32" ALIAS "MoveWindow" (hwnd AS LONG,x AS LONG,y AS LONG,nWidth AS LONG,nHeight AS LONG,bRepaint AS LONG) AS LONG
 DECLARE FUNCTION SetCdText LIB "user32" ALIAS "SetWindowTextA" (hWnd AS LONG,ByRef lpString AS STRING) AS LONG
 
-' inc2026: процедура окна диалога вынесена из TYPE в обычную FUNCTION: Windows вызывает её
-' как функцию с 4 параметрами, а у метода TYPE есть скрытый объект (This); заголовок
-' передаётся через QColorDialog_HookCaption (задаётся в Execute перед ChooseColorDlg)
-DIM QColorDialog_HookCaption AS STRING
-
-FUNCTION QColorDialog_HookProc(hWnd AS LONG, uMsg AS LONG, wParam AS LONG, lParam AS LONG) AS LONG
-  DIM R AS QRECT
-  IF uMsg=WM_INITDIALOG THEN
-    GetCdRect(hWnd,R)
-    MoveCd(hWnd,((Screen.Width-(R.Right-R.Left))/2),((Screen.Height-(R.Bottom-R.Top))/2),(R.Right-R.Left),(R.Bottom-R.Top),0)
-    IF LEN(QColorDialog_HookCaption) THEN
-      SetCdText(hWnd,QColorDialog_HookCaption)
-    END IF
-    Result=True
-  ELSE
-    Result=False
-  END IF
-END FUNCTION
-
 TYPE QCOLORDIALOG EXTENDS QOBJECT
   PRIVATE:
     CC AS TCHOOSECOLOR    
@@ -68,7 +49,20 @@ TYPE QCOLORDIALOG EXTENDS QOBJECT
         
     WITH QCOLORDIALOG
         
-      ' inc2026: метод HookProc заменён функцией QColorDialog_HookProc выше TYPE
+      Function HookProc(hWnd AS LONG, uMsg AS LONG, wParam AS LONG, lParam AS LONG) AS LONG
+        dim R as QRECT
+
+        if uMsg=WM_INITDIALOG then  ' all initializing is done inside 
+          GetCdRect(hWnd,R)    ' this if-then statement
+          MoveCd(hWnd,((Screen.Width-(R.Right-R.Left))/2),((Screen.Height-(R.Bottom-R.Top))/2),(R.Right-R.Left),(R.Bottom-R.Top),0) 
+          if LEN(.Caption) then
+            SetCdText(hWnd,.Caption)
+          end if
+          Result=true
+        else
+          Result=false
+        end if
+      End Function
 
       '==========================================
       ' Mйthode affichage boite dialogue couleur
@@ -90,8 +84,7 @@ TYPE QCOLORDIALOG EXTENDS QOBJECT
         case cdNoFullOpen
           .CC.Flags =.CC.Flags OR CC_PREVENTFULLOPEN
         End Select
-        QColorDialog_HookCaption=.Caption ' inc2026: заголовок для QColorDialog_HookProc
-        if .Caption<>"" then .CC.lpfnHook=CODEPTR(QColorDialog_HookProc) ' inc2026: было CODEPTR(QCOLORDIALOG.HookProc) - адрес метода TYPE, Windows вызывает его без объекта
+        if .Caption<>"" then .CC.lpfnHook=CODEPTR(QCOLORDIALOG.HookProc)
         if ChooseColorDlg(.CC) <> 0 then
           for i=1 to 16
           .Colors(i)=.CC.CustColors(i)
