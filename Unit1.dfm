@@ -223,6 +223,7 @@ object Form1: TForm1
       Font.Size = 10
       Align = alTop
       OwnerDraw = True
+      Style = tsButtons
       OnMouseDown = TabsMouseDown
       PopupMenu = FTabsPopup
     end
