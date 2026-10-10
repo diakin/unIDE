@@ -449,6 +449,7 @@ type
     FVars: TStringList;           // 'SCOPE|NAME' -> TRqVar
     FProcs: TStringList;          // NAME -> TRqProc
     FTypes: TStringList;          // имена TYPE
+    FTypeDefs: TStringList;       // ИМЯ=файл(строка) первого объявления TYPE
     FLabels: TStringList;
     // Где метка: "ПРОЦЕДУРА|МЕТКА=файл(строка)" (процедура '' - модуль) -
     // проверка GOTO/GOSUB, CheckLabel
@@ -1273,6 +1274,7 @@ begin
   FProcs := TStringList.Create;
   FProcs.Sorted := True;
   FTypes := TStringList.Create;
+  FTypeDefs := TStringList.Create;
   FTypes.Sorted := True;
   FTypes.Duplicates := dupIgnore;
   FLabels := TStringList.Create;
@@ -1355,6 +1357,7 @@ begin
   FVars.Free;
   FProcs.Free;
   FTypes.Free;
+  FTypeDefs.Free;
   FLabels.Free;
   FLabelPlaces.Free;
   FGosubSites.Free;
@@ -5548,12 +5551,28 @@ procedure TRqFbConv.ProcessTypeHeader(var AToks: TToks; AFrom, ATo: Integer);
 var
   NameIdx, ExtIdx, BaseIdx, LineIdx, Found: Integer;
   Info: TRqTypeInfo;
-  Block: string;
+  Block, Here: string;
 begin
   NameIdx := NextSig(AToks, AFrom + 1, ATo);
   if (NameIdx < 0) or (AToks[NameIdx].Kind <> tkIdent) then
     Exit;
   FTypes.Add(AToks[NameIdx].Up);
+  // TYPE с тем же именем второй раз (rapidq.inc, строка 1066, и
+  // rapidq2.inc, строка 6372: TYPE QDebug с разными полями при
+  // $INCLUDE "RAPIDQ.INC"): у типа одно описание, второе заменяет первое,
+  // и методы первого теряют свои поля; во FreeBASIC два Type с одним
+  // именем не собираются. Место первого объявления - в сообщении.
+  Here := FCurFile + '(' + IntToStr(FCurLine) + ')';
+  if FPass = 1 then
+  begin
+    if FTypeDefs.IndexOfName(AToks[NameIdx].Up) < 0 then
+      FTypeDefs.Add(AToks[NameIdx].Up + '=' + Here);
+  end
+  else if (FTypeDefs.IndexOfName(AToks[NameIdx].Up) >= 0) and
+          (FTypeDefs.Values[AToks[NameIdx].Up] <> Here) then
+    Error('TYPE ' + AToks[NameIdx].Text + ' already defined - уже объявлен в ' +
+          FTypeDefs.Values[AToks[NameIdx].Up] +
+          '; перевод берёт последнее объявление, у методов первого его поля не найдутся');
   ExtIdx := NextSig(AToks, NameIdx + 1, ATo);
   BaseIdx := NextSig(AToks, ExtIdx + 1, ATo);
   if IsOp(AToks, ExtIdx, '<') then
