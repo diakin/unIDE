@@ -3727,6 +3727,42 @@ procedure TRqFbConv.ProcessExpr(var AToks: TToks; AFrom, ATo: Integer);
 var
   TokIdx, PrevIdx, OpenIdx, CloseIdx: Integer;
   LibProc: TRqProc;
+
+  // @ стоит в аргументе вызова процедуры DLL: Имя(..., @x) или оператор
+  // Имя ..., @x (имя - перед AFrom)
+  function AtInLibCall(AAtIdx: Integer): Boolean;
+  var
+    ScanIdx, Depth, NameIdx: Integer;
+    CallProc: TRqProc;
+  begin
+    Result := False;
+    Depth := 0;
+    NameIdx := -1;
+    ScanIdx := AAtIdx - 1;
+    while ScanIdx >= AFrom do
+    begin
+      if IsOp(AToks, ScanIdx, ')') then
+        Inc(Depth)
+      else if IsOp(AToks, ScanIdx, '(') then
+      begin
+        if Depth = 0 then
+        begin
+          NameIdx := PrevSig(AToks, ScanIdx - 1);
+          Break;
+        end;
+        Dec(Depth);
+      end;
+      Dec(ScanIdx);
+    end;
+    if (ScanIdx < AFrom) and (Depth = 0) then
+      NameIdx := PrevSig(AToks, AFrom - 1);
+    if (NameIdx < 0) or (AToks[NameIdx].Kind <> tkIdent) or
+       IsOp(AToks, PrevSig(AToks, NameIdx - 1), '.') then
+      Exit;
+    CallProc := FindProc(AToks[NameIdx].Up);
+    Result := (CallProc <> nil) and (CallProc.LibKinds <> '');
+  end;
+
 begin
   // Унарный "+" (после знака, "(" или "," и в начале выражения) убирается:
   // у числа он ничего не меняет, у строки FreeBASIC его не принимает
@@ -3760,8 +3796,11 @@ begin
              IsOp(AToks, PrevIdx, '(') or (AToks[PrevIdx].Kind = tkIdent) then
           begin
             AToks[TokIdx].OutText := '';
-            Warn('передача по ссылке через @ при вызове не поддержана - ' +
-                 'параметр получит копию (объявите его BYREF)');
+            // Аргумент процедуры DLL: что передать, решает WrapLibArgs по
+            // параметру (число ByVal - адрес переменной)
+            if not AtInLibCall(TokIdx) then
+              Warn('передача по ссылке через @ при вызове не поддержана - ' +
+                   'параметр получит копию (объявите его BYREF)');
           end;
         end;
     end;
@@ -3852,7 +3891,21 @@ begin
     ParamKind := AProc.LibKinds[ArgNo];
     FirstIdx := NextSig(AToks, ArgStart, ArgEnd);
     LastIdx := PrevSig(AToks, ArgEnd);
-    if (FirstIdx >= 0) and (LastIdx >= FirstIdx) and
+    if (FirstIdx >= 0) and (LastIdx > FirstIdx) and IsOp(AToks, FirstIdx, '@') then
+    begin
+      // @x - передача по ссылке (документация RapidQ, chapter3.html:
+      // StrCat(@A$, ...)). Процедура DLL с параметром-числом ByVal
+      // (адрес: rapidq2.inc, OpenProcessToken(..., @Thndl),
+      // AdjustTokenPrivileges(..., @pdword)) получает адрес переменной.
+      // Параметр ByRef, строка, запись - переменная как есть: и так по
+      // ссылке.
+      if (ParamKind = 'N') and not ExprIsString(AToks, FirstIdx + 1, LastIdx) then
+      begin
+        AToks[FirstIdx].OutText := 'Cast(Integer, @';
+        AToks[LastIdx].Post := AToks[LastIdx].Post + ')';
+      end;
+    end
+    else if (FirstIdx >= 0) and (LastIdx >= FirstIdx) and
        not IsWord(AToks, FirstIdx, 'BYVAL') then
     begin
       // Запись (TYPE без EXTENDS) в параметр-число: адрес записи, как в
@@ -5673,7 +5726,10 @@ begin
     Exit;
   end;
   ProcRec := FindProc(AToks[NameIdx].Up);
-  if ProcRec <> nil then
+  // Обращение - только к процедуре с телом. Без тела BIND - лишь шаблон
+  // для CALLFUNC (rapidq2.inc: BIND hBind TO FuncBind_4), оператор
+  // убирается, и пустое тело (MissingBodies) ей не нужно
+  if (ProcRec <> nil) and ProcRec.HasBody then
     ProcRec.Used := True;
   if ProcRec = nil then
   begin
