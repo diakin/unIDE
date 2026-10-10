@@ -1115,8 +1115,8 @@ SUB io2RndInter (io$, rndf$, LostP)
   dim io2RndFile2 as QfileStream
   dim io2Rndtmp as QfileStream
   dim io2RndList as QSTRINGLIST
-  dim ioNumPnt as int
-  dim i0 as int
+  dim ioNumPnt as integer
+  dim i0 as integer
 
   dim doevnt
   doevnt=-99
@@ -1204,8 +1204,8 @@ SUB io2RndInter1 (io$, rndf$, LostP)
 
 
   dim io2RndList as QSTRINGLIST
-  dim ioNumPnt as int
-  dim i0 as int
+  dim ioNumPnt as integer
+  dim i0 as integer
   dim pnt as single
   needtoWrite=0
   dim doevnt

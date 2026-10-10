@@ -48,24 +48,24 @@ dim ZDiskr as integer   'число штрихов датчика дискрет
 '!!!------------ число точек для расчета масштаба графика исходя из перемещения 30 град---------------
 
 dim NumPnt as integer   'основное число точек для показа на графике
-dim Numbrd as int       'запас по краям (число добавочных точек) для фильтрации
+dim Numbrd as integer       'запас по краям (число добавочных точек) для фильтрации
 dim NumPntRs as integer 'число точек  передискретизированное к степени 2 для спектра
 
 '----------------- число точек  для результатов измерений ----------
 dim NumPnt1 as integer   'основное число точек для показа на графике
-dim Numbrd1 as int       'запас по краям (число добавочных точек) для фильтрации
+dim Numbrd1 as integer       'запас по краям (число добавочных точек) для фильтрации
 dim NumPntRs1 as integer 'число точек  передискретизированное к степени 2 для спектра
 
 dim NumPnt2 as integer   'основное число точек для показа на графике
-dim Numbrd2 as int       'запас по краям (число добавочных точек) для фильтрации
+dim Numbrd2 as integer       'запас по краям (число добавочных точек) для фильтрации
 dim NumPntRs2 as integer 'число точек  передискретизированное к степени 2 для спектра
 
 dim NumPnt3 as integer   'основное число точек для показа на графике
-dim Numbrd3 as int       'запас по краям (число добавочных точек) для фильтрации
+dim Numbrd3 as integer       'запас по краям (число добавочных точек) для фильтрации
 dim NumPntRs3 as integer 'число точек  передискретизированное к степени 2 для спектра
 
 dim NumPnt4 as integer   'основное число точек для показа на графике
-dim Numbrd4 as int       'запас по краям (число добавочных точек) для фильтрации
+dim Numbrd4 as integer       'запас по краям (число добавочных точек) для фильтрации
 dim NumPntRs4 as integer 'число точек  передискретизированное к степени 2 для спектра
 
 '------------------------------------------------------------------------'
@@ -81,7 +81,7 @@ dim NumPntF as integer '!!! расширенное число точек    NumB
 DEFBYTE prohod
 'DeltaFi=0
 
-dim NumGarm as int ' число гармоник на графике  '
+dim NumGarm as integer ' число гармоник на графике  '
 
 dim NPnt as integer                  
 
@@ -89,16 +89,16 @@ dim NPnt as integer
 dim StToc as integer 'степень точности
 dim kpnt#  as double
 
-dim InputH as int '    ;// 16 бит 2 байта  номер входа датчика входного звена
-dim InputL as int'' ;// 16 бит 2 байта  номер входа датчика выходного звена
+dim InputH as integer '    ;// 16 бит 2 байта  номер входа датчика входного звена
+dim InputL as integer'' ;// 16 бит 2 байта  номер входа датчика выходного звена
 dim Peredat as single '; // передаточное отношение
 dim TipPeredat as single '; // передаточное отношение
-dim Nfltr as int ';//- число точек уcреднения (фильтрации)
-dim PuskModeint as int   '; //- режим пуска (ручной, по метке, по событию)
-dim MoveModeint as int   '; //- режим движения
-dim NumCkl as int ' - число циклов измерения (устаревш.)
-dim TipDatIn as int    ' число фаз датчика входного звена
-dim TipDatOut as int ' число фаз датчика выходного звена
+dim Nfltr as integer ';//- число точек уcреднения (фильтрации)
+dim PuskModeint as integer   '; //- режим пуска (ручной, по метке, по событию)
+dim MoveModeint as integer   '; //- режим движения
+dim NumCkl as integer ' - число циклов измерения (устаревш.)
+dim TipDatIn as integer    ' число фаз датчика входного звена
+dim TipDatOut as integer ' число фаз датчика выходного звена
 dim Delz as integer ' коэффициент деления '
 
 defstr RazmPogr=" угл.сек "

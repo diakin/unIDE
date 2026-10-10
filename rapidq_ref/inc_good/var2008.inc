@@ -45,7 +45,7 @@ dim ZDiskr as integer ' число штрихов датчика дискрет�
 dim ZDiskrVozm as integer ' максимально возможное число отсчетов исходя из числа штрихов датчика и передаточного отношения
 
 dim NumPnt as integer    'основное число точек для измерения
-dim Numbrd as int   'запас по краям (число добавочных точек) для фильтрации
+dim Numbrd as integer   'запас по краям (число добавочных точек) для фильтрации
 dim NumPntRs as integer  'число точек  передискретизированное к степени 2 для спектра
 
 Dim FrMax as single ' максимальная частота вращения звена в кинематической схеме для фильтрации ВЧ шума
@@ -69,28 +69,28 @@ dim NPnt as integer
 dim NPr as integer   ' Np=5*imax - 5 точек на макс оборотную в кинематике.
 '------------------------------------------------------------------------'
 
-dim NumGarm as int ' число гармоник на графике  '
+dim NumGarm as integer ' число гармоник на графике  '
 
 
 dim StToc as integer 'степень точности
 
 dim kpnt#  as double
 
-dim InputH as int '      ;// 16 бит 2 байта  номер входа датчика входного звена
-dim InputL as int''    ;// 16 бит 2 байта  номер входа датчика выходного звена
+dim InputH as integer '      ;// 16 бит 2 байта  номер входа датчика входного звена
+dim InputL as integer''    ;// 16 бит 2 байта  номер входа датчика выходного звена
 
 dim Peredat as single  ';  // передаточное отношение
 dim TipPeredat as single  ';  // передаточное отношение
 
-dim Nfltr as int   '; //  - число точек уcреднения (фильтрации)
+dim Nfltr as integer   '; //  - число точек уcреднения (фильтрации)
 
-dim PuskModeint as int   '; //- режим пуска (ручной, по метке, по событию)
-dim MoveModeint as int   '; //- режим движения
-dim NumCkl as int ' - число циклов измерения (устаревш.)
+dim PuskModeint as integer   '; //- режим пуска (ручной, по метке, по событию)
+dim MoveModeint as integer   '; //- режим движения
+dim NumCkl as integer ' - число циклов измерения (устаревш.)
 
 
-dim TipDatIn as int    ' число фаз датчика входного звена
-dim TipDatOut as int ' число фаз датчика выходного звена
+dim TipDatIn as integer    ' число фаз датчика входного звена
+dim TipDatOut as integer ' число фаз датчика выходного звена
 dim Delz as integer ' коэффициент деления '
 
 defstr RazmPogr=" угл.сек "

@@ -7,7 +7,7 @@ $DEFINE __RQINC
 $DEFINE __QBCOLOR
 $DEFINE space space$
 
-$define  int integer 
+'$define  int integer   ' inc2026: убрано - INT(x) превращался в INTEGER(x), а INTEGER(x) в RapidQ возвращает x (INT(2.7) -> 2.7, тест 2026-10-10); объявления "as int" в inc_good и в программах rapidq_ref заменены на "as integer"
 $define  float single
 
 dim vbNullString as string

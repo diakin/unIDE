@@ -136,7 +136,7 @@ DatMin!=ARMin!
 END SUB
 
 '**********************************************************************
-sub ArrAbsExtrN (Dat!() as single, byref _AbsDatMax!, N as int) 
+sub ArrAbsExtrN (Dat!() as single, byref _AbsDatMax!, N as integer) 
 defint  p
 defint MaxEl,MinEl
 

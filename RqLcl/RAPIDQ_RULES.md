@@ -88,7 +88,7 @@ Function RqStr Overload (ByVal Value As Double) As String   ' число -> ""
 
 - `$DEFINE` регистр не различает: `$DEFINE TRANSPARENT 1`, затем `PRINT TRANSPARENT; Transparent; transparent` → `1 1 1` (tofb/tests/research/DefCase1.bas).
 - Внутри `TYPE … EXTENDS QOBJECT` с тем же `$DEFINE TRANSPARENT 1` поле `Transparent AS INTEGER` компилируется, `DefObj.Transparent = 7` → `PRINT DefObj.Transparent` даёт `7` (DefCase2.bas): имя члена не заменяется. Так в rapidq2.inc (QFormEx, QMenu: поле Transparent, в CONSTRUCTOR — `Transparent = True`). Перевод: внутри TYPE не заменяются объявление поля и имена, уже ставшие членами этого TYPE; где ещё RapidQ не заменяет — не проверялось.
-- `INTEGER(x)` возвращает x без изменений: `INTEGER(2.7)` → 2.7, `INTEGER(-2.7)` → -2.7, `INTEGER(2.5)` → 2.5, `INTEGER(3.5)` → 3.5; `INT(2.7)` → 2, `INT(-2.7)` → -2 (без rapidq.inc; IntCast.bas). Перевод: `INTEGER(x)` → `(x)`. В rapidq.inc есть `$define int integer` — тогда `INT(2.7)` становится `INTEGER(2.7)`; что при этом печатает RapidQ — проверяет IntCast2.bas.
+- `INTEGER(x)` возвращает x без изменений: `INTEGER(2.7)` → 2.7, `INTEGER(-2.7)` → -2.7, `INTEGER(2.5)` → 2.5, `INTEGER(3.5)` → 3.5; `INT(2.7)` → 2, `INT(-2.7)` → -2 (без rapidq.inc; IntCast.bas). Перевод: `INTEGER(x)` → `(x)`. С `$INCLUDE "RAPIDQ.INC"`, где был `$define int integer`, `INT(2.7)` → 2.7, `INT(-2.7)` → -2.7 (IntCast2.bas, тест 2026-10-10): $define превращал INT в INTEGER. Этот $define в rapidq.inc, rapidq2.inc и их копиях в inc_good закомментирован, `as int` в inc_good и программах rapidq_ref заменено на `as integer` (по словам пользователя, $define был только для краткой записи `DIM x AS int`).
 
 ## Режимы: Compat и Smart
 

@@ -7,7 +7,7 @@ $DEFINE __RQINC
 $DEFINE __QBCOLOR
 $DEFINE space space$
 
-$define  int integer	
+'$define  int integer   ' inc2026: убрано - INT(x) превращалс€ в INTEGER(x), а INTEGER(x) в RapidQ возвращает x (INT(2.7) -> 2.7, тест 2026-10-10); объ€влени€ "as int" в inc_good и в программах rapidq_ref заменены на "as integer"
 
 '!!! ------------------------- Useful variables -------------------------
 CONST False = 0

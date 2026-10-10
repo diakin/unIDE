@@ -978,8 +978,8 @@ SUB io2RndInter (io$, rndf$, LostP)
 dim io2RndFile2 as QfileStream
 dim io2Rndtmp as QfileStream
 dim io2RndList as QSTRINGLIST 
-dim ioNumPnt as int
-dim i0 as int
+dim ioNumPnt as integer
+dim i0 as integer
 
 defsng pnt
 if fileexists (io$)=0 then showmessage ("io2RndInter File not found "+io$):exit sub
@@ -1062,8 +1062,8 @@ dim io2Rndtxt as QfileStream
 
 
 dim io2RndList as QSTRINGLIST 
-dim ioNumPnt as int
-dim i0 as int
+dim ioNumPnt as integer
+dim i0 as integer
 dim pnt as single
 needtoWrite=0
 

@@ -245,13 +245,13 @@ dectoHex=signn$+ HexVal$
 END function
 
 '-- **************************************************************************'
-function AddChrBefore(NumStr as string , Dlina as int, chr as string) as string
+function AddChrBefore(NumStr as string , Dlina as integer, chr as string) as string
 'Andrew Shelkovenko dec 2003
 'A function that pre-padd string with chr to required Length 
 'print AddChrBefore("-387.35" , 10, "=")  
 '==-0387.35
 
-diM kolvo as int
+diM kolvo as integer
 kolvo =Dlina-Len(NumStr)
 if   kolvo<0 theN AddChrBefore="String too long"
 if   kolvo=0 theN AddChrBefore=NumStr: exit function
@@ -260,14 +260,14 @@ end function
 
 
 '-- **************************************************************************'
-function Add0Before(NumStr as string , Dlina as int) as string
+function Add0Before(NumStr as string , Dlina as integer) as string
 'Andrew Shelkovenko dec 2003
 'A function that pre-padd string with 0's to required Length 
 'print Add0Before("-387.35" , 8)  
 '-0387.35
 
 
-diM kolvo as int
+diM kolvo as integer
 kolvo =Dlina-Len(NumStr)
 if   kolvo<0 theN Add0Before="String too long"
 if   kolvo=0 theN Add0Before=NumStr: exit function
