@@ -6859,8 +6859,10 @@ var
         end;
         if FTypeBody <> 2 then
           Continue;
-        // CONSTRUCTOR: член без имени объекта
-        if IsLocalName(Up) or InList(FTypes, Up) then
+        // CONSTRUCTOR: член без имени объекта. Имя типа (TYPE Grid в
+        // программе) пропускается, только если у компонента нет такого
+        // члена: поле Grid AS QSTRINGGRID важнее
+        if IsLocalName(Up) or (InList(FTypes, Up) and (FCurType.Kind(Up) = #0)) then
           Continue;
         StmtStart := (RefIdx = FirstIdx) or IsWord(Toks, PrevIdx, 'THEN') or
                      IsWord(Toks, PrevIdx, 'ELSE');
