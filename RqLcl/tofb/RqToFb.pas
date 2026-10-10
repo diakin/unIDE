@@ -576,6 +576,7 @@ type
     function IsOp(const AToks: TToks; AIdx: Integer; const AOp: string): Boolean;
     function IsWord(const AToks: TToks; AIdx: Integer; const AWord: string): Boolean;
     function ApplyDefines(const AText: string): string;
+    function DefineKeptInType(const AToks: TToks; AIdx, AFirst: Integer): Boolean;
     function RangeText(const AToks: TToks; AFrom, ATo: Integer): string;
     function RawText(const AToks: TToks; AFrom, ATo: Integer): string;
     procedure ClearRange(var AToks: TToks; AFrom, ATo: Integer);
@@ -1853,6 +1854,36 @@ begin
 end;
 
 // $DEFINE: слово заменяется определением (один раз, без повторной замены)
+// Внутри TYPE имя члена $DEFINE не заменяет. Тест пользователя в RapidQ
+// 2026-10-10 (tests/research/DefCase1.bas, DefCase2.bas): $DEFINE регистр
+// не различает (TRANSPARENT, Transparent, transparent - все 1), но с
+// $DEFINE TRANSPARENT 1 поле "Transparent AS INTEGER" в TYPE ... EXTENDS
+// компилируется и DefObj.Transparent = 7 печатает 7. Так в rapidq2.inc:
+// $DEFINE TRANSPARENT 1, поле Transparent у QFormEx и у QMenu, в
+// CONSTRUCTOR - "Transparent = True".
+// Не заменяется: объявление поля (первое слово строки, за ним AS или "(")
+// и имя, которое уже есть среди членов этого TYPE. Вне TYPE и в других
+// местах TYPE - как раньше; как RapidQ поступает там, не проверялось.
+function TRqFbConv.DefineKeptInType(const AToks: TToks; AIdx, AFirst: Integer): Boolean;
+var
+  NextIdx: Integer;
+begin
+  Result := False;
+  if (FCurType = nil) and not FInType then
+    Exit;
+  if AIdx = AFirst then
+  begin
+    NextIdx := NextSig(AToks, AIdx + 1, High(AToks));
+    if IsWord(AToks, NextIdx, 'AS') or IsOp(AToks, NextIdx, '(') then
+    begin
+      Result := True;
+      Exit;
+    end;
+  end;
+  if (FCurType <> nil) and (FCurType.Kind(AToks[AIdx].Up) <> #0) then
+    Result := True;
+end;
+
 function TRqFbConv.ApplyDefines(const AText: string): string;
 var
   Toks: TToks;
@@ -1877,7 +1908,7 @@ begin
             (TokIdx > FirstIdx)) then
     begin
       PrevIdx := PrevSig(Toks, TokIdx - 1);
-      if not IsOp(Toks, PrevIdx, '.') then
+      if not IsOp(Toks, PrevIdx, '.') and not DefineKeptInType(Toks, TokIdx, FirstIdx) then
       begin
         DefIdx := FDefines.IndexOf(Toks[TokIdx].Up);
         if DefIdx >= 0 then
@@ -4317,6 +4348,16 @@ begin
   // MEMCPY(Запись, ...) - адрес записи (см. MemRecordArgs)
   if (FFuncMap.IndexOf(Up) >= 0) and IsOp(AToks, NextIdx, '(') then
     MemRecordArgs(AToks, AIdx, ATo);
+  // INTEGER(x) - значение x без изменений. Тест пользователя в RapidQ
+  // 2026-10-10 (tests/research/IntCast.bas): INTEGER(2.7) -> 2.7,
+  // INTEGER(-2.7) -> -2.7, INTEGER(2.5) -> 2.5. В rapidq2.inc:
+  // integer((a - b) / 2), integer(powr.BatteryFlag)
+  if (Up = 'INTEGER') and (FindProc(Up) = nil) and IsOp(AToks, NextIdx, '(') and
+     not IsWord(AToks, PrevSig(AToks, AIdx - 1), 'AS') then
+  begin
+    AToks[AIdx].OutText := '';
+    Exit;
+  end;
   // ABS(Запись) - адрес записи, LONG: rapidq2.inc - "$DEFINE UDTPTR ABS" с
   // комментарием "Return the pointer of user defined type in a long value"
   // (QPageSetup: PSD.hDevMode = UDTPTR(DevM)). Только 32 бит
