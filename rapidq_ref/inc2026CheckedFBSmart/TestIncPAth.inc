@@ -1,1 +1,0 @@
-print "inc dir   C:\BAS\RAPIDQ\inc\TestIncPAth.inc" 
