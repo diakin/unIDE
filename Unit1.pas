@@ -7234,14 +7234,15 @@ begin
   // Он и так активен - переключать нечего: ActivateWindow на свою же
   // вкладку заново залил бы в редактор текст из записи окна (а она
   // обновляется только при уходе с вкладки) и перестроил инспектор.
-  for Idx := 0 to WindowsItemCount - 1 do
-    if FWindows[Idx].Used and
-       (CompareText(FWindows[Idx].FileName, FN) = 0) then
-    begin
-      if Idx <> FWindowsIndex then
-        ActivateWindow(Idx);
-      Exit;
-    end;
+  // Сравнение - IndexOfWindowByFile (полный путь, короткое имя 8.3), а не
+  // строк: тот же файл мог быть открыт другой записью пути
+  Idx := IndexOfWindowByFile(FN);
+  if Idx >= 0 then
+  begin
+    if Idx <> FWindowsIndex then
+      ActivateWindow(Idx);
+    Exit;
+  end;
 
   Idx := FindFreeWindow;
   if Idx < 0 then
@@ -13122,8 +13123,15 @@ begin
 
       // Файла по записанному пути может не быть (папку перенесли) -
       // пробуем найти его рядом с программой по хвосту пути
-      Src := PrjPathFromStore(PrjDir, StripLeadingNumber(Raw));
+      // Прямые косые - обратными (D:/папка/файл.inc записан, когда файл
+      // открывали из сообщения компилятора, до правки OpenNamedFile)
+      Src := StringReplace(PrjPathFromStore(PrjDir, StripLeadingNumber(Raw)),
+                           '/', '\', [rfReplaceAll]);
       Path := ResolveFileName(Src);
+      // Тот же файл уже в списке другой записью пути - второй раз не
+      // открываем (слот остаётся пустым, его вкладка и закладки не грузятся)
+      if IndexOfWindowByFile(Path) >= 0 then
+        Continue;
 
       if CompareText(Path, Src) <> 0 then
       begin
