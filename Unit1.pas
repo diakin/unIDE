@@ -60160,8 +60160,16 @@ begin
       end;
     end;
 
+    // Вложенность строк сдвинуть - до ApplyWidthEdit: он гасит снимок.
+    // Без этого правка, чьё EN_CHANGE пришло внутри сообщения (вставка
+    // EM_REPLACESEL - Enter, Paste), оставляла FLineDepth несдвинутой, и
+    // направляющие ниже правки до пересборки карты рисовались по чужим
+    // строкам.
     if not EditHandled then
+    begin
+      ShiftDepthForEdit;
       ApplyWidthEdit; // текст другой - кэш ширин поправить
+    end;
 
     if RichEdit1.Modified then
     begin
