@@ -11,6 +11,7 @@ uses
   DsgPalette,     // окно палитры компонентов
   DsgForeign,     // сторонние компоненты палитры (пакеты, установленные в Delphi)
   ClrScheme,      // цветовая схема подсветки (.clr) - TClrScheme
+  RqDeclFind,     // объявления в исходниках RapidQ - панель объявления
   UiTheme,        // темы своих элементов: Light / Dark / Custom, цвета ролей
   UiScroll,       // полоса прокрутки, которую рисует программа
   UiButton,       // кнопка, которую рисует программа (вместо TButton)
@@ -1487,6 +1488,14 @@ type
     // В панели - начало блока по метке направляющей (GuideMarkClick), а не
     // объявление: своя подсказка
     FDeclIsBlock: Boolean;
+    // Подпись панели для "не найдено", когда она своя (RapidQ); '' - общая
+    FDeclNoneText: string;
+    // RapidQ: разобранные файлы с диска и список файлов поиска
+    // (RqDeclFileList) - для какой вкладки и главного .bas, когда собран
+    FRqDeclCache: TRqDeclCache;
+    FRqDeclFiles: TStringList;
+    FRqDeclFilesKey: string;
+    FRqDeclFilesTick: Cardinal;
     // Метки направляющих у краёв окна - с последней отрисовки
     // (HighlightVisibleText); щелчок по метке - GuideMarkClick
     FGuideMarks: array of TGuideMark;
@@ -2653,6 +2662,10 @@ type
     procedure BuildDeclPanel;
     procedure SubLabelShow(const AName: string);
     procedure DeclPanelUpdate;
+    function  DeclRqMode: Boolean;
+    procedure DeclPanelUpdateRq;
+    procedure RqDeclFileList(AFiles: TStrings);
+    function  RqDeclLoadLines(const AFile: string; ALines: TStrings): Boolean;
     function  GuideMarkAt(AX, AY: Integer): Integer;
     procedure GuideMarkClick(AMarkIdx: Integer);
     procedure DeclPanelShow;
@@ -19738,6 +19751,8 @@ begin
   ArdFreeAll;
   FreeAndNil(FEnvOverrides);
   CiFreeAll;
+  FreeAndNil(FRqDeclCache);  // панель объявления RapidQ
+  FreeAndNil(FRqDeclFiles);
   RqHelpCloseAll;   // окна справки CHM - до выхода программы
   // Возвращаем старую процедуру на место. Если FormShow не отработал,
   // сабклассинга не было и присваивать nil нельзя.
@@ -40085,8 +40100,11 @@ begin
   case FDeclMode of
     1:
     begin
-      S := FDeclWord + ': объявление не найдено ни в этом файле, ни в ' +
-      'модулях проекта из uses';
+      if FDeclNoneText <> '' then
+        S := FDeclNoneText
+      else
+        S := FDeclWord + ': объявление не найдено ни в этом файле, ни в ' +
+        'модулях проекта из uses';
  FDeclPanel.Color := UiColor('Decl.NoneBG');
       FDeclPanel.Hint := '';
     end;
@@ -40214,6 +40232,14 @@ begin
   FDeclIsBlock := False;
   FDeclFile := FCurrentFileName;
   FDeclOtherFile := '';
+  FDeclNoneText := '';
+
+  // Исходник RapidQ - свой разбор: DIM, SUB, TYPE, $INCLUDE-файлы
+  if DeclRqMode then
+  begin
+    DeclPanelUpdateRq;
+    Exit;
+  end;
 
   Ext := LowerCase(ExtractFileExt(FCurrentFileName));
   if (Ext <> '.pas') and (Ext <> '.pp') and (Ext <> '.dpr') and
@@ -51123,6 +51149,347 @@ begin
     Chain.Free;
     Visited.Free;
   end;
+end;
+
+// ---------------------------------------------------------------------------
+//  Панель объявления для исходников RapidQ (DeclPanelUpdate зовёт
+//  DeclPanelUpdateRq). Разбор - RqDeclFind: DIM, CONST, CREATE, DEF*,
+//  SUB/FUNCTION, DECLARE, TYPE и его члены, $DEFINE, $RESOURCE, метки;
+//  параметры и DIM внутри процедуры - только в ней.
+//  Порядок поиска: локальные процедуры под кареткой; члены TYPE, внутри
+//  которого каретка; затем объявления в этом файле, главном .bas и
+//  $INCLUDE-файлах по порядку подключения - первое найденное. После
+//  точки (Obj.Имя, .Имя в WITH) -
+//  сначала члены TYPE, потом остальное.
+//  Не нашлось - неявная переменная (без DIM): первое присваивание вне
+//  процедур, иначе первое в своей процедуре; в панели - её тип по
+//  суффиксу или $OPTION DIM.
+// ---------------------------------------------------------------------------
+
+// Вкладка - исходник RapidQ: .bas, .rqb, .rq; .inc и .bi - когда вкладка
+// собирается RapidQ
+function TForm1.DeclRqMode: Boolean;
+var
+  Ext: string;
+begin
+  Ext := LowerCase(ExtractFileExt(FCurrentFileName));
+  Result := (IsRapidQSource(FCurrentFileName) or (Ext = '.inc') or
+             (Ext = '.bi')) and (CurBuildKind = bkRapidQ);
+end;
+
+// Файлы, где ищется объявление (кроме самой вкладки): главный .bas вкладки
+// и $INCLUDE-файлы - его и самой вкладки, с вложенными, по порядку строк.
+// Обход читает файлы с диска, поэтому список держится 10 секунд, пока не
+// сменились вкладка и главный файл.
+procedure TForm1.RqDeclFileList(AFiles: TStrings);
+var
+  MainBas, CurFull, Key: string;
+  Found: TStringList;
+  FileIdx: Integer;
+begin
+  AFiles.Clear;
+  MainBas := RapidQTargetBas(False);
+  Key := UpperCase(FCurrentFileName + '|' + MainBas);
+  if (FRqDeclFiles <> nil) and (Key = FRqDeclFilesKey) and
+     (GetTickCount - FRqDeclFilesTick < 10000) then
+  begin
+    AFiles.Assign(FRqDeclFiles);
+    Exit;
+  end;
+  if FRqDeclFiles = nil then
+    FRqDeclFiles := TStringList.Create;
+  FRqDeclFiles.Clear;
+  CurFull := '';
+  if FCurrentFileName <> '' then
+    CurFull := ExpandFileName(FCurrentFileName);
+  Found := TStringList.Create;
+  try
+    if (MainBas <> '') and FileExists(MainBas) then
+    begin
+      Found.Add(ExpandFileName(MainBas));
+      RqDbgIncludeSet(MainBas, Found, nil);
+    end;
+    if (CurFull <> '') and FileExists(CurFull) then
+      RqDbgIncludeSet(CurFull, Found, nil);
+    for FileIdx := 0 to Found.Count - 1 do
+      if (CompareText(Found[FileIdx], CurFull) <> 0) and
+         (FRqDeclFiles.IndexOf(Found[FileIdx]) < 0) then
+        FRqDeclFiles.Add(Found[FileIdx]);
+  finally
+    Found.Free;
+  end;
+  FRqDeclFilesKey := Key;
+  FRqDeclFilesTick := GetTickCount;
+  AFiles.Assign(FRqDeclFiles);
+end;
+
+// Строки файла AFile: из его вкладки, если он открыт (там могут быть
+// несохранённые правки), иначе с диска. False - не прочитался.
+function TForm1.RqDeclLoadLines(const AFile: string; ALines: TStrings): Boolean;
+var
+  WinIdx: Integer;
+begin
+  Result := False;
+  WinIdx := IndexOfWindowByFile(AFile);
+  if WinIdx >= 0 then
+  begin
+    ALines.Text := FWindows[WinIdx].Text;
+    Result := True;
+    Exit;
+  end;
+  try
+    ALines.LoadFromFile(AFile);
+    Result := True;
+  except
+    // файл занят или пропал
+  end;
+end;
+
+procedure TForm1.DeclPanelUpdateRq;
+var
+  Sel: TCharRange;
+  Line, LineStart, CharPos, WordStart, WordEnd, LineIdx: Integer;
+  FileIdx, Found, PassIdx: Integer;
+  SrcLines, Files, FileLines: TStringList;
+  LineText, CleanText, WordUp, OwnerType, FoundFile, Suffix, DefType: string;
+  InBrem, AfterDot, OwnIndex, IsImplicit: Boolean;
+  CurIndex, FileIndex, FoundIndex: TRqDeclIndex;
+  Kinds: array[0..1] of TRqDeclKind;
+  Item: TRqDeclItem;
+
+  // Объявление вида AKind: в этом файле, затем в файлах Files по порядку.
+  // Нашлось - FoundIndex, Found, FoundFile ('' - этот файл), OwnIndex.
+  function SearchKind(AKind: TRqDeclKind): Boolean;
+  var
+    SearchIdx: Integer;
+  begin
+    Result := True;
+    Found := CurIndex.Find(WordUp, AKind, Line, '');
+    if Found >= 0 then
+    begin
+      FoundIndex := CurIndex;
+      Exit;
+    end;
+    for SearchIdx := 0 to Files.Count - 1 do
+    begin
+      // Открытый на вкладке - по тексту вкладки, остальные - из кэша
+      if IndexOfWindowByFile(Files[SearchIdx]) >= 0 then
+      begin
+        if not RqDeclLoadLines(Files[SearchIdx], FileLines) then
+          Continue;
+        FileIndex := TRqDeclIndex.Create;
+        FileIndex.Build(FileLines);
+        Found := FileIndex.Find(WordUp, AKind, 0, '');
+        if Found < 0 then
+        begin
+          FileIndex.Free;
+          Continue;
+        end;
+        // Этот разбор создан здесь - освобождается в конце
+        OwnIndex := True;
+      end
+      else
+      begin
+        FileIndex := FRqDeclCache.IndexOfFile(Files[SearchIdx]);
+        if FileIndex = nil then
+          Continue;
+        Found := FileIndex.Find(WordUp, AKind, 0, '');
+        if Found < 0 then
+          Continue;
+      end;
+      FoundIndex := FileIndex;
+      FoundFile := Files[SearchIdx];
+      Exit;
+    end;
+    Result := False;
+  end;
+
+begin
+  SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
+  Line := SendMessageA(RichEdit1.Handle, EM_EXLINEFROMCHAR, 0, Sel.cpMin);
+  LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, Line, 0);
+  OwnIndex := False;
+  FoundIndex := nil;
+
+  SrcLines := TStringList.Create;
+  Files := TStringList.Create;
+  FileLines := TStringList.Create;
+  CurIndex := TRqDeclIndex.Create;
+  try
+    SrcLines.Text := GetEditorText;
+    if (Line < 0) or (Line >= SrcLines.Count) then
+    begin
+      DeclPanelShow;
+      Exit;
+    end;
+
+    // Строка под кареткой очищенная (комментарии, строки, brem - пробелами)
+    InBrem := False;
+    CleanText := '';
+    for LineIdx := 0 to Line do
+      CleanText := RqDeclCleanLine(SrcLines[LineIdx], InBrem);
+
+    // Имя под кареткой. Каретка сразу за именем или за его суффиксом
+    // ($ % & ! # ?) - тоже оно.
+    LineText := SrcLines[Line];
+    CharPos := Sel.cpMin - LineStart + 1;
+    if (CharPos > Length(LineText)) or (CharPos < 1) or
+       not RqDeclIdChar(LineText[CharPos]) then
+      Dec(CharPos);
+    while (CharPos > 1) and (CharPos <= Length(LineText)) and
+          RqDeclSuffix(LineText[CharPos]) do
+      Dec(CharPos);
+    if (CharPos < 1) or (CharPos > Length(LineText)) or
+       not RqDeclIdChar(LineText[CharPos]) or
+       (CharPos > Length(CleanText)) or (CleanText[CharPos] = ' ') then
+    begin
+      DeclPanelShow;
+      Exit;
+    end;
+    WordStart := CharPos;
+    while (WordStart > 1) and RqDeclIdChar(LineText[WordStart - 1]) do
+      Dec(WordStart);
+    WordEnd := CharPos;
+    while (WordEnd < Length(LineText)) and RqDeclIdChar(LineText[WordEnd + 1]) do
+      Inc(WordEnd);
+    if not RqDeclIdStart(LineText[WordStart]) then
+    begin
+      DeclPanelShow;
+      Exit;
+    end;
+    // Директива ($INCLUDE, $DEFINE) - не имя
+    if (WordStart > 1) and (LineText[WordStart - 1] in ['$', '#']) then
+    begin
+      DeclPanelShow;
+      Exit;
+    end;
+    while (WordEnd < Length(LineText)) and RqDeclSuffix(LineText[WordEnd + 1]) do
+      Inc(WordEnd);
+    FDeclWord := Copy(LineText, WordStart, WordEnd - WordStart + 1);
+    WordUp := RqDeclStrip(FDeclWord);
+    if RqDeclIsKeyword(WordUp) then
+    begin
+      DeclPanelShow;
+      Exit;
+    end;
+    AfterDot := (WordStart > 1) and (LineText[WordStart - 1] = '.');
+
+    FDeclFromPos := Sel.cpMin;
+    FDeclFromLine := Line;
+    CurIndex.Build(SrcLines);
+    FoundIndex := nil;
+    FoundFile := '';
+    OwnIndex := False;
+    Found := -1;
+
+    // Локальные процедуры, члены своего TYPE
+    if not AfterDot then
+      Found := CurIndex.Find(WordUp, rdkLocal, Line, '');
+    if Found < 0 then
+    begin
+      OwnerType := CurIndex.TypeAt(Line);
+      if OwnerType <> '' then
+        Found := CurIndex.Find(WordUp, rdkMember, Line, OwnerType);
+    end;
+    IsImplicit := False;
+    RqDeclFileList(Files);
+    if FRqDeclCache = nil then
+      FRqDeclCache := TRqDeclCache.Create;
+    if Found >= 0 then
+      FoundIndex := CurIndex
+    else
+    begin
+      if AfterDot then
+      begin
+        Kinds[0] := rdkMember;
+        Kinds[1] := rdkGlobal;
+      end
+      else
+      begin
+        Kinds[0] := rdkGlobal;
+        Kinds[1] := rdkMember;
+      end;
+      for PassIdx := 0 to 1 do
+        if SearchKind(Kinds[PassIdx]) then
+          Break;
+    end;
+
+    // Без DIM - неявная переменная: первое присваивание вне процедур (в
+    // этом файле, главном .bas, $INCLUDE), иначе первое в своей процедуре
+    if (FoundIndex = nil) and not AfterDot then
+    begin
+      if SearchKind(rdkImplicitGlobal) then
+        IsImplicit := True
+      else
+      begin
+        Found := CurIndex.Find(WordUp, rdkImplicitLocal, Line, '');
+        if Found >= 0 then
+        begin
+          FoundIndex := CurIndex;
+          IsImplicit := True;
+        end;
+      end;
+    end;
+
+    if FoundIndex = nil then
+    begin
+      FDeclLine := -1;
+      FDeclMode := 1;
+      FDeclNoneText := FDeclWord + ': объявление не найдено ни в этом файле, ' +
+                       'ни в главном .bas и его $INCLUDE-файлах';
+      if RqFindClass(WordUp) <> nil then
+        FDeclNoneText := FDeclWord + ': класс RapidQ (встроенный или из ' +
+                         'описания компонентов), объявления в исходниках нет';
+      DeclPanelShow;
+      Exit;
+    end;
+
+    Item := FoundIndex.Item(Found);
+    FDeclLine := Item.Line;
+    FDeclCol := Item.Col;
+    if FoundFile = '' then
+      FDeclText := Trim(StringReplace(SrcLines[Item.Line], #9, ' ',
+                                      [rfReplaceAll]))
+    else
+    begin
+      FDeclOtherFile := FoundFile;
+      if IndexOfWindowByFile(FoundFile) < 0 then
+        RqDeclLoadLines(FoundFile, FileLines);
+      if Item.Line < FileLines.Count then
+        FDeclText := Trim(StringReplace(FileLines[Item.Line], #9, ' ',
+                                        [rfReplaceAll]))
+      else
+        FDeclText := '';
+    end;
+    // Неявной - тип: по суффиксу (как в щелчке, иначе как в присваивании),
+    // без суффикса - $OPTION DIM (этот файл, затем остальные по порядку)
+    if IsImplicit then
+    begin
+      Suffix := RqDeclSuffixOf(FDeclWord);
+      if Suffix = '' then
+        Suffix := Item.Suffix;
+      DefType := CurIndex.OptionDim;
+      FileIdx := 0;
+      while (DefType = '') and (FileIdx < Files.Count) do
+      begin
+        FileIndex := FRqDeclCache.IndexOfFile(Files[FileIdx]);
+        if FileIndex <> nil then
+          DefType := FileIndex.OptionDim;
+        Inc(FileIdx);
+      end;
+      FDeclText := '[без DIM, ' + RqDeclSuffixType(Suffix, DefType) + '] ' +
+                   FDeclText;
+    end;
+    FDeclMode := 2;
+  finally
+    if OwnIndex then
+      FoundIndex.Free;
+    CurIndex.Free;
+    FileLines.Free;
+    Files.Free;
+    SrcLines.Free;
+  end;
+  DeclPanelShow;
 end;
 
 // Точка копии сеанса на строке ALine (с 0, по тексту сборки) файла AFile;
