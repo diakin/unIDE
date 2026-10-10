@@ -3,6 +3,9 @@
 '             -- to all your programs, or just extract what you need.
 
 $Include "RAPIDQ2.INC"
+$TypeCheck off
+$ESCAPECHARS off
+
 
 '$IFNDEF space
 $DEFINE space space$
