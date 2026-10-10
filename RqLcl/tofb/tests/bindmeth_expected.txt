@@ -1,0 +1,6 @@
+windows -1-1
+A send 3
+B send 10
+A send 7
+A hits 7
+B hits 10
