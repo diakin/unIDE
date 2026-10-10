@@ -2,7 +2,8 @@
 '             -- attach a $INCLUDE "RAPIDQ.INC"
 '             -- to all your programs, or just extract what you need.
 
-  'ввввввв
+$Include "RAPIDQ2.INC"
+
 '$IFNDEF space
 $DEFINE space space$
 '$ENDIF
@@ -12,10 +13,9 @@ $DEFINE MsgBox Showmessage
 
 $DEFINE chr chr$
 $DEFINE mid mid$
-$DEFINE fileexist fileexists 
+$DEFINE fileexist fileexists
 
-$define  int integer 
-defstr vbNullString=""
+$define  int integer
 $define #define $define
 
 ' вариант комментария
@@ -25,17 +25,20 @@ $define !! '
 
 $define #define $define
 
-$define brem $ifdef 
+$define brem $ifdef
 $define erem $endif
 
-$define remb $ifdef 
+$define remb $ifdef
 $define reme $endif
 
 
-dim ErrorMsg$ as string
+
+
+
+'dim ErrorMsg$ as string
 ErrorMsg$="No errors"
 
-defstr infomsg$=""
+'defstr infomsg$=""
 
 
 '!!! ------------------------- Useful variables ------------
@@ -45,20 +48,20 @@ $define pi 3.14159
 
 $define ascb asc
 
-Const Base64Table As String = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
+'Const Base64Table As String = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"
 
 
-CONST  CRLF= chr$(13)+chr$(10)'' "\r\n"    ' chr$(13)+chr$(10)
+'CONST  CRLF= chr$(13)+chr$(10)'' "\r\n"    ' chr$(13)+chr$(10)
 
-CONST vbcrlf= chr$(13)+chr$(10)
-CONST HT =chr$(9)
-CONST  CR =chr$(13)
-CONST  LF =chr$(10)
-CONST  QT =chr$(34)
-CONST  BkSl= chr$(92)
-CONST  BSl =chr$(92)
-CONST  aps =chr$(39)
-CONST sp =chr$(32)
+'CONST vbcrlf= chr$(13)+chr$(10)
+'CONST HT =chr$(9)
+'CONST  CR =chr$(13)
+'CONST  LF =chr$(10)
+'CONST  QT =chr$(34)
+'CONST  BkSl= chr$(92)
+'CONST  BSl =chr$(92)
+'CONST  aps =chr$(39)
+'CONST sp =chr$(32)
 
 $DEFINE tpTop    0
 $DEFINE tpBottom 1
@@ -67,26 +70,26 @@ $DEFINE tpRight  3
 
 
 '!!!-- Control Alignments
-CONST alNone = 0
-CONST alTop = 1
-CONST alBottom = 2
-CONST alLeft = 3
-CONST alRight = 4
-CONST alClient = 5           '-- Expand to fit client
+'CONST alNone = 0
+'CONST alTop = 1
+'CONST alBottom = 2
+'CONST alLeft = 3
+'CONST alRight = 4
+'CONST alClient = 5           '-- Expand to fit client
 
 '!!!-- Text Alignments
-CONST taLeftJustify = 0
-CONST taRightJustify = 1
-CONST taCenter = 2
+'CONST taLeftJustify = 0
+'CONST taRightJustify = 1
+'CONST taCenter = 2
 
-CONST SND_SYNC = 0           '-- Synchronous playback (Wait for sound to finish)
-CONST SND_ASYNC = 1          '-- Asynchronous playback (Like background play).
-CONST SND_LOOP = 8           '-- Loop sound
+'CONST SND_SYNC = 0           '-- Synchronous playback (Wait for sound to finish)
+'CONST SND_ASYNC = 1          '-- Asynchronous playback (Like background play).
+'CONST SND_LOOP = 8           '-- Loop sound
 
 '!!!-- BASIC Colors
-CONST clBlack = 0
+'CONST clBlack = 0
 '-- BGR
-CONST clBlue = &HFF0000  '256
+'CONST clBlue = &HFF0000  '256
 CONST clLBlue = &HFFaa00  '256clLtBlue
 CONST clLtBlue = &HFFaa00  '256clLtBlue
 CONST clDBlue = &H800000 '128
@@ -98,19 +101,19 @@ CONST clDB = &H800000 '128
 CONST clMaroon = &H808000
 CONST clM = &H808000
 
-CONST clGreen = &H00FF00
+'CONST clGreen = &H00FF00
 CONST clDGreen = &H008000
 CONST clG = &H00FF00
 CONST clDG = &H008000
 
 CONST clLRed = &H8080FF
-CONST clRed =   &H0000FF
+'CONST clRed =   &H0000FF
 CONST clDRed = &H000080
 CONST clLR = &H8080FF
 CONST clR =   &H0000FF
 CONST clDR = &H000080
 
-CONST clPurple = &HFF00FF
+'CONST clPurple = &HFF00FF
 CONST clDPurple =&h800080
 CONST clP = &HFF00FF
 CONST clDP =&h800080
@@ -126,7 +129,7 @@ CONST clGrey=&h808080
 CONST clGray=&h808080
 CONST clDGray=&h808080
 CONST clDGrey=&h808080
-CONST clWhite = &HFFFFFF
+'CONST clWhite = &HFFFFFF
 CONST clW = &HFFFFFF
 
 CONST clAqua=&hffff00
@@ -134,7 +137,7 @@ CONST clLAqua=&hfffff0
 CONST clA=&hffff00
 CONST clLA=&hfffff0
 
-CONST clyellow=&h00ffff
+'CONST clyellow=&h00ffff
 CONST cly=&h00ffff
 CONST clBrown=&h008080
 CONST clOrange=&h0080FF
@@ -143,38 +146,38 @@ CONST clO=&h0080FF
 'CONST cl
 
 '!!!-- System colors
-CONST clScrollBar = -2147483648
-CONST clBackGround = -2147483647
-CONST clActiveCaption = -2147483646
-CONST clInActiveCaption = -2147483645
-CONST clMenu = -2147483644
-CONST clWindow = -2147483643
-CONST clWindowFrame = -2147483642
-CONST clMenuText = -2147483641
-CONST clWindowText = -2147483640
-CONST clCaptionText = -2147483639
-CONST clActiveBorder = -2147483638
-CONST clInActiveBorder = -2147483637
-CONST clAppWorkSpace = -2147483636
-CONST clHilight = -2147483635
-CONST clHilightText = -2147483634
-CONST clBtnFace = -2147483633
-CONST clBtnShadow = -2147483632
-CONST clGrayText = -2147483631
-CONST clBtnText = -2147483630
-CONST clInActiveCaptionText = -2147483629
-CONST clBtnHighlight = -2147483628
-CONST cl3DDkShadow = -2147483627
-CONST cl3DLight = -2147483626
-CONST clInfoText = -2147483625
-CONST clInfoBk3DDkShadow = -2147483624
-CONST clNone = 536870911
-CONST clDefault = 536870912
+'CONST clScrollBar = -2147483648
+'CONST clBackGround = -2147483647
+'CONST clActiveCaption = -2147483646
+'CONST clInActiveCaption = -2147483645
+'CONST clMenu = -2147483644
+'CONST clWindow = -2147483643
+'CONST clWindowFrame = -2147483642
+'CONST clMenuText = -2147483641
+'CONST clWindowText = -2147483640
+'CONST clCaptionText = -2147483639
+'CONST clActiveBorder = -2147483638
+'CONST clInActiveBorder = -2147483637
+'CONST clAppWorkSpace = -2147483636
+'CONST clHilight = -2147483635
+'CONST clHilightText = -2147483634
+'CONST clBtnFace = -2147483633
+'CONST clBtnShadow = -2147483632
+'CONST clGrayText = -2147483631
+'CONST clBtnText = -2147483630
+'CONST clInActiveCaptionText = -2147483629
+'CONST clBtnHighlight = -2147483628
+'CONST cl3DDkShadow = -2147483627
+'CONST cl3DLight = -2147483626
+'CONST clInfoText = -2147483625
+'CONST clInfoBk3DDkShadow = -2147483624
+'CONST clNone = 536870911
+'CONST clDefault = 536870912
 
 '!!!-- Mouse Shift States, True if Shift% AND ss<State>
-CONST ssShift = 256
-CONST ssCtrl = 16
-CONST ssAlt = 1
+'CONST ssShift = 256
+'CONST ssCtrl = 16
+'CONST ssAlt = 1
 
 '!!!-- MessageDlg Message Types
 CONST mtWarning = 0
@@ -540,39 +543,39 @@ CONST goRowSelect = 12
 CONST goAlwaysShowEditor = 13
 CONST goThumbTracking = 14
 
-'- goVertLine     
+'- goVertLine
 ' When True, vertical lines appear between the columns.
 'goRangeSelect   When True, the user can select a range of cells at one
 'time. When goEditing is True, the user can no longer select a range of
 'cells.
 
-'- goDrawFocusSelected   
+'- goDrawFocusSelected
 '  When True, the cell with the focus is colored
 'the same as other cells in a selected block are colored. When False, the
 'cell with the focus remains the color of all unselected cells, the color
 'specified with the grid Color property.
 
-'- goRowSizing    
+'- goRowSizing
 ' When True, rows can be resized individually except for
 'fixed or nonscrolling rows.
 
-'- goColSizing   
+'- goColSizing
 '  When True, columns can be resized individually except
 'for fixed or nonscrolling columns.
 
-'- goRowMoving   
+'- goRowMoving
 '  When True, the user can move a row to a new location in
 'the grid using the mouse.
 
-'-goColMoving  
+'-goColMoving
 '   When True, the user can move a column to a new location
 'in the grid using the mouse.
 
-'-goEditing  
+'-goEditing
 '     When True, the user can edit the text in the grid. When
 'goEditing is True, the user cannot select a range of cells at one time.
 
-'-goAlwaysShowEditor   
+'-goAlwaysShowEditor
 '   When True, the grid is in automatic edit mode
 'if goEditing is also True. When the grid is in automatic edit mode, the
 'user does not have to press Enter or F2 before editing the contents of a
@@ -581,7 +584,7 @@ CONST goThumbTracking = 14
 'goEditing is False, setting goAlwaysShowEditor to True has no effect.
 
 
-'-goTabs  
+'-goTabs
 'When True, the user can use the Tab and Shift-Tab keys to move
 'from column to column in the grid.
 
@@ -589,7 +592,7 @@ CONST goThumbTracking = 14
 '     When True, the user can only whole rows at a time
 'instead of individual cells.
 
-'-goThumbTracking 
+'-goThumbTracking
 'When True, the contents of the grid scrolls while the
 'user is moving the thumb tab of the grid scroll bar. When False, the
 'contents of the grid doesn't scroll until the user releases the thumb
@@ -869,7 +872,7 @@ QBColorLi(8) = clb        '-- Grey
 QBColorLi(9) = &HC0C0C0 'clo        '-- orange
 QBColorLi(10) = &HFF00       '-- Light Green
 QBColorLi(11) = &HFF          '-- Light red
-QBColorLi(12) = &HFFFF00       '-- Aqua 
+QBColorLi(12) = &HFFFF00       '-- Aqua
 QBColorLi(13) = &HFF00FF       '-- Light Magenta
 QBColorLi(14) = &HFFFF         '-- Yellow
 QBColorLi(15) = &HFFFFFF       '-- Bright White
@@ -906,39 +909,41 @@ QBColorLi(15) = &HFFFFFF       '-- Bright White
 #define CP_MAC_TURKISH  10081
 #define CP_UTF8    65001
 
+
+
 '!!! ------------------------------ custom function ------------------------'
 
 '-- ***********************************************************************'
 sub AddClrString (AddString$, Clr, Sender as QRICHEDIT)
-'Add colored string to QRICHEDIT
-Sender.SelStart =len (Sender.Text)
-Sender.SelLength =Len(AddString$)
-Sender.SelAttributes.Color=Clr
-Sender.AddStrings AddString$
+  'Add colored string to QRICHEDIT
+  Sender.SelStart =len (Sender.Text)
+  Sender.SelLength =Len(AddString$)
+  Sender.SelAttributes.Color=Clr
+  Sender.AddStrings AddString$
 end sub
 '-- ***********************************************************************'
 sub AddFontString (AddString$, FontStr as QFont, Sender as QRICHEDIT)
-'Add colored string to QRICHEDIT
-Sender.SelStart =len (Sender.Text)
-Sender.SelLength =Len(AddString$)
-Sender.SelAttributes.Color=FontStr.Color
-Sender.SelAttributes.Name=FontStr.Name
-Sender.AddStrings AddString$
+  'Add colored string to QRICHEDIT
+  Sender.SelStart =len (Sender.Text)
+  Sender.SelLength =Len(AddString$)
+  Sender.SelAttributes.Color=FontStr.Color
+  Sender.SelAttributes.Name=FontStr.Name
+  Sender.AddStrings AddString$
 end sub
 
 
 '-- ***********************************************************************'
 Function fTally (sSearchIn As String, sToFind As string) As Long
-DefInt iCharCounter = 0
-For N = 1 To Len(sSearchIn)
-	If sSearchIn[N] = sToFind Then iCharCounter ++
-Next N
-Result = iCharCounter
+  DefInt iCharCounter = 0
+  For N = 1 To Len(sSearchIn)
+    If sSearchIn[N] = sToFind Then iCharCounter ++
+  Next N
+  Result = iCharCounter
 End Function
 
 '-- ***********************************************************************'
 Function Trim$(s as string) as string
-Result=LTRIM$(RTRIM$(s))
+  Result=LTRIM$(RTRIM$(s))
 End Function
 
 
@@ -950,11 +955,11 @@ declare Function GetMsgBodyCodePage ( Msg As String) As String
 declare Function GetMsgBodyCodeMethod( Msg As String) As String
 declare Function GetHeaderField( Header As String, Field as string) As String
 declare Function GetMSGHeader( Source As String) As String
-declare Function GetMSGBody( Source As String) As String 
+declare Function GetMSGBody( Source As String) As String
 declare Function isKOI8( Red$ As String) As long
 declare Function RQBASE64Encode(s As String) As String
 declare Function RQBASE64Decode (stxt As String) As String
-declare Function DecodeSubj( Subject As String) As String 
+declare Function DecodeSubj( Subject As String) As String
 declare Function RQConvertCodePage (SourseString As String, inPage As long, outPage As long) As String
 
 Declare Sub SetLastError Lib "kernel32" Alias "SetLastError" (ByVal dwErrCode As Long)
@@ -965,81 +970,81 @@ DECLARE FUNCTION WaitForSingleObject Lib "kernel32" Alias "WaitForSingleObject" 
 'Rusdate$=field$(FileRec.Date,"-",2)+"-"+field$(FileRec.Date,"-",1)+"-"+right$(field$(FileRec.Date,"-",3),2)
 
 function GetRusdate as string
-result=field$(Date$,"-",2)+"-"+field$(Date$,"-",1)+"-"+right$(field$(Date$,"-",3),2)
+  result=field$(Date$,"-",2)+"-"+field$(Date$,"-",1)+"-"+right$(field$(Date$,"-",3),2)
 end function
 
 function Rusdate as string
-result=field$(Date$,"-",2)+"-"+field$(Date$,"-",1)+"-"+right$(field$(Date$,"-",3),2)
+  result=field$(Date$,"-",2)+"-"+field$(Date$,"-",1)+"-"+right$(field$(Date$,"-",3),2)
 end function
 
 function Rudate as string
-result=field$(Date$,"-",2)+"-"+field$(Date$,"-",1)+"-"+right$(field$(Date$,"-",3),2)
+  result=field$(Date$,"-",2)+"-"+field$(Date$,"-",1)+"-"+right$(field$(Date$,"-",3),2)
 end function
 
 '$include "C:\BAS\RAPIDQ\inc\conversion.inc"
 $include "conversion.inc"
-$include "Files.inc" 
+$include "Files.inc"
 '$include "Fileops.inc"
-$include "func_array.inc" 
-$include "parse.inc"   
+$include "func_array.inc"
+$include "parse.inc"
 
 $include "fbscancodes.inc"
 $include "eml.inc"
 
 '*****************************************
 sub cprint(s as string)
-dim sn as string
-sn=s
-chartooem sn,sn
-print sn
+  dim sn as string
+  sn=s
+  chartooem sn,sn
+  print sn
 End sub
 
 
 '*****************************************
 Function ODD(value AS INTEGER ) AS INTEGER
-IF FRAC( value / 2 ) <> 0 THEN
-	ODD = 1
-ELSE  
-	ODD = 0 
-END IF 
+  IF FRAC( value / 2 ) <> 0 THEN
+    ODD = 1
+  ELSE
+    ODD = 0
+  END IF
 End Function
 
 
 '*****************************************
 Sub ClearGrid(Sender As QStringGrid)
-OldColcount=Sender.colcount
-OldRowcount=Sender.rowcount
+  OldColcount=Sender.colcount
+  OldRowcount=Sender.rowcount
 
-FixedColcount=Sender.FixedCols
-FixedRowcount=Sender.FixedRows
-
-
-'Sender.Col = Sender.FixedCols+1
-'Sender.Row =Sender.FixedRows+ 1
-'Sender.LeftCol = Sender.FixedCols+1
-'Sender.TopRow =Sender.FixedRows+ 1
-
-Sender.Col = 1
-Sender.Row = 1
-Sender.LeftCol = 1
-Sender.TopRow = 1
+  FixedColcount=Sender.FixedCols
+  FixedRowcount=Sender.FixedRows
 
 
-Z = Sender.RowCount-2
-For Y = Z To 1 Step -1
-	Sender.DeleteRow(Y)
-Next Y
+  'Sender.Col = Sender.FixedCols+1
+  'Sender.Row =Sender.FixedRows+ 1
+  'Sender.LeftCol = Sender.FixedCols+1
+  'Sender.TopRow =Sender.FixedRows+ 1
 
-Z = Sender.ColCount-2
-For X = Z To 1 Step -1
-	Sender.DeleteCol(X)
-Next X
+  Sender.Col = 1
+  Sender.Row = 1
+  Sender.LeftCol = 1
+  Sender.TopRow = 1
 
-Sender.colcount=OldColcount
-Sender.rowcount=OldRowcount
 
-Sender.FixedCols=FixedColcount
-Sender.FixedRows=FixedRowcount
+  Z = Sender.RowCount-2
+  For Y = Z To 1 Step -1
+    Sender.DeleteRow(Y)
+  Next Y
+
+  Z = Sender.ColCount-2
+  For X = Z To 1 Step -1
+    Sender.DeleteCol(X)
+  Next X
+
+  Sender.colcount=OldColcount
+  Sender.rowcount=OldRowcount
+
+  Sender.FixedCols=FixedColcount
+  Sender.FixedRows=FixedRowcount
 
 
 End Sub
@@ -1056,137 +1061,137 @@ DECLARE FUNCTION EnableWindow Lib "user32" Alias "EnableWindow" (ByVal hwnd AS L
 'Adapted from code by Pete Kleinschmidt and Michael Zito 1-5-2004, and Andrew Shelkovenko
 ' Method "Bug" left in
 '======================================================================================================================
-                                                                  'If window was not previously disabled, the return value is 0
+'If window was not previously disabled, the return value is 0
 
 TYPE QDebug EXTENDS QObject      'Begin defining our QDebug object
   PRIVATE:
-     RowNum     AS INTEGER
-     Redit      AS QRICHEDIT
+  RowNum     AS INTEGER
+  Redit      AS QRICHEDIT
 
   PUBLIC:
-     Visible    AS LONG  PROPERTY SET Set_Visible
-     Enabled    AS LONG  PROPERTY SET Set_Enabled
-     Form       AS QFORM            'Create our Debug form
-     TestSockets AS INTEGER         'also use WSAGetLastError
+  Visible    AS LONG  PROPERTY SET Set_Visible
+  Enabled    AS LONG  PROPERTY SET Set_Enabled
+  Form       AS QFORM            'Create our Debug form
+  TestSockets AS INTEGER         'also use WSAGetLastError
 
 
- PROPERTY SET Set_Visible(VisibleValue AS LONG)   'Property Set for Visible property
-       IF VisibleValue = 1 THEN                    'If Visible property is set to True
-            THIS.Form.Show                         'Then show our Debug window
-            THIS.Redit.Parent = THIS.Form
-            EnableWindow(THIS.Form.Handle, THIS.Enabled)
-         ELSE                                      'Otherwise
-            ' EnableWindow(THIS.Form.Handle, 1)
-            THIS.Form.Close                        'Close the Debug window if it is open
-        END IF
- END PROPERTY
-
- PROPERTY SET Set_Enabled(EnabledValue AS LONG)   '0 =  fixed/read-only, 1 = Debug window to move/close etc.
-      THIS.Enabled = EnabledValue
-      IF THIS.Form.Visible THEN EnableWindow(THIS.Form.Handle, THIS.Enabled)
- END PROPERTY
-  
- SUB PrintWrap (StringToPrint AS STRING)             'wrap around text in form
-      DIM RowHeight AS INTEGER
-      DIM NewStr   AS STRING
-
-      IF QDebug.Visible = 1 THEN                      'If Debug Visible property is True
-           IF THIS.Form.Visible = 0 THEN THIS.Form.Show
-           IF THIS.Redit.Visible THEN THIS.Redit.Visible= 0  'Print onto Form instead
-           NewStr = StringToPrint + SPACE$(THIS.Form.ClientWidth)  'Clear out previous
-           RowHeight = THIS.Form.TextHeight(NewStr)
-           INC(THIS.RowNum, RowHeight)
-           IF THIS.RowNum> (THIS.Form.ClientHeight - RowHeight) THEN THIS.RowNum = 0
-           THIS.Form.TextOut(0, THIS.RowNum, NewStr, 0, &HFFFFFF)
-           EnableWindow(THIS.Form.Handle, THIS.Enabled)
-           DOEVENTS                                      'in case inside a loop
-      END IF
- END SUB
-
- SUB PrintStr(StringToPrint AS STRING)                   'Debug Str Print method
-  IF QDebug.Visible = 1 THEN                             'If Debug Visible property is True
-       IF THIS.Form.Visible = 0 THEN
-            THIS.Form.Show                               'turn it on
-            THIS.Redit.Parent = THIS.Form                'need to set parent
-            THIS.Redit.Visible = 1  'Turn it back on
-            THIS.Redit.Height  = THIS.Form.ClientHeight  'always resize
-            THIS.Redit.Width   = THIS.Form.ClientWidth
-       END IF
-       THIS.Redit.AddStrings(StringToPrint)             'Add the value to our Richedit box
-       THIS.Redit.SelStart=LEN(THIS.Redit.Text)         'Move the cursor to the last character in the RichEdit box
-       'send message to richedit control to scroll so cursor is in view (&HB7 = EM_SCROLLCARET)
-       SENDMESSAGE(THIS.Redit.handle, &HB7, 0, 0)
-       EnableWindow(THIS.Form.Handle, THIS.Enabled) 'enable mouse and keyboard input to the Debug form.
-       DOEVENTS                                          'Let Windows do stuff
+  PROPERTY SET Set_Visible(VisibleValue AS LONG)   'Property Set for Visible property
+  IF VisibleValue = 1 THEN                    'If Visible property is set to True
+    THIS.Form.Show                         'Then show our Debug window
+    THIS.Redit.Parent = THIS.Form
+    EnableWindow(THIS.Form.Handle, THIS.Enabled)
+  ELSE                                      'Otherwise
+    ' EnableWindow(THIS.Form.Handle, 1)
+    THIS.Form.Close                        'Close the Debug window if it is open
   END IF
- END SUB
+END PROPERTY
 
- SUBI Print(...)
-      DIM TheWholeStr AS STRING
-      DIM i AS INTEGER
-      DIM j AS INTEGER
-    
-      TheWholeStr = ""
-      j = ParamStrCount
-      IF ParamValCount > ParamStrCount THEN j = ParamValCount 'more strings or variables?
-      FOR i = 1 TO j
-           IF i<= ParamStrCount THEN TheWholeStr = TheWholeStr + ParamStr$(i) + " "
-           IF i<= ParamValCount THEN TheWholeStr = TheWholeStr + STR$(ParamVal(i)) + " "
-      NEXT i
-      THIS.PrintStr(TheWholeStr)
- END SUBI
+PROPERTY SET Set_Enabled(EnabledValue AS LONG)   '0 =  fixed/read-only, 1 = Debug window to move/close etc.
+THIS.Enabled = EnabledValue
+IF THIS.Form.Visible THEN EnableWindow(THIS.Form.Handle, THIS.Enabled)
+END PROPERTY
+
+SUB PrintWrap (StringToPrint AS STRING)             'wrap around text in form
+  DIM RowHeight AS INTEGER
+  DIM NewStr   AS STRING
+
+  IF QDebug.Visible = 1 THEN                      'If Debug Visible property is True
+    IF THIS.Form.Visible = 0 THEN THIS.Form.Show
+    IF THIS.Redit.Visible THEN THIS.Redit.Visible= 0  'Print onto Form instead
+    NewStr = StringToPrint + SPACE$(THIS.Form.ClientWidth)  'Clear out previous
+    RowHeight = THIS.Form.TextHeight(NewStr)
+    INC(THIS.RowNum, RowHeight)
+    IF THIS.RowNum> (THIS.Form.ClientHeight - RowHeight) THEN THIS.RowNum = 0
+    THIS.Form.TextOut(0, THIS.RowNum, NewStr, 0, &HFFFFFF)
+    EnableWindow(THIS.Form.Handle, THIS.Enabled)
+    DOEVENTS                                      'in case inside a loop
+  END IF
+END SUB
+
+SUB PrintStr(StringToPrint AS STRING)                   'Debug Str Print method
+  IF QDebug.Visible = 1 THEN                             'If Debug Visible property is True
+    IF THIS.Form.Visible = 0 THEN
+      THIS.Form.Show                               'turn it on
+      THIS.Redit.Parent = THIS.Form                'need to set parent
+      THIS.Redit.Visible = 1  'Turn it back on
+      THIS.Redit.Height  = THIS.Form.ClientHeight  'always resize
+      THIS.Redit.Width   = THIS.Form.ClientWidth
+    END IF
+    THIS.Redit.AddStrings(StringToPrint)             'Add the value to our Richedit box
+    THIS.Redit.SelStart=LEN(THIS.Redit.Text)         'Move the cursor to the last character in the RichEdit box
+    'send message to richedit control to scroll so cursor is in view (&HB7 = EM_SCROLLCARET)
+    SENDMESSAGE(THIS.Redit.handle, &HB7, 0, 0)
+    EnableWindow(THIS.Form.Handle, THIS.Enabled) 'enable mouse and keyboard input to the Debug form.
+    DOEVENTS                                          'Let Windows do stuff
+  END IF
+END SUB
+
+SUBI Print(...)
+DIM TheWholeStr AS STRING
+DIM i AS INTEGER
+DIM j AS INTEGER
+
+TheWholeStr = ""
+j = ParamStrCount
+IF ParamValCount > ParamStrCount THEN j = ParamValCount 'more strings or variables?
+FOR i = 1 TO j
+  IF i<= ParamStrCount THEN TheWholeStr = TheWholeStr + ParamStr$(i) + " "
+  IF i<= ParamValCount THEN TheWholeStr = TheWholeStr + STR$(ParamVal(i)) + " "
+NEXT i
+THIS.PrintStr(TheWholeStr)
+END SUBI
 
 
- SUB Bug (StringToPrint AS STRING)  'keep compatible with previous release
-     THIS.PrintStr(StringToPrint)
- END SUB
+SUB Bug (StringToPrint AS STRING)  'keep compatible with previous release
+  THIS.PrintStr(StringToPrint)
+END SUB
 
- SUB SetError(NewErr AS LONG)
-     SetLastError(NewErr)
- END SUB
- 
- FUNCTION ErrNum() AS DWORD    'get windows last error
-      DIM Rtn AS DWORD
-    
-      IF THIS.TestSockets THEN
-          Rtn = WSAGetLastError
-      ELSE
-           Rtn = GetLastError()
-      END IF
-      THIS.Print(Rtn)
-      RESULT = Rtn
- END FUNCTION
+SUB SetError(NewErr AS LONG)
+  SetLastError(NewErr)
+END SUB
 
+FUNCTION ErrNum() AS DWORD    'get windows last error
+  DIM Rtn AS DWORD
 
- FUNCTION Err$   AS STRING   'ripped off from format message
-       DIM Buffer        AS STRING
-       DIM lngRet        AS LONG
-
-       Buffer=SPACE$(512)
-       lngRet=FormatMessage (FORMAT_MESSAGE_FROM_SYSTEM, _
-        0&, _
-        GetLastError(), _
-        LANG_NEUTRAL, _
-        @Buffer, _
-        LEN(Buffer), _
-        0&)
-      THIS.Print(LEFT$(Buffer,lngRet))  
-      RESULT = LEFT$(Buffer,lngRet)
-  END FUNCTION
+  IF THIS.TestSockets THEN
+    Rtn = WSAGetLastError
+  ELSE
+    Rtn = GetLastError()
+  END IF
+  THIS.Print(Rtn)
+  RESULT = Rtn
+END FUNCTION
 
 
-   CONSTRUCTOR
-      RowNum = 0
-      Visible = 1             'Default to Visible
-      Enabled = 1    'User wants to scroll/close/etc.
-      Form.AutoScroll = 1
-      Form.Height = 600
-      Form.Width = 180
-      Form.Caption = "Debug"
-      Redit.Scrollbars = 2 'ssVertical = 2, ssBoth = 3
-      TestSockets = 0   'no testing of Win Sockets
-      SetError(0&)   'clear out previous error
- END CONSTRUCTOR
+FUNCTION Err$   AS STRING   'ripped off from format message
+  DIM Buffer        AS STRING
+  DIM lngRet        AS LONG
+
+  Buffer=SPACE$(512)
+  lngRet=FormatMessage (FORMAT_MESSAGE_FROM_SYSTEM, _
+                        0&, _
+                        GetLastError(), _
+                        LANG_NEUTRAL, _
+                        @Buffer, _
+                        LEN(Buffer), _
+                        0&)
+  THIS.Print(LEFT$(Buffer,lngRet))
+  RESULT = LEFT$(Buffer,lngRet)
+END FUNCTION
+
+
+CONSTRUCTOR
+RowNum = 0
+Visible = 1             'Default to Visible
+Enabled = 1    'User wants to scroll/close/etc.
+Form.AutoScroll = 1
+Form.Height = 600
+Form.Width = 180
+Form.Caption = "Debug"
+Redit.Scrollbars = 2 'ssVertical = 2, ssBoth = 3
+TestSockets = 0   'no testing of Win Sockets
+SetError(0&)   'clear out previous error
+END CONSTRUCTOR
 END TYPE
 
 
@@ -1203,7 +1208,7 @@ const    EM_GETIMECOMPMODE           =WM_USER + 122
 const    EM_FINDTEXTW                =WM_USER + 123
 const    EM_FINDTEXTEXW              =WM_USER + 124
 const    EM_RECONVERSION             =WM_USER + 125
-const    EM_SETIMEMODEBIAS           =WM_USER + 126  
+const    EM_SETIMEMODEBIAS           =WM_USER + 126
 const    EM_GETIMEMODEBIAS           =WM_USER + 127
 const    EM_SETBIDIOPTIONS           =WM_USER + 200
 const    EM_GETBIDIOPTIONS           =WM_USER + 201
@@ -1320,4 +1325,5 @@ DECLARE FUNCTION SetWindowLongAPI LIB "user32" ALIAS "SetWindowLongA" _
 
 Declare Function CallWindowProc Lib "user32" Alias "CallWindowProcA" _
 (lpPrevWndFunc As Long,  hWnd As Long, Msg As Long,  wParam As Long,  lParam As Long) As Long
+
 
