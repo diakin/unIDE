@@ -161,9 +161,6 @@ Type QAPPLICATION
     Declare Sub Minimize()
     Declare Sub Restore()
     Declare Property IcoHandle(ByVal Value As Long)
-    ' Дескриптор значка программы (HICON), 0 - нет. Чтение Icon в числовом
-    ' присваивании (QFormEx: hIcon = Application.Icon) переводится сюда
-    Declare Property IconHandle() As Long
     Declare Sub HelpCommand(ByVal Command As Long, ByVal HelpData As Long)
     Declare Sub HelpContext(ByVal Context As Long)
     Declare Sub HelpJump(ByRef JumpID As String)
@@ -176,9 +173,6 @@ End Function
 ' Значок программы - ресурс $RESOURCE с файлом .ico
 Property QAPPLICATION.IcoHandle(ByVal Value As Long)
     RqLclSetInt(Obj(), "IcoHandle", Value)
-End Property
-Property QAPPLICATION.IconHandle() As Long
-    Return RqGetInt(Obj(), "IconHandle")
 End Property
 ' Справка HelpFile: HelpCommand - WinHelp (команда, данные); HelpContext и
 ' HelpJump - у файла .chm через HtmlHelp, у остальных через WinHelp

@@ -4623,10 +4623,10 @@ begin
   end;
 
   // Число = Объект.Icon (rapidq2.inc, QFormEx.AddTrayIcon: .TrayIcon.hIcon
-  // = QForm.Icon) - дескриптор значка, Объект.IconHandle (rqlcl.bi). В
-  // RqLcl Icon - строка (перенос значка между объектами). Тест
-  // пользователя в RapidQ 2026-10-10: у формы без значка H = F.Icon даёт
-  // 0, S = F.Icon - "". Что чтение даёт у формы со значком, не проверялось.
+  // = QForm.Icon) - 0. Icon в RapidQ только для записи (документация,
+  // qform.html: Icon STRING, W); тест пользователя 2026-10-10: H = F.Icon
+  // даёт 0, S = F.Icon - "". В RqLcl Icon - строка, и присваивание числу
+  // fbc отвергал (error 181).
   if (RhsLast > RhsFirst) and (AToks[RhsLast].Kind = tkIdent) and
      (AToks[RhsLast].Up = 'ICON') and
      IsOp(AToks, PrevSig(AToks, RhsLast - 1), '.') and
@@ -4638,9 +4638,18 @@ begin
       TokIdx := NextSig(AToks, TokIdx + 1, RhsLast);
     if TokIdx = RhsLast then
     begin
-      AToks[RhsLast].Text := 'IconHandle';
-      AToks[RhsLast].Up := 'ICONHANDLE';
-      AToks[RhsLast].OutText := 'IconHandle';
+      for TokIdx := RhsFirst + 1 to RhsLast do
+      begin
+        AToks[TokIdx].Kind := tkSpace;
+        AToks[TokIdx].Text := '';
+        AToks[TokIdx].Up := '';
+        AToks[TokIdx].OutText := '';
+      end;
+      AToks[RhsFirst].Kind := tkNumber;
+      AToks[RhsFirst].Text := '0';
+      AToks[RhsFirst].Up := '0';
+      AToks[RhsFirst].OutText := '0';
+      RhsLast := RhsFirst;
     end;
   end;
 
