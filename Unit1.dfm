@@ -217,6 +217,7 @@ object Form1: TForm1
     object FTabs: TUiTabControl
       Top = 0
       Height = 30
+      MultiLine = True
       ParentFont = False
       Font.Name = 'Tahoma'
       Font.Size = 10

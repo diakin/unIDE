@@ -1422,6 +1422,10 @@ type
     FTabsOldProc: TWndMethod;
     FTabsHostProc: TWndMethod; // прежний обработчик панели-родителя вкладок
     FInFitTabs: Boolean;
+    // Вкладки в несколько рядов (MultiLine в .dfm): высота полосы с одним
+    // рядом - из .dfm; на каждый следующий ряд полоса выше (UpdateTabsHeight)
+    FTabsBaseHeight: Integer;
+    FInTabsHeight: Boolean;
     FTabWin: array of Integer;
     FLockTabs: Boolean; // защита от рекурсии при программной смене вкладки
     FTabHintIdx: Integer; // вкладка, для которой показана подсказка (TabsMouseMove)
@@ -2765,6 +2769,7 @@ type
     procedure TabsWndProc(var Message: TMessage);
     procedure TabsHostWndProc(var Message: TMessage);
     procedure FitTabsToWidth;
+    procedure UpdateTabsHeight;
     procedure CheckCtlScrollX;
     procedure XorOwnCaret(DC: HDC; const P: TPoint);
     procedure MoveOwnCaret(const P: TPoint; AOn: Boolean);
@@ -19451,6 +19456,8 @@ begin
   // Смена ширины и удаление вкладок - см. FitTabsToWidth
   FTabsOldProc := FTabs.WindowProc;
   FTabs.WindowProc := TabsWndProc;
+  // Вкладки в несколько рядов: высота полосы - по числу рядов
+  FTabsBaseHeight := FTabs.Height;
 
   // WM_DRAWITEM полоса вкладок шлёт своему родителю, то есть pnlMain.
   // Поэтому подписи рисуем из его обработчика: ни OnDrawTab, ни CN_DRAWITEM
@@ -20097,7 +20104,10 @@ end;
 // вкладки к правому краю, см. FitTabsToWidth
 procedure TForm1.TabsWndProc(var Message: TMessage);
 const
+  TCM_SETITEMA_ = $1300 + 6;
+  TCM_INSERTITEMA_ = $1300 + 7;
   TCM_DELETEITEM_ = $1300 + 8;
+  TCM_DELETEALLITEMS_ = $1300 + 9;
 var
   DI: PDrawItemStruct;
 begin
@@ -20119,6 +20129,50 @@ begin
   FTabsOldProc(Message);
   if (Message.Msg = WM_SIZE) or (Message.Msg = TCM_DELETEITEM_) then
     FitTabsToWidth;
+  // Число рядов меняют ширина полосы, вкладки и их подписи, шрифт
+  if (Message.Msg = WM_SIZE) or (Message.Msg = TCM_DELETEITEM_) or
+     (Message.Msg = TCM_INSERTITEMA_) or (Message.Msg = TCM_SETITEMA_) or
+     (Message.Msg = TCM_DELETEALLITEMS_) or (Message.Msg = WM_SETFONT) then
+    UpdateTabsHeight;
+end;
+
+// Вкладки в несколько рядов (MultiLine): высота полосы - высота с одним
+// рядом (из .dfm) плюс то, на сколько нижний край последнего ряда ниже
+// нижнего края первого. Ряды по высоте перекрываются на пару точек,
+// поэтому берутся края ярлычков (TabRect), а не число рядов на высоту
+// ярлычка. Редактор и панель объявления (Align) сдвигаются сами.
+procedure TForm1.UpdateTabsHeight;
+var
+  TabIdx, TopBottom, LowBottom, NewHeight: Integer;
+  TabBox: TRect;
+begin
+  if (FTabs = nil) or not FTabs.HandleAllocated or FInTabsHeight or
+     (FTabsBaseHeight <= 0) then
+    Exit;
+  TopBottom := MaxInt;
+  LowBottom := 0;
+  for TabIdx := 0 to FTabs.Tabs.Count - 1 do
+  begin
+    TabBox := FTabs.TabRect(TabIdx);
+    if TabBox.Bottom <= TabBox.Top then
+      Continue;
+    if TabBox.Bottom < TopBottom then
+      TopBottom := TabBox.Bottom;
+    if TabBox.Bottom > LowBottom then
+      LowBottom := TabBox.Bottom;
+  end;
+  if TopBottom = MaxInt then
+    NewHeight := FTabsBaseHeight
+  else
+    NewHeight := FTabsBaseHeight + (LowBottom - TopBottom);
+  if NewHeight = FTabs.Height then
+    Exit;
+  FInTabsHeight := True;
+  try
+    FTabs.Height := NewHeight;
+  finally
+    FInTabsHeight := False;
+  end;
 end;
 
 // Вкладки не помещаются, полоса прокручена, а справа от последней вкладки
