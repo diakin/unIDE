@@ -425,6 +425,8 @@ type
     Tail: TStringList;        // строки в END TYPE (переходники событий)
     Thunks: TStringList;      // переходник=Поле|КЛАСС|Событие|МЕТОД
     Variadic: TStringList;    // методы SUBI / FUNCTIONI (верхний регистр)
+    MethParams: TStringList;  // ИМЯ=параметры метода FreeBASIC (M, N)
+    CbThunks: TStringList;    // методы, адрес которых берёт CODEPTR (верхний регистр)
     Regs: string;             // подключение событий в начале конструктора
     HasCtor: Boolean;
     constructor Create;
@@ -676,6 +678,8 @@ type
     procedure TypeEnd(var AToks: TToks; AFirst, ATo: Integer);
     function TypeAssign(var AToks: TToks; AFirst, AEq, ATo: Integer): Boolean;
     procedure TypeCallFunc(var AToks: TToks; AFirst, ATo: Integer);
+    function CodePtrMethod(var AToks: TToks; AIdx, AOpen, AClose: Integer): Boolean;
+    procedure AddCodePtrThunks;
     procedure AddThunk(const AName, ACompFb, AClassUp, AEventDisplay,
                        AMethUp: string);
   public
@@ -848,6 +852,8 @@ begin
   Tail := TStringList.Create;
   Thunks := TStringList.Create;
   Variadic := TStringList.Create;
+  MethParams := TStringList.Create;
+  CbThunks := TStringList.Create;
 end;
 
 destructor TRqTypeInfo.Destroy;
@@ -862,6 +868,8 @@ begin
   Tail.Free;
   Thunks.Free;
   Variadic.Free;
+  MethParams.Free;
+  CbThunks.Free;
   inherited Destroy;
 end;
 
@@ -4023,6 +4031,12 @@ begin
   if ((Up = 'CODEPTR') or (Up = 'CALLBACK')) and (FindProc(Up) = nil) and
      IsOp(AToks, NextIdx, '(') and (MatchParen(AToks, NextIdx, ATo) > 0) then
   begin
+    // CODEPTR(This.Метод) / CODEPTR(Тип.Метод) в методе своего компонента
+    // (QColorDialog.inc: CODEPTR(QCOLORDIALOG.HookProc)) -> адрес
+    // переходника: обычной процедуры с параметрами метода, которая вызывает
+    // метод у объекта, запомненного при взятии адреса (CodePtrMethod)
+    if CodePtrMethod(AToks, AIdx, NextIdx, MatchParen(AToks, NextIdx, ATo)) then
+      Exit;
     ProcRec := nil;
     if NextSig(AToks, NextIdx + 1, ATo) >= 0 then
       ProcRec := FindProc(AToks[NextSig(AToks, NextIdx + 1, ATo)].Up);
@@ -4030,8 +4044,8 @@ begin
        (NextSig(AToks, NextSig(AToks, NextIdx + 1, ATo) + 1, ATo) <>
         MatchParen(AToks, NextIdx, ATo)) then
       Error(AToks[AIdx].Text + RawText(AToks, NextIdx, MatchParen(AToks, NextIdx, ATo)) +
-            ': ожидалось имя SUB или FUNCTION (метод своего компонента пока ' +
-            'не поддержан)')
+            ': ожидалось имя SUB или FUNCTION (метод своего компонента - ' +
+            'только внутри его TYPE: This.Метод или Тип.Метод)')
     else
     begin
       AToks[AIdx].OutText := 'Cast';
@@ -7067,6 +7081,7 @@ begin
       FCurType.MemberFb.Add(NameUp + '=' + FbName);
       FCurType.MemberType.Add(NameUp + '=' + RetType);
       FCurType.ParamCounts.Add(NameUp + '=' + IntToStr(ParamCount));
+      FCurType.MethParams.Add(NameUp + '=' + Params);
       FCurType.Decls.Add('Declare ' + DeclText);
       if ProcRec.IsVariadic then
       begin
@@ -7358,6 +7373,136 @@ begin
                       AEventDisplay + '|' + AMethUp);
 end;
 
+// CODEPTR(This.Метод) / CODEPTR(Тип.Метод) внутри TYPE своего компонента.
+// Windows вызывает процедуру по адресу без объекта, поэтому адрес берётся у
+// переходника Тип__RqCb_Метод (обычная процедура с параметрами метода),
+// а объект запоминается в Тип__RqCbObj_Метод в момент взятия адреса:
+//   CODEPTR(This.Метод) -> Тип__RqCbAddr_Метод(@This)
+// Переходник вызывает метод у последнего запомненного объекта.
+function TRqFbConv.CodePtrMethod(var AToks: TToks; AIdx, AOpen, AClose: Integer): Boolean;
+var
+  OwnerIdx, DotIdx, MethIdx, TokIdx: Integer;
+  MethUp: string;
+begin
+  Result := False;
+  if FCurType = nil then
+    Exit;
+  OwnerIdx := NextSig(AToks, AOpen + 1, AClose);
+  if (OwnerIdx < 0) or (OwnerIdx >= AClose) then
+    Exit;
+  DotIdx := NextSig(AToks, OwnerIdx + 1, AClose);
+  if (DotIdx < 0) or not IsOp(AToks, DotIdx, '.') then
+    Exit;
+  MethIdx := NextSig(AToks, DotIdx + 1, AClose);
+  if (MethIdx < 0) or (AToks[MethIdx].Kind <> tkIdent) or
+     (NextSig(AToks, MethIdx + 1, AClose) <> AClose) then
+    Exit;
+  if not IsWord(AToks, OwnerIdx, 'THIS') and
+     not IsWord(AToks, OwnerIdx, FCurType.Name) then
+    Exit;
+  MethUp := AToks[MethIdx].Up;
+  if (FPass = 2) and not (FCurType.Kind(MethUp) in ['M', 'N']) then
+  begin
+    Error(AToks[AIdx].Text + RawText(AToks, AOpen, AClose) +
+          ': ' + AToks[MethIdx].Text + ' - не SUB и не FUNCTION типа ' +
+          FCurType.Display);
+    Result := True;
+    Exit;
+  end;
+  if (FPass = 1) and (FCurType.CbThunks.IndexOf(MethUp) < 0) then
+    FCurType.CbThunks.Add(MethUp);
+  Rebuild(AToks, AIdx, AClose, FCurType.Display + '__RqCbAddr_' +
+          MemberFbName(AToks[MethIdx].Text) + '(@This)');
+  // токены в скобках уже выведены - дальше по выражению их не обрабатывать
+  for TokIdx := AOpen to AClose do
+    AToks[TokIdx].Kind := tkSpace;
+  Result := True;
+end;
+
+// Переходники для CODEPTR(This.Метод) (первый проход, END TYPE)
+procedure TRqFbConv.AddCodePtrThunks;
+var
+  ThunkIdx, CharIdx, Depth: Integer;
+  MethUp, MethFb, Params, Args, Piece, CbName, ObjName, AddrName, RetText: string;
+  Kind: Char;
+
+  // имя параметра из "ByVal Имя As Тип" / "ByRef Имя() As Тип"
+  procedure AddArg(const APiece: string);
+  var
+    Words: string;
+    SpacePos: Integer;
+  begin
+    Words := Trim(APiece);
+    if Words = '' then
+      Exit;
+    if (UpperCase(Copy(Words, 1, 6)) = 'BYVAL ') or
+       (UpperCase(Copy(Words, 1, 6)) = 'BYREF ') then
+      Words := Trim(Copy(Words, 7, MaxInt));
+    SpacePos := Pos(' ', Words);
+    if SpacePos > 0 then
+      Words := Copy(Words, 1, SpacePos - 1);
+    if Pos('(', Words) > 0 then
+      Words := Copy(Words, 1, Pos('(', Words) - 1) + '()';
+    if Args <> '' then
+      Args := Args + ', ';
+    Args := Args + Words;
+  end;
+
+begin
+  for ThunkIdx := 0 to FCurType.CbThunks.Count - 1 do
+  begin
+    MethUp := FCurType.CbThunks[ThunkIdx];
+    Kind := FCurType.Kind(MethUp);
+    if not (Kind in ['M', 'N']) then
+      Continue;
+    MethFb := FCurType.MemberFb.Values[MethUp];
+    if MethFb = '' then
+      MethFb := MethUp;
+    Params := FCurType.MethParams.Values[MethUp];
+    Args := '';
+    Piece := '';
+    Depth := 0;
+    for CharIdx := 1 to Length(Params) do
+    begin
+      if Params[CharIdx] = '(' then
+        Inc(Depth)
+      else if Params[CharIdx] = ')' then
+        Dec(Depth);
+      if (Params[CharIdx] = ',') and (Depth = 0) then
+      begin
+        AddArg(Piece);
+        Piece := '';
+      end
+      else
+        Piece := Piece + Params[CharIdx];
+    end;
+    AddArg(Piece);
+    CbName := FCurType.Display + '__RqCb_' + MethFb;
+    ObjName := FCurType.Display + '__RqCbObj_' + MethFb;
+    AddrName := FCurType.Display + '__RqCbAddr_' + MethFb;
+    FCurType.After.Add('Dim Shared ' + ObjName + ' As ' + FCurType.Display + ' Ptr');
+    FCurType.After.Add('Declare Function ' + AddrName + '(ByVal RqObj As ' +
+                       FCurType.Display + ' Ptr) As Integer');
+    if Kind = 'N' then
+    begin
+      RetText := FbType(FCurType.MemberType.Values[MethUp]);
+      FCurType.After.Add('Declare Function ' + CbName + '(' + Params + ') As ' + RetText);
+      FCurType.Tail.Add('Function ' + CbName + '(' + Params + ') As ' + RetText +
+                        ' : Return ' + ObjName + '->' + MethFb + '(' + Args +
+                        ') : End Function');
+    end
+    else
+    begin
+      FCurType.After.Add('Declare Sub ' + CbName + '(' + Params + ')');
+      FCurType.Tail.Add('Sub ' + CbName + '(' + Params + ') : ' + ObjName + '->' +
+                        MethFb + '(' + Args + ') : End Sub');
+    end;
+    FCurType.Tail.Add('Function ' + AddrName + '(ByVal RqObj As ' + FCurType.Display +
+                      ' Ptr) As Integer : ' + ObjName + ' = RqObj : Return Cast(Integer, @' +
+                      CbName + ') : End Function');
+  end;
+end;
+
 // END TYPE: переходники событий (и конструктор, если его нет, а события
 // подключать надо), затем #line
 procedure TRqFbConv.TypeEnd(var AToks: TToks; AFirst, ATo: Integer);
@@ -7412,6 +7557,7 @@ begin
       FCurType.Tail.Add('Sub ' + ThunkName + '(' + Params + ') : ' + SelfText +
                         '->' + MethFb + '(' + Args + ') : End Sub');
     end;
+    AddCodePtrThunks;
     if not FCurType.HasCtor and (FCurType.Regs <> '') then
       FCurType.Tail.Insert(0, 'Constructor ' + FCurType.Display + '()' +
                            FCurType.Regs + ' : End Constructor');
