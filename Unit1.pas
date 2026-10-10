@@ -210,6 +210,15 @@ type
 
   TMatchRowArray = array of TMatchRow;
 
+  // Копия до замены All по вкладкам, проекту, диску (Undo): текст окна
+  // или байты файла на диске
+  TReplBackup = record
+    FileName: string;
+    Text: string;
+    OnDisk: Boolean;    // файл не был открыт - перезаписан на диске
+  end;
+  TReplBackupArray = array of TReplBackup;
+
   // Текст файла на диске на момент последнего чтения или записи здесь
   TDiskBase = class
   public
@@ -665,14 +674,12 @@ type
     FObjSetList: TCheckListBox;
     BtnPrev: TUiButton;
     BtnNext: TUiButton;
-    chkList: TUiCheckBox;
     cmbReplace: TUiComboBox;
     BtnRepl: TUiButton;
     BtnAll: TUiButton;
     UndoBtn: TUiButton;
     cmbMode: TUiComboBox;
     chkCase: TUiCheckBox;
-    btnFindInFiles: TUiButton;
     cmbScope: TUiComboBox;
     btnViewUnit: TUiIconButton;
     btnViewForm: TUiIconButton;
@@ -857,7 +864,26 @@ type
     procedure DoFindNext(Sender: TObject);
     procedure DoReplace(Sender: TObject);
     procedure DoReplaceAll(Sender: TObject);
-    procedure FindInFilesClick(Sender: TObject);
+    // Поиск и замена по области cmbScope - см. SearchScope
+    function  SearchScope: Integer;
+    function  MatchKeyFor(AScope: Integer; const APattern: string): string;
+    procedure FileFindNext;
+    procedure FileFindPrev;
+    procedure FileReplace;
+    procedure FileReplaceAll;
+    function  TabsToList(const APattern: string): Integer;
+    function  SearchToList: Boolean;
+    function  NextHitRow(AFrom: Integer; AForward: Boolean): Integer;
+    procedure MultiFindStep(AForward: Boolean);
+    procedure ShowMatchRow(ARow: Integer);
+    function  SelectionIsPattern(const APattern: string): Boolean;
+    procedure MultiReplace;
+    function  ReplaceInText(const ASrc, APattern, AReplace: string;
+                            var ACount: Integer): string;
+    procedure AddReplBackup(const AFile, AText: string; AOnDisk: Boolean);
+    procedure SetWindowTextReplaced(AWinIdx: Integer; const AText: string);
+    procedure MultiReplaceAll;
+    procedure UndoMultiReplace;
     procedure NotDoneClick(Sender: TObject);
     procedure NewFormClick(Sender: TObject);
     procedure ProgramResetClick(Sender: TObject);
@@ -1743,6 +1769,12 @@ type
     FMatchGrid: TStringGrid;
     FMatchRows: TMatchRowArray;
     FMatchPattern: string; // что искали - по нему подсвечиваем вхождения
+    // Для чего построен список (MatchKeyFor); '' - список по файлу или
+    // устарел. Совпал - Find-> идёт по нему, не ищет заново
+    FMatchKey: string;
+    FMatchCur: Integer;    // строка списка, к которой перешли последней
+    // Копии до последней замены All по вкладкам, проекту, диску - для Undo
+    FReplBackups: TReplBackupArray;
     FNewTabAdded: Boolean; // EnsureTab только что завела новую вкладку
 
     // Горячие папки: где искать потерянные файлы. Objects[I] <> nil означает,
@@ -16172,14 +16204,25 @@ end;
 //
 //  Панель видна постоянно и не прячется в меню: искать приходится чаще всего
 //  остального. Поля Find и Replace - комбобоксы, они же хранят историю.
-//  Галка List открывает отдельное окно со всеми найденными строками.
+//  Где искать и заменять - список области (cmbScope, см. SearchScope):
+//  в файле, список (найденное в файле - в Match list), во вкладках, в
+//  файлах проекта, на диске. Кнопки Find->, <-Find, Replace, All работают
+//  по выбранной области.
 // ---------------------------------------------------------------------------
 
+// Область поиска - пункты cmbScope по порядку (см. SearchScope)
+const
+  ScopeFile = 0;      // в файле
+  ScopeList = 1;      // в файле, найденное - в Match list
+  ScopeTabs = 2;      // во вкладках
+  ScopeProject = 3;   // в файлах проекта
+  ScopeDisk = 4;      // на диске
+
 // Раскладка в три ряда по 24 пикселя (панель под надписью - около 75):
-//   1: [Find      ] [<-Find][Find->] [List] [Find In Files]
-//   2: [Replace   ] [Replace][All]          [Во вкладках   ]
-//   3:              [Normal ] [Case]
-// Режим поиска стоит под кнопкой Replace, галка Case - справа от него.
+//   1: [Find      ] [<-Find][Find->]
+//   2: [Replace   ] [Replace][All][Undo]
+//   3: [Normal ] [Case] [В файле       ]
+// Режим поиска, галка Case и область - в третьем ряду.
 procedure TForm1.BuildSearchPanel;
 const
   Row1 = 1;
@@ -16203,14 +16246,6 @@ begin
 
     cmbFind.Top := Row1 + 1;
     cmbFind.Width := 100;
-
-    X := 110;
-    Inc(X, 49);
-    Inc(X, 49);
-
-    chkList.Left := X + 4;
-    // Обработчика нет: галка только взводит флаг, а список строится
-    // при следующем поиске - см. DoFindNext и DoFindPrev
 
     cmbReplace.Width := 100;
 
@@ -16241,20 +16276,14 @@ begin
     chkCase.Left := cmbMode.Left + cmbMode.Width + 4;
     chkCase.Width := TextW(chkCase.Caption) + 20;
 
-    btnFindInFiles.Left := chkCase.Left + chkCase.Width + 2;
-    btnFindInFiles.Width := TextW(btnFindInFiles.Caption) + 20;
-
-    cmbScope.Left := btnFindInFiles.Left + btnFindInFiles.Width + 4;
-    // Порядок пунктов важен, подписи - нет:
-    //   0 - открытые вкладки
-    //   1 - все окна (список Windows), в том числе без вкладки
-    //   2 - все файлы проекта, открытые и нет
-    //   3 - папка на диске
+    cmbScope.Left := chkCase.Left + chkCase.Width + 4;
+    // Порядок пунктов важен (ScopeFile ... ScopeDisk), подписи - нет
+    cmbScope.Items.Add('В файле');
+    cmbScope.Items.Add('Список');
     cmbScope.Items.Add('Во вкладках');
-    cmbScope.Items.Add('В окнах');
     cmbScope.Items.Add('В файлах проекта');
     cmbScope.Items.Add('На диске');
-    cmbScope.ItemIndex := 0;
+    cmbScope.ItemIndex := ScopeFile;
 
     W := 0;
     for I := 0 to cmbScope.Items.Count - 1 do
@@ -16263,17 +16292,16 @@ begin
     cmbScope.Width := W + Arrow + 8;
 
     // Правый край первой строки - вровень с третьей, самой длинной: лишнее
-    // место отдаём полю поиска, кнопки за ним сдвигаем. List встаёт у
+    // место отдаём полю поиска, кнопки за ним сдвигаем. Find-> встаёт у
     // правого края рамки.
     R := cmbScope.Left + cmbScope.Width;
 
-    D := R - (chkList.Left + chkList.Width);
+    D := R - (BtnNext.Left + BtnNext.Width);
     if D > 0 then
     begin
       cmbFind.Width := cmbFind.Width + D;
       BtnPrev.Left := BtnPrev.Left + D;
       BtnNext.Left := BtnNext.Left + D;
-      chkList.Left := chkList.Left + D;
     end;
 
     // Вторая строка - по первой: поле замены той же ширины, что поле
@@ -16439,7 +16467,7 @@ begin
   Result := MatchPosFrom(Line, Pattern, 1);
 end;
 
-procedure TForm1.DoFindNext(Sender: TObject);
+procedure TForm1.FileFindNext;
 var
   S: string;
   P, StartFrom: Integer;
@@ -16477,13 +16505,13 @@ begin
   CenterCaretLine;
   UpdateStatusBarInfo;
 
-  if chkList.Checked then
+  if SearchScope = ScopeList then
     BuildMatchList;
 end;
 
 // Поиск назад. FindText умеет искать только вперёд, поэтому идём от начала
 // файла и запоминаем последнее совпадение, оказавшееся левее каретки.
-procedure TForm1.DoFindPrev(Sender: TObject);
+procedure TForm1.FileFindPrev;
 var
   S: string;
   P, Best, Limit: Integer;
@@ -16517,7 +16545,7 @@ begin
   CenterCaretLine;
   UpdateStatusBarInfo;
 
-  if chkList.Checked then
+  if SearchScope = ScopeList then
     BuildMatchList;
 end;
 
@@ -16527,7 +16555,7 @@ end;
 //
 // Поиск идёт от каретки к концу файла, без закольцовывания: иначе после
 // ответа "Нет" мы бы вернулись к тому же месту и спрашивали бесконечно.
-procedure TForm1.DoReplace(Sender: TObject);
+procedure TForm1.FileReplace;
 var
   S, R: string;
   P, N: Integer;
@@ -16579,7 +16607,7 @@ begin
   StatusBar1.SimplePanel := True;
   UpdateStatusBarInfo;
 
-  if chkList.Checked then
+  if SearchScope = ScopeList then
     BuildMatchList;
 end;
 
@@ -16687,7 +16715,7 @@ end;
 //
 // Здесь текст забирается ОДИН раз, собирается результат и пишется обратно
 // ОДНИМ присваиванием. Карта пересобирается тоже один раз, в конце.
-procedure TForm1.DoReplaceAll(Sender: TObject);
+procedure TForm1.FileReplaceAll;
 var
   S, R, Src, Hay, Pat, Res: string;
   P, N, PL, Start, Used, Cap: Integer;
@@ -16745,6 +16773,7 @@ begin
     Src := GetEditorText;
     FReplaceBackup := Src;
     FReplaceBackupWin := FWindowsIndex;
+    SetLength(FReplBackups, 0);   // Undo - эта замена, не прежний All
 
     PL := Length(S);
     WholeW := (cmbMode <> nil) and (cmbMode.ItemIndex = 1);
@@ -16842,8 +16871,654 @@ begin
   StatusBar1.SimpleText := Format('Заменено: %d', [N]);
   StatusBar1.SimplePanel := True;
 
-  if chkList.Checked then
+  if SearchScope = ScopeList then
     BuildMatchList;
+end;
+
+// ---------------------------------------------------------------------------
+//  Область поиска и замены (список cmbScope)
+//
+//    В файле           - текущий файл: Find-> / <-Find - следующее и
+//                        предыдущее вхождение, Replace - по одному с
+//                        вопросом, All - все сразу (FileFindNext,
+//                        FileFindPrev, FileReplace, FileReplaceAll)
+//    Список            - то же, и найденное в файле - в Match list
+//    Во вкладках       - открытые вкладки;
+//    В файлах проекта  - файлы проекта (окно Find In Files: расширения);
+//    На диске          - папки (окно Find In Files: папки, расширения).
+//  Для трёх последних: Find-> - Match list по области и переход к первому
+//  вхождению, следующие нажатия - к следующему по списку (<-Find - к
+//  предыдущему); Replace - поиск заново и по одному вхождению с вопросом,
+//  файл открывается в редакторе; All - поиск заново, вопрос с числом
+//  вхождений и файлов, замена во всех. Файлы, открытые в редакторе,
+//  меняются в редакторе (сохранять - как обычно); не открытые -
+//  перезаписываются на диске в своей кодировке. Undo возвращает всё, что
+//  поменял последний All, - и окна, и файлы на диске.
+//  Режим Go to line - всегда в текущем файле.
+// ---------------------------------------------------------------------------
+
+function TForm1.SearchScope: Integer;
+begin
+  Result := ScopeFile;
+  if cmbScope <> nil then
+    Result := cmbScope.ItemIndex;
+  if (Result < ScopeFile) or (Result > ScopeDisk) then
+    Result := ScopeFile;
+  // Go to line - переход по номеру строки в текущем файле
+  if (cmbMode <> nil) and (cmbMode.ItemIndex = 2) then
+    Result := ScopeFile;
+end;
+
+// Ключ списка в Match list: область, образец, Case, режим. Совпал с
+// текущим - Find-> идёт по готовому списку, не ищет заново
+function TForm1.MatchKeyFor(AScope: Integer; const APattern: string): string;
+begin
+  Result := IntToStr(AScope) + '|' + APattern + '|' +
+            IntToStr(Ord(chkCase.Checked)) + '|' + IntToStr(cmbMode.ItemIndex);
+end;
+
+procedure TForm1.DoFindNext(Sender: TObject);
+begin
+  if SearchScope <= ScopeList then
+    FileFindNext
+  else
+    MultiFindStep(True);
+end;
+
+procedure TForm1.DoFindPrev(Sender: TObject);
+begin
+  if SearchScope <= ScopeList then
+    FileFindPrev
+  else
+    MultiFindStep(False);
+end;
+
+procedure TForm1.DoReplace(Sender: TObject);
+begin
+  if SearchScope <= ScopeList then
+    FileReplace
+  else
+    MultiReplace;
+end;
+
+procedure TForm1.DoReplaceAll(Sender: TObject);
+begin
+  if SearchScope <= ScopeList then
+    FileReplaceAll
+  else
+    MultiReplaceAll;
+end;
+
+// Во вкладках - ровно то, что открыто вкладками, и в их порядке; текст из
+// памяти (с несохранёнными правками). Результат - число вхождений
+function TForm1.TabsToList(const APattern: string): Integer;
+var
+  TabIdx, WinIdx, MatchCount, Files: Integer;
+begin
+  Result := 0;
+  Files := 0;
+  StoreCurrentWindow;
+  EnsureMatchForm;
+  FMatchPattern := APattern;
+  ResetMatchRows;
+  for TabIdx := 0 to High(FTabWin) do
+  begin
+    WinIdx := FTabWin[TabIdx];
+    if (WinIdx < 0) or (WinIdx > WindowsItemCount - 1) or
+       not FWindows[WinIdx].Used then
+      Continue;
+    MatchCount := ScanTextForMatches(FWindows[WinIdx].FileName, WinIdx,
+                                     FWindows[WinIdx].Text, APattern);
+    if MatchCount > 0 then
+    begin
+      Inc(Result, MatchCount);
+      Inc(Files);
+    end;
+  end;
+  FillMatchGrid;
+  if Result = 0 then
+    FMatchForm.Caption := 'Match list - во вкладках ничего не найдено'
+  else
+    FMatchForm.Caption := Format('Match list - %d в %d вкладках',
+                                 [Result, Files]);
+  if not FMatchForm.Visible then
+    PlaceMatchForm;
+  FMatchForm.Show;
+end;
+
+// Match list по области (вкладки, проект, диск) - поиск заново. False -
+// список не построен (пустой образец, поиск остановлен или его список
+// заменили)
+function TForm1.SearchToList: Boolean;
+var
+  Pattern: string;
+begin
+  Result := False;
+  Pattern := cmbFind.Text; // без Trim: образец - как введён
+  if Pattern = '' then
+    Exit;
+  AddHistory(cmbFind, Pattern);
+  FMatchKey := '';
+  FMatchCur := -1;
+  case SearchScope of
+    ScopeTabs:
+      TabsToList(Pattern);
+    ScopeProject, ScopeDisk:
+      begin
+        EnsureMatchForm;
+        ResetMatchRows;
+        FillMatchGrid;
+        FifShowWindow(SearchScope = ScopeProject);
+        FifRun;
+        if FFifListTaken then
+          Exit;
+      end;
+  else
+    Exit;
+  end;
+  FMatchKey := MatchKeyFor(SearchScope, Pattern);
+  Result := True;
+end;
+
+// Следующее (APrev = False) или предыдущее вхождение в Match list от
+// AFrom; по кругу. -1 - вхождений нет
+function TForm1.NextHitRow(AFrom: Integer; AForward: Boolean): Integer;
+var
+  Step, RowIdx, RowCount: Integer;
+begin
+  Result := -1;
+  RowCount := Length(FMatchRows);
+  if RowCount = 0 then
+    Exit;
+  if AForward then
+    Step := 1
+  else
+    Step := -1;
+  if (AFrom < 0) or (AFrom >= RowCount) then
+    if AForward then
+      AFrom := -1
+    else
+      AFrom := RowCount;
+  RowIdx := AFrom;
+  repeat
+    RowIdx := RowIdx + Step;
+    if RowIdx >= RowCount then
+      RowIdx := 0
+    else if RowIdx < 0 then
+      RowIdx := RowCount - 1;
+    if FMatchRows[RowIdx].Kind = mrkHit then
+    begin
+      Result := RowIdx;
+      Exit;
+    end;
+  until RowIdx = AFrom;
+end;
+
+// Find-> / <-Find для вкладок, проекта, диска: по готовому списку, если он
+// для того же образца и области, иначе - поиск заново и первое (для
+// <-Find - последнее) вхождение
+procedure TForm1.MultiFindStep(AForward: Boolean);
+var
+  Pattern: string;
+  RowIdx: Integer;
+begin
+  Pattern := cmbFind.Text;
+  if Pattern = '' then
+    Exit;
+  if FFifRunning then
+  begin
+    FFifAbort := True;   // идёт поиск - кнопка его останавливает
+    Exit;
+  end;
+  if (FMatchKey <> MatchKeyFor(SearchScope, Pattern)) or (FMatchForm = nil) or
+     not FMatchForm.Visible or (Length(FMatchRows) = 0) then
+  begin
+    if not SearchToList then
+      Exit;
+    RowIdx := NextHitRow(-1, AForward);
+  end
+  else
+  begin
+    AddHistory(cmbFind, Pattern);
+    RowIdx := NextHitRow(FMatchCur, AForward);
+  end;
+  if RowIdx < 0 then
+  begin
+    StatusBar1.SimpleText := 'Не найдено: ' + Pattern;
+    StatusBar1.SimplePanel := True;
+    Exit;
+  end;
+  ShowMatchRow(RowIdx);
+  JumpToMatch(RowIdx);
+end;
+
+// Строка Match list - выделить в гриде (если её группа не свёрнута)
+procedure TForm1.ShowMatchRow(ARow: Integer);
+begin
+  if (FMatchGrid = nil) or (ARow < 0) or (ARow + 1 >= FMatchGrid.RowCount) then
+    Exit;
+  if FMatchGrid.RowHeights[ARow + 1] <= 0 then
+    Exit;
+  FMatchGrid.Row := ARow + 1;
+end;
+
+// Совпадает ли выделение в редакторе с образцом (с учётом Case)
+function TForm1.SelectionIsPattern(const APattern: string): Boolean;
+var
+  SelText: string;
+begin
+  Result := False;
+  if RichEdit1.SelLength <> Length(APattern) then
+    Exit;
+  SelText := SelTextA(Length(APattern) + 1);
+  if chkCase.Checked then
+    Result := SelText = APattern
+  else
+    Result := AnsiUpperCase(SelText) = AnsiUpperCase(APattern);
+end;
+
+// Replace для вкладок, проекта, диска: поиск заново, затем по каждому
+// вхождению - файл в редакторе, вопрос Да / Нет / Отмена. Позиции
+// следующих вхождений той же строки сдвигаются на разницу длин
+procedure TForm1.MultiReplace;
+var
+  Pattern, Replacement, FileName: string;
+  RowIdx, LaterIdx, Done, Skipped, Shift, LineNo: Integer;
+begin
+  Pattern := cmbFind.Text;
+  if Pattern = '' then
+    Exit;
+  if FFifRunning then
+  begin
+    FFifAbort := True;
+    Exit;
+  end;
+  Replacement := cmbReplace.Text;
+  AddHistory(cmbReplace, Replacement);
+  if not SearchToList then
+    Exit;
+
+  Done := 0;
+  Skipped := 0;
+  Shift := Length(Replacement) - Length(Pattern);
+  RowIdx := 0;
+  while RowIdx <= High(FMatchRows) do
+  begin
+    if FMatchRows[RowIdx].Kind <> mrkHit then
+    begin
+      Inc(RowIdx);
+      Continue;
+    end;
+    ShowMatchRow(RowIdx);
+    JumpToMatch(RowIdx);
+    FileName := FMatchRows[RowIdx].FileName;
+    LineNo := FMatchRows[RowIdx].LineNo;
+    // Файл не открылся или текст уже другой - вхождение пропускается
+    if (CompareText(FCurrentFileName, FileName) <> 0) or
+       not SelectionIsPattern(Pattern) then
+    begin
+      Inc(Skipped);
+      Inc(RowIdx);
+      Continue;
+    end;
+    case MessageDlg('Заменить это вхождение?' + #13#10 +
+                    ExtractFileName(FileName) + ', строка ' +
+                    IntToStr(LineNo + 1) + #13#10#13#10 +
+                    Pattern + '  ->  ' + Replacement,
+                    mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
+      mrYes:
+      begin
+        RichEdit1.SelText := Replacement;
+        Inc(Done);
+        if Shift <> 0 then
+          for LaterIdx := RowIdx + 1 to High(FMatchRows) do
+            if (FMatchRows[LaterIdx].Kind = mrkHit) and
+               (FMatchRows[LaterIdx].LineNo = LineNo) and
+               (CompareText(FMatchRows[LaterIdx].FileName, FileName) = 0) then
+              Inc(FMatchRows[LaterIdx].MatchPos, Shift);
+      end;
+      mrNo:
+        ;
+    else
+      Break;
+    end;
+    Inc(RowIdx);
+  end;
+
+  // Список - до замены: следующий Find-> ищет заново
+  FMatchKey := '';
+  StatusBar1.SimpleText := Format('Заменено: %d', [Done]);
+  if Skipped > 0 then
+    StatusBar1.SimpleText := StatusBar1.SimpleText +
+      Format(', пропущено: %d (файл не открылся или текст изменился)', [Skipped]);
+  StatusBar1.SimplePanel := True;
+  UpdateStatusBarInfo;
+  RefreshTabsModified;
+end;
+
+// Замена всех вхождений в тексте - по правилам поиска (Case, WholeWord).
+// ACount - сколько заменено
+function TForm1.ReplaceInText(const ASrc, APattern, AReplace: string;
+                              var ACount: Integer): string;
+var
+  Hay, Pat, Res: string;
+  PatLen, Start, FoundAt, Used, Cap: Integer;
+  WholeW: Boolean;
+
+  procedure Append(const APart: string);
+  var
+    PartLen: Integer;
+  begin
+    PartLen := Length(APart);
+    if PartLen = 0 then
+      Exit;
+    while Used + PartLen > Cap do
+    begin
+      Cap := Cap * 2;
+      SetLength(Res, Cap);
+    end;
+    Move(APart[1], Res[Used + 1], PartLen);
+    Inc(Used, PartLen);
+  end;
+
+  function AtWordBounds(APos: Integer): Boolean;
+  begin
+    Result := ((APos = 1) or not IsWordChar(ASrc[APos - 1])) and
+              ((APos + PatLen > Length(ASrc)) or
+               not IsWordChar(ASrc[APos + PatLen]));
+  end;
+
+begin
+  ACount := 0;
+  Result := ASrc;
+  PatLen := Length(APattern);
+  if (PatLen = 0) or (ASrc = '') then
+    Exit;
+  WholeW := (cmbMode <> nil) and (cmbMode.ItemIndex = 1);
+  if chkCase.Checked then
+  begin
+    Hay := ASrc;
+    Pat := APattern;
+  end
+  else
+  begin
+    Hay := AnsiUpperCase(ASrc);
+    Pat := AnsiUpperCase(APattern);
+  end;
+  Cap := Length(ASrc) + 1024;
+  SetLength(Res, Cap);
+  Used := 0;
+  Start := 1;
+  FoundAt := PosEx(Pat, Hay, Start);
+  while FoundAt > 0 do
+  begin
+    if WholeW and not AtWordBounds(FoundAt) then
+    begin
+      FoundAt := PosEx(Pat, Hay, FoundAt + 1);
+      Continue;
+    end;
+    Append(Copy(ASrc, Start, FoundAt - Start));
+    Append(AReplace);
+    Inc(ACount);
+    Start := FoundAt + PatLen;
+    FoundAt := PosEx(Pat, Hay, Start);
+  end;
+  if ACount = 0 then
+    Exit;
+  Append(Copy(ASrc, Start, Length(ASrc) - Start + 1));
+  SetLength(Res, Used);
+  Result := Res;
+end;
+
+// Копия до замены All - для Undo
+procedure TForm1.AddReplBackup(const AFile, AText: string; AOnDisk: Boolean);
+var
+  BackupIdx: Integer;
+begin
+  BackupIdx := Length(FReplBackups);
+  SetLength(FReplBackups, BackupIdx + 1);
+  FReplBackups[BackupIdx].FileName := AFile;
+  FReplBackups[BackupIdx].Text := AText;
+  FReplBackups[BackupIdx].OnDisk := AOnDisk;
+end;
+
+// Новый текст окна AWinIdx: текущее - в редактор (одна карта, один раз),
+// остальные - в память окна
+procedure TForm1.SetWindowTextReplaced(AWinIdx: Integer; const AText: string);
+begin
+  if AWinIdx = FWindowsIndex then
+  begin
+    FLockHighlight := True;
+    try
+      SetEditorText(AText);
+    finally
+      FLockHighlight := False;
+    end;
+    RichEdit1.SelStart := 0;
+    RichEdit1.SelLength := 0;
+    RichEdit1.Modified := True;
+    RebuildCommentRangeMap;
+    RichEditLinesCount := SendMessageA(RichEdit1.Handle, EM_GETLINECOUNT, 0, 0);
+    UpdateVisibleBounds;
+    RichEdit1.Invalidate;
+  end
+  else
+  begin
+    FWindows[AWinIdx].Text := AText;
+    FWindows[AWinIdx].Modified := True;
+    FWindows[AWinIdx].MapValid := False;
+    SetLength(FWindows[AWinIdx].CommentRanges, 0);
+    SetLength(FWindows[AWinIdx].StringRanges, 0);
+    if FWindows[AWinIdx].CursorPos > Length(AText) then
+      FWindows[AWinIdx].CursorPos := 0;
+    UpdateTabCaption(AWinIdx);
+  end;
+end;
+
+// Прочитать файл с диска как есть (для Undo)
+function ReadRawFile(const AFile: string; var AText: string): Boolean;
+var
+  Stream: TFileStream;
+begin
+  Result := False;
+  AText := '';
+  try
+    Stream := TFileStream.Create(AFile, fmOpenRead or fmShareDenyNone);
+    try
+      SetLength(AText, Stream.Size);
+      if Stream.Size > 0 then
+        Stream.ReadBuffer(AText[1], Stream.Size);
+    finally
+      Stream.Free;
+    end;
+    Result := True;
+  except
+    AText := '';
+  end;
+end;
+
+// Записать файл как есть (Undo)
+function WriteRawFile(const AFile, AText: string): Boolean;
+var
+  Stream: TFileStream;
+begin
+  Result := False;
+  try
+    Stream := TFileStream.Create(AFile, fmCreate);
+    try
+      if AText <> '' then
+        Stream.WriteBuffer(AText[1], Length(AText));
+    finally
+      Stream.Free;
+    end;
+    Result := True;
+  except
+  end;
+end;
+
+// All для вкладок, проекта, диска: поиск заново, вопрос с числом
+// вхождений и файлов, замена. Открытые файлы - в редакторе, остальные -
+// на диске в своей кодировке (ReadTextFileDecoded / SaveTextFile)
+procedure TForm1.MultiReplaceAll;
+var
+  Pattern, Replacement, Src, Res, Raw, Question: string;
+  Files: TStringList;
+  RowIdx, FileIdx, WinIdx, Total, FilesOnDisk, Count, Done, DoneFiles,
+    Failed: Integer;
+  SavedUtf8, SavedBom, FileUtf8, FileBom: Boolean;
+begin
+  Pattern := cmbFind.Text;
+  if Pattern = '' then
+    Exit;
+  if FFifRunning then
+  begin
+    FFifAbort := True;
+    Exit;
+  end;
+  Replacement := cmbReplace.Text;
+  AddHistory(cmbReplace, Replacement);
+  if not SearchToList then
+    Exit;
+
+  Files := TStringList.Create;
+  try
+    Total := 0;
+    FilesOnDisk := 0;
+    for RowIdx := 0 to High(FMatchRows) do
+      if (FMatchRows[RowIdx].Kind = mrkGroup) and
+         (FMatchRows[RowIdx].HitCount > 0) then
+      begin
+        Files.Add(FMatchRows[RowIdx].FileName);
+        Inc(Total, FMatchRows[RowIdx].HitCount);
+        if IndexOfWindowByFile(FMatchRows[RowIdx].FileName) < 0 then
+          Inc(FilesOnDisk);
+      end;
+    if Total = 0 then
+    begin
+      StatusBar1.SimpleText := 'Не найдено: ' + Pattern;
+      StatusBar1.SimplePanel := True;
+      Exit;
+    end;
+
+    Question := Format('Заменить все вхождения: %d в %d файлах?',
+                       [Total, Files.Count]) + #13#10#13#10 +
+                Pattern + '  ->  ' + Replacement;
+    if FilesOnDisk > 0 then
+      Question := Question + #13#10#13#10 +
+        Format('Не открыты в редакторе: %d - они будут перезаписаны на диске.',
+               [FilesOnDisk]);
+    Question := Question + #13#10'Откатить - кнопка Undo.';
+    if MessageDlg(Question, mtWarning, [mbYes, mbNo], 0) <> mrYes then
+      Exit;
+
+    StoreCurrentWindow;
+    SetLength(FReplBackups, 0);
+    FReplaceBackup := '';
+    Done := 0;
+    DoneFiles := 0;
+    Failed := 0;
+    SavedUtf8 := FFileIsUtf8;
+    SavedBom := FFileHasBom;
+    try
+      for FileIdx := 0 to Files.Count - 1 do
+      begin
+        WinIdx := IndexOfWindowByFile(Files[FileIdx]);
+        if WinIdx >= 0 then
+        begin
+          if WinIdx = FWindowsIndex then
+            Src := GetEditorText
+          else
+            Src := FWindows[WinIdx].Text;
+          Res := ReplaceInText(Src, Pattern, Replacement, Count);
+          if Count = 0 then
+            Continue;
+          AddReplBackup(FWindows[WinIdx].FileName, Src, False);
+          SetWindowTextReplaced(WinIdx, Res);
+        end
+        else
+        begin
+          if not ReadRawFile(Files[FileIdx], Raw) then
+          begin
+            Inc(Failed);
+            Continue;
+          end;
+          Src := ReadTextFileDecoded(Files[FileIdx]);
+          FileUtf8 := FFileIsUtf8;
+          FileBom := FFileHasBom;
+          Res := ReplaceInText(Src, Pattern, Replacement, Count);
+          if Count = 0 then
+            Continue;
+          FFileIsUtf8 := FileUtf8;
+          FFileHasBom := FileBom;
+          try
+            SaveTextFile(Files[FileIdx], Res);
+            AddReplBackup(Files[FileIdx], Raw, True);
+          except
+            Inc(Failed);
+            Continue;
+          end;
+        end;
+        Inc(Done, Count);
+        Inc(DoneFiles);
+      end;
+    finally
+      FFileIsUtf8 := SavedUtf8;
+      FFileHasBom := SavedBom;
+    end;
+  finally
+    Files.Free;
+  end;
+
+  FMatchKey := '';
+  RefreshTabsModified;
+  if FMatchForm <> nil then
+    FMatchForm.Caption := Format('Match list - заменено %d в %d файлах ' +
+                                 '(список - до замены)', [Done, DoneFiles]);
+  StatusBar1.SimpleText := Format('Заменено: %d в %d файлах', [Done, DoneFiles]);
+  if Failed > 0 then
+    StatusBar1.SimpleText := StatusBar1.SimpleText +
+      Format(', не удалось записать: %d', [Failed]);
+  StatusBar1.SimplePanel := True;
+  UpdateStatusBarInfo;
+end;
+
+// Undo после All по вкладкам, проекту, диску: окна - прежний текст в
+// окно (если файл открыт), файлы на диске - прежние байты
+procedure TForm1.UndoMultiReplace;
+var
+  BackupIdx, WinIdx, Restored, Failed: Integer;
+begin
+  Restored := 0;
+  Failed := 0;
+  StoreCurrentWindow;
+  for BackupIdx := 0 to High(FReplBackups) do
+  begin
+    if FReplBackups[BackupIdx].OnDisk then
+    begin
+      if WriteRawFile(FReplBackups[BackupIdx].FileName,
+                      FReplBackups[BackupIdx].Text) then
+        Inc(Restored)
+      else
+        Inc(Failed);
+      Continue;
+    end;
+    WinIdx := IndexOfWindowByFile(FReplBackups[BackupIdx].FileName);
+    if WinIdx < 0 then
+    begin
+      Inc(Failed);   // окно закрыли
+      Continue;
+    end;
+    SetWindowTextReplaced(WinIdx, FReplBackups[BackupIdx].Text);
+    Inc(Restored);
+  end;
+  SetLength(FReplBackups, 0);
+  RefreshTabsModified;
+  StatusBar1.SimpleText := Format('Отменена замена All: файлов %d', [Restored]);
+  if Failed > 0 then
+    StatusBar1.SimpleText := StatusBar1.SimpleText +
+      Format(', не вернуть: %d (окно закрыто или файл не записывается)', [Failed]);
+  StatusBar1.SimplePanel := True;
+  UpdateStatusBarInfo;
 end;
 
 // Смена фильтра пересобирает список
@@ -16855,6 +17530,12 @@ end;
 // Возврат текста к состоянию до массовой замены
 procedure TForm1.UndoReplaceAllClick(Sender: TObject);
 begin
+  // Последней была замена All по вкладкам, проекту или диску
+  if Length(FReplBackups) > 0 then
+  begin
+    UndoMultiReplace;
+    Exit;
+  end;
   if FReplaceBackup = '' then
   begin
     ShowMessage('11337:Нет сохранённой копии: массовая замена не выполнялась.');
@@ -17475,6 +18156,7 @@ begin
   FN := FMatchRows[Idx].FileName;
   if FN = '' then
     Exit;
+  FMatchCur := Idx;
 
   // Слот ищем заново, а не берём из строки: между поиском и кликом окно могли
   // закрыть, и по старому индексу лежит уже другой файл
@@ -17521,7 +18203,6 @@ end;
 procedure TForm1.MatchFormClose(Sender: TObject; var Action: TCloseAction);
 begin
   Action := caHide; // окно переиспользуем, а не пересоздаём
-  chkList.Checked := False;
 end;
 
 // Собирает список строк, в которых встретился образец - по текущему файлу.
@@ -17546,6 +18227,7 @@ begin
 
   EnsureMatchForm;
   FMatchPattern := S;
+  FMatchKey := '';
   ResetMatchRows;
 
   N := ScanTextForMatches(FCurrentFileName, FWindowsIndex, GetEditorText, S);
@@ -17604,112 +18286,13 @@ begin
   end;
 end;
 
-procedure TForm1.FindInFilesClick(Sender: TObject);
-var
-  S: string;
-  I, W, Total, Files, N: Integer;
-begin
-  // Идёт поиск в файлах (окно Find In Files): эта кнопка его
-  // останавливает. Новый поиск отсюда же - уже после остановки
-  if FFifRunning then
-  begin
-    FFifAbort := True;
-    Exit;
-  end;
-
-  // Файлы проекта и диск - окно Find In Files (немодальное): расширения,
-  // папки, ход поиска. Файлы проекта ищутся сразу, на диске - по кнопке
-  // "Найти" окна: сначала надо выбрать папки
-  if (cmbScope.ItemIndex = 2) or (cmbScope.ItemIndex = 3) then
-  begin
-    FifShowWindow(cmbScope.ItemIndex = 2);
-    if (cmbScope.ItemIndex = 2) and (cmbFind.Text <> '') then
-      FifRun;
-    Exit;
-  end;
-
-  S := cmbFind.Text;
-  if S = '' then
-  begin
-    ToggleSearchPanel; // фокус в поле ввода: искать пока нечего
-    Exit;
-  end;
-  AddHistory(cmbFind, S);
-
-  // Текущее окно сначала сбрасываем в свой слот, иначе в памяти лежит текст
-  // без последних правок, а ищем мы именно по памяти
-  StoreCurrentWindow;
-
-  Total := 0;
-  Files := 0;
-
-  Screen.Cursor := crHourGlass;
-  try
-    EnsureMatchForm;
-    FMatchPattern := S;
-    ResetMatchRows;
-
-    if cmbScope.ItemIndex = 0 then
-    begin
-      // Во вкладках - ровно то, что открыто вкладками, и в их порядке.
-      // Окно без вкладки сюда не попадает, даже если его слот занят.
-      for I := 0 to High(FTabWin) do
-      begin
-        W := FTabWin[I];
-        if (W < 0) or (W > WindowsItemCount - 1) then
-          Continue;
-        if not FWindows[W].Used then
-          Continue;
-
-        N := ScanTextForMatches(FWindows[W].FileName, W, FWindows[W].Text, S);
-        if N > 0 then
-        begin
-          Inc(Total, N);
-          Inc(Files);
-        end;
-      end;
-    end
-    else
-    begin
-      // В окнах - по списку окон, то есть по тому же набору, что
-      // показывает меню Windows: и файлы, открытые без вкладки
-      for I := 0 to WindowsItemCount - 1 do
-      begin
-        if not FWindows[I].Used then
-          Continue;
-
-        N := ScanTextForMatches(FWindows[I].FileName, I, FWindows[I].Text, S);
-        if N > 0 then
-        begin
-          Inc(Total, N);
-          Inc(Files);
-        end;
-      end;
-    end;
-  finally
-    Screen.Cursor := crDefault;
-    RefreshStatusBar;
-  end;
-
-  FillMatchGrid;
-
-  if Total = 0 then
-    FMatchForm.Caption := 'Match list - ничего не найдено'
-  else
-    FMatchForm.Caption :=
-      Format('Match list - %d в %d файлах', [Total, Files]);
-
-  PlaceMatchForm;
-  FMatchForm.Show;
-end;
-
 // ---------------------------------------------------------------------------
 //  Find In Files: файлы проекта и файлы на диске
 //
 //  Окно Find In Files (DlgFifDisk) немодальное: главное окно и Match list
 //  во время поиска работают. Найденное попадает в Match list сразу, по
 //  мере просмотра файлов (FifStep, раз в 100 мс); кнопка "Найти" на время
-//  поиска - "Стоп", кнопка Find In Files главного окна - тоже стоп.
+//  поиска - "Стоп"; кнопки Find->, Replace, All главного окна - тоже стоп.
 //  Расширения - список с галками в окне: для файлов проекта - расширения
 //  файлов проекта (с числом файлов), для диска - свой список
 //  ([FindInFiles] DiskExts в editor.ini) плюс поле других масок.
@@ -18351,6 +18934,12 @@ begin
         FMatchForm.Caption := FMatchForm.Caption + ' - ' + Note;
       if not FFifProject then
         FMatchForm.Caption := FMatchForm.Caption + ' - ' + DirText;
+      // Find-> пойдёт по этому списку
+      if FFifProject then
+        FMatchKey := MatchKeyFor(ScopeProject, Pattern)
+      else
+        FMatchKey := MatchKeyFor(ScopeDisk, Pattern);
+      FMatchCur := -1;
     end;
     if FinalText = '' then
     begin
@@ -62264,6 +62853,7 @@ begin
     else
       FReplaceBackup := GetEditorText;
     FReplaceBackupWin := FWindowsIndex;
+    SetLength(FReplBackups, 0);
 
     Res := SL.Text;
     // TStringList.Text дописывает перевод строки в конце - убираем его,

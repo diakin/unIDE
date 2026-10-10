@@ -1222,11 +1222,6 @@ object Form1: TForm1
           Height = 22
           OnClick = DoFindNext
         end
-        object chkList: TUiCheckBox
-          Top = 4
-          Width = 40
-          Caption = 'List'
-        end
         object cmbReplace: TUiComboBox
           Left = 4
           Top = 26
@@ -1271,14 +1266,6 @@ object Form1: TForm1
           Left = 88
           Width = 44
           Height = 17
-        end
-        object btnFindInFiles: TUiButton
-          Top = 56
-          Height = 22
-          Caption = 'Find In Files'
-          OnClick = FindInFilesClick
-          Left = 136
-          Width = 77
         end
         object cmbScope: TUiComboBox
           Top = 56
