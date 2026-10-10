@@ -946,6 +946,9 @@ Type QFORM Extends QCONTROL
     ' Icon = файл .ico или "" (кэш картинок); чтение кладёт значок в кэш
     Declare Property Icon() As String
     Declare Property Icon(ByRef Value As String)
+    ' Дескриптор значка (HICON), 0 - значка нет. Чтение Icon в числовом
+    ' присваивании (rapidq2.inc: hIcon = QForm.Icon) переводится сюда
+    Declare Property IconHandle() As Long
     Declare Property ModalResult() As Long
     Declare Property ModalResult(ByVal Value As Long)
     Declare Property OnResize(ByVal Handler As Sub())
@@ -1122,6 +1125,9 @@ Property QFORM.Icon() As String
 End Property
 Property QFORM.Icon(ByRef Value As String)
     RqLclSetStr(RqObj, "Icon", Value)
+End Property
+Property QFORM.IconHandle() As Long
+    Return RqGetInt(RqObj, "IconHandle")
 End Property
 Property QFORM.ICOHandle(ByVal Value As Long)
     RqLclSetInt(RqObj, "ICOHandle", Value)

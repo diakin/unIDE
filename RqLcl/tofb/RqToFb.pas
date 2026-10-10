@@ -4622,6 +4622,28 @@ begin
     Exit;
   end;
 
+  // Число = Объект.Icon (rapidq2.inc, QFormEx.AddTrayIcon: .TrayIcon.hIcon
+  // = QForm.Icon) - дескриптор значка, Объект.IconHandle (rqlcl.bi). В
+  // RqLcl Icon - строка (перенос значка между объектами). Тест
+  // пользователя в RapidQ 2026-10-10: у формы без значка H = F.Icon даёт
+  // 0, S = F.Icon - "". Что чтение даёт у формы со значком, не проверялось.
+  if (RhsLast > RhsFirst) and (AToks[RhsLast].Kind = tkIdent) and
+     (AToks[RhsLast].Up = 'ICON') and
+     IsOp(AToks, PrevSig(AToks, RhsLast - 1), '.') and
+     not ExprIsString(AToks, FirstIdx, EqIdx - 1) then
+  begin
+    TokIdx := RhsFirst;
+    while (TokIdx >= 0) and (TokIdx < RhsLast) and
+          ((AToks[TokIdx].Kind = tkIdent) or IsOp(AToks, TokIdx, '.')) do
+      TokIdx := NextSig(AToks, TokIdx + 1, RhsLast);
+    if TokIdx = RhsLast then
+    begin
+      AToks[RhsLast].Text := 'IconHandle';
+      AToks[RhsLast].Up := 'ICONHANDLE';
+      AToks[RhsLast].OutText := 'IconHandle';
+    end;
+  end;
+
   if HasDot then
   begin
     // This.Установщик = x, This.OnXxx = This.Метод внутри TYPE ... EXTENDS

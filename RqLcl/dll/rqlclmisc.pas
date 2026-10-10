@@ -252,6 +252,16 @@ begin
     AValue := TCustomListBox(AObj).ItemIndex;
     Result := True;
   end
+  // QFORM.IconHandle (только чтение): дескриптор значка формы, 0 - значка
+  // нет (в RapidQ чтение Icon у формы без значка в число - 0)
+  else if (AObj is TCustomForm) and (Prop = 'ICONHANDLE') then
+  begin
+    if TCustomForm(AObj).Icon.Empty then
+      AValue := 0
+    else
+      AValue := Integer(PtrInt(TCustomForm(AObj).Icon.Handle));
+    Result := True;
+  end
   else if (AObj is TCustomComboBox) and (Prop = 'ITEMINDEX') then
   begin
     AValue := TCustomComboBox(AObj).ItemIndex;

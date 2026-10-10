@@ -794,6 +794,16 @@ begin
     AValue := Integer(PtrInt(TCustomImageList(AObj).Reference[
                 TCustomImageList(AObj).Width].Handle));
     Result := True;
+  end
+  // Application.IconHandle (только чтение): дескриптор значка программы,
+  // 0 - значка нет (rapidq2.inc, QFormEx: hIcon = Application.Icon)
+  else if (AObj is TApplication) and (Prop = 'ICONHANDLE') then
+  begin
+    if TApplication(AObj).Icon.Empty then
+      AValue := 0
+    else
+      AValue := Integer(PtrInt(TApplication(AObj).Icon.Handle));
+    Result := True;
   end;
 end;
 
