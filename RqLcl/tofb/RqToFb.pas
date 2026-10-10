@@ -481,6 +481,8 @@ type
     FRedims: TStringList;         // имена, у которых есть REDIM
     FDefines: TRqNameMap;         // NAME -> замена
     FResources: TStringList;      // $RESOURCE: ИМЯ=полный путь ('' - не найден)
+    // $OPTION ICON "файл.ico": значок exe (полный путь; '' - не задан)
+    FAppIcon: string;
     FDoneFiles: TStringList;      // исходный файл (верхний регистр) -> вывод
     FOutNames: TStringList;       // занятые имена файлов вывода
     FWarnedNames: TStringList;    // о чём уже предупреждали
@@ -3229,7 +3231,7 @@ end;
 function TRqFbConv.ProcessDirective(var AToks: TToks; AFrom, ATo: Integer;
                                     var AOut: string): Boolean;
 var
-  Name, Value, IncName, Found, OutPath, Original: string;
+  Name, Value, IncName, Found, OutPath, Original, IconName: string;
   ArgIdx, CloseIdx, TokIdx: Integer;
   Angle: Boolean;
 begin
@@ -3356,6 +3358,26 @@ begin
       FTypeCheck := True
     else if Value = 'BYREF' then
       FByRefDefault := True
+    // $OPTION ICON "path\file.ico" - значок exe (документация, chapter3.html:
+    // "This changes the default icon of your executable file"): в файл
+    // ресурсов (WriteResources) - ICON. Путь - как у $RESOURCE.
+    else if Value = 'ICON' then
+    begin
+      if (TokIdx >= 0) and (AToks[TokIdx].Kind = tkString) then
+      begin
+        IconName := AToks[TokIdx].Text;
+        if (Length(IconName) >= 2) and (IconName[1] = '"') then
+          IconName := Copy(IconName, 2, Length(IconName) - 2);
+        if (Copy(IconName, 1, 2) = './') or (Copy(IconName, 1, 2) = '.\') then
+          System.Delete(IconName, 1, 2);
+        FAppIcon := ResolveInclude(IconName, False);
+        if (FAppIcon = '') and (FPass = 2) then
+          Warn('$OPTION ICON: файл "' + IconName + '" не найден - значок ' +
+               'exe не задан');
+      end
+      else if FPass = 2 then
+        Warn('$OPTION ICON: ожидалось имя файла в кавычках');
+    end
     else
       Warn('$OPTION ' + Value + ': не поддержано, пропущено');
     Exit;
@@ -8821,6 +8843,7 @@ begin
     FDefines.Clear;
     FDefinePlaces.Clear;
     FResources.Clear;
+    FAppIcon := '';
     SetLength(FConds, 0);
     FCurProc := nil;
     FInType := False;
@@ -8966,11 +8989,16 @@ var
   RcStream: TFileStream;
 begin
   Result := '';
-  if FResources.Count = 0 then
+  if (FResources.Count = 0) and (FAppIcon = '') then
     Exit;
   RcLines := TStringList.Create;
   try
     RcLines.Add('// $RESOURCE ' + ExtractFileName(FMainFile) + ' (RqToFb)');
+    // $OPTION ICON: значок exe. Имя FB_PROGRAM_ICON - как в документации
+    // FreeBASIC к файлам ресурсов
+    if FAppIcon <> '' then
+      RcLines.Add('FB_PROGRAM_ICON ICON "' +
+                  StringReplace(FAppIcon, '\', '/', [rfReplaceAll]) + '"');
     for ResIdx := 0 to FResources.Count - 1 do
     begin
       ResPath := FResources.ValueFromIndex[ResIdx];
