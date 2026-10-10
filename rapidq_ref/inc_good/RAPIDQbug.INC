@@ -7,7 +7,7 @@ $DEFINE __RQINC
 $DEFINE __QBCOLOR
 $DEFINE space space$
 
-'$define  int integer   ' inc2026: Û·‡ÌÓ - INT(x) ÔÂ‚‡˘‡ÎÒˇ ‚ INTEGER(x), ‡ INTEGER(x) ‚ RapidQ ‚ÓÁ‚‡˘‡ÂÚ x (INT(2.7) -> 2.7, ÚÂÒÚ 2026-10-10); Ó·˙ˇ‚ÎÂÌËˇ "as int" ‚ inc_good Ë ‚ ÔÓ„‡ÏÏ‡ı rapidq_ref Á‡ÏÂÌÂÌ˚ Ì‡ "as integer"
+'$define  int integer   ' inc2026: —É–±—Ä–∞–Ω–æ - INT(x) –ø—Ä–µ–≤—Ä–∞—â–∞–ª—Å—è –≤ INTEGER(x), –∞ INTEGER(x) –≤ RapidQ –≤–æ–∑–≤—Ä–∞—â–∞–µ—Ç x (INT(2.7) -> 2.7, —Ç–µ—Å—Ç 2026-10-10); –æ–±—ä—è–≤–ª–µ–Ω–∏—è "as int" –≤ inc_good –∏ –≤ –ø—Ä–æ–≥—Ä–∞–º–º–∞—Ö rapidq_ref –∑–∞–º–µ–Ω–µ–Ω—ã –Ω–∞ "as integer"
 
 '!!! ------------------------- Useful variables -------------------------
 CONST False = 0
