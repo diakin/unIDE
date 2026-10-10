@@ -773,11 +773,15 @@ $DEFINE __RQ2WIN32API   'rapidq2 windows api calls
 
 
 
+$IFNDEF __QFORMEX_INC_SA   ' inc2026: объявлено и в QFormEx.inc - он подключён раньше
 CONST GWL_HWNDPARENT = (-8)                   'Minimize to task bar
 CONST GWL_WNDPROC = -4
+$ENDIF  ' inc2026: __QFORMEX_INC_SA
 CONST GWL_STYLE = -16
 CONST GWL_EXSTYLE = (-20)
+$IFNDEF __QFORMEX_INC_SA   ' inc2026: объявлено и в QFormEx.inc - он подключён раньше
 CONST HWND_DESKTOP = 0
+$ENDIF  ' inc2026: __QFORMEX_INC_SA
 CONST HWND_TOPMOST = -1
 CONST HWND_NOTOPMOST = -2
 $DEFINE HWND_TOP  0
@@ -1011,13 +1015,17 @@ DECLARE FUNCTION SetLayeredWindowAttributes Lib "user32" Alias "SetLayeredWindow
 (hWnd AS Long, crKey AS Long, bAlpha AS Long, dwFlags AS Long) AS Long
 
 DECLARE FUNCTION ShowWindow Lib "user32" Alias "ShowWindow" (hwnd As Long,nCmdShow As Long) As Long
+$IFNDEF __QFORMEX_INC_SA   ' inc2026: объявлено и в QFormEx.inc - он подключён раньше
 DECLARE FUNCTION CallWindowProc Lib "user32.dll" Alias "CallWindowProcA" (lpPrevWndFunc As Long, hwnd As Long, Msg As Long, wParam As Long, lParam As Long) As Long
+$ENDIF  ' inc2026: __QFORMEX_INC_SA
 
 
 
 
 ' enable / disable mouse and keyboard input to a specified window or control.fEnable = enable/disable flag
+$IFNDEF __QDEBUG_INC_SA   ' inc2026: объявлено и в QDebug.inc - он подключён раньше
 DECLARE FUNCTION EnableWindow Lib "user32" Alias "EnableWindow" (ByVal hwnd AS LONG, ByVal fEnable AS LONG) AS LONG  'If window was previously disabled, the return value is nonzero
+$ENDIF  ' inc2026: __QDEBUG_INC_SA
 DECLARE SUB SetWindowPos Lib "User32"  ALIAS "SetWindowPos"_
  (ByVal hWnd As Long,_
   ByVal hWndInsertAfter As Long,_
@@ -1027,7 +1035,9 @@ DECLARE SUB SetWindowPos Lib "User32"  ALIAS "SetWindowPos"_
 
 
 DECLARE FUNCTION GetWindowLong LIB "USER32" ALIAS "GetWindowLongA" (hwnd AS LONG, type AS LONG) AS LONG
+$IFNDEF __QFORMEX_INC_SA   ' inc2026: объявлено и в QFormEx.inc - он подключён раньше
 DECLARE FUNCTION SetWindowLong LIB "user32" ALIAS "SetWindowLongA" (hWnd AS LONG,nIndex AS LONG, dwNewLong AS LONG) AS LONG
+$ENDIF  ' inc2026: __QFORMEX_INC_SA
 DECLARE SUB ClientToScreen LIB "USER32" ALIAS "ClientToScreen" (hwnd AS LONG, lpPoint AS LONG)
 DECLARE FUNCTION DefWindowProc LIB "USER32" ALIAS "DefWindowProcA" (hwnd AS LONG, msg as long, wparam as long, lparam as long) AS LONG
 
@@ -1036,11 +1046,13 @@ DECLARE FUNCTION DefWindowProc LIB "USER32" ALIAS "DefWindowProcA" (hwnd AS LONG
 '------------------Windows SHell32 functions------------------------
 '----------------- Use for QFORM extension -----------------------
 
+$IFNDEF __QFORMEX_INC_SA   ' inc2026: объявлено и в QFormEx.inc - он подключён раньше
 DECLARE SUB DragAcceptFiles LIB "SHELL32" ALIAS "DragAcceptFiles" (hWnd AS LONG, Accept AS LONG)
 DECLARE SUB DragFinish LIB "SHELL32" ALIAS "DragFinish" (hDrop AS LONG)
 DECLARE FUNCTION DragQueryFile LIB "SHELL32" ALIAS "DragQueryFileA" (hDrop AS LONG, iFile AS LONG, lpszFile AS LONG, cch AS LONG) AS LONG
 DECLARE FUNCTION DragQueryPoint LIB "SHELL32" ALIAS "DragQueryPoint" (hDrop AS LONG, lppt AS POINTAPI) AS LONG
 DECLARE FUNCTION Shell_NotifyIcon Lib "SHELL32" ALIAS "Shell_NotifyIconA" (ByVal dwMessage As Long, lpData As QNOTIFYICONDATA) As Long
+$ENDIF  ' inc2026: __QFORMEX_INC_SA
 DECLARE FUNCTION ShellExecute LIB "shell32.dll" ALIAS "ShellExecuteA" (ByVal hwnd AS LONG, ByVal lpOperation AS STRING, ByVal lpFile AS STRING, ByVal lpParameters AS STRING, ByVal lpDirectory AS STRING, ByVal nShowCmd AS LONG) AS LONG
 
 
@@ -1195,6 +1207,7 @@ DECLARE FUNCTION GetKeyState Lib "user32" Alias "GetKeyState" (ByVal nVirtKey As
 $DEFINE OPAQUE 2
 $DEFINE TRANSPARENT 1
 
+$IFNDEF __QCANVASEX_INC_SA   ' inc2026: объявлено и в QCanvasEx.inc - он подключён раньше
 Type TBITMAP
   bmType   As LONG
   bmWidth   As LONG
@@ -1204,6 +1217,7 @@ Type TBITMAP
   bmBitsPixel  As WORD
   bmBits   As LONG
 End Type
+$ENDIF  ' inc2026: __QCANVASEX_INC_SA
 
 
 '  Pen Styles
@@ -1487,7 +1501,9 @@ DECLARE FUNCTION SetPriorityClass  Lib "kernel32" ALIAS "SetPriorityClass" (ByVa
 DECLARE FUNCTION GetPriorityClass  Lib "kernel32" ALIAS "GetPriorityClass" (ByVal hProcess As Long) As Long
 DECLARE FUNCTION GetCurrentProcess Lib "kernel32" ALIAS  "GetCurrentProcess"() As Long
 
+$IFNDEF __QDRIVECOMBOBOX_INC_SA   ' inc2026: объявлено и в QDriveCombobox.inc - он подключён раньше
 DECLARE FUNCTION GetDriveType Lib "kernel32" Alias "GetDriveTypeA" (nDrive As String) As Long
+$ENDIF  ' inc2026: __QDRIVECOMBOBOX_INC_SA
 DECLARE FUNCTION GetDiskFreeSpaceEx LIB "kernel32" ALIAS "GetDiskFreeSpaceExA"_
   (lpRootPathName AS STRING, lpFreeBytesAvailableToCaller AS LONG,_
    lpTotalNumberOfBytes AS LONG, lpTotalNumberOfFreeBytes AS LONG) AS LONG
@@ -1617,6 +1633,7 @@ $DEFINE CC_ANYCOLOR         &H100
 
 
 'Flags for OPENFILENAME.Flags (see QFileDialog box)
+$IFNDEF __QFILEDIALOG_INC_SA   ' inc2026: объявлено и в QFileDialog.inc / QFileDialogDoc.inc - он подключён раньше
 CONST OFN_READONLY                 =  &H00000001
 CONST OFN_OVERWRITEPROMPT          =  &H00000002  'display the overwrite warning
 CONST OFN_HIDEREADONLY             =  &H00000004  'hide the Open as Readonly checkbox
@@ -1638,9 +1655,11 @@ CONST OFN_NOLONGNAMES              =  &H00040000
 CONST OFN_EXPLORER                 =  &H00080000 'explorer like browser
 CONST OFN_NODEREFERENCELINKS       =  &H00100000
 CONST OFN_LONGNAMES                =  &H00200000
+$ENDIF  ' inc2026: __QFILEDIALOG_INC_SA
 
 
 
+$IFNDEF __QFILEDIALOG_INC_SA   ' inc2026: объявлено и в QFileDialog.inc / QFileDialogDoc.inc - он подключён раньше
 TYPE OPENFILENAME
   lStructSize  AS DWORD      'Specifies the length, in bytes, of the structure.
   hwndOwner   AS LONG        'any valid window handle, or it can be NULL if the dialog box has no owner
@@ -1669,13 +1688,16 @@ TYPE OPENFILENAME
   '  DWORD         FlagsEx;
   '#endif // (_WIN32_WINNT >= 0x0500)
 END TYPE
+$ENDIF  ' inc2026: __QFILEDIALOG_INC_SA
 
 
-$IFNDEF __QCOLORDIALOG    ' inc2026: ChooseColorDlg объявляет и подключённая раньше версия QColorDialog
+$IFNDEF __QCOLORDIALOG_INC    ' inc2026: ChooseColorDlg объявляет и подключённая раньше версия QColorDialog
 DECLARE FUNCTION ChooseColorDlg LIB "COMDLG32" ALIAS "ChooseColorA" (CC AS CHOOSECOLOR) AS LONG
 $ENDIF
+$IFNDEF __QFILEDIALOG_INC_SA   ' inc2026: объявлено и в QFileDialog.inc / QFileDialogDoc.inc - он подключён раньше
 DECLARE FUNCTION GetSaveFileName LIB "COMDLG32" ALIAS "GetSaveFileNameA" (pOpenfilename AS OPENFILENAME) AS LONG
 DECLARE FUNCTION GetOpenFileName LIB "COMDLG32" ALIAS "GetOpenFileNameA" (pOpenfilename AS OPENFILENAME) AS LONG
+$ENDIF  ' inc2026: __QFILEDIALOG_INC_SA
 
 'Error codes from CommDlgExtendedError
 $DEFINE CDERR_DIALOGFAILURE   &HFFFF
@@ -1695,7 +1717,9 @@ $DEFINE CDERR_NOHOOK   &HB
 $DEFINE CDERR_REGISTERMSGFAIL   &HC
 
 
+$IFNDEF __QFILEDIALOG_INC_SA   ' inc2026: объявлено и в QFileDialog.inc / QFileDialogDoc.inc - он подключён раньше
 DECLARE FUNCTION CommDlgExtendedError Lib "comdlg32.dll" Alias "CommDlgExtendedError" () As Long
+$ENDIF  ' inc2026: __QFILEDIALOG_INC_SA
 
 
 
@@ -1710,6 +1734,7 @@ DECLARE FUNCTION CommDlgExtendedError Lib "comdlg32.dll" Alias "CommDlgExtendedE
 '**************************************************************
 
 'Structure containing time-out parameters for a communications device
+$IFNDEF __COMPORT_INC_SA   ' inc2026: объявлено и в ComPort.inc - он подключён раньше
 TYPE COMMTIMEOUTS
   ReadIntervalTimeout AS DWORD
   ReadTotalTimeoutMultiplier AS DWORD
@@ -1717,9 +1742,11 @@ TYPE COMMTIMEOUTS
   WriteTotalTimeoutMultiplier AS DWORD
   WriteTotalTimeoutConstant AS DWORD
 END TYPE
+$ENDIF  ' inc2026: __COMPORT_INC_SA
 
 'Device Control Block
 'Structure that defines the control settings for a serial communications device
+$IFNDEF __COMPORT_INC_SA   ' inc2026: объявлено и в ComPort.inc - он подключён раньше
 TYPE DCB
   DCBlength AS DWORD        'sizeof DCB
   BaudRate AS DWORD         'current baud rate
@@ -1750,8 +1777,10 @@ TYPE DCB
   EvtChar AS BYTE           'received event character
   wReserved1 AS WORD        'reserved; do not use
 END TYPE
+$ENDIF  ' inc2026: __COMPORT_INC_SA
 
 'Structure containing current Comm Port State
+$IFNDEF __COMPORT_INC_SA   ' inc2026: объявлено и в ComPort.inc - он подключён раньше
 TYPE COMSTAT
   COMSTATflags AS DWORD     'fCtsHold           1 bit Specifies whether waiting for CTS signal
   'fDsrHold           1 bit Specifies whether waiting for DSR signal
@@ -1764,19 +1793,23 @@ TYPE COMSTAT
   cbInQue AS DWORD          'number of bytes received but not yet read
   cbOutQue AS DWORD         'number of bytes remaining to be transmitted
 END TYPE
+$ENDIF  ' inc2026: __COMPORT_INC_SA
 
 'Win32 File Handling User Defined Types
 
 'Structure that contains the security descriptor for an object
 'not currently used by us
+$IFNDEF __COMPORT_INC_SA   ' inc2026: объявлено и в ComPort.inc - он подключён раньше
 TYPE SECURITYATTRIBUTES
   nLength AS DWORD
   lpSecurityDescriptor AS LONG
   bInheritHandle AS LONG
 END TYPE
+$ENDIF  ' inc2026: __COMPORT_INC_SA
 
 'Structure containing info used in Overlapped (asynchronous) I/O
 'not currently used by us
+$IFNDEF __COMPORT_INC_SA   ' inc2026: объявлено и в ComPort.inc - он подключён раньше
 TYPE OVERLAPPED
   Internal AS LONG
   InternalHigh AS LONG
@@ -1784,25 +1817,32 @@ TYPE OVERLAPPED
   OffsetHigh AS DWORD
   hEvent AS LONG
 END TYPE
+$ENDIF  ' inc2026: __COMPORT_INC_SA
 
 'DCB Constants
 'Parity
+$IFNDEF __COMPORT_INC_SA   ' inc2026: объявлено и в ComPort.inc - он подключён раньше
 CONST NOPARITY              = 0
 CONST ODDPARITY             = 1
 CONST EVENPARITY            = 2
 CONST MARKPARITY            = 3
 CONST SPACEPARITY           = 4
+$ENDIF  ' inc2026: __COMPORT_INC_SA
 'StopBits
+$IFNDEF __COMPORT_INC_SA   ' inc2026: объявлено и в ComPort.inc - он подключён раньше
 CONST ONESTOPBIT            = 0
 CONST ONE5STOPBITS          = 1
 CONST TWOSTOPBITS           = 2
+$ENDIF  ' inc2026: __COMPORT_INC_SA
 
 'PurgeCOM constants
 'dwFlags
+$IFNDEF __COMPORT_INC_SA   ' inc2026: объявлено и в ComPort.inc - он подключён раньше
 CONST PURGE_RXABORT         = &H2
 CONST PURGE_RXCLEAR         = &H8
 CONST PURGE_TXABORT         = &H1
 CONST PURGE_TXCLEAR         = &H4
+$ENDIF  ' inc2026: __COMPORT_INC_SA
 
 'Win32 File Handling Constants
 
@@ -1810,23 +1850,29 @@ CONST PURGE_TXCLEAR         = &H4
 CONST GENERIC_READ          = &H80000000
 CONST GENERIC_WRITE         = &H40000000
 'dwShareMode Constants
+$IFNDEF __COMPORT_INC_SA   ' inc2026: объявлено и в ComPort.inc - он подключён раньше
 CONST FILE_SHARE_READ       = &H1
 CONST FILE_SHARE_WRITE      = &H2
+$ENDIF  ' inc2026: __COMPORT_INC_SA
 'dwCreationDisposition Constants
+$IFNDEF __COMPORT_INC_SA   ' inc2026: объявлено и в ComPort.inc - он подключён раньше
 CONST CREATE_NEW            = 1
 CONST CREATE_ALWAYS         = 2
 CONST OPEN_EXISTING         = 3
 CONST OPEN_ALWAYS           = 4
 CONST TRUNCATE_EXISTING     = 5
+$ENDIF  ' inc2026: __COMPORT_INC_SA
 'dwFlagsAndAttributes
 CONST FILE_ATTRIBUTE_NORMAL = &H80
 
 'Win32 Error Constants
+$IFNDEF __COMPORT_INC_SA   ' inc2026: объявлено и в ComPort.inc - он подключён раньше
 CONST FORMAT_MESSAGE_ALLOCATE_BUFFER  = &H100
 CONST FORMAT_MESSAGE_FROM_SYSTEM      = &H1000
 CONST LANG_NEUTRAL                    = &H0
 CONST SUBLANG_DEFAULT                 = &H1
 CONST ERROR_BAD_USERNAME              = 2202
+$ENDIF  ' inc2026: __COMPORT_INC_SA
 
 
 'Win32 Function Declarations
@@ -1844,12 +1890,15 @@ Declare Function WSAGetLastError Lib "WSOCK32" ALIAS "WSAGetLastError" () As Lon
 'Several Win32 functions set an error code if they fail.  This retrieves them.
 'Note, If a function succeeds, it may not set this code.  If you retrieve it
 'after a function succeeds, it may return an error code for a previous function that failed.
+$IFNDEF __COMPORT_INC_SA   ' inc2026: объявлено и в ComPort.inc - он подключён раньше
 DECLARE FUNCTION GetLastError LIB "kernel32" ALIAS "GetLastError" () AS DWORD
+$ENDIF  ' inc2026: __COMPORT_INC_SA
 'Returns last error code value
 'See http://msdn.microsoft.com/library/default.asp?url=/library/en-us/debug/errlist_7oz7.asp
 'for what codes mean
 
 'Converts GetLastError codes to string messages.
+$IFNDEF __COMPORT_INC_SA   ' inc2026: объявлено и в ComPort.inc - он подключён раньше
 DECLARE FUNCTION FormatMessage LIB "kernel32" ALIAS "FormatMessageA" _
  (dwFlags AS DWORD, _                    '[IN] Specifies aspects of the formatting process and how to interpret lpSource
   lpSource AS LONG, _                     '[IN] Specifies the location of the message definition
@@ -1859,56 +1908,70 @@ DECLARE FUNCTION FormatMessage LIB "kernel32" ALIAS "FormatMessageA" _
   nSize AS DWORD, _                       '[IN] specifies the max number of characters that can be stored in the output buffer
   lpArguments AS LONG) _                  '[IN] Pointer to an array of values that are used as insert values in the formatted message
  AS LONG                                 'If function succeeds, returns non-zero. If function fails, returns 0.
+$ENDIF  ' inc2026: __COMPORT_INC_SA
 
 'Win32 Communication Functions
 
 ' Initializes the communications parameters for a specified communications device.
+$IFNDEF __COMPORT_INC_SA   ' inc2026: объявлено и в ComPort.inc - он подключён раньше
 DECLARE FUNCTION SetupComm LIB "kernel32" ALIAS "SetupComm"_
  (hFile AS LONG,_                         '[IN] Handle to open Comm device
   dwInQueue AS DWORD,_                     '[IN] specifies number of bytes of input buffer
   dwOutQueue AS DWORD) _                   '[IN] specifies number of bytes of output buffer
  AS LONG                                  'If function succeeds, returns non-zero. If function fails, returns 0.
+$ENDIF  ' inc2026: __COMPORT_INC_SA
 
 ' Discards all characters from the output or input buffer of a
 ' specified communications resource. It can also terminate
 ' pending read or write operations on the resource.
+$IFNDEF __COMPORT_INC_SA   ' inc2026: объявлено и в ComPort.inc - он подключён раньше
 DECLARE FUNCTION PurgeComm LIB "kernel32" ALIAS "PurgeComm"_
  (hFile AS LONG, _                         '[IN] Handle to open Comm device
   dwFlags AS DWORD) _                       '[IN] Action to perform flag
  AS LONG                                   'If function succeeds, returns non-zero. If function fails, returns 0.
+$ENDIF  ' inc2026: __COMPORT_INC_SA
 
 ' Sets the time-out parameters for all read and write operations on a
 ' specified communications device.
+$IFNDEF __COMPORT_INC_SA   ' inc2026: объявлено и в ComPort.inc - он подключён раньше
 DECLARE FUNCTION SetCommTimeouts LIB "kernel32" ALIAS "SetCommTimeouts"_
  (hFile AS LONG,_                          '[IN] Handle to open Comm device
   lpCommTimeouts AS COMMTIMEOUTS) _         '[IN] Structure containing timeout values
  AS LONG                                   'If function succeeds, returns non-zero. If function fails, returns 0.
+$ENDIF  ' inc2026: __COMPORT_INC_SA
 
 'Retrieves current Device Control Block (DCB)
+$IFNDEF __COMPORT_INC_SA   ' inc2026: объявлено и в ComPort.inc - он подключён раньше
 DECLARE FUNCTION GetCommState LIB "kernel32" ALIAS "GetCommState" _
  (hFile AS LONG, _                         '[IN] Handle to open Comm device
   lpDCB AS DCB) _                           '[OUT] Pointer to structure containing config info
  AS LONG                                   'If function succeeds, returns non-zero. If function fails, returns 0.
+$ENDIF  ' inc2026: __COMPORT_INC_SA
 
 'Sets Device Control Block (DCB)
+$IFNDEF __COMPORT_INC_SA   ' inc2026: объявлено и в ComPort.inc - он подключён раньше
 DECLARE FUNCTION SetCommState LIB "kernel32" ALIAS "SetCommState" _
  (hFile AS LONG, _                          '[IN] Handle to open Comm device
   lpDCB AS DCB) _                            '[IN] Pointer to structure containing config info
  AS LONG                                    'If function succeeds, returns non-zero. If function fails, returns 0.
+$ENDIF  ' inc2026: __COMPORT_INC_SA
 
 ' Retrieves information about a communications error and reports
 ' the current status of a communications device. Clears the
 ' device's error flag to enable additional input and output
 ' (I/O) operations.
+$IFNDEF __COMPORT_INC_SA   ' inc2026: объявлено и в ComPort.inc - он подключён раньше
 DECLARE FUNCTION ClearCommError LIB "kernel32" ALIAS "ClearCommError" _
  (hFile AS LONG,_                            '[IN] Handle to open Comm device
   BYREF lpErrors AS DWORD,_                   '[OUT] Pointer to var to be filled with a mask indicating the type of error
   lpStat AS COMSTAT) _                        '[OUT] Pointer to structure containing devices status info
  AS LONG                                     'If function succeeds, returns non-zero. If function fails, returns 0.
+$ENDIF  ' inc2026: __COMPORT_INC_SA
 
 'Win32 File Handling Functions
 
 'Create or open a new Comm device/file
+$IFNDEF __COMPORT_INC_SA   ' inc2026: объявлено и в ComPort.inc - он подключён раньше
 DECLARE FUNCTION CreateFile LIB "kernel32" ALIAS "CreateFileA"_
  (lpFileName AS STRING, _                        '[IN] String that specifies name of object to create or open
   dwDesiredAccess AS DWORD, _                     '[IN] Specifies type of access to object
@@ -1918,9 +1981,11 @@ DECLARE FUNCTION CreateFile LIB "kernel32" ALIAS "CreateFileA"_
   dwFlagsAndAttributes AS DWORD,_                 '[IN] Specifies the file attributes and flags
   hTemplateFile AS LONG) _                        '[IN] handle to template that supplies file attributes
  AS LONG                                     'If successful, returns handle to object/file created
+$ENDIF  ' inc2026: __COMPORT_INC_SA
 
 ' Writes data to a file
 ' We are not using Overlapped (asynchronous) I/O
+$IFNDEF __COMPORT_INC_SA   ' inc2026: объявлено и в ComPort.inc - он подключён раньше
 DECLARE FUNCTION WriteFile LIB "kernel32" ALIAS "WriteFile"_
  (hFile AS LONG, _                        '[IN] Handle to open Comm device/file
   lpBuffer AS STRING, _                    '[IN] Pointer to buffer containing the data to be written to Comm device/file
@@ -1928,6 +1993,7 @@ DECLARE FUNCTION WriteFile LIB "kernel32" ALIAS "WriteFile"_
   BYREF lpNumberOfBytesWritten AS DWORD, _ '[OUT] Pointer to var containing number of bytes written
   lpOverlapped AS OVERLAPPED) _            '[IN] Pointer to structure containing info if Comm device/file was opened in Overlapped mode.
  AS LONG                                  'If function succeeds, returns non-zero. If function fails, returns 0.
+$ENDIF  ' inc2026: __COMPORT_INC_SA
 
 DECLARE FUNCTION WriteFileAlias2 LIB "kernel32" ALIAS "WriteFile"_
  (hFile AS LONG, _                        '[IN] Handle to open Comm device/file
@@ -1949,6 +2015,7 @@ DECLARE FUNCTION WriteFileAlias2 LIB "kernel32" ALIAS "WriteFile"_
 
 'Reads data from a file
 'We are not using Overlapped (asynchronous) I/O
+$IFNDEF __COMPORT_INC_SA   ' inc2026: объявлено и в ComPort.inc - он подключён раньше
 DECLARE FUNCTION ReadFile LIB "kernel32" ALIAS "ReadFile"_
  (hFile AS LONG, _                        '[IN] Handle to open Comm device/file
   BYREF lpBuffer AS STRING, _              '[OUT] Pointer to buffer that receives data from Comm device/file
@@ -1956,6 +2023,7 @@ DECLARE FUNCTION ReadFile LIB "kernel32" ALIAS "ReadFile"_
   BYREF lpNumberOfBytesRead AS DWORD, _    '[OUT] Specifies number of bytes read from file
   lpOverlapped AS OVERLAPPED) _            '[IN] Pointer to structure containing info if Comm device/file was opened in Overlapped mode.
  AS LONG                                  'If function succeeds, returns non-zero. If function fails, returns 0.
+$ENDIF  ' inc2026: __COMPORT_INC_SA
 
 DECLARE FUNCTION ReadFileAlias2 LIB "kernel32" ALIAS "ReadFile"_
  (hFile AS LONG, _                        '[IN] Handle to open Comm device/file
@@ -1966,9 +2034,11 @@ DECLARE FUNCTION ReadFileAlias2 LIB "kernel32" ALIAS "ReadFile"_
  AS LONG                                  'If function succeeds, returns non-zero. If function fails, returns 0.
 
 
+$IFNDEF __COMPORT_INC_SA   ' inc2026: объявлено и в ComPort.inc - он подключён раньше
 DECLARE FUNCTION CloseHandle LIB "kernel32" ALIAS "CloseHandle" _
  (hObject AS LONG) _                      '[IN/OUT] Handle to open Comm device/file
  AS LONG                                  'If function succeeds, returns non-zero. If function fails, returns 0.
+$ENDIF  ' inc2026: __COMPORT_INC_SA
 
 
 'alternate API allows asynch I/O but lets an application perform other processing during a file read operation.
@@ -2332,16 +2402,19 @@ $DEFINE  LWA_COLORKEY   &H1
 $DEFINE  LWA_ALPHA      &H2
 
 
+$IFNDEF __QFORMEX_INC_SA   ' inc2026: объявлено и в QFormEx.inc - он подключён раньше
 Declare Sub OnDrag_eventTemplate(file as string)
 Declare Sub OnTrayClick_eventTemplate
 Declare Sub OnTrayDblClick_eventTemplate
 Declare Sub OnMinimise_eventTemplate
+$ENDIF  ' inc2026: __QFORMEX_INC_SA
 Declare Sub OnMouseWheel_eventTemplate(MouseRotation AS INTEGER, Xpos AS LONG, Ypos AS LONG, Shift AS INTEGER)
 Declare Sub OnLostFocus_eventTemplate
 Declare Sub OnGetFocus_eventTemplate
 Declare Function gRQ2_WndProc_eventTemplate(Hnd AS INTEGER, Msg AS INTEGER, Wparm AS INTEGER, Lparm AS INTEGER) AS LONG
 
 
+$IFNDEF __QFORMEX_INC   ' inc2026: QFormEx уже подключён другой версией (QFormEx.inc раньше RAPIDQ2.INC) - эта пропускается
 TYPE QFormEx EXTENDS QFORM
   PRIVATE:
   TrayIcon            AS QNOTIFYICONDATA
@@ -2659,6 +2732,8 @@ TrayIconUpdate = 2000       'every 2 seconds
 END CONSTRUCTOR
 
 END TYPE
+$DEFINE __QFORMEX_INC   ' inc2026: QFormEx объявлен - другие версии (QFormEx.inc) пропустятся
+$ENDIF  ' inc2026: __QFORMEX_INC
 
 
 
@@ -2696,8 +2771,10 @@ $DEFINE MDI_HWND_DESKTOP    0
 $DEFINE MDI_USEDEFAULT    &H80000000
 $DEFINE MDI_MINIMIZE    &HF020
 $DEFINE MDI_MAXIMIZE      &HF030
+$IFNDEF __QFORMMDI_INC_SA   ' inc2026: объявлено и в QFormMDI.inc - он подключён раньше
 CONST MDI_HWNDPARENT =   -8
 CONST MDI_HICON      =   -14
+$ENDIF  ' inc2026: __QFORMMDI_INC_SA
 $DEFINE MDI_COLOR_WINDOW    5
 $DEFINE MDI_COLOR_BACKGROUND    1
 $DEFINE MDI_COLOR_WINDOWFRAME    6
@@ -2705,11 +2782,14 @@ $DEFINE MDI_COLOR_APPWORKSPACE    12
 $DEFINE MDI_COLOR_HIGHLIGHT    13
 
 'Events
+$IFNDEF __QFORMMDI_INC_SA   ' inc2026: объявлено и в QFormMDI.inc - он подключён раньше
 Declare Sub OnChildClose_eventTemplate(handleChild as long,index as integer,titleChild as string)
 Declare Sub OnChildActive_eventTemplate(handleChild as long,index as integer,titleChild as string)
 Declare Sub OnChildResize_eventTemplate(handleChild as long,index as integer,titleChild as string)
+$ENDIF  ' inc2026: __QFORMMDI_INC_SA
 
 
+$IFNDEF __QFORMMDI_INC   ' inc2026: QFormMDI уже подключён другой версией (QFormMDI.inc раньше RAPIDQ2.INC) - эта пропускается
 TYPE QFormMDI EXTENDS QFORM
   Private:
   hClient         as long
@@ -3315,6 +3395,8 @@ hClient=0
 ChildCount=0
 End Constructor
 END TYPE
+$DEFINE __QFORMMDI_INC   ' inc2026: QFormMDI объявлен - другие версии (QFormMDI.inc) пропустятся
+$ENDIF  ' inc2026: __QFORMMDI_INC
 
 
 
@@ -3343,7 +3425,9 @@ CONST sc_drsize=&hF008
 'DECLARE SUB QDF_OnPaint_EventTemplate
 DECLARE SUB OnPaint_eventTemplate
 DECLARE SUB OnDock_eventTemplate(Docked AS INTEGER, Alt AS INTEGER)
+$IFNDEF __COMPORT_INC_SA   ' inc2026: объявлено и в ComPort.inc - он подключён раньше
 DECLARE SUB OnClose_eventTemplate
+$ENDIF  ' inc2026: __COMPORT_INC_SA
 
 
 TYPE QDFPANEL EXTENDS QPANEL
@@ -4369,6 +4453,7 @@ CONST tmAlpha = -1
 
 
 
+$IFNDEF __QBITMAPEX_INC   ' inc2026: QBitmapEx уже подключён другой версией (QBitmapEx.inc раньше RAPIDQ2.INC) - эта пропускается
 Type QBitmapEx EXTENDS QBITMAP
   PRIVATE:
   info as TBITMAP
@@ -4781,6 +4866,8 @@ Type QBitmapEx EXTENDS QBITMAP
   PenSize=1
 End Constructor
 END TYPE
+$DEFINE __QBITMAPEX_INC   ' inc2026: QBitmapEx объявлен - другие версии (QBitmapEx.inc) пропустятся
+$ENDIF  ' inc2026: __QBITMAPEX_INC
 
 
 
@@ -4791,6 +4878,7 @@ END TYPE
 'by D.Glodt (c)2000-2004, modified by John Kelly, 2005
 '====================================================================================================================
 
+$IFNDEF __QIMAGEEX_INC   ' inc2026: QImageEx уже подключён другой версией (QImageEx.inc раньше RAPIDQ2.INC) - эта пропускается
 TYPE QImageEx EXTENDS QIMAGE
   PRIVATE:
   bitmap as QBitmap
@@ -4877,6 +4965,8 @@ TYPE QImageEx EXTENDS QIMAGE
   End Sub
 
 END TYPE
+$DEFINE __QIMAGEEX_INC   ' inc2026: QImageEx объявлен - другие версии (QImageEx.inc) пропустятся
+$ENDIF  ' inc2026: __QIMAGEEX_INC
 
 
 
@@ -4887,6 +4977,7 @@ END TYPE
 '  much more than QBITMAP or QIMAGE
 '====================================================================================================================
 
+$IFNDEF __QCANVASEX_INC   ' inc2026: QCanvasEx уже подключён другой версией (QCanvasEx.inc раньше RAPIDQ2.INC) - эта пропускается
 TYPE QCanvasEx EXTENDS QCANVAS
 
   PRIVATE:
@@ -5145,6 +5236,8 @@ TYPE QCanvasEx EXTENDS QCANVAS
   PenSize=1
 End Constructor
 End Type
+$DEFINE __QCANVASEX_INC   ' inc2026: QCanvasEx объявлен - другие версии (QCanvasEx.inc) пропустятся
+$ENDIF  ' inc2026: __QCANVASEX_INC
 
 
 
@@ -5172,14 +5265,17 @@ End Type
 
 
 'Forward Internal Declarations for events
+$IFNDEF __COMPORT_INC_SA   ' inc2026: объявлено и в ComPort.inc - он подключён раньше
 DECLARE SUB OnComError_EventTemplate (strErrorMessage AS STRING)
 DECLARE SUB OnOpen_EventTemplate
 DECLARE SUB OnClose_EventTemplate
 DECLARE SUB OnWriteString_EventTemplate
 DECLARE SUB OnReadString_EventTemplate
+$ENDIF  ' inc2026: __COMPORT_INC_SA
 
 
 
+$IFNDEF __COMPORT_INC   ' inc2026: ComPort уже подключён другой версией (ComPort.inc раньше RAPIDQ2.INC) - эта пропускается
 TYPE COMPORT EXTENDS QOBJECT
 
   'EVENTS
@@ -5538,6 +5634,8 @@ FUNCTION ReadString (dwRdSize AS DWORD, intWait AS INTEGER) AS STRING
 END FUNCTION
 
 END TYPE
+$DEFINE __COMPORT_INC   ' inc2026: ComPort объявлен - другие версии (ComPort.inc) пропустятся
+$ENDIF  ' inc2026: __COMPORT_INC
 
 
 ' Just get it over, QCOMPORT does nothing
@@ -5880,6 +5978,7 @@ $DEFINE fdSave  1
 CONST fdStrTerm$ = CHR$(0) + CHR$(0)
 CONST fdMaxFiles = 256
 
+$IFNDEF __QFILEDIALOG_INC   ' inc2026: QFileDialog уже подключён другой версией (QFileDialog.inc или QFileDialogDoc.inc раньше RAPIDQ2.INC) - эта пропускается
 TYPE QFILEDIALOG EXTENDS QOBJECT
   PRIVATE:
   tmpFileName    AS STRING
@@ -6024,6 +6123,8 @@ FUNCTION Execute() AS LONG
 END FUNCTION
 
 END TYPE
+$DEFINE __QFILEDIALOG_INC   ' inc2026: QFileDialog объявлен - другие версии (QFileDialog.inc, QFileDialogDoc.inc) пропустятся
+$ENDIF  ' inc2026: __QFILEDIALOG_INC
 $ENDIF ' _RQDIALOGINC
 
 
@@ -6031,7 +6132,7 @@ $ENDIF ' _RQDIALOGINC
 
 
 
-$IFNDEF __QCOLORDIALOG    ' inc2026: QColorDialog уже подключён другой версией (QColorDialog10.inc, QColorDialog11.inc подключены раньше RAPIDQ2.INC) - эта пропускается
+$IFNDEF __QCOLORDIALOG_INC    ' inc2026: QColorDialog уже подключён другой версией (QColorDialog10.inc, QColorDialog11.inc подключены раньше RAPIDQ2.INC) - эта пропускается
 '================================================================================================
 ' Class QColorDialog version 1.3, original by D. Glodt?, updated for RQ2 by Don Homans
 '11/2009
@@ -6160,8 +6261,8 @@ Colors(16)=&HFF00FF
 END CONSTRUCTOR
 END WITH
 END TYPE
-$DEFINE __QCOLORDIALOG     ' inc2026: QColorDialog 1.3 объявлен - другие версии (QColorDialog10.inc, QColorDialog11.inc) пропустятся
-$ENDIF  ' inc2026: __QCOLORDIALOG
+$DEFINE __QCOLORDIALOG_INC     ' inc2026: QColorDialog 1.3 объявлен - другие версии (QColorDialog10.inc, QColorDialog11.inc) пропустятся
+$ENDIF  ' inc2026: __QCOLORDIALOG_INC
 
 
 
@@ -6174,6 +6275,7 @@ $ENDIF  ' inc2026: __QCOLORDIALOG
 '================================================================================================
 
 
+$IFNDEF __QDRIVECOMBOBOX_INC   ' inc2026: QDriveComboBox уже подключён другой версией (QDriveCombobox.inc раньше RAPIDQ2.INC) - эта пропускается
 TYPE QDriveComboBox EXTENDS QComboBox
   '=========================================
   ' mйthode reception des lecteurs prйsents
@@ -6208,6 +6310,8 @@ TYPE QDriveComboBox EXTENDS QComboBox
   CONSTRUCTOR
 END CONSTRUCTOR
 END TYPE
+$DEFINE __QDRIVECOMBOBOX_INC   ' inc2026: QDriveComboBox объявлен - другие версии (QDriveCombobox.inc) пропустятся
+$ENDIF  ' inc2026: __QDRIVECOMBOBOX_INC
 
 
 
@@ -6220,6 +6324,7 @@ END TYPE
 ' simple way to make an application "About" box
 '=================================================================================================
 
+$IFNDEF __QABOUT_INC   ' inc2026: QAbout уже подключён другой версией (QAbout.inc раньше RAPIDQ2.INC) - эта пропускается
 Type QAbout EXTENDS QOBJECT
   private:
   form as QFORM
@@ -6367,6 +6472,8 @@ Email=""
 Web=""
 End Constructor
 END TYPE
+$DEFINE __QABOUT_INC   ' inc2026: QAbout объявлен - другие версии (QAbout.inc) пропустятся
+$ENDIF  ' inc2026: __QABOUT_INC
 
 
 
@@ -6378,6 +6485,7 @@ END TYPE
 '======================================================================================================================
 'If window was not previously disabled, the return value is 0
 
+$IFNDEF __QDEBUG_INC   ' inc2026: QDebug уже подключён другой версией (QDebug.inc раньше RAPIDQ2.INC) - эта пропускается
 TYPE QDebug EXTENDS QOBJECT  'Begin defining our QDebug object
   PRIVATE  :
   RowNum AS INTEGER
@@ -6699,6 +6807,8 @@ WatchTime = 10
 Timer1.Interval = 10    'set to 10 msec update rate (fast)
 END CONSTRUCTOR
 END TYPE
+$DEFINE __QDEBUG_INC   ' inc2026: QDebug объявлен - другие версии (QDebug.inc) пропустятся
+$ENDIF  ' inc2026: __QDEBUG_INC
 
 
 
@@ -6720,6 +6830,7 @@ END TYPE
 ' |~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 '======================================================================================================================
+$IFNDEF __QLISTVIEWEX_INC   ' inc2026: QListviewEx уже подключён другой версией (QListviewEx.inc раньше RAPIDQ2.INC) - эта пропускается
 TYPE Qlistviewex EXTENDS Qlistview
   ParentPanel    as qpanel
   Header         as qpanel
@@ -7083,6 +7194,8 @@ sub DirectSaveAs
 end sub
 
 END TYPE
+$DEFINE __QLISTVIEWEX_INC   ' inc2026: QListviewEx объявлен - другие версии (QListviewEx.inc) пропустятся
+$ENDIF  ' inc2026: __QLISTVIEWEX_INC
 
 
 
@@ -7115,6 +7228,7 @@ $DEFINE PSD_NONETWORKBUTTON   &H200000
 $DEFINE WM_INITDIALOG_PSD &H110
 
 
+$IFNDEF __QPAGESETUP_INC_SA   ' inc2026: объявлено и в QPageSetup.inc - он подключён раньше
 TYPE TPSD
   lStructSize AS LONG
   hWndOwner AS LONG
@@ -7138,13 +7252,17 @@ TYPE TPSD
   lpPageSetupTemplate AS LONG
   hPageSetupTemplate AS LONG
 END TYPE
+$ENDIF  ' inc2026: __QPAGESETUP_INC_SA
 
 
 
 $IFNDEF __WIN32API       'windows 32 definitions
+$IFNDEF __QPAGESETUP_INC_SA   ' inc2026: объявлено и в QPageSetup.inc - он подключён раньше
 DECLARE FUNCTION PageSetupDlg LIB "COMDLG32" ALIAS "PageSetupDlgA" (Ptr AS TPSD) AS LONG
+$ENDIF  ' inc2026: __QPAGESETUP_INC_SA
 $ENDIF
 
+$IFNDEF __QPAGESETUP_INC   ' inc2026: QPageSetup уже подключён другой версией (QPageSetup.inc раньше RAPIDQ2.INC) - эта пропускается
 Type QPageSetup EXTENDS QOBJECT
   Private :
   PSD   AS TPSD
@@ -7435,6 +7553,8 @@ DisableMargins=false
 MyWndProc=0
 End Constructor
 End Type
+$DEFINE __QPAGESETUP_INC   ' inc2026: QPageSetup объявлен - другие версии (QPageSetup.inc) пропустятся
+$ENDIF  ' inc2026: __QPAGESETUP_INC
 
 '===============================================================================================
 

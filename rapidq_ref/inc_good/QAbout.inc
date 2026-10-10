@@ -1,3 +1,6 @@
+$IFNDEF __QABOUT_INC   ' inc2026: подключается только первая версия QAbout (QAbout.inc или версия в RAPIDQ2.INC)
+$DEFINE __QABOUT_INC
+$DEFINE __QABOUT_INC_SA   ' inc2026: подключён отдельный файл QAbout - совпадающие объявления в RAPIDQ.INC / RAPIDQ2.INC пропустятся
 '=======================================================
 ' Type Objet
 ' Classe QAbout version 1.2
@@ -159,3 +162,4 @@ Type QAbout EXTENDS QOBJECT
     Web=""
   End Constructor
 End Type
+$ENDIF  ' inc2026: __QABOUT_INC

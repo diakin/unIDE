@@ -1,3 +1,6 @@
+$IFNDEF __QFILEDIALOG_INC   ' inc2026: подключается только первая версия QFileDialog (QFileDialog.inc, QFileDialogDoc.inc или версия в RAPIDQ2.INC)
+$DEFINE __QFILEDIALOG_INC
+$DEFINE __QFILEDIALOG_INC_SA   ' inc2026: подключён отдельный файл QFileDialog - совпадающие объявления в RAPIDQ.INC / RAPIDQ2.INC пропустятся
 '$typecheck on
 '============================================================================================
 '  Class QFILEDIAGLOG   an Open or Save sizeable file dialog box with overwrite warning
@@ -396,5 +399,4 @@ $ENDIF ' _RQDIALOGINC
 ' ShowMessage "file name no path =" + fDialog.FileTitle
 'END IF
 'END IF
-
-
+$ENDIF  ' inc2026: __QFILEDIALOG_INC

@@ -1,3 +1,6 @@
+$IFNDEF __COMPORT_INC   ' inc2026: подключается только первая версия ComPort (ComPort.inc или версия в RAPIDQ2.INC)
+$DEFINE __COMPORT_INC
+$DEFINE __COMPORT_INC_SA   ' inc2026: подключён отдельный файл ComPort - совпадающие объявления в RAPIDQ.INC / RAPIDQ2.INC пропустятся
 'ComPort.cmp  ' inc2026: file renamed from ComPort.cmp to ComPort.inc
 'Version 0.9
 'December 13, 2001
@@ -566,4 +569,4 @@ END IF
 END FUNCTION
 
 END TYPE
-
+$ENDIF  ' inc2026: __COMPORT_INC

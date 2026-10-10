@@ -2648,10 +2648,25 @@ begin
   // $IFDEF / $IFNDEF / $ELSE / $ENDIF выполняются здесь же
   if (Toks[FirstIdx].Kind = tkDirective) and
      ((FirstUp = '$IFDEF') or (FirstUp = '$IFNDEF') or (FirstUp = '$ELSE') or
-      (FirstUp = '$ENDIF')) then
+      (FirstUp = '$ENDIF') or (FirstUp = '$IF')) then
   begin
     AOut := CommentOut(AText);
-    if (FirstUp = '$IFDEF') or (FirstUp = '$IFNDEF') then
+    // #if выражение (строки заголовка C в блоке-комментарии brem 0 ... erem,
+    // QFileDialogDoc.inc: #if (_WIN32_WINNT >= 0x0500) ... #endif): выражение
+    // не вычисляется, блок пропускается, как неопределённое условие в C.
+    // Без этого #endif закрывал чужой блок ($ENDIF без $IFDEF дальше)
+    if FirstUp = '$IF' then
+    begin
+      if CondActive then
+        Warn(Trim(RawText(Toks, FirstIdx, High(Toks))) +
+             ': условие #if/$IF не вычисляется - блок до #endif пропущен');
+      Cond.ParentActive := CondActive;
+      Cond.Active := False;
+      Cond.ElseSeen := False;
+      SetLength(FConds, Length(FConds) + 1);
+      FConds[High(FConds)] := Cond;
+    end
+    else if (FirstUp = '$IFDEF') or (FirstUp = '$IFNDEF') then
     begin
       NameIdx := NextSig(Toks, FirstIdx + 1, High(Toks));
       CondName := '';

@@ -1,3 +1,6 @@
+$IFNDEF __QFORMMDI_INC   ' inc2026: подключается только первая версия QFormMDI (QFormMDI.inc или версия в RAPIDQ2.INC)
+$DEFINE __QFORMMDI_INC
+$DEFINE __QFORMMDI_INC_SA   ' inc2026: подключён отдельный файл QFormMDI - совпадающие объявления в RAPIDQ.INC / RAPIDQ2.INC пропустятся
 '=======================================================
 ' Type Objet
 ' Classe QFormMDI Version 1.0
@@ -688,3 +691,4 @@ public:
     ChildCount=0
   End Constructor
 END TYPE
+$ENDIF  ' inc2026: __QFORMMDI_INC

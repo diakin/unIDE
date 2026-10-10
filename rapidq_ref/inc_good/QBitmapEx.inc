@@ -1,3 +1,6 @@
+$IFNDEF __QBITMAPEX_INC   ' inc2026: подключается только первая версия QBitmapEx (QBitmapEx.inc или версия в RAPIDQ2.INC)
+$DEFINE __QBITMAPEX_INC
+$DEFINE __QBITMAPEX_INC_SA   ' inc2026: подключён отдельный файл QBitmapEx - совпадающие объявления в RAPIDQ.INC / RAPIDQ2.INC пропустятся
 '=======================================================
 ' Type Objet
 ' Classe QBitmapEx Version 1.4
@@ -363,3 +366,4 @@ Type QBitmapEx EXTENDS QBITMAP
     PenSize=1
   End Constructor
 End Type
+$ENDIF  ' inc2026: __QBITMAPEX_INC

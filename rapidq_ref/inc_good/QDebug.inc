@@ -1,3 +1,6 @@
+$IFNDEF __QDEBUG_INC   ' inc2026: подключается только первая версия QDebug (QDebug.inc или версия в RAPIDQ2.INC)
+$DEFINE __QDEBUG_INC
+$DEFINE __QDEBUG_INC_SA   ' inc2026: подключён отдельный файл QDebug - совпадающие объявления в RAPIDQ.INC / RAPIDQ2.INC пропустятся
 'QDEBUG.cmp 
 'Version 0.9
 'March 2, 2002
@@ -55,3 +58,4 @@ END TYPE
 
 DIM Debug AS QDebug                                 'Create our Debug object
 Debug.Enabled = True                                'Set the Enabled property to show the Debug form
+$ENDIF  ' inc2026: __QDEBUG_INC

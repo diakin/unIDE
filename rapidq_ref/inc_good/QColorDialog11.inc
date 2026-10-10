@@ -1,5 +1,5 @@
-$IFNDEF __QCOLORDIALOG    ' inc2026: подключается только первая версия QColorDialog (QColorDialog10.inc, QColorDialog11.inc или версия 1.3 в RAPIDQ2.INC)
-$DEFINE __QCOLORDIALOG
+$IFNDEF __QCOLORDIALOG_INC    ' inc2026: подключается только первая версия QColorDialog (QColorDialog10.inc, QColorDialog11.inc или версия 1.3 в RAPIDQ2.INC)
+$DEFINE __QCOLORDIALOG_INC
 '=======================================================
 ' Type Objet
 ' Classe QColorDialog version 1.1
@@ -120,4 +120,4 @@ TYPE QCOLORDIALOG EXTENDS QOBJECT
 
 END WITH
 END TYPE
-$ENDIF  ' inc2026: __QCOLORDIALOG
+$ENDIF  ' inc2026: __QCOLORDIALOG_INC

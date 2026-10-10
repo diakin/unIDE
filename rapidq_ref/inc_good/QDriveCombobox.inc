@@ -1,3 +1,6 @@
+$IFNDEF __QDRIVECOMBOBOX_INC   ' inc2026: подключается только первая версия QDriveComboBox (QDriveCombobox.inc или версия в RAPIDQ2.INC)
+$DEFINE __QDRIVECOMBOBOX_INC
+$DEFINE __QDRIVECOMBOBOX_INC_SA   ' inc2026: подключён отдельный файл QDriveComboBox - совпадающие объявления в RAPIDQ.INC / RAPIDQ2.INC пропустятся
 '=======================================================
 ' Type Objet
 ' Classe QDriveCombobox
@@ -42,3 +45,4 @@ TYPE QDriveComboBox EXTENDS QComboBox
 END TYPE  
 
 $ENDIF      'component added to RapidQ2.inc
+$ENDIF  ' inc2026: __QDRIVECOMBOBOX_INC

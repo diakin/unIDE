@@ -1,3 +1,6 @@
+$IFNDEF __QPAGESETUP_INC   ' inc2026: подключается только первая версия QPageSetup (QPageSetup.inc или версия в RAPIDQ2.INC)
+$DEFINE __QPAGESETUP_INC
+$DEFINE __QPAGESETUP_INC_SA   ' inc2026: подключён отдельный файл QPageSetup - совпадающие объявления в RAPIDQ.INC / RAPIDQ2.INC пропустятся
 '=======================================================
 ' Type Objet
 ' Classe QPageSetup version 1.2
@@ -202,4 +205,4 @@ Type QPageSetup EXTENDS QOBJECT
     DisableMargins=false
   End Constructor
 End Type
-      
+$ENDIF  ' inc2026: __QPAGESETUP_INC

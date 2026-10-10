@@ -1,3 +1,6 @@
+$IFNDEF __QCANVASEX_INC   ' inc2026: подключается только первая версия QCanvasEx (QCanvasEx.inc или версия в RAPIDQ2.INC)
+$DEFINE __QCANVASEX_INC
+$DEFINE __QCANVASEX_INC_SA   ' inc2026: подключён отдельный файл QCanvasEx - совпадающие объявления в RAPIDQ.INC / RAPIDQ2.INC пропустятся
 '=======================================================
 ' Type Objet
 ' Classe QCanvasEx
@@ -359,4 +362,4 @@ Type QCanvasEx EXTENDS QCANVAS
     PenSize=1
   End Constructor
 End Type
-      
+$ENDIF  ' inc2026: __QCANVASEX_INC

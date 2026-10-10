@@ -1,3 +1,6 @@
+$IFNDEF __QFORMEX_INC   ' inc2026: подключается только первая версия QFormEx (QFormEx.inc или версия в RAPIDQ2.INC)
+$DEFINE __QFORMEX_INC
+$DEFINE __QFORMEX_INC_SA   ' inc2026: подключён отдельный файл QFormEx - совпадающие объявления в RAPIDQ.INC / RAPIDQ2.INC пропустятся
 '=======================================================
 ' Type Objet
 ' Classe QFormEx version 1.2
@@ -173,5 +176,4 @@ Type QFormEx extends QFORM
     QFormEx.flagTrayIcon=false
   End Sub  
 End Type
-
-
+$ENDIF  ' inc2026: __QFORMEX_INC

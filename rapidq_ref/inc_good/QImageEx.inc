@@ -1,3 +1,6 @@
+$IFNDEF __QIMAGEEX_INC   ' inc2026: подключается только первая версия QImageEx (QImageEx.inc или версия в RAPIDQ2.INC)
+$DEFINE __QIMAGEEX_INC
+$DEFINE __QIMAGEEX_INC_SA   ' inc2026: подключён отдельный файл QImageEx - совпадающие объявления в RAPIDQ.INC / RAPIDQ2.INC пропустятся
 '=======================================================
 ' Type Objet
 ' Classe QImageEx version 1.1
@@ -105,3 +108,4 @@ Type QImageEx EXTENDS QIMAGE
     end if
   End Sub    
 End Type
+$ENDIF  ' inc2026: __QIMAGEEX_INC

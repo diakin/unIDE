@@ -1,3 +1,6 @@
+$IFNDEF __QLISTVIEWEX_INC   ' inc2026: подключается только первая версия QListviewEx (QListviewEx.inc или версия в RAPIDQ2.INC)
+$DEFINE __QLISTVIEWEX_INC
+$DEFINE __QLISTVIEWEX_INC_SA   ' inc2026: подключён отдельный файл QListviewEx - совпадающие объявления в RAPIDQ.INC / RAPIDQ2.INC пропустятся
 $typecheck on
 $optimize on
 
@@ -326,4 +329,4 @@ end type
 ' | http://dreadsoft.too.it       |
 ' | dreadsoft@yahoo.it            |
 ' |~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  
+$ENDIF  ' inc2026: __QLISTVIEWEX_INC
