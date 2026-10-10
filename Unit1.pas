@@ -1636,6 +1636,11 @@ type
     FGutterBG: TColor;
     // Маркеры, под которые построена карта комментариев и строк
     FMapMarkersSig: string;
+    // Начало правки для RescanVisibleMap (TryShiftMap); -1 - неизвестно
+    FMapEditPos: Integer;
+    // Карта разобрана заново только до этой позиции (RescanVisibleMap),
+    // дальше диапазонов нет до полной пересборки; 0 - карта полная
+    FMapPartialEnd: Integer;
 
     // Кэш длинных строк - см. GetLineInfo
     FLineInfo: array[0..LineInfoCount - 1] of TLineInfo;
@@ -2167,6 +2172,8 @@ type
     procedure PaintDoubleBuffered; // весь кадр собирается в памяти
 
     procedure RebuildCommentRangeMap;
+    procedure ScanCommentRanges(const FullText: string; ABase: Integer);
+    procedure RescanVisibleMap(AEditPos: Integer; AInvalidate: Boolean);
 
     procedure UpdateStatusBarInfo; // Заказать обновление статус-бара
     procedure RefreshStatusBar;    // Собственно пересчёт полей
@@ -3479,11 +3486,13 @@ begin
   Message.Result := 0;
 end;
 
-procedure TForm1.RebuildCommentRangeMap;
+// Разбор текста FullText на блочные комментарии и строки - автомат карты.
+// Диапазоны ДОПИСЫВАЮТСЯ в CommentRanges и StringRanges; позиции в них -
+// позиции контрола, FullText начинается с позиции ABase. Начало FullText
+// должно быть в обычном коде (не в комментарии и не в строке).
+procedure TForm1.ScanCommentRanges(const FullText: string; ABase: Integer);
 var
-  FullText: string;
   TextLen, I: Integer;
-  T0: Int64; // замер длительности разбора, точным счётчиком
   InBlock: Boolean;
   InSingleLine: Boolean;
   InString: Boolean;
@@ -3520,43 +3529,6 @@ var
   end;
 
 begin
-  // Во время переключения окна в редакторе ещё лежит текст предыдущего файла,
-  // и строить по нему карту бессмысленно - ActivateWindow сделает это сам,
-  // когда текст будет на месте.
-  if FSuppressMapRebuild then
-    Exit;
-  FMapRebuilt := True;
-
-  // Карты меняются - строчные комментарии длинных строк искать заново
-  Inc(FMapVer);
-  FMapMarkersSig := FScheme.MarkersSig;
-
-  // Заказ, если он был, только что исполнен здесь - снимаем его, иначе
-  // таймер сделал бы ту же работу второй раз
-  if FMapTimer <> nil then
-    FMapTimer.Enabled := False;
-
-  // Подсветка выключена - карту никто не читает, строить её незачем.
-  // На 32-мегабайтном файле это полсекунды впустую при каждом открытии.
-  // Помечаем устаревшей: когда подсветку включат обратно, отрисовка сама
-  // закажет разбор.
-  if not FUseSyntaxHighlight then
-  begin
-    SetLength(CommentRanges, 0);
-    SetLength(StringRanges, 0);
-    FMapStale := True;
-    Exit;
-  end;
-
-  T0 := PerfNow;
-
-  // 1. Очищаем старые карты перед пересчётом
-  SetLength(CommentRanges, 0);
-  SetLength(StringRanges, 0);
-
-  // Читаем весь текст редактора в память за один раз. Перевод строки должен
-  // быть ОДНИМ символом, как в индексах контрола: позиции карты - это они.
-  FullText := GetEditorTextCR;
   TextLen := Length(FullText);
 
   // Длины динамических маркеров текущей языковой схемы
@@ -3603,7 +3575,7 @@ begin
           SetLength(StringRanges, Length(StringRanges) + 1);
           StringRanges[High(StringRanges)].StartPos := StringStartPos;
           StringRanges[High(StringRanges)].Kind := StrKind;
-          StringRanges[High(StringRanges)].EndPos := I + CurLen - 1;
+          StringRanges[High(StringRanges)].EndPos := ABase + I + CurLen - 1;
           Inc(I, CurLen);
         end;
       end
@@ -3646,11 +3618,11 @@ begin
       if P = 0 then
       begin
         // Закрытия в тексте нет - комментарий тянется до конца
-        CommentRanges[High(CommentRanges)].EndPos := TextLen;
+        CommentRanges[High(CommentRanges)].EndPos := ABase + TextLen;
         Break;
       end;
 
-      CommentRanges[High(CommentRanges)].EndPos := P + Length(EndMark) - 1;
+      CommentRanges[High(CommentRanges)].EndPos := ABase + P + Length(EndMark) - 1;
       I := P + Length(EndMark);
       Continue;
     end;
@@ -3680,7 +3652,7 @@ begin
     begin
       InBlock := True;
       BlockKind := HitKind;
-      StartPos := I - 1;
+      StartPos := ABase + I - 1;
       Inc(I, BLen);
       Continue;
     end;
@@ -3696,7 +3668,7 @@ begin
     begin
       InString := True;
       StrKind := StrHitKind;
-      StringStartPos := I - 1;
+      StringStartPos := ABase + I - 1;
       Inc(I, SLen);
       Continue;
     end;
@@ -3706,15 +3678,72 @@ begin
   end;
 
   // 3. ФИНАЛЬНАЯ ЗАЩИТА: файл закончился, а строка так и не была закрыта.
-  // Блочный комментарий сюда не попадает: незакрытый он дописывается прямо
-  // в своей ветке, там же, где ищется закрывающий маркер.
+  // Незакрытый блочный комментарий дописывается в своей ветке, там же, где
+  // ищется закрывающий маркер. Сюда он попадает, только если маркер
+  // открытия - последние символы текста: до той ветки цикл не доходит.
+
+  if InBlock then
+  begin
+    SetLength(CommentRanges, Length(CommentRanges) + 1);
+    CommentRanges[High(CommentRanges)].StartPos := StartPos;
+    CommentRanges[High(CommentRanges)].Kind := BlockKind;
+    CommentRanges[High(CommentRanges)].EndPos := ABase + TextLen;
+  end;
 
   if InString then
   begin
     SetLength(StringRanges, Length(StringRanges) + 1);
     StringRanges[High(StringRanges)].StartPos := StringStartPos;
-    StringRanges[High(StringRanges)].EndPos := TextLen;
+    StringRanges[High(StringRanges)].Kind := StrKind;
+    StringRanges[High(StringRanges)].EndPos := ABase + TextLen;
   end;
+end;
+
+procedure TForm1.RebuildCommentRangeMap;
+var
+  FullText: string;
+  I: Integer;
+  T0: Int64; // замер длительности разбора, точным счётчиком
+begin
+  // Во время переключения окна в редакторе ещё лежит текст предыдущего файла,
+  // и строить по нему карту бессмысленно - ActivateWindow сделает это сам,
+  // когда текст будет на месте.
+  if FSuppressMapRebuild then
+    Exit;
+  FMapRebuilt := True;
+  FMapPartialEnd := 0;
+
+  // Карты меняются - строчные комментарии длинных строк искать заново
+  Inc(FMapVer);
+  FMapMarkersSig := FScheme.MarkersSig;
+
+  // Заказ, если он был, только что исполнен здесь - снимаем его, иначе
+  // таймер сделал бы ту же работу второй раз
+  if FMapTimer <> nil then
+    FMapTimer.Enabled := False;
+
+  // Подсветка выключена - карту никто не читает, строить её незачем.
+  // На 32-мегабайтном файле это полсекунды впустую при каждом открытии.
+  // Помечаем устаревшей: когда подсветку включат обратно, отрисовка сама
+  // закажет разбор.
+  if not FUseSyntaxHighlight then
+  begin
+    SetLength(CommentRanges, 0);
+    SetLength(StringRanges, 0);
+    FMapStale := True;
+    Exit;
+  end;
+
+  T0 := PerfNow;
+
+  // 1. Очищаем старые карты перед пересчётом
+  SetLength(CommentRanges, 0);
+  SetLength(StringRanges, 0);
+
+  // Читаем весь текст редактора в память за один раз. Перевод строки должен
+  // быть ОДНИМ символом, как в индексах контрола: позиции карты - это они.
+  FullText := GetEditorTextCR;
+  ScanCommentRanges(FullText, 0);
 
   // Подстраиваем интервал таймера под РЕАЛЬНУЮ стоимость разбора на этом
   // файле. Фиксированные 150 мс одинаково плохи с обеих сторон: на небольшом
@@ -3753,6 +3782,77 @@ begin
       I := 3000;
     FMapTimer.Interval := I;
   end;
+end;
+
+// Карта заново - только до конца видимой части экрана.
+//
+// Правка, задевшая маркер (открыла или закрыла комментарий, кавычку),
+// меняет раскраску всего текста после себя. Полная пересборка идёт по
+// таймеру (ScheduleMapRebuild), и на большом файле вместе с задержкой
+// таймера (втрое больше длительности разбора, до 3 с) экран до неё
+// показывал прежнюю раскраску. Здесь разбирается кусок от последнего
+// диапазона, закончившегося до правки, до нижней видимой строки - экран
+// раскрашивается сразу, остальное делает таймер.
+//
+// Диапазоны, закончившиеся до AEditPos, остаются как были, остальные
+// выбрасываются; FMapPartialEnd - докуда карта теперь верна. Отрисовка,
+// дойдя ниже этой позиции (прокрутили до полной пересборки), вызывает
+// эту же процедуру с AEditPos = FMapPartialEnd.
+procedure TForm1.RescanVisibleMap(AEditPos: Integer; AInvalidate: Boolean);
+var
+  KeepComments, KeepStrings, ResumePos, LimitPos, TopLine, LastLine: Integer;
+  ClientRect: TRect;
+begin
+  if not FUseSyntaxHighlight or FMapStale or (AEditPos < 0) or
+     (LineHeight <= 0) or not RichEdit1.HandleAllocated then
+    Exit;
+
+  // Нижняя граница - начало строки под последней видимой
+  Windows.GetClientRect(RichEdit1.Handle, ClientRect);
+  TopLine := SendMessageA(RichEdit1.Handle, EM_GETFIRSTVISIBLELINE, 0, 0);
+  LastLine := TopLine + ClientRect.Bottom div LineHeight + 2;
+  LimitPos := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, LastLine, 0);
+  if LimitPos < 0 then
+    LimitPos := TextLenInternal;
+  // Правка ниже экрана или видимая часть уже разобрана
+  if LimitPos <= AEditPos then
+    Exit;
+
+  // Запас в маркер: правка могла достроить или разбить маркер слева
+  AEditPos := AEditPos - FScheme.FMaxMarkerLen - 1;
+  if AEditPos < 0 then
+    AEditPos := 0;
+
+  // Диапазоны идут по возрастанию и не пересекаются - остаются первые,
+  // закончившиеся до правки. После конца диапазона - обычный код, с него
+  // разбор и продолжается.
+  KeepComments := 0;
+  while (KeepComments <= High(CommentRanges)) and
+        (CommentRanges[KeepComments].EndPos <= AEditPos) do
+    Inc(KeepComments);
+  KeepStrings := 0;
+  while (KeepStrings <= High(StringRanges)) and
+        (StringRanges[KeepStrings].EndPos <= AEditPos) do
+    Inc(KeepStrings);
+  ResumePos := 0;
+  if KeepComments > 0 then
+    ResumePos := CommentRanges[KeepComments - 1].EndPos;
+  if (KeepStrings > 0) and (StringRanges[KeepStrings - 1].EndPos > ResumePos) then
+    ResumePos := StringRanges[KeepStrings - 1].EndPos;
+
+  SetLength(CommentRanges, KeepComments);
+  SetLength(StringRanges, KeepStrings);
+  ScanCommentRanges(TextRange(ResumePos, LimitPos - ResumePos), ResumePos);
+
+  if LimitPos >= TextLenInternal then
+    FMapPartialEnd := 0
+  else
+    FMapPartialEnd := LimitPos;
+  // Кэш строк сверяет версию карты - строки разберутся заново
+  Inc(FMapVer);
+
+  if AInvalidate then
+    Windows.InvalidateRect(RichEdit1.Handle, nil, False);
 end;
 
 // Показания системного счётчика высокого разрешения. GetTickCount с его
@@ -7433,6 +7533,7 @@ end;
 // изменился - имена компонентов строятся заново.
 procedure TForm1.RestoreWindowParse(Index: Integer);
 begin
+  FMapPartialEnd := 0; // карта окна полная
   CommentRanges := Copy(FWindows[Index].CommentRanges, 0,
                         Length(FWindows[Index].CommentRanges));
   StringRanges := Copy(FWindows[Index].StringRanges, 0,
@@ -19842,7 +19943,11 @@ begin
     L := Length(M);
     if (L = 0) or (L <= BestLen) then
       Continue;
-    if Copy(AText, APos, L) = M then
+    // Сначала первый символ: Copy на каждый символ текста - выделение
+    // строки в памяти, и на полном разборе это большая часть времени
+    if (APos >= 1) and (APos + L - 1 <= Length(AText)) and
+       (AText[APos] = M[1]) and
+       ((L = 1) or (Copy(AText, APos, L) = M)) then
     begin
       BestLen := L;
       AKind := I;
@@ -19874,7 +19979,11 @@ begin
     L := Length(M);
     if (L = 0) or (L <= BestLen) then
       Continue;
-    if Copy(AText, APos, L) = M then
+    // Сначала первый символ: Copy на каждый символ текста - выделение
+    // строки в памяти, и на полном разборе это большая часть времени
+    if (APos >= 1) and (APos + L - 1 <= Length(AText)) and
+       (AText[APos] = M[1]) and
+       ((L = 1) or (Copy(AText, APos, L) = M)) then
     begin
       BestLen := L;
       AKind := I;
@@ -19949,6 +20058,17 @@ var
 
 begin
   Result := False;
+  // Начало правки для RescanVisibleMap: меньшее из начала выделения до
+  // правки и каретки после неё. Правка, сделанная не у каретки, сюда не
+  // попадает - её поправит полная пересборка по таймеру.
+  FMapEditPos := -1;
+  if FPreValid and RichEdit1.HandleAllocated then
+  begin
+    SendMessageA(RichEdit1.Handle, EM_EXGETSEL, 0, Integer(@Sel));
+    FMapEditPos := FPreSelMin;
+    if Sel.cpMin < FMapEditPos then
+      FMapEditPos := Sel.cpMin;
+  end;
   try
     if not FPreValid then
       Exit;
@@ -20007,6 +20127,8 @@ begin
       end
     else if StringRanges[I].EndPos > EditPos then
       Inc(StringRanges[I].EndPos, D);
+    if FMapPartialEnd > EditPos then
+      Inc(FMapPartialEnd, D);
 
     if HasMarker(FPreWin) or HasMarker(PostWin) then
       Exit; // задело маркер - ещё и полный разбор
@@ -38720,7 +38842,11 @@ begin
     if Pos(' *', Form1.Caption) = 0 then
       Form1.Caption := AppTitle + ' - ' + DisplayName + ' *';
     if not TryShiftMap then
+    begin
+      // Экран - сразу, весь текст - по таймеру
+      RescanVisibleMap(FMapEditPos, True);
       ScheduleMapRebuild;
+    end;
     FNeedLineInv := True;
   end;
 
@@ -59990,7 +60116,10 @@ begin
       PerfT := PerfNow;
       if not EditHandled then
         if not TryShiftMap then
+        begin
+          RescanVisibleMap(FMapEditPos, True);
           ScheduleMapRebuild;
+        end;
 
       // Метим ТОЛЬКО строку с кареткой, и в обоих случаях.
       //
@@ -61181,6 +61310,10 @@ begin
   // не важно, кто и откуда её переключил.
   if FUseSyntaxHighlight and FMapStale then
     RebuildCommentRangeMap;
+  // Карта после правки разобрана только до прежнего низа экрана, а экран
+  // прокрутили ниже - доразобрать видимое (полная пересборка ещё впереди)
+  if FUseSyntaxHighlight and (FMapPartialEnd > 0) then
+    RescanVisibleMap(FMapPartialEnd, False);
   if FUseSyntaxHighlight then
     EnsureKeywordHash;
 
