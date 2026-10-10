@@ -59781,6 +59781,7 @@ procedure TForm1.NewRichEditProc(var Message: TMessage);
 var
   MarkIdx: Integer;
   CursorPt: TPoint;
+  SerialBefore: Cardinal;
 begin
   // Вставка - только текстом (PastePlainText): WM_PASTE от меню Windows и
   // Ctrl+V / Shift+Insert, если их не перехватило меню формы
@@ -59845,11 +59846,23 @@ begin
   end;
   if FMsgDepth = 0 then
     FOuterMsg := Message.Msg;
+  SerialBefore := FEditSerial;
   Inc(FMsgDepth);
   try
     NewRichEditProcBody(Message);
   finally
     Dec(FMsgDepth);
+  end;
+  // Сообщение изменило текст - видимая часть рисуется сейчас, до выборки
+  // следующего сообщения. Сама по себе перерисовка ждёт пустой очереди:
+  // WM_PAINT Windows выдаёт последним, и при автоповторе клавиши экран
+  // отставал от текста.
+  if (FMsgDepth = 0) and (FEditSerial <> SerialBefore) and
+     RichEdit1.HandleAllocated then
+  begin
+    Windows.UpdateWindow(RichEdit1.Handle);
+    if PaintBox1 <> nil then
+      PaintBox1.Update;
   end;
   // Отпустили левую кнопку - каретка уже на месте щелчка: объявление
   // идентификатора под ней - в панель над редактором
@@ -59869,6 +59882,8 @@ var
   ClickLine: Integer;
   EditHandled: Boolean;
   ClickBeyond: Boolean;
+  EnterCount, EnterIdx: Integer;
+  EnterIndent, EnterText: string;
 begin
   // Всё, что добавляет текст, - после проверки предела объёма. Стоит до
   // FLockHighlight: массовые правки идут как раз под ним. Ctrl+V контрол
@@ -60040,8 +60055,31 @@ begin
     if PeekMessage(QueuedMsg, RichEdit1.Handle, WM_CHAR, WM_CHAR,
                    PM_NOREMOVE) and (QueuedMsg.wParam = 13) then
       PeekMessage(QueuedMsg, RichEdit1.Handle, WM_CHAR, WM_CHAR, PM_REMOVE);
+    // Удержанная клавиша: автоповтор, накопившийся в очереди, - одной
+    // вставкой. Иначе каждое нажатие - своя правка и свой разбор, очередь
+    // растёт быстрее, чем разбирается, а WM_PAINT Windows выдаёт только
+    // при пустой очереди. Берутся только нажатия Enter, стоящие в очереди
+    // первыми; их WM_CHAR ещё нет - его делает TranslateMessage при выборке.
+    EnterCount := 1;
+    while PeekMessage(QueuedMsg, RichEdit1.Handle, 0, 0, PM_NOREMOVE) and
+          (QueuedMsg.message = WM_KEYDOWN) and
+          (QueuedMsg.wParam = VK_RETURN) do
+    begin
+      PeekMessage(QueuedMsg, RichEdit1.Handle, WM_KEYDOWN, WM_KEYDOWN,
+                  PM_REMOVE);
+      Inc(EnterCount);
+    end;
+    // Отступ следующих строк - тот же: каретка после первого Enter стоит
+    // за отступом новой строки, и EnterIndentText вернул бы его же
+    EnterIndent := EnterIndentText;
+    EnterText := '';
+    for EnterIdx := 1 to EnterCount do
+      EnterText := EnterText + #13 + EnterIndent;
     SendMessage(RichEdit1.Handle, EM_REPLACESEL, 1,
-                Integer(PChar(#13 + EnterIndentText)));
+                Integer(PChar(EnterText)));
+    // То, что после клавиши делает общий путь ниже (сюда он не доходит)
+    EnsureCaretVisibleX;
+    UpdateLineNumbers;
     Message.Result := 0;
     Exit;
   end;
