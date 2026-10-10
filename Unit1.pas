@@ -2656,6 +2656,7 @@ type
     procedure RebuildSubListBraces(const AText: string);
     procedure RebuildSubListBlocks(const AText: string);
     procedure FormatIndentText;
+    function  FormatDfmLines(const ASrc: string; ALines: TStringList): Integer;
     procedure FillSubListView;
     // Вкладка Includes правой панели (RapidQ)
     function  IncludesApply: Boolean;
@@ -62882,6 +62883,138 @@ end;
 // Строки внутри блочного комментария и многострочного литерала остаются как
 // есть. Откат - Edit / Отменить массовую замену: текст до форматирования
 // кладётся в тот же FReplaceBackup, что и у массовой замены.
+// Отступы текстового .dfm (.lfm, .xfm, .fmx) - как их пишет Delphi: по два
+// пробела на уровень. object, inherited, inline и item открывают уровень,
+// end закрывает (end> - ещё и коллекцию < >). Значение в ( ), < >, { } -
+// на уровень глубже свойства; продолжение значения (строка кончается "="
+// или "+") - тоже. Строки - в ALines (по одной на строку ASrc, как цикл
+// FormatIndentText), результат - число строк с новым отступом.
+function TForm1.FormatDfmLines(const ASrc: string;
+                               ALines: TStringList): Integer;
+var
+  // Открытые конструкции: O - объект, I - item, "(", "<", "{"
+  Stack: string;
+  LineStart, CharIdx: Integer;
+  Raw: string;
+  ContNext: Boolean;
+
+  function TopKind: Char;
+  begin
+    if Stack = '' then
+      Result := #0
+    else
+      Result := Stack[Length(Stack)];
+  end;
+
+  procedure PopKind;
+  begin
+    if Stack <> '' then
+      SetLength(Stack, Length(Stack) - 1);
+  end;
+
+  procedure DoLine;
+  var
+    Depth, Pos_: Integer;
+    Trimmed, Code, FirstWord, NewLine: string;
+    InQuote: Boolean;
+  begin
+    Trimmed := Trim(Raw);
+    if Trimmed = '' then
+    begin
+      ALines.Add('');
+      if Raw <> '' then
+        Inc(Result);
+      Exit;
+    end;
+
+    // Код без строковых литералов ('' внутри - два переключения)
+    Code := '';
+    InQuote := False;
+    for Pos_ := 1 to Length(Trimmed) do
+      if Trimmed[Pos_] = '''' then
+        InQuote := not InQuote
+      else if not InQuote then
+        Code := Code + Trimmed[Pos_];
+
+    Pos_ := 1;
+    while (Pos_ <= Length(Code)) and
+          (Code[Pos_] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+      Inc(Pos_);
+    FirstWord := LowerCase(Copy(Code, 1, Pos_ - 1));
+
+    if (FirstWord = 'end') and (TopKind in ['O', 'I']) then
+      Depth := Length(Stack) - 1
+    else
+    begin
+      Depth := Length(Stack);
+      if ContNext then
+        Inc(Depth);
+    end;
+    if Depth < 0 then
+      Depth := 0;
+
+    // Пробелы в конце строки не трогаем
+    NewLine := StringOfChar(' ', Depth * 2) + TrimLeft(Raw);
+    ALines.Add(NewLine);
+    if NewLine <> Raw then
+      Inc(Result);
+
+    if (FirstWord = 'object') or (FirstWord = 'inherited') or
+       (FirstWord = 'inline') then
+      Stack := Stack + 'O'
+    else if LowerCase(Code) = 'item' then
+      Stack := Stack + 'I'
+    else if (FirstWord = 'end') and (TopKind in ['O', 'I']) then
+    begin
+      PopKind;
+      for Pos_ := 4 to Length(Code) do
+        if (Code[Pos_] = '>') and (TopKind = '<') then
+          PopKind;
+    end
+    else
+      for Pos_ := 1 to Length(Code) do
+        case Code[Pos_] of
+          '(', '{', '<':
+            Stack := Stack + Code[Pos_];
+          ')':
+            if TopKind = '(' then
+              PopKind;
+          '}':
+            if TopKind = '{' then
+              PopKind;
+          '>':
+            if TopKind = '<' then
+              PopKind;
+        end;
+
+    // Последний символ - по строке целиком: у "Caption = 'x'" код без
+    // литерала кончается "=", но значение уже есть
+    ContNext := not (TopKind in ['(', '{', '<']) and
+                (Trimmed[Length(Trimmed)] in ['=', '+']);
+  end;
+
+begin
+  Result := 0;
+  Stack := '';
+  ContNext := False;
+  LineStart := 1;
+  CharIdx := 1;
+  while CharIdx <= Length(ASrc) + 1 do
+  begin
+    if (CharIdx > Length(ASrc)) or (ASrc[CharIdx] = #13) or
+       (ASrc[CharIdx] = #10) then
+    begin
+      Raw := Copy(ASrc, LineStart, CharIdx - LineStart);
+      DoLine;
+      if (CharIdx < Length(ASrc)) and (ASrc[CharIdx] = #13) and
+         (ASrc[CharIdx + 1] = #10) then
+        Inc(CharIdx);
+      LineStart := CharIdx + 1;
+    end;
+    Inc(CharIdx);
+  end;
+end;
+
 procedure TForm1.FormatIndentText;
 var
   Src, Res, Raw, Body, Pad: string;
@@ -62902,6 +63035,8 @@ var
   SusLines: array of Integer;
   SusTexts: array of string;
   SusNote, SusPlace: string;
+  // Текстовый .dfm (.lfm, .xfm, .fmx): отступы - FormatDfmLines
+  IsDfm: Boolean;
 
   // Код строки кончается точкой: "Output." - имя после точки не дописано,
   // и компилятор прочтёт это вместе со следующей строкой. Не считаются:
@@ -62968,7 +63103,17 @@ var
   end;
 
 begin
-  if not FScheme.FSubTags and
+  Raw := '';
+  if (FWindowsIndex >= 0) and FWindows[FWindowsIndex].Used then
+    Raw := LowerCase(ExtractFileExt(FWindows[FWindowsIndex].FileName));
+  if Raw = '' then
+    Raw := LowerCase(ExtractFileExt(FCurrentFileName));
+  if Copy(Raw, Length(Raw), 1) = ')' then
+    Delete(Raw, Length(Raw), 1);   // '(без имени.dfm)'
+  IsDfm := (Raw = '.dfm') or (Raw = '.lfm') or (Raw = '.xfm') or
+           (Raw = '.fmx');
+
+  if not IsDfm and not FScheme.FSubTags and
      ((FScheme.FSubOpenWords = nil) or (FScheme.FSubOpenWords.Count = 0)) and
      ((FScheme.FSubOpenFirst = nil) or (FScheme.FSubOpenFirst.Count = 0)) then
   begin
@@ -63051,7 +63196,14 @@ begin
     SetLength(SusLines, 0);
     SetLength(SusTexts, 0);
 
-    I := 1;
+    // .dfm - своим разбором, цикл ниже не выполняется
+    if IsDfm then
+    begin
+      Changed := FormatDfmLines(Src, SL);
+      I := Len + 2;
+    end
+    else
+      I := 1;
     while I <= Len + 1 do
     begin
       if (I > Len) or (Src[I] = #13) or (Src[I] = #10) then
