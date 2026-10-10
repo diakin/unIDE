@@ -1071,6 +1071,41 @@ Function RqDllProc(ByRef DllName As String, ByRef ProcName As String, _
 End Function
 
 ' ---------------------------------------------------------------------------
+'  LIBRARYINST(DLL) - описатель DLL (otherdetail.html: "Returns the handle
+'  to the DLL module"): GetModuleHandleA - DLL загружена (DECLARE ... LIB
+'  загружает её при запуске, RqDllProc), иначе 0.
+'  UNLOADLIBRARY(DLL) - в RapidQ выгружает DLL из памяти. Здесь ничего не
+'  делает: адреса функций DECLARE ... LIB взяты при запуске (RqDllProc), и
+'  после выгрузки DLL вызов по ним упал бы. В rapidq2.inc за
+'  UNLOADLIBRARY следуют вызовы тех же функций (NViewLoad, JpegDLL_...).
+' ---------------------------------------------------------------------------
+Type RqRtGetModFn As Function stdcall (ByVal ModName As ZString Ptr) As Any Ptr
+Function RqLibraryInst(ByRef DllName As String) As Long
+    Static GetMod As RqRtGetModFn
+    If GetMod = 0 Then
+        GetMod = Cast(RqRtGetModFn, DyLibSymbol(DyLibLoad("kernel32"), "GetModuleHandleA"))
+    End If
+    If GetMod = 0 Then Return 0
+    Return Cast(Long, Cast(Integer, GetMod(StrPtr(DllName))))
+End Function
+
+Sub RqUnloadLibrary(ByRef DllName As String)
+End Sub
+
+' SOUND частота, длительность (otherdetail.html): длительность - в тиках
+' таймера, 18.2 в секунду (18 - секунда). Beep kernel32: частота 37..32767,
+' время в миллисекундах.
+Type RqRtBeepFn As Function stdcall (ByVal Freq As ULong, ByVal Duration As ULong) As Long
+Sub RqSound(ByVal Freq As Long, ByVal Duration As Long)
+    Static BeepProc As RqRtBeepFn
+    If BeepProc = 0 Then
+        BeepProc = Cast(RqRtBeepFn, DyLibSymbol(DyLibLoad("kernel32"), "Beep"))
+    End If
+    If (BeepProc = 0) OrElse (Duration <= 0) Then Exit Sub
+    BeepProc(Freq, CULng(Duration * 1000 / 18.2))
+End Sub
+
+' ---------------------------------------------------------------------------
 '  SetNewWndProc из NewWndProc.inc (препроцессор заменяет её тело): окну -
 '  новая оконная процедура, результат - прежняя. У RapidQ здесь строился
 '  переходник x86 (CODEPTR RapidQ не даёт процедуру, годную для Windows);

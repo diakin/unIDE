@@ -156,6 +156,7 @@ Type QAPPLICATION
     Declare Property ShowHint(ByVal Value As Long)
     Declare Property Icon(ByRef Value As String)
     Declare Property Handle() As Integer
+    Declare Property hInstance() As Integer
     Declare Sub Terminate()
     Declare Sub Minimize()
     Declare Sub Restore()
@@ -189,6 +190,12 @@ Property QAPPLICATION.Icon(ByRef Value As String)
 End Property
 ' hInstance программы
 Property QAPPLICATION.Handle() As Integer
+    Return Cast(Integer, RqLclGetModuleHandle(0))
+End Property
+' Application.hInstance - в документации (qapplication.html) нет, у
+' Handle сказано "hInstance of the application"; в rapidq2.inc (QFormEx,
+' QImageEx) - Application.hInstance. Значение - как у Handle
+Property QAPPLICATION.hInstance() As Integer
     Return Cast(Integer, RqLclGetModuleHandle(0))
 End Property
 ' Конец программы: окна закрываются (ShowModal возвращается), следующий

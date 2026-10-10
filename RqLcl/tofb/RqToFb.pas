@@ -136,7 +136,9 @@ const
     'VARPTR$=RqVarPtrStr MEMCPY=RqMemCpy MEMSET=RqMemSet MEMCMP=RqMemCmp ' +
     'SENDMESSAGE=RqSendMessage POSTMESSAGE=RqPostMessage ' +
     'KILLMESSAGE=RqKillMessage SHELL=RqShell QUICKSORT=RqQuickSort ' +
-    'VARTYPE=RqVarType';
+    'VARTYPE=RqVarType ' +
+    // DLL (rqrt.bi): UNLOADLIBRARY ничего не делает - см. там
+    'LIBRARYINST=RqLibraryInst UNLOADLIBRARY=RqUnloadLibrary SOUND=RqSound';
 
   // Свойства и методы RapidQ, имена которых в FreeBASIC - ключевые слова:
   // .Pointer (QMEMORYSTREAM) -> .PointerAddr (rqstream.bi), .Type и .Peek
@@ -238,7 +240,7 @@ const
     'TYPEOF UBYTE UINTEGER ULONG ULONGINT UNION UNLOCK UNTIL USHORT USING ' +
     'VAR VIEW WEND WHILE WIDTH WINDOW WITH WRITE WSTRING XOR ZSTRING ' +
     'LEN VAL STR CHR ASC LEFT RIGHT MID INSTR ABS INT FIX SGN SQR TIMER RND ' +
-    'POS ' +
+    'POS HEX OCT BIN LCASE UCASE TRIM LTRIM RTRIM SPACE ' +
     // встроенные функции FreeBASIC с именами, которые в RapidQ свободны
     // (sadd в conversion.inc: fbc - "Duplicated definition"; переменная
     // strptr в RQdebugger; параметр dir у SysDir в Files.inc). У RapidQ
@@ -266,7 +268,11 @@ const
     'EXIT CONST DECLARE PROPERTY OPERATOR CONSTRUCTOR DESTRUCTOR WITH ' +
     'SCOPE NAMESPACE ENUM UNION EXTENDS BYVAL BYREF AND OR NOT XOR MOD ' +
     'SHL SHR ANDALSO ORELSE CAST CONTINUE STATIC SHARED PUBLIC PRIVATE ' +
-    'PROTECTED THIS BASE VAR LET CALL PEEK';
+    'PROTECTED THIS BASE VAR LET CALL PEEK ' +
+    // у Type с методами (свой компонент): fbc 1.10.1 error 238 "Fields
+    // cannot be named as keywords" (rapidq2.inc, QFormEx: Virtual AS QFORM;
+    // QBitmapEx: FUNCTION Pointer)
+    'VIRTUAL ABSTRACT OVERRIDE POINTER';
 
   // Классы RapidQ (объекты: передаются по ссылке, без преобразования)
   RqObjectText =
@@ -357,6 +363,11 @@ type
     // FUNCTION читает RESULT (result = result & ...): значение функции
     // FreeBASIC прочитать нельзя, оно ведётся в локальной rq_result
     ResultRead: Boolean;
+    // Первый DECLARE без LIB в этом проходе: номер прохода и место. Второй
+    // такой же DECLARE (rapidq2.inc: DECLARE SUB OnClose_EventTemplate у
+    // QDockForm и у ComPort) fbc отвергает (error 4) - он закомментируется
+    DeclPass: Integer;
+    DeclAt: string;
   end;
 
   // Таблица ИМЯ -> значение с поиском делением пополам. Заменяет списки
@@ -498,6 +509,13 @@ type
     FPlainType: string;           // запись TYPE (не свой компонент) - имя
     FFixBodies: string;           // свойства полей STRING*N - после END TYPE
     FCreateDepth: Integer;
+    // FOR ... NEXT: открытые циклы. Счётчик - поле или элемент массива
+    // (rapidq2.inc, QListViewEx: FOR THIS.lx = ...) у FreeBASIC быть не
+    // может (error 52) - такой FOR переводится в WHILE ... WEND
+    // (ProcessFor), его NEXT - в шаг и WEND
+    FForTargets: array of string;   // счётчик (текст RapidQ); '' - обычный FOR
+    FForSteps: array of string;     // имя переменной шага
+    FForCount: Integer;
     FTypeCheck: Boolean;
     FEscape: Boolean;
     FDefaultType: string;
@@ -611,6 +629,7 @@ type
     procedure ProcessAssignOrCall(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessDim(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessDef(var AToks: TToks; AFrom, ATo: Integer);
+    function InitIsConst(const AToks: TToks; AFrom, ATo: Integer): Boolean;
     procedure ProcessConst(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessProcHeader(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessBind(var AToks: TToks; AFrom, ATo: Integer);
@@ -636,6 +655,7 @@ type
     procedure ProcessPrint(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessIf(var AToks: TToks; AFrom, ATo: Integer);
     procedure ProcessFor(var AToks: TToks; AFrom, ATo: Integer);
+    procedure ProcessNext(var AToks: TToks; AFrom, ATo: Integer);
     function GosubScope: string;
     procedure GosubVarNames(const AScope: string; var ASpName, AStkName: string);
     procedure ProcessGosub(var AToks: TToks; AFrom, ATo: Integer);
@@ -2342,18 +2362,24 @@ begin
     end;
 end;
 
-// Перем ++ (оператор RapidQ, loops.html: I++) -> Перем += 1
+// Перем ++ (оператор RapidQ, loops.html: I++) -> Перем += 1; Перем --
+// (rapidq2.inc, QFormMDI.inc: QFormMDI.ChildCount--) -> Перем -= 1
 function TRqFbConv.ProcessPlusPlus(var AToks: TToks; AFirst, ATo: Integer): Boolean;
 var
   LastIdx, PlusIdx, TargetEnd: Integer;
   VarRec: TRqVar;
+  OpChar: string;
 begin
   Result := False;
   LastIdx := PrevSig(AToks, ATo);
-  if not IsOp(AToks, LastIdx, '+') then
+  if IsOp(AToks, LastIdx, '+') then
+    OpChar := '+'
+  else if IsOp(AToks, LastIdx, '-') then
+    OpChar := '-'
+  else
     Exit;
   PlusIdx := PrevSig(AToks, LastIdx - 1);
-  if not IsOp(AToks, PlusIdx, '+') or (PlusIdx <= AFirst) then
+  if not IsOp(AToks, PlusIdx, OpChar) or (PlusIdx <= AFirst) then
     Exit;
   TargetEnd := PrevSig(AToks, PlusIdx - 1);
   if not ((AToks[TargetEnd].Kind = tkIdent) or IsOp(AToks, TargetEnd, ')')) then
@@ -2362,7 +2388,7 @@ begin
   VarRec := FindVar(AToks[AFirst].Up);
   if VarRec <> nil then
     VarRec.Assigned := True;
-  AToks[PlusIdx].OutText := '+= 1';
+  AToks[PlusIdx].OutText := OpChar + '= 1';
   AToks[LastIdx].OutText := '';
   if PlusIdx + 1 < LastIdx then
     ClearRange(AToks, PlusIdx + 1, LastIdx - 1);
@@ -3459,6 +3485,28 @@ begin
   Up := AToks[FirstIdx].Up;
   NextIdx := NextSig(AToks, FirstIdx + 1, ATo);
 
+  // EXIT EVENT (rapidq2.inc, QDockForm: IF BTN = 1 THEN EXIT EVENT) -
+  // обработчик события переводится в Sub
+  if (Up = 'EXIT') and IsWord(AToks, NextIdx, 'EVENT') then
+  begin
+    AToks[NextIdx].OutText := 'Sub';
+    Exit;
+  end;
+
+  // FOR, переведённый в WHILE (ProcessFor): EXIT FOR - Exit While, NEXT -
+  // шаг и WEND
+  if (Up = 'EXIT') and IsWord(AToks, NextIdx, 'FOR') and (FForCount > 0) and
+     (FForTargets[FForCount - 1] <> '') then
+  begin
+    AToks[NextIdx].OutText := 'While';
+    Exit;
+  end;
+  if (Up = 'NEXT') and (FindProc(Up) = nil) then
+  begin
+    ProcessNext(AToks, FirstIdx, ATo);
+    Exit;
+  end;
+
   // Перем ++; This.Член++ (в методе TYPE ... EXTENDS: QFILEDIALOG.INC
   // .SelCount++ внутри WITH This, RewriteTypeText делает из него
   // This.SelCount++)
@@ -3885,7 +3933,7 @@ end;
 // SetCell). False - не тот случай, SWAP остаётся как есть.
 function TRqFbConv.ProcessSwap(var AToks: TToks; AFirst, ATo: Integer): Boolean;
 var
-  TokIdx, CommaIdx, Depth: Integer;
+  TokIdx, CommaIdx, Depth, OpenIdx, CloseIdx: Integer;
   LeftText, RightText, TempName: string;
 
   // В операнде есть "." на верхнем уровне и владелец - объект
@@ -3925,6 +3973,36 @@ var
 
 begin
   Result := False;
+  // SWAP (a, b) - оба операнда в одних скобках (rapidq2.inc, QListViewEx:
+  // swap (This.item(lx).caption, ...)); в документации - SWAP a, b.
+  // Скобки становятся пробелами, дальше - как без них.
+  OpenIdx := NextSig(AToks, AFirst + 1, ATo);
+  CloseIdx := PrevSig(AToks, ATo);
+  if IsOp(AToks, OpenIdx, '(') and (CloseIdx > OpenIdx) and
+     (MatchParen(AToks, OpenIdx, ATo) = CloseIdx) then
+  begin
+    Depth := 0;
+    for TokIdx := OpenIdx + 1 to CloseIdx - 1 do
+      if IsOp(AToks, TokIdx, '(') then
+        Inc(Depth)
+      else if IsOp(AToks, TokIdx, ')') then
+        Dec(Depth)
+      else if (Depth = 0) and IsOp(AToks, TokIdx, ',') then
+      begin
+        for Depth := 0 to 1 do
+        begin
+          if Depth = 0 then
+            CommaIdx := OpenIdx
+          else
+            CommaIdx := CloseIdx;
+          AToks[CommaIdx].Kind := tkSpace;
+          AToks[CommaIdx].Text := ' ';
+          AToks[CommaIdx].Up := ' ';
+          AToks[CommaIdx].OutText := ' ';
+        end;
+        Break;
+      end;
+  end;
   CommaIdx := -1;
   Depth := 0;
   for TokIdx := AFirst + 1 to ATo do
@@ -4023,7 +4101,7 @@ end;
 procedure TRqFbConv.ProcessIdent(var AToks: TToks; AIdx, ATo: Integer);
 var
   Up: string;
-  PrevIdx, NextIdx, TypeIdx: Integer;
+  PrevIdx, NextIdx, TypeIdx, CloseIdx: Integer;
   VarRec: TRqVar;
   ProcRec: TRqProc;
 begin
@@ -4239,6 +4317,20 @@ begin
   // MEMCPY(Запись, ...) - адрес записи (см. MemRecordArgs)
   if (FFuncMap.IndexOf(Up) >= 0) and IsOp(AToks, NextIdx, '(') then
     MemRecordArgs(AToks, AIdx, ATo);
+  // ABS(Запись) - адрес записи, LONG: rapidq2.inc - "$DEFINE UDTPTR ABS" с
+  // комментарием "Return the pointer of user defined type in a long value"
+  // (QPageSetup: PSD.hDevMode = UDTPTR(DevM)). Только 32 бит
+  if (Up = 'ABS') and (FindProc(Up) = nil) and IsOp(AToks, NextIdx, '(') then
+  begin
+    CloseIdx := MatchParen(AToks, NextIdx, ATo);
+    if (CloseIdx > 0) and ArgIsRecord(AToks, NextIdx + 1, CloseIdx - 1) then
+    begin
+      AToks[AIdx].OutText := 'Cast';
+      AToks[NextIdx].Post := AToks[NextIdx].Post + 'Long, Cast(Integer, @';
+      AToks[CloseIdx].Pre := ')' + AToks[CloseIdx].Pre;
+      Exit;
+    end;
+  end;
   // VARPTR(x) -> RqVarPtr(@x): у строки - адрес символов (StrPtr), у
   // остального - адрес; перегрузку выбирает fbc по типу указателя (rqrt.bi)
   if (Up = 'VARPTR') and IsOp(AToks, NextIdx, '(') and
@@ -4771,6 +4863,28 @@ begin
 end;
 
 // DEFINT a, b = 5, c(3) = {1,2,3,4} - объявление переменных
+// Выражение - константа: числа, строки, знаки и имена CONST
+function TRqFbConv.InitIsConst(const AToks: TToks; AFrom, ATo: Integer): Boolean;
+var
+  TokIdx: Integer;
+  VarRec: TRqVar;
+begin
+  Result := False;
+  for TokIdx := AFrom to ATo do
+    if AToks[TokIdx].Kind = tkIdent then
+    begin
+      if (AToks[TokIdx].Up = 'AND') or (AToks[TokIdx].Up = 'OR') or
+         (AToks[TokIdx].Up = 'XOR') or (AToks[TokIdx].Up = 'NOT') or
+         (AToks[TokIdx].Up = 'MOD') or (AToks[TokIdx].Up = 'SHL') or
+         (AToks[TokIdx].Up = 'SHR') then
+        Continue;
+      VarRec := FindVar(AToks[TokIdx].Up);
+      if (VarRec = nil) or not VarRec.IsConst then
+        Exit;
+    end;
+  Result := True;
+end;
+
 procedure TRqFbConv.ProcessDef(var AToks: TToks; AFrom, ATo: Integer);
 var
   Up, RqType, Scope, Items, ItemText, DimsText, InitText, Extra: string;
@@ -4855,6 +4969,12 @@ begin
       ItemText := VarRec.FbName + ' As Integer';
       Extra := Extra + ' : ' + VarRec.FbName + InitText;
     end
+    // Вне процедур значение не константа (rapidq2.inc: DefInt
+    // gRQ2_SND_OS_Version = gRQ2_GetVersion And 255): Dim Shared FreeBASIC
+    // принимает только константу (error 11) - присваивание отдельно
+    else if (InitText <> '') and not IsArray and (Scope = '') and
+            not InitIsConst(AToks, TokIdx + 1, ItemEnd) then
+      Extra := Extra + ' : ' + VarRec.FbName + InitText
     else
       ItemText := ItemText + InitText;
     if Items <> '' then
@@ -5612,6 +5732,20 @@ begin
   end
   else if ProcRec.IsVariadic then
     Params := VariadicParam;
+  // Повторный DECLARE без LIB с теми же параметрами - комментарием
+  if (LibText = '') and (ProcRec.DeclPass = FPass) and
+     (ProcRec.DeclAt <> FCurFile + '(' + IntToStr(FCurLine) + ')') and
+     (ProcRec.DeclParams = Params) then
+  begin
+    Rebuild(AToks, AFrom, ATo, '''' + RawText(AToks, AFrom, ATo) +
+            '   '' повторный DECLARE, первый - ' + ProcRec.DeclAt);
+    Exit;
+  end;
+  if LibText = '' then
+  begin
+    ProcRec.DeclPass := FPass;
+    ProcRec.DeclAt := FCurFile + '(' + IntToStr(FCurLine) + ')';
+  end;
   ProcRec.DeclParams := Params;
   ProcRec.DeclAliases := FParamAliases;
   if (LibText <> '') and not ProcRec.IsVariadic then
@@ -5992,10 +6126,69 @@ end;
 // FOR перем = a TO b [STEP c]: переменная цикла - без преобразования
 procedure TRqFbConv.ProcessFor(var AToks: TToks; AFrom, ATo: Integer);
 var
-  VarIdx: Integer;
+  VarIdx, EqIdx, ToIdx, StepIdx, TokIdx, Depth, SavedBlocks: Integer;
   VarRec: TRqVar;
+  TargetText, StartText, EndText, StepText, EndName, StepName: string;
 begin
   VarIdx := NextSig(AToks, AFrom + 1, ATo);
+  // "=", TO и STEP на верхнем уровне скобок
+  EqIdx := -1;
+  ToIdx := -1;
+  StepIdx := -1;
+  Depth := 0;
+  for TokIdx := AFrom + 1 to ATo do
+    if IsOp(AToks, TokIdx, '(') then
+      Inc(Depth)
+    else if IsOp(AToks, TokIdx, ')') then
+      Dec(Depth)
+    else if Depth = 0 then
+    begin
+      if (EqIdx < 0) and IsOp(AToks, TokIdx, '=') then
+        EqIdx := TokIdx
+      else if (EqIdx >= 0) and (ToIdx < 0) and IsWord(AToks, TokIdx, 'TO') then
+        ToIdx := TokIdx
+      else if (ToIdx >= 0) and IsWord(AToks, TokIdx, 'STEP') then
+        StepIdx := TokIdx;
+    end;
+  SetLength(FForTargets, FForCount + 1);
+  SetLength(FForSteps, FForCount + 1);
+  FForTargets[FForCount] := '';
+  FForSteps[FForCount] := '';
+  Inc(FForCount);
+
+  // Счётчик - не простая переменная (This.lx, a.b, a(1)): WHILE ... WEND.
+  // Конец и шаг вычисляются один раз, как у FOR.
+  if (VarIdx >= 0) and (EqIdx > VarIdx) and (ToIdx > EqIdx) and
+     (NextSig(AToks, VarIdx + 1, EqIdx - 1) >= 0) then
+  begin
+    TargetText := RawText(AToks, VarIdx, EqIdx - 1);
+    StartText := RawText(AToks, EqIdx + 1, ToIdx - 1);
+    if StepIdx > 0 then
+    begin
+      EndText := RawText(AToks, ToIdx + 1, StepIdx - 1);
+      StepText := RawText(AToks, StepIdx + 1, ATo);
+    end
+    else
+    begin
+      EndText := RawText(AToks, ToIdx + 1, ATo);
+      StepText := '1';
+    end;
+    EndName := 'rq_forend' + IntToStr(FCurLine) + '#';
+    StepName := 'rq_forstep' + IntToStr(FCurLine) + '#';
+    FForTargets[FForCount - 1] := TargetText;
+    FForSteps[FForCount - 1] := StepName;
+    SavedBlocks := FModBlocks;
+    Rebuild(AToks, AFrom, ATo, TranslateFragment(
+      TargetText + ' = ' + StartText + ' : ' +
+      EndName + ' = (' + EndText + ') : ' +
+      StepName + ' = (' + StepText + ') : ' +
+      'WHILE ((' + StepName + ' >= 0) AND (' + TargetText + ' <= ' + EndName +
+      ')) OR ((' + StepName + ' < 0) AND (' + TargetText + ' >= ' + EndName +
+      '))'));
+    FModBlocks := SavedBlocks;
+    Exit;
+  end;
+
   if (VarIdx >= 0) and (AToks[VarIdx].Kind = tkIdent) then
   begin
     VarRec := ResolveVar(AToks[VarIdx].Text, False);
@@ -6020,6 +6213,51 @@ end;
 // в каждой области (FGosubSites), второй - нумерует их в том же порядке.
 
 // Область GOSUB: '*' - модуль, иначе имя SUB/FUNCTION
+// NEXT [a [, b]]: закрывает столько FOR, сколько в нём имён (без имён -
+// один). Закрывает FOR, переведённый в WHILE, - шаг и WEND вместо Next.
+procedure TRqFbConv.ProcessNext(var AToks: TToks; AFrom, ATo: Integer);
+var
+  CloseCount, TokIdx, LoopIdx, SavedBlocks: Integer;
+  AnyConverted: Boolean;
+  OutText: string;
+begin
+  CloseCount := 1;
+  for TokIdx := AFrom + 1 to ATo do
+    if IsOp(AToks, TokIdx, ',') then
+      Inc(CloseCount);
+  AnyConverted := False;
+  for LoopIdx := FForCount - 1 downto FForCount - CloseCount do
+    if (LoopIdx >= 0) and (FForTargets[LoopIdx] <> '') then
+      AnyConverted := True;
+  if not AnyConverted then
+  begin
+    Dec(FForCount, CloseCount);
+    if FForCount < 0 then
+      FForCount := 0;
+    ProcessExpr(AToks, AFrom + 1, ATo);
+    Exit;
+  end;
+  // Есть переведённый: каждый закрывается по отдельности
+  OutText := '';
+  SavedBlocks := FModBlocks;
+  for LoopIdx := 1 to CloseCount do
+  begin
+    if FForCount <= 0 then
+      Break;
+    Dec(FForCount);
+    if OutText <> '' then
+      OutText := OutText + ' : ';
+    if FForTargets[FForCount] <> '' then
+      OutText := OutText + TranslateFragment(FForTargets[FForCount] + ' = ' +
+                 FForTargets[FForCount] + ' + ' + FForSteps[FForCount]) +
+                 ' : Wend'
+    else
+      OutText := OutText + 'Next';
+  end;
+  FModBlocks := SavedBlocks;
+  Rebuild(AToks, AFrom, ATo, OutText);
+end;
+
 function TRqFbConv.GosubScope: string;
 begin
   if FCurProc = nil then
@@ -6717,6 +6955,10 @@ function TRqFbConv.MemberFbName(const ADisplay: string): string;
 begin
   if SuffixOf(ADisplay) <> '' then
     Result := Mangle(ADisplay)
+  // имя, у которого уже есть замена для членов (POINTER -> PointerAddr,
+  // RqMemberMapText): та же - Объект.Имя снаружи переводится по ней
+  else if FMemberMap.IndexOf(UpperCase(ADisplay)) >= 0 then
+    Result := FMemberMap.Get(UpperCase(ADisplay))
   else if InList(FBadMembers, UpperCase(ADisplay)) then
     Result := ADisplay + '_v'
   else
@@ -7000,7 +7242,12 @@ var
           Continue;
         AfterIdx := NextSig(Toks, RefIdx + 1, ATo);
         Up := Toks[RefIdx].Up;
-        if ((Up = FCurType.Name) or (Up = 'THIS')) and IsOp(Toks, AfterIdx, '.') then
+        // Имя предка тоже (rapidq2.inc, QFormEx EXTENDS QFORM: в методе
+        // QForm.Icon) - как This: у класса RapidQ других объектов с этим
+        // именем нет
+        if ((Up = FCurType.Name) or (Up = 'THIS') or
+            ((FCurType.BaseClass <> '') and (Up = FCurType.BaseClass))) and
+           IsOp(Toks, AfterIdx, '.') then
         begin
           Toks[RefIdx].Text := 'This';
           Changed := True;
@@ -8266,6 +8513,7 @@ begin
     if FAborted then
       Break;
     FPass := PassIdx;
+    FForCount := 0;
     FPassLines := 0;
     FProgLast := 0;
     FDoneFiles.Clear;
