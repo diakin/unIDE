@@ -679,6 +679,8 @@ type
     function TypeAssign(var AToks: TToks; AFirst, AEq, ATo: Integer): Boolean;
     procedure TypeCallFunc(var AToks: TToks; AFirst, ATo: Integer);
     function CodePtrMethod(var AToks: TToks; AIdx, AOpen, AClose: Integer): Boolean;
+    function BindMethod(var AToks: TToks; AFrom, AToIdx, AOwnerIdx, ATo: Integer;
+                        const AKeyUp: string): Boolean;
     procedure AddCodePtrThunks;
     procedure AddThunk(const AName, ACompFb, AClassUp, AEventDisplay,
                        AMethUp: string);
@@ -5313,8 +5315,12 @@ begin
   end;
   if IsOp(AToks, NextSig(AToks, NameIdx + 1, ATo), '.') then
   begin
-    Error('BIND ... TO ' + RawText(AToks, NameIdx, ATo) + ': метод своего ' +
-          'компонента как указатель на процедуру пока не поддержан');
+    // BIND v TO This.Метод / Тип.Метод внутри TYPE своего компонента
+    // (rapidq2.inc: BIND QFormEx.BindIndex TO QFormEx.WindowProc) -
+    // адрес переходника, как у CODEPTR(This.Метод) (BindMethod)
+    if not BindMethod(AToks, AFrom, ToIdx, NameIdx, ATo, KeyUp) then
+      Error('BIND ... TO ' + RawText(AToks, NameIdx, ATo) + ': метод своего ' +
+            'компонента - только внутри его TYPE (This.Метод или Тип.Метод)');
     Exit;
   end;
   ProcRec := FindProc(AToks[NameIdx].Up);
@@ -7419,10 +7425,56 @@ begin
   Result := True;
 end;
 
+// BIND v TO This.Метод / Тип.Метод внутри TYPE своего компонента ->
+// v = Тип__RqCbAddr_Метод(@This): адрес переходника (см. CodePtrMethod),
+// шаблон для CALLFUNC - сам метод (у переходника те же параметры)
+function TRqFbConv.BindMethod(var AToks: TToks; AFrom, AToIdx, AOwnerIdx, ATo: Integer;
+                              const AKeyUp: string): Boolean;
+var
+  DotIdx, MethIdx, TokIdx: Integer;
+  MethUp: string;
+  MethProc: TRqProc;
+begin
+  Result := False;
+  if FCurType = nil then
+    Exit;
+  DotIdx := NextSig(AToks, AOwnerIdx + 1, ATo);
+  MethIdx := NextSig(AToks, DotIdx + 1, ATo);
+  if (MethIdx < 0) or (AToks[MethIdx].Kind <> tkIdent) or
+     (NextSig(AToks, MethIdx + 1, ATo) >= 0) then
+    Exit;
+  if not IsWord(AToks, AOwnerIdx, 'THIS') and
+     not IsWord(AToks, AOwnerIdx, FCurType.Name) then
+    Exit;
+  Result := True;
+  MethUp := AToks[MethIdx].Up;
+  if (FPass = 2) and not (FCurType.Kind(MethUp) in ['M', 'N']) then
+  begin
+    Error('BIND ... TO ' + RawText(AToks, AOwnerIdx, ATo) + ': ' +
+          AToks[MethIdx].Text + ' - не SUB и не FUNCTION типа ' + FCurType.Display);
+    Exit;
+  end;
+  if (FPass = 1) and (FCurType.CbThunks.IndexOf(MethUp) < 0) then
+    FCurType.CbThunks.Add(MethUp);
+  MethProc := FindProc(FCurType.Name + '.' + MethUp);
+  if MethProc <> nil then
+    FBinds.Values[AKeyUp] := MethProc.Name;
+  AToks[AFrom].OutText := '';
+  if (AFrom + 1 <= ATo) and (AToks[AFrom + 1].Kind = tkSpace) then
+    AToks[AFrom + 1].OutText := '';
+  ProcessExpr(AToks, AFrom + 1, AToIdx - 1);
+  Rebuild(AToks, AToIdx, ATo, '= ' + FCurType.Display + '__RqCbAddr_' +
+          MemberFbName(AToks[MethIdx].Text) + '(@This)');
+  for TokIdx := AToIdx + 1 to ATo do
+    AToks[TokIdx].Kind := tkSpace;
+end;
+
 // Переходники для CODEPTR(This.Метод) (первый проход, END TYPE)
 procedure TRqFbConv.AddCodePtrThunks;
+const
+  RqCbSlots = 16;  // объектов с отдельным переходником на один метод
 var
-  ThunkIdx, CharIdx, Depth: Integer;
+  ThunkIdx, CharIdx, Depth, SlotIdx: Integer;
   MethUp, MethFb, Params, Args, Piece, CbName, ObjName, AddrName, RetText: string;
   Kind: Char;
 
@@ -7480,26 +7532,58 @@ begin
     CbName := FCurType.Display + '__RqCb_' + MethFb;
     ObjName := FCurType.Display + '__RqCbObj_' + MethFb;
     AddrName := FCurType.Display + '__RqCbAddr_' + MethFb;
-    FCurType.After.Add('Dim Shared ' + ObjName + ' As ' + FCurType.Display + ' Ptr');
+    // у каждого объекта свой переходник (в RapidQ у каждого объекта свой
+    // адрес метода): RqCbSlots штук, объект - в своём элементе массива
+    FCurType.After.Add('Dim Shared ' + ObjName + '(0 To ' + IntToStr(RqCbSlots - 1) +
+                       ') As ' + FCurType.Display + ' Ptr');
     FCurType.After.Add('Declare Function ' + AddrName + '(ByVal RqObj As ' +
                        FCurType.Display + ' Ptr) As Integer');
     if Kind = 'N' then
-    begin
-      RetText := FbType(FCurType.MemberType.Values[MethUp]);
-      FCurType.After.Add('Declare Function ' + CbName + '(' + Params + ') As ' + RetText);
-      FCurType.Tail.Add('Function ' + CbName + '(' + Params + ') As ' + RetText +
-                        ' : Return ' + ObjName + '->' + MethFb + '(' + Args +
-                        ') : End Function');
-    end
+      RetText := FbType(FCurType.MemberType.Values[MethUp])
     else
+      RetText := '';
+    for SlotIdx := 0 to RqCbSlots - 1 do
     begin
-      FCurType.After.Add('Declare Sub ' + CbName + '(' + Params + ')');
-      FCurType.Tail.Add('Sub ' + CbName + '(' + Params + ') : ' + ObjName + '->' +
-                        MethFb + '(' + Args + ') : End Sub');
+      if Kind = 'N' then
+      begin
+        FCurType.After.Add('Declare Function ' + CbName + '_' + IntToStr(SlotIdx) +
+                           '(' + Params + ') As ' + RetText);
+        FCurType.Tail.Add('Function ' + CbName + '_' + IntToStr(SlotIdx) + '(' + Params +
+                          ') As ' + RetText + ' : Return ' + ObjName + '(' +
+                          IntToStr(SlotIdx) + ')->' + MethFb + '(' + Args +
+                          ') : End Function');
+      end
+      else
+      begin
+        FCurType.After.Add('Declare Sub ' + CbName + '_' + IntToStr(SlotIdx) +
+                           '(' + Params + ')');
+        FCurType.Tail.Add('Sub ' + CbName + '_' + IntToStr(SlotIdx) + '(' + Params +
+                          ') : ' + ObjName + '(' + IntToStr(SlotIdx) + ')->' + MethFb +
+                          '(' + Args + ') : End Sub');
+      end;
     end;
+    // свой элемент у объекта, который уже брал адрес, иначе первый свободный;
+    // все заняты - последний (переходник переходит к новому объекту)
     FCurType.Tail.Add('Function ' + AddrName + '(ByVal RqObj As ' + FCurType.Display +
-                      ' Ptr) As Integer : ' + ObjName + ' = RqObj : Return Cast(Integer, @' +
-                      CbName + ') : End Function');
+                      ' Ptr) As Integer');
+    FCurType.Tail.Add('  Dim RqSlot As Integer');
+    FCurType.Tail.Add('  For RqSlot = 0 To ' + IntToStr(RqCbSlots - 1) + ' : If ' +
+                      ObjName + '(RqSlot) = RqObj Then Exit For');
+    FCurType.Tail.Add('  Next');
+    FCurType.Tail.Add('  If RqSlot > ' + IntToStr(RqCbSlots - 1) + ' Then');
+    FCurType.Tail.Add('    For RqSlot = 0 To ' + IntToStr(RqCbSlots - 1) + ' : If ' +
+                      ObjName + '(RqSlot) = 0 Then Exit For');
+    FCurType.Tail.Add('    Next');
+    FCurType.Tail.Add('    If RqSlot > ' + IntToStr(RqCbSlots - 1) + ' Then RqSlot = ' +
+                      IntToStr(RqCbSlots - 1));
+    FCurType.Tail.Add('  End If');
+    FCurType.Tail.Add('  ' + ObjName + '(RqSlot) = RqObj');
+    FCurType.Tail.Add('  Select Case RqSlot');
+    for SlotIdx := 0 to RqCbSlots - 1 do
+      FCurType.Tail.Add('  Case ' + IntToStr(SlotIdx) + ' : Return Cast(Integer, @' +
+                        CbName + '_' + IntToStr(SlotIdx) + ')');
+    FCurType.Tail.Add('  End Select');
+    FCurType.Tail.Add('End Function');
   end;
 end;
 
