@@ -42,8 +42,12 @@ ErrorMsg$="No errors"
 
 
 '!!! ------------------------- Useful variables ------------
+$IFNDEF FALSE    ' inc2026: False и True уже определяет RAPIDQ2.INC (подключён выше) или файл компонента (QColorDialog10.inc), значения те же
 $define  False  0
+$ENDIF
+$IFNDEF TRUE
 $define True  1
+$ENDIF
 $define pi 3.14159
 
 $define ascb asc
