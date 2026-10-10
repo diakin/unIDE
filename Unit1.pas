@@ -60024,7 +60024,27 @@ begin
   // вводе)
   //
   // Enter (и Shift+Enter): перевод строки и отступ новой строки - на
-  // уровне блока (EnterIndentText), тоже через EM_REPLACESEL
+  // уровне блока (EnterIndentText), тоже через EM_REPLACESEL.
+  //
+  // Перехват - уже на WM_KEYDOWN, в контрол оно не идёт. Наблюдение
+  // пользователя 2026-10-10: при перехвате только WM_CHAR каждое Enter
+  // давало пустую строку и под ней строку с отступом - перевод строки
+  // вставлялся ещё и помимо WM_CHAR. WM_CHAR #13 этого нажатия к этому
+  // моменту уже в очереди (TranslateMessage идёт до DispatchMessage) -
+  // убираем его оттуда.
+  if (Message.Msg = WM_KEYDOWN) and (Message.WParam = VK_RETURN) and
+     (GetKeyState(VK_CONTROL) >= 0) and (GetKeyState(VK_MENU) >= 0) and
+     not RichEdit1.ReadOnly then
+  begin
+    if PeekMessage(QueuedMsg, RichEdit1.Handle, WM_CHAR, WM_CHAR,
+                   PM_NOREMOVE) and (QueuedMsg.wParam = 13) then
+      PeekMessage(QueuedMsg, RichEdit1.Handle, WM_CHAR, WM_CHAR, PM_REMOVE);
+    SendMessage(RichEdit1.Handle, EM_REPLACESEL, 1,
+                Integer(PChar(#13 + EnterIndentText)));
+    Message.Result := 0;
+    Exit;
+  end;
+  // WM_CHAR #13 без своего WM_KEYDOWN (прислан программой) - так же
   if (Message.Msg = WM_CHAR) and (Message.WParam = 13) and
      (GetKeyState(VK_CONTROL) >= 0) and not RichEdit1.ReadOnly then
   begin
