@@ -368,6 +368,15 @@ type
     // QDockForm и у ComPort) fbc отвергает (error 4) - он закомментируется
     DeclPass: Integer;
     DeclAt: string;
+    // То же для DECLARE с LIB. Повторный с другими параметрами (rapidq2.inc:
+    // GlobalMemoryStatus(lpBuffer As MEMORYSTATUS), программа - то же с
+    // T_MEMORYSTATUS) fbc отвергает (error 4): второй закомментируется, а
+    // параметры первого, которые у них различаются и оба ByRef, - As Any
+    // (LibMerged, собирается в первом проходе), чтобы подходили вызовы обоих.
+    LibDeclPass: Integer;
+    LibDeclAt: string;
+    LibDeclParams: string;
+    LibMerged: string;
   end;
 
   // Таблица ИМЯ -> значение с поиском делением пополам. Заменяет списки
@@ -5695,6 +5704,53 @@ begin
   ProcessExpr(AToks, ArgFrom, ATo);
 end;
 
+// Параметры двух DECLARE одной процедуры из DLL (строки ParseParams через
+// запятую): совпадающие - как есть, различающиеся ByRef - "ByRef имя As
+// Any". Число разное или различие не в типе ByRef - '' (не сводятся).
+function MergeLibParams(const AFirst, ASecond: string): string;
+var
+  FirstList, SecondList: TStringList;
+  ParamIdx, AsPos: Integer;
+  FirstItem, SecondItem: string;
+begin
+  Result := '';
+  FirstList := TStringList.Create;
+  SecondList := TStringList.Create;
+  try
+    // Запятая внутри параметра не встречается: значения по умолчанию у
+    // DECLARE из DLL нет
+    FirstList.Text := StringReplace(AFirst, ',', #13#10, [rfReplaceAll]);
+    SecondList.Text := StringReplace(ASecond, ',', #13#10, [rfReplaceAll]);
+    if FirstList.Count <> SecondList.Count then
+      Exit;
+    for ParamIdx := 0 to FirstList.Count - 1 do
+    begin
+      FirstItem := Trim(FirstList[ParamIdx]);
+      SecondItem := Trim(SecondList[ParamIdx]);
+      if not SameText(FirstItem, SecondItem) then
+      begin
+        if (Pos('BYREF ', UpperCase(FirstItem)) <> 1) or
+           (Pos('BYREF ', UpperCase(SecondItem)) <> 1) then
+          Exit;
+        AsPos := Pos(' AS ', UpperCase(FirstItem));
+        if AsPos = 0 then
+          Exit;
+        FirstItem := Copy(FirstItem, 1, AsPos - 1) + ' As Any';
+      end;
+      FirstList[ParamIdx] := FirstItem;
+    end;
+    for ParamIdx := 0 to FirstList.Count - 1 do
+    begin
+      if ParamIdx > 0 then
+        Result := Result + ', ';
+      Result := Result + FirstList[ParamIdx];
+    end;
+  finally
+    SecondList.Free;
+    FirstList.Free;
+  end;
+end;
+
 // DECLARE SUB|FUNCTION Имя [LIB "dll"] [ALIAS "имя"] [(параметры)] [AS тип]
 procedure TRqFbConv.ProcessDeclare(var AToks: TToks; AFrom, ATo: Integer);
 var
@@ -5786,6 +5842,38 @@ begin
   begin
     ProcRec.DeclPass := FPass;
     ProcRec.DeclAt := FCurFile + '(' + IntToStr(FCurLine) + ')';
+  end;
+  // Повторный DECLARE с LIB и другими параметрами - комментарием, если
+  // параметры сводятся (MergeLibParams); первый получит сведённые
+  if (LibText <> '') and not ProcRec.IsVariadic then
+  begin
+    if (ProcRec.LibDeclPass = FPass) and
+       (ProcRec.LibDeclAt <> FCurFile + '(' + IntToStr(FCurLine) + ')') and
+       not SameText(ProcRec.LibDeclParams, Params) then
+    begin
+      if FPass = 1 then
+      begin
+        if ProcRec.LibMerged = '' then
+          ProcRec.LibMerged := MergeLibParams(ProcRec.LibDeclParams, Params)
+        else
+          ProcRec.LibMerged := MergeLibParams(ProcRec.LibMerged, Params);
+      end;
+      if ProcRec.LibMerged <> '' then
+      begin
+        Rebuild(AToks, AFrom, ATo, '''' + RawText(AToks, AFrom, ATo) +
+                '   '' повторный DECLARE с другими параметрами, первый - ' +
+                ProcRec.LibDeclAt + ', параметры там: ' + ProcRec.LibMerged);
+        Exit;
+      end;
+    end
+    else if ProcRec.LibDeclPass <> FPass then
+    begin
+      ProcRec.LibDeclPass := FPass;
+      ProcRec.LibDeclAt := FCurFile + '(' + IntToStr(FCurLine) + ')';
+      if (FPass = 2) and (ProcRec.LibMerged <> '') then
+        Params := ProcRec.LibMerged;
+      ProcRec.LibDeclParams := Params;
+    end;
   end;
   ProcRec.DeclParams := Params;
   ProcRec.DeclAliases := FParamAliases;
