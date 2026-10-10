@@ -777,6 +777,7 @@ type
     procedure SearchSelectedClick(Sender: TObject);
     procedure DebugLineClick(Sender: TObject);
     procedure EditClickEvent(Sender: TObject);
+    procedure PastePlainText;
     procedure ClearAllClick(Sender: TObject);
     procedure CaseConvertClick(Sender: TObject);
     procedure LogPopupPopup(Sender: TObject);
@@ -59585,6 +59586,20 @@ var
   MarkIdx: Integer;
   CursorPt: TPoint;
 begin
+  // Вставка - только текстом (PastePlainText): WM_PASTE от меню Windows и
+  // Ctrl+V / Shift+Insert, если их не перехватило меню формы
+  if FMsgDepth = 0 then
+    if (Message.Msg = WM_PASTE) or
+       ((Message.Msg = WM_KEYDOWN) and
+        (((Message.WParam = Ord('V')) and (GetKeyState(VK_CONTROL) < 0) and
+          (GetKeyState(VK_MENU) >= 0)) or
+         ((Message.WParam = VK_INSERT) and (GetKeyState(VK_SHIFT) < 0) and
+          (GetKeyState(VK_CONTROL) >= 0)))) then
+    begin
+      PastePlainText;
+      Message.Result := 0;
+      Exit;
+    end;
   // Code Insight: клавиши списка подстановки и подсказки параметров
   if (FMsgDepth = 0) and CiBeforeMessage(Message) then
     Exit;
@@ -62308,6 +62323,29 @@ begin
     FTidyRestart := False;
 end;
 
+// Вставка в редактор - только текстом: текст буфера обмена (CF_TEXT;
+// Windows сам делает его из CF_UNICODETEXT) заменой выделения
+// (EM_REPLACESEL - через неё идут снимок для отмены и учёт правки).
+// Наблюдение пользователя 2026-10-10: текст, скопированный из этого же
+// редактора, через WM_PASTE (PasteFromClipboard) в него не вставлялся, а
+// в лог (там вставка EM_PASTESPECIAL CF_UNICODETEXT) - вставлялся; текст
+// из лога в редактор - тоже. WM_PASTE предпочитает формат буфера самого
+// RichEdit (RTF и др.) - почему он не вставился, не выяснено.
+procedure TForm1.PastePlainText;
+var
+  PasteText: string;
+begin
+  if not RichEdit1.HandleAllocated or RichEdit1.ReadOnly then
+    Exit;
+  if not Clipboard.HasFormat(CF_TEXT) then
+    Exit;
+  PasteText := Clipboard.AsText;
+  if PasteText = '' then
+    Exit;
+  SendMessage(RichEdit1.Handle, EM_REPLACESEL, 1, Integer(PChar(PasteText)));
+  SendMessageA(RichEdit1.Handle, EM_SCROLLCARET, 0, 0);
+end;
+
 procedure TForm1.EditClickEvent(Sender: TObject);
 begin
   if RichEdit1 = nil then
@@ -62342,7 +62380,7 @@ begin
   else if (Sender = mCopy) or (Sender = btnCopy) or (Sender = pmuCopy) then
     RichEdit1.CopyToClipboard
   else if (Sender = mPaste) or (Sender = btnPaste) or (Sender = pmuPaste) then
-    RichEdit1.PasteFromClipboard
+    PastePlainText
   else if (Sender = mSelectAll) or (Sender = pmuSelectAll) then
     RichEdit1.SelectAll
   else if (Sender = mDelete) or (Sender = pmuDelete) then
@@ -62380,7 +62418,7 @@ begin
   if Sender = btnCopy then
     RichEdit1.CopyToClipboard;
   if Sender = btnPaste then
-    RichEdit1.PasteFromClipboard;
+    PastePlainText;
 
   // После действий возвращаем фокус в редактор, чтобы пользователь мог сразу писать код
   RichEdit1.SetFocus;
