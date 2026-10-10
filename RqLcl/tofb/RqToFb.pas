@@ -8202,17 +8202,37 @@ begin
       Params := Params + 'ByRef Sender As ' + ClassUp;
       Args := '';
       if (ArgCount > 0) and
-         (FCurType.ParamCounts.Values[MethUp] = IntToStr(ArgCount)) then
+         ((FCurType.ParamCounts.Values[MethUp] = IntToStr(ArgCount)) or
+          (FCurType.ParamCounts.Values[MethUp] = IntToStr(ArgCount + 1))) then
         for ArgIdx := 1 to ArgCount do
         begin
           if Args <> '' then
             Args := Args + ', ';
           Args := Args + 'RqArg' + IntToStr(ArgIdx);
         end;
+      // У метода на параметр больше, чем у события, - последний Sender
+      // (rapidq2.inc: SUB columnclick(hcapt AS QCOOLBTN) на OnClick кнопки
+      // заголовка, hcapt.caption - подпись нажатой)
+      if FCurType.ParamCounts.Values[MethUp] = IntToStr(ArgCount + 1) then
+      begin
+        if Args <> '' then
+          Args := Args + ', ';
+        Args := Args + 'Sender';
+      end;
       MethFb := FCurType.MemberFb.Values[MethUp];
       if MethFb = '' then
         MethFb := MethUp;
-      if CompFb = '' then
+      if Copy(CompFb, 1, 1) = '*' then
+      begin
+        // поле - массив: объект - последний, присвоивший событие
+        System.Delete(CompFb, 1, 1);
+        SelfText := FCurType.Display + '__RqThObj_' + CompFb;
+        if FCurType.After.IndexOf('Dim Shared ' + SelfText + ' As ' +
+                                  FCurType.Display + ' Ptr') < 0 then
+          FCurType.After.Add('Dim Shared ' + SelfText + ' As ' +
+                             FCurType.Display + ' Ptr');
+      end
+      else if CompFb = '' then
         SelfText := 'Cast(' + FCurType.Display + ' Ptr, Cast(Any Ptr, @Sender))'
       else
         SelfText := 'Cast(' + FCurType.Display + ' Ptr, Cast(Any Ptr, ' +
@@ -8253,11 +8273,58 @@ end;
 function TRqFbConv.TypeAssign(var AToks: TToks; AFirst, AEq, ATo: Integer): Boolean;
 var
   SigIdx: array[0..4] of Integer;
-  SigCount, TokIdx, RhsFirst, RhsLast, RhsDot, MethIdx: Integer;
+  SigCount, TokIdx, RhsFirst, RhsLast, RhsDot, MethIdx, CompIdx, OpenIdx,
+    CloseIdx, DotIdx, EventIdx: Integer;
   MemberUp, CompUp, CompFb, ClassUp, EventDisplay, MethUp, ThunkName: string;
   Kind: Char;
 begin
   Result := False;
+  // This.Поле(i).OnXxx = This.Метод: поле - массив компонентов (rapidq2.inc,
+  // QListViewEx.draw: .ColHeader(.ix).OnClick = .columnclick). Объект в
+  // переходнике - по смещению не найти (индекс неизвестен): берётся
+  // последний, присвоивший событие (Тип__RqThObj_Поле), как у CODEPTR.
+  CompIdx := NextSig(AToks, NextSig(AToks, AFirst, AEq - 1) + 1, AEq - 1);
+  if IsWord(AToks, NextSig(AToks, AFirst, AEq - 1), 'THIS') and
+     IsOp(AToks, CompIdx, '.') then
+  begin
+    CompIdx := NextSig(AToks, CompIdx + 1, AEq - 1);
+    OpenIdx := NextSig(AToks, CompIdx + 1, AEq - 1);
+    if (CompIdx >= 0) and (AToks[CompIdx].Kind = tkIdent) and
+       IsOp(AToks, OpenIdx, '(') then
+    begin
+      CloseIdx := MatchParen(AToks, OpenIdx, AEq - 1);
+      DotIdx := NextSig(AToks, CloseIdx + 1, AEq - 1);
+      EventIdx := NextSig(AToks, DotIdx + 1, AEq - 1);
+      RhsFirst := NextSig(AToks, AEq + 1, ATo);
+      RhsLast := PrevSig(AToks, ATo);
+      RhsDot := NextSig(AToks, RhsFirst + 1, ATo);
+      MethIdx := NextSig(AToks, RhsDot + 1, ATo);
+      if (CloseIdx > 0) and IsOp(AToks, DotIdx, '.') and (EventIdx >= 0) and
+         (AToks[EventIdx].Kind = tkIdent) and
+         (NextSig(AToks, EventIdx + 1, AEq - 1) < 0) and
+         IsEventName(AToks[EventIdx].Up) and
+         IsWord(AToks, RhsFirst, 'THIS') and IsOp(AToks, RhsDot, '.') and
+         (MethIdx = RhsLast) and (AToks[MethIdx].Kind = tkIdent) and
+         not (FCurType.Kind(AToks[MethIdx].Up) in ['F', 'P', 'E']) and
+         (FCurType.Kind(AToks[CompIdx].Up) = 'F') then
+      begin
+        CompUp := AToks[CompIdx].Up;
+        CompFb := FCurType.MemberFb.Values[CompUp];
+        ClassUp := FCurType.MemberType.Values[CompUp];
+        EventDisplay := AToks[EventIdx].Text;
+        MethUp := AToks[MethIdx].Up;
+        ThunkName := FCurType.Display + '__RqTh_' + CompFb + '_' +
+                     EventDisplay + '_' + MemberFbName(AToks[MethIdx].Text);
+        if FPass = 1 then
+          AddThunk(ThunkName, '*' + CompFb, ClassUp, EventDisplay, MethUp);
+        ProcessExpr(AToks, AFirst, AEq - 1);
+        Rebuild(AToks, RhsFirst, RhsLast, '@' + ThunkName + ' : ' +
+                FCurType.Display + '__RqThObj_' + CompFb + ' = @This');
+        Result := True;
+        Exit;
+      end;
+    end;
+  end;
   SigCount := 0;
   for TokIdx := AFirst to AEq - 1 do
     if AToks[TokIdx].Kind <> tkSpace then
