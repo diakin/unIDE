@@ -84,6 +84,12 @@ Function RqStr Overload (ByVal Value As Double) As String   ' число -> ""
 - Итог: `PRINT` заменяется своей процедурой форматирования.
 - `STR$` в RapidQ — без пробела перед положительным числом и без 9 знаков: `STR$(3)` → `3`, `STR$(-3)` → `-3`, `STR$(5.5)` → `5.5` (тест 2026-10-07). Так же работает `Str$` FreeBASIC — замена не нужна.
 
+## $DEFINE и INTEGER(x) (тесты пользователя 2026-10-10)
+
+- `$DEFINE` регистр не различает: `$DEFINE TRANSPARENT 1`, затем `PRINT TRANSPARENT; Transparent; transparent` → `1 1 1` (tofb/tests/research/DefCase1.bas).
+- Внутри `TYPE … EXTENDS QOBJECT` с тем же `$DEFINE TRANSPARENT 1` поле `Transparent AS INTEGER` компилируется, `DefObj.Transparent = 7` → `PRINT DefObj.Transparent` даёт `7` (DefCase2.bas): имя члена не заменяется. Так в rapidq2.inc (QFormEx, QMenu: поле Transparent, в CONSTRUCTOR — `Transparent = True`). Перевод: внутри TYPE не заменяются объявление поля и имена, уже ставшие членами этого TYPE; где ещё RapidQ не заменяет — не проверялось.
+- `INTEGER(x)` возвращает x без изменений: `INTEGER(2.7)` → 2.7, `INTEGER(-2.7)` → -2.7, `INTEGER(2.5)` → 2.5, `INTEGER(3.5)` → 3.5; `INT(2.7)` → 2, `INT(-2.7)` → -2 (без rapidq.inc; IntCast.bas). Перевод: `INTEGER(x)` → `(x)`. В rapidq.inc есть `$define int integer` — тогда `INT(2.7)` становится `INTEGER(2.7)`; что при этом печатает RapidQ — проверяет IntCast2.bas.
+
 ## Режимы: Compat и Smart
 
 Решение пользователя (2026-10-07): поведение RapidQ копируется не везде. Там, где RapidQ падает или молча теряет данные, по умолчанию действует разумный вариант; точное поведение RapidQ — отдельный режим.

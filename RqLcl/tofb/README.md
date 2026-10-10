@@ -37,6 +37,7 @@ unIDE пишет их тёмно-оранжевым цветом, после и�
 - Два прохода в порядке включения файлов: первый собирает объявления и необъявленные переменные, второй пишет текст.
 - `$DEFINE`, `$UNDEF`, `$IFDEF`/`$IFNDEF`/`$ELSE`/`$ENDIF` выполняет сам препроцессор (в RapidQ ими меняют и ключевые слова, как в `rapidq.inc`); `#define` в начале строки — то же, что `$DEFINE`. `$IF`/`#if` с выражением не вычисляется: блок до парного `#endif`/`$ENDIF` пропускается целиком (с предупреждением, если он не внутри уже пропущенного блока), и его `#endif` не закрывает внешний `$IFDEF` — так в QFileDialogDoc.inc внутри `brem … erem`. Проверка: `tests/ifblock.bas`.
 - `FOR` со счётчиком-полем или элементом массива (rapidq2.inc, QListViewEx: `FOR THIS.lx = 0 TO …`, `NEXT THIS.ix`): у FreeBASIC так нельзя (error 52 «Expected scalar counter»). Переводится в `счётчик = начало : rq_forendN# = (конец) : rq_forstepN# = (шаг) : WHILE …` (конец и шаг вычисляются один раз), `NEXT` — в `счётчик = счётчик + шаг : Wend`, `EXIT FOR` в таком цикле — `Exit While`. Проверка: `tests/forfield.bas`.
+- Внутри TYPE `$DEFINE` не заменяет объявление поля и имена членов этого TYPE (тест в RapidQ: research/DefCase2.bas; rapidq2.inc — `$DEFINE TRANSPARENT 1` и поле Transparent). `INTEGER(x)` → `(x)`: RapidQ возвращает x без изменений (research/IntCast.bas). Проверка: `tests/defintype.bas`.
 - `x--` — как `x++`: `x -= 1` (rapidq2.inc, QFormMDI: `QFormMDI.ChildCount--`).
 - `SWAP (a, b)` — скобки убираются (в документации `SWAP a, b`).
 - `EXIT EVENT` — `Exit Sub` (обработчик события — Sub).
