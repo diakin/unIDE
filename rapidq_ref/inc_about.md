@@ -174,6 +174,8 @@ QRECT». Варианты:
 | using.inc | const log10 | USING_log10 | FUNCTION LOG10 из Math.inc |
 | using.inc | DIM FORMAT$ | USING_format$ | встроенная FORMAT$ нынешнего RapidQ |
 | SetFileTimeAttrib.inc | sysdir$ | SFTA_sysdir$ | FUNCTION SysDir из Files.inc |
+| QRichEditXt.inc | Type Point | QREXT_Point | SUB Point из QPoint.inc (rc.exe: «Usertype POINT already used») |
+| QLibrary.Inc | Dim Point (в методах) | QLIB_Point | то же |
 | QMaxSplitter.inc | DIM Rect1 | MSPLIT_Rect1 | rc.exe: «Identifier RECT1 already used»; другого Rect1 в сборке нет, причина не найдена, после переименования ошибки нет |
 
 Если программа обращалась к этим именам напрямую (например, вызывала

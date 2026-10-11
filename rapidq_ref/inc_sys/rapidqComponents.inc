@@ -25979,7 +25979,7 @@ Type RQConst Extends QStringList
       Dim RQ_Idx          As Integer
       Dim Buffer          As QStringList
       Dim StrLength       As Integer
-      Dim Point           As Byte
+      Dim QLIB_Point           As Byte
       Dim StrLine         As String
       Dim StrWord         As String
       Dim StrValue        As String
@@ -25997,13 +25997,13 @@ Type RQConst Extends QStringList
             If InStr(StrLine,"CONST") > 0 And Left$(StrLine,1) <> "'" Then
                StrLine   = Trim$(ReplaceSubStr$(StrLine,"CONST",""))
                StrLength = Len(StrLine)
-               Point     = InStr(StrLine,"=") + 1
-               StrWord   = Trim$(Left$(StrLine,Point - 2))
-               StrValue  = Trim$(Mid$(StrLine,Point,StrLength - Point + 1))
+               QLIB_Point     = InStr(StrLine,"=") + 1
+               StrWord   = Trim$(Left$(StrLine,QLIB_Point - 2))
+               StrValue  = Trim$(Mid$(StrLine,QLIB_Point,StrLength - QLIB_Point + 1))
                If InStr(StrValue,"'") > 0 Then
                   StrLength = Len(StrValue)
-                  Point     = InStr(StrValue,"'") 
-                  StrValue  = Trim$(Left$(StrValue,Point-1))
+                  QLIB_Point     = InStr(StrValue,"'") 
+                  StrValue  = Trim$(Left$(StrValue,QLIB_Point-1))
                End If
                If InStr(StrValue,"&H") > 0 Then
                   StrLine  = StrValue
@@ -26096,7 +26096,7 @@ End Type
 '~dup          
 '~dup    Function ReadEntry (Section As String, KeyWord As String) As String
 '~dup       Dim StrLength As Integer
-'~dup       Dim Point     As Byte
+'~dup       Dim QLIB_Point     As Byte
 '~dup       Dim StrLine   As String
 '~dup       Dim StrWord   As String
 '~dup       Dim Bracket   As String
@@ -26119,8 +26119,8 @@ End Type
 '~dup                   StrWord    = Trim$(Field$(StrLine,"=",1))
 '~dup                   StrLength  = Len(StrLine)
 '~dup                   If Equ$(StrWord,KeyWord,False) Then
-'~dup                      Point    = InStr(StrLine,"=") + 1
-'~dup                      Result   = Mid$(StrLine,Point,StrLength - Point + 1)
+'~dup                      QLIB_Point    = InStr(StrLine,"=") + 1
+'~dup                      Result   = Mid$(StrLine,QLIB_Point,StrLength - QLIB_Point + 1)
 '~dup                      LinesIdx = QIniFile.Lines.ItemCount 
 '~dup                   Else
 '~dup                      Inc LinesIdx
@@ -26139,7 +26139,7 @@ End Type
 '~dup    
 '~dup    Sub ReadSection (Section As String)
 '~dup       Dim StrLength As Integer
-'~dup       Dim Point     As Byte
+'~dup       Dim QLIB_Point     As Byte
 '~dup       Dim StrLine   As String
 '~dup       Dim StrWord   As String
 '~dup       Dim Bracket   As String
@@ -26177,7 +26177,7 @@ End Type
 '~dup       Dim StrLength As Integer
 '~dup       Dim StrLine   As String
 '~dup       Dim StrWord   As String
-'~dup       Dim Point     As Byte
+'~dup       Dim QLIB_Point     As Byte
 '~dup       Dim Bracket   As String
 '~dup       Dim LinesIdx  As Integer
 '~dup       Dim Fin       As Byte
@@ -26200,8 +26200,8 @@ End Type
 '~dup                   StrLength = Len(StrLine)
 '~dup                   StrWord   = Trim$(Field$(StrLine,"=",1))
 '~dup                   If Equ$(StrWord,KeyWord,False) Then
-'~dup                      Point   = InStr(StrLine,"=") + 1
-'~dup                      StrWord = Mid$(StrLine,Point,StrLength - Point + 1)
+'~dup                      QLIB_Point   = InStr(StrLine,"=") + 1
+'~dup                      StrWord = Mid$(StrLine,QLIB_Point,StrLength - QLIB_Point + 1)
 '~dup                      StrLine = CatStr$(KeyWord," = ",KeyEntry)
 '~dup                      QIniFile.Lines.DelItems(LinesIdx)
 '~dup                      QIniFile.Lines.InsertItem(LinesIdx,StrLine)
@@ -26235,7 +26235,7 @@ End Type
 '~dup    
 '~dup    Sub WriteSection (Section As String,SectionList As QStringList)
 '~dup       Dim StrLength As Integer
-'~dup       Dim Point     As Byte
+'~dup       Dim QLIB_Point     As Byte
 '~dup       Dim StrLine   As String
 '~dup       Dim StrWord   As String
 '~dup       Dim Bracket   As String
@@ -26243,7 +26243,7 @@ End Type
 '~dup       Dim Buffer    As QStringList
 '~dup 
 '~dup       QIniFile.Lines.Clear
-'~dup       Point   = False
+'~dup       QLIB_Point   = False
 '~dup       Section = QIniFile.AddBrackets$(Section)
 '~dup       If FileExists(QIniFile.Name) Then
 '~dup          Buffer.LoadFromFile(QIniFile.Name)
@@ -26253,7 +26253,7 @@ End Type
 '~dup             StrLine = Buffer.Item(LinesIdx)
 '~dup             StrWord = Left$(Trim$(Buffer.Item(LinesIdx)),Len(Section))
 '~dup             If Equ$(StrWord,Section,False) Then
-'~dup                Point   = LinesIdx
+'~dup                QLIB_Point   = LinesIdx
 '~dup                Inc LinesIdx
 '~dup                StrLine = Buffer.Item(LinesIdx)
 '~dup                Bracket = Left$(StrLine,1)
@@ -26269,15 +26269,15 @@ End Type
 '~dup          Wend
 '~dup       End If
 '~dup       SectionList.InsertItem(0,Section)
-'~dup       If Point > False Then
+'~dup       If QLIB_Point > False Then
 '~dup          For LinesIdx = 0 To SectionList.Itemcount-1
 '~dup             StrLine = SectionList.Item(LinesIdx)
-'~dup             QIniFile.Lines.InsertItem(Point,StrLine)
-'~dup             Inc Point
+'~dup             QIniFile.Lines.InsertItem(QLIB_Point,StrLine)
+'~dup             Inc QLIB_Point
 '~dup          Next LinesIdx
 '~dup       Else
 '~dup          QIniFile.Lines.AddItems " "
-'~dup          Point = QIniFile.Lines.ItemCount
+'~dup          QLIB_Point = QIniFile.Lines.ItemCount
 '~dup          QIniFile.Lines.AddList SectionList
 '~dup       End If
 '~dup       QIniFile.ClearEnding
@@ -28566,7 +28566,7 @@ $ENDIF
 '~dup const IMF_DUALFONT			= &h0080   ' повтор, первое: constants.inc(193)
 
 '!!!======================================================================================================================'
-Type Point
+Type QREXT_Point
         Left As Long
         Top As Long
 End Type
@@ -28599,8 +28599,8 @@ defint FIRSTVISIBLELINE,LastVISIBLELINE
 defint FirstChar
 
 dim VisRect as QRect
-dim VisPoint as Point
-dim VisPoint1 as Point
+dim VisPoint as QREXT_Point
+dim VisPoint1 as QREXT_Point
 
 
 TYPE QRichEdit_xt EXTENDS QRichEdit
@@ -28609,7 +28609,7 @@ Tmr AS QTIMER '- initilization timer
 OldWndProc AS LONG
 WndProc AS EVENT(RichEditWndProc_EventTemplate)
 KeyList as Qstringlist  '  keywords list
-ScrollPoint as Point
+ScrollPoint as QREXT_Point
 
 PUBLIC:
 HandleDC as integer 

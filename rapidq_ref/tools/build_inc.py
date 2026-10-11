@@ -184,7 +184,11 @@ RENAMES = {'cmd5.inc': ('MD5_', ['F', 'G', 'H', 'FF', 'GG', 'HH', 'II']),
            'setfiletimeattrib.inc': ('SFTA_', ['sysdir']),
            # DIM Rect1 AS QRECT - rc.exe: "Identifier RECT1 already used";
            # другого объявления Rect1 в сборке нет, причина не найдена
-           'qmaxsplitter.inc': ('MSPLIT_', ['Rect1'])}
+           'qmaxsplitter.inc': ('MSPLIT_', ['Rect1']),
+           # Type Point и Dim Point - имя SUB Point из QPoint.inc (rc.exe:
+           # "Usertype POINT already used")
+           'qricheditxt.inc': ('QREXT_', ['Point']),
+           'qlibrary.inc': ('QLIB_', ['Point'])}
 
 
 def rename_words(line, prefix, names):
