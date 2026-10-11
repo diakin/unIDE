@@ -256,6 +256,202 @@ def local_type_defines(seq):
     return local, unresolved
 
 
+def split_code_colon(code):
+    """Код до первого ':' вне кавычек (заголовок SUB без хвоста)."""
+    in_str = False
+    for idx, ch in enumerate(code):
+        if ch == '"':
+            in_str = not in_str
+        elif ch == ':' and not in_str:
+            return code[:idx]
+    return code
+
+
+def decls_first(out):
+    """Декларации впереди: тела SUB/FUNCTION переносятся в конец файла, на
+    их месте - DECLARE SUB/FUNCTION с тем же заголовком (RapidQ
+    однопроходный: так всё, что объявлено, видно и выше тела). Тело остаётся
+    на месте, если
+      - оно внутри $IF..., который не страж файла ($IFNDEF X / $DEFINE X);
+      - имя с точкой (FUNCTION Screen.MousePresent) или внутри TYPE;
+      - в файле есть $UNDEF (снятое имя в конце уже не то);
+      - тело содержит имя, которое $DEFINE объявляет ниже по сборке.
+    Режимы файла ($TYPECHECK, $ESCAPECHARS, $OPTION EXPLICIT/WEAKTYPE) перед
+    телами в конце ставятся заново. Результат: (строки, число перенесённых)."""
+    # 1. имена DECLARE SUB/FUNCTION (не LIB), которые уже есть в тексте
+    declared = set()
+    for line in out:
+        code = code_part(line)
+        m = re.match(r'declare\s+(?:sub|function|subi|functioni)\s+(\w+[\$%&!#]?)', code, re.I)
+        if m and not re.search(r'\blib\b', code, re.I):
+            declared.add(m.group(1).upper())
+    # 2. где объявлены $DEFINE (номер строки, имя)
+    define_at = []
+    for num, line in enumerate(out):
+        m = re.match(r'[\$#]define\s+(\w+)', code_part(line), re.I)
+        if m:
+            define_at.append((num, m.group(1).upper()))
+    # 2а. имена модуля (DIM, DEFxxx, CONST, CREATE, TYPE вне SUB/FUNCTION):
+    # тело, перенесённое в конец, увидело бы и те, что объявлены ниже
+    # (FOR x в rapidq.inc и DIM x() другого файла - уже массив)
+    in_body = False
+    for num, line in enumerate(out):
+        code = code_part(line)
+        low = code.lower()
+        if re.match(r'(?:(?:private|public)\s+)?(sub|function|subi|functioni)\s', low):
+            in_body = True
+            continue
+        if re.match(r'end\s+(sub|function)\b', low):
+            in_body = False
+            continue
+        if in_body:
+            continue
+        m = re.match(r'(dim|defint|deflng|defstr|defdbl|defsng|defbyte|defword|defdword|defshort)\s+(.*)$', code, re.I)
+        if m:
+            for part in split_top(m.group(2)):
+                nm = re.match(r'\s*(?:shared\s+)?(\w+)', part, re.I)
+                if nm:
+                    define_at.append((num, nm.group(1).upper()))
+            continue
+        m = re.match(r'(?:(?:private|public)\s+)?(?:const|create|type)\s+(\w+)', code, re.I)
+        if m:
+            define_at.append((num, m.group(1).upper()))
+    # 3. файлы с $UNDEF
+    undef_files = set()
+    section = ''
+    for line in out:
+        if line.startswith("'[build_inc] ") and not line.startswith("'[build_inc] ("):
+            section = line[13:].strip()
+        if re.match(r'\$undef\b', code_part(line), re.I):
+            undef_files.add(section)
+
+    result, moved = [], []
+    section = ''
+    conds = []            # [(строка $IF..., страж ли)]
+    modes = collections.OrderedDict()
+    in_type = False
+    count = len(out)
+    idx = 0
+    mode_re = re.compile(r'\$(typecheck|escapechars)\s+(on|off)\b|\$option\s+(explicit|weaktype)\b', re.I)
+    while idx < count:
+        line = out[idx]
+        code = code_part(line)
+        if line.startswith("'[build_inc] "):
+            if not line.startswith("'[build_inc] ("):
+                section = line[13:].strip()
+                modes = collections.OrderedDict()
+            result.append(line)
+            idx += 1
+            continue
+        mm = mode_re.match(code)
+        if mm:
+            key = (mm.group(1) or mm.group(3)).lower()
+            modes[key] = line.strip()
+        if re.match(r'\$if', code, re.I):
+            guard = False
+            m = re.match(r'\$ifndef\s+(\w+)\s*$', code, re.I)
+            if m:
+                # страж: следующая строка кода - $DEFINE того же имени. Если
+                # она '~dup (имя уже объявлено выше, RQDialog.inc:
+                # _RQDIALOGINC из rapidq2.inc), блок не действует - не страж
+                for nxt in out[idx + 1:idx + 6]:
+                    ncode = code_part(nxt)
+                    if not ncode:
+                        if nxt.startswith("'~dup "):
+                            break
+                        continue
+                    guard = bool(re.match(r'\$define\s+' + re.escape(m.group(1)) + r'\b', ncode, re.I))
+                    break
+            conds.append((line, guard))
+        elif re.match(r'\$endif\b', code, re.I) and conds:
+            conds.pop()
+        if re.match(r'type\s+\w+.*\bextends\b', code, re.I) or re.match(r'type\s+\w+\s*<', code, re.I):
+            in_type = True
+        elif re.match(r'end\s+type\b', code, re.I):
+            in_type = False
+        hdr = re.sub(r'^(?:private|public)\s+', '', code, flags=re.I)
+        m = re.match(r'(sub|function|subi|functioni)\s+(\w+[\$%&!#]?)(\s*\.)?', hdr, re.I)
+        if not m or in_type:
+            result.append(line)
+            idx += 1
+            continue
+        # тело: до END SUB / END FUNCTION
+        last = idx
+        closed = False
+        while last + 1 < count:
+            if re.match(r'end\s+(sub|function)\b', code_part(out[last]), re.I):
+                closed = True
+                break
+            if out[last + 1].startswith("'[build_inc] "):
+                break
+            last += 1
+        if not closed and re.match(r'end\s+(sub|function)\b', code_part(out[last]), re.I):
+            closed = True
+        if not closed:
+            # конца нет в своём файле (ole.inc, using.inc: тело не закрыто
+            # или закрыто иначе) - как есть
+            result.append(line)
+            idx += 1
+            continue
+        body = out[idx:last + 1]
+        name = m.group(2).upper()
+        hdr_end = idx
+        while code_part(out[hdr_end]).rstrip().endswith('_') and hdr_end < last:
+            hdr_end += 1
+        stay = (m.group(3) is not None or any(not g for _, g in conds) or section in undef_files)
+        if not stay:
+            text = strip_strings(' '.join(code_part(l) for l in body)).upper()
+            # свои: параметры и DIM/DEFxxx внутри тела
+            own = set(re.findall(r'(\w+)\s+AS\b', text))
+            for l in body:
+                mm2 = re.match(r'(dim|def\w+|static)\s+(.*)$', code_part(l), re.I)
+                if mm2:
+                    for part in split_top(mm2.group(2)):
+                        nm2 = re.match(r'\s*(\w+)', part)
+                        if nm2:
+                            own.add(nm2.group(1).upper())
+            words = set(re.findall(r'(?<![\w.])([A-Z_]\w*)(?![\w])', text))
+            for dnum, dname in define_at:
+                if dnum > last and dname in words and dname not in own:
+                    stay = True
+                    break
+        if stay:
+            result.extend(body)
+            idx = last + 1
+            continue
+        # заголовок -> DECLARE
+        hdr_lines = [code_part(l) for l in out[idx:hdr_end + 1]]
+        hdr_lines[0] = re.sub(r'^\s*(?:private|public)\s+', '', hdr_lines[0], flags=re.I)
+        hdr_lines[-1] = split_code_colon(hdr_lines[-1]).rstrip()
+        if name not in declared:
+            result.append('DECLARE ' + hdr_lines[0].strip())
+            result.extend(hdr_lines[1:])
+            declared.add(name)
+        result.append("'~body %s   ' сборка: тело - в конце файла" % code_part(out[idx])[:70])
+        moved.append((section, [v for v in modes.values()], body))
+        idx = last + 1
+    return result, moved
+
+
+def append_bodies(result, moved):
+    """Тела из decls_first - в конец, по файлам, с режимами файла."""
+    tail = ["'" + '=' * 76,
+            "' Тела SUB / FUNCTION (декларации - выше, на местах в своих файлах)",
+            "'" + '=' * 76]
+    last_section = None
+    for section, mode_lines, body in moved:
+        if section != last_section:
+            if last_section is not None:
+                tail += ["$TYPECHECK OFF", "$ESCAPECHARS OFF"]
+            tail.append("'[build_inc] %s (тела)" % section)
+            tail.extend(mode_lines)
+            last_section = section
+        tail.extend(body)
+    if last_section is not None:
+        tail += ["$TYPECHECK OFF", "$ESCAPECHARS OFF"]
+    return result + tail
+
+
 def line_keep(take_val):
     """'да, строки 1-228' в плане - из файла берутся только эти строки
     (дальше пример программы). Функция от номера строки с 0 или None."""
@@ -596,6 +792,9 @@ def main():
         if f.lower() in builder.emitted:
             continue
         builder.emit_file(f, texts[f], keep=line_keep(take.get(f.lower(), 'да')), out=out)
+    out, moved = decls_first(out)
+    out = append_bodies(out, moved)
+    print('bodies moved', len(moved))
     out.append("$ENDIF ' __RQALLPROC_INC")
     write(os.path.join(OUT, 'rapidqAllProc.inc'), out)
 

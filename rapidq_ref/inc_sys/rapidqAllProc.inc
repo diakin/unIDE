@@ -3668,37 +3668,20 @@ QBColorLi(15) = &HFFFFFF       '-- Bright White
 '!!! ------------------------------ custom function ------------------------'
 
 '-- ***********************************************************************'
-sub AddClrString (AddString$, Clr, Sender as QRICHEDIT)
-  'Add colored string to QRICHEDIT
-  Sender.SelStart =len (Sender.Text)
-  Sender.SelLength =Len(AddString$)
-  Sender.SelAttributes.Color=Clr
-  Sender.AddStrings AddString$
-end sub
+DECLARE sub AddClrString (AddString$, Clr, Sender as QRICHEDIT)
+'~body sub AddClrString (AddString$, Clr, Sender as QRICHEDIT)   ' сборка: тело - в конце файла
 '-- ***********************************************************************'
-sub AddFontString (AddString$, FontStr as QFont, Sender as QRICHEDIT)
-  'Add colored string to QRICHEDIT
-  Sender.SelStart =len (Sender.Text)
-  Sender.SelLength =Len(AddString$)
-  Sender.SelAttributes.Color=FontStr.Color
-  Sender.SelAttributes.Name=FontStr.Name
-  Sender.AddStrings AddString$
-end sub
+DECLARE sub AddFontString (AddString$, FontStr as QFont, Sender as QRICHEDIT)
+'~body sub AddFontString (AddString$, FontStr as QFont, Sender as QRICHEDIT)   ' сборка: тело - в конце файла
 
 
 '-- ***********************************************************************'
-Function fTally (sSearchIn As String, sToFind As string) As Long
-  DefInt iCharCounter = 0
-  For N = 1 To Len(sSearchIn)
-    If sSearchIn[N] = sToFind Then iCharCounter ++
-  Next N
-  Result = iCharCounter
-End Function
+DECLARE Function fTally (sSearchIn As String, sToFind As string) As Long
+'~body Function fTally (sSearchIn As String, sToFind As string) As Long   ' сборка: тело - в конце файла
 
 '-- ***********************************************************************'
-Function Trim$(s as string) as string
-  Result=LTRIM$(RTRIM$(s))
-End Function
+DECLARE Function Trim$(s as string) as string
+'~body Function Trim$(s as string) as string   ' сборка: тело - в конце файла
 
 
 '--- Declarations ---
@@ -3723,17 +3706,14 @@ DECLARE FUNCTION WaitForSingleObject Lib "kernel32" Alias "WaitForSingleObject" 
 
 'Rusdate$=field$(FileRec.Date,"-",2)+"-"+field$(FileRec.Date,"-",1)+"-"+right$(field$(FileRec.Date,"-",3),2)
 
-function GetRusdate as string
-  result=field$(Date$,"-",2)+"-"+field$(Date$,"-",1)+"-"+right$(field$(Date$,"-",3),2)
-end function
+DECLARE function GetRusdate as string
+'~body function GetRusdate as string   ' сборка: тело - в конце файла
 
-function Rusdate as string
-  result=field$(Date$,"-",2)+"-"+field$(Date$,"-",1)+"-"+right$(field$(Date$,"-",3),2)
-end function
+DECLARE function Rusdate as string
+'~body function Rusdate as string   ' сборка: тело - в конце файла
 
-function Rudate as string
-  result=field$(Date$,"-",2)+"-"+field$(Date$,"-",1)+"-"+right$(field$(Date$,"-",3),2)
-end function
+DECLARE function Rudate as string
+'~body function Rudate as string   ' сборка: тело - в конце файла
 
 '$include "C:\BAS\RAPIDQ\inc\conversion.inc"
 '~inc $include "conversion.inc"   ' сборка: файл - здесь
@@ -3840,44 +3820,16 @@ cchMultiByte As Long,  lpDefaultChar As long,  lpUsedDefaultChar As Long) As Lon
 
 
 '-- ****************************************'
-function LCaseApi(  SrcTxt as string ) as string
-tmp$=SrcTxt+"-"
-l=len(SrcTxt)
-result=CharLower(left$(tmp$,l))
-end function
+DECLARE function LCaseApi(  SrcTxt as string ) as string
+'~body function LCaseApi(  SrcTxt as string ) as string   ' сборка: тело - в конце файла
 
 '-- ****************************************'
-function UCaseApi(  SrcTxt as string ) as string
-tmp$=SrcTxt+"-"
-l=len(SrcTxt)
-result=CharUpper(left$(tmp$,l))
-end function
+DECLARE function UCaseApi(  SrcTxt as string ) as string
+'~body function UCaseApi(  SrcTxt as string ) as string   ' сборка: тело - в конце файла
 
 '-- *****************************************'
-FUNCTION vidnum$ (Num, dig%) as string
-'Andrew Shelkovenko dec 2003
-'A  function that returns the string representation of  of a rounded numeric expression.
-'Syntax: vidnum$ (numeric-expression, dig%) 
-'Num$ = vidnum$ (999999.2366666666, 4)
-'Return  999999.2367 
-'Num$ = vidnum$ (-0.236, 4)
-'Return  -0.236
-'Num$ =vidnum$ (-12389.236, -2)
-'Return -12400
-'Details:
-'dig% - number of significant digits 
-
-Num$=str$(Num)
-pntPos=instr(Num$,".")
-if pntPos=0 then 
-	digMax=0
-else
-	digMax=Len(Num$)-pntPos
-end if
-
-if dig%>digMax then dig%=digMax 
-vidnum$ = STR$((  CLNG(  abs(Num) * 10 ^ dig%) / 10 ^ dig%)*sgn(Num))
-END FUNCTION
+DECLARE FUNCTION vidnum$ (Num, dig%) as string
+'~body FUNCTION vidnum$ (Num, dig%) as string   ' сборка: тело - в конце файла
 '
 '-- **************************************************************************'
 function   Hex2Dec (HexStr as string) as string
@@ -3927,71 +3879,8 @@ Hex2Dec=Dec$
 END function
 
 '-- **************************************************************************'
-function dectoHex (Dec as string) as string
-defdbl ost, ch
-defstr HexVal$
-HexVal$=""
-ost=0: ch=0
-Dec#=val(Dec)
-sign=sgn(Dec#)
-Dec#=abs(Dec#)
-WHILE  Dec# >= 16#
-	ch=FIX(Dec# / 16#)
-	ost = Dec#-ch*16#
-	
-	Dec#=ch
-	select case ost
-	case is <10
-		Hexdig$=str$(ost)
-	case 10
-		Hexdig$="A"
-	case 11
-		Hexdig$="B"
-	case 12
-		Hexdig$="C"
-	case 13
-		Hexdig$="D"
-	case 14
-		Hexdig$="E"
-	case 15
-		Hexdig$="F"
-	case 15
-		Hexdig$="10"
-		
-	case else
-	end select
-	
-	HexVal$ =Hexdig$  + HexVal$: 
-	
-wend
-
-select case Dec#
-	
-case is <10
-	Hexdig$=str$(Dec#)
-case 10
-	Hexdig$="A"
-case 11
-	Hexdig$="B"
-case 12
-	Hexdig$="C"
-case 13
-	Hexdig$="D"
-case 14
-	Hexdig$="E"
-case 15
-	Hexdig$="F"
-case 15
-	Hexdig$="10"
-	
-case else
-end select
-
-HexVal$ =Hexdig$  + HexVal$: 
-if sign=-1 then signn$="-" else signn$=""
-if HexVal$="0" then HexVal$="00"
-dectoHex=signn$+ HexVal$
-END function
+DECLARE function dectoHex (Dec as string) as string
+'~body function dectoHex (Dec as string) as string   ' сборка: тело - в конце файла
 
 '-- **************************************************************************'
 function AddChrBefore(NumStr as string , Dlina as integer, chr1 as string) as string
@@ -4076,37 +3965,8 @@ ByteReOrder=~tmp$
 end FUNCTION
 
 '-- **************************************************************************'
-FUNCTION CByteNum (ByteStr$,Num_Type as short ) as variant
-'print"CByteNum ByteStr$=";ByteStr$
-'Andrew Shelkovenko dec 2003
-'' converts   number of Num_Type type to bytes sequence.
-'Num_Type can be next value:
-'const Num_SHORT = 2
-'const Num_WORD = 3
-'const Num_LONG = 4
-'const Num_DWORD = 5
-'const Num_SINGLE = 6
-'const Num_DOUBLE = 8
-
-
-DIM M AS QMemoryStream
-select case Num_Type
-case Num_BYTE
-	ShowMessage "CByteNum: Can't to write BYTE.Wrong parameter type - Num_BYTE": exit funCTION
-case  Num_SHORT: M.Write (ByteStr$):m.Position=0:CByteNum=m.ReadNum(Num_SHORT)
-case  Num_WORD:  M.Write (ByteStr$):m.Position=0:CByteNum=m.ReadNum(Num_WORD)
-case  Num_LONG:  M.Write (ByteStr$):m.Position=0:CByteNum=m.ReadNum(Num_LONG)
-case  Num_DWORD: M.Write (ByteStr$):m.Position=0:CByteNum=m.ReadNum(Num_DWORD)
-case  Num_SINGLE:M.Write (ByteStr$):m.Position=0:CByteNum=m.ReadNum(Num_SINGLE)
-case  Num_DOUBLE:M.Write (ByteStr$):m.Position=0:CByteNum=m.ReadNum(Num_DOUBLE)
-	
-case else
-	M.Write (ByteStr$):m.Position=0:CByteNum=m.ReadNum(Num_DOUBLE)
-end select
-
-M.Close
-
-end funCTION
+DECLARE FUNCTION CByteNum (ByteStr$,Num_Type as short ) as variant
+'~body FUNCTION CByteNum (ByteStr$,Num_Type as short ) as variant   ' сборка: тело - в конце файла
 
 '-- **************************************************************************'
 FUNCTION CNumByte (Num, Num_Type as short) as string
@@ -4327,45 +4187,8 @@ TimeString=Hr$+":"+Min$+":"+Sec$'+"   "
 end function
 
 '-- *********************************************************************'
-Function GetWord (Oper$ as string, getV$ as string) as long
-'Old! Use GetVarPos!!!
-
-'return variable  position in checked string
-'getV$ - variable name 
-'Oper$ - checked string
-'if getV$ commented,  or quoted (just text, not varname)  - return error code
-result=-1 ' error
-defstr Lsep$="()[]=><, :+-*\/;"
-defstr Rsep$="()[]=><, :'+-*\/;"
-
-Oper$=lcase$(Oper$)
-getV$=lcase$(getV$)
-
-Wpos=instr(Oper$,getV$) 
-if Wpos=0 then result=0: exit function 'pattern not contained
-'check comment and string
-
-while Wpos>0 
-	
-	if (instr(Lsep$,Oper$[Wpos-1])>0 or Wpos=1) and (instr(Rsep$,Oper$[Wpos+len(getV$)])>0  or Wpos+len(getV$)-1=len(Oper$))  then
-		'check string 
-		QPos1=rinstr(Wpos,Oper$,qt) ''1 quote pos   
-		QPos2= instr(Wpos,Oper$,qt) '2 quote pos   
-		CPos=rinstr(Wpos,Oper$,"'") 'comment pos  
-		
-		if QPos1<Wpos and QPos2 >Wpos and QPos1>0 then 'it's string, not var
-		elseif (CPos<Wpos and CPos>0) and  QPos1<CPos    then 'it's comment and QPos2>0
-		else
-			result=Wpos 
-			exit while
-		end if
-	else
-	end if
-	Wpos=instr(Wpos+1, Oper$,getV$) 
-	result=-2 'present, but not var
-wend
-
-end function
+DECLARE Function GetWord (Oper$ as string, getV$ as string) as long
+'~body Function GetWord (Oper$ as string, getV$ as string) as long   ' сборка: тело - в конце файла
 
 
 'NumQT=tally(Oper$, qt)
@@ -4476,55 +4299,20 @@ Ugl2Sec=SecFull
 end function
 
 '*****************************************
-function Sec2Ugl (SecFull as long) as string
-
-if sgn(SecFull)=-1 then zn$="-" else zn$=""
-SecFull=abs(SecFull)
-'print"SecFull=";SecFull
-
-Grad=SecFull\3600 ' число целых градусов
-'print"Grad=";Grad
-gradSec=Grad*3600 ' число секунд в целых градусах
-'print"gradSec=";gradSec
-
-ostminSec=SecFull-gradSec ' число сек в дробной части градусов - минутах и сек
-'print"ostminSec=";ostminSec
-
-mint=ostminSec\60 ' целое число минут
-'print"mint=";mint
-mintsec=mint*60 ' число секунд в целых минутах
-'print"mintsec=";mintsec
-sec1 =ostminSec- mintsec ' остаток чистых секунд
-'print"sec1=";sec1
-
-
-Sec2Ugl=zn$+str$((Grad))+chr$(176)+str$((Mint))+"'"+str$((Sec1))+qt
-
-
-
-end function
+DECLARE function Sec2Ugl (SecFull as long) as string
+'~body function Sec2Ugl (SecFull as long) as string   ' сборка: тело - в конце файла
 
 '*********************************************************************
-function sadd(InpStr as string) as long
-'Returns the memory offset of the string data in the string variable
-' use as pointer to the string variable
-DIM Mem AS QMemoryStream
-Mem.Write InpStr
-Mem.Position = 0
-sadd=Mem.Pointer
-end function
+DECLARE function sadd(InpStr as string) as long
+'~body function sadd(InpStr as string) as long   ' сборка: тело - в конце файла
 
 '*********************************************************************
-function Cutleft(a as string, n as long)  as string
-'return string without first n chars
-result= mid$(a,n+1,len(a)-n+1)
-end function
+DECLARE function Cutleft(a as string, n as long)  as string
+'~body function Cutleft(a as string, n as long)  as string   ' сборка: тело - в конце файла
 
 '*********************************************************************
-function CutRight(a as string, n as long)  as string
-'return string without first n chars
-result= mid$(a,1,len(a)-n)
-end function
+DECLARE function CutRight(a as string, n as long)  as string
+'~body function CutRight(a as string, n as long)  as string   ' сборка: тело - в конце файла
 
 '-- ************************************************************************'
 function delTags (HTMLtext as string) as string 
@@ -4613,170 +4401,35 @@ result=string1$
 end function
 
 '*****************************************
-Function RQConvertCodePage (SourseString As String, inPage As long, outPage As long) As String
-'print "1159 RQConvertCodePage SourseString=";SourseString
-'$define cp_Win  1251
-'$define cp_Dos  866
-'$define cp_Koi  20866 
-'$define cp_Iso  28595
-'$define cp_UTF8 65001 
-'$define cp_UTF7 65000 
-
-
-Dim LenSourseString As Long
-LenSourseString = Len(SourseString)
-'print "1170 RQConvertCodePage  LenSourseString=";LenSourseString
-
-Dim str1 As String
-Dim str2 As String
-Dim RetStrLong As Long
-
-dim tmp as string 
-tmp=SourseString
-ptrtmp&=varptr(tmp)
-
-str1 = String$(LenSourseString * 4, chr$(0))
-str2 = String$(LenSourseString * 4, chr$(0))
-
-ptrstr1&=varptr(str1)
-ptrstr2&=varptr(str2)
-
-RetStrLong = MultiByteToWideChar(inPage, 0, tmp, LenSourseString, 0&, 0)
-'print"RetStrLong=";RetStrLong
-RetStrLong = MultiByteToWideChar(inPage, 0, tmp,LenSourseString , ptrstr1&, RetStrLong)
-'print"RetStrLong=";RetStrLong
-RetStrLong2 = WideCharToMultiByte(outPage, 0, ptrstr1&, RetStrLong, str2, LenSourseString * 2, ByVal 0&, 0) ' str2
-'print"RetStrLong2=";RetStrLong2
-
-RQConvertCodePage = Left$(str2, RetStrLong2)
-End Function
+'~body Function RQConvertCodePage (SourseString As String, inPage As long, ou   ' сборка: тело - в конце файла
 
 '*****************************************
-Function RQConvertCodePage1 (SourseStringPtr As long, inPage As long, outPage As long) As String
-'print "1159 RQConvertCodePage SourseString=";SourseString
-'$define cp_Win  1251
-'$define cp_Dos  866
-'$define cp_Koi  20866 
-'$define cp_Iso  28595
-'$define cp_UTF8 65001 
-'$define cp_UTF7 65000 
-
-
-Dim LenSourseString As Long
-LenSourseString = Len(varptr$(SourseStringPtr))
-'print "1170 RQConvertCodePage3  LenSourseString=";LenSourseString
-
-Dim str1 As String
-Dim str2 As String
-Dim RetStrLong As Long
-
-str1 = String$(LenSourseString * 4, chr$(0))'+String$(LenSourseString * 4, chr$(0))
-str2 = String$(LenSourseString * 4, chr$(0))'+String$(LenSourseString * 4, chr$(0))
-
-ptrstr1&=varptr(str1)
-ptrstr2&=varptr(str2)
-
-'RetStrLong = MultiByteToWideChar2(inPage, 0, SourseStringPtr, LenSourseString , 0&, 0)
-RetStrLong = MultiByteToWideChar1(inPage, 0, SourseStringPtr, -1 , 0&, 0)
-'print"RetStrLong0=";RetStrLong
-RetStrLong = MultiByteToWideChar1(inPage, 0, SourseStringPtr,-1, ptrstr1&, RetStrLong)
-'print"RetStrLong1=";RetStrLong
-RetStrLong2 = WideCharToMultiByte1(outPage, 0, ptrstr1&, RetStrLong, str2, LenSourseString * 4, ByVal 0&, 0) ' str2
-'print"RetStrLong2=";RetStrLong2
-
-RQConvertCodePage1 = Left$(str2, RetStrLong2)
-End Function
+DECLARE Function RQConvertCodePage1 (SourseStringPtr As long, inPage As long, outPage As long) As String
+'~body Function RQConvertCodePage1 (SourseStringPtr As long, inPage As long,    ' сборка: тело - в конце файла
 
 '*****************************************
-Function ConvertCodePage2 (SourseString As String, inPage As long, outPage As long) As String
-
-Dim LenSourseString As Long
-LenSourseString = Len(SourseString)
-
-Dim str1 As String
-Dim str2 As String
-Dim RetStrLong As Long
-
-dim tmp as string 
-tmp=SourseString
-ptrtmp&=varptr(tmp)
-
-str1 = String$(LenSourseString * 4, chr$(0))
-str2 = String$(LenSourseString * 4, chr$(0))
-
-ptrstr1&=varptr(str1)
-ptrstr2&=varptr(str2)
-
-RetStrLong = MultiByteToWideChar(inPage, 0, tmp, LenSourseString, 0&, 0)
-RetStrLong = MultiByteToWideChar(inPage, 0, tmp, RetStrLong, ptrstr1&, LenSourseString)
-'print"RetStrLong =";RetStrLong 
-RetStrLong2 = WideCharToMultiByte(outPage, 0, ptrstr1&, RetStrLong, str2, LenSourseString * 4, ByVal 0&, 0) ' str2
-'print"RetStrLong2 =";RetStrLong2 
-
-ConvertCodePage2 = Left$(str2, RetStrLong2) ' inc2026: было ConvertCodePage = ... (в conversion.inc такой функции нет, необъявленная переменная), стало ConvertCodePage2 - имя этой функции (строка 949), иначе она возвращает пустую строку
-End Function
+DECLARE Function ConvertCodePage2 (SourseString As String, inPage As long, outPage As long) As String
+'~body Function ConvertCodePage2 (SourseString As String, inPage As long, out   ' сборка: тело - в конце файла
 
 
 '*****************************************
-FUNCTION RC4 (key AS STRING, str AS STRING) AS STRING
-DIM stateTable(256) AS BYTE, randomIndex AS BYTE
-DIM i AS LONG, j AS LONG, k AS LONG, n AS LONG
-
-result = ""
-
-n = LEN(key)
-IF 0 < n THEN
-	FOR i = 0 TO 255
-		stateTable(i) = i
-	NEXT
-	
-	j = 0
-	FOR i = 0 TO 255
-		k = (i MOD n) + 1
-		j = (j + stateTable(i) + ASC(key[k])) AND 255
-		SWAP stateTable(i), stateTable(j)
-	NEXT
-	
-	j = 0
-	n = LEN(str)
-	FOR k = 1 TO n
-		i = k AND 255
-		j = (j + stateTable(i)) AND 255
-		randomIndex = (stateTable(i) + stateTable(j)) AND 255
-		SWAP stateTable(i), stateTable(j)
-		
-		result = result & CHR$(ASC(str[k]) XOR stateTable(randomIndex))
-	NEXT
-END IF
-END FUNCTION
+DECLARE FUNCTION RC4 (key AS STRING, str AS STRING) AS STRING
+'~body FUNCTION RC4 (key AS STRING, str AS STRING) AS STRING   ' сборка: тело - в конце файла
 
 
 
 '-- ************************************************************************'
-function BGR2HtmlColor (BGRColor as long) as string
-'hexColor$=HEX$(BGRColor) 
-hexColor$=MID$( HEX$(BGRColor),3,6) 
-result="#"+MID$( hexColor$,5,2) +MID$( hexColor$,3,2) +MID$( hexColor$,1,2) 
-end function
+DECLARE function BGR2HtmlColor (BGRColor as long) as string
+'~body function BGR2HtmlColor (BGRColor as long) as string   ' сборка: тело - в конце файла
 
 '-- ************************************************************************'
-function HtmlColor2BGR (HtmlColor as string) as long
-HtmlColor$=mid$(trim$(ucase$(HtmlColor)),2,6) 
-HtmlColor$=MID$( HtmlColor$,5,2) +MID$( HtmlColor$,3,2) +MID$( HtmlColor$,1,2) 
-HtmlColor$=CONVBASE$(HtmlColor$,16,10)
-result=val(HtmlColor$)
-end function
+DECLARE function HtmlColor2BGR (HtmlColor as string) as long
+'~body function HtmlColor2BGR (HtmlColor as string) as long   ' сборка: тело - в конце файла
 
 
 '*****************************************
-FUNCTION STRL$ (value AS long) AS STRING
-tmp$=STRF$(value, ffFixed, 11, 18)
-if instr(tmp$,".")>0 then decSep$="."
-if instr(tmp$,",")>0 then decSep$=","
-
-STRL$ = field$(STRF$(value, ffFixed, 11, 18),decSep$,1)
-
-END FUNCTION
+DECLARE FUNCTION STRL$ (value AS long) AS STRING
+'~body FUNCTION STRL$ (value AS long) AS STRING   ' сборка: тело - в конце файла
 
 brem 0
 --- кодовые страницы -------
@@ -5010,74 +4663,49 @@ Declare Function InternetOpenUrl Lib "wininet" Alias "InternetOpenUrlA" ( _
 
 
 '# QUOTE : Returns a quoted string
-function Quote (StringToQuote as string) as string
-  StringToQuote =  chr$(34) + StringToQuote + chr$(34)
-  result = replacesubstr$(stringtoquote, chr$(34) + chr$(34), chr$(34))
-end function
+DECLARE function Quote (StringToQuote as string) as string
+'~body function Quote (StringToQuote as string) as string   ' сборка: тело - в конце файла
 
 '===============================================================================
 '# STRIPPATH : Returns file path (without file name)
-Function StripPath (fullname as string) as string
-  'print
-  'print "1 StripPath fullname=";fullname
-
-  result = left$(fullname, rinstr(fullname, "\"))
-
-  'print "2 StripPath fullname=";fullname
-  'print
-
-end function
+DECLARE Function StripPath (fullname as string) as string
+'~body Function StripPath (fullname as string) as string   ' сборка: тело - в конце файла
 
 '===============================================================================
 '# STRIPFILENAME : Returns file name (without path)
-Function StripFileName (fullname as string) as string
-  result = right$(fullname, len(fullname) - rinstr(fullname, "\"))
-end function
+DECLARE Function StripFileName (fullname as string) as string
+'~body Function StripFileName (fullname as string) as string   ' сборка: тело - в конце файла
 
 
 '===============================================================================
 '# GetFileNameNoPath : Returns file name (without path)
-Function GetFileNameNoPath (fullname as string) as string
-  result = right$(fullname, len(fullname) - rinstr(fullname, "\"))
-end function
+DECLARE Function GetFileNameNoPath (fullname as string) as string
+'~body Function GetFileNameNoPath (fullname as string) as string   ' сборка: тело - в конце файла
 
 
 
 '===============================================================================
 '# STRIPFILEEXT : Returns file extension (like ".exe", ".html" etc.)
-Function StripFileExt (fullname as string) as string
-  if instr(fullname,".")=0 then
-    result =""
-  else
-    result = right$(fullname, len(fullname) - rinstr(fullname, ".") + 1)
-  end if
-end function
+DECLARE Function StripFileExt (fullname as string) as string
+'~body Function StripFileExt (fullname as string) as string   ' сборка: тело - в конце файла
 
 '===============================================================================
 '# FILENAMENOEXT : Returns file name without extension
-function FileNameNoExt(fullname as string) as string
-  fullname = right$(fullname, len(fullname) - rinstr(fullname, "\"))
-  result = left$(fullname, rinstr(fullname, ".") - 1)
-end function
+DECLARE function FileNameNoExt(fullname as string) as string
+'~body function FileNameNoExt(fullname as string) as string   ' сборка: тело - в конце файла
 
 '===============================================================================
 '# FULLPATHNOEXT : Returns full path without file extension
-function FullPathNoExt(fullname as string) as string
-  result = left$(fullname, rinstr(fullname, ".") - 1)
-end function
+DECLARE function FullPathNoExt(fullname as string) as string
+'~body function FullPathNoExt(fullname as string) as string   ' сборка: тело - в конце файла
 
 '===============================================================================
 '# C_Style : Returns "slashed" path from a "backslashed" one
-function C_Style (fullname as string) as string
-  fullname = replacesubstr$(fullname, "\\", "\")
-  result = replacesubstr$(fullname, "\", "/")
-end function
+DECLARE function C_Style (fullname as string) as string
+'~body function C_Style (fullname as string) as string   ' сборка: тело - в конце файла
 '*****************************************
-function bsPath (fullname as string) as string
-  'backslashedPath
-  'fullname = replacesubstr$(fullname, "\\", "\")
-  result = replacesubstr$(fullname, "/", "\")
-end function
+DECLARE function bsPath (fullname as string) as string
+'~body function bsPath (fullname as string) as string   ' сборка: тело - в конце файла
 
 
 '===============================================================================
@@ -5105,35 +4733,14 @@ end function
 '===============================================================================
 '# HOMEDIR : The folder where the application is
 
-function homedir() as string
-  result = left$(command$(0), rinstr(command$(0), "\"))
-end function
+DECLARE function homedir() as string
+'~body function homedir() as string   ' сборка: тело - в конце файла
 
 '===============================================================================
 '# BROWSEFORFOLDERS : Returns the selected folder
 
-function BrowseForFolders (initialdir as string, wincapt as string) as string
-  dim bff_form as qform
-  with bff_form
-    .height = 400
-    .center
-    .caption = wincapt
-    .delbordericons 2
-  end with
-  dim bff_tree as qdirtree
-  with bff_tree
-    .parent = bff_form
-    .align = 5
-  end with
-  if bff_form.caption = "" then bff_form.caption = "Select folder"
-  if direxists(initialdir) then
-    bff_tree.directory = initialdir
-  else
-    bff_tree.directory = curdir$
-  end if
-  bff_form.showmodal
-  result = bff_tree.directory
-end function
+DECLARE function BrowseForFolders (initialdir as string, wincapt as string) as string
+'~body function BrowseForFolders (initialdir as string, wincapt as string) as   ' сборка: тело - в конце файла
 
 '===============================================================================
 '# BROWSEFORFILE : Returns the selected folder
@@ -5308,15 +4915,8 @@ END FUNCTION
 'both.
 
 '-- *****************************************************'
-FUNCTION ChangeFilePath(FileName as STRING, NewPath as STRING) AS STRING
-  DIM Result AS STRING
-  DIM FileNoPath AS STRING
-
-  FileNoPath = ExtractFileName(FileName)
-
-  Result = NewPath+FileNoPath
-  ChangeFilePath = Result
-END FUNCTION
+DECLARE FUNCTION ChangeFilePath(FileName as STRING, NewPath as STRING) AS STRING
+'~body FUNCTION ChangeFilePath(FileName as STRING, NewPath as STRING) AS STRI   ' сборка: тело - в конце файла
 $ESCAPECHARS Off
 
 '-- *****************************************************'
@@ -5396,93 +4996,28 @@ FUNCTION SaveStringEx(ss$ as STRING ,FileName as STRING, mode as integer  ) AS i
 
 END FUNCTION
 '-- *****************************************************'
-FUNCTION CheckFileWr (FileName as STRING  ) AS long
-  result=0
-  DIM fileStr as QFileStream
-  'fmOpenWrite = 1
-  if fileStr.open (FileName,1 )=-1 then
-    result=-1
-    FileStr.Close
-  end if
-
-END FUNCTION
+DECLARE FUNCTION CheckFileWr (FileName as STRING  ) AS long
+'~body FUNCTION CheckFileWr (FileName as STRING  ) AS long   ' сборка: тело - в конце файла
 
 '******************************'
-FUNCTION LoadString(FileName as STRING  ) AS string
-  DIM fileStr as QFileStream
-  result="0"
-  'fmOpenRead = 0
-  if fileStr.open (FileName,0 )=-1 then'fmCreate'
-    result="-1"
-    result=FileStr.ReadBinStr( FileStr.size)
-    FileStr.Close
-    'result=1
-  end if
-
-END FUNCTION
+DECLARE FUNCTION LoadString(FileName as STRING  ) AS string
+'~body FUNCTION LoadString(FileName as STRING  ) AS string   ' сборка: тело - в конце файла
 
 '-- *****************************************************'
-FUNCTION LoadBinString(FileName as STRING , n as long ) AS string
-  'print"FileName=";FileName
-  DIM fileStr as QFileStream
-  result="0"
-  res$="0"
-  'print"res1$=";res$
-  'fmOpenRead = 0
-  if fileStr.open (FileName,0 )=-1 then'fmRead'
-    if n=-1 then n=FileStr.size
-    if n>FileStr.size then n=FileStr.size
-    result="-1"
-    res$="-1"
-    result=FileStr.ReadBinStr( n)
-    FileStr.Close
-    'result=1
-  end if
-  'print"res2$=";res$
-END FUNCTION
+DECLARE FUNCTION LoadBinString(FileName as STRING , n as long ) AS string
+'~body FUNCTION LoadBinString(FileName as STRING , n as long ) AS string   ' сборка: тело - в конце файла
 
 '-- *****************************************************'
-FUNCTION LoadString1(FileName as STRING  ) AS string
-  DIM fileStr as QFileStream
-  result="0"
-  'fmOpenRead = 0
-  if fileStr.open (FileName,0 )=-1 then'fmRead'
-    result="-1"
-    result=FileStr.ReadStr( FileStr.size)
-    FileStr.Close
-    'result=1
-  end if
-
-END FUNCTION
+DECLARE FUNCTION LoadString1(FileName as STRING  ) AS string
+'~body FUNCTION LoadString1(FileName as STRING  ) AS string   ' сборка: тело - в конце файла
 
 '_==============================================================
 
 
 '-- *****************************************************'
 
-function MKSubDir (DirDst$) as short
-  'Andrew Shelkovenko dec 2003, jul 2004
-  'Create DirDst$ directory with full subdir structure
-  '----------------------------------------------
-  'print "MKSubDir DirDst$="; DirDst$
-  result=0
-  dim DirDst1$ as string
-  DirDst1$=string$(len(DirDst$),"a")
-  'chartooem DirDst$,DirDst1$
-  DirDst1$=DirDst$
-
-  if right$(DirDst1$,1)<>BkSl then DirDst1$=DirDst1$+BkSl
-  z1=instr(DirDst1$,BkSl)
-  z2=0
-  while z1>0
-    SubDirDst$=left$(DirDst1$,z1 )
-    if DIREXISTS(SubDirDst$)=0 then MKDIR SubDirDst$ :'print "MKSubDir SubDirDst$=" ,SubDirDst$
-    z2=z1+1
-    z1=instr(z2,DirDst1$,BkSl)
-  wend
-
-  result=1
-end function
+DECLARE function MKSubDir (DirDst$) as short
+'~body function MKSubDir (DirDst$) as short   ' сборка: тело - в конце файла
 
 '-- *****************************************************'
 sub SubDirCopy (DirSrc$, DirDst$, mask$) '- -----------------------------------'
@@ -5769,92 +5304,15 @@ function DirCopy (DirSrc$, DirDst$, mask$) as long
 end function
 
 '-- ***********************************************************************'
-sub FileCopy (FileSrc$, FileDst$) '- -----------------------------------'
-  'Andrew Shelkovenko dec 2003
-  'Copy FileSrc$ to FileDst$
-  ' if path dest is not exists - create it.
-
-  dim FileSrc as QFileStream
-  dim FileDst as QFileStream
-
-  dr$=StripPath (FileDst$)
-  'print "dr$=" ,dr$
-
-  'MKDIR dr$ 'StripPath (FileDst$)
-
-  if dr$<>"" then
-    MKSubDir dr$
-    if DIREXISTS(dr$ ) =0 then showmessage ("FileCopy Can't create directory "+dr$ ): 'exit sub
-  end if
-
-  if FileSrc.Open(FileSrc$, fmOpenRead) =-1 then
-    if FileDst.Open(FileDst$, fmCreate) =-1 then
-      FileDst.CopyFrom  (FileSrc, 0)
-
-      FileDst.close
-      FileSrc.close
-    else
-      'print  "Can't create "+FileDst$
-    end if
-  else
-    'print  "File not found "+FileSrc$
-  end if
-
-end sub
+DECLARE sub FileCopy (FileSrc$, FileDst$)
+'~body sub FileCopy (FileSrc$, FileDst$)   ' сборка: тело - в конце файла
 '-- ***********************************************************************'
-function fFileCopy (FileSrc$, FileDst$) as long '- -----------------------------------'
-  'print " fFileCopy FileSrc$=";FileSrc$
-  'Andrew Shelkovenko dec 2003
-  'Copy FileSrc$ to FileDst$
-  result=0
-  dim FileSrc as QFileStream
-  dim FileDst as QFileStream
-
-  'if Filesize(FileDst$)=0 then
-  'end if
-
-  dr$=StripPath (FileDst$)
-  'print "2 fFileCopy FileDst$=";FileDst$
-  'print " fFileCopy dr$=";dr$
-
-  if dr$<>"" then
-    if DIREXISTS(dr$ ) =0 then MKSubDir dr$
-    if DIREXISTS(dr$ ) =0 then result=-1: exit function 'showmessage ("FileCopy Can't create directory "+dr$ ): '
-  end if
-  result=-2
-  if FileSrc.Open(FileSrc$, fmOpenRead) =-1 then
-    result=-3
-    if FileDst.Open(FileDst$, fmCreate) =-1 then
-      result=-4
-      FileDst.CopyFrom  (FileSrc, 0)
-      FileSrc.close
-      FileDst.close
-      result=1
-    else
-      ShowMessage ("fFileCopy error: Can't create file "+FileDst$)
-
-    end if
-  else
-    ShowMessage ("fFileCopy error: Can't open file "+FileSrc$)
-
-  end if
-end function
+DECLARE function fFileCopy (FileSrc$, FileDst$) as long
+'~body function fFileCopy (FileSrc$, FileDst$) as long   ' сборка: тело - в конце файла
 
 '-- ***********************************************************************'
-sub KillFiles (FileName$)
-  'Andrew Shelkovenko  diakin@narod.ru  apr 2004
-  'Kill files in FileName$ by mask
-  'for example KillFiles "C:\BAS\RAPIDQ\tmp\*.tmp"
-
-  FName$ =StripPath (FileName$)+ DIR$(FileName$, 0 ) '-- Get first file
-
-  while STRIPFILENAME (FName$) <>""
-    kill FName$
-
-    if fileexists (FName$)>0 then ShowMessage ("KillFiles Can't kill file "+FName$) ' inc2026: fileexists(FName$) вместо fileexists(StripPath(FileName$)+FName$): FName$ уже содержит путь (строки 911, 917), путь удваивался и проверка никогда не срабатывала
-    FName$ = StripPath (FileName$)+DIR$ '-- Get next file
-  wend
-end sub
+DECLARE sub KillFiles (FileName$)
+'~body sub KillFiles (FileName$)   ' сборка: тело - в конце файла
 
 '-- *****************************************************'
 sub KillSubDir (DirSrc$, mask$)
@@ -5922,38 +5380,8 @@ sub KillSubDir (DirSrc$, mask$)
 END SUB
 
 '-- ***********************************************************************'
-SUB io2Rnd (fsrc$, fdst$)
-  '--------------------------------
-  'convert text file with single value strings to binary
-  ' for example
-  '17.78091
-  '16.64166
-
-  'fsrc$ - source file  fdst$ - dest. file
-  'data type - single
-
-  'CONST fmCreate = 65535
-  'CONST fmOpenRead = 0
-  'CONST fmOpenWrite = 1
-  'CONST fmOpenReadWrite = 2
-
-  dim FileSourse as QFileStream
-  dim FileDest as QFileStream
-  defsng ValSrc
-
-  FileSourse.Open (fsrc$, 2 )'fmOpenReadWrite'
-  FileDest.Open   (fdst$, 65535 )  'fmOpenReadWrite'
-
-  WHILE NOT FileSourse.EOF
-    ValSrc$=FileSourse.ReadLine : 'print "ValSrc$=" ,ValSrc$
-    ValSrc=val(ValSrc$) :         'print "ValSrc=" ,ValSrc
-    FileDest.Write (ValSrc)
-  wend
-
-  FileSourse.CLOSE
-  FileDest.CLOSE
-
-END SUB
+DECLARE SUB io2Rnd (fsrc$, fdst$)
+'~body SUB io2Rnd (fsrc$, fdst$)   ' сборка: тело - в конце файла
 
 
 '-- ***********************************************************************'
@@ -6000,38 +5428,8 @@ SUB Rnd2io (fsrc$, fdst$)
 END SUB
 
 '-- ***********************************************************************'
-SUB io2RndPV (fsrc$, fdst$)
-  '--------------------------------
-  'convert text file with single value strings to binary
-  ' for example
-  '17.78091
-  '16.64166
-
-  'fsrc$ - source file  fdst$ - dest. file
-  'data type - single
-
-  'CONST fmCreate = 65535
-  'CONST fmOpenRead = 0
-  'CONST fmOpenWrite = 1
-  'CONST fmOpenReadWrite = 2
-
-  dim FileSourse as QFileStream
-  dim FileDest as QFileStream
-  defsng ValSrc
-
-  FileSourse.Open (fsrc$, 2 )'fmOpenReadWrite'
-  FileDest.Open   (fdst$, 65535 )  'fmOpenReadWrite'
-
-  WHILE NOT FileSourse.EOF
-    ValSrc$=FileSourse.ReadLine : 'print "ValSrc$=" ,ValSrc$
-    ValSrc=val(ValSrc$) :         'print "ValSrc=" ,ValSrc
-    FileDest.Write (ValSrc)
-  wend
-
-  FileSourse.CLOSE
-  FileDest.CLOSE
-
-END SUB
+DECLARE SUB io2RndPV (fsrc$, fdst$)
+'~body SUB io2RndPV (fsrc$, fdst$)   ' сборка: тело - в конце файла
 
 
 '-- ***********************************************************************'
@@ -6347,80 +5745,17 @@ end sub
 
 '-------------------------------------------------------------------'
 '-- ***********************************************************************'
-function ChDirOEM (PathDst$) as short
-  'print "ChDirOEM PathDst$=" ,PathDst$
-  result=0
-  dim PathDst1$ as string
-  PathDst1$=string$(len(PathDst$),"a")
-  chartooem PathDst$,PathDst1$
-  'print "ChDirOEM PathDst$=" ,PathDst$
-  'print "ChDirOEM PathDst1$=" ,PathDst1$
-
-  CHDIR  PathDst1$
-  result=1
-end function
+DECLARE function ChDirOEM (PathDst$) as short
+'~body function ChDirOEM (PathDst$) as short   ' сборка: тело - в конце файла
 
 '-------------------------------------------------------------------'
 '-- ***********************************************************************'
-function MkDirOEM (PathDst$) as short
-  result=0
-  dim PathDst1$ as string
-  'print "MkDirOEM PathDst$=" ,PathDst$
-  PathDst1$=string$(len(PathDst$),"a")
-  chartooem PathDst$,PathDst1$
-  'print "MkDirOEM PathDst$=" ,PathDst$
-  'print "MkDirOEM PathDst1$=" ,PathDst1$
-  MkDIR  PathDst1$
-  result=1
-end function
+DECLARE function MkDirOEM (PathDst$) as short
+'~body function MkDirOEM (PathDst$) as short   ' сборка: тело - в конце файла
 
 '*****************************************
-function DownLoadURL (sUrl as string, dFileName as string) as long
-  'print"sUrl=";sUrl
-  ' скачивает файл с заданного sURL и сохраняет под именем dFileName
-  'возвращает число скачанных байт TotalReadBytes или -1 в случае ошибки
-
-  Dim hOpen As Long, hFile As Long, sBuffer As String, ReadBytes As Long, TotalReadBytes As Long
-  defint sBufferSize=2048
-  filetxt$=""
-
-  'Create a buffer for the file we're going to download
-  sBuffer = Space$(sBufferSize)+"<<<" ' inc2026: Space$ вместо Space: в RapidQ есть только SPACE$ (indexa.html); в документации только SPACE$
-
-
-  'Create an internet connection
-  hOpen = InternetOpen(scUserAgent, INTERNET_OPEN_TYPE_DIRECT, vbNullString, vbNullString, 0)
-  'print"hOpen=";hOpen
-  'Open the url
-
-  hFile = InternetOpenUrl(hOpen, sURL, vbNullString, 0&, INTERNET_FLAG_RELOAD, ByVal 0&)
-  'print"hFile=";hFile
-
-  'Read the first 1000 bytes of the file
-  zzz=InternetReadFile (hFile, sBuffer, sBufferSize, ReadBytes)
-  filetxt$=left$(sBuffer,ReadBytes)
-  TotalReadBytes=ReadBytes
-
-
-  while ReadBytes>0
-    'print"ReadBytes=";ReadBytes
-    'print"zzz=";zzz
-    'clean up
-    'Show our file
-    'PRINT sBuffer
-    zzz=InternetReadFile (hFile, sBuffer, sBufferSize, ReadBytes)
-    filetxt$=filetxt$+left$(sBuffer,ReadBytes)
-    TotalReadBytes=TotalReadBytes+ReadBytes
-  wend
-
-  InternetCloseHandle (hFile)
-  InternetCloseHandle (hOpen)
-
-  zzj=savestring(filetxt$,dFileName)
-
-  DownLoadURL=TotalReadBytes
-
-End Function ' inc2026: END FUNCTION вместо END SUB: процедура открыта как function DownLoadURL (строка 1440)
+DECLARE function DownLoadURL (sUrl as string, dFileName as string) as long
+'~body function DownLoadURL (sUrl as string, dFileName as string) as long   ' сборка: тело - в конце файла
 
 
 '[build_inc] (дальше снова rapidq.inc)
@@ -6444,29 +5779,8 @@ average! = ARMid! / (MaxEl-MinEl+1)
 result=average!
 END function
 '-- **************************************************************************'
-sub ARRAverageSubtract (Dat!() as single) 
-' calculate and subtract average value from function Dat1!()
-defint  p, Lmin1, Lmax1
-Lmin1 = LBOUND(Dat!):Lmax1 = UBOUND(Dat!) 
-defsng ARMid!=0
-'print"ARRAverageSubtract Lmax1=";Lmax1
-'print"ARRAverageSubtract Lmin1=";Lmin1
-
-FOR p = Lmin1 TO Lmax1:
-	ARMid! = ARMid! + Dat!(p):
-
-NEXT p
-
-average! = ARMid! / (Lmax1-LMin1+1)
-'print"average!=";average!
-
-FOR p = LMin1 TO Lmax1: 
-Dat!(p) = Dat!(p) - average!: 
-'print"Dat!(";p;")=";Dat!(p)
-NEXT p
-'print"end ----------"
-
-END sub
+DECLARE sub ARRAverageSubtract (Dat!() as single)
+'~body sub ARRAverageSubtract (Dat!() as single)   ' сборка: тело - в конце файла
 
 '-- **************************************************************************'
 FUNCTION ARRMax (Dat!() as single, MinEl  as integer, MaxEl as integer) as single
@@ -6524,47 +5838,8 @@ END FUNCTION
 
 
 '-- **************************************************************************'
-FUNCTIONI FindMax (...) AS DOUBLE
-
-DIM Largest AS DOUBLE
-DIM I AS BYTE
-
-Largest = ParamVal(1)
-
-FOR I = 1 TO ParamValCount
-	IF ParamVal(I) > Largest THEN
-		''       print "ParamVal(",I,")=" ,ParamVal(I)
-		Largest = ParamVal(I)
-	END IF
-NEXT
-
-FindMax = Largest         ' or Result = Largest
-END FUNCTIONI
-
-'-- **************************************************************************'
-sub ArrExtr (Dat!() as single, byref DatMin!, byref DatMax!) '' as single 
-'find  maximum and minimum
-
-defint  p
-defint MaxEl,MinEl
-
-MinEl=lbound(Dat!)
-MaxEl=ubound(Dat!)
-
-defsng ARMax!=Dat!(MinEl)
-defsng ARMin!=Dat!(MinEl)
-
-FOR p = MinEl TO MaxEl:
-	IF Dat!(p) > ARMax! THEN ARMax! = Dat!(p):
-	IF Dat!(p) < ARMin! THEN ARMin! = Dat!(p):
-	
-NEXT p
-DatMax!=ARMax!
-'print "DatMax=" ,DatMax!
-DatMin!=ARMin!
-'print "DatMin=" ,DatMin!
-
-END SUB
+DECLARE FUNCTIONI FindMax (...) AS DOUBLE
+'~body FUNCTIONI FindMax (...) AS DOUBLE   ' сборка: тело - в конце файла
 
 '**********************************************************************
 sub ArrAbsExtrN (Dat!() as single, byref _AbsDatMax!, N as integer) 
@@ -6588,24 +5863,8 @@ END SUB
 
 
 '**********************************************************************
-sub ArrAbsExtr (Dat!() as single, byref _AbsDatMax!) 
-defint  p
-defint MaxEl,MinEl
-
-MinEl=lbound(Dat!)
-'print "ArrAbsExtr sub MinEl=" ,MinEl
-MaxEl=ubound(Dat!)
-'print "ArrAbsExtr sub MaxEl=" ,MaxEl
-
-defsng ARMax!=Dat!(MinEl)
-defsng ARMin!=Dat!(MinEl)
-_AbsDatMax!=ARMax!
-FOR p = MinEl TO MaxEl:
-	IF abs(Dat!(p)) >  _AbsDatMax! THEN  _AbsDatMax! = abs(Dat!(p))
-NEXT p
-'print "sub _AbsDatMax!=" ,_AbsDatMax!
-
-END SUB
+DECLARE sub ArrAbsExtr (Dat!() as single, byref _AbsDatMax!)
+'~body sub ArrAbsExtr (Dat!() as single, byref _AbsDatMax!)   ' сборка: тело - в конце файла
 
 '**********************************************************************
 sub ArrAbsMaxEx (Dat!() as single, MinEl  as integer, MaxEl as integer,byref _AbsDatMax!,byref pointX!) 
@@ -6789,14 +6048,8 @@ NEXT i
 
 END SUB
 '-- **********************************************************************
-sub ARRAddConst (Dat!() as single, const! as single) 
-defint  p, Lmin1, Lmax1
-Lmin1 = LBOUND(Dat!):Lmax1 = UBOUND(Dat!) 
-
-FOR p = Lmin1 TO Lmax1:
-	Dat!(p) = const! + Dat!(p):
-NEXT p
-END SUB
+DECLARE sub ARRAddConst (Dat!() as single, const! as single)
+'~body sub ARRAddConst (Dat!() as single, const! as single)   ' сборка: тело - в конце файла
 
 '-- **********************************************************************
 SUB ArrReSample (Dat1() AS SINGLE, Dat2() AS SINGLE, npt)
@@ -7030,44 +6283,8 @@ end function 'sub '
 
 
 '-- *********************************************************************'
-Function GetVarPos (Oper$ as string, getV$ as string) as long
-'return variable  position in checked string
-'getV$ - variable name 
-'Oper$ - checked string
-'if getV$ commented,  or quoted (just text, not varname)  - return error code
-result=-1 ' error
-'cr+lf+",./\| !@#$%^&*()_+=-?><~`;:[]{}'"+ht+qt
-defstr Lsep$="()[]=><, :+-*\/;."
-defstr Rsep$="[()]=><, :'+-*\/;."
-
-Oper$=lcase$(Oper$)-ht
-getV$=lcase$(getV$)-ht
-
-Wpos=instr(Oper$,getV$) 
-if Wpos=0 then result=0: exit function 'pattern not contained
-'check comment and string
-
-while Wpos>0 
-
-	if (instr(Lsep$,Oper$[Wpos-1])>0 or Wpos=1) and (instr(Rsep$,Oper$[Wpos+len(getV$)])>0  or Wpos+len(getV$)-1=len(Oper$))  then
-		'check string 
-		QPos1=rinstr(Wpos,Oper$,qt) ''1 quote pos   
-		QPos2= instr(Wpos,Oper$,qt) '2 quote pos   
-		CPos=rinstr(Wpos,Oper$,"'") 'comment pos  
-
-		if QPos1<Wpos and QPos2 >Wpos and QPos1>0 then 'it's string, not var
-		elseif (CPos<Wpos and CPos>0) and  QPos1<CPos    then 'it's comment and QPos2>0
-		else
-			result=Wpos 
-			exit while
-		end if
-	else
-	end if
-		Wpos=instr(Wpos+1, Oper$,getV$) 
-	result=-2 'present, but not var
-wend
-
-end function
+DECLARE Function GetVarPos (Oper$ as string, getV$ as string) as long
+'~body Function GetVarPos (Oper$ as string, getV$ as string) as long   ' сборка: тело - в конце файла
 
 '-- *********************************************************************'
 sub ParseDim (Var$() as string,VarType$() as string, SrcTxt$ as string, VarCount as long)
@@ -7163,10 +6380,8 @@ for i=0 to NQT+1
 next
 end sub '
 '-- *********************************************************************'
-function DelCommentsF (STxt$ as string) as string
-DelComments (@STxt$)
-result=STxt$
-end function 
+DECLARE function DelCommentsF (STxt$ as string) as string
+'~body function DelCommentsF (STxt$ as string) as string   ' сборка: тело - в конце файла
 
 '-- *********************************************************************'
 sub ReplaceComments (STxt$ as string)
@@ -7404,125 +6619,22 @@ $DEFINE VK_PDown    &H22
 '[build_inc] eml.inc
 '============================================================================
 '*****************************************
-Function GetSubjCodePage( Subject As String) As String
-zza$=Subject
-CodePage$=field$(zza$,"?",2)
-result=""
-if CodePage$ <>"" then
-	result=CodePage$
-elseif CodePage$="" and isKOI8(zza$)=1 then
-	result="koi8-r"
-else
-	result=""
-end if
-
-end function
+'~body Function GetSubjCodePage( Subject As String) As String   ' сборка: тело - в конце файла
 
 '*****************************************
-Function GetSubjCodeMethod( Subject As String) As String
-result=lcase$(field$(Subject,"?",3))
-end function
+'~body Function GetSubjCodeMethod( Subject As String) As String   ' сборка: тело - в конце файла
 
 '*****************************************
-Function GetMsgBodyContentType ( Msg As String) As String
-'Content-Type: text/plain; charset=koi8-r
-'Content-Type: text/plain; charset=UTF-8
-'Content-Type: text/plain;format=flowed;charset="koi8-r";reply-type=original
-
-Msg=replacesubstr$(Msg,ht," ")
-Msg=replacesubstr$(Msg,crlf+" ","")
-Msg=replacesubstr$(Msg,";"+crlf,"; ")
-'print"Msg=";Msg
-
-
-ContentType$=GetHeaderField(Msg,"Content-Type")
-'print"GetMsgBodyContentType ContentType$=";ContentType$
-result=field$(ContentType$,";",1)
-end function
+'~body Function GetMsgBodyContentType ( Msg As String) As String   ' сборка: тело - в конце файла
 
 '*****************************************
-Function GetMsgBodyCodePage ( Msg As String) As String
-'Content-Type: text/plain; charset=koi8-r
-'Content-Type: text/plain; charset=UTF-8
-'Content-Type: text/plain;format=flowed;charset="koi8-r";reply-type=original
-dim i as long
-Msg=replacesubstr$(Msg,ht," ")
-Msg=replacesubstr$(Msg,crlf+" ","")
-Msg=replacesubstr$(Msg,";"+crlf,"; ")
-
-ContentType$=GetHeaderField(Msg,"Content-Type")
-semicolCount=tally(ContentType$,";")
-for i=1 to semicolCount
-	valfield$=field$(ContentType$,";",i+1)
-	if instr(valfield$,"charset=")>0 then
-		param$=field$(valfield$,"=",2)
-		exit for
-	else
-		
-	end if
-	
-next i
-result=param$
-end function
+'~body Function GetMsgBodyCodePage ( Msg As String) As String   ' сборка: тело - в конце файла
 
 '*****************************************
-Function GetMsgBodyCodeMethod( MsgBody As String) As String
-'Content-Transfer-Encoding: 8bit
-dim i as long
-MsgBody=replacesubstr$(MsgBody,ht," ")
-MsgBody=replacesubstr$(MsgBody,crlf+" ","")
-MsgBody=replacesubstr$(MsgBody,";"+crlf,"; ")
-
-ContentTransferEncoding$=GetHeaderField(MsgBody,"Content-Transfer-Encoding") ' inc2026: MsgBody вместо Msg здесь и в строках 67-69: параметр называется MsgBody (заголовок, строка 64, и DECLARE в rapidq.inc), Msg - необъявленная переменная
-semicolCount=tally(ContentTransferEncoding$,";")
-for i=1 to semicolCount
-	valfield$=field$(ContentTransferEncoding$,";",i+1)
-	if instr(valfield$,"charset=")>0 then
-		param$=field$(valfield$,"=",2)
-		exit for
-	else
-		
-	end if
-next i
-result=param$
-end function
+'~body Function GetMsgBodyCodeMethod( MsgBody As String) As String   ' сборка: тело - в конце файла
 
 '*****************************************
-Function GetHeaderField( Header As String, Field as string) As String
-Header=replacesubstr$(Header,ht," ")
-Header=replacesubstr$(Header,crlf+" ","")
-Header=replacesubstr$(Header,";"+crlf,"; ")
-
-'print"Header=";Header
-' returm requared field value from message header
-dim i as long
-fieldidx=-1
-dim HeaderList as QStringList
-HeaderList.text=(Header)
-
-if instr(Field,":")=0 then Field=Field+":"
-
-field=lcase$(Field)'+":"
-lenfield=len(field)
-
-for i2=0 to HeaderList.Itemcount-1
-	hitem$=lcase$(HeaderList.Item(i2))
-	lenitem=len(hitem$)
-	instrsep=instr(hitem$,":")
-	
-	'if  instr(hitem$,field) >0 then
-	if  left$(hitem$,lenfield) =field then
-		fieldidx=i2: exit for
-	end if
-	
-next i2
-
-if fieldidx =-1 then
-	result=""
-else
-	result=trim$(mid$(HeaderList.Item(fieldidx),instrsep+1,lenitem-instrsep))
-end if
-end function
+'~body Function GetHeaderField( Header As String, Field as string) As String   ' сборка: тело - в конце файла
 
 '*****************************************
 Function GetMSGHeader( Source As String) As String
@@ -7579,76 +6691,7 @@ end function
 
 
 '*****************************************
-Function isKOI8( Red$ As String) As long
-' проверяет кодировку строки на koi8
-'оПЧПЕ УППВЭЕОЙЕ Ч ЗПУФЕЧПК ЛОЙЗЕ 'diakin-рТПЗТБННБ RQ Search and Replace - РПЙУЛ Й ЪБНЕОБ Ф'.
-'пФПРМЕОЙЕ, ЧПДПУОБВЦЕОЙЕ..
-
-result=0
-'if instr(Red$, "ПЧ")>0 then result=1 '"koi8-r"
-'if instr(Red$, "ПП")>0 then result=1 '"koi8-r"
-'if instr(Red$, "ВЭ")>0 then result=1 '"koi8-r"
-'if instr(Red$, "ПД")>0 then result=1 '"koi8-r"
-'if instr(Red$, "ПЧ")>0 then result=1 '"koi8-r"
-'if instr(Red$, "ПЧ")>0 then result=1 '"koi8-r"
-
-if instr(Red$, " Ч ")>0 then result=1 '"koi8-r"
-'if instr(Red$, "ПЗ")>0 then result=1 '"koi8-r"
-
-'if instr(Red$, "РП")>0 then result=1 '"koi8-r"
-if instr(Red$, "ЪБ")>0 then result=1 '"koi8-r"
-
-
-if instr(Red$, "ДЩ")>0 then result=1 '"koi8-r"
-if instr(Red$, "ЧЩ")>0 then result=1 '"koi8-r"
-if instr(Red$, "ФШ")>0 then result=1 '"koi8-r"
-if instr(Red$, "пФ")>0 then result=1 '"koi8-r"
-
-if instr(Red$, "ВЙ")>0 then result=1 '"koi8-r"
-if instr(Red$, "ДЙ")>0 then result=1
-if instr(Red$, "ЗЙ")>0 then result=1
-if instr(Red$, "ЛЙ")>0 then result=1
-if instr(Red$, "МЙ")>0 then result=1
-if instr(Red$, "НЙ")>0 then result=1
-if instr(Red$, "РЙ")>0 then result=1
-if instr(Red$, "ТЙ")>0 then result=1
-if instr(Red$, "ФЙ")>0 then result=1
-if instr(Red$, "ЦЙ")>0 then result=1
-if instr(Red$, "ПЙ")>0 then result=1 '"koi8-r"
-if instr(Red$, " Й ")>0 then result=1 '"koi8-r"
-
-if instr(Red$, " Й")>0 then result=1
-if instr(Red$, " й ")>0 then result=1
-
-if instr(Red$, "ЙЫ")>0 then result=1
-
-if instr(Red$, "ЙЪ")>0 then result=1
-if instr(Red$, "йЪ")>0 then result=1
-
-if instr(Red$, "бй")>0 then result=1
-if instr(Red$, "дй")>0 then result=1
-if instr(Red$, "йй")>0 then result=1
-
-if instr(Red$, "pЙ")>0 then result=1
-
-if instr(Red$, "Kй")>0 then result=1
-
-if instr(Red$, "ШЫ")>0 then result=1
-if instr(Red$, "ЕЫ")>0 then result=1
-
-if instr(Red$, "ъД")>0 then result=1
-
-if instr(Red$, "ЪБ")>0 then result=1
-if instr(Red$, "ЪХ")>0 then result=1
-
-if instr(Red$, "ъБ")>0 then result=1
-if instr(Red$, "ЪЩ")>0 then result=1
-if instr(Red$, "ЪП")>0 then result=1
-if instr(Red$, "ЪЙ")>0 then result=1
-
-if instr(Red$, "ЪТ")>0 then result=1
-
-end function
+'~body Function isKOI8( Red$ As String) As long   ' сборка: тело - в конце файла
 
 '*****************************************
 ' BASE64 encode
@@ -7936,80 +6979,14 @@ exitfunc:
 End Function 
 
 '*****************************************
-Sub ExtractEMailFromWab(wabFile As String, EmailList as QStringlist)
-Dim WABDog As Long, WABLeft As Long, WABRight As Long 
-Dim WABTemp As String 
-dim ie5 as long
-dim SObCount as long
-Dim WABEmail(1) As String 
-dim WABData as string
-
-
-WABData=LoadString(wabFile)
-SObCount=tally(WABData,"@")
-'print"SObCount=";SObCount
-Pos1 = 1
-wabPos=1
-
-for ie5=0 to SObCount-1
-	' находим собаку @
-	WABDog = InStr(wabPos, WABData, Chr$(0) & Chr$(64) & Chr$(0)) 
-	' от собаки находим два Chr(0) справа и слева
-	WABLeft = RInStr(WABDog,WABData, Chr$(0) & Chr$(0))
-	WABRight = InStr(WABDog, WABData, Chr$(0) & Chr$(0)) 
-	
-	'вырезаем e-mail адрес
-	WABTemp = Mid$(WABData, WABLeft, WABRight - WABLeft)
-	WABTemp = replaceSubStr$(WABTemp , Chr(0), "") 
-	
-	for i95=1 to 31 ' если содержатся непечатные символы
-		if instr(WABTemp, chr$(i95))>0 then
-			'print"i95=";i95
-			exit for
-		end if
-	next i95
-	'if i95<31 then goto NextEml1
-	
-	if i95>31 then 'goto NextEml1
-		
-		
-		WABTemp = WABTemp -chr$(0)
-		wzz$=WABTemp
-		
-		zzz=IsEmail(wzz$)
-		zz1= False
-		
-		If ( zzz= True) And ( zz1= False) Then 
-			'Call WABAddEmail(WABTemp) 
-			
-			if instr(EmailList.text,wzz$)=0 then
-				erow=UBound(WABEmail)
-				ReDim WABEmail(erow + 1) As String 
-				WABEmail(erow) = wzz$ 
-				EmailList.additems wzz$
-				infomsg$=EmailList.item(erow-1)
-'call  AddClrString ("585:infomsg$="+(infomsg$), clred, LogEdit)
-				doevents
-			end if
-			
-		End If 
-	End If 
-	
-	NextEml1: 
-	wabPos = WABRight 
-next ie5
-
-End Sub 
+DECLARE Sub ExtractEMailFromWab(wabFile As String, EmailList as QStringlist)
+'~body Sub ExtractEMailFromWab(wabFile As String, EmailList as QStringlist)   ' сборка: тело - в конце файла
 
 '[build_inc] (дальше снова rapidq.inc)
 
 '*****************************************
-sub cprint(s as string)
-  dim sn as string
-  sn=s
-  chartooem sn,sn
-  print sn
-End sub
+DECLARE sub cprint(s as string)
+'~body sub cprint(s as string)   ' сборка: тело - в конце файла
 
 
 '*****************************************
@@ -8504,20 +7481,7 @@ Declare Function GetLocaleInfo Lib "kernel32" Alias "GetLocaleInfoA" _
    ByVal cchData As Long) As Long
 Declare function lastdayM(datum$ as string)as string
 declare function weekday(datum$ as string)as integer
-Function lastdayM(datum$ as string)as string ' inc2026: заголовок приведён к DECLARE (строка 34): добавлено as string
-    Dim pBuffer As String , last As SYSTEMTIME
-    last.wYear=val(field$(datum$,"-",3))
-    last.wmonth=val(field$(datum$,"-",1))
-    last.wDay = 28
-    pbuffer="Init"
-    while len(pBuffer)<>0
-        pBuffer = String$(255, 0)
-        GetDateFormat( ByVal 0&, 0, last, "ddd", Varptr(pBuffer), Len(pBuffer))
-        pBuffer = Left$(pBuffer, InStr(1, pBuffer, Chr$(0)) - 1)
-        last.wDay=last.wDay+1 
-    wend
-    lastdaym=str$(last.wmonth)+"-"+str$(last.wDay-2)+"-"+str$(last.wyear)
-End function
+'~body Function lastdayM(datum$ as string)as string   ' сборка: тело - в конце файла
 Function weekday(datum$ as string)as integer
     dim wdm(1 to 7) as string*3,b as string
     for i=49 to 55 'giorni short
@@ -9467,15 +8431,10 @@ $IFNDEF _CALLBACK_0
     Declare Function FuncBind_0 (hFunction As Long) As Long  ' Bind dont work with no Arg function
     DefInt lpCallBack_0  = CodePtr(MasterCallBack_0)
 
-    Function MasterCallBack_0 (hFunction As Long) As Long
-        DefInt hBind = hFunction
-        Bind hBind To FuncBind_0 : hBind = hFunction ' inc2026: РґРѕР±Р°РІР»РµРЅРѕ : hBind = hFunction РїРѕСЃР»Рµ Bind: BIND Р·Р°РїРёСЃС‹РІР°РµС‚ РІ hBind Р°РґСЂРµСЃ FuncBind_0 (РіР»Р°РІР° 11) Рё Р·Р°С‚РёСЂР°РµС‚ hFunction РёР· СЃС‚СЂРѕРєРё РІС‹С€Рµ, Р° Сѓ FuncBind_0 С‚РµР»Р° РЅРµС‚; РІ CallBack_1...8.Inc РїРѕСЂСЏРґРѕРє С‚Р°РєРѕР№ Р¶Рµ - DefInt hBind, Bind, hBind = hFunction
-        Result = CallFunc (hBind, hBind)
-    End Function
+'~body Function MasterCallBack_0 (hFunction As Long) As Long   ' сборка: тело - в конце файла
 
-    Function SetNewCallBack_0 (hFunction As Long) As Long
-        Result = SetNewFwToCallBack (lpCallBack_0, hFunction)
-    End Function
+DECLARE Function SetNewCallBack_0 (hFunction As Long) As Long
+'~body Function SetNewCallBack_0 (hFunction As Long) As Long   ' сборка: тело - в конце файла
 $ENDIF
 ' ----------------------------------------------------------------------------------
 '
@@ -9531,16 +8490,10 @@ $IFNDEF _CALLBACK_1
     Declare Function FuncBind_1 (Arg1 As Long) As Long
     DefInt lpCallBack_1  = CodePtr(MasterCallBack_1)
 
-    Function MasterCallBack_1 (hFunction As Long, Arg1 As Long) As Long
-        DefInt hBind
-        Bind hBind To FuncBind_1
-        hBind = hFunction
-        Result = CallFunc (hBind, Arg1)
-    End Function
+'~body Function MasterCallBack_1 (hFunction As Long, Arg1 As Long) As Long   ' сборка: тело - в конце файла
 
-    Function SetNewCallBack_1 (hFunction As Long) As Long
-        Result = SetNewFwToCallBack (lpCallBack_1, hFunction)
-    End Function
+DECLARE Function SetNewCallBack_1 (hFunction As Long) As Long
+'~body Function SetNewCallBack_1 (hFunction As Long) As Long   ' сборка: тело - в конце файла
 $ENDIF
 ' ----------------------------------------------------------------------------------
 '
@@ -9596,16 +8549,10 @@ $IFNDEF _CALLBACK_2
     Declare Function FuncBind_2 (Arg1 As Long, Arg2 As Long) As Long
     DefInt lpCallBack_2  = CodePtr(MasterCallBack_2)
 
-    Function MasterCallBack_2 (hFunction As Long, Arg1 As Long, Arg2 As Long) As Long ' inc2026: hFunction РІРјРµСЃС‚Рѕ cbIndex: РІ DECLARE (СЃС‚СЂРѕРєР° 45) Рё РІ С‚РµР»Рµ (СЃС‚СЂРѕРєР° 52) - hFunction, РєР°Рє РІ CallBack_0/1/3/4; RapidQ Р±РµСЂС‘С‚ РёРјРµРЅР° РёР· DECLARE, С‚Р°Рє С‡С‚Рѕ РїРѕРІРµРґРµРЅРёРµ РЅРµ РјРµРЅСЏРµС‚СЃСЏ, cbIndex РЅРёРіРґРµ РЅРµ РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ
-        DefInt hBind
-        Bind hBind To FuncBind_2
-        hBind = hFunction
-        Result = CallFunc (hBind, Arg1, Arg2)
-    End Function
+'~body Function MasterCallBack_2 (hFunction As Long, Arg1 As Long, Arg2 As Lo   ' сборка: тело - в конце файла
 
-    Function SetNewCallBack_2 (hFunction As Long) As Long
-        Result = SetNewFwToCallBack (lpCallBack_2, hFunction)
-    End Function
+DECLARE Function SetNewCallBack_2 (hFunction As Long) As Long
+'~body Function SetNewCallBack_2 (hFunction As Long) As Long   ' сборка: тело - в конце файла
 $ENDIF
 ' ----------------------------------------------------------------------------------
 '
@@ -9661,16 +8608,10 @@ $IFNDEF _CALLBACK_3
     Declare Function FuncBind_3 (Arg1 As Long, Arg2 As Long, Arg3 As Long) As Long
     DefInt lpCallBack_3  = CodePtr(MasterCallBack_3)
 
-    Function MasterCallBack_3 (hFunction As Long, Arg1 As Long, Arg2 As Long, Arg3 As Long) As Long
-        DefInt hBind
-        Bind hBind To FuncBind_3
-        hBind = hFunction
-        Result = CallFunc (hBind, Arg1, Arg2, Arg3)
-    End Function
+'~body Function MasterCallBack_3 (hFunction As Long, Arg1 As Long, Arg2 As Lo   ' сборка: тело - в конце файла
 
-    Function SetNewCallBack_3 (hFunction As Long) As Long
-        Result = SetNewFwToCallBack (lpCallBack_3, hFunction)
-    End Function
+DECLARE Function SetNewCallBack_3 (hFunction As Long) As Long
+'~body Function SetNewCallBack_3 (hFunction As Long) As Long   ' сборка: тело - в конце файла
 $ENDIF
 ' ----------------------------------------------------------------------------------
 '
@@ -9791,16 +8732,10 @@ $IFNDEF _CALLBACK_5
     Declare Function FuncBind_5 (Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As long, Arg5 As long) As Long
     DefInt lpCallBack_5  = CodePtr(MasterCallBack_5)
 
-    Function MasterCallBack_5 (hFunction As Long, Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As Long, Arg5 As long) As Long ' inc2026: hFunction РІРјРµСЃС‚Рѕ hBind: РІ Р·Р°РіРѕР»РѕРІРєРµ Р±С‹Р»Рѕ hBind - С‚Рѕ Р¶Рµ РёРјСЏ, С‡С‚Рѕ Сѓ Р»РѕРєР°Р»СЊРЅРѕР№ DefInt hBind (СЃС‚СЂРѕРєР° 50); РІ DECLARE (СЃС‚СЂРѕРєР° 45) Рё РІ С‚РµР»Рµ (СЃС‚СЂРѕРєР° 52) - hFunction, РєР°Рє РІ CallBack_4/6/7/8
-        DefInt hBind
-        Bind hBind To FuncBind_5
-        hBind = hFunction
-        Result = CallFunc (hBind, Arg1, Arg2, Arg3, Arg4, Arg5)
-    End Function
+'~body Function MasterCallBack_5 (hFunction As Long, Arg1 As Long, Arg2 As Lo   ' сборка: тело - в конце файла
 
-    Function SetNewCallBack_5 (hFunction As Long) As Long
-        Result = SetNewFwToCallBack (lpCallBack_5, hFunction)
-    End Function
+DECLARE Function SetNewCallBack_5 (hFunction As Long) As Long
+'~body Function SetNewCallBack_5 (hFunction As Long) As Long   ' сборка: тело - в конце файла
 $ENDIF
 ' ----------------------------------------------------------------------------------
 '
@@ -9865,9 +8800,8 @@ $IFNDEF _CALLBACK_6
         hBind = hFunction
         Result = CallFunc (hBind, Arg1, Arg2, Arg3, Arg4, Arg5, Arg6)
     End Function
-    Function SetNewCallBack_6 (hFunction As Long) As Long
-        Result = SetNewFwToCallBack (lpCallBack_6, hFunction)
-    End Function
+DECLARE Function SetNewCallBack_6 (hFunction As Long) As Long
+'~body Function SetNewCallBack_6 (hFunction As Long) As Long   ' сборка: тело - в конце файла
 $ENDIF
 ' ----------------------------------------------------------------------------------
 '
@@ -9923,16 +8857,10 @@ $IFNDEF _CALLBACK_7
     Declare Function FuncBind_7 (Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As long, Arg5 As long, Arg6 As long, Arg7 As long) As Long
     DefInt lpCallBack_7  = CodePtr(MasterCallBack_7)
 
-    Function MasterCallBack_7 (hFunction As Long, Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As Long, Arg5 As long, Arg6 As long, Arg7 As long) As Long
-        DefInt hBind
-        Bind hBind To FuncBind_7
-        hBind = hFunction
-        Result = CallFunc (hBind, Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, Arg7)
-    End Function
+'~body Function MasterCallBack_7 (hFunction As Long, Arg1 As Long, Arg2 As Lo   ' сборка: тело - в конце файла
 
-    Function SetNewCallBack_7 (hFunction As Long) As Long
-        Result = SetNewFwToCallBack (lpCallBack_7, hFunction)
-    End Function
+DECLARE Function SetNewCallBack_7 (hFunction As Long) As Long
+'~body Function SetNewCallBack_7 (hFunction As Long) As Long   ' сборка: тело - в конце файла
 $ENDIF
 ' ----------------------------------------------------------------------------------
 '
@@ -9988,16 +8916,10 @@ $IFNDEF _CALLBACK_8
     Declare Function FuncBind_8 (Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As long, Arg5 As long, Arg6 As long, Arg7 As long, Arg8 As long) As Long
     DefInt lpCallBack_8  = CodePtr(MasterCallBack_8)
 
-    Function MasterCallBack_8 (hFunction As Long, Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As Long, Arg5 As long, Arg6 As long, Arg7 As long, Arg8 As long) As Long
-        DefInt hBind
-        Bind hBind To FuncBind_8
-        hBind = hFunction
-        Result = CallFunc (hBind, Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, Arg7, Arg8)
-    End Function
+'~body Function MasterCallBack_8 (hFunction As Long, Arg1 As Long, Arg2 As Lo   ' сборка: тело - в конце файла
 
-    Function SetNewCallBack_8 (hFunction As Long) As Long
-        Result = SetNewFwToCallBack (lpCallBack_8, hFunction)
-    End Function
+DECLARE Function SetNewCallBack_8 (hFunction As Long) As Long
+'~body Function SetNewCallBack_8 (hFunction As Long) As Long   ' сборка: тело - в конце файла
 $ENDIF
 ' ----------------------------------------------------------------------------------
 '
@@ -11190,19 +10112,12 @@ Declare Function CMRegisterLanguage lib "cmcs21.dll" alias _
 '~dup const False = 0   ' повтор, первое: rapidq2.inc(82)
 
 '______________________________________________________________________________
-Function CM_SetLanguage (hWnd as long, pszName as string) as long
-Dim LangName as string
-LangName = pszName
-Result = Sendmsg (hWnd, CMM_SETLANGUAGE, 0, varptr(LangName))
-End Function
+DECLARE Function CM_SetLanguage (hWnd as long, pszName as string) as long
+'~body Function CM_SetLanguage (hWnd as long, pszName as string) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_GetLanguage (hwnd as long) as string
-Dim LangName as string
-LangName = String$(20, CM_MAX_LANGUAGE_NAME)
-Sendmsg (hWnd, CMM_GETLANGUAGE, 0, varptr(LangName))
-Result = LangName
-End function
+DECLARE Function CM_GetLanguage (hwnd as long) as string
+'~body Function CM_GetLanguage (hwnd as long) as string   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
 Function Cm_EnableColorSyntax (hWnd as long, Enable as integer) as long
@@ -11210,81 +10125,48 @@ Result = Sendmsg (hWnd, CMM_ENABLECOLORSYNTAX, Enable, 0)
 End Function
 
 '______________________________________________________________________________
-Function CM_EnableColumnSel( hwnd as long, bEnable as Bool) as long
-Result = Sendmsg (hWnd, CMM_ENABLECOLUMNSEL, bEnable, 0)
-End Function
+DECLARE Function CM_EnableColumnSel( hwnd as long, bEnable as Bool) as long
+'~body Function CM_EnableColumnSel( hwnd as long, bEnable as Bool) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_IsNormalizeCaseEnabled (hWnd as long) as long
-Result = Sendmsg (hWnd, CMM_ISNORMALIZECASEENABLED, 0, 0)
-End Function
+DECLARE Function CM_IsNormalizeCaseEnabled (hWnd as long) as long
+'~body Function CM_IsNormalizeCaseEnabled (hWnd as long) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_IsOvertypeEnabled (hWnd as long) as long
-Result = Sendmsg (hWnd, CMM_ISOVERTYPEENABLED, 0, 0)
-End Function
+DECLARE Function CM_IsOvertypeEnabled (hWnd as long) as long
+'~body Function CM_IsOvertypeEnabled (hWnd as long) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_EnableSelBounds (hWnd as long, bEnable as bool) as long
-Result = Sendmsg (hWnd, CMM_ENABLESELBOUNDS, 0, bEnable)
-End Function
+DECLARE Function CM_EnableSelBounds (hWnd as long, bEnable as bool) as long
+'~body Function CM_EnableSelBounds (hWnd as long, bEnable as bool) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_EnableLineToolTips (hWnd as long, bEnable as bool) as long
-Result = Sendmsg (hWnd, CMM_ENABLELINETOOLTIPS, 0, bEnable)
-End Function
+DECLARE Function CM_EnableLineToolTips (hWnd as long, bEnable as bool) as long
+'~body Function CM_EnableLineToolTips (hWnd as long, bEnable as bool) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function Cm_IsColorSyntaxEnabled (hWnd as long) as Bool
-Result = Sendmsg (hWnd, CMM_ISCOLORSYNTAXENABLED, 0, 0)
-End Function
+DECLARE Function Cm_IsColorSyntaxEnabled (hWnd as long) as Bool
+'~body Function Cm_IsColorSyntaxEnabled (hWnd as long) as Bool   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function Cm_SetColors (hWnd as long, colors as CM_COLORS) as long
-Dim Col_Mem as qmemorystream
-Dim output as long
-Col_Mem.position = 0
-Col_Mem.WriteUDT(colors)
-output = Sendmsg (hWnd, CMM_SETCOLORS, 0, Col_Mem.pointer)
-Col_Mem.close
-Result = output
-End Function
+DECLARE Function Cm_SetColors (hWnd as long, colors as CM_COLORS) as long
+'~body Function Cm_SetColors (hWnd as long, colors as CM_COLORS) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function Cm_RegisterLanguage (pszName as String, Lang as CM_LANGUAGE) as long
-Dim error as long
-Dim LangName as string
-LangName = pszName
-Dim RL_Mem as qmemorystream
-RL_mem.position = 0
-RL_Mem.WriteUDT(Lang)
-error = CMRegisterLanguage(varptr(LangName), RL_Mem.pointer)
-RL_Mem.close
-result = error
-End function
+DECLARE Function Cm_RegisterLanguage (pszName as String, Lang as CM_LANGUAGE) as long
+'~body Function Cm_RegisterLanguage (pszName as String, Lang as CM_LANGUAGE)    ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_SetFontStyles (hWnd as long, FontStyles as CM_FONTSTYLES) as long
-Dim Fn_Mem as qmemorystream
-Dim output as long
-Fn_Mem.position = 0
-Fn_Mem.WriteUDT(FontStyles)
-output = Sendmsg (hWnd, CMM_SETFONTSTYLES, 0, Fn_Mem.pointer)
-Fn_Mem.close
-Result = output
-End Function
+DECLARE Function CM_SetFontStyles (hWnd as long, FontStyles as CM_FONTSTYLES) as long
+'~body Function CM_SetFontStyles (hWnd as long, FontStyles as CM_FONTSTYLES)    ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_SetFontOwnership (hWnd as long, bEnable as bool) as long
-Result = Sendmsg (hWnd, CMM_SETFONTOWNERSHIP, bEnable, 0)
-IF CME_FAILURE Then ShowMessage "It Failed"
-End Function
+DECLARE Function CM_SetFontOwnership (hWnd as long, bEnable as bool) as long
+'~body Function CM_SetFontOwnership (hWnd as long, bEnable as bool) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_GetFontOwnership (hWnd as long, bEnable as bool) as long
-Result = Sendmsg (hWnd, CMM_GETFONTOWNERSHIP, bEnable, 0)
-IF CME_FAILURE Then ShowMessage "It Failed"
-End Function
+DECLARE Function CM_GetFontOwnership (hWnd as long, bEnable as bool) as long
+'~body Function CM_GetFontOwnership (hWnd as long, bEnable as bool) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
 Function CM_SetLinenumbering (hwnd as long, _
@@ -11300,34 +10182,28 @@ Result = output
 End function
 
 '______________________________________________________________________________
-Function CM_EnableLeftMargin (hWnd as long, benable as BOOL) as long
-Result = Sendmsg (hWnd, CMM_ENABLELEFTMARGIN, bEnable, 0)
-End Function
+DECLARE Function CM_EnableLeftMargin (hWnd as long, benable as BOOL) as long
+'~body Function CM_EnableLeftMargin (hWnd as long, benable as BOOL) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_IsLeftMarginEnabled (hWnd as long) as long
-Result = Sendmsg (hWnd, CMM_ISLEFTMARGINENABLED,0,0)
-End Function
+DECLARE Function CM_IsLeftMarginEnabled (hWnd as long) as long
+'~body Function CM_IsLeftMarginEnabled (hWnd as long) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_SetBorderStyle(hWnd as long, dwStyle as dword) as long
-Result = Sendmsg (hWnd, CMM_SETBORDERSTYLE, CM_BORDER_CORRAL ,0)
-End function
+DECLARE Function CM_SetBorderStyle(hWnd as long, dwStyle as dword) as long
+'~body Function CM_SetBorderStyle(hWnd as long, dwStyle as dword) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_SetModified (hwnd as long, bModified as bool) as Long
-Result = Sendmsg (hWnd, CMM_SETMODIFIED, bModified,0)
-End function
+DECLARE Function CM_SetModified (hwnd as long, bModified as bool) as Long
+'~body Function CM_SetModified (hwnd as long, bModified as bool) as Long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_IsModified (hWnd as long) as long
-Result = Sendmsg (hWnd, CMM_ISMODIFIED,0,0)
-End function
+DECLARE Function CM_IsModified (hWnd as long) as long
+'~body Function CM_IsModified (hWnd as long) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_EnableHideSel (hwnd as Long, bEnabled as Bool) As Long
-Result = Sendmsg (hWnd, CMM_ENABLEHIDESEL, bEnabled, 0)
-End function
+DECLARE Function CM_EnableHideSel (hwnd as Long, bEnabled as Bool) As Long
+'~body Function CM_EnableHideSel (hwnd as Long, bEnabled as Bool) As Long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
 Function CM_SetDivider (hWnd as long, nLine as Integer, bEnable as BOOL) as long
@@ -11340,90 +10216,68 @@ Result = Sendmsg (hWnd, CMM_GETDIVIDER, nline, 0)
 End Function
 
 '______________________________________________________________________________
-Function CM_EnableDragDrop (hWnd as Long, bEnable as bool) as long
-Result = Sendmsg (hWnd, CMM_ENABLEDRAGDROP, bEnable, 0)
-End function
+DECLARE Function CM_EnableDragDrop (hWnd as Long, bEnable as bool) as long
+'~body Function CM_EnableDragDrop (hWnd as Long, bEnable as bool) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_IsDragDropEnabled (hWnd as Long) as bool
-Result = Sendmsg (hWnd, CMM_ISDRAGDROPENABLED, 0, 0)
-End function
+DECLARE Function CM_IsDragDropEnabled (hWnd as Long) as bool
+'~body Function CM_IsDragDropEnabled (hWnd as Long) as bool   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_InsertText (hWnd as Long, pszText as string, pPos as CM_POSITION) as long
-Dim tmp as string
-tmp = pszText
-Result = Sendmsg (hWnd, CMM_INSERTTEXT, pPos, varptr(tmp))
-End function
+DECLARE Function CM_InsertText (hWnd as Long, pszText as string, pPos as CM_POSITION) as long
+'~body Function CM_InsertText (hWnd as Long, pszText as string, pPos as CM_PO   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_OpenFile (hWnd as long, pszFilename as string) as long
-Dim filename as string
-Filename = pszFilename
-Result = Sendmsg(hWnd, CMM_OPENFILE, 0, varptr(filename))
-End Function
+DECLARE Function CM_OpenFile (hWnd as long, pszFilename as string) as long
+'~body Function CM_OpenFile (hWnd as long, pszFilename as string) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_InsertFile (hWnd as long, pszFilename as string, pPos as CM_POSITION) as long
-Dim filename as string
-Filename = pszFilename
-Result = Sendmsg(hWnd, CMM_INSERTFILE, pPos, varptr(filename))
-End Function
+DECLARE Function CM_InsertFile (hWnd as long, pszFilename as string, pPos as CM_POSITION) as long
+'~body Function CM_InsertFile (hWnd as long, pszFilename as string, pPos as C   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_Print (hWnd as long, hdc as long, dwFlags as word) as long
-Result = Sendmsg(hwnd, CMM_PRINT, CM_PRINT_COLOR, 0)
-End Function
+DECLARE Function CM_Print (hWnd as long, hdc as long, dwFlags as word) as long
+'~body Function CM_Print (hWnd as long, hdc as long, dwFlags as word) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_CanCut (hWnd as long) as long
-Result = sendmsg(hWnd, CMM_CANCUT,0,0)
-End function
+DECLARE Function CM_CanCut (hWnd as long) as long
+'~body Function CM_CanCut (hWnd as long) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_Cut (hWnd as long) as long
-Result = sendmsg(hWnd, CMM_CUT,0,0)
-End function
+DECLARE Function CM_Cut (hWnd as long) as long
+'~body Function CM_Cut (hWnd as long) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_CanCopy (hWnd as long) as long
-Result = sendmsg(hWnd, CMM_CANCOPY,0,0)
-End function
+DECLARE Function CM_CanCopy (hWnd as long) as long
+'~body Function CM_CanCopy (hWnd as long) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_Copy (hWnd as long) as long
-Result = sendmsg(hWnd, CMM_COPY,0,0)
-End function
+DECLARE Function CM_Copy (hWnd as long) as long
+'~body Function CM_Copy (hWnd as long) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_Paste (hWnd as long) as long
-Result = sendmsg(hWnd, CMM_PASTE,0,0)
-End function
+DECLARE Function CM_Paste (hWnd as long) as long
+'~body Function CM_Paste (hWnd as long) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_Undo (hWnd as long) as long
-Result = sendmsg(hWnd, CMM_UNDO,0,0)
-End function
+DECLARE Function CM_Undo (hWnd as long) as long
+'~body Function CM_Undo (hWnd as long) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_Redo (hWnd as long) as long
-Result = sendmsg(hWnd, CMM_REDO,0,0)
-End function
+DECLARE Function CM_Redo (hWnd as long) as long
+'~body Function CM_Redo (hWnd as long) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_SetSelect (hWnd as long) as long
-Result = sendmsg(hWnd, CMM_SETSEL,0,0)
-End function
+DECLARE Function CM_SetSelect (hWnd as long) as long
+'~body Function CM_SetSelect (hWnd as long) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_SelectAll (hWnd as long) as long
-Result = sendmsg(hWnd, CMM_EXECUTECMD,CMD_SELECTALL,0)
-End function
+DECLARE Function CM_SelectAll (hWnd as long) as long
+'~body Function CM_SelectAll (hWnd as long) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_Capitalize (hWnd as long) as Long
-Result = sendmsg(hWnd, CMM_EXECUTECMD, CMD_WORDCAPITALIZE,0)
-End function
+DECLARE Function CM_Capitalize (hWnd as long) as Long
+'~body Function CM_Capitalize (hWnd as long) as Long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
 Function CM_DeleteLine (hWnd as long, nLine as integer) as long
@@ -11436,60 +10290,44 @@ Result = sendmsg(hWnd, CMM_EXECUTECMD, CMD_GOTOLINE,nLine)
 End function
 
 '______________________________________________________________________________
-Function CM_Upper (hWnd as long) as long
-Result = sendmsg(hWnd, CMM_EXECUTECMD, CMD_WORDUPPERCASE,0)
-End function
+DECLARE Function CM_Upper (hWnd as long) as long
+'~body Function CM_Upper (hWnd as long) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_Lower (hWnd as long) as long
-Result = sendmsg(hWnd, CMM_EXECUTECMD, CMD_WORDLOWERCASE,0)
-End function
+DECLARE Function CM_Lower (hWnd as long) as long
+'~body Function CM_Lower (hWnd as long) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_Home (hWnd as long) as long
-Result = sendmsg(hWnd, CMM_EXECUTECMD, CMD_HOME,0)
-End function
+DECLARE Function CM_Home (hWnd as long) as long
+'~body Function CM_Home (hWnd as long) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_Properties (hWnd as long) as long
-Result = sendmsg(hWnd, CMM_EXECUTECMD, CMD_PROPERTIES,0)
-End function
+DECLARE Function CM_Properties (hWnd as long) as long
+'~body Function CM_Properties (hWnd as long) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_FindNext (hWnd as long) as long
-Result = sendmsg(hWnd, CMM_EXECUTECMD, CMD_FINDNEXT,0)
-End function
+DECLARE Function CM_FindNext (hWnd as long) as long
+'~body Function CM_FindNext (hWnd as long) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_Delete (hWnd as long) as long
-Result = sendmsg(hWnd, CMM_EXECUTECMD, CMD_DELETE,0)
-End function
+DECLARE Function CM_Delete (hWnd as long) as long
+'~body Function CM_Delete (hWnd as long) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_DeleteSel (hWnd as long) as Long
-Result = sendmsg(hWnd, CM_DeleteSel(1),0,0)
-End function 
+DECLARE Function CM_DeleteSel (hWnd as long) as Long
+'~body Function CM_DeleteSel (hWnd as long) as Long   ' сборка: тело - в конце файла
 
 
 '______________________________________________________________________________
-Function CM_SetText (hWnd as Long, pszText as string) as long
-Result = sendmsg(hWnd, pszText, 0, 0)
-End function
+DECLARE Function CM_SetText (hWnd as Long, pszText as string) as long
+'~body Function CM_SetText (hWnd as Long, pszText as string) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_SaveFile (hWnd as long, Filename as string, bClearUndo as Bool) as long
-Dim tempfilename as string
-tempfilename = Filename
-SendMsg(hWnd, CMM_SAVEFILE,bClearUndo, varptr(tempFilename))
-IF CME_FAILURE  Then ShowMessage "There was a problem saving the file"
-End function
+DECLARE Function CM_SaveFile (hWnd as long, Filename as string, bClearUndo as Bool) as long
+'~body Function CM_SaveFile (hWnd as long, Filename as string, bClearUndo as    ' сборка: тело - в конце файла
 '______________________________________________________________________________
-Function CM_SaveFileAs (hWnd as long, Filename as string) as long
-Dim tempfilename as string
-tempfilename = Filename
-SendMsg(hWnd, CMM_SAVEFILE,, varptr(tempFilename))
-IF CME_FAILURE  Then ShowMessage "There was a problem saving the file"
-End function
+DECLARE Function CM_SaveFileAs (hWnd as long, Filename as string) as long
+'~body Function CM_SaveFileAs (hWnd as long, Filename as string) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
 Function CM_ShowScrollBar (hWnd as long, bHorizontal as bool, _
@@ -11509,29 +10347,24 @@ Result = SendMsg(hWnd, CMM_SETBOOKMARK, nline, bEnable)
 End function
 
 '______________________________________________________________________________
-Function CM_NextBookmark  (hWnd as long) as long
-Result = SendMsg(hWnd, CMM_EXECUTECMD, CMD_BOOKMARKNEXT, 0)
-End function
+DECLARE Function CM_NextBookmark  (hWnd as long) as long
+'~body Function CM_NextBookmark  (hWnd as long) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_PrevBookmark  (hWnd as long) as long
-Result = SendMsg(hWnd, CMM_EXECUTECMD, CMD_BOOKMARKPREV, 0)
-End function
+DECLARE Function CM_PrevBookmark  (hWnd as long) as long
+'~body Function CM_PrevBookmark  (hWnd as long) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_DelBookmark  (hWnd as long) as long
-Result = SendMsg(hWnd, CMM_EXECUTECMD, CMD_BOOKMARKTOGGLE, 0)
-End function
+DECLARE Function CM_DelBookmark  (hWnd as long) as long
+'~body Function CM_DelBookmark  (hWnd as long) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_SetImageList (hWnd as long, hImageList as long) as long
-Result = SendMsg(hWnd, CMM_SETIMAGELIST, 0, hImageList)
-End function
+DECLARE Function CM_SetImageList (hWnd as long, hImageList as long) as long
+'~body Function CM_SetImageList (hWnd as long, hImageList as long) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Function CM_GetImageList (hWnd as long) as long
-Result = SendMsg(hWnd, CMM_GETIMAGELIST, 0, 0)
-End function
+DECLARE Function CM_GetImageList (hWnd as long) as long
+'~body Function CM_GetImageList (hWnd as long) as long   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
 Function CM_SetMarginImages (hWnd as long, nLine as integer, _
@@ -11541,9 +10374,8 @@ Result = SendMsg(hWnd, CMM_SETMARGINIMAGES, nLine, 2^ByImageIndex)
 End function
 
 '______________________________________________________________________________
-Function CM_AboutBox (hWnd as long) as long
-Result = SendMsg(hWnd, CMM_ABOUTBOX,0,0)
-End function
+DECLARE Function CM_AboutBox (hWnd as long) as long
+'~body Function CM_AboutBox (hWnd as long) as long   ' сборка: тело - в конце файла
 
 
 
@@ -11564,15 +10396,12 @@ End function
 ' *****************************************************************************
 ' Commands and dialog boxes                                                   *
 ' *****************************************************************************
-Sub CMC_Find (hwnd as long)
-sendmsg(hWnd, CMM_EXECUTECMD,CMD_FIND,0)
-End sub
+DECLARE Sub CMC_Find (hwnd as long)
+'~body Sub CMC_Find (hwnd as long)   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
-Sub CMC_FindReplace (hwnd as long)
-SetFocus(hWnd)
-sendmsg(hWnd, CMM_EXECUTECMD,CMD_FINDREPLACE,0)
-End sub
+DECLARE Sub CMC_FindReplace (hwnd as long)
+'~body Sub CMC_FindReplace (hwnd as long)   ' сборка: тело - в конце файла
 
 
 
@@ -11646,16 +10475,8 @@ End function
 ' Other functions                                                             *
 ' *****************************************************************************
 
-Function LoadKeywords (Filename as string) as string
-Dim Tempstr as String
-Dim Load_fs as qfilestream
-Load_fs.open(Filename, 2)
-Load_fs.position = 0
-Tempstr = Load_fs.readstr (Load_fs.size)
-Load_fs.close
-Tempstr = replacesubstr$(Tempstr, chr$(13), "")
-Result = TempStr
-End Function
+DECLARE Function LoadKeywords (Filename as string) as string
+'~body Function LoadKeywords (Filename as string) as string   ' сборка: тело - в конце файла
 
 '______________________________________________________________________________
 FUNCTION SplitPath(Source AS STRING) AS STRING
@@ -12399,20 +11220,8 @@ End Function
 '*******************************************************************************
    
     
-Function WordToHex(ByVal lValue As Long) As String
-    Dim lByte As Long
-    Dim lCount As Long
-    DIM TEMPSTR AS STRING
-
-    TEMPSTR = ""
-    For lCount = 0 To 3
-
-        lByte = RShift(lValue, lCount * BITS_TO_A_BYTE) And m_lOnBits(BITS_TO_A_BYTE - 1)
-        TEMPSTR = TEMPSTR + Right$("0" + Hex$(lByte), 2)
-    Next
-    Result = TEMPSTR
-
-End Function
+DECLARE Function WordToHex(ByVal lValue As Long) As String
+'~body Function WordToHex(ByVal lValue As Long) As String   ' сборка: тело - в конце файла
 
 '*******************************************************************************
 ' MD5 (FUNCTION)
@@ -12454,126 +11263,8 @@ Const S11 As Long = 7
     Const S44 As Long = 21    
     Dim x(2) As Long    
     
-Function MD5(sMessage As String) As String
-    Dim k   As Long
-    Dim AA  As Long
-    Dim BB  As Long
-    Dim CC  As Long
-    Dim DD  As Long
-    Dim a   As Long
-    Dim b   As Long
-    Dim c   As Long
-    Dim d   As Long 
-    Dim mI  As Long
-    ' Steps 1 and 2.  Append padding bits and length and convert to words
-
-    ConvertToWordArray(sMessage)
-    
-    REDIM x(LBOUND(WordArray) TO UBOUND(WordArray)) AS LONG
-    FOR mI = LBOUND(WordArray) TO UBOUND(WordArray)
-        x(mi) = WordArray(mi) 'TODO
-    NEXT
-    
-    ' Step 3.  Initialise
-    a = &H67452301
-    b = &HEFCDAB89
-    c = &H98BADCFE
-    d = &H10325476
-
-    ' Step 4.  Process the message in 16-word blocks
-    For k = 0 To UBound(x) Step 16
-        AA = a
-        BB = b
-        CC = c
-        DD = d
-    
-    
-        ' The hex number on the end of each of the following procedure calls is
-        ' an element from the 64 element table constructed with
-        ' T(i) = Int(4294967296 * Abs(Sin(i))) where i is 1 to 64.
-        '
-        ' However, for speed we don't want to calculate the value every time.
-        MD5_FF a, b, c, d, x(k + 0), S11, &HD76AA478
-
-        MD5_FF d, a, b, c, x(k + 1), S12, &HE8C7B756
-        MD5_FF c, d, a, b, x(k + 2), S13, &H242070DB
-        MD5_FF b, c, d, a, x(k + 3), S14, &HC1BDCEEE
-        MD5_FF a, b, c, d, x(k + 4), S11, &HF57C0FAF
-        MD5_FF d, a, b, c, x(k + 5), S12, &H4787C62A
-        MD5_FF c, d, a, b, x(k + 6), S13, &HA8304613
-        MD5_FF b, c, d, a, x(k + 7), S14, &HFD469501
-        MD5_FF a, b, c, d, x(k + 8), S11, &H698098D8
-        MD5_FF d, a, b, c, x(k + 9), S12, &H8B44F7AF
-        MD5_FF c, d, a, b, x(k + 10), S13, &HFFFF5BB1
-        MD5_FF b, c, d, a, x(k + 11), S14, &H895CD7BE
-        MD5_FF a, b, c, d, x(k + 12), S11, &H6B901122
-        MD5_FF d, a, b, c, x(k + 13), S12, &HFD987193
-        MD5_FF c, d, a, b, x(k + 14), S13, &HA679438E
-        MD5_FF b, c, d, a, x(k + 15), S14, &H49B40821
-
-        
-        MD5_GG a, b, c, d, x(k + 1), S21, &HF61E2562
-        MD5_GG d, a, b, c, x(k + 6), S22, &HC040B340
-        MD5_GG c, d, a, b, x(k + 11), S23, &H265E5A51
-        MD5_GG b, c, d, a, x(k + 0), S24, &HE9B6C7AA
-        MD5_GG a, b, c, d, x(k + 5), S21, &HD62F105D
-        MD5_GG d, a, b, c, x(k + 10), S22, &H2441453
-        MD5_GG c, d, a, b, x(k + 15), S23, &HD8A1E681
-        MD5_GG b, c, d, a, x(k + 4), S24, &HE7D3FBC8
-        MD5_GG a, b, c, d, x(k + 9), S21, &H21E1CDE6
-        MD5_GG d, a, b, c, x(k + 14), S22, &HC33707D6
-        MD5_GG c, d, a, b, x(k + 3), S23, &HF4D50D87
-        MD5_GG b, c, d, a, x(k + 8), S24, &H455A14ED
-        MD5_GG a, b, c, d, x(k + 13), S21, &HA9E3E905
-        MD5_GG d, a, b, c, x(k + 2), S22, &HFCEFA3F8
-        MD5_GG c, d, a, b, x(k + 7), S23, &H676F02D9
-        MD5_GG b, c, d, a, x(k + 12), S24, &H8D2A4C8A
-            
-        MD5_HH a, b, c, d, x(k + 5), S31, &HFFFA3942
-        MD5_HH d, a, b, c, x(k + 8), S32, &H8771F681
-        MD5_HH c, d, a, b, x(k + 11), S33, &H6D9D6122
-        MD5_HH b, c, d, a, x(k + 14), S34, &HFDE5380C
-        MD5_HH a, b, c, d, x(k + 1), S31, &HA4BEEA44
-        MD5_HH d, a, b, c, x(k + 4), S32, &H4BDECFA9
-        MD5_HH c, d, a, b, x(k + 7), S33, &HF6BB4B60
-        MD5_HH b, c, d, a, x(k + 10), S34, &HBEBFBC70
-        MD5_HH a, b, c, d, x(k + 13), S31, &H289B7EC6
-        MD5_HH d, a, b, c, x(k + 0), S32, &HEAA127FA
-        MD5_HH c, d, a, b, x(k + 3), S33, &HD4EF3085
-        MD5_HH b, c, d, a, x(k + 6), S34, &H4881D05
-        MD5_HH a, b, c, d, x(k + 9), S31, &HD9D4D039
-        MD5_HH d, a, b, c, x(k + 12), S32, &HE6DB99E5
-        MD5_HH c, d, a, b, x(k + 15), S33, &H1FA27CF8
-        MD5_HH b, c, d, a, x(k + 2), S34, &HC4AC5665
-    
-        MD5_II a, b, c, d, x(k + 0), S41, &HF4292244
-        MD5_II d, a, b, c, x(k + 7), S42, &H432AFF97
-        MD5_II c, d, a, b, x(k + 14), S43, &HAB9423A7
-        MD5_II b, c, d, a, x(k + 5), S44, &HFC93A039
-        MD5_II a, b, c, d, x(k + 12), S41, &H655B59C3
-        MD5_II d, a, b, c, x(k + 3), S42, &H8F0CCC92
-        MD5_II c, d, a, b, x(k + 10), S43, &HFFEFF47D
-        MD5_II b, c, d, a, x(k + 1), S44, &H85845DD1
-        MD5_II a, b, c, d, x(k + 8), S41, &H6FA87E4F
-        MD5_II d, a, b, c, x(k + 15), S42, &HFE2CE6E0
-        MD5_II c, d, a, b, x(k + 6), S43, &HA3014314
-        MD5_II b, c, d, a, x(k + 13), S44, &H4E0811A1
-        MD5_II a, b, c, d, x(k + 4), S41, &HF7537E82
-        MD5_II d, a, b, c, x(k + 11), S42, &HBD3AF235
-        MD5_II c, d, a, b, x(k + 2), S43, &H2AD7D2BB
-        MD5_II b, c, d, a, x(k + 9), S44, &HEB86D391
-    
-    
-        a = AddUnsigned(a, AA)
-        b = AddUnsigned(b, BB)
-        c = AddUnsigned(c, CC)
-        d = AddUnsigned(d, DD)
-        
-        
-    Next
-    ' Step 5.  Output the 128 bit digest
-    result = LCase$(WordToHex(a) & WordToHex(b) & WordToHex(c) & WordToHex(d))
-End Function
+DECLARE Function MD5(sMessage As String) As String
+'~body Function MD5(sMessage As String) As String   ' сборка: тело - в конце файла
 'Class_initialize
 $OPTION WEAKTYPE OFF
 $OPTION VBDLL    OFF
@@ -15936,41 +14627,8 @@ end type
 
 
 '*****************************************
-sub SetPARAFORMAT (Sender as QRichedit)
-Dim Mem as QMemoryStream
-dim pf as _paraformat
-Dim TabSpace as Long
-Dim x as Long
-
-Mem.Position=0
-Mem.WriteUdt pf
-
-pf.cbSize=Mem.Size
-pf.dwMask=PFM_TABSTOPS 'or PFM_ALIGNMENT or PFM_STARTINDENT or PFM_OFFSET or PFM_RIGHTINDENT or PFM_NUMBERING
-
-pf.cTabCount=8
-
-'--The tab spaces are measured in twips. 1440 is roughly 1 inch
-TabSpace=0.2*1440
-For x=0 to 31
-	pf.rgxTabs(x)=TabSpace*x
-Next x
-
-'//pf.dxStartIndent=Val(StartIndent.Text)*1440
-'//pf.dxOffset=Val(OffsetIndent.Text)*1440
-'//pf.dxRightIndent=Val(RightIndent.Text)*1440
-
-'//if aLeft.Checked then pf.wAlignment=PFA_LEFT
-'//if aCenter.Checked then pf.wAlignment=PFA_CENTER
-'//if aRight.Checked then pf.wAlignment=PFA_RIGHT
-
-'pf.wNumbering=aBullet.Checked*PFN_BULLET
-
-Mem.Position=0
-Mem.WriteUdt pf
-SendMessageA(Sender.handle, EM_SETPARAFORMAT, 0, Mem.Pointer) 
-Mem.Close
-end sub
+DECLARE sub SetPARAFORMAT (Sender as QRichedit)
+'~body sub SetPARAFORMAT (Sender as QRichedit)   ' сборка: тело - в конце файла
 
 
 '============================================================================
@@ -16022,97 +14680,73 @@ end sub
 '
 ' - more libraries are coming soon :)
 
-sub nOpenMouseDlg(index%)
-PID = Shell("rundll32.exe shell32.dll,Control_RunDLL main.cpl @0,"+str$(index), 5)
-end sub
+DECLARE sub nOpenMouseDlg(index%)
+'~body sub nOpenMouseDlg(index%)   ' сборка: тело - в конце файла
 
-sub nOpenKeyboardDlg(index%) 
-if index%>1 then index%=0
-PID = Shell("rundll32.exe shell32.dll,Control_RunDLL _
-            main.cpl @1,"+str$(index%), 5)
-end sub
+DECLARE sub nOpenKeyboardDlg(index%)
+'~body sub nOpenKeyboardDlg(index%)   ' сборка: тело - в конце файла
 
-sub OpenPrintersFolder
-PID = Shell("rundll32.exe shell32.dll,Control_RunDLL main.cpl @2", 5)
-end sub
+DECLARE sub OpenPrintersFolder
+'~body sub OpenPrintersFolder   ' сборка: тело - в конце файла
 
-sub OpenFontsFolder
-PID = Shell("rundll32.exe shell32.dll,Control_RunDLL main.cpl @3", 5)
-end sub
+DECLARE sub OpenFontsFolder
+'~body sub OpenFontsFolder   ' сборка: тело - в конце файла
 
-sub nOpenDisplayDlg(index%)
-PID = Shell("rundll32.exe shell32.dll,Control_RunDLL desk.cpl @0,"+str$(index%), 5)
-end sub
+DECLARE sub nOpenDisplayDlg(index%)
+'~body sub nOpenDisplayDlg(index%)   ' сборка: тело - в конце файла
 
-sub OpenTimeDlg
-PID = Shell("rundll32.exe shell32.dll,Control_RunDLL timedate.cpl @0", 5)
-end sub
+DECLARE sub OpenTimeDlg
+'~body sub OpenTimeDlg   ' сборка: тело - в конце файла
 
-sub nOpenDialingDlg(index%)
-PID = Shell("rundll32.exe shell32.dll,Control_RunDLL telephon.cpl @0,"+str$(index%), 5)
-end sub
+DECLARE sub nOpenDialingDlg(index%)
+'~body sub nOpenDialingDlg(index%)   ' сборка: тело - в конце файла
 
-sub nOpenSystemDialog(index%)
-PID = Shell("rundll32.exe shell32.dll,Control_RunDLL sysdm.cpl @0"+str$(index%), 5)
-end sub
+DECLARE sub nOpenSystemDialog(index%)
+'~body sub nOpenSystemDialog(index%)   ' сборка: тело - в конце файла
 
-sub OpenAddNewHardwareDlg
-PID = Shell("rundll32.exe shell32.dll,Control_RunDLL sysdm.cpl @1", 5)
-end sub
+DECLARE sub OpenAddNewHardwareDlg
+'~body sub OpenAddNewHardwareDlg   ' сборка: тело - в конце файла
 
-sub nOpenScannerDlg(index%)
-PID = Shell("rundll32.exe shell32.dll,Control_RunDLL sticpl.cpl @0", 5)
-end sub
+DECLARE sub nOpenScannerDlg(index%)
+'~body sub nOpenScannerDlg(index%)   ' сборка: тело - в конце файла
 
-sub OpenThemesDlg
-PID = Shell("rundll32.exe shell32.dll,Control_RunDLL themes.cpl @0", 5)
-end sub
+DECLARE sub OpenThemesDlg
+'~body sub OpenThemesDlg   ' сборка: тело - в конце файла
 
-sub nOpenAddRemoveProgramsDlg(index%)
-PID = Shell("rundll32.exe shell32.dll,Control_RunDLL appwiz.cpl @0,"+str$(index%), 5)
-end sub
+DECLARE sub nOpenAddRemoveProgramsDlg(index%)
+'~body sub nOpenAddRemoveProgramsDlg(index%)   ' сборка: тело - в конце файла
 
-sub nOpenPowerMgmtDlg(index%)
-PID = Shell("rundll32.exe shell32.dll,Control_RunDLL powercfg.cpl @0,"+str$(index%), 5)
-end sub
+DECLARE sub nOpenPowerMgmtDlg(index%)
+'~body sub nOpenPowerMgmtDlg(index%)   ' сборка: тело - в конце файла
 
-sub nOpenPasswordsDlg(index%)
-PID = Shell("rundll32.exe shell32.dll,Control_RunDLL password.cpl @0,"+str$(index%), 5)
-end sub
+DECLARE sub nOpenPasswordsDlg(index%)
+'~body sub nOpenPasswordsDlg(index%)   ' сборка: тело - в конце файла
 
-sub nOpenModemDlg(index%)
-PID = Shell("rundll32.exe shell32.dll,Control_RunDLL modem.cpl @0,"+str$(index%), 5)
-end sub
+DECLARE sub nOpenModemDlg(index%)
+'~body sub nOpenModemDlg(index%)   ' сборка: тело - в конце файла
 
-sub nOpenMMDeviceDlg(index%)
-PID = Shell("rundll32.exe shell32.dll,Control_RunDLL mmsys.cpl @0,"+str$(index), 5)
-end sub
+DECLARE sub nOpenMMDeviceDlg(index%)
+'~body sub nOpenMMDeviceDlg(index%)   ' сборка: тело - в конце файла
 
-sub OpenSoundsDlg
-PID = Shell("rundll32.exe shell32.dll,Control_RunDLL mmsys.cpl @1", 5)
-end sub
+DECLARE sub OpenSoundsDlg
+'~body sub OpenSoundsDlg   ' сборка: тело - в конце файла
 
-sub nOpenGamesDlg(index%)
-PID = Shell("rundll32.exe shell32.dll,Control_RunDLL joy.cpl @0,"+str$(index%), 5)
-end sub
+DECLARE sub nOpenGamesDlg(index%)
+'~body sub nOpenGamesDlg(index%)   ' сборка: тело - в конце файла
 
-sub nOpenRegionalDlg(index%)
-PID = Shell("rundll32.exe shell32.dll,Control_RunDLL intl.cpl @0,"+str$(index%), 5)
-end sub
+DECLARE sub nOpenRegionalDlg(index%)
+'~body sub nOpenRegionalDlg(index%)   ' сборка: тело - в конце файла
 
-sub nOpenInternetDlg(index%)
-PID = Shell("rundll32.exe shell32.dll,Control_RunDLL inetcpl.cpl @0,"+str$(index%), 5)
-end sub
+DECLARE sub nOpenInternetDlg(index%)
+'~body sub nOpenInternetDlg(index%)   ' сборка: тело - в конце файла
 
-sub nOpenUsersDlg(index%)
-PID = Shell("rundll32.exe shell32.dll,Control_RunDLL inetcpl.cpl @1,"+str$(index%), 5)
-end sub
+DECLARE sub nOpenUsersDlg(index%)
+'~body sub nOpenUsersDlg(index%)   ' сборка: тело - в конце файла
 
 ' Only if one has TweakUI98 (or greater?) installed
 ' this one is not configured to accept arguments to display tabs at index%
-sub OpenTweakUIDlg
-PID = Shell("rundll32.exe shell32.dll,Control_RunDLL tweakui.cpl @0", 5)
-end sub
+DECLARE sub OpenTweakUIDlg
+'~body sub OpenTweakUIDlg   ' сборка: тело - в конце файла
   
 '============================================================================
 '[build_inc] conversion1.inc
@@ -17657,41 +16291,8 @@ End Function
 '~dup end function
 
 '*****************************************
-Function QPDecode( Source As String) As String
-outtxt$=""
-
-Source=replacesubstr$(Source,"="+crlf,"")
-Source=replacesubstr$(Source,"="+cr,"")
-Source=replacesubstr$(Source,"="+lf,"")
-
-HexCharCount=tally(Source,"=")
-'print"HexCharCount=";HexCharCount
-
-sepidx=instr(Source,"=")
-outtxt$=left$(Source,sepidx-1)
-
-for ii=1 to HexCharCount
-	'HexChar$=field$(Source,"=",ii+1)
-	HexChar$=mid$(Source,sepidx+1,2)
-	'print"HexChar$=";HexChar$
-	outtxt$=outtxt$+chr$(val(CONVBASE$(HexChar$, 16, 10)))
-	'print"headerTxtConv$=";outtxt$
-	
-	sepidxNew=instr(sepidx+1,Source,"=")
-	if sepidxNew>sepidx+2 then
-		txt1$=  mid$(Source,sepidx+3,(sepidxNew)-(sepidx+3))
-		outtxt$=outtxt$+txt1$
-	elseif sepidxNew=0 then
-		' lastpart
-		txt1$=  mid$(Source,sepidx+3,len(Source)-(sepidx+2))
-		outtxt$=outtxt$+txt1$
-		
-	end if
-	sepidx=sepidxNew
-next ii
-
-result=outtxt$
-end function
+DECLARE Function QPDecode( Source As String) As String
+'~body Function QPDecode( Source As String) As String   ' сборка: тело - в конце файла
 
 '*****************************************
 '~dup Function GetMSGHeader( Source As String) As String   ' повтор, первое: eml.inc(123)
@@ -18095,25 +16696,8 @@ Declare Function SHGetFileInfo Lib "shell32" Alias "SHGetFileInfoA" _
 'Declare Function ConvertToTruePath(ByVal sPath As String) As String
 
 '*****************************************
-Function ConvertToTruePath(ByVal sPath As String) As String
-  ' Parse... breaks the string parameter down to individual folders
-  Dim DirParser As QStringlist : DirParser.Clear : DirParser.Parse(sPath, "\")
-  Dim RootDir As String : RootDir = DirParser.Item(0) & "\"
-  Dim SubFolderPath As String : SubFolderPath = ""
-  Dim TruePath As String : TruePath = ""
-  Dim Index As Long : Index = 0
-
-  If DirParser.ItemCount > 1 Then
-    For Index = 1 To (DirParser.ItemCount-1)
-      SubFolderPath = SubFolderPath & DirParser.Item(Index) & "\"
-      SFI.szDisplayName = String$(260, Chr$(0))
-      SHGetFileInfo(RootDir & SubFolderPath, 0, SFI, SizeOf(SFI), SHGFI_DISPLAYNAME)
-      TruePath = TruePath & Left$(SFI.szDisplayName, Instr(SFI.szDisplayName, Chr$(0))-1) & "\"
-    Next Index
-  End If
-
-  Result = (RootDir & TruePath)
-End Function
+DECLARE Function ConvertToTruePath(ByVal sPath As String) As String
+'~body Function ConvertToTruePath(ByVal sPath As String) As String   ' сборка: тело - в конце файла
 '============================================================================
 '[build_inc] Copy of NOTA.inc
 '============================================================================
@@ -18241,10 +16825,7 @@ End Function
 	'EXAMPLE:
 		'TimeOpened$ = CloseNOTASys
 
-	Function CloseNOTASys
-		CloseNOTASys = NOTASys.ReadString("LastOpened")
-		NOTASys.CloseKey
-	End function
+'~body Function CloseNOTASys   ' сборка: тело - в конце файла
 
 
 'CloseNOTAUser()
@@ -18253,10 +16834,7 @@ End Function
 	'EXAMPLE:
 		'TimeOpened$ = CloseNOTAUser
 
-	Function CloseNOTAUser
-		CloseNOTAUser = NOTAUser.ReadString("LastOpened")
-		NOTAUser.CloseKey
-	END Function
+'~body Function CloseNOTAUser   ' сборка: тело - в конце файла
 
 
 'Die()
@@ -18266,9 +16844,7 @@ End Function
 		'	Die
 		'end if
 
-	Function Die
-		ExitProcess(9999)
-	End Function
+'~body Function Die   ' сборка: тело - в конце файла
 
 
 'DivBytes()
@@ -18381,14 +16957,7 @@ End Function
 	'			ShowMessage "Open file failed."
 	'	end if
 
-	Function GetComputerName$
-		dim bpmMachineName$ as string
-		dim bpmMachineNameLength& as long
-		bpmMachineName$ = Space$(200)
-		bpmMachineNameLength& = 200
-		GetComputerName( VarPtr(bpmMachineName$), VarPtr(bpmMachineNameLength&) )
-		GetComputerName$ = Left$(bpmMachineName$, bpmMachineNameLength&)
-	end function
+'~body Function GetComputerName$   ' сборка: тело - в конце файла
 
 
 'GetFreeDrive()
@@ -18436,51 +17005,7 @@ End Function
 		'Error& = GetLastError
 		'ShowMessage ( GetLastError$("NT4SP6ErrList.txt", Error&) )
 
-	Function GetLastError$
-		dim bpmLookUpError$ as string
-		bpmLookUpError$ = "No error match found"
-		if mid$(bpmErrorFileName$,2,2) = ":\\" then
-			bpmErrorFileName$ = bpmErrorFileName$
-			else
-				if mid$(bpmErrorFileName$,1,1) = chr$(92) then
-					if FileExists(Left$(CurDir$,2) + "\\" + bpmErrorFileName$) then
-							bpmErrorFileName$ = ( Left$(CurDir$,2) + "\\" + bpmErrorFileName$)
-						else
-							if FileExists(CurDir$ + "\\" + bpmErrorFileName$) then
-								bpmErrorFileName$ = (CurDir$ + "\\" + bpmErrorFileName$)
-								else
-									GetLastError$ = ("GetLastError$ Error!\n" + bpmErrorFileName$ + "\n Error file not found.  See syntax in NOTA.inc.")
-							end if
-					end if
-				end if
-		end if
-		if bpmErrorCodeNumber& = 0 then
-			GetLastError$ = "ErrorCode = 0 \"No Error.\""
-			end
-		end if
-		dim bpmErrorFile as QFileStream
-		if fileExists(bpmErrorFileName$) then
-			bpmErrorFile.open(bpmErrorFileName$,0)
-			dim bpmErrorTemp$ as string
-			dim bpmErrorWaldo& as long
-			dim bpmErrorHex$ as string
-			for bpmErrorWaldo&  = 0 to bpmErrorFile.LineCount
-				bpmErrorTemp$ = bpmErrorFile.Readline
-				if Val( Mid$( bpmErrorTemp$, 1, INSTR(bpmErrorTemp$, "\t") ) ) = bpmErrorCodeNumber& then
-					bpmErrorTemp$ = Right$( bpmErrorTemp$, ( len(bpmErrorTemp$) - instr(bpmErrorTemp$, "\t") ) )
-					bpmErrorHex$ = Mid$( bpmErrorTemp$, 1, ( INSTR(bpmErrorTemp$, "\t") - 1 ) )
-					bpmErrorWaldo& = bpmErrorFile.LineCount
-					bpmErrorTemp$ = Right$( bpmErrorTemp$, ( len(bpmErrorTemp$) - instr(bpmErrorTemp$, "\t") ) )
-					bpmLookUpError$ = (bpmErrorTemp$ + "\nERRORCODE:" + str$(bpmErrorCodeNumber&) + "  HEX:" + bpmErrorHex$)
-				end if
-			next
-			Else
-				GetLastError$ = ("GetLastError$ Error!\n" + bpmErrorFileName$ + "\n Error file not found.  See syntax in NOTA.inc.")
-				end
-		end if
-		bpmErrorFile.Close
-		GetLastError$ = bpmLookUpError$
-	End Function
+'~body Function GetLastError$   ' сборка: тело - в конце файла
 
 
 'GetTempPath$()
@@ -18489,20 +17014,7 @@ End Function
 	'EXAMPLE:
 		'? "Temp is ";GetTempPath$
 
-	Function GetTempPath$
-		dim bpmLengthOfTemp& as long
-		dim bpmTempPath$ as string
-		bpmTempPath$ = Space$(200)
-		bpmLengthOfTemp& = 200
-		GetTempPath( VarPtr(bpmLengthOfTemp&), VarPtr(bpmTempPath$) )
-		bpmTempPath$ = RTrim$(bpmTempPath$)
-		if RIGHT$( bpmTempPath$, ( Len(bpmTempPath$) - 2 ) ) = "\\" then
-			bpmLengthOfTemp& = ( Len(bpmTempPath$) - 2 )
-			else
-				bpmLengthOfTemp& = ( Len(bpmTempPath$) - 1 )
-		end if
-		GetTempPath$ = Left$(bpmTempPath$, bpmLengthOfTemp&)
-	end Function
+'~body Function GetTempPath$   ' сборка: тело - в конце файла
 
 
 'GetUserName$()
@@ -18510,14 +17022,7 @@ End Function
 	'EXAMPLE:
 		'User$ = GetUserName$
 
-	Function GetUserName$
-		Dim bpmGetUserVar$ as string
-		Dim bpmGetUserLength& as long
-		bpmGetUserVar$ = Space$(200)
-		bpmGetUserLength& = 200
-		GetUserName( VarPtr(bpmGetUserVar$), VarPtr(bpmGetUserLength&) )
-		GetUserName$ = Left$(bpmGetUserVar$, (bpmGetUserLength& - 1) )
-	end function
+'~body Function GetUserName$   ' сборка: тело - в конце файла
 
 
 'GetWindowsDirectory$()
@@ -18526,23 +17031,13 @@ End Function
 	'EXAMPLE:
 		'? GetWindowsDirectory$
 
-	Function GetWindowsDirectory$
-		Dim bpmWinDir$ as string
-		Dim bpmWinDirLength& as long
-		dim bpmReturnLength& as long
-		bpmWinDirLength& = 200
-		bpmWinDir$ = Space$(200)
-		bpmReturnLength& = GetWindowsDirectory( VarPtr(bpmWinDir$), VarPtr(bpmWinDirLength&) )
-		GetWindowsDirectory$ = Left$(bpmWinDir$, bpmReturnLength&)
-	end function
+'~body Function GetWindowsDirectory$   ' сборка: тело - в конце файла
 
 
 'KillIt()
 	'my own, dont ask why
 
-	Function KillIt
-		Application.Terminate
-	End Function
+'~body Function KillIt   ' сборка: тело - в конце файла
 
 
 'LogEvent()
@@ -18550,9 +17045,7 @@ End Function
 	'EXAMPLE:
 		'LogEvent("i", "2323", "Information event 2323")
 
-	Function LogEvent (bpmSeverity$ as String, bpmCategory$ as string, bpmEventText$ as string)
-		Logevent = STR$( shell( ("LOGEVENT.EXE -s " + bpmSeverity$ + " -c " + bpmCategory$ + " \"" + bpmEventText$ + "\"") ) )
-	end Function
+'~body Function LogEvent (bpmSeverity$ as String, bpmCategory$ as string, bpm   ' сборка: тело - в конце файла
 
 
 'MakeMOTD()
@@ -18561,37 +17054,7 @@ End Function
 	'EXAMPLE:
 		'WhereIsTheMOTD$ = MakeMOTD
 
-	Function MakeMOTD 
-		Dim bpmMOTDRoot$ as string
-		Dim bpmKey as QRegistry
-		bpmKey.RootKey = &H80000002
-		bpmKey.OpenKey ("Software\\Network_Of_The_Apes", 1)
-		if bpmKey.ValueExists("MOTDRoot") = 0 then
-			bpmKey.WriteString("MOTDRoot","C:")
-			bpmMOTDRoot$ = "C:"
-			else
-				bpmMOTDRoot$ = bpmKey.ReadString("MOTDRoot")
-		end if
-		bpmKey.CloseKey
-		if FileExists( (bpmMOTDRoot$ + "\\MOTD_" + ApeDate$ + ".txt") ) = 0 then
-			dim bpmMOTDFile as QfileStream
-			bpmMOTDFile.Open( (bpmMOTDRoot$ + "\\MOTD_" + ApeDate$ + ".txt"), 65535 )
-			bpmMOTDFile.WriteLine("(((((((((((((((((((((((((((((((((NETWORK OF THE APES)))))))))))))))))))))))))))))))))")
-			bpmMOTDFile.WriteLine("MESSAGE OF THE DAY")
-			bpmMOTDFile.WriteLine( (Date$ + "  " +  Time$) )
-			bpmMOTDFile.WriteLine("-------------------------------------------------------------------------------------")
-			bpmMOTDFile.WriteLine("")
-			bpmMOTDFile.WriteLine("")
-			bpmMOTDFile.WriteLine("")
-			bpmMOTDFile.WriteLine("  bm :)-~")
-			bpmMOTDFile.WriteLine("")
-			bpmMOTDFile.WriteLine("-------------------------------------------------------------------------------------")
-			bpmMOTDFile.WriteLine( ("For previous messages of the day look at " + bpmMOTDRoot$ + "\\MOTD_LOG.TXT.") )
-			bpmMOTDFile.Close
-		end if
-		Shell ("NotePad.EXE " + bpmMOTDRoot$ + "\\MOTD_" + ApeDate$ + ".txt")
-		MakeMOTD = (bpmMOTDRoot$ + "\\MOTD_" + ApeDate$ + ".txt")
-	End Function
+'~body Function MakeMOTD   ' сборка: тело - в конце файла
 
 
 'OpenNOTASys()
@@ -18600,11 +17063,7 @@ End Function
 	'EXAMPLE:
 		'WriteTime$ = OpenNOTASys
 
-	Function OpenNOTASys
-		NOTASys.OpenKey("Software\\Network_Of_The_Apes", 1)
-		NOTASys.WriteString( "LastOpened", (Date$ + "  " + Time$) )
-		OpenNOTASys = NOTASys.ReadString("LastOpened")
-	End Function
+'~body Function OpenNOTASys   ' сборка: тело - в конце файла
 
 
 'OpenNOTAUser()
@@ -18613,11 +17072,7 @@ End Function
 	'EXAMPLE:
 		'WriteTime$ = OpenNOTAUser
 
-	Function OpenNOTAUser
-		NOTAUser.OpenKey("Software\\Network_Of_The_Apes", 1)
-		NOTAUser.WriteString( "LastOpened", (Date$ + "  " + Time$) )
-		OpenNOTAUser = NOTAUser.ReadString("LastOpened")
-	End Function
+'~body Function OpenNOTAUser   ' сборка: тело - в конце файла
 
 
 'ProgramName$()
@@ -18692,31 +17147,12 @@ dim blockCount AS LONG, currentRecID AS LONG
 dim fs AS QFILESTREAM, __s AS STRING
 
 '*
-sub dbtCreate( dbtArch as string)
-dim streamEx as QMemorystream
-
-'print "Creating memo table.." ; dbtArch
-
-if fs.open(dbtArch, fmCreate) = FALSE then
- 'showMessage("Create fail ..  "+dbtArch)
- print "Create fail ..  "+dbtArch
- end
-end if    
-
-streamEx.writeNUM(1,4)
-streamEx.size = 512      'Reserve rest
-
-fs.CopyFrom(streamEx, 0)
-fs.close
-'print "Memo done!!"
-end sub
+DECLARE sub dbtCreate( dbtArch as string)
+'~body sub dbtCreate( dbtArch as string)   ' сборка: тело - в конце файла
 
 
-sub dbtClose
- fs.close
- blockCount = 0
- __s = ""
-end sub
+DECLARE sub dbtClose
+'~body sub dbtClose   ' сборка: тело - в конце файла
 
 '*
 sub dbtOpen(dbtArch as string,  mode as integer)
@@ -18731,15 +17167,8 @@ currentRecID = -1
 end sub
 
 '*
-private sub readRecord
-Eom = 0   'End of record
-__s = ""
-
-while Eom=0
-  __s = __s + fs.readSTR(512)
-  Eom = INSTR(__s, Chr$(&H1A))
-wend
-end sub
+DECLARE sub readRecord
+'~body private sub readRecord   ' сборка: тело - в конце файла
 
 '*
 function MemoAppend(text as string) as integer
@@ -18779,66 +17208,12 @@ end function
 
 
 '*
-function Memoget(n as long) as string
-'n is the identifier of requested record ("pointer")
-if n < 0  or n > blockCount  THEN
-   exit function
-end if
-
-currentRecID = n      'Remember    
-
-fs.position = n*512   'Beginning of data
-readRecord            ' Uses __s 
-result = Left$( __s, INSTR(__s, Chr$(&H1A))-1 )
-end function
+DECLARE function Memoget(n as long) as string
+'~body function Memoget(n as long) as string   ' сборка: тело - в конце файла
 
 '*
-function memoUpdate(newtext as string) as long
-'If the number of 512-byte-blocks to be occupied with the received text is >
-'than original number of blocks, then the text will be recorded at end of
-'file, and the original record will remains in "place" but without any reference
-'to it. Otherwise the original record is used but the end of text mark will be 
-'updated.
-
-n& = currentRecID     'This number is a "pointer"!!
-'print "Memoupdate....."; "  Current pointer "; n&
-if n& = -1  then
-  goto leave
-end if
-
-'Old contents was saved to __s
-l&      = Len(__s)
-blocks% = l&/512
-rest%   = l& mod 512
-
-fs.position = n&*512    'Begin of record
-select case Len(newText)
-case is <= l&
-   fs.write(newText)
-   fs.writeNUM(&H1A, 1)
-
-case else
-   select case 1+Len(newtext) / 512
-   case blocks%
-     select case Len(newtext) mod 512
-     case is > 0       'It doesn't fill the block
-       fs.write(newText)
-       fs.writeNUM(&H1A, 1)
-
-     case 0  
-       n& = MemoAppend(newtext)
-     end select  
-
-   case else
-     n& = MemoAppend(newtext)
-   end select  
-end select   
-
-currentRecID = -1   'Reset
-
-leave:
-result = n&     'Block count
-end function
+DECLARE function memoUpdate(newtext as string) as long
+'~body function memoUpdate(newtext as string) as long   ' сборка: тело - в конце файла
 
    
 '============================================================================
@@ -18866,29 +17241,10 @@ TimerDBG.Interval = 300
 TimerDBG.Enabled = 1  
 TimerDBG.OnTimer = TimerOverDbg 
 '= ========================================'
-SUB FormWndProc (Hwnd&, uMsg&, wParam&, lParam&) 
-   IF uMsg& = WM_COPYDATA THEN 
-      DIM MStream AS QMEMORYSTREAM 
-      MStream.MemCopyFrom(lParam&, 12) 
-      MStream.Position = 0 
-      MStream.ReadUDT(DataStruct) 
-      MStream.Close 
-      strRecv = VARPTR$(DataStruct.lpData) 
-      flgRecv=1
-   END IF 
-END SUB 
+'~body SUB FormWndProc (Hwnd&, uMsg&, wParam&, lParam&)   ' сборка: тело - в конце файла
 '= ========================================'
-SUB SendData  
-   DEFLNG wndhnd 
-   wndhnd=Findwindow("TForm",AppName) 
-   IF wndhnd=0 THEN 
-      SHOWMESSAGE "Could not find "+AppName 
-      EXIT SUB 
-   END IF 
-   DataStruct.lpData = VARPTR(strSend) 
-   DataStruct.cbData = LEN(strSend) 
-   SENDMESSAGE wndhnd, WM_COPYDATA, 0, DataStruct 
-END SUB 
+DECLARE SUB SendData
+'~body SUB SendData   ' сборка: тело - в конце файла
 '= ========================================'
 CREATE _DebugFORM AS QFORM 
 	CAPTION="DebuggerWnd"
@@ -18911,66 +17267,13 @@ END CREATE
 '== dbg1 == 
 
 '-- ***************************************************************************************************
-sub TimerOverDbg
-if _DebugFORM.Visible=0 then _DebugFORM.Visible=1
-end sub
+'~body sub TimerOverDbg   ' сборка: тело - в конце файла
 
 '-- ***************************************************************************************************
-sub MsgHandler
-MsgHandlerStart=1
-while   1=1
-	select case  strRecv
-	case "RunItOnClick"
-		flgRecv=0
-		exit while
-	case "PauseOnClick"
-		if flgRecv=1 then
-			flgRecv=0
-		end if
-	case "ContinueOnClick"
-		flgRecv=0
-		exit while
-	case "StepOverOnClick"
-		if flgRecv=1  then
-			flgRecv=0
-			exit while
-		end if
-	case "StepInToOnClick"
-		if flgRecv=1 then
-			flgRecv=0
-			exit while
-		end if
-	case  "RunToCursOnClick"
-		strSend="RunToCursOnClick received"
-	case   "AddWatchOnClick"
-		strSend="AddWatchOnClick received"
-	case    "DelWatchOnClick"
-		strSend="DelWatchOnClick received"
-	case     "DelAllWatchOnClick"
-		strSend="DelAllWatchOnClick received"
-	case      "ToggleBreakPointOnClick"
-		strSend="ToggleBreakPointOnClick received"
-	case  "ClearAllBreakPointsOnClick"
-		strSend= "ClearAllBreakPointsOnClick received"
-	case "FormCloseOnClick"
-		end
-		exit while
-	case else
-		exit while
-	end select
-	doevents
-wend
-strSend=_DebugEdit.Text
-senddata
-END SUB
+'~body sub MsgHandler   ' сборка: тело - в конце файла
 
 '-- ***************************************************************************************************
-sub  _DebugFormClose
-flgRecv=1
-strRecv="FormCloseOnClick"
-_DebugForm.Close
-end
-end sub
+'~body sub  _DebugFormClose   ' сборка: тело - в конце файла
 '============================================================================
 '[build_inc] debugNoSend.inc
 '============================================================================
@@ -19146,42 +17449,11 @@ dim ModeFlg as byte
     ~DebugForm.center
 
 '--**************************************************'
-Subi RQDebug(...)
-GetLinesLack=ParamStrCount-~WatchDisplay.LineCOunt-1   
-print "GetLinesLack="; GetLinesLack
-FOR Ij = 1 TO GetLinesLack
-	~WatchDisplay.addString  "-" 'paramStr$(i)     
-next iJ
-
-FOR Ij = 1 TO ParamStrCount
-	~WatchDisplay.Line(ij-1)=paramStr$(ij)+"="+str$(paramval(ij))
-NEXT Ij
-
-pv=paramval(ParamValCount)
-'print"pv=";pv
-op=OperatorsPos(pv)
-'print"op=";op
-ol=OperatorsLenth(pv)
-'print"ol=";ol
-
-call ViewStep (Op,OL)
-
-if ModeFlg=0 then  ~DebugForm.showmodal else  ~DebugForm.show
-
-End Subi '=======================================================================
-
+DECLARE Subi RQDebug(...)
+'~body Subi RQDebug(...)   ' сборка: тело - в конце файла
 
 '***************************************
-sub ViewStep (OperPos,OperLength)
-~SrcDisplay.SelStart=OperPos
-~SrcDisplay.SelLength=OperLength
-end sub
-
-'***************************************
-sub Trace
-ModeFlg=0
-~DebugForm.close
-end sub
+'~body sub Trace   ' сборка: тело - в конце файла
 
 '***************************************
 sub ~Continue
@@ -19221,53 +17493,16 @@ end sub
 '-- ************************************************************************'
 
 ' Число из таблицы "|имя=число|имя=число|" по имени; нет имени - -1
-FUNCTION HtmTableValue(TableText AS STRING, KeyText AS STRING) AS LONG
-  DIM KeyPos AS LONG, ValueStart AS LONG, ValueEnd AS LONG, FoundValue AS LONG
-  FoundValue = -1
-  KeyPos = INSTR(TableText, "|" + KeyText + "=")
-  IF KeyPos > 0 THEN
-    ValueStart = KeyPos + LEN(KeyText) + 2
-    ValueEnd = INSTR(ValueStart, TableText, "|")
-    FoundValue = VAL(MID$(TableText, ValueStart, ValueEnd - ValueStart))
-  END IF
-  HtmTableValue = FoundValue
-END FUNCTION
+DECLARE FUNCTION HtmTableValue(TableText AS STRING, KeyText AS STRING) AS LONG
+'~body FUNCTION HtmTableValue(TableText AS STRING, KeyText AS STRING) AS LONG   ' сборка: тело - в конце файла
 
 ' Десятичное число из цифр; пусто или не цифра - -1
-FUNCTION HtmDecValue(DigitText AS STRING) AS LONG
-  DIM CharIdx AS LONG, DigitNum AS LONG, NumValue AS LONG
-  NumValue = -1
-  IF LEN(DigitText) > 0 AND LEN(DigitText) <= 7 THEN
-    NumValue = 0
-    FOR CharIdx = 1 TO LEN(DigitText)
-      DigitNum = INSTR("0123456789", MID$(DigitText, CharIdx, 1)) - 1
-      IF DigitNum < 0 THEN
-        NumValue = -1
-        EXIT FOR
-      END IF
-      NumValue = NumValue * 10 + DigitNum
-    NEXT
-  END IF
-  HtmDecValue = NumValue
-END FUNCTION
+DECLARE FUNCTION HtmDecValue(DigitText AS STRING) AS LONG
+'~body FUNCTION HtmDecValue(DigitText AS STRING) AS LONG   ' сборка: тело - в конце файла
 
 ' Шестнадцатеричное число; пусто или не цифра - -1
-FUNCTION HtmHexValue(HexText AS STRING) AS LONG
-  DIM CharIdx AS LONG, DigitNum AS LONG, NumValue AS LONG
-  NumValue = -1
-  IF LEN(HexText) > 0 AND LEN(HexText) <= 6 THEN
-    NumValue = 0
-    FOR CharIdx = 1 TO LEN(HexText)
-      DigitNum = INSTR("0123456789abcdef", LCASE$(MID$(HexText, CharIdx, 1))) - 1
-      IF DigitNum < 0 THEN
-        NumValue = -1
-        EXIT FOR
-      END IF
-      NumValue = NumValue * 16 + DigitNum
-    NEXT
-  END IF
-  HtmHexValue = NumValue
-END FUNCTION
+DECLARE FUNCTION HtmHexValue(HexText AS STRING) AS LONG
+'~body FUNCTION HtmHexValue(HexText AS STRING) AS LONG   ' сборка: тело - в конце файла
 
 ' Символ по коду Unicode - в Windows-1251; нет в кодировке - "?"
 FUNCTION HtmCodeToChar(CodeNum AS LONG) AS STRING
@@ -20516,137 +18751,9 @@ MathString$(34) = "ceil"
 MathString$(35) = "cbrt"
 MathString$(36) = "sqr"
 
-FUNCTION EvaluateExpression (BYREF MathString$ AS STRING, DRGMode AS BYTE) AS DOUBLE
- EvaluateErrorFlag=0
- formula$ = MathString$
- IF DRGMode = 0 THEN 
-   CMode = 57.2957795130824                  'converts to degrees
-   CModeN = 0.0174532925199433               'converts to radians
- ELSEIF DRGMode = 2 THEN 
-   CMode = 63.6619772367584                  'converts to grad
-   CModeN =0.0157079632679489                'converts to radians
- ELSE
-   CMode =1
-   CModeN =1
- END IF
- CheckSyntax
- IF EvaluateErrorFlag=0 THEN ExpSolverEdit 
- IF EvaluateErrorFlag=0 THEN 
-   EvaluateExpression = EvaluateAnswer
- ELSE
-   EvaluateExpression = 0
- END IF
-END FUNCTION
+'~body FUNCTION EvaluateExpression (BYREF MathString$ AS STRING, DRGMode AS B   ' сборка: тело - в конце файла
 
-SUB CheckSyntax
-  DEFBYTE x
-  DEFSHORT posops, startmath, wherepi
-  DEFSTR math$, mathchar$, errmath$, oldmathchar$, ops$, afterendpar$
-  formula$ = LCASE$(REPLACESUBSTR$(formula$," ",""))
-  formula$ = REPLACESUBSTR$(formula$,"pi","3.14159265358979")
-  changeE
-  math$ = ""
-  startmath = 0
-  errmath$ = ""
-  mathchar$ = ""       
-  IF TALLY(formula$,")(") <> 0 THEN
-    MessageDlg("Invalid -> ')('. Please correct syntax.", mtError, mbOK, 0)
-    EvaluateErrorFlag = 1
-    EXIT SUB
-  END IF    
-  IF TALLY(formula$,"(") <> TALLY(formula$,")") THEN
-    MessageDlg("Missing parenthesis. Please correct syntax.", mtError, mbOK, 0)
-    EvaluateErrorFlag = 1
-    EXIT SUB
-  ELSE
-    DO     
-      INC startmath
-      oldmathchar$ = mathchar$
-      mathchar$ = MID$(formula$,startmath,1)
-      SELECT CASE mathchar$
-        CASE "e"
-          SELECT CASE oldmathchar$
-            CASE "","^","c","s","-","+","*","/","\"
-              math$ = math$ + mathchar$
-              errmath$ = math$
-          END SELECT
-        CASE "a","b","c","f","g","h","i","l","n","o","p","q","r","s","t","v","x"              
-          math$ = math$ + mathchar$
-          errmath$ = errmath$ + mathchar$
-          SELECT CASE oldmathchar$
-            CASE "0" TO "9"
-              MessageDlg(errmath$ + " is invalid. Please correct syntax.", mtError, mbOK, 0)
-              EvaluateErrorFlag = 1
-              EXIT SUB
-          END SELECT            
-        CASE "d","j","k","m","u","w","y","z"
-          errmath$ = errmath$ + mathchar$
-          FOR x = 1 TO 5
-            ops$ = MID$("+-*/^",x,1)
-            posops = RINSTR(errmath$,ops$)
-            IF posops <> 0 THEN EXIT FOR
-          NEXT x
-          errmath$ = RIGHT$(errmath$,LEN(errmath$)-posops)
-          MessageDlg(errmath$ + "?" + " Please correct syntax.", mtError, mbOK, 0)
-          EvaluateErrorFlag = 1
-          EXIT SUB
-        CASE ")"
-          afterendpar$ = MID$(formula$,startmath+1,1)
-          SELECT CASE afterendpar$
-            CASE "0" TO "9"
-              MessageDlg(")"+ afterendpar$ + " is invalid." + " Please correct syntax.", mtError, mbOK, 0)
-              EvaluateErrorFlag = 1
-              EXIT SUB
-          END SELECT            
-        CASE "("
-          SELECT CASE oldmathchar$
-            CASE "0" TO "9"
-              MessageDlg(oldmathchar$ + "( is invalid." + " Please correct syntax.", mtError, mbOK, 0)
-              EvaluateErrorFlag = 1
-              EXIT SUB
-          END SELECT               
-          IF math$ <> "" THEN
-            FOR x = 1 TO 36
-              IF math$ = MathString$(x) THEN 
-                math$ = ""
-              END IF
-            NEXT x
-            IF math$ <> "" AND math$ <> "pi" THEN      'if there's a match, skip this
-              MessageDlg(errmath$ + "?" + " Please correct syntax.", mtError, mbOK, 0)
-              EvaluateErrorFlag = 1
-              EXIT SUB
-            END IF
-          END IF
-        CASE "0" TO "9"
-          errmath$ = errmath$ + mathchar$
-          SELECT CASE oldmathchar$
-            CASE "a" TO "d", "f" TO "z"
-              FOR x = 1 TO 5
-                ops$ = MID$("+-*/^",x,1)
-                posops = RINSTR(errmath$,ops$)
-                IF posops <> 0 THEN EXIT FOR
-              NEXT x
-              errmath$ = RIGHT$(errmath$,LEN(errmath$)-posops)
-              MessageDlg(errmath$ + "?" + " Please correct syntax.", mtError, mbOK, 0)
-              EvaluateErrorFlag = 1
-              EXIT SUB
-          END SELECT
-        CASE "+","-","*","/","^"
-          IF (math$ <> "" AND math$ <> "pi") AND (INSTR(math$,"(") = 0 OR INSTR(math$,")") = 0) THEN
-            FOR x = 1 TO 5
-              ops$ = MID$("+-*/^",x,1)
-              posops = RINSTR(errmath$,ops$)
-              IF posops <> 0 THEN EXIT FOR
-            NEXT x
-            math$ = RIGHT$(math$,LEN(math$)-posops)
-            MessageDlg("Missing parenthesis. Please correct syntax.", mtError, mbOK, 0)
-            EvaluateErrorFlag = 1
-            EXIT SUB
-          END IF              
-      END SELECT    
-    LOOP UNTIL startmath = LEN(formula$)
-  END IF
-END SUB
+'~body SUB CheckSyntax   ' сборка: тело - в конце файла
 
 SUB ExpSolverEdit
 DEFBYTE reformatted, formulaL, par1, par2, operator, preoperator, postoperator, start, x, y, i
@@ -20925,9 +19032,7 @@ SUB Functions(par1 AS INTEGER,mathval$ AS STRING)
   formula$ = REPLACESUBSTR$(formula$,oldval$,insertval$)
 END SUB
 
-SUB DoInPrecision(value AS DOUBLE, value$ AS STRING)
-  value$ = FORMAT$("%g",value)
-END SUB
+'~body SUB DoInPrecision(value AS DOUBLE, value$ AS STRING)   ' сборка: тело - в конце файла
 
 SUB changeE
   DEFBYTE posE, x
@@ -20959,48 +19064,7 @@ SUB changeE
   LOOP                  
 END SUB
 
-SUB CheckE(newstring$ AS STRING)
-  DEFSTR powerEnd$, oldbase$, checkneg$, base$, power$, newbase$
-  DEFBYTE whereE, whereDot, x, move, powerEnd
-  DEFSHORT power
-  whereE = INSTR(newstring$,"E")
-  x = whereE
-  IF whereE = 0 THEN
-    EXIT SUB
-  ELSE
-    whereDot = RINSTR(whereE,newstring$,".")
-    IF whereDot < 2 THEN whereDot = 2      'since in scientific format
-    DO
-      INC x
-      IF x >= LEN(newstring$) THEN
-        powerEnd = x
-        EXIT DO
-      END IF  
-      powerEnd$ = MID$(newstring$,x,1)
-      SELECT CASE powerEnd$
-        CASE "+","*","/",")"
-          powerEnd = x - 1
-          EXIT DO
-        CASE "-"
-          IF x <> whereE + 1 THEN
-            powerEnd = x - 1
-            EXIT DO
-          END IF
-      END SELECT
-    LOOP
-    oldbase$ = LEFT$(newstring$,whereE-1)
-    base$ = REPLACESUBSTR$(oldbase$,".","")
-    power$ = MID$(newstring$,whereE+1,powerEnd-whereE)
-    power = VAL(power$)
-    IF power => 14 THEN EXIT SUB
-    checkneg$ = LEFT$(power$,1)
-    IF checkneg$ = "-" THEN
-      move = ABS(power)
-      newbase$ = "." + STRING$(move-(whereDot-1),"0") + base$
-    END IF
-    newstring$ = newbase$
-  END IF
-END SUB
+'~body SUB CheckE(newstring$ AS STRING)   ' сборка: тело - в конце файла
   
 $TYPECHECK OFF   ' сборка: вернуть после evaluate.inc
 '============================================================================
@@ -21028,10 +19092,8 @@ declare function FBReplaceSubStrFunc lib "fbfunc2.dll" alias "FBREPLACESUBSTRFUN
 (byref SrcString as string, SString as string, RString as string ) as integer
 
 
-function fbReplaceSubStr$ (SrcString as string, SString as string, RString as string ) as string  ' обертка FBReplaceSubStrFunc
-SrcString4$=SrcString
-fbReplaceSubStr$=varptr$(FBReplaceSubStrFunc (SrcString4$, SString, RString) )
-end function
+DECLARE function fbReplaceSubStr$ (SrcString as string, SString as string, RString as string ) as string
+'~body function fbReplaceSubStr$ (SrcString as string, SString as string, RSt   ' сборка: тело - в конце файла
 '============================================================================
 '[build_inc] fileops.inc
 '============================================================================
@@ -24032,55 +22094,12 @@ dim      MinLeft As Long
 dim      MinTop As Long
 
 '-- ***********************************************************************'
-Sub SetFormPos(hwnd as long, SetX as long, SetY as long)
-    Dim WinEst As WINDOWPLACEMENT
-    'Dim Punto As POINTAPI
-    Dim rtn As Long
-    'set the new min/max positions
-    'Punto.x = 100'200
-    'Punto.y = 100
-    'initialize the structure
-    WinEst.flags =WPF_SETMINPOSITION
-    WinEst.Length = SIZEOF(WinEst)
-    WinEst.showCmd =SW_MINIMIZE 'SW_RESTORE'SW_SHOWMINIMIZED'SW_HIDE'' SW_MINIMIZE
-    WinEst.ptMinPosition_X =SetX' Punto.X 'set new MINIMIZED position'
-    WinEst.ptMinPosition_Y =SetY' Punto.Y
-    
-    '- WinEst.rcNormalPosition = Rectan
-     WinEst.rcNormalPosition_Left    =  Rectan.Left  '200'' set new normal position
-     WinEst.rcNormalPosition_Top     =  Rectan.Top  '200'' 
-     WinEst.rcNormalPosition_Right   =  Rectan.Right '250 ''
-     WinEst.rcNormalPosition_Bottom  =  Rectan.Bottom'250'' 
-    
-    'set the new window placement (minimized)
-    rtn = SetWindowPlacement(hwnd, WinEst) 
-End Sub
+DECLARE Sub SetFormPos(hwnd as long, SetX as long, SetY as long)
+'~body Sub SetFormPos(hwnd as long, SetX as long, SetY as long)   ' сборка: тело - в конце файла
 
 '-- ***********************************************************************'
-Sub GetFormPos (Sender as QForm)
-    'Tip submitted by pyp99 (pyp99@hotmail.com)
-    Dim WinEst As WINDOWPLACEMENT
-    Dim rtn As Long
-    WinEst.Length = SIZEOF(WinEst)
-    'get the current window placement
-    rtn = GetWindowPlacement(Sender.handle, WinEst)   
-    'print "rtn=" ,rtn
-
-
-    '-Rectan = WinEst.rcNormalPosition
-    Rectan.Left = WinEst.rcNormalPosition_Left  
-    Rectan.Top= WinEst.rcNormalPosition_Top  
-    Rectan.Right= WinEst.rcNormalPosition_Right 
-    Rectan.Bottom= WinEst.rcNormalPosition_Bottom 
-
-   MinTop= WinEst.ptMinPosition_Y
-   MinLeft=WinEst.ptMinPosition_X
-
-    'print "Rectan.Right=" ,Rectan.Right
-    'print "Rectan.Top=" ,Rectan.Top
-    'print "Rectan.Bottom=" ,Rectan.Bottom
-    
-End Sub
+DECLARE Sub GetFormPos (Sender as QForm)
+'~body Sub GetFormPos (Sender as QForm)   ' сборка: тело - в конце файла
  
 '============================================================================
 '[build_inc] Form1.inc
@@ -24257,15 +22276,8 @@ End Create
 '~dup END FUNCTION
 
 '______________________________________________________________________________
-Function LoadFile (Filename as string, hwnd As Long) as string
-Dim Tempstr as String
-Dim Load_fs as qfilestream
-Load_fs.open(Filename, 2)
-Load_fs.position = 0
-Tempstr = Load_fs.readstr(Load_fs.size)
-Load_fs.close
-Result = Sendmsg (hWnd, CMM_INSERTTEXT , 0, Varptr(TempStr))
-End Function
+DECLARE Function LoadFile (Filename as string, hwnd As Long) as string
+'~body Function LoadFile (Filename as string, hwnd As Long) as string   ' сборка: тело - в конце файла
 '______________________________________________________________________________
 '~dup Sub RegisterRapidQLanguage   ' повтор, первое: CM_Functions.inc(508)
 '~dup Dim NewLanguage as CM_LANGUAGE
@@ -25399,187 +23411,104 @@ CONST rqc = 2.997925 * 10 ^ 8      '(m/s: velocity of light in vacuum)
 '-------------------------------------------------------------------------------
 '   ACOSH() returns the hyperbolic areacosine of x
 '-------------------------------------------------------------------------------
-Function ACOSH(value AS DOUBLE) AS DOUBLE
-  SELECT CASE value
-   CASE IS < 1
-    MessageBox("Invalid Argument .", "ACOSH - Error", 0)
-   CASE IS >= 1
-    ACOSH =  ( LOG (value + SQR( value ^ 2 - 1 )))
-  END SELECT
-End Function
+DECLARE Function ACOSH(value AS DOUBLE) AS DOUBLE
+'~body Function ACOSH(value AS DOUBLE) AS DOUBLE   ' сборка: тело - в конце файла
 '-------------------------------------------------------------------------------
 '   ACOT() returns the arccotangent of x
 '-------------------------------------------------------------------------------
-Function ACOT(value AS DOUBLE) AS DOUBLE
- ACOT = ((rqPI / 2) - ATAN (value))
-End Function
+DECLARE Function ACOT(value AS DOUBLE) AS DOUBLE
+'~body Function ACOT(value AS DOUBLE) AS DOUBLE   ' сборка: тело - в конце файла
 '-------------------------------------------------------------------------------
 '   ACOTH() returns the hyperbolic areacotangent of x
 '-------------------------------------------------------------------------------
-Function ACOTH(value AS DOUBLE) AS DOUBLE
- SELECT CASE ABS (value)
-  CASE IS > 1
-   ACOTH =  (LOG((value + 1) / (value - 1)) * 0.5)
-  CASE ELSE
-   MessageBox("ERROR: Invalid Argument .", "ACOTH - Error", 0)
- END SELECT
-End Function
+DECLARE Function ACOTH(value AS DOUBLE) AS DOUBLE
+'~body Function ACOTH(value AS DOUBLE) AS DOUBLE   ' сборка: тело - в конце файла
 '-------------------------------------------------------------------------------
 '   ACOSEC() returns the arccosecans of x
 '-------------------------------------------------------------------------------
-Function ACOSEC(value AS DOUBLE) AS DOUBLE
- SELECT CASE ABS (value)
-  CASE IS < 1
-   MessageBox("Invalid Argument .", "ACOSEC - Error", 0)
-  CASE ELSE
-   ACOSEC =  (ASIN(1/value))
-  END SELECT
-End Function
+DECLARE Function ACOSEC(value AS DOUBLE) AS DOUBLE
+'~body Function ACOSEC(value AS DOUBLE) AS DOUBLE   ' сборка: тело - в конце файла
 '-------------------------------------------------------------------------------
 '   ACOSECH() returns the hyperbolic arccosecans of x
 '-------------------------------------------------------------------------------
-Function ACOSECH(value AS DOUBLE) AS DOUBLE
- SELECT CASE ABS(value)
-  CASE = 0
-   MessageBox("Invalid Argument .", "ACOSECH - Error", 0)
-  CASE ELSE
-   ACOSECH =  (ASINH(1 / value))
- END SELECT
-End Function
+DECLARE Function ACOSECH(value AS DOUBLE) AS DOUBLE
+'~body Function ACOSECH(value AS DOUBLE) AS DOUBLE   ' сборка: тело - в конце файла
 '-------------------------------------------------------------------------------
 '   ADDZ() returns the sum of two complex numbers
 '-------------------------------------------------------------------------------
-Function ADDZ(Z()AS DOUBLE ) AS DOUBLE
-    re1 = Z(0): im1 = Z(1) : re2 = Z(2) : im2 = Z(3)
-    Z(0) = re1 + re2
-    Z(1) = im1 + im2
-    Z(2) = 0
-    Z(3) = 0
-    ADDZ = Z()
-End Function
+DECLARE Function ADDZ(Z()AS DOUBLE ) AS DOUBLE
+'~body Function ADDZ(Z()AS DOUBLE ) AS DOUBLE   ' сборка: тело - в конце файла
 '-------------------------------------------------------------------------------
 '   ASINH() returns the hyperbolic areasine of x
 '-------------------------------------------------------------------------------
-Function ASINH(value AS DOUBLE) AS DOUBLE
- ASINH = LOG (value + (SQR(value * value + 1)))
-End Function
+DECLARE Function ASINH(value AS DOUBLE) AS DOUBLE
+'~body Function ASINH(value AS DOUBLE) AS DOUBLE   ' сборка: тело - в конце файла
 '-------------------------------------------------------------------------------
 '   ASEC() returns the arccosecans of x
 '-------------------------------------------------------------------------------
-Function ASEC(value AS DOUBLE) AS DOUBLE
- SELECT CASE ABS (value)
-  CASE IS < 1
-    MessageBox("ERROR:Invalid Argument .", "ASEC - Error", 0)
-  CASE ELSE
-   ASEC =  (rqPI / 2 - ASIN( 1 / value))
- END SELECT
-End Function
+DECLARE Function ASEC(value AS DOUBLE) AS DOUBLE
+'~body Function ASEC(value AS DOUBLE) AS DOUBLE   ' сборка: тело - в конце файла
 '-------------------------------------------------------------------------------
 '   ASECH() returns the hyperbolic arccosecans of x
 '-------------------------------------------------------------------------------
-Function ASECH(value AS DOUBLE) AS DOUBLE
- SELECT CASE ABS (value)
-  CASE IS > 1
-   MessageBox("ERROR:Invalid Argument .", "ASECH - Error", 0)
-  CASE IS <= 0
-   MessageBox("ERROR:Invalid Argument .", "ASECH - Error", 0)
-  CASE ELSE
-   ASECH = (ACOSH(1 / value))
- END SELECT
-End Function
+DECLARE Function ASECH(value AS DOUBLE) AS DOUBLE
+'~body Function ASECH(value AS DOUBLE) AS DOUBLE   ' сборка: тело - в конце файла
 '-------------------------------------------------------------------------------
 '   ATANH() returns the hyperbolic areatangent of x
 '-------------------------------------------------------------------------------
-Function ATANH(value AS DOUBLE) AS DOUBLE
- SELECT CASE ABS(value)
-  CASE IS < 1
-   ATANH = (LOG((1 + value) / (1 - value)) * 0.5)
-  CASE 0
-   ATANH = 1
-  CASE ELSE
-   MessageBox("ERROR:Invalid Argument .", "ATANH - Error", 0)
- END SELECT
-End Function
+DECLARE Function ATANH(value AS DOUBLE) AS DOUBLE
+'~body Function ATANH(value AS DOUBLE) AS DOUBLE   ' сборка: тело - в конце файла
 '--------------------------------------------------------------------------------
 '   CONJZ() returns the conjugated complex number of a complex number
 '--------------------------------------------------------------------------------
-Function CONJZ(Z()AS DOUBLE ) AS DOUBLE
-    re = Z(0): im = Z(1)
-    Z(1) = im * (-1)
-    CONJZ = Z()
-End Function
+DECLARE Function CONJZ(Z()AS DOUBLE ) AS DOUBLE
+'~body Function CONJZ(Z()AS DOUBLE ) AS DOUBLE   ' сборка: тело - в конце файла
 '-------------------------------------------------------------------------------
 '   COSEC() returns the cosecans of x
 '-------------------------------------------------------------------------------
-Function COSEC(value AS DOUBLE) AS DOUBLE
- COSEC = 1 / SIN(value)
-End Function
+DECLARE Function COSEC(value AS DOUBLE) AS DOUBLE
+'~body Function COSEC(value AS DOUBLE) AS DOUBLE   ' сборка: тело - в конце файла
 '-------------------------------------------------------------------------------
 '   COSECH() returns the hyperbolic cosecans of x
 '-------------------------------------------------------------------------------
-Function COSECH(value AS DOUBLE) AS DOUBLE
- COSECH = (2 / (EXP(value) - EXP(value * -1)))
-End Function
+DECLARE Function COSECH(value AS DOUBLE) AS DOUBLE
+'~body Function COSECH(value AS DOUBLE) AS DOUBLE   ' сборка: тело - в конце файла
 '-------------------------------------------------------------------------------
 '   COSH() returns the hyperbolic cosine of x
 '-------------------------------------------------------------------------------
-Function COSH(value AS DOUBLE) AS DOUBLE
- COSH = (0.5 * (EXP(value) + EXP(value * -1)))
- IF value = 0 THEN COSH = 1
-End Function
+DECLARE Function COSH(value AS DOUBLE) AS DOUBLE
+'~body Function COSH(value AS DOUBLE) AS DOUBLE   ' сборка: тело - в конце файла
 '--------------------------------------------------------------------------------
 '   COSZ() returns the cosine of a complex number
 '--------------------------------------------------------------------------------
-Function COSZ(Z()AS DOUBLE ) AS DOUBLE
-    re = Z(0): im = Z(1)
-    Z(0) = COS(re) * COSH(im)
-    Z(1) = SIN(re) * SINH(im)
-    COSZ = Z()
-End Function
+DECLARE Function COSZ(Z()AS DOUBLE ) AS DOUBLE
+'~body Function COSZ(Z()AS DOUBLE ) AS DOUBLE   ' сборка: тело - в конце файла
 '--------------------------------------------------------------------------------
 '   COSHZ() sine of a complex number
 '--------------------------------------------------------------------------------
-Function COSHZ(Z()AS DOUBLE ) AS DOUBLE
-    re = Z(0): im = Z(1)
-    Z(0) = COSH(re) * COS(im)
-    Z(1) = SINH(re) * SIN(im)
-    COSHZ = Z()
-End Function
+DECLARE Function COSHZ(Z()AS DOUBLE ) AS DOUBLE
+'~body Function COSHZ(Z()AS DOUBLE ) AS DOUBLE   ' сборка: тело - в конце файла
 '-------------------------------------------------------------------------------
 '   COT() returns the cotangent of x
 '-------------------------------------------------------------------------------
-Function COT(value AS DOUBLE) AS DOUBLE
- COT = 1 / TAN(value)
-End Function
+DECLARE Function COT(value AS DOUBLE) AS DOUBLE
+'~body Function COT(value AS DOUBLE) AS DOUBLE   ' сборка: тело - в конце файла
 '-------------------------------------------------------------------------------
 '   COTH() returns the hyperbolic cotangent of x
 '-------------------------------------------------------------------------------
-Function COTH(value AS DOUBLE) AS DOUBLE
- SELECT CASE value
-  CASE 0
-   MessageBox("ERROR: Invalid Argument .", "COTH - Error", 0)
-  CASE ELSE
-   COTH = COSH(value) / SINH(value)
-  END SELECT
-End Function
+DECLARE Function COTH(value AS DOUBLE) AS DOUBLE
+'~body Function COTH(value AS DOUBLE) AS DOUBLE   ' сборка: тело - в конце файла
 '-------------------------------------------------------------------------------
 '   DEG2RAD() returns radians instead of degrees
 '-------------------------------------------------------------------------------
-Function DEG2RAD(value AS DOUBLE) AS DOUBLE
- DEG2RAD = value * 0.017453
-End Function
+DECLARE Function DEG2RAD(value AS DOUBLE) AS DOUBLE
+'~body Function DEG2RAD(value AS DOUBLE) AS DOUBLE   ' сборка: тело - в конце файла
 '--------------------------------------------------------------------------------
 '   DIVZ() returns the quotient of two complex numbers
 '--------------------------------------------------------------------------------
 '   DIVZ() = Z1 / Z2
-Function DIVZ(Z()AS DOUBLE ) AS DOUBLE
-    re1 = Z(0): im1 = Z(1) : re2 = Z(2) : im2 = Z(3)
-    Z(0) = (req * re2 + im1 * im2) / (re2*re2 + im2*im2)
-    Z(1) = (-re1 * im2 + re2 * im1) / (re2 * re2 + im2 * im2)
-    Z(2) = 0
-    Z(3) = 0
-    DIVZ = Z()
-End Function
+DECLARE Function DIVZ(Z()AS DOUBLE ) AS DOUBLE
+'~body Function DIVZ(Z()AS DOUBLE ) AS DOUBLE   ' сборка: тело - в конце файла
 '--------------------------------------------------------------------------------
 '   EVEN() returns "1" (= true) if a number is even, else "0"
 '--------------------------------------------------------------------------------
@@ -25593,12 +23522,8 @@ End Function
 '--------------------------------------------------------------------------------
 '    EXPZ() returns the exponential value of a complex number (= e^z)
 '--------------------------------------------------------------------------------
-Function EXPZ(Z()AS DOUBLE ) AS DOUBLE
-    re = Z(0): im = Z(1) : a = Z(3)
-    Z(0) = EXP(re) * COS (im)
-    Z(1) = EXP(re) * SIN (im)
-    EXPZ = Z()
-End Function
+DECLARE Function EXPZ(Z()AS DOUBLE ) AS DOUBLE
+'~body Function EXPZ(Z()AS DOUBLE ) AS DOUBLE   ' сборка: тело - в конце файла
 '-------------------------------------------------------------------------------
 '   FAC() returns the factorial of the integer x
 '-------------------------------------------------------------------------------
@@ -25619,56 +23544,19 @@ End Function
 '   GCD() returns the greatest common denominator of two integers
 '   based on the Euclidean algorithm
 '-------------------------------------------------------------------------------
-Function GCD(value1 AS DOUBLE, value2 AS DOUBLE ) AS LONG
-  ERROR% = 0
-  SELECT CASE value1
-   CASE IS <> INT(value1) 'Integer check
-    ERROR% = 1
-   CASE 0                 'ZERO check
-    ERROR% = 2
-  END SELECT
-  SELECT CASE value2
-   CASE IS <> INT(value2) 'Integer check
-    ERROR% = 1
-   CASE 0                 'ZERO Check
-    ERROR% = 2
-  END SELECT
-  SELECT CASE ERROR%
-   CASE 0
-    value1 = ABS(value1) : value2 = ABS(value2)    'Euclidean algorithm
-     DO
-      Res = value1 - value2 * INT(value1/value2)
-      IF Res = 0 THEN GCD = value2
-      value1 = value2
-      value2 = Res
-     LOOP UNTIL Res = 0
-   CASE 1
-     GCD = 0
-     MessageBox("Invalid Argument (no INTEGER).", "GCD - Error", 0)
-   CASE 2
-     GCD = 0
-     MessageBox("Invalid Argument (ZERO).", "GCD - Error", 0)
-  END SELECT
-End Function
+DECLARE Function GCD(value1 AS DOUBLE, value2 AS DOUBLE ) AS LONG
+'~body Function GCD(value1 AS DOUBLE, value2 AS DOUBLE ) AS LONG   ' сборка: тело - в конце файла
 '--------------------------------------------------------------------------------
 '   INVZ() returns the reciprocal value of a complex number
 '--------------------------------------------------------------------------------
 ' INVZ(Z) = 1/Z
-Function INVZ(Z()AS DOUBLE ) AS DOUBLE
-    re = Z(0): im = Z(1)
-    Z(0) =  re / ( re * re + im * im)
-    Z(1) =  im / ( re * re + im * im)
-    INVZ = Z()
-End Function
+DECLARE Function INVZ(Z()AS DOUBLE ) AS DOUBLE
+'~body Function INVZ(Z()AS DOUBLE ) AS DOUBLE   ' сборка: тело - в конце файла
 '--------------------------------------------------------------------------------
 '     LOGZ() returns the natural logarithm of a complex number
 '--------------------------------------------------------------------------------
-Function LOGZ(Z()AS DOUBLE ) AS DOUBLE
-    re = Z(0): im = Z(1)
-    Z(0) =  LOG (re / ( re * re + im * im))
-    Z(1) =  im / ( re * re + im * im)
-    LOGZ = Z()
-End Function
+DECLARE Function LOGZ(Z()AS DOUBLE ) AS DOUBLE
+'~body Function LOGZ(Z()AS DOUBLE ) AS DOUBLE   ' сборка: тело - в конце файла
 '--------------------------------------------------------------------------------
 '    LOG10() returns the base 10 log of x
 '--------------------------------------------------------------------------------
@@ -25680,51 +23568,29 @@ End Function
 '--------------------------------------------------------------------------------
 '     LOG10Z() returns the 10-th logarithm of z (base is 10)
 '--------------------------------------------------------------------------------
-Function LOG10Z(Z()AS DOUBLE ) AS DOUBLE
-    re = Z(0): im = Z(1)
-    Z(0) =  LOG (re / ( re * re + im * im))/ LOG (10)
-    Z(1) =  im / ( re * re + im * im) / LOG (10)
-    LOG10Z = Z()
-End Function
+DECLARE Function LOG10Z(Z()AS DOUBLE ) AS DOUBLE
+'~body Function LOG10Z(Z()AS DOUBLE ) AS DOUBLE   ' сборка: тело - в конце файла
 '--------------------------------------------------------------------------------
 '     LOGAZ() returns the a-th logarithm of z (base is a)
 '--------------------------------------------------------------------------------
-Function LOGAZ(Z()AS DOUBLE ) AS DOUBLE
-    re = Z(0): im = Z(1) : a = Z(3)
-    Z(0) =  LOG (re / ( re * re + im * im))/ LOG (a)
-    Z(1) =  im / ( re * re + im * im) / LOG (a)
-    LOGAZ = Z()
-End Function
+DECLARE Function LOGAZ(Z()AS DOUBLE ) AS DOUBLE
+'~body Function LOGAZ(Z()AS DOUBLE ) AS DOUBLE   ' сборка: тело - в конце файла
 '--------------------------------------------------------------------------------
 '    MAGZ() returns the absolute value of a complex number
 '--------------------------------------------------------------------------------
-Function MAGZ(Z()AS DOUBLE ) AS DOUBLE
-    re = Z(0): im = Z(1)
-    Z(0) = SQR( re * re + im * im)   '= |Z|
-    Z(1) = 0
-    MAGZ = Z()
-End Function
+DECLARE Function MAGZ(Z()AS DOUBLE ) AS DOUBLE
+'~body Function MAGZ(Z()AS DOUBLE ) AS DOUBLE   ' сборка: тело - в конце файла
 '--------------------------------------------------------------------------------
 '    MULZ() returns the product of two complex numbers
 '--------------------------------------------------------------------------------
-Function MULZ(Z()AS DOUBLE ) AS DOUBLE
-    re1 = Z(0): im1 = Z(1) : re2 = Z(2) : im2 = Z(3)
-    Z(0) = re1 * re2 - im1 * im2
-    Z(1) = re1 * im2 + re2 * im1
-    Z(2) = 0
-    Z(3) = 0
-    MULZ = Z()
-End Function
+DECLARE Function MULZ(Z()AS DOUBLE ) AS DOUBLE
+'~body Function MULZ(Z()AS DOUBLE ) AS DOUBLE   ' сборка: тело - в конце файла
 '--------------------------------------------------------------------------------
 '    NORZ() returns the normal form of a complex value
 '--------------------------------------------------------------------------------
 ' Z = x + iy = re + i*im   =   r*e^i*theta
-Function NORZ(Z()AS DOUBLE ) AS DOUBLE
-    re = Z(0): im = Z(1)
-    Z(0) = SQR( re * re + im * im)    ' = r = value
-    Z(1) = ATAN (im / re)             ' = theta = argument
-    NORZ = Z()                        'Z() = (r,theta)
-End Function
+DECLARE Function NORZ(Z()AS DOUBLE ) AS DOUBLE
+'~body Function NORZ(Z()AS DOUBLE ) AS DOUBLE   ' сборка: тело - в конце файла
 '--------------------------------------------------------------------------------
 '   ODD() returns "1" (=true) if a number(INTEGER) is odd
 '--------------------------------------------------------------------------------
@@ -25739,102 +23605,63 @@ End Function
 '   POLZ() returns Z IN the polar coordinate system
 '--------------------------------------------------------------------------------
 ' Transformation from    z = x + iy     to     z = r*cos((phi) + r*i*sin(phi)
-Function POLZ(Z()AS DOUBLE ) AS DOUBLE
-    re = Z(0): im = Z(1)
-    Z(0) = SQR( re * re + im * im) * COS(ATAN (im / re))
-    Z(1) = SQR( re * re + im * im) * SIN(ATAN (im / re))
-    POLZ = Z()
-End Function
+DECLARE Function POLZ(Z()AS DOUBLE ) AS DOUBLE
+'~body Function POLZ(Z()AS DOUBLE ) AS DOUBLE   ' сборка: тело - в конце файла
 '--------------------------------------------------------------------------------
 '    POWZ() returns the power n  of a complex number = (x+iy)^n = z^n
 '--------------------------------------------------------------------------------
- Function POWZ(Z()AS DOUBLE ) AS DOUBLE
-    re = Z(0): im = Z(1) : expo = Z(2)
-     Z(0) =(SQR( re * re + im * im)) ^ expo * COS(expo * ATAN (im / re) )
-     Z(1) =(SQR( re * re + im * im)) ^ expo * SIN(expo * ATAN (im / re) )
-     Z(2) = 0
-    POWZ = Z()
-End Function
+DECLARE Function POWZ(Z()AS DOUBLE ) AS DOUBLE
+'~body Function POWZ(Z()AS DOUBLE ) AS DOUBLE   ' сборка: тело - в конце файла
 '--------------------------------------------------------------------------------
 '   RAD2DEG() returns degrees instead of radians
 '--------------------------------------------------------------------------------
-Function RAD2DEG(value AS DOUBLE) AS DOUBLE
- RAD2DEG = value / 0.017453
-End Function
+DECLARE Function RAD2DEG(value AS DOUBLE) AS DOUBLE
+'~body Function RAD2DEG(value AS DOUBLE) AS DOUBLE   ' сборка: тело - в конце файла
 '--------------------------------------------------------------------------------
 '   SEC() returns the secans of x
 '--------------------------------------------------------------------------------
-Function SEC(value AS DOUBLE) AS DOUBLE
- SEC = 1 / COS(value)
-End Function
+DECLARE Function SEC(value AS DOUBLE) AS DOUBLE
+'~body Function SEC(value AS DOUBLE) AS DOUBLE   ' сборка: тело - в конце файла
 '--------------------------------------------------------------------------------
 '   SECH() returns the hyperbolic secans of x
 '--------------------------------------------------------------------------------
-Function SECH(value AS DOUBLE) AS DOUBLE
- SECH = (2 / (EXP(value) + EXP(value * -1)))
-' SECH = 1/ COSH (value)
-End Function
+DECLARE Function SECH(value AS DOUBLE) AS DOUBLE
+'~body Function SECH(value AS DOUBLE) AS DOUBLE   ' сборка: тело - в конце файла
 '--------------------------------------------------------------------------------
 '   SINH() returns the hyperbolic sine of x
 '--------------------------------------------------------------------------------
-Function SINH(value AS DOUBLE) AS DOUBLE
- SINH = (0.5 * (EXP(value) - EXP(value * -1)))
-  IF value = 0 THEN SINH = 0
-End Function
+DECLARE Function SINH(value AS DOUBLE) AS DOUBLE
+'~body Function SINH(value AS DOUBLE) AS DOUBLE   ' сборка: тело - в конце файла
 '--------------------------------------------------------------------------------
 '   SINZ() sine of a complex number
 '--------------------------------------------------------------------------------
-Function SINZ(Z()AS DOUBLE ) AS DOUBLE
-    re = Z(0): im = Z(1)
-    Z(0) = SIN(re) * COSH(im)
-    Z(1) = COS(re) * SINH(im)
-    SINZ = Z()
-End Function
+DECLARE Function SINZ(Z()AS DOUBLE ) AS DOUBLE
+'~body Function SINZ(Z()AS DOUBLE ) AS DOUBLE   ' сборка: тело - в конце файла
 '--------------------------------------------------------------------------------
 '   SINHZ() sine of a complex number
 '--------------------------------------------------------------------------------
-Function SINHZ(Z()AS DOUBLE ) AS DOUBLE
-    re = Z(0): im = Z(1)
-    Z(0) = SINH(re) * COS(im)
-    Z(1) = COSH(re) * SIN(im)
-    SINHZ = Z()
-End Function
+DECLARE Function SINHZ(Z()AS DOUBLE ) AS DOUBLE
+'~body Function SINHZ(Z()AS DOUBLE ) AS DOUBLE   ' сборка: тело - в конце файла
 '--------------------------------------------------------------------------------
 '   SQRZ() returns the square root of acomplex number
 '--------------------------------------------------------------------------------
-Function SQRZ(Z()AS DOUBLE ) AS DOUBLE
-    re = Z(0): im = Z(1)
-    Z(0) = ((re + SQR(re * re + im * im)) * 0.5) ^ 0.5
-    Z(1) = (((re * -1) + SQR(re * re + im * im)) * 0.5) ^ 0.5
-    SQRZ = Z()
-End Function
+DECLARE Function SQRZ(Z()AS DOUBLE ) AS DOUBLE
+'~body Function SQRZ(Z()AS DOUBLE ) AS DOUBLE   ' сборка: тело - в конце файла
 '-------------------------------------------------------------------------------
 '   SUBZ() returns the difference of two complex numbers
 '-------------------------------------------------------------------------------
-Function SUBZ(Z()AS DOUBLE ) AS DOUBLE
-    re1 = Z(0): im1 = Z(1) : re2 = Z(2) : im2 = Z(3)
-    Z(0) = re1 - re2
-    Z(1) = im1 - im2
-    Z(2) = 0
-    Z(3) = 0
-    SUBZ = Z()
-End Function
+DECLARE Function SUBZ(Z()AS DOUBLE ) AS DOUBLE
+'~body Function SUBZ(Z()AS DOUBLE ) AS DOUBLE   ' сборка: тело - в конце файла
 '--------------------------------------------------------------------------------
 '   TANH() returns the hyperbolic tangent of x
 '--------------------------------------------------------------------------------
-Function TANH(value AS DOUBLE) AS DOUBLE
-    TANH = SINH(value) / COSH(value)
-    IF value = 0 THEN TANH = 0
-End Function
+DECLARE Function TANH(value AS DOUBLE) AS DOUBLE
+'~body Function TANH(value AS DOUBLE) AS DOUBLE   ' сборка: тело - в конце файла
 '--------------------------------------------------------------------------------
 '   TANZ() returns the tangent of a complex number
 '--------------------------------------------------------------------------------
-Function TANZ(Z()AS DOUBLE ) AS DOUBLE
-    re1 = Z(0): im1 = Z(1)
-    Z(0) =  SIN(2 * re) / (COS(2 * re) + COSH(2 * im))
-    Z(1) =  SINH(2 * im) / (COS(2 * re) + COSH(2 * im))
-    TANZ = Z()
-End Function
+DECLARE Function TANZ(Z()AS DOUBLE ) AS DOUBLE
+'~body Function TANZ(Z()AS DOUBLE ) AS DOUBLE   ' сборка: тело - в конце файла
 'MaxInt,MinInt
 Const MaxInt = 2147483647
 Const MinInt =-2147483648
@@ -25917,21 +23744,8 @@ End Function
 '---------------------------------------------------------------------
 ' Power (base,exponent)
 '---------------------------------------------------------------------
-Function Power(Base as Double, Exponent as Double) as Double
-If Int(Exponent) <> Exponent then
-   MessageBox("Error : Invalid floating point operation.","Power - Invalid Exponent",0)
-   Exit Function
-End If
-  If Exponent = 0.0 Then
-    Result = 1.0               '{ n**0 = 1 }
-  ElseIf (Base = 0.0) and (Exponent > 0.0) Then
-    Result = 0.0               '{ 0**n = 0, n > 0 }
-  ElseIf (Frac(Exponent) = 0.0) and (Abs(Exponent) <= MaxInt) then
-    Result = Base^Int(Fix(Exponent))
-  else
-    Result = Exp(Exponent * Log(Base))
-  End If
-End Function
+DECLARE Function Power(Base as Double, Exponent as Double) as Double
+'~body Function Power(Base as Double, Exponent as Double) as Double   ' сборка: тело - в конце файла
 
 
 '============================================================================
@@ -26370,49 +24184,27 @@ Create MainMenu as QMainMenu
        End Create
 End Create
 
-Sub mOpen_Click(Sender as QMenuItem)
+'~body Sub mOpen_Click(Sender as QMenuItem)   ' сборка: тело - в конце файла
 
-End Sub
+'~body Sub mNew_Click(Sender as QMenuItem)   ' сборка: тело - в конце файла
 
-Sub mNew_Click(Sender as QMenuItem)
+'~body Sub mSave_Click(Sender as QMenuItem)   ' сборка: тело - в конце файла
 
-End Sub
+'~body Sub mSaveAs_Click(Sender as QMenuItem)   ' сборка: тело - в конце файла
 
-Sub mSave_Click(Sender as QMenuItem)
+'~body Sub mUndo_Click(Sender as QMenuItem)   ' сборка: тело - в конце файла
 
-End Sub
+'~body Sub mPaste_Click(Sender as QMenuItem)   ' сборка: тело - в конце файла
 
-Sub mSaveAs_Click(Sender as QMenuItem)
+'~body Sub mCut_Click(Sender as QMenuItem)   ' сборка: тело - в конце файла
 
-End Sub
+'~body Sub mCopy_Click(Sender as QMenuItem)   ' сборка: тело - в конце файла
 
-Sub mUndo_Click(Sender as QMenuItem)
+'~body Sub mHelp_Click(Sender as QMenuItem)   ' сборка: тело - в конце файла
 
-End Sub
+'~body Sub mSoftware_Click(Sender as QMenuItem)   ' сборка: тело - в конце файла
 
-Sub mPaste_Click(Sender as QMenuItem)
-
-End Sub
-
-Sub mCut_Click(Sender as QMenuItem)
-
-End Sub
-
-Sub mCopy_Click(Sender as QMenuItem)
-
-End Sub
-
-Sub mHelp_Click(Sender as QMenuItem)
-
-End Sub
-
-Sub mSoftware_Click(Sender as QMenuItem)
-
-End Sub
-
-Sub mExit_Click(Sender as QMenuItem)
-
-End Sub
+'~body Sub mExit_Click(Sender as QMenuItem)   ' сборка: тело - в конце файла
 
 '============================================================================
 '[build_inc] microTIMER.inc
@@ -26435,18 +24227,8 @@ $ENDIF      'windows inc
 
 
 'From Jacques P.
-FuncTion  MicroTimer_dwToDbl (iDw As Long) As Double
-    DefDbl dwTmp, dbl2exp31
-    dwTmp = iDw
-    dbl2exp31 = 2147483648                  ' 2^31
-    If dwTmp < 0 Then                       ' Bit 31, Integer bit sign is set
-        dwTmp = dwTmp SHL 1                 ' get rid of bit 31
-        dwTmp = dwTmp SHR 1
-        Result = dbl2exp31  +  dwTmp        ' add the value of bit 31
-    Else
-        Result = dwTmp
-    End If
-End Function
+DECLARE FuncTion  MicroTimer_dwToDbl (iDw As Long) As Double
+'~body FuncTion  MicroTimer_dwToDbl (iDw As Long) As Double   ' сборка: тело - в конце файла
 
 
 FUNCTION microTIMER() AS DOUBLE
@@ -26495,10 +24277,8 @@ END FUNCTION
 '[build_inc] Minimize.inc
 '============================================================================
 Declare Function SetWindow Lib "user32" Alias "SetWindowLongA" (hwnd As Long, nIndex As Long, dwNewLong As Long) As Long
-Sub SetMinimize (Form as QForm)
-Setwindow(Form.Handle, -8, 0)
-Setwindow(Application.Handle, -8, Form.Handle)
-End Sub
+DECLARE Sub SetMinimize (Form as QForm)
+'~body Sub SetMinimize (Form as QForm)   ' сборка: тело - в конце файла
 
 '============================================================================
 '[build_inc] msgdlg.inc
@@ -26569,9 +24349,7 @@ const dFth = 768
 Declare Function MsgDlg (MsgDlgText As String, MsgDlgTitle As String, MsgDlgButtons As Long) As Long
 Declare Function MDlg Lib "user32" Alias "MessageBoxA" (ByVal hwnd As Long, ByVal lpText As String, ByVal lpCaption As String, ByVal wType As Long) As Long
 
-Function MsgDlg (MsgDlgText As String, MsgDlgTitle As String, MsgDlgButtons As Long) As Long
-    Result = MDlg (Form.Handle,MsgDlgText,MsgDlgTitle,MsgDlgButtons)
-End Function
+'~body Function MsgDlg (MsgDlgText As String, MsgDlgTitle As String, MsgDlgBu   ' сборка: тело - в конце файла
 
 ' And here are exemples
 '
@@ -26745,10 +24523,7 @@ print "inc dir   C:\BAS\RAPIDQ\inc\NewWindow23.inc"
 	'EXAMPLE:
 		'TimeOpened$ = CloseAppKey
 
-	Function CloseAppKey
-		CloseAppKey = AppKey.ReadString("LastOpened")
-		AppKey.CloseKey
-	End function
+'~body Function CloseAppKey   ' сборка: тело - в конце файла
 
 
 'CloseAppSysKey()
@@ -26757,10 +24532,7 @@ print "inc dir   C:\BAS\RAPIDQ\inc\NewWindow23.inc"
 	'EXAMPLE:
 		'TimeOpened$ = CloseAppSysKey
 
-	Function CloseAppSysKey
-		CloseAppSysKey = AppSysKey.ReadString("LastOpened")
-		AppSysKey.CloseKey
-	End function
+'~body Function CloseAppSysKey   ' сборка: тело - в конце файла
 
 
 'CloseNOTASys()
@@ -27134,11 +24906,7 @@ print "inc dir   C:\BAS\RAPIDQ\inc\NewWindow23.inc"
 		'WriteTime$ = OpenAppKey
 		'CloseAppKey
 
-	Function OpenAppKey
-		AppKey.OpenKey(AppKeyString$, 1)
-		AppKey.WriteString( "LastOpened", (Date$ + "  " + Time$) )
-		OpenAppKey = AppKey.ReadString("LastOpened")
-	End Function
+'~body Function OpenAppKey   ' сборка: тело - в конце файла
 
 
 'OpenAppSysKey()
@@ -27153,11 +24921,7 @@ print "inc dir   C:\BAS\RAPIDQ\inc\NewWindow23.inc"
 		'WriteTime$ = OpenAppSysKey
 		'CloseAppSysKey
 
-	Function OpenAppSysKey
-		AppSysKey.OpenKey(AppKeyString$, 1)
-		AppSysKey.WriteString( "LastOpened", (Date$ + "  " + Time$) )
-		OpenAppSysKey = AppSysKey.ReadString("LastOpened")
-	End Function
+'~body Function OpenAppSysKey   ' сборка: тело - в конце файла
 
 
 'OpenNOTASys()
@@ -27449,33 +25213,8 @@ Declare Function GetVersionEx_mOD Lib "kernel32.dll" Alias "GetVersionExA" _
 
 Dim sStruc_mOD As QMemoryStream
 
-SUB GetVersion_mOD
-	DIM rtn AS LONG
-	DIM OSV AS OSVERSIONINFO_mOD
-
-	WiTH sStruc_mOD
-		OSV.dwOSVersionInfoSize = SizeOf(OSV)
-		.WriteUDT(OSV)
-		rtn = GetVersionEx_mOD(.Pointer)
-		IF rtn <> False THEN
-			.Position = False
-			.ReadUDT(OSV)
-			IF OSV.dwPlatformId = True THEN
-				isXP_mOD = False
-			ELSEIF OSV.dwPlatformId = 2 THEN
-				IF OSV.dwMajorVersion=5 THEN
-					' Windows XP and 2000
-					IF OSV.dwMinorVersion = True THEN
-						isXP_mOD = 2	' Windows XP
-					ELSE
-						isXP_mOD = True	' Windows 2000
-					END IF
-				END IF
-			END IF
-		END IF
-		.Close
-	End WiTH
-END SUB
+DECLARE SUB GetVersion_mOD
+'~body SUB GetVersion_mOD   ' сборка: тело - в конце файла
 Call GetVersion_mOD
 $ENDIF ' __RQGETVERSION2
 ' //
@@ -27727,10 +25466,8 @@ Dim Add_MyProc As Long
 
 
 ' Corrige le menu de la barre de tвches et ajoute aussi le support OwnerDraw
-Sub FixTaskBarMenu (hWnd As Long)
-	SetWindowLong_mOD ( hWnd, GWL_HWNDPARENT_mOD, HWND_DESKTOP_mOD )
-	SetWindowLong_mOD ( Application.Handle, GWL_HWNDPARENT_mOD, hWnd )
-End Sub
+DECLARE Sub FixTaskBarMenu (hWnd As Long)
+'~body Sub FixTaskBarMenu (hWnd As Long)   ' сборка: тело - в конце файла
 
 Declare Sub CheckMenuBarForItems(frmTmp As Long)
 
@@ -28605,17 +26342,8 @@ Declare Function SetMenuDefaultItem_mOD Lib "user32.dll" Alias "SetMenuDefaultIt
 	 ByVal uItem As Long, _
 	 ByVal fByPos As Long) As Long
 
-Sub DefSysItem ()
-	If mnuSysFromIcon = True Then
-		SetMenuDefaultItem_mOD (pNewSysMenu.Handle, pSysTerminate.Command, MF_BYCOMMAND)
-	Else
-		If isZoomed_mOD(mnuSysMainForm) = False Then
-			SetMenuDefaultItem_mOD (pNewSysMenu.Handle, pSysMaximize.Command, MF_BYCOMMAND)
-		Else
-			SetMenuDefaultItem_mOD (pNewSysMenu.Handle, pSysRestore.Command, MF_BYCOMMAND)
-		End If
-	End If
-End Sub
+DECLARE Sub DefSysItem ()
+'~body Sub DefSysItem ()   ' сборка: тело - в конце файла
 
 
 Sub DrawMenuText (lColor As Long, lExtra As Integer)
@@ -28841,56 +26569,12 @@ Function CheckIfSYSColor (lColor As Integer) As Integer
 		Result = lColor
 	End If
 End Function
-Sub UpdateColors
-	' // Charge les nouvelles couleurs
-	'hHBr(13)	= GetStockObject_mOD(NULL_BRUSH_mOD)
-	'WiTH mnuODCouleurs
-	'	ChangeBrush	(True, GetSysColor_mOD(COLOR_BTNFACE_mOD), 12)
-	'	ChangeBrush	(True, .ItemContSelInactif, 11)
-	'	ChangeBrush	(True, .ItemContSel, 10)
-	'	ChangeBrush	(True, .ItemFondSelInact2, 9)
-	'	ChangeBrush	(True, .ItemFondSelInact1, 8)
-	'	ChangeBrush	(True, .ItemFondInact2, 7)
-	'	ChangeBrush	(True, .ItemFondInact1, 6)
-	'	ChangeBrush	(True, .ItemFondSel2, 5)
-	'	ChangeBrush	(True, .ItemFondSel1, 4)
-	'	ChangeBrush	(True, .ItemFond2, 3)
-	'	ChangeBrush	(True, .ItemFond1, 2)
-	'	ChangeBrush	(2, .MenuCont, 1)
-	'	ChangeBrush	(True, .MenuFond, False)
-	'End WiTH
-	DrawMenuBar_mOD(hMainMenu)
-End Sub
-Sub LoadNewColors
-	' // Charge nos nouvelles couleurs
-	WiTH mnuODMesCouleurs
-		.MainMenuTxt		= CheckIfSYSColor(.MainMenuTxt)
-		.MainMenuTxtSel		= CheckIfSYSColor(.MainMenuTxtSel)
-		.MainMenuTxtInactif	= CheckIfSYSColor(.MainMenuTxtInactif)
-		.MenuFond			= CheckIfSYSColor(.MenuFond)
-		.MenuCont			= CheckIfSYSColor(.MenuCont)
-		.ItemFond1			= CheckIfSYSColor(.ItemFond1)
-		.ItemFond2			= CheckIfSYSColor(.ItemFond2)
-		.ItemFondSel1		= CheckIfSYSColor(.ItemFondSel1)
-		.ItemFondSel2		= CheckIfSYSColor(.ItemFondSel2)
-		.ItemFondInact1		= CheckIfSYSColor(.ItemFondInact1)
-		.ItemFondInact2		= CheckIfSYSColor(.ItemFondInact2)
-		.ItemFondSelInact1	= CheckIfSYSColor(.ItemFondSelInact1)
-		.ItemFondSelInact2	= CheckIfSYSColor(.ItemFondSelInact2)
-		.ItemContSel		= CheckIfSYSColor(.ItemContSel)
-		.ItemContSelInactif	= CheckIfSYSColor(.ItemContSelInactif)
-		.ItemTxt			= CheckIfSYSColor(.ItemTxt)
-		.ItemTxtSel			= CheckIfSYSColor(.ItemTxtSel)
-		.ItemTxtInactif		= CheckIfSYSColor(.ItemTxtInactif)
-	End WiTH
-	mnuODCouleurs = mnuODMesCouleurs
-	Call UpdateColors
-End Sub
-Sub LoadDefaultColors
-	' // Attention ceci va remplacer nos couleurs par les couleurs prйdйfinies
-	mnuODCouleurs = mnuODDefCouleurs
-	Call UpdateColors
-End Sub
+DECLARE Sub UpdateColors
+'~body Sub UpdateColors   ' сборка: тело - в конце файла
+DECLARE Sub LoadNewColors
+'~body Sub LoadNewColors   ' сборка: тело - в конце файла
+DECLARE Sub LoadDefaultColors
+'~body Sub LoadDefaultColors   ' сборка: тело - в конце файла
 Call LoadDefaultColors
 
 
@@ -29389,19 +27073,8 @@ Sub MakeODItem (ParentHnd As Long, mItem As QMenuItem, bmpIndex As Long)
 	If ParentHnd = pNewSysMenu.Handle Then _
 		mnuSystem(wID) = True
 End Sub
-Sub MakeODMenuBarItem (ParentHnd As Long, mItem As QMenuItem, bmpIndex As Long)
-	If UBound(mnuMain) < mItem.Command Then
-		ReDim mnuMain(mItem.Command)		As Long
-		ReDim mnubitmap(mItem.Command)		As Long
-		'ReDim mnuShortCut(mItem.Command)	As String
-		ReDim mnuSystem(mItem.Command)		As Long
-		ReDim mnuSubMenu(mItem.Command)		As Long
-	End If
-	mnuMain (mItem.Command) = True
-	MakeODItem (ParentHnd, mItem, bmpIndex)
-	DrawMenuBar_mOD(ParentHnd)
-	hMainMenu = ParentHnd
-End Sub
+DECLARE Sub MakeODMenuBarItem (ParentHnd As Long, mItem As QMenuItem, bmpIndex As Long)
+'~body Sub MakeODMenuBarItem (ParentHnd As Long, mItem As QMenuItem, bmpIndex   ' сборка: тело - в конце файла
 
 
 Declare Function GetMenu_mOD Lib "user32.dll" Alias "GetMenu" ( _ 
@@ -29516,34 +27189,10 @@ End Sub
 
 ' ==================================================================================================
 
-Sub mReplaceSysMenu '()
-	mnuReplaceSysMenu = Enabled
-	If Enabled = True Then
-		' Doit avoir sa propre fonction owner comme MainForm
-		'MakeODItem (pNewSysMenu.Handle, pSysRestore, False)
-		'MakeODItem (pNewSysMenu.Handle, pSysMove, False)
-		'MakeODItem (pNewSysMenu.Handle, pSysResize, False)
-		'MakeODItem (pNewSysMenu.Handle, pSysMinimize, False)
-		'MakeODItem (pNewSysMenu.Handle, pSysMaximize, False)
-		'MakeODItem (pNewSysMenu.Handle, pSysSeparator, False)
-		'MakeODItem (pNewSysMenu.Handle, pSysTerminate, False)
-		MakeODMenu (pNewSysMenu.Handle)
-	End If
-End Sub
+'~body Sub mReplaceSysMenu   ' сборка: тело - в конце файла
 
-Sub pFixItemState ()
-	If IsZoomed_mOD (mnuSysMainForm) Then
-		pSysRestore.Enabled	= True
-		pSysMove.Enabled	= False
-		pSysResize.Enabled	= False
-		pSysMaximize.Enabled = False
-	Else
-		pSysRestore.Enabled	= False
-		pSysMove.Enabled	= True
-		pSysResize.Enabled	= True
-		pSysMaximize.Enabled = True
-	End If
-End Sub
+DECLARE Sub pFixItemState ()
+'~body Sub pFixItemState ()   ' сборка: тело - в конце файла
 Sub pShowSysPopup (FromIcon As Integer, X As Integer, Y As Integer)
     Dim sMenu As Long
     Dim sStyle As Long
@@ -30217,14 +27866,7 @@ End Function
 '	End WiTH
 '	result = MenuStr
 'End Function
-Function GetMenuCheckState '(hMenu As Long, ID As Long) As Long
-    WiTH MII
-        .cbSize = SizeOf (MII)
-        .fMask = MIIM_STATE Or MIIM_TYPE Or MIIM_DATA Or MIIM_ID
-	    GetMenuItemInfo_mOD(hMenu, ID, MF_BYCOMMAND, MII)
-    	result = IIf((MFT_RADIOCHECK And .fType) <> False , True, False)
-    End WiTH
-End Function
+'~body Function GetMenuCheckState   ' сборка: тело - в конце файла
 'Function GetMenuCheckBMPHandle '(hMenu As Long, ID As Long) As Long
 '	WiTH MII
 '		.cbSize = SizeOf (MII)
@@ -30237,21 +27879,7 @@ End Function
 'End Function
 
 
-Function pGetClassName_mOD '(ByVal hwnd As Long) As String 
-	Dim sClass As String 
-	Dim nLen As Long
-	 
-	sClass = Space$(128) 'String$(128, Chr$(False)) 
-	nLen = GetClassName_mOD(hwnd, @sClass, 128) 
-	 
-	If nLen = False Then 
-		sClass = "" 
-	Else 
-		sClass = Left$(sClass, nLen) 
-	End If 
-	 
-	pGetClassName_mOD = sClass
-End Function
+'~body Function pGetClassName_mOD   ' сборка: тело - в конце файла
 
 '============================================================================
 '[build_inc] ole.inc
@@ -30366,15 +27994,8 @@ Declare Function CoCreateInstance Lib "ole32" ALIAS "CoCreateInstance"( _
 '------------------------------------------------------------
 '   Convert a binary GUID to a string representation of a GUID
 '------------------------------------------------------------
-Function GuidStringFromGUID(rclsid As GUID) As String
-    Dim rc As Long
-    Dim stGuid As String * 40
-
-    ' 39 chars  for the GUID and terminate with Null char
-    stGuid = String$(40, 0&)
-    rc = StringFromGUID2(rclsid, VARPTR(stGuid), (Len(stGuid) - 1))
-    GuidStringFromGUID = Left$(stGuid, rc - 1)
-End Function
+DECLARE Function GuidStringFromGUID(rclsid As GUID) As String
+'~body Function GuidStringFromGUID(rclsid As GUID) As String   ' сборка: тело - в конце файла
 
 
 'code to call the COM procedure vtable via pointer to pointer
@@ -31224,16 +28845,7 @@ dim rect2_editor as qrect
     Structure$="Articolo_Nome:10,Articolo_Codice:10,Articolo_Descrizione:30,Articolo_Categoria:10,Articolo_Immagine:15,Articolo_Larghezza:4,Articolo_Profondita:4,Articolo_Altezza:4,Articolo_VDX:10,Articolo_VDY:10,Articolo_Peso:4,Articolo_Costo:6,Articolo_UTILITA:10"
     IndexField$="Articolo_Nome"
     RetFunction$=SPACE$(160)
-sub crea_pulsar_db
-
-    RQ_NewConventionalDB @RetFunction$,Structure$,IndexField$,PulsarPath$,PulsarFile$
-
-    IF LEFT$(RetFunction$,2)<>"ok" THEN
-        Msg$="OPERATION IS NOT COMPLETED: "+LTRIM$(RTRIM$(RetFunction$))
-        MESSAGEBOX(Msg$, "Pъlsar 3.0 in RapidQ", mbOK)
-    ELSE
-    END IF
-end sub
+'~body sub crea_pulsar_db   ' сборка: тело - в конце файла
 
 '------inizializzazione database temporaneo-----------
   dim path as string
@@ -31246,120 +28858,9 @@ IF FileExists(path) = 0 Then
 end if
 
 '----------------------inserisce oggetto da librerie a designer-preventivi-------------
-sub inserisci_oggetto_in_pulsar_db
+'~body sub inserisci_oggetto_in_pulsar_db   ' сборка: тело - в конце файла
 
-ShowMessage "selezionato item " + str$(Edit_nome.text)
-
-    DatabaseRecord.Articolo_Nome=Edit_nome.text
-    DatabaseRecord.Articolo_Codice=Edit_codice.text
-    DatabaseRecord.Articolo_Descrizione=Edit_descrizione.text
-    DatabaseRecord.Articolo_Categoria=Edit_categoria.text
-    DatabaseRecord.Articolo_Immagine=image1.bmp
-    DatabaseRecord.Articolo_Larghezza=Edit_larghezza.text
-    DatabaseRecord.Articolo_Profondita=Edit_profondita.text
-    DatabaseRecord.Articolo_Altezza=Edit_altezza.text
-    DatabaseRecord.Articolo_VDX=" "
-    DatabaseRecord.Articolo_VDY=" "
-    DatabaseRecord.Articolo_Peso=Edit_peso.text
-    DatabaseRecord.Articolo_Costo=Edit_prezzo.text
-    DatabaseRecord.Articolo_UTILITA=" "
-
-
-    	RecordToSave$=DatabaseRecord.Articolo_Nome
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Codice
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Descrizione
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Categoria
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Immagine
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Larghezza
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Profondita
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Altezza
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_VDX
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_VDY
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Peso
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Costo
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_UTILITA
-
-
-    RetFunction$=SPACE$(160)
-
-    RQ_SaveConvDB @RetFunction$,PulsarPath$,PulsarFile$,RecordToSave$
-
-    IF LEFT$(RetFunction$,5)="ERROR" THEN
-
-        'If record is saved, the packed function return "ok".
-        'If error occur, function return error code in string
-        'format: "ERROR CODE:xxx...." (xxx is error code -see pъlsar manual-)
-        Msg$="OPERATION IS NOT COMPLETED: "+LTRIM$(RTRIM$(RetFunction$))
-        MESSAGEBOX(Msg$, "Pъlsar 3.0 in RapidQ", mbOK)
-
-    ELSE
-
-        'record is saved
-        MESSAGEBOX("OPERACION OK.", "Pъlsar 3.0 in RapidQ", mbOK)
-
-    END IF
-
-end sub
-
-sub visualizza_tutti_da_pulsar_db
-
-    RetFunction$=SPACE$(160)
-
-    RQ_GetQuantityOfRecords @RetFunction$,PulsarPath$,PulsarFile$
-
-    IF LEFT$(RetFunction$,5)="ERROR" THEN
-
-
-         Msg$="OPERATION IS NOT COMPLETED: "+LTRIM$(RTRIM$(RetFunction$))
-         MESSAGEBOX(Msg$, "Pъlsar 3.0 in RapidQ", mbOK)
-         END
-
-    END IF
-
-    RecordsInDB$=LTRIM$(RTRIM$(RetFunction$)) 
-
-    FOR Reading%=1 TO VAL(RecordsInDB$)
-
-       RQ_GetRecordConvDB @RetFunction$,PulsarPath$,PulsarFile$,LTRIM$(RTRIM$(STR$(Reading%)))
-
-       IF LCASE$(LEFT$(RetFunction$,5))="error" THEN
-
-            Msg$="Error reading record number:"+ LTRIM$ ( RTRIM$ ( STR$ ( Reading% ) ) )
-            MESSAGEBOX(Msg$, "Pъlsar 3.0 in RapidQ", mbOK)
-            END
-
-        ELSE
-
-
-    DatabaseRecord.Articolo_Nome=LEFT$(RetFunction$,10)
-    DatabaseRecord.Articolo_Codice=MID$(RetFunction$,11,10)
-    DatabaseRecord.Articolo_Descrizione=MID$(RetFunction$,21,30)
-    DatabaseRecord.Articolo_Categoria=MID$(RetFunction$,51,10)
-    DatabaseRecord.Articolo_Immagine=MID$(RetFunction$,61,15)
-    DatabaseRecord.Articolo_Larghezza=MID$(RetFunction$,76,4)
-    DatabaseRecord.Articolo_Profondita=MID$(RetFunction$,80,4)
-    DatabaseRecord.Articolo_Altezza=MID$(RetFunction$,84,4)
-    DatabaseRecord.Articolo_VDX=MID$(RetFunction$,88,10)
-    DatabaseRecord.Articolo_VDY=MID$(RetFunction$,98,10)
-    DatabaseRecord.Articolo_Peso=MID$(RetFunction$,108,4)
-    DatabaseRecord.Articolo_Costo=MID$(RetFunction$,112,6)
-    DatabaseRecord.Articolo_UTILITA=MID$(RetFunction$,118,10)
-
-
-            'show the record
-            dim Msg1$ as string
-            Msg1$="APELLIDO: "+DatabaseRecord.Articolo_Nome+CHR$(10)+CHR$(13)
-            Msg1$=Msg$+"NOMBRES: "+DatabaseRecord.Articolo_Descrizione+CHR$(10)+CHR$(13)
-            Msg1$=Msg$+"E-MAIL: "+DatabaseRecord.Articolo_Immagine+CHR$(10)+CHR$(13)
-            Msg1$=Msg$+"WEB: "+DatabaseRecord.Articolo_Categoria
-
-            MESSAGEBOX(Msg1$, "Pъlsar 3.0 in RapidQ", mbOK)
-
-         END IF
-
-    NEXT Reading%
-
-end sub
+'~body sub visualizza_tutti_da_pulsar_db   ' сборка: тело - в конце файла
 '============================================================================
 '[build_inc] QFiles.inc
 '============================================================================
@@ -31392,100 +28893,21 @@ Dim qf8 As QFileStream
 Dim qfn(1 to MaxQFiles) As Byte  'keeps track of which qfiles are open
 DIM qfi As LONG
 
-SUB fINITIALIZE  'call this to initialize at program start
-For qfi=1 to MaxQFiles: qfn(qfi)=0: Next qfi
-END SUB
+'~body SUB fINITIALIZE   ' сборка: тело - в конце файла
 
-FUNCTION GetFileNum() As LONG
-Result=-1
-FOR qfi=1 to MaxQFiles
-IF qfn(qfi)=0 THEN Result=qfi: Exit Function
-NEXT qfi
-END FUNCTION
+'~body FUNCTION GetFileNum() As LONG   ' сборка: тело - в конце файла
 
-SUB fOPEN(fNum As LONG, fName$ AS STRING, fHow AS LONG)
-qfi=fHow
-IF FILEEXISTS(fName$)=0 THEN qfi=fmcreate
-SELECT CASE fNum
-CASE 1: qf1.OPEN(fName$,qfi)
-CASE 2: qf2.OPEN(fName$,qfi)
-CASE 3: qf3.OPEN(fName$,qfi)
-CASE 4: qf4.OPEN(fName$,qfi)
-CASE 5: qf5.OPEN(fName$,qfi)
-CASE 6: qf6.OPEN(fName$,qfi)
-CASE 7: qf7.OPEN(fName$,qfi)
-CASE 8: qf8.OPEN(fName$,qfi)
-END SELECT
-qfn(fNum)=1
-END SUB
+'~body SUB fOPEN(fNum As LONG, fName$ AS STRING, fHow AS LONG)   ' сборка: тело - в конце файла
 
-SUB fCLOSE(fNum As LONG)
-SELECT CASE fNum
-CASE 1: qf1.CLOSE
-CASE 2: qf2.CLOSE
-CASE 3: qf3.CLOSE
-CASE 4: qf4.CLOSE
-CASE 5: qf5.CLOSE
-CASE 6: qf6.CLOSE
-CASE 7: qf7.CLOSE
-CASE 8: qf8.CLOSE
-END SELECT
-qfn(fNum)=0: DoEvents
-END SUB
+'~body SUB fCLOSE(fNum As LONG)   ' сборка: тело - в конце файла
 
-SUB fPOSITION(fNum As LONG, fPosition As LONG)
-SELECT CASE fNum
-CASE 1: qf1.Position=fPosition
-CASE 2: qf2.Position=fPosition
-CASE 3: qf3.Position=fPosition
-CASE 4: qf4.Position=fPosition
-CASE 5: qf5.Position=fPosition
-CASE 6: qf6.Position=fPosition
-CASE 7: qf7.Position=fPosition
-CASE 8: qf8.Position=fPosition
-END SELECT
-END SUB
+'~body SUB fPOSITION(fNum As LONG, fPosition As LONG)   ' сборка: тело - в конце файла
 
-FUNCTION fSIZE(fNum As LONG) As LONG
-SELECT CASE fNum
-CASE 1: Result=qf1.Size
-CASE 2: Result=qf2.Size
-CASE 3: Result=qf3.Size
-CASE 4: Result=qf4.Size
-CASE 5: Result=qf5.Size
-CASE 6: Result=qf6.Size
-CASE 7: Result=qf7.Size
-CASE 8: Result=qf8.Size
-END SELECT
-END FUNCTION
+'~body FUNCTION fSIZE(fNum As LONG) As LONG   ' сборка: тело - в конце файла
 
-FUNCTION fReadBinStr(fNum As LONG, fBytes As LONG) As STRING
-SELECT CASE fNum
-CASE 1: Result=qf1.ReadBinStr(fBytes)
-CASE 2: Result=qf2.ReadBinStr(fBytes)
-CASE 3: Result=qf3.ReadBinStr(fBytes)
-CASE 4: Result=qf4.ReadBinStr(fBytes)
-CASE 5: Result=qf5.ReadBinStr(fBytes)
-CASE 6: Result=qf6.ReadBinStr(fBytes)
-CASE 7: Result=qf7.ReadBinStr(fBytes)
-CASE 8: Result=qf8.ReadBinStr(fBytes)
-END SELECT
-DoEvents
-END FUNCTION
+'~body FUNCTION fReadBinStr(fNum As LONG, fBytes As LONG) As STRING   ' сборка: тело - в конце файла
 
-SUB fWriteLine(fNum As LONG, fString As STRING)
-SELECT CASE fNum
-CASE 1: qf1.WriteLine(fString)
-CASE 2: qf2.WriteLine(fString)
-CASE 3: qf3.WriteLine(fString)
-CASE 4: qf4.WriteLine(fString)
-CASE 5: qf5.WriteLine(fString)
-CASE 6: qf6.WriteLine(fString)
-CASE 7: qf7.WriteLine(fString)
-CASE 8: qf8.WriteLine(fString)
-END SELECT
-DoEvents
-END SUB
+'~body SUB fWriteLine(fNum As LONG, fString As STRING)   ' сборка: тело - в конце файла
 
 'Add other QFileStream properties and methods here as you need them.
 'These routines look ugly, but are a workaround to access files by index.  
@@ -31925,10 +29347,8 @@ adresse_mafonction = CODEPTR(WindowProc) 'instruction rapidQ (adressof en VB)
 '~dup End Sub
 
 ' Corrige le menu de la barre d'outil et ajoute aussi le support OwnerDraw
-Sub FixTaskBar (hWnd As Long)
-    SetWindowLong ( hWnd, GWL_HWNDPARENT, HWND_DESKTOP )
-    SetWindowLong ( Application.Handle, GWL_HWNDPARENT, hWnd )
-End Sub
+DECLARE Sub FixTaskBar (hWnd As Long)
+'~body Sub FixTaskBar (hWnd As Long)   ' сборка: тело - в конце файла
 
 
 '~dup Declare Sub GetInfoFromMenu (iCaption As String)   ' повтор, первое: ODMenuXP.inc(414)
@@ -32007,97 +29427,11 @@ Dim s_CaptionY	As Integer, _
 	s_BorderW	= GetSystemMetrics(SM_CXDLGFRAME)
 	s_CaptionY	= 24 'GetSystemMetrics(SM_CYCAPTION) +s_BorderW
 
-Sub ConfigureNCandClient(hWnd As Long, lParam As Long)
-	'Exit Function
-            
-	Dim tNCR As NCCALCSIZE_PARAMS
-	Dim tWP As WINDOWPOS
-	Dim m_Pos_wRect As RECT
-	Dim tNCR_rgrc0 As RECT
+DECLARE Sub ConfigureNCandClient(hWnd As Long, lParam As Long)
+'~body Sub ConfigureNCandClient(hWnd As Long, lParam As Long)   ' сборка: тело - в конце файла
 
-    GetClientRect(hWnd, rc_Skin)
-    Pt.X = rc_Skin.Left
-    Pt.Y = rc_Skin.Top
-    ClientToScreen(hWnd, Pt)
-    'OffSetRect ...
-    rc_Skin.Left = rc_Skin.Left +Pt.X
-    rc_Skin.Right = rc_Skin.Left +rc_Skin.Right -8'+Pt.X
-    rc_Skin.Top = rc_Skin.Top +Pt.Y
-    rc_Skin.Bottom = rc_Skin.Top +rc_Skin.Bottom -8'+Pt.Y
-    
-	hRgn_Client = CreateRectRgnIndirect(rc_Skin)
-	If hRgn_Client Then
-	' Get the new window position & recommended client rect
-    'CopyMemory tNCR, ByVal lParam, Len(tNCR)
-	Mem.Position	= 0
-	Mem.MemCopyFrom(lParam, SizeOf(tNCR))
-	Mem.Position	= 0
-	Mem.ReadUDT	(tNCR)
-
-    'CopyMemory tWP, ByVal tNCR.lppos, Len(tWP)
-	Mem2.Position	= 0
-	Mem2.MemCopyFrom(tNCR.lppos, SizeOf(tWP))
-	Mem2.Position	= 0
-	Mem2.ReadUDT	(tWP)
-
-	'SetRect m_Pos_wRect, m_Position.wRectLeft, m_Position.wRectTop, m_Position.wRectRight, m_Position.wRectBottom
-	' set the new window rect here
-    'SetRect m_Position.wRect, tWP.X, tWP.Y, tWP.X + tWP.Cx, tWP.Y + tWP.Cy
-    SetRect m_Pos_wRect, tWP.X, tWP.Y, tWP.X + tWP.Cx, tWP.Y + tWP.Cy
-	m_Position.wRectLeft = m_Pos_wRect.Left
-    m_Position.wRectTop = m_Pos_wRect.Top
-    m_Position.wRectRight = m_Pos_wRect.Right
-    m_Position.wRectBottom = m_Pos_wRect.Bottom
-    GetInfoFromMenu (STR$(m_Position.wRectLeft))
-    GetInfoFromMenu (STR$(m_Position.wRectTop))
-    GetInfoFromMenu (STR$(m_Position.wRectRight))
-    GetInfoFromMenu (STR$(m_Position.wRectBottom))
-    
-	' calculate the client, titlebar, menubar, & nonclient button regions
-    'CalculateBarRects False
-       
-	' use the calculated client region here (screen coords vs client coords)
-    GetRgnBox hRgn_Client, tNCR_rgrc0 'tNCR.rgrc0
-    tNCR.rgrc0Left = tNCR_rgrc0.Left
-    tNCR.rgrc0Top = tNCR_rgrc0.Top
-    tNCR.rgrc0Right = tNCR_rgrc0.Right
-    tNCR.rgrc0Bottom = tNCR_rgrc0.Bottom
-
-	' Return the new client area
-    'tNCR.rgrc1 = tNCR.rgrc0
-    tNCR.rgrc1Left = tNCR.rgrc0Left
-    GetInfoFromMenu (STR$(tNCR.rgrc0Left))
-    tNCR.rgrc1Top = tNCR.rgrc0Top
-    GetInfoFromMenu (STR$(tNCR.rgrc0Top))
-    tNCR.rgrc1Right = tNCR.rgrc0Right
-    GetInfoFromMenu (STR$(tNCR.rgrc0Right))
-    tNCR.rgrc1Bottom = tNCR.rgrc0Bottom
-    GetInfoFromMenu (STR$(tNCR.rgrc0Bottom))
-    'CopyMemory ByVal lParam, tNCR, Len(tNCR)
-	Mem.Position	= 0
-	Mem.WriteUDT	(tNCR)	'-- Write structure back to memory
-	Mem.Position	= 0
-	'-- Copy this structure back to the original address, so changes can take effect
-	Mem.MemCopyTo	(lParam, SizeOf(tNCR))
-	
-	End If
-	Mem.Close
-	Mem2.Close
-	If hRgn_Client Then DeleteObject hRgn_Client
-	If m_Position.wRgn Then DeleteObject m_Position.wRgn
-	SetRect m_Pos_wRect, 0, 0, -1, -1 ' reset to invalid value used in next line
-	hRgn_Client = 0
-	m_Position.wRgn = 0
-    Pt.X = 0
-    Pt.Y = 0
-End Sub
-
-Sub TitleBarMouseDown(hWnd As Long)
-	Dim tPS As POINTS
-	tPS.x = Screen.MouseX: tPS.y = Screen.MouseY
-	ReleaseCapture
-	SendMessageAPI hWnd, WM_NCLBUTTONDOWN, HTCAPTION, tPS
-End Sub
+DECLARE Sub TitleBarMouseDown(hWnd As Long)
+'~body Sub TitleBarMouseDown(hWnd As Long)   ' сборка: тело - в конце файла
 
 '~dup Dim m_bActive As Integer   ' повтор, первое: ODMenuXP.inc(1275)
 
@@ -32180,35 +29514,8 @@ Sub DrawWindowBorders (hWnd As Long, wParam As Long)
 	'End If
 End Sub
 
-Sub DrawIconText (hWnd As Long, wParam As Long)
-	' Draw Icon
-	'ExtractIconEx "shell32.dll", Cnt, mIcon, ByVal 0&, 1
-	'DrawIcon Me.hdc, 32 * Cnt, 0, mIcon
-	'DestroyIcon mIcon
-	Dim hIcon As Long
-	'Dim SmallIcon As Long
-	$TypeCheck Off
-	hIcon = SendMessageAPI(hWnd, WM_GETICON, 1, ByVal 0&)
-	$TypeCheck On
-	'smallIcon = CopyImage(hIcon, 1, 16, 16, &H4000)
-	DrawIconEx dc_Skin, s_BorderW +2, s_BorderW +1, hIcon, 16, 16, 0, 0, DI_NORMAL
-	'DrawIcon dc_Skin, 4, 0, smallIcon 'hIcon
-	DestroyIcon hIcon
-	'DestroyIcon smallIcon
-	' Draw Text
-	Dim wCaption As String
-	Dim r_wCaption As RECT
-	$TypeCheck Off
-	wCaption = SendMessageAPI(hWnd, &HD, 1, ByVal 0&)
-	$TypeCheck On
-	SetTextColor (dc_Skin, &HFFFFFF)
-	SetBkMode (dc_Skin, 1)
-	r_wCaption.Left	= s_BorderW + 16 + 6
-	r_wCaption.Top	= s_BorderW
-	r_wCaption.Right = r_Skin.Right -r_Skin.Left -(s_BorderW *2) -(GetSystemMetrics(SM_CXSIZE) *4)
-	r_wCaption.Bottom = r_Skin.Top +s_CaptionY -4
-	DrawText dc_Skin, wCaption, Len(wCaption), r_wCaption, &H0
-End Sub
+DECLARE Sub DrawIconText (hWnd As Long, wParam As Long)
+'~body Sub DrawIconText (hWnd As Long, wParam As Long)   ' сборка: тело - в конце файла
 
 Sub DrawButtons (hWnd As Long, wParam As Long)
 	' Draw Buttons
@@ -32281,14 +29588,8 @@ Sub DrawButtons (hWnd As Long, wParam As Long)
 				     ScrCopy)
 End Sub
 
-Sub RefreshBtns (hWnd As Long, wParam As Long)
-	Select Case wParam
-		Case 3, 10 To 18
-			DrawButtons (hWnd, wParam)
-		Case Else
-			GetInfoFromMenu ("WM_??PAINT :  " +STR$(wParam))
-	End Select
-End Sub
+DECLARE Sub RefreshBtns (hWnd As Long, wParam As Long)
+'~body Sub RefreshBtns (hWnd As Long, wParam As Long)   ' сборка: тело - в конце файла
 
 Sub DrawHotStateBtns (hWnd As Long, wParam As Long)
 	r_bSkin = r_Skin
@@ -32399,11 +29700,8 @@ Declare Function RedrawWindow Lib "user32" Alias "RedrawWindow" ( _
 		ByVal hrgnUpdate As Long, _
 		ByVal fuRedraw As Long) As Long
 
-Sub Redraw(hwnd As Long)
-	$TypeCheck Off
-	RedrawWindow hwnd, ByVal 0&, 0, RDW_UPDATENOW Or RDW_INVALIDATE Or RDW_INTERNALPAINT Or RDW_ALLCHILDREN
-	$TypeCheck On
-End Sub
+DECLARE Sub Redraw(hwnd As Long)
+'~body Sub Redraw(hwnd As Long)   ' сборка: тело - в конце файла
 
 Dim tNCR As NCCALCSIZE_PARAMS
 Dim tWP As WINDOWPOS
@@ -32413,351 +29711,7 @@ Dim m_lLeft As Long, _
 Dim m_lRight As Long, _
 	m_lBottom As Long
 
-FUNCTION WindowProc '(ByVal hwnd AS Long, ByVal uMsg AS Long,ByVal wParam AS Long, ByVal lParam AS LONG) AS LONG
-	Dim PrevProc As Long
-	Static s_dx As Long
-	Static s_dy As Long
-	PrevProc = precedent_adresse_mainfrm
-	Select Case uMsg
-		Case WM_NCACTIVATE
-			m_bActive = Not (wParam = 0)
-			
-			WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
-            
-            WindowProc hWnd, WM_NCPAINT, 0, 0
-            
-            Redraw hWnd
-            
-		Case WM_PAINT, WM_NCPAINT, WM_INITMENUPOPUP 'WM_NCACTIVATE, WM_SETTEXT, WM_KILLFOCUS, WM_MOUSEACTIVATE, WM_SYSCOMMAND, 
-			WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
-			GetInfoFromMenu ("WM_??PAINT :  " +STR$(lParam) +", " +STR$(wParam))
-			
-			GetWindowRect(hWnd, r_Skin)
-			dc_Skin = GetWindowDC(hWnd)
-			
-			DrawWindowBorders (hWnd, wParam)
-			DrawButtons (hWnd, wParam)
-			DrawIconText (hWnd, wParam)
-			
-			Select Case btnState
-				Case 1
-					DrawHotStateBtns (hWnd, HTCLOSE)
-				Case 2
-					DrawHotStateBtns (hWnd, HTMAXBUTTON)
-				Case 3
-					DrawHotStateBtns (hWnd, HTMINBUTTON)
-				Case 4
-					DrawDownStateBtns (hWnd, HTCLOSE)
-				Case 5
-					DrawDownStateBtns (hWnd, HTMAXBUTTON)
-				Case 6
-					DrawDownStateBtns (hWnd, HTMINBUTTON)
-				Case Else
-			End Select
-			
-			ReleaseDC (hWnd, dc_Skin)
-		Case WM_NCCALCSIZE
-        '    If wParam Then
-		'		WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
-        '        'DefWindowProc hWnd, uMsg, wParam, lParam
-		'		ConfigureNCandClient(hWnd, lParam)
-        '        'NewWndProc = WVR_VALIDRECTS  ' special meaning
-        '        WindowProc = &H400
-        '        'bWasIntercepted = True  ' don't forward this message
-		'	End If
-		'	GetInfoFromMenu ("WM_NCCALCSIZE :  " +STR$(lParam) +", " +STR$(wParam))
-			If wParam <> 0 Then
-
-				' Get the structure pointed to by lParam:
-				'CopyMemory tNCR, ByVal lParam, Len(tNCR)
-				'CopyMemory tWP, ByVal tNCR.lppos, Len(tWP)
-				Mem.Position	= 0
-				Mem.MemCopyFrom(lParam, SizeOf(tNCR))
-				Mem.Position	= 0
-				Mem.ReadUDT	(tNCR)
-
-				Mem2.Position	= 0
-				Mem2.MemCopyFrom(tNCR.lppos, SizeOf(tWP))
-				Mem2.Position	= 0
-				Mem2.ReadUDT	(tWP)
-
-				'With tNCR.rgrc(0)
-					' Set these
-					tNCR.rgrc0left		= tWP.x
-					tNCR.rgrc0top		= tWP.y
-					tNCR.rgrc0right		= tWP.x + tWP.cx
-					tNCR.rgrc0bottom	= tWP.y + tWP.cy
-
-					' Defaults
-					m_lLeft		= GetSystemMetrics(SM_CXFRAME) -2
-					m_lRight	= m_lLeft
-					m_lTop		= GetSystemMetrics(SM_CYCAPTION) + GetSystemMetrics(SM_CYFRAME)
-					If m_lTop < 24 Then _
-						m_lTop = 24
-					m_lBottom	= GetSystemMetrics(SM_CYFRAME) -2
-
-					' If the window in question is an MDI child, then we
-					' ant to ensure that the standard settings get sent
-					' back to windows: to prevent drawing additional borders,
-					' which aren't required:
-					'If Not m_bZoomedMDIChild Then
-					'	' If the implementation is valid then request the
-					'	' physical size of the title bar and borders:
-					'	If GetImplementation(Implementation) Then
-					'		Implementation.GetLeftMarginWidth m_lLeft
-					'		Implementation.GetTopMarginHeight m_lTop
-					'		Implementation.GetRightMarginWidth m_lRight
-					'		Implementation.GetBottomMarginHeight m_lBottom
-					'	End If
-					'End If
-
-					' Set our physical left/top/right/bottom values:
-					tNCR.rgrc0Left = tNCR.rgrc0Left + m_lLeft
-					tNCR.rgrc0Top = tNCR.rgrc0Top + m_lTop
-					tNCR.rgrc0Right = tNCR.rgrc0Right - m_lRight - 1
-					tNCR.rgrc0Bottom = tNCR.rgrc0Bottom - m_lBottom - 1
-				'End With
-
-				' Return the new client area size to windows:
-				tNCR.rgrc1Left = tNCR.rgrc0Left
-				tNCR.rgrc1Top = tNCR.rgrc0Top
-				tNCR.rgrc1Right = tNCR.rgrc0Right
-				tNCR.rgrc1Bottom = tNCR.rgrc0Bottom
-				'CopyMemory ByVal lParam, tNCR, Len(tNCR)
-				Mem.Position	= 0
-				Mem.WriteUDT	(tNCR)	'-- Write structure back to memory
-				Mem.Position	= 0
-				
-				Mem.MemCopyTo	(lParam, SizeOf(tNCR))
-				Mem.Close: Mem2.Close
-				WindowProc = WVR_VALIDRECTS
-
-			Else
-				' lParam points to a rectangle
-				'WindowProc = CallOldWindowProc(hwnd, uMsg, wParam, lParam)
-				WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
-			End If
-		Case WM_NCLBUTTONDOWN 'TO WM_NCMBUTTONDBLCLK
-		
-		    'Dim Ret As Long
-		    
-		    
-            'If s_dx = 0 Then s_dx = 1
-            'If s_dy = 0 Then s_dy = 1
-            's_dx = -1 * s_dx: s_dy = -1 * s_dy
-            'mouse_event &H1, s_dx, s_dy, 0, 0
-
-            Dim hRgn As Long
-			GetWindowRect(hWnd, r_Skin)
-			dc_Skin = GetWindowDC(hWnd)
-			GetInfoFromMenu ("Souris activйe :  " +STR$(hWnd) +", " +STR$(lParam) +", " +STR$(wParam))
-			hRgn = CreateRectRgn(r_Skin.Left, r_Skin.Top +20, r_Skin.Right, r_Skin.Bottom) 'CreateRectRgnIndirect(0&)
-            ValidateRgn(hWnd, hRgn)
-			Select Case wParam
-				Case HTMINBUTTON
-					If btnState <> 6 Then
-						DrawButtons(hWnd, wParam)
-						DrawDownStateBtns (hWnd, wParam)
-						btnState = 6
-						GetInfoFromMenu ("WM_NCLBUTTONDOWN :  " +STR$(wParam))
-					End If
-				Case HTMAXBUTTON
-					If btnState <> 5 Then
-						DrawButtons (hWnd, wParam)
-						DrawDownStateBtns (hWnd, wParam)
-						btnState = 5
-						GetInfoFromMenu ("WM_NCLBUTTONDOWN :  " +STR$(wParam))
-					End If
-				Case HTCLOSE
-					If btnState <> 4 Then
-						DrawButtons (hWnd, wParam)
-						DrawDownStateBtns (hWnd, wParam)
-						btnState = 4
-					End If
-		'		Case 2, 5, 8, 9, 10 To 18, 20 '3, 
-		'			If uMsg = &HA4 Then _
-		'				lParam = 0
-		'			Dim m_wParam2 As Long
-		'			m_wParam2 = wParam
-		'			wParam = 0
-		'			WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
-		'			wParam = 0
-		'			
-		'			GetWindowRect(hWnd, r_Skin)
-		'			dc_Skin = GetWindowDC(hWnd)
-		'			
-		'			RefreshBtns (hWnd, m_wParam2)
-		'			
-		'			ReleaseDC (hWnd, dc_Skin)
-		'			'SendMessageAPI (hWnd, WM_NCLBUTTONDOWN, m_wParam2, 0&)
-				Case Else
-		'			If wParam <> 0 and wParam <> 4 Then _
-		'				GetInfoFromMenu ("Souris activйe :  " +STR$(hWnd) +", " +STR$(lParam) +", " +STR$(wParam))
-		'			WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
-			End Select
-			
-			
-    ''create a temporary region
-    'Ret = CreateEllipticRgn(0, 0, 1, 1)
-    ''copy the current clipping region into the temporary region
-    'GetClipRgn dc_Skin, Ret
-    'OffsetClipRgn dc_Skin, 10, 10
-    ''set the new window region
-    'SetWindowRgn hWnd, Ret, 1
-			
-			
-			'hRgn = CreateRectRgn(r_Skin.Left, r_Skin.Top +20, r_Skin.Right, r_Skin.Bottom) 'CreateRectRgnIndirect(0&)
-            'ValidateRgn(hWnd, hRgn)
-			WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
-            '$TypeCheck Off
-            'ValidateRect(hWnd, ByVal 0&)
-            '$TypeCheck On
-            'ValidateRgn(hWnd, hRgn)
-            DeleteObject hRgn
-			ReleaseDC (hWnd, dc_Skin)
-		Case WM_NCMOUSEMOVE, WM_MOUSEMOVE ', WM_NCHITTEST, WM_MOUSEMOVE
-			Select Case wParam
-				Case HTMINBUTTON
-					If btnState <> 3 and btnState <> 6 Then
-						GetWindowRect(hWnd, r_Skin)
-						dc_Skin = GetWindowDC(hWnd)
-						DrawButtons(hWnd, wParam)
-						DrawHotStateBtns (hWnd, wParam)
-						ReleaseDC (hWnd, dc_Skin)
-						btnState = 3
-					End If
-				Case HTMAXBUTTON
-					If btnState <> 2 and btnState <> 5 Then
-						GetWindowRect(hWnd, r_Skin)
-						dc_Skin = GetWindowDC(hWnd)
-						DrawButtons (hWnd, wParam)
-						DrawHotStateBtns (hWnd, wParam)
-						ReleaseDC (hWnd, dc_Skin)
-						btnState = 2
-					End If
-				Case HTCLOSE
-					If btnState <> 1 and btnState <> 4 Then
-						GetWindowRect(hWnd, r_Skin)
-						dc_Skin = GetWindowDC(hWnd)
-						DrawButtons (hWnd, wParam)
-						DrawHotStateBtns (hWnd, wParam)
-						ReleaseDC (hWnd, dc_Skin)
-						btnState = 1
-					End If
-		'		Case 10 To 18
-		'			Dim m_wParam As Long
-		'			m_wParam = wParam
-		'			wParam = 0
-		'			WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
-		'			wParam = 0
-		'			'GetInfoFromMenu ("WM_NCHITTEST :  " +STR$(hWnd) +", " +STR$(lParam) +", " +STR$(wParam))
-		'			
-		'			GetWindowRect(hWnd, r_Skin)
-		'			dc_Skin = GetWindowDC(hWnd)
-		'			
-		'			RefreshBtns (hWnd, m_wParam)
-		'			
-		'			ReleaseDC (hWnd, dc_Skin)
-		'			'WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
-				Case Else
-					If btnState > 0 Then
-						GetWindowRect(hWnd, r_Skin)
-						dc_Skin = GetWindowDC(hWnd)
-						DrawButtons(hWnd, wParam)
-						ReleaseDC (hWnd, dc_Skin)
-						btnState = 0
-					End If
-		'			GetInfoFromMenu ("WM_NCHITTEST :  " +STR$(wParam))
-					'WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
-		'			If wParam <> 0 and wParam <> 2 and wParam <> 3 and wParam <> 8 and wParam <> 9 and wParam <> 20 Then _
-		'				GetInfoFromMenu ("WM_NCHITTEST :  " +STR$(hWnd) +", " +STR$(lParam) +", " +STR$(wParam))
-			End Select
-			WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
-        'Case WM_SIZE
-		'	WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
-		'	SendMessageAPI hWnd, WM_NCPAINT, 0, 0
-		Case WM_SETCURSOR
-			Dim HtPlus As Long
-			Dim lStyle As Long, _
-				lNewStyle As Long
-			If hWnd = wParam Then
-				HtPlus = VAL(Right$(hex$(lParam), 2))
-				Select Case HtPlus
-					Case 0, 10 To 18
-						' Sans ceci, Windows redessine la zone de la barre de titre
-						' ainsi que les btns rйduire/agrandir/fermer chaque fois que
-						' la souris est relвchйe suivant un йvйnement appuyй NC.
-
-	    				lStyle = GetWindowLong(hWnd, GWL_STYLE)
-						lNewStyle = lStyle And Not WS_VISIBLE
-						SetWindowLong (hWnd, GWL_STYLE, lNewStyle)
-						CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
-						'WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
-						SetWindowLong (hWnd, GWL_STYLE, lStyle)
-						GetInfoFromMenu ("WM_SETCURSOR :  " +STR$(HtPlus))
-					Case Else
-						WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
-				End Select
-			Else
-				WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
-			End If
-			' If we don't catch this the controlbox area
-            ' will show an ugly flicker.
-            'Dim hRgn As Long
-			'GetWindowRect(hWnd, r_Skin)
-			'dc_Skin = GetWindowDC(hWnd)
-            'Select Case HtPlus
-            '    Case HTTOP, HTBOTTOM
-            '        GetInfoFromMenu ("WM_SETCURSOR :  " +STR$(HtPlus))
-            '    	'$TypeCheck Off
-            '        'SetCursor LoadCursor(ByVal 0&, IDC_SIZENS)
-            '    	'$TypeCheck On
-            '		'SelectClipRgn (dc_Skin, hRgn)
-            '    Case HTLEFT, HTRIGHT
-            '        GetInfoFromMenu ("WM_SETCURSOR :  " +STR$(HtPlus))
-            '    	'$TypeCheck Off
-            '        'SetCursor LoadCursor(ByVal 0&, IDC_SIZEWE)
-            '    	'$TypeCheck On
-            '		'SelectClipRgn (dc_Skin, hRgn)
-            '    Case HTTOPLEFT, HTBOTTOMRIGHT
-            '        GetInfoFromMenu ("WM_SETCURSOR :  " +STR$(HtPlus))
-            '    	'$TypeCheck Off
-            '        'SetCursor LoadCursor(ByVal 0&, IDC_SIZENWSE)
-            '    	'$TypeCheck On
-            '		'SelectClipRgn (dc_Skin, hRgn)
-            '    Case HTTOPRIGHT, HTBOTTOMLEFT
-            '        GetInfoFromMenu ("WM_SETCURSOR :  " +STR$(HtPlus))
-            '    	'$TypeCheck Off
-            '        'SetCursor LoadCursor(ByVal 0&, IDC_SIZENESW)
-            '    	'$TypeCheck On
-            '		'SelectClipRgn (dc_Skin, hRgn)
-            '    'Case 18
-            '    '    GetInfoFromMenu ("WM_SETCURSOR :  " +STR$(HtPlus))
-            '	'	'SelectClipRgn (dc_Skin, hRgn)
-            '	Case 0
-            '       	GetInfoFromMenu ("WM_SETCURSOR :  " +STR$(HtPlus) +" vs " +STR$(lParam) +" vs " +STR$(wParam))
-            '    Case Else
-            '        ' Let Windows handle this one.
-            '        'If HtPlus <> 4 Then
-            '        	'WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
-            '        'End If
-            'End Select
-			'hRgn = CreateRectRgnIndirect(0&)
-            'ProtectFromDrawing
-            'WindowProc = 1
-            'WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
-            '$TypeCheck Off
-            'ValidateRect(hWnd, ByVal 0&)
-            '$TypeCheck On
-            'ValidateRgn(hWnd, hRgn)
-            'DeleteObject hRgn
-			'ReleaseDC (hWnd, dc_Skin)
-		Case Else
-			WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
-	End Select
-	'WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
-
-END FUNCTION
+'~body FUNCTION WindowProc   ' сборка: тело - в конце файла
 $TYPECHECK OFF   ' сборка: вернуть после QFormSkin.inc
 '============================================================================
 '[build_inc] QFuncLib.inc
@@ -32771,23 +29725,20 @@ Const P_I=acos(-1)
 '===============================================
 ' Return the short name of file
 '===============================================
-Function GetFileName(file as string) as string
- result=RIGHT$(file,Len(file)-RINSTR(file,"\"))
-End Function
+DECLARE Function GetFileName(file as string) as string
+'~body Function GetFileName(file as string) as string   ' сборка: тело - в конце файла
 
 '===============================================
 ' Return the path name of file
 '===============================================
-Function GetPathName(file as string) as string
-  result=LEFT$(file,RINSTR(file,"\")-1)
-End Function
+DECLARE Function GetPathName(file as string) as string
+'~body Function GetPathName(file as string) as string   ' сборка: тело - в конце файла
 
 '===============================================
 ' Return the extension of file
 '===============================================
-Function GetFileExt(file as string) as string
-  result=RIGHT$(file,Len(file)-RINSTR(file,"."))
-End Function
+DECLARE Function GetFileExt(file as string) as string
+'~body Function GetFileExt(file as string) as string   ' сборка: тело - в конце файла
 
 '===============================================
 ' Return the n word in a string expression
@@ -32833,88 +29784,62 @@ end function
 '====================================================
 ' Return a string with remove char
 '====================================================
-function RemoveChar$(s as string,char as string) as string
-  dim source as string  
-
-  if s<>"" then
-    source=s
-    while instr(source,char)<>0
-      source=left$(source,instr(source,char)-1)+mid$(source,instr(source,char)+len(char))
-    wend
-    result=source
-  end if
-end function
+DECLARE function RemoveChar$(s as string,char as string) as string
+'~body function RemoveChar$(s as string,char as string) as string   ' сборка: тело - в конце файла
 
 '====================================================
 ' Return a string without space to start and to end
 '====================================================
-Function Trim_$(s as string) as string
-  Result=LTRIM$(RTRIM$(s))
-End Function
+DECLARE Function Trim_$(s as string) as string
+'~body Function Trim_$(s as string) as string   ' сборка: тело - в конце файла
 
 '======================================================
 ' Return ratio
 '======================================================
-function Ratio(Value1 as double,Value2 as double) as double
-  Result=((Value1-Value2)*100)/Value1
-end function
+DECLARE function Ratio(Value1 as double,Value2 as double) as double
+'~body function Ratio(Value1 as double,Value2 as double) as double   ' сборка: тело - в конце файла
 
 '========================================
 ' Return radian value
 '========================================
-function GetRadian(degrees as double) as double
-  Result=degrees*(Pi/180)
-end function
+DECLARE function GetRadian(degrees as double) as double
+'~body function GetRadian(degrees as double) as double   ' сборка: тело - в конце файла
 
 '==========================================
 ' Return degrees value
 '==========================================
-function GetDegrees(radian as double) as double
-  Result=radian*(180/Pi)
-end function
+DECLARE function GetDegrees(radian as double) as double
+'~body function GetDegrees(radian as double) as double   ' сборка: тело - в конце файла
 
 '===================================
 ' Return distance
 '===================================
-function Distance(x as double,y as double) as double
-  Result=SQR(x^2+y^2)
-end function
+DECLARE function Distance(x as double,y as double) as double
+'~body function Distance(x as double,y as double) as double   ' сборка: тело - в конце файла
 
 '===================================
 ' Return surface
 '===================================
-function Surface(Width as double,Height as double) as double
-  Result=Width*Height
-end function
+DECLARE function Surface(Width as double,Height as double) as double
+'~body function Surface(Width as double,Height as double) as double   ' сборка: тело - в конце файла
 
 '===================================
 ' Return blue value of color
 '===================================
-function GetBlue(Color as long) as long
-    Result=int(Color/65536)
-end function
+DECLARE function GetBlue(Color as long) as long
+'~body function GetBlue(Color as long) as long   ' сборка: тело - в конце файла
 
 '===================================
 ' Return red value of color
 '===================================
-function GetRed(Color as long) as long
-    dim blue as long
-    dim green as long     
-
-    blue=int(Color/65536)
-    green=int((Color-(blue*65536))/256)
-    Result=int(Color-(blue*65536)-(green*256))
-end function
+DECLARE function GetRed(Color as long) as long
+'~body function GetRed(Color as long) as long   ' сборка: тело - в конце файла
 
 '===================================
 ' Return green value of color
 '===================================
-function GetGreen(Color as long) as long
-    dim blue as long
-
-    blue=int(Color/65536)
-    Result=int((Color-(blue*65536))/256)
-end function
+DECLARE function GetGreen(Color as long) as long
+'~body function GetGreen(Color as long) as long   ' сборка: тело - в конце файла
 
 '==========================================
 ' Return Dec from bin
@@ -32975,10 +29900,8 @@ Type QPoint
     Y as long
 End Type
 
-Sub Point(FPoint as QPoint, x as long, y as long)
-FPoint.X = x
-FPoint.Y = y
-End Sub
+DECLARE Sub Point(FPoint as QPoint, x as long, y as long)
+'~body Sub Point(FPoint as QPoint, x as long, y as long)   ' сборка: тело - в конце файла
 
 
 '============================================================================
@@ -33216,595 +30139,49 @@ DIM nSR(MaxBooks&) As WORD     'n sheets read
 DIM SheetName(MaxBooks&,MaxSheets&) As STRING
   
 '''''Main Routines
-FUNCTION xlsOPEN
-Result=-1&: xFinish=0??: sERR=""
-IF (b<0&) OR (b>MaxBooks&) THEN sERR="Book out of range": Exit Function
-ClearBookData
-IF FILEEXISTS(FileSpec(b))<=0& THEN sERR="File not found": Exit Function
-ReadOLEFile
-IF sERR<>"" THEN Goto OpenFail
-M(b).Position=0&
-FindBOF:
-'GetRecord
-xCode=M(b).ReadNum(2&): xLength=M(b).ReadNum(2&): xNext=M(b).Position+xLength
-IF xCode=xBOF?? THEN
-  xNext=M(b).Position-4&
-  IF xNext>0& THEN Call ShiftBook(0&,-xNext): xNext=0&
-  P(b,0&,0&)=0&: Goto NextParse
-ELSE
-  M(b).Position=M(b).Position+&H3C
-  IF M(b).Position<M(b).Size THEN Goto FindBOF   
-  sERR="BOF not found": Goto OpenFail
-END IF
-NextOpen:
-xPosition=M(b).Position  ': GetRecord
-xCode=M(b).ReadNum(2&): xLength=M(b).ReadNum(2&): xNext=M(b).Position+xLength
-SELECT CASE xCode
-CASE xBOF??
-  GetData
-  IF B2W(0&)<>&H600 THEN sERR="Not BIFF8 file": Goto OpenFail
-  IF B2W(2&)<>5?? THEN
-    IF nSR(b)<MaxSheets& THEN INC(nSR(b)) ELSE sERR="Too many sheets": Goto OpenFail
-    IF xPosition<>P(b,nSR(b),0&) THEN sERR="File format read error": Goto OpenFail
-  END IF
-  P(b,nSR(b),pOFFSET&)=xPosition
-CASE xEOF??
-  P(b,nSR(b),pLENGTH&)=M(b).Position-P(b,nSR(b),pOFFSET&)
-  IF nSR(b)=nSheets(b) THEN xFinish=1?? 'accounted for all BOUNDSHEETs
-' WorkBook Globals
-CASE xFILEPASS??
-  IF xLength<>0?? THEN sERR="File password required": Goto OpenFail
-CASE xPASSWORD??
-  IF xLength<>2?? THEN sERR="Password required": Goto OpenFail
-CASE xBOUNDSHEET??
-  IF nSheets(b)<MaxSheets& THEN INC(nSheets(b)) ELSE sERR="Too many sheets": Goto OpenFail
-  P(b,nSheets(b),pSHEET&)=xPosition: GetData
-  MEMCPY(VARPTR(P(b,nSheets(b),pOFFSET&)),VARPTR(buf(0&)),4&)
-  k=buf(6&)+(256& * buf(7&))+7&: s$=""
-  FOR i=8& to k: s$=s$+CHR$(buf(i)): NEXT i
-  SheetName(b,nSheets(b))=s$
-CASE xSST??
-  IF SST(b,0&,0&)<>0& THEN sERR="Multiple SST records": Goto OpenFail
-  SST(b,0&,0&)=xPosition+12&
-  M(b).Position=M(b).Position+4&: tSST(b)=M(b).ReadNum(4&) 'Total SST strings
-  nSST(b)=0&: j=0&: k=0&
-  IF tSST(b)=0& THEN Goto CheckSSTtotal
-  CountStrings:
-'  xTmp=StrRecLen
-   sLength=M(b).ReadNum(2&): xTmp=sLength
-   sCode=0??: sCode=M(b).ReadNum(1&)
-   IF (sCode AND 1)>0?? THEN sLength=2??*sLength: xTmp=sLength 'String not compressed
-   IF (sCode AND 8)>0?? THEN xTmp=M(b).ReadNum(2&): xTmp=sLength+4&*xTmp 'RichString
-   IF (sCode AND 4)>0?? THEN i=M(b).ReadNum(4&): xTmp=xTmp+i  'Far East
-'
-  M(b).Position=M(b).Position+xTmp: INC(k)
-  IF j+k>=tSST(b) THEN Goto EndofBlock
-  IF M(b).Position<xNext THEN Goto CountStrings
-  EndofBlock:
-  xTmp=0&
-  'Check if some lamer wrote a string across records.  Thus...
-  IF M(b).Position>xNext THEN xTmp=M(b).Position-xNext+1
-  SST(b,nSST(b),1&)=k: SST(b,nSST(b),2&)=M(b).Position: j=j+k: k=0&
-  IF j>=tSST(b) THEN Goto CheckSSTTotal
-  IF M(b).Position>P(b,1&,0&) THEN Goto CheckSSTTotal
-  M(b).Position=xNext ': GetRecord
-  xCode=M(b).ReadNum(2&): xLength=M(b).ReadNum(2&): xNext=M(b).Position+xLength
-  IF xCode=xCONTINUE?? THEN 
-    IF nSST(b)=MaxSST& THEN sERR="MaxSST& too small": Goto OpenFail
-    INC(nSST(b)): M(b).Position=M(b).Position+xTmp  'ptr to 1st in record
-    SST(b,nSST(b),0&)=M(b).Position: Goto CountStrings
-  END IF
-  CheckSSTTotal:
-  IF j<>tSST(b) THEN sERR="SST total mismatch "+STR$(j)+" "+STR$(tSST(b))+" at "+HEX$(M(b).Position): Goto OpenFail
-  IF xIntegrity=0& THEN xNext=P(b,1&,pOFFSET&)-4& '->next EOF
-' WorkSheet Data  
-CASE xDIMENSIONS??
-  P(b,nSR(b),pDIMENSIONS&)=xPosition
-  P(b,nSR(b),pminROW&)=M(b).ReadNum(4&): P(b,nSR(b),pmaxROW&)=M(b).ReadNum(4&)
-  P(b,nSR(b),pminCOL&)=M(b).ReadNum(2&): P(b,nSR(b),pmaxCOL&)=M(b).ReadNum(2&)
-  IF xIntegrity=1& THEN Goto NextParse
-  IF nSR(b)<nSheets(b) THEN xNext=P(b,nSR(b)+1&,pOFFSET&)-4&: Goto NextParse 'Next BOF-4
-  i=P(b,0&,1&)
-  IF (i>4096&) AND (i>M(b).Position) THEN xNext=P(b,0&,1&)-4&  'BIFF8 length-4
-END SELECT
-NextParse:
-M(b).Position=xNext
-IF xFinish=1?? Then Goto OpenDone 
-IF M(b).Position<(M(b).Size-4&) Then Goto NextOpen
-sERR="Unexpected end of file"
-OpenFail:
-'ClearBookData
-M(b).Close: Exit Function
-OpenDone:
-Result=nSR(b)
-END FUNCTION
+'~body FUNCTION xlsOPEN   ' сборка: тело - в конце файла
 
-FUNCTION xlsSAVE(file As STRING) As LONG
-DIM FAT(4&) As LONG
-Result=-1&: sERR=""
-IF FILEEXISTS(file)<=0& THEN F.Open(file,fmCreate) ELSE F.Open(file,2&)
-IF FILEEXISTS("qxls.dat")<=0& THEN ExtractResource(Resource(1&),"qxls.dat"):DoEvents
-F2.Open("qxls.dat",0&)
-M(b).Position=0&: F.Position=0&
-F.CopyFrom(F2,80&): FillFile(-1&,&H200) 'OLE header
-FAT(0&)=P(b,0&,1&)  'file length
-For i=0& to FAT(0&)-1& Step 8&
-xiEEE=M(b).ReadNum(8&):F.WriteNum(xiEEE,8&): NEXT i
-IF FAT(0&)>&H1000 THEN Call FillFile(0&,&H200) ELSE Call FillFile(0&,&H1000)
-FAT(1&)=F.Position: i=1&: xPosition=(F.Position-&H200)\&H200 'ptr to FAT
-WriteFATentry:
-IF i<xPosition THEN F.WriteNum(i,4&): INC(i): Goto WriteFATentry
-F.WriteNum(-2&,4&)
-j=(F.Position-FAT(1&))\&H200+1& '# of FAT sectors
-j=j+(j+2&)\128&
-For i=1& to j: F.WriteNum(-3&,4&): NEXT i
-CheckFATCount:
-k=(F.Position-FAT(1&))\&H200+1&
-IF k>j THEN F.WriteNum(-3&,4&): xTmp=F.Position
-F.WriteNum(-2&,4&): FillFile(-1&,&H200)
-FAT(4&)=(F.Position-FAT(1&))\&H200  'final update of # FAT sectors
-IF FAT(4&)>k THEN F.Position=xTmp: j=k-1&: Goto CheckFATCount
-xInt=(F.Position-&H200)\&H200     'ptr to DIR
-xTmp=F.Position: F2.Position=&H50
-F.CopyFrom(F2,512&) 'ole directory
-IF FAT(0&)<&H1000 THEN i=&H1000 ELSE i=FAT(0&)
-F.Position=xTmp+&HF8: F.WriteNum(i,4&) 'length
-F.Position=&H2C: F.WriteNum(FAT(4&),4&) 'put # of FAT sectors
-F.Position=&H30: F.WriteNum(xInt,4&)   'put DIR ptr
-F.Position=&H4C: i=xPosition: xNext=&H200
-WriteFATindex:
-F.WriteNum(i,4&): INC(i)
-IF F.Position<>xNext THEN Goto FATindexDone
-IF F.Position=&H200 THEN
-  F.Position=&H44: F.WriteNum(xInt+1&,4&)
-  F.Position=(xInt+2&)*&H200: xNext=F.Position+&H1FC 
-ELSE
-  j=(F.Position+4&)\&H200-1&: F.WriteNum(j,4&): xNext=F.Position+&H1FC
-END IF
-FATindexDone:
-IF i<xInt THEN Goto WriteFATindex
-FillFile(-1&,&H200)  
-IF FAT(4&)>109& THEN i=(FAT(4&)-109&)\128&+1&: F.Position=&H48: F.WriteNum(i,4&)
-Result=F.Size
-F.Close: F2.Close
-END FUNCTION
+'~body FUNCTION xlsSAVE(file As STRING) As LONG   ' сборка: тело - в конце файла
 
-FUNCTION xlsREAD(s As LONG, row As LONG, col As LONG) As STRING
-DIM r As WORD, c As WORD, strindex As WORD
-Result="": sERR=""
-IF (b>MaxBooks&) OR (s>nSR(b)) THEN sERR="Book or sheet index too big": Exit Function
-IF (row<P(b,s,pminROW&)) OR (row>=P(b,s,pmaxROW&)) THEN sERR="Row out of bounds": Exit Function
-IF (col<0&) OR (col>255&) THEN sERR="Col out of bounds": Exit Function
-M(b).Position=P(b,s,pOFFSET&)+20&     'index record
-xEnd=P(b,s,pOFFSET&)+P(b,s,pLENGTH&)  'end of sheet
-'Find row block
-'GetRecord
-GetIndexRecord:
-xCode=M(b).ReadNum(2&): xLength=M(b).ReadNum(2&): xNext=M(b).Position+xLength
-ptrINDEXEnd=xNext
-IF xCode=xINDEX?? THEN Goto CheckIndex
-M(b).Position=xNext
-IF xNext<xEnd THEN Goto GetIndexRecord ELSE sERR="Index not found": Exit Function '&H208
-CheckIndex:
-i=M(b).Readnum(4&)
-IF i<>0& THEN sERR="Bad Index record format": Exit Function
-i=M(b).Readnum(4&)
-IF i<>P(b,s,pminROW&) THEN sERR="Index and Dimensions disagree": Exit Function
-j=M(b).Readnum(4&)
-IF j<>P(b,s,pmaxROW&) THEN sERR="Index and Dimensions disagree": Exit Function
-j=4& * ((row-i)\32&)+4&
-IF j+12&>xLength THEN sERR="Index record too short": Exit Function
-ptrINDEX=M(b).Position+j: M(b).Position=ptrINDEX: i=M(b).ReadNum(4&)
-IF i<0& THEN sERR="Neg index pointer": Exit Function
-IF i>xEnd THEN sERR="Bad index pointer": Exit Function
-M(b).Position=i: xEnd=i
-'GetRecord
-xCode=M(b).ReadNum(2&): xLength=M(b).ReadNum(2&): xNext=M(b).Position+xLength
-IF xCode<>xDBCELL?? THEN sERR="DBCell not found": Exit Function
-ptrDBOffset=M(b).Position: xTmp=xNext: GetData
-MEMCPY(VARPTR(i),VARPTR(buf(0&)),4&) 'neg offset to first cell data record
-j=xEnd-i+20&: k=0&: i=0&: M(b).Position=j-20&
-GetRowRecord:
-ptrROW=M(b).Position
-'GetRecord
-xCode=M(b).ReadNum(2&): xLength=M(b).ReadNum(2&): xNext=M(b).Position+xLength
-IF xCode<>xROW?? THEN sERR="Row record not found": Exit Function
-k=k+buf(2&*i+4&)+256& * buf(2&*i+5&): r=M(b).ReadNum(4&)
-IF r<row THEN M(b).Position=xNext: INC(i): Goto GetRowRecord
-ptrDB=xEnd+10&+2&*i
-IF ptrDB>=xTmp THEN ptrDB=0&
-IF r>row THEN sERR="Row not defined": Exit Function
-i=j+k: M(b).Position=i: xPosition=i
-IF (i<ptrROW) OR (i>xEnd) THEN sERR="No cell record": Exit Function
-NextRead:
-xPosition=M(b).Position
-'GetRecord
-xCode=M(b).ReadNum(2&): xLength=M(b).ReadNum(2&): xNext=M(b).Position+xLength
-SELECT CASE xCODE
-  CASE xSTRING??, xARRAY??, xSHRFMLA??, &H4BC, xCONTINUE??
-  Goto KeepMoving
-END SELECT
-GetData: r=buf(0&)+256&*buf(1&)
-IF r<>row THEN sERR="Col not found/defined": Exit Function
-c=buf(2&)+256&*buf(3&)
-IF c>col THEN Exit Function  'columns to left were blank/not defined
-IF (c<col) AND (xCode<>xMULRK??) THEN Goto KeepMoving
-xFormat=buf(4&)+256&*buf(5&): wPosition=xPosition
-CellType:
-SELECT CASE xCode
-CASE xLABELSST??
-  strindex=buf(6&)+256&*buf(7&): k=0&: i=0&
-  FindSSTRecord:
-  j=k: k=k+SST(b,i,1&)
-  IF strindex<k THEN Goto FindString
-  IF i<nSST(b) THEN INC(i): Goto FindSSTRecord
-  sERR="Index>no. strings": Exit Function
-  FindString:
-  M(b).Position=SST(b,i,0&): xNext=SST(b,i,2&)
-  SSTString:
-'  xTmp=StrRecLen
-   sLength=M(b).ReadNum(2&): xTmp=sLength
-   sCode=0&: sCode=M(b).ReadNum(1&)
-   IF (sCode AND 1??)>0& THEN sLength=2??*sLength: xTmp=sLength 'String not compressed
-   IF (sCode AND 8??)>0& THEN xTmp=M(b).ReadNum(2&): xTmp=sLength+4&*xTmp 'RichString
-   IF (sCode AND 4??)>0& THEN i=M(b).ReadNum(4&): xTmp=xTmp+i  'Far East
-'
-  IF j<>strindex THEN Goto NextSSTEntry
-  GetUnicodeNow:
-  xUnicode=M(b).Position+M(b).Pointer: s$=""
-  FOR i=1& to sLength
-  'Check if string written across a CONTINUE record
-  IF M(b).Position=xNext THEN M(b).Position=M(b).Position+5
-  xB1=M(b).ReadNum(1&)
-  'for 16-bit char and NOT (Far East OR Rich Text), get odd bytes only 
-  IF sCode=1?? THEN
-    xB2=M(b).ReadNum(1&): INC(i)
-    SELECT CASE xB2
-    CASE 4? 'RUSSIAN
-    IF xB1=1? THEN j=167& ELSE j=176&
-    IF xB1=81? THEN j=103&
-    xB1=xB1+j
-    END SELECT
-  END IF
-  s$=s$+CHR$(xB1)
-  NEXT i
-  Result=s$: xType=-1&: Exit Function
-  NextSSTEntry:
-  INC(j): M(b).Position=M(b).Position+xTmp
-  IF M(b).Position>P(b,1&,pOFFSET&) THEN sERR="SST read error": Exit Function
-  Goto SSTString
-CASE xRK??, &H7E
-  MEMCPY(VARPTR(RK),VARPTR(buf(6&)),4&)
-  Result=RK2str: Exit Function
-CASE xNUMBER??
-  xIEEEnumber:
-  MEMCPY(VARPTR(xIEEE),VARPTR(buf(6&)),8&)
-  Result=STR$(xIEEE): xType=4&: Exit Function
-CASE xMULRK??
-  IF c>col THEN Goto KeepMoving
-  i=6&  'first RK in buf
-  NextMULRK:
-  IF (c<col) AND (i+6<xLength) THEN INC(c): i=i+6&: Goto NextMULRK
-  IF c=col THEN
-    MEMCPY(VARPTR(RK),VARPTR(buf(i)),4&): ptrData=xPosition+i+4&
-    Result=RK2str: Exit Function
-  END IF
-CASE xBLANK??
-  sERR="#BLANK": Exit Function
-CASE xLABEL??
-  M(b).Position=xPosition+10&: xTmp=StrRecLen: Goto GetUnicodeNow
-CASE xBOOLERR??
-  sERR="#BOOLERR": Exit Function
-CASE xFORMULA??, &H6, &H406
-  xTmp=buf(12&)+256&*buf(13&): sERR="#FORMULA"
-  IF (buf(6&)=0&) AND (xTmp=&HFFFF) THEN 
-    M(b).Position=xNext  'Return value in next record
-'    GetRecord
-    xCode=M(b).ReadNum(2&): xLength=M(b).ReadNum(2&): xNext=M(b).Position+xLength
-    GetData
-    SELECT CASE xCODE
-      CASE xARRAY??, xSHRFMLA??, &H4BC
-      M(b).Position=xNext ': GetRecord
-      xCode=M(b).ReadNum(2&): xLength=M(b).ReadNum(2&): xNext=M(b).Position+xLength
-      GetData: Goto CellType
-    END SELECT
-    Goto CellType
-  END IF
-  IF (buf(6&)=1?) AND (xTmp=&HFFFF) THEN Result=STR$(buf(8&)): xType=2&: Exit Function
-  Goto xIEEEnumber 
-CASE xMULBLANK??
-CASE xSTRING??
-  sLength=buf(0&)+256&*buf(1&): s$=""
-  FOR i=1& to sLength: s$=s$+CHR$(buf(i+2&)): NEXT i
-  Result=s$: xType=-1&: Exit Function
-CASE xWINDOW2??: Exit Function
-CASE xSELECTION??: Exit Function
-CASE xDBCELL??: sERR="Cell not found": Exit Function
-CASE xRSTRING??: sERR="#RSTRING obsolete in BIFF8": Exit Function
-CASE ELSE
-  sERR="#"+RIGHT$(HEX$(xCode),4&)+" unexpected record code": Exit Function
-END SELECT
-KeepMoving:
-M(b).Position=xNext
-IF M(b).Position<=xEnd-4& THEN Goto NextRead
-END FUNCTION
+'~body FUNCTION xlsREAD(s As LONG, row As LONG, col As LONG) As STRING   ' сборка: тело - в конце файла
 
-FUNCTION xlsWRITE(s As LONG, row As LONG, col As LONG, value As STRING) As LONG
-DIM wr As LONG, wc As LONG, ws As LONG, wInt As LONG
-DIM wType As LONG, wLength AS WORD
-DIM xSingle As SINGLE
-DIM r$ As STRING
-Result=-1&: sERR=""
-IF row>P(b,s,pMaxROW&) THEN sERR="Row not found": Exit Function
-wr=row: wc=col: ws=s: wType=-1&: wLength=LEN(value)
-IF wLength=0 THEN wType=-2&: Goto MakeRecord  'null string->BLANK
-FOR i=1& to wLength: s$=MID$(value,i,1&)
-IF (s$>"9") OR (s$<"-") OR (s$="\") THEN Goto MakeRecord
-NEXT i
-s$=value: i=TALLY(s$,".")
-IF i>1& THEN Goto MakeRecord
-j=TALLY(s$,"-")
-IF j>1& then Goto MakeRecord
-IF (j>0&) AND (LEFT$(s$,1&)<>"-") THEN Goto MakeRecord '"-" not first char
-wType=4&: xIEEE=VAL(s$)
-IF (wlength-i-j)>6& THEN Goto MakeRecord
-IF (xIEEE>536870911.0#) OR (xIEEE<-536870912.0#) THEN Goto NotInteger
-IF i=0& THEN wInt=INT(xIEEE): wType=2&: Goto MakeRecord
-IF INSTR(1&,s$,".")<wLength-2& THEN Goto NotInteger
-IF (xIEEE>5368709.11#) OR (xIEEE<-5368709.12#) THEN Goto NotInteger
-wInt=INT(xIEEE*100#): wType=3&: Goto MakeRecord 'x 100
+'~body FUNCTION xlsWRITE(s As LONG, row As LONG, col As LONG, value As STRING   ' сборка: тело - в конце файла
 
-NotInteger:
-IF (xIEEE<-(1.5E-45)) OR (xIEEE>(3.4E+38)) THEN Goto MakeRecord
-xSingle=xIEEE
-IF (xSingle AND &HC0000000)=0& THEN wType=0& 
+'~body SUB SheetPointers(s As LONG, nbytes As LONG)   ' сборка: тело - в конце файла
 
-MakeRecord:
-'Check if record already there
-ptrINDEXEnd=0&: ptrINDEX=0&: ptrDBOffset=0&: ptrROW=0&: ptrDB=0&: ptrData=0&: wPosition=0&
-r$=xlsREAD(ws, wr, wc)  'if record exists, xPosition to xNext-1 is field
-IF (r$="") AND (LEFT$(sERR,1&)<>"#") THEN xLength=0 ELSE xLength=xLength+4
-MEMSET(VARPTR(buf(0&)),0&,4&)
-buf(4&)=wr MOD 256&: buf(5&)=wr\256&: buf(6&)=wc MOD 256&: buf(7&)=wc\256&
-IF xFormat=0& THEN xFormat=&HF
-buf(8&)=xFormat MOD 256&: buf(9&)=xFormat\256&
-SELECT CASE wType
-  CASE -2&: buf(0&)=1?: buf(1&)=2?: buf(2&)=6?
-  CASE -1&: buf(0&)=4?: buf(1&)=2?
-    buf(10&)=wLength MOD 256&: buf(11&)=wLength\256&: buf(12&)=0?
-    buf(2&)=(9&+wLength) MOD 256&: buf(3&)=(9&+wLength)\256&
-    FOR i=1& to wLength: buf(12&+i)=ASC(MID$(value,i,1&)): NEXT i
-  CASE 0&, 1&, 2&, 3&: buf(0&)=xRK??: buf(1&)=2?: buf(2&)=10?
-    IF wType=1& THEN xSingle=100.0!*xSingle
-    IF (wType AND 2&)>0& THEN RK=wInt SHL 2& ELSE MEMCPY(VARPTR(RK),VARPTR(xIEEE)+4&,4&)   
-    RK=(RK AND xRKEncoded&) OR wType
-    MEMCPY(VARPTR(buf(10&)),VARPTR(RK),4&) 
-  CASE 4&: buf(0&)=xNUMBER??: buf(1&)=2?: buf(2&)=14?: MEMCPY(VARPTR(buf(10&)),VARPTR(xIEEE),8&) 
-END SELECT
-wLength=4??+buf(2&)+256??*buf(3&)
-wInt=wLength-xLength
-IF wInt=0 THEN Goto xPutNew
-IF xCode=xMULRK?? THEN M(b).Position=ptrData: M(b).WriteNum(RK,4&): Goto xWriteDone
-SELECT CASE sERR
-  CASE "Row not defined","Col out of bounds": Exit Function
-  CASE ELSE: wPosition=xPosition
-END SELECT
+'~body SUB ChangeValue(ptr As LONG, blen As LONG, nbytes As LONG)   ' сборка: тело - в конце файла
 
-'Update column data
-IF wc<P(b,ws,pminCOL&) THEN
-  P(b,ws,pminCOL&)=wc: xTmp=P(b,ws,pDIMENSIONS&)+12&
-  M(b).Position=xTmp: M(b).WriteNum(wc,2&)
-END IF
-IF wc>P(b,ws,pmaxCOL&)-1& THEN
-  P(b,ws,pmaxCOL&)=wc+1&: xTmp=P(b,ws,pDIMENSIONS&)+14&
-  M(b).Position=xTmp: M(b).WriteNum(wc+1&,2&)
-END IF
-IF ptrROW=0& THEN Goto FileLength
-M(b).Position=ptrROW+6&: sCode=M(b).ReadNum(2&)
-IF wc<sCode THEN M(b).Position=ptrROW+6&: M(b).WriteNum(wc,2&)
-M(b).Position=ptrROW+8&: sCode=M(b).ReadNum(2&)
-IF wc>=sCode THEN M(b).Position=ptrROW+8&: M(b).WriteNum(wc+1&,2&)
+'~body FUNCTION xlsSHEETNAME(s As LONG) As STRING   ' сборка: тело - в конце файла
 
-FileLength:
-P(b,0&,1&)=P(b,0&,1&)+wInt
-ChangeValue(P(b,ws,pOFFSET&)+36&,4&,wInt) 'change ptr needed by Excel
-UpdateINDEX:
-ChangeValue(ptrINDEX,4&,wInt): ptrINDEX=ptrINDEX+4&
-IF ptrINDEX<ptrINDEXEnd THEN Goto UpdateINDEX
-SheetPointers(ws,wInt)
-ChangeValue(ptrDBOffset,4&,wInt)
-IF ptrDB>0& THEN ChangeValue(ptrDB,2&,wInt)
+'~body FUNCTION xlsMINROW(s As LONG) As LONG   ' сборка: тело - в конце файла
 
-IF wInt>0& THEN ShiftBook(wPosition,wInt) ELSE ShiftBook(wPosition+wLength,wInt)
-xPutNew:
-MEMCPY(wPosition+M(b).Pointer,VARPTR(buf(0&)),wLength)
-xWriteDone:
-IF wLength>0& THEN sERR=""
-Result=wLength
-END FUNCTION
+'~body FUNCTION xlsMAXROW(s As LONG) As LONG   ' сборка: тело - в конце файла
 
-SUB SheetPointers(s As LONG, nbytes As LONG)
-i=s+1&: j=nbytes
-CheckSheetNumber:
-IF i>nSR(b) THEN Exit Sub
-ChangeValue(P(b,i,pSHEET&)+4&,4&,j)
-M(b).Position=P(b,i,pOFFSET&)+20&
-'GetRecord
-xCode=M(b).ReadNum(2&): xLength=M(b).ReadNum(2&): xNext=M(b).Position+xLength
-k=P(b,i,pOFFSET&)+36&
-UpdateINDEX2:
-ChangeValue(k,4&,j): k=k+4&
-IF k<xNext THEN Goto UpdateINDEX2
-P(b,i,pOFFSET&)=P(b,i,pOFFSET&)+j: P(b,i,pDIMENSIONS&)=P(b,i,pDIMENSIONS&)+j 
-INC(i): Goto CheckSheetNumber
-END SUB
+'~body FUNCTION xlsMINCOL(s As LONG) As LONG   ' сборка: тело - в конце файла
 
-SUB ChangeValue(ptr As LONG, blen As LONG, nbytes As LONG)
-M(b).Position=ptr: xTmp=M(b).ReadNum(blen)
-xTmp=xTmp+nbytes
-M(b).Position=ptr: M(b).WriteNum(xTmp,blen) 
-END SUB
+'~body FUNCTION xlsMAXCOL(s As LONG) As LONG   ' сборка: тело - в конце файла
 
-FUNCTION xlsSHEETNAME(s As LONG) As STRING
-Result=SheetName(b,s) 
-END FUNCTION
+'~body FUNCTION xlsSHEETLENGTH(s As LONG) As LONG   ' сборка: тело - в конце файла
 
-FUNCTION xlsMINROW(s As LONG) As LONG
-Result=P(b,s,pminROW&)
-END FUNCTION
+'~body FUNCTION xlsNUMBERSHEETS   ' сборка: тело - в конце файла
 
-FUNCTION xlsMAXROW(s As LONG) As LONG
-Result=P(b,s,pmaxROW&)-1&
-END FUNCTION
-
-FUNCTION xlsMINCOL(s As LONG) As LONG
-Result=P(b,s,pminCOL&)
-END FUNCTION
-
-FUNCTION xlsMAXCOL(s As LONG) As LONG
-Result=P(b,s,pmaxCOL&)-1&
-END FUNCTION
-
-FUNCTION xlsSHEETLENGTH(s As LONG) As LONG
-Result=P(b,s,pLENGTH&)
-END FUNCTION
-
-FUNCTION xlsNUMBERSHEETS
-Result=nSR(b)
-END FUNCTION
-
-FUNCTION xlsCLOSE
-Result=-1&
-IF (b<0&) OR (b>MaxBooks&) THEN Exit Function
-M(b).Close: ClearBookData: Result=b
-END FUNCTION
+'~body FUNCTION xlsCLOSE   ' сборка: тело - в конце файла
 
 '''''Supporting routines
-SUB GetRecord
-xCode=M(b).ReadNum(2&): xLength=M(b).ReadNum(2&): xNext=M(b).Position+xLength
-END SUB
+'~body SUB GetRecord   ' сборка: тело - в конце файла
 
-SUB GetData
-Dim kmax As WORD
-IF xLength=0?? THEN Exit SUB
-kmax=MaxBytes&
-IF kmax>xLength-1?? THEN kmax=xLength-1??
-FOR i=0& to kmax: buf(i)=M(b).ReadNum(1&): Next i
-END SUB
+'~body SUB GetData   ' сборка: тело - в конце файла
 
-FUNCTION RK2str
-xType=RK AND &H3
-IF (RK AND xRKInteger&)>0& THEN   
-  xInt=RK SHR 2&
-  IF RK<0& THEN xInt=xInt OR &HC0000000
-  IF (RK AND xRKby100&)>0& THEN RK2str=STR$(xInt/100&) ELSE RK2Str=STR$(xInt)
-  Exit Function
-ELSE
-  MEMSET(VARPTR(xIEEE),0&,8&)
-  xInt=(RK AND xRKEncoded&)
-  MEMCPY(VARPTR(xIEEE)+4&,VARPTR(xInt),4&)
-  IF (RK AND xRKby100&)>0& THEN RK2str=STR$(xIEEE/100.0#) ELSE RK2Str=STR$(xIEEE)
-  Exit Function
-END IF
-END FUNCTION
+'~body FUNCTION RK2str   ' сборка: тело - в конце файла
 
-FUNCTION StrRecLen 'returns bytes from ptr to next record
-DIM kk As LONG 
-sLength=M(b).ReadNum(2&): kk=sLength
-sCode=0??: sCode=M(b).ReadNum(1&)
-IF (sCode AND 1??)>0& THEN sLength=2??*sLength: kk=sLength 'String not compressed
-IF (sCode AND 8??)>0& THEN kk=M(b).ReadNum(2&): kk=sLength+4&*kk 'RichString
-IF (sCode AND 4??)>0& THEN i=M(b).ReadNum(4&): kk=kk+i  'Far East
-StrRecLen=kk
-END FUNCTION
+'~body FUNCTION StrRecLen   ' сборка: тело - в конце файла
 
-FUNCTION B2W(index As LONG) AS WORD
-B2W=buf(index)+256??*buf(index+1&)
-END FUNCTION
+'~body FUNCTION B2W(index As LONG) AS WORD   ' сборка: тело - в конце файла
 
-SUB ClearBookData
-nSheets(b)=0&: nSR(b)=0& : tSST(b)=0&: nSST(b)=0& 
-FOR i=0& to MaxSST&
-For j=0& to 2&: SST(b,i,j)=0&: NEXT j
-NEXT i
-FOR i=0& to MaxSheets&
-SheetName(b,i)=""
-FOR j=0& to NumVars&: P(b,i,j)=0&: NEXT j
-NEXT i
-END SUB
+'~body SUB ClearBookData   ' сборка: тело - в конце файла
 
 'This uses OLE FAT to read file.  The code is not yet optimized.
-SUB ReadOLEFile
-DIM FATlen As LONG, DIRptr As LONG, FATindex As LONG, FATptr As LONG
-DIM BB As LONG, NextFAT As LONG, ptrFATindex As LONG, EndFATindex As LONG
-DIM WBptr As LONG, FATseg As LONG
-F.Open(FileSpec(b),fmOpenRead)
-F.Position=&H1E: i=F.ReadNum(2&): BB=2&^i  'size of big block sectors
-F.Position=&H2C: FATlen=F.ReadNum(4&)
-F.Position=&H30: i=F.ReadNum(4&): DIRptr=i*BB+BB
-F.Position=&H44: FATindex=F.ReadNum(4&): INC(FATindex)
-'IF FATindex>0& THEN FATindex=FATindex*BB+BB 'FAT index exceeds OLE header
-M(b).Position=0&: ptrFATindex=&H4C: EndFATindex=BB 
-
-'Find Workbook entry
-WBptr=DIRptr
-F.Position=DIRptr+&H74: xInt=F.ReadNum(4&) 'may be offset into FAT
-IF (xInt<0&) OR (xInt>32&) THEN xInt=0&    'but only if it is positive and not too big
-FOR j=1& to 3&: WBptr=WBptr+&H80
-F.Position=WBptr: i=F.ReadNum(4&)
-IF i=&H6F0057 THEN Goto FoundWBptr
-NEXT j
-sERR="Workbook OLE directory entry not found": Exit Sub
-FoundWBptr:
-F.Position=WBptr+&H74: j=F.ReadNum(4&)
-IF j<=0& THEN j=xInt   'use the right offset into FAT
-P(b,0&,1&)=F.ReadNum(4&) 'BIFF8 size
-
-FOR k=1& to FATlen  'do a FAT sector
-'next we switch to FAT index extension, if applicable
-IF ptrFATindex>=EndFATindex THEN
-  ptrFATindex=FATindex*BB  'end of OLE header or FAT index sector
-  EndFATindex=ptrFATindex+BB
-  F.Position=EndFATindex-4&: FATindex=F.ReadNum(4&): INC(FATindex)
-END IF  
-
-F.Position=ptrFATindex: i=F.ReadNum(4&): ptrFATindex=ptrFATindex+4&
-IF i<0& THEN sERR="Bad FAT index": Exit Sub
-FATptr=i*BB+BB: xNext=FATptr+BB: FATseg=FATptr
-IF k=1& THEN FATptr=FATseg+j*4& 'offset into FAT
-
-IF ptrFATindex=EndFATindex THEN NextFAT=FATindex ELSE NextFAT=F.ReadNum(4&): INC(NextFAT)
-j=0& 
-
-GetFATPointer:
-IF FATptr>=xNext THEN Goto NextFATSector
-F.Position=FATptr: i=F.ReadNum(4&): FATptr=FATptr+4&
-IF j=0 THEN j=i-1&
-
-IF i=NextFAT THEN i=j+1&: Goto LoadSector
-SELECT CASE i
-CASE &HFFFFFFFF: j=0&: Goto GetFATPointer
-CASE &HFFFFFFFE  '-2 is EOF marker, but you read one more sector of user data
-  IF M(b).Size<2048& THEN  'this because short OLE-generated files have bad DIRptr
-    i=F.ReadNum(4&): j=i-1&: Goto LoadSector
-  END IF
-CASE &HFFFFFFFD: j=0&: Goto GetFATPointer 'inserted garbage; skip it
-CASE &HFFFFFFFC: j=0&: Goto GetFATPointer
-END SELECT
-
-LoadSector:
-INC(j): F.Position=j*&H200: M(b).CopyFrom(F,&H200)
-IF i=-2& THEN Goto LoadDone 'EOF
-IF i<>j THEN i=(i*4) MOD BB: FATptr=FATseg+i: j=0&
-Goto GetFATPointer
-
-NextFATSector:
-NEXT k
-
-LoadDone:
-P(b,0&,2&)=M(b).Size: F.Close
-IF P(b,0&,2&)<P(b,0&,1&) THEN sERR="All BIFF8 data not loaded"
-END SUB
+'~body SUB ReadOLEFile   ' сборка: тело - в конце файла
 
 'The following two subs are replaced by ReadOLEFile
 'MS Excel corrupts certain files (to prevent access?) which we now undo
@@ -33835,11 +30212,7 @@ END SUB
 'INC(j): Goto TrashCycle
 'END SUB
 
-SUB FillFile(value As LONG, amt As LONG)
-FillFileDone:
-IF (F.Position-&H200) MOD amt=0& THEN Exit Sub
-F.WriteNum(value,4&): Goto FillFileDone
-END SUB
+'~body SUB FillFile(value As LONG, amt As LONG)   ' сборка: тело - в конце файла
 
 SUB ShiftBook(ptr As LONG, nbytes As LONG)
 DIM mfrom As LONG, mdest As LONG
@@ -33856,17 +30229,9 @@ END IF
 END SUB
 
 'Utility routines to display internal data
-SUB PrintSheetNames   'For CONSOLE application
-For i=0& to nSheets(b): Print SheetName(b,i)
-For j=0& to NumVars&: PRINT " "+RIGHT$(HEX$(P(b,i,j)),7&);: NEXT j
-PRINT: NEXT i
-END SUB
+'~body SUB PrintSheetNames   ' сборка: тело - в конце файла
 
-SUB PrintSSTRecords
-PRINT "No. SST blocks=";STR$(nSST(b)+1&);" Strings in SST=";STR$(tSST(b))
-For j=0& to nSST(b): PRINT STR$(SST(b,j,1&))+" ";: Next j
-PRINT
-END SUB
+'~body SUB PrintSSTRecords   ' сборка: тело - в конце файла
 
 '============================================================================
 '[build_inc] QXpTheme.INC
@@ -33922,24 +30287,8 @@ END SUB
 
 '/
 '--*****************************************************'
-function floatVal( number as string) as single
-result = 0
-
-number = LTRIM$(RTRIM$(number))
-if Len(number) = 0  or  Val(number) = 0   then
-  exit function
-end if
-  
-point? = instr(number, ".")
-
-if point? > 0  then
-  decimal$ = Mid$(number, point?+1)
-  result = Val( Mid$(number, 1, point?-1) )+Val(decimal$)/10 ^ Len(decimal$)
-
-else
-  result = Val(number)
-end if
-end function     
+DECLARE function floatVal( number as string) as single
+'~body function floatVal( number as string) as single   ' сборка: тело - в конце файла
 
 '
 type varInfo
@@ -33952,106 +30301,20 @@ type varInfo
 dim varBuf as qMemoryStream
 
 '-----------------
-subi putMe(...)
-dim thisVar as varInfo
-
-if ParamValCount+ParamStrCount <> 3 then
-  print "Incorrect number of parameter(s).."  :  END
-end if
-  
-if paramStrCount = 2  then
-  thisVar.name   = paramSTR$(1)
-  thisVar.strVal = paramSTR$(2)
-  thisVar.primitive = paramVal(1)
-  
-elseif ParamValCount = 2 then
-  thisVar.name   = paramSTR$(1)
-  thisVar.strVal = Str$(paramVAL(1))
-  thisVar.primitive = paramVAL(2)
-  
-else
-  print "Expected (string, string, int) or (string, single, int) .."
-end if    
-
-varBuf.writeUDT(thisVar)
-end subi
-
-'----------
-function getMe(clave as string) as variant
-dim thisVar as varInfo
-count% = varBuf.size / sizeOf(thisVar)
-
-if count% = 0  then
-  result = ""  
-  exit function
-end if  
-
-r$ = ""
-p% = 0
-j% = 1
-
-size%  = varBuf.size
-varBuf.position = 0       'Start
-while varBuf.position < size%
-  varBuf.readUDT(thisVar)
-  
-  if clave = RTrim$(thisVar.name) then
-    r$ = thisVar.strVal
-    p% = 10     'Any
-    exit while
-  end if
-  
-  inc j%
-    if j% > count%  then
-    exit while
-  end if    
-wend
-
-if p% > 0  then
-  select case thisVar.primitive
-  case 0
-    result = r$
-  case 1   
-    result = floatVal(r$)
-  case else
-    'Other possible primitives    
-  end select
-else
-   result = ""  'Guess it..
-end if	
-end function
+DECLARE subi putMe(...)
+'~body subi putMe(...)   ' сборка: тело - в конце файла
 
 '-------
-sub closeit()
-  varBuf.close
-end sub  
+DECLARE sub closeit()
+'~body sub closeit()   ' сборка: тело - в конце файла
 
 '-----------
-sub saveTofile( filename )
-dim file as qfilestream
-
-if file.open( filename, fmCreate) == FALSE  then
-  print "Cannot create file  " + filename
-end if
-
-file.CopyFrom(varBuf, 0)
-file.close
-end sub
+DECLARE sub saveTofile( filename )
+'~body sub saveTofile( filename )   ' сборка: тело - в конце файла
 
 '-----------
-sub loadFromfile( filename )
-dim file as qfilestream
-
-if file.open( filename, fmOpenReadWrite) == FALSE  then
-  print "Cannot open file  " + filename
-end if
-
-varBuf.size = 0        'KILL
-varBuf.position = 0
-varBuf.CopyFrom(file, 0)
-
-file.close
-end sub
+DECLARE sub loadFromfile( filename )
+'~body sub loadFromfile( filename )   ' сборка: тело - в конце файла
 
 '============================================================================
 '[build_inc] RichEditApi.inc
@@ -35027,9 +31290,8 @@ DefInt ptrCallAddressManyArgs
 ptrCallAddressManyArgs = VarPtr (CallAddressManyArgsArray(0))
 '
 ' ----- RQ CALL CallAddressManyArgs -----
-Function CallAddressManyArgs (address As Long, ptrStructArg As Long) As Long
-    Result = CallAsmProc (ptrCallAddressManyArgs, address, ptrStructArg, 0, 0)
-End Function
+DECLARE Function CallAddressManyArgs (address As Long, ptrStructArg As Long) As Long
+'~body Function CallAddressManyArgs (address As Long, ptrStructArg As Long) A   ' сборка: тело - в конце файла
 '
 ' ============================================================
 '
@@ -35054,9 +31316,8 @@ DefInt ptrCallPointerManyArgs
 ptrCallPointerManyArgs = VarPtr (CallPointerManyArgsArray(0))
 '
 ' ----- RQ CALL CallPointerManyArgs -----
-Function CallPointerManyArgs (pointer As Long, ptrStructArg As Long) As Long
-    Result = CallAsmProc (ptrCallPointerManyArgs, pointer, ptrStructArg, 0, 0)
-End Function
+DECLARE Function CallPointerManyArgs (pointer As Long, ptrStructArg As Long) As Long
+'~body Function CallPointerManyArgs (pointer As Long, ptrStructArg As Long) A   ' сборка: тело - в конце файла
 '
 ' ============================================================
 '
@@ -35075,9 +31336,8 @@ DefInt ptrCallAddressNoArg
 ptrCallAddressNoArg = VarPtr (CallAddressNoArgArray(0))
 '
 ' ----- RQ CALL CallAddressNoArg -----
-Function CallAddressNoArg (address As Long) As Long
-    Result = CallAsmProc (ptrCallAddressNoArg, address, 0, 0, 0)
-End Function
+DECLARE Function CallAddressNoArg (address As Long) As Long
+'~body Function CallAddressNoArg (address As Long) As Long   ' сборка: тело - в конце файла
 '
 ' ============================================================
 '
@@ -35097,9 +31357,8 @@ DefInt ptrCallPointerNoArg
 ptrCallPointerNoArg = VarPtr (CallPointerNoArgArray(0))
 '
 ' ----- RQ CALL CallPointerNoArg -----
-Function CallPointerNoArg (pointer As Long) As Long
-    Result = CallAsmProc (ptrCallPointerNoArg, pointer, 0, 0, 0)
-End Function
+DECLARE Function CallPointerNoArg (pointer As Long) As Long
+'~body Function CallPointerNoArg (pointer As Long) As Long   ' сборка: тело - в конце файла
 '
 ' ============================================================
 '
@@ -35119,9 +31378,8 @@ DefInt ptrCallAddressOneArg
 ptrCallAddressOneArg = VarPtr (CallAddressOneArgArray(0))
 '
 ' ----- RQ CALL CallAddressOneArg -----
-Function CallAddressOneArg (address As Long, arg1 As Long) As Long
-    Result = CallAsmProc (ptrCallAddressOneArg, address, arg1, 0, 0)
-End Function
+DECLARE Function CallAddressOneArg (address As Long, arg1 As Long) As Long
+'~body Function CallAddressOneArg (address As Long, arg1 As Long) As Long   ' сборка: тело - в конце файла
 '
 ' ============================================================
 '
@@ -35142,9 +31400,8 @@ DefInt ptrCallPointerOneArg
 ptrCallPointerOneArg = VarPtr (CallPointerOneArgArray(0))
 '
 ' ----- RQ CALL CallPointerOneArg -----
-Function CallPointerOneArg (pointer As Long, arg1 As Long) As Long
-    Result = CallAsmProc (ptrCallPointerOneArg, pointer, arg1, 0, 0)
-End Function
+DECLARE Function CallPointerOneArg (pointer As Long, arg1 As Long) As Long
+'~body Function CallPointerOneArg (pointer As Long, arg1 As Long) As Long   ' сборка: тело - в конце файла
 '
 ' ============================================================
 '
@@ -35164,9 +31421,8 @@ DefInt ptrCallAddressTwoArgs
 ptrCallAddressTwoArgs = VarPtr (CallAddressTwoArgsArray(0))
 '
 ' ----- RQ CALL CallAddressTwoArgs -----
-Function CallAddressTwoArgs (address As Long, arg1 As Long, arg2 As Long) As Long
-    Result = CallAsmProc (ptrCallAddressTwoArgs, address, arg1, arg2, 0)
-End Function
+DECLARE Function CallAddressTwoArgs (address As Long, arg1 As Long, arg2 As Long) As Long
+'~body Function CallAddressTwoArgs (address As Long, arg1 As Long, arg2 As Lo   ' сборка: тело - в конце файла
 '
 ' ============================================================
 '
@@ -35187,9 +31443,8 @@ DefInt ptrCallPointerTwoArgs
 ptrCallPointerTwoArgs = VarPtr (CallPointerTwoArgsArray(0))
 '
 ' ----- RQ CALL CallPointerTwoArgs -----
-Function CallPointerTwoArgs (pointer As Long, arg1 As Long, arg2 As Long) As Long
-    Result = CallAsmProc (ptrCallPointerTwoArgs, pointer, arg1, arg2, 0)
-End Function
+DECLARE Function CallPointerTwoArgs (pointer As Long, arg1 As Long, arg2 As Long) As Long
+'~body Function CallPointerTwoArgs (pointer As Long, arg1 As Long, arg2 As Lo   ' сборка: тело - в конце файла
 '
 ' ============================================================
 '
@@ -35209,9 +31464,8 @@ DefInt ptrCallAddressThreeArgs
 ptrCallAddressThreeArgs = VarPtr (CallAddressThreeArgsArray(0))
 '
 ' ----- RQ CALL CallAddressThreeArgs -----
-Function CallAddressThreeArgs (address As Long, arg1 As Long, arg2 As Long, arg3 As Long) As Long
-    Result = CallAsmProc (ptrCallAddressThreeArgs, address, arg1, arg2, arg3)
-End Function
+DECLARE Function CallAddressThreeArgs (address As Long, arg1 As Long, arg2 As Long, arg3 As Long) As Long
+'~body Function CallAddressThreeArgs (address As Long, arg1 As Long, arg2 As    ' сборка: тело - в конце файла
 '
 ' ============================================================
 '
@@ -35232,9 +31486,8 @@ DefInt ptrCallPointerThreeArgs
 ptrCallPointerThreeArgs = VarPtr (CallPointerThreeArgsArray(0))
 '
 ' ----- RQ CALL CallPointerThreeArgs -----
-Function CallPointerThreeArgs (pointer As Long, arg1 As Long, arg2 As Long, arg3 As Long) As Long
-    Result = CallAsmProc (ptrCallPointerThreeArgs, pointer, arg1, arg2, arg3)
-End Function
+DECLARE Function CallPointerThreeArgs (pointer As Long, arg1 As Long, arg2 As Long, arg3 As Long) As Long
+'~body Function CallPointerThreeArgs (pointer As Long, arg1 As Long, arg2 As    ' сборка: тело - в конце файла
 '
 ' ============================================================
 '
@@ -35253,9 +31506,8 @@ DefInt ptrReadDWordAtAddress
 ptrReadDWordAtAddress = VarPtr (ReadDWordAtAddressArray(0))
 '
 ' ----- RQ CALL ReadDWordAtAddress -----
-Function ReadDWordAtAddress (address As Long) As Long
-    Result = CallAsmProc (ptrReadDWordAtAddress, address, 0, 0, 0)
-End Function
+DECLARE Function ReadDWordAtAddress (address As Long) As Long
+'~body Function ReadDWordAtAddress (address As Long) As Long   ' сборка: тело - в конце файла
 '
 ' ============================================================
 '
@@ -35275,9 +31527,8 @@ DefInt ptrReadWordAtAddress
 ptrReadWordAtAddress = VarPtr (ReadWordAtAddressArray(0))
 '
 ' ----- RQ CALL ReadWordAtAddress -----
-Function ReadWordAtAddress (address As Long) As Long
-    Result = CallAsmProc (ptrReadWordAtAddress, address, 0, 0, 0)
-End Function
+DECLARE Function ReadWordAtAddress (address As Long) As Long
+'~body Function ReadWordAtAddress (address As Long) As Long   ' сборка: тело - в конце файла
 '
 ' ============================================================
 '
@@ -35296,9 +31547,8 @@ DefInt ptrReadByteAtAddress
 ptrReadByteAtAddress = VarPtr (ReadByteAtAddressArray(0))
 '
 ' ----- RQ CALL ReadByteAtAddress -----
-Function ReadByteAtAddress (address As Long) As Long
-    Result = CallAsmProc (ptrReadByteAtAddress, address, 0, 0, 0)
-End Function
+DECLARE Function ReadByteAtAddress (address As Long) As Long
+'~body Function ReadByteAtAddress (address As Long) As Long   ' сборка: тело - в конце файла
 '
 ' ============================================================
 '
@@ -35317,9 +31567,8 @@ DefInt ptrReadDWordAtPointer
 ptrReadDWordAtPointer = VarPtr (ReadDWordAtPointerArray(0))
 '
 ' ----- RQ CALL ReadDWordAtPointer -----
-Function ReadDWordAtPointer (pointer As Long) As Long
-    Result = CallAsmProc (ptrReadDWordAtPointer, pointer, 0, 0, 0)
-End Function
+DECLARE Function ReadDWordAtPointer (pointer As Long) As Long
+'~body Function ReadDWordAtPointer (pointer As Long) As Long   ' сборка: тело - в конце файла
 '
 ' ============================================================
 '
@@ -35339,9 +31588,8 @@ DefInt ptrReadWordAtPointer
 ptrReadWordAtPointer = VarPtr (ReadWordAtPointerArray(0))
 '
 ' ----- RQ CALL ReadWordAtPointer -----
-Function ReadWordAtPointer (pointer As Long) As Long
-    Result = CallAsmProc (ptrReadWordAtPointer, pointer, 0, 0, 0)
-End Function
+DECLARE Function ReadWordAtPointer (pointer As Long) As Long
+'~body Function ReadWordAtPointer (pointer As Long) As Long   ' сборка: тело - в конце файла
 '
 ' ============================================================
 '
@@ -35361,9 +31609,8 @@ DefInt ptrReadByteAtPointer
 ptrReadByteAtPointer = VarPtr (ReadByteAtPointerArray(0))
 '
 ' ----- RQ CALL ReadByteAtPointer -----
-Function ReadByteAtPointer (pointer As Long) As Long
-    Result = CallAsmProc (ptrReadByteAtPointer, pointer, 0, 0, 0)
-End Function
+DECLARE Function ReadByteAtPointer (pointer As Long) As Long
+'~body Function ReadByteAtPointer (pointer As Long) As Long   ' сборка: тело - в конце файла
 '
 ' ============================================================
 '
@@ -35382,9 +31629,8 @@ DefInt ptrWriteDWordAtAddress
 ptrWriteDWordAtAddress = VarPtr (WriteDWordAtAddressArray(0))
 '
 ' ----- RQ CALL WriteDWordAtAddress -----
-Function WriteDWordAtAddress (address As Long, dwData As Long) As Long
-    Result = CallAsmProc (ptrWriteDWordAtAddress, address, dwData, 0, 0)
-End Function
+DECLARE Function WriteDWordAtAddress (address As Long, dwData As Long) As Long
+'~body Function WriteDWordAtAddress (address As Long, dwData As Long) As Long   ' сборка: тело - в конце файла
 '
 ' ============================================================
 '
@@ -35404,9 +31650,8 @@ DefInt ptrWriteWordAtAddress
 ptrWriteWordAtAddress = VarPtr (WriteWordAtAddressArray(0))
 '
 ' ----- RQ CALL WriteWordAtAddress -----
-Function WriteWordAtAddress (address As Long, wData As Long) As Long
-    Result = CallAsmProc (ptrWriteWordAtAddress, address, wData, 0, 0)
-End Function
+DECLARE Function WriteWordAtAddress (address As Long, wData As Long) As Long
+'~body Function WriteWordAtAddress (address As Long, wData As Long) As Long   ' сборка: тело - в конце файла
 '
 ' ============================================================
 '
@@ -35426,9 +31671,8 @@ DefInt ptrWriteByteAtAddress
 ptrWriteByteAtAddress = VarPtr (WriteByteAtAddressArray(0))
 '
 ' ----- RQ CALL WriteByteAtAddress -----
-Function WriteByteAtAddress (address As Long, bData As Long) As Long
-    Result = CallAsmProc (ptrWriteByteAtAddress, address, bData, 0, 0)
-End Function
+DECLARE Function WriteByteAtAddress (address As Long, bData As Long) As Long
+'~body Function WriteByteAtAddress (address As Long, bData As Long) As Long   ' сборка: тело - в конце файла
 '
 ' ============================================================
 '
@@ -35447,9 +31691,8 @@ DefInt ptrWriteDWordAtPointer
 ptrWriteDWordAtPointer = VarPtr (WriteDWordAtPointerArray(0))
 '
 ' ----- RQ CALL WriteDWordAtPointer -----
-Function WriteDWordAtPointer (pointer As Long, dwData As Long) As Long
-    Result = CallAsmProc (ptrWriteDWordAtPointer, pointer, dwData, 0, 0)
-End Function
+DECLARE Function WriteDWordAtPointer (pointer As Long, dwData As Long) As Long
+'~body Function WriteDWordAtPointer (pointer As Long, dwData As Long) As Long   ' сборка: тело - в конце файла
 '
 ' ============================================================
 '
@@ -35469,9 +31712,8 @@ DefInt ptrWriteWordAtPointer
 ptrWriteWordAtPointer = VarPtr (WriteWordAtPointerArray(0))
 '
 ' ----- RQ CALL WriteWordAtPointer -----
-Function WriteWordAtPointer (pointer As Long, wData As Long) As Long
-    Result = CallAsmProc (ptrWriteWordAtPointer, pointer, wData, 0, 0)
-End Function
+DECLARE Function WriteWordAtPointer (pointer As Long, wData As Long) As Long
+'~body Function WriteWordAtPointer (pointer As Long, wData As Long) As Long   ' сборка: тело - в конце файла
 '
 ' ============================================================
 '
@@ -35491,9 +31733,8 @@ DefInt ptrWriteByteAtPointer
 ptrWriteByteAtPointer = VarPtr (WriteByteAtPointerArray(0))
 '
 ' ----- RQ CALL WriteByteAtPointer -----
-Function WriteByteAtPointer (pointer As Long, bData As Long) As Long
-    Result = CallAsmProc (ptrWriteByteAtPointer, pointer, bData, 0, 0)
-End Function
+DECLARE Function WriteByteAtPointer (pointer As Long, bData As Long) As Long
+'~body Function WriteByteAtPointer (pointer As Long, bData As Long) As Long   ' сборка: тело - в конце файла
 '
 ' ============================================================
 '
@@ -35520,89 +31761,8 @@ $define #define $define
 
 '--- Declarations ---
 '*****************************************
-function ReadVarFromMemory2 (adrr as long, vart as long ) as  variant 'double 
-' read N bytes from address "adrr" ad return
-' vart is vartype from rapidQ.inc
-'CONST Num_BYTE   = 1            '-- ie. PRINT File.ReadNum(Num_SINGLE)
-'CONST Num_SHORT  = 2
-'CONST Num_WORD   = 3
-'CONST Num_LONG   = 4
-'CONST Num_DWORD  = 5
-'CONST Num_SINGLE = 6
-'CONST Num_DOUBLE = 8
-
-DIM Mem AS QMemoryStream
-dim resltbyte as byte ' 1 byte
-dim resltshort as short ' 2 byte
-dim resltword as word ' 2 byte
-dim resltlong as long ' 4 byte
-dim resltdword as dword ' 4 byte
-dim resltsingle as single ' 4 byte
-dim resltdouble as double ' 8 byte
-
-
-Select case vart
-case Num_BYTE
-	'Mem.Position = 0
-	'Mem.MemCopyFrom (adrr, 1)
-	'Mem.Position = 0
-	'Mem.Read (resltbyte)
-	ReadVarFromMemory=-1 ' resltbyte
-	Mem.Close
-	
-case Num_SHORT
-	Mem.Position = 0
-	Mem.MemCopyFrom (adrr, 2)
-	Mem.Position = 0
-	Mem.Read (resltshort)
-	ReadVarFromMemory=resltshort
-	Mem.Close
-	
-case Num_WORD
-	Mem.Position = 0
-	Mem.MemCopyFrom (adrr, 2)
-	Mem.Position = 0
-	Mem.Read (resltword)
-	ReadVarFromMemory=resltword
-	Mem.Close
-	
-case Num_LONG
-	Mem.Position = 0
-	Mem.MemCopyFrom (adrr, 4)
-	Mem.Position = 0
-	Mem.Read (resltlong)
-	ReadVarFromMemory=resltlong
-	Mem.Close
-	
-case Num_DWORD
-	Mem.Position = 0
-	Mem.MemCopyFrom (adrr, 4)
-	Mem.Position = 0
-	Mem.Read (resltdword)
-	ReadVarFromMemory=resltdword
-	Mem.Close
-	
-case Num_SINGLE
-	Mem.Position = 0
-	Mem.MemCopyFrom (adrr, 4)
-	Mem.Position = 0
-	Mem.Read (resltsingle)
-	ReadVarFromMemory=resltsingle
-	Mem.Close
-	
-	
-case Num_DOUBLE
-	Mem.Position = 0
-	Mem.MemCopyFrom (adrr, 8)
-	Mem.Position = 0
-	Mem.Read (resltDOUBLE)
-	ReadVarFromMemory=resltDOUBLE
-	Mem.Close
-	
-case else
-end select
-
-end function
+DECLARE function ReadVarFromMemory2 (adrr as long, vart as long ) as  variant
+'~body function ReadVarFromMemory2 (adrr as long, vart as long ) as  variant   ' сборка: тело - в конце файла
 
 
 '*****************************************
@@ -35646,13 +31806,8 @@ declare function fbTimeValue1 Lib "fbDate.dll" Alias "FBTIMEVALUE@4" _
 ( s as string ) as long 'double  
 'Gets the date serial representation of a time expressed as a String.
 
-function TimeValue (s as string) as double 
-dim sertimeptr as long
-
-sertimeptr=fbTimeValue1 (s)
-sertime=ReadVarFromMemory (sertimeptr, Num_DOUBLE ) 
-TimeValue=sertime
-end function
+DECLARE function TimeValue (s as string) as double
+'~body function TimeValue (s as string) as double   ' сборка: тело - в конце файла
 
 
 '*****************************************
@@ -35699,13 +31854,8 @@ declare function Second Lib "fbDate.dll" Alias "FBSECOND@8" _
 declare function fbNow1  Lib "fbDate.dll" Alias "FBNOW@0" ( ) as long ' double  
 'Gets a date serial of the current date and time
 
-function Now () as double
-dim sertimeptr as long
-sertimeptr=fbNow1()
-sertime=ReadVarFromMemory (sertimeptr, Num_DOUBLE ) 
-Now=sertime
-
-end function
+DECLARE function Now () as double
+'~body function Now () as double   ' сборка: тело - в конце файла
 
 '*****************************************
 declare function fbDateAdd1 Lib "fbDate.dll" Alias "FBDATEADD@12" _
@@ -35713,13 +31863,8 @@ declare function fbDateAdd1 Lib "fbDate.dll" Alias "FBDATEADD@12" _
 'Gets the result of a time interval added to a date serial.
 number1#=number
 serial1#=serial
-function DateAdd (interval as string,  number as double,  serial as double ) as double
-dim sertimeptr as long
-sertimeptr=fbDateAdd1(interval,  number1#,  serial1# )
-sertime=ReadVarFromMemory (sertimeptr, Num_DOUBLE ) 
-DateAdd=sertime
-
-end function
+DECLARE function DateAdd (interval as string,  number as double,  serial as double ) as double
+'~body function DateAdd (interval as string,  number as double,  serial as do   ' сборка: тело - в конце файла
 
 
 '*****************************************
@@ -36003,100 +32148,21 @@ DIM procId AS LONG : dim procExit as long
 '#############
 
 '*****************************************
-FUNCTION CreateAPIString(length AS LONG) AS STRING
-Result = SPACE$(length)
-END FUNCTION
+'~body FUNCTION CreateAPIString(length AS LONG) AS STRING   ' сборка: тело - в конце файла
 
 '*****************************************
-FUNCTION ReadAPIString(str AS STRING, length AS LONG) AS STRING
-DIM realLength AS LONG
-realLength = LEN(str)
-
-IF length < realLength THEN
-	realLength = length
-END IF
-
-Result = LEFT$(str, realLength)
-END FUNCTION
+'~body FUNCTION ReadAPIString(str AS STRING, length AS LONG) AS STRING   ' сборка: тело - в конце файла
 
 '*****************************************
-FUNCTION ReadNullTermString(str AS STRING) AS STRING
-DEFINT i
-
-FOR i = 1 TO LEN(str)
-	IF (ASC(str[i]) = NULL) THEN
-		Result = LTRIM$(RTRIM$(LEFT$(str, i - 1)))
-		EXIT FOR
-	END IF
-NEXT i
-END FUNCTION
+'~body FUNCTION ReadNullTermString(str AS STRING) AS STRING   ' сборка: тело - в конце файла
 
 '*****************************************
-FUNCTION FindProcessId(name AS STRING) AS LONG
-name = UCASE$(name)
-'print"name=";name
-DIM processes(NUM_PROCESSES) AS LONG, size AS LONG, procUsed AS LONG
-size = NUM_PROCESSES * SIZEOF(LONG)
-
-EnumProcesses(VARPTR(processes(0)), size, procUsed)
-
-procUsed = procUsed / SIZEOF(LONG)
-
-Result = -1
-
-DEFINT i
-FOR i = 0 TO procUsed - 1
-	DIM pid AS LONG, pHandle AS LONG
-	pid = processes(i)
-	
-	pHandle = OpenProcess(PROCESS_QUERY_INFORMATION OR PROCESS_VM_READ,FALSE, pid) ' PROCESS_ALL_ACCESS
-	'pHandle = OpenProcess(PROCESS_TERMINATE , TRue, pid) ' PROCESS_ALL_ACCESS
-	
-	'print procUsed
-	
-	
-	DIM module AS LONG, modSize AS LONG, modUsed AS LONG
-	module = 0
-	modSize = SIZEOF(LONG)
-	modUsed = 0
-	
-	IF (EnumProcessModules(pHandle, VARPTR(module), modSize, modUsed) <> NULL) THEN
-		
-		DIM modName AS STRING, nameSize AS LONG
-		modName = CreateAPIString(NAME_LENGTH)
-		nameSize = NAME_LENGTH
-		
-		GetModuleBaseName(pHandle, module, modName, nameSize)
-		modName = ReadNullTermString(modName)
-		
-		CloseHandle(pHandle)
-		
-		IF (UCASE$(modName) = name) THEN
-			Result = pid
-			procExit = pHandle
-			
-		END IF
-	END IF
-	
-NEXT i
-END FUNCTION
+'~body FUNCTION FindProcessId(name AS STRING) AS LONG   ' сборка: тело - в конце файла
 
 
 '*****************************************
-FUNCTION rqTerminateProcess ( procID AS long ) AS LONG
-	if procID <> -1 then 
-	pHandle=OpenProcess (PROCESS_TERMINATE, 0,procID)
-	'print"pHandle=";pHandle
-	zzx=TerminateProcess( pHandle , 0 )
-	'print"zzx=";zzx
-	
-	zzc=CloseHandle (pHandle) 
-	'print"zzc=";zzc
-	rqTerminateProcess=zzc
-	else
-	rqTerminateProcess=0
-	end if
-END FUNCTION
+DECLARE FUNCTION rqTerminateProcess ( procID AS long ) AS LONG
+'~body FUNCTION rqTerminateProcess ( procID AS long ) AS LONG   ' сборка: тело - в конце файла
 
 '--------- example -------------
 'print rqTerminateProcess (FindProcessId("calc.exe"))
@@ -36240,105 +32306,7 @@ sysdir$ = Left$(strSave, GetWindowsDirectory(strSave, Len(strSave)))
 '
         '= CHANGE FILE DATES and TIMES
         ' -------------------------
-        Functioni ChangeFileDateAndTime ( ... ) As Long
-            DefInt iHandle, N
-            DefInt dateTime(1 To 6) = {1985, 8, 23, 22, 10, 12} ' YYYY, MM, DD, hh, mm, ss (08/23/1985 22:10:12)
-            DefStr pathFileName, whichTimes, cftErr
-            Dim bufferFileTime As T_FILETIMEcft
-            Dim systemTime as T_SYSTEMTIMEcft
-            ' Get String Parameters of the Functioni
-            ' ---------------------------------
-            cftErr = ""
-            If ParamStrCount > 0 Then
-                pathFileName = ParamStr$(1)
-            Else
-                cftErr = "No FileName Provided"
-            End If    
-            If cftErr <> "" Then Goto cftError
-            If ParamStrCount > 1 Then whichTimes = ParamStr$(2)  ' Optional
-            ' Open The File
-            ' -------------
-            iHandle = QDIR_CreateFile(pathFileName, QDIR_GENERIC_WRITE, (QDIR_FILE_SHARE_READ Or QDIR_FILE_SHARE_WRITE), _
-                                0, QDIR_OPEN_EXISTING, 0, 0)
-            If iHandle = 0 Then cftErr = "File Not Found":Goto cftError
-            '
-            ' Get Numeric Parameters of the Functioni
-            ' ---------------------------------------
-            cftErr = ""
-            For N = 1 To 6
-               If ParamValCount > N - 1 Then
-                    dateTime(N) = ParamVal(N)
-                Else
-                    cftErr = Str$(N - 1) & " Numeric Param(s) Recieved, 6 Awaited"
-                    Exit For
-                End If
-            Next N
-            If cftErr <> "" Then Goto cftError
-            '
-
-            systemTime.wYear = dateTime(1)
-            systemTime.wMonth = dateTime(2)
-            'systemTime.wDayOfWeek = 0
-            systemTime.wDay = dateTime(3)
-            systemTime.wHour = dateTime(4)
-            systemTime.wMinute = dateTime(5)
-            systemTime.wSecond = dateTime(6)
-            systemTime.wMilliseconds = 333       
-            '
-
-            ' set The New File Time On Disk
-            ' -----------------------------
-            QDIR_SystemTimeToFileTime (systemTime, bufferFileTime)
-            If Instr(Ucase$(whichTimes), "CRE") Then
-                If QDIR_SetFileTime (iHandle, bufferFileTime, 0, 0) <> 1 Then cftErr = "Problem in Writing CreationTime"
-            End If    
-            If cftErr <> "" Then Goto cftError
-            '
-            If Instr(Ucase$(whichTimes), "ACC") Then
-                If QDIR_SetFileTime (iHandle, 0, bufferFileTime, 0) <> 1 Then cftErr = "Problem in Writing lastAccessTime"
-            End If
-            If cftErr <> "" Then Goto cftError
-            '
-            If (Instr(Ucase$(whichTimes), "WRI") or whichTimes = "") Then
-                If QDIR_SetFileTime (iHandle, 0, 0, bufferFileTime) <> 1 Then cftErr = "Problem in Writing lastWriteTime"
-            End If
-            If cftErr <> "" Then Goto cftError
-            '
-            If iHandle Then QDIR_CloseHandle iHandle
-            Result = 1 ' True
-''            print " File Date and/or Time  changed: " & pathFileName & "    " & cftErr
-
-            Exit Functioni
-cftError:
-            Result = 0 ' False
-            If iHandle Then QDIR_CloseHandle iHandle
-            'ShowMessage ("While Changing File Date and/or Time : " & QDIR_RQCR & "    " & cftErr)
-''            print "While Changing File Date and/or Time : " & pathFileName & "    " & cftErr
-        End Functioni
-'
-' ----------------------------------------------------------------------------
-'
-        ' CHANGE FILE ATTRIBUTES
-        ' ----------------------
-        Function ChangeFileAttributes (sPathFileName As string, attributesAsString As String) As Long
-            DefInt iAttributes
-            DefStr pathFileName
-            pathFileName = sPathFileName   
-            print "ChangeFileAttributes pathFileName=" ,pathFileName
-            iAttributes = 0
-            attributesAsString = UCASE$(AttributesAsString)
-            If Instr(attributesAsString, "A") Then iAttributes = iAttributes + QDIR_FILE_ATTRIBUTE_ARCHIVE
-            If Instr(attributesAsString, "D") Then iAttributes = iAttributes + QDIR_FILE_ATTRIBUTE_DIRECTORY
-            If Instr(attributesAsString, "H") Then iAttributes = iAttributes + QDIR_FILE_ATTRIBUTE_HIDDEN
-            If Instr(attributesAsString, "N") Then iAttributes = iAttributes + QDIR_FILE_ATTRIBUTE_NORMAL
-            If Instr(attributesAsString, "R") Then iAttributes = iAttributes + QDIR_FILE_ATTRIBUTE_READONLY
-            If Instr(attributesAsString, "S") Then iAttributes = iAttributes + QDIR_FILE_ATTRIBUTE_SYSTEM
-            If Instr(attributesAsString, "T") Then iAttributes = iAttributes + QDIR_FILE_ATTRIBUTE_TEMPORARY
-            If Instr(attributesAsString, "C") Then iAttributes = iAttributes + QDIR_FILE_ATTRIBUTE_COMPRESSED
-            Result = QDIR_SetFileAttributes (pathFileName, iAttributes) 
-            print "Result SetFileAttributes  "+pathFileName +"=" ,Result
-
-        End Function
+'~body Functioni ChangeFileDateAndTime ( ... ) As Long   ' сборка: тело - в конце файла
 '
 ' ----------------------------------------------------------------------------
 
@@ -36490,60 +32458,8 @@ Declare Sub ShellRedirCallBack (Text As String)
 DefInt ptrShellRedirCallBack
 Bind ptrShellRedirCallBack To ShellRedirCallBack
 '
-Function ShellRedir (CommandLine As String) As String
-     Dim tPipeAttributes As RDR_SECURITY_ATTRIBUTES
-     Dim tProcessAttributes As RDR_SECURITY_ATTRIBUTES
-     Dim tThreadAttributes As RDR_SECURITY_ATTRIBUTES
-     Dim tProcessInformation As RDR_PROCESS_INFORMATION
-     Dim tStartupInformation As RDR_STARTUPINFO
-     DefInt hPipeRead, hPipeWrite, nbrByteRead, hProcess
-     Dim sBit As String * RDR_BUFFER_SIZE
-     DefStr sTextOut = ""
-     DefStr sCommandLine = CommandLine
-     DefStr sNull = ""
-     DefStr sConsoleTitle = "RAPIDQ SHELLREDIR CONSOLE"
-     tPipeAttributes.nLength = SizeOf(tPipeAttributes)
-     tPipeAttributes.lpSecurityDescriptor = 0
-     tPipeAttributes.bInheritHandle = -1
-     tProcessAttributes.nLength = SizeOf(tProcessAttributes)
-     tThreadAttributes.nLength = SizeOf(tThreadAttributes)
-     If RDR_CreatePipe(Varptr(hPipeRead), VarPtr(hPipeWrite), tPipeAttributes, 0) <> 0 Then
-         RDR_GetStartupInfo tStartupInformation
-         tStartupInformation.cb = SizeOf(tStartupInformation)
-         tStartupInformation.hStdOutput = hPipeWrite
-         tStartupInformation.hStdError = hPipeWrite
-         tStartupInformation.dwFlags = RDR_STARTF_USESHOWWINDOW Or RDR_STARTF_USESTDHANDLES
-         tStartupInformation.wShowWindow = RDR_SW_HIDE  ' RDR_SW_SHOW
-         tStartupInformation.lpTitle = VARPTR(sConsoleTitle)
-         hProcess = RDR_CreateProcess(VarPtr(sNull), VarPtr(sCommandLine), tProcessAttributes, _
-                             tThreadAttributes, -1, 0, 0, VarPtr(sNull), tStartupInformation, tProcessInformation)
-         If hProcess <> 0 Then
-             Do
-                 If RDR_ReadFile(hPipeRead, VarPtr(sBit), RDR_BUFFER_SIZE, VarPtr(nbrByteRead), 0) <> 0 Then
-                     sTextOut = sTextOut & Left$(sBit, nbrByteRead)
-                     CallFunc (ptrShellRedirCallBack, Left$(sBit, nbrByteRead))
-                     DoEvents
-                 Else
-                     RDR_CloseHandle tProcessInformation.hThread
-                     RDR_CloseHandle tProcessInformation.hProcess
-                     Exit Do
-                 End If
-                 RDR_CloseHandle hPipeWrite
-             Loop
-             RDR_CloseHandle hPipeWrite
-             RDR_CloseHandle hPipeRead
-         Else
-             RDR_CloseHandle hPipeWrite
-             RDR_CloseHandle hPipeRead
-             sTextOut = Chr$(10) & Chr$(10) & "   *** CANT CREATE PROCESS   FOR " & Chr$(34) & sCommandLine & Chr$(34) & Chr$(10) & Chr$(10)
-             CallFunc (ptrShellRedirCallBack, sTextOut)
-         End If
-     Else
-         sTextOut = Chr$(10) & Chr$(10) & "   *** CANT CREATE PIPE   FOR " & Chr$(34) & sCommandLine & Chr$(34) & Chr$(10) & Chr$(10)
-         CallFunc (ptrShellRedirCallBack, sTextOut)
-     End If
-     Result = sTextOut
-End Function
+DECLARE Function ShellRedir (CommandLine As String) As String
+'~body Function ShellRedir (CommandLine As String) As String   ' сборка: тело - в конце файла
 ' ==================================================================================
 ' End ShellRedir.Inc
 
@@ -36666,9 +32582,7 @@ Enabled=1
 OnTimer=StayOnTop
 End Create
 
-SUB StayOnTop(hwnd as QForm)
-OnTop=SetWindowPos(hwnd.Handle,HWND_TOPMOST,0,0,0,0,FLAGS)
-End SUB
+'~body SUB StayOnTop(hwnd as QForm)   ' сборка: тело - в конце файла
  
 ' Form.ShowModal
 $TYPECHECK OFF
@@ -37063,33 +32977,11 @@ $DEFINE __RQSYSUTILS
 '~dup    End If
 '~dup End Function
 
-Function ExtractFileExt(File As String) As String
-   Defint Pt,i
-   If File = "" then Exit Function
-   Pt = 0
-   For i = 1 to Len(File)
-       If File[i] = "." then Pt = i
-   Next i
-   If Pt = 0 then
-      Result = ""
-   Else
-      Result = Mid$(File,Pt + 1,Len(File))
-   End If
-End Function
+DECLARE Function ExtractFileExt(File As String) As String
+'~body Function ExtractFileExt(File As String) As String   ' сборка: тело - в конце файла
 
-Function DelFileExt(File As String) As String
-   Defint Pt,i
-   If File = "" then Exit Function
-   Pt = 0
-   For i = 1 to Len(File)
-       If File[i] = "." then Pt = i
-   Next i
-   If Pt = 0 then
-      Result = File
-   Else
-      Result = Mid$(File,1,Pt - 1)
-   End If
-End Function
+DECLARE Function DelFileExt(File As String) As String
+'~body Function DelFileExt(File As String) As String   ' сборка: тело - в конце файла
 
 '~dup Function ChangeFileExt(File As String,Ext As String) As String   ' повтор, первое: Files.inc(242)
 '~dup    Defint Pt,i
@@ -37141,9 +33033,8 @@ Function HiWord(Value As Long) As Integer
     Result = (Value And  &HFFFF0000) \ &H10000
 End Function
 
-Function MakeLong(a As Word, b As Word) As Long
-   Result = a or (b shl 16) ' inc2026: было (a or b) shl 16 - младшее слово тоже сдвигалось и смешивалось со старшим; MAKELONG Windows: a - младшее слово, b - старшее (так вызывается в QAnimate.inc: MakeLong(.StartFrame,.StopFrame) для ACM_PLAY)
-End Function
+DECLARE Function MakeLong(a As Word, b As Word) As Long
+'~body Function MakeLong(a As Word, b As Word) As Long   ' сборка: тело - в конце файла
 
 Function SysErrorMessage(Error As Integer) As String
      Dim Buffer As String
@@ -70617,4 +66508,4915 @@ $ENDIF '__WIN32API
 '	$Include "WindowsAPI.inc"
 '	$Include "NOTA.inc"
 
+'============================================================================
+' Тела SUB / FUNCTION (декларации - выше, на местах в своих файлах)
+'============================================================================
+'[build_inc] rapidq.inc (тела)
+$TypeCheck off
+$ESCAPECHARS off
+sub AddClrString (AddString$, Clr, Sender as QRICHEDIT)
+  'Add colored string to QRICHEDIT
+  Sender.SelStart =len (Sender.Text)
+  Sender.SelLength =Len(AddString$)
+  Sender.SelAttributes.Color=Clr
+  Sender.AddStrings AddString$
+end sub
+sub AddFontString (AddString$, FontStr as QFont, Sender as QRICHEDIT)
+  'Add colored string to QRICHEDIT
+  Sender.SelStart =len (Sender.Text)
+  Sender.SelLength =Len(AddString$)
+  Sender.SelAttributes.Color=FontStr.Color
+  Sender.SelAttributes.Name=FontStr.Name
+  Sender.AddStrings AddString$
+end sub
+Function fTally (sSearchIn As String, sToFind As string) As Long
+  DefInt iCharCounter = 0
+  For N = 1 To Len(sSearchIn)
+    If sSearchIn[N] = sToFind Then iCharCounter ++
+  Next N
+  Result = iCharCounter
+End Function
+Function Trim$(s as string) as string
+  Result=LTRIM$(RTRIM$(s))
+End Function
+function GetRusdate as string
+  result=field$(Date$,"-",2)+"-"+field$(Date$,"-",1)+"-"+right$(field$(Date$,"-",3),2)
+end function
+function Rusdate as string
+  result=field$(Date$,"-",2)+"-"+field$(Date$,"-",1)+"-"+right$(field$(Date$,"-",3),2)
+end function
+function Rudate as string
+  result=field$(Date$,"-",2)+"-"+field$(Date$,"-",1)+"-"+right$(field$(Date$,"-",3),2)
+end function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] conversion.inc (тела)
+function LCaseApi(  SrcTxt as string ) as string
+tmp$=SrcTxt+"-"
+l=len(SrcTxt)
+result=CharLower(left$(tmp$,l))
+end function
+function UCaseApi(  SrcTxt as string ) as string
+tmp$=SrcTxt+"-"
+l=len(SrcTxt)
+result=CharUpper(left$(tmp$,l))
+end function
+FUNCTION vidnum$ (Num, dig%) as string
+'Andrew Shelkovenko dec 2003
+'A  function that returns the string representation of  of a rounded numeric expression.
+'Syntax: vidnum$ (numeric-expression, dig%) 
+'Num$ = vidnum$ (999999.2366666666, 4)
+'Return  999999.2367 
+'Num$ = vidnum$ (-0.236, 4)
+'Return  -0.236
+'Num$ =vidnum$ (-12389.236, -2)
+'Return -12400
+'Details:
+'dig% - number of significant digits 
+
+Num$=str$(Num)
+pntPos=instr(Num$,".")
+if pntPos=0 then 
+	digMax=0
+else
+	digMax=Len(Num$)-pntPos
+end if
+
+if dig%>digMax then dig%=digMax 
+vidnum$ = STR$((  CLNG(  abs(Num) * 10 ^ dig%) / 10 ^ dig%)*sgn(Num))
+END FUNCTION
+function dectoHex (Dec as string) as string
+defdbl ost, ch
+defstr HexVal$
+HexVal$=""
+ost=0: ch=0
+Dec#=val(Dec)
+sign=sgn(Dec#)
+Dec#=abs(Dec#)
+WHILE  Dec# >= 16#
+	ch=FIX(Dec# / 16#)
+	ost = Dec#-ch*16#
+	
+	Dec#=ch
+	select case ost
+	case is <10
+		Hexdig$=str$(ost)
+	case 10
+		Hexdig$="A"
+	case 11
+		Hexdig$="B"
+	case 12
+		Hexdig$="C"
+	case 13
+		Hexdig$="D"
+	case 14
+		Hexdig$="E"
+	case 15
+		Hexdig$="F"
+	case 15
+		Hexdig$="10"
+		
+	case else
+	end select
+	
+	HexVal$ =Hexdig$  + HexVal$: 
+	
+wend
+
+select case Dec#
+	
+case is <10
+	Hexdig$=str$(Dec#)
+case 10
+	Hexdig$="A"
+case 11
+	Hexdig$="B"
+case 12
+	Hexdig$="C"
+case 13
+	Hexdig$="D"
+case 14
+	Hexdig$="E"
+case 15
+	Hexdig$="F"
+case 15
+	Hexdig$="10"
+	
+case else
+end select
+
+HexVal$ =Hexdig$  + HexVal$: 
+if sign=-1 then signn$="-" else signn$=""
+if HexVal$="0" then HexVal$="00"
+dectoHex=signn$+ HexVal$
+END function
+FUNCTION CByteNum (ByteStr$,Num_Type as short ) as variant
+'print"CByteNum ByteStr$=";ByteStr$
+'Andrew Shelkovenko dec 2003
+'' converts   number of Num_Type type to bytes sequence.
+'Num_Type can be next value:
+'const Num_SHORT = 2
+'const Num_WORD = 3
+'const Num_LONG = 4
+'const Num_DWORD = 5
+'const Num_SINGLE = 6
+'const Num_DOUBLE = 8
+
+
+DIM M AS QMemoryStream
+select case Num_Type
+case Num_BYTE
+	ShowMessage "CByteNum: Can't to write BYTE.Wrong parameter type - Num_BYTE": exit funCTION
+case  Num_SHORT: M.Write (ByteStr$):m.Position=0:CByteNum=m.ReadNum(Num_SHORT)
+case  Num_WORD:  M.Write (ByteStr$):m.Position=0:CByteNum=m.ReadNum(Num_WORD)
+case  Num_LONG:  M.Write (ByteStr$):m.Position=0:CByteNum=m.ReadNum(Num_LONG)
+case  Num_DWORD: M.Write (ByteStr$):m.Position=0:CByteNum=m.ReadNum(Num_DWORD)
+case  Num_SINGLE:M.Write (ByteStr$):m.Position=0:CByteNum=m.ReadNum(Num_SINGLE)
+case  Num_DOUBLE:M.Write (ByteStr$):m.Position=0:CByteNum=m.ReadNum(Num_DOUBLE)
+	
+case else
+	M.Write (ByteStr$):m.Position=0:CByteNum=m.ReadNum(Num_DOUBLE)
+end select
+
+M.Close
+
+end funCTION
+Function GetWord (Oper$ as string, getV$ as string) as long
+'Old! Use GetVarPos!!!
+
+'return variable  position in checked string
+'getV$ - variable name 
+'Oper$ - checked string
+'if getV$ commented,  or quoted (just text, not varname)  - return error code
+result=-1 ' error
+defstr Lsep$="()[]=><, :+-*\/;"
+defstr Rsep$="()[]=><, :'+-*\/;"
+
+Oper$=lcase$(Oper$)
+getV$=lcase$(getV$)
+
+Wpos=instr(Oper$,getV$) 
+if Wpos=0 then result=0: exit function 'pattern not contained
+'check comment and string
+
+while Wpos>0 
+	
+	if (instr(Lsep$,Oper$[Wpos-1])>0 or Wpos=1) and (instr(Rsep$,Oper$[Wpos+len(getV$)])>0  or Wpos+len(getV$)-1=len(Oper$))  then
+		'check string 
+		QPos1=rinstr(Wpos,Oper$,qt) ''1 quote pos   
+		QPos2= instr(Wpos,Oper$,qt) '2 quote pos   
+		CPos=rinstr(Wpos,Oper$,"'") 'comment pos  
+		
+		if QPos1<Wpos and QPos2 >Wpos and QPos1>0 then 'it's string, not var
+		elseif (CPos<Wpos and CPos>0) and  QPos1<CPos    then 'it's comment and QPos2>0
+		else
+			result=Wpos 
+			exit while
+		end if
+	else
+	end if
+	Wpos=instr(Wpos+1, Oper$,getV$) 
+	result=-2 'present, but not var
+wend
+
+end function
+function Sec2Ugl (SecFull as long) as string
+
+if sgn(SecFull)=-1 then zn$="-" else zn$=""
+SecFull=abs(SecFull)
+'print"SecFull=";SecFull
+
+Grad=SecFull\3600 ' число целых градусов
+'print"Grad=";Grad
+gradSec=Grad*3600 ' число секунд в целых градусах
+'print"gradSec=";gradSec
+
+ostminSec=SecFull-gradSec ' число сек в дробной части градусов - минутах и сек
+'print"ostminSec=";ostminSec
+
+mint=ostminSec\60 ' целое число минут
+'print"mint=";mint
+mintsec=mint*60 ' число секунд в целых минутах
+'print"mintsec=";mintsec
+sec1 =ostminSec- mintsec ' остаток чистых секунд
+'print"sec1=";sec1
+
+
+Sec2Ugl=zn$+str$((Grad))+chr$(176)+str$((Mint))+"'"+str$((Sec1))+qt
+
+
+
+end function
+function sadd(InpStr as string) as long
+'Returns the memory offset of the string data in the string variable
+' use as pointer to the string variable
+DIM Mem AS QMemoryStream
+Mem.Write InpStr
+Mem.Position = 0
+sadd=Mem.Pointer
+end function
+function Cutleft(a as string, n as long)  as string
+'return string without first n chars
+result= mid$(a,n+1,len(a)-n+1)
+end function
+function CutRight(a as string, n as long)  as string
+'return string without first n chars
+result= mid$(a,1,len(a)-n)
+end function
+Function RQConvertCodePage (SourseString As String, inPage As long, outPage As long) As String
+'print "1159 RQConvertCodePage SourseString=";SourseString
+'$define cp_Win  1251
+'$define cp_Dos  866
+'$define cp_Koi  20866 
+'$define cp_Iso  28595
+'$define cp_UTF8 65001 
+'$define cp_UTF7 65000 
+
+
+Dim LenSourseString As Long
+LenSourseString = Len(SourseString)
+'print "1170 RQConvertCodePage  LenSourseString=";LenSourseString
+
+Dim str1 As String
+Dim str2 As String
+Dim RetStrLong As Long
+
+dim tmp as string 
+tmp=SourseString
+ptrtmp&=varptr(tmp)
+
+str1 = String$(LenSourseString * 4, chr$(0))
+str2 = String$(LenSourseString * 4, chr$(0))
+
+ptrstr1&=varptr(str1)
+ptrstr2&=varptr(str2)
+
+RetStrLong = MultiByteToWideChar(inPage, 0, tmp, LenSourseString, 0&, 0)
+'print"RetStrLong=";RetStrLong
+RetStrLong = MultiByteToWideChar(inPage, 0, tmp,LenSourseString , ptrstr1&, RetStrLong)
+'print"RetStrLong=";RetStrLong
+RetStrLong2 = WideCharToMultiByte(outPage, 0, ptrstr1&, RetStrLong, str2, LenSourseString * 2, ByVal 0&, 0) ' str2
+'print"RetStrLong2=";RetStrLong2
+
+RQConvertCodePage = Left$(str2, RetStrLong2)
+End Function
+Function RQConvertCodePage1 (SourseStringPtr As long, inPage As long, outPage As long) As String
+'print "1159 RQConvertCodePage SourseString=";SourseString
+'$define cp_Win  1251
+'$define cp_Dos  866
+'$define cp_Koi  20866 
+'$define cp_Iso  28595
+'$define cp_UTF8 65001 
+'$define cp_UTF7 65000 
+
+
+Dim LenSourseString As Long
+LenSourseString = Len(varptr$(SourseStringPtr))
+'print "1170 RQConvertCodePage3  LenSourseString=";LenSourseString
+
+Dim str1 As String
+Dim str2 As String
+Dim RetStrLong As Long
+
+str1 = String$(LenSourseString * 4, chr$(0))'+String$(LenSourseString * 4, chr$(0))
+str2 = String$(LenSourseString * 4, chr$(0))'+String$(LenSourseString * 4, chr$(0))
+
+ptrstr1&=varptr(str1)
+ptrstr2&=varptr(str2)
+
+'RetStrLong = MultiByteToWideChar2(inPage, 0, SourseStringPtr, LenSourseString , 0&, 0)
+RetStrLong = MultiByteToWideChar1(inPage, 0, SourseStringPtr, -1 , 0&, 0)
+'print"RetStrLong0=";RetStrLong
+RetStrLong = MultiByteToWideChar1(inPage, 0, SourseStringPtr,-1, ptrstr1&, RetStrLong)
+'print"RetStrLong1=";RetStrLong
+RetStrLong2 = WideCharToMultiByte1(outPage, 0, ptrstr1&, RetStrLong, str2, LenSourseString * 4, ByVal 0&, 0) ' str2
+'print"RetStrLong2=";RetStrLong2
+
+RQConvertCodePage1 = Left$(str2, RetStrLong2)
+End Function
+Function ConvertCodePage2 (SourseString As String, inPage As long, outPage As long) As String
+
+Dim LenSourseString As Long
+LenSourseString = Len(SourseString)
+
+Dim str1 As String
+Dim str2 As String
+Dim RetStrLong As Long
+
+dim tmp as string 
+tmp=SourseString
+ptrtmp&=varptr(tmp)
+
+str1 = String$(LenSourseString * 4, chr$(0))
+str2 = String$(LenSourseString * 4, chr$(0))
+
+ptrstr1&=varptr(str1)
+ptrstr2&=varptr(str2)
+
+RetStrLong = MultiByteToWideChar(inPage, 0, tmp, LenSourseString, 0&, 0)
+RetStrLong = MultiByteToWideChar(inPage, 0, tmp, RetStrLong, ptrstr1&, LenSourseString)
+'print"RetStrLong =";RetStrLong 
+RetStrLong2 = WideCharToMultiByte(outPage, 0, ptrstr1&, RetStrLong, str2, LenSourseString * 4, ByVal 0&, 0) ' str2
+'print"RetStrLong2 =";RetStrLong2 
+
+ConvertCodePage2 = Left$(str2, RetStrLong2) ' inc2026: было ConvertCodePage = ... (в conversion.inc такой функции нет, необъявленная переменная), стало ConvertCodePage2 - имя этой функции (строка 949), иначе она возвращает пустую строку
+End Function
+FUNCTION RC4 (key AS STRING, str AS STRING) AS STRING
+DIM stateTable(256) AS BYTE, randomIndex AS BYTE
+DIM i AS LONG, j AS LONG, k AS LONG, n AS LONG
+
+result = ""
+
+n = LEN(key)
+IF 0 < n THEN
+	FOR i = 0 TO 255
+		stateTable(i) = i
+	NEXT
+	
+	j = 0
+	FOR i = 0 TO 255
+		k = (i MOD n) + 1
+		j = (j + stateTable(i) + ASC(key[k])) AND 255
+		SWAP stateTable(i), stateTable(j)
+	NEXT
+	
+	j = 0
+	n = LEN(str)
+	FOR k = 1 TO n
+		i = k AND 255
+		j = (j + stateTable(i)) AND 255
+		randomIndex = (stateTable(i) + stateTable(j)) AND 255
+		SWAP stateTable(i), stateTable(j)
+		
+		result = result & CHR$(ASC(str[k]) XOR stateTable(randomIndex))
+	NEXT
+END IF
+END FUNCTION
+function BGR2HtmlColor (BGRColor as long) as string
+'hexColor$=HEX$(BGRColor) 
+hexColor$=MID$( HEX$(BGRColor),3,6) 
+result="#"+MID$( hexColor$,5,2) +MID$( hexColor$,3,2) +MID$( hexColor$,1,2) 
+end function
+function HtmlColor2BGR (HtmlColor as string) as long
+HtmlColor$=mid$(trim$(ucase$(HtmlColor)),2,6) 
+HtmlColor$=MID$( HtmlColor$,5,2) +MID$( HtmlColor$,3,2) +MID$( HtmlColor$,1,2) 
+HtmlColor$=CONVBASE$(HtmlColor$,16,10)
+result=val(HtmlColor$)
+end function
+FUNCTION STRL$ (value AS long) AS STRING
+tmp$=STRF$(value, ffFixed, 11, 18)
+if instr(tmp$,".")>0 then decSep$="."
+if instr(tmp$,",")>0 then decSep$=","
+
+STRL$ = field$(STRF$(value, ffFixed, 11, 18),decSep$,1)
+
+END FUNCTION
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] Files.inc (тела)
+function Quote (StringToQuote as string) as string
+  StringToQuote =  chr$(34) + StringToQuote + chr$(34)
+  result = replacesubstr$(stringtoquote, chr$(34) + chr$(34), chr$(34))
+end function
+Function StripPath (fullname as string) as string
+  'print
+  'print "1 StripPath fullname=";fullname
+
+  result = left$(fullname, rinstr(fullname, "\"))
+
+  'print "2 StripPath fullname=";fullname
+  'print
+
+end function
+Function StripFileName (fullname as string) as string
+  result = right$(fullname, len(fullname) - rinstr(fullname, "\"))
+end function
+Function GetFileNameNoPath (fullname as string) as string
+  result = right$(fullname, len(fullname) - rinstr(fullname, "\"))
+end function
+Function StripFileExt (fullname as string) as string
+  if instr(fullname,".")=0 then
+    result =""
+  else
+    result = right$(fullname, len(fullname) - rinstr(fullname, ".") + 1)
+  end if
+end function
+function FileNameNoExt(fullname as string) as string
+  fullname = right$(fullname, len(fullname) - rinstr(fullname, "\"))
+  result = left$(fullname, rinstr(fullname, ".") - 1)
+end function
+function FullPathNoExt(fullname as string) as string
+  result = left$(fullname, rinstr(fullname, ".") - 1)
+end function
+function C_Style (fullname as string) as string
+  fullname = replacesubstr$(fullname, "\\", "\")
+  result = replacesubstr$(fullname, "\", "/")
+end function
+function bsPath (fullname as string) as string
+  'backslashedPath
+  'fullname = replacesubstr$(fullname, "\\", "\")
+  result = replacesubstr$(fullname, "/", "\")
+end function
+function homedir() as string
+  result = left$(command$(0), rinstr(command$(0), "\"))
+end function
+function BrowseForFolders (initialdir as string, wincapt as string) as string
+  dim bff_form as qform
+  with bff_form
+    .height = 400
+    .center
+    .caption = wincapt
+    .delbordericons 2
+  end with
+  dim bff_tree as qdirtree
+  with bff_tree
+    .parent = bff_form
+    .align = 5
+  end with
+  if bff_form.caption = "" then bff_form.caption = "Select folder"
+  if direxists(initialdir) then
+    bff_tree.directory = initialdir
+  else
+    bff_tree.directory = curdir$
+  end if
+  bff_form.showmodal
+  result = bff_tree.directory
+end function
+FUNCTION ChangeFilePath(FileName as STRING, NewPath as STRING) AS STRING
+  DIM Result AS STRING
+  DIM FileNoPath AS STRING
+
+  FileNoPath = ExtractFileName(FileName)
+
+  Result = NewPath+FileNoPath
+  ChangeFilePath = Result
+END FUNCTION
+FUNCTION CheckFileWr (FileName as STRING  ) AS long
+  result=0
+  DIM fileStr as QFileStream
+  'fmOpenWrite = 1
+  if fileStr.open (FileName,1 )=-1 then
+    result=-1
+    FileStr.Close
+  end if
+
+END FUNCTION
+FUNCTION LoadString(FileName as STRING  ) AS string
+  DIM fileStr as QFileStream
+  result="0"
+  'fmOpenRead = 0
+  if fileStr.open (FileName,0 )=-1 then'fmCreate'
+    result="-1"
+    result=FileStr.ReadBinStr( FileStr.size)
+    FileStr.Close
+    'result=1
+  end if
+
+END FUNCTION
+FUNCTION LoadBinString(FileName as STRING , n as long ) AS string
+  'print"FileName=";FileName
+  DIM fileStr as QFileStream
+  result="0"
+  res$="0"
+  'print"res1$=";res$
+  'fmOpenRead = 0
+  if fileStr.open (FileName,0 )=-1 then'fmRead'
+    if n=-1 then n=FileStr.size
+    if n>FileStr.size then n=FileStr.size
+    result="-1"
+    res$="-1"
+    result=FileStr.ReadBinStr( n)
+    FileStr.Close
+    'result=1
+  end if
+  'print"res2$=";res$
+END FUNCTION
+FUNCTION LoadString1(FileName as STRING  ) AS string
+  DIM fileStr as QFileStream
+  result="0"
+  'fmOpenRead = 0
+  if fileStr.open (FileName,0 )=-1 then'fmRead'
+    result="-1"
+    result=FileStr.ReadStr( FileStr.size)
+    FileStr.Close
+    'result=1
+  end if
+
+END FUNCTION
+function MKSubDir (DirDst$) as short
+  'Andrew Shelkovenko dec 2003, jul 2004
+  'Create DirDst$ directory with full subdir structure
+  '----------------------------------------------
+  'print "MKSubDir DirDst$="; DirDst$
+  result=0
+  dim DirDst1$ as string
+  DirDst1$=string$(len(DirDst$),"a")
+  'chartooem DirDst$,DirDst1$
+  DirDst1$=DirDst$
+
+  if right$(DirDst1$,1)<>BkSl then DirDst1$=DirDst1$+BkSl
+  z1=instr(DirDst1$,BkSl)
+  z2=0
+  while z1>0
+    SubDirDst$=left$(DirDst1$,z1 )
+    if DIREXISTS(SubDirDst$)=0 then MKDIR SubDirDst$ :'print "MKSubDir SubDirDst$=" ,SubDirDst$
+    z2=z1+1
+    z1=instr(z2,DirDst1$,BkSl)
+  wend
+
+  result=1
+end function
+sub FileCopy (FileSrc$, FileDst$) '- -----------------------------------'
+  'Andrew Shelkovenko dec 2003
+  'Copy FileSrc$ to FileDst$
+  ' if path dest is not exists - create it.
+
+  dim FileSrc as QFileStream
+  dim FileDst as QFileStream
+
+  dr$=StripPath (FileDst$)
+  'print "dr$=" ,dr$
+
+  'MKDIR dr$ 'StripPath (FileDst$)
+
+  if dr$<>"" then
+    MKSubDir dr$
+    if DIREXISTS(dr$ ) =0 then showmessage ("FileCopy Can't create directory "+dr$ ): 'exit sub
+  end if
+
+  if FileSrc.Open(FileSrc$, fmOpenRead) =-1 then
+    if FileDst.Open(FileDst$, fmCreate) =-1 then
+      FileDst.CopyFrom  (FileSrc, 0)
+
+      FileDst.close
+      FileSrc.close
+    else
+      'print  "Can't create "+FileDst$
+    end if
+  else
+    'print  "File not found "+FileSrc$
+  end if
+
+end sub
+function fFileCopy (FileSrc$, FileDst$) as long '- -----------------------------------'
+  'print " fFileCopy FileSrc$=";FileSrc$
+  'Andrew Shelkovenko dec 2003
+  'Copy FileSrc$ to FileDst$
+  result=0
+  dim FileSrc as QFileStream
+  dim FileDst as QFileStream
+
+  'if Filesize(FileDst$)=0 then
+  'end if
+
+  dr$=StripPath (FileDst$)
+  'print "2 fFileCopy FileDst$=";FileDst$
+  'print " fFileCopy dr$=";dr$
+
+  if dr$<>"" then
+    if DIREXISTS(dr$ ) =0 then MKSubDir dr$
+    if DIREXISTS(dr$ ) =0 then result=-1: exit function 'showmessage ("FileCopy Can't create directory "+dr$ ): '
+  end if
+  result=-2
+  if FileSrc.Open(FileSrc$, fmOpenRead) =-1 then
+    result=-3
+    if FileDst.Open(FileDst$, fmCreate) =-1 then
+      result=-4
+      FileDst.CopyFrom  (FileSrc, 0)
+      FileSrc.close
+      FileDst.close
+      result=1
+    else
+      ShowMessage ("fFileCopy error: Can't create file "+FileDst$)
+
+    end if
+  else
+    ShowMessage ("fFileCopy error: Can't open file "+FileSrc$)
+
+  end if
+end function
+sub KillFiles (FileName$)
+  'Andrew Shelkovenko  diakin@narod.ru  apr 2004
+  'Kill files in FileName$ by mask
+  'for example KillFiles "C:\BAS\RAPIDQ\tmp\*.tmp"
+
+  FName$ =StripPath (FileName$)+ DIR$(FileName$, 0 ) '-- Get first file
+
+  while STRIPFILENAME (FName$) <>""
+    kill FName$
+
+    if fileexists (FName$)>0 then ShowMessage ("KillFiles Can't kill file "+FName$) ' inc2026: fileexists(FName$) вместо fileexists(StripPath(FileName$)+FName$): FName$ уже содержит путь (строки 911, 917), путь удваивался и проверка никогда не срабатывала
+    FName$ = StripPath (FileName$)+DIR$ '-- Get next file
+  wend
+end sub
+SUB io2Rnd (fsrc$, fdst$)
+  '--------------------------------
+  'convert text file with single value strings to binary
+  ' for example
+  '17.78091
+  '16.64166
+
+  'fsrc$ - source file  fdst$ - dest. file
+  'data type - single
+
+  'CONST fmCreate = 65535
+  'CONST fmOpenRead = 0
+  'CONST fmOpenWrite = 1
+  'CONST fmOpenReadWrite = 2
+
+  dim FileSourse as QFileStream
+  dim FileDest as QFileStream
+  defsng ValSrc
+
+  FileSourse.Open (fsrc$, 2 )'fmOpenReadWrite'
+  FileDest.Open   (fdst$, 65535 )  'fmOpenReadWrite'
+
+  WHILE NOT FileSourse.EOF
+    ValSrc$=FileSourse.ReadLine : 'print "ValSrc$=" ,ValSrc$
+    ValSrc=val(ValSrc$) :         'print "ValSrc=" ,ValSrc
+    FileDest.Write (ValSrc)
+  wend
+
+  FileSourse.CLOSE
+  FileDest.CLOSE
+
+END SUB
+SUB io2RndPV (fsrc$, fdst$)
+  '--------------------------------
+  'convert text file with single value strings to binary
+  ' for example
+  '17.78091
+  '16.64166
+
+  'fsrc$ - source file  fdst$ - dest. file
+  'data type - single
+
+  'CONST fmCreate = 65535
+  'CONST fmOpenRead = 0
+  'CONST fmOpenWrite = 1
+  'CONST fmOpenReadWrite = 2
+
+  dim FileSourse as QFileStream
+  dim FileDest as QFileStream
+  defsng ValSrc
+
+  FileSourse.Open (fsrc$, 2 )'fmOpenReadWrite'
+  FileDest.Open   (fdst$, 65535 )  'fmOpenReadWrite'
+
+  WHILE NOT FileSourse.EOF
+    ValSrc$=FileSourse.ReadLine : 'print "ValSrc$=" ,ValSrc$
+    ValSrc=val(ValSrc$) :         'print "ValSrc=" ,ValSrc
+    FileDest.Write (ValSrc)
+  wend
+
+  FileSourse.CLOSE
+  FileDest.CLOSE
+
+END SUB
+function ChDirOEM (PathDst$) as short
+  'print "ChDirOEM PathDst$=" ,PathDst$
+  result=0
+  dim PathDst1$ as string
+  PathDst1$=string$(len(PathDst$),"a")
+  chartooem PathDst$,PathDst1$
+  'print "ChDirOEM PathDst$=" ,PathDst$
+  'print "ChDirOEM PathDst1$=" ,PathDst1$
+
+  CHDIR  PathDst1$
+  result=1
+end function
+function MkDirOEM (PathDst$) as short
+  result=0
+  dim PathDst1$ as string
+  'print "MkDirOEM PathDst$=" ,PathDst$
+  PathDst1$=string$(len(PathDst$),"a")
+  chartooem PathDst$,PathDst1$
+  'print "MkDirOEM PathDst$=" ,PathDst$
+  'print "MkDirOEM PathDst1$=" ,PathDst1$
+  MkDIR  PathDst1$
+  result=1
+end function
+function DownLoadURL (sUrl as string, dFileName as string) as long
+  'print"sUrl=";sUrl
+  ' скачивает файл с заданного sURL и сохраняет под именем dFileName
+  'возвращает число скачанных байт TotalReadBytes или -1 в случае ошибки
+
+  Dim hOpen As Long, hFile As Long, sBuffer As String, ReadBytes As Long, TotalReadBytes As Long
+  defint sBufferSize=2048
+  filetxt$=""
+
+  'Create a buffer for the file we're going to download
+  sBuffer = Space$(sBufferSize)+"<<<" ' inc2026: Space$ вместо Space: в RapidQ есть только SPACE$ (indexa.html); в документации только SPACE$
+
+
+  'Create an internet connection
+  hOpen = InternetOpen(scUserAgent, INTERNET_OPEN_TYPE_DIRECT, vbNullString, vbNullString, 0)
+  'print"hOpen=";hOpen
+  'Open the url
+
+  hFile = InternetOpenUrl(hOpen, sURL, vbNullString, 0&, INTERNET_FLAG_RELOAD, ByVal 0&)
+  'print"hFile=";hFile
+
+  'Read the first 1000 bytes of the file
+  zzz=InternetReadFile (hFile, sBuffer, sBufferSize, ReadBytes)
+  filetxt$=left$(sBuffer,ReadBytes)
+  TotalReadBytes=ReadBytes
+
+
+  while ReadBytes>0
+    'print"ReadBytes=";ReadBytes
+    'print"zzz=";zzz
+    'clean up
+    'Show our file
+    'PRINT sBuffer
+    zzz=InternetReadFile (hFile, sBuffer, sBufferSize, ReadBytes)
+    filetxt$=filetxt$+left$(sBuffer,ReadBytes)
+    TotalReadBytes=TotalReadBytes+ReadBytes
+  wend
+
+  InternetCloseHandle (hFile)
+  InternetCloseHandle (hOpen)
+
+  zzj=savestring(filetxt$,dFileName)
+
+  DownLoadURL=TotalReadBytes
+
+End Function ' inc2026: END FUNCTION вместо END SUB: процедура открыта как function DownLoadURL (строка 1440)
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] func_array.inc (тела)
+sub ARRAverageSubtract (Dat!() as single) 
+' calculate and subtract average value from function Dat1!()
+defint  p, Lmin1, Lmax1
+Lmin1 = LBOUND(Dat!):Lmax1 = UBOUND(Dat!) 
+defsng ARMid!=0
+'print"ARRAverageSubtract Lmax1=";Lmax1
+'print"ARRAverageSubtract Lmin1=";Lmin1
+
+FOR p = Lmin1 TO Lmax1:
+	ARMid! = ARMid! + Dat!(p):
+
+NEXT p
+
+average! = ARMid! / (Lmax1-LMin1+1)
+'print"average!=";average!
+
+FOR p = LMin1 TO Lmax1: 
+Dat!(p) = Dat!(p) - average!: 
+'print"Dat!(";p;")=";Dat!(p)
+NEXT p
+'print"end ----------"
+
+END sub
+FUNCTIONI FindMax (...) AS DOUBLE
+
+DIM Largest AS DOUBLE
+DIM I AS BYTE
+
+Largest = ParamVal(1)
+
+FOR I = 1 TO ParamValCount
+	IF ParamVal(I) > Largest THEN
+		''       print "ParamVal(",I,")=" ,ParamVal(I)
+		Largest = ParamVal(I)
+	END IF
+NEXT
+
+FindMax = Largest         ' or Result = Largest
+END FUNCTIONI
+
+'-- **************************************************************************'
+sub ArrExtr (Dat!() as single, byref DatMin!, byref DatMax!) '' as single 
+'find  maximum and minimum
+
+defint  p
+defint MaxEl,MinEl
+
+MinEl=lbound(Dat!)
+MaxEl=ubound(Dat!)
+
+defsng ARMax!=Dat!(MinEl)
+defsng ARMin!=Dat!(MinEl)
+
+FOR p = MinEl TO MaxEl:
+	IF Dat!(p) > ARMax! THEN ARMax! = Dat!(p):
+	IF Dat!(p) < ARMin! THEN ARMin! = Dat!(p):
+	
+NEXT p
+DatMax!=ARMax!
+'print "DatMax=" ,DatMax!
+DatMin!=ARMin!
+'print "DatMin=" ,DatMin!
+
+END SUB
+sub ArrAbsExtr (Dat!() as single, byref _AbsDatMax!) 
+defint  p
+defint MaxEl,MinEl
+
+MinEl=lbound(Dat!)
+'print "ArrAbsExtr sub MinEl=" ,MinEl
+MaxEl=ubound(Dat!)
+'print "ArrAbsExtr sub MaxEl=" ,MaxEl
+
+defsng ARMax!=Dat!(MinEl)
+defsng ARMin!=Dat!(MinEl)
+_AbsDatMax!=ARMax!
+FOR p = MinEl TO MaxEl:
+	IF abs(Dat!(p)) >  _AbsDatMax! THEN  _AbsDatMax! = abs(Dat!(p))
+NEXT p
+'print "sub _AbsDatMax!=" ,_AbsDatMax!
+
+END SUB
+sub ARRAddConst (Dat!() as single, const! as single) 
+defint  p, Lmin1, Lmax1
+Lmin1 = LBOUND(Dat!):Lmax1 = UBOUND(Dat!) 
+
+FOR p = Lmin1 TO Lmax1:
+	Dat!(p) = const! + Dat!(p):
+NEXT p
+END SUB
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] parse.inc (тела)
+Function GetVarPos (Oper$ as string, getV$ as string) as long
+'return variable  position in checked string
+'getV$ - variable name 
+'Oper$ - checked string
+'if getV$ commented,  or quoted (just text, not varname)  - return error code
+result=-1 ' error
+'cr+lf+",./\| !@#$%^&*()_+=-?><~`;:[]{}'"+ht+qt
+defstr Lsep$="()[]=><, :+-*\/;."
+defstr Rsep$="[()]=><, :'+-*\/;."
+
+Oper$=lcase$(Oper$)-ht
+getV$=lcase$(getV$)-ht
+
+Wpos=instr(Oper$,getV$) 
+if Wpos=0 then result=0: exit function 'pattern not contained
+'check comment and string
+
+while Wpos>0 
+
+	if (instr(Lsep$,Oper$[Wpos-1])>0 or Wpos=1) and (instr(Rsep$,Oper$[Wpos+len(getV$)])>0  or Wpos+len(getV$)-1=len(Oper$))  then
+		'check string 
+		QPos1=rinstr(Wpos,Oper$,qt) ''1 quote pos   
+		QPos2= instr(Wpos,Oper$,qt) '2 quote pos   
+		CPos=rinstr(Wpos,Oper$,"'") 'comment pos  
+
+		if QPos1<Wpos and QPos2 >Wpos and QPos1>0 then 'it's string, not var
+		elseif (CPos<Wpos and CPos>0) and  QPos1<CPos    then 'it's comment and QPos2>0
+		else
+			result=Wpos 
+			exit while
+		end if
+	else
+	end if
+		Wpos=instr(Wpos+1, Oper$,getV$) 
+	result=-2 'present, but not var
+wend
+
+end function
+function DelCommentsF (STxt$ as string) as string
+DelComments (@STxt$)
+result=STxt$
+end function 
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] eml.inc (тела)
+Function GetSubjCodePage( Subject As String) As String
+zza$=Subject
+CodePage$=field$(zza$,"?",2)
+result=""
+if CodePage$ <>"" then
+	result=CodePage$
+elseif CodePage$="" and isKOI8(zza$)=1 then
+	result="koi8-r"
+else
+	result=""
+end if
+
+end function
+Function GetSubjCodeMethod( Subject As String) As String
+result=lcase$(field$(Subject,"?",3))
+end function
+Function GetMsgBodyContentType ( Msg As String) As String
+'Content-Type: text/plain; charset=koi8-r
+'Content-Type: text/plain; charset=UTF-8
+'Content-Type: text/plain;format=flowed;charset="koi8-r";reply-type=original
+
+Msg=replacesubstr$(Msg,ht," ")
+Msg=replacesubstr$(Msg,crlf+" ","")
+Msg=replacesubstr$(Msg,";"+crlf,"; ")
+'print"Msg=";Msg
+
+
+ContentType$=GetHeaderField(Msg,"Content-Type")
+'print"GetMsgBodyContentType ContentType$=";ContentType$
+result=field$(ContentType$,";",1)
+end function
+Function GetMsgBodyCodePage ( Msg As String) As String
+'Content-Type: text/plain; charset=koi8-r
+'Content-Type: text/plain; charset=UTF-8
+'Content-Type: text/plain;format=flowed;charset="koi8-r";reply-type=original
+dim i as long
+Msg=replacesubstr$(Msg,ht," ")
+Msg=replacesubstr$(Msg,crlf+" ","")
+Msg=replacesubstr$(Msg,";"+crlf,"; ")
+
+ContentType$=GetHeaderField(Msg,"Content-Type")
+semicolCount=tally(ContentType$,";")
+for i=1 to semicolCount
+	valfield$=field$(ContentType$,";",i+1)
+	if instr(valfield$,"charset=")>0 then
+		param$=field$(valfield$,"=",2)
+		exit for
+	else
+		
+	end if
+	
+next i
+result=param$
+end function
+Function GetMsgBodyCodeMethod( MsgBody As String) As String
+'Content-Transfer-Encoding: 8bit
+dim i as long
+MsgBody=replacesubstr$(MsgBody,ht," ")
+MsgBody=replacesubstr$(MsgBody,crlf+" ","")
+MsgBody=replacesubstr$(MsgBody,";"+crlf,"; ")
+
+ContentTransferEncoding$=GetHeaderField(MsgBody,"Content-Transfer-Encoding") ' inc2026: MsgBody вместо Msg здесь и в строках 67-69: параметр называется MsgBody (заголовок, строка 64, и DECLARE в rapidq.inc), Msg - необъявленная переменная
+semicolCount=tally(ContentTransferEncoding$,";")
+for i=1 to semicolCount
+	valfield$=field$(ContentTransferEncoding$,";",i+1)
+	if instr(valfield$,"charset=")>0 then
+		param$=field$(valfield$,"=",2)
+		exit for
+	else
+		
+	end if
+next i
+result=param$
+end function
+Function GetHeaderField( Header As String, Field as string) As String
+Header=replacesubstr$(Header,ht," ")
+Header=replacesubstr$(Header,crlf+" ","")
+Header=replacesubstr$(Header,";"+crlf,"; ")
+
+'print"Header=";Header
+' returm requared field value from message header
+dim i as long
+fieldidx=-1
+dim HeaderList as QStringList
+HeaderList.text=(Header)
+
+if instr(Field,":")=0 then Field=Field+":"
+
+field=lcase$(Field)'+":"
+lenfield=len(field)
+
+for i2=0 to HeaderList.Itemcount-1
+	hitem$=lcase$(HeaderList.Item(i2))
+	lenitem=len(hitem$)
+	instrsep=instr(hitem$,":")
+	
+	'if  instr(hitem$,field) >0 then
+	if  left$(hitem$,lenfield) =field then
+		fieldidx=i2: exit for
+	end if
+	
+next i2
+
+if fieldidx =-1 then
+	result=""
+else
+	result=trim$(mid$(HeaderList.Item(fieldidx),instrsep+1,lenitem-instrsep))
+end if
+end function
+Function isKOI8( Red$ As String) As long
+' проверяет кодировку строки на koi8
+'оПЧПЕ УППВЭЕОЙЕ Ч ЗПУФЕЧПК ЛОЙЗЕ 'diakin-рТПЗТБННБ RQ Search and Replace - РПЙУЛ Й ЪБНЕОБ Ф'.
+'пФПРМЕОЙЕ, ЧПДПУОБВЦЕОЙЕ..
+
+result=0
+'if instr(Red$, "ПЧ")>0 then result=1 '"koi8-r"
+'if instr(Red$, "ПП")>0 then result=1 '"koi8-r"
+'if instr(Red$, "ВЭ")>0 then result=1 '"koi8-r"
+'if instr(Red$, "ПД")>0 then result=1 '"koi8-r"
+'if instr(Red$, "ПЧ")>0 then result=1 '"koi8-r"
+'if instr(Red$, "ПЧ")>0 then result=1 '"koi8-r"
+
+if instr(Red$, " Ч ")>0 then result=1 '"koi8-r"
+'if instr(Red$, "ПЗ")>0 then result=1 '"koi8-r"
+
+'if instr(Red$, "РП")>0 then result=1 '"koi8-r"
+if instr(Red$, "ЪБ")>0 then result=1 '"koi8-r"
+
+
+if instr(Red$, "ДЩ")>0 then result=1 '"koi8-r"
+if instr(Red$, "ЧЩ")>0 then result=1 '"koi8-r"
+if instr(Red$, "ФШ")>0 then result=1 '"koi8-r"
+if instr(Red$, "пФ")>0 then result=1 '"koi8-r"
+
+if instr(Red$, "ВЙ")>0 then result=1 '"koi8-r"
+if instr(Red$, "ДЙ")>0 then result=1
+if instr(Red$, "ЗЙ")>0 then result=1
+if instr(Red$, "ЛЙ")>0 then result=1
+if instr(Red$, "МЙ")>0 then result=1
+if instr(Red$, "НЙ")>0 then result=1
+if instr(Red$, "РЙ")>0 then result=1
+if instr(Red$, "ТЙ")>0 then result=1
+if instr(Red$, "ФЙ")>0 then result=1
+if instr(Red$, "ЦЙ")>0 then result=1
+if instr(Red$, "ПЙ")>0 then result=1 '"koi8-r"
+if instr(Red$, " Й ")>0 then result=1 '"koi8-r"
+
+if instr(Red$, " Й")>0 then result=1
+if instr(Red$, " й ")>0 then result=1
+
+if instr(Red$, "ЙЫ")>0 then result=1
+
+if instr(Red$, "ЙЪ")>0 then result=1
+if instr(Red$, "йЪ")>0 then result=1
+
+if instr(Red$, "бй")>0 then result=1
+if instr(Red$, "дй")>0 then result=1
+if instr(Red$, "йй")>0 then result=1
+
+if instr(Red$, "pЙ")>0 then result=1
+
+if instr(Red$, "Kй")>0 then result=1
+
+if instr(Red$, "ШЫ")>0 then result=1
+if instr(Red$, "ЕЫ")>0 then result=1
+
+if instr(Red$, "ъД")>0 then result=1
+
+if instr(Red$, "ЪБ")>0 then result=1
+if instr(Red$, "ЪХ")>0 then result=1
+
+if instr(Red$, "ъБ")>0 then result=1
+if instr(Red$, "ЪЩ")>0 then result=1
+if instr(Red$, "ЪП")>0 then result=1
+if instr(Red$, "ЪЙ")>0 then result=1
+
+if instr(Red$, "ЪТ")>0 then result=1
+
+end function
+Sub ExtractEMailFromWab(wabFile As String, EmailList as QStringlist)
+Dim WABDog As Long, WABLeft As Long, WABRight As Long 
+Dim WABTemp As String 
+dim ie5 as long
+dim SObCount as long
+Dim WABEmail(1) As String 
+dim WABData as string
+
+
+WABData=LoadString(wabFile)
+SObCount=tally(WABData,"@")
+'print"SObCount=";SObCount
+Pos1 = 1
+wabPos=1
+
+for ie5=0 to SObCount-1
+	' находим собаку @
+	WABDog = InStr(wabPos, WABData, Chr$(0) & Chr$(64) & Chr$(0)) 
+	' от собаки находим два Chr(0) справа и слева
+	WABLeft = RInStr(WABDog,WABData, Chr$(0) & Chr$(0))
+	WABRight = InStr(WABDog, WABData, Chr$(0) & Chr$(0)) 
+	
+	'вырезаем e-mail адрес
+	WABTemp = Mid$(WABData, WABLeft, WABRight - WABLeft)
+	WABTemp = replaceSubStr$(WABTemp , Chr(0), "") 
+	
+	for i95=1 to 31 ' если содержатся непечатные символы
+		if instr(WABTemp, chr$(i95))>0 then
+			'print"i95=";i95
+			exit for
+		end if
+	next i95
+	'if i95<31 then goto NextEml1
+	
+	if i95>31 then 'goto NextEml1
+		
+		
+		WABTemp = WABTemp -chr$(0)
+		wzz$=WABTemp
+		
+		zzz=IsEmail(wzz$)
+		zz1= False
+		
+		If ( zzz= True) And ( zz1= False) Then 
+			'Call WABAddEmail(WABTemp) 
+			
+			if instr(EmailList.text,wzz$)=0 then
+				erow=UBound(WABEmail)
+				ReDim WABEmail(erow + 1) As String 
+				WABEmail(erow) = wzz$ 
+				EmailList.additems wzz$
+				infomsg$=EmailList.item(erow-1)
+'call  AddClrString ("585:infomsg$="+(infomsg$), clred, LogEdit)
+				doevents
+			end if
+			
+		End If 
+	End If 
+	
+	NextEml1: 
+	wabPos = WABRight 
+next ie5
+
+End Sub 
+sub cprint(s as string)
+  dim sn as string
+  sn=s
+  chartooem sn,sn
+  print sn
+End sub
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] ApiDate.inc (тела)
+Function lastdayM(datum$ as string)as string ' inc2026: заголовок приведён к DECLARE (строка 34): добавлено as string
+    Dim pBuffer As String , last As SYSTEMTIME
+    last.wYear=val(field$(datum$,"-",3))
+    last.wmonth=val(field$(datum$,"-",1))
+    last.wDay = 28
+    pbuffer="Init"
+    while len(pBuffer)<>0
+        pBuffer = String$(255, 0)
+        GetDateFormat( ByVal 0&, 0, last, "ddd", Varptr(pBuffer), Len(pBuffer))
+        pBuffer = Left$(pBuffer, InStr(1, pBuffer, Chr$(0)) - 1)
+        last.wDay=last.wDay+1 
+    wend
+    lastdaym=str$(last.wmonth)+"-"+str$(last.wDay-2)+"-"+str$(last.wyear)
+End function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] CallBack_0.Inc (тела)
+    Function MasterCallBack_0 (hFunction As Long) As Long
+        DefInt hBind = hFunction
+        Bind hBind To FuncBind_0 : hBind = hFunction ' inc2026: РґРѕР±Р°РІР»РµРЅРѕ : hBind = hFunction РїРѕСЃР»Рµ Bind: BIND Р·Р°РїРёСЃС‹РІР°РµС‚ РІ hBind Р°РґСЂРµСЃ FuncBind_0 (РіР»Р°РІР° 11) Рё Р·Р°С‚РёСЂР°РµС‚ hFunction РёР· СЃС‚СЂРѕРєРё РІС‹С€Рµ, Р° Сѓ FuncBind_0 С‚РµР»Р° РЅРµС‚; РІ CallBack_1...8.Inc РїРѕСЂСЏРґРѕРє С‚Р°РєРѕР№ Р¶Рµ - DefInt hBind, Bind, hBind = hFunction
+        Result = CallFunc (hBind, hBind)
+    End Function
+    Function SetNewCallBack_0 (hFunction As Long) As Long
+        Result = SetNewFwToCallBack (lpCallBack_0, hFunction)
+    End Function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] CallBack_1.Inc (тела)
+    Function MasterCallBack_1 (hFunction As Long, Arg1 As Long) As Long
+        DefInt hBind
+        Bind hBind To FuncBind_1
+        hBind = hFunction
+        Result = CallFunc (hBind, Arg1)
+    End Function
+    Function SetNewCallBack_1 (hFunction As Long) As Long
+        Result = SetNewFwToCallBack (lpCallBack_1, hFunction)
+    End Function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] CallBack_2.Inc (тела)
+    Function MasterCallBack_2 (hFunction As Long, Arg1 As Long, Arg2 As Long) As Long ' inc2026: hFunction РІРјРµСЃС‚Рѕ cbIndex: РІ DECLARE (СЃС‚СЂРѕРєР° 45) Рё РІ С‚РµР»Рµ (СЃС‚СЂРѕРєР° 52) - hFunction, РєР°Рє РІ CallBack_0/1/3/4; RapidQ Р±РµСЂС‘С‚ РёРјРµРЅР° РёР· DECLARE, С‚Р°Рє С‡С‚Рѕ РїРѕРІРµРґРµРЅРёРµ РЅРµ РјРµРЅСЏРµС‚СЃСЏ, cbIndex РЅРёРіРґРµ РЅРµ РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ
+        DefInt hBind
+        Bind hBind To FuncBind_2
+        hBind = hFunction
+        Result = CallFunc (hBind, Arg1, Arg2)
+    End Function
+    Function SetNewCallBack_2 (hFunction As Long) As Long
+        Result = SetNewFwToCallBack (lpCallBack_2, hFunction)
+    End Function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] CallBack_3.Inc (тела)
+    Function MasterCallBack_3 (hFunction As Long, Arg1 As Long, Arg2 As Long, Arg3 As Long) As Long
+        DefInt hBind
+        Bind hBind To FuncBind_3
+        hBind = hFunction
+        Result = CallFunc (hBind, Arg1, Arg2, Arg3)
+    End Function
+    Function SetNewCallBack_3 (hFunction As Long) As Long
+        Result = SetNewFwToCallBack (lpCallBack_3, hFunction)
+    End Function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] CallBack_5.Inc (тела)
+    Function MasterCallBack_5 (hFunction As Long, Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As Long, Arg5 As long) As Long ' inc2026: hFunction РІРјРµСЃС‚Рѕ hBind: РІ Р·Р°РіРѕР»РѕРІРєРµ Р±С‹Р»Рѕ hBind - С‚Рѕ Р¶Рµ РёРјСЏ, С‡С‚Рѕ Сѓ Р»РѕРєР°Р»СЊРЅРѕР№ DefInt hBind (СЃС‚СЂРѕРєР° 50); РІ DECLARE (СЃС‚СЂРѕРєР° 45) Рё РІ С‚РµР»Рµ (СЃС‚СЂРѕРєР° 52) - hFunction, РєР°Рє РІ CallBack_4/6/7/8
+        DefInt hBind
+        Bind hBind To FuncBind_5
+        hBind = hFunction
+        Result = CallFunc (hBind, Arg1, Arg2, Arg3, Arg4, Arg5)
+    End Function
+    Function SetNewCallBack_5 (hFunction As Long) As Long
+        Result = SetNewFwToCallBack (lpCallBack_5, hFunction)
+    End Function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] CallBack_6.Inc (тела)
+    Function SetNewCallBack_6 (hFunction As Long) As Long
+        Result = SetNewFwToCallBack (lpCallBack_6, hFunction)
+    End Function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] CallBack_7.Inc (тела)
+    Function MasterCallBack_7 (hFunction As Long, Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As Long, Arg5 As long, Arg6 As long, Arg7 As long) As Long
+        DefInt hBind
+        Bind hBind To FuncBind_7
+        hBind = hFunction
+        Result = CallFunc (hBind, Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, Arg7)
+    End Function
+    Function SetNewCallBack_7 (hFunction As Long) As Long
+        Result = SetNewFwToCallBack (lpCallBack_7, hFunction)
+    End Function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] CallBack_8.Inc (тела)
+    Function MasterCallBack_8 (hFunction As Long, Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As Long, Arg5 As long, Arg6 As long, Arg7 As long, Arg8 As long) As Long
+        DefInt hBind
+        Bind hBind To FuncBind_8
+        hBind = hFunction
+        Result = CallFunc (hBind, Arg1, Arg2, Arg3, Arg4, Arg5, Arg6, Arg7, Arg8)
+    End Function
+    Function SetNewCallBack_8 (hFunction As Long) As Long
+        Result = SetNewFwToCallBack (lpCallBack_8, hFunction)
+    End Function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] CM_Functions.inc (тела)
+Function CM_SetLanguage (hWnd as long, pszName as string) as long
+Dim LangName as string
+LangName = pszName
+Result = Sendmsg (hWnd, CMM_SETLANGUAGE, 0, varptr(LangName))
+End Function
+Function CM_GetLanguage (hwnd as long) as string
+Dim LangName as string
+LangName = String$(20, CM_MAX_LANGUAGE_NAME)
+Sendmsg (hWnd, CMM_GETLANGUAGE, 0, varptr(LangName))
+Result = LangName
+End function
+Function CM_EnableColumnSel( hwnd as long, bEnable as Bool) as long
+Result = Sendmsg (hWnd, CMM_ENABLECOLUMNSEL, bEnable, 0)
+End Function
+Function CM_IsNormalizeCaseEnabled (hWnd as long) as long
+Result = Sendmsg (hWnd, CMM_ISNORMALIZECASEENABLED, 0, 0)
+End Function
+Function CM_IsOvertypeEnabled (hWnd as long) as long
+Result = Sendmsg (hWnd, CMM_ISOVERTYPEENABLED, 0, 0)
+End Function
+Function CM_EnableSelBounds (hWnd as long, bEnable as bool) as long
+Result = Sendmsg (hWnd, CMM_ENABLESELBOUNDS, 0, bEnable)
+End Function
+Function CM_EnableLineToolTips (hWnd as long, bEnable as bool) as long
+Result = Sendmsg (hWnd, CMM_ENABLELINETOOLTIPS, 0, bEnable)
+End Function
+Function Cm_IsColorSyntaxEnabled (hWnd as long) as Bool
+Result = Sendmsg (hWnd, CMM_ISCOLORSYNTAXENABLED, 0, 0)
+End Function
+Function Cm_SetColors (hWnd as long, colors as CM_COLORS) as long
+Dim Col_Mem as qmemorystream
+Dim output as long
+Col_Mem.position = 0
+Col_Mem.WriteUDT(colors)
+output = Sendmsg (hWnd, CMM_SETCOLORS, 0, Col_Mem.pointer)
+Col_Mem.close
+Result = output
+End Function
+Function Cm_RegisterLanguage (pszName as String, Lang as CM_LANGUAGE) as long
+Dim error as long
+Dim LangName as string
+LangName = pszName
+Dim RL_Mem as qmemorystream
+RL_mem.position = 0
+RL_Mem.WriteUDT(Lang)
+error = CMRegisterLanguage(varptr(LangName), RL_Mem.pointer)
+RL_Mem.close
+result = error
+End function
+Function CM_SetFontStyles (hWnd as long, FontStyles as CM_FONTSTYLES) as long
+Dim Fn_Mem as qmemorystream
+Dim output as long
+Fn_Mem.position = 0
+Fn_Mem.WriteUDT(FontStyles)
+output = Sendmsg (hWnd, CMM_SETFONTSTYLES, 0, Fn_Mem.pointer)
+Fn_Mem.close
+Result = output
+End Function
+Function CM_SetFontOwnership (hWnd as long, bEnable as bool) as long
+Result = Sendmsg (hWnd, CMM_SETFONTOWNERSHIP, bEnable, 0)
+IF CME_FAILURE Then ShowMessage "It Failed"
+End Function
+Function CM_GetFontOwnership (hWnd as long, bEnable as bool) as long
+Result = Sendmsg (hWnd, CMM_GETFONTOWNERSHIP, bEnable, 0)
+IF CME_FAILURE Then ShowMessage "It Failed"
+End Function
+Function CM_EnableLeftMargin (hWnd as long, benable as BOOL) as long
+Result = Sendmsg (hWnd, CMM_ENABLELEFTMARGIN, bEnable, 0)
+End Function
+Function CM_IsLeftMarginEnabled (hWnd as long) as long
+Result = Sendmsg (hWnd, CMM_ISLEFTMARGINENABLED,0,0)
+End Function
+Function CM_SetBorderStyle(hWnd as long, dwStyle as dword) as long
+Result = Sendmsg (hWnd, CMM_SETBORDERSTYLE, CM_BORDER_CORRAL ,0)
+End function
+Function CM_SetModified (hwnd as long, bModified as bool) as Long
+Result = Sendmsg (hWnd, CMM_SETMODIFIED, bModified,0)
+End function
+Function CM_IsModified (hWnd as long) as long
+Result = Sendmsg (hWnd, CMM_ISMODIFIED,0,0)
+End function
+Function CM_EnableHideSel (hwnd as Long, bEnabled as Bool) As Long
+Result = Sendmsg (hWnd, CMM_ENABLEHIDESEL, bEnabled, 0)
+End function
+Function CM_EnableDragDrop (hWnd as Long, bEnable as bool) as long
+Result = Sendmsg (hWnd, CMM_ENABLEDRAGDROP, bEnable, 0)
+End function
+Function CM_IsDragDropEnabled (hWnd as Long) as bool
+Result = Sendmsg (hWnd, CMM_ISDRAGDROPENABLED, 0, 0)
+End function
+Function CM_InsertText (hWnd as Long, pszText as string, pPos as CM_POSITION) as long
+Dim tmp as string
+tmp = pszText
+Result = Sendmsg (hWnd, CMM_INSERTTEXT, pPos, varptr(tmp))
+End function
+Function CM_OpenFile (hWnd as long, pszFilename as string) as long
+Dim filename as string
+Filename = pszFilename
+Result = Sendmsg(hWnd, CMM_OPENFILE, 0, varptr(filename))
+End Function
+Function CM_InsertFile (hWnd as long, pszFilename as string, pPos as CM_POSITION) as long
+Dim filename as string
+Filename = pszFilename
+Result = Sendmsg(hWnd, CMM_INSERTFILE, pPos, varptr(filename))
+End Function
+Function CM_Print (hWnd as long, hdc as long, dwFlags as word) as long
+Result = Sendmsg(hwnd, CMM_PRINT, CM_PRINT_COLOR, 0)
+End Function
+Function CM_CanCut (hWnd as long) as long
+Result = sendmsg(hWnd, CMM_CANCUT,0,0)
+End function
+Function CM_Cut (hWnd as long) as long
+Result = sendmsg(hWnd, CMM_CUT,0,0)
+End function
+Function CM_CanCopy (hWnd as long) as long
+Result = sendmsg(hWnd, CMM_CANCOPY,0,0)
+End function
+Function CM_Copy (hWnd as long) as long
+Result = sendmsg(hWnd, CMM_COPY,0,0)
+End function
+Function CM_Paste (hWnd as long) as long
+Result = sendmsg(hWnd, CMM_PASTE,0,0)
+End function
+Function CM_Undo (hWnd as long) as long
+Result = sendmsg(hWnd, CMM_UNDO,0,0)
+End function
+Function CM_Redo (hWnd as long) as long
+Result = sendmsg(hWnd, CMM_REDO,0,0)
+End function
+Function CM_SetSelect (hWnd as long) as long
+Result = sendmsg(hWnd, CMM_SETSEL,0,0)
+End function
+Function CM_SelectAll (hWnd as long) as long
+Result = sendmsg(hWnd, CMM_EXECUTECMD,CMD_SELECTALL,0)
+End function
+Function CM_Capitalize (hWnd as long) as Long
+Result = sendmsg(hWnd, CMM_EXECUTECMD, CMD_WORDCAPITALIZE,0)
+End function
+Function CM_Upper (hWnd as long) as long
+Result = sendmsg(hWnd, CMM_EXECUTECMD, CMD_WORDUPPERCASE,0)
+End function
+Function CM_Lower (hWnd as long) as long
+Result = sendmsg(hWnd, CMM_EXECUTECMD, CMD_WORDLOWERCASE,0)
+End function
+Function CM_Home (hWnd as long) as long
+Result = sendmsg(hWnd, CMM_EXECUTECMD, CMD_HOME,0)
+End function
+Function CM_Properties (hWnd as long) as long
+Result = sendmsg(hWnd, CMM_EXECUTECMD, CMD_PROPERTIES,0)
+End function
+Function CM_FindNext (hWnd as long) as long
+Result = sendmsg(hWnd, CMM_EXECUTECMD, CMD_FINDNEXT,0)
+End function
+Function CM_Delete (hWnd as long) as long
+Result = sendmsg(hWnd, CMM_EXECUTECMD, CMD_DELETE,0)
+End function
+Function CM_DeleteSel (hWnd as long) as Long
+Result = sendmsg(hWnd, CM_DeleteSel(1),0,0)
+End function 
+Function CM_SetText (hWnd as Long, pszText as string) as long
+Result = sendmsg(hWnd, pszText, 0, 0)
+End function
+Function CM_SaveFile (hWnd as long, Filename as string, bClearUndo as Bool) as long
+Dim tempfilename as string
+tempfilename = Filename
+SendMsg(hWnd, CMM_SAVEFILE,bClearUndo, varptr(tempFilename))
+IF CME_FAILURE  Then ShowMessage "There was a problem saving the file"
+End function
+Function CM_SaveFileAs (hWnd as long, Filename as string) as long
+Dim tempfilename as string
+tempfilename = Filename
+SendMsg(hWnd, CMM_SAVEFILE,, varptr(tempFilename))
+IF CME_FAILURE  Then ShowMessage "There was a problem saving the file"
+End function
+Function CM_NextBookmark  (hWnd as long) as long
+Result = SendMsg(hWnd, CMM_EXECUTECMD, CMD_BOOKMARKNEXT, 0)
+End function
+Function CM_PrevBookmark  (hWnd as long) as long
+Result = SendMsg(hWnd, CMM_EXECUTECMD, CMD_BOOKMARKPREV, 0)
+End function
+Function CM_DelBookmark  (hWnd as long) as long
+Result = SendMsg(hWnd, CMM_EXECUTECMD, CMD_BOOKMARKTOGGLE, 0)
+End function
+Function CM_SetImageList (hWnd as long, hImageList as long) as long
+Result = SendMsg(hWnd, CMM_SETIMAGELIST, 0, hImageList)
+End function
+Function CM_GetImageList (hWnd as long) as long
+Result = SendMsg(hWnd, CMM_GETIMAGELIST, 0, 0)
+End function
+Function CM_AboutBox (hWnd as long) as long
+Result = SendMsg(hWnd, CMM_ABOUTBOX,0,0)
+End function
+Sub CMC_Find (hwnd as long)
+sendmsg(hWnd, CMM_EXECUTECMD,CMD_FIND,0)
+End sub
+Sub CMC_FindReplace (hwnd as long)
+SetFocus(hWnd)
+sendmsg(hWnd, CMM_EXECUTECMD,CMD_FINDREPLACE,0)
+End sub
+Function LoadKeywords (Filename as string) as string
+Dim Tempstr as String
+Dim Load_fs as qfilestream
+Load_fs.open(Filename, 2)
+Load_fs.position = 0
+Tempstr = Load_fs.readstr (Load_fs.size)
+Load_fs.close
+Tempstr = replacesubstr$(Tempstr, chr$(13), "")
+Result = TempStr
+End Function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] CMD5.inc (тела)
+$TYPECHECK ON
+$OPTION WEAKTYPE ON
+Function WordToHex(ByVal lValue As Long) As String
+    Dim lByte As Long
+    Dim lCount As Long
+    DIM TEMPSTR AS STRING
+
+    TEMPSTR = ""
+    For lCount = 0 To 3
+
+        lByte = RShift(lValue, lCount * BITS_TO_A_BYTE) And m_lOnBits(BITS_TO_A_BYTE - 1)
+        TEMPSTR = TEMPSTR + Right$("0" + Hex$(lByte), 2)
+    Next
+    Result = TEMPSTR
+
+End Function
+Function MD5(sMessage As String) As String
+    Dim k   As Long
+    Dim AA  As Long
+    Dim BB  As Long
+    Dim CC  As Long
+    Dim DD  As Long
+    Dim a   As Long
+    Dim b   As Long
+    Dim c   As Long
+    Dim d   As Long 
+    Dim mI  As Long
+    ' Steps 1 and 2.  Append padding bits and length and convert to words
+
+    ConvertToWordArray(sMessage)
+    
+    REDIM x(LBOUND(WordArray) TO UBOUND(WordArray)) AS LONG
+    FOR mI = LBOUND(WordArray) TO UBOUND(WordArray)
+        x(mi) = WordArray(mi) 'TODO
+    NEXT
+    
+    ' Step 3.  Initialise
+    a = &H67452301
+    b = &HEFCDAB89
+    c = &H98BADCFE
+    d = &H10325476
+
+    ' Step 4.  Process the message in 16-word blocks
+    For k = 0 To UBound(x) Step 16
+        AA = a
+        BB = b
+        CC = c
+        DD = d
+    
+    
+        ' The hex number on the end of each of the following procedure calls is
+        ' an element from the 64 element table constructed with
+        ' T(i) = Int(4294967296 * Abs(Sin(i))) where i is 1 to 64.
+        '
+        ' However, for speed we don't want to calculate the value every time.
+        MD5_FF a, b, c, d, x(k + 0), S11, &HD76AA478
+
+        MD5_FF d, a, b, c, x(k + 1), S12, &HE8C7B756
+        MD5_FF c, d, a, b, x(k + 2), S13, &H242070DB
+        MD5_FF b, c, d, a, x(k + 3), S14, &HC1BDCEEE
+        MD5_FF a, b, c, d, x(k + 4), S11, &HF57C0FAF
+        MD5_FF d, a, b, c, x(k + 5), S12, &H4787C62A
+        MD5_FF c, d, a, b, x(k + 6), S13, &HA8304613
+        MD5_FF b, c, d, a, x(k + 7), S14, &HFD469501
+        MD5_FF a, b, c, d, x(k + 8), S11, &H698098D8
+        MD5_FF d, a, b, c, x(k + 9), S12, &H8B44F7AF
+        MD5_FF c, d, a, b, x(k + 10), S13, &HFFFF5BB1
+        MD5_FF b, c, d, a, x(k + 11), S14, &H895CD7BE
+        MD5_FF a, b, c, d, x(k + 12), S11, &H6B901122
+        MD5_FF d, a, b, c, x(k + 13), S12, &HFD987193
+        MD5_FF c, d, a, b, x(k + 14), S13, &HA679438E
+        MD5_FF b, c, d, a, x(k + 15), S14, &H49B40821
+
+        
+        MD5_GG a, b, c, d, x(k + 1), S21, &HF61E2562
+        MD5_GG d, a, b, c, x(k + 6), S22, &HC040B340
+        MD5_GG c, d, a, b, x(k + 11), S23, &H265E5A51
+        MD5_GG b, c, d, a, x(k + 0), S24, &HE9B6C7AA
+        MD5_GG a, b, c, d, x(k + 5), S21, &HD62F105D
+        MD5_GG d, a, b, c, x(k + 10), S22, &H2441453
+        MD5_GG c, d, a, b, x(k + 15), S23, &HD8A1E681
+        MD5_GG b, c, d, a, x(k + 4), S24, &HE7D3FBC8
+        MD5_GG a, b, c, d, x(k + 9), S21, &H21E1CDE6
+        MD5_GG d, a, b, c, x(k + 14), S22, &HC33707D6
+        MD5_GG c, d, a, b, x(k + 3), S23, &HF4D50D87
+        MD5_GG b, c, d, a, x(k + 8), S24, &H455A14ED
+        MD5_GG a, b, c, d, x(k + 13), S21, &HA9E3E905
+        MD5_GG d, a, b, c, x(k + 2), S22, &HFCEFA3F8
+        MD5_GG c, d, a, b, x(k + 7), S23, &H676F02D9
+        MD5_GG b, c, d, a, x(k + 12), S24, &H8D2A4C8A
+            
+        MD5_HH a, b, c, d, x(k + 5), S31, &HFFFA3942
+        MD5_HH d, a, b, c, x(k + 8), S32, &H8771F681
+        MD5_HH c, d, a, b, x(k + 11), S33, &H6D9D6122
+        MD5_HH b, c, d, a, x(k + 14), S34, &HFDE5380C
+        MD5_HH a, b, c, d, x(k + 1), S31, &HA4BEEA44
+        MD5_HH d, a, b, c, x(k + 4), S32, &H4BDECFA9
+        MD5_HH c, d, a, b, x(k + 7), S33, &HF6BB4B60
+        MD5_HH b, c, d, a, x(k + 10), S34, &HBEBFBC70
+        MD5_HH a, b, c, d, x(k + 13), S31, &H289B7EC6
+        MD5_HH d, a, b, c, x(k + 0), S32, &HEAA127FA
+        MD5_HH c, d, a, b, x(k + 3), S33, &HD4EF3085
+        MD5_HH b, c, d, a, x(k + 6), S34, &H4881D05
+        MD5_HH a, b, c, d, x(k + 9), S31, &HD9D4D039
+        MD5_HH d, a, b, c, x(k + 12), S32, &HE6DB99E5
+        MD5_HH c, d, a, b, x(k + 15), S33, &H1FA27CF8
+        MD5_HH b, c, d, a, x(k + 2), S34, &HC4AC5665
+    
+        MD5_II a, b, c, d, x(k + 0), S41, &HF4292244
+        MD5_II d, a, b, c, x(k + 7), S42, &H432AFF97
+        MD5_II c, d, a, b, x(k + 14), S43, &HAB9423A7
+        MD5_II b, c, d, a, x(k + 5), S44, &HFC93A039
+        MD5_II a, b, c, d, x(k + 12), S41, &H655B59C3
+        MD5_II d, a, b, c, x(k + 3), S42, &H8F0CCC92
+        MD5_II c, d, a, b, x(k + 10), S43, &HFFEFF47D
+        MD5_II b, c, d, a, x(k + 1), S44, &H85845DD1
+        MD5_II a, b, c, d, x(k + 8), S41, &H6FA87E4F
+        MD5_II d, a, b, c, x(k + 15), S42, &HFE2CE6E0
+        MD5_II c, d, a, b, x(k + 6), S43, &HA3014314
+        MD5_II b, c, d, a, x(k + 13), S44, &H4E0811A1
+        MD5_II a, b, c, d, x(k + 4), S41, &HF7537E82
+        MD5_II d, a, b, c, x(k + 11), S42, &HBD3AF235
+        MD5_II c, d, a, b, x(k + 2), S43, &H2AD7D2BB
+        MD5_II b, c, d, a, x(k + 9), S44, &HEB86D391
+    
+    
+        a = AddUnsigned(a, AA)
+        b = AddUnsigned(b, BB)
+        c = AddUnsigned(c, CC)
+        d = AddUnsigned(d, DD)
+        
+        
+    Next
+    ' Step 5.  Output the 128 bit digest
+    result = LCase$(WordToHex(a) & WordToHex(b) & WordToHex(c) & WordToHex(d))
+End Function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] constants.inc (тела)
+sub SetPARAFORMAT (Sender as QRichedit)
+Dim Mem as QMemoryStream
+dim pf as _paraformat
+Dim TabSpace as Long
+Dim x as Long
+
+Mem.Position=0
+Mem.WriteUdt pf
+
+pf.cbSize=Mem.Size
+pf.dwMask=PFM_TABSTOPS 'or PFM_ALIGNMENT or PFM_STARTINDENT or PFM_OFFSET or PFM_RIGHTINDENT or PFM_NUMBERING
+
+pf.cTabCount=8
+
+'--The tab spaces are measured in twips. 1440 is roughly 1 inch
+TabSpace=0.2*1440
+For x=0 to 31
+	pf.rgxTabs(x)=TabSpace*x
+Next x
+
+'//pf.dxStartIndent=Val(StartIndent.Text)*1440
+'//pf.dxOffset=Val(OffsetIndent.Text)*1440
+'//pf.dxRightIndent=Val(RightIndent.Text)*1440
+
+'//if aLeft.Checked then pf.wAlignment=PFA_LEFT
+'//if aCenter.Checked then pf.wAlignment=PFA_CENTER
+'//if aRight.Checked then pf.wAlignment=PFA_RIGHT
+
+'pf.wNumbering=aBullet.Checked*PFN_BULLET
+
+Mem.Position=0
+Mem.WriteUdt pf
+SendMessageA(Sender.handle, EM_SETPARAFORMAT, 0, Mem.Pointer) 
+Mem.Close
+end sub
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] Control.inc (тела)
+sub nOpenMouseDlg(index%)
+PID = Shell("rundll32.exe shell32.dll,Control_RunDLL main.cpl @0,"+str$(index), 5)
+end sub
+sub nOpenKeyboardDlg(index%) 
+if index%>1 then index%=0
+PID = Shell("rundll32.exe shell32.dll,Control_RunDLL _
+            main.cpl @1,"+str$(index%), 5)
+end sub
+sub OpenPrintersFolder
+PID = Shell("rundll32.exe shell32.dll,Control_RunDLL main.cpl @2", 5)
+end sub
+sub OpenFontsFolder
+PID = Shell("rundll32.exe shell32.dll,Control_RunDLL main.cpl @3", 5)
+end sub
+sub nOpenDisplayDlg(index%)
+PID = Shell("rundll32.exe shell32.dll,Control_RunDLL desk.cpl @0,"+str$(index%), 5)
+end sub
+sub OpenTimeDlg
+PID = Shell("rundll32.exe shell32.dll,Control_RunDLL timedate.cpl @0", 5)
+end sub
+sub nOpenDialingDlg(index%)
+PID = Shell("rundll32.exe shell32.dll,Control_RunDLL telephon.cpl @0,"+str$(index%), 5)
+end sub
+sub nOpenSystemDialog(index%)
+PID = Shell("rundll32.exe shell32.dll,Control_RunDLL sysdm.cpl @0"+str$(index%), 5)
+end sub
+sub OpenAddNewHardwareDlg
+PID = Shell("rundll32.exe shell32.dll,Control_RunDLL sysdm.cpl @1", 5)
+end sub
+sub nOpenScannerDlg(index%)
+PID = Shell("rundll32.exe shell32.dll,Control_RunDLL sticpl.cpl @0", 5)
+end sub
+sub OpenThemesDlg
+PID = Shell("rundll32.exe shell32.dll,Control_RunDLL themes.cpl @0", 5)
+end sub
+sub nOpenAddRemoveProgramsDlg(index%)
+PID = Shell("rundll32.exe shell32.dll,Control_RunDLL appwiz.cpl @0,"+str$(index%), 5)
+end sub
+sub nOpenPowerMgmtDlg(index%)
+PID = Shell("rundll32.exe shell32.dll,Control_RunDLL powercfg.cpl @0,"+str$(index%), 5)
+end sub
+sub nOpenPasswordsDlg(index%)
+PID = Shell("rundll32.exe shell32.dll,Control_RunDLL password.cpl @0,"+str$(index%), 5)
+end sub
+sub nOpenModemDlg(index%)
+PID = Shell("rundll32.exe shell32.dll,Control_RunDLL modem.cpl @0,"+str$(index%), 5)
+end sub
+sub nOpenMMDeviceDlg(index%)
+PID = Shell("rundll32.exe shell32.dll,Control_RunDLL mmsys.cpl @0,"+str$(index), 5)
+end sub
+sub OpenSoundsDlg
+PID = Shell("rundll32.exe shell32.dll,Control_RunDLL mmsys.cpl @1", 5)
+end sub
+sub nOpenGamesDlg(index%)
+PID = Shell("rundll32.exe shell32.dll,Control_RunDLL joy.cpl @0,"+str$(index%), 5)
+end sub
+sub nOpenRegionalDlg(index%)
+PID = Shell("rundll32.exe shell32.dll,Control_RunDLL intl.cpl @0,"+str$(index%), 5)
+end sub
+sub nOpenInternetDlg(index%)
+PID = Shell("rundll32.exe shell32.dll,Control_RunDLL inetcpl.cpl @0,"+str$(index%), 5)
+end sub
+sub nOpenUsersDlg(index%)
+PID = Shell("rundll32.exe shell32.dll,Control_RunDLL inetcpl.cpl @1,"+str$(index%), 5)
+end sub
+sub OpenTweakUIDlg
+PID = Shell("rundll32.exe shell32.dll,Control_RunDLL tweakui.cpl @0", 5)
+end sub
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] conversionOld.inc (тела)
+Function QPDecode( Source As String) As String
+outtxt$=""
+
+Source=replacesubstr$(Source,"="+crlf,"")
+Source=replacesubstr$(Source,"="+cr,"")
+Source=replacesubstr$(Source,"="+lf,"")
+
+HexCharCount=tally(Source,"=")
+'print"HexCharCount=";HexCharCount
+
+sepidx=instr(Source,"=")
+outtxt$=left$(Source,sepidx-1)
+
+for ii=1 to HexCharCount
+	'HexChar$=field$(Source,"=",ii+1)
+	HexChar$=mid$(Source,sepidx+1,2)
+	'print"HexChar$=";HexChar$
+	outtxt$=outtxt$+chr$(val(CONVBASE$(HexChar$, 16, 10)))
+	'print"headerTxtConv$=";outtxt$
+	
+	sepidxNew=instr(sepidx+1,Source,"=")
+	if sepidxNew>sepidx+2 then
+		txt1$=  mid$(Source,sepidx+3,(sepidxNew)-(sepidx+3))
+		outtxt$=outtxt$+txt1$
+	elseif sepidxNew=0 then
+		' lastpart
+		txt1$=  mid$(Source,sepidx+3,len(Source)-(sepidx+2))
+		outtxt$=outtxt$+txt1$
+		
+	end if
+	sepidx=sepidxNew
+next ii
+
+result=outtxt$
+end function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] ConvertToTruePath.inc (тела)
+Function ConvertToTruePath(ByVal sPath As String) As String
+  ' Parse... breaks the string parameter down to individual folders
+  Dim DirParser As QStringlist : DirParser.Clear : DirParser.Parse(sPath, "\")
+  Dim RootDir As String : RootDir = DirParser.Item(0) & "\"
+  Dim SubFolderPath As String : SubFolderPath = ""
+  Dim TruePath As String : TruePath = ""
+  Dim Index As Long : Index = 0
+
+  If DirParser.ItemCount > 1 Then
+    For Index = 1 To (DirParser.ItemCount-1)
+      SubFolderPath = SubFolderPath & DirParser.Item(Index) & "\"
+      SFI.szDisplayName = String$(260, Chr$(0))
+      SHGetFileInfo(RootDir & SubFolderPath, 0, SFI, SizeOf(SFI), SHGFI_DISPLAYNAME)
+      TruePath = TruePath & Left$(SFI.szDisplayName, Instr(SFI.szDisplayName, Chr$(0))-1) & "\"
+    Next Index
+  End If
+
+  Result = (RootDir & TruePath)
+End Function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] Copy of NOTA.inc (тела)
+	Function CloseNOTASys
+		CloseNOTASys = NOTASys.ReadString("LastOpened")
+		NOTASys.CloseKey
+	End function
+	Function CloseNOTAUser
+		CloseNOTAUser = NOTAUser.ReadString("LastOpened")
+		NOTAUser.CloseKey
+	END Function
+	Function Die
+		ExitProcess(9999)
+	End Function
+	Function GetComputerName$
+		dim bpmMachineName$ as string
+		dim bpmMachineNameLength& as long
+		bpmMachineName$ = Space$(200)
+		bpmMachineNameLength& = 200
+		GetComputerName( VarPtr(bpmMachineName$), VarPtr(bpmMachineNameLength&) )
+		GetComputerName$ = Left$(bpmMachineName$, bpmMachineNameLength&)
+	end function
+	Function GetLastError$
+		dim bpmLookUpError$ as string
+		bpmLookUpError$ = "No error match found"
+		if mid$(bpmErrorFileName$,2,2) = ":\\" then
+			bpmErrorFileName$ = bpmErrorFileName$
+			else
+				if mid$(bpmErrorFileName$,1,1) = chr$(92) then
+					if FileExists(Left$(CurDir$,2) + "\\" + bpmErrorFileName$) then
+							bpmErrorFileName$ = ( Left$(CurDir$,2) + "\\" + bpmErrorFileName$)
+						else
+							if FileExists(CurDir$ + "\\" + bpmErrorFileName$) then
+								bpmErrorFileName$ = (CurDir$ + "\\" + bpmErrorFileName$)
+								else
+									GetLastError$ = ("GetLastError$ Error!\n" + bpmErrorFileName$ + "\n Error file not found.  See syntax in NOTA.inc.")
+							end if
+					end if
+				end if
+		end if
+		if bpmErrorCodeNumber& = 0 then
+			GetLastError$ = "ErrorCode = 0 \"No Error.\""
+			end
+		end if
+		dim bpmErrorFile as QFileStream
+		if fileExists(bpmErrorFileName$) then
+			bpmErrorFile.open(bpmErrorFileName$,0)
+			dim bpmErrorTemp$ as string
+			dim bpmErrorWaldo& as long
+			dim bpmErrorHex$ as string
+			for bpmErrorWaldo&  = 0 to bpmErrorFile.LineCount
+				bpmErrorTemp$ = bpmErrorFile.Readline
+				if Val( Mid$( bpmErrorTemp$, 1, INSTR(bpmErrorTemp$, "\t") ) ) = bpmErrorCodeNumber& then
+					bpmErrorTemp$ = Right$( bpmErrorTemp$, ( len(bpmErrorTemp$) - instr(bpmErrorTemp$, "\t") ) )
+					bpmErrorHex$ = Mid$( bpmErrorTemp$, 1, ( INSTR(bpmErrorTemp$, "\t") - 1 ) )
+					bpmErrorWaldo& = bpmErrorFile.LineCount
+					bpmErrorTemp$ = Right$( bpmErrorTemp$, ( len(bpmErrorTemp$) - instr(bpmErrorTemp$, "\t") ) )
+					bpmLookUpError$ = (bpmErrorTemp$ + "\nERRORCODE:" + str$(bpmErrorCodeNumber&) + "  HEX:" + bpmErrorHex$)
+				end if
+			next
+			Else
+				GetLastError$ = ("GetLastError$ Error!\n" + bpmErrorFileName$ + "\n Error file not found.  See syntax in NOTA.inc.")
+				end
+		end if
+		bpmErrorFile.Close
+		GetLastError$ = bpmLookUpError$
+	End Function
+	Function GetTempPath$
+		dim bpmLengthOfTemp& as long
+		dim bpmTempPath$ as string
+		bpmTempPath$ = Space$(200)
+		bpmLengthOfTemp& = 200
+		GetTempPath( VarPtr(bpmLengthOfTemp&), VarPtr(bpmTempPath$) )
+		bpmTempPath$ = RTrim$(bpmTempPath$)
+		if RIGHT$( bpmTempPath$, ( Len(bpmTempPath$) - 2 ) ) = "\\" then
+			bpmLengthOfTemp& = ( Len(bpmTempPath$) - 2 )
+			else
+				bpmLengthOfTemp& = ( Len(bpmTempPath$) - 1 )
+		end if
+		GetTempPath$ = Left$(bpmTempPath$, bpmLengthOfTemp&)
+	end Function
+	Function GetUserName$
+		Dim bpmGetUserVar$ as string
+		Dim bpmGetUserLength& as long
+		bpmGetUserVar$ = Space$(200)
+		bpmGetUserLength& = 200
+		GetUserName( VarPtr(bpmGetUserVar$), VarPtr(bpmGetUserLength&) )
+		GetUserName$ = Left$(bpmGetUserVar$, (bpmGetUserLength& - 1) )
+	end function
+	Function GetWindowsDirectory$
+		Dim bpmWinDir$ as string
+		Dim bpmWinDirLength& as long
+		dim bpmReturnLength& as long
+		bpmWinDirLength& = 200
+		bpmWinDir$ = Space$(200)
+		bpmReturnLength& = GetWindowsDirectory( VarPtr(bpmWinDir$), VarPtr(bpmWinDirLength&) )
+		GetWindowsDirectory$ = Left$(bpmWinDir$, bpmReturnLength&)
+	end function
+	Function KillIt
+		Application.Terminate
+	End Function
+	Function LogEvent (bpmSeverity$ as String, bpmCategory$ as string, bpmEventText$ as string)
+		Logevent = STR$( shell( ("LOGEVENT.EXE -s " + bpmSeverity$ + " -c " + bpmCategory$ + " \"" + bpmEventText$ + "\"") ) )
+	end Function
+	Function MakeMOTD 
+		Dim bpmMOTDRoot$ as string
+		Dim bpmKey as QRegistry
+		bpmKey.RootKey = &H80000002
+		bpmKey.OpenKey ("Software\\Network_Of_The_Apes", 1)
+		if bpmKey.ValueExists("MOTDRoot") = 0 then
+			bpmKey.WriteString("MOTDRoot","C:")
+			bpmMOTDRoot$ = "C:"
+			else
+				bpmMOTDRoot$ = bpmKey.ReadString("MOTDRoot")
+		end if
+		bpmKey.CloseKey
+		if FileExists( (bpmMOTDRoot$ + "\\MOTD_" + ApeDate$ + ".txt") ) = 0 then
+			dim bpmMOTDFile as QfileStream
+			bpmMOTDFile.Open( (bpmMOTDRoot$ + "\\MOTD_" + ApeDate$ + ".txt"), 65535 )
+			bpmMOTDFile.WriteLine("(((((((((((((((((((((((((((((((((NETWORK OF THE APES)))))))))))))))))))))))))))))))))")
+			bpmMOTDFile.WriteLine("MESSAGE OF THE DAY")
+			bpmMOTDFile.WriteLine( (Date$ + "  " +  Time$) )
+			bpmMOTDFile.WriteLine("-------------------------------------------------------------------------------------")
+			bpmMOTDFile.WriteLine("")
+			bpmMOTDFile.WriteLine("")
+			bpmMOTDFile.WriteLine("")
+			bpmMOTDFile.WriteLine("  bm :)-~")
+			bpmMOTDFile.WriteLine("")
+			bpmMOTDFile.WriteLine("-------------------------------------------------------------------------------------")
+			bpmMOTDFile.WriteLine( ("For previous messages of the day look at " + bpmMOTDRoot$ + "\\MOTD_LOG.TXT.") )
+			bpmMOTDFile.Close
+		end if
+		Shell ("NotePad.EXE " + bpmMOTDRoot$ + "\\MOTD_" + ApeDate$ + ".txt")
+		MakeMOTD = (bpmMOTDRoot$ + "\\MOTD_" + ApeDate$ + ".txt")
+	End Function
+	Function OpenNOTASys
+		NOTASys.OpenKey("Software\\Network_Of_The_Apes", 1)
+		NOTASys.WriteString( "LastOpened", (Date$ + "  " + Time$) )
+		OpenNOTASys = NOTASys.ReadString("LastOpened")
+	End Function
+	Function OpenNOTAUser
+		NOTAUser.OpenKey("Software\\Network_Of_The_Apes", 1)
+		NOTAUser.WriteString( "LastOpened", (Date$ + "  " + Time$) )
+		OpenNOTAUser = NOTAUser.ReadString("LastOpened")
+	End Function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] DBT.INC (тела)
+sub dbtCreate( dbtArch as string)
+dim streamEx as QMemorystream
+
+'print "Creating memo table.." ; dbtArch
+
+if fs.open(dbtArch, fmCreate) = FALSE then
+ 'showMessage("Create fail ..  "+dbtArch)
+ print "Create fail ..  "+dbtArch
+ end
+end if    
+
+streamEx.writeNUM(1,4)
+streamEx.size = 512      'Reserve rest
+
+fs.CopyFrom(streamEx, 0)
+fs.close
+'print "Memo done!!"
+end sub
+sub dbtClose
+ fs.close
+ blockCount = 0
+ __s = ""
+end sub
+private sub readRecord
+Eom = 0   'End of record
+__s = ""
+
+while Eom=0
+  __s = __s + fs.readSTR(512)
+  Eom = INSTR(__s, Chr$(&H1A))
+wend
+end sub
+function Memoget(n as long) as string
+'n is the identifier of requested record ("pointer")
+if n < 0  or n > blockCount  THEN
+   exit function
+end if
+
+currentRecID = n      'Remember    
+
+fs.position = n*512   'Beginning of data
+readRecord            ' Uses __s 
+result = Left$( __s, INSTR(__s, Chr$(&H1A))-1 )
+end function
+function memoUpdate(newtext as string) as long
+'If the number of 512-byte-blocks to be occupied with the received text is >
+'than original number of blocks, then the text will be recorded at end of
+'file, and the original record will remains in "place" but without any reference
+'to it. Otherwise the original record is used but the end of text mark will be 
+'updated.
+
+n& = currentRecID     'This number is a "pointer"!!
+'print "Memoupdate....."; "  Current pointer "; n&
+if n& = -1  then
+  goto leave
+end if
+
+'Old contents was saved to __s
+l&      = Len(__s)
+blocks% = l&/512
+rest%   = l& mod 512
+
+fs.position = n&*512    'Begin of record
+select case Len(newText)
+case is <= l&
+   fs.write(newText)
+   fs.writeNUM(&H1A, 1)
+
+case else
+   select case 1+Len(newtext) / 512
+   case blocks%
+     select case Len(newtext) mod 512
+     case is > 0       'It doesn't fill the block
+       fs.write(newText)
+       fs.writeNUM(&H1A, 1)
+
+     case 0  
+       n& = MemoAppend(newtext)
+     end select  
+
+   case else
+     n& = MemoAppend(newtext)
+   end select  
+end select   
+
+currentRecID = -1   'Reset
+
+leave:
+result = n&     'Block count
+end function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] debug.inc (тела)
+SUB FormWndProc (Hwnd&, uMsg&, wParam&, lParam&) 
+   IF uMsg& = WM_COPYDATA THEN 
+      DIM MStream AS QMEMORYSTREAM 
+      MStream.MemCopyFrom(lParam&, 12) 
+      MStream.Position = 0 
+      MStream.ReadUDT(DataStruct) 
+      MStream.Close 
+      strRecv = VARPTR$(DataStruct.lpData) 
+      flgRecv=1
+   END IF 
+END SUB 
+SUB SendData  
+   DEFLNG wndhnd 
+   wndhnd=Findwindow("TForm",AppName) 
+   IF wndhnd=0 THEN 
+      SHOWMESSAGE "Could not find "+AppName 
+      EXIT SUB 
+   END IF 
+   DataStruct.lpData = VARPTR(strSend) 
+   DataStruct.cbData = LEN(strSend) 
+   SENDMESSAGE wndhnd, WM_COPYDATA, 0, DataStruct 
+END SUB 
+sub TimerOverDbg
+if _DebugFORM.Visible=0 then _DebugFORM.Visible=1
+end sub
+sub MsgHandler
+MsgHandlerStart=1
+while   1=1
+	select case  strRecv
+	case "RunItOnClick"
+		flgRecv=0
+		exit while
+	case "PauseOnClick"
+		if flgRecv=1 then
+			flgRecv=0
+		end if
+	case "ContinueOnClick"
+		flgRecv=0
+		exit while
+	case "StepOverOnClick"
+		if flgRecv=1  then
+			flgRecv=0
+			exit while
+		end if
+	case "StepInToOnClick"
+		if flgRecv=1 then
+			flgRecv=0
+			exit while
+		end if
+	case  "RunToCursOnClick"
+		strSend="RunToCursOnClick received"
+	case   "AddWatchOnClick"
+		strSend="AddWatchOnClick received"
+	case    "DelWatchOnClick"
+		strSend="DelWatchOnClick received"
+	case     "DelAllWatchOnClick"
+		strSend="DelAllWatchOnClick received"
+	case      "ToggleBreakPointOnClick"
+		strSend="ToggleBreakPointOnClick received"
+	case  "ClearAllBreakPointsOnClick"
+		strSend= "ClearAllBreakPointsOnClick received"
+	case "FormCloseOnClick"
+		end
+		exit while
+	case else
+		exit while
+	end select
+	doevents
+wend
+strSend=_DebugEdit.Text
+senddata
+END SUB
+sub  _DebugFormClose
+flgRecv=1
+strRecv="FormCloseOnClick"
+_DebugForm.Close
+end
+end sub
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] debugWindow.inc (тела)
+Subi RQDebug(...)
+GetLinesLack=ParamStrCount-~WatchDisplay.LineCOunt-1   
+print "GetLinesLack="; GetLinesLack
+FOR Ij = 1 TO GetLinesLack
+	~WatchDisplay.addString  "-" 'paramStr$(i)     
+next iJ
+
+FOR Ij = 1 TO ParamStrCount
+	~WatchDisplay.Line(ij-1)=paramStr$(ij)+"="+str$(paramval(ij))
+NEXT Ij
+
+pv=paramval(ParamValCount)
+'print"pv=";pv
+op=OperatorsPos(pv)
+'print"op=";op
+ol=OperatorsLenth(pv)
+'print"ol=";ol
+
+call ViewStep (Op,OL)
+
+if ModeFlg=0 then  ~DebugForm.showmodal else  ~DebugForm.show
+
+End Subi '=======================================================================
+
+
+'***************************************
+sub ViewStep (OperPos,OperLength)
+~SrcDisplay.SelStart=OperPos
+~SrcDisplay.SelLength=OperLength
+end sub
+sub Trace
+ModeFlg=0
+~DebugForm.close
+end sub
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] delTags.inc (тела)
+FUNCTION HtmTableValue(TableText AS STRING, KeyText AS STRING) AS LONG
+  DIM KeyPos AS LONG, ValueStart AS LONG, ValueEnd AS LONG, FoundValue AS LONG
+  FoundValue = -1
+  KeyPos = INSTR(TableText, "|" + KeyText + "=")
+  IF KeyPos > 0 THEN
+    ValueStart = KeyPos + LEN(KeyText) + 2
+    ValueEnd = INSTR(ValueStart, TableText, "|")
+    FoundValue = VAL(MID$(TableText, ValueStart, ValueEnd - ValueStart))
+  END IF
+  HtmTableValue = FoundValue
+END FUNCTION
+FUNCTION HtmDecValue(DigitText AS STRING) AS LONG
+  DIM CharIdx AS LONG, DigitNum AS LONG, NumValue AS LONG
+  NumValue = -1
+  IF LEN(DigitText) > 0 AND LEN(DigitText) <= 7 THEN
+    NumValue = 0
+    FOR CharIdx = 1 TO LEN(DigitText)
+      DigitNum = INSTR("0123456789", MID$(DigitText, CharIdx, 1)) - 1
+      IF DigitNum < 0 THEN
+        NumValue = -1
+        EXIT FOR
+      END IF
+      NumValue = NumValue * 10 + DigitNum
+    NEXT
+  END IF
+  HtmDecValue = NumValue
+END FUNCTION
+FUNCTION HtmHexValue(HexText AS STRING) AS LONG
+  DIM CharIdx AS LONG, DigitNum AS LONG, NumValue AS LONG
+  NumValue = -1
+  IF LEN(HexText) > 0 AND LEN(HexText) <= 6 THEN
+    NumValue = 0
+    FOR CharIdx = 1 TO LEN(HexText)
+      DigitNum = INSTR("0123456789abcdef", LCASE$(MID$(HexText, CharIdx, 1))) - 1
+      IF DigitNum < 0 THEN
+        NumValue = -1
+        EXIT FOR
+      END IF
+      NumValue = NumValue * 16 + DigitNum
+    NEXT
+  END IF
+  HtmHexValue = NumValue
+END FUNCTION
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] evaluate.inc (тела)
+$TYPECHECK ON
+FUNCTION EvaluateExpression (BYREF MathString$ AS STRING, DRGMode AS BYTE) AS DOUBLE
+ EvaluateErrorFlag=0
+ formula$ = MathString$
+ IF DRGMode = 0 THEN 
+   CMode = 57.2957795130824                  'converts to degrees
+   CModeN = 0.0174532925199433               'converts to radians
+ ELSEIF DRGMode = 2 THEN 
+   CMode = 63.6619772367584                  'converts to grad
+   CModeN =0.0157079632679489                'converts to radians
+ ELSE
+   CMode =1
+   CModeN =1
+ END IF
+ CheckSyntax
+ IF EvaluateErrorFlag=0 THEN ExpSolverEdit 
+ IF EvaluateErrorFlag=0 THEN 
+   EvaluateExpression = EvaluateAnswer
+ ELSE
+   EvaluateExpression = 0
+ END IF
+END FUNCTION
+SUB CheckSyntax
+  DEFBYTE x
+  DEFSHORT posops, startmath, wherepi
+  DEFSTR math$, mathchar$, errmath$, oldmathchar$, ops$, afterendpar$
+  formula$ = LCASE$(REPLACESUBSTR$(formula$," ",""))
+  formula$ = REPLACESUBSTR$(formula$,"pi","3.14159265358979")
+  changeE
+  math$ = ""
+  startmath = 0
+  errmath$ = ""
+  mathchar$ = ""       
+  IF TALLY(formula$,")(") <> 0 THEN
+    MessageDlg("Invalid -> ')('. Please correct syntax.", mtError, mbOK, 0)
+    EvaluateErrorFlag = 1
+    EXIT SUB
+  END IF    
+  IF TALLY(formula$,"(") <> TALLY(formula$,")") THEN
+    MessageDlg("Missing parenthesis. Please correct syntax.", mtError, mbOK, 0)
+    EvaluateErrorFlag = 1
+    EXIT SUB
+  ELSE
+    DO     
+      INC startmath
+      oldmathchar$ = mathchar$
+      mathchar$ = MID$(formula$,startmath,1)
+      SELECT CASE mathchar$
+        CASE "e"
+          SELECT CASE oldmathchar$
+            CASE "","^","c","s","-","+","*","/","\"
+              math$ = math$ + mathchar$
+              errmath$ = math$
+          END SELECT
+        CASE "a","b","c","f","g","h","i","l","n","o","p","q","r","s","t","v","x"              
+          math$ = math$ + mathchar$
+          errmath$ = errmath$ + mathchar$
+          SELECT CASE oldmathchar$
+            CASE "0" TO "9"
+              MessageDlg(errmath$ + " is invalid. Please correct syntax.", mtError, mbOK, 0)
+              EvaluateErrorFlag = 1
+              EXIT SUB
+          END SELECT            
+        CASE "d","j","k","m","u","w","y","z"
+          errmath$ = errmath$ + mathchar$
+          FOR x = 1 TO 5
+            ops$ = MID$("+-*/^",x,1)
+            posops = RINSTR(errmath$,ops$)
+            IF posops <> 0 THEN EXIT FOR
+          NEXT x
+          errmath$ = RIGHT$(errmath$,LEN(errmath$)-posops)
+          MessageDlg(errmath$ + "?" + " Please correct syntax.", mtError, mbOK, 0)
+          EvaluateErrorFlag = 1
+          EXIT SUB
+        CASE ")"
+          afterendpar$ = MID$(formula$,startmath+1,1)
+          SELECT CASE afterendpar$
+            CASE "0" TO "9"
+              MessageDlg(")"+ afterendpar$ + " is invalid." + " Please correct syntax.", mtError, mbOK, 0)
+              EvaluateErrorFlag = 1
+              EXIT SUB
+          END SELECT            
+        CASE "("
+          SELECT CASE oldmathchar$
+            CASE "0" TO "9"
+              MessageDlg(oldmathchar$ + "( is invalid." + " Please correct syntax.", mtError, mbOK, 0)
+              EvaluateErrorFlag = 1
+              EXIT SUB
+          END SELECT               
+          IF math$ <> "" THEN
+            FOR x = 1 TO 36
+              IF math$ = MathString$(x) THEN 
+                math$ = ""
+              END IF
+            NEXT x
+            IF math$ <> "" AND math$ <> "pi" THEN      'if there's a match, skip this
+              MessageDlg(errmath$ + "?" + " Please correct syntax.", mtError, mbOK, 0)
+              EvaluateErrorFlag = 1
+              EXIT SUB
+            END IF
+          END IF
+        CASE "0" TO "9"
+          errmath$ = errmath$ + mathchar$
+          SELECT CASE oldmathchar$
+            CASE "a" TO "d", "f" TO "z"
+              FOR x = 1 TO 5
+                ops$ = MID$("+-*/^",x,1)
+                posops = RINSTR(errmath$,ops$)
+                IF posops <> 0 THEN EXIT FOR
+              NEXT x
+              errmath$ = RIGHT$(errmath$,LEN(errmath$)-posops)
+              MessageDlg(errmath$ + "?" + " Please correct syntax.", mtError, mbOK, 0)
+              EvaluateErrorFlag = 1
+              EXIT SUB
+          END SELECT
+        CASE "+","-","*","/","^"
+          IF (math$ <> "" AND math$ <> "pi") AND (INSTR(math$,"(") = 0 OR INSTR(math$,")") = 0) THEN
+            FOR x = 1 TO 5
+              ops$ = MID$("+-*/^",x,1)
+              posops = RINSTR(errmath$,ops$)
+              IF posops <> 0 THEN EXIT FOR
+            NEXT x
+            math$ = RIGHT$(math$,LEN(math$)-posops)
+            MessageDlg("Missing parenthesis. Please correct syntax.", mtError, mbOK, 0)
+            EvaluateErrorFlag = 1
+            EXIT SUB
+          END IF              
+      END SELECT    
+    LOOP UNTIL startmath = LEN(formula$)
+  END IF
+END SUB
+SUB DoInPrecision(value AS DOUBLE, value$ AS STRING)
+  value$ = FORMAT$("%g",value)
+END SUB
+SUB CheckE(newstring$ AS STRING)
+  DEFSTR powerEnd$, oldbase$, checkneg$, base$, power$, newbase$
+  DEFBYTE whereE, whereDot, x, move, powerEnd
+  DEFSHORT power
+  whereE = INSTR(newstring$,"E")
+  x = whereE
+  IF whereE = 0 THEN
+    EXIT SUB
+  ELSE
+    whereDot = RINSTR(whereE,newstring$,".")
+    IF whereDot < 2 THEN whereDot = 2      'since in scientific format
+    DO
+      INC x
+      IF x >= LEN(newstring$) THEN
+        powerEnd = x
+        EXIT DO
+      END IF  
+      powerEnd$ = MID$(newstring$,x,1)
+      SELECT CASE powerEnd$
+        CASE "+","*","/",")"
+          powerEnd = x - 1
+          EXIT DO
+        CASE "-"
+          IF x <> whereE + 1 THEN
+            powerEnd = x - 1
+            EXIT DO
+          END IF
+      END SELECT
+    LOOP
+    oldbase$ = LEFT$(newstring$,whereE-1)
+    base$ = REPLACESUBSTR$(oldbase$,".","")
+    power$ = MID$(newstring$,whereE+1,powerEnd-whereE)
+    power = VAL(power$)
+    IF power => 14 THEN EXIT SUB
+    checkneg$ = LEFT$(power$,1)
+    IF checkneg$ = "-" THEN
+      move = ABS(power)
+      newbase$ = "." + STRING$(move-(whereDot-1),"0") + base$
+    END IF
+    newstring$ = newbase$
+  END IF
+END SUB
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] FBFunctions.inc (тела)
+function fbReplaceSubStr$ (SrcString as string, SString as string, RString as string ) as string  ' обертка FBReplaceSubStrFunc
+SrcString4$=SrcString
+fbReplaceSubStr$=varptr$(FBReplaceSubStrFunc (SrcString4$, SString, RString) )
+end function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] Form.inc (тела)
+Sub SetFormPos(hwnd as long, SetX as long, SetY as long)
+    Dim WinEst As WINDOWPLACEMENT
+    'Dim Punto As POINTAPI
+    Dim rtn As Long
+    'set the new min/max positions
+    'Punto.x = 100'200
+    'Punto.y = 100
+    'initialize the structure
+    WinEst.flags =WPF_SETMINPOSITION
+    WinEst.Length = SIZEOF(WinEst)
+    WinEst.showCmd =SW_MINIMIZE 'SW_RESTORE'SW_SHOWMINIMIZED'SW_HIDE'' SW_MINIMIZE
+    WinEst.ptMinPosition_X =SetX' Punto.X 'set new MINIMIZED position'
+    WinEst.ptMinPosition_Y =SetY' Punto.Y
+    
+    '- WinEst.rcNormalPosition = Rectan
+     WinEst.rcNormalPosition_Left    =  Rectan.Left  '200'' set new normal position
+     WinEst.rcNormalPosition_Top     =  Rectan.Top  '200'' 
+     WinEst.rcNormalPosition_Right   =  Rectan.Right '250 ''
+     WinEst.rcNormalPosition_Bottom  =  Rectan.Bottom'250'' 
+    
+    'set the new window placement (minimized)
+    rtn = SetWindowPlacement(hwnd, WinEst) 
+End Sub
+Sub GetFormPos (Sender as QForm)
+    'Tip submitted by pyp99 (pyp99@hotmail.com)
+    Dim WinEst As WINDOWPLACEMENT
+    Dim rtn As Long
+    WinEst.Length = SIZEOF(WinEst)
+    'get the current window placement
+    rtn = GetWindowPlacement(Sender.handle, WinEst)   
+    'print "rtn=" ,rtn
+
+
+    '-Rectan = WinEst.rcNormalPosition
+    Rectan.Left = WinEst.rcNormalPosition_Left  
+    Rectan.Top= WinEst.rcNormalPosition_Top  
+    Rectan.Right= WinEst.rcNormalPosition_Right 
+    Rectan.Bottom= WinEst.rcNormalPosition_Bottom 
+
+   MinTop= WinEst.ptMinPosition_Y
+   MinLeft=WinEst.ptMinPosition_X
+
+    'print "Rectan.Right=" ,Rectan.Right
+    'print "Rectan.Top=" ,Rectan.Top
+    'print "Rectan.Bottom=" ,Rectan.Bottom
+    
+End Sub
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] Functions.inc (тела)
+Function LoadFile (Filename as string, hwnd As Long) as string
+Dim Tempstr as String
+Dim Load_fs as qfilestream
+Load_fs.open(Filename, 2)
+Load_fs.position = 0
+Tempstr = Load_fs.readstr(Load_fs.size)
+Load_fs.close
+Result = Sendmsg (hWnd, CMM_INSERTTEXT , 0, Varptr(TempStr))
+End Function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] Math.inc (тела)
+Function ACOSH(value AS DOUBLE) AS DOUBLE
+  SELECT CASE value
+   CASE IS < 1
+    MessageBox("Invalid Argument .", "ACOSH - Error", 0)
+   CASE IS >= 1
+    ACOSH =  ( LOG (value + SQR( value ^ 2 - 1 )))
+  END SELECT
+End Function
+Function ACOT(value AS DOUBLE) AS DOUBLE
+ ACOT = ((rqPI / 2) - ATAN (value))
+End Function
+Function ACOTH(value AS DOUBLE) AS DOUBLE
+ SELECT CASE ABS (value)
+  CASE IS > 1
+   ACOTH =  (LOG((value + 1) / (value - 1)) * 0.5)
+  CASE ELSE
+   MessageBox("ERROR: Invalid Argument .", "ACOTH - Error", 0)
+ END SELECT
+End Function
+Function ACOSEC(value AS DOUBLE) AS DOUBLE
+ SELECT CASE ABS (value)
+  CASE IS < 1
+   MessageBox("Invalid Argument .", "ACOSEC - Error", 0)
+  CASE ELSE
+   ACOSEC =  (ASIN(1/value))
+  END SELECT
+End Function
+Function ACOSECH(value AS DOUBLE) AS DOUBLE
+ SELECT CASE ABS(value)
+  CASE = 0
+   MessageBox("Invalid Argument .", "ACOSECH - Error", 0)
+  CASE ELSE
+   ACOSECH =  (ASINH(1 / value))
+ END SELECT
+End Function
+Function ADDZ(Z()AS DOUBLE ) AS DOUBLE
+    re1 = Z(0): im1 = Z(1) : re2 = Z(2) : im2 = Z(3)
+    Z(0) = re1 + re2
+    Z(1) = im1 + im2
+    Z(2) = 0
+    Z(3) = 0
+    ADDZ = Z()
+End Function
+Function ASINH(value AS DOUBLE) AS DOUBLE
+ ASINH = LOG (value + (SQR(value * value + 1)))
+End Function
+Function ASEC(value AS DOUBLE) AS DOUBLE
+ SELECT CASE ABS (value)
+  CASE IS < 1
+    MessageBox("ERROR:Invalid Argument .", "ASEC - Error", 0)
+  CASE ELSE
+   ASEC =  (rqPI / 2 - ASIN( 1 / value))
+ END SELECT
+End Function
+Function ASECH(value AS DOUBLE) AS DOUBLE
+ SELECT CASE ABS (value)
+  CASE IS > 1
+   MessageBox("ERROR:Invalid Argument .", "ASECH - Error", 0)
+  CASE IS <= 0
+   MessageBox("ERROR:Invalid Argument .", "ASECH - Error", 0)
+  CASE ELSE
+   ASECH = (ACOSH(1 / value))
+ END SELECT
+End Function
+Function ATANH(value AS DOUBLE) AS DOUBLE
+ SELECT CASE ABS(value)
+  CASE IS < 1
+   ATANH = (LOG((1 + value) / (1 - value)) * 0.5)
+  CASE 0
+   ATANH = 1
+  CASE ELSE
+   MessageBox("ERROR:Invalid Argument .", "ATANH - Error", 0)
+ END SELECT
+End Function
+Function CONJZ(Z()AS DOUBLE ) AS DOUBLE
+    re = Z(0): im = Z(1)
+    Z(1) = im * (-1)
+    CONJZ = Z()
+End Function
+Function COSEC(value AS DOUBLE) AS DOUBLE
+ COSEC = 1 / SIN(value)
+End Function
+Function COSECH(value AS DOUBLE) AS DOUBLE
+ COSECH = (2 / (EXP(value) - EXP(value * -1)))
+End Function
+Function COSH(value AS DOUBLE) AS DOUBLE
+ COSH = (0.5 * (EXP(value) + EXP(value * -1)))
+ IF value = 0 THEN COSH = 1
+End Function
+Function COSZ(Z()AS DOUBLE ) AS DOUBLE
+    re = Z(0): im = Z(1)
+    Z(0) = COS(re) * COSH(im)
+    Z(1) = SIN(re) * SINH(im)
+    COSZ = Z()
+End Function
+Function COSHZ(Z()AS DOUBLE ) AS DOUBLE
+    re = Z(0): im = Z(1)
+    Z(0) = COSH(re) * COS(im)
+    Z(1) = SINH(re) * SIN(im)
+    COSHZ = Z()
+End Function
+Function COT(value AS DOUBLE) AS DOUBLE
+ COT = 1 / TAN(value)
+End Function
+Function COTH(value AS DOUBLE) AS DOUBLE
+ SELECT CASE value
+  CASE 0
+   MessageBox("ERROR: Invalid Argument .", "COTH - Error", 0)
+  CASE ELSE
+   COTH = COSH(value) / SINH(value)
+  END SELECT
+End Function
+Function DEG2RAD(value AS DOUBLE) AS DOUBLE
+ DEG2RAD = value * 0.017453
+End Function
+Function DIVZ(Z()AS DOUBLE ) AS DOUBLE
+    re1 = Z(0): im1 = Z(1) : re2 = Z(2) : im2 = Z(3)
+    Z(0) = (req * re2 + im1 * im2) / (re2*re2 + im2*im2)
+    Z(1) = (-re1 * im2 + re2 * im1) / (re2 * re2 + im2 * im2)
+    Z(2) = 0
+    Z(3) = 0
+    DIVZ = Z()
+End Function
+Function EXPZ(Z()AS DOUBLE ) AS DOUBLE
+    re = Z(0): im = Z(1) : a = Z(3)
+    Z(0) = EXP(re) * COS (im)
+    Z(1) = EXP(re) * SIN (im)
+    EXPZ = Z()
+End Function
+Function GCD(value1 AS DOUBLE, value2 AS DOUBLE ) AS LONG
+  ERROR% = 0
+  SELECT CASE value1
+   CASE IS <> INT(value1) 'Integer check
+    ERROR% = 1
+   CASE 0                 'ZERO check
+    ERROR% = 2
+  END SELECT
+  SELECT CASE value2
+   CASE IS <> INT(value2) 'Integer check
+    ERROR% = 1
+   CASE 0                 'ZERO Check
+    ERROR% = 2
+  END SELECT
+  SELECT CASE ERROR%
+   CASE 0
+    value1 = ABS(value1) : value2 = ABS(value2)    'Euclidean algorithm
+     DO
+      Res = value1 - value2 * INT(value1/value2)
+      IF Res = 0 THEN GCD = value2
+      value1 = value2
+      value2 = Res
+     LOOP UNTIL Res = 0
+   CASE 1
+     GCD = 0
+     MessageBox("Invalid Argument (no INTEGER).", "GCD - Error", 0)
+   CASE 2
+     GCD = 0
+     MessageBox("Invalid Argument (ZERO).", "GCD - Error", 0)
+  END SELECT
+End Function
+Function INVZ(Z()AS DOUBLE ) AS DOUBLE
+    re = Z(0): im = Z(1)
+    Z(0) =  re / ( re * re + im * im)
+    Z(1) =  im / ( re * re + im * im)
+    INVZ = Z()
+End Function
+Function LOGZ(Z()AS DOUBLE ) AS DOUBLE
+    re = Z(0): im = Z(1)
+    Z(0) =  LOG (re / ( re * re + im * im))
+    Z(1) =  im / ( re * re + im * im)
+    LOGZ = Z()
+End Function
+Function LOG10Z(Z()AS DOUBLE ) AS DOUBLE
+    re = Z(0): im = Z(1)
+    Z(0) =  LOG (re / ( re * re + im * im))/ LOG (10)
+    Z(1) =  im / ( re * re + im * im) / LOG (10)
+    LOG10Z = Z()
+End Function
+Function LOGAZ(Z()AS DOUBLE ) AS DOUBLE
+    re = Z(0): im = Z(1) : a = Z(3)
+    Z(0) =  LOG (re / ( re * re + im * im))/ LOG (a)
+    Z(1) =  im / ( re * re + im * im) / LOG (a)
+    LOGAZ = Z()
+End Function
+Function MAGZ(Z()AS DOUBLE ) AS DOUBLE
+    re = Z(0): im = Z(1)
+    Z(0) = SQR( re * re + im * im)   '= |Z|
+    Z(1) = 0
+    MAGZ = Z()
+End Function
+Function MULZ(Z()AS DOUBLE ) AS DOUBLE
+    re1 = Z(0): im1 = Z(1) : re2 = Z(2) : im2 = Z(3)
+    Z(0) = re1 * re2 - im1 * im2
+    Z(1) = re1 * im2 + re2 * im1
+    Z(2) = 0
+    Z(3) = 0
+    MULZ = Z()
+End Function
+Function NORZ(Z()AS DOUBLE ) AS DOUBLE
+    re = Z(0): im = Z(1)
+    Z(0) = SQR( re * re + im * im)    ' = r = value
+    Z(1) = ATAN (im / re)             ' = theta = argument
+    NORZ = Z()                        'Z() = (r,theta)
+End Function
+Function POLZ(Z()AS DOUBLE ) AS DOUBLE
+    re = Z(0): im = Z(1)
+    Z(0) = SQR( re * re + im * im) * COS(ATAN (im / re))
+    Z(1) = SQR( re * re + im * im) * SIN(ATAN (im / re))
+    POLZ = Z()
+End Function
+ Function POWZ(Z()AS DOUBLE ) AS DOUBLE
+    re = Z(0): im = Z(1) : expo = Z(2)
+     Z(0) =(SQR( re * re + im * im)) ^ expo * COS(expo * ATAN (im / re) )
+     Z(1) =(SQR( re * re + im * im)) ^ expo * SIN(expo * ATAN (im / re) )
+     Z(2) = 0
+    POWZ = Z()
+End Function
+Function RAD2DEG(value AS DOUBLE) AS DOUBLE
+ RAD2DEG = value / 0.017453
+End Function
+Function SEC(value AS DOUBLE) AS DOUBLE
+ SEC = 1 / COS(value)
+End Function
+Function SECH(value AS DOUBLE) AS DOUBLE
+ SECH = (2 / (EXP(value) + EXP(value * -1)))
+' SECH = 1/ COSH (value)
+End Function
+Function SINH(value AS DOUBLE) AS DOUBLE
+ SINH = (0.5 * (EXP(value) - EXP(value * -1)))
+  IF value = 0 THEN SINH = 0
+End Function
+Function SINZ(Z()AS DOUBLE ) AS DOUBLE
+    re = Z(0): im = Z(1)
+    Z(0) = SIN(re) * COSH(im)
+    Z(1) = COS(re) * SINH(im)
+    SINZ = Z()
+End Function
+Function SINHZ(Z()AS DOUBLE ) AS DOUBLE
+    re = Z(0): im = Z(1)
+    Z(0) = SINH(re) * COS(im)
+    Z(1) = COSH(re) * SIN(im)
+    SINHZ = Z()
+End Function
+Function SQRZ(Z()AS DOUBLE ) AS DOUBLE
+    re = Z(0): im = Z(1)
+    Z(0) = ((re + SQR(re * re + im * im)) * 0.5) ^ 0.5
+    Z(1) = (((re * -1) + SQR(re * re + im * im)) * 0.5) ^ 0.5
+    SQRZ = Z()
+End Function
+Function SUBZ(Z()AS DOUBLE ) AS DOUBLE
+    re1 = Z(0): im1 = Z(1) : re2 = Z(2) : im2 = Z(3)
+    Z(0) = re1 - re2
+    Z(1) = im1 - im2
+    Z(2) = 0
+    Z(3) = 0
+    SUBZ = Z()
+End Function
+Function TANH(value AS DOUBLE) AS DOUBLE
+    TANH = SINH(value) / COSH(value)
+    IF value = 0 THEN TANH = 0
+End Function
+Function TANZ(Z()AS DOUBLE ) AS DOUBLE
+    re1 = Z(0): im1 = Z(1)
+    Z(0) =  SIN(2 * re) / (COS(2 * re) + COSH(2 * im))
+    Z(1) =  SINH(2 * im) / (COS(2 * re) + COSH(2 * im))
+    TANZ = Z()
+End Function
+Function Power(Base as Double, Exponent as Double) as Double
+If Int(Exponent) <> Exponent then
+   MessageBox("Error : Invalid floating point operation.","Power - Invalid Exponent",0)
+   Exit Function
+End If
+  If Exponent = 0.0 Then
+    Result = 1.0               '{ n**0 = 1 }
+  ElseIf (Base = 0.0) and (Exponent > 0.0) Then
+    Result = 0.0               '{ 0**n = 0, n > 0 }
+  ElseIf (Frac(Exponent) = 0.0) and (Abs(Exponent) <= MaxInt) then
+    Result = Base^Int(Fix(Exponent))
+  else
+    Result = Exp(Exponent * Log(Base))
+  End If
+End Function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] menu.inc (тела)
+Sub mOpen_Click(Sender as QMenuItem)
+
+End Sub
+Sub mNew_Click(Sender as QMenuItem)
+
+End Sub
+Sub mSave_Click(Sender as QMenuItem)
+
+End Sub
+Sub mSaveAs_Click(Sender as QMenuItem)
+
+End Sub
+Sub mUndo_Click(Sender as QMenuItem)
+
+End Sub
+Sub mPaste_Click(Sender as QMenuItem)
+
+End Sub
+Sub mCut_Click(Sender as QMenuItem)
+
+End Sub
+Sub mCopy_Click(Sender as QMenuItem)
+
+End Sub
+Sub mHelp_Click(Sender as QMenuItem)
+
+End Sub
+Sub mSoftware_Click(Sender as QMenuItem)
+
+End Sub
+Sub mExit_Click(Sender as QMenuItem)
+
+End Sub
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] microTIMER.inc (тела)
+FuncTion  MicroTimer_dwToDbl (iDw As Long) As Double
+    DefDbl dwTmp, dbl2exp31
+    dwTmp = iDw
+    dbl2exp31 = 2147483648                  ' 2^31
+    If dwTmp < 0 Then                       ' Bit 31, Integer bit sign is set
+        dwTmp = dwTmp SHL 1                 ' get rid of bit 31
+        dwTmp = dwTmp SHR 1
+        Result = dbl2exp31  +  dwTmp        ' add the value of bit 31
+    Else
+        Result = dwTmp
+    End If
+End Function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] Minimize.inc (тела)
+Sub SetMinimize (Form as QForm)
+Setwindow(Form.Handle, -8, 0)
+Setwindow(Application.Handle, -8, Form.Handle)
+End Sub
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] msgdlg.inc (тела)
+Function MsgDlg (MsgDlgText As String, MsgDlgTitle As String, MsgDlgButtons As Long) As Long
+    Result = MDlg (Form.Handle,MsgDlgText,MsgDlgTitle,MsgDlgButtons)
+End Function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] NOTA.inc (тела)
+	Function CloseAppKey
+		CloseAppKey = AppKey.ReadString("LastOpened")
+		AppKey.CloseKey
+	End function
+	Function CloseAppSysKey
+		CloseAppSysKey = AppSysKey.ReadString("LastOpened")
+		AppSysKey.CloseKey
+	End function
+	Function OpenAppKey
+		AppKey.OpenKey(AppKeyString$, 1)
+		AppKey.WriteString( "LastOpened", (Date$ + "  " + Time$) )
+		OpenAppKey = AppKey.ReadString("LastOpened")
+	End Function
+	Function OpenAppSysKey
+		AppSysKey.OpenKey(AppKeyString$, 1)
+		AppSysKey.WriteString( "LastOpened", (Date$ + "  " + Time$) )
+		OpenAppSysKey = AppSysKey.ReadString("LastOpened")
+	End Function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] ODMenuXP.inc (тела)
+SUB GetVersion_mOD
+	DIM rtn AS LONG
+	DIM OSV AS OSVERSIONINFO_mOD
+
+	WiTH sStruc_mOD
+		OSV.dwOSVersionInfoSize = SizeOf(OSV)
+		.WriteUDT(OSV)
+		rtn = GetVersionEx_mOD(.Pointer)
+		IF rtn <> False THEN
+			.Position = False
+			.ReadUDT(OSV)
+			IF OSV.dwPlatformId = True THEN
+				isXP_mOD = False
+			ELSEIF OSV.dwPlatformId = 2 THEN
+				IF OSV.dwMajorVersion=5 THEN
+					' Windows XP and 2000
+					IF OSV.dwMinorVersion = True THEN
+						isXP_mOD = 2	' Windows XP
+					ELSE
+						isXP_mOD = True	' Windows 2000
+					END IF
+				END IF
+			END IF
+		END IF
+		.Close
+	End WiTH
+END SUB
+Sub FixTaskBarMenu (hWnd As Long)
+	SetWindowLong_mOD ( hWnd, GWL_HWNDPARENT_mOD, HWND_DESKTOP_mOD )
+	SetWindowLong_mOD ( Application.Handle, GWL_HWNDPARENT_mOD, hWnd )
+End Sub
+Sub DefSysItem ()
+	If mnuSysFromIcon = True Then
+		SetMenuDefaultItem_mOD (pNewSysMenu.Handle, pSysTerminate.Command, MF_BYCOMMAND)
+	Else
+		If isZoomed_mOD(mnuSysMainForm) = False Then
+			SetMenuDefaultItem_mOD (pNewSysMenu.Handle, pSysMaximize.Command, MF_BYCOMMAND)
+		Else
+			SetMenuDefaultItem_mOD (pNewSysMenu.Handle, pSysRestore.Command, MF_BYCOMMAND)
+		End If
+	End If
+End Sub
+Sub UpdateColors
+	' // Charge les nouvelles couleurs
+	'hHBr(13)	= GetStockObject_mOD(NULL_BRUSH_mOD)
+	'WiTH mnuODCouleurs
+	'	ChangeBrush	(True, GetSysColor_mOD(COLOR_BTNFACE_mOD), 12)
+	'	ChangeBrush	(True, .ItemContSelInactif, 11)
+	'	ChangeBrush	(True, .ItemContSel, 10)
+	'	ChangeBrush	(True, .ItemFondSelInact2, 9)
+	'	ChangeBrush	(True, .ItemFondSelInact1, 8)
+	'	ChangeBrush	(True, .ItemFondInact2, 7)
+	'	ChangeBrush	(True, .ItemFondInact1, 6)
+	'	ChangeBrush	(True, .ItemFondSel2, 5)
+	'	ChangeBrush	(True, .ItemFondSel1, 4)
+	'	ChangeBrush	(True, .ItemFond2, 3)
+	'	ChangeBrush	(True, .ItemFond1, 2)
+	'	ChangeBrush	(2, .MenuCont, 1)
+	'	ChangeBrush	(True, .MenuFond, False)
+	'End WiTH
+	DrawMenuBar_mOD(hMainMenu)
+End Sub
+Sub LoadNewColors
+	' // Charge nos nouvelles couleurs
+	WiTH mnuODMesCouleurs
+		.MainMenuTxt		= CheckIfSYSColor(.MainMenuTxt)
+		.MainMenuTxtSel		= CheckIfSYSColor(.MainMenuTxtSel)
+		.MainMenuTxtInactif	= CheckIfSYSColor(.MainMenuTxtInactif)
+		.MenuFond			= CheckIfSYSColor(.MenuFond)
+		.MenuCont			= CheckIfSYSColor(.MenuCont)
+		.ItemFond1			= CheckIfSYSColor(.ItemFond1)
+		.ItemFond2			= CheckIfSYSColor(.ItemFond2)
+		.ItemFondSel1		= CheckIfSYSColor(.ItemFondSel1)
+		.ItemFondSel2		= CheckIfSYSColor(.ItemFondSel2)
+		.ItemFondInact1		= CheckIfSYSColor(.ItemFondInact1)
+		.ItemFondInact2		= CheckIfSYSColor(.ItemFondInact2)
+		.ItemFondSelInact1	= CheckIfSYSColor(.ItemFondSelInact1)
+		.ItemFondSelInact2	= CheckIfSYSColor(.ItemFondSelInact2)
+		.ItemContSel		= CheckIfSYSColor(.ItemContSel)
+		.ItemContSelInactif	= CheckIfSYSColor(.ItemContSelInactif)
+		.ItemTxt			= CheckIfSYSColor(.ItemTxt)
+		.ItemTxtSel			= CheckIfSYSColor(.ItemTxtSel)
+		.ItemTxtInactif		= CheckIfSYSColor(.ItemTxtInactif)
+	End WiTH
+	mnuODCouleurs = mnuODMesCouleurs
+	Call UpdateColors
+End Sub
+Sub LoadDefaultColors
+	' // Attention ceci va remplacer nos couleurs par les couleurs prйdйfinies
+	mnuODCouleurs = mnuODDefCouleurs
+	Call UpdateColors
+End Sub
+Sub MakeODMenuBarItem (ParentHnd As Long, mItem As QMenuItem, bmpIndex As Long)
+	If UBound(mnuMain) < mItem.Command Then
+		ReDim mnuMain(mItem.Command)		As Long
+		ReDim mnubitmap(mItem.Command)		As Long
+		'ReDim mnuShortCut(mItem.Command)	As String
+		ReDim mnuSystem(mItem.Command)		As Long
+		ReDim mnuSubMenu(mItem.Command)		As Long
+	End If
+	mnuMain (mItem.Command) = True
+	MakeODItem (ParentHnd, mItem, bmpIndex)
+	DrawMenuBar_mOD(ParentHnd)
+	hMainMenu = ParentHnd
+End Sub
+Sub mReplaceSysMenu '()
+	mnuReplaceSysMenu = Enabled
+	If Enabled = True Then
+		' Doit avoir sa propre fonction owner comme MainForm
+		'MakeODItem (pNewSysMenu.Handle, pSysRestore, False)
+		'MakeODItem (pNewSysMenu.Handle, pSysMove, False)
+		'MakeODItem (pNewSysMenu.Handle, pSysResize, False)
+		'MakeODItem (pNewSysMenu.Handle, pSysMinimize, False)
+		'MakeODItem (pNewSysMenu.Handle, pSysMaximize, False)
+		'MakeODItem (pNewSysMenu.Handle, pSysSeparator, False)
+		'MakeODItem (pNewSysMenu.Handle, pSysTerminate, False)
+		MakeODMenu (pNewSysMenu.Handle)
+	End If
+End Sub
+Sub pFixItemState ()
+	If IsZoomed_mOD (mnuSysMainForm) Then
+		pSysRestore.Enabled	= True
+		pSysMove.Enabled	= False
+		pSysResize.Enabled	= False
+		pSysMaximize.Enabled = False
+	Else
+		pSysRestore.Enabled	= False
+		pSysMove.Enabled	= True
+		pSysResize.Enabled	= True
+		pSysMaximize.Enabled = True
+	End If
+End Sub
+Function GetMenuCheckState '(hMenu As Long, ID As Long) As Long
+    WiTH MII
+        .cbSize = SizeOf (MII)
+        .fMask = MIIM_STATE Or MIIM_TYPE Or MIIM_DATA Or MIIM_ID
+	    GetMenuItemInfo_mOD(hMenu, ID, MF_BYCOMMAND, MII)
+    	result = IIf((MFT_RADIOCHECK And .fType) <> False , True, False)
+    End WiTH
+End Function
+Function pGetClassName_mOD '(ByVal hwnd As Long) As String 
+	Dim sClass As String 
+	Dim nLen As Long
+	 
+	sClass = Space$(128) 'String$(128, Chr$(False)) 
+	nLen = GetClassName_mOD(hwnd, @sClass, 128) 
+	 
+	If nLen = False Then 
+		sClass = "" 
+	Else 
+		sClass = Left$(sClass, nLen) 
+	End If 
+	 
+	pGetClassName_mOD = sClass
+End Function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] ole.inc (тела)
+$TYPECHECK ON
+Function GuidStringFromGUID(rclsid As GUID) As String
+    Dim rc As Long
+    Dim stGuid As String * 40
+
+    ' 39 chars  for the GUID and terminate with Null char
+    stGuid = String$(40, 0&)
+    rc = StringFromGUID2(rclsid, VARPTR(stGuid), (Len(stGuid) - 1))
+    GuidStringFromGUID = Left$(stGuid, rc - 1)
+End Function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] pulsar.inc (тела)
+sub crea_pulsar_db
+
+    RQ_NewConventionalDB @RetFunction$,Structure$,IndexField$,PulsarPath$,PulsarFile$
+
+    IF LEFT$(RetFunction$,2)<>"ok" THEN
+        Msg$="OPERATION IS NOT COMPLETED: "+LTRIM$(RTRIM$(RetFunction$))
+        MESSAGEBOX(Msg$, "Pъlsar 3.0 in RapidQ", mbOK)
+    ELSE
+    END IF
+end sub
+sub inserisci_oggetto_in_pulsar_db
+
+ShowMessage "selezionato item " + str$(Edit_nome.text)
+
+    DatabaseRecord.Articolo_Nome=Edit_nome.text
+    DatabaseRecord.Articolo_Codice=Edit_codice.text
+    DatabaseRecord.Articolo_Descrizione=Edit_descrizione.text
+    DatabaseRecord.Articolo_Categoria=Edit_categoria.text
+    DatabaseRecord.Articolo_Immagine=image1.bmp
+    DatabaseRecord.Articolo_Larghezza=Edit_larghezza.text
+    DatabaseRecord.Articolo_Profondita=Edit_profondita.text
+    DatabaseRecord.Articolo_Altezza=Edit_altezza.text
+    DatabaseRecord.Articolo_VDX=" "
+    DatabaseRecord.Articolo_VDY=" "
+    DatabaseRecord.Articolo_Peso=Edit_peso.text
+    DatabaseRecord.Articolo_Costo=Edit_prezzo.text
+    DatabaseRecord.Articolo_UTILITA=" "
+
+
+    	RecordToSave$=DatabaseRecord.Articolo_Nome
+	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Codice
+	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Descrizione
+	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Categoria
+	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Immagine
+	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Larghezza
+	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Profondita
+	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Altezza
+	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_VDX
+	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_VDY
+	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Peso
+	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Costo
+	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_UTILITA
+
+
+    RetFunction$=SPACE$(160)
+
+    RQ_SaveConvDB @RetFunction$,PulsarPath$,PulsarFile$,RecordToSave$
+
+    IF LEFT$(RetFunction$,5)="ERROR" THEN
+
+        'If record is saved, the packed function return "ok".
+        'If error occur, function return error code in string
+        'format: "ERROR CODE:xxx...." (xxx is error code -see pъlsar manual-)
+        Msg$="OPERATION IS NOT COMPLETED: "+LTRIM$(RTRIM$(RetFunction$))
+        MESSAGEBOX(Msg$, "Pъlsar 3.0 in RapidQ", mbOK)
+
+    ELSE
+
+        'record is saved
+        MESSAGEBOX("OPERACION OK.", "Pъlsar 3.0 in RapidQ", mbOK)
+
+    END IF
+
+end sub
+sub visualizza_tutti_da_pulsar_db
+
+    RetFunction$=SPACE$(160)
+
+    RQ_GetQuantityOfRecords @RetFunction$,PulsarPath$,PulsarFile$
+
+    IF LEFT$(RetFunction$,5)="ERROR" THEN
+
+
+         Msg$="OPERATION IS NOT COMPLETED: "+LTRIM$(RTRIM$(RetFunction$))
+         MESSAGEBOX(Msg$, "Pъlsar 3.0 in RapidQ", mbOK)
+         END
+
+    END IF
+
+    RecordsInDB$=LTRIM$(RTRIM$(RetFunction$)) 
+
+    FOR Reading%=1 TO VAL(RecordsInDB$)
+
+       RQ_GetRecordConvDB @RetFunction$,PulsarPath$,PulsarFile$,LTRIM$(RTRIM$(STR$(Reading%)))
+
+       IF LCASE$(LEFT$(RetFunction$,5))="error" THEN
+
+            Msg$="Error reading record number:"+ LTRIM$ ( RTRIM$ ( STR$ ( Reading% ) ) )
+            MESSAGEBOX(Msg$, "Pъlsar 3.0 in RapidQ", mbOK)
+            END
+
+        ELSE
+
+
+    DatabaseRecord.Articolo_Nome=LEFT$(RetFunction$,10)
+    DatabaseRecord.Articolo_Codice=MID$(RetFunction$,11,10)
+    DatabaseRecord.Articolo_Descrizione=MID$(RetFunction$,21,30)
+    DatabaseRecord.Articolo_Categoria=MID$(RetFunction$,51,10)
+    DatabaseRecord.Articolo_Immagine=MID$(RetFunction$,61,15)
+    DatabaseRecord.Articolo_Larghezza=MID$(RetFunction$,76,4)
+    DatabaseRecord.Articolo_Profondita=MID$(RetFunction$,80,4)
+    DatabaseRecord.Articolo_Altezza=MID$(RetFunction$,84,4)
+    DatabaseRecord.Articolo_VDX=MID$(RetFunction$,88,10)
+    DatabaseRecord.Articolo_VDY=MID$(RetFunction$,98,10)
+    DatabaseRecord.Articolo_Peso=MID$(RetFunction$,108,4)
+    DatabaseRecord.Articolo_Costo=MID$(RetFunction$,112,6)
+    DatabaseRecord.Articolo_UTILITA=MID$(RetFunction$,118,10)
+
+
+            'show the record
+            dim Msg1$ as string
+            Msg1$="APELLIDO: "+DatabaseRecord.Articolo_Nome+CHR$(10)+CHR$(13)
+            Msg1$=Msg$+"NOMBRES: "+DatabaseRecord.Articolo_Descrizione+CHR$(10)+CHR$(13)
+            Msg1$=Msg$+"E-MAIL: "+DatabaseRecord.Articolo_Immagine+CHR$(10)+CHR$(13)
+            Msg1$=Msg$+"WEB: "+DatabaseRecord.Articolo_Categoria
+
+            MESSAGEBOX(Msg1$, "Pъlsar 3.0 in RapidQ", mbOK)
+
+         END IF
+
+    NEXT Reading%
+
+end sub
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] QFiles.inc (тела)
+SUB fINITIALIZE  'call this to initialize at program start
+For qfi=1 to MaxQFiles: qfn(qfi)=0: Next qfi
+END SUB
+FUNCTION GetFileNum() As LONG
+Result=-1
+FOR qfi=1 to MaxQFiles
+IF qfn(qfi)=0 THEN Result=qfi: Exit Function
+NEXT qfi
+END FUNCTION
+SUB fOPEN(fNum As LONG, fName$ AS STRING, fHow AS LONG)
+qfi=fHow
+IF FILEEXISTS(fName$)=0 THEN qfi=fmcreate
+SELECT CASE fNum
+CASE 1: qf1.OPEN(fName$,qfi)
+CASE 2: qf2.OPEN(fName$,qfi)
+CASE 3: qf3.OPEN(fName$,qfi)
+CASE 4: qf4.OPEN(fName$,qfi)
+CASE 5: qf5.OPEN(fName$,qfi)
+CASE 6: qf6.OPEN(fName$,qfi)
+CASE 7: qf7.OPEN(fName$,qfi)
+CASE 8: qf8.OPEN(fName$,qfi)
+END SELECT
+qfn(fNum)=1
+END SUB
+SUB fCLOSE(fNum As LONG)
+SELECT CASE fNum
+CASE 1: qf1.CLOSE
+CASE 2: qf2.CLOSE
+CASE 3: qf3.CLOSE
+CASE 4: qf4.CLOSE
+CASE 5: qf5.CLOSE
+CASE 6: qf6.CLOSE
+CASE 7: qf7.CLOSE
+CASE 8: qf8.CLOSE
+END SELECT
+qfn(fNum)=0: DoEvents
+END SUB
+SUB fPOSITION(fNum As LONG, fPosition As LONG)
+SELECT CASE fNum
+CASE 1: qf1.Position=fPosition
+CASE 2: qf2.Position=fPosition
+CASE 3: qf3.Position=fPosition
+CASE 4: qf4.Position=fPosition
+CASE 5: qf5.Position=fPosition
+CASE 6: qf6.Position=fPosition
+CASE 7: qf7.Position=fPosition
+CASE 8: qf8.Position=fPosition
+END SELECT
+END SUB
+FUNCTION fSIZE(fNum As LONG) As LONG
+SELECT CASE fNum
+CASE 1: Result=qf1.Size
+CASE 2: Result=qf2.Size
+CASE 3: Result=qf3.Size
+CASE 4: Result=qf4.Size
+CASE 5: Result=qf5.Size
+CASE 6: Result=qf6.Size
+CASE 7: Result=qf7.Size
+CASE 8: Result=qf8.Size
+END SELECT
+END FUNCTION
+FUNCTION fReadBinStr(fNum As LONG, fBytes As LONG) As STRING
+SELECT CASE fNum
+CASE 1: Result=qf1.ReadBinStr(fBytes)
+CASE 2: Result=qf2.ReadBinStr(fBytes)
+CASE 3: Result=qf3.ReadBinStr(fBytes)
+CASE 4: Result=qf4.ReadBinStr(fBytes)
+CASE 5: Result=qf5.ReadBinStr(fBytes)
+CASE 6: Result=qf6.ReadBinStr(fBytes)
+CASE 7: Result=qf7.ReadBinStr(fBytes)
+CASE 8: Result=qf8.ReadBinStr(fBytes)
+END SELECT
+DoEvents
+END FUNCTION
+SUB fWriteLine(fNum As LONG, fString As STRING)
+SELECT CASE fNum
+CASE 1: qf1.WriteLine(fString)
+CASE 2: qf2.WriteLine(fString)
+CASE 3: qf3.WriteLine(fString)
+CASE 4: qf4.WriteLine(fString)
+CASE 5: qf5.WriteLine(fString)
+CASE 6: qf6.WriteLine(fString)
+CASE 7: qf7.WriteLine(fString)
+CASE 8: qf8.WriteLine(fString)
+END SELECT
+DoEvents
+END SUB
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] QFormSkin.inc (тела)
+$Option Explicit
+Sub FixTaskBar (hWnd As Long)
+    SetWindowLong ( hWnd, GWL_HWNDPARENT, HWND_DESKTOP )
+    SetWindowLong ( Application.Handle, GWL_HWNDPARENT, hWnd )
+End Sub
+Sub ConfigureNCandClient(hWnd As Long, lParam As Long)
+	'Exit Function
+            
+	Dim tNCR As NCCALCSIZE_PARAMS
+	Dim tWP As WINDOWPOS
+	Dim m_Pos_wRect As RECT
+	Dim tNCR_rgrc0 As RECT
+
+    GetClientRect(hWnd, rc_Skin)
+    Pt.X = rc_Skin.Left
+    Pt.Y = rc_Skin.Top
+    ClientToScreen(hWnd, Pt)
+    'OffSetRect ...
+    rc_Skin.Left = rc_Skin.Left +Pt.X
+    rc_Skin.Right = rc_Skin.Left +rc_Skin.Right -8'+Pt.X
+    rc_Skin.Top = rc_Skin.Top +Pt.Y
+    rc_Skin.Bottom = rc_Skin.Top +rc_Skin.Bottom -8'+Pt.Y
+    
+	hRgn_Client = CreateRectRgnIndirect(rc_Skin)
+	If hRgn_Client Then
+	' Get the new window position & recommended client rect
+    'CopyMemory tNCR, ByVal lParam, Len(tNCR)
+	Mem.Position	= 0
+	Mem.MemCopyFrom(lParam, SizeOf(tNCR))
+	Mem.Position	= 0
+	Mem.ReadUDT	(tNCR)
+
+    'CopyMemory tWP, ByVal tNCR.lppos, Len(tWP)
+	Mem2.Position	= 0
+	Mem2.MemCopyFrom(tNCR.lppos, SizeOf(tWP))
+	Mem2.Position	= 0
+	Mem2.ReadUDT	(tWP)
+
+	'SetRect m_Pos_wRect, m_Position.wRectLeft, m_Position.wRectTop, m_Position.wRectRight, m_Position.wRectBottom
+	' set the new window rect here
+    'SetRect m_Position.wRect, tWP.X, tWP.Y, tWP.X + tWP.Cx, tWP.Y + tWP.Cy
+    SetRect m_Pos_wRect, tWP.X, tWP.Y, tWP.X + tWP.Cx, tWP.Y + tWP.Cy
+	m_Position.wRectLeft = m_Pos_wRect.Left
+    m_Position.wRectTop = m_Pos_wRect.Top
+    m_Position.wRectRight = m_Pos_wRect.Right
+    m_Position.wRectBottom = m_Pos_wRect.Bottom
+    GetInfoFromMenu (STR$(m_Position.wRectLeft))
+    GetInfoFromMenu (STR$(m_Position.wRectTop))
+    GetInfoFromMenu (STR$(m_Position.wRectRight))
+    GetInfoFromMenu (STR$(m_Position.wRectBottom))
+    
+	' calculate the client, titlebar, menubar, & nonclient button regions
+    'CalculateBarRects False
+       
+	' use the calculated client region here (screen coords vs client coords)
+    GetRgnBox hRgn_Client, tNCR_rgrc0 'tNCR.rgrc0
+    tNCR.rgrc0Left = tNCR_rgrc0.Left
+    tNCR.rgrc0Top = tNCR_rgrc0.Top
+    tNCR.rgrc0Right = tNCR_rgrc0.Right
+    tNCR.rgrc0Bottom = tNCR_rgrc0.Bottom
+
+	' Return the new client area
+    'tNCR.rgrc1 = tNCR.rgrc0
+    tNCR.rgrc1Left = tNCR.rgrc0Left
+    GetInfoFromMenu (STR$(tNCR.rgrc0Left))
+    tNCR.rgrc1Top = tNCR.rgrc0Top
+    GetInfoFromMenu (STR$(tNCR.rgrc0Top))
+    tNCR.rgrc1Right = tNCR.rgrc0Right
+    GetInfoFromMenu (STR$(tNCR.rgrc0Right))
+    tNCR.rgrc1Bottom = tNCR.rgrc0Bottom
+    GetInfoFromMenu (STR$(tNCR.rgrc0Bottom))
+    'CopyMemory ByVal lParam, tNCR, Len(tNCR)
+	Mem.Position	= 0
+	Mem.WriteUDT	(tNCR)	'-- Write structure back to memory
+	Mem.Position	= 0
+	'-- Copy this structure back to the original address, so changes can take effect
+	Mem.MemCopyTo	(lParam, SizeOf(tNCR))
+	
+	End If
+	Mem.Close
+	Mem2.Close
+	If hRgn_Client Then DeleteObject hRgn_Client
+	If m_Position.wRgn Then DeleteObject m_Position.wRgn
+	SetRect m_Pos_wRect, 0, 0, -1, -1 ' reset to invalid value used in next line
+	hRgn_Client = 0
+	m_Position.wRgn = 0
+    Pt.X = 0
+    Pt.Y = 0
+End Sub
+Sub TitleBarMouseDown(hWnd As Long)
+	Dim tPS As POINTS
+	tPS.x = Screen.MouseX: tPS.y = Screen.MouseY
+	ReleaseCapture
+	SendMessageAPI hWnd, WM_NCLBUTTONDOWN, HTCAPTION, tPS
+End Sub
+Sub DrawIconText (hWnd As Long, wParam As Long)
+	' Draw Icon
+	'ExtractIconEx "shell32.dll", Cnt, mIcon, ByVal 0&, 1
+	'DrawIcon Me.hdc, 32 * Cnt, 0, mIcon
+	'DestroyIcon mIcon
+	Dim hIcon As Long
+	'Dim SmallIcon As Long
+	$TypeCheck Off
+	hIcon = SendMessageAPI(hWnd, WM_GETICON, 1, ByVal 0&)
+	$TypeCheck On
+	'smallIcon = CopyImage(hIcon, 1, 16, 16, &H4000)
+	DrawIconEx dc_Skin, s_BorderW +2, s_BorderW +1, hIcon, 16, 16, 0, 0, DI_NORMAL
+	'DrawIcon dc_Skin, 4, 0, smallIcon 'hIcon
+	DestroyIcon hIcon
+	'DestroyIcon smallIcon
+	' Draw Text
+	Dim wCaption As String
+	Dim r_wCaption As RECT
+	$TypeCheck Off
+	wCaption = SendMessageAPI(hWnd, &HD, 1, ByVal 0&)
+	$TypeCheck On
+	SetTextColor (dc_Skin, &HFFFFFF)
+	SetBkMode (dc_Skin, 1)
+	r_wCaption.Left	= s_BorderW + 16 + 6
+	r_wCaption.Top	= s_BorderW
+	r_wCaption.Right = r_Skin.Right -r_Skin.Left -(s_BorderW *2) -(GetSystemMetrics(SM_CXSIZE) *4)
+	r_wCaption.Bottom = r_Skin.Top +s_CaptionY -4
+	DrawText dc_Skin, wCaption, Len(wCaption), r_wCaption, &H0
+End Sub
+Sub RefreshBtns (hWnd As Long, wParam As Long)
+	Select Case wParam
+		Case 3, 10 To 18
+			DrawButtons (hWnd, wParam)
+		Case Else
+			GetInfoFromMenu ("WM_??PAINT :  " +STR$(wParam))
+	End Select
+End Sub
+Sub Redraw(hwnd As Long)
+	$TypeCheck Off
+	RedrawWindow hwnd, ByVal 0&, 0, RDW_UPDATENOW Or RDW_INVALIDATE Or RDW_INTERNALPAINT Or RDW_ALLCHILDREN
+	$TypeCheck On
+End Sub
+FUNCTION WindowProc '(ByVal hwnd AS Long, ByVal uMsg AS Long,ByVal wParam AS Long, ByVal lParam AS LONG) AS LONG
+	Dim PrevProc As Long
+	Static s_dx As Long
+	Static s_dy As Long
+	PrevProc = precedent_adresse_mainfrm
+	Select Case uMsg
+		Case WM_NCACTIVATE
+			m_bActive = Not (wParam = 0)
+			
+			WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
+            
+            WindowProc hWnd, WM_NCPAINT, 0, 0
+            
+            Redraw hWnd
+            
+		Case WM_PAINT, WM_NCPAINT, WM_INITMENUPOPUP 'WM_NCACTIVATE, WM_SETTEXT, WM_KILLFOCUS, WM_MOUSEACTIVATE, WM_SYSCOMMAND, 
+			WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
+			GetInfoFromMenu ("WM_??PAINT :  " +STR$(lParam) +", " +STR$(wParam))
+			
+			GetWindowRect(hWnd, r_Skin)
+			dc_Skin = GetWindowDC(hWnd)
+			
+			DrawWindowBorders (hWnd, wParam)
+			DrawButtons (hWnd, wParam)
+			DrawIconText (hWnd, wParam)
+			
+			Select Case btnState
+				Case 1
+					DrawHotStateBtns (hWnd, HTCLOSE)
+				Case 2
+					DrawHotStateBtns (hWnd, HTMAXBUTTON)
+				Case 3
+					DrawHotStateBtns (hWnd, HTMINBUTTON)
+				Case 4
+					DrawDownStateBtns (hWnd, HTCLOSE)
+				Case 5
+					DrawDownStateBtns (hWnd, HTMAXBUTTON)
+				Case 6
+					DrawDownStateBtns (hWnd, HTMINBUTTON)
+				Case Else
+			End Select
+			
+			ReleaseDC (hWnd, dc_Skin)
+		Case WM_NCCALCSIZE
+        '    If wParam Then
+		'		WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
+        '        'DefWindowProc hWnd, uMsg, wParam, lParam
+		'		ConfigureNCandClient(hWnd, lParam)
+        '        'NewWndProc = WVR_VALIDRECTS  ' special meaning
+        '        WindowProc = &H400
+        '        'bWasIntercepted = True  ' don't forward this message
+		'	End If
+		'	GetInfoFromMenu ("WM_NCCALCSIZE :  " +STR$(lParam) +", " +STR$(wParam))
+			If wParam <> 0 Then
+
+				' Get the structure pointed to by lParam:
+				'CopyMemory tNCR, ByVal lParam, Len(tNCR)
+				'CopyMemory tWP, ByVal tNCR.lppos, Len(tWP)
+				Mem.Position	= 0
+				Mem.MemCopyFrom(lParam, SizeOf(tNCR))
+				Mem.Position	= 0
+				Mem.ReadUDT	(tNCR)
+
+				Mem2.Position	= 0
+				Mem2.MemCopyFrom(tNCR.lppos, SizeOf(tWP))
+				Mem2.Position	= 0
+				Mem2.ReadUDT	(tWP)
+
+				'With tNCR.rgrc(0)
+					' Set these
+					tNCR.rgrc0left		= tWP.x
+					tNCR.rgrc0top		= tWP.y
+					tNCR.rgrc0right		= tWP.x + tWP.cx
+					tNCR.rgrc0bottom	= tWP.y + tWP.cy
+
+					' Defaults
+					m_lLeft		= GetSystemMetrics(SM_CXFRAME) -2
+					m_lRight	= m_lLeft
+					m_lTop		= GetSystemMetrics(SM_CYCAPTION) + GetSystemMetrics(SM_CYFRAME)
+					If m_lTop < 24 Then _
+						m_lTop = 24
+					m_lBottom	= GetSystemMetrics(SM_CYFRAME) -2
+
+					' If the window in question is an MDI child, then we
+					' ant to ensure that the standard settings get sent
+					' back to windows: to prevent drawing additional borders,
+					' which aren't required:
+					'If Not m_bZoomedMDIChild Then
+					'	' If the implementation is valid then request the
+					'	' physical size of the title bar and borders:
+					'	If GetImplementation(Implementation) Then
+					'		Implementation.GetLeftMarginWidth m_lLeft
+					'		Implementation.GetTopMarginHeight m_lTop
+					'		Implementation.GetRightMarginWidth m_lRight
+					'		Implementation.GetBottomMarginHeight m_lBottom
+					'	End If
+					'End If
+
+					' Set our physical left/top/right/bottom values:
+					tNCR.rgrc0Left = tNCR.rgrc0Left + m_lLeft
+					tNCR.rgrc0Top = tNCR.rgrc0Top + m_lTop
+					tNCR.rgrc0Right = tNCR.rgrc0Right - m_lRight - 1
+					tNCR.rgrc0Bottom = tNCR.rgrc0Bottom - m_lBottom - 1
+				'End With
+
+				' Return the new client area size to windows:
+				tNCR.rgrc1Left = tNCR.rgrc0Left
+				tNCR.rgrc1Top = tNCR.rgrc0Top
+				tNCR.rgrc1Right = tNCR.rgrc0Right
+				tNCR.rgrc1Bottom = tNCR.rgrc0Bottom
+				'CopyMemory ByVal lParam, tNCR, Len(tNCR)
+				Mem.Position	= 0
+				Mem.WriteUDT	(tNCR)	'-- Write structure back to memory
+				Mem.Position	= 0
+				
+				Mem.MemCopyTo	(lParam, SizeOf(tNCR))
+				Mem.Close: Mem2.Close
+				WindowProc = WVR_VALIDRECTS
+
+			Else
+				' lParam points to a rectangle
+				'WindowProc = CallOldWindowProc(hwnd, uMsg, wParam, lParam)
+				WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
+			End If
+		Case WM_NCLBUTTONDOWN 'TO WM_NCMBUTTONDBLCLK
+		
+		    'Dim Ret As Long
+		    
+		    
+            'If s_dx = 0 Then s_dx = 1
+            'If s_dy = 0 Then s_dy = 1
+            's_dx = -1 * s_dx: s_dy = -1 * s_dy
+            'mouse_event &H1, s_dx, s_dy, 0, 0
+
+            Dim hRgn As Long
+			GetWindowRect(hWnd, r_Skin)
+			dc_Skin = GetWindowDC(hWnd)
+			GetInfoFromMenu ("Souris activйe :  " +STR$(hWnd) +", " +STR$(lParam) +", " +STR$(wParam))
+			hRgn = CreateRectRgn(r_Skin.Left, r_Skin.Top +20, r_Skin.Right, r_Skin.Bottom) 'CreateRectRgnIndirect(0&)
+            ValidateRgn(hWnd, hRgn)
+			Select Case wParam
+				Case HTMINBUTTON
+					If btnState <> 6 Then
+						DrawButtons(hWnd, wParam)
+						DrawDownStateBtns (hWnd, wParam)
+						btnState = 6
+						GetInfoFromMenu ("WM_NCLBUTTONDOWN :  " +STR$(wParam))
+					End If
+				Case HTMAXBUTTON
+					If btnState <> 5 Then
+						DrawButtons (hWnd, wParam)
+						DrawDownStateBtns (hWnd, wParam)
+						btnState = 5
+						GetInfoFromMenu ("WM_NCLBUTTONDOWN :  " +STR$(wParam))
+					End If
+				Case HTCLOSE
+					If btnState <> 4 Then
+						DrawButtons (hWnd, wParam)
+						DrawDownStateBtns (hWnd, wParam)
+						btnState = 4
+					End If
+		'		Case 2, 5, 8, 9, 10 To 18, 20 '3, 
+		'			If uMsg = &HA4 Then _
+		'				lParam = 0
+		'			Dim m_wParam2 As Long
+		'			m_wParam2 = wParam
+		'			wParam = 0
+		'			WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
+		'			wParam = 0
+		'			
+		'			GetWindowRect(hWnd, r_Skin)
+		'			dc_Skin = GetWindowDC(hWnd)
+		'			
+		'			RefreshBtns (hWnd, m_wParam2)
+		'			
+		'			ReleaseDC (hWnd, dc_Skin)
+		'			'SendMessageAPI (hWnd, WM_NCLBUTTONDOWN, m_wParam2, 0&)
+				Case Else
+		'			If wParam <> 0 and wParam <> 4 Then _
+		'				GetInfoFromMenu ("Souris activйe :  " +STR$(hWnd) +", " +STR$(lParam) +", " +STR$(wParam))
+		'			WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
+			End Select
+			
+			
+    ''create a temporary region
+    'Ret = CreateEllipticRgn(0, 0, 1, 1)
+    ''copy the current clipping region into the temporary region
+    'GetClipRgn dc_Skin, Ret
+    'OffsetClipRgn dc_Skin, 10, 10
+    ''set the new window region
+    'SetWindowRgn hWnd, Ret, 1
+			
+			
+			'hRgn = CreateRectRgn(r_Skin.Left, r_Skin.Top +20, r_Skin.Right, r_Skin.Bottom) 'CreateRectRgnIndirect(0&)
+            'ValidateRgn(hWnd, hRgn)
+			WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
+            '$TypeCheck Off
+            'ValidateRect(hWnd, ByVal 0&)
+            '$TypeCheck On
+            'ValidateRgn(hWnd, hRgn)
+            DeleteObject hRgn
+			ReleaseDC (hWnd, dc_Skin)
+		Case WM_NCMOUSEMOVE, WM_MOUSEMOVE ', WM_NCHITTEST, WM_MOUSEMOVE
+			Select Case wParam
+				Case HTMINBUTTON
+					If btnState <> 3 and btnState <> 6 Then
+						GetWindowRect(hWnd, r_Skin)
+						dc_Skin = GetWindowDC(hWnd)
+						DrawButtons(hWnd, wParam)
+						DrawHotStateBtns (hWnd, wParam)
+						ReleaseDC (hWnd, dc_Skin)
+						btnState = 3
+					End If
+				Case HTMAXBUTTON
+					If btnState <> 2 and btnState <> 5 Then
+						GetWindowRect(hWnd, r_Skin)
+						dc_Skin = GetWindowDC(hWnd)
+						DrawButtons (hWnd, wParam)
+						DrawHotStateBtns (hWnd, wParam)
+						ReleaseDC (hWnd, dc_Skin)
+						btnState = 2
+					End If
+				Case HTCLOSE
+					If btnState <> 1 and btnState <> 4 Then
+						GetWindowRect(hWnd, r_Skin)
+						dc_Skin = GetWindowDC(hWnd)
+						DrawButtons (hWnd, wParam)
+						DrawHotStateBtns (hWnd, wParam)
+						ReleaseDC (hWnd, dc_Skin)
+						btnState = 1
+					End If
+		'		Case 10 To 18
+		'			Dim m_wParam As Long
+		'			m_wParam = wParam
+		'			wParam = 0
+		'			WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
+		'			wParam = 0
+		'			'GetInfoFromMenu ("WM_NCHITTEST :  " +STR$(hWnd) +", " +STR$(lParam) +", " +STR$(wParam))
+		'			
+		'			GetWindowRect(hWnd, r_Skin)
+		'			dc_Skin = GetWindowDC(hWnd)
+		'			
+		'			RefreshBtns (hWnd, m_wParam)
+		'			
+		'			ReleaseDC (hWnd, dc_Skin)
+		'			'WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
+				Case Else
+					If btnState > 0 Then
+						GetWindowRect(hWnd, r_Skin)
+						dc_Skin = GetWindowDC(hWnd)
+						DrawButtons(hWnd, wParam)
+						ReleaseDC (hWnd, dc_Skin)
+						btnState = 0
+					End If
+		'			GetInfoFromMenu ("WM_NCHITTEST :  " +STR$(wParam))
+					'WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
+		'			If wParam <> 0 and wParam <> 2 and wParam <> 3 and wParam <> 8 and wParam <> 9 and wParam <> 20 Then _
+		'				GetInfoFromMenu ("WM_NCHITTEST :  " +STR$(hWnd) +", " +STR$(lParam) +", " +STR$(wParam))
+			End Select
+			WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
+        'Case WM_SIZE
+		'	WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
+		'	SendMessageAPI hWnd, WM_NCPAINT, 0, 0
+		Case WM_SETCURSOR
+			Dim HtPlus As Long
+			Dim lStyle As Long, _
+				lNewStyle As Long
+			If hWnd = wParam Then
+				HtPlus = VAL(Right$(hex$(lParam), 2))
+				Select Case HtPlus
+					Case 0, 10 To 18
+						' Sans ceci, Windows redessine la zone de la barre de titre
+						' ainsi que les btns rйduire/agrandir/fermer chaque fois que
+						' la souris est relвchйe suivant un йvйnement appuyй NC.
+
+	    				lStyle = GetWindowLong(hWnd, GWL_STYLE)
+						lNewStyle = lStyle And Not WS_VISIBLE
+						SetWindowLong (hWnd, GWL_STYLE, lNewStyle)
+						CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
+						'WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
+						SetWindowLong (hWnd, GWL_STYLE, lStyle)
+						GetInfoFromMenu ("WM_SETCURSOR :  " +STR$(HtPlus))
+					Case Else
+						WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
+				End Select
+			Else
+				WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
+			End If
+			' If we don't catch this the controlbox area
+            ' will show an ugly flicker.
+            'Dim hRgn As Long
+			'GetWindowRect(hWnd, r_Skin)
+			'dc_Skin = GetWindowDC(hWnd)
+            'Select Case HtPlus
+            '    Case HTTOP, HTBOTTOM
+            '        GetInfoFromMenu ("WM_SETCURSOR :  " +STR$(HtPlus))
+            '    	'$TypeCheck Off
+            '        'SetCursor LoadCursor(ByVal 0&, IDC_SIZENS)
+            '    	'$TypeCheck On
+            '		'SelectClipRgn (dc_Skin, hRgn)
+            '    Case HTLEFT, HTRIGHT
+            '        GetInfoFromMenu ("WM_SETCURSOR :  " +STR$(HtPlus))
+            '    	'$TypeCheck Off
+            '        'SetCursor LoadCursor(ByVal 0&, IDC_SIZEWE)
+            '    	'$TypeCheck On
+            '		'SelectClipRgn (dc_Skin, hRgn)
+            '    Case HTTOPLEFT, HTBOTTOMRIGHT
+            '        GetInfoFromMenu ("WM_SETCURSOR :  " +STR$(HtPlus))
+            '    	'$TypeCheck Off
+            '        'SetCursor LoadCursor(ByVal 0&, IDC_SIZENWSE)
+            '    	'$TypeCheck On
+            '		'SelectClipRgn (dc_Skin, hRgn)
+            '    Case HTTOPRIGHT, HTBOTTOMLEFT
+            '        GetInfoFromMenu ("WM_SETCURSOR :  " +STR$(HtPlus))
+            '    	'$TypeCheck Off
+            '        'SetCursor LoadCursor(ByVal 0&, IDC_SIZENESW)
+            '    	'$TypeCheck On
+            '		'SelectClipRgn (dc_Skin, hRgn)
+            '    'Case 18
+            '    '    GetInfoFromMenu ("WM_SETCURSOR :  " +STR$(HtPlus))
+            '	'	'SelectClipRgn (dc_Skin, hRgn)
+            '	Case 0
+            '       	GetInfoFromMenu ("WM_SETCURSOR :  " +STR$(HtPlus) +" vs " +STR$(lParam) +" vs " +STR$(wParam))
+            '    Case Else
+            '        ' Let Windows handle this one.
+            '        'If HtPlus <> 4 Then
+            '        	'WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
+            '        'End If
+            'End Select
+			'hRgn = CreateRectRgnIndirect(0&)
+            'ProtectFromDrawing
+            'WindowProc = 1
+            'WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
+            '$TypeCheck Off
+            'ValidateRect(hWnd, ByVal 0&)
+            '$TypeCheck On
+            'ValidateRgn(hWnd, hRgn)
+            'DeleteObject hRgn
+			'ReleaseDC (hWnd, dc_Skin)
+		Case Else
+			WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
+	End Select
+	'WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
+
+END FUNCTION
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] QFuncLib.inc (тела)
+Function GetFileName(file as string) as string
+ result=RIGHT$(file,Len(file)-RINSTR(file,"\"))
+End Function
+Function GetPathName(file as string) as string
+  result=LEFT$(file,RINSTR(file,"\")-1)
+End Function
+Function GetFileExt(file as string) as string
+  result=RIGHT$(file,Len(file)-RINSTR(file,"."))
+End Function
+function RemoveChar$(s as string,char as string) as string
+  dim source as string  
+
+  if s<>"" then
+    source=s
+    while instr(source,char)<>0
+      source=left$(source,instr(source,char)-1)+mid$(source,instr(source,char)+len(char))
+    wend
+    result=source
+  end if
+end function
+Function Trim_$(s as string) as string
+  Result=LTRIM$(RTRIM$(s))
+End Function
+function Ratio(Value1 as double,Value2 as double) as double
+  Result=((Value1-Value2)*100)/Value1
+end function
+function GetRadian(degrees as double) as double
+  Result=degrees*(Pi/180)
+end function
+function GetDegrees(radian as double) as double
+  Result=radian*(180/Pi)
+end function
+function Distance(x as double,y as double) as double
+  Result=SQR(x^2+y^2)
+end function
+function Surface(Width as double,Height as double) as double
+  Result=Width*Height
+end function
+function GetBlue(Color as long) as long
+    Result=int(Color/65536)
+end function
+function GetRed(Color as long) as long
+    dim blue as long
+    dim green as long     
+
+    blue=int(Color/65536)
+    green=int((Color-(blue*65536))/256)
+    Result=int(Color-(blue*65536)-(green*256))
+end function
+function GetGreen(Color as long) as long
+    dim blue as long
+
+    blue=int(Color/65536)
+    Result=int((Color-(blue*65536))/256)
+end function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] QPoint.inc (тела)
+Sub Point(FPoint as QPoint, x as long, y as long)
+FPoint.X = x
+FPoint.Y = y
+End Sub
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] QXLS.INC (тела)
+FUNCTION xlsOPEN
+Result=-1&: xFinish=0??: sERR=""
+IF (b<0&) OR (b>MaxBooks&) THEN sERR="Book out of range": Exit Function
+ClearBookData
+IF FILEEXISTS(FileSpec(b))<=0& THEN sERR="File not found": Exit Function
+ReadOLEFile
+IF sERR<>"" THEN Goto OpenFail
+M(b).Position=0&
+FindBOF:
+'GetRecord
+xCode=M(b).ReadNum(2&): xLength=M(b).ReadNum(2&): xNext=M(b).Position+xLength
+IF xCode=xBOF?? THEN
+  xNext=M(b).Position-4&
+  IF xNext>0& THEN Call ShiftBook(0&,-xNext): xNext=0&
+  P(b,0&,0&)=0&: Goto NextParse
+ELSE
+  M(b).Position=M(b).Position+&H3C
+  IF M(b).Position<M(b).Size THEN Goto FindBOF   
+  sERR="BOF not found": Goto OpenFail
+END IF
+NextOpen:
+xPosition=M(b).Position  ': GetRecord
+xCode=M(b).ReadNum(2&): xLength=M(b).ReadNum(2&): xNext=M(b).Position+xLength
+SELECT CASE xCode
+CASE xBOF??
+  GetData
+  IF B2W(0&)<>&H600 THEN sERR="Not BIFF8 file": Goto OpenFail
+  IF B2W(2&)<>5?? THEN
+    IF nSR(b)<MaxSheets& THEN INC(nSR(b)) ELSE sERR="Too many sheets": Goto OpenFail
+    IF xPosition<>P(b,nSR(b),0&) THEN sERR="File format read error": Goto OpenFail
+  END IF
+  P(b,nSR(b),pOFFSET&)=xPosition
+CASE xEOF??
+  P(b,nSR(b),pLENGTH&)=M(b).Position-P(b,nSR(b),pOFFSET&)
+  IF nSR(b)=nSheets(b) THEN xFinish=1?? 'accounted for all BOUNDSHEETs
+' WorkBook Globals
+CASE xFILEPASS??
+  IF xLength<>0?? THEN sERR="File password required": Goto OpenFail
+CASE xPASSWORD??
+  IF xLength<>2?? THEN sERR="Password required": Goto OpenFail
+CASE xBOUNDSHEET??
+  IF nSheets(b)<MaxSheets& THEN INC(nSheets(b)) ELSE sERR="Too many sheets": Goto OpenFail
+  P(b,nSheets(b),pSHEET&)=xPosition: GetData
+  MEMCPY(VARPTR(P(b,nSheets(b),pOFFSET&)),VARPTR(buf(0&)),4&)
+  k=buf(6&)+(256& * buf(7&))+7&: s$=""
+  FOR i=8& to k: s$=s$+CHR$(buf(i)): NEXT i
+  SheetName(b,nSheets(b))=s$
+CASE xSST??
+  IF SST(b,0&,0&)<>0& THEN sERR="Multiple SST records": Goto OpenFail
+  SST(b,0&,0&)=xPosition+12&
+  M(b).Position=M(b).Position+4&: tSST(b)=M(b).ReadNum(4&) 'Total SST strings
+  nSST(b)=0&: j=0&: k=0&
+  IF tSST(b)=0& THEN Goto CheckSSTtotal
+  CountStrings:
+'  xTmp=StrRecLen
+   sLength=M(b).ReadNum(2&): xTmp=sLength
+   sCode=0??: sCode=M(b).ReadNum(1&)
+   IF (sCode AND 1)>0?? THEN sLength=2??*sLength: xTmp=sLength 'String not compressed
+   IF (sCode AND 8)>0?? THEN xTmp=M(b).ReadNum(2&): xTmp=sLength+4&*xTmp 'RichString
+   IF (sCode AND 4)>0?? THEN i=M(b).ReadNum(4&): xTmp=xTmp+i  'Far East
+'
+  M(b).Position=M(b).Position+xTmp: INC(k)
+  IF j+k>=tSST(b) THEN Goto EndofBlock
+  IF M(b).Position<xNext THEN Goto CountStrings
+  EndofBlock:
+  xTmp=0&
+  'Check if some lamer wrote a string across records.  Thus...
+  IF M(b).Position>xNext THEN xTmp=M(b).Position-xNext+1
+  SST(b,nSST(b),1&)=k: SST(b,nSST(b),2&)=M(b).Position: j=j+k: k=0&
+  IF j>=tSST(b) THEN Goto CheckSSTTotal
+  IF M(b).Position>P(b,1&,0&) THEN Goto CheckSSTTotal
+  M(b).Position=xNext ': GetRecord
+  xCode=M(b).ReadNum(2&): xLength=M(b).ReadNum(2&): xNext=M(b).Position+xLength
+  IF xCode=xCONTINUE?? THEN 
+    IF nSST(b)=MaxSST& THEN sERR="MaxSST& too small": Goto OpenFail
+    INC(nSST(b)): M(b).Position=M(b).Position+xTmp  'ptr to 1st in record
+    SST(b,nSST(b),0&)=M(b).Position: Goto CountStrings
+  END IF
+  CheckSSTTotal:
+  IF j<>tSST(b) THEN sERR="SST total mismatch "+STR$(j)+" "+STR$(tSST(b))+" at "+HEX$(M(b).Position): Goto OpenFail
+  IF xIntegrity=0& THEN xNext=P(b,1&,pOFFSET&)-4& '->next EOF
+' WorkSheet Data  
+CASE xDIMENSIONS??
+  P(b,nSR(b),pDIMENSIONS&)=xPosition
+  P(b,nSR(b),pminROW&)=M(b).ReadNum(4&): P(b,nSR(b),pmaxROW&)=M(b).ReadNum(4&)
+  P(b,nSR(b),pminCOL&)=M(b).ReadNum(2&): P(b,nSR(b),pmaxCOL&)=M(b).ReadNum(2&)
+  IF xIntegrity=1& THEN Goto NextParse
+  IF nSR(b)<nSheets(b) THEN xNext=P(b,nSR(b)+1&,pOFFSET&)-4&: Goto NextParse 'Next BOF-4
+  i=P(b,0&,1&)
+  IF (i>4096&) AND (i>M(b).Position) THEN xNext=P(b,0&,1&)-4&  'BIFF8 length-4
+END SELECT
+NextParse:
+M(b).Position=xNext
+IF xFinish=1?? Then Goto OpenDone 
+IF M(b).Position<(M(b).Size-4&) Then Goto NextOpen
+sERR="Unexpected end of file"
+OpenFail:
+'ClearBookData
+M(b).Close: Exit Function
+OpenDone:
+Result=nSR(b)
+END FUNCTION
+FUNCTION xlsSAVE(file As STRING) As LONG
+DIM FAT(4&) As LONG
+Result=-1&: sERR=""
+IF FILEEXISTS(file)<=0& THEN F.Open(file,fmCreate) ELSE F.Open(file,2&)
+IF FILEEXISTS("qxls.dat")<=0& THEN ExtractResource(Resource(1&),"qxls.dat"):DoEvents
+F2.Open("qxls.dat",0&)
+M(b).Position=0&: F.Position=0&
+F.CopyFrom(F2,80&): FillFile(-1&,&H200) 'OLE header
+FAT(0&)=P(b,0&,1&)  'file length
+For i=0& to FAT(0&)-1& Step 8&
+xiEEE=M(b).ReadNum(8&):F.WriteNum(xiEEE,8&): NEXT i
+IF FAT(0&)>&H1000 THEN Call FillFile(0&,&H200) ELSE Call FillFile(0&,&H1000)
+FAT(1&)=F.Position: i=1&: xPosition=(F.Position-&H200)\&H200 'ptr to FAT
+WriteFATentry:
+IF i<xPosition THEN F.WriteNum(i,4&): INC(i): Goto WriteFATentry
+F.WriteNum(-2&,4&)
+j=(F.Position-FAT(1&))\&H200+1& '# of FAT sectors
+j=j+(j+2&)\128&
+For i=1& to j: F.WriteNum(-3&,4&): NEXT i
+CheckFATCount:
+k=(F.Position-FAT(1&))\&H200+1&
+IF k>j THEN F.WriteNum(-3&,4&): xTmp=F.Position
+F.WriteNum(-2&,4&): FillFile(-1&,&H200)
+FAT(4&)=(F.Position-FAT(1&))\&H200  'final update of # FAT sectors
+IF FAT(4&)>k THEN F.Position=xTmp: j=k-1&: Goto CheckFATCount
+xInt=(F.Position-&H200)\&H200     'ptr to DIR
+xTmp=F.Position: F2.Position=&H50
+F.CopyFrom(F2,512&) 'ole directory
+IF FAT(0&)<&H1000 THEN i=&H1000 ELSE i=FAT(0&)
+F.Position=xTmp+&HF8: F.WriteNum(i,4&) 'length
+F.Position=&H2C: F.WriteNum(FAT(4&),4&) 'put # of FAT sectors
+F.Position=&H30: F.WriteNum(xInt,4&)   'put DIR ptr
+F.Position=&H4C: i=xPosition: xNext=&H200
+WriteFATindex:
+F.WriteNum(i,4&): INC(i)
+IF F.Position<>xNext THEN Goto FATindexDone
+IF F.Position=&H200 THEN
+  F.Position=&H44: F.WriteNum(xInt+1&,4&)
+  F.Position=(xInt+2&)*&H200: xNext=F.Position+&H1FC 
+ELSE
+  j=(F.Position+4&)\&H200-1&: F.WriteNum(j,4&): xNext=F.Position+&H1FC
+END IF
+FATindexDone:
+IF i<xInt THEN Goto WriteFATindex
+FillFile(-1&,&H200)  
+IF FAT(4&)>109& THEN i=(FAT(4&)-109&)\128&+1&: F.Position=&H48: F.WriteNum(i,4&)
+Result=F.Size
+F.Close: F2.Close
+END FUNCTION
+FUNCTION xlsREAD(s As LONG, row As LONG, col As LONG) As STRING
+DIM r As WORD, c As WORD, strindex As WORD
+Result="": sERR=""
+IF (b>MaxBooks&) OR (s>nSR(b)) THEN sERR="Book or sheet index too big": Exit Function
+IF (row<P(b,s,pminROW&)) OR (row>=P(b,s,pmaxROW&)) THEN sERR="Row out of bounds": Exit Function
+IF (col<0&) OR (col>255&) THEN sERR="Col out of bounds": Exit Function
+M(b).Position=P(b,s,pOFFSET&)+20&     'index record
+xEnd=P(b,s,pOFFSET&)+P(b,s,pLENGTH&)  'end of sheet
+'Find row block
+'GetRecord
+GetIndexRecord:
+xCode=M(b).ReadNum(2&): xLength=M(b).ReadNum(2&): xNext=M(b).Position+xLength
+ptrINDEXEnd=xNext
+IF xCode=xINDEX?? THEN Goto CheckIndex
+M(b).Position=xNext
+IF xNext<xEnd THEN Goto GetIndexRecord ELSE sERR="Index not found": Exit Function '&H208
+CheckIndex:
+i=M(b).Readnum(4&)
+IF i<>0& THEN sERR="Bad Index record format": Exit Function
+i=M(b).Readnum(4&)
+IF i<>P(b,s,pminROW&) THEN sERR="Index and Dimensions disagree": Exit Function
+j=M(b).Readnum(4&)
+IF j<>P(b,s,pmaxROW&) THEN sERR="Index and Dimensions disagree": Exit Function
+j=4& * ((row-i)\32&)+4&
+IF j+12&>xLength THEN sERR="Index record too short": Exit Function
+ptrINDEX=M(b).Position+j: M(b).Position=ptrINDEX: i=M(b).ReadNum(4&)
+IF i<0& THEN sERR="Neg index pointer": Exit Function
+IF i>xEnd THEN sERR="Bad index pointer": Exit Function
+M(b).Position=i: xEnd=i
+'GetRecord
+xCode=M(b).ReadNum(2&): xLength=M(b).ReadNum(2&): xNext=M(b).Position+xLength
+IF xCode<>xDBCELL?? THEN sERR="DBCell not found": Exit Function
+ptrDBOffset=M(b).Position: xTmp=xNext: GetData
+MEMCPY(VARPTR(i),VARPTR(buf(0&)),4&) 'neg offset to first cell data record
+j=xEnd-i+20&: k=0&: i=0&: M(b).Position=j-20&
+GetRowRecord:
+ptrROW=M(b).Position
+'GetRecord
+xCode=M(b).ReadNum(2&): xLength=M(b).ReadNum(2&): xNext=M(b).Position+xLength
+IF xCode<>xROW?? THEN sERR="Row record not found": Exit Function
+k=k+buf(2&*i+4&)+256& * buf(2&*i+5&): r=M(b).ReadNum(4&)
+IF r<row THEN M(b).Position=xNext: INC(i): Goto GetRowRecord
+ptrDB=xEnd+10&+2&*i
+IF ptrDB>=xTmp THEN ptrDB=0&
+IF r>row THEN sERR="Row not defined": Exit Function
+i=j+k: M(b).Position=i: xPosition=i
+IF (i<ptrROW) OR (i>xEnd) THEN sERR="No cell record": Exit Function
+NextRead:
+xPosition=M(b).Position
+'GetRecord
+xCode=M(b).ReadNum(2&): xLength=M(b).ReadNum(2&): xNext=M(b).Position+xLength
+SELECT CASE xCODE
+  CASE xSTRING??, xARRAY??, xSHRFMLA??, &H4BC, xCONTINUE??
+  Goto KeepMoving
+END SELECT
+GetData: r=buf(0&)+256&*buf(1&)
+IF r<>row THEN sERR="Col not found/defined": Exit Function
+c=buf(2&)+256&*buf(3&)
+IF c>col THEN Exit Function  'columns to left were blank/not defined
+IF (c<col) AND (xCode<>xMULRK??) THEN Goto KeepMoving
+xFormat=buf(4&)+256&*buf(5&): wPosition=xPosition
+CellType:
+SELECT CASE xCode
+CASE xLABELSST??
+  strindex=buf(6&)+256&*buf(7&): k=0&: i=0&
+  FindSSTRecord:
+  j=k: k=k+SST(b,i,1&)
+  IF strindex<k THEN Goto FindString
+  IF i<nSST(b) THEN INC(i): Goto FindSSTRecord
+  sERR="Index>no. strings": Exit Function
+  FindString:
+  M(b).Position=SST(b,i,0&): xNext=SST(b,i,2&)
+  SSTString:
+'  xTmp=StrRecLen
+   sLength=M(b).ReadNum(2&): xTmp=sLength
+   sCode=0&: sCode=M(b).ReadNum(1&)
+   IF (sCode AND 1??)>0& THEN sLength=2??*sLength: xTmp=sLength 'String not compressed
+   IF (sCode AND 8??)>0& THEN xTmp=M(b).ReadNum(2&): xTmp=sLength+4&*xTmp 'RichString
+   IF (sCode AND 4??)>0& THEN i=M(b).ReadNum(4&): xTmp=xTmp+i  'Far East
+'
+  IF j<>strindex THEN Goto NextSSTEntry
+  GetUnicodeNow:
+  xUnicode=M(b).Position+M(b).Pointer: s$=""
+  FOR i=1& to sLength
+  'Check if string written across a CONTINUE record
+  IF M(b).Position=xNext THEN M(b).Position=M(b).Position+5
+  xB1=M(b).ReadNum(1&)
+  'for 16-bit char and NOT (Far East OR Rich Text), get odd bytes only 
+  IF sCode=1?? THEN
+    xB2=M(b).ReadNum(1&): INC(i)
+    SELECT CASE xB2
+    CASE 4? 'RUSSIAN
+    IF xB1=1? THEN j=167& ELSE j=176&
+    IF xB1=81? THEN j=103&
+    xB1=xB1+j
+    END SELECT
+  END IF
+  s$=s$+CHR$(xB1)
+  NEXT i
+  Result=s$: xType=-1&: Exit Function
+  NextSSTEntry:
+  INC(j): M(b).Position=M(b).Position+xTmp
+  IF M(b).Position>P(b,1&,pOFFSET&) THEN sERR="SST read error": Exit Function
+  Goto SSTString
+CASE xRK??, &H7E
+  MEMCPY(VARPTR(RK),VARPTR(buf(6&)),4&)
+  Result=RK2str: Exit Function
+CASE xNUMBER??
+  xIEEEnumber:
+  MEMCPY(VARPTR(xIEEE),VARPTR(buf(6&)),8&)
+  Result=STR$(xIEEE): xType=4&: Exit Function
+CASE xMULRK??
+  IF c>col THEN Goto KeepMoving
+  i=6&  'first RK in buf
+  NextMULRK:
+  IF (c<col) AND (i+6<xLength) THEN INC(c): i=i+6&: Goto NextMULRK
+  IF c=col THEN
+    MEMCPY(VARPTR(RK),VARPTR(buf(i)),4&): ptrData=xPosition+i+4&
+    Result=RK2str: Exit Function
+  END IF
+CASE xBLANK??
+  sERR="#BLANK": Exit Function
+CASE xLABEL??
+  M(b).Position=xPosition+10&: xTmp=StrRecLen: Goto GetUnicodeNow
+CASE xBOOLERR??
+  sERR="#BOOLERR": Exit Function
+CASE xFORMULA??, &H6, &H406
+  xTmp=buf(12&)+256&*buf(13&): sERR="#FORMULA"
+  IF (buf(6&)=0&) AND (xTmp=&HFFFF) THEN 
+    M(b).Position=xNext  'Return value in next record
+'    GetRecord
+    xCode=M(b).ReadNum(2&): xLength=M(b).ReadNum(2&): xNext=M(b).Position+xLength
+    GetData
+    SELECT CASE xCODE
+      CASE xARRAY??, xSHRFMLA??, &H4BC
+      M(b).Position=xNext ': GetRecord
+      xCode=M(b).ReadNum(2&): xLength=M(b).ReadNum(2&): xNext=M(b).Position+xLength
+      GetData: Goto CellType
+    END SELECT
+    Goto CellType
+  END IF
+  IF (buf(6&)=1?) AND (xTmp=&HFFFF) THEN Result=STR$(buf(8&)): xType=2&: Exit Function
+  Goto xIEEEnumber 
+CASE xMULBLANK??
+CASE xSTRING??
+  sLength=buf(0&)+256&*buf(1&): s$=""
+  FOR i=1& to sLength: s$=s$+CHR$(buf(i+2&)): NEXT i
+  Result=s$: xType=-1&: Exit Function
+CASE xWINDOW2??: Exit Function
+CASE xSELECTION??: Exit Function
+CASE xDBCELL??: sERR="Cell not found": Exit Function
+CASE xRSTRING??: sERR="#RSTRING obsolete in BIFF8": Exit Function
+CASE ELSE
+  sERR="#"+RIGHT$(HEX$(xCode),4&)+" unexpected record code": Exit Function
+END SELECT
+KeepMoving:
+M(b).Position=xNext
+IF M(b).Position<=xEnd-4& THEN Goto NextRead
+END FUNCTION
+FUNCTION xlsWRITE(s As LONG, row As LONG, col As LONG, value As STRING) As LONG
+DIM wr As LONG, wc As LONG, ws As LONG, wInt As LONG
+DIM wType As LONG, wLength AS WORD
+DIM xSingle As SINGLE
+DIM r$ As STRING
+Result=-1&: sERR=""
+IF row>P(b,s,pMaxROW&) THEN sERR="Row not found": Exit Function
+wr=row: wc=col: ws=s: wType=-1&: wLength=LEN(value)
+IF wLength=0 THEN wType=-2&: Goto MakeRecord  'null string->BLANK
+FOR i=1& to wLength: s$=MID$(value,i,1&)
+IF (s$>"9") OR (s$<"-") OR (s$="\") THEN Goto MakeRecord
+NEXT i
+s$=value: i=TALLY(s$,".")
+IF i>1& THEN Goto MakeRecord
+j=TALLY(s$,"-")
+IF j>1& then Goto MakeRecord
+IF (j>0&) AND (LEFT$(s$,1&)<>"-") THEN Goto MakeRecord '"-" not first char
+wType=4&: xIEEE=VAL(s$)
+IF (wlength-i-j)>6& THEN Goto MakeRecord
+IF (xIEEE>536870911.0#) OR (xIEEE<-536870912.0#) THEN Goto NotInteger
+IF i=0& THEN wInt=INT(xIEEE): wType=2&: Goto MakeRecord
+IF INSTR(1&,s$,".")<wLength-2& THEN Goto NotInteger
+IF (xIEEE>5368709.11#) OR (xIEEE<-5368709.12#) THEN Goto NotInteger
+wInt=INT(xIEEE*100#): wType=3&: Goto MakeRecord 'x 100
+
+NotInteger:
+IF (xIEEE<-(1.5E-45)) OR (xIEEE>(3.4E+38)) THEN Goto MakeRecord
+xSingle=xIEEE
+IF (xSingle AND &HC0000000)=0& THEN wType=0& 
+
+MakeRecord:
+'Check if record already there
+ptrINDEXEnd=0&: ptrINDEX=0&: ptrDBOffset=0&: ptrROW=0&: ptrDB=0&: ptrData=0&: wPosition=0&
+r$=xlsREAD(ws, wr, wc)  'if record exists, xPosition to xNext-1 is field
+IF (r$="") AND (LEFT$(sERR,1&)<>"#") THEN xLength=0 ELSE xLength=xLength+4
+MEMSET(VARPTR(buf(0&)),0&,4&)
+buf(4&)=wr MOD 256&: buf(5&)=wr\256&: buf(6&)=wc MOD 256&: buf(7&)=wc\256&
+IF xFormat=0& THEN xFormat=&HF
+buf(8&)=xFormat MOD 256&: buf(9&)=xFormat\256&
+SELECT CASE wType
+  CASE -2&: buf(0&)=1?: buf(1&)=2?: buf(2&)=6?
+  CASE -1&: buf(0&)=4?: buf(1&)=2?
+    buf(10&)=wLength MOD 256&: buf(11&)=wLength\256&: buf(12&)=0?
+    buf(2&)=(9&+wLength) MOD 256&: buf(3&)=(9&+wLength)\256&
+    FOR i=1& to wLength: buf(12&+i)=ASC(MID$(value,i,1&)): NEXT i
+  CASE 0&, 1&, 2&, 3&: buf(0&)=xRK??: buf(1&)=2?: buf(2&)=10?
+    IF wType=1& THEN xSingle=100.0!*xSingle
+    IF (wType AND 2&)>0& THEN RK=wInt SHL 2& ELSE MEMCPY(VARPTR(RK),VARPTR(xIEEE)+4&,4&)   
+    RK=(RK AND xRKEncoded&) OR wType
+    MEMCPY(VARPTR(buf(10&)),VARPTR(RK),4&) 
+  CASE 4&: buf(0&)=xNUMBER??: buf(1&)=2?: buf(2&)=14?: MEMCPY(VARPTR(buf(10&)),VARPTR(xIEEE),8&) 
+END SELECT
+wLength=4??+buf(2&)+256??*buf(3&)
+wInt=wLength-xLength
+IF wInt=0 THEN Goto xPutNew
+IF xCode=xMULRK?? THEN M(b).Position=ptrData: M(b).WriteNum(RK,4&): Goto xWriteDone
+SELECT CASE sERR
+  CASE "Row not defined","Col out of bounds": Exit Function
+  CASE ELSE: wPosition=xPosition
+END SELECT
+
+'Update column data
+IF wc<P(b,ws,pminCOL&) THEN
+  P(b,ws,pminCOL&)=wc: xTmp=P(b,ws,pDIMENSIONS&)+12&
+  M(b).Position=xTmp: M(b).WriteNum(wc,2&)
+END IF
+IF wc>P(b,ws,pmaxCOL&)-1& THEN
+  P(b,ws,pmaxCOL&)=wc+1&: xTmp=P(b,ws,pDIMENSIONS&)+14&
+  M(b).Position=xTmp: M(b).WriteNum(wc+1&,2&)
+END IF
+IF ptrROW=0& THEN Goto FileLength
+M(b).Position=ptrROW+6&: sCode=M(b).ReadNum(2&)
+IF wc<sCode THEN M(b).Position=ptrROW+6&: M(b).WriteNum(wc,2&)
+M(b).Position=ptrROW+8&: sCode=M(b).ReadNum(2&)
+IF wc>=sCode THEN M(b).Position=ptrROW+8&: M(b).WriteNum(wc+1&,2&)
+
+FileLength:
+P(b,0&,1&)=P(b,0&,1&)+wInt
+ChangeValue(P(b,ws,pOFFSET&)+36&,4&,wInt) 'change ptr needed by Excel
+UpdateINDEX:
+ChangeValue(ptrINDEX,4&,wInt): ptrINDEX=ptrINDEX+4&
+IF ptrINDEX<ptrINDEXEnd THEN Goto UpdateINDEX
+SheetPointers(ws,wInt)
+ChangeValue(ptrDBOffset,4&,wInt)
+IF ptrDB>0& THEN ChangeValue(ptrDB,2&,wInt)
+
+IF wInt>0& THEN ShiftBook(wPosition,wInt) ELSE ShiftBook(wPosition+wLength,wInt)
+xPutNew:
+MEMCPY(wPosition+M(b).Pointer,VARPTR(buf(0&)),wLength)
+xWriteDone:
+IF wLength>0& THEN sERR=""
+Result=wLength
+END FUNCTION
+SUB SheetPointers(s As LONG, nbytes As LONG)
+i=s+1&: j=nbytes
+CheckSheetNumber:
+IF i>nSR(b) THEN Exit Sub
+ChangeValue(P(b,i,pSHEET&)+4&,4&,j)
+M(b).Position=P(b,i,pOFFSET&)+20&
+'GetRecord
+xCode=M(b).ReadNum(2&): xLength=M(b).ReadNum(2&): xNext=M(b).Position+xLength
+k=P(b,i,pOFFSET&)+36&
+UpdateINDEX2:
+ChangeValue(k,4&,j): k=k+4&
+IF k<xNext THEN Goto UpdateINDEX2
+P(b,i,pOFFSET&)=P(b,i,pOFFSET&)+j: P(b,i,pDIMENSIONS&)=P(b,i,pDIMENSIONS&)+j 
+INC(i): Goto CheckSheetNumber
+END SUB
+SUB ChangeValue(ptr As LONG, blen As LONG, nbytes As LONG)
+M(b).Position=ptr: xTmp=M(b).ReadNum(blen)
+xTmp=xTmp+nbytes
+M(b).Position=ptr: M(b).WriteNum(xTmp,blen) 
+END SUB
+FUNCTION xlsSHEETNAME(s As LONG) As STRING
+Result=SheetName(b,s) 
+END FUNCTION
+FUNCTION xlsMINROW(s As LONG) As LONG
+Result=P(b,s,pminROW&)
+END FUNCTION
+FUNCTION xlsMAXROW(s As LONG) As LONG
+Result=P(b,s,pmaxROW&)-1&
+END FUNCTION
+FUNCTION xlsMINCOL(s As LONG) As LONG
+Result=P(b,s,pminCOL&)
+END FUNCTION
+FUNCTION xlsMAXCOL(s As LONG) As LONG
+Result=P(b,s,pmaxCOL&)-1&
+END FUNCTION
+FUNCTION xlsSHEETLENGTH(s As LONG) As LONG
+Result=P(b,s,pLENGTH&)
+END FUNCTION
+FUNCTION xlsNUMBERSHEETS
+Result=nSR(b)
+END FUNCTION
+FUNCTION xlsCLOSE
+Result=-1&
+IF (b<0&) OR (b>MaxBooks&) THEN Exit Function
+M(b).Close: ClearBookData: Result=b
+END FUNCTION
+SUB GetRecord
+xCode=M(b).ReadNum(2&): xLength=M(b).ReadNum(2&): xNext=M(b).Position+xLength
+END SUB
+SUB GetData
+Dim kmax As WORD
+IF xLength=0?? THEN Exit SUB
+kmax=MaxBytes&
+IF kmax>xLength-1?? THEN kmax=xLength-1??
+FOR i=0& to kmax: buf(i)=M(b).ReadNum(1&): Next i
+END SUB
+FUNCTION RK2str
+xType=RK AND &H3
+IF (RK AND xRKInteger&)>0& THEN   
+  xInt=RK SHR 2&
+  IF RK<0& THEN xInt=xInt OR &HC0000000
+  IF (RK AND xRKby100&)>0& THEN RK2str=STR$(xInt/100&) ELSE RK2Str=STR$(xInt)
+  Exit Function
+ELSE
+  MEMSET(VARPTR(xIEEE),0&,8&)
+  xInt=(RK AND xRKEncoded&)
+  MEMCPY(VARPTR(xIEEE)+4&,VARPTR(xInt),4&)
+  IF (RK AND xRKby100&)>0& THEN RK2str=STR$(xIEEE/100.0#) ELSE RK2Str=STR$(xIEEE)
+  Exit Function
+END IF
+END FUNCTION
+FUNCTION StrRecLen 'returns bytes from ptr to next record
+DIM kk As LONG 
+sLength=M(b).ReadNum(2&): kk=sLength
+sCode=0??: sCode=M(b).ReadNum(1&)
+IF (sCode AND 1??)>0& THEN sLength=2??*sLength: kk=sLength 'String not compressed
+IF (sCode AND 8??)>0& THEN kk=M(b).ReadNum(2&): kk=sLength+4&*kk 'RichString
+IF (sCode AND 4??)>0& THEN i=M(b).ReadNum(4&): kk=kk+i  'Far East
+StrRecLen=kk
+END FUNCTION
+FUNCTION B2W(index As LONG) AS WORD
+B2W=buf(index)+256??*buf(index+1&)
+END FUNCTION
+SUB ClearBookData
+nSheets(b)=0&: nSR(b)=0& : tSST(b)=0&: nSST(b)=0& 
+FOR i=0& to MaxSST&
+For j=0& to 2&: SST(b,i,j)=0&: NEXT j
+NEXT i
+FOR i=0& to MaxSheets&
+SheetName(b,i)=""
+FOR j=0& to NumVars&: P(b,i,j)=0&: NEXT j
+NEXT i
+END SUB
+SUB ReadOLEFile
+DIM FATlen As LONG, DIRptr As LONG, FATindex As LONG, FATptr As LONG
+DIM BB As LONG, NextFAT As LONG, ptrFATindex As LONG, EndFATindex As LONG
+DIM WBptr As LONG, FATseg As LONG
+F.Open(FileSpec(b),fmOpenRead)
+F.Position=&H1E: i=F.ReadNum(2&): BB=2&^i  'size of big block sectors
+F.Position=&H2C: FATlen=F.ReadNum(4&)
+F.Position=&H30: i=F.ReadNum(4&): DIRptr=i*BB+BB
+F.Position=&H44: FATindex=F.ReadNum(4&): INC(FATindex)
+'IF FATindex>0& THEN FATindex=FATindex*BB+BB 'FAT index exceeds OLE header
+M(b).Position=0&: ptrFATindex=&H4C: EndFATindex=BB 
+
+'Find Workbook entry
+WBptr=DIRptr
+F.Position=DIRptr+&H74: xInt=F.ReadNum(4&) 'may be offset into FAT
+IF (xInt<0&) OR (xInt>32&) THEN xInt=0&    'but only if it is positive and not too big
+FOR j=1& to 3&: WBptr=WBptr+&H80
+F.Position=WBptr: i=F.ReadNum(4&)
+IF i=&H6F0057 THEN Goto FoundWBptr
+NEXT j
+sERR="Workbook OLE directory entry not found": Exit Sub
+FoundWBptr:
+F.Position=WBptr+&H74: j=F.ReadNum(4&)
+IF j<=0& THEN j=xInt   'use the right offset into FAT
+P(b,0&,1&)=F.ReadNum(4&) 'BIFF8 size
+
+FOR k=1& to FATlen  'do a FAT sector
+'next we switch to FAT index extension, if applicable
+IF ptrFATindex>=EndFATindex THEN
+  ptrFATindex=FATindex*BB  'end of OLE header or FAT index sector
+  EndFATindex=ptrFATindex+BB
+  F.Position=EndFATindex-4&: FATindex=F.ReadNum(4&): INC(FATindex)
+END IF  
+
+F.Position=ptrFATindex: i=F.ReadNum(4&): ptrFATindex=ptrFATindex+4&
+IF i<0& THEN sERR="Bad FAT index": Exit Sub
+FATptr=i*BB+BB: xNext=FATptr+BB: FATseg=FATptr
+IF k=1& THEN FATptr=FATseg+j*4& 'offset into FAT
+
+IF ptrFATindex=EndFATindex THEN NextFAT=FATindex ELSE NextFAT=F.ReadNum(4&): INC(NextFAT)
+j=0& 
+
+GetFATPointer:
+IF FATptr>=xNext THEN Goto NextFATSector
+F.Position=FATptr: i=F.ReadNum(4&): FATptr=FATptr+4&
+IF j=0 THEN j=i-1&
+
+IF i=NextFAT THEN i=j+1&: Goto LoadSector
+SELECT CASE i
+CASE &HFFFFFFFF: j=0&: Goto GetFATPointer
+CASE &HFFFFFFFE  '-2 is EOF marker, but you read one more sector of user data
+  IF M(b).Size<2048& THEN  'this because short OLE-generated files have bad DIRptr
+    i=F.ReadNum(4&): j=i-1&: Goto LoadSector
+  END IF
+CASE &HFFFFFFFD: j=0&: Goto GetFATPointer 'inserted garbage; skip it
+CASE &HFFFFFFFC: j=0&: Goto GetFATPointer
+END SELECT
+
+LoadSector:
+INC(j): F.Position=j*&H200: M(b).CopyFrom(F,&H200)
+IF i=-2& THEN Goto LoadDone 'EOF
+IF i<>j THEN i=(i*4) MOD BB: FATptr=FATseg+i: j=0&
+Goto GetFATPointer
+
+NextFATSector:
+NEXT k
+
+LoadDone:
+P(b,0&,2&)=M(b).Size: F.Close
+IF P(b,0&,2&)<P(b,0&,1&) THEN sERR="All BIFF8 data not loaded"
+END SUB
+SUB FillFile(value As LONG, amt As LONG)
+FillFileDone:
+IF (F.Position-&H200) MOD amt=0& THEN Exit Sub
+F.WriteNum(value,4&): Goto FillFileDone
+END SUB
+SUB PrintSheetNames   'For CONSOLE application
+For i=0& to nSheets(b): Print SheetName(b,i)
+For j=0& to NumVars&: PRINT " "+RIGHT$(HEX$(P(b,i,j)),7&);: NEXT j
+PRINT: NEXT i
+END SUB
+SUB PrintSSTRecords
+PRINT "No. SST blocks=";STR$(nSST(b)+1&);" Strings in SST=";STR$(tSST(b))
+For j=0& to nSST(b): PRINT STR$(SST(b,j,1&))+" ";: Next j
+PRINT
+END SUB
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] registryVars.inc (тела)
+function floatVal( number as string) as single
+result = 0
+
+number = LTRIM$(RTRIM$(number))
+if Len(number) = 0  or  Val(number) = 0   then
+  exit function
+end if
+  
+point? = instr(number, ".")
+
+if point? > 0  then
+  decimal$ = Mid$(number, point?+1)
+  result = Val( Mid$(number, 1, point?-1) )+Val(decimal$)/10 ^ Len(decimal$)
+
+else
+  result = Val(number)
+end if
+end function     
+subi putMe(...)
+dim thisVar as varInfo
+
+if ParamValCount+ParamStrCount <> 3 then
+  print "Incorrect number of parameter(s).."  :  END
+end if
+  
+if paramStrCount = 2  then
+  thisVar.name   = paramSTR$(1)
+  thisVar.strVal = paramSTR$(2)
+  thisVar.primitive = paramVal(1)
+  
+elseif ParamValCount = 2 then
+  thisVar.name   = paramSTR$(1)
+  thisVar.strVal = Str$(paramVAL(1))
+  thisVar.primitive = paramVAL(2)
+  
+else
+  print "Expected (string, string, int) or (string, single, int) .."
+end if    
+
+varBuf.writeUDT(thisVar)
+end subi
+
+'----------
+function getMe(clave as string) as variant
+dim thisVar as varInfo
+count% = varBuf.size / sizeOf(thisVar)
+
+if count% = 0  then
+  result = ""  
+  exit function
+end if  
+
+r$ = ""
+p% = 0
+j% = 1
+
+size%  = varBuf.size
+varBuf.position = 0       'Start
+while varBuf.position < size%
+  varBuf.readUDT(thisVar)
+  
+  if clave = RTrim$(thisVar.name) then
+    r$ = thisVar.strVal
+    p% = 10     'Any
+    exit while
+  end if
+  
+  inc j%
+    if j% > count%  then
+    exit while
+  end if    
+wend
+
+if p% > 0  then
+  select case thisVar.primitive
+  case 0
+    result = r$
+  case 1   
+    result = floatVal(r$)
+  case else
+    'Other possible primitives    
+  end select
+else
+   result = ""  'Guess it..
+end if	
+end function
+sub closeit()
+  varBuf.close
+end sub  
+sub saveTofile( filename )
+dim file as qfilestream
+
+if file.open( filename, fmCreate) == FALSE  then
+  print "Cannot create file  " + filename
+end if
+
+file.CopyFrom(varBuf, 0)
+file.close
+end sub
+sub loadFromfile( filename )
+dim file as qfilestream
+
+if file.open( filename, fmOpenReadWrite) == FALSE  then
+  print "Cannot open file  " + filename
+end if
+
+varBuf.size = 0        'KILL
+varBuf.position = 0
+varBuf.CopyFrom(file, 0)
+
+file.close
+end sub
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] RqAsmUtils.Inc (тела)
+Function CallAddressManyArgs (address As Long, ptrStructArg As Long) As Long
+    Result = CallAsmProc (ptrCallAddressManyArgs, address, ptrStructArg, 0, 0)
+End Function
+Function CallPointerManyArgs (pointer As Long, ptrStructArg As Long) As Long
+    Result = CallAsmProc (ptrCallPointerManyArgs, pointer, ptrStructArg, 0, 0)
+End Function
+Function CallAddressNoArg (address As Long) As Long
+    Result = CallAsmProc (ptrCallAddressNoArg, address, 0, 0, 0)
+End Function
+Function CallPointerNoArg (pointer As Long) As Long
+    Result = CallAsmProc (ptrCallPointerNoArg, pointer, 0, 0, 0)
+End Function
+Function CallAddressOneArg (address As Long, arg1 As Long) As Long
+    Result = CallAsmProc (ptrCallAddressOneArg, address, arg1, 0, 0)
+End Function
+Function CallPointerOneArg (pointer As Long, arg1 As Long) As Long
+    Result = CallAsmProc (ptrCallPointerOneArg, pointer, arg1, 0, 0)
+End Function
+Function CallAddressTwoArgs (address As Long, arg1 As Long, arg2 As Long) As Long
+    Result = CallAsmProc (ptrCallAddressTwoArgs, address, arg1, arg2, 0)
+End Function
+Function CallPointerTwoArgs (pointer As Long, arg1 As Long, arg2 As Long) As Long
+    Result = CallAsmProc (ptrCallPointerTwoArgs, pointer, arg1, arg2, 0)
+End Function
+Function CallAddressThreeArgs (address As Long, arg1 As Long, arg2 As Long, arg3 As Long) As Long
+    Result = CallAsmProc (ptrCallAddressThreeArgs, address, arg1, arg2, arg3)
+End Function
+Function CallPointerThreeArgs (pointer As Long, arg1 As Long, arg2 As Long, arg3 As Long) As Long
+    Result = CallAsmProc (ptrCallPointerThreeArgs, pointer, arg1, arg2, arg3)
+End Function
+Function ReadDWordAtAddress (address As Long) As Long
+    Result = CallAsmProc (ptrReadDWordAtAddress, address, 0, 0, 0)
+End Function
+Function ReadWordAtAddress (address As Long) As Long
+    Result = CallAsmProc (ptrReadWordAtAddress, address, 0, 0, 0)
+End Function
+Function ReadByteAtAddress (address As Long) As Long
+    Result = CallAsmProc (ptrReadByteAtAddress, address, 0, 0, 0)
+End Function
+Function ReadDWordAtPointer (pointer As Long) As Long
+    Result = CallAsmProc (ptrReadDWordAtPointer, pointer, 0, 0, 0)
+End Function
+Function ReadWordAtPointer (pointer As Long) As Long
+    Result = CallAsmProc (ptrReadWordAtPointer, pointer, 0, 0, 0)
+End Function
+Function ReadByteAtPointer (pointer As Long) As Long
+    Result = CallAsmProc (ptrReadByteAtPointer, pointer, 0, 0, 0)
+End Function
+Function WriteDWordAtAddress (address As Long, dwData As Long) As Long
+    Result = CallAsmProc (ptrWriteDWordAtAddress, address, dwData, 0, 0)
+End Function
+Function WriteWordAtAddress (address As Long, wData As Long) As Long
+    Result = CallAsmProc (ptrWriteWordAtAddress, address, wData, 0, 0)
+End Function
+Function WriteByteAtAddress (address As Long, bData As Long) As Long
+    Result = CallAsmProc (ptrWriteByteAtAddress, address, bData, 0, 0)
+End Function
+Function WriteDWordAtPointer (pointer As Long, dwData As Long) As Long
+    Result = CallAsmProc (ptrWriteDWordAtPointer, pointer, dwData, 0, 0)
+End Function
+Function WriteWordAtPointer (pointer As Long, wData As Long) As Long
+    Result = CallAsmProc (ptrWriteWordAtPointer, pointer, wData, 0, 0)
+End Function
+Function WriteByteAtPointer (pointer As Long, bData As Long) As Long
+    Result = CallAsmProc (ptrWriteByteAtPointer, pointer, bData, 0, 0)
+End Function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] RQdate.inc (тела)
+function ReadVarFromMemory2 (adrr as long, vart as long ) as  variant 'double 
+' read N bytes from address "adrr" ad return
+' vart is vartype from rapidQ.inc
+'CONST Num_BYTE   = 1            '-- ie. PRINT File.ReadNum(Num_SINGLE)
+'CONST Num_SHORT  = 2
+'CONST Num_WORD   = 3
+'CONST Num_LONG   = 4
+'CONST Num_DWORD  = 5
+'CONST Num_SINGLE = 6
+'CONST Num_DOUBLE = 8
+
+DIM Mem AS QMemoryStream
+dim resltbyte as byte ' 1 byte
+dim resltshort as short ' 2 byte
+dim resltword as word ' 2 byte
+dim resltlong as long ' 4 byte
+dim resltdword as dword ' 4 byte
+dim resltsingle as single ' 4 byte
+dim resltdouble as double ' 8 byte
+
+
+Select case vart
+case Num_BYTE
+	'Mem.Position = 0
+	'Mem.MemCopyFrom (adrr, 1)
+	'Mem.Position = 0
+	'Mem.Read (resltbyte)
+	ReadVarFromMemory=-1 ' resltbyte
+	Mem.Close
+	
+case Num_SHORT
+	Mem.Position = 0
+	Mem.MemCopyFrom (adrr, 2)
+	Mem.Position = 0
+	Mem.Read (resltshort)
+	ReadVarFromMemory=resltshort
+	Mem.Close
+	
+case Num_WORD
+	Mem.Position = 0
+	Mem.MemCopyFrom (adrr, 2)
+	Mem.Position = 0
+	Mem.Read (resltword)
+	ReadVarFromMemory=resltword
+	Mem.Close
+	
+case Num_LONG
+	Mem.Position = 0
+	Mem.MemCopyFrom (adrr, 4)
+	Mem.Position = 0
+	Mem.Read (resltlong)
+	ReadVarFromMemory=resltlong
+	Mem.Close
+	
+case Num_DWORD
+	Mem.Position = 0
+	Mem.MemCopyFrom (adrr, 4)
+	Mem.Position = 0
+	Mem.Read (resltdword)
+	ReadVarFromMemory=resltdword
+	Mem.Close
+	
+case Num_SINGLE
+	Mem.Position = 0
+	Mem.MemCopyFrom (adrr, 4)
+	Mem.Position = 0
+	Mem.Read (resltsingle)
+	ReadVarFromMemory=resltsingle
+	Mem.Close
+	
+	
+case Num_DOUBLE
+	Mem.Position = 0
+	Mem.MemCopyFrom (adrr, 8)
+	Mem.Position = 0
+	Mem.Read (resltDOUBLE)
+	ReadVarFromMemory=resltDOUBLE
+	Mem.Close
+	
+case else
+end select
+
+end function
+function TimeValue (s as string) as double 
+dim sertimeptr as long
+
+sertimeptr=fbTimeValue1 (s)
+sertime=ReadVarFromMemory (sertimeptr, Num_DOUBLE ) 
+TimeValue=sertime
+end function
+function Now () as double
+dim sertimeptr as long
+sertimeptr=fbNow1()
+sertime=ReadVarFromMemory (sertimeptr, Num_DOUBLE ) 
+Now=sertime
+
+end function
+function DateAdd (interval as string,  number as double,  serial as double ) as double
+dim sertimeptr as long
+sertimeptr=fbDateAdd1(interval,  number1#,  serial1# )
+sertime=ReadVarFromMemory (sertimeptr, Num_DOUBLE ) 
+DateAdd=sertime
+
+end function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] RQProcess.inc (тела)
+FUNCTION CreateAPIString(length AS LONG) AS STRING
+Result = SPACE$(length)
+END FUNCTION
+FUNCTION ReadAPIString(str AS STRING, length AS LONG) AS STRING
+DIM realLength AS LONG
+realLength = LEN(str)
+
+IF length < realLength THEN
+	realLength = length
+END IF
+
+Result = LEFT$(str, realLength)
+END FUNCTION
+FUNCTION ReadNullTermString(str AS STRING) AS STRING
+DEFINT i
+
+FOR i = 1 TO LEN(str)
+	IF (ASC(str[i]) = NULL) THEN
+		Result = LTRIM$(RTRIM$(LEFT$(str, i - 1)))
+		EXIT FOR
+	END IF
+NEXT i
+END FUNCTION
+FUNCTION FindProcessId(name AS STRING) AS LONG
+name = UCASE$(name)
+'print"name=";name
+DIM processes(NUM_PROCESSES) AS LONG, size AS LONG, procUsed AS LONG
+size = NUM_PROCESSES * SIZEOF(LONG)
+
+EnumProcesses(VARPTR(processes(0)), size, procUsed)
+
+procUsed = procUsed / SIZEOF(LONG)
+
+Result = -1
+
+DEFINT i
+FOR i = 0 TO procUsed - 1
+	DIM pid AS LONG, pHandle AS LONG
+	pid = processes(i)
+	
+	pHandle = OpenProcess(PROCESS_QUERY_INFORMATION OR PROCESS_VM_READ,FALSE, pid) ' PROCESS_ALL_ACCESS
+	'pHandle = OpenProcess(PROCESS_TERMINATE , TRue, pid) ' PROCESS_ALL_ACCESS
+	
+	'print procUsed
+	
+	
+	DIM module AS LONG, modSize AS LONG, modUsed AS LONG
+	module = 0
+	modSize = SIZEOF(LONG)
+	modUsed = 0
+	
+	IF (EnumProcessModules(pHandle, VARPTR(module), modSize, modUsed) <> NULL) THEN
+		
+		DIM modName AS STRING, nameSize AS LONG
+		modName = CreateAPIString(NAME_LENGTH)
+		nameSize = NAME_LENGTH
+		
+		GetModuleBaseName(pHandle, module, modName, nameSize)
+		modName = ReadNullTermString(modName)
+		
+		CloseHandle(pHandle)
+		
+		IF (UCASE$(modName) = name) THEN
+			Result = pid
+			procExit = pHandle
+			
+		END IF
+	END IF
+	
+NEXT i
+END FUNCTION
+FUNCTION rqTerminateProcess ( procID AS long ) AS LONG
+	if procID <> -1 then 
+	pHandle=OpenProcess (PROCESS_TERMINATE, 0,procID)
+	'print"pHandle=";pHandle
+	zzx=TerminateProcess( pHandle , 0 )
+	'print"zzx=";zzx
+	
+	zzc=CloseHandle (pHandle) 
+	'print"zzc=";zzc
+	rqTerminateProcess=zzc
+	else
+	rqTerminateProcess=0
+	end if
+END FUNCTION
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] SetFileTimeAttrib.inc (тела)
+        Functioni ChangeFileDateAndTime ( ... ) As Long
+            DefInt iHandle, N
+            DefInt dateTime(1 To 6) = {1985, 8, 23, 22, 10, 12} ' YYYY, MM, DD, hh, mm, ss (08/23/1985 22:10:12)
+            DefStr pathFileName, whichTimes, cftErr
+            Dim bufferFileTime As T_FILETIMEcft
+            Dim systemTime as T_SYSTEMTIMEcft
+            ' Get String Parameters of the Functioni
+            ' ---------------------------------
+            cftErr = ""
+            If ParamStrCount > 0 Then
+                pathFileName = ParamStr$(1)
+            Else
+                cftErr = "No FileName Provided"
+            End If    
+            If cftErr <> "" Then Goto cftError
+            If ParamStrCount > 1 Then whichTimes = ParamStr$(2)  ' Optional
+            ' Open The File
+            ' -------------
+            iHandle = QDIR_CreateFile(pathFileName, QDIR_GENERIC_WRITE, (QDIR_FILE_SHARE_READ Or QDIR_FILE_SHARE_WRITE), _
+                                0, QDIR_OPEN_EXISTING, 0, 0)
+            If iHandle = 0 Then cftErr = "File Not Found":Goto cftError
+            '
+            ' Get Numeric Parameters of the Functioni
+            ' ---------------------------------------
+            cftErr = ""
+            For N = 1 To 6
+               If ParamValCount > N - 1 Then
+                    dateTime(N) = ParamVal(N)
+                Else
+                    cftErr = Str$(N - 1) & " Numeric Param(s) Recieved, 6 Awaited"
+                    Exit For
+                End If
+            Next N
+            If cftErr <> "" Then Goto cftError
+            '
+
+            systemTime.wYear = dateTime(1)
+            systemTime.wMonth = dateTime(2)
+            'systemTime.wDayOfWeek = 0
+            systemTime.wDay = dateTime(3)
+            systemTime.wHour = dateTime(4)
+            systemTime.wMinute = dateTime(5)
+            systemTime.wSecond = dateTime(6)
+            systemTime.wMilliseconds = 333       
+            '
+
+            ' set The New File Time On Disk
+            ' -----------------------------
+            QDIR_SystemTimeToFileTime (systemTime, bufferFileTime)
+            If Instr(Ucase$(whichTimes), "CRE") Then
+                If QDIR_SetFileTime (iHandle, bufferFileTime, 0, 0) <> 1 Then cftErr = "Problem in Writing CreationTime"
+            End If    
+            If cftErr <> "" Then Goto cftError
+            '
+            If Instr(Ucase$(whichTimes), "ACC") Then
+                If QDIR_SetFileTime (iHandle, 0, bufferFileTime, 0) <> 1 Then cftErr = "Problem in Writing lastAccessTime"
+            End If
+            If cftErr <> "" Then Goto cftError
+            '
+            If (Instr(Ucase$(whichTimes), "WRI") or whichTimes = "") Then
+                If QDIR_SetFileTime (iHandle, 0, 0, bufferFileTime) <> 1 Then cftErr = "Problem in Writing lastWriteTime"
+            End If
+            If cftErr <> "" Then Goto cftError
+            '
+            If iHandle Then QDIR_CloseHandle iHandle
+            Result = 1 ' True
+''            print " File Date and/or Time  changed: " & pathFileName & "    " & cftErr
+
+            Exit Functioni
+cftError:
+            Result = 0 ' False
+            If iHandle Then QDIR_CloseHandle iHandle
+            'ShowMessage ("While Changing File Date and/or Time : " & QDIR_RQCR & "    " & cftErr)
+''            print "While Changing File Date and/or Time : " & pathFileName & "    " & cftErr
+        End Functioni
+'
+' ----------------------------------------------------------------------------
+'
+        ' CHANGE FILE ATTRIBUTES
+        ' ----------------------
+        Function ChangeFileAttributes (sPathFileName As string, attributesAsString As String) As Long
+            DefInt iAttributes
+            DefStr pathFileName
+            pathFileName = sPathFileName   
+            print "ChangeFileAttributes pathFileName=" ,pathFileName
+            iAttributes = 0
+            attributesAsString = UCASE$(AttributesAsString)
+            If Instr(attributesAsString, "A") Then iAttributes = iAttributes + QDIR_FILE_ATTRIBUTE_ARCHIVE
+            If Instr(attributesAsString, "D") Then iAttributes = iAttributes + QDIR_FILE_ATTRIBUTE_DIRECTORY
+            If Instr(attributesAsString, "H") Then iAttributes = iAttributes + QDIR_FILE_ATTRIBUTE_HIDDEN
+            If Instr(attributesAsString, "N") Then iAttributes = iAttributes + QDIR_FILE_ATTRIBUTE_NORMAL
+            If Instr(attributesAsString, "R") Then iAttributes = iAttributes + QDIR_FILE_ATTRIBUTE_READONLY
+            If Instr(attributesAsString, "S") Then iAttributes = iAttributes + QDIR_FILE_ATTRIBUTE_SYSTEM
+            If Instr(attributesAsString, "T") Then iAttributes = iAttributes + QDIR_FILE_ATTRIBUTE_TEMPORARY
+            If Instr(attributesAsString, "C") Then iAttributes = iAttributes + QDIR_FILE_ATTRIBUTE_COMPRESSED
+            Result = QDIR_SetFileAttributes (pathFileName, iAttributes) 
+            print "Result SetFileAttributes  "+pathFileName +"=" ,Result
+
+        End Function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] ShellRedir.Inc (тела)
+Function ShellRedir (CommandLine As String) As String
+     Dim tPipeAttributes As RDR_SECURITY_ATTRIBUTES
+     Dim tProcessAttributes As RDR_SECURITY_ATTRIBUTES
+     Dim tThreadAttributes As RDR_SECURITY_ATTRIBUTES
+     Dim tProcessInformation As RDR_PROCESS_INFORMATION
+     Dim tStartupInformation As RDR_STARTUPINFO
+     DefInt hPipeRead, hPipeWrite, nbrByteRead, hProcess
+     Dim sBit As String * RDR_BUFFER_SIZE
+     DefStr sTextOut = ""
+     DefStr sCommandLine = CommandLine
+     DefStr sNull = ""
+     DefStr sConsoleTitle = "RAPIDQ SHELLREDIR CONSOLE"
+     tPipeAttributes.nLength = SizeOf(tPipeAttributes)
+     tPipeAttributes.lpSecurityDescriptor = 0
+     tPipeAttributes.bInheritHandle = -1
+     tProcessAttributes.nLength = SizeOf(tProcessAttributes)
+     tThreadAttributes.nLength = SizeOf(tThreadAttributes)
+     If RDR_CreatePipe(Varptr(hPipeRead), VarPtr(hPipeWrite), tPipeAttributes, 0) <> 0 Then
+         RDR_GetStartupInfo tStartupInformation
+         tStartupInformation.cb = SizeOf(tStartupInformation)
+         tStartupInformation.hStdOutput = hPipeWrite
+         tStartupInformation.hStdError = hPipeWrite
+         tStartupInformation.dwFlags = RDR_STARTF_USESHOWWINDOW Or RDR_STARTF_USESTDHANDLES
+         tStartupInformation.wShowWindow = RDR_SW_HIDE  ' RDR_SW_SHOW
+         tStartupInformation.lpTitle = VARPTR(sConsoleTitle)
+         hProcess = RDR_CreateProcess(VarPtr(sNull), VarPtr(sCommandLine), tProcessAttributes, _
+                             tThreadAttributes, -1, 0, 0, VarPtr(sNull), tStartupInformation, tProcessInformation)
+         If hProcess <> 0 Then
+             Do
+                 If RDR_ReadFile(hPipeRead, VarPtr(sBit), RDR_BUFFER_SIZE, VarPtr(nbrByteRead), 0) <> 0 Then
+                     sTextOut = sTextOut & Left$(sBit, nbrByteRead)
+                     CallFunc (ptrShellRedirCallBack, Left$(sBit, nbrByteRead))
+                     DoEvents
+                 Else
+                     RDR_CloseHandle tProcessInformation.hThread
+                     RDR_CloseHandle tProcessInformation.hProcess
+                     Exit Do
+                 End If
+                 RDR_CloseHandle hPipeWrite
+             Loop
+             RDR_CloseHandle hPipeWrite
+             RDR_CloseHandle hPipeRead
+         Else
+             RDR_CloseHandle hPipeWrite
+             RDR_CloseHandle hPipeRead
+             sTextOut = Chr$(10) & Chr$(10) & "   *** CANT CREATE PROCESS   FOR " & Chr$(34) & sCommandLine & Chr$(34) & Chr$(10) & Chr$(10)
+             CallFunc (ptrShellRedirCallBack, sTextOut)
+         End If
+     Else
+         sTextOut = Chr$(10) & Chr$(10) & "   *** CANT CREATE PIPE   FOR " & Chr$(34) & sCommandLine & Chr$(34) & Chr$(10) & Chr$(10)
+         CallFunc (ptrShellRedirCallBack, sTextOut)
+     End If
+     Result = sTextOut
+End Function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] StayOnTop.inc (тела)
+$OPTION WEAKTYPE ON
+SUB StayOnTop(hwnd as QForm)
+OnTop=SetWindowPos(hwnd.Handle,HWND_TOPMOST,0,0,0,0,FLAGS)
+End SUB
+$TYPECHECK OFF
+$ESCAPECHARS OFF
+'[build_inc] SysUtils.inc (тела)
+Function ExtractFileExt(File As String) As String
+   Defint Pt,i
+   If File = "" then Exit Function
+   Pt = 0
+   For i = 1 to Len(File)
+       If File[i] = "." then Pt = i
+   Next i
+   If Pt = 0 then
+      Result = ""
+   Else
+      Result = Mid$(File,Pt + 1,Len(File))
+   End If
+End Function
+Function DelFileExt(File As String) As String
+   Defint Pt,i
+   If File = "" then Exit Function
+   Pt = 0
+   For i = 1 to Len(File)
+       If File[i] = "." then Pt = i
+   Next i
+   If Pt = 0 then
+      Result = File
+   Else
+      Result = Mid$(File,1,Pt - 1)
+   End If
+End Function
+Function MakeLong(a As Word, b As Word) As Long
+   Result = a or (b shl 16) ' inc2026: было (a or b) shl 16 - младшее слово тоже сдвигалось и смешивалось со старшим; MAKELONG Windows: a - младшее слово, b - старшее (так вызывается в QAnimate.inc: MakeLong(.StartFrame,.StopFrame) для ACM_PLAY)
+End Function
+$TYPECHECK OFF
+$ESCAPECHARS OFF
 $ENDIF ' __RQALLPROC_INC
