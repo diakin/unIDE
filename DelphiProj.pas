@@ -29,6 +29,10 @@ function ExpandDelphiRoot(const S, ARoot: string): string;
 // Error: ..." в AErrors. Результат - число повторов.
 function DfmDuplicateNames(const ADfm: string; AErrors: TStrings): Integer;
 
+// Обработчики OnXxx текстового .dfm против published-методов класса
+// формы в APas - строками "файл(строка) Error: ..." в AErrors.
+function DfmCheckHandlers(const ADfm, APas: string; AErrors: TStrings): Integer;
+
 implementation
 
 // $(DELPHI) в путях. Окно настроек разворачивает макросы при вводе, но
@@ -510,6 +514,190 @@ begin
       TStringList(Scopes[LineIdx]).Free;
     Scopes.Free;
     Lines.Free;
+  end;
+end;
+
+// Обработчики событий из текстового .dfm (OnClick = Имя) против класса
+// формы в .pas. Поток .dfm ищет метод по имени только среди published, и
+// обработчик, объявленный в private или не объявленный вовсе, даёт при
+// создании формы EReadError "Error reading X.OnClick: Invalid property
+// value". dcc32 этого не проверяет. Обработчики объектов внутри фрейма
+// (inline) принадлежат классу фрейма - их не смотрим; унаследованную
+// форму (inherited в корне) - тоже: методы могут быть у предка.
+// Каждая ошибка - строкой в AErrors в формате dcc32. Результат - число
+// ошибок.
+function DfmCheckHandlers(const ADfm, APas: string; AErrors: TStrings): Integer;
+var
+  DfmLines, PasLines, Published, Others: TStringList;
+  LineIdx, Depth, InlineDepth, ColonPos, EqPos, SpacePos, ClassLine: Integer;
+  Line, Low, RootClass, Word1, PropName, Handler, Head: string;
+  InPublished: Boolean;
+  Stream: TFileStream;
+
+  // Имя метода из строки "procedure Имя(" / "function Имя:"
+  function MethodName(const ALine: string): string;
+  var
+    Pos1: Integer;
+  begin
+    Result := '';
+    Pos1 := Pos(' ', ALine);
+    if Pos1 = 0 then
+      Exit;
+    Result := Trim(Copy(ALine, Pos1 + 1, Length(ALine)));
+    Pos1 := 1;
+    while (Pos1 <= Length(Result)) and
+          (Result[Pos1] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+      Inc(Pos1);
+    Result := Copy(Result, 1, Pos1 - 1);
+  end;
+
+begin
+  Result := 0;
+  if not FileExists(ADfm) or not FileExists(APas) then
+    Exit;
+  SetLength(Head, 4);
+  Stream := TFileStream.Create(ADfm, fmOpenRead or fmShareDenyNone);
+  try
+    if Stream.Read(Head[1], 4) < 4 then
+      Exit;
+  finally
+    Stream.Free;
+  end;
+  if (Head = 'TPF0') or (Head[1] = #$FF) then
+    Exit;
+
+  DfmLines := TStringList.Create;
+  PasLines := TStringList.Create;
+  Published := TStringList.Create;
+  Others := TStringList.Create;
+  try
+    DfmLines.LoadFromFile(ADfm);
+    PasLines.LoadFromFile(APas);
+    Published.Sorted := True;
+    Published.CaseSensitive := False;
+    Others.Sorted := True;
+    Others.CaseSensitive := False;
+
+    // Класс корня: "object Form1: TForm1"
+    RootClass := '';
+    for LineIdx := 0 to DfmLines.Count - 1 do
+    begin
+      Line := Trim(DfmLines[LineIdx]);
+      if Line = '' then
+        Continue;
+      if LowerCase(Copy(Line, 1, 7)) <> 'object ' then
+        Exit;                         // inherited / inline в корне
+      ColonPos := Pos(':', Line);
+      if ColonPos = 0 then
+        Exit;
+      RootClass := Trim(Copy(Line, ColonPos + 1, Length(Line)));
+      Break;
+    end;
+    if RootClass = '' then
+      Exit;
+
+    // Объявление класса в .pas: "TForm1 = class(...)". До первого
+    // private / protected / public - published (по умолчанию у формы).
+    ClassLine := -1;
+    for LineIdx := 0 to PasLines.Count - 1 do
+    begin
+      Low := LowerCase(StringReplace(PasLines[LineIdx], ' ', '',
+                                     [rfReplaceAll]));
+      if Copy(Low, 1, Length(RootClass) + 7) =
+         LowerCase(RootClass) + '=class(' then
+      begin
+        ClassLine := LineIdx;
+        Break;
+      end;
+    end;
+    if ClassLine < 0 then
+      Exit;
+    InPublished := True;
+    for LineIdx := ClassLine + 1 to PasLines.Count - 1 do
+    begin
+      Low := LowerCase(Trim(PasLines[LineIdx]));
+      if (Low = 'end;') or (Copy(Low, 1, 4) = 'end;') then
+        Break;
+      if (Low = 'private') or (Low = 'protected') or (Low = 'public') or
+         (Copy(Low, 1, 8) = 'private ') or (Copy(Low, 1, 7) = 'public ') or
+         (Copy(Low, 1, 10) = 'protected ') or
+         (Copy(Low, 1, 15) = 'strict private') then
+        InPublished := False
+      else if Low = 'published' then
+        InPublished := True
+      else if (Copy(Low, 1, 10) = 'procedure ') or
+              (Copy(Low, 1, 9) = 'function ') then
+      begin
+        if InPublished then
+          Published.Add(MethodName(Trim(PasLines[LineIdx])))
+        else
+          Others.Add(MethodName(Trim(PasLines[LineIdx])));
+      end;
+    end;
+
+    // Строки "OnXxx = Имя" вне вложенных фреймов
+    Depth := 0;
+    InlineDepth := 0;   // 0 - не внутри inline; иначе глубина его блока
+    for LineIdx := 0 to DfmLines.Count - 1 do
+    begin
+      Line := Trim(DfmLines[LineIdx]);
+      Low := LowerCase(Line);
+      if (Copy(Low, 1, 3) = 'end') and
+         ((Length(Low) = 3) or (Low[4] in ['>', ')', ' '])) then
+      begin
+        if Depth > 0 then
+          Dec(Depth);
+        if (InlineDepth > 0) and (Depth < InlineDepth) then
+          InlineDepth := 0;
+        Continue;
+      end;
+      if Low = 'item' then
+      begin
+        Inc(Depth);
+        Continue;
+      end;
+      SpacePos := Pos(' ', Low);
+      Word1 := Copy(Low, 1, SpacePos - 1);
+      if (SpacePos > 0) and ((Word1 = 'object') or (Word1 = 'inherited') or
+                             (Word1 = 'inline')) then
+      begin
+        Inc(Depth);
+        if (Word1 = 'inline') and (InlineDepth = 0) then
+          InlineDepth := Depth;
+        Continue;
+      end;
+      if InlineDepth > 0 then
+        Continue;
+      if Copy(Low, 1, 2) <> 'on' then
+        Continue;
+      EqPos := Pos('=', Line);
+      if EqPos = 0 then
+        Continue;
+      PropName := Trim(Copy(Line, 1, EqPos - 1));
+      Handler := Trim(Copy(Line, EqPos + 1, Length(Line)));
+      if (Handler = '') or not (Handler[1] in ['A'..'Z', 'a'..'z', '_']) then
+        Continue;
+      if Published.IndexOf(Handler) >= 0 then
+        Continue;
+      if Others.IndexOf(Handler) >= 0 then
+        AErrors.Add(Format('%s(%d) Error: %s = %s - метод %s объявлен в ' +
+                           'private/public %s, а .dfm видит только ' +
+                           'published: при создании формы будет ' +
+                           'EReadError "Invalid property value"',
+                           [ADfm, LineIdx + 1, PropName, Handler, Handler,
+                            RootClass]))
+      else
+        AErrors.Add(Format('%s(%d) Error: %s = %s - метода %s нет в ' +
+                           'классе %s (%s)',
+                           [ADfm, LineIdx + 1, PropName, Handler, Handler,
+                            RootClass, ExtractFileName(APas)]));
+      Inc(Result);
+    end;
+  finally
+    Others.Free;
+    Published.Free;
+    PasLines.Free;
+    DfmLines.Free;
   end;
 end;
 

@@ -43944,7 +43944,10 @@ begin
         UnitFile := ExtractFilePath(ADpr) + UnitFile;
       DfmFile := ChangeFileExt(ExpandFileName(UnitFile), '.dfm');
       if FileExists(DfmFile) then
+      begin
         DfmDuplicateNames(DfmFile, Errors);
+        DfmCheckHandlers(DfmFile, ChangeFileExt(DfmFile, '.pas'), Errors);
+      end;
     end;
     for ErrIdx := 0 to Errors.Count - 1 do
       LogComp(Errors[ErrIdx]);
@@ -44070,7 +44073,7 @@ begin
   // создании формы (EComponentError "A component named ... already exists").
   if not DelphiCheckDfmNames(Dpr) then
   begin
-    LogComp('Компиляция остановлена: в .dfm повторяются имена компонентов');
+    LogComp('Компиляция остановлена: ошибки в .dfm (повторы имён, обработчики)');
     Exit;
   end;
 
