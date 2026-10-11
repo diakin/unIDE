@@ -3343,7 +3343,10 @@ end;
 procedure TFormDesigner.ContextMenu(AComp: TComponent; const AScreen: TPoint);
 begin
   FDragging := False;
-  if AComp <> nil then
+  // Правый щелчок по компоненту выделенной группы группу не сбрасывает -
+  // как в Delphi: Cut, Copy, Delete и выравнивание из меню - для всей
+  // группы. Щелчок мимо группы выделяет компонент под мышью.
+  if (AComp <> nil) and not ((GroupCount > 1) and InGroup(AComp)) then
     Select(AComp, True);
   if Assigned(FOnContext) then
     FOnContext(AScreen);
