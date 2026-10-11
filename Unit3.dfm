@@ -120,7 +120,6 @@ object Form3: TForm3
     end
   end
   object Splitter1: TSplitter
-    Color = clMaroon
     Left = 706
     Top = 0
     Width = 6
@@ -130,7 +129,6 @@ object Form3: TForm3
     MinSize = 300
   end
   object Panel2: TPanel
-    Color = clGreen
     Left = 0
     Top = 0
     Width = 706
@@ -142,7 +140,6 @@ object Form3: TForm3
     TabOrder = 0
     object Panel1: TPanel
       UseDockManager = False
-      Color = clOlive
       Left = 1
       Top = 6
       Width = 694
