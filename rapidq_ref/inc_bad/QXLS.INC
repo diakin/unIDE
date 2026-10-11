@@ -632,7 +632,7 @@ NEXT i
 FOR i=0& to MaxSheets&
 SheetName(b,i)=""
 FOR j=0& to NumVars&: P(b,i,j)=0&: NEXT j
-NEXT i
+NEXT i
 END SUB
 
 'This uses OLE FAT to read file.  The code is not yet optimized.
