@@ -57,8 +57,8 @@ object Form3: TForm3
       OnDrawItem = lstIncFilesDrawItem
     end
     object btnScan: TBitBtn
-      Left = 58
-      Top = 446
+      Left = 143
+      Top = 491
       Width = 96
       Height = 25
       Hint = 'Перечитать эталон и файлы с диска и проверить заново'
@@ -109,11 +109,11 @@ object Form3: TForm3
   end
   object Panel2: TPanel
     Color = clBlue
-    Align = alClient
-    Left = 8
+    Align = alNone
+    Left = 0
     Top = 0
-    Width = 404
-    Height = 764
+    Width = 420
+    Height = 859
     Caption = 'Panel2'
     object Panel1: TPanel
       Color = clGreen
@@ -247,10 +247,10 @@ object Form3: TForm3
       OnDblClick = lstErrorsDblClick
     end
     object btnRef: TBitBtn
-      Left = 462
-      Top = 556
-      Width = 30
-      Height = 21
+      Left = 432
+      Top = 568
+      Width = 196
+      Height = 60
       Hint = 'Папка эталонных inc (исходные файлы общих rapidqAllProc.inc и rapidqComponents.inc)'
       Caption = '...'
       TabOrder = 2
