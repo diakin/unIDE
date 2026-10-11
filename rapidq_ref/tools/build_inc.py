@@ -829,6 +829,16 @@ def main():
                 fixed += 1
         if fixed:
             renamed.append('%s: %d строк "define ИМЯ значение" без $ - $define' % (f, fixed))
+        # Число с суффиксом C (commctrl32.inc: CONST SBN_FIRST = (-880U)) -
+        # RapidQ: "Invalid character 'U' in number"; суффикс убирается
+        fixed = 0
+        for num, line in enumerate(texts[f]):
+            code = code_part(line)
+            if re.search(r'(?<![\w&])\d+[uU][lL]?\b', strip_strings(code)):
+                texts[f][num] = line.replace(code, re.sub(r'(?<![\w&])(\d+)[uU][lL]?\b', r'\1', code), 1)
+                fixed += 1
+        if fixed:
+            renamed.append('%s: %d строк с числом 880U (суффикс C) - без U' % (f, fixed))
     for f in files:
         if f.lower() in RENAMES:
             prefix, names = RENAMES[f.lower()]

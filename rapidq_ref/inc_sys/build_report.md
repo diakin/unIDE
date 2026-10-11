@@ -121,6 +121,7 @@
 
 Внутренние процедуры с короткими именами (совпадали с переменными других файлов: QXLS.INC DIM F AS QFileStream) и опечатки:
 
+- commctrl32.inc: 4 строк с числом 880U (суффикс C) - без U
 - keys.inc: 46 строк "define ИМЯ значение" без $ - $define
 - CMD5.inc: F, G, H, FF, GG, HH, II -> MD5_...
 
@@ -165,8 +166,6 @@
 | DECLARE | INSERTMENUITEM | rapidq2.inc(1606): `DECLARE FUNCTION INSERTMENUITEM LIB "USER32.DLL" ALIAS "INSERTMENUITEMA" (BYVAL ` | Api.inc(113): `DECLARE FUNCTION INSERTMENUITEM LIB "USER32.DLL" ALIAS "INSERTMENUITEMA" _ (BYVA` |
 | $DEFINE | TOOLTIPS_CLASS | CommCtrl.inc(1157): `CONST TOOLTIPS_CLASS = "TOOLTIPS_CLASS32"` | commctrl32.inc(80): `TOOLTIPS_CLASSA` |
 | $DEFINE | WC_TABCONTROL | CommCtrl.inc(334): `CONST WC_TABCONTROL = "SYSTABCONTROL32"` | commctrl32.inc(90): `WC_TABCONTROLA` |
-| CONST | PGN_FIRST | CommCtrl.inc(1423): `CONST PGN_FIRST = (-900)` | commctrl32.inc(241): `CONST PGN_FIRST = (-900U)` |
-| CONST | PGN_LAST | CommCtrl.inc(1426): `CONST PGN_LAST = (-950)` | commctrl32.inc(242): `CONST PGN_LAST = (-950U)` |
 | $DEFINE | LVIF_GROUPID | CommCtrl.inc(500): `CONST LVIF_GROUPID = &H0100` | commctrl32.inc(789): `128` |
 | $DEFINE | LVIF_COLUMNS | CommCtrl.inc(501): `CONST LVIF_COLUMNS = &H0200` | commctrl32.inc(790): `256` |
 | $DEFINE | TVI_ROOT | CommCtrl.inc(121): `CONST TVI_ROOT = &HFFFF0000???` | commctrl32.inc(970): `(&HFFFF0000)` |
