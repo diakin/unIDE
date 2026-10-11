@@ -21288,6 +21288,11 @@ begin
       MoveFile(PChar(OldMain), PChar(MainExe));
     Exit;
   end;
+  // Манифест пробного exe больше не нужен: у рабочего свой
+  // (OwnTrialInstall скопировал его с рабочего)
+  if FileExists(TrialExe + '.manifest') and
+     FileExists(MainExe + '.manifest') then
+    DeleteFile(TrialExe + '.manifest');
   TrialMap := ChangeFileExt(TrialExe, '.map');
   MainMap := ChangeFileExt(MainExe, '.map');
   if FileExists(TrialMap) then
@@ -52827,6 +52832,7 @@ function TForm1.OwnTrialInstall(const AStageDir, AExeDir,
                                 ABase: string): Boolean;
 var
   StageDir, StageExe, TrialExe, StageMap, TrialMap: string;
+  MainManifest, TrialManifest: string;
   Found: TSearchRec;
 begin
   Result := False;
@@ -52863,6 +52869,21 @@ if not FileExists(StageExe) then
     if not MoveFile(PChar(StageMap), PChar(TrialMap)) then
       LogComp('Пробная сборка: .map не перенесён - ' + TrialMap);
   end;
+  // Внешний манифест (<имя>.exe.manifest: стили Windows, Common Controls
+  // 6.0) Windows ищет только по имени exe. У пробной сборки своего не было -
+  // она запускалась без стилей и выглядела не так, как рабочая (кнопки,
+  // цвета панелей). Копия - под именем пробного exe.
+  MainManifest := IncludeTrailingPathDelimiter(AExeDir) + ABase + '.exe.manifest';
+  TrialManifest := TrialExe + '.manifest';
+  if FileExists(MainManifest) then
+  begin
+    if not Windows.CopyFile(PChar(MainManifest), PChar(TrialManifest), False) then
+      LogComp('Пробная сборка: манифест не скопирован - ' + TrialManifest +
+              ' (' + SysErrorMessage(GetLastError) + ')');
+  end
+  else
+    LogComp('Пробная сборка: рядом нет ' + ExtractFileName(MainManifest) +
+            ' - пробный exe запустится без стилей Windows, как и рабочий');
   // Остальное в папке сборки (.drc и т. п.) - убрать, и саму папку
   if FindFirst(StageDir + '*.*', faAnyFile and not faDirectory, Found) = 0 then
   try
