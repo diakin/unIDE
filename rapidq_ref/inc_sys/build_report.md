@@ -5,8 +5,8 @@
 ## Состав
 
 - rapidqAllProc.inc: rapidq2.inc (без разделов компонентов), rapidq.inc, и 99 файлов: AddMenuItemBitmaps4a.inc, AdvAPI32.inc, Api.inc, ApiDate.inc, CallBack_0.Inc, CallBack_1.Inc, CallBack_2.Inc, CallBack_3.Inc, CallBack_4.Inc, CallBack_5.Inc, CallBack_6.Inc, CallBack_7.Inc, CallBack_8.Inc, CallBackAll.Inc, CallBackForwarder.Inc, CallBacks.Inc, CMD5.inc, CommCtrl.inc, commctrl32.inc, Common.inc, constants.inc, Control.inc, conversion.inc, conversion1.inc, conversionOld.inc, ConvertToTruePath.inc, Copy of NOTA.inc, createWind.inc, DBT.INC, debugWindow.inc, delTags.inc, eMail.Inc, eml.inc, emlOld.inc, evaluate.inc, FBFunctions.inc, fbscancodes.inc, fileops.inc, Files.inc, Files1.inc, Files2.inc, FilesBug.inc, FileUtils.inc, Form.inc, func_array.inc, GDI32.inc, htmlhelp.inc, Kernel32.inc, keys.inc, like.inc, Math.inc, MDI_API.INC, Memory.inc, microTIMER.inc, Minimize.inc, msgdlg.inc, NewWindow23.inc, NewWndProc.Inc, NOTA.inc, objectToolbox.inc, ODMenuXP.inc, ole.inc, parse.inc, pdecl.inc, printdlg.inc, PRINTERDLL.INC, printrichedit.inc, pulsar.inc, QFiles.inc, QFormLocale.inc, QFormSkin.inc, QFuncLib.inc, QPoint.inc, QPrintDialog.inc, QStringGridEx.inc, QXLS.INC, registryVars.inc, RichEditApi.inc, rq_math.inc, RqAsmUtils.Inc, RQDialog.inc, RQProcess.inc, SetFileTimeAttrib.inc, setup.inc, Shell32.inc, ShellRedir.Inc, SysUtils.inc, TestIncPAth.inc, TRM_RQDeclares.INC, User32.inc, using.inc, var.inc, var2008.inc, WFunctions.inc, Win32_constants.inc, WIN32API.INC, WINDOWS.INC, WindowsAPI.inc, WinMM.Inc
-- rapidqComponents.inc: разделы компонентов rapidq2.inc и 95 файлов: apiRe.inc, odbc.inc, QCoolBarXPv1d.inc, QDataBase.inc, qdrive2024.inc, qEditEx.inc, QIni.inc, QIniFile.inc, QMaxSplitter.inc, QRedEx.Inc, qspintext.inc, QTextEdit.inc, RichEdPopUp.inc, VFW.inc, XP_MANIFEST.INC, COMPORTxp.inc, HiLight.inc, QAnim.inc, QAnimate.inc, QAVI.inc, QBevel.inc, QBrowseDialog.inc, QButtonXP.INC, qcalendar.inc, Qcdaudio.inc, qcgi.inc, QChart.inc, QColorButton.inc, QCursor.inc, qdataBaseSQL.inc, QDesktop.inc, QDigDisplay.inc, QDir.Inc, qdownload.inc, QDrawFocus.inc, QDrawMenu.inc, QFileListView.inc, QFlashLabel.inc, QFlatButton.inc, qfocus.inc, QFTPCLIENT.INC, qgraph.inc, QGridColor.inc, QHead.inc, QHTML.inc, QICMP.INC, QICON.inc, Qid3Tag.inc, QImageBox.inc, QImageDialog.inc, QImageListEx.inc, QInputBox.inc, QLed.inc, QLedScroll.inc, QLibrary.Inc, QLine.inc, QListBoxEx.inc, QMailLabel.inc, qmenu.inc, QMidi.inc, Qmp3.inc, qposic.inc, QPrinterInfo.inc, QProcess.inc, QProgress.inc, QProgressBar.inc, QRichEditXt.inc, QrPanel.inc, QRun.inc, QSavePlus.inc, QSHFileOperation.inc, QShutdown.inc, QSkin.inc, QSkinBtn.inc, QSocketEx.inc, QSpinEdit.inc, QSplash.inc, QStatusBarEx.inc, QtabControlEx.inc, QTextBtn.inc, QThread.inc, QToolBar.inc, QToolBarEX.inc, QTreeviewEx.inc, QVideo.inc, QVolumeInfo.inc, QVuMeter.inc, QWave.inc, QXPButton.inc, RapidFRM.inc, RapidQ_D3D.inc, RC4crypt.inc, RSocket.INC, TstRichEd.inc, XPThemes.inc
-- не вошли: 96 файлов (ниже)
+- rapidqComponents.inc: разделы компонентов rapidq2.inc и 94 файлов: apiRe.inc, odbc.inc, QCoolBarXPv1d.inc, QDataBase.inc, qdrive2024.inc, qEditEx.inc, QIni.inc, QIniFile.inc, QMaxSplitter.inc, QRedEx.Inc, qspintext.inc, QTextEdit.inc, RichEdPopUp.inc, VFW.inc, XP_MANIFEST.INC, COMPORTxp.inc, HiLight.inc, QAnim.inc, QAnimate.inc, QAVI.inc, QBevel.inc, QBrowseDialog.inc, QButtonXP.INC, qcalendar.inc, Qcdaudio.inc, qcgi.inc, QChart.inc, QColorButton.inc, QCursor.inc, qdataBaseSQL.inc, QDesktop.inc, QDigDisplay.inc, QDir.Inc, qdownload.inc, QDrawFocus.inc, QDrawMenu.inc, QFileListView.inc, QFlashLabel.inc, QFlatButton.inc, qfocus.inc, QFTPCLIENT.INC, qgraph.inc, QGridColor.inc, QHead.inc, QHTML.inc, QICMP.INC, QICON.inc, Qid3Tag.inc, QImageBox.inc, QImageDialog.inc, QImageListEx.inc, QInputBox.inc, QLed.inc, QLedScroll.inc, QLibrary.Inc, QLine.inc, QListBoxEx.inc, QMailLabel.inc, qmenu.inc, QMidi.inc, Qmp3.inc, qposic.inc, QPrinterInfo.inc, QProcess.inc, QProgress.inc, QProgressBar.inc, QRichEditXt.inc, QrPanel.inc, QRun.inc, QSavePlus.inc, QSHFileOperation.inc, QShutdown.inc, QSkin.inc, QSkinBtn.inc, QSocketEx.inc, QSpinEdit.inc, QSplash.inc, QStatusBarEx.inc, QtabControlEx.inc, QTextBtn.inc, QToolBar.inc, QToolBarEX.inc, QTreeviewEx.inc, QVideo.inc, QVolumeInfo.inc, QVuMeter.inc, QWave.inc, QXPButton.inc, RapidFRM.inc, RapidQ_D3D.inc, RC4crypt.inc, RSocket.INC, TstRichEd.inc, XPThemes.inc
+- не вошли: 97 файлов (ниже)
 
 ## Взята часть файла
 
@@ -89,6 +89,7 @@
 | QTButton95.inc | нет: нужен $RESOURCE btn_BMP в программе (QTBtnBMP.BMPHandle = btn_BMP при подключении); подключать отдельно |
 | QTButton_AddOns.inc | нет: дополнение к QTButton, нужен ресурс btn_BMP в программе; подключать отдельно |
 | QTextEditTest.inc | взята другая версия: QTEXTEDIT - QTextEdit.inc |
+| QThread.inc | нет: rc.exe - "Usertype QTHREAD already used", другого QThread в сборке нет (похоже, в этой версии RapidQ такой класс уже есть - не проверено) |
 | QWinIni.inc | взята другая версия: QINI - QIni.inc |
 | QxEdit.inc | взята другая версия: QxEDIT - qEditEx.inc |
 | QXpTheme.INC | нет: подключать отдельно - при запуске пишет .manifest и перезапускает программу |
@@ -222,7 +223,6 @@
 - rapidq2.inc: DECLARE CHOOSECOLORDLG - ChooseColorDlg_rapidq2 (параметры не те, что у WIN32API.INC)
 - QICON.inc: DECLARE DRAWICON - DrawIcon_QICON (параметры не те, что у QFormSkin.inc)
 - QSHFileOperation.inc: DECLARE SHFILEOPERATION - SHFileOperation_QSHFileOperation (параметры не те, что у WIN32API.INC)
-- QThread.inc: DECLARE CREATETHREAD - CreateThread_QThread (параметры не те, что у WIN32API.INC)
 - RapidFRM.inc: DECLARE INVALIDATERECT - InvalidateRect_RapidFRM (параметры не те, что у QFormSkin.inc)
 
 ## $DEFINE имени типом - только для своего файла
@@ -246,8 +246,8 @@
 
 ## Убрано как повтор
 
-- CONST: 7421
-- DECLARE: 2064
+- CONST: 7414
+- DECLARE: 2061
 - $DEFINE: 2022
 - SUB/FUNCTION: 237
 - TYPE: 478
@@ -1176,8 +1176,6 @@
 | $DEFINE | BOOLEAN | rapidq2.inc(2241): `LONG` | QSpinEdit.inc(16): `INTEGER` |
 | $DEFINE | BOOLEAN | rapidq2.inc(2241): `LONG` | QSplash.inc(14): `INTEGER` |
 | $DEFINE | BOOLEAN | rapidq2.inc(2241): `LONG` | QTextBtn.inc(15): `INTEGER` |
-| DECLARE | GETTHREADPRIORITY | WIN32API.INC(2240): `DECLARE FUNCTION GETTHREADPRIORITY LIB "KERNEL32" ALIAS "GETTHREADPRIORITY" (BYV` | QThread.inc(42): `DECLARE FUNCTION GETTHREADPRIORITY LIB "KERNEL32" ALIAS "GETTHREADPRIORITY" (HTH` |
-| DECLARE | SETTHREADPRIORITY | WIN32API.INC(2239): `DECLARE FUNCTION SETTHREADPRIORITY LIB "KERNEL32" ALIAS "SETTHREADPRIORITY" (BYV` | QThread.inc(44): `DECLARE FUNCTION SETTHREADPRIORITY LIB "KERNEL32" ALIAS "SETTHREADPRIORITY" (HTH` |
 | $DEFINE | BOOLEAN | rapidq2.inc(2241): `LONG` | QVideo.inc(18): `INTEGER` |
 | DECLARE | MCISENDSTRING | WIN32API.INC(11810): `DECLARE FUNCTION MCISENDSTRING LIB "WINMM.DLL" ALIAS "MCISENDSTRINGA" (BYVAL LPS` | QVideo.inc(23): `DECLARE FUNCTION MCISENDSTRING LIB "WINMM.DLL" ALIAS "MCISENDSTRINGA" (LPSTRCOMM` |
 | DECLARE | MCIGETERRORSTRING | WIN32API.INC(11818): `DECLARE FUNCTION MCIGETERRORSTRING LIB "WINMM.DLL" ALIAS "MCIGETERRORSTRINGA" (B` | QVideo.inc(24): `DECLARE FUNCTION MCIGETERRORSTRING LIB "WINMM.DLL" ALIAS "MCIGETERRORSTRINGA" (D` |
