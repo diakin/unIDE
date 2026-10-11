@@ -1,7 +1,7 @@
 object Form1: TForm1
   BorderIcons = [biSystemMenu, biMinimize, biMaximize]
-  Left = 99
-  Top = 210
+  Left = 19
+  Top = 196
   Width = 1407
   Height = 910
   Caption = 'Form1 current'
@@ -562,6 +562,12 @@ object Form1: TForm1
       end
       object mViewIcons: TMenuItem
         Caption = 'Palette Icons...'
+      end
+      object mSep2: TMenuItem
+        Caption = '-'
+      end
+      object mIncManager: TMenuItem
+        Caption = 'IncManager...'
       end
     end
     object mProject: TMenuItem
