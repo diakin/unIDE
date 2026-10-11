@@ -189,6 +189,14 @@ QRECT». Варианты:
 
   Программа, которая писала `x AS HWND`, рассчитывая на этот `$DEFINE`,
   должна объявить его у себя.
+- **Подмена встроенного класса закомментирована.** Компоненты в конце файла
+  делали `$UNDEF QRICHEDIT` / `$DEFINE QRICHEDIT QREDEX` (QRedEx.Inc; так же
+  QTextEdit.inc, RichEdPopUp.inc, HiLight.inc — QRICHEDIT; qEditEx.inc —
+  QEDIT), чтобы `CREATE x AS QRICHEDIT` в программе создавал их класс. В общем
+  файле это подменяло класс для всех файлов ниже (rc.exe: «Inheritance from
+  extended type not yet supported» у `TYPE QTEXTEDIT EXTENDS QRICHEDIT`).
+  Программа, которая на это рассчитывала, пишет класс компонента прямо:
+  `CREATE x AS QREDEX`, или сама делает такой `$DEFINE` после подключения.
 - **`$UNDEF` имени, которое объявил другой файл, закомментирован.**
   WIN32API.INC в конце снимал TRUE и FALSE для всего, что ниже. В общем файле
   TRUE и FALSE после него остаются (1 и 0).

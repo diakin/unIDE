@@ -519,6 +519,15 @@ def const_value(text):
     return text.upper()
 
 
+# Встроенные классы RapidQ (ComponentAll.data)
+BUILTIN_CLASSES = set('''QFORM QEDIT QRICHEDIT QLABEL QBUTTON QCOOLBTN QOVALBTN QCHECKBOX
+QRADIOBUTTON QPANEL QTABCONTROL QCOMBOBOX QLISTBOX QGROUPBOX QSCROLLBOX QSCROLLBAR QSTRINGGRID
+QLISTVIEW QDIRTREE QFILELISTBOX QTREEVIEW QOUTLINE QGAUGE QTRACKBAR QHEADER QSTATUSBAR QCANVAS
+QIMAGE QOLECONTAINER QSPLITTER QBITMAP QIMAGELIST QSTRINGLIST QTIMER QSOCKET QFILESTREAM
+QMEMORYSTREAM QFONT QMYSQL QOLEOBJECT QREGISTRY QOPENDIALOG QSAVEDIALOG QFONTDIALOG
+QCOLORDIALOG QMAINMENU QPOPUPMENU QMENUITEM QRECT QOBJECT'''.split())
+
+
 SIMPLE_TYPES = {'BYTE', 'WORD', 'DWORD', 'SHORT', 'INTEGER', 'LONG', 'SINGLE', 'DOUBLE',
                 'STRING', 'ANY', 'VARIANT'}
 
@@ -1000,6 +1009,18 @@ def main():
                 fixed += 1
         if fixed:
             renamed.append('%s: $OPTION INKEY$ TRAPALL закомментирован (действует на всю программу)' % f)
+        # $DEFINE встроенного класса своим (QRedEx.Inc: $UNDEF QRICHEDIT /
+        # $DEFINE QRICHEDIT QREDEX) в общем файле подменил бы класс для всех
+        # файлов ниже и для программы (rc.exe: "Inheritance from extended
+        # type not yet supported" у TYPE QTEXTEDIT EXTENDS QRICHEDIT)
+        fixed = 0
+        for num, line in enumerate(texts[f]):
+            mm = re.match(r'[\$#](define|undef)\s+(\w+)\b', code_part(line), re.I)
+            if mm and mm.group(2).upper() in BUILTIN_CLASSES:
+                texts[f][num] = "'~define " + line + "   ' сборка: встроенный класс не подменяется"
+                fixed += 1
+        if fixed:
+            renamed.append('%s: $DEFINE/$UNDEF встроенного класса закомментированы' % f)
         # Строка-комментарий ассемблера "; ..." (RichEditApi.inc) - "'"
         fixed = 0
         for num, line in enumerate(texts[f]):

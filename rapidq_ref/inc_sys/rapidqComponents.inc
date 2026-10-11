@@ -8798,8 +8798,8 @@ TYPE QxEDIT EXTENDS QEDIT
 
 END TYPE
 
-$UNDEF QEDIT
-$DEFINE QEDIT QxEDIT
+'~define $UNDEF QEDIT   ' сборка: встроенный класс не подменяется
+'~define $DEFINE QEDIT QxEDIT   ' сборка: встроенный класс не подменяется
  
 
 
@@ -9986,8 +9986,8 @@ End Type
 ' =============================================================================
 ' =============================================================================
 
-$UNDEF QRICHEDIT
-$DEFINE QRICHEDIT QREDEX
+'~define $UNDEF QRICHEDIT   ' сборка: встроенный класс не подменяется
+'~define $DEFINE QRICHEDIT QREDEX   ' сборка: встроенный класс не подменяется
 
 '============================================================================
 '[build_inc] qspintext.inc
@@ -10352,8 +10352,8 @@ TYPE QTEXTEDIT EXTENDS QRICHEDIT
     END constRUCTOR
 END TYPE
 
-'~undef $UNDEF QRICHEDIT   ' сборка: QRICHEDIT объявлены другим файлом
-'~dup $DEFINE QRICHEDIT QTEXTEDIT   ' повтор, первое: QRedEx.Inc(573)
+'~define $UNDEF QRICHEDIT   ' сборка: встроенный класс не подменяется
+'~define $DEFINE QRICHEDIT QTEXTEDIT   ' сборка: встроенный класс не подменяется
       
 '============================================================================
 '[build_inc] RichEdPopUp.inc
@@ -10494,8 +10494,8 @@ END WITH
 
 END TYPE
 
-'~undef $UNDEF QRICHEDIT   ' сборка: QRICHEDIT объявлены другим файлом
-'~dup $DEFINE QRICHEDIT QMAXEDIT   ' повтор, первое: QRedEx.Inc(573)
+'~define $UNDEF QRICHEDIT   ' сборка: встроенный класс не подменяется
+'~define $DEFINE QRICHEDIT QMAXEDIT   ' сборка: встроенный класс не подменяется
 
 '================= END NEW COMPONENT ========================
 
@@ -12494,8 +12494,8 @@ TYPE QREdit EXTENDS QRichEdit
   END constRUCTOR
 END TYPE
 
-'~undef $UNDEF QRICHEDIT   ' сборка: QRICHEDIT объявлены другим файлом
-'~dup $DEFINE QRICHEDIT QREdit   ' повтор, первое: QRedEx.Inc(573)
+'~define $UNDEF QRICHEDIT   ' сборка: встроенный класс не подменяется
+'~define $DEFINE QRICHEDIT QREdit   ' сборка: встроенный класс не подменяется
 
   
 $TYPECHECK OFF   ' сборка: вернуть после HiLight.inc
@@ -35420,8 +35420,8 @@ TYPE TestEDIT EXTENDS QRICHEDIT
 		end function
     END WITH
 END TYPE
-'~undef $UNDEF QRICHEDIT   ' сборка: QRICHEDIT объявлены другим файлом
-'~dup $DEFINE QRICHEDIT QMAXEDIT   ' повтор, первое: QRedEx.Inc(573)
+'~define $UNDEF QRICHEDIT   ' сборка: встроенный класс не подменяется
+'~define $DEFINE QRICHEDIT QMAXEDIT   ' сборка: встроенный класс не подменяется
 '================= END NEW COMPONENT ========================
   
 
