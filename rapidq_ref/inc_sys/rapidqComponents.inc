@@ -9188,7 +9188,7 @@ DIM SplitPos    AS POINTAPI
 DIM OldSplitPos AS POINTAPI
 DIM OldWhere    AS POINTAPI
 DIM Org         AS POINTAPI
-DIM Rect1           AS QRECT
+DIM MSPLIT_Rect1           AS QRECT
 DEFWORD PatternPtn(7) = {&H00AA, &H0055, &H00AA, &H0055, &H00AA, &H0055, &H00AA, &H0055}
 DEFWORD SolidPtn(7) = {&H00FF, &H00FF, &H00FF, &H00FF, &H00FF, &H00FF, &H00FF, &H00FF}
 
@@ -9304,11 +9304,11 @@ TYPE QMAXSPLITTER EXTENDS QPANEL
                 CASE 1
                     MoveWindow(.Mover, 0, 0, 0, .MoverRect.Top+Where.Y-1, 0)
                 CASE 2
-                    MoveWindow(.Mover, 0, Rect1.Bottom-(Where.Y+.Height), 0, .MoverRect.Bottom-(Where.Y+.Height)+1, 0)
+                    MoveWindow(.Mover, 0, MSPLIT_Rect1.Bottom-(Where.Y+.Height), 0, .MoverRect.Bottom-(Where.Y+.Height)+1, 0)
                 CASE 3
                     MoveWindow(.Mover, 0, 0, .MoverRect.Left+Where.X+1, 0, 0)
                 CASE 4
-                    MoveWindow(.Mover, Rect1.Right-(Where.X+.Width), 0, .MoverRect.Right-(Where.X+.Width)+1, 0, 0)
+                    MoveWindow(.Mover, MSPLIT_Rect1.Right-(Where.X+.Width), 0, .MoverRect.Right-(Where.X+.Width)+1, 0, 0)
             END SELECT
             SendMessage(.Owner, &H5, 0, 0)
             DoEvents
@@ -9357,16 +9357,16 @@ TYPE QMAXSPLITTER EXTENDS QPANEL
             IF Moving = 1 THEN
                 GetCursorPos(SplitPos)
                 
-                GetClientRect(.Owner, Rect1) ' inc2026: Rect1 вместо R: глобальная QRECT названа Rect1 (строка 42), её Bottom/Right читаются в строках 158, 162, 216, 220; R нигде не объявлена; в inc/old/QSplitter.inc строка 204 и старой версии везде R
+                GetClientRect(.Owner, MSPLIT_Rect1) ' inc2026: Rect1 вместо R: глобальная QRECT названа Rect1 (строка 42), её Bottom/Right читаются в строках 158, 162, 216, 220; R нигде не объявлена; в inc/old/QSplitter.inc строка 204 и старой версии везде R
                 OwnerOrg.X = 0
                 OwnerOrg.Y = 0
                 ClientToScreen_QMaxSplitter(.Owner, OwnerOrg)
                 IF .Align = 1 OR .Align = 2 THEN
-                    IF SplitPos.Y < (OwnerOrg.Y+.MinSize) OR SplitPos.Y > (OwnerOrg.Y-.MinSize) + Rect1.Bottom _
+                    IF SplitPos.Y < (OwnerOrg.Y+.MinSize) OR SplitPos.Y > (OwnerOrg.Y-.MinSize) + MSPLIT_Rect1.Bottom _
                      OR SplitPos.Y < (OwnerOrg.Y+(.Height/2)) THEN EXIT EVENT
                     SplitPos.Y = SplitPos.Y-(.Height/2)
                 ELSEIF .Align = 3 OR .Align = 4 THEN
-                    IF SplitPos.X < (OwnerOrg.X+.MinSize) OR SplitPos.X > (OwnerOrg.X-.MinSize) + Rect1.Right _
+                    IF SplitPos.X < (OwnerOrg.X+.MinSize) OR SplitPos.X > (OwnerOrg.X-.MinSize) + MSPLIT_Rect1.Right _
                      OR SplitPos.X < (OwnerOrg.X+(.Width/2)) THEN EXIT EVENT
                     SplitPos.X = SplitPos.X-(.Width/2)
                 ELSE

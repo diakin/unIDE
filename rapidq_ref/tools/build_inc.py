@@ -181,7 +181,10 @@ RENAMES = {'cmd5.inc': ('MD5_', ['F', 'G', 'H', 'FF', 'GG', 'HH', 'II']),
            # и DIM FORMAT$ - у нынешнего RapidQ это встроенная FORMAT$
            'using.inc': ('USING_', ['log10', 'format']),
            # Dim sysdir$ - имя FUNCTION SysDir из Files.inc
-           'setfiletimeattrib.inc': ('SFTA_', ['sysdir'])}
+           'setfiletimeattrib.inc': ('SFTA_', ['sysdir']),
+           # DIM Rect1 AS QRECT - rc.exe: "Identifier RECT1 already used";
+           # другого объявления Rect1 в сборке нет, причина не найдена
+           'qmaxsplitter.inc': ('MSPLIT_', ['Rect1'])}
 
 
 def rename_words(line, prefix, names):
