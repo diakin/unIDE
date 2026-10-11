@@ -34,7 +34,7 @@ uses
   Controls, Forms, Dialogs, ExtCtrls, FileCtrl, StdCtrls, Buttons, CheckLst,
   IniFiles,
   IncCheck,     // сравнение с эталоном, проверки, защита, демо
-  FolderDlg;    // выбор папки эталона - BrowseFolderDialog
+  FolderDlg, UiStdCtrls;    // выбор папки эталона - BrowseFolderDialog
 
 type
   // Открыть файл в редакторе на строке (с 1; 0 - без перехода)
@@ -44,24 +44,30 @@ type
                              AItems: TStrings): string of object;
 
   TForm3 = class(TForm)
-    Panel1: TPanel;
-    DirectoryListBox1: TDirectoryListBox;
-    BitBtn1: TBitBtn;
-    BitBtn2: TBitBtn;
+    UiPanel1: TUiPanel;
     Label1: TLabel;
-    CheckListBox1: TCheckListBox;
-    DriveComboBox1: TDriveComboBox;
-    chkSubDirs: TCheckBox;
     lstIncFiles: TCheckListBox;
-    lblCount: TLabel;
-    lblRef: TLabel;
-    btnRef: TBitBtn;
-    lblErrHead: TLabel;
-    lstErrors: TListBox;
     btnScan: TBitBtn;
     btnGuard: TBitBtn;
     btnDemo: TBitBtn;
+    lblCount: TLabel;
     lblLegend: TLabel;
+    Panel2: TPanel;
+    Panel1: TPanel;
+    CheckListBox1: TCheckListBox;
+    lblRef: TLabel;
+    lblErrHead: TLabel;
+    lstErrors: TListBox;
+    btnRef: TBitBtn;
+    Splitter1: TSplitter;
+    Panel3: TPanel;
+    DirectoryListBox1: TDirectoryListBox;
+    UiPanel2: TUiPanel;
+    DriveComboBox1: TDriveComboBox;
+    Panel4: TPanel;
+    BitBtn1: TBitBtn;
+    BitBtn2: TBitBtn;
+    chkSubDirs: TCheckBox;
     procedure BitBtn1Click(Sender: TObject);
     procedure BitBtn2Click(Sender: TObject);
     procedure CheckListBox1ClickCheck(Sender: TObject);
