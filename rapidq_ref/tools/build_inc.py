@@ -576,6 +576,7 @@ def lib_signature_renames(order, texts, rq2):
     под именем Имя_Файл (ALIAS прежний), и вызовы в этом файле - тоже.
     Результат - список для отчёта."""
     first, mapping = {}, collections.defaultdict(dict)
+    display = collections.defaultdict(dict)
     for fname, lines, keep in order:
         for unit in split_units(lines):
             if unit.key != 'D' or not unit.names or (keep is not None and not keep(unit.first)):
@@ -589,7 +590,11 @@ def lib_signature_renames(order, texts, rq2):
             elif first[name][0] != fname and lib_sig_conflict(first[name][1], sig):
                 real = rq2 if fname.endswith(' (компоненты)') else fname
                 tag = re.sub(r'\W', '', os.path.splitext(real)[0])[:16]
-                mapping[real][name] = name.rstrip('$%&!#') + '_' + tag + \
+                # имя как написано (для ALIAS: имена в DLL различают регистр)
+                shown = re.search(r'(?:sub|function)\s+(' + re.escape(name) + r')', code_part(lines[unit.first]), re.I)
+                shown = shown.group(1) if shown else name
+                display[real][name] = shown
+                mapping[real][name] = shown.rstrip('$%&!#') + '_' + tag + \
                     (name[-1] if name[-1] in '$%&!#' else '')
     report = []
     for real, names in mapping.items():
@@ -599,9 +604,10 @@ def lib_signature_renames(order, texts, rq2):
         # ALIAS - прежнее имя, если его не было
         units = split_units(lines)
         for unit in units:
+            # ALIAS бывает и слитно с переносом: Alias_ (Kernel32.inc)
             if unit.key == 'D' and unit.names and unit.names[0] in [v.upper() for v in names.values()] \
-                    and not re.search(r'\bALIAS\b', unit.text):
-                orig = [k for k, v in names.items() if v.upper() == unit.names[0]][0]
+                    and not re.search(r'\bALIAS(?![A-Z0-9])', unit.text):
+                orig = [display[real][k] for k, v in names.items() if v.upper() == unit.names[0]][0]
                 for num in range(unit.first, unit.last + 1):
                     mm = re.search(r'(\bLIB\s*"[^"]*")', lines[num], re.I)
                     if mm:
