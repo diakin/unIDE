@@ -1,6 +1,6 @@
 object Form3: TForm3
-  Left = 63
-  Top = 167
+  Left = 99
+  Top = 85
   Width = 1322
   Height = 897
   Caption = 'INC Manager'
@@ -216,8 +216,8 @@ object Form3: TForm3
     end
     object lblRef: TLabel
       Color = clGradientInactiveCaption
-      Left = 26
-      Top = 566
+      Left = 326
+      Top = 658
       Width = 340
       Height = 13
       AutoSize = False
@@ -240,15 +240,15 @@ object Form3: TForm3
       Left = 2
       Top = 326
       Width = 380
-      Height = 258
+      Height = 154
       Hint = 'Двойной щелчок - строка в редакторе'
       ItemHeight = 13
       TabOrder = 3
       OnDblClick = lstErrorsDblClick
     end
     object btnRef: TBitBtn
-      Left = 400
-      Top = 560
+      Left = 462
+      Top = 556
       Width = 30
       Height = 21
       Hint = 'Папка эталонных inc (исходные файлы общих rapidqAllProc.inc и rapidqComponents.inc)'
