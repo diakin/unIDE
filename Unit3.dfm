@@ -1,6 +1,6 @@
 object Form3: TForm3
-  Left = 99
-  Top = 85
+  Left = 262
+  Top = 172
   Width = 1322
   Height = 897
   Caption = 'INC Manager'
@@ -57,8 +57,8 @@ object Form3: TForm3
       OnDrawItem = lstIncFilesDrawItem
     end
     object btnScan: TBitBtn
-      Left = 143
-      Top = 491
+      Left = 295
+      Top = 628
       Width = 96
       Height = 25
       Hint = 'Перечитать эталон и файлы с диска и проверить заново'
@@ -109,10 +109,10 @@ object Form3: TForm3
   end
   object Panel2: TPanel
     Color = clBlue
-    Align = alNone
+    Align = alClient
     Left = 0
     Top = 0
-    Width = 420
+    Width = 371
     Height = 859
     Caption = 'Panel2'
     object Panel1: TPanel
@@ -216,10 +216,10 @@ object Form3: TForm3
     end
     object lblRef: TLabel
       Color = clGradientInactiveCaption
-      Left = 326
-      Top = 658
+      Left = 269
+      Top = 593
       Width = 340
-      Height = 13
+      Height = 66
       AutoSize = False
     end
     object lblErrHead: TLabel
@@ -247,8 +247,8 @@ object Form3: TForm3
       OnDblClick = lstErrorsDblClick
     end
     object btnRef: TBitBtn
-      Left = 432
-      Top = 568
+      Left = 32
+      Top = 548
       Width = 196
       Height = 60
       Hint = 'Папка эталонных inc (исходные файлы общих rapidqAllProc.inc и rapidqComponents.inc)'
@@ -258,10 +258,11 @@ object Form3: TForm3
     end
   end
   object Splitter1: TSplitter
-    Align = alClient
+    Align = alRight
     Color = clRed
-    Left = 448
-    Top = 114
-    Height = 0
+    Left = 378
+    Top = 0
+    Height = 859
+    Width = 12
   end
 end
