@@ -55,12 +55,12 @@ type
     lstIncFiles: TCheckListBox;
     lblCount: TLabel;
     lblRef: TLabel;
-    btnRef: TButton;
+    btnRef: TBitBtn;
     lblErrHead: TLabel;
     lstErrors: TListBox;
-    btnScan: TButton;
-    btnGuard: TButton;
-    btnDemo: TButton;
+    btnScan: TBitBtn;
+    btnGuard: TBitBtn;
+    btnDemo: TBitBtn;
     lblLegend: TLabel;
     procedure BitBtn1Click(Sender: TObject);
     procedure BitBtn2Click(Sender: TObject);
@@ -91,6 +91,10 @@ type
     FOnChoose: TIncChooseEvent;
     procedure ProgressStep(const AText: string; var ACancel: Boolean);
     procedure SetBusy(ABusy: Boolean);
+    // $0128 - WM_UPDATEUISTATE, в Messages.pas Delphi 7 этой константы нет.
+    // По Alt Windows меняет показ подчёркиваний, и контролы окна пропадают
+    // (см. TForm1.WMUpdateUIState) - сообщение дальше не передаём.
+    procedure WMUpdateUIState(var Message: TMessage); message $0128;
     procedure LoadFolders;
     procedure SaveFolders;
     procedure ClearInfos;
@@ -122,6 +126,11 @@ const
   // Цвета значков: совпадает / отличается / нет в эталоне
   StatusColors: array[TIncStatus] of TColor =
     (clSilver, $0040B040, $0000C8FF, clWhite);
+
+procedure TForm3.WMUpdateUIState(var Message: TMessage);
+begin
+  Message.Result := 0;
+end;
 
 // Окно - сразу, потом чтение эталона и проверка файлов: ход - в строке
 // под списком, кнопка Сканировать на это время - Стоп

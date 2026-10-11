@@ -167,6 +167,14 @@ type
     FDragCtl: TControl;
     FDragFrom: TPoint;
     FDragRect: TRect;
+    // Пока тянут - компонент на месте, рисуется только рамка будущего
+    // места (XOR, как в Delphi): форма с сеткой перерисовывается один раз,
+    // при отпускании кнопки. FFrames - рамки на экране, FDragNew - новые
+    // места (в координатах родителя): у одного компонента - [0], у группы -
+    // по индексу в FGroup (пустой прямоугольник - не двигается).
+    FFrames: array of TRect;
+    FFramesShown: Boolean;
+    FDragNew: array of TRect;
     FOnSelect: TDsgSelectEvent;
     FOnChange: TDsgChangeEvent;
     FOnKey: TDsgKeyEvent;
@@ -277,6 +285,9 @@ type
     function SelControl: TControl;
     procedure ShowCarets;
     procedure HideCarets;
+    procedure ToggleDragFrames;
+    procedure SetDragFrames(const ANew: array of TRect);
+    procedure ClearDragFrames;
     procedure PaintGrid(DC: HDC);
     // от перехватчиков сообщений
     procedure MouseDown(ATarget: TComponent; const AScreen: TPoint);
@@ -4605,6 +4616,72 @@ begin
   CommitGroup;
 end;
 
+// Рамки перетаскивания: XOR на экране в пределах клиентской части формы.
+// Второй вызов с теми же рамками стирает их.
+procedure TFormDesigner.ToggleDragFrames;
+var
+  DC: HDC;
+  FrameIdx: Integer;
+  Origin: TPoint;
+  R: TRect;
+begin
+  if (Length(FFrames) = 0) or (FForm = nil) or not FForm.HandleAllocated then
+    Exit;
+  DC := GetDC(0);
+  try
+    Origin := FForm.ClientToScreen(Point(0, 0));
+    IntersectClipRect(DC, Origin.X, Origin.Y, Origin.X + FForm.ClientWidth,
+                      Origin.Y + FForm.ClientHeight);
+    for FrameIdx := 0 to High(FFrames) do
+    begin
+      R := FFrames[FrameIdx];
+      if IsRectEmpty(R) then
+        Continue;
+      // Двойная линия - видна и на сетке
+      DrawFocusRect(DC, R);
+      InflateRect(R, -1, -1);
+      if not IsRectEmpty(R) then
+        DrawFocusRect(DC, R);
+    end;
+  finally
+    ReleaseDC(0, DC);
+  end;
+  FFramesShown := not FFramesShown;
+end;
+
+// Новые рамки (в координатах экрана): прежние стираются, новые рисуются
+procedure TFormDesigner.SetDragFrames(const ANew: array of TRect);
+var
+  FrameIdx: Integer;
+  Same: Boolean;
+begin
+  Same := FFramesShown and (Length(ANew) = Length(FFrames));
+  if Same then
+    for FrameIdx := 0 to High(ANew) do
+      if not EqualRect(ANew[FrameIdx], FFrames[FrameIdx]) then
+      begin
+        Same := False;
+        Break;
+      end;
+  if Same then
+    Exit;
+  if FFramesShown then
+    ToggleDragFrames;
+  SetLength(FFrames, Length(ANew));
+  for FrameIdx := 0 to High(ANew) do
+    FFrames[FrameIdx] := ANew[FrameIdx];
+  if Length(FFrames) > 0 then
+    ToggleDragFrames;
+end;
+
+// Стереть рамки перетаскивания
+procedure TFormDesigner.ClearDragFrames;
+begin
+  if FFramesShown then
+    ToggleDragFrames;
+  SetLength(FFrames, 0);
+end;
+
 procedure TFormDesigner.MouseDown(ATarget: TComponent; const AScreen: TPoint);
 var
   Par: TWinControl;
@@ -4614,6 +4691,8 @@ var
   I: Integer;
 begin
   HideHint;
+  // Рамки прошлого перетаскивания, если кнопку отпустили не над формой
+  ClearDragFrames;
   // Выбран класс на палитре - щелчок ставит компонент
   if Assigned(FOnPlace) then
   begin
@@ -4706,6 +4785,8 @@ var
   Code: string;
   R: TRect;
   C: TControl;
+  Frames: array of TRect;
+  Origin: TPoint;
 begin
   if not FDragging or (FDragCtl = nil) then
     Exit;
@@ -4713,6 +4794,9 @@ begin
   DY := AScreen.Y - FDragFrom.Y;
   if not FDragMoved and (Abs(DX) < 3) and (Abs(DY) < 3) then
     Exit;
+  if not FDragMoved then
+    // Маркеры выделения - на старом месте; на время переноса их нет
+    HideCarets;
   FDragMoved := True;
 
   // Группа: сдвиг - по тому, за кого тянут (угол на сетку), и тот же сдвиг
@@ -4722,10 +4806,15 @@ begin
   begin
     DX := SnapX(FDragRect.Left + DX) - FDragRect.Left;
     DY := SnapY(FDragRect.Top + DY) - FDragRect.Top;
+    SetLength(FDragNew, FGroup.Count);
+    SetLength(Frames, FGroup.Count);
     for I := 0 to FGroup.Count - 1 do
     begin
+      FDragNew[I] := Rect(0, 0, 0, 0);
+      Frames[I] := Rect(0, 0, 0, 0);
       C := TControl(FGroup[I]);
-      if (I > High(FGroupFrom)) or (C.Align <> alNone) or IsRuntime(C) then
+      if (I > High(FGroupFrom)) or (C.Align <> alNone) or IsRuntime(C) or
+         (C.Parent = nil) then
         Continue;
       R := FGroupFrom[I];
       Code := CodePlacedSides(C);
@@ -4734,9 +4823,12 @@ begin
       if Pos('T', Code) = 0 then
         OffsetRect(R, 0, DY);
       ClampToParent(C.Parent, R, False);
-      C.SetBounds(R.Left, R.Top, C.Width, C.Height);
+      FDragNew[I] := R;
+      Origin := C.Parent.ClientToScreen(R.TopLeft);
+      Frames[I] := Rect(Origin.X, Origin.Y, Origin.X + C.Width,
+                        Origin.Y + C.Height);
     end;
-    ShowGroupMarks;
+    SetDragFrames(Frames);
     Exit;
   end;
 
@@ -4751,25 +4843,51 @@ begin
   // В пределах родителя
   R := Rect(NewX, NewY, NewX + FDragCtl.Width, NewY + FDragCtl.Height);
   ClampToParent(FDragCtl.Parent, R, False);
-  NewX := R.Left;
-  NewY := R.Top;
-  FDragCtl.SetBounds(NewX, NewY, FDragCtl.Width, FDragCtl.Height);
-  ShowCarets;
+  SetLength(FDragNew, 1);
+  FDragNew[0] := R;
+  SetLength(Frames, 1);
+  Origin := FDragCtl.Parent.ClientToScreen(R.TopLeft);
+  Frames[0] := Rect(Origin.X, Origin.Y, Origin.X + FDragCtl.Width,
+                    Origin.Y + FDragCtl.Height);
+  SetDragFrames(Frames);
 end;
 
+// Кнопку отпустили: рамки стираются, компоненты встают на новые места -
+// одна перерисовка формы
 procedure TFormDesigner.MouseUp;
+var
+  I: Integer;
+  C: TControl;
 begin
   if not FDragging then
     Exit;
   FDragging := False;
+  ClearDragFrames;
   if FGroupDrag then
   begin
     FGroupDrag := False;
     FDragCtl := nil;
     if FDragMoved then
+    begin
+      for I := 0 to FGroup.Count - 1 do
+        if (I <= High(FDragNew)) and not IsRectEmpty(FDragNew[I]) then
+        begin
+          C := TControl(FGroup[I]);
+          C.SetBounds(FDragNew[I].Left, FDragNew[I].Top, C.Width, C.Height);
+        end;
+      ShowGroupMarks;
       CommitGroup;
+    end;
+    SetLength(FDragNew, 0);
     Exit;
   end;
+  if FDragMoved and (FDragCtl <> nil) and (Length(FDragNew) > 0) then
+  begin
+    FDragCtl.SetBounds(FDragNew[0].Left, FDragNew[0].Top, FDragCtl.Width,
+                       FDragCtl.Height);
+    ShowCarets;
+  end;
+  SetLength(FDragNew, 0);
   if FDragMoved and (FDragCtl <> nil) and
      not EqualRect(FDragCtl.BoundsRect, FDragRect) then
     CommitBounds(FDragCtl);

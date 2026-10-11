@@ -84,7 +84,7 @@ object Form3: TForm3
     Height = 13
     AutoSize = False
   end
-  object btnRef: TButton
+  object btnRef: TBitBtn
     Left = 350
     Top = 280
     Width = 30
@@ -139,7 +139,7 @@ object Form3: TForm3
     OnDblClick = lstIncFilesDblClick
     OnDrawItem = lstIncFilesDrawItem
   end
-  object btnScan: TButton
+  object btnScan: TBitBtn
     Left = 392
     Top = 484
     Width = 96
@@ -149,7 +149,7 @@ object Form3: TForm3
     TabOrder = 4
     OnClick = btnScanClick
   end
-  object btnGuard: TButton
+  object btnGuard: TBitBtn
     Left = 494
     Top = 484
     Width = 110
@@ -159,7 +159,7 @@ object Form3: TForm3
     TabOrder = 5
     OnClick = btnGuardClick
   end
-  object btnDemo: TButton
+  object btnDemo: TBitBtn
     Left = 610
     Top = 484
     Width = 86
