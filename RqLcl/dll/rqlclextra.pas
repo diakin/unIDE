@@ -635,7 +635,7 @@ begin
   FNames := TStringList.Create;
   FPorts := TStringList.Create;
   FCopies := 1;
-  FCopyMode := 10;   // cmSrcCopy
+  FCopyMode := $CC0020;   // cmSrcCopy (код Windows, см. MiscCopyModeToLcl)
   FIndex := -1;
   FTitle := '';
   LoadPrinters;

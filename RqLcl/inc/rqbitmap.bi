@@ -6,7 +6,8 @@
 '
 '  BMP: чтение кладёт картинку в кэш DLL и возвращает "" (Image.BMP =
 '  Bitmap.BMP, Canvas.Draw(0, 0, Bitmap.BMP)); запись - файл или "" (кэш).
-'  CopyMode - номер RapidQ: cmBlackness 0 ... cmSrcCopy 10 ... cmWhiteness 14.
+'  CopyMode - код растровой операции Windows (cmSrcCopy = &HCC0020, rapidq2.inc;
+'  номера 0..14 из документации RapidQ не работают - тест 2026-10-11).
 '  PixelFormat: pfDevice 0, pf1bit 1, pf4bit 2, pf8bit 3, pf15bit 4,
 '  pf16bit 5, pf24bit 6, pf32bit 7.
 ' ---------------------------------------------------------------------------

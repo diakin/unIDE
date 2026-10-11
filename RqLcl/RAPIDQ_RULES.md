@@ -205,3 +205,7 @@ print "14 "; 5, 5.5, "end"               14 55.500000000end
 print "15 "; 3.0; " "; 0.00001           15 3 0.000010000
 dim s as string : s="7" : n=s : print "16 "; n    16 0
 ```
+
+## CopyMode (тест пользователя в RapidQ, 2026-10-11)
+
+`tests/research/CopyModeTest.bas`: CopyMode у QCANVAS и QBITMAP - код растровой операции Windows, как в rapidq2.inc (`cmSrcCopy = &HCC0020`, `cmBlackness = &H42` ...). Номера 0..14 из документации (qbitmap.html: `cmSrcCopy = 10`) рисуют чёрным при любом номере. Прочитанное значение равно записанному (и номер, и код). Документация здесь неверна; rapidq.inc и другие inc с номерами 0..14 (RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc) - тоже.

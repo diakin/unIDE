@@ -51,8 +51,7 @@ function MiscCallObj(AObj: TObject; const AMethod: string; AOther: TObject;
                      AInt: Integer): Boolean;
 // Холст элемента для рисования (таблица, список, комбобокс); nil - нет
 function CanvasOf(AObj: TObject): TCanvas;
-// CopyMode RapidQ - номер (cmBlackness 0 ... cmWhiteness 14, документация
-// QBITMAP); у LCL - код растровой операции
+// CopyMode RapidQ - код растровой операции Windows, как и у LCL
 function MiscCopyModeToLcl(AIndex: Integer): TCopyMode;
 function MiscCopyModeFromLcl(AMode: TCopyMode): Integer;
 
@@ -61,47 +60,19 @@ implementation
 uses
   Grids, rqlclextra;
 
-const
-  CopyModeTable: array[0..14] of TCopyMode = (
-    cmBlackness, cmDstInvert, cmMergeCopy, cmMergePaint, cmNotSrcCopy,
-    cmNotSrcErase, cmPatCopy, cmPatInvert, cmPatPaint, cmSrcAnd, cmSrcCopy,
-    cmSrcErase, cmSrcInvert, cmSrcPaint, cmWhiteness);
-
-// Номер 0..14 - по таблице. Иначе - код растровой операции как есть, если
-// он из таблицы: rapidq2.inc задаёт cmSrcCopy и прочие кодами Windows
-// (&HCC0020 - "The CopyMode values in original Rapidq.Inc are wrong",
-// Lance, 2002), документация QBITMAP - номерами 0..14. Подходят оба.
+// CopyMode в RapidQ - код растровой операции Windows как есть: тест
+// пользователя 2026-10-11 (tests/research/CopyModeTest.bas) - номера 0..14
+// из документации QBITMAP рисуют чёрным, коды (&HCC0020 - SrcCopy,
+// rapidq2.inc) работают, и прочитанное значение равно записанному. У LCL
+// TCopyMode - тот же код.
 function MiscCopyModeToLcl(AIndex: Integer): TCopyMode;
-var
-  ModeIdx: Integer;
 begin
-  if (AIndex >= Low(CopyModeTable)) and (AIndex <= High(CopyModeTable)) then
-  begin
-    Result := CopyModeTable[AIndex];
-    Exit;
-  end;
-  for ModeIdx := Low(CopyModeTable) to High(CopyModeTable) do
-    if Integer(CopyModeTable[ModeIdx]) = AIndex then
-    begin
-      Result := CopyModeTable[ModeIdx];
-      Exit;
-    end;
-  raise Exception.Create('CopyMode: no mode ' + IntToStr(AIndex) +
-                         ' (0..14 or raster operation code)');
+  Result := TCopyMode(AIndex);
 end;
 
-// Код LCL не из таблицы - -1
 function MiscCopyModeFromLcl(AMode: TCopyMode): Integer;
-var
-  ModeIdx: Integer;
 begin
-  Result := -1;
-  for ModeIdx := Low(CopyModeTable) to High(CopyModeTable) do
-    if CopyModeTable[ModeIdx] = AMode then
-    begin
-      Result := ModeIdx;
-      Exit;
-    end;
+  Result := Integer(AMode);
 end;
 
 var

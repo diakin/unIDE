@@ -358,39 +358,26 @@
 | Имя | Значение: файлы | Брать |
 |---|---|---|
 | CDS_TEST | 2: rapidq2.inc<br>4: WINDOWS.INC | 2 |
-| CMBLACKNESS | 0: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>66: rapidq2.inc | решить (тест) |
-| CMDSTINVERT | 1: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>5570569: rapidq2.inc | решить (тест) |
-| CMMERGECOPY | 2: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>12583114: rapidq2.inc | решить (тест) |
-| CMMERGEPAINT | 3: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>12255782: rapidq2.inc | решить (тест) |
-| CMNOTSRCCOPY | 4: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>3342344: rapidq2.inc | решить (тест) |
-| CMNOTSRCERASE | 5: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>1114278: rapidq2.inc | решить (тест) |
-| CMPATCOPY | 6: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>15728673: rapidq2.inc | решить (тест) |
-| CMPATINVERT | 7: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>5898313: rapidq2.inc | решить (тест) |
-| CMPATPAINT | 8: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>16452105: rapidq2.inc | решить (тест) |
-| CMSRCAND | 9: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>8913094: rapidq2.inc | решить (тест) |
-| CMSRCCOPY | 10: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>13369376: rapidq2.inc | решить (тест) |
-| CMSRCERASE | 11: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>4457256: rapidq2.inc | решить (тест) |
-| CMSRCINVERT | 12: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>6684742: rapidq2.inc | решить (тест) |
-| CMSRCPAINT | 13: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>15597702: rapidq2.inc | решить (тест) |
-| CMWHITENESS | 14: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>16711778: rapidq2.inc | решить (тест) |
+| CMBLACKNESS | 0: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>66: rapidq2.inc | код Windows (rapidq2.inc) |
+| CMDSTINVERT | 1: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>5570569: rapidq2.inc | код Windows (rapidq2.inc) |
+| CMMERGECOPY | 2: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>12583114: rapidq2.inc | код Windows (rapidq2.inc) |
+| CMMERGEPAINT | 3: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>12255782: rapidq2.inc | код Windows (rapidq2.inc) |
+| CMNOTSRCCOPY | 4: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>3342344: rapidq2.inc | код Windows (rapidq2.inc) |
+| CMNOTSRCERASE | 5: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>1114278: rapidq2.inc | код Windows (rapidq2.inc) |
+| CMPATCOPY | 6: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>15728673: rapidq2.inc | код Windows (rapidq2.inc) |
+| CMPATINVERT | 7: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>5898313: rapidq2.inc | код Windows (rapidq2.inc) |
+| CMPATPAINT | 8: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>16452105: rapidq2.inc | код Windows (rapidq2.inc) |
+| CMSRCAND | 9: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>8913094: rapidq2.inc | код Windows (rapidq2.inc) |
+| CMSRCCOPY | 10: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>13369376: rapidq2.inc | код Windows (rapidq2.inc) |
+| CMSRCERASE | 11: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>4457256: rapidq2.inc | код Windows (rapidq2.inc) |
+| CMSRCINVERT | 12: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>6684742: rapidq2.inc | код Windows (rapidq2.inc) |
+| CMSRCPAINT | 13: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>15597702: rapidq2.inc | код Windows (rapidq2.inc) |
+| CMWHITENESS | 14: RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc<br>16711778: rapidq2.inc | код Windows (rapidq2.inc) |
 | LVIF_COLUMNS | 256: commctrl32.inc<br>512: CommCtrl.inc | 512 |
 | LVIF_GROUPID | 128: commctrl32.inc<br>256: CommCtrl.inc | 256 |
 | VK_EXECUTE | 43: fbscancodes.inc, rapidq2.inc<br>49: keys.inc | 43 |
 
-Константы cm* (CopyMode у QBITMAP, QCANVAS, QIMAGE): в документации RapidQ
-(qbitmap.html) - номера 0..14 (cmSrcCopy = 10), в rapidq2.inc (строки 500-522) -
-коды растровых операций Windows (cmSrcCopy = &HCC0020) с пометкой «The CopyMode
-values in original Rapidq.Inc are wrong. Here are the correct Ternary raster
-operations» (Lance, 2002). Какие значения принимает сам RapidQ, не проверялось;
-RqLcl с 2026-10-11 принимает и те, и другие.
-
-Тест для RapidQ:
-
-```
-DIM Bmp AS QBITMAP
-Bmp.Width = 100 : Bmp.Height = 100
-Bmp.CopyMode = 10
-SHOWMESSAGE "10 -> " + STR$(Bmp.CopyMode)
-Bmp.CopyMode = &HCC0020
-SHOWMESSAGE "&HCC0020 -> " + STR$(Bmp.CopyMode)
-```
+Константы cm* (CopyMode у QBITMAP, QCANVAS, QIMAGE): тест в RapidQ 2026-10-11
+(RqLcl/tofb/tests/research/CopyModeTest.bas) - RapidQ принимает коды растровых
+операций Windows, как в rapidq2.inc (cmSrcCopy = &HCC0020); номера 0..14 из
+документации (qbitmap.html) рисуют чёрным. Берутся значения rapidq2.inc.

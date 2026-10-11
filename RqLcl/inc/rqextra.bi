@@ -4,7 +4,7 @@
 '  rqlcl.bi.
 '
 '  Рисование (FillRect, TextOut, Draw, CopyRect...) - как у QIMAGE;
-'  CopyMode - номер RapidQ (cmBlackness 0 ... cmSrcCopy 10 ... cmWhiteness 14).
+'  CopyMode - код растровой операции Windows (cmSrcCopy = &HCC0020, rapidq2.inc).
 ' ---------------------------------------------------------------------------
 
 ' ---------------------------------------------------------------------------
