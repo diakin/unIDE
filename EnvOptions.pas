@@ -36,6 +36,8 @@ type
     DsgShowCaptions: Boolean;     // имена под значками невизуальных компонентов
     DsgShowHints: Boolean;        // подсказка «Имя: Класс» над компонентом
     DsgExtendedHints: Boolean;    // в подсказке - место, размер, TabOrder
+    DsgDragTrace: Boolean;        // журнал переноса в HiLite log (отладка;
+                                  // сам журнал замедляет перенос)
   end;
 
   // Editor Options - Margin and gutter, Code Insight. В editor.ini -
@@ -122,6 +124,7 @@ begin
   AOpts.MinimizeOnRun := False;
   AOpts.HideDesignersOnRun := True;   // так среда работала и раньше
   AOpts.DsgShowGrid := True;
+  AOpts.DsgDragTrace := False;
   AOpts.DsgSnapToGrid := True;
   AOpts.DsgGridX := 8;
   AOpts.DsgGridY := 8;
@@ -161,6 +164,8 @@ begin
                                              AOpts.HideDesignersOnRun);
     AOpts.DsgShowGrid := Ini.ReadBool(SecDesigner, 'DisplayGrid',
                                       AOpts.DsgShowGrid);
+    AOpts.DsgDragTrace := Ini.ReadBool(SecDesigner, 'DragTrace',
+                                       AOpts.DsgDragTrace);
     AOpts.DsgSnapToGrid := Ini.ReadBool(SecDesigner, 'SnapToGrid',
                                         AOpts.DsgSnapToGrid);
     AOpts.DsgGridX := GridValue(Ini.ReadInteger(SecDesigner, 'GridSizeX',
@@ -194,6 +199,7 @@ begin
     Ini.WriteBool(SecPrefs, 'MinimizeOnRun', AOpts.MinimizeOnRun);
     Ini.WriteBool(SecPrefs, 'HideDesignersOnRun', AOpts.HideDesignersOnRun);
     Ini.WriteBool(SecDesigner, 'DisplayGrid', AOpts.DsgShowGrid);
+    Ini.WriteBool(SecDesigner, 'DragTrace', AOpts.DsgDragTrace);
     Ini.WriteBool(SecDesigner, 'SnapToGrid', AOpts.DsgSnapToGrid);
     Ini.WriteInteger(SecDesigner, 'GridSizeX', GridValue(AOpts.DsgGridX));
     Ini.WriteInteger(SecDesigner, 'GridSizeY', GridValue(AOpts.DsgGridY));

@@ -56692,6 +56692,7 @@ begin
   ADesigner.GridX := FEnv.DsgGridX;
   ADesigner.GridY := FEnv.DsgGridY;
   ADesigner.ShowGrid := FEnv.DsgShowGrid;
+  ADesigner.DragTrace := FEnv.DsgDragTrace;
   ADesigner.SnapToGrid := FEnv.DsgSnapToGrid;
   ADesigner.ShowCaptions := FEnv.DsgShowCaptions;
   ADesigner.ShowHints := FEnv.DsgShowHints;

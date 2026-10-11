@@ -202,6 +202,7 @@ type
     // рисуются одним разом в ThawForm.
     FFreezeDepth: Integer;
     FFreezeRect: TRect;
+    FDragTrace: Boolean;         // журнал включён (editor.ini, DragTrace)
     FTrace: Boolean;
     FTraceWhat: string;          // что тянут - в заголовок журнала
     FTraceHeader: Boolean;       // заголовок уже в журнале
@@ -349,6 +350,8 @@ type
     property Form: TForm read FForm;
     property RootName: string read FRootName;
     property Dragging: Boolean read GetDragging;
+    // Журнал переноса в HiLite log: [Designer] DragTrace=1 в editor.ini
+    property DragTrace: Boolean read FDragTrace write FDragTrace;
     // Шаг сетки по обеим осям (прежнее свойство): чтение - шаг по X
     property Grid: Integer read FGridX write SetGrid;
     property GridX: Integer read FGridX write SetGridX;
@@ -4895,7 +4898,9 @@ end;
 
 procedure TFormDesigner.TraceStart(const AWhat: string);
 begin
-  FTrace := True;
+  FTrace := FDragTrace;
+  if not FTrace then
+    Exit;
   FTraceStart := GetTickCount;
   FTraceLines := 0;
   FTraceMoves := 0;
