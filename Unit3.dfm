@@ -12,6 +12,7 @@ object Form3: TForm3
   Font.Style = []
   OldCreateOrder = False
   ShowHint = True
+  OnClose = FormClose
   OnDestroy = FormDestroy
   PixelsPerInch = 96
   TextHeight = 13

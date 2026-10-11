@@ -24,6 +24,9 @@ type
                 isChanged,  // эталон с тем же именем есть, текст другой
                 isNew);     // эталона нет - кандидат в хранилище
 
+  // Ход долгой работы: AText - что делается; ACancel := True - прервать
+  TIncProgress = procedure(const AText: string; var ACancel: Boolean) of object;
+
   TIncFileInfo = class
   public
     FileName: string;
@@ -51,7 +54,9 @@ type
   public
     constructor Create;
     destructor Destroy; override;
-    procedure Load(const ARefDir, ASysDir: string);
+    // AProgress - ход по файлам (может быть nil). False - прервано.
+    function Load(const ARefDir, ASysDir: string;
+                  AProgress: TIncProgress): Boolean;
     function FindByName(const AFileName: string): string;
     function FindByText(const ANormText: string): string;
     // Файл общих inc, где определено имя ('' - нигде)
@@ -562,11 +567,15 @@ begin
   inherited;
 end;
 
-procedure TIncRefIndex.Load(const ARefDir, ASysDir: string);
+function TIncRefIndex.Load(const ARefDir, ASysDir: string;
+                           AProgress: TIncProgress): Boolean;
 var
   Files, Lines, Names: TStringList;
   FileIdx, PathIdx, NameIdx: Integer;
+  Cancel: Boolean;
 begin
+  Result := False;
+  Cancel := False;
   FRefDir := ARefDir;
   FSysDir := ASysDir;
   FNames.Clear;
@@ -580,6 +589,14 @@ begin
     FindFilesExt(ARefDir, '.inc', False, Files, MaxFilesWalk);
     for FileIdx := 0 to Files.Count - 1 do
     begin
+      if Assigned(AProgress) then
+      begin
+        AProgress(Format('Эталон: %d из %d - %s',
+                         [FileIdx + 1, Files.Count,
+                          ExtractFileName(Files[FileIdx])]), Cancel);
+        if Cancel then
+          Exit;
+      end;
       PathIdx := FPaths.Add(Files[FileIdx]);
       FNames.AddObject(UpperCase(ExtractFileName(Files[FileIdx])),
                        TObject(PathIdx));
@@ -596,6 +613,13 @@ begin
     FindFilesExt(ASysDir, '.inc', False, Files, MaxFilesWalk);
     for FileIdx := 0 to Files.Count - 1 do
     begin
+      if Assigned(AProgress) then
+      begin
+        AProgress('Имена общих inc: ' + ExtractFileName(Files[FileIdx]),
+                  Cancel);
+        if Cancel then
+          Exit;
+      end;
       try
         Lines.LoadFromFile(Files[FileIdx]);
       except
@@ -606,6 +630,7 @@ begin
       for NameIdx := 0 to Names.Count - 1 do
         FDefined.Add(Names[NameIdx] + '=' + ExtractFileName(Files[FileIdx]));
     end;
+    Result := True;
   finally
     Names.Free;
     Lines.Free;

@@ -76,7 +76,13 @@ type
     procedure btnDemoClick(Sender: TObject);
     procedure btnRefClick(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
+    procedure FormClose(Sender: TObject; var Action: TCloseAction);
   private
+    FBusy: Boolean;        // идёт чтение эталона или проверка файлов
+    FAbort: Boolean;       // нажат Стоп
+    FLastTick: Cardinal;   // последний показ хода (ProgressStep)
+    procedure ProgressStep(const AText: string; var ACancel: Boolean);
+    procedure SetBusy(ABusy: Boolean);
     FIniFile: string;
     FSysDir: string;       // общие inc (SysIncPath)
     FDefaultRef: string;   // эталон по умолчанию
@@ -89,7 +95,7 @@ type
     procedure SaveFolders;
     procedure ClearInfos;
     procedure FillIncFiles;
-    procedure EnsureRef(AReload: Boolean);
+    function  EnsureRef(AReload: Boolean): Boolean;
     procedure ShowMessagesOf(AIndex: Integer);
     procedure CheckedFolders(AList: TStrings);
     function  SelectedInfo: TIncFileInfo;
@@ -117,20 +123,65 @@ const
   StatusColors: array[TIncStatus] of TColor =
     (clSilver, $0040B040, $0000C8FF, clWhite);
 
+// Окно - сразу, потом чтение эталона и проверка файлов: ход - в строке
+// под списком, кнопка Сканировать на это время - Стоп
 procedure TForm3.ShowFor(const AIniFile, ASysDir, ADefaultRef: string);
 begin
+  Show;
+  BringToFront;
+  if FBusy then
+    Exit;
   FIniFile := AIniFile;
   FSysDir := ASysDir;
   FDefaultRef := ADefaultRef;
+  Update;
   LoadFolders;
-  Show;
-  BringToFront;
 end;
 
 procedure TForm3.FormDestroy(Sender: TObject);
 begin
+  FAbort := True;
   ClearInfos;
   FreeAndNil(FRef);
+end;
+
+// Закрыли окно во время проверки - остановить
+procedure TForm3.FormClose(Sender: TObject; var Action: TCloseAction);
+begin
+  if FBusy then
+    FAbort := True;
+end;
+
+// Шаг долгой работы: раз в 100 мс - строка хода и очередь сообщений
+// (окно живое, Стоп нажимается). ACancel - нажали Стоп.
+procedure TForm3.ProgressStep(const AText: string; var ACancel: Boolean);
+begin
+  ACancel := FAbort;
+  if ACancel or (GetTickCount - FLastTick < 100) then
+    Exit;
+  FLastTick := GetTickCount;
+  lblCount.Caption := AText;
+  Application.ProcessMessages;
+  ACancel := FAbort;
+end;
+
+// На время проверки - только Стоп: папки и кнопки, которые запускают
+// проверку заново или пишут в файлы, недоступны
+procedure TForm3.SetBusy(ABusy: Boolean);
+begin
+  FBusy := ABusy;
+  if ABusy then
+  begin
+    FAbort := False;
+    FLastTick := 0;
+    btnScan.Caption := 'Стоп';
+  end
+  else
+    btnScan.Caption := 'Сканировать';
+  Panel1.Enabled := not ABusy;
+  btnRef.Enabled := not ABusy;
+  btnGuard.Enabled := not ABusy;
+  btnDemo.Enabled := not ABusy;
 end;
 
 procedure TForm3.LoadFolders;
@@ -224,14 +275,23 @@ begin
   lblErrHead.Caption := '';
 end;
 
-// Эталон: файлы папки FRefDir и имена общих inc (FSysDir)
-procedure TForm3.EnsureRef(AReload: Boolean);
+// Эталон: файлы папки FRefDir и имена общих inc (FSysDir). False -
+// прервано Стопом (эталон тогда будет прочитан заново в следующий раз).
+function TForm3.EnsureRef(AReload: Boolean): Boolean;
 begin
+  Result := True;
   if (FRef <> nil) and not AReload then
     Exit;
   if FRef = nil then
     FRef := TIncRefIndex.Create;
-  FRef.Load(FRefDir, FSysDir);
+  lblRef.Caption := 'Эталон: читается...';
+  if not FRef.Load(FRefDir, FSysDir, ProgressStep) then
+  begin
+    FreeAndNil(FRef);
+    lblRef.Caption := 'Эталон: чтение прервано';
+    Result := False;
+    Exit;
+  end;
   if FRef.RefCount = 0 then
     lblRef.Caption := 'Эталон: не найден (' + FRefDir + ')'
   else
@@ -260,16 +320,22 @@ var
   Counts: array[TIncStatus] of Integer;
   Status: TIncStatus;
   Info: TIncFileInfo;
+  Cancel: Boolean;
 begin
-  if FLoading then
+  if FLoading or FBusy then
     Exit;
-  Screen.Cursor := crHourGlass;
+  SetBusy(True);
   Files := TStringList.Create;
   Folders := TStringList.Create;
-  lstIncFiles.Items.BeginUpdate;
+  Cancel := False;
   try
-    EnsureRef(False);
     ClearInfos;
+    if not EnsureRef(False) then
+    begin
+      lblCount.Caption := 'Прервано: эталон не прочитан. Сканировать - ' +
+                          'начать заново';
+      Exit;
+    end;
     Files.Sorted := True;
     Files.Duplicates := dupIgnore;
     Missing := 0;
@@ -286,6 +352,11 @@ begin
     Errors := 0;
     for ItemIdx := 0 to Files.Count - 1 do
     begin
+      ProgressStep(Format('Проверка: %d из %d - %s',
+                          [ItemIdx + 1, Files.Count,
+                           ExtractFileName(Files[ItemIdx])]), Cancel);
+      if Cancel then
+        Break;
       Info := TIncFileInfo.Create(Files[ItemIdx]);
       IncCheckFile(Info, FRef);
       Inc(Counts[Info.Status]);
@@ -303,11 +374,14 @@ begin
     if Missing > 0 then
       lblCount.Caption := lblCount.Caption +
                           Format('; папок нет на диске: %d', [Missing]);
+    if Cancel then
+      lblCount.Caption := Format('Прервано: проверено %d из %d. ',
+                                 [lstIncFiles.Items.Count, Files.Count]) +
+                          lblCount.Caption;
   finally
-    lstIncFiles.Items.EndUpdate;
     Folders.Free;
     Files.Free;
-    Screen.Cursor := crDefault;
+    SetBusy(False);
   end;
   if lstIncFiles.Items.Count > 0 then
   begin
@@ -436,12 +510,12 @@ end;
 // Сканировать заново: эталон и файлы с диска
 procedure TForm3.btnScanClick(Sender: TObject);
 begin
-  Screen.Cursor := crHourGlass;
-  try
-    EnsureRef(True);
-  finally
-    Screen.Cursor := crDefault;
+  if FBusy then
+  begin
+    FAbort := True;
+    Exit;
   end;
+  FreeAndNil(FRef);   // FillIncFiles прочитает эталон заново
   FillIncFiles;
 end;
 
@@ -570,12 +644,7 @@ begin
     Exit;
   FRefDir := ExcludeTrailingPathDelimiter(Dir);
   SaveFolders;
-  Screen.Cursor := crHourGlass;
-  try
-    EnsureRef(True);
-  finally
-    Screen.Cursor := crDefault;
-  end;
+  FreeAndNil(FRef);   // FillIncFiles прочитает эталон заново
   FillIncFiles;
 end;
 
