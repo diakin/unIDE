@@ -4691,12 +4691,8 @@ DECLARE function bsPath (fullname as string) as string
 ' Administrative Tools    |                         |                         |
 '-----------------------------------------------------------------------------|
 
-function SysDir (dir as string) as string
-  DIM fo_reg AS QRegistry
-  fo_reg.RootKey = &H80000001
-  fo_reg.openkey ("Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders", 0)
-  result = fo_reg.readstring(dir) + "\"
-end function
+DECLARE function SysDir (dir as string) as string
+'~body function SysDir (dir as string) as string   ' сборка: тело - в конце файла
 
 '===============================================================================
 '# HOMEDIR : The folder where the application is
@@ -20770,11 +20766,8 @@ DECLARE Function LOGZ(Z()AS DOUBLE ) AS DOUBLE
 '--------------------------------------------------------------------------------
 '    LOG10() returns the base 10 log of x
 '--------------------------------------------------------------------------------
- Function LOG10(value AS DOUBLE) AS DOUBLE
-'  LOG10 = (LOG (value) * LOG(10 * rqE))
-  LOG10 = LOG (value)/LOG(10)
-
- End Function
+DECLARE Function LOG10(value AS DOUBLE) AS DOUBLE
+'~body Function LOG10(value AS DOUBLE) AS DOUBLE   ' сборка: тело - в конце файла
 '--------------------------------------------------------------------------------
 '     LOG10Z() returns the 10-th logarithm of z (base is 10)
 '--------------------------------------------------------------------------------
@@ -28919,12 +28912,12 @@ declare    Functioni ChangeFileDateAndTime ( ... ) As Long
 
 'Declare Function SetFileAttributes Lib "kernel32" Alias "SetFileAttributesA" (ByVal lpFileName As String, ByVal dwFileAttributes As Long) As Long
 
-Dim sysdir$ as String, strSave as string
+Dim SFTA_sysdir$ as String, strSave as string
 
 '~dup Declare Function GetWindowsDirectory Lib "kernel32" Alias "GetWindowsDirectoryA" (ByVal lpBuffer As String, ByVal nSize As Long) As Long   ' повтор, первое: Kernel32.inc, поднято(213)
  strSave = String$(200, Chr$(0))
 
-sysdir$ = Left$(strSave, GetWindowsDirectory(strSave, Len(strSave))) 
+SFTA_sysdir$ = Left$(strSave, GetWindowsDirectory(strSave, Len(strSave))) 
 '--------------------------------
 
 '-- ***********************************************************************'
@@ -29666,7 +29659,7 @@ const SGNNO%=0:const SGNFRONT%=1:const SGNBACK%=2
 '               123456789012 Repeated backslash because of ESCAPECHARS
 const symbols$="#.,-+^*$&! \\"
 const signs$="- +"
-const log10=2.302585
+const USING_log10=2.302585
 
 'change these constants to suit your local needs
 const thou$="."
@@ -29807,7 +29800,7 @@ buildoutput:
          'is there any numeric param?
          if valcount%=<paramvalcount then
             num#=(paramval(valcount%))
-            if num# then oom%=round(log(abs(num#))/log10)+1 else  oom%=0
+            if num# then oom%=round(log(abs(num#))/USING_log10)+1 else  oom%=0
             fpart$="":epart$="":spart$=""
             'sign processing
             if sign%=1 then
@@ -63280,6 +63273,12 @@ function bsPath (fullname as string) as string
   'fullname = replacesubstr$(fullname, "\\", "\")
   result = replacesubstr$(fullname, "/", "\")
 end function
+function SysDir (dir as string) as string
+  DIM fo_reg AS QRegistry
+  fo_reg.RootKey = &H80000001
+  fo_reg.openkey ("Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders", 0)
+  result = fo_reg.readstring(dir) + "\"
+end function
 function homedir() as string
   result = left$(command$(0), rinstr(command$(0), "\"))
 end function
@@ -65326,6 +65325,11 @@ Function LOGZ(Z()AS DOUBLE ) AS DOUBLE
     Z(1) =  im / ( re * re + im * im)
     LOGZ = Z()
 End Function
+ Function LOG10(value AS DOUBLE) AS DOUBLE
+'  LOG10 = (LOG (value) * LOG(10 * rqE))
+  LOG10 = LOG (value)/LOG(10)
+
+ End Function
 Function LOG10Z(Z()AS DOUBLE ) AS DOUBLE
     re = Z(0): im = Z(1)
     Z(0) =  LOG (re / ( re * re + im * im))/ LOG (10)

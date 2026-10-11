@@ -176,13 +176,17 @@ def split_units(lines):
 # совпадают с переменными других файлов и программ (QXLS.INC: DIM F AS
 # QFileStream при FUNCTION F из CMD5.inc). В сборке - с приставкой; снаружи
 # файла их никто не вызывает (проверено поиском по incOld).
-RENAMES = {'cmd5.inc': ('MD5_', ['F', 'G', 'H', 'FF', 'GG', 'HH', 'II'])}
+RENAMES = {'cmd5.inc': ('MD5_', ['F', 'G', 'H', 'FF', 'GG', 'HH', 'II']),
+           # const log10 = 2.302585 (ln 10) - имя FUNCTION LOG10 из Math.inc
+           'using.inc': ('USING_', ['log10']),
+           # Dim sysdir$ - имя FUNCTION SysDir из Files.inc
+           'setfiletimeattrib.inc': ('SFTA_', ['sysdir'])}
 
 
 def rename_words(line, prefix, names):
     """Слова names в коде строки (вне строк в кавычках и комментария) - с
     приставкой prefix; не после точки."""
-    pat = re.compile(r'(?<![\w.])(' + '|'.join(names) + r')(?![\w$%&!#])', re.I)
+    pat = re.compile(r'(?<![\w.])(' + '|'.join(names) + r')(?![\w])', re.I)
     out, buf, in_str = [], '', False
     idx = 0
     while idx < len(line):
