@@ -135,7 +135,7 @@
 | QTButton85b.inc | 720 | 2005-11-10 | QTButton (QButton) | да |
 | QTButton94.inc | 1251 | 2005-11-10 | QTButton (QButton) | да |
 | QTButton94b.inc | 1443 | 2005-11-10 | QTButton (QButton) | да |
-| QTButton95.inc | 1448 | 2005-11-10 | QTButton (QButton) | да |
+| QTButton95.inc | 1448 | 2005-11-10 | QTButton (QButton) | нет: нужен $RESOURCE btn_BMP в программе (QTBtnBMP.BMPHandle = btn_BMP при подключении); подключать отдельно |
 | QTextBtn.inc | 88 | 2010-06-21 | QTextBtn (QLabel) | да |
 | QTextEdit.inc | 225 | inc2026 | QTEXTEDIT (QRICHEDIT) | да |
 | QTextEditTest.inc | 83 | 2005-09-26 | QTEXTEDIT (QRICHEDIT) | да |
@@ -334,7 +334,7 @@
 | rq_math.inc | 481 | 2004-03-17 | 4 | 0 | 45 |  | да |
 | setup.inc | 5 | 2004-03-17 | 0 | 1 | 1 |  | да |
 | stdObjMnu.inc | 245 | 2005-07-22 | 0 | 0 | 0 |  | нет: фрагмент программы (объекты и процедуры основной программы) |
-| stdObjbar.inc | 351 | 2021-03-13 | 0 | 0 | 0 |  | да |
+| stdObjbar.inc | 351 | 2021-03-13 | 0 | 0 | 0 |  | нет: фрагмент программы (панель кнопок конструктора форм, картинки Form_BMP и др. - ресурсы программы) |
 | using.inc | 243 | 2004-03-17 | 8 | 1 | 0 |  | да |
 | var.inc | 353 | 2021-04-01 | 1 | 0 | 0 |  | да |
 | var2008.inc | 258 | 2013-05-24 | 15 | 0 | 0 |  | да |
