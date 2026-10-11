@@ -938,6 +938,16 @@ begin
     DsgLogProc(S, AColor);
 end;
 
+// Журнал перетаскивания: подробных строк за один перенос
+const
+  TraceMaxLines = 400;
+
+// Прямоугольник строкой - для журнала
+function DsgRectText(const R: TRect): string;
+begin
+  Result := Format('(%d,%d)-(%d,%d)', [R.Left, R.Top, R.Right, R.Bottom]);
+end;
+
 // Имя и класс компонента для журнала
 function DsgCompName(C: TComponent): string;
 begin
@@ -4798,16 +4808,6 @@ begin
   end;
   ShowGroupMarks;
   CommitGroup;
-end;
-
-// Журнал перетаскивания: подробных строк за один перенос
-const
-  TraceMaxLines = 400;
-
-// Прямоугольник строкой - для журнала
-function DsgRectText(const R: TRect): string;
-begin
-  Result := Format('(%d,%d)-(%d,%d)', [R.Left, R.Top, R.Right, R.Bottom]);
 end;
 
 // Рамки перетаскивания: XOR на экране в пределах клиентской части формы.
