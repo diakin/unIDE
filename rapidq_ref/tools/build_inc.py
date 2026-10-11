@@ -452,6 +452,31 @@ def append_bodies(result, moved):
     return result + tail
 
 
+def const_value(text):
+    """Для сравнения повторов: у CONST - только значение (CONST X = 1 и
+    $DEFINE X 1 - одно и то же); скобки вокруг числа не в счёт."""
+    text = re.sub(r'^(?:PUBLIC\s+|PRIVATE\s+)?CONST\s+\S+\s*(?:AS\s+\w+\s*)?=\s*', '', text.strip(), flags=re.I)
+    text = re.sub(r'\s+', ' ', text).strip()
+    m = re.match(r'^\((.*)\)$', text)
+    if m and '(' not in m.group(1):
+        text = m.group(1).strip()
+    # число в любой записи (&H0001, 1, &H80 OR &H1) - его значение
+    expr = re.sub(r'&H([0-9A-F]+)&?', lambda mm: str(int(mm.group(1), 16)), text.upper())
+    expr = re.sub(r'(?<=\d)&', '', expr)
+    expr = expr.replace(' OR ', ' | ').replace(' AND ', ' & ')
+    if re.fullmatch(r'[0-9\s()|&+\-*]+', expr):
+        try:
+            return str(eval(expr, {'__builtins__': {}}))
+        except Exception:
+            pass
+    if '"' not in text:
+        text = text.replace(' ', '')
+        if text.startswith('(') and text.endswith(')') and text.count('(') == 1:
+            text = text[1:-1]
+        text = re.sub(r'\+0$', '', text)
+    return text.upper()
+
+
 def line_keep(take_val):
     """'да, строки 1-228' в плане - из файла берутся только эти строки
     (дальше пример программы). Функция от номера строки с 0 или None."""
@@ -573,7 +598,15 @@ class Builder:
             if unit.key and unit.names:
                 # Повтор внутри одного исходного файла остаётся как был
                 # (rapidq2.inc: $DEFINE Boolean byte, ниже $DEFINE BOOLEAN LONG)
-                hits = [(n, self.seen.get((unit.key, n))) for n in unit.names]
+                # CONST и $DEFINE - одно пространство имён: $DEFINE ODT_MENU 1
+                # (rapidq2.inc) и ниже CONST ODT_MENU = 1 (Api.inc) дают у
+                # RapidQ "CONST 1 = 1" - "CONST variable 1 already defined"
+                if unit.key in ('C', 'M'):
+                    hits = [(n, self.seen.get((unit.key, n)) or
+                             self.seen.get(('M' if unit.key == 'C' else 'C', n)))
+                            for n in unit.names]
+                else:
+                    hits = [(n, self.seen.get((unit.key, n))) for n in unit.names]
                 hits = [(n, h if (h is None or h[0] != name) else None) for n, h in hits]
                 if any(h for _, h in hits) and not all(h for _, h in hits) and \
                         unit.key == 'V' and re.match(r'(dim|def\w+)\s', code_part(block[0]), re.I):
@@ -601,7 +634,8 @@ class Builder:
                     dup_of = hits[0][1]
                     for nm, prev in hits:
                         self.report_dup[unit.key] += 1
-                        if unit.key in ('C', 'M', 'P', 'D', 'T') and prev[2] != unit.text:
+                        if unit.key in ('C', 'M', 'P', 'D', 'T') and \
+                                const_value(prev[2]) != const_value(unit.text):
                             self.report_diff.append((unit.key, nm, prev[0], prev[1],
                                                      name, unit.first + 1, prev[2], unit.text))
                 else:
@@ -692,6 +726,16 @@ def main():
     by_low = {f.lower(): f for f in files}
     texts = {f: read_lines(os.path.join(SRC, f)) for f in files}
     renamed = []
+    # "define ИМЯ значение" без $ (keys.inc, 46 строк): у RapidQ это вызов
+    # define - ошибка; в сборке - $define
+    for f in files:
+        fixed = 0
+        for num, line in enumerate(texts[f]):
+            if re.match(r'\s*define\s+\w+\s+\S', line, re.I):
+                texts[f][num] = re.sub(r'^(\s*)define', r'\1$define', line, count=1, flags=re.I)
+                fixed += 1
+        if fixed:
+            renamed.append('%s: %d строк "define ИМЯ значение" без $ - $define' % (f, fixed))
     for f in files:
         if f.lower() in RENAMES:
             prefix, names = RENAMES[f.lower()]
@@ -830,9 +874,9 @@ def main():
     rep += ['| %s | %s |' % (by_low.get(x, x), why.get(x, '').replace('|', '\\|'))
             for x in sorted(skipped)]
     if renamed:
-        rep += ['', '## Переименовано в сборке', '',
+        rep += ['', '## Исправлено в сборке', '',
                 'Внутренние процедуры с короткими именами (совпадали с переменными '
-                'других файлов: QXLS.INC DIM F AS QFileStream):', '']
+                'других файлов: QXLS.INC DIM F AS QFileStream) и опечатки:', '']
         rep += ['- ' + r for r in renamed]
     if builder.local_defines or unresolved_defines:
         rep += ['', '## $DEFINE имени типом - только для своего файла', '',

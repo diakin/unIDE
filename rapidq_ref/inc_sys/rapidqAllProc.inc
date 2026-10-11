@@ -4595,13 +4595,13 @@ $DEFINE FILE_ATTRIBUTE_HIDDEN  &H2
 $DEFINE FILE_ATTRIBUTE_SYSTEM  &H4
 $DEFINE FILE_ATTRIBUTE_DIRECTORY  &H10
 $DEFINE FILE_ATTRIBUTE_ARCHIVE  &H20
-$DEFINE FILE_ATTRIBUTE_NORMAL  &H80
+'~dup $DEFINE FILE_ATTRIBUTE_NORMAL  &H80   ' повтор, первое: rapidq2.inc(1866)
 $DEFINE FILE_ATTRIBUTE_TEMPORARY  &H100
 $DEFINE FILE_ATTRIBUTE_COMPRESSED  &H800
 
-$DEFINE GENERIC_READ  &H80000000
-$DEFINE FILE_SHARE_READ  &H1
-$DEFINE OPEN_EXISTING  3
+'~dup $DEFINE GENERIC_READ  &H80000000   ' повтор, первое: rapidq2.inc(1850)
+'~dup $DEFINE FILE_SHARE_READ  &H1   ' повтор, первое: rapidq2.inc(1854)
+'~dup $DEFINE OPEN_EXISTING  3   ' повтор, первое: rapidq2.inc(1861)
 $DEFINE FILE_TYPE_CHAR  &H2
 $DEFINE FILE_TYPE_DISK  &H1
 $DEFINE FILE_TYPE_PIPE  &H3
@@ -5229,79 +5229,8 @@ fdefaultChkAttr=0
 fAttrChg=0
 
 '-- ***********************************************************************'
-function DirCopy (DirSrc$, DirDst$, mask$) as long
-  'print "DirCopy mask$=" ,mask$
-  'print "DirCopy DirDst$=" ,DirDst$
-  'print "DirCopy DirSrc$=" ,DirSrc$
-  'Andrew Shelkovenko dec 2003
-  'Copy files (by mask$) from DirSrc$ to DirDst$
-  result=0
-  dim FileSrc as QFileStream
-  dim FileDst as QFileStream
-  defint NumFIles
-  NumFIles=0
-  'MKDIR DirDst$
-  rz=MKSubDir (DirDst$)
-  if right$(DirSrc$,1)<>"\" then DirSrc$=DirSrc$+"\"
-  if right$(DirDst$,1)<>"\" then DirDst$=DirDst$+"\"
-
-  if direxists(DirDst$) =0 then
-    showmessage ("DirCopy Error: Can't create folder "+DirDst$)
-    exit function
-  end if
-
-  FileName$ = DIR$(DirSrc$+mask$, 0) '-- Get first file
-
-  while    FileName$ <>""
-    if fileexists(DirDst$+FileName$) =0 then goto DCcreate:
-    fOldfa=GetFileAttributes (DirDst$+FileName$)
-    fzas=FILE_ATTRIBUTE_READONLY or FILE_ATTRIBUTE_HIDDEN or FILE_ATTRIBUTE_SYSTEM
-
-    if (fOldfa and fzas) >0 then
-      if fdefaultChkAttr=0 then
-        frzm24=MessageDlg("DirCopy "+fMsg35$+"  "+DirDst$+FileName$, mtWarning, mbYes OR mbNo OR mbAll, 0)
-        IF frzm24 = mrNo THEN ' inc2026: frzm24 вместо rzm24: ответ MessageDlg записан в frzm24 (строка 789), rzm24 нигде не получает значения - ответ "Нет" не обрабатывался
-          fAttrChg=0
-          goto DirCopyExitSub:
-        elseif frzm24 = mrYes then
-          SetFileAttributes (DirDst$+FileName$,FILE_ATTRIBUTE_NORMAL)
-          fAttrChg=1
-        elseif frzm24 = mrAll then
-          fdefaultChkAttr=1
-          SetFileAttributes (DirDst$+FileName$,FILE_ATTRIBUTE_NORMAL)
-          fAttrChg=1
-        END IF
-
-      else
-        SetFileAttributes (DirDst$+FileName$,FILE_ATTRIBUTE_NORMAL)
-        fAttrChg=1
-      end if
-    else
-
-    end if
-    DCcreate:
-    FileSrc.Open(DirSrc$+filename$, fmOpenRead)
-    if FileDst.Open(DirDst$ +filename$, fmCreate) =-1 then
-      FileDst.CopyFrom  (FileSrc, 0)
-      FileDst.close
-    else
-      'result=0
-      ShowMessage ("DirCopy error: Access denied "+DirDst$ +filename$)
-
-    end if
-    FileSrc.close
-    SetFileAttributes (DirDst$+FileName$,fOldfa)
-
-    FileName$ = DIR$ '-- Get next file
-    inc NumFIles
-    DiaMsg$="DirCopy copied= "+str$(NumFIles) +" files"
-    'print"DiaMsg$=";DiaMsg$
-    doevents
-  wend
-  'print "DirCopy copied= "+str$(NumFIles) +" files
-  result=NumFIles
-  DirCopyExitSub:
-end function
+DECLARE function DirCopy (DirSrc$, DirDst$, mask$) as long
+'~body function DirCopy (DirSrc$, DirDst$, mask$) as long   ' сборка: тело - в конце файла
 
 '-- ***********************************************************************'
 DECLARE sub FileCopy (FileSrc$, FileDst$)
@@ -7147,19 +7076,19 @@ const EM_STREAMOUT = 1098
 const EM_UNDO = 199
 
 
-Const WM_MOUSEMOVE = &H200
-Const WM_LBUTTONDOWN = &H201
-Const WM_LBUTTONUP = &H202
-Const WM_LBUTTONDBLCLK = &H203
-Const WM_RBUTTONDOWN = &H204
-Const WM_RBUTTONUP = &H205
-Const WM_RBUTTONDBLCLK = &H206
-Const WM_MBUTTONDOWN = &H207
-Const WM_MBUTTONUP = &H208
-Const WM_MBUTTONDBLCLK = &H209
-Const WM_MOUSEWHEEL = &H20A
-Const WM_KEYDOWN = &H100
-Const WM_KEYUP = &H101
+'~dup Const WM_MOUSEMOVE = &H200   ' повтор, первое: rapidq2.inc(852)
+'~dup Const WM_LBUTTONDOWN = &H201   ' повтор, первое: rapidq2.inc(853)
+'~dup Const WM_LBUTTONUP = &H202   ' повтор, первое: rapidq2.inc(854)
+'~dup Const WM_LBUTTONDBLCLK = &H203   ' повтор, первое: rapidq2.inc(855)
+'~dup Const WM_RBUTTONDOWN = &H204   ' повтор, первое: rapidq2.inc(856)
+'~dup Const WM_RBUTTONUP = &H205   ' повтор, первое: rapidq2.inc(857)
+'~dup Const WM_RBUTTONDBLCLK = &H206   ' повтор, первое: rapidq2.inc(858)
+'~dup Const WM_MBUTTONDOWN = &H207   ' повтор, первое: rapidq2.inc(859)
+'~dup Const WM_MBUTTONUP = &H208   ' повтор, первое: rapidq2.inc(860)
+'~dup Const WM_MBUTTONDBLCLK = &H209   ' повтор, первое: rapidq2.inc(861)
+'~dup Const WM_MOUSEWHEEL = &H20A   ' повтор, первое: rapidq2.inc(863)
+'~dup Const WM_KEYDOWN = &H100   ' повтор, первое: rapidq2.inc(820)
+'~dup Const WM_KEYUP = &H101   ' повтор, первое: rapidq2.inc(821)
 
 '~dup CONST GWL_WNDPROC = (-4)   ' повтор, первое: rapidq2.inc(778)
 '~dup CONST GWL_HWNDPARENT = (-8)   ' повтор, первое: rapidq2.inc(777)
@@ -7328,51 +7257,51 @@ $TYPECHECK OFF   ' сборка: вернуть после AddMenuItemBitmaps4a.
 '============================================================================
 '~dup const GWL_WNDPROC = -4   ' повтор, первое: rapidq2.inc(778)
 
-const ODT_MENU = 1
+'~dup const ODT_MENU = 1   ' повтор, первое: rapidq2.inc(1513)
 
-const ODS_SELECTED = 1
-const ODS_GRAYED = 2
-const ODS_DISABLED = 4
-const ODS_CHECKED = 8
-const ODS_FOCUS = &H10
-const ODS_DEFAULT = &H20
-const ODS_COMBOBOXEDIT = &H1000
+'~dup const ODS_SELECTED = 1   ' повтор, первое: rapidq2.inc(1514)
+'~dup const ODS_GRAYED = 2   ' повтор, первое: rapidq2.inc(1515)
+'~dup const ODS_DISABLED = 4   ' повтор, первое: rapidq2.inc(1516)
+'~dup const ODS_CHECKED = 8   ' повтор, первое: rapidq2.inc(1517)
+'~dup const ODS_FOCUS = &H10   ' повтор, первое: rapidq2.inc(1518)
+'~dup const ODS_DEFAULT = &H20   ' повтор, первое: rapidq2.inc(1519)
+'~dup const ODS_COMBOBOXEDIT = &H1000   ' повтор, первое: rapidq2.inc(1520)
 
-const WM_DRAWITEM = &H2B
-const WM_MEASUREITEM = &H2C
-const WM_MENUSELECT = &H11F
+'~dup const WM_DRAWITEM = &H2B   ' повтор, первое: rapidq2.inc(835)
+'~dup const WM_MEASUREITEM = &H2C   ' повтор, первое: rapidq2.inc(836)
+'~dup const WM_MENUSELECT = &H11F   ' повтор, первое: rapidq2.inc(839)
 
-const MF_BYCOMMAND = 0
-const MF_BYPOSITION = &H400
-const MF_OWNERDRAW = &H100
-const MF_STRING = 0
-const MF_BITMAP = 4
-const MF_HILITE = &H80
+'~dup const MF_BYCOMMAND = 0   ' повтор, первое: rapidq2.inc(1522)
+'~dup const MF_BYPOSITION = &H400   ' повтор, первое: rapidq2.inc(1523)
+'~dup const MF_OWNERDRAW = &H100   ' повтор, первое: rapidq2.inc(1524)
+'~dup const MF_STRING = 0   ' повтор, первое: rapidq2.inc(1527)
+'~dup const MF_BITMAP = 4   ' повтор, первое: rapidq2.inc(1528)
+'~dup const MF_HILITE = &H80   ' повтор, первое: rapidq2.inc(1529)
 
-const MIIM_STATE = &H1
-const MIIM_ID = &H2
-const MIIM_SUBMENU = &H4
-const MIIM_CHECKMARKS = &H8
-const MIIM_DATA = &H20
-const MIIM_TYPE = &H10
+'~dup const MIIM_STATE = &H1   ' повтор, первое: rapidq2.inc(1538)
+'~dup const MIIM_ID = &H2   ' повтор, первое: rapidq2.inc(1539)
+'~dup const MIIM_SUBMENU = &H4   ' повтор, первое: rapidq2.inc(1540)
+'~dup const MIIM_CHECKMARKS = &H8   ' повтор, первое: rapidq2.inc(1541)
+'~dup const MIIM_DATA = &H20   ' повтор, первое: rapidq2.inc(1542)
+'~dup const MIIM_TYPE = &H10   ' повтор, первое: rapidq2.inc(1543)
 
-const MFT_BITMAP = &H4
-const MFT_MENUBARBREAK = &H20
-Const MFT_MENUBREAK = &H40
-Const MFT_OWNERDRAW = &H100
-Const MFT_RADIOCHECK = &H200
-Const MFT_RIGHTJUSTIFY = &H4000
-Const MFT_RIGHTORDER = &H2000
-Const MFT_SEPARATOR = &H800
-Const MFT_STRING = &H0
-Const MFS_CHECKED = &H8
-Const MFS_DEFAULT = &H1000
-Const MFS_DISABLED = &H2
-Const MFS_ENABLED = &H0
-Const MFS_GRAYED = &H1
-Const MFS_HILITE = &H80
-Const MFS_UNCHECKED = &H0
-Const MFS_UNHILITE = &H0
+'~dup const MFT_BITMAP = &H4   ' повтор, первое: rapidq2.inc(1545)
+'~dup const MFT_MENUBARBREAK = &H20   ' повтор, первое: rapidq2.inc(1546)
+'~dup Const MFT_MENUBREAK = &H40   ' повтор, первое: rapidq2.inc(1547)
+'~dup Const MFT_OWNERDRAW = &H100   ' повтор, первое: rapidq2.inc(1548)
+'~dup Const MFT_RADIOCHECK = &H200   ' повтор, первое: rapidq2.inc(1549)
+'~dup Const MFT_RIGHTJUSTIFY = &H4000   ' повтор, первое: rapidq2.inc(1550)
+'~dup Const MFT_RIGHTORDER = &H2000   ' повтор, первое: rapidq2.inc(1551)
+'~dup Const MFT_SEPARATOR = &H800   ' повтор, первое: rapidq2.inc(1552)
+'~dup Const MFT_STRING = &H0   ' повтор, первое: rapidq2.inc(1553)
+'~dup Const MFS_CHECKED = &H8   ' повтор, первое: rapidq2.inc(1554)
+'~dup Const MFS_DEFAULT = &H1000   ' повтор, первое: rapidq2.inc(1555)
+'~dup Const MFS_DISABLED = &H2   ' повтор, первое: rapidq2.inc(1556)
+'~dup Const MFS_ENABLED = &H0   ' повтор, первое: rapidq2.inc(1557)
+'~dup Const MFS_GRAYED = &H1   ' повтор, первое: rapidq2.inc(1558)
+'~dup Const MFS_HILITE = &H80   ' повтор, первое: rapidq2.inc(1559)
+'~dup Const MFS_UNCHECKED = &H0   ' повтор, первое: rapidq2.inc(1560)
+'~dup Const MFS_UNHILITE = &H0   ' повтор, первое: rapidq2.inc(1561)
 
 TYPE TMEASUREITEMSTRUCT
     CtlType AS LONG
@@ -11278,7 +11207,7 @@ $DEFINE __COMMCTRL
 Declare Sub InitCommonControls Lib "comctl32.dll" Alias "InitCommonControls"()
 
 $IFNDEF __WIN32API
-Const WM_USER = &H400
+'~dup Const WM_USER = &H400   ' повтор, первое: rapidq2.inc(870)
 $ENDIF
 
 Const CCM_FIRST               = &H2000
@@ -12858,7 +12787,7 @@ $DEFINE HOTKEY_CLASS HOTKEY_CLASSA
 $DEFINE PROGRESS_CLASS PROGRESS_CLASSA
 $DEFINE STATUSCLASSNAME STATUSCLASSNAMEA
 $DEFINE TOOLBARCLASSNAME TOOLBARCLASSNAMEA
-$DEFINE TOOLTIPS_CLASS TOOLTIPS_CLASSA
+'~dup $DEFINE TOOLTIPS_CLASS TOOLTIPS_CLASSA   ' повтор, первое: CommCtrl.inc(1157)
 $DEFINE TRACKBAR_CLASS TRACKBAR_CLASSA
 $DEFINE UPDOWN_CLASS UPDOWN_CLASSA
 $DEFINE DATETIMEPICK_CLASS DATETIMEPICK_CLASSA
@@ -12868,7 +12797,7 @@ $DEFINE WC_COMBOBOXEX WC_COMBOBOXEXA
 $DEFINE WC_HEADER WC_HEADERA
 $DEFINE WC_IPADDRESS WC_IPADDRESSA
 $DEFINE WC_LISTVIEW WC_LISTVIEWA
-$DEFINE WC_TABCONTROL WC_TABCONTROLA
+'~dup $DEFINE WC_TABCONTROL WC_TABCONTROLA   ' повтор, первое: CommCtrl.inc(334)
 $DEFINE WC_TREEVIEW WC_TREEVIEWA
 $DEFINE WC_PAGESCROLLER WC_PAGESCROLLERA
 $DEFINE WC_NATIVEFONTCTL WC_NATIVEFONTCTLA
@@ -12879,14 +12808,14 @@ $DEFINE WC_LISTBOX WC_LISTBOXA
 $DEFINE WC_COMBOBOX WC_COMBOBOXA
 $DEFINE WC_SCROLLBAR WC_SCROLLBARA
 
-$DEFINE LVM_FIRST &h1000
-$DEFINE TV_FIRST &h1100
+'~dup $DEFINE LVM_FIRST &h1000   ' повтор, первое: CommCtrl.inc(480)
+'~dup $DEFINE TV_FIRST &h1100   ' повтор, первое: CommCtrl.inc(137)
 $DEFINE HDM_FIRST &h1200
 '~dup CONST   ACM_OPEN =	(WM_USER+100)   ' повтор, первое: CommCtrl.inc(1473)
 '~dup CONST   ACM_PLAY =	(WM_USER+101)   ' повтор, первое: CommCtrl.inc(1475)
 '~dup CONST   ACM_STOP =	(WM_USER+102)   ' повтор, первое: CommCtrl.inc(1476)
-$DEFINE ACN_START	1
-$DEFINE ACN_STOP	2
+'~dup $DEFINE ACN_START	1   ' повтор, первое: CommCtrl.inc(1477)
+'~dup $DEFINE ACN_STOP	2   ' повтор, первое: CommCtrl.inc(1478)
 $DEFINE CBEIF_TEXT	&h00000001
 $DEFINE CBEIF_IMAGE	&h00000002
 $DEFINE CBEIF_SELECTEDIMAGE	&h00000004
@@ -12911,31 +12840,31 @@ $DEFINE DL_CURSORSET	0
 $DEFINE DL_STOPCURSOR	1
 $DEFINE DL_COPYCURSOR	2
 $DEFINE DL_MOVECURSOR	3
-$DEFINE CCS_TOP	1
-$DEFINE CCS_NOMOVEY	2
-$DEFINE CCS_BOTTOM	3
-$DEFINE CCS_NORESIZE	4
-$DEFINE CCS_NOPARENTALIGN	8
-$DEFINE CCS_ADJUSTABLE	32
-$DEFINE CCS_NODIVIDER	64
-$DEFINE CCS_VERT 128
-$DEFINE CCS_LEFT 129
-$DEFINE CCS_NOMOVEX 130
-$DEFINE CCS_RIGHT 131
-$DEFINE ACS_CENTER	&h0001
-$DEFINE ACS_TRANSPARENT	&h0002
-$DEFINE ACS_AUTOPLAY	&h0004
-$DEFINE ACS_TIMER	&h0008
-$DEFINE PGS_VERT	&h00000000
-$DEFINE PGS_HORZ	&h00000001
-$DEFINE PGS_AUTOSCROLL	&h00000002
-$DEFINE PGS_DRAGNDROP	&h00000004
+'~dup $DEFINE CCS_TOP	1   ' повтор, первое: CommCtrl.inc(31)
+'~dup $DEFINE CCS_NOMOVEY	2   ' повтор, первое: CommCtrl.inc(27)
+'~dup $DEFINE CCS_BOTTOM	3   ' повтор, первое: CommCtrl.inc(23)
+'~dup $DEFINE CCS_NORESIZE	4   ' повтор, первое: CommCtrl.inc(29)
+'~dup $DEFINE CCS_NOPARENTALIGN	8   ' повтор, первое: CommCtrl.inc(28)
+'~dup $DEFINE CCS_ADJUSTABLE	32   ' повтор, первое: CommCtrl.inc(22)
+'~dup $DEFINE CCS_NODIVIDER	64   ' повтор, первое: CommCtrl.inc(25)
+'~dup $DEFINE CCS_VERT 128   ' повтор, первое: CommCtrl.inc(32)
+'~dup $DEFINE CCS_LEFT 129   ' повтор, первое: CommCtrl.inc(24)
+'~dup $DEFINE CCS_NOMOVEX 130   ' повтор, первое: CommCtrl.inc(26)
+'~dup $DEFINE CCS_RIGHT 131   ' повтор, первое: CommCtrl.inc(30)
+'~dup $DEFINE ACS_CENTER	&h0001   ' повтор, первое: CommCtrl.inc(1480)
+'~dup $DEFINE ACS_TRANSPARENT	&h0002   ' повтор, первое: CommCtrl.inc(1482)
+'~dup $DEFINE ACS_AUTOPLAY	&h0004   ' повтор, первое: CommCtrl.inc(1479)
+'~dup $DEFINE ACS_TIMER	&h0008   ' повтор, первое: CommCtrl.inc(1481)
+'~dup $DEFINE PGS_VERT	&h00000000   ' повтор, первое: CommCtrl.inc(1431)
+'~dup $DEFINE PGS_HORZ	&h00000001   ' повтор, первое: CommCtrl.inc(1430)
+'~dup $DEFINE PGS_AUTOSCROLL	&h00000002   ' повтор, первое: CommCtrl.inc(1428)
+'~dup $DEFINE PGS_DRAGNDROP	&h00000004   ' повтор, первое: CommCtrl.inc(1429)
 $DEFINE CMB_MASKED	2
 $DEFINE MINSYSCOMMAND	SC_SIZE
-$DEFINE SBT_OWNERDRAW	&h1000
-$DEFINE SBT_NOBORDERS	256
-$DEFINE SBT_POPOUT	512
-$DEFINE SBT_RTLREADING	1024
+'~dup $DEFINE SBT_OWNERDRAW	&h1000   ' повтор, первое: CommCtrl.inc(1498)
+'~dup $DEFINE SBT_NOBORDERS	256   ' повтор, первое: CommCtrl.inc(1496)
+'~dup $DEFINE SBT_POPOUT	512   ' повтор, первое: CommCtrl.inc(1499)
+'~dup $DEFINE SBT_RTLREADING	1024   ' повтор, первое: CommCtrl.inc(1500)
 CONST SB_SETTEXT	= (WM_USER+1)
 CONST SB_GETTEXT	= (WM_USER+2)
 CONST SB_GETTEXTLENGTH	= (WM_USER+3)
@@ -13104,33 +13033,33 @@ CONST IPM_SETFOCUS	= (WM_USER+104)
 CONST IPM_ISBLANK	= (WM_USER+105)
 '~dup CONST I_INDENTCALLBACK = (-1)   ' повтор, первое: CommCtrl.inc(513)
 '~dup CONST I_IMAGENONE = (-2)   ' повтор, первое: CommCtrl.inc(551)
-$DEFINE TBSTATE_CHECKED	1
-$DEFINE TBSTATE_PRESSED	2
-$DEFINE TBSTATE_ENABLED	4
-$DEFINE TBSTATE_HIDDEN	8
-$DEFINE TBSTATE_INDETERMINATE	16
-$DEFINE TBSTATE_WRAP	32
-$DEFINE TBSTATE_MARKED	&h0080
-$DEFINE TBSTYLE_BUTTON	0
-$DEFINE TBSTYLE_SEP	1
-$DEFINE TBSTYLE_CHECK	2
-$DEFINE TBSTYLE_GROUP	4
+'~dup $DEFINE TBSTATE_CHECKED	1   ' повтор, первое: CommCtrl.inc(1330)
+'~dup $DEFINE TBSTATE_PRESSED	2   ' повтор, первое: CommCtrl.inc(1336)
+'~dup $DEFINE TBSTATE_ENABLED	4   ' повтор, первое: CommCtrl.inc(1332)
+'~dup $DEFINE TBSTATE_HIDDEN	8   ' повтор, первое: CommCtrl.inc(1333)
+'~dup $DEFINE TBSTATE_INDETERMINATE	16   ' повтор, первое: CommCtrl.inc(1334)
+'~dup $DEFINE TBSTATE_WRAP	32   ' повтор, первое: CommCtrl.inc(1337)
+'~dup $DEFINE TBSTATE_MARKED	&h0080   ' повтор, первое: CommCtrl.inc(1335)
+'~dup $DEFINE TBSTYLE_BUTTON	0   ' повтор, первое: CommCtrl.inc(1340)
+'~dup $DEFINE TBSTYLE_SEP	1   ' повтор, первое: CommCtrl.inc(1354)
+'~dup $DEFINE TBSTYLE_CHECK	2   ' повтор, первое: CommCtrl.inc(1341)
+'~dup $DEFINE TBSTYLE_GROUP	4   ' повтор, первое: CommCtrl.inc(1349)
 '~dup CONST TBSTYLE_CHECKGROUP =(TBSTYLE_GROUP or TBSTYLE_CHECK)   ' повтор, первое: CommCtrl.inc(1350)
-$DEFINE TBSTYLE_DROPDOWN	8
-$DEFINE TBSTYLE_AUTOSIZE	16
-$DEFINE TBSTYLE_NOPREFIX	32
-$DEFINE TBSTYLE_TOOLTIPS	256
-$DEFINE TBSTYLE_WRAPABLE	512
-$DEFINE TBSTYLE_ALTDRAG	1024
-$DEFINE TBSTYLE_FLAT 2048
-$DEFINE TBSTYLE_LIST 4096
-$DEFINE TBSTYLE_CUSTOMERASE 8192
-$DEFINE TBSTYLE_REGISTERDROP	&h4000
-$DEFINE TBSTYLE_TRANSPARENT	&h8000
-$DEFINE TBSTYLE_EX_DRAWDDARROWS	&h00000001
-$DEFINE TBSTYLE_EX_MIXEDBUTTONS 8
-$DEFINE TBSTYLE_EX_HIDECLIPPEDBUTTONS 16
-$DEFINE TBSTYLE_EX_DOUBLEBUFFER	&h80
+'~dup $DEFINE TBSTYLE_DROPDOWN	8   ' повтор, первое: CommCtrl.inc(1343)
+'~dup $DEFINE TBSTYLE_AUTOSIZE	16   ' повтор, первое: CommCtrl.inc(1339)
+'~dup $DEFINE TBSTYLE_NOPREFIX	32   ' повтор, первое: CommCtrl.inc(1352)
+'~dup $DEFINE TBSTYLE_TOOLTIPS	256   ' повтор, первое: CommCtrl.inc(1355)
+'~dup $DEFINE TBSTYLE_WRAPABLE	512   ' повтор, первое: CommCtrl.inc(1357)
+'~dup $DEFINE TBSTYLE_ALTDRAG	1024   ' повтор, первое: CommCtrl.inc(1338)
+'~dup $DEFINE TBSTYLE_FLAT 2048   ' повтор, первое: CommCtrl.inc(1348)
+'~dup $DEFINE TBSTYLE_LIST 4096   ' повтор, первое: CommCtrl.inc(1351)
+'~dup $DEFINE TBSTYLE_CUSTOMERASE 8192   ' повтор, первое: CommCtrl.inc(1342)
+'~dup $DEFINE TBSTYLE_REGISTERDROP	&h4000   ' повтор, первое: CommCtrl.inc(1353)
+'~dup $DEFINE TBSTYLE_TRANSPARENT	&h8000   ' повтор, первое: CommCtrl.inc(1356)
+'~dup $DEFINE TBSTYLE_EX_DRAWDDARROWS	&h00000001   ' повтор, первое: CommCtrl.inc(1345)
+'~dup $DEFINE TBSTYLE_EX_MIXEDBUTTONS 8   ' повтор, первое: CommCtrl.inc(1347)
+'~dup $DEFINE TBSTYLE_EX_HIDECLIPPEDBUTTONS 16   ' повтор, первое: CommCtrl.inc(1346)
+'~dup $DEFINE TBSTYLE_EX_DOUBLEBUFFER	&h80   ' повтор, первое: CommCtrl.inc(1344)
 $DEFINE BTNS_BUTTON	TBSTYLE_BUTTON
 $DEFINE BTNS_SEP	TBSTYLE_SEP
 $DEFINE BTNS_CHECK	TBSTYLE_CHECK
@@ -13281,26 +13210,26 @@ CONST TBBF_LARGE 1
 '~dup CONST TBN_RESTORE	= (TBN_FIRST-21)   ' повтор, первое: CommCtrl.inc(1305)
 '~dup CONST TBN_SAVE	= (TBN_FIRST-22)   ' повтор, первое: CommCtrl.inc(1306)
 '~dup CONST TBN_INITCUSTOMIZE	= (TBN_FIRST-23)   ' повтор, первое: CommCtrl.inc(1307)
-$DEFINE TBNRF_HIDEHELP	1
-$DEFINE TBNRF_ENDCUSTOMIZE	2
-$DEFINE TBNF_IMAGE	1
-$DEFINE TBNF_TEXT	2
-$DEFINE TBNF_DI_SETITEM	&h10000000
-$DEFINE TTS_ALWAYSTIP	1
-$DEFINE TTS_NOPREFIX	2
+'~dup $DEFINE TBNRF_HIDEHELP	1   ' повтор, первое: CommCtrl.inc(1315)
+'~dup $DEFINE TBNRF_ENDCUSTOMIZE	2   ' повтор, первое: CommCtrl.inc(1314)
+'~dup $DEFINE TBNF_IMAGE	1   ' повтор, первое: CommCtrl.inc(1309)
+'~dup $DEFINE TBNF_TEXT	2   ' повтор, первое: CommCtrl.inc(1310)
+'~dup $DEFINE TBNF_DI_SETITEM	&h10000000   ' повтор, первое: CommCtrl.inc(1308)
+'~dup $DEFINE TTS_ALWAYSTIP	1   ' повтор, первое: CommCtrl.inc(1158)
+'~dup $DEFINE TTS_NOPREFIX	2   ' повтор, первое: CommCtrl.inc(1159)
 $DEFINE TTS_NOANIMATE	&h10
 $DEFINE TTS_NOFADE	&h20
-$DEFINE TTS_BALLOON	&h40
+'~dup $DEFINE TTS_BALLOON	&h40   ' повтор, первое: CommCtrl.inc(1160)
 $DEFINE TTS_CLOSE	&h80
-$DEFINE TTF_IDISHWND	1
-$DEFINE TTF_CENTERTIP	2
-$DEFINE TTF_RTLREADING	4
-$DEFINE TTF_SUBCLASS	16
-$DEFINE TTF_TRACK &h0020
-$DEFINE TTF_ABSOLUTE &h0080
-$DEFINE TTF_TRANSPARENT &h0100
+'~dup $DEFINE TTF_IDISHWND	1   ' повтор, первое: CommCtrl.inc(1165)
+'~dup $DEFINE TTF_CENTERTIP	2   ' повтор, первое: CommCtrl.inc(1163)
+'~dup $DEFINE TTF_RTLREADING	4   ' повтор, первое: CommCtrl.inc(1166)
+'~dup $DEFINE TTF_SUBCLASS	16   ' повтор, первое: CommCtrl.inc(1167)
+'~dup $DEFINE TTF_TRACK &h0020   ' повтор, первое: CommCtrl.inc(1168)
+'~dup $DEFINE TTF_ABSOLUTE &h0080   ' повтор, первое: CommCtrl.inc(1162)
+'~dup $DEFINE TTF_TRANSPARENT &h0100   ' повтор, первое: CommCtrl.inc(1169)
 $DEFINE TTF_PARSELINKS &h1000
-$DEFINE TTF_DI_SETITEM &h8000
+'~dup $DEFINE TTF_DI_SETITEM &h8000   ' повтор, первое: CommCtrl.inc(1164)
 $DEFINE TBCD_TICS 1
 $DEFINE TBCD_THUMB 2
 $DEFINE TBCD_CHANNEL 3
@@ -13313,7 +13242,7 @@ $DEFINE TTDT_AUTOMATIC	0
 $DEFINE TTDT_RESHOW	1
 $DEFINE TTDT_AUTOPOP	2
 $DEFINE TTDT_INITIAL	3
-$DEFINE TTM_ACTIVATE	(WM_USER+1)
+'~dup $DEFINE TTM_ACTIVATE	(WM_USER+1)   ' повтор, первое: CommCtrl.inc(1174)
 $DEFINE TTM_SETDELAYTIME	(WM_USER+3)
 $DEFINE TTM_ADDTOOL	(WM_USER+4)
 $DEFINE TTM_DELTOOL	(WM_USER+5)
@@ -13328,8 +13257,8 @@ $DEFINE TTM_GETTOOLCOUNT	(WM_USER+13)
 $DEFINE TTM_ENUMTOOLS	(WM_USER+14)
 $DEFINE TTM_GETCURRENTTOOL	(WM_USER+15)
 $DEFINE TTM_WINDOWFROMPOINT	(WM_USER+16)
-$DEFINE TTM_TRACKACTIVATE	  (WM_USER+17)  
-$DEFINE TTM_TRACKPOSITION	  (WM_USER+18)  
+'~dup $DEFINE TTM_TRACKACTIVATE	  (WM_USER+17)     ' повтор, первое: CommCtrl.inc(1171)
+'~dup $DEFINE TTM_TRACKPOSITION	  (WM_USER+18)     ' повтор, первое: CommCtrl.inc(1170)
 $DEFINE TTM_SETTIPBKCOLOR	  (WM_USER+19)
 $DEFINE TTM_SETTIPTEXTCOLOR	(WM_USER+20)
 $DEFINE TTM_GETDELAYTIME	   (WM_USER+21)
@@ -13345,57 +13274,57 @@ $DEFINE TTM_GETBUBBLESIZE	(WM_USER+30)
 $DEFINE TTM_ADJUSTRECT	(WM_USER+31)
 $DEFINE TTM_SETTITLE	(WM_USER+32)
 $DEFINE TTN_GETDISPINFO    (TTN_FIRST - 0)
-$DEFINE TTN_NEEDTEXT	TTN_GETDISPINFOA
+'~dup $DEFINE TTN_NEEDTEXT	TTN_GETDISPINFOA   ' повтор, первое: CommCtrl.inc(1203)
 $DEFINE TTN_SHOW	(TTN_FIRST-1)
 $DEFINE TTN_POP	(TTN_FIRST-2)
-$DEFINE UD_MAXVAL	&h7fff
-$DEFINE UD_MINVAL	(-UD_MAXVAL)
-$DEFINE UDN_DELTAPOS (UDN_FIRST-1)
-$DEFINE UDS_WRAP	1
-$DEFINE UDS_SETBUDDYINT	2
-$DEFINE UDS_ALIGNRIGHT	4
-$DEFINE UDS_ALIGNLEFT	8
-$DEFINE UDS_AUTOBUDDY	16
-$DEFINE UDS_ARROWKEYS	32
-$DEFINE UDS_HORZ	64
-$DEFINE UDS_NOTHOUSANDS	128
-$DEFINE UDS_HOTTRACK	&h0100
-$DEFINE UDM_SETRANGE	(WM_USER+101)
-$DEFINE UDM_GETRANGE	(WM_USER+102)
-$DEFINE UDM_SETPOS	(WM_USER+103)
-$DEFINE UDM_GETPOS	(WM_USER+104)
-$DEFINE UDM_SETBUDDY	(WM_USER+105)
-$DEFINE UDM_GETBUDDY	(WM_USER+106)
-$DEFINE UDM_SETACCEL	(WM_USER+107)
-$DEFINE UDM_GETACCEL	(WM_USER+108)
-$DEFINE UDM_SETBASE	(WM_USER+109)
-$DEFINE UDM_GETBASE	(WM_USER+110)
-$DEFINE UDM_SETRANGE32	(WM_USER+111)
-$DEFINE UDM_GETRANGE32	(WM_USER+112)
-$DEFINE UDM_SETPOS32	(WM_USER+113)
-$DEFINE UDM_GETPOS32	(WM_USER+114)
-$DEFINE UDM_SETUNICODEFORMAT	CCM_SETUNICODEFORMAT
-$DEFINE UDM_GETUNICODEFORMAT	CCM_GETUNICODEFORMAT
-$DEFINE SBT_TOOLTIPS	&h0800
+'~dup $DEFINE UD_MAXVAL	&h7fff   ' повтор, первое: CommCtrl.inc(1434)
+'~dup $DEFINE UD_MINVAL	(-UD_MAXVAL)   ' повтор, первое: CommCtrl.inc(1435)
+'~dup $DEFINE UDN_DELTAPOS (UDN_FIRST-1)   ' повтор, первое: CommCtrl.inc(1437)
+'~dup $DEFINE UDS_WRAP	1   ' повтор, первое: CommCtrl.inc(1438)
+'~dup $DEFINE UDS_SETBUDDYINT	2   ' повтор, первое: CommCtrl.inc(1439)
+'~dup $DEFINE UDS_ALIGNRIGHT	4   ' повтор, первое: CommCtrl.inc(1440)
+'~dup $DEFINE UDS_ALIGNLEFT	8   ' повтор, первое: CommCtrl.inc(1441)
+'~dup $DEFINE UDS_AUTOBUDDY	16   ' повтор, первое: CommCtrl.inc(1442)
+'~dup $DEFINE UDS_ARROWKEYS	32   ' повтор, первое: CommCtrl.inc(1443)
+'~dup $DEFINE UDS_HORZ	64   ' повтор, первое: CommCtrl.inc(1444)
+'~dup $DEFINE UDS_NOTHOUSANDS	128   ' повтор, первое: CommCtrl.inc(1445)
+'~dup $DEFINE UDS_HOTTRACK	&h0100   ' повтор, первое: CommCtrl.inc(1446)
+'~dup $DEFINE UDM_SETRANGE	(WM_USER+101)   ' повтор, первое: CommCtrl.inc(1447)
+'~dup $DEFINE UDM_GETRANGE	(WM_USER+102)   ' повтор, первое: CommCtrl.inc(1448)
+'~dup $DEFINE UDM_SETPOS	(WM_USER+103)   ' повтор, первое: CommCtrl.inc(1449)
+'~dup $DEFINE UDM_GETPOS	(WM_USER+104)   ' повтор, первое: CommCtrl.inc(1450)
+'~dup $DEFINE UDM_SETBUDDY	(WM_USER+105)   ' повтор, первое: CommCtrl.inc(1451)
+'~dup $DEFINE UDM_GETBUDDY	(WM_USER+106)   ' повтор, первое: CommCtrl.inc(1452)
+'~dup $DEFINE UDM_SETACCEL	(WM_USER+107)   ' повтор, первое: CommCtrl.inc(1453)
+'~dup $DEFINE UDM_GETACCEL	(WM_USER+108)   ' повтор, первое: CommCtrl.inc(1454)
+'~dup $DEFINE UDM_SETBASE	(WM_USER+109)   ' повтор, первое: CommCtrl.inc(1455)
+'~dup $DEFINE UDM_GETBASE	(WM_USER+110)   ' повтор, первое: CommCtrl.inc(1456)
+'~dup $DEFINE UDM_SETRANGE32	(WM_USER+111)   ' повтор, первое: CommCtrl.inc(1457)
+'~dup $DEFINE UDM_GETRANGE32	(WM_USER+112)   ' повтор, первое: CommCtrl.inc(1458)
+'~dup $DEFINE UDM_SETPOS32	(WM_USER+113)   ' повтор, первое: CommCtrl.inc(1459)
+'~dup $DEFINE UDM_GETPOS32	(WM_USER+114)   ' повтор, первое: CommCtrl.inc(1460)
+'~dup $DEFINE UDM_SETUNICODEFORMAT	CCM_SETUNICODEFORMAT   ' повтор, первое: CommCtrl.inc(1461)
+'~dup $DEFINE UDM_GETUNICODEFORMAT	CCM_GETUNICODEFORMAT   ' повтор, первое: CommCtrl.inc(1462)
+'~dup $DEFINE SBT_TOOLTIPS	&h0800   ' повтор, первое: CommCtrl.inc(1501)
 $DEFINE SBN_SIMPLEMODECHANGE	(SBN_FIRST)
-$DEFINE TBS_AUTOTICKS	1
-$DEFINE TBS_VERT	2
-$DEFINE TBS_HORZ	0
-$DEFINE TBS_TOP	4
-$DEFINE TBS_BOTTOM	0
-$DEFINE TBS_LEFT	4
-$DEFINE TBS_RIGHT	0
-$DEFINE TBS_BOTH	8
-$DEFINE TBS_NOTICKS	16
-$DEFINE TBS_ENABLESELRANGE	32
-$DEFINE TBS_FIXEDLENGTH	64
-$DEFINE TBS_NOTHUMB	128
-$DEFINE TBS_TOOLTIPS &h0100
-$DEFINE TBTS_TOP 0
-$DEFINE TBTS_LEFT 1
-$DEFINE TBTS_BOTTOM 2
-$DEFINE TBTS_RIGHT 3
-$DEFINE TBS_REVERSED &h0200
+'~dup $DEFINE TBS_AUTOTICKS	1   ' повтор, первое: CommCtrl.inc(1316)
+'~dup $DEFINE TBS_VERT	2   ' повтор, первое: CommCtrl.inc(1329)
+'~dup $DEFINE TBS_HORZ	0   ' повтор, первое: CommCtrl.inc(1321)
+'~dup $DEFINE TBS_TOP	4   ' повтор, первое: CommCtrl.inc(1328)
+'~dup $DEFINE TBS_BOTTOM	0   ' повтор, первое: CommCtrl.inc(1318)
+'~dup $DEFINE TBS_LEFT	4   ' повтор, первое: CommCtrl.inc(1322)
+'~dup $DEFINE TBS_RIGHT	0   ' повтор, первое: CommCtrl.inc(1326)
+'~dup $DEFINE TBS_BOTH	8   ' повтор, первое: CommCtrl.inc(1317)
+'~dup $DEFINE TBS_NOTICKS	16   ' повтор, первое: CommCtrl.inc(1324)
+'~dup $DEFINE TBS_ENABLESELRANGE	32   ' повтор, первое: CommCtrl.inc(1319)
+'~dup $DEFINE TBS_FIXEDLENGTH	64   ' повтор, первое: CommCtrl.inc(1320)
+'~dup $DEFINE TBS_NOTHUMB	128   ' повтор, первое: CommCtrl.inc(1323)
+'~dup $DEFINE TBS_TOOLTIPS &h0100   ' повтор, первое: CommCtrl.inc(1327)
+'~dup $DEFINE TBTS_TOP 0   ' повтор, первое: CommCtrl.inc(1361)
+'~dup $DEFINE TBTS_LEFT 1   ' повтор, первое: CommCtrl.inc(1359)
+'~dup $DEFINE TBTS_BOTTOM 2   ' повтор, первое: CommCtrl.inc(1358)
+'~dup $DEFINE TBTS_RIGHT 3   ' повтор, первое: CommCtrl.inc(1360)
+'~dup $DEFINE TBS_REVERSED &h0200   ' повтор, первое: CommCtrl.inc(1325)
 $DEFINE TBS_DOWNISLEFT &h0400
 $DEFINE TBIF_BYINDEX &h80000000
 $DEFINE TBIF_COMMAND 32
@@ -13476,27 +13405,27 @@ $DEFINE PBM_SETBARCOLOR	1033
 $DEFINE PBM_SETBKCOLOR	CCM_SETBKCOLOR
 $DEFINE PBS_SMOOTH	1
 $DEFINE PBS_VERTICAL	4
-$DEFINE LVS_ICON	0
-$DEFINE LVS_REPORT	1
-$DEFINE LVS_SMALLICON	2
-$DEFINE LVS_LIST	3
-$DEFINE LVS_TYPEMASK	3
-$DEFINE LVS_SINGLESEL	4
-$DEFINE LVS_SHOWSELALWAYS	8
-$DEFINE LVS_SORTASCENDING	16
-$DEFINE LVS_SORTDESCENDING	32
-$DEFINE LVS_SHAREIMAGELISTS	64
-$DEFINE LVS_NOLABELWRAP	128
-$DEFINE LVS_AUTOARRANGE	256
-$DEFINE LVS_EDITLABELS	512
-$DEFINE LVS_NOSCROLL	&h2000
-$DEFINE LVS_TYPESTYLEMASK	&hfc00
-$DEFINE LVS_ALIGNTOP	0
-$DEFINE LVS_ALIGNLEFT	&h800
-$DEFINE LVS_ALIGNMASK	&hc00
-$DEFINE LVS_OWNERDRAWFIXED	&h400
-$DEFINE LVS_NOCOLUMNHEADER	&h4000
-$DEFINE LVS_NOSORTHEADER	&h8000
+'~dup $DEFINE LVS_ICON	0   ' повтор, первое: CommCtrl.inc(450)
+'~dup $DEFINE LVS_REPORT	1   ' повтор, первое: CommCtrl.inc(451)
+'~dup $DEFINE LVS_SMALLICON	2   ' повтор, первое: CommCtrl.inc(452)
+'~dup $DEFINE LVS_LIST	3   ' повтор, первое: CommCtrl.inc(453)
+'~dup $DEFINE LVS_TYPEMASK	3   ' повтор, первое: CommCtrl.inc(454)
+'~dup $DEFINE LVS_SINGLESEL	4   ' повтор, первое: CommCtrl.inc(455)
+'~dup $DEFINE LVS_SHOWSELALWAYS	8   ' повтор, первое: CommCtrl.inc(456)
+'~dup $DEFINE LVS_SORTASCENDING	16   ' повтор, первое: CommCtrl.inc(457)
+'~dup $DEFINE LVS_SORTDESCENDING	32   ' повтор, первое: CommCtrl.inc(458)
+'~dup $DEFINE LVS_SHAREIMAGELISTS	64   ' повтор, первое: CommCtrl.inc(459)
+'~dup $DEFINE LVS_NOLABELWRAP	128   ' повтор, первое: CommCtrl.inc(460)
+'~dup $DEFINE LVS_AUTOARRANGE	256   ' повтор, первое: CommCtrl.inc(461)
+'~dup $DEFINE LVS_EDITLABELS	512   ' повтор, первое: CommCtrl.inc(462)
+'~dup $DEFINE LVS_NOSCROLL	&h2000   ' повтор, первое: CommCtrl.inc(464)
+'~dup $DEFINE LVS_TYPESTYLEMASK	&hfc00   ' повтор, первое: CommCtrl.inc(466)
+'~dup $DEFINE LVS_ALIGNTOP	0   ' повтор, первое: CommCtrl.inc(468)
+'~dup $DEFINE LVS_ALIGNLEFT	&h800   ' повтор, первое: CommCtrl.inc(469)
+'~dup $DEFINE LVS_ALIGNMASK	&hc00   ' повтор, первое: CommCtrl.inc(470)
+'~dup $DEFINE LVS_OWNERDRAWFIXED	&h400   ' повтор, первое: CommCtrl.inc(472)
+'~dup $DEFINE LVS_NOCOLUMNHEADER	&h4000   ' повтор, первое: CommCtrl.inc(473)
+'~dup $DEFINE LVS_NOSORTHEADER	&h8000   ' повтор, первое: CommCtrl.inc(474)
 $DEFINE CDIS_CHECKED 8
 $DEFINE CDIS_DEFAULT 32
 $DEFINE CDIS_DISABLED 4
@@ -13525,390 +13454,390 @@ $DEFINE CDRF_NOTIFYPOSTERASE 64
 $DEFINE CDRF_NOTIFYPOSTPAINT 16
 $DEFINE CDRF_NEWFONT 2
 $DEFINE CDRF_SKIPDEFAULT 4
-$DEFINE LVBKIF_SOURCE_NONE      &h00000000
-$DEFINE LVBKIF_SOURCE_HBITMAP   &h00000001
-$DEFINE LVBKIF_SOURCE_URL       &h00000002
-$DEFINE LVBKIF_SOURCE_MASK      &h00000003
-$DEFINE LVBKIF_STYLE_NORMAL     &h00000000
-$DEFINE LVBKIF_STYLE_TILE       &h00000010
-$DEFINE LVBKIF_STYLE_MASK       &h00000010
-$DEFINE LVBKIF_FLAG_TILEOFFSET  &h00000100
-$DEFINE LVBKIF_TYPE_WATERMARK   &h10000000
-$DEFINE LVS_OWNERDATA 4096
-$DEFINE LVS_EX_CHECKBOXES 4
-$DEFINE LVS_EX_FULLROWSELECT 32
-$DEFINE LVS_EX_GRIDLINES 1
-$DEFINE LVS_EX_HEADERDRAGDROP 16
-$DEFINE LVS_EX_ONECLICKACTIVATE 64
-$DEFINE LVS_EX_SUBITEMIMAGES 2
-$DEFINE LVS_EX_TRACKSELECT 8
-$DEFINE LVS_EX_TWOCLICKACTIVATE 128
-$DEFINE LVSICF_NOINVALIDATEALL	&h00000001
-$DEFINE LVSICF_NOSCROLL	&h00000002
-$DEFINE LVS_EX_FLATSB	&h00000100
-$DEFINE LVS_EX_REGIONAL	&h00000200
-$DEFINE LVS_EX_INFOTIP	&h00000400
-$DEFINE LVS_EX_UNDERLINEHOT	&h00000800
-$DEFINE LVS_EX_UNDERLINECOLD	&h00001000
-$DEFINE LVS_EX_MULTIWORKAREAS	&h00002000
-$DEFINE LVS_EX_LABELTIP	&h00004000
-$DEFINE LVS_EX_BORDERSELECT	&h00008000
-$DEFINE LVSIL_NORMAL	0
-$DEFINE LVSIL_SMALL	1
-$DEFINE LVSIL_STATE	2
-$DEFINE LVM_GETBKCOLOR	LVM_FIRST
-$DEFINE LVM_SETBKCOLOR	(LVM_FIRST+1)
-$DEFINE LVM_GETIMAGELIST	(LVM_FIRST+2)
-$DEFINE LVM_SETIMAGELIST	(LVM_FIRST+3)
-$DEFINE LVM_GETITEMCOUNT	(LVM_FIRST+4)
-$DEFINE LVIF_TEXT	1
-$DEFINE LVIF_IMAGE	2
-$DEFINE LVIF_PARAM	4
-$DEFINE LVIF_STATE	8
-$DEFINE LVIF_INDENT 16
-$DEFINE LVIF_NORECOMPUTE 2048
-$DEFINE LVIF_GROUPID 128
-$DEFINE LVIF_COLUMNS 256
-$DEFINE LVIS_FOCUSED	1
-$DEFINE LVIS_SELECTED	2
-$DEFINE LVIS_CUT	4
-$DEFINE LVIS_DROPHILITED	8
-$DEFINE LVIS_OVERLAYMASK	&hF00
-$DEFINE LVIS_STATEIMAGEMASK	&hF000
+'~dup $DEFINE LVBKIF_SOURCE_NONE      &h00000000   ' повтор, первое: CommCtrl.inc(792)
+'~dup $DEFINE LVBKIF_SOURCE_HBITMAP   &h00000001   ' повтор, первое: CommCtrl.inc(793)
+'~dup $DEFINE LVBKIF_SOURCE_URL       &h00000002   ' повтор, первое: CommCtrl.inc(794)
+'~dup $DEFINE LVBKIF_SOURCE_MASK      &h00000003   ' повтор, первое: CommCtrl.inc(795)
+'~dup $DEFINE LVBKIF_STYLE_NORMAL     &h00000000   ' повтор, первое: CommCtrl.inc(796)
+'~dup $DEFINE LVBKIF_STYLE_TILE       &h00000010   ' повтор, первое: CommCtrl.inc(797)
+'~dup $DEFINE LVBKIF_STYLE_MASK       &h00000010   ' повтор, первое: CommCtrl.inc(798)
+'~dup $DEFINE LVBKIF_FLAG_TILEOFFSET  &h00000100   ' повтор, первое: CommCtrl.inc(799)
+'~dup $DEFINE LVBKIF_TYPE_WATERMARK   &h10000000   ' повтор, первое: CommCtrl.inc(800)
+'~dup $DEFINE LVS_OWNERDATA 4096   ' повтор, первое: CommCtrl.inc(463)
+'~dup $DEFINE LVS_EX_CHECKBOXES 4   ' повтор, первое: CommCtrl.inc(742)
+'~dup $DEFINE LVS_EX_FULLROWSELECT 32   ' повтор, первое: CommCtrl.inc(745)
+'~dup $DEFINE LVS_EX_GRIDLINES 1   ' повтор, первое: CommCtrl.inc(740)
+'~dup $DEFINE LVS_EX_HEADERDRAGDROP 16   ' повтор, первое: CommCtrl.inc(744)
+'~dup $DEFINE LVS_EX_ONECLICKACTIVATE 64   ' повтор, первое: CommCtrl.inc(746)
+'~dup $DEFINE LVS_EX_SUBITEMIMAGES 2   ' повтор, первое: CommCtrl.inc(741)
+'~dup $DEFINE LVS_EX_TRACKSELECT 8   ' повтор, первое: CommCtrl.inc(743)
+'~dup $DEFINE LVS_EX_TWOCLICKACTIVATE 128   ' повтор, первое: CommCtrl.inc(747)
+'~dup $DEFINE LVSICF_NOINVALIDATEALL	&h00000001   ' повтор, первое: CommCtrl.inc(722)
+'~dup $DEFINE LVSICF_NOSCROLL	&h00000002   ' повтор, первое: CommCtrl.inc(723)
+'~dup $DEFINE LVS_EX_FLATSB	&h00000100   ' повтор, первое: CommCtrl.inc(748)
+'~dup $DEFINE LVS_EX_REGIONAL	&h00000200   ' повтор, первое: CommCtrl.inc(749)
+'~dup $DEFINE LVS_EX_INFOTIP	&h00000400   ' повтор, первое: CommCtrl.inc(750)
+'~dup $DEFINE LVS_EX_UNDERLINEHOT	&h00000800   ' повтор, первое: CommCtrl.inc(751)
+'~dup $DEFINE LVS_EX_UNDERLINECOLD	&h00001000   ' повтор, первое: CommCtrl.inc(752)
+'~dup $DEFINE LVS_EX_MULTIWORKAREAS	&h00002000   ' повтор, первое: CommCtrl.inc(753)
+'~dup $DEFINE LVS_EX_LABELTIP	&h00004000   ' повтор, первое: CommCtrl.inc(754)
+'~dup $DEFINE LVS_EX_BORDERSELECT	&h00008000   ' повтор, первое: CommCtrl.inc(755)
+'~dup $DEFINE LVSIL_NORMAL	0   ' повтор, первое: CommCtrl.inc(487)
+'~dup $DEFINE LVSIL_SMALL	1   ' повтор, первое: CommCtrl.inc(488)
+'~dup $DEFINE LVSIL_STATE	2   ' повтор, первое: CommCtrl.inc(489)
+'~dup $DEFINE LVM_GETBKCOLOR	LVM_FIRST   ' повтор, первое: CommCtrl.inc(483)
+'~dup $DEFINE LVM_SETBKCOLOR	(LVM_FIRST+1)   ' повтор, первое: CommCtrl.inc(484)
+'~dup $DEFINE LVM_GETIMAGELIST	(LVM_FIRST+2)   ' повтор, первое: CommCtrl.inc(485)
+'~dup $DEFINE LVM_SETIMAGELIST	(LVM_FIRST+3)   ' повтор, первое: CommCtrl.inc(491)
+'~dup $DEFINE LVM_GETITEMCOUNT	(LVM_FIRST+4)   ' повтор, первое: CommCtrl.inc(492)
+'~dup $DEFINE LVIF_TEXT	1   ' повтор, первое: CommCtrl.inc(494)
+'~dup $DEFINE LVIF_IMAGE	2   ' повтор, первое: CommCtrl.inc(495)
+'~dup $DEFINE LVIF_PARAM	4   ' повтор, первое: CommCtrl.inc(496)
+'~dup $DEFINE LVIF_STATE	8   ' повтор, первое: CommCtrl.inc(497)
+'~dup $DEFINE LVIF_INDENT 16   ' повтор, первое: CommCtrl.inc(498)
+'~dup $DEFINE LVIF_NORECOMPUTE 2048   ' повтор, первое: CommCtrl.inc(499)
+'~dup $DEFINE LVIF_GROUPID 128   ' повтор, первое: CommCtrl.inc(500)
+'~dup $DEFINE LVIF_COLUMNS 256   ' повтор, первое: CommCtrl.inc(501)
+'~dup $DEFINE LVIS_FOCUSED	1   ' повтор, первое: CommCtrl.inc(503)
+'~dup $DEFINE LVIS_SELECTED	2   ' повтор, первое: CommCtrl.inc(504)
+'~dup $DEFINE LVIS_CUT	4   ' повтор, первое: CommCtrl.inc(505)
+'~dup $DEFINE LVIS_DROPHILITED	8   ' повтор, первое: CommCtrl.inc(506)
+'~dup $DEFINE LVIS_OVERLAYMASK	&hF00   ' повтор, первое: CommCtrl.inc(510)
+'~dup $DEFINE LVIS_STATEIMAGEMASK	&hF000   ' повтор, первое: CommCtrl.inc(511)
 $DEFINE LPSTR_TEXTCALLBACK	(-1)
-$DEFINE I_IMAGECALLBACK	(-1)
-$DEFINE LVM_GETITEM	(LVM_FIRST+5)
-$DEFINE LVM_SETITEM	(LVM_FIRST+6)
-$DEFINE LVM_INSERTITEM	(LVM_FIRST+7)
-$DEFINE LVM_DELETEITEM	(LVM_FIRST+8)
-$DEFINE LVM_DELETEALLITEMS	(LVM_FIRST+9)
-$DEFINE LVM_GETCALLBACKMASK	(LVM_FIRST+10)
-$DEFINE LVM_SETCALLBACKMASK	(LVM_FIRST+11)
-$DEFINE LVM_SETBKIMAGE	(LVM_FIRST + 68)
-$DEFINE LVM_GETBKIMAGE	(LVM_FIRST + 69)
-$DEFINE LV_MAX_WORKAREAS	16
-$DEFINE LVM_SETWORKAREAS	(LVM_FIRST+65)
-$DEFINE LVM_GETWORKAREAS	(LVM_FIRST+70)
-$DEFINE LVM_GETNUMBEROFWORKAREAS	(LVM_FIRST+73)
-$DEFINE LVM_GETSELECTIONMARK	(LVM_FIRST+66)
-$DEFINE LVM_SETSELECTIONMARK	(LVM_FIRST+67)
-$DEFINE LVM_SETHOVERTIME	(LVM_FIRST+71)
-$DEFINE LVM_GETHOVERTIME	(LVM_FIRST+72)
-$DEFINE LVM_SETTOOLTIPS	(LVM_FIRST+74)
-$DEFINE LVM_GETTOOLTIPS	(LVM_FIRST+78)
-$DEFINE LVNI_ALL	0
-$DEFINE LVNI_FOCUSED	1
-$DEFINE LVNI_SELECTED	2
-$DEFINE LVNI_CUT	4
-$DEFINE LVNI_DROPHILITED	8
-$DEFINE LVNI_ABOVE	256
-$DEFINE LVNI_BELOW	512
-$DEFINE LVNI_TOLEFT	1024
-$DEFINE LVNI_TORIGHT	2048
-$DEFINE LVM_GETNEXTITEM	(LVM_FIRST+12)
-$DEFINE LVFI_PARAM	1
-$DEFINE LVFI_STRING	2
-$DEFINE LVFI_PARTIAL	8
-$DEFINE LVFI_WRAP	32
-$DEFINE LVFI_NEARESTXY	64
-$DEFINE LVIF_DI_SETITEM	&h1000
-$DEFINE LVM_FINDITEM	(LVM_FIRST+13)
-$DEFINE LVIR_BOUNDS	0
-$DEFINE LVIR_ICON	1
-$DEFINE LVIR_LABEL	2
-$DEFINE LVIR_SELECTBOUNDS	3
-$DEFINE LVM_GETITEMRECT	(LVM_FIRST+14)
-$DEFINE LVM_SETITEMPOSITION	(LVM_FIRST+15)
-$DEFINE LVM_GETITEMPOSITION	(LVM_FIRST+16)
-$DEFINE LVM_GETSTRINGWIDTH	(LVM_FIRST+17)
-$DEFINE LVHT_NOWHERE	1
-$DEFINE LVHT_ONITEMICON	2
-$DEFINE LVHT_ONITEMLABEL	4
-$DEFINE LVHT_ONITEMSTATEICON	8
-$DEFINE LVHT_ONITEM	(LVHT_ONITEMICON or LVHT_ONITEMLABEL or LVHT_ONITEMSTATEICON)
-$DEFINE LVHT_ABOVE	8
-$DEFINE LVHT_BELOW	16
-$DEFINE LVHT_TORIGHT	32
-$DEFINE LVHT_TOLEFT	64
-$DEFINE LVM_HITTEST	(LVM_FIRST+18)
-$DEFINE LVM_ENSUREVISIBLE	(LVM_FIRST+19)
-$DEFINE LVM_SCROLL	(LVM_FIRST+20)
-$DEFINE LVM_REDRAWITEMS	(LVM_FIRST+21)
-$DEFINE LVA_DEFAULT	0
-$DEFINE LVA_ALIGNLEFT	1
-$DEFINE LVA_ALIGNTOP	2
-$DEFINE LVA_SNAPTOGRID	5
-$DEFINE LVM_ARRANGE	(LVM_FIRST+22)
-$DEFINE LVM_EDITLABEL	(LVM_FIRST+23)
-$DEFINE LVM_GETEDITCONTROL	(LVM_FIRST+24)
-$DEFINE LVCF_FMT	1
-$DEFINE LVCF_WIDTH	2
-$DEFINE LVCF_TEXT	4
-$DEFINE LVCF_SUBITEM	8
-$DEFINE LVCF_IMAGE 16
-$DEFINE LVCF_ORDER 32
-$DEFINE LVCFMT_LEFT	0
-$DEFINE LVCFMT_RIGHT	1
-$DEFINE LVCFMT_CENTER	2
-$DEFINE LVCFMT_JUSTIFYMASK	3
-$DEFINE LVCFMT_BITMAP_ON_RIGHT 4096
-$DEFINE LVCFMT_COL_HAS_IMAGES  32768
-$DEFINE LVCFMT_IMAGE 2048 
-$DEFINE LVM_GETCOLUMN	(LVM_FIRST+25)
-$DEFINE LVM_SETCOLUMN	(LVM_FIRST+26)
-$DEFINE LVM_INSERTCOLUMN	(LVM_FIRST+27)
-$DEFINE LVM_DELETECOLUMN	(LVM_FIRST+28)
-$DEFINE LVM_GETCOLUMNWIDTH	(LVM_FIRST+29)
-$DEFINE LVSCW_AUTOSIZE	(-1)
-$DEFINE LVSCW_AUTOSIZE_USEHEADER	(-2)
-$DEFINE LVM_SETCOLUMNWIDTH	(LVM_FIRST+30)
-$DEFINE LVM_CREATEDRAGIMAGE	(LVM_FIRST+33)
-$DEFINE LVM_GETVIEWRECT	(LVM_FIRST+34)
-$DEFINE LVM_GETTEXTCOLOR	(LVM_FIRST+35)
-$DEFINE LVM_SETTEXTCOLOR	(LVM_FIRST+36)
-$DEFINE LVM_GETTEXTBKCOLOR	(LVM_FIRST+37)
-$DEFINE LVM_SETTEXTBKCOLOR	(LVM_FIRST+38)
-$DEFINE LVM_GETTOPINDEX	(LVM_FIRST+39)
-$DEFINE LVM_GETCOUNTPERPAGE	(LVM_FIRST+40)
-$DEFINE LVM_GETORIGIN	(LVM_FIRST+41)
-$DEFINE LVM_UPDATE	(LVM_FIRST+42)
-$DEFINE LVM_SETITEMSTATE	(LVM_FIRST+43)
-$DEFINE LVM_GETITEMSTATE	(LVM_FIRST+44)
-$DEFINE LVM_GETITEMTEXT	(LVM_FIRST+45)
-$DEFINE LVM_SETITEMTEXT	(LVM_FIRST+46)
-$DEFINE LVM_SETITEMCOUNT	(LVM_FIRST+47)
-$DEFINE LVM_SORTITEMS	(LVM_FIRST+48)
-$DEFINE LVM_SETITEMPOSITION32	(LVM_FIRST+49)
-$DEFINE LVM_GETSELECTEDCOUNT	(LVM_FIRST+50)
-$DEFINE LVM_GETITEMSPACING	(LVM_FIRST+51)
-$DEFINE LVM_GETISEARCHSTRING	(LVM_FIRST+52)
-$DEFINE LVM_APPROXIMATEVIEWRECT (LVM_FIRST+64)
-$DEFINE LVM_SETEXTENDEDLISTVIEWSTYLE (LVM_FIRST+54)
-$DEFINE LVM_GETEXTENDEDLISTVIEWSTYLE (LVM_FIRST+55)
-$DEFINE LVM_SETCOLUMNORDERARRAY (LVM_FIRST+58)
-$DEFINE LVM_GETCOLUMNORDERARRAY (LVM_FIRST+59)
-$DEFINE LVM_GETHEADER (LVM_FIRST+31)
-$DEFINE LVM_GETHOTCURSOR (LVM_FIRST+63)
-$DEFINE LVM_GETHOTITEM (LVM_FIRST+61)
-$DEFINE LVM_GETSUBITEMRECT (LVM_FIRST+56)
-$DEFINE LVM_SETHOTCURSOR (LVM_FIRST+62)
-$DEFINE LVM_SETHOTITEM (LVM_FIRST+60)
-$DEFINE LVM_SETICONSPACING (LVM_FIRST+53)
-$DEFINE LVM_SUBITEMHITTEST (LVM_FIRST+57)
-$DEFINE LVN_ITEMCHANGING	LVN_FIRST
-$DEFINE LVN_ITEMCHANGED	(LVN_FIRST-1)
-$DEFINE LVN_INSERTITEM	(LVN_FIRST-2)
-$DEFINE LVN_DELETEITEM	(LVN_FIRST-3)
-$DEFINE LVN_DELETEALLITEMS	(LVN_FIRST-4)
-$DEFINE LVN_BEGINLABELEDIT	(LVN_FIRST-5)
-$DEFINE LVN_ENDLABELEDIT	(LVN_FIRST-6)
-$DEFINE LVN_COLUMNCLICK	(LVN_FIRST-8)
-$DEFINE LVN_BEGINDRAG	(LVN_FIRST-9)
-$DEFINE LVN_BEGINRDRAG	(LVN_FIRST-11)
-$DEFINE LVN_GETDISPINFO	(LVN_FIRST-50)
-$DEFINE LVN_SETDISPINFO	(LVN_FIRST-51)
-$DEFINE LVN_KEYDOWN	(LVN_FIRST-55)
-$DEFINE LVN_GETINFOTIP	(LVN_FIRST-57)
-$DEFINE LVKF_ALT	&h0001
-$DEFINE LVKF_CONTROL	&h0002
-$DEFINE LVKF_SHIFT	&h0004
-$DEFINE LVGIT_UNFOLDED  1
-$DEFINE TVS_HASBUTTONS	1
-$DEFINE TVS_HASLINES	2
-$DEFINE TVS_LINESATROOT	4
-$DEFINE TVS_EDITLABELS	8
-$DEFINE TVS_DISABLEDRAGDROP	16
-$DEFINE TVS_SHOWSELALWAYS	32
-$DEFINE TVS_CHECKBOXES 256
-$DEFINE TVS_NOTOOLTIPS 128
-$DEFINE TVS_RTLREADING 64
-$DEFINE TVS_TRACKSELECT 512
-$DEFINE TVS_FULLROWSELECT 4096
-$DEFINE TVS_INFOTIP 2048
-$DEFINE TVS_NONEVENHEIGHT 16384
-$DEFINE TVS_NOSCROLL 8192
-$DEFINE TVS_SINGLEEXPAND 1024
-$DEFINE TVS_NOHSCROLL	&h8000
-$DEFINE TVIF_TEXT	1
-$DEFINE TVIF_IMAGE	2
-$DEFINE TVIF_PARAM	4
-$DEFINE TVIF_STATE	8
-$DEFINE TVIF_HANDLE	16
-$DEFINE TVIF_SELECTEDIMAGE	32
-$DEFINE TVIF_CHILDREN	64
-$DEFINE TVIF_INTEGRAL	&h0080
+'~dup $DEFINE I_IMAGECALLBACK	(-1)   ' повтор, первое: CommCtrl.inc(550)
+'~dup $DEFINE LVM_GETITEM	(LVM_FIRST+5)   ' повтор, первое: CommCtrl.inc(553)
+'~dup $DEFINE LVM_SETITEM	(LVM_FIRST+6)   ' повтор, первое: CommCtrl.inc(556)
+'~dup $DEFINE LVM_INSERTITEM	(LVM_FIRST+7)   ' повтор, первое: CommCtrl.inc(559)
+'~dup $DEFINE LVM_DELETEITEM	(LVM_FIRST+8)   ' повтор, первое: CommCtrl.inc(562)
+'~dup $DEFINE LVM_DELETEALLITEMS	(LVM_FIRST+9)   ' повтор, первое: CommCtrl.inc(563)
+'~dup $DEFINE LVM_GETCALLBACKMASK	(LVM_FIRST+10)   ' повтор, первое: CommCtrl.inc(564)
+'~dup $DEFINE LVM_SETCALLBACKMASK	(LVM_FIRST+11)   ' повтор, первое: CommCtrl.inc(565)
+'~dup $DEFINE LVM_SETBKIMAGE	(LVM_FIRST + 68)   ' повтор, первое: CommCtrl.inc(802)
+'~dup $DEFINE LVM_GETBKIMAGE	(LVM_FIRST + 69)   ' повтор, первое: CommCtrl.inc(804)
+'~dup $DEFINE LV_MAX_WORKAREAS	16   ' повтор, первое: CommCtrl.inc(771)
+'~dup $DEFINE LVM_SETWORKAREAS	(LVM_FIRST+65)   ' повтор, первое: CommCtrl.inc(772)
+'~dup $DEFINE LVM_GETWORKAREAS	(LVM_FIRST+70)   ' повтор, первое: CommCtrl.inc(773)
+'~dup $DEFINE LVM_GETNUMBEROFWORKAREAS	(LVM_FIRST+73)   ' повтор, первое: CommCtrl.inc(774)
+'~dup $DEFINE LVM_GETSELECTIONMARK	(LVM_FIRST+66)   ' повтор, первое: CommCtrl.inc(775)
+'~dup $DEFINE LVM_SETSELECTIONMARK	(LVM_FIRST+67)   ' повтор, первое: CommCtrl.inc(776)
+'~dup $DEFINE LVM_SETHOVERTIME	(LVM_FIRST+71)   ' повтор, первое: CommCtrl.inc(777)
+'~dup $DEFINE LVM_GETHOVERTIME	(LVM_FIRST+72)   ' повтор, первое: CommCtrl.inc(778)
+'~dup $DEFINE LVM_SETTOOLTIPS	(LVM_FIRST+74)   ' повтор, первое: CommCtrl.inc(779)
+'~dup $DEFINE LVM_GETTOOLTIPS	(LVM_FIRST+78)   ' повтор, первое: CommCtrl.inc(780)
+'~dup $DEFINE LVNI_ALL	0   ' повтор, первое: CommCtrl.inc(567)
+'~dup $DEFINE LVNI_FOCUSED	1   ' повтор, первое: CommCtrl.inc(568)
+'~dup $DEFINE LVNI_SELECTED	2   ' повтор, первое: CommCtrl.inc(569)
+'~dup $DEFINE LVNI_CUT	4   ' повтор, первое: CommCtrl.inc(570)
+'~dup $DEFINE LVNI_DROPHILITED	8   ' повтор, первое: CommCtrl.inc(571)
+'~dup $DEFINE LVNI_ABOVE	256   ' повтор, первое: CommCtrl.inc(573)
+'~dup $DEFINE LVNI_BELOW	512   ' повтор, первое: CommCtrl.inc(574)
+'~dup $DEFINE LVNI_TOLEFT	1024   ' повтор, первое: CommCtrl.inc(575)
+'~dup $DEFINE LVNI_TORIGHT	2048   ' повтор, первое: CommCtrl.inc(576)
+'~dup $DEFINE LVM_GETNEXTITEM	(LVM_FIRST+12)   ' повтор, первое: CommCtrl.inc(578)
+'~dup $DEFINE LVFI_PARAM	1   ' повтор, первое: CommCtrl.inc(580)
+'~dup $DEFINE LVFI_STRING	2   ' повтор, первое: CommCtrl.inc(581)
+'~dup $DEFINE LVFI_PARTIAL	8   ' повтор, первое: CommCtrl.inc(582)
+'~dup $DEFINE LVFI_WRAP	32   ' повтор, первое: CommCtrl.inc(583)
+'~dup $DEFINE LVFI_NEARESTXY	64   ' повтор, первое: CommCtrl.inc(584)
+'~dup $DEFINE LVIF_DI_SETITEM	&h1000   ' повтор, первое: CommCtrl.inc(1101)
+'~dup $DEFINE LVM_FINDITEM	(LVM_FIRST+13)   ' повтор, первое: CommCtrl.inc(602)
+'~dup $DEFINE LVIR_BOUNDS	0   ' повтор, первое: CommCtrl.inc(604)
+'~dup $DEFINE LVIR_ICON	1   ' повтор, первое: CommCtrl.inc(605)
+'~dup $DEFINE LVIR_LABEL	2   ' повтор, первое: CommCtrl.inc(606)
+'~dup $DEFINE LVIR_SELECTBOUNDS	3   ' повтор, первое: CommCtrl.inc(607)
+'~dup $DEFINE LVM_GETITEMRECT	(LVM_FIRST+14)   ' повтор, первое: CommCtrl.inc(609)
+'~dup $DEFINE LVM_SETITEMPOSITION	(LVM_FIRST+15)   ' повтор, первое: CommCtrl.inc(610)
+'~dup $DEFINE LVM_GETITEMPOSITION	(LVM_FIRST+16)   ' повтор, первое: CommCtrl.inc(611)
+'~dup $DEFINE LVM_GETSTRINGWIDTH	(LVM_FIRST+17)   ' повтор, первое: CommCtrl.inc(612)
+'~dup $DEFINE LVHT_NOWHERE	1   ' повтор, первое: CommCtrl.inc(615)
+'~dup $DEFINE LVHT_ONITEMICON	2   ' повтор, первое: CommCtrl.inc(616)
+'~dup $DEFINE LVHT_ONITEMLABEL	4   ' повтор, первое: CommCtrl.inc(617)
+'~dup $DEFINE LVHT_ONITEMSTATEICON	8   ' повтор, первое: CommCtrl.inc(618)
+'~dup $DEFINE LVHT_ONITEM	(LVHT_ONITEMICON or LVHT_ONITEMLABEL or LVHT_ONITEMSTATEICON)   ' повтор, первое: CommCtrl.inc(619)
+'~dup $DEFINE LVHT_ABOVE	8   ' повтор, первое: CommCtrl.inc(621)
+'~dup $DEFINE LVHT_BELOW	16   ' повтор, первое: CommCtrl.inc(622)
+'~dup $DEFINE LVHT_TORIGHT	32   ' повтор, первое: CommCtrl.inc(623)
+'~dup $DEFINE LVHT_TOLEFT	64   ' повтор, первое: CommCtrl.inc(624)
+'~dup $DEFINE LVM_HITTEST	(LVM_FIRST+18)   ' повтор, первое: CommCtrl.inc(639)
+'~dup $DEFINE LVM_ENSUREVISIBLE	(LVM_FIRST+19)   ' повтор, первое: CommCtrl.inc(640)
+'~dup $DEFINE LVM_SCROLL	(LVM_FIRST+20)   ' повтор, первое: CommCtrl.inc(641)
+'~dup $DEFINE LVM_REDRAWITEMS	(LVM_FIRST+21)   ' повтор, первое: CommCtrl.inc(642)
+'~dup $DEFINE LVA_DEFAULT	0   ' повтор, первое: CommCtrl.inc(643)
+'~dup $DEFINE LVA_ALIGNLEFT	1   ' повтор, первое: CommCtrl.inc(644)
+'~dup $DEFINE LVA_ALIGNTOP	2   ' повтор, первое: CommCtrl.inc(645)
+'~dup $DEFINE LVA_SNAPTOGRID	5   ' повтор, первое: CommCtrl.inc(646)
+'~dup $DEFINE LVM_ARRANGE	(LVM_FIRST+22)   ' повтор, первое: CommCtrl.inc(648)
+'~dup $DEFINE LVM_EDITLABEL	(LVM_FIRST+23)   ' повтор, первое: CommCtrl.inc(649)
+'~dup $DEFINE LVM_GETEDITCONTROL	(LVM_FIRST+24)   ' повтор, первое: CommCtrl.inc(651)
+'~dup $DEFINE LVCF_FMT	1   ' повтор, первое: CommCtrl.inc(675)
+'~dup $DEFINE LVCF_WIDTH	2   ' повтор, первое: CommCtrl.inc(676)
+'~dup $DEFINE LVCF_TEXT	4   ' повтор, первое: CommCtrl.inc(677)
+'~dup $DEFINE LVCF_SUBITEM	8   ' повтор, первое: CommCtrl.inc(678)
+'~dup $DEFINE LVCF_IMAGE 16   ' повтор, первое: CommCtrl.inc(679)
+'~dup $DEFINE LVCF_ORDER 32   ' повтор, первое: CommCtrl.inc(680)
+'~dup $DEFINE LVCFMT_LEFT	0   ' повтор, первое: CommCtrl.inc(682)
+'~dup $DEFINE LVCFMT_RIGHT	1   ' повтор, первое: CommCtrl.inc(683)
+'~dup $DEFINE LVCFMT_CENTER	2   ' повтор, первое: CommCtrl.inc(684)
+'~dup $DEFINE LVCFMT_JUSTIFYMASK	3   ' повтор, первое: CommCtrl.inc(685)
+'~dup $DEFINE LVCFMT_BITMAP_ON_RIGHT 4096   ' повтор, первое: CommCtrl.inc(687)
+'~dup $DEFINE LVCFMT_COL_HAS_IMAGES  32768   ' повтор, первое: CommCtrl.inc(688)
+'~dup $DEFINE LVCFMT_IMAGE 2048    ' повтор, первое: CommCtrl.inc(686)
+'~dup $DEFINE LVM_GETCOLUMN	(LVM_FIRST+25)   ' повтор, первое: CommCtrl.inc(690)
+'~dup $DEFINE LVM_SETCOLUMN	(LVM_FIRST+26)   ' повтор, первое: CommCtrl.inc(693)
+'~dup $DEFINE LVM_INSERTCOLUMN	(LVM_FIRST+27)   ' повтор, первое: CommCtrl.inc(695)
+'~dup $DEFINE LVM_DELETECOLUMN	(LVM_FIRST+28)   ' повтор, первое: CommCtrl.inc(697)
+'~dup $DEFINE LVM_GETCOLUMNWIDTH	(LVM_FIRST+29)   ' повтор, первое: CommCtrl.inc(698)
+'~dup $DEFINE LVSCW_AUTOSIZE	(-1)   ' повтор, первое: CommCtrl.inc(699)
+'~dup $DEFINE LVSCW_AUTOSIZE_USEHEADER	(-2)   ' повтор, первое: CommCtrl.inc(700)
+'~dup $DEFINE LVM_SETCOLUMNWIDTH	(LVM_FIRST+30)   ' повтор, первое: CommCtrl.inc(701)
+'~dup $DEFINE LVM_CREATEDRAGIMAGE	(LVM_FIRST+33)   ' повтор, первое: CommCtrl.inc(703)
+'~dup $DEFINE LVM_GETVIEWRECT	(LVM_FIRST+34)   ' повтор, первое: CommCtrl.inc(704)
+'~dup $DEFINE LVM_GETTEXTCOLOR	(LVM_FIRST+35)   ' повтор, первое: CommCtrl.inc(705)
+'~dup $DEFINE LVM_SETTEXTCOLOR	(LVM_FIRST+36)   ' повтор, первое: CommCtrl.inc(706)
+'~dup $DEFINE LVM_GETTEXTBKCOLOR	(LVM_FIRST+37)   ' повтор, первое: CommCtrl.inc(707)
+'~dup $DEFINE LVM_SETTEXTBKCOLOR	(LVM_FIRST+38)   ' повтор, первое: CommCtrl.inc(708)
+'~dup $DEFINE LVM_GETTOPINDEX	(LVM_FIRST+39)   ' повтор, первое: CommCtrl.inc(709)
+'~dup $DEFINE LVM_GETCOUNTPERPAGE	(LVM_FIRST+40)   ' повтор, первое: CommCtrl.inc(710)
+'~dup $DEFINE LVM_GETORIGIN	(LVM_FIRST+41)   ' повтор, первое: CommCtrl.inc(711)
+'~dup $DEFINE LVM_UPDATE	(LVM_FIRST+42)   ' повтор, первое: CommCtrl.inc(712)
+'~dup $DEFINE LVM_SETITEMSTATE	(LVM_FIRST+43)   ' повтор, первое: CommCtrl.inc(713)
+'~dup $DEFINE LVM_GETITEMSTATE	(LVM_FIRST+44)   ' повтор, первое: CommCtrl.inc(714)
+'~dup $DEFINE LVM_GETITEMTEXT	(LVM_FIRST+45)   ' повтор, первое: CommCtrl.inc(715)
+'~dup $DEFINE LVM_SETITEMTEXT	(LVM_FIRST+46)   ' повтор, первое: CommCtrl.inc(718)
+'~dup $DEFINE LVM_SETITEMCOUNT	(LVM_FIRST+47)   ' повтор, первое: CommCtrl.inc(725)
+'~dup $DEFINE LVM_SORTITEMS	(LVM_FIRST+48)   ' повтор, первое: CommCtrl.inc(726)
+'~dup $DEFINE LVM_SETITEMPOSITION32	(LVM_FIRST+49)   ' повтор, первое: CommCtrl.inc(727)
+'~dup $DEFINE LVM_GETSELECTEDCOUNT	(LVM_FIRST+50)   ' повтор, первое: CommCtrl.inc(728)
+'~dup $DEFINE LVM_GETITEMSPACING	(LVM_FIRST+51)   ' повтор, первое: CommCtrl.inc(729)
+'~dup $DEFINE LVM_GETISEARCHSTRING	(LVM_FIRST+52)   ' повтор, первое: CommCtrl.inc(730)
+'~dup $DEFINE LVM_APPROXIMATEVIEWRECT (LVM_FIRST+64)   ' повтор, первое: CommCtrl.inc(770)
+'~dup $DEFINE LVM_SETEXTENDEDLISTVIEWSTYLE (LVM_FIRST+54)   ' повтор, первое: CommCtrl.inc(737)
+'~dup $DEFINE LVM_GETEXTENDEDLISTVIEWSTYLE (LVM_FIRST+55)   ' повтор, первое: CommCtrl.inc(738)
+'~dup $DEFINE LVM_SETCOLUMNORDERARRAY (LVM_FIRST+58)   ' повтор, первое: CommCtrl.inc(764)
+'~dup $DEFINE LVM_GETCOLUMNORDERARRAY (LVM_FIRST+59)   ' повтор, первое: CommCtrl.inc(765)
+'~dup $DEFINE LVM_GETHEADER (LVM_FIRST+31)   ' повтор, первое: CommCtrl.inc(702)
+'~dup $DEFINE LVM_GETHOTCURSOR (LVM_FIRST+63)   ' повтор, первое: CommCtrl.inc(769)
+'~dup $DEFINE LVM_GETHOTITEM (LVM_FIRST+61)   ' повтор, первое: CommCtrl.inc(767)
+'~dup $DEFINE LVM_GETSUBITEMRECT (LVM_FIRST+56)   ' повтор, первое: CommCtrl.inc(762)
+'~dup $DEFINE LVM_SETHOTCURSOR (LVM_FIRST+62)   ' повтор, первое: CommCtrl.inc(768)
+'~dup $DEFINE LVM_SETHOTITEM (LVM_FIRST+60)   ' повтор, первое: CommCtrl.inc(766)
+'~dup $DEFINE LVM_SETICONSPACING (LVM_FIRST+53)   ' повтор, первое: CommCtrl.inc(732)
+'~dup $DEFINE LVM_SUBITEMHITTEST (LVM_FIRST+57)   ' повтор, первое: CommCtrl.inc(763)
+'~dup $DEFINE LVN_ITEMCHANGING	LVN_FIRST   ' повтор, первое: CommCtrl.inc(1074)
+'~dup $DEFINE LVN_ITEMCHANGED	(LVN_FIRST-1)   ' повтор, первое: CommCtrl.inc(1075)
+'~dup $DEFINE LVN_INSERTITEM	(LVN_FIRST-2)   ' повтор, первое: CommCtrl.inc(1076)
+'~dup $DEFINE LVN_DELETEITEM	(LVN_FIRST-3)   ' повтор, первое: CommCtrl.inc(1077)
+'~dup $DEFINE LVN_DELETEALLITEMS	(LVN_FIRST-4)   ' повтор, первое: CommCtrl.inc(1078)
+'~dup $DEFINE LVN_BEGINLABELEDIT	(LVN_FIRST-5)   ' повтор, первое: CommCtrl.inc(1079)
+'~dup $DEFINE LVN_ENDLABELEDIT	(LVN_FIRST-6)   ' повтор, первое: CommCtrl.inc(1081)
+'~dup $DEFINE LVN_COLUMNCLICK	(LVN_FIRST-8)   ' повтор, первое: CommCtrl.inc(1083)
+'~dup $DEFINE LVN_BEGINDRAG	(LVN_FIRST-9)   ' повтор, первое: CommCtrl.inc(1084)
+'~dup $DEFINE LVN_BEGINRDRAG	(LVN_FIRST-11)   ' повтор, первое: CommCtrl.inc(1085)
+'~dup $DEFINE LVN_GETDISPINFO	(LVN_FIRST-50)   ' повтор, первое: CommCtrl.inc(1096)
+'~dup $DEFINE LVN_SETDISPINFO	(LVN_FIRST-51)   ' повтор, первое: CommCtrl.inc(1098)
+'~dup $DEFINE LVN_KEYDOWN	(LVN_FIRST-55)   ' повтор, первое: CommCtrl.inc(1113)
+'~dup $DEFINE LVN_GETINFOTIP	(LVN_FIRST-57)   ' повтор, первое: CommCtrl.inc(1143)
+'~dup $DEFINE LVKF_ALT	&h0001   ' повтор, первое: CommCtrl.inc(1003)
+'~dup $DEFINE LVKF_CONTROL	&h0002   ' повтор, первое: CommCtrl.inc(1004)
+'~dup $DEFINE LVKF_SHIFT	&h0004   ' повтор, первое: CommCtrl.inc(1005)
+'~dup $DEFINE LVGIT_UNFOLDED  1   ' повтор, первое: CommCtrl.inc(1141)
+'~dup $DEFINE TVS_HASBUTTONS	1   ' повтор, первое: CommCtrl.inc(37)
+'~dup $DEFINE TVS_HASLINES	2   ' повтор, первое: CommCtrl.inc(38)
+'~dup $DEFINE TVS_LINESATROOT	4   ' повтор, первое: CommCtrl.inc(39)
+'~dup $DEFINE TVS_EDITLABELS	8   ' повтор, первое: CommCtrl.inc(40)
+'~dup $DEFINE TVS_DISABLEDRAGDROP	16   ' повтор, первое: CommCtrl.inc(41)
+'~dup $DEFINE TVS_SHOWSELALWAYS	32   ' повтор, первое: CommCtrl.inc(42)
+'~dup $DEFINE TVS_CHECKBOXES 256   ' повтор, первое: CommCtrl.inc(45)
+'~dup $DEFINE TVS_NOTOOLTIPS 128   ' повтор, первое: CommCtrl.inc(44)
+'~dup $DEFINE TVS_RTLREADING 64   ' повтор, первое: CommCtrl.inc(43)
+'~dup $DEFINE TVS_TRACKSELECT 512   ' повтор, первое: CommCtrl.inc(46)
+'~dup $DEFINE TVS_FULLROWSELECT 4096   ' повтор, первое: CommCtrl.inc(49)
+'~dup $DEFINE TVS_INFOTIP 2048   ' повтор, первое: CommCtrl.inc(48)
+'~dup $DEFINE TVS_NONEVENHEIGHT 16384   ' повтор, первое: CommCtrl.inc(51)
+'~dup $DEFINE TVS_NOSCROLL 8192   ' повтор, первое: CommCtrl.inc(50)
+'~dup $DEFINE TVS_SINGLEEXPAND 1024   ' повтор, первое: CommCtrl.inc(47)
+'~dup $DEFINE TVS_NOHSCROLL	&h8000   ' повтор, первое: CommCtrl.inc(52)
+'~dup $DEFINE TVIF_TEXT	1   ' повтор, первое: CommCtrl.inc(56)
+'~dup $DEFINE TVIF_IMAGE	2   ' повтор, первое: CommCtrl.inc(57)
+'~dup $DEFINE TVIF_PARAM	4   ' повтор, первое: CommCtrl.inc(58)
+'~dup $DEFINE TVIF_STATE	8   ' повтор, первое: CommCtrl.inc(59)
+'~dup $DEFINE TVIF_HANDLE	16   ' повтор, первое: CommCtrl.inc(60)
+'~dup $DEFINE TVIF_SELECTEDIMAGE	32   ' повтор, первое: CommCtrl.inc(61)
+'~dup $DEFINE TVIF_CHILDREN	64   ' повтор, первое: CommCtrl.inc(62)
+'~dup $DEFINE TVIF_INTEGRAL	&h0080   ' повтор, первое: CommCtrl.inc(63)
 $DEFINE TVIS_FOCUSED	1
-$DEFINE TVIS_SELECTED	2
-$DEFINE TVIS_CUT	4
-$DEFINE TVIS_DROPHILITED	8
-$DEFINE TVIS_BOLD	16
-$DEFINE TVIS_EXPANDED	32
-$DEFINE TVIS_EXPANDEDONCE	64
-$DEFINE TVIS_OVERLAYMASK	&hF00
-$DEFINE TVIS_STATEIMAGEMASK	&hF000
-$DEFINE TVIS_USERMASK	&hF000
-$DEFINE I_CHILDRENCALLBACK	(-1)
-$DEFINE TVI_ROOT	(&hFFFF0000)
-$DEFINE TVI_FIRST	(&hFFFF0001)
-$DEFINE TVI_LAST	(&hFFFF0002)
-$DEFINE TVI_SORT	(&hFFFF0003)
-$DEFINE TVSIL_NORMAL	0
-$DEFINE TVSIL_STATE	2
-$DEFINE TVM_INSERTITEM	TV_FIRST
-$DEFINE TVM_DELETEITEM	(TV_FIRST+1)
-$DEFINE TVM_EXPAND	(TV_FIRST+2)
-$DEFINE TVM_GETITEMRECT	(TV_FIRST+4)
-$DEFINE TVM_GETCOUNT	(TV_FIRST+5)
-$DEFINE TVM_GETINDENT	(TV_FIRST+6)
-$DEFINE TVM_SETINDENT	(TV_FIRST+7)
-$DEFINE TVM_GETIMAGELIST	(TV_FIRST+8)
-$DEFINE TVM_SETIMAGELIST	(TV_FIRST+9)
-$DEFINE TVM_GETNEXTITEM	(TV_FIRST+10)
-$DEFINE TVM_SELECTITEM	(TV_FIRST+11)
-$DEFINE TVM_GETITEM	(TV_FIRST+12)
-$DEFINE TVM_SETITEM	(TV_FIRST+13)
-$DEFINE TVM_EDITLABEL	(TV_FIRST+14)
-$DEFINE TVM_GETEDITCONTROL	(TV_FIRST+15)
-$DEFINE TVM_GETVISIBLECOUNT	(TV_FIRST+16)
-$DEFINE TVM_HITTEST	(TV_FIRST+17)
-$DEFINE TVM_CREATEDRAGIMAGE	(TV_FIRST+18)
-$DEFINE TVM_SORTCHILDREN	(TV_FIRST+19)
-$DEFINE TVM_ENSUREVISIBLE	(TV_FIRST+20)
-$DEFINE TVM_SORTCHILDRENCB	(TV_FIRST+21)
-$DEFINE TVM_ENDEDITLABELNOW	(TV_FIRST+22)
-$DEFINE TVM_GETISEARCHSTRING	(TV_FIRST+23)
-$DEFINE TVM_GETTOOLTIPS (TV_FIRST+25)
-$DEFINE TVM_SETTOOLTIPS (TV_FIRST+24)
-$DEFINE TVM_GETBKCOLOR (TV_FIRST+31)
-$DEFINE TVM_GETINSERTMARKCOLOR (TV_FIRST+38)
-$DEFINE TVM_GETITEMHEIGHT (TV_FIRST+28)
-$DEFINE TVM_GETSCROLLTIME (TV_FIRST+34)
-$DEFINE TVM_GETTEXTCOLOR (TV_FIRST+32)
-$DEFINE TVM_SETBKCOLOR (TV_FIRST+29)
-$DEFINE TVM_SETINSERTMARK (TV_FIRST+26)
-$DEFINE TVM_SETINSERTMARKCOLOR (TV_FIRST+37)
-$DEFINE TVM_SETITEMHEIGHT (TV_FIRST+27)
-$DEFINE TVM_SETSCROLLTIME (TV_FIRST+33)
-$DEFINE TVM_SETTEXTCOLOR (TV_FIRST+30)
-$DEFINE TVM_SETUNICODEFORMAT CCM_SETUNICODEFORMAT
-$DEFINE TVM_GETUNICODEFORMAT CCM_GETUNICODEFORMAT
-$DEFINE TVM_GETITEMSTATE (TV_FIRST+39)
-$DEFINE TVM_SETLINECOLOR (TV_FIRST+40)
-$DEFINE TVM_GETLINECOLOR (TV_FIRST+41)
-$DEFINE TVE_COLLAPSE	1
-$DEFINE TVE_EXPAND	2
-$DEFINE TVE_TOGGLE	3
-$DEFINE TVE_COLLAPSERESET	&h8000
-$DEFINE TVE_EXPANDPARTIAL	&h4000
-$DEFINE TVC_UNKNOWN	0
-$DEFINE TVC_BYMOUSE	1
-$DEFINE TVC_BYKEYBOARD	2
-$DEFINE TVGN_ROOT	0
-$DEFINE TVGN_NEXT	1
-$DEFINE TVGN_PREVIOUS	2
-$DEFINE TVGN_PARENT	3
-$DEFINE TVGN_CHILD	4
-$DEFINE TVGN_FIRSTVISIBLE	5
-$DEFINE TVGN_NEXTVISIBLE	6
-$DEFINE TVGN_PREVIOUSVISIBLE	7
-$DEFINE TVGN_DROPHILITE	8
-$DEFINE TVGN_CARET	9
-$DEFINE TVGN_LASTVISIBLE	10
-$DEFINE TVN_SELCHANGING	(TVN_FIRST-1)
-$DEFINE TVN_SELCHANGED	(TVN_FIRST-2)
-$DEFINE TVN_GETDISPINFO	(TVN_FIRST-3)
-$DEFINE TVN_SETDISPINFO	(TVN_FIRST-4)
-$DEFINE TVN_ITEMEXPANDING	(TVN_FIRST-5)
-$DEFINE TVN_ITEMEXPANDED	(TVN_FIRST-6)
-$DEFINE TVN_BEGINDRAG	(TVN_FIRST-7)
-$DEFINE TVN_BEGINRDRAG	(TVN_FIRST-8)
-$DEFINE TVN_DELETEITEM	(TVN_FIRST-9)
-$DEFINE TVN_BEGINLABELEDIT	(TVN_FIRST-10)
-$DEFINE TVN_ENDLABELEDIT	(TVN_FIRST-11)
-$DEFINE TVN_KEYDOWN	(TVN_FIRST-12)
-$DEFINE TVN_GETINFOTIP	(TVN_FIRST-13)
-$DEFINE TVN_SINGLEEXPAND	(TVN_FIRST-15)
-$DEFINE TVNRET_DEFAULT 0
-$DEFINE TVNRET_SKIPOLD 1
-$DEFINE TVNRET_SKIPNEW 2
-$DEFINE TVIF_DI_SETITEM	&h1000
-$DEFINE TVHT_NOWHERE	1
-$DEFINE TVHT_ONITEMICON	2
-$DEFINE TVHT_ONITEMLABEL	4
-$DEFINE TVHT_ONITEM	(TVHT_ONITEMICON or TVHT_ONITEMLABEL or TVHT_ONITEMSTATEICON)
-$DEFINE TVHT_ONITEMINDENT	8
-$DEFINE TVHT_ONITEMBUTTON	16
-$DEFINE TVHT_ONITEMRIGHT	32
-$DEFINE TVHT_ONITEMSTATEICON	64
-$DEFINE TVHT_ABOVE	256
-$DEFINE TVHT_BELOW	512
-$DEFINE TVHT_TORIGHT	1024
-$DEFINE TVHT_TOLEFT	2048
-$DEFINE TCHT_NOWHERE	1
-$DEFINE TCHT_ONITEMICON	2
-$DEFINE TCHT_ONITEMLABEL	4
-$DEFINE TCHT_ONITEM	(TCHT_ONITEMICON or TCHT_ONITEMLABEL)
-$DEFINE TCS_FORCEICONLEFT	16
-$DEFINE TCS_FORCELABELLEFT	32
-$DEFINE TCS_TABS	0
-$DEFINE TCS_BUTTONS	256
-$DEFINE TCS_SINGLELINE	0
-$DEFINE TCS_MULTILINE	512
-$DEFINE TCS_RIGHTJUSTIFY	0
-$DEFINE TCS_FIXEDWIDTH	1024
-$DEFINE TCS_RAGGEDRIGHT	2048
-$DEFINE TCS_FOCUSONBUTTONDOWN	&h1000
-$DEFINE TCS_OWNERDRAWFIXED	&h2000
-$DEFINE TCS_TOOLTIPS	&h4000
-$DEFINE TCS_FOCUSNEVER	&h8000
-$DEFINE TCS_BOTTOM	2
-$DEFINE TCS_RIGHT	2
-$DEFINE TCS_VERTICAL	128
-$DEFINE TCS_SCROLLOPPOSITE	&h0001
-$DEFINE TCS_HOTTRACK	&h0040
-$DEFINE TCS_MULTISELECT	&h0004
-$DEFINE TCS_FLATBUTTONS	&h0008
-$DEFINE TCS_EX_FLATSEPARATORS	&h00000001
-$DEFINE TCS_EX_REGISTERDROP	&h00000002
-$DEFINE TCIF_TEXT	1
-$DEFINE TCIF_IMAGE	2
-$DEFINE TCIF_RTLREADING	4
-$DEFINE TCIF_PARAM	8
-$DEFINE TCIF_STATE	16
-$DEFINE TCM_FIRST	&h1300
-$DEFINE TCM_GETIMAGELIST	(TCM_FIRST+2)
-$DEFINE TCM_SETIMAGELIST	(TCM_FIRST+3)
-$DEFINE TCM_GETITEMCOUNT	(TCM_FIRST+4)
-$DEFINE TCM_GETITEM	(TCM_FIRST+5)
-$DEFINE TCM_SETITEM	(TCM_FIRST+6)
-$DEFINE TCM_INSERTITEM	(TCM_FIRST+7)
-$DEFINE TCM_DELETEITEM	(TCM_FIRST+8)
-$DEFINE TCM_DELETEALLITEMS	(TCM_FIRST+9)
-$DEFINE TCM_GETITEMRECT	(TCM_FIRST+10)
-$DEFINE TCM_GETCURSEL	(TCM_FIRST+11)
-$DEFINE TCM_SETCURSEL	(TCM_FIRST+12)
-$DEFINE TCM_HITTEST	(TCM_FIRST+13)
-$DEFINE TCM_SETITEMEXTRA	(TCM_FIRST+14)
+'~dup $DEFINE TVIS_SELECTED	2   ' повтор, первое: CommCtrl.inc(65)
+'~dup $DEFINE TVIS_CUT	4   ' повтор, первое: CommCtrl.inc(66)
+'~dup $DEFINE TVIS_DROPHILITED	8   ' повтор, первое: CommCtrl.inc(67)
+'~dup $DEFINE TVIS_BOLD	16   ' повтор, первое: CommCtrl.inc(68)
+'~dup $DEFINE TVIS_EXPANDED	32   ' повтор, первое: CommCtrl.inc(69)
+'~dup $DEFINE TVIS_EXPANDEDONCE	64   ' повтор, первое: CommCtrl.inc(70)
+'~dup $DEFINE TVIS_OVERLAYMASK	&hF00   ' повтор, первое: CommCtrl.inc(73)
+'~dup $DEFINE TVIS_STATEIMAGEMASK	&hF000   ' повтор, первое: CommCtrl.inc(74)
+'~dup $DEFINE TVIS_USERMASK	&hF000   ' повтор, первое: CommCtrl.inc(75)
+'~dup $DEFINE I_CHILDRENCALLBACK	(-1)   ' повтор, первое: CommCtrl.inc(77)
+'~dup $DEFINE TVI_ROOT	(&hFFFF0000)   ' повтор, первое: CommCtrl.inc(121)
+'~dup $DEFINE TVI_FIRST	(&hFFFF0001)   ' повтор, первое: CommCtrl.inc(122)
+'~dup $DEFINE TVI_LAST	(&hFFFF0002)   ' повтор, первое: CommCtrl.inc(123)
+'~dup $DEFINE TVI_SORT	(&hFFFF0003)   ' повтор, первое: CommCtrl.inc(124)
+'~dup $DEFINE TVSIL_NORMAL	0   ' повтор, первое: CommCtrl.inc(156)
+'~dup $DEFINE TVSIL_STATE	2   ' повтор, первое: CommCtrl.inc(157)
+'~dup $DEFINE TVM_INSERTITEM	TV_FIRST   ' повтор, первое: CommCtrl.inc(139)
+'~dup $DEFINE TVM_DELETEITEM	(TV_FIRST+1)   ' повтор, первое: CommCtrl.inc(142)
+'~dup $DEFINE TVM_EXPAND	(TV_FIRST+2)   ' повтор, первое: CommCtrl.inc(143)
+'~dup $DEFINE TVM_GETITEMRECT	(TV_FIRST+4)   ' повтор, первое: CommCtrl.inc(151)
+'~dup $DEFINE TVM_GETCOUNT	(TV_FIRST+5)   ' повтор, первое: CommCtrl.inc(152)
+'~dup $DEFINE TVM_GETINDENT	(TV_FIRST+6)   ' повтор, первое: CommCtrl.inc(153)
+'~dup $DEFINE TVM_SETINDENT	(TV_FIRST+7)   ' повтор, первое: CommCtrl.inc(154)
+'~dup $DEFINE TVM_GETIMAGELIST	(TV_FIRST+8)   ' повтор, первое: CommCtrl.inc(155)
+'~dup $DEFINE TVM_SETIMAGELIST	(TV_FIRST+9)   ' повтор, первое: CommCtrl.inc(159)
+'~dup $DEFINE TVM_GETNEXTITEM	(TV_FIRST+10)   ' повтор, первое: CommCtrl.inc(160)
+'~dup $DEFINE TVM_SELECTITEM	(TV_FIRST+11)   ' повтор, первое: CommCtrl.inc(175)
+'~dup $DEFINE TVM_GETITEM	(TV_FIRST+12)   ' повтор, первое: CommCtrl.inc(176)
+'~dup $DEFINE TVM_SETITEM	(TV_FIRST+13)   ' повтор, первое: CommCtrl.inc(178)
+'~dup $DEFINE TVM_EDITLABEL	(TV_FIRST+14)   ' повтор, первое: CommCtrl.inc(180)
+'~dup $DEFINE TVM_GETEDITCONTROL	(TV_FIRST+15)   ' повтор, первое: CommCtrl.inc(182)
+'~dup $DEFINE TVM_GETVISIBLECOUNT	(TV_FIRST+16)   ' повтор, первое: CommCtrl.inc(183)
+'~dup $DEFINE TVM_HITTEST	(TV_FIRST+17)   ' повтор, первое: CommCtrl.inc(184)
+'~dup $DEFINE TVM_CREATEDRAGIMAGE	(TV_FIRST+18)   ' повтор, первое: CommCtrl.inc(206)
+'~dup $DEFINE TVM_SORTCHILDREN	(TV_FIRST+19)   ' повтор, первое: CommCtrl.inc(207)
+'~dup $DEFINE TVM_ENSUREVISIBLE	(TV_FIRST+20)   ' повтор, первое: CommCtrl.inc(208)
+'~dup $DEFINE TVM_SORTCHILDRENCB	(TV_FIRST+21)   ' повтор, первое: CommCtrl.inc(216)
+'~dup $DEFINE TVM_ENDEDITLABELNOW	(TV_FIRST+22)   ' повтор, первое: CommCtrl.inc(217)
+'~dup $DEFINE TVM_GETISEARCHSTRING	(TV_FIRST+23)   ' повтор, первое: CommCtrl.inc(218)
+'~dup $DEFINE TVM_GETTOOLTIPS (TV_FIRST+25)   ' повтор, первое: CommCtrl.inc(220)
+'~dup $DEFINE TVM_SETTOOLTIPS (TV_FIRST+24)   ' повтор, первое: CommCtrl.inc(219)
+'~dup $DEFINE TVM_GETBKCOLOR (TV_FIRST+31)   ' повтор, первое: CommCtrl.inc(228)
+'~dup $DEFINE TVM_GETINSERTMARKCOLOR (TV_FIRST+38)   ' повтор, первое: CommCtrl.inc(233)
+'~dup $DEFINE TVM_GETITEMHEIGHT (TV_FIRST+28)   ' повтор, первое: CommCtrl.inc(225)
+'~dup $DEFINE TVM_GETSCROLLTIME (TV_FIRST+34)   ' повтор, первое: CommCtrl.inc(231)
+'~dup $DEFINE TVM_GETTEXTCOLOR (TV_FIRST+32)   ' повтор, первое: CommCtrl.inc(229)
+'~dup $DEFINE TVM_SETBKCOLOR (TV_FIRST+29)   ' повтор, первое: CommCtrl.inc(226)
+'~dup $DEFINE TVM_SETINSERTMARK (TV_FIRST+26)   ' повтор, первое: CommCtrl.inc(221)
+'~dup $DEFINE TVM_SETINSERTMARKCOLOR (TV_FIRST+37)   ' повтор, первое: CommCtrl.inc(232)
+'~dup $DEFINE TVM_SETITEMHEIGHT (TV_FIRST+27)   ' повтор, первое: CommCtrl.inc(224)
+'~dup $DEFINE TVM_SETSCROLLTIME (TV_FIRST+33)   ' повтор, первое: CommCtrl.inc(230)
+'~dup $DEFINE TVM_SETTEXTCOLOR (TV_FIRST+30)   ' повтор, первое: CommCtrl.inc(227)
+'~dup $DEFINE TVM_SETUNICODEFORMAT CCM_SETUNICODEFORMAT   ' повтор, первое: CommCtrl.inc(222)
+'~dup $DEFINE TVM_GETUNICODEFORMAT CCM_GETUNICODEFORMAT   ' повтор, первое: CommCtrl.inc(223)
+'~dup $DEFINE TVM_GETITEMSTATE (TV_FIRST+39)   ' повтор, первое: CommCtrl.inc(234)
+'~dup $DEFINE TVM_SETLINECOLOR (TV_FIRST+40)   ' повтор, первое: CommCtrl.inc(238)
+'~dup $DEFINE TVM_GETLINECOLOR (TV_FIRST+41)   ' повтор, первое: CommCtrl.inc(239)
+'~dup $DEFINE TVE_COLLAPSE	1   ' повтор, первое: CommCtrl.inc(145)
+'~dup $DEFINE TVE_EXPAND	2   ' повтор, первое: CommCtrl.inc(146)
+'~dup $DEFINE TVE_TOGGLE	3   ' повтор, первое: CommCtrl.inc(147)
+'~dup $DEFINE TVE_COLLAPSERESET	&h8000   ' повтор, первое: CommCtrl.inc(149)
+'~dup $DEFINE TVE_EXPANDPARTIAL	&h4000   ' повтор, первое: CommCtrl.inc(148)
+'~dup $DEFINE TVC_UNKNOWN	0   ' повтор, первое: CommCtrl.inc(257)
+'~dup $DEFINE TVC_BYMOUSE	1   ' повтор, первое: CommCtrl.inc(258)
+'~dup $DEFINE TVC_BYKEYBOARD	2   ' повтор, первое: CommCtrl.inc(259)
+'~dup $DEFINE TVGN_ROOT	0   ' повтор, первое: CommCtrl.inc(161)
+'~dup $DEFINE TVGN_NEXT	1   ' повтор, первое: CommCtrl.inc(162)
+'~dup $DEFINE TVGN_PREVIOUS	2   ' повтор, первое: CommCtrl.inc(163)
+'~dup $DEFINE TVGN_PARENT	3   ' повтор, первое: CommCtrl.inc(164)
+'~dup $DEFINE TVGN_CHILD	4   ' повтор, первое: CommCtrl.inc(165)
+'~dup $DEFINE TVGN_FIRSTVISIBLE	5   ' повтор, первое: CommCtrl.inc(166)
+'~dup $DEFINE TVGN_NEXTVISIBLE	6   ' повтор, первое: CommCtrl.inc(167)
+'~dup $DEFINE TVGN_PREVIOUSVISIBLE	7   ' повтор, первое: CommCtrl.inc(168)
+'~dup $DEFINE TVGN_DROPHILITE	8   ' повтор, первое: CommCtrl.inc(169)
+'~dup $DEFINE TVGN_CARET	9   ' повтор, первое: CommCtrl.inc(170)
+'~dup $DEFINE TVGN_LASTVISIBLE	10   ' повтор, первое: CommCtrl.inc(171)
+'~dup $DEFINE TVN_SELCHANGING	(TVN_FIRST-1)   ' повтор, первое: CommCtrl.inc(252)
+'~dup $DEFINE TVN_SELCHANGED	(TVN_FIRST-2)   ' повтор, первое: CommCtrl.inc(254)
+'~dup $DEFINE TVN_GETDISPINFO	(TVN_FIRST-3)   ' повтор, первое: CommCtrl.inc(261)
+'~dup $DEFINE TVN_SETDISPINFO	(TVN_FIRST-4)   ' повтор, первое: CommCtrl.inc(263)
+'~dup $DEFINE TVN_ITEMEXPANDING	(TVN_FIRST-5)   ' повтор, первое: CommCtrl.inc(278)
+'~dup $DEFINE TVN_ITEMEXPANDED	(TVN_FIRST-6)   ' повтор, первое: CommCtrl.inc(280)
+'~dup $DEFINE TVN_BEGINDRAG	(TVN_FIRST-7)   ' повтор, первое: CommCtrl.inc(282)
+'~dup $DEFINE TVN_BEGINRDRAG	(TVN_FIRST-8)   ' повтор, первое: CommCtrl.inc(284)
+'~dup $DEFINE TVN_DELETEITEM	(TVN_FIRST-9)   ' повтор, первое: CommCtrl.inc(286)
+'~dup $DEFINE TVN_BEGINLABELEDIT	(TVN_FIRST-10)   ' повтор, первое: CommCtrl.inc(288)
+'~dup $DEFINE TVN_ENDLABELEDIT	(TVN_FIRST-11)   ' повтор, первое: CommCtrl.inc(290)
+'~dup $DEFINE TVN_KEYDOWN	(TVN_FIRST-12)   ' повтор, первое: CommCtrl.inc(292)
+'~dup $DEFINE TVN_GETINFOTIP	(TVN_FIRST-13)   ' повтор, первое: CommCtrl.inc(293)
+'~dup $DEFINE TVN_SINGLEEXPAND	(TVN_FIRST-15)   ' повтор, первое: CommCtrl.inc(295)
+'~dup $DEFINE TVNRET_DEFAULT 0   ' повтор, первое: CommCtrl.inc(297)
+'~dup $DEFINE TVNRET_SKIPOLD 1   ' повтор, первое: CommCtrl.inc(298)
+'~dup $DEFINE TVNRET_SKIPNEW 2   ' повтор, первое: CommCtrl.inc(299)
+'~dup $DEFINE TVIF_DI_SETITEM	&h1000   ' повтор, первое: CommCtrl.inc(266)
+'~dup $DEFINE TVHT_NOWHERE	1   ' повтор, первое: CommCtrl.inc(192)
+'~dup $DEFINE TVHT_ONITEMICON	2   ' повтор, первое: CommCtrl.inc(193)
+'~dup $DEFINE TVHT_ONITEMLABEL	4   ' повтор, первое: CommCtrl.inc(194)
+'~dup $DEFINE TVHT_ONITEM	(TVHT_ONITEMICON or TVHT_ONITEMLABEL or TVHT_ONITEMSTATEICON)   ' повтор, первое: CommCtrl.inc(203)
+'~dup $DEFINE TVHT_ONITEMINDENT	8   ' повтор, первое: CommCtrl.inc(195)
+'~dup $DEFINE TVHT_ONITEMBUTTON	16   ' повтор, первое: CommCtrl.inc(196)
+'~dup $DEFINE TVHT_ONITEMRIGHT	32   ' повтор, первое: CommCtrl.inc(197)
+'~dup $DEFINE TVHT_ONITEMSTATEICON	64   ' повтор, первое: CommCtrl.inc(198)
+'~dup $DEFINE TVHT_ABOVE	256   ' повтор, первое: CommCtrl.inc(199)
+'~dup $DEFINE TVHT_BELOW	512   ' повтор, первое: CommCtrl.inc(200)
+'~dup $DEFINE TVHT_TORIGHT	1024   ' повтор, первое: CommCtrl.inc(201)
+'~dup $DEFINE TVHT_TOLEFT	2048   ' повтор, первое: CommCtrl.inc(202)
+'~dup $DEFINE TCHT_NOWHERE	1   ' повтор, первое: CommCtrl.inc(406)
+'~dup $DEFINE TCHT_ONITEMICON	2   ' повтор, первое: CommCtrl.inc(407)
+'~dup $DEFINE TCHT_ONITEMLABEL	4   ' повтор, первое: CommCtrl.inc(408)
+'~dup $DEFINE TCHT_ONITEM	(TCHT_ONITEMICON or TCHT_ONITEMLABEL)   ' повтор, первое: CommCtrl.inc(409)
+'~dup $DEFINE TCS_FORCEICONLEFT	16   ' повтор, первое: CommCtrl.inc(341)
+'~dup $DEFINE TCS_FORCELABELLEFT	32   ' повтор, первое: CommCtrl.inc(342)
+'~dup $DEFINE TCS_TABS	0   ' повтор, первое: CommCtrl.inc(345)
+'~dup $DEFINE TCS_BUTTONS	256   ' повтор, первое: CommCtrl.inc(346)
+'~dup $DEFINE TCS_SINGLELINE	0   ' повтор, первое: CommCtrl.inc(347)
+'~dup $DEFINE TCS_MULTILINE	512   ' повтор, первое: CommCtrl.inc(348)
+'~dup $DEFINE TCS_RIGHTJUSTIFY	0   ' повтор, первое: CommCtrl.inc(349)
+'~dup $DEFINE TCS_FIXEDWIDTH	1024   ' повтор, первое: CommCtrl.inc(350)
+'~dup $DEFINE TCS_RAGGEDRIGHT	2048   ' повтор, первое: CommCtrl.inc(351)
+'~dup $DEFINE TCS_FOCUSONBUTTONDOWN	&h1000   ' повтор, первое: CommCtrl.inc(352)
+'~dup $DEFINE TCS_OWNERDRAWFIXED	&h2000   ' повтор, первое: CommCtrl.inc(353)
+'~dup $DEFINE TCS_TOOLTIPS	&h4000   ' повтор, первое: CommCtrl.inc(354)
+'~dup $DEFINE TCS_FOCUSNEVER	&h8000   ' повтор, первое: CommCtrl.inc(355)
+'~dup $DEFINE TCS_BOTTOM	2   ' повтор, первое: CommCtrl.inc(337)
+'~dup $DEFINE TCS_RIGHT	2   ' повтор, первое: CommCtrl.inc(338)
+'~dup $DEFINE TCS_VERTICAL	128   ' повтор, первое: CommCtrl.inc(344)
+'~dup $DEFINE TCS_SCROLLOPPOSITE	&h0001   ' повтор, первое: CommCtrl.inc(336)
+'~dup $DEFINE TCS_HOTTRACK	&h0040   ' повтор, первое: CommCtrl.inc(343)
+'~dup $DEFINE TCS_MULTISELECT	&h0004   ' повтор, первое: CommCtrl.inc(339)
+'~dup $DEFINE TCS_FLATBUTTONS	&h0008   ' повтор, первое: CommCtrl.inc(340)
+'~dup $DEFINE TCS_EX_FLATSEPARATORS	&h00000001   ' повтор, первое: CommCtrl.inc(357)
+'~dup $DEFINE TCS_EX_REGISTERDROP	&h00000002   ' повтор, первое: CommCtrl.inc(358)
+'~dup $DEFINE TCIF_TEXT	1   ' повтор, первое: CommCtrl.inc(365)
+'~dup $DEFINE TCIF_IMAGE	2   ' повтор, первое: CommCtrl.inc(366)
+'~dup $DEFINE TCIF_RTLREADING	4   ' повтор, первое: CommCtrl.inc(367)
+'~dup $DEFINE TCIF_PARAM	8   ' повтор, первое: CommCtrl.inc(368)
+'~dup $DEFINE TCIF_STATE	16   ' повтор, первое: CommCtrl.inc(369)
+'~dup $DEFINE TCM_FIRST	&h1300   ' повтор, первое: CommCtrl.inc(360)
+'~dup $DEFINE TCM_GETIMAGELIST	(TCM_FIRST+2)   ' повтор, первое: CommCtrl.inc(361)
+'~dup $DEFINE TCM_SETIMAGELIST	(TCM_FIRST+3)   ' повтор, первое: CommCtrl.inc(362)
+'~dup $DEFINE TCM_GETITEMCOUNT	(TCM_FIRST+4)   ' повтор, первое: CommCtrl.inc(363)
+'~dup $DEFINE TCM_GETITEM	(TCM_FIRST+5)   ' повтор, первое: CommCtrl.inc(393)
+'~dup $DEFINE TCM_SETITEM	(TCM_FIRST+6)   ' повтор, первое: CommCtrl.inc(395)
+'~dup $DEFINE TCM_INSERTITEM	(TCM_FIRST+7)   ' повтор, первое: CommCtrl.inc(397)
+'~dup $DEFINE TCM_DELETEITEM	(TCM_FIRST+8)   ' повтор, первое: CommCtrl.inc(400)
+'~dup $DEFINE TCM_DELETEALLITEMS	(TCM_FIRST+9)   ' повтор, первое: CommCtrl.inc(401)
+'~dup $DEFINE TCM_GETITEMRECT	(TCM_FIRST+10)   ' повтор, первое: CommCtrl.inc(402)
+'~dup $DEFINE TCM_GETCURSEL	(TCM_FIRST+11)   ' повтор, первое: CommCtrl.inc(403)
+'~dup $DEFINE TCM_SETCURSEL	(TCM_FIRST+12)   ' повтор, первое: CommCtrl.inc(404)
+'~dup $DEFINE TCM_HITTEST	(TCM_FIRST+13)   ' повтор, первое: CommCtrl.inc(416)
+'~dup $DEFINE TCM_SETITEMEXTRA	(TCM_FIRST+14)   ' повтор, первое: CommCtrl.inc(417)
 
-$DEFINE TCM_ADJUSTRECT	(TCM_FIRST+40)
-$DEFINE TCM_SETITEMSIZE	(TCM_FIRST+41)
-$DEFINE TCM_REMOVEIMAGE	(TCM_FIRST+42)
-$DEFINE TCM_SETPADDING	(TCM_FIRST+43)
-$DEFINE TCM_GETROWCOUNT	(TCM_FIRST+44)
-$DEFINE TCM_GETTOOLTIPS	(TCM_FIRST+45)
-$DEFINE TCM_SETTOOLTIPS	(TCM_FIRST+46)
-$DEFINE TCM_GETCURFOCUS	(TCM_FIRST+47)
-$DEFINE TCM_SETCURFOCUS	(TCM_FIRST+48)
-$DEFINE TCM_SETMINTABWIDTH	(TCM_FIRST + 49)
-$DEFINE TCM_DESELECTALL	(TCM_FIRST + 50)
-$DEFINE TCM_HIGHLIGHTITEM	(TCM_FIRST + 51)
-$DEFINE TCM_SETEXTENDEDSTYLE	(TCM_FIRST + 52)
-$DEFINE TCM_GETEXTENDEDSTYLE	(TCM_FIRST + 53)
-$DEFINE TCM_SETUNICODEFORMAT	CCM_SETUNICODEFORMAT
-$DEFINE TCM_GETUNICODEFORMAT	CCM_GETUNICODEFORMAT
-$DEFINE TCN_KEYDOWN	TCN_FIRST
-$DEFINE TCN_SELCHANGE	(TCN_FIRST-1)
-$DEFINE TCN_SELCHANGING	(TCN_FIRST-2)
+'~dup $DEFINE TCM_ADJUSTRECT	(TCM_FIRST+40)   ' повтор, первое: CommCtrl.inc(418)
+'~dup $DEFINE TCM_SETITEMSIZE	(TCM_FIRST+41)   ' повтор, первое: CommCtrl.inc(419)
+'~dup $DEFINE TCM_REMOVEIMAGE	(TCM_FIRST+42)   ' повтор, первое: CommCtrl.inc(420)
+'~dup $DEFINE TCM_SETPADDING	(TCM_FIRST+43)   ' повтор, первое: CommCtrl.inc(421)
+'~dup $DEFINE TCM_GETROWCOUNT	(TCM_FIRST+44)   ' повтор, первое: CommCtrl.inc(422)
+'~dup $DEFINE TCM_GETTOOLTIPS	(TCM_FIRST+45)   ' повтор, первое: CommCtrl.inc(423)
+'~dup $DEFINE TCM_SETTOOLTIPS	(TCM_FIRST+46)   ' повтор, первое: CommCtrl.inc(424)
+'~dup $DEFINE TCM_GETCURFOCUS	(TCM_FIRST+47)   ' повтор, первое: CommCtrl.inc(425)
+'~dup $DEFINE TCM_SETCURFOCUS	(TCM_FIRST+48)   ' повтор, первое: CommCtrl.inc(426)
+'~dup $DEFINE TCM_SETMINTABWIDTH	(TCM_FIRST + 49)   ' повтор, первое: CommCtrl.inc(427)
+'~dup $DEFINE TCM_DESELECTALL	(TCM_FIRST + 50)   ' повтор, первое: CommCtrl.inc(428)
+'~dup $DEFINE TCM_HIGHLIGHTITEM	(TCM_FIRST + 51)   ' повтор, первое: CommCtrl.inc(429)
+'~dup $DEFINE TCM_SETEXTENDEDSTYLE	(TCM_FIRST + 52)   ' повтор, первое: CommCtrl.inc(430)
+'~dup $DEFINE TCM_GETEXTENDEDSTYLE	(TCM_FIRST + 53)   ' повтор, первое: CommCtrl.inc(431)
+'~dup $DEFINE TCM_SETUNICODEFORMAT	CCM_SETUNICODEFORMAT   ' повтор, первое: CommCtrl.inc(432)
+'~dup $DEFINE TCM_GETUNICODEFORMAT	CCM_GETUNICODEFORMAT   ' повтор, первое: CommCtrl.inc(433)
+'~dup $DEFINE TCN_KEYDOWN	TCN_FIRST   ' повтор, первое: CommCtrl.inc(435)
+'~dup $DEFINE TCN_SELCHANGE	(TCN_FIRST-1)   ' повтор, первое: CommCtrl.inc(443)
+'~dup $DEFINE TCN_SELCHANGING	(TCN_FIRST-2)   ' повтор, первое: CommCtrl.inc(444)
 $DEFINE NM_OUTOFMEMORY (NM_FIRST-1)
 $DEFINE NM_CLICK (NM_FIRST-2)
 $DEFINE NM_DBLCLK (NM_FIRST-3)
@@ -13925,19 +13854,19 @@ $DEFINE NM_RELEASEDCAPTURE (NM_FIRST-16)
 $DEFINE NM_SETCURSOR (NM_FIRST-17)
 $DEFINE NM_CHAR (NM_FIRST-18)
 $DEFINE NM_TOOLTIPSCREATED (NM_FIRST-19)
-$DEFINE SBARS_SIZEGRIP 256
-$DEFINE CCM_FIRST &h2000
-$DEFINE CCM_LAST (CCM_FIRST+&h200)
-$DEFINE CCM_SETBKCOLOR 8193
-$DEFINE CCM_SETCOLORSCHEME 8194
-$DEFINE CCM_GETCOLORSCHEME 8195
-$DEFINE CCM_GETDROPTARGET 8196
-$DEFINE CCM_SETUNICODEFORMAT 8197
-$DEFINE CCM_GETUNICODEFORMAT 8198
-$DEFINE CCM_SETVERSION &h2007
-$DEFINE CCM_GETVERSION &h2008
-$DEFINE CCM_SETNOTIFYWINDOW &h2009
-$DEFINE CCM_SETWINDOWTHEME &h200b
+'~dup $DEFINE SBARS_SIZEGRIP 256   ' повтор, первое: CommCtrl.inc(34)
+'~dup $DEFINE CCM_FIRST &h2000   ' повтор, первое: CommCtrl.inc(9)
+'~dup $DEFINE CCM_LAST (CCM_FIRST+&h200)   ' повтор, первое: CommCtrl.inc(14)
+'~dup $DEFINE CCM_SETBKCOLOR 8193   ' повтор, первое: CommCtrl.inc(15)
+'~dup $DEFINE CCM_SETCOLORSCHEME 8194   ' повтор, первое: CommCtrl.inc(16)
+'~dup $DEFINE CCM_GETCOLORSCHEME 8195   ' повтор, первое: CommCtrl.inc(10)
+'~dup $DEFINE CCM_GETDROPTARGET 8196   ' повтор, первое: CommCtrl.inc(11)
+'~dup $DEFINE CCM_SETUNICODEFORMAT 8197   ' повтор, первое: CommCtrl.inc(18)
+'~dup $DEFINE CCM_GETUNICODEFORMAT 8198   ' повтор, первое: CommCtrl.inc(12)
+'~dup $DEFINE CCM_SETVERSION &h2007   ' повтор, первое: CommCtrl.inc(19)
+'~dup $DEFINE CCM_GETVERSION &h2008   ' повтор, первое: CommCtrl.inc(13)
+'~dup $DEFINE CCM_SETNOTIFYWINDOW &h2009   ' повтор, первое: CommCtrl.inc(17)
+'~dup $DEFINE CCM_SETWINDOWTHEME &h200b   ' повтор, первое: CommCtrl.inc(20)
 $DEFINE CCM_DPISCALE &h200c
 $DEFINE ICC_LISTVIEW_CLASSES 1
 $DEFINE ICC_TREEVIEW_CLASSES 2
@@ -14019,7 +13948,7 @@ $DEFINE MCN_SELECT		(-746)
 $DEFINE ODT_HEADER 100
 $DEFINE ODT_TAB 101
 $DEFINE ODT_LISTVIEW 102
-$DEFINE SB_SETBKCOLOR	&h2001
+'~dup $DEFINE SB_SETBKCOLOR	&h2001   ' повтор, первое: CommCtrl.inc(1485)
 $DEFINE SB_ISSIMPLE 1038
 $DEFINE MCSC_BACKGROUND 0
 $DEFINE MCSC_TEXT 1
@@ -14076,46 +14005,46 @@ $DEFINE RB_GETROWHEIGHT (WM_USER+14)
 $DEFINE RB_SETBANDINFO (WM_USER+6)
 $DEFINE RB_SETPARENT (WM_USER+7)
 $DEFINE RBN_HEIGHTCHANGE RBN_FIRST
-$DEFINE LVN_ODCACHEHINT (LVN_FIRST-13)
-$DEFINE LVN_ODFINDITEM (LVN_FIRST-52)
-$DEFINE LVN_ITEMACTIVATE (LVN_FIRST-14)
-$DEFINE LVN_ODSTATECHANGED (LVN_FIRST-15)
-$DEFINE SB_SETICON 1039
+'~dup $DEFINE LVN_ODCACHEHINT (LVN_FIRST-13)   ' повтор, первое: CommCtrl.inc(1087)
+'~dup $DEFINE LVN_ODFINDITEM (LVN_FIRST-52)   ' повтор, первое: CommCtrl.inc(1088)
+'~dup $DEFINE LVN_ITEMACTIVATE (LVN_FIRST-14)   ' повтор, первое: CommCtrl.inc(1091)
+'~dup $DEFINE LVN_ODSTATECHANGED (LVN_FIRST-15)   ' повтор, первое: CommCtrl.inc(1092)
+'~dup $DEFINE SB_SETICON 1039   ' повтор, первое: CommCtrl.inc(1486)
 $DEFINE SB_SETTIPTEXT	1040
 $DEFINE SB_GETTIPTEXT	1042
 $DEFINE SB_GETICON	1044
-$DEFINE SB_SETUNICODEFORMAT	&h2005
+'~dup $DEFINE SB_SETUNICODEFORMAT	&h2005   ' повтор, первое: CommCtrl.inc(1493)
 $DEFINE SB_GETUNICODEFORMAT	&h2006
-$DEFINE PGF_INVISIBLE 0
-$DEFINE PGF_NORMAL 1
-$DEFINE PGF_GRAYED 2
-$DEFINE PGF_DEPRESSED 4
-$DEFINE PGF_HOT 8
+'~dup $DEFINE PGF_INVISIBLE 0   ' повтор, первое: CommCtrl.inc(1400)
+'~dup $DEFINE PGF_NORMAL 1   ' повтор, первое: CommCtrl.inc(1401)
+'~dup $DEFINE PGF_GRAYED 2   ' повтор, первое: CommCtrl.inc(1398)
+'~dup $DEFINE PGF_DEPRESSED 4   ' повтор, первое: CommCtrl.inc(1397)
+'~dup $DEFINE PGF_HOT 8   ' повтор, первое: CommCtrl.inc(1399)
 $DEFINE PGB_TOPORLEFT 0
 $DEFINE PGB_BOTTOMORRIGHT 1
-$DEFINE PGF_SCROLLUP 1
-$DEFINE PGF_SCROLLDOWN 2
-$DEFINE PGF_SCROLLLEFT 4
-$DEFINE PGF_SCROLLRIGHT 8
-$DEFINE PGK_SHIFT 1
-$DEFINE PGK_CONTROL 2
-$DEFINE PGK_MENU 4
-$DEFINE PGF_CALCWIDTH 1
-$DEFINE PGF_CALCHEIGHT 2
-$DEFINE PGM_FIRST &h1400
-$DEFINE PGM_SETCHILD (PGM_FIRST+1)
-$DEFINE PGM_RECALCSIZE (PGM_FIRST+2)
-$DEFINE PGM_FORWARDMOUSE (PGM_FIRST+3)
-$DEFINE PGM_SETBKCOLOR (PGM_FIRST+4)
-$DEFINE PGM_GETBKCOLOR (PGM_FIRST+5)
-$DEFINE PGM_SETBORDER (PGM_FIRST+6)
-$DEFINE PGM_GETBORDER (PGM_FIRST+7)
-$DEFINE PGM_SETPOS (PGM_FIRST+8)
-$DEFINE PGM_GETPOS (PGM_FIRST+9)
-$DEFINE PGM_SETBUTTONSIZE (PGM_FIRST+10)
-$DEFINE PGM_GETBUTTONSIZE (PGM_FIRST+11)
-$DEFINE PGM_GETBUTTONSTATE (PGM_FIRST+12)
-$DEFINE PGM_GETDROPTARGET CCM_GETDROPTARGET
+'~dup $DEFINE PGF_SCROLLUP 1   ' повтор, первое: CommCtrl.inc(1405)
+'~dup $DEFINE PGF_SCROLLDOWN 2   ' повтор, первое: CommCtrl.inc(1402)
+'~dup $DEFINE PGF_SCROLLLEFT 4   ' повтор, первое: CommCtrl.inc(1403)
+'~dup $DEFINE PGF_SCROLLRIGHT 8   ' повтор, первое: CommCtrl.inc(1404)
+'~dup $DEFINE PGK_SHIFT 1   ' повтор, первое: CommCtrl.inc(1408)
+'~dup $DEFINE PGK_CONTROL 2   ' повтор, первое: CommCtrl.inc(1406)
+'~dup $DEFINE PGK_MENU 4   ' повтор, первое: CommCtrl.inc(1407)
+'~dup $DEFINE PGF_CALCWIDTH 1   ' повтор, первое: CommCtrl.inc(1396)
+'~dup $DEFINE PGF_CALCHEIGHT 2   ' повтор, первое: CommCtrl.inc(1395)
+'~dup $DEFINE PGM_FIRST &h1400   ' повтор, первое: CommCtrl.inc(1409)
+'~dup $DEFINE PGM_SETCHILD (PGM_FIRST+1)   ' повтор, первое: CommCtrl.inc(1421)
+'~dup $DEFINE PGM_RECALCSIZE (PGM_FIRST+2)   ' повтор, первое: CommCtrl.inc(1417)
+'~dup $DEFINE PGM_FORWARDMOUSE (PGM_FIRST+3)   ' повтор, первое: CommCtrl.inc(1410)
+'~dup $DEFINE PGM_SETBKCOLOR (PGM_FIRST+4)   ' повтор, первое: CommCtrl.inc(1418)
+'~dup $DEFINE PGM_GETBKCOLOR (PGM_FIRST+5)   ' повтор, первое: CommCtrl.inc(1411)
+'~dup $DEFINE PGM_SETBORDER (PGM_FIRST+6)   ' повтор, первое: CommCtrl.inc(1419)
+'~dup $DEFINE PGM_GETBORDER (PGM_FIRST+7)   ' повтор, первое: CommCtrl.inc(1412)
+'~dup $DEFINE PGM_SETPOS (PGM_FIRST+8)   ' повтор, первое: CommCtrl.inc(1422)
+'~dup $DEFINE PGM_GETPOS (PGM_FIRST+9)   ' повтор, первое: CommCtrl.inc(1416)
+'~dup $DEFINE PGM_SETBUTTONSIZE (PGM_FIRST+10)   ' повтор, первое: CommCtrl.inc(1420)
+'~dup $DEFINE PGM_GETBUTTONSIZE (PGM_FIRST+11)   ' повтор, первое: CommCtrl.inc(1413)
+'~dup $DEFINE PGM_GETBUTTONSTATE (PGM_FIRST+12)   ' повтор, первое: CommCtrl.inc(1414)
+'~dup $DEFINE PGM_GETDROPTARGET CCM_GETDROPTARGET   ' повтор, первое: CommCtrl.inc(1415)
 
 $DEFINE RBS_REGISTERDROP 4096
 $DEFINE RBS_AUTOSIZE 8192
@@ -14405,20 +14334,20 @@ Public Const COLOR_SCROLLBAR = 0
 Public Const COLOR_BACKGROUND = 1
 Public Const COLOR_ACTIVECAPTION = 2
 Public Const COLOR_INACTIVECAPTION = 3
-Public Const COLOR_MENU = 4
+'~dup Public Const COLOR_MENU = 4   ' повтор, первое: rapidq2.inc(1531)
 Public Const COLOR_WINDOW = 5
 Public Const COLOR_WINDOWFRAME = 6
-Public Const COLOR_MENUTEXT = 7
+'~dup Public Const COLOR_MENUTEXT = 7   ' повтор, первое: rapidq2.inc(1532)
 Public Const COLOR_WINDOWTEXT = 8
 Public Const COLOR_CAPTIONTEXT = 9
 Public Const COLOR_ACTIVEBORDER = 10
 Public Const COLOR_INACTIVEBORDER = 11
 Public Const COLOR_APPWORKSPACE = 12
-Public Const COLOR_HIGHLIGHT = 13
-Public Const COLOR_HIGHLIGHTTEXT = 14
+'~dup Public Const COLOR_HIGHLIGHT = 13   ' повтор, первое: rapidq2.inc(1533)
+'~dup Public Const COLOR_HIGHLIGHTTEXT = 14   ' повтор, первое: rapidq2.inc(1534)
 Public Const COLOR_BTNFACE = 15
 Public Const COLOR_BTNSHADOW = 16
-Public Const COLOR_GRAYTEXT = 17
+'~dup Public Const COLOR_GRAYTEXT = 17   ' повтор, первое: rapidq2.inc(1535)
 Public Const COLOR_BTNTEXT = 18
 Public Const COLOR_INACTIVECAPTIONTEXT = 19
 Public Const COLOR_BTNHIGHLIGHT = 20
@@ -14427,7 +14356,7 @@ Declare Function GetSysColor1 Lib "user32" Alias "GetSysColor" (ByVal nIndex As 
 Declare Function SetSysColors1 Lib "user32" Alias "SetSysColors" (ByVal nChanges As Long, lpSysColor As Long, lpColorValues As Long) As Long
 
 
-'~dup const WM_USER = &H400   ' повтор, первое: CommCtrl.inc(6)
+'~dup const WM_USER = &H400   ' повтор, первое: rapidq2.inc(870)
 
 '~dup const    EM_AUTOURLDETECT            =WM_USER + 91   ' повтор, первое: rapidq.inc(756)
 
@@ -14530,19 +14459,19 @@ Declare Function SetSysColors1 Lib "user32" Alias "SetSysColors" (ByVal nChanges
 '~dup const EM_UNDO = 199   ' повтор, первое: rapidq.inc(854)
 
 
-'~dup Const WM_MOUSEMOVE = &H200   ' повтор, первое: rapidq.inc(857)
-'~dup Const WM_LBUTTONDOWN = &H201   ' повтор, первое: rapidq.inc(858)
-'~dup Const WM_LBUTTONUP = &H202   ' повтор, первое: rapidq.inc(859)
-'~dup Const WM_LBUTTONDBLCLK = &H203   ' повтор, первое: rapidq.inc(860)
-'~dup Const WM_RBUTTONDOWN = &H204   ' повтор, первое: rapidq.inc(861)
-'~dup Const WM_RBUTTONUP = &H205   ' повтор, первое: rapidq.inc(862)
-'~dup Const WM_RBUTTONDBLCLK = &H206   ' повтор, первое: rapidq.inc(863)
-'~dup Const WM_MBUTTONDOWN = &H207   ' повтор, первое: rapidq.inc(864)
-'~dup Const WM_MBUTTONUP = &H208   ' повтор, первое: rapidq.inc(865)
-'~dup Const WM_MBUTTONDBLCLK = &H209   ' повтор, первое: rapidq.inc(866)
-'~dup Const WM_MOUSEWHEEL = &H20A   ' повтор, первое: rapidq.inc(867)
+'~dup Const WM_MOUSEMOVE = &H200   ' повтор, первое: rapidq2.inc(852)
+'~dup Const WM_LBUTTONDOWN = &H201   ' повтор, первое: rapidq2.inc(853)
+'~dup Const WM_LBUTTONUP = &H202   ' повтор, первое: rapidq2.inc(854)
+'~dup Const WM_LBUTTONDBLCLK = &H203   ' повтор, первое: rapidq2.inc(855)
+'~dup Const WM_RBUTTONDOWN = &H204   ' повтор, первое: rapidq2.inc(856)
+'~dup Const WM_RBUTTONUP = &H205   ' повтор, первое: rapidq2.inc(857)
+'~dup Const WM_RBUTTONDBLCLK = &H206   ' повтор, первое: rapidq2.inc(858)
+'~dup Const WM_MBUTTONDOWN = &H207   ' повтор, первое: rapidq2.inc(859)
+'~dup Const WM_MBUTTONUP = &H208   ' повтор, первое: rapidq2.inc(860)
+'~dup Const WM_MBUTTONDBLCLK = &H209   ' повтор, первое: rapidq2.inc(861)
+'~dup Const WM_MOUSEWHEEL = &H20A   ' повтор, первое: rapidq2.inc(863)
 'Const WM_KEYDOWN = &H100
-'~dup Const WM_KEYUP = &H101   ' повтор, первое: rapidq.inc(869)
+'~dup Const WM_KEYUP = &H101   ' повтор, первое: rapidq2.inc(821)
 
 
 
@@ -14553,7 +14482,7 @@ const WM_COPY = 769
 const WM_COPYDATA = 74
 const WM_PASTE = 770
 const WM_CLEAR = 771
-const WM_CHAR = 258
+'~dup const WM_CHAR = 258   ' повтор, первое: rapidq2.inc(822)
 
 '------------- /* Extended edit style masks */
 const SES_EMULATESYSEDIT  =1
@@ -16748,7 +16677,7 @@ DECLARE Function ConvertToTruePath(ByVal sPath As String) As String
 	'NOTAUser - (RW) - NOTA Current User Registry Key (I know I'm ignoring CONST)
 			Dim NOTAUser as QRegistry : NOTAUser.RootKey = &H80000001
 	'Pi - (R) - Pi of course.
-			const Pi = 3.14159265358979323846
+'~dup 			const Pi = 3.14159265358979323846   ' повтор, первое: rapidq2.inc(60)
 	'Planck - (R) - Planck's Constant
 			const Planck = 6.62628e-34
 	'SolarDay - (R) - 1 Solar Day in seconds
@@ -17117,14 +17046,14 @@ dim hInst AS LONG
 $DEFINE HWND INTEGER
 
 const WS_EX_CLIENTEDGE = &H200 ' Just some of the many API constants
-const WS_CHILD = &H40000000
-const WS_VISIBLE = &H10000000
-const WS_BORDER = &H800000
+'~dup const WS_CHILD = &H40000000   ' повтор, первое: rapidq2.inc(949)
+'~dup const WS_VISIBLE = &H10000000   ' повтор, первое: rapidq2.inc(951)
+'~dup const WS_BORDER = &H800000   ' повтор, первое: rapidq2.inc(957)
 const ES_LEFT = 0
 const ES_AUTOHSCROLL = &H80
 const ES_MULTILINE = &H4
 
-const WM_COMMAND = &H111
+'~dup const WM_COMMAND = &H111   ' повтор, первое: rapidq2.inc(830)
 
 DECLARE FUNCTION GetModuleHandle LIB "KERNEL32" ALIAS "GetModuleHandleA" _
 (ModuleName AS STRING) AS LONG
@@ -19298,14 +19227,14 @@ $ENDIF
 '============================================================================
 '[build_inc] Files1.inc
 '============================================================================
-Const FILE_ATTRIBUTE_READONLY = &H1
-Const FILE_ATTRIBUTE_HIDDEN = &H2
-Const FILE_ATTRIBUTE_SYSTEM = &H4
-Const FILE_ATTRIBUTE_DIRECTORY = &H10
-Const FILE_ATTRIBUTE_ARCHIVE = &H20
+'~dup Const FILE_ATTRIBUTE_READONLY = &H1   ' повтор, первое: Files.inc(2)
+'~dup Const FILE_ATTRIBUTE_HIDDEN = &H2   ' повтор, первое: Files.inc(3)
+'~dup Const FILE_ATTRIBUTE_SYSTEM = &H4   ' повтор, первое: Files.inc(4)
+'~dup Const FILE_ATTRIBUTE_DIRECTORY = &H10   ' повтор, первое: Files.inc(5)
+'~dup Const FILE_ATTRIBUTE_ARCHIVE = &H20   ' повтор, первое: Files.inc(6)
 '~dup Const FILE_ATTRIBUTE_NORMAL = &H80   ' повтор, первое: rapidq2.inc(1866)
-Const FILE_ATTRIBUTE_TEMPORARY = &H100
-Const FILE_ATTRIBUTE_COMPRESSED = &H800
+'~dup Const FILE_ATTRIBUTE_TEMPORARY = &H100   ' повтор, первое: Files.inc(8)
+'~dup Const FILE_ATTRIBUTE_COMPRESSED = &H800   ' повтор, первое: Files.inc(9)
 
 '~dup Type SECURITY_ATTRIBUTES   ' повтор, первое: Files.inc(21)
 '~dup nLength As Long
@@ -20558,14 +20487,14 @@ $ESCAPECHARS Off
 '============================================================================
 '[build_inc] Files2.inc
 '============================================================================
-'~dup Const FILE_ATTRIBUTE_READONLY = &H1   ' повтор, первое: Files1.inc(1)
-'~dup Const FILE_ATTRIBUTE_HIDDEN = &H2   ' повтор, первое: Files1.inc(2)
-'~dup Const FILE_ATTRIBUTE_SYSTEM = &H4   ' повтор, первое: Files1.inc(3)
-'~dup Const FILE_ATTRIBUTE_DIRECTORY = &H10   ' повтор, первое: Files1.inc(4)
-'~dup Const FILE_ATTRIBUTE_ARCHIVE = &H20   ' повтор, первое: Files1.inc(5)
+'~dup Const FILE_ATTRIBUTE_READONLY = &H1   ' повтор, первое: Files.inc(2)
+'~dup Const FILE_ATTRIBUTE_HIDDEN = &H2   ' повтор, первое: Files.inc(3)
+'~dup Const FILE_ATTRIBUTE_SYSTEM = &H4   ' повтор, первое: Files.inc(4)
+'~dup Const FILE_ATTRIBUTE_DIRECTORY = &H10   ' повтор, первое: Files.inc(5)
+'~dup Const FILE_ATTRIBUTE_ARCHIVE = &H20   ' повтор, первое: Files.inc(6)
 '~dup Const FILE_ATTRIBUTE_NORMAL = &H80   ' повтор, первое: rapidq2.inc(1866)
-'~dup Const FILE_ATTRIBUTE_TEMPORARY = &H100   ' повтор, первое: Files1.inc(7)
-'~dup Const FILE_ATTRIBUTE_COMPRESSED = &H800   ' повтор, первое: Files1.inc(8)
+'~dup Const FILE_ATTRIBUTE_TEMPORARY = &H100   ' повтор, первое: Files.inc(8)
+'~dup Const FILE_ATTRIBUTE_COMPRESSED = &H800   ' повтор, первое: Files.inc(9)
 
 '~dup Type SECURITY_ATTRIBUTES   ' повтор, первое: Files.inc(21)
 '~dup nLength As Long
@@ -23075,9 +23004,9 @@ $define VK_BACKSPACE 8
 '~dup $define VK_SPACE 32   ' повтор, первое: rapidq2.inc(1085)
 $define VK_CTRL 17
 $define VK_WINMENU 91
-define VK_PAGEUP 33
-define VK_PAGEDOWN 34
-define VK_SYSTEM_MENU 93
+$define VK_PAGEUP 33
+$define VK_PAGEDOWN 34
+$define VK_SYSTEM_MENU 93
 '~dup $define VK_DELETE 46   ' повтор, первое: rapidq2.inc(1099)
 '~dup $define VK_PAUSE 19   ' повтор, первое: rapidq2.inc(1082)
 $define VK_CAPSLOCK 20
@@ -23105,51 +23034,51 @@ $define VK_OEM_102 226
 
 '---------------All to 123
 
-define VK_F1 112 
-define VK_F2 113
-define VK_F3 114
-define VK_F4 115
-define VK_F5 116
-define VK_F6 117
-define VK_F7 118
-define VK_F8 119
-define VK_F9 120
-define VK_F10 121
-define VK_F11 122
-define VK_F12 123
+'~dup $define VK_F1 112    ' повтор, первое: rapidq2.inc(1158)
+'~dup $define VK_F2 113   ' повтор, первое: rapidq2.inc(1159)
+'~dup $define VK_F3 114   ' повтор, первое: rapidq2.inc(1160)
+'~dup $define VK_F4 115   ' повтор, первое: rapidq2.inc(1161)
+'~dup $define VK_F5 116   ' повтор, первое: rapidq2.inc(1162)
+'~dup $define VK_F6 117   ' повтор, первое: rapidq2.inc(1163)
+'~dup $define VK_F7 118   ' повтор, первое: rapidq2.inc(1164)
+'~dup $define VK_F8 119   ' повтор, первое: rapidq2.inc(1165)
+'~dup $define VK_F9 120   ' повтор, первое: rapidq2.inc(1166)
+'~dup $define VK_F10 121   ' повтор, первое: rapidq2.inc(1167)
+'~dup $define VK_F11 122   ' повтор, первое: rapidq2.inc(1168)
+'~dup $define VK_F12 123   ' повтор, первое: rapidq2.inc(1169)
 
-define VK_A 65
-define VK_B 66
-define VK_C 67
-define VK_D 68
-define VK_E 69
-define VK_F 70
-define VK_G 71
-define VK_H 72
-define VK_I  73
-define VK_J 74
-define VK_K 75
-define VK_L 76
-define VK_M 77
-define VK_N 78
-define VK_O 79
-define VK_P 80
-define VK_Q 81
-define VK_R 82
-define VK_S 83
-define VK_T 84
-define VK_U 85
-define VK_V 86
-define VK_W 87
-define VK_X 88
-define VK_Y 89
-define VK_Z 90
+'~dup $define VK_A 65   ' повтор, первое: rapidq2.inc(1114)
+'~dup $define VK_B 66   ' повтор, первое: rapidq2.inc(1115)
+'~dup $define VK_C 67   ' повтор, первое: rapidq2.inc(1116)
+'~dup $define VK_D 68   ' повтор, первое: rapidq2.inc(1117)
+'~dup $define VK_E 69   ' повтор, первое: rapidq2.inc(1118)
+'~dup $define VK_F 70   ' повтор, первое: rapidq2.inc(1119)
+'~dup $define VK_G 71   ' повтор, первое: rapidq2.inc(1120)
+'~dup $define VK_H 72   ' повтор, первое: rapidq2.inc(1121)
+'~dup $define VK_I  73   ' повтор, первое: rapidq2.inc(1122)
+'~dup $define VK_J 74   ' повтор, первое: rapidq2.inc(1123)
+'~dup $define VK_K 75   ' повтор, первое: rapidq2.inc(1124)
+'~dup $define VK_L 76   ' повтор, первое: rapidq2.inc(1125)
+'~dup $define VK_M 77   ' повтор, первое: rapidq2.inc(1126)
+'~dup $define VK_N 78   ' повтор, первое: rapidq2.inc(1127)
+'~dup $define VK_O 79   ' повтор, первое: rapidq2.inc(1128)
+'~dup $define VK_P 80   ' повтор, первое: rapidq2.inc(1129)
+'~dup $define VK_Q 81   ' повтор, первое: rapidq2.inc(1130)
+'~dup $define VK_R 82   ' повтор, первое: rapidq2.inc(1131)
+'~dup $define VK_S 83   ' повтор, первое: rapidq2.inc(1132)
+'~dup $define VK_T 84   ' повтор, первое: rapidq2.inc(1133)
+'~dup $define VK_U 85   ' повтор, первое: rapidq2.inc(1134)
+'~dup $define VK_V 86   ' повтор, первое: rapidq2.inc(1135)
+'~dup $define VK_W 87   ' повтор, первое: rapidq2.inc(1136)
+'~dup $define VK_X 88   ' повтор, первое: rapidq2.inc(1137)
+'~dup $define VK_Y 89   ' повтор, первое: rapidq2.inc(1138)
+'~dup $define VK_Z 90   ' повтор, первое: rapidq2.inc(1139)
 
-define VK_HOME 36
-define VK_END 35
-define VK_NUM 144
-define VK_INSERT 45
-define VK_STAR 106
+'~dup $define VK_HOME 36   ' повтор, первое: rapidq2.inc(1089)
+'~dup $define VK_END 35   ' повтор, первое: rapidq2.inc(1088)
+$define VK_NUM 144
+'~dup $define VK_INSERT 45   ' повтор, первое: rapidq2.inc(1098)
+$define VK_STAR 106
 
 $define import $Include
 $define $import import
@@ -23801,18 +23730,18 @@ DECLARE FUNCTION SetWindowLong1 LIB "User32" ALIAS "SetWindowLongA" _
 '~dup                  (hwnd AS LONG) AS LONG
 'DECLARE FUNCTION CloseHandle LIB "Kernel32" ALIAS "CloseHandle" (hObject AS LONG) AS LONG
 
-const WS_EX_MDICHILD = &H40
+'~dup const WS_EX_MDICHILD = &H40   ' повтор, первое: rapidq2.inc(965)
 '~dup const WS_EX_CLIENTEDGE = &H200   ' повтор, первое: createWind.inc(16)
-'~dup const WS_CHILD = &H40000000   ' повтор, первое: createWind.inc(17)
-'~dup const WS_VISIBLE = &H10000000   ' повтор, первое: createWind.inc(18)
-const WS_OVERLAPPED = &H0
-const WS_CAPTION = &HC00000
-const WS_SYSMENU = &H80000
-const WS_THICKFRAME = &H40000
-const WS_MINIMIZEBOX = &H20000
-const WS_MAXIMIZEBOX = &H10000
-const WS_VSCROLL = &H200000
-const WS_HSCROLL = &H100000
+'~dup const WS_CHILD = &H40000000   ' повтор, первое: rapidq2.inc(949)
+'~dup const WS_VISIBLE = &H10000000   ' повтор, первое: rapidq2.inc(951)
+'~dup const WS_OVERLAPPED = &H0   ' повтор, первое: rapidq2.inc(947)
+'~dup const WS_CAPTION = &HC00000   ' повтор, первое: rapidq2.inc(956)
+'~dup const WS_SYSMENU = &H80000   ' повтор, первое: rapidq2.inc(961)
+'~dup const WS_THICKFRAME = &H40000   ' повтор, первое: rapidq2.inc(962)
+'~dup const WS_MINIMIZEBOX = &H20000   ' повтор, первое: rapidq2.inc(968)
+'~dup const WS_MAXIMIZEBOX = &H10000   ' повтор, первое: rapidq2.inc(969)
+'~dup const WS_VSCROLL = &H200000   ' повтор, первое: rapidq2.inc(959)
+'~dup const WS_HSCROLL = &H100000   ' повтор, первое: rapidq2.inc(960)
 '~dup const WS_OVERLAPPEDWINDOW = (WS_OVERLAPPED OR WS_CAPTION OR WS_SYSMENU OR WS_THICKFRAME OR WS_MINIMIZEBOX OR WS_MAXIMIZEBOX)   ' повтор, первое: rapidq2.inc(970)
 
 const CW_USEDEFAULT = &H80000000
@@ -23821,7 +23750,7 @@ const WM_CREATE = &H1
 const WM_DESTROY = &H2
 const WM_SIZE = &H5
 const WM_SETTEXT = &HC
-const WM_SYSCOMMAND = &H112
+'~dup const WM_SYSCOMMAND = &H112   ' повтор, первое: rapidq2.inc(831)
 const WM_MDIDESTROY = &H221
 const WM_MDIRESTORE = &H223
 const WM_MDIMAXIMIZE = &H225
@@ -23837,7 +23766,7 @@ const ES_AUTOVSCROLL = &H40
 const MDITILE_VERTICAL = &H0
 const MDITILE_HORIZONTAL = &H1
 
-const SC_MINIMIZE = &HF020
+'~dup const SC_MINIMIZE = &HF020   ' повтор, первое: rapidq2.inc(868)
 
 '~dup const GENERIC_READ = &H80000000   ' повтор, первое: rapidq2.inc(1850)
 '~dup const OPEN_ALWAYS = 4   ' повтор, первое: rapidq2.inc(1862)
@@ -24445,7 +24374,7 @@ print "inc dir   C:\BAS\RAPIDQ\inc\NewWindow23.inc"
 	'NOTAUser - (RW) - NOTA Current User Registry Key (I know I'm ignoring CONST)
 '~dup 			Dim NOTAUser as QRegistry : NOTAUser.RootKey = &H80000001   ' повтор, первое: Copy of NOTA.inc(46)
 	'Pi - (R) - Pi of course.
-'~dup 			const Pi = 3.14159265358979323846   ' повтор, первое: Copy of NOTA.inc(48)
+'~dup 			const Pi = 3.14159265358979323846   ' повтор, первое: rapidq2.inc(60)
 	'Planck - (R) - Planck's Constant
 '~dup 			const Planck = 6.62628e-34   ' повтор, первое: Copy of NOTA.inc(50)
 	'SolarDay - (R) - 1 Solar Day in seconds
@@ -25577,14 +25506,14 @@ Dim lTimer_mOD As QTimer
 ' INC
 ' **************************************************************************************************
 
-'~dup Const ODT_MENU			= 1   ' повтор, первое: Api.inc(3)
+'~dup Const ODT_MENU			= 1   ' повтор, первое: rapidq2.inc(1513)
 
-'~dup Const ODS_SELECTED		= 1   ' повтор, первое: Api.inc(5)
-'~dup Const ODS_GRAYED		= 2   ' повтор, первое: Api.inc(6)
-'~dup Const ODS_DISABLED		= 4   ' повтор, первое: Api.inc(7)
-'~dup Const ODS_CHECKED		= 8   ' повтор, первое: Api.inc(8)
-'~dup Const ODS_FOCUS			= &H10   ' повтор, первое: Api.inc(9)
-'~dup Const ODS_DEFAULT		= &H20   ' повтор, первое: Api.inc(10)
+'~dup Const ODS_SELECTED		= 1   ' повтор, первое: rapidq2.inc(1514)
+'~dup Const ODS_GRAYED		= 2   ' повтор, первое: rapidq2.inc(1515)
+'~dup Const ODS_DISABLED		= 4   ' повтор, первое: rapidq2.inc(1516)
+'~dup Const ODS_CHECKED		= 8   ' повтор, первое: rapidq2.inc(1517)
+'~dup Const ODS_FOCUS			= &H10   ' повтор, первое: rapidq2.inc(1518)
+'~dup Const ODS_DEFAULT		= &H20   ' повтор, первое: rapidq2.inc(1519)
 'Const ODS_COMBOBOXEDIT = &H1000
 Const ODS_HOTLIGHT As Long = &H40
 
@@ -25600,26 +25529,26 @@ Const WM_INITMENUPOPUP_mOD		= &H117
 Const WM_UNINITMENUPOPUP_mOD	= &H125
 
 Const MIIM_BITMAP	As Long = &H80
-'~dup Const MIIM_CHECKMARKS As Long = &H8   ' повтор, первое: Api.inc(27)
-'~dup Const MIIM_DATA		As Long = &H20   ' повтор, первое: Api.inc(28)
+'~dup Const MIIM_CHECKMARKS As Long = &H8   ' повтор, первое: rapidq2.inc(1541)
+'~dup Const MIIM_DATA		As Long = &H20   ' повтор, первое: rapidq2.inc(1542)
 Const MIIM_FTYPE	As Long = &H100
-'~dup Const MIIM_ID		As Long = &H2   ' повтор, первое: Api.inc(25)
-'~dup Const MIIM_STATE	As Long = &H1   ' повтор, первое: Api.inc(24)
+'~dup Const MIIM_ID		As Long = &H2   ' повтор, первое: rapidq2.inc(1539)
+'~dup Const MIIM_STATE	As Long = &H1   ' повтор, первое: rapidq2.inc(1538)
 Const MIIM_STRING	As Long = &H40
-'~dup Const MIIM_SUBMENU	As Long = &H4   ' повтор, первое: Api.inc(26)
-'~dup Const MIIM_TYPE		As Long = &H10   ' повтор, первое: Api.inc(29)
+'~dup Const MIIM_SUBMENU	As Long = &H4   ' повтор, первое: rapidq2.inc(1540)
+'~dup Const MIIM_TYPE		As Long = &H10   ' повтор, первое: rapidq2.inc(1543)
 
 Const MF_APPEND As Long = &H100
-'~dup Const MF_BITMAP As Long = &H4   ' повтор, первое: Api.inc(21)
-'~dup Const MF_BYCOMMAND As Long = &H0   ' повтор, первое: Api.inc(17)
-'~dup Const MF_BYPOSITION As Long = &H400   ' повтор, первое: Api.inc(18)
+'~dup Const MF_BITMAP As Long = &H4   ' повтор, первое: rapidq2.inc(1528)
+'~dup Const MF_BYCOMMAND As Long = &H0   ' повтор, первое: rapidq2.inc(1522)
+'~dup Const MF_BYPOSITION As Long = &H400   ' повтор, первое: rapidq2.inc(1523)
 Const MF_CALLBACKS As Long = &H8000000
 Const MF_CHANGE As Long = &H80
 Const MF_CHECKED As Long = &H8
 Const MF_CONV As Long = &H40000000
 Const MF_DEFAULT As Long = &H1000
 Const MF_DELETE As Long = &H200
-Const MF_DISABLED As Long = &H2
+'~dup Const MF_DISABLED As Long = &H2   ' повтор, первое: rapidq2.inc(1526)
 'Const MF_DLL_NAME As String = "Microsoft Picture Converter"
 Const MF_ENABLED As Long = &H0
 Const MF_END As Long = &H80
@@ -25628,9 +25557,9 @@ Const MF_ERRORS As Long = &H10000000
 'Const MF_FLAGS_NO_CREATE_IF_NO_RESOURCE As Long = &H2
 'Const MF_FPCR_FUNC As Long = &H25
 'Const MF_FPCR_FUNC_STR As String = "mf_fpcr"
-Const MF_GRAYED As Long = &H1
+'~dup Const MF_GRAYED As Long = &H1   ' повтор, первое: rapidq2.inc(1525)
 Const MF_HELP As Long = &H4000
-'~dup Const MF_HILITE As Long = &H80   ' повтор, первое: Api.inc(22)
+'~dup Const MF_HILITE As Long = &H80   ' повтор, первое: rapidq2.inc(1529)
 Const MF_HSZ_INFO As Long = &H1000000
 Const MF_INSERT As Long = &H0
 Const MF_LINKS As Long = &H20000000
@@ -25638,37 +25567,37 @@ Const MF_MASK As Long = &HFF000000
 Const MF_MENUBARBREAK As Long = &H20
 Const MF_MENUBREAK As Long = &H40
 Const MF_MOUSESELECT As Long = &H8000
-'~dup Const MF_OWNERDRAW As Long = &H100   ' повтор, первое: Api.inc(19)
+'~dup Const MF_OWNERDRAW As Long = &H100   ' повтор, первое: rapidq2.inc(1524)
 Const MF_POPUP As Long = &H10
 Const MF_POSTMSGS As Long = &H4000000
 Const MF_REMOVE As Long = &H1000
 Const MF_RIGHTJUSTIFY As Long = &H4000
 Const MF_SENDMSGS As Long = &H2000000
 Const MF_SEPARATOR As Long = &H800
-'~dup Const MF_STRING As Long = &H0   ' повтор, первое: Api.inc(20)
+'~dup Const MF_STRING As Long = &H0   ' повтор, первое: rapidq2.inc(1527)
 Const MF_SYSMENU As Long = &H2000
 Const MF_UNCHECKED As Long = &H0
 Const MF_UNHILITE As Long = &H0
 Const MF_USECHECKBITMAPS As Long = &H200
 
-'~dup Const MFT_BITMAP		= MF_BITMAP   ' повтор, первое: Api.inc(31)
-'~dup Const MFT_MENUBARBREAK	= MF_MENUBARBREAK   ' повтор, первое: Api.inc(32)
-'~dup Const MFT_MENUBREAK		= MF_MENUBREAK   ' повтор, первое: Api.inc(33)
-'~dup Const MFT_OWNERDRAW		= MF_OWNERDRAW   ' повтор, первое: Api.inc(34)
-'~dup Const MFT_RADIOCHECK	= &H200   ' повтор, первое: Api.inc(35)
-'~dup Const MFT_RIGHTJUSTIFY	= MF_RIGHTJUSTIFY   ' повтор, первое: Api.inc(36)
-'~dup Const MFT_RIGHTORDER	= &H2000   ' повтор, первое: Api.inc(37)
-'~dup Const MFT_SEPARATOR		= MF_SEPARATOR   ' повтор, первое: Api.inc(38)
-'~dup Const MFT_STRING		= MF_STRING   ' повтор, первое: Api.inc(39)
+'~dup Const MFT_BITMAP		= MF_BITMAP   ' повтор, первое: rapidq2.inc(1545)
+'~dup Const MFT_MENUBARBREAK	= MF_MENUBARBREAK   ' повтор, первое: rapidq2.inc(1546)
+'~dup Const MFT_MENUBREAK		= MF_MENUBREAK   ' повтор, первое: rapidq2.inc(1547)
+'~dup Const MFT_OWNERDRAW		= MF_OWNERDRAW   ' повтор, первое: rapidq2.inc(1548)
+'~dup Const MFT_RADIOCHECK	= &H200   ' повтор, первое: rapidq2.inc(1549)
+'~dup Const MFT_RIGHTJUSTIFY	= MF_RIGHTJUSTIFY   ' повтор, первое: rapidq2.inc(1550)
+'~dup Const MFT_RIGHTORDER	= &H2000   ' повтор, первое: rapidq2.inc(1551)
+'~dup Const MFT_SEPARATOR		= MF_SEPARATOR   ' повтор, первое: rapidq2.inc(1552)
+'~dup Const MFT_STRING		= MF_STRING   ' повтор, первое: rapidq2.inc(1553)
 
-'~dup Const MFS_CHECKED		= MF_CHECKED   ' повтор, первое: Api.inc(40)
-'~dup Const MFS_DEFAULT		= MF_DEFAULT   ' повтор, первое: Api.inc(41)
-'~dup Const MFS_DISABLED		= MF_DISABLED   ' повтор, первое: Api.inc(42)
-'~dup Const MFS_ENABLED		= MF_ENABLED   ' повтор, первое: Api.inc(43)
-'~dup Const MFS_GRAYED		= MF_GRAYED   ' повтор, первое: Api.inc(44)
-'~dup Const MFS_HILITE		= MF_HILITE   ' повтор, первое: Api.inc(45)
-'~dup Const MFS_UNCHECKED		= MF_UNCHECKED   ' повтор, первое: Api.inc(46)
-'~dup Const MFS_UNHILITE		= MF_UNHILITE   ' повтор, первое: Api.inc(47)
+'~dup Const MFS_CHECKED		= MF_CHECKED   ' повтор, первое: rapidq2.inc(1554)
+'~dup Const MFS_DEFAULT		= MF_DEFAULT   ' повтор, первое: rapidq2.inc(1555)
+'~dup Const MFS_DISABLED		= MF_DISABLED   ' повтор, первое: rapidq2.inc(1556)
+'~dup Const MFS_ENABLED		= MF_ENABLED   ' повтор, первое: rapidq2.inc(1557)
+'~dup Const MFS_GRAYED		= MF_GRAYED   ' повтор, первое: rapidq2.inc(1558)
+'~dup Const MFS_HILITE		= MF_HILITE   ' повтор, первое: rapidq2.inc(1559)
+'~dup Const MFS_UNCHECKED		= MF_UNCHECKED   ' повтор, первое: rapidq2.inc(1560)
+'~dup Const MFS_UNHILITE		= MF_UNHILITE   ' повтор, первое: rapidq2.inc(1561)
 
 Type MEASUREITEMSTRUCT_mOD
 	CtlType		As Long
@@ -28104,24 +28033,24 @@ end function
 '============================================================================
 ' Page setup dialog example
 
-CONST PSD_DEFAULTMINMARGINS = 0
-CONST PSD_MINMARGINS = &H1
-CONST PSD_MARGINS = &H2
-CONST PSD_INTHOUSANDTHSOFINCHES = &H4
-CONST PSD_INHUNDREDTHSOFMILLIMETERS = &H8
-CONST PSD_DISABLEMARGINS = &H10
-CONST PSD_DISABLEPRINTER = &H20
-CONST PSD_NOWARNING = &H80
-CONST PSD_DISABLEORIENTATION = &H100
-CONST PSD_DISABLEPAPER = &H200
-CONST PSD_RETURNDEFAULT = &H400
-CONST PSD_SHOWHELP = &H800
-CONST PSD_ENABLEPAGESETUPHOOK = &H2000
-CONST PSD_ENABLEPAGESETUPTEMPLATE = &H8000
-CONST PSD_ENABLEPAGESETUPTEMPLATEHANDLE = &H20000
-CONST PSD_ENABLEPAGEPAINTHOOK = &H40000
-CONST PSD_DISABLEPAGEPAINTING = &H80000
-CONST PSD_NONETWORKBUTTON = &H200000
+'~dup CONST PSD_DEFAULTMINMARGINS = 0   ' повтор, первое: rapidq2.inc(7210)
+'~dup CONST PSD_MINMARGINS = &H1   ' повтор, первое: rapidq2.inc(7211)
+'~dup CONST PSD_MARGINS = &H2   ' повтор, первое: rapidq2.inc(7212)
+'~dup CONST PSD_INTHOUSANDTHSOFINCHES = &H4   ' повтор, первое: rapidq2.inc(7213)
+'~dup CONST PSD_INHUNDREDTHSOFMILLIMETERS = &H8   ' повтор, первое: rapidq2.inc(7214)
+'~dup CONST PSD_DISABLEMARGINS = &H10   ' повтор, первое: rapidq2.inc(7215)
+'~dup CONST PSD_DISABLEPRINTER = &H20   ' повтор, первое: rapidq2.inc(7216)
+'~dup CONST PSD_NOWARNING = &H80   ' повтор, первое: rapidq2.inc(7217)
+'~dup CONST PSD_DISABLEORIENTATION = &H100   ' повтор, первое: rapidq2.inc(7218)
+'~dup CONST PSD_DISABLEPAPER = &H200   ' повтор, первое: rapidq2.inc(7219)
+'~dup CONST PSD_RETURNDEFAULT = &H400   ' повтор, первое: rapidq2.inc(7220)
+'~dup CONST PSD_SHOWHELP = &H800   ' повтор, первое: rapidq2.inc(7221)
+'~dup CONST PSD_ENABLEPAGESETUPHOOK = &H2000   ' повтор, первое: rapidq2.inc(7222)
+'~dup CONST PSD_ENABLEPAGESETUPTEMPLATE = &H8000   ' повтор, первое: rapidq2.inc(7223)
+'~dup CONST PSD_ENABLEPAGESETUPTEMPLATEHANDLE = &H20000   ' повтор, первое: rapidq2.inc(7224)
+'~dup CONST PSD_ENABLEPAGEPAINTHOOK = &H40000   ' повтор, первое: rapidq2.inc(7225)
+'~dup CONST PSD_DISABLEPAGEPAINTING = &H80000   ' повтор, первое: rapidq2.inc(7226)
+'~dup CONST PSD_NONETWORKBUTTON = &H200000   ' повтор, первое: rapidq2.inc(7227)
 
 '~dup TYPE TPSD   ' повтор, первое: rapidq2.inc(7232)
 '~dup     lStructSize AS LONG
@@ -28296,18 +28225,18 @@ Const BF_FLAT = &H4000     ' For flat rather than 3-D borders.
 Const BF_MONO = &H8000     ' For monochrome borders.
 
 ' MS Defined Styles.
-Const WHITE_BRUSH = 0
-Const BLACK_BRUSH = 4
-Const WHITE_PEN = 6
-Const BLACK_PEN = 7
-Const NULL_PEN = 8
-Const OEM_FIXED_FONT = 10
-Const ANSI_FIXED_FONT = 11
-Const ANSI_VAR_FONT = 12
-Const SYSTEM_FONT = 13
-Const DEVICE_DEFAULT_FONT = 14
-Const DEFAULT_PALETTE = 15
-Const SYSTEM_FIXED_FONT = 16
+'~dup Const WHITE_BRUSH = 0   ' повтор, первое: rapidq2.inc(1256)
+'~dup Const BLACK_BRUSH = 4   ' повтор, первое: rapidq2.inc(1260)
+'~dup Const WHITE_PEN = 6   ' повтор, первое: rapidq2.inc(1263)
+'~dup Const BLACK_PEN = 7   ' повтор, первое: rapidq2.inc(1264)
+'~dup Const NULL_PEN = 8   ' повтор, первое: rapidq2.inc(1265)
+'~dup Const OEM_FIXED_FONT = 10   ' повтор, первое: rapidq2.inc(1266)
+'~dup Const ANSI_FIXED_FONT = 11   ' повтор, первое: rapidq2.inc(1267)
+'~dup Const ANSI_VAR_FONT = 12   ' повтор, первое: rapidq2.inc(1268)
+'~dup Const SYSTEM_FONT = 13   ' повтор, первое: rapidq2.inc(1269)
+'~dup Const DEVICE_DEFAULT_FONT = 14   ' повтор, первое: rapidq2.inc(1270)
+'~dup Const DEFAULT_PALETTE = 15   ' повтор, первое: rapidq2.inc(1271)
+'~dup Const SYSTEM_FIXED_FONT = 16   ' повтор, первое: rapidq2.inc(1272)
 Const CLR_INVALID = &HFFFF
 
 ' Bitmap Styles.
@@ -29080,7 +29009,7 @@ $Option Explicit
 '~dup Const HWND_DESKTOP	= 0   ' повтор, первое: rapidq2.inc(783)
 
 
-'~dup Const WS_VISIBLE = &H10000000   ' повтор, первое: createWind.inc(18)
+'~dup Const WS_VISIBLE = &H10000000   ' повтор, первое: rapidq2.inc(951)
 
 CONST WM_PAINT = &H000F
 
@@ -29092,7 +29021,7 @@ Const WM_NCPAINT = &H85
 Const WM_NCACTIVATE = &H86
 
 
-Const WM_KILLFOCUS = &H8
+'~dup Const WM_KILLFOCUS = &H8   ' повтор, первое: rapidq2.inc(817)
 Const WM_MOUSEACTIVATE = &H21
 
 Const WM_NCMOUSEMOVE = &HA0
@@ -29106,19 +29035,19 @@ Const WM_NCMBUTTONDOWN = &HA7
 Const WM_NCMBUTTONUP = &HA8
 Const WM_NCMBUTTONDBLCLK = &HA9
 
-'~dup Const WM_MOUSEMOVE = &H200   ' повтор, первое: rapidq.inc(857)
-'~dup Const WM_LBUTTONDOWN = &H201   ' повтор, первое: rapidq.inc(858)
-'~dup Const WM_LBUTTONUP = &H202   ' повтор, первое: rapidq.inc(859)
-'~dup Const WM_LBUTTONDBLCLK = &H203   ' повтор, первое: rapidq.inc(860)
-'~dup Const WM_RBUTTONDOWN = &H204   ' повтор, первое: rapidq.inc(861)
-'~dup Const WM_RBUTTONUP = &H205   ' повтор, первое: rapidq.inc(862)
-'~dup Const WM_RBUTTONDBLCLK = &H206   ' повтор, первое: rapidq.inc(863)
-'~dup Const WM_MBUTTONDOWN = &H207   ' повтор, первое: rapidq.inc(864)
-'~dup Const WM_MBUTTONUP = &H208   ' повтор, первое: rapidq.inc(865)
-'~dup Const WM_MBUTTONDBLCLK = &H209   ' повтор, первое: rapidq.inc(866)
+'~dup Const WM_MOUSEMOVE = &H200   ' повтор, первое: rapidq2.inc(852)
+'~dup Const WM_LBUTTONDOWN = &H201   ' повтор, первое: rapidq2.inc(853)
+'~dup Const WM_LBUTTONUP = &H202   ' повтор, первое: rapidq2.inc(854)
+'~dup Const WM_LBUTTONDBLCLK = &H203   ' повтор, первое: rapidq2.inc(855)
+'~dup Const WM_RBUTTONDOWN = &H204   ' повтор, первое: rapidq2.inc(856)
+'~dup Const WM_RBUTTONUP = &H205   ' повтор, первое: rapidq2.inc(857)
+'~dup Const WM_RBUTTONDBLCLK = &H206   ' повтор, первое: rapidq2.inc(858)
+'~dup Const WM_MBUTTONDOWN = &H207   ' повтор, первое: rapidq2.inc(859)
+'~dup Const WM_MBUTTONUP = &H208   ' повтор, первое: rapidq2.inc(860)
+'~dup Const WM_MBUTTONDBLCLK = &H209   ' повтор, первое: rapidq2.inc(861)
 
-'~dup CONST WM_USER = &H400   ' повтор, первое: CommCtrl.inc(6)
-CONST WM_TRAYICON = WM_USER + 400
+'~dup CONST WM_USER = &H400   ' повтор, первое: rapidq2.inc(870)
+'~dup CONST WM_TRAYICON = WM_USER + 400   ' повтор, первое: rapidq2.inc(867)
 
 '~dup Const WM_SIZE = &H5   ' повтор, первое: MDI_API.INC(69)
 '~dup Const WM_SETTEXT = &HC   ' повтор, первое: MDI_API.INC(70)
@@ -29126,8 +29055,8 @@ CONST WM_TRAYICON = WM_USER + 400
 Const WM_SETCURSOR = &H20
 Const WM_GETICON = &H7F
 
-'~dup Const WM_SYSCOMMAND = &H112   ' повтор, первое: MDI_API.INC(71)
-Const WM_INITMENUPOPUP = &H117
+'~dup Const WM_SYSCOMMAND = &H112   ' повтор, первое: rapidq2.inc(831)
+'~dup Const WM_INITMENUPOPUP = &H117   ' повтор, первое: rapidq2.inc(838)
 
 ' WM_NCHITTEST and MOUSEHOOKSTRUCT Mouse Position Codes
 Const HTERROR = (-2)
@@ -29185,15 +29114,15 @@ Const WVR_VALIDRECTS = &H400
 '~dup 		ByVal lParam As Long ) As Long
 
 
-Const SM_CYCAPTION = 4
-Const SM_CXBORDER = 5
-Const SM_CYBORDER = 6
-Const SM_CXDLGFRAME = 7
-Const SM_CYDLGFRAME = 8
-CONST SM_CXSIZE = 30
-CONST SM_CYSIZE = 31
-CONST SM_CXFRAME = 32
-CONST SM_CYFRAME = 33
+'~dup Const SM_CYCAPTION = 4   ' повтор, первое: rapidq2.inc(2116)
+'~dup Const SM_CXBORDER = 5   ' повтор, первое: rapidq2.inc(2117)
+'~dup Const SM_CYBORDER = 6   ' повтор, первое: rapidq2.inc(2118)
+'~dup Const SM_CXDLGFRAME = 7   ' повтор, первое: rapidq2.inc(2119)
+'~dup Const SM_CYDLGFRAME = 8   ' повтор, первое: rapidq2.inc(2120)
+'~dup CONST SM_CXSIZE = 30   ' повтор, первое: rapidq2.inc(2142)
+'~dup CONST SM_CYSIZE = 31   ' повтор, первое: rapidq2.inc(2143)
+'~dup CONST SM_CXFRAME = 32   ' повтор, первое: rapidq2.inc(2144)
+'~dup CONST SM_CYFRAME = 33   ' повтор, первое: rapidq2.inc(2145)
 
 '~dup DECLARE FUNCTION GetSystemMetrics LIB "user32" ALIAS "GetSystemMetrics" _   ' повтор, первое: rapidq2.inc(2169)
 '~dup 		(nIndex AS LONG) AS LONG
@@ -29254,8 +29183,8 @@ DECLARE FUNCTION GetWindowDC LIB "user32" ALIAS "GetWindowDC" _
 
 Const ScrCopy = &HCC0020
 
-Const DI_MASK = &H1
-Const DI_IMAGE = &H2
+'~dup Const DI_MASK = &H1   ' повтор, первое: rapidq2.inc(1276)
+'~dup Const DI_IMAGE = &H2   ' повтор, первое: rapidq2.inc(1277)
 '~dup Const DI_NORMAL = DI_MASK Or DI_IMAGE   ' повтор, первое: rapidq2.inc(1278)
 
 '~dup Declare Function StretchBlt Lib "gdi32" Alias "StretchBlt" ( _   ' повтор, первое: rapidq2.inc(1467)
@@ -29909,24 +29838,24 @@ DECLARE Sub Point(FPoint as QPoint, x as long, y as long)
 '============================================================================
 ' Page setup dialog example
 
-'~dup CONST PSD_DEFAULTMINMARGINS = 0   ' повтор, первое: printdlg.inc(3)
-'~dup CONST PSD_MINMARGINS = &H1   ' повтор, первое: printdlg.inc(4)
-'~dup CONST PSD_MARGINS = &H2   ' повтор, первое: printdlg.inc(5)
-'~dup CONST PSD_INTHOUSANDTHSOFINCHES = &H4   ' повтор, первое: printdlg.inc(6)
-'~dup CONST PSD_INHUNDREDTHSOFMILLIMETERS = &H8   ' повтор, первое: printdlg.inc(7)
-'~dup CONST PSD_DISABLEMARGINS = &H10   ' повтор, первое: printdlg.inc(8)
-'~dup CONST PSD_DISABLEPRINTER = &H20   ' повтор, первое: printdlg.inc(9)
-'~dup CONST PSD_NOWARNING = &H80   ' повтор, первое: printdlg.inc(10)
-'~dup CONST PSD_DISABLEORIENTATION = &H100   ' повтор, первое: printdlg.inc(11)
-'~dup CONST PSD_DISABLEPAPER = &H200   ' повтор, первое: printdlg.inc(12)
-'~dup CONST PSD_RETURNDEFAULT = &H400   ' повтор, первое: printdlg.inc(13)
-'~dup CONST PSD_SHOWHELP = &H800   ' повтор, первое: printdlg.inc(14)
-'~dup CONST PSD_ENABLEPAGESETUPHOOK = &H2000   ' повтор, первое: printdlg.inc(15)
-'~dup CONST PSD_ENABLEPAGESETUPTEMPLATE = &H8000   ' повтор, первое: printdlg.inc(16)
-'~dup CONST PSD_ENABLEPAGESETUPTEMPLATEHANDLE = &H20000   ' повтор, первое: printdlg.inc(17)
-'~dup CONST PSD_ENABLEPAGEPAINTHOOK = &H40000   ' повтор, первое: printdlg.inc(18)
-'~dup CONST PSD_DISABLEPAGEPAINTING = &H80000   ' повтор, первое: printdlg.inc(19)
-'~dup CONST PSD_NONETWORKBUTTON = &H200000   ' повтор, первое: printdlg.inc(20)
+'~dup CONST PSD_DEFAULTMINMARGINS = 0   ' повтор, первое: rapidq2.inc(7210)
+'~dup CONST PSD_MINMARGINS = &H1   ' повтор, первое: rapidq2.inc(7211)
+'~dup CONST PSD_MARGINS = &H2   ' повтор, первое: rapidq2.inc(7212)
+'~dup CONST PSD_INTHOUSANDTHSOFINCHES = &H4   ' повтор, первое: rapidq2.inc(7213)
+'~dup CONST PSD_INHUNDREDTHSOFMILLIMETERS = &H8   ' повтор, первое: rapidq2.inc(7214)
+'~dup CONST PSD_DISABLEMARGINS = &H10   ' повтор, первое: rapidq2.inc(7215)
+'~dup CONST PSD_DISABLEPRINTER = &H20   ' повтор, первое: rapidq2.inc(7216)
+'~dup CONST PSD_NOWARNING = &H80   ' повтор, первое: rapidq2.inc(7217)
+'~dup CONST PSD_DISABLEORIENTATION = &H100   ' повтор, первое: rapidq2.inc(7218)
+'~dup CONST PSD_DISABLEPAPER = &H200   ' повтор, первое: rapidq2.inc(7219)
+'~dup CONST PSD_RETURNDEFAULT = &H400   ' повтор, первое: rapidq2.inc(7220)
+'~dup CONST PSD_SHOWHELP = &H800   ' повтор, первое: rapidq2.inc(7221)
+'~dup CONST PSD_ENABLEPAGESETUPHOOK = &H2000   ' повтор, первое: rapidq2.inc(7222)
+'~dup CONST PSD_ENABLEPAGESETUPTEMPLATE = &H8000   ' повтор, первое: rapidq2.inc(7223)
+'~dup CONST PSD_ENABLEPAGESETUPTEMPLATEHANDLE = &H20000   ' повтор, первое: rapidq2.inc(7224)
+'~dup CONST PSD_ENABLEPAGEPAINTHOOK = &H40000   ' повтор, первое: rapidq2.inc(7225)
+'~dup CONST PSD_DISABLEPAGEPAINTING = &H80000   ' повтор, первое: rapidq2.inc(7226)
+'~dup CONST PSD_NONETWORKBUTTON = &H200000   ' повтор, первое: rapidq2.inc(7227)
 
 '~dup TYPE TPSD   ' повтор, первое: rapidq2.inc(7232)
 '~dup     lStructSize AS LONG
@@ -32570,8 +32499,8 @@ $OPTION WEAKTYPE ON
 
 declare sub StayOnTop(hwnd as QForm)
 
-Const SWP_NOMOVE=&H2
-Const SWP_NOSIZE=&H1
+'~dup Const SWP_NOMOVE=&H2   ' повтор, первое: rapidq2.inc(792)
+'~dup Const SWP_NOSIZE=&H1   ' повтор, первое: rapidq2.inc(791)
 '~dup Const HWND_TOPMOST= -1   ' повтор, первое: rapidq2.inc(785)
 Const FLAGS = SWP_NOMOVE Or SWP_NOSIZE
 dim OnTop as integer
@@ -33313,51 +33242,51 @@ print "inc dir   C:\BAS\RAPIDQ\inc\TestIncPAth.inc"
 		'end select
 
 	' GetSystemMetrics constants
-		Const SM_CXSCREEN = 0
-		Const SM_CYSCREEN = 1
-		Const SM_CXVSCROLL = 2
-		Const SM_CYHSCROLL = 3
-'~dup 		Const SM_CYCAPTION = 4   ' повтор, первое: QFormSkin.inc(114)
-'~dup 		Const SM_CXBORDER = 5   ' повтор, первое: QFormSkin.inc(115)
-'~dup 		Const SM_CYBORDER = 6   ' повтор, первое: QFormSkin.inc(116)
-'~dup 		Const SM_CXDLGFRAME = 7   ' повтор, первое: QFormSkin.inc(117)
-'~dup 		Const SM_CYDLGFRAME = 8   ' повтор, первое: QFormSkin.inc(118)
-		Const SM_CYVTHUMB = 9
-		Const SM_CXHTHUMB = 10
-		Const SM_CXICON = 11
-		Const SM_CYICON = 12
-		Const SM_CXCURSOR = 13
-		Const SM_CYCURSOR = 14
-		Const SM_CYMENU = 15
-		Const SM_CXFULLSCREEN = 16
-		Const SM_CYFULLSCREEN = 17
-		Const SM_CYKANJIWINDOW = 18
-		Const SM_MOUSEPRESENT = 19
-		Const SM_CYVSCROLL = 20
-		Const SM_CXHSCROLL = 21
-		Const SM_DEBUG = 22
-		Const SM_SWAPBUTTON = 23
-		Const SM_RESERVED1 = 24
-		Const SM_RESERVED2 = 25
-		Const SM_RESERVED3 = 26
-		Const SM_RESERVED4 = 27
-		Const SM_CXMIN = 28
-		Const SM_CYMIN = 29
-'~dup 		Const SM_CXSIZE = 30   ' повтор, первое: QFormSkin.inc(119)
-'~dup 		Const SM_CYSIZE = 31   ' повтор, первое: QFormSkin.inc(120)
-'~dup 		Const SM_CXFRAME = 32   ' повтор, первое: QFormSkin.inc(121)
-'~dup 		Const SM_CYFRAME = 33   ' повтор, первое: QFormSkin.inc(122)
-		Const SM_CXMINTRACK = 34
-		Const SM_CYMINTRACK = 35
-		Const SM_CXDOUBLECLK = 36
-		Const SM_CYDOUBLECLK = 37
-		Const SM_CXICONSPACING = 38
-		Const SM_CYICONSPACING = 39
-		Const SM_MENUDROPALIGNMENT = 40
-		Const SM_PENWINDOWS = 41
-		Const SM_DBCSENABLED = 42
-		Const SM_CMOUSEBUTTONS = 43
-		Const SM_CMETRICS = 44
+'~dup 		Const SM_CXSCREEN = 0   ' повтор, первое: rapidq2.inc(2112)
+'~dup 		Const SM_CYSCREEN = 1   ' повтор, первое: rapidq2.inc(2113)
+'~dup 		Const SM_CXVSCROLL = 2   ' повтор, первое: rapidq2.inc(2114)
+'~dup 		Const SM_CYHSCROLL = 3   ' повтор, первое: rapidq2.inc(2115)
+'~dup 		Const SM_CYCAPTION = 4   ' повтор, первое: rapidq2.inc(2116)
+'~dup 		Const SM_CXBORDER = 5   ' повтор, первое: rapidq2.inc(2117)
+'~dup 		Const SM_CYBORDER = 6   ' повтор, первое: rapidq2.inc(2118)
+'~dup 		Const SM_CXDLGFRAME = 7   ' повтор, первое: rapidq2.inc(2119)
+'~dup 		Const SM_CYDLGFRAME = 8   ' повтор, первое: rapidq2.inc(2120)
+'~dup 		Const SM_CYVTHUMB = 9   ' повтор, первое: rapidq2.inc(2121)
+'~dup 		Const SM_CXHTHUMB = 10   ' повтор, первое: rapidq2.inc(2122)
+'~dup 		Const SM_CXICON = 11   ' повтор, первое: rapidq2.inc(2123)
+'~dup 		Const SM_CYICON = 12   ' повтор, первое: rapidq2.inc(2124)
+'~dup 		Const SM_CXCURSOR = 13   ' повтор, первое: rapidq2.inc(2125)
+'~dup 		Const SM_CYCURSOR = 14   ' повтор, первое: rapidq2.inc(2126)
+'~dup 		Const SM_CYMENU = 15   ' повтор, первое: rapidq2.inc(2127)
+'~dup 		Const SM_CXFULLSCREEN = 16   ' повтор, первое: rapidq2.inc(2128)
+'~dup 		Const SM_CYFULLSCREEN = 17   ' повтор, первое: rapidq2.inc(2129)
+'~dup 		Const SM_CYKANJIWINDOW = 18   ' повтор, первое: rapidq2.inc(2130)
+'~dup 		Const SM_MOUSEPRESENT = 19   ' повтор, первое: rapidq2.inc(2131)
+'~dup 		Const SM_CYVSCROLL = 20   ' повтор, первое: rapidq2.inc(2132)
+'~dup 		Const SM_CXHSCROLL = 21   ' повтор, первое: rapidq2.inc(2133)
+'~dup 		Const SM_DEBUG = 22   ' повтор, первое: rapidq2.inc(2134)
+'~dup 		Const SM_SWAPBUTTON = 23   ' повтор, первое: rapidq2.inc(2135)
+'~dup 		Const SM_RESERVED1 = 24   ' повтор, первое: rapidq2.inc(2136)
+'~dup 		Const SM_RESERVED2 = 25   ' повтор, первое: rapidq2.inc(2137)
+'~dup 		Const SM_RESERVED3 = 26   ' повтор, первое: rapidq2.inc(2138)
+'~dup 		Const SM_RESERVED4 = 27   ' повтор, первое: rapidq2.inc(2139)
+'~dup 		Const SM_CXMIN = 28   ' повтор, первое: rapidq2.inc(2140)
+'~dup 		Const SM_CYMIN = 29   ' повтор, первое: rapidq2.inc(2141)
+'~dup 		Const SM_CXSIZE = 30   ' повтор, первое: rapidq2.inc(2142)
+'~dup 		Const SM_CYSIZE = 31   ' повтор, первое: rapidq2.inc(2143)
+'~dup 		Const SM_CXFRAME = 32   ' повтор, первое: rapidq2.inc(2144)
+'~dup 		Const SM_CYFRAME = 33   ' повтор, первое: rapidq2.inc(2145)
+'~dup 		Const SM_CXMINTRACK = 34   ' повтор, первое: rapidq2.inc(2146)
+'~dup 		Const SM_CYMINTRACK = 35   ' повтор, первое: rapidq2.inc(2147)
+'~dup 		Const SM_CXDOUBLECLK = 36   ' повтор, первое: rapidq2.inc(2148)
+'~dup 		Const SM_CYDOUBLECLK = 37   ' повтор, первое: rapidq2.inc(2149)
+'~dup 		Const SM_CXICONSPACING = 38   ' повтор, первое: rapidq2.inc(2150)
+'~dup 		Const SM_CYICONSPACING = 39   ' повтор, первое: rapidq2.inc(2151)
+'~dup 		Const SM_MENUDROPALIGNMENT = 40   ' повтор, первое: rapidq2.inc(2152)
+'~dup 		Const SM_PENWINDOWS = 41   ' повтор, первое: rapidq2.inc(2153)
+'~dup 		Const SM_DBCSENABLED = 42   ' повтор, первое: rapidq2.inc(2154)
+'~dup 		Const SM_CMOUSEBUTTONS = 43   ' повтор, первое: rapidq2.inc(2155)
+'~dup 		Const SM_CMETRICS = 44   ' повтор, первое: rapidq2.inc(2156)
 	'End GetSystemMetrics constants
 
 '~dup 	Declare Function GetSystemMetrics Lib "user32.dll" Alias_   ' повтор, первое: rapidq2.inc(2169)
@@ -34287,10 +34216,10 @@ DIM Arg2!(1) as single      ' значения аргумента
 '============================================================================
 '~dup Const HWND_TOPMOST = -1   ' повтор, первое: rapidq2.inc(785)
 '~dup Const HWND_NOTOPMOST = -2   ' повтор, первое: rapidq2.inc(786)
-'~dup Const SWP_NOSIZE = &H1   ' повтор, первое: StayOnTop.inc(12)
-'~dup Const SWP_NOMOVE = &H2   ' повтор, первое: StayOnTop.inc(11)
-Const SWP_NOACTIVATE = &H10
-Const SWP_SHOWWINDOW = &H40
+'~dup Const SWP_NOSIZE = &H1   ' повтор, первое: rapidq2.inc(791)
+'~dup Const SWP_NOMOVE = &H2   ' повтор, первое: rapidq2.inc(792)
+'~dup Const SWP_NOACTIVATE = &H10   ' повтор, первое: rapidq2.inc(794)
+'~dup Const SWP_SHOWWINDOW = &H40   ' повтор, первое: rapidq2.inc(795)
 
 '~dup Declare Function BringWindowToTop Lib "user32" Alias "BringWindowToTop"_   ' повтор, первое: rapidq2.inc(984)
 '~dup (ByVal hwnd As Long) As Long
@@ -34351,7 +34280,7 @@ const  WS_EX_DLGMODALFRAME = 1
 const  WS_EX_LEFT = 0
 const  WS_EX_LEFTSCROLLBAR = &H4000
 const  WS_EX_LTRREADING = 0
-'~dup const  WS_EX_MDICHILD = 64   ' повтор, первое: MDI_API.INC(51)
+'~dup const  WS_EX_MDICHILD = 64   ' повтор, первое: rapidq2.inc(965)
 const  WS_EX_NOPARENTNOTIFY = 4
 const  WS_EX_OVERLAPPEDWINDOW = &H300
 const  WS_EX_PALETTEWINDOW = &H188
@@ -34371,33 +34300,33 @@ const  WS_EX_WINDOWEDGE = 256
 '_______________________________________________________________________________
 
 ' ---------------------------------------> Window Class
-'~dup const  WS_BORDER = &H800000   ' повтор, первое: createWind.inc(19)
-'~dup const  WS_CAPTION = &Hc00000   ' повтор, первое: MDI_API.INC(56)
-'~dup const  WS_CHILD = &H40000000   ' повтор, первое: createWind.inc(17)
+'~dup const  WS_BORDER = &H800000   ' повтор, первое: rapidq2.inc(957)
+'~dup const  WS_CAPTION = &Hc00000   ' повтор, первое: rapidq2.inc(956)
+'~dup const  WS_CHILD = &H40000000   ' повтор, первое: rapidq2.inc(949)
 const  WS_CHILDWINDOW = &H40000000
-const  WS_CLIPCHILDREN = &H2000000
-const  WS_CLIPSIBLINGS = &H4000000
-const  WS_DISABLED = &H8000000
-const  WS_DLGFRAME = &H400000
-const  WS_GROUP = &H20000
-'~dup const  WS_HSCROLL = &H100000   ' повтор, первое: MDI_API.INC(62)
+'~dup const  WS_CLIPCHILDREN = &H2000000   ' повтор, первое: rapidq2.inc(954)
+'~dup const  WS_CLIPSIBLINGS = &H4000000   ' повтор, первое: rapidq2.inc(953)
+'~dup const  WS_DISABLED = &H8000000   ' повтор, первое: rapidq2.inc(952)
+'~dup const  WS_DLGFRAME = &H400000   ' повтор, первое: rapidq2.inc(958)
+'~dup const  WS_GROUP = &H20000   ' повтор, первое: rapidq2.inc(963)
+'~dup const  WS_HSCROLL = &H100000   ' повтор, первое: rapidq2.inc(960)
 const  WS_ICONIC = &H20000000
-const  WS_MAXIMIZE = &H1000000
-'~dup const  WS_MAXIMIZEBOX = &H10000   ' повтор, первое: MDI_API.INC(60)
-const  WS_MINIMIZE = &H20000000
-'~dup const  WS_MINIMIZEBOX = &H20000   ' повтор, первое: MDI_API.INC(59)
-'~dup const  WS_OVERLAPPED = 0   ' повтор, первое: MDI_API.INC(55)
+'~dup const  WS_MAXIMIZE = &H1000000   ' повтор, первое: rapidq2.inc(955)
+'~dup const  WS_MAXIMIZEBOX = &H10000   ' повтор, первое: rapidq2.inc(969)
+'~dup const  WS_MINIMIZE = &H20000000   ' повтор, первое: rapidq2.inc(950)
+'~dup const  WS_MINIMIZEBOX = &H20000   ' повтор, первое: rapidq2.inc(968)
+'~dup const  WS_OVERLAPPED = 0   ' повтор, первое: rapidq2.inc(947)
 '~dup const  WS_OVERLAPPEDWINDOW = &Hcf0000   ' повтор, первое: rapidq2.inc(970)
-const  WS_POPUP = &H80000000
+'~dup const  WS_POPUP = &H80000000   ' повтор, первое: rapidq2.inc(948)
 const  WS_POPUPWINDOW = &H80880000
 const  WS_SIZEBOX = &H40000
-'~dup const  WS_SYSMENU = &H80000   ' повтор, первое: MDI_API.INC(57)
-const  WS_TABSTOP = &H10000
-'~dup const  WS_THICKFRAME = &H40000   ' повтор, первое: MDI_API.INC(58)
+'~dup const  WS_SYSMENU = &H80000   ' повтор, первое: rapidq2.inc(961)
+'~dup const  WS_TABSTOP = &H10000   ' повтор, первое: rapidq2.inc(964)
+'~dup const  WS_THICKFRAME = &H40000   ' повтор, первое: rapidq2.inc(962)
 const  WS_TILED = 0
 const  WS_TILEDWINDOW = &Hcf0000
-'~dup const  WS_VISIBLE = &H10000000   ' повтор, первое: createWind.inc(18)
-'~dup const  WS_VSCROLL = &H200000   ' повтор, первое: MDI_API.INC(61)
+'~dup const  WS_VISIBLE = &H10000000   ' повтор, первое: rapidq2.inc(951)
+'~dup const  WS_VSCROLL = &H200000   ' повтор, первое: rapidq2.inc(959)
 const  MDIS_ALLCHILDSTYLES = 1
 
 ' ---------------------------------------> Button class
@@ -34659,8 +34588,8 @@ Const WM_SETREDRAW = &HB
 'const ES_LEFT = 0
 'const ES_AUTOHSCROLL = &H80
 
-'~dup const WM_COMMAND = &H111   ' повтор, первое: createWind.inc(24)
-'~dup Const WM_USER = &H400   ' повтор, первое: CommCtrl.inc(6)
+'~dup const WM_COMMAND = &H111   ' повтор, первое: rapidq2.inc(830)
+'~dup Const WM_USER = &H400   ' повтор, первое: rapidq2.inc(870)
 Const WM_CLOSE = &H10
 '~dup Const WM_SIZE = &H5   ' повтор, первое: MDI_API.INC(69)
 
@@ -35464,10 +35393,10 @@ Public Const DETACHED_PROCESS = &H8
 
 Public Const CREATE_NEW_CONSOLE = &H10
 
-Public Const NORMAL_PRIORITY_CLASS = &H20
-Public Const IDLE_PRIORITY_CLASS = &H40
-Public Const HIGH_PRIORITY_CLASS = &H80
-Public Const REALTIME_PRIORITY_CLASS = &H100
+'~dup Public Const NORMAL_PRIORITY_CLASS = &H20   ' повтор, первое: rapidq2.inc(1495)
+'~dup Public Const IDLE_PRIORITY_CLASS = &H40   ' повтор, первое: rapidq2.inc(1493)
+'~dup Public Const HIGH_PRIORITY_CLASS = &H80   ' повтор, первое: rapidq2.inc(1497)
+'~dup Public Const REALTIME_PRIORITY_CLASS = &H100   ' повтор, первое: rapidq2.inc(1498)
 
 Public Const CREATE_NEW_PROCESS_GROUP = &H200
 
@@ -35665,14 +35594,14 @@ Public Const FILE_GENERIC_EXECUTE = (STANDARD_RIGHTS_EXECUTE Or FILE_READ_ATTRIB
 
 '~dup Public Const FILE_SHARE_READ = &H1   ' повтор, первое: rapidq2.inc(1854)
 '~dup Public Const FILE_SHARE_WRITE = &H2   ' повтор, первое: rapidq2.inc(1855)
-'~dup Public Const FILE_ATTRIBUTE_READONLY = &H1   ' повтор, первое: Files1.inc(1)
-'~dup Public Const FILE_ATTRIBUTE_HIDDEN = &H2   ' повтор, первое: Files1.inc(2)
-'~dup Public Const FILE_ATTRIBUTE_SYSTEM = &H4   ' повтор, первое: Files1.inc(3)
-'~dup Public Const FILE_ATTRIBUTE_DIRECTORY = &H10   ' повтор, первое: Files1.inc(4)
-'~dup Public Const FILE_ATTRIBUTE_ARCHIVE = &H20   ' повтор, первое: Files1.inc(5)
+'~dup Public Const FILE_ATTRIBUTE_READONLY = &H1   ' повтор, первое: Files.inc(2)
+'~dup Public Const FILE_ATTRIBUTE_HIDDEN = &H2   ' повтор, первое: Files.inc(3)
+'~dup Public Const FILE_ATTRIBUTE_SYSTEM = &H4   ' повтор, первое: Files.inc(4)
+'~dup Public Const FILE_ATTRIBUTE_DIRECTORY = &H10   ' повтор, первое: Files.inc(5)
+'~dup Public Const FILE_ATTRIBUTE_ARCHIVE = &H20   ' повтор, первое: Files.inc(6)
 '~dup Public Const FILE_ATTRIBUTE_NORMAL = &H80   ' повтор, первое: rapidq2.inc(1866)
-'~dup Public Const FILE_ATTRIBUTE_TEMPORARY = &H100   ' повтор, первое: Files1.inc(7)
-'~dup Public Const FILE_ATTRIBUTE_COMPRESSED = &H800   ' повтор, первое: Files1.inc(8)
+'~dup Public Const FILE_ATTRIBUTE_TEMPORARY = &H100   ' повтор, первое: Files.inc(8)
+'~dup Public Const FILE_ATTRIBUTE_COMPRESSED = &H800   ' повтор, первое: Files.inc(9)
 Public Const FILE_NOTIFY_CHANGE_FILE_NAME = &H1
 Public Const FILE_NOTIFY_CHANGE_DIR_NAME = &H2
 Public Const FILE_NOTIFY_CHANGE_ATTRIBUTES = &H4
@@ -36096,7 +36025,7 @@ End Type
 '
 
 Public Const SE_PRIVILEGE_ENABLED_BY_DEFAULT = &H1
-Public Const SE_PRIVILEGE_ENABLED = &H2
+'~dup Public Const SE_PRIVILEGE_ENABLED = &H2   ' повтор, первое: rapidq2.inc(2195)
 Public Const SE_PRIVILEGE_USED_FOR_ACCESS = &H80000000
 
 '
@@ -36308,10 +36237,10 @@ Public Const DRIVE_REMOTE = 4
 Public Const DRIVE_CDROM = 5
 Public Const DRIVE_RAMDISK = 6
 
-Public Const FILE_TYPE_UNKNOWN = &H0
-Public Const FILE_TYPE_DISK = &H1
-Public Const FILE_TYPE_CHAR = &H2
-Public Const FILE_TYPE_PIPE = &H3
+'~dup Public Const FILE_TYPE_UNKNOWN = &H0   ' повтор, первое: Files.inc(17)
+'~dup Public Const FILE_TYPE_DISK = &H1   ' повтор, первое: Files.inc(15)
+'~dup Public Const FILE_TYPE_CHAR = &H2   ' повтор, первое: Files.inc(14)
+'~dup Public Const FILE_TYPE_PIPE = &H3   ' повтор, первое: Files.inc(16)
 Public Const FILE_TYPE_REMOTE = &H8000
 
 Public Const STD_INPUT_HANDLE = -10&
@@ -37203,8 +37132,8 @@ Public Const LCMAP_BYTEREV = &H800       '  byte reversal
 Public Const SORT_STRINGSORT = &H1000      '  use string sort method
 
 ' Code Page Default Values.
-Public Const CP_ACP = 0  '  default to ANSI code page
-Public Const CP_OEMCP = 1  '  default to OEM  code page
+'~dup Public Const CP_ACP = 0  '  default to ANSI code page   ' повтор, первое: rapidq.inc(578)
+'~dup Public Const CP_OEMCP = 1  '  default to OEM  code page   ' повтор, первое: rapidq.inc(579)
 
 ' Country Codes.
 
@@ -37661,22 +37590,22 @@ Declare Function SetConsoleOutputCP Lib "kernel32" Alias "SetConsoleOutputCP" (B
 ' -------------
 
 ' Binary raster ops
-Public Const R2_BLACK = 1       '   0
-Public Const R2_NOTMERGEPEN = 2 '  DPon
-Public Const R2_MASKNOTPEN = 3  '  DPna
-Public Const R2_NOTCOPYPEN = 4  '  PN
-Public Const R2_MASKPENNOT = 5  '  PDna
-Public Const R2_NOT = 6 '  Dn
-Public Const R2_XORPEN = 7      '  DPx
-Public Const R2_NOTMASKPEN = 8  '  DPan
-Public Const R2_MASKPEN = 9     '  DPa
-Public Const R2_NOTXORPEN = 10  '  DPxn
-Public Const R2_NOP = 11        '  D
-Public Const R2_MERGENOTPEN = 12        '  DPno
-Public Const R2_COPYPEN = 13    '  P
-Public Const R2_MERGEPENNOT = 14        '  PDno
-Public Const R2_MERGEPEN = 15   '  DPo
-Public Const R2_WHITE = 16      '   1
+'~dup Public Const R2_BLACK = 1       '   0   ' повтор, первое: rapidq2.inc(1237)
+'~dup Public Const R2_NOTMERGEPEN = 2 '  DPon   ' повтор, первое: rapidq2.inc(1238)
+'~dup Public Const R2_MASKNOTPEN = 3  '  DPna   ' повтор, первое: rapidq2.inc(1239)
+'~dup Public Const R2_NOTCOPYPEN = 4  '  PN   ' повтор, первое: rapidq2.inc(1240)
+'~dup Public Const R2_MASKPENNOT = 5  '  PDna   ' повтор, первое: rapidq2.inc(1241)
+'~dup Public Const R2_NOT = 6 '  Dn   ' повтор, первое: rapidq2.inc(1242)
+'~dup Public Const R2_XORPEN = 7      '  DPx   ' повтор, первое: rapidq2.inc(1243)
+'~dup Public Const R2_NOTMASKPEN = 8  '  DPan   ' повтор, первое: rapidq2.inc(1244)
+'~dup Public Const R2_MASKPEN = 9     '  DPa   ' повтор, первое: rapidq2.inc(1245)
+'~dup Public Const R2_NOTXORPEN = 10  '  DPxn   ' повтор, первое: rapidq2.inc(1246)
+'~dup Public Const R2_NOP = 11        '  D   ' повтор, первое: rapidq2.inc(1247)
+'~dup Public Const R2_MERGENOTPEN = 12        '  DPno   ' повтор, первое: rapidq2.inc(1248)
+'~dup Public Const R2_COPYPEN = 13    '  P   ' повтор, первое: rapidq2.inc(1249)
+'~dup Public Const R2_MERGEPENNOT = 14        '  PDno   ' повтор, первое: rapidq2.inc(1250)
+'~dup Public Const R2_MERGEPEN = 15   '  DPo   ' повтор, первое: rapidq2.inc(1251)
+'~dup Public Const R2_WHITE = 16      '   1   ' повтор, первое: rapidq2.inc(1252)
 Public Const R2_LAST = 16
 
 '  Ternary raster operations
@@ -37920,19 +37849,19 @@ Public Const SP_OUTOFMEMORY = (-5)
 Public Const PR_JOBSTATUS = &H0
 
 '  Object Definitions for EnumObjects()
-Public Const OBJ_PEN = 1
-Public Const OBJ_BRUSH = 2
-Public Const OBJ_DC = 3
-Public Const OBJ_METADC = 4
-Public Const OBJ_PAL = 5
-Public Const OBJ_FONT = 6
-Public Const OBJ_BITMAP = 7
-Public Const OBJ_REGION = 8
-Public Const OBJ_METAFILE = 9
-Public Const OBJ_MEMDC = 10
-Public Const OBJ_EXTPEN = 11
-Public Const OBJ_ENHMETADC = 12
-Public Const OBJ_ENHMETAFILE = 13
+'~dup Public Const OBJ_PEN = 1   ' повтор, первое: rapidq2.inc(893)
+'~dup Public Const OBJ_BRUSH = 2   ' повтор, первое: rapidq2.inc(894)
+'~dup Public Const OBJ_DC = 3   ' повтор, первое: rapidq2.inc(895)
+'~dup Public Const OBJ_METADC = 4   ' повтор, первое: rapidq2.inc(896)
+'~dup Public Const OBJ_PAL = 5   ' повтор, первое: rapidq2.inc(897)
+'~dup Public Const OBJ_FONT = 6   ' повтор, первое: rapidq2.inc(898)
+'~dup Public Const OBJ_BITMAP = 7   ' повтор, первое: rapidq2.inc(899)
+'~dup Public Const OBJ_REGION = 8   ' повтор, первое: rapidq2.inc(900)
+'~dup Public Const OBJ_METAFILE = 9   ' повтор, первое: rapidq2.inc(901)
+'~dup Public Const OBJ_MEMDC = 10   ' повтор, первое: rapidq2.inc(902)
+'~dup Public Const OBJ_EXTPEN = 11   ' повтор, первое: rapidq2.inc(903)
+'~dup Public Const OBJ_ENHMETADC = 12   ' повтор, первое: rapidq2.inc(904)
+'~dup Public Const OBJ_ENHMETAFILE = 13   ' повтор, первое: rapidq2.inc(905)
 
 '  xform stuff
 Public Const MWT_IDENTITY = 1
@@ -38468,8 +38397,8 @@ Public Const PC_EXPLICIT = &H2  '  palette index is explicit to device
 Public Const PC_NOCOLLAPSE = &H4        '  do not match color to system palette
 
 ' Background Modes
-Public Const TRANSPARENT = 1
-Public Const OPAQUE = 2
+'~dup Public Const TRANSPARENT = 1   ' повтор, первое: rapidq2.inc(1208)
+'~dup Public Const OPAQUE = 2   ' повтор, первое: rapidq2.inc(1207)
 Public Const BKMODE_LAST = 2
 
 '  Graphics Modes
@@ -38503,24 +38432,24 @@ Public Const ABSOLUTE = 1
 Public Const RELATIVE = 2
 
 ' Stock Logical Objects
-'~dup Public Const WHITE_BRUSH = 0   ' повтор, первое: PRINTERDLL.INC(131)
-Public Const LTGRAY_BRUSH = 1
-Public Const GRAY_BRUSH = 2
-Public Const DKGRAY_BRUSH = 3
-'~dup Public Const BLACK_BRUSH = 4   ' повтор, первое: PRINTERDLL.INC(132)
-Public Const NULL_BRUSH = 5
-Public Const HOLLOW_BRUSH = NULL_BRUSH
-'~dup Public Const WHITE_PEN = 6   ' повтор, первое: PRINTERDLL.INC(133)
-'~dup Public Const BLACK_PEN = 7   ' повтор, первое: PRINTERDLL.INC(134)
-'~dup Public Const NULL_PEN = 8   ' повтор, первое: PRINTERDLL.INC(135)
-'~dup Public Const OEM_FIXED_FONT = 10   ' повтор, первое: PRINTERDLL.INC(136)
-'~dup Public Const ANSI_FIXED_FONT = 11   ' повтор, первое: PRINTERDLL.INC(137)
-'~dup Public Const ANSI_VAR_FONT = 12   ' повтор, первое: PRINTERDLL.INC(138)
-'~dup Public Const SYSTEM_FONT = 13   ' повтор, первое: PRINTERDLL.INC(139)
-'~dup Public Const DEVICE_DEFAULT_FONT = 14   ' повтор, первое: PRINTERDLL.INC(140)
-'~dup Public Const DEFAULT_PALETTE = 15   ' повтор, первое: PRINTERDLL.INC(141)
-'~dup Public Const SYSTEM_FIXED_FONT = 16   ' повтор, первое: PRINTERDLL.INC(142)
-Public Const STOCK_LAST = 16
+'~dup Public Const WHITE_BRUSH = 0   ' повтор, первое: rapidq2.inc(1256)
+'~dup Public Const LTGRAY_BRUSH = 1   ' повтор, первое: rapidq2.inc(1257)
+'~dup Public Const GRAY_BRUSH = 2   ' повтор, первое: rapidq2.inc(1258)
+'~dup Public Const DKGRAY_BRUSH = 3   ' повтор, первое: rapidq2.inc(1259)
+'~dup Public Const BLACK_BRUSH = 4   ' повтор, первое: rapidq2.inc(1260)
+'~dup Public Const NULL_BRUSH = 5   ' повтор, первое: rapidq2.inc(1261)
+'~dup Public Const HOLLOW_BRUSH = NULL_BRUSH   ' повтор, первое: rapidq2.inc(1262)
+'~dup Public Const WHITE_PEN = 6   ' повтор, первое: rapidq2.inc(1263)
+'~dup Public Const BLACK_PEN = 7   ' повтор, первое: rapidq2.inc(1264)
+'~dup Public Const NULL_PEN = 8   ' повтор, первое: rapidq2.inc(1265)
+'~dup Public Const OEM_FIXED_FONT = 10   ' повтор, первое: rapidq2.inc(1266)
+'~dup Public Const ANSI_FIXED_FONT = 11   ' повтор, первое: rapidq2.inc(1267)
+'~dup Public Const ANSI_VAR_FONT = 12   ' повтор, первое: rapidq2.inc(1268)
+'~dup Public Const SYSTEM_FONT = 13   ' повтор, первое: rapidq2.inc(1269)
+'~dup Public Const DEVICE_DEFAULT_FONT = 14   ' повтор, первое: rapidq2.inc(1270)
+'~dup Public Const DEFAULT_PALETTE = 15   ' повтор, первое: rapidq2.inc(1271)
+'~dup Public Const SYSTEM_FIXED_FONT = 16   ' повтор, первое: rapidq2.inc(1272)
+'~dup Public Const STOCK_LAST = 16   ' повтор, первое: rapidq2.inc(1273)
 
 '~dup Public Const CLR_INVALID = &HFFFF   ' повтор, первое: PRINTERDLL.INC(143)
 
@@ -38565,16 +38494,16 @@ Public Const HS_DITHEREDBKCLR = 24
 Public Const HS_API_MAX = 25
 
 '  Pen Styles
-Public Const PS_SOLID = 0
-Public Const PS_DASH = 1                    '  -------
-Public Const PS_DOT = 2                     '  .......
-Public Const PS_DASHDOT = 3                 '  _._._._
-Public Const PS_DASHDOTDOT = 4              '  _.._.._
-Public Const PS_NULL = 5
-Public Const PS_INSIDEFRAME = 6
-Public Const PS_USERSTYLE = 7
-Public Const PS_ALTERNATE = 8
-Public Const PS_STYLE_MASK = &HF
+'~dup Public Const PS_SOLID = 0   ' повтор, первое: rapidq2.inc(1224)
+'~dup Public Const PS_DASH = 1                    '  -------   ' повтор, первое: rapidq2.inc(1225)
+'~dup Public Const PS_DOT = 2                     '  .......   ' повтор, первое: rapidq2.inc(1226)
+'~dup Public Const PS_DASHDOT = 3                 '  _._._._   ' повтор, первое: rapidq2.inc(1227)
+'~dup Public Const PS_DASHDOTDOT = 4              '  _.._.._   ' повтор, первое: rapidq2.inc(1228)
+'~dup Public Const PS_NULL = 5   ' повтор, первое: rapidq2.inc(1229)
+'~dup Public Const PS_INSIDEFRAME = 6   ' повтор, первое: rapidq2.inc(1230)
+'~dup Public Const PS_USERSTYLE = 7   ' повтор, первое: rapidq2.inc(1231)
+'~dup Public Const PS_ALTERNATE = 8   ' повтор, первое: rapidq2.inc(1232)
+'~dup Public Const PS_STYLE_MASK = &HF   ' повтор, первое: rapidq2.inc(1233)
 
 Public Const PS_ENDCAP_ROUND = &H0
 Public Const PS_ENDCAP_SQUARE = &H100
@@ -38594,36 +38523,36 @@ Public Const AD_COUNTERCLOCKWISE = 1
 Public Const AD_CLOCKWISE = 2
 
 '  Device Parameters for GetDeviceCaps()
-Public Const DRIVERVERSION = 0      '  Device driver version
-Public Const TECHNOLOGY = 2         '  Device classification
-Public Const HORZSIZE = 4           '  Horizontal size in millimeters
-Public Const VERTSIZE = 6           '  Vertical size in millimeters
-Public Const HORZRES = 8            '  Horizontal width in pixels
-Public Const VERTRES = 10           '  Vertical width in pixels
-Public Const BITSPIXEL = 12         '  Number of bits per pixel
-Public Const PLANES = 14            '  Number of planes
-Public Const NUMBRUSHES = 16        '  Number of brushes the device has
-Public Const NUMPENS = 18           '  Number of pens the device has
-Public Const NUMMARKERS = 20        '  Number of markers the device has
-Public Const NUMFONTS = 22          '  Number of fonts the device has
-Public Const NUMCOLORS = 24         '  Number of colors the device supports
-Public Const PDEVICESIZE = 26       '  Size required for device descriptor
-Public Const CURVECAPS = 28         '  Curve capabilities
-Public Const LINECAPS = 30          '  Line capabilities
-Public Const POLYGONALCAPS = 32     '  Polygonal capabilities
-Public Const TEXTCAPS = 34          '  Text capabilities
-Public Const CLIPCAPS = 36          '  Clipping capabilities
-Public Const RASTERCAPS = 38        '  Bitblt capabilities
-Public Const ASPECTX = 40           '  Length of the X leg
-Public Const ASPECTY = 42           '  Length of the Y leg
-Public Const ASPECTXY = 44          '  Length of the hypotenuse
+'~dup Public Const DRIVERVERSION = 0      '  Device driver version   ' повтор, первое: rapidq2.inc(1384)
+'~dup Public Const TECHNOLOGY = 2         '  Device classification   ' повтор, первое: rapidq2.inc(1385)
+'~dup Public Const HORZSIZE = 4           '  Horizontal size in millimeters   ' повтор, первое: rapidq2.inc(1386)
+'~dup Public Const VERTSIZE = 6           '  Vertical size in millimeters   ' повтор, первое: rapidq2.inc(1387)
+'~dup Public Const HORZRES = 8            '  Horizontal width in pixels   ' повтор, первое: rapidq2.inc(1388)
+'~dup Public Const VERTRES = 10           '  Vertical width in pixels   ' повтор, первое: rapidq2.inc(1389)
+'~dup Public Const BITSPIXEL = 12         '  Number of bits per pixel   ' повтор, первое: rapidq2.inc(1390)
+'~dup Public Const PLANES = 14            '  Number of planes   ' повтор, первое: rapidq2.inc(1391)
+'~dup Public Const NUMBRUSHES = 16        '  Number of brushes the device has   ' повтор, первое: rapidq2.inc(1392)
+'~dup Public Const NUMPENS = 18           '  Number of pens the device has   ' повтор, первое: rapidq2.inc(1393)
+'~dup Public Const NUMMARKERS = 20        '  Number of markers the device has   ' повтор, первое: rapidq2.inc(1394)
+'~dup Public Const NUMFONTS = 22          '  Number of fonts the device has   ' повтор, первое: rapidq2.inc(1395)
+'~dup Public Const NUMCOLORS = 24         '  Number of colors the device supports   ' повтор, первое: rapidq2.inc(1396)
+'~dup Public Const PDEVICESIZE = 26       '  Size required for device descriptor   ' повтор, первое: rapidq2.inc(1397)
+'~dup Public Const CURVECAPS = 28         '  Curve capabilities   ' повтор, первое: rapidq2.inc(1398)
+'~dup Public Const LINECAPS = 30          '  Line capabilities   ' повтор, первое: rapidq2.inc(1399)
+'~dup Public Const POLYGONALCAPS = 32     '  Polygonal capabilities   ' повтор, первое: rapidq2.inc(1400)
+'~dup Public Const TEXTCAPS = 34          '  Text capabilities   ' повтор, первое: rapidq2.inc(1401)
+'~dup Public Const CLIPCAPS = 36          '  Clipping capabilities   ' повтор, первое: rapidq2.inc(1402)
+'~dup Public Const RASTERCAPS = 38        '  Bitblt capabilities   ' повтор, первое: rapidq2.inc(1403)
+'~dup Public Const ASPECTX = 40           '  Length of the X leg   ' повтор, первое: rapidq2.inc(1404)
+'~dup Public Const ASPECTY = 42           '  Length of the Y leg   ' повтор, первое: rapidq2.inc(1405)
+'~dup Public Const ASPECTXY = 44          '  Length of the hypotenuse   ' повтор, первое: rapidq2.inc(1406)
 
-Public Const LOGPIXELSX = 88        '  Logical pixels/inch in X
-Public Const LOGPIXELSY = 90        '  Logical pixels/inch in Y
+'~dup Public Const LOGPIXELSX = 88        '  Logical pixels/inch in X   ' повтор, первое: rapidq2.inc(1408)
+'~dup Public Const LOGPIXELSY = 90        '  Logical pixels/inch in Y   ' повтор, первое: rapidq2.inc(1409)
 
-Public Const SIZEPALETTE = 104      '  Number of entries in physical palette
-Public Const NUMRESERVED = 106      '  Number of reserved entries in palette
-Public Const COLORRES = 108         '  Actual color resolution
+'~dup Public Const SIZEPALETTE = 104      '  Number of entries in physical palette   ' повтор, первое: rapidq2.inc(1411)
+'~dup Public Const NUMRESERVED = 106      '  Number of reserved entries in palette   ' повтор, первое: rapidq2.inc(1412)
+'~dup Public Const COLORRES = 108         '  Actual color resolution   ' повтор, первое: rapidq2.inc(1413)
 
 '  Printing related DeviceCaps. These replace the appropriate Escapes
 Public Const PHYSICALWIDTH = 110 '  Physical Width in device units
@@ -38780,20 +38709,20 @@ Public Const FLOODFILLSURFACE = 1
 Public Const DM_SPECVERSION = &H320
 
 ' field selection bits
-Public Const DM_ORIENTATION = &H1&
-Public Const DM_PAPERSIZE = &H2&
-Public Const DM_PAPERLENGTH = &H4&
-Public Const DM_PAPERWIDTH = &H8&
-Public Const DM_SCALE = &H10&
-Public Const DM_COPIES = &H100&
-Public Const DM_DEFAULTSOURCE = &H200&
-Public Const DM_PRINTQUALITY = &H400&
-Public Const DM_COLOR = &H800&
-Public Const DM_DUPLEX = &H1000&
-Public Const DM_YRESOLUTION = &H2000&
-Public Const DM_TTOPTION = &H4000&
-Public Const DM_COLLATE As Long = &H8000
-Public Const DM_FORMNAME As Long = &H10000
+'~dup Public Const DM_ORIENTATION = &H1&   ' повтор, первое: rapidq2.inc(1340)
+'~dup Public Const DM_PAPERSIZE = &H2&   ' повтор, первое: rapidq2.inc(1341)
+'~dup Public Const DM_PAPERLENGTH = &H4&   ' повтор, первое: rapidq2.inc(1342)
+'~dup Public Const DM_PAPERWIDTH = &H8&   ' повтор, первое: rapidq2.inc(1343)
+'~dup Public Const DM_SCALE = &H10&   ' повтор, первое: rapidq2.inc(1344)
+'~dup Public Const DM_COPIES = &H100&   ' повтор, первое: rapidq2.inc(1348)
+'~dup Public Const DM_DEFAULTSOURCE = &H200&   ' повтор, первое: rapidq2.inc(1349)
+'~dup Public Const DM_PRINTQUALITY = &H400&   ' повтор, первое: rapidq2.inc(1350)
+'~dup Public Const DM_COLOR = &H800&   ' повтор, первое: rapidq2.inc(1351)
+'~dup Public Const DM_DUPLEX = &H1000&   ' повтор, первое: rapidq2.inc(1352)
+'~dup Public Const DM_YRESOLUTION = &H2000&   ' повтор, первое: rapidq2.inc(1353)
+'~dup Public Const DM_TTOPTION = &H4000&   ' повтор, первое: rapidq2.inc(1354)
+'~dup Public Const DM_COLLATE As Long = &H8000   ' повтор, первое: rapidq2.inc(1355)
+'~dup Public Const DM_FORMNAME As Long = &H10000   ' повтор, первое: rapidq2.inc(1356)
 
 '  orientation selections
 Public Const DMORIENT_PORTRAIT = 1
@@ -40553,100 +40482,100 @@ Public Const KF_REPEAT = &H4000
 Public Const KF_UP = &H8000
 
 ' Virtual Keys, Standard Set
-Public Const VK_LBUTTON = &H1
-Public Const VK_RBUTTON = &H2
-Public Const VK_CANCEL = &H3
-Public Const VK_MBUTTON = &H4             '  NOT contiguous with L RBUTTON
+'~dup Public Const VK_LBUTTON = &H1   ' повтор, первое: rapidq2.inc(1071)
+'~dup Public Const VK_RBUTTON = &H2   ' повтор, первое: rapidq2.inc(1072)
+'~dup Public Const VK_CANCEL = &H3   ' повтор, первое: rapidq2.inc(1073)
+'~dup Public Const VK_MBUTTON = &H4             '  NOT contiguous with L RBUTTON   ' повтор, первое: rapidq2.inc(1074)
 
-Public Const VK_BACK = &H8
-Public Const VK_TAB = &H9
+'~dup Public Const VK_BACK = &H8   ' повтор, первое: rapidq2.inc(1075)
+'~dup Public Const VK_TAB = &H9   ' повтор, первое: rapidq2.inc(1076)
 
-Public Const VK_CLEAR = &HC
-Public Const VK_RETURN = &HD
+'~dup Public Const VK_CLEAR = &HC   ' повтор, первое: rapidq2.inc(1077)
+'~dup Public Const VK_RETURN = &HD   ' повтор, первое: rapidq2.inc(1078)
 
-Public Const VK_SHIFT = &H10
-Public Const VK_CONTROL = &H11
-Public Const VK_MENU = &H12
-Public Const VK_PAUSE = &H13
-Public Const VK_CAPITAL = &H14
+'~dup Public Const VK_SHIFT = &H10   ' повтор, первое: rapidq2.inc(1079)
+'~dup Public Const VK_CONTROL = &H11   ' повтор, первое: rapidq2.inc(1080)
+'~dup Public Const VK_MENU = &H12   ' повтор, первое: rapidq2.inc(1081)
+'~dup Public Const VK_PAUSE = &H13   ' повтор, первое: rapidq2.inc(1082)
+'~dup Public Const VK_CAPITAL = &H14   ' повтор, первое: rapidq2.inc(1083)
 
-Public Const VK_ESCAPE = &H1B
+'~dup Public Const VK_ESCAPE = &H1B   ' повтор, первое: rapidq2.inc(1084)
 
-Public Const VK_SPACE = &H20
-Public Const VK_PRIOR = &H21
-Public Const VK_NEXT = &H22
-Public Const VK_END = &H23
-Public Const VK_HOME = &H24
-Public Const VK_LEFT = &H25
-Public Const VK_UP = &H26
-Public Const VK_RIGHT = &H27
-Public Const VK_DOWN = &H28
-Public Const VK_SELECT = &H29
-Public Const VK_PRINT = &H2A
-Public Const VK_EXECUTE = &H2B
-Public Const VK_SNAPSHOT = &H2C
-Public Const VK_INSERT = &H2D
-Public Const VK_DELETE = &H2E
-Public Const VK_HELP = &H2F
+'~dup Public Const VK_SPACE = &H20   ' повтор, первое: rapidq2.inc(1085)
+'~dup Public Const VK_PRIOR = &H21   ' повтор, первое: rapidq2.inc(1086)
+'~dup Public Const VK_NEXT = &H22   ' повтор, первое: rapidq2.inc(1087)
+'~dup Public Const VK_END = &H23   ' повтор, первое: rapidq2.inc(1088)
+'~dup Public Const VK_HOME = &H24   ' повтор, первое: rapidq2.inc(1089)
+'~dup Public Const VK_LEFT = &H25   ' повтор, первое: rapidq2.inc(1090)
+'~dup Public Const VK_UP = &H26   ' повтор, первое: rapidq2.inc(1091)
+'~dup Public Const VK_RIGHT = &H27   ' повтор, первое: rapidq2.inc(1092)
+'~dup Public Const VK_DOWN = &H28   ' повтор, первое: rapidq2.inc(1093)
+'~dup Public Const VK_SELECT = &H29   ' повтор, первое: rapidq2.inc(1094)
+'~dup Public Const VK_PRINT = &H2A   ' повтор, первое: rapidq2.inc(1095)
+'~dup Public Const VK_EXECUTE = &H2B   ' повтор, первое: rapidq2.inc(1096)
+'~dup Public Const VK_SNAPSHOT = &H2C   ' повтор, первое: rapidq2.inc(1097)
+'~dup Public Const VK_INSERT = &H2D   ' повтор, первое: rapidq2.inc(1098)
+'~dup Public Const VK_DELETE = &H2E   ' повтор, первое: rapidq2.inc(1099)
+'~dup Public Const VK_HELP = &H2F   ' повтор, первое: rapidq2.inc(1100)
 
 ' VK_A thru VK_Z are the same as their ASCII equivalents: 'A' thru 'Z'
 ' VK_0 thru VK_9 are the same as their ASCII equivalents: '0' thru '9'
 
-Public Const VK_NUMPAD0 = &H60
-Public Const VK_NUMPAD1 = &H61
-Public Const VK_NUMPAD2 = &H62
-Public Const VK_NUMPAD3 = &H63
-Public Const VK_NUMPAD4 = &H64
-Public Const VK_NUMPAD5 = &H65
-Public Const VK_NUMPAD6 = &H66
-Public Const VK_NUMPAD7 = &H67
-Public Const VK_NUMPAD8 = &H68
-Public Const VK_NUMPAD9 = &H69
-Public Const VK_MULTIPLY = &H6A
-Public Const VK_ADD = &H6B
-Public Const VK_SEPARATOR = &H6C
-Public Const VK_SUBTRACT = &H6D
-Public Const VK_DECIMAL = &H6E
-Public Const VK_DIVIDE = &H6F
-Public Const VK_F1 = &H70
-Public Const VK_F2 = &H71
-Public Const VK_F3 = &H72
-Public Const VK_F4 = &H73
-Public Const VK_F5 = &H74
-Public Const VK_F6 = &H75
-Public Const VK_F7 = &H76
-Public Const VK_F8 = &H77
-Public Const VK_F9 = &H78
-Public Const VK_F10 = &H79
-Public Const VK_F11 = &H7A
-Public Const VK_F12 = &H7B
-Public Const VK_F13 = &H7C
-Public Const VK_F14 = &H7D
-Public Const VK_F15 = &H7E
-Public Const VK_F16 = &H7F
-Public Const VK_F17 = &H80
-Public Const VK_F18 = &H81
-Public Const VK_F19 = &H82
-Public Const VK_F20 = &H83
-Public Const VK_F21 = &H84
-Public Const VK_F22 = &H85
-Public Const VK_F23 = &H86
-Public Const VK_F24 = &H87
+'~dup Public Const VK_NUMPAD0 = &H60   ' повтор, первое: rapidq2.inc(1142)
+'~dup Public Const VK_NUMPAD1 = &H61   ' повтор, первое: rapidq2.inc(1143)
+'~dup Public Const VK_NUMPAD2 = &H62   ' повтор, первое: rapidq2.inc(1144)
+'~dup Public Const VK_NUMPAD3 = &H63   ' повтор, первое: rapidq2.inc(1145)
+'~dup Public Const VK_NUMPAD4 = &H64   ' повтор, первое: rapidq2.inc(1146)
+'~dup Public Const VK_NUMPAD5 = &H65   ' повтор, первое: rapidq2.inc(1147)
+'~dup Public Const VK_NUMPAD6 = &H66   ' повтор, первое: rapidq2.inc(1148)
+'~dup Public Const VK_NUMPAD7 = &H67   ' повтор, первое: rapidq2.inc(1149)
+'~dup Public Const VK_NUMPAD8 = &H68   ' повтор, первое: rapidq2.inc(1150)
+'~dup Public Const VK_NUMPAD9 = &H69   ' повтор, первое: rapidq2.inc(1151)
+'~dup Public Const VK_MULTIPLY = &H6A   ' повтор, первое: rapidq2.inc(1152)
+'~dup Public Const VK_ADD = &H6B   ' повтор, первое: rapidq2.inc(1153)
+'~dup Public Const VK_SEPARATOR = &H6C   ' повтор, первое: rapidq2.inc(1154)
+'~dup Public Const VK_SUBTRACT = &H6D   ' повтор, первое: rapidq2.inc(1155)
+'~dup Public Const VK_DECIMAL = &H6E   ' повтор, первое: rapidq2.inc(1156)
+'~dup Public Const VK_DIVIDE = &H6F   ' повтор, первое: rapidq2.inc(1157)
+'~dup Public Const VK_F1 = &H70   ' повтор, первое: rapidq2.inc(1158)
+'~dup Public Const VK_F2 = &H71   ' повтор, первое: rapidq2.inc(1159)
+'~dup Public Const VK_F3 = &H72   ' повтор, первое: rapidq2.inc(1160)
+'~dup Public Const VK_F4 = &H73   ' повтор, первое: rapidq2.inc(1161)
+'~dup Public Const VK_F5 = &H74   ' повтор, первое: rapidq2.inc(1162)
+'~dup Public Const VK_F6 = &H75   ' повтор, первое: rapidq2.inc(1163)
+'~dup Public Const VK_F7 = &H76   ' повтор, первое: rapidq2.inc(1164)
+'~dup Public Const VK_F8 = &H77   ' повтор, первое: rapidq2.inc(1165)
+'~dup Public Const VK_F9 = &H78   ' повтор, первое: rapidq2.inc(1166)
+'~dup Public Const VK_F10 = &H79   ' повтор, первое: rapidq2.inc(1167)
+'~dup Public Const VK_F11 = &H7A   ' повтор, первое: rapidq2.inc(1168)
+'~dup Public Const VK_F12 = &H7B   ' повтор, первое: rapidq2.inc(1169)
+'~dup Public Const VK_F13 = &H7C   ' повтор, первое: rapidq2.inc(1170)
+'~dup Public Const VK_F14 = &H7D   ' повтор, первое: rapidq2.inc(1171)
+'~dup Public Const VK_F15 = &H7E   ' повтор, первое: rapidq2.inc(1172)
+'~dup Public Const VK_F16 = &H7F   ' повтор, первое: rapidq2.inc(1173)
+'~dup Public Const VK_F17 = &H80   ' повтор, первое: rapidq2.inc(1174)
+'~dup Public Const VK_F18 = &H81   ' повтор, первое: rapidq2.inc(1175)
+'~dup Public Const VK_F19 = &H82   ' повтор, первое: rapidq2.inc(1176)
+'~dup Public Const VK_F20 = &H83   ' повтор, первое: rapidq2.inc(1177)
+'~dup Public Const VK_F21 = &H84   ' повтор, первое: rapidq2.inc(1178)
+'~dup Public Const VK_F22 = &H85   ' повтор, первое: rapidq2.inc(1179)
+'~dup Public Const VK_F23 = &H86   ' повтор, первое: rapidq2.inc(1180)
+'~dup Public Const VK_F24 = &H87   ' повтор, первое: rapidq2.inc(1181)
 
-Public Const VK_NUMLOCK = &H90
-Public Const VK_SCROLL = &H91
+'~dup Public Const VK_NUMLOCK = &H90   ' повтор, первое: rapidq2.inc(1183)
+'~dup Public Const VK_SCROLL = &H91   ' повтор, первое: rapidq2.inc(1184)
 
 '
 '   VK_L VK_R - left and right Alt, Ctrl and Shift virtual keys.
 '   Used only as parameters to GetAsyncKeyState() and GetKeyState().
 '   No other API or message will distinguish left and right keys in this way.
 '  /
-Public Const VK_LSHIFT = &HA0
-Public Const VK_RSHIFT = &HA1
-Public Const VK_LCONTROL = &HA2
-Public Const VK_RCONTROL = &HA3
-Public Const VK_LMENU = &HA4
-Public Const VK_RMENU = &HA5
+'~dup Public Const VK_LSHIFT = &HA0   ' повтор, первое: rapidq2.inc(1191)
+'~dup Public Const VK_RSHIFT = &HA1   ' повтор, первое: rapidq2.inc(1192)
+'~dup Public Const VK_LCONTROL = &HA2   ' повтор, первое: rapidq2.inc(1193)
+'~dup Public Const VK_RCONTROL = &HA3   ' повтор, первое: rapidq2.inc(1194)
+'~dup Public Const VK_LMENU = &HA4   ' повтор, первое: rapidq2.inc(1195)
+'~dup Public Const VK_RMENU = &HA5   ' повтор, первое: rapidq2.inc(1196)
 
 Public Const VK_ATTN = &HF6
 Public Const VK_CRSEL = &HF7
@@ -40824,16 +40753,16 @@ Public Const WM_NULL = &H0
 Public Const WM_MOVE = &H3
 '~dup Public Const WM_SIZE = &H5   ' повтор, первое: MDI_API.INC(69)
 
-Public Const WM_ACTIVATE = &H6
+'~dup Public Const WM_ACTIVATE = &H6   ' повтор, первое: rapidq2.inc(811)
 '
 '  WM_ACTIVATE state values
 
-Public Const WA_INACTIVE = 0
-Public Const WA_ACTIVE = 1
-Public Const WA_CLICKACTIVE = 2
+'~dup Public Const WA_INACTIVE = 0   ' повтор, первое: rapidq2.inc(813)
+'~dup Public Const WA_ACTIVE = 1   ' повтор, первое: rapidq2.inc(814)
+'~dup Public Const WA_CLICKACTIVE = 2   ' повтор, первое: rapidq2.inc(815)
 
-Public Const WM_SETFOCUS = &H7
-'~dup Public Const WM_KILLFOCUS = &H8   ' повтор, первое: QFormSkin.inc(21)
+'~dup Public Const WM_SETFOCUS = &H7   ' повтор, первое: rapidq2.inc(816)
+'~dup Public Const WM_KILLFOCUS = &H8   ' повтор, первое: rapidq2.inc(817)
 Public Const WM_ENABLE = &HA
 '~dup Public Const WM_SETREDRAW = &HB   ' повтор, первое: Win32_constants.inc(308)
 '~dup Public Const WM_SETTEXT = &HC   ' повтор, первое: MDI_API.INC(70)
@@ -40873,8 +40802,8 @@ Public Const WM_PAINTICON = &H26
 Public Const WM_ICONERASEBKGND = &H27
 Public Const WM_NEXTDLGCTL = &H28
 Public Const WM_SPOOLERSTATUS = &H2A
-'~dup Public Const WM_DRAWITEM = &H2B   ' повтор, первое: Api.inc(13)
-'~dup Public Const WM_MEASUREITEM = &H2C   ' повтор, первое: Api.inc(14)
+'~dup Public Const WM_DRAWITEM = &H2B   ' повтор, первое: rapidq2.inc(835)
+'~dup Public Const WM_MEASUREITEM = &H2C   ' повтор, первое: rapidq2.inc(836)
 Public Const WM_DELETEITEM = &H2D
 Public Const WM_VKEYTOITEM = &H2E
 Public Const WM_CHARTOITEM = &H2F
@@ -40937,51 +40866,51 @@ Public Const WM_GETDLGCODE = &H87
 '~dup Public Const WM_NCMBUTTONUP = &HA8   ' повтор, первое: QFormSkin.inc(32)
 '~dup Public Const WM_NCMBUTTONDBLCLK = &HA9   ' повтор, первое: QFormSkin.inc(33)
 
-Public Const WM_KEYFIRST = &H100
-'~dup Public Const WM_KEYDOWN = &H100   ' повтор, первое: rapidq.inc(868)
-'~dup Public Const WM_KEYUP = &H101   ' повтор, первое: rapidq.inc(869)
-'~dup Public Const WM_CHAR = &H102           ' повтор, первое: constants.inc(164)
+'~dup Public Const WM_KEYFIRST = &H100   ' повтор, первое: rapidq2.inc(819)
+'~dup Public Const WM_KEYDOWN = &H100   ' повтор, первое: rapidq2.inc(820)
+'~dup Public Const WM_KEYUP = &H101   ' повтор, первое: rapidq2.inc(821)
+'~dup Public Const WM_CHAR = &H102           ' повтор, первое: rapidq2.inc(822)
 '!!!--------------------------------
-Public Const WM_DEADCHAR = &H103
-Public Const WM_SYSKEYDOWN = &H104
-Public Const WM_SYSKEYUP = &H105
-Public Const WM_SYSCHAR = &H106
-Public Const WM_SYSDEADCHAR = &H107
-Public Const WM_KEYLAST = &H108
-Public Const WM_INITDIALOG = &H110
-'~dup Public Const WM_COMMAND = &H111   ' повтор, первое: createWind.inc(24)
-'~dup Public Const WM_SYSCOMMAND = &H112   ' повтор, первое: MDI_API.INC(71)
-Public Const WM_TIMER = &H113
-Public Const WM_HSCROLL = &H114
-Public Const WM_VSCROLL = &H115
-Public Const WM_INITMENU = &H116
-'~dup Public Const WM_INITMENUPOPUP = &H117   ' повтор, первое: QFormSkin.inc(56)
-'~dup Public Const WM_MENUSELECT = &H11F   ' повтор, первое: Api.inc(15)
-Public Const WM_MENUCHAR = &H120
-Public Const WM_ENTERIDLE = &H121
+'~dup Public Const WM_DEADCHAR = &H103   ' повтор, первое: rapidq2.inc(823)
+'~dup Public Const WM_SYSKEYDOWN = &H104   ' повтор, первое: rapidq2.inc(824)
+'~dup Public Const WM_SYSKEYUP = &H105   ' повтор, первое: rapidq2.inc(825)
+'~dup Public Const WM_SYSCHAR = &H106   ' повтор, первое: rapidq2.inc(826)
+'~dup Public Const WM_SYSDEADCHAR = &H107   ' повтор, первое: rapidq2.inc(827)
+'~dup Public Const WM_KEYLAST = &H108   ' повтор, первое: rapidq2.inc(828)
+'~dup Public Const WM_INITDIALOG = &H110   ' повтор, первое: rapidq2.inc(829)
+'~dup Public Const WM_COMMAND = &H111   ' повтор, первое: rapidq2.inc(830)
+'~dup Public Const WM_SYSCOMMAND = &H112   ' повтор, первое: rapidq2.inc(831)
+'~dup Public Const WM_TIMER = &H113   ' повтор, первое: rapidq2.inc(832)
+'~dup Public Const WM_HSCROLL = &H114   ' повтор, первое: rapidq2.inc(833)
+'~dup Public Const WM_VSCROLL = &H115   ' повтор, первое: rapidq2.inc(834)
+'~dup Public Const WM_INITMENU = &H116   ' повтор, первое: rapidq2.inc(837)
+'~dup Public Const WM_INITMENUPOPUP = &H117   ' повтор, первое: rapidq2.inc(838)
+'~dup Public Const WM_MENUSELECT = &H11F   ' повтор, первое: rapidq2.inc(839)
+'~dup Public Const WM_MENUCHAR = &H120   ' повтор, первое: rapidq2.inc(840)
+'~dup Public Const WM_ENTERIDLE = &H121   ' повтор, первое: rapidq2.inc(841)
 
-Public Const WM_CTLCOLORMSGBOX = &H132
-Public Const WM_CTLCOLOREDIT = &H133
-Public Const WM_CTLCOLORLISTBOX = &H134
-Public Const WM_CTLCOLORBTN = &H135
-Public Const WM_CTLCOLORDLG = &H136
-Public Const WM_CTLCOLORSCROLLBAR = &H137
-Public Const WM_CTLCOLORSTATIC = &H138
+'~dup Public Const WM_CTLCOLORMSGBOX = &H132   ' повтор, первое: rapidq2.inc(843)
+'~dup Public Const WM_CTLCOLOREDIT = &H133   ' повтор, первое: rapidq2.inc(844)
+'~dup Public Const WM_CTLCOLORLISTBOX = &H134   ' повтор, первое: rapidq2.inc(845)
+'~dup Public Const WM_CTLCOLORBTN = &H135   ' повтор, первое: rapidq2.inc(846)
+'~dup Public Const WM_CTLCOLORDLG = &H136   ' повтор, первое: rapidq2.inc(847)
+'~dup Public Const WM_CTLCOLORSCROLLBAR = &H137   ' повтор, первое: rapidq2.inc(848)
+'~dup Public Const WM_CTLCOLORSTATIC = &H138   ' повтор, первое: rapidq2.inc(849)
 
-Public Const WM_MOUSEFIRST = &H200
-'~dup Public Const WM_MOUSEMOVE = &H200   ' повтор, первое: rapidq.inc(857)
-'~dup Public Const WM_LBUTTONDOWN = &H201   ' повтор, первое: rapidq.inc(858)
-'~dup Public Const WM_LBUTTONUP = &H202   ' повтор, первое: rapidq.inc(859)
-'~dup Public Const WM_LBUTTONDBLCLK = &H203   ' повтор, первое: rapidq.inc(860)
-'~dup Public Const WM_RBUTTONDOWN = &H204   ' повтор, первое: rapidq.inc(861)
-'~dup Public Const WM_RBUTTONUP = &H205   ' повтор, первое: rapidq.inc(862)
-'~dup Public Const WM_RBUTTONDBLCLK = &H206   ' повтор, первое: rapidq.inc(863)
-'~dup Public Const WM_MBUTTONDOWN = &H207   ' повтор, первое: rapidq.inc(864)
-'~dup Public Const WM_MBUTTONUP = &H208   ' повтор, первое: rapidq.inc(865)
-'~dup Public Const WM_MBUTTONDBLCLK = &H209   ' повтор, первое: rapidq.inc(866)
-Public Const WM_MOUSELAST = &H209
+'~dup Public Const WM_MOUSEFIRST = &H200   ' повтор, первое: rapidq2.inc(851)
+'~dup Public Const WM_MOUSEMOVE = &H200   ' повтор, первое: rapidq2.inc(852)
+'~dup Public Const WM_LBUTTONDOWN = &H201   ' повтор, первое: rapidq2.inc(853)
+'~dup Public Const WM_LBUTTONUP = &H202   ' повтор, первое: rapidq2.inc(854)
+'~dup Public Const WM_LBUTTONDBLCLK = &H203   ' повтор, первое: rapidq2.inc(855)
+'~dup Public Const WM_RBUTTONDOWN = &H204   ' повтор, первое: rapidq2.inc(856)
+'~dup Public Const WM_RBUTTONUP = &H205   ' повтор, первое: rapidq2.inc(857)
+'~dup Public Const WM_RBUTTONDBLCLK = &H206   ' повтор, первое: rapidq2.inc(858)
+'~dup Public Const WM_MBUTTONDOWN = &H207   ' повтор, первое: rapidq2.inc(859)
+'~dup Public Const WM_MBUTTONUP = &H208   ' повтор, первое: rapidq2.inc(860)
+'~dup Public Const WM_MBUTTONDBLCLK = &H209   ' повтор, первое: rapidq2.inc(861)
+'~dup Public Const WM_MOUSELAST = &H209   ' повтор, первое: rapidq2.inc(864)
 
-Public Const WM_PARENTNOTIFY = &H210
+'~dup Public Const WM_PARENTNOTIFY = &H210   ' повтор, первое: rapidq2.inc(862)
 Public Const WM_ENTERMENULOOP = &H211
 Public Const WM_EXITMENULOOP = &H212
 Public Const WM_MDICREATE = &H220
@@ -40995,7 +40924,7 @@ Public Const WM_MDINEXT = &H224
 '~dup Public Const WM_MDIICONARRANGE = &H228   ' повтор, первое: MDI_API.INC(77)
 Public Const WM_MDIGETACTIVE = &H229
 '~dup Public Const WM_MDISETMENU = &H230   ' повтор, первое: MDI_API.INC(79)
-Public Const WM_DROPFILES = &H233
+'~dup Public Const WM_DROPFILES = &H233   ' повтор, первое: rapidq2.inc(866)
 Public Const WM_MDIREFRESHMENU = &H234
 
 
@@ -41025,7 +40954,7 @@ Public Const WM_PENWINLAST = &H38F
 ' NOTE: All Message Numbers below 0x0400 are RESERVED.
 
 ' Private Window Messages Start Here:
-'~dup Public Const WM_USER = &H400   ' повтор, первое: CommCtrl.inc(6)
+'~dup Public Const WM_USER = &H400   ' повтор, первое: rapidq2.inc(870)
 
 ' WM_SYNCTASK Commands
 Public Const ST_BEGINSWP = 0
@@ -41115,27 +41044,27 @@ Public Const MK_CONTROL = &H8
 Public Const MK_MBUTTON = &H10
 
 ' Window Styles
-'~dup Public Const WS_OVERLAPPED = &H0&   ' повтор, первое: MDI_API.INC(55)
-'~dup Public Const WS_POPUP = &H80000000   ' повтор, первое: Win32_constants.inc(50)
-'~dup Public Const WS_CHILD = &H40000000   ' повтор, первое: createWind.inc(17)
-'~dup Public Const WS_MINIMIZE = &H20000000   ' повтор, первое: Win32_constants.inc(46)
-'~dup Public Const WS_VISIBLE = &H10000000   ' повтор, первое: createWind.inc(18)
-'~dup Public Const WS_DISABLED = &H8000000   ' повтор, первое: Win32_constants.inc(39)
-'~dup Public Const WS_CLIPSIBLINGS = &H4000000   ' повтор, первое: Win32_constants.inc(38)
-'~dup Public Const WS_CLIPCHILDREN = &H2000000   ' повтор, первое: Win32_constants.inc(37)
-'~dup Public Const WS_MAXIMIZE = &H1000000   ' повтор, первое: Win32_constants.inc(44)
-'~dup Public Const WS_CAPTION = &HC00000                  '  WS_BORDER Or WS_DLGFRAME   ' повтор, первое: MDI_API.INC(56)
-'~dup Public Const WS_BORDER = &H800000   ' повтор, первое: createWind.inc(19)
-'~dup Public Const WS_DLGFRAME = &H400000   ' повтор, первое: Win32_constants.inc(40)
-'~dup Public Const WS_VSCROLL = &H200000   ' повтор, первое: MDI_API.INC(61)
-'~dup Public Const WS_HSCROLL = &H100000   ' повтор, первое: MDI_API.INC(62)
-'~dup Public Const WS_SYSMENU = &H80000   ' повтор, первое: MDI_API.INC(57)
-'~dup Public Const WS_THICKFRAME = &H40000   ' повтор, первое: MDI_API.INC(58)
-'~dup Public Const WS_GROUP = &H20000   ' повтор, первое: Win32_constants.inc(41)
-'~dup Public Const WS_TABSTOP = &H10000   ' повтор, первое: Win32_constants.inc(54)
+'~dup Public Const WS_OVERLAPPED = &H0&   ' повтор, первое: rapidq2.inc(947)
+'~dup Public Const WS_POPUP = &H80000000   ' повтор, первое: rapidq2.inc(948)
+'~dup Public Const WS_CHILD = &H40000000   ' повтор, первое: rapidq2.inc(949)
+'~dup Public Const WS_MINIMIZE = &H20000000   ' повтор, первое: rapidq2.inc(950)
+'~dup Public Const WS_VISIBLE = &H10000000   ' повтор, первое: rapidq2.inc(951)
+'~dup Public Const WS_DISABLED = &H8000000   ' повтор, первое: rapidq2.inc(952)
+'~dup Public Const WS_CLIPSIBLINGS = &H4000000   ' повтор, первое: rapidq2.inc(953)
+'~dup Public Const WS_CLIPCHILDREN = &H2000000   ' повтор, первое: rapidq2.inc(954)
+'~dup Public Const WS_MAXIMIZE = &H1000000   ' повтор, первое: rapidq2.inc(955)
+'~dup Public Const WS_CAPTION = &HC00000                  '  WS_BORDER Or WS_DLGFRAME   ' повтор, первое: rapidq2.inc(956)
+'~dup Public Const WS_BORDER = &H800000   ' повтор, первое: rapidq2.inc(957)
+'~dup Public Const WS_DLGFRAME = &H400000   ' повтор, первое: rapidq2.inc(958)
+'~dup Public Const WS_VSCROLL = &H200000   ' повтор, первое: rapidq2.inc(959)
+'~dup Public Const WS_HSCROLL = &H100000   ' повтор, первое: rapidq2.inc(960)
+'~dup Public Const WS_SYSMENU = &H80000   ' повтор, первое: rapidq2.inc(961)
+'~dup Public Const WS_THICKFRAME = &H40000   ' повтор, первое: rapidq2.inc(962)
+'~dup Public Const WS_GROUP = &H20000   ' повтор, первое: rapidq2.inc(963)
+'~dup Public Const WS_TABSTOP = &H10000   ' повтор, первое: rapidq2.inc(964)
 
-'~dup Public Const WS_MINIMIZEBOX = &H20000   ' повтор, первое: MDI_API.INC(59)
-'~dup Public Const WS_MAXIMIZEBOX = &H10000   ' повтор, первое: MDI_API.INC(60)
+'~dup Public Const WS_MINIMIZEBOX = &H20000   ' повтор, первое: rapidq2.inc(968)
+'~dup Public Const WS_MAXIMIZEBOX = &H10000   ' повтор, первое: rapidq2.inc(969)
 
 '~dup Public Const WS_TILED = WS_OVERLAPPED   ' повтор, первое: Win32_constants.inc(56)
 '~dup Public Const WS_ICONIC = WS_MINIMIZE   ' повтор, первое: Win32_constants.inc(43)
@@ -41175,20 +41104,20 @@ Public Const CS_BYTEALIGNWINDOW = &H2000
 Public Const CS_PUBLICCLASS = &H4000
 
 ' Predefined Clipboard Formats
-Public Const CF_TEXT = 1
-Public Const CF_BITMAP = 2
-Public Const CF_METAFILEPICT = 3
-Public Const CF_SYLK = 4
-Public Const CF_DIF = 5
-Public Const CF_TIFF = 6
-Public Const CF_OEMTEXT = 7
-Public Const CF_DIB = 8
-Public Const CF_PALETTE = 9
-Public Const CF_PENDATA = 10
-Public Const CF_RIFF = 11
-Public Const CF_WAVE = 12
-Public Const CF_UNICODETEXT = 13
-Public Const CF_ENHMETAFILE = 14
+'~dup Public Const CF_TEXT = 1   ' повтор, первое: rapidq2.inc(909)
+'~dup Public Const CF_BITMAP = 2   ' повтор, первое: rapidq2.inc(910)
+'~dup Public Const CF_METAFILEPICT = 3   ' повтор, первое: rapidq2.inc(911)
+'~dup Public Const CF_SYLK = 4   ' повтор, первое: rapidq2.inc(912)
+'~dup Public Const CF_DIF = 5   ' повтор, первое: rapidq2.inc(913)
+'~dup Public Const CF_TIFF = 6   ' повтор, первое: rapidq2.inc(914)
+'~dup Public Const CF_OEMTEXT = 7   ' повтор, первое: rapidq2.inc(915)
+'~dup Public Const CF_DIB = 8   ' повтор, первое: rapidq2.inc(916)
+'~dup Public Const CF_PALETTE = 9   ' повтор, первое: rapidq2.inc(917)
+'~dup Public Const CF_PENDATA = 10   ' повтор, первое: rapidq2.inc(918)
+'~dup Public Const CF_RIFF = 11   ' повтор, первое: rapidq2.inc(919)
+'~dup Public Const CF_WAVE = 12   ' повтор, первое: rapidq2.inc(920)
+'~dup Public Const CF_UNICODETEXT = 13   ' повтор, первое: rapidq2.inc(921)
+'~dup Public Const CF_ENHMETAFILE = 14   ' повтор, первое: rapidq2.inc(922)
 
 Public Const CF_OWNERDISPLAY = &H80
 Public Const CF_DSPTEXT = &H81
@@ -41260,7 +41189,7 @@ End Type
 '~dup Public Const WPF_RESTORETOMAXIMIZED = &H2   ' повтор, первое: Form.inc(22)
 
 ' Owner draw control types
-'~dup Public Const ODT_MENU = 1   ' повтор, первое: Api.inc(3)
+'~dup Public Const ODT_MENU = 1   ' повтор, первое: rapidq2.inc(1513)
 Public Const ODT_LISTBOX = 2
 Public Const ODT_COMBOBOX = 3
 Public Const ODT_BUTTON = 4
@@ -41271,11 +41200,11 @@ Public Const ODA_SELECT = &H2
 Public Const ODA_FOCUS = &H4
 
 ' Owner draw state
-'~dup Public Const ODS_SELECTED = &H1   ' повтор, первое: Api.inc(5)
-'~dup Public Const ODS_GRAYED = &H2   ' повтор, первое: Api.inc(6)
-'~dup Public Const ODS_DISABLED = &H4   ' повтор, первое: Api.inc(7)
-'~dup Public Const ODS_CHECKED = &H8   ' повтор, первое: Api.inc(8)
-'~dup Public Const ODS_FOCUS = &H10   ' повтор, первое: Api.inc(9)
+'~dup Public Const ODS_SELECTED = &H1   ' повтор, первое: rapidq2.inc(1514)
+'~dup Public Const ODS_GRAYED = &H2   ' повтор, первое: rapidq2.inc(1515)
+'~dup Public Const ODS_DISABLED = &H4   ' повтор, первое: rapidq2.inc(1516)
+'~dup Public Const ODS_CHECKED = &H8   ' повтор, первое: rapidq2.inc(1517)
+'~dup Public Const ODS_FOCUS = &H10   ' повтор, первое: rapidq2.inc(1518)
 
 ' MEASUREITEMSTRUCT for ownerdraw
 '~dup Type MEASUREITEMSTRUCT   ' повтор, первое: rapidq2.inc(1563)
@@ -41341,10 +41270,10 @@ Public Const MOD_SHIFT = &H4
 Public Const IDHOT_SNAPWINDOW = (-1)    '  SHIFT-PRINTSCRN
 Public Const IDHOT_SNAPDESKTOP = (-2)    '  PRINTSCRN
 
-Public Const EWX_LOGOFF = 0
-Public Const EWX_SHUTDOWN = 1
-Public Const EWX_REBOOT = 2
-Public Const EWX_FORCE = 4
+'~dup Public Const EWX_LOGOFF = 0   ' повтор, первое: rapidq2.inc(1335)
+'~dup Public Const EWX_SHUTDOWN = 1   ' повтор, первое: rapidq2.inc(1336)
+'~dup Public Const EWX_REBOOT = 2   ' повтор, первое: rapidq2.inc(1337)
+'~dup Public Const EWX_FORCE = 4   ' повтор, первое: rapidq2.inc(1338)
 
 Public Const READAPI = 0        '  Flags for _lopen
 Public Const WRITEAPI = 1
@@ -41426,13 +41355,13 @@ Declare Function EndDeferWindowPos Lib "user32" Alias "EndDeferWindowPos" (ByVal
 '~dup Declare Function IsZoomed Lib "user32" Alias "IsZoomed" (ByVal hwnd As Long) As Long   ' повтор, первое: rapidq2.inc(1005)
 
 ' SetWindowPos Flags
-'~dup Public Const SWP_NOSIZE = &H1   ' повтор, первое: StayOnTop.inc(12)
-'~dup Public Const SWP_NOMOVE = &H2   ' повтор, первое: StayOnTop.inc(11)
-Public Const SWP_NOZORDER = &H4
+'~dup Public Const SWP_NOSIZE = &H1   ' повтор, первое: rapidq2.inc(791)
+'~dup Public Const SWP_NOMOVE = &H2   ' повтор, первое: rapidq2.inc(792)
+'~dup Public Const SWP_NOZORDER = &H4   ' повтор, первое: rapidq2.inc(793)
 Public Const SWP_NOREDRAW = &H8
-'~dup Public Const SWP_NOACTIVATE = &H10   ' повтор, первое: WFunctions.inc(5)
+'~dup Public Const SWP_NOACTIVATE = &H10   ' повтор, первое: rapidq2.inc(794)
 Public Const SWP_FRAMECHANGED = &H20        '  The frame changed: send WM_NCCALCSIZE
-'~dup Public Const SWP_SHOWWINDOW = &H40   ' повтор, первое: WFunctions.inc(6)
+'~dup Public Const SWP_SHOWWINDOW = &H40   ' повтор, первое: rapidq2.inc(795)
 Public Const SWP_HIDEWINDOW = &H80
 Public Const SWP_NOCOPYBITS = &H100
 Public Const SWP_NOOWNERZORDER = &H200      '  Don't do owner Z ordering
@@ -41441,8 +41370,8 @@ Public Const SWP_DRAWFRAME = SWP_FRAMECHANGED
 Public Const SWP_NOREPOSITION = SWP_NOOWNERZORDER
 
 ' SetWindowPos() hwndInsertAfter values
-Public Const HWND_TOP = 0
-Public Const HWND_BOTTOM = 1
+'~dup Public Const HWND_TOP = 0   ' повтор, первое: rapidq2.inc(787)
+'~dup Public Const HWND_BOTTOM = 1   ' повтор, первое: rapidq2.inc(788)
 '~dup Public Const HWND_TOPMOST = -1   ' повтор, первое: rapidq2.inc(785)
 '~dup Public Const HWND_NOTOPMOST = -2   ' повтор, первое: rapidq2.inc(786)
 
@@ -41597,51 +41526,51 @@ Declare Function CopyAcceleratorTable Lib "user32" Alias "CopyAcceleratorTableA"
 Declare Function TranslateAccelerator Lib "user32" Alias "TranslateAcceleratorA" (ByVal hwnd As Long, ByVal hAccTable As Long, lpMsg As MSG) As Long
 
 ' GetSystemMetrics() codes
-'~dup Public Const SM_CXSCREEN = 0   ' повтор, первое: User32.inc(137)
-'~dup Public Const SM_CYSCREEN = 1   ' повтор, первое: User32.inc(138)
-'~dup Public Const SM_CXVSCROLL = 2   ' повтор, первое: User32.inc(139)
-'~dup Public Const SM_CYHSCROLL = 3   ' повтор, первое: User32.inc(140)
-'~dup Public Const SM_CYCAPTION = 4   ' повтор, первое: QFormSkin.inc(114)
-'~dup Public Const SM_CXBORDER = 5   ' повтор, первое: QFormSkin.inc(115)
-'~dup Public Const SM_CYBORDER = 6   ' повтор, первое: QFormSkin.inc(116)
-'~dup Public Const SM_CXDLGFRAME = 7   ' повтор, первое: QFormSkin.inc(117)
-'~dup Public Const SM_CYDLGFRAME = 8   ' повтор, первое: QFormSkin.inc(118)
-'~dup Public Const SM_CYVTHUMB = 9   ' повтор, первое: User32.inc(146)
-'~dup Public Const SM_CXHTHUMB = 10   ' повтор, первое: User32.inc(147)
-'~dup Public Const SM_CXICON = 11   ' повтор, первое: User32.inc(148)
-'~dup Public Const SM_CYICON = 12   ' повтор, первое: User32.inc(149)
-'~dup Public Const SM_CXCURSOR = 13   ' повтор, первое: User32.inc(150)
-'~dup Public Const SM_CYCURSOR = 14   ' повтор, первое: User32.inc(151)
-'~dup Public Const SM_CYMENU = 15   ' повтор, первое: User32.inc(152)
-'~dup Public Const SM_CXFULLSCREEN = 16   ' повтор, первое: User32.inc(153)
-'~dup Public Const SM_CYFULLSCREEN = 17   ' повтор, первое: User32.inc(154)
-'~dup Public Const SM_CYKANJIWINDOW = 18   ' повтор, первое: User32.inc(155)
-'~dup Public Const SM_MOUSEPRESENT = 19   ' повтор, первое: User32.inc(156)
-'~dup Public Const SM_CYVSCROLL = 20   ' повтор, первое: User32.inc(157)
-'~dup Public Const SM_CXHSCROLL = 21   ' повтор, первое: User32.inc(158)
-'~dup Public Const SM_DEBUG = 22   ' повтор, первое: User32.inc(159)
-'~dup Public Const SM_SWAPBUTTON = 23   ' повтор, первое: User32.inc(160)
-'~dup Public Const SM_RESERVED1 = 24   ' повтор, первое: User32.inc(161)
-'~dup Public Const SM_RESERVED2 = 25   ' повтор, первое: User32.inc(162)
-'~dup Public Const SM_RESERVED3 = 26   ' повтор, первое: User32.inc(163)
-'~dup Public Const SM_RESERVED4 = 27   ' повтор, первое: User32.inc(164)
-'~dup Public Const SM_CXMIN = 28   ' повтор, первое: User32.inc(165)
-'~dup Public Const SM_CYMIN = 29   ' повтор, первое: User32.inc(166)
-'~dup Public Const SM_CXSIZE = 30   ' повтор, первое: QFormSkin.inc(119)
-'~dup Public Const SM_CYSIZE = 31   ' повтор, первое: QFormSkin.inc(120)
-'~dup Public Const SM_CXFRAME = 32   ' повтор, первое: QFormSkin.inc(121)
-'~dup Public Const SM_CYFRAME = 33   ' повтор, первое: QFormSkin.inc(122)
-'~dup Public Const SM_CXMINTRACK = 34   ' повтор, первое: User32.inc(171)
-'~dup Public Const SM_CYMINTRACK = 35   ' повтор, первое: User32.inc(172)
-'~dup Public Const SM_CXDOUBLECLK = 36   ' повтор, первое: User32.inc(173)
-'~dup Public Const SM_CYDOUBLECLK = 37   ' повтор, первое: User32.inc(174)
-'~dup Public Const SM_CXICONSPACING = 38   ' повтор, первое: User32.inc(175)
-'~dup Public Const SM_CYICONSPACING = 39   ' повтор, первое: User32.inc(176)
-'~dup Public Const SM_MENUDROPALIGNMENT = 40   ' повтор, первое: User32.inc(177)
-'~dup Public Const SM_PENWINDOWS = 41   ' повтор, первое: User32.inc(178)
-'~dup Public Const SM_DBCSENABLED = 42   ' повтор, первое: User32.inc(179)
-'~dup Public Const SM_CMOUSEBUTTONS = 43   ' повтор, первое: User32.inc(180)
-'~dup Public Const SM_CMETRICS = 44   ' повтор, первое: User32.inc(181)
+'~dup Public Const SM_CXSCREEN = 0   ' повтор, первое: rapidq2.inc(2112)
+'~dup Public Const SM_CYSCREEN = 1   ' повтор, первое: rapidq2.inc(2113)
+'~dup Public Const SM_CXVSCROLL = 2   ' повтор, первое: rapidq2.inc(2114)
+'~dup Public Const SM_CYHSCROLL = 3   ' повтор, первое: rapidq2.inc(2115)
+'~dup Public Const SM_CYCAPTION = 4   ' повтор, первое: rapidq2.inc(2116)
+'~dup Public Const SM_CXBORDER = 5   ' повтор, первое: rapidq2.inc(2117)
+'~dup Public Const SM_CYBORDER = 6   ' повтор, первое: rapidq2.inc(2118)
+'~dup Public Const SM_CXDLGFRAME = 7   ' повтор, первое: rapidq2.inc(2119)
+'~dup Public Const SM_CYDLGFRAME = 8   ' повтор, первое: rapidq2.inc(2120)
+'~dup Public Const SM_CYVTHUMB = 9   ' повтор, первое: rapidq2.inc(2121)
+'~dup Public Const SM_CXHTHUMB = 10   ' повтор, первое: rapidq2.inc(2122)
+'~dup Public Const SM_CXICON = 11   ' повтор, первое: rapidq2.inc(2123)
+'~dup Public Const SM_CYICON = 12   ' повтор, первое: rapidq2.inc(2124)
+'~dup Public Const SM_CXCURSOR = 13   ' повтор, первое: rapidq2.inc(2125)
+'~dup Public Const SM_CYCURSOR = 14   ' повтор, первое: rapidq2.inc(2126)
+'~dup Public Const SM_CYMENU = 15   ' повтор, первое: rapidq2.inc(2127)
+'~dup Public Const SM_CXFULLSCREEN = 16   ' повтор, первое: rapidq2.inc(2128)
+'~dup Public Const SM_CYFULLSCREEN = 17   ' повтор, первое: rapidq2.inc(2129)
+'~dup Public Const SM_CYKANJIWINDOW = 18   ' повтор, первое: rapidq2.inc(2130)
+'~dup Public Const SM_MOUSEPRESENT = 19   ' повтор, первое: rapidq2.inc(2131)
+'~dup Public Const SM_CYVSCROLL = 20   ' повтор, первое: rapidq2.inc(2132)
+'~dup Public Const SM_CXHSCROLL = 21   ' повтор, первое: rapidq2.inc(2133)
+'~dup Public Const SM_DEBUG = 22   ' повтор, первое: rapidq2.inc(2134)
+'~dup Public Const SM_SWAPBUTTON = 23   ' повтор, первое: rapidq2.inc(2135)
+'~dup Public Const SM_RESERVED1 = 24   ' повтор, первое: rapidq2.inc(2136)
+'~dup Public Const SM_RESERVED2 = 25   ' повтор, первое: rapidq2.inc(2137)
+'~dup Public Const SM_RESERVED3 = 26   ' повтор, первое: rapidq2.inc(2138)
+'~dup Public Const SM_RESERVED4 = 27   ' повтор, первое: rapidq2.inc(2139)
+'~dup Public Const SM_CXMIN = 28   ' повтор, первое: rapidq2.inc(2140)
+'~dup Public Const SM_CYMIN = 29   ' повтор, первое: rapidq2.inc(2141)
+'~dup Public Const SM_CXSIZE = 30   ' повтор, первое: rapidq2.inc(2142)
+'~dup Public Const SM_CYSIZE = 31   ' повтор, первое: rapidq2.inc(2143)
+'~dup Public Const SM_CXFRAME = 32   ' повтор, первое: rapidq2.inc(2144)
+'~dup Public Const SM_CYFRAME = 33   ' повтор, первое: rapidq2.inc(2145)
+'~dup Public Const SM_CXMINTRACK = 34   ' повтор, первое: rapidq2.inc(2146)
+'~dup Public Const SM_CYMINTRACK = 35   ' повтор, первое: rapidq2.inc(2147)
+'~dup Public Const SM_CXDOUBLECLK = 36   ' повтор, первое: rapidq2.inc(2148)
+'~dup Public Const SM_CYDOUBLECLK = 37   ' повтор, первое: rapidq2.inc(2149)
+'~dup Public Const SM_CXICONSPACING = 38   ' повтор, первое: rapidq2.inc(2150)
+'~dup Public Const SM_CYICONSPACING = 39   ' повтор, первое: rapidq2.inc(2151)
+'~dup Public Const SM_MENUDROPALIGNMENT = 40   ' повтор, первое: rapidq2.inc(2152)
+'~dup Public Const SM_PENWINDOWS = 41   ' повтор, первое: rapidq2.inc(2153)
+'~dup Public Const SM_DBCSENABLED = 42   ' повтор, первое: rapidq2.inc(2154)
+'~dup Public Const SM_CMOUSEBUTTONS = 43   ' повтор, первое: rapidq2.inc(2155)
+'~dup Public Const SM_CMETRICS = 44   ' повтор, первое: rapidq2.inc(2156)
 '~dup Public Const SM_CXSIZEFRAME = SM_CXFRAME   ' повтор, первое: rapidq2.inc(2157)
 '~dup Public Const SM_CYSIZEFRAME = SM_CYFRAME   ' повтор, первое: rapidq2.inc(2158)
 '~dup Public Const SM_CXFIXEDFRAME = SM_CXDLGFRAME    ' повтор, первое: rapidq2.inc(2159)
@@ -41884,20 +41813,20 @@ Declare Function ChildWindowFromPoint Lib "user32" Alias "ChildWindowFromPoint" 
 '~dup Public Const COLOR_BACKGROUND = 1   ' повтор, первое: constants.inc(13)
 '~dup Public Const COLOR_ACTIVECAPTION = 2   ' повтор, первое: constants.inc(14)
 '~dup Public Const COLOR_INACTIVECAPTION = 3   ' повтор, первое: constants.inc(15)
-'~dup Public Const COLOR_MENU = 4   ' повтор, первое: constants.inc(16)
+'~dup Public Const COLOR_MENU = 4   ' повтор, первое: rapidq2.inc(1531)
 '~dup Public Const COLOR_WINDOW = 5   ' повтор, первое: constants.inc(17)
 '~dup Public Const COLOR_WINDOWFRAME = 6   ' повтор, первое: constants.inc(18)
-'~dup Public Const COLOR_MENUTEXT = 7   ' повтор, первое: constants.inc(19)
+'~dup Public Const COLOR_MENUTEXT = 7   ' повтор, первое: rapidq2.inc(1532)
 '~dup Public Const COLOR_WINDOWTEXT = 8   ' повтор, первое: constants.inc(20)
 '~dup Public Const COLOR_CAPTIONTEXT = 9   ' повтор, первое: constants.inc(21)
 '~dup Public Const COLOR_ACTIVEBORDER = 10   ' повтор, первое: constants.inc(22)
 '~dup Public Const COLOR_INACTIVEBORDER = 11   ' повтор, первое: constants.inc(23)
 '~dup Public Const COLOR_APPWORKSPACE = 12   ' повтор, первое: constants.inc(24)
-'~dup Public Const COLOR_HIGHLIGHT = 13   ' повтор, первое: constants.inc(25)
-'~dup Public Const COLOR_HIGHLIGHTTEXT = 14   ' повтор, первое: constants.inc(26)
+'~dup Public Const COLOR_HIGHLIGHT = 13   ' повтор, первое: rapidq2.inc(1533)
+'~dup Public Const COLOR_HIGHLIGHTTEXT = 14   ' повтор, первое: rapidq2.inc(1534)
 '~dup Public Const COLOR_BTNFACE = 15   ' повтор, первое: constants.inc(27)
 '~dup Public Const COLOR_BTNSHADOW = 16   ' повтор, первое: constants.inc(28)
-'~dup Public Const COLOR_GRAYTEXT = 17   ' повтор, первое: constants.inc(29)
+'~dup Public Const COLOR_GRAYTEXT = 17   ' повтор, первое: rapidq2.inc(1535)
 '~dup Public Const COLOR_BTNTEXT = 18   ' повтор, первое: constants.inc(30)
 '~dup Public Const COLOR_INACTIVECAPTIONTEXT = 19   ' повтор, первое: constants.inc(31)
 '~dup Public Const COLOR_BTNHIGHLIGHT = 20   ' повтор, первое: constants.inc(32)
@@ -41963,29 +41892,29 @@ Declare Function CallNextHookEx Lib "user32" Alias "CallNextHookEx" (ByVal hHook
 '~dup Public Const MF_DELETE = &H200&   ' повтор, первое: ODMenuXP.inc(558)
 '~dup Public Const MF_REMOVE = &H1000&   ' повтор, первое: ODMenuXP.inc(581)
 
-'~dup Public Const MF_BYCOMMAND = &H0&   ' повтор, первое: Api.inc(17)
-'~dup Public Const MF_BYPOSITION = &H400&   ' повтор, первое: Api.inc(18)
+'~dup Public Const MF_BYCOMMAND = &H0&   ' повтор, первое: rapidq2.inc(1522)
+'~dup Public Const MF_BYPOSITION = &H400&   ' повтор, первое: rapidq2.inc(1523)
 
 '~dup Public Const MF_SEPARATOR = &H800&   ' повтор, первое: ODMenuXP.inc(584)
 
 '~dup Public Const MF_ENABLED = &H0&   ' повтор, первое: ODMenuXP.inc(561)
-'~dup Public Const MF_GRAYED = &H1&   ' повтор, первое: ODMenuXP.inc(568)
-'~dup Public Const MF_DISABLED = &H2&   ' повтор, первое: ODMenuXP.inc(559)
+'~dup Public Const MF_GRAYED = &H1&   ' повтор, первое: rapidq2.inc(1525)
+'~dup Public Const MF_DISABLED = &H2&   ' повтор, первое: rapidq2.inc(1526)
 
 '~dup Public Const MF_UNCHECKED = &H0&   ' повтор, первое: ODMenuXP.inc(587)
 '~dup Public Const MF_CHECKED = &H8&   ' повтор, первое: ODMenuXP.inc(555)
 '~dup Public Const MF_USECHECKBITMAPS = &H200&   ' повтор, первое: ODMenuXP.inc(589)
 
-'~dup Public Const MF_STRING = &H0&   ' повтор, первое: Api.inc(20)
-'~dup Public Const MF_BITMAP = &H4&   ' повтор, первое: Api.inc(21)
-'~dup Public Const MF_OWNERDRAW = &H100&   ' повтор, первое: Api.inc(19)
+'~dup Public Const MF_STRING = &H0&   ' повтор, первое: rapidq2.inc(1527)
+'~dup Public Const MF_BITMAP = &H4&   ' повтор, первое: rapidq2.inc(1528)
+'~dup Public Const MF_OWNERDRAW = &H100&   ' повтор, первое: rapidq2.inc(1524)
 
 '~dup Public Const MF_POPUP = &H10&   ' повтор, первое: ODMenuXP.inc(579)
 '~dup Public Const MF_MENUBARBREAK = &H20&   ' повтор, первое: ODMenuXP.inc(575)
 '~dup Public Const MF_MENUBREAK = &H40&   ' повтор, первое: ODMenuXP.inc(576)
 
 '~dup Public Const MF_UNHILITE = &H0&   ' повтор, первое: ODMenuXP.inc(588)
-'~dup Public Const MF_HILITE = &H80&   ' повтор, первое: Api.inc(22)
+'~dup Public Const MF_HILITE = &H80&   ' повтор, первое: rapidq2.inc(1529)
 
 '~dup Public Const MF_SYSMENU = &H2000&   ' повтор, первое: ODMenuXP.inc(586)
 '~dup Public Const MF_HELP = &H4000&   ' повтор, первое: ODMenuXP.inc(569)
@@ -42008,7 +41937,7 @@ End Type
 ' System Menu Command Values
 Public Const SC_SIZE = &HF000
 Public Const SC_MOVE = &HF010
-'~dup Public Const SC_MINIMIZE = &HF020   ' повтор, первое: MDI_API.INC(87)
+'~dup Public Const SC_MINIMIZE = &HF020   ' повтор, первое: rapidq2.inc(868)
 Public Const SC_MAXIMIZE = &HF030
 Public Const SC_NEXTWINDOW = &HF040
 Public Const SC_PREVWINDOW = &HF050
@@ -44077,7 +44006,7 @@ Public Const CO_E_INIT_SCM_FILE_MAPPING_EXISTS = &H8000400F
 Public Const CO_E_INIT_SCM_MAP_VIEW_OF_FILE = &H80004010
 Public Const CO_E_INIT_SCM_EXEC_FAILURE = &H80004011
 Public Const CO_E_INIT_ONLY_SINGLE_THREADED = &H80004012
-Public Const S_OK = &H0
+'~dup Public Const S_OK = &H0   ' повтор, первое: ole.inc(40)
 Public Const S_FALSE = &H1
 Public Const OLE_E_FIRST = &H80040000
 Public Const OLE_E_LAST = &H800400FF
@@ -48559,21 +48488,21 @@ Type PERF_COUNTER_BLOCK
         ByteLength As Long
 End Type
 
-Public Const CDERR_DIALOGFAILURE = &HFFFF
+'~dup Public Const CDERR_DIALOGFAILURE = &HFFFF   ' повтор, первое: rapidq2.inc(1703)
 
-Public Const CDERR_GENERALCODES = &H0
-Public Const CDERR_STRUCTSIZE = &H1
-Public Const CDERR_INITIALIZATION = &H2
-Public Const CDERR_NOTEMPLATE = &H3
-Public Const CDERR_NOHINSTANCE = &H4
-Public Const CDERR_LOADSTRFAILURE = &H5
-Public Const CDERR_FINDRESFAILURE = &H6
-Public Const CDERR_LOADRESFAILURE = &H7
-Public Const CDERR_LOCKRESFAILURE = &H8
-Public Const CDERR_MEMALLOCFAILURE = &H9
-Public Const CDERR_MEMLOCKFAILURE = &HA
-Public Const CDERR_NOHOOK = &HB
-Public Const CDERR_REGISTERMSGFAIL = &HC
+'~dup Public Const CDERR_GENERALCODES = &H0   ' повтор, первое: rapidq2.inc(1705)
+'~dup Public Const CDERR_STRUCTSIZE = &H1   ' повтор, первое: rapidq2.inc(1706)
+'~dup Public Const CDERR_INITIALIZATION = &H2   ' повтор, первое: rapidq2.inc(1707)
+'~dup Public Const CDERR_NOTEMPLATE = &H3   ' повтор, первое: rapidq2.inc(1708)
+'~dup Public Const CDERR_NOHINSTANCE = &H4   ' повтор, первое: rapidq2.inc(1709)
+'~dup Public Const CDERR_LOADSTRFAILURE = &H5   ' повтор, первое: rapidq2.inc(1710)
+'~dup Public Const CDERR_FINDRESFAILURE = &H6   ' повтор, первое: rapidq2.inc(1711)
+'~dup Public Const CDERR_LOADRESFAILURE = &H7   ' повтор, первое: rapidq2.inc(1712)
+'~dup Public Const CDERR_LOCKRESFAILURE = &H8   ' повтор, первое: rapidq2.inc(1713)
+'~dup Public Const CDERR_MEMALLOCFAILURE = &H9   ' повтор, первое: rapidq2.inc(1714)
+'~dup Public Const CDERR_MEMLOCKFAILURE = &HA   ' повтор, первое: rapidq2.inc(1715)
+'~dup Public Const CDERR_NOHOOK = &HB   ' повтор, первое: rapidq2.inc(1716)
+'~dup Public Const CDERR_REGISTERMSGFAIL = &HC   ' повтор, первое: rapidq2.inc(1717)
 
 Public Const PDERR_PRINTERCODES = &H1000
 Public Const PDERR_SETUPFAILURE = &H1001
@@ -49104,7 +49033,7 @@ Public Const ABM_REMOVE = &H1
 Public Const ABM_QUERYPOS = &H2
 Public Const ABM_SETPOS = &H3
 Public Const ABM_GETSTATE = &H4
-Public Const ABM_GETTASKBARPOS = &H5
+'~dup Public Const ABM_GETTASKBARPOS = &H5   ' повтор, первое: QFormLocale.inc(68)
 Public Const ABM_ACTIVATE = &H6               '  lParam == TRUE/FALSE means activate/deactivate
 Public Const ABM_GETAUTOHIDEBAR = &H7
 Public Const ABM_SETAUTOHIDEBAR = &H8          '  this can fail at any time.  MUST check the result
@@ -49123,10 +49052,10 @@ Public Const ABN_WINDOWARRANGE = &H3 '  lParam == TRUE means hide
 
 Public Const ABS_AUTOHIDE = &H1
 Public Const ABS_ALWAYSONTOP = &H2
-Public Const ABE_LEFT = 0
-Public Const ABE_TOP = 1
-Public Const ABE_RIGHT = 2
-Public Const ABE_BOTTOM = 3
+'~dup Public Const ABE_LEFT = 0   ' повтор, первое: QFormLocale.inc(71)
+'~dup Public Const ABE_TOP = 1   ' повтор, первое: QFormLocale.inc(74)
+'~dup Public Const ABE_RIGHT = 2   ' повтор, первое: QFormLocale.inc(77)
+'~dup Public Const ABE_BOTTOM = 3   ' повтор, первое: QFormLocale.inc(80)
 
 '~dup Type APPBARDATA   ' повтор, первое: QFormLocale.inc(94)
 '~dup         cbSize As Long
@@ -49269,13 +49198,13 @@ Type NOTIFYICONDATA
         szTip As String * 64
 End Type
 
-Public Const NIM_ADD = &H0
-Public Const NIM_MODIFY = &H1
-Public Const NIM_DELETE = &H2
+'~dup Public Const NIM_ADD = &H0   ' повтор, первое: rapidq2.inc(799)
+'~dup Public Const NIM_MODIFY = &H1   ' повтор, первое: rapidq2.inc(800)
+'~dup Public Const NIM_DELETE = &H2   ' повтор, первое: rapidq2.inc(801)
 
-Public Const NIF_MESSAGE = &H1
-Public Const NIF_ICON = &H2
-Public Const NIF_TIP = &H4
+'~dup Public Const NIF_MESSAGE = &H1   ' повтор, первое: rapidq2.inc(802)
+'~dup Public Const NIF_ICON = &H2   ' повтор, первое: rapidq2.inc(803)
+'~dup Public Const NIF_TIP = &H4   ' повтор, первое: rapidq2.inc(804)
 
 '~dup Declare Function Shell_NotifyIcon Lib "shell32.dll" Alias " Shell_NotifyIconA" (ByVal dwMessage As Long, lpData As NOTIFYICONDATA) As Long   ' повтор, первое: rapidq2.inc(1054)
 
@@ -49614,26 +49543,26 @@ Declare Function CreateProcessAsUser Lib "kernel32" Alias "CreateProcessAsUserA"
 
 '  dwPlatformId defines:
 '
-Public Const VER_PLATFORM_WIN32s = 0
-Public Const VER_PLATFORM_WIN32_WINDOWS = 1
-Public Const VER_PLATFORM_WIN32_NT = 2
+'~dup Public Const VER_PLATFORM_WIN32s = 0   ' повтор, первое: rapidq2.inc(2064)
+'~dup Public Const VER_PLATFORM_WIN32_WINDOWS = 1   ' повтор, первое: rapidq2.inc(2065)
+'~dup Public Const VER_PLATFORM_WIN32_NT = 2   ' повтор, первое: rapidq2.inc(2066)
 
 '~dup Declare Function GetVersionEx Lib "kernel32" Alias "GetVersionExA" (ByVal lpVersionInformation As OSVERSIONINFO) As Long   ' повтор, первое: rapidq2.inc(2067)
 
 '  Power Management APIs
 
-Public Const AC_LINE_OFFLINE = &H0
-Public Const AC_LINE_ONLINE = &H1
-Public Const AC_LINE_BACKUP_POWER = &H2
-Public Const AC_LINE_UNKNOWN = &HFF
-Public Const BATTERY_FLAG_HIGH = &H1
-Public Const BATTERY_FLAG_LOW = &H2
-Public Const BATTERY_FLAG_CRITICAL = &H4
-Public Const BATTERY_FLAG_CHARGING = &H8
-Public Const BATTERY_FLAG_NO_BATTERY = &H80
-Public Const BATTERY_FLAG_UNKNOWN = &HFF
-Public Const BATTERY_PERCENTAGE_UNKNOWN = &HFF
-Public Const BATTERY_LIFE_UNKNOWN = &HFFFF
+'~dup Public Const AC_LINE_OFFLINE = &H0   ' повтор, первое: rapidq2.inc(2071)
+'~dup Public Const AC_LINE_ONLINE = &H1   ' повтор, первое: rapidq2.inc(2072)
+'~dup Public Const AC_LINE_BACKUP_POWER = &H2   ' повтор, первое: rapidq2.inc(2073)
+'~dup Public Const AC_LINE_UNKNOWN = &HFF   ' повтор, первое: rapidq2.inc(2074)
+'~dup Public Const BATTERY_FLAG_HIGH = &H1   ' повтор, первое: rapidq2.inc(2075)
+'~dup Public Const BATTERY_FLAG_LOW = &H2   ' повтор, первое: rapidq2.inc(2076)
+'~dup Public Const BATTERY_FLAG_CRITICAL = &H4   ' повтор, первое: rapidq2.inc(2077)
+'~dup Public Const BATTERY_FLAG_CHARGING = &H8   ' повтор, первое: rapidq2.inc(2078)
+'~dup Public Const BATTERY_FLAG_NO_BATTERY = &H80   ' повтор, первое: rapidq2.inc(2079)
+'~dup Public Const BATTERY_FLAG_UNKNOWN = &HFF   ' повтор, первое: rapidq2.inc(2080)
+'~dup Public Const BATTERY_PERCENTAGE_UNKNOWN = &HFF   ' повтор, первое: rapidq2.inc(2081)
+'~dup Public Const BATTERY_LIFE_UNKNOWN = &HFFFF   ' повтор, первое: rapidq2.inc(2082)
 
 '~dup Type SYSTEM_POWER_STATUS   ' повтор, первое: rapidq2.inc(2084)
 '~dup         ACLineStatus As Byte
@@ -49762,15 +49691,15 @@ Public Const CDM_SETDEFEXT = (CDM_FIRST + &H6)
 
 Declare Function ChooseColorDlg Lib "comdlg32.dll" Alias "ChooseColorA" (pChoosecolor As CHOOSECOLOR) As Long
 
-Public Const CC_RGBINIT = &H1
-Public Const CC_FULLOPEN = &H2
-Public Const CC_PREVENTFULLOPEN = &H4
-Public Const CC_SHOWHELP = &H8
-Public Const CC_ENABLEHOOK = &H10
-Public Const CC_ENABLETEMPLATE = &H20
-Public Const CC_ENABLETEMPLATEHANDLE = &H40
-Public Const CC_SOLIDCOLOR = &H80
-Public Const CC_ANYCOLOR = &H100
+'~dup Public Const CC_RGBINIT = &H1   ' повтор, первое: rapidq2.inc(1624)
+'~dup Public Const CC_FULLOPEN = &H2   ' повтор, первое: rapidq2.inc(1625)
+'~dup Public Const CC_PREVENTFULLOPEN = &H4   ' повтор, первое: rapidq2.inc(1626)
+'~dup Public Const CC_SHOWHELP = &H8   ' повтор, первое: rapidq2.inc(1627)
+'~dup Public Const CC_ENABLEHOOK = &H10   ' повтор, первое: rapidq2.inc(1628)
+'~dup Public Const CC_ENABLETEMPLATE = &H20   ' повтор, первое: rapidq2.inc(1629)
+'~dup Public Const CC_ENABLETEMPLATEHANDLE = &H40   ' повтор, первое: rapidq2.inc(1630)
+'~dup Public Const CC_SOLIDCOLOR = &H80   ' повтор, первое: rapidq2.inc(1631)
+'~dup Public Const CC_ANYCOLOR = &H100   ' повтор, первое: rapidq2.inc(1632)
 
 Type FINDREPLACE
         lStructSize As Long        '  size of this struct 0x20
@@ -49975,25 +49904,25 @@ End Type
 
 '~dup Declare Function PageSetupDlg Lib "comdlg32.dll" Alias "PageSetupDlgA" (pPagesetupdlg As TPAGESETUPDLG) As Long   ' повтор, первое: rapidq2.inc(7261)
 
-'~dup Public Const PSD_DEFAULTMINMARGINS = &H0 '  default (printer's)   ' повтор, первое: printdlg.inc(3)
+'~dup Public Const PSD_DEFAULTMINMARGINS = &H0 '  default (printer's)   ' повтор, первое: rapidq2.inc(7210)
 Public Const PSD_INWININIINTLMEASURE = &H0 '  1st of 4 possible
 
-'~dup Public Const PSD_MINMARGINS = &H1 '  use caller's   ' повтор, первое: printdlg.inc(4)
-'~dup Public Const PSD_MARGINS = &H2 '  use caller's   ' повтор, первое: printdlg.inc(5)
-'~dup Public Const PSD_INTHOUSANDTHSOFINCHES = &H4 '  2nd of 4 possible   ' повтор, первое: printdlg.inc(6)
-'~dup Public Const PSD_INHUNDREDTHSOFMILLIMETERS = &H8 '  3rd of 4 possible   ' повтор, первое: printdlg.inc(7)
-'~dup Public Const PSD_DISABLEMARGINS = &H10   ' повтор, первое: printdlg.inc(8)
-'~dup Public Const PSD_DISABLEPRINTER = &H20   ' повтор, первое: printdlg.inc(9)
-'~dup Public Const PSD_NOWARNING = &H80 '  must be same as PD_*   ' повтор, первое: printdlg.inc(10)
-'~dup Public Const PSD_DISABLEORIENTATION = &H100   ' повтор, первое: printdlg.inc(11)
-'~dup Public Const PSD_RETURNDEFAULT = &H400 '  must be same as PD_*   ' повтор, первое: printdlg.inc(13)
-'~dup Public Const PSD_DISABLEPAPER = &H200   ' повтор, первое: printdlg.inc(12)
-'~dup Public Const PSD_SHOWHELP = &H800 '  must be same as PD_*   ' повтор, первое: printdlg.inc(14)
-'~dup Public Const PSD_ENABLEPAGESETUPHOOK = &H2000 '  must be same as PD_*   ' повтор, первое: printdlg.inc(15)
-'~dup Public Const PSD_ENABLEPAGESETUPTEMPLATE = &H8000 '  must be same as PD_*   ' повтор, первое: printdlg.inc(16)
-'~dup Public Const PSD_ENABLEPAGESETUPTEMPLATEHANDLE = &H20000 '  must be same as PD_*   ' повтор, первое: printdlg.inc(17)
-'~dup Public Const PSD_ENABLEPAGEPAINTHOOK = &H40000   ' повтор, первое: printdlg.inc(18)
-'~dup Public Const PSD_DISABLEPAGEPAINTING = &H80000   ' повтор, первое: printdlg.inc(19)
+'~dup Public Const PSD_MINMARGINS = &H1 '  use caller's   ' повтор, первое: rapidq2.inc(7211)
+'~dup Public Const PSD_MARGINS = &H2 '  use caller's   ' повтор, первое: rapidq2.inc(7212)
+'~dup Public Const PSD_INTHOUSANDTHSOFINCHES = &H4 '  2nd of 4 possible   ' повтор, первое: rapidq2.inc(7213)
+'~dup Public Const PSD_INHUNDREDTHSOFMILLIMETERS = &H8 '  3rd of 4 possible   ' повтор, первое: rapidq2.inc(7214)
+'~dup Public Const PSD_DISABLEMARGINS = &H10   ' повтор, первое: rapidq2.inc(7215)
+'~dup Public Const PSD_DISABLEPRINTER = &H20   ' повтор, первое: rapidq2.inc(7216)
+'~dup Public Const PSD_NOWARNING = &H80 '  must be same as PD_*   ' повтор, первое: rapidq2.inc(7217)
+'~dup Public Const PSD_DISABLEORIENTATION = &H100   ' повтор, первое: rapidq2.inc(7218)
+'~dup Public Const PSD_RETURNDEFAULT = &H400 '  must be same as PD_*   ' повтор, первое: rapidq2.inc(7220)
+'~dup Public Const PSD_DISABLEPAPER = &H200   ' повтор, первое: rapidq2.inc(7219)
+'~dup Public Const PSD_SHOWHELP = &H800 '  must be same as PD_*   ' повтор, первое: rapidq2.inc(7221)
+'~dup Public Const PSD_ENABLEPAGESETUPHOOK = &H2000 '  must be same as PD_*   ' повтор, первое: rapidq2.inc(7222)
+'~dup Public Const PSD_ENABLEPAGESETUPTEMPLATE = &H8000 '  must be same as PD_*   ' повтор, первое: rapidq2.inc(7223)
+'~dup Public Const PSD_ENABLEPAGESETUPTEMPLATEHANDLE = &H20000 '  must be same as PD_*   ' повтор, первое: rapidq2.inc(7224)
+'~dup Public Const PSD_ENABLEPAGEPAINTHOOK = &H40000   ' повтор, первое: rapidq2.inc(7225)
+'~dup Public Const PSD_DISABLEPAGEPAINTING = &H80000   ' повтор, первое: rapidq2.inc(7226)
 
 Declare Function DdeInitialize Lib "user32" Alias "DdeInitializeA" (pidInst As Long, ByVal pfnCallback As Long, ByVal afCmd As Long, ByVal ulRes As Long) As Integer
 Declare Function SetServiceBits Lib "advapi32" Alias "SetServiceBits" (ByVal hServiceStatus As Long, ByVal dwServiceBits As Long, ByVal bSetBitsOn As Boolean, ByVal bUpdateImmediately As Boolean) As Long
@@ -51294,13 +51223,13 @@ End Type
 
 '~dup $define FILE_ATTRIBUTE_READONLY  &H1   ' повтор, первое: Files.inc(2)
 
-'~dup Public Const FILE_ATTRIBUTE_HIDDEN = &H2   ' повтор, первое: Files1.inc(2)
-'~dup Public Const FILE_ATTRIBUTE_SYSTEM = &H4   ' повтор, первое: Files1.inc(3)
-'~dup Public Const FILE_ATTRIBUTE_DIRECTORY = &H10   ' повтор, первое: Files1.inc(4)
-'~dup Public Const FILE_ATTRIBUTE_ARCHIVE = &H20   ' повтор, первое: Files1.inc(5)
+'~dup Public Const FILE_ATTRIBUTE_HIDDEN = &H2   ' повтор, первое: Files.inc(3)
+'~dup Public Const FILE_ATTRIBUTE_SYSTEM = &H4   ' повтор, первое: Files.inc(4)
+'~dup Public Const FILE_ATTRIBUTE_DIRECTORY = &H10   ' повтор, первое: Files.inc(5)
+'~dup Public Const FILE_ATTRIBUTE_ARCHIVE = &H20   ' повтор, первое: Files.inc(6)
 '~dup Public Const FILE_ATTRIBUTE_NORMAL = &H80   ' повтор, первое: rapidq2.inc(1866)
-'~dup Public Const FILE_ATTRIBUTE_TEMPORARY = &H100   ' повтор, первое: Files1.inc(7)
-'~dup Public Const FILE_ATTRIBUTE_COMPRESSED = &H800   ' повтор, первое: Files1.inc(8)
+'~dup Public Const FILE_ATTRIBUTE_TEMPORARY = &H100   ' повтор, первое: Files.inc(8)
+'~dup Public Const FILE_ATTRIBUTE_COMPRESSED = &H800   ' повтор, первое: Files.inc(9)
 '~dup Public Const FILE_NOTIFY_CHANGE_FILE_NAME = &H1   ' повтор, первое: WIN32API.INC(994)
 '~dup Public Const FILE_NOTIFY_CHANGE_DIR_NAME = &H2   ' повтор, первое: WIN32API.INC(995)
 '~dup Public Const FILE_NOTIFY_CHANGE_ATTRIBUTES = &H4   ' повтор, первое: WIN32API.INC(996)
@@ -51723,9 +51652,9 @@ End Type
 '  Privilege attributes
 '
 
-$DEFINE SE_PRIVILEGE_ENABLED_BY_DEFAULT &H1
+'~dup $DEFINE SE_PRIVILEGE_ENABLED_BY_DEFAULT &H1   ' повтор, первое: WIN32API.INC(1416)
 '~dup $DEFINE SE_PRIVILEGE_ENABLED  &H2   ' повтор, первое: rapidq2.inc(2195)
-$DEFINE SE_PRIVILEGE_USED_FOR_ACCESS  &H80000000
+'~dup $DEFINE SE_PRIVILEGE_USED_FOR_ACCESS  &H80000000   ' повтор, первое: WIN32API.INC(1418)
 
 '
 '  Privilege Set Control flags
@@ -51940,11 +51869,11 @@ $DEFINE SE_PRIVILEGE_USED_FOR_ACCESS  &H80000000
 '~dup Public Const DRIVE_CDROM = 5   ' повтор, первое: WIN32API.INC(1626)
 '~dup Public Const DRIVE_RAMDISK = 6   ' повтор, первое: WIN32API.INC(1627)
 
-'~dup Public Const FILE_TYPE_UNKNOWN = &H0   ' повтор, первое: WIN32API.INC(1629)
+'~dup Public Const FILE_TYPE_UNKNOWN = &H0   ' повтор, первое: Files.inc(17)
 '~dup $define FILE_TYPE_DISK  &H1   ' повтор, первое: Files.inc(15)
 '~dup $define  FILE_TYPE_CHAR  &H2   ' повтор, первое: Files.inc(14)
 '~dup $define  FILE_TYPE_PIPE  &H3   ' повтор, первое: Files.inc(16)
-$define  FILE_TYPE_REMOTE  &H8000
+'~dup $define  FILE_TYPE_REMOTE  &H8000   ' повтор, первое: WIN32API.INC(1633)
 
 '~dup Public Const STD_INPUT_HANDLE = -10&   ' повтор, первое: WIN32API.INC(1635)
 '~dup Public Const STD_OUTPUT_HANDLE = -11&   ' повтор, первое: WIN32API.INC(1636)
@@ -52100,22 +52029,22 @@ $define  FILE_TYPE_REMOTE  &H8000
 '~dup Public Const FILE_MAP_ALL_ACCESS = SECTION_ALL_ACCESS   ' повтор, первое: WIN32API.INC(1786)
 
 ' OpenFile() Flags
-$DEFINE OF_READ             &H0
-$DEFINE OF_WRITE            &H1
-$DEFINE OF_READWRITE        &H00000002
-$DEFINE OF_SHARE_COMPAT     &H00000000
-$DEFINE OF_SHARE_EXCLUSIVE  &H00000010
-$DEFINE OF_SHARE_DENY_WRITE &H20
-$DEFINE OF_SHARE_DENY_READ  &H00000030
-$DEFINE OF_SHARE_DENY_NONE  &H00000040
-$DEFINE OF_PARSE            &H00000100
-$DEFINE OF_DELETE           &H00000200
-$DEFINE OF_VERIFY           &H00000400
-$DEFINE OF_CANCEL           &H00000800
-$DEFINE OF_CREATE           &H1000
-$DEFINE OF_PROMPT           &H00002000
-$DEFINE OF_EXIST            &H00004000
-$DEFINE OF_REOPEN           &H00008000
+'~dup $DEFINE OF_READ             &H0   ' повтор, первое: WIN32API.INC(1789)
+'~dup $DEFINE OF_WRITE            &H1   ' повтор, первое: WIN32API.INC(1790)
+'~dup $DEFINE OF_READWRITE        &H00000002   ' повтор, первое: WIN32API.INC(1791)
+'~dup $DEFINE OF_SHARE_COMPAT     &H00000000   ' повтор, первое: WIN32API.INC(1792)
+'~dup $DEFINE OF_SHARE_EXCLUSIVE  &H00000010   ' повтор, первое: WIN32API.INC(1793)
+'~dup $DEFINE OF_SHARE_DENY_WRITE &H20   ' повтор, первое: WIN32API.INC(1794)
+'~dup $DEFINE OF_SHARE_DENY_READ  &H00000030   ' повтор, первое: WIN32API.INC(1795)
+'~dup $DEFINE OF_SHARE_DENY_NONE  &H00000040   ' повтор, первое: WIN32API.INC(1796)
+'~dup $DEFINE OF_PARSE            &H00000100   ' повтор, первое: WIN32API.INC(1797)
+'~dup $DEFINE OF_DELETE           &H00000200   ' повтор, первое: WIN32API.INC(1798)
+'~dup $DEFINE OF_VERIFY           &H00000400   ' повтор, первое: WIN32API.INC(1799)
+'~dup $DEFINE OF_CANCEL           &H00000800   ' повтор, первое: WIN32API.INC(1800)
+'~dup $DEFINE OF_CREATE           &H1000   ' повтор, первое: WIN32API.INC(1801)
+'~dup $DEFINE OF_PROMPT           &H00002000   ' повтор, первое: WIN32API.INC(1802)
+'~dup $DEFINE OF_EXIST            &H00004000   ' повтор, первое: WIN32API.INC(1803)
+'~dup $DEFINE OF_REOPEN           &H00008000   ' повтор, первое: WIN32API.INC(1804)
 
 '~dup Public Const OFS_MAXPATHNAME = 128   ' повтор, первое: WIN32API.INC(1806)
 
@@ -52305,13 +52234,13 @@ $DEFINE OF_REOPEN           &H00008000
 
 ' priority of your program (all subs and functions)
 'from low to highest priority, rapidq is NORMAL_PRIORITY_CLASS
-'~dup CONST IDLE_PRIORITY_CLASS            = &H40     'very slow, for occasional running   ' повтор, первое: WIN32API.INC(786)
-CONST BELOW_NORMAL_PRIORITY_CLASS    = &H4000   'Win2000, NT, XP+ only!!!
-'~dup CONST NORMAL_PRIORITY_CLASS          = &H20		'normal   ' повтор, первое: WIN32API.INC(785)
-CONST ABOVE_NORMAL_PRIORITY_CLASS    = &H8000   'Win2000, NT, XP+ only!!!
-'~dup CONST HIGH_PRIORITY_CLASS            = &H80     'careful, other programs suffer   ' повтор, первое: WIN32API.INC(787)
+'~dup CONST IDLE_PRIORITY_CLASS            = &H40     'very slow, for occasional running   ' повтор, первое: rapidq2.inc(1493)
+'~dup CONST BELOW_NORMAL_PRIORITY_CLASS    = &H4000   'Win2000, NT, XP+ only!!!   ' повтор, первое: rapidq2.inc(1494)
+'~dup CONST NORMAL_PRIORITY_CLASS          = &H20		'normal   ' повтор, первое: rapidq2.inc(1495)
+'~dup CONST ABOVE_NORMAL_PRIORITY_CLASS    = &H8000   'Win2000, NT, XP+ only!!!   ' повтор, первое: rapidq2.inc(1496)
+'~dup CONST HIGH_PRIORITY_CLASS            = &H80     'careful, other programs suffer   ' повтор, первое: rapidq2.inc(1497)
 'CAUTION!! REALTIME has no mouse,no keyboard, no disk, may lockup the computer use only for hardware I/O
-'~dup CONST REALTIME_PRIORITY_CLASS        = &H100       ' повтор, первое: WIN32API.INC(788)
+'~dup CONST REALTIME_PRIORITY_CLASS        = &H100       ' повтор, первое: rapidq2.inc(1498)
 
 
 '~dup DECLARE Function SetThreadPriority Lib "kernel32" ALIAS "SetThreadPriority" (ByVal hThread As Long, ByVal nPriority As Long) As Long   ' повтор, первое: WIN32API.INC(2239)
@@ -52498,16 +52427,16 @@ $ENDIF
 '~dup Declare Function ReportEvent Lib "advapi32.dll" Alias "ReportEventA" (ByVal hEventLog As Long, ByVal wType As Long, ByVal wCategory As Long, ByVal dwEventID As Long, lpUserSid As Any, ByVal wNumStrings As Long, ByVal dwDataSize As Long, ByVal lpStrings As Long, lpRawData As Any) As Long   ' повтор, первое: WIN32API.INC(2128)
 
 ' Security APIs
-$DEFINE TokenUser = 1
-$DEFINE TokenGroups = 2
-$DEFINE TokenPrivileges = 3
-$DEFINE TokenOwner = 4
-$DEFINE TokenPrimaryGroup = 5
-$DEFINE TokenDefaultDacl = 6
-$DEFINE TokenSource = 7
-$DEFINE TokenType = 8
-$DEFINE TokenImpersonationLevel = 9
-$DEFINE TokenStatistics = 10
+'~dup $DEFINE TokenUser = 1   ' повтор, первое: WIN32API.INC(2131)
+'~dup $DEFINE TokenGroups = 2   ' повтор, первое: WIN32API.INC(2132)
+'~dup $DEFINE TokenPrivileges = 3   ' повтор, первое: WIN32API.INC(2133)
+'~dup $DEFINE TokenOwner = 4   ' повтор, первое: WIN32API.INC(2134)
+'~dup $DEFINE TokenPrimaryGroup = 5   ' повтор, первое: WIN32API.INC(2135)
+'~dup $DEFINE TokenDefaultDacl = 6   ' повтор, первое: WIN32API.INC(2136)
+'~dup $DEFINE TokenSource = 7   ' повтор, первое: WIN32API.INC(2137)
+'~dup $DEFINE TokenType = 8   ' повтор, первое: WIN32API.INC(2138)
+'~dup $DEFINE TokenImpersonationLevel = 9   ' повтор, первое: WIN32API.INC(2139)
+'~dup $DEFINE TokenStatistics = 10   ' повтор, первое: WIN32API.INC(2140)
 '~dup $DEFINE TOKEN_ADJUST_PRIVILEGES &H20   ' повтор, первое: rapidq2.inc(2193)
 '~dup $DEFINE TOKEN_QUERY &H8   ' повтор, первое: rapidq2.inc(2194)
 
@@ -52905,8 +52834,8 @@ $DEFINE TokenStatistics = 10
 '~dup Public Const SORT_STRINGSORT = &H1000      '  use string sort method   ' повтор, первое: WIN32API.INC(2521)
 
 ' Code Page Default Values.
-'~dup Public Const CP_ACP = 0  '  default to ANSI code page   ' повтор, первое: WIN32API.INC(2524)
-'~dup Public Const CP_OEMCP = 1  '  default to OEM  code page   ' повтор, первое: WIN32API.INC(2525)
+'~dup Public Const CP_ACP = 0  '  default to ANSI code page   ' повтор, первое: rapidq.inc(578)
+'~dup Public Const CP_OEMCP = 1  '  default to OEM  code page   ' повтор, первое: rapidq.inc(579)
 
 ' Country Codes.
 
@@ -53363,22 +53292,22 @@ $DEFINE TokenStatistics = 10
 ' -------------
 
 ' Binary raster ops
-'~dup Public Const R2_BLACK = 1       '   0   ' повтор, первое: WIN32API.INC(2982)
-'~dup Public Const R2_NOTMERGEPEN = 2 '  DPon   ' повтор, первое: WIN32API.INC(2983)
-'~dup Public Const R2_MASKNOTPEN = 3  '  DPna   ' повтор, первое: WIN32API.INC(2984)
-'~dup Public Const R2_NOTCOPYPEN = 4  '  PN   ' повтор, первое: WIN32API.INC(2985)
-'~dup Public Const R2_MASKPENNOT = 5  '  PDna   ' повтор, первое: WIN32API.INC(2986)
-'~dup Public Const R2_NOT = 6 '  Dn   ' повтор, первое: WIN32API.INC(2987)
-'~dup Public Const R2_XORPEN = 7      '  DPx   ' повтор, первое: WIN32API.INC(2988)
-'~dup Public Const R2_NOTMASKPEN = 8  '  DPan   ' повтор, первое: WIN32API.INC(2989)
-'~dup Public Const R2_MASKPEN = 9     '  DPa   ' повтор, первое: WIN32API.INC(2990)
-'~dup Public Const R2_NOTXORPEN = 10  '  DPxn   ' повтор, первое: WIN32API.INC(2991)
-'~dup Public Const R2_NOP = 11        '  D   ' повтор, первое: WIN32API.INC(2992)
-'~dup Public Const R2_MERGENOTPEN = 12        '  DPno   ' повтор, первое: WIN32API.INC(2993)
-'~dup Public Const R2_COPYPEN = 13    '  P   ' повтор, первое: WIN32API.INC(2994)
-'~dup Public Const R2_MERGEPENNOT = 14        '  PDno   ' повтор, первое: WIN32API.INC(2995)
-'~dup Public Const R2_MERGEPEN = 15   '  DPo   ' повтор, первое: WIN32API.INC(2996)
-'~dup Public Const R2_WHITE = 16      '   1   ' повтор, первое: WIN32API.INC(2997)
+'~dup Public Const R2_BLACK = 1       '   0   ' повтор, первое: rapidq2.inc(1237)
+'~dup Public Const R2_NOTMERGEPEN = 2 '  DPon   ' повтор, первое: rapidq2.inc(1238)
+'~dup Public Const R2_MASKNOTPEN = 3  '  DPna   ' повтор, первое: rapidq2.inc(1239)
+'~dup Public Const R2_NOTCOPYPEN = 4  '  PN   ' повтор, первое: rapidq2.inc(1240)
+'~dup Public Const R2_MASKPENNOT = 5  '  PDna   ' повтор, первое: rapidq2.inc(1241)
+'~dup Public Const R2_NOT = 6 '  Dn   ' повтор, первое: rapidq2.inc(1242)
+'~dup Public Const R2_XORPEN = 7      '  DPx   ' повтор, первое: rapidq2.inc(1243)
+'~dup Public Const R2_NOTMASKPEN = 8  '  DPan   ' повтор, первое: rapidq2.inc(1244)
+'~dup Public Const R2_MASKPEN = 9     '  DPa   ' повтор, первое: rapidq2.inc(1245)
+'~dup Public Const R2_NOTXORPEN = 10  '  DPxn   ' повтор, первое: rapidq2.inc(1246)
+'~dup Public Const R2_NOP = 11        '  D   ' повтор, первое: rapidq2.inc(1247)
+'~dup Public Const R2_MERGENOTPEN = 12        '  DPno   ' повтор, первое: rapidq2.inc(1248)
+'~dup Public Const R2_COPYPEN = 13    '  P   ' повтор, первое: rapidq2.inc(1249)
+'~dup Public Const R2_MERGEPENNOT = 14        '  PDno   ' повтор, первое: rapidq2.inc(1250)
+'~dup Public Const R2_MERGEPEN = 15   '  DPo   ' повтор, первое: rapidq2.inc(1251)
+'~dup Public Const R2_WHITE = 16      '   1   ' повтор, первое: rapidq2.inc(1252)
 '~dup Public Const R2_LAST = 16   ' повтор, первое: WIN32API.INC(2998)
 
 '  Ternary raster operations
@@ -53622,19 +53551,19 @@ $DEFINE TokenStatistics = 10
 '~dup Public Const PR_JOBSTATUS = &H0   ' повтор, первое: WIN32API.INC(3238)
 
 '  Object Definitions for EnumObjects()
-'~dup Public Const OBJ_PEN = 1   ' повтор, первое: WIN32API.INC(3241)
-'~dup Public Const OBJ_BRUSH = 2   ' повтор, первое: WIN32API.INC(3242)
-'~dup Public Const OBJ_DC = 3   ' повтор, первое: WIN32API.INC(3243)
-'~dup Public Const OBJ_METADC = 4   ' повтор, первое: WIN32API.INC(3244)
-'~dup Public Const OBJ_PAL = 5   ' повтор, первое: WIN32API.INC(3245)
-'~dup Public Const OBJ_FONT = 6   ' повтор, первое: WIN32API.INC(3246)
-'~dup Public Const OBJ_BITMAP = 7   ' повтор, первое: WIN32API.INC(3247)
-'~dup Public Const OBJ_REGION = 8   ' повтор, первое: WIN32API.INC(3248)
-'~dup Public Const OBJ_METAFILE = 9   ' повтор, первое: WIN32API.INC(3249)
-'~dup Public Const OBJ_MEMDC = 10   ' повтор, первое: WIN32API.INC(3250)
-'~dup Public Const OBJ_EXTPEN = 11   ' повтор, первое: WIN32API.INC(3251)
-'~dup Public Const OBJ_ENHMETADC = 12   ' повтор, первое: WIN32API.INC(3252)
-'~dup Public Const OBJ_ENHMETAFILE = 13   ' повтор, первое: WIN32API.INC(3253)
+'~dup Public Const OBJ_PEN = 1   ' повтор, первое: rapidq2.inc(893)
+'~dup Public Const OBJ_BRUSH = 2   ' повтор, первое: rapidq2.inc(894)
+'~dup Public Const OBJ_DC = 3   ' повтор, первое: rapidq2.inc(895)
+'~dup Public Const OBJ_METADC = 4   ' повтор, первое: rapidq2.inc(896)
+'~dup Public Const OBJ_PAL = 5   ' повтор, первое: rapidq2.inc(897)
+'~dup Public Const OBJ_FONT = 6   ' повтор, первое: rapidq2.inc(898)
+'~dup Public Const OBJ_BITMAP = 7   ' повтор, первое: rapidq2.inc(899)
+'~dup Public Const OBJ_REGION = 8   ' повтор, первое: rapidq2.inc(900)
+'~dup Public Const OBJ_METAFILE = 9   ' повтор, первое: rapidq2.inc(901)
+'~dup Public Const OBJ_MEMDC = 10   ' повтор, первое: rapidq2.inc(902)
+'~dup Public Const OBJ_EXTPEN = 11   ' повтор, первое: rapidq2.inc(903)
+'~dup Public Const OBJ_ENHMETADC = 12   ' повтор, первое: rapidq2.inc(904)
+'~dup Public Const OBJ_ENHMETAFILE = 13   ' повтор, первое: rapidq2.inc(905)
 
 '  xform stuff
 '~dup Public Const MWT_IDENTITY = 1   ' повтор, первое: WIN32API.INC(3256)
@@ -54202,8 +54131,8 @@ $DEFINE TokenStatistics = 10
 '~dup Public Const PC_NOCOLLAPSE = &H4        '  do not match color to system palette   ' повтор, первое: WIN32API.INC(3786)
 
 ' Background Modes
-'~dup Public Const TRANSPARENT = 1   ' повтор, первое: WIN32API.INC(3789)
-'~dup Public Const OPAQUE = 2   ' повтор, первое: WIN32API.INC(3790)
+'~dup Public Const TRANSPARENT = 1   ' повтор, первое: rapidq2.inc(1208)
+'~dup Public Const OPAQUE = 2   ' повтор, первое: rapidq2.inc(1207)
 '~dup Public Const BKMODE_LAST = 2   ' повтор, первое: WIN32API.INC(3791)
 
 '  Graphics Modes
@@ -54237,24 +54166,24 @@ $DEFINE TokenStatistics = 10
 '~dup Public Const RELATIVE = 2   ' повтор, первое: WIN32API.INC(3821)
 
 ' Stock Logical Objects
-'~dup Public Const WHITE_BRUSH = 0   ' повтор, первое: PRINTERDLL.INC(131)
-'~dup Public Const LTGRAY_BRUSH = 1   ' повтор, первое: WIN32API.INC(3825)
-'~dup Public Const GRAY_BRUSH = 2   ' повтор, первое: WIN32API.INC(3826)
-'~dup Public Const DKGRAY_BRUSH = 3   ' повтор, первое: WIN32API.INC(3827)
-'~dup Public Const BLACK_BRUSH = 4   ' повтор, первое: PRINTERDLL.INC(132)
-'~dup Public Const NULL_BRUSH = 5   ' повтор, первое: WIN32API.INC(3829)
-'~dup Public Const HOLLOW_BRUSH = NULL_BRUSH   ' повтор, первое: WIN32API.INC(3830)
-'~dup Public Const WHITE_PEN = 6   ' повтор, первое: PRINTERDLL.INC(133)
-'~dup Public Const BLACK_PEN = 7   ' повтор, первое: PRINTERDLL.INC(134)
-'~dup Public Const NULL_PEN = 8   ' повтор, первое: PRINTERDLL.INC(135)
-'~dup Public Const OEM_FIXED_FONT = 10   ' повтор, первое: PRINTERDLL.INC(136)
-'~dup Public Const ANSI_FIXED_FONT = 11   ' повтор, первое: PRINTERDLL.INC(137)
-'~dup Public Const ANSI_VAR_FONT = 12   ' повтор, первое: PRINTERDLL.INC(138)
-'~dup Public Const SYSTEM_FONT = 13   ' повтор, первое: PRINTERDLL.INC(139)
-'~dup Public Const DEVICE_DEFAULT_FONT = 14   ' повтор, первое: PRINTERDLL.INC(140)
-'~dup Public Const DEFAULT_PALETTE = 15   ' повтор, первое: PRINTERDLL.INC(141)
-'~dup Public Const SYSTEM_FIXED_FONT = 16   ' повтор, первое: PRINTERDLL.INC(142)
-'~dup Public Const STOCK_LAST = 16   ' повтор, первое: WIN32API.INC(3841)
+'~dup Public Const WHITE_BRUSH = 0   ' повтор, первое: rapidq2.inc(1256)
+'~dup Public Const LTGRAY_BRUSH = 1   ' повтор, первое: rapidq2.inc(1257)
+'~dup Public Const GRAY_BRUSH = 2   ' повтор, первое: rapidq2.inc(1258)
+'~dup Public Const DKGRAY_BRUSH = 3   ' повтор, первое: rapidq2.inc(1259)
+'~dup Public Const BLACK_BRUSH = 4   ' повтор, первое: rapidq2.inc(1260)
+'~dup Public Const NULL_BRUSH = 5   ' повтор, первое: rapidq2.inc(1261)
+'~dup Public Const HOLLOW_BRUSH = NULL_BRUSH   ' повтор, первое: rapidq2.inc(1262)
+'~dup Public Const WHITE_PEN = 6   ' повтор, первое: rapidq2.inc(1263)
+'~dup Public Const BLACK_PEN = 7   ' повтор, первое: rapidq2.inc(1264)
+'~dup Public Const NULL_PEN = 8   ' повтор, первое: rapidq2.inc(1265)
+'~dup Public Const OEM_FIXED_FONT = 10   ' повтор, первое: rapidq2.inc(1266)
+'~dup Public Const ANSI_FIXED_FONT = 11   ' повтор, первое: rapidq2.inc(1267)
+'~dup Public Const ANSI_VAR_FONT = 12   ' повтор, первое: rapidq2.inc(1268)
+'~dup Public Const SYSTEM_FONT = 13   ' повтор, первое: rapidq2.inc(1269)
+'~dup Public Const DEVICE_DEFAULT_FONT = 14   ' повтор, первое: rapidq2.inc(1270)
+'~dup Public Const DEFAULT_PALETTE = 15   ' повтор, первое: rapidq2.inc(1271)
+'~dup Public Const SYSTEM_FIXED_FONT = 16   ' повтор, первое: rapidq2.inc(1272)
+'~dup Public Const STOCK_LAST = 16   ' повтор, первое: rapidq2.inc(1273)
 
 '~dup Public Const CLR_INVALID = &HFFFF   ' повтор, первое: PRINTERDLL.INC(143)
 
@@ -54299,16 +54228,16 @@ $DEFINE TokenStatistics = 10
 '~dup Public Const HS_API_MAX = 25   ' повтор, первое: WIN32API.INC(3883)
 
 '  Pen Styles
-'~dup Public Const PS_SOLID = 0   ' повтор, первое: WIN32API.INC(3886)
-'~dup Public Const PS_DASH = 1                    '  -------   ' повтор, первое: WIN32API.INC(3887)
-'~dup Public Const PS_DOT = 2                     '  .......   ' повтор, первое: WIN32API.INC(3888)
-'~dup Public Const PS_DASHDOT = 3                 '  _._._._   ' повтор, первое: WIN32API.INC(3889)
-'~dup Public Const PS_DASHDOTDOT = 4              '  _.._.._   ' повтор, первое: WIN32API.INC(3890)
-'~dup Public Const PS_NULL = 5   ' повтор, первое: WIN32API.INC(3891)
-'~dup Public Const PS_INSIDEFRAME = 6   ' повтор, первое: WIN32API.INC(3892)
-'~dup Public Const PS_USERSTYLE = 7   ' повтор, первое: WIN32API.INC(3893)
-'~dup Public Const PS_ALTERNATE = 8   ' повтор, первое: WIN32API.INC(3894)
-'~dup Public Const PS_STYLE_MASK = &HF   ' повтор, первое: WIN32API.INC(3895)
+'~dup Public Const PS_SOLID = 0   ' повтор, первое: rapidq2.inc(1224)
+'~dup Public Const PS_DASH = 1                    '  -------   ' повтор, первое: rapidq2.inc(1225)
+'~dup Public Const PS_DOT = 2                     '  .......   ' повтор, первое: rapidq2.inc(1226)
+'~dup Public Const PS_DASHDOT = 3                 '  _._._._   ' повтор, первое: rapidq2.inc(1227)
+'~dup Public Const PS_DASHDOTDOT = 4              '  _.._.._   ' повтор, первое: rapidq2.inc(1228)
+'~dup Public Const PS_NULL = 5   ' повтор, первое: rapidq2.inc(1229)
+'~dup Public Const PS_INSIDEFRAME = 6   ' повтор, первое: rapidq2.inc(1230)
+'~dup Public Const PS_USERSTYLE = 7   ' повтор, первое: rapidq2.inc(1231)
+'~dup Public Const PS_ALTERNATE = 8   ' повтор, первое: rapidq2.inc(1232)
+'~dup Public Const PS_STYLE_MASK = &HF   ' повтор, первое: rapidq2.inc(1233)
 
 '~dup Public Const PS_ENDCAP_ROUND = &H0   ' повтор, первое: WIN32API.INC(3897)
 '~dup Public Const PS_ENDCAP_SQUARE = &H100   ' повтор, первое: WIN32API.INC(3898)
@@ -54328,36 +54257,36 @@ $DEFINE TokenStatistics = 10
 '~dup Public Const AD_CLOCKWISE = 2   ' повтор, первое: WIN32API.INC(3912)
 
 '  Device Parameters for GetDeviceCaps()
-'~dup Public Const DRIVERVERSION = 0      '  Device driver version   ' повтор, первое: WIN32API.INC(3915)
-'~dup Public Const TECHNOLOGY = 2         '  Device classification   ' повтор, первое: WIN32API.INC(3916)
-'~dup Public Const HORZSIZE = 4           '  Horizontal size in millimeters   ' повтор, первое: WIN32API.INC(3917)
-'~dup Public Const VERTSIZE = 6           '  Vertical size in millimeters   ' повтор, первое: WIN32API.INC(3918)
-'~dup Public Const HORZRES = 8            '  Horizontal width in pixels   ' повтор, первое: WIN32API.INC(3919)
-'~dup Public Const VERTRES = 10           '  Vertical width in pixels   ' повтор, первое: WIN32API.INC(3920)
-'~dup Public Const BITSPIXEL = 12         '  Number of bits per pixel   ' повтор, первое: WIN32API.INC(3921)
-'~dup Public Const PLANES = 14            '  Number of planes   ' повтор, первое: WIN32API.INC(3922)
-'~dup Public Const NUMBRUSHES = 16        '  Number of brushes the device has   ' повтор, первое: WIN32API.INC(3923)
-'~dup Public Const NUMPENS = 18           '  Number of pens the device has   ' повтор, первое: WIN32API.INC(3924)
-'~dup Public Const NUMMARKERS = 20        '  Number of markers the device has   ' повтор, первое: WIN32API.INC(3925)
-'~dup Public Const NUMFONTS = 22          '  Number of fonts the device has   ' повтор, первое: WIN32API.INC(3926)
-'~dup Public Const NUMCOLORS = 24         '  Number of colors the device supports   ' повтор, первое: WIN32API.INC(3927)
-'~dup Public Const PDEVICESIZE = 26       '  Size required for device descriptor   ' повтор, первое: WIN32API.INC(3928)
-'~dup Public Const CURVECAPS = 28         '  Curve capabilities   ' повтор, первое: WIN32API.INC(3929)
-'~dup Public Const LINECAPS = 30          '  Line capabilities   ' повтор, первое: WIN32API.INC(3930)
-'~dup Public Const POLYGONALCAPS = 32     '  Polygonal capabilities   ' повтор, первое: WIN32API.INC(3931)
-'~dup Public Const TEXTCAPS = 34          '  Text capabilities   ' повтор, первое: WIN32API.INC(3932)
-'~dup Public Const CLIPCAPS = 36          '  Clipping capabilities   ' повтор, первое: WIN32API.INC(3933)
-'~dup Public Const RASTERCAPS = 38        '  Bitblt capabilities   ' повтор, первое: WIN32API.INC(3934)
-'~dup Public Const ASPECTX = 40           '  Length of the X leg   ' повтор, первое: WIN32API.INC(3935)
-'~dup Public Const ASPECTY = 42           '  Length of the Y leg   ' повтор, первое: WIN32API.INC(3936)
-'~dup Public Const ASPECTXY = 44          '  Length of the hypotenuse   ' повтор, первое: WIN32API.INC(3937)
+'~dup Public Const DRIVERVERSION = 0      '  Device driver version   ' повтор, первое: rapidq2.inc(1384)
+'~dup Public Const TECHNOLOGY = 2         '  Device classification   ' повтор, первое: rapidq2.inc(1385)
+'~dup Public Const HORZSIZE = 4           '  Horizontal size in millimeters   ' повтор, первое: rapidq2.inc(1386)
+'~dup Public Const VERTSIZE = 6           '  Vertical size in millimeters   ' повтор, первое: rapidq2.inc(1387)
+'~dup Public Const HORZRES = 8            '  Horizontal width in pixels   ' повтор, первое: rapidq2.inc(1388)
+'~dup Public Const VERTRES = 10           '  Vertical width in pixels   ' повтор, первое: rapidq2.inc(1389)
+'~dup Public Const BITSPIXEL = 12         '  Number of bits per pixel   ' повтор, первое: rapidq2.inc(1390)
+'~dup Public Const PLANES = 14            '  Number of planes   ' повтор, первое: rapidq2.inc(1391)
+'~dup Public Const NUMBRUSHES = 16        '  Number of brushes the device has   ' повтор, первое: rapidq2.inc(1392)
+'~dup Public Const NUMPENS = 18           '  Number of pens the device has   ' повтор, первое: rapidq2.inc(1393)
+'~dup Public Const NUMMARKERS = 20        '  Number of markers the device has   ' повтор, первое: rapidq2.inc(1394)
+'~dup Public Const NUMFONTS = 22          '  Number of fonts the device has   ' повтор, первое: rapidq2.inc(1395)
+'~dup Public Const NUMCOLORS = 24         '  Number of colors the device supports   ' повтор, первое: rapidq2.inc(1396)
+'~dup Public Const PDEVICESIZE = 26       '  Size required for device descriptor   ' повтор, первое: rapidq2.inc(1397)
+'~dup Public Const CURVECAPS = 28         '  Curve capabilities   ' повтор, первое: rapidq2.inc(1398)
+'~dup Public Const LINECAPS = 30          '  Line capabilities   ' повтор, первое: rapidq2.inc(1399)
+'~dup Public Const POLYGONALCAPS = 32     '  Polygonal capabilities   ' повтор, первое: rapidq2.inc(1400)
+'~dup Public Const TEXTCAPS = 34          '  Text capabilities   ' повтор, первое: rapidq2.inc(1401)
+'~dup Public Const CLIPCAPS = 36          '  Clipping capabilities   ' повтор, первое: rapidq2.inc(1402)
+'~dup Public Const RASTERCAPS = 38        '  Bitblt capabilities   ' повтор, первое: rapidq2.inc(1403)
+'~dup Public Const ASPECTX = 40           '  Length of the X leg   ' повтор, первое: rapidq2.inc(1404)
+'~dup Public Const ASPECTY = 42           '  Length of the Y leg   ' повтор, первое: rapidq2.inc(1405)
+'~dup Public Const ASPECTXY = 44          '  Length of the hypotenuse   ' повтор, первое: rapidq2.inc(1406)
 
-'~dup Public Const LOGPIXELSX = 88        '  Logical pixels/inch in X   ' повтор, первое: WIN32API.INC(3939)
-'~dup Public Const LOGPIXELSY = 90        '  Logical pixels/inch in Y   ' повтор, первое: WIN32API.INC(3940)
+'~dup Public Const LOGPIXELSX = 88        '  Logical pixels/inch in X   ' повтор, первое: rapidq2.inc(1408)
+'~dup Public Const LOGPIXELSY = 90        '  Logical pixels/inch in Y   ' повтор, первое: rapidq2.inc(1409)
 
-'~dup Public Const SIZEPALETTE = 104      '  Number of entries in physical palette   ' повтор, первое: WIN32API.INC(3942)
-'~dup Public Const NUMRESERVED = 106      '  Number of reserved entries in palette   ' повтор, первое: WIN32API.INC(3943)
-'~dup Public Const COLORRES = 108         '  Actual color resolution   ' повтор, первое: WIN32API.INC(3944)
+'~dup Public Const SIZEPALETTE = 104      '  Number of entries in physical palette   ' повтор, первое: rapidq2.inc(1411)
+'~dup Public Const NUMRESERVED = 106      '  Number of reserved entries in palette   ' повтор, первое: rapidq2.inc(1412)
+'~dup Public Const COLORRES = 108         '  Actual color resolution   ' повтор, первое: rapidq2.inc(1413)
 
 '  Printing related DeviceCaps. These replace the appropriate Escapes
 '~dup Public Const PHYSICALWIDTH = 110 '  Physical Width in device units   ' повтор, первое: WIN32API.INC(3947)
@@ -54512,25 +54441,25 @@ $DEFINE TokenStatistics = 10
 
 
 'values updated by JohnK
-'~dup CONST EWX_LOGOFF 				= 0   ' повтор, первое: WIN32API.INC(6662)
-'~dup CONST EWX_SHUTDOWN 				= 1   ' повтор, первое: WIN32API.INC(6663)
-'~dup CONST EWX_REBOOT 				= 2   ' повтор, первое: WIN32API.INC(6664)
-'~dup CONST EWX_FORCE 				= 4   ' повтор, первое: WIN32API.INC(6665)
-CONST DM_BITSPERPEL 			= &H40000
-CONST DM_PELSWIDTH 				= &H80000
-CONST DM_PELSHEIGHT 			= &H100000
-CONST DM_DISPLAYFREQUENCY	 	= &H400000 
-CONST CDS_DYNAMIC 				= &H0
-CONST CDS_UPDATEREGISTRY	 	= &H1
-CONST CDS_TEST 					= &H4
-CONST CDS_FULLSCREEN 			= &H4
-CONST CDS_GLOBAL 				= &H8
-CONST CDS_SET_PRIMARY 			= &H10
-CONST CDS_RESET 				= &H40000000
-CONST CDS_SETRECT 				= &H20000000
-CONST CDS_NORESET 				= &H10000000
-CONST DISP_CHANGE_SUCCESSFUL	= 0
-CONST DISP_CHANGE_RESTART 		= 1
+'~dup CONST EWX_LOGOFF 				= 0   ' повтор, первое: rapidq2.inc(1335)
+'~dup CONST EWX_SHUTDOWN 				= 1   ' повтор, первое: rapidq2.inc(1336)
+'~dup CONST EWX_REBOOT 				= 2   ' повтор, первое: rapidq2.inc(1337)
+'~dup CONST EWX_FORCE 				= 4   ' повтор, первое: rapidq2.inc(1338)
+'~dup CONST DM_BITSPERPEL 			= &H40000   ' повтор, первое: rapidq2.inc(1358)
+'~dup CONST DM_PELSWIDTH 				= &H80000   ' повтор, первое: rapidq2.inc(1359)
+'~dup CONST DM_PELSHEIGHT 			= &H100000   ' повтор, первое: rapidq2.inc(1360)
+'~dup CONST DM_DISPLAYFREQUENCY	 	= &H400000    ' повтор, первое: rapidq2.inc(1362)
+'~dup CONST CDS_DYNAMIC 				= &H0   ' повтор, первое: rapidq2.inc(1364)
+'~dup CONST CDS_UPDATEREGISTRY	 	= &H1   ' повтор, первое: rapidq2.inc(1365)
+'~dup CONST CDS_TEST 					= &H4   ' повтор, первое: rapidq2.inc(1366)
+'~dup CONST CDS_FULLSCREEN 			= &H4   ' повтор, первое: rapidq2.inc(1367)
+'~dup CONST CDS_GLOBAL 				= &H8   ' повтор, первое: rapidq2.inc(1368)
+'~dup CONST CDS_SET_PRIMARY 			= &H10   ' повтор, первое: rapidq2.inc(1369)
+'~dup CONST CDS_RESET 				= &H40000000   ' повтор, первое: rapidq2.inc(1370)
+'~dup CONST CDS_SETRECT 				= &H20000000   ' повтор, первое: rapidq2.inc(1371)
+'~dup CONST CDS_NORESET 				= &H10000000   ' повтор, первое: rapidq2.inc(1372)
+'~dup CONST DISP_CHANGE_SUCCESSFUL	= 0   ' повтор, первое: rapidq2.inc(1373)
+'~dup CONST DISP_CHANGE_RESTART 		= 1   ' повтор, первое: rapidq2.inc(1374)
 '~dup CONST DISP_CHANGE_FAILED 		= -1   ' повтор, первое: rapidq2.inc(1375)
 '~dup CONST DISP_CHANGE_BADMODE 		= -2   ' повтор, первое: rapidq2.inc(1376)
 '~dup CONST DISP_CHANGE_NOTUPDATED	= -3   ' повтор, первое: rapidq2.inc(1377)
@@ -54554,20 +54483,20 @@ CONST STRING_SIZE				= 32
 '~dup Public Const DM_SPECVERSION = &H320   ' повтор, первое: WIN32API.INC(4098)
 
 ' field selection bits
-'~dup Public Const DM_ORIENTATION = &H1&   ' повтор, первое: WIN32API.INC(4101)
-'~dup Public Const DM_PAPERSIZE = &H2&   ' повтор, первое: WIN32API.INC(4102)
-'~dup Public Const DM_PAPERLENGTH = &H4&   ' повтор, первое: WIN32API.INC(4103)
-'~dup Public Const DM_PAPERWIDTH = &H8&   ' повтор, первое: WIN32API.INC(4104)
-'~dup Public Const DM_SCALE = &H10&   ' повтор, первое: WIN32API.INC(4105)
-'~dup Public Const DM_COPIES = &H100&   ' повтор, первое: WIN32API.INC(4106)
-'~dup Public Const DM_DEFAULTSOURCE = &H200&   ' повтор, первое: WIN32API.INC(4107)
-'~dup Public Const DM_PRINTQUALITY = &H400&   ' повтор, первое: WIN32API.INC(4108)
-'~dup Public Const DM_COLOR = &H800&   ' повтор, первое: WIN32API.INC(4109)
-'~dup Public Const DM_DUPLEX = &H1000&   ' повтор, первое: WIN32API.INC(4110)
-'~dup Public Const DM_YRESOLUTION = &H2000&   ' повтор, первое: WIN32API.INC(4111)
-'~dup Public Const DM_TTOPTION = &H4000&   ' повтор, первое: WIN32API.INC(4112)
-'~dup Public Const DM_COLLATE As Long = &H8000   ' повтор, первое: WIN32API.INC(4113)
-'~dup Public Const DM_FORMNAME As Long = &H10000   ' повтор, первое: WIN32API.INC(4114)
+'~dup Public Const DM_ORIENTATION = &H1&   ' повтор, первое: rapidq2.inc(1340)
+'~dup Public Const DM_PAPERSIZE = &H2&   ' повтор, первое: rapidq2.inc(1341)
+'~dup Public Const DM_PAPERLENGTH = &H4&   ' повтор, первое: rapidq2.inc(1342)
+'~dup Public Const DM_PAPERWIDTH = &H8&   ' повтор, первое: rapidq2.inc(1343)
+'~dup Public Const DM_SCALE = &H10&   ' повтор, первое: rapidq2.inc(1344)
+'~dup Public Const DM_COPIES = &H100&   ' повтор, первое: rapidq2.inc(1348)
+'~dup Public Const DM_DEFAULTSOURCE = &H200&   ' повтор, первое: rapidq2.inc(1349)
+'~dup Public Const DM_PRINTQUALITY = &H400&   ' повтор, первое: rapidq2.inc(1350)
+'~dup Public Const DM_COLOR = &H800&   ' повтор, первое: rapidq2.inc(1351)
+'~dup Public Const DM_DUPLEX = &H1000&   ' повтор, первое: rapidq2.inc(1352)
+'~dup Public Const DM_YRESOLUTION = &H2000&   ' повтор, первое: rapidq2.inc(1353)
+'~dup Public Const DM_TTOPTION = &H4000&   ' повтор, первое: rapidq2.inc(1354)
+'~dup Public Const DM_COLLATE As Long = &H8000   ' повтор, первое: rapidq2.inc(1355)
+'~dup Public Const DM_FORMNAME As Long = &H10000   ' повтор, первое: rapidq2.inc(1356)
 
 '  orientation selections
 '~dup Public Const DMORIENT_PORTRAIT = 1   ' повтор, первое: WIN32API.INC(4117)
@@ -56332,132 +56261,132 @@ CONST STRING_SIZE				= 32
 '~dup Public Const KF_UP = &H8000   ' повтор, первое: WIN32API.INC(5871)
 
 ' Virtual Keys, Standard Set
-'~dup Public Const VK_LBUTTON = &H1   ' повтор, первое: WIN32API.INC(5874)
-'~dup Public Const VK_RBUTTON = &H2   ' повтор, первое: WIN32API.INC(5875)
-'~dup Public Const VK_CANCEL = &H3   ' повтор, первое: WIN32API.INC(5876)
-'~dup Public Const VK_MBUTTON = &H4             '  NOT contiguous with L RBUTTON   ' повтор, первое: WIN32API.INC(5877)
-'~dup Public Const VK_BACK = &H8   ' повтор, первое: WIN32API.INC(5879)
-'~dup Public Const VK_TAB = &H9   ' повтор, первое: WIN32API.INC(5880)
-'~dup Public Const VK_CLEAR = &HC   ' повтор, первое: WIN32API.INC(5882)
-'~dup Public Const VK_RETURN = &HD   ' повтор, первое: WIN32API.INC(5883)
-'~dup Public Const VK_SHIFT = &H10   ' повтор, первое: WIN32API.INC(5885)
-'~dup Public Const VK_CONTROL = &H11   ' повтор, первое: WIN32API.INC(5886)
-'~dup Public Const VK_MENU = &H12   ' повтор, первое: WIN32API.INC(5887)
-'~dup Public Const VK_PAUSE = &H13   ' повтор, первое: WIN32API.INC(5888)
-'~dup Public Const VK_CAPITAL = &H14   ' повтор, первое: WIN32API.INC(5889)
-'~dup Public Const VK_ESCAPE = &H1B   ' повтор, первое: WIN32API.INC(5891)
-'~dup Public Const VK_SPACE = &H20   ' повтор, первое: WIN32API.INC(5893)
-'~dup Public Const VK_PRIOR = &H21   ' повтор, первое: WIN32API.INC(5894)
-'~dup Public Const VK_NEXT = &H22   ' повтор, первое: WIN32API.INC(5895)
-'~dup Public Const VK_END = &H23   ' повтор, первое: WIN32API.INC(5896)
-'~dup Public Const VK_HOME = &H24   ' повтор, первое: WIN32API.INC(5897)
-'~dup Public Const VK_LEFT = &H25   ' повтор, первое: WIN32API.INC(5898)
-'~dup Public Const VK_UP = &H26   ' повтор, первое: WIN32API.INC(5899)
-'~dup Public Const VK_RIGHT = &H27   ' повтор, первое: WIN32API.INC(5900)
-'~dup Public Const VK_DOWN = &H28   ' повтор, первое: WIN32API.INC(5901)
-'~dup Public Const VK_SELECT = &H29   ' повтор, первое: WIN32API.INC(5902)
-'~dup Public Const VK_PRINT = &H2A   ' повтор, первое: WIN32API.INC(5903)
-'~dup Public Const VK_EXECUTE = &H2B   ' повтор, первое: WIN32API.INC(5904)
-'~dup Public Const VK_SNAPSHOT = &H2C   ' повтор, первое: WIN32API.INC(5905)
-'~dup Public Const VK_INSERT = &H2D   ' повтор, первое: WIN32API.INC(5906)
-'~dup Public Const VK_DELETE = &H2E   ' повтор, первое: WIN32API.INC(5907)
-'~dup Public Const VK_HELP = &H2F   ' повтор, первое: WIN32API.INC(5908)
+'~dup Public Const VK_LBUTTON = &H1   ' повтор, первое: rapidq2.inc(1071)
+'~dup Public Const VK_RBUTTON = &H2   ' повтор, первое: rapidq2.inc(1072)
+'~dup Public Const VK_CANCEL = &H3   ' повтор, первое: rapidq2.inc(1073)
+'~dup Public Const VK_MBUTTON = &H4             '  NOT contiguous with L RBUTTON   ' повтор, первое: rapidq2.inc(1074)
+'~dup Public Const VK_BACK = &H8   ' повтор, первое: rapidq2.inc(1075)
+'~dup Public Const VK_TAB = &H9   ' повтор, первое: rapidq2.inc(1076)
+'~dup Public Const VK_CLEAR = &HC   ' повтор, первое: rapidq2.inc(1077)
+'~dup Public Const VK_RETURN = &HD   ' повтор, первое: rapidq2.inc(1078)
+'~dup Public Const VK_SHIFT = &H10   ' повтор, первое: rapidq2.inc(1079)
+'~dup Public Const VK_CONTROL = &H11   ' повтор, первое: rapidq2.inc(1080)
+'~dup Public Const VK_MENU = &H12   ' повтор, первое: rapidq2.inc(1081)
+'~dup Public Const VK_PAUSE = &H13   ' повтор, первое: rapidq2.inc(1082)
+'~dup Public Const VK_CAPITAL = &H14   ' повтор, первое: rapidq2.inc(1083)
+'~dup Public Const VK_ESCAPE = &H1B   ' повтор, первое: rapidq2.inc(1084)
+'~dup Public Const VK_SPACE = &H20   ' повтор, первое: rapidq2.inc(1085)
+'~dup Public Const VK_PRIOR = &H21   ' повтор, первое: rapidq2.inc(1086)
+'~dup Public Const VK_NEXT = &H22   ' повтор, первое: rapidq2.inc(1087)
+'~dup Public Const VK_END = &H23   ' повтор, первое: rapidq2.inc(1088)
+'~dup Public Const VK_HOME = &H24   ' повтор, первое: rapidq2.inc(1089)
+'~dup Public Const VK_LEFT = &H25   ' повтор, первое: rapidq2.inc(1090)
+'~dup Public Const VK_UP = &H26   ' повтор, первое: rapidq2.inc(1091)
+'~dup Public Const VK_RIGHT = &H27   ' повтор, первое: rapidq2.inc(1092)
+'~dup Public Const VK_DOWN = &H28   ' повтор, первое: rapidq2.inc(1093)
+'~dup Public Const VK_SELECT = &H29   ' повтор, первое: rapidq2.inc(1094)
+'~dup Public Const VK_PRINT = &H2A   ' повтор, первое: rapidq2.inc(1095)
+'~dup Public Const VK_EXECUTE = &H2B   ' повтор, первое: rapidq2.inc(1096)
+'~dup Public Const VK_SNAPSHOT = &H2C   ' повтор, первое: rapidq2.inc(1097)
+'~dup Public Const VK_INSERT = &H2D   ' повтор, первое: rapidq2.inc(1098)
+'~dup Public Const VK_DELETE = &H2E   ' повтор, первое: rapidq2.inc(1099)
+'~dup Public Const VK_HELP = &H2F   ' повтор, первое: rapidq2.inc(1100)
 
 ' VK_A thru VK_Z are the same as their ASCII equivalents: 'A' thru 'Z'
 ' VK_0 thru VK_9 are the same as their ASCII equivalents: '0' thru '9'
 
-Public Const VK_0	= 48
-Public Const VK_1	= 49
-Public Const VK_2	= 50
-Public Const VK_3	= 51
-Public Const VK_4	= 52
-Public Const VK_5	= 53
-Public Const VK_6	= 54
-Public Const VK_7	= 55
-Public Const VK_8	= 56
-Public Const VK_9	= 57
-Public Const VK_A	= 65
-Public Const VK_B	= 66
-Public Const VK_C	= 67
-Public Const VK_D	= 68
-Public Const VK_E	= 69
-Public Const VK_F	= 70
-Public Const VK_G	= 71
-Public Const VK_H	= 72
-Public Const VK_I	= 73
-Public Const VK_J	= 74
-Public Const VK_K	= 75
-Public Const VK_L	= 76
-Public Const VK_M	= 77
-Public Const VK_N	= 78
-Public Const VK_O	= 79
-Public Const VK_P	= 80
-Public Const VK_Q	= 81
-Public Const VK_R	= 82
-Public Const VK_S	= 83
-Public Const VK_T	= 84
-Public Const VK_U	= 85
-Public Const VK_V	= 86
-Public Const VK_W	= 87
-Public Const VK_X	= 88
-Public Const VK_Y	= 89
-Public Const VK_Z	= 90
+'~dup Public Const VK_0	= 48   ' повтор, первое: rapidq2.inc(1104)
+'~dup Public Const VK_1	= 49   ' повтор, первое: rapidq2.inc(1105)
+'~dup Public Const VK_2	= 50   ' повтор, первое: rapidq2.inc(1106)
+'~dup Public Const VK_3	= 51   ' повтор, первое: rapidq2.inc(1107)
+'~dup Public Const VK_4	= 52   ' повтор, первое: rapidq2.inc(1108)
+'~dup Public Const VK_5	= 53   ' повтор, первое: rapidq2.inc(1109)
+'~dup Public Const VK_6	= 54   ' повтор, первое: rapidq2.inc(1110)
+'~dup Public Const VK_7	= 55   ' повтор, первое: rapidq2.inc(1111)
+'~dup Public Const VK_8	= 56   ' повтор, первое: rapidq2.inc(1112)
+'~dup Public Const VK_9	= 57   ' повтор, первое: rapidq2.inc(1113)
+'~dup Public Const VK_A	= 65   ' повтор, первое: rapidq2.inc(1114)
+'~dup Public Const VK_B	= 66   ' повтор, первое: rapidq2.inc(1115)
+'~dup Public Const VK_C	= 67   ' повтор, первое: rapidq2.inc(1116)
+'~dup Public Const VK_D	= 68   ' повтор, первое: rapidq2.inc(1117)
+'~dup Public Const VK_E	= 69   ' повтор, первое: rapidq2.inc(1118)
+'~dup Public Const VK_F	= 70   ' повтор, первое: rapidq2.inc(1119)
+'~dup Public Const VK_G	= 71   ' повтор, первое: rapidq2.inc(1120)
+'~dup Public Const VK_H	= 72   ' повтор, первое: rapidq2.inc(1121)
+'~dup Public Const VK_I	= 73   ' повтор, первое: rapidq2.inc(1122)
+'~dup Public Const VK_J	= 74   ' повтор, первое: rapidq2.inc(1123)
+'~dup Public Const VK_K	= 75   ' повтор, первое: rapidq2.inc(1124)
+'~dup Public Const VK_L	= 76   ' повтор, первое: rapidq2.inc(1125)
+'~dup Public Const VK_M	= 77   ' повтор, первое: rapidq2.inc(1126)
+'~dup Public Const VK_N	= 78   ' повтор, первое: rapidq2.inc(1127)
+'~dup Public Const VK_O	= 79   ' повтор, первое: rapidq2.inc(1128)
+'~dup Public Const VK_P	= 80   ' повтор, первое: rapidq2.inc(1129)
+'~dup Public Const VK_Q	= 81   ' повтор, первое: rapidq2.inc(1130)
+'~dup Public Const VK_R	= 82   ' повтор, первое: rapidq2.inc(1131)
+'~dup Public Const VK_S	= 83   ' повтор, первое: rapidq2.inc(1132)
+'~dup Public Const VK_T	= 84   ' повтор, первое: rapidq2.inc(1133)
+'~dup Public Const VK_U	= 85   ' повтор, первое: rapidq2.inc(1134)
+'~dup Public Const VK_V	= 86   ' повтор, первое: rapidq2.inc(1135)
+'~dup Public Const VK_W	= 87   ' повтор, первое: rapidq2.inc(1136)
+'~dup Public Const VK_X	= 88   ' повтор, первое: rapidq2.inc(1137)
+'~dup Public Const VK_Y	= 89   ' повтор, первое: rapidq2.inc(1138)
+'~dup Public Const VK_Z	= 90   ' повтор, первое: rapidq2.inc(1139)
 
-'~dup Public Const VK_NUMPAD0 = &H60   ' повтор, первое: WIN32API.INC(5913)
-'~dup Public Const VK_NUMPAD1 = &H61   ' повтор, первое: WIN32API.INC(5914)
-'~dup Public Const VK_NUMPAD2 = &H62   ' повтор, первое: WIN32API.INC(5915)
-'~dup Public Const VK_NUMPAD3 = &H63   ' повтор, первое: WIN32API.INC(5916)
-'~dup Public Const VK_NUMPAD4 = &H64   ' повтор, первое: WIN32API.INC(5917)
-'~dup Public Const VK_NUMPAD5 = &H65   ' повтор, первое: WIN32API.INC(5918)
-'~dup Public Const VK_NUMPAD6 = &H66   ' повтор, первое: WIN32API.INC(5919)
-'~dup Public Const VK_NUMPAD7 = &H67   ' повтор, первое: WIN32API.INC(5920)
-'~dup Public Const VK_NUMPAD8 = &H68   ' повтор, первое: WIN32API.INC(5921)
-'~dup Public Const VK_NUMPAD9 = &H69   ' повтор, первое: WIN32API.INC(5922)
-'~dup Public Const VK_MULTIPLY = &H6A   ' повтор, первое: WIN32API.INC(5923)
-'~dup Public Const VK_ADD = &H6B   ' повтор, первое: WIN32API.INC(5924)
-'~dup Public Const VK_SEPARATOR = &H6C   ' повтор, первое: WIN32API.INC(5925)
-'~dup Public Const VK_SUBTRACT = &H6D   ' повтор, первое: WIN32API.INC(5926)
-'~dup Public Const VK_DECIMAL = &H6E   ' повтор, первое: WIN32API.INC(5927)
-'~dup Public Const VK_DIVIDE = &H6F   ' повтор, первое: WIN32API.INC(5928)
-'~dup Public Const VK_F1 = &H70   ' повтор, первое: WIN32API.INC(5929)
-'~dup Public Const VK_F2 = &H71   ' повтор, первое: WIN32API.INC(5930)
-'~dup Public Const VK_F3 = &H72   ' повтор, первое: WIN32API.INC(5931)
-'~dup Public Const VK_F4 = &H73   ' повтор, первое: WIN32API.INC(5932)
-'~dup Public Const VK_F5 = &H74   ' повтор, первое: WIN32API.INC(5933)
-'~dup Public Const VK_F6 = &H75   ' повтор, первое: WIN32API.INC(5934)
-'~dup Public Const VK_F7 = &H76   ' повтор, первое: WIN32API.INC(5935)
-'~dup Public Const VK_F8 = &H77   ' повтор, первое: WIN32API.INC(5936)
-'~dup Public Const VK_F9 = &H78   ' повтор, первое: WIN32API.INC(5937)
-'~dup Public Const VK_F10 = &H79   ' повтор, первое: WIN32API.INC(5938)
-'~dup Public Const VK_F11 = &H7A   ' повтор, первое: WIN32API.INC(5939)
-'~dup Public Const VK_F12 = &H7B   ' повтор, первое: WIN32API.INC(5940)
-'~dup Public Const VK_F13 = &H7C   ' повтор, первое: WIN32API.INC(5941)
-'~dup Public Const VK_F14 = &H7D   ' повтор, первое: WIN32API.INC(5942)
-'~dup Public Const VK_F15 = &H7E   ' повтор, первое: WIN32API.INC(5943)
-'~dup Public Const VK_F16 = &H7F   ' повтор, первое: WIN32API.INC(5944)
-'~dup Public Const VK_F17 = &H80   ' повтор, первое: WIN32API.INC(5945)
-'~dup Public Const VK_F18 = &H81   ' повтор, первое: WIN32API.INC(5946)
-'~dup Public Const VK_F19 = &H82   ' повтор, первое: WIN32API.INC(5947)
-'~dup Public Const VK_F20 = &H83   ' повтор, первое: WIN32API.INC(5948)
-'~dup Public Const VK_F21 = &H84   ' повтор, первое: WIN32API.INC(5949)
-'~dup Public Const VK_F22 = &H85   ' повтор, первое: WIN32API.INC(5950)
-'~dup Public Const VK_F23 = &H86   ' повтор, первое: WIN32API.INC(5951)
-'~dup Public Const VK_F24 = &H87   ' повтор, первое: WIN32API.INC(5952)
+'~dup Public Const VK_NUMPAD0 = &H60   ' повтор, первое: rapidq2.inc(1142)
+'~dup Public Const VK_NUMPAD1 = &H61   ' повтор, первое: rapidq2.inc(1143)
+'~dup Public Const VK_NUMPAD2 = &H62   ' повтор, первое: rapidq2.inc(1144)
+'~dup Public Const VK_NUMPAD3 = &H63   ' повтор, первое: rapidq2.inc(1145)
+'~dup Public Const VK_NUMPAD4 = &H64   ' повтор, первое: rapidq2.inc(1146)
+'~dup Public Const VK_NUMPAD5 = &H65   ' повтор, первое: rapidq2.inc(1147)
+'~dup Public Const VK_NUMPAD6 = &H66   ' повтор, первое: rapidq2.inc(1148)
+'~dup Public Const VK_NUMPAD7 = &H67   ' повтор, первое: rapidq2.inc(1149)
+'~dup Public Const VK_NUMPAD8 = &H68   ' повтор, первое: rapidq2.inc(1150)
+'~dup Public Const VK_NUMPAD9 = &H69   ' повтор, первое: rapidq2.inc(1151)
+'~dup Public Const VK_MULTIPLY = &H6A   ' повтор, первое: rapidq2.inc(1152)
+'~dup Public Const VK_ADD = &H6B   ' повтор, первое: rapidq2.inc(1153)
+'~dup Public Const VK_SEPARATOR = &H6C   ' повтор, первое: rapidq2.inc(1154)
+'~dup Public Const VK_SUBTRACT = &H6D   ' повтор, первое: rapidq2.inc(1155)
+'~dup Public Const VK_DECIMAL = &H6E   ' повтор, первое: rapidq2.inc(1156)
+'~dup Public Const VK_DIVIDE = &H6F   ' повтор, первое: rapidq2.inc(1157)
+'~dup Public Const VK_F1 = &H70   ' повтор, первое: rapidq2.inc(1158)
+'~dup Public Const VK_F2 = &H71   ' повтор, первое: rapidq2.inc(1159)
+'~dup Public Const VK_F3 = &H72   ' повтор, первое: rapidq2.inc(1160)
+'~dup Public Const VK_F4 = &H73   ' повтор, первое: rapidq2.inc(1161)
+'~dup Public Const VK_F5 = &H74   ' повтор, первое: rapidq2.inc(1162)
+'~dup Public Const VK_F6 = &H75   ' повтор, первое: rapidq2.inc(1163)
+'~dup Public Const VK_F7 = &H76   ' повтор, первое: rapidq2.inc(1164)
+'~dup Public Const VK_F8 = &H77   ' повтор, первое: rapidq2.inc(1165)
+'~dup Public Const VK_F9 = &H78   ' повтор, первое: rapidq2.inc(1166)
+'~dup Public Const VK_F10 = &H79   ' повтор, первое: rapidq2.inc(1167)
+'~dup Public Const VK_F11 = &H7A   ' повтор, первое: rapidq2.inc(1168)
+'~dup Public Const VK_F12 = &H7B   ' повтор, первое: rapidq2.inc(1169)
+'~dup Public Const VK_F13 = &H7C   ' повтор, первое: rapidq2.inc(1170)
+'~dup Public Const VK_F14 = &H7D   ' повтор, первое: rapidq2.inc(1171)
+'~dup Public Const VK_F15 = &H7E   ' повтор, первое: rapidq2.inc(1172)
+'~dup Public Const VK_F16 = &H7F   ' повтор, первое: rapidq2.inc(1173)
+'~dup Public Const VK_F17 = &H80   ' повтор, первое: rapidq2.inc(1174)
+'~dup Public Const VK_F18 = &H81   ' повтор, первое: rapidq2.inc(1175)
+'~dup Public Const VK_F19 = &H82   ' повтор, первое: rapidq2.inc(1176)
+'~dup Public Const VK_F20 = &H83   ' повтор, первое: rapidq2.inc(1177)
+'~dup Public Const VK_F21 = &H84   ' повтор, первое: rapidq2.inc(1178)
+'~dup Public Const VK_F22 = &H85   ' повтор, первое: rapidq2.inc(1179)
+'~dup Public Const VK_F23 = &H86   ' повтор, первое: rapidq2.inc(1180)
+'~dup Public Const VK_F24 = &H87   ' повтор, первое: rapidq2.inc(1181)
 
-'~dup Public Const VK_NUMLOCK = &H90   ' повтор, первое: WIN32API.INC(5954)
-'~dup Public Const VK_SCROLL = &H91   ' повтор, первое: WIN32API.INC(5955)
+'~dup Public Const VK_NUMLOCK = &H90   ' повтор, первое: rapidq2.inc(1183)
+'~dup Public Const VK_SCROLL = &H91   ' повтор, первое: rapidq2.inc(1184)
 
 '
 '   VK_L VK_R - left and right Alt, Ctrl and Shift virtual keys.
 '   Used only as parameters to GetAsyncKeyState() and GetKeyState().
 '   No other API or message will distinguish left and right keys in this way.
 '  /
-'~dup Public Const VK_LSHIFT = &HA0   ' повтор, первое: WIN32API.INC(5962)
-'~dup Public Const VK_RSHIFT = &HA1   ' повтор, первое: WIN32API.INC(5963)
-'~dup Public Const VK_LCONTROL = &HA2   ' повтор, первое: WIN32API.INC(5964)
-'~dup Public Const VK_RCONTROL = &HA3   ' повтор, первое: WIN32API.INC(5965)
-'~dup Public Const VK_LMENU = &HA4   ' повтор, первое: WIN32API.INC(5966)
-'~dup Public Const VK_RMENU = &HA5   ' повтор, первое: WIN32API.INC(5967)
+'~dup Public Const VK_LSHIFT = &HA0   ' повтор, первое: rapidq2.inc(1191)
+'~dup Public Const VK_RSHIFT = &HA1   ' повтор, первое: rapidq2.inc(1192)
+'~dup Public Const VK_LCONTROL = &HA2   ' повтор, первое: rapidq2.inc(1193)
+'~dup Public Const VK_RCONTROL = &HA3   ' повтор, первое: rapidq2.inc(1194)
+'~dup Public Const VK_LMENU = &HA4   ' повтор, первое: rapidq2.inc(1195)
+'~dup Public Const VK_RMENU = &HA5   ' повтор, первое: rapidq2.inc(1196)
 
 '~dup Public Const VK_ATTN = &HF6   ' повтор, первое: WIN32API.INC(5969)
 '~dup Public Const VK_CRSEL = &HF7   ' повтор, первое: WIN32API.INC(5970)
@@ -56652,16 +56581,16 @@ DECLARE FUNCTION SendInput LIB "user32.dll" ALIAS "SendInput" (nInputs AS DWORD,
 '~dup Public Const WM_MOVE = &H3   ' повтор, первое: WIN32API.INC(6142)
 '~dup Public Const WM_SIZE = &H5   ' повтор, первое: MDI_API.INC(69)
 
-'~dup Public Const WM_ACTIVATE = &H6   ' повтор, первое: WIN32API.INC(6145)
+'~dup Public Const WM_ACTIVATE = &H6   ' повтор, первое: rapidq2.inc(811)
 '
 '  WM_ACTIVATE state values
 
-'~dup Public Const WA_INACTIVE = 0   ' повтор, первое: WIN32API.INC(6149)
-'~dup Public Const WA_ACTIVE = 1   ' повтор, первое: WIN32API.INC(6150)
-'~dup Public Const WA_CLICKACTIVE = 2   ' повтор, первое: WIN32API.INC(6151)
+'~dup Public Const WA_INACTIVE = 0   ' повтор, первое: rapidq2.inc(813)
+'~dup Public Const WA_ACTIVE = 1   ' повтор, первое: rapidq2.inc(814)
+'~dup Public Const WA_CLICKACTIVE = 2   ' повтор, первое: rapidq2.inc(815)
 
-'~dup Public Const WM_SETFOCUS = &H7   ' повтор, первое: WIN32API.INC(6153)
-'~dup Public Const WM_KILLFOCUS = &H8   ' повтор, первое: QFormSkin.inc(21)
+'~dup Public Const WM_SETFOCUS = &H7   ' повтор, первое: rapidq2.inc(816)
+'~dup Public Const WM_KILLFOCUS = &H8   ' повтор, первое: rapidq2.inc(817)
 '~dup Public Const WM_ENABLE = &HA   ' повтор, первое: WIN32API.INC(6155)
 '~dup Public Const WM_SETREDRAW = &HB   ' повтор, первое: Win32_constants.inc(308)
 '~dup Public Const WM_SETTEXT = &HC   ' повтор, первое: MDI_API.INC(70)
@@ -56702,8 +56631,8 @@ DECLARE FUNCTION SendInput LIB "user32.dll" ALIAS "SendInput" (nInputs AS DWORD,
 '~dup Public Const WM_ICONERASEBKGND = &H27   ' повтор, первое: WIN32API.INC(6191)
 '~dup Public Const WM_NEXTDLGCTL = &H28   ' повтор, первое: WIN32API.INC(6192)
 '~dup Public Const WM_SPOOLERSTATUS = &H2A   ' повтор, первое: WIN32API.INC(6193)
-'~dup Public Const WM_DRAWITEM = &H2B   ' повтор, первое: Api.inc(13)
-'~dup Public Const WM_MEASUREITEM = &H2C   ' повтор, первое: Api.inc(14)
+'~dup Public Const WM_DRAWITEM = &H2B   ' повтор, первое: rapidq2.inc(835)
+'~dup Public Const WM_MEASUREITEM = &H2C   ' повтор, первое: rapidq2.inc(836)
 '~dup Public Const WM_DELETEITEM = &H2D   ' повтор, первое: WIN32API.INC(6196)
 '~dup Public Const WM_VKEYTOITEM = &H2E   ' повтор, первое: WIN32API.INC(6197)
 '~dup Public Const WM_CHARTOITEM = &H2F   ' повтор, первое: WIN32API.INC(6198)
@@ -56776,51 +56705,51 @@ CONST WM_NOTIFYFORMAT     = &H0055
 '~dup Public Const WM_NCMBUTTONUP = &HA8   ' повтор, первое: QFormSkin.inc(32)
 '~dup Public Const WM_NCMBUTTONDBLCLK = &HA9   ' повтор, первое: QFormSkin.inc(33)
 
-'~dup Public Const WM_KEYFIRST = &H100   ' повтор, первое: WIN32API.INC(6258)
-'~dup Public Const WM_KEYDOWN = &H100   ' повтор, первое: rapidq.inc(868)
-'~dup Public Const WM_KEYUP = &H101   ' повтор, первое: rapidq.inc(869)
-'~dup Public Const WM_CHAR = &H102   ' повтор, первое: constants.inc(164)
-'~dup Public Const WM_DEADCHAR = &H103   ' повтор, первое: WIN32API.INC(6263)
-'~dup Public Const WM_SYSKEYDOWN = &H104   ' повтор, первое: WIN32API.INC(6264)
-'~dup Public Const WM_SYSKEYUP = &H105   ' повтор, первое: WIN32API.INC(6265)
-'~dup Public Const WM_SYSCHAR = &H106   ' повтор, первое: WIN32API.INC(6266)
-'~dup Public Const WM_SYSDEADCHAR = &H107   ' повтор, первое: WIN32API.INC(6267)
-'~dup Public Const WM_KEYLAST = &H108   ' повтор, первое: WIN32API.INC(6268)
-'~dup Public Const WM_INITDIALOG = &H110   ' повтор, первое: WIN32API.INC(6269)
-'~dup Public Const WM_COMMAND = &H111   ' повтор, первое: createWind.inc(24)
-'~dup Public Const WM_SYSCOMMAND = &H112   ' повтор, первое: MDI_API.INC(71)
-'~dup Public Const WM_TIMER = &H113   ' повтор, первое: WIN32API.INC(6272)
-'~dup Public Const WM_HSCROLL = &H114   ' повтор, первое: WIN32API.INC(6273)
-'~dup Public Const WM_VSCROLL = &H115   ' повтор, первое: WIN32API.INC(6274)
-'~dup Public Const WM_INITMENU = &H116   ' повтор, первое: WIN32API.INC(6275)
-'~dup Public Const WM_INITMENUPOPUP = &H117   ' повтор, первое: QFormSkin.inc(56)
-'~dup Public Const WM_MENUSELECT = &H11F   ' повтор, первое: Api.inc(15)
-'~dup Public Const WM_MENUCHAR = &H120   ' повтор, первое: WIN32API.INC(6278)
-'~dup Public Const WM_ENTERIDLE = &H121   ' повтор, первое: WIN32API.INC(6279)
+'~dup Public Const WM_KEYFIRST = &H100   ' повтор, первое: rapidq2.inc(819)
+'~dup Public Const WM_KEYDOWN = &H100   ' повтор, первое: rapidq2.inc(820)
+'~dup Public Const WM_KEYUP = &H101   ' повтор, первое: rapidq2.inc(821)
+'~dup Public Const WM_CHAR = &H102   ' повтор, первое: rapidq2.inc(822)
+'~dup Public Const WM_DEADCHAR = &H103   ' повтор, первое: rapidq2.inc(823)
+'~dup Public Const WM_SYSKEYDOWN = &H104   ' повтор, первое: rapidq2.inc(824)
+'~dup Public Const WM_SYSKEYUP = &H105   ' повтор, первое: rapidq2.inc(825)
+'~dup Public Const WM_SYSCHAR = &H106   ' повтор, первое: rapidq2.inc(826)
+'~dup Public Const WM_SYSDEADCHAR = &H107   ' повтор, первое: rapidq2.inc(827)
+'~dup Public Const WM_KEYLAST = &H108   ' повтор, первое: rapidq2.inc(828)
+'~dup Public Const WM_INITDIALOG = &H110   ' повтор, первое: rapidq2.inc(829)
+'~dup Public Const WM_COMMAND = &H111   ' повтор, первое: rapidq2.inc(830)
+'~dup Public Const WM_SYSCOMMAND = &H112   ' повтор, первое: rapidq2.inc(831)
+'~dup Public Const WM_TIMER = &H113   ' повтор, первое: rapidq2.inc(832)
+'~dup Public Const WM_HSCROLL = &H114   ' повтор, первое: rapidq2.inc(833)
+'~dup Public Const WM_VSCROLL = &H115   ' повтор, первое: rapidq2.inc(834)
+'~dup Public Const WM_INITMENU = &H116   ' повтор, первое: rapidq2.inc(837)
+'~dup Public Const WM_INITMENUPOPUP = &H117   ' повтор, первое: rapidq2.inc(838)
+'~dup Public Const WM_MENUSELECT = &H11F   ' повтор, первое: rapidq2.inc(839)
+'~dup Public Const WM_MENUCHAR = &H120   ' повтор, первое: rapidq2.inc(840)
+'~dup Public Const WM_ENTERIDLE = &H121   ' повтор, первое: rapidq2.inc(841)
 
-'~dup Public Const WM_CTLCOLORMSGBOX = &H132   ' повтор, первое: WIN32API.INC(6281)
-'~dup Public Const WM_CTLCOLOREDIT = &H133   ' повтор, первое: WIN32API.INC(6282)
-'~dup Public Const WM_CTLCOLORLISTBOX = &H134   ' повтор, первое: WIN32API.INC(6283)
-'~dup Public Const WM_CTLCOLORBTN = &H135   ' повтор, первое: WIN32API.INC(6284)
-'~dup Public Const WM_CTLCOLORDLG = &H136   ' повтор, первое: WIN32API.INC(6285)
-'~dup Public Const WM_CTLCOLORSCROLLBAR = &H137   ' повтор, первое: WIN32API.INC(6286)
-'~dup Public Const WM_CTLCOLORSTATIC = &H138   ' повтор, первое: WIN32API.INC(6287)
+'~dup Public Const WM_CTLCOLORMSGBOX = &H132   ' повтор, первое: rapidq2.inc(843)
+'~dup Public Const WM_CTLCOLOREDIT = &H133   ' повтор, первое: rapidq2.inc(844)
+'~dup Public Const WM_CTLCOLORLISTBOX = &H134   ' повтор, первое: rapidq2.inc(845)
+'~dup Public Const WM_CTLCOLORBTN = &H135   ' повтор, первое: rapidq2.inc(846)
+'~dup Public Const WM_CTLCOLORDLG = &H136   ' повтор, первое: rapidq2.inc(847)
+'~dup Public Const WM_CTLCOLORSCROLLBAR = &H137   ' повтор, первое: rapidq2.inc(848)
+'~dup Public Const WM_CTLCOLORSTATIC = &H138   ' повтор, первое: rapidq2.inc(849)
 
-'~dup Public Const WM_MOUSEFIRST = &H200   ' повтор, первое: WIN32API.INC(6289)
-'~dup Public Const WM_MOUSEMOVE = &H200   ' повтор, первое: rapidq.inc(857)
-'~dup Public Const WM_LBUTTONDOWN = &H201   ' повтор, первое: rapidq.inc(858)
-'~dup Public Const WM_LBUTTONUP = &H202   ' повтор, первое: rapidq.inc(859)
-'~dup Public Const WM_LBUTTONDBLCLK = &H203   ' повтор, первое: rapidq.inc(860)
-'~dup Public Const WM_RBUTTONDOWN = &H204   ' повтор, первое: rapidq.inc(861)
-'~dup Public Const WM_RBUTTONUP = &H205   ' повтор, первое: rapidq.inc(862)
-'~dup Public Const WM_RBUTTONDBLCLK = &H206   ' повтор, первое: rapidq.inc(863)
-'~dup Public Const WM_MBUTTONDOWN = &H207   ' повтор, первое: rapidq.inc(864)
-'~dup Public Const WM_MBUTTONUP = &H208   ' повтор, первое: rapidq.inc(865)
-'~dup Public Const WM_MBUTTONDBLCLK = &H209   ' повтор, первое: rapidq.inc(866)
-'~dup Public Const WM_MOUSEWHEEL = &H20A   ' повтор, первое: rapidq.inc(867)
-'~dup Public Const WM_MOUSELAST = &H20A   ' повтор, первое: WIN32API.INC(6300)
+'~dup Public Const WM_MOUSEFIRST = &H200   ' повтор, первое: rapidq2.inc(851)
+'~dup Public Const WM_MOUSEMOVE = &H200   ' повтор, первое: rapidq2.inc(852)
+'~dup Public Const WM_LBUTTONDOWN = &H201   ' повтор, первое: rapidq2.inc(853)
+'~dup Public Const WM_LBUTTONUP = &H202   ' повтор, первое: rapidq2.inc(854)
+'~dup Public Const WM_LBUTTONDBLCLK = &H203   ' повтор, первое: rapidq2.inc(855)
+'~dup Public Const WM_RBUTTONDOWN = &H204   ' повтор, первое: rapidq2.inc(856)
+'~dup Public Const WM_RBUTTONUP = &H205   ' повтор, первое: rapidq2.inc(857)
+'~dup Public Const WM_RBUTTONDBLCLK = &H206   ' повтор, первое: rapidq2.inc(858)
+'~dup Public Const WM_MBUTTONDOWN = &H207   ' повтор, первое: rapidq2.inc(859)
+'~dup Public Const WM_MBUTTONUP = &H208   ' повтор, первое: rapidq2.inc(860)
+'~dup Public Const WM_MBUTTONDBLCLK = &H209   ' повтор, первое: rapidq2.inc(861)
+'~dup Public Const WM_MOUSEWHEEL = &H20A   ' повтор, первое: rapidq2.inc(863)
+'~dup Public Const WM_MOUSELAST = &H20A   ' повтор, первое: rapidq2.inc(864)
 
-'~dup Public Const WM_PARENTNOTIFY = &H210   ' повтор, первое: WIN32API.INC(6302)
+'~dup Public Const WM_PARENTNOTIFY = &H210   ' повтор, первое: rapidq2.inc(862)
 '~dup Public Const WM_ENTERMENULOOP = &H211   ' повтор, первое: WIN32API.INC(6303)
 '~dup Public Const WM_EXITMENULOOP = &H212   ' повтор, первое: WIN32API.INC(6304)
 '~dup Public Const WM_MDICREATE = &H220   ' повтор, первое: WIN32API.INC(6305)
@@ -56834,9 +56763,9 @@ CONST WM_NOTIFYFORMAT     = &H0055
 '~dup Public Const WM_MDIICONARRANGE = &H228   ' повтор, первое: MDI_API.INC(77)
 '~dup Public Const WM_MDIGETACTIVE = &H229   ' повтор, первое: WIN32API.INC(6314)
 '~dup Public Const WM_MDISETMENU = &H230   ' повтор, первое: MDI_API.INC(79)
-'~dup Public Const WM_DROPFILES = &H233   ' повтор, первое: WIN32API.INC(6316)
+'~dup Public Const WM_DROPFILES = &H233   ' повтор, первое: rapidq2.inc(866)
 '~dup Public Const WM_MDIREFRESHMENU = &H234   ' повтор, первое: WIN32API.INC(6317)
-'~dup Public Const  WM_TRAYICON=&H590   ' повтор, первое: QFormSkin.inc(47)
+'~dup Public Const  WM_TRAYICON=&H590   ' повтор, первое: rapidq2.inc(867)
 
 
 
@@ -56866,7 +56795,7 @@ CONST WM_NOTIFYFORMAT     = &H0055
 ' NOTE: All Message Numbers below 0x0400 are RESERVED.
 
 ' Private Window Messages Start Here:
-'~dup Public Const WM_USER = &H400   ' повтор, первое: CommCtrl.inc(6)
+'~dup Public Const WM_USER = &H400   ' повтор, первое: rapidq2.inc(870)
 
 ' WM_SYNCTASK Commands
 '~dup Public Const ST_BEGINSWP = 0   ' повтор, первое: WIN32API.INC(6349)
@@ -56958,34 +56887,34 @@ CONST WM_NOTIFYFORMAT     = &H0055
 
 
 ' Window Styles
-'~dup Public Const WS_OVERLAPPED = &H0&   ' повтор, первое: MDI_API.INC(55)
-'~dup Public Const WS_POPUP = &H80000000   ' повтор, первое: Win32_constants.inc(50)
-'~dup Public Const WS_CHILD = &H40000000   ' повтор, первое: createWind.inc(17)
-'~dup Public Const WS_MINIMIZE = &H20000000   ' повтор, первое: Win32_constants.inc(46)
-'~dup Public Const WS_VISIBLE = &H10000000   ' повтор, первое: createWind.inc(18)
-'~dup Public Const WS_DISABLED = &H8000000   ' повтор, первое: Win32_constants.inc(39)
-'~dup Public Const WS_CLIPSIBLINGS = &H4000000   ' повтор, первое: Win32_constants.inc(38)
-'~dup Public Const WS_CLIPCHILDREN = &H2000000   ' повтор, первое: Win32_constants.inc(37)
-'~dup Public Const WS_MAXIMIZE = &H1000000   ' повтор, первое: Win32_constants.inc(44)
-'~dup Public Const WS_CAPTION = &HC00000                  '  WS_BORDER Or WS_DLGFRAME   ' повтор, первое: MDI_API.INC(56)
-'~dup Public Const WS_BORDER = &H800000   ' повтор, первое: createWind.inc(19)
-'~dup Public Const WS_DLGFRAME = &H400000   ' повтор, первое: Win32_constants.inc(40)
-'~dup Public Const WS_VSCROLL = &H200000   ' повтор, первое: MDI_API.INC(61)
-'~dup Public Const WS_HSCROLL = &H100000   ' повтор, первое: MDI_API.INC(62)
-'~dup Public Const WS_SYSMENU = &H80000   ' повтор, первое: MDI_API.INC(57)
-'~dup Public Const WS_THICKFRAME = &H40000   ' повтор, первое: MDI_API.INC(58)
-'~dup Public Const WS_GROUP = &H20000   ' повтор, первое: Win32_constants.inc(41)
-'~dup Public Const WS_TABSTOP = &H10000   ' повтор, первое: Win32_constants.inc(54)
+'~dup Public Const WS_OVERLAPPED = &H0&   ' повтор, первое: rapidq2.inc(947)
+'~dup Public Const WS_POPUP = &H80000000   ' повтор, первое: rapidq2.inc(948)
+'~dup Public Const WS_CHILD = &H40000000   ' повтор, первое: rapidq2.inc(949)
+'~dup Public Const WS_MINIMIZE = &H20000000   ' повтор, первое: rapidq2.inc(950)
+'~dup Public Const WS_VISIBLE = &H10000000   ' повтор, первое: rapidq2.inc(951)
+'~dup Public Const WS_DISABLED = &H8000000   ' повтор, первое: rapidq2.inc(952)
+'~dup Public Const WS_CLIPSIBLINGS = &H4000000   ' повтор, первое: rapidq2.inc(953)
+'~dup Public Const WS_CLIPCHILDREN = &H2000000   ' повтор, первое: rapidq2.inc(954)
+'~dup Public Const WS_MAXIMIZE = &H1000000   ' повтор, первое: rapidq2.inc(955)
+'~dup Public Const WS_CAPTION = &HC00000                  '  WS_BORDER Or WS_DLGFRAME   ' повтор, первое: rapidq2.inc(956)
+'~dup Public Const WS_BORDER = &H800000   ' повтор, первое: rapidq2.inc(957)
+'~dup Public Const WS_DLGFRAME = &H400000   ' повтор, первое: rapidq2.inc(958)
+'~dup Public Const WS_VSCROLL = &H200000   ' повтор, первое: rapidq2.inc(959)
+'~dup Public Const WS_HSCROLL = &H100000   ' повтор, первое: rapidq2.inc(960)
+'~dup Public Const WS_SYSMENU = &H80000   ' повтор, первое: rapidq2.inc(961)
+'~dup Public Const WS_THICKFRAME = &H40000   ' повтор, первое: rapidq2.inc(962)
+'~dup Public Const WS_GROUP = &H20000   ' повтор, первое: rapidq2.inc(963)
+'~dup Public Const WS_TABSTOP = &H10000   ' повтор, первое: rapidq2.inc(964)
 
-'~dup Public Const WS_MINIMIZEBOX = &H20000   ' повтор, первое: MDI_API.INC(59)
-'~dup Public Const WS_MAXIMIZEBOX = &H10000   ' повтор, первое: MDI_API.INC(60)
+'~dup Public Const WS_MINIMIZEBOX = &H20000   ' повтор, первое: rapidq2.inc(968)
+'~dup Public Const WS_MAXIMIZEBOX = &H10000   ' повтор, первое: rapidq2.inc(969)
 
 '~dup Public Const WS_TILED = WS_OVERLAPPED   ' повтор, первое: Win32_constants.inc(56)
 '~dup Public Const WS_ICONIC = WS_MINIMIZE   ' повтор, первое: Win32_constants.inc(43)
 '~dup Public Const WS_SIZEBOX = WS_THICKFRAME   ' повтор, первое: Win32_constants.inc(52)
 '~dup Public Const WS_OVERLAPPEDWINDOW = (WS_OVERLAPPED Or WS_CAPTION Or WS_SYSMENU Or WS_THICKFRAME Or WS_MINIMIZEBOX Or WS_MAXIMIZEBOX)   ' повтор, первое: rapidq2.inc(970)
 '~dup Public Const WS_TILEDWINDOW = WS_OVERLAPPEDWINDOW   ' повтор, первое: Win32_constants.inc(57)
-'~dup Public Const WS_EX_MDICHILD=&H40   ' повтор, первое: MDI_API.INC(51)
+'~dup Public Const WS_EX_MDICHILD=&H40   ' повтор, первое: rapidq2.inc(965)
 
 '
 '   Common Window Styles
@@ -57019,20 +56948,20 @@ CONST WM_NOTIFYFORMAT     = &H0055
 '~dup Public Const CS_PUBLICCLASS = &H4000   ' повтор, первое: WIN32API.INC(6493)
 
 ' Predefined Clipboard Formats
-'~dup Public Const CF_TEXT = 1   ' повтор, первое: WIN32API.INC(6496)
-'~dup Public Const CF_BITMAP = 2   ' повтор, первое: WIN32API.INC(6497)
-'~dup Public Const CF_METAFILEPICT = 3   ' повтор, первое: WIN32API.INC(6498)
-'~dup Public Const CF_SYLK = 4   ' повтор, первое: WIN32API.INC(6499)
-'~dup Public Const CF_DIF = 5   ' повтор, первое: WIN32API.INC(6500)
-'~dup Public Const CF_TIFF = 6   ' повтор, первое: WIN32API.INC(6501)
-'~dup Public Const CF_OEMTEXT = 7   ' повтор, первое: WIN32API.INC(6502)
-'~dup Public Const CF_DIB = 8   ' повтор, первое: WIN32API.INC(6503)
-'~dup Public Const CF_PALETTE = 9   ' повтор, первое: WIN32API.INC(6504)
-'~dup Public Const CF_PENDATA = 10   ' повтор, первое: WIN32API.INC(6505)
-'~dup Public Const CF_RIFF = 11   ' повтор, первое: WIN32API.INC(6506)
-'~dup Public Const CF_WAVE = 12   ' повтор, первое: WIN32API.INC(6507)
-'~dup Public Const CF_UNICODETEXT = 13   ' повтор, первое: WIN32API.INC(6508)
-'~dup Public Const CF_ENHMETAFILE = 14   ' повтор, первое: WIN32API.INC(6509)
+'~dup Public Const CF_TEXT = 1   ' повтор, первое: rapidq2.inc(909)
+'~dup Public Const CF_BITMAP = 2   ' повтор, первое: rapidq2.inc(910)
+'~dup Public Const CF_METAFILEPICT = 3   ' повтор, первое: rapidq2.inc(911)
+'~dup Public Const CF_SYLK = 4   ' повтор, первое: rapidq2.inc(912)
+'~dup Public Const CF_DIF = 5   ' повтор, первое: rapidq2.inc(913)
+'~dup Public Const CF_TIFF = 6   ' повтор, первое: rapidq2.inc(914)
+'~dup Public Const CF_OEMTEXT = 7   ' повтор, первое: rapidq2.inc(915)
+'~dup Public Const CF_DIB = 8   ' повтор, первое: rapidq2.inc(916)
+'~dup Public Const CF_PALETTE = 9   ' повтор, первое: rapidq2.inc(917)
+'~dup Public Const CF_PENDATA = 10   ' повтор, первое: rapidq2.inc(918)
+'~dup Public Const CF_RIFF = 11   ' повтор, первое: rapidq2.inc(919)
+'~dup Public Const CF_WAVE = 12   ' повтор, первое: rapidq2.inc(920)
+'~dup Public Const CF_UNICODETEXT = 13   ' повтор, первое: rapidq2.inc(921)
+'~dup Public Const CF_ENHMETAFILE = 14   ' повтор, первое: rapidq2.inc(922)
 
 '~dup Public Const CF_OWNERDISPLAY = &H80   ' повтор, первое: WIN32API.INC(6511)
 '~dup Public Const CF_DSPTEXT = &H81   ' повтор, первое: WIN32API.INC(6512)
@@ -57104,7 +57033,7 @@ CONST WM_NOTIFYFORMAT     = &H0055
 '~dup Public Const WPF_RESTORETOMAXIMIZED = &H2   ' повтор, первое: Form.inc(22)
 
 ' Owner draw control types
-'~dup Public Const ODT_MENU = 1   ' повтор, первое: Api.inc(3)
+'~dup Public Const ODT_MENU = 1   ' повтор, первое: rapidq2.inc(1513)
 '~dup Public Const ODT_LISTBOX = 2   ' повтор, первое: WIN32API.INC(6582)
 '~dup Public Const ODT_COMBOBOX = 3   ' повтор, первое: WIN32API.INC(6583)
 '~dup Public Const ODT_BUTTON = 4   ' повтор, первое: WIN32API.INC(6584)
@@ -57115,38 +57044,38 @@ CONST WM_NOTIFYFORMAT     = &H0055
 '~dup Public Const ODA_FOCUS = &H4   ' повтор, первое: WIN32API.INC(6589)
 
 ' Owner draw state
-'~dup Public Const ODS_SELECTED = &H1   ' повтор, первое: Api.inc(5)
-'~dup Public Const ODS_GRAYED = &H2   ' повтор, первое: Api.inc(6)
-'~dup Public Const ODS_DISABLED = &H4   ' повтор, первое: Api.inc(7)
-'~dup Public Const ODS_CHECKED = &H8   ' повтор, первое: Api.inc(8)
-'~dup Public Const ODS_FOCUS = &H10   ' повтор, первое: Api.inc(9)
+'~dup Public Const ODS_SELECTED = &H1   ' повтор, первое: rapidq2.inc(1514)
+'~dup Public Const ODS_GRAYED = &H2   ' повтор, первое: rapidq2.inc(1515)
+'~dup Public Const ODS_DISABLED = &H4   ' повтор, первое: rapidq2.inc(1516)
+'~dup Public Const ODS_CHECKED = &H8   ' повтор, первое: rapidq2.inc(1517)
+'~dup Public Const ODS_FOCUS = &H10   ' повтор, первое: rapidq2.inc(1518)
 
 
 
-'~dup CONST MIIM_STATE = &H1   ' повтор, первое: Api.inc(24)
-'~dup CONST MIIM_ID = &H2   ' повтор, первое: Api.inc(25)
-'~dup CONST MIIM_SUBMENU = &H4   ' повтор, первое: Api.inc(26)
-'~dup CONST MIIM_CHECKMARKS = &H8   ' повтор, первое: Api.inc(27)
-'~dup CONST MIIM_DATA = &H20   ' повтор, первое: Api.inc(28)
-'~dup CONST MIIM_TYPE = &H10   ' повтор, первое: Api.inc(29)
+'~dup CONST MIIM_STATE = &H1   ' повтор, первое: rapidq2.inc(1538)
+'~dup CONST MIIM_ID = &H2   ' повтор, первое: rapidq2.inc(1539)
+'~dup CONST MIIM_SUBMENU = &H4   ' повтор, первое: rapidq2.inc(1540)
+'~dup CONST MIIM_CHECKMARKS = &H8   ' повтор, первое: rapidq2.inc(1541)
+'~dup CONST MIIM_DATA = &H20   ' повтор, первое: rapidq2.inc(1542)
+'~dup CONST MIIM_TYPE = &H10   ' повтор, первое: rapidq2.inc(1543)
 
-'~dup CONST MFT_BITMAP = &H4   ' повтор, первое: Api.inc(31)
-'~dup CONST MFT_MENUBARBREAK = &H20   ' повтор, первое: Api.inc(32)
-'~dup CONST MFT_MENUBREAK = &H40   ' повтор, первое: Api.inc(33)
-'~dup CONST MFT_OWNERDRAW = &H100   ' повтор, первое: Api.inc(34)
-'~dup CONST MFT_RADIOCHECK = &H200   ' повтор, первое: Api.inc(35)
-'~dup CONST MFT_RIGHTJUSTIFY = &H4000   ' повтор, первое: Api.inc(36)
-'~dup CONST MFT_RIGHTORDER = &H2000   ' повтор, первое: Api.inc(37)
-'~dup CONST MFT_SEPARATOR = &H800   ' повтор, первое: Api.inc(38)
-'~dup CONST MFT_STRING = &H0   ' повтор, первое: Api.inc(39)
-'~dup CONST MFS_CHECKED = &H8   ' повтор, первое: Api.inc(40)
-'~dup CONST MFS_DEFAULT = &H1000   ' повтор, первое: Api.inc(41)
-'~dup CONST MFS_DISABLED = &H2   ' повтор, первое: Api.inc(42)
-'~dup CONST MFS_ENABLED = &H0   ' повтор, первое: Api.inc(43)
-'~dup CONST MFS_GRAYED = &H1   ' повтор, первое: Api.inc(44)
-'~dup CONST MFS_HILITE = &H80   ' повтор, первое: Api.inc(45)
-'~dup CONST MFS_UNCHECKED = &H0   ' повтор, первое: Api.inc(46)
-'~dup CONST MFS_UNHILITE = &H0   ' повтор, первое: Api.inc(47)
+'~dup CONST MFT_BITMAP = &H4   ' повтор, первое: rapidq2.inc(1545)
+'~dup CONST MFT_MENUBARBREAK = &H20   ' повтор, первое: rapidq2.inc(1546)
+'~dup CONST MFT_MENUBREAK = &H40   ' повтор, первое: rapidq2.inc(1547)
+'~dup CONST MFT_OWNERDRAW = &H100   ' повтор, первое: rapidq2.inc(1548)
+'~dup CONST MFT_RADIOCHECK = &H200   ' повтор, первое: rapidq2.inc(1549)
+'~dup CONST MFT_RIGHTJUSTIFY = &H4000   ' повтор, первое: rapidq2.inc(1550)
+'~dup CONST MFT_RIGHTORDER = &H2000   ' повтор, первое: rapidq2.inc(1551)
+'~dup CONST MFT_SEPARATOR = &H800   ' повтор, первое: rapidq2.inc(1552)
+'~dup CONST MFT_STRING = &H0   ' повтор, первое: rapidq2.inc(1553)
+'~dup CONST MFS_CHECKED = &H8   ' повтор, первое: rapidq2.inc(1554)
+'~dup CONST MFS_DEFAULT = &H1000   ' повтор, первое: rapidq2.inc(1555)
+'~dup CONST MFS_DISABLED = &H2   ' повтор, первое: rapidq2.inc(1556)
+'~dup CONST MFS_ENABLED = &H0   ' повтор, первое: rapidq2.inc(1557)
+'~dup CONST MFS_GRAYED = &H1   ' повтор, первое: rapidq2.inc(1558)
+'~dup CONST MFS_HILITE = &H80   ' повтор, первое: rapidq2.inc(1559)
+'~dup CONST MFS_UNCHECKED = &H0   ' повтор, первое: rapidq2.inc(1560)
+'~dup CONST MFS_UNHILITE = &H0   ' повтор, первое: rapidq2.inc(1561)
 
 ' MEASUREITEMSTRUCT for ownerdraw
 '~dup      TYPE MEASUREITEMSTRUCT   ' повтор, первое: rapidq2.inc(1563)
@@ -57306,25 +57235,25 @@ CONST WM_NOTIFYFORMAT     = &H0055
 '~dup Declare Function IsZoomed Lib "user32" Alias "IsZoomed" (ByVal hwnd As Long) As Long   ' повтор, первое: rapidq2.inc(1005)
 
 ' SetWindowPos Flags
-'~dup Public Const SWP_NOSIZE = &H1   ' повтор, первое: StayOnTop.inc(12)
-'~dup Public Const SWP_NOMOVE = &H2   ' повтор, первое: StayOnTop.inc(11)
-'~dup Public Const SWP_NOZORDER = &H4   ' повтор, первое: WIN32API.INC(6749)
+'~dup Public Const SWP_NOSIZE = &H1   ' повтор, первое: rapidq2.inc(791)
+'~dup Public Const SWP_NOMOVE = &H2   ' повтор, первое: rapidq2.inc(792)
+'~dup Public Const SWP_NOZORDER = &H4   ' повтор, первое: rapidq2.inc(793)
 '~dup Public Const SWP_NOREDRAW = &H8   ' повтор, первое: WIN32API.INC(6750)
-'~dup Public Const SWP_NOACTIVATE = &H10   ' повтор, первое: WFunctions.inc(5)
+'~dup Public Const SWP_NOACTIVATE = &H10   ' повтор, первое: rapidq2.inc(794)
 '~dup Public Const SWP_FRAMECHANGED = &H20        '  The frame changed: send WM_NCCALCSIZE   ' повтор, первое: WIN32API.INC(6752)
-'~dup Public Const SWP_SHOWWINDOW = &H40   ' повтор, первое: WFunctions.inc(6)
+'~dup Public Const SWP_SHOWWINDOW = &H40   ' повтор, первое: rapidq2.inc(795)
 '~dup Public Const SWP_HIDEWINDOW = &H80   ' повтор, первое: WIN32API.INC(6754)
 '~dup Public Const SWP_NOCOPYBITS = &H100   ' повтор, первое: WIN32API.INC(6755)
 '~dup Public Const SWP_NOOWNERZORDER = &H200      '  Don't do owner Z ordering   ' повтор, первое: WIN32API.INC(6756)
-Public Const SWP_NOSENDCHANGING = &H400  'Don't send WM_WINDOWPOSCHANGING */
+'~dup Public Const SWP_NOSENDCHANGING = &H400  'Don't send WM_WINDOWPOSCHANGING */   ' повтор, первое: rapidq2.inc(796)
 
 
 '~dup Public Const SWP_DRAWFRAME = SWP_FRAMECHANGED   ' повтор, первое: WIN32API.INC(6758)
 '~dup Public Const SWP_NOREPOSITION = SWP_NOOWNERZORDER   ' повтор, первое: WIN32API.INC(6759)
 
 ' SetWindowPos() hwndInsertAfter values
-'~dup Public Const HWND_TOP = 0   ' повтор, первое: WIN32API.INC(6762)
-'~dup Public Const HWND_BOTTOM = 1   ' повтор, первое: WIN32API.INC(6763)
+'~dup Public Const HWND_TOP = 0   ' повтор, первое: rapidq2.inc(787)
+'~dup Public Const HWND_BOTTOM = 1   ' повтор, первое: rapidq2.inc(788)
 '~dup Public Const HWND_TOPMOST = -1   ' повтор, первое: rapidq2.inc(785)
 '~dup Public Const HWND_NOTOPMOST = -2   ' повтор, первое: rapidq2.inc(786)
 
@@ -57478,62 +57407,62 @@ Public Const SWP_NOSENDCHANGING = &H400  'Don't send WM_WINDOWPOSCHANGING */
 '~dup Declare Function TranslateAccelerator Lib "user32" Alias "TranslateAcceleratorA" (ByVal hwnd As Long, ByVal hAccTable As Long, lpMsg As MSG) As Long   ' повтор, первое: WIN32API.INC(6915)
 
 ' GetSystemMetrics() codes
-'~dup Public Const SM_CXSCREEN = 0   ' повтор, первое: User32.inc(137)
-'~dup Public Const SM_CYSCREEN = 1   ' повтор, первое: User32.inc(138)
-'~dup Public Const SM_CXVSCROLL = 2   ' повтор, первое: User32.inc(139)
-'~dup Public Const SM_CYHSCROLL = 3   ' повтор, первое: User32.inc(140)
-'~dup Public Const SM_CYCAPTION = 4   ' повтор, первое: QFormSkin.inc(114)
-'~dup Public Const SM_CXBORDER = 5   ' повтор, первое: QFormSkin.inc(115)
-'~dup Public Const SM_CYBORDER = 6   ' повтор, первое: QFormSkin.inc(116)
-'~dup Public Const SM_CXDLGFRAME = 7   ' повтор, первое: QFormSkin.inc(117)
-'~dup Public Const SM_CYDLGFRAME = 8   ' повтор, первое: QFormSkin.inc(118)
-'~dup Public Const SM_CYVTHUMB = 9   ' повтор, первое: User32.inc(146)
-'~dup Public Const SM_CXHTHUMB = 10   ' повтор, первое: User32.inc(147)
-'~dup Public Const SM_CXICON = 11   ' повтор, первое: User32.inc(148)
-'~dup Public Const SM_CYICON = 12   ' повтор, первое: User32.inc(149)
-'~dup Public Const SM_CXCURSOR = 13   ' повтор, первое: User32.inc(150)
-'~dup Public Const SM_CYCURSOR = 14   ' повтор, первое: User32.inc(151)
-'~dup Public Const SM_CYMENU = 15   ' повтор, первое: User32.inc(152)
-'~dup Public Const SM_CXFULLSCREEN = 16   ' повтор, первое: User32.inc(153)
-'~dup Public Const SM_CYFULLSCREEN = 17   ' повтор, первое: User32.inc(154)
-'~dup Public Const SM_CYKANJIWINDOW = 18   ' повтор, первое: User32.inc(155)
-'~dup Public Const SM_MOUSEPRESENT = 19   ' повтор, первое: User32.inc(156)
-'~dup Public Const SM_CYVSCROLL = 20   ' повтор, первое: User32.inc(157)
-'~dup Public Const SM_CXHSCROLL = 21   ' повтор, первое: User32.inc(158)
-'~dup Public Const SM_DEBUG = 22   ' повтор, первое: User32.inc(159)
-'~dup Public Const SM_SWAPBUTTON = 23   ' повтор, первое: User32.inc(160)
-'~dup Public Const SM_RESERVED1 = 24   ' повтор, первое: User32.inc(161)
-'~dup Public Const SM_RESERVED2 = 25   ' повтор, первое: User32.inc(162)
-'~dup Public Const SM_RESERVED3 = 26   ' повтор, первое: User32.inc(163)
-'~dup Public Const SM_RESERVED4 = 27   ' повтор, первое: User32.inc(164)
-'~dup Public Const SM_CXMIN = 28   ' повтор, первое: User32.inc(165)
-'~dup Public Const SM_CYMIN = 29   ' повтор, первое: User32.inc(166)
-'~dup Public Const SM_CXSIZE = 30   ' повтор, первое: QFormSkin.inc(119)
-'~dup Public Const SM_CYSIZE = 31   ' повтор, первое: QFormSkin.inc(120)
-'~dup Public Const SM_CXFRAME = 32   ' повтор, первое: QFormSkin.inc(121)
-'~dup Public Const SM_CYFRAME = 33   ' повтор, первое: QFormSkin.inc(122)
-'~dup Public Const SM_CXMINTRACK = 34   ' повтор, первое: User32.inc(171)
-'~dup Public Const SM_CYMINTRACK = 35   ' повтор, первое: User32.inc(172)
-'~dup Public Const SM_CXDOUBLECLK = 36   ' повтор, первое: User32.inc(173)
-'~dup Public Const SM_CYDOUBLECLK = 37   ' повтор, первое: User32.inc(174)
-'~dup Public Const SM_CXICONSPACING = 38   ' повтор, первое: User32.inc(175)
-'~dup Public Const SM_CYICONSPACING = 39   ' повтор, первое: User32.inc(176)
-'~dup Public Const SM_MENUDROPALIGNMENT = 40   ' повтор, первое: User32.inc(177)
-'~dup Public Const SM_PENWINDOWS = 41   ' повтор, первое: User32.inc(178)
-'~dup Public Const SM_DBCSENABLED = 42   ' повтор, первое: User32.inc(179)
-'~dup Public Const SM_CMOUSEBUTTONS = 43   ' повтор, первое: User32.inc(180)
-'~dup Public Const SM_CMETRICS = 44   ' повтор, первое: User32.inc(181)
+'~dup Public Const SM_CXSCREEN = 0   ' повтор, первое: rapidq2.inc(2112)
+'~dup Public Const SM_CYSCREEN = 1   ' повтор, первое: rapidq2.inc(2113)
+'~dup Public Const SM_CXVSCROLL = 2   ' повтор, первое: rapidq2.inc(2114)
+'~dup Public Const SM_CYHSCROLL = 3   ' повтор, первое: rapidq2.inc(2115)
+'~dup Public Const SM_CYCAPTION = 4   ' повтор, первое: rapidq2.inc(2116)
+'~dup Public Const SM_CXBORDER = 5   ' повтор, первое: rapidq2.inc(2117)
+'~dup Public Const SM_CYBORDER = 6   ' повтор, первое: rapidq2.inc(2118)
+'~dup Public Const SM_CXDLGFRAME = 7   ' повтор, первое: rapidq2.inc(2119)
+'~dup Public Const SM_CYDLGFRAME = 8   ' повтор, первое: rapidq2.inc(2120)
+'~dup Public Const SM_CYVTHUMB = 9   ' повтор, первое: rapidq2.inc(2121)
+'~dup Public Const SM_CXHTHUMB = 10   ' повтор, первое: rapidq2.inc(2122)
+'~dup Public Const SM_CXICON = 11   ' повтор, первое: rapidq2.inc(2123)
+'~dup Public Const SM_CYICON = 12   ' повтор, первое: rapidq2.inc(2124)
+'~dup Public Const SM_CXCURSOR = 13   ' повтор, первое: rapidq2.inc(2125)
+'~dup Public Const SM_CYCURSOR = 14   ' повтор, первое: rapidq2.inc(2126)
+'~dup Public Const SM_CYMENU = 15   ' повтор, первое: rapidq2.inc(2127)
+'~dup Public Const SM_CXFULLSCREEN = 16   ' повтор, первое: rapidq2.inc(2128)
+'~dup Public Const SM_CYFULLSCREEN = 17   ' повтор, первое: rapidq2.inc(2129)
+'~dup Public Const SM_CYKANJIWINDOW = 18   ' повтор, первое: rapidq2.inc(2130)
+'~dup Public Const SM_MOUSEPRESENT = 19   ' повтор, первое: rapidq2.inc(2131)
+'~dup Public Const SM_CYVSCROLL = 20   ' повтор, первое: rapidq2.inc(2132)
+'~dup Public Const SM_CXHSCROLL = 21   ' повтор, первое: rapidq2.inc(2133)
+'~dup Public Const SM_DEBUG = 22   ' повтор, первое: rapidq2.inc(2134)
+'~dup Public Const SM_SWAPBUTTON = 23   ' повтор, первое: rapidq2.inc(2135)
+'~dup Public Const SM_RESERVED1 = 24   ' повтор, первое: rapidq2.inc(2136)
+'~dup Public Const SM_RESERVED2 = 25   ' повтор, первое: rapidq2.inc(2137)
+'~dup Public Const SM_RESERVED3 = 26   ' повтор, первое: rapidq2.inc(2138)
+'~dup Public Const SM_RESERVED4 = 27   ' повтор, первое: rapidq2.inc(2139)
+'~dup Public Const SM_CXMIN = 28   ' повтор, первое: rapidq2.inc(2140)
+'~dup Public Const SM_CYMIN = 29   ' повтор, первое: rapidq2.inc(2141)
+'~dup Public Const SM_CXSIZE = 30   ' повтор, первое: rapidq2.inc(2142)
+'~dup Public Const SM_CYSIZE = 31   ' повтор, первое: rapidq2.inc(2143)
+'~dup Public Const SM_CXFRAME = 32   ' повтор, первое: rapidq2.inc(2144)
+'~dup Public Const SM_CYFRAME = 33   ' повтор, первое: rapidq2.inc(2145)
+'~dup Public Const SM_CXMINTRACK = 34   ' повтор, первое: rapidq2.inc(2146)
+'~dup Public Const SM_CYMINTRACK = 35   ' повтор, первое: rapidq2.inc(2147)
+'~dup Public Const SM_CXDOUBLECLK = 36   ' повтор, первое: rapidq2.inc(2148)
+'~dup Public Const SM_CYDOUBLECLK = 37   ' повтор, первое: rapidq2.inc(2149)
+'~dup Public Const SM_CXICONSPACING = 38   ' повтор, первое: rapidq2.inc(2150)
+'~dup Public Const SM_CYICONSPACING = 39   ' повтор, первое: rapidq2.inc(2151)
+'~dup Public Const SM_MENUDROPALIGNMENT = 40   ' повтор, первое: rapidq2.inc(2152)
+'~dup Public Const SM_PENWINDOWS = 41   ' повтор, первое: rapidq2.inc(2153)
+'~dup Public Const SM_DBCSENABLED = 42   ' повтор, первое: rapidq2.inc(2154)
+'~dup Public Const SM_CMOUSEBUTTONS = 43   ' повтор, первое: rapidq2.inc(2155)
+'~dup Public Const SM_CMETRICS = 44   ' повтор, первое: rapidq2.inc(2156)
 '~dup Public Const SM_CXSIZEFRAME = SM_CXFRAME   ' повтор, первое: rapidq2.inc(2157)
 '~dup Public Const SM_CYSIZEFRAME = SM_CYFRAME   ' повтор, первое: rapidq2.inc(2158)
 '~dup Public Const SM_CXFIXEDFRAME = SM_CXDLGFRAME   ' повтор, первое: rapidq2.inc(2159)
 '~dup Public Const SM_CYFIXEDFRAME = SM_CYDLGFRAME   ' повтор, первое: rapidq2.inc(2160)
-CONST SM_NETWORK = 63
-CONST SM_SLOWMACHINE = 73
-CONST SM_MOUSEWHEELPRESENT = 75
-Public Const SM_CXVIRTUALSCREEN = 78
-Public Const SM_CYVIRTUALSCREEN = 79
-Public Const SM_CMONITORS = 80
-Public Const SM_SAMEDISPLAYFORMAT = 81
+'~dup CONST SM_NETWORK = 63   ' повтор, первое: rapidq2.inc(2161)
+'~dup CONST SM_SLOWMACHINE = 73   ' повтор, первое: rapidq2.inc(2162)
+'~dup CONST SM_MOUSEWHEELPRESENT = 75   ' повтор, первое: rapidq2.inc(2163)
+'~dup Public Const SM_CXVIRTUALSCREEN = 78   ' повтор, первое: rapidq2.inc(2164)
+'~dup Public Const SM_CYVIRTUALSCREEN = 79   ' повтор, первое: rapidq2.inc(2165)
+'~dup Public Const SM_CMONITORS = 80   ' повтор, первое: rapidq2.inc(2166)
+'~dup Public Const SM_SAMEDISPLAYFORMAT = 81   ' повтор, первое: rapidq2.inc(2167)
 
 
 '~dup Declare Function GetSystemMetrics Lib "user32" Alias "GetSystemMetrics" (ByVal nIndex As Long) As Long   ' повтор, первое: rapidq2.inc(2169)
@@ -57791,20 +57720,20 @@ Public Const SM_SAMEDISPLAYFORMAT = 81
 '~dup Public Const COLOR_BACKGROUND = 1   ' повтор, первое: constants.inc(13)
 '~dup Public Const COLOR_ACTIVECAPTION = 2   ' повтор, первое: constants.inc(14)
 '~dup Public Const COLOR_INACTIVECAPTION = 3   ' повтор, первое: constants.inc(15)
-'~dup Public Const COLOR_MENU = 4   ' повтор, первое: constants.inc(16)
+'~dup Public Const COLOR_MENU = 4   ' повтор, первое: rapidq2.inc(1531)
 '~dup Public Const COLOR_WINDOW = 5   ' повтор, первое: constants.inc(17)
 '~dup Public Const COLOR_WINDOWFRAME = 6   ' повтор, первое: constants.inc(18)
-'~dup Public Const COLOR_MENUTEXT = 7   ' повтор, первое: constants.inc(19)
+'~dup Public Const COLOR_MENUTEXT = 7   ' повтор, первое: rapidq2.inc(1532)
 '~dup Public Const COLOR_WINDOWTEXT = 8   ' повтор, первое: constants.inc(20)
 '~dup Public Const COLOR_CAPTIONTEXT = 9   ' повтор, первое: constants.inc(21)
 '~dup Public Const COLOR_ACTIVEBORDER = 10   ' повтор, первое: constants.inc(22)
 '~dup Public Const COLOR_INACTIVEBORDER = 11   ' повтор, первое: constants.inc(23)
 '~dup Public Const COLOR_APPWORKSPACE = 12   ' повтор, первое: constants.inc(24)
-'~dup Public Const COLOR_HIGHLIGHT = 13   ' повтор, первое: constants.inc(25)
-'~dup Public Const COLOR_HIGHLIGHTTEXT = 14   ' повтор, первое: constants.inc(26)
+'~dup Public Const COLOR_HIGHLIGHT = 13   ' повтор, первое: rapidq2.inc(1533)
+'~dup Public Const COLOR_HIGHLIGHTTEXT = 14   ' повтор, первое: rapidq2.inc(1534)
 '~dup Public Const COLOR_BTNFACE = 15   ' повтор, первое: constants.inc(27)
 '~dup Public Const COLOR_BTNSHADOW = 16   ' повтор, первое: constants.inc(28)
-'~dup Public Const COLOR_GRAYTEXT = 17   ' повтор, первое: constants.inc(29)
+'~dup Public Const COLOR_GRAYTEXT = 17   ' повтор, первое: rapidq2.inc(1535)
 '~dup Public Const COLOR_BTNTEXT = 18   ' повтор, первое: constants.inc(30)
 '~dup Public Const COLOR_INACTIVECAPTIONTEXT = 19   ' повтор, первое: constants.inc(31)
 '~dup Public Const COLOR_BTNHIGHLIGHT = 20   ' повтор, первое: constants.inc(32)
@@ -57870,29 +57799,29 @@ Public Const SM_SAMEDISPLAYFORMAT = 81
 '~dup Public Const MF_DELETE = &H200&   ' повтор, первое: ODMenuXP.inc(558)
 '~dup Public Const MF_REMOVE = &H1000&   ' повтор, первое: ODMenuXP.inc(581)
 
-'~dup Public Const MF_BYCOMMAND = &H0&   ' повтор, первое: Api.inc(17)
-'~dup Public Const MF_BYPOSITION = &H400&   ' повтор, первое: Api.inc(18)
+'~dup Public Const MF_BYCOMMAND = &H0&   ' повтор, первое: rapidq2.inc(1522)
+'~dup Public Const MF_BYPOSITION = &H400&   ' повтор, первое: rapidq2.inc(1523)
 
 '~dup Public Const MF_SEPARATOR = &H800&   ' повтор, первое: ODMenuXP.inc(584)
 
 '~dup Public Const MF_ENABLED = &H0&   ' повтор, первое: ODMenuXP.inc(561)
-'~dup Public Const MF_GRAYED = &H1&   ' повтор, первое: ODMenuXP.inc(568)
-'~dup Public Const MF_DISABLED = &H2&   ' повтор, первое: ODMenuXP.inc(559)
+'~dup Public Const MF_GRAYED = &H1&   ' повтор, первое: rapidq2.inc(1525)
+'~dup Public Const MF_DISABLED = &H2&   ' повтор, первое: rapidq2.inc(1526)
 
 '~dup Public Const MF_UNCHECKED = &H0&   ' повтор, первое: ODMenuXP.inc(587)
 '~dup Public Const MF_CHECKED = &H8&   ' повтор, первое: ODMenuXP.inc(555)
 '~dup Public Const MF_USECHECKBITMAPS = &H200&   ' повтор, первое: ODMenuXP.inc(589)
 
-'~dup Public Const MF_STRING = &H0&   ' повтор, первое: Api.inc(20)
-'~dup Public Const MF_BITMAP = &H4&   ' повтор, первое: Api.inc(21)
-'~dup Public Const MF_OWNERDRAW = &H100&   ' повтор, первое: Api.inc(19)
+'~dup Public Const MF_STRING = &H0&   ' повтор, первое: rapidq2.inc(1527)
+'~dup Public Const MF_BITMAP = &H4&   ' повтор, первое: rapidq2.inc(1528)
+'~dup Public Const MF_OWNERDRAW = &H100&   ' повтор, первое: rapidq2.inc(1524)
 
 '~dup Public Const MF_POPUP = &H10&   ' повтор, первое: ODMenuXP.inc(579)
 '~dup Public Const MF_MENUBARBREAK = &H20&   ' повтор, первое: ODMenuXP.inc(575)
 '~dup Public Const MF_MENUBREAK = &H40&   ' повтор, первое: ODMenuXP.inc(576)
 
 '~dup Public Const MF_UNHILITE = &H0&   ' повтор, первое: ODMenuXP.inc(588)
-'~dup Public Const MF_HILITE = &H80&   ' повтор, первое: Api.inc(22)
+'~dup Public Const MF_HILITE = &H80&   ' повтор, первое: rapidq2.inc(1529)
 
 '~dup Public Const MF_SYSMENU = &H2000&   ' повтор, первое: ODMenuXP.inc(586)
 '~dup Public Const MF_HELP = &H4000&   ' повтор, первое: ODMenuXP.inc(569)
@@ -57924,7 +57853,7 @@ Public Const SM_SAMEDISPLAYFORMAT = 81
 ''Const SC_SIZE = &HF007''Adjust right bottom corner'
 ''Const SC_SIZE = &HF008''Adjust left bootom corner'
 '~dup Public Const SC_MOVE = &HF010   ' повтор, первое: WIN32API.INC(7328)
-'~dup Public Const SC_MINIMIZE = &HF020   ' повтор, первое: MDI_API.INC(87)
+'~dup Public Const SC_MINIMIZE = &HF020   ' повтор, первое: rapidq2.inc(868)
 '~dup Public Const SC_MAXIMIZE = &HF030   ' повтор, первое: WIN32API.INC(7330)
 '~dup Public Const SC_NEXTWINDOW = &HF040   ' повтор, первое: WIN32API.INC(7331)
 '~dup Public Const SC_PREVWINDOW = &HF050   ' повтор, первое: WIN32API.INC(7332)
@@ -59032,1268 +58961,1268 @@ Public Const BM_CLICK = &HF5
 ' This section contains the error code definitions for the Win32 API functions.
 
 ' NO_ERROR
-$DEFINE NO_ERROR 0 '  dderror
+'~dup $DEFINE NO_ERROR 0 '  dderror   ' повтор, первое: WIN32API.INC(8434)
 
 ' The configuration registry database operation completed successfully.
-$DEFINE ERROR_SUCCESS 0&
+'~dup $DEFINE ERROR_SUCCESS 0&   ' повтор, первое: WIN32API.INC(8437)
 
 '   Incorrect function.
-$DEFINE ERROR_INVALID_FUNCTION 1 '  dderror
+'~dup $DEFINE ERROR_INVALID_FUNCTION 1 '  dderror   ' повтор, первое: WIN32API.INC(8440)
 
 '   The system cannot find the file specified.
-$DEFINE ERROR_FILE_NOT_FOUND 2&
+'~dup $DEFINE ERROR_FILE_NOT_FOUND 2&   ' повтор, первое: WIN32API.INC(8443)
 
 '   The system cannot find the path specified.
-$DEFINE ERROR_PATH_NOT_FOUND 3&
+'~dup $DEFINE ERROR_PATH_NOT_FOUND 3&   ' повтор, первое: WIN32API.INC(8446)
 
 '   The system cannot open the file.
-$DEFINE ERROR_TOO_MANY_OPEN_FILES 4&
+'~dup $DEFINE ERROR_TOO_MANY_OPEN_FILES 4&   ' повтор, первое: WIN32API.INC(8449)
 
 '   Access is denied.
-$DEFINE ERROR_ACCESS_DENIED 5&
+'~dup $DEFINE ERROR_ACCESS_DENIED 5&   ' повтор, первое: WIN32API.INC(8452)
 
 '   The handle is invalid.
-$DEFINE ERROR_INVALID_HANDLE 6&
+'~dup $DEFINE ERROR_INVALID_HANDLE 6&   ' повтор, первое: WIN32API.INC(8455)
 
 '   The storage control blocks were destroyed.
-$DEFINE ERROR_ARENA_TRASHED 7&
+'~dup $DEFINE ERROR_ARENA_TRASHED 7&   ' повтор, первое: WIN32API.INC(8458)
 
 '   Not enough storage is available to process this command.
-$DEFINE ERROR_NOT_ENOUGH_MEMORY 8 '  dderror
+'~dup $DEFINE ERROR_NOT_ENOUGH_MEMORY 8 '  dderror   ' повтор, первое: WIN32API.INC(8461)
 
 '   The storage control block address is invalid.
-$DEFINE ERROR_INVALID_BLOCK 9&
+'~dup $DEFINE ERROR_INVALID_BLOCK 9&   ' повтор, первое: WIN32API.INC(8464)
 
 '   The environment is incorrect.
-$DEFINE ERROR_BAD_ENVIRONMENT 10&
+'~dup $DEFINE ERROR_BAD_ENVIRONMENT 10&   ' повтор, первое: WIN32API.INC(8467)
 
 '   An attempt was made to load a program with an
 '   incorrect format.
-$DEFINE ERROR_BAD_FORMAT 11&
+'~dup $DEFINE ERROR_BAD_FORMAT 11&   ' повтор, первое: WIN32API.INC(8471)
 
 '   The access code is invalid.
-$DEFINE ERROR_INVALID_ACCESS 12&
+'~dup $DEFINE ERROR_INVALID_ACCESS 12&   ' повтор, первое: WIN32API.INC(8474)
 
 '   The data is invalid.
-$DEFINE ERROR_INVALID_DATA 13&
+'~dup $DEFINE ERROR_INVALID_DATA 13&   ' повтор, первое: WIN32API.INC(8477)
 
 '   Not enough storage is available to complete this operation.
-$DEFINE ERROR_OUTOFMEMORY 14&
+'~dup $DEFINE ERROR_OUTOFMEMORY 14&   ' повтор, первое: WIN32API.INC(8480)
 
 '   The system cannot find the drive specified.
-$DEFINE ERROR_INVALID_DRIVE 15&
+'~dup $DEFINE ERROR_INVALID_DRIVE 15&   ' повтор, первое: WIN32API.INC(8483)
 
 '   The directory cannot be removed.
-$DEFINE ERROR_CURRENT_DIRECTORY 16&
+'~dup $DEFINE ERROR_CURRENT_DIRECTORY 16&   ' повтор, первое: WIN32API.INC(8486)
 
 '   The system cannot move the file
 '   to a different disk drive.
-$DEFINE ERROR_NOT_SAME_DEVICE 17&
+'~dup $DEFINE ERROR_NOT_SAME_DEVICE 17&   ' повтор, первое: WIN32API.INC(8490)
 
 '   There are no more files.
-$DEFINE ERROR_NO_MORE_FILES 18&
+'~dup $DEFINE ERROR_NO_MORE_FILES 18&   ' повтор, первое: WIN32API.INC(8493)
 
 '   The media is write protected.
-$DEFINE ERROR_WRITE_PROTECT 19&
+'~dup $DEFINE ERROR_WRITE_PROTECT 19&   ' повтор, первое: WIN32API.INC(8496)
 
 '   The system cannot find the device specified.
-$DEFINE ERROR_BAD_UNIT 20&
+'~dup $DEFINE ERROR_BAD_UNIT 20&   ' повтор, первое: WIN32API.INC(8499)
 
 '   The device is not ready.
-$DEFINE ERROR_NOT_READY 21&
+'~dup $DEFINE ERROR_NOT_READY 21&   ' повтор, первое: WIN32API.INC(8502)
 
 '   The device does not recognize the command.
-$DEFINE ERROR_BAD_COMMAND 22&
+'~dup $DEFINE ERROR_BAD_COMMAND 22&   ' повтор, первое: WIN32API.INC(8505)
 
 '   Data error (cyclic redundancy check)
-$DEFINE ERROR_CRC 23&
+'~dup $DEFINE ERROR_CRC 23&   ' повтор, первое: WIN32API.INC(8508)
 
 '   The program issued a command but the
 '   command length is incorrect.
-$DEFINE ERROR_BAD_LENGTH 24&
+'~dup $DEFINE ERROR_BAD_LENGTH 24&   ' повтор, первое: WIN32API.INC(8512)
 
 '   The drive cannot locate a specific
 '   area or track on the disk.
-$DEFINE ERROR_SEEK 25&
+'~dup $DEFINE ERROR_SEEK 25&   ' повтор, первое: WIN32API.INC(8516)
 
 '   The specified disk or diskette cannot be accessed.
-$DEFINE ERROR_NOT_DOS_DISK 26&
+'~dup $DEFINE ERROR_NOT_DOS_DISK 26&   ' повтор, первое: WIN32API.INC(8519)
 
 '   The drive cannot find the sector requested.
-$DEFINE ERROR_SECTOR_NOT_FOUND 27&
+'~dup $DEFINE ERROR_SECTOR_NOT_FOUND 27&   ' повтор, первое: WIN32API.INC(8522)
 
 '   The printer is out of paper.
-$DEFINE ERROR_OUT_OF_PAPER 28&
+'~dup $DEFINE ERROR_OUT_OF_PAPER 28&   ' повтор, первое: WIN32API.INC(8525)
 
 '   The system cannot write to the specified device.
-$DEFINE ERROR_WRITE_FAULT 29&
+'~dup $DEFINE ERROR_WRITE_FAULT 29&   ' повтор, первое: WIN32API.INC(8528)
 
 '   The system cannot read from the specified device.
-$DEFINE ERROR_READ_FAULT 30&
+'~dup $DEFINE ERROR_READ_FAULT 30&   ' повтор, первое: WIN32API.INC(8531)
 
 '   A device attached to the system is not functioning.
-$DEFINE ERROR_GEN_FAILURE 31&
+'~dup $DEFINE ERROR_GEN_FAILURE 31&   ' повтор, первое: WIN32API.INC(8534)
 
 '   The process cannot access the file because
 '   it is being used by another process.
-$DEFINE ERROR_SHARING_VIOLATION 32&
+'~dup $DEFINE ERROR_SHARING_VIOLATION 32&   ' повтор, первое: WIN32API.INC(8538)
 
 '   The process cannot access the file because
 '   another process has locked a portion of the file.
-$DEFINE ERROR_LOCK_VIOLATION 33&
+'~dup $DEFINE ERROR_LOCK_VIOLATION 33&   ' повтор, первое: WIN32API.INC(8542)
 
 '   The wrong diskette is in the drive.
 '   Insert %2 (Volume Serial Number: %3)
 '   into drive %1.
-$DEFINE ERROR_WRONG_DISK 34&
+'~dup $DEFINE ERROR_WRONG_DISK 34&   ' повтор, первое: WIN32API.INC(8547)
 
 '   Too many files opened for sharing.
-$DEFINE ERROR_SHARING_BUFFER_EXCEEDED 36&
+'~dup $DEFINE ERROR_SHARING_BUFFER_EXCEEDED 36&   ' повтор, первое: WIN32API.INC(8550)
 
 '   Reached end of file.
-$DEFINE ERROR_HANDLE_EOF 38&
+'~dup $DEFINE ERROR_HANDLE_EOF 38&   ' повтор, первое: WIN32API.INC(8553)
 
 '   The disk is full.
-$DEFINE ERROR_HANDLE_DISK_FULL 39&
+'~dup $DEFINE ERROR_HANDLE_DISK_FULL 39&   ' повтор, первое: WIN32API.INC(8556)
 
 '   The network request is not supported.
-$DEFINE ERROR_NOT_SUPPORTED 50&
+'~dup $DEFINE ERROR_NOT_SUPPORTED 50&   ' повтор, первое: WIN32API.INC(8559)
 
 '   The remote computer is not available.
-$DEFINE ERROR_REM_NOT_LIST 51&
+'~dup $DEFINE ERROR_REM_NOT_LIST 51&   ' повтор, первое: WIN32API.INC(8562)
 
 '   A duplicate name exists on the network.
-$DEFINE ERROR_DUP_NAME 52&
+'~dup $DEFINE ERROR_DUP_NAME 52&   ' повтор, первое: WIN32API.INC(8565)
 
 '   The network path was not found.
-$DEFINE ERROR_BAD_NETPATH 53&
+'~dup $DEFINE ERROR_BAD_NETPATH 53&   ' повтор, первое: WIN32API.INC(8568)
 
 '   The network is busy.
-$DEFINE ERROR_NETWORK_BUSY 54&
+'~dup $DEFINE ERROR_NETWORK_BUSY 54&   ' повтор, первое: WIN32API.INC(8571)
 
 '   The specified network resource or device is no longer
 '   available.
-$DEFINE ERROR_DEV_NOT_EXIST 55 '  dderror
+'~dup $DEFINE ERROR_DEV_NOT_EXIST 55 '  dderror   ' повтор, первое: WIN32API.INC(8575)
 
 '   The network BIOS command limit has been reached.
-$DEFINE ERROR_TOO_MANY_CMDS 56&
+'~dup $DEFINE ERROR_TOO_MANY_CMDS 56&   ' повтор, первое: WIN32API.INC(8578)
 
 '   A network adapter hardware error occurred.
-$DEFINE ERROR_ADAP_HDW_ERR 57&
+'~dup $DEFINE ERROR_ADAP_HDW_ERR 57&   ' повтор, первое: WIN32API.INC(8581)
 
 '   The specified server cannot perform the requested
 '   operation.
-$DEFINE ERROR_BAD_NET_RESP 58&
+'~dup $DEFINE ERROR_BAD_NET_RESP 58&   ' повтор, первое: WIN32API.INC(8585)
 
 '   An unexpected network error occurred.
-$DEFINE ERROR_UNEXP_NET_ERR 59&
+'~dup $DEFINE ERROR_UNEXP_NET_ERR 59&   ' повтор, первое: WIN32API.INC(8588)
 
 '   The remote adapter is not compatible.
-$DEFINE ERROR_BAD_REM_ADAP 60&
+'~dup $DEFINE ERROR_BAD_REM_ADAP 60&   ' повтор, первое: WIN32API.INC(8591)
 
 '   The printer queue is full.
-$DEFINE ERROR_PRINTQ_FULL 61&
+'~dup $DEFINE ERROR_PRINTQ_FULL 61&   ' повтор, первое: WIN32API.INC(8594)
 
 '   Space to store the file waiting to be printed is
 '   not available on the server.
-$DEFINE ERROR_NO_SPOOL_SPACE 62&
+'~dup $DEFINE ERROR_NO_SPOOL_SPACE 62&   ' повтор, первое: WIN32API.INC(8598)
 
 '   Your file waiting to be printed was deleted.
-$DEFINE ERROR_PRINT_CANCELLED 63&
+'~dup $DEFINE ERROR_PRINT_CANCELLED 63&   ' повтор, первое: WIN32API.INC(8601)
 
 '   The specified network name is no longer available.
-$DEFINE ERROR_NETNAME_DELETED 64&
+'~dup $DEFINE ERROR_NETNAME_DELETED 64&   ' повтор, первое: WIN32API.INC(8604)
 
 '   Network access is denied.
-$DEFINE ERROR_NETWORK_ACCESS_DENIED 65&
+'~dup $DEFINE ERROR_NETWORK_ACCESS_DENIED 65&   ' повтор, первое: WIN32API.INC(8607)
 
 '   The network resource type is not correct.
-$DEFINE ERROR_BAD_DEV_TYPE 66&
+'~dup $DEFINE ERROR_BAD_DEV_TYPE 66&   ' повтор, первое: WIN32API.INC(8610)
 
 '   The network name cannot be found.
-$DEFINE ERROR_BAD_NET_NAME 67&
+'~dup $DEFINE ERROR_BAD_NET_NAME 67&   ' повтор, первое: WIN32API.INC(8613)
 
 '   The name limit for the local computer network
 '   adapter card was exceeded.
-$DEFINE ERROR_TOO_MANY_NAMES 68&
+'~dup $DEFINE ERROR_TOO_MANY_NAMES 68&   ' повтор, первое: WIN32API.INC(8617)
 
 '   The network BIOS session limit was exceeded.
-$DEFINE ERROR_TOO_MANY_SESS 69&
+'~dup $DEFINE ERROR_TOO_MANY_SESS 69&   ' повтор, первое: WIN32API.INC(8620)
 
 '   The remote server has been paused or is in the
 '   process of being started.
-$DEFINE ERROR_SHARING_PAUSED 70&
+'~dup $DEFINE ERROR_SHARING_PAUSED 70&   ' повтор, первое: WIN32API.INC(8624)
 
 '   The network request was not accepted.
-$DEFINE ERROR_REQ_NOT_ACCEP 71&
+'~dup $DEFINE ERROR_REQ_NOT_ACCEP 71&   ' повтор, первое: WIN32API.INC(8627)
 
 '   The specified printer or disk device has been paused.
-$DEFINE ERROR_REDIR_PAUSED 72&
+'~dup $DEFINE ERROR_REDIR_PAUSED 72&   ' повтор, первое: WIN32API.INC(8630)
 
 '   The file exists.
-$DEFINE ERROR_FILE_EXISTS 80&
+'~dup $DEFINE ERROR_FILE_EXISTS 80&   ' повтор, первое: WIN32API.INC(8633)
 
 '   The directory or file cannot be created.
-$DEFINE ERROR_CANNOT_MAKE 82&
+'~dup $DEFINE ERROR_CANNOT_MAKE 82&   ' повтор, первое: WIN32API.INC(8636)
 
 '   Fail on INT 24
-$DEFINE ERROR_FAIL_I24 83&
+'~dup $DEFINE ERROR_FAIL_I24 83&   ' повтор, первое: WIN32API.INC(8639)
 
 '   Storage to process this request is not available.
-$DEFINE ERROR_OUT_OF_STRUCTURES 84&
+'~dup $DEFINE ERROR_OUT_OF_STRUCTURES 84&   ' повтор, первое: WIN32API.INC(8642)
 
 '   The local device name is already in use.
-$DEFINE ERROR_ALREADY_ASSIGNED 85&
+'~dup $DEFINE ERROR_ALREADY_ASSIGNED 85&   ' повтор, первое: WIN32API.INC(8645)
 
 '   The specified network password is not correct.
-$DEFINE ERROR_INVALID_PASSWORD 86&
+'~dup $DEFINE ERROR_INVALID_PASSWORD 86&   ' повтор, первое: WIN32API.INC(8648)
 
 '   The parameter is incorrect.
-$DEFINE ERROR_INVALID_PARAMETER 87 '  dderror
+'~dup $DEFINE ERROR_INVALID_PARAMETER 87 '  dderror   ' повтор, первое: WIN32API.INC(8651)
 
 '   A write fault occurred on the network.
-$DEFINE ERROR_NET_WRITE_FAULT 88&
+'~dup $DEFINE ERROR_NET_WRITE_FAULT 88&   ' повтор, первое: WIN32API.INC(8654)
 
 '   The system cannot start another process at
 '   this time.
-$DEFINE ERROR_NO_PROC_SLOTS 89&
+'~dup $DEFINE ERROR_NO_PROC_SLOTS 89&   ' повтор, первое: WIN32API.INC(8658)
 
 '   Cannot create another system semaphore.
-$DEFINE ERROR_TOO_MANY_SEMAPHORES 100&
+'~dup $DEFINE ERROR_TOO_MANY_SEMAPHORES 100&   ' повтор, первое: WIN32API.INC(8661)
 
 '   The exclusive semaphore is owned by another process.
-$DEFINE ERROR_EXCL_SEM_ALREADY_OWNED 101&
+'~dup $DEFINE ERROR_EXCL_SEM_ALREADY_OWNED 101&   ' повтор, первое: WIN32API.INC(8664)
 
 '   The semaphore is set and cannot be closed.
-$DEFINE ERROR_SEM_IS_SET 102&
+'~dup $DEFINE ERROR_SEM_IS_SET 102&   ' повтор, первое: WIN32API.INC(8667)
 
 '   The semaphore cannot be set again.
-$DEFINE ERROR_TOO_MANY_SEM_REQUESTS 103&
+'~dup $DEFINE ERROR_TOO_MANY_SEM_REQUESTS 103&   ' повтор, первое: WIN32API.INC(8670)
 
 '   Cannot request exclusive semaphores at interrupt time.
-$DEFINE ERROR_INVALID_AT_INTERRUPT_TIME 104&
+'~dup $DEFINE ERROR_INVALID_AT_INTERRUPT_TIME 104&   ' повтор, первое: WIN32API.INC(8673)
 
 '   The previous ownership of this semaphore has ended.
-$DEFINE ERROR_SEM_OWNER_DIED 105&
+'~dup $DEFINE ERROR_SEM_OWNER_DIED 105&   ' повтор, первое: WIN32API.INC(8676)
 
 '   Insert the diskette for drive %1.
-$DEFINE ERROR_SEM_USER_LIMIT 106&
+'~dup $DEFINE ERROR_SEM_USER_LIMIT 106&   ' повтор, первое: WIN32API.INC(8679)
 
 '   Program stopped because alternate diskette was not inserted.
-$DEFINE ERROR_DISK_CHANGE 107&
+'~dup $DEFINE ERROR_DISK_CHANGE 107&   ' повтор, первое: WIN32API.INC(8682)
 
 '   The disk is in use or locked by
 '   another process.
-$DEFINE ERROR_DRIVE_LOCKED 108&
+'~dup $DEFINE ERROR_DRIVE_LOCKED 108&   ' повтор, первое: WIN32API.INC(8686)
 
 '   The pipe has been ended.
-$DEFINE ERROR_BROKEN_PIPE 109&
+'~dup $DEFINE ERROR_BROKEN_PIPE 109&   ' повтор, первое: WIN32API.INC(8689)
 
 '   The system cannot open the
 '   device or file specified.
-$DEFINE ERROR_OPEN_FAILED 110&
+'~dup $DEFINE ERROR_OPEN_FAILED 110&   ' повтор, первое: WIN32API.INC(8693)
 
 '   The file name is too long.
-$DEFINE ERROR_BUFFER_OVERFLOW 111&
+'~dup $DEFINE ERROR_BUFFER_OVERFLOW 111&   ' повтор, первое: WIN32API.INC(8696)
 
 '   There is not enough space on the disk.
-$DEFINE ERROR_DISK_FULL 112&
+'~dup $DEFINE ERROR_DISK_FULL 112&   ' повтор, первое: WIN32API.INC(8699)
 
 '   No more internal file identifiers available.
-$DEFINE ERROR_NO_MORE_SEARCH_HANDLES 113&
+'~dup $DEFINE ERROR_NO_MORE_SEARCH_HANDLES 113&   ' повтор, первое: WIN32API.INC(8702)
 
 '   The target internal file identifier is incorrect.
-$DEFINE ERROR_INVALID_TARGET_HANDLE 114&
+'~dup $DEFINE ERROR_INVALID_TARGET_HANDLE 114&   ' повтор, первое: WIN32API.INC(8705)
 
 '   The IOCTL call made by the application program is
 '   not correct.
-$DEFINE ERROR_INVALID_CATEGORY 117&
+'~dup $DEFINE ERROR_INVALID_CATEGORY 117&   ' повтор, первое: WIN32API.INC(8709)
 
 '   The verify-on-write switch parameter value is not
 '   correct.
-$DEFINE ERROR_INVALID_VERIFY_SWITCH 118&
+'~dup $DEFINE ERROR_INVALID_VERIFY_SWITCH 118&   ' повтор, первое: WIN32API.INC(8713)
 
 '   The system does not support the command requested.
-$DEFINE ERROR_BAD_DRIVER_LEVEL 119&
+'~dup $DEFINE ERROR_BAD_DRIVER_LEVEL 119&   ' повтор, первое: WIN32API.INC(8716)
 
 '   This function is only valid in Windows NT mode.
-$DEFINE ERROR_CALL_NOT_IMPLEMENTED 120&
+'~dup $DEFINE ERROR_CALL_NOT_IMPLEMENTED 120&   ' повтор, первое: WIN32API.INC(8719)
 
 '   The semaphore timeout period has expired.
-$DEFINE ERROR_SEM_TIMEOUT 121&
+'~dup $DEFINE ERROR_SEM_TIMEOUT 121&   ' повтор, первое: WIN32API.INC(8722)
 
 '   The data area passed to a system call is too
 '   small.
-$DEFINE ERROR_INSUFFICIENT_BUFFER 122 '  dderror
+'~dup $DEFINE ERROR_INSUFFICIENT_BUFFER 122 '  dderror   ' повтор, первое: WIN32API.INC(8726)
 
 '   The filename, directory name, or volume label syntax is incorrect.
-$DEFINE ERROR_INVALID_NAME 123&
+'~dup $DEFINE ERROR_INVALID_NAME 123&   ' повтор, первое: WIN32API.INC(8729)
 
 '   The system call level is not correct.
-$DEFINE ERROR_INVALID_LEVEL 124&
+'~dup $DEFINE ERROR_INVALID_LEVEL 124&   ' повтор, первое: WIN32API.INC(8732)
 
 '   The disk has no volume label.
-$DEFINE ERROR_NO_VOLUME_LABEL 125&
+'~dup $DEFINE ERROR_NO_VOLUME_LABEL 125&   ' повтор, первое: WIN32API.INC(8735)
 
 '   The specified module could not be found.
-$DEFINE ERROR_MOD_NOT_FOUND 126&
+'~dup $DEFINE ERROR_MOD_NOT_FOUND 126&   ' повтор, первое: WIN32API.INC(8738)
 
 '   The specified procedure could not be found.
-$DEFINE ERROR_PROC_NOT_FOUND 127&
+'~dup $DEFINE ERROR_PROC_NOT_FOUND 127&   ' повтор, первое: WIN32API.INC(8741)
 
 '   There are no child processes to wait for.
-$DEFINE ERROR_WAIT_NO_CHILDREN 128&
+'~dup $DEFINE ERROR_WAIT_NO_CHILDREN 128&   ' повтор, первое: WIN32API.INC(8744)
 
 '   The %1 application cannot be run in Windows NT mode.
-$DEFINE ERROR_CHILD_NOT_COMPLETE 129&
+'~dup $DEFINE ERROR_CHILD_NOT_COMPLETE 129&   ' повтор, первое: WIN32API.INC(8747)
 
 '   Attempt to use a file handle to an open disk partition for an
 '   operation other than raw disk I/O.
-$DEFINE ERROR_DIRECT_ACCESS_HANDLE 130&
+'~dup $DEFINE ERROR_DIRECT_ACCESS_HANDLE 130&   ' повтор, первое: WIN32API.INC(8751)
 
 '   An attempt was made to move the file pointer before the beginning of the file.
-$DEFINE ERROR_NEGATIVE_SEEK 131&
+'~dup $DEFINE ERROR_NEGATIVE_SEEK 131&   ' повтор, первое: WIN32API.INC(8754)
 
 '   The file pointer cannot be set on the specified device or file.
-$DEFINE ERROR_SEEK_ON_DEVICE 132&
+'~dup $DEFINE ERROR_SEEK_ON_DEVICE 132&   ' повтор, первое: WIN32API.INC(8757)
 
 '   A JOIN or SUBST command
 '   cannot be used for a drive that
 '   contains previously joined drives.
-$DEFINE ERROR_IS_JOIN_TARGET 133&
+'~dup $DEFINE ERROR_IS_JOIN_TARGET 133&   ' повтор, первое: WIN32API.INC(8762)
 
 '   An attempt was made to use a
 '   JOIN or SUBST command on a drive that has
 '   already been joined.
-$DEFINE ERROR_IS_JOINED 134&
+'~dup $DEFINE ERROR_IS_JOINED 134&   ' повтор, первое: WIN32API.INC(8767)
 
 '   An attempt was made to use a
 '   JOIN or SUBST command on a drive that has
 '   already been substituted.
-$DEFINE ERROR_IS_SUBSTED 135&
+'~dup $DEFINE ERROR_IS_SUBSTED 135&   ' повтор, первое: WIN32API.INC(8772)
 
 '   The system tried to delete
 '   the JOIN of a drive that is not joined.
-$DEFINE ERROR_NOT_JOINED 136&
+'~dup $DEFINE ERROR_NOT_JOINED 136&   ' повтор, первое: WIN32API.INC(8776)
 
 '   The system tried to delete the
 '   substitution of a drive that is not substituted.
-$DEFINE ERROR_NOT_SUBSTED 137&
+'~dup $DEFINE ERROR_NOT_SUBSTED 137&   ' повтор, первое: WIN32API.INC(8780)
 
 '   The system tried to join a drive
 '   to a directory on a joined drive.
-$DEFINE ERROR_JOIN_TO_JOIN 138&
+'~dup $DEFINE ERROR_JOIN_TO_JOIN 138&   ' повтор, первое: WIN32API.INC(8784)
 
 '   The system tried to substitute a
 '   drive to a directory on a substituted drive.
-$DEFINE ERROR_SUBST_TO_SUBST 139&
+'~dup $DEFINE ERROR_SUBST_TO_SUBST 139&   ' повтор, первое: WIN32API.INC(8788)
 
 '   The system tried to join a drive to
 '   a directory on a substituted drive.
-$DEFINE ERROR_JOIN_TO_SUBST 140&
+'~dup $DEFINE ERROR_JOIN_TO_SUBST 140&   ' повтор, первое: WIN32API.INC(8792)
 
 '   The system tried to SUBST a drive
 '   to a directory on a joined drive.
-$DEFINE ERROR_SUBST_TO_JOIN 141&
+'~dup $DEFINE ERROR_SUBST_TO_JOIN 141&   ' повтор, первое: WIN32API.INC(8796)
 
 '   The system cannot perform a JOIN or SUBST at this time.
-$DEFINE ERROR_BUSY_DRIVE 142&
+'~dup $DEFINE ERROR_BUSY_DRIVE 142&   ' повтор, первое: WIN32API.INC(8799)
 
 '   The system cannot join or substitute a
 '   drive to or for a directory on the same drive.
-$DEFINE ERROR_SAME_DRIVE 143&
+'~dup $DEFINE ERROR_SAME_DRIVE 143&   ' повтор, первое: WIN32API.INC(8803)
 
 '   The directory is not a subdirectory of the root directory.
-$DEFINE ERROR_DIR_NOT_ROOT 144&
+'~dup $DEFINE ERROR_DIR_NOT_ROOT 144&   ' повтор, первое: WIN32API.INC(8806)
 
 '   The directory is not empty.
-$DEFINE ERROR_DIR_NOT_EMPTY 145&
+'~dup $DEFINE ERROR_DIR_NOT_EMPTY 145&   ' повтор, первое: WIN32API.INC(8809)
 
 '   The path specified is being used in
 '   a substitute.
-$DEFINE ERROR_IS_SUBST_PATH 146&
+'~dup $DEFINE ERROR_IS_SUBST_PATH 146&   ' повтор, первое: WIN32API.INC(8813)
 
 '   Not enough resources are available to
 '   process this command.
-$DEFINE ERROR_IS_JOIN_PATH 147&
+'~dup $DEFINE ERROR_IS_JOIN_PATH 147&   ' повтор, первое: WIN32API.INC(8817)
 
 '   The path specified cannot be used at this time.
-$DEFINE ERROR_PATH_BUSY 148&
+'~dup $DEFINE ERROR_PATH_BUSY 148&   ' повтор, первое: WIN32API.INC(8820)
 
 '   An attempt was made to join
 '   or substitute a drive for which a directory
 '   on the drive is the target of a previous
 '   substitute.
-$DEFINE ERROR_IS_SUBST_TARGET 149&
+'~dup $DEFINE ERROR_IS_SUBST_TARGET 149&   ' повтор, первое: WIN32API.INC(8826)
 
 '   System trace information was not specified in your
 '   CONFIG.SYS file, or tracing is disallowed.
-$DEFINE ERROR_SYSTEM_TRACE 150&
+'~dup $DEFINE ERROR_SYSTEM_TRACE 150&   ' повтор, первое: WIN32API.INC(8830)
 
 '   The number of specified semaphore events for
 '   DosMuxSemWait is not correct.
-$DEFINE ERROR_INVALID_EVENT_COUNT 151&
+'~dup $DEFINE ERROR_INVALID_EVENT_COUNT 151&   ' повтор, первое: WIN32API.INC(8834)
 
 '   DosMuxSemWait did not execute; too many semaphores
 '   are already set.
-$DEFINE ERROR_TOO_MANY_MUXWAITERS 152&
+'~dup $DEFINE ERROR_TOO_MANY_MUXWAITERS 152&   ' повтор, первое: WIN32API.INC(8838)
 
 '   The DosMuxSemWait list is not correct.
-$DEFINE ERROR_INVALID_LIST_FORMAT 153&
+'~dup $DEFINE ERROR_INVALID_LIST_FORMAT 153&   ' повтор, первое: WIN32API.INC(8841)
 
 '   The volume label you entered exceeds the
 '   11 character limit.  The first 11 characters were written
 '   to disk.  Any characters that exceeded the 11 character limit
 '   were automatically deleted.
-$DEFINE ERROR_LABEL_TOO_LONG 154&
+'~dup $DEFINE ERROR_LABEL_TOO_LONG 154&   ' повтор, первое: WIN32API.INC(8847)
 
 '   Cannot create another thread.
-$DEFINE ERROR_TOO_MANY_TCBS 155&
+'~dup $DEFINE ERROR_TOO_MANY_TCBS 155&   ' повтор, первое: WIN32API.INC(8850)
 
 '   The recipient process has refused the signal.
-$DEFINE ERROR_SIGNAL_REFUSED 156&
+'~dup $DEFINE ERROR_SIGNAL_REFUSED 156&   ' повтор, первое: WIN32API.INC(8853)
 
 '   The segment is already discarded and cannot be locked.
-$DEFINE ERROR_DISCARDED 157&
+'~dup $DEFINE ERROR_DISCARDED 157&   ' повтор, первое: WIN32API.INC(8856)
 
 '   The segment is already unlocked.
-$DEFINE ERROR_NOT_LOCKED 158&
+'~dup $DEFINE ERROR_NOT_LOCKED 158&   ' повтор, первое: WIN32API.INC(8859)
 
 '   The address for the thread ID is not correct.
-$DEFINE ERROR_BAD_THREADID_ADDR 159&
+'~dup $DEFINE ERROR_BAD_THREADID_ADDR 159&   ' повтор, первое: WIN32API.INC(8862)
 
 '   The argument string passed to DosExecPgm is not correct.
-$DEFINE ERROR_BAD_ARGUMENTS 160&
+'~dup $DEFINE ERROR_BAD_ARGUMENTS 160&   ' повтор, первое: WIN32API.INC(8865)
 
 '   The specified path is invalid.
-$DEFINE ERROR_BAD_PATHNAME 161&
+'~dup $DEFINE ERROR_BAD_PATHNAME 161&   ' повтор, первое: WIN32API.INC(8868)
 
 '   A signal is already pending.
-$DEFINE ERROR_SIGNAL_PENDING 162&
+'~dup $DEFINE ERROR_SIGNAL_PENDING 162&   ' повтор, первое: WIN32API.INC(8871)
 
 '   No more threads can be created in the system.
-$DEFINE ERROR_MAX_THRDS_REACHED 164&
+'~dup $DEFINE ERROR_MAX_THRDS_REACHED 164&   ' повтор, первое: WIN32API.INC(8874)
 
 '   Unable to lock a region of a file.
-$DEFINE ERROR_LOCK_FAILED 167&
+'~dup $DEFINE ERROR_LOCK_FAILED 167&   ' повтор, первое: WIN32API.INC(8877)
 
 '   The requested resource is in use.
-$DEFINE ERROR_BUSY 170&
+'~dup $DEFINE ERROR_BUSY 170&   ' повтор, первое: WIN32API.INC(8880)
 
 '   A lock request was not outstanding for the supplied cancel region.
-$DEFINE ERROR_CANCEL_VIOLATION 173&
+'~dup $DEFINE ERROR_CANCEL_VIOLATION 173&   ' повтор, первое: WIN32API.INC(8883)
 
 '   The file system does not support atomic changes to the lock type.
-$DEFINE ERROR_ATOMIC_LOCKS_NOT_SUPPORTED 174&
+'~dup $DEFINE ERROR_ATOMIC_LOCKS_NOT_SUPPORTED 174&   ' повтор, первое: WIN32API.INC(8886)
 
 '   The system detected a segment number that was not correct.
-$DEFINE ERROR_INVALID_SEGMENT_NUMBER 180&
+'~dup $DEFINE ERROR_INVALID_SEGMENT_NUMBER 180&   ' повтор, первое: WIN32API.INC(8889)
 
 '   The operating system cannot run %1.
-$DEFINE ERROR_INVALID_ORDINAL 182&
+'~dup $DEFINE ERROR_INVALID_ORDINAL 182&   ' повтор, первое: WIN32API.INC(8892)
 
 '   Cannot create a file when that file already exists.
-$DEFINE ERROR_ALREADY_EXISTS 183&
+'~dup $DEFINE ERROR_ALREADY_EXISTS 183&   ' повтор, первое: WIN32API.INC(8895)
 
 '   The flag passed is not correct.
-$DEFINE ERROR_INVALID_FLAG_NUMBER 186&
+'~dup $DEFINE ERROR_INVALID_FLAG_NUMBER 186&   ' повтор, первое: WIN32API.INC(8898)
 
 '   The specified system semaphore name was not found.
-$DEFINE ERROR_SEM_NOT_FOUND 187&
+'~dup $DEFINE ERROR_SEM_NOT_FOUND 187&   ' повтор, первое: WIN32API.INC(8901)
 
 '   The operating system cannot run %1.
-$DEFINE ERROR_INVALID_STARTING_CODESEG 188&
+'~dup $DEFINE ERROR_INVALID_STARTING_CODESEG 188&   ' повтор, первое: WIN32API.INC(8904)
 
 '   The operating system cannot run %1.
-$DEFINE ERROR_INVALID_STACKSEG 189&
+'~dup $DEFINE ERROR_INVALID_STACKSEG 189&   ' повтор, первое: WIN32API.INC(8907)
 
 '   The operating system cannot run %1.
-$DEFINE ERROR_INVALID_MODULETYPE 190&
+'~dup $DEFINE ERROR_INVALID_MODULETYPE 190&   ' повтор, первое: WIN32API.INC(8910)
 
 '   Cannot run %1 in Windows NT mode.
-$DEFINE ERROR_INVALID_EXE_SIGNATURE 191&
+'~dup $DEFINE ERROR_INVALID_EXE_SIGNATURE 191&   ' повтор, первое: WIN32API.INC(8913)
 
 '   The operating system cannot run %1.
-$DEFINE ERROR_EXE_MARKED_INVALID 192&
+'~dup $DEFINE ERROR_EXE_MARKED_INVALID 192&   ' повтор, первое: WIN32API.INC(8916)
 
 '   %1 is not a valid Windows NT application.
-$DEFINE ERROR_BAD_EXE_FORMAT 193&
+'~dup $DEFINE ERROR_BAD_EXE_FORMAT 193&   ' повтор, первое: WIN32API.INC(8919)
 
 '   The operating system cannot run %1.
-$DEFINE ERROR_ITERATED_DATA_EXCEEDS_64k 194&
+'~dup $DEFINE ERROR_ITERATED_DATA_EXCEEDS_64k 194&   ' повтор, первое: WIN32API.INC(8922)
 
 '   The operating system cannot run %1.
-$DEFINE ERROR_INVALID_MINALLOCSIZE 195&
+'~dup $DEFINE ERROR_INVALID_MINALLOCSIZE 195&   ' повтор, первое: WIN32API.INC(8925)
 
 '   The operating system cannot run this
 '   application program.
-$DEFINE ERROR_DYNLINK_FROM_INVALID_RING 196&
+'~dup $DEFINE ERROR_DYNLINK_FROM_INVALID_RING 196&   ' повтор, первое: WIN32API.INC(8929)
 
 '   The operating system is not presently
 '   configured to run this application.
-$DEFINE ERROR_IOPL_NOT_ENABLED 197&
+'~dup $DEFINE ERROR_IOPL_NOT_ENABLED 197&   ' повтор, первое: WIN32API.INC(8933)
 
 '   The operating system cannot run %1.
-$DEFINE ERROR_INVALID_SEGDPL 198&
+'~dup $DEFINE ERROR_INVALID_SEGDPL 198&   ' повтор, первое: WIN32API.INC(8936)
 
 '   The operating system cannot run this
 '   application program.
-$DEFINE ERROR_AUTODATASEG_EXCEEDS_64k 199&
+'~dup $DEFINE ERROR_AUTODATASEG_EXCEEDS_64k 199&   ' повтор, первое: WIN32API.INC(8940)
 
 '   The code segment cannot be greater than or equal to 64KB.
-$DEFINE ERROR_RING2SEG_MUST_BE_MOVABLE 200&
+'~dup $DEFINE ERROR_RING2SEG_MUST_BE_MOVABLE 200&   ' повтор, первое: WIN32API.INC(8943)
 
 '   The operating system cannot run %1.
-$DEFINE ERROR_RELOC_CHAIN_XEEDS_SEGLIM 201&
+'~dup $DEFINE ERROR_RELOC_CHAIN_XEEDS_SEGLIM 201&   ' повтор, первое: WIN32API.INC(8946)
 
 '   The operating system cannot run %1.
-$DEFINE ERROR_INFLOOP_IN_RELOC_CHAIN 202&
+'~dup $DEFINE ERROR_INFLOOP_IN_RELOC_CHAIN 202&   ' повтор, первое: WIN32API.INC(8949)
 
 '   The system could not find the environment
 '   option that was entered.
-$DEFINE ERROR_ENVVAR_NOT_FOUND 203&
+'~dup $DEFINE ERROR_ENVVAR_NOT_FOUND 203&   ' повтор, первое: WIN32API.INC(8953)
 
 '   No process in the command subtree has a
 '   signal handler.
-$DEFINE ERROR_NO_SIGNAL_SENT 205&
+'~dup $DEFINE ERROR_NO_SIGNAL_SENT 205&   ' повтор, первое: WIN32API.INC(8957)
 
 '   The filename or extension is too long.
-$DEFINE ERROR_FILENAME_EXCED_RANGE 206&
+'~dup $DEFINE ERROR_FILENAME_EXCED_RANGE 206&   ' повтор, первое: WIN32API.INC(8960)
 
 '   The ring 2 stack is in use.
-$DEFINE ERROR_RING2_STACK_IN_USE 207&
+'~dup $DEFINE ERROR_RING2_STACK_IN_USE 207&   ' повтор, первое: WIN32API.INC(8963)
 
 '   The Global filename characters,  or ?, are entered
 '   incorrectly or too many Global filename characters are specified.
-$DEFINE ERROR_META_EXPANSION_TOO_LONG 208&
+'~dup $DEFINE ERROR_META_EXPANSION_TOO_LONG 208&   ' повтор, первое: WIN32API.INC(8967)
 
 '   The signal being posted is not correct.
-$DEFINE ERROR_INVALID_SIGNAL_NUMBER 209&
+'~dup $DEFINE ERROR_INVALID_SIGNAL_NUMBER 209&   ' повтор, первое: WIN32API.INC(8970)
 
 '   The signal handler cannot be set.
-$DEFINE ERROR_THREAD_1_INACTIVE 210&
+'~dup $DEFINE ERROR_THREAD_1_INACTIVE 210&   ' повтор, первое: WIN32API.INC(8973)
 
 '   The segment is locked and cannot be reallocated.
-$DEFINE ERROR_LOCKED 212&
+'~dup $DEFINE ERROR_LOCKED 212&   ' повтор, первое: WIN32API.INC(8976)
 
 '   Too many dynamic link modules are attached to this
 '   program or dynamic link module.
-$DEFINE ERROR_TOO_MANY_MODULES 214&
+'~dup $DEFINE ERROR_TOO_MANY_MODULES 214&   ' повтор, первое: WIN32API.INC(8980)
 
 '   Can't nest calls to LoadModule.
-$DEFINE ERROR_NESTING_NOT_ALLOWED 215&
+'~dup $DEFINE ERROR_NESTING_NOT_ALLOWED 215&   ' повтор, первое: WIN32API.INC(8983)
 
 '   The pipe state is invalid.
-$DEFINE ERROR_BAD_PIPE 230&
+'~dup $DEFINE ERROR_BAD_PIPE 230&   ' повтор, первое: WIN32API.INC(8986)
 
 '   All pipe instances are busy.
-$DEFINE ERROR_PIPE_BUSY 231&
+'~dup $DEFINE ERROR_PIPE_BUSY 231&   ' повтор, первое: WIN32API.INC(8989)
 
 '   The pipe is being closed.
-$DEFINE ERROR_NO_DATA 232&
+'~dup $DEFINE ERROR_NO_DATA 232&   ' повтор, первое: WIN32API.INC(8992)
 
 '   No process is on the other end of the pipe.
-$DEFINE ERROR_PIPE_NOT_CONNECTED 233&
+'~dup $DEFINE ERROR_PIPE_NOT_CONNECTED 233&   ' повтор, первое: WIN32API.INC(8995)
 
 '   More data is available.
-$DEFINE ERROR_MORE_DATA 234 '  dderror
+'~dup $DEFINE ERROR_MORE_DATA 234 '  dderror   ' повтор, первое: WIN32API.INC(8998)
 
 '   The session was cancelled.
-$DEFINE ERROR_VC_DISCONNECTED 240&
+'~dup $DEFINE ERROR_VC_DISCONNECTED 240&   ' повтор, первое: WIN32API.INC(9001)
 
 '   The specified extended attribute name was invalid.
-$DEFINE ERROR_INVALID_EA_NAME 254&
+'~dup $DEFINE ERROR_INVALID_EA_NAME 254&   ' повтор, первое: WIN32API.INC(9004)
 
 '   The extended attributes are inconsistent.
-$DEFINE ERROR_EA_LIST_INCONSISTENT 255&
+'~dup $DEFINE ERROR_EA_LIST_INCONSISTENT 255&   ' повтор, первое: WIN32API.INC(9007)
 
 '   No more data is available.
-$DEFINE ERROR_NO_MORE_ITEMS 259&
+'~dup $DEFINE ERROR_NO_MORE_ITEMS 259&   ' повтор, первое: WIN32API.INC(9010)
 
 '   The Copy API cannot be used.
-$DEFINE ERROR_CANNOT_COPY 266&
+'~dup $DEFINE ERROR_CANNOT_COPY 266&   ' повтор, первое: WIN32API.INC(9013)
 
 '   The directory name is invalid.
-$DEFINE ERROR_DIRECTORY 267&
+'~dup $DEFINE ERROR_DIRECTORY 267&   ' повтор, первое: WIN32API.INC(9016)
 
 '   The extended attributes did not fit in the buffer.
-$DEFINE ERROR_EAS_DIDNT_FIT 275&
+'~dup $DEFINE ERROR_EAS_DIDNT_FIT 275&   ' повтор, первое: WIN32API.INC(9019)
 
 '   The extended attribute file on the mounted file system is corrupt.
-$DEFINE ERROR_EA_FILE_CORRUPT 276&
+'~dup $DEFINE ERROR_EA_FILE_CORRUPT 276&   ' повтор, первое: WIN32API.INC(9022)
 
 '   The extended attribute table file is full.
-$DEFINE ERROR_EA_TABLE_FULL 277&
+'~dup $DEFINE ERROR_EA_TABLE_FULL 277&   ' повтор, первое: WIN32API.INC(9025)
 
 '   The specified extended attribute handle is invalid.
-$DEFINE ERROR_INVALID_EA_HANDLE 278&
+'~dup $DEFINE ERROR_INVALID_EA_HANDLE 278&   ' повтор, первое: WIN32API.INC(9028)
 
 '   The mounted file system does not support extended attributes.
-$DEFINE ERROR_EAS_NOT_SUPPORTED 282&
+'~dup $DEFINE ERROR_EAS_NOT_SUPPORTED 282&   ' повтор, первое: WIN32API.INC(9031)
 
 '   Attempt to release mutex not owned by caller.
-$DEFINE ERROR_NOT_OWNER 288&
+'~dup $DEFINE ERROR_NOT_OWNER 288&   ' повтор, первое: WIN32API.INC(9034)
 
 '   Too many posts were made to a semaphore.
-$DEFINE ERROR_TOO_MANY_POSTS 298&
+'~dup $DEFINE ERROR_TOO_MANY_POSTS 298&   ' повтор, первое: WIN32API.INC(9037)
 
 '   The system cannot find message for message number 0x%1
 '   in message file for %2.
-$DEFINE ERROR_MR_MID_NOT_FOUND 317&
+'~dup $DEFINE ERROR_MR_MID_NOT_FOUND 317&   ' повтор, первое: WIN32API.INC(9041)
 
 '   Attempt to access invalid address.
-$DEFINE ERROR_INVALID_ADDRESS 487&
+'~dup $DEFINE ERROR_INVALID_ADDRESS 487&   ' повтор, первое: WIN32API.INC(9044)
 
 '   Arithmetic result exceeded 32 bits.
-$DEFINE ERROR_ARITHMETIC_OVERFLOW 534&
+'~dup $DEFINE ERROR_ARITHMETIC_OVERFLOW 534&   ' повтор, первое: WIN32API.INC(9047)
 
 '   There is a process on other end of the pipe.
-$DEFINE ERROR_PIPE_CONNECTED 535&
+'~dup $DEFINE ERROR_PIPE_CONNECTED 535&   ' повтор, первое: WIN32API.INC(9050)
 
 '   Waiting for a process to open the other end of the pipe.
-$DEFINE ERROR_PIPE_LISTENING 536&
+'~dup $DEFINE ERROR_PIPE_LISTENING 536&   ' повтор, первое: WIN32API.INC(9053)
 
 '   Access to the extended attribute was denied.
-$DEFINE ERROR_EA_ACCESS_DENIED 994&
+'~dup $DEFINE ERROR_EA_ACCESS_DENIED 994&   ' повтор, первое: WIN32API.INC(9056)
 
 '   The I/O operation has been aborted because of either a thread exit
 '   or an application request.
-$DEFINE ERROR_OPERATION_ABORTED 995&
+'~dup $DEFINE ERROR_OPERATION_ABORTED 995&   ' повтор, первое: WIN32API.INC(9060)
 
 '   Overlapped I/O event is not in a signalled state.
-$DEFINE ERROR_IO_INCOMPLETE 996&
+'~dup $DEFINE ERROR_IO_INCOMPLETE 996&   ' повтор, первое: WIN32API.INC(9063)
 
 '   Overlapped I/O operation is in progress.
-$DEFINE ERROR_IO_PENDING 997 '  dderror
+'~dup $DEFINE ERROR_IO_PENDING 997 '  dderror   ' повтор, первое: WIN32API.INC(9066)
 
 '   Invalid access to memory location.
-$DEFINE ERROR_NOACCESS 998&
+'~dup $DEFINE ERROR_NOACCESS 998&   ' повтор, первое: WIN32API.INC(9069)
 
 '   Error performing inpage operation.
-$DEFINE ERROR_SWAPERROR 999&
+'~dup $DEFINE ERROR_SWAPERROR 999&   ' повтор, первое: WIN32API.INC(9072)
 
 '   Recursion too deep, stack overflowed.
-$DEFINE ERROR_STACK_OVERFLOW 1001&
+'~dup $DEFINE ERROR_STACK_OVERFLOW 1001&   ' повтор, первое: WIN32API.INC(9075)
 
 '   The window cannot act on the sent message.
-$DEFINE ERROR_INVALID_MESSAGE 1002&
+'~dup $DEFINE ERROR_INVALID_MESSAGE 1002&   ' повтор, первое: WIN32API.INC(9078)
 
 '   Cannot complete this function.
-$DEFINE ERROR_CAN_NOT_COMPLETE 1003&
+'~dup $DEFINE ERROR_CAN_NOT_COMPLETE 1003&   ' повтор, первое: WIN32API.INC(9081)
 
 '   Invalid flags.
-$DEFINE ERROR_INVALID_FLAGS 1004&
+'~dup $DEFINE ERROR_INVALID_FLAGS 1004&   ' повтор, первое: WIN32API.INC(9084)
 
 '   The volume does not contain a recognized file system.
 '   Please make sure that all required file system drivers are loaded and that the
 '   volume is not corrupt.
-$DEFINE ERROR_UNRECOGNIZED_VOLUME 1005&
+'~dup $DEFINE ERROR_UNRECOGNIZED_VOLUME 1005&   ' повтор, первое: WIN32API.INC(9089)
 
 '   The volume for a file has been externally altered such that the
 '   opened file is no longer valid.
-$DEFINE ERROR_FILE_INVALID 1006&
+'~dup $DEFINE ERROR_FILE_INVALID 1006&   ' повтор, первое: WIN32API.INC(9093)
 
 '   The requested operation cannot be performed in full-screen mode.
-$DEFINE ERROR_FULLSCREEN_MODE 1007&
+'~dup $DEFINE ERROR_FULLSCREEN_MODE 1007&   ' повтор, первое: WIN32API.INC(9096)
 
 '   An attempt was made to reference a token that does not exist.
-$DEFINE ERROR_NO_TOKEN 1008&
+'~dup $DEFINE ERROR_NO_TOKEN 1008&   ' повтор, первое: WIN32API.INC(9099)
 
 '   The configuration registry database is corrupt.
-$DEFINE ERROR_BADDB 1009&
+'~dup $DEFINE ERROR_BADDB 1009&   ' повтор, первое: WIN32API.INC(9102)
 
 '   The configuration registry key is invalid.
-$DEFINE ERROR_BADKEY 1010&
+'~dup $DEFINE ERROR_BADKEY 1010&   ' повтор, первое: WIN32API.INC(9105)
 
 '   The configuration registry key could not be opened.
-$DEFINE ERROR_CANTOPEN 1011&
+'~dup $DEFINE ERROR_CANTOPEN 1011&   ' повтор, первое: WIN32API.INC(9108)
 
 '   The configuration registry key could not be read.
-$DEFINE ERROR_CANTREAD 1012&
+'~dup $DEFINE ERROR_CANTREAD 1012&   ' повтор, первое: WIN32API.INC(9111)
 
 '   The configuration registry key could not be written.
-$DEFINE ERROR_CANTWRITE 1013&
+'~dup $DEFINE ERROR_CANTWRITE 1013&   ' повтор, первое: WIN32API.INC(9114)
 
 '   One of the files in the Registry database had to be recovered
 '   by use of a log or alternate copy.  The recovery was successful.
-$DEFINE ERROR_REGISTRY_RECOVERED 1014&
+'~dup $DEFINE ERROR_REGISTRY_RECOVERED 1014&   ' повтор, первое: WIN32API.INC(9118)
 
 '   The Registry is corrupt. The structure of one of the files that contains
 '   Registry data is corrupt, or the system's image of the file in memory
 '   is corrupt, or the file could not be recovered because the alternate
 '   copy or log was absent or corrupt.
-$DEFINE ERROR_REGISTRY_CORRUPT 1015&
+'~dup $DEFINE ERROR_REGISTRY_CORRUPT 1015&   ' повтор, первое: WIN32API.INC(9124)
 
 '   An I/O operation initiated by the Registry failed unrecoverably.
 '   The Registry could not read in, or write out, or flush, one of the files
 '   that contain the system's image of the Registry.
-$DEFINE ERROR_REGISTRY_IO_FAILED 1016&
+'~dup $DEFINE ERROR_REGISTRY_IO_FAILED 1016&   ' повтор, первое: WIN32API.INC(9129)
 
 '   The system has attempted to load or restore a file into the Registry, but the
 '   specified file is not in a Registry file format.
-$DEFINE ERROR_NOT_REGISTRY_FILE 1017&
+'~dup $DEFINE ERROR_NOT_REGISTRY_FILE 1017&   ' повтор, первое: WIN32API.INC(9133)
 
 '   Illegal operation attempted on a Registry key which has been marked for deletion.
-$DEFINE ERROR_KEY_DELETED 1018&
+'~dup $DEFINE ERROR_KEY_DELETED 1018&   ' повтор, первое: WIN32API.INC(9136)
 
 '   System could not allocate the required space in a Registry log.
-$DEFINE ERROR_NO_LOG_SPACE 1019&
+'~dup $DEFINE ERROR_NO_LOG_SPACE 1019&   ' повтор, первое: WIN32API.INC(9139)
 
 '   Cannot create a symbolic link in a Registry key that already
 '   has subkeys or values.
-$DEFINE ERROR_KEY_HAS_CHILDREN 1020&
+'~dup $DEFINE ERROR_KEY_HAS_CHILDREN 1020&   ' повтор, первое: WIN32API.INC(9143)
 
 '   Cannot create a stable subkey under a volatile parent key.
-$DEFINE ERROR_CHILD_MUST_BE_VOLATILE 1021&
+'~dup $DEFINE ERROR_CHILD_MUST_BE_VOLATILE 1021&   ' повтор, первое: WIN32API.INC(9146)
 
 '   A notify change request is being completed and the information
 '   is not being returned in the caller's buffer. The caller now
 '   needs to enumerate the files to find the changes.
-$DEFINE ERROR_NOTIFY_ENUM_DIR 1022&
+'~dup $DEFINE ERROR_NOTIFY_ENUM_DIR 1022&   ' повтор, первое: WIN32API.INC(9151)
 
 '   A stop control has been sent to a service which other running services
 '   are dependent on.
-$DEFINE ERROR_DEPENDENT_SERVICES_RUNNING 1051&
+'~dup $DEFINE ERROR_DEPENDENT_SERVICES_RUNNING 1051&   ' повтор, первое: WIN32API.INC(9155)
 
 '   The requested control is not valid for this service
-$DEFINE ERROR_INVALID_SERVICE_CONTROL 1052&
+'~dup $DEFINE ERROR_INVALID_SERVICE_CONTROL 1052&   ' повтор, первое: WIN32API.INC(9158)
 
 '   The service did not respond to the start or control request in a timely
 '   fashion.
-$DEFINE ERROR_SERVICE_REQUEST_TIMEOUT 1053&
+'~dup $DEFINE ERROR_SERVICE_REQUEST_TIMEOUT 1053&   ' повтор, первое: WIN32API.INC(9162)
 
 '   A thread could not be created for the service.
-$DEFINE ERROR_SERVICE_NO_THREAD 1054&
+'~dup $DEFINE ERROR_SERVICE_NO_THREAD 1054&   ' повтор, первое: WIN32API.INC(9165)
 
 '   The service database is locked.
-$DEFINE ERROR_SERVICE_DATABASE_LOCKED 1055&
+'~dup $DEFINE ERROR_SERVICE_DATABASE_LOCKED 1055&   ' повтор, первое: WIN32API.INC(9168)
 
 '   An instance of the service is already running.
-$DEFINE ERROR_SERVICE_ALREADY_RUNNING 1056&
+'~dup $DEFINE ERROR_SERVICE_ALREADY_RUNNING 1056&   ' повтор, первое: WIN32API.INC(9171)
 
 '   The account name is invalid or does not exist.
-$DEFINE ERROR_INVALID_SERVICE_ACCOUNT 1057&
+'~dup $DEFINE ERROR_INVALID_SERVICE_ACCOUNT 1057&   ' повтор, первое: WIN32API.INC(9174)
 
 '   The specified service is disabled and cannot be started.
-$DEFINE ERROR_SERVICE_DISABLED 1058&
+'~dup $DEFINE ERROR_SERVICE_DISABLED 1058&   ' повтор, первое: WIN32API.INC(9177)
 
 '   Circular service dependency was specified.
-$DEFINE ERROR_CIRCULAR_DEPENDENCY 1059&
+'~dup $DEFINE ERROR_CIRCULAR_DEPENDENCY 1059&   ' повтор, первое: WIN32API.INC(9180)
 
 '   The specified service does not exist as an installed service.
-$DEFINE ERROR_SERVICE_DOES_NOT_EXIST 1060&
+'~dup $DEFINE ERROR_SERVICE_DOES_NOT_EXIST 1060&   ' повтор, первое: WIN32API.INC(9183)
 
 '   The service cannot accept control messages at this time.
-$DEFINE ERROR_SERVICE_CANNOT_ACCEPT_CTRL 1061&
+'~dup $DEFINE ERROR_SERVICE_CANNOT_ACCEPT_CTRL 1061&   ' повтор, первое: WIN32API.INC(9186)
 
 '   The service has not been started.
-$DEFINE ERROR_SERVICE_NOT_ACTIVE 1062&
+'~dup $DEFINE ERROR_SERVICE_NOT_ACTIVE 1062&   ' повтор, первое: WIN32API.INC(9189)
 
 '   The service process could not connect to the service controller.
-$DEFINE ERROR_FAILED_SERVICE_CONTROLLER_CONNECT 1063&
+'~dup $DEFINE ERROR_FAILED_SERVICE_CONTROLLER_CONNECT 1063&   ' повтор, первое: WIN32API.INC(9192)
 
 '   An exception occurred in the service when handling the control request.
-$DEFINE ERROR_EXCEPTION_IN_SERVICE 1064&
+'~dup $DEFINE ERROR_EXCEPTION_IN_SERVICE 1064&   ' повтор, первое: WIN32API.INC(9195)
 
 '   The database specified does not exist.
-$DEFINE ERROR_DATABASE_DOES_NOT_EXIST 1065&
+'~dup $DEFINE ERROR_DATABASE_DOES_NOT_EXIST 1065&   ' повтор, первое: WIN32API.INC(9198)
 
 '   The service has returned a service-specific error code.
-$DEFINE ERROR_SERVICE_SPECIFIC_ERROR 1066&
+'~dup $DEFINE ERROR_SERVICE_SPECIFIC_ERROR 1066&   ' повтор, первое: WIN32API.INC(9201)
 
 '   The process terminated unexpectedly.
-$DEFINE ERROR_PROCESS_ABORTED 1067&
+'~dup $DEFINE ERROR_PROCESS_ABORTED 1067&   ' повтор, первое: WIN32API.INC(9204)
 
 '   The dependency service or group failed to start.
-$DEFINE ERROR_SERVICE_DEPENDENCY_FAIL 1068&
+'~dup $DEFINE ERROR_SERVICE_DEPENDENCY_FAIL 1068&   ' повтор, первое: WIN32API.INC(9207)
 
 '   The service did not start due to a logon failure.
-$DEFINE ERROR_SERVICE_LOGON_FAILED 1069&
+'~dup $DEFINE ERROR_SERVICE_LOGON_FAILED 1069&   ' повтор, первое: WIN32API.INC(9210)
 
 '   After starting, the service hung in a start-pending state.
-$DEFINE ERROR_SERVICE_START_HANG 1070&
+'~dup $DEFINE ERROR_SERVICE_START_HANG 1070&   ' повтор, первое: WIN32API.INC(9213)
 
 '   The specified service database lock is invalid.
-$DEFINE ERROR_INVALID_SERVICE_LOCK 1071&
+'~dup $DEFINE ERROR_INVALID_SERVICE_LOCK 1071&   ' повтор, первое: WIN32API.INC(9216)
 
 '   The specified service has been marked for deletion.
-$DEFINE ERROR_SERVICE_MARKED_FOR_DELETE 1072&
+'~dup $DEFINE ERROR_SERVICE_MARKED_FOR_DELETE 1072&   ' повтор, первое: WIN32API.INC(9219)
 
 '   The specified service already exists.
-$DEFINE ERROR_SERVICE_EXISTS 1073&
+'~dup $DEFINE ERROR_SERVICE_EXISTS 1073&   ' повтор, первое: WIN32API.INC(9222)
 
 '   The system is currently running with the last-known-good configuration.
-$DEFINE ERROR_ALREADY_RUNNING_LKG 1074&
+'~dup $DEFINE ERROR_ALREADY_RUNNING_LKG 1074&   ' повтор, первое: WIN32API.INC(9225)
 
 '   The dependency service does not exist or has been marked for
 '   deletion.
-$DEFINE ERROR_SERVICE_DEPENDENCY_DELETED 1075&
+'~dup $DEFINE ERROR_SERVICE_DEPENDENCY_DELETED 1075&   ' повтор, первое: WIN32API.INC(9229)
 
 '   The current boot has already been accepted for use as the
 '   last-known-good control set.
-$DEFINE ERROR_BOOT_ALREADY_ACCEPTED 1076&
+'~dup $DEFINE ERROR_BOOT_ALREADY_ACCEPTED 1076&   ' повтор, первое: WIN32API.INC(9233)
 
 '   No attempts to start the service have been made since the last boot.
-$DEFINE ERROR_SERVICE_NEVER_STARTED 1077&
+'~dup $DEFINE ERROR_SERVICE_NEVER_STARTED 1077&   ' повтор, первое: WIN32API.INC(9236)
 
 '   The name is already in use as either a service name or a service display
 '   name.
-$DEFINE ERROR_DUPLICATE_SERVICE_NAME 1078&
+'~dup $DEFINE ERROR_DUPLICATE_SERVICE_NAME 1078&   ' повтор, первое: WIN32API.INC(9240)
 
 '   The physical end of the tape has been reached.
-$DEFINE ERROR_END_OF_MEDIA 1100&
+'~dup $DEFINE ERROR_END_OF_MEDIA 1100&   ' повтор, первое: WIN32API.INC(9243)
 
 '   A tape access reached a filemark.
-$DEFINE ERROR_FILEMARK_DETECTED 1101&
+'~dup $DEFINE ERROR_FILEMARK_DETECTED 1101&   ' повтор, первое: WIN32API.INC(9246)
 
 '   Beginning of tape or partition was encountered.
-$DEFINE ERROR_BEGINNING_OF_MEDIA 1102&
+'~dup $DEFINE ERROR_BEGINNING_OF_MEDIA 1102&   ' повтор, первое: WIN32API.INC(9249)
 
 '   A tape access reached the end of a set of files.
-$DEFINE ERROR_SETMARK_DETECTED 1103&
+'~dup $DEFINE ERROR_SETMARK_DETECTED 1103&   ' повтор, первое: WIN32API.INC(9252)
 
 '   No more data is on the tape.
-$DEFINE ERROR_NO_DATA_DETECTED 1104&
+'~dup $DEFINE ERROR_NO_DATA_DETECTED 1104&   ' повтор, первое: WIN32API.INC(9255)
 
 '   Tape could not be partitioned.
-$DEFINE ERROR_PARTITION_FAILURE 1105&
+'~dup $DEFINE ERROR_PARTITION_FAILURE 1105&   ' повтор, первое: WIN32API.INC(9258)
 
 '   When accessing a new tape of a multivolume partition, the current
 '   blocksize is incorrect.
-$DEFINE ERROR_INVALID_BLOCK_LENGTH 1106&
+'~dup $DEFINE ERROR_INVALID_BLOCK_LENGTH 1106&   ' повтор, первое: WIN32API.INC(9262)
 
 '   Tape partition information could not be found when loading a tape.
-$DEFINE ERROR_DEVICE_NOT_PARTITIONED 1107&
+'~dup $DEFINE ERROR_DEVICE_NOT_PARTITIONED 1107&   ' повтор, первое: WIN32API.INC(9265)
 
 '   Unable to lock the media eject mechanism.
-$DEFINE ERROR_UNABLE_TO_LOCK_MEDIA 1108&
+'~dup $DEFINE ERROR_UNABLE_TO_LOCK_MEDIA 1108&   ' повтор, первое: WIN32API.INC(9268)
 
 '   Unable to unload the media.
-$DEFINE ERROR_UNABLE_TO_UNLOAD_MEDIA 1109&
+'~dup $DEFINE ERROR_UNABLE_TO_UNLOAD_MEDIA 1109&   ' повтор, первое: WIN32API.INC(9271)
 
 '   Media in drive may have changed.
-$DEFINE ERROR_MEDIA_CHANGED 1110&
+'~dup $DEFINE ERROR_MEDIA_CHANGED 1110&   ' повтор, первое: WIN32API.INC(9274)
 
 '   The I/O bus was reset.
-$DEFINE ERROR_BUS_RESET 1111&
+'~dup $DEFINE ERROR_BUS_RESET 1111&   ' повтор, первое: WIN32API.INC(9277)
 
 '   No media in drive.
-$DEFINE ERROR_NO_MEDIA_IN_DRIVE 1112&
+'~dup $DEFINE ERROR_NO_MEDIA_IN_DRIVE 1112&   ' повтор, первое: WIN32API.INC(9280)
 
 '   No mapping for the Unicode character exists in the target multi-byte code page.
-$DEFINE ERROR_NO_UNICODE_TRANSLATION 1113&
+'~dup $DEFINE ERROR_NO_UNICODE_TRANSLATION 1113&   ' повтор, первое: WIN32API.INC(9283)
 
 '   A dynamic link library (DLL) initialization routine failed.
-$DEFINE ERROR_DLL_INIT_FAILED 1114&
+'~dup $DEFINE ERROR_DLL_INIT_FAILED 1114&   ' повтор, первое: WIN32API.INC(9286)
 
 '   A system shutdown is in progress.
-$DEFINE ERROR_SHUTDOWN_IN_PROGRESS 1115&
+'~dup $DEFINE ERROR_SHUTDOWN_IN_PROGRESS 1115&   ' повтор, первое: WIN32API.INC(9289)
 
 '   Unable to abort the system shutdown because no shutdown was in progress.
-$DEFINE ERROR_NO_SHUTDOWN_IN_PROGRESS 1116&
+'~dup $DEFINE ERROR_NO_SHUTDOWN_IN_PROGRESS 1116&   ' повтор, первое: WIN32API.INC(9292)
 
 '   The request could not be performed because of an I/O device error.
-$DEFINE ERROR_IO_DEVICE 1117&
+'~dup $DEFINE ERROR_IO_DEVICE 1117&   ' повтор, первое: WIN32API.INC(9295)
 
 '   No serial device was successfully initialized.  The serial driver will unload.
-$DEFINE ERROR_SERIAL_NO_DEVICE 1118&
+'~dup $DEFINE ERROR_SERIAL_NO_DEVICE 1118&   ' повтор, первое: WIN32API.INC(9298)
 
 '   Unable to open a device that was sharing an interrupt request (IRQ)
 '   with other devices. At least one other device that uses that IRQ
 '   was already opened.
-$DEFINE ERROR_IRQ_BUSY 1119&
+'~dup $DEFINE ERROR_IRQ_BUSY 1119&   ' повтор, первое: WIN32API.INC(9303)
 
 '   A serial I/O operation was completed by another write to the serial port.
 '   (The IOCTL_SERIAL_XOFF_COUNTER reached zero.)
-$DEFINE ERROR_MORE_WRITES 1120&
+'~dup $DEFINE ERROR_MORE_WRITES 1120&   ' повтор, первое: WIN32API.INC(9307)
 
 '   A serial I/O operation completed because the time-out period expired.
 '   (The IOCTL_SERIAL_XOFF_COUNTER did not reach zero.)
-$DEFINE ERROR_COUNTER_TIMEOUT 1121&
+'~dup $DEFINE ERROR_COUNTER_TIMEOUT 1121&   ' повтор, первое: WIN32API.INC(9311)
 
 '   No ID address mark was found on the floppy disk.
-$DEFINE ERROR_FLOPPY_ID_MARK_NOT_FOUND 1122&
+'~dup $DEFINE ERROR_FLOPPY_ID_MARK_NOT_FOUND 1122&   ' повтор, первое: WIN32API.INC(9314)
 
 '   Mismatch between the floppy disk sector ID field and the floppy disk
 '   controller track address.
-$DEFINE ERROR_FLOPPY_WRONG_CYLINDER 1123&
+'~dup $DEFINE ERROR_FLOPPY_WRONG_CYLINDER 1123&   ' повтор, первое: WIN32API.INC(9318)
 
 '   The floppy disk controller reported an error that is not recognized
 '   by the floppy disk driver.
-$DEFINE ERROR_FLOPPY_UNKNOWN_ERROR 1124&
+'~dup $DEFINE ERROR_FLOPPY_UNKNOWN_ERROR 1124&   ' повтор, первое: WIN32API.INC(9322)
 
 '   The floppy disk controller returned inconsistent results in its registers.
-$DEFINE ERROR_FLOPPY_BAD_REGISTERS 1125&
+'~dup $DEFINE ERROR_FLOPPY_BAD_REGISTERS 1125&   ' повтор, первое: WIN32API.INC(9325)
 
 '   While accessing the hard disk, a recalibrate operation failed, even after retries.
-$DEFINE ERROR_DISK_RECALIBRATE_FAILED 1126&
+'~dup $DEFINE ERROR_DISK_RECALIBRATE_FAILED 1126&   ' повтор, первое: WIN32API.INC(9328)
 
 '   While accessing the hard disk, a disk operation failed even after retries.
-$DEFINE ERROR_DISK_OPERATION_FAILED 1127&
+'~dup $DEFINE ERROR_DISK_OPERATION_FAILED 1127&   ' повтор, первое: WIN32API.INC(9331)
 
 '   While accessing the hard disk, a disk controller reset was needed, but
 '   even that failed.
-$DEFINE ERROR_DISK_RESET_FAILED 1128&
+'~dup $DEFINE ERROR_DISK_RESET_FAILED 1128&   ' повтор, первое: WIN32API.INC(9335)
 
 '   Physical end of tape encountered.
-$DEFINE ERROR_EOM_OVERFLOW 1129&
+'~dup $DEFINE ERROR_EOM_OVERFLOW 1129&   ' повтор, первое: WIN32API.INC(9338)
 
 '   Not enough server storage is available to process this command.
-$DEFINE ERROR_NOT_ENOUGH_SERVER_MEMORY 1130&
+'~dup $DEFINE ERROR_NOT_ENOUGH_SERVER_MEMORY 1130&   ' повтор, первое: WIN32API.INC(9341)
 
 '   A potential deadlock condition has been detected.
-$DEFINE ERROR_POSSIBLE_DEADLOCK 1131&
+'~dup $DEFINE ERROR_POSSIBLE_DEADLOCK 1131&   ' повтор, первое: WIN32API.INC(9344)
 
 '   The base address or the file offset specified does not have the proper
 '   alignment.
-$DEFINE ERROR_MAPPED_ALIGNMENT 1132&
+'~dup $DEFINE ERROR_MAPPED_ALIGNMENT 1132&   ' повтор, первое: WIN32API.INC(9348)
 
 ' NEW for Win32
-$DEFINE ERROR_INVALID_PIXEL_FORMAT 2000
-$DEFINE ERROR_BAD_DRIVER 2001
-$DEFINE ERROR_INVALID_WINDOW_STYLE 2002
-$DEFINE ERROR_METAFILE_NOT_SUPPORTED 2003
-$DEFINE ERROR_TRANSFORM_NOT_SUPPORTED 2004
-$DEFINE ERROR_CLIPPING_NOT_SUPPORTED 2005
-$DEFINE ERROR_UNKNOWN_PRINT_MONITOR 3000
-$DEFINE ERROR_PRINTER_DRIVER_IN_USE 3001
-$DEFINE ERROR_SPOOL_FILE_NOT_FOUND 3002
-$DEFINE ERROR_SPL_NO_STARTDOC 3003
-$DEFINE ERROR_SPL_NO_ADDJOB 3004
-$DEFINE ERROR_PRINT_PROCESSOR_ALREADY_INSTALLED 3005
-$DEFINE ERROR_PRINT_MONITOR_ALREADY_INSTALLED 3006
-$DEFINE ERROR_WINS_INTERNAL 4000
-$DEFINE ERROR_CAN_NOT_DEL_LOCAL_WINS 4001
-$DEFINE ERROR_STATIC_INIT 4002
-$DEFINE ERROR_INC_BACKUP 4003
-$DEFINE ERROR_FULL_BACKUP 4004
-$DEFINE ERROR_REC_NON_EXISTENT 4005
-$DEFINE ERROR_RPL_NOT_ALLOWED 4006
-$DEFINE SEVERITY_SUCCESS 0
-$DEFINE SEVERITY_ERROR 1
-$DEFINE FACILITY_NT_BIT &H10000000
-$DEFINE NOERROR 0
-$DEFINE E_UNEXPECTED &H8000FFFF
-$DEFINE E_NOTIMPL &H80004001
-$DEFINE E_OUTOFMEMORY &H8007000E
-$DEFINE E_INVALIDARG &H80070057
-$DEFINE E_NOINTERFACE &H80004002
-$DEFINE E_POINTER &H80004003
-$DEFINE E_HANDLE &H80070006
-$DEFINE E_ABORT &H80004004
-$DEFINE E_FAIL &H80004005
-$DEFINE E_ACCESSDENIED &H80070005
-$DEFINE CO_E_INIT_TLS &H80004006
-$DEFINE CO_E_INIT_SHARED_ALLOCATOR &H80004007
-$DEFINE CO_E_INIT_MEMORY_ALLOCATOR &H80004008
-$DEFINE CO_E_INIT_CLASS_CACHE &H80004009
-$DEFINE CO_E_INIT_RPC_CHANNEL &H8000400A
-$DEFINE CO_E_INIT_TLS_SET_CHANNEL_CONTROL &H8000400B
-$DEFINE CO_E_INIT_TLS_CHANNEL_CONTROL &H8000400C
-$DEFINE CO_E_INIT_UNACCEPTED_USER_ALLOCATOR &H8000400D
-$DEFINE CO_E_INIT_SCM_MUTEX_EXISTS &H8000400E
-$DEFINE CO_E_INIT_SCM_FILE_MAPPING_EXISTS &H8000400F
-$DEFINE CO_E_INIT_SCM_MAP_VIEW_OF_FILE &H80004010
-$DEFINE CO_E_INIT_SCM_EXEC_FAILURE &H80004011
-$DEFINE CO_E_INIT_ONLY_SINGLE_THREADED &H80004012
+'~dup $DEFINE ERROR_INVALID_PIXEL_FORMAT 2000   ' повтор, первое: WIN32API.INC(9351)
+'~dup $DEFINE ERROR_BAD_DRIVER 2001   ' повтор, первое: WIN32API.INC(9352)
+'~dup $DEFINE ERROR_INVALID_WINDOW_STYLE 2002   ' повтор, первое: WIN32API.INC(9353)
+'~dup $DEFINE ERROR_METAFILE_NOT_SUPPORTED 2003   ' повтор, первое: WIN32API.INC(9354)
+'~dup $DEFINE ERROR_TRANSFORM_NOT_SUPPORTED 2004   ' повтор, первое: WIN32API.INC(9355)
+'~dup $DEFINE ERROR_CLIPPING_NOT_SUPPORTED 2005   ' повтор, первое: WIN32API.INC(9356)
+'~dup $DEFINE ERROR_UNKNOWN_PRINT_MONITOR 3000   ' повтор, первое: WIN32API.INC(9357)
+'~dup $DEFINE ERROR_PRINTER_DRIVER_IN_USE 3001   ' повтор, первое: WIN32API.INC(9358)
+'~dup $DEFINE ERROR_SPOOL_FILE_NOT_FOUND 3002   ' повтор, первое: WIN32API.INC(9359)
+'~dup $DEFINE ERROR_SPL_NO_STARTDOC 3003   ' повтор, первое: WIN32API.INC(9360)
+'~dup $DEFINE ERROR_SPL_NO_ADDJOB 3004   ' повтор, первое: WIN32API.INC(9361)
+'~dup $DEFINE ERROR_PRINT_PROCESSOR_ALREADY_INSTALLED 3005   ' повтор, первое: WIN32API.INC(9362)
+'~dup $DEFINE ERROR_PRINT_MONITOR_ALREADY_INSTALLED 3006   ' повтор, первое: WIN32API.INC(9363)
+'~dup $DEFINE ERROR_WINS_INTERNAL 4000   ' повтор, первое: WIN32API.INC(9364)
+'~dup $DEFINE ERROR_CAN_NOT_DEL_LOCAL_WINS 4001   ' повтор, первое: WIN32API.INC(9365)
+'~dup $DEFINE ERROR_STATIC_INIT 4002   ' повтор, первое: WIN32API.INC(9366)
+'~dup $DEFINE ERROR_INC_BACKUP 4003   ' повтор, первое: WIN32API.INC(9367)
+'~dup $DEFINE ERROR_FULL_BACKUP 4004   ' повтор, первое: WIN32API.INC(9368)
+'~dup $DEFINE ERROR_REC_NON_EXISTENT 4005   ' повтор, первое: WIN32API.INC(9369)
+'~dup $DEFINE ERROR_RPL_NOT_ALLOWED 4006   ' повтор, первое: WIN32API.INC(9370)
+'~dup $DEFINE SEVERITY_SUCCESS 0   ' повтор, первое: WIN32API.INC(9371)
+'~dup $DEFINE SEVERITY_ERROR 1   ' повтор, первое: WIN32API.INC(9372)
+'~dup $DEFINE FACILITY_NT_BIT &H10000000   ' повтор, первое: WIN32API.INC(9373)
+'~dup $DEFINE NOERROR 0   ' повтор, первое: WIN32API.INC(9374)
+'~dup $DEFINE E_UNEXPECTED &H8000FFFF   ' повтор, первое: WIN32API.INC(9375)
+'~dup $DEFINE E_NOTIMPL &H80004001   ' повтор, первое: WIN32API.INC(9376)
+'~dup $DEFINE E_OUTOFMEMORY &H8007000E   ' повтор, первое: WIN32API.INC(9377)
+'~dup $DEFINE E_INVALIDARG &H80070057   ' повтор, первое: WIN32API.INC(9378)
+'~dup $DEFINE E_NOINTERFACE &H80004002   ' повтор, первое: WIN32API.INC(9379)
+'~dup $DEFINE E_POINTER &H80004003   ' повтор, первое: WIN32API.INC(9380)
+'~dup $DEFINE E_HANDLE &H80070006   ' повтор, первое: WIN32API.INC(9381)
+'~dup $DEFINE E_ABORT &H80004004   ' повтор, первое: WIN32API.INC(9382)
+'~dup $DEFINE E_FAIL &H80004005   ' повтор, первое: WIN32API.INC(9383)
+'~dup $DEFINE E_ACCESSDENIED &H80070005   ' повтор, первое: WIN32API.INC(9384)
+'~dup $DEFINE CO_E_INIT_TLS &H80004006   ' повтор, первое: WIN32API.INC(9385)
+'~dup $DEFINE CO_E_INIT_SHARED_ALLOCATOR &H80004007   ' повтор, первое: WIN32API.INC(9386)
+'~dup $DEFINE CO_E_INIT_MEMORY_ALLOCATOR &H80004008   ' повтор, первое: WIN32API.INC(9387)
+'~dup $DEFINE CO_E_INIT_CLASS_CACHE &H80004009   ' повтор, первое: WIN32API.INC(9388)
+'~dup $DEFINE CO_E_INIT_RPC_CHANNEL &H8000400A   ' повтор, первое: WIN32API.INC(9389)
+'~dup $DEFINE CO_E_INIT_TLS_SET_CHANNEL_CONTROL &H8000400B   ' повтор, первое: WIN32API.INC(9390)
+'~dup $DEFINE CO_E_INIT_TLS_CHANNEL_CONTROL &H8000400C   ' повтор, первое: WIN32API.INC(9391)
+'~dup $DEFINE CO_E_INIT_UNACCEPTED_USER_ALLOCATOR &H8000400D   ' повтор, первое: WIN32API.INC(9392)
+'~dup $DEFINE CO_E_INIT_SCM_MUTEX_EXISTS &H8000400E   ' повтор, первое: WIN32API.INC(9393)
+'~dup $DEFINE CO_E_INIT_SCM_FILE_MAPPING_EXISTS &H8000400F   ' повтор, первое: WIN32API.INC(9394)
+'~dup $DEFINE CO_E_INIT_SCM_MAP_VIEW_OF_FILE &H80004010   ' повтор, первое: WIN32API.INC(9395)
+'~dup $DEFINE CO_E_INIT_SCM_EXEC_FAILURE &H80004011   ' повтор, первое: WIN32API.INC(9396)
+'~dup $DEFINE CO_E_INIT_ONLY_SINGLE_THREADED &H80004012   ' повтор, первое: WIN32API.INC(9397)
 '~dup $DEFINE S_OK &H0   ' повтор, первое: ole.inc(40)
-$DEFINE S_FALSE &H1
-$DEFINE OLE_E_FIRST &H80040000
-$DEFINE OLE_E_LAST &H800400FF
-$DEFINE OLE_S_FIRST &H40000
-$DEFINE OLE_S_LAST &H400FF
-$DEFINE OLE_E_OLEVERB &H80040000
-$DEFINE OLE_E_ADVF &H80040001
-$DEFINE OLE_E_ENUM_NOMORE &H80040002
-$DEFINE OLE_E_ADVISENOTSUPPORTED &H80040003
-$DEFINE OLE_E_NOCONNECTION &H80040004
-$DEFINE OLE_E_NOTRUNNING &H80040005
-$DEFINE OLE_E_NOCACHE &H80040006
-$DEFINE OLE_E_BLANK &H80040007
-$DEFINE OLE_E_CLASSDIFF &H80040008
-$DEFINE OLE_E_CANT_GETMONIKER &H80040009
-$DEFINE OLE_E_CANT_BINDTOSOURCE &H8004000A
-$DEFINE OLE_E_STATIC &H8004000B
-$DEFINE OLE_E_PROMPTSAVECANCELLED &H8004000C
-$DEFINE OLE_E_INVALIDRECT &H8004000D
-$DEFINE OLE_E_WRONGCOMPOBJ &H8004000E
-$DEFINE OLE_E_INVALIDHWND &H8004000F
-$DEFINE OLE_E_NOT_INPLACEACTIVE &H80040010
-$DEFINE OLE_E_CANTCONVERT &H80040011
-$DEFINE OLE_E_NOSTORAGE &H80040012
-$DEFINE DV_E_FORMATETC &H80040064
-$DEFINE DV_E_DVTARGETDEVICE &H80040065
-$DEFINE DV_E_STGMEDIUM &H80040066
-$DEFINE DV_E_STATDATA &H80040067
-$DEFINE DV_E_LINDEX &H80040068
-$DEFINE DV_E_TYMED &H80040069
-$DEFINE DV_E_CLIPFORMAT &H8004006A
-$DEFINE DV_E_DVASPECT &H8004006B
-$DEFINE DV_E_DVTARGETDEVICE_SIZE &H8004006C
-$DEFINE DV_E_NOIVIEWOBJECT &H8004006D
-$DEFINE DRAGDROP_E_FIRST &H80040100
-$DEFINE DRAGDROP_E_LAST &H8004010F
-$DEFINE DRAGDROP_S_FIRST &H40100
-$DEFINE DRAGDROP_S_LAST &H4010F
-$DEFINE DRAGDROP_E_NOTREGISTERED &H80040100
-$DEFINE DRAGDROP_E_ALREADYREGISTERED &H80040101
-$DEFINE DRAGDROP_E_INVALIDHWND &H80040102
-$DEFINE CLASSFACTORY_E_FIRST &H80040110
-$DEFINE CLASSFACTORY_E_LAST &H8004011F
-$DEFINE CLASSFACTORY_S_FIRST &H40110
-$DEFINE CLASSFACTORY_S_LAST &H4011F
-$DEFINE CLASS_E_NOAGGREGATION &H80040110
-$DEFINE CLASS_E_CLASSNOTAVAILABLE &H80040111
-$DEFINE MARSHAL_E_FIRST &H80040120
-$DEFINE MARSHAL_E_LAST &H8004012F
-$DEFINE MARSHAL_S_FIRST &H40120
-$DEFINE MARSHAL_S_LAST &H4012F
-$DEFINE DATA_E_FIRST &H80040130
-$DEFINE DATA_E_LAST &H8004013F
-$DEFINE DATA_S_FIRST &H40130
-$DEFINE DATA_S_LAST &H4013F
-$DEFINE VIEW_E_FIRST &H80040140
-$DEFINE VIEW_E_LAST &H8004014F
-$DEFINE VIEW_S_FIRST &H40140
-$DEFINE VIEW_S_LAST &H4014F
-$DEFINE VIEW_E_DRAW &H80040140
-$DEFINE REGDB_E_FIRST &H80040150
-$DEFINE REGDB_E_LAST &H8004015F
-$DEFINE REGDB_S_FIRST &H40150
-$DEFINE REGDB_S_LAST &H4015F
-$DEFINE REGDB_E_READREGDB &H80040150
-$DEFINE REGDB_E_WRITEREGDB &H80040151
-$DEFINE REGDB_E_KEYMISSING &H80040152
-$DEFINE REGDB_E_INVALIDVALUE &H80040153
-$DEFINE REGDB_E_CLASSNOTREG &H80040154
-$DEFINE REGDB_E_IIDNOTREG &H80040155
-$DEFINE CACHE_E_FIRST &H80040170
-$DEFINE CACHE_E_LAST &H8004017F
-$DEFINE CACHE_S_FIRST &H40170
-$DEFINE CACHE_S_LAST &H4017F
-$DEFINE CACHE_E_NOCACHE_UPDATED &H80040170
-$DEFINE OLEOBJ_E_FIRST &H80040180
-$DEFINE OLEOBJ_E_LAST &H8004018F
-$DEFINE OLEOBJ_S_FIRST &H40180
-$DEFINE OLEOBJ_S_LAST &H4018F
-$DEFINE OLEOBJ_E_NOVERBS &H80040180
-$DEFINE OLEOBJ_E_INVALIDVERB &H80040181
-$DEFINE CLIENTSITE_E_FIRST &H80040190
-$DEFINE CLIENTSITE_E_LAST &H8004019F
-$DEFINE CLIENTSITE_S_FIRST &H40190
-$DEFINE CLIENTSITE_S_LAST &H4019F
-$DEFINE INPLACE_E_NOTUNDOABLE &H800401A0
-$DEFINE INPLACE_E_NOTOOLSPACE &H800401A1
-$DEFINE INPLACE_E_FIRST &H800401A0
-$DEFINE INPLACE_E_LAST &H800401AF
-$DEFINE INPLACE_S_FIRST &H401A0
-$DEFINE INPLACE_S_LAST &H401AF
-$DEFINE ENUM_E_FIRST &H800401B0
-$DEFINE ENUM_E_LAST &H800401BF
-$DEFINE ENUM_S_FIRST &H401B0
-$DEFINE ENUM_S_LAST &H401BF
-$DEFINE CONVERT10_E_FIRST &H800401C0
-$DEFINE CONVERT10_E_LAST &H800401CF
-$DEFINE CONVERT10_S_FIRST &H401C0
-$DEFINE CONVERT10_S_LAST &H401CF
-$DEFINE CONVERT10_E_OLESTREAM_GET &H800401C0
-$DEFINE CONVERT10_E_OLESTREAM_PUT &H800401C1
-$DEFINE CONVERT10_E_OLESTREAM_FMT &H800401C2
-$DEFINE CONVERT10_E_OLESTREAM_BITMAP_TO_DIB &H800401C3
-$DEFINE CONVERT10_E_STG_FMT &H800401C4
-$DEFINE CONVERT10_E_STG_NO_STD_STREAM &H800401C5
-$DEFINE CONVERT10_E_STG_DIB_TO_BITMAP &H800401C6
-$DEFINE CLIPBRD_E_FIRST &H800401D0
-$DEFINE CLIPBRD_E_LAST &H800401DF
-$DEFINE CLIPBRD_S_FIRST &H401D0
-$DEFINE CLIPBRD_S_LAST &H401DF
-$DEFINE CLIPBRD_E_CANT_OPEN &H800401D0
-$DEFINE CLIPBRD_E_CANT_EMPTY &H800401D1
-$DEFINE CLIPBRD_E_CANT_SET &H800401D2
-$DEFINE CLIPBRD_E_BAD_DATA &H800401D3
-$DEFINE CLIPBRD_E_CANT_CLOSE &H800401D4
-$DEFINE MK_E_FIRST &H800401E0
-$DEFINE MK_E_LAST &H800401EF
-$DEFINE MK_S_FIRST &H401E0
-$DEFINE MK_S_LAST &H401EF
-$DEFINE MK_E_CONNECTMANUALLY &H800401E0
-$DEFINE MK_E_EXCEEDEDDEADLINE &H800401E1
-$DEFINE MK_E_NEEDGENERIC &H800401E2
-$DEFINE MK_E_UNAVAILABLE &H800401E3
-$DEFINE MK_E_SYNTAX &H800401E4
-$DEFINE MK_E_NOOBJECT &H800401E5
-$DEFINE MK_E_INVALIDEXTENSION &H800401E6
-$DEFINE MK_E_INTERMEDIATEINTERFACENOTSUPPORTED &H800401E7
-$DEFINE MK_E_NOTBINDABLE &H800401E8
-$DEFINE MK_E_NOTBOUND &H800401E9
-$DEFINE MK_E_CANTOPENFILE &H800401EA
-$DEFINE MK_E_MUSTBOTHERUSER &H800401EB
-$DEFINE MK_E_NOINVERSE &H800401EC
-$DEFINE MK_E_NOSTORAGE &H800401ED
-$DEFINE MK_E_NOPREFIX &H800401EE
-$DEFINE MK_E_ENUMERATION_FAILED &H800401EF
-$DEFINE CO_E_FIRST &H800401F0
-$DEFINE CO_E_LAST &H800401FF
-$DEFINE CO_S_FIRST &H401F0
-$DEFINE CO_S_LAST &H401FF
-$DEFINE CO_E_NOTINITIALIZED &H800401F0
-$DEFINE CO_E_ALREADYINITIALIZED &H800401F1
-$DEFINE CO_E_CANTDETERMINECLASS &H800401F2
-$DEFINE CO_E_CLASSSTRING &H800401F3
-$DEFINE CO_E_IIDSTRING &H800401F4
-$DEFINE CO_E_APPNOTFOUND &H800401F5
-$DEFINE CO_E_APPSINGLEUSE &H800401F6
-$DEFINE CO_E_ERRORINAPP &H800401F7
-$DEFINE CO_E_DLLNOTFOUND &H800401F8
-$DEFINE CO_E_ERRORINDLL &H800401F9
-$DEFINE CO_E_WRONGOSFORAPP &H800401FA
-$DEFINE CO_E_OBJNOTREG &H800401FB
-$DEFINE CO_E_OBJISREG &H800401FC
-$DEFINE CO_E_OBJNOTCONNECTED &H800401FD
-$DEFINE CO_E_APPDIDNTREG &H800401FE
-$DEFINE CO_E_RELEASED &H800401FF
-$DEFINE OLE_S_USEREG &H40000
-$DEFINE OLE_S_STATIC &H40001
-$DEFINE OLE_S_MAC_CLIPFORMAT &H40002
-$DEFINE DRAGDROP_S_DROP &H40100
-$DEFINE DRAGDROP_S_CANCEL &H40101
-$DEFINE DRAGDROP_S_USEDEFAULTCURSORS &H40102
-$DEFINE DATA_S_SAMEFORMATETC &H40130
-$DEFINE VIEW_S_ALREADY_FROZEN &H40140
-$DEFINE CACHE_S_FORMATETC_NOTSUPPORTED &H40170
-$DEFINE CACHE_S_SAMECACHE &H40171
-$DEFINE CACHE_S_SOMECACHES_NOTUPDATED &H40172
-$DEFINE OLEOBJ_S_INVALIDVERB &H40180
-$DEFINE OLEOBJ_S_CANNOT_DOVERB_NOW &H40181
-$DEFINE OLEOBJ_S_INVALIDHWND &H40182
-$DEFINE INPLACE_S_TRUNCATED &H401A0
-$DEFINE CONVERT10_S_NO_PRESENTATION &H401C0
-$DEFINE MK_S_REDUCED_TO_SELF &H401E2
-$DEFINE MK_S_ME &H401E4
-$DEFINE MK_S_HIM &H401E5
-$DEFINE MK_S_US &H401E6
-$DEFINE MK_S_MONIKERALREADYREGISTERED &H401E7
-$DEFINE CO_E_CLASS_CREATE_FAILED &H80080001
-$DEFINE CO_E_SCM_ERROR &H80080002
-$DEFINE CO_E_SCM_RPC_FAILURE &H80080003
-$DEFINE CO_E_BAD_PATH &H80080004
-$DEFINE CO_E_SERVER_EXEC_FAILURE &H80080005
-$DEFINE CO_E_OBJSRV_RPC_FAILURE &H80080006
-$DEFINE MK_E_NO_NORMALIZED &H80080007
-$DEFINE CO_E_SERVER_STOPPING &H80080008
-$DEFINE MEM_E_INVALID_ROOT &H80080009
-$DEFINE MEM_E_INVALID_LINK &H80080010
-$DEFINE MEM_E_INVALID_SIZE &H80080011
-$DEFINE DISP_E_UNKNOWNINTERFACE &H80020001
-$DEFINE DISP_E_MEMBERNOTFOUND &H80020003
-$DEFINE DISP_E_PARAMNOTFOUND &H80020004
-$DEFINE DISP_E_TYPEMISMATCH &H80020005
-$DEFINE DISP_E_UNKNOWNNAME &H80020006
-$DEFINE DISP_E_NONAMEDARGS &H80020007
-$DEFINE DISP_E_BADVARTYPE &H80020008
-$DEFINE DISP_E_EXCEPTION &H80020009
-$DEFINE DISP_E_OVERFLOW &H8002000A
-$DEFINE DISP_E_BADINDEX &H8002000B
-$DEFINE DISP_E_UNKNOWNLCID &H8002000C
-$DEFINE DISP_E_ARRAYISLOCKED &H8002000D
-$DEFINE DISP_E_BADPARAMCOUNT &H8002000E
-$DEFINE DISP_E_PARAMNOTOPTIONAL &H8002000F
-$DEFINE DISP_E_BADCALLEE &H80020010
-$DEFINE DISP_E_NOTACOLLECTION &H80020011
-$DEFINE TYPE_E_BUFFERTOOSMALL &H80028016
-$DEFINE TYPE_E_INVDATAREAD &H80028018
-$DEFINE TYPE_E_UNSUPFORMAT &H80028019
-$DEFINE TYPE_E_REGISTRYACCESS &H8002801C
-$DEFINE TYPE_E_LIBNOTREGISTERED &H8002801D
-$DEFINE TYPE_E_UNDEFINEDTYPE &H80028027
-$DEFINE TYPE_E_QUALIFIEDNAMEDISALLOWED &H80028028
-$DEFINE TYPE_E_INVALIDSTATE &H80028029
-$DEFINE TYPE_E_WRONGTYPEKIND &H8002802A
-$DEFINE TYPE_E_ELEMENTNOTFOUND &H8002802B
-$DEFINE TYPE_E_AMBIGUOUSNAME &H8002802C
-$DEFINE TYPE_E_NAMECONFLICT &H8002802D
-$DEFINE TYPE_E_UNKNOWNLCID &H8002802E
-$DEFINE TYPE_E_DLLFUNCTIONNOTFOUND &H8002802F
-$DEFINE TYPE_E_BADMODULEKIND &H800288BD
-$DEFINE TYPE_E_SIZETOOBIG &H800288C5
-$DEFINE TYPE_E_DUPLICATEID &H800288C6
-$DEFINE TYPE_E_INVALIDID &H800288CF
-$DEFINE TYPE_E_TYPEMISMATCH &H80028CA0
-$DEFINE TYPE_E_OUTOFBOUNDS &H80028CA1
-$DEFINE TYPE_E_IOERROR &H80028CA2
-$DEFINE TYPE_E_CANTCREATETMPFILE &H80028CA3
-$DEFINE TYPE_E_CANTLOADLIBRARY &H80029C4A
-$DEFINE TYPE_E_INCONSISTENTPROPFUNCS &H80029C83
-$DEFINE TYPE_E_CIRCULARTYPE &H80029C84
-$DEFINE STG_E_INVALIDFUNCTION &H80030001
-$DEFINE STG_E_FILENOTFOUND &H80030002
-$DEFINE STG_E_PATHNOTFOUND &H80030003
-$DEFINE STG_E_TOOMANYOPENFILES &H80030004
-$DEFINE STG_E_ACCESSDENIED &H80030005
-$DEFINE STG_E_INVALIDHANDLE &H80030006
-$DEFINE STG_E_INSUFFICIENTMEMORY &H80030008
-$DEFINE STG_E_INVALIDPOINTER &H80030009
-$DEFINE STG_E_NOMOREFILES &H80030012
-$DEFINE STG_E_DISKISWRITEPROTECTED &H80030013
-$DEFINE STG_E_SEEKERROR &H80030019
-$DEFINE STG_E_WRITEFAULT &H8003001D
-$DEFINE STG_E_READFAULT &H8003001E
-$DEFINE STG_E_SHAREVIOLATION &H80030020
-$DEFINE STG_E_LOCKVIOLATION &H80030021
-$DEFINE STG_E_FILEALREADYEXISTS &H80030050
-$DEFINE STG_E_INVALIDPARAMETER &H80030057
-$DEFINE STG_E_MEDIUMFULL &H80030070
-$DEFINE STG_E_ABNORMALAPIEXIT &H800300FA
-$DEFINE STG_E_INVALIDHEADER &H800300FB
-$DEFINE STG_E_INVALIDNAME &H800300FC
-$DEFINE STG_E_UNKNOWN &H800300FD
-$DEFINE STG_E_UNIMPLEMENTEDFUNCTION &H800300FE
-$DEFINE STG_E_INVALIDFLAG &H800300FF
-$DEFINE STG_E_INUSE &H80030100
-$DEFINE STG_E_NOTCURRENT &H80030101
-$DEFINE STG_E_REVERTED &H80030102
-$DEFINE STG_E_CANTSAVE &H80030103
-$DEFINE STG_E_OLDFORMAT &H80030104
-$DEFINE STG_E_OLDDLL &H80030105
-$DEFINE STG_E_SHAREREQUIRED &H80030106
-$DEFINE STG_E_NOTFILEBASEDSTORAGE &H80030107
-$DEFINE STG_E_EXTANTMARSHALLINGS &H80030108
-$DEFINE STG_S_CONVERTED &H30200
-$DEFINE RPC_E_CALL_REJECTED &H80010001
-$DEFINE RPC_E_CALL_CANCELED &H80010002
-$DEFINE RPC_E_CANTPOST_INSENDCALL &H80010003
-$DEFINE RPC_E_CANTCALLOUT_INASYNCCALL &H80010004
-$DEFINE RPC_E_CANTCALLOUT_INEXTERNALCALL &H80010005
-$DEFINE RPC_E_CONNECTION_TERMINATED &H80010006
-$DEFINE RPC_E_SERVER_DIED &H80010007
-$DEFINE RPC_E_CLIENT_DIED &H80010008
-$DEFINE RPC_E_INVALID_DATAPACKET &H80010009
-$DEFINE RPC_E_CANTTRANSMIT_CALL &H8001000A
-$DEFINE RPC_E_CLIENT_CANTMARSHAL_DATA &H8001000B
-$DEFINE RPC_E_CLIENT_CANTUNMARSHAL_DATA &H8001000C
-$DEFINE RPC_E_SERVER_CANTMARSHAL_DATA &H8001000D
-$DEFINE RPC_E_SERVER_CANTUNMARSHAL_DATA &H8001000E
-$DEFINE RPC_E_INVALID_DATA &H8001000F
-$DEFINE RPC_E_INVALID_PARAMETER &H80010010
-$DEFINE RPC_E_CANTCALLOUT_AGAIN &H80010011
-$DEFINE RPC_E_SERVER_DIED_DNE &H80010012
-$DEFINE RPC_E_SYS_CALL_FAILED &H80010100
-$DEFINE RPC_E_OUT_OF_RESOURCES &H80010101
-$DEFINE RPC_E_ATTEMPTED_MULTITHREAD &H80010102
-$DEFINE RPC_E_NOT_REGISTERED &H80010103
-$DEFINE RPC_E_FAULT &H80010104
-$DEFINE RPC_E_SERVERFAULT &H80010105
-$DEFINE RPC_E_CHANGED_MODE &H80010106
-$DEFINE RPC_E_INVALIDMETHOD &H80010107
-$DEFINE RPC_E_DISCONNECTED &H80010108
-$DEFINE RPC_E_RETRY &H80010109
-$DEFINE RPC_E_SERVERCALL_RETRYLATER &H8001010A
-$DEFINE RPC_E_SERVERCALL_REJECTED &H8001010B
-$DEFINE RPC_E_INVALID_CALLDATA &H8001010C
-$DEFINE RPC_E_CANTCALLOUT_ININPUTSYNCCALL &H8001010D
-$DEFINE RPC_E_WRONG_THREAD &H8001010E
-$DEFINE RPC_E_THREAD_NOT_INIT &H8001010F
-$DEFINE RPC_E_UNEXPECTED &H8001FFFF
+'~dup $DEFINE S_FALSE &H1   ' повтор, первое: WIN32API.INC(9399)
+'~dup $DEFINE OLE_E_FIRST &H80040000   ' повтор, первое: WIN32API.INC(9400)
+'~dup $DEFINE OLE_E_LAST &H800400FF   ' повтор, первое: WIN32API.INC(9401)
+'~dup $DEFINE OLE_S_FIRST &H40000   ' повтор, первое: WIN32API.INC(9402)
+'~dup $DEFINE OLE_S_LAST &H400FF   ' повтор, первое: WIN32API.INC(9403)
+'~dup $DEFINE OLE_E_OLEVERB &H80040000   ' повтор, первое: WIN32API.INC(9404)
+'~dup $DEFINE OLE_E_ADVF &H80040001   ' повтор, первое: WIN32API.INC(9405)
+'~dup $DEFINE OLE_E_ENUM_NOMORE &H80040002   ' повтор, первое: WIN32API.INC(9406)
+'~dup $DEFINE OLE_E_ADVISENOTSUPPORTED &H80040003   ' повтор, первое: WIN32API.INC(9407)
+'~dup $DEFINE OLE_E_NOCONNECTION &H80040004   ' повтор, первое: WIN32API.INC(9408)
+'~dup $DEFINE OLE_E_NOTRUNNING &H80040005   ' повтор, первое: WIN32API.INC(9409)
+'~dup $DEFINE OLE_E_NOCACHE &H80040006   ' повтор, первое: WIN32API.INC(9410)
+'~dup $DEFINE OLE_E_BLANK &H80040007   ' повтор, первое: WIN32API.INC(9411)
+'~dup $DEFINE OLE_E_CLASSDIFF &H80040008   ' повтор, первое: WIN32API.INC(9412)
+'~dup $DEFINE OLE_E_CANT_GETMONIKER &H80040009   ' повтор, первое: WIN32API.INC(9413)
+'~dup $DEFINE OLE_E_CANT_BINDTOSOURCE &H8004000A   ' повтор, первое: WIN32API.INC(9414)
+'~dup $DEFINE OLE_E_STATIC &H8004000B   ' повтор, первое: WIN32API.INC(9415)
+'~dup $DEFINE OLE_E_PROMPTSAVECANCELLED &H8004000C   ' повтор, первое: WIN32API.INC(9416)
+'~dup $DEFINE OLE_E_INVALIDRECT &H8004000D   ' повтор, первое: WIN32API.INC(9417)
+'~dup $DEFINE OLE_E_WRONGCOMPOBJ &H8004000E   ' повтор, первое: WIN32API.INC(9418)
+'~dup $DEFINE OLE_E_INVALIDHWND &H8004000F   ' повтор, первое: WIN32API.INC(9419)
+'~dup $DEFINE OLE_E_NOT_INPLACEACTIVE &H80040010   ' повтор, первое: WIN32API.INC(9420)
+'~dup $DEFINE OLE_E_CANTCONVERT &H80040011   ' повтор, первое: WIN32API.INC(9421)
+'~dup $DEFINE OLE_E_NOSTORAGE &H80040012   ' повтор, первое: WIN32API.INC(9422)
+'~dup $DEFINE DV_E_FORMATETC &H80040064   ' повтор, первое: WIN32API.INC(9423)
+'~dup $DEFINE DV_E_DVTARGETDEVICE &H80040065   ' повтор, первое: WIN32API.INC(9424)
+'~dup $DEFINE DV_E_STGMEDIUM &H80040066   ' повтор, первое: WIN32API.INC(9425)
+'~dup $DEFINE DV_E_STATDATA &H80040067   ' повтор, первое: WIN32API.INC(9426)
+'~dup $DEFINE DV_E_LINDEX &H80040068   ' повтор, первое: WIN32API.INC(9427)
+'~dup $DEFINE DV_E_TYMED &H80040069   ' повтор, первое: WIN32API.INC(9428)
+'~dup $DEFINE DV_E_CLIPFORMAT &H8004006A   ' повтор, первое: WIN32API.INC(9429)
+'~dup $DEFINE DV_E_DVASPECT &H8004006B   ' повтор, первое: WIN32API.INC(9430)
+'~dup $DEFINE DV_E_DVTARGETDEVICE_SIZE &H8004006C   ' повтор, первое: WIN32API.INC(9431)
+'~dup $DEFINE DV_E_NOIVIEWOBJECT &H8004006D   ' повтор, первое: WIN32API.INC(9432)
+'~dup $DEFINE DRAGDROP_E_FIRST &H80040100   ' повтор, первое: WIN32API.INC(9433)
+'~dup $DEFINE DRAGDROP_E_LAST &H8004010F   ' повтор, первое: WIN32API.INC(9434)
+'~dup $DEFINE DRAGDROP_S_FIRST &H40100   ' повтор, первое: WIN32API.INC(9435)
+'~dup $DEFINE DRAGDROP_S_LAST &H4010F   ' повтор, первое: WIN32API.INC(9436)
+'~dup $DEFINE DRAGDROP_E_NOTREGISTERED &H80040100   ' повтор, первое: WIN32API.INC(9437)
+'~dup $DEFINE DRAGDROP_E_ALREADYREGISTERED &H80040101   ' повтор, первое: WIN32API.INC(9438)
+'~dup $DEFINE DRAGDROP_E_INVALIDHWND &H80040102   ' повтор, первое: WIN32API.INC(9439)
+'~dup $DEFINE CLASSFACTORY_E_FIRST &H80040110   ' повтор, первое: WIN32API.INC(9440)
+'~dup $DEFINE CLASSFACTORY_E_LAST &H8004011F   ' повтор, первое: WIN32API.INC(9441)
+'~dup $DEFINE CLASSFACTORY_S_FIRST &H40110   ' повтор, первое: WIN32API.INC(9442)
+'~dup $DEFINE CLASSFACTORY_S_LAST &H4011F   ' повтор, первое: WIN32API.INC(9443)
+'~dup $DEFINE CLASS_E_NOAGGREGATION &H80040110   ' повтор, первое: WIN32API.INC(9444)
+'~dup $DEFINE CLASS_E_CLASSNOTAVAILABLE &H80040111   ' повтор, первое: WIN32API.INC(9445)
+'~dup $DEFINE MARSHAL_E_FIRST &H80040120   ' повтор, первое: WIN32API.INC(9446)
+'~dup $DEFINE MARSHAL_E_LAST &H8004012F   ' повтор, первое: WIN32API.INC(9447)
+'~dup $DEFINE MARSHAL_S_FIRST &H40120   ' повтор, первое: WIN32API.INC(9448)
+'~dup $DEFINE MARSHAL_S_LAST &H4012F   ' повтор, первое: WIN32API.INC(9449)
+'~dup $DEFINE DATA_E_FIRST &H80040130   ' повтор, первое: WIN32API.INC(9450)
+'~dup $DEFINE DATA_E_LAST &H8004013F   ' повтор, первое: WIN32API.INC(9451)
+'~dup $DEFINE DATA_S_FIRST &H40130   ' повтор, первое: WIN32API.INC(9452)
+'~dup $DEFINE DATA_S_LAST &H4013F   ' повтор, первое: WIN32API.INC(9453)
+'~dup $DEFINE VIEW_E_FIRST &H80040140   ' повтор, первое: WIN32API.INC(9454)
+'~dup $DEFINE VIEW_E_LAST &H8004014F   ' повтор, первое: WIN32API.INC(9455)
+'~dup $DEFINE VIEW_S_FIRST &H40140   ' повтор, первое: WIN32API.INC(9456)
+'~dup $DEFINE VIEW_S_LAST &H4014F   ' повтор, первое: WIN32API.INC(9457)
+'~dup $DEFINE VIEW_E_DRAW &H80040140   ' повтор, первое: WIN32API.INC(9458)
+'~dup $DEFINE REGDB_E_FIRST &H80040150   ' повтор, первое: WIN32API.INC(9459)
+'~dup $DEFINE REGDB_E_LAST &H8004015F   ' повтор, первое: WIN32API.INC(9460)
+'~dup $DEFINE REGDB_S_FIRST &H40150   ' повтор, первое: WIN32API.INC(9461)
+'~dup $DEFINE REGDB_S_LAST &H4015F   ' повтор, первое: WIN32API.INC(9462)
+'~dup $DEFINE REGDB_E_READREGDB &H80040150   ' повтор, первое: WIN32API.INC(9463)
+'~dup $DEFINE REGDB_E_WRITEREGDB &H80040151   ' повтор, первое: WIN32API.INC(9464)
+'~dup $DEFINE REGDB_E_KEYMISSING &H80040152   ' повтор, первое: WIN32API.INC(9465)
+'~dup $DEFINE REGDB_E_INVALIDVALUE &H80040153   ' повтор, первое: WIN32API.INC(9466)
+'~dup $DEFINE REGDB_E_CLASSNOTREG &H80040154   ' повтор, первое: WIN32API.INC(9467)
+'~dup $DEFINE REGDB_E_IIDNOTREG &H80040155   ' повтор, первое: WIN32API.INC(9468)
+'~dup $DEFINE CACHE_E_FIRST &H80040170   ' повтор, первое: WIN32API.INC(9469)
+'~dup $DEFINE CACHE_E_LAST &H8004017F   ' повтор, первое: WIN32API.INC(9470)
+'~dup $DEFINE CACHE_S_FIRST &H40170   ' повтор, первое: WIN32API.INC(9471)
+'~dup $DEFINE CACHE_S_LAST &H4017F   ' повтор, первое: WIN32API.INC(9472)
+'~dup $DEFINE CACHE_E_NOCACHE_UPDATED &H80040170   ' повтор, первое: WIN32API.INC(9473)
+'~dup $DEFINE OLEOBJ_E_FIRST &H80040180   ' повтор, первое: WIN32API.INC(9474)
+'~dup $DEFINE OLEOBJ_E_LAST &H8004018F   ' повтор, первое: WIN32API.INC(9475)
+'~dup $DEFINE OLEOBJ_S_FIRST &H40180   ' повтор, первое: WIN32API.INC(9476)
+'~dup $DEFINE OLEOBJ_S_LAST &H4018F   ' повтор, первое: WIN32API.INC(9477)
+'~dup $DEFINE OLEOBJ_E_NOVERBS &H80040180   ' повтор, первое: WIN32API.INC(9478)
+'~dup $DEFINE OLEOBJ_E_INVALIDVERB &H80040181   ' повтор, первое: WIN32API.INC(9479)
+'~dup $DEFINE CLIENTSITE_E_FIRST &H80040190   ' повтор, первое: WIN32API.INC(9480)
+'~dup $DEFINE CLIENTSITE_E_LAST &H8004019F   ' повтор, первое: WIN32API.INC(9481)
+'~dup $DEFINE CLIENTSITE_S_FIRST &H40190   ' повтор, первое: WIN32API.INC(9482)
+'~dup $DEFINE CLIENTSITE_S_LAST &H4019F   ' повтор, первое: WIN32API.INC(9483)
+'~dup $DEFINE INPLACE_E_NOTUNDOABLE &H800401A0   ' повтор, первое: WIN32API.INC(9484)
+'~dup $DEFINE INPLACE_E_NOTOOLSPACE &H800401A1   ' повтор, первое: WIN32API.INC(9485)
+'~dup $DEFINE INPLACE_E_FIRST &H800401A0   ' повтор, первое: WIN32API.INC(9486)
+'~dup $DEFINE INPLACE_E_LAST &H800401AF   ' повтор, первое: WIN32API.INC(9487)
+'~dup $DEFINE INPLACE_S_FIRST &H401A0   ' повтор, первое: WIN32API.INC(9488)
+'~dup $DEFINE INPLACE_S_LAST &H401AF   ' повтор, первое: WIN32API.INC(9489)
+'~dup $DEFINE ENUM_E_FIRST &H800401B0   ' повтор, первое: WIN32API.INC(9490)
+'~dup $DEFINE ENUM_E_LAST &H800401BF   ' повтор, первое: WIN32API.INC(9491)
+'~dup $DEFINE ENUM_S_FIRST &H401B0   ' повтор, первое: WIN32API.INC(9492)
+'~dup $DEFINE ENUM_S_LAST &H401BF   ' повтор, первое: WIN32API.INC(9493)
+'~dup $DEFINE CONVERT10_E_FIRST &H800401C0   ' повтор, первое: WIN32API.INC(9494)
+'~dup $DEFINE CONVERT10_E_LAST &H800401CF   ' повтор, первое: WIN32API.INC(9495)
+'~dup $DEFINE CONVERT10_S_FIRST &H401C0   ' повтор, первое: WIN32API.INC(9496)
+'~dup $DEFINE CONVERT10_S_LAST &H401CF   ' повтор, первое: WIN32API.INC(9497)
+'~dup $DEFINE CONVERT10_E_OLESTREAM_GET &H800401C0   ' повтор, первое: WIN32API.INC(9498)
+'~dup $DEFINE CONVERT10_E_OLESTREAM_PUT &H800401C1   ' повтор, первое: WIN32API.INC(9499)
+'~dup $DEFINE CONVERT10_E_OLESTREAM_FMT &H800401C2   ' повтор, первое: WIN32API.INC(9500)
+'~dup $DEFINE CONVERT10_E_OLESTREAM_BITMAP_TO_DIB &H800401C3   ' повтор, первое: WIN32API.INC(9501)
+'~dup $DEFINE CONVERT10_E_STG_FMT &H800401C4   ' повтор, первое: WIN32API.INC(9502)
+'~dup $DEFINE CONVERT10_E_STG_NO_STD_STREAM &H800401C5   ' повтор, первое: WIN32API.INC(9503)
+'~dup $DEFINE CONVERT10_E_STG_DIB_TO_BITMAP &H800401C6   ' повтор, первое: WIN32API.INC(9504)
+'~dup $DEFINE CLIPBRD_E_FIRST &H800401D0   ' повтор, первое: WIN32API.INC(9505)
+'~dup $DEFINE CLIPBRD_E_LAST &H800401DF   ' повтор, первое: WIN32API.INC(9506)
+'~dup $DEFINE CLIPBRD_S_FIRST &H401D0   ' повтор, первое: WIN32API.INC(9507)
+'~dup $DEFINE CLIPBRD_S_LAST &H401DF   ' повтор, первое: WIN32API.INC(9508)
+'~dup $DEFINE CLIPBRD_E_CANT_OPEN &H800401D0   ' повтор, первое: WIN32API.INC(9509)
+'~dup $DEFINE CLIPBRD_E_CANT_EMPTY &H800401D1   ' повтор, первое: WIN32API.INC(9510)
+'~dup $DEFINE CLIPBRD_E_CANT_SET &H800401D2   ' повтор, первое: WIN32API.INC(9511)
+'~dup $DEFINE CLIPBRD_E_BAD_DATA &H800401D3   ' повтор, первое: WIN32API.INC(9512)
+'~dup $DEFINE CLIPBRD_E_CANT_CLOSE &H800401D4   ' повтор, первое: WIN32API.INC(9513)
+'~dup $DEFINE MK_E_FIRST &H800401E0   ' повтор, первое: WIN32API.INC(9514)
+'~dup $DEFINE MK_E_LAST &H800401EF   ' повтор, первое: WIN32API.INC(9515)
+'~dup $DEFINE MK_S_FIRST &H401E0   ' повтор, первое: WIN32API.INC(9516)
+'~dup $DEFINE MK_S_LAST &H401EF   ' повтор, первое: WIN32API.INC(9517)
+'~dup $DEFINE MK_E_CONNECTMANUALLY &H800401E0   ' повтор, первое: WIN32API.INC(9518)
+'~dup $DEFINE MK_E_EXCEEDEDDEADLINE &H800401E1   ' повтор, первое: WIN32API.INC(9519)
+'~dup $DEFINE MK_E_NEEDGENERIC &H800401E2   ' повтор, первое: WIN32API.INC(9520)
+'~dup $DEFINE MK_E_UNAVAILABLE &H800401E3   ' повтор, первое: WIN32API.INC(9521)
+'~dup $DEFINE MK_E_SYNTAX &H800401E4   ' повтор, первое: WIN32API.INC(9522)
+'~dup $DEFINE MK_E_NOOBJECT &H800401E5   ' повтор, первое: WIN32API.INC(9523)
+'~dup $DEFINE MK_E_INVALIDEXTENSION &H800401E6   ' повтор, первое: WIN32API.INC(9524)
+'~dup $DEFINE MK_E_INTERMEDIATEINTERFACENOTSUPPORTED &H800401E7   ' повтор, первое: WIN32API.INC(9525)
+'~dup $DEFINE MK_E_NOTBINDABLE &H800401E8   ' повтор, первое: WIN32API.INC(9526)
+'~dup $DEFINE MK_E_NOTBOUND &H800401E9   ' повтор, первое: WIN32API.INC(9527)
+'~dup $DEFINE MK_E_CANTOPENFILE &H800401EA   ' повтор, первое: WIN32API.INC(9528)
+'~dup $DEFINE MK_E_MUSTBOTHERUSER &H800401EB   ' повтор, первое: WIN32API.INC(9529)
+'~dup $DEFINE MK_E_NOINVERSE &H800401EC   ' повтор, первое: WIN32API.INC(9530)
+'~dup $DEFINE MK_E_NOSTORAGE &H800401ED   ' повтор, первое: WIN32API.INC(9531)
+'~dup $DEFINE MK_E_NOPREFIX &H800401EE   ' повтор, первое: WIN32API.INC(9532)
+'~dup $DEFINE MK_E_ENUMERATION_FAILED &H800401EF   ' повтор, первое: WIN32API.INC(9533)
+'~dup $DEFINE CO_E_FIRST &H800401F0   ' повтор, первое: WIN32API.INC(9534)
+'~dup $DEFINE CO_E_LAST &H800401FF   ' повтор, первое: WIN32API.INC(9535)
+'~dup $DEFINE CO_S_FIRST &H401F0   ' повтор, первое: WIN32API.INC(9536)
+'~dup $DEFINE CO_S_LAST &H401FF   ' повтор, первое: WIN32API.INC(9537)
+'~dup $DEFINE CO_E_NOTINITIALIZED &H800401F0   ' повтор, первое: WIN32API.INC(9538)
+'~dup $DEFINE CO_E_ALREADYINITIALIZED &H800401F1   ' повтор, первое: WIN32API.INC(9539)
+'~dup $DEFINE CO_E_CANTDETERMINECLASS &H800401F2   ' повтор, первое: WIN32API.INC(9540)
+'~dup $DEFINE CO_E_CLASSSTRING &H800401F3   ' повтор, первое: WIN32API.INC(9541)
+'~dup $DEFINE CO_E_IIDSTRING &H800401F4   ' повтор, первое: WIN32API.INC(9542)
+'~dup $DEFINE CO_E_APPNOTFOUND &H800401F5   ' повтор, первое: WIN32API.INC(9543)
+'~dup $DEFINE CO_E_APPSINGLEUSE &H800401F6   ' повтор, первое: WIN32API.INC(9544)
+'~dup $DEFINE CO_E_ERRORINAPP &H800401F7   ' повтор, первое: WIN32API.INC(9545)
+'~dup $DEFINE CO_E_DLLNOTFOUND &H800401F8   ' повтор, первое: WIN32API.INC(9546)
+'~dup $DEFINE CO_E_ERRORINDLL &H800401F9   ' повтор, первое: WIN32API.INC(9547)
+'~dup $DEFINE CO_E_WRONGOSFORAPP &H800401FA   ' повтор, первое: WIN32API.INC(9548)
+'~dup $DEFINE CO_E_OBJNOTREG &H800401FB   ' повтор, первое: WIN32API.INC(9549)
+'~dup $DEFINE CO_E_OBJISREG &H800401FC   ' повтор, первое: WIN32API.INC(9550)
+'~dup $DEFINE CO_E_OBJNOTCONNECTED &H800401FD   ' повтор, первое: WIN32API.INC(9551)
+'~dup $DEFINE CO_E_APPDIDNTREG &H800401FE   ' повтор, первое: WIN32API.INC(9552)
+'~dup $DEFINE CO_E_RELEASED &H800401FF   ' повтор, первое: WIN32API.INC(9553)
+'~dup $DEFINE OLE_S_USEREG &H40000   ' повтор, первое: WIN32API.INC(9554)
+'~dup $DEFINE OLE_S_STATIC &H40001   ' повтор, первое: WIN32API.INC(9555)
+'~dup $DEFINE OLE_S_MAC_CLIPFORMAT &H40002   ' повтор, первое: WIN32API.INC(9556)
+'~dup $DEFINE DRAGDROP_S_DROP &H40100   ' повтор, первое: WIN32API.INC(9557)
+'~dup $DEFINE DRAGDROP_S_CANCEL &H40101   ' повтор, первое: WIN32API.INC(9558)
+'~dup $DEFINE DRAGDROP_S_USEDEFAULTCURSORS &H40102   ' повтор, первое: WIN32API.INC(9559)
+'~dup $DEFINE DATA_S_SAMEFORMATETC &H40130   ' повтор, первое: WIN32API.INC(9560)
+'~dup $DEFINE VIEW_S_ALREADY_FROZEN &H40140   ' повтор, первое: WIN32API.INC(9561)
+'~dup $DEFINE CACHE_S_FORMATETC_NOTSUPPORTED &H40170   ' повтор, первое: WIN32API.INC(9562)
+'~dup $DEFINE CACHE_S_SAMECACHE &H40171   ' повтор, первое: WIN32API.INC(9563)
+'~dup $DEFINE CACHE_S_SOMECACHES_NOTUPDATED &H40172   ' повтор, первое: WIN32API.INC(9564)
+'~dup $DEFINE OLEOBJ_S_INVALIDVERB &H40180   ' повтор, первое: WIN32API.INC(9565)
+'~dup $DEFINE OLEOBJ_S_CANNOT_DOVERB_NOW &H40181   ' повтор, первое: WIN32API.INC(9566)
+'~dup $DEFINE OLEOBJ_S_INVALIDHWND &H40182   ' повтор, первое: WIN32API.INC(9567)
+'~dup $DEFINE INPLACE_S_TRUNCATED &H401A0   ' повтор, первое: WIN32API.INC(9568)
+'~dup $DEFINE CONVERT10_S_NO_PRESENTATION &H401C0   ' повтор, первое: WIN32API.INC(9569)
+'~dup $DEFINE MK_S_REDUCED_TO_SELF &H401E2   ' повтор, первое: WIN32API.INC(9570)
+'~dup $DEFINE MK_S_ME &H401E4   ' повтор, первое: WIN32API.INC(9571)
+'~dup $DEFINE MK_S_HIM &H401E5   ' повтор, первое: WIN32API.INC(9572)
+'~dup $DEFINE MK_S_US &H401E6   ' повтор, первое: WIN32API.INC(9573)
+'~dup $DEFINE MK_S_MONIKERALREADYREGISTERED &H401E7   ' повтор, первое: WIN32API.INC(9574)
+'~dup $DEFINE CO_E_CLASS_CREATE_FAILED &H80080001   ' повтор, первое: WIN32API.INC(9575)
+'~dup $DEFINE CO_E_SCM_ERROR &H80080002   ' повтор, первое: WIN32API.INC(9576)
+'~dup $DEFINE CO_E_SCM_RPC_FAILURE &H80080003   ' повтор, первое: WIN32API.INC(9577)
+'~dup $DEFINE CO_E_BAD_PATH &H80080004   ' повтор, первое: WIN32API.INC(9578)
+'~dup $DEFINE CO_E_SERVER_EXEC_FAILURE &H80080005   ' повтор, первое: WIN32API.INC(9579)
+'~dup $DEFINE CO_E_OBJSRV_RPC_FAILURE &H80080006   ' повтор, первое: WIN32API.INC(9580)
+'~dup $DEFINE MK_E_NO_NORMALIZED &H80080007   ' повтор, первое: WIN32API.INC(9581)
+'~dup $DEFINE CO_E_SERVER_STOPPING &H80080008   ' повтор, первое: WIN32API.INC(9582)
+'~dup $DEFINE MEM_E_INVALID_ROOT &H80080009   ' повтор, первое: WIN32API.INC(9583)
+'~dup $DEFINE MEM_E_INVALID_LINK &H80080010   ' повтор, первое: WIN32API.INC(9584)
+'~dup $DEFINE MEM_E_INVALID_SIZE &H80080011   ' повтор, первое: WIN32API.INC(9585)
+'~dup $DEFINE DISP_E_UNKNOWNINTERFACE &H80020001   ' повтор, первое: WIN32API.INC(9586)
+'~dup $DEFINE DISP_E_MEMBERNOTFOUND &H80020003   ' повтор, первое: WIN32API.INC(9587)
+'~dup $DEFINE DISP_E_PARAMNOTFOUND &H80020004   ' повтор, первое: WIN32API.INC(9588)
+'~dup $DEFINE DISP_E_TYPEMISMATCH &H80020005   ' повтор, первое: WIN32API.INC(9589)
+'~dup $DEFINE DISP_E_UNKNOWNNAME &H80020006   ' повтор, первое: WIN32API.INC(9590)
+'~dup $DEFINE DISP_E_NONAMEDARGS &H80020007   ' повтор, первое: WIN32API.INC(9591)
+'~dup $DEFINE DISP_E_BADVARTYPE &H80020008   ' повтор, первое: WIN32API.INC(9592)
+'~dup $DEFINE DISP_E_EXCEPTION &H80020009   ' повтор, первое: WIN32API.INC(9593)
+'~dup $DEFINE DISP_E_OVERFLOW &H8002000A   ' повтор, первое: WIN32API.INC(9594)
+'~dup $DEFINE DISP_E_BADINDEX &H8002000B   ' повтор, первое: WIN32API.INC(9595)
+'~dup $DEFINE DISP_E_UNKNOWNLCID &H8002000C   ' повтор, первое: WIN32API.INC(9596)
+'~dup $DEFINE DISP_E_ARRAYISLOCKED &H8002000D   ' повтор, первое: WIN32API.INC(9597)
+'~dup $DEFINE DISP_E_BADPARAMCOUNT &H8002000E   ' повтор, первое: WIN32API.INC(9598)
+'~dup $DEFINE DISP_E_PARAMNOTOPTIONAL &H8002000F   ' повтор, первое: WIN32API.INC(9599)
+'~dup $DEFINE DISP_E_BADCALLEE &H80020010   ' повтор, первое: WIN32API.INC(9600)
+'~dup $DEFINE DISP_E_NOTACOLLECTION &H80020011   ' повтор, первое: WIN32API.INC(9601)
+'~dup $DEFINE TYPE_E_BUFFERTOOSMALL &H80028016   ' повтор, первое: WIN32API.INC(9602)
+'~dup $DEFINE TYPE_E_INVDATAREAD &H80028018   ' повтор, первое: WIN32API.INC(9603)
+'~dup $DEFINE TYPE_E_UNSUPFORMAT &H80028019   ' повтор, первое: WIN32API.INC(9604)
+'~dup $DEFINE TYPE_E_REGISTRYACCESS &H8002801C   ' повтор, первое: WIN32API.INC(9605)
+'~dup $DEFINE TYPE_E_LIBNOTREGISTERED &H8002801D   ' повтор, первое: WIN32API.INC(9606)
+'~dup $DEFINE TYPE_E_UNDEFINEDTYPE &H80028027   ' повтор, первое: WIN32API.INC(9607)
+'~dup $DEFINE TYPE_E_QUALIFIEDNAMEDISALLOWED &H80028028   ' повтор, первое: WIN32API.INC(9608)
+'~dup $DEFINE TYPE_E_INVALIDSTATE &H80028029   ' повтор, первое: WIN32API.INC(9609)
+'~dup $DEFINE TYPE_E_WRONGTYPEKIND &H8002802A   ' повтор, первое: WIN32API.INC(9610)
+'~dup $DEFINE TYPE_E_ELEMENTNOTFOUND &H8002802B   ' повтор, первое: WIN32API.INC(9611)
+'~dup $DEFINE TYPE_E_AMBIGUOUSNAME &H8002802C   ' повтор, первое: WIN32API.INC(9612)
+'~dup $DEFINE TYPE_E_NAMECONFLICT &H8002802D   ' повтор, первое: WIN32API.INC(9613)
+'~dup $DEFINE TYPE_E_UNKNOWNLCID &H8002802E   ' повтор, первое: WIN32API.INC(9614)
+'~dup $DEFINE TYPE_E_DLLFUNCTIONNOTFOUND &H8002802F   ' повтор, первое: WIN32API.INC(9615)
+'~dup $DEFINE TYPE_E_BADMODULEKIND &H800288BD   ' повтор, первое: WIN32API.INC(9616)
+'~dup $DEFINE TYPE_E_SIZETOOBIG &H800288C5   ' повтор, первое: WIN32API.INC(9617)
+'~dup $DEFINE TYPE_E_DUPLICATEID &H800288C6   ' повтор, первое: WIN32API.INC(9618)
+'~dup $DEFINE TYPE_E_INVALIDID &H800288CF   ' повтор, первое: WIN32API.INC(9619)
+'~dup $DEFINE TYPE_E_TYPEMISMATCH &H80028CA0   ' повтор, первое: WIN32API.INC(9620)
+'~dup $DEFINE TYPE_E_OUTOFBOUNDS &H80028CA1   ' повтор, первое: WIN32API.INC(9621)
+'~dup $DEFINE TYPE_E_IOERROR &H80028CA2   ' повтор, первое: WIN32API.INC(9622)
+'~dup $DEFINE TYPE_E_CANTCREATETMPFILE &H80028CA3   ' повтор, первое: WIN32API.INC(9623)
+'~dup $DEFINE TYPE_E_CANTLOADLIBRARY &H80029C4A   ' повтор, первое: WIN32API.INC(9624)
+'~dup $DEFINE TYPE_E_INCONSISTENTPROPFUNCS &H80029C83   ' повтор, первое: WIN32API.INC(9625)
+'~dup $DEFINE TYPE_E_CIRCULARTYPE &H80029C84   ' повтор, первое: WIN32API.INC(9626)
+'~dup $DEFINE STG_E_INVALIDFUNCTION &H80030001   ' повтор, первое: WIN32API.INC(9627)
+'~dup $DEFINE STG_E_FILENOTFOUND &H80030002   ' повтор, первое: WIN32API.INC(9628)
+'~dup $DEFINE STG_E_PATHNOTFOUND &H80030003   ' повтор, первое: WIN32API.INC(9629)
+'~dup $DEFINE STG_E_TOOMANYOPENFILES &H80030004   ' повтор, первое: WIN32API.INC(9630)
+'~dup $DEFINE STG_E_ACCESSDENIED &H80030005   ' повтор, первое: WIN32API.INC(9631)
+'~dup $DEFINE STG_E_INVALIDHANDLE &H80030006   ' повтор, первое: WIN32API.INC(9632)
+'~dup $DEFINE STG_E_INSUFFICIENTMEMORY &H80030008   ' повтор, первое: WIN32API.INC(9633)
+'~dup $DEFINE STG_E_INVALIDPOINTER &H80030009   ' повтор, первое: WIN32API.INC(9634)
+'~dup $DEFINE STG_E_NOMOREFILES &H80030012   ' повтор, первое: WIN32API.INC(9635)
+'~dup $DEFINE STG_E_DISKISWRITEPROTECTED &H80030013   ' повтор, первое: WIN32API.INC(9636)
+'~dup $DEFINE STG_E_SEEKERROR &H80030019   ' повтор, первое: WIN32API.INC(9637)
+'~dup $DEFINE STG_E_WRITEFAULT &H8003001D   ' повтор, первое: WIN32API.INC(9638)
+'~dup $DEFINE STG_E_READFAULT &H8003001E   ' повтор, первое: WIN32API.INC(9639)
+'~dup $DEFINE STG_E_SHAREVIOLATION &H80030020   ' повтор, первое: WIN32API.INC(9640)
+'~dup $DEFINE STG_E_LOCKVIOLATION &H80030021   ' повтор, первое: WIN32API.INC(9641)
+'~dup $DEFINE STG_E_FILEALREADYEXISTS &H80030050   ' повтор, первое: WIN32API.INC(9642)
+'~dup $DEFINE STG_E_INVALIDPARAMETER &H80030057   ' повтор, первое: WIN32API.INC(9643)
+'~dup $DEFINE STG_E_MEDIUMFULL &H80030070   ' повтор, первое: WIN32API.INC(9644)
+'~dup $DEFINE STG_E_ABNORMALAPIEXIT &H800300FA   ' повтор, первое: WIN32API.INC(9645)
+'~dup $DEFINE STG_E_INVALIDHEADER &H800300FB   ' повтор, первое: WIN32API.INC(9646)
+'~dup $DEFINE STG_E_INVALIDNAME &H800300FC   ' повтор, первое: WIN32API.INC(9647)
+'~dup $DEFINE STG_E_UNKNOWN &H800300FD   ' повтор, первое: WIN32API.INC(9648)
+'~dup $DEFINE STG_E_UNIMPLEMENTEDFUNCTION &H800300FE   ' повтор, первое: WIN32API.INC(9649)
+'~dup $DEFINE STG_E_INVALIDFLAG &H800300FF   ' повтор, первое: WIN32API.INC(9650)
+'~dup $DEFINE STG_E_INUSE &H80030100   ' повтор, первое: WIN32API.INC(9651)
+'~dup $DEFINE STG_E_NOTCURRENT &H80030101   ' повтор, первое: WIN32API.INC(9652)
+'~dup $DEFINE STG_E_REVERTED &H80030102   ' повтор, первое: WIN32API.INC(9653)
+'~dup $DEFINE STG_E_CANTSAVE &H80030103   ' повтор, первое: WIN32API.INC(9654)
+'~dup $DEFINE STG_E_OLDFORMAT &H80030104   ' повтор, первое: WIN32API.INC(9655)
+'~dup $DEFINE STG_E_OLDDLL &H80030105   ' повтор, первое: WIN32API.INC(9656)
+'~dup $DEFINE STG_E_SHAREREQUIRED &H80030106   ' повтор, первое: WIN32API.INC(9657)
+'~dup $DEFINE STG_E_NOTFILEBASEDSTORAGE &H80030107   ' повтор, первое: WIN32API.INC(9658)
+'~dup $DEFINE STG_E_EXTANTMARSHALLINGS &H80030108   ' повтор, первое: WIN32API.INC(9659)
+'~dup $DEFINE STG_S_CONVERTED &H30200   ' повтор, первое: WIN32API.INC(9660)
+'~dup $DEFINE RPC_E_CALL_REJECTED &H80010001   ' повтор, первое: WIN32API.INC(9661)
+'~dup $DEFINE RPC_E_CALL_CANCELED &H80010002   ' повтор, первое: WIN32API.INC(9662)
+'~dup $DEFINE RPC_E_CANTPOST_INSENDCALL &H80010003   ' повтор, первое: WIN32API.INC(9663)
+'~dup $DEFINE RPC_E_CANTCALLOUT_INASYNCCALL &H80010004   ' повтор, первое: WIN32API.INC(9664)
+'~dup $DEFINE RPC_E_CANTCALLOUT_INEXTERNALCALL &H80010005   ' повтор, первое: WIN32API.INC(9665)
+'~dup $DEFINE RPC_E_CONNECTION_TERMINATED &H80010006   ' повтор, первое: WIN32API.INC(9666)
+'~dup $DEFINE RPC_E_SERVER_DIED &H80010007   ' повтор, первое: WIN32API.INC(9667)
+'~dup $DEFINE RPC_E_CLIENT_DIED &H80010008   ' повтор, первое: WIN32API.INC(9668)
+'~dup $DEFINE RPC_E_INVALID_DATAPACKET &H80010009   ' повтор, первое: WIN32API.INC(9669)
+'~dup $DEFINE RPC_E_CANTTRANSMIT_CALL &H8001000A   ' повтор, первое: WIN32API.INC(9670)
+'~dup $DEFINE RPC_E_CLIENT_CANTMARSHAL_DATA &H8001000B   ' повтор, первое: WIN32API.INC(9671)
+'~dup $DEFINE RPC_E_CLIENT_CANTUNMARSHAL_DATA &H8001000C   ' повтор, первое: WIN32API.INC(9672)
+'~dup $DEFINE RPC_E_SERVER_CANTMARSHAL_DATA &H8001000D   ' повтор, первое: WIN32API.INC(9673)
+'~dup $DEFINE RPC_E_SERVER_CANTUNMARSHAL_DATA &H8001000E   ' повтор, первое: WIN32API.INC(9674)
+'~dup $DEFINE RPC_E_INVALID_DATA &H8001000F   ' повтор, первое: WIN32API.INC(9675)
+'~dup $DEFINE RPC_E_INVALID_PARAMETER &H80010010   ' повтор, первое: WIN32API.INC(9676)
+'~dup $DEFINE RPC_E_CANTCALLOUT_AGAIN &H80010011   ' повтор, первое: WIN32API.INC(9677)
+'~dup $DEFINE RPC_E_SERVER_DIED_DNE &H80010012   ' повтор, первое: WIN32API.INC(9678)
+'~dup $DEFINE RPC_E_SYS_CALL_FAILED &H80010100   ' повтор, первое: WIN32API.INC(9679)
+'~dup $DEFINE RPC_E_OUT_OF_RESOURCES &H80010101   ' повтор, первое: WIN32API.INC(9680)
+'~dup $DEFINE RPC_E_ATTEMPTED_MULTITHREAD &H80010102   ' повтор, первое: WIN32API.INC(9681)
+'~dup $DEFINE RPC_E_NOT_REGISTERED &H80010103   ' повтор, первое: WIN32API.INC(9682)
+'~dup $DEFINE RPC_E_FAULT &H80010104   ' повтор, первое: WIN32API.INC(9683)
+'~dup $DEFINE RPC_E_SERVERFAULT &H80010105   ' повтор, первое: WIN32API.INC(9684)
+'~dup $DEFINE RPC_E_CHANGED_MODE &H80010106   ' повтор, первое: WIN32API.INC(9685)
+'~dup $DEFINE RPC_E_INVALIDMETHOD &H80010107   ' повтор, первое: WIN32API.INC(9686)
+'~dup $DEFINE RPC_E_DISCONNECTED &H80010108   ' повтор, первое: WIN32API.INC(9687)
+'~dup $DEFINE RPC_E_RETRY &H80010109   ' повтор, первое: WIN32API.INC(9688)
+'~dup $DEFINE RPC_E_SERVERCALL_RETRYLATER &H8001010A   ' повтор, первое: WIN32API.INC(9689)
+'~dup $DEFINE RPC_E_SERVERCALL_REJECTED &H8001010B   ' повтор, первое: WIN32API.INC(9690)
+'~dup $DEFINE RPC_E_INVALID_CALLDATA &H8001010C   ' повтор, первое: WIN32API.INC(9691)
+'~dup $DEFINE RPC_E_CANTCALLOUT_ININPUTSYNCCALL &H8001010D   ' повтор, первое: WIN32API.INC(9692)
+'~dup $DEFINE RPC_E_WRONG_THREAD &H8001010E   ' повтор, первое: WIN32API.INC(9693)
+'~dup $DEFINE RPC_E_THREAD_NOT_INIT &H8001010F   ' повтор, первое: WIN32API.INC(9694)
+'~dup $DEFINE RPC_E_UNEXPECTED &H8001FFFF   ' повтор, первое: WIN32API.INC(9695)
 
 
 ' /////////////////////////
@@ -60303,87 +60232,87 @@ $DEFINE RPC_E_UNEXPECTED &H8001FFFF
 ' /////////////////////////
 
 '   The specified username is invalid.
-$DEFINE ERROR_BAD_USERNAME 2202&
+'~dup $DEFINE ERROR_BAD_USERNAME 2202&   ' повтор, первое: rapidq2.inc(1874)
 
 '   This network connection does not exist.
-$DEFINE ERROR_NOT_CONNECTED 2250&
+'~dup $DEFINE ERROR_NOT_CONNECTED 2250&   ' повтор, первое: WIN32API.INC(9708)
 
 '   This network connection has files open or requests pending.
-$DEFINE ERROR_OPEN_FILES 2401&
+'~dup $DEFINE ERROR_OPEN_FILES 2401&   ' повтор, первое: WIN32API.INC(9711)
 
 '   The device is in use by an active process and cannot be disconnected.
-$DEFINE ERROR_DEVICE_IN_USE 2404&
+'~dup $DEFINE ERROR_DEVICE_IN_USE 2404&   ' повтор, первое: WIN32API.INC(9714)
 
 '   The specified device name is invalid.
-$DEFINE ERROR_BAD_DEVICE 1200&
+'~dup $DEFINE ERROR_BAD_DEVICE 1200&   ' повтор, первое: WIN32API.INC(9717)
 
 '   The device is not currently connected but it is a remembered connection.
-$DEFINE ERROR_CONNECTION_UNAVAIL 1201&
+'~dup $DEFINE ERROR_CONNECTION_UNAVAIL 1201&   ' повтор, первое: WIN32API.INC(9720)
 
 '   An attempt was made to remember a device that had previously been remembered.
-$DEFINE ERROR_DEVICE_ALREADY_REMEMBERED 1202&
+'~dup $DEFINE ERROR_DEVICE_ALREADY_REMEMBERED 1202&   ' повтор, первое: WIN32API.INC(9723)
 
 '   No network provider accepted the given network path.
-$DEFINE ERROR_NO_NET_OR_BAD_PATH 1203&
+'~dup $DEFINE ERROR_NO_NET_OR_BAD_PATH 1203&   ' повтор, первое: WIN32API.INC(9726)
 
 '   The specified network provider name is invalid.
-$DEFINE ERROR_BAD_PROVIDER 1204&
+'~dup $DEFINE ERROR_BAD_PROVIDER 1204&   ' повтор, первое: WIN32API.INC(9729)
 
 '   Unable to open the network connection profile.
-$DEFINE ERROR_CANNOT_OPEN_PROFILE 1205&
+'~dup $DEFINE ERROR_CANNOT_OPEN_PROFILE 1205&   ' повтор, первое: WIN32API.INC(9732)
 
 '   The network connection profile is corrupt.
-$DEFINE ERROR_BAD_PROFILE 1206&
+'~dup $DEFINE ERROR_BAD_PROFILE 1206&   ' повтор, первое: WIN32API.INC(9735)
 
 '   Cannot enumerate a non-container.
-$DEFINE ERROR_NOT_CONTAINER 1207&
+'~dup $DEFINE ERROR_NOT_CONTAINER 1207&   ' повтор, первое: WIN32API.INC(9738)
 
 '   An extended error has occurred.
-$DEFINE ERROR_EXTENDED_ERROR 1208&
+'~dup $DEFINE ERROR_EXTENDED_ERROR 1208&   ' повтор, первое: WIN32API.INC(9741)
 
 '   The format of the specified group name is invalid.
-$DEFINE ERROR_INVALID_GROUPNAME 1209&
+'~dup $DEFINE ERROR_INVALID_GROUPNAME 1209&   ' повтор, первое: WIN32API.INC(9744)
 
 '   The format of the specified computer name is invalid.
-$DEFINE ERROR_INVALID_COMPUTERNAME 1210&
+'~dup $DEFINE ERROR_INVALID_COMPUTERNAME 1210&   ' повтор, первое: WIN32API.INC(9747)
 
 '   The format of the specified event name is invalid.
-$DEFINE ERROR_INVALID_EVENTNAME 1211&
+'~dup $DEFINE ERROR_INVALID_EVENTNAME 1211&   ' повтор, первое: WIN32API.INC(9750)
 
 '   The format of the specified domain name is invalid.
-$DEFINE ERROR_INVALID_DOMAINNAME 1212&
+'~dup $DEFINE ERROR_INVALID_DOMAINNAME 1212&   ' повтор, первое: WIN32API.INC(9753)
 
 '   The format of the specified service name is invalid.
-$DEFINE ERROR_INVALID_SERVICENAME 1213&
+'~dup $DEFINE ERROR_INVALID_SERVICENAME 1213&   ' повтор, первое: WIN32API.INC(9756)
 
 '   The format of the specified network name is invalid.
-$DEFINE ERROR_INVALID_NETNAME 1214&
+'~dup $DEFINE ERROR_INVALID_NETNAME 1214&   ' повтор, первое: WIN32API.INC(9759)
 
 '   The format of the specified share name is invalid.
-$DEFINE ERROR_INVALID_SHARENAME 1215&
+'~dup $DEFINE ERROR_INVALID_SHARENAME 1215&   ' повтор, первое: WIN32API.INC(9762)
 
 '   The format of the specified password is invalid.
-$DEFINE ERROR_INVALID_PASSWORDNAME 1216&
+'~dup $DEFINE ERROR_INVALID_PASSWORDNAME 1216&   ' повтор, первое: WIN32API.INC(9765)
 
 '   The format of the specified message name is invalid.
-$DEFINE ERROR_INVALID_MESSAGENAME 1217&
+'~dup $DEFINE ERROR_INVALID_MESSAGENAME 1217&   ' повтор, первое: WIN32API.INC(9768)
 
 '   The format of the specified message destination is invalid.
-$DEFINE ERROR_INVALID_MESSAGEDEST 1218&
+'~dup $DEFINE ERROR_INVALID_MESSAGEDEST 1218&   ' повтор, первое: WIN32API.INC(9771)
 
 '   The credentials supplied conflict with an existing set of credentials.
-$DEFINE ERROR_SESSION_CREDENTIAL_CONFLICT 1219&
+'~dup $DEFINE ERROR_SESSION_CREDENTIAL_CONFLICT 1219&   ' повтор, первое: WIN32API.INC(9774)
 
 '   An attempt was made to establish a session to a Lan Manager server, but there
 '   are already too many sessions established to that server.
-$DEFINE ERROR_REMOTE_SESSION_LIMIT_EXCEEDED 1220&
+'~dup $DEFINE ERROR_REMOTE_SESSION_LIMIT_EXCEEDED 1220&   ' повтор, первое: WIN32API.INC(9778)
 
 '   The workgroup or domain name is already in use by another computer on the
 '   network.
-$DEFINE ERROR_DUP_DOMAINNAME 1221&
+'~dup $DEFINE ERROR_DUP_DOMAINNAME 1221&   ' повтор, первое: WIN32API.INC(9782)
 
 '   The network is not present or not started.
-$DEFINE ERROR_NO_NETWORK 1222&
+'~dup $DEFINE ERROR_NO_NETWORK 1222&   ' повтор, первое: WIN32API.INC(9785)
 
 
 ' /////////////////////////
@@ -60393,317 +60322,317 @@ $DEFINE ERROR_NO_NETWORK 1222&
 ' /////////////////////////
 
 '   Not all privileges referenced are assigned to the caller.
-$DEFINE ERROR_NOT_ALL_ASSIGNED 1300&
+'~dup $DEFINE ERROR_NOT_ALL_ASSIGNED 1300&   ' повтор, первое: WIN32API.INC(9795)
 
 '   Some mapping between account names and security IDs was not done.
-$DEFINE ERROR_SOME_NOT_MAPPED 1301&
+'~dup $DEFINE ERROR_SOME_NOT_MAPPED 1301&   ' повтор, первое: WIN32API.INC(9798)
 
 '   No system quota limits are specifically set for this account.
-$DEFINE ERROR_NO_QUOTAS_FOR_ACCOUNT 1302&
+'~dup $DEFINE ERROR_NO_QUOTAS_FOR_ACCOUNT 1302&   ' повтор, первое: WIN32API.INC(9801)
 
 '   No encryption key is available.  A well-known encryption key was returned.
-$DEFINE ERROR_LOCAL_USER_SESSION_KEY 1303&
+'~dup $DEFINE ERROR_LOCAL_USER_SESSION_KEY 1303&   ' повтор, первое: WIN32API.INC(9804)
 
 '   The NT password is too complex to be converted to a LAN Manager
 '   password.  The LAN Manager password returned is a NULL string.
-$DEFINE ERROR_NULL_LM_PASSWORD 1304&
+'~dup $DEFINE ERROR_NULL_LM_PASSWORD 1304&   ' повтор, первое: WIN32API.INC(9808)
 
 '   The revision level is unknown.
-$DEFINE ERROR_UNKNOWN_REVISION 1305&
+'~dup $DEFINE ERROR_UNKNOWN_REVISION 1305&   ' повтор, первое: WIN32API.INC(9811)
 
 '   Indicates two revision levels are incompatible.
-$DEFINE ERROR_REVISION_MISMATCH 1306&
+'~dup $DEFINE ERROR_REVISION_MISMATCH 1306&   ' повтор, первое: WIN32API.INC(9814)
 
 '   This security ID may not be assigned as the owner of this object.
-$DEFINE ERROR_INVALID_OWNER 1307&
+'~dup $DEFINE ERROR_INVALID_OWNER 1307&   ' повтор, первое: WIN32API.INC(9817)
 
 '   This security ID may not be assigned as the primary group of an object.
-$DEFINE ERROR_INVALID_PRIMARY_GROUP 1308&
+'~dup $DEFINE ERROR_INVALID_PRIMARY_GROUP 1308&   ' повтор, первое: WIN32API.INC(9820)
 
 '   An attempt has been made to operate on an impersonation token
 '   by a thread that is not currently impersonating a client.
-$DEFINE ERROR_NO_IMPERSONATION_TOKEN 1309&
+'~dup $DEFINE ERROR_NO_IMPERSONATION_TOKEN 1309&   ' повтор, первое: WIN32API.INC(9824)
 
 '   The group may not be disabled.
-$DEFINE ERROR_CANT_DISABLE_MANDATORY 1310&
+'~dup $DEFINE ERROR_CANT_DISABLE_MANDATORY 1310&   ' повтор, первое: WIN32API.INC(9827)
 
 '   There are currently no logon servers available to service the logon
 '   request.
-$DEFINE ERROR_NO_LOGON_SERVERS 1311&
+'~dup $DEFINE ERROR_NO_LOGON_SERVERS 1311&   ' повтор, первое: WIN32API.INC(9831)
 
 '    A specified logon session does not exist.  It may already have
 '    been terminated.
-$DEFINE ERROR_NO_SUCH_LOGON_SESSION 1312&
+'~dup $DEFINE ERROR_NO_SUCH_LOGON_SESSION 1312&   ' повтор, первое: WIN32API.INC(9835)
 
 '    A specified privilege does not exist.
-$DEFINE ERROR_NO_SUCH_PRIVILEGE 1313&
+'~dup $DEFINE ERROR_NO_SUCH_PRIVILEGE 1313&   ' повтор, первое: WIN32API.INC(9838)
 
 '    A required privilege is not held by the client.
-$DEFINE ERROR_PRIVILEGE_NOT_HELD 1314&
+'~dup $DEFINE ERROR_PRIVILEGE_NOT_HELD 1314&   ' повтор, первое: WIN32API.INC(9841)
 
 '   The name provided is not a properly formed account name.
-$DEFINE ERROR_INVALID_ACCOUNT_NAME 1315&
+'~dup $DEFINE ERROR_INVALID_ACCOUNT_NAME 1315&   ' повтор, первое: WIN32API.INC(9844)
 
 '   The specified user already exists.
-$DEFINE ERROR_USER_EXISTS 1316&
+'~dup $DEFINE ERROR_USER_EXISTS 1316&   ' повтор, первое: WIN32API.INC(9847)
 
 '   The specified user does not exist.
-$DEFINE ERROR_NO_SUCH_USER 1317&
+'~dup $DEFINE ERROR_NO_SUCH_USER 1317&   ' повтор, первое: WIN32API.INC(9850)
 
 '   The specified group already exists.
-$DEFINE ERROR_GROUP_EXISTS 1318&
+'~dup $DEFINE ERROR_GROUP_EXISTS 1318&   ' повтор, первое: WIN32API.INC(9853)
 
 '   The specified group does not exist.
-$DEFINE ERROR_NO_SUCH_GROUP 1319&
+'~dup $DEFINE ERROR_NO_SUCH_GROUP 1319&   ' повтор, первое: WIN32API.INC(9856)
 
 '   Either the specified user account is already a member of the specified
 '   group, or the specified group cannot be deleted because it contains
 '   a member.
-$DEFINE ERROR_MEMBER_IN_GROUP 1320&
+'~dup $DEFINE ERROR_MEMBER_IN_GROUP 1320&   ' повтор, первое: WIN32API.INC(9861)
 
 '   The specified user account is not a member of the specified group account.
-$DEFINE ERROR_MEMBER_NOT_IN_GROUP 1321&
+'~dup $DEFINE ERROR_MEMBER_NOT_IN_GROUP 1321&   ' повтор, первое: WIN32API.INC(9864)
 
 '   The last remaining administration account cannot be disabled
 '   or deleted.
-$DEFINE ERROR_LAST_ADMIN 1322&
+'~dup $DEFINE ERROR_LAST_ADMIN 1322&   ' повтор, первое: WIN32API.INC(9868)
 
 '   Unable to update the password.  The value provided as the current
 '   password is incorrect.
-$DEFINE ERROR_WRONG_PASSWORD 1323&
+'~dup $DEFINE ERROR_WRONG_PASSWORD 1323&   ' повтор, первое: WIN32API.INC(9872)
 
 '   Unable to update the password.  The value provided for the new password
 '   contains values that are not allowed in passwords.
-$DEFINE ERROR_ILL_FORMED_PASSWORD 1324&
+'~dup $DEFINE ERROR_ILL_FORMED_PASSWORD 1324&   ' повтор, первое: WIN32API.INC(9876)
 
 '   Unable to update the password because a password update rule has been
 '   violated.
-$DEFINE ERROR_PASSWORD_RESTRICTION 1325&
+'~dup $DEFINE ERROR_PASSWORD_RESTRICTION 1325&   ' повтор, первое: WIN32API.INC(9880)
 
 '   Logon failure: unknown user name or bad password.
-$DEFINE ERROR_LOGON_FAILURE 1326&
+'~dup $DEFINE ERROR_LOGON_FAILURE 1326&   ' повтор, первое: WIN32API.INC(9883)
 
 '   Logon failure: user account restriction.
-$DEFINE ERROR_ACCOUNT_RESTRICTION 1327&
+'~dup $DEFINE ERROR_ACCOUNT_RESTRICTION 1327&   ' повтор, первое: WIN32API.INC(9886)
 
 '   Logon failure: account logon time restriction violation.
-$DEFINE ERROR_INVALID_LOGON_HOURS 1328&
+'~dup $DEFINE ERROR_INVALID_LOGON_HOURS 1328&   ' повтор, первое: WIN32API.INC(9889)
 
 '   Logon failure: user not allowed to log on to this computer.
-$DEFINE ERROR_INVALID_WORKSTATION 1329&
+'~dup $DEFINE ERROR_INVALID_WORKSTATION 1329&   ' повтор, первое: WIN32API.INC(9892)
 
 '   Logon failure: the specified account password has expired.
-$DEFINE ERROR_PASSWORD_EXPIRED 1330&
+'~dup $DEFINE ERROR_PASSWORD_EXPIRED 1330&   ' повтор, первое: WIN32API.INC(9895)
 
 '   Logon failure: account currently disabled.
-$DEFINE ERROR_ACCOUNT_DISABLED 1331&
+'~dup $DEFINE ERROR_ACCOUNT_DISABLED 1331&   ' повтор, первое: WIN32API.INC(9898)
 
 '   No mapping between account names and security IDs was done.
-$DEFINE ERROR_NONE_MAPPED 1332&
+'~dup $DEFINE ERROR_NONE_MAPPED 1332&   ' повтор, первое: WIN32API.INC(9901)
 
 '   Too many local user identifiers (LUIDs) were requested at one time.
-$DEFINE ERROR_TOO_MANY_LUIDS_REQUESTED 1333&
+'~dup $DEFINE ERROR_TOO_MANY_LUIDS_REQUESTED 1333&   ' повтор, первое: WIN32API.INC(9904)
 
 '   No more local user identifiers (LUIDs) are available.
-$DEFINE ERROR_LUIDS_EXHAUSTED 1334&
+'~dup $DEFINE ERROR_LUIDS_EXHAUSTED 1334&   ' повтор, первое: WIN32API.INC(9907)
 
 '   The subauthority part of a security ID is invalid for this particular use.
-$DEFINE ERROR_INVALID_SUB_AUTHORITY 1335&
+'~dup $DEFINE ERROR_INVALID_SUB_AUTHORITY 1335&   ' повтор, первое: WIN32API.INC(9910)
 
 '   The access control list (ACL) structure is invalid.
-$DEFINE ERROR_INVALID_ACL 1336&
+'~dup $DEFINE ERROR_INVALID_ACL 1336&   ' повтор, первое: WIN32API.INC(9913)
 
 '   The security ID structure is invalid.
-$DEFINE ERROR_INVALID_SID 1337&
+'~dup $DEFINE ERROR_INVALID_SID 1337&   ' повтор, первое: WIN32API.INC(9916)
 
 '   The security descriptor structure is invalid.
-$DEFINE ERROR_INVALID_SECURITY_DESCR 1338&
+'~dup $DEFINE ERROR_INVALID_SECURITY_DESCR 1338&   ' повтор, первое: WIN32API.INC(9919)
 
 '   The inherited access control list (ACL) or access control entry (ACE)
 '   could not be built.
-$DEFINE ERROR_BAD_INHERITANCE_ACL 1340&
+'~dup $DEFINE ERROR_BAD_INHERITANCE_ACL 1340&   ' повтор, первое: WIN32API.INC(9923)
 
 '   The server is currently disabled.
-$DEFINE ERROR_SERVER_DISABLED 1341&
+'~dup $DEFINE ERROR_SERVER_DISABLED 1341&   ' повтор, первое: WIN32API.INC(9926)
 
 '   The server is currently enabled.
-$DEFINE ERROR_SERVER_NOT_DISABLED 1342&
+'~dup $DEFINE ERROR_SERVER_NOT_DISABLED 1342&   ' повтор, первое: WIN32API.INC(9929)
 
 '   The value provided was an invalid value for an identifier authority.
-$DEFINE ERROR_INVALID_ID_AUTHORITY 1343&
+'~dup $DEFINE ERROR_INVALID_ID_AUTHORITY 1343&   ' повтор, первое: WIN32API.INC(9932)
 
 '   No more memory is available for security information updates.
-$DEFINE ERROR_ALLOTTED_SPACE_EXCEEDED 1344&
+'~dup $DEFINE ERROR_ALLOTTED_SPACE_EXCEEDED 1344&   ' повтор, первое: WIN32API.INC(9935)
 
 '   The specified attributes are invalid, or incompatible with the
 '   attributes for the group as a whole.
-$DEFINE ERROR_INVALID_GROUP_ATTRIBUTES 1345&
+'~dup $DEFINE ERROR_INVALID_GROUP_ATTRIBUTES 1345&   ' повтор, первое: WIN32API.INC(9939)
 
 '   Either a required impersonation level was not provided, or the
 '   provided impersonation level is invalid.
-$DEFINE ERROR_BAD_IMPERSONATION_LEVEL 1346&
+'~dup $DEFINE ERROR_BAD_IMPERSONATION_LEVEL 1346&   ' повтор, первое: WIN32API.INC(9943)
 
 '   Cannot open an anonymous level security token.
-$DEFINE ERROR_CANT_OPEN_ANONYMOUS 1347&
+'~dup $DEFINE ERROR_CANT_OPEN_ANONYMOUS 1347&   ' повтор, первое: WIN32API.INC(9946)
 
 '   The validation information class requested was invalid.
-$DEFINE ERROR_BAD_VALIDATION_CLASS 1348&
+'~dup $DEFINE ERROR_BAD_VALIDATION_CLASS 1348&   ' повтор, первое: WIN32API.INC(9949)
 
 '   The type of the token is inappropriate for its attempted use.
-$DEFINE ERROR_BAD_TOKEN_TYPE 1349&
+'~dup $DEFINE ERROR_BAD_TOKEN_TYPE 1349&   ' повтор, первое: WIN32API.INC(9952)
 
 '   Unable to perform a security operation on an object
 '   which has no associated security.
-$DEFINE ERROR_NO_SECURITY_ON_OBJECT 1350&
+'~dup $DEFINE ERROR_NO_SECURITY_ON_OBJECT 1350&   ' повтор, первое: WIN32API.INC(9956)
 
 '   Indicates a Windows NT Advanced Server could not be contacted or that
 '   objects within the domain are protected such that necessary
 '   information could not be retrieved.
-$DEFINE ERROR_CANT_ACCESS_DOMAIN_INFO 1351&
+'~dup $DEFINE ERROR_CANT_ACCESS_DOMAIN_INFO 1351&   ' повтор, первое: WIN32API.INC(9961)
 
 '   The security account manager (SAM) or local security
 '   authority (LSA) server was in the wrong state to perform
 '   the security operation.
-$DEFINE ERROR_INVALID_SERVER_STATE 1352&
+'~dup $DEFINE ERROR_INVALID_SERVER_STATE 1352&   ' повтор, первое: WIN32API.INC(9966)
 
 '   The domain was in the wrong state to perform the security operation.
-$DEFINE ERROR_INVALID_DOMAIN_STATE 1353&
+'~dup $DEFINE ERROR_INVALID_DOMAIN_STATE 1353&   ' повтор, первое: WIN32API.INC(9969)
 
 '   This operation is only allowed for the Primary Domain Controller of the domain.
-$DEFINE ERROR_INVALID_DOMAIN_ROLE 1354&
+'~dup $DEFINE ERROR_INVALID_DOMAIN_ROLE 1354&   ' повтор, первое: WIN32API.INC(9972)
 
 '   The specified domain did not exist.
-$DEFINE ERROR_NO_SUCH_DOMAIN 1355&
+'~dup $DEFINE ERROR_NO_SUCH_DOMAIN 1355&   ' повтор, первое: WIN32API.INC(9975)
 
 '   The specified domain already exists.
-$DEFINE ERROR_DOMAIN_EXISTS 1356&
+'~dup $DEFINE ERROR_DOMAIN_EXISTS 1356&   ' повтор, первое: WIN32API.INC(9978)
 
 '   An attempt was made to exceed the limit on the number of domains per server.
-$DEFINE ERROR_DOMAIN_LIMIT_EXCEEDED 1357&
+'~dup $DEFINE ERROR_DOMAIN_LIMIT_EXCEEDED 1357&   ' повтор, первое: WIN32API.INC(9981)
 
 '   Unable to complete the requested operation because of either a
 '   catastrophic media failure or a data structure corruption on the disk.
-$DEFINE ERROR_INTERNAL_DB_CORRUPTION 1358&
+'~dup $DEFINE ERROR_INTERNAL_DB_CORRUPTION 1358&   ' повтор, первое: WIN32API.INC(9985)
 
 '   The security account database contains an internal inconsistency.
-$DEFINE ERROR_INTERNAL_ERROR 1359&
+'~dup $DEFINE ERROR_INTERNAL_ERROR 1359&   ' повтор, первое: WIN32API.INC(9988)
 
 '   Generic access types were contained in an access mask which should
 '   already be mapped to non-generic types.
-$DEFINE ERROR_GENERIC_NOT_MAPPED 1360&
+'~dup $DEFINE ERROR_GENERIC_NOT_MAPPED 1360&   ' повтор, первое: WIN32API.INC(9992)
 
 '   A security descriptor is not in the right format (absolute or self-relative).
-$DEFINE ERROR_BAD_DESCRIPTOR_FORMAT 1361&
+'~dup $DEFINE ERROR_BAD_DESCRIPTOR_FORMAT 1361&   ' повтор, первое: WIN32API.INC(9995)
 
 '   The requested action is restricted for use by logon processes
 '   only.  The calling process has not registered as a logon process.
-$DEFINE ERROR_NOT_LOGON_PROCESS 1362&
+'~dup $DEFINE ERROR_NOT_LOGON_PROCESS 1362&   ' повтор, первое: WIN32API.INC(9999)
 
 '   Cannot start a new logon session with an ID that is already in use.
-$DEFINE ERROR_LOGON_SESSION_EXISTS 1363&
+'~dup $DEFINE ERROR_LOGON_SESSION_EXISTS 1363&   ' повтор, первое: WIN32API.INC(10002)
 
 '   A specified authentication package is unknown.
-$DEFINE ERROR_NO_SUCH_PACKAGE 1364&
+'~dup $DEFINE ERROR_NO_SUCH_PACKAGE 1364&   ' повтор, первое: WIN32API.INC(10005)
 
 '   The logon session is not in a state that is consistent with the
 '   requested operation.
-$DEFINE ERROR_BAD_LOGON_SESSION_STATE 1365&
+'~dup $DEFINE ERROR_BAD_LOGON_SESSION_STATE 1365&   ' повтор, первое: WIN32API.INC(10009)
 
 '   The logon session ID is already in use.
-$DEFINE ERROR_LOGON_SESSION_COLLISION 1366&
+'~dup $DEFINE ERROR_LOGON_SESSION_COLLISION 1366&   ' повтор, первое: WIN32API.INC(10012)
 
 '   A logon request contained an invalid logon type value.
-$DEFINE ERROR_INVALID_LOGON_TYPE 1367&
+'~dup $DEFINE ERROR_INVALID_LOGON_TYPE 1367&   ' повтор, первое: WIN32API.INC(10015)
 
 '   Unable to impersonate via a named pipe until data has been read
 '   from that pipe.
-$DEFINE ERROR_CANNOT_IMPERSONATE 1368&
+'~dup $DEFINE ERROR_CANNOT_IMPERSONATE 1368&   ' повтор, первое: WIN32API.INC(10019)
 
 '   The transaction state of a Registry subtree is incompatible with the
 '   requested operation.
-$DEFINE ERROR_RXACT_INVALID_STATE 1369&
+'~dup $DEFINE ERROR_RXACT_INVALID_STATE 1369&   ' повтор, первое: WIN32API.INC(10023)
 
 '   An internal security database corruption has been encountered.
-$DEFINE ERROR_RXACT_COMMIT_FAILURE 1370&
+'~dup $DEFINE ERROR_RXACT_COMMIT_FAILURE 1370&   ' повтор, первое: WIN32API.INC(10026)
 
 '   Cannot perform this operation on built-in accounts.
-$DEFINE ERROR_SPECIAL_ACCOUNT 1371&
+'~dup $DEFINE ERROR_SPECIAL_ACCOUNT 1371&   ' повтор, первое: WIN32API.INC(10029)
 
 '   Cannot perform this operation on this built-in special group.
-$DEFINE ERROR_SPECIAL_GROUP 1372&
+'~dup $DEFINE ERROR_SPECIAL_GROUP 1372&   ' повтор, первое: WIN32API.INC(10032)
 
 '   Cannot perform this operation on this built-in special user.
-$DEFINE ERROR_SPECIAL_USER 1373&
+'~dup $DEFINE ERROR_SPECIAL_USER 1373&   ' повтор, первое: WIN32API.INC(10035)
 
 '   The user cannot be removed from a group because the group
 '   is currently the user's primary group.
-$DEFINE ERROR_MEMBERS_PRIMARY_GROUP 1374&
+'~dup $DEFINE ERROR_MEMBERS_PRIMARY_GROUP 1374&   ' повтор, первое: WIN32API.INC(10039)
 
 '   The token is already in use as a primary token.
-$DEFINE ERROR_TOKEN_ALREADY_IN_USE 1375&
+'~dup $DEFINE ERROR_TOKEN_ALREADY_IN_USE 1375&   ' повтор, первое: WIN32API.INC(10042)
 
 '   The specified local group does not exist.
-$DEFINE ERROR_NO_SUCH_ALIAS 1376&
+'~dup $DEFINE ERROR_NO_SUCH_ALIAS 1376&   ' повтор, первое: WIN32API.INC(10045)
 
 '   The specified account name is not a member of the local group.
-$DEFINE ERROR_MEMBER_NOT_IN_ALIAS 1377&
+'~dup $DEFINE ERROR_MEMBER_NOT_IN_ALIAS 1377&   ' повтор, первое: WIN32API.INC(10048)
 
 '   The specified account name is already a member of the local group.
-$DEFINE ERROR_MEMBER_IN_ALIAS 1378&
+'~dup $DEFINE ERROR_MEMBER_IN_ALIAS 1378&   ' повтор, первое: WIN32API.INC(10051)
 
 '   The specified local group already exists.
-$DEFINE ERROR_ALIAS_EXISTS 1379&
+'~dup $DEFINE ERROR_ALIAS_EXISTS 1379&   ' повтор, первое: WIN32API.INC(10054)
 
 '   Logon failure: the user has not been granted the requested
 '   logon type at this computer.
-$DEFINE ERROR_LOGON_NOT_GRANTED 1380&
+'~dup $DEFINE ERROR_LOGON_NOT_GRANTED 1380&   ' повтор, первое: WIN32API.INC(10058)
 
 '   The maximum number of secrets that may be stored in a single system has been
 '   exceeded.
-$DEFINE ERROR_TOO_MANY_SECRETS 1381&
+'~dup $DEFINE ERROR_TOO_MANY_SECRETS 1381&   ' повтор, первое: WIN32API.INC(10062)
 
 '   The length of a secret exceeds the maximum length allowed.
-$DEFINE ERROR_SECRET_TOO_LONG 1382&
+'~dup $DEFINE ERROR_SECRET_TOO_LONG 1382&   ' повтор, первое: WIN32API.INC(10065)
 
 '   The local security authority database contains an internal inconsistency.
-$DEFINE ERROR_INTERNAL_DB_ERROR 1383&
+'~dup $DEFINE ERROR_INTERNAL_DB_ERROR 1383&   ' повтор, первое: WIN32API.INC(10068)
 
 '   During a logon attempt, the user's security context accumulated too many
 '   security IDs.
-$DEFINE ERROR_TOO_MANY_CONTEXT_IDS 1384&
+'~dup $DEFINE ERROR_TOO_MANY_CONTEXT_IDS 1384&   ' повтор, первое: WIN32API.INC(10072)
 
 '   Logon failure: the user has not been granted the requested logon type
 '   at this computer.
-$DEFINE ERROR_LOGON_TYPE_NOT_GRANTED 1385&
+'~dup $DEFINE ERROR_LOGON_TYPE_NOT_GRANTED 1385&   ' повтор, первое: WIN32API.INC(10076)
 
 '   A cross-encrypted password is necessary to change a user password.
-$DEFINE ERROR_NT_CROSS_ENCRYPTION_REQUIRED 1386&
+'~dup $DEFINE ERROR_NT_CROSS_ENCRYPTION_REQUIRED 1386&   ' повтор, первое: WIN32API.INC(10079)
 
 '   A new member could not be added to a local group because the member does
 '   not exist.
-$DEFINE ERROR_NO_SUCH_MEMBER 1387&
+'~dup $DEFINE ERROR_NO_SUCH_MEMBER 1387&   ' повтор, первое: WIN32API.INC(10083)
 
 '   A new member could not be added to a local group because the member has the
 '   wrong account type.
-$DEFINE ERROR_INVALID_MEMBER 1388&
+'~dup $DEFINE ERROR_INVALID_MEMBER 1388&   ' повтор, первое: WIN32API.INC(10087)
 
 '   Too many security IDs have been specified.
-$DEFINE ERROR_TOO_MANY_SIDS 1389&
+'~dup $DEFINE ERROR_TOO_MANY_SIDS 1389&   ' повтор, первое: WIN32API.INC(10090)
 
 '   A cross-encrypted password is necessary to change this user password.
-$DEFINE ERROR_LM_CROSS_ENCRYPTION_REQUIRED 1390&
+'~dup $DEFINE ERROR_LM_CROSS_ENCRYPTION_REQUIRED 1390&   ' повтор, первое: WIN32API.INC(10093)
 
 '   Indicates an ACL contains no inheritable components
-$DEFINE ERROR_NO_INHERITANCE 1391&
+'~dup $DEFINE ERROR_NO_INHERITANCE 1391&   ' повтор, первое: WIN32API.INC(10096)
 
 '   The file or directory is corrupt and non-readable.
-$DEFINE ERROR_FILE_CORRUPT 1392&
+'~dup $DEFINE ERROR_FILE_CORRUPT 1392&   ' повтор, первое: WIN32API.INC(10099)
 
 '   The disk structure is corrupt and non-readable.
-$DEFINE ERROR_DISK_CORRUPT 1393&
+'~dup $DEFINE ERROR_DISK_CORRUPT 1393&   ' повтор, первое: WIN32API.INC(10102)
 
 '   There is no user session key for the specified logon session.
-$DEFINE ERROR_NO_USER_SESSION_KEY 1394&
+'~dup $DEFINE ERROR_NO_USER_SESSION_KEY 1394&   ' повтор, первое: WIN32API.INC(10105)
 
 '  End of security error codes
 
@@ -60715,157 +60644,157 @@ $DEFINE ERROR_NO_USER_SESSION_KEY 1394&
 ' /////////////////////////
 
 '   Invalid window handle.
-$DEFINE ERROR_INVALID_WINDOW_HANDLE 1400&
+'~dup $DEFINE ERROR_INVALID_WINDOW_HANDLE 1400&   ' повтор, первое: WIN32API.INC(10117)
 
 '   Invalid menu handle.
-$DEFINE ERROR_INVALID_MENU_HANDLE 1401&
+'~dup $DEFINE ERROR_INVALID_MENU_HANDLE 1401&   ' повтор, первое: WIN32API.INC(10120)
 
 '   Invalid cursor handle.
-$DEFINE ERROR_INVALID_CURSOR_HANDLE 1402&
+'~dup $DEFINE ERROR_INVALID_CURSOR_HANDLE 1402&   ' повтор, первое: WIN32API.INC(10123)
 
 '   Invalid accelerator table handle.
-$DEFINE ERROR_INVALID_ACCEL_HANDLE 1403&
+'~dup $DEFINE ERROR_INVALID_ACCEL_HANDLE 1403&   ' повтор, первое: WIN32API.INC(10126)
 
 '   Invalid hook handle.
-$DEFINE ERROR_INVALID_HOOK_HANDLE 1404&
+'~dup $DEFINE ERROR_INVALID_HOOK_HANDLE 1404&   ' повтор, первое: WIN32API.INC(10129)
 
 '   Invalid handle to a multiple-window position structure.
-$DEFINE ERROR_INVALID_DWP_HANDLE 1405&
+'~dup $DEFINE ERROR_INVALID_DWP_HANDLE 1405&   ' повтор, первое: WIN32API.INC(10132)
 
 '   Cannot create a top-level child window.
-$DEFINE ERROR_TLW_WITH_WSCHILD 1406&
+'~dup $DEFINE ERROR_TLW_WITH_WSCHILD 1406&   ' повтор, первое: WIN32API.INC(10135)
 
 '   Cannot find window class.
-$DEFINE ERROR_CANNOT_FIND_WND_CLASS 1407&
+'~dup $DEFINE ERROR_CANNOT_FIND_WND_CLASS 1407&   ' повтор, первое: WIN32API.INC(10138)
 
 '   Invalid window, belongs to other thread.
-$DEFINE ERROR_WINDOW_OF_OTHER_THREAD 1408&
+'~dup $DEFINE ERROR_WINDOW_OF_OTHER_THREAD 1408&   ' повтор, первое: WIN32API.INC(10141)
 
 '   Hot key is already registered.
-$DEFINE ERROR_HOTKEY_ALREADY_REGISTERED 1409&
+'~dup $DEFINE ERROR_HOTKEY_ALREADY_REGISTERED 1409&   ' повтор, первое: WIN32API.INC(10144)
 
 '   Class already exists.
-$DEFINE ERROR_CLASS_ALREADY_EXISTS 1410&
+'~dup $DEFINE ERROR_CLASS_ALREADY_EXISTS 1410&   ' повтор, первое: WIN32API.INC(10147)
 
 '   Class does not exist.
-$DEFINE ERROR_CLASS_DOES_NOT_EXIST 1411&
+'~dup $DEFINE ERROR_CLASS_DOES_NOT_EXIST 1411&   ' повтор, первое: WIN32API.INC(10150)
 
 '   Class still has open windows.
-$DEFINE ERROR_CLASS_HAS_WINDOWS 1412&
+'~dup $DEFINE ERROR_CLASS_HAS_WINDOWS 1412&   ' повтор, первое: WIN32API.INC(10153)
 
 '   Invalid index.
-$DEFINE ERROR_INVALID_INDEX 1413&
+'~dup $DEFINE ERROR_INVALID_INDEX 1413&   ' повтор, первое: WIN32API.INC(10156)
 
 '   Invalid icon handle.
-$DEFINE ERROR_INVALID_ICON_HANDLE 1414&
+'~dup $DEFINE ERROR_INVALID_ICON_HANDLE 1414&   ' повтор, первое: WIN32API.INC(10159)
 
 '   Using private DIALOG window words.
-$DEFINE ERROR_PRIVATE_DIALOG_INDEX 1415&
+'~dup $DEFINE ERROR_PRIVATE_DIALOG_INDEX 1415&   ' повтор, первое: WIN32API.INC(10162)
 
 '   The listbox identifier was not found.
-$DEFINE ERROR_LISTBOX_ID_NOT_FOUND 1416&
+'~dup $DEFINE ERROR_LISTBOX_ID_NOT_FOUND 1416&   ' повтор, первое: WIN32API.INC(10165)
 
 '   No wildcards were found.
-$DEFINE ERROR_NO_WILDCARD_CHARACTERS 1417&
+'~dup $DEFINE ERROR_NO_WILDCARD_CHARACTERS 1417&   ' повтор, первое: WIN32API.INC(10168)
 
 '   Thread does not have a clipboard open.
-$DEFINE ERROR_CLIPBOARD_NOT_OPEN 1418&
+'~dup $DEFINE ERROR_CLIPBOARD_NOT_OPEN 1418&   ' повтор, первое: WIN32API.INC(10171)
 
 '   Hot key is not registered.
-$DEFINE ERROR_HOTKEY_NOT_REGISTERED 1419&
+'~dup $DEFINE ERROR_HOTKEY_NOT_REGISTERED 1419&   ' повтор, первое: WIN32API.INC(10174)
 
 '   The window is not a valid dialog window.
-$DEFINE ERROR_WINDOW_NOT_DIALOG 1420&
+'~dup $DEFINE ERROR_WINDOW_NOT_DIALOG 1420&   ' повтор, первое: WIN32API.INC(10177)
 
 '   Control ID not found.
-$DEFINE ERROR_CONTROL_ID_NOT_FOUND 1421&
+'~dup $DEFINE ERROR_CONTROL_ID_NOT_FOUND 1421&   ' повтор, первое: WIN32API.INC(10180)
 
 '   Invalid message for a combo box because it does not have an edit control.
-$DEFINE ERROR_INVALID_COMBOBOX_MESSAGE 1422&
+'~dup $DEFINE ERROR_INVALID_COMBOBOX_MESSAGE 1422&   ' повтор, первое: WIN32API.INC(10183)
 
 '   The window is not a combo box.
-$DEFINE ERROR_WINDOW_NOT_COMBOBOX 1423&
+'~dup $DEFINE ERROR_WINDOW_NOT_COMBOBOX 1423&   ' повтор, первое: WIN32API.INC(10186)
 
 '   Height must be less than 256.
-$DEFINE ERROR_INVALID_EDIT_HEIGHT 1424&
+'~dup $DEFINE ERROR_INVALID_EDIT_HEIGHT 1424&   ' повтор, первое: WIN32API.INC(10189)
 
 '   Invalid device context (DC) handle.
-$DEFINE ERROR_DC_NOT_FOUND 1425&
+'~dup $DEFINE ERROR_DC_NOT_FOUND 1425&   ' повтор, первое: WIN32API.INC(10192)
 
 '   Invalid hook procedure type.
-$DEFINE ERROR_INVALID_HOOK_FILTER 1426&
+'~dup $DEFINE ERROR_INVALID_HOOK_FILTER 1426&   ' повтор, первое: WIN32API.INC(10195)
 
 '   Invalid hook procedure.
-$DEFINE ERROR_INVALID_FILTER_PROC 1427&
+'~dup $DEFINE ERROR_INVALID_FILTER_PROC 1427&   ' повтор, первое: WIN32API.INC(10198)
 
 '   Cannot set non-local hook without a module handle.
-$DEFINE ERROR_HOOK_NEEDS_HMOD 1428&
+'~dup $DEFINE ERROR_HOOK_NEEDS_HMOD 1428&   ' повтор, первое: WIN32API.INC(10201)
 
 '   This hook procedure can only be set Globally.
 '
-$DEFINE ERROR_PUBLIC_ONLY_HOOK 1429&
+'~dup $DEFINE ERROR_PUBLIC_ONLY_HOOK 1429&   ' повтор, первое: WIN32API.INC(10205)
 
 '   The journal hook procedure is already installed.
-$DEFINE ERROR_JOURNAL_HOOK_SET 1430&
+'~dup $DEFINE ERROR_JOURNAL_HOOK_SET 1430&   ' повтор, первое: WIN32API.INC(10208)
 
 '   The hook procedure is not installed.
-$DEFINE ERROR_HOOK_NOT_INSTALLED 1431&
+'~dup $DEFINE ERROR_HOOK_NOT_INSTALLED 1431&   ' повтор, первое: WIN32API.INC(10211)
 
 '   Invalid message for single-selection listbox.
-$DEFINE ERROR_INVALID_LB_MESSAGE 1432&
+'~dup $DEFINE ERROR_INVALID_LB_MESSAGE 1432&   ' повтор, первое: WIN32API.INC(10214)
 
 '   LB_SETCOUNT sent to non-lazy listbox.
-$DEFINE ERROR_SETCOUNT_ON_BAD_LB 1433&
+'~dup $DEFINE ERROR_SETCOUNT_ON_BAD_LB 1433&   ' повтор, первое: WIN32API.INC(10217)
 
 '   This list box does not support tab stops.
-$DEFINE ERROR_LB_WITHOUT_TABSTOPS 1434&
+'~dup $DEFINE ERROR_LB_WITHOUT_TABSTOPS 1434&   ' повтор, первое: WIN32API.INC(10220)
 
 '   Cannot destroy object created by another thread.
-$DEFINE ERROR_DESTROY_OBJECT_OF_OTHER_THREAD 1435&
+'~dup $DEFINE ERROR_DESTROY_OBJECT_OF_OTHER_THREAD 1435&   ' повтор, первое: WIN32API.INC(10223)
 
 '   Child windows cannot have menus.
-$DEFINE ERROR_CHILD_WINDOW_MENU 1436&
+'~dup $DEFINE ERROR_CHILD_WINDOW_MENU 1436&   ' повтор, первое: WIN32API.INC(10226)
 
 '   The window does not have a system menu.
-$DEFINE ERROR_NO_SYSTEM_MENU 1437&
+'~dup $DEFINE ERROR_NO_SYSTEM_MENU 1437&   ' повтор, первое: WIN32API.INC(10229)
 
 '   Invalid message box style.
-$DEFINE ERROR_INVALID_MSGBOX_STYLE 1438&
+'~dup $DEFINE ERROR_INVALID_MSGBOX_STYLE 1438&   ' повтор, первое: WIN32API.INC(10232)
 
 '   Invalid system-wide (SPI_) parameter.
-$DEFINE ERROR_INVALID_SPI_VALUE 1439&
+'~dup $DEFINE ERROR_INVALID_SPI_VALUE 1439&   ' повтор, первое: WIN32API.INC(10235)
 
 '   Screen already locked.
-$DEFINE ERROR_SCREEN_ALREADY_LOCKED 1440&
+'~dup $DEFINE ERROR_SCREEN_ALREADY_LOCKED 1440&   ' повтор, первое: WIN32API.INC(10238)
 
 '   All handles to windows in a multiple-window position structure must
 '   have the same parent.
-$DEFINE ERROR_HWNDS_HAVE_DIFF_PARENT 1441&
+'~dup $DEFINE ERROR_HWNDS_HAVE_DIFF_PARENT 1441&   ' повтор, первое: WIN32API.INC(10242)
 
 '   The window is not a child window.
-$DEFINE ERROR_NOT_CHILD_WINDOW 1442&
+'~dup $DEFINE ERROR_NOT_CHILD_WINDOW 1442&   ' повтор, первое: WIN32API.INC(10245)
 
 '   Invalid GW_ command.
-$DEFINE ERROR_INVALID_GW_COMMAND 1443&
+'~dup $DEFINE ERROR_INVALID_GW_COMMAND 1443&   ' повтор, первое: WIN32API.INC(10248)
 
 '   Invalid thread identifier.
-$DEFINE ERROR_INVALID_THREAD_ID 1444&
+'~dup $DEFINE ERROR_INVALID_THREAD_ID 1444&   ' повтор, первое: WIN32API.INC(10251)
 
 '   Cannot process a message from a window that is not a multiple document
 '   interface (MDI) window.
-$DEFINE ERROR_NON_MDICHILD_WINDOW 1445&
+'~dup $DEFINE ERROR_NON_MDICHILD_WINDOW 1445&   ' повтор, первое: WIN32API.INC(10255)
 
 '   Popup menu already active.
-$DEFINE ERROR_POPUP_ALREADY_ACTIVE 1446&
+'~dup $DEFINE ERROR_POPUP_ALREADY_ACTIVE 1446&   ' повтор, первое: WIN32API.INC(10258)
 
 '   The window does not have scroll bars.
-$DEFINE ERROR_NO_SCROLLBARS 1447&
+'~dup $DEFINE ERROR_NO_SCROLLBARS 1447&   ' повтор, первое: WIN32API.INC(10261)
 
 '   Scroll bar range cannot be greater than 0x7FFF.
-$DEFINE ERROR_INVALID_SCROLLBAR_RANGE 1448&
+'~dup $DEFINE ERROR_INVALID_SCROLLBAR_RANGE 1448&   ' повтор, первое: WIN32API.INC(10264)
 
 '   Cannot show or remove the window in the way specified.
-$DEFINE ERROR_INVALID_SHOWWIN_COMMAND 1449&
+'~dup $DEFINE ERROR_INVALID_SHOWWIN_COMMAND 1449&   ' повтор, первое: WIN32API.INC(10267)
 
 '  End of WinUser error codes
 
@@ -60877,16 +60806,16 @@ $DEFINE ERROR_INVALID_SHOWWIN_COMMAND 1449&
 ' /////////////////////////
 
 '   The event log file is corrupt.
-$DEFINE ERROR_EVENTLOG_FILE_CORRUPT 1500&
+'~dup $DEFINE ERROR_EVENTLOG_FILE_CORRUPT 1500&   ' повтор, первое: WIN32API.INC(10279)
 
 '   No event log file could be opened, so the event logging service did not start.
-$DEFINE ERROR_EVENTLOG_CANT_START 1501&
+'~dup $DEFINE ERROR_EVENTLOG_CANT_START 1501&   ' повтор, первое: WIN32API.INC(10282)
 
 '   The event log file is full.
-$DEFINE ERROR_LOG_FILE_FULL 1502&
+'~dup $DEFINE ERROR_LOG_FILE_FULL 1502&   ' повтор, первое: WIN32API.INC(10285)
 
 '   The event log file has changed between reads.
-$DEFINE ERROR_EVENTLOG_FILE_CHANGED 1503&
+'~dup $DEFINE ERROR_EVENTLOG_FILE_CHANGED 1503&   ' повтор, первое: WIN32API.INC(10288)
 
 '  End of eventlog error codes
 
@@ -60898,382 +60827,382 @@ $DEFINE ERROR_EVENTLOG_FILE_CHANGED 1503&
 ' /////////////////////////
 
 '   The string binding is invalid.
-$DEFINE RPC_S_INVALID_STRING_BINDING 1700&
+'~dup $DEFINE RPC_S_INVALID_STRING_BINDING 1700&   ' повтор, первое: WIN32API.INC(10300)
 
 '   The binding handle is not the correct type.
-$DEFINE RPC_S_WRONG_KIND_OF_BINDING 1701&
+'~dup $DEFINE RPC_S_WRONG_KIND_OF_BINDING 1701&   ' повтор, первое: WIN32API.INC(10303)
 
 '   The binding handle is invalid.
-$DEFINE RPC_S_INVALID_BINDING 1702&
+'~dup $DEFINE RPC_S_INVALID_BINDING 1702&   ' повтор, первое: WIN32API.INC(10306)
 
 '   The RPC protocol sequence is not supported.
-$DEFINE RPC_S_PROTSEQ_NOT_SUPPORTED 1703&
+'~dup $DEFINE RPC_S_PROTSEQ_NOT_SUPPORTED 1703&   ' повтор, первое: WIN32API.INC(10309)
 
 '   The RPC protocol sequence is invalid.
-$DEFINE RPC_S_INVALID_RPC_PROTSEQ 1704&
+'~dup $DEFINE RPC_S_INVALID_RPC_PROTSEQ 1704&   ' повтор, первое: WIN32API.INC(10312)
 
 '   The string universal unique identifier (UUID) is invalid.
-$DEFINE RPC_S_INVALID_STRING_UUID 1705&
+'~dup $DEFINE RPC_S_INVALID_STRING_UUID 1705&   ' повтор, первое: WIN32API.INC(10315)
 
 '   The endpoint format is invalid.
-$DEFINE RPC_S_INVALID_ENDPOINT_FORMAT 1706&
+'~dup $DEFINE RPC_S_INVALID_ENDPOINT_FORMAT 1706&   ' повтор, первое: WIN32API.INC(10318)
 
 '   The network address is invalid.
-$DEFINE RPC_S_INVALID_NET_ADDR 1707&
+'~dup $DEFINE RPC_S_INVALID_NET_ADDR 1707&   ' повтор, первое: WIN32API.INC(10321)
 
 '   No endpoint was found.
-$DEFINE RPC_S_NO_ENDPOINT_FOUND 1708&
+'~dup $DEFINE RPC_S_NO_ENDPOINT_FOUND 1708&   ' повтор, первое: WIN32API.INC(10324)
 
 '   The timeout value is invalid.
-$DEFINE RPC_S_INVALID_TIMEOUT 1709&
+'~dup $DEFINE RPC_S_INVALID_TIMEOUT 1709&   ' повтор, первое: WIN32API.INC(10327)
 
 '   The object universal unique identifier (UUID) was not found.
-$DEFINE RPC_S_OBJECT_NOT_FOUND 1710&
+'~dup $DEFINE RPC_S_OBJECT_NOT_FOUND 1710&   ' повтор, первое: WIN32API.INC(10330)
 
 '   The object universal unique identifier (UUID) has already been registered.
-$DEFINE RPC_S_ALREADY_REGISTERED 1711&
+'~dup $DEFINE RPC_S_ALREADY_REGISTERED 1711&   ' повтор, первое: WIN32API.INC(10333)
 
 '   The type universal unique identifier (UUID) has already been registered.
-$DEFINE RPC_S_TYPE_ALREADY_REGISTERED 1712&
+'~dup $DEFINE RPC_S_TYPE_ALREADY_REGISTERED 1712&   ' повтор, первое: WIN32API.INC(10336)
 
 '   The RPC server is already listening.
-$DEFINE RPC_S_ALREADY_LISTENING 1713&
+'~dup $DEFINE RPC_S_ALREADY_LISTENING 1713&   ' повтор, первое: WIN32API.INC(10339)
 
 '   No protocol sequences have been registered.
-$DEFINE RPC_S_NO_PROTSEQS_REGISTERED 1714&
+'~dup $DEFINE RPC_S_NO_PROTSEQS_REGISTERED 1714&   ' повтор, первое: WIN32API.INC(10342)
 
 '   The RPC server is not listening.
-$DEFINE RPC_S_NOT_LISTENING 1715&
+'~dup $DEFINE RPC_S_NOT_LISTENING 1715&   ' повтор, первое: WIN32API.INC(10345)
 
 '   The manager type is unknown.
-$DEFINE RPC_S_UNKNOWN_MGR_TYPE 1716&
+'~dup $DEFINE RPC_S_UNKNOWN_MGR_TYPE 1716&   ' повтор, первое: WIN32API.INC(10348)
 
 '   The interface is unknown.
-$DEFINE RPC_S_UNKNOWN_IF 1717&
+'~dup $DEFINE RPC_S_UNKNOWN_IF 1717&   ' повтор, первое: WIN32API.INC(10351)
 
 '   There are no bindings.
-$DEFINE RPC_S_NO_BINDINGS 1718&
+'~dup $DEFINE RPC_S_NO_BINDINGS 1718&   ' повтор, первое: WIN32API.INC(10354)
 
 '   There are no protocol sequences.
-$DEFINE RPC_S_NO_PROTSEQS 1719&
+'~dup $DEFINE RPC_S_NO_PROTSEQS 1719&   ' повтор, первое: WIN32API.INC(10357)
 
 '   The endpoint cannot be created.
-$DEFINE RPC_S_CANT_CREATE_ENDPOINT 1720&
+'~dup $DEFINE RPC_S_CANT_CREATE_ENDPOINT 1720&   ' повтор, первое: WIN32API.INC(10360)
 
 '   Not enough resources are available to complete this operation.
-$DEFINE RPC_S_OUT_OF_RESOURCES 1721&
+'~dup $DEFINE RPC_S_OUT_OF_RESOURCES 1721&   ' повтор, первое: WIN32API.INC(10363)
 
 '   The RPC server is unavailable.
-$DEFINE RPC_S_SERVER_UNAVAILABLE 1722&
+'~dup $DEFINE RPC_S_SERVER_UNAVAILABLE 1722&   ' повтор, первое: WIN32API.INC(10366)
 
 '   The RPC server is too busy to complete this operation.
-$DEFINE RPC_S_SERVER_TOO_BUSY 1723&
+'~dup $DEFINE RPC_S_SERVER_TOO_BUSY 1723&   ' повтор, первое: WIN32API.INC(10369)
 
 '   The network options are invalid.
-$DEFINE RPC_S_INVALID_NETWORK_OPTIONS 1724&
+'~dup $DEFINE RPC_S_INVALID_NETWORK_OPTIONS 1724&   ' повтор, первое: WIN32API.INC(10372)
 
 '   There is not a remote procedure call active in this thread.
-$DEFINE RPC_S_NO_CALL_ACTIVE 1725&
+'~dup $DEFINE RPC_S_NO_CALL_ACTIVE 1725&   ' повтор, первое: WIN32API.INC(10375)
 
 '   The remote procedure call failed.
-$DEFINE RPC_S_CALL_FAILED 1726&
+'~dup $DEFINE RPC_S_CALL_FAILED 1726&   ' повтор, первое: WIN32API.INC(10378)
 
 '   The remote procedure call failed and did not execute.
-$DEFINE RPC_S_CALL_FAILED_DNE 1727&
+'~dup $DEFINE RPC_S_CALL_FAILED_DNE 1727&   ' повтор, первое: WIN32API.INC(10381)
 
 '   A remote procedure call (RPC) protocol error occurred.
-$DEFINE RPC_S_PROTOCOL_ERROR 1728&
+'~dup $DEFINE RPC_S_PROTOCOL_ERROR 1728&   ' повтор, первое: WIN32API.INC(10384)
 
 '   The transfer syntax is not supported by the RPC server.
-$DEFINE RPC_S_UNSUPPORTED_TRANS_SYN 1730&
+'~dup $DEFINE RPC_S_UNSUPPORTED_TRANS_SYN 1730&   ' повтор, первое: WIN32API.INC(10387)
 
 '   The universal unique identifier (UUID) type is not supported.
-$DEFINE RPC_S_UNSUPPORTED_TYPE 1732&
+'~dup $DEFINE RPC_S_UNSUPPORTED_TYPE 1732&   ' повтор, первое: WIN32API.INC(10390)
 
 '   The tag is invalid.
-$DEFINE RPC_S_INVALID_TAG 1733&
+'~dup $DEFINE RPC_S_INVALID_TAG 1733&   ' повтор, первое: WIN32API.INC(10393)
 
 '   The array bounds are invalid.
-$DEFINE RPC_S_INVALID_BOUND 1734&
+'~dup $DEFINE RPC_S_INVALID_BOUND 1734&   ' повтор, первое: WIN32API.INC(10396)
 
 '   The binding does not contain an entry name.
-$DEFINE RPC_S_NO_ENTRY_NAME 1735&
+'~dup $DEFINE RPC_S_NO_ENTRY_NAME 1735&   ' повтор, первое: WIN32API.INC(10399)
 
 '   The name syntax is invalid.
-$DEFINE RPC_S_INVALID_NAME_SYNTAX 1736&
+'~dup $DEFINE RPC_S_INVALID_NAME_SYNTAX 1736&   ' повтор, первое: WIN32API.INC(10402)
 
 '   The name syntax is not supported.
-$DEFINE RPC_S_UNSUPPORTED_NAME_SYNTAX 1737&
+'~dup $DEFINE RPC_S_UNSUPPORTED_NAME_SYNTAX 1737&   ' повтор, первое: WIN32API.INC(10405)
 
 '   No network address is available to use to construct a universal
 '   unique identifier (UUID).
-$DEFINE RPC_S_UUID_NO_ADDRESS 1739&
+'~dup $DEFINE RPC_S_UUID_NO_ADDRESS 1739&   ' повтор, первое: WIN32API.INC(10409)
 
 '   The endpoint is a duplicate.
-$DEFINE RPC_S_DUPLICATE_ENDPOINT 1740&
+'~dup $DEFINE RPC_S_DUPLICATE_ENDPOINT 1740&   ' повтор, первое: WIN32API.INC(10412)
 
 '   The authentication type is unknown.
-$DEFINE RPC_S_UNKNOWN_AUTHN_TYPE 1741&
+'~dup $DEFINE RPC_S_UNKNOWN_AUTHN_TYPE 1741&   ' повтор, первое: WIN32API.INC(10415)
 
 '   The maximum number of calls is too small.
-$DEFINE RPC_S_MAX_CALLS_TOO_SMALL 1742&
+'~dup $DEFINE RPC_S_MAX_CALLS_TOO_SMALL 1742&   ' повтор, первое: WIN32API.INC(10418)
 
 '   The string is too long.
-$DEFINE RPC_S_STRING_TOO_LONG 1743&
+'~dup $DEFINE RPC_S_STRING_TOO_LONG 1743&   ' повтор, первое: WIN32API.INC(10421)
 
 '   The RPC protocol sequence was not found.
-$DEFINE RPC_S_PROTSEQ_NOT_FOUND 1744&
+'~dup $DEFINE RPC_S_PROTSEQ_NOT_FOUND 1744&   ' повтор, первое: WIN32API.INC(10424)
 
 '   The procedure number is out of range.
-$DEFINE RPC_S_PROCNUM_OUT_OF_RANGE 1745&
+'~dup $DEFINE RPC_S_PROCNUM_OUT_OF_RANGE 1745&   ' повтор, первое: WIN32API.INC(10427)
 
 '   The binding does not contain any authentication information.
-$DEFINE RPC_S_BINDING_HAS_NO_AUTH 1746&
+'~dup $DEFINE RPC_S_BINDING_HAS_NO_AUTH 1746&   ' повтор, первое: WIN32API.INC(10430)
 
 '   The authentication service is unknown.
-$DEFINE RPC_S_UNKNOWN_AUTHN_SERVICE 1747&
+'~dup $DEFINE RPC_S_UNKNOWN_AUTHN_SERVICE 1747&   ' повтор, первое: WIN32API.INC(10433)
 
 '   The authentication level is unknown.
-$DEFINE RPC_S_UNKNOWN_AUTHN_LEVEL 1748&
+'~dup $DEFINE RPC_S_UNKNOWN_AUTHN_LEVEL 1748&   ' повтор, первое: WIN32API.INC(10436)
 
 '   The security context is invalid.
-$DEFINE RPC_S_INVALID_AUTH_IDENTITY 1749&
+'~dup $DEFINE RPC_S_INVALID_AUTH_IDENTITY 1749&   ' повтор, первое: WIN32API.INC(10439)
 
 '   The authorization service is unknown.
-$DEFINE RPC_S_UNKNOWN_AUTHZ_SERVICE 1750&
+'~dup $DEFINE RPC_S_UNKNOWN_AUTHZ_SERVICE 1750&   ' повтор, первое: WIN32API.INC(10442)
 
 '   The entry is invalid.
-$DEFINE EPT_S_INVALID_ENTRY 1751&
+'~dup $DEFINE EPT_S_INVALID_ENTRY 1751&   ' повтор, первое: WIN32API.INC(10445)
 
 '   The server endpoint cannot perform the operation.
-$DEFINE EPT_S_CANT_PERFORM_OP 1752&
+'~dup $DEFINE EPT_S_CANT_PERFORM_OP 1752&   ' повтор, первое: WIN32API.INC(10448)
 
 '   There are no more endpoints available from the endpoint mapper.
-$DEFINE EPT_S_NOT_REGISTERED 1753&
+'~dup $DEFINE EPT_S_NOT_REGISTERED 1753&   ' повтор, первое: WIN32API.INC(10451)
 
 '   No interfaces have been exported.
-$DEFINE RPC_S_NOTHING_TO_EXPORT 1754&
+'~dup $DEFINE RPC_S_NOTHING_TO_EXPORT 1754&   ' повтор, первое: WIN32API.INC(10454)
 
 '   The entry name is incomplete.
-$DEFINE RPC_S_INCOMPLETE_NAME 1755&
+'~dup $DEFINE RPC_S_INCOMPLETE_NAME 1755&   ' повтор, первое: WIN32API.INC(10457)
 
 '   The version option is invalid.
-$DEFINE RPC_S_INVALID_VERS_OPTION 1756&
+'~dup $DEFINE RPC_S_INVALID_VERS_OPTION 1756&   ' повтор, первое: WIN32API.INC(10460)
 
 '   There are no more members.
-$DEFINE RPC_S_NO_MORE_MEMBERS 1757&
+'~dup $DEFINE RPC_S_NO_MORE_MEMBERS 1757&   ' повтор, первое: WIN32API.INC(10463)
 
 '   There is nothing to unexport.
-$DEFINE RPC_S_NOT_ALL_OBJS_UNEXPORTED 1758&
+'~dup $DEFINE RPC_S_NOT_ALL_OBJS_UNEXPORTED 1758&   ' повтор, первое: WIN32API.INC(10466)
 
 '   The interface was not found.
-$DEFINE RPC_S_INTERFACE_NOT_FOUND 1759&
+'~dup $DEFINE RPC_S_INTERFACE_NOT_FOUND 1759&   ' повтор, первое: WIN32API.INC(10469)
 
 '   The entry already exists.
-$DEFINE RPC_S_ENTRY_ALREADY_EXISTS 1760&
+'~dup $DEFINE RPC_S_ENTRY_ALREADY_EXISTS 1760&   ' повтор, первое: WIN32API.INC(10472)
 
 '   The entry is not found.
-$DEFINE RPC_S_ENTRY_NOT_FOUND 1761&
+'~dup $DEFINE RPC_S_ENTRY_NOT_FOUND 1761&   ' повтор, первое: WIN32API.INC(10475)
 
 '   The name service is unavailable.
-$DEFINE RPC_S_NAME_SERVICE_UNAVAILABLE 1762&
+'~dup $DEFINE RPC_S_NAME_SERVICE_UNAVAILABLE 1762&   ' повтор, первое: WIN32API.INC(10478)
 
 '   The network address family is invalid.
-$DEFINE RPC_S_INVALID_NAF_ID 1763&
+'~dup $DEFINE RPC_S_INVALID_NAF_ID 1763&   ' повтор, первое: WIN32API.INC(10481)
 
 '   The requested operation is not supported.
-$DEFINE RPC_S_CANNOT_SUPPORT 1764&
+'~dup $DEFINE RPC_S_CANNOT_SUPPORT 1764&   ' повтор, первое: WIN32API.INC(10484)
 
 '   No security context is available to allow impersonation.
-$DEFINE RPC_S_NO_CONTEXT_AVAILABLE 1765&
+'~dup $DEFINE RPC_S_NO_CONTEXT_AVAILABLE 1765&   ' повтор, первое: WIN32API.INC(10487)
 
 '   An internal error occurred in a remote procedure call (RPC).
-$DEFINE RPC_S_INTERNAL_ERROR 1766&
+'~dup $DEFINE RPC_S_INTERNAL_ERROR 1766&   ' повтор, первое: WIN32API.INC(10490)
 
 '   The RPC server attempted an integer division by zero.'
-$DEFINE RPC_S_ZERO_DIVIDE 1767&
+'~dup $DEFINE RPC_S_ZERO_DIVIDE 1767&   ' повтор, первое: WIN32API.INC(10493)
 
 '   An addressing error occurred in the RPC server.
-$DEFINE RPC_S_ADDRESS_ERROR 1768&
+'~dup $DEFINE RPC_S_ADDRESS_ERROR 1768&   ' повтор, первое: WIN32API.INC(10496)
 
 '   A floating-point operation at the RPC server caused a division by zero.
-$DEFINE RPC_S_FP_DIV_ZERO 1769&
+'~dup $DEFINE RPC_S_FP_DIV_ZERO 1769&   ' повтор, первое: WIN32API.INC(10499)
 
 '   A floating-point underflow occurred at the RPC server.
-$DEFINE RPC_S_FP_UNDERFLOW 1770&
+'~dup $DEFINE RPC_S_FP_UNDERFLOW 1770&   ' повтор, первое: WIN32API.INC(10502)
 
 '   A floating-point overflow occurred at the RPC server.
-$DEFINE RPC_S_FP_OVERFLOW 1771&
+'~dup $DEFINE RPC_S_FP_OVERFLOW 1771&   ' повтор, первое: WIN32API.INC(10505)
 
 '   The list of RPC servers available for the binding of auto handles
 '   has been exhausted.
-$DEFINE RPC_X_NO_MORE_ENTRIES 1772&
+'~dup $DEFINE RPC_X_NO_MORE_ENTRIES 1772&   ' повтор, первое: WIN32API.INC(10509)
 
 '   Unable to open the character translation table file.
-$DEFINE RPC_X_SS_CHAR_TRANS_OPEN_FAIL 1773&
+'~dup $DEFINE RPC_X_SS_CHAR_TRANS_OPEN_FAIL 1773&   ' повтор, первое: WIN32API.INC(10512)
 
 '   The file containing the character translation table has fewer than
 '   512 bytes.
-$DEFINE RPC_X_SS_CHAR_TRANS_SHORT_FILE 1774&
+'~dup $DEFINE RPC_X_SS_CHAR_TRANS_SHORT_FILE 1774&   ' повтор, первое: WIN32API.INC(10516)
 
 '   A null context handle was passed from the client to the host during
 '   a remote procedure call.
-$DEFINE RPC_X_SS_IN_NULL_CONTEXT 1775&
+'~dup $DEFINE RPC_X_SS_IN_NULL_CONTEXT 1775&   ' повтор, первое: WIN32API.INC(10520)
 
 '   The context handle changed during a remote procedure call.
-$DEFINE RPC_X_SS_CONTEXT_DAMAGED 1777&
+'~dup $DEFINE RPC_X_SS_CONTEXT_DAMAGED 1777&   ' повтор, первое: WIN32API.INC(10523)
 
 '   The binding handles passed to a remote procedure call do not match.
-$DEFINE RPC_X_SS_HANDLES_MISMATCH 1778&
+'~dup $DEFINE RPC_X_SS_HANDLES_MISMATCH 1778&   ' повтор, первое: WIN32API.INC(10526)
 
 '   The stub is unable to get the remote procedure call handle.
-$DEFINE RPC_X_SS_CANNOT_GET_CALL_HANDLE 1779&
+'~dup $DEFINE RPC_X_SS_CANNOT_GET_CALL_HANDLE 1779&   ' повтор, первое: WIN32API.INC(10529)
 
 '   A null reference pointer was passed to the stub.
-$DEFINE RPC_X_NULL_REF_POINTER 1780&
+'~dup $DEFINE RPC_X_NULL_REF_POINTER 1780&   ' повтор, первое: WIN32API.INC(10532)
 
 '   The enumeration value is out of range.
-$DEFINE RPC_X_ENUM_VALUE_OUT_OF_RANGE 1781&
+'~dup $DEFINE RPC_X_ENUM_VALUE_OUT_OF_RANGE 1781&   ' повтор, первое: WIN32API.INC(10535)
 
 '   The byte count is too small.
-$DEFINE RPC_X_BYTE_COUNT_TOO_SMALL 1782&
+'~dup $DEFINE RPC_X_BYTE_COUNT_TOO_SMALL 1782&   ' повтор, первое: WIN32API.INC(10538)
 
 '   The stub received bad data.
-$DEFINE RPC_X_BAD_STUB_DATA 1783&
+'~dup $DEFINE RPC_X_BAD_STUB_DATA 1783&   ' повтор, первое: WIN32API.INC(10541)
 
 '   The supplied user buffer is not valid for the requested operation.
-$DEFINE ERROR_INVALID_USER_BUFFER 1784&
+'~dup $DEFINE ERROR_INVALID_USER_BUFFER 1784&   ' повтор, первое: WIN32API.INC(10544)
 
 '   The disk media is not recognized.  It may not be formatted.
-$DEFINE ERROR_UNRECOGNIZED_MEDIA 1785&
+'~dup $DEFINE ERROR_UNRECOGNIZED_MEDIA 1785&   ' повтор, первое: WIN32API.INC(10547)
 
 '   The workstation does not have a trust secret.
-$DEFINE ERROR_NO_TRUST_LSA_SECRET 1786&
+'~dup $DEFINE ERROR_NO_TRUST_LSA_SECRET 1786&   ' повтор, первое: WIN32API.INC(10550)
 
 '   The SAM database on the Windows NT Advanced Server does not have a computer
 '   account for this workstation trust relationship.
-$DEFINE ERROR_NO_TRUST_SAM_ACCOUNT 1787&
+'~dup $DEFINE ERROR_NO_TRUST_SAM_ACCOUNT 1787&   ' повтор, первое: WIN32API.INC(10554)
 
 '   The trust relationship between the primary domain and the trusted
 '   domain failed.
-$DEFINE ERROR_TRUSTED_DOMAIN_FAILURE 1788&
+'~dup $DEFINE ERROR_TRUSTED_DOMAIN_FAILURE 1788&   ' повтор, первое: WIN32API.INC(10558)
 
 '   The trust relationship between this workstation and the primary
 '   domain failed.
-$DEFINE ERROR_TRUSTED_RELATIONSHIP_FAILURE 1789&
+'~dup $DEFINE ERROR_TRUSTED_RELATIONSHIP_FAILURE 1789&   ' повтор, первое: WIN32API.INC(10562)
 
 '   The network logon failed.
-$DEFINE ERROR_TRUST_FAILURE 1790&
+'~dup $DEFINE ERROR_TRUST_FAILURE 1790&   ' повтор, первое: WIN32API.INC(10565)
 
 '   A remote procedure call is already in progress for this thread.
-$DEFINE RPC_S_CALL_IN_PROGRESS 1791&
+'~dup $DEFINE RPC_S_CALL_IN_PROGRESS 1791&   ' повтор, первое: WIN32API.INC(10568)
 
 '   An attempt was made to logon, but the network logon service was not started.
-$DEFINE ERROR_NETLOGON_NOT_STARTED 1792&
+'~dup $DEFINE ERROR_NETLOGON_NOT_STARTED 1792&   ' повтор, первое: WIN32API.INC(10571)
 
 '   The user's account has expired.
-$DEFINE ERROR_ACCOUNT_EXPIRED 1793&
+'~dup $DEFINE ERROR_ACCOUNT_EXPIRED 1793&   ' повтор, первое: WIN32API.INC(10574)
 
 '   The redirector is in use and cannot be unloaded.
-$DEFINE ERROR_REDIRECTOR_HAS_OPEN_HANDLES 1794&
+'~dup $DEFINE ERROR_REDIRECTOR_HAS_OPEN_HANDLES 1794&   ' повтор, первое: WIN32API.INC(10577)
 
 '   The specified printer driver is already installed.
-$DEFINE ERROR_PRINTER_DRIVER_ALREADY_INSTALLED 1795&
+'~dup $DEFINE ERROR_PRINTER_DRIVER_ALREADY_INSTALLED 1795&   ' повтор, первое: WIN32API.INC(10580)
 
 '   The specified port is unknown.
-$DEFINE ERROR_UNKNOWN_PORT 1796&
+'~dup $DEFINE ERROR_UNKNOWN_PORT 1796&   ' повтор, первое: WIN32API.INC(10583)
 
 '   The printer driver is unknown.
-$DEFINE ERROR_UNKNOWN_PRINTER_DRIVER 1797&
+'~dup $DEFINE ERROR_UNKNOWN_PRINTER_DRIVER 1797&   ' повтор, первое: WIN32API.INC(10586)
 
 '   The print processor is unknown.
 '
-$DEFINE ERROR_UNKNOWN_PRINTPROCESSOR 1798&
+'~dup $DEFINE ERROR_UNKNOWN_PRINTPROCESSOR 1798&   ' повтор, первое: WIN32API.INC(10590)
 
 '   The specified separator file is invalid.
-$DEFINE ERROR_INVALID_SEPARATOR_FILE 1799&
+'~dup $DEFINE ERROR_INVALID_SEPARATOR_FILE 1799&   ' повтор, первое: WIN32API.INC(10593)
 
 '   The specified priority is invalid.
-$DEFINE ERROR_INVALID_PRIORITY 1800&
+'~dup $DEFINE ERROR_INVALID_PRIORITY 1800&   ' повтор, первое: WIN32API.INC(10596)
 
 '   The printer name is invalid.
-$DEFINE ERROR_INVALID_PRINTER_NAME 1801&
+'~dup $DEFINE ERROR_INVALID_PRINTER_NAME 1801&   ' повтор, первое: WIN32API.INC(10599)
 
 '   The printer already exists.
-$DEFINE ERROR_PRINTER_ALREADY_EXISTS 1802&
+'~dup $DEFINE ERROR_PRINTER_ALREADY_EXISTS 1802&   ' повтор, первое: WIN32API.INC(10602)
 
 '   The printer command is invalid.
-$DEFINE ERROR_INVALID_PRINTER_COMMAND 1803&
+'~dup $DEFINE ERROR_INVALID_PRINTER_COMMAND 1803&   ' повтор, первое: WIN32API.INC(10605)
 
 '   The specified datatype is invalid.
-$DEFINE ERROR_INVALID_DATATYPE 1804&
+'~dup $DEFINE ERROR_INVALID_DATATYPE 1804&   ' повтор, первое: WIN32API.INC(10608)
 
 '   The Environment specified is invalid.
-$DEFINE ERROR_INVALID_ENVIRONMENT 1805&
+'~dup $DEFINE ERROR_INVALID_ENVIRONMENT 1805&   ' повтор, первое: WIN32API.INC(10611)
 
 '   There are no more bindings.
-$DEFINE RPC_S_NO_MORE_BINDINGS 1806&
+'~dup $DEFINE RPC_S_NO_MORE_BINDINGS 1806&   ' повтор, первое: WIN32API.INC(10614)
 
 '   The account used is an interdomain trust account.  Use your Global user account or local user account to access this server.
-$DEFINE ERROR_NOLOGON_INTERDOMAIN_TRUST_ACCOUNT 1807&
+'~dup $DEFINE ERROR_NOLOGON_INTERDOMAIN_TRUST_ACCOUNT 1807&   ' повтор, первое: WIN32API.INC(10617)
 
 '   The account used is a Computer Account.  Use your Global user account or local user account to access this server.
-$DEFINE ERROR_NOLOGON_WORKSTATION_TRUST_ACCOUNT 1808&
+'~dup $DEFINE ERROR_NOLOGON_WORKSTATION_TRUST_ACCOUNT 1808&   ' повтор, первое: WIN32API.INC(10620)
 
 '   The account used is an server trust account.  Use your Global user account or local user account to access this server.
-$DEFINE ERROR_NOLOGON_SERVER_TRUST_ACCOUNT 1809&
+'~dup $DEFINE ERROR_NOLOGON_SERVER_TRUST_ACCOUNT 1809&   ' повтор, первое: WIN32API.INC(10623)
 
 '   The name or security ID (SID) of the domain specified is inconsistent
 '   with the trust information for that domain.
-$DEFINE ERROR_DOMAIN_TRUST_INCONSISTENT 1810&
+'~dup $DEFINE ERROR_DOMAIN_TRUST_INCONSISTENT 1810&   ' повтор, первое: WIN32API.INC(10627)
 
 '   The server is in use and cannot be unloaded.
-$DEFINE ERROR_SERVER_HAS_OPEN_HANDLES 1811&
+'~dup $DEFINE ERROR_SERVER_HAS_OPEN_HANDLES 1811&   ' повтор, первое: WIN32API.INC(10630)
 
 '   The specified image file did not contain a resource section.
-$DEFINE ERROR_RESOURCE_DATA_NOT_FOUND 1812&
+'~dup $DEFINE ERROR_RESOURCE_DATA_NOT_FOUND 1812&   ' повтор, первое: WIN32API.INC(10633)
 
 '   The specified resource type can not be found in the image file.
-$DEFINE ERROR_RESOURCE_TYPE_NOT_FOUND 1813&
+'~dup $DEFINE ERROR_RESOURCE_TYPE_NOT_FOUND 1813&   ' повтор, первое: WIN32API.INC(10636)
 
 '   The specified resource name can not be found in the image file.
-$DEFINE ERROR_RESOURCE_NAME_NOT_FOUND 1814&
+'~dup $DEFINE ERROR_RESOURCE_NAME_NOT_FOUND 1814&   ' повтор, первое: WIN32API.INC(10639)
 
 '   The specified resource language ID cannot be found in the image file.
-$DEFINE ERROR_RESOURCE_LANG_NOT_FOUND 1815&
+'~dup $DEFINE ERROR_RESOURCE_LANG_NOT_FOUND 1815&   ' повтор, первое: WIN32API.INC(10642)
 
 '   Not enough quota is available to process this command.
-$DEFINE ERROR_NOT_ENOUGH_QUOTA 1816&
+'~dup $DEFINE ERROR_NOT_ENOUGH_QUOTA 1816&   ' повтор, первое: WIN32API.INC(10645)
 
 '   The group member was not found.
-$DEFINE RPC_S_GROUP_MEMBER_NOT_FOUND 1898&
+'~dup $DEFINE RPC_S_GROUP_MEMBER_NOT_FOUND 1898&   ' повтор, первое: WIN32API.INC(10648)
 
 '   The endpoint mapper database could not be created.
-$DEFINE EPT_S_CANT_CREATE 1899&
+'~dup $DEFINE EPT_S_CANT_CREATE 1899&   ' повтор, первое: WIN32API.INC(10651)
 
 '   The object universal unique identifier (UUID) is the nil UUID.
-$DEFINE RPC_S_INVALID_OBJECT 1900&
+'~dup $DEFINE RPC_S_INVALID_OBJECT 1900&   ' повтор, первое: WIN32API.INC(10654)
 
 '   The specified time is invalid.
-$DEFINE ERROR_INVALID_TIME 1901&
+'~dup $DEFINE ERROR_INVALID_TIME 1901&   ' повтор, первое: WIN32API.INC(10657)
 
 '   The specified Form name is invalid.
-$DEFINE ERROR_INVALID_FORM_NAME 1902&
+'~dup $DEFINE ERROR_INVALID_FORM_NAME 1902&   ' повтор, первое: WIN32API.INC(10660)
 
 '   The specified Form size is invalid
-$DEFINE ERROR_INVALID_FORM_SIZE 1903&
+'~dup $DEFINE ERROR_INVALID_FORM_SIZE 1903&   ' повтор, первое: WIN32API.INC(10663)
 
 '   The specified Printer handle is already being waited on
-$DEFINE ERROR_ALREADY_WAITING 1904&
+'~dup $DEFINE ERROR_ALREADY_WAITING 1904&   ' повтор, первое: WIN32API.INC(10666)
 
 '   The specified Printer has been deleted
-$DEFINE ERROR_PRINTER_DELETED 1905&
+'~dup $DEFINE ERROR_PRINTER_DELETED 1905&   ' повтор, первое: WIN32API.INC(10669)
 
 '   The state of the Printer is invalid
-$DEFINE ERROR_INVALID_PRINTER_STATE 1906&
+'~dup $DEFINE ERROR_INVALID_PRINTER_STATE 1906&   ' повтор, первое: WIN32API.INC(10672)
 
 '   The list of servers for this workgroup is not currently available
-$DEFINE ERROR_NO_BROWSER_SERVERS_FOUND 6118&
+'~dup $DEFINE ERROR_NO_BROWSER_SERVERS_FOUND 6118&   ' повтор, первое: WIN32API.INC(10675)
 
 
 ' -------------------------
@@ -65017,7 +64946,7 @@ Declare Function RegisterServiceProcess Lib "kernel32.dll" Alias "RegisterServic
 '~dup Public Const ABM_QUERYPOS = &H2   ' повтор, первое: WIN32API.INC(14422)
 '~dup Public Const ABM_SETPOS = &H3   ' повтор, первое: WIN32API.INC(14423)
 '~dup Public Const ABM_GETSTATE = &H4   ' повтор, первое: WIN32API.INC(14424)
-'~dup Public Const ABM_GETTASKBARPOS = &H5   ' повтор, первое: WIN32API.INC(14425)
+'~dup Public Const ABM_GETTASKBARPOS = &H5   ' повтор, первое: QFormLocale.inc(68)
 '~dup Public Const ABM_ACTIVATE = &H6               '  lParam == TRUE/FALSE means activate/deactivate   ' повтор, первое: WIN32API.INC(14426)
 '~dup Public Const ABM_GETAUTOHIDEBAR = &H7   ' повтор, первое: WIN32API.INC(14427)
 '~dup Public Const ABM_SETAUTOHIDEBAR = &H8          '  this can fail at any time.  MUST check the result   ' повтор, первое: WIN32API.INC(14428)
@@ -65036,10 +64965,10 @@ Declare Function RegisterServiceProcess Lib "kernel32.dll" Alias "RegisterServic
 
 '~dup Public Const ABS_AUTOHIDE = &H1   ' повтор, первое: WIN32API.INC(14442)
 '~dup Public Const ABS_ALWAYSONTOP = &H2   ' повтор, первое: WIN32API.INC(14443)
-'~dup Public Const ABE_LEFT = 0   ' повтор, первое: WIN32API.INC(14444)
-'~dup Public Const ABE_TOP = 1   ' повтор, первое: WIN32API.INC(14445)
-'~dup Public Const ABE_RIGHT = 2   ' повтор, первое: WIN32API.INC(14446)
-'~dup Public Const ABE_BOTTOM = 3   ' повтор, первое: WIN32API.INC(14447)
+'~dup Public Const ABE_LEFT = 0   ' повтор, первое: QFormLocale.inc(71)
+'~dup Public Const ABE_TOP = 1   ' повтор, первое: QFormLocale.inc(74)
+'~dup Public Const ABE_RIGHT = 2   ' повтор, первое: QFormLocale.inc(77)
+'~dup Public Const ABE_BOTTOM = 3   ' повтор, первое: QFormLocale.inc(80)
 
 '~dup Type APPBARDATA   ' повтор, первое: QFormLocale.inc(94)
 '~dup         cbSize As Long
@@ -65182,18 +65111,18 @@ Declare Function RegisterServiceProcess Lib "kernel32.dll" Alias "RegisterServic
 '~dup         szTip As String * 64
 '~dup End Type
 
-'~dup Public Const NIM_ADD = &H0   ' повтор, первое: WIN32API.INC(14590)
-'~dup Public Const NIM_MODIFY = &H1   ' повтор, первое: WIN32API.INC(14591)
-'~dup Public Const NIM_DELETE = &H2   ' повтор, первое: WIN32API.INC(14592)
+'~dup Public Const NIM_ADD = &H0   ' повтор, первое: rapidq2.inc(799)
+'~dup Public Const NIM_MODIFY = &H1   ' повтор, первое: rapidq2.inc(800)
+'~dup Public Const NIM_DELETE = &H2   ' повтор, первое: rapidq2.inc(801)
 
 CONST NIM_MESSAGE=1
 CONST NIM_ICON=2
 CONST NIM_TIP=4
 
 
-'~dup Public Const NIF_MESSAGE = &H1   ' повтор, первое: WIN32API.INC(14594)
-'~dup Public Const NIF_ICON = &H2   ' повтор, первое: WIN32API.INC(14595)
-'~dup Public Const NIF_TIP = &H4   ' повтор, первое: WIN32API.INC(14596)
+'~dup Public Const NIF_MESSAGE = &H1   ' повтор, первое: rapidq2.inc(802)
+'~dup Public Const NIF_ICON = &H2   ' повтор, первое: rapidq2.inc(803)
+'~dup Public Const NIF_TIP = &H4   ' повтор, первое: rapidq2.inc(804)
 
 '~dup Declare Function Shell_NotifyIcon Lib "shell32.dll" Alias " Shell_NotifyIconA" (ByVal dwMessage As Long, lpData As NOTIFYICONDATA) As Long   ' повтор, первое: rapidq2.inc(1054)
 
@@ -65574,9 +65503,9 @@ End Type
 
 '  dwPlatformId defines:
 '
-'~dup Public Const VER_PLATFORM_WIN32s = 0   ' повтор, первое: WIN32API.INC(14935)
-'~dup Public Const VER_PLATFORM_WIN32_WINDOWS = 1   ' повтор, первое: WIN32API.INC(14936)
-'~dup Public Const VER_PLATFORM_WIN32_NT = 2   ' повтор, первое: WIN32API.INC(14937)
+'~dup Public Const VER_PLATFORM_WIN32s = 0   ' повтор, первое: rapidq2.inc(2064)
+'~dup Public Const VER_PLATFORM_WIN32_WINDOWS = 1   ' повтор, первое: rapidq2.inc(2065)
+'~dup Public Const VER_PLATFORM_WIN32_NT = 2   ' повтор, первое: rapidq2.inc(2066)
 
 ' wSuiteMask defines:
 '
@@ -65626,18 +65555,18 @@ Public Const VER_NT_SERVER = &H0000003
 
 '  Power Management APIs
 
-'~dup Public Const AC_LINE_OFFLINE = &H0   ' повтор, первое: WIN32API.INC(14943)
-'~dup Public Const AC_LINE_ONLINE = &H1   ' повтор, первое: WIN32API.INC(14944)
-'~dup Public Const AC_LINE_BACKUP_POWER = &H2   ' повтор, первое: WIN32API.INC(14945)
-'~dup Public Const AC_LINE_UNKNOWN = &HFF   ' повтор, первое: WIN32API.INC(14946)
-'~dup Public Const BATTERY_FLAG_HIGH = &H1   ' повтор, первое: WIN32API.INC(14947)
-'~dup Public Const BATTERY_FLAG_LOW = &H2   ' повтор, первое: WIN32API.INC(14948)
-'~dup Public Const BATTERY_FLAG_CRITICAL = &H4   ' повтор, первое: WIN32API.INC(14949)
-'~dup Public Const BATTERY_FLAG_CHARGING = &H8   ' повтор, первое: WIN32API.INC(14950)
-'~dup Public Const BATTERY_FLAG_NO_BATTERY = &H80   ' повтор, первое: WIN32API.INC(14951)
-'~dup Public Const BATTERY_FLAG_UNKNOWN = &HFF   ' повтор, первое: WIN32API.INC(14952)
-'~dup Public Const BATTERY_PERCENTAGE_UNKNOWN = &HFF   ' повтор, первое: WIN32API.INC(14953)
-'~dup Public Const BATTERY_LIFE_UNKNOWN = &HFFFF   ' повтор, первое: WIN32API.INC(14954)
+'~dup Public Const AC_LINE_OFFLINE = &H0   ' повтор, первое: rapidq2.inc(2071)
+'~dup Public Const AC_LINE_ONLINE = &H1   ' повтор, первое: rapidq2.inc(2072)
+'~dup Public Const AC_LINE_BACKUP_POWER = &H2   ' повтор, первое: rapidq2.inc(2073)
+'~dup Public Const AC_LINE_UNKNOWN = &HFF   ' повтор, первое: rapidq2.inc(2074)
+'~dup Public Const BATTERY_FLAG_HIGH = &H1   ' повтор, первое: rapidq2.inc(2075)
+'~dup Public Const BATTERY_FLAG_LOW = &H2   ' повтор, первое: rapidq2.inc(2076)
+'~dup Public Const BATTERY_FLAG_CRITICAL = &H4   ' повтор, первое: rapidq2.inc(2077)
+'~dup Public Const BATTERY_FLAG_CHARGING = &H8   ' повтор, первое: rapidq2.inc(2078)
+'~dup Public Const BATTERY_FLAG_NO_BATTERY = &H80   ' повтор, первое: rapidq2.inc(2079)
+'~dup Public Const BATTERY_FLAG_UNKNOWN = &HFF   ' повтор, первое: rapidq2.inc(2080)
+'~dup Public Const BATTERY_PERCENTAGE_UNKNOWN = &HFF   ' повтор, первое: rapidq2.inc(2081)
+'~dup Public Const BATTERY_LIFE_UNKNOWN = &HFFFF   ' повтор, первое: rapidq2.inc(2082)
 
 '~dup Type SYSTEM_POWER_STATUS   ' повтор, первое: rapidq2.inc(2084)
 '~dup         ACLineStatus As Byte
@@ -65751,32 +65680,32 @@ Public Const VER_NT_SERVER = &H0000003
 '~dup END TYPE
 
 'Flags for CHOOSECOLOR.Flags (see QColorDialog box)
-'~dup CONST CC_RGBINIT = &H1   ' повтор, первое: WIN32API.INC(15083)
-'~dup CONST CC_FULLOPEN = &H2   ' повтор, первое: WIN32API.INC(15084)
-'~dup CONST CC_PREVENTFULLOPEN = &H4   ' повтор, первое: WIN32API.INC(15085)
-'~dup CONST CC_SHOWHELP = &H8   ' повтор, первое: WIN32API.INC(15086)
-'~dup CONST CC_ENABLEHOOK = &H10   ' повтор, первое: WIN32API.INC(15087)
-'~dup CONST CC_ENABLETEMPLATE = &H20   ' повтор, первое: WIN32API.INC(15088)
-'~dup CONST CC_ENABLETEMPLATEHANDLE = &H40   ' повтор, первое: WIN32API.INC(15089)
-'~dup CONST CC_SOLIDCOLOR = &H80   ' повтор, первое: WIN32API.INC(15090)
-'~dup CONST CC_ANYCOLOR = &H100   ' повтор, первое: WIN32API.INC(15091)
+'~dup CONST CC_RGBINIT = &H1   ' повтор, первое: rapidq2.inc(1624)
+'~dup CONST CC_FULLOPEN = &H2   ' повтор, первое: rapidq2.inc(1625)
+'~dup CONST CC_PREVENTFULLOPEN = &H4   ' повтор, первое: rapidq2.inc(1626)
+'~dup CONST CC_SHOWHELP = &H8   ' повтор, первое: rapidq2.inc(1627)
+'~dup CONST CC_ENABLEHOOK = &H10   ' повтор, первое: rapidq2.inc(1628)
+'~dup CONST CC_ENABLETEMPLATE = &H20   ' повтор, первое: rapidq2.inc(1629)
+'~dup CONST CC_ENABLETEMPLATEHANDLE = &H40   ' повтор, первое: rapidq2.inc(1630)
+'~dup CONST CC_SOLIDCOLOR = &H80   ' повтор, первое: rapidq2.inc(1631)
+'~dup CONST CC_ANYCOLOR = &H100   ' повтор, первое: rapidq2.inc(1632)
 
 'Error codes from CommDlgExtendedError
 
-'~dup Public Const CDERR_DIALOGFAILURE = &HFFFF   ' повтор, первое: WIN32API.INC(13880)
-'~dup Public Const CDERR_GENERALCODES = &H0   ' повтор, первое: WIN32API.INC(13882)
-'~dup Public Const CDERR_STRUCTSIZE = &H1   ' повтор, первое: WIN32API.INC(13883)
-'~dup Public Const CDERR_INITIALIZATION = &H2   ' повтор, первое: WIN32API.INC(13884)
-'~dup Public Const CDERR_NOTEMPLATE = &H3   ' повтор, первое: WIN32API.INC(13885)
-'~dup Public Const CDERR_NOHINSTANCE = &H4   ' повтор, первое: WIN32API.INC(13886)
-'~dup Public Const CDERR_LOADSTRFAILURE = &H5   ' повтор, первое: WIN32API.INC(13887)
-'~dup Public Const CDERR_FINDRESFAILURE = &H6   ' повтор, первое: WIN32API.INC(13888)
-'~dup Public Const CDERR_LOADRESFAILURE = &H7   ' повтор, первое: WIN32API.INC(13889)
-'~dup Public Const CDERR_LOCKRESFAILURE = &H8   ' повтор, первое: WIN32API.INC(13890)
-'~dup Public Const CDERR_MEMALLOCFAILURE = &H9   ' повтор, первое: WIN32API.INC(13891)
-'~dup Public Const CDERR_MEMLOCKFAILURE = &HA   ' повтор, первое: WIN32API.INC(13892)
-'~dup Public Const CDERR_NOHOOK = &HB   ' повтор, первое: WIN32API.INC(13893)
-'~dup Public Const CDERR_REGISTERMSGFAIL = &HC   ' повтор, первое: WIN32API.INC(13894)
+'~dup Public Const CDERR_DIALOGFAILURE = &HFFFF   ' повтор, первое: rapidq2.inc(1703)
+'~dup Public Const CDERR_GENERALCODES = &H0   ' повтор, первое: rapidq2.inc(1705)
+'~dup Public Const CDERR_STRUCTSIZE = &H1   ' повтор, первое: rapidq2.inc(1706)
+'~dup Public Const CDERR_INITIALIZATION = &H2   ' повтор, первое: rapidq2.inc(1707)
+'~dup Public Const CDERR_NOTEMPLATE = &H3   ' повтор, первое: rapidq2.inc(1708)
+'~dup Public Const CDERR_NOHINSTANCE = &H4   ' повтор, первое: rapidq2.inc(1709)
+'~dup Public Const CDERR_LOADSTRFAILURE = &H5   ' повтор, первое: rapidq2.inc(1710)
+'~dup Public Const CDERR_FINDRESFAILURE = &H6   ' повтор, первое: rapidq2.inc(1711)
+'~dup Public Const CDERR_LOADRESFAILURE = &H7   ' повтор, первое: rapidq2.inc(1712)
+'~dup Public Const CDERR_LOCKRESFAILURE = &H8   ' повтор, первое: rapidq2.inc(1713)
+'~dup Public Const CDERR_MEMALLOCFAILURE = &H9   ' повтор, первое: rapidq2.inc(1714)
+'~dup Public Const CDERR_MEMLOCKFAILURE = &HA   ' повтор, первое: rapidq2.inc(1715)
+'~dup Public Const CDERR_NOHOOK = &HB   ' повтор, первое: rapidq2.inc(1716)
+'~dup Public Const CDERR_REGISTERMSGFAIL = &HC   ' повтор, первое: rapidq2.inc(1717)
 
 '~dup DECLARE FUNCTION CommDlgExtendedError Lib "comdlg32.dll" Alias "CommDlgExtendedError" () As Long   ' повтор, первое: rapidq2.inc(1721)
 '~dup DECLARE FUNCTION ChooseColorDlg LIB "COMDLG32" ALIAS "ChooseColorA" (CC AS CHOOSECOLOR) AS LONG   ' повтор, первое: WIN32API.INC(15081)
@@ -65988,25 +65917,25 @@ Public Const VER_NT_SERVER = &H0000003
 
 '~dup Declare Function PageSetupDlg Lib "comdlg32.dll" Alias "PageSetupDlgA" (pPagesetupdlg As TPAGESETUPDLG) As Long   ' повтор, первое: rapidq2.inc(7261)
 
-'~dup Public Const PSD_DEFAULTMINMARGINS = &H0 '  default (printer's)   ' повтор, первое: printdlg.inc(3)
+'~dup Public Const PSD_DEFAULTMINMARGINS = &H0 '  default (printer's)   ' повтор, первое: rapidq2.inc(7210)
 '~dup Public Const PSD_INWININIINTLMEASURE = &H0 '  1st of 4 possible   ' повтор, первое: WIN32API.INC(15297)
 
-'~dup Public Const PSD_MINMARGINS = &H1 '  use caller's   ' повтор, первое: printdlg.inc(4)
-'~dup Public Const PSD_MARGINS = &H2 '  use caller's   ' повтор, первое: printdlg.inc(5)
-'~dup Public Const PSD_INTHOUSANDTHSOFINCHES = &H4 '  2nd of 4 possible   ' повтор, первое: printdlg.inc(6)
-'~dup Public Const PSD_INHUNDREDTHSOFMILLIMETERS = &H8 '  3rd of 4 possible   ' повтор, первое: printdlg.inc(7)
-'~dup Public Const PSD_DISABLEMARGINS = &H10   ' повтор, первое: printdlg.inc(8)
-'~dup Public Const PSD_DISABLEPRINTER = &H20   ' повтор, первое: printdlg.inc(9)
-'~dup Public Const PSD_NOWARNING = &H80 '  must be same as PD_*   ' повтор, первое: printdlg.inc(10)
-'~dup Public Const PSD_DISABLEORIENTATION = &H100   ' повтор, первое: printdlg.inc(11)
-'~dup Public Const PSD_RETURNDEFAULT = &H400 '  must be same as PD_*   ' повтор, первое: printdlg.inc(13)
-'~dup Public Const PSD_DISABLEPAPER = &H200   ' повтор, первое: printdlg.inc(12)
-'~dup Public Const PSD_SHOWHELP = &H800 '  must be same as PD_*   ' повтор, первое: printdlg.inc(14)
-'~dup Public Const PSD_ENABLEPAGESETUPHOOK = &H2000 '  must be same as PD_*   ' повтор, первое: printdlg.inc(15)
-'~dup Public Const PSD_ENABLEPAGESETUPTEMPLATE = &H8000 '  must be same as PD_*   ' повтор, первое: printdlg.inc(16)
-'~dup Public Const PSD_ENABLEPAGESETUPTEMPLATEHANDLE = &H20000 '  must be same as PD_*   ' повтор, первое: printdlg.inc(17)
-'~dup Public Const PSD_ENABLEPAGEPAINTHOOK = &H40000   ' повтор, первое: printdlg.inc(18)
-'~dup Public Const PSD_DISABLEPAGEPAINTING = &H80000   ' повтор, первое: printdlg.inc(19)
+'~dup Public Const PSD_MINMARGINS = &H1 '  use caller's   ' повтор, первое: rapidq2.inc(7211)
+'~dup Public Const PSD_MARGINS = &H2 '  use caller's   ' повтор, первое: rapidq2.inc(7212)
+'~dup Public Const PSD_INTHOUSANDTHSOFINCHES = &H4 '  2nd of 4 possible   ' повтор, первое: rapidq2.inc(7213)
+'~dup Public Const PSD_INHUNDREDTHSOFMILLIMETERS = &H8 '  3rd of 4 possible   ' повтор, первое: rapidq2.inc(7214)
+'~dup Public Const PSD_DISABLEMARGINS = &H10   ' повтор, первое: rapidq2.inc(7215)
+'~dup Public Const PSD_DISABLEPRINTER = &H20   ' повтор, первое: rapidq2.inc(7216)
+'~dup Public Const PSD_NOWARNING = &H80 '  must be same as PD_*   ' повтор, первое: rapidq2.inc(7217)
+'~dup Public Const PSD_DISABLEORIENTATION = &H100   ' повтор, первое: rapidq2.inc(7218)
+'~dup Public Const PSD_RETURNDEFAULT = &H400 '  must be same as PD_*   ' повтор, первое: rapidq2.inc(7220)
+'~dup Public Const PSD_DISABLEPAPER = &H200   ' повтор, первое: rapidq2.inc(7219)
+'~dup Public Const PSD_SHOWHELP = &H800 '  must be same as PD_*   ' повтор, первое: rapidq2.inc(7221)
+'~dup Public Const PSD_ENABLEPAGESETUPHOOK = &H2000 '  must be same as PD_*   ' повтор, первое: rapidq2.inc(7222)
+'~dup Public Const PSD_ENABLEPAGESETUPTEMPLATE = &H8000 '  must be same as PD_*   ' повтор, первое: rapidq2.inc(7223)
+'~dup Public Const PSD_ENABLEPAGESETUPTEMPLATEHANDLE = &H20000 '  must be same as PD_*   ' повтор, первое: rapidq2.inc(7224)
+'~dup Public Const PSD_ENABLEPAGEPAINTHOOK = &H40000   ' повтор, первое: rapidq2.inc(7225)
+'~dup Public Const PSD_DISABLEPAGEPAINTING = &H80000   ' повтор, первое: rapidq2.inc(7226)
 
 '~dup Declare Function DdeInitialize Lib "user32" Alias "DdeInitializeA" (pidInst As Long, ByVal pfnCallback As Long, ByVal afCmd As Long, ByVal ulRes As Long) As Integer   ' повтор, первое: WIN32API.INC(15316)
 '~dup Declare Function SetServiceBits Lib "advapi32" Alias "SetServiceBits" (ByVal hServiceStatus As Long, ByVal dwServiceBits As Long, ByVal bSetBitsOn As LONG, ByVal bUpdateImmediately As LONG) As Long   ' повтор, первое: WIN32API.INC(15317)
@@ -66135,8 +66064,8 @@ Public Const VER_NT_SERVER = &H0000003
 
 '------ AlphaBlending  with microsoft imaging dll -----
 '----
-Const AC_SRC_OVER = &H00
-Const AC_SRC_ALPHA = &H1
+'~dup Const AC_SRC_OVER = &H00   ' повтор, первое: rapidq2.inc(1418)
+'~dup Const AC_SRC_ALPHA = &H1   ' повтор, первое: rapidq2.inc(1419)
 
 Type BLENDFUNCTION
   BlendOp 		As Byte
@@ -66187,8 +66116,8 @@ End Type
 '~dup Declare Function DrawState Lib "user32" Alias "DrawStateA" (ByVal hDC As Long, ByVal hBrush As Long, ByVal lpDrawStateProc As Long, ByVal lParam As Long, ByVal wParam As Long, ByVal n1 As Long, ByVal n2 As Long, ByVal n3 As Long, ByVal n4 As Long, ByVal un As Long) As Long   ' повтор, первое: WIN32API.INC(15469)
 
 'DrawIconEx conststants
-'~dup Const DI_MASK=&H1   ' повтор, первое: QFormSkin.inc(183)
-'~dup Const DI_IMAGE=&H2   ' повтор, первое: QFormSkin.inc(184)
+'~dup Const DI_MASK=&H1   ' повтор, первое: rapidq2.inc(1276)
+'~dup Const DI_IMAGE=&H2   ' повтор, первое: rapidq2.inc(1277)
 '~dup Const DI_NORMAL=DI_MASK Or DI_IMAGE   ' повтор, первое: rapidq2.inc(1278)
 
 
@@ -67065,6 +66994,79 @@ function MKSubDir (DirDst$) as short
   wend
 
   result=1
+end function
+function DirCopy (DirSrc$, DirDst$, mask$) as long
+  'print "DirCopy mask$=" ,mask$
+  'print "DirCopy DirDst$=" ,DirDst$
+  'print "DirCopy DirSrc$=" ,DirSrc$
+  'Andrew Shelkovenko dec 2003
+  'Copy files (by mask$) from DirSrc$ to DirDst$
+  result=0
+  dim FileSrc as QFileStream
+  dim FileDst as QFileStream
+  defint NumFIles
+  NumFIles=0
+  'MKDIR DirDst$
+  rz=MKSubDir (DirDst$)
+  if right$(DirSrc$,1)<>"\" then DirSrc$=DirSrc$+"\"
+  if right$(DirDst$,1)<>"\" then DirDst$=DirDst$+"\"
+
+  if direxists(DirDst$) =0 then
+    showmessage ("DirCopy Error: Can't create folder "+DirDst$)
+    exit function
+  end if
+
+  FileName$ = DIR$(DirSrc$+mask$, 0) '-- Get first file
+
+  while    FileName$ <>""
+    if fileexists(DirDst$+FileName$) =0 then goto DCcreate:
+    fOldfa=GetFileAttributes (DirDst$+FileName$)
+    fzas=FILE_ATTRIBUTE_READONLY or FILE_ATTRIBUTE_HIDDEN or FILE_ATTRIBUTE_SYSTEM
+
+    if (fOldfa and fzas) >0 then
+      if fdefaultChkAttr=0 then
+        frzm24=MessageDlg("DirCopy "+fMsg35$+"  "+DirDst$+FileName$, mtWarning, mbYes OR mbNo OR mbAll, 0)
+        IF frzm24 = mrNo THEN ' inc2026: frzm24 вместо rzm24: ответ MessageDlg записан в frzm24 (строка 789), rzm24 нигде не получает значения - ответ "Нет" не обрабатывался
+          fAttrChg=0
+          goto DirCopyExitSub:
+        elseif frzm24 = mrYes then
+          SetFileAttributes (DirDst$+FileName$,FILE_ATTRIBUTE_NORMAL)
+          fAttrChg=1
+        elseif frzm24 = mrAll then
+          fdefaultChkAttr=1
+          SetFileAttributes (DirDst$+FileName$,FILE_ATTRIBUTE_NORMAL)
+          fAttrChg=1
+        END IF
+
+      else
+        SetFileAttributes (DirDst$+FileName$,FILE_ATTRIBUTE_NORMAL)
+        fAttrChg=1
+      end if
+    else
+
+    end if
+    DCcreate:
+    FileSrc.Open(DirSrc$+filename$, fmOpenRead)
+    if FileDst.Open(DirDst$ +filename$, fmCreate) =-1 then
+      FileDst.CopyFrom  (FileSrc, 0)
+      FileDst.close
+    else
+      'result=0
+      ShowMessage ("DirCopy error: Access denied "+DirDst$ +filename$)
+
+    end if
+    FileSrc.close
+    SetFileAttributes (DirDst$+FileName$,fOldfa)
+
+    FileName$ = DIR$ '-- Get next file
+    inc NumFIles
+    DiaMsg$="DirCopy copied= "+str$(NumFIles) +" files"
+    'print"DiaMsg$=";DiaMsg$
+    doevents
+  wend
+  'print "DirCopy copied= "+str$(NumFIles) +" files
+  result=NumFIles
+  DirCopyExitSub:
 end function
 sub FileCopy (FileSrc$, FileDst$) '- -----------------------------------'
   'Andrew Shelkovenko dec 2003

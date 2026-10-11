@@ -5174,14 +5174,14 @@ $ENDIF
 '~dup $DEFINE HWND INTEGER   ' повтор, первое: createWind.inc(14)
 
 '~dup const WS_EX_CLIENTEDGE = &H200 ' Just some of the many API constants   ' повтор, первое: createWind.inc(16)
-'~dup const WS_CHILD = &H40000000   ' повтор, первое: createWind.inc(17)
-'~dup const WS_VISIBLE = &H10000000   ' повтор, первое: createWind.inc(18)
-'~dup const WS_BORDER = &H800000   ' повтор, первое: createWind.inc(19)
+'~dup const WS_CHILD = &H40000000   ' повтор, первое: rapidq2.inc(949)
+'~dup const WS_VISIBLE = &H10000000   ' повтор, первое: rapidq2.inc(951)
+'~dup const WS_BORDER = &H800000   ' повтор, первое: rapidq2.inc(957)
 '~dup const ES_LEFT = 0   ' повтор, первое: createWind.inc(20)
 '~dup const ES_AUTOHSCROLL = &H80   ' повтор, первое: createWind.inc(21)
 '~dup const ES_MULTILINE = &H4   ' повтор, первое: createWind.inc(22)
 
-'~dup const WM_COMMAND = &H111   ' повтор, первое: createWind.inc(24)
+'~dup const WM_COMMAND = &H111   ' повтор, первое: rapidq2.inc(830)
 
 '~dup DECLARE FUNCTION GetModuleHandle LIB "KERNEL32" ALIAS "GetModuleHandleA" _   ' повтор, первое: createWind.inc(26)
 '~dup (ModuleName AS STRING) AS LONG
@@ -12050,15 +12050,15 @@ $IFNDEF __RQINC2         'RapidQ2.inc loaded?
 '~dup $DEFINE WS_DLGFRAME         &H00400000   ' повтор, первое: rapidq2.inc(958)
 '~dup $DEFINE WS_THICKFRAME       &H00040000   ' повтор, первое: rapidq2.inc(962)
     'extended windows styles
-$DEFINE WS_EX_DLGMODALFRAME     &H00000001
-$DEFINE WS_EX_NOPARENTNOTIFY    &H00000004
-$DEFINE WS_EX_TOPMOST           &H00000008
-$DEFINE WS_EX_TRANSPARENT       &H00000020
-$DEFINE WS_EX_TOOLWINDOW        &H00000080
-$DEFINE WS_EX_WINDOWEDGE        &H00000100
-$DEFINE WS_EX_CLIENTEDGE        &H00000200
-$DEFINE WS_EX_STATICEDGE        &H00020000
-$DEFINE WS_EX_APPWINDOW         &H00040000
+'~dup $DEFINE WS_EX_DLGMODALFRAME     &H00000001   ' повтор, первое: Win32_constants.inc(9)
+'~dup $DEFINE WS_EX_NOPARENTNOTIFY    &H00000004   ' повтор, первое: Win32_constants.inc(14)
+'~dup $DEFINE WS_EX_TOPMOST           &H00000008   ' повтор, первое: Win32_constants.inc(22)
+'~dup $DEFINE WS_EX_TRANSPARENT       &H00000020   ' повтор, первое: Win32_constants.inc(23)
+'~dup $DEFINE WS_EX_TOOLWINDOW        &H00000080   ' повтор, первое: Win32_constants.inc(21)
+'~dup $DEFINE WS_EX_WINDOWEDGE        &H00000100   ' повтор, первое: Win32_constants.inc(24)
+'~dup $DEFINE WS_EX_CLIENTEDGE        &H00000200   ' повтор, первое: createWind.inc(16)
+'~dup $DEFINE WS_EX_STATICEDGE        &H00020000   ' повтор, первое: Win32_constants.inc(20)
+'~dup $DEFINE WS_EX_APPWINDOW         &H00040000   ' повтор, первое: Win32_constants.inc(5)
 
 
 'set windows position
@@ -13173,7 +13173,7 @@ $ENDIF      '__VFW_INC
 
 $IFNDEF __WIN32API   'for windows 32 API calls/constants
 $IFNDEF __RQINC2   ' & rapidQ2
-$DEFINE GWL_STYLE   &HFFFFFFF0      '-16
+'~dup $DEFINE GWL_STYLE   &HFFFFFFF0      '-16   ' повтор, первое: rapidq2.inc(780)
 '~dup DECLARE FUNCTION SetWindowLong LIB "user32" ALIAS "SetWindowLongA" (hWnd AS LONG,nIndex AS LONG, dwNewLong AS LONG) AS LONG   ' повтор, первое: rapidq2.inc(1039)
 '~dup DECLARE FUNCTION GetWindowLong LIB "USER32" ALIAS "GetWindowLongA" (hwnd AS LONG, type AS LONG) AS LONG   ' повтор, первое: rapidq2.inc(1037)
 '~dup TYPE OSVERSIONINFO     ' повтор, первое: rapidq2.inc(2055)
@@ -14540,9 +14540,9 @@ $IFNDEF __RQINC2         'RapidQ2.inc loaded?
   	RESULT = ParamVal(1)
   END FUNCTION
 
-  $DEFINE pf8bit  3
-  $DEFINE pf24bit 6
-  $DEFINE pf32bit 7
+'~dup   $DEFINE pf8bit  3   ' повтор, первое: rapidq2.inc(527)
+'~dup   $DEFINE pf24bit 6   ' повтор, первое: rapidq2.inc(530)
+'~dup   $DEFINE pf32bit 7   ' повтор, первое: rapidq2.inc(531)
 $ENDIF          'rapidq2 inc
 
 
@@ -14564,14 +14564,14 @@ $IFNDEF __WIN32API         'Windows.inc loaded?
 '~dup End Type
 
 ' DIB color table identifiers 
-$DEFINE DIB_RGB_COLORS 0&       ' color table in RGBs 
-$DEFINE DIB_PAL_COLORS 1&       ' color table in palette indices 
+'~dup $DEFINE DIB_RGB_COLORS 0&       ' color table in RGBs    ' повтор, первое: WIN32API.INC(4043)
+'~dup $DEFINE DIB_PAL_COLORS 1&       ' color table in palette indices    ' повтор, первое: WIN32API.INC(4044)
 
 ' constants for the biCompression field 
-$DEFINE  BI_RGB     0&
-$DEFINE  BI_RLE8    1&
-$DEFINE  BI_RLE4    2&
-$DEFINE  BI_bitfields 3&
+'~dup $DEFINE  BI_RGB     0&   ' повтор, первое: WIN32API.INC(3320)
+'~dup $DEFINE  BI_RLE8    1&   ' повтор, первое: WIN32API.INC(3321)
+'~dup $DEFINE  BI_RLE4    2&   ' повтор, первое: WIN32API.INC(3322)
+'~dup $DEFINE  BI_bitfields 3&   ' повтор, первое: WIN32API.INC(3323)
 
 
 '~dup Declare Function mmioStringToFOURCC Lib "winmm.dll" Alias "mmioStringToFOURCCA" (ByVal sz As String, ByVal uFlags AS LONG) AS LONG 'returns fourcc   ' повтор, первое: WIN32API.INC(11785)
@@ -14582,22 +14582,22 @@ $DEFINE  BI_bitfields 3&
 'Declare Function mmioClose Lib "winmm.dll" ALIAS "(ByVal hmmio AS LONG, ByVal wFlags AS LONG) AS LONG   ' MMRESULT
 
 'open file flags for AVIFileOpen
-'~dup $DEFINE OF_READ             &H0   ' повтор, первое: WINDOWS.INC(1768)
-'~dup $DEFINE OF_WRITE            &H1   ' повтор, первое: WINDOWS.INC(1769)
-'~dup $DEFINE OF_READWRITE        &H00000002   ' повтор, первое: WINDOWS.INC(1770)
-'~dup $DEFINE OF_SHARE_COMPAT     &H00000000   ' повтор, первое: WINDOWS.INC(1771)
-'~dup $DEFINE OF_SHARE_EXCLUSIVE  &H00000010   ' повтор, первое: WINDOWS.INC(1772)
-'~dup $DEFINE OF_SHARE_DENY_WRITE &H20   ' повтор, первое: WINDOWS.INC(1773)
-'~dup $DEFINE OF_SHARE_DENY_READ  &H00000030   ' повтор, первое: WINDOWS.INC(1774)
-'~dup $DEFINE OF_SHARE_DENY_NONE  &H00000040   ' повтор, первое: WINDOWS.INC(1775)
-'~dup $DEFINE OF_PARSE            &H00000100   ' повтор, первое: WINDOWS.INC(1776)
-'~dup $DEFINE OF_DELETE           &H00000200   ' повтор, первое: WINDOWS.INC(1777)
-'~dup $DEFINE OF_VERIFY           &H00000400   ' повтор, первое: WINDOWS.INC(1778)
-'~dup $DEFINE OF_CANCEL           &H00000800   ' повтор, первое: WINDOWS.INC(1779)
-'~dup $DEFINE OF_CREATE           &H1000   ' повтор, первое: WINDOWS.INC(1780)
-'~dup $DEFINE OF_PROMPT           &H00002000   ' повтор, первое: WINDOWS.INC(1781)
-'~dup $DEFINE OF_EXIST            &H00004000   ' повтор, первое: WINDOWS.INC(1782)
-'~dup $DEFINE OF_REOPEN           &H00008000   ' повтор, первое: WINDOWS.INC(1783)
+'~dup $DEFINE OF_READ             &H0   ' повтор, первое: WIN32API.INC(1789)
+'~dup $DEFINE OF_WRITE            &H1   ' повтор, первое: WIN32API.INC(1790)
+'~dup $DEFINE OF_READWRITE        &H00000002   ' повтор, первое: WIN32API.INC(1791)
+'~dup $DEFINE OF_SHARE_COMPAT     &H00000000   ' повтор, первое: WIN32API.INC(1792)
+'~dup $DEFINE OF_SHARE_EXCLUSIVE  &H00000010   ' повтор, первое: WIN32API.INC(1793)
+'~dup $DEFINE OF_SHARE_DENY_WRITE &H20   ' повтор, первое: WIN32API.INC(1794)
+'~dup $DEFINE OF_SHARE_DENY_READ  &H00000030   ' повтор, первое: WIN32API.INC(1795)
+'~dup $DEFINE OF_SHARE_DENY_NONE  &H00000040   ' повтор, первое: WIN32API.INC(1796)
+'~dup $DEFINE OF_PARSE            &H00000100   ' повтор, первое: WIN32API.INC(1797)
+'~dup $DEFINE OF_DELETE           &H00000200   ' повтор, первое: WIN32API.INC(1798)
+'~dup $DEFINE OF_VERIFY           &H00000400   ' повтор, первое: WIN32API.INC(1799)
+'~dup $DEFINE OF_CANCEL           &H00000800   ' повтор, первое: WIN32API.INC(1800)
+'~dup $DEFINE OF_CREATE           &H1000   ' повтор, первое: WIN32API.INC(1801)
+'~dup $DEFINE OF_PROMPT           &H00002000   ' повтор, первое: WIN32API.INC(1802)
+'~dup $DEFINE OF_EXIST            &H00004000   ' повтор, первое: WIN32API.INC(1803)
+'~dup $DEFINE OF_REOPEN           &H00008000   ' повтор, первое: WIN32API.INC(1804)
 
 
 $ENDIF          'windows inc
@@ -21449,26 +21449,26 @@ $ENDIF
 
 $IFNDEF __RQINC2
 
-'~dup Const ODT_MENU=1   ' повтор, первое: Api.inc(3)
-'~dup Const ODS_SELECTED=1   ' повтор, первое: Api.inc(5)
-'~dup Const ODS_GRAYED=2   ' повтор, первое: Api.inc(6)
-'~dup Const ODS_DISABLED=4   ' повтор, первое: Api.inc(7)
-'~dup Const ODS_CHECKED=8   ' повтор, первое: Api.inc(8)
-'~dup Const WM_DRAWITEM=&H2B   ' повтор, первое: Api.inc(13)
-'~dup Const WM_MEASUREITEM=&H2C   ' повтор, первое: Api.inc(14)
-'~dup Const MF_BYCOMMAND=0   ' повтор, первое: Api.inc(17)
-'~dup Const MF_BYPOSITION=&H400   ' повтор, первое: Api.inc(18)
-'~dup Const MF_OWNERDRAW=&H100   ' повтор, первое: Api.inc(19)
-'~dup Const MF_GRAYED=&H1   ' повтор, первое: ODMenuXP.inc(568)
-'~dup Const MF_DISABLED=&H2   ' повтор, первое: ODMenuXP.inc(559)
-'~dup Const MF_STRING=0   ' повтор, первое: Api.inc(20)
-'~dup Const MF_BITMAP=4   ' повтор, первое: Api.inc(21)
+'~dup Const ODT_MENU=1   ' повтор, первое: rapidq2.inc(1513)
+'~dup Const ODS_SELECTED=1   ' повтор, первое: rapidq2.inc(1514)
+'~dup Const ODS_GRAYED=2   ' повтор, первое: rapidq2.inc(1515)
+'~dup Const ODS_DISABLED=4   ' повтор, первое: rapidq2.inc(1516)
+'~dup Const ODS_CHECKED=8   ' повтор, первое: rapidq2.inc(1517)
+'~dup Const WM_DRAWITEM=&H2B   ' повтор, первое: rapidq2.inc(835)
+'~dup Const WM_MEASUREITEM=&H2C   ' повтор, первое: rapidq2.inc(836)
+'~dup Const MF_BYCOMMAND=0   ' повтор, первое: rapidq2.inc(1522)
+'~dup Const MF_BYPOSITION=&H400   ' повтор, первое: rapidq2.inc(1523)
+'~dup Const MF_OWNERDRAW=&H100   ' повтор, первое: rapidq2.inc(1524)
+'~dup Const MF_GRAYED=&H1   ' повтор, первое: rapidq2.inc(1525)
+'~dup Const MF_DISABLED=&H2   ' повтор, первое: rapidq2.inc(1526)
+'~dup Const MF_STRING=0   ' повтор, первое: rapidq2.inc(1527)
+'~dup Const MF_BITMAP=4   ' повтор, первое: rapidq2.inc(1528)
 
-'~dup Const COLOR_MENU=4 'Menu   ' повтор, первое: constants.inc(16)
-'~dup Const COLOR_MENUTEXT=7 'Window Text   ' повтор, первое: constants.inc(19)
-'~dup Const COLOR_HIGHLIGHT=13 'Selected item background   ' повтор, первое: constants.inc(25)
-'~dup Const COLOR_HIGHLIGHTTEXT=14 'Selected menu item   ' повтор, первое: constants.inc(26)
-'~dup Const COLOR_GRAYTEXT=17 'Grey text, of zero if dithering is used.   ' повтор, первое: constants.inc(29)
+'~dup Const COLOR_MENU=4 'Menu   ' повтор, первое: rapidq2.inc(1531)
+'~dup Const COLOR_MENUTEXT=7 'Window Text   ' повтор, первое: rapidq2.inc(1532)
+'~dup Const COLOR_HIGHLIGHT=13 'Selected item background   ' повтор, первое: rapidq2.inc(1533)
+'~dup Const COLOR_HIGHLIGHTTEXT=14 'Selected menu item   ' повтор, первое: rapidq2.inc(1534)
+'~dup Const COLOR_GRAYTEXT=17 'Grey text, of zero if dithering is used.   ' повтор, первое: rapidq2.inc(1535)
 
 '~dup TYPE TMEASUREITEMSTRUCT   ' повтор, первое: Api.inc(49)
 '~dup     CtlType AS LONG
@@ -30094,7 +30094,7 @@ $IFNDEF __QPROCESS_INC      'don't reload
     Const ProcessIdle=-15
 
 $IFNDEF __WIN32API      'APIs     
-    $DEFINE CREATE_SUSPENDED 4&
+'~dup     $DEFINE CREATE_SUSPENDED 4&   ' повтор, первое: WIN32API.INC(779)
 '~dup     Declare Function CreateThread Lib "kernel32" Alias "CreateThread" (lpThreadAttributes As long, ByVal dwStackSize As Long, lpStartAddress As Long, lpParameter As long, ByVal dwCreationFlags As Long, lpThreadId As Long) As Long   ' повтор, первое: WIN32API.INC(2235)
 '~dup     Declare Function ResumeThread Lib "kernel32.dll" Alias "ResumeThread" (hThread As Long) As Long   ' повтор, первое: WIN32API.INC(2000)
 '~dup     Declare Function SuspendThread Lib "kernel32" Alias "SuspendThread" (ByVal hThread As Long) As Long   ' повтор, первое: WIN32API.INC(1999)
@@ -30204,7 +30204,7 @@ $IFNDEF __QPROGRESS_INC  'don't reload
     $DEFINE __QPROGRESS_INC
 
     $IFNDEF __WIN32API  'APIs
-'~dup         $DEFINE CREATE_SUSPENDED 4&   ' повтор, первое: QProcess.inc(17)
+'~dup         $DEFINE CREATE_SUSPENDED 4&   ' повтор, первое: WIN32API.INC(779)
 '~dup         DECLARE FUNCTION CreateThread LIB "kernel32" ALIAS "CreateThread"(lpThreadAttributes AS LONG , ByVal dwStackSize AS LONG , lpStartAddress AS LONG , lpParameter AS LONG , ByVal dwCreationFlags AS LONG , lpThreadId AS LONG) AS LONG   ' повтор, первое: WIN32API.INC(2235)
 '~dup         DECLARE FUNCTION ResumeThread LIB "kernel32.dll" ALIAS "ResumeThread"(hThread AS LONG) AS LONG   ' повтор, первое: WIN32API.INC(2000)
 '~dup         DECLARE FUNCTION SuspendThread LIB "kernel32" ALIAS "SuspendThread"(ByVal hThread AS LONG) AS LONG   ' повтор, первое: WIN32API.INC(1999)
@@ -30515,8 +30515,8 @@ $IFNDEF __QPROGRESSBAR_INC         'don't reload
 '~dup         DECLARE FUNCTION DestroyWindow LIB "user32" ALIAS "DestroyWindow" (ByVal hWnd AS LONG) AS LONG   ' повтор, первое: WIN32API.INC(6723)
 
         '-- Window styles
-'~dup         CONST WS_CHILD = &H40000000   ' повтор, первое: createWind.inc(17)
-'~dup         CONST WS_VISIBLE = &H10000000   ' повтор, первое: createWind.inc(18)
+'~dup         CONST WS_CHILD = &H40000000   ' повтор, первое: rapidq2.inc(949)
+'~dup         CONST WS_VISIBLE = &H10000000   ' повтор, первое: rapidq2.inc(951)
 
 
         $IFNDEF __RQ2WIN32API
@@ -30579,10 +30579,10 @@ $IFNDEF __QPROGRESSBAR_INC         'don't reload
 '~dup         $DEFINE FALSE 0   ' повтор, первое: rapidq2.inc(55)
     $ENDIF
 
-    $DEFINE SWP_HIDEWINDOW &H0080       'Hides the window.
+'~dup     $DEFINE SWP_HIDEWINDOW &H0080       'Hides the window.   ' повтор, первое: WIN32API.INC(6754)
 '~dup     $DEFINE SWP_NOACTIVATE &H0010       'Does not activate the window. If this flag is not set, the window is activated and moved to the top of either the topmost or non-topmost group (depending on the setting of the hWndInsertAfter parameter).   ' повтор, первое: rapidq2.inc(794)
-    $DEFINE SWP_NOOWNERZORDER &H0200    'Does not change the owner window's position in the Z order.
-    $DEFINE SWP_NOREDRAW  &H0008        'Does not redraw changes. If this flag is set, no repainting of any kind occurs. This applies to the client area, the nonclient area (including the title bar and scroll bars), and any part of the parent window uncovered as a result of the window being moved. When this flag is set, the application must explicitly invalidate or redraw any parts of the window and parent window that need redrawing.
+'~dup     $DEFINE SWP_NOOWNERZORDER &H0200    'Does not change the owner window's position in the Z order.   ' повтор, первое: WIN32API.INC(6756)
+'~dup     $DEFINE SWP_NOREDRAW  &H0008        'Does not redraw changes. If this flag is set, no repainting of any kind occurs. This applies to the client area, the nonclient area (including the title bar and scroll bars), and any part of the parent window uncovered as a result of the window being moved. When this flag is set, the application must explicitly invalidate or redraw any parts of the window and parent window that need redrawing.   ' повтор, первое: WIN32API.INC(6750)
 '~dup     $DEFINE SWP_NOSIZE &H0001           'Retains the current size (ignores the cx and cy parameters).   ' повтор, первое: rapidq2.inc(791)
 '~dup     $DEFINE SWP_NOZORDER &H0004         'Retains the current Z order (ignores the hWndInsertAfter parameter)   ' повтор, первое: rapidq2.inc(793)
 '~dup     $DEFINE SWP_SHOWWINDOW &H0040    ' повтор, первое: rapidq2.inc(795)
@@ -30788,7 +30788,7 @@ $ENDIF
 '[build_inc] QRichEditXt.inc
 '============================================================================
 '$Include "constants.inc"
-'~dup const WM_USER = &H400   ' повтор, первое: CommCtrl.inc(6)
+'~dup const WM_USER = &H400   ' повтор, первое: rapidq2.inc(870)
 
 '~dup const    EM_AUTOURLDETECT            =WM_USER + 91   ' повтор, первое: rapidq.inc(756)
 
@@ -30910,7 +30910,7 @@ $ENDIF
 '~dup const WM_COPYDATA = 74   ' повтор, первое: constants.inc(161)
 '~dup const WM_PASTE = 770   ' повтор, первое: constants.inc(162)
 '~dup const WM_CLEAR = 771   ' повтор, первое: constants.inc(163)
-'~dup const WM_CHAR = 258   ' повтор, первое: constants.inc(164)
+'~dup const WM_CHAR = 258   ' повтор, первое: rapidq2.inc(822)
 
 '------------- /* Extended edit style masks */
 '~dup const	SES_EMULATESYSEDIT		=1   ' повтор, первое: constants.inc(167)
@@ -31394,20 +31394,20 @@ Declare Function Run_SetWindowPos Lib "user32" Alias "SetWindowPos" (hwnd As Lon
 $IFNDEF __WIN32API ' inc2026: перенесено со строки 17 - условие только для констант SW_, объявления Run_* выше нужны всегда
 
 ' ShowWindow() Commands
-$DEFINE SW_HIDE      0
-$DEFINE SW_SHOWNORMAL      1
-$DEFINE SW_NORMAL      1
-$DEFINE SW_SHOWMINIMIZED      2
-$DEFINE SW_SHOWMAXIMIZED      3
-$DEFINE SW_MAXIMIZE      3
-$DEFINE SW_SHOWNOACTIVATE      4
-$DEFINE SW_SHOW      5
-$DEFINE SW_MINIMIZE      6
-$DEFINE SW_SHOWMINNOACTIVE      7
-$DEFINE SW_SHOWNA      8
-$DEFINE SW_RESTORE      9
-$DEFINE SW_SHOWDEFAULT      10
-$DEFINE SW_MAX      10
+'~dup $DEFINE SW_HIDE      0   ' повтор, первое: Form.inc(6)
+'~dup $DEFINE SW_SHOWNORMAL      1   ' повтор, первое: Form.inc(7)
+'~dup $DEFINE SW_NORMAL      1   ' повтор, первое: Form.inc(8)
+'~dup $DEFINE SW_SHOWMINIMIZED      2   ' повтор, первое: Form.inc(9)
+'~dup $DEFINE SW_SHOWMAXIMIZED      3   ' повтор, первое: Form.inc(10)
+'~dup $DEFINE SW_MAXIMIZE      3   ' повтор, первое: Form.inc(11)
+'~dup $DEFINE SW_SHOWNOACTIVATE      4   ' повтор, первое: Form.inc(12)
+'~dup $DEFINE SW_SHOW      5   ' повтор, первое: Form.inc(13)
+'~dup $DEFINE SW_MINIMIZE      6   ' повтор, первое: Form.inc(14)
+'~dup $DEFINE SW_SHOWMINNOACTIVE      7   ' повтор, первое: Form.inc(15)
+'~dup $DEFINE SW_SHOWNA      8   ' повтор, первое: Form.inc(16)
+'~dup $DEFINE SW_RESTORE      9   ' повтор, первое: Form.inc(17)
+'~dup $DEFINE SW_SHOWDEFAULT      10   ' повтор, первое: Form.inc(18)
+'~dup $DEFINE SW_MAX      10   ' повтор, первое: Form.inc(19)
 
 $ENDIF
 
@@ -32078,10 +32078,10 @@ $IFNDEF __WIN32API				   'windows 32 constants for sound media
 $IFNDEF __RQINC2
 '~dup     Declare Function ExitWindowsEx Lib "user32" Alias "ExitWindowsEx" (uFlags As Long, dwReserved As Long) As Long   ' повтор, первое: rapidq2.inc(1481)
 '~dup     Declare Function GetCurrentProcess Lib "kernel32" Alias "GetCurrentProcess"() As Long   ' повтор, первое: rapidq2.inc(1502)
-'~dup     Const EWX_LOGOFF = 0   ' повтор, первое: WIN32API.INC(6662)
-'~dup     Const EWX_SHUTDOWN = 1   ' повтор, первое: WIN32API.INC(6663)
-'~dup     Const EWX_REBOOT = 2   ' повтор, первое: WIN32API.INC(6664)
-'~dup     Const EWX_FORCE = 4   ' повтор, первое: WIN32API.INC(6665)
+'~dup     Const EWX_LOGOFF = 0   ' повтор, первое: rapidq2.inc(1335)
+'~dup     Const EWX_SHUTDOWN = 1   ' повтор, первое: rapidq2.inc(1336)
+'~dup     Const EWX_REBOOT = 2   ' повтор, первое: rapidq2.inc(1337)
+'~dup     Const EWX_FORCE = 4   ' повтор, первое: rapidq2.inc(1338)
 $ENDIF      'RapidQ2 inc
 
 
@@ -33846,12 +33846,12 @@ $DEFINE MAXTOOLBTNS     64                                              ' User c
 $ENDIF                                                                  ' ... usage? or >64 button toolbars?
 
 $IFNDEF __RQINC2
-$DEFINE alNone          0
-$DEFINE alTop           1
-$DEFINE alBottom        2
-$DEFINE alLeft          3
-$DEFINE alRight         4
-$DEFINE alClient        5
+'~dup $DEFINE alNone          0   ' повтор, первое: rapidq2.inc(86)
+'~dup $DEFINE alTop           1   ' повтор, первое: rapidq2.inc(87)
+'~dup $DEFINE alBottom        2   ' повтор, первое: rapidq2.inc(88)
+'~dup $DEFINE alLeft          3   ' повтор, первое: rapidq2.inc(89)
+'~dup $DEFINE alRight         4   ' повтор, первое: rapidq2.inc(90)
+'~dup $DEFINE alClient        5   ' повтор, первое: rapidq2.inc(91)
 $ENDIF
 
 $IFNDEF True
@@ -35656,7 +35656,7 @@ $IFNDEF OBJ_BITMAP
 $ENDIF
 
 $IFNDEF BS_OWNERDRAW
-  $DEFINE BS_OWNERDRAW &HB
+'~dup   $DEFINE BS_OWNERDRAW &HB   ' повтор, первое: Win32_constants.inc(78)
 $ENDIF
 
 
@@ -35716,7 +35716,7 @@ $IFNDEF __WIN32API			'for windows 32 API calls/constants
 
 '~dup     Const GWL_HWNDPARENT = (-8)   ' повтор, первое: rapidq2.inc(777)
 '~dup     Const GWL_STYLE = (-16)   ' повтор, первое: rapidq2.inc(780)
-    $DEFINE HWND_DESKTOP        0
+'~dup     $DEFINE HWND_DESKTOP        0   ' повтор, первое: rapidq2.inc(783)
 
 '~dup     Declare Function GetWindowLong _   ' повтор, первое: rapidq2.inc(1037)
 '~dup             Lib "user32" Alias "GetWindowLongA" _
@@ -36107,7 +36107,7 @@ $DEFINE LMOUSE_BTN  1                                           ' Left Mouse But
 $DEFINE RMOUSE_BTN  2                                           ' Right Mouse Button
 $DEFINE MMOUSE_BTN  4                                           ' Middle Mouse Button
 
-$DEFINE WH_MOUSE    7                                           ' Hook mouse constant
+'~dup $DEFINE WH_MOUSE    7                                           ' Hook mouse constant   ' повтор, первое: WIN32API.INC(5989)
 
 DEFLNG hHook                                                    ' Var for hooking/unhooking mouse
 DEFINT gMouseBtns                                               ' My (global) mouse btns
@@ -36264,19 +36264,19 @@ END TYPE
 ' available (an unfortunate legacy when creating components at the "local" level).
 '
 ' Some of the uMsg constants
-'~dup $DEFINE TCM_SETIMAGELIST &H1303   ' повтор, первое: commctrl32.inc(1099)
-'~dup $DEFINE TCM_GETITEMCOUNT &H1304   ' повтор, первое: commctrl32.inc(1100)
-'~dup $DEFINE TCM_SETITEM &H1306   ' повтор, первое: commctrl32.inc(1102)
-'~dup $DEFINE TCM_INSERTITEM &H1307   ' повтор, первое: commctrl32.inc(1103)
-'~dup $DEFINE TCM_DELETEITEM &H1308   ' повтор, первое: commctrl32.inc(1104)
-'~dup $DEFINE TCM_DELETEALLITEMS &H1309   ' повтор, первое: commctrl32.inc(1105)
-'~dup $DEFINE TCM_GETITEMRECT &H130A   ' повтор, первое: commctrl32.inc(1106)
+'~dup $DEFINE TCM_SETIMAGELIST &H1303   ' повтор, первое: CommCtrl.inc(362)
+'~dup $DEFINE TCM_GETITEMCOUNT &H1304   ' повтор, первое: CommCtrl.inc(363)
+'~dup $DEFINE TCM_SETITEM &H1306   ' повтор, первое: CommCtrl.inc(395)
+'~dup $DEFINE TCM_INSERTITEM &H1307   ' повтор, первое: CommCtrl.inc(397)
+'~dup $DEFINE TCM_DELETEITEM &H1308   ' повтор, первое: CommCtrl.inc(400)
+'~dup $DEFINE TCM_DELETEALLITEMS &H1309   ' повтор, первое: CommCtrl.inc(401)
+'~dup $DEFINE TCM_GETITEMRECT &H130A   ' повтор, первое: CommCtrl.inc(402)
 ' Mask values
-'~dup $DEFINE TCIF_TEXT &H1   ' повтор, первое: commctrl32.inc(1092)
-'~dup $DEFINE TCIF_IMAGE &H2   ' повтор, первое: commctrl32.inc(1093)
-'~dup $DEFINE TCIF_RTLREADING &H4   ' повтор, первое: commctrl32.inc(1094)
-'~dup $DEFINE TCIF_PARAM &H8   ' повтор, первое: commctrl32.inc(1095)
-'~dup $DEFINE TCIF_STATE &H10   ' повтор, первое: commctrl32.inc(1096)
+'~dup $DEFINE TCIF_TEXT &H1   ' повтор, первое: CommCtrl.inc(365)
+'~dup $DEFINE TCIF_IMAGE &H2   ' повтор, первое: CommCtrl.inc(366)
+'~dup $DEFINE TCIF_RTLREADING &H4   ' повтор, первое: CommCtrl.inc(367)
+'~dup $DEFINE TCIF_PARAM &H8   ' повтор, первое: CommCtrl.inc(368)
+'~dup $DEFINE TCIF_STATE &H10   ' повтор, первое: CommCtrl.inc(369)
 
 TYPE TabTCITEMHEADER
 mask AS long
@@ -37807,7 +37807,7 @@ END TYPE
 $DEFINE __XPTHEME
 $IFNDEF __WIN32API
 
-'~dup Const TRANSPARENT        = 1   ' повтор, первое: WIN32API.INC(3789)
+'~dup Const TRANSPARENT        = 1   ' повтор, первое: rapidq2.inc(1208)
 '~dup Const DT_CENTER          = &H1   ' повтор, первое: WIN32API.INC(7009)
 '~dup Const GWL_EXSTYLE        = -20   ' повтор, первое: rapidq2.inc(781)
 '~dup Const GWL_STYLE          = -16   ' повтор, первое: rapidq2.inc(780)
@@ -37816,18 +37816,18 @@ $IFNDEF __WIN32API
 '~dup Const WM_NCPAINT         = &H85   ' повтор, первое: QFormSkin.inc(17)
 '~dup Const WM_PAINT           = &HF   ' повтор, первое: QFormSkin.inc(11)
 '~dup Const WS_EX_CLIENTEDGE   = &H200   ' повтор, первое: createWind.inc(16)
-'~dup Const WS_BORDER          = &H800000   ' повтор, первое: createWind.inc(19)
-'~dup Const SWP_NOSIZE         = &H1   ' повтор, первое: StayOnTop.inc(12)
-'~dup Const SWP_NOMOVE         = &H2   ' повтор, первое: StayOnTop.inc(11)
-'~dup Const SWP_NOZORDER       = &H4   ' повтор, первое: WIN32API.INC(6749)
+'~dup Const WS_BORDER          = &H800000   ' повтор, первое: rapidq2.inc(957)
+'~dup Const SWP_NOSIZE         = &H1   ' повтор, первое: rapidq2.inc(791)
+'~dup Const SWP_NOMOVE         = &H2   ' повтор, первое: rapidq2.inc(792)
+'~dup Const SWP_NOZORDER       = &H4   ' повтор, первое: rapidq2.inc(793)
 '~dup Const SWP_NOREDRAW       = &H8   ' повтор, первое: WIN32API.INC(6750)
-'~dup Const SWP_NOACTIVATE     = &H10   ' повтор, первое: WFunctions.inc(5)
+'~dup Const SWP_NOACTIVATE     = &H10   ' повтор, первое: rapidq2.inc(794)
   '
-'~dup Const SWP_SHOWWINDOW     = &H40   ' повтор, первое: WFunctions.inc(6)
+'~dup Const SWP_SHOWWINDOW     = &H40   ' повтор, первое: rapidq2.inc(795)
 '~dup Const SWP_HIDEWINDOW     = &H80   ' повтор, первое: WIN32API.INC(6754)
 '~dup Const SWP_NOCOPYBITS     = &H100   ' повтор, первое: WIN32API.INC(6755)
 '~dup Const SWP_NOOWNERZORDER  = &H200   ' повтор, первое: WIN32API.INC(6756)
-'~dup Const SWP_NOSENDCHANGING = &H400   ' повтор, первое: WINDOWS.INC(6984)
+'~dup Const SWP_NOSENDCHANGING = &H400   ' повтор, первое: rapidq2.inc(796)
 '~dup Const SWP_DRAWFRAME      = SWP_FRAMECHANGED   ' повтор, первое: WIN32API.INC(6758)
 '~dup Const SWP_NOREPOSITION   = SWP_NOOWNERZORDER   ' повтор, первое: WIN32API.INC(6759)
 
