@@ -1445,6 +1445,7 @@ type
     FRqProbeAges: TStringList; // файлы снимка: "путь=FileAge" (RapidQSnapStale)
     FObjSnapHint: string;      // обычная подсказка кнопки снимка
     FRqStaleTick: Cardinal;    // когда UpdateToolbarState проверял снимок
+    FIdleSlowTick: Cardinal;   // последняя запись о долгом простое (AppIdle)
     FRqInspMain: string;       // главный .bas файла в инспекторе
     FObjRebuilding: Boolean; // дерево перестраивается - Data узлов недействительны
     FDfmNodes: TList;
@@ -50206,10 +50207,29 @@ end;
 // Delphi. Enabled у TSpeedButton перерисовывает кнопку только при смене
 // значения, так что частые вызовы не мигают.
 procedure TForm1.AppIdle(Sender: TObject; var Done: Boolean);
+var
+  StartTick, Spent: Cardinal;
 begin
   // Первый простой: окно показано, запуск прошёл (OwnPromoteTrial)
   FStartupDone := True;
+  // Простой наступает после КАЖДОГО сообщения, в том числе после каждого
+  // движения мыши. Пока в конструкторе тянут компонент или рамку, вид
+  // кнопок не меняется, а его пересчёт задерживал следующее движение -
+  // рамка шла рывками.
+  if ((FDesigner <> nil) and FDesigner.Dragging) or
+     ((FRqDesigner <> nil) and FRqDesigner.Dragging) then
+    Exit;
+  StartTick := GetTickCount;
   UpdateToolbarState;
+  // Долгий простой - в HiLite log (не чаще раза в 2 с): он тормозит всё,
+  // что идёт сообщениями, - мышь, клавиатуру, перерисовку
+  Spent := GetTickCount - StartTick;
+  if (Spent >= MsgTimerLimit) and (GetTickCount - FIdleSlowTick >= 2000) then
+  begin
+    FIdleSlowTick := GetTickCount;
+    Dbg(Format('17165: простой (AppIdle, UpdateToolbarState) %d мс', [Spent]),
+        clNavy);
+  end;
 end;
 
 procedure TForm1.UpdateToolbarState;
