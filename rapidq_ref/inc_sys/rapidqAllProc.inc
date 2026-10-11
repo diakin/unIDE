@@ -5734,6 +5734,10 @@ END FUNCTION
 DECLARE FUNCTIONI FindMax (...) AS DOUBLE
 '~body FUNCTIONI FindMax (...) AS DOUBLE   ' сборка: тело - в конце файла
 
+'-- **************************************************************************'
+DECLARE sub ArrExtr (Dat!() as single, byref DatMin!, byref DatMax!)
+'~body sub ArrExtr (Dat!() as single, byref DatMin!, byref DatMax!)   ' сборка: тело - в конце файла
+
 '**********************************************************************
 sub ArrAbsExtrN (Dat!() as single, byref _AbsDatMax!, N as integer) 
 defint  p
@@ -14656,7 +14660,51 @@ DECLARE Function ConvertToTruePath(ByVal sPath As String) As String
 		'Error& = GetLastError
 		'ShowMessage ( GetLastError$("NT4SP6ErrList.txt", Error&) )
 
-'~body Function GetLastError$   ' сборка: тело - в конце файла
+	Function GetLastError$
+		dim bpmLookUpError$ as string
+		bpmLookUpError$ = "No error match found"
+		if mid$(bpmErrorFileName$,2,2) = ":\\" then
+			bpmErrorFileName$ = bpmErrorFileName$
+			else
+				if mid$(bpmErrorFileName$,1,1) = chr$(92) then
+					if FileExists(Left$(CurDir$,2) + "\\" + bpmErrorFileName$) then
+							bpmErrorFileName$ = ( Left$(CurDir$,2) + "\\" + bpmErrorFileName$)
+						else
+							if FileExists(CurDir$ + "\\" + bpmErrorFileName$) then
+								bpmErrorFileName$ = (CurDir$ + "\\" + bpmErrorFileName$)
+								else
+									GetLastError$ = ("GetLastError$ Error!\n" + bpmErrorFileName$ + "\n Error file not found.  See syntax in NOTA.inc.")
+							end if
+					end if
+				end if
+		end if
+		if bpmErrorCodeNumber& = 0 then
+			GetLastError$ = "ErrorCode = 0 \"No Error.\""
+			end
+		end if
+		dim bpmErrorFile as QFileStream
+		if fileExists(bpmErrorFileName$) then
+			bpmErrorFile.open(bpmErrorFileName$,0)
+			dim bpmErrorTemp$ as string
+			dim bpmErrorWaldo& as long
+			dim bpmErrorHex$ as string
+			for bpmErrorWaldo&  = 0 to bpmErrorFile.LineCount
+				bpmErrorTemp$ = bpmErrorFile.Readline
+				if Val( Mid$( bpmErrorTemp$, 1, INSTR(bpmErrorTemp$, "\t") ) ) = bpmErrorCodeNumber& then
+					bpmErrorTemp$ = Right$( bpmErrorTemp$, ( len(bpmErrorTemp$) - instr(bpmErrorTemp$, "\t") ) )
+					bpmErrorHex$ = Mid$( bpmErrorTemp$, 1, ( INSTR(bpmErrorTemp$, "\t") - 1 ) )
+					bpmErrorWaldo& = bpmErrorFile.LineCount
+					bpmErrorTemp$ = Right$( bpmErrorTemp$, ( len(bpmErrorTemp$) - instr(bpmErrorTemp$, "\t") ) )
+					bpmLookUpError$ = (bpmErrorTemp$ + "\nERRORCODE:" + str$(bpmErrorCodeNumber&) + "  HEX:" + bpmErrorHex$)
+				end if
+			next
+			Else
+				GetLastError$ = ("GetLastError$ Error!\n" + bpmErrorFileName$ + "\n Error file not found.  See syntax in NOTA.inc.")
+				end
+		end if
+		bpmErrorFile.Close
+		GetLastError$ = bpmLookUpError$
+	End Function
 
 
 'GetTempPath$()
@@ -14997,6 +15045,10 @@ dim ModeFlg as byte
 '--**************************************************'
 DECLARE Subi RQDebug(...)
 '~body Subi RQDebug(...)   ' сборка: тело - в конце файла
+
+
+'***************************************
+'~body sub ViewStep (OperPos,OperLength)   ' сборка: тело - в конце файла
 
 '***************************************
 '~body sub Trace   ' сборка: тело - в конце файла
@@ -20750,8 +20802,37 @@ End Function
 '   GCD() returns the greatest common denominator of two integers
 '   based on the Euclidean algorithm
 '-------------------------------------------------------------------------------
-DECLARE Function GCD(value1 AS DOUBLE, value2 AS DOUBLE ) AS LONG
-'~body Function GCD(value1 AS DOUBLE, value2 AS DOUBLE ) AS LONG   ' сборка: тело - в конце файла
+Function GCD(value1 AS DOUBLE, value2 AS DOUBLE ) AS LONG
+  ERROR% = 0
+  SELECT CASE value1
+   CASE IS <> INT(value1) 'Integer check
+    ERROR% = 1
+   CASE 0                 'ZERO check
+    ERROR% = 2
+  END SELECT
+  SELECT CASE value2
+   CASE IS <> INT(value2) 'Integer check
+    ERROR% = 1
+   CASE 0                 'ZERO Check
+    ERROR% = 2
+  END SELECT
+  SELECT CASE ERROR%
+   CASE 0
+    value1 = ABS(value1) : value2 = ABS(value2)    'Euclidean algorithm
+     DO
+      Res = value1 - value2 * INT(value1/value2)
+      IF Res = 0 THEN GCD = value2
+      value1 = value2
+      value2 = Res
+     LOOP UNTIL Res = 0
+   CASE 1
+     GCD = 0
+     MessageBox("Invalid Argument (no INTEGER).", "GCD - Error", 0)
+   CASE 2
+     GCD = 0
+     MessageBox("Invalid Argument (ZERO).", "GCD - Error", 0)
+  END SELECT
+End Function
 '--------------------------------------------------------------------------------
 '   INVZ() returns the reciprocal value of a complex number
 '--------------------------------------------------------------------------------
@@ -20871,31 +20952,13 @@ Const MinInt =-2147483648
 '---------------------------------------------------------------------
 ' FindMax (int1,int2..intN as integer)
 '---------------------------------------------------------------------
-FunctionI FindMax_math (...) as Double
-     Dim Largest as Double
-     Dim I as BYTE
-     Largest = -999999999999
-     For I = 1 TO ParamValCount
-       If ParamVal(I) > Largest Then
-          Largest = ParamVal(I)
-       End If
-     Next
-     FindMax_math = Largest         ' or Result = Largest
-End FunctionI
+DECLARE FunctionI FindMax_math (...) as Double
+'~body FunctionI FindMax_math (...) as Double   ' сборка: тело - в конце файла
 '---------------------------------------------------------------------
 ' FindMin (int1,int2..intN as integer)
 '---------------------------------------------------------------------
-FunctionI FindMin_math (...) as Double
-     Dim Largest as Double
-     Dim I as BYTE
-     Largest = 999999999999
-     For I = 1 TO ParamValCount
-       If ParamVal(I) < Largest Then
-          Largest = ParamVal(I)
-       End If
-     Next
-     FindMin_math = Largest         ' or Result = Largest
-End FunctionI
+DECLARE FunctionI FindMin_math (...) as Double
+'~body FunctionI FindMin_math (...) as Double   ' сборка: тело - в конце файла
 '---------------------------------------------------------------------
 ' MinValue (Array() of double)
 '---------------------------------------------------------------------
@@ -25114,21 +25177,8 @@ DefInt ptrMCALLasm = VarPtr (MCALLasmArray(0))
 '   MethodName (or offset) As Long, 
 '   Arg1 As Long, Arg2 As Long, ..., ArgN As Long
 '   example MCALL(lpDirectDraw, DD_Flip, 0)
-Functioni MCALL (...) As Long
-  DefInt N
-  Dim Arg(0 To (ParamValCount - 2)) As Long
-
-  If ParamValCount > 1 Then               'check argument count good
-        Arg(0) = ParamValCount - 2          ' Arg Number
-        If ParamValCount > 2 Then
-          For N = 3 To ParamValCount
-            Arg(N - 2) = ParamVal(N)        'load up parameters from Functioni
-          Next N
-        End If
-'    Param(1) = ObjectPtr, Param(2) = MethodName, then call the function pointer address
-    Result = CallAsmProc (ptrMCALLasm, VarPtr(Arg(0)), ParamVal(1), ParamVal(2), 0)
-   End If
-End Functioni
+DECLARE Functioni MCALL (...) As Long
+'~body Functioni MCALL (...) As Long   ' сборка: тело - в конце файла
 '
 '====================================================================================
 ' ---- RQ CODE END ----
@@ -25932,7 +25982,16 @@ dim rect2_editor as qrect
     Structure$="Articolo_Nome:10,Articolo_Codice:10,Articolo_Descrizione:30,Articolo_Categoria:10,Articolo_Immagine:15,Articolo_Larghezza:4,Articolo_Profondita:4,Articolo_Altezza:4,Articolo_VDX:10,Articolo_VDY:10,Articolo_Peso:4,Articolo_Costo:6,Articolo_UTILITA:10"
     IndexField$="Articolo_Nome"
     RetFunction$=SPACE$(160)
-'~body sub crea_pulsar_db   ' сборка: тело - в конце файла
+sub crea_pulsar_db
+
+    RQ_NewConventionalDB @RetFunction$,Structure$,IndexField$,PulsarPath$,PulsarFile$
+
+    IF LEFT$(RetFunction$,2)<>"ok" THEN
+        Msg$="OPERATION IS NOT COMPLETED: "+LTRIM$(RTRIM$(RetFunction$))
+        MESSAGEBOX(Msg$, "Pъlsar 3.0 in RapidQ", mbOK)
+    ELSE
+    END IF
+end sub
 
 '------inizializzazione database temporaneo-----------
   dim path as string
@@ -25945,9 +26004,120 @@ IF FileExists(path) = 0 Then
 end if
 
 '----------------------inserisce oggetto da librerie a designer-preventivi-------------
-'~body sub inserisci_oggetto_in_pulsar_db   ' сборка: тело - в конце файла
+sub inserisci_oggetto_in_pulsar_db
 
-'~body sub visualizza_tutti_da_pulsar_db   ' сборка: тело - в конце файла
+ShowMessage "selezionato item " + str$(Edit_nome.text)
+
+    DatabaseRecord.Articolo_Nome=Edit_nome.text
+    DatabaseRecord.Articolo_Codice=Edit_codice.text
+    DatabaseRecord.Articolo_Descrizione=Edit_descrizione.text
+    DatabaseRecord.Articolo_Categoria=Edit_categoria.text
+    DatabaseRecord.Articolo_Immagine=image1.bmp
+    DatabaseRecord.Articolo_Larghezza=Edit_larghezza.text
+    DatabaseRecord.Articolo_Profondita=Edit_profondita.text
+    DatabaseRecord.Articolo_Altezza=Edit_altezza.text
+    DatabaseRecord.Articolo_VDX=" "
+    DatabaseRecord.Articolo_VDY=" "
+    DatabaseRecord.Articolo_Peso=Edit_peso.text
+    DatabaseRecord.Articolo_Costo=Edit_prezzo.text
+    DatabaseRecord.Articolo_UTILITA=" "
+
+
+    	RecordToSave$=DatabaseRecord.Articolo_Nome
+	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Codice
+	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Descrizione
+	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Categoria
+	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Immagine
+	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Larghezza
+	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Profondita
+	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Altezza
+	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_VDX
+	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_VDY
+	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Peso
+	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Costo
+	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_UTILITA
+
+
+    RetFunction$=SPACE$(160)
+
+    RQ_SaveConvDB @RetFunction$,PulsarPath$,PulsarFile$,RecordToSave$
+
+    IF LEFT$(RetFunction$,5)="ERROR" THEN
+
+        'If record is saved, the packed function return "ok".
+        'If error occur, function return error code in string
+        'format: "ERROR CODE:xxx...." (xxx is error code -see pъlsar manual-)
+        Msg$="OPERATION IS NOT COMPLETED: "+LTRIM$(RTRIM$(RetFunction$))
+        MESSAGEBOX(Msg$, "Pъlsar 3.0 in RapidQ", mbOK)
+
+    ELSE
+
+        'record is saved
+        MESSAGEBOX("OPERACION OK.", "Pъlsar 3.0 in RapidQ", mbOK)
+
+    END IF
+
+end sub
+
+sub visualizza_tutti_da_pulsar_db
+
+    RetFunction$=SPACE$(160)
+
+    RQ_GetQuantityOfRecords @RetFunction$,PulsarPath$,PulsarFile$
+
+    IF LEFT$(RetFunction$,5)="ERROR" THEN
+
+
+         Msg$="OPERATION IS NOT COMPLETED: "+LTRIM$(RTRIM$(RetFunction$))
+         MESSAGEBOX(Msg$, "Pъlsar 3.0 in RapidQ", mbOK)
+         END
+
+    END IF
+
+    RecordsInDB$=LTRIM$(RTRIM$(RetFunction$)) 
+
+    FOR Reading%=1 TO VAL(RecordsInDB$)
+
+       RQ_GetRecordConvDB @RetFunction$,PulsarPath$,PulsarFile$,LTRIM$(RTRIM$(STR$(Reading%)))
+
+       IF LCASE$(LEFT$(RetFunction$,5))="error" THEN
+
+            Msg$="Error reading record number:"+ LTRIM$ ( RTRIM$ ( STR$ ( Reading% ) ) )
+            MESSAGEBOX(Msg$, "Pъlsar 3.0 in RapidQ", mbOK)
+            END
+
+        ELSE
+
+
+    DatabaseRecord.Articolo_Nome=LEFT$(RetFunction$,10)
+    DatabaseRecord.Articolo_Codice=MID$(RetFunction$,11,10)
+    DatabaseRecord.Articolo_Descrizione=MID$(RetFunction$,21,30)
+    DatabaseRecord.Articolo_Categoria=MID$(RetFunction$,51,10)
+    DatabaseRecord.Articolo_Immagine=MID$(RetFunction$,61,15)
+    DatabaseRecord.Articolo_Larghezza=MID$(RetFunction$,76,4)
+    DatabaseRecord.Articolo_Profondita=MID$(RetFunction$,80,4)
+    DatabaseRecord.Articolo_Altezza=MID$(RetFunction$,84,4)
+    DatabaseRecord.Articolo_VDX=MID$(RetFunction$,88,10)
+    DatabaseRecord.Articolo_VDY=MID$(RetFunction$,98,10)
+    DatabaseRecord.Articolo_Peso=MID$(RetFunction$,108,4)
+    DatabaseRecord.Articolo_Costo=MID$(RetFunction$,112,6)
+    DatabaseRecord.Articolo_UTILITA=MID$(RetFunction$,118,10)
+
+
+            'show the record
+            dim Msg1$ as string
+            Msg1$="APELLIDO: "+DatabaseRecord.Articolo_Nome+CHR$(10)+CHR$(13)
+            Msg1$=Msg$+"NOMBRES: "+DatabaseRecord.Articolo_Descrizione+CHR$(10)+CHR$(13)
+            Msg1$=Msg$+"E-MAIL: "+DatabaseRecord.Articolo_Immagine+CHR$(10)+CHR$(13)
+            Msg1$=Msg$+"WEB: "+DatabaseRecord.Articolo_Categoria
+
+            MESSAGEBOX(Msg1$, "Pъlsar 3.0 in RapidQ", mbOK)
+
+         END IF
+
+    NEXT Reading%
+
+end sub
 '============================================================================
 '[build_inc] QFiles.inc
 '============================================================================
@@ -27348,6 +27518,51 @@ dim varBuf as qMemoryStream
 '-----------------
 DECLARE subi putMe(...)
 '~body subi putMe(...)   ' сборка: тело - в конце файла
+
+'----------
+function getMe(clave as string) as variant
+dim thisVar as varInfo
+count% = varBuf.size / sizeOf(thisVar)
+
+if count% = 0  then
+  result = ""  
+  exit function
+end if  
+
+r$ = ""
+p% = 0
+j% = 1
+
+size%  = varBuf.size
+varBuf.position = 0       'Start
+while varBuf.position < size%
+  varBuf.readUDT(thisVar)
+  
+  if clave = RTrim$(thisVar.name) then
+    r$ = thisVar.strVal
+    p% = 10     'Any
+    exit while
+  end if
+  
+  inc j%
+    if j% > count%  then
+    exit while
+  end if    
+wend
+
+if p% > 0  then
+  select case thisVar.primitive
+  case 0
+    result = r$
+  case 1   
+    result = floatVal(r$)
+  case else
+    'Other possible primitives    
+  end select
+else
+   result = ""  'Guess it..
+end if	
+end function
 
 '-------
 DECLARE sub closeit()
@@ -28927,6 +29142,13 @@ SFTA_sysdir$ = Left$(strSave, GetWindowsDirectory(strSave, Len(strSave)))
 '~body Functioni ChangeFileDateAndTime ( ... ) As Long   ' сборка: тело - в конце файла
 '
 ' ----------------------------------------------------------------------------
+'
+        ' CHANGE FILE ATTRIBUTES
+        ' ----------------------
+DECLARE Function ChangeFileAttributes (sPathFileName As string, attributesAsString As String) As Long
+'~body Function ChangeFileAttributes (sPathFileName As string, attributesAsSt   ' сборка: тело - в конце файла
+'
+' ----------------------------------------------------------------------------
 
 
 'ChangeFileAttributes ("c:/tmp/" , "HA" ) ' change dirECTORY attrib to hidden, archiev
@@ -29703,7 +29925,7 @@ FUNCTIONI USING$(...)
 
    
    'a lot of vars!
-   DIM FORMAT$ as string,OUTPUT$ as string ,a$ as string
+   DIM USING_FORMAT$ as string,OUTPUT$ as string ,a$ as string
    dim ipart$ as string, fpart$ as string,epart$ as string,spart$ as string   
    DIM valcount% as integer,strcount% as integer, innum% as integer,THOU% as integer,expo% as integer
    dim DECPOS% as integer,SIGN% as integer,PAD% as integer,currency% as integer
@@ -29718,14 +29940,14 @@ FUNCTIONI USING$(...)
    valcount%=1:strcount%=1
    'get format string
    if paramstrcount then
-      format$=paramstr$(1)
+      USING_format$=paramstr$(1)
       inc strcount%
       output$=""
       ptr%=1
       gosub reset
      'parsing format string loop
-      while ptr%=<len(format$)
-         a$=mid$(format$,ptr%,1)
+      while ptr%=<len(USING_format$)
+         a$=mid$(USING_format$,ptr%,1)
          xx%=instr(symbols$,a$)
          if  xx% and (skip%=0) then
             select case xx%
@@ -29880,17 +30102,6 @@ reset:
    skip%=0
 return
 end functioni
-
-$escapechars on
-print using$("! can tell you This is a & Test&","Idiot","silly",", Is'nt?")
-PRINT USING$("This -\a is a fake format-!",111,"hello")
-dim frm$ as string
-frm$= "+##  \\    \\ , FOB,   cost  $$,####.##  each. +#,###.#^^^^ "  
-print using$(frm$,2,"apples",0.2,-1) 
-print using$(frm$,34,"cars",1010,345678907)
-print using$(frm$,0,"cars",0,0)
-print using$(frm$,-3,"Computers",-345.6,0.000023)
-?"Press any key..":do:loop until len(inkey$)  
 $TYPECHECK OFF   ' сборка: вернуть после using.inc
 $ESCAPECHARS OFF   ' сборка: вернуть после using.inc
 '============================================================================
@@ -63721,8 +63932,6 @@ NEXT
 
 FindMax = Largest         ' or Result = Largest
 END FUNCTIONI
-
-'-- **************************************************************************'
 sub ArrExtr (Dat!() as single, byref DatMin!, byref DatMax!) '' as single 
 'find  maximum and minimum
 
@@ -64540,51 +64749,6 @@ $OPTION VBDLL OFF
 		GetComputerName( VarPtr(bpmMachineName$), VarPtr(bpmMachineNameLength&) )
 		GetComputerName$ = Left$(bpmMachineName$, bpmMachineNameLength&)
 	end function
-	Function GetLastError$
-		dim bpmLookUpError$ as string
-		bpmLookUpError$ = "No error match found"
-		if mid$(bpmErrorFileName$,2,2) = ":\\" then
-			bpmErrorFileName$ = bpmErrorFileName$
-			else
-				if mid$(bpmErrorFileName$,1,1) = chr$(92) then
-					if FileExists(Left$(CurDir$,2) + "\\" + bpmErrorFileName$) then
-							bpmErrorFileName$ = ( Left$(CurDir$,2) + "\\" + bpmErrorFileName$)
-						else
-							if FileExists(CurDir$ + "\\" + bpmErrorFileName$) then
-								bpmErrorFileName$ = (CurDir$ + "\\" + bpmErrorFileName$)
-								else
-									GetLastError$ = ("GetLastError$ Error!\n" + bpmErrorFileName$ + "\n Error file not found.  See syntax in NOTA.inc.")
-							end if
-					end if
-				end if
-		end if
-		if bpmErrorCodeNumber& = 0 then
-			GetLastError$ = "ErrorCode = 0 \"No Error.\""
-			end
-		end if
-		dim bpmErrorFile as QFileStream
-		if fileExists(bpmErrorFileName$) then
-			bpmErrorFile.open(bpmErrorFileName$,0)
-			dim bpmErrorTemp$ as string
-			dim bpmErrorWaldo& as long
-			dim bpmErrorHex$ as string
-			for bpmErrorWaldo&  = 0 to bpmErrorFile.LineCount
-				bpmErrorTemp$ = bpmErrorFile.Readline
-				if Val( Mid$( bpmErrorTemp$, 1, INSTR(bpmErrorTemp$, "\t") ) ) = bpmErrorCodeNumber& then
-					bpmErrorTemp$ = Right$( bpmErrorTemp$, ( len(bpmErrorTemp$) - instr(bpmErrorTemp$, "\t") ) )
-					bpmErrorHex$ = Mid$( bpmErrorTemp$, 1, ( INSTR(bpmErrorTemp$, "\t") - 1 ) )
-					bpmErrorWaldo& = bpmErrorFile.LineCount
-					bpmErrorTemp$ = Right$( bpmErrorTemp$, ( len(bpmErrorTemp$) - instr(bpmErrorTemp$, "\t") ) )
-					bpmLookUpError$ = (bpmErrorTemp$ + "\nERRORCODE:" + str$(bpmErrorCodeNumber&) + "  HEX:" + bpmErrorHex$)
-				end if
-			next
-			Else
-				GetLastError$ = ("GetLastError$ Error!\n" + bpmErrorFileName$ + "\n Error file not found.  See syntax in NOTA.inc.")
-				end
-		end if
-		bpmErrorFile.Close
-		GetLastError$ = bpmLookUpError$
-	End Function
 	Function GetTempPath$
 		dim bpmLengthOfTemp& as long
 		dim bpmTempPath$ as string
@@ -64847,9 +65011,6 @@ call ViewStep (Op,OL)
 if ModeFlg=0 then  ~DebugForm.showmodal else  ~DebugForm.show
 
 End Subi '=======================================================================
-
-
-'***************************************
 sub ViewStep (OperPos,OperLength)
 ~SrcDisplay.SelStart=OperPos
 ~SrcDisplay.SelLength=OperLength
@@ -65282,37 +65443,6 @@ Function EXPZ(Z()AS DOUBLE ) AS DOUBLE
     Z(1) = EXP(re) * SIN (im)
     EXPZ = Z()
 End Function
-Function GCD(value1 AS DOUBLE, value2 AS DOUBLE ) AS LONG
-  ERROR% = 0
-  SELECT CASE value1
-   CASE IS <> INT(value1) 'Integer check
-    ERROR% = 1
-   CASE 0                 'ZERO check
-    ERROR% = 2
-  END SELECT
-  SELECT CASE value2
-   CASE IS <> INT(value2) 'Integer check
-    ERROR% = 1
-   CASE 0                 'ZERO Check
-    ERROR% = 2
-  END SELECT
-  SELECT CASE ERROR%
-   CASE 0
-    value1 = ABS(value1) : value2 = ABS(value2)    'Euclidean algorithm
-     DO
-      Res = value1 - value2 * INT(value1/value2)
-      IF Res = 0 THEN GCD = value2
-      value1 = value2
-      value2 = Res
-     LOOP UNTIL Res = 0
-   CASE 1
-     GCD = 0
-     MessageBox("Invalid Argument (no INTEGER).", "GCD - Error", 0)
-   CASE 2
-     GCD = 0
-     MessageBox("Invalid Argument (ZERO).", "GCD - Error", 0)
-  END SELECT
-End Function
 Function INVZ(Z()AS DOUBLE ) AS DOUBLE
     re = Z(0): im = Z(1)
     Z(0) =  re / ( re * re + im * im)
@@ -65425,6 +65555,28 @@ Function TANZ(Z()AS DOUBLE ) AS DOUBLE
     Z(1) =  SINH(2 * im) / (COS(2 * re) + COSH(2 * im))
     TANZ = Z()
 End Function
+FunctionI FindMax_math (...) as Double
+     Dim Largest as Double
+     Dim I as BYTE
+     Largest = -999999999999
+     For I = 1 TO ParamValCount
+       If ParamVal(I) > Largest Then
+          Largest = ParamVal(I)
+       End If
+     Next
+     FindMax_math = Largest         ' or Result = Largest
+End FunctionI
+FunctionI FindMin_math (...) as Double
+     Dim Largest as Double
+     Dim I as BYTE
+     Largest = 999999999999
+     For I = 1 TO ParamValCount
+       If ParamVal(I) < Largest Then
+          Largest = ParamVal(I)
+       End If
+     Next
+     FindMin_math = Largest         ' or Result = Largest
+End FunctionI
 Function Power(Base as Double, Exponent as Double) as Double
 If Int(Exponent) <> Exponent then
    MessageBox("Error : Invalid floating point operation.","Power - Invalid Exponent",0)
@@ -65672,134 +65824,21 @@ Function GuidStringFromGUID(rclsid As GUID) As String
     rc = StringFromGUID2(rclsid, VARPTR(stGuid), (Len(stGuid) - 1))
     GuidStringFromGUID = Left$(stGuid, rc - 1)
 End Function
-$TYPECHECK OFF
-$ESCAPECHARS OFF
-$OPTION WEAKTYPE OFF
-$OPTION VBDLL OFF
-'[build_inc] pulsar.inc (тела)
-sub crea_pulsar_db
+Functioni MCALL (...) As Long
+  DefInt N
+  Dim Arg(0 To (ParamValCount - 2)) As Long
 
-    RQ_NewConventionalDB @RetFunction$,Structure$,IndexField$,PulsarPath$,PulsarFile$
-
-    IF LEFT$(RetFunction$,2)<>"ok" THEN
-        Msg$="OPERATION IS NOT COMPLETED: "+LTRIM$(RTRIM$(RetFunction$))
-        MESSAGEBOX(Msg$, "Pъlsar 3.0 in RapidQ", mbOK)
-    ELSE
-    END IF
-end sub
-sub inserisci_oggetto_in_pulsar_db
-
-ShowMessage "selezionato item " + str$(Edit_nome.text)
-
-    DatabaseRecord.Articolo_Nome=Edit_nome.text
-    DatabaseRecord.Articolo_Codice=Edit_codice.text
-    DatabaseRecord.Articolo_Descrizione=Edit_descrizione.text
-    DatabaseRecord.Articolo_Categoria=Edit_categoria.text
-    DatabaseRecord.Articolo_Immagine=image1.bmp
-    DatabaseRecord.Articolo_Larghezza=Edit_larghezza.text
-    DatabaseRecord.Articolo_Profondita=Edit_profondita.text
-    DatabaseRecord.Articolo_Altezza=Edit_altezza.text
-    DatabaseRecord.Articolo_VDX=" "
-    DatabaseRecord.Articolo_VDY=" "
-    DatabaseRecord.Articolo_Peso=Edit_peso.text
-    DatabaseRecord.Articolo_Costo=Edit_prezzo.text
-    DatabaseRecord.Articolo_UTILITA=" "
-
-
-    	RecordToSave$=DatabaseRecord.Articolo_Nome
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Codice
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Descrizione
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Categoria
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Immagine
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Larghezza
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Profondita
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Altezza
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_VDX
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_VDY
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Peso
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Costo
-	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_UTILITA
-
-
-    RetFunction$=SPACE$(160)
-
-    RQ_SaveConvDB @RetFunction$,PulsarPath$,PulsarFile$,RecordToSave$
-
-    IF LEFT$(RetFunction$,5)="ERROR" THEN
-
-        'If record is saved, the packed function return "ok".
-        'If error occur, function return error code in string
-        'format: "ERROR CODE:xxx...." (xxx is error code -see pъlsar manual-)
-        Msg$="OPERATION IS NOT COMPLETED: "+LTRIM$(RTRIM$(RetFunction$))
-        MESSAGEBOX(Msg$, "Pъlsar 3.0 in RapidQ", mbOK)
-
-    ELSE
-
-        'record is saved
-        MESSAGEBOX("OPERACION OK.", "Pъlsar 3.0 in RapidQ", mbOK)
-
-    END IF
-
-end sub
-sub visualizza_tutti_da_pulsar_db
-
-    RetFunction$=SPACE$(160)
-
-    RQ_GetQuantityOfRecords @RetFunction$,PulsarPath$,PulsarFile$
-
-    IF LEFT$(RetFunction$,5)="ERROR" THEN
-
-
-         Msg$="OPERATION IS NOT COMPLETED: "+LTRIM$(RTRIM$(RetFunction$))
-         MESSAGEBOX(Msg$, "Pъlsar 3.0 in RapidQ", mbOK)
-         END
-
-    END IF
-
-    RecordsInDB$=LTRIM$(RTRIM$(RetFunction$)) 
-
-    FOR Reading%=1 TO VAL(RecordsInDB$)
-
-       RQ_GetRecordConvDB @RetFunction$,PulsarPath$,PulsarFile$,LTRIM$(RTRIM$(STR$(Reading%)))
-
-       IF LCASE$(LEFT$(RetFunction$,5))="error" THEN
-
-            Msg$="Error reading record number:"+ LTRIM$ ( RTRIM$ ( STR$ ( Reading% ) ) )
-            MESSAGEBOX(Msg$, "Pъlsar 3.0 in RapidQ", mbOK)
-            END
-
-        ELSE
-
-
-    DatabaseRecord.Articolo_Nome=LEFT$(RetFunction$,10)
-    DatabaseRecord.Articolo_Codice=MID$(RetFunction$,11,10)
-    DatabaseRecord.Articolo_Descrizione=MID$(RetFunction$,21,30)
-    DatabaseRecord.Articolo_Categoria=MID$(RetFunction$,51,10)
-    DatabaseRecord.Articolo_Immagine=MID$(RetFunction$,61,15)
-    DatabaseRecord.Articolo_Larghezza=MID$(RetFunction$,76,4)
-    DatabaseRecord.Articolo_Profondita=MID$(RetFunction$,80,4)
-    DatabaseRecord.Articolo_Altezza=MID$(RetFunction$,84,4)
-    DatabaseRecord.Articolo_VDX=MID$(RetFunction$,88,10)
-    DatabaseRecord.Articolo_VDY=MID$(RetFunction$,98,10)
-    DatabaseRecord.Articolo_Peso=MID$(RetFunction$,108,4)
-    DatabaseRecord.Articolo_Costo=MID$(RetFunction$,112,6)
-    DatabaseRecord.Articolo_UTILITA=MID$(RetFunction$,118,10)
-
-
-            'show the record
-            dim Msg1$ as string
-            Msg1$="APELLIDO: "+DatabaseRecord.Articolo_Nome+CHR$(10)+CHR$(13)
-            Msg1$=Msg$+"NOMBRES: "+DatabaseRecord.Articolo_Descrizione+CHR$(10)+CHR$(13)
-            Msg1$=Msg$+"E-MAIL: "+DatabaseRecord.Articolo_Immagine+CHR$(10)+CHR$(13)
-            Msg1$=Msg$+"WEB: "+DatabaseRecord.Articolo_Categoria
-
-            MESSAGEBOX(Msg1$, "Pъlsar 3.0 in RapidQ", mbOK)
-
-         END IF
-
-    NEXT Reading%
-
-end sub
+  If ParamValCount > 1 Then               'check argument count good
+        Arg(0) = ParamValCount - 2          ' Arg Number
+        If ParamValCount > 2 Then
+          For N = 3 To ParamValCount
+            Arg(N - 2) = ParamVal(N)        'load up parameters from Functioni
+          Next N
+        End If
+'    Param(1) = ObjectPtr, Param(2) = MethodName, then call the function pointer address
+    Result = CallAsmProc (ptrMCALLasm, VarPtr(Arg(0)), ParamVal(1), ParamVal(2), 0)
+   End If
+End Functioni
 $TYPECHECK OFF
 $ESCAPECHARS OFF
 $OPTION WEAKTYPE OFF
@@ -67081,51 +67120,6 @@ end if
 
 varBuf.writeUDT(thisVar)
 end subi
-
-'----------
-function getMe(clave as string) as variant
-dim thisVar as varInfo
-count% = varBuf.size / sizeOf(thisVar)
-
-if count% = 0  then
-  result = ""  
-  exit function
-end if  
-
-r$ = ""
-p% = 0
-j% = 1
-
-size%  = varBuf.size
-varBuf.position = 0       'Start
-while varBuf.position < size%
-  varBuf.readUDT(thisVar)
-  
-  if clave = RTrim$(thisVar.name) then
-    r$ = thisVar.strVal
-    p% = 10     'Any
-    exit while
-  end if
-  
-  inc j%
-    if j% > count%  then
-    exit while
-  end if    
-wend
-
-if p% > 0  then
-  select case thisVar.primitive
-  case 0
-    result = r$
-  case 1   
-    result = floatVal(r$)
-  case else
-    'Other possible primitives    
-  end select
-else
-   result = ""  'Guess it..
-end if	
-end function
 sub closeit()
   varBuf.close
 end sub  
@@ -67393,11 +67387,6 @@ cftError:
             'ShowMessage ("While Changing File Date and/or Time : " & QDIR_RQCR & "    " & cftErr)
 ''            print "While Changing File Date and/or Time : " & pathFileName & "    " & cftErr
         End Functioni
-'
-' ----------------------------------------------------------------------------
-'
-        ' CHANGE FILE ATTRIBUTES
-        ' ----------------------
         Function ChangeFileAttributes (sPathFileName As string, attributesAsString As String) As Long
             DefInt iAttributes
             DefStr pathFileName

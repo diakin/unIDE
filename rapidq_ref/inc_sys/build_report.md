@@ -13,6 +13,7 @@
 - QDrawMenu.inc: строки 1-228 (дальше пример программы)
 - QSavePlus.inc: строки 1-216 (дальше пример программы)
 - RichEditApi.inc: строки 1-226 (дальше структуры, недопереведённые с ассемблера: "AS AS COLORREF", "CHARRANGE <>")
+- using.inc: строки 1-232 (дальше пример программы)
 
 ## Не вошли
 
@@ -143,7 +144,7 @@
 - RichEditApi.inc: 3 строк-комментариев "; ..." - с '
 - CMD5.inc: F, G, H, FF, GG, HH, II -> MD5_...
 - SetFileTimeAttrib.inc: sysdir -> SFTA_...
-- using.inc: log10 -> USING_...
+- using.inc: log10, format -> USING_...
 
 ## $DEFINE имени типом - только для своего файла
 

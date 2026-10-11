@@ -121,7 +121,7 @@ def split_units(lines):
             continue
         m = re.match(r'(sub|function|subi|functioni)\s+(\w+(?:\.\w+)?[\$%&!#]?)', code, re.I)
         if m:
-            block(r'end\s+(sub|function)\b')
+            block(r'end\s+(sub|function|subi|functioni)\b')
             units.append(Unit(first, idx, 'P', [m.group(2).upper()], norm(first, idx)))
             idx += 1
             continue
@@ -178,7 +178,8 @@ def split_units(lines):
 # файла их никто не вызывает (проверено поиском по incOld).
 RENAMES = {'cmd5.inc': ('MD5_', ['F', 'G', 'H', 'FF', 'GG', 'HH', 'II']),
            # const log10 = 2.302585 (ln 10) - имя FUNCTION LOG10 из Math.inc
-           'using.inc': ('USING_', ['log10']),
+           # и DIM FORMAT$ - у нынешнего RapidQ это встроенная FORMAT$
+           'using.inc': ('USING_', ['log10', 'format']),
            # Dim sysdir$ - имя FUNCTION SysDir из Files.inc
            'setfiletimeattrib.inc': ('SFTA_', ['sysdir'])}
 
@@ -327,7 +328,7 @@ def decls_first(out):
         if re.match(r'(?:(?:private|public)\s+)?(sub|function|subi|functioni)\s', low):
             in_body = True
             continue
-        if re.match(r'end\s+(sub|function)\b', low):
+        if re.match(r'end\s+(sub|function|subi|functioni)\b', low):
             in_body = False
             continue
         if in_body:
@@ -409,13 +410,13 @@ def decls_first(out):
         last = idx
         closed = False
         while last + 1 < count:
-            if re.match(r'end\s+(sub|function)\b', code_part(out[last]), re.I):
+            if re.match(r'end\s+(sub|function|subi|functioni)\b', code_part(out[last]), re.I):
                 closed = True
                 break
             if out[last + 1].startswith("'[build_inc] "):
                 break
             last += 1
-        if not closed and re.match(r'end\s+(sub|function)\b', code_part(out[last]), re.I):
+        if not closed and re.match(r'end\s+(sub|function|subi|functioni)\b', code_part(out[last]), re.I):
             closed = True
         if not closed:
             # конца нет в своём файле (ole.inc, using.inc: тело не закрыто
