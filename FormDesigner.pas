@@ -191,6 +191,24 @@ type
     FBandFrom: TPoint;          // точка нажатия, экран
     FBandRect: TRect;           // рамка сейчас, экран
     FBandParent: TWinControl;
+    // Журнал перетаскивания (HiLite log): что происходит, пока тянут -
+    // движения мыши, рамки, перерисовки окон формы, смены мест, маркеры.
+    // Включается на время одного переноса или рамки (TraceStart ...
+    // TraceEnd); подробных строк - не больше TraceMaxLines, в конце - итог.
+    FTrace: Boolean;
+    FTraceWhat: string;          // что тянут - в заголовок журнала
+    FTraceHeader: Boolean;       // заголовок уже в журнале
+    FTraceStart: Cardinal;
+    FTraceLines: Integer;
+    FTraceMoves: Integer;
+    FTraceFrames: Integer;
+    FTracePaintRoot: Integer;
+    FTracePaintKids: Integer;
+    FTraceErase: Integer;
+    FTracePos: Integer;
+    FTraceFlush: Integer;
+    FTraceMarks: Integer;
+    FTraceCarets: Integer;
     FOnSelect: TDsgSelectEvent;
     FOnChange: TDsgChangeEvent;
     FOnKey: TDsgKeyEvent;
@@ -306,6 +324,10 @@ type
     procedure ClearDragFrames;
     function  GetDragging: Boolean;
     procedure BandSelect;
+    procedure TraceStart(const AWhat: string);
+    procedure TraceLine(const AText: string);
+    procedure TraceEnd;
+    procedure TraceMsg(ACtl: TWinControl; const AMsg: TMessage);
     function  PaintGrid(DC: HDC): Boolean;
     // от перехватчиков сообщений
     procedure MouseDown(ATarget: TComponent; const AScreen: TPoint);
@@ -1809,6 +1831,8 @@ var
   OldPage: Integer;
 begin
   IsRoot := FCtl = FDesigner.Form;
+  if FDesigner.FTrace then
+    FDesigner.TraceMsg(FCtl, Msg);
 
   case Msg.Msg of
     // Правый щелчок: выделить компонент под курсором и показать меню
@@ -3243,6 +3267,11 @@ var
   OldR: array[1..8] of TRect;
   WasVisible: array[1..8] of Boolean;
 begin
+  if FTrace then
+  begin
+    Inc(FTraceCarets);
+    TraceLine('ShowCarets');
+  end;
   C := SelControl;
   // Группа: вместо маркеров - уголки у каждого компонента
   if GroupCount > 1 then
@@ -3328,6 +3357,11 @@ end;
 // откуда ушёл компонент или маркер, стояло стёртым до отпускания кнопки.
 procedure TFormDesigner.FlushPaint;
 begin
+  if FTrace then
+  begin
+    Inc(FTraceFlush);
+    TraceLine('FlushPaint (RedrawWindow UPDATENOW)');
+  end;
   if (FForm <> nil) and FForm.HandleAllocated then
     RedrawWindow(FForm.Handle, nil, 0, RDW_UPDATENOW or RDW_ALLCHILDREN);
 end;
@@ -3337,6 +3371,11 @@ var
   I: Integer;
   R: TRect;
 begin
+  if FTrace then
+  begin
+    Inc(FTraceCarets);
+    TraceLine('HideCarets');
+  end;
   for I := 1 to 8 do
     if (FCarets[I] <> nil) and FCarets[I].Visible then
     begin
@@ -3354,6 +3393,7 @@ end;
 procedure TFormDesigner.ContextMenu(AComp: TComponent; const AScreen: TPoint);
 begin
   FDragging := False;
+  FTrace := False;
   // Правый щелчок по компоненту выделенной группы группу не сбрасывает -
   // как в Delphi: Cut, Copy, Delete и выравнивание из меню - для всей
   // группы. Щелчок мимо группы выделяет компонент под мышью.
@@ -3366,6 +3406,7 @@ end;
 procedure TFormDesigner.DblClick;
 begin
   FDragging := False;
+  FTrace := False;
   ReleaseCapture;
   // Компонент из кода: его обработчики назначаются в коде - не трогаем
   if IsRuntime(FSel) then
@@ -4407,6 +4448,11 @@ var
   WasVisible: array of Boolean;
   Shown: Boolean;
 begin
+  if FTrace then
+  begin
+    Inc(FTraceMarks);
+    TraceLine('ShowGroupMarks');
+  end;
   if (FForm = nil) or not FForm.HandleAllocated then
     Exit;
   S := GroupMarkSize;
@@ -4676,6 +4722,16 @@ begin
   CommitGroup;
 end;
 
+// Журнал перетаскивания: подробных строк за один перенос
+const
+  TraceMaxLines = 400;
+
+// Прямоугольник строкой - для журнала
+function DsgRectText(const R: TRect): string;
+begin
+  Result := Format('(%d,%d)-(%d,%d)', [R.Left, R.Top, R.Right, R.Bottom]);
+end;
+
 // Рамки перетаскивания: XOR на экране в пределах клиентской части формы.
 // Второй вызов с теми же рамками стирает их.
 procedure TFormDesigner.ToggleDragFrames;
@@ -4725,6 +4781,15 @@ begin
       end;
   if Same then
     Exit;
+  if FTrace then
+  begin
+    Inc(FTraceFrames);
+    if Length(ANew) > 0 then
+      TraceLine(Format('рамки: %d, первая %s',
+                       [Length(ANew), DsgRectText(ANew[0])]))
+    else
+      TraceLine('рамки: стереть');
+  end;
   if FFramesShown then
     ToggleDragFrames;
   SetLength(FFrames, Length(ANew));
@@ -4740,6 +4805,101 @@ begin
   if FFramesShown then
     ToggleDragFrames;
   SetLength(FFrames, 0);
+end;
+
+procedure TFormDesigner.TraceStart(const AWhat: string);
+begin
+  FTrace := True;
+  FTraceStart := GetTickCount;
+  FTraceLines := 0;
+  FTraceMoves := 0;
+  FTraceFrames := 0;
+  FTracePaintRoot := 0;
+  FTracePaintKids := 0;
+  FTraceErase := 0;
+  FTracePos := 0;
+  FTraceFlush := 0;
+  FTraceMarks := 0;
+  FTraceCarets := 0;
+  // Заголовок - с первой строкой: простой щелчок без движения журнал не
+  // засоряет
+  FTraceWhat := AWhat;
+  FTraceHeader := False;
+end;
+
+procedure TFormDesigner.TraceLine(const AText: string);
+begin
+  if not FTrace then
+    Exit;
+  if not FTraceHeader then
+  begin
+    FTraceHeader := True;
+    DsgLog('3800: перенос - начало: ' + FTraceWhat, clNavy);
+  end;
+  Inc(FTraceLines);
+  if FTraceLines > TraceMaxLines then
+    Exit;
+  if FTraceLines = TraceMaxLines then
+  begin
+    DsgLog('3801: перенос: дальше подробные строки не пишутся, итог - в ' +
+           'конце', clNavy);
+    Exit;
+  end;
+  DsgLog(Format('3802: %5d мс  %s', [GetTickCount - FTraceStart, AText]),
+         clGray);
+end;
+
+procedure TFormDesigner.TraceEnd;
+begin
+  if not FTrace then
+    Exit;
+  FTrace := False;
+  if FTraceMoves = 0 then
+    Exit;   // щелчок без движения
+  DsgLog(Format('3803: перенос - итог за %d мс: движений мыши %d, ' +
+                'перерисовок рамки %d, WM_PAINT формы %d, WM_PAINT ' +
+                'компонентов %d, WM_ERASEBKGND %d, смен места окон %d, ' +
+                'FlushPaint %d, ShowGroupMarks %d, маркеров (Show/Hide) %d',
+                [GetTickCount - FTraceStart, FTraceMoves, FTraceFrames,
+                 FTracePaintRoot, FTracePaintKids, FTraceErase, FTracePos,
+                 FTraceFlush, FTraceMarks, FTraceCarets]), clNavy);
+end;
+
+// Сообщения окон формы во время переноса: кто перерисовывается и что
+// сдвигается
+procedure TFormDesigner.TraceMsg(ACtl: TWinControl; const AMsg: TMessage);
+var
+  Upd: TRect;
+  WinPos: PWindowPos;
+begin
+  case AMsg.Msg of
+    WM_PAINT:
+      begin
+        if ACtl = FForm then
+          Inc(FTracePaintRoot)
+        else
+          Inc(FTracePaintKids);
+        if not GetUpdateRect(ACtl.Handle, Upd, False) then
+          Upd := Rect(0, 0, 0, 0);
+        TraceLine('WM_PAINT ' + ACtl.Name + ' ' + DsgRectText(Upd));
+      end;
+    WM_ERASEBKGND:
+      begin
+        Inc(FTraceErase);
+        TraceLine('WM_ERASEBKGND ' + ACtl.Name);
+      end;
+    WM_WINDOWPOSCHANGED:
+      begin
+        WinPos := PWindowPos(AMsg.LParam);
+        if (WinPos <> nil) and ((WinPos^.flags and SWP_NOMOVE) = 0) then
+        begin
+          Inc(FTracePos);
+          TraceLine(Format('WM_WINDOWPOSCHANGED %s -> %d,%d %dx%d',
+                           [ACtl.Name, WinPos^.x, WinPos^.y, WinPos^.cx,
+                            WinPos^.cy]));
+        end;
+      end;
+  end;
 end;
 
 function TFormDesigner.GetDragging: Boolean;
@@ -4808,6 +4968,7 @@ var
   I: Integer;
 begin
   HideHint;
+  FTrace := False;
   // Рамки прошлого перетаскивания, если кнопку отпустили не над формой
   ClearDragFrames;
   // Выбран класс на палитре - щелчок ставит компонент
@@ -4867,6 +5028,8 @@ begin
     FGroupDrag := True;
     FDragging := True;
     FDragMoved := False;
+    TraceStart(Format('группа из %d, тянут за %s', [FGroup.Count,
+                                                   FDragCtl.Name]));
     Exit;
   end;
 
@@ -4884,6 +5047,7 @@ begin
     FBandMoved := False;
     FBandFrom := AScreen;
     FBandParent := PlaceParent(ATarget);
+    TraceStart('рамка выделения в ' + FBandParent.Name);
     Exit;
   end;
 
@@ -4908,6 +5072,7 @@ begin
   FDragRect := FDragCtl.BoundsRect;
   FDragging := True;
   FDragMoved := False;
+  TraceStart('компонент ' + FDragCtl.Name);
 end;
 
 // Перемещение - как MouseMoveObject у RQ: смещение от точки нажатия, угол
@@ -4923,6 +5088,11 @@ var
   Origin: TPoint;
   Clip: TRect;
 begin
+  if FTrace then
+  begin
+    Inc(FTraceMoves);
+    TraceLine(Format('мышь %d,%d', [AScreen.X, AScreen.Y]));
+  end;
   // Рамка выделения: от точки нажатия до мыши, в пределах контейнера
   if FBanding then
   begin
@@ -5020,15 +5190,18 @@ begin
   begin
     FBanding := False;
     ClearDragFrames;
+    TraceLine('отпустили: выделение рамкой');
     if FBandMoved then
       BandSelect;
     FBandParent := nil;
+    TraceEnd;
     Exit;
   end;
   if not FDragging then
     Exit;
   FDragging := False;
   ClearDragFrames;
+  TraceLine('отпустили: компоненты - на новые места');
   if FGroupDrag then
   begin
     FGroupDrag := False;
@@ -5042,9 +5215,11 @@ begin
           C.SetBounds(FDragNew[I].Left, FDragNew[I].Top, C.Width, C.Height);
         end;
       ShowGroupMarks;
+      TraceLine('запись в .dfm (CommitGroup)');
       CommitGroup;
     end;
     SetLength(FDragNew, 0);
+    TraceEnd;
     Exit;
   end;
   if FDragMoved and (FDragCtl <> nil) and (Length(FDragNew) > 0) then
@@ -5056,8 +5231,12 @@ begin
   SetLength(FDragNew, 0);
   if FDragMoved and (FDragCtl <> nil) and
      not EqualRect(FDragCtl.BoundsRect, FDragRect) then
+  begin
+    TraceLine('запись в .dfm (CommitBounds)');
     CommitBounds(FDragCtl);
+  end;
   FDragCtl := nil;
+  TraceEnd;
 end;
 
 procedure TFormDesigner.KeyDown(AKey: Word);
