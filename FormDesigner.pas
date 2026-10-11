@@ -203,6 +203,19 @@ type
     FFreezeDepth: Integer;
     FFreezeRect: TRect;
     FDragTrace: Boolean;         // журнал включён (editor.ini, DragTrace)
+    // Замер рамки (всегда, без DragTrace): время рисования рамки и
+    // промежутки между движениями мыши - в счётчиках, в лог одной строкой
+    // при отпускании (TimingReport). Во время переноса лог не пишется.
+    FTimFreq: Int64;             // частота QueryPerformanceCounter
+    FTimFrames: Integer;         // рисований рамки (ToggleDragFrames)
+    FTimFrameSum: Int64;         // их суммарное время, тики счётчика
+    FTimFrameMax: Int64;
+    FTimMoves: Integer;          // движений мыши
+    FTimMoveFirst: Int64;        // время первого и прошлого движения
+    FTimMoveLast: Int64;
+    FTimGapMax: Int64;           // наибольший промежуток между движениями
+    FTimMoveSum: Int64;          // суммарное время обработки движения
+    FTimMoveMax: Int64;
     FTrace: Boolean;
     FTraceWhat: string;          // что тянут - в заголовок журнала
     FTraceHeader: Boolean;       // заголовок уже в журнале
@@ -335,6 +348,8 @@ type
     procedure FreezeForm;
     procedure ThawForm;
     procedure AddRepaint(const R: TRect);
+    procedure TimingReset;
+    procedure TimingReport(const AWhat: string);
     procedure TraceStart(const AWhat: string);
     procedure TraceLine(const AText: string);
     procedure TraceEnd;
@@ -343,6 +358,7 @@ type
     // от перехватчиков сообщений
     procedure MouseDown(ATarget: TComponent; const AScreen: TPoint);
     procedure MouseMove(const AScreen: TPoint);
+    procedure MouseMoveWork(const AScreen: TPoint);
     procedure MouseUp;
     procedure KeyDown(AKey: Word);
     procedure FormMoved;
@@ -4821,10 +4837,11 @@ begin
   CommitGroup;
 end;
 
-// Рамки перетаскивания: XOR на экране в пределах клиентской части формы.
+// Рамки перетаскивания: XOR в клиентской части формы, поверх компонентов.
 // Второй вызов с теми же рамками стирает их.
 procedure TFormDesigner.ToggleDragFrames;
 var
+  StartCount, EndCount: Int64;
   DC: HDC;
   FrameIdx: Integer;
   Origin: TPoint;
@@ -4832,16 +4849,24 @@ var
 begin
   if (Length(FFrames) = 0) or (FForm = nil) or not FForm.HandleAllocated then
     Exit;
-  DC := GetDC(0);
+  // DC самой формы, без отсечения дочерних окон (нет DCX_CLIPCHILDREN) -
+  // рамка ложится и поверх компонентов. Раньше рисовали в DC экрана
+  // (GetDC(0)): при включённом Aero (DWM) каждое такое рисование идёт
+  // через чтение составленной картинки рабочего стола и занимает десятки
+  // миллисекунд - рамка шла рывками.
+  QueryPerformanceCounter(StartCount);
+  DC := GetDCEx(FForm.Handle, 0, DCX_CACHE or DCX_CLIPSIBLINGS);
+  if DC = 0 then
+    Exit;
   try
     Origin := FForm.ClientToScreen(Point(0, 0));
-    IntersectClipRect(DC, Origin.X, Origin.Y, Origin.X + FForm.ClientWidth,
-                      Origin.Y + FForm.ClientHeight);
     for FrameIdx := 0 to High(FFrames) do
     begin
       R := FFrames[FrameIdx];
       if IsRectEmpty(R) then
         Continue;
+      // Рамки - в координатах экрана, рисуем в клиентских формы
+      OffsetRect(R, -Origin.X, -Origin.Y);
       // Двойная линия - видна и на сетке
       DrawFocusRect(DC, R);
       InflateRect(R, -1, -1);
@@ -4849,9 +4874,14 @@ begin
         DrawFocusRect(DC, R);
     end;
   finally
-    ReleaseDC(0, DC);
+    ReleaseDC(FForm.Handle, DC);
   end;
   FFramesShown := not FFramesShown;
+  QueryPerformanceCounter(EndCount);
+  Inc(FTimFrames);
+  Inc(FTimFrameSum, EndCount - StartCount);
+  if EndCount - StartCount > FTimFrameMax then
+    FTimFrameMax := EndCount - StartCount;
 end;
 
 // Новые рамки (в координатах экрана): прежние стираются, новые рисуются
@@ -4894,6 +4924,53 @@ begin
   if FFramesShown then
     ToggleDragFrames;
   SetLength(FFrames, 0);
+end;
+
+procedure TFormDesigner.TimingReset;
+begin
+  if FTimFreq = 0 then
+    QueryPerformanceFrequency(FTimFreq);
+  FTimFrames := 0;
+  FTimFrameSum := 0;
+  FTimFrameMax := 0;
+  FTimMoves := 0;
+  FTimMoveFirst := 0;
+  FTimMoveLast := 0;
+  FTimGapMax := 0;
+  FTimMoveSum := 0;
+  FTimMoveMax := 0;
+end;
+
+// Одна строка замера после переноса; без движений мыши - ничего
+procedure TFormDesigner.TimingReport(const AWhat: string);
+
+  // Тики счётчика - в миллисекунды с десятыми
+  function Ms(ATicks: Int64): string;
+  begin
+    if FTimFreq <= 0 then
+      Result := '?'
+    else
+      Result := FormatFloat('0.0', ATicks * 1000.0 / FTimFreq);
+  end;
+
+var
+  GapAvg, FrameAvg, MoveAvg: Int64;
+begin
+  if (FTimMoves < 2) or (FTimFreq <= 0) then
+    Exit;
+  GapAvg := (FTimMoveLast - FTimMoveFirst) div (FTimMoves - 1);
+  MoveAvg := FTimMoveSum div FTimMoves;
+  if FTimFrames > 0 then
+    FrameAvg := FTimFrameSum div FTimFrames
+  else
+    FrameAvg := 0;
+  DsgLog(Format('3804: %s - движений мыши %d за %s мс, промежуток между ' +
+                'ними: средний %s мс, наибольший %s мс; обработка ' +
+                'движения: средняя %s мс, наибольшая %s мс; рисований ' +
+                'рамки %d: среднее %s мс, наибольшее %s мс',
+                [AWhat, FTimMoves, Ms(FTimMoveLast - FTimMoveFirst),
+                 Ms(GapAvg), Ms(FTimGapMax), Ms(MoveAvg), Ms(FTimMoveMax),
+                 FTimFrames, Ms(FrameAvg), Ms(FTimFrameMax)]), clNavy);
 end;
 
 procedure TFormDesigner.TraceStart(const AWhat: string);
@@ -5060,6 +5137,7 @@ var
 begin
   HideHint;
   FTrace := False;
+  TimingReset;
   // Рамки прошлого перетаскивания, если кнопку отпустили не над формой
   ClearDragFrames;
   // Выбран класс на палитре - щелчок ставит компонент
@@ -5169,7 +5247,29 @@ end;
 // Перемещение - как MouseMoveObject у RQ: смещение от точки нажатия, угол
 // компонента встаёт на сетку. Первые 3 пикселя - не перемещение, а
 // дрожание руки при щелчке.
+// Движение мыши с замером: промежуток от прошлого движения и время
+// обработки (MouseMoveWork) - в счётчики
 procedure TFormDesigner.MouseMove(const AScreen: TPoint);
+var
+  StartCount, EndCount: Int64;
+begin
+  if not FDragging and not FBanding then
+    Exit;
+  QueryPerformanceCounter(StartCount);
+  if FTimMoves = 0 then
+    FTimMoveFirst := StartCount
+  else if StartCount - FTimMoveLast > FTimGapMax then
+    FTimGapMax := StartCount - FTimMoveLast;
+  FTimMoveLast := StartCount;
+  Inc(FTimMoves);
+  MouseMoveWork(AScreen);
+  QueryPerformanceCounter(EndCount);
+  Inc(FTimMoveSum, EndCount - StartCount);
+  if EndCount - StartCount > FTimMoveMax then
+    FTimMoveMax := EndCount - StartCount;
+end;
+
+procedure TFormDesigner.MouseMoveWork(const AScreen: TPoint);
 var
   DX, DY, NewX, NewY, I: Integer;
   Code: string;
@@ -5286,6 +5386,7 @@ begin
       BandSelect;
     FBandParent := nil;
     TraceEnd;
+    TimingReport('рамка выделения');
     Exit;
   end;
   if not FDragging then
@@ -5311,6 +5412,7 @@ begin
     end;
     SetLength(FDragNew, 0);
     TraceEnd;
+    TimingReport('перенос группы');
     Exit;
   end;
   if FDragMoved and (FDragCtl <> nil) and (Length(FDragNew) > 0) then
@@ -5328,6 +5430,7 @@ begin
   end;
   FDragCtl := nil;
   TraceEnd;
+  TimingReport('перенос компонента');
 end;
 
 procedure TFormDesigner.KeyDown(AKey: Word);
