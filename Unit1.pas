@@ -637,6 +637,8 @@ type
     FOwnCaretTimer: TTimer;
     DsgItem: TMenuItem;
     mViewIcons: TMenuItem;
+    mSepInc: TMenuItem;
+    mIncManager: TMenuItem;
     BtnPnl: TPanel;
     FObjSnapBtn: TUiButton; // снимок поверх .dfm: показать / убрать (SnapCapShow)
     FObjDsgBtn: TUiButton; // Design form - открыть конструктор
@@ -2297,6 +2299,7 @@ type
     procedure DsgAddForeignPages;
     procedure DsgPaletteGlyph(Sender: TObject);
     procedure PaletteIconsClick(Sender: TObject);
+    procedure IncManagerClick(Sender: TObject);
     procedure PaletteIconEditClick(Sender: TObject);
     procedure PaletteIconsShow(const ASelect: string);
     procedure PaletteIconsApplied(Sender: TObject);
@@ -3334,6 +3337,7 @@ var
     DlgMatchList, // Match list - EnsureMatchForm
     DlgListWnd,   // списки модулей и форм - MakeListWindow
     DlgHotFolders, // папки для поиска потерянных файлов - ShowHotFolders
+    Unit3,        // Inc Manager (View) - IncManagerClick
     DlgDelPrj,    // Delete Projects - DeleteProjectClick
     DlgBmClear,   // Clear List закладок - BmClearClick
     DlgWinList,   // Del WinList - DelWinListClick
@@ -33130,6 +33134,13 @@ end;
 //  пересборка для этого не нужны: icons\palette\*.py остаются для того,
 //  чтобы перенести значки во встроенные (DsgIcons.pas).
 // ---------------------------------------------------------------------------
+
+// View - IncManager: свои inc-файлы пользователя против общих (шаг 1 -
+// список папок с ними, в editor.ini, раздел [IncManager])
+procedure TForm1.IncManagerClick(Sender: TObject);
+begin
+  Form3.ShowFor(SettingsFileName);
+end;
 
 procedure TForm1.PaletteIconsClick(Sender: TObject);
 begin

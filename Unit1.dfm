@@ -563,11 +563,12 @@ object Form1: TForm1
       object mViewIcons: TMenuItem
         Caption = 'Palette Icons...'
       end
-      object mSep2: TMenuItem
+      object mSepInc: TMenuItem
         Caption = '-'
       end
       object mIncManager: TMenuItem
         Caption = 'IncManager...'
+        OnClick = IncManagerClick
       end
     end
     object mProject: TMenuItem
