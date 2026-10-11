@@ -81,8 +81,6 @@ type
     FBusy: Boolean;        // идёт чтение эталона или проверка файлов
     FAbort: Boolean;       // нажат Стоп
     FLastTick: Cardinal;   // последний показ хода (ProgressStep)
-    procedure ProgressStep(const AText: string; var ACancel: Boolean);
-    procedure SetBusy(ABusy: Boolean);
     FIniFile: string;
     FSysDir: string;       // общие inc (SysIncPath)
     FDefaultRef: string;   // эталон по умолчанию
@@ -91,6 +89,8 @@ type
     FLoading: Boolean;     // список заполняется из editor.ini - не записывать
     FOnOpenFile: TIncOpenFileEvent;
     FOnChoose: TIncChooseEvent;
+    procedure ProgressStep(const AText: string; var ACancel: Boolean);
+    procedure SetBusy(ABusy: Boolean);
     procedure LoadFolders;
     procedure SaveFolders;
     procedure ClearInfos;
