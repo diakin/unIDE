@@ -4,9 +4,9 @@
 
 ## Состав
 
-- rapidqAllProc.inc: rapidq2.inc (без разделов компонентов), rapidq.inc, и 108 файлов: AddMenuItemBitmaps4a.inc, AdvAPI32.inc, Api.inc, ApiDate.inc, CallBack_0.Inc, CallBack_1.Inc, CallBack_2.Inc, CallBack_3.Inc, CallBack_4.Inc, CallBack_5.Inc, CallBack_6.Inc, CallBack_7.Inc, CallBack_8.Inc, CallBackAll.Inc, CallBackForwarder.Inc, CallBacks.Inc, CMD5.inc, CommCtrl.inc, commctrl32.inc, Common.inc, constants.inc, Control.inc, conversion.inc, conversion1.inc, conversionOld.inc, ConvertToTruePath.inc, Copy of NOTA.inc, createWind.inc, DBT.INC, debug.inc, debugNoSend.inc, debugWindow.inc, delTags.inc, eMail.Inc, eml.inc, emlOld.inc, evaluate.inc, FBFunctions.inc, fbscancodes.inc, fileops.inc, Files.inc, Files1.inc, Files2.inc, FilesBug.inc, FileUtils.inc, Form.inc, Form1.inc, func_array.inc, GDI32.inc, htmlhelp.inc, Kernel32.inc, keys.inc, LabelGrid.inc, like.inc, Math.inc, MDI_API.INC, Memory.inc, menu.inc, microTIMER.inc, Minimize.inc, msgdlg.inc, NewWindow23.inc, NewWndProc.Inc, NOTA.inc, objectToolbox.inc, ODMenuXP.inc, ole.inc, parse.inc, pdecl.inc, printdlg.inc, PRINTERDLL.INC, printrichedit.inc, pulsar.inc, QFiles.inc, QFormLocale.inc, QFormSkin.inc, QFuncLib.inc, QPoint.inc, QPrintDialog.inc, QStringGridEx.inc, QXLS.INC, QXpTheme.INC, registryVars.inc, RichEditApi.inc, rq_math.inc, RqAsmUtils.Inc, RQdate.inc, RQDialog.inc, RQProcess.inc, SetFileTimeAttrib.inc, setup.inc, Shell32.inc, ShellRedir.Inc, StayOnTop.inc, stdObjbar.inc, SysUtils.inc, TestIncPAth.inc, TRM_RQDeclares.INC, User32.inc, using.inc, var.inc, var2008.inc, WFunctions.inc, Win32_constants.inc, WIN32API.INC, WINDOWS.INC, WindowsAPI.inc, WinMM.Inc
+- rapidqAllProc.inc: rapidq2.inc (без разделов компонентов), rapidq.inc, и 102 файлов: AddMenuItemBitmaps4a.inc, AdvAPI32.inc, Api.inc, ApiDate.inc, CallBack_0.Inc, CallBack_1.Inc, CallBack_2.Inc, CallBack_3.Inc, CallBack_4.Inc, CallBack_5.Inc, CallBack_6.Inc, CallBack_7.Inc, CallBack_8.Inc, CallBackAll.Inc, CallBackForwarder.Inc, CallBacks.Inc, CMD5.inc, CommCtrl.inc, commctrl32.inc, Common.inc, constants.inc, Control.inc, conversion.inc, conversion1.inc, conversionOld.inc, ConvertToTruePath.inc, Copy of NOTA.inc, createWind.inc, DBT.INC, debugNoSend.inc, debugWindow.inc, delTags.inc, eMail.Inc, eml.inc, emlOld.inc, evaluate.inc, FBFunctions.inc, fbscancodes.inc, fileops.inc, Files.inc, Files1.inc, Files2.inc, FilesBug.inc, FileUtils.inc, Form.inc, func_array.inc, GDI32.inc, htmlhelp.inc, Kernel32.inc, keys.inc, like.inc, Math.inc, MDI_API.INC, Memory.inc, microTIMER.inc, Minimize.inc, msgdlg.inc, NewWindow23.inc, NewWndProc.Inc, NOTA.inc, objectToolbox.inc, ODMenuXP.inc, ole.inc, parse.inc, pdecl.inc, printdlg.inc, PRINTERDLL.INC, printrichedit.inc, pulsar.inc, QFiles.inc, QFormLocale.inc, QFormSkin.inc, QFuncLib.inc, QPoint.inc, QPrintDialog.inc, QStringGridEx.inc, QXLS.INC, registryVars.inc, RichEditApi.inc, rq_math.inc, RqAsmUtils.Inc, RQdate.inc, RQDialog.inc, RQProcess.inc, SetFileTimeAttrib.inc, setup.inc, Shell32.inc, ShellRedir.Inc, stdObjbar.inc, SysUtils.inc, TestIncPAth.inc, TRM_RQDeclares.INC, User32.inc, using.inc, var.inc, var2008.inc, WFunctions.inc, Win32_constants.inc, WIN32API.INC, WINDOWS.INC, WindowsAPI.inc, WinMM.Inc
 - rapidqComponents.inc: разделы компонентов rapidq2.inc и 96 файлов: apiRe.inc, odbc.inc, QCoolBarXPv1d.inc, QDataBase.inc, qdrive2024.inc, qEditEx.inc, QIni.inc, QIniFile.inc, QMaxSplitter.inc, QRedEx.Inc, qspintext.inc, QTButton95.inc, QTextEdit.inc, RichEdPopUp.inc, VFW.inc, XP_MANIFEST.INC, COMPORTxp.inc, HiLight.inc, QAnim.inc, QAnimate.inc, QAVI.inc, QBevel.inc, QBrowseDialog.inc, QButtonXP.INC, qcalendar.inc, Qcdaudio.inc, qcgi.inc, QChart.inc, QColorButton.inc, QCursor.inc, qdataBaseSQL.inc, QDesktop.inc, QDigDisplay.inc, QDir.Inc, qdownload.inc, QDrawFocus.inc, QDrawMenu.inc, QFileListView.inc, QFlashLabel.inc, QFlatButton.inc, qfocus.inc, QFTPCLIENT.INC, qgraph.inc, QGridColor.inc, QHead.inc, QHTML.inc, QICMP.INC, QICON.inc, Qid3Tag.inc, QImageBox.inc, QImageDialog.inc, QImageListEx.inc, QInputBox.inc, QLed.inc, QLedScroll.inc, QLibrary.Inc, QLine.inc, QListBoxEx.inc, QMailLabel.inc, qmenu.inc, QMidi.inc, Qmp3.inc, qposic.inc, QPrinterInfo.inc, QProcess.inc, QProgress.inc, QProgressBar.inc, QRichEditXt.inc, QrPanel.inc, QRun.inc, QSavePlus.inc, QSHFileOperation.inc, QShutdown.inc, QSkin.inc, QSkinBtn.inc, QSocketEx.inc, QSpinEdit.inc, QSplash.inc, QStatusBarEx.inc, QtabControlEx.inc, QTextBtn.inc, QThread.inc, QToolBar.inc, QToolBarEX.inc, QTreeviewEx.inc, QVideo.inc, QVolumeInfo.inc, QVuMeter.inc, QWave.inc, QXPButton.inc, RapidFRM.inc, RapidQ_D3D.inc, RC4crypt.inc, RSocket.INC, TstRichEd.inc, XPThemes.inc
-- не вошли: 86 файлов (ниже)
+- не вошли: 92 файлов (ниже)
 
 ## Взята часть файла
 
@@ -32,7 +32,9 @@
 | DAQmxConst.inc | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
 | Dbase.inc | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
 | dbtools.inc | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
+| debug.inc | нет: подключать отдельно - при запуске создаёт окно отладки _DebugFORM |
 | DxfONE!h.inc | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
+| Form1.inc | нет: фрагмент программы (форма Form1 с кнопкой) |
 | ftiQuery.inc | нет: FUNCTION внутри FUNCTION (ftiExtractProgPath вставлена в ftiExtractFileName, строки 110-143) |
 | Functions.inc | нет: часть CodeSense (cmcs21.dll), тип Bool - из $Define Bool Integer в CodeSense.inc; подключать CodeSense.inc |
 | gl.inc | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
@@ -42,7 +44,9 @@
 | glu.inc | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
 | glut.inc | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
 | glwgl.inc | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
+| LabelGrid.inc | нет: фрагмент программы (при запуске строит сетку надписей на панели) |
 | LangIniHeader.inc | нет: фрагмент программы (StartPath$, DIM LangIni AS QINI - класс из компонентов) |
+| menu.inc | нет: фрагмент программы (меню формы MainForm, "Menu file for test.rqw") |
 | MYSQL.INC | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
 | NI6210.inc | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
 | QAbout.inc | взята другая версия: QAbout - rapidq2.inc |
@@ -84,6 +88,7 @@
 | QTextEditTest.inc | взята другая версия: QTEXTEDIT - QTextEdit.inc |
 | QWinIni.inc | взята другая версия: QINI - QIni.inc |
 | QxEdit.inc | взята другая версия: QxEDIT - qEditEx.inc |
+| QXpTheme.INC | нет: подключать отдельно - при запуске пишет .manifest и перезапускает программу |
 | RapidFRM_Mods.inc | нет: фрагмент программы (объекты и процедуры основной программы) |
 | rapidq2007.inc | старая версия rapidq.inc |
 | rapidq3.inc | копия rapidq.inc |
@@ -96,6 +101,7 @@
 | RQDxf.inc | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
 | Splash.inc | нет: фрагмент программы (заставка, CREATE формы и показ) |
 | SplashForm.inc | нет: фрагмент программы (заставка, CREATE формы и показ) |
+| StayOnTop.inc | нет: подключать отдельно - включает $OPTION VBDLL ON и WEAKTYPE ON для всего, что ниже, и создаёт таймер |
 | stdObjMnu.inc | нет: фрагмент программы (объекты и процедуры основной программы) |
 | ultraRichEd.inc | взята другая версия: QMAXEDIT - RichEdPopUp.inc |
 | vfw2.inc | взята другая версия: QWebCam - VFW.inc |
@@ -129,6 +135,7 @@
 - commctrl32.inc: 4 строк с числом 880U (суффикс C) - без U
 - commctrl32.inc: 5 строк CONST без = - с =
 - keys.inc: 46 строк "define ИМЯ значение" без $ - $define
+- keys.inc: $OPTION INKEY$ TRAPALL закомментирован (действует на всю программу)
 - NI6210.inc: 1 строк CONST без = - с =
 - CMD5.inc: F, G, H, FF, GG, HH, II -> MD5_...
 
@@ -154,12 +161,12 @@
 
 ## Убрано как повтор
 
-- CONST: 7440
-- DECLARE: 2121
+- CONST: 7436
+- DECLARE: 2116
 - $DEFINE: 2030
-- SUB/FUNCTION: 241
-- TYPE: 497
-- DIM/DEFxxx/CREATE: 143
+- SUB/FUNCTION: 238
+- TYPE: 496
+- DIM/DEFxxx/CREATE: 137
 
 ## Повторы с другим текстом (оставлено первое)
 
@@ -396,12 +403,10 @@
 | DECLARE | GETWINDOWSDIRECTORY | Kernel32.inc, поднято(213): `DECLARE FUNCTION GETWINDOWSDIRECTORY LIB "KERNEL32.DLL" ALIAS_ "GETWINDOWSDIRECT` | SetFileTimeAttrib.inc(124): `DECLARE FUNCTION GETWINDOWSDIRECTORY LIB "KERNEL32" ALIAS "GETWINDOWSDIRECTORYA"` |
 | DECLARE | SETWINDOWLONG | rapidq2.inc(1039): `DECLARE FUNCTION SETWINDOWLONG LIB "USER32" ALIAS "SETWINDOWLONGA" (HWND AS LONG` | setup.inc(1): `DECLARE FUNCTION SETWINDOWLONG LIB "USER32" ALIAS "SETWINDOWLONGA" (HWND AS LONG` |
 | SUB/FUNCTION | MINSET | Common.inc(20): `SUB MINSET (FRMHANDLE AS INTEGER, APPHANDLE AS INTEGER) SETWINDOWLONG(FRMHANDLE,` | setup.inc(3): `SUB MINSET (FHAND AS INTEGER, APPHAND AS INTEGER) SETWINDOWLONG(FHAND, -8, 0) SE` |
-| DECLARE | SETWINDOWPOS | rapidq2.inc(1029): `DECLARE SUB SETWINDOWPOS LIB "USER32" ALIAS "SETWINDOWPOS"_ (BYVAL HWND AS LONG,` | StayOnTop.inc(5): `DECLARE FUNCTION SETWINDOWPOS LIB "USER32" ALIAS "SETWINDOWPOS" (BYVAL HWND AS L` |
 | SUB/FUNCTION | EXTRACTFILENAME | Files.inc(277): `FUNCTION EXTRACTFILENAME(FILENAME AS STRING) AS STRING DIM LENGTH AS INTEGER DIM` | SysUtils.inc(3): `FUNCTION EXTRACTFILENAME(FILE AS STRING) AS STRING DEFINT SL,I IF FILE = "" THEN` |
 | SUB/FUNCTION | EXTRACTFILEPATH | Files.inc(310): `FUNCTION EXTRACTFILEPATH(FILENAME AS STRING) AS STRING DIM LENGTH AS INTEGER DIM` | SysUtils.inc(17): `FUNCTION EXTRACTFILEPATH(FILE AS STRING) AS STRING DEFINT SL,I IF FILE = "" THEN` |
 | SUB/FUNCTION | CHANGEFILEEXT | Files.inc(242): `FUNCTION CHANGEFILEEXT(FILENAME AS STRING, NEWEXT AS STRING) AS STRING DIM RETUR` | SysUtils.inc(59): `FUNCTION CHANGEFILEEXT(FILE AS STRING,EXT AS STRING) AS STRING DEFINT PT,I IF FI` |
 | SUB/FUNCTION | TRIM$ | rapidq.inc(641): `FUNCTION TRIM$(S AS STRING) AS STRING RESULT=LTRIM$(RTRIM$(S)) END FUNCTION` | SysUtils.inc(93): `FUNCTION TRIM$(S AS STRING) AS STRING RESULT = LTRIM$(RTRIM$(S)) -CHR$(10)-CHR$(` |
-| DECLARE | FINDWINDOW | debug.inc(11): `DECLARE FUNCTION FINDWINDOW LIB "USER32" ALIAS "FINDWINDOWA" (BYVAL LPCLASSNAME ` | User32.inc(17): `DECLARE FUNCTION FINDWINDOW LIB "USER32.DLL" ALIAS_ "FINDWINDOWA" (LPCLASSNAME A` |
 | DECLARE | GETCAPTURE | rapidq2.inc(999): `DECLARE FUNCTION GETCAPTURE LIB "USER32" ALIAS "GETCAPTURE" () AS LONG` | User32.inc(29): `DECLARE FUNCTION GETCAPTURE LIB "USER32.DLL" ALIAS_ "GETCAPTURE" AS LONG` |
 | DECLARE | GETCLASSNAME | rapidq2.inc(989): `DECLARE FUNCTION GETCLASSNAME LIB "USER32" ALIAS "GETCLASSNAMEA" (HWND AS LONG, ` | User32.inc(35): `DECLARE FUNCTION GETCLASSNAME LIB "USER32.DLL" ALIAS_ "GETCLASSNAMEA" (HWND AS L` |
 | DECLARE | GETDESKTOPWINDOW | rapidq2.inc(1475): `DECLARE FUNCTION GETDESKTOPWINDOW LIB "USER32" ALIAS "GETDESKTOPWINDOW" () AS LO` | User32.inc(48): `DECLARE FUNCTION GETDESKTOPWINDOW LIB "USER32.DLL" ALIAS_ "GETDESKTOPWINDOW" AS ` |
@@ -413,7 +418,7 @@
 | DECLARE | SETWINDOWPOS | rapidq2.inc(1029): `DECLARE SUB SETWINDOWPOS LIB "USER32" ALIAS "SETWINDOWPOS"_ (BYVAL HWND AS LONG,` | User32.inc(216): `DECLARE FUNCTION SETWINDOWPOS LIB "USER32.DLL" ALIAS_ "SETWINDOWPOS" (HWND AS LO` |
 | DECLARE | SETWINDOWRGN | QFormSkin.inc(159): `DECLARE FUNCTION SETWINDOWRGN LIB "USER32" ALIAS "SETWINDOWRGN" (BYVAL HWND AS L` | User32.inc(226): `DECLARE FUNCTION SETWINDOWRGN LIB "USER32.DLL" ALIAS_ "SETWINDOWRGN" (HWND AS LO` |
 | DECLARE | BRINGWINDOWTOTOP | rapidq2.inc(984): `DECLARE FUNCTION BRINGWINDOWTOTOP LIB "USER32" ALIAS "BRINGWINDOWTOTOP" (BYVAL H` | WFunctions.inc(8): `DECLARE FUNCTION BRINGWINDOWTOTOP LIB "USER32" ALIAS "BRINGWINDOWTOTOP"_ (BYVAL ` |
-| DECLARE | FINDWINDOW | debug.inc(11): `DECLARE FUNCTION FINDWINDOW LIB "USER32" ALIAS "FINDWINDOWA" (BYVAL LPCLASSNAME ` | WFunctions.inc(11): `DECLARE FUNCTION FINDWINDOW LIB "USER32" ALIAS "FINDWINDOWA" _ (CLASSNAME AS STR` |
+| DECLARE | FINDWINDOW | User32.inc(17): `DECLARE FUNCTION FINDWINDOW LIB "USER32.DLL" ALIAS_ "FINDWINDOWA" (LPCLASSNAME A` | WFunctions.inc(11): `DECLARE FUNCTION FINDWINDOW LIB "USER32" ALIAS "FINDWINDOWA" _ (CLASSNAME AS STR` |
 | DECLARE | SETWINDOWPOS | rapidq2.inc(1029): `DECLARE SUB SETWINDOWPOS LIB "USER32" ALIAS "SETWINDOWPOS"_ (BYVAL HWND AS LONG,` | WFunctions.inc(14): `DECLARE SUB SETWINDOWPOS LIB "USER32" ALIAS "SETWINDOWPOS"(HWND AS LONG,_ HWNDIN` |
 | DECLARE | SHELLEXECUTE | rapidq2.inc(1056): `DECLARE FUNCTION SHELLEXECUTE LIB "SHELL32.DLL" ALIAS "SHELLEXECUTEA" (BYVAL HWN` | WFunctions.inc(18): `DECLARE FUNCTION SHELLEXECUTE LIB "SHELL32.DLL" ALIAS "SHELLEXECUTEA" _ (BYVAL H` |
 | DECLARE | SETFOREGROUNDWINDOW | rapidq2.inc(1012): `DECLARE FUNCTION SETFOREGROUNDWINDOW LIB "USER32" ALIAS "SETFOREGROUNDWINDOW" (B` | WFunctions.inc(23): `DECLARE FUNCTION SETFOREGROUNDWINDOW LIB "USER32" ALIAS _ "SETFOREGROUNDWINDOW" ` |
@@ -589,6 +594,7 @@
 | DECLARE | SETCLASSLONG | rapidq2.inc(1009): `DECLARE FUNCTION SETCLASSLONG LIB "USER32" ALIAS "SETCLASSLONGA" (HWND AS LONG,N` | WIN32API.INC(7249): `DECLARE FUNCTION SETCLASSLONG LIB "USER32" ALIAS "SETCLASSLONGA" (BYVAL HWND AS ` |
 | DECLARE | GETPARENT | rapidq2.inc(995): `DECLARE FUNCTION GETPARENT LIB "USER32" ALIAS "GETPARENT" (HWND AS LONG) AS LONG` | WIN32API.INC(7252): `DECLARE FUNCTION GETPARENT LIB "USER32" ALIAS "GETPARENT" (BYVAL HWND AS LONG) A` |
 | DECLARE | SETPARENT | rapidq2.inc(1011): `DECLARE FUNCTION SETPARENT LIB "USER32" ALIAS "SETPARENT" (HWNDCHILD AS LONG,HWN` | WIN32API.INC(7253): `DECLARE FUNCTION SETPARENT LIB "USER32" ALIAS "SETPARENT" (BYVAL HWNDCHILD AS LO` |
+| DECLARE | FINDWINDOW | User32.inc(17): `DECLARE FUNCTION FINDWINDOW LIB "USER32.DLL" ALIAS_ "FINDWINDOWA" (LPCLASSNAME A` | WIN32API.INC(7254): `DECLARE FUNCTION FINDWINDOW LIB "USER32" ALIAS "FINDWINDOWA" (BYVAL LPCLASSNAME ` |
 | DECLARE | GETCLASSNAME | rapidq2.inc(989): `DECLARE FUNCTION GETCLASSNAME LIB "USER32" ALIAS "GETCLASSNAMEA" (HWND AS LONG, ` | WIN32API.INC(7256): `DECLARE FUNCTION GETCLASSNAME LIB "USER32" ALIAS "GETCLASSNAMEA" (BYVAL HWND AS ` |
 | DECLARE | LOADCURSOR | QFormSkin.inc(249): `DECLARE FUNCTION LOADCURSOR LIB "USER32" ALIAS "LOADCURSORA" _ (BYVAL HINSTANCE ` | WIN32API.INC(7350): `DECLARE FUNCTION LOADCURSOR LIB "USER32" ALIAS "LOADCURSORA" (BYVAL HINSTANCE AS` |
 | DECLARE | DESTROYICON | QFormSkin.inc(215): `DECLARE FUNCTION DESTROYICON LIB "USER32" ALIAS "DESTROYICON" ( _ BYVAL HICON AS` | WIN32API.INC(7381): `DECLARE FUNCTION DESTROYICON LIB "USER32" ALIAS "DESTROYICON" (BYVAL HICON AS LO` |
@@ -887,6 +893,7 @@
 | DECLARE | SETCLASSLONG | rapidq2.inc(1009): `DECLARE FUNCTION SETCLASSLONG LIB "USER32" ALIAS "SETCLASSLONGA" (HWND AS LONG,N` | WINDOWS.INC(7503): `DECLARE FUNCTION SETCLASSLONG LIB "USER32" ALIAS "SETCLASSLONGA" (BYVAL HWND AS ` |
 | DECLARE | GETPARENT | rapidq2.inc(995): `DECLARE FUNCTION GETPARENT LIB "USER32" ALIAS "GETPARENT" (HWND AS LONG) AS LONG` | WINDOWS.INC(7506): `DECLARE FUNCTION GETPARENT LIB "USER32" ALIAS "GETPARENT" (BYVAL HWND AS LONG) A` |
 | DECLARE | SETPARENT | rapidq2.inc(1011): `DECLARE FUNCTION SETPARENT LIB "USER32" ALIAS "SETPARENT" (HWNDCHILD AS LONG,HWN` | WINDOWS.INC(7507): `DECLARE FUNCTION SETPARENT LIB "USER32" ALIAS "SETPARENT" (BYVAL HWNDCHILD AS LO` |
+| DECLARE | FINDWINDOW | User32.inc(17): `DECLARE FUNCTION FINDWINDOW LIB "USER32.DLL" ALIAS_ "FINDWINDOWA" (LPCLASSNAME A` | WINDOWS.INC(7508): `DECLARE FUNCTION FINDWINDOW LIB "USER32" ALIAS "FINDWINDOWA" (BYVAL LPCLASSNAME ` |
 | DECLARE | GETCLASSNAME | rapidq2.inc(989): `DECLARE FUNCTION GETCLASSNAME LIB "USER32" ALIAS "GETCLASSNAMEA" (HWND AS LONG, ` | WINDOWS.INC(7510): `DECLARE FUNCTION GETCLASSNAME LIB "USER32" ALIAS "GETCLASSNAMEA" (BYVAL HWND AS ` |
 | DECLARE | GETNEXTWINDOW | WIN32API.INC(7258): `DECLARE FUNCTION GETNEXTWINDOW LIB "USER32" ALIAS "GETWINDOW" (BYVAL HWND AS LON` | WINDOWS.INC(7512): `DECLARE FUNCTION GETNEXTWINDOW LIB "USER32" ALIAS "GETNEXTWINDOW" (BYVAL HWND AS` |
 | TYPE | MENUITEMTEMPLATEHEADER | WIN32API.INC(7313): `TYPE MENUITEMTEMPLATEHEADER VERSIONNUMBER AS INTEGER OFFSET AS INTEGER END TYPE` | WINDOWS.INC(7567): `TYPE MENUITEMTEMPLATEHEADER VERSIONNUMBER AS WORD OFFSET AS WORD END TYPE` |

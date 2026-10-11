@@ -354,7 +354,7 @@ def decls_first(out):
     in_type = False
     count = len(out)
     idx = 0
-    mode_re = re.compile(r'\$(typecheck|escapechars)\s+(on|off)\b|\$option\s+(explicit|weaktype)\b', re.I)
+    mode_re = re.compile(r'\$(typecheck|escapechars)\s+(on|off)\b|\$option\s+(explicit|weaktype|vbdll)\b', re.I)
     while idx < count:
         line = out[idx]
         code = code_part(line)
@@ -459,6 +459,9 @@ def decls_first(out):
     return result, moved
 
 
+MODES_OFF = ["$TYPECHECK OFF", "$ESCAPECHARS OFF", "$OPTION WEAKTYPE OFF", "$OPTION VBDLL OFF"]
+
+
 def append_bodies(result, moved):
     """Тела из decls_first - в конец, по файлам, с режимами файла."""
     tail = ["'" + '=' * 76,
@@ -468,13 +471,13 @@ def append_bodies(result, moved):
     for section, mode_lines, body in moved:
         if section != last_section:
             if last_section is not None:
-                tail += ["$TYPECHECK OFF", "$ESCAPECHARS OFF"]
+                tail += MODES_OFF
             tail.append("'[build_inc] %s (тела)" % section)
             tail.extend(mode_lines)
             last_section = section
         tail.extend(body)
     if last_section is not None:
-        tail += ["$TYPECHECK OFF", "$ESCAPECHARS OFF"]
+        tail += MODES_OFF
     return result + tail
 
 
@@ -873,6 +876,15 @@ def main():
                 fixed += 1
         if fixed:
             renamed.append('%s: %d строк с числом 880U (суффикс C) - без U' % (f, fixed))
+        # $OPTION INKEY$ TRAPALL (keys.inc) меняет INKEY$ во всей программе -
+        # в общем файле не включается
+        fixed = 0
+        for num, line in enumerate(texts[f]):
+            if re.match(r'\$option\s+inkey\$', code_part(line), re.I):
+                texts[f][num] = "'~option " + line + "   ' сборка: меняет INKEY$ во всей программе - включайте в своей"
+                fixed += 1
+        if fixed:
+            renamed.append('%s: $OPTION INKEY$ TRAPALL закомментирован (действует на всю программу)' % f)
         # CONST без = (commctrl32.inc: CONST TB_SETCOLORSCHEME	CCM_SETCOLORSCHEME)
         fixed = 0
         for num, line in enumerate(texts[f]):

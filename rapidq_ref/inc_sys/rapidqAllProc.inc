@@ -3969,40 +3969,8 @@ DECLARE FUNCTION CByteNum (ByteStr$,Num_Type as short ) as variant
 '~body FUNCTION CByteNum (ByteStr$,Num_Type as short ) as variant   ' сборка: тело - в конце файла
 
 '-- **************************************************************************'
-FUNCTION CNumByte (Num, Num_Type as short) as string
-'Andrew Shelkovenko dec 2003
-
-'converts bytes sequence to  number of Num_Type type  
-'Num_Type can be next value:
-'const Num_SHORT = 2
-'const Num_WORD = 3
-'const Num_LONG = 4
-'const Num_DWORD = 5
-'const Num_SINGLE = 6
-'const Num_DOUBLE = 8
-
-
-DIM M AS QMemoryStream
-
-select case Num_Type
-case Num_BYTE
-	dim N1 as BYTE 
-	ShowMessage "CNumByte: Can't to write BYTE.Wrong parameter type - Num_BYTE": exit funCTION
-	
-case  Num_SHORT: DEFSHORT N2:N2=Num:M.Write(N2):M.Position=0:CNumByte=M.ReadBinStr(sizeOf(N2))
-case  Num_WORD:  DEFWORD  N3:N3=Num:M.Write(N3):M.Position=0:CNumByte=M.ReadBinStr(sizeOf(N3))
-case  Num_LONG:  DEFLNG   N4:N4=Num:M.Write(N4):M.Position=0:CNumByte=M.ReadBinStr(sizeOf(N4))
-case  Num_DWORD: DEFDWORD N5:N5=Num:M.Write(N5):M.Position=0:CNumByte=M.ReadBinStr(sizeOf(N5))
-case  Num_SINGLE:DEFSNG   N6:N6=Num:M.Write(N6):M.Position=0:CNumByte=M.ReadBinStr(sizeOf(N6))
-case  Num_DOUBLE:DEFDBL   N7:N7=Num:M.Write(N7):M.Position=0:CNumByte=M.ReadBinStr(sizeOf(N7))
-	
-case else
-	dim N8 as DOUBLE:N8=Num:
-	M.Write(N8):
-	M.Position=0:CNumByte=M.ReadBinStr(sizeOf(N8)):M.Close                                         
-end select
-M.Close
-end funCTION
+DECLARE FUNCTION CNumByte (Num, Num_Type as short) as string
+'~body FUNCTION CNumByte (Num, Num_Type as short) as string   ' сборка: тело - в конце файла
 
 '-- **************************************************************************'
 
@@ -14910,19 +14878,10 @@ DECLARE function memoUpdate(newtext as string) as long
 
    
 '============================================================================
-'[build_inc] debug.inc
+'[build_inc] debugNoSend.inc
 '============================================================================
 '! --- вставляем процедуру дебаггера ----------'
 '~inc $INCLUDE"RAPIDQ.INC"   ' уже в сборке или заменён выбранной версией
-'~dup CONST WM_COPYDATA = &H4A   ' повтор, первое: constants.inc(161)
-TYPE COPYDATASTRUCT 
-	dwData AS LONG 
-	cbData AS LONG 
-	lpData AS LONG 
-END TYPE 
-
-DIM DataStruct AS COPYDATASTRUCT 
-DECLARE FUNCTION FindWindow LIB "user32" ALIAS "FindWindowA" (ByVal lpClassName AS String, ByVal lpWindowName AS String) AS LONG 
 
 DEFSTR strSend, strRecv, AppName 
 DEFInt flgRecv 
@@ -14933,11 +14892,7 @@ dim timerDbg as QTimer
 TimerDBG.Interval = 300 
 TimerDBG.Enabled = 1  
 TimerDBG.OnTimer = TimerOverDbg 
-'= ========================================'
-'~body SUB FormWndProc (Hwnd&, uMsg&, wParam&, lParam&)   ' сборка: тело - в конце файла
-'= ========================================'
-DECLARE SUB SendData
-'~body SUB SendData   ' сборка: тело - в конце файла
+
 '= ========================================'
 CREATE _DebugFORM AS QFORM 
 	CAPTION="DebuggerWnd"
@@ -14967,104 +14922,6 @@ END CREATE
 
 '-- ***************************************************************************************************
 '~body sub  _DebugFormClose   ' сборка: тело - в конце файла
-'============================================================================
-'[build_inc] debugNoSend.inc
-'============================================================================
-'! --- вставляем процедуру дебаггера ----------'
-'~inc $INCLUDE"RAPIDQ.INC"   ' уже в сборке или заменён выбранной версией
-
-'~dup DEFSTR strSend, strRecv, AppName    ' повтор, первое: debug.inc(13)
-'~dup DEFInt flgRecv    ' повтор, первое: debug.inc(14)
-'~dup declare sub MsgHandler    ' повтор, первое: debug.inc(15)
-'~dup declare sub _DebugFormClose    ' повтор, первое: debug.inc(16)
-'~dup declare sub TimerOverDbg    ' повтор, первое: debug.inc(17)
-'~dup dim timerDbg as QTimer   ' повтор, первое: debug.inc(18)
-TimerDBG.Interval = 300 
-TimerDBG.Enabled = 1  
-TimerDBG.OnTimer = TimerOverDbg 
-
-'= ========================================'
-'~dup CREATE _DebugFORM AS QFORM    ' повтор, первое: debug.inc(47)
-'~dup 	CAPTION="DebuggerWnd"
-'~dup 	left=1
-'~dup 	top=1  
-'~dup 	Width = 248 
-'~dup 	Height = 230 
-'~dup 	FormStyle = fsStayOnTop 
-'~dup 	BorderStyle=bsSizeToolWin 
-'~dup 	onClose=_DebugFormClose 
-'~dup 	CREATE _DebugEdit AS QRICHEDIT
-'~dup 		hideselection=0
-'~dup 		scrollbars=3
-'~dup 		top=2
-'~dup 		left=2
-'~dup 		width=_DebugFORM.clientwidth-2
-'~dup 		height=_DebugFORM.clientheight-2
-'~dup 	END CREATE 
-'~dup END CREATE 
-'== dbg1 == 
-
-'-- ***************************************************************************************************
-'~dup sub TimerOverDbg   ' повтор, первое: debug.inc(68)
-'~dup if _DebugFORM.Visible=0 then _DebugFORM.Visible=1
-'~dup end sub
-
-'-- ***************************************************************************************************
-'~dup sub MsgHandler   ' повтор, первое: debug.inc(73)
-'~dup MsgHandlerStart=1
-'~dup while   1=1
-'~dup 	select case  strRecv
-'~dup 	case "RunItOnClick"
-'~dup 		flgRecv=0
-'~dup 		exit while
-'~dup 	case "PauseOnClick"
-'~dup 		if flgRecv=1 then
-'~dup 			flgRecv=0
-'~dup 		end if
-'~dup 	case "ContinueOnClick"
-'~dup 		flgRecv=0
-'~dup 		exit while
-'~dup 	case "StepOverOnClick"
-'~dup 		if flgRecv=1  then
-'~dup 			flgRecv=0
-'~dup 			exit while
-'~dup 		end if
-'~dup 	case "StepInToOnClick"
-'~dup 		if flgRecv=1 then
-'~dup 			flgRecv=0
-'~dup 			exit while
-'~dup 		end if
-'~dup 	case  "RunToCursOnClick"
-'~dup 		strSend="RunToCursOnClick received"
-'~dup 	case   "AddWatchOnClick"
-'~dup 		strSend="AddWatchOnClick received"
-'~dup 	case    "DelWatchOnClick"
-'~dup 		strSend="DelWatchOnClick received"
-'~dup 	case     "DelAllWatchOnClick"
-'~dup 		strSend="DelAllWatchOnClick received"
-'~dup 	case      "ToggleBreakPointOnClick"
-'~dup 		strSend="ToggleBreakPointOnClick received"
-'~dup 	case  "ClearAllBreakPointsOnClick"
-'~dup 		strSend= "ClearAllBreakPointsOnClick received"
-'~dup 	case "FormCloseOnClick"
-'~dup 		end
-'~dup 		exit while
-'~dup 	case else
-'~dup 		exit while
-'~dup 	end select
-'~dup 	doevents
-'~dup wend
-'~dup strSend=_DebugEdit.Text
-'~dup senddata
-'~dup END SUB
-
-'-- ***************************************************************************************************
-'~dup sub  _DebugFormClose   ' повтор, первое: debug.inc(122)
-'~dup flgRecv=1
-'~dup strRecv="FormCloseOnClick"
-'~dup _DebugForm.Close
-'~dup end
-'~dup end sub
 '============================================================================
 '[build_inc] debugWindow.inc
 '============================================================================
@@ -19795,25 +19652,6 @@ DECLARE Sub GetFormPos (Sender as QForm)
 '~body Sub GetFormPos (Sender as QForm)   ' сборка: тело - в конце файла
  
 '============================================================================
-'[build_inc] Form1.inc
-'============================================================================
-Create Form1 as QForm
-      Caption = "Form1"
-      Top     = 429
-      Left    = 380
-      Width   = 477
-      Height  = 358
-End Create
-Create Button1 as QButton
-      Parent  = Form1
-      Top     = 64
-      Left    = 56
-      Width   = 75
-      Height  = 25
-      Caption = "Button1"
-End Create
-
-'============================================================================
 '[build_inc] GDI32.inc
 '============================================================================
 'GDI32.DLL Functions
@@ -20517,7 +20355,7 @@ $ENDIF      'HTMLHELP_INC
 '[build_inc] keys.inc
 '============================================================================
 $EscapeChars ON
-$Option INKEY$ TRAPALL
+'~option $Option INKEY$ TRAPALL   ' сборка: меняет INKEY$ во всей программе - включайте в своей
 
 $define func function
 $define funci functioni
@@ -20639,86 +20477,6 @@ $define class type 'class obj extends qoleobject (example)
 
 $UNDEF CHAR   ' сборка: ниже это имя переменной, QFuncLib.inc(72): function RemoveChar$(s as string,char as string) as string
 $ESCAPECHARS OFF   ' сборка: вернуть после keys.inc
-'============================================================================
-'[build_inc] LabelGrid.inc
-'============================================================================
-'--- properties --------------
-defint RowCount=3 
-defint ColCount=3
-defint DefaultColWidth=95'76
-defint DefaultRowHeight=24
-
-defint GridLineWidth=1
-defint GridLineColor=cldgreen
-defint GridWidth=GridLineWidth*(ColCount+1)+DefaultColWidth*ColCount
-defint GridHeight =GridLineWidth*(RowCount+1)+DefaultRowHeight*RowCount
-defint GridColor=&HBAFCE7'cllRed
-
-defint cellAlignment=taCenter 
-defint SelectedBGColor=clyellow
-
-defint SelCol,SelRow
-defint GridTop, GridLeft
-
-'!!! --- Merge ---------------------------------
-defint MergeStartCol=0
-defint MergeStartRow=0
-
-defint MergeCountCol=2
-defint MergeCountRow=1
-'-----------------------------------------------
-CREATE PanelGrid AS QPANEL
-        Left =2
-        Top = 2
-			Width=GridWidth
-			Height=GridHeight
-			
-        Caption = "Panel1"
-        TabOrder = 8
-			color=GridLineColor
-			BevelOuter =bvnone
-			BevelInner=bvnone
-END CREATE
-
-dim Labels(RowCount,ColCount) as QLabel
-cellk=0
-
-for irow=0 to  RowCount-1
-	for jcol=0 to  ColCount-1
-		Labels(irow,jcol).parent=PanelGrid
-		Labels(irow,jcol).tag=-cellk
-		Labels(irow,jcol).Autosize=0
-		Labels(irow,jcol).Alignment=cellAlignment
-		Labels(irow,jcol).left=GridLineWidth*(jcol+1)+DefaultColWidth*jcol
-		Labels(irow,jcol).top=GridLineWidth*(irow+1)+DefaultRowHeight*irow
-		'Labels(irow,jcol).caption=str$(Labels(irow,jcol).top)
-		'Labels(irow,jcol).OnClick=SelectCell
-		Labels(irow,jcol).color=GridColor
-		Labels(irow,jcol).Height=DefaultRowHeight
-		Labels(irow,jcol).Width=DefaultColWidth
-
-		if irow>=MergeStartRow  and irow<MergeStartRow+MergeCountRow and jcol>=MergeStartCol and jcol<MergeStartCol+MergeCountCol then
-			'Labels(irow,jcol).caption="Merged"
-			Labels(irow,jcol).visible =0
-			Labels(irow,jcol).color=clLBlue
-		end if
-
-		if irow=MergeStartRow and jcol=MergeStartRow then
-			Labels(irow,jcol).Height=GridLineWidth*(MergeCountRow-1)+DefaultRowHeight*MergeCountRow
-			Labels(irow,jcol).Width=GridLineWidth*(MergeCountCol-1)+DefaultColWidth*MergeCountCol 
-			'Labels(irow,jcol).color=clred
-			Labels(irow,jcol).visible =1
-		end if
-		inc cellk
-	next jcol
-next irow
-Labels(0,0).caption="Заданное"
-Labels(0,0).color=&H90D7FF
-Labels(0,2).caption="Измеренное"
-Labels(1,0).caption="Импульсов"
-Labels(1,1).caption="Uзп"
-Labels(1,2).caption="Uфп"
-      
 '============================================================================
 '[build_inc] like.inc
 '============================================================================
@@ -21541,122 +21299,6 @@ Function NewStrArray(Count&) As Integer
     DefInt Ptr = HeapAlloc(GetProcessHeap,HEAP_NO_SERIALIZE Or HEAP_ZERO_MEMORY,SizeOf(String)*Count&)
     Result = Ptr
 End Function
-
-'============================================================================
-'[build_inc] menu.inc
-'============================================================================
-'Menu file for test.rqw
-
-Declare Sub mOpen_Click(Sender as QMenuItem)
-Declare Sub mNew_Click(Sender as QMenuItem)
-Declare Sub mSave_Click(Sender as QMenuItem)
-Declare Sub mSaveAs_Click(Sender as QMenuItem)
-Declare Sub mPrint_Click(Sender as QMenuItem)
-Declare Sub mUndo_Click(Sender as QMenuItem)
-Declare Sub mPaste_Click(Sender as QMenuItem)
-Declare Sub mCut_Click(Sender as QMenuItem)
-Declare Sub mCopy_Click(Sender as QMenuItem)
-Declare Sub mExit_Click(Sender as QMenuItem)
-Declare Sub mHelp_Click(Sender as QMenuItem)
-Declare Sub mSoftware_Click(Sender as QMenuItem)
-
-Create MainMenu as QMainMenu
-       Parent = MainForm
-       Create mFile as QMenuItem
-              Caption = "&File"
-              Create mNew as QMenuItem
-                     Caption = "&New"
-                     OnClick = mNew_Click
-              End Create
-              Create mOpen as QMenuItem
-                     Caption = "&Open"
-                     OnClick = mOpen_Click
-              End Create
-              Create N1 as QMenuItem
-                     Caption = "-"
-              End Create
-              Create mSave as QMenuItem
-                     Caption = "&Save"
-                     OnClick = mSave_Click
-              End Create
-              Create mSaveAs as QMenuItem
-                     Caption = "Save &As"
-                     OnClick = mSaveAs_Click
-              End Create
-              Create N11 as QMenuItem
-                     Caption = "-"
-              End Create
-              Create mPrint as QMenuItem
-                     Caption = "Print"
-                     OnClick = mPrint_Click
-              End Create
-              Create N12 as QMenuItem
-                     Caption = "-"
-              End Create
-              Create mExit as QMenuItem
-                     Caption = "&Exit"
-                     OnClick = mExit_Click
-              End Create
-       End Create
-       Create mEdit as QMenuItem
-              Caption = "&Edit"
-              Create mUndo as QMenuItem
-                     Caption = "&Undo"
-                     OnClick = mUndo_Click
-              End Create
-              Create N2 as QMenuItem
-                     Caption = "-"
-              End Create
-              Create mPaste as QMenuItem
-                     Caption = "&Paste"
-                     OnClick = mPaste_Click
-              End Create
-              Create mCut as QMenuItem
-                     Caption = "&Cut"
-                     OnClick = mCut_Click
-              End Create
-              Create mCopy as QMenuItem
-                     Caption = "&Copy"
-                     OnClick = mCopy_Click
-              End Create
-       End Create
-       Create mAbout as QMenuItem
-              Caption = "&About"
-              Create mHelp as QMenuItem
-                     Caption = "&Help"
-                     OnClick = mHelp_Click
-              End Create
-              Create N3 as QMenuItem
-                     Caption = "-"
-              End Create
-              Create mSoftware as QMenuItem
-                     Caption = "&Software"
-                     OnClick = mSoftware_Click
-              End Create
-       End Create
-End Create
-
-'~body Sub mOpen_Click(Sender as QMenuItem)   ' сборка: тело - в конце файла
-
-'~body Sub mNew_Click(Sender as QMenuItem)   ' сборка: тело - в конце файла
-
-'~body Sub mSave_Click(Sender as QMenuItem)   ' сборка: тело - в конце файла
-
-'~body Sub mSaveAs_Click(Sender as QMenuItem)   ' сборка: тело - в конце файла
-
-'~body Sub mUndo_Click(Sender as QMenuItem)   ' сборка: тело - в конце файла
-
-'~body Sub mPaste_Click(Sender as QMenuItem)   ' сборка: тело - в конце файла
-
-'~body Sub mCut_Click(Sender as QMenuItem)   ' сборка: тело - в конце файла
-
-'~body Sub mCopy_Click(Sender as QMenuItem)   ' сборка: тело - в конце файла
-
-'~body Sub mHelp_Click(Sender as QMenuItem)   ' сборка: тело - в конце файла
-
-'~body Sub mSoftware_Click(Sender as QMenuItem)   ' сборка: тело - в конце файла
-
-'~body Sub mExit_Click(Sender as QMenuItem)   ' сборка: тело - в конце файла
 
 '============================================================================
 '[build_inc] microTIMER.inc
@@ -27686,48 +27328,6 @@ END SUB
 '~body SUB PrintSSTRecords   ' сборка: тело - в конце файла
 
 '============================================================================
-'[build_inc] QXpTheme.INC
-'============================================================================
-'************************************************************************************************
-'*																
-'*	QXpTheme by Nicolas Tillet http://www.membres.lycos.fr/ntillet86     du 10/2003             	
-'*																
-'************************************************************************************************
-
-
-
-
-	CREATE manifest AS QSTRINGLIST  
-		additems "<?xml version="+CHR$(34)+"1.0"+CHR$(34)+" encoding="+CHR$(34)+"UTF-8"+CHR$(34)+" standalone="+CHR$(34)+"yes"+CHR$(34)+"?>"
-		additems "<assembly xmlns="+CHR$(34)+"urn:schemas-microsoft-com:asm.v1"+CHR$(34)+" manifestVersion="+CHR$(34)+"1.0"+CHR$(34)+">"
-		additems "<assemblyIdentity"
-		additems "version = "+CHR$(34)+"1.0.0.0"+CHR$(34)+""
-		additems "processorArchitecture = "+CHR$(34)+"X86"+CHR$(34)+""
-		additems "name = "+CHR$(34)+"[].[].[]"+CHR$(34)+""
-		additems "type="+CHR$(34)+"win32"+CHR$(34)+""
-		additems "/>"
-		additems "<description></description>"
-		additems "<dependency>"
-		additems "<dependentAssembly>"
-		additems "<assemblyIdentity"
-		additems "type="+CHR$(34)+"win32"+CHR$(34)+""
-		additems "name = "+CHR$(34)+"Microsoft.Windows.Common-Controls"+CHR$(34)+""
-		additems "version = "+CHR$(34)+"6.0.0.0"+CHR$(34)+""
-		additems "processorArchitecture = "+CHR$(34)+"X86"+CHR$(34)+""
-		additems "publicKeyToken = "+CHR$(34)+"6595b64144ccf1df"+CHR$(34)+""
-		additems "language = "+CHR$(34)+"*"+CHR$(34)+"" 
-		additems "/>"                  	
-		additems "</dependentAssembly>"                  	
-		additems "</dependency>"                  	
-		additems "</assembly>"                  	
-	END CREATE 
-	IF FILEEXISTS(Command$ (0)+".manifest")=0 THEN 
-		manifest.SaveToFile(Command$ (0)+".manifest")
-		RUN Command$ (0) 
-		Application.Terminate
-	END IF 
-
-'============================================================================
 '[build_inc] registryVars.inc
 '============================================================================
 '~dup CONST fmCreate = 65535   ' повтор, первое: rapidq2.inc(292)
@@ -29778,38 +29378,6 @@ DECLARE Function ShellRedir (CommandLine As String) As String
 ' End
 
 '============================================================================
-'[build_inc] StayOnTop.inc
-'============================================================================
-'$Include "Win32API.inc"
-$OPTION VBDLL ON
-$OPTION WEAKTYPE ON
-
-'~dup declare function SetWindowPos Lib "User32" alias "SetWindowPos" (ByVal hwnd as long,ByVal hwndInsertAfter as Long, _   ' повтор, первое: rapidq2.inc(1029)
-'~dup ByVal x as long, ByVal y as Long,ByVal cx as Long,ByVal cy as Long, _
-'~dup ByVal wFlags as Long)as Long
-
-declare sub StayOnTop(hwnd as QForm)
-
-'~dup Const SWP_NOMOVE=&H2   ' повтор, первое: rapidq2.inc(792)
-'~dup Const SWP_NOSIZE=&H1   ' повтор, первое: rapidq2.inc(791)
-'~dup Const HWND_TOPMOST= -1   ' повтор, первое: rapidq2.inc(785)
-Const FLAGS = SWP_NOMOVE Or SWP_NOSIZE
-dim OnTop as integer
-
-Create StayOnTopTimer as QTimer
-Interval=1
-Enabled=1
-OnTimer=StayOnTop
-End Create
-
-'~body SUB StayOnTop(hwnd as QForm)   ' сборка: тело - в конце файла
- 
-' Form.ShowModal
-$TYPECHECK OFF
-$OPTION VBDLL OFF
-$OPTION WEAKTYPE OFF
-
-'============================================================================
 '[build_inc] stdObjbar.inc
 '============================================================================
 DIM cmdForm AS QCOOLBTN
@@ -30413,8 +29981,8 @@ print "inc dir   C:\BAS\RAPIDQ\inc\TestIncPAth.inc"
 
 'FindWindow()
 
-'~dup 	Declare Function FindWindow Lib "user32.dll" Alias_   ' повтор, первое: debug.inc(11)
-'~dup 	 "FindWindowA" (lpClassName As String, lpWindowName As String) As Long 
+	Declare Function FindWindow Lib "user32.dll" Alias_
+	 "FindWindowA" (lpClassName As String, lpWindowName As String) As Long 
 
 
 'GetActiveWindow
@@ -31515,7 +31083,7 @@ DIM Arg2!(1) as single      ' значения аргумента
 '~dup Declare Function BringWindowToTop Lib "user32" Alias "BringWindowToTop"_   ' повтор, первое: rapidq2.inc(984)
 '~dup (ByVal hwnd As Long) As Long
 
-'~dup Declare Function FindWindow Lib "user32" Alias "FindWindowA" _   ' повтор, первое: debug.inc(11)
+'~dup Declare Function FindWindow Lib "user32" Alias "FindWindowA" _   ' повтор, первое: User32.inc(17)
 '~dup (className As String, windowName As String) As Integer
                  
 '~dup Declare Sub SetWindowPos Lib "user32" ALIAS "SetWindowPos"(hWnd As Long,_   ' повтор, первое: rapidq2.inc(1029)
@@ -38147,11 +37715,11 @@ Public Const PWR_CRITICALRESUME = 3
 '~dup Public Const WM_COPYDATA = &H4A   ' повтор, первое: constants.inc(161)
 Public Const WM_CANCELJOURNAL = &H4B
 
-'~dup Type COPYDATASTRUCT   ' повтор, первое: debug.inc(4)
-'~dup         dwData As Long
-'~dup         cbData As Long
-'~dup         lpData As Long
-'~dup End Type
+Type COPYDATASTRUCT
+        dwData As Long
+        cbData As Long
+        lpData As Long
+End Type
 
 '~dup Public Const WM_NCCREATE = &H81   ' повтор, первое: QFormSkin.inc(13)
 '~dup Public Const WM_NCDESTROY = &H82   ' повтор, первое: QFormSkin.inc(14)
@@ -39167,7 +38735,7 @@ Declare Function GetClassLong Lib "user32" Alias "GetClassLongA" (ByVal hwnd As 
 
 '~dup Declare Function GetParent Lib "user32" Alias "GetParent" (ByVal hwnd As Long) As Long   ' повтор, первое: rapidq2.inc(995)
 '~dup Declare Function SetParent Lib "user32" Alias "SetParent" (ByVal hWndChild As Long, ByVal hWndNewParent As Long) As Long   ' повтор, первое: rapidq2.inc(1011)
-'~dup Declare Function FindWindow Lib "user32" Alias "FindWindowA" (ByVal lpClassName As String, ByVal lpWindowName As String) As Long   ' повтор, первое: debug.inc(11)
+'~dup Declare Function FindWindow Lib "user32" Alias "FindWindowA" (ByVal lpClassName As String, ByVal lpWindowName As String) As Long   ' повтор, первое: User32.inc(17)
 
 '~dup Declare Function GetClassName Lib "user32" Alias "GetClassNameA" (ByVal hwnd As Long, ByVal lpClassName As String, ByVal nMaxCount As Long) As Long   ' повтор, первое: rapidq2.inc(989)
 Declare Function GetTopWindow Lib "user32" Alias "GetTopWindow" (ByVal hwnd As Long) As Long
@@ -54019,7 +53587,7 @@ CONST WM_NOTIFYFORMAT     = &H0055
 '~dup Public Const WM_COPYDATA = &H4A   ' повтор, первое: constants.inc(161)
 '~dup Public Const WM_CANCELJOURNAL = &H4B   ' повтор, первое: WIN32API.INC(6232)
 
-'~dup Type COPYDATASTRUCT   ' повтор, первое: debug.inc(4)
+'~dup Type COPYDATASTRUCT   ' повтор, первое: WIN32API.INC(6234)
 '~dup         dwData As Long
 '~dup         cbData As Long
 '~dup         lpData As Long
@@ -55107,7 +54675,7 @@ CONST WM_NOTIFYFORMAT     = &H0055
 
 '~dup Declare Function GetParent Lib "user32" Alias "GetParent" (ByVal hwnd As Long) As Long   ' повтор, первое: rapidq2.inc(995)
 '~dup Declare Function SetParent Lib "user32" Alias "SetParent" (ByVal hWndChild As Long, ByVal hWndNewParent As Long) As Long   ' повтор, первое: rapidq2.inc(1011)
-'~dup Declare Function FindWindow Lib "user32" Alias "FindWindowA" (ByVal lpClassName As String, ByVal lpWindowName As String) As Long   ' повтор, первое: debug.inc(11)
+'~dup Declare Function FindWindow Lib "user32" Alias "FindWindowA" (ByVal lpClassName As String, ByVal lpWindowName As String) As Long   ' повтор, первое: User32.inc(17)
 
 '~dup Declare Function GetClassName Lib "user32" Alias "GetClassNameA" (ByVal hwnd As Long, ByVal lpClassName As Long, ByVal nMaxCount As Long) As Long   ' повтор, первое: rapidq2.inc(989)
 '~dup Declare Function GetTopWindow Lib "user32" Alias "GetTopWindow" (ByVal hwnd As Long) As Long   ' повтор, первое: WIN32API.INC(7257)
@@ -63817,6 +63385,8 @@ function Rudate as string
 end function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] conversion.inc (тела)
 function LCaseApi(  SrcTxt as string ) as string
 tmp$=SrcTxt+"-"
@@ -63947,6 +63517,40 @@ end select
 
 M.Close
 
+end funCTION
+FUNCTION CNumByte (Num, Num_Type as short) as string
+'Andrew Shelkovenko dec 2003
+
+'converts bytes sequence to  number of Num_Type type  
+'Num_Type can be next value:
+'const Num_SHORT = 2
+'const Num_WORD = 3
+'const Num_LONG = 4
+'const Num_DWORD = 5
+'const Num_SINGLE = 6
+'const Num_DOUBLE = 8
+
+
+DIM M AS QMemoryStream
+
+select case Num_Type
+case Num_BYTE
+	dim N1 as BYTE 
+	ShowMessage "CNumByte: Can't to write BYTE.Wrong parameter type - Num_BYTE": exit funCTION
+	
+case  Num_SHORT: DEFSHORT N2:N2=Num:M.Write(N2):M.Position=0:CNumByte=M.ReadBinStr(sizeOf(N2))
+case  Num_WORD:  DEFWORD  N3:N3=Num:M.Write(N3):M.Position=0:CNumByte=M.ReadBinStr(sizeOf(N3))
+case  Num_LONG:  DEFLNG   N4:N4=Num:M.Write(N4):M.Position=0:CNumByte=M.ReadBinStr(sizeOf(N4))
+case  Num_DWORD: DEFDWORD N5:N5=Num:M.Write(N5):M.Position=0:CNumByte=M.ReadBinStr(sizeOf(N5))
+case  Num_SINGLE:DEFSNG   N6:N6=Num:M.Write(N6):M.Position=0:CNumByte=M.ReadBinStr(sizeOf(N6))
+case  Num_DOUBLE:DEFDBL   N7:N7=Num:M.Write(N7):M.Position=0:CNumByte=M.ReadBinStr(sizeOf(N7))
+	
+case else
+	dim N8 as DOUBLE:N8=Num:
+	M.Write(N8):
+	M.Position=0:CNumByte=M.ReadBinStr(sizeOf(N8)):M.Close                                         
+end select
+M.Close
 end funCTION
 Function GetWord (Oper$ as string, getV$ as string) as long
 'Old! Use GetVarPos!!!
@@ -64180,6 +63784,8 @@ STRL$ = field$(STRF$(value, ffFixed, 11, 18),decSep$,1)
 END FUNCTION
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] Files.inc (тела)
 function Quote (StringToQuote as string) as string
   StringToQuote =  chr$(34) + StringToQuote + chr$(34)
@@ -64624,6 +64230,8 @@ function DownLoadURL (sUrl as string, dFileName as string) as long
 End Function ' inc2026: END FUNCTION вместо END SUB: процедура открыта как function DownLoadURL (строка 1440)
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] func_array.inc (тела)
 sub ARRAverageSubtract (Dat!() as single) 
 ' calculate and subtract average value from function Dat1!()
@@ -64717,6 +64325,8 @@ NEXT p
 END SUB
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] parse.inc (тела)
 Function GetVarPos (Oper$ as string, getV$ as string) as long
 'return variable  position in checked string
@@ -64762,6 +64372,8 @@ result=STxt$
 end function 
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] eml.inc (тела)
 Function GetSubjCodePage( Subject As String) As String
 zza$=Subject
@@ -65014,6 +64626,8 @@ sub cprint(s as string)
 End sub
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] ApiDate.inc (тела)
 Function lastdayM(datum$ as string)as string ' inc2026: заголовок приведён к DECLARE (строка 34): добавлено as string
     Dim pBuffer As String , last As SYSTEMTIME
@@ -65031,6 +64645,8 @@ Function lastdayM(datum$ as string)as string ' inc2026: заголовок пр�
 End function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] CallBack_0.Inc (тела)
     Function MasterCallBack_0 (hFunction As Long) As Long
         DefInt hBind = hFunction
@@ -65042,6 +64658,8 @@ $ESCAPECHARS OFF
     End Function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] CallBack_1.Inc (тела)
     Function MasterCallBack_1 (hFunction As Long, Arg1 As Long) As Long
         DefInt hBind
@@ -65054,6 +64672,8 @@ $ESCAPECHARS OFF
     End Function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] CallBack_2.Inc (тела)
     Function MasterCallBack_2 (hFunction As Long, Arg1 As Long, Arg2 As Long) As Long ' inc2026: hFunction РІРјРµСЃС‚Рѕ cbIndex: РІ DECLARE (СЃС‚СЂРѕРєР° 45) Рё РІ С‚РµР»Рµ (СЃС‚СЂРѕРєР° 52) - hFunction, РєР°Рє РІ CallBack_0/1/3/4; RapidQ Р±РµСЂС‘С‚ РёРјРµРЅР° РёР· DECLARE, С‚Р°Рє С‡С‚Рѕ РїРѕРІРµРґРµРЅРёРµ РЅРµ РјРµРЅСЏРµС‚СЃСЏ, cbIndex РЅРёРіРґРµ РЅРµ РёСЃРїРѕР»СЊР·СѓРµС‚СЃСЏ
         DefInt hBind
@@ -65066,6 +64686,8 @@ $ESCAPECHARS OFF
     End Function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] CallBack_3.Inc (тела)
     Function MasterCallBack_3 (hFunction As Long, Arg1 As Long, Arg2 As Long, Arg3 As Long) As Long
         DefInt hBind
@@ -65078,6 +64700,8 @@ $ESCAPECHARS OFF
     End Function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] CallBack_5.Inc (тела)
     Function MasterCallBack_5 (hFunction As Long, Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As Long, Arg5 As long) As Long ' inc2026: hFunction РІРјРµСЃС‚Рѕ hBind: РІ Р·Р°РіРѕР»РѕРІРєРµ Р±С‹Р»Рѕ hBind - С‚Рѕ Р¶Рµ РёРјСЏ, С‡С‚Рѕ Сѓ Р»РѕРєР°Р»СЊРЅРѕР№ DefInt hBind (СЃС‚СЂРѕРєР° 50); РІ DECLARE (СЃС‚СЂРѕРєР° 45) Рё РІ С‚РµР»Рµ (СЃС‚СЂРѕРєР° 52) - hFunction, РєР°Рє РІ CallBack_4/6/7/8
         DefInt hBind
@@ -65090,12 +64714,16 @@ $ESCAPECHARS OFF
     End Function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] CallBack_6.Inc (тела)
     Function SetNewCallBack_6 (hFunction As Long) As Long
         Result = SetNewFwToCallBack (lpCallBack_6, hFunction)
     End Function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] CallBack_7.Inc (тела)
     Function MasterCallBack_7 (hFunction As Long, Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As Long, Arg5 As long, Arg6 As long, Arg7 As long) As Long
         DefInt hBind
@@ -65108,6 +64736,8 @@ $ESCAPECHARS OFF
     End Function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] CallBack_8.Inc (тела)
     Function MasterCallBack_8 (hFunction As Long, Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As Long, Arg5 As long, Arg6 As long, Arg7 As long, Arg8 As long) As Long
         DefInt hBind
@@ -65120,9 +64750,12 @@ $ESCAPECHARS OFF
     End Function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] CMD5.inc (тела)
 $TYPECHECK ON
 $OPTION WEAKTYPE ON
+$OPTION VBDLL    ON
 Function WordToHex(ByVal lValue As Long) As String
     Dim lByte As Long
     Dim lCount As Long
@@ -65259,6 +64892,8 @@ Function MD5(sMessage As String) As String
 End Function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] constants.inc (тела)
 sub SetPARAFORMAT (Sender as QRichedit)
 Dim Mem as QMemoryStream
@@ -65297,6 +64932,8 @@ Mem.Close
 end sub
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] Control.inc (тела)
 sub nOpenMouseDlg(index%)
 PID = Shell("rundll32.exe shell32.dll,Control_RunDLL main.cpl @0,"+str$(index), 5)
@@ -65368,6 +65005,8 @@ PID = Shell("rundll32.exe shell32.dll,Control_RunDLL tweakui.cpl @0", 5)
 end sub
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] conversionOld.inc (тела)
 Function QPDecode( Source As String) As String
 outtxt$=""
@@ -65406,6 +65045,8 @@ result=outtxt$
 end function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] ConvertToTruePath.inc (тела)
 Function ConvertToTruePath(ByVal sPath As String) As String
   ' Parse... breaks the string parameter down to individual folders
@@ -65428,6 +65069,8 @@ Function ConvertToTruePath(ByVal sPath As String) As String
 End Function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] Copy of NOTA.inc (тела)
 	Function CloseNOTASys
 		CloseNOTASys = NOTASys.ReadString("LastOpened")
@@ -65573,6 +65216,8 @@ $ESCAPECHARS OFF
 	End Function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] DBT.INC (тела)
 sub dbtCreate( dbtArch as string)
 dim streamEx as QMemorystream
@@ -65666,29 +65311,9 @@ result = n&     'Block count
 end function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
-'[build_inc] debug.inc (тела)
-SUB FormWndProc (Hwnd&, uMsg&, wParam&, lParam&) 
-   IF uMsg& = WM_COPYDATA THEN 
-      DIM MStream AS QMEMORYSTREAM 
-      MStream.MemCopyFrom(lParam&, 12) 
-      MStream.Position = 0 
-      MStream.ReadUDT(DataStruct) 
-      MStream.Close 
-      strRecv = VARPTR$(DataStruct.lpData) 
-      flgRecv=1
-   END IF 
-END SUB 
-SUB SendData  
-   DEFLNG wndhnd 
-   wndhnd=Findwindow("TForm",AppName) 
-   IF wndhnd=0 THEN 
-      SHOWMESSAGE "Could not find "+AppName 
-      EXIT SUB 
-   END IF 
-   DataStruct.lpData = VARPTR(strSend) 
-   DataStruct.cbData = LEN(strSend) 
-   SENDMESSAGE wndhnd, WM_COPYDATA, 0, DataStruct 
-END SUB 
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
+'[build_inc] debugNoSend.inc (тела)
 sub TimerOverDbg
 if _DebugFORM.Visible=0 then _DebugFORM.Visible=1
 end sub
@@ -65747,6 +65372,8 @@ end
 end sub
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] debugWindow.inc (тела)
 Subi RQDebug(...)
 GetLinesLack=ParamStrCount-~WatchDisplay.LineCOunt-1   
@@ -65784,6 +65411,8 @@ ModeFlg=0
 end sub
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] delTags.inc (тела)
 FUNCTION HtmTableValue(TableText AS STRING, KeyText AS STRING) AS LONG
   DIM KeyPos AS LONG, ValueStart AS LONG, ValueEnd AS LONG, FoundValue AS LONG
@@ -65830,6 +65459,8 @@ FUNCTION HtmHexValue(HexText AS STRING) AS LONG
 END FUNCTION
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] evaluate.inc (тела)
 $TYPECHECK ON
 FUNCTION EvaluateExpression (BYREF MathString$ AS STRING, DRGMode AS BYTE) AS DOUBLE
@@ -66009,6 +65640,8 @@ SUB CheckE(newstring$ AS STRING)
 END SUB
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] FBFunctions.inc (тела)
 function fbReplaceSubStr$ (SrcString as string, SString as string, RString as string ) as string  ' обертка FBReplaceSubStrFunc
 SrcString4$=SrcString
@@ -66016,6 +65649,8 @@ fbReplaceSubStr$=varptr$(FBReplaceSubStrFunc (SrcString4$, SString, RString) )
 end function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] Form.inc (тела)
 Sub SetFormPos(hwnd as long, SetX as long, SetY as long)
     Dim WinEst As WINDOWPLACEMENT
@@ -66066,6 +65701,8 @@ Sub GetFormPos (Sender as QForm)
 End Sub
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] Math.inc (тела)
 Function ACOSH(value AS DOUBLE) AS DOUBLE
   SELECT CASE value
@@ -66351,42 +65988,8 @@ End If
 End Function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
-'[build_inc] menu.inc (тела)
-Sub mOpen_Click(Sender as QMenuItem)
-
-End Sub
-Sub mNew_Click(Sender as QMenuItem)
-
-End Sub
-Sub mSave_Click(Sender as QMenuItem)
-
-End Sub
-Sub mSaveAs_Click(Sender as QMenuItem)
-
-End Sub
-Sub mUndo_Click(Sender as QMenuItem)
-
-End Sub
-Sub mPaste_Click(Sender as QMenuItem)
-
-End Sub
-Sub mCut_Click(Sender as QMenuItem)
-
-End Sub
-Sub mCopy_Click(Sender as QMenuItem)
-
-End Sub
-Sub mHelp_Click(Sender as QMenuItem)
-
-End Sub
-Sub mSoftware_Click(Sender as QMenuItem)
-
-End Sub
-Sub mExit_Click(Sender as QMenuItem)
-
-End Sub
-$TYPECHECK OFF
-$ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] microTIMER.inc (тела)
 FuncTion  MicroTimer_dwToDbl (iDw As Long) As Double
     DefDbl dwTmp, dbl2exp31
@@ -66402,6 +66005,8 @@ FuncTion  MicroTimer_dwToDbl (iDw As Long) As Double
 End Function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] Minimize.inc (тела)
 Sub SetMinimize (Form as QForm)
 Setwindow(Form.Handle, -8, 0)
@@ -66409,12 +66014,16 @@ Setwindow(Application.Handle, -8, Form.Handle)
 End Sub
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] msgdlg.inc (тела)
 Function MsgDlg (MsgDlgText As String, MsgDlgTitle As String, MsgDlgButtons As Long) As Long
     Result = MDlg (Form.Handle,MsgDlgText,MsgDlgTitle,MsgDlgButtons)
 End Function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] NOTA.inc (тела)
 	Function CloseAppKey
 		CloseAppKey = AppKey.ReadString("LastOpened")
@@ -66436,6 +66045,8 @@ $ESCAPECHARS OFF
 	End Function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] ODMenuXP.inc (тела)
 SUB GetVersion_mOD
 	DIM rtn AS LONG
@@ -66594,6 +66205,8 @@ Function pGetClassName_mOD '(ByVal hwnd As Long) As String
 End Function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] ole.inc (тела)
 $TYPECHECK ON
 Function GuidStringFromGUID(rclsid As GUID) As String
@@ -66607,6 +66220,8 @@ Function GuidStringFromGUID(rclsid As GUID) As String
 End Function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] pulsar.inc (тела)
 sub crea_pulsar_db
 
@@ -66733,6 +66348,8 @@ sub visualizza_tutti_da_pulsar_db
 end sub
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] QFiles.inc (тела)
 SUB fINITIALIZE  'call this to initialize at program start
 For qfi=1 to MaxQFiles: qfn(qfi)=0: Next qfi
@@ -66823,6 +66440,8 @@ DoEvents
 END SUB
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] QFormSkin.inc (тела)
 $Option Explicit
 Sub FixTaskBar (hWnd As Long)
@@ -67308,6 +66927,8 @@ FUNCTION WindowProc '(ByVal hwnd AS Long, ByVal uMsg AS Long,ByVal wParam AS Lon
 END FUNCTION
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] QFuncLib.inc (тела)
 Function GetFileName(file as string) as string
  result=RIGHT$(file,Len(file)-RINSTR(file,"\"))
@@ -67366,6 +66987,8 @@ function GetGreen(Color as long) as long
 end function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] QPoint.inc (тела)
 Sub Point(FPoint as QPoint, x as long, y as long)
 FPoint.X = x
@@ -67373,6 +66996,8 @@ FPoint.Y = y
 End Sub
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] QXLS.INC (тела)
 FUNCTION xlsOPEN
 Result=-1&: xFinish=0??: sERR=""
@@ -67958,6 +67583,8 @@ PRINT
 END SUB
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] registryVars.inc (тела)
 function floatVal( number as string) as single
 result = 0
@@ -68073,6 +67700,8 @@ file.close
 end sub
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] RqAsmUtils.Inc (тела)
 Function CallAddressManyArgs (address As Long, ptrStructArg As Long) As Long
     Result = CallAsmProc (ptrCallAddressManyArgs, address, ptrStructArg, 0, 0)
@@ -68142,6 +67771,8 @@ Function WriteByteAtPointer (pointer As Long, bData As Long) As Long
 End Function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] RQdate.inc (тела)
 function ReadVarFromMemory2 (adrr as long, vart as long ) as  variant 'double 
 ' read N bytes from address "adrr" ad return
@@ -68249,6 +67880,8 @@ DateAdd=sertime
 end function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] RQProcess.inc (тела)
 FUNCTION CreateAPIString(length AS LONG) AS STRING
 Result = SPACE$(length)
@@ -68337,6 +67970,8 @@ FUNCTION rqTerminateProcess ( procID AS long ) AS LONG
 END FUNCTION
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] SetFileTimeAttrib.inc (тела)
         Functioni ChangeFileDateAndTime ( ... ) As Long
             DefInt iHandle, N
@@ -68439,6 +68074,8 @@ cftError:
         End Function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] ShellRedir.Inc (тела)
 Function ShellRedir (CommandLine As String) As String
      Dim tPipeAttributes As RDR_SECURITY_ATTRIBUTES
@@ -68496,13 +68133,8 @@ Function ShellRedir (CommandLine As String) As String
 End Function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
-'[build_inc] StayOnTop.inc (тела)
-$OPTION WEAKTYPE ON
-SUB StayOnTop(hwnd as QForm)
-OnTop=SetWindowPos(hwnd.Handle,HWND_TOPMOST,0,0,0,0,FLAGS)
-End SUB
-$TYPECHECK OFF
-$ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 '[build_inc] SysUtils.inc (тела)
 Function ExtractFileExt(File As String) As String
    Defint Pt,i
@@ -68535,4 +68167,6 @@ Function MakeLong(a As Word, b As Word) As Long
 End Function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
+$OPTION WEAKTYPE OFF
+$OPTION VBDLL OFF
 $ENDIF ' __RQALLPROC_INC
