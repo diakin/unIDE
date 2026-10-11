@@ -140,6 +140,14 @@ type
     FGridX: Integer;
     FGridY: Integer;
     FShowGrid: Boolean;
+    // Кисть-узор сетки: клетка FGridX x FGridY цвета формы с точкой в углу.
+    // Фон формы стирается одной заливкой этой кистью (PaintGrid) - Windows
+    // сама размножает клетку по области перерисовки. Пересоздаётся, когда
+    // меняется шаг или цвет формы.
+    FGridBrush: HBRUSH;
+    FGridBrushColor: TColor;
+    FGridBrushX: Integer;
+    FGridBrushY: Integer;
     FSnapToGrid: Boolean;
     // Имена под значками невизуальных компонентов
     FShowCaptions: Boolean;
@@ -288,7 +296,7 @@ type
     procedure ToggleDragFrames;
     procedure SetDragFrames(const ANew: array of TRect);
     procedure ClearDragFrames;
-    procedure PaintGrid(DC: HDC);
+    function  PaintGrid(DC: HDC): Boolean;
     // от перехватчиков сообщений
     procedure MouseDown(ATarget: TComponent; const AScreen: TPoint);
     procedure MouseMove(const AScreen: TPoint);
@@ -1951,8 +1959,11 @@ begin
     WM_ERASEBKGND:
       if IsRoot then
       begin
-        FPrev(Msg);
-        FDesigner.PaintGrid(HDC(Msg.WParam));
+        // Фон с сеткой - одной заливкой; без сетки - обычное стирание
+        if FDesigner.PaintGrid(HDC(Msg.WParam)) then
+          Msg.Result := 1
+        else
+          FPrev(Msg);
         Exit;
       end;
 
@@ -2368,6 +2379,8 @@ end;
 
 destructor TFormDesigner.Destroy;
 begin
+  if FGridBrush <> 0 then
+    DeleteObject(FGridBrush);
   HideHint;
   FreeAndNil(FHintTimer);
   FreeAndNil(FHintWnd);
@@ -3032,23 +3045,56 @@ begin
 end;
 
 // Сетка точками поверх фона формы - как PaintFormGrid у RQ
-procedure TFormDesigner.PaintGrid(DC: HDC);
+// Фон формы с сеткой: заливка кистью-узором (клетка сетки - маленький
+// bmp, его размножает Windows) только в области перерисовки, одним вызовом.
+// Раньше фон заливался цветом формы, а потом каждая точка сетки ставилась
+// SetPixel по всей форме - тысячи вызовов на каждое стирание фона. False -
+// сетка не показывается, фон стирает форма сама.
+function TFormDesigner.PaintGrid(DC: HDC): Boolean;
 var
-  X, Y: Integer;
+  Cell: TBitmap;
+  FormColor: TColor;
+  Area: TRect;
+  Origin: TPoint;
 begin
+  Result := False;
   if (FForm = nil) or not FShowGrid or (FGridX < 2) or (FGridY < 2) then
     Exit;
-  Y := 0;
-  while Y < FForm.ClientHeight do
+  FormColor := ColorToRGB(FForm.Color);
+  if (FGridBrush = 0) or (FormColor <> FGridBrushColor) or
+     (FGridX <> FGridBrushX) or (FGridY <> FGridBrushY) then
   begin
-    X := 0;
-    while X < FForm.ClientWidth do
-    begin
-      SetPixel(DC, X, Y, $007F7F7F);
-      Inc(X, FGridX);
+    if FGridBrush <> 0 then
+      DeleteObject(FGridBrush);
+    Cell := TBitmap.Create;
+    try
+      Cell.Width := FGridX;
+      Cell.Height := FGridY;
+      Cell.Canvas.Brush.Color := FormColor;
+      Cell.Canvas.FillRect(Rect(0, 0, FGridX, FGridY));
+      Cell.Canvas.Pixels[0, 0] := $007F7F7F;
+      // Кисть копирует картинку - bmp можно освободить
+      FGridBrush := CreatePatternBrush(Cell.Handle);
+    finally
+      Cell.Free;
     end;
-    Inc(Y, FGridY);
+    FGridBrushColor := FormColor;
+    FGridBrushX := FGridX;
+    FGridBrushY := FGridY;
   end;
+  if FGridBrush = 0 then
+    Exit;
+  // Узор - от угла клиентской части формы. Начало кисти задаётся в точках
+  // устройства: прозрачный дочерний контрол просит нарисовать фон формы в
+  // свой DC со сдвинутым началом координат - точки сетки должны совпасть.
+  Origin := Point(0, 0);
+  LPtoDP(DC, Origin, 1);
+  SetBrushOrgEx(DC, Origin.X, Origin.Y, nil);
+  // 0 - ошибка, NULLREGION - рисовать нечего: тогда вся клиентская часть
+  if GetClipBox(DC, Area) <= NULLREGION then
+    Area := FForm.ClientRect;
+  FillRect(DC, Area, FGridBrush);
+  Result := True;
 end;
 
 function TFormDesigner.SelControl: TControl;
