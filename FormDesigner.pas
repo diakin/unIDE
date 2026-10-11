@@ -183,6 +183,14 @@ type
     FFrames: array of TRect;
     FFramesShown: Boolean;
     FDragNew: array of TRect;
+    // Выделение рамкой: нажали на пустом месте формы (или с Ctrl - внутри
+    // контейнера) и ведут мышь. Рамка рисуется так же, XOR (FFrames); по
+    // отпусканию в группу идут дети FBandParent, которых рамка задела.
+    FBanding: Boolean;
+    FBandMoved: Boolean;
+    FBandFrom: TPoint;          // точка нажатия, экран
+    FBandRect: TRect;           // рамка сейчас, экран
+    FBandParent: TWinControl;
     FOnSelect: TDsgSelectEvent;
     FOnChange: TDsgChangeEvent;
     FOnKey: TDsgKeyEvent;
@@ -296,6 +304,8 @@ type
     procedure ToggleDragFrames;
     procedure SetDragFrames(const ANew: array of TRect);
     procedure ClearDragFrames;
+    function  GetDragging: Boolean;
+    procedure BandSelect;
     function  PaintGrid(DC: HDC): Boolean;
     // от перехватчиков сообщений
     procedure MouseDown(ATarget: TComponent; const AScreen: TPoint);
@@ -306,7 +316,7 @@ type
     procedure CommitBounds(AComp: TComponent);
     property Form: TForm read FForm;
     property RootName: string read FRootName;
-    property Dragging: Boolean read FDragging;
+    property Dragging: Boolean read GetDragging;
     // Шаг сетки по обеим осям (прежнее свойство): чтение - шаг по X
     property Grid: Integer read FGridX write SetGrid;
     property GridX: Integer read FGridX write SetGridX;
@@ -583,7 +593,8 @@ function PasRenameIdent(const APas, AOld, ANew: string;
 implementation
 
 uses
-  TypInfo, Buttons, Menus, UiScroll;
+  TypInfo, Buttons, Menus, UiScroll,
+  Math;   // Min, Max - рамка выделения
 
 const
   CaretSize = 6;
@@ -4731,6 +4742,63 @@ begin
   SetLength(FFrames, 0);
 end;
 
+function TFormDesigner.GetDragging: Boolean;
+begin
+  Result := FDragging or FBanding;
+end;
+
+// Рамку отпустили: дети FBandParent, которых она задела, - в группу (как в
+// Delphi, достаточно задеть). Компоненты .dfm и созданные кодом в одну
+// группу не берутся: если задеты те и другие - только из .dfm. Один
+// компонент - обычное выделение; ни одного - остаётся форма (контейнер).
+procedure TFormDesigner.BandSelect;
+var
+  Found: TList;
+  CtlIdx: Integer;
+  C: TControl;
+  Origin: TPoint;
+  CtlRect, Hit: TRect;
+  HasDfm: Boolean;
+begin
+  if (FBandParent = nil) or IsRectEmpty(FBandRect) then
+    Exit;
+  Found := TList.Create;
+  try
+    HasDfm := False;
+    for CtlIdx := 0 to FBandParent.ControlCount - 1 do
+    begin
+      C := FBandParent.Controls[CtlIdx];
+      // Только компоненты формы и значки невизуальных - не маркеры и не
+      // служебные окна конструктора
+      if not C.Visible or (C is TDsgCaret) or (C is TDsgIconCaption) or
+         not ((C is TDsgIcon) or (C.Owner = FForm)) then
+        Continue;
+      Origin := FBandParent.ClientToScreen(Point(C.Left, C.Top));
+      CtlRect := Rect(Origin.X, Origin.Y, Origin.X + C.Width,
+                      Origin.Y + C.Height);
+      if not IntersectRect(Hit, CtlRect, FBandRect) then
+        Continue;
+      Found.Add(C);
+      if not IsRuntime(C) then
+        HasDfm := True;
+    end;
+    // Не смешивать .dfm и код
+    if HasDfm then
+      for CtlIdx := Found.Count - 1 downto 0 do
+        if IsRuntime(TComponent(Found[CtlIdx])) then
+          Found.Delete(CtlIdx);
+    DsgLog('3790: рамка: задето компонентов ' + IntToStr(Found.Count),
+           clNavy);
+    if Found.Count = 0 then
+      Exit;
+    Select(TComponent(Found[0]), True);
+    for CtlIdx := 1 to Found.Count - 1 do
+      ToggleGroup(TComponent(Found[CtlIdx]));
+  finally
+    Found.Free;
+  end;
+end;
+
 procedure TFormDesigner.MouseDown(ATarget: TComponent; const AScreen: TPoint);
 var
   Par: TWinControl;
@@ -4802,6 +4870,23 @@ begin
     Exit;
   end;
 
+  FBanding := False;
+  // Пустое место формы или, с Ctrl, контейнера - выделение рамкой, как в
+  // Delphi. Сначала выделяется сама форма (контейнер), как при щелчке.
+  if (ATarget = FForm) or
+     ((GetKeyState(VK_CONTROL) < 0) and (ATarget is TWinControl) and
+      (csAcceptsControls in TControl(ATarget).ControlStyle) and
+      not (ATarget is TDsgStub)) then
+  begin
+    Select(ATarget, True);
+    FDragging := False;
+    FBanding := True;
+    FBandMoved := False;
+    FBandFrom := AScreen;
+    FBandParent := PlaceParent(ATarget);
+    Exit;
+  end;
+
   Select(ATarget, True);
   // Компонент из кода и компонент, у которого код задаёт и Left, и Top, -
   // только выделяются. Одну из них - двигается по другой оси (MouseMove).
@@ -4836,7 +4921,30 @@ var
   C: TControl;
   Frames: array of TRect;
   Origin: TPoint;
+  Clip: TRect;
 begin
+  // Рамка выделения: от точки нажатия до мыши, в пределах контейнера
+  if FBanding then
+  begin
+    if not FBandMoved and (Abs(AScreen.X - FBandFrom.X) < 3) and
+       (Abs(AScreen.Y - FBandFrom.Y) < 3) then
+      Exit;
+    FBandMoved := True;
+    R := Rect(Min(FBandFrom.X, AScreen.X), Min(FBandFrom.Y, AScreen.Y),
+              Max(FBandFrom.X, AScreen.X), Max(FBandFrom.Y, AScreen.Y));
+    if (FBandParent <> nil) and FBandParent.HandleAllocated then
+    begin
+      Origin := FBandParent.ClientToScreen(Point(0, 0));
+      Clip := Rect(Origin.X, Origin.Y, Origin.X + FBandParent.ClientWidth,
+                   Origin.Y + FBandParent.ClientHeight);
+      IntersectRect(R, R, Clip);
+    end;
+    FBandRect := R;
+    SetLength(Frames, 1);
+    Frames[0] := R;
+    SetDragFrames(Frames);
+    Exit;
+  end;
   if not FDragging or (FDragCtl = nil) then
     Exit;
   DX := AScreen.X - FDragFrom.X;
@@ -4908,6 +5016,15 @@ var
   I: Integer;
   C: TControl;
 begin
+  if FBanding then
+  begin
+    FBanding := False;
+    ClearDragFrames;
+    if FBandMoved then
+      BandSelect;
+    FBandParent := nil;
+    Exit;
+  end;
   if not FDragging then
     Exit;
   FDragging := False;
