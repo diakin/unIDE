@@ -136,7 +136,22 @@
     файл), а не функция Windows LoadStringA из WIN32API.INC / WINDOWS.INC;
   - `UpdateColors` — процедура из ODMenuXP.inc, а не функция gdi32.
 
-### 3. DECLARE … LIB с другими параметрами — под другим именем
+### 3. TYPE и DECLARE … LIB, объявленные иначе, — под другим именем
+
+**TYPE-записи.** Запись с тем же именем, но другими полями, чем выше в другом
+файле, в своём файле переименована в `Имя_Файл` вместе со всеми `AS Имя`
+этого файла. Пример: SHFILEOPSTRUCT. В WIN32API.INC у неё `pFrom As String`
+(у RapidQ строка в записи должна быть `STRING * n`, rc.exe: «Expected *»), в
+QSHFileOperation.inc — `pFrom As Long`. В общем файле под исходным именем
+WIN32API-версия, у QSHFileOperation.inc — SHFILEOPSTRUCT_QSHFileOperation.
+LONG, DWORD, INTEGER считаются одним размером (4 байта), SHORT и WORD — тоже;
+`$DEFINE INTEGER SHORT` в WIN32API.INC учитывается. Таких 36, список —
+`build_report.md`: OPENFILENAME, MENUITEMINFO, DEVMODE, WNDCLASSEX,
+CHOOSECOLOR, NM_LISTVIEW, WINDOWPLACEMENT, LOGFONT и др. Программе, которая
+писала под WIN32API.INC или WINDOWS.INC, в таких местах может понадобиться
+`Имя_WIN32API`.
+
+**DECLARE … LIB.**
 
 Одна и та же функция Windows в разных файлах объявлена с разными параметрами.
 Например, `GetClientRect`:

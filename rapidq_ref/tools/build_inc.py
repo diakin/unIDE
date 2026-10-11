@@ -584,6 +584,60 @@ def rename_map(line, mapping):
     return ''.join(out) + line[idx:]
 
 
+SAME_SIZE = {'LONG': 'I4', 'DWORD': 'I4', 'INTEGER': 'I4', 'SHORT': 'I2', 'WORD': 'I2'}
+
+
+def type_fields(text, aliases=None):
+    """Поля TYPE-записи: [(ТИП, длина строки)] по порядку. Типы одного
+    размера - одно (LONG, DWORD, INTEGER - 4 байта у RapidQ; SHORT, WORD);
+    aliases - $DEFINE файла (WIN32API.INC: INTEGER - SHORT)."""
+    upper = strip_strings(text.upper())
+    body = re.sub(r'^\s*(?:PRIVATE\s+|PUBLIC\s+)?TYPE\s+\w+', '', upper)
+    body = re.sub(r'END\s+TYPE.*$', '', body)
+    result = []
+    for tname, size in re.findall(r'\bAS\s+(\w+)(?:\s*\*\s*(\w+))?', body):
+        tname = (aliases or {}).get(tname, tname)
+        result.append((SAME_SIZE.get(tname, tname), size))
+    return result
+
+
+def type_layout_renames(order, texts, rq2):
+    """TYPE-запись с тем же именем, что объявлена выше в другом файле, но
+    с другими полями (WIN32API.INC: SHFILEOPSTRUCT с pFrom As String,
+    QSHFileOperation.inc: pFrom As Long; rc.exe у первой: "Expected * but
+    got end-of-line") - в своём файле под именем Имя_Файл вместе со всеми
+    "AS Имя" этого файла. Результат - список для отчёта."""
+    first, mapping = {}, collections.defaultdict(dict)
+    for fname, lines, keep in order:
+        aliases = {}
+        for line in lines:
+            mm = re.match(r'[\$#]define\s+(\w+)\s+(\w+)\s*$', code_part(line), re.I)
+            if mm and mm.group(2).upper() in SIMPLE_TYPES:
+                aliases[mm.group(1).upper()] = mm.group(2).upper()
+        for unit in split_units(lines):
+            if unit.key != 'T' or not unit.names or (keep is not None and not keep(unit.first)):
+                continue
+            if re.search(r'\bEXTENDS\b', unit.text):
+                continue
+            name = unit.names[0]
+            fields = type_fields(unit.text, aliases)
+            if name not in first:
+                first[name] = (fname, fields)
+            elif first[name][0] != fname and first[name][1] != fields:
+                real = rq2 if fname.endswith(' (компоненты)') else fname
+                tag = re.sub(r'\W', '', os.path.splitext(real)[0])[:16]
+                shown = re.search(r'type\s+(' + re.escape(name) + r')', code_part(lines[unit.first]), re.I)
+                mapping[real][name] = (shown.group(1) if shown else name) + '_' + tag
+    report = []
+    for real, names in mapping.items():
+        lines = texts[real]
+        for num, line in enumerate(lines):
+            lines[num] = rename_map(line, names)
+        for orig, new in sorted(names.items()):
+            report.append('%s: TYPE %s - %s (поля не те, что у %s)' % (real, orig, new, first[orig][0]))
+    return report
+
+
 def lib_signature_renames(order, texts, rq2):
     """DECLARE ... LIB, у которой то же имя, что у объявленной выше в другом
     файле, но параметры другие (rapidq2.inc: GetClientRect(hwnd, lpRect AS
@@ -1149,7 +1203,8 @@ def main():
     order += [(f, texts[f], line_keep(take.get(f.lower(), 'да'))) for f in proc_files]
     order += [(rq2 + ' (компоненты)', texts[rq2], lambda n: n in in_comp)]
     order += [(f, texts[f], line_keep(take.get(f.lower(), 'да'))) for f in ordered]
-    lib_renamed = lib_signature_renames(order, texts, rq2)
+    lib_renamed = type_layout_renames(order, texts, rq2)
+    lib_renamed += lib_signature_renames(order, texts, rq2)
     builder.local_defines, unresolved_defines = local_type_defines(order)
     for fname, lines, keep in order:
         for unit in split_units(lines):
@@ -1223,9 +1278,9 @@ def main():
                 'других файлов: QXLS.INC DIM F AS QFileStream) и опечатки:', '']
         rep += ['- ' + r for r in renamed]
     if lib_renamed:
-        rep += ['', '## DECLARE ... LIB с другими параметрами - под своим именем', '',
-                'То же имя объявлено выше в другом файле с другими параметрами; в этом '
-                'файле функция и её вызовы переименованы, ALIAS прежний.', '']
+        rep += ['', '## TYPE и DECLARE ... LIB с другими полями / параметрами - под своим именем', '',
+                'То же имя объявлено выше в другом файле иначе; в этом файле запись или '
+                'функция и её использования переименованы (у функции ALIAS прежний).', '']
         rep += ['- ' + r for r in lib_renamed]
     if builder.local_defines or unresolved_defines:
         rep += ['', '## $DEFINE имени типом - только для своего файла', '',

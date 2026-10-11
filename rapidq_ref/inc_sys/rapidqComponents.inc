@@ -8,7 +8,7 @@ $INCLUDE "rapidqAllProc.inc"
 '[build_inc] rapidq2.inc (компоненты)
 '============================================================================
 $IFNDEF __QCOLORDIALOG_INC    ' inc2026: ChooseColorDlg объявляет и подключённая раньше версия QColorDialog
-'~dup DECLARE FUNCTION ChooseColorDlg LIB "COMDLG32" ALIAS "ChooseColorA" (CC AS CHOOSECOLOR) AS LONG   ' повтор, первое: WIN32API.INC(15081)
+DECLARE FUNCTION ChooseColorDlg_rapidq2 LIB "COMDLG32" ALIAS "ChooseColorA" (CC AS CHOOSECOLOR) AS LONG
 $ENDIF
 $IFNDEF __QFORMEX_INC   ' inc2026: QFormEx уже подключён другой версией (QFormEx.inc раньше RAPIDQ2.INC) - эта пропускается
 TYPE QFormEx EXTENDS QFORM
@@ -3618,7 +3618,7 @@ TYPE QColorDialog EXTENDS QFORM
       CASE cdNoFullOpen
         .CC.Flags = .CC.Flags OR CC_PREVENTFULLOPEN
       END SELECT
-      IF ChooseColorDlg(THIS.CC) THEN                         ' Call the Color select Dialog
+      IF ChooseColorDlg_rapidq2(THIS.CC) THEN                         ' Call the Color select Dialog
         .Color = .CC.RGBResult                              ' Update user selected color
         Result = 1
       ELSE
@@ -10640,29 +10640,29 @@ $ENDIF		' __RQINC2
 '~dup End Type
 
 
-'~dup Type BITMAPINFO   ' повтор, первое: WIN32API.INC(3325)
-'~dup    'bmiHeader As BITMAPINFOHEADER	'cant nest in RapidQ
-'~dup     bmiHeader_biSize 			As DWORD'Specifies the number of bytes required by the structure.
-'~dup     bmiHeader_biWidth 			As LONG	'Specifies the width of the bitmap, in pixels.
-'~dup     bmiHeader_biHeight 			As LONG	'height, if positive, bitmap is bottom-up DIB (origin = lower left corner). If biHeight is negative,  bitmap is top-down DIB (origin = upper left corner)
-'~dup     bmiHeader_biPlanes 			As WORD	'number of planes, must be set to 1
-'~dup     bmiHeader_biBitCount 		As WORD	'number of bits per pixel, must be 1, 4, 8, 16, 24, or 32
-'~dup     bmiHeader_biCompression 	As DWORD 'type of compression for a compressed bottom-up bitmap (top-down DIBs cannot be compressed)
-'~dup 											'BI_RGB	= An uncompressed format
-'~dup 											'BI_RLE8	= A run-length encoded (RLE) format for bitmaps with 8 bits per pixel.
-'~dup 											'BI_RLE4 = An RLE format for bitmaps with 4 bits per pixel.
-'~dup 											'BI_BITFIELDS =	not compressed and that the color table consists of three doubleword color masks(RGB) respectively, of each pixel, for 16- and 32-bits-per-pixel
-'~dup     bmiHeader_biSizeImage 		As DWORD	'the size, in bytes, of the image, may be set to 0 for BI_RGB bitmaps.
-'~dup     bmiHeader_biXPelsPerMeter 	As LONG		'horizontal resolution, in pixels per meter, of the target device for the bitmap. 
-'~dup     bmiHeader_biYPelsPerMeter 	As LONG
-'~dup     bmiHeader_biClrUsed 		As DWORD	'number of color indices in the color table actually used, if zero, the bitmap uses max of biBitCount
-'~dup     bmiHeader_biClrImportant 	As DWORD	'number of color indices that are considered important for displaying the bitmap
-'~dup 	'bmiColors As RGBQUAD
-'~dup     bmiColors_rgbBlue 			As Byte
-'~dup     bmiColors_rgbGreen 			As Byte
-'~dup     bmiColors_rgbRed 			As Byte
-'~dup     bmiColors_rgbReserved 		As Byte
-'~dup End Type
+Type BITMAPINFO_VFW
+   'bmiHeader As BITMAPINFOHEADER	'cant nest in RapidQ
+    bmiHeader_biSize 			As DWORD'Specifies the number of bytes required by the structure.
+    bmiHeader_biWidth 			As LONG	'Specifies the width of the bitmap, in pixels.
+    bmiHeader_biHeight 			As LONG	'height, if positive, bitmap is bottom-up DIB (origin = lower left corner). If biHeight is negative,  bitmap is top-down DIB (origin = upper left corner)
+    bmiHeader_biPlanes 			As WORD	'number of planes, must be set to 1
+    bmiHeader_biBitCount 		As WORD	'number of bits per pixel, must be 1, 4, 8, 16, 24, or 32
+    bmiHeader_biCompression 	As DWORD 'type of compression for a compressed bottom-up bitmap (top-down DIBs cannot be compressed)
+											'BI_RGB	= An uncompressed format
+											'BI_RLE8	= A run-length encoded (RLE) format for bitmaps with 8 bits per pixel.
+											'BI_RLE4 = An RLE format for bitmaps with 4 bits per pixel.
+											'BI_BITFIELDS =	not compressed and that the color table consists of three doubleword color masks(RGB) respectively, of each pixel, for 16- and 32-bits-per-pixel
+    bmiHeader_biSizeImage 		As DWORD	'the size, in bytes, of the image, may be set to 0 for BI_RGB bitmaps.
+    bmiHeader_biXPelsPerMeter 	As LONG		'horizontal resolution, in pixels per meter, of the target device for the bitmap. 
+    bmiHeader_biYPelsPerMeter 	As LONG
+    bmiHeader_biClrUsed 		As DWORD	'number of color indices in the color table actually used, if zero, the bitmap uses max of biBitCount
+    bmiHeader_biClrImportant 	As DWORD	'number of color indices that are considered important for displaying the bitmap
+	'bmiColors As RGBQUAD
+    bmiColors_rgbBlue 			As Byte
+    bmiColors_rgbGreen 			As Byte
+    bmiColors_rgbRed 			As Byte
+    bmiColors_rgbReserved 		As Byte
+End Type
 
 
 $ENDIF		'__WIN32API
@@ -11092,7 +11092,7 @@ Function capDlgVideoCompression(ByVal hCapWnd As Long) As Long' Boolean
    capDlgVideoCompression = SendMessageAPI(hCapWnd, WM_CAP_DLG_VIDEOCOMPRESSION, 0&, 0&)
 End Function
 
-Function capGetVideoFormat(ByVal hCapWnd As Long, ByRef BmpFormat As BITMAPINFO, ByVal CapFormatSize As Long) As Long
+Function capGetVideoFormat(ByVal hCapWnd As Long, ByRef BmpFormat As BITMAPINFO_VFW, ByVal CapFormatSize As Long) As Long
    capGetVideoFormat = SendMessageAPI(hCapWnd, WM_CAP_GET_VIDEOFORMAT, CapFormatSize, BmpFormat)
 End Function
 
@@ -11100,7 +11100,7 @@ Function capGetVideoFormatSize(ByVal hCapWnd As Long) As Long
    capGetVideoFormatSize = SendMessageAPI(hCapWnd, WM_CAP_GET_VIDEOFORMAT, 0&, 0&)
 End Function
 
-Function capSetVideoFormat(ByVal hCapWnd As Long, ByRef BmpFormat As BITMAPINFO, ByVal CapFormatSize As Long) As Long' Boolean
+Function capSetVideoFormat(ByVal hCapWnd As Long, ByRef BmpFormat As BITMAPINFO_VFW, ByVal CapFormatSize As Long) As Long' Boolean
    capSetVideoFormat = SendMessageAPI(hCapWnd, WM_CAP_SET_VIDEOFORMAT, CapFormatSize, BmpFormat)
 End Function
 
@@ -11380,7 +11380,7 @@ END SUB
 
 
 FUNCTION SetImageSize(TheImageWidth AS LONG, TheImageHeight AS LONG) AS LONG
-	DIM VideoFormat AS BITMAPINFO
+	DIM VideoFormat AS BITMAPINFO_VFW
 	DIM SzbmpInfo AS DWORD: SzbmpInfo = SIZEOF(VideoFormat)
 
 	IF (TheImageHeight > 0) AND (TheImageWidth > 0) THEN
@@ -11414,7 +11414,7 @@ END FUNCTION
 
 
 FUNCTION SetImageHeight (TheImageHeight AS LONG) AS LONG
-	DIM VideoFormat AS BITMAPINFO
+	DIM VideoFormat AS BITMAPINFO_VFW
 	DIM SzbmpInfo AS DWORD: SzbmpInfo = SIZEOF(VideoFormat)
 
 	IF TheImageHeight > 0 THEN
@@ -11440,7 +11440,7 @@ END FUNCTION
 
 
 FUNCTION SetImageWidth (TheImageWidth AS LONG) AS LONG ' inc2026: было SUB ... AS LONG с RESULT внутри и END SUB (строка 945); стало FUNCTION, как SetImageHeight (строка 902): результат используется в конструкторе, строка 1128
-	DIM VideoFormat AS BITMAPINFO
+	DIM VideoFormat AS BITMAPINFO_VFW
 	DIM SzbmpInfo AS DWORD: SzbmpInfo = SIZEOF(VideoFormat)
 
 	IF TheImageWidth > 0 THEN
@@ -11461,7 +11461,7 @@ END FUNCTION ' inc2026: было END SUB, стало END FUNCTION: SetImageWidth
 
 
 SUB SetBitCount (TheBitCount AS WORD)
-	DIM VideoFormat AS BITMAPINFO
+	DIM VideoFormat AS BITMAPINFO_VFW
 	DIM SzbmpInfo AS DWORD: SzbmpInfo = SIZEOF(VideoFormat)
 
 	IF TheBitCount > 0 THEN
@@ -20164,13 +20164,13 @@ $IFNDEF boolean
 $ENDIF
 
 $IFNDEF __WIN32API				   'windows 32 definitions
-'~dup Type SHFILEINFO   ' повтор, первое: WIN32API.INC(14619)
-'~dup     hIcon As Long                      '  out: icon
-'~dup     iIcon As integer                   '  out: icon index
-'~dup     dwAttributes As dword              '  out: SFGAO_ flags
-'~dup     szDisplayName As String * 260      '  out: display name (or path)
-'~dup     szTypeName As String * 80          '  out: type name
-'~dup End Type
+Type SHFILEINFO_QFileListView
+    hIcon As Long                      '  out: icon
+    iIcon As integer                   '  out: icon index
+    dwAttributes As dword              '  out: SFGAO_ flags
+    szDisplayName As String * 260      '  out: display name (or path)
+    szTypeName As String * 80          '  out: type name
+End Type
 
 
 '~dup Const SHGFI_DISPLAYNAME    = &H200   ' повтор, первое: ConvertToTruePath.inc(2)
@@ -20191,7 +20191,7 @@ Const LVM_SETBKIMAGEA      = (LVM_FIRST + 68)
 '~dup Const LVSIL_SMALL          = 1   ' повтор, первое: CommCtrl.inc(488)
 
 
-Declare Function SHGetFileInfoFileListView Lib "shell32.dll" Alias "SHGetFileInfoA" (pszPath As String,dwFileAttributes As Long,psfi As SHFILEINFO,cbFileInfo As Long,uFlags As Long) As Dword
+Declare Function SHGetFileInfoFileListView Lib "shell32.dll" Alias "SHGetFileInfoA" (pszPath As String,dwFileAttributes As Long,psfi As SHFILEINFO_QFileListView,cbFileInfo As Long,uFlags As Long) As Dword
 Declare Function DestroyIconFileListView Lib "user32" Alias "DestroyIcon" (ByVal hIcon As Long) As Long
 declare function SetFocusFileListView Lib "user32" Alias "SetFocus" (Handle as long) as long
 $ENDIF
@@ -20202,7 +20202,7 @@ declare sub FileChange_EventTemplate(File as string)
 Type QFileListView extends QListView
   Private:
     ColumnsInitialized as boolean
-    FI As SHFILEINFO
+    FI As SHFILEINFO_QFileListView
   Public:
     Filename as string property set SetFileName
     ColumnCaption(4) as string
@@ -29498,25 +29498,25 @@ Const fofWantNukeWarning = &H4000      ' Send a warning if a file is being destr
 
 '= DECLARATIONS ==========================================
 
-'~dup Type SHFILEOPSTRUCT   ' повтор, первое: WIN32API.INC(14505)
-'~dup     hwnd As Long                       ' Window handle to the dialog box to display information about the status of the file operation
-'~dup     wFunc As Long                      ' Value that indicates which operation to perform (foMove, foCopy, foDelete, foRename)
-'~dup     pFrom As Long                      ' Address of a buffer to specify one or more source file names. These names must be fully qualified paths. Standard DOS wild cards, such as "*", are permitted in the file-name position
-'~dup     pTo As Long                        ' Address of a buffer to contain the name of the destination file or directory. This parameter must be set to NULL if it is not used. Like pFrom, the pTo member is also a double-NULL terminated string and is handled in much the same way
-'~dup     fFlags As Word                     ' Flags that control the file operation | inc2026: As Word вместо As Integer - в SHFILEOPSTRUCT поле FILEOP_FLAGS 2 байта, в 32-битном shellapi.h структура упакована по 1 байту (pshpack1); INTEGER RapidQ 4 байта сдвигал fAnyOperationsAborted, hNameMappings, lpszProgressTitle на 2 байта (отсюда и 'Does not work' у lpszProgressTitle в строке 88)
-'~dup     fAnyOperationsAborted As Long      ' Value that receives TRUE if the user aborted any file operations before they were completed, or FALSE otherwise
-'~dup     hNameMappings As Long              ' A handle to a name mapping object containing the old and new names of the renamed files. This member is used only if the fFlags member includes the FOF_WANTMAPPINGHANDLE flag
-'~dup     lpszProgressTitle As Long          ' Address of a string to use as the title of a progress dialog box. This member is used only if fFlags includes the FOF_SIMPLEPROGRESS flag. Does not work - don't know why... Tested almost everything :-(
-'~dup End Type
+Type SHFILEOPSTRUCT_QSHFileOperation
+    hwnd As Long                       ' Window handle to the dialog box to display information about the status of the file operation
+    wFunc As Long                      ' Value that indicates which operation to perform (foMove, foCopy, foDelete, foRename)
+    pFrom As Long                      ' Address of a buffer to specify one or more source file names. These names must be fully qualified paths. Standard DOS wild cards, such as "*", are permitted in the file-name position
+    pTo As Long                        ' Address of a buffer to contain the name of the destination file or directory. This parameter must be set to NULL if it is not used. Like pFrom, the pTo member is also a double-NULL terminated string and is handled in much the same way
+    fFlags As Word                     ' Flags that control the file operation | inc2026: As Word вместо As Integer - в SHFILEOPSTRUCT поле FILEOP_FLAGS 2 байта, в 32-битном shellapi.h структура упакована по 1 байту (pshpack1); INTEGER RapidQ 4 байта сдвигал fAnyOperationsAborted, hNameMappings, lpszProgressTitle на 2 байта (отсюда и 'Does not work' у lpszProgressTitle в строке 88)
+    fAnyOperationsAborted As Long      ' Value that receives TRUE if the user aborted any file operations before they were completed, or FALSE otherwise
+    hNameMappings As Long              ' A handle to a name mapping object containing the old and new names of the renamed files. This member is used only if the fFlags member includes the FOF_WANTMAPPINGHANDLE flag
+    lpszProgressTitle As Long          ' Address of a string to use as the title of a progress dialog box. This member is used only if fFlags includes the FOF_SIMPLEPROGRESS flag. Does not work - don't know why... Tested almost everything :-(
+End Type
 
 ' Some flags need higher than 4.0 versions of shell32.dll. For more informations about SHFileOperation and SHFILEOPSTRUCT see:
 ' http://msdn.microsoft.com/library/default.asp?url=/library/en-us/shellcc/platform/Shell/functions/SHFileOperation.asp
 ' and http://msdn.microsoft.com/library/default.asp?url=/library/en-us/shellcc/platform/Shell/Structures/SHFILEOPSTRUCT.asp
 
-'~dup Declare Function SHFileOperation Lib "shell32.dll" _   ' повтор, первое: WIN32API.INC(14516)
-'~dup           Alias "SHFileOperationA" (lpFileOp As SHFILEOPSTRUCT) As Long
+Declare Function SHFileOperation_QSHFileOperation Lib "shell32.dll" _
+          Alias "SHFileOperationA" (lpFileOp As SHFILEOPSTRUCT_QSHFileOperation) As Long
 
-Dim lpFileOp As SHFILEOPSTRUCT
+Dim lpFileOp As SHFILEOPSTRUCT_QSHFileOperation
 
 DefStr SHfoFrom, dSHfoFrom, SHfoTo, dSHfoTo
 
@@ -29565,7 +29565,7 @@ Function CopyEx (dSHfoFrom As String, dSHfoTo As String, _
         'lpFileOp.fAnyOperationsAborted =
         'lpFileOp.hNameMappings =
         'lpFileOp.lpszProgressTitle = VarPtr(dSHfoProgressTitle)
-    Result = SHFileOperation(lpFileOp)
+    Result = SHFileOperation_QSHFileOperation(lpFileOp)
 End Function
 
 Function Copy (dSHfoFrom As String, dSHfoTo As String) As Long
@@ -29577,7 +29577,7 @@ Function Copy (dSHfoFrom As String, dSHfoTo As String) As Long
         lpFileOp.pFrom = VarPtr(SHfoFrom)
         lpFileOp.pTo = VarPtr(SHfoTo)
         lpFileOp.fFlags = QSHFileOperation.DefaultFlags
-    Result = SHFileOperation(lpFileOp)
+    Result = SHFileOperation_QSHFileOperation(lpFileOp)
 End Function
 
 Function MoveEx (dSHfoFrom As String, dSHfoTo As String, _
@@ -29594,7 +29594,7 @@ Function MoveEx (dSHfoFrom As String, dSHfoTo As String, _
         'lpFileOp.fAnyOperationsAborted =
         'lpFileOp.hNameMappings =
         'lpFileOp.lpszProgressTitle = VarPtr(dSHfoProgressTitle)
-    Result = SHFileOperation(lpFileOp)
+    Result = SHFileOperation_QSHFileOperation(lpFileOp)
 End Function
 
 Function Move (dSHfoFrom As String, dSHfoTo As String) As Long
@@ -29606,7 +29606,7 @@ Function Move (dSHfoFrom As String, dSHfoTo As String) As Long
         lpFileOp.pFrom = VarPtr(SHfoFrom)
         lpFileOp.pTo = VarPtr(SHfoTo)
         lpFileOp.fFlags = QSHFileOperation.DefaultFlags
-    Result = SHFileOperation(lpFileOp)
+    Result = SHFileOperation_QSHFileOperation(lpFileOp)
 End Function
 
 Function RenameEx (dSHfoFrom As String, dSHfoTo As String, _
@@ -29623,7 +29623,7 @@ Function RenameEx (dSHfoFrom As String, dSHfoTo As String, _
         'lpFileOp.fAnyOperationsAborted =
         'lpFileOp.hNameMappings =
         'lpFileOp.lpszProgressTitle = VarPtr(dSHfoProgressTitle)
-    Result = SHFileOperation(lpFileOp)
+    Result = SHFileOperation_QSHFileOperation(lpFileOp)
 End Function
 
 Function Rename (dSHfoFrom As String, dSHfoTo As String) As Long
@@ -29635,7 +29635,7 @@ Function Rename (dSHfoFrom As String, dSHfoTo As String) As Long
         lpFileOp.pFrom = VarPtr(SHfoFrom)
         lpFileOp.pTo = VarPtr(SHfoTo)
         lpFileOp.fFlags = QSHFileOperation.DefaultFlags
-    Result = SHFileOperation(lpFileOp)
+    Result = SHFileOperation_QSHFileOperation(lpFileOp)
 End Function
 
 Function DeleteEx (dSHfoFrom As String, SHfoToBin As Integer, SHConfirm As Integer, _
@@ -29650,7 +29650,7 @@ Function DeleteEx (dSHfoFrom As String, SHfoToBin As Integer, SHConfirm As Integ
         'lpFileOp.fAnyOperationsAborted =
         'lpFileOp.hNameMappings =
         'lpFileOp.lpszProgressTitle = VarPtr(dSHfoProgressTitle)
-    Result = SHFileOperation(lpFileOp)
+    Result = SHFileOperation_QSHFileOperation(lpFileOp)
 End Function
 
 Function Delete (dSHfoFrom As String, SHfoToBin As Integer, SHConfirm As Integer) As Long
@@ -29660,7 +29660,7 @@ Function Delete (dSHfoFrom As String, SHfoToBin As Integer, SHConfirm As Integer
         lpFileOp.wFunc = foDelete
         lpFileOp.pFrom = VarPtr(SHfoFrom)
         lpFileOp.fFlags = QSHFileOperation.DefaultFlags OR (fofAllowUndo * SHfoToBin) OR (fofNoConfirmation * ABS(SHConfirm - 1))
-    Result = SHFileOperation(lpFileOp)
+    Result = SHFileOperation_QSHFileOperation(lpFileOp)
 End Function
 
 End Type
@@ -35455,22 +35455,22 @@ $IFNDEF __WIN32API
 '~dup Const SWP_DRAWFRAME      = SWP_FRAMECHANGED   ' повтор, первое: WIN32API.INC(6758)
 '~dup Const SWP_NOREPOSITION   = SWP_NOOWNERZORDER   ' повтор, первое: WIN32API.INC(6759)
 
-'~dup Type LOGFONT   ' повтор, первое: WIN32API.INC(3518)
-'~dup      lfHeight         As Long
-'~dup      lfWidth          As Long
-'~dup      lfEscapement     As Long
-'~dup      lfOrientation    As Long
-'~dup      lfWeight         As Long
-'~dup      lfItalic         As Byte
-'~dup      lfUnderline      As Byte
-'~dup      lfStrikeOut      As Byte
-'~dup      lfCharSet        As Byte
-'~dup      lfOutPrecision   As Byte
-'~dup      lfClipPrecision  As Byte
-'~dup      lfQuality        As Byte
-'~dup      lfPitchAndFamily As Byte
-'~dup      lfFaceName       As String * 32
-'~dup End Type
+Type LOGFONT_XPThemes
+     lfHeight         As Long
+     lfWidth          As Long
+     lfEscapement     As Long
+     lfOrientation    As Long
+     lfWeight         As Long
+     lfItalic         As Byte
+     lfUnderline      As Byte
+     lfStrikeOut      As Byte
+     lfCharSet        As Byte
+     lfOutPrecision   As Byte
+     lfClipPrecision  As Byte
+     lfQuality        As Byte
+     lfPitchAndFamily As Byte
+     lfFaceName       As String * 32
+End Type
 
 '~dup Type RECT   ' повтор, первое: rapidq2.inc(884)
 '~dup     Left   As Long
@@ -35484,7 +35484,7 @@ $IFNDEF __WIN32API
 '~dup      cy As Long
 '~dup End Type
 
-'~dup Declare Function CreateFontIndirect Lib "gdi32" Alias "CreateFontIndirectA" (lpLogFont As LOGFONT) As Long   ' повтор, первое: WIN32API.INC(4376)
+Declare Function CreateFontIndirect_XPThemes Lib "gdi32" Alias "CreateFontIndirectA" (lpLogFont As LOGFONT_XPThemes) As Long
 '~dup Declare Function DrawText Lib "user32" Alias "DrawTextA" (hDC As Long, lpStr As String, nCount As Long, lpRect As RECT, wFormat As Long) As Long   ' повтор, первое: QFormSkin.inc(223)
 '~dup Declare Function ExcludeClipRect Lib "gdi32" Alias "ExcludeClipRect" (hDC As Long, Left As Long, Top As Long, Right As Long, Bottom As Long) As Long   ' повтор, первое: QFormSkin.inc(241)
 '~dup Declare Function FillRect Lib "user32" Alias "FillRect" (hDC As Long, lpRect As RECT, hBrush As Long) As Long   ' повтор, первое: WIN32API.INC(7227)
@@ -35526,7 +35526,7 @@ Declare Function CloseThemeData Lib "uxtheme" Alias "CloseThemeData" (hTheme As 
 Declare Function DrawThemeBackground Lib "uxtheme" Alias "DrawThemeBackground" (hTheme As Long, hDC As Long, iPartId As Long, iStateId As Long, pRect As RECT, pClipRect As RECT) As Long
 Declare Function DrawThemeParentBackground Lib "uxtheme" Alias "DrawThemeParentBackground" (hWnd As Long, hDC As Long, prc As RECT) As Long
 Declare Function GetThemeInt Lib "uxtheme" Alias "GetThemeInt" (hTheme As Long, iPartId As Long, iStateId As Long, iPropId As Long, piVal As Long) As Long
-Declare Function GetThemeSysFont Lib "uxtheme" Alias "GetThemeSysFont" (hTheme As Long, iFontID As Long, plf As LOGFONT) As Long
+Declare Function GetThemeSysFont Lib "uxtheme" Alias "GetThemeSysFont" (hTheme As Long, iFontID As Long, plf As LOGFONT_XPThemes) As Long
 Declare Function OpenThemeData Lib "uxtheme" Alias "OpenThemeData" (hWnd As Long, pszClAssList As String) As Long
 
 
@@ -35832,7 +35832,7 @@ TYPE QGroupBoxUx EXTENDS QGROUPBOX
     DIM TextRect   AS RECT
     DIM TextSize   AS SIZE
     DIM Margs      AS MARGINS
-    DIM LF         AS LOGFONT
+    DIM LF         AS LOGFONT_XPThemes
     IF hWnd = .Handle THEN
       Result = CallWindowProc(.ptrOldProc, hWnd, uMsg, wParam, lParam)
       IF uMsg = WM_PAINT OR uMsg = WM_NCPAINT THEN
@@ -35847,7 +35847,7 @@ TYPE QGroupBoxUx EXTENDS QGROUPBOX
           ' Create a suitable font for the caption
           GetThemeSysFont(hTheme, TMT_MENUFONT, LF)
           LF.lfWeight = 0
-          hFont = CreateFontIndirect(LF)
+          hFont = CreateFontIndirect_XPThemes(LF)
           SelectObject(hDC, hFont)
           ' Get the caption color
           GetThemeInt(hTheme, BP_GROUPBOX, 1, TMT_TEXTCOLOR, @TextColor)
