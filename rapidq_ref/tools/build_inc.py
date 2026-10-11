@@ -601,6 +601,54 @@ def type_fields(text, aliases=None):
     return result
 
 
+ACTIVE = {}   # active_lines() для сборки
+
+
+def active_lines(order):
+    """Какие строки действуют в общем файле: $DEFINE/$UNDEF/$IFDEF/$IFNDEF/
+    $ELSE/$ENDIF (и brem/erem) по сборке подряд. {файл: номера строк}.
+    VFW.inc: BITMAPINFO в $IFNDEF __WIN32API - в сборке WIN32API.INC выше,
+    блок не действует."""
+    defined = set()
+    result = {}
+    for fname, lines, keep in order:
+        act = set()
+        stack = []
+        for num, line in enumerate(lines):
+            if keep is not None and not keep(num):
+                continue
+            code = code_part(line)
+            on = all(stack)
+            m = re.match(r'(?:\$ifdef|brem)\s+(\w+)', code, re.I)
+            if m:
+                stack.append(on and m.group(1).upper() in defined)
+                continue
+            m = re.match(r'\$ifndef\s+(\w+)', code, re.I)
+            if m:
+                stack.append(on and m.group(1).upper() not in defined)
+                continue
+            if re.match(r'\$else\b', code, re.I) and stack:
+                outer = all(stack[:-1])
+                stack[-1] = outer and not stack[-1]
+                continue
+            if re.match(r'(\$endif|erem)\b', code, re.I):
+                if stack:
+                    stack.pop()
+                continue
+            if not on:
+                continue
+            act.add(num)
+            m = re.match(r'[\$#]define\s+(\w+)', code, re.I)
+            if m:
+                defined.add(m.group(1).upper())
+            m = re.match(r'\$undef\s+(.*)', code, re.I)
+            if m:
+                for part in m.group(1).split(','):
+                    defined.discard(part.strip().upper())
+        result[fname] = act
+    return result
+
+
 def type_layout_renames(order, texts, rq2):
     """TYPE-запись с тем же именем, что объявлена выше в другом файле, но
     с другими полями (WIN32API.INC: SHFILEOPSTRUCT с pFrom As String,
@@ -614,8 +662,11 @@ def type_layout_renames(order, texts, rq2):
             mm = re.match(r'[\$#]define\s+(\w+)\s+(\w+)\s*$', code_part(line), re.I)
             if mm and mm.group(2).upper() in SIMPLE_TYPES:
                 aliases[mm.group(1).upper()] = mm.group(2).upper()
+        act = ACTIVE.get(fname, set())
         for unit in split_units(lines):
             if unit.key != 'T' or not unit.names or (keep is not None and not keep(unit.first)):
+                continue
+            if unit.first not in act:
                 continue
             if re.search(r'\bEXTENDS\b', unit.text):
                 continue
@@ -648,8 +699,11 @@ def lib_signature_renames(order, texts, rq2):
     first, mapping = {}, collections.defaultdict(dict)
     display = collections.defaultdict(dict)
     for fname, lines, keep in order:
+        act = ACTIVE.get(fname, set())
         for unit in split_units(lines):
             if unit.key != 'D' or not unit.names or (keep is not None and not keep(unit.first)):
+                continue
+            if unit.first not in act:
                 continue
             if not re.search(r'\bLIB\b', unit.text):
                 continue
@@ -1203,6 +1257,8 @@ def main():
     order += [(f, texts[f], line_keep(take.get(f.lower(), 'да'))) for f in proc_files]
     order += [(rq2 + ' (компоненты)', texts[rq2], lambda n: n in in_comp)]
     order += [(f, texts[f], line_keep(take.get(f.lower(), 'да'))) for f in ordered]
+    ACTIVE.clear()
+    ACTIVE.update(active_lines(order))
     lib_renamed = type_layout_renames(order, texts, rq2)
     lib_renamed += lib_signature_renames(order, texts, rq2)
     builder.local_defines, unresolved_defines = local_type_defines(order)

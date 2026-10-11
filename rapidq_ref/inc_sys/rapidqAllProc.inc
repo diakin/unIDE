@@ -46945,41 +46945,41 @@ $ENDIF
 '~dup         cy As Long
 '~dup End Type
 
-Type POINTS_WINDOWS
-        x  As SHORT
-        y  As SHORT
-End Type
+'~dup Type POINTS   ' повтор, первое: QFormSkin.inc(137)
+'~dup         x  As SHORT
+'~dup         y  As SHORT
+'~dup End Type
 
-Type MSG_WINDOWS
-    hwnd	AS LONG
-    message	AS LONG
-    wParam	AS LONG
-    lParam	AS LONG
-    time	AS LONG
-    pt_x	AS LONG 	'As POINTAPI
-	pt_y 	AS LONG
-End Type
+'~dup Type MSG   ' повтор, первое: WIN32API.INC(107)
+'~dup     hwnd	AS LONG
+'~dup     message	AS LONG
+'~dup     wParam	AS LONG
+'~dup     lParam	AS LONG
+'~dup     time	AS LONG
+'~dup     pt_x	AS LONG 	'As POINTAPI
+'~dup 	pt_y 	AS LONG
+'~dup End Type
 
-Type STARTUPINFO_WINDOWS
-        cb As Long
-        lpReserved As long 'String
-        lpDesktop As long ' String
-        lpTitle As long ' String
-        dwX As Long
-        dwY As Long
-        dwXSize As Long
-        dwYSize As Long
-        dwXCountChars As Long
-        dwYCountChars As Long
-        dwFillAttribute As Long
-        dwFlags As Long
-        wShowWindow As SHORT
-        cbReserved2 As SHORT
-        lpReserved2 As Byte
-        hStdInput As Long
-        hStdOutput As Long
-        hStdError As Long
-End Type
+'~dup Type STARTUPINFO   ' повтор, первое: WIN32API.INC(116)
+'~dup         cb As Long
+'~dup         lpReserved As long 'String
+'~dup         lpDesktop As long ' String
+'~dup         lpTitle As long ' String
+'~dup         dwX As Long
+'~dup         dwY As Long
+'~dup         dwXSize As Long
+'~dup         dwYSize As Long
+'~dup         dwXCountChars As Long
+'~dup         dwYCountChars As Long
+'~dup         dwFillAttribute As Long
+'~dup         dwFlags As Long
+'~dup         wShowWindow As SHORT
+'~dup         cbReserved2 As SHORT
+'~dup         lpReserved2 As Byte
+'~dup         hStdInput As Long
+'~dup         hStdOutput As Long
+'~dup         hStdError As Long
+'~dup End Type
 
 '~dup Public Const SHUTDOWN_NORETRY = &H1   ' повтор, первое: WIN32API.INC(137)
 '~dup Public Const MAX_PATH = 260   ' повтор, первое: WIN32API.INC(2073)
@@ -47935,10 +47935,10 @@ End Type
 '~dup End Type
 
 
-Type LUID_AND_ATTRIBUTES_WINDOWS
-        pLuid As LUID
-        Attributes As Long
-End Type
+'~dup Type LUID_AND_ATTRIBUTES   ' повтор, первое: rapidq2.inc(2179)
+'~dup         pLuid As LUID
+'~dup         Attributes As Long
+'~dup End Type
 
 ' //////////////////////////////////////////////////////////////////////
 '                                                                     //
@@ -48275,15 +48275,15 @@ End Type
 '   structure (defined in se.h)
 '
 
-Type PRIVILEGE_SET_WINDOWS
-        PrivilegeCount As Long
-        Control As Long
-        lpPrivilegeArray AS Long        'pointer to (ANYSIZE_ARRAY) of LUID_AND_ATTRIBUTES
-        'type LUID_AND_ATTRIBUTES
-           'pLuid As LUID
-           'Attributes As Long
-        'end type
-End Type
+'~dup Type PRIVILEGE_SET   ' повтор, первое: WIN32API.INC(1435)
+'~dup         PrivilegeCount As Long
+'~dup         Control As Long
+'~dup         lpPrivilegeArray AS Long        'pointer to (ANYSIZE_ARRAY) of LUID_AND_ATTRIBUTES
+'~dup         'type LUID_AND_ATTRIBUTES
+'~dup            'pLuid As LUID
+'~dup            'Attributes As Long
+'~dup         'end type
+'~dup End Type
 
 
 '//////////////////////////////////////////////////////////////////////
@@ -48653,14 +48653,14 @@ End Type
 '~dup Public Const OFS_MAXPATHNAME = 128   ' повтор, первое: WIN32API.INC(1806)
 
 ' OpenFile() Structure
-Type OFSTRUCT_WINDOWS
-        cBytes As Byte
-        fFixedDisk As Byte
-        nErrCode As WORD
-        Reserved1 As WORD
-        Reserved2 As WORD
-        szPathName AS STRING*OFS_MAXPATHNAME        ') As Byte
-End Type
+'~dup Type OFSTRUCT   ' повтор, первое: WIN32API.INC(1809)
+'~dup         cBytes As Byte
+'~dup         fFixedDisk As Byte
+'~dup         nErrCode As WORD
+'~dup         Reserved1 As WORD
+'~dup         Reserved2 As WORD
+'~dup         szPathName AS STRING*OFS_MAXPATHNAME        ') As Byte
+'~dup End Type
 
 '~dup Declare Function InterlockedIncrement Lib "kernel32" Alias "InterlockedIncrement" (lpAddend As Long) As Long   ' повтор, первое: WIN32API.INC(1818)
 '~dup Declare Function InterlockedDecrement Lib "kernel32" Alias "InterlockedDecrement" (lpAddend As Long) As Long   ' повтор, первое: WIN32API.INC(1819)
@@ -48670,13 +48670,13 @@ End Type
 '~dup Declare Function GetModuleFileName Lib "kernel32" Alias "GetModuleFileNameA" (ByVal hModule As Long, ByVal lpFileName As String, ByVal nSize As Long) As Long   ' повтор, первое: WIN32API.INC(1823)
 '~dup Declare Function GetModuleHandle Lib "kernel32" Alias "GetModuleHandleA" (ByVal lpModuleName As String) As Long   ' повтор, первое: createWind.inc(26)
 
-Declare Function CreateProcess_WINDOWS Lib "kernel32" Alias "CreateProcessA" (ByVal lpApplicationName As String, ByVal lpCommandLine As String, lpProcessAttributes As SECURITY_ATTRIBUTES, lpThreadAttributes As SECURITY_ATTRIBUTES, ByVal bInheritHandles As Long, ByVal dwCreationFlags As Long, lpEnvironment As Any, ByVal lpCurrentDriectory As String, lpStartupInfo As STARTUPINFO_WINDOWS, lpProcessInformation As PROCESS_INFORMATION) As Long
+'~dup Declare Function CreateProcess Lib "kernel32" Alias "CreateProcessA" (ByVal lpApplicationName As String, ByVal lpCommandLine As String, lpProcessAttributes As SECURITY_ATTRIBUTES, lpThreadAttributes As SECURITY_ATTRIBUTES, ByVal bInheritHandles As Long, ByVal dwCreationFlags As Long, lpEnvironment As Any, ByVal lpCurrentDriectory As String, lpStartupInfo As STARTUPINFO, lpProcessInformation As PROCESS_INFORMATION) As Long   ' повтор, первое: WIN32API.INC(1826)
 
 '~dup Declare Function SetProcessShutdownParameters Lib "kernel32" Alias "SetProcessShutdownParameters" (ByVal dwLevel As Long, ByVal dwFlags As Long) As Long   ' повтор, первое: WIN32API.INC(1828)
 '~dup Declare Function GetProcessShutdownParameters Lib "kernel32" Alias "GetProcessShutdownParameters" (lpdwLevel As Long, lpdwFlags As Long) As Long   ' повтор, первое: WIN32API.INC(1829)
 
 '~dup Declare Sub FatalAppExit Lib "kernel32" Alias "FatalAppExitA" (ByVal uAction As Long, ByVal lpMessageText As String)   ' повтор, первое: WIN32API.INC(1831)
-Declare Sub GetStartupInfo_WINDOWS Lib "kernel32" Alias "GetStartupInfoA" (lpStartupInfo As STARTUPINFO_WINDOWS)
+'~dup Declare Sub GetStartupInfo Lib "kernel32" Alias "GetStartupInfoA" (lpStartupInfo As STARTUPINFO)   ' повтор, первое: WIN32API.INC(1832)
 '~dup Declare Function GetCommandLine Lib "kernel32" Alias "GetCommandLineA" () As String   ' повтор, первое: Kernel32.inc(41)
 '~dup Declare Function GetEnvironmentVariable Lib "kernel32" Alias "GetEnvironmentVariableA" (ByVal lpName As String, ByVal lpBuffer As String, ByVal nSize As Long) As Long   ' повтор, первое: WIN32API.INC(1834)
 '~dup Declare Function SetEnvironmentVariable Lib "kernel32" Alias "SetEnvironmentVariableA" (ByVal lpName As String, ByVal lpValue As String) As Long   ' повтор, первое: WIN32API.INC(1835)
@@ -48695,31 +48695,31 @@ Declare Sub GetStartupInfo_WINDOWS Lib "kernel32" Alias "GetStartupInfoA" (lpSta
 '~dup Declare Function ContinueDebugEvent Lib "kernel32" Alias "ContinueDebugEvent" (ByVal dwProcessId As Long, ByVal dwThreadId As Long, ByVal dwContinueStatus As Long) As Long   ' повтор, первое: WIN32API.INC(1848)
 '~dup Declare Function DebugActiveProcess Lib "kernel32" Alias "DebugActiveProcess" (ByVal dwProcessId As Long) As Long   ' повтор, первое: WIN32API.INC(1849)
 
-TYPE CRITICAL_SECTION_WINDOWS
-	DebugInfo 		AS LONG			'pointer to RTL_CRITICAL_SECTION_DEBUG
-'			TYPE RTL_CRITICAL_SECTION_DEBUG
-'				wType AS WORD
-'				CreatorBackTraceIndex AS WORD
-'				CriticalSection AS DWORD ' actually, CRITICAL_SECTION PTR, but we can't do a circular reference
-'				ProcessLocksList AS LIST_ENTRY
-'				EntryCount AS DWORD
-'				ContentionCount AS DWORD
-'				Spare(0 TO 1) AS DWORD
-'			END TYPE
-	' The following three fields control entering and exiting the critical
-	' section for the resource
-	LockCount 		AS LONG
-	RecursionCount 	AS LONG
-	OwningThread 	AS DWORD ' from the thread's ClientId->UniqueThread
-	LockSemaphore 	AS DWORD
-	SpinCount 		AS DWORD ' force size on 64-bit systems when packed
-END TYPE
+'~dup TYPE CRITICAL_SECTION   ' повтор, первое: WIN32API.INC(1851)
+'~dup 	DebugInfo 		AS LONG			'pointer to RTL_CRITICAL_SECTION_DEBUG
+'~dup '			TYPE RTL_CRITICAL_SECTION_DEBUG
+'~dup '				wType AS WORD
+'~dup '				CreatorBackTraceIndex AS WORD
+'~dup '				CriticalSection AS DWORD ' actually, CRITICAL_SECTION PTR, but we can't do a circular reference
+'~dup '				ProcessLocksList AS LIST_ENTRY
+'~dup '				EntryCount AS DWORD
+'~dup '				ContentionCount AS DWORD
+'~dup '				Spare(0 TO 1) AS DWORD
+'~dup '			END TYPE
+'~dup 	' The following three fields control entering and exiting the critical
+'~dup 	' section for the resource
+'~dup 	LockCount 		AS LONG
+'~dup 	RecursionCount 	AS LONG
+'~dup 	OwningThread 	AS DWORD ' from the thread's ClientId->UniqueThread
+'~dup 	LockSemaphore 	AS DWORD
+'~dup 	SpinCount 		AS DWORD ' force size on 64-bit systems when packed
+'~dup END TYPE
 
 
-Declare Sub InitializeCriticalSection_WINDOWS Lib "kernel32" Alias "InitializeCriticalSection" (lpCriticalSection As CRITICAL_SECTION_WINDOWS)
-Declare Sub EnterCriticalSection_WINDOWS Lib "kernel32" Alias "EnterCriticalSection" (lpCriticalSection As CRITICAL_SECTION_WINDOWS)
-Declare Sub LeaveCriticalSection_WINDOWS Lib "kernel32" Alias "LeaveCriticalSection" (lpCriticalSection As CRITICAL_SECTION_WINDOWS)
-Declare Sub DeleteCriticalSection_WINDOWS Lib "kernel32" Alias "DeleteCriticalSection" (lpCriticalSection As CRITICAL_SECTION_WINDOWS)
+'~dup Declare Sub InitializeCriticalSection Lib "kernel32" Alias "InitializeCriticalSection" (lpCriticalSection As CRITICAL_SECTION)   ' повтор, первое: WIN32API.INC(1855)
+'~dup Declare Sub EnterCriticalSection Lib "kernel32" Alias "EnterCriticalSection" (lpCriticalSection As CRITICAL_SECTION)   ' повтор, первое: WIN32API.INC(1857)
+'~dup Declare Sub LeaveCriticalSection Lib "kernel32" Alias "LeaveCriticalSection" (lpCriticalSection As CRITICAL_SECTION)   ' повтор, первое: WIN32API.INC(1858)
+'~dup Declare Sub DeleteCriticalSection Lib "kernel32" Alias "DeleteCriticalSection" (lpCriticalSection As CRITICAL_SECTION)   ' повтор, первое: WIN32API.INC(1859)
 '~dup Declare Function SetEvent Lib "kernel32" Alias "SetEvent" (ByVal hEvent As Long) As Long   ' повтор, первое: WIN32API.INC(1860)
 '~dup Declare Function ResetEvent Lib "kernel32" Alias "ResetEvent" (ByVal hEvent As Long) As Long   ' повтор, первое: WIN32API.INC(1861)
 '~dup Declare Function PulseEvent Lib "kernel32" Alias "PulseEvent" (ByVal hEvent As Long) As Long   ' повтор, первое: WIN32API.INC(1862)
@@ -48731,7 +48731,7 @@ Declare Sub DeleteCriticalSection_WINDOWS Lib "kernel32" Alias "DeleteCriticalSe
 '~dup Declare Sub OutputDebugString Lib "kernel32" Alias "OutputDebugStringA" (ByVal lpOutputString As String)   ' повтор, первое: WIN32API.INC(1868)
 '~dup Declare Function GetVersion Lib "kernel32" Alias "GetVersion" () As Long   ' повтор, первое: Kernel32.inc(177)
 
-Declare Function OpenFile_WINDOWS Lib "kernel32" Alias "OpenFile" (ByVal lpFileName As String, lpReOpenBuff As OFSTRUCT_WINDOWS, ByVal wStyle As Long) As Long
+'~dup Declare Function OpenFile Lib "kernel32" Alias "OpenFile" (ByVal lpFileName As String, lpReOpenBuff As OFSTRUCT, ByVal wStyle As Long) As Long   ' повтор, первое: WIN32API.INC(1871)
 
 ' GetTempFileName() Flags
 '
@@ -48963,7 +48963,7 @@ $ENDIF
 '~dup Declare Function SetCurrentDirectory Lib "kernel32" Alias "SetCurrentDirectoryA" (ByVal lpPathName As String) As Long   ' повтор, первое: WIN32API.INC(2061)
 '~dup Declare Function GetCurrentDirectory Lib "kernel32" Alias "GetCurrentDirectory" (ByVal nBufferLength As Long, ByVal lpBuffer As Long) As Long   ' повтор, первое: WIN32API.INC(2062)
 '~dup Declare Function GetDiskFreeSpace Lib "kernel32" Alias "GetDiskFreeSpaceA" (ByVal lpRootPathName As String, lpSectorsPerCluster As Long, lpBytesPerSector As Long, lpNumberOfFreeClusters As Long, lpTtoalNumberOfClusters As Long) As Long   ' повтор, первое: Kernel32.inc, поднято(94)
-Declare Function GetDiskFreeSpaceEx_WINDOWS Lib "kernel32" Alias "GetDiskFreeSpaceExA" (ByVal lpRootPathName As String, FreeBytesAvailableToCaller As ULARGE_INTEGER, TotalNumberOfBytes As ULARGE_INTEGER, TotalNumberOfFreeBytes As ULARGE_INTEGER) As Long
+'~dup Declare Function GetDiskFreeSpaceEx Lib "kernel32" Alias "GetDiskFreeSpaceExA" (ByVal lpRootPathName As String, FreeBytesAvailableToCaller As ULARGE_INTEGER, TotalNumberOfBytes As ULARGE_INTEGER, TotalNumberOfFreeBytes As ULARGE_INTEGER) As Long   ' повтор, первое: rapidq2.inc(1507)
 '~dup Declare Function CreateDirectory Lib "kernel32" Alias "CreateDirectoryA" (ByVal lpPathName As String, lpSecurityAttributes As SECURITY_ATTRIBUTES) As Long   ' повтор, первое: Files.inc(34)
 '~dup Declare Function CreateDirectoryEx Lib "kernel32" Alias "CreateDirectoryExA" (ByVal lpTemplateDirectory As String, ByVal lpNewDirectory As String, lpSecurityAttributes As SECURITY_ATTRIBUTES) As Long   ' повтор, первое: WIN32API.INC(2065)
 '~dup Declare Function RemoveDirectory Lib "kernel32" Alias "RemoveDirectoryA" (ByVal lpPathName As String) As Long   ' повтор, первое: WIN32API.INC(2066)
@@ -48977,7 +48977,7 @@ Declare Function GetDiskFreeSpaceEx_WINDOWS Lib "kernel32" Alias "GetDiskFreeSpa
 
 '~dup Declare Function DefineDosDevice Lib "kernel32" Alias "DefineDosDeviceA" (ByVal dwFlags As Long, ByVal lpDeviceName As String, ByVal lpTargetPath As String) As Long   ' повтор, первое: WIN32API.INC(2075)
 '~dup Declare Function QueryDosDevice Lib "kernel32" Alias "QueryDosDeviceA" (ByVal lpDeviceName As String, ByVal lpTargetPath As String, ByVal ucchMax As Long) As Long   ' повтор, первое: WIN32API.INC(2076)
-Declare Function CreateFile_WINDOWS Lib "kernel32" Alias "CreateFileA" (ByVal lpFileName As String, ByVal dwDesiredAccess As Long, ByVal dwShareMode As Long, lpSecurityAttributes As SECURITY_ATTRIBUTES, ByVal dwCreationDisposition As Long, ByVal dwFlagsAndAttributes As Long, ByVal hTemplateFile As Long) As Long
+'~dup Declare Function CreateFile Lib "kernel32" Alias "CreateFileA" (ByVal lpFileName As String, ByVal dwDesiredAccess As Long, ByVal dwShareMode As Long, lpSecurityAttributes As SECURITY_ATTRIBUTES, ByVal dwCreationDisposition As Long, ByVal dwFlagsAndAttributes As Long, ByVal hTemplateFile As Long) As Long   ' повтор, первое: rapidq2.inc(1975)
 '~dup Declare Function SetFileAttributes Lib "kernel32" Alias "SetFileAttributesA" (ByVal lpFileName As String, ByVal dwFileAttributes As Long) As Long   ' повтор, первое: Files.inc(31)
 '~dup Declare Function GetFileAttributes Lib "kernel32" Alias "GetFileAttributesA" (ByVal lpFileName As String) As Long   ' повтор, первое: Files.inc(29)
 '~dup Declare Function DeleteFile Lib "kernel32" Alias "DeleteFileA" (ByVal lpFileName As String) As Long   ' повтор, первое: Kernel32.inc(26)
@@ -49055,7 +49055,7 @@ Declare Function CreateFile_WINDOWS Lib "kernel32" Alias "CreateFileA" (ByVal lp
 '~dup Declare Function ImpersonateNamedPipeClient Lib "advapi32.dll" Alias "ImpersonateNamedPipeClient" (ByVal hNamedPipe As Long) As Long   ' повтор, первое: WIN32API.INC(2149)
 '~dup Declare Function ImpersonateSelf Lib "advapi32.dll" Alias "ImpersonateSelf" (ImpersonationLevel As Integer) As Long   ' повтор, первое: WIN32API.INC(2150)
 '~dup Declare Function RevertToSelf Lib "advapi32.dll" Alias "RevertToSelf" () As Long   ' повтор, первое: WIN32API.INC(2151)
-Declare Function AccessCheck_WINDOWS Lib "advapi32.dll" Alias "AccessCheck" (pSecurityDescriptor As SECURITY_DESCRIPTOR, ByVal ClientToken As Long, ByVal DesiredAccess As Long, GenericMapping As GENERIC_MAPPING, PrivilegeSet As PRIVILEGE_SET_WINDOWS, PrivilegeSetLength As Long, GrantedAccess As Long, ByVal Status As Long) As Long
+'~dup Declare Function AccessCheck Lib "advapi32.dll" Alias "AccessCheck" (pSecurityDescriptor As SECURITY_DESCRIPTOR, ByVal ClientToken As Long, ByVal DesiredAccess As Long, GenericMapping As GENERIC_MAPPING, PrivilegeSet As PRIVILEGE_SET, PrivilegeSetLength As Long, GrantedAccess As Long, ByVal Status As Long) As Long   ' повтор, первое: WIN32API.INC(2152)
 
 ' Type TOKEN_PRIVILEGES
 ' 	PrivilegeCount As Long
@@ -49079,12 +49079,12 @@ Declare Function AccessCheck_WINDOWS Lib "advapi32.dll" Alias "AccessCheck" (pSe
 '~dup Declare Function SetTokenInformation Lib "advapi32.dll" Alias "SetTokenInformation" (ByVal TokenHandle As Long, TokenInformationClass As Integer, TokenInformation As Any, ByVal TokenInformationLength As Long) As Long   ' повтор, первое: WIN32API.INC(2163)
 '~dup Declare Function AdjustTokenPrivileges Lib "advapi32.dll" Alias "AdjustTokenPrivileges" (ByVal TokenHandle As Long, ByVal DisableAllPrivileges As Long, NewState As TOKEN_PRIVILEGES, ByVal BufferLength As Long, PreviousState As TOKEN_PRIVILEGES, ReturnLength As Long) As Long   ' повтор, первое: rapidq2.inc(2207)
 '~dup Declare Function AdjustTokenGroups Lib "advapi32.dll" Alias "AdjustTokenGroups" (ByVal TokenHandle As Long, ByVal ResetToDefault As Long, NewState As TOKEN_GROUPS, ByVal BufferLength As Long, PreviousState As TOKEN_GROUPS, ReturnLength As Long) As Long   ' повтор, первое: WIN32API.INC(2165)
-Declare Function PrivilegeCheck_WINDOWS Lib "advapi32.dll" Alias "PrivilegeCheck" (ByVal ClientToken As Long, RequiredPrivileges As PRIVILEGE_SET_WINDOWS, ByVal pfResult As Long) As Long
+'~dup Declare Function PrivilegeCheck Lib "advapi32.dll" Alias "PrivilegeCheck" (ByVal ClientToken As Long, RequiredPrivileges As PRIVILEGE_SET, ByVal pfResult As Long) As Long   ' повтор, первое: WIN32API.INC(2166)
 '~dup Declare Function AccessCheckAndAuditAlarm Lib "advapi32.dll" Alias "AccessCheckAndAuditAlarmA" (ByVal SubsystemName As String, HandleId As Any, ByVal ObjectTypeName As String, ByVal ObjectName As String, SecurityDescriptor As SECURITY_DESCRIPTOR, ByVal DesiredAccess As Long, GenericMapping As GENERIC_MAPPING, ByVal ObjectCreation As Long, GrantedAccess As Long, ByVal AccessStatus As Long, ByVal pfGenerateOnClose As Long) As Long   ' повтор, первое: WIN32API.INC(2167)
-Declare Function ObjectOpenAuditAlarm_WINDOWS Lib "kernel32" Alias "ObjectOpenAuditAlarmA" (ByVal SubsystemName As String, HandleId As Any, ByVal ObjectTypeName As String, ByVal ObjectName As String, pSecurityDescriptor As SECURITY_DESCRIPTOR, ByVal ClientToken As Long, ByVal DesiredAccess As Long, ByVal GrantedAccess As Long, Privileges As PRIVILEGE_SET_WINDOWS, ByVal ObjectCreation As Long, ByVal AccessGranted As Long, ByVal GenerateOnClose As Long) As Long
-Declare Function ObjectPrivilegeAuditAlarm_WINDOWS Lib "advapi32.dll" Alias "ObjectPrivilegeAuditAlarmA" (ByVal SubsystemName As String, HandleId As Any, ByVal ClientToken As Long, ByVal DesiredAccess As Long, Privileges As PRIVILEGE_SET_WINDOWS, ByVal AccessGranted As Long) As Long
+'~dup Declare Function ObjectOpenAuditAlarm Lib "kernel32" Alias "ObjectOpenAuditAlarmA" (ByVal SubsystemName As String, HandleId As Any, ByVal ObjectTypeName As String, ByVal ObjectName As String, pSecurityDescriptor As SECURITY_DESCRIPTOR, ByVal ClientToken As Long, ByVal DesiredAccess As Long, ByVal GrantedAccess As Long, Privileges As PRIVILEGE_SET, ByVal ObjectCreation As Long, ByVal AccessGranted As Long, ByVal GenerateOnClose As Long) As Long   ' повтор, первое: WIN32API.INC(2168)
+'~dup Declare Function ObjectPrivilegeAuditAlarm Lib "advapi32.dll" Alias "ObjectPrivilegeAuditAlarmA" (ByVal SubsystemName As String, HandleId As Any, ByVal ClientToken As Long, ByVal DesiredAccess As Long, Privileges As PRIVILEGE_SET, ByVal AccessGranted As Long) As Long   ' повтор, первое: WIN32API.INC(2169)
 '~dup Declare Function ObjectCloseAuditAlarm Lib "advapi32.dll" Alias "ObjectCloseAuditAlarmA" (ByVal SubsystemName As String, HandleId As Any, ByVal GenerateOnClose As Long) As Long   ' повтор, первое: WIN32API.INC(2170)
-Declare Function PrivilegedServiceAuditAlarm_WINDOWS Lib "advapi32.dll" Alias "PrivilegedServiceAuditAlarmA" (ByVal SubsystemName As String, ByVal ServiceName As String, ByVal ClientToken As Long, Privileges As PRIVILEGE_SET_WINDOWS, ByVal AccessGranted As Long) As Long
+'~dup Declare Function PrivilegedServiceAuditAlarm Lib "advapi32.dll" Alias "PrivilegedServiceAuditAlarmA" (ByVal SubsystemName As String, ByVal ServiceName As String, ByVal ClientToken As Long, Privileges As PRIVILEGE_SET, ByVal AccessGranted As Long) As Long   ' повтор, первое: WIN32API.INC(2171)
 '~dup Declare Function IsValidSid Lib "advapi32.dll" Alias "IsValidSid" (pSid As Any) As Long   ' повтор, первое: WIN32API.INC(2172)
 '~dup Declare Function EqualSid Lib "advapi32.dll" Alias "EqualSid" (pSid1 As Any, pSid2 As Any) As Long   ' повтор, первое: WIN32API.INC(2173)
 '~dup Declare Function EqualPrefixSid Lib "advapi32.dll" Alias "EqualPrefixSid" (pSid1 As Any, pSid2 As Any) As Long   ' повтор, первое: WIN32API.INC(2174)
@@ -49202,18 +49202,18 @@ Declare Function PrivilegedServiceAuditAlarm_WINDOWS Lib "advapi32.dll" Alias "P
 '~dup Declare Function SetLocalTime Lib "kernel32" Alias "SetLocalTime" (lpSystemTime As SYSTEMTIME) As Long   ' повтор, первое: WIN32API.INC(2291)
 '~dup Declare Sub GetSystemInfo Lib "kernel32" Alias "GetSystemInfo" (lpSystemInfo As SYSTEM_INFO)   ' повтор, первое: WIN32API.INC(2292)
 
-Type TIME_ZONE_INFORMATION_WINDOWS
-        Bias As Long
-        StandardName(32) As Integer
-        StandardDate As SYSTEMTIME
-        StandardBias As Long
-        DaylightName(32) As Integer
-        DaylightDate As SYSTEMTIME
-        DaylightBias As Long
-End Type
+'~dup Type TIME_ZONE_INFORMATION   ' повтор, первое: WIN32API.INC(2294)
+'~dup         Bias As Long
+'~dup         StandardName(32) As Integer
+'~dup         StandardDate As SYSTEMTIME
+'~dup         StandardBias As Long
+'~dup         DaylightName(32) As Integer
+'~dup         DaylightDate As SYSTEMTIME
+'~dup         DaylightBias As Long
+'~dup End Type
 
-Declare Function GetTimeZoneInformation_WINDOWS Lib "kernel32" Alias "GetTimeZoneInformation" (lpTimeZoneInformation As TIME_ZONE_INFORMATION_WINDOWS) As Long
-Declare Function SetTimeZoneInformation_WINDOWS Lib "kernel32" Alias "SetTimeZoneInformation" (lpTimeZoneInformation As TIME_ZONE_INFORMATION_WINDOWS) As Long
+'~dup Declare Function GetTimeZoneInformation Lib "kernel32" Alias "GetTimeZoneInformation" (lpTimeZoneInformation As TIME_ZONE_INFORMATION) As Long   ' повтор, первое: WIN32API.INC(2304)
+'~dup Declare Function SetTimeZoneInformation Lib "kernel32" Alias "SetTimeZoneInformation" (lpTimeZoneInformation As TIME_ZONE_INFORMATION) As Long   ' повтор, первое: WIN32API.INC(2305)
 
 ' Routines to convert back and forth
 ' between system time and file time
@@ -49331,7 +49331,7 @@ Declare Function SetTimeZoneInformation_WINDOWS Lib "kernel32" Alias "SetTimeZon
 '~dup Declare Function LookupAccountSid Lib "advapi32.dll" Alias "LookupAccountSidA" (ByVal lpSystemName As String, Sid As Any, ByVal name As String, cbName As Long, ByVal ReferencedDomainName As String, cbReferencedDomainName As Long, peUse As Integer) As Long   ' повтор, первое: WIN32API.INC(2420)
 
 '~dup Declare Function LookupAccountName Lib "advapi32.dll" Alias "LookupAccountNameA" (ByVal lpSystemName As String, ByVal lpAccountName As String, Sid As Long, cbSid As Long, ByVal ReferencedDomainName As String, cbReferencedDomainName As Long, peUse As Integer) As Long   ' повтор, первое: WIN32API.INC(2422)
-Declare Function LookupPrivilegeValue_WINDOWS Lib "advapi32.dll" Alias "LookupPrivilegeValueA" (ByVal lpSystemName As String, ByVal lpName As String, lpLuid As LARGE_INTEGER) As Long
+'~dup Declare Function LookupPrivilegeValue Lib "advapi32.dll" Alias "LookupPrivilegeValueA" (ByVal lpSystemName As String, ByVal lpName As String, lpLuid As LARGE_INTEGER) As Long   ' повтор, первое: rapidq2.inc(2202)
 '~dup Declare Function LookupPrivilegeName Lib "advapi32.dll" Alias "LookupPrivilegeNameA" (ByVal lpSystemName As String, lpLuid As LARGE_INTEGER, ByVal lpName As String, cbName As Long) As Long   ' повтор, первое: WIN32API.INC(2424)
 '~dup Declare Function LookupPrivilegeDisplayName Lib "advapi32.dll" Alias "LookupPrivilegeDisplayNameA" (ByVal lpSystemName As String, ByVal lpName As String, ByVal lpDisplayName As String, cbDisplayName As Long, lpLanguageID As Long) As Long   ' повтор, первое: WIN32API.INC(2425)
 '~dup Declare Function AllocateLocallyUniqueId Lib "advapi32.dll" Alias "AllocateLocallyUniqueId" (Luid As LARGE_INTEGER) As Long   ' повтор, первое: WIN32API.INC(2426)
@@ -49347,8 +49347,8 @@ Declare Function LookupPrivilegeValue_WINDOWS Lib "advapi32.dll" Alias "LookupPr
 
 
 ' Performance counter API's
-Declare Function QueryPerformanceCounter_WINDOWS Lib "kernel32" Alias "QueryPerformanceCounter" (lpPerformanceCount As LARGE_INTEGER) As Long
-Declare Function QueryPerformanceFrequency_WINDOWS Lib "kernel32" Alias "QueryPerformanceFrequency" (lpFrequency As LARGE_INTEGER) As Long
+'~dup Declare Function QueryPerformanceCounter Lib "kernel32" Alias "QueryPerformanceCounter" (lpPerformanceCount As LARGE_INTEGER) As Long   ' повтор, первое: microTIMER.inc(11)
+'~dup Declare Function QueryPerformanceFrequency Lib "kernel32" Alias "QueryPerformanceFrequency" (lpFrequency As LARGE_INTEGER) As Long   ' повтор, первое: microTIMER.inc(13)
 
 '  Abnormal termination codes
 '~dup Public Const TC_NORMAL = 0   ' повтор, первое: WIN32API.INC(2437)
@@ -50235,25 +50235,25 @@ Declare Function QueryPerformanceFrequency_WINDOWS Lib "kernel32" Alias "QueryPe
 '~dup 	rgbReserved As Byte
 '~dup End Type
 
-Type BITMAPINFO_WINDOWS
-    'bmiHeader As BITMAPINFOHEADER	'cant nest in RapidQ
-    bmiHeader_biSize 			As Long
-    bmiHeader_biWidth 			As Long
-    bmiHeader_biHeight 			As Long
-    bmiHeader_biPlanes 			As WORD
-    bmiHeader_biBitCount 		As WORD
-    bmiHeader_biCompression 	As Long
-    bmiHeader_biSizeImage 		As Long
-    bmiHeader_biXPelsPerMeter 	As Long
-    bmiHeader_biYPelsPerMeter 	As Long
-    bmiHeader_biClrUsed 		As Long
-    bmiHeader_biClrImportant 	As Long
-	'bmiColors As RGBQUAD (4 bytes) is a dynamic array! Start off with the most likely vaule 256 colors
-    bmiColors_rgbBlue(0 To 255) 	As Byte
-    bmiColors_rgbGreen(0 To 255)	As Byte
-    bmiColors_rgbRed(0 To 255) 		As Byte
-    bmiColors_rgbReserved(0 To 255) As Byte
-End Type
+'~dup Type BITMAPINFO   ' повтор, первое: WIN32API.INC(3325)
+'~dup     'bmiHeader As BITMAPINFOHEADER	'cant nest in RapidQ
+'~dup     bmiHeader_biSize 			As Long
+'~dup     bmiHeader_biWidth 			As Long
+'~dup     bmiHeader_biHeight 			As Long
+'~dup     bmiHeader_biPlanes 			As WORD
+'~dup     bmiHeader_biBitCount 		As WORD
+'~dup     bmiHeader_biCompression 	As Long
+'~dup     bmiHeader_biSizeImage 		As Long
+'~dup     bmiHeader_biXPelsPerMeter 	As Long
+'~dup     bmiHeader_biYPelsPerMeter 	As Long
+'~dup     bmiHeader_biClrUsed 		As Long
+'~dup     bmiHeader_biClrImportant 	As Long
+'~dup 	'bmiColors As RGBQUAD (4 bytes) is a dynamic array! Start off with the most likely vaule 256 colors
+'~dup     bmiColors_rgbBlue(0 To 255) 	As Byte
+'~dup     bmiColors_rgbGreen(0 To 255)	As Byte
+'~dup     bmiColors_rgbRed(0 To 255) 		As Byte
+'~dup     bmiColors_rgbReserved(0 To 255) As Byte
+'~dup End Type
 '	example code
 '	DIM trash AS BITMAPINFO
 '	trash.bmiHeader_biHeight = 10
@@ -50266,19 +50266,19 @@ End Type
 '~dup Public Const BI_bitfields = 3&   ' повтор, первое: WIN32API.INC(3323)
 
 
-Type BITMAPCOREINFO_WINDOWS
-'   bmciHeader As BITMAPCOREHEADER
-    bmciHeader_bcSize 		As LONG
-    bmciHeader_bcWidth 		As WORD
-    bmciHeader_bcHeight 	As WORD
-    bmciHeader_bcPlanes 	As WORD
-    bmciHeader_bcBitCount 	As WORD
-
-'    bmciColors As RGBTRIPLE
-    bmciColors_rgbtBlue(0 TO 255)  As Byte
-    bmciColors_rgbtGreen(0 TO 255) As Byte
-    bmciColors_rgbtRed(0 TO 255)   As Byte
-End Type
+'~dup Type BITMAPCOREINFO   ' повтор, первое: WIN32API.INC(3330)
+'~dup '   bmciHeader As BITMAPCOREHEADER
+'~dup     bmciHeader_bcSize 		As LONG
+'~dup     bmciHeader_bcWidth 		As WORD
+'~dup     bmciHeader_bcHeight 	As WORD
+'~dup     bmciHeader_bcPlanes 	As WORD
+'~dup     bmciHeader_bcBitCount 	As WORD
+'~dup 
+'~dup '    bmciColors As RGBTRIPLE
+'~dup     bmciColors_rgbtBlue(0 TO 255)  As Byte
+'~dup     bmciColors_rgbtGreen(0 TO 255) As Byte
+'~dup     bmciColors_rgbtRed(0 TO 255)   As Byte
+'~dup End Type
 
 
 '~dup Type BITMAPFILEHEADER   ' повтор, первое: WIN32API.INC(3335)
@@ -51348,7 +51348,7 @@ CONST STRING_SIZE				= 32
 '~dup Declare Function CopyMetaFile Lib "gdi32" Alias "CopyMetaFileA" (ByVal hMF As Long, ByVal lpFileName As String) As Long   ' повтор, первое: WIN32API.INC(4359)
 
 '~dup Declare Function CreateBitmap Lib "gdi32" Alias "CreateBitmap" (ByVal nWidth As Long, ByVal nHeight As Long, ByVal nPlanes As Long, ByVal nBitCount As Long, lpBits As Any) As Long   ' повтор, первое: WIN32API.INC(4361)
-Declare Function CreateBitmapIndirect_WINDOWS Lib "gdi32" Alias "CreateBitmapIndirect" (lpBitmap As TBITMAP) As Long
+'~dup Declare Function CreateBitmapIndirect Lib "gdi32" Alias "CreateBitmapIndirect" (lpBitmap As TBITMAP) As Long   ' повтор, первое: WIN32API.INC(4362)
 '~dup Declare Function CreateBrushIndirect Lib "gdi32" Alias "CreateBrushIndirect" (lpLogBrush As LOGBRUSH) As Long   ' повтор, первое: WIN32API.INC(4363)
 '~dup Declare Function CreateCompatibleBitmap Lib "gdi32" Alias "CreateCompatibleBitmap" (ByVal hdc As Long, ByVal nWidth As Long, ByVal nHeight As Long) As Long   ' повтор, первое: rapidq2.inc(1446)
 '~dup Declare Function CreateDiscardableBitmap Lib "gdi32" Alias "CreateDiscardableBitmap" (ByVal hdc As Long, ByVal nWidth As Long, ByVal nHeight As Long) As Long   ' повтор, первое: WIN32API.INC(4365)
@@ -51356,7 +51356,7 @@ Declare Function CreateBitmapIndirect_WINDOWS Lib "gdi32" Alias "CreateBitmapInd
 '~dup Declare Function CreateCompatibleDC Lib "gdi32" Alias "CreateCompatibleDC" (ByVal hdc As Long) As Long   ' повтор, первое: rapidq2.inc(1447)
 '~dup Declare Function CreateDC Lib "gdi32" Alias "CreateDCA" (ByVal lpDriverName As String, ByVal lpDeviceName As String, ByVal lpOutput As String, lpInitData As DEVMODE) As Long   ' повтор, первое: rapidq2.inc(1429)
 
-Declare Function CreateDIBitmap_WINDOWS Lib "gdi32" Alias "CreateDIBitmap" (ByVal hdc As Long, lpInfoHeader As BITMAPINFOHEADER, ByVal dwUsage As Long, lpInitBits As Any, lpInitInfo As BITMAPINFO_WINDOWS, ByVal wUsage As Long) As Long
+'~dup Declare Function CreateDIBitmap Lib "gdi32" Alias "CreateDIBitmap" (ByVal hdc As Long, lpInfoHeader As BITMAPINFOHEADER, ByVal dwUsage As Long, lpInitBits As Any, lpInitInfo As BITMAPINFO, ByVal wUsage As Long) As Long   ' повтор, первое: WIN32API.INC(4370)
 '~dup Declare Function CreateDIBPatternBrush Lib "gdi32" Alias "CreateDIBPatternBrush" (ByVal hPackedDIB As Long, ByVal wUsage As Long) As Long   ' повтор, первое: WIN32API.INC(4371)
 '~dup Declare Function CreateDIBPatternBrushPt Lib "gdi32" Alias "CreateDIBPatternBrushPt" (lpPackedDIB As Any, ByVal iUsage As Long) As Long   ' повтор, первое: WIN32API.INC(4372)
 '~dup Declare Function CreateEllipticRgnIndirect Lib "gdi32" Alias "CreateEllipticRgnIndirect" (lpRect As Rect) As Long   ' повтор, первое: WIN32API.INC(4373)
@@ -51366,7 +51366,7 @@ Declare Function CreateDIBitmap_WINDOWS Lib "gdi32" Alias "CreateDIBitmap" (ByVa
 '~dup Declare Function CreateFont Lib "gdi32" Alias "CreateFontA" (ByVal H As Long, ByVal W As Long, ByVal E As Long, ByVal O As Long, ByVal W As Long, ByVal I As Long, ByVal u As Long, ByVal S As Long, ByVal C As Long, ByVal OP As Long, ByVal CP As Long, ByVal Q As Long, ByVal PAF As Long, ByVal F As String) As Long   ' повтор, первое: WIN32API.INC(4377)
 
 '~dup Declare Function CreateHatchBrush Lib "gdi32" Alias "CreateHatchBrush" (ByVal nIndex As Long, ByVal crColor As Long) As Long   ' повтор, первое: WIN32API.INC(4379)
-Declare Function CreateIC_WINDOWS Lib "gdi32" Alias "CreateICA" (ByVal lpDriverName As String, ByVal lpDeviceName As String, ByVal lpOutput As String, lpInitData As DEVMODE) As Long
+'~dup Declare Function CreateIC Lib "gdi32" Alias "CreateICA" (ByVal lpDriverName As String, ByVal lpDeviceName As String, ByVal lpOutput As String, lpInitData As DEVMODE) As Long   ' повтор, первое: WIN32API.INC(4380)
 
 '~dup Declare Function CreateMetaFile Lib "gdi32" Alias "CreateMetaFileA" (ByVal lpString As String) As Long   ' повтор, первое: WIN32API.INC(4382)
 
@@ -51426,7 +51426,7 @@ Declare Function CreateIC_WINDOWS Lib "gdi32" Alias "CreateICA" (ByVal lpDriverN
 '~dup Public Const DCTT_DOWNLOAD = &H2&   ' повтор, первое: WIN32API.INC(4432)
 '~dup Public Const DCTT_SUBDEV = &H4&   ' повтор, первое: WIN32API.INC(4433)
 
-Declare Function DeviceCapabilities_WINDOWS Lib "winspool.drv" Alias "DeviceCapabilitiesA" (ByVal lpDeviceName As String, ByVal lpPort As String, ByVal iIndex As Long, ByVal lpOutput As String, lpDevMode As DEVMODE) As Long
+'~dup Declare Function DeviceCapabilities Lib "winspool.drv" Alias "DeviceCapabilitiesA" (ByVal lpDeviceName As String, ByVal lpPort As String, ByVal iIndex As Long, ByVal lpOutput As String, lpDevMode As DEVMODE) As Long   ' повтор, первое: WIN32API.INC(4435)
 
 '~dup Declare Function Ellipse Lib "gdi32" Alias "Ellipse" (ByVal hdc As Long, ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long) As Long   ' повтор, первое: rapidq2.inc(1452)
 
@@ -51461,7 +51461,7 @@ Declare Function DeviceCapabilities_WINDOWS Lib "winspool.drv" Alias "DeviceCapa
 '~dup Declare Function GetCurrentObject Lib "gdi32" Alias "GetCurrentObject" (ByVal hdc As Long, ByVal uObjectType As Long) As Long   ' повтор, первое: rapidq2.inc(1456)
 '~dup Declare Function GetCurrentPositionEx Lib "gdi32" Alias "GetCurrentPositionEx" (ByVal hdc As Long, lpPoint As POINTAPI) As Long   ' повтор, первое: WIN32API.INC(4468)
 '~dup Declare Function GetDeviceCaps Lib "gdi32" Alias "GetDeviceCaps" (ByVal hdc As Long, ByVal nIndex As Long) As Long   ' повтор, первое: rapidq2.inc(1454)
-Declare Function GetDIBits_WINDOWS Lib "gdi32" Alias "GetDIBits" (ByVal aHDC As Long, ByVal hBitmap As Long, ByVal nStartScan As Long, ByVal nNumScans As Long, lpBits As Any, lpBI As BITMAPINFO_WINDOWS, ByVal wUsage As Long) As Long
+'~dup Declare Function GetDIBits Lib "gdi32" Alias "GetDIBits" (ByVal aHDC As Long, ByVal hBitmap As Long, ByVal nStartScan As Long, ByVal nNumScans As Long, lpBits As Any, lpBI As BITMAPINFO, ByVal wUsage As Long) As Long   ' повтор, первое: WIN32API.INC(4470)
 '~dup Declare Function GetFontData Lib "gdi32" Alias "GetFontDataA" (ByVal hdc As Long, ByVal dwTable As Long, ByVal dwOffset As Long, lpvBuffer As Any, ByVal cbData As Long) As Long   ' повтор, первое: WIN32API.INC(4471)
 '~dup Declare Function GetGlyphOutline Lib "gdi32" Alias "GetGlyphOutlineA" (ByVal hdc As Long, ByVal uChar As Long, ByVal fuFormat As Long, lpgm As GLYPHMETRICS, ByVal cbBuffer As Long, lpBuffer As Any, lpmat2 As MAT2) As Long   ' повтор, первое: WIN32API.INC(4472)
 '~dup Declare Function GetGraphicsMode Lib "gdi32" Alias "GetGraphicsMode" (ByVal hdc As Long) As Long   ' повтор, первое: WIN32API.INC(4473)
@@ -51516,7 +51516,7 @@ Declare Function GetDIBits_WINDOWS Lib "gdi32" Alias "GetDIBits" (ByVal aHDC As 
 '~dup Declare Function RectInRegion Lib "gdi32" Alias "RectInRegion" (ByVal hRgn As Long, lpRect As RECT) As Long   ' повтор, первое: WIN32API.INC(4522)
 '~dup Declare Function Rectangle Lib "gdi32" Alias "Rectangle" (ByVal hdc As Long, ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long) As Long   ' повтор, первое: rapidq2.inc(1462)
 '~dup Declare Function RestoreDC Lib "gdi32" Alias "RestoreDC" (ByVal hdc As Long, ByVal nSavedDC As Long) As Long   ' повтор, первое: WIN32API.INC(4524)
-Declare Function ResetDC_WINDOWS Lib "gdi32" Alias "ResetDCA" (ByVal hdc As Long, lpInitData As DEVMODE) As Long
+'~dup Declare Function ResetDC Lib "gdi32" Alias "ResetDCA" (ByVal hdc As Long, lpInitData As DEVMODE) As Long   ' повтор, первое: PRINTERDLL.INC(190)
 '~dup Declare Function RealizePalette Lib "gdi32" Alias "RealizePalette" (ByVal hdc As Long) As Long   ' повтор, первое: WIN32API.INC(4526)
 '~dup Declare Function RemoveFontResource Lib "gdi32" Alias "RemoveFontResourceA" (ByVal lpFileName As String) As Long   ' повтор, первое: WIN32API.INC(4527)
 '~dup Declare Function RoundRect Lib "gdi32" Alias "RoundRect" (ByVal hdc As Long, ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long, ByVal X3 As Long, ByVal Y3 As Long) As Long   ' повтор, первое: rapidq2.inc(1463)
@@ -51533,8 +51533,8 @@ Declare Function ResetDC_WINDOWS Lib "gdi32" Alias "ResetDCA" (ByVal hdc As Long
 '~dup Declare Function SetBitmapBits Lib "gdi32" Alias "SetBitmapBits" (ByVal hBitmap As Long, ByVal dwCount As Long, lpBits As Any) As Long   ' повтор, первое: WIN32API.INC(4539)
 
 '~dup Declare Function SetBoundsRect Lib "gdi32" Alias "SetBoundsRect" (ByVal hdc As Long, lprcBounds As RECT, ByVal flags As Long) As Long   ' повтор, первое: WIN32API.INC(4541)
-Declare Function SetDIBits_WINDOWS Lib "gdi32" Alias "SetDIBits" (ByVal hdc As Long, ByVal hBitmap As Long, ByVal nStartScan As Long, ByVal nNumScans As Long, lpBits As Any, lpBI As BITMAPINFO_WINDOWS, ByVal wUsage As Long) As Long
-Declare Function SetDIBitsToDevice_WINDOWS Lib "gdi32" Alias "SetDIBitsToDevice" (ByVal hdc As Long, ByVal x As Long, ByVal y As Long, ByVal dx As Long, ByVal dy As Long, ByVal SrcX As Long, ByVal SrcY As Long, ByVal Scan As Long, ByVal NumScans As Long, Bits As Any, BitsInfo As BITMAPINFO_WINDOWS, ByVal wUsage As Long) As Long
+'~dup Declare Function SetDIBits Lib "gdi32" Alias "SetDIBits" (ByVal hdc As Long, ByVal hBitmap As Long, ByVal nStartScan As Long, ByVal nNumScans As Long, lpBits As Any, lpBI As BITMAPINFO, ByVal wUsage As Long) As Long   ' повтор, первое: WIN32API.INC(4542)
+'~dup Declare Function SetDIBitsToDevice Lib "gdi32" Alias "SetDIBitsToDevice" (ByVal hdc As Long, ByVal x As Long, ByVal y As Long, ByVal dx As Long, ByVal dy As Long, ByVal SrcX As Long, ByVal SrcY As Long, ByVal Scan As Long, ByVal NumScans As Long, Bits As Any, BitsInfo As BITMAPINFO, ByVal wUsage As Long) As Long   ' повтор, первое: WIN32API.INC(4543)
 '~dup Declare Function SetMapperFlags Lib "gdi32" Alias "SetMapperFlags" (ByVal hdc As Long, ByVal dwFlag As Long) As Long   ' повтор, первое: WIN32API.INC(4544)
 '~dup Declare Function SetGraphicsMode Lib "gdi32" Alias "SetGraphicsMode" (ByVal hdc As Long, ByVal iMode As Long) As Long   ' повтор, первое: WIN32API.INC(4545)
 '~dup Declare Function SetMapMode Lib "gdi32" Alias "SetMapMode" (ByVal hdc As Long, ByVal nMapMode As Long) As Long   ' повтор, первое: WIN32API.INC(4546)
@@ -51545,7 +51545,7 @@ Declare Function SetDIBitsToDevice_WINDOWS Lib "gdi32" Alias "SetDIBitsToDevice"
 '~dup Declare Function SetPolyFillMode Lib "gdi32" Alias "SetPolyFillMode" (ByVal hdc As Long, ByVal nPolyFillMode As Long) As Long   ' повтор, первое: WIN32API.INC(4551)
 '~dup Declare Function StretchBlt Lib "gdi32" Alias "StretchBlt" (ByVal hdc As Long, ByVal x As Long, ByVal y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal hSrcDC As Long, ByVal xSrc As Long, ByVal ySrc As Long, ByVal nSrcWidth As Long, ByVal nSrcHeight As Long, ByVal dwRop As Long) As Long   ' повтор, первое: rapidq2.inc(1467)
 '~dup Declare Function SetRectRgn Lib "gdi32" Alias "SetRectRgn" (ByVal hRgn As Long, ByVal X1 As Long, ByVal Y1 As Long, ByVal X2 As Long, ByVal Y2 As Long) As Long   ' повтор, первое: QFormSkin.inc(152)
-Declare Function StretchDIBits_WINDOWS Lib "gdi32" Alias "StretchDIBits" (ByVal hdc As Long, ByVal x As Long, ByVal y As Long, ByVal dx As Long, ByVal dy As Long, ByVal SrcX As Long, ByVal SrcY As Long, ByVal wSrcWidth As Long, ByVal wSrcHeight As Long, lpBits As Any, lpBitsInfo As BITMAPINFO_WINDOWS, ByVal wUsage As Long, ByVal dwRop As Long) As Long
+'~dup Declare Function StretchDIBits Lib "gdi32" Alias "StretchDIBits" (ByVal hdc As Long, ByVal x As Long, ByVal y As Long, ByVal dx As Long, ByVal dy As Long, ByVal SrcX As Long, ByVal SrcY As Long, ByVal wSrcWidth As Long, ByVal wSrcHeight As Long, lpBits As Any, lpBitsInfo As BITMAPINFO, ByVal wUsage As Long, ByVal dwRop As Long) As Long   ' повтор, первое: WIN32API.INC(4554)
 '~dup Declare Function SetROP2 Lib "gdi32" Alias "SetROP2" (ByVal hdc As Long, ByVal nDrawMode As Long) As Long   ' повтор, первое: rapidq2.inc(1465)
 '~dup Declare Function SetStretchBltMode Lib "gdi32" Alias "SetStretchBltMode" (ByVal hdc As Long, ByVal nStretchMode As Long) As Long   ' повтор, первое: WIN32API.INC(4556)
 '~dup Declare Function SetSystemPaletteUse Lib "gdi32" Alias "SetSystemPaletteUse" (ByVal hdc As Long, ByVal wUsage As Long) As Long   ' повтор, первое: WIN32API.INC(4557)
@@ -51672,7 +51672,7 @@ Declare Function StretchDIBits_WINDOWS Lib "gdi32" Alias "StretchDIBits" (ByVal 
 '~dup Declare Function GetArcDirection Lib "gdi32" Alias "GetArcDirection" (ByVal hdc As Long) As Long   ' повтор, первое: WIN32API.INC(4678)
 
 '~dup Declare Function GetObject Lib "gdi32" Alias "GetObjectA" (ByVal hObject As Long, ByVal nCount As Long, lpObject As TBITMAP) As Long   ' повтор, первое: rapidq2.inc(1455)
-Declare Function MoveToEx_WINDOWS Lib "gdi32" Alias "MoveToEx" (ByVal hdc As Long, ByVal x As Long, ByVal y As Long, lpPoint As POINTAPI) As Long
+'~dup Declare Function MoveToEx Lib "gdi32" Alias "MoveToEx" (ByVal hdc As Long, ByVal x As Long, ByVal y As Long, lpPoint As POINTAPI) As Long   ' повтор, первое: rapidq2.inc(1460)
 '~dup Declare Function TextOut Lib "gdi32" Alias "TextOutA" (ByVal hdc As Long, ByVal x As Long, ByVal y As Long, ByVal lpString As String, ByVal nCount As Long) As Long   ' повтор, первое: WIN32API.INC(4682)
 '~dup Declare Function ExtTextOut Lib "gdi32" Alias "ExtTextOutA" (ByVal hdc As Long, ByVal x As Long, ByVal y As Long, ByVal wOptions As Long, lpRect As Rect, ByVal lpString As String, ByVal nCount As Long, lpDx As Long) As Long   ' повтор, первое: WIN32API.INC(4683)
 '~dup Declare Function PolyTextOut Lib "gdi32" Alias "PolyTextOutA" (ByVal hdc As Long, pptxt As POLYTEXT, cStrings As Long) As Long   ' повтор, первое: WIN32API.INC(4684)
@@ -52183,35 +52183,35 @@ Declare Function MoveToEx_WINDOWS Lib "gdi32" Alias "MoveToEx" (ByVal hdc As Lon
 '~dup         pEmr As emr
 '~dup         rclBounds As RECTL
 '~dup         cpts As Long
-'~dup         apts(1) As POINTS_WINDOWS
+'~dup         apts(1) As POINTS
 '~dup End Type
 
 '~dup Type EMRPOLYBEZIER16   ' повтор, первое: WIN32API.INC(5195)
 '~dup         pEmr As emr
 '~dup         rclBounds As RECTL
 '~dup         cpts As Long
-'~dup         apts(1) As POINTS_WINDOWS
+'~dup         apts(1) As POINTS
 '~dup End Type
 
 '~dup Type EMRPOLYGON16   ' повтор, первое: WIN32API.INC(5202)
 '~dup         pEmr As emr
 '~dup         rclBounds As RECTL
 '~dup         cpts As Long
-'~dup         apts(1) As POINTS_WINDOWS
+'~dup         apts(1) As POINTS
 '~dup End Type
 
 '~dup Type EMRPLOYBEZIERTO16   ' повтор, первое: WIN32API.INC(5209)
 '~dup         pEmr As emr
 '~dup         rclBounds As RECTL
 '~dup         cpts As Long
-'~dup         apts(1) As POINTS_WINDOWS
+'~dup         apts(1) As POINTS
 '~dup End Type
 
 '~dup Type EMRPOLYLINETO16   ' повтор, первое: WIN32API.INC(5216)
 '~dup         pEmr As emr
 '~dup         rclBounds As RECTL
 '~dup         cpts As Long
-'~dup         apts(1) As POINTS_WINDOWS
+'~dup         apts(1) As POINTS
 '~dup End Type
 
 '~dup Type EMRPOLYDRAW   ' повтор, первое: WIN32API.INC(5223)
@@ -52226,7 +52226,7 @@ Declare Function MoveToEx_WINDOWS Lib "gdi32" Alias "MoveToEx" (ByVal hdc As Lon
 '~dup         pEmr As emr
 '~dup         rclBounds As RECTL
 '~dup         cpts As Long
-'~dup         apts(1) As POINTS_WINDOWS
+'~dup         apts(1) As POINTS
 '~dup         abTypes(1) As WORD
 '~dup End Type
 
@@ -52254,7 +52254,7 @@ Declare Function MoveToEx_WINDOWS Lib "gdi32" Alias "MoveToEx" (ByVal hdc As Lon
 '~dup         nPolys As Long
 '~dup         cpts As Long
 '~dup         aPolyCounts(1) As Long
-'~dup         apts(1) As POINTS_WINDOWS
+'~dup         apts(1) As POINTS
 '~dup End Type
 
 '~dup Type EMRPOLYPOLYGON16   ' повтор, первое: WIN32API.INC(5266)
@@ -52263,7 +52263,7 @@ Declare Function MoveToEx_WINDOWS Lib "gdi32" Alias "MoveToEx" (ByVal hdc As Lon
 '~dup         nPolys As Long
 '~dup         cpts As Long
 '~dup         aPolyCounts(1) As Long
-'~dup         apts(1) As POINTS_WINDOWS
+'~dup         apts(1) As POINTS
 '~dup End Type
 
 '~dup Type EMRINVERTRGN   ' повтор, первое: WIN32API.INC(5275)
@@ -53624,14 +53624,14 @@ CONST WM_NOTIFYFORMAT     = &H0055
 '~dup         hWndInsertAfter As Long
 '~dup End Type
 
-Type WINDOWPLACEMENT_WINDOWS
-        Length As Long
-        flags As Long
-        showCmd As Long
-        ptMinPosition As POINTAPI
-        ptMaxPosition As POINTAPI
-        rcNormalPosition As Rect
-End Type
+'~dup Type WINDOWPLACEMENT   ' повтор, первое: Form.inc(26)
+'~dup         Length As Long
+'~dup         flags As Long
+'~dup         showCmd As Long
+'~dup         ptMinPosition As POINTAPI
+'~dup         ptMaxPosition As POINTAPI
+'~dup         rcNormalPosition As Rect
+'~dup End Type
 
 '~dup Public Const WPF_SETMINPOSITION = &H1   ' повтор, первое: Form.inc(21)
 '~dup Public Const WPF_RESTORETOMAXIMIZED = &H2   ' повтор, первое: Form.inc(22)
@@ -53730,10 +53730,10 @@ End Type
 '~dup End Type
 
 ' Message Function Templates
-Declare Function GetMessage_WINDOWS Lib "user32" Alias "GetMessageA" (lpMsg As MSG_WINDOWS, ByVal hwnd As Long, ByVal wMsgFilterMin As Long, ByVal wMsgFilterMax As Long) As Long
-Declare Function TranslateMessage_WINDOWS Lib "user32" Alias "TranslateMessage" (lpMsg As MSG_WINDOWS) As Long
-Declare Function DispatchMessage_WINDOWS Lib "user32" Alias "DispatchMessageA" (lpMsg As MSG_WINDOWS) As Long
-Declare Function PeekMessage_WINDOWS Lib "user32" Alias "PeekMessageA" (lpMsg As MSG_WINDOWS, ByVal hwnd As Long, ByVal wMsgFilterMin As Long, ByVal wMsgFilterMax As Long, ByVal wRemoveMsg As Long) As Long
+'~dup Declare Function GetMessage Lib "user32" Alias "GetMessageA" (lpMsg As MSG, ByVal hwnd As Long, ByVal wMsgFilterMin As Long, ByVal wMsgFilterMax As Long) As Long   ' повтор, первое: WIN32API.INC(6642)
+'~dup Declare Function TranslateMessage Lib "user32" Alias "TranslateMessage" (lpMsg As MSG) As Long   ' повтор, первое: WIN32API.INC(6643)
+'~dup Declare Function DispatchMessage Lib "user32" Alias "DispatchMessageA" (lpMsg As MSG) As Long   ' повтор, первое: WIN32API.INC(6644)
+'~dup Declare Function PeekMessage Lib "user32" Alias "PeekMessageA" (lpMsg As MSG, ByVal hwnd As Long, ByVal wMsgFilterMin As Long, ByVal wMsgFilterMax As Long, ByVal wRemoveMsg As Long) As Long   ' повтор, первое: WIN32API.INC(6645)
 
 ' PeekMessage() Options
 '~dup Public Const PM_NOREMOVE = &H0   ' повтор, первое: WIN32API.INC(6648)
@@ -53766,28 +53766,28 @@ Declare Function PeekMessage_WINDOWS Lib "user32" Alias "PeekMessageA" (lpMsg As
 '~dup Declare Function GetMessageExtraInfo Lib "user32" Alias "GetMessageExtraInfo" () As Long   ' повтор, первое: User32.inc(96)
 '****  SendMessage already declared in RapidQ  *****
 '~dup Declare Function SendMessageAPI Lib "user32" Alias "SendMessageA" (ByVal hwnd As Long, ByVal wMsg As Long, ByVal wParam As Long, lParam As Long) As Long   ' повтор, первое: rapidq2.inc(980)
-'~dup Declare Function SendMessageTimeout Lib "user32" Alias "SendMessageTimeoutA" (ByVal hwnd As Long, ByVal MSG_WINDOWS As Long, ByVal wParam As Long, ByVal lParam As Long, ByVal fuFlags As Long, ByVal uTimeout As Long, lpdwResult As Long) As Long   ' повтор, первое: WIN32API.INC(6679)
-'~dup Declare Function SendNotifyMessage Lib "user32" Alias "SendNotifyMessageA" (ByVal hwnd As Long, ByVal MSG_WINDOWS As Long, ByVal wParam As Long, ByVal lParam As Long) As Long   ' повтор, первое: WIN32API.INC(6680)
-'~dup Declare Function SendMessageCallback Lib "user32" Alias "SendMessageCallbackA" (ByVal hwnd As Long, ByVal MSG_WINDOWS As Long, ByVal wParam As Long, ByVal lParam As Long, ByVal lpResultCallBack As Long, ByVal dwData As Long) As Long   ' повтор, первое: WIN32API.INC(6681)
+'~dup Declare Function SendMessageTimeout Lib "user32" Alias "SendMessageTimeoutA" (ByVal hwnd As Long, ByVal msg As Long, ByVal wParam As Long, ByVal lParam As Long, ByVal fuFlags As Long, ByVal uTimeout As Long, lpdwResult As Long) As Long   ' повтор, первое: WIN32API.INC(6679)
+'~dup Declare Function SendNotifyMessage Lib "user32" Alias "SendNotifyMessageA" (ByVal hwnd As Long, ByVal msg As Long, ByVal wParam As Long, ByVal lParam As Long) As Long   ' повтор, первое: WIN32API.INC(6680)
+'~dup Declare Function SendMessageCallback Lib "user32" Alias "SendMessageCallbackA" (ByVal hwnd As Long, ByVal msg As Long, ByVal wParam As Long, ByVal lParam As Long, ByVal lpResultCallBack As Long, ByVal dwData As Long) As Long   ' повтор, первое: WIN32API.INC(6681)
 'Declare Function PostMessage Lib "user32" Alias "PostMessageA" (ByVal hwnd As Long, ByVal wMsg As Long, ByVal wParam As Long, ByVal lParam As Long) As Long
-'~dup Declare Function PostThreadMessage Lib "user32" Alias "PostThreadMessageA" (ByVal idThread As Long, ByVal MSG_WINDOWS As Long, ByVal wParam As Long, ByVal lParam As Long) As Long   ' повтор, первое: WIN32API.INC(6683)
+'~dup Declare Function PostThreadMessage Lib "user32" Alias "PostThreadMessageA" (ByVal idThread As Long, ByVal msg As Long, ByVal wParam As Long, ByVal lParam As Long) As Long   ' повтор, первое: WIN32API.INC(6683)
 
 ' Special HWND value for use with PostMessage and SendMessage
 '~dup Public Const HWND_BROADCAST = &HFFFF&   ' повтор, первое: WIN32API.INC(6686)
 
 
-Type WNDCLASS_WINDOWS
-    style As Long
-    lpfnwndproc As Long
-    cbClsextra As Long
-    cbWndExtra2 As Long
-    hInstance As Long
-    hIcon As Long
-    hCursor As Long
-    hbrBackground As Long
-    lpszMenuName  AS LONG		'As String
-    lpszClassName AS LONG		'As String
-End Type
+'~dup Type WNDCLASS   ' повтор, первое: WIN32API.INC(6689)
+'~dup     style As Long
+'~dup     lpfnwndproc As Long
+'~dup     cbClsextra As Long
+'~dup     cbWndExtra2 As Long
+'~dup     hInstance As Long
+'~dup     hIcon As Long
+'~dup     hCursor As Long
+'~dup     hbrBackground As Long
+'~dup     lpszMenuName  AS LONG		'As String
+'~dup     lpszClassName AS LONG		'As String
+'~dup End Type
 
 '~dup Declare Function AttachThreadInput Lib "user32" Alias "AttachThreadInput" (ByVal idAttach As Long, ByVal idAttachTo As Long, ByVal fAttach As Long) As Long   ' повтор, первое: WIN32API.INC(6702)
 '~dup Declare Function ReplyMessage Lib "user32" Alias "ReplyMessage" (ByVal lReply As Long) As Long   ' повтор, первое: WIN32API.INC(6703)
@@ -53799,9 +53799,9 @@ End Type
 
 '~dup Declare Function GetDoubleClickTime Lib "user32" Alias "GetDoubleClickTime" () As Long   ' повтор, первое: User32.inc(60)
 '~dup Declare Function SetDoubleClickTime Lib "user32" Alias "SetDoubleClickTime" (ByVal wCount As Long) As Long   ' повтор, первое: WIN32API.INC(6711)
-Declare Function RegisterClass_WINDOWS Lib "user32" Alias "RegisterClass" (Class As WNDCLASS_WINDOWS) As Long
+'~dup Declare Function RegisterClass Lib "user32" Alias "RegisterClass" (Class As WNDCLASS) As Long   ' повтор, первое: WIN32API.INC(6712)
 '~dup Declare Function UnregisterClass Lib "user32" Alias "UnregisterClassA" (ByVal lpClassName As String, ByVal hInstance As Long) As Long   ' повтор, первое: WIN32API.INC(6713)
-Declare Function GetClassInfo_WINDOWS Lib "user32" Alias "GetClassInfoA" (ByVal hInstance As Long, ByVal lpClassName As String, lpWndClass As WNDCLASS_WINDOWS) As Long
+'~dup Declare Function GetClassInfo Lib "user32" Alias "GetClassInfoA" (ByVal hInstance As Long, ByVal lpClassName As String, lpWndClass As WNDCLASS) As Long   ' повтор, первое: WIN32API.INC(6714)
 
 '~dup Public Const CW_USEDEFAULT = &H80000000   ' повтор, первое: MDI_API.INC(65)
 '~dup Public Const HWND_DESKTOP = 0   ' повтор, первое: rapidq2.inc(783)
@@ -53825,8 +53825,8 @@ Declare Function GetClassInfo_WINDOWS Lib "user32" Alias "GetClassInfoA" (ByVal 
 '~dup Declare Function CloseWindow Lib "user32" Alias "CloseWindow" (ByVal hwnd As Long) As Long   ' повтор, первое: WIN32API.INC(6730)
 '~dup Declare Function MoveWindow Lib "user32" Alias "MoveWindow" (ByVal hwnd As Long, ByVal x As Long, ByVal y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal bRepaint As Long) As Long   ' повтор, первое: rapidq2.inc(993)
 '~dup Declare Function SetWindowPos Lib "user32" Alias "SetWindowPos" (ByVal hwnd As Long, ByVal hWndInsertAfter As Long, ByVal x As Long, ByVal y As Long, ByVal cx As Long, ByVal cy As Long, ByVal wFlags As Long) As Long   ' повтор, первое: rapidq2.inc(1029)
-Declare Function GetWindowPlacement_WINDOWS Lib "user32" Alias "GetWindowPlacement" (ByVal hwnd As Long, lpwndpl As WINDOWPLACEMENT_WINDOWS) As Long
-Declare Function SetWindowPlacement_WINDOWS Lib "user32" Alias "SetWindowPlacement" (ByVal hwnd As Long, lpwndpl As WINDOWPLACEMENT_WINDOWS) As Long
+'~dup Declare Function GetWindowPlacement Lib "user32" Alias "GetWindowPlacement" (ByVal hwnd As Long, lpwndpl As WINDOWPLACEMENT) As Long   ' повтор, первое: Form.inc(45)
+'~dup Declare Function SetWindowPlacement Lib "user32" Alias "SetWindowPlacement" (ByVal hwnd As Long, lpwndpl As WINDOWPLACEMENT) As Long   ' повтор, первое: Form.inc(47)
 
 '~dup Declare Function BeginDeferWindowPos Lib "user32" Alias "BeginDeferWindowPos" (ByVal nNumWindows As Long) As Long   ' повтор, первое: WIN32API.INC(6736)
 '~dup Declare Function DeferWindowPos Lib "user32" Alias "DeferWindowPos" (ByVal hWinPosInfo As Long, ByVal hwnd As Long, ByVal hWndInsertAfter As Long, ByVal x As Long, ByVal y As Long, ByVal cx As Long, ByVal cy As Long, ByVal wFlags As Long) As Long   ' повтор, первое: WIN32API.INC(6737)
@@ -53899,7 +53899,7 @@ Declare Function SetWindowPlacement_WINDOWS Lib "user32" Alias "SetWindowPlaceme
 
 '~dup Public Const DLGWINDOWEXTRA = 30        '  Window extra bytes needed for private dialog classes   ' повтор, первое: WIN32API.INC(6803)
 
-Declare Function CallMsgFilter_WINDOWS Lib "user32" Alias "CallMsgFilterA" (lpMsg As MSG_WINDOWS, ByVal ncode As Long) As Long
+'~dup Declare Function CallMsgFilter Lib "user32" Alias "CallMsgFilterA" (lpMsg As MSG, ByVal ncode As Long) As Long   ' повтор, первое: WIN32API.INC(6805)
 
 ' Clipboard Manager Functions
 '~dup Declare Function OpenClipboard Lib "user32" Alias "OpenClipboard" (ByVal hwnd As Long) As Long   ' повтор, первое: WIN32API.INC(6808)
@@ -54008,7 +54008,7 @@ Declare Function CallMsgFilter_WINDOWS Lib "user32" Alias "CallMsgFilterA" (lpMs
 '~dup Declare Function CreateAcceleratorTable Lib "user32" Alias "CreateAcceleratorTableA" (lpaccl As ACCEL, ByVal cEntries As Long) As Long   ' повтор, первое: WIN32API.INC(6912)
 '~dup Declare Function DestroyAcceleratorTable Lib "user32" Alias "DestroyAcceleratorTable" (ByVal haccel As Long) As Long   ' повтор, первое: WIN32API.INC(6913)
 '~dup Declare Function CopyAcceleratorTable Lib "user32" Alias "CopyAcceleratorTableA" (ByVal hAccelSrc As Long, lpAccelDst As ACCEL, ByVal cAccelEntries As Long) As Long   ' повтор, первое: WIN32API.INC(6914)
-Declare Function TranslateAccelerator_WINDOWS Lib "user32" Alias "TranslateAcceleratorA" (ByVal hwnd As Long, ByVal hAccTable As Long, lpMsg As MSG_WINDOWS) As Long
+'~dup Declare Function TranslateAccelerator Lib "user32" Alias "TranslateAcceleratorA" (ByVal hwnd As Long, ByVal hAccTable As Long, lpMsg As MSG) As Long   ' повтор, первое: WIN32API.INC(6915)
 
 ' GetSystemMetrics() codes
 '~dup Public Const SM_CXSCREEN = 0   ' повтор, первое: rapidq2.inc(2112)
@@ -54186,7 +54186,7 @@ Declare Function TranslateAccelerator_WINDOWS Lib "user32" Alias "TranslateAccel
 '~dup Declare Function InvalidateRgn Lib "user32" Alias "InvalidateRgn" (ByVal hwnd As Long, ByVal hRgn As Long, ByVal bErase As Long) As Long   ' повтор, первое: QFormSkin.inc(163)
 '~dup Declare Function ValidateRgn Lib "user32" Alias "ValidateRgn" (ByVal hwnd As Long, ByVal hRgn As Long) As Long   ' повтор, первое: QFormSkin.inc(164)
 
-Declare Function RedrawWindow_WINDOWS Lib "user32" Alias "RedrawWindow" (ByVal hwnd As Long, lprcUpdate As RECT, ByVal hrgnUpdate As Long, ByVal fuRedraw As Long) As Long
+'~dup Declare Function RedrawWindow Lib "user32" Alias "RedrawWindow" (ByVal hwnd As Long, lprcUpdate As RECT, ByVal hrgnUpdate As Long, ByVal fuRedraw As Long) As Long   ' повтор, первое: QFormSkin.inc(743)
 
 '~dup Public Const RDW_INVALIDATE = &H1   ' повтор, первое: QFormSkin.inc(735)
 '~dup Public Const RDW_INTERNALPAINT = &H2   ' повтор, первое: QFormSkin.inc(734)
@@ -54243,8 +54243,8 @@ Declare Function RedrawWindow_WINDOWS Lib "user32" Alias "RedrawWindow" (ByVal h
 '~dup Declare Function GetWindowText Lib "user32" Alias "GetWindowTextA" (ByVal hwnd As Long, ByVal lpString As Long, ByVal cch As Long) As Long   ' повтор, первое: rapidq2.inc(997)
 '~dup Declare Function GetWindowTextLength Lib "user32" Alias "GetWindowTextLengthA" (ByVal hwnd As Long) As Long   ' повтор, первое: rapidq2.inc(998)
 
-Declare Function GetClientRect_WINDOWS Lib "user32" Alias "GetClientRect" (ByVal hwnd As Long, lpRect As RECT) As Long
-Declare Function GetWindowRect_WINDOWS Lib "user32" Alias "GetWindowRect" (ByVal hwnd As Long, lpRect As RECT) As Long
+'~dup Declare Function GetClientRect Lib "user32" Alias "GetClientRect" (ByVal hwnd As Long, lpRect As RECT) As Long   ' повтор, первое: rapidq2.inc(992)
+'~dup Declare Function GetWindowRect Lib "user32" Alias "GetWindowRect" (ByVal hwnd As Long, lpRect As RECT) As Long   ' повтор, первое: rapidq2.inc(996)
 '~dup Declare Function AdjustWindowRect Lib "user32" Alias "AdjustWindowRect" (lpRect As RECT, ByVal dwStyle As Long, ByVal bMenu As Long) As Long   ' повтор, первое: WIN32API.INC(7126)
 '~dup Declare Function AdjustWindowRectEx Lib "user32" Alias "AdjustWindowRectEx" (lpRect As RECT, ByVal dsStyle As Long, ByVal bMenu As Long, ByVal dwEsStyle As Long) As Long   ' повтор, первое: WIN32API.INC(7127)
 
@@ -54290,7 +54290,7 @@ Declare Function GetWindowRect_WINDOWS Lib "user32" Alias "GetWindowRect" (ByVal
 '~dup Declare Function SetCursorPos Lib "user32" Alias "SetCursorPos" (ByVal x As Long, ByVal y As Long) As Long   ' повтор, первое: rapidq2.inc(1065)
 '~dup Declare Function SetCursor Lib "user32" Alias "SetCursor" (ByVal hCursor As Long) As Long   ' повтор, первое: QFormSkin.inc(247)
 '~dup Declare Function GetCursorPos Lib "user32" Alias "GetCursorPos" (lpPoint As POINTAPI) As Long   ' повтор, первое: WIN32API.INC(7170)
-Declare Function ClipCursor_WINDOWS Lib "user32" Alias "ClipCursor" (lprc As RECT) As Long
+'~dup Declare Function ClipCursor Lib "user32" Alias "ClipCursor" (lprc As RECT) As Long   ' повтор, первое: WIN32API.INC(7171)
 '~dup Declare Function GetCursor Lib "user32" Alias "GetCursor" () As Long   ' повтор, первое: User32.inc(42)
 '~dup Declare Function GetClipCursor Lib "user32" Alias "GetClipCursor" (lprc As RECT) As Long   ' повтор, первое: WIN32API.INC(7173)
 
@@ -54303,7 +54303,7 @@ Declare Function ClipCursor_WINDOWS Lib "user32" Alias "ClipCursor" (lprc As REC
 '~dup Declare Function SetCaretPos Lib "user32" Alias "SetCaretPos" (ByVal x As Long, ByVal y As Long) As Long   ' повтор, первое: WIN32API.INC(7181)
 '~dup Declare Function GetCaretPos Lib "user32" Alias "GetCaretPos" (lpPoint As POINTAPI) As Long   ' повтор, первое: WIN32API.INC(7182)
 
-Declare Function ClientToScreen_WINDOWS Lib "user32" Alias "ClientToScreen" (ByVal hwnd As Long, lpPoint As POINTAPI) As Long
+'~dup Declare Function ClientToScreen Lib "user32" Alias "ClientToScreen" (ByVal hwnd As Long, lpPoint As POINTAPI) As Long   ' повтор, первое: rapidq2.inc(1041)
 '~dup Declare Function ScreenToClient Lib "user32" Alias "ScreenToClient" (ByVal hwnd As Long, lpPoint As POINTAPI) As Long   ' повтор, первое: WIN32API.INC(7185)
 
 '~dup Declare Function MapWindowPoints Lib "user32" Alias "MapWindowPoints" (ByVal hwndFrom As Long, ByVal hwndTo As Long, lppt As Any, ByVal cPoints As Long) As Long   ' повтор, первое: WIN32API.INC(7187)
@@ -54719,7 +54719,7 @@ Public Const BM_CLICK = &HF5
 '~dup Public Const DWL_USER = 8   ' повтор, первое: WIN32API.INC(7587)
 
 ' Dialog Manager Routines
-Declare Function IsDialogMessage_WINDOWS Lib "user32" Alias "IsDialogMessageA" (ByVal hDlg As Long, lpMsg As MSG_WINDOWS) As Long
+'~dup Declare Function IsDialogMessage Lib "user32" Alias "IsDialogMessageA" (ByVal hDlg As Long, lpMsg As MSG) As Long   ' повтор, первое: WIN32API.INC(7590)
 '~dup Declare Function MapDialogRect Lib "user32" Alias "MapDialogRect" (ByVal hDlg As Long, lpRect As RECT) As Long   ' повтор, первое: WIN32API.INC(7591)
 '~dup Declare Function DlgDirList Lib "user32" Alias "DlgDirListA" (ByVal hDlg As Long, ByVal lpPathSpec As String, ByVal nIDListBox As Long, ByVal nIDStaticPath As Long, ByVal wFileType As Long) As Long   ' повтор, первое: WIN32API.INC(7592)
 
@@ -54950,7 +54950,7 @@ Declare Function IsDialogMessage_WINDOWS Lib "user32" Alias "IsDialogMessageA" (
 '~dup Declare Function DefFrameProc Lib "user32" Alias "DefFrameProcA" (ByVal hwnd As Long, ByVal hWndMDIClient As Long, ByVal wMsg As Long, ByVal wParam As Long, ByVal lParam As Long) As Long   ' повтор, первое: WIN32API.INC(7818)
 '~dup Declare Function DefMDIChildProc Lib "user32" Alias "DefMDIChildProcA" (ByVal hwnd As Long, ByVal wMsg As Long, ByVal wParam As Long, ByVal lParam As Long) As Long   ' повтор, первое: rapidq2.inc(988)
 
-Declare Function TranslateMDISysAccel_WINDOWS Lib "user32" Alias "TranslateMDISysAccel" (ByVal hWndClient As Long, lpMsg As MSG_WINDOWS) As Long
+'~dup Declare Function TranslateMDISysAccel Lib "user32" Alias "TranslateMDISysAccel" (ByVal hWndClient As Long, lpMsg As MSG) As Long   ' повтор, первое: WIN32API.INC(7821)
 
 '~dup Declare Function ArrangeIconicWindows Lib "user32" Alias "ArrangeIconicWindows" (ByVal hwnd As Long) As Long   ' повтор, первое: WIN32API.INC(7823)
 
@@ -55209,9 +55209,9 @@ Declare Function TranslateMDISysAccel_WINDOWS Lib "user32" Alias "TranslateMDISy
 
 '~dup Declare Function DdeSetQualityOfService Lib "user32" Alias "DdeSetQualityOfService" (ByVal hWndClient As Long, pqosNew As SECURITY_QUALITY_OF_SERVICE, pqosPrev As SECURITY_QUALITY_OF_SERVICE) As Long   ' повтор, первое: WIN32API.INC(8078)
 '~dup Declare Function ImpersonateDdeClientWindow Lib "user32" Alias "ImpersonateDdeClientWindow" (ByVal hWndClient As Long, ByVal hWndServer As Long) As Long   ' повтор, первое: WIN32API.INC(8079)
-'~dup Declare Function PackDDElParam Lib "user32" Alias "PackDDElParam" (ByVal MSG_WINDOWS As Long, ByVal uiLo As Long, ByVal uiHi As Long) As Long   ' повтор, первое: WIN32API.INC(8080)
-'~dup Declare Function UnpackDDElParam Lib "user32" Alias "UnpackDDElParam" (ByVal MSG_WINDOWS As Long, ByVal lParam As Long, puiLo As Long, puiHi As Long) As Long   ' повтор, первое: WIN32API.INC(8081)
-'~dup Declare Function FreeDDElParam Lib "user32" Alias "FreeDDElParam" (ByVal MSG_WINDOWS As Long, ByVal lParam As Long) As Long   ' повтор, первое: WIN32API.INC(8082)
+'~dup Declare Function PackDDElParam Lib "user32" Alias "PackDDElParam" (ByVal msg As Long, ByVal uiLo As Long, ByVal uiHi As Long) As Long   ' повтор, первое: WIN32API.INC(8080)
+'~dup Declare Function UnpackDDElParam Lib "user32" Alias "UnpackDDElParam" (ByVal msg As Long, ByVal lParam As Long, puiLo As Long, puiHi As Long) As Long   ' повтор, первое: WIN32API.INC(8081)
+'~dup Declare Function FreeDDElParam Lib "user32" Alias "FreeDDElParam" (ByVal msg As Long, ByVal lParam As Long) As Long   ' повтор, первое: WIN32API.INC(8082)
 '~dup Declare Function ReuseDDElParam Lib "user32" Alias "ReuseDDElParam" (ByVal lParam As Long, ByVal msgIn As Long, ByVal msgOut As Long, ByVal uiLo As Long, ByVal uiHi As Long) As Long   ' повтор, первое: WIN32API.INC(8083)
 
 '~dup Type HSZPAIR   ' повтор, первое: WIN32API.INC(8085)
@@ -58329,27 +58329,27 @@ Declare Function TranslateMDISysAccel_WINDOWS Lib "user32" Alias "TranslateMDISy
 '~dup Public Const JOYSTICKID1 = 0   ' повтор, первое: WIN32API.INC(11645)
 '~dup Public Const JOYSTICKID2 = 1   ' повтор, первое: WIN32API.INC(11646)
 
-Type JOYCAPS_WINDOWS
-        wMid As WORD
-        wPid As WORD
-        szPname As String * MAXPNAMELEN
-        wXmin As Integer
-        wXmax As Integer
-        wYmin As Integer
-        wYmax As Integer
-        wZmin As Integer
-        wZmax As Integer
-        wNumButtons As Integer
-        wPeriodMin As Integer
-        wPeriodMax As Integer
-End Type
+'~dup Type JOYCAPS   ' повтор, первое: WIN32API.INC(11648)
+'~dup         wMid As WORD
+'~dup         wPid As WORD
+'~dup         szPname As String * MAXPNAMELEN
+'~dup         wXmin As Integer
+'~dup         wXmax As Integer
+'~dup         wYmin As Integer
+'~dup         wYmax As Integer
+'~dup         wZmin As Integer
+'~dup         wZmax As Integer
+'~dup         wNumButtons As Integer
+'~dup         wPeriodMin As Integer
+'~dup         wPeriodMax As Integer
+'~dup End Type
 
-Type JOYINFO_WINDOWS
-        wXpos As Integer
-        wYpos As Integer
-        wZpos As Integer
-        wButtons As Integer
-End Type
+'~dup Type JOYINFO   ' повтор, первое: WIN32API.INC, поднято(11663)
+'~dup         wXpos As Integer
+'~dup         wYpos As Integer
+'~dup         wZpos As Integer
+'~dup         wButtons As Integer
+'~dup End Type
 
 
 '~dup Type JOYINFOEX   ' повтор, первое: WIN32API.INC, поднято(11202)
@@ -58369,13 +58369,13 @@ End Type
 '~dup End Type
 
 
-Declare Function joyGetDevCaps_WINDOWS Lib "winmm.dll" Alias "joyGetDevCapsA" (ByVal id As Long, lpCaps As JOYCAPS_WINDOWS, ByVal uSize As Long) As Long
+'~dup Declare Function joyGetDevCaps Lib "winmm.dll" Alias "joyGetDevCapsA" (ByVal id As Long, lpCaps As JOYCAPS, ByVal uSize As Long) As Long   ' повтор, первое: WIN32API.INC(11670)
 '~dup Declare Function joyGetNumDevs Lib "winmm.dll" Alias "joyGetNumDev" () As Long   ' повтор, первое: WIN32API.INC(11672)
 '~dup Declare Function joyGetThreshold Lib "winmm.dll" Alias "joyGetThreshold" (ByVal id As Long, lpuThreshold As Long) As Long   ' повтор, первое: WIN32API.INC(11673)
 '~dup Declare Function joyReleaseCapture Lib "winmm.dll" Alias "joyReleaseCapture" (ByVal id As Long) As Long   ' повтор, первое: WIN32API.INC(11674)
 '~dup Declare Function joySetCapture Lib "winmm.dll" Alias "joySetCapture" (ByVal hwnd As Long, ByVal uID As Long, ByVal uPeriod As Long, ByVal bChanged As Long) As Long   ' повтор, первое: WIN32API.INC(11675)
 '~dup Declare Function joySetThreshold Lib "winmm.dll" Alias "joySetThreshold" (ByVal id As Long, ByVal uThreshold As Long) As Long   ' повтор, первое: WIN32API.INC(11676)
-Declare Function joyGetPos_WINDOWS Lib "winmm.dll" Alias "joyGetPos" (ByVal uJoyID As Long, pji As JOYINFO_WINDOWS) As Long
+'~dup Declare Function joyGetPos Lib "winmm.dll" Alias "joyGetPos" (ByVal uJoyID As Long, pji As JOYINFO) As Long   ' повтор, первое: WIN32API.INC(11176)
 '~dup Declare Function joyGetPosEx Lib "winmm.dll" Alias "joyGetPosEx" (ByVal uJoyID As Long, pji As JOYINFOEX) As Long   ' повтор, первое: WIN32API.INC(11177)
 
 
@@ -58610,7 +58610,7 @@ Declare Function joyGetPos_WINDOWS Lib "winmm.dll" Alias "joyGetPos" (ByVal uJoy
 '~dup Declare Function waveOutGetPlaybackRate Lib "winmm.dll" Alias "waveOutGetPlaybackRate" (ByVal hWaveOut As Long, lpdwRate As Long) As Long   ' повтор, первое: WIN32API.INC(11444)
 '~dup Declare Function waveOutSetPlaybackRate Lib "winmm.dll" Alias "waveOutSetPlaybackRate" (ByVal hWaveOut As Long, ByVal dwRate As Long) As Long   ' повтор, первое: WIN32API.INC(11445)
 '~dup Declare Function waveOutGetID Lib "winmm.dll" Alias "waveOutGetID" (ByVal hWaveOut As Long, lpuDeviceID As Long) As Long   ' повтор, первое: WIN32API.INC(11446)
-'~dup Declare Function waveOutMessage Lib "winmm.dll" Alias "waveOutMessage" (ByVal hWaveOut As Long, ByVal MSG_WINDOWS As Long, ByVal dw1 As Long, ByVal dw2 As Long) As Long   ' повтор, первое: WIN32API.INC(11447)
+'~dup Declare Function waveOutMessage Lib "winmm.dll" Alias "waveOutMessage" (ByVal hWaveOut As Long, ByVal msg As Long, ByVal dw1 As Long, ByVal dw2 As Long) As Long   ' повтор, первое: WIN32API.INC(11447)
 '~dup Declare Function waveInGetNumDevs Lib "winmm.dll" Alias "waveInGetNumDevs" () As Long   ' повтор, первое: WIN32API.INC(11448)
 
 '~dup Declare Function waveInGetDevCaps Lib "winmm.dll" Alias "waveInGetDevCapsA" (ByVal uDeviceID As Long, lpCaps As WAVEINCAPS, ByVal uSize As Long) As Long   ' повтор, первое: WIN32API.INC(11450)
@@ -58627,7 +58627,7 @@ Declare Function joyGetPos_WINDOWS Lib "winmm.dll" Alias "joyGetPos" (ByVal uJoy
 '~dup Declare Function waveInReset Lib "winmm.dll" Alias "waveInReset" (ByVal hWaveIn As Long) As Long   ' повтор, первое: WIN32API.INC(11461)
 '~dup Declare Function waveInGetPosition Lib "winmm.dll" Alias "waveInGetPosition" (ByVal hWaveIn As Long, lpInfo As MMTIME, ByVal uSize As Long) As Long   ' повтор, первое: WIN32API.INC(11462)
 '~dup Declare Function waveInGetID Lib "winmm.dll" Alias "waveInGetID" (ByVal hWaveIn As Long, lpuDeviceID As Long) As Long   ' повтор, первое: WIN32API.INC(11463)
-'~dup Declare Function waveInMessage Lib "winmm.dll" Alias "waveInMessage" (ByVal hWaveIn As Long, ByVal MSG_WINDOWS As Long, ByVal dw1 As Long, ByVal dw2 As Long) As Long   ' повтор, первое: WIN32API.INC(11464)
+'~dup Declare Function waveInMessage Lib "winmm.dll" Alias "waveInMessage" (ByVal hWaveIn As Long, ByVal msg As Long, ByVal dw1 As Long, ByVal dw2 As Long) As Long   ' повтор, первое: WIN32API.INC(11464)
 
 '  MIDI error return values
 '~dup Public Const MIDIERR_UNPREPARED = (MIDIERR_BASE + 0)   '  header not prepared   ' повтор, первое: WIN32API.INC(11467)
@@ -58724,7 +58724,7 @@ Declare Function joyGetPos_WINDOWS Lib "winmm.dll" Alias "joyGetPos" (ByVal uJoy
 '~dup Declare Function midiOutCachePatches Lib "winmm.dll" Alias "midiOutCachePatches" (ByVal hMidiOut As Long, ByVal uBank As Long, lpPatchArray As Long, ByVal uFlags As Long) As Long   ' повтор, первое: WIN32API.INC(11558)
 '~dup Declare Function midiOutCacheDrumPatches Lib "winmm.dll" Alias "midiOutCacheDrumPatches" (ByVal hMidiOut As Long, ByVal uPatch As Long, lpKeyArray As Long, ByVal uFlags As Long) As Long   ' повтор, первое: WIN32API.INC(11559)
 '~dup Declare Function midiOutGetID Lib "winmm.dll" Alias "midiOutGetID" (ByVal hMidiOut As Long, lpuDeviceID As Long) As Long   ' повтор, первое: WIN32API.INC(11560)
-'~dup Declare Function midiOutMessage Lib "winmm.dll" Alias "midiOutMessage" (ByVal hMidiOut As Long, ByVal MSG_WINDOWS As Long, ByVal dw1 As Long, ByVal dw2 As Long) As Long   ' повтор, первое: WIN32API.INC(11561)
+'~dup Declare Function midiOutMessage Lib "winmm.dll" Alias "midiOutMessage" (ByVal hMidiOut As Long, ByVal msg As Long, ByVal dw1 As Long, ByVal dw2 As Long) As Long   ' повтор, первое: WIN32API.INC(11561)
 '~dup Declare Function midiInGetNumDevs Lib "winmm.dll" Alias "midiInGetNumDevs" () As Long   ' повтор, первое: WIN32API.INC(11562)
 
 '~dup Declare Function midiInGetDevCaps Lib "winmm.dll" Alias "midiInGetDevCapsA" (ByVal uDeviceID As Long, lpCaps As MIDIINCAPS, ByVal uSize As Long) As Long   ' повтор, первое: WIN32API.INC(11564)
@@ -58740,7 +58740,7 @@ Declare Function joyGetPos_WINDOWS Lib "winmm.dll" Alias "joyGetPos" (ByVal uJoy
 '~dup Declare Function midiInStop Lib "winmm.dll" Alias "midiInStop" (ByVal hMidiIn As Long) As Long   ' повтор, первое: WIN32API.INC(11574)
 '~dup Declare Function midiInReset Lib "winmm.dll" Alias "midiInReset" (ByVal hMidiIn As Long) As Long   ' повтор, первое: WIN32API.INC(11575)
 '~dup Declare Function midiInGetID Lib "winmm.dll" Alias "midiInGetID" (ByVal hMidiIn As Long, lpuDeviceID As Long) As Long   ' повтор, первое: WIN32API.INC(11576)
-'~dup Declare Function midiInMessage Lib "winmm.dll" Alias "midiInMessage" (ByVal hMidiIn As Long, ByVal MSG_WINDOWS As Long, ByVal dw1 As Long, ByVal dw2 As Long) As Long   ' повтор, первое: WIN32API.INC(11577)
+'~dup Declare Function midiInMessage Lib "winmm.dll" Alias "midiInMessage" (ByVal hMidiIn As Long, ByVal msg As Long, ByVal dw1 As Long, ByVal dw2 As Long) As Long   ' повтор, первое: WIN32API.INC(11577)
 
 
 
@@ -58795,7 +58795,7 @@ Declare Function joyGetPos_WINDOWS Lib "winmm.dll" Alias "joyGetPos" (ByVal uJoy
 
 '~dup Declare Function auxSetVolume Lib "winmm.dll" Alias "auxSetVolume" (ByVal uDeviceID As Long, ByVal dwVolume As Long) As Long   ' повтор, первое: WIN32API.INC(11602)
 '~dup Declare Function auxGetVolume Lib "winmm.dll" Alias "auxGetVolume" (ByVal uDeviceID As Long, lpdwVolume As Long) As Long   ' повтор, первое: WIN32API.INC(11603)
-'~dup Declare Function auxOutMessage Lib "winmm.dll" Alias "auxOutMessage" (ByVal uDeviceID As Long, ByVal MSG_WINDOWS As Long, ByVal dw1 As Long, ByVal dw2 As Long) As Long   ' повтор, первое: WIN32API.INC(11604)
+'~dup Declare Function auxOutMessage Lib "winmm.dll" Alias "auxOutMessage" (ByVal uDeviceID As Long, ByVal msg As Long, ByVal dw1 As Long, ByVal dw2 As Long) As Long   ' повтор, первое: WIN32API.INC(11604)
 
 '  timer error return values
 '~dup Public Const TIMERR_NOERROR = (0)  '  no error   ' повтор, первое: WIN32API.INC(11607)
@@ -59994,8 +59994,8 @@ Declare Function mciGetErrorCdaudio Lib "winmm.dll" Alias "mciGetErrorStringA" (
 '~dup Declare Function AddJob Lib "winspool.drv" Alias "AddJobA" (ByVal hPrinter As Long, ByVal Level As Long, pData As Long, ByVal cdBuf As Long, pcbNeeded As Long) As Long   ' повтор, первое: WIN32API.INC(12851)
 '~dup Declare Function ScheduleJob Lib "winspool.drv" Alias "ScheduleJob" (ByVal hPrinter As Long, ByVal JobId As Long) As Long   ' повтор, первое: WIN32API.INC(12852)
 '~dup Declare Function PrinterProperties Lib "winspool.drv" Alias "PrinterProperties" (ByVal hwnd As Long, ByVal hPrinter As Long) As Long   ' повтор, первое: WIN32API.INC(12853)
-Declare Function DocumentProperties_WINDOWS Lib "winspool.drv" Alias "DocumentPropertiesA" (ByVal hwnd As Long, ByVal hPrinter As Long, ByVal pDeviceName As String, pDevModeOutput As DEVMODE, pDevModeInput As DEVMODE, ByVal fMode As Long) As Long
-Declare Function AdvancedDocumentProperties_WINDOWS Lib "winspool.drv" Alias "AdvancedDocumentPropertiesA" (ByVal hwnd As Long, ByVal hPrinter As Long, ByVal pDeviceName As String, pDevModeOutput As DEVMODE, pDevModeInput As DEVMODE) As Long
+'~dup Declare Function DocumentProperties Lib "winspool.drv" Alias "DocumentPropertiesA" (ByVal hwnd As Long, ByVal hPrinter As Long, ByVal pDeviceName As String, pDevModeOutput As DEVMODE, pDevModeInput As DEVMODE, ByVal fMode As Long) As Long   ' повтор, первое: WIN32API.INC(12854)
+'~dup Declare Function AdvancedDocumentProperties Lib "winspool.drv" Alias "AdvancedDocumentPropertiesA" (ByVal hwnd As Long, ByVal hPrinter As Long, ByVal pDeviceName As String, pDevModeOutput As DEVMODE, pDevModeInput As DEVMODE) As Long   ' повтор, первое: WIN32API.INC(12855)
 
 '~dup Declare Function GetPrinterData Lib "winspool.drv" Alias "GetPrinterDataA" (ByVal hPrinter As Long, ByVal pValueName As String, pType As Long, pData As Long, ByVal nSize As Long, pcbNeeded As Long) As Long   ' повтор, первое: WIN32API.INC(12857)
 '~dup Declare Function SetPrinterData Lib "winspool.drv" Alias "SetPrinterDataA" (ByVal hPrinter As Long, ByVal pValueName As String, ByVal dwType As Long, pData As Long, ByVal cbData As Long) As Long   ' повтор, первое: WIN32API.INC(12858)
@@ -60199,23 +60199,23 @@ Declare Function AdvancedDocumentProperties_WINDOWS Lib "winspool.drv" Alias "Ad
 '~dup Public Const NCBNAMSZ = 16  '  absolute length of a net name   ' повтор, первое: WIN32API.INC(13056)
 '~dup Public Const MAX_LANA = 254  '  lana's in range 0 to MAX_LANA   ' повтор, первое: WIN32API.INC(13057)
 
-Type NCB_WINDOWS
-        ncb_command As byte
-        ncb_retcode As byte
-        ncb_lsn As byte
-        ncb_num As byte
-        ncb_buffer As Long
-        ncb_length As WORD
-        ncb_callname(15) As STRING * NCBNAMSZ
-        ncb_name(15) As byte * NCBNAMSZ
-        ncb_rto As byte
-        ncb_sto As byte
-        ncb_post As Long
-        ncb_lana_num As byte
-        ncb_cmd_cplt As byte
-        ncb_reserve(10) As Byte	' Reserved, must be 0
-        ncb_event As Long
-End Type
+'~dup Type NCB   ' повтор, первое: WIN32API.INC(13059)
+'~dup         ncb_command As byte
+'~dup         ncb_retcode As byte
+'~dup         ncb_lsn As byte
+'~dup         ncb_num As byte
+'~dup         ncb_buffer As Long
+'~dup         ncb_length As WORD
+'~dup         ncb_callname(15) As STRING * NCBNAMSZ
+'~dup         ncb_name(15) As byte * NCBNAMSZ
+'~dup         ncb_rto As byte
+'~dup         ncb_sto As byte
+'~dup         ncb_post As Long
+'~dup         ncb_lana_num As byte
+'~dup         ncb_cmd_cplt As byte
+'~dup         ncb_reserve(10) As Byte	' Reserved, must be 0
+'~dup         ncb_event As Long
+'~dup End Type
 
 '~dup Type ADAPTER_STATUS   ' повтор, первое: WIN32API.INC(13077)
 '~dup         adapter_address As String * 6
@@ -60393,7 +60393,7 @@ End Type
 
 '~dup Public Const NRC_PENDING = &HFF  '  asynchronous command is not yet finished   ' повтор, первое: WIN32API.INC(13251)
 
-Declare Function Netbios_WINDOWS Lib "netapi32.dll" Alias "Netbios" (pncb As NCB_WINDOWS) as Long
+'~dup Declare Function Netbios Lib "netapi32.dll" Alias "Netbios" (pncb As NCB) as Long   ' повтор, первое: WIN32API.INC(13253)
 
 ' Legal values for expression in except().
 '~dup Public Const EXCEPTION_EXECUTE_HANDLER = 1   ' повтор, первое: WIN32API.INC(13256)
@@ -61065,7 +61065,7 @@ Declare Function RegisterServiceProcess Lib "kernel32.dll" Alias "RegisterServic
 '~dup Declare Function LZCopy Lib "lz32.dll" Alias "LZCopy" (ByVal hfSource As Long, ByVal hfDest As Long) As Long   ' повтор, первое: WIN32API.INC(13937)
 '~dup Declare Function LZInit Lib "lz32.dll" Alias "LZInit" (ByVal hfSrc As Long) As Long   ' повтор, первое: WIN32API.INC(13938)
 '~dup Declare Function GetExpandedName Lib "lz32.dll" Alias "GetExpandedNameA" (ByVal lpszSource As String, ByVal lpszBuffer As String) As Long   ' повтор, первое: WIN32API.INC(13939)
-Declare Function LZOpenFile_WINDOWS Lib "lz32.dll" Alias "LZOpenFileA" (ByVal lpszFile As String, lpOf As OFSTRUCT_WINDOWS, ByVal style As Long) As Long
+'~dup Declare Function LZOpenFile Lib "lz32.dll" Alias "LZOpenFileA" (ByVal lpszFile As String, lpOf As OFSTRUCT, ByVal style As Long) As Long   ' повтор, первое: WIN32API.INC(13940)
 '~dup Declare Function LZSeek Lib "lz32.dll" Alias "LZSeek" (ByVal hfFile As Long, ByVal lOffset As Long, ByVal nOrigin As Long) As Long   ' повтор, первое: WIN32API.INC(13941)
 '~dup Declare Function LZRead Lib "lz32.dll" Alias "LZRead" (ByVal hfFile As Long, ByVal lpvBuf As String, ByVal cbread As Long) As Long   ' повтор, первое: WIN32API.INC(13942)
 '~dup Declare Sub LZClose Lib "lz32.dll" Alias "LZClose" (ByVal hfFile As Long)   ' повтор, первое: WIN32API.INC(13943)
@@ -61574,16 +61574,16 @@ Declare Function LZOpenFile_WINDOWS Lib "lz32.dll" Alias "LZOpenFileA" (ByVal lp
 '~dup Public Const ABE_RIGHT = 2   ' повтор, первое: QFormLocale.inc(77)
 '~dup Public Const ABE_BOTTOM = 3   ' повтор, первое: QFormLocale.inc(80)
 
-Type APPBARDATA_WINDOWS
-        cbSize As Long
-        hwnd As Long
-        uCallbackMessage As Long
-        uEdge As Long
-        rc As Rect
-        lParam As Long '  message specific
-End Type
+'~dup Type APPBARDATA   ' повтор, первое: QFormLocale.inc(94)
+'~dup         cbSize As Long
+'~dup         hwnd As Long
+'~dup         uCallbackMessage As Long
+'~dup         uEdge As Long
+'~dup         rc As Rect
+'~dup         lParam As Long '  message specific
+'~dup End Type
 
-Declare Function SHAppBarMessage_WINDOWS Lib "shell32.dll" Alias "SHAppBarMessage" (ByVal dwMessage As Long, pData As APPBARDATA_WINDOWS) As Long
+'~dup Declare Function SHAppBarMessage Lib "shell32.dll" Alias "SHAppBarMessage" (ByVal dwMessage As Long, pData As APPBARDATA) As Long   ' повтор, первое: WIN32API.INC(14458)
 
 ' //  EndAppBar
 
@@ -61728,7 +61728,7 @@ CONST NIM_TIP=4
 '~dup Public Const NIF_ICON = &H2   ' повтор, первое: rapidq2.inc(803)
 '~dup Public Const NIF_TIP = &H4   ' повтор, первое: rapidq2.inc(804)
 
-Declare Function Shell_NotifyIcon_WINDOWS Lib "shell32.dll" Alias " Shell_NotifyIconA" (ByVal dwMessage As Long, lpData As NOTIFYICONDATA) As Long
+'~dup Declare Function Shell_NotifyIcon Lib "shell32.dll" Alias " Shell_NotifyIconA" (ByVal dwMessage As Long, lpData As NOTIFYICONDATA) As Long   ' повтор, первое: rapidq2.inc(1054)
 
 ' // End Tray Notification Icons
 
@@ -61773,7 +61773,7 @@ Declare Function Shell_NotifyIcon_WINDOWS Lib "shell32.dll" Alias " Shell_Notify
 '~dup Public Const SHGFI_PIDL = &H8                           '  pszPath is a pidl   ' повтор, первое: WIN32API.INC(14640)
 '~dup Public Const SHGFI_USEFILEATTRIBUTES = &H10             '  use passed dwFileAttribute   ' повтор, первое: WIN32API.INC(14641)
 
-Declare Function SHGetFileInfo_WINDOWS Lib "shell32.dll" Alias " SHGetFileInfoA" (ByVal pszPath As String, ByVal dwFileAttributes As Long, psfi As SHFILEINFO, ByVal cbFileInfo As Long, ByVal uFlags As Long) As Long
+'~dup Declare Function SHGetFileInfo Lib "shell32.dll" Alias " SHGetFileInfoA" (ByVal pszPath As String, ByVal dwFileAttributes As Long, psfi As SHFILEINFO, ByVal cbFileInfo As Long, ByVal uFlags As Long) As Long   ' повтор, первое: ConvertToTruePath.inc(14)
 
 '~dup Declare Function SHGetNewLinkInfo Lib "shell32.dll" Alias "SHGetNewLinkInfoA" (ByVal pszLinkto As String, ByVal pszDir As String, ByVal pszName As String, pfMustCopy As Long, ByVal uFlags As Long) As Long   ' повтор, первое: WIN32API.INC(14645)
 
@@ -62078,7 +62078,7 @@ Declare Function SHGetFileInfo_WINDOWS Lib "shell32.dll" Alias " SHGetFileInfoA"
 '~dup Declare Function LogonUser Lib "ADVAPI32.DLL" Alias "LogonUserA" (ByVal lpszUsername As String, ByVal lpszDomain As String, ByVal lpszPassword As String, ByVal dwLogonType As Long, ByVal dwLogonProvider As Long, phToken As Long) As Long   ' повтор, первое: WIN32API.INC(14917)
 
 '~dup Declare Function ImpersonateLoggedOnUser Lib "kernel32" Alias "ImpersonateLoggedOnUser" (ByVal hToken As Long) As Long   ' повтор, первое: WIN32API.INC(14919)
-Declare Function CreateProcessAsUser_WINDOWS Lib "kernel32" Alias "CreateProcessAsUserA" (ByVal hToken As Long, ByVal lpApplicationName As String, ByVal lpCommandLine As String, ByVal lpProcessAttributes As SECURITY_ATTRIBUTES, ByVal lpThreadAttributes As SECURITY_ATTRIBUTES, ByVal bInheritHandles As Long, ByVal dwCreationFlags As Long, ByVal lpEnvironment As String, ByVal lpCurrentDirectory As String, ByVal lpStartupInfo As STARTUPINFO_WINDOWS, ByVal lpProcessInformation As PROCESS_INFORMATION) As Long
+'~dup Declare Function CreateProcessAsUser Lib "kernel32" Alias "CreateProcessAsUserA" (ByVal hToken As Long, ByVal lpApplicationName As String, ByVal lpCommandLine As String, ByVal lpProcessAttributes As SECURITY_ATTRIBUTES, ByVal lpThreadAttributes As SECURITY_ATTRIBUTES, ByVal bInheritHandles As Long, ByVal dwCreationFlags As Long, ByVal lpEnvironment As String, ByVal lpCurrentDirectory As String, ByVal lpStartupInfo As STARTUPINFO, ByVal lpProcessInformation As PROCESS_INFORMATION) As Long   ' повтор, первое: WIN32API.INC(14920)
 
 '  Performance counter API's
 '
@@ -62312,27 +62312,27 @@ Public Const VER_NT_SERVER = &H0000003
 '~dup Public Const CDERR_REGISTERMSGFAIL = &HC   ' повтор, первое: rapidq2.inc(1717)
 
 '~dup DECLARE FUNCTION CommDlgExtendedError Lib "comdlg32.dll" Alias "CommDlgExtendedError" () As Long   ' повтор, первое: rapidq2.inc(1721)
-DECLARE FUNCTION ChooseColorDlg_WINDOWS LIB "COMDLG32" ALIAS "ChooseColorA" (CC AS CHOOSECOLOR) AS LONG
+'~dup DECLARE FUNCTION ChooseColorDlg LIB "COMDLG32" ALIAS "ChooseColorA" (CC AS CHOOSECOLOR) AS LONG   ' повтор, первое: WIN32API.INC(15081)
 '~dup DECLARE FUNCTION GetSaveFileName LIB "COMDLG32" ALIAS "GetSaveFileNameA" (pOpenfilename AS OPENFILENAME) AS LONG   ' повтор, первое: rapidq2.inc(1698)
 '~dup DECLARE FUNCTION GetOpenFileName LIB "COMDLG32" ALIAS "GetOpenFileNameA" (pOpenfilename AS OPENFILENAME) AS LONG   ' повтор, первое: rapidq2.inc(1699)
 '~dup Declare Function GetFileTitle Lib "comdlg32.dll" Alias "GetFileTitleA" (ByVal lpszFile As String, ByVal lpszTitle As String, ByVal cbBuf As Integer) As Integer   ' повтор, первое: WIN32API.INC(14997)
 
 
 
-Type FINDREPLACE_WINDOWS
-        lStructSize As Long        '  size of this struct 0x20
-        hwndOwner As Long          '  handle to owner's window
-        hInstance As Long          '  instance handle of.EXE that
-                                    '    contains cust. dlg. template
-        flags As Long              '  one or more of the FR_??
-        lpstrFindWhat As Long      '  ptr. to search string
-        lpstrReplaceWith As Long   '  ptr. to replace string
-        wFindWhatLen As WORD       '  size of find buffer
-        wReplaceWithLen As WORD    '  size of replace buffer
-        lCustData As Long          '  data passed to hook fn.
-        lpfnHook As Long           '  ptr. to hook fn. or NULL
-        lpTemplateName As Long     '  custom template name
-End Type
+'~dup Type FINDREPLACE   ' повтор, первое: WIN32API.INC(15093)
+'~dup         lStructSize As Long        '  size of this struct 0x20
+'~dup         hwndOwner As Long          '  handle to owner's window
+'~dup         hInstance As Long          '  instance handle of.EXE that
+'~dup                                     '    contains cust. dlg. template
+'~dup         flags As Long              '  one or more of the FR_??
+'~dup         lpstrFindWhat As Long      '  ptr. to search string
+'~dup         lpstrReplaceWith As Long   '  ptr. to replace string
+'~dup         wFindWhatLen As WORD       '  size of find buffer
+'~dup         wReplaceWithLen As WORD    '  size of replace buffer
+'~dup         lCustData As Long          '  data passed to hook fn.
+'~dup         lpfnHook As Long           '  ptr. to hook fn. or NULL
+'~dup         lpTemplateName As Long     '  custom template name
+'~dup End Type
 
 '~dup Public Const FR_DOWN = &H1   ' повтор, первое: WIN32API.INC(15108)
 '~dup Public Const FR_WHOLEWORD = &H2   ' повтор, первое: WIN32API.INC(15109)
@@ -62352,9 +62352,9 @@ End Type
 '~dup Public Const FR_HIDEMATCHCASE = &H8000   ' повтор, первое: WIN32API.INC(15123)
 '~dup Public Const FR_HIDEWHOLEWORD = &H10000   ' повтор, первое: WIN32API.INC(15124)
 
-Declare Function FindText_WINDOWS Lib "comdlg32.dll" Alias "FindTextA " (pFindreplace As FINDREPLACE_WINDOWS) As Long
+'~dup Declare Function FindText Lib "comdlg32.dll" Alias "FindTextA " (pFindreplace As FINDREPLACE) As Long   ' повтор, первое: WIN32API.INC(15126)
 
-Declare Function ReplaceText_WINDOWS Lib "comdlg32.dll" Alias "ReplaceTextA" (pFindreplace As FINDREPLACE_WINDOWS) As Long
+'~dup Declare Function ReplaceText Lib "comdlg32.dll" Alias "ReplaceTextA" (pFindreplace As FINDREPLACE) As Long   ' повтор, первое: WIN32API.INC(15128)
 
 '~dup Type CHOOSEFONT   ' повтор, первое: WIN32API.INC(15130)
 '~dup         lStructSize As Long
@@ -62519,7 +62519,7 @@ Declare Function ReplaceText_WINDOWS Lib "comdlg32.dll" Alias "ReplaceTextA" (pF
 '~dup         hPageSetupTemplate As Long
 '~dup End Type
 
-Declare Function PageSetupDlg_WINDOWS Lib "comdlg32.dll" Alias "PageSetupDlgA" (pPagesetupdlg As TPAGESETUPDLG) As Long
+'~dup Declare Function PageSetupDlg Lib "comdlg32.dll" Alias "PageSetupDlgA" (pPagesetupdlg As TPAGESETUPDLG) As Long   ' повтор, первое: rapidq2.inc(7261)
 
 '~dup Public Const PSD_DEFAULTMINMARGINS = &H0 '  default (printer's)   ' повтор, первое: rapidq2.inc(7210)
 '~dup Public Const PSD_INWININIINTLMEASURE = &H0 '  1st of 4 possible   ' повтор, первое: WIN32API.INC(15297)
@@ -62542,7 +62542,7 @@ Declare Function PageSetupDlg_WINDOWS Lib "comdlg32.dll" Alias "PageSetupDlgA" (
 '~dup Public Const PSD_DISABLEPAGEPAINTING = &H80000   ' повтор, первое: rapidq2.inc(7226)
 
 '~dup Declare Function DdeInitialize Lib "user32" Alias "DdeInitializeA" (pidInst As Long, ByVal pfnCallback As Long, ByVal afCmd As Long, ByVal ulRes As Long) As Integer   ' повтор, первое: WIN32API.INC(15316)
-Declare Function SetServiceBits_WINDOWS Lib "advapi32" Alias "SetServiceBits" (ByVal hServiceStatus As Long, ByVal dwServiceBits As Long, ByVal bSetBitsOn As LONG, ByVal bUpdateImmediately As LONG) As Long
+'~dup Declare Function SetServiceBits Lib "advapi32" Alias "SetServiceBits" (ByVal hServiceStatus As Long, ByVal dwServiceBits As Long, ByVal bSetBitsOn As LONG, ByVal bUpdateImmediately As LONG) As Long   ' повтор, первое: WIN32API.INC(15317)
 '~dup Declare Function CopyLZFile Lib "lz32" Alias "CopyLZFile" (ByVal n1 As Long, ByVal n2 As Long) As Long   ' повтор, первое: WIN32API.INC(15318)
 '~dup Declare Function LZStart Lib "lz32" Alias "LZStart" () As Long   ' повтор, первое: WIN32API.INC(15319)
 '~dup Declare Sub LZDone Lib "lz32" Alias "LZDone" ()   ' повтор, первое: WIN32API.INC(15320)
@@ -62608,7 +62608,7 @@ Declare Function SetServiceBits_WINDOWS Lib "advapi32" Alias "SetServiceBits" (B
 '~dup Declare Function SetSystemTimeAdjustment Lib "kernel32" Alias "SetSystemTimeAdjustment" (ByVal dwTimeAdjustment As Long, ByVal bTimeAdjustmentDisabled As Boolean) As Long   ' повтор, первое: WIN32API.INC(15380)
 '~dup Declare Function SetThreadAffinityMask Lib "kernel32" Alias "SetThreadAffinityMask" (ByVal hThread As Long, ByVal dwThreadAffinityMask As Long) As Long   ' повтор, первое: WIN32API.INC(15381)
 '~dup Declare Function SetUnhandledExceptionFilter Lib "kernel32" Alias "SetUnhandledExceptionFilter" (ByVal lpTopLevelExceptionFilter As Long) As Long   ' повтор, первое: WIN32API.INC(15382)
-Declare Function SystemTimeToTzSpecificLocalTime_WINDOWS Lib "kernel32" Alias "SystemTimeToTzSpecificLocalTime" (lpTimeZoneInformation As TIME_ZONE_INFORMATION_WINDOWS, lpUniversalTime As SYSTEMTIME, lpLocalTime As SYSTEMTIME) As Long
+'~dup Declare Function SystemTimeToTzSpecificLocalTime Lib "kernel32" Alias "SystemTimeToTzSpecificLocalTime" (lpTimeZoneInformation As TIME_ZONE_INFORMATION, lpUniversalTime As SYSTEMTIME, lpLocalTime As SYSTEMTIME) As Long   ' повтор, первое: WIN32API.INC(15383)
 '~dup Declare Function WriteFileEx Lib "kernel32" Alias "WriteFileEx" (ByVal hFile As Long, lpBuffer As Any, ByVal nNumberOfBytesToWrite As Long, lpOverlapped As OVERLAPPED, ByVal lpCompletionRoutine As Long) As Long   ' повтор, первое: WIN32API.INC(15384)
 
 '~dup Type PIXELFORMATDESCRIPTOR   ' повтор, первое: WIN32API.INC(15386)
@@ -62641,7 +62641,7 @@ Declare Function SystemTimeToTzSpecificLocalTime_WINDOWS Lib "kernel32" Alias "S
 '~dup End Type
 
 '~dup Declare Function ChoosePixelFormat Lib "gdi32" Alias "ChoosePixelFormat" (ByVal hDC As Long, pPixelFormatDescriptor As PIXELFORMATDESCRIPTOR) As Long   ' повтор, первое: WIN32API.INC(15415)
-Declare Function CreateDIBSection_WINDOWS Lib "gdi32" Alias "CreateDIBSection" (ByVal hDC As Long, pBitmapInfo As BITMAPINFO_WINDOWS, ByVal un As Long, ByVal lplpVoid As Long, ByVal handle As Long, ByVal dw As Long) As Long
+'~dup Declare Function CreateDIBSection Lib "gdi32" Alias "CreateDIBSection" (ByVal hDC As Long, pBitmapInfo As BITMAPINFO, ByVal un As Long, ByVal lplpVoid As Long, ByVal handle As Long, ByVal dw As Long) As Long   ' повтор, первое: WIN32API.INC(15416)
 '~dup Declare Function DescribePixelFormat Lib "gdi32" Alias "DescribePixelFormat" (ByVal hDC As Long, ByVal n As Long, ByVal un As Long, lpPixelFormatDescriptor As PIXELFORMATDESCRIPTOR) As Long   ' повтор, первое: WIN32API.INC(15417)
 '~dup Declare Function EnumFonts Lib "gdi32" Alias "EnumFontsA" (ByVal hDC As Long, ByVal lpsz As String, ByVal lpFontEnumProc As Long, ByVal lParam As Long) As Long   ' повтор, первое: WIN32API.INC(15418)
 '~dup Declare Function EnumMetaFile Lib "gdi32" Alias "EnumMetaFile" (ByVal hDC As Long, ByVal hMetafile As Long, ByVal lpMFEnumProc As Long, ByVal lParam As Long) As Long   ' повтор, первое: WIN32API.INC(15419)
@@ -62678,9 +62678,9 @@ Type BLENDFUNCTION
   AlphaFormat 	As Byte
 End Type
 
-Declare Function AlphaBlend_WINDOWS Lib "msimg32.dll" Alias "AlphaBlend" _
-(ByVal hdc1 As Long, ByVal X1 As integer, ByVal Y1 As integer, ByVal Width1 As integer, ByVal Height1 As integer,_
- ByVal hdc2 As Long, ByVal X2 As integer, ByVal Y2 As integer, ByVal Width2 As integer, ByVal Height2 As integer, BLEND As BLENDFUNCTION) As Long
+'~dup Declare Function AlphaBlend Lib "msimg32.dll" Alias "AlphaBlend" _   ' повтор, первое: rapidq2.inc(1421)
+'~dup (ByVal hdc1 As Long, ByVal X1 As integer, ByVal Y1 As integer, ByVal Width1 As integer, ByVal Height1 As integer,_
+'~dup  ByVal hdc2 As Long, ByVal X2 As integer, ByVal Y2 As integer, ByVal Width2 As integer, ByVal Height2 As integer, BLEND As BLENDFUNCTION) As Long
 
 
 
@@ -62696,7 +62696,7 @@ Declare Function AlphaBlend_WINDOWS Lib "msimg32.dll" Alias "AlphaBlend" _
 '~dup Declare Function SetPrinter Lib "winspool.drv" Alias "SetPrinterA" (ByVal hPrinter As Long, ByVal Level As Long, pPrinter as Long, ByVal Command As Long) As Long   ' повтор, первое: WIN32API.INC(15445)
 
 '~dup Declare Function BroadcastSystemMessage Lib "user32" Alias "BroadcastSystemMessage" (ByVal dw As Long, pdw As Long, ByVal un As Long, ByVal wParam As Long, ByVal lParam As Long) As Long   ' повтор, первое: WIN32API.INC(15447)
-'~dup Declare Function CallWindowProc Lib "user32" Alias "CallWindowProcA" (ByVal lpPrevWndFunc As Long, ByVal hWnd As Long, ByVal MSG_WINDOWS As Long, ByVal wParam As Long, ByVal lParam As Long) As Long   ' повтор, первое: rapidq2.inc(1019)
+'~dup Declare Function CallWindowProc Lib "user32" Alias "CallWindowProcA" (ByVal lpPrevWndFunc As Long, ByVal hWnd As Long, ByVal Msg As Long, ByVal wParam As Long, ByVal lParam As Long) As Long   ' повтор, первое: rapidq2.inc(1019)
 '~dup Declare Function CascadeWindows Lib "user32" Alias "CascadeWindows" (ByVal hwndParent As Long, ByVal wHow As Long, ByVal lpRect As RECT, ByVal cKids As Long, lpkids As Long) As Integer   ' повтор, первое: WIN32API.INC(15449)
 '~dup Declare Function ChangeMenu Lib "user32" Alias "ChangeMenuA" (ByVal hMenu As Long, ByVal cmd As Long, ByVal lpszNewItem As String, ByVal cmdInsert As Long, ByVal flags As Long) As Long   ' повтор, первое: WIN32API.INC(15450)
 '~dup Declare Function CheckMenuRadioItem Lib "user32" Alias "CheckMenuRadioItem" (ByVal hMenu As Long, ByVal un1 As Long, ByVal un2 As Long, ByVal un3 As Long, ByVal un4 As Long) As Long   ' повтор, первое: WIN32API.INC(15451)
@@ -62705,7 +62705,7 @@ Declare Function AlphaBlend_WINDOWS Lib "msimg32.dll" Alias "AlphaBlend" _
 '~dup Declare Function CloseWindowStation Lib "user32" Alias "CloseWindowStation" (ByVal hWinSta As Long) As Long   ' повтор, первое: WIN32API.INC(15454)
 
 '~dup Declare Function CopyImage Lib "user32" Alias "CopyImage" (ByVal handle As Long, ByVal un1 As Long, ByVal n1 As Long, ByVal n2 As Long, ByVal un2 As Long) As Long   ' повтор, первое: QFormSkin.inc(217)
-Declare Function CreateDesktop_WINDOWS Lib "user32" Alias "CreateDesktopA" (ByVal lpszDesktop As String, ByVal lpszDevice As String, pDevmode As DEVMODE, ByVal dwFlags As Long, ByVal dwDesiredAccess As Long, lpsa As SECURITY_ATTRIBUTES) As Long
+'~dup Declare Function CreateDesktop Lib "user32" Alias "CreateDesktopA" (ByVal lpszDesktop As String, ByVal lpszDevice As String, pDevmode As DEVMODE, ByVal dwFlags As Long, ByVal dwDesiredAccess As Long, lpsa As SECURITY_ATTRIBUTES) As Long   ' повтор, первое: WIN32API.INC(15457)
 '~dup Declare Function CreateDialogIndirectParam Lib "user32" Alias "CreateDialogIndirectParamA" (ByVal hInstance As Long, lpTemplate As DLGTEMPLATE, ByVal hWndParent As Long, ByVal lpDialogFunc As Long, ByVal dwInitParam As Long) As Long   ' повтор, первое: WIN32API.INC(15458)
 '~dup Declare Function CreateDialogParam Lib "user32" Alias "CreateDialogParamA" (ByVal hInstance As Long, ByVal lpName As String, ByVal hWndParent As Long, ByVal lpDialogFunc As Long, ByVal lParamInit As Long) As Long   ' повтор, первое: WIN32API.INC(15459)
 '~dup Declare Function DialogBoxIndirectParam Lib "user32" Alias "DialogBoxIndirectParamA" (ByVal hInstance As Long, hDialogTemplate As DLGTEMPLATE, ByVal hWndParent As Long, ByVal lpDialogFunc As Long, ByVal dwInitParam As Long) As Long   ' повтор, первое: WIN32API.INC(15460)
@@ -62713,9 +62713,9 @@ Declare Function CreateDesktop_WINDOWS Lib "user32" Alias "CreateDesktopA" (ByVa
 '~dup Declare Function DragDetect Lib "user32" Alias "DragDetect" (ByVal hWnd As Long, ByVal pt As POINTAPI) As Long   ' повтор, первое: WIN32API.INC(15462)
 '~dup Declare Function DragObject Lib "user32" Alias "DragObject" (ByVal hWnd1 As Long, ByVal hWnd2 As Long, ByVal un As Long, ByVal dw As Long, ByVal hCursor As Long) As Long   ' повтор, первое: WIN32API.INC(15463)
 '~dup Declare Function DrawAnimatedRects Lib "user32" Alias "DrawAnimatedRects" (ByVal hwnd As Long, ByVal idAni As Long, lprcFrom As Rect, lprcTo As Rect) As Long   ' повтор, первое: WIN32API.INC(15464)
-Declare Function DrawCaption_WINDOWS Lib "user32" Alias "DrawCaption" (ByVal hWnd As Long, ByVal hDC As Long, pcRect As Rect, ByVal un As Long) As Long
-Declare Function DrawEdge_WINDOWS Lib "user32" Alias "DrawEdge" (ByVal hdc As Long, qrc As RECT, ByVal edge As Long, ByVal grfFlags As Long) As Long
-Declare Function DrawFrameControl_WINDOWS Lib "user32" Alias "DrawFrameControl" (ByVal hDC As Long, lpRect As RECT, ByVal un1 As Long, ByVal un2 As Long) As Long
+'~dup Declare Function DrawCaption Lib "user32" Alias "DrawCaption" (ByVal hWnd As Long, ByVal hDC As Long, pcRect As Rect, ByVal un As Long) As Long   ' повтор, первое: rapidq2.inc(1002)
+'~dup Declare Function DrawEdge Lib "user32" Alias "DrawEdge" (ByVal hdc As Long, qrc As RECT, ByVal edge As Long, ByVal grfFlags As Long) As Long   ' повтор, первое: rapidq2.inc(1000)
+'~dup Declare Function DrawFrameControl Lib "user32" Alias "DrawFrameControl" (ByVal hDC As Long, lpRect As RECT, ByVal un1 As Long, ByVal un2 As Long) As Long   ' повтор, первое: rapidq2.inc(1001)
 '~dup Declare Function DrawIconEx Lib "user32" Alias "DrawIconEx" (ByVal hdc As Long, ByVal xLeft As Long, ByVal yTop As Long, ByVal hIcon As Long, ByVal cxWidth As Long, ByVal cyWidth As Long, ByVal istepIfAniCur As Long, ByVal hbrFlickerFreeDraw As Long, ByVal diFlags As Long) As Long   ' повтор, первое: rapidq2.inc(1477)
 '~dup Declare Function DrawState Lib "user32" Alias "DrawStateA" (ByVal hDC As Long, ByVal hBrush As Long, ByVal lpDrawStateProc As Long, ByVal lParam As Long, ByVal wParam As Long, ByVal n1 As Long, ByVal n2 As Long, ByVal n3 As Long, ByVal n4 As Long, ByVal un As Long) As Long   ' повтор, первое: WIN32API.INC(15469)
 
@@ -62763,7 +62763,7 @@ Declare Function DrawFrameControl_WINDOWS Lib "user32" Alias "DrawFrameControl" 
 '~dup       cch AS LONG
 '~dup      END TYPE
 
-Declare Function GetMenuItemInfo_WINDOWS Lib "user32" Alias "GetMenuItemInfoA" (ByVal hMenu As Long, ByVal un As Long, ByVal b As Boolean, lpMenuItemInfo As MENUITEMINFO) As Long
+'~dup Declare Function GetMenuItemInfo Lib "user32" Alias "GetMenuItemInfoA" (ByVal hMenu As Long, ByVal un As Long, ByVal b As Boolean, lpMenuItemInfo As MENUITEMINFO) As Long   ' повтор, первое: rapidq2.inc(1604)
 '~dup Declare Function GetMenuItemRect Lib "user32" Alias "GetMenuItemRect" (ByVal hWnd As Long, ByVal hMenu As Long, ByVal uItem As Long, lprcItem As RECT) As Long   ' повтор, первое: WIN32API.INC(15509)
 
 '~dup Type SCROLLINFO   ' повтор, первое: commctrl32.inc(36)
@@ -62782,7 +62782,7 @@ Declare Function GetMenuItemInfo_WINDOWS Lib "user32" Alias "GetMenuItemInfoA" (
 '~dup Declare Function GetWindowContextHelpId Lib "user32" Alias "GetWindowContextHelpId" (ByVal hWnd As Long) As Long   ' повтор, первое: WIN32API.INC(15524)
 '~dup Declare Function GetWindowRgn Lib "user32" Alias "GetWindowRgn" (ByVal hWnd As Long, ByVal hRgn As Long) As Long   ' повтор, первое: WIN32API.INC(15525)
 '~dup Declare Function GrayString Lib "user32" Alias "GrayStringA" (ByVal hDC As Long, ByVal hBrush As Long, ByVal lpOutputFunc As Long, ByVal lpData As Long, ByVal nCount As Long, ByVal X As Long, ByVal Y As Long, ByVal nWidth As Long, ByVal nHeight As Long) As Long   ' повтор, первое: WIN32API.INC(15526)
-Declare Function InsertMenuItem_WINDOWS Lib "user32" Alias "InsertMenuItemA" (ByVal hMenu As Long, ByVal un As Long, ByVal bool As Boolean, ByVal lpcMenuItemInfo As MENUITEMINFO) As Long
+'~dup Declare Function InsertMenuItem Lib "user32" Alias "InsertMenuItemA" (ByVal hMenu As Long, ByVal un As Long, ByVal bool As Boolean, ByVal lpcMenuItemInfo As MENUITEMINFO) As Long   ' повтор, первое: rapidq2.inc(1606)
 '~dup Declare Function LoadCursorFromFile Lib "user32" Alias "LoadCursorFromFileA" (ByVal lpFileName As String) As Long   ' повтор, первое: WFunctions.inc(38)
 '~dup Declare Function LoadImage Lib "user32" Alias "LoadImageA" (ByVal hInst As Long, ByVal lpsz As String, ByVal un1 As Long, ByVal n1 As Long, ByVal n2 As Long, ByVal un2 As Long) As Long   ' повтор, первое: rapidq2.inc(1478)
 '~dup Declare Function LookupIconIdFromDirectoryEx Lib "user32" Alias "LookupIconIdFromDirectoryEx" (presbits as Long, ByVal fIcon As Boolean, ByVal cxDesired As Long, ByVal cyDesired As Long, ByVal Flags As Long) As Long   ' повтор, первое: WIN32API.INC(15530)
@@ -62826,7 +62826,7 @@ Declare Function InsertMenuItem_WINDOWS Lib "user32" Alias "InsertMenuItemA" (By
 '~dup Declare Function RegisterClassEx Lib "user32" Alias "RegisterClassExA" (pcWndClassEx As WNDCLASSEX) As Integer   ' повтор, первое: rapidq2.inc(985)
 '~dup Declare Function SetMenuContextHelpId Lib "user32" Alias "SetMenuContextHelpId" (ByVal hMenu As Long, ByVal dw As Long) As Long   ' повтор, первое: WIN32API.INC(15569)
 '~dup Declare Function SetMenuDefaultItem Lib "user32" Alias "SetMenuDefaultItem" (ByVal hMenu As Long, ByVal uItem As Long, ByVal fByPos As Long) As Long   ' повтор, первое: WIN32API.INC(15570)
-Declare Function SetMenuItemInfo_WINDOWS Lib "user32" Alias "SetMenuItemInfoA" (ByVal hMenu As Long, ByVal un As Long, ByVal bool As Boolean, lpcMenuItemInfo As MENUITEMINFO) As Long
+'~dup Declare Function SetMenuItemInfo Lib "user32" Alias "SetMenuItemInfoA" (ByVal hMenu As Long, ByVal un As Long, ByVal bool As Boolean, lpcMenuItemInfo As MENUITEMINFO) As Long   ' повтор, первое: rapidq2.inc(1605)
 '~dup Declare Function SetMessageExtraInfo Lib "user32" Alias "SetMessageExtraInfo" (ByVal lParam As Long) As Long   ' повтор, первое: WIN32API.INC(15572)
 '~dup Declare Function SetMessageQueue Lib "user32" Alias "SetMessageQueue" (ByVal cMessagesMax As Long) As Long   ' повтор, первое: WIN32API.INC(15573)
 '~dup Declare Function SetProcessWindowStation Lib "user32" Alias "SetProcessWindowStation" (ByVal hWinSta As Long) As Long   ' повтор, первое: WIN32API.INC(15574)
@@ -62836,7 +62836,7 @@ Declare Function SetMenuItemInfo_WINDOWS Lib "user32" Alias "SetMenuItemInfoA" (
 '~dup Declare Function SetTimer Lib "user32" Alias "SetTimer" (ByVal hWnd As Long, ByVal nIDEvent As Long, ByVal uElapse As Long, ByVal lpTimerFunc As Long) As Long   ' повтор, первое: WIN32API.INC(15578)
 '~dup Declare Function SetUserObjectInformation Lib "user32" Alias "SetUserObjectInformationA" (ByVal hObj As Long, ByVal nIndex As Long, pvInfo As Any, ByVal nLength As Long) As Long   ' повтор, первое: WIN32API.INC(15579)
 '~dup Declare Function SetWindowContextHelpId Lib "user32" Alias "SetWindowContextHelpId" (ByVal hWnd As Long, ByVal dw As Long) As Long   ' повтор, первое: WIN32API.INC(15580)
-Declare Function SetWindowRgn_WINDOWS Lib "user32" Alias "SetWindowRgn" (ByVal hWnd As Long, ByVal hRgn As Long, ByVal bRedraw As Boolean) As Long
+'~dup Declare Function SetWindowRgn Lib "user32" Alias "SetWindowRgn" (ByVal hWnd As Long, ByVal hRgn As Long, ByVal bRedraw As Boolean) As Long   ' повтор, первое: QFormSkin.inc(159)
 '~dup Declare Function SetWindowsHook Lib "user32" Alias "SetWindowsHookA" (ByVal nFilterType As Long, ByVal pfnFilterProc As Long) As Long   ' повтор, первое: WIN32API.INC(15582)
 '~dup Declare Function SetWindowsHookEx Lib "user32" Alias "SetWindowsHookExA" (ByVal idHook As Long, ByVal lpfn As Long, ByVal hmod As Long, ByVal dwThreadId As Long) As Long   ' повтор, первое: WIN32API.INC(15584)
 '~dup Declare Function ShowWindowAsync Lib "user32" Alias "ShowWindowAsync" (ByVal hWnd As Long, ByVal nCmdShow As Long) As Long   ' повтор, первое: WIN32API.INC(15585)

@@ -9210,14 +9210,14 @@ $IFNDEF __WIN32API				   'windows 32 definitions
 '~dup     Declare Function CreatePatternBrush Lib "gdi32" ALIAS "CreatePatternBrush"(ByVal hBitmap As Long) As Long   ' повтор, первое: WIN32API.INC(4390)
 '~dup     Declare Function SelectObject Lib "gdi32" Alias "SelectObject" (ByVal hdc As Long, ByVal hObject As Long) As Long   ' повтор, первое: rapidq2.inc(1464)
 '~dup     Declare Function SetBrushOrgEx Lib "gdi32" ALIAS "SetBrushOrgEx"(ByVal hdc As Long, ByVal nXOrg As Long, ByVal nYOrg As Long, lppt As POINTAPI) As Long   ' повтор, первое: WIN32API.INC(4706)
-    Declare Function ClientToScreen_QMaxSplitter Lib "user32" Alias "ClientToScreen" (ByVal hwnd As Long, lpPoint As POINTAPI) As Long
+'~dup     Declare Function ClientToScreen Lib "user32" Alias "ClientToScreen" (ByVal hwnd As Long, lpPoint As POINTAPI) As Long   ' повтор, первое: rapidq2.inc(1041)
 '~dup     Declare Function PatBlt Lib "gdi32" Alias "PatBlt" (ByVal hdc As Long, ByVal x As Long, ByVal y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal dwRop As Long) As Long   ' повтор, первое: rapidq2.inc(1461)
 '~dup     Declare Function DeleteObject Lib "gdi32" Alias "DeleteObject" (ByVal hObject As Long) As Long   ' повтор, первое: rapidq2.inc(1451)
 '~dup     Declare Function ReleaseDC Lib "user32" Alias "ReleaseDC" (ByVal hwnd As Long, ByVal hdc As Long) As Long   ' повтор, первое: rapidq2.inc(1483)
 '~dup     Declare Function GetCursorPos Lib "user32" ALIAS "GetCursorPos"(lpPoint As POINTAPI) As Long   ' повтор, первое: WIN32API.INC(7170)
 '~dup     Declare Function GetClientRect Lib "user32" Alias "GetClientRect" (ByVal hwnd As Long, lpRect As QRECT) As Long   ' повтор, первое: rapidq2.inc(992)
 '~dup     Declare Function ScreenToClient Lib "user32" ALIAS "ScreenToClient"(ByVal hwnd As Long, lpPoint As POINTAPI) As Long   ' повтор, первое: WIN32API.INC(7185)
-    Declare Function OffsetRect_QMaxSplitter Lib "user32" Alias "OffsetRect" (lpRect As QRECT, ByVal x As Long, ByVal y As Long) As Long
+'~dup     Declare Function OffsetRect Lib "user32" Alias "OffsetRect" (lpRect As QRECT, ByVal x As Long, ByVal y As Long) As Long   ' повтор, первое: WIN32API.INC(7237)
 '~dup     Declare Function MoveWindow Lib "user32" Alias "MoveWindow" (ByVal hwnd As Long, ByVal x As Long, ByVal y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal bRepaint As Long) As Long   ' повтор, первое: rapidq2.inc(993)
 $ENDIF
 
@@ -9297,7 +9297,7 @@ TYPE QMAXSPLITTER EXTENDS QPANEL
         SUB MoveChild(Where AS POINTAPI)
             ScreenToClient(.Mover, Where)
             GetClientRect(.Mover, This.MoverRect)
-            OffsetRect_QMaxSplitter(This.MoverRect, 1, 1)
+            OffsetRect(This.MoverRect, 1, 1)
             IF Where = OldWhere THEN EXIT SUB
             DIM Redraw AS LONG
             SELECT CASE .Align
@@ -9329,7 +9329,7 @@ TYPE QMAXSPLITTER EXTENDS QPANEL
             
             Org.X = 0
             Org.Y = 0
-            ClientToScreen_QMaxSplitter(.Handle, Org)
+            ClientToScreen(.Handle, Org)
             IF .Align = 1 OR .Align = 2 THEN
                 PatBlt(hDC, Org.X, Split.Y, .Width, .Height, PATINVERT)
             ELSEIF .Align = 3 OR .Align = 4 THEN
@@ -9346,7 +9346,7 @@ TYPE QMAXSPLITTER EXTENDS QPANEL
                 Moving = 1
                 SplitPos.X = 0
                 SplitPos.Y = 0
-                ClientToScreen_QMaxSplitter(.Handle, SplitPos)
+                ClientToScreen(.Handle, SplitPos)
                 .DrawSplitter(SplitPos)
                 OldSplitPos = SplitPos
             END IF
@@ -9360,7 +9360,7 @@ TYPE QMAXSPLITTER EXTENDS QPANEL
                 GetClientRect(.Owner, MSPLIT_Rect1) ' inc2026: Rect1 вместо R: глобальная QRECT названа Rect1 (строка 42), её Bottom/Right читаются в строках 158, 162, 216, 220; R нигде не объявлена; в inc/old/QSplitter.inc строка 204 и старой версии везде R
                 OwnerOrg.X = 0
                 OwnerOrg.Y = 0
-                ClientToScreen_QMaxSplitter(.Owner, OwnerOrg)
+                ClientToScreen(.Owner, OwnerOrg)
                 IF .Align = 1 OR .Align = 2 THEN
                     IF SplitPos.Y < (OwnerOrg.Y+.MinSize) OR SplitPos.Y > (OwnerOrg.Y-.MinSize) + MSPLIT_Rect1.Bottom _
                      OR SplitPos.Y < (OwnerOrg.Y+(.Height/2)) THEN EXIT EVENT
@@ -10640,29 +10640,29 @@ $ENDIF		' __RQINC2
 '~dup End Type
 
 
-Type BITMAPINFO_VFW
-   'bmiHeader As BITMAPINFOHEADER	'cant nest in RapidQ
-    bmiHeader_biSize 			As DWORD'Specifies the number of bytes required by the structure.
-    bmiHeader_biWidth 			As LONG	'Specifies the width of the bitmap, in pixels.
-    bmiHeader_biHeight 			As LONG	'height, if positive, bitmap is bottom-up DIB (origin = lower left corner). If biHeight is negative,  bitmap is top-down DIB (origin = upper left corner)
-    bmiHeader_biPlanes 			As WORD	'number of planes, must be set to 1
-    bmiHeader_biBitCount 		As WORD	'number of bits per pixel, must be 1, 4, 8, 16, 24, or 32
-    bmiHeader_biCompression 	As DWORD 'type of compression for a compressed bottom-up bitmap (top-down DIBs cannot be compressed)
-											'BI_RGB	= An uncompressed format
-											'BI_RLE8	= A run-length encoded (RLE) format for bitmaps with 8 bits per pixel.
-											'BI_RLE4 = An RLE format for bitmaps with 4 bits per pixel.
-											'BI_BITFIELDS =	not compressed and that the color table consists of three doubleword color masks(RGB) respectively, of each pixel, for 16- and 32-bits-per-pixel
-    bmiHeader_biSizeImage 		As DWORD	'the size, in bytes, of the image, may be set to 0 for BI_RGB bitmaps.
-    bmiHeader_biXPelsPerMeter 	As LONG		'horizontal resolution, in pixels per meter, of the target device for the bitmap. 
-    bmiHeader_biYPelsPerMeter 	As LONG
-    bmiHeader_biClrUsed 		As DWORD	'number of color indices in the color table actually used, if zero, the bitmap uses max of biBitCount
-    bmiHeader_biClrImportant 	As DWORD	'number of color indices that are considered important for displaying the bitmap
-	'bmiColors As RGBQUAD
-    bmiColors_rgbBlue 			As Byte
-    bmiColors_rgbGreen 			As Byte
-    bmiColors_rgbRed 			As Byte
-    bmiColors_rgbReserved 		As Byte
-End Type
+'~dup Type BITMAPINFO   ' повтор, первое: WIN32API.INC(3325)
+'~dup    'bmiHeader As BITMAPINFOHEADER	'cant nest in RapidQ
+'~dup     bmiHeader_biSize 			As DWORD'Specifies the number of bytes required by the structure.
+'~dup     bmiHeader_biWidth 			As LONG	'Specifies the width of the bitmap, in pixels.
+'~dup     bmiHeader_biHeight 			As LONG	'height, if positive, bitmap is bottom-up DIB (origin = lower left corner). If biHeight is negative,  bitmap is top-down DIB (origin = upper left corner)
+'~dup     bmiHeader_biPlanes 			As WORD	'number of planes, must be set to 1
+'~dup     bmiHeader_biBitCount 		As WORD	'number of bits per pixel, must be 1, 4, 8, 16, 24, or 32
+'~dup     bmiHeader_biCompression 	As DWORD 'type of compression for a compressed bottom-up bitmap (top-down DIBs cannot be compressed)
+'~dup 											'BI_RGB	= An uncompressed format
+'~dup 											'BI_RLE8	= A run-length encoded (RLE) format for bitmaps with 8 bits per pixel.
+'~dup 											'BI_RLE4 = An RLE format for bitmaps with 4 bits per pixel.
+'~dup 											'BI_BITFIELDS =	not compressed and that the color table consists of three doubleword color masks(RGB) respectively, of each pixel, for 16- and 32-bits-per-pixel
+'~dup     bmiHeader_biSizeImage 		As DWORD	'the size, in bytes, of the image, may be set to 0 for BI_RGB bitmaps.
+'~dup     bmiHeader_biXPelsPerMeter 	As LONG		'horizontal resolution, in pixels per meter, of the target device for the bitmap. 
+'~dup     bmiHeader_biYPelsPerMeter 	As LONG
+'~dup     bmiHeader_biClrUsed 		As DWORD	'number of color indices in the color table actually used, if zero, the bitmap uses max of biBitCount
+'~dup     bmiHeader_biClrImportant 	As DWORD	'number of color indices that are considered important for displaying the bitmap
+'~dup 	'bmiColors As RGBQUAD
+'~dup     bmiColors_rgbBlue 			As Byte
+'~dup     bmiColors_rgbGreen 			As Byte
+'~dup     bmiColors_rgbRed 			As Byte
+'~dup     bmiColors_rgbReserved 		As Byte
+'~dup End Type
 
 
 $ENDIF		'__WIN32API
@@ -11092,7 +11092,7 @@ Function capDlgVideoCompression(ByVal hCapWnd As Long) As Long' Boolean
    capDlgVideoCompression = SendMessageAPI(hCapWnd, WM_CAP_DLG_VIDEOCOMPRESSION, 0&, 0&)
 End Function
 
-Function capGetVideoFormat(ByVal hCapWnd As Long, ByRef BmpFormat As BITMAPINFO_VFW, ByVal CapFormatSize As Long) As Long
+Function capGetVideoFormat(ByVal hCapWnd As Long, ByRef BmpFormat As BITMAPINFO, ByVal CapFormatSize As Long) As Long
    capGetVideoFormat = SendMessageAPI(hCapWnd, WM_CAP_GET_VIDEOFORMAT, CapFormatSize, BmpFormat)
 End Function
 
@@ -11100,7 +11100,7 @@ Function capGetVideoFormatSize(ByVal hCapWnd As Long) As Long
    capGetVideoFormatSize = SendMessageAPI(hCapWnd, WM_CAP_GET_VIDEOFORMAT, 0&, 0&)
 End Function
 
-Function capSetVideoFormat(ByVal hCapWnd As Long, ByRef BmpFormat As BITMAPINFO_VFW, ByVal CapFormatSize As Long) As Long' Boolean
+Function capSetVideoFormat(ByVal hCapWnd As Long, ByRef BmpFormat As BITMAPINFO, ByVal CapFormatSize As Long) As Long' Boolean
    capSetVideoFormat = SendMessageAPI(hCapWnd, WM_CAP_SET_VIDEOFORMAT, CapFormatSize, BmpFormat)
 End Function
 
@@ -11380,7 +11380,7 @@ END SUB
 
 
 FUNCTION SetImageSize(TheImageWidth AS LONG, TheImageHeight AS LONG) AS LONG
-	DIM VideoFormat AS BITMAPINFO_VFW
+	DIM VideoFormat AS BITMAPINFO
 	DIM SzbmpInfo AS DWORD: SzbmpInfo = SIZEOF(VideoFormat)
 
 	IF (TheImageHeight > 0) AND (TheImageWidth > 0) THEN
@@ -11414,7 +11414,7 @@ END FUNCTION
 
 
 FUNCTION SetImageHeight (TheImageHeight AS LONG) AS LONG
-	DIM VideoFormat AS BITMAPINFO_VFW
+	DIM VideoFormat AS BITMAPINFO
 	DIM SzbmpInfo AS DWORD: SzbmpInfo = SIZEOF(VideoFormat)
 
 	IF TheImageHeight > 0 THEN
@@ -11440,7 +11440,7 @@ END FUNCTION
 
 
 FUNCTION SetImageWidth (TheImageWidth AS LONG) AS LONG ' inc2026: было SUB ... AS LONG с RESULT внутри и END SUB (строка 945); стало FUNCTION, как SetImageHeight (строка 902): результат используется в конструкторе, строка 1128
-	DIM VideoFormat AS BITMAPINFO_VFW
+	DIM VideoFormat AS BITMAPINFO
 	DIM SzbmpInfo AS DWORD: SzbmpInfo = SIZEOF(VideoFormat)
 
 	IF TheImageWidth > 0 THEN
@@ -11461,7 +11461,7 @@ END FUNCTION ' inc2026: было END SUB, стало END FUNCTION: SetImageWidth
 
 
 SUB SetBitCount (TheBitCount AS WORD)
-	DIM VideoFormat AS BITMAPINFO_VFW
+	DIM VideoFormat AS BITMAPINFO
 	DIM SzbmpInfo AS DWORD: SzbmpInfo = SIZEOF(VideoFormat)
 
 	IF TheBitCount > 0 THEN
@@ -20164,13 +20164,13 @@ $IFNDEF boolean
 $ENDIF
 
 $IFNDEF __WIN32API				   'windows 32 definitions
-Type SHFILEINFO_QFileListView
-    hIcon As Long                      '  out: icon
-    iIcon As integer                   '  out: icon index
-    dwAttributes As dword              '  out: SFGAO_ flags
-    szDisplayName As String * 260      '  out: display name (or path)
-    szTypeName As String * 80          '  out: type name
-End Type
+'~dup Type SHFILEINFO   ' повтор, первое: WIN32API.INC(14619)
+'~dup     hIcon As Long                      '  out: icon
+'~dup     iIcon As integer                   '  out: icon index
+'~dup     dwAttributes As dword              '  out: SFGAO_ flags
+'~dup     szDisplayName As String * 260      '  out: display name (or path)
+'~dup     szTypeName As String * 80          '  out: type name
+'~dup End Type
 
 
 '~dup Const SHGFI_DISPLAYNAME    = &H200   ' повтор, первое: ConvertToTruePath.inc(2)
@@ -20191,7 +20191,7 @@ Const LVM_SETBKIMAGEA      = (LVM_FIRST + 68)
 '~dup Const LVSIL_SMALL          = 1   ' повтор, первое: CommCtrl.inc(488)
 
 
-Declare Function SHGetFileInfoFileListView Lib "shell32.dll" Alias "SHGetFileInfoA" (pszPath As String,dwFileAttributes As Long,psfi As SHFILEINFO_QFileListView,cbFileInfo As Long,uFlags As Long) As Dword
+Declare Function SHGetFileInfoFileListView Lib "shell32.dll" Alias "SHGetFileInfoA" (pszPath As String,dwFileAttributes As Long,psfi As SHFILEINFO,cbFileInfo As Long,uFlags As Long) As Dword
 Declare Function DestroyIconFileListView Lib "user32" Alias "DestroyIcon" (ByVal hIcon As Long) As Long
 declare function SetFocusFileListView Lib "user32" Alias "SetFocus" (Handle as long) as long
 $ENDIF
@@ -20202,7 +20202,7 @@ declare sub FileChange_EventTemplate(File as string)
 Type QFileListView extends QListView
   Private:
     ColumnsInitialized as boolean
-    FI As SHFILEINFO_QFileListView
+    FI As SHFILEINFO
   Public:
     Filename as string property set SetFileName
     ColumnCaption(4) as string
@@ -27719,7 +27719,7 @@ $IFNDEF __QPROCESS_INC      'don't reload
 
 $IFNDEF __WIN32API      'APIs     
 '~dup     $DEFINE CREATE_SUSPENDED 4&   ' повтор, первое: WIN32API.INC(779)
-    Declare Function CreateThread_QProcess Lib "kernel32" Alias "CreateThread" (lpThreadAttributes As long, ByVal dwStackSize As Long, lpStartAddress As Long, lpParameter As long, ByVal dwCreationFlags As Long, lpThreadId As Long) As Long
+'~dup     Declare Function CreateThread Lib "kernel32" Alias "CreateThread" (lpThreadAttributes As long, ByVal dwStackSize As Long, lpStartAddress As Long, lpParameter As long, ByVal dwCreationFlags As Long, lpThreadId As Long) As Long   ' повтор, первое: WIN32API.INC(2235)
 '~dup     Declare Function ResumeThread Lib "kernel32.dll" Alias "ResumeThread" (hThread As Long) As Long   ' повтор, первое: WIN32API.INC(2000)
 '~dup     Declare Function SuspendThread Lib "kernel32" Alias "SuspendThread" (ByVal hThread As Long) As Long   ' повтор, первое: WIN32API.INC(1999)
 '~dup     Declare Function TerminateThread Lib "kernel32" Alias "TerminateThread" (ByVal hThread As Long, ByVal dwExitCode As Long) As Long   ' повтор, первое: WIN32API.INC(2243)
@@ -27794,7 +27794,7 @@ Type QProcess extends QObject
        if this.hProcess<>0 then TerminateThread(this.hProcess,0)
        PtVar=varptr(this.IdProcess)
        PtSub=CODEPTR(this.Process)
-       this.hProcess=CreateThread_QProcess(0,0,PtSub,0,0,PtVar)
+       this.hProcess=CreateThread(0,0,PtSub,0,0,PtVar)
        SetProcessPriority(this.hProcess,this.Priority) 
     End Sub
 
@@ -27829,7 +27829,7 @@ $IFNDEF __QPROGRESS_INC  'don't reload
 
     $IFNDEF __WIN32API  'APIs
 '~dup         $DEFINE CREATE_SUSPENDED 4&   ' повтор, первое: WIN32API.INC(779)
-        DECLARE FUNCTION CreateThread_QProgress LIB "kernel32" ALIAS "CreateThread"(lpThreadAttributes AS LONG , ByVal dwStackSize AS LONG , lpStartAddress AS LONG , lpParameter AS LONG , ByVal dwCreationFlags AS LONG , lpThreadId AS LONG) AS LONG
+'~dup         DECLARE FUNCTION CreateThread LIB "kernel32" ALIAS "CreateThread"(lpThreadAttributes AS LONG , ByVal dwStackSize AS LONG , lpStartAddress AS LONG , lpParameter AS LONG , ByVal dwCreationFlags AS LONG , lpThreadId AS LONG) AS LONG   ' повтор, первое: WIN32API.INC(2235)
 '~dup         DECLARE FUNCTION ResumeThread LIB "kernel32.dll" ALIAS "ResumeThread"(hThread AS LONG) AS LONG   ' повтор, первое: WIN32API.INC(2000)
 '~dup         DECLARE FUNCTION SuspendThread LIB "kernel32" ALIAS "SuspendThread"(ByVal hThread AS LONG) AS LONG   ' повтор, первое: WIN32API.INC(1999)
 '~dup         DECLARE FUNCTION TerminateThread LIB "kernel32" ALIAS "TerminateThread"(ByVal hThread AS LONG , ByVal dwExitCode AS LONG) AS LONG   ' повтор, первое: WIN32API.INC(2243)
@@ -28044,7 +28044,7 @@ $IFNDEF __QPROGRESS_INC  'don't reload
             '***********************************************
             SUB CreateMyThread
                 .lpThreadAddr = CODEPTR(This.DrawMotions)
-                .hThread = CreateThread_QProgress(0& , 0& , This.lpThreadAddr , 0& , CREATE_SUSPENDED , VARPTR(This.ThreadID))
+                .hThread = CreateThread(0& , 0& , This.lpThreadAddr , 0& , CREATE_SUSPENDED , VARPTR(This.ThreadID))
             END SUB
 
 
@@ -35455,22 +35455,22 @@ $IFNDEF __WIN32API
 '~dup Const SWP_DRAWFRAME      = SWP_FRAMECHANGED   ' повтор, первое: WIN32API.INC(6758)
 '~dup Const SWP_NOREPOSITION   = SWP_NOOWNERZORDER   ' повтор, первое: WIN32API.INC(6759)
 
-Type LOGFONT_XPThemes
-     lfHeight         As Long
-     lfWidth          As Long
-     lfEscapement     As Long
-     lfOrientation    As Long
-     lfWeight         As Long
-     lfItalic         As Byte
-     lfUnderline      As Byte
-     lfStrikeOut      As Byte
-     lfCharSet        As Byte
-     lfOutPrecision   As Byte
-     lfClipPrecision  As Byte
-     lfQuality        As Byte
-     lfPitchAndFamily As Byte
-     lfFaceName       As String * 32
-End Type
+'~dup Type LOGFONT   ' повтор, первое: WIN32API.INC(3518)
+'~dup      lfHeight         As Long
+'~dup      lfWidth          As Long
+'~dup      lfEscapement     As Long
+'~dup      lfOrientation    As Long
+'~dup      lfWeight         As Long
+'~dup      lfItalic         As Byte
+'~dup      lfUnderline      As Byte
+'~dup      lfStrikeOut      As Byte
+'~dup      lfCharSet        As Byte
+'~dup      lfOutPrecision   As Byte
+'~dup      lfClipPrecision  As Byte
+'~dup      lfQuality        As Byte
+'~dup      lfPitchAndFamily As Byte
+'~dup      lfFaceName       As String * 32
+'~dup End Type
 
 '~dup Type RECT   ' повтор, первое: rapidq2.inc(884)
 '~dup     Left   As Long
@@ -35484,7 +35484,7 @@ End Type
 '~dup      cy As Long
 '~dup End Type
 
-Declare Function CreateFontIndirect_XPThemes Lib "gdi32" Alias "CreateFontIndirectA" (lpLogFont As LOGFONT_XPThemes) As Long
+'~dup Declare Function CreateFontIndirect Lib "gdi32" Alias "CreateFontIndirectA" (lpLogFont As LOGFONT) As Long   ' повтор, первое: WIN32API.INC(4376)
 '~dup Declare Function DrawText Lib "user32" Alias "DrawTextA" (hDC As Long, lpStr As String, nCount As Long, lpRect As RECT, wFormat As Long) As Long   ' повтор, первое: QFormSkin.inc(223)
 '~dup Declare Function ExcludeClipRect Lib "gdi32" Alias "ExcludeClipRect" (hDC As Long, Left As Long, Top As Long, Right As Long, Bottom As Long) As Long   ' повтор, первое: QFormSkin.inc(241)
 '~dup Declare Function FillRect Lib "user32" Alias "FillRect" (hDC As Long, lpRect As RECT, hBrush As Long) As Long   ' повтор, первое: WIN32API.INC(7227)
@@ -35497,7 +35497,7 @@ Declare Function CreateFontIndirect_XPThemes Lib "gdi32" Alias "CreateFontIndire
 '~dup Declare Function SetWindowLong Lib "user32" Alias "SetWindowLongA" (ByVal hwnd As Long, ByVal nIndex As Long, ByVal dwNewLong As Long) As Long   ' повтор, первое: rapidq2.inc(1039)
 '~dup Declare Function GetWindowLong Lib "user32" Alias "GetWindowLongA" (ByVal hwnd As Long, ByVal nIndex As Long) As Long   ' повтор, первое: rapidq2.inc(1037)
 '~dup Declare Function SetWindowPos Lib "user32" Alias "SetWindowPos" (ByVal hwnd As Long, ByVal hWndInsertAfter As Long, ByVal x As Long, ByVal y As Long, ByVal cx As Long, ByVal cy As Long, ByVal wFlags As Long) As Long   ' повтор, первое: rapidq2.inc(1029)
-Declare Function GetWindowRect_XPThemes Lib "user32" Alias "GetWindowRect" (ByVal hwnd As Long, lpRect As RECT) As Long
+'~dup Declare Function GetWindowRect Lib "user32" Alias "GetWindowRect" (ByVal hwnd As Long, lpRect As RECT) As Long   ' повтор, первое: rapidq2.inc(996)
 '~dup Declare Function CreateSolidBrush Lib "gdi32" Alias "CreateSolidBrush" (ByVal crColor As Long) As Long   ' повтор, первое: rapidq2.inc(1449)
 '~dup Declare Function DeleteObject Lib "gdi32" Alias "DeleteObject" (ByVal hObject As Long) As Long   ' повтор, первое: rapidq2.inc(1451)
 '~dup Declare Function SelectObject Lib "gdi32" Alias "SelectObject" (ByVal hdc As Long, ByVal hObject As Long) As Long   ' повтор, первое: rapidq2.inc(1464)
@@ -35526,7 +35526,7 @@ Declare Function CloseThemeData Lib "uxtheme" Alias "CloseThemeData" (hTheme As 
 Declare Function DrawThemeBackground Lib "uxtheme" Alias "DrawThemeBackground" (hTheme As Long, hDC As Long, iPartId As Long, iStateId As Long, pRect As RECT, pClipRect As RECT) As Long
 Declare Function DrawThemeParentBackground Lib "uxtheme" Alias "DrawThemeParentBackground" (hWnd As Long, hDC As Long, prc As RECT) As Long
 Declare Function GetThemeInt Lib "uxtheme" Alias "GetThemeInt" (hTheme As Long, iPartId As Long, iStateId As Long, iPropId As Long, piVal As Long) As Long
-Declare Function GetThemeSysFont Lib "uxtheme" Alias "GetThemeSysFont" (hTheme As Long, iFontID As Long, plf As LOGFONT_XPThemes) As Long
+Declare Function GetThemeSysFont Lib "uxtheme" Alias "GetThemeSysFont" (hTheme As Long, iFontID As Long, plf As LOGFONT) As Long
 Declare Function OpenThemeData Lib "uxtheme" Alias "OpenThemeData" (hWnd As Long, pszClAssList As String) As Long
 
 
@@ -35559,7 +35559,7 @@ TYPE QRichEditUx EXTENDS QRICHEDIT
             SetWindowPos(hWnd,0,0,0,0,0,SWP_FRAMECHANGED OR SWP_NOACTIVATE OR SWP_NOMOVE OR SWP_NOSIZE OR SWP_NOZORDER)
           END IF
           hDC = GetWindowDC(hWnd)
-          GetWindowRect_XPThemes(hWnd, R)
+          GetWindowRect(hWnd, R)
           R.Right  = R.Right  - R.Left
           R.Bottom = R.Bottom - R.Top
           R.Top  = 0
@@ -35631,7 +35631,7 @@ TYPE QScrollBoxUx EXTENDS QSCROLLBOX
             SetWindowPos(hWnd,0,0,0,0,0,SWP_FRAMECHANGED OR SWP_NOACTIVATE OR SWP_NOMOVE OR SWP_NOSIZE OR SWP_NOZORDER)
           END IF
           hDC = GetWindowDC(hWnd)
-          GetWindowRect_XPThemes(hWnd, R)
+          GetWindowRect(hWnd, R)
           R.Right  = R.Right  - R.Left
           R.Bottom = R.Bottom - R.Top
           R.Top  = 0
@@ -35703,7 +35703,7 @@ TYPE QStringGridUx EXTENDS QStringGrid
             SetWindowPos(hWnd,0,0,0,0,0,SWP_FRAMECHANGED OR SWP_NOACTIVATE OR SWP_NOMOVE OR SWP_NOSIZE OR SWP_NOZORDER)
           END IF
           hDC = GetWindowDC(hWnd)
-          GetWindowRect_XPThemes(hWnd, R)
+          GetWindowRect(hWnd, R)
           R.Right  = R.Right  - R.Left
           R.Bottom = R.Bottom - R.Top
           R.Top  = 0
@@ -35775,7 +35775,7 @@ TYPE QPanelUx EXTENDS QPanel
             SetWindowPos(hWnd,0,0,0,0,0,SWP_FRAMECHANGED OR SWP_NOACTIVATE OR SWP_NOMOVE OR SWP_NOSIZE OR SWP_NOZORDER)
           END IF
           hDC = GetWindowDC(hWnd)
-          GetWindowRect_XPThemes(hWnd, R)
+          GetWindowRect(hWnd, R)
           R.Right  = R.Right  - R.Left
           R.Bottom = R.Bottom - R.Top
           R.Top  = 0
@@ -35832,14 +35832,14 @@ TYPE QGroupBoxUx EXTENDS QGROUPBOX
     DIM TextRect   AS RECT
     DIM TextSize   AS SIZE
     DIM Margs      AS MARGINS
-    DIM LF         AS LOGFONT_XPThemes
+    DIM LF         AS LOGFONT
     IF hWnd = .Handle THEN
       Result = CallWindowProc(.ptrOldProc, hWnd, uMsg, wParam, lParam)
       IF uMsg = WM_PAINT OR uMsg = WM_NCPAINT THEN
         hTheme = OpenThemeData(hWnd,"B"+CHR$(0)+"U"+CHR$(0)+"T"+CHR$(0)+"T"+CHR$(0)+"O"+CHR$(0)+"N"+CHR$(0)+CHR$(0)+CHR$(0))
         IF hTheme THEN
           hDC = GetWindowDC(hWnd)
-          GetWindowRect_XPThemes(hWnd, BGRect)
+          GetWindowRect(hWnd, BGRect)
           BGRect.Right  = BGRect.Right - BGRect.Left
           BGRect.Bottom = BGRect.Bottom - BGRect.Top
           BGRect.Top  = 0
@@ -35847,7 +35847,7 @@ TYPE QGroupBoxUx EXTENDS QGROUPBOX
           ' Create a suitable font for the caption
           GetThemeSysFont(hTheme, TMT_MENUFONT, LF)
           LF.lfWeight = 0
-          hFont = CreateFontIndirect_XPThemes(LF)
+          hFont = CreateFontIndirect(LF)
           SelectObject(hDC, hFont)
           ' Get the caption color
           GetThemeInt(hTheme, BP_GROUPBOX, 1, TMT_TEXTCOLOR, @TextColor)

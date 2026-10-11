@@ -145,7 +145,7 @@
 QSHFileOperation.inc — `pFrom As Long`. В общем файле под исходным именем
 WIN32API-версия, у QSHFileOperation.inc — SHFILEOPSTRUCT_QSHFileOperation.
 LONG, DWORD, INTEGER считаются одним размером (4 байта), SHORT и WORD — тоже;
-`$DEFINE INTEGER SHORT` в WIN32API.INC учитывается. Таких 36, список —
+`$DEFINE INTEGER SHORT` в WIN32API.INC учитывается. Объявления в блоках, которые в сборке не действуют (VFW.inc: BITMAPINFO в `$IFNDEF __WIN32API`; весь WINDOWS.INC — WIN32API.INC выше), не переименовываются. Таких записей около 20, список —
 `build_report.md`: OPENFILENAME, MENUITEMINFO, DEVMODE, WNDCLASSEX,
 CHOOSECOLOR, NM_LISTVIEW, WINDOWPLACEMENT, LOGFONT и др. Программе, которая
 писала под WIN32API.INC или WINDOWS.INC, в таких местах может понадобиться
