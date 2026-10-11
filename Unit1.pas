@@ -943,6 +943,8 @@ type
     procedure BmDelMissingClick(Sender: TObject);
     procedure LogPopupClick(Sender: TObject);
     procedure NewFileClick(Sender: TObject);
+    // View - IncManager (OnClick в .dfm - поэтому до private)
+    procedure IncManagerClick(Sender: TObject);
     procedure DsgMenuClick(Sender: TObject);
     procedure DsgAlignMenuExtra;
     procedure FObjSetListClick(Sender: TObject);
@@ -2299,7 +2301,6 @@ type
     procedure DsgAddForeignPages;
     procedure DsgPaletteGlyph(Sender: TObject);
     procedure PaletteIconsClick(Sender: TObject);
-    procedure IncManagerClick(Sender: TObject);
     procedure PaletteIconEditClick(Sender: TObject);
     procedure PaletteIconsShow(const ASelect: string);
     procedure PaletteIconsApplied(Sender: TObject);
