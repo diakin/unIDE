@@ -2099,6 +2099,7 @@ type
     // Перед сборкой: сохранить без вопросов изменённые исходники в других
     // вкладках (.pas, .dfm, .dpr, .inc). False - сохранение не удалось.
     function  SaveSourcesBeforeBuild: Boolean;
+    function  DelphiCheckDfmNames(const ADpr: string): Boolean;
 
     // Проекты
     function  ProjectsDir: string;
@@ -43903,6 +43904,45 @@ end;
 
 // Возвращает True, если сборка прошла без ошибок: по этому признаку
 // Compile & Run решает, запускать ли собранное.
+// Имена компонентов в .dfm модулей проекта (uses .dpr): повторы - строками
+// ошибок в лог, двойной щелчок ведёт к строке. False - повторы есть.
+function TForm1.DelphiCheckDfmNames(const ADpr: string): Boolean;
+var
+  Units, Errors: TStringList;
+  UnitIdx, ErrIdx, BarPos: Integer;
+  UnitFile, DfmFile: string;
+begin
+  Result := True;
+  Units := TStringList.Create;
+  Errors := TStringList.Create;
+  try
+    ParseDprUnits(ADpr, Units);
+    for UnitIdx := 0 to Units.Count - 1 do
+    begin
+      // Строка списка: UnitName|FileName|Form|Class
+      UnitFile := Units[UnitIdx];
+      BarPos := Pos('|', UnitFile);
+      UnitFile := Copy(UnitFile, BarPos + 1, Length(UnitFile));
+      BarPos := Pos('|', UnitFile);
+      if BarPos > 0 then
+        UnitFile := Copy(UnitFile, 1, BarPos - 1);
+      if UnitFile = '' then
+        Continue;
+      if ExtractFileDrive(UnitFile) = '' then
+        UnitFile := ExtractFilePath(ADpr) + UnitFile;
+      DfmFile := ChangeFileExt(ExpandFileName(UnitFile), '.dfm');
+      if FileExists(DfmFile) then
+        DfmDuplicateNames(DfmFile, Errors);
+    end;
+    for ErrIdx := 0 to Errors.Count - 1 do
+      LogComp(Errors[ErrIdx]);
+    Result := Errors.Count = 0;
+  finally
+    Errors.Free;
+    Units.Free;
+  end;
+end;
+
 function TForm1.CompileDelphi: Boolean;
 var
   MadeDir: Boolean;
@@ -44012,6 +44052,15 @@ begin
   // Полный путь: дальше от него считаются папки exe и .dcu
   Dpr := ExpandFileName(Dpr);
   LogComp('Цель: ' + Dpr);
+
+  // Повторы имён компонентов в .dfm модулей проекта. dcc32 их не видит:
+  // .dfm уходит в exe ресурсом как есть, и ошибка вылезла бы только при
+  // создании формы (EComponentError "A component named ... already exists").
+  if not DelphiCheckDfmNames(Dpr) then
+  begin
+    LogComp('Компиляция остановлена: в .dfm повторяются имена компонентов');
+    Exit;
+  end;
 
   // Имя в строке program - по имени .dpr: dcc32 берёт имя для {$R *.res}
   // из program, и после переименования .dpr в exe попадал бы старый .res
