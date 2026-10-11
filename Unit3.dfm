@@ -11,6 +11,8 @@ object Form3: TForm3
   Font.Name = 'MS Sans Serif'
   Font.Style = []
   OldCreateOrder = False
+  ShowHint = True
+  OnDestroy = FormDestroy
   PixelsPerInch = 96
   TextHeight = 13
   object Panel1: TPanel
@@ -74,6 +76,46 @@ object Form3: TForm3
       OnClick = chkSubDirsClick
     end
   end
+  object lblRef: TLabel
+    Left = 4
+    Top = 284
+    Width = 340
+    Height = 13
+    AutoSize = False
+  end
+  object btnRef: TButton
+    Left = 350
+    Top = 280
+    Width = 30
+    Height = 21
+    Hint = 'Папка эталонных inc (исходные файлы общих rapidqAllProc.inc и rapidqComponents.inc)'
+    Caption = '...'
+    TabOrder = 2
+    OnClick = btnRefClick
+  end
+  object lblErrHead: TLabel
+    Left = 4
+    Top = 308
+    Width = 378
+    Height = 13
+    AutoSize = False
+    Font.Charset = DEFAULT_CHARSET
+    Font.Color = clWindowText
+    Font.Height = -11
+    Font.Name = 'MS Sans Serif'
+    Font.Style = [fsBold]
+    ParentFont = False
+  end
+  object lstErrors: TListBox
+    Left = 2
+    Top = 326
+    Width = 380
+    Height = 258
+    Hint = 'Двойной щелчок - строка в редакторе'
+    ItemHeight = 13
+    TabOrder = 3
+    OnDblClick = lstErrorsDblClick
+  end
   object Label1: TLabel
     Alignment = taCenter
     AutoSize = False
@@ -87,15 +129,60 @@ object Form3: TForm3
     Left = 392
     Top = 40
     Width = 304
-    Height = 512
-    ItemHeight = 16
+    Height = 436
+    Hint = 'Щелчок - замечания по файлу слева; двойной щелчок - файл в редакторе'
+    ItemHeight = 18
+    Style = lbOwnerDrawFixed
     TabOrder = 1
+    OnClick = lstIncFilesClick
+    OnDblClick = lstIncFilesDblClick
+    OnDrawItem = lstIncFilesDrawItem
+  end
+  object btnScan: TButton
+    Left = 392
+    Top = 484
+    Width = 96
+    Height = 25
+    Hint = 'Перечитать эталон и файлы с диска и проверить заново'
+    Caption = 'Сканировать'
+    TabOrder = 4
+    OnClick = btnScanClick
+  end
+  object btnGuard: TButton
+    Left = 494
+    Top = 484
+    Width = 110
+    Height = 25
+    Hint = 'Защитный $IFNDEF в отмеченные файлы, где его нет (прежний текст - в .bak)'
+    Caption = 'Защитный $IFNDEF'
+    TabOrder = 5
+    OnClick = btnGuardClick
+  end
+  object btnDemo: TButton
+    Left = 610
+    Top = 484
+    Width = 86
+    Height = 25
+    Hint = 'Программа, подключающая выбранный файл: найденная или новая'
+    Caption = 'Демо'
+    TabOrder = 6
+    OnClick = btnDemoClick
   end
   object lblCount: TLabel
     Left = 392
-    Top = 560
+    Top = 514
     Width = 304
-    Height = 13
+    Height = 28
     AutoSize = False
+    WordWrap = True
+  end
+  object lblLegend: TLabel
+    Left = 392
+    Top = 546
+    Width = 304
+    Height = 40
+    AutoSize = False
+    Caption = 'Значок: зелёный - совпадает с эталоном, жёлтый - эталон с тем же именем отличается, белый - в эталоне нет. Красное число - ошибки.'
+    WordWrap = True
   end
 end

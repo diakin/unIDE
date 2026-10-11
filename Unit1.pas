@@ -2301,6 +2301,7 @@ type
     procedure DsgAddForeignPages;
     procedure DsgPaletteGlyph(Sender: TObject);
     procedure PaletteIconsClick(Sender: TObject);
+    procedure IncMgrOpenFile(const AFile: string; ALine: Integer);
     procedure PaletteIconEditClick(Sender: TObject);
     procedure PaletteIconsShow(const ASelect: string);
     procedure PaletteIconsApplied(Sender: TObject);
@@ -33136,11 +33137,35 @@ end;
 //  чтобы перенести значки во встроенные (DsgIcons.pas).
 // ---------------------------------------------------------------------------
 
-// View - IncManager: свои inc-файлы пользователя против общих (шаг 1 -
-// список папок с ними, в editor.ini, раздел [IncManager])
+// View - IncManager: свои inc-файлы пользователя против эталона (Unit3).
+// Эталон по умолчанию - incOld рядом с папкой общих inc (SysIncPath), без
+// неё - rapidq_ref\incOld у exe.
 procedure TForm1.IncManagerClick(Sender: TObject);
+var
+  SysDir, UserDir, Mode, OwnDir, RefDir: string;
 begin
-  Form3.ShowFor(SettingsFileName);
+  RapidQIncSettings('', SysDir, UserDir, Mode, OwnDir);
+  if SysDir <> '' then
+    RefDir := ExtractFilePath(ExcludeTrailingPathDelimiter(SysDir)) + 'incOld'
+  else
+    RefDir := ExtractFilePath(Application.ExeName) + 'rapidq_ref\incOld';
+  if (SysDir = '') or not DirectoryExists(RefDir) then
+    if DirectoryExists(ExtractFilePath(Application.ExeName) +
+                       'rapidq_ref\incOld') then
+      RefDir := ExtractFilePath(Application.ExeName) + 'rapidq_ref\incOld';
+  Form3.OnOpenFile := IncMgrOpenFile;
+  Form3.OnChoose := ChooseFromList;
+  Form3.ShowFor(SettingsFileName, SysDir, RefDir);
+end;
+
+// Файл из INC Manager - во вкладку; ALine (с 1) - строка, 0 - без перехода
+procedure TForm1.IncMgrOpenFile(const AFile: string; ALine: Integer);
+begin
+  OpenNamedFile(AFile);
+  if (ALine > 0) and
+     (CompareText(ExpandFileName(FCurrentFileName), ExpandFileName(AFile)) = 0) then
+    GotoLine(ALine - 1);
+  BringToFront;
 end;
 
 procedure TForm1.PaletteIconsClick(Sender: TObject);

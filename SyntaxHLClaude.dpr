@@ -53,7 +53,8 @@ uses
   ClrScheme in 'ClrScheme.pas',
   RqToFb in 'RqLcl\tofb\RqToFb.pas',
   UiScroll in 'UiScroll.pas',
-  Unit3 in 'Unit3.pas' {Form3};
+  Unit3 in 'Unit3.pas' {Form3},
+  IncCheck in 'IncCheck.pas';
 
 {$R *.res}
 
