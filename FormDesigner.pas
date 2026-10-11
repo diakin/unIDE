@@ -195,6 +195,13 @@ type
     // движения мыши, рамки, перерисовки окон формы, смены мест, маркеры.
     // Включается на время одного переноса или рамки (TraceStart ...
     // TraceEnd); подробных строк - не больше TraceMaxLines, в конце - итог.
+    // Маркеры и уголки группы переставляются при замороженной форме
+    // (WM_SETREDRAW): каждое окошко, спрятанное или сдвинутое по одному,
+    // заставляло Windows сразу стирать фон под ним - компонент моргал по
+    // 8-10 раз. Места, которые надо перерисовать, копятся в FFreezeRect и
+    // рисуются одним разом в ThawForm.
+    FFreezeDepth: Integer;
+    FFreezeRect: TRect;
     FTrace: Boolean;
     FTraceWhat: string;          // что тянут - в заголовок журнала
     FTraceHeader: Boolean;       // заголовок уже в журнале
@@ -324,6 +331,9 @@ type
     procedure ClearDragFrames;
     function  GetDragging: Boolean;
     procedure BandSelect;
+    procedure FreezeForm;
+    procedure ThawForm;
+    procedure AddRepaint(const R: TRect);
     procedure TraceStart(const AWhat: string);
     procedure TraceLine(const AText: string);
     procedure TraceEnd;
@@ -3272,91 +3282,150 @@ begin
     Inc(FTraceCarets);
     TraceLine('ShowCarets');
   end;
-  C := SelControl;
-  // Группа: вместо маркеров - уголки у каждого компонента
-  if GroupCount > 1 then
-  begin
-    HideCarets;
-    ShowGroupMarks;
-    Exit;
+  FreezeForm;
+  try
+    C := SelControl;
+    // Группа: вместо маркеров - уголки у каждого компонента
+    if GroupCount > 1 then
+    begin
+      HideCarets;
+      ShowGroupMarks;
+      Exit;
+    end;
+    if (C = nil) or (C.Parent = nil) then
+    begin
+      HideCarets;
+      Exit;
+    end;
+
+    // Где маркеры стояли - после переноса это место перерисовывается
+    for I := 1 to 8 do
+    begin
+      WasVisible[I] := FCarets[I].Visible;
+      OldR[I] := FCarets[I].BoundsRect;
+    end;
+
+    // Окно формы могли создать заново - маркеры переселяем в новое.
+    // Координаты маркеров - клиентские координаты окна формы, те же, что
+    // даёт FForm.ScreenToClient.
+    for I := 1 to 8 do
+    begin
+      if FCarets[I].ParentWindow <> FForm.Handle then
+        FCarets[I].ParentWindow := FForm.Handle;
+      if not FCarets[I].Visible then
+        FCarets[I].Visible := True;
+    end;
+
+    // Место компонента сверяется ещё раз после расстановки: если раскладка
+    // формы всё же сдвинулась, маркеры переставляются. Маркеры в
+    // выравнивании больше не участвуют (см. ParentWindow выше), обычно
+    // хватает одного прохода.
+
+    Was := Point(MaxInt, MaxInt);
+    W := -1;
+    H := -1;
+    for Pass := 1 to 3 do
+    begin
+      P := FForm.ScreenToClient(C.Parent.ClientToScreen(Point(C.Left, C.Top)));
+      if (P.X = Was.X) and (P.Y = Was.Y) and (C.Width = W) and
+         (C.Height = H) then
+        Break;
+      Was := P;
+      L := P.X;
+      T := P.Y;
+      W := C.Width;
+      H := C.Height;
+      MX := L + (W - CaretSize) div 2;
+      MY := T + (H - CaretSize) div 2;
+
+      FCarets[1].SetBounds(L, T, CaretSize, CaretSize);
+      FCarets[2].SetBounds(L, MY, CaretSize, CaretSize);
+      FCarets[3].SetBounds(L, T + H - CaretSize, CaretSize, CaretSize);
+      FCarets[4].SetBounds(MX, T + H - CaretSize, CaretSize, CaretSize);
+      FCarets[5].SetBounds(L + W - CaretSize, T + H - CaretSize, CaretSize, CaretSize);
+      FCarets[6].SetBounds(L + W - CaretSize, MY, CaretSize, CaretSize);
+      FCarets[7].SetBounds(L + W - CaretSize, T, CaretSize, CaretSize);
+      FCarets[8].SetBounds(MX, T, CaretSize, CaretSize);
+    end;
+
+    // Поверх всего на форме: компонент может лежать глубоко в панелях
+    for I := 1 to 8 do
+      FCarets[I].BringToFront;
+
+    // Маркер - дочернее окно формы, а стоит он над контролами, вложенными в
+    // панели. Место, откуда он ушёл, помечаем к перерисовке вместе со всеми
+    // вложенными окнами (RDW_ALLCHILDREN) - и перерисовываем сразу
+    // (FlushPaint): иначе при перетаскивании за маркерами оставался след.
+    for I := 1 to 8 do
+    begin
+      if WasVisible[I] and not EqualRect(OldR[I], FCarets[I].BoundsRect) then
+        AddRepaint(OldR[I]);
+      // Сами маркеры на новом месте - тоже (форма была заморожена)
+      AddRepaint(FCarets[I].BoundsRect);
+    end;
+    FlushPaint;
+  finally
+    ThawForm;
   end;
-  if (C = nil) or (C.Parent = nil) then
-  begin
-    HideCarets;
-    Exit;
-  end;
-
-  // Где маркеры стояли - после переноса это место перерисовывается
-  for I := 1 to 8 do
-  begin
-    WasVisible[I] := FCarets[I].Visible;
-    OldR[I] := FCarets[I].BoundsRect;
-  end;
-
-  // Окно формы могли создать заново - маркеры переселяем в новое.
-  // Координаты маркеров - клиентские координаты окна формы, те же, что
-  // даёт FForm.ScreenToClient.
-  for I := 1 to 8 do
-  begin
-    if FCarets[I].ParentWindow <> FForm.Handle then
-      FCarets[I].ParentWindow := FForm.Handle;
-    if not FCarets[I].Visible then
-      FCarets[I].Visible := True;
-  end;
-
-  // Место компонента сверяется ещё раз после расстановки: если раскладка
-  // формы всё же сдвинулась, маркеры переставляются. Маркеры в
-  // выравнивании больше не участвуют (см. ParentWindow выше), обычно
-  // хватает одного прохода.
-
-  Was := Point(MaxInt, MaxInt);
-  W := -1;
-  H := -1;
-  for Pass := 1 to 3 do
-  begin
-    P := FForm.ScreenToClient(C.Parent.ClientToScreen(Point(C.Left, C.Top)));
-    if (P.X = Was.X) and (P.Y = Was.Y) and (C.Width = W) and
-       (C.Height = H) then
-      Break;
-    Was := P;
-    L := P.X;
-    T := P.Y;
-    W := C.Width;
-    H := C.Height;
-    MX := L + (W - CaretSize) div 2;
-    MY := T + (H - CaretSize) div 2;
-
-    FCarets[1].SetBounds(L, T, CaretSize, CaretSize);
-    FCarets[2].SetBounds(L, MY, CaretSize, CaretSize);
-    FCarets[3].SetBounds(L, T + H - CaretSize, CaretSize, CaretSize);
-    FCarets[4].SetBounds(MX, T + H - CaretSize, CaretSize, CaretSize);
-    FCarets[5].SetBounds(L + W - CaretSize, T + H - CaretSize, CaretSize, CaretSize);
-    FCarets[6].SetBounds(L + W - CaretSize, MY, CaretSize, CaretSize);
-    FCarets[7].SetBounds(L + W - CaretSize, T, CaretSize, CaretSize);
-    FCarets[8].SetBounds(MX, T, CaretSize, CaretSize);
-  end;
-
-  // Поверх всего на форме: компонент может лежать глубоко в панелях
-  for I := 1 to 8 do
-    FCarets[I].BringToFront;
-
-  // Маркер - дочернее окно формы, а стоит он над контролами, вложенными в
-  // панели. Место, откуда он ушёл, помечаем к перерисовке вместе со всеми
-  // вложенными окнами (RDW_ALLCHILDREN) - и перерисовываем сразу
-  // (FlushPaint): иначе при перетаскивании за маркерами оставался след.
-  for I := 1 to 8 do
-    if WasVisible[I] and not EqualRect(OldR[I], FCarets[I].BoundsRect) then
-      RedrawWindow(FForm.Handle, @OldR[I], 0,
-                   RDW_INVALIDATE or RDW_ERASE or RDW_ALLCHILDREN);
-  FlushPaint;
 end;
 
 // Всё, что на форме помечено к перерисовке, - нарисовать сейчас. WM_PAINT
 // Windows присылает, только когда в очереди нет других сообщений, а пока
 // кнопка мыши нажата и мышь движется, WM_MOUSEMOVE идут непрерывно: место,
 // откуда ушёл компонент или маркер, стояло стёртым до отпускания кнопки.
+procedure TFormDesigner.FreezeForm;
+begin
+  if (FFreezeDepth = 0) and (FForm <> nil) and FForm.HandleAllocated then
+  begin
+    SendMessage(FForm.Handle, WM_SETREDRAW, 0, 0);
+    FFreezeRect := Rect(0, 0, 0, 0);
+  end;
+  Inc(FFreezeDepth);
+end;
+
+procedure TFormDesigner.ThawForm;
+var
+  R: TRect;
+begin
+  if FFreezeDepth = 0 then
+    Exit;
+  Dec(FFreezeDepth);
+  if (FFreezeDepth > 0) or (FForm = nil) or not FForm.HandleAllocated then
+    Exit;
+  SendMessage(FForm.Handle, WM_SETREDRAW, 1, 0);
+  R := FFreezeRect;
+  FFreezeRect := Rect(0, 0, 0, 0);
+  if IsRectEmpty(R) then
+    Exit;
+  if FTrace then
+    TraceLine('перерисовка после маркеров ' + DsgRectText(R));
+  RedrawWindow(FForm.Handle, @R, 0, RDW_INVALIDATE or RDW_ERASE or
+               RDW_ALLCHILDREN or RDW_UPDATENOW);
+end;
+
+// Место (клиентские координаты формы) - к перерисовке: при замороженной
+// форме - в общий прямоугольник, иначе сразу
+procedure TFormDesigner.AddRepaint(const R: TRect);
+begin
+  if IsRectEmpty(R) or (FForm = nil) or not FForm.HandleAllocated then
+    Exit;
+  if FFreezeDepth > 0 then
+  begin
+    if IsRectEmpty(FFreezeRect) then
+      FFreezeRect := R
+    else
+      UnionRect(FFreezeRect, FFreezeRect, R);
+  end
+  else
+    RedrawWindow(FForm.Handle, @R, 0,
+                 RDW_INVALIDATE or RDW_ERASE or RDW_ALLCHILDREN);
+end;
+
 procedure TFormDesigner.FlushPaint;
 begin
+  // Форма заморожена - нарисует ThawForm
+  if FFreezeDepth > 0 then
+    Exit;
   if FTrace then
   begin
     Inc(FTraceFlush);
@@ -3376,18 +3445,21 @@ begin
     Inc(FTraceCarets);
     TraceLine('HideCarets');
   end;
-  for I := 1 to 8 do
-    if (FCarets[I] <> nil) and FCarets[I].Visible then
-    begin
-      R := FCarets[I].BoundsRect;
-      FCarets[I].Visible := False;
-      // Место маркера - перерисовать вместе с вложенными окнами (см.
-      // ShowCarets)
-      if (FForm <> nil) and FForm.HandleAllocated then
-        RedrawWindow(FForm.Handle, @R, 0,
-                     RDW_INVALIDATE or RDW_ERASE or RDW_ALLCHILDREN);
-    end;
-  FlushPaint;
+  FreezeForm;
+  try
+    for I := 1 to 8 do
+      if (FCarets[I] <> nil) and FCarets[I].Visible then
+      begin
+        R := FCarets[I].BoundsRect;
+        FCarets[I].Visible := False;
+        // Место маркера - перерисовать вместе с вложенными окнами (см.
+        // ShowCarets)
+        AddRepaint(R);
+      end;
+    FlushPaint;
+  finally
+    ThawForm;
+  end;
 end;
 
 procedure TFormDesigner.ContextMenu(AComp: TComponent; const AScreen: TPoint);
@@ -4455,73 +4527,79 @@ begin
   end;
   if (FForm = nil) or not FForm.HandleAllocated then
     Exit;
-  S := GroupMarkSize;
-  if GroupCount > 1 then
-    Need := FGroup.Count * 4
-  else
-    Need := 0;
-  while FGroupMarks.Count < Need do
-  begin
-    M := TDsgGroupMark.Create(FForm);
-    M.Visible := False;
-    M.Enabled := False;
-    M.Width := S;
-    M.Height := S;
-    M.ParentWindow := FForm.Handle;
-    FGroupMarks.Add(M);
-  end;
-
-  SetLength(OldR, FGroupMarks.Count);
-  SetLength(WasVisible, FGroupMarks.Count);
-  for I := 0 to FGroupMarks.Count - 1 do
-  begin
-    M := TDsgGroupMark(FGroupMarks[I]);
-    WasVisible[I] := M.Visible;
-    OldR[I] := M.BoundsRect;
-  end;
-
-  for I := 0 to FGroupMarks.Count - 1 do
-  begin
-    M := TDsgGroupMark(FGroupMarks[I]);
-    K := I div 4;
-    Shown := False;
-    if I < Need then
+  FreezeForm;
+  try
+    S := GroupMarkSize;
+    if GroupCount > 1 then
+      Need := FGroup.Count * 4
+    else
+      Need := 0;
+    while FGroupMarks.Count < Need do
     begin
-      C := TControl(FGroup[K]);
-      Shown := (C.Parent <> nil) and C.Visible and C.Parent.Showing;
-      if Shown then
-      begin
-        if M.ParentWindow <> FForm.Handle then
-          M.ParentWindow := FForm.Handle;
-        P := FForm.ScreenToClient(C.Parent.ClientToScreen(Point(C.Left, C.Top)));
-        case I mod 4 of
-          0: M.SetBounds(P.X, P.Y, S, S);
-          1: M.SetBounds(P.X + C.Width - S, P.Y, S, S);
-          2: M.SetBounds(P.X, P.Y + C.Height - S, S, S);
-        else
-          M.SetBounds(P.X + C.Width - S, P.Y + C.Height - S, S, S);
-        end;
-        if not M.Visible then
-          M.Visible := True;
-        // Поверх всего на форме: компонент может лежать глубоко в панелях
-        M.BringToFront;
-      end;
-    end;
-    if not Shown and M.Visible then
+      M := TDsgGroupMark.Create(FForm);
       M.Visible := False;
-  end;
+      M.Enabled := False;
+      M.Width := S;
+      M.Height := S;
+      M.ParentWindow := FForm.Handle;
+      FGroupMarks.Add(M);
+    end;
 
-  // Место, откуда окошко ушло, - перерисовать вместе с вложенными окнами
-  // (как в ShowCarets)
-  for I := 0 to FGroupMarks.Count - 1 do
-  begin
-    M := TDsgGroupMark(FGroupMarks[I]);
-    if WasVisible[I] and
-       (not M.Visible or not EqualRect(OldR[I], M.BoundsRect)) then
-      RedrawWindow(FForm.Handle, @OldR[I], 0,
-                   RDW_INVALIDATE or RDW_ERASE or RDW_ALLCHILDREN);
+    SetLength(OldR, FGroupMarks.Count);
+    SetLength(WasVisible, FGroupMarks.Count);
+    for I := 0 to FGroupMarks.Count - 1 do
+    begin
+      M := TDsgGroupMark(FGroupMarks[I]);
+      WasVisible[I] := M.Visible;
+      OldR[I] := M.BoundsRect;
+    end;
+
+    for I := 0 to FGroupMarks.Count - 1 do
+    begin
+      M := TDsgGroupMark(FGroupMarks[I]);
+      K := I div 4;
+      Shown := False;
+      if I < Need then
+      begin
+        C := TControl(FGroup[K]);
+        Shown := (C.Parent <> nil) and C.Visible and C.Parent.Showing;
+        if Shown then
+        begin
+          if M.ParentWindow <> FForm.Handle then
+            M.ParentWindow := FForm.Handle;
+          P := FForm.ScreenToClient(C.Parent.ClientToScreen(Point(C.Left, C.Top)));
+          case I mod 4 of
+            0: M.SetBounds(P.X, P.Y, S, S);
+            1: M.SetBounds(P.X + C.Width - S, P.Y, S, S);
+            2: M.SetBounds(P.X, P.Y + C.Height - S, S, S);
+          else
+            M.SetBounds(P.X + C.Width - S, P.Y + C.Height - S, S, S);
+          end;
+          if not M.Visible then
+            M.Visible := True;
+          // Поверх всего на форме: компонент может лежать глубоко в панелях
+          M.BringToFront;
+        end;
+      end;
+      if not Shown and M.Visible then
+        M.Visible := False;
+    end;
+
+    // Место, откуда окошко ушло, - перерисовать вместе с вложенными окнами
+    // (как в ShowCarets); окошки на новом месте - тоже
+    for I := 0 to FGroupMarks.Count - 1 do
+    begin
+      M := TDsgGroupMark(FGroupMarks[I]);
+      if WasVisible[I] and
+         (not M.Visible or not EqualRect(OldR[I], M.BoundsRect)) then
+        AddRepaint(OldR[I]);
+      if M.Visible then
+        AddRepaint(M.BoundsRect);
+    end;
+    FlushPaint;
+  finally
+    ThawForm;
   end;
-  FlushPaint;
 end;
 
 // Новые места группы - в .dfm одной серией (OnBatch)
