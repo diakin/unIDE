@@ -2201,6 +2201,9 @@ type
     procedure RefreshRapidQInspector;
     function  RapidQComponentsReady(AReport: Boolean): Boolean;
     procedure RapidQIncludeDirs(var AMainDir, AIncDir: string);
+    function  RapidQIncDir: string;
+    procedure RapidQIncSettings(const AProject: string;
+                                var ASysDir, AUserDir, AMode, AOwnDir: string);
     function  RapidQLoadCustomTypes(ALines: TStrings;
                                     const AFile: string): Integer;
     procedure RapidQFillObjTables(AObj: TObject);
@@ -9741,6 +9744,7 @@ var
   Keys, OptLog: TStringList;
   OldName, OldDir, OldType, OldTarget: string;
   NewName, NewDir, NewType, NewTarget, Dir, Val, SectName: string;
+  IncSysDir, IncUserDir, IncMode, IncOwnDir: string;
   K, SectIdx, KeyIdx, FoundAt, LogIdx: Integer;
   DirChanged, OptionsChanged: Boolean;
 begin
@@ -9780,6 +9784,10 @@ begin
     if K < 0 then
       K := Dlg.cbType.Items.Add(OldType);
     Dlg.cbType.ItemIndex := K;
+    // Папка inc (проект RapidQ): виды из настроек компилятора, выбор и
+    // своя папка проекта
+    RapidQIncSettings(OldName, IncSysDir, IncUserDir, IncMode, IncOwnDir);
+    Dlg.SetRqInc(IncSysDir, IncUserDir, IncMode, IncOwnDir);
 
     // Проект Delphi с главным .dpr - вкладка Project options
     if (CompareText(OldType, 'Delphi') = 0) and
@@ -9809,6 +9817,19 @@ begin
     NewName := Trim(Dlg.edName.Text);
     NewDir := Trim(Dlg.edDir.Text);
     NewType := Dlg.cbType.Text;
+
+    // Папка inc - в раздел проекта сразу (переименование раздела ниже
+    // переносит и её)
+    if CompareText(NewType, 'RapidQ Basic') = 0 then
+    begin
+      Prj := TProjectIni.Create(SettingsFileName, OldName);
+      try
+        Prj.WriteString('Project', 'IncMode', Dlg.RqIncMode);
+        Prj.WriteString('Project', 'IncPath', Dlg.RqIncOwnDir);
+      finally
+        Prj.Free;
+      end;
+    end;
 
     if (NewName = '') or (NewDir = '') then
     begin
@@ -9996,6 +10017,7 @@ var
   cbType: TUiComboBox;
   chkBase: TUiCheckBox;
   Dir, Nm, Tp, TargetFile: string;
+  IncSysDir, IncUserDir, IncMode, IncOwnDir: string;
   OnBase: Boolean;
   Existing: Boolean;  // в папке уже лежит проект - своих файлов не пишем
   Prj: TProjectIni;
@@ -10060,6 +10082,9 @@ begin
 
     cbType.ItemIndex := 0;
     FNewPrjType := cbType;
+    // Папка inc нового проекта RapidQ - по умолчанию системные (новые)
+    RapidQIncSettings('', IncSysDir, IncUserDir, IncMode, IncOwnDir);
+    Dlg.SetRqInc(IncSysDir, IncUserDir, 'sys', '');
 
     // Кнопка выбора папки закрывает окно с mrRetry, папка выбирается
     // системным диалогом, и окно открывается заново с новым путём
@@ -10091,6 +10116,8 @@ begin
     Dir := Trim(edDir.Text);
     Tp := cbType.Text;
     OnBase := chkBase.Checked;
+    IncMode := Dlg.RqIncMode;
+    IncOwnDir := Dlg.RqIncOwnDir;
 
     if (Nm = '') or (Dir = '') then
     begin
@@ -10475,6 +10502,11 @@ begin
       Prj.WriteString('Project', 'Type', Tp);
       if TargetFile <> '' then
         Prj.WriteString('Project', 'Target', PrjTargetToStore(Dir, TargetFile));
+      if CompareText(Tp, 'RapidQ Basic') = 0 then
+      begin
+        Prj.WriteString('Project', 'IncMode', IncMode);
+        Prj.WriteString('Project', 'IncPath', IncOwnDir);
+      end;
     finally
       Prj.Free;
     end;
@@ -24864,24 +24896,67 @@ function RapidQResolveInclude(const AName, AMainDir,
 procedure TForm1.RapidQIncludeDirs(var AMainDir, AIncDir: string);
 var
   MainBas: string;
-  Ini: TIniFile;
 begin
   MainBas := RapidQTargetBas(False);
   if MainBas <> '' then
     AMainDir := ExtractFilePath(MainBas)
   else
     AMainDir := ExtractFilePath(FCurrentFileName);
-  AIncDir := '';
-  if FileExists(SettingsFileName) then
-  begin
-    Ini := TIniFile.Create(SettingsFileName);
-    try
-      AIncDir := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
-      'IncPath', ''));
-    finally
-      Ini.Free;
-    end;
+  AIncDir := RapidQIncDir;
+end;
+
+// Папки inc RapidQ (rapidq_ref/inc_about.md): в настройках компилятора
+// две - системные, новые (SysIncPath: rapidqAllProc.inc,
+// rapidqComponents.inc) и пользовательские, старые (IncPath: те, с
+// которыми программы писались). Проект выбирает вид (IncMode = sys/user)
+// и может задать свою папку (IncPath раздела Project) - Project
+// Properties. Проект без выбора (создан раньше этой настройки) -
+// пользовательские: старые программы собираются с прежними inc.
+procedure TForm1.RapidQIncSettings(const AProject: string;
+  var ASysDir, AUserDir, AMode, AOwnDir: string);
+var
+  Ini: TIniFile;
+  Prj: TProjectIni;
+begin
+  ASysDir := '';
+  AUserDir := '';
+  AMode := '';
+  AOwnDir := '';
+  if not FileExists(SettingsFileName) then
+    Exit;
+  Ini := TIniFile.Create(SettingsFileName);
+  try
+    ASysDir := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
+                                   'SysIncPath', ''));
+    AUserDir := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
+                                    'IncPath', ''));
+  finally
+    Ini.Free;
   end;
+  if AProject = '' then
+    Exit;
+  Prj := TProjectIni.Create(SettingsFileName, AProject);
+  try
+    AMode := LowerCase(Trim(Prj.ReadString('Project', 'IncMode', '')));
+    AOwnDir := Trim(Prj.ReadString('Project', 'IncPath', ''));
+  finally
+    Prj.Free;
+  end;
+end;
+
+// Папка inc для сборки и разбора RapidQ текущего проекта: своя папка
+// проекта, иначе по виду (системные или пользовательские)
+function TForm1.RapidQIncDir: string;
+var
+  SysDir, UserDir, Mode, OwnDir: string;
+begin
+  RapidQIncSettings(FCurrentProject, SysDir, UserDir, Mode, OwnDir);
+  if OwnDir <> '' then
+    Result := OwnDir
+  else if Mode = 'sys' then
+    Result := SysDir
+  else
+    Result := UserDir;
 end;
 
 // Классы программы (TYPE ... EXTENDS) и её константы (CONST Имя = целое,
@@ -45452,13 +45527,14 @@ begin
     Ini := TIniFile.Create(SettingsFileName);
     try
       CompDir := Trim(Ini.ReadString(Sect, 'CompPath', ''));
-      IncDir := Trim(Ini.ReadString(Sect, 'IncPath', ''));
       LibDir := Trim(Ini.ReadString(Sect, 'LibPath', ''));
       IconFile := Trim(Ini.ReadString(Sect, 'IcoFile', ''));
     finally
       Ini.Free;
     end;
   end;
+  // Папка inc - по проекту (RapidQIncDir)
+  IncDir := RapidQIncDir;
 
   if CompDir = '' then
   begin
@@ -46520,16 +46596,8 @@ begin
     Exit;
   end;
   Sect := CompilerSection('RapidQ Basic');
-  IncDir := '';
-  if FileExists(SettingsFileName) then
-  begin
-    Ini := TIniFile.Create(SettingsFileName);
-    try
-      IncDir := Trim(Ini.ReadString(Sect, 'IncPath', ''));
-    finally
-      Ini.Free;
-    end;
-  end;
+  // Папка inc - по проекту (RapidQIncDir)
+  IncDir := RapidQIncDir;
   FCompDlg.EndStage(fbsCheck, True, '');
 
   // Перевод
@@ -47475,17 +47543,7 @@ begin
   if AMain = '' then
     Exit;
   MainDir := ExtractFilePath(ExpandFileName(AMain));
-  IncDir := '';
-  if FileExists(SettingsFileName) then
-  begin
-    Ini := TIniFile.Create(SettingsFileName);
-    try
-      IncDir := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
-                                    'IncPath', ''));
-    finally
-      Ini.Free;
-    end;
-  end;
+  IncDir := RapidQIncDir;
   Files := TStringList.Create;
   Lines := TStringList.Create;
   try
@@ -48437,16 +48495,8 @@ begin
       FbBuildOf(MainBas, FbOutKind, FbBits);
       IncDir := FbIncDirs(FbBits, UserInc);
     end
-    else if FileExists(SettingsFileName) then
-    begin
-      Ini := TIniFile.Create(SettingsFileName);
-      try
-        IncDir := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
-        'IncPath', ''));
-      finally
-        Ini.Free;
-      end;
-    end;
+    else
+      IncDir := RapidQIncDir;
 
     CurFile := FCurrentFileName;
     Visited := TStringList.Create;
@@ -48993,17 +49043,7 @@ var
 
   begin
     MainDir := ExtractFilePath(ExpandFileName(AMain));
-    IncDir := '';
-    if FileExists(SettingsFileName) then
-    begin
-      Ini := TIniFile.Create(SettingsFileName);
-      try
-        IncDir := Trim(Ini.ReadString(CompilerSection('RapidQ Basic'),
-                                      'IncPath', ''));
-      finally
-        Ini.Free;
-      end;
-    end;
+    IncDir := RapidQIncDir;
 
     Files := TStringList.Create;
     Lines := TStringList.Create;

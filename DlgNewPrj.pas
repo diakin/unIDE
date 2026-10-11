@@ -50,6 +50,12 @@ type
     btnBrowse: TUiButton;
     chkBase: TUiCheckBox;
     cbType: TUiComboBox;
+    grpRqInc: TUiGroupBox;
+    rbIncSys: TUiRadioButton;
+    rbIncUser: TUiRadioButton;
+    edIncPath: TUiEdit;
+    btnIncBrowse: TUiButton;
+    lblIncNote: TLabel;
     tsOptions: TTabSheet;
     pcOptions: TUiPageControl;
     tsForms: TTabSheet;
@@ -212,7 +218,14 @@ type
     procedure btnVerKeySetClick(Sender: TObject);
     procedure btnVerKeyDelClick(Sender: TObject);
     procedure clbDesignPkgsClick(Sender: TObject);
+    procedure cbTypeChange(Sender: TObject);
+    procedure rbIncClick(Sender: TObject);
+    procedure btnIncBrowseClick(Sender: TObject);
   private
+    // Папки inc RapidQ из настроек компилятора: системные (новые) и
+    // пользовательские (старые) - см. SetRqInc
+    FIncSysDir: string;
+    FIncUserDir: string;
     FDpr: string;               // .dpr проекта; '' - вкладки Delphi нет
     FDof: TMemIniFile;          // <проект>.dof в памяти
     FDofBefore: string;         // текст .dof после загрузки - для сравнения
@@ -230,6 +243,7 @@ type
     // $0128 - WM_UPDATEUISTATE, в Messages.pas Delphi 7 этой константы нет
     procedure WMUpdateUIState(var Message: TMessage); message $0128;
     procedure SetOptionsVisible(AVisible: Boolean);
+    procedure UpdateRqIncVisible;
     function CompFlag(const AKey: string): Boolean;
     procedure SetCompFlag(const AKey: string; AValue: Boolean);
     procedure LoadForms;
@@ -257,6 +271,13 @@ type
   public
     // Показать вкладку Project options и заполнить её по ADpr
     procedure LoadDelphiOptions(const ADpr: string);
+    // Папка inc проекта RapidQ: ASysDir, AUserDir - из настроек
+    // компилятора; AMode - 'sys' или 'user' ('' - user); AOwnDir - свой
+    // путь проекта ('' - по выбору)
+    procedure SetRqInc(const ASysDir, AUserDir, AMode, AOwnDir: string);
+    function RqIncMode: string;
+    // Свой путь проекта: '' - путь в поле совпадает с путём выбранного вида
+    function RqIncOwnDir: string;
     // Записать .dof, .dpr и .res. AChanged - было ли что записано. Что
     // сделано и ошибки - строками в ALog.
     function SaveDelphiOptions(ALog: TStrings; out AChanged: Boolean): Boolean;
@@ -268,8 +289,10 @@ implementation
 {$R *.dfm}
 
 const
-  // Высота окна без вкладки Project options и с ней
+  // Высота окна без вкладки Project options и с ней; с рамкой папки inc
+  // (проект RapidQ) - выше на её высоту
   CompactClientHeight = 224;
+  CompactRqClientHeight = 352;
   FullClientHeight = 560;
   // Design-пакеты Delphi 7
   KnownPackagesKey = 'Software\Borland\Delphi\7.0\Known Packages';
@@ -307,10 +330,80 @@ procedure TDlgNewPrj.SetOptionsVisible(AVisible: Boolean);
 begin
   tsOptions.TabVisible := AVisible;
   pcMain.ActivePage := tsProject;
-  if AVisible then
+  UpdateRqIncVisible;
+end;
+
+// Рамка папки inc - только у проекта RapidQ; высота окна - по ней
+procedure TDlgNewPrj.UpdateRqIncVisible;
+begin
+  grpRqInc.Visible := CompareText(cbType.Text, 'RapidQ Basic') = 0;
+  if tsOptions.TabVisible then
     ClientHeight := FullClientHeight
+  else if grpRqInc.Visible then
+    ClientHeight := CompactRqClientHeight
   else
     ClientHeight := CompactClientHeight;
+end;
+
+procedure TDlgNewPrj.cbTypeChange(Sender: TObject);
+begin
+  UpdateRqIncVisible;
+end;
+
+procedure TDlgNewPrj.SetRqInc(const ASysDir, AUserDir, AMode, AOwnDir: string);
+begin
+  FIncSysDir := ASysDir;
+  FIncUserDir := AUserDir;
+  // Выбор переключателя заполняет поле (rbIncClick) - свой путь после
+  rbIncSys.Checked := CompareText(AMode, 'sys') = 0;
+  rbIncUser.Checked := not rbIncSys.Checked;
+  if rbIncSys.Checked then
+    edIncPath.Text := FIncSysDir
+  else
+    edIncPath.Text := FIncUserDir;
+  if AOwnDir <> '' then
+    edIncPath.Text := AOwnDir;
+  UpdateRqIncVisible;
+end;
+
+// Переключатель - в поле путь выбранного вида из настроек компилятора
+procedure TDlgNewPrj.rbIncClick(Sender: TObject);
+begin
+  if rbIncSys.Checked then
+    edIncPath.Text := FIncSysDir
+  else
+    edIncPath.Text := FIncUserDir;
+end;
+
+procedure TDlgNewPrj.btnIncBrowseClick(Sender: TObject);
+var
+  FolderPath: string;
+begin
+  FolderPath := Trim(edIncPath.Text);
+  if BrowseFolderDialog('Папка inc', FolderPath) then
+    edIncPath.Text := FolderPath;
+end;
+
+function TDlgNewPrj.RqIncMode: string;
+begin
+  if rbIncSys.Checked then
+    Result := 'sys'
+  else
+    Result := 'user';
+end;
+
+function TDlgNewPrj.RqIncOwnDir: string;
+var
+  KindDir: string;
+begin
+  Result := Trim(edIncPath.Text);
+  if rbIncSys.Checked then
+    KindDir := FIncSysDir
+  else
+    KindDir := FIncUserDir;
+  if CompareText(ExcludeTrailingPathDelimiter(Result),
+                 ExcludeTrailingPathDelimiter(KindDir)) = 0 then
+    Result := '';
 end;
 
 function TDlgNewPrj.DofText: string;

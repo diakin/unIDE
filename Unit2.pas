@@ -2990,7 +2990,12 @@ begin
     begin
       Fields.Add('IdePath|IDE path');
       Fields.Add('CompPath|Compiler');
-      Fields.Add('IncPath|Include');
+      // Папки inc (rapidq_ref/inc_about.md): пользовательские, старые
+      // (IncPath, прежний ключ) и системные, новые - rapidqAllProc.inc и
+      // rapidqComponents.inc (SysIncPath). Какую берёт проект - Project
+      // Properties (Unit1, RapidQIncDir)
+      Fields.Add('IncPath|Include (user, old)');
+      Fields.Add('SysIncPath|Include (system, new)');
       Fields.Add('LibPath|Library');
       Fields.Add('PrjPath|Projects');
       Fields.Add('TplPath|Templates');

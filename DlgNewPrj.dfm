@@ -90,6 +90,53 @@ object DlgNewPrj: TDlgNewPrj
           'Python'
           'Rust'
           'WebSite')
+        OnChange = cbTypeChange
+      end
+      object grpRqInc: TUiGroupBox
+        Left = 12
+        Top = 140
+        Width = 710
+        Height = 118
+        Caption = 'Папка inc (RapidQ)'
+        TabOrder = 5
+        object rbIncSys: TUiRadioButton
+          Left = 12
+          Top = 22
+          Width = 680
+          Height = 17
+          Caption = 'Системные (новые): rapidqAllProc.inc, rapidqComponents.inc'
+          TabOrder = 0
+          OnClick = rbIncClick
+        end
+        object rbIncUser: TUiRadioButton
+          Left = 12
+          Top = 44
+          Width = 680
+          Height = 17
+          Caption = 'Пользовательские (старые): inc, с которыми писалась программа'
+          TabOrder = 1
+          OnClick = rbIncClick
+        end
+        object edIncPath: TUiEdit
+          Left = 12
+          Top = 70
+          Width = 640
+          TabOrder = 2
+        end
+        object btnIncBrowse: TUiButton
+          Left = 660
+          Top = 69
+          Width = 30
+          Height = 23
+          Caption = '...'
+          TabOrder = 3
+          OnClick = btnIncBrowseClick
+        end
+        object lblIncNote: TLabel
+          Left = 12
+          Top = 96
+          Caption = 'Пути - из настроек компилятора RapidQ; свой путь в поле - только для этого проекта'
+        end
       end
     end
     object tsOptions: TTabSheet
