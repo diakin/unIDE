@@ -1729,6 +1729,15 @@ type
     FFifDlg: TForm;
     FFifProject: Boolean;     // файлы проекта; False - диск
     FFifRunning: Boolean;     // идёт поиск
+    // Собирается список файлов проекта для галок расширений (FifFillExts):
+    // ход - в окне, Стоп прерывает. Прерван - поиск не начинается.
+    FFifListing: Boolean;
+    FFifListAborted: Boolean;
+    // Этот список - для FifRun, чтобы не обходить папки второй раз;
+    // берётся один раз. Строки файлов через CRLF; '' - нет.
+    FFifProjCache: string;
+    FFifProjCacheNote: string;
+    FFifProjCacheValid: Boolean;
     FFifAbort: Boolean;       // Стоп, закрытие окна, новый список в Match list
     FFifListTaken: Boolean;   // Match list занят другим списком - не трогать
     FFifCloseAfter: Boolean;  // главное окно закрывают во время поиска
@@ -17296,6 +17305,10 @@ begin
       ResetMatchRows;
       FillMatchGrid;
       FifShowWindow(SearchScope = ScopeProject);
+      // Список файлов проекта прервали Стопом - или он ещё собирается
+      // (Find-> нажали снова во время сбора)
+      if FFifListAborted or FFifListing then
+        Exit;
       FifRun;
       if FFifListTaken then
         Exit;
@@ -18747,11 +18760,12 @@ begin
     UiApplyForm(Dlg);
   end;
   Dlg := TDlgFifDisk(FFifDlg);
-  if FFifRunning then
+  if FFifRunning or FFifListing then
   begin
     Dlg.Show;
     Exit;
   end;
+  FFifListAborted := False;
 
   FFifProject := AProject;
   DirText := '';
@@ -18800,13 +18814,18 @@ begin
     Dlg.chkSub.Checked := SubDirs;
   end;
 
+  // Окно - сразу: список файлов проекта для галок расширений собирается
+  // в FifFillExts, на большой папке долго, и ход его виден в окне
+  Dlg.btnOk.Caption := 'Найти';
+  Dlg.Show;
+  Dlg.Update;
   FifFillExts;
+  if FFifListAborted then
+    Exit;
   if cmbFind.Text = '' then
     FifStatus('Образец поиска - в поле Find главного окна')
   else
     FifStatus('Образец: ' + cmbFind.Text);
-  Dlg.btnOk.Caption := 'Найти';
-  Dlg.Show;
 end;
 
 // Список расширений с галками.
@@ -18821,6 +18840,7 @@ var
   Files, Exts: TStringList;
   KnownExts, CheckedExts, OffExts, OldMasks, MaskItem, Ext, Note: string;
   FileIdx, ExtIdx, Found, SemiAt: Integer;
+  ListOk: Boolean;
 begin
   Dlg := TDlgFifDisk(FFifDlg);
   KnownExts := '';
@@ -18853,13 +18873,38 @@ begin
         Exts.Sorted := True;
         Exts.CaseSensitive := False;
         FFifAbort := False;
-        if not FifProjectFiles(Files, Note) then
+        FFifProjCacheValid := False;
+        // Ход обхода - в окне (FifProgress), кнопка - Стоп
+        FFifListing := True;
+        FFifLastTick := 0;
+        Dlg.btnOk.Caption := 'Стоп';
+        try
+          ListOk := FifProjectFiles(Files, Note);
+        finally
+          FFifListing := False;
+          Dlg.btnOk.Caption := 'Найти';
+        end;
+        if not ListOk then
         begin
           Dlg.btnOk.Enabled := False;
           FifStatus('Проект не открыт');
           Exit;
         end;
         Dlg.btnOk.Enabled := True;
+        if FFifAbort then
+        begin
+          FFifListAborted := True;
+          FFifAbort := False;
+          FifStatus(Format('Список файлов проекта прерван (собрано: %d). ' +
+                           'Поиск не начат; Найти - собрать заново',
+                           [Files.Count]));
+        end
+        else
+        begin
+          FFifProjCache := Files.Text;
+          FFifProjCacheNote := Note;
+          FFifProjCacheValid := True;
+        end;
         for FileIdx := 0 to Files.Count - 1 do
         begin
           Ext := LowerCase(ExtractFileExt(Files[FileIdx]));
@@ -19092,7 +19137,7 @@ begin
   FFifLastTick := GetTickCount;
   FifStatus(AText);
   FifGridGrow;
-  if (FMatchForm <> nil) and not FFifListTaken then
+  if FFifRunning and (FMatchForm <> nil) and not FFifListTaken then
     FMatchForm.Caption := Format('Match list - %d в %d файлах (поиск...)',
                                  [FFifTotal, FFifFiles]);
   Application.ProcessMessages;
@@ -19114,7 +19159,7 @@ end;
 procedure TForm1.FifDlgClose(Sender: TObject; var Action: TCloseAction);
 begin
   Action := caHide;
-  if FFifRunning then
+  if FFifRunning or FFifListing then
     FFifAbort := True;
 end;
 
@@ -19159,7 +19204,7 @@ var
   Total, Files, FileIdx, DirIdx, SemiAt: Integer;
   Cancel: Boolean;
 begin
-  if FFifRunning then
+  if FFifRunning or FFifListing then
   begin
     FFifAbort := True;
     Exit;
@@ -19167,6 +19212,7 @@ begin
   if FFifDlg = nil then
     Exit;
   Dlg := TDlgFifDisk(FFifDlg);
+  FFifListAborted := False;
 
   Pattern := cmbFind.Text; // без Trim: образец - как введён
   if Pattern = '' then
@@ -19249,7 +19295,16 @@ begin
   try
     if FFifProject then
     begin
-      if not FifProjectFiles(List, Note) then
+      // Список, только что собранный для галок расширений (FifFillExts), -
+      // он же; иначе обход заново, с ходом в окне
+      if FFifProjCacheValid then
+      begin
+        List.Text := FFifProjCache;
+        Note := FFifProjCacheNote;
+        FFifProjCacheValid := False;
+        FFifProjCache := '';
+      end
+      else if not FifProjectFiles(List, Note) then
       begin
         FinalText := 'Проект не открыт';
         Exit;
@@ -19381,10 +19436,16 @@ procedure TForm1.FifProgress(const ADir: string; ACount: Integer;
 begin
   if FFifAbort then
     ACancel := True;
-  if ACancel or not FFifRunning then
+  if ACancel or not (FFifRunning or FFifListing) then
     Exit;
-  if not FifStep(FifPathLine('Папка: ', ADir) +
-                 #13#10'Найдено файлов по маскам: ' + IntToStr(ACount)) then
+  if FFifListing then
+  begin
+    if not FifStep(FifPathLine('Список файлов проекта: ', ADir) +
+                   #13#10'Файлов: ' + IntToStr(ACount) + ' (Стоп - прервать)') then
+      ACancel := True;
+  end
+  else if not FifStep(FifPathLine('Папка: ', ADir) +
+                      #13#10'Найдено файлов по маскам: ' + IntToStr(ACount)) then
     ACancel := True;
 end;
 
