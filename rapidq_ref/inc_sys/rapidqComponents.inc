@@ -11955,15 +11955,15 @@ CONST ERROR_READING_PORT              = "There was an error reading data from th
                                                     'for what codes mean
 
 'Converts GetLastError codes to string messages.
-'~dup Declare Function FormatMessage Lib "kernel32" Alias "FormatMessageA" _   ' повтор, первое: rapidq2.inc(1902)
-'~dup     (dwFlags AS DWORD, _                            '[IN] Specifies aspects of the formatting process and how to interpret lpSource
-'~dup     BYREF lpSource As LONG, _                       '[IN] Specifies the location of the message definition
-'~dup     dwMessageId AS DWORD, _                         '[IN] Specifies the message identifier for the requested message
-'~dup     dwLanguageId AS DWORD, _                        '[IN] Specifies the language identifier for the requested message
-'~dup     BYREF lpBuffer As STRING, _                     '[OUT] Pointer to a buffer for the formatted message
-'~dup     nSize AS DWORD, _                               '[IN] specifies the max number of characters that can be stored in the output buffer
-'~dup     BYREF Arguments As Long) _                      '[IN] Pointer to an array of values that are used as insert values in the formatted message
-'~dup       AS LONG                                       ''If function succeeds, returns non-zero. If function fails, returns 0. 
+Declare Function FormatMessage_COMPORTxp Lib "kernel32" Alias "FormatMessageA" _
+    (dwFlags AS DWORD, _                            '[IN] Specifies aspects of the formatting process and how to interpret lpSource
+    BYREF lpSource As LONG, _                       '[IN] Specifies the location of the message definition
+    dwMessageId AS DWORD, _                         '[IN] Specifies the message identifier for the requested message
+    dwLanguageId AS DWORD, _                        '[IN] Specifies the language identifier for the requested message
+    BYREF lpBuffer As STRING, _                     '[OUT] Pointer to a buffer for the formatted message
+    nSize AS DWORD, _                               '[IN] specifies the max number of characters that can be stored in the output buffer
+    BYREF Arguments As Long) _                      '[IN] Pointer to an array of values that are used as insert values in the formatted message
+      AS LONG                                       ''If function succeeds, returns non-zero. If function fails, returns 0. 
 
 'Win32 Communication Functions
 
@@ -12108,7 +12108,7 @@ TYPE MyCom_Port EXTENDS QObject
     lngArguments=0
     Buffer=SPACE$(1024)
     
-    lngRet=FormatMessage (FORMAT_MESSAGE_FROM_SYSTEM, _
+    lngRet=FormatMessage_COMPORTxp (FORMAT_MESSAGE_FROM_SYSTEM, _
                          lngSource, _
                          GetLastError, _
                          LANG_NEUTRAL, _
@@ -24234,7 +24234,7 @@ $IFNDEF boolean
 '~dup   $DEFINE boolean integer   ' повтор, первое: rapidq2.inc(2241)
 $ENDIF
 
-'~dup Declare Function ExtractAssociatedIcon Lib "shell32.dll" Alias "ExtractAssociatedIconA" (hInst As Long,ByRef lpIconPath As string ,byref lpiIcon As Long) As Long    ' повтор, первое: WIN32API.INC(14407)
+Declare Function ExtractAssociatedIcon_QICON Lib "shell32.dll" Alias "ExtractAssociatedIconA" (hInst As Long,ByRef lpIconPath As string ,byref lpiIcon As Long) As Long 
 '~dup Declare Function ExtractIcon Lib "shell32.dll" Alias "ExtractIconA" (hInst As Long,lpszExeFileName As String,nIconIndex As Long) As Long   ' повтор, первое: WIN32API.INC(14408)
 '~dup Declare Function DestroyIcon Lib "user32" Alias "DestroyIcon" (hIcon As Long) As Long   ' повтор, первое: QFormSkin.inc(215)
 Declare Function DrawIcon_QICON Lib "user32" Alias "DrawIconEx" (hdc As Long,xLeft As Long,yTop As Long,hIcon As Long,cxWidth As Long,cyWidth As Long,istepIfAniCur As Long,hbrFlickerFreeDraw As Long,diFlags As Long) As Long
@@ -24280,7 +24280,7 @@ Type QICON EXTENDS QOBJECT
         lpIcon=2
         Qicon.FileName=name
         Path=name
-        Qicon.handle=ExtractAssociatedIcon(application.handle,Path,lpIcon)
+        Qicon.handle=ExtractAssociatedIcon_QICON(application.handle,Path,lpIcon)
         if Qicon.handle>0 then Qicon.count=1
       else
         Qicon.count=ExtractIcon(application.handle,name,-1)
@@ -33610,8 +33610,8 @@ bErase AS long) AS long
 
 '~dup DECLARE FUNCTION SetWindowsHookEx LIB "user32" ALIAS "SetWindowsHookExA" (idHook AS long, lpFn AS long, _   ' повтор, первое: WIN32API.INC(15584)
 '~dup hmod AS long, dwThreadId AS dword) AS long
-'~dup DECLARE FUNCTION CallNextHookEx LIB "user32" ALIAS "CallNextHookEx" (hHook AS long, nCode AS long, _   ' повтор, первое: WIN32API.INC(7275)
-'~dup wParam AS long, lParam AS long) AS long
+DECLARE FUNCTION CallNextHookEx_RapidFRM LIB "user32" ALIAS "CallNextHookEx" (hHook AS long, nCode AS long, _
+wParam AS long, lParam AS long) AS long
 '~dup DECLARE FUNCTION UnhookWindowsHookEx LIB "user32" ALIAS "UnhookWindowsHookEx" (hHook AS long) AS long   ' повтор, первое: WIN32API.INC(7274)
 '~dup DECLARE FUNCTION GetCurrentThreadId LIB "kernel32" ALIAS "GetCurrentThreadId" () AS long   ' повтор, первое: Kernel32.inc(88)
 
@@ -33644,7 +33644,7 @@ IF idHook >= 0 THEN                                         ' If < 0 no processi
 	CASE 8: gMouseBtns=0
 	END SELECT
 END IF
-Result=CallNextHookEx(hHook, idHook, wParam, lParam)        ' Call the next hook
+Result=CallNextHookEx_RapidFRM(hHook, idHook, wParam, lParam)        ' Call the next hook
 END FUNCTION
 
 SUB HookTheMouse()

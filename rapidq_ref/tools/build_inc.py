@@ -536,8 +536,10 @@ SIMPLE_TYPES = {'BYTE', 'WORD', 'DWORD', 'SHORT', 'INTEGER', 'LONG', 'SINGLE', '
                 'STRING', 'ANY', 'VARIANT'}
 
 
-def lib_params(text):
-    """Типы параметров DECLARE ... LIB по порядку ('' - без AS)."""
+def lib_params(text, vbdll=False):
+    """Параметры DECLARE ... LIB по порядку: (тип, BYVAL/BYREF). Без
+    BYVAL/BYREF - BYVAL, а при $OPTION VBDLL ON (WIN32API.INC) - BYREF, как
+    у VB."""
     upper = strip_strings(text.upper())
     m = re.search(r'\bLIB\b.*?\(([^()]*(?:\([^()]*\)[^()]*)*)\)', upper)
     if not m or not m.group(1).strip():
@@ -545,17 +547,31 @@ def lib_params(text):
     result = []
     for part in split_top(m.group(1)):
         mm = re.search(r'\bAS\s+(\w+)', part)
-        result.append(mm.group(1) if mm else '')
+        if re.search(r'\bBYVAL\b', part):
+            mode = 'BYVAL'
+        elif re.search(r'\bBYREF\b', part):
+            mode = 'BYREF'
+        else:
+            mode = 'BYREF' if vbdll else 'BYVAL'
+        result.append((mm.group(1) if mm else '', mode))
     return result
 
 
 def lib_sig_conflict(first, other):
-    """Вызов, написанный под one, не годится для other: другое число
-    параметров или на месте записи (TYPE) - другой тип (QRECT и RECT)."""
+    """Вызов, написанный под одно объявление, не годится для другого: другое
+    число параметров, на месте записи (TYPE) - другой тип (QRECT и RECT) или
+    у числа/строки другая передача (BYVAL и BYREF: CallNextHookEx в
+    WIN32API.INC под $OPTION VBDLL ON - lParam As Any по ссылке, в
+    RapidFRM.inc - lParam AS long по значению)."""
     if len(first) != len(other):
         return True
-    for t1, t2 in zip(first, other):
-        if t1 != t2 and (t1 not in SIMPLE_TYPES or t2 not in SIMPLE_TYPES) and t1 and t2:
+    for (t1, m1), (t2, m2) in zip(first, other):
+        if not t1 or not t2:
+            continue
+        simple1, simple2 = t1 in SIMPLE_TYPES, t2 in SIMPLE_TYPES
+        if t1 != t2 and not (simple1 and simple2):
+            return True
+        if simple1 and simple2 and m1 != m2:
             return True
     return False
 
@@ -700,6 +716,13 @@ def lib_signature_renames(order, texts, rq2):
     display = collections.defaultdict(dict)
     for fname, lines, keep in order:
         act = ACTIVE.get(fname, set())
+        vb_lines, vb_on = set(), False
+        for num, line in enumerate(lines):
+            mm = re.match(r'\$option\s+vbdll\s+(on|off)\b', code_part(line), re.I)
+            if mm:
+                vb_on = mm.group(1).upper() == 'ON'
+            if vb_on:
+                vb_lines.add(num)
         for unit in split_units(lines):
             if unit.key != 'D' or not unit.names or (keep is not None and not keep(unit.first)):
                 continue
@@ -708,7 +731,7 @@ def lib_signature_renames(order, texts, rq2):
             if not re.search(r'\bLIB\b', unit.text):
                 continue
             name = unit.names[0]
-            sig = lib_params(unit.text)
+            sig = lib_params(unit.text, unit.first in vb_lines)
             if name not in first:
                 first[name] = (fname, sig)
             elif first[name][0] != fname and lib_sig_conflict(first[name][1], sig):

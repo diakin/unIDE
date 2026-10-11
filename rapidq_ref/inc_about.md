@@ -158,7 +158,14 @@ CHOOSECOLOR, NM_LISTVIEW, WINDOWPLACEMENT, LOGFONT и др. Программе, 
 писала под WIN32API.INC или WINDOWS.INC, в таких местах может понадобиться
 `Имя_WIN32API`.
 
-**DECLARE … LIB.**
+**DECLARE … LIB.** Параметры сравниваются по числу, по типу записи и по
+передаче: параметр без BYVAL/BYREF у RapidQ передаётся по значению, а под
+`$OPTION VBDLL ON` (WIN32API.INC) — по ссылке, как у VB. Пример:
+CallNextHookEx в WIN32API.INC — `lParam As Any` по ссылке, в RapidFRM.inc —
+`lParam AS long` по значению; с объявлением WIN32API.INC rc.exe выдал
+«Unknown identifier LPARAM» на вызове с параметром функции. В RapidFRM.inc
+теперь CallNextHookEx_RapidFRM.
+
 
 Одна и та же функция Windows в разных файлах объявлена с разными параметрами.
 Например, `GetClientRect`:

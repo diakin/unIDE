@@ -13023,28 +13023,28 @@ end sub
 
 
 '*****************************************
-'~dup Declare Function MultiByteToWideChar Lib "kernel32" alias "MultiByteToWideChar" _   ' повтор, первое: conversion.inc(75)
-'~dup ( CodePage As Long,  dwFlags As Long, _
-'~dup lpMultiByteStr As string,  cchMultiByte As Long, _
-'~dup byref  lpWideCharStr As Long, _
-'~dup cchWideChar As Long) As Long
+Declare Function MultiByteToWideChar_conversionOld Lib "kernel32" alias "MultiByteToWideChar" _
+( CodePage As Long,  dwFlags As Long, _
+lpMultiByteStr As string,  cchMultiByte As Long, _
+byref  lpWideCharStr As Long, _
+cchWideChar As Long) As Long
 
-'~dup Declare Function WideCharToMultiByte Lib "kernel32" alias "WideCharToMultiByte" _   ' повтор, первое: conversion.inc(81)
-'~dup ( CodePage As Long,  dwFlags As Long, _
-'~dup byref  lpWideCharStr As Long,  cchWideChar As Long, byref  lpMultiByteStr As string, _
-'~dup cchMultiByte As Long,  lpDefaultChar As long,  lpUsedDefaultChar As Long) As Long
+Declare Function WideCharToMultiByte_conversionOld Lib "kernel32" alias "WideCharToMultiByte" _
+( CodePage As Long,  dwFlags As Long, _
+byref  lpWideCharStr As Long,  cchWideChar As Long, byref  lpMultiByteStr As string, _
+cchMultiByte As Long,  lpDefaultChar As long,  lpUsedDefaultChar As Long) As Long
 
 '*****************************************
-'~dup Declare Function MultiByteToWideChar1 Lib "kernel32" alias "MultiByteToWideChar" _   ' повтор, первое: conversion.inc(87)
-'~dup ( CodePage As Long,  dwFlags As Long, _
-'~dup lpMultiByteStr As string,  cchMultiByte As Long, _
-'~dup byref  lpWideCharStr As Long, _
-'~dup cchWideChar As Long) As Long
+Declare Function MultiByteToWideChar1_conversionOld Lib "kernel32" alias "MultiByteToWideChar" _
+( CodePage As Long,  dwFlags As Long, _
+lpMultiByteStr As string,  cchMultiByte As Long, _
+byref  lpWideCharStr As Long, _
+cchWideChar As Long) As Long
 
-'~dup Declare Function WideCharToMultiByte1 Lib "kernel32" alias "WideCharToMultiByte" _   ' повтор, первое: conversion.inc(93)
-'~dup ( CodePage As Long,  dwFlags As Long, _
-'~dup byref  lpWideCharStr As long,  cchWideChar As Long,byref  lpMultiByteStr As string, _
-'~dup cchMultiByte As Long,  lpDefaultChar As long,  lpUsedDefaultChar As Long) As Long
+Declare Function WideCharToMultiByte1_conversionOld Lib "kernel32" alias "WideCharToMultiByte" _
+( CodePage As Long,  dwFlags As Long, _
+byref  lpWideCharStr As long,  cchWideChar As Long,byref  lpMultiByteStr As string, _
+cchMultiByte As Long,  lpDefaultChar As long,  lpUsedDefaultChar As Long) As Long
 
 
 
@@ -14124,11 +14124,11 @@ End Function
 '~dup ptrstr1&=varptr(str1)
 '~dup ptrstr2&=varptr(str2)
 '~dup 
-'~dup RetStrLong = MultiByteToWideChar(inPage, 0, tmp, LenSourseString, 0&, 0)
+'~dup RetStrLong = MultiByteToWideChar_conversionOld(inPage, 0, tmp, LenSourseString, 0&, 0)
 '~dup print"RetStrLong=";RetStrLong
-'~dup RetStrLong = MultiByteToWideChar(inPage, 0, tmp,LenSourseString , ptrstr1&, RetStrLong)
+'~dup RetStrLong = MultiByteToWideChar_conversionOld(inPage, 0, tmp,LenSourseString , ptrstr1&, RetStrLong)
 '~dup print"RetStrLong=";RetStrLong
-'~dup RetStrLong2 = WideCharToMultiByte(outPage, 0, ptrstr1&, RetStrLong, str2, LenSourseString * 2, ByVal 0&, 0) ' str2
+'~dup RetStrLong2 = WideCharToMultiByte_conversionOld(outPage, 0, ptrstr1&, RetStrLong, str2, LenSourseString * 2, ByVal 0&, 0) ' str2
 '~dup print"RetStrLong2=";RetStrLong2
 '~dup 
 '~dup RQConvertCodePage = Left$(str2, RetStrLong2)
@@ -14162,11 +14162,11 @@ End Function
 '~dup ptrstr1&=varptr(str1)
 '~dup ptrstr2&=varptr(str2)
 '~dup 
-'~dup RetStrLong = MultiByteToWideChar(inPage, 0, tmp, LenSourseString, 0&, 0)
+'~dup RetStrLong = MultiByteToWideChar_conversionOld(inPage, 0, tmp, LenSourseString, 0&, 0)
 '~dup print"RetStrLong=";RetStrLong
-'~dup RetStrLong = MultiByteToWideChar(inPage, 0, tmp, LenSourseString, ptrstr1&, RetStrLong) ' LenSourseString*2)
+'~dup RetStrLong = MultiByteToWideChar_conversionOld(inPage, 0, tmp, LenSourseString, ptrstr1&, RetStrLong) ' LenSourseString*2)
 '~dup print"RetStrLong=";RetStrLong
-'~dup RetStrLong2 = WideCharToMultiByte(outPage, 0, ptrstr1&, RetStrLong, str2, LenSourseString * 2, 0&, 0) ' str2
+'~dup RetStrLong2 = WideCharToMultiByte_conversionOld(outPage, 0, ptrstr1&, RetStrLong, str2, LenSourseString * 2, 0&, 0) ' str2
 '~dup print"RetStrLong2=";RetStrLong2
 '~dup 
 '~dup RQConvertCodePage = Left$(str2, RetStrLong2)
@@ -14844,8 +14844,8 @@ const ES_MULTILINE = &H4
 DECLARE FUNCTION GetModuleHandle LIB "KERNEL32" ALIAS "GetModuleHandleA" _
 (ModuleName AS STRING) AS LONG
 
-'~dup DECLARE FUNCTION SetWindowText LIB "USER32" ALIAS "SetWindowTextA" _   ' повтор, первое: rapidq2.inc(1013)
-'~dup (Hwnd AS INTEGER, Text AS STRING) AS LONG
+DECLARE FUNCTION SetWindowText_createWind LIB "USER32" ALIAS "SetWindowTextA" _
+(Hwnd AS INTEGER, Text AS STRING) AS LONG
 
 DECLARE SUB FormWndProc (Handle AS INTEGER, uMsg AS LONG, wParam AS LONG,lParam AS LONG)
 
@@ -21036,8 +21036,8 @@ DECLARE FUNCTION CreateFile_MDI_API LIB "Kernel32" ALIAS "CreateFileA" _
 '~dup                  (hwnd AS LONG, x AS LONG, y AS LONG, nWidth AS LONG, nHeight AS LONG, bRepaint AS LONG) AS LONG
 DECLARE FUNCTION SetWindowLong1 LIB "User32" ALIAS "SetWindowLongA" _
                  (hwnd AS LONG, nIndex AS LONG, dwNewLong AS LONG) AS LONG
-'~dup DECLARE FUNCTION GetWindowText LIB "User32" ALIAS "GetWindowTextA" _   ' повтор, первое: rapidq2.inc(997)
-'~dup                  (hwnd AS LONG, lpString AS STRING, cch AS LONG) AS LONG
+DECLARE FUNCTION GetWindowText_MDI_API LIB "User32" ALIAS "GetWindowTextA" _
+                 (hwnd AS LONG, lpString AS STRING, cch AS LONG) AS LONG
 '~dup DECLARE FUNCTION SetFocus LIB "User32" ALIAS "SetFocus" _   ' повтор, первое: rapidq2.inc(1010)
 '~dup                  (hwnd AS LONG) AS LONG
 'DECLARE FUNCTION CloseHandle LIB "Kernel32" ALIAS "CloseHandle" (hObject AS LONG) AS LONG
@@ -29863,9 +29863,9 @@ print "inc dir   C:\BAS\RAPIDQ\inc\TestIncPAth.inc"
 
 'GetWindowText()
 
-'~dup 	Declare Function GetWindowText Lib "user32.dll" Alias_   ' повтор, первое: rapidq2.inc(997)
-'~dup 	 "GetWindowTextA" (hWnd As Long, lpString As String,_
-'~dup 	 nMaxCount As Long) As Long
+	Declare Function GetWindowText_User32 Lib "user32.dll" Alias_
+	 "GetWindowTextA" (hWnd As Long, lpString As String,_
+	 nMaxCount As Long) As Long
 
 
 'GetWindowTextLength()
@@ -33086,7 +33086,7 @@ Declare Function GetFileType Lib "kernel32" Alias "GetFileType" (ByVal hFile As 
 Declare Function GetFileSize Lib "kernel32" Alias "GetFileSize" (ByVal hFile As Long, lpFileSizeHigh As Long) As Long
 Declare Function GetStdHandle Lib "kernel32" Alias "GetStdHandle" (ByVal nStdHandle As Long) As Long
 Declare Function SetStdHandle Lib "kernel32" Alias "SetStdHandle" (ByVal nStdHandle As Long, ByVal nHandle As Long) As Long
-'~dup Declare Function WriteFile Lib "kernel32" Alias "WriteFile" (ByVal hFile As Long, lpBuffer As Any, ByVal nNumberOfBytesToWrite As Long, lpNumberOfBytesWritten As Long, lpOverlapped As OVERLAPPED) As Long   ' повтор, первое: rapidq2.inc(1989)
+Declare Function WriteFile_WIN32API Lib "kernel32" Alias "WriteFile" (ByVal hFile As Long, lpBuffer As Any, ByVal nNumberOfBytesToWrite As Long, lpNumberOfBytesWritten As Long, lpOverlapped As OVERLAPPED) As Long
 '~dup Declare Function ReadFile Lib "kernel32" Alias "ReadFile" (ByVal hFile As Long, lpBuffer As Any, ByVal nNumberOfBytesToRead As Long, lpNumberOfBytesRead As Long, lpOverlapped As OVERLAPPED) As Long   ' повтор, первое: rapidq2.inc(2019)
 Declare Function FlushFileBuffers Lib "kernel32" Alias "FlushFileBuffers" (ByVal hFile As Long) As Long
 Declare Function DeviceIoControl Lib "kernel32" Alias "DeviceIoControl" (ByVal hDevice As Long, ByVal dwIoControlCode As Long, lpInBuffer As Any, ByVal nInBufferSize As Long, lpOutBuffer As Any, ByVal nOutBufferSize As Long, lpBytesReturned As Long, lpOverlapped As OVERLAPPED) As Long
@@ -33145,9 +33145,9 @@ Declare Function VirtualQueryEx Lib "kernel32" Alias "VirtualQueryEx" (ByVal hPr
 '~dup Declare Function HeapCreate Lib "kernel32" Alias "HeapCreate" (ByVal flOptions As Long, ByVal dwInitialSize As Long, ByVal dwMaximumSize As Long) As Long   ' повтор, первое: Memory.inc(19)
 '~dup Declare Function HeapDestroy Lib "kernel32" Alias "HeapDestroy" (ByVal hHeap As Long) As Long   ' повтор, первое: Memory.inc(20)
 '~dup Declare Function HeapAlloc Lib "kernel32" Alias "HeapAlloc" (ByVal hHeap As Long, ByVal dwFlags As Long, ByVal dwBytes As Long) As Long   ' повтор, первое: Memory.inc(21)
-'~dup Declare Function HeapReAlloc Lib "kernel32" Alias "HeapReAlloc" (ByVal hHeap As Long, ByVal dwFlags As Long, lpMem As Any, ByVal dwBytes As Long) As Long   ' повтор, первое: Memory.inc(22)
-'~dup Declare Function HeapFree Lib "kernel32" Alias "HeapFree" (ByVal hHeap As Long, ByVal dwFlags As Long, lpMem As Any) As Long   ' повтор, первое: Memory.inc(23)
-'~dup Declare Function HeapSize Lib "kernel32" Alias "HeapSize" (ByVal hHeap As Long, ByVal dwFlags As Long, lpMem As Any) As Long   ' повтор, первое: Memory.inc(24)
+Declare Function HeapReAlloc_WIN32API Lib "kernel32" Alias "HeapReAlloc" (ByVal hHeap As Long, ByVal dwFlags As Long, lpMem As Any, ByVal dwBytes As Long) As Long
+Declare Function HeapFree_WIN32API Lib "kernel32" Alias "HeapFree" (ByVal hHeap As Long, ByVal dwFlags As Long, lpMem As Any) As Long
+Declare Function HeapSize_WIN32API Lib "kernel32" Alias "HeapSize" (ByVal hHeap As Long, ByVal dwFlags As Long, lpMem As Any) As Long
 '~dup Declare Function GetProcessHeap Lib "kernel32" Alias "GetProcessHeap" () As Long   ' повтор, первое: Kernel32.inc(126)
 Declare Function GetProcessTimes Lib "kernel32" Alias "GetProcessTimes" (ByVal hProcess As Long, lpCreationTime As FILETIME, lpExitTime As FILETIME, lpKernelTime As FILETIME, lpUserTime As FILETIME) As Long
 '~dup Declare Function OpenProcess Lib "kernel32" Alias "OpenProcess" (ByVal dwDesiredAccess As Long, ByVal bInheritHandle As Long, ByVal dwProcessId As Long) As Long   ' повтор, первое: RQProcess.inc(66)
@@ -33155,7 +33155,7 @@ Declare Function GetProcessTimes Lib "kernel32" Alias "GetProcessTimes" (ByVal h
 '~dup Declare Function GetCurrentProcessId Lib "kernel32" Alias "GetCurrentProcessId" () As Long   ' повтор, первое: Kernel32.inc(76)
 '~dup Declare Sub ExitProcess Lib "kernel32" Alias "ExitProcess" (ByVal uExitCode As Long)   ' повтор, первое: Kernel32.inc, поднято(35)
 '~dup Declare Function TerminateProcess Lib "kernel32" Alias "TerminateProcess" (ByVal hProcess As Long, ByVal uExitCode As Long) As Long   ' повтор, первое: RQProcess.inc(74)
-'~dup Declare Function GetExitCodeProcess Lib "kernel32" Alias "GetExitCodeProcess" (ByVal hProcess As Long, lpExitCode As Long) As Long   ' повтор, первое: RQProcess.inc(79)
+Declare Function GetExitCodeProcess_WIN32API Lib "kernel32" Alias "GetExitCodeProcess" (ByVal hProcess As Long, lpExitCode As Long) As Long
 
 '~dup Declare Function GetLastError Lib "kernel32" Alias "GetLastError" () As Long   ' повтор, первое: rapidq2.inc(1894)
 '~dup Declare Sub SetLastError Lib "kernel32" Alias "SetLastError" (ByVal dwErrCode As Long)   ' повтор, первое: rapidq2.inc(1887)
@@ -33242,7 +33242,7 @@ Declare Function GetSystemDirectory Lib "kernel32" Alias "GetSystemDirectoryA" (
 '~dup Declare Function GetTempPath Lib "kernel32" Alias "GetTempPathA" (ByVal nBufferLength As Long, ByVal lpBuffer As String) As Long   ' повтор, первое: Kernel32.inc, поднято(148)
 Declare Function SetCurrentDirectory Lib "kernel32" Alias "SetCurrentDirectoryA" (ByVal lpPathName As String) As Long
 Declare Function GetCurrentDirectory Lib "kernel32" Alias "GetCurrentDirectory" (ByVal nBufferLength As Long, ByVal lpBuffer As String) As Long
-'~dup Declare Function GetDiskFreeSpace Lib "kernel32" Alias "GetDiskFreeSpaceA" (ByVal lpRootPathName As String, lpSectorsPerCluster As Long, lpBytesPerSector As Long, lpNumberOfFreeClusters As Long, lpTtoalNumberOfClusters As Long) As Long   ' повтор, первое: Kernel32.inc, поднято(94)
+Declare Function GetDiskFreeSpace_WIN32API Lib "kernel32" Alias "GetDiskFreeSpaceA" (ByVal lpRootPathName As String, lpSectorsPerCluster As Long, lpBytesPerSector As Long, lpNumberOfFreeClusters As Long, lpTtoalNumberOfClusters As Long) As Long
 '~dup Declare Function CreateDirectory Lib "kernel32" Alias "CreateDirectoryA" (ByVal lpPathName As String, lpSecurityAttributes As SECURITY_ATTRIBUTES) As Long   ' повтор, первое: Files.inc(34)
 Declare Function CreateDirectoryEx Lib "kernel32" Alias "CreateDirectoryExA" (ByVal lpTemplateDirectory As String, ByVal lpNewDirectory As String, lpSecurityAttributes As SECURITY_ATTRIBUTES) As Long
 Declare Function RemoveDirectory Lib "kernel32" Alias "RemoveDirectoryA" (ByVal lpPathName As String) As Long
@@ -33338,7 +33338,7 @@ Type TOKEN_PRIVILEGES_WIN32API
         Privileges(ANYSIZE_ARRAY) As LUID_AND_ATTRIBUTES_WIN32API
 End Type
 
-'~dup Declare Function OpenProcessToken Lib "advapi32.dll" Alias "OpenProcessToken" (ByVal ProcessHandle As Long, ByVal DesiredAccess As Long, TokenHandle As Long) As Long   ' повтор, первое: rapidq2.inc(2197)
+Declare Function OpenProcessToken_WIN32API Lib "advapi32.dll" Alias "OpenProcessToken" (ByVal ProcessHandle As Long, ByVal DesiredAccess As Long, TokenHandle As Long) As Long
 Declare Function OpenThreadToken Lib "advapi32.dll" Alias "OpenThreadToken" (ByVal ThreadHandle As Long, ByVal DesiredAccess As Long, ByVal OpenAsSelf As Long, TokenHandle As Long) As Long
 
 Declare Function GetTokenInformation Lib "advapi32.dll" Alias "GetTokenInformation" (ByVal TokenHandle As Long, TokenInformationClass As Integer, TokenInformation As Any, ByVal TokenInformationLength As Long, ReturnLength As Long) As Long
@@ -33497,7 +33497,7 @@ Declare Function CompareFileTime Lib "kernel32" Alias "CompareFileTime" (lpFileT
 Declare Function FileTimeToDosDateTime Lib "kernel32" Alias "FileTimeToDosDateTime" (lpFileTime As FILETIME, ByVal lpFatDate As Long, ByVal lpFatTime As Long) As Long
 Declare Function DosDateTimeToFileTime Lib "kernel32" Alias "DosDateTimeToFileTime" (ByVal wFatDate As Long, ByVal wFatTime As Long, lpFileTime As FILETIME) As Long
 '~dup Declare Function GetTickCount Lib "kernel32" Alias "GetTickCount" () As Long   ' повтор, первое: Kernel32.inc(159)
-'~dup Declare Function FormatMessage Lib "kernel32" Alias "FormatMessageA" (ByVal dwFlags As Long, lpSource As Any, ByVal dwMessageId As Long, ByVal dwLanguageId As Long, ByVal lpBuffer As String, ByVal nSize As Long, Arguments As Long) As Long   ' повтор, первое: rapidq2.inc(1902)
+Declare Function FormatMessage_WIN32API Lib "kernel32" Alias "FormatMessageA" (ByVal dwFlags As Long, lpSource As Any, ByVal dwMessageId As Long, ByVal dwLanguageId As Long, ByVal lpBuffer As String, ByVal nSize As Long, Arguments As Long) As Long
 
 '~dup Public Const FORMAT_MESSAGE_ALLOCATE_BUFFER = &H100   ' повтор, первое: rapidq2.inc(1870)
 Public Const FORMAT_MESSAGE_IGNORE_INSERTS = &H200
@@ -33607,9 +33607,9 @@ Declare Function LookupPrivilegeName Lib "advapi32.dll" Alias "LookupPrivilegeNa
 Declare Function LookupPrivilegeDisplayName Lib "advapi32.dll" Alias "LookupPrivilegeDisplayNameA" (ByVal lpSystemName As String, ByVal lpName As String, ByVal lpDisplayName As String, cbDisplayName As Long, lpLanguageID As Long) As Long
 Declare Function AllocateLocallyUniqueId Lib "advapi32.dll" Alias "AllocateLocallyUniqueId" (Luid As LARGE_INTEGER) As Long
 
-'~dup Declare Function GetComputerName Lib "kernel32" Alias "GetComputerNameA" (ByVal lpBuffer As String, nSize As Long) As Long   ' повтор, первое: Kernel32.inc, поднято(52)
+Declare Function GetComputerName_WIN32API Lib "kernel32" Alias "GetComputerNameA" (ByVal lpBuffer As String, nSize As Long) As Long
 Declare Function SetComputerName Lib "kernel32" Alias "SetComputerNameA" (ByVal lpComputerName As String) As Long
-'~dup Declare Function GetUserName Lib "advapi32.dll" Alias "GetUserNameA" (ByVal lpBuffer As String, nSize As Long) As Long   ' повтор, первое: AdvAPI32.inc(14)
+Declare Function GetUserName_WIN32API Lib "advapi32.dll" Alias "GetUserNameA" (ByVal lpBuffer As String, nSize As Long) As Long
 
 ' Performance counter API's
 Declare Function QueryPerformanceCounter_WIN32API Lib "kernel32" Alias "QueryPerformanceCounter" (lpPerformanceCount As LARGE_INTEGER) As Long
@@ -37898,7 +37898,7 @@ Declare Function GetClassInfo Lib "user32" Alias "GetClassInfoA" (ByVal hInstanc
 '~dup Public Const CW_USEDEFAULT = &H80000000   ' повтор, первое: MDI_API.INC(65)
 '~dup Public Const HWND_DESKTOP = 0   ' повтор, первое: rapidq2.inc(783)
 
-'~dup Declare Function CreateWindowEx Lib "user32" Alias "CreateWindowExA" (ByVal dwExStyle As Long, ByVal lpClassName As String, ByVal lpWindowName As String, ByVal dwStyle As Long, ByVal x As Long, ByVal y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal hWndParent As Long, ByVal hMenu As Long, ByVal hInstance As Long, lpParam As Any) As Long   ' повтор, первое: rapidq2.inc(987)
+Declare Function CreateWindowEx_WIN32API Lib "user32" Alias "CreateWindowExA" (ByVal dwExStyle As Long, ByVal lpClassName As String, ByVal lpWindowName As String, ByVal dwStyle As Long, ByVal x As Long, ByVal y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal hWndParent As Long, ByVal hMenu As Long, ByVal hInstance As Long, lpParam As Any) As Long
 Declare Function IsWindow Lib "user32" Alias "IsWindow" (ByVal hwnd As Long) As Long
 Declare Function IsMenu Lib "user32" Alias "IsMenu" (ByVal hMenu As Long) As Long
 Declare Function IsChild Lib "user32" Alias "IsChild" (ByVal hWndParent As Long, ByVal hwnd As Long) As Long
@@ -38299,8 +38299,8 @@ Public Const ESB_DISABLE_RTDN = ESB_DISABLE_RIGHT
 '~dup Declare Function GetProp Lib "user32" Alias "GetPropA" (ByVal hwnd As Long, ByVal lpString As String) As Long   ' повтор, первое: rapidq2.inc(991)
 '~dup Declare Function RemoveProp Lib "user32" Alias "RemovePropA" (ByVal hwnd As Long, ByVal lpString As String) As Long   ' повтор, первое: rapidq2.inc(1006)
 
-'~dup Declare Function SetWindowText Lib "user32" Alias "SetWindowTextA" (ByVal hwnd As Long, ByVal lpString As String) As Long   ' повтор, первое: rapidq2.inc(1013)
-'~dup Declare Function GetWindowText Lib "user32" Alias "GetWindowTextA" (ByVal hwnd As Long, ByVal lpString As String, ByVal cch As Long) As Long   ' повтор, первое: rapidq2.inc(997)
+Declare Function SetWindowText_WIN32API Lib "user32" Alias "SetWindowTextA" (ByVal hwnd As Long, ByVal lpString As String) As Long
+Declare Function GetWindowText_WIN32API Lib "user32" Alias "GetWindowTextA" (ByVal hwnd As Long, ByVal lpString As String, ByVal cch As Long) As Long
 '~dup Declare Function GetWindowTextLength Lib "user32" Alias "GetWindowTextLengthA" (ByVal hwnd As Long) As Long   ' повтор, первое: rapidq2.inc(998)
 
 Declare Function GetClientRect_WIN32API Lib "user32" Alias "GetClientRect" (ByVal hwnd As Long, lpRect As RECT) As Long
@@ -45679,7 +45679,7 @@ Declare Function FindEnvironmentString Lib "shell32.dll" Alias "FindEnvironmentS
 
 Public Const EIRESID = -1
 
-'~dup Declare Function ExtractIconEx Lib "shell32.dll" Alias "ExtractIconExA" (ByVal lpszFile As String, ByVal nIconIndex As Long, phiconLarge As Long, phiconSmall As Long, ByVal nIcons As Long) As Long   ' повтор, первое: QFormSkin.inc(196)
+Declare Function ExtractIconEx_WIN32API Lib "shell32.dll" Alias "ExtractIconExA" (ByVal lpszFile As String, ByVal nIconIndex As Long, phiconLarge As Long, phiconSmall As Long, ByVal nIcons As Long) As Long
 
 ' // Shell File Operations
 
