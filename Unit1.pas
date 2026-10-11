@@ -467,6 +467,9 @@ type
     KeepFirst: Boolean;     // начало первой строки левее правки
   end;
 
+  // Что создаёт DelphiNewModule (File - New - Pascal)
+  TDelphiNewKind = (dnkForm, dnkUnit, dnkDataModule, dnkFrame);
+
   TForm1 = class(TForm)
     RichEdit1: TRichEdit;
     MainMenu1: TMainMenu;
@@ -716,6 +719,15 @@ type
     mNewItem4: TMenuItem;
     mNewItem5: TMenuItem;
     mNewItem6: TMenuItem;
+    mNewPasApp: TMenuItem;
+    mNewPasForm: TMenuItem;
+    mNewPasUnit: TMenuItem;
+    mNewPasDataMod: TMenuItem;
+    mNewPasFrame: TMenuItem;
+    mNewPasDll: TMenuItem;
+    mNewPasConsole: TMenuItem;
+    mNewPasSep: TMenuItem;
+    mNewPasOther: TMenuItem;
     FDsgMenu: TUiPopupMenu; // меню конструктора по правому щелчку
     FDsgMenuGrp1: TMenuItem;
     FDsgMiUndo: TMenuItem;
@@ -896,6 +908,16 @@ type
     procedure UndoMultiReplace;
     procedure NotDoneClick(Sender: TObject);
     procedure NewFormClick(Sender: TObject);
+    procedure DelphiNewModule(AKind: TDelphiNewKind; Sender: TObject);
+    procedure NewPasUnitWindow;
+    procedure NewPasAppClick(Sender: TObject);
+    procedure NewPasFormClick(Sender: TObject);
+    procedure NewPasUnitClick(Sender: TObject);
+    procedure NewPasDataModuleClick(Sender: TObject);
+    procedure NewPasFrameClick(Sender: TObject);
+    procedure NewPasDllClick(Sender: TObject);
+    procedure NewPasConsoleClick(Sender: TObject);
+    procedure NewPasOtherClick(Sender: TObject);
     procedure ProgramResetClick(Sender: TObject);
     procedure ArdVerifyClick(Sender: TObject);
     procedure ArdUploadClick(Sender: TObject);
@@ -1894,6 +1916,9 @@ type
     // Главный файл выбранного готового проекта (.dpr, .lpr, .ino ...) -
     // цель сборки нового описания
     FNewPrjMain: string;
+    // Заготовка Delphi для следующего New Project из File - New - Pascal:
+    // 0 - обычный вызов, 1 - Application, 2 - DLL, 3 - Console Application
+    FNewDelphiKind: Integer;
     // Ряд кнопок как в Delphi, справа от Compile & Run
 
     // Единый обработчик кликов для кнопок тулбара
@@ -10027,6 +10052,7 @@ var
   Prj: TProjectIni;
   ExMain: string;     // его главный файл, '' - не найден
   SL: TStringList;
+  DelphiKind: Integer; // FNewDelphiKind этого вызова
 
   // Есть ли в папке хоть один .pas. Расширение сверяется ещё раз: маска
   // *.pas по коротким именам находит и file.pas~ (FILE~1.PAS).
@@ -10052,6 +10078,11 @@ var
 
 begin
   // Несохранённый текст во всех окнах - новый проект их закроет
+  // Пункт File - New - Pascal: тип Delphi и вид заготовки. Флаг
+  // сбрасывается сразу - ни один выход ниже не оставит его следующему вызову.
+  DelphiKind := FNewDelphiKind;
+  FNewDelphiKind := 0;
+
   if not ConfirmSaveAll then
     Exit;
 
@@ -10089,6 +10120,18 @@ begin
     // Папка inc нового проекта RapidQ - по умолчанию системные (новые)
     RapidQIncSettings('', IncSysDir, IncUserDir, IncMode, IncOwnDir);
     Dlg.SetRqInc(IncSysDir, IncUserDir, 'sys', '');
+    if DelphiKind > 0 then
+    begin
+      if cbType.Items.IndexOf('Delphi') >= 0 then
+        cbType.ItemIndex := cbType.Items.IndexOf('Delphi');
+      case DelphiKind of
+        2: Dlg.Caption := 'New Project - DLL';
+        3: Dlg.Caption := 'New Project - Console Application';
+      else
+        Dlg.Caption := 'New Project - Application';
+      end;
+      Dlg.cbTypeChange(cbType);
+    end;
 
     // Кнопка выбора папки закрывает окно с mrRetry, папка выбирается
     // системным диалогом, и окно открывается заново с новым путём
@@ -10216,7 +10259,53 @@ begin
 
     // ЗАГОТОВКА ДЛЯ DELPHI: проект, модуль и пустая форма. Готовому
     // проекту она не нужна - его файлы уже на месте.
-    if (CompareText(Tp, 'Delphi') = 0) and not OnBase and not Existing then
+    // Библиотека и консольная программа - только .dpr (и .res у библиотеки),
+    // тем же текстом, что у Delphi 7
+    if (CompareText(Tp, 'Delphi') = 0) and not OnBase and not Existing and
+       (DelphiKind = 2) then
+    begin
+      SL.Clear;
+      SL.Add('library ' + Nm + ';');
+      SL.Add('');
+      SL.Add('{ Important note about DLL memory management: ShareMem must be the');
+      SL.Add('  first unit in your library''s USES clause AND your project''s (select');
+      SL.Add('  Project-View Source) USES clause if your DLL exports any procedures or');
+      SL.Add('  functions that pass strings as parameters or function results. This');
+      SL.Add('  applies to all strings passed to and from your DLL--even those that');
+      SL.Add('  are nested in records and classes. ShareMem is the interface unit to');
+      SL.Add('  the BORLNDMM.DLL shared memory manager, which must be deployed along');
+      SL.Add('  with your DLL. To avoid using BORLNDMM.DLL, pass string information');
+      SL.Add('  using PChar or ShortString parameters. }');
+      SL.Add('');
+      SL.Add('uses');
+      SL.Add('  SysUtils,');
+      SL.Add('  Classes;');
+      SL.Add('');
+      SL.Add('{$R *.res}');
+      SL.Add('');
+      SL.Add('begin');
+      SL.Add('end.');
+      SL.SaveToFile(Dir + Nm + '.dpr');
+      if not WriteEmptyRes(Dir + Nm + '.res') then
+        ShowMessage('6302:Не удалось создать ' + Nm + '.res');
+    end
+    else if (CompareText(Tp, 'Delphi') = 0) and not OnBase and not Existing and
+            (DelphiKind = 3) then
+    begin
+      SL.Clear;
+      SL.Add('program ' + Nm + ';');
+      SL.Add('');
+      SL.Add('{$APPTYPE CONSOLE}');
+      SL.Add('');
+      SL.Add('uses');
+      SL.Add('  SysUtils;');
+      SL.Add('');
+      SL.Add('begin');
+      SL.Add('  { TODO -oUser -cConsole Main : Insert code here }');
+      SL.Add('end.');
+      SL.SaveToFile(Dir + Nm + '.dpr');
+    end
+    else if (CompareText(Tp, 'Delphi') = 0) and not OnBase and not Existing then
     begin
       SL.Clear;
       SL.Add('program ' + Nm + ';');
@@ -10528,6 +10617,10 @@ begin
     else if (CompareText(Tp, 'Delphi') = 0) and
             FileExists(Dir + 'Unit1.pas') then
       OpenNamedFile(Dir + 'Unit1.pas')
+    else if (CompareText(Tp, 'Delphi') = 0) and
+            FileExists(Dir + Nm + '.dpr') then
+      // DLL и консольная программа - без модуля, весь код в .dpr
+      OpenNamedFile(Dir + Nm + '.dpr')
     else if (CompareText(Tp, 'Lazarus') = 0) and
             FileExists(Dir + 'unit1.pas') then
       OpenNamedFile(Dir + 'unit1.pas')
@@ -51829,66 +51922,119 @@ begin
 end;
 
 // New Form - новый модуль с пустой формой в проекте, как File -> New ->
-// Form в Delphi 7:
-//   - UnitN.pas и UnitN.dfm - в папку .dpr. N - первый свободный номер с 2:
-//     нет файлов UnitN и в .dpr нет слов UnitN и FormN;
-//   - в uses .dpr - "UnitN in 'UnitN.pas' {FormN}", после последнего
-//     Application.CreateForm - создание новой формы (автосоздание, как в
-//     Delphi по умолчанию);
-//   - модуль открывается во вкладке, форма - в конструкторе.
-// .dpr с несохранёнными правками во вкладке не трогаем: запись на диск
-// разошлась бы с ними.
+// Form в Delphi 7. Во вкладке файла RapidQ - форма RapidQ (блок CREATE);
+// пункт File - New - Pascal - Form всегда добавляет форму Delphi.
 procedure TForm1.NewFormClick(Sender: TObject);
-var
-  Dpr, DprDir, DprLow, UnitNm, FormNm, PasFile, DfmFile, Line: string;
-  DprText, NewText: TStringList;
-  Num, LineIdx, UsesEnd, CreateLast, RunLine, WinIdx: Integer;
-  DprMod: Boolean;
 begin
-  // Файл RapidQ - новая форма блоком CREATE в нём же
-  if (FCurrentFileName <> '') and IncludesApply then
+  if (Sender <> mNewPasForm) and (FCurrentFileName <> '') and
+     IncludesApply then
   begin
     RqNewForm;
     Exit;
   end;
+  DelphiNewModule(dnkForm, Sender);
+end;
+
+// Новый модуль в проекте Delphi, как File -> New в Delphi 7:
+//   - UnitN.pas (и UnitN.dfm у формы, модуля данных и фрейма) - в папку
+//     .dpr. N - первый свободный номер с 2: нет файлов UnitN и в .dpr нет
+//     слов UnitN и <объект>N (FormN, DataModuleN, FrameN);
+//   - в uses .dpr - "UnitN in 'UnitN.pas'" с комментарием, как его пишет
+//     Delphi: {FormN}, {DataModuleN: TDataModule}, {FrameN: TFrame};
+//   - форма и модуль данных создаются в .dpr после последнего
+//     Application.CreateForm (если включено Auto create forms); фрейм и
+//     простой модуль - нет: их создаёт сам код;
+//   - модуль открывается во вкладке, форма - в конструкторе.
+// .dpr с несохранёнными правками во вкладке не трогаем: запись на диск
+// разошлась бы с ними.
+procedure TForm1.DelphiNewModule(AKind: TDelphiNewKind; Sender: TObject);
+var
+  Dpr, DprDir, DprLow, UnitNm, ObjBase, ObjNm, KindNm, PasFile, DfmFile,
+  Line, UsesNote: string;
+  DprText, NewText: TStringList;
+  Num, LineIdx, UsesEnd, CreateLast, RunLine, WinIdx: Integer;
+  DprMod: Boolean;
+begin
+  case AKind of
+    dnkUnit:
+    begin
+      ObjBase := '';
+      KindNm := 'New Unit';
+    end;
+    dnkDataModule:
+    begin
+      ObjBase := 'DataModule';
+      KindNm := 'New Data Module';
+    end;
+    dnkFrame:
+    begin
+      ObjBase := 'Frame';
+      KindNm := 'New Frame';
+    end;
+  else
+    ObjBase := 'Form';
+    KindNm := 'New Form';
+  end;
+
   Dpr := DelphiTargetDpr;
+  // Модуль без формы можно начать и без проекта - во вкладке без имени,
+  // как в Delphi без открытого проекта
+  if (Dpr = '') and (AKind = dnkUnit) then
+  begin
+    NewPasUnitWindow;
+    Exit;
+  end;
   if Dpr = '' then
   begin
-    ShowMessage('27240:New Form: не найден файл проекта .dpr. Откройте ' +
-    'проект Delphi или его .dpr.');
-                Exit;
+    ShowMessage('27240:' + KindNm + ': не найден файл проекта .dpr. ' +
+                'Откройте проект Delphi или его .dpr.');
+    Exit;
   end;
-  // Цель проекта - не .dpr (проект RapidQ: его .bas): форма Delphi туда
+  // Цель проекта - не .dpr (проект RapidQ: его .bas): модуль Delphi туда
   // не вписывается
   if CompareText(ExtractFileExt(Dpr), '.dpr') <> 0 then
   begin
-    ShowMessage('New Form: цель текущего проекта - ' + ExtractFileName(Dpr) +
-                ', а не .dpr. Форму RapidQ добавляет New Form во вкладке ' +
-                'файла .bas; форму Delphi - в проекте Delphi.');
+    if AKind = dnkUnit then
+    begin
+      NewPasUnitWindow;
+      Exit;
+    end;
+    ShowMessage(KindNm + ': цель текущего проекта - ' +
+                ExtractFileName(Dpr) + ', а не .dpr. Форму RapidQ ' +
+                'добавляет New Form во вкладке файла .bas; модули Delphi - ' +
+                'в проекте Delphi.');
     Exit;
   end;
 
   // Цель - сам редактор (имя .dpr совпадает с именем exe, как в
-  // IsOwnProject). Форму можно вписать и в него, но для пробы обычно
-  // нужен отдельный проект - спрашиваем.
+  // IsOwnProject). Модуль можно вписать и в него, но для пробы формы
+  // обычно нужен отдельный проект - спрашиваем.
   if CompareText(ChangeFileExt(ExtractFileName(Dpr), ''),
                  OwnExeBase) = 0 then
-  case MessageDlg('27238:New Form: текущий проект - сам редактор (' +
-                  ExtractFileName(Dpr) + ').'#13#10#13#10 +
-    'Да - создать отдельный тестовый проект с новой ' +
-    'формой.'#13#10 +
-    'Нет - добавить форму в ' + ExtractFileName(Dpr) + '.',
-                  mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
-    mrYes:
-    begin
-      NewFormTestProject(Sender);
+  begin
+    if AKind = dnkForm then
+      case MessageDlg('27238:New Form: текущий проект - сам редактор (' +
+                      ExtractFileName(Dpr) + ').'#13#10#13#10 +
+                      'Да - создать отдельный тестовый проект с новой ' +
+                      'формой.'#13#10 +
+                      'Нет - добавить форму в ' + ExtractFileName(Dpr) + '.',
+                      mtConfirmation, [mbYes, mbNo, mbCancel], 0) of
+        mrYes:
+        begin
+          NewFormTestProject(Sender);
+          Exit;
+        end;
+        mrNo:
+          ; // дальше - как для любого проекта
+      else
+        Exit;
+      end
+    else if MessageDlg(KindNm + ': текущий проект - сам редактор (' +
+                       ExtractFileName(Dpr) + '). Добавить модуль в ' +
+                       'него?', mtConfirmation, [mbYes, mbNo], 0) <> mrYes then
       Exit;
-    end;
-    mrNo:
-      ; // дальше - как для любого проекта
-  else
-    Exit;
   end;
+
   WinIdx := IndexOfWindowByFile(Dpr);
   if WinIdx >= 0 then
   begin
@@ -51898,9 +52044,9 @@ begin
       DprMod := FWindows[WinIdx].Modified;
     if DprMod then
     begin
-      ShowMessage('27252:New Form: в ' + ExtractFileName(Dpr) +
-      ' есть несохранённые правки. Сохраните его и повторите.');
-                  Exit;
+      ShowMessage('27252:' + KindNm + ': в ' + ExtractFileName(Dpr) +
+                  ' есть несохранённые правки. Сохраните его и повторите.');
+      Exit;
     end;
   end;
 
@@ -51914,10 +52060,14 @@ begin
     while FileExists(DprDir + 'Unit' + IntToStr(Num) + '.pas') or
           FileExists(DprDir + 'Unit' + IntToStr(Num) + '.dfm') or
           HasWordLow(DprLow, 'unit' + IntToStr(Num)) or
-          HasWordLow(DprLow, 'form' + IntToStr(Num)) do
+          ((ObjBase <> '') and
+           HasWordLow(DprLow, LowerCase(ObjBase) + IntToStr(Num))) do
       Inc(Num);
     UnitNm := 'Unit' + IntToStr(Num);
-    FormNm := 'Form' + IntToStr(Num);
+    if ObjBase <> '' then
+      ObjNm := ObjBase + IntToStr(Num)
+    else
+      ObjNm := '';
     PasFile := DprDir + UnitNm + '.pas';
     DfmFile := DprDir + UnitNm + '.dfm';
 
@@ -51935,102 +52085,286 @@ begin
       end;
     if (UsesEnd < 0) or (UsesEnd >= DprText.Count) then
     begin
-      ShowMessage('27283:New Form: в ' + ExtractFileName(Dpr) +
-      ' не найден список uses.');
-                  Exit;
+      ShowMessage('27283:' + KindNm + ': в ' + ExtractFileName(Dpr) +
+                  ' не найден список uses.');
+      Exit;
     end;
 
-    // Модуль
+    // Модуль - тем же текстом, что у Delphi 7
     NewText.Add('unit ' + UnitNm + ';');
     NewText.Add('');
     NewText.Add('interface');
     NewText.Add('');
-    NewText.Add('uses');
-    NewText.Add('  Windows, Messages, SysUtils, Variants, Classes, Graphics,');
-    NewText.Add('  Controls, Forms, Dialogs;');
-    NewText.Add('');
-    NewText.Add('type');
-    NewText.Add('  T' + FormNm + ' = class(TForm)');
-    NewText.Add('  private');
-    NewText.Add('    { Private declarations }');
-    NewText.Add('  public');
-    NewText.Add('    { Public declarations }');
-    NewText.Add('  end;');
-    NewText.Add('');
-    NewText.Add('var');
-    NewText.Add('  ' + FormNm + ': T' + FormNm + ';');
-    NewText.Add('');
+    case AKind of
+      dnkForm:
+      begin
+        NewText.Add('uses');
+        NewText.Add('  Windows, Messages, SysUtils, Variants, Classes, ' +
+                    'Graphics,');
+        NewText.Add('  Controls, Forms, Dialogs;');
+        NewText.Add('');
+        NewText.Add('type');
+        NewText.Add('  T' + ObjNm + ' = class(TForm)');
+      end;
+      dnkDataModule:
+      begin
+        NewText.Add('uses');
+        NewText.Add('  SysUtils, Classes;');
+        NewText.Add('');
+        NewText.Add('type');
+        NewText.Add('  T' + ObjNm + ' = class(TDataModule)');
+      end;
+      dnkFrame:
+      begin
+        NewText.Add('uses');
+        NewText.Add('  Windows, Messages, SysUtils, Variants, Classes, ' +
+                    'Graphics, Controls, Forms,');
+        NewText.Add('  Dialogs;');
+        NewText.Add('');
+        NewText.Add('type');
+        NewText.Add('  T' + ObjNm + ' = class(TFrame)');
+      end;
+    end;
+    if AKind <> dnkUnit then
+    begin
+      NewText.Add('  private');
+      NewText.Add('    { Private declarations }');
+      NewText.Add('  public');
+      NewText.Add('    { Public declarations }');
+      NewText.Add('  end;');
+      NewText.Add('');
+      // У фрейма нет глобальной переменной: экземпляры создаёт код или
+      // форма, на которую фрейм положен
+      if AKind <> dnkFrame then
+      begin
+        NewText.Add('var');
+        NewText.Add('  ' + ObjNm + ': T' + ObjNm + ';');
+        NewText.Add('');
+      end;
+    end;
     NewText.Add('implementation');
     NewText.Add('');
-    NewText.Add('{$R *.dfm}');
-    NewText.Add('');
+    if AKind <> dnkUnit then
+    begin
+      NewText.Add('{$R *.dfm}');
+      NewText.Add('');
+    end;
     NewText.Add('end.');
     NewText.SaveToFile(PasFile);
 
-    // Пустая форма, текстом - так её создаёт Delphi
+    // .dfm текстом - так его создаёт Delphi
     NewText.Clear;
-    NewText.Add('object ' + FormNm + ': T' + FormNm);
-    NewText.Add('  Left = 200');
-    NewText.Add('  Top = 120');
-    NewText.Add('  Width = 640');
-    NewText.Add('  Height = 480');
-    NewText.Add('  Caption = ''' + FormNm + '''');
-    NewText.Add('  Color = clBtnFace');
-    NewText.Add('  Font.Charset = DEFAULT_CHARSET');
-    NewText.Add('  Font.Color = clWindowText');
-    NewText.Add('  Font.Height = -11');
-    NewText.Add('  Font.Name = ''MS Sans Serif''');
-    NewText.Add('  Font.Style = []');
-    NewText.Add('  OldCreateOrder = False');
-    NewText.Add('  PixelsPerInch = 96');
-    NewText.Add('  TextHeight = 13');
-    NewText.Add('end');
-    NewText.SaveToFile(DfmFile);
-
-    // .dpr: сначала создание формы (строки ниже uses), потом uses - номер
-    // строки конца uses от вставки ниже не меняется
-    CreateLast := -1;
-    RunLine := -1;
-    for LineIdx := 0 to DprText.Count - 1 do
-    begin
-      Line := LowerCase(DprText[LineIdx]);
-      if Pos('application.createform(', Line) > 0 then
-        CreateLast := LineIdx
-      else if (RunLine < 0) and (Pos('application.run', Line) > 0) then
-        RunLine := LineIdx;
+    case AKind of
+      dnkForm:
+      begin
+        NewText.Add('object ' + ObjNm + ': T' + ObjNm);
+        NewText.Add('  Left = 200');
+        NewText.Add('  Top = 120');
+        NewText.Add('  Width = 640');
+        NewText.Add('  Height = 480');
+        NewText.Add('  Caption = ''' + ObjNm + '''');
+        NewText.Add('  Color = clBtnFace');
+        NewText.Add('  Font.Charset = DEFAULT_CHARSET');
+        NewText.Add('  Font.Color = clWindowText');
+        NewText.Add('  Font.Height = -11');
+        NewText.Add('  Font.Name = ''MS Sans Serif''');
+        NewText.Add('  Font.Style = []');
+        NewText.Add('  OldCreateOrder = False');
+        NewText.Add('  PixelsPerInch = 96');
+        NewText.Add('  TextHeight = 13');
+        NewText.Add('end');
+      end;
+      dnkDataModule:
+      begin
+        NewText.Add('object ' + ObjNm + ': T' + ObjNm);
+        NewText.Add('  OldCreateOrder = False');
+        NewText.Add('  Left = 200');
+        NewText.Add('  Top = 120');
+        NewText.Add('  Height = 150');
+        NewText.Add('  Width = 215');
+        NewText.Add('end');
+      end;
+      dnkFrame:
+      begin
+        NewText.Add('object ' + ObjNm + ': T' + ObjNm);
+        NewText.Add('  Left = 0');
+        NewText.Add('  Top = 0');
+        NewText.Add('  Width = 320');
+        NewText.Add('  Height = 240');
+        NewText.Add('  TabOrder = 0');
+        NewText.Add('end');
+      end;
     end;
-    Line := '  Application.CreateForm(T' + FormNm + ', ' + FormNm + ');';
-    // IDE Options - Designer - Auto create forms & data modules
-    if not FEnv.DsgAutoCreateForms then
-      LogRaw('New Form: Auto create forms выключено - создание ' + FormNm +
-             ' в ' + ExtractFileName(Dpr) + ' не вписано')
-    else if CreateLast >= 0 then
-      DprText.Insert(CreateLast + 1, Line)
-    else if RunLine >= 0 then
-      DprText.Insert(RunLine, Line)
-    else
-      LogRaw('New Form: в ' + ExtractFileName(Dpr) + ' нет ни ' +
-      'Application.CreateForm, ни Application.Run - создание формы ' +
-      'не вписано');
+    if AKind <> dnkUnit then
+      NewText.SaveToFile(DfmFile);
 
-             Line := TrimRight(DprText[UsesEnd]);
-             SetLength(Line, Length(Line) - 1);
-             DprText[UsesEnd] := Line + ',';
-             DprText.Insert(UsesEnd + 1, '  ' + UnitNm + ' in ''' + UnitNm +
-    '.pas'' {' + FormNm + '};');
-                            DprText.SaveToFile(Dpr);
+    // .dpr: сначала создание (строки ниже uses), потом uses - номер
+    // строки конца uses от вставки ниже не меняется
+    if AKind in [dnkForm, dnkDataModule] then
+    begin
+      CreateLast := -1;
+      RunLine := -1;
+      for LineIdx := 0 to DprText.Count - 1 do
+      begin
+        Line := LowerCase(DprText[LineIdx]);
+        if Pos('application.createform(', Line) > 0 then
+          CreateLast := LineIdx
+        else if (RunLine < 0) and (Pos('application.run', Line) > 0) then
+          RunLine := LineIdx;
+      end;
+      Line := '  Application.CreateForm(T' + ObjNm + ', ' + ObjNm + ');';
+      // IDE Options - Designer - Auto create forms & data modules
+      if not FEnv.DsgAutoCreateForms then
+        LogRaw(KindNm + ': Auto create forms выключено - создание ' +
+               ObjNm + ' в ' + ExtractFileName(Dpr) + ' не вписано')
+      else if CreateLast >= 0 then
+        DprText.Insert(CreateLast + 1, Line)
+      else if RunLine >= 0 then
+        DprText.Insert(RunLine, Line)
+      else
+        LogRaw(KindNm + ': в ' + ExtractFileName(Dpr) + ' нет ни ' +
+               'Application.CreateForm, ни Application.Run - создание ' +
+               ObjNm + ' не вписано');
+    end;
+
+    case AKind of
+      dnkForm:       UsesNote := ' {' + ObjNm + '}';
+      dnkDataModule: UsesNote := ' {' + ObjNm + ': TDataModule}';
+      dnkFrame:      UsesNote := ' {' + ObjNm + ': TFrame}';
+    else
+      UsesNote := '';
+    end;
+    Line := TrimRight(DprText[UsesEnd]);
+    SetLength(Line, Length(Line) - 1);
+    DprText[UsesEnd] := Line + ',';
+    DprText.Insert(UsesEnd + 1, '  ' + UnitNm + ' in ''' + UnitNm +
+                   '.pas''' + UsesNote + ';');
+    DprText.SaveToFile(Dpr);
   finally
     NewText.Free;
     DprText.Free;
   end;
 
-  LogRaw('New Form: ' + UnitNm + '.pas и ' + UnitNm + '.dfm (' + FormNm +
-  ') созданы и вписаны в ' + ExtractFileName(Dpr));
+  if AKind = dnkUnit then
+    LogRaw(KindNm + ': ' + UnitNm + '.pas создан и вписан в ' +
+           ExtractFileName(Dpr))
+  else
+    LogRaw(KindNm + ': ' + UnitNm + '.pas и ' + UnitNm + '.dfm (' + ObjNm +
+           ') созданы и вписаны в ' + ExtractFileName(Dpr));
   // Открытый .dpr - сразу с новыми строками
-         if WinIdx >= 0 then
-         ReloadWindowFromDisk(WinIdx, False);
-         OpenNamedFile(PasFile);
-         DesignFormClick(Sender);
+  if WinIdx >= 0 then
+    ReloadWindowFromDisk(WinIdx, False);
+  OpenNamedFile(PasFile);
+  if AKind <> dnkUnit then
+    DesignFormClick(Sender);
+end;
+
+// Модуль без формы вне проекта Delphi - вкладка без имени с заготовкой
+// Unit1, как File -> New -> Unit в Delphi без открытого проекта. Имя
+// файла спросит Save.
+procedure TForm1.NewPasUnitWindow;
+var
+  Idx: Integer;
+begin
+  Idx := FindFreeWindow;
+  if Idx < 0 then
+  begin
+    ShowMessage(Format('4534:Открыто максимальное число файлов (%d).',
+                       [WindowsItemCount]));
+    Exit;
+  end;
+
+  StoreCurrentWindow;
+
+  FWindows[Idx].Used := True;
+  FWindows[Idx].FileName := '(без имени.pas)';
+  FWindows[Idx].IncOwner := '';
+  FWindows[Idx].Text := 'unit Unit1;'#13#10#13#10'interface'#13#10#13#10 +
+                        'implementation'#13#10#13#10'end.'#13#10;
+  FWindows[Idx].CursorPos := 0;
+  FWindows[Idx].Modified := False;
+  FWindows[Idx].IsUtf8 := False;
+  FWindows[Idx].HasBom := False;
+  FWindows[Idx].Broken := False;
+  FWindows[Idx].WorkMs := 0;
+
+  ActivateWindow(Idx);
+  FCurrentFileName := '';
+end;
+
+// File - New - Pascal: пункты как в File - New у Delphi 7
+procedure TForm1.NewPasAppClick(Sender: TObject);
+begin
+  FNewDelphiKind := 1;
+  NewProjectClick(Sender);
+end;
+
+procedure TForm1.NewPasFormClick(Sender: TObject);
+begin
+  NewFormClick(mNewPasForm);
+end;
+
+procedure TForm1.NewPasUnitClick(Sender: TObject);
+begin
+  DelphiNewModule(dnkUnit, Sender);
+end;
+
+procedure TForm1.NewPasDataModuleClick(Sender: TObject);
+begin
+  DelphiNewModule(dnkDataModule, Sender);
+end;
+
+procedure TForm1.NewPasFrameClick(Sender: TObject);
+begin
+  DelphiNewModule(dnkFrame, Sender);
+end;
+
+procedure TForm1.NewPasDllClick(Sender: TObject);
+begin
+  FNewDelphiKind := 2;
+  NewProjectClick(Sender);
+end;
+
+procedure TForm1.NewPasConsoleClick(Sender: TObject);
+begin
+  FNewDelphiKind := 3;
+  NewProjectClick(Sender);
+end;
+
+// Other... - список всех заготовок (в Delphi на этом месте окно New Items)
+procedure TForm1.NewPasOtherClick(Sender: TObject);
+var
+  Items: TStringList;
+  Choice: string;
+begin
+  Items := TStringList.Create;
+  try
+    Items.Add('Application');
+    Items.Add('Form');
+    Items.Add('Unit');
+    Items.Add('Data Module');
+    Items.Add('Frame');
+    Items.Add('DLL');
+    Items.Add('Console Application');
+    Choice := ChooseFromList('New Items', 'Новый элемент Pascal (Delphi):',
+                             Items);
+  finally
+    Items.Free;
+  end;
+  if Choice = 'Application' then
+    NewPasAppClick(Sender)
+  else if Choice = 'Form' then
+    NewPasFormClick(Sender)
+  else if Choice = 'Unit' then
+    NewPasUnitClick(Sender)
+  else if Choice = 'Data Module' then
+    NewPasDataModuleClick(Sender)
+  else if Choice = 'Frame' then
+    NewPasFrameClick(Sender)
+  else if Choice = 'DLL' then
+    NewPasDllClick(Sender)
+  else if Choice = 'Console Application' then
+    NewPasConsoleClick(Sender);
 end;
 
 // New Form, когда текущий проект - сам редактор, и выбран отдельный

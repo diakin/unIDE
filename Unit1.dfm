@@ -356,10 +356,52 @@ object Form1: TForm1
           Hint = '.txt'
         end
         object mNewItem2: TMenuItem
-          Caption = 'Pascal Unit'
-          OnClick = NewFileClick
+          Caption = 'Pascal'
           ShortCut = 0
-          Hint = '.pas'
+          object mNewPasApp: TMenuItem
+            Caption = 'Application'
+            OnClick = NewPasAppClick
+            ShortCut = 0
+          end
+          object mNewPasForm: TMenuItem
+            Caption = 'Form'
+            OnClick = NewPasFormClick
+            ShortCut = 0
+          end
+          object mNewPasUnit: TMenuItem
+            Caption = 'Unit'
+            OnClick = NewPasUnitClick
+            ShortCut = 0
+          end
+          object mNewPasDataMod: TMenuItem
+            Caption = 'Data Module'
+            OnClick = NewPasDataModuleClick
+            ShortCut = 0
+          end
+          object mNewPasFrame: TMenuItem
+            Caption = 'Frame'
+            OnClick = NewPasFrameClick
+            ShortCut = 0
+          end
+          object mNewPasDll: TMenuItem
+            Caption = 'DLL'
+            OnClick = NewPasDllClick
+            ShortCut = 0
+          end
+          object mNewPasConsole: TMenuItem
+            Caption = 'Console Application'
+            OnClick = NewPasConsoleClick
+            ShortCut = 0
+          end
+          object mNewPasSep: TMenuItem
+            Caption = '-'
+            ShortCut = 0
+          end
+          object mNewPasOther: TMenuItem
+            Caption = 'Other...'
+            OnClick = NewPasOtherClick
+            ShortCut = 0
+          end
         end
         object mNewItem3: TMenuItem
           Caption = 'BASIC File'
