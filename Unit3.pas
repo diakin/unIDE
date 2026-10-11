@@ -68,6 +68,10 @@ type
     BitBtn1: TBitBtn;
     BitBtn2: TBitBtn;
     chkSubDirs: TCheckBox;
+    lblFolders: TLabel;
+    Splitter2: TSplitter;
+    pnlRef: TPanel;
+    pnlFileBtns: TPanel;
     procedure BitBtn1Click(Sender: TObject);
     procedure BitBtn2Click(Sender: TObject);
     procedure CheckListBox1ClickCheck(Sender: TObject);
