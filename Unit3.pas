@@ -34,7 +34,9 @@ uses
   Controls, Forms, Dialogs, ExtCtrls, FileCtrl, StdCtrls, Buttons, CheckLst,
   IniFiles,
   IncCheck,     // сравнение с эталоном, проверки, защита, демо
-  FolderDlg, UiStdCtrls;    // выбор папки эталона - BrowseFolderDialog
+  FolderDlg,    // выбор папки эталона - BrowseFolderDialog
+  UiStdCtrls,   // TUiPanel
+  UiButton;     // TUiButton - кнопки в цветах темы (TBitBtn рисуется белым)
 
 type
   // Открыть файл в редакторе на строке (с 1; 0 - без перехода)
@@ -47,9 +49,9 @@ type
     UiPanel1: TUiPanel;
     Label1: TLabel;
     lstIncFiles: TCheckListBox;
-    btnScan: TBitBtn;
-    btnGuard: TBitBtn;
-    btnDemo: TBitBtn;
+    btnScan: TUiButton;
+    btnGuard: TUiButton;
+    btnDemo: TUiButton;
     lblCount: TLabel;
     lblLegend: TLabel;
     Panel2: TPanel;
@@ -58,15 +60,15 @@ type
     lblRef: TLabel;
     lblErrHead: TLabel;
     lstErrors: TListBox;
-    btnRef: TBitBtn;
+    btnRef: TUiButton;
     Splitter1: TSplitter;
     Panel3: TPanel;
     DirectoryListBox1: TDirectoryListBox;
     UiPanel2: TUiPanel;
     DriveComboBox1: TDriveComboBox;
     Panel4: TPanel;
-    BitBtn1: TBitBtn;
-    BitBtn2: TBitBtn;
+    BitBtn1: TUiButton;
+    BitBtn2: TUiButton;
     chkSubDirs: TCheckBox;
     lblFolders: TLabel;
     Splitter2: TSplitter;

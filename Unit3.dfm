@@ -68,7 +68,7 @@ object Form3: TForm3
       BevelOuter = bvNone
       Caption = ''
       TabOrder = 1
-      object btnScan: TBitBtn
+      object btnScan: TUiButton
         Left = 0
         Top = 7
         Width = 110
@@ -78,7 +78,7 @@ object Form3: TForm3
         TabOrder = 0
         OnClick = btnScanClick
       end
-      object btnGuard: TBitBtn
+      object btnGuard: TUiButton
         Left = 118
         Top = 7
         Width = 140
@@ -88,7 +88,7 @@ object Form3: TForm3
         TabOrder = 1
         OnClick = btnGuardClick
       end
-      object btnDemo: TBitBtn
+      object btnDemo: TUiButton
         Left = 266
         Top = 7
         Width = 110
@@ -126,6 +126,7 @@ object Form3: TForm3
     Width = 6
     Height = 722
     Align = alRight
+    AutoSnap = False
     MinSize = 300
   end
   object Panel2: TPanel
@@ -176,7 +177,7 @@ object Form3: TForm3
         BevelOuter = bvNone
         Caption = ''
         TabOrder = 2
-        object BitBtn1: TBitBtn
+        object BitBtn1: TUiButton
           Left = 0
           Top = 7
           Width = 110
@@ -186,7 +187,7 @@ object Form3: TForm3
           TabOrder = 0
           OnClick = BitBtn1Click
         end
-        object BitBtn2: TBitBtn
+        object BitBtn2: TUiButton
           Left = 118
           Top = 7
           Width = 130
@@ -252,6 +253,7 @@ object Form3: TForm3
         Width = 6
         Height = 270
         Align = alLeft
+        AutoSnap = False
         MinSize = 120
       end
       object CheckListBox1: TCheckListBox
@@ -283,7 +285,7 @@ object Form3: TForm3
         Anchors = [akLeft, akTop, akRight]
         AutoSize = False
       end
-      object btnRef: TBitBtn
+      object btnRef: TUiButton
         Left = 658
         Top = 5
         Width = 36
