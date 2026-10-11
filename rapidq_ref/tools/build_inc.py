@@ -333,6 +333,8 @@ class Builder:
         self.lib_seen = {}       # имя DECLARE ... LIB -> (файл, строка)
         self.local_defines = {}  # (файл, ИМЯ) -> причина (local_type_defines)
         self.all_files = all_files   # файлы, которые вошли в сборку (нижний регистр)
+        self.sources = {}        # нижний регистр -> (имя, строки, keep) для вставки по $INCLUDE
+        self.emitted = set()     # уже выведенные файлы (нижний регистр)
 
     def key_kind(self, kind):
         # DECLARE и тело одной процедуры - разные объявления
@@ -340,6 +342,7 @@ class Builder:
 
     def emit_file(self, name, lines, keep=None, out=None):
         """Строки файла name в out; keep(номер строки) - брать ли строку."""
+        self.emitted.add(name.lower())
         out.append("'" + '=' * 76)
         out.append("'[build_inc] %s" % name)
         out.append("'" + '=' * 76)
@@ -422,7 +425,16 @@ class Builder:
                 m = re.match(r'\$include\s*["<]([^">]+)[">]', code, re.I)
                 if m:
                     target = os.path.basename(m.group(1).replace('\\', '/')).lower()
-                    if target in self.all_files or target in self.skipped:
+                    if target in self.sources and target not in self.emitted:
+                        # Файл ещё не выведен - на место $INCLUDE: RapidQ
+                        # однопроходный, объявления нужны выше (rapidq.inc:
+                        # $include "conversion.inc", ниже cprint вызывает
+                        # CharToOem из него; rc.exe: Expected = but got "SN")
+                        out.append("'~inc " + line + "   ' сборка: файл - здесь")
+                        real, src_lines, src_keep = self.sources[target]
+                        self.emit_file(real, src_lines, keep=src_keep, out=out)
+                        out.append("'[build_inc] (дальше снова %s)" % name)
+                    elif target in self.all_files or target in self.skipped:
                         out.append("'~inc " + line + "   ' уже в сборке или заменён выбранной версией")
                     else:
                         out.append(line)
@@ -555,6 +567,8 @@ def main():
     all_files = set(f.lower() for f in proc_files + ordered + [by_low[x] for x in RQ_MAIN])
     builder = Builder(all_files)
     builder.skipped = skipped
+    for f in proc_files + ordered:
+        builder.sources[f.lower()] = (f, texts[f], line_keep(take.get(f.lower(), 'да')))
 
     rq2 = by_low['rapidq2.inc']
     comp_ranges = rapidq2_component_ranges(texts[rq2])
@@ -579,6 +593,8 @@ def main():
     builder.emit_file(rq2, texts[rq2], keep=lambda n: n not in in_comp, out=out)
     builder.emit_file(by_low['rapidq.inc'], texts[by_low['rapidq.inc']], out=out)
     for f in proc_files:
+        if f.lower() in builder.emitted:
+            continue
         builder.emit_file(f, texts[f], keep=line_keep(take.get(f.lower(), 'да')), out=out)
     out.append("$ENDIF ' __RQALLPROC_INC")
     write(os.path.join(OUT, 'rapidqAllProc.inc'), out)
@@ -591,6 +607,8 @@ def main():
            '$INCLUDE "rapidqAllProc.inc"']
     builder.emit_file(rq2 + ' (компоненты)', texts[rq2], keep=lambda n: n in in_comp, out=out)
     for f in ordered:
+        if f.lower() in builder.emitted:
+            continue
         builder.emit_file(f, texts[f], keep=line_keep(take.get(f.lower(), 'да')), out=out)
     out.append("$ENDIF ' __RQCOMPONENTS_INC")
     write(os.path.join(OUT, 'rapidqComponents.inc'), out)

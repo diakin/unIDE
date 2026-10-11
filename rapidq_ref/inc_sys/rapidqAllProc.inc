@@ -3736,14 +3736,4272 @@ function Rudate as string
 end function
 
 '$include "C:\BAS\RAPIDQ\inc\conversion.inc"
-'~inc $include "conversion.inc"   ' уже в сборке или заменён выбранной версией
-'~inc $include "Files.inc"   ' уже в сборке или заменён выбранной версией
-'$include "Fileops.inc"
-'~inc $include "func_array.inc"   ' уже в сборке или заменён выбранной версией
-'~inc $include "parse.inc"   ' уже в сборке или заменён выбранной версией
+'~inc $include "conversion.inc"   ' сборка: файл - здесь
+'============================================================================
+'[build_inc] conversion.inc
+'============================================================================
+' version 09-06-2022 !!!!!
 
-'~inc $include "fbscancodes.inc"   ' уже в сборке или заменён выбранной версией
-'~inc $include "eml.inc"   ' уже в сборке или заменён выбранной версией
+'$include "C:\BAS\RAPIDQ\RQIDE\testinc.inc"
+$define cp_Win  1251
+$define cp_Dos  866
+$define cp_Koi  20866 
+$define cp_Iso  28595
+'~dup $define cp_UTF8 65001    ' повтор, первое: rapidq.inc(606)
+$define cp_UTF7 65000 
+
+$define cp_CentralEuropean_DOS 852
+$define cp_CentralEuropean_Windows 1250
+$define cp_CentralEuropean_ISO 28592
+$define cp_Cyrillic_DOS 866
+$define cp_Cyrillic_Windows 1251
+$define cp_Cyrillic_ISO 28595
+$define cp_Cyrillic_KOI8-R 20866
+$define cp_Ukrainian_KOI8-RU 21866
+$define cp_Latin3_ISO 28593
+$define cp_Western 1252
+$define cp_Baltic_Windows 1257
+$define cp_Baltic_ISO 28594
+$define cp_Greek_Windows 1253
+$define cp_Greek_ISO 28597
+'~dup $define cp_Turkish 1254   ' повтор, первое: rapidq.inc(595)
+$define cp_Arabic_Windows 1256
+$define cp_Arabic_ISO 28596
+$define cp_Hebrew_DOS 862
+$define cp_Hebrew_Windows 1255
+
+'~dup $define CP_NIL    (-1)   ' повтор, первое: rapidq.inc(583)
+'~dup $define CP_SYMBOL   42   ' повтор, первое: rapidq.inc(584)
+'~dup $define CP_OEM_437   437   ' повтор, первое: rapidq.inc(585)
+'~dup $define CP_THAI    874   ' повтор, первое: rapidq.inc(586)
+'~dup $define CP_JAPAN   932   ' повтор, первое: rapidq.inc(587)
+'~dup $define CP_CHINA   936   ' повтор, первое: rapidq.inc(588)
+'~dup $define CP_KOREA   949   ' повтор, первое: rapidq.inc(589)
+'~dup $define CP_TAIWAN   950   ' повтор, первое: rapidq.inc(590)
+'~dup $define CP_EASTEUROPE  1250   ' повтор, первое: rapidq.inc(591)
+'~dup $define CP_RUSSIAN   1251   ' повтор, первое: rapidq.inc(592)
+'~dup $define CP_WESTEUROPE  1252   ' повтор, первое: rapidq.inc(593)
+'~dup $define CP_GREEK   1253   ' повтор, первое: rapidq.inc(594)
+'~dup $define CP_TURKISH   1254   ' повтор, первое: rapidq.inc(595)
+'~dup $define CP_HEBREW   1255   ' повтор, первое: rapidq.inc(596)
+'~dup $define CP_ARABIC   1256   ' повтор, первое: rapidq.inc(597)
+'~dup $define CP_BALTIC   1257   ' повтор, первое: rapidq.inc(598)
+'~dup $define CP_JOHAB   1361   ' повтор, первое: rapidq.inc(599)
+'~dup $define CP_MAC_ROMAN  10000   ' повтор, первое: rapidq.inc(600)
+'~dup $define CP_MAC_JAPAN  10001   ' повтор, первое: rapidq.inc(601)
+'~dup $define CP_MAC_GREEK  10006   ' повтор, первое: rapidq.inc(602)
+'~dup $define CP_MAC_CYRILLIC  10007   ' повтор, первое: rapidq.inc(603)
+'~dup $define CP_MAC_LATIN2  10029   ' повтор, первое: rapidq.inc(604)
+'~dup $define CP_MAC_TURKISH  10081   ' повтор, первое: rapidq.inc(605)
+'~dup $define CP_UTF8    65001   ' повтор, первое: rapidq.inc(606)
+
+
+
+'--------------------------- Custom functions --------------------------
+'$IFNDEF CharToOem
+Declare Function CharToOem Lib "user32" Alias "CharToOemA" _
+(ByVal lpszSrc As String, ByVal lpszDst As String) as Long
+'$ENDIF
+
+
+'$IFNDEF OemToChar
+Declare Function OemToChar Lib "user32" Alias "OemToCharA" _
+(ByVal lpszSrc As String, ByVal lpszDst As String) As Long
+'$ENDIF
+
+Declare Function CharLower Lib "user32" Alias "CharLowerA" (ByVal lpsz As String) As String
+Declare Function CharUpper Lib "user32" Alias "CharUpperA" (ByVal lpsz As String) As String
+
+
+'*****************************************
+Declare Function MultiByteToWideChar Lib "kernel32" alias "MultiByteToWideChar" _
+( CodePage As Long,  dwFlags As Long, _
+lpMultiByteStr As Long,  cchMultiByte As Long, _
+lpWideCharStr As Long, _
+cchWideChar As Long) As Long
+
+Declare Function WideCharToMultiByte Lib "kernel32" alias "WideCharToMultiByte" _
+( CodePage As Long,  dwFlags As Long, _
+lpWideCharStr As Long,  cchWideChar As Long, lpMultiByteStr As Long, _
+cchMultiByte As Long,  lpDefaultChar As long,  lpUsedDefaultChar As Long) As Long
+
+'*****************************************
+Declare Function MultiByteToWideChar1 Lib "kernel32" alias "MultiByteToWideChar" _
+( CodePage As Long,  dwFlags As Long, _
+lpMultiByteStr As long,  cchMultiByte As Long, _
+lpWideCharStr As Long, _
+cchWideChar As Long) As Long
+
+Declare Function WideCharToMultiByte1 Lib "kernel32" alias "WideCharToMultiByte" _
+( CodePage As Long,  dwFlags As Long, _
+lpWideCharStr As long,  cchWideChar As Long, lpMultiByteStr As Long, _
+cchMultiByte As Long,  lpDefaultChar As long,  lpUsedDefaultChar As Long) As Long
+
+
+
+'-- ****************************************'
+function LCaseApi(  SrcTxt as string ) as string
+tmp$=SrcTxt+"-"
+l=len(SrcTxt)
+result=CharLower(left$(tmp$,l))
+end function
+
+'-- ****************************************'
+function UCaseApi(  SrcTxt as string ) as string
+tmp$=SrcTxt+"-"
+l=len(SrcTxt)
+result=CharUpper(left$(tmp$,l))
+end function
+
+'-- *****************************************'
+FUNCTION vidnum$ (Num, dig%) as string
+'Andrew Shelkovenko dec 2003
+'A  function that returns the string representation of  of a rounded numeric expression.
+'Syntax: vidnum$ (numeric-expression, dig%) 
+'Num$ = vidnum$ (999999.2366666666, 4)
+'Return  999999.2367 
+'Num$ = vidnum$ (-0.236, 4)
+'Return  -0.236
+'Num$ =vidnum$ (-12389.236, -2)
+'Return -12400
+'Details:
+'dig% - number of significant digits 
+
+Num$=str$(Num)
+pntPos=instr(Num$,".")
+if pntPos=0 then 
+	digMax=0
+else
+	digMax=Len(Num$)-pntPos
+end if
+
+if dig%>digMax then dig%=digMax 
+vidnum$ = STR$((  CLNG(  abs(Num) * 10 ^ dig%) / 10 ^ dig%)*sgn(Num))
+END FUNCTION
+'
+'-- **************************************************************************'
+function   Hex2Dec (HexStr as string) as string
+
+DEFdbl numb
+defdbl number
+DEFBYTE x,length, y
+number = 0
+length = LEN(HexStr)
+FOR x = 1 TO length
+	y = length - x
+	
+	digit$ = UCASE$(MID$(HexStr,x,1))
+	SELECT CASE digit$
+	CASE "A"
+		numb = 10 * 16^y
+	CASE "B"
+		numb = 11 * 16^y
+	CASE "C"
+		numb = 12 * 16^y
+	CASE "D"
+		numb = 13 * 16^y
+	CASE "E"
+		numb = 14 * 16^y
+	CASE "F"
+		numb = 15 * 16^y
+	CASE ELSE
+		numb = VAL(LCASE$(digit$)) * 16^y
+	END SELECT
+	number = number + numb
+	qw:
+NEXT
+
+if number>10^6 then 
+	n1=fix(number/1000000) 
+	n2=(number-n1*1000000)    
+	NumNul=6-len(str$(n2)) 
+	TrNul$=string$(NumNul, "0")
+	
+	Dec$ = STR$(n1)+TrNul$+str$(n2)
+	
+else
+	Dec$ = STR$(number)
+end if
+Hex2Dec=Dec$
+
+END function
+
+'-- **************************************************************************'
+function dectoHex (Dec as string) as string
+defdbl ost, ch
+defstr HexVal$
+HexVal$=""
+ost=0: ch=0
+Dec#=val(Dec)
+sign=sgn(Dec#)
+Dec#=abs(Dec#)
+WHILE  Dec# >= 16#
+	ch=FIX(Dec# / 16#)
+	ost = Dec#-ch*16#
+	
+	Dec#=ch
+	select case ost
+	case is <10
+		Hexdig$=str$(ost)
+	case 10
+		Hexdig$="A"
+	case 11
+		Hexdig$="B"
+	case 12
+		Hexdig$="C"
+	case 13
+		Hexdig$="D"
+	case 14
+		Hexdig$="E"
+	case 15
+		Hexdig$="F"
+	case 15
+		Hexdig$="10"
+		
+	case else
+	end select
+	
+	HexVal$ =Hexdig$  + HexVal$: 
+	
+wend
+
+select case Dec#
+	
+case is <10
+	Hexdig$=str$(Dec#)
+case 10
+	Hexdig$="A"
+case 11
+	Hexdig$="B"
+case 12
+	Hexdig$="C"
+case 13
+	Hexdig$="D"
+case 14
+	Hexdig$="E"
+case 15
+	Hexdig$="F"
+case 15
+	Hexdig$="10"
+	
+case else
+end select
+
+HexVal$ =Hexdig$  + HexVal$: 
+if sign=-1 then signn$="-" else signn$=""
+if HexVal$="0" then HexVal$="00"
+dectoHex=signn$+ HexVal$
+END function
+
+'-- **************************************************************************'
+function AddChrBefore(NumStr as string , Dlina as integer, chr1 as string) as string
+'Andrew Shelkovenko dec 2003
+'A function that pre-padd string with chr to required Length 
+'print AddChrBefore("-387.35" , 10, "=")  
+'==-0387.35
+
+diM kolvo as integer
+kolvo =Dlina-Len(NumStr)
+'showmessage (NumStr)
+if   kolvo<0 theN AddChrBefore="String too long"
+if   kolvo=0 theN AddChrBefore=NumStr: exit function
+AddChrBefore= STRING$(kolvo, chr1)+ NumStr
+'call  AddClrString ("259:AddChrBefore="+str$(AddChrBefore), clred, LogEdit)
+end function
+
+'-- **************************************************************************'
+function AddChrAfter(NumStr as string , Dlina as integer, chr1 as string) as string
+'Andrew Shelkovenko Mar 2008
+'A function that pre-padd string with chr1 to required Length 
+'print AddChrBefore("-387.35" , 10, "=")  
+'==-0387.35
+
+diM kolvo as integer
+kolvo =Dlina-Len(NumStr)
+if   kolvo<0 theN AddChrAfter="String too long" ' inc2026: в функции AddChrAfter было присваивание AddChrBefore (копия из AddChrBefore, строки 264-265), стало AddChrAfter - иначе результат функции не задаётся
+if   kolvo=0 theN AddChrAfter=NumStr: exit function ' inc2026: в функции AddChrAfter было присваивание AddChrBefore (копия из AddChrBefore, строки 264-265), стало AddChrAfter - иначе результат функции не задаётся
+AddChrAfter=  NumStr+STRING$(kolvo, chr1)
+end function
+
+
+'-- **************************************************************************'
+function Add0Before(NumStr as string , Dlina as integer) as string
+'Andrew Shelkovenko dec 2003
+'A function that pre-padd string with 0's to required Length 
+'print Add0Before("-387.35" , 8)  
+'-0387.35
+
+
+diM kolvo as integer
+kolvo =Dlina-Len(NumStr)
+if   kolvo<0 theN Add0Before="String too long"
+if   kolvo=0 theN Add0Before=NumStr: exit function
+
+Add0Before = STRING$(kolvo, "0")+ NumStr
+
+end function
+
+'-- ***********************************
+FUNCTION ByteReOrder (ByteStr$,ReOrder$ ) as string
+'Andrew Shelkovenko dec 2003
+' A function that reorder bytes in string.
+'ByteStr$ - Sourse string
+'ReOrder$ - new byte order
+
+'ReOrder$="21342"
+'old position - 2, new position - 1
+'old position - 1, new position - 2
+'old position - 3, new position - 3
+'old position - 4, new position - 4
+'old position - 2, new position - 5
+
+~tmp$=""
+
+LenB=Len(ByteStr$)
+LenR=Len(ReOrder$)
+
+for i=1 to LenB
+	poz$=ReOrder$[i]
+	if val(poz$)> LenB then ShowMessage( "ByteReOrder: ReOrder index outbound input string"):exit FUNCTION
+	if i<= LenR then
+		byt$=ByteStr$[val(poz$)]
+	else
+		byt$=ByteStr$[i]
+	end if
+	~tmp$=~tmp$+byt$
+next
+
+ByteReOrder=~tmp$
+
+end FUNCTION
+
+'-- **************************************************************************'
+FUNCTION CByteNum (ByteStr$,Num_Type as short ) as variant
+'print"CByteNum ByteStr$=";ByteStr$
+'Andrew Shelkovenko dec 2003
+'' converts   number of Num_Type type to bytes sequence.
+'Num_Type can be next value:
+'const Num_SHORT = 2
+'const Num_WORD = 3
+'const Num_LONG = 4
+'const Num_DWORD = 5
+'const Num_SINGLE = 6
+'const Num_DOUBLE = 8
+
+
+DIM M AS QMemoryStream
+select case Num_Type
+case Num_BYTE
+	ShowMessage "CByteNum: Can't to write BYTE.Wrong parameter type - Num_BYTE": exit funCTION
+case  Num_SHORT: M.Write (ByteStr$):m.Position=0:CByteNum=m.ReadNum(Num_SHORT)
+case  Num_WORD:  M.Write (ByteStr$):m.Position=0:CByteNum=m.ReadNum(Num_WORD)
+case  Num_LONG:  M.Write (ByteStr$):m.Position=0:CByteNum=m.ReadNum(Num_LONG)
+case  Num_DWORD: M.Write (ByteStr$):m.Position=0:CByteNum=m.ReadNum(Num_DWORD)
+case  Num_SINGLE:M.Write (ByteStr$):m.Position=0:CByteNum=m.ReadNum(Num_SINGLE)
+case  Num_DOUBLE:M.Write (ByteStr$):m.Position=0:CByteNum=m.ReadNum(Num_DOUBLE)
+	
+case else
+	M.Write (ByteStr$):m.Position=0:CByteNum=m.ReadNum(Num_DOUBLE)
+end select
+
+M.Close
+
+end funCTION
+
+'-- **************************************************************************'
+FUNCTION CNumByte (Num, Num_Type as short) as string
+'Andrew Shelkovenko dec 2003
+
+'converts bytes sequence to  number of Num_Type type  
+'Num_Type can be next value:
+'const Num_SHORT = 2
+'const Num_WORD = 3
+'const Num_LONG = 4
+'const Num_DWORD = 5
+'const Num_SINGLE = 6
+'const Num_DOUBLE = 8
+
+
+DIM M AS QMemoryStream
+
+select case Num_Type
+case Num_BYTE
+	dim N1 as BYTE 
+	ShowMessage "CNumByte: Can't to write BYTE.Wrong parameter type - Num_BYTE": exit funCTION
+	
+case  Num_SHORT: DEFSHORT N2:N2=Num:M.Write(N2):M.Position=0:CNumByte=M.ReadBinStr(sizeOf(N2))
+case  Num_WORD:  DEFWORD  N3:N3=Num:M.Write(N3):M.Position=0:CNumByte=M.ReadBinStr(sizeOf(N3))
+case  Num_LONG:  DEFLNG   N4:N4=Num:M.Write(N4):M.Position=0:CNumByte=M.ReadBinStr(sizeOf(N4))
+case  Num_DWORD: DEFDWORD N5:N5=Num:M.Write(N5):M.Position=0:CNumByte=M.ReadBinStr(sizeOf(N5))
+case  Num_SINGLE:DEFSNG   N6:N6=Num:M.Write(N6):M.Position=0:CNumByte=M.ReadBinStr(sizeOf(N6))
+case  Num_DOUBLE:DEFDBL   N7:N7=Num:M.Write(N7):M.Position=0:CNumByte=M.ReadBinStr(sizeOf(N7))
+	
+case else
+	dim N8 as DOUBLE:N8=Num:
+	M.Write(N8):
+	M.Position=0:CNumByte=M.ReadBinStr(sizeOf(N8)):M.Close                                         
+end select
+M.Close
+end funCTION
+
+'-- **************************************************************************'
+
+' LIKE Function - pattern matching routine for Rapid-Q by William Yu
+' This emulates the VB LIKE operator.
+' Thanks to Thomas Binder for the original C code
+'
+' ?   Any single character.
+' *   Zero or more characters.
+' #   Any single digit (0-9).
+' [charlist]  Any single character in charlist.
+' [!charlist] Any single character not in charlist.
+'
+' A group of one or more characters (charlist) enclosed in brackets ([ ])
+' can be used to match any single character in string and can include almost
+' any character code, including digits.
+'
+' Note:   To match the special characters left bracket ([), question
+' mark (?), number sign (#), and asterisk (*), enclose them in brackets.
+' The right bracket (]) can't be used within a group to match itself, but
+' it can be used outside a group as an individual character.
+'
+' By using a hyphen (-) to separate the upper and lower bounds of the range,
+' charlist can specify a range of characters. For example, [A-Z] results in
+' a match if the corresponding character position in string contains any
+' uppercase letters in the range A-Z. Multiple ranges are included within
+' the brackets without delimiters.
+
+
+DECLARE FUNCTION Like(ParseString AS STRING, Pattern AS STRING) AS INTEGER
+DECLARE FUNCTION IsDigit(S AS STRING) AS INTEGER
+
+const INVERT = "!"       '-- Some like ^ or ~ instead, whatever you want
+
+'-- **************************************************************************'
+FUNCTION IsDigit(S AS STRING) AS INTEGER
+IF S >= "0" AND S <= "9" THEN
+	IsDigit = 1
+ELSE
+	IsDigit = 0
+END IF
+END FUNCTION
+
+
+'-- **************************************************************************'
+FUNCTION IsDigitsOnly(S AS STRING) AS INTEGER
+
+for i=1 to len(s)
+	
+	IF S[i] >= "0" AND S[i] <= "9" THEN
+		IsDigitsOnly = 1
+	ELSE
+		IsDigitsOnly = 0
+		exit for
+	END IF
+next
+
+END FUNCTION
+
+
+'-- **************************************************************************'
+FUNCTION Like(ParseString AS STRING, Pattern AS STRING) AS INTEGER
+DIM prev AS INTEGER, matched AS INTEGER, reverse AS INTEGER
+
+WHILE Pattern <> ""
+	SELECT CASE MID$(Pattern, 1, 1)
+	CASE "?"
+		IF ParseString = "" THEN
+			Like = 0
+			EXIT FUNCTION
+		END IF
+	CASE "#"
+		IF IsDigit(MID$(ParseString, 1, 1)) = 0 THEN
+			Like = 0
+			EXIT FUNCTION
+		END IF
+	CASE "*"
+		DO
+		Pattern = MID$(Pattern, 2, LEN(Pattern)-1)
+		LOOP UNTIL MID$(Pattern, 1, 1) <> "*"
+		IF Pattern = "" THEN
+			Like = 1
+			EXIT FUNCTION
+		END IF
+		WHILE ParseString <> ""
+			IF Like(ParseString, Pattern) THEN
+				Like = 1
+				EXIT FUNCTION
+			END IF
+			IF ParseString <> "" THEN
+				ParseString = MID$(ParseString, 2, LEN(ParseString)-1)
+			END IF
+		WEND
+		Like = 0
+		EXIT FUNCTION
+	CASE "["
+		reverse = (MID$(Pattern, 2, 1) = INVERT)
+		IF reverse THEN
+			Pattern = MID$(Pattern, 2, LEN(Pattern)-1)
+		END IF
+		prev = 256: matched = 0
+		DO
+		Pattern = MID$(Pattern, 2, LEN(Pattern)-1)
+		IF (Pattern <> "") AND (esc <> 0 OR MID$(Pattern, 1, 1) <> "]") THEN
+			IF MID$(Pattern, 1, 1) = "-" THEN
+				Pattern = MID$(Pattern, 2, LEN(Pattern)-1)
+				IF Pattern = "" THEN
+					Like = 0
+					EXIT FUNCTION
+				END IF
+				matched = matched OR (MID$(ParseString, 1, 1) <= MID$(Pattern, 1, 1) AND ASC(MID$(ParseString, 1, 1)) >= prev)
+			ELSE
+				matched = matched OR (MID$(ParseString, 1, 1) = MID$(Pattern, 1, 1))
+			END IF
+			prev = ASC(MID$(Pattern, 1, 1))
+		ELSE
+			EXIT DO
+		END IF
+		esc = 0
+		LOOP
+		IF (prev = 256 OR MID$(Pattern, 1, 1) <> "]" OR ABS(matched) = ABS(reverse)) THEN
+			Like = 0
+			EXIT FUNCTION
+		END IF
+	CASE ELSE
+		IF MID$(ParseString, 1, 1) <> MID$(Pattern, 1, 1) THEN
+			Like = 0
+			EXIT FUNCTION
+		END IF
+	END SELECT
+	ParseString = MID$(ParseString, 2, LEN(ParseString)-1)
+	Pattern = MID$(Pattern, 2, LEN(Pattern)-1)
+WEND
+
+Like = ABS(LEN(ParseString) = 0)
+END FUNCTION
+
+'-- Test code
+'print "Like('24','##')=", Like("24","##")
+
+'?"Like(aBBBa, a*a)=", Like("aBBBa","a*a")
+'?Like("F","[!A-Z]")
+'?Like("a2a","a#a")
+'?Like("aM5b","a[A-GL-P]#[!c-e]")
+'?Like("BAT123khg","B?T*")
+'?Like("CAT123khg","B?T*")
+
+'?Like("Combine(10, 20) = 30", "*(*?,*?)*=*#")
+'-- **************************************************************************'
+function SecTime (cTime$ as string) as integer 
+TimeHH=val (field$(cTime$, ":",1)) 
+TimeMM=val (field$(cTime$, ":",2)) 
+TimeSS=val (field$(cTime$, ":",3)) 
+result=TimeHH*3600+TimeMM*60+TimeSS 
+end function
+
+
+'-- **************************************************************************'
+function DayDate (cDate$ as string) as integer 
+
+MM=val (field$(cDate$, "-",1)) 
+Day=val (field$(cDate$, "-",2)) 
+Year=val (field$(cDate$, "-",3)) 
+
+result=365*(Year)+30*(MM)+(Day) 
+end function
+
+'-- **************************************************************************'
+function TimeString (TimSec as integer) as string
+
+Hr%=TimSec/3600
+SecMin=TimSec-Hr%*3600
+Min%=(SecMin)/60
+Sec%=SecMin-Min%*60
+
+Hr$=Right$("0"+str$(Hr%), 2)
+Min$=Right$("0"+str$(Min%), 2)
+Sec$=Right$("0"+str$(Sec%), 2)
+
+TimeString=Hr$+":"+Min$+":"+Sec$'+"   "
+
+end function
+
+'-- *********************************************************************'
+Function GetWord (Oper$ as string, getV$ as string) as long
+'Old! Use GetVarPos!!!
+
+'return variable  position in checked string
+'getV$ - variable name 
+'Oper$ - checked string
+'if getV$ commented,  or quoted (just text, not varname)  - return error code
+result=-1 ' error
+defstr Lsep$="()[]=><, :+-*\/;"
+defstr Rsep$="()[]=><, :'+-*\/;"
+
+Oper$=lcase$(Oper$)
+getV$=lcase$(getV$)
+
+Wpos=instr(Oper$,getV$) 
+if Wpos=0 then result=0: exit function 'pattern not contained
+'check comment and string
+
+while Wpos>0 
+	
+	if (instr(Lsep$,Oper$[Wpos-1])>0 or Wpos=1) and (instr(Rsep$,Oper$[Wpos+len(getV$)])>0  or Wpos+len(getV$)-1=len(Oper$))  then
+		'check string 
+		QPos1=rinstr(Wpos,Oper$,qt) ''1 quote pos   
+		QPos2= instr(Wpos,Oper$,qt) '2 quote pos   
+		CPos=rinstr(Wpos,Oper$,"'") 'comment pos  
+		
+		if QPos1<Wpos and QPos2 >Wpos and QPos1>0 then 'it's string, not var
+		elseif (CPos<Wpos and CPos>0) and  QPos1<CPos    then 'it's comment and QPos2>0
+		else
+			result=Wpos 
+			exit while
+		end if
+	else
+	end if
+	Wpos=instr(Wpos+1, Oper$,getV$) 
+	result=-2 'present, but not var
+wend
+
+end function
+
+
+'NumQT=tally(Oper$, qt)
+'NumRem=tally(Oper$, "'")
+'CharPos=instr(Oper$, getC$)
+
+
+'*****************************************
+'sub Ob2Grad (obor as single,   SecFull as integer, byref  SecMnt as integer,  byref  Grad as integer,  byref  Mint as integer,  byref Sec1 as integer, byref  Ugl$ as string)
+sub Ob2Grad (obor as single,   SecFull as integer, SecMnt as integer,  Grad as integer,  Mint as integer,  Sec1 as integer,  byref Ugl$ as string)
+'convert value of revolutions to degree of arc
+'obor - value of revolutions (input)
+'SecFull - Full secounds of arc in value of revolutions
+'Grad - degrees of arc 
+'Mint - minutes of arc
+'Sec1 - Secounds of arc
+'Ugl$ - string repres. of value of revolutions in {arc degrees, minutes, secounds} format
+'SecMnt -secounds of arc in {arc degrees, secounds format} representation of the revolutions value(, i.e. Grad,SecMnt)
+
+SecFull=obor*360*60*60
+sign=sgn(obor)
+obor=abs(obor)
+Grad=fix(obor*360)'+val(Edit18.text)'
+
+Mint=fix((obor*360-Grad)*60)
+
+Sec1=round((((obor*360-Grad)*60)-Mint)*60)
+
+if sec1=60 then 
+	sec1=0
+	inc mint
+	if mint=60 then
+		mint=0
+		inc grad
+	end if
+end if
+
+SecMnt=round((obor*360-Grad)*3600)
+
+if sgn(SecFull)=-1 then zn$="-" else zn$=""
+
+Ugl$=zn$+str$(abs(Grad))+chr$(176)+str$(abs(Mint))+"'"+str$(abs(Sec1))+qt
+
+end sub
+
+'*****************************************
+sub Grad2Sec ( Ugl$ as string, byref obor as single,  byref SecFull as integer, byref  SecMnt as integer,_
+byref  Grad as integer,  byref  Mint as integer,  byref  Sec1 as integer )
+
+'convert value of revolutions to degree of arc
+'obor - value of revolutions (input)
+'SecFull - Full secounds of arc in value of revolutions
+'Grad - degrees of arc 
+'Mint - minutes of arc
+'Sec1 - Secounds of arc
+'Ugl$ - string repres. of value of revolutions in {arc degrees, minutes, secounds} format
+'SecMnt -secounds of arc in {arc degrees, secounds format} representation of the revolutions value(, i.e. Grad,SecMnt)
+
+if Ugl$[1]="-" then znak=-1 else znak=1
+
+Ugl$=Ugl$-"-"
+
+gradpos=instr(Ugl$,chr$(176))
+GradU=val(left$(Ugl$,gradpos-1))
+Grad=GradU*znak
+'print"Grad=";Grad
+
+mintpos=instr(Ugl$,chr$(39))
+mintU=val(mid$(Ugl$,gradpos+1,mintpos- gradpos ))
+mint=mintU*znak
+'print"mint=";mint
+
+secpos=instr(Ugl$,qt)
+secU=val(mid$(Ugl$,mintpos+1,secpos -mintpos ))
+sec1=secU*znak
+'print"sec=";sec
+
+SecFull=(GradU*3600+mintU*60+secU)*znak
+'print"SecFull=";SecFull
+
+obor=SecFull/3600/360
+'print"obor=";obor
+
+SecMnt=mint*60+sec1
+'print"SecMnt=";SecMnt
+end sub
+
+'*****************************************
+function Ugl2Sec (Ugl$ as string) as integer
+if Ugl$[1]="-" then znak=-1 else znak=1
+
+Ugl$=Ugl$-"-"
+
+gradpos=instr(Ugl$,chr$(176))
+GradU=val(left$(Ugl$,gradpos-1))
+
+mintpos=instr(Ugl$,chr$(39))
+mintU=val(mid$(Ugl$,gradpos+1,mintpos- gradpos ))
+
+secpos=instr(Ugl$,qt)
+secU=val(mid$(Ugl$,mintpos+1,secpos -mintpos ))
+
+SecFull=(GradU*3600+mintU*60+secU)*znak
+'print"SecFull=";SecFull
+
+Ugl2Sec=SecFull
+
+end function
+
+'*****************************************
+function Sec2Ugl (SecFull as long) as string
+
+if sgn(SecFull)=-1 then zn$="-" else zn$=""
+SecFull=abs(SecFull)
+'print"SecFull=";SecFull
+
+Grad=SecFull\3600 ' число целых градусов
+'print"Grad=";Grad
+gradSec=Grad*3600 ' число секунд в целых градусах
+'print"gradSec=";gradSec
+
+ostminSec=SecFull-gradSec ' число сек в дробной части градусов - минутах и сек
+'print"ostminSec=";ostminSec
+
+mint=ostminSec\60 ' целое число минут
+'print"mint=";mint
+mintsec=mint*60 ' число секунд в целых минутах
+'print"mintsec=";mintsec
+sec1 =ostminSec- mintsec ' остаток чистых секунд
+'print"sec1=";sec1
+
+
+Sec2Ugl=zn$+str$((Grad))+chr$(176)+str$((Mint))+"'"+str$((Sec1))+qt
+
+
+
+end function
+
+'*********************************************************************
+function sadd(InpStr as string) as long
+'Returns the memory offset of the string data in the string variable
+' use as pointer to the string variable
+DIM Mem AS QMemoryStream
+Mem.Write InpStr
+Mem.Position = 0
+sadd=Mem.Pointer
+end function
+
+'*********************************************************************
+function Cutleft(a as string, n as long)  as string
+'return string without first n chars
+result= mid$(a,n+1,len(a)-n+1)
+end function
+
+'*********************************************************************
+function CutRight(a as string, n as long)  as string
+'return string without first n chars
+result= mid$(a,1,len(a)-n)
+end function
+
+'-- ************************************************************************'
+function delTags (HTMLtext as string) as string 
+string1$=HTMLtext
+
+string1$=REPLACESUBSTR$(string1$,"       " , " "  )
+string1$=REPLACESUBSTR$(string1$,"      " , " "  )
+string1$=REPLACESUBSTR$(string1$,"     " , " "  )
+string1$=REPLACESUBSTR$(string1$,"    " , " "  )
+string1$=REPLACESUBSTR$(string1$,"   " , " "  )
+string1$=REPLACESUBSTR$(string1$,"  " , " "  )
+
+
+string1$=REPLACESUBSTR$(string1$,">"+crlf, ">"+"~~~" )
+string1$=REPLACESUBSTR$(string1$,". ", "."+crlf )
+
+string1$=REPLACESUBSTR$(string1$,"<br>", crlf )
+STRING1$=REPLACESUBSTR$(STRING1$,"<BR>", crlf )
+
+string1$=REPLACESUBSTR$(string1$,"</p>", crlf )
+STRING1$=REPLACESUBSTR$(STRING1$,"</P>", crlf )
+
+string1$=REPLACESUBSTR$(string1$,"</tr>", crlf )
+STRING1$=REPLACESUBSTR$(STRING1$,"</TR>", crlf)
+
+string1$=REPLACESUBSTR$(string1$,"</td>", " " )
+STRING1$=REPLACESUBSTR$(STRING1$,"</TD>", " " )
+
+string1$=REPLACESUBSTR$(string1$,"<td>", "" )
+
+string1$=REPLACESUBSTR$(string1$,"</FONT>", "" )
+
+string1$=REPLACESUBSTR$(string1$,"<P>", "" )
+
+'z0=ftally (string1$, "<")
+z0Old=z0
+
+z1=instr(string1$, "<")
+z2=instr(string1$, ">")
+
+while z1>0 and z2>0 
+	if z2>z1 then 
+		string1$=delete$(string1$, z1, z2-z1+1) '+chr$(10) 
+	else
+		'<a class="small" target="_top" href="/default.asp">MSDN Home</a>&nbsp;>&nbsp;
+		string1$=delete$(string1$, z2, 1)
+	end if
+	z1=instr( string1$, "<")
+	z2=instr( string1$, ">")
+	'dec z0
+	inc z0
+	
+wend
+
+string1$=REPLACESUBSTR$(string1$,"   " , " "  )
+string1$=REPLACESUBSTR$(string1$,"  " , " "  )
+string1$=REPLACESUBSTR$(string1$,chr$(9)+chr$(9)+chr$(9) , " "  )
+string1$=REPLACESUBSTR$(string1$,chr$(9)+chr$(9) , " "  )
+string1$=REPLACESUBSTR$(string1$,chr$(9), " "  )
+
+string1$=REPLACESUBSTR$(string1$,"~~~",crlf )
+
+string1$=REPLACESUBSTR$(string1$,"&quot;" , qt  )
+string1$=REPLACESUBSTR$(string1$,"&gt;" , ">"  )
+string1$=REPLACESUBSTR$(string1$,"&lt;" , "<"  )
+string1$=REPLACESUBSTR$(string1$,"&nbsp;" , " "  )
+
+
+string1$=REPLACESUBSTR$(string1$,crlf+crlf+crlf+crlf+crlf , crlf  )
+string1$=REPLACESUBSTR$(string1$,crlf+crlf+crlf+crlf , crlf  )
+string1$=REPLACESUBSTR$(string1$,crlf+crlf+crlf , crlf  )
+string1$=REPLACESUBSTR$(string1$,crlf+crlf , crlf  )
+
+string1$=REPLACESUBSTR$(string1$,cr+cr+cr+cr+cr , cr  )
+string1$=REPLACESUBSTR$(string1$,cr+cr+cr+cr , cr  )
+string1$=REPLACESUBSTR$(string1$,cr+cr+cr , cr  )
+string1$=REPLACESUBSTR$(string1$,cr+cr , cr  )
+
+string1$=REPLACESUBSTR$(string1$,lf+lf+lf+lf+lf , lf  )
+string1$=REPLACESUBSTR$(string1$,lf+lf+lf+lf , lf  )
+string1$=REPLACESUBSTR$(string1$,lf+lf+lf, lf  )
+string1$=REPLACESUBSTR$(string1$,lf+lf, lf  )
+
+result=string1$
+
+end function
+
+'*****************************************
+Function RQConvertCodePage (SourseString As String, inPage As long, outPage As long) As String
+'print "1159 RQConvertCodePage SourseString=";SourseString
+'$define cp_Win  1251
+'$define cp_Dos  866
+'$define cp_Koi  20866 
+'$define cp_Iso  28595
+'$define cp_UTF8 65001 
+'$define cp_UTF7 65000 
+
+
+Dim LenSourseString As Long
+LenSourseString = Len(SourseString)
+'print "1170 RQConvertCodePage  LenSourseString=";LenSourseString
+
+Dim str1 As String
+Dim str2 As String
+Dim RetStrLong As Long
+
+dim tmp as string 
+tmp=SourseString
+ptrtmp&=varptr(tmp)
+
+str1 = String$(LenSourseString * 4, chr$(0))
+str2 = String$(LenSourseString * 4, chr$(0))
+
+ptrstr1&=varptr(str1)
+ptrstr2&=varptr(str2)
+
+RetStrLong = MultiByteToWideChar(inPage, 0, tmp, LenSourseString, 0&, 0)
+'print"RetStrLong=";RetStrLong
+RetStrLong = MultiByteToWideChar(inPage, 0, tmp,LenSourseString , ptrstr1&, RetStrLong)
+'print"RetStrLong=";RetStrLong
+RetStrLong2 = WideCharToMultiByte(outPage, 0, ptrstr1&, RetStrLong, str2, LenSourseString * 2, ByVal 0&, 0) ' str2
+'print"RetStrLong2=";RetStrLong2
+
+RQConvertCodePage = Left$(str2, RetStrLong2)
+End Function
+
+'*****************************************
+Function RQConvertCodePage1 (SourseStringPtr As long, inPage As long, outPage As long) As String
+'print "1159 RQConvertCodePage SourseString=";SourseString
+'$define cp_Win  1251
+'$define cp_Dos  866
+'$define cp_Koi  20866 
+'$define cp_Iso  28595
+'$define cp_UTF8 65001 
+'$define cp_UTF7 65000 
+
+
+Dim LenSourseString As Long
+LenSourseString = Len(varptr$(SourseStringPtr))
+'print "1170 RQConvertCodePage3  LenSourseString=";LenSourseString
+
+Dim str1 As String
+Dim str2 As String
+Dim RetStrLong As Long
+
+str1 = String$(LenSourseString * 4, chr$(0))'+String$(LenSourseString * 4, chr$(0))
+str2 = String$(LenSourseString * 4, chr$(0))'+String$(LenSourseString * 4, chr$(0))
+
+ptrstr1&=varptr(str1)
+ptrstr2&=varptr(str2)
+
+'RetStrLong = MultiByteToWideChar2(inPage, 0, SourseStringPtr, LenSourseString , 0&, 0)
+RetStrLong = MultiByteToWideChar1(inPage, 0, SourseStringPtr, -1 , 0&, 0)
+'print"RetStrLong0=";RetStrLong
+RetStrLong = MultiByteToWideChar1(inPage, 0, SourseStringPtr,-1, ptrstr1&, RetStrLong)
+'print"RetStrLong1=";RetStrLong
+RetStrLong2 = WideCharToMultiByte1(outPage, 0, ptrstr1&, RetStrLong, str2, LenSourseString * 4, ByVal 0&, 0) ' str2
+'print"RetStrLong2=";RetStrLong2
+
+RQConvertCodePage1 = Left$(str2, RetStrLong2)
+End Function
+
+'*****************************************
+Function ConvertCodePage2 (SourseString As String, inPage As long, outPage As long) As String
+
+Dim LenSourseString As Long
+LenSourseString = Len(SourseString)
+
+Dim str1 As String
+Dim str2 As String
+Dim RetStrLong As Long
+
+dim tmp as string 
+tmp=SourseString
+ptrtmp&=varptr(tmp)
+
+str1 = String$(LenSourseString * 4, chr$(0))
+str2 = String$(LenSourseString * 4, chr$(0))
+
+ptrstr1&=varptr(str1)
+ptrstr2&=varptr(str2)
+
+RetStrLong = MultiByteToWideChar(inPage, 0, tmp, LenSourseString, 0&, 0)
+RetStrLong = MultiByteToWideChar(inPage, 0, tmp, RetStrLong, ptrstr1&, LenSourseString)
+'print"RetStrLong =";RetStrLong 
+RetStrLong2 = WideCharToMultiByte(outPage, 0, ptrstr1&, RetStrLong, str2, LenSourseString * 4, ByVal 0&, 0) ' str2
+'print"RetStrLong2 =";RetStrLong2 
+
+ConvertCodePage2 = Left$(str2, RetStrLong2) ' inc2026: было ConvertCodePage = ... (в conversion.inc такой функции нет, необъявленная переменная), стало ConvertCodePage2 - имя этой функции (строка 949), иначе она возвращает пустую строку
+End Function
+
+
+'*****************************************
+FUNCTION RC4 (key AS STRING, str AS STRING) AS STRING
+DIM stateTable(256) AS BYTE, randomIndex AS BYTE
+DIM i AS LONG, j AS LONG, k AS LONG, n AS LONG
+
+result = ""
+
+n = LEN(key)
+IF 0 < n THEN
+	FOR i = 0 TO 255
+		stateTable(i) = i
+	NEXT
+	
+	j = 0
+	FOR i = 0 TO 255
+		k = (i MOD n) + 1
+		j = (j + stateTable(i) + ASC(key[k])) AND 255
+		SWAP stateTable(i), stateTable(j)
+	NEXT
+	
+	j = 0
+	n = LEN(str)
+	FOR k = 1 TO n
+		i = k AND 255
+		j = (j + stateTable(i)) AND 255
+		randomIndex = (stateTable(i) + stateTable(j)) AND 255
+		SWAP stateTable(i), stateTable(j)
+		
+		result = result & CHR$(ASC(str[k]) XOR stateTable(randomIndex))
+	NEXT
+END IF
+END FUNCTION
+
+
+
+'-- ************************************************************************'
+function BGR2HtmlColor (BGRColor as long) as string
+'hexColor$=HEX$(BGRColor) 
+hexColor$=MID$( HEX$(BGRColor),3,6) 
+result="#"+MID$( hexColor$,5,2) +MID$( hexColor$,3,2) +MID$( hexColor$,1,2) 
+end function
+
+'-- ************************************************************************'
+function HtmlColor2BGR (HtmlColor as string) as long
+HtmlColor$=mid$(trim$(ucase$(HtmlColor)),2,6) 
+HtmlColor$=MID$( HtmlColor$,5,2) +MID$( HtmlColor$,3,2) +MID$( HtmlColor$,1,2) 
+HtmlColor$=CONVBASE$(HtmlColor$,16,10)
+result=val(HtmlColor$)
+end function
+
+
+'*****************************************
+FUNCTION STRL$ (value AS long) AS STRING
+tmp$=STRF$(value, ffFixed, 11, 18)
+if instr(tmp$,".")>0 then decSep$="."
+if instr(tmp$,",")>0 then decSep$=","
+
+STRL$ = field$(STRF$(value, ffFixed, 11, 18),decSep$,1)
+
+END FUNCTION
+
+brem 0
+--- кодовые страницы -------
+      037 IBM EBCDIC - U.S./Canada 
+      437 OEM - United States 
+      500 IBM EBCDIC - International 
+      708 Arabic - ASMO 708 
+      709 Arabic - ASMO 449+, BCON V4 
+      710 Arabic - Transparent Arabic 
+      720 Arabic - Transparent ASMO 
+      737 OEM - Greek (formerly 437G) 
+      775 OEM - Baltic 
+      850 OEM - Multilingual Latin I 
+      852 OEM - Latin II 
+      855 OEM - Cyrillic (primarily Russian) 
+      857 OEM - Turkish 
+      858 OEM - Multlingual Latin I + Euro symbol 
+      860 OEM - Portuguese 
+      861 OEM - Icelandic 
+      862 OEM - Hebrew 
+      863 OEM - Canadian-French 
+      864 OEM - Arabic 
+      865 OEM - Nordic 
+      866 OEM - Russian 
+      869 OEM - Modern Greek 
+      870 IBM EBCDIC - Multilingual/ROECE (Latin-2) 
+      874 ANSI/OEM - Thai (same as 28605, ISO 8859-15) 
+      875 IBM EBCDIC - Modern Greek 
+      932 ANSI/OEM - Japanese, Shift-JIS 
+      936 ANSI/OEM - Simplified Chinese (PRC, Singapore) 
+      949 ANSI/OEM - Korean (Unified Hangeul Code) 
+      950 ANSI/OEM - Traditional Chinese (Taiwan; Hong Kong SAR, PRC) 
+      1026 IBM EBCDIC - Turkish (Latin-5) 
+      1047 IBM EBCDIC - Latin 1/Open System 
+      1140 IBM EBCDIC - U.S./Canada (037 + Euro symbol) 
+      1141 IBM EBCDIC - Germany (20273 + Euro symbol) 
+      1142 IBM EBCDIC - Denmark/Norway (20277 + Euro symbol) 
+      1143 IBM EBCDIC - Finland/Sweden (20278 + Euro symbol) 
+      1144 IBM EBCDIC - Italy (20280 + Euro symbol) 
+      1145 IBM EBCDIC - Latin America/Spain (20284 + Euro symbol) 
+      1146 IBM EBCDIC - United Kingdom (20285 + Euro symbol) 
+      1147 IBM EBCDIC - France (20297 + Euro symbol) 
+      1148 IBM EBCDIC - International (500 + Euro symbol) 
+      1149 IBM EBCDIC - Icelandic (20871 + Euro symbol) 
+      1200 Unicode UCS-2 Little-Endian (BMP of ISO 10646) 
+      1201 Unicode UCS-2 Big-Endian 
+      1250 ANSI - Central European 
+      1251 ANSI - Cyrillic 
+      1252 ANSI - Latin I 
+      1253 ANSI - Greek 
+      1254 ANSI - Turkish 
+      1255 ANSI - Hebrew 
+      1256 ANSI - Arabic 
+      1257 ANSI - Baltic 
+      1258 ANSI/OEM - Vietnamese 
+      1361 Korean (Johab) 
+      10000 MAC - Roman 
+      10001 MAC - Japanese 
+      10002 MAC - Traditional Chinese (Big5) 
+      10003 MAC - Korean 
+      10004 MAC - Arabic 
+      10005 MAC - Hebrew 
+      10006 MAC - Greek I 
+      10007 MAC - Cyrillic 
+      10008 MAC - Simplified Chinese (GB 2312) 
+      10010 MAC - Romania 
+      10017 MAC - Ukraine 
+      10021 MAC - Thai 
+      10029 MAC - Latin II 
+      10079 MAC - Icelandic 
+      10081 MAC - Turkish 
+      10082 MAC - Croatia 
+      12000 Unicode UCS-4 Little-Endian 
+      12001 Unicode UCS-4 Big-Endian 
+      20000 CNS - Taiwan 
+      20001 TCA - Taiwan 
+      20002 Eten - Taiwan 
+      20003 IBM5550 - Taiwan 
+      20004 TeleText - Taiwan 
+      20005 Wang - Taiwan 
+      20105 IA5 IRV International Alphabet No. 5 (7-bit) 
+      20106 IA5 German (7-bit) 
+      20107 IA5 Swedish (7-bit) 
+      20108 IA5 Norwegian (7-bit) 
+      20127 US-ASCII (7-bit) 
+      20261 T.61 
+      20269 ISO 6937 Non-Spacing Accent 
+      20273 IBM EBCDIC - Germany 
+      20277 IBM EBCDIC - Denmark/Norway 
+      20278 IBM EBCDIC - Finland/Sweden 
+      20280 IBM EBCDIC - Italy 
+      20284 IBM EBCDIC - Latin America/Spain 
+      20285 IBM EBCDIC - United Kingdom 
+      20290 IBM EBCDIC - Japanese Katakana Extended 
+      20297 IBM EBCDIC - France 
+      20420 IBM EBCDIC - Arabic 
+      20423 IBM EBCDIC - Greek 
+      20424 IBM EBCDIC - Hebrew 
+      20833 IBM EBCDIC - Korean Extended 
+      20838 IBM EBCDIC - Thai 
+      20866 Russian - KOI8-R 
+      20871 IBM EBCDIC - Icelandic 
+      20880 IBM EBCDIC - Cyrillic (Russian) 
+      20905 IBM EBCDIC - Turkish 
+      20924 IBM EBCDIC - Latin-1/Open System (1047 + Euro symbol) 
+      20932 JIS X 0208-1990 & 0121-1990 
+      20936 Simplified Chinese (GB2312) 
+      21025 IBM EBCDIC - Cyrillic (Serbian, Bulgarian) 
+      21027 Extended Alpha Lowercase 
+      21866 Ukrainian (KOI8-U) 
+      28591 ISO 8859-1 Latin I 
+      28592 ISO 8859-2 Central Europe 
+      28593 ISO 8859-3 Latin 3 
+      28594 ISO 8859-4 Baltic 
+      28595 ISO 8859-5 Cyrillic 
+      28596 ISO 8859-6 Arabic 
+      28597 ISO 8859-7 Greek 
+      28598 ISO 8859-8 Hebrew 
+      28599 ISO 8859-9 Latin 5 
+      28605 ISO 8859-15 Latin 9 
+      29001 Europa 3 
+      38598 ISO 8859-8 Hebrew 
+      50220 ISO 2022 Japanese with no halfwidth Katakana 
+      50221 ISO 2022 Japanese with halfwidth Katakana 
+      50222 ISO 2022 Japanese JIS X 0201-1989 
+      50225 ISO 2022 Korean 
+      50227 ISO 2022 Simplified Chinese 
+      50229 ISO 2022 Traditional Chinese 
+      50930 Japanese (Katakana) Extended 
+      50931 US/Canada and Japanese 
+      50933 Korean Extended and Korean 
+      50935 Simplified Chinese Extended and Simplified Chinese 
+      50936 Simplified Chinese 
+      50937 US/Canada and Traditional Chinese 
+      50939 Japanese (Latin) Extended and Japanese 
+      51932 EUC - Japanese 
+      51936 EUC - Simplified Chinese 
+      51949 EUC - Korean 
+      51950 EUC - Traditional Chinese 
+      52936 HZ-GB2312 Simplified Chinese 
+      54936 Windows XP: GB18030 Simplified Chinese (4 Byte) 
+      57002 ISCII Devanagari 
+      57003 ISCII Bengali 
+      57004 ISCII Tamil 
+      57005 ISCII Telugu 
+      57006 ISCII Assamese 
+      57007 ISCII Oriya 
+      57008 ISCII Kannada 
+      57009 ISCII Malayalam 
+      57010 ISCII Gujarati 
+      57011 ISCII Punjabi 
+      65000 Unicode UTF-7 
+      65001 Unicode UTF-8 
+erem
+'[build_inc] (дальше снова rapidq.inc)
+'~inc $include "Files.inc"   ' сборка: файл - здесь
+'============================================================================
+'[build_inc] Files.inc
+'============================================================================
+
+$DEFINE FILE_ATTRIBUTE_READONLY  &H1
+$DEFINE FILE_ATTRIBUTE_HIDDEN  &H2
+$DEFINE FILE_ATTRIBUTE_SYSTEM  &H4
+$DEFINE FILE_ATTRIBUTE_DIRECTORY  &H10
+$DEFINE FILE_ATTRIBUTE_ARCHIVE  &H20
+$DEFINE FILE_ATTRIBUTE_NORMAL  &H80
+$DEFINE FILE_ATTRIBUTE_TEMPORARY  &H100
+$DEFINE FILE_ATTRIBUTE_COMPRESSED  &H800
+
+$DEFINE GENERIC_READ  &H80000000
+$DEFINE FILE_SHARE_READ  &H1
+$DEFINE OPEN_EXISTING  3
+$DEFINE FILE_TYPE_CHAR  &H2
+$DEFINE FILE_TYPE_DISK  &H1
+$DEFINE FILE_TYPE_PIPE  &H3
+$DEFINE FILE_TYPE_UNKNOWN  &H0
+
+
+
+Type SECURITY_ATTRIBUTES
+  nLength As Long
+  lpSecurityDescriptor As Long
+  bInheritHandle As Long
+End Type
+
+'Declare Function GetFileSizeEx Lib "kernel32" (ByVal hFile As Long, lpFileSize As Currency) As Boolean
+
+Declare Function GetFileAttributes Lib "kernel32" Alias "GetFileAttributesA"_
+(ByVal lpFileName As String) As Long
+Declare Function SetFileAttributes Lib "kernel32" Alias "SetFileAttributesA"_
+(ByVal lpFileName As String, ByVal dwFileAttributes As Long) As Long
+
+Declare Function CreateDirectory Lib "kernel32" Alias "CreateDirectoryA" _
+(ByVal lpPathName As String, lpSecurityAttributes As SECURITY_ATTRIBUTES) As Long
+
+fMsg35$="ReadOnly or hidden or system file! Change anyway?"
+
+
+
+'---------- wininet ------------------
+Const scUserAgent = "Test program"
+Const INTERNET_OPEN_TYPE_DIRECT = 1
+Const INTERNET_OPEN_TYPE_PROXY = 3
+Const INTERNET_FLAG_RELOAD = &H80000000
+
+Declare Function InternetOpen Lib "wininet" Alias "InternetOpenA" (_
+                                                                   sAgent As String,_
+                                                                   lAccessType As Long,  _
+                                                                   sProxyName As String,  _
+                                                                   sProxyBypass As String,  _
+                                                                   lFlags As Long_
+) As Long
+
+Declare Function InternetCloseHandle Lib "wininet"  Alias "InternetCloseHandle"  ( hInet As Long) As Integer
+
+Declare Function InternetReadFile Lib "wininet"  Alias "InternetReadFile" ( _
+                                                                            hFile As Long,  _
+                                                                            byref sBuffer As String,  _
+                                                                            lNumBytesToRead As Long, _
+                                                                            byref lNumberOfBytesRead As Long_
+) As Integer
+
+Declare Function InternetOpenUrl Lib "wininet" Alias "InternetOpenUrlA" ( _
+                                                                          hInternetSession As Long,  _
+                                                                          lpszUrl As String,  _
+                                                                          lpszHeaders As String,  _
+                                                                          dwHeadersLength As Long,  _
+                                                                          dwFlags As Long,  _
+                                                                          dwContext As Long) As Long
+'-------------------------------------
+
+
+'# QUOTE : Returns a quoted string
+function Quote (StringToQuote as string) as string
+  StringToQuote =  chr$(34) + StringToQuote + chr$(34)
+  result = replacesubstr$(stringtoquote, chr$(34) + chr$(34), chr$(34))
+end function
+
+'===============================================================================
+'# STRIPPATH : Returns file path (without file name)
+Function StripPath (fullname as string) as string
+  'print
+  'print "1 StripPath fullname=";fullname
+
+  result = left$(fullname, rinstr(fullname, "\"))
+
+  'print "2 StripPath fullname=";fullname
+  'print
+
+end function
+
+'===============================================================================
+'# STRIPFILENAME : Returns file name (without path)
+Function StripFileName (fullname as string) as string
+  result = right$(fullname, len(fullname) - rinstr(fullname, "\"))
+end function
+
+
+'===============================================================================
+'# GetFileNameNoPath : Returns file name (without path)
+Function GetFileNameNoPath (fullname as string) as string
+  result = right$(fullname, len(fullname) - rinstr(fullname, "\"))
+end function
+
+
+
+'===============================================================================
+'# STRIPFILEEXT : Returns file extension (like ".exe", ".html" etc.)
+Function StripFileExt (fullname as string) as string
+  if instr(fullname,".")=0 then
+    result =""
+  else
+    result = right$(fullname, len(fullname) - rinstr(fullname, ".") + 1)
+  end if
+end function
+
+'===============================================================================
+'# FILENAMENOEXT : Returns file name without extension
+function FileNameNoExt(fullname as string) as string
+  fullname = right$(fullname, len(fullname) - rinstr(fullname, "\"))
+  result = left$(fullname, rinstr(fullname, ".") - 1)
+end function
+
+'===============================================================================
+'# FULLPATHNOEXT : Returns full path without file extension
+function FullPathNoExt(fullname as string) as string
+  result = left$(fullname, rinstr(fullname, ".") - 1)
+end function
+
+'===============================================================================
+'# C_Style : Returns "slashed" path from a "backslashed" one
+function C_Style (fullname as string) as string
+  fullname = replacesubstr$(fullname, "\\", "\")
+  result = replacesubstr$(fullname, "\", "/")
+end function
+'*****************************************
+function bsPath (fullname as string) as string
+  'backslashedPath
+  'fullname = replacesubstr$(fullname, "\\", "\")
+  result = replacesubstr$(fullname, "/", "\")
+end function
+
+
+'===============================================================================
+'# SYSDIR : Retrieves windows shell directories
+
+'-------------------------|
+' Allowed values for dir  |
+'-----------------------------------------------------------------------------|
+' Desktop                 | Templates               | AppData                 |
+' Start Menu              | Programs                | Startup                 |
+' Fonts                   | SendTo                  | Recent                  |
+' Favorites               | Cache                   | Cookies                 |
+' History                 | NetHood                 | Personal                |
+' PrintHood               | Local AppData           | My Pictures             |
+' Administrative Tools    |                         |                         |
+'-----------------------------------------------------------------------------|
+
+function SysDir (dir as string) as string
+  DIM fo_reg AS QRegistry
+  fo_reg.RootKey = &H80000001
+  fo_reg.openkey ("Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders", 0)
+  result = fo_reg.readstring(dir) + "\"
+end function
+
+'===============================================================================
+'# HOMEDIR : The folder where the application is
+
+function homedir() as string
+  result = left$(command$(0), rinstr(command$(0), "\"))
+end function
+
+'===============================================================================
+'# BROWSEFORFOLDERS : Returns the selected folder
+
+function BrowseForFolders (initialdir as string, wincapt as string) as string
+  dim bff_form as qform
+  with bff_form
+    .height = 400
+    .center
+    .caption = wincapt
+    .delbordericons 2
+  end with
+  dim bff_tree as qdirtree
+  with bff_tree
+    .parent = bff_form
+    .align = 5
+  end with
+  if bff_form.caption = "" then bff_form.caption = "Select folder"
+  if direxists(initialdir) then
+    bff_tree.directory = initialdir
+  else
+    bff_tree.directory = curdir$
+  end if
+  bff_form.showmodal
+  result = bff_tree.directory
+end function
+
+'===============================================================================
+'# BROWSEFORFILE : Returns the selected folder
+
+Function BrowseForFile (caption as string, filter as string, _
+                        initialdir as string) as string
+
+  dim bff_od as qopendialog
+  with bff_od
+    .caption = caption
+    .filter = filter
+    .initialdir = initialdir
+
+    if .execute then
+      result = .filename
+    end if
+  end with
+
+end function
+
+'_=============================================================================
+
+$ESCAPECHARS ON
+
+'ChangeFileExt:
+'Returns: String
+'Parameters:
+'FileName (String): Name of file with old extention
+'NewExt (String): New extention. This must include the leading ".".
+
+'Information:
+'Author: Taj Morton
+'Email: tmorton at linuxmail dot org.
+'License: Public Domain
+
+'Description:
+'Changes the extention of FileName to NewExt. For example:
+'ChangeFileExt("File.bas", ".inc")
+'returns File.inc. This function does not delete the old string,
+'instead, it simply returns a new one with the extention.
+'You must include the leading "." for it to be added, as it is not
+'done by the function.
+
+FUNCTION ChangeFileExt(FileName as String, NewExt as STRING) as STRING
+  DIM Returns as STRING
+  DIM CurrentExt as String
+  DIM CurrentExtLoc as INTEGER
+  DIM FileNoExt as STRING
+
+  CurrentExtLoc = RInStr(FileName, ".")
+  CurrentExt = MID$(FileName, CurrentExtLoc, LEN(FileName))
+  FileNoExt = DELETE$(FileName, CurrentExtLoc, LEN(FileName))
+
+  Result = INSERT$(NewExt, FileNoExt, LEN(FileName))
+  ChangeFileExt = Result
+END FUNCTION
+
+'ExtractFileName:
+'Returns: String
+'Parameters:
+'FileName (String): File with full path
+
+'Information:
+'Author: Taj Morton
+'Email: tmorton at linuxmail dot org.
+'License: Public Domain
+
+'Description:
+'ExtractFileName takes a file name with a path and returns only
+'the file name. For example:
+'ExtractFileName("C:\\Program Files\\AFile.bas")
+'returns AFile.bas. You can use either two back-slashes or a single
+'forward slash (/) for folder seperators.
+'Both forward and back-slashes are supported by Windows.
+'The back-slash takes procedure over the forward slash.
+'Note that ExtractFileName does _not_ check the validity of the path passed.
+'You must check yourself.
+
+FUNCTION ExtractFileName(FileName as STRING) AS STRING
+  DIM Length as INTEGER
+  DIM Result as STRING
+
+  Length = RInStr(FileName, "\\") OR RInStr(FileName, "/")
+  Result = MID$(FileName, Length+1, LEN(FileName) - Length + 1)
+  ExtractFileName = Result
+END FUNCTION
+
+'ExtractFilePath
+'Returns: String
+'Parameters:
+'FileName (String): File with full path
+
+'Information:
+'Author: Taj Morton
+'Email: tmorton at linuxmail dot org.
+'License: Public Domain
+
+'Description:
+'ExtractFilePath takes string with full path and returns a string
+'with only the path. For example:
+'ExtractFilePath("C:\\Program Files\\AProgram.bas")
+'returns C:\Program Files (the \\'s are for RQ and back-slashes).
+'ExtractFilePath also takes forward-slashes (/). Window's supports
+'these as well.
+'The back-slash takes procedure over the forward slash.
+'Note that ExtractFilePath does _not_ test the validity
+'of the passed name. You must check it yourself. Even if the name is
+'invalid, the path will be returned. For example, if C:/ProgramErrorFiles/AFile.txt
+'is passed, C:/ProgramErrorFiles will be returned.
+
+'-- *****************************************************'
+FUNCTION ExtractFilePath(FileName as STRING) AS STRING
+  DIM Length as INTEGER
+  DIM Result as STRING
+
+  Length = RInStr(FileName, "\\") OR RInStr(FileName, "/")
+  Result = MID$(FileName, 0, Length)
+  ExtractFilePath = Result
+END FUNCTION
+
+'ChangeFileName
+'Returns: String
+'Parameters:
+'FileName (String): File with full path
+'NewName (String): Text that will replace old file name
+
+'Information:
+'Author: Taj Morton
+'Email: tmorton at linuxmail dot org.
+'License: Public Domain
+
+'Description:
+'ChangeFileName takes a file name with full path and file and a new name.
+'It replaces the current filename (in FileName) and replaces it with NewName.
+'ChangeFileName does not actually change FileName, instead it returns a new
+'string which contains the new name.
+'Note that ChangeFileName does not check the validity of FileName
+'or the new result. You must do it yourself (if you want). ChangeFileName
+'takes both the back-slash and forward slash to serperate folder and file names.
+'You can use either \\ or /. Both are supported by Windows.
+'The back-slash takes procedure over the forward slash.
+
+'-- *****************************************************'
+FUNCTION ChangeFileName(FileName as STRING, NewName as STRING) AS STRING
+  DIM FileNameLoc as INTEGER
+  DIM Result as STRING
+  DIM PathNoName AS STRING
+
+  PathNoName = ExtractFilePath(FileName)
+  Result = PathNoName+NewName
+  ChangeFileName = Result
+END FUNCTION
+
+'ChangeFilePath
+'Returns: String
+'Parameters:
+'FileName (String): File with full path
+'NewPath (String): New path that will replace the path in FileName
+
+'Information:
+'Author: Taj Morton
+'Email: tmorton at linuxmail dot org.
+'License: Public Domain
+
+'Description:
+'ChangeFilePath takes FileName and replaces the path with NewPath.
+'It does not change FileName to have the new path, instead, it returns
+'a string which has the new path. It's up to you to take the correct
+'action. Also, old or new path and names' are not checked for validity,
+'you must do it yourself.
+'You may use either the \\ or the / to seperate your paths. Windows supports
+'both.
+
+'-- *****************************************************'
+FUNCTION ChangeFilePath(FileName as STRING, NewPath as STRING) AS STRING
+  DIM Result AS STRING
+  DIM FileNoPath AS STRING
+
+  FileNoPath = ExtractFileName(FileName)
+
+  Result = NewPath+FileNoPath
+  ChangeFilePath = Result
+END FUNCTION
+$ESCAPECHARS Off
+
+'-- *****************************************************'
+FUNCTION FileSize(FileName as STRING) AS integer
+  DIM fileStr as QFileStream
+
+  'if fileexists (FileName)>0 then
+  if	fileStr.open (FileName,0)=-1  then 'fmOpenRead
+
+    result=fileStr.size
+    fileStr.close
+  else
+    result=-1
+  end if
+
+END FUNCTION
+'-- *****************************************************'
+FUNCTION SaveString(ss$ as STRING ,FileName as STRING  ) AS integer
+  result=0
+
+  if FileName="" then showmessage ("FUNCTION SaveString. Wrong FileName="+FileName):exit function
+  DIM fileStr as QFileStream
+
+  if fileStr.open (FileName,65535 )=-1 then 'fmCreate'
+    result=-1
+    FileStr.WriteBinStr(ss$, len(ss$))
+    FileStr.Close
+    result=1
+  else
+    'ShowMessage ("SaveString error: Access denied "+FileName)
+    result=-2
+  end if
+END FUNCTION
+
+'-- *****************************************************'
+FUNCTION SaveStringEx(ss$ as STRING ,FileName as STRING, mode as integer  ) AS integer
+  ' save string SS$ to file FileName.
+  'Mode=0 - overwrite,
+  'Mode=1 - append string ss$ to file FileName
+  'Mode=2 - append  crlf+ss$ to file FileName
+
+  result=0
+
+  if FileName="" then showmessage ("FUNCTION SaveString. Wrong FileName="+FileName):exit function
+
+  DIM fileStr as QFileStream
+
+  if mode=0 then
+    result=0
+    if fileStr.open (FileName,65535 )=-1 then 'fmCreate'
+      result=-1
+      FileStr.WriteBinStr(ss$, len(ss$))
+      FileStr.Close
+    else
+      'ShowMessage ("SaveStringEx error: Access denied "+FileName)
+      result=-2
+      exit function
+    end if
+
+  elseif mode=1 or mode=2 then
+    if fileexists(FileName)=0 then md=65535:crl$="" else md=2:crl$=crlf 'showmessage ("FUNCTION SaveString. Can't open File="+FileName):exit function | inc2026: crl$="" вместо crl="": в ветке else - crl$=crlf, ниже используется crl$ (строка 446); crl - другая, числовая переменная
+    if fileStr.open (FileName,md )=-1 then  'fmOpenReadWrite = 2
+      fileStr.Position=fileStr.size
+      result=-1
+      if mode=1 then FileStr.WriteStr(ss$, len(ss$)) else FileStr.WriteStr(crl$+ss$, len(crl$+ss$))
+      FileStr.Close
+    else
+      'ShowMessage ("SaveStringEx error: Access denied "+FileName)
+      result=-2
+      exit function
+
+    end if
+  else
+  end if
+
+  result=1
+
+END FUNCTION
+'-- *****************************************************'
+FUNCTION CheckFileWr (FileName as STRING  ) AS long
+  result=0
+  DIM fileStr as QFileStream
+  'fmOpenWrite = 1
+  if fileStr.open (FileName,1 )=-1 then
+    result=-1
+    FileStr.Close
+  end if
+
+END FUNCTION
+
+'******************************'
+FUNCTION LoadString(FileName as STRING  ) AS string
+  DIM fileStr as QFileStream
+  result="0"
+  'fmOpenRead = 0
+  if fileStr.open (FileName,0 )=-1 then'fmCreate'
+    result="-1"
+    result=FileStr.ReadBinStr( FileStr.size)
+    FileStr.Close
+    'result=1
+  end if
+
+END FUNCTION
+
+'-- *****************************************************'
+FUNCTION LoadBinString(FileName as STRING , n as long ) AS string
+  'print"FileName=";FileName
+  DIM fileStr as QFileStream
+  result="0"
+  res$="0"
+  'print"res1$=";res$
+  'fmOpenRead = 0
+  if fileStr.open (FileName,0 )=-1 then'fmRead'
+    if n=-1 then n=FileStr.size
+    if n>FileStr.size then n=FileStr.size
+    result="-1"
+    res$="-1"
+    result=FileStr.ReadBinStr( n)
+    FileStr.Close
+    'result=1
+  end if
+  'print"res2$=";res$
+END FUNCTION
+
+'-- *****************************************************'
+FUNCTION LoadString1(FileName as STRING  ) AS string
+  DIM fileStr as QFileStream
+  result="0"
+  'fmOpenRead = 0
+  if fileStr.open (FileName,0 )=-1 then'fmRead'
+    result="-1"
+    result=FileStr.ReadStr( FileStr.size)
+    FileStr.Close
+    'result=1
+  end if
+
+END FUNCTION
+
+'_==============================================================
+
+
+'-- *****************************************************'
+
+function MKSubDir (DirDst$) as short
+  'Andrew Shelkovenko dec 2003, jul 2004
+  'Create DirDst$ directory with full subdir structure
+  '----------------------------------------------
+  'print "MKSubDir DirDst$="; DirDst$
+  result=0
+  dim DirDst1$ as string
+  DirDst1$=string$(len(DirDst$),"a")
+  'chartooem DirDst$,DirDst1$
+  DirDst1$=DirDst$
+
+  if right$(DirDst1$,1)<>BkSl then DirDst1$=DirDst1$+BkSl
+  z1=instr(DirDst1$,BkSl)
+  z2=0
+  while z1>0
+    SubDirDst$=left$(DirDst1$,z1 )
+    if DIREXISTS(SubDirDst$)=0 then MKDIR SubDirDst$ :'print "MKSubDir SubDirDst$=" ,SubDirDst$
+    z2=z1+1
+    z1=instr(z2,DirDst1$,BkSl)
+  wend
+
+  result=1
+end function
+
+'-- *****************************************************'
+sub SubDirCopy (DirSrc$, DirDst$, mask$) '- -----------------------------------'
+  'Andrew Shelkovenko dec 2003
+  'Copy DirSrc$ directory with full subdir structure and files (by mask$) to DirDst$
+  dim FileSrc as QFileStream
+  dim FileDst as QFileStream
+
+  'Index=0
+  NumFiles=0
+  defint nsd1, nsd2
+  defstr mask
+  nsd1=0:nsd2=0
+  NumDir=0
+  ArrNumDir=500
+  dim SubDir(500) as string
+
+  ArrNumFil=500
+  dim FileNames (500) as string
+  mask="*.*"
+  if right$(DirSrc$,1)<> BkSl then DirSrc$=DirSrc$+BkSl
+  if right$(DirDst$,1)<> BkSl then DirDst$=DirDst$+BkSl
+  SubDir(0)=DirSrc$
+
+  sss1:
+  for i=NSD1 to Nsd2 'current level sudirs'
+    'print "374 SubDir(",i,")=",SubDir(i)
+    SubDirname$=dir$(SubDir(i)+mask, faDirectory)
+
+    while    SubDirname$ <>""
+      if FileRec.Size =0 and SubDirname$<> "." and SubDirname$<> ".." then ''
+        inc adddir
+        inc NumDir 'add subdir'
+        if NumDir=ArrNumDir then ArrNumDir=ArrNumDir+300: redim SubDir(ArrNumDir) as string
+        SubDir(NumDir)=SubDir(i)+SubDirname$+"\"
+        'print "383 SubDir(", NumDir, ")=",SubDir(NumDir)
+      else
+      end if
+      SubDirname$=dir$
+      doevents:if stops1=1 then stops1=0: exit sub
+    wend
+
+    'search files in current subdirectory
+    Fn$=dir$(SubDir(i)+mask$,faAnyFile-faDirectory) ':-)
+    while Fn$ <>""
+      if  Fn$<> "." and Fn$<> ".."  then 'and FileRec.Size <>0'
+        inc NumFiles
+        if NumFiles=ArrNumFil then ArrNumFil=ArrNumFil+300: redim FileNames(ArrNumFil) as string:'print "redim FileNames"
+        FileNames(NumFiles)=SubDir(i)+Fn$
+        'print "FileNames(",NumFiles,")=" ,FileNames(NumFiles)
+
+      else
+      end if
+      Fn$=dir$
+    wend
+  next i
+
+  if adddir>0 then
+    NSD1=NSD2+1
+    NSD2=NSD2+adddir
+    adddir=0
+    goto sss1 'repeat with new sub level
+  else
+  end if
+
+  ' got subdirs list in SubDir(i) array and file list with full path in FileNames(j)
+  ' now create subdirs structure with new path
+
+  for i1=0 to i-1
+    NewSubDir$=SubDir(i1)-DirSrc$
+    NewSubDir$=DirDst$+NewSubDir$
+    MKSubDir (NewSubDir$)
+  next i1
+
+  for j=1 to NumFiles
+    FileSrc.Open(FileNames(j), fmOpenRead)
+    if FileSrc.size=0 then FileSrc.close: goto SubDirCopynextj1
+
+    NewFileName$=FileNames(j)-DirSrc$
+    NewFileName$=DirDst$+NewFileName$
+    'print "NewFileName$=" ,NewFileName$
+    if FileDst.Open(NewFileName$, fmCreate) =-1 then
+      FileDst.CopyFrom  (FileSrc, 0)''
+      FileSrc.close''
+      FileDst.close
+    else
+      ShowMessage ("SubDirCopy error: Access denied "+NewFileName$)
+
+    end if
+    SubDirCopynextj1:
+  next j
+
+end sub
+
+'-- *****************************************************'
+function fSubDirCopy (DirSrc$, DirDst$, mask$) as long '- -----------------------------------'
+  'Andrew Shelkovenko dec 2003
+  'Copy DirSrc$ directory with full subdir structure and files (by mask$) to DirDst$
+  'DiaMsg$="Начало копирования.."
+
+  dim FileSrc as QFileStream
+  dim FileDst as QFileStream
+  dim i as long
+
+  result=-1
+  'Index=0
+  NumFiles=0
+  defint nsd1, nsd2
+  defstr mask
+  nsd1=0:nsd2=0
+  NumDir=0
+  ArrNumDir=500
+  dim SubDir(500) as string
+
+  ArrNumFil=500
+  dim FileNames (500) as string
+  mask="*.*"
+  if right$(DirSrc$,1)<> BkSl then DirSrc$=DirSrc$+BkSl
+  'print "DirSrc$="; DirSrc$
+
+  SubDir(0)=DirSrc$
+
+  sss1:
+  for i=NSD1 to Nsd2 'current level sudirs'
+    SubDirname$=dir$(SubDir(i)+mask, faDirectory)
+    while    SubDirname$ <>""
+      if FileRec.Size =0 and SubDirname$<> "." and SubDirname$<> ".." then ''
+        attr=GetFileAttributes(SubDir(i)+SubDirname$) ' inc2026: SubDir(i) вместо SubDir(d2): d2 нигде не получает значения (0), поэтому атрибуты брались для папки верхнего уровня, а не для текущей SubDir(i) (строка 672)
+        If (attr And FILE_ATTRIBUTE_DIRECTORY)=0 Then goto fSubDirCopynodir1
+        inc adddir
+        inc NumDir 'add subdir'
+        if NumDir=ArrNumDir then ArrNumDir=ArrNumDir+300: redim SubDir(ArrNumDir) as string:'DiaMsg$="‘Є ­ЁагҐ¬ Ї®¤¤ЁаҐЄв®аЁЁ "+SubDir(NumDir) 'SubDirname$
+        SubDir(NumDir)=SubDir(i)+SubDirname$+"\"
+      else
+      end if
+      fSubDirCopynodir1:
+      SubDirname$=dir$
+      doevents:if stops1=1 then stops1=0: exit function
+    wend
+
+    'DiaMsg$="Всего поддиректорий " +str$(NumDir)
+
+    'search files in current subdirectory
+    Fn$=dir$(SubDir(i)+mask$,faAnyFile-faDirectory) ':-)
+    attr=GetFileAttributes(SubDir(i)+Fn$) ' inc2026: SubDir(i) вместо SubDir(d2): d2 нигде не получает значения (0); текущая папка - SubDir(i) (строка 691)
+
+    while Fn$ <>""
+      if  Fn$<> "." and Fn$<> ".."  then 'and FileRec.Size <>0'
+        inc NumFiles
+        if NumFiles=ArrNumFil then ArrNumFil=ArrNumFil+300: redim FileNames(ArrNumFil) as string:'DiaMsg$=str$(NumFiles)
+        FileNames(NumFiles)=SubDir(i)+Fn$
+        'print "FileNames(",NumFiles,")=" ,FileNames(NumFiles)
+        'DiaMsg$="Сканируем файлы "+FileNames(NumFiles)
+      else
+      end if
+      Fn$=dir$
+    wend
+  next i
+  result=-2
+
+  if adddir>0 then
+    NSD1=NSD2+1
+    NSD2=NSD2+adddir
+    adddir=0
+    goto sss1 'repeat with new sub level
+  else
+  end if
+
+  ' got subdirs list in SubDir(i) array and file list with full path in FileNames(j)
+  ' now create subdirs structure with new path
+
+  for i1=0 to i-1
+    NewSubDir$=SubDir(i1)-DirSrc$
+    NewSubDir$=DirDst$+NewSubDir$
+    MKSubDir (NewSubDir$)
+  next i1
+  result=-3
+
+  for j=1 to NumFiles
+
+    FileSrc.Open(FileNames(j), fmOpenRead)
+    if FileSrc.size=0 then
+      FileSrc.close:
+      goto fSubDirCopynextj
+    end if
+
+    NewFileName1$=FileNames(j)-DirSrc$
+    NewFileName$=DirDst$+NewFileName1$
+
+    if FileDst.Open(NewFileName$, fmCreate) =-1 then
+
+      FileDst.CopyFrom  (FileSrc, 0)''
+      FileSrc.close''
+      FileDst.close
+    else
+      ShowMessage ("fSubDirCopy error: Access denied "+NewFileName$)
+
+    end if
+
+    fSubDirCopynextj:
+    doevents
+  next j
+
+  result=j-1
+
+end function
+
+fdefaultChkAttr=0
+fAttrChg=0
+
+'-- ***********************************************************************'
+function DirCopy (DirSrc$, DirDst$, mask$) as long
+  'print "DirCopy mask$=" ,mask$
+  'print "DirCopy DirDst$=" ,DirDst$
+  'print "DirCopy DirSrc$=" ,DirSrc$
+  'Andrew Shelkovenko dec 2003
+  'Copy files (by mask$) from DirSrc$ to DirDst$
+  result=0
+  dim FileSrc as QFileStream
+  dim FileDst as QFileStream
+  defint NumFIles
+  NumFIles=0
+  'MKDIR DirDst$
+  rz=MKSubDir (DirDst$)
+  if right$(DirSrc$,1)<>"\" then DirSrc$=DirSrc$+"\"
+  if right$(DirDst$,1)<>"\" then DirDst$=DirDst$+"\"
+
+  if direxists(DirDst$) =0 then
+    showmessage ("DirCopy Error: Can't create folder "+DirDst$)
+    exit function
+  end if
+
+  FileName$ = DIR$(DirSrc$+mask$, 0) '-- Get first file
+
+  while    FileName$ <>""
+    if fileexists(DirDst$+FileName$) =0 then goto DCcreate:
+    fOldfa=GetFileAttributes (DirDst$+FileName$)
+    fzas=FILE_ATTRIBUTE_READONLY or FILE_ATTRIBUTE_HIDDEN or FILE_ATTRIBUTE_SYSTEM
+
+    if (fOldfa and fzas) >0 then
+      if fdefaultChkAttr=0 then
+        frzm24=MessageDlg("DirCopy "+fMsg35$+"  "+DirDst$+FileName$, mtWarning, mbYes OR mbNo OR mbAll, 0)
+        IF frzm24 = mrNo THEN ' inc2026: frzm24 вместо rzm24: ответ MessageDlg записан в frzm24 (строка 789), rzm24 нигде не получает значения - ответ "Нет" не обрабатывался
+          fAttrChg=0
+          goto DirCopyExitSub:
+        elseif frzm24 = mrYes then
+          SetFileAttributes (DirDst$+FileName$,FILE_ATTRIBUTE_NORMAL)
+          fAttrChg=1
+        elseif frzm24 = mrAll then
+          fdefaultChkAttr=1
+          SetFileAttributes (DirDst$+FileName$,FILE_ATTRIBUTE_NORMAL)
+          fAttrChg=1
+        END IF
+
+      else
+        SetFileAttributes (DirDst$+FileName$,FILE_ATTRIBUTE_NORMAL)
+        fAttrChg=1
+      end if
+    else
+
+    end if
+    DCcreate:
+    FileSrc.Open(DirSrc$+filename$, fmOpenRead)
+    if FileDst.Open(DirDst$ +filename$, fmCreate) =-1 then
+      FileDst.CopyFrom  (FileSrc, 0)
+      FileDst.close
+    else
+      'result=0
+      ShowMessage ("DirCopy error: Access denied "+DirDst$ +filename$)
+
+    end if
+    FileSrc.close
+    SetFileAttributes (DirDst$+FileName$,fOldfa)
+
+    FileName$ = DIR$ '-- Get next file
+    inc NumFIles
+    DiaMsg$="DirCopy copied= "+str$(NumFIles) +" files"
+    'print"DiaMsg$=";DiaMsg$
+    doevents
+  wend
+  'print "DirCopy copied= "+str$(NumFIles) +" files
+  result=NumFIles
+  DirCopyExitSub:
+end function
+
+'-- ***********************************************************************'
+sub FileCopy (FileSrc$, FileDst$) '- -----------------------------------'
+  'Andrew Shelkovenko dec 2003
+  'Copy FileSrc$ to FileDst$
+  ' if path dest is not exists - create it.
+
+  dim FileSrc as QFileStream
+  dim FileDst as QFileStream
+
+  dr$=StripPath (FileDst$)
+  'print "dr$=" ,dr$
+
+  'MKDIR dr$ 'StripPath (FileDst$)
+
+  if dr$<>"" then
+    MKSubDir dr$
+    if DIREXISTS(dr$ ) =0 then showmessage ("FileCopy Can't create directory "+dr$ ): 'exit sub
+  end if
+
+  if FileSrc.Open(FileSrc$, fmOpenRead) =-1 then
+    if FileDst.Open(FileDst$, fmCreate) =-1 then
+      FileDst.CopyFrom  (FileSrc, 0)
+
+      FileDst.close
+      FileSrc.close
+    else
+      'print  "Can't create "+FileDst$
+    end if
+  else
+    'print  "File not found "+FileSrc$
+  end if
+
+end sub
+'-- ***********************************************************************'
+function fFileCopy (FileSrc$, FileDst$) as long '- -----------------------------------'
+  'print " fFileCopy FileSrc$=";FileSrc$
+  'Andrew Shelkovenko dec 2003
+  'Copy FileSrc$ to FileDst$
+  result=0
+  dim FileSrc as QFileStream
+  dim FileDst as QFileStream
+
+  'if Filesize(FileDst$)=0 then
+  'end if
+
+  dr$=StripPath (FileDst$)
+  'print "2 fFileCopy FileDst$=";FileDst$
+  'print " fFileCopy dr$=";dr$
+
+  if dr$<>"" then
+    if DIREXISTS(dr$ ) =0 then MKSubDir dr$
+    if DIREXISTS(dr$ ) =0 then result=-1: exit function 'showmessage ("FileCopy Can't create directory "+dr$ ): '
+  end if
+  result=-2
+  if FileSrc.Open(FileSrc$, fmOpenRead) =-1 then
+    result=-3
+    if FileDst.Open(FileDst$, fmCreate) =-1 then
+      result=-4
+      FileDst.CopyFrom  (FileSrc, 0)
+      FileSrc.close
+      FileDst.close
+      result=1
+    else
+      ShowMessage ("fFileCopy error: Can't create file "+FileDst$)
+
+    end if
+  else
+    ShowMessage ("fFileCopy error: Can't open file "+FileSrc$)
+
+  end if
+end function
+
+'-- ***********************************************************************'
+sub KillFiles (FileName$)
+  'Andrew Shelkovenko  diakin@narod.ru  apr 2004
+  'Kill files in FileName$ by mask
+  'for example KillFiles "C:\BAS\RAPIDQ\tmp\*.tmp"
+
+  FName$ =StripPath (FileName$)+ DIR$(FileName$, 0 ) '-- Get first file
+
+  while STRIPFILENAME (FName$) <>""
+    kill FName$
+
+    if fileexists (FName$)>0 then ShowMessage ("KillFiles Can't kill file "+FName$) ' inc2026: fileexists(FName$) вместо fileexists(StripPath(FileName$)+FName$): FName$ уже содержит путь (строки 911, 917), путь удваивался и проверка никогда не срабатывала
+    FName$ = StripPath (FileName$)+DIR$ '-- Get next file
+  wend
+end sub
+
+'-- *****************************************************'
+sub KillSubDir (DirSrc$, mask$)
+  'print "-- KillSubDir DirSrc$=",DirSrc$
+  'Andrew Shelkovenko diakin@narod.ru may 2004
+  'Kill files by mask$ in all subdirs in DirSrc$ directory and kill all empty subdirs and DirSrc$ (if empty)
+  'So.. if mask$="*.*" then  kill DirSrc$ with all subdirs and files
+
+  dim FileSrc as QFileStream
+
+  'Index=0
+  NumFiles=0
+  defint nsd1, nsd2
+  defstr mask
+  nsd1=0:nsd2=0
+  NumDir=0
+  ArrNumDir=500
+  dim SubDir(500) as string
+
+  ArrNumFil=500
+  dim FileNames (500) as string
+  mask="*.*"
+  if right$(DirSrc$,1)<>BkSl then SubDir(0)=DirSrc$+BkSl else SubDir(0)=DirSrc$
+
+  s1:
+  for i=NSD1 to Nsd2 'current level sudirs'
+    SubDirname$=dir$(SubDir(i)+mask, faDirectory)
+    print"SubDirname$=";SubDirname$
+
+    while    SubDirname$ <>""
+      if FileRec.Size =0 and SubDirname$<> "." and SubDirname$<> ".." then ''
+        inc adddir
+        inc NumDir 'add subdir'
+        if NumDir=ArrNumDir then ArrNumDir=ArrNumDir+300: redim SubDir(ArrNumDir) as string
+        subDir(NumDir)=SubDir(i)+SubDirname$+"\"
+      else
+      end if
+      SubDirname$=dir$
+      doevents:if stops1=1 then stops1=0: exit sub
+    wend
+
+    'search files in current subdirectory
+    Fn$=dir$(SubDir(i)+mask$,faAnyFile-faDirectory) ':-)
+    while Fn$ <>""
+      if  Fn$<> "." and Fn$<> ".."  then 'and FileRec.Size <>0'
+        kill SubDir(i)+Fn$
+      else
+      end if
+      Fn$=dir$
+    wend
+  next i
+
+  if adddir>0 then
+    NSD1=NSD2+1
+    NSD2=NSD2+adddir
+    adddir=0
+    goto s1 'repeat with new sub level
+  else
+  end if
+
+  for i1=i-1 to 1 step -1
+    RMDIR SubDir(i1)
+  next i1
+
+END SUB
+
+'-- ***********************************************************************'
+SUB io2Rnd (fsrc$, fdst$)
+  '--------------------------------
+  'convert text file with single value strings to binary
+  ' for example
+  '17.78091
+  '16.64166
+
+  'fsrc$ - source file  fdst$ - dest. file
+  'data type - single
+
+  'CONST fmCreate = 65535
+  'CONST fmOpenRead = 0
+  'CONST fmOpenWrite = 1
+  'CONST fmOpenReadWrite = 2
+
+  dim FileSourse as QFileStream
+  dim FileDest as QFileStream
+  defsng ValSrc
+
+  FileSourse.Open (fsrc$, 2 )'fmOpenReadWrite'
+  FileDest.Open   (fdst$, 65535 )  'fmOpenReadWrite'
+
+  WHILE NOT FileSourse.EOF
+    ValSrc$=FileSourse.ReadLine : 'print "ValSrc$=" ,ValSrc$
+    ValSrc=val(ValSrc$) :         'print "ValSrc=" ,ValSrc
+    FileDest.Write (ValSrc)
+  wend
+
+  FileSourse.CLOSE
+  FileDest.CLOSE
+
+END SUB
+
+
+'-- ***********************************************************************'
+SUB Rnd2io (fsrc$, fdst$)
+  '--------------------------------
+  'convert  binary file with single type value data to  text file with single type value strings
+  ' i.e
+  '17.78091
+  '16.64166
+  '19.87037
+
+  'CONST fmCreate = 65535
+  'CONST fmOpenRead = 0
+  'CONST fmOpenWrite = 1
+  'CONST fmOpenReadWrite = 2
+
+  'CONST Num_BYTE = 1
+  'CONST Num_SHORT = 2
+  'CONST Num_WORD = 3
+  'CONST Num_LONG = 4
+  'CONST Num_DWORD = 5
+  'CONST Num_SINGLE = 6
+  'CONST Num_DOUBLE = 8
+
+  dim FileSourse as QFileStream
+  dim FileDest as QFileStream
+
+  defsng ValSrc
+
+  FileSourse.Open (fsrc$, 2 )        'fmOpenReadWrite'
+  FileDest.Open   (fdst$, 65535 )    'fmOpenCreate'
+
+  ie = FileSourse.size/4: 'print "ie=" ,ie
+
+  for i=0 to ie-1
+    ValSrc=FileSourse.ReadNum(6) :'print "ValSrc=" ,ValSrc
+    ValSrc$=str$(ValSrc):   'print "ValSrc$=" ,ValSrc$
+    FileDest.WriteLine (ValSrc$)
+  next i
+
+  FileSourse.CLOSE
+  FileDest.CLOSE
+
+END SUB
+
+'-- ***********************************************************************'
+SUB io2RndPV (fsrc$, fdst$)
+  '--------------------------------
+  'convert text file with single value strings to binary
+  ' for example
+  '17.78091
+  '16.64166
+
+  'fsrc$ - source file  fdst$ - dest. file
+  'data type - single
+
+  'CONST fmCreate = 65535
+  'CONST fmOpenRead = 0
+  'CONST fmOpenWrite = 1
+  'CONST fmOpenReadWrite = 2
+
+  dim FileSourse as QFileStream
+  dim FileDest as QFileStream
+  defsng ValSrc
+
+  FileSourse.Open (fsrc$, 2 )'fmOpenReadWrite'
+  FileDest.Open   (fdst$, 65535 )  'fmOpenReadWrite'
+
+  WHILE NOT FileSourse.EOF
+    ValSrc$=FileSourse.ReadLine : 'print "ValSrc$=" ,ValSrc$
+    ValSrc=val(ValSrc$) :         'print "ValSrc=" ,ValSrc
+    FileDest.Write (ValSrc)
+  wend
+
+  FileSourse.CLOSE
+  FileDest.CLOSE
+
+END SUB
+
+
+'-- ***********************************************************************'
+SUB io2RndInter (io$, rndf$, LostP)
+  'convert text file with the two-fields per string "point,data" format
+  ' to binary format with interpolation of missed points
+  '---- for example -----
+  ' 0,17.78091
+  ' 1,16.64166
+  '     points 2,3 is missed
+  ' 4,19.87037
+  ' 5,16.64123
+  '------------------------------------
+  'io$   - source text file
+  'rndf$ - destination binary file
+  'LostP - return number of missed points (use @LostP )
+  ' call io2RndInter (io$, rndf$, @LostP)
+  '------------------------------------
+  dim io2RndFile2 as QfileStream
+  dim io2Rndtmp as QfileStream
+  dim io2RndList as QSTRINGLIST
+  dim ioNumPnt as integer
+  dim i0 as integer
+
+  dim doevnt
+  doevnt=-99
+  doevnt=LostP
+
+  defsng pnt
+  if fileexists (io$)=0 then showmessage ("io2RndInter File not found "+io$):exit sub
+  if FileSize(io$)<1 then showmessage ("io2RndInter Zero size file "+io$):LostP=-99:exit sub
+
+  io2RndList.LoadFromFile (io$)
+  ArgName$=FullPathNoExt(rndf$)+"Arg"+STRIPFILEEXT(rndf$)
+  io2RndFile2.Open(rndf$, fmCreate)
+  io2Rndtmp.Open(ArgName$, fmCreate)
+
+  pntOld = 0: AdatOld! = 0: LostP = 1:j=0: i0=0
+  i0=val(Field$(io2RndList.Item(0),",", 1))
+
+  for k=0 to io2RndList.ItemCount-1
+    pnt=val(Field$(io2RndList.Item(k),",", 1))
+    Adat!=val( Field$(io2RndList.Item(k),",", 2) )
+    IF pnt = i0 THEN
+      io2RndFile2.WriteNum(Adat!,Num_SINGLE )
+      'io2Rndtmp.WriteLine (str$(pnt)+" "+str$(Adat!) )
+      io2Rndtmp.WriteNum (pnt,Num_SINGLE)
+      pntOld = pnt: AdatOld! = Adat!
+    elseif pnt < i0 then
+      io2RndFile2.WriteNum(Adat!,Num_SINGLE )
+      'io2Rndtmp.WriteLine (str$(i0)+" "+str$(Adat!) )
+      io2Rndtmp.WriteNum (pnt,Num_SINGLE)
+      pntOld = i0: AdatOld! = Adat!
+    else
+      IF pnt <> pntOld THEN ki! = (Adat! - AdatOld!) / (pnt - pntOld) ELSE GOTO ex1
+      FOR j = i0 TO pnt - 1
+        LostP = LostP + 1
+        Adat1! = AdatOld! + ki!
+        io2RndFile2.WriteNum(Adat1!,Num_SINGLE )
+        'io2Rndtmp.WriteLine (str$(j)+" "+str$(Adat1!) )
+        io2Rndtmp.WriteNum (j,Num_SINGLE)
+        AdatOld! = Adat1!
+      NEXT j
+      AdatOld! = Adat!: pntOld = pnt:
+      'io2Rndtmp.WriteLine (str$(pnt)+" "+str$(Adat!) )
+      io2Rndtmp.WriteNum (pnt,Num_SINGLE)
+      io2RndFile2.WriteNum(Adat!,Num_SINGLE )
+      i0 = j
+    END IF
+    ex1:
+    inc i0
+    if doevnt=-1 then doevents
+  next k
+  io2RndFile2.close
+  io2Rndtmp.close
+  'print "io2Rnd completed"
+END SUB
+
+'-- **********************************************'
+SUB io2RndInter1 (io$, rndf$, LostP)
+  'convert text file with the two-fields per string "point,data" format
+  ' to binary format file with interpolation of missed points
+  ' and with averaging-out of extra points
+  ' points sequence can be to increase or to decrease
+  ' outputs two binary files - argue (point number) and function (point value)
+  '---- for example -----
+  ' 5,17.78091
+  ' 4,16.61626
+  ' 4,13.44161 extra points
+  ' 4,19.68366
+  '     points 2,3 is missed
+  ' 1,19.87037
+  ' 0,16.64123
+  '------------------------------------
+  'io$   - source text file
+  'rndf$ - name of destination binary file. (function (point value))
+
+  '- name of destination binary file. (argue (point number))
+  'ArgName$=FullPathNoExt(rndf$)+"Arg"+STRIPFILEEXT(rndf$)
+
+  'LostP - return number of missed points (use @LostP in sub call)
+  ' call io2RndInter1 (io$, rndf$, @LostP)
+  '------------------------------------
+  dim io2RndFile2 as QfileStream
+  dim io2RndArg as QfileStream
+  dim io2io as QfileStream
+  dim io2Rndtxt as QfileStream
+
+
+  dim io2RndList as QSTRINGLIST
+  dim ioNumPnt as integer
+  dim i0 as integer
+  dim pnt as single
+  needtoWrite=0
+  dim doevnt
+  doevnt=-99
+  doevnt=LostP
+
+  if fileexists (io$)=0 then showmessage ("io2RndInter File not found "+io$): exit sub
+  if FileSize(io$)<1 then showmessage ("io2RndInter Zero size file "+io$): LostP=-99: exit sub
+
+  io2RndList.LoadFromFile (io$)
+  io2RndList.text=replacesubstr$(io2RndList.text,crlf+crlf,crlf)
+
+  ArgName$=FullPathNoExt(rndf$)+"Arg"+STRIPFILEEXT(rndf$)
+  ioutName$=FullPathNoExt(rndf$)+".io2"
+  txtOutName$=FullPathNoExt(rndf$)+".txt"
+
+
+  print"io2RndInter1 ArgName$=";ArgName$
+
+  io2RndFile2.Open(rndf$, fmCreate)
+  io2RndArg.Open(ArgName$, fmCreate)
+  io2io.Open(ioutName$, fmCreate)
+
+  pntOld = 0: AdatOld! = 0: LostP = 1: j=0: i0=0
+  i0=val(Field$(io2RndList.Item(0),",", 1))
+  'print"i0=";i0
+
+  aaa$=""
+  bzz=io2RndList.ItemCount-1
+
+  while aaa$="" and bzz>0
+    aaa$=io2RndList.Item(bzz)
+    dec bzz
+  wend
+
+  iend=val(Field$(aaa$,",", 1))
+  print"io2RndInter1 iend=";iend
+
+  if iend> 10* bzz then
+    showmessage "Некорректные данные в архиве "+FullPathNoExt(rndf$)
+    iend= bzz
+  end if
+
+  if iend>i0 then
+    io2stp=1
+  elseif iend<i0 then
+    io2stp=-1
+  else
+    'showmessage ("io2RndInter Begin point= EndPoint")
+    showmessage "Некорректные данные в архиве "+FullPathNoExt(rndf$)
+  end if
+
+  for k=0 to io2RndList.ItemCount-1
+    'Gauge.Position=cint(k/(bzz-1) *100)
+    if k> kold+250 then
+      locate 1,10
+      print"io2RndInter1 k=";k
+      kold=k
+    end if
+
+    pnt=val(Field$(io2RndList.Item(k),",", 1))
+    Adat!=val( Field$(io2RndList.Item(k),",", 2) )
+    IF pnt = i0 THEN
+      if needtoWrite=1 then
+        io2RndFile2.Position=io2RndFile2.Position-4 ' 4 byte for single type
+        io2RndArg.Position=io2RndArg.Position-4
+        io2RndFile2.WriteNum(AdatOld!,Num_SINGLE ) ' усредняем
+        io2RndArg.WriteNum (pntOld,Num_SINGLE)
+        io2io.WriteLine (str$(pntOld)+","+str$(AdatOld!))
+
+        'call  AddClrString ("pnt old="+str$(pntold)+" "+str$(AdatOld!) , clred, LogEdit)
+        needtoWrite=0
+      end if
+      io2RndFile2.WriteNum(Adat!,Num_SINGLE )
+      io2RndArg.WriteNum (pnt,Num_SINGLE)
+      io2io.WriteLine (str$(pnt)+","+str$(Adat!))
+
+      'call  AddClrString ("pnt="+str$(pnt)+" "+str$(Adat!), clred, LogEdit)
+      pntOld = pnt: AdatOld! = Adat!
+    else
+      if iend>i0 then
+        if pnt < i0 then
+          AdatOld! = (Adat!+AdatOld!)/2
+          dec i0
+          needtoWrite=1
+        elseIF pnt > i0 THEN ' points missed - interpoliren
+          ki! = (Adat! - AdatOld!) / (pnt - pntOld)
+          FOR j = i0 TO pnt -io2stp step io2stp
+            LostP = LostP + 1
+            Adat1! = AdatOld! + ki!*io2stp
+            io2RndFile2.WriteNum(Adat1!,Num_SINGLE )
+            io2RndArg.WriteNum (j,Num_SINGLE)
+            io2io.WriteLine (str$(j)+","+str$(Adat1!)) ' inc2026: Adat1! вместо Adat!: в цикле интерполяции пишется промежуточное значение Adat1! (строка 1299), так же в парной ветке (строка 1323)
+            AdatOld! = Adat1!
+          NEXT j
+          AdatOld! = Adat!: pntOld = pnt:
+          'io2RndArg.WriteLine (str$(pnt)+" "+str$(Adat!) )
+          io2RndArg.WriteNum (pnt,Num_SINGLE)
+          io2RndFile2.WriteNum(Adat!,Num_SINGLE )
+          io2io.WriteLine (str$(pnt)+","+str$(Adat!))
+          i0 = j
+        end if
+      elseif iend<i0 then
+        if pnt > i0 then ' extra points - averaging-out
+          AdatOld! = (Adat!+AdatOld!)/2
+          inc i0
+          needtoWrite=1
+        elseIF pnt < i0 THEN ' points missed - interpoliren
+          ki! = (Adat! - AdatOld!) / (pnt - pntOld)
+          FOR j = i0 TO pnt -io2stp step io2stp
+            LostP = LostP + 1
+            Adat1! = AdatOld! + ki!*io2stp
+            io2RndFile2.WriteNum(Adat1!,Num_SINGLE )
+            io2RndArg.WriteNum (j,Num_SINGLE)
+            io2io.WriteLine (str$(j)+","+str$(Adat1!))
+            AdatOld! = Adat1!
+          NEXT j
+          AdatOld! = Adat!: pntOld = pnt:
+          'io2RndArg.WriteLine (str$(pnt)+" "+str$(Adat!) )
+          io2RndArg.WriteNum (pnt,Num_SINGLE)
+          io2RndFile2.WriteNum(Adat!,Num_SINGLE )
+          io2io.WriteLine (str$(pnt)+","+str$(Adat!))
+          i0 = j
+        end if
+      else
+        'showmessage ("io2RndInter Begin point= EndPoint"): exit sub
+        goto io2RndInterexitsub
+      END IF
+
+    end if
+
+    ex1:
+    if iend>i0 then
+      inc i0
+    elseif iend<i0 then
+      dec i0
+    else
+      'showmessage ("io2RndInter Begin point= EndPoint")
+      goto io2RndInterexitsub
+    end if
+    if doevnt=-1 then doevents
+  next k
+  io2RndInterexitsub:
+
+  io2RndFile2.close
+  io2RndArg.close
+  io2io.close
+END SUB
+
+'***********************************************
+sub ioAverage (io$, outf$, bpnt as integer)
+  ' процедура обработки файла формата точка, данные, когда на каждую точку приходится несколько отсчетов
+  dim InputList as QSTRINGLIST
+  dim OutPutList as QSTRINGLIST
+  InputList.clear
+  OutPutList.clear
+  if fileExists (io$)> 0 and FileSize(io$)>0 then
+    InputList.LoadFromFile (io$)
+  else
+    'ShowMessage ("ioAverage:File "+io$ +" not found")
+    exit sub
+  end if
+
+  if InputList.ItemCount<5 then
+    'ShowMessage ("ioAverage:Data not found")
+    exit sub
+  end if
+
+  pntOld=1
+  newpnt=1
+  ep=0
+
+
+  for k=0 to InputList.ItemCount-1
+    a$=InputList.item (k)
+    pnt=val(Field$(InputList.Item(k),",", 1)):
+    Adat!=val( Field$(InputList.Item(k),",", 2)):
+
+    if k=0 then pntOld=pnt:bpnt=pnt
+
+    if pnt=pntOld then
+      Aver=Aver+Adat!:'RQDebug("строка 37",0,"k", k, "pnt",pnt,"Adat!",Adat!,"ep",ep,"Aver",Aver)
+      inc ep
+    else
+      if ep=0 then ep=1
+      Aver=Aver/ep:'RQDebug("строка 41",0,"k", k, "pnt",pnt,"Adat!",Adat!,"ep",ep,"Aver",Aver)
+      OutPutList.AddItems  str$(pntOld)+","+str$(Aver)
+      inc newpnt
+      'RQDebug("k", k, "pnt",pnt,"Adat!",Adat!,"Aver",Aver)
+      Aver=Adat!
+      pntOld=pnt
+      ep=1
+    end if
+
+  next k
+  Aver=Aver/ep:'RQDebug("строка 41",0,"k", k, "pnt",pnt,"Adat!",Adat!,"ep",ep,"Aver",Aver)
+  OutPutList.AddItems  str$(pntOld)+","+str$(Aver)
+
+  OutPutList.SaveToFile (outf$)
+end sub
+
+'-------------------------------------------------------------------'
+'-- ***********************************************************************'
+function ChDirOEM (PathDst$) as short
+  'print "ChDirOEM PathDst$=" ,PathDst$
+  result=0
+  dim PathDst1$ as string
+  PathDst1$=string$(len(PathDst$),"a")
+  chartooem PathDst$,PathDst1$
+  'print "ChDirOEM PathDst$=" ,PathDst$
+  'print "ChDirOEM PathDst1$=" ,PathDst1$
+
+  CHDIR  PathDst1$
+  result=1
+end function
+
+'-------------------------------------------------------------------'
+'-- ***********************************************************************'
+function MkDirOEM (PathDst$) as short
+  result=0
+  dim PathDst1$ as string
+  'print "MkDirOEM PathDst$=" ,PathDst$
+  PathDst1$=string$(len(PathDst$),"a")
+  chartooem PathDst$,PathDst1$
+  'print "MkDirOEM PathDst$=" ,PathDst$
+  'print "MkDirOEM PathDst1$=" ,PathDst1$
+  MkDIR  PathDst1$
+  result=1
+end function
+
+'*****************************************
+function DownLoadURL (sUrl as string, dFileName as string) as long
+  'print"sUrl=";sUrl
+  ' скачивает файл с заданного sURL и сохраняет под именем dFileName
+  'возвращает число скачанных байт TotalReadBytes или -1 в случае ошибки
+
+  Dim hOpen As Long, hFile As Long, sBuffer As String, ReadBytes As Long, TotalReadBytes As Long
+  defint sBufferSize=2048
+  filetxt$=""
+
+  'Create a buffer for the file we're going to download
+  sBuffer = Space$(sBufferSize)+"<<<" ' inc2026: Space$ вместо Space: в RapidQ есть только SPACE$ (indexa.html); в документации только SPACE$
+
+
+  'Create an internet connection
+  hOpen = InternetOpen(scUserAgent, INTERNET_OPEN_TYPE_DIRECT, vbNullString, vbNullString, 0)
+  'print"hOpen=";hOpen
+  'Open the url
+
+  hFile = InternetOpenUrl(hOpen, sURL, vbNullString, 0&, INTERNET_FLAG_RELOAD, ByVal 0&)
+  'print"hFile=";hFile
+
+  'Read the first 1000 bytes of the file
+  zzz=InternetReadFile (hFile, sBuffer, sBufferSize, ReadBytes)
+  filetxt$=left$(sBuffer,ReadBytes)
+  TotalReadBytes=ReadBytes
+
+
+  while ReadBytes>0
+    'print"ReadBytes=";ReadBytes
+    'print"zzz=";zzz
+    'clean up
+    'Show our file
+    'PRINT sBuffer
+    zzz=InternetReadFile (hFile, sBuffer, sBufferSize, ReadBytes)
+    filetxt$=filetxt$+left$(sBuffer,ReadBytes)
+    TotalReadBytes=TotalReadBytes+ReadBytes
+  wend
+
+  InternetCloseHandle (hFile)
+  InternetCloseHandle (hOpen)
+
+  zzj=savestring(filetxt$,dFileName)
+
+  DownLoadURL=TotalReadBytes
+
+End Function ' inc2026: END FUNCTION вместо END SUB: процедура открыта как function DownLoadURL (строка 1440)
+
+
+'[build_inc] (дальше снова rapidq.inc)
+'$include "Fileops.inc"
+'~inc $include "func_array.inc"   ' сборка: файл - здесь
+'============================================================================
+'[build_inc] func_array.inc
+'============================================================================
+'-- **************************************************************************'
+function ARRAverage (Dat!() as single, MinEl  as integer, MaxEl as integer) as single
+' calculate average value from function Dat1!()
+defint  p
+defsng ARMid!=0
+
+FOR p = MinEl TO MaxEl:
+	ARMid! = ARMid! + Dat!(p):
+NEXT p
+
+average! = ARMid! / (MaxEl-MinEl+1)
+
+result=average!
+END function
+'-- **************************************************************************'
+sub ARRAverageSubtract (Dat!() as single) 
+' calculate and subtract average value from function Dat1!()
+defint  p, Lmin1, Lmax1
+Lmin1 = LBOUND(Dat!):Lmax1 = UBOUND(Dat!) 
+defsng ARMid!=0
+'print"ARRAverageSubtract Lmax1=";Lmax1
+'print"ARRAverageSubtract Lmin1=";Lmin1
+
+FOR p = Lmin1 TO Lmax1:
+	ARMid! = ARMid! + Dat!(p):
+
+NEXT p
+
+average! = ARMid! / (Lmax1-LMin1+1)
+'print"average!=";average!
+
+FOR p = LMin1 TO Lmax1: 
+Dat!(p) = Dat!(p) - average!: 
+'print"Dat!(";p;")=";Dat!(p)
+NEXT p
+'print"end ----------"
+
+END sub
+
+'-- **************************************************************************'
+FUNCTION ARRMax (Dat!() as single, MinEl  as integer, MaxEl as integer) as single
+'find max element of array
+defint  p
+defsng ARMax!=Dat!(MinEl)
+FOR p = MinEl TO MaxEl:
+	IF Dat!(p) > ARMax! THEN ARMax! = Dat!(p):
+NEXT p
+result = ARMax!
+END FUNCTION
+
+'-- **************************************************************************'
+FUNCTION ARRMin (Dat!() as single, MinEl  as integer, MaxEl as integer) as single 
+'find min element of array
+defint p
+defsng ARMin!=Dat!(MinEl)
+FOR p = MinEl TO MaxEl:
+	IF Dat!(p) < ARMin! THEN ARMin! = Dat!(p):
+NEXT p
+result = ARMin!
+END FUNCTION
+
+'-- **************************************************************************'
+FUNCTION ARRMaxEx (Dat!() as single, MinEl  as integer, MaxEl as integer,byref pointX!) as single
+'print"ARRMaxEx MaxEl=";MaxEl
+'print"ARRMaxEx MinEl=";MinEl
+'find max abs element of array
+defint  p
+defsng ARMax!=(Dat!(MinEl))
+
+'print"ARRMaxEx ARMax!=";ARMax!
+
+FOR p = MinEl TO MaxEl-1:
+	IF (Dat!(p)) > (ARMax!) THEN ARMax! = (Dat!(p)) :pointX!=p
+'print"ARMax!=";ARMax!
+'print"Dat!(";p;")=";Dat!(p)
+NEXT p
+
+result = ARMax!
+
+END FUNCTION
+
+'-- **************************************************************************'
+FUNCTION ARRMinEx (Dat!() as single, MinEl  as integer, MaxEl as integer, byref pointX!) as single 
+'find min element of array
+defint p
+defsng ARMin!=(Dat!(MinEl))
+FOR p = MinEl TO MaxEl:
+	IF (Dat!(p)) < ARMin! THEN ARMin! = (Dat!(p)): pointX!=p
+NEXT p
+result = ARMin!
+
+END FUNCTION
+
+
+'-- **************************************************************************'
+FUNCTIONI FindMax (...) AS DOUBLE
+
+DIM Largest AS DOUBLE
+DIM I AS BYTE
+
+Largest = ParamVal(1)
+
+FOR I = 1 TO ParamValCount
+	IF ParamVal(I) > Largest THEN
+		''       print "ParamVal(",I,")=" ,ParamVal(I)
+		Largest = ParamVal(I)
+	END IF
+NEXT
+
+FindMax = Largest         ' or Result = Largest
+END FUNCTIONI
+
+'-- **************************************************************************'
+sub ArrExtr (Dat!() as single, byref DatMin!, byref DatMax!) '' as single 
+'find  maximum and minimum
+
+defint  p
+defint MaxEl,MinEl
+
+MinEl=lbound(Dat!)
+MaxEl=ubound(Dat!)
+
+defsng ARMax!=Dat!(MinEl)
+defsng ARMin!=Dat!(MinEl)
+
+FOR p = MinEl TO MaxEl:
+	IF Dat!(p) > ARMax! THEN ARMax! = Dat!(p):
+	IF Dat!(p) < ARMin! THEN ARMin! = Dat!(p):
+	
+NEXT p
+DatMax!=ARMax!
+'print "DatMax=" ,DatMax!
+DatMin!=ARMin!
+'print "DatMin=" ,DatMin!
+
+END SUB
+
+'**********************************************************************
+sub ArrAbsExtrN (Dat!() as single, byref _AbsDatMax!, N as integer) 
+defint  p
+defint MaxEl,MinEl
+
+MinEl=lbound(Dat!)+N
+'print "ArrAbsExtr sub MinEl=" ,MinEl
+MaxEl=ubound(Dat!)
+'print "ArrAbsExtr sub MaxEl=" ,MaxEl
+
+defsng ARMax!=Dat!(MinEl)
+defsng ARMin!=Dat!(MinEl)
+_AbsDatMax!=ARMax!
+FOR p = MinEl TO MaxEl:
+	IF abs(Dat!(p)) >  _AbsDatMax! THEN  _AbsDatMax! = abs(Dat!(p))
+NEXT p
+'print "sub _AbsDatMax!=" ,_AbsDatMax!
+
+END SUB
+
+
+'**********************************************************************
+sub ArrAbsExtr (Dat!() as single, byref _AbsDatMax!) 
+defint  p
+defint MaxEl,MinEl
+
+MinEl=lbound(Dat!)
+'print "ArrAbsExtr sub MinEl=" ,MinEl
+MaxEl=ubound(Dat!)
+'print "ArrAbsExtr sub MaxEl=" ,MaxEl
+
+defsng ARMax!=Dat!(MinEl)
+defsng ARMin!=Dat!(MinEl)
+_AbsDatMax!=ARMax!
+FOR p = MinEl TO MaxEl:
+	IF abs(Dat!(p)) >  _AbsDatMax! THEN  _AbsDatMax! = abs(Dat!(p))
+NEXT p
+'print "sub _AbsDatMax!=" ,_AbsDatMax!
+
+END SUB
+
+'**********************************************************************
+sub ArrAbsMaxEx (Dat!() as single, MinEl  as integer, MaxEl as integer,byref _AbsDatMax!,byref pointX!) 
+defint  p
+'defint MaxEl,MinEl
+
+'MinEl=lbound(Dat!)
+'print "sub MinEl=" ,MinEl
+'MaxEl=ubound(Dat!)
+'print "sub MaxEl=" ,MaxEl
+
+defsng ARMax!=Dat!(MinEl)
+defsng ARMin!=Dat!(MinEl)
+_AbsDatMax!=abs(ARMax!)
+FOR p = MinEl TO MaxEl:
+	IF abs(Dat!(p)) >  _AbsDatMax! THEN  _AbsDatMax! = abs(Dat!(p)):pointX!=p
+NEXT p
+'print "sub _AbsDatMax!=" ,_AbsDatMax!
+
+END SUB
+'**********************************************************************
+sub ArrAbsMinEx (Dat!() as single, MinEl  as integer, MaxEl as integer,byref _AbsDatMin!,byref pointX!) 
+defint  p
+'defint MaxEl,MinEl
+
+'MinEl=lbound(Dat!)
+'print "sub MinEl=" ,MinEl
+'MaxEl=ubound(Dat!)
+'print "sub MaxEl=" ,MaxEl
+
+defsng ARMax!=Dat!(MinEl)
+defsng ARMin!=Dat!(MinEl)
+_AbsDatMin!=abs(ARMax!)
+FOR p = MinEl TO MaxEl:
+	IF abs(Dat!(p)) <  _AbsDatMin! THEN  _AbsDatMin! = abs(Dat!(p)):pointX!=p
+NEXT p
+
+END SUB
+
+'-- **********************************************************************
+Sub ArrRaznost (Dat1!() as single , Dat2!() as single, Raznost!() as single) '' as single'' MinEl??, MaxEl??)
+Lmin1 = LBOUND(Dat1!):Lmax1 = UBOUND(Dat1!) 
+'print "Lmax1=" ,Lmax1
+'print "Lmin1=" ,Lmin1
+
+Lmin2 = LBOUND(Dat2!) : Lmax2 = UBOUND(Dat2!)
+'print "Lmax2=" ,Lmax2
+'print "Lmin2=" ,Lmin2
+
+if Lmin2 <> Lmin1 or Lmax1 <> Lmax2 then 
+'showMessage ( "ArrRaznost error: Arrays size mismatch"+lf+"Lmin1="+str$(Lmin1)+" Lmax1="+str$(Lmax1)+lf+"Lmin2="+str$(Lmin2)+" Lmax2="+str$(Lmax2) ) 
+'exit sub
+end if
+
+REDIM Raznost!(Lmin1 to Lmax1) as single
+
+FOR i = Lmin1 TO Lmax1: 
+	Raznost!(i) = Dat1!(i) - Dat2!(i): 
+	'print "Raznost!(",i, ") =" ,Raznost!(i)
+NEXT i
+
+END SUB
+'-- **********************************************************************
+Sub ArrRaznostR (Dat1!() as single , Dat2!() as single) '' as single'' MinEl??, MaxEl??)
+Lmin1 = LBOUND(Dat1!):Lmax1 = UBOUND(Dat1!) 
+Lmin2 = LBOUND(Dat2!) : Lmax2 = UBOUND(Dat2!)
+
+if Lmin2 <> Lmin1 or Lmax1 <> Lmax2 then showMessage ( "ArrRaznostR. Arrays size mismatch" ): exit sub
+FOR i = Lmin1 TO Lmax1: 
+	Dat1!(i) = Dat1!(i) - Dat2!(i): 
+	'print "Raznost!(",i, ") =" ,Raznost!(i)
+NEXT i
+
+END SUB
+'**********************************************************************
+Sub ArrSum (Dat1!() as single , Dat2!() as single, SumA!() as single) 
+Lmin1 = LBOUND(Dat1!):Lmax1 = UBOUND(Dat1!) 
+Lmin2 = LBOUND(Dat2!) : Lmax2 = UBOUND(Dat2!)
+if Lmin2 <> Lmin1 or Lmax1 <> Lmax2 then showMessage ( "ArrSum. Arrays size mismatch" ): exit sub
+
+
+
+REDIM SumA!(Lmin1 to Lmax1) as single
+FOR i = Lmin1 TO Lmax1: SumA!(i) = Dat1!(i) + Dat2!(i): NEXT i
+END SUB
+'**********************************************************************
+
+'**********************************************************************
+Sub ArrSumR (Dat1!() as single , Dat2!() as single) 
+Lmin1 = LBOUND(Dat1!):Lmax1 = UBOUND(Dat1!) 
+Lmin2 = LBOUND(Dat2!) : Lmax2 = UBOUND(Dat2!)
+if Lmin2 <> Lmin1 or Lmax1 <> Lmax2 then showMessage ( "ArrSumR. Arrays size mismatch" ): exit sub
+
+FOR i = Lmin1 TO Lmax1: Dat1!(i) = Dat1!(i) + Dat2!(i): NEXT i
+END SUB
+'**********************************************************************
+
+
+'-- **********************************************************************
+SUB kTArray (Dat1!() as single, kt! as single, Dat2!() as single)
+'multiply array to const and save result in new array
+Lmin1 = LBOUND(Dat1!):Lmax1 = UBOUND(Dat1!) 
+
+REDIM Dat2!(Lmin1 to Lmax1) as single
+FOR i = Lmin1 to Lmax1: Dat2!(i) = Dat1!(i) * kt!: NEXT i
+END SUB
+
+'-- **********************************************************************
+SUB kTArrayR (Dat1!() as single, kt! as single)
+'multiply array to const
+Lmin1 = LBOUND(Dat1!):Lmax1 = UBOUND(Dat1!) 
+FOR i = Lmin1 to Lmax1: Dat1!(i) = Dat1!(i) * kt!: NEXT i
+END SUB
+
+
+'-- **********************************************************************
+SUB Nakopl (F!() as single, Nakop!() as single, period as Word)
+'-----------------------------
+'Calculate average on moving window (interval) of function
+''F() - function array
+'Nakop!() - moving average
+'period - number of moving window points - (max 65535) must be odd number!
+'-----------------------------
+defint Lmin1,Lmax1
+Lmin1 = LBOUND(F!): ' for example =0
+'print "Lmin1=" ,Lmin1
+
+Lmax1 = UBOUND(F!)  ' for example =56
+'print "Lmax1=" ,Lmax1
+
+REDIM Nakop!(0 to period-1) as single'!!! from 0  !!!' 
+
+defsng Summ!
+defint ibeg,iend, NumPnt
+
+'0  0  0   1         2         3         4         5  5  5
+'012345678901234567890123456789012345678901234567890123456
+'|||||||||||||||||||||||||||||||||||||||||||||||||||||||||    -numbers of function points     F!() 
+'|||||||                                           |||||||    - moving window  period points
+'   ^ibeg=3                                           ^iend=53
+'000+++++++++++++++++++++++++++++++++++++++++++++++++++000    - averaged function  Nakop!()
+'|||^|||
+'calculate average on 7 points  Nakop!(3)= ( f(0)+f(1)+...f(6) )/7 =f(0)/7+f(1)/7+ ...f(6)/7
+' |||^|||
+'  |||^|||
+'   |||^|||
+'then first point f(0)/7  deleted, next f(7)/7 point added. Nakop!(4)=Nakop!(3)- f(0)/7 + f(7)/7
+
+NumPnt=Lmax1-Lmin1+1  '57 elements in array (0 to 56)
+NumInterval=NumPnt-1  '56 intevals
+ibeg = (period-1) / 2 'starting point of moving window on F!()
+iend = NumInterval - ibeg  'end point point of moving window on F!()
+Summ! = 0:
+
+
+'calculate average in starting point  
+FOR j = Lmin1 TO Lmin1+(period-1):     Summ! = Summ! + F!(j): NEXT j 'cumulative value'
+Nakop!(ibeg) = Summ! / period:  'average in starting point
+'print
+Summ! = 0:
+FOR j = Lmin1 TO ibeg-1: Nakop!(j) =Nakop!(ibeg): next '!!! loosed points  in start '   F!(j)
+
+
+''calculate average in end point  
+FOR j = Lmin1+NumPnt - period  TO Lmin1+NumPnt-1: Summ! = Summ! + F!(j): NEXT j
+Nakop!(iend) = Summ! / period: 'calculate average
+
+FOR j = iend+1 TO NumPnt: Nakop!(j) =Nakop!(iend): next ' loosed points in finish' F!(j)
+
+
+FOR i = Lmin1+ibeg + 1 TO Lmin1+iend - 1
+	Nakop!(i) = Nakop!(i-1) + (    F!(i+Lmin1+ibeg)  -  F!(Lmin1+i-ibeg-1)   ) / period
+	'                              ^  4  3           4  3
+	'if i>43000 and i<50000 then
+	'print "i+Lmin1+ibeg=",i+Lmin1+ibeg,"           Nakop!(i-1)=" ,Nakop!(i-1)
+	'print "------------------------------"
+	
+	'end if
+	
+NEXT i
+
+END SUB
+'-- **********************************************************************
+sub ARRAddConst (Dat!() as single, const! as single) 
+defint  p, Lmin1, Lmax1
+Lmin1 = LBOUND(Dat!):Lmax1 = UBOUND(Dat!) 
+
+FOR p = Lmin1 TO Lmax1:
+	Dat!(p) = const! + Dat!(p):
+NEXT p
+END SUB
+
+'-- **********************************************************************
+SUB ArrReSample (Dat1() AS SINGLE, Dat2() AS SINGLE, npt)
+'------------------
+'resample data series Dat1() to  Dat2!() with new points number npt, using linear interpolation
+
+Lmin1 = LBOUND(Dat1): Lmax1 = UBOUND(Dat1)
+'print "ArrReSample Lmax1=" ,Lmax1
+'print "ArrReSample Lmin1=" ,Lmin1
+Lmin2 = LBOUND(Dat2): Lmax2 = UBOUND(Dat2)
+
+ipt = Lmax1 - Lmin1+1 '--- 11-0+1=12  число точек в исходном массиве
+kti = npt / ipt       '--- 36/12=3  отношение нового числа точек к старому
+'print "ArrReSample kti=" ,kti
+j1 = 0  'current new point
+j1old = 0 'previous new points
+
+Dat2(Lmin2) = Dat1(Lmin1) '--- in first point functions is equal
+
+FOR i = 1 TO ipt-1 '---  11 points  1 ... 11
+	deltaD1 = (Dat1(i) - Dat1(i - 1)) / kti  ' increment of a function in the new current interval for linear interpolation
+	ostFunc=Dat1(i-1)-deltaD1*drob-Dat2(j1old)
+	
+	jz = i * kti '--- =3
+	j=FIX(jz) '--- absolute new point number'
+	drob=jz-j '--- fraction
+	j1 = j - j1old '--- new points number in current interval  
+	FOR k = 1 TO j1
+		Dat2(j1old + k) = deltaD1 * k +Dat2(j1old) +ostFunc
+		'print "ArrReSample Dat2(",j1old + k,") =" ,ArrReSample Dat2(j1old + k)
+		
+	NEXT k
+	j1old = j1 + j1old
+NEXT i
+
+END SUB
+
+'--**************************************************************************************** 
+SUB OgibF (Dat1() AS SINGLE, OgibUp() AS SINGLE, OgibDn() AS SINGLE)
+Lmin1 = LBOUND(Dat1): Lmax1 = UBOUND(Dat1)
+'print "Lmax1=" ,Lmax1: print "Lmin1=" ,Lmin1
+redim OgibUp(Lmax1) AS SINGLE
+redim OgibDn(Lmax1) AS SINGLE
+
+OgibUp(Lmin1)=Dat1(Lmin1)
+OgibDn(Lmin1)=Dat1(Lmin1)
+ku=Lmin1
+kd=Lmin1 '0'
+
+' search max and min
+
+FOR i = Lmin1+1 TO Lmax1 - 1
+	
+	IF (Dat1(i)-Dat1(i-1))>0.08 AND Dat1(i) >= Dat1(i + 1) THEN
+		OgibUp(i)=Dat1(i)
+		'- intrerpolation'
+		kti=( OgibUp(i)-OgibUp(ku) )/(i-ku)
+		 for ik=ku+1 to i-1
+			OgibUp(ik)=kti*(ik-ku)+OgibUp(ku)
+		 next ik
+		ku=i
+	ELSEif Dat1(i) < Dat1(i - 1) AND Dat1(i) <= Dat1(i + 1) then
+		OgibDn(i)=Dat1(i)
+		'- intrerpolation'
+		kti=( OgibDn(i)-OgibDn(kd) )/(i-kd)
+		 for ik=kd+1 to i-1
+			OgibDn(ik)=kti*(ik-kd)+OgibDn(kd)
+		 next ik
+		kd=i
+	END IF
+	
+NEXT i
+
+END SUB
+
+'--**************************************************************************************** 
+SUB OgibFNew (Dat1() AS SINGLE, OgibUp() AS SINGLE, OgibDn() AS SINGLE)
+Lmin1 = LBOUND(Dat1): Lmax1 = UBOUND(Dat1)
+'print "Lmax1=" ,Lmax1: print "Lmin1=" ,Lmin1
+redim OgibUp(Lmax1) AS SINGLE
+redim OgibDn(Lmax1) AS SINGLE
+
+dim DatMax(512) AS SINGLE
+dim DatMin(512) AS SINGLE
+
+OgibUp(Lmin1)=Dat1(Lmin1)
+OgibDn(Lmin1)=Dat1(Lmin1)
+ku=Lmin1
+kd=Lmin1 '0'
+
+' search max and min
+mm=0
+
+FOR i = Lmin1+1 TO Lmax1 - 1
+	
+	IF (Dat1(i)-Dat1(i-1))>0.08 AND Dat1(i) >= Dat1(i + 1) THEN
+		mm=mm+1
+		DatMax(mm)=Dat1(i)
+		OgibUp(i)=Dat1(i)
+		'- intrerpolation'
+		kti=( OgibUp(i)-OgibUp(ku) )/(i-ku)
+		 for ik=ku+1 to i-1
+			OgibUp(ik)=kti*(ik-ku)+OgibUp(ku)
+		 next ik
+		ku=i
+	ELSEif Dat1(i) < Dat1(i - 1) AND Dat1(i) <= Dat1(i + 1) then
+		OgibDn(i)=Dat1(i)
+		'- intrerpolation'
+		kti=( OgibDn(i)-OgibDn(kd) )/(i-kd)
+		 for ik=kd+1 to i-1
+			OgibDn(ik)=kti*(ik-kd)+OgibDn(kd)
+		 next ik
+		kd=i
+	END IF
+	
+NEXT i
+
+END SUB
+
+
+'--**************************************************************************************** 
+SUB  cutPoints (Dat!() as single, cutPnt as integer)
+NumPoint = UBOUND(Dat!)
+
+for i=CutPnt to NumPoint-CutPnt-1
+	Dat!(i-CutPnt)=Dat!(i)
+	'print "Dat!(",i-CutPnt,")=",Dat!(i-CutPnt)
+next i
+
+END SUB
+
+
+'--**************************************************************************************** 
+sub ReversX1(Dat!() as single)
+NumPoint = UBOUND(Dat!)
+for i=0 to NumPoint-1
+	ddi=Dat!(i)
+	ddj=Dat!(NumPoint-1-i)
+	Dat!(i)=ddi
+	Dat!(NumPoint-1-i)=ddj
+
+	'swap Dat!(i),Dat!(NumPoint-1-i)
+next i
+
+
+end sub
+'--**************************************************************************************** 
+SUB DelIncline (Dat!() as single)
+' убирает наклон из функции, т.е начальная и конечная точки равны 0
+Npt = UBOUND(Dat!)
+kt!=(Dat!(Npt-1)-Dat!(0))/(Npt-1)
+DIM Incline!(Npt-1) as single
+for i=0 to Npt-1
+Dat!(i)=Dat!(i)-kt!*i
+next i
+
+
+
+end sub
+
+'--**************************************************************************************** 
+'Sub ArrConcat(Dat1!() as single,Dat2!() as single, FullDat as single)
+
+'END SUB
+
+''--**************************************************************************************** 
+'SUB SynNak (Dat!(), period, Snak!())
+'Npt = UBOUND(Dat!)
+'REDIM Snak!(period) as single
+
+'FOR k = 1 TO period
+	'FOR i = k TO CINT(Npt / period) * period STEP period
+		'Snak!(k) = Snak!(k) + Dat!(i)
+	'NEXT i
+	
+'NEXT k
+
+'CALL kTArrayr(Snak!(), 1/CINT(Npt/period))
+
+'END SUB
+
+'[build_inc] (дальше снова rapidq.inc)
+'~inc $include "parse.inc"   ' сборка: файл - здесь
+'============================================================================
+'[build_inc] parse.inc
+'============================================================================
+'-- *********************************************************************'
+function GetCharNum (Oper$ as string, getC as string) as long
+'return Char count  in checked string
+'getC - Char 
+'Oper$ - checked string
+'if getC commented,  or quoted (just text)  - return error code
+'print "getC=";getC
+
+DIM ch  AS STRING * 1
+ch=getC
+'print"qt=";qt
+
+result=-1 ' error
+QTNum=0 
+tmpres=0
+
+FirstRem=instr(Oper$, "'")
+
+FirstQT=instr(Oper$, qt)
+'print"FirstQT=";FirstQT
+
+if FirstRem < FirstQT and FirstRem >0 then ' есть комментарий - его отбрасываем
+	Oper$=left$(Oper$,FirstRem)
+	result=tally(Oper$,getC)
+	exit function
+end if
+
+'print"Oper$=";Oper$
+
+for ~i=1 to Len(Oper$)
+	chrs$=Oper$[~i]
+	if chrs$=qt and QTNum=0 then 
+		QTNum=1 'следующий char  находится после первого вхождения qt
+	elseif chrs$=qt and QTNum=1 then
+		QTNum=0 'следующий char находимся после второго вхождения qt
+	elseif chrs$=ch and QTNum=0 then
+		inc tmpres
+		'print"tmpres=";tmpres
+	else
+	end if
+next ~i ' inc2026: next ~i вместо next i: счётчик цикла строки 30 - ~i (так же в GetOperators, строка 261); i здесь нигде не присваивается
+result=tmpres
+
+end function 'sub '
+
+
+'-- *********************************************************************'
+Function GetVarPos (Oper$ as string, getV$ as string) as long
+'return variable  position in checked string
+'getV$ - variable name 
+'Oper$ - checked string
+'if getV$ commented,  or quoted (just text, not varname)  - return error code
+result=-1 ' error
+'cr+lf+",./\| !@#$%^&*()_+=-?><~`;:[]{}'"+ht+qt
+defstr Lsep$="()[]=><, :+-*\/;."
+defstr Rsep$="[()]=><, :'+-*\/;."
+
+Oper$=lcase$(Oper$)-ht
+getV$=lcase$(getV$)-ht
+
+Wpos=instr(Oper$,getV$) 
+if Wpos=0 then result=0: exit function 'pattern not contained
+'check comment and string
+
+while Wpos>0 
+
+	if (instr(Lsep$,Oper$[Wpos-1])>0 or Wpos=1) and (instr(Rsep$,Oper$[Wpos+len(getV$)])>0  or Wpos+len(getV$)-1=len(Oper$))  then
+		'check string 
+		QPos1=rinstr(Wpos,Oper$,qt) ''1 quote pos   
+		QPos2= instr(Wpos,Oper$,qt) '2 quote pos   
+		CPos=rinstr(Wpos,Oper$,"'") 'comment pos  
+
+		if QPos1<Wpos and QPos2 >Wpos and QPos1>0 then 'it's string, not var
+		elseif (CPos<Wpos and CPos>0) and  QPos1<CPos    then 'it's comment and QPos2>0
+		else
+			result=Wpos 
+			exit while
+		end if
+	else
+	end if
+		Wpos=instr(Wpos+1, Oper$,getV$) 
+	result=-2 'present, but not var
+wend
+
+end function
+
+'-- *********************************************************************'
+sub ParseDim (Var$() as string,VarType$() as string, SrcTxt$ as string, VarCount as long)
+SrcTxt$=Ucase$(SrcTxt$)
+DIMPos=instr(SrcTxt$,"DIM ")
+
+if DIMPos=0 then VarCount=0: exit sub
+
+SrcTxt$=right$(SrcTxt$,len(SrcTxt$)-DIMPos-3)
+asPos=GetVarPos(SrcTxt$,"AS")
+comPos=instr(SrcTxt$,",")
+while comPos >0 
+	Var$(k)=trim$(Left$(SrcTxt$, asPos-1))
+	VarType$(k)=trim$(mid$(SrcTxt$,asPos+2, comPos-asPos-2))
+	SrcTxt$=right$(SrcTxt$,len(SrcTxt$)-comPos)
+	asPos=GetVarPos(SrcTxt$,"AS")
+	comPos=instr(SrcTxt$,",")
+	inc k
+wend
+Var$(k)=trim$(Left$(SrcTxt$, asPos-1))
+VarType$(k)=trim$(right$(SrcTxt$,len(SrcTxt$)-asPos-1))
+VarCount=k+1
+end sub '
+
+
+'-- *********************************************************************'
+
+
+'-- *********************************************************************'
+'DEFSTR A, B, C="Hello", D, E
+sub ParseDef (Var$() as string,VarType$ as string, SrcTxt$ as string, VarCount as long)
+SrcTxt$=Ucase$(SrcTxt$)
+DEFPos=instr(SrcTxt$,"DEF")
+
+if DEFPos=0 then VarCount=0: exit sub
+
+SrcTxt$=right$(SrcTxt$,len(SrcTxt$)-DEFPos-2)
+VarPos=instr(SrcTxt$," ")-1
+VarType$=left$(SrcTxt$,VarPos)
+SrcTxt$=right$(SrcTxt$,len(SrcTxt$)-VarPos)
+
+'VarType$=left$(SrcTxt$,instr(SrcTxt$," "))
+
+select case VarType$
+case "STR"
+VarType$="STRING"
+case "DBL"
+VarType$="DOUBLE"
+case "INT"
+VarType$="INTEGER"
+case "LNG"
+VarType$="LONG"
+case "SNG"
+VarType$="SINGLE"
+CASE ELSE
+
+end select
+
+ComCnt=tally(SrcTxt$,",")
+for k=0 to ComCnt-1
+	Var$(k)=trim$(field$(SrcTxt$,",",k+1)-VarType$)
+next k
+Var$(k)=trim$(field$(SrcTxt$,",",k+1))
+VarCount= k+1
+end sub 
+'-- *********************************************************************'
+
+'-- *********************************************************************'
+sub DelComments (STxt$ as string)
+'delete comments in SrcTxt$
+'function tally -  see http://forum.qbasicnews.com/viewtopic.php?t=8787
+' qt as string =chr$(34)
+NQT=tally(STxt$, qt)
+PQT1=0
+PQT2=0
+PRem=0
+for i=0 to NQT+1 
+	PQT1=instr(PQT2+1,STxt$, qt)
+	if PQT1=0 and PQT2>0 then ' no quotes yet
+		i=NQT+1
+	else
+		PQT2=instr(PQT1+1,STxt$, qt)
+	end if
+	'PQT2=instr(PQT1+1,STxt$, qt)
+	PRem=instr(PRem+1,STxt$, "'")
+		if (PRem < PQT1 and PRem >0) or (PQT1=0 and PRem >0)  then 
+			STxt$=left$(STxt$,PRem-1)
+			'print"2STxt$=";STxt$
+		exit for
+		else
+		PRem=PQT2
+		end if
+next
+end sub '
+'-- *********************************************************************'
+function DelCommentsF (STxt$ as string) as string
+DelComments (@STxt$)
+result=STxt$
+end function 
+
+'-- *********************************************************************'
+sub ReplaceComments (STxt$ as string)
+'replace comments in SrcTxt$ by spaces, so full string lenth is not changing
+NQT=tally(STxt$, qt)
+PQT1=0
+PQT2=0
+PRem=0
+for i=0 to NQT+1 
+	PQT1=instr(PQT2+1,STxt$, qt)
+	if PQT1=0 and PQT2>0 then ' больше кавычек нет
+		i=NQT+1
+	else
+		PQT2=instr(PQT1+1,STxt$, qt)
+	end if
+	'PQT2=instr(PQT1+1,STxt$, qt)
+	PRem=instr(PRem+1,STxt$, "'")
+		if (PRem < PQT1 and PRem >0) or (PQT1=0 and PRem >0)  then 
+			cmntLen=len(STxt$)-PRem+1
+			STxt$=replace$(STxt$,STRING$(cmntLen, " "), PRem)
+			'STxt$=left$(STxt$,PRem-1)
+			'print"2STxt$=";STxt$
+		exit for
+		else
+		PRem=PQT2
+		end if
+next
+end sub '
+'-- *********************************************************************'
+
+'-- *********************************************************************'
+sub GetOperators (Oper$() as string,OperPos() as integer, SrcTxt$ as string,NumOpers as long)
+'parse and return  operators in checked string SrcTxt$
+'operators - not quoted and not commented parts of line delimited by ":"
+'Oper$() - array of operators
+'OperPos() - operator's positions
+
+ch$=chr$(58)
+QTNum=0 
+dim SrcList as QStringList
+bop=1: eop=1
+
+SrcList.text=SrcTxt$
+for i=0 to SrcList.ItemCount-1
+	ReplaceComments (@SrcList.Item(i))
+	SrcL$=rtrim$(SrcList.Item(i))
+	ss$=right$(SrcL$,1)
+	if ss$="_" then SrcList.Item(i)=SrcL$
+next i
+
+SrcList.text=replacesubStr$(SrcList.text,"_"+crlf,"")
+
+
+SrcTxt$=SrcList.text
+SrcTxt$=replacesubStr$(SrcTxt$,"_"+crlf,"")
+SrcTxt$=replacesubStr$(SrcTxt$,crlf," :")
+
+k=0
+for ~i=1 to Len(SrcTxt$)
+	chrs$=SrcTxt$[~i]
+	if chrs$=qt and QTNum=0 then 
+		QTNum=1 'следующий char  находится после первого вхождения qt
+	elseif chrs$=qt and QTNum=1 then
+		QTNum=0 'следующий char находимся после второго вхождения qt
+	elseif chrs$=ch$ and QTNum=0 then
+		eop=~i
+		~tmp$=trim$(mid$(SrcTxt$,bop,eop-bop))
+'print"~tmp$=";~tmp$
+		if ~tmp$<>"" and ~tmp$<>":" then
+			Oper$(k)=~tmp$
+			OperPos(k)=bop
+			k ++
+		end if
+			bop=eop+1
+	else
+	end if
+next ~i
+eop=~i
+
+~tmp$=trim$(mid$(SrcTxt$,bop,eop-bop))
+if ~tmp$<>"" then
+	Oper$(k)=~tmp$
+	OperPos(k)=bop
+end if
+
+NumOpers=k
+'print"sub GetOperators.NumOpers=";NumOpers
+end sub '
+'-- *********************************************************************'
+         
+'[build_inc] (дальше снова rapidq.inc)
+
+'~inc $include "fbscancodes.inc"   ' сборка: файл - здесь
+'============================================================================
+'[build_inc] fbscancodes.inc
+'============================================================================
+' Virtual Keys, Standard Set
+
+
+'~dup $DEFINE VK_LBUTTON    &H1   ' повтор, первое: rapidq2.inc(1071)
+'~dup $DEFINE VK_RBUTTON    &H2   ' повтор, первое: rapidq2.inc(1072)
+'~dup $DEFINE VK_CANCEL    &H3   ' повтор, первое: rapidq2.inc(1073)
+'~dup $DEFINE VK_MBUTTON    &H4             '  NOT contiguous with L RBUTTON   ' повтор, первое: rapidq2.inc(1074)
+'~dup $DEFINE VK_BACK    &H8   ' повтор, первое: rapidq2.inc(1075)
+'~dup $DEFINE VK_TAB    &H9   ' повтор, первое: rapidq2.inc(1076)
+'~dup $DEFINE VK_CLEAR    &HC   ' повтор, первое: rapidq2.inc(1077)
+'~dup $DEFINE VK_RETURN    &HD   ' повтор, первое: rapidq2.inc(1078)
+$DEFINE VK_Enter    &HD
+'~dup $DEFINE VK_SHIFT    &H10   ' повтор, первое: rapidq2.inc(1079)
+'~dup $DEFINE VK_CONTROL    &H11   ' повтор, первое: rapidq2.inc(1080)
+'~dup $DEFINE VK_MENU    &H12   ' повтор, первое: rapidq2.inc(1081)
+'~dup $DEFINE VK_PAUSE    &H13   ' повтор, первое: rapidq2.inc(1082)
+'~dup $DEFINE VK_CAPITAL    &H14   ' повтор, первое: rapidq2.inc(1083)
+'~dup $DEFINE VK_ESCAPE    &H1B   ' повтор, первое: rapidq2.inc(1084)
+'~dup $DEFINE VK_SPACE    &H20   ' повтор, первое: rapidq2.inc(1085)
+'~dup $DEFINE VK_PRIOR    &H21   ' повтор, первое: rapidq2.inc(1086)
+'~dup $DEFINE VK_NEXT    &H22   ' повтор, первое: rapidq2.inc(1087)
+$DEFINE VK_PUp    &H21
+$DEFINE VK_PDown    &H22
+'~dup $DEFINE VK_END    &H23   ' повтор, первое: rapidq2.inc(1088)
+'~dup $DEFINE VK_HOME    &H24   ' повтор, первое: rapidq2.inc(1089)
+'~dup $DEFINE VK_LEFT    &H25 'left arrow   ' повтор, первое: rapidq2.inc(1090)
+'~dup $DEFINE VK_UP    &H26  'up arrow   ' повтор, первое: rapidq2.inc(1091)
+'~dup $DEFINE VK_RIGHT    &H27 'etc   ' повтор, первое: rapidq2.inc(1092)
+'~dup $DEFINE VK_DOWN    &H28   ' повтор, первое: rapidq2.inc(1093)
+'~dup $DEFINE VK_SELECT    &H29   ' повтор, первое: rapidq2.inc(1094)
+'~dup $DEFINE VK_PRINT    &H2A   ' повтор, первое: rapidq2.inc(1095)
+'~dup $DEFINE VK_EXECUTE    &H2B   ' повтор, первое: rapidq2.inc(1096)
+'~dup $DEFINE VK_SNAPSHOT    &H2C   ' повтор, первое: rapidq2.inc(1097)
+'~dup $DEFINE VK_INSERT    &H2D   ' повтор, первое: rapidq2.inc(1098)
+'~dup $DEFINE VK_DELETE    &H2E   ' повтор, первое: rapidq2.inc(1099)
+'~dup $DEFINE VK_HELP    &H2F   ' повтор, первое: rapidq2.inc(1100)
+
+' VK_A thru VK_Z are the same as their ASCII equivalents: 'A' thru 'Z'
+' VK_0 thru VK_9 are the same as their ASCII equivalents: '0' thru '9'
+'~dup $DEFINE VK_0    &H30   ' повтор, первое: rapidq2.inc(1104)
+'~dup $DEFINE VK_1    &H31   ' повтор, первое: rapidq2.inc(1105)
+'~dup $DEFINE VK_2    &H32   ' повтор, первое: rapidq2.inc(1106)
+'~dup $DEFINE VK_3    &H33   ' повтор, первое: rapidq2.inc(1107)
+'~dup $DEFINE VK_4    &H34   ' повтор, первое: rapidq2.inc(1108)
+'~dup $DEFINE VK_5    &H35   ' повтор, первое: rapidq2.inc(1109)
+'~dup $DEFINE VK_6    &H36   ' повтор, первое: rapidq2.inc(1110)
+'~dup $DEFINE VK_7    &H37   ' повтор, первое: rapidq2.inc(1111)
+'~dup $DEFINE VK_8    &H38   ' повтор, первое: rapidq2.inc(1112)
+'~dup $DEFINE VK_9    &H39   ' повтор, первое: rapidq2.inc(1113)
+'~dup $DEFINE VK_A    &H41   ' повтор, первое: rapidq2.inc(1114)
+'~dup $DEFINE VK_B    &H42   ' повтор, первое: rapidq2.inc(1115)
+'~dup $DEFINE VK_C    &H43   ' повтор, первое: rapidq2.inc(1116)
+'~dup $DEFINE VK_D    &H44   ' повтор, первое: rapidq2.inc(1117)
+'~dup $DEFINE VK_E    &H45   ' повтор, первое: rapidq2.inc(1118)
+'~dup $DEFINE VK_F    &H46   ' повтор, первое: rapidq2.inc(1119)
+'~dup $DEFINE VK_G    &H47   ' повтор, первое: rapidq2.inc(1120)
+'~dup $DEFINE VK_H    &H48   ' повтор, первое: rapidq2.inc(1121)
+'~dup $DEFINE VK_I    &H49   ' повтор, первое: rapidq2.inc(1122)
+'~dup $DEFINE VK_J    &H4A   ' повтор, первое: rapidq2.inc(1123)
+'~dup $DEFINE VK_K    &H4B   ' повтор, первое: rapidq2.inc(1124)
+'~dup $DEFINE VK_L    &H4C   ' повтор, первое: rapidq2.inc(1125)
+'~dup $DEFINE VK_M    &H4D   ' повтор, первое: rapidq2.inc(1126)
+'~dup $DEFINE VK_N    &H4E   ' повтор, первое: rapidq2.inc(1127)
+'~dup $DEFINE VK_O    &H4F   ' повтор, первое: rapidq2.inc(1128)
+'~dup $DEFINE VK_P    &H50   ' повтор, первое: rapidq2.inc(1129)
+'~dup $DEFINE VK_Q    &H51   ' повтор, первое: rapidq2.inc(1130)
+'~dup $DEFINE VK_R    &H52   ' повтор, первое: rapidq2.inc(1131)
+'~dup $DEFINE VK_S    &H53   ' повтор, первое: rapidq2.inc(1132)
+'~dup $DEFINE VK_T    &H54   ' повтор, первое: rapidq2.inc(1133)
+'~dup $DEFINE VK_U    &H55   ' повтор, первое: rapidq2.inc(1134)
+'~dup $DEFINE VK_V    &H56   ' повтор, первое: rapidq2.inc(1135)
+'~dup $DEFINE VK_W    &H57   ' повтор, первое: rapidq2.inc(1136)
+'~dup $DEFINE VK_X    &H58   ' повтор, первое: rapidq2.inc(1137)
+'~dup $DEFINE VK_Y    &H59   ' повтор, первое: rapidq2.inc(1138)
+'~dup $DEFINE VK_Z    &H5A   ' повтор, первое: rapidq2.inc(1139)
+
+
+'~dup $DEFINE VK_NUMPAD0    &H60   ' повтор, первое: rapidq2.inc(1142)
+'~dup $DEFINE VK_NUMPAD1    &H61   ' повтор, первое: rapidq2.inc(1143)
+'~dup $DEFINE VK_NUMPAD2    &H62   ' повтор, первое: rapidq2.inc(1144)
+'~dup $DEFINE VK_NUMPAD3    &H63   ' повтор, первое: rapidq2.inc(1145)
+'~dup $DEFINE VK_NUMPAD4    &H64   ' повтор, первое: rapidq2.inc(1146)
+'~dup $DEFINE VK_NUMPAD5    &H65   ' повтор, первое: rapidq2.inc(1147)
+'~dup $DEFINE VK_NUMPAD6    &H66   ' повтор, первое: rapidq2.inc(1148)
+'~dup $DEFINE VK_NUMPAD7    &H67   ' повтор, первое: rapidq2.inc(1149)
+'~dup $DEFINE VK_NUMPAD8    &H68   ' повтор, первое: rapidq2.inc(1150)
+'~dup $DEFINE VK_NUMPAD9    &H69   ' повтор, первое: rapidq2.inc(1151)
+'~dup $DEFINE VK_MULTIPLY    &H6A   ' повтор, первое: rapidq2.inc(1152)
+'~dup $DEFINE VK_ADD    &H6B   ' повтор, первое: rapidq2.inc(1153)
+'~dup $DEFINE VK_SEPARATOR    &H6C   ' повтор, первое: rapidq2.inc(1154)
+'~dup $DEFINE VK_SUBTRACT    &H6D   ' повтор, первое: rapidq2.inc(1155)
+'~dup $DEFINE VK_DECIMAL    &H6E   ' повтор, первое: rapidq2.inc(1156)
+'~dup $DEFINE VK_DIVIDE    &H6F   ' повтор, первое: rapidq2.inc(1157)
+'~dup $DEFINE VK_F1    &H70   ' повтор, первое: rapidq2.inc(1158)
+'~dup $DEFINE VK_F2    &H71   ' повтор, первое: rapidq2.inc(1159)
+'~dup $DEFINE VK_F3    &H72   ' повтор, первое: rapidq2.inc(1160)
+'~dup $DEFINE VK_F4    &H73   ' повтор, первое: rapidq2.inc(1161)
+'~dup $DEFINE VK_F5    &H74   ' повтор, первое: rapidq2.inc(1162)
+'~dup $DEFINE VK_F6    &H75   ' повтор, первое: rapidq2.inc(1163)
+'~dup $DEFINE VK_F7    &H76   ' повтор, первое: rapidq2.inc(1164)
+'~dup $DEFINE VK_F8    &H77   ' повтор, первое: rapidq2.inc(1165)
+'~dup $DEFINE VK_F9    &H78   ' повтор, первое: rapidq2.inc(1166)
+'~dup $DEFINE VK_F10    &H79   ' повтор, первое: rapidq2.inc(1167)
+'~dup $DEFINE VK_F11    &H7A   ' повтор, первое: rapidq2.inc(1168)
+'~dup $DEFINE VK_F12    &H7B   ' повтор, первое: rapidq2.inc(1169)
+'~dup $DEFINE VK_F13    &H7C   ' повтор, первое: rapidq2.inc(1170)
+'~dup $DEFINE VK_F14    &H7D   ' повтор, первое: rapidq2.inc(1171)
+'~dup $DEFINE VK_F15    &H7E   ' повтор, первое: rapidq2.inc(1172)
+'~dup $DEFINE VK_F16    &H7F   ' повтор, первое: rapidq2.inc(1173)
+'~dup $DEFINE VK_F17    &H80   ' повтор, первое: rapidq2.inc(1174)
+'~dup $DEFINE VK_F18    &H81   ' повтор, первое: rapidq2.inc(1175)
+'~dup $DEFINE VK_F19    &H82   ' повтор, первое: rapidq2.inc(1176)
+'~dup $DEFINE VK_F20    &H83   ' повтор, первое: rapidq2.inc(1177)
+'~dup $DEFINE VK_F21    &H84   ' повтор, первое: rapidq2.inc(1178)
+'~dup $DEFINE VK_F22    &H85   ' повтор, первое: rapidq2.inc(1179)
+'~dup $DEFINE VK_F23    &H86   ' повтор, первое: rapidq2.inc(1180)
+'~dup $DEFINE VK_F24    &H87   ' повтор, первое: rapidq2.inc(1181)
+
+'~dup $DEFINE VK_NUMLOCK    &H90   ' повтор, первое: rapidq2.inc(1183)
+'~dup $DEFINE VK_SCROLL    &H91   ' повтор, первое: rapidq2.inc(1184)
+
+'
+'   VK_L VK_R - left and right Alt, Ctrl and Shift virtual keys.
+'   Used only as parameters to GetAsyncKeyState() and GetKeyState().
+'   No other API or message will distinguish left and right keys in this way.
+'  /
+'~dup $DEFINE VK_LSHIFT    &HA0   ' повтор, первое: rapidq2.inc(1191)
+'~dup $DEFINE VK_RSHIFT    &HA1   ' повтор, первое: rapidq2.inc(1192)
+'~dup $DEFINE VK_LCONTROL    &HA2   ' повтор, первое: rapidq2.inc(1193)
+'~dup $DEFINE VK_RCONTROL    &HA3   ' повтор, первое: rapidq2.inc(1194)
+'~dup $DEFINE VK_LMENU    &HA4   ' повтор, первое: rapidq2.inc(1195)
+'~dup $DEFINE VK_RMENU    &HA5   ' повтор, первое: rapidq2.inc(1196)
+
+' ascii codes are the same as their virtual key codes
+
+'[build_inc] (дальше снова rapidq.inc)
+'~inc $include "eml.inc"   ' сборка: файл - здесь
+'============================================================================
+'[build_inc] eml.inc
+'============================================================================
+'*****************************************
+Function GetSubjCodePage( Subject As String) As String
+zza$=Subject
+CodePage$=field$(zza$,"?",2)
+result=""
+if CodePage$ <>"" then
+	result=CodePage$
+elseif CodePage$="" and isKOI8(zza$)=1 then
+	result="koi8-r"
+else
+	result=""
+end if
+
+end function
+
+'*****************************************
+Function GetSubjCodeMethod( Subject As String) As String
+result=lcase$(field$(Subject,"?",3))
+end function
+
+'*****************************************
+Function GetMsgBodyContentType ( Msg As String) As String
+'Content-Type: text/plain; charset=koi8-r
+'Content-Type: text/plain; charset=UTF-8
+'Content-Type: text/plain;format=flowed;charset="koi8-r";reply-type=original
+
+Msg=replacesubstr$(Msg,ht," ")
+Msg=replacesubstr$(Msg,crlf+" ","")
+Msg=replacesubstr$(Msg,";"+crlf,"; ")
+'print"Msg=";Msg
+
+
+ContentType$=GetHeaderField(Msg,"Content-Type")
+'print"GetMsgBodyContentType ContentType$=";ContentType$
+result=field$(ContentType$,";",1)
+end function
+
+'*****************************************
+Function GetMsgBodyCodePage ( Msg As String) As String
+'Content-Type: text/plain; charset=koi8-r
+'Content-Type: text/plain; charset=UTF-8
+'Content-Type: text/plain;format=flowed;charset="koi8-r";reply-type=original
+dim i as long
+Msg=replacesubstr$(Msg,ht," ")
+Msg=replacesubstr$(Msg,crlf+" ","")
+Msg=replacesubstr$(Msg,";"+crlf,"; ")
+
+ContentType$=GetHeaderField(Msg,"Content-Type")
+semicolCount=tally(ContentType$,";")
+for i=1 to semicolCount
+	valfield$=field$(ContentType$,";",i+1)
+	if instr(valfield$,"charset=")>0 then
+		param$=field$(valfield$,"=",2)
+		exit for
+	else
+		
+	end if
+	
+next i
+result=param$
+end function
+
+'*****************************************
+Function GetMsgBodyCodeMethod( MsgBody As String) As String
+'Content-Transfer-Encoding: 8bit
+dim i as long
+MsgBody=replacesubstr$(MsgBody,ht," ")
+MsgBody=replacesubstr$(MsgBody,crlf+" ","")
+MsgBody=replacesubstr$(MsgBody,";"+crlf,"; ")
+
+ContentTransferEncoding$=GetHeaderField(MsgBody,"Content-Transfer-Encoding") ' inc2026: MsgBody вместо Msg здесь и в строках 67-69: параметр называется MsgBody (заголовок, строка 64, и DECLARE в rapidq.inc), Msg - необъявленная переменная
+semicolCount=tally(ContentTransferEncoding$,";")
+for i=1 to semicolCount
+	valfield$=field$(ContentTransferEncoding$,";",i+1)
+	if instr(valfield$,"charset=")>0 then
+		param$=field$(valfield$,"=",2)
+		exit for
+	else
+		
+	end if
+next i
+result=param$
+end function
+
+'*****************************************
+Function GetHeaderField( Header As String, Field as string) As String
+Header=replacesubstr$(Header,ht," ")
+Header=replacesubstr$(Header,crlf+" ","")
+Header=replacesubstr$(Header,";"+crlf,"; ")
+
+'print"Header=";Header
+' returm requared field value from message header
+dim i as long
+fieldidx=-1
+dim HeaderList as QStringList
+HeaderList.text=(Header)
+
+if instr(Field,":")=0 then Field=Field+":"
+
+field=lcase$(Field)'+":"
+lenfield=len(field)
+
+for i2=0 to HeaderList.Itemcount-1
+	hitem$=lcase$(HeaderList.Item(i2))
+	lenitem=len(hitem$)
+	instrsep=instr(hitem$,":")
+	
+	'if  instr(hitem$,field) >0 then
+	if  left$(hitem$,lenfield) =field then
+		fieldidx=i2: exit for
+	end if
+	
+next i2
+
+if fieldidx =-1 then
+	result=""
+else
+	result=trim$(mid$(HeaderList.Item(fieldidx),instrsep+1,lenitem-instrsep))
+end if
+end function
+
+'*****************************************
+Function GetMSGHeader( Source As String) As String
+dim MSGHeader as qstringlist 'string
+dim MSG as qstringlist
+
+Source=replacesubstr$(Source,ht," ")
+Source=replacesubstr$(Source,crlf+" ","")
+Source=replacesubstr$(Source,";"+crlf,"; ")
+
+MSGHeader.clear
+
+MSG.text=Source
+'print "------------- 136 GetMSGHeader Source=";Source
+emptylineIDX=-1
+
+emptylineIDX=MSG.IndexOf("")
+
+if emptylineIDX=-1 then emptylineIDX=MSG.ItemCount-1
+
+for i=0 to emptylineIDX-1
+	MSGHeader.additems (MSG.item(i))
+next i
+
+result=MSGHeader.text
+
+end function
+
+'*****************************************
+Function GetMSGBody( Source As String) As String 
+dim MSGBody as qstringlist 'string
+dim MSG as qstringlist
+
+Source=replacesubstr$(Source,ht," ")
+Source=replacesubstr$(Source,crlf+" ","") ' основной 
+Source=replacesubstr$(Source,";"+crlf,"; ")
+
+MSGBody.clear
+
+MSG.text=Source
+emptylineIDX=-1
+
+emptylineIDX=MSG.IndexOf("")
+
+if emptylineIDX=-1 then  emptylineIDX=1 
+
+for i=emptylineIDX to MSG.itemcount-1
+	MSGBody.additems (MSG.item(i))
+next i
+
+result=MSGBody.text
+
+end function
+
+
+'*****************************************
+Function isKOI8( Red$ As String) As long
+' проверяет кодировку строки на koi8
+'оПЧПЕ УППВЭЕОЙЕ Ч ЗПУФЕЧПК ЛОЙЗЕ 'diakin-рТПЗТБННБ RQ Search and Replace - РПЙУЛ Й ЪБНЕОБ Ф'.
+'пФПРМЕОЙЕ, ЧПДПУОБВЦЕОЙЕ..
+
+result=0
+'if instr(Red$, "ПЧ")>0 then result=1 '"koi8-r"
+'if instr(Red$, "ПП")>0 then result=1 '"koi8-r"
+'if instr(Red$, "ВЭ")>0 then result=1 '"koi8-r"
+'if instr(Red$, "ПД")>0 then result=1 '"koi8-r"
+'if instr(Red$, "ПЧ")>0 then result=1 '"koi8-r"
+'if instr(Red$, "ПЧ")>0 then result=1 '"koi8-r"
+
+if instr(Red$, " Ч ")>0 then result=1 '"koi8-r"
+'if instr(Red$, "ПЗ")>0 then result=1 '"koi8-r"
+
+'if instr(Red$, "РП")>0 then result=1 '"koi8-r"
+if instr(Red$, "ЪБ")>0 then result=1 '"koi8-r"
+
+
+if instr(Red$, "ДЩ")>0 then result=1 '"koi8-r"
+if instr(Red$, "ЧЩ")>0 then result=1 '"koi8-r"
+if instr(Red$, "ФШ")>0 then result=1 '"koi8-r"
+if instr(Red$, "пФ")>0 then result=1 '"koi8-r"
+
+if instr(Red$, "ВЙ")>0 then result=1 '"koi8-r"
+if instr(Red$, "ДЙ")>0 then result=1
+if instr(Red$, "ЗЙ")>0 then result=1
+if instr(Red$, "ЛЙ")>0 then result=1
+if instr(Red$, "МЙ")>0 then result=1
+if instr(Red$, "НЙ")>0 then result=1
+if instr(Red$, "РЙ")>0 then result=1
+if instr(Red$, "ТЙ")>0 then result=1
+if instr(Red$, "ФЙ")>0 then result=1
+if instr(Red$, "ЦЙ")>0 then result=1
+if instr(Red$, "ПЙ")>0 then result=1 '"koi8-r"
+if instr(Red$, " Й ")>0 then result=1 '"koi8-r"
+
+if instr(Red$, " Й")>0 then result=1
+if instr(Red$, " й ")>0 then result=1
+
+if instr(Red$, "ЙЫ")>0 then result=1
+
+if instr(Red$, "ЙЪ")>0 then result=1
+if instr(Red$, "йЪ")>0 then result=1
+
+if instr(Red$, "бй")>0 then result=1
+if instr(Red$, "дй")>0 then result=1
+if instr(Red$, "йй")>0 then result=1
+
+if instr(Red$, "pЙ")>0 then result=1
+
+if instr(Red$, "Kй")>0 then result=1
+
+if instr(Red$, "ШЫ")>0 then result=1
+if instr(Red$, "ЕЫ")>0 then result=1
+
+if instr(Red$, "ъД")>0 then result=1
+
+if instr(Red$, "ЪБ")>0 then result=1
+if instr(Red$, "ЪХ")>0 then result=1
+
+if instr(Red$, "ъБ")>0 then result=1
+if instr(Red$, "ЪЩ")>0 then result=1
+if instr(Red$, "ЪП")>0 then result=1
+if instr(Red$, "ЪЙ")>0 then result=1
+
+if instr(Red$, "ЪТ")>0 then result=1
+
+end function
+
+'*****************************************
+' BASE64 encode
+Function RQBASE64Encode(s As String) As String
+Dim lenStr As Long, endPos As Long, lastChars As Long, l As Long, i As Long
+dim cBASE64 as string
+cBASE64=""
+dim b64(63) As String
+dim b256(255) As Long
+
+For i = 0 To 63 Step 1
+	b64(i) = Mid$(Base64Table, i + 1, 1)
+	b256(Asc(b64(i))) = i
+Next
+
+lenStr = Len(s)
+lastChars = lenStr Mod 3
+endPos = lenStr - lastChars
+
+For i = 1 To endPos Step 3
+	l = CLng(AscB(Mid$(s, i, 1))) * 65536 + CLng(AscB(Mid$(s, i + 1, 1))) * 256 + CLng(AscB(Mid$(s, i + 2, 1)))
+	cBASE64 = cBASE64 & b64(l \ 262144) & b64((l \ 4096) Mod 64) & _
+	b64((l \ 64) Mod 64) & b64(l Mod 64)
+Next
+
+Select Case lastChars
+Case 1
+	l = CLng(AscB(Right$(s, 1))) * 16
+	cBASE64 = cBASE64 & b64((l \ 64) Mod 64) & b64(l Mod 64) & "=="
+Case 2
+	l = CLng(AscB(Mid$(s, lenStr - 1, 1))) * 1024 + CLng(AscB(Right$(s, 1))) * 4
+	cBASE64 = cBASE64 & b64((l \ 4096) Mod 64) & _
+	b64((l \ 64) Mod 64) & b64(l Mod 64) & "="
+End Select
+result=cBASE64
+
+End Function
+
+
+'*****************************************
+' BASE64 decode
+Function RQBASE64Decode (stxt As String) As String
+Dim lenStr As Long, endPos As Long, lastChars As Long, l As Long, i As Long
+dim RQBASE64E as string
+RQBASE64E=""
+dim b64(63) As String
+dim b256(255) As Long
+
+
+For i = 0 To 63 Step 1
+	b64(i) = Mid$(Base64Table, i + 1, 1)
+	b256(Asc(b64(i))) = i
+Next
+
+lenStr = Len(stxt)
+If Right$(stxt, 2) = "==" Then
+	lenStr = lenStr - 2
+Else
+	If Right$(stxt, 1) = "=" Then lenStr = lenStr - 1
+End If
+
+lastChars = lenStr Mod 4
+endPos = lenStr - lastChars
+For i = 1 To endPos Step 4
+	l=b256(Asc(Mid$(stxt,i,1)))*262144+b256(Asc(Mid$(stxt,i+1,1)))*4096+b256(Asc(Mid$(stxt,i+2,1)))*64+_
+	b256(Asc(Mid$(stxt,i+3,1)))
+	RQBASE64E = RQBASE64E + Chr$(l \ 65536) & Chr$((l \ 256) Mod 256) & Chr$(l Mod 256)
+Next i
+
+Select Case lastChars
+Case 2
+	l = b256(Asc(Mid$(stxt, lenStr - 1, 1))) * 1024 + b256(Asc(Mid$(stxt, lenStr, 1))) * 16
+	RQBASE64E = RQBASE64E & Chr$(l \ 256)
+Case 3
+	l = (b256(Asc(Mid$(stxt, lenStr - 2, 1))) * 4096 + b256(Asc(Mid$(stxt, lenStr - 1, 1))) * 64 +_
+	b256(Asc(Mid$(stxt, lenStr, 1)))) \ 4
+	RQBASE64E = RQBASE64E & Chr$(l \ 256) & Chr$(l Mod 256)
+End Select
+result=RQBASE64E
+
+End Function 
+
+
+'*****************************************
+
+'*****************************************
+Function DecodeSubj( Subject As String) As String 
+'print  "----------- DecodeSubj Subject=";Subject
+
+Dim i As Integer 
+Dim l As Integer 
+Dim v As string
+dim begpos as long ' 1st position of =?
+dim begpos2 as long ' 2nd position of =?
+dim endpos as long ' 1st position of ?=
+dim endpos2 as long ' 2nd position of ?=
+Dim decodedSubj$ As string
+
+
+begpos=0
+endpos=0
+
+headerTxtConv$=""
+result=""
+encodedword$=""
+pretext$=""
+decodedSubj$=""
+
+' если заголовок кодированный - то удаляем пробелы
+if instr(Subject,"=?")>0 then 
+	Subject=replacesubstr$(Subject,ht,"")
+	Subject=replacesubstr$(Subject,crlf+" ","")
+	Subject=replacesubstr$(Subject,";"+crlf,"; ")
+	Subject=replacesubstr$(Subject,"?=        ","?=")
+	Subject=replacesubstr$(Subject,"?=       ","?=")
+	Subject=replacesubstr$(Subject,"?=      ","?=")
+	Subject=replacesubstr$(Subject,"?=     ","?=")
+	Subject=replacesubstr$(Subject,"?=    ","?=")
+	Subject=replacesubstr$(Subject,"?=   ","?=")
+	Subject=replacesubstr$(Subject,"?=  ","?=")
+	Subject=replacesubstr$(Subject,"?= ","?=")
+	'Subject=Subject-" "
+else
+	if isKOI8(Subject)>0 then ' проверка на koi8
+		Subject=RQConvertCodePage(Subject, cp_Koi, cp_Win)
+	end if
+	result=Subject
+	exit function
+end if
+
+'!!!  encoded-word = "=?" charset "?" encoding "?" encoded-text "?="
+'subj$="=?windows-1251?B?zvLi5bo9PDu?= =?windows-1251?B?4u7lIOjn7uHw4Obl7ejlKQ==?=
+'        1            2 3           4   1            2 3                        4   
+'Subj:" =?windows-1251?Q?=C8=ED=F4=EE=F0=EC=E0=F6=E8=FF_?==?windows-1251?Q?=EE=E1_?==?windows-1251?Q?=EE=EF=EB=E0=F2=E5_?==?windows-1251?Q?=F1=E5=F0=E2=E8=F1=E0_forexsignal?=.ru
+'        1            2 3                               4  1            2 3       4  1   
+begpos=instr(Subject,"=?")
+textpos=1
+lensubj=len(Subject)
+
+while begpos>0 and begpos <lensubj
+	
+	spos1=instr(begpos+1,Subject,"?") ' 1 позиция ? - начало charset
+	spos2=instr(spos1+1,Subject,"?") ' 2 позиция ? - начало метода кодирования encoding
+	if spos2=0 then spos2=len(Subject)
+	spos3=instr(spos2+1,Subject,"?") ' 3 позиция ? - начало encoded-text
+	if spos3=0 then spos3=len(Subject)
+	spos4=instr(spos3+1,Subject,"?=") ' 4 позиция ? - конец encoded-text
+	if spos4=0 then spos4=len(Subject)
+	
+	pretext$=mid$(Subject,textpos,begpos-textpos)
+	codepage$=lcase$(mid$(Subject,spos1+1,spos2-spos1-1))
+	codeMode$=lcase$(mid$(Subject,spos2+1,1))
+	
+	begpos=instr(spos4,Subject,"=?") ' следующее encodedword$
+	if begpos=0 then begpos=len(Subject)
+	
+	textpos=spos4+2 'instr(spos4,Subject,"=?")
+	
+	encodedword$=mid$(Subject,spos3+1,spos4-spos3-1) ' декодируемая часть
+	encodedword$=replacesubstr$(encodedword$,"_","=20") ' replace white spaces
+	headerTxtConv$=""
+	headerTxtConv$=field$(encodedword$,"=",1) '""
+	if codeMode$="q" then ' quoted printable part
+		HexCharCount=tally(encodedword$,"=")
+		for ii=1 to HexCharCount
+			HexChar2$=ucase$(field$(encodedword$,"=",ii+1))
+			HexChar$=left$(HexChar2$,2)
+			Ost1$=right$(HexChar2$,len(HexChar2$)-2)
+			headerTxtConv$=headerTxtConv$+chr$(val(CONVBASE$(HexChar$, 16, 10)))+Ost1$
+		next ii
+		
+	elseif codeMode$="b" then ' base64 part
+		encodedword$=encodedword$-" "
+		headerTxtConv$=RQBASE64Decode(encodedword$)
+	else
+		
+	end if
+	'----------
+	Select case codepage$
+		
+	case "windows-1251"
+		
+	case "koi8-r"
+		' print " 511 headerTxtConv$=";headerTxtConv$
+		headerTxtConv$=RQConvertCodePage(headerTxtConv$, cp_Koi, cp_Win)
+			if isKOI8(headerTxtConv$)>0 then
+				headerTxtConv$=RQConvertCodePage(headerTxtConv$, cp_Koi, cp_Win)
+			end if
+		'cprint" 468 headerTxtConv$="+headerTxtConv$
+		
+	case "utf-8"
+		headerTxtConv$=RQConvertCodePage(headerTxtConv$, cp_UTF8, cp_Win)
+			if isKOI8(headerTxtConv$)>0 then
+				headerTxtConv$=RQConvertCodePage(headerTxtConv$, cp_Koi, cp_Win)
+			end if
+		
+	case "utf-7"
+		headerTxtConv$=RQConvertCodePage(headerTxtConv$, cp_UTF7, cp_Win)
+			if isKOI8(headerTxtConv$)>0 then
+				headerTxtConv$=RQConvertCodePage(headerTxtConv$, cp_Koi, cp_Win)
+			end if
+		
+	case else
+		
+	end select
+	if pretext$-" "="" then pretext$=""
+	decodedSubj$=decodedSubj$+pretext$+headerTxtConv$
+	'print"460 decodedSubj$=";decodedSubj$
+	
+	
+wend
+
+begpos=len(Subject)
+pretext$=mid$(Subject,textpos,begpos-textpos+1)
+decodedSubj$=decodedSubj$+pretext$
+
+if isKOI8(decodedSubj$)>0 then
+	decodedSubj$=RQConvertCodePage(decodedSubj$, cp_Koi, cp_Win)
+end if
+
+
+result=decodedSubj$
+
+End Function 
+
+'*****************************************
+Function IsEmail(wabMail As String) As long 
+Dim I As Integer 
+Dim Char As String 
+Dim Cdot(1) As String 
+
+zzq=Like(wabMail, "*@*.*")
+
+If zzq=0 Then 
+	IsEmail = False 
+	goto exitfunc
+End If
+
+'--- split ---
+DotCount=tally(wabMail, ".")
+'diakin@narod.ru - 2 части 
+redim Cdot(DotCount) As String '0,1
+
+for i=0 to DotCount
+	cdot(i)=field$(wabMail, ".",i+1)
+next i
+'--- end split ---
+lendomen=Len(Cdot(UBound(Cdot)))
+
+If lendomen<> 3 And lendomen<> 2 Then 
+	IsEmail = False 
+	Exit Function 
+End If 
+
+For I = 1 To lendomen Step 1 
+	Char = Mid$(Cdot(UBound(Cdot)), I, 1) 
+	If (LCase$(Char) > Chr$(122)) Or  (LCase$(Char) < Chr$(97)) Then 
+		IsEmail = False 
+		Exit Function 
+	End If 
+Next I 
+
+brem 1
+======
+For I = 1 To Len(wabMail) Step 1 
+	Char = Mid$(wabMail, I, 1) 
+	If (LCase$(Char) <= Chr$(122) And LCase$(Char) >= Chr$(97)) _ 
+	Or (Char >= Chr$(48) And Char <= Chr$(57)) _ 
+	Or (Char = ".") _ 
+	Or (Char = "@") _ 
+	Or (Char = "-") _ 
+	Or (Char = "_") Then 
+	IsEmail = True 
+Else 
+	IsEmail = False 
+	Exit Function 
+End If
+
+Next I 
+===
+erem
+
+IsEmail = True
+exitfunc:
+End Function 
+
+'*****************************************
+Sub ExtractEMailFromWab(wabFile As String, EmailList as QStringlist)
+Dim WABDog As Long, WABLeft As Long, WABRight As Long 
+Dim WABTemp As String 
+dim ie5 as long
+dim SObCount as long
+Dim WABEmail(1) As String 
+dim WABData as string
+
+
+WABData=LoadString(wabFile)
+SObCount=tally(WABData,"@")
+'print"SObCount=";SObCount
+Pos1 = 1
+wabPos=1
+
+for ie5=0 to SObCount-1
+	' находим собаку @
+	WABDog = InStr(wabPos, WABData, Chr$(0) & Chr$(64) & Chr$(0)) 
+	' от собаки находим два Chr(0) справа и слева
+	WABLeft = RInStr(WABDog,WABData, Chr$(0) & Chr$(0))
+	WABRight = InStr(WABDog, WABData, Chr$(0) & Chr$(0)) 
+	
+	'вырезаем e-mail адрес
+	WABTemp = Mid$(WABData, WABLeft, WABRight - WABLeft)
+	WABTemp = replaceSubStr$(WABTemp , Chr(0), "") 
+	
+	for i95=1 to 31 ' если содержатся непечатные символы
+		if instr(WABTemp, chr$(i95))>0 then
+			'print"i95=";i95
+			exit for
+		end if
+	next i95
+	'if i95<31 then goto NextEml1
+	
+	if i95>31 then 'goto NextEml1
+		
+		
+		WABTemp = WABTemp -chr$(0)
+		wzz$=WABTemp
+		
+		zzz=IsEmail(wzz$)
+		zz1= False
+		
+		If ( zzz= True) And ( zz1= False) Then 
+			'Call WABAddEmail(WABTemp) 
+			
+			if instr(EmailList.text,wzz$)=0 then
+				erow=UBound(WABEmail)
+				ReDim WABEmail(erow + 1) As String 
+				WABEmail(erow) = wzz$ 
+				EmailList.additems wzz$
+				infomsg$=EmailList.item(erow-1)
+'call  AddClrString ("585:infomsg$="+(infomsg$), clred, LogEdit)
+				doevents
+			end if
+			
+		End If 
+	End If 
+	
+	NextEml1: 
+	wabPos = WABRight 
+next ie5
+
+End Sub 
+
+'[build_inc] (дальше снова rapidq.inc)
 
 '*****************************************
 sub cprint(s as string)
@@ -5792,7 +10050,65 @@ $IFNDEF _CALLBACK_8
 $ENDIF
 
 $IFNDEF _NEWWNDPROC
-'~inc $Include "NewWndProc.Inc"   ' уже в сборке или заменён выбранной версией
+'~inc $Include "NewWndProc.Inc"   ' сборка: файл - здесь
+'============================================================================
+'[build_inc] NewWndProc.Inc
+'============================================================================
+'
+' ----------------------------------------------------------------------------
+' SET NEW WINDOW PROCEDURE     MANY CALLBACK     TURN AROUND        by Jacques
+'
+'!!! NO INDEX, AS MANY NEW WNDPROC AS YOU WANT                       MUCH EASIERS
+'
+' Thanks Warriant for relaunching the subject
+' August 13th, 2006
+' ----------------------------------------------------------------------------
+
+$IFNDEF _NEWWNDPROC
+$DEFINE _NEWWNDPROC
+$IFNDEF _CALLBACK_4
+'~dup $DEFINE _CALLBACK_4   ' повтор, первое: rapidq2.inc(2374)
+'~dup Declare Function MasterCallBack_4 (hFunction As Long, Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As long) As Long   ' повтор, первое: rapidq2.inc(2375)
+'~dup Declare Function FuncBind_4 (Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As long) As Long   ' повтор, первое: rapidq2.inc(2376)
+'~dup DefInt lpCallBack_4 = CodePtr(MasterCallBack_4)   ' повтор, первое: rapidq2.inc(2377)
+'
+'~dup Function MasterCallBack_4 (hFunction As Long, Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As Long) As Long   ' повтор, первое: rapidq2.inc(2379)
+'~dup   DefInt hBind
+'~dup   Bind hBind To FuncBind_4
+'~dup   hBind = hFunction
+'~dup   Result = CallFunc (hBind, Arg1, Arg2, Arg3, Arg4)
+'~dup End Function
+$ENDIF
+' ==== CALLBACK FORWARDER ===========================================
+Declare Function NWP_GetProcessHeap Lib "kernel32" Alias "GetProcessHeap" () As Long
+Declare Function NWP_HeapAlloc Lib "kernel32" Alias "HeapAlloc" (ByVal hHeap As Long, _
+                                                                 ByVal dwFlags As Long, ByVal dwBytes As Long) As Long
+DECLARE FUNCTION NWP_SetWindowLong LIB "USER32" ALIAS "SetWindowLongA" (hWnd AS LONG, nIndex AS LONG, dwNewLong AS LONG) AS LONG
+' -------------------------------------------------------------------
+FUNCTION SetNewWndProc (ObjectHandle AS LONG, hFunction AS LONG) AS LONG
+  DEFLNG hProcessHeap = NWP_GetProcessHeap
+  DEFLNG ptrForwarder = NWP_HeapAlloc (hProcessHeap, 12, 14)
+  DIM mTmp AS QMEMORYSTREAM
+  WITH mTmp
+    .Size = 14
+    .Position = 0
+    .WriteNum(&H58           , 1)    ' pop Eax
+    .WriteNum(&H68           , 1)    ' push ...
+    .WriteNum(hFunction      , 4)    ' ... hFunction
+    .WriteNum(&H50           , 1)    ' push eax
+    .WriteNum(&HB8           , 1)    ' mov  eax, ...
+    .WriteNum(lpCallBack_4   , 4)    ' ... ForwardTo
+    .WriteNum(&HE0FF         , 2)    ' jmp eax
+    memcpy (ptrForwarder  , .Pointer, 14)
+  END WITH
+  Result = NWP_SetWindowLong (ObjectHandle, -4, ptrForwarder)
+END FUNCTION
+' ==== END CALLBACK FORWARDER =======================================
+$ENDIF
+'
+
+
+'[build_inc] (дальше снова CallBackAll.Inc)
 $ENDIF
 ' ------------------------------------------------------------------------
 '
@@ -11799,1200 +16115,6 @@ PID = Shell("rundll32.exe shell32.dll,Control_RunDLL tweakui.cpl @0", 5)
 end sub
   
 '============================================================================
-'[build_inc] conversion.inc
-'============================================================================
-' version 09-06-2022 !!!!!
-
-'$include "C:\BAS\RAPIDQ\RQIDE\testinc.inc"
-$define cp_Win  1251
-$define cp_Dos  866
-$define cp_Koi  20866 
-$define cp_Iso  28595
-'~dup $define cp_UTF8 65001    ' повтор, первое: rapidq.inc(606)
-$define cp_UTF7 65000 
-
-$define cp_CentralEuropean_DOS 852
-$define cp_CentralEuropean_Windows 1250
-$define cp_CentralEuropean_ISO 28592
-$define cp_Cyrillic_DOS 866
-$define cp_Cyrillic_Windows 1251
-$define cp_Cyrillic_ISO 28595
-$define cp_Cyrillic_KOI8-R 20866
-$define cp_Ukrainian_KOI8-RU 21866
-$define cp_Latin3_ISO 28593
-$define cp_Western 1252
-$define cp_Baltic_Windows 1257
-$define cp_Baltic_ISO 28594
-$define cp_Greek_Windows 1253
-$define cp_Greek_ISO 28597
-'~dup $define cp_Turkish 1254   ' повтор, первое: rapidq.inc(595)
-$define cp_Arabic_Windows 1256
-$define cp_Arabic_ISO 28596
-$define cp_Hebrew_DOS 862
-$define cp_Hebrew_Windows 1255
-
-'~dup $define CP_NIL    (-1)   ' повтор, первое: rapidq.inc(583)
-'~dup $define CP_SYMBOL   42   ' повтор, первое: rapidq.inc(584)
-'~dup $define CP_OEM_437   437   ' повтор, первое: rapidq.inc(585)
-'~dup $define CP_THAI    874   ' повтор, первое: rapidq.inc(586)
-'~dup $define CP_JAPAN   932   ' повтор, первое: rapidq.inc(587)
-'~dup $define CP_CHINA   936   ' повтор, первое: rapidq.inc(588)
-'~dup $define CP_KOREA   949   ' повтор, первое: rapidq.inc(589)
-'~dup $define CP_TAIWAN   950   ' повтор, первое: rapidq.inc(590)
-'~dup $define CP_EASTEUROPE  1250   ' повтор, первое: rapidq.inc(591)
-'~dup $define CP_RUSSIAN   1251   ' повтор, первое: rapidq.inc(592)
-'~dup $define CP_WESTEUROPE  1252   ' повтор, первое: rapidq.inc(593)
-'~dup $define CP_GREEK   1253   ' повтор, первое: rapidq.inc(594)
-'~dup $define CP_TURKISH   1254   ' повтор, первое: rapidq.inc(595)
-'~dup $define CP_HEBREW   1255   ' повтор, первое: rapidq.inc(596)
-'~dup $define CP_ARABIC   1256   ' повтор, первое: rapidq.inc(597)
-'~dup $define CP_BALTIC   1257   ' повтор, первое: rapidq.inc(598)
-'~dup $define CP_JOHAB   1361   ' повтор, первое: rapidq.inc(599)
-'~dup $define CP_MAC_ROMAN  10000   ' повтор, первое: rapidq.inc(600)
-'~dup $define CP_MAC_JAPAN  10001   ' повтор, первое: rapidq.inc(601)
-'~dup $define CP_MAC_GREEK  10006   ' повтор, первое: rapidq.inc(602)
-'~dup $define CP_MAC_CYRILLIC  10007   ' повтор, первое: rapidq.inc(603)
-'~dup $define CP_MAC_LATIN2  10029   ' повтор, первое: rapidq.inc(604)
-'~dup $define CP_MAC_TURKISH  10081   ' повтор, первое: rapidq.inc(605)
-'~dup $define CP_UTF8    65001   ' повтор, первое: rapidq.inc(606)
-
-
-
-'--------------------------- Custom functions --------------------------
-'$IFNDEF CharToOem
-Declare Function CharToOem Lib "user32" Alias "CharToOemA" _
-(ByVal lpszSrc As String, ByVal lpszDst As String) as Long
-'$ENDIF
-
-
-'$IFNDEF OemToChar
-Declare Function OemToChar Lib "user32" Alias "OemToCharA" _
-(ByVal lpszSrc As String, ByVal lpszDst As String) As Long
-'$ENDIF
-
-Declare Function CharLower Lib "user32" Alias "CharLowerA" (ByVal lpsz As String) As String
-Declare Function CharUpper Lib "user32" Alias "CharUpperA" (ByVal lpsz As String) As String
-
-
-'*****************************************
-Declare Function MultiByteToWideChar Lib "kernel32" alias "MultiByteToWideChar" _
-( CodePage As Long,  dwFlags As Long, _
-lpMultiByteStr As Long,  cchMultiByte As Long, _
-lpWideCharStr As Long, _
-cchWideChar As Long) As Long
-
-Declare Function WideCharToMultiByte Lib "kernel32" alias "WideCharToMultiByte" _
-( CodePage As Long,  dwFlags As Long, _
-lpWideCharStr As Long,  cchWideChar As Long, lpMultiByteStr As Long, _
-cchMultiByte As Long,  lpDefaultChar As long,  lpUsedDefaultChar As Long) As Long
-
-'*****************************************
-Declare Function MultiByteToWideChar1 Lib "kernel32" alias "MultiByteToWideChar" _
-( CodePage As Long,  dwFlags As Long, _
-lpMultiByteStr As long,  cchMultiByte As Long, _
-lpWideCharStr As Long, _
-cchWideChar As Long) As Long
-
-Declare Function WideCharToMultiByte1 Lib "kernel32" alias "WideCharToMultiByte" _
-( CodePage As Long,  dwFlags As Long, _
-lpWideCharStr As long,  cchWideChar As Long, lpMultiByteStr As Long, _
-cchMultiByte As Long,  lpDefaultChar As long,  lpUsedDefaultChar As Long) As Long
-
-
-
-'-- ****************************************'
-function LCaseApi(  SrcTxt as string ) as string
-tmp$=SrcTxt+"-"
-l=len(SrcTxt)
-result=CharLower(left$(tmp$,l))
-end function
-
-'-- ****************************************'
-function UCaseApi(  SrcTxt as string ) as string
-tmp$=SrcTxt+"-"
-l=len(SrcTxt)
-result=CharUpper(left$(tmp$,l))
-end function
-
-'-- *****************************************'
-FUNCTION vidnum$ (Num, dig%) as string
-'Andrew Shelkovenko dec 2003
-'A  function that returns the string representation of  of a rounded numeric expression.
-'Syntax: vidnum$ (numeric-expression, dig%) 
-'Num$ = vidnum$ (999999.2366666666, 4)
-'Return  999999.2367 
-'Num$ = vidnum$ (-0.236, 4)
-'Return  -0.236
-'Num$ =vidnum$ (-12389.236, -2)
-'Return -12400
-'Details:
-'dig% - number of significant digits 
-
-Num$=str$(Num)
-pntPos=instr(Num$,".")
-if pntPos=0 then 
-	digMax=0
-else
-	digMax=Len(Num$)-pntPos
-end if
-
-if dig%>digMax then dig%=digMax 
-vidnum$ = STR$((  CLNG(  abs(Num) * 10 ^ dig%) / 10 ^ dig%)*sgn(Num))
-END FUNCTION
-'
-'-- **************************************************************************'
-function   Hex2Dec (HexStr as string) as string
-
-DEFdbl numb
-defdbl number
-DEFBYTE x,length, y
-number = 0
-length = LEN(HexStr)
-FOR x = 1 TO length
-	y = length - x
-	
-	digit$ = UCASE$(MID$(HexStr,x,1))
-	SELECT CASE digit$
-	CASE "A"
-		numb = 10 * 16^y
-	CASE "B"
-		numb = 11 * 16^y
-	CASE "C"
-		numb = 12 * 16^y
-	CASE "D"
-		numb = 13 * 16^y
-	CASE "E"
-		numb = 14 * 16^y
-	CASE "F"
-		numb = 15 * 16^y
-	CASE ELSE
-		numb = VAL(LCASE$(digit$)) * 16^y
-	END SELECT
-	number = number + numb
-	qw:
-NEXT
-
-if number>10^6 then 
-	n1=fix(number/1000000) 
-	n2=(number-n1*1000000)    
-	NumNul=6-len(str$(n2)) 
-	TrNul$=string$(NumNul, "0")
-	
-	Dec$ = STR$(n1)+TrNul$+str$(n2)
-	
-else
-	Dec$ = STR$(number)
-end if
-Hex2Dec=Dec$
-
-END function
-
-'-- **************************************************************************'
-function dectoHex (Dec as string) as string
-defdbl ost, ch
-defstr HexVal$
-HexVal$=""
-ost=0: ch=0
-Dec#=val(Dec)
-sign=sgn(Dec#)
-Dec#=abs(Dec#)
-WHILE  Dec# >= 16#
-	ch=FIX(Dec# / 16#)
-	ost = Dec#-ch*16#
-	
-	Dec#=ch
-	select case ost
-	case is <10
-		Hexdig$=str$(ost)
-	case 10
-		Hexdig$="A"
-	case 11
-		Hexdig$="B"
-	case 12
-		Hexdig$="C"
-	case 13
-		Hexdig$="D"
-	case 14
-		Hexdig$="E"
-	case 15
-		Hexdig$="F"
-	case 15
-		Hexdig$="10"
-		
-	case else
-	end select
-	
-	HexVal$ =Hexdig$  + HexVal$: 
-	
-wend
-
-select case Dec#
-	
-case is <10
-	Hexdig$=str$(Dec#)
-case 10
-	Hexdig$="A"
-case 11
-	Hexdig$="B"
-case 12
-	Hexdig$="C"
-case 13
-	Hexdig$="D"
-case 14
-	Hexdig$="E"
-case 15
-	Hexdig$="F"
-case 15
-	Hexdig$="10"
-	
-case else
-end select
-
-HexVal$ =Hexdig$  + HexVal$: 
-if sign=-1 then signn$="-" else signn$=""
-if HexVal$="0" then HexVal$="00"
-dectoHex=signn$+ HexVal$
-END function
-
-'-- **************************************************************************'
-function AddChrBefore(NumStr as string , Dlina as integer, chr1 as string) as string
-'Andrew Shelkovenko dec 2003
-'A function that pre-padd string with chr to required Length 
-'print AddChrBefore("-387.35" , 10, "=")  
-'==-0387.35
-
-diM kolvo as integer
-kolvo =Dlina-Len(NumStr)
-'showmessage (NumStr)
-if   kolvo<0 theN AddChrBefore="String too long"
-if   kolvo=0 theN AddChrBefore=NumStr: exit function
-AddChrBefore= STRING$(kolvo, chr1)+ NumStr
-'call  AddClrString ("259:AddChrBefore="+str$(AddChrBefore), clred, LogEdit)
-end function
-
-'-- **************************************************************************'
-function AddChrAfter(NumStr as string , Dlina as integer, chr1 as string) as string
-'Andrew Shelkovenko Mar 2008
-'A function that pre-padd string with chr1 to required Length 
-'print AddChrBefore("-387.35" , 10, "=")  
-'==-0387.35
-
-diM kolvo as integer
-kolvo =Dlina-Len(NumStr)
-if   kolvo<0 theN AddChrAfter="String too long" ' inc2026: в функции AddChrAfter было присваивание AddChrBefore (копия из AddChrBefore, строки 264-265), стало AddChrAfter - иначе результат функции не задаётся
-if   kolvo=0 theN AddChrAfter=NumStr: exit function ' inc2026: в функции AddChrAfter было присваивание AddChrBefore (копия из AddChrBefore, строки 264-265), стало AddChrAfter - иначе результат функции не задаётся
-AddChrAfter=  NumStr+STRING$(kolvo, chr1)
-end function
-
-
-'-- **************************************************************************'
-function Add0Before(NumStr as string , Dlina as integer) as string
-'Andrew Shelkovenko dec 2003
-'A function that pre-padd string with 0's to required Length 
-'print Add0Before("-387.35" , 8)  
-'-0387.35
-
-
-diM kolvo as integer
-kolvo =Dlina-Len(NumStr)
-if   kolvo<0 theN Add0Before="String too long"
-if   kolvo=0 theN Add0Before=NumStr: exit function
-
-Add0Before = STRING$(kolvo, "0")+ NumStr
-
-end function
-
-'-- ***********************************
-FUNCTION ByteReOrder (ByteStr$,ReOrder$ ) as string
-'Andrew Shelkovenko dec 2003
-' A function that reorder bytes in string.
-'ByteStr$ - Sourse string
-'ReOrder$ - new byte order
-
-'ReOrder$="21342"
-'old position - 2, new position - 1
-'old position - 1, new position - 2
-'old position - 3, new position - 3
-'old position - 4, new position - 4
-'old position - 2, new position - 5
-
-~tmp$=""
-
-LenB=Len(ByteStr$)
-LenR=Len(ReOrder$)
-
-for i=1 to LenB
-	poz$=ReOrder$[i]
-	if val(poz$)> LenB then ShowMessage( "ByteReOrder: ReOrder index outbound input string"):exit FUNCTION
-	if i<= LenR then
-		byt$=ByteStr$[val(poz$)]
-	else
-		byt$=ByteStr$[i]
-	end if
-	~tmp$=~tmp$+byt$
-next
-
-ByteReOrder=~tmp$
-
-end FUNCTION
-
-'-- **************************************************************************'
-FUNCTION CByteNum (ByteStr$,Num_Type as short ) as variant
-'print"CByteNum ByteStr$=";ByteStr$
-'Andrew Shelkovenko dec 2003
-'' converts   number of Num_Type type to bytes sequence.
-'Num_Type can be next value:
-'const Num_SHORT = 2
-'const Num_WORD = 3
-'const Num_LONG = 4
-'const Num_DWORD = 5
-'const Num_SINGLE = 6
-'const Num_DOUBLE = 8
-
-
-DIM M AS QMemoryStream
-select case Num_Type
-case Num_BYTE
-	ShowMessage "CByteNum: Can't to write BYTE.Wrong parameter type - Num_BYTE": exit funCTION
-case  Num_SHORT: M.Write (ByteStr$):m.Position=0:CByteNum=m.ReadNum(Num_SHORT)
-case  Num_WORD:  M.Write (ByteStr$):m.Position=0:CByteNum=m.ReadNum(Num_WORD)
-case  Num_LONG:  M.Write (ByteStr$):m.Position=0:CByteNum=m.ReadNum(Num_LONG)
-case  Num_DWORD: M.Write (ByteStr$):m.Position=0:CByteNum=m.ReadNum(Num_DWORD)
-case  Num_SINGLE:M.Write (ByteStr$):m.Position=0:CByteNum=m.ReadNum(Num_SINGLE)
-case  Num_DOUBLE:M.Write (ByteStr$):m.Position=0:CByteNum=m.ReadNum(Num_DOUBLE)
-	
-case else
-	M.Write (ByteStr$):m.Position=0:CByteNum=m.ReadNum(Num_DOUBLE)
-end select
-
-M.Close
-
-end funCTION
-
-'-- **************************************************************************'
-FUNCTION CNumByte (Num, Num_Type as short) as string
-'Andrew Shelkovenko dec 2003
-
-'converts bytes sequence to  number of Num_Type type  
-'Num_Type can be next value:
-'const Num_SHORT = 2
-'const Num_WORD = 3
-'const Num_LONG = 4
-'const Num_DWORD = 5
-'const Num_SINGLE = 6
-'const Num_DOUBLE = 8
-
-
-DIM M AS QMemoryStream
-
-select case Num_Type
-case Num_BYTE
-	dim N1 as BYTE 
-	ShowMessage "CNumByte: Can't to write BYTE.Wrong parameter type - Num_BYTE": exit funCTION
-	
-case  Num_SHORT: DEFSHORT N2:N2=Num:M.Write(N2):M.Position=0:CNumByte=M.ReadBinStr(sizeOf(N2))
-case  Num_WORD:  DEFWORD  N3:N3=Num:M.Write(N3):M.Position=0:CNumByte=M.ReadBinStr(sizeOf(N3))
-case  Num_LONG:  DEFLNG   N4:N4=Num:M.Write(N4):M.Position=0:CNumByte=M.ReadBinStr(sizeOf(N4))
-case  Num_DWORD: DEFDWORD N5:N5=Num:M.Write(N5):M.Position=0:CNumByte=M.ReadBinStr(sizeOf(N5))
-case  Num_SINGLE:DEFSNG   N6:N6=Num:M.Write(N6):M.Position=0:CNumByte=M.ReadBinStr(sizeOf(N6))
-case  Num_DOUBLE:DEFDBL   N7:N7=Num:M.Write(N7):M.Position=0:CNumByte=M.ReadBinStr(sizeOf(N7))
-	
-case else
-	dim N8 as DOUBLE:N8=Num:
-	M.Write(N8):
-	M.Position=0:CNumByte=M.ReadBinStr(sizeOf(N8)):M.Close                                         
-end select
-M.Close
-end funCTION
-
-'-- **************************************************************************'
-
-' LIKE Function - pattern matching routine for Rapid-Q by William Yu
-' This emulates the VB LIKE operator.
-' Thanks to Thomas Binder for the original C code
-'
-' ?   Any single character.
-' *   Zero or more characters.
-' #   Any single digit (0-9).
-' [charlist]  Any single character in charlist.
-' [!charlist] Any single character not in charlist.
-'
-' A group of one or more characters (charlist) enclosed in brackets ([ ])
-' can be used to match any single character in string and can include almost
-' any character code, including digits.
-'
-' Note:   To match the special characters left bracket ([), question
-' mark (?), number sign (#), and asterisk (*), enclose them in brackets.
-' The right bracket (]) can't be used within a group to match itself, but
-' it can be used outside a group as an individual character.
-'
-' By using a hyphen (-) to separate the upper and lower bounds of the range,
-' charlist can specify a range of characters. For example, [A-Z] results in
-' a match if the corresponding character position in string contains any
-' uppercase letters in the range A-Z. Multiple ranges are included within
-' the brackets without delimiters.
-
-
-DECLARE FUNCTION Like(ParseString AS STRING, Pattern AS STRING) AS INTEGER
-DECLARE FUNCTION IsDigit(S AS STRING) AS INTEGER
-
-const INVERT = "!"       '-- Some like ^ or ~ instead, whatever you want
-
-'-- **************************************************************************'
-FUNCTION IsDigit(S AS STRING) AS INTEGER
-IF S >= "0" AND S <= "9" THEN
-	IsDigit = 1
-ELSE
-	IsDigit = 0
-END IF
-END FUNCTION
-
-
-'-- **************************************************************************'
-FUNCTION IsDigitsOnly(S AS STRING) AS INTEGER
-
-for i=1 to len(s)
-	
-	IF S[i] >= "0" AND S[i] <= "9" THEN
-		IsDigitsOnly = 1
-	ELSE
-		IsDigitsOnly = 0
-		exit for
-	END IF
-next
-
-END FUNCTION
-
-
-'-- **************************************************************************'
-FUNCTION Like(ParseString AS STRING, Pattern AS STRING) AS INTEGER
-DIM prev AS INTEGER, matched AS INTEGER, reverse AS INTEGER
-
-WHILE Pattern <> ""
-	SELECT CASE MID$(Pattern, 1, 1)
-	CASE "?"
-		IF ParseString = "" THEN
-			Like = 0
-			EXIT FUNCTION
-		END IF
-	CASE "#"
-		IF IsDigit(MID$(ParseString, 1, 1)) = 0 THEN
-			Like = 0
-			EXIT FUNCTION
-		END IF
-	CASE "*"
-		DO
-		Pattern = MID$(Pattern, 2, LEN(Pattern)-1)
-		LOOP UNTIL MID$(Pattern, 1, 1) <> "*"
-		IF Pattern = "" THEN
-			Like = 1
-			EXIT FUNCTION
-		END IF
-		WHILE ParseString <> ""
-			IF Like(ParseString, Pattern) THEN
-				Like = 1
-				EXIT FUNCTION
-			END IF
-			IF ParseString <> "" THEN
-				ParseString = MID$(ParseString, 2, LEN(ParseString)-1)
-			END IF
-		WEND
-		Like = 0
-		EXIT FUNCTION
-	CASE "["
-		reverse = (MID$(Pattern, 2, 1) = INVERT)
-		IF reverse THEN
-			Pattern = MID$(Pattern, 2, LEN(Pattern)-1)
-		END IF
-		prev = 256: matched = 0
-		DO
-		Pattern = MID$(Pattern, 2, LEN(Pattern)-1)
-		IF (Pattern <> "") AND (esc <> 0 OR MID$(Pattern, 1, 1) <> "]") THEN
-			IF MID$(Pattern, 1, 1) = "-" THEN
-				Pattern = MID$(Pattern, 2, LEN(Pattern)-1)
-				IF Pattern = "" THEN
-					Like = 0
-					EXIT FUNCTION
-				END IF
-				matched = matched OR (MID$(ParseString, 1, 1) <= MID$(Pattern, 1, 1) AND ASC(MID$(ParseString, 1, 1)) >= prev)
-			ELSE
-				matched = matched OR (MID$(ParseString, 1, 1) = MID$(Pattern, 1, 1))
-			END IF
-			prev = ASC(MID$(Pattern, 1, 1))
-		ELSE
-			EXIT DO
-		END IF
-		esc = 0
-		LOOP
-		IF (prev = 256 OR MID$(Pattern, 1, 1) <> "]" OR ABS(matched) = ABS(reverse)) THEN
-			Like = 0
-			EXIT FUNCTION
-		END IF
-	CASE ELSE
-		IF MID$(ParseString, 1, 1) <> MID$(Pattern, 1, 1) THEN
-			Like = 0
-			EXIT FUNCTION
-		END IF
-	END SELECT
-	ParseString = MID$(ParseString, 2, LEN(ParseString)-1)
-	Pattern = MID$(Pattern, 2, LEN(Pattern)-1)
-WEND
-
-Like = ABS(LEN(ParseString) = 0)
-END FUNCTION
-
-'-- Test code
-'print "Like('24','##')=", Like("24","##")
-
-'?"Like(aBBBa, a*a)=", Like("aBBBa","a*a")
-'?Like("F","[!A-Z]")
-'?Like("a2a","a#a")
-'?Like("aM5b","a[A-GL-P]#[!c-e]")
-'?Like("BAT123khg","B?T*")
-'?Like("CAT123khg","B?T*")
-
-'?Like("Combine(10, 20) = 30", "*(*?,*?)*=*#")
-'-- **************************************************************************'
-function SecTime (cTime$ as string) as integer 
-TimeHH=val (field$(cTime$, ":",1)) 
-TimeMM=val (field$(cTime$, ":",2)) 
-TimeSS=val (field$(cTime$, ":",3)) 
-result=TimeHH*3600+TimeMM*60+TimeSS 
-end function
-
-
-'-- **************************************************************************'
-function DayDate (cDate$ as string) as integer 
-
-MM=val (field$(cDate$, "-",1)) 
-Day=val (field$(cDate$, "-",2)) 
-Year=val (field$(cDate$, "-",3)) 
-
-result=365*(Year)+30*(MM)+(Day) 
-end function
-
-'-- **************************************************************************'
-function TimeString (TimSec as integer) as string
-
-Hr%=TimSec/3600
-SecMin=TimSec-Hr%*3600
-Min%=(SecMin)/60
-Sec%=SecMin-Min%*60
-
-Hr$=Right$("0"+str$(Hr%), 2)
-Min$=Right$("0"+str$(Min%), 2)
-Sec$=Right$("0"+str$(Sec%), 2)
-
-TimeString=Hr$+":"+Min$+":"+Sec$'+"   "
-
-end function
-
-'-- *********************************************************************'
-Function GetWord (Oper$ as string, getV$ as string) as long
-'Old! Use GetVarPos!!!
-
-'return variable  position in checked string
-'getV$ - variable name 
-'Oper$ - checked string
-'if getV$ commented,  or quoted (just text, not varname)  - return error code
-result=-1 ' error
-defstr Lsep$="()[]=><, :+-*\/;"
-defstr Rsep$="()[]=><, :'+-*\/;"
-
-Oper$=lcase$(Oper$)
-getV$=lcase$(getV$)
-
-Wpos=instr(Oper$,getV$) 
-if Wpos=0 then result=0: exit function 'pattern not contained
-'check comment and string
-
-while Wpos>0 
-	
-	if (instr(Lsep$,Oper$[Wpos-1])>0 or Wpos=1) and (instr(Rsep$,Oper$[Wpos+len(getV$)])>0  or Wpos+len(getV$)-1=len(Oper$))  then
-		'check string 
-		QPos1=rinstr(Wpos,Oper$,qt) ''1 quote pos   
-		QPos2= instr(Wpos,Oper$,qt) '2 quote pos   
-		CPos=rinstr(Wpos,Oper$,"'") 'comment pos  
-		
-		if QPos1<Wpos and QPos2 >Wpos and QPos1>0 then 'it's string, not var
-		elseif (CPos<Wpos and CPos>0) and  QPos1<CPos    then 'it's comment and QPos2>0
-		else
-			result=Wpos 
-			exit while
-		end if
-	else
-	end if
-	Wpos=instr(Wpos+1, Oper$,getV$) 
-	result=-2 'present, but not var
-wend
-
-end function
-
-
-'NumQT=tally(Oper$, qt)
-'NumRem=tally(Oper$, "'")
-'CharPos=instr(Oper$, getC$)
-
-
-'*****************************************
-'sub Ob2Grad (obor as single,   SecFull as integer, byref  SecMnt as integer,  byref  Grad as integer,  byref  Mint as integer,  byref Sec1 as integer, byref  Ugl$ as string)
-sub Ob2Grad (obor as single,   SecFull as integer, SecMnt as integer,  Grad as integer,  Mint as integer,  Sec1 as integer,  byref Ugl$ as string)
-'convert value of revolutions to degree of arc
-'obor - value of revolutions (input)
-'SecFull - Full secounds of arc in value of revolutions
-'Grad - degrees of arc 
-'Mint - minutes of arc
-'Sec1 - Secounds of arc
-'Ugl$ - string repres. of value of revolutions in {arc degrees, minutes, secounds} format
-'SecMnt -secounds of arc in {arc degrees, secounds format} representation of the revolutions value(, i.e. Grad,SecMnt)
-
-SecFull=obor*360*60*60
-sign=sgn(obor)
-obor=abs(obor)
-Grad=fix(obor*360)'+val(Edit18.text)'
-
-Mint=fix((obor*360-Grad)*60)
-
-Sec1=round((((obor*360-Grad)*60)-Mint)*60)
-
-if sec1=60 then 
-	sec1=0
-	inc mint
-	if mint=60 then
-		mint=0
-		inc grad
-	end if
-end if
-
-SecMnt=round((obor*360-Grad)*3600)
-
-if sgn(SecFull)=-1 then zn$="-" else zn$=""
-
-Ugl$=zn$+str$(abs(Grad))+chr$(176)+str$(abs(Mint))+"'"+str$(abs(Sec1))+qt
-
-end sub
-
-'*****************************************
-sub Grad2Sec ( Ugl$ as string, byref obor as single,  byref SecFull as integer, byref  SecMnt as integer,_
-byref  Grad as integer,  byref  Mint as integer,  byref  Sec1 as integer )
-
-'convert value of revolutions to degree of arc
-'obor - value of revolutions (input)
-'SecFull - Full secounds of arc in value of revolutions
-'Grad - degrees of arc 
-'Mint - minutes of arc
-'Sec1 - Secounds of arc
-'Ugl$ - string repres. of value of revolutions in {arc degrees, minutes, secounds} format
-'SecMnt -secounds of arc in {arc degrees, secounds format} representation of the revolutions value(, i.e. Grad,SecMnt)
-
-if Ugl$[1]="-" then znak=-1 else znak=1
-
-Ugl$=Ugl$-"-"
-
-gradpos=instr(Ugl$,chr$(176))
-GradU=val(left$(Ugl$,gradpos-1))
-Grad=GradU*znak
-'print"Grad=";Grad
-
-mintpos=instr(Ugl$,chr$(39))
-mintU=val(mid$(Ugl$,gradpos+1,mintpos- gradpos ))
-mint=mintU*znak
-'print"mint=";mint
-
-secpos=instr(Ugl$,qt)
-secU=val(mid$(Ugl$,mintpos+1,secpos -mintpos ))
-sec1=secU*znak
-'print"sec=";sec
-
-SecFull=(GradU*3600+mintU*60+secU)*znak
-'print"SecFull=";SecFull
-
-obor=SecFull/3600/360
-'print"obor=";obor
-
-SecMnt=mint*60+sec1
-'print"SecMnt=";SecMnt
-end sub
-
-'*****************************************
-function Ugl2Sec (Ugl$ as string) as integer
-if Ugl$[1]="-" then znak=-1 else znak=1
-
-Ugl$=Ugl$-"-"
-
-gradpos=instr(Ugl$,chr$(176))
-GradU=val(left$(Ugl$,gradpos-1))
-
-mintpos=instr(Ugl$,chr$(39))
-mintU=val(mid$(Ugl$,gradpos+1,mintpos- gradpos ))
-
-secpos=instr(Ugl$,qt)
-secU=val(mid$(Ugl$,mintpos+1,secpos -mintpos ))
-
-SecFull=(GradU*3600+mintU*60+secU)*znak
-'print"SecFull=";SecFull
-
-Ugl2Sec=SecFull
-
-end function
-
-'*****************************************
-function Sec2Ugl (SecFull as long) as string
-
-if sgn(SecFull)=-1 then zn$="-" else zn$=""
-SecFull=abs(SecFull)
-'print"SecFull=";SecFull
-
-Grad=SecFull\3600 ' число целых градусов
-'print"Grad=";Grad
-gradSec=Grad*3600 ' число секунд в целых градусах
-'print"gradSec=";gradSec
-
-ostminSec=SecFull-gradSec ' число сек в дробной части градусов - минутах и сек
-'print"ostminSec=";ostminSec
-
-mint=ostminSec\60 ' целое число минут
-'print"mint=";mint
-mintsec=mint*60 ' число секунд в целых минутах
-'print"mintsec=";mintsec
-sec1 =ostminSec- mintsec ' остаток чистых секунд
-'print"sec1=";sec1
-
-
-Sec2Ugl=zn$+str$((Grad))+chr$(176)+str$((Mint))+"'"+str$((Sec1))+qt
-
-
-
-end function
-
-'*********************************************************************
-function sadd(InpStr as string) as long
-'Returns the memory offset of the string data in the string variable
-' use as pointer to the string variable
-DIM Mem AS QMemoryStream
-Mem.Write InpStr
-Mem.Position = 0
-sadd=Mem.Pointer
-end function
-
-'*********************************************************************
-function Cutleft(a as string, n as long)  as string
-'return string without first n chars
-result= mid$(a,n+1,len(a)-n+1)
-end function
-
-'*********************************************************************
-function CutRight(a as string, n as long)  as string
-'return string without first n chars
-result= mid$(a,1,len(a)-n)
-end function
-
-'-- ************************************************************************'
-function delTags (HTMLtext as string) as string 
-string1$=HTMLtext
-
-string1$=REPLACESUBSTR$(string1$,"       " , " "  )
-string1$=REPLACESUBSTR$(string1$,"      " , " "  )
-string1$=REPLACESUBSTR$(string1$,"     " , " "  )
-string1$=REPLACESUBSTR$(string1$,"    " , " "  )
-string1$=REPLACESUBSTR$(string1$,"   " , " "  )
-string1$=REPLACESUBSTR$(string1$,"  " , " "  )
-
-
-string1$=REPLACESUBSTR$(string1$,">"+crlf, ">"+"~~~" )
-string1$=REPLACESUBSTR$(string1$,". ", "."+crlf )
-
-string1$=REPLACESUBSTR$(string1$,"<br>", crlf )
-STRING1$=REPLACESUBSTR$(STRING1$,"<BR>", crlf )
-
-string1$=REPLACESUBSTR$(string1$,"</p>", crlf )
-STRING1$=REPLACESUBSTR$(STRING1$,"</P>", crlf )
-
-string1$=REPLACESUBSTR$(string1$,"</tr>", crlf )
-STRING1$=REPLACESUBSTR$(STRING1$,"</TR>", crlf)
-
-string1$=REPLACESUBSTR$(string1$,"</td>", " " )
-STRING1$=REPLACESUBSTR$(STRING1$,"</TD>", " " )
-
-string1$=REPLACESUBSTR$(string1$,"<td>", "" )
-
-string1$=REPLACESUBSTR$(string1$,"</FONT>", "" )
-
-string1$=REPLACESUBSTR$(string1$,"<P>", "" )
-
-'z0=ftally (string1$, "<")
-z0Old=z0
-
-z1=instr(string1$, "<")
-z2=instr(string1$, ">")
-
-while z1>0 and z2>0 
-	if z2>z1 then 
-		string1$=delete$(string1$, z1, z2-z1+1) '+chr$(10) 
-	else
-		'<a class="small" target="_top" href="/default.asp">MSDN Home</a>&nbsp;>&nbsp;
-		string1$=delete$(string1$, z2, 1)
-	end if
-	z1=instr( string1$, "<")
-	z2=instr( string1$, ">")
-	'dec z0
-	inc z0
-	
-wend
-
-string1$=REPLACESUBSTR$(string1$,"   " , " "  )
-string1$=REPLACESUBSTR$(string1$,"  " , " "  )
-string1$=REPLACESUBSTR$(string1$,chr$(9)+chr$(9)+chr$(9) , " "  )
-string1$=REPLACESUBSTR$(string1$,chr$(9)+chr$(9) , " "  )
-string1$=REPLACESUBSTR$(string1$,chr$(9), " "  )
-
-string1$=REPLACESUBSTR$(string1$,"~~~",crlf )
-
-string1$=REPLACESUBSTR$(string1$,"&quot;" , qt  )
-string1$=REPLACESUBSTR$(string1$,"&gt;" , ">"  )
-string1$=REPLACESUBSTR$(string1$,"&lt;" , "<"  )
-string1$=REPLACESUBSTR$(string1$,"&nbsp;" , " "  )
-
-
-string1$=REPLACESUBSTR$(string1$,crlf+crlf+crlf+crlf+crlf , crlf  )
-string1$=REPLACESUBSTR$(string1$,crlf+crlf+crlf+crlf , crlf  )
-string1$=REPLACESUBSTR$(string1$,crlf+crlf+crlf , crlf  )
-string1$=REPLACESUBSTR$(string1$,crlf+crlf , crlf  )
-
-string1$=REPLACESUBSTR$(string1$,cr+cr+cr+cr+cr , cr  )
-string1$=REPLACESUBSTR$(string1$,cr+cr+cr+cr , cr  )
-string1$=REPLACESUBSTR$(string1$,cr+cr+cr , cr  )
-string1$=REPLACESUBSTR$(string1$,cr+cr , cr  )
-
-string1$=REPLACESUBSTR$(string1$,lf+lf+lf+lf+lf , lf  )
-string1$=REPLACESUBSTR$(string1$,lf+lf+lf+lf , lf  )
-string1$=REPLACESUBSTR$(string1$,lf+lf+lf, lf  )
-string1$=REPLACESUBSTR$(string1$,lf+lf, lf  )
-
-result=string1$
-
-end function
-
-'*****************************************
-Function RQConvertCodePage (SourseString As String, inPage As long, outPage As long) As String
-'print "1159 RQConvertCodePage SourseString=";SourseString
-'$define cp_Win  1251
-'$define cp_Dos  866
-'$define cp_Koi  20866 
-'$define cp_Iso  28595
-'$define cp_UTF8 65001 
-'$define cp_UTF7 65000 
-
-
-Dim LenSourseString As Long
-LenSourseString = Len(SourseString)
-'print "1170 RQConvertCodePage  LenSourseString=";LenSourseString
-
-Dim str1 As String
-Dim str2 As String
-Dim RetStrLong As Long
-
-dim tmp as string 
-tmp=SourseString
-ptrtmp&=varptr(tmp)
-
-str1 = String$(LenSourseString * 4, chr$(0))
-str2 = String$(LenSourseString * 4, chr$(0))
-
-ptrstr1&=varptr(str1)
-ptrstr2&=varptr(str2)
-
-RetStrLong = MultiByteToWideChar(inPage, 0, tmp, LenSourseString, 0&, 0)
-'print"RetStrLong=";RetStrLong
-RetStrLong = MultiByteToWideChar(inPage, 0, tmp,LenSourseString , ptrstr1&, RetStrLong)
-'print"RetStrLong=";RetStrLong
-RetStrLong2 = WideCharToMultiByte(outPage, 0, ptrstr1&, RetStrLong, str2, LenSourseString * 2, ByVal 0&, 0) ' str2
-'print"RetStrLong2=";RetStrLong2
-
-RQConvertCodePage = Left$(str2, RetStrLong2)
-End Function
-
-'*****************************************
-Function RQConvertCodePage1 (SourseStringPtr As long, inPage As long, outPage As long) As String
-'print "1159 RQConvertCodePage SourseString=";SourseString
-'$define cp_Win  1251
-'$define cp_Dos  866
-'$define cp_Koi  20866 
-'$define cp_Iso  28595
-'$define cp_UTF8 65001 
-'$define cp_UTF7 65000 
-
-
-Dim LenSourseString As Long
-LenSourseString = Len(varptr$(SourseStringPtr))
-'print "1170 RQConvertCodePage3  LenSourseString=";LenSourseString
-
-Dim str1 As String
-Dim str2 As String
-Dim RetStrLong As Long
-
-str1 = String$(LenSourseString * 4, chr$(0))'+String$(LenSourseString * 4, chr$(0))
-str2 = String$(LenSourseString * 4, chr$(0))'+String$(LenSourseString * 4, chr$(0))
-
-ptrstr1&=varptr(str1)
-ptrstr2&=varptr(str2)
-
-'RetStrLong = MultiByteToWideChar2(inPage, 0, SourseStringPtr, LenSourseString , 0&, 0)
-RetStrLong = MultiByteToWideChar1(inPage, 0, SourseStringPtr, -1 , 0&, 0)
-'print"RetStrLong0=";RetStrLong
-RetStrLong = MultiByteToWideChar1(inPage, 0, SourseStringPtr,-1, ptrstr1&, RetStrLong)
-'print"RetStrLong1=";RetStrLong
-RetStrLong2 = WideCharToMultiByte1(outPage, 0, ptrstr1&, RetStrLong, str2, LenSourseString * 4, ByVal 0&, 0) ' str2
-'print"RetStrLong2=";RetStrLong2
-
-RQConvertCodePage1 = Left$(str2, RetStrLong2)
-End Function
-
-'*****************************************
-Function ConvertCodePage2 (SourseString As String, inPage As long, outPage As long) As String
-
-Dim LenSourseString As Long
-LenSourseString = Len(SourseString)
-
-Dim str1 As String
-Dim str2 As String
-Dim RetStrLong As Long
-
-dim tmp as string 
-tmp=SourseString
-ptrtmp&=varptr(tmp)
-
-str1 = String$(LenSourseString * 4, chr$(0))
-str2 = String$(LenSourseString * 4, chr$(0))
-
-ptrstr1&=varptr(str1)
-ptrstr2&=varptr(str2)
-
-RetStrLong = MultiByteToWideChar(inPage, 0, tmp, LenSourseString, 0&, 0)
-RetStrLong = MultiByteToWideChar(inPage, 0, tmp, RetStrLong, ptrstr1&, LenSourseString)
-'print"RetStrLong =";RetStrLong 
-RetStrLong2 = WideCharToMultiByte(outPage, 0, ptrstr1&, RetStrLong, str2, LenSourseString * 4, ByVal 0&, 0) ' str2
-'print"RetStrLong2 =";RetStrLong2 
-
-ConvertCodePage2 = Left$(str2, RetStrLong2) ' inc2026: было ConvertCodePage = ... (в conversion.inc такой функции нет, необъявленная переменная), стало ConvertCodePage2 - имя этой функции (строка 949), иначе она возвращает пустую строку
-End Function
-
-
-'*****************************************
-FUNCTION RC4 (key AS STRING, str AS STRING) AS STRING
-DIM stateTable(256) AS BYTE, randomIndex AS BYTE
-DIM i AS LONG, j AS LONG, k AS LONG, n AS LONG
-
-result = ""
-
-n = LEN(key)
-IF 0 < n THEN
-	FOR i = 0 TO 255
-		stateTable(i) = i
-	NEXT
-	
-	j = 0
-	FOR i = 0 TO 255
-		k = (i MOD n) + 1
-		j = (j + stateTable(i) + ASC(key[k])) AND 255
-		SWAP stateTable(i), stateTable(j)
-	NEXT
-	
-	j = 0
-	n = LEN(str)
-	FOR k = 1 TO n
-		i = k AND 255
-		j = (j + stateTable(i)) AND 255
-		randomIndex = (stateTable(i) + stateTable(j)) AND 255
-		SWAP stateTable(i), stateTable(j)
-		
-		result = result & CHR$(ASC(str[k]) XOR stateTable(randomIndex))
-	NEXT
-END IF
-END FUNCTION
-
-
-
-'-- ************************************************************************'
-function BGR2HtmlColor (BGRColor as long) as string
-'hexColor$=HEX$(BGRColor) 
-hexColor$=MID$( HEX$(BGRColor),3,6) 
-result="#"+MID$( hexColor$,5,2) +MID$( hexColor$,3,2) +MID$( hexColor$,1,2) 
-end function
-
-'-- ************************************************************************'
-function HtmlColor2BGR (HtmlColor as string) as long
-HtmlColor$=mid$(trim$(ucase$(HtmlColor)),2,6) 
-HtmlColor$=MID$( HtmlColor$,5,2) +MID$( HtmlColor$,3,2) +MID$( HtmlColor$,1,2) 
-HtmlColor$=CONVBASE$(HtmlColor$,16,10)
-result=val(HtmlColor$)
-end function
-
-
-'*****************************************
-FUNCTION STRL$ (value AS long) AS STRING
-tmp$=STRF$(value, ffFixed, 11, 18)
-if instr(tmp$,".")>0 then decSep$="."
-if instr(tmp$,",")>0 then decSep$=","
-
-STRL$ = field$(STRF$(value, ffFixed, 11, 18),decSep$,1)
-
-END FUNCTION
-
-brem 0
---- кодовые страницы -------
-      037 IBM EBCDIC - U.S./Canada 
-      437 OEM - United States 
-      500 IBM EBCDIC - International 
-      708 Arabic - ASMO 708 
-      709 Arabic - ASMO 449+, BCON V4 
-      710 Arabic - Transparent Arabic 
-      720 Arabic - Transparent ASMO 
-      737 OEM - Greek (formerly 437G) 
-      775 OEM - Baltic 
-      850 OEM - Multilingual Latin I 
-      852 OEM - Latin II 
-      855 OEM - Cyrillic (primarily Russian) 
-      857 OEM - Turkish 
-      858 OEM - Multlingual Latin I + Euro symbol 
-      860 OEM - Portuguese 
-      861 OEM - Icelandic 
-      862 OEM - Hebrew 
-      863 OEM - Canadian-French 
-      864 OEM - Arabic 
-      865 OEM - Nordic 
-      866 OEM - Russian 
-      869 OEM - Modern Greek 
-      870 IBM EBCDIC - Multilingual/ROECE (Latin-2) 
-      874 ANSI/OEM - Thai (same as 28605, ISO 8859-15) 
-      875 IBM EBCDIC - Modern Greek 
-      932 ANSI/OEM - Japanese, Shift-JIS 
-      936 ANSI/OEM - Simplified Chinese (PRC, Singapore) 
-      949 ANSI/OEM - Korean (Unified Hangeul Code) 
-      950 ANSI/OEM - Traditional Chinese (Taiwan; Hong Kong SAR, PRC) 
-      1026 IBM EBCDIC - Turkish (Latin-5) 
-      1047 IBM EBCDIC - Latin 1/Open System 
-      1140 IBM EBCDIC - U.S./Canada (037 + Euro symbol) 
-      1141 IBM EBCDIC - Germany (20273 + Euro symbol) 
-      1142 IBM EBCDIC - Denmark/Norway (20277 + Euro symbol) 
-      1143 IBM EBCDIC - Finland/Sweden (20278 + Euro symbol) 
-      1144 IBM EBCDIC - Italy (20280 + Euro symbol) 
-      1145 IBM EBCDIC - Latin America/Spain (20284 + Euro symbol) 
-      1146 IBM EBCDIC - United Kingdom (20285 + Euro symbol) 
-      1147 IBM EBCDIC - France (20297 + Euro symbol) 
-      1148 IBM EBCDIC - International (500 + Euro symbol) 
-      1149 IBM EBCDIC - Icelandic (20871 + Euro symbol) 
-      1200 Unicode UCS-2 Little-Endian (BMP of ISO 10646) 
-      1201 Unicode UCS-2 Big-Endian 
-      1250 ANSI - Central European 
-      1251 ANSI - Cyrillic 
-      1252 ANSI - Latin I 
-      1253 ANSI - Greek 
-      1254 ANSI - Turkish 
-      1255 ANSI - Hebrew 
-      1256 ANSI - Arabic 
-      1257 ANSI - Baltic 
-      1258 ANSI/OEM - Vietnamese 
-      1361 Korean (Johab) 
-      10000 MAC - Roman 
-      10001 MAC - Japanese 
-      10002 MAC - Traditional Chinese (Big5) 
-      10003 MAC - Korean 
-      10004 MAC - Arabic 
-      10005 MAC - Hebrew 
-      10006 MAC - Greek I 
-      10007 MAC - Cyrillic 
-      10008 MAC - Simplified Chinese (GB 2312) 
-      10010 MAC - Romania 
-      10017 MAC - Ukraine 
-      10021 MAC - Thai 
-      10029 MAC - Latin II 
-      10079 MAC - Icelandic 
-      10081 MAC - Turkish 
-      10082 MAC - Croatia 
-      12000 Unicode UCS-4 Little-Endian 
-      12001 Unicode UCS-4 Big-Endian 
-      20000 CNS - Taiwan 
-      20001 TCA - Taiwan 
-      20002 Eten - Taiwan 
-      20003 IBM5550 - Taiwan 
-      20004 TeleText - Taiwan 
-      20005 Wang - Taiwan 
-      20105 IA5 IRV International Alphabet No. 5 (7-bit) 
-      20106 IA5 German (7-bit) 
-      20107 IA5 Swedish (7-bit) 
-      20108 IA5 Norwegian (7-bit) 
-      20127 US-ASCII (7-bit) 
-      20261 T.61 
-      20269 ISO 6937 Non-Spacing Accent 
-      20273 IBM EBCDIC - Germany 
-      20277 IBM EBCDIC - Denmark/Norway 
-      20278 IBM EBCDIC - Finland/Sweden 
-      20280 IBM EBCDIC - Italy 
-      20284 IBM EBCDIC - Latin America/Spain 
-      20285 IBM EBCDIC - United Kingdom 
-      20290 IBM EBCDIC - Japanese Katakana Extended 
-      20297 IBM EBCDIC - France 
-      20420 IBM EBCDIC - Arabic 
-      20423 IBM EBCDIC - Greek 
-      20424 IBM EBCDIC - Hebrew 
-      20833 IBM EBCDIC - Korean Extended 
-      20838 IBM EBCDIC - Thai 
-      20866 Russian - KOI8-R 
-      20871 IBM EBCDIC - Icelandic 
-      20880 IBM EBCDIC - Cyrillic (Russian) 
-      20905 IBM EBCDIC - Turkish 
-      20924 IBM EBCDIC - Latin-1/Open System (1047 + Euro symbol) 
-      20932 JIS X 0208-1990 & 0121-1990 
-      20936 Simplified Chinese (GB2312) 
-      21025 IBM EBCDIC - Cyrillic (Serbian, Bulgarian) 
-      21027 Extended Alpha Lowercase 
-      21866 Ukrainian (KOI8-U) 
-      28591 ISO 8859-1 Latin I 
-      28592 ISO 8859-2 Central Europe 
-      28593 ISO 8859-3 Latin 3 
-      28594 ISO 8859-4 Baltic 
-      28595 ISO 8859-5 Cyrillic 
-      28596 ISO 8859-6 Arabic 
-      28597 ISO 8859-7 Greek 
-      28598 ISO 8859-8 Hebrew 
-      28599 ISO 8859-9 Latin 5 
-      28605 ISO 8859-15 Latin 9 
-      29001 Europa 3 
-      38598 ISO 8859-8 Hebrew 
-      50220 ISO 2022 Japanese with no halfwidth Katakana 
-      50221 ISO 2022 Japanese with halfwidth Katakana 
-      50222 ISO 2022 Japanese JIS X 0201-1989 
-      50225 ISO 2022 Korean 
-      50227 ISO 2022 Simplified Chinese 
-      50229 ISO 2022 Traditional Chinese 
-      50930 Japanese (Katakana) Extended 
-      50931 US/Canada and Japanese 
-      50933 Korean Extended and Korean 
-      50935 Simplified Chinese Extended and Simplified Chinese 
-      50936 Simplified Chinese 
-      50937 US/Canada and Traditional Chinese 
-      50939 Japanese (Latin) Extended and Japanese 
-      51932 EUC - Japanese 
-      51936 EUC - Simplified Chinese 
-      51949 EUC - Korean 
-      51950 EUC - Traditional Chinese 
-      52936 HZ-GB2312 Simplified Chinese 
-      54936 Windows XP: GB18030 Simplified Chinese (4 Byte) 
-      57002 ISCII Devanagari 
-      57003 ISCII Bengali 
-      57004 ISCII Tamil 
-      57005 ISCII Telugu 
-      57006 ISCII Assamese 
-      57007 ISCII Oriya 
-      57008 ISCII Kannada 
-      57009 ISCII Malayalam 
-      57010 ISCII Gujarati 
-      57011 ISCII Punjabi 
-      65000 Unicode UTF-7 
-      65001 Unicode UTF-8 
-erem
-'============================================================================
 '[build_inc] conversion1.inc
 '============================================================================
 '--------------------------- Custom functions --------------------------
@@ -14368,84 +17490,84 @@ End Function
 
 '*****************************************
 ' BASE64 encode
-Function RQBASE64Encode(s As String) As String
-Dim lenStr As Long, endPos As Long, lastChars As Long, l As Long, i As Long
-dim cBASE64 as string
-
-dim b64(63) As String
-dim b256(255) As Long
-
-For i = 0 To 63 Step 1
-	b64(i) = Mid$(Base64Table, i + 1, 1)
-	b256(Asc(b64(i))) = i
-Next
-
-lenStr = Len(s)
-lastChars = lenStr Mod 3
-endPos = lenStr - lastChars
-
-For i = 1 To endPos Step 3
-	l = CLng(AscB(Mid$(s, i, 1))) * 65536 + CLng(AscB(Mid$(s, i + 1, 1))) * 256 + CLng(AscB(Mid$(s, i + 2, 1)))
-	cBASE64 = cBASE64 & b64(l \ 262144) & b64((l \ 4096) Mod 64) & _
-	b64((l \ 64) Mod 64) & b64(l Mod 64)
-Next
-
-Select Case lastChars
-Case 1
-	l = CLng(AscB(Right$(s, 1))) * 16
-	cBASE64 = cBASE64 & b64((l \ 64) Mod 64) & b64(l Mod 64) & "=="
-Case 2
-	l = CLng(AscB(Mid$(s, lenStr - 1, 1))) * 1024 + CLng(AscB(Right$(s, 1))) * 4
-	cBASE64 = cBASE64 & b64((l \ 4096) Mod 64) & _
-	b64((l \ 64) Mod 64) & b64(l Mod 64) & "="
-End Select
-result=cBASE64
-
-End Function
+'~dup Function RQBASE64Encode(s As String) As String   ' повтор, первое: eml.inc(250)
+'~dup Dim lenStr As Long, endPos As Long, lastChars As Long, l As Long, i As Long
+'~dup dim cBASE64 as string
+'~dup 
+'~dup dim b64(63) As String
+'~dup dim b256(255) As Long
+'~dup 
+'~dup For i = 0 To 63 Step 1
+'~dup 	b64(i) = Mid$(Base64Table, i + 1, 1)
+'~dup 	b256(Asc(b64(i))) = i
+'~dup Next
+'~dup 
+'~dup lenStr = Len(s)
+'~dup lastChars = lenStr Mod 3
+'~dup endPos = lenStr - lastChars
+'~dup 
+'~dup For i = 1 To endPos Step 3
+'~dup 	l = CLng(AscB(Mid$(s, i, 1))) * 65536 + CLng(AscB(Mid$(s, i + 1, 1))) * 256 + CLng(AscB(Mid$(s, i + 2, 1)))
+'~dup 	cBASE64 = cBASE64 & b64(l \ 262144) & b64((l \ 4096) Mod 64) & _
+'~dup 	b64((l \ 64) Mod 64) & b64(l Mod 64)
+'~dup Next
+'~dup 
+'~dup Select Case lastChars
+'~dup Case 1
+'~dup 	l = CLng(AscB(Right$(s, 1))) * 16
+'~dup 	cBASE64 = cBASE64 & b64((l \ 64) Mod 64) & b64(l Mod 64) & "=="
+'~dup Case 2
+'~dup 	l = CLng(AscB(Mid$(s, lenStr - 1, 1))) * 1024 + CLng(AscB(Right$(s, 1))) * 4
+'~dup 	cBASE64 = cBASE64 & b64((l \ 4096) Mod 64) & _
+'~dup 	b64((l \ 64) Mod 64) & b64(l Mod 64) & "="
+'~dup End Select
+'~dup result=cBASE64
+'~dup 
+'~dup End Function
 
 
 '*****************************************
 ' BASE64 decode
-Function RQBASE64Decode (s As String) As String
-'print"s =";s 
-'print "RQBASE64Decode Base64Table=";Base64Table
-
-Dim lenStr As Long, endPos As Long, lastChars As Long, l As Long, i As Long
-dim RQBASE64E as string
-dim b64(63) As String
-dim b256(255) As Long
-
-
-For i = 0 To 63 Step 1
-	b64(i) = Mid$(Base64Table, i + 1, 1)
-	b256(Asc(b64(i))) = i
-Next
-
-lenStr = Len(s)
-If Right$(s, 2) = "==" Then
-	lenStr = lenStr - 2
-Else
-	If Right$(s, 1) = "=" Then lenStr = lenStr - 1
-End If
-
-lastChars = lenStr Mod 4
-endPos = lenStr - lastChars
-For i = 1 To endPos Step 4
-	l = b256(Asc(Mid$(s, i, 1))) * 262144 + b256(Asc(Mid$(s, i + 1, 1))) * 4096 + b256(Asc(Mid$(s, i + 2, 1))) * 64 + b256(Asc(Mid$(s, i + 3, 1)))
-	RQBASE64E = RQBASE64E + Chr$(l \ 65536) & Chr$((l \ 256) Mod 256) & Chr$(l Mod 256)
-Next
-
-Select Case lastChars
-Case 2
-	l = b256(Asc(Mid$(s, lenStr - 1, 1))) * 1024 + b256(Asc(Mid$(s, lenStr, 1))) * 16
-	RQBASE64E = RQBASE64E & Chr$(l \ 256)
-Case 3
-	l = (b256(Asc(Mid$(s, lenStr - 2, 1))) * 4096 + b256(Asc(Mid$(s, lenStr - 1, 1))) * 64 + b256(Asc(Mid$(s, lenStr, 1)))) \ 4
-	RQBASE64E = RQBASE64E & Chr$(l \ 256) & Chr$(l Mod 256)
-End Select
-result=RQBASE64E
-
-End Function 
+'~dup Function RQBASE64Decode (s As String) As String   ' повтор, первое: eml.inc(288)
+'~dup 'print"s =";s 
+'~dup 'print "RQBASE64Decode Base64Table=";Base64Table
+'~dup 
+'~dup Dim lenStr As Long, endPos As Long, lastChars As Long, l As Long, i As Long
+'~dup dim RQBASE64E as string
+'~dup dim b64(63) As String
+'~dup dim b256(255) As Long
+'~dup 
+'~dup 
+'~dup For i = 0 To 63 Step 1
+'~dup 	b64(i) = Mid$(Base64Table, i + 1, 1)
+'~dup 	b256(Asc(b64(i))) = i
+'~dup Next
+'~dup 
+'~dup lenStr = Len(s)
+'~dup If Right$(s, 2) = "==" Then
+'~dup 	lenStr = lenStr - 2
+'~dup Else
+'~dup 	If Right$(s, 1) = "=" Then lenStr = lenStr - 1
+'~dup End If
+'~dup 
+'~dup lastChars = lenStr Mod 4
+'~dup endPos = lenStr - lastChars
+'~dup For i = 1 To endPos Step 4
+'~dup 	l = b256(Asc(Mid$(s, i, 1))) * 262144 + b256(Asc(Mid$(s, i + 1, 1))) * 4096 + b256(Asc(Mid$(s, i + 2, 1))) * 64 + b256(Asc(Mid$(s, i + 3, 1)))
+'~dup 	RQBASE64E = RQBASE64E + Chr$(l \ 65536) & Chr$((l \ 256) Mod 256) & Chr$(l Mod 256)
+'~dup Next
+'~dup 
+'~dup Select Case lastChars
+'~dup Case 2
+'~dup 	l = b256(Asc(Mid$(s, lenStr - 1, 1))) * 1024 + b256(Asc(Mid$(s, lenStr, 1))) * 16
+'~dup 	RQBASE64E = RQBASE64E & Chr$(l \ 256)
+'~dup Case 3
+'~dup 	l = (b256(Asc(Mid$(s, lenStr - 2, 1))) * 4096 + b256(Asc(Mid$(s, lenStr - 1, 1))) * 64 + b256(Asc(Mid$(s, lenStr, 1)))) \ 4
+'~dup 	RQBASE64E = RQBASE64E & Chr$(l \ 256) & Chr$(l Mod 256)
+'~dup End Select
+'~dup result=RQBASE64E
+'~dup 
+'~dup End Function 
 
 
 '-- ************************************************************************'
@@ -14572,39 +17694,39 @@ result=outtxt$
 end function
 
 '*****************************************
-Function GetMSGHeader( Source As String) As String
-dim MSGHeader as qstringlist 'string
-dim MSG as qstringlist
-MSG.text=Source
-
-emptylineIDX=MSG.IndexOf("")
-
-for i=0 to emptylineIDX-1
-	MSGHeader.additems (MSG.item(i))
-next i
-
-'print"MSGHeader==========",MSGHeader.text+"<<<<<<<<<<<<<<<<<"
-result=MSGHeader.text
-end function
+'~dup Function GetMSGHeader( Source As String) As String   ' повтор, первое: eml.inc(123)
+'~dup dim MSGHeader as qstringlist 'string
+'~dup dim MSG as qstringlist
+'~dup MSG.text=Source
+'~dup 
+'~dup emptylineIDX=MSG.IndexOf("")
+'~dup 
+'~dup for i=0 to emptylineIDX-1
+'~dup 	MSGHeader.additems (MSG.item(i))
+'~dup next i
+'~dup 
+'~dup 'print"MSGHeader==========",MSGHeader.text+"<<<<<<<<<<<<<<<<<"
+'~dup result=MSGHeader.text
+'~dup end function
 
 
 
 '*****************************************
-Function GetMSGBody( Source As String) As String 
-dim MSGBody as qstringlist 'string
-dim MSG as qstringlist
-MSG.text=Source
-
-emptylineIDX=MSG.IndexOf("")
-
-for i=emptylineIDX to MSG.itemcount-1
-	MSGBody.additems (MSG.item(i))
-next i
-
-'print"MSGHeader==========",MSGHeader.text+"<<<<<<<<<<<<<<<<<"
-result=MSGBody.text
-
-end function
+'~dup Function GetMSGBody( Source As String) As String    ' повтор, первое: eml.inc(150)
+'~dup dim MSGBody as qstringlist 'string
+'~dup dim MSG as qstringlist
+'~dup MSG.text=Source
+'~dup 
+'~dup emptylineIDX=MSG.IndexOf("")
+'~dup 
+'~dup for i=emptylineIDX to MSG.itemcount-1
+'~dup 	MSGBody.additems (MSG.item(i))
+'~dup next i
+'~dup 
+'~dup 'print"MSGHeader==========",MSGHeader.text+"<<<<<<<<<<<<<<<<<"
+'~dup result=MSGBody.text
+'~dup 
+'~dup end function
 
 
 
@@ -14688,34 +17810,34 @@ print"result=";result
 End Function 
 
 '*****************************************
-Function GetHeaderField( Header As String, Field as string) As String
-'print"Header=";Header
-' returm requared field value from message header
-fieldidx=-1
-dim HeaderList as QStringList
-HeaderList.text=lcase$(Header)
-'print"HeaderList.text=";HeaderList.text
-
-if instr(Field,":")=0 then Field=Field+":"
-
-field=lcase$(Field)'+":"
-
-'fieldidx=HeaderList.IndexOf(field)
-
-for i=0 to HeaderList.Itemcount-1
-	if instr(HeaderList.Item(i),field) >0 then
-		fieldidx=i: exit for
-	end if
-	
-next i
-
-if fieldidx =-1 then
-	result=""
-else
-	result=trim$(field$(HeaderList.Item(fieldidx),":",2))
-end if
-
-end function
+'~dup Function GetHeaderField( Header As String, Field as string) As String   ' повтор, первое: eml.inc(86)
+'~dup 'print"Header=";Header
+'~dup ' returm requared field value from message header
+'~dup fieldidx=-1
+'~dup dim HeaderList as QStringList
+'~dup HeaderList.text=lcase$(Header)
+'~dup 'print"HeaderList.text=";HeaderList.text
+'~dup 
+'~dup if instr(Field,":")=0 then Field=Field+":"
+'~dup 
+'~dup field=lcase$(Field)'+":"
+'~dup 
+'~dup 'fieldidx=HeaderList.IndexOf(field)
+'~dup 
+'~dup for i=0 to HeaderList.Itemcount-1
+'~dup 	if instr(HeaderList.Item(i),field) >0 then
+'~dup 		fieldidx=i: exit for
+'~dup 	end if
+'~dup 	
+'~dup next i
+'~dup 
+'~dup if fieldidx =-1 then
+'~dup 	result=""
+'~dup else
+'~dup 	result=trim$(field$(HeaderList.Item(fieldidx),":",2))
+'~dup end if
+'~dup 
+'~dup end function
 
 
 '*****************************************
@@ -16553,607 +19675,6 @@ eMail = MAPISendMail(0, 0, rMessage, 0, 0)
 End Function
 
 '============================================================================
-'[build_inc] eml.inc
-'============================================================================
-'*****************************************
-Function GetSubjCodePage( Subject As String) As String
-zza$=Subject
-CodePage$=field$(zza$,"?",2)
-result=""
-if CodePage$ <>"" then
-	result=CodePage$
-elseif CodePage$="" and isKOI8(zza$)=1 then
-	result="koi8-r"
-else
-	result=""
-end if
-
-end function
-
-'*****************************************
-Function GetSubjCodeMethod( Subject As String) As String
-result=lcase$(field$(Subject,"?",3))
-end function
-
-'*****************************************
-Function GetMsgBodyContentType ( Msg As String) As String
-'Content-Type: text/plain; charset=koi8-r
-'Content-Type: text/plain; charset=UTF-8
-'Content-Type: text/plain;format=flowed;charset="koi8-r";reply-type=original
-
-Msg=replacesubstr$(Msg,ht," ")
-Msg=replacesubstr$(Msg,crlf+" ","")
-Msg=replacesubstr$(Msg,";"+crlf,"; ")
-'print"Msg=";Msg
-
-
-ContentType$=GetHeaderField(Msg,"Content-Type")
-'print"GetMsgBodyContentType ContentType$=";ContentType$
-result=field$(ContentType$,";",1)
-end function
-
-'*****************************************
-Function GetMsgBodyCodePage ( Msg As String) As String
-'Content-Type: text/plain; charset=koi8-r
-'Content-Type: text/plain; charset=UTF-8
-'Content-Type: text/plain;format=flowed;charset="koi8-r";reply-type=original
-dim i as long
-Msg=replacesubstr$(Msg,ht," ")
-Msg=replacesubstr$(Msg,crlf+" ","")
-Msg=replacesubstr$(Msg,";"+crlf,"; ")
-
-ContentType$=GetHeaderField(Msg,"Content-Type")
-semicolCount=tally(ContentType$,";")
-for i=1 to semicolCount
-	valfield$=field$(ContentType$,";",i+1)
-	if instr(valfield$,"charset=")>0 then
-		param$=field$(valfield$,"=",2)
-		exit for
-	else
-		
-	end if
-	
-next i
-result=param$
-end function
-
-'*****************************************
-Function GetMsgBodyCodeMethod( MsgBody As String) As String
-'Content-Transfer-Encoding: 8bit
-dim i as long
-MsgBody=replacesubstr$(MsgBody,ht," ")
-MsgBody=replacesubstr$(MsgBody,crlf+" ","")
-MsgBody=replacesubstr$(MsgBody,";"+crlf,"; ")
-
-ContentTransferEncoding$=GetHeaderField(MsgBody,"Content-Transfer-Encoding") ' inc2026: MsgBody вместо Msg здесь и в строках 67-69: параметр называется MsgBody (заголовок, строка 64, и DECLARE в rapidq.inc), Msg - необъявленная переменная
-semicolCount=tally(ContentTransferEncoding$,";")
-for i=1 to semicolCount
-	valfield$=field$(ContentTransferEncoding$,";",i+1)
-	if instr(valfield$,"charset=")>0 then
-		param$=field$(valfield$,"=",2)
-		exit for
-	else
-		
-	end if
-next i
-result=param$
-end function
-
-'*****************************************
-'~dup Function GetHeaderField( Header As String, Field as string) As String   ' повтор, первое: conversionOld.inc(1143)
-'~dup Header=replacesubstr$(Header,ht," ")
-'~dup Header=replacesubstr$(Header,crlf+" ","")
-'~dup Header=replacesubstr$(Header,";"+crlf,"; ")
-'~dup 
-'~dup 'print"Header=";Header
-'~dup ' returm requared field value from message header
-'~dup dim i as long
-'~dup fieldidx=-1
-'~dup dim HeaderList as QStringList
-'~dup HeaderList.text=(Header)
-'~dup 
-'~dup if instr(Field,":")=0 then Field=Field+":"
-'~dup 
-'~dup field=lcase$(Field)'+":"
-'~dup lenfield=len(field)
-'~dup 
-'~dup for i2=0 to HeaderList.Itemcount-1
-'~dup 	hitem$=lcase$(HeaderList.Item(i2))
-'~dup 	lenitem=len(hitem$)
-'~dup 	instrsep=instr(hitem$,":")
-'~dup 	
-'~dup 	'if  instr(hitem$,field) >0 then
-'~dup 	if  left$(hitem$,lenfield) =field then
-'~dup 		fieldidx=i2: exit for
-'~dup 	end if
-'~dup 	
-'~dup next i2
-'~dup 
-'~dup if fieldidx =-1 then
-'~dup 	result=""
-'~dup else
-'~dup 	result=trim$(mid$(HeaderList.Item(fieldidx),instrsep+1,lenitem-instrsep))
-'~dup end if
-'~dup end function
-
-'*****************************************
-'~dup Function GetMSGHeader( Source As String) As String   ' повтор, первое: conversionOld.inc(1027)
-'~dup dim MSGHeader as qstringlist 'string
-'~dup dim MSG as qstringlist
-'~dup 
-'~dup Source=replacesubstr$(Source,ht," ")
-'~dup Source=replacesubstr$(Source,crlf+" ","")
-'~dup Source=replacesubstr$(Source,";"+crlf,"; ")
-'~dup 
-'~dup MSGHeader.clear
-'~dup 
-'~dup MSG.text=Source
-'~dup 'print "------------- 136 GetMSGHeader Source=";Source
-'~dup emptylineIDX=-1
-'~dup 
-'~dup emptylineIDX=MSG.IndexOf("")
-'~dup 
-'~dup if emptylineIDX=-1 then emptylineIDX=MSG.ItemCount-1
-'~dup 
-'~dup for i=0 to emptylineIDX-1
-'~dup 	MSGHeader.additems (MSG.item(i))
-'~dup next i
-'~dup 
-'~dup result=MSGHeader.text
-'~dup 
-'~dup end function
-
-'*****************************************
-'~dup Function GetMSGBody( Source As String) As String    ' повтор, первое: conversionOld.inc(1045)
-'~dup dim MSGBody as qstringlist 'string
-'~dup dim MSG as qstringlist
-'~dup 
-'~dup Source=replacesubstr$(Source,ht," ")
-'~dup Source=replacesubstr$(Source,crlf+" ","") ' основной 
-'~dup Source=replacesubstr$(Source,";"+crlf,"; ")
-'~dup 
-'~dup MSGBody.clear
-'~dup 
-'~dup MSG.text=Source
-'~dup emptylineIDX=-1
-'~dup 
-'~dup emptylineIDX=MSG.IndexOf("")
-'~dup 
-'~dup if emptylineIDX=-1 then  emptylineIDX=1 
-'~dup 
-'~dup for i=emptylineIDX to MSG.itemcount-1
-'~dup 	MSGBody.additems (MSG.item(i))
-'~dup next i
-'~dup 
-'~dup result=MSGBody.text
-'~dup 
-'~dup end function
-
-
-'*****************************************
-Function isKOI8( Red$ As String) As long
-' проверяет кодировку строки на koi8
-'оПЧПЕ УППВЭЕОЙЕ Ч ЗПУФЕЧПК ЛОЙЗЕ 'diakin-рТПЗТБННБ RQ Search and Replace - РПЙУЛ Й ЪБНЕОБ Ф'.
-'пФПРМЕОЙЕ, ЧПДПУОБВЦЕОЙЕ..
-
-result=0
-'if instr(Red$, "ПЧ")>0 then result=1 '"koi8-r"
-'if instr(Red$, "ПП")>0 then result=1 '"koi8-r"
-'if instr(Red$, "ВЭ")>0 then result=1 '"koi8-r"
-'if instr(Red$, "ПД")>0 then result=1 '"koi8-r"
-'if instr(Red$, "ПЧ")>0 then result=1 '"koi8-r"
-'if instr(Red$, "ПЧ")>0 then result=1 '"koi8-r"
-
-if instr(Red$, " Ч ")>0 then result=1 '"koi8-r"
-'if instr(Red$, "ПЗ")>0 then result=1 '"koi8-r"
-
-'if instr(Red$, "РП")>0 then result=1 '"koi8-r"
-if instr(Red$, "ЪБ")>0 then result=1 '"koi8-r"
-
-
-if instr(Red$, "ДЩ")>0 then result=1 '"koi8-r"
-if instr(Red$, "ЧЩ")>0 then result=1 '"koi8-r"
-if instr(Red$, "ФШ")>0 then result=1 '"koi8-r"
-if instr(Red$, "пФ")>0 then result=1 '"koi8-r"
-
-if instr(Red$, "ВЙ")>0 then result=1 '"koi8-r"
-if instr(Red$, "ДЙ")>0 then result=1
-if instr(Red$, "ЗЙ")>0 then result=1
-if instr(Red$, "ЛЙ")>0 then result=1
-if instr(Red$, "МЙ")>0 then result=1
-if instr(Red$, "НЙ")>0 then result=1
-if instr(Red$, "РЙ")>0 then result=1
-if instr(Red$, "ТЙ")>0 then result=1
-if instr(Red$, "ФЙ")>0 then result=1
-if instr(Red$, "ЦЙ")>0 then result=1
-if instr(Red$, "ПЙ")>0 then result=1 '"koi8-r"
-if instr(Red$, " Й ")>0 then result=1 '"koi8-r"
-
-if instr(Red$, " Й")>0 then result=1
-if instr(Red$, " й ")>0 then result=1
-
-if instr(Red$, "ЙЫ")>0 then result=1
-
-if instr(Red$, "ЙЪ")>0 then result=1
-if instr(Red$, "йЪ")>0 then result=1
-
-if instr(Red$, "бй")>0 then result=1
-if instr(Red$, "дй")>0 then result=1
-if instr(Red$, "йй")>0 then result=1
-
-if instr(Red$, "pЙ")>0 then result=1
-
-if instr(Red$, "Kй")>0 then result=1
-
-if instr(Red$, "ШЫ")>0 then result=1
-if instr(Red$, "ЕЫ")>0 then result=1
-
-if instr(Red$, "ъД")>0 then result=1
-
-if instr(Red$, "ЪБ")>0 then result=1
-if instr(Red$, "ЪХ")>0 then result=1
-
-if instr(Red$, "ъБ")>0 then result=1
-if instr(Red$, "ЪЩ")>0 then result=1
-if instr(Red$, "ЪП")>0 then result=1
-if instr(Red$, "ЪЙ")>0 then result=1
-
-if instr(Red$, "ЪТ")>0 then result=1
-
-end function
-
-'*****************************************
-' BASE64 encode
-'~dup Function RQBASE64Encode(s As String) As String   ' повтор, первое: conversionOld.inc(823)
-'~dup Dim lenStr As Long, endPos As Long, lastChars As Long, l As Long, i As Long
-'~dup dim cBASE64 as string
-'~dup cBASE64=""
-'~dup dim b64(63) As String
-'~dup dim b256(255) As Long
-'~dup 
-'~dup For i = 0 To 63 Step 1
-'~dup 	b64(i) = Mid$(Base64Table, i + 1, 1)
-'~dup 	b256(Asc(b64(i))) = i
-'~dup Next
-'~dup 
-'~dup lenStr = Len(s)
-'~dup lastChars = lenStr Mod 3
-'~dup endPos = lenStr - lastChars
-'~dup 
-'~dup For i = 1 To endPos Step 3
-'~dup 	l = CLng(AscB(Mid$(s, i, 1))) * 65536 + CLng(AscB(Mid$(s, i + 1, 1))) * 256 + CLng(AscB(Mid$(s, i + 2, 1)))
-'~dup 	cBASE64 = cBASE64 & b64(l \ 262144) & b64((l \ 4096) Mod 64) & _
-'~dup 	b64((l \ 64) Mod 64) & b64(l Mod 64)
-'~dup Next
-'~dup 
-'~dup Select Case lastChars
-'~dup Case 1
-'~dup 	l = CLng(AscB(Right$(s, 1))) * 16
-'~dup 	cBASE64 = cBASE64 & b64((l \ 64) Mod 64) & b64(l Mod 64) & "=="
-'~dup Case 2
-'~dup 	l = CLng(AscB(Mid$(s, lenStr - 1, 1))) * 1024 + CLng(AscB(Right$(s, 1))) * 4
-'~dup 	cBASE64 = cBASE64 & b64((l \ 4096) Mod 64) & _
-'~dup 	b64((l \ 64) Mod 64) & b64(l Mod 64) & "="
-'~dup End Select
-'~dup result=cBASE64
-'~dup 
-'~dup End Function
-
-
-'*****************************************
-' BASE64 decode
-'~dup Function RQBASE64Decode (stxt As String) As String   ' повтор, первое: conversionOld.inc(861)
-'~dup Dim lenStr As Long, endPos As Long, lastChars As Long, l As Long, i As Long
-'~dup dim RQBASE64E as string
-'~dup RQBASE64E=""
-'~dup dim b64(63) As String
-'~dup dim b256(255) As Long
-'~dup 
-'~dup 
-'~dup For i = 0 To 63 Step 1
-'~dup 	b64(i) = Mid$(Base64Table, i + 1, 1)
-'~dup 	b256(Asc(b64(i))) = i
-'~dup Next
-'~dup 
-'~dup lenStr = Len(stxt)
-'~dup If Right$(stxt, 2) = "==" Then
-'~dup 	lenStr = lenStr - 2
-'~dup Else
-'~dup 	If Right$(stxt, 1) = "=" Then lenStr = lenStr - 1
-'~dup End If
-'~dup 
-'~dup lastChars = lenStr Mod 4
-'~dup endPos = lenStr - lastChars
-'~dup For i = 1 To endPos Step 4
-'~dup 	l=b256(Asc(Mid$(stxt,i,1)))*262144+b256(Asc(Mid$(stxt,i+1,1)))*4096+b256(Asc(Mid$(stxt,i+2,1)))*64+_
-'~dup 	b256(Asc(Mid$(stxt,i+3,1)))
-'~dup 	RQBASE64E = RQBASE64E + Chr$(l \ 65536) & Chr$((l \ 256) Mod 256) & Chr$(l Mod 256)
-'~dup Next i
-'~dup 
-'~dup Select Case lastChars
-'~dup Case 2
-'~dup 	l = b256(Asc(Mid$(stxt, lenStr - 1, 1))) * 1024 + b256(Asc(Mid$(stxt, lenStr, 1))) * 16
-'~dup 	RQBASE64E = RQBASE64E & Chr$(l \ 256)
-'~dup Case 3
-'~dup 	l = (b256(Asc(Mid$(stxt, lenStr - 2, 1))) * 4096 + b256(Asc(Mid$(stxt, lenStr - 1, 1))) * 64 +_
-'~dup 	b256(Asc(Mid$(stxt, lenStr, 1)))) \ 4
-'~dup 	RQBASE64E = RQBASE64E & Chr$(l \ 256) & Chr$(l Mod 256)
-'~dup End Select
-'~dup result=RQBASE64E
-'~dup 
-'~dup End Function 
-
-
-'*****************************************
-
-'*****************************************
-Function DecodeSubj( Subject As String) As String 
-'print  "----------- DecodeSubj Subject=";Subject
-
-Dim i As Integer 
-Dim l As Integer 
-Dim v As string
-dim begpos as long ' 1st position of =?
-dim begpos2 as long ' 2nd position of =?
-dim endpos as long ' 1st position of ?=
-dim endpos2 as long ' 2nd position of ?=
-Dim decodedSubj$ As string
-
-
-begpos=0
-endpos=0
-
-headerTxtConv$=""
-result=""
-encodedword$=""
-pretext$=""
-decodedSubj$=""
-
-' если заголовок кодированный - то удаляем пробелы
-if instr(Subject,"=?")>0 then 
-	Subject=replacesubstr$(Subject,ht,"")
-	Subject=replacesubstr$(Subject,crlf+" ","")
-	Subject=replacesubstr$(Subject,";"+crlf,"; ")
-	Subject=replacesubstr$(Subject,"?=        ","?=")
-	Subject=replacesubstr$(Subject,"?=       ","?=")
-	Subject=replacesubstr$(Subject,"?=      ","?=")
-	Subject=replacesubstr$(Subject,"?=     ","?=")
-	Subject=replacesubstr$(Subject,"?=    ","?=")
-	Subject=replacesubstr$(Subject,"?=   ","?=")
-	Subject=replacesubstr$(Subject,"?=  ","?=")
-	Subject=replacesubstr$(Subject,"?= ","?=")
-	'Subject=Subject-" "
-else
-	if isKOI8(Subject)>0 then ' проверка на koi8
-		Subject=RQConvertCodePage(Subject, cp_Koi, cp_Win)
-	end if
-	result=Subject
-	exit function
-end if
-
-'!!!  encoded-word = "=?" charset "?" encoding "?" encoded-text "?="
-'subj$="=?windows-1251?B?zvLi5bo9PDu?= =?windows-1251?B?4u7lIOjn7uHw4Obl7ejlKQ==?=
-'        1            2 3           4   1            2 3                        4   
-'Subj:" =?windows-1251?Q?=C8=ED=F4=EE=F0=EC=E0=F6=E8=FF_?==?windows-1251?Q?=EE=E1_?==?windows-1251?Q?=EE=EF=EB=E0=F2=E5_?==?windows-1251?Q?=F1=E5=F0=E2=E8=F1=E0_forexsignal?=.ru
-'        1            2 3                               4  1            2 3       4  1   
-begpos=instr(Subject,"=?")
-textpos=1
-lensubj=len(Subject)
-
-while begpos>0 and begpos <lensubj
-	
-	spos1=instr(begpos+1,Subject,"?") ' 1 позиция ? - начало charset
-	spos2=instr(spos1+1,Subject,"?") ' 2 позиция ? - начало метода кодирования encoding
-	if spos2=0 then spos2=len(Subject)
-	spos3=instr(spos2+1,Subject,"?") ' 3 позиция ? - начало encoded-text
-	if spos3=0 then spos3=len(Subject)
-	spos4=instr(spos3+1,Subject,"?=") ' 4 позиция ? - конец encoded-text
-	if spos4=0 then spos4=len(Subject)
-	
-	pretext$=mid$(Subject,textpos,begpos-textpos)
-	codepage$=lcase$(mid$(Subject,spos1+1,spos2-spos1-1))
-	codeMode$=lcase$(mid$(Subject,spos2+1,1))
-	
-	begpos=instr(spos4,Subject,"=?") ' следующее encodedword$
-	if begpos=0 then begpos=len(Subject)
-	
-	textpos=spos4+2 'instr(spos4,Subject,"=?")
-	
-	encodedword$=mid$(Subject,spos3+1,spos4-spos3-1) ' декодируемая часть
-	encodedword$=replacesubstr$(encodedword$,"_","=20") ' replace white spaces
-	headerTxtConv$=""
-	headerTxtConv$=field$(encodedword$,"=",1) '""
-	if codeMode$="q" then ' quoted printable part
-		HexCharCount=tally(encodedword$,"=")
-		for ii=1 to HexCharCount
-			HexChar2$=ucase$(field$(encodedword$,"=",ii+1))
-			HexChar$=left$(HexChar2$,2)
-			Ost1$=right$(HexChar2$,len(HexChar2$)-2)
-			headerTxtConv$=headerTxtConv$+chr$(val(CONVBASE$(HexChar$, 16, 10)))+Ost1$
-		next ii
-		
-	elseif codeMode$="b" then ' base64 part
-		encodedword$=encodedword$-" "
-		headerTxtConv$=RQBASE64Decode(encodedword$)
-	else
-		
-	end if
-	'----------
-	Select case codepage$
-		
-	case "windows-1251"
-		
-	case "koi8-r"
-		' print " 511 headerTxtConv$=";headerTxtConv$
-		headerTxtConv$=RQConvertCodePage(headerTxtConv$, cp_Koi, cp_Win)
-			if isKOI8(headerTxtConv$)>0 then
-				headerTxtConv$=RQConvertCodePage(headerTxtConv$, cp_Koi, cp_Win)
-			end if
-		'cprint" 468 headerTxtConv$="+headerTxtConv$
-		
-	case "utf-8"
-		headerTxtConv$=RQConvertCodePage(headerTxtConv$, cp_UTF8, cp_Win)
-			if isKOI8(headerTxtConv$)>0 then
-				headerTxtConv$=RQConvertCodePage(headerTxtConv$, cp_Koi, cp_Win)
-			end if
-		
-	case "utf-7"
-		headerTxtConv$=RQConvertCodePage(headerTxtConv$, cp_UTF7, cp_Win)
-			if isKOI8(headerTxtConv$)>0 then
-				headerTxtConv$=RQConvertCodePage(headerTxtConv$, cp_Koi, cp_Win)
-			end if
-		
-	case else
-		
-	end select
-	if pretext$-" "="" then pretext$=""
-	decodedSubj$=decodedSubj$+pretext$+headerTxtConv$
-	'print"460 decodedSubj$=";decodedSubj$
-	
-	
-wend
-
-begpos=len(Subject)
-pretext$=mid$(Subject,textpos,begpos-textpos+1)
-decodedSubj$=decodedSubj$+pretext$
-
-if isKOI8(decodedSubj$)>0 then
-	decodedSubj$=RQConvertCodePage(decodedSubj$, cp_Koi, cp_Win)
-end if
-
-
-result=decodedSubj$
-
-End Function 
-
-'*****************************************
-Function IsEmail(wabMail As String) As long 
-Dim I As Integer 
-Dim Char As String 
-Dim Cdot(1) As String 
-
-zzq=Like(wabMail, "*@*.*")
-
-If zzq=0 Then 
-	IsEmail = False 
-	goto exitfunc
-End If
-
-'--- split ---
-DotCount=tally(wabMail, ".")
-'diakin@narod.ru - 2 части 
-redim Cdot(DotCount) As String '0,1
-
-for i=0 to DotCount
-	cdot(i)=field$(wabMail, ".",i+1)
-next i
-'--- end split ---
-lendomen=Len(Cdot(UBound(Cdot)))
-
-If lendomen<> 3 And lendomen<> 2 Then 
-	IsEmail = False 
-	Exit Function 
-End If 
-
-For I = 1 To lendomen Step 1 
-	Char = Mid$(Cdot(UBound(Cdot)), I, 1) 
-	If (LCase$(Char) > Chr$(122)) Or  (LCase$(Char) < Chr$(97)) Then 
-		IsEmail = False 
-		Exit Function 
-	End If 
-Next I 
-
-brem 1
-======
-For I = 1 To Len(wabMail) Step 1 
-	Char = Mid$(wabMail, I, 1) 
-	If (LCase$(Char) <= Chr$(122) And LCase$(Char) >= Chr$(97)) _ 
-	Or (Char >= Chr$(48) And Char <= Chr$(57)) _ 
-	Or (Char = ".") _ 
-	Or (Char = "@") _ 
-	Or (Char = "-") _ 
-	Or (Char = "_") Then 
-	IsEmail = True 
-Else 
-	IsEmail = False 
-	Exit Function 
-End If
-
-Next I 
-===
-erem
-
-IsEmail = True
-exitfunc:
-End Function 
-
-'*****************************************
-Sub ExtractEMailFromWab(wabFile As String, EmailList as QStringlist)
-Dim WABDog As Long, WABLeft As Long, WABRight As Long 
-Dim WABTemp As String 
-dim ie5 as long
-dim SObCount as long
-Dim WABEmail(1) As String 
-dim WABData as string
-
-
-WABData=LoadString(wabFile)
-SObCount=tally(WABData,"@")
-'print"SObCount=";SObCount
-Pos1 = 1
-wabPos=1
-
-for ie5=0 to SObCount-1
-	' находим собаку @
-	WABDog = InStr(wabPos, WABData, Chr$(0) & Chr$(64) & Chr$(0)) 
-	' от собаки находим два Chr(0) справа и слева
-	WABLeft = RInStr(WABDog,WABData, Chr$(0) & Chr$(0))
-	WABRight = InStr(WABDog, WABData, Chr$(0) & Chr$(0)) 
-	
-	'вырезаем e-mail адрес
-	WABTemp = Mid$(WABData, WABLeft, WABRight - WABLeft)
-	WABTemp = replaceSubStr$(WABTemp , Chr(0), "") 
-	
-	for i95=1 to 31 ' если содержатся непечатные символы
-		if instr(WABTemp, chr$(i95))>0 then
-			'print"i95=";i95
-			exit for
-		end if
-	next i95
-	'if i95<31 then goto NextEml1
-	
-	if i95>31 then 'goto NextEml1
-		
-		
-		WABTemp = WABTemp -chr$(0)
-		wzz$=WABTemp
-		
-		zzz=IsEmail(wzz$)
-		zz1= False
-		
-		If ( zzz= True) And ( zz1= False) Then 
-			'Call WABAddEmail(WABTemp) 
-			
-			if instr(EmailList.text,wzz$)=0 then
-				erow=UBound(WABEmail)
-				ReDim WABEmail(erow + 1) As String 
-				WABEmail(erow) = wzz$ 
-				EmailList.additems wzz$
-				infomsg$=EmailList.item(erow-1)
-'call  AddClrString ("585:infomsg$="+(infomsg$), clred, LogEdit)
-				doevents
-			end if
-			
-		End If 
-	End If 
-	
-	NextEml1: 
-	wabPos = WABRight 
-next ie5
-
-End Sub 
-
-'============================================================================
 '[build_inc] emlOld.inc
 '============================================================================
 '*****************************************
@@ -17241,7 +19762,7 @@ End Sub
 '~dup end function
 
 '*****************************************
-'~dup Function GetHeaderField( Header As String, Field as string) As String   ' повтор, первое: conversionOld.inc(1143)
+'~dup Function GetHeaderField( Header As String, Field as string) As String   ' повтор, первое: eml.inc(86)
 '~dup Header=replacesubstr$(Header,ht," ")
 '~dup Header=replacesubstr$(Header,crlf+" "," ")
 '~dup Header=replacesubstr$(Header,";"+crlf,"; ")
@@ -17274,7 +19795,7 @@ End Sub
 '~dup end function
 
 '*****************************************
-'~dup Function GetMSGHeader( Source As String) As String   ' повтор, первое: conversionOld.inc(1027)
+'~dup Function GetMSGHeader( Source As String) As String   ' повтор, первое: eml.inc(123)
 '~dup dim MSGHeader as qstringlist 'string
 '~dup dim MSG as qstringlist
 '~dup 
@@ -17305,7 +19826,7 @@ End Sub
 '~dup end function
 
 '*****************************************
-'~dup Function GetMSGBody( Source As String) As String    ' повтор, первое: conversionOld.inc(1045)
+'~dup Function GetMSGBody( Source As String) As String    ' повтор, первое: eml.inc(150)
 '~dup dim MSGBody as qstringlist 'string
 '~dup dim MSG as qstringlist
 '~dup 
@@ -17390,7 +19911,7 @@ End Sub
 
 '*****************************************
 ' BASE64 encode
-'~dup Function RQBASE64Encode(s As String) As String   ' повтор, первое: conversionOld.inc(823)
+'~dup Function RQBASE64Encode(s As String) As String   ' повтор, первое: eml.inc(250)
 '~dup Dim lenStr As Long, endPos As Long, lastChars As Long, l As Long, i As Long
 '~dup dim cBASE64 as string
 '~dup cBASE64=""
@@ -17428,7 +19949,7 @@ End Sub
 
 '*****************************************
 ' BASE64 decode
-'~dup Function RQBASE64Decode (stxt As String) As String   ' повтор, первое: conversionOld.inc(861)
+'~dup Function RQBASE64Decode (stxt As String) As String   ' повтор, первое: eml.inc(288)
 '~dup Dim lenStr As Long, endPos As Long, lastChars As Long, l As Long, i As Long
 '~dup dim RQBASE64E as string
 '~dup RQBASE64E=""
@@ -18512,144 +21033,6 @@ SrcString4$=SrcString
 fbReplaceSubStr$=varptr$(FBReplaceSubStrFunc (SrcString4$, SString, RString) )
 end function
 '============================================================================
-'[build_inc] fbscancodes.inc
-'============================================================================
-' Virtual Keys, Standard Set
-
-
-'~dup $DEFINE VK_LBUTTON    &H1   ' повтор, первое: rapidq2.inc(1071)
-'~dup $DEFINE VK_RBUTTON    &H2   ' повтор, первое: rapidq2.inc(1072)
-'~dup $DEFINE VK_CANCEL    &H3   ' повтор, первое: rapidq2.inc(1073)
-'~dup $DEFINE VK_MBUTTON    &H4             '  NOT contiguous with L RBUTTON   ' повтор, первое: rapidq2.inc(1074)
-'~dup $DEFINE VK_BACK    &H8   ' повтор, первое: rapidq2.inc(1075)
-'~dup $DEFINE VK_TAB    &H9   ' повтор, первое: rapidq2.inc(1076)
-'~dup $DEFINE VK_CLEAR    &HC   ' повтор, первое: rapidq2.inc(1077)
-'~dup $DEFINE VK_RETURN    &HD   ' повтор, первое: rapidq2.inc(1078)
-$DEFINE VK_Enter    &HD
-'~dup $DEFINE VK_SHIFT    &H10   ' повтор, первое: rapidq2.inc(1079)
-'~dup $DEFINE VK_CONTROL    &H11   ' повтор, первое: rapidq2.inc(1080)
-'~dup $DEFINE VK_MENU    &H12   ' повтор, первое: rapidq2.inc(1081)
-'~dup $DEFINE VK_PAUSE    &H13   ' повтор, первое: rapidq2.inc(1082)
-'~dup $DEFINE VK_CAPITAL    &H14   ' повтор, первое: rapidq2.inc(1083)
-'~dup $DEFINE VK_ESCAPE    &H1B   ' повтор, первое: rapidq2.inc(1084)
-'~dup $DEFINE VK_SPACE    &H20   ' повтор, первое: rapidq2.inc(1085)
-'~dup $DEFINE VK_PRIOR    &H21   ' повтор, первое: rapidq2.inc(1086)
-'~dup $DEFINE VK_NEXT    &H22   ' повтор, первое: rapidq2.inc(1087)
-$DEFINE VK_PUp    &H21
-$DEFINE VK_PDown    &H22
-'~dup $DEFINE VK_END    &H23   ' повтор, первое: rapidq2.inc(1088)
-'~dup $DEFINE VK_HOME    &H24   ' повтор, первое: rapidq2.inc(1089)
-'~dup $DEFINE VK_LEFT    &H25 'left arrow   ' повтор, первое: rapidq2.inc(1090)
-'~dup $DEFINE VK_UP    &H26  'up arrow   ' повтор, первое: rapidq2.inc(1091)
-'~dup $DEFINE VK_RIGHT    &H27 'etc   ' повтор, первое: rapidq2.inc(1092)
-'~dup $DEFINE VK_DOWN    &H28   ' повтор, первое: rapidq2.inc(1093)
-'~dup $DEFINE VK_SELECT    &H29   ' повтор, первое: rapidq2.inc(1094)
-'~dup $DEFINE VK_PRINT    &H2A   ' повтор, первое: rapidq2.inc(1095)
-'~dup $DEFINE VK_EXECUTE    &H2B   ' повтор, первое: rapidq2.inc(1096)
-'~dup $DEFINE VK_SNAPSHOT    &H2C   ' повтор, первое: rapidq2.inc(1097)
-'~dup $DEFINE VK_INSERT    &H2D   ' повтор, первое: rapidq2.inc(1098)
-'~dup $DEFINE VK_DELETE    &H2E   ' повтор, первое: rapidq2.inc(1099)
-'~dup $DEFINE VK_HELP    &H2F   ' повтор, первое: rapidq2.inc(1100)
-
-' VK_A thru VK_Z are the same as their ASCII equivalents: 'A' thru 'Z'
-' VK_0 thru VK_9 are the same as their ASCII equivalents: '0' thru '9'
-'~dup $DEFINE VK_0    &H30   ' повтор, первое: rapidq2.inc(1104)
-'~dup $DEFINE VK_1    &H31   ' повтор, первое: rapidq2.inc(1105)
-'~dup $DEFINE VK_2    &H32   ' повтор, первое: rapidq2.inc(1106)
-'~dup $DEFINE VK_3    &H33   ' повтор, первое: rapidq2.inc(1107)
-'~dup $DEFINE VK_4    &H34   ' повтор, первое: rapidq2.inc(1108)
-'~dup $DEFINE VK_5    &H35   ' повтор, первое: rapidq2.inc(1109)
-'~dup $DEFINE VK_6    &H36   ' повтор, первое: rapidq2.inc(1110)
-'~dup $DEFINE VK_7    &H37   ' повтор, первое: rapidq2.inc(1111)
-'~dup $DEFINE VK_8    &H38   ' повтор, первое: rapidq2.inc(1112)
-'~dup $DEFINE VK_9    &H39   ' повтор, первое: rapidq2.inc(1113)
-'~dup $DEFINE VK_A    &H41   ' повтор, первое: rapidq2.inc(1114)
-'~dup $DEFINE VK_B    &H42   ' повтор, первое: rapidq2.inc(1115)
-'~dup $DEFINE VK_C    &H43   ' повтор, первое: rapidq2.inc(1116)
-'~dup $DEFINE VK_D    &H44   ' повтор, первое: rapidq2.inc(1117)
-'~dup $DEFINE VK_E    &H45   ' повтор, первое: rapidq2.inc(1118)
-'~dup $DEFINE VK_F    &H46   ' повтор, первое: rapidq2.inc(1119)
-'~dup $DEFINE VK_G    &H47   ' повтор, первое: rapidq2.inc(1120)
-'~dup $DEFINE VK_H    &H48   ' повтор, первое: rapidq2.inc(1121)
-'~dup $DEFINE VK_I    &H49   ' повтор, первое: rapidq2.inc(1122)
-'~dup $DEFINE VK_J    &H4A   ' повтор, первое: rapidq2.inc(1123)
-'~dup $DEFINE VK_K    &H4B   ' повтор, первое: rapidq2.inc(1124)
-'~dup $DEFINE VK_L    &H4C   ' повтор, первое: rapidq2.inc(1125)
-'~dup $DEFINE VK_M    &H4D   ' повтор, первое: rapidq2.inc(1126)
-'~dup $DEFINE VK_N    &H4E   ' повтор, первое: rapidq2.inc(1127)
-'~dup $DEFINE VK_O    &H4F   ' повтор, первое: rapidq2.inc(1128)
-'~dup $DEFINE VK_P    &H50   ' повтор, первое: rapidq2.inc(1129)
-'~dup $DEFINE VK_Q    &H51   ' повтор, первое: rapidq2.inc(1130)
-'~dup $DEFINE VK_R    &H52   ' повтор, первое: rapidq2.inc(1131)
-'~dup $DEFINE VK_S    &H53   ' повтор, первое: rapidq2.inc(1132)
-'~dup $DEFINE VK_T    &H54   ' повтор, первое: rapidq2.inc(1133)
-'~dup $DEFINE VK_U    &H55   ' повтор, первое: rapidq2.inc(1134)
-'~dup $DEFINE VK_V    &H56   ' повтор, первое: rapidq2.inc(1135)
-'~dup $DEFINE VK_W    &H57   ' повтор, первое: rapidq2.inc(1136)
-'~dup $DEFINE VK_X    &H58   ' повтор, первое: rapidq2.inc(1137)
-'~dup $DEFINE VK_Y    &H59   ' повтор, первое: rapidq2.inc(1138)
-'~dup $DEFINE VK_Z    &H5A   ' повтор, первое: rapidq2.inc(1139)
-
-
-'~dup $DEFINE VK_NUMPAD0    &H60   ' повтор, первое: rapidq2.inc(1142)
-'~dup $DEFINE VK_NUMPAD1    &H61   ' повтор, первое: rapidq2.inc(1143)
-'~dup $DEFINE VK_NUMPAD2    &H62   ' повтор, первое: rapidq2.inc(1144)
-'~dup $DEFINE VK_NUMPAD3    &H63   ' повтор, первое: rapidq2.inc(1145)
-'~dup $DEFINE VK_NUMPAD4    &H64   ' повтор, первое: rapidq2.inc(1146)
-'~dup $DEFINE VK_NUMPAD5    &H65   ' повтор, первое: rapidq2.inc(1147)
-'~dup $DEFINE VK_NUMPAD6    &H66   ' повтор, первое: rapidq2.inc(1148)
-'~dup $DEFINE VK_NUMPAD7    &H67   ' повтор, первое: rapidq2.inc(1149)
-'~dup $DEFINE VK_NUMPAD8    &H68   ' повтор, первое: rapidq2.inc(1150)
-'~dup $DEFINE VK_NUMPAD9    &H69   ' повтор, первое: rapidq2.inc(1151)
-'~dup $DEFINE VK_MULTIPLY    &H6A   ' повтор, первое: rapidq2.inc(1152)
-'~dup $DEFINE VK_ADD    &H6B   ' повтор, первое: rapidq2.inc(1153)
-'~dup $DEFINE VK_SEPARATOR    &H6C   ' повтор, первое: rapidq2.inc(1154)
-'~dup $DEFINE VK_SUBTRACT    &H6D   ' повтор, первое: rapidq2.inc(1155)
-'~dup $DEFINE VK_DECIMAL    &H6E   ' повтор, первое: rapidq2.inc(1156)
-'~dup $DEFINE VK_DIVIDE    &H6F   ' повтор, первое: rapidq2.inc(1157)
-'~dup $DEFINE VK_F1    &H70   ' повтор, первое: rapidq2.inc(1158)
-'~dup $DEFINE VK_F2    &H71   ' повтор, первое: rapidq2.inc(1159)
-'~dup $DEFINE VK_F3    &H72   ' повтор, первое: rapidq2.inc(1160)
-'~dup $DEFINE VK_F4    &H73   ' повтор, первое: rapidq2.inc(1161)
-'~dup $DEFINE VK_F5    &H74   ' повтор, первое: rapidq2.inc(1162)
-'~dup $DEFINE VK_F6    &H75   ' повтор, первое: rapidq2.inc(1163)
-'~dup $DEFINE VK_F7    &H76   ' повтор, первое: rapidq2.inc(1164)
-'~dup $DEFINE VK_F8    &H77   ' повтор, первое: rapidq2.inc(1165)
-'~dup $DEFINE VK_F9    &H78   ' повтор, первое: rapidq2.inc(1166)
-'~dup $DEFINE VK_F10    &H79   ' повтор, первое: rapidq2.inc(1167)
-'~dup $DEFINE VK_F11    &H7A   ' повтор, первое: rapidq2.inc(1168)
-'~dup $DEFINE VK_F12    &H7B   ' повтор, первое: rapidq2.inc(1169)
-'~dup $DEFINE VK_F13    &H7C   ' повтор, первое: rapidq2.inc(1170)
-'~dup $DEFINE VK_F14    &H7D   ' повтор, первое: rapidq2.inc(1171)
-'~dup $DEFINE VK_F15    &H7E   ' повтор, первое: rapidq2.inc(1172)
-'~dup $DEFINE VK_F16    &H7F   ' повтор, первое: rapidq2.inc(1173)
-'~dup $DEFINE VK_F17    &H80   ' повтор, первое: rapidq2.inc(1174)
-'~dup $DEFINE VK_F18    &H81   ' повтор, первое: rapidq2.inc(1175)
-'~dup $DEFINE VK_F19    &H82   ' повтор, первое: rapidq2.inc(1176)
-'~dup $DEFINE VK_F20    &H83   ' повтор, первое: rapidq2.inc(1177)
-'~dup $DEFINE VK_F21    &H84   ' повтор, первое: rapidq2.inc(1178)
-'~dup $DEFINE VK_F22    &H85   ' повтор, первое: rapidq2.inc(1179)
-'~dup $DEFINE VK_F23    &H86   ' повтор, первое: rapidq2.inc(1180)
-'~dup $DEFINE VK_F24    &H87   ' повтор, первое: rapidq2.inc(1181)
-
-'~dup $DEFINE VK_NUMLOCK    &H90   ' повтор, первое: rapidq2.inc(1183)
-'~dup $DEFINE VK_SCROLL    &H91   ' повтор, первое: rapidq2.inc(1184)
-
-'
-'   VK_L VK_R - left and right Alt, Ctrl and Shift virtual keys.
-'   Used only as parameters to GetAsyncKeyState() and GetKeyState().
-'   No other API or message will distinguish left and right keys in this way.
-'  /
-'~dup $DEFINE VK_LSHIFT    &HA0   ' повтор, первое: rapidq2.inc(1191)
-'~dup $DEFINE VK_RSHIFT    &HA1   ' повтор, первое: rapidq2.inc(1192)
-'~dup $DEFINE VK_LCONTROL    &HA2   ' повтор, первое: rapidq2.inc(1193)
-'~dup $DEFINE VK_RCONTROL    &HA3   ' повтор, первое: rapidq2.inc(1194)
-'~dup $DEFINE VK_LMENU    &HA4   ' повтор, первое: rapidq2.inc(1195)
-'~dup $DEFINE VK_RMENU    &HA5   ' повтор, первое: rapidq2.inc(1196)
-
-' ascii codes are the same as their virtual key codes
-
-'============================================================================
 '[build_inc] fileops.inc
 '============================================================================
 '=======================================================================|
@@ -18671,48 +21054,48 @@ $DEFINE __FILEOPS_INC
     
     '===============================================================================
     '# QUOTE : Returns a quoted string
-FUNCTION Quote(StringToQuote AS STRING) AS STRING
-    StringToQuote = CHR$(34) + StringToQuote + CHR$(34)
-    Result = REPLACESUBSTR$(stringtoquote , CHR$(34) + CHR$(34) , CHR$(34))
-END FUNCTION
+'~dup FUNCTION Quote(StringToQuote AS STRING) AS STRING   ' повтор, первое: Files.inc(75)
+'~dup     StringToQuote = CHR$(34) + StringToQuote + CHR$(34)
+'~dup     Result = REPLACESUBSTR$(stringtoquote , CHR$(34) + CHR$(34) , CHR$(34))
+'~dup END FUNCTION
 
     '===============================================================================
     '# STRIPPATH : Returns file path (without file name)
-FUNCTION StripPath(fullname AS STRING) AS STRING
-    Result = LEFT$(fullname , rinstr(fullname , "\"))
-END FUNCTION
+'~dup FUNCTION StripPath(fullname AS STRING) AS STRING   ' повтор, первое: Files.inc(82)
+'~dup     Result = LEFT$(fullname , rinstr(fullname , "\"))
+'~dup END FUNCTION
 
     '===============================================================================
     '# STRIPFILENAME : Returns file name (without path)
-FUNCTION StripFileName(fullname AS STRING) AS STRING
-    Result = RIGHT$(fullname , LEN(fullname) - rinstr(fullname , "\"))
-END FUNCTION
+'~dup FUNCTION StripFileName(fullname AS STRING) AS STRING   ' повтор, первое: Files.inc(95)
+'~dup     Result = RIGHT$(fullname , LEN(fullname) - rinstr(fullname , "\"))
+'~dup END FUNCTION
 
     '===============================================================================
     '# STRIPFILEEXT : Returns file extension (like ".exe", ".html" etc.)
-FUNCTION StripFileExt(fullname AS STRING) AS STRING
-    Result = RIGHT$(fullname , LEN(fullname) - rinstr(fullname , ".") + 1)
-END FUNCTION
+'~dup FUNCTION StripFileExt(fullname AS STRING) AS STRING   ' повтор, первое: Files.inc(110)
+'~dup     Result = RIGHT$(fullname , LEN(fullname) - rinstr(fullname , ".") + 1)
+'~dup END FUNCTION
 
     '===============================================================================
     '# FILENAMENOEXT : Returns file name without extension
-FUNCTION FileNameNoExt(fullname AS STRING) AS STRING
-    fullname = RIGHT$(fullname , LEN(fullname) - rinstr(fullname , "\"))
-    Result = LEFT$(fullname , rinstr(fullname , ".") - 1)
-END FUNCTION
+'~dup FUNCTION FileNameNoExt(fullname AS STRING) AS STRING   ' повтор, первое: Files.inc(120)
+'~dup     fullname = RIGHT$(fullname , LEN(fullname) - rinstr(fullname , "\"))
+'~dup     Result = LEFT$(fullname , rinstr(fullname , ".") - 1)
+'~dup END FUNCTION
 
     '===============================================================================
     '# FULLPATHNOEXT : Returns full path without file extension
-FUNCTION FullPathNoExt(fullname AS STRING) AS STRING
-    Result = LEFT$(fullname , rinstr(fullname , ".") - 1)
-END FUNCTION
+'~dup FUNCTION FullPathNoExt(fullname AS STRING) AS STRING   ' повтор, первое: Files.inc(127)
+'~dup     Result = LEFT$(fullname , rinstr(fullname , ".") - 1)
+'~dup END FUNCTION
 
     '===============================================================================
     '# C_Style : Returns "slashed" path from a "backslashed" one
-FUNCTION C_Style(fullname AS STRING) AS STRING
-    fullname = REPLACESUBSTR$(fullname , "\\" , "\")
-    Result = REPLACESUBSTR$(fullname , "\" , "/")
-END FUNCTION
+'~dup FUNCTION C_Style(fullname AS STRING) AS STRING   ' повтор, первое: Files.inc(133)
+'~dup     fullname = REPLACESUBSTR$(fullname , "\\" , "\")
+'~dup     Result = REPLACESUBSTR$(fullname , "\" , "/")
+'~dup END FUNCTION
 
 
     '===============================================================================
@@ -18728,18 +21111,18 @@ END FUNCTION
     'PrintHood               | Local AppData           | My Pictures             |
     'Administrative Tools    |                         |                         |
     '----------------------------------------------------------------------------|
-FUNCTION SysDir(dir AS STRING) AS STRING
-    DIM fo_reg AS QREGISTRY
-    fo_reg.RootKey = &H80000001
-    fo_reg.openkey("Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders" , 0)
-    Result = fo_reg.readstring(dir) + "\"
-END FUNCTION
+'~dup FUNCTION SysDir(dir AS STRING) AS STRING   ' повтор, первое: Files.inc(160)
+'~dup     DIM fo_reg AS QREGISTRY
+'~dup     fo_reg.RootKey = &H80000001
+'~dup     fo_reg.openkey("Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders" , 0)
+'~dup     Result = fo_reg.readstring(dir) + "\"
+'~dup END FUNCTION
 
     '===============================================================================
     '# HOMEDIR : The folder where the application is
-FUNCTION homedir() AS STRING
-    Result = LEFT$(Command$(0) , rinstr(Command$(0) , "\"))
-END FUNCTION
+'~dup FUNCTION homedir() AS STRING   ' повтор, первое: Files.inc(170)
+'~dup     Result = LEFT$(Command$(0) , rinstr(Command$(0) , "\"))
+'~dup END FUNCTION
 
 
 
@@ -18773,45 +21156,45 @@ END FUNCTION
 
 '===============================================================================
 '# BROWSEFORFOLDERS : Returns the selected folder
-FUNCTION BrowseForFolders(InitialDir AS STRING , wincapt AS STRING) AS STRING
-    DIM bff_form AS QFORM
-    WITH bff_form
-        .Height = 400
-        .Center
-        .Caption = wincapt
-        .DelBorderIcons 2
-    END WITH
-    DIM bff_tree AS QDIRTREE
-    WITH bff_tree
-        .Parent = bff_form
-        .Align = 5
-    END WITH
-    IF bff_form.Caption = "" THEN bff_form.Caption = "Select folder"
-    IF DIREXISTS(InitialDir) THEN
-        bff_tree.Directory = InitialDir
-    ELSE
-        bff_tree.Directory = CurDir$
-    END IF
-    bff_form.ShowModal
-    Result = bff_tree.Directory
-END FUNCTION
+'~dup FUNCTION BrowseForFolders(InitialDir AS STRING , wincapt AS STRING) AS STRING   ' повтор, первое: Files.inc(177)
+'~dup     DIM bff_form AS QFORM
+'~dup     WITH bff_form
+'~dup         .Height = 400
+'~dup         .Center
+'~dup         .Caption = wincapt
+'~dup         .DelBorderIcons 2
+'~dup     END WITH
+'~dup     DIM bff_tree AS QDIRTREE
+'~dup     WITH bff_tree
+'~dup         .Parent = bff_form
+'~dup         .Align = 5
+'~dup     END WITH
+'~dup     IF bff_form.Caption = "" THEN bff_form.Caption = "Select folder"
+'~dup     IF DIREXISTS(InitialDir) THEN
+'~dup         bff_tree.Directory = InitialDir
+'~dup     ELSE
+'~dup         bff_tree.Directory = CurDir$
+'~dup     END IF
+'~dup     bff_form.ShowModal
+'~dup     Result = bff_tree.Directory
+'~dup END FUNCTION
 
 '===============================================================================
 '# BROWSEFORFILE : Uses opendialog, returns file name
-FUNCTION BrowseForFile(Caption AS STRING , Filter AS STRING , _
-        InitialDir AS STRING) AS STRING
-
-    DIM bff_od AS QOPENDIALOG
-    WITH bff_od
-        .Caption = Caption
-        .Filter = Filter
-        .InitialDir = InitialDir
-
-        IF .Execute THEN
-            result =.FileName
-        END IF
-    END WITH
-END FUNCTION
+'~dup FUNCTION BrowseForFile(Caption AS STRING , Filter AS STRING , _   ' повтор, первое: Files.inc(203)
+'~dup         InitialDir AS STRING) AS STRING
+'~dup 
+'~dup     DIM bff_od AS QOPENDIALOG
+'~dup     WITH bff_od
+'~dup         .Caption = Caption
+'~dup         .Filter = Filter
+'~dup         .InitialDir = InitialDir
+'~dup 
+'~dup         IF .Execute THEN
+'~dup             result =.FileName
+'~dup         END IF
+'~dup     END WITH
+'~dup END FUNCTION
 
 
 $ENDIF
@@ -18851,1496 +21234,6 @@ $ENDIF
 '*** end sample test code ***
 
 '============================================================================
-'[build_inc] Files.inc
-'============================================================================
-
-$DEFINE FILE_ATTRIBUTE_READONLY  &H1
-$DEFINE FILE_ATTRIBUTE_HIDDEN  &H2
-$DEFINE FILE_ATTRIBUTE_SYSTEM  &H4
-$DEFINE FILE_ATTRIBUTE_DIRECTORY  &H10
-$DEFINE FILE_ATTRIBUTE_ARCHIVE  &H20
-$DEFINE FILE_ATTRIBUTE_NORMAL  &H80
-$DEFINE FILE_ATTRIBUTE_TEMPORARY  &H100
-$DEFINE FILE_ATTRIBUTE_COMPRESSED  &H800
-
-$DEFINE GENERIC_READ  &H80000000
-$DEFINE FILE_SHARE_READ  &H1
-$DEFINE OPEN_EXISTING  3
-$DEFINE FILE_TYPE_CHAR  &H2
-$DEFINE FILE_TYPE_DISK  &H1
-$DEFINE FILE_TYPE_PIPE  &H3
-$DEFINE FILE_TYPE_UNKNOWN  &H0
-
-
-
-Type SECURITY_ATTRIBUTES
-  nLength As Long
-  lpSecurityDescriptor As Long
-  bInheritHandle As Long
-End Type
-
-'Declare Function GetFileSizeEx Lib "kernel32" (ByVal hFile As Long, lpFileSize As Currency) As Boolean
-
-Declare Function GetFileAttributes Lib "kernel32" Alias "GetFileAttributesA"_
-(ByVal lpFileName As String) As Long
-Declare Function SetFileAttributes Lib "kernel32" Alias "SetFileAttributesA"_
-(ByVal lpFileName As String, ByVal dwFileAttributes As Long) As Long
-
-Declare Function CreateDirectory Lib "kernel32" Alias "CreateDirectoryA" _
-(ByVal lpPathName As String, lpSecurityAttributes As SECURITY_ATTRIBUTES) As Long
-
-fMsg35$="ReadOnly or hidden or system file! Change anyway?"
-
-
-
-'---------- wininet ------------------
-Const scUserAgent = "Test program"
-Const INTERNET_OPEN_TYPE_DIRECT = 1
-Const INTERNET_OPEN_TYPE_PROXY = 3
-Const INTERNET_FLAG_RELOAD = &H80000000
-
-Declare Function InternetOpen Lib "wininet" Alias "InternetOpenA" (_
-                                                                   sAgent As String,_
-                                                                   lAccessType As Long,  _
-                                                                   sProxyName As String,  _
-                                                                   sProxyBypass As String,  _
-                                                                   lFlags As Long_
-) As Long
-
-Declare Function InternetCloseHandle Lib "wininet"  Alias "InternetCloseHandle"  ( hInet As Long) As Integer
-
-Declare Function InternetReadFile Lib "wininet"  Alias "InternetReadFile" ( _
-                                                                            hFile As Long,  _
-                                                                            byref sBuffer As String,  _
-                                                                            lNumBytesToRead As Long, _
-                                                                            byref lNumberOfBytesRead As Long_
-) As Integer
-
-Declare Function InternetOpenUrl Lib "wininet" Alias "InternetOpenUrlA" ( _
-                                                                          hInternetSession As Long,  _
-                                                                          lpszUrl As String,  _
-                                                                          lpszHeaders As String,  _
-                                                                          dwHeadersLength As Long,  _
-                                                                          dwFlags As Long,  _
-                                                                          dwContext As Long) As Long
-'-------------------------------------
-
-
-'# QUOTE : Returns a quoted string
-'~dup function Quote (StringToQuote as string) as string   ' повтор, первое: fileops.inc(20)
-'~dup   StringToQuote =  chr$(34) + StringToQuote + chr$(34)
-'~dup   result = replacesubstr$(stringtoquote, chr$(34) + chr$(34), chr$(34))
-'~dup end function
-
-'===============================================================================
-'# STRIPPATH : Returns file path (without file name)
-'~dup Function StripPath (fullname as string) as string   ' повтор, первое: fileops.inc(27)
-'~dup   'print
-'~dup   'print "1 StripPath fullname=";fullname
-'~dup 
-'~dup   result = left$(fullname, rinstr(fullname, "\"))
-'~dup 
-'~dup   'print "2 StripPath fullname=";fullname
-'~dup   'print
-'~dup 
-'~dup end function
-
-'===============================================================================
-'# STRIPFILENAME : Returns file name (without path)
-'~dup Function StripFileName (fullname as string) as string   ' повтор, первое: fileops.inc(33)
-'~dup   result = right$(fullname, len(fullname) - rinstr(fullname, "\"))
-'~dup end function
-
-
-'===============================================================================
-'# GetFileNameNoPath : Returns file name (without path)
-Function GetFileNameNoPath (fullname as string) as string
-  result = right$(fullname, len(fullname) - rinstr(fullname, "\"))
-end function
-
-
-
-'===============================================================================
-'# STRIPFILEEXT : Returns file extension (like ".exe", ".html" etc.)
-'~dup Function StripFileExt (fullname as string) as string   ' повтор, первое: fileops.inc(39)
-'~dup   if instr(fullname,".")=0 then
-'~dup     result =""
-'~dup   else
-'~dup     result = right$(fullname, len(fullname) - rinstr(fullname, ".") + 1)
-'~dup   end if
-'~dup end function
-
-'===============================================================================
-'# FILENAMENOEXT : Returns file name without extension
-'~dup function FileNameNoExt(fullname as string) as string   ' повтор, первое: fileops.inc(45)
-'~dup   fullname = right$(fullname, len(fullname) - rinstr(fullname, "\"))
-'~dup   result = left$(fullname, rinstr(fullname, ".") - 1)
-'~dup end function
-
-'===============================================================================
-'# FULLPATHNOEXT : Returns full path without file extension
-'~dup function FullPathNoExt(fullname as string) as string   ' повтор, первое: fileops.inc(52)
-'~dup   result = left$(fullname, rinstr(fullname, ".") - 1)
-'~dup end function
-
-'===============================================================================
-'# C_Style : Returns "slashed" path from a "backslashed" one
-'~dup function C_Style (fullname as string) as string   ' повтор, первое: fileops.inc(58)
-'~dup   fullname = replacesubstr$(fullname, "\\", "\")
-'~dup   result = replacesubstr$(fullname, "\", "/")
-'~dup end function
-'*****************************************
-function bsPath (fullname as string) as string
-  'backslashedPath
-  'fullname = replacesubstr$(fullname, "\\", "\")
-  result = replacesubstr$(fullname, "/", "\")
-end function
-
-
-'===============================================================================
-'# SYSDIR : Retrieves windows shell directories
-
-'-------------------------|
-' Allowed values for dir  |
-'-----------------------------------------------------------------------------|
-' Desktop                 | Templates               | AppData                 |
-' Start Menu              | Programs                | Startup                 |
-' Fonts                   | SendTo                  | Recent                  |
-' Favorites               | Cache                   | Cookies                 |
-' History                 | NetHood                 | Personal                |
-' PrintHood               | Local AppData           | My Pictures             |
-' Administrative Tools    |                         |                         |
-'-----------------------------------------------------------------------------|
-
-'~dup function SysDir (dir as string) as string   ' повтор, первое: fileops.inc(77)
-'~dup   DIM fo_reg AS QRegistry
-'~dup   fo_reg.RootKey = &H80000001
-'~dup   fo_reg.openkey ("Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders", 0)
-'~dup   result = fo_reg.readstring(dir) + "\"
-'~dup end function
-
-'===============================================================================
-'# HOMEDIR : The folder where the application is
-
-'~dup function homedir() as string   ' повтор, первое: fileops.inc(86)
-'~dup   result = left$(command$(0), rinstr(command$(0), "\"))
-'~dup end function
-
-'===============================================================================
-'# BROWSEFORFOLDERS : Returns the selected folder
-
-'~dup function BrowseForFolders (initialdir as string, wincapt as string) as string   ' повтор, первое: fileops.inc(122)
-'~dup   dim bff_form as qform
-'~dup   with bff_form
-'~dup     .height = 400
-'~dup     .center
-'~dup     .caption = wincapt
-'~dup     .delbordericons 2
-'~dup   end with
-'~dup   dim bff_tree as qdirtree
-'~dup   with bff_tree
-'~dup     .parent = bff_form
-'~dup     .align = 5
-'~dup   end with
-'~dup   if bff_form.caption = "" then bff_form.caption = "Select folder"
-'~dup   if direxists(initialdir) then
-'~dup     bff_tree.directory = initialdir
-'~dup   else
-'~dup     bff_tree.directory = curdir$
-'~dup   end if
-'~dup   bff_form.showmodal
-'~dup   result = bff_tree.directory
-'~dup end function
-
-'===============================================================================
-'# BROWSEFORFILE : Returns the selected folder
-
-'~dup Function BrowseForFile (caption as string, filter as string, _   ' повтор, первое: fileops.inc(147)
-'~dup                         initialdir as string) as string
-'~dup 
-'~dup   dim bff_od as qopendialog
-'~dup   with bff_od
-'~dup     .caption = caption
-'~dup     .filter = filter
-'~dup     .initialdir = initialdir
-'~dup 
-'~dup     if .execute then
-'~dup       result = .filename
-'~dup     end if
-'~dup   end with
-'~dup 
-'~dup end function
-
-'_=============================================================================
-
-$ESCAPECHARS ON
-
-'ChangeFileExt:
-'Returns: String
-'Parameters:
-'FileName (String): Name of file with old extention
-'NewExt (String): New extention. This must include the leading ".".
-
-'Information:
-'Author: Taj Morton
-'Email: tmorton at linuxmail dot org.
-'License: Public Domain
-
-'Description:
-'Changes the extention of FileName to NewExt. For example:
-'ChangeFileExt("File.bas", ".inc")
-'returns File.inc. This function does not delete the old string,
-'instead, it simply returns a new one with the extention.
-'You must include the leading "." for it to be added, as it is not
-'done by the function.
-
-FUNCTION ChangeFileExt(FileName as String, NewExt as STRING) as STRING
-  DIM Returns as STRING
-  DIM CurrentExt as String
-  DIM CurrentExtLoc as INTEGER
-  DIM FileNoExt as STRING
-
-  CurrentExtLoc = RInStr(FileName, ".")
-  CurrentExt = MID$(FileName, CurrentExtLoc, LEN(FileName))
-  FileNoExt = DELETE$(FileName, CurrentExtLoc, LEN(FileName))
-
-  Result = INSERT$(NewExt, FileNoExt, LEN(FileName))
-  ChangeFileExt = Result
-END FUNCTION
-
-'ExtractFileName:
-'Returns: String
-'Parameters:
-'FileName (String): File with full path
-
-'Information:
-'Author: Taj Morton
-'Email: tmorton at linuxmail dot org.
-'License: Public Domain
-
-'Description:
-'ExtractFileName takes a file name with a path and returns only
-'the file name. For example:
-'ExtractFileName("C:\\Program Files\\AFile.bas")
-'returns AFile.bas. You can use either two back-slashes or a single
-'forward slash (/) for folder seperators.
-'Both forward and back-slashes are supported by Windows.
-'The back-slash takes procedure over the forward slash.
-'Note that ExtractFileName does _not_ check the validity of the path passed.
-'You must check yourself.
-
-FUNCTION ExtractFileName(FileName as STRING) AS STRING
-  DIM Length as INTEGER
-  DIM Result as STRING
-
-  Length = RInStr(FileName, "\\") OR RInStr(FileName, "/")
-  Result = MID$(FileName, Length+1, LEN(FileName) - Length + 1)
-  ExtractFileName = Result
-END FUNCTION
-
-'ExtractFilePath
-'Returns: String
-'Parameters:
-'FileName (String): File with full path
-
-'Information:
-'Author: Taj Morton
-'Email: tmorton at linuxmail dot org.
-'License: Public Domain
-
-'Description:
-'ExtractFilePath takes string with full path and returns a string
-'with only the path. For example:
-'ExtractFilePath("C:\\Program Files\\AProgram.bas")
-'returns C:\Program Files (the \\'s are for RQ and back-slashes).
-'ExtractFilePath also takes forward-slashes (/). Window's supports
-'these as well.
-'The back-slash takes procedure over the forward slash.
-'Note that ExtractFilePath does _not_ test the validity
-'of the passed name. You must check it yourself. Even if the name is
-'invalid, the path will be returned. For example, if C:/ProgramErrorFiles/AFile.txt
-'is passed, C:/ProgramErrorFiles will be returned.
-
-'-- *****************************************************'
-FUNCTION ExtractFilePath(FileName as STRING) AS STRING
-  DIM Length as INTEGER
-  DIM Result as STRING
-
-  Length = RInStr(FileName, "\\") OR RInStr(FileName, "/")
-  Result = MID$(FileName, 0, Length)
-  ExtractFilePath = Result
-END FUNCTION
-
-'ChangeFileName
-'Returns: String
-'Parameters:
-'FileName (String): File with full path
-'NewName (String): Text that will replace old file name
-
-'Information:
-'Author: Taj Morton
-'Email: tmorton at linuxmail dot org.
-'License: Public Domain
-
-'Description:
-'ChangeFileName takes a file name with full path and file and a new name.
-'It replaces the current filename (in FileName) and replaces it with NewName.
-'ChangeFileName does not actually change FileName, instead it returns a new
-'string which contains the new name.
-'Note that ChangeFileName does not check the validity of FileName
-'or the new result. You must do it yourself (if you want). ChangeFileName
-'takes both the back-slash and forward slash to serperate folder and file names.
-'You can use either \\ or /. Both are supported by Windows.
-'The back-slash takes procedure over the forward slash.
-
-'-- *****************************************************'
-FUNCTION ChangeFileName(FileName as STRING, NewName as STRING) AS STRING
-  DIM FileNameLoc as INTEGER
-  DIM Result as STRING
-  DIM PathNoName AS STRING
-
-  PathNoName = ExtractFilePath(FileName)
-  Result = PathNoName+NewName
-  ChangeFileName = Result
-END FUNCTION
-
-'ChangeFilePath
-'Returns: String
-'Parameters:
-'FileName (String): File with full path
-'NewPath (String): New path that will replace the path in FileName
-
-'Information:
-'Author: Taj Morton
-'Email: tmorton at linuxmail dot org.
-'License: Public Domain
-
-'Description:
-'ChangeFilePath takes FileName and replaces the path with NewPath.
-'It does not change FileName to have the new path, instead, it returns
-'a string which has the new path. It's up to you to take the correct
-'action. Also, old or new path and names' are not checked for validity,
-'you must do it yourself.
-'You may use either the \\ or the / to seperate your paths. Windows supports
-'both.
-
-'-- *****************************************************'
-FUNCTION ChangeFilePath(FileName as STRING, NewPath as STRING) AS STRING
-  DIM Result AS STRING
-  DIM FileNoPath AS STRING
-
-  FileNoPath = ExtractFileName(FileName)
-
-  Result = NewPath+FileNoPath
-  ChangeFilePath = Result
-END FUNCTION
-$ESCAPECHARS Off
-
-'-- *****************************************************'
-FUNCTION FileSize(FileName as STRING) AS integer
-  DIM fileStr as QFileStream
-
-  'if fileexists (FileName)>0 then
-  if	fileStr.open (FileName,0)=-1  then 'fmOpenRead
-
-    result=fileStr.size
-    fileStr.close
-  else
-    result=-1
-  end if
-
-END FUNCTION
-'-- *****************************************************'
-FUNCTION SaveString(ss$ as STRING ,FileName as STRING  ) AS integer
-  result=0
-
-  if FileName="" then showmessage ("FUNCTION SaveString. Wrong FileName="+FileName):exit function
-  DIM fileStr as QFileStream
-
-  if fileStr.open (FileName,65535 )=-1 then 'fmCreate'
-    result=-1
-    FileStr.WriteBinStr(ss$, len(ss$))
-    FileStr.Close
-    result=1
-  else
-    'ShowMessage ("SaveString error: Access denied "+FileName)
-    result=-2
-  end if
-END FUNCTION
-
-'-- *****************************************************'
-FUNCTION SaveStringEx(ss$ as STRING ,FileName as STRING, mode as integer  ) AS integer
-  ' save string SS$ to file FileName.
-  'Mode=0 - overwrite,
-  'Mode=1 - append string ss$ to file FileName
-  'Mode=2 - append  crlf+ss$ to file FileName
-
-  result=0
-
-  if FileName="" then showmessage ("FUNCTION SaveString. Wrong FileName="+FileName):exit function
-
-  DIM fileStr as QFileStream
-
-  if mode=0 then
-    result=0
-    if fileStr.open (FileName,65535 )=-1 then 'fmCreate'
-      result=-1
-      FileStr.WriteBinStr(ss$, len(ss$))
-      FileStr.Close
-    else
-      'ShowMessage ("SaveStringEx error: Access denied "+FileName)
-      result=-2
-      exit function
-    end if
-
-  elseif mode=1 or mode=2 then
-    if fileexists(FileName)=0 then md=65535:crl$="" else md=2:crl$=crlf 'showmessage ("FUNCTION SaveString. Can't open File="+FileName):exit function | inc2026: crl$="" вместо crl="": в ветке else - crl$=crlf, ниже используется crl$ (строка 446); crl - другая, числовая переменная
-    if fileStr.open (FileName,md )=-1 then  'fmOpenReadWrite = 2
-      fileStr.Position=fileStr.size
-      result=-1
-      if mode=1 then FileStr.WriteStr(ss$, len(ss$)) else FileStr.WriteStr(crl$+ss$, len(crl$+ss$))
-      FileStr.Close
-    else
-      'ShowMessage ("SaveStringEx error: Access denied "+FileName)
-      result=-2
-      exit function
-
-    end if
-  else
-  end if
-
-  result=1
-
-END FUNCTION
-'-- *****************************************************'
-FUNCTION CheckFileWr (FileName as STRING  ) AS long
-  result=0
-  DIM fileStr as QFileStream
-  'fmOpenWrite = 1
-  if fileStr.open (FileName,1 )=-1 then
-    result=-1
-    FileStr.Close
-  end if
-
-END FUNCTION
-
-'******************************'
-FUNCTION LoadString(FileName as STRING  ) AS string
-  DIM fileStr as QFileStream
-  result="0"
-  'fmOpenRead = 0
-  if fileStr.open (FileName,0 )=-1 then'fmCreate'
-    result="-1"
-    result=FileStr.ReadBinStr( FileStr.size)
-    FileStr.Close
-    'result=1
-  end if
-
-END FUNCTION
-
-'-- *****************************************************'
-FUNCTION LoadBinString(FileName as STRING , n as long ) AS string
-  'print"FileName=";FileName
-  DIM fileStr as QFileStream
-  result="0"
-  res$="0"
-  'print"res1$=";res$
-  'fmOpenRead = 0
-  if fileStr.open (FileName,0 )=-1 then'fmRead'
-    if n=-1 then n=FileStr.size
-    if n>FileStr.size then n=FileStr.size
-    result="-1"
-    res$="-1"
-    result=FileStr.ReadBinStr( n)
-    FileStr.Close
-    'result=1
-  end if
-  'print"res2$=";res$
-END FUNCTION
-
-'-- *****************************************************'
-FUNCTION LoadString1(FileName as STRING  ) AS string
-  DIM fileStr as QFileStream
-  result="0"
-  'fmOpenRead = 0
-  if fileStr.open (FileName,0 )=-1 then'fmRead'
-    result="-1"
-    result=FileStr.ReadStr( FileStr.size)
-    FileStr.Close
-    'result=1
-  end if
-
-END FUNCTION
-
-'_==============================================================
-
-
-'-- *****************************************************'
-
-function MKSubDir (DirDst$) as short
-  'Andrew Shelkovenko dec 2003, jul 2004
-  'Create DirDst$ directory with full subdir structure
-  '----------------------------------------------
-  'print "MKSubDir DirDst$="; DirDst$
-  result=0
-  dim DirDst1$ as string
-  DirDst1$=string$(len(DirDst$),"a")
-  'chartooem DirDst$,DirDst1$
-  DirDst1$=DirDst$
-
-  if right$(DirDst1$,1)<>BkSl then DirDst1$=DirDst1$+BkSl
-  z1=instr(DirDst1$,BkSl)
-  z2=0
-  while z1>0
-    SubDirDst$=left$(DirDst1$,z1 )
-    if DIREXISTS(SubDirDst$)=0 then MKDIR SubDirDst$ :'print "MKSubDir SubDirDst$=" ,SubDirDst$
-    z2=z1+1
-    z1=instr(z2,DirDst1$,BkSl)
-  wend
-
-  result=1
-end function
-
-'-- *****************************************************'
-sub SubDirCopy (DirSrc$, DirDst$, mask$) '- -----------------------------------'
-  'Andrew Shelkovenko dec 2003
-  'Copy DirSrc$ directory with full subdir structure and files (by mask$) to DirDst$
-  dim FileSrc as QFileStream
-  dim FileDst as QFileStream
-
-  'Index=0
-  NumFiles=0
-  defint nsd1, nsd2
-  defstr mask
-  nsd1=0:nsd2=0
-  NumDir=0
-  ArrNumDir=500
-  dim SubDir(500) as string
-
-  ArrNumFil=500
-  dim FileNames (500) as string
-  mask="*.*"
-  if right$(DirSrc$,1)<> BkSl then DirSrc$=DirSrc$+BkSl
-  if right$(DirDst$,1)<> BkSl then DirDst$=DirDst$+BkSl
-  SubDir(0)=DirSrc$
-
-  sss1:
-  for i=NSD1 to Nsd2 'current level sudirs'
-    'print "374 SubDir(",i,")=",SubDir(i)
-    SubDirname$=dir$(SubDir(i)+mask, faDirectory)
-
-    while    SubDirname$ <>""
-      if FileRec.Size =0 and SubDirname$<> "." and SubDirname$<> ".." then ''
-        inc adddir
-        inc NumDir 'add subdir'
-        if NumDir=ArrNumDir then ArrNumDir=ArrNumDir+300: redim SubDir(ArrNumDir) as string
-        SubDir(NumDir)=SubDir(i)+SubDirname$+"\"
-        'print "383 SubDir(", NumDir, ")=",SubDir(NumDir)
-      else
-      end if
-      SubDirname$=dir$
-      doevents:if stops1=1 then stops1=0: exit sub
-    wend
-
-    'search files in current subdirectory
-    Fn$=dir$(SubDir(i)+mask$,faAnyFile-faDirectory) ':-)
-    while Fn$ <>""
-      if  Fn$<> "." and Fn$<> ".."  then 'and FileRec.Size <>0'
-        inc NumFiles
-        if NumFiles=ArrNumFil then ArrNumFil=ArrNumFil+300: redim FileNames(ArrNumFil) as string:'print "redim FileNames"
-        FileNames(NumFiles)=SubDir(i)+Fn$
-        'print "FileNames(",NumFiles,")=" ,FileNames(NumFiles)
-
-      else
-      end if
-      Fn$=dir$
-    wend
-  next i
-
-  if adddir>0 then
-    NSD1=NSD2+1
-    NSD2=NSD2+adddir
-    adddir=0
-    goto sss1 'repeat with new sub level
-  else
-  end if
-
-  ' got subdirs list in SubDir(i) array and file list with full path in FileNames(j)
-  ' now create subdirs structure with new path
-
-  for i1=0 to i-1
-    NewSubDir$=SubDir(i1)-DirSrc$
-    NewSubDir$=DirDst$+NewSubDir$
-    MKSubDir (NewSubDir$)
-  next i1
-
-  for j=1 to NumFiles
-    FileSrc.Open(FileNames(j), fmOpenRead)
-    if FileSrc.size=0 then FileSrc.close: goto SubDirCopynextj1
-
-    NewFileName$=FileNames(j)-DirSrc$
-    NewFileName$=DirDst$+NewFileName$
-    'print "NewFileName$=" ,NewFileName$
-    if FileDst.Open(NewFileName$, fmCreate) =-1 then
-      FileDst.CopyFrom  (FileSrc, 0)''
-      FileSrc.close''
-      FileDst.close
-    else
-      ShowMessage ("SubDirCopy error: Access denied "+NewFileName$)
-
-    end if
-    SubDirCopynextj1:
-  next j
-
-end sub
-
-'-- *****************************************************'
-function fSubDirCopy (DirSrc$, DirDst$, mask$) as long '- -----------------------------------'
-  'Andrew Shelkovenko dec 2003
-  'Copy DirSrc$ directory with full subdir structure and files (by mask$) to DirDst$
-  'DiaMsg$="Начало копирования.."
-
-  dim FileSrc as QFileStream
-  dim FileDst as QFileStream
-  dim i as long
-
-  result=-1
-  'Index=0
-  NumFiles=0
-  defint nsd1, nsd2
-  defstr mask
-  nsd1=0:nsd2=0
-  NumDir=0
-  ArrNumDir=500
-  dim SubDir(500) as string
-
-  ArrNumFil=500
-  dim FileNames (500) as string
-  mask="*.*"
-  if right$(DirSrc$,1)<> BkSl then DirSrc$=DirSrc$+BkSl
-  'print "DirSrc$="; DirSrc$
-
-  SubDir(0)=DirSrc$
-
-  sss1:
-  for i=NSD1 to Nsd2 'current level sudirs'
-    SubDirname$=dir$(SubDir(i)+mask, faDirectory)
-    while    SubDirname$ <>""
-      if FileRec.Size =0 and SubDirname$<> "." and SubDirname$<> ".." then ''
-        attr=GetFileAttributes(SubDir(i)+SubDirname$) ' inc2026: SubDir(i) вместо SubDir(d2): d2 нигде не получает значения (0), поэтому атрибуты брались для папки верхнего уровня, а не для текущей SubDir(i) (строка 672)
-        If (attr And FILE_ATTRIBUTE_DIRECTORY)=0 Then goto fSubDirCopynodir1
-        inc adddir
-        inc NumDir 'add subdir'
-        if NumDir=ArrNumDir then ArrNumDir=ArrNumDir+300: redim SubDir(ArrNumDir) as string:'DiaMsg$="‘Є ­ЁагҐ¬ Ї®¤¤ЁаҐЄв®аЁЁ "+SubDir(NumDir) 'SubDirname$
-        SubDir(NumDir)=SubDir(i)+SubDirname$+"\"
-      else
-      end if
-      fSubDirCopynodir1:
-      SubDirname$=dir$
-      doevents:if stops1=1 then stops1=0: exit function
-    wend
-
-    'DiaMsg$="Всего поддиректорий " +str$(NumDir)
-
-    'search files in current subdirectory
-    Fn$=dir$(SubDir(i)+mask$,faAnyFile-faDirectory) ':-)
-    attr=GetFileAttributes(SubDir(i)+Fn$) ' inc2026: SubDir(i) вместо SubDir(d2): d2 нигде не получает значения (0); текущая папка - SubDir(i) (строка 691)
-
-    while Fn$ <>""
-      if  Fn$<> "." and Fn$<> ".."  then 'and FileRec.Size <>0'
-        inc NumFiles
-        if NumFiles=ArrNumFil then ArrNumFil=ArrNumFil+300: redim FileNames(ArrNumFil) as string:'DiaMsg$=str$(NumFiles)
-        FileNames(NumFiles)=SubDir(i)+Fn$
-        'print "FileNames(",NumFiles,")=" ,FileNames(NumFiles)
-        'DiaMsg$="Сканируем файлы "+FileNames(NumFiles)
-      else
-      end if
-      Fn$=dir$
-    wend
-  next i
-  result=-2
-
-  if adddir>0 then
-    NSD1=NSD2+1
-    NSD2=NSD2+adddir
-    adddir=0
-    goto sss1 'repeat with new sub level
-  else
-  end if
-
-  ' got subdirs list in SubDir(i) array and file list with full path in FileNames(j)
-  ' now create subdirs structure with new path
-
-  for i1=0 to i-1
-    NewSubDir$=SubDir(i1)-DirSrc$
-    NewSubDir$=DirDst$+NewSubDir$
-    MKSubDir (NewSubDir$)
-  next i1
-  result=-3
-
-  for j=1 to NumFiles
-
-    FileSrc.Open(FileNames(j), fmOpenRead)
-    if FileSrc.size=0 then
-      FileSrc.close:
-      goto fSubDirCopynextj
-    end if
-
-    NewFileName1$=FileNames(j)-DirSrc$
-    NewFileName$=DirDst$+NewFileName1$
-
-    if FileDst.Open(NewFileName$, fmCreate) =-1 then
-
-      FileDst.CopyFrom  (FileSrc, 0)''
-      FileSrc.close''
-      FileDst.close
-    else
-      ShowMessage ("fSubDirCopy error: Access denied "+NewFileName$)
-
-    end if
-
-    fSubDirCopynextj:
-    doevents
-  next j
-
-  result=j-1
-
-end function
-
-fdefaultChkAttr=0
-fAttrChg=0
-
-'-- ***********************************************************************'
-function DirCopy (DirSrc$, DirDst$, mask$) as long
-  'print "DirCopy mask$=" ,mask$
-  'print "DirCopy DirDst$=" ,DirDst$
-  'print "DirCopy DirSrc$=" ,DirSrc$
-  'Andrew Shelkovenko dec 2003
-  'Copy files (by mask$) from DirSrc$ to DirDst$
-  result=0
-  dim FileSrc as QFileStream
-  dim FileDst as QFileStream
-  defint NumFIles
-  NumFIles=0
-  'MKDIR DirDst$
-  rz=MKSubDir (DirDst$)
-  if right$(DirSrc$,1)<>"\" then DirSrc$=DirSrc$+"\"
-  if right$(DirDst$,1)<>"\" then DirDst$=DirDst$+"\"
-
-  if direxists(DirDst$) =0 then
-    showmessage ("DirCopy Error: Can't create folder "+DirDst$)
-    exit function
-  end if
-
-  FileName$ = DIR$(DirSrc$+mask$, 0) '-- Get first file
-
-  while    FileName$ <>""
-    if fileexists(DirDst$+FileName$) =0 then goto DCcreate:
-    fOldfa=GetFileAttributes (DirDst$+FileName$)
-    fzas=FILE_ATTRIBUTE_READONLY or FILE_ATTRIBUTE_HIDDEN or FILE_ATTRIBUTE_SYSTEM
-
-    if (fOldfa and fzas) >0 then
-      if fdefaultChkAttr=0 then
-        frzm24=MessageDlg("DirCopy "+fMsg35$+"  "+DirDst$+FileName$, mtWarning, mbYes OR mbNo OR mbAll, 0)
-        IF frzm24 = mrNo THEN ' inc2026: frzm24 вместо rzm24: ответ MessageDlg записан в frzm24 (строка 789), rzm24 нигде не получает значения - ответ "Нет" не обрабатывался
-          fAttrChg=0
-          goto DirCopyExitSub:
-        elseif frzm24 = mrYes then
-          SetFileAttributes (DirDst$+FileName$,FILE_ATTRIBUTE_NORMAL)
-          fAttrChg=1
-        elseif frzm24 = mrAll then
-          fdefaultChkAttr=1
-          SetFileAttributes (DirDst$+FileName$,FILE_ATTRIBUTE_NORMAL)
-          fAttrChg=1
-        END IF
-
-      else
-        SetFileAttributes (DirDst$+FileName$,FILE_ATTRIBUTE_NORMAL)
-        fAttrChg=1
-      end if
-    else
-
-    end if
-    DCcreate:
-    FileSrc.Open(DirSrc$+filename$, fmOpenRead)
-    if FileDst.Open(DirDst$ +filename$, fmCreate) =-1 then
-      FileDst.CopyFrom  (FileSrc, 0)
-      FileDst.close
-    else
-      'result=0
-      ShowMessage ("DirCopy error: Access denied "+DirDst$ +filename$)
-
-    end if
-    FileSrc.close
-    SetFileAttributes (DirDst$+FileName$,fOldfa)
-
-    FileName$ = DIR$ '-- Get next file
-    inc NumFIles
-    DiaMsg$="DirCopy copied= "+str$(NumFIles) +" files"
-    'print"DiaMsg$=";DiaMsg$
-    doevents
-  wend
-  'print "DirCopy copied= "+str$(NumFIles) +" files
-  result=NumFIles
-  DirCopyExitSub:
-end function
-
-'-- ***********************************************************************'
-sub FileCopy (FileSrc$, FileDst$) '- -----------------------------------'
-  'Andrew Shelkovenko dec 2003
-  'Copy FileSrc$ to FileDst$
-  ' if path dest is not exists - create it.
-
-  dim FileSrc as QFileStream
-  dim FileDst as QFileStream
-
-  dr$=StripPath (FileDst$)
-  'print "dr$=" ,dr$
-
-  'MKDIR dr$ 'StripPath (FileDst$)
-
-  if dr$<>"" then
-    MKSubDir dr$
-    if DIREXISTS(dr$ ) =0 then showmessage ("FileCopy Can't create directory "+dr$ ): 'exit sub
-  end if
-
-  if FileSrc.Open(FileSrc$, fmOpenRead) =-1 then
-    if FileDst.Open(FileDst$, fmCreate) =-1 then
-      FileDst.CopyFrom  (FileSrc, 0)
-
-      FileDst.close
-      FileSrc.close
-    else
-      'print  "Can't create "+FileDst$
-    end if
-  else
-    'print  "File not found "+FileSrc$
-  end if
-
-end sub
-'-- ***********************************************************************'
-function fFileCopy (FileSrc$, FileDst$) as long '- -----------------------------------'
-  'print " fFileCopy FileSrc$=";FileSrc$
-  'Andrew Shelkovenko dec 2003
-  'Copy FileSrc$ to FileDst$
-  result=0
-  dim FileSrc as QFileStream
-  dim FileDst as QFileStream
-
-  'if Filesize(FileDst$)=0 then
-  'end if
-
-  dr$=StripPath (FileDst$)
-  'print "2 fFileCopy FileDst$=";FileDst$
-  'print " fFileCopy dr$=";dr$
-
-  if dr$<>"" then
-    if DIREXISTS(dr$ ) =0 then MKSubDir dr$
-    if DIREXISTS(dr$ ) =0 then result=-1: exit function 'showmessage ("FileCopy Can't create directory "+dr$ ): '
-  end if
-  result=-2
-  if FileSrc.Open(FileSrc$, fmOpenRead) =-1 then
-    result=-3
-    if FileDst.Open(FileDst$, fmCreate) =-1 then
-      result=-4
-      FileDst.CopyFrom  (FileSrc, 0)
-      FileSrc.close
-      FileDst.close
-      result=1
-    else
-      ShowMessage ("fFileCopy error: Can't create file "+FileDst$)
-
-    end if
-  else
-    ShowMessage ("fFileCopy error: Can't open file "+FileSrc$)
-
-  end if
-end function
-
-'-- ***********************************************************************'
-sub KillFiles (FileName$)
-  'Andrew Shelkovenko  diakin@narod.ru  apr 2004
-  'Kill files in FileName$ by mask
-  'for example KillFiles "C:\BAS\RAPIDQ\tmp\*.tmp"
-
-  FName$ =StripPath (FileName$)+ DIR$(FileName$, 0 ) '-- Get first file
-
-  while STRIPFILENAME (FName$) <>""
-    kill FName$
-
-    if fileexists (FName$)>0 then ShowMessage ("KillFiles Can't kill file "+FName$) ' inc2026: fileexists(FName$) вместо fileexists(StripPath(FileName$)+FName$): FName$ уже содержит путь (строки 911, 917), путь удваивался и проверка никогда не срабатывала
-    FName$ = StripPath (FileName$)+DIR$ '-- Get next file
-  wend
-end sub
-
-'-- *****************************************************'
-sub KillSubDir (DirSrc$, mask$)
-  'print "-- KillSubDir DirSrc$=",DirSrc$
-  'Andrew Shelkovenko diakin@narod.ru may 2004
-  'Kill files by mask$ in all subdirs in DirSrc$ directory and kill all empty subdirs and DirSrc$ (if empty)
-  'So.. if mask$="*.*" then  kill DirSrc$ with all subdirs and files
-
-  dim FileSrc as QFileStream
-
-  'Index=0
-  NumFiles=0
-  defint nsd1, nsd2
-  defstr mask
-  nsd1=0:nsd2=0
-  NumDir=0
-  ArrNumDir=500
-  dim SubDir(500) as string
-
-  ArrNumFil=500
-  dim FileNames (500) as string
-  mask="*.*"
-  if right$(DirSrc$,1)<>BkSl then SubDir(0)=DirSrc$+BkSl else SubDir(0)=DirSrc$
-
-  s1:
-  for i=NSD1 to Nsd2 'current level sudirs'
-    SubDirname$=dir$(SubDir(i)+mask, faDirectory)
-    print"SubDirname$=";SubDirname$
-
-    while    SubDirname$ <>""
-      if FileRec.Size =0 and SubDirname$<> "." and SubDirname$<> ".." then ''
-        inc adddir
-        inc NumDir 'add subdir'
-        if NumDir=ArrNumDir then ArrNumDir=ArrNumDir+300: redim SubDir(ArrNumDir) as string
-        subDir(NumDir)=SubDir(i)+SubDirname$+"\"
-      else
-      end if
-      SubDirname$=dir$
-      doevents:if stops1=1 then stops1=0: exit sub
-    wend
-
-    'search files in current subdirectory
-    Fn$=dir$(SubDir(i)+mask$,faAnyFile-faDirectory) ':-)
-    while Fn$ <>""
-      if  Fn$<> "." and Fn$<> ".."  then 'and FileRec.Size <>0'
-        kill SubDir(i)+Fn$
-      else
-      end if
-      Fn$=dir$
-    wend
-  next i
-
-  if adddir>0 then
-    NSD1=NSD2+1
-    NSD2=NSD2+adddir
-    adddir=0
-    goto s1 'repeat with new sub level
-  else
-  end if
-
-  for i1=i-1 to 1 step -1
-    RMDIR SubDir(i1)
-  next i1
-
-END SUB
-
-'-- ***********************************************************************'
-SUB io2Rnd (fsrc$, fdst$)
-  '--------------------------------
-  'convert text file with single value strings to binary
-  ' for example
-  '17.78091
-  '16.64166
-
-  'fsrc$ - source file  fdst$ - dest. file
-  'data type - single
-
-  'CONST fmCreate = 65535
-  'CONST fmOpenRead = 0
-  'CONST fmOpenWrite = 1
-  'CONST fmOpenReadWrite = 2
-
-  dim FileSourse as QFileStream
-  dim FileDest as QFileStream
-  defsng ValSrc
-
-  FileSourse.Open (fsrc$, 2 )'fmOpenReadWrite'
-  FileDest.Open   (fdst$, 65535 )  'fmOpenReadWrite'
-
-  WHILE NOT FileSourse.EOF
-    ValSrc$=FileSourse.ReadLine : 'print "ValSrc$=" ,ValSrc$
-    ValSrc=val(ValSrc$) :         'print "ValSrc=" ,ValSrc
-    FileDest.Write (ValSrc)
-  wend
-
-  FileSourse.CLOSE
-  FileDest.CLOSE
-
-END SUB
-
-
-'-- ***********************************************************************'
-SUB Rnd2io (fsrc$, fdst$)
-  '--------------------------------
-  'convert  binary file with single type value data to  text file with single type value strings
-  ' i.e
-  '17.78091
-  '16.64166
-  '19.87037
-
-  'CONST fmCreate = 65535
-  'CONST fmOpenRead = 0
-  'CONST fmOpenWrite = 1
-  'CONST fmOpenReadWrite = 2
-
-  'CONST Num_BYTE = 1
-  'CONST Num_SHORT = 2
-  'CONST Num_WORD = 3
-  'CONST Num_LONG = 4
-  'CONST Num_DWORD = 5
-  'CONST Num_SINGLE = 6
-  'CONST Num_DOUBLE = 8
-
-  dim FileSourse as QFileStream
-  dim FileDest as QFileStream
-
-  defsng ValSrc
-
-  FileSourse.Open (fsrc$, 2 )        'fmOpenReadWrite'
-  FileDest.Open   (fdst$, 65535 )    'fmOpenCreate'
-
-  ie = FileSourse.size/4: 'print "ie=" ,ie
-
-  for i=0 to ie-1
-    ValSrc=FileSourse.ReadNum(6) :'print "ValSrc=" ,ValSrc
-    ValSrc$=str$(ValSrc):   'print "ValSrc$=" ,ValSrc$
-    FileDest.WriteLine (ValSrc$)
-  next i
-
-  FileSourse.CLOSE
-  FileDest.CLOSE
-
-END SUB
-
-'-- ***********************************************************************'
-SUB io2RndPV (fsrc$, fdst$)
-  '--------------------------------
-  'convert text file with single value strings to binary
-  ' for example
-  '17.78091
-  '16.64166
-
-  'fsrc$ - source file  fdst$ - dest. file
-  'data type - single
-
-  'CONST fmCreate = 65535
-  'CONST fmOpenRead = 0
-  'CONST fmOpenWrite = 1
-  'CONST fmOpenReadWrite = 2
-
-  dim FileSourse as QFileStream
-  dim FileDest as QFileStream
-  defsng ValSrc
-
-  FileSourse.Open (fsrc$, 2 )'fmOpenReadWrite'
-  FileDest.Open   (fdst$, 65535 )  'fmOpenReadWrite'
-
-  WHILE NOT FileSourse.EOF
-    ValSrc$=FileSourse.ReadLine : 'print "ValSrc$=" ,ValSrc$
-    ValSrc=val(ValSrc$) :         'print "ValSrc=" ,ValSrc
-    FileDest.Write (ValSrc)
-  wend
-
-  FileSourse.CLOSE
-  FileDest.CLOSE
-
-END SUB
-
-
-'-- ***********************************************************************'
-SUB io2RndInter (io$, rndf$, LostP)
-  'convert text file with the two-fields per string "point,data" format
-  ' to binary format with interpolation of missed points
-  '---- for example -----
-  ' 0,17.78091
-  ' 1,16.64166
-  '     points 2,3 is missed
-  ' 4,19.87037
-  ' 5,16.64123
-  '------------------------------------
-  'io$   - source text file
-  'rndf$ - destination binary file
-  'LostP - return number of missed points (use @LostP )
-  ' call io2RndInter (io$, rndf$, @LostP)
-  '------------------------------------
-  dim io2RndFile2 as QfileStream
-  dim io2Rndtmp as QfileStream
-  dim io2RndList as QSTRINGLIST
-  dim ioNumPnt as integer
-  dim i0 as integer
-
-  dim doevnt
-  doevnt=-99
-  doevnt=LostP
-
-  defsng pnt
-  if fileexists (io$)=0 then showmessage ("io2RndInter File not found "+io$):exit sub
-  if FileSize(io$)<1 then showmessage ("io2RndInter Zero size file "+io$):LostP=-99:exit sub
-
-  io2RndList.LoadFromFile (io$)
-  ArgName$=FullPathNoExt(rndf$)+"Arg"+STRIPFILEEXT(rndf$)
-  io2RndFile2.Open(rndf$, fmCreate)
-  io2Rndtmp.Open(ArgName$, fmCreate)
-
-  pntOld = 0: AdatOld! = 0: LostP = 1:j=0: i0=0
-  i0=val(Field$(io2RndList.Item(0),",", 1))
-
-  for k=0 to io2RndList.ItemCount-1
-    pnt=val(Field$(io2RndList.Item(k),",", 1))
-    Adat!=val( Field$(io2RndList.Item(k),",", 2) )
-    IF pnt = i0 THEN
-      io2RndFile2.WriteNum(Adat!,Num_SINGLE )
-      'io2Rndtmp.WriteLine (str$(pnt)+" "+str$(Adat!) )
-      io2Rndtmp.WriteNum (pnt,Num_SINGLE)
-      pntOld = pnt: AdatOld! = Adat!
-    elseif pnt < i0 then
-      io2RndFile2.WriteNum(Adat!,Num_SINGLE )
-      'io2Rndtmp.WriteLine (str$(i0)+" "+str$(Adat!) )
-      io2Rndtmp.WriteNum (pnt,Num_SINGLE)
-      pntOld = i0: AdatOld! = Adat!
-    else
-      IF pnt <> pntOld THEN ki! = (Adat! - AdatOld!) / (pnt - pntOld) ELSE GOTO ex1
-      FOR j = i0 TO pnt - 1
-        LostP = LostP + 1
-        Adat1! = AdatOld! + ki!
-        io2RndFile2.WriteNum(Adat1!,Num_SINGLE )
-        'io2Rndtmp.WriteLine (str$(j)+" "+str$(Adat1!) )
-        io2Rndtmp.WriteNum (j,Num_SINGLE)
-        AdatOld! = Adat1!
-      NEXT j
-      AdatOld! = Adat!: pntOld = pnt:
-      'io2Rndtmp.WriteLine (str$(pnt)+" "+str$(Adat!) )
-      io2Rndtmp.WriteNum (pnt,Num_SINGLE)
-      io2RndFile2.WriteNum(Adat!,Num_SINGLE )
-      i0 = j
-    END IF
-    ex1:
-    inc i0
-    if doevnt=-1 then doevents
-  next k
-  io2RndFile2.close
-  io2Rndtmp.close
-  'print "io2Rnd completed"
-END SUB
-
-'-- **********************************************'
-SUB io2RndInter1 (io$, rndf$, LostP)
-  'convert text file with the two-fields per string "point,data" format
-  ' to binary format file with interpolation of missed points
-  ' and with averaging-out of extra points
-  ' points sequence can be to increase or to decrease
-  ' outputs two binary files - argue (point number) and function (point value)
-  '---- for example -----
-  ' 5,17.78091
-  ' 4,16.61626
-  ' 4,13.44161 extra points
-  ' 4,19.68366
-  '     points 2,3 is missed
-  ' 1,19.87037
-  ' 0,16.64123
-  '------------------------------------
-  'io$   - source text file
-  'rndf$ - name of destination binary file. (function (point value))
-
-  '- name of destination binary file. (argue (point number))
-  'ArgName$=FullPathNoExt(rndf$)+"Arg"+STRIPFILEEXT(rndf$)
-
-  'LostP - return number of missed points (use @LostP in sub call)
-  ' call io2RndInter1 (io$, rndf$, @LostP)
-  '------------------------------------
-  dim io2RndFile2 as QfileStream
-  dim io2RndArg as QfileStream
-  dim io2io as QfileStream
-  dim io2Rndtxt as QfileStream
-
-
-  dim io2RndList as QSTRINGLIST
-  dim ioNumPnt as integer
-  dim i0 as integer
-  dim pnt as single
-  needtoWrite=0
-  dim doevnt
-  doevnt=-99
-  doevnt=LostP
-
-  if fileexists (io$)=0 then showmessage ("io2RndInter File not found "+io$): exit sub
-  if FileSize(io$)<1 then showmessage ("io2RndInter Zero size file "+io$): LostP=-99: exit sub
-
-  io2RndList.LoadFromFile (io$)
-  io2RndList.text=replacesubstr$(io2RndList.text,crlf+crlf,crlf)
-
-  ArgName$=FullPathNoExt(rndf$)+"Arg"+STRIPFILEEXT(rndf$)
-  ioutName$=FullPathNoExt(rndf$)+".io2"
-  txtOutName$=FullPathNoExt(rndf$)+".txt"
-
-
-  print"io2RndInter1 ArgName$=";ArgName$
-
-  io2RndFile2.Open(rndf$, fmCreate)
-  io2RndArg.Open(ArgName$, fmCreate)
-  io2io.Open(ioutName$, fmCreate)
-
-  pntOld = 0: AdatOld! = 0: LostP = 1: j=0: i0=0
-  i0=val(Field$(io2RndList.Item(0),",", 1))
-  'print"i0=";i0
-
-  aaa$=""
-  bzz=io2RndList.ItemCount-1
-
-  while aaa$="" and bzz>0
-    aaa$=io2RndList.Item(bzz)
-    dec bzz
-  wend
-
-  iend=val(Field$(aaa$,",", 1))
-  print"io2RndInter1 iend=";iend
-
-  if iend> 10* bzz then
-    showmessage "Некорректные данные в архиве "+FullPathNoExt(rndf$)
-    iend= bzz
-  end if
-
-  if iend>i0 then
-    io2stp=1
-  elseif iend<i0 then
-    io2stp=-1
-  else
-    'showmessage ("io2RndInter Begin point= EndPoint")
-    showmessage "Некорректные данные в архиве "+FullPathNoExt(rndf$)
-  end if
-
-  for k=0 to io2RndList.ItemCount-1
-    'Gauge.Position=cint(k/(bzz-1) *100)
-    if k> kold+250 then
-      locate 1,10
-      print"io2RndInter1 k=";k
-      kold=k
-    end if
-
-    pnt=val(Field$(io2RndList.Item(k),",", 1))
-    Adat!=val( Field$(io2RndList.Item(k),",", 2) )
-    IF pnt = i0 THEN
-      if needtoWrite=1 then
-        io2RndFile2.Position=io2RndFile2.Position-4 ' 4 byte for single type
-        io2RndArg.Position=io2RndArg.Position-4
-        io2RndFile2.WriteNum(AdatOld!,Num_SINGLE ) ' усредняем
-        io2RndArg.WriteNum (pntOld,Num_SINGLE)
-        io2io.WriteLine (str$(pntOld)+","+str$(AdatOld!))
-
-        'call  AddClrString ("pnt old="+str$(pntold)+" "+str$(AdatOld!) , clred, LogEdit)
-        needtoWrite=0
-      end if
-      io2RndFile2.WriteNum(Adat!,Num_SINGLE )
-      io2RndArg.WriteNum (pnt,Num_SINGLE)
-      io2io.WriteLine (str$(pnt)+","+str$(Adat!))
-
-      'call  AddClrString ("pnt="+str$(pnt)+" "+str$(Adat!), clred, LogEdit)
-      pntOld = pnt: AdatOld! = Adat!
-    else
-      if iend>i0 then
-        if pnt < i0 then
-          AdatOld! = (Adat!+AdatOld!)/2
-          dec i0
-          needtoWrite=1
-        elseIF pnt > i0 THEN ' points missed - interpoliren
-          ki! = (Adat! - AdatOld!) / (pnt - pntOld)
-          FOR j = i0 TO pnt -io2stp step io2stp
-            LostP = LostP + 1
-            Adat1! = AdatOld! + ki!*io2stp
-            io2RndFile2.WriteNum(Adat1!,Num_SINGLE )
-            io2RndArg.WriteNum (j,Num_SINGLE)
-            io2io.WriteLine (str$(j)+","+str$(Adat1!)) ' inc2026: Adat1! вместо Adat!: в цикле интерполяции пишется промежуточное значение Adat1! (строка 1299), так же в парной ветке (строка 1323)
-            AdatOld! = Adat1!
-          NEXT j
-          AdatOld! = Adat!: pntOld = pnt:
-          'io2RndArg.WriteLine (str$(pnt)+" "+str$(Adat!) )
-          io2RndArg.WriteNum (pnt,Num_SINGLE)
-          io2RndFile2.WriteNum(Adat!,Num_SINGLE )
-          io2io.WriteLine (str$(pnt)+","+str$(Adat!))
-          i0 = j
-        end if
-      elseif iend<i0 then
-        if pnt > i0 then ' extra points - averaging-out
-          AdatOld! = (Adat!+AdatOld!)/2
-          inc i0
-          needtoWrite=1
-        elseIF pnt < i0 THEN ' points missed - interpoliren
-          ki! = (Adat! - AdatOld!) / (pnt - pntOld)
-          FOR j = i0 TO pnt -io2stp step io2stp
-            LostP = LostP + 1
-            Adat1! = AdatOld! + ki!*io2stp
-            io2RndFile2.WriteNum(Adat1!,Num_SINGLE )
-            io2RndArg.WriteNum (j,Num_SINGLE)
-            io2io.WriteLine (str$(j)+","+str$(Adat1!))
-            AdatOld! = Adat1!
-          NEXT j
-          AdatOld! = Adat!: pntOld = pnt:
-          'io2RndArg.WriteLine (str$(pnt)+" "+str$(Adat!) )
-          io2RndArg.WriteNum (pnt,Num_SINGLE)
-          io2RndFile2.WriteNum(Adat!,Num_SINGLE )
-          io2io.WriteLine (str$(pnt)+","+str$(Adat!))
-          i0 = j
-        end if
-      else
-        'showmessage ("io2RndInter Begin point= EndPoint"): exit sub
-        goto io2RndInterexitsub
-      END IF
-
-    end if
-
-    ex1:
-    if iend>i0 then
-      inc i0
-    elseif iend<i0 then
-      dec i0
-    else
-      'showmessage ("io2RndInter Begin point= EndPoint")
-      goto io2RndInterexitsub
-    end if
-    if doevnt=-1 then doevents
-  next k
-  io2RndInterexitsub:
-
-  io2RndFile2.close
-  io2RndArg.close
-  io2io.close
-END SUB
-
-'***********************************************
-sub ioAverage (io$, outf$, bpnt as integer)
-  ' процедура обработки файла формата точка, данные, когда на каждую точку приходится несколько отсчетов
-  dim InputList as QSTRINGLIST
-  dim OutPutList as QSTRINGLIST
-  InputList.clear
-  OutPutList.clear
-  if fileExists (io$)> 0 and FileSize(io$)>0 then
-    InputList.LoadFromFile (io$)
-  else
-    'ShowMessage ("ioAverage:File "+io$ +" not found")
-    exit sub
-  end if
-
-  if InputList.ItemCount<5 then
-    'ShowMessage ("ioAverage:Data not found")
-    exit sub
-  end if
-
-  pntOld=1
-  newpnt=1
-  ep=0
-
-
-  for k=0 to InputList.ItemCount-1
-    a$=InputList.item (k)
-    pnt=val(Field$(InputList.Item(k),",", 1)):
-    Adat!=val( Field$(InputList.Item(k),",", 2)):
-
-    if k=0 then pntOld=pnt:bpnt=pnt
-
-    if pnt=pntOld then
-      Aver=Aver+Adat!:'RQDebug("строка 37",0,"k", k, "pnt",pnt,"Adat!",Adat!,"ep",ep,"Aver",Aver)
-      inc ep
-    else
-      if ep=0 then ep=1
-      Aver=Aver/ep:'RQDebug("строка 41",0,"k", k, "pnt",pnt,"Adat!",Adat!,"ep",ep,"Aver",Aver)
-      OutPutList.AddItems  str$(pntOld)+","+str$(Aver)
-      inc newpnt
-      'RQDebug("k", k, "pnt",pnt,"Adat!",Adat!,"Aver",Aver)
-      Aver=Adat!
-      pntOld=pnt
-      ep=1
-    end if
-
-  next k
-  Aver=Aver/ep:'RQDebug("строка 41",0,"k", k, "pnt",pnt,"Adat!",Adat!,"ep",ep,"Aver",Aver)
-  OutPutList.AddItems  str$(pntOld)+","+str$(Aver)
-
-  OutPutList.SaveToFile (outf$)
-end sub
-
-'-------------------------------------------------------------------'
-'-- ***********************************************************************'
-function ChDirOEM (PathDst$) as short
-  'print "ChDirOEM PathDst$=" ,PathDst$
-  result=0
-  dim PathDst1$ as string
-  PathDst1$=string$(len(PathDst$),"a")
-  chartooem PathDst$,PathDst1$
-  'print "ChDirOEM PathDst$=" ,PathDst$
-  'print "ChDirOEM PathDst1$=" ,PathDst1$
-
-  CHDIR  PathDst1$
-  result=1
-end function
-
-'-------------------------------------------------------------------'
-'-- ***********************************************************************'
-function MkDirOEM (PathDst$) as short
-  result=0
-  dim PathDst1$ as string
-  'print "MkDirOEM PathDst$=" ,PathDst$
-  PathDst1$=string$(len(PathDst$),"a")
-  chartooem PathDst$,PathDst1$
-  'print "MkDirOEM PathDst$=" ,PathDst$
-  'print "MkDirOEM PathDst1$=" ,PathDst1$
-  MkDIR  PathDst1$
-  result=1
-end function
-
-'*****************************************
-function DownLoadURL (sUrl as string, dFileName as string) as long
-  'print"sUrl=";sUrl
-  ' скачивает файл с заданного sURL и сохраняет под именем dFileName
-  'возвращает число скачанных байт TotalReadBytes или -1 в случае ошибки
-
-  Dim hOpen As Long, hFile As Long, sBuffer As String, ReadBytes As Long, TotalReadBytes As Long
-  defint sBufferSize=2048
-  filetxt$=""
-
-  'Create a buffer for the file we're going to download
-  sBuffer = Space$(sBufferSize)+"<<<" ' inc2026: Space$ вместо Space: в RapidQ есть только SPACE$ (indexa.html); в документации только SPACE$
-
-
-  'Create an internet connection
-  hOpen = InternetOpen(scUserAgent, INTERNET_OPEN_TYPE_DIRECT, vbNullString, vbNullString, 0)
-  'print"hOpen=";hOpen
-  'Open the url
-
-  hFile = InternetOpenUrl(hOpen, sURL, vbNullString, 0&, INTERNET_FLAG_RELOAD, ByVal 0&)
-  'print"hFile=";hFile
-
-  'Read the first 1000 bytes of the file
-  zzz=InternetReadFile (hFile, sBuffer, sBufferSize, ReadBytes)
-  filetxt$=left$(sBuffer,ReadBytes)
-  TotalReadBytes=ReadBytes
-
-
-  while ReadBytes>0
-    'print"ReadBytes=";ReadBytes
-    'print"zzz=";zzz
-    'clean up
-    'Show our file
-    'PRINT sBuffer
-    zzz=InternetReadFile (hFile, sBuffer, sBufferSize, ReadBytes)
-    filetxt$=filetxt$+left$(sBuffer,ReadBytes)
-    TotalReadBytes=TotalReadBytes+ReadBytes
-  wend
-
-  InternetCloseHandle (hFile)
-  InternetCloseHandle (hOpen)
-
-  zzj=savestring(filetxt$,dFileName)
-
-  DownLoadURL=TotalReadBytes
-
-End Function ' inc2026: END FUNCTION вместо END SUB: процедура открыта как function DownLoadURL (строка 1440)
-
-
-'============================================================================
 '[build_inc] Files1.inc
 '============================================================================
 Const FILE_ATTRIBUTE_READONLY = &H1
@@ -20370,26 +21263,26 @@ Const FILE_ATTRIBUTE_COMPRESSED = &H800
 
 
 '# QUOTE : Returns a quoted string
-'~dup function Quote (StringToQuote as string) as string   ' повтор, первое: fileops.inc(20)
+'~dup function Quote (StringToQuote as string) as string   ' повтор, первое: Files.inc(75)
 '~dup StringToQuote =  chr$(34) + StringToQuote + chr$(34)
 '~dup result = replacesubstr$(stringtoquote, chr$(34) + chr$(34), chr$(34))
 '~dup end function
 
 '===============================================================================
 '# STRIPPATH : Returns file path (without file name)
-'~dup Function StripPath (fullname as string) as string   ' повтор, первое: fileops.inc(27)
+'~dup Function StripPath (fullname as string) as string   ' повтор, первое: Files.inc(82)
 '~dup result = left$(fullname, rinstr(fullname, "\"))
 '~dup end function
 
 '===============================================================================
 '# STRIPFILENAME : Returns file name (without path)
-'~dup Function StripFileName (fullname as string) as string   ' повтор, первое: fileops.inc(33)
+'~dup Function StripFileName (fullname as string) as string   ' повтор, первое: Files.inc(95)
 '~dup result = right$(fullname, len(fullname) - rinstr(fullname, "\"))
 '~dup end function
 
 '===============================================================================
 '# STRIPFILEEXT : Returns file extension (like ".exe", ".html" etc.)
-'~dup Function StripFileExt (fullname as string) as string   ' повтор, первое: fileops.inc(39)
+'~dup Function StripFileExt (fullname as string) as string   ' повтор, первое: Files.inc(110)
 '~dup fullname=StripFileName(fullname)
 '~dup if instr(fullname,".")=0 then 
 '~dup 	result =""
@@ -20400,20 +21293,20 @@ Const FILE_ATTRIBUTE_COMPRESSED = &H800
 
 '===============================================================================
 '# FILENAMENOEXT : Returns file name without extension
-'~dup function FileNameNoExt(fullname as string) as string   ' повтор, первое: fileops.inc(45)
+'~dup function FileNameNoExt(fullname as string) as string   ' повтор, первое: Files.inc(120)
 '~dup fullname = right$(fullname, len(fullname) - rinstr(fullname, "\"))
 '~dup result = left$(fullname, rinstr(fullname, ".") - 1)
 '~dup end function
 
 '===============================================================================
 '# FULLPATHNOEXT : Returns full path without file extension
-'~dup function FullPathNoExt(fullname as string) as string   ' повтор, первое: fileops.inc(52)
+'~dup function FullPathNoExt(fullname as string) as string   ' повтор, первое: Files.inc(127)
 '~dup result = left$(fullname, rinstr(fullname, ".") - 1)
 '~dup end function
 
 '===============================================================================
 '# C_Style : Returns "slashed" path from a "backslashed" one
-'~dup function C_Style (fullname as string) as string   ' повтор, первое: fileops.inc(58)
+'~dup function C_Style (fullname as string) as string   ' повтор, первое: Files.inc(133)
 '~dup fullname = replacesubstr$(fullname, "\\", "\")
 '~dup result = replacesubstr$(fullname, "\", "/")
 '~dup end function
@@ -20433,7 +21326,7 @@ Const FILE_ATTRIBUTE_COMPRESSED = &H800
 ' Administrative Tools    |                         |                         |
 '-----------------------------------------------------------------------------|
 
-'~dup function SysDir (dir as string) as string   ' повтор, первое: fileops.inc(77)
+'~dup function SysDir (dir as string) as string   ' повтор, первое: Files.inc(160)
 '~dup DIM fo_reg AS QRegistry
 '~dup fo_reg.RootKey = &H80000001
 '~dup fo_reg.openkey ("Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders", 0)
@@ -20443,14 +21336,14 @@ Const FILE_ATTRIBUTE_COMPRESSED = &H800
 '===============================================================================
 '# HOMEDIR : The folder where the application is
 
-'~dup function homedir() as string   ' повтор, первое: fileops.inc(86)
+'~dup function homedir() as string   ' повтор, первое: Files.inc(170)
 '~dup result = left$(command$(0), rinstr(command$(0), "\"))
 '~dup end function
 
 '===============================================================================
 '# BROWSEFORFOLDERS : Returns the selected folder
 
-'~dup function BrowseForFolders (initialdir as string, wincapt as string) as string   ' повтор, первое: fileops.inc(122)
+'~dup function BrowseForFolders (initialdir as string, wincapt as string) as string   ' повтор, первое: Files.inc(177)
 '~dup dim bff_form as qform
 '~dup with bff_form
 '~dup 	.height = 400
@@ -20476,7 +21369,7 @@ Const FILE_ATTRIBUTE_COMPRESSED = &H800
 '===============================================================================
 '# BROWSEFORFILE : Returns the selected folder
 
-'~dup Function BrowseForFile (caption as string, filter as string, _   ' повтор, первое: fileops.inc(147)
+'~dup Function BrowseForFile (caption as string, filter as string, _   ' повтор, первое: Files.inc(203)
 '~dup initialdir as string) as string
 '~dup 
 '~dup dim bff_od as qopendialog
@@ -21630,26 +22523,26 @@ $ESCAPECHARS Off
 
 
 '# QUOTE : Returns a quoted string
-'~dup function Quote (StringToQuote as string) as string   ' повтор, первое: fileops.inc(20)
+'~dup function Quote (StringToQuote as string) as string   ' повтор, первое: Files.inc(75)
 '~dup StringToQuote =  chr$(34) + StringToQuote + chr$(34)
 '~dup result = replacesubstr$(stringtoquote, chr$(34) + chr$(34), chr$(34))
 '~dup end function
 
 '===============================================================================
 '# STRIPPATH : Returns file path (without file name)
-'~dup Function StripPath (fullname as string) as string   ' повтор, первое: fileops.inc(27)
+'~dup Function StripPath (fullname as string) as string   ' повтор, первое: Files.inc(82)
 '~dup result = left$(fullname, rinstr(fullname, "\"))
 '~dup end function
 
 '===============================================================================
 '# STRIPFILENAME : Returns file name (without path)
-'~dup Function StripFileName (fullname as string) as string   ' повтор, первое: fileops.inc(33)
+'~dup Function StripFileName (fullname as string) as string   ' повтор, первое: Files.inc(95)
 '~dup result = right$(fullname, len(fullname) - rinstr(fullname, "\"))
 '~dup end function
 
 '===============================================================================
 '# STRIPFILEEXT : Returns file extension (like ".exe", ".html" etc.)
-'~dup Function StripFileExt (fullname as string) as string   ' повтор, первое: fileops.inc(39)
+'~dup Function StripFileExt (fullname as string) as string   ' повтор, первое: Files.inc(110)
 '~dup if instr(fullname,".")=0 then 
 '~dup 	result =""
 '~dup else
@@ -21659,20 +22552,20 @@ $ESCAPECHARS Off
 
 '===============================================================================
 '# FILENAMENOEXT : Returns file name without extension
-'~dup function FileNameNoExt(fullname as string) as string   ' повтор, первое: fileops.inc(45)
+'~dup function FileNameNoExt(fullname as string) as string   ' повтор, первое: Files.inc(120)
 '~dup fullname = right$(fullname, len(fullname) - rinstr(fullname, "\"))
 '~dup result = left$(fullname, rinstr(fullname, ".") - 1)
 '~dup end function
 
 '===============================================================================
 '# FULLPATHNOEXT : Returns full path without file extension
-'~dup function FullPathNoExt(fullname as string) as string   ' повтор, первое: fileops.inc(52)
+'~dup function FullPathNoExt(fullname as string) as string   ' повтор, первое: Files.inc(127)
 '~dup result = left$(fullname, rinstr(fullname, ".") - 1)
 '~dup end function
 
 '===============================================================================
 '# C_Style : Returns "slashed" path from a "backslashed" one
-'~dup function C_Style (fullname as string) as string   ' повтор, первое: fileops.inc(58)
+'~dup function C_Style (fullname as string) as string   ' повтор, первое: Files.inc(133)
 '~dup fullname = replacesubstr$(fullname, "\\", "\")
 '~dup result = replacesubstr$(fullname, "\", "/")
 '~dup end function
@@ -21692,7 +22585,7 @@ $ESCAPECHARS Off
 ' Administrative Tools    |                         |                         |
 '-----------------------------------------------------------------------------|
 
-'~dup function SysDir (dir as string) as string   ' повтор, первое: fileops.inc(77)
+'~dup function SysDir (dir as string) as string   ' повтор, первое: Files.inc(160)
 '~dup DIM fo_reg AS QRegistry
 '~dup fo_reg.RootKey = &H80000001
 '~dup fo_reg.openkey ("Software\Microsoft\Windows\CurrentVersion\Explorer\Shell Folders", 0)
@@ -21702,14 +22595,14 @@ $ESCAPECHARS Off
 '===============================================================================
 '# HOMEDIR : The folder where the application is
 
-'~dup function homedir() as string   ' повтор, первое: fileops.inc(86)
+'~dup function homedir() as string   ' повтор, первое: Files.inc(170)
 '~dup result = left$(command$(0), rinstr(command$(0), "\"))
 '~dup end function
 
 '===============================================================================
 '# BROWSEFORFOLDERS : Returns the selected folder
 
-'~dup function BrowseForFolders (initialdir as string, wincapt as string) as string   ' повтор, первое: fileops.inc(122)
+'~dup function BrowseForFolders (initialdir as string, wincapt as string) as string   ' повтор, первое: Files.inc(177)
 '~dup dim bff_form as qform
 '~dup with bff_form
 '~dup 	.height = 400
@@ -21735,7 +22628,7 @@ $ESCAPECHARS Off
 '===============================================================================
 '# BROWSEFORFILE : Returns the selected folder
 
-'~dup Function BrowseForFile (caption as string, filter as string, _   ' повтор, первое: fileops.inc(147)
+'~dup Function BrowseForFile (caption as string, filter as string, _   ' повтор, первое: Files.inc(203)
 '~dup initialdir as string) as string
 '~dup 
 '~dup dim bff_od as qopendialog
@@ -22894,7 +23787,7 @@ $ESCAPECHARS Off
 '===============================================================================
 '# BROWSEFORFOLDERS : Returns the selected folder
 
-'~dup function BrowseForFolders (initialdir as string, wincapt as string) as string   ' повтор, первое: fileops.inc(122)
+'~dup function BrowseForFolders (initialdir as string, wincapt as string) as string   ' повтор, первое: Files.inc(177)
 '~dup dim bff_form as qform
 '~dup with bff_form
 '~dup .height = 400
@@ -23207,558 +24100,6 @@ Create Button1 as QButton
       Height  = 25
       Caption = "Button1"
 End Create
-
-'============================================================================
-'[build_inc] func_array.inc
-'============================================================================
-'-- **************************************************************************'
-function ARRAverage (Dat!() as single, MinEl  as integer, MaxEl as integer) as single
-' calculate average value from function Dat1!()
-defint  p
-defsng ARMid!=0
-
-FOR p = MinEl TO MaxEl:
-	ARMid! = ARMid! + Dat!(p):
-NEXT p
-
-average! = ARMid! / (MaxEl-MinEl+1)
-
-result=average!
-END function
-'-- **************************************************************************'
-sub ARRAverageSubtract (Dat!() as single) 
-' calculate and subtract average value from function Dat1!()
-defint  p, Lmin1, Lmax1
-Lmin1 = LBOUND(Dat!):Lmax1 = UBOUND(Dat!) 
-defsng ARMid!=0
-'print"ARRAverageSubtract Lmax1=";Lmax1
-'print"ARRAverageSubtract Lmin1=";Lmin1
-
-FOR p = Lmin1 TO Lmax1:
-	ARMid! = ARMid! + Dat!(p):
-
-NEXT p
-
-average! = ARMid! / (Lmax1-LMin1+1)
-'print"average!=";average!
-
-FOR p = LMin1 TO Lmax1: 
-Dat!(p) = Dat!(p) - average!: 
-'print"Dat!(";p;")=";Dat!(p)
-NEXT p
-'print"end ----------"
-
-END sub
-
-'-- **************************************************************************'
-FUNCTION ARRMax (Dat!() as single, MinEl  as integer, MaxEl as integer) as single
-'find max element of array
-defint  p
-defsng ARMax!=Dat!(MinEl)
-FOR p = MinEl TO MaxEl:
-	IF Dat!(p) > ARMax! THEN ARMax! = Dat!(p):
-NEXT p
-result = ARMax!
-END FUNCTION
-
-'-- **************************************************************************'
-FUNCTION ARRMin (Dat!() as single, MinEl  as integer, MaxEl as integer) as single 
-'find min element of array
-defint p
-defsng ARMin!=Dat!(MinEl)
-FOR p = MinEl TO MaxEl:
-	IF Dat!(p) < ARMin! THEN ARMin! = Dat!(p):
-NEXT p
-result = ARMin!
-END FUNCTION
-
-'-- **************************************************************************'
-FUNCTION ARRMaxEx (Dat!() as single, MinEl  as integer, MaxEl as integer,byref pointX!) as single
-'print"ARRMaxEx MaxEl=";MaxEl
-'print"ARRMaxEx MinEl=";MinEl
-'find max abs element of array
-defint  p
-defsng ARMax!=(Dat!(MinEl))
-
-'print"ARRMaxEx ARMax!=";ARMax!
-
-FOR p = MinEl TO MaxEl-1:
-	IF (Dat!(p)) > (ARMax!) THEN ARMax! = (Dat!(p)) :pointX!=p
-'print"ARMax!=";ARMax!
-'print"Dat!(";p;")=";Dat!(p)
-NEXT p
-
-result = ARMax!
-
-END FUNCTION
-
-'-- **************************************************************************'
-FUNCTION ARRMinEx (Dat!() as single, MinEl  as integer, MaxEl as integer, byref pointX!) as single 
-'find min element of array
-defint p
-defsng ARMin!=(Dat!(MinEl))
-FOR p = MinEl TO MaxEl:
-	IF (Dat!(p)) < ARMin! THEN ARMin! = (Dat!(p)): pointX!=p
-NEXT p
-result = ARMin!
-
-END FUNCTION
-
-
-'-- **************************************************************************'
-FUNCTIONI FindMax (...) AS DOUBLE
-
-DIM Largest AS DOUBLE
-DIM I AS BYTE
-
-Largest = ParamVal(1)
-
-FOR I = 1 TO ParamValCount
-	IF ParamVal(I) > Largest THEN
-		''       print "ParamVal(",I,")=" ,ParamVal(I)
-		Largest = ParamVal(I)
-	END IF
-NEXT
-
-FindMax = Largest         ' or Result = Largest
-END FUNCTIONI
-
-'-- **************************************************************************'
-sub ArrExtr (Dat!() as single, byref DatMin!, byref DatMax!) '' as single 
-'find  maximum and minimum
-
-defint  p
-defint MaxEl,MinEl
-
-MinEl=lbound(Dat!)
-MaxEl=ubound(Dat!)
-
-defsng ARMax!=Dat!(MinEl)
-defsng ARMin!=Dat!(MinEl)
-
-FOR p = MinEl TO MaxEl:
-	IF Dat!(p) > ARMax! THEN ARMax! = Dat!(p):
-	IF Dat!(p) < ARMin! THEN ARMin! = Dat!(p):
-	
-NEXT p
-DatMax!=ARMax!
-'print "DatMax=" ,DatMax!
-DatMin!=ARMin!
-'print "DatMin=" ,DatMin!
-
-END SUB
-
-'**********************************************************************
-sub ArrAbsExtrN (Dat!() as single, byref _AbsDatMax!, N as integer) 
-defint  p
-defint MaxEl,MinEl
-
-MinEl=lbound(Dat!)+N
-'print "ArrAbsExtr sub MinEl=" ,MinEl
-MaxEl=ubound(Dat!)
-'print "ArrAbsExtr sub MaxEl=" ,MaxEl
-
-defsng ARMax!=Dat!(MinEl)
-defsng ARMin!=Dat!(MinEl)
-_AbsDatMax!=ARMax!
-FOR p = MinEl TO MaxEl:
-	IF abs(Dat!(p)) >  _AbsDatMax! THEN  _AbsDatMax! = abs(Dat!(p))
-NEXT p
-'print "sub _AbsDatMax!=" ,_AbsDatMax!
-
-END SUB
-
-
-'**********************************************************************
-sub ArrAbsExtr (Dat!() as single, byref _AbsDatMax!) 
-defint  p
-defint MaxEl,MinEl
-
-MinEl=lbound(Dat!)
-'print "ArrAbsExtr sub MinEl=" ,MinEl
-MaxEl=ubound(Dat!)
-'print "ArrAbsExtr sub MaxEl=" ,MaxEl
-
-defsng ARMax!=Dat!(MinEl)
-defsng ARMin!=Dat!(MinEl)
-_AbsDatMax!=ARMax!
-FOR p = MinEl TO MaxEl:
-	IF abs(Dat!(p)) >  _AbsDatMax! THEN  _AbsDatMax! = abs(Dat!(p))
-NEXT p
-'print "sub _AbsDatMax!=" ,_AbsDatMax!
-
-END SUB
-
-'**********************************************************************
-sub ArrAbsMaxEx (Dat!() as single, MinEl  as integer, MaxEl as integer,byref _AbsDatMax!,byref pointX!) 
-defint  p
-'defint MaxEl,MinEl
-
-'MinEl=lbound(Dat!)
-'print "sub MinEl=" ,MinEl
-'MaxEl=ubound(Dat!)
-'print "sub MaxEl=" ,MaxEl
-
-defsng ARMax!=Dat!(MinEl)
-defsng ARMin!=Dat!(MinEl)
-_AbsDatMax!=abs(ARMax!)
-FOR p = MinEl TO MaxEl:
-	IF abs(Dat!(p)) >  _AbsDatMax! THEN  _AbsDatMax! = abs(Dat!(p)):pointX!=p
-NEXT p
-'print "sub _AbsDatMax!=" ,_AbsDatMax!
-
-END SUB
-'**********************************************************************
-sub ArrAbsMinEx (Dat!() as single, MinEl  as integer, MaxEl as integer,byref _AbsDatMin!,byref pointX!) 
-defint  p
-'defint MaxEl,MinEl
-
-'MinEl=lbound(Dat!)
-'print "sub MinEl=" ,MinEl
-'MaxEl=ubound(Dat!)
-'print "sub MaxEl=" ,MaxEl
-
-defsng ARMax!=Dat!(MinEl)
-defsng ARMin!=Dat!(MinEl)
-_AbsDatMin!=abs(ARMax!)
-FOR p = MinEl TO MaxEl:
-	IF abs(Dat!(p)) <  _AbsDatMin! THEN  _AbsDatMin! = abs(Dat!(p)):pointX!=p
-NEXT p
-
-END SUB
-
-'-- **********************************************************************
-Sub ArrRaznost (Dat1!() as single , Dat2!() as single, Raznost!() as single) '' as single'' MinEl??, MaxEl??)
-Lmin1 = LBOUND(Dat1!):Lmax1 = UBOUND(Dat1!) 
-'print "Lmax1=" ,Lmax1
-'print "Lmin1=" ,Lmin1
-
-Lmin2 = LBOUND(Dat2!) : Lmax2 = UBOUND(Dat2!)
-'print "Lmax2=" ,Lmax2
-'print "Lmin2=" ,Lmin2
-
-if Lmin2 <> Lmin1 or Lmax1 <> Lmax2 then 
-'showMessage ( "ArrRaznost error: Arrays size mismatch"+lf+"Lmin1="+str$(Lmin1)+" Lmax1="+str$(Lmax1)+lf+"Lmin2="+str$(Lmin2)+" Lmax2="+str$(Lmax2) ) 
-'exit sub
-end if
-
-REDIM Raznost!(Lmin1 to Lmax1) as single
-
-FOR i = Lmin1 TO Lmax1: 
-	Raznost!(i) = Dat1!(i) - Dat2!(i): 
-	'print "Raznost!(",i, ") =" ,Raznost!(i)
-NEXT i
-
-END SUB
-'-- **********************************************************************
-Sub ArrRaznostR (Dat1!() as single , Dat2!() as single) '' as single'' MinEl??, MaxEl??)
-Lmin1 = LBOUND(Dat1!):Lmax1 = UBOUND(Dat1!) 
-Lmin2 = LBOUND(Dat2!) : Lmax2 = UBOUND(Dat2!)
-
-if Lmin2 <> Lmin1 or Lmax1 <> Lmax2 then showMessage ( "ArrRaznostR. Arrays size mismatch" ): exit sub
-FOR i = Lmin1 TO Lmax1: 
-	Dat1!(i) = Dat1!(i) - Dat2!(i): 
-	'print "Raznost!(",i, ") =" ,Raznost!(i)
-NEXT i
-
-END SUB
-'**********************************************************************
-Sub ArrSum (Dat1!() as single , Dat2!() as single, SumA!() as single) 
-Lmin1 = LBOUND(Dat1!):Lmax1 = UBOUND(Dat1!) 
-Lmin2 = LBOUND(Dat2!) : Lmax2 = UBOUND(Dat2!)
-if Lmin2 <> Lmin1 or Lmax1 <> Lmax2 then showMessage ( "ArrSum. Arrays size mismatch" ): exit sub
-
-
-
-REDIM SumA!(Lmin1 to Lmax1) as single
-FOR i = Lmin1 TO Lmax1: SumA!(i) = Dat1!(i) + Dat2!(i): NEXT i
-END SUB
-'**********************************************************************
-
-'**********************************************************************
-Sub ArrSumR (Dat1!() as single , Dat2!() as single) 
-Lmin1 = LBOUND(Dat1!):Lmax1 = UBOUND(Dat1!) 
-Lmin2 = LBOUND(Dat2!) : Lmax2 = UBOUND(Dat2!)
-if Lmin2 <> Lmin1 or Lmax1 <> Lmax2 then showMessage ( "ArrSumR. Arrays size mismatch" ): exit sub
-
-FOR i = Lmin1 TO Lmax1: Dat1!(i) = Dat1!(i) + Dat2!(i): NEXT i
-END SUB
-'**********************************************************************
-
-
-'-- **********************************************************************
-SUB kTArray (Dat1!() as single, kt! as single, Dat2!() as single)
-'multiply array to const and save result in new array
-Lmin1 = LBOUND(Dat1!):Lmax1 = UBOUND(Dat1!) 
-
-REDIM Dat2!(Lmin1 to Lmax1) as single
-FOR i = Lmin1 to Lmax1: Dat2!(i) = Dat1!(i) * kt!: NEXT i
-END SUB
-
-'-- **********************************************************************
-SUB kTArrayR (Dat1!() as single, kt! as single)
-'multiply array to const
-Lmin1 = LBOUND(Dat1!):Lmax1 = UBOUND(Dat1!) 
-FOR i = Lmin1 to Lmax1: Dat1!(i) = Dat1!(i) * kt!: NEXT i
-END SUB
-
-
-'-- **********************************************************************
-SUB Nakopl (F!() as single, Nakop!() as single, period as Word)
-'-----------------------------
-'Calculate average on moving window (interval) of function
-''F() - function array
-'Nakop!() - moving average
-'period - number of moving window points - (max 65535) must be odd number!
-'-----------------------------
-defint Lmin1,Lmax1
-Lmin1 = LBOUND(F!): ' for example =0
-'print "Lmin1=" ,Lmin1
-
-Lmax1 = UBOUND(F!)  ' for example =56
-'print "Lmax1=" ,Lmax1
-
-REDIM Nakop!(0 to period-1) as single'!!! from 0  !!!' 
-
-defsng Summ!
-defint ibeg,iend, NumPnt
-
-'0  0  0   1         2         3         4         5  5  5
-'012345678901234567890123456789012345678901234567890123456
-'|||||||||||||||||||||||||||||||||||||||||||||||||||||||||    -numbers of function points     F!() 
-'|||||||                                           |||||||    - moving window  period points
-'   ^ibeg=3                                           ^iend=53
-'000+++++++++++++++++++++++++++++++++++++++++++++++++++000    - averaged function  Nakop!()
-'|||^|||
-'calculate average on 7 points  Nakop!(3)= ( f(0)+f(1)+...f(6) )/7 =f(0)/7+f(1)/7+ ...f(6)/7
-' |||^|||
-'  |||^|||
-'   |||^|||
-'then first point f(0)/7  deleted, next f(7)/7 point added. Nakop!(4)=Nakop!(3)- f(0)/7 + f(7)/7
-
-NumPnt=Lmax1-Lmin1+1  '57 elements in array (0 to 56)
-NumInterval=NumPnt-1  '56 intevals
-ibeg = (period-1) / 2 'starting point of moving window on F!()
-iend = NumInterval - ibeg  'end point point of moving window on F!()
-Summ! = 0:
-
-
-'calculate average in starting point  
-FOR j = Lmin1 TO Lmin1+(period-1):     Summ! = Summ! + F!(j): NEXT j 'cumulative value'
-Nakop!(ibeg) = Summ! / period:  'average in starting point
-'print
-Summ! = 0:
-FOR j = Lmin1 TO ibeg-1: Nakop!(j) =Nakop!(ibeg): next '!!! loosed points  in start '   F!(j)
-
-
-''calculate average in end point  
-FOR j = Lmin1+NumPnt - period  TO Lmin1+NumPnt-1: Summ! = Summ! + F!(j): NEXT j
-Nakop!(iend) = Summ! / period: 'calculate average
-
-FOR j = iend+1 TO NumPnt: Nakop!(j) =Nakop!(iend): next ' loosed points in finish' F!(j)
-
-
-FOR i = Lmin1+ibeg + 1 TO Lmin1+iend - 1
-	Nakop!(i) = Nakop!(i-1) + (    F!(i+Lmin1+ibeg)  -  F!(Lmin1+i-ibeg-1)   ) / period
-	'                              ^  4  3           4  3
-	'if i>43000 and i<50000 then
-	'print "i+Lmin1+ibeg=",i+Lmin1+ibeg,"           Nakop!(i-1)=" ,Nakop!(i-1)
-	'print "------------------------------"
-	
-	'end if
-	
-NEXT i
-
-END SUB
-'-- **********************************************************************
-sub ARRAddConst (Dat!() as single, const! as single) 
-defint  p, Lmin1, Lmax1
-Lmin1 = LBOUND(Dat!):Lmax1 = UBOUND(Dat!) 
-
-FOR p = Lmin1 TO Lmax1:
-	Dat!(p) = const! + Dat!(p):
-NEXT p
-END SUB
-
-'-- **********************************************************************
-SUB ArrReSample (Dat1() AS SINGLE, Dat2() AS SINGLE, npt)
-'------------------
-'resample data series Dat1() to  Dat2!() with new points number npt, using linear interpolation
-
-Lmin1 = LBOUND(Dat1): Lmax1 = UBOUND(Dat1)
-'print "ArrReSample Lmax1=" ,Lmax1
-'print "ArrReSample Lmin1=" ,Lmin1
-Lmin2 = LBOUND(Dat2): Lmax2 = UBOUND(Dat2)
-
-ipt = Lmax1 - Lmin1+1 '--- 11-0+1=12  число точек в исходном массиве
-kti = npt / ipt       '--- 36/12=3  отношение нового числа точек к старому
-'print "ArrReSample kti=" ,kti
-j1 = 0  'current new point
-j1old = 0 'previous new points
-
-Dat2(Lmin2) = Dat1(Lmin1) '--- in first point functions is equal
-
-FOR i = 1 TO ipt-1 '---  11 points  1 ... 11
-	deltaD1 = (Dat1(i) - Dat1(i - 1)) / kti  ' increment of a function in the new current interval for linear interpolation
-	ostFunc=Dat1(i-1)-deltaD1*drob-Dat2(j1old)
-	
-	jz = i * kti '--- =3
-	j=FIX(jz) '--- absolute new point number'
-	drob=jz-j '--- fraction
-	j1 = j - j1old '--- new points number in current interval  
-	FOR k = 1 TO j1
-		Dat2(j1old + k) = deltaD1 * k +Dat2(j1old) +ostFunc
-		'print "ArrReSample Dat2(",j1old + k,") =" ,ArrReSample Dat2(j1old + k)
-		
-	NEXT k
-	j1old = j1 + j1old
-NEXT i
-
-END SUB
-
-'--**************************************************************************************** 
-SUB OgibF (Dat1() AS SINGLE, OgibUp() AS SINGLE, OgibDn() AS SINGLE)
-Lmin1 = LBOUND(Dat1): Lmax1 = UBOUND(Dat1)
-'print "Lmax1=" ,Lmax1: print "Lmin1=" ,Lmin1
-redim OgibUp(Lmax1) AS SINGLE
-redim OgibDn(Lmax1) AS SINGLE
-
-OgibUp(Lmin1)=Dat1(Lmin1)
-OgibDn(Lmin1)=Dat1(Lmin1)
-ku=Lmin1
-kd=Lmin1 '0'
-
-' search max and min
-
-FOR i = Lmin1+1 TO Lmax1 - 1
-	
-	IF (Dat1(i)-Dat1(i-1))>0.08 AND Dat1(i) >= Dat1(i + 1) THEN
-		OgibUp(i)=Dat1(i)
-		'- intrerpolation'
-		kti=( OgibUp(i)-OgibUp(ku) )/(i-ku)
-		 for ik=ku+1 to i-1
-			OgibUp(ik)=kti*(ik-ku)+OgibUp(ku)
-		 next ik
-		ku=i
-	ELSEif Dat1(i) < Dat1(i - 1) AND Dat1(i) <= Dat1(i + 1) then
-		OgibDn(i)=Dat1(i)
-		'- intrerpolation'
-		kti=( OgibDn(i)-OgibDn(kd) )/(i-kd)
-		 for ik=kd+1 to i-1
-			OgibDn(ik)=kti*(ik-kd)+OgibDn(kd)
-		 next ik
-		kd=i
-	END IF
-	
-NEXT i
-
-END SUB
-
-'--**************************************************************************************** 
-SUB OgibFNew (Dat1() AS SINGLE, OgibUp() AS SINGLE, OgibDn() AS SINGLE)
-Lmin1 = LBOUND(Dat1): Lmax1 = UBOUND(Dat1)
-'print "Lmax1=" ,Lmax1: print "Lmin1=" ,Lmin1
-redim OgibUp(Lmax1) AS SINGLE
-redim OgibDn(Lmax1) AS SINGLE
-
-dim DatMax(512) AS SINGLE
-dim DatMin(512) AS SINGLE
-
-OgibUp(Lmin1)=Dat1(Lmin1)
-OgibDn(Lmin1)=Dat1(Lmin1)
-ku=Lmin1
-kd=Lmin1 '0'
-
-' search max and min
-mm=0
-
-FOR i = Lmin1+1 TO Lmax1 - 1
-	
-	IF (Dat1(i)-Dat1(i-1))>0.08 AND Dat1(i) >= Dat1(i + 1) THEN
-		mm=mm+1
-		DatMax(mm)=Dat1(i)
-		OgibUp(i)=Dat1(i)
-		'- intrerpolation'
-		kti=( OgibUp(i)-OgibUp(ku) )/(i-ku)
-		 for ik=ku+1 to i-1
-			OgibUp(ik)=kti*(ik-ku)+OgibUp(ku)
-		 next ik
-		ku=i
-	ELSEif Dat1(i) < Dat1(i - 1) AND Dat1(i) <= Dat1(i + 1) then
-		OgibDn(i)=Dat1(i)
-		'- intrerpolation'
-		kti=( OgibDn(i)-OgibDn(kd) )/(i-kd)
-		 for ik=kd+1 to i-1
-			OgibDn(ik)=kti*(ik-kd)+OgibDn(kd)
-		 next ik
-		kd=i
-	END IF
-	
-NEXT i
-
-END SUB
-
-
-'--**************************************************************************************** 
-SUB  cutPoints (Dat!() as single, cutPnt as integer)
-NumPoint = UBOUND(Dat!)
-
-for i=CutPnt to NumPoint-CutPnt-1
-	Dat!(i-CutPnt)=Dat!(i)
-	'print "Dat!(",i-CutPnt,")=",Dat!(i-CutPnt)
-next i
-
-END SUB
-
-
-'--**************************************************************************************** 
-sub ReversX1(Dat!() as single)
-NumPoint = UBOUND(Dat!)
-for i=0 to NumPoint-1
-	ddi=Dat!(i)
-	ddj=Dat!(NumPoint-1-i)
-	Dat!(i)=ddi
-	Dat!(NumPoint-1-i)=ddj
-
-	'swap Dat!(i),Dat!(NumPoint-1-i)
-next i
-
-
-end sub
-'--**************************************************************************************** 
-SUB DelIncline (Dat!() as single)
-' убирает наклон из функции, т.е начальная и конечная точки равны 0
-Npt = UBOUND(Dat!)
-kt!=(Dat!(Npt-1)-Dat!(0))/(Npt-1)
-DIM Incline!(Npt-1) as single
-for i=0 to Npt-1
-Dat!(i)=Dat!(i)-kt!*i
-next i
-
-
-
-end sub
-
-'--**************************************************************************************** 
-'Sub ArrConcat(Dat1!() as single,Dat2!() as single, FullDat as single)
-
-'END SUB
-
-''--**************************************************************************************** 
-'SUB SynNak (Dat!(), period, Snak!())
-'Npt = UBOUND(Dat!)
-'REDIM Snak!(period) as single
-
-'FOR k = 1 TO period
-	'FOR i = k TO CINT(Npt / period) * period STEP period
-		'Snak!(k) = Snak!(k) + Dat!(i)
-	'NEXT i
-	
-'NEXT k
-
-'CALL kTArrayr(Snak!(), 1/CINT(Npt/period))
-
-'END SUB
 
 '============================================================================
 '[build_inc] Functions.inc
@@ -26249,63 +26590,6 @@ End Function
 '[build_inc] NewWindow23.inc
 '============================================================================
 print "inc dir   C:\BAS\RAPIDQ\inc\NewWindow23.inc"
-'============================================================================
-'[build_inc] NewWndProc.Inc
-'============================================================================
-'
-' ----------------------------------------------------------------------------
-' SET NEW WINDOW PROCEDURE     MANY CALLBACK     TURN AROUND        by Jacques
-'
-'!!! NO INDEX, AS MANY NEW WNDPROC AS YOU WANT                       MUCH EASIERS
-'
-' Thanks Warriant for relaunching the subject
-' August 13th, 2006
-' ----------------------------------------------------------------------------
-
-$IFNDEF _NEWWNDPROC
-$DEFINE _NEWWNDPROC
-$IFNDEF _CALLBACK_4
-'~dup $DEFINE _CALLBACK_4   ' повтор, первое: rapidq2.inc(2374)
-'~dup Declare Function MasterCallBack_4 (hFunction As Long, Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As long) As Long   ' повтор, первое: rapidq2.inc(2375)
-'~dup Declare Function FuncBind_4 (Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As long) As Long   ' повтор, первое: rapidq2.inc(2376)
-'~dup DefInt lpCallBack_4 = CodePtr(MasterCallBack_4)   ' повтор, первое: rapidq2.inc(2377)
-'
-'~dup Function MasterCallBack_4 (hFunction As Long, Arg1 As Long, Arg2 As Long, Arg3 As Long, Arg4 As Long) As Long   ' повтор, первое: rapidq2.inc(2379)
-'~dup   DefInt hBind
-'~dup   Bind hBind To FuncBind_4
-'~dup   hBind = hFunction
-'~dup   Result = CallFunc (hBind, Arg1, Arg2, Arg3, Arg4)
-'~dup End Function
-$ENDIF
-' ==== CALLBACK FORWARDER ===========================================
-Declare Function NWP_GetProcessHeap Lib "kernel32" Alias "GetProcessHeap" () As Long
-Declare Function NWP_HeapAlloc Lib "kernel32" Alias "HeapAlloc" (ByVal hHeap As Long, _
-                                                                 ByVal dwFlags As Long, ByVal dwBytes As Long) As Long
-DECLARE FUNCTION NWP_SetWindowLong LIB "USER32" ALIAS "SetWindowLongA" (hWnd AS LONG, nIndex AS LONG, dwNewLong AS LONG) AS LONG
-' -------------------------------------------------------------------
-FUNCTION SetNewWndProc (ObjectHandle AS LONG, hFunction AS LONG) AS LONG
-  DEFLNG hProcessHeap = NWP_GetProcessHeap
-  DEFLNG ptrForwarder = NWP_HeapAlloc (hProcessHeap, 12, 14)
-  DIM mTmp AS QMEMORYSTREAM
-  WITH mTmp
-    .Size = 14
-    .Position = 0
-    .WriteNum(&H58           , 1)    ' pop Eax
-    .WriteNum(&H68           , 1)    ' push ...
-    .WriteNum(hFunction      , 4)    ' ... hFunction
-    .WriteNum(&H50           , 1)    ' push eax
-    .WriteNum(&HB8           , 1)    ' mov  eax, ...
-    .WriteNum(lpCallBack_4   , 4)    ' ... ForwardTo
-    .WriteNum(&HE0FF         , 2)    ' jmp eax
-    memcpy (ptrForwarder  , .Pointer, 14)
-  END WITH
-  Result = NWP_SetWindowLong (ObjectHandle, -4, ptrForwarder)
-END FUNCTION
-' ==== END CALLBACK FORWARDER =======================================
-$ENDIF
-'
-
-
 '============================================================================
 '[build_inc] NOTA.inc
 '============================================================================
@@ -30144,283 +30428,6 @@ End Functioni
 $ENDIF		'__OLE_INC
 
 $TYPECHECK OFF   ' сборка: вернуть после ole.inc
-'============================================================================
-'[build_inc] parse.inc
-'============================================================================
-'-- *********************************************************************'
-function GetCharNum (Oper$ as string, getC as string) as long
-'return Char count  in checked string
-'getC - Char 
-'Oper$ - checked string
-'if getC commented,  or quoted (just text)  - return error code
-'print "getC=";getC
-
-DIM ch  AS STRING * 1
-ch=getC
-'print"qt=";qt
-
-result=-1 ' error
-QTNum=0 
-tmpres=0
-
-FirstRem=instr(Oper$, "'")
-
-FirstQT=instr(Oper$, qt)
-'print"FirstQT=";FirstQT
-
-if FirstRem < FirstQT and FirstRem >0 then ' есть комментарий - его отбрасываем
-	Oper$=left$(Oper$,FirstRem)
-	result=tally(Oper$,getC)
-	exit function
-end if
-
-'print"Oper$=";Oper$
-
-for ~i=1 to Len(Oper$)
-	chrs$=Oper$[~i]
-	if chrs$=qt and QTNum=0 then 
-		QTNum=1 'следующий char  находится после первого вхождения qt
-	elseif chrs$=qt and QTNum=1 then
-		QTNum=0 'следующий char находимся после второго вхождения qt
-	elseif chrs$=ch and QTNum=0 then
-		inc tmpres
-		'print"tmpres=";tmpres
-	else
-	end if
-next ~i ' inc2026: next ~i вместо next i: счётчик цикла строки 30 - ~i (так же в GetOperators, строка 261); i здесь нигде не присваивается
-result=tmpres
-
-end function 'sub '
-
-
-'-- *********************************************************************'
-Function GetVarPos (Oper$ as string, getV$ as string) as long
-'return variable  position in checked string
-'getV$ - variable name 
-'Oper$ - checked string
-'if getV$ commented,  or quoted (just text, not varname)  - return error code
-result=-1 ' error
-'cr+lf+",./\| !@#$%^&*()_+=-?><~`;:[]{}'"+ht+qt
-defstr Lsep$="()[]=><, :+-*\/;."
-defstr Rsep$="[()]=><, :'+-*\/;."
-
-Oper$=lcase$(Oper$)-ht
-getV$=lcase$(getV$)-ht
-
-Wpos=instr(Oper$,getV$) 
-if Wpos=0 then result=0: exit function 'pattern not contained
-'check comment and string
-
-while Wpos>0 
-
-	if (instr(Lsep$,Oper$[Wpos-1])>0 or Wpos=1) and (instr(Rsep$,Oper$[Wpos+len(getV$)])>0  or Wpos+len(getV$)-1=len(Oper$))  then
-		'check string 
-		QPos1=rinstr(Wpos,Oper$,qt) ''1 quote pos   
-		QPos2= instr(Wpos,Oper$,qt) '2 quote pos   
-		CPos=rinstr(Wpos,Oper$,"'") 'comment pos  
-
-		if QPos1<Wpos and QPos2 >Wpos and QPos1>0 then 'it's string, not var
-		elseif (CPos<Wpos and CPos>0) and  QPos1<CPos    then 'it's comment and QPos2>0
-		else
-			result=Wpos 
-			exit while
-		end if
-	else
-	end if
-		Wpos=instr(Wpos+1, Oper$,getV$) 
-	result=-2 'present, but not var
-wend
-
-end function
-
-'-- *********************************************************************'
-sub ParseDim (Var$() as string,VarType$() as string, SrcTxt$ as string, VarCount as long)
-SrcTxt$=Ucase$(SrcTxt$)
-DIMPos=instr(SrcTxt$,"DIM ")
-
-if DIMPos=0 then VarCount=0: exit sub
-
-SrcTxt$=right$(SrcTxt$,len(SrcTxt$)-DIMPos-3)
-asPos=GetVarPos(SrcTxt$,"AS")
-comPos=instr(SrcTxt$,",")
-while comPos >0 
-	Var$(k)=trim$(Left$(SrcTxt$, asPos-1))
-	VarType$(k)=trim$(mid$(SrcTxt$,asPos+2, comPos-asPos-2))
-	SrcTxt$=right$(SrcTxt$,len(SrcTxt$)-comPos)
-	asPos=GetVarPos(SrcTxt$,"AS")
-	comPos=instr(SrcTxt$,",")
-	inc k
-wend
-Var$(k)=trim$(Left$(SrcTxt$, asPos-1))
-VarType$(k)=trim$(right$(SrcTxt$,len(SrcTxt$)-asPos-1))
-VarCount=k+1
-end sub '
-
-
-'-- *********************************************************************'
-
-
-'-- *********************************************************************'
-'DEFSTR A, B, C="Hello", D, E
-sub ParseDef (Var$() as string,VarType$ as string, SrcTxt$ as string, VarCount as long)
-SrcTxt$=Ucase$(SrcTxt$)
-DEFPos=instr(SrcTxt$,"DEF")
-
-if DEFPos=0 then VarCount=0: exit sub
-
-SrcTxt$=right$(SrcTxt$,len(SrcTxt$)-DEFPos-2)
-VarPos=instr(SrcTxt$," ")-1
-VarType$=left$(SrcTxt$,VarPos)
-SrcTxt$=right$(SrcTxt$,len(SrcTxt$)-VarPos)
-
-'VarType$=left$(SrcTxt$,instr(SrcTxt$," "))
-
-select case VarType$
-case "STR"
-VarType$="STRING"
-case "DBL"
-VarType$="DOUBLE"
-case "INT"
-VarType$="INTEGER"
-case "LNG"
-VarType$="LONG"
-case "SNG"
-VarType$="SINGLE"
-CASE ELSE
-
-end select
-
-ComCnt=tally(SrcTxt$,",")
-for k=0 to ComCnt-1
-	Var$(k)=trim$(field$(SrcTxt$,",",k+1)-VarType$)
-next k
-Var$(k)=trim$(field$(SrcTxt$,",",k+1))
-VarCount= k+1
-end sub 
-'-- *********************************************************************'
-
-'-- *********************************************************************'
-sub DelComments (STxt$ as string)
-'delete comments in SrcTxt$
-'function tally -  see http://forum.qbasicnews.com/viewtopic.php?t=8787
-' qt as string =chr$(34)
-NQT=tally(STxt$, qt)
-PQT1=0
-PQT2=0
-PRem=0
-for i=0 to NQT+1 
-	PQT1=instr(PQT2+1,STxt$, qt)
-	if PQT1=0 and PQT2>0 then ' no quotes yet
-		i=NQT+1
-	else
-		PQT2=instr(PQT1+1,STxt$, qt)
-	end if
-	'PQT2=instr(PQT1+1,STxt$, qt)
-	PRem=instr(PRem+1,STxt$, "'")
-		if (PRem < PQT1 and PRem >0) or (PQT1=0 and PRem >0)  then 
-			STxt$=left$(STxt$,PRem-1)
-			'print"2STxt$=";STxt$
-		exit for
-		else
-		PRem=PQT2
-		end if
-next
-end sub '
-'-- *********************************************************************'
-function DelCommentsF (STxt$ as string) as string
-DelComments (@STxt$)
-result=STxt$
-end function 
-
-'-- *********************************************************************'
-sub ReplaceComments (STxt$ as string)
-'replace comments in SrcTxt$ by spaces, so full string lenth is not changing
-NQT=tally(STxt$, qt)
-PQT1=0
-PQT2=0
-PRem=0
-for i=0 to NQT+1 
-	PQT1=instr(PQT2+1,STxt$, qt)
-	if PQT1=0 and PQT2>0 then ' больше кавычек нет
-		i=NQT+1
-	else
-		PQT2=instr(PQT1+1,STxt$, qt)
-	end if
-	'PQT2=instr(PQT1+1,STxt$, qt)
-	PRem=instr(PRem+1,STxt$, "'")
-		if (PRem < PQT1 and PRem >0) or (PQT1=0 and PRem >0)  then 
-			cmntLen=len(STxt$)-PRem+1
-			STxt$=replace$(STxt$,STRING$(cmntLen, " "), PRem)
-			'STxt$=left$(STxt$,PRem-1)
-			'print"2STxt$=";STxt$
-		exit for
-		else
-		PRem=PQT2
-		end if
-next
-end sub '
-'-- *********************************************************************'
-
-'-- *********************************************************************'
-sub GetOperators (Oper$() as string,OperPos() as integer, SrcTxt$ as string,NumOpers as long)
-'parse and return  operators in checked string SrcTxt$
-'operators - not quoted and not commented parts of line delimited by ":"
-'Oper$() - array of operators
-'OperPos() - operator's positions
-
-ch$=chr$(58)
-QTNum=0 
-dim SrcList as QStringList
-bop=1: eop=1
-
-SrcList.text=SrcTxt$
-for i=0 to SrcList.ItemCount-1
-	ReplaceComments (@SrcList.Item(i))
-	SrcL$=rtrim$(SrcList.Item(i))
-	ss$=right$(SrcL$,1)
-	if ss$="_" then SrcList.Item(i)=SrcL$
-next i
-
-SrcList.text=replacesubStr$(SrcList.text,"_"+crlf,"")
-
-
-SrcTxt$=SrcList.text
-SrcTxt$=replacesubStr$(SrcTxt$,"_"+crlf,"")
-SrcTxt$=replacesubStr$(SrcTxt$,crlf," :")
-
-k=0
-for ~i=1 to Len(SrcTxt$)
-	chrs$=SrcTxt$[~i]
-	if chrs$=qt and QTNum=0 then 
-		QTNum=1 'следующий char  находится после первого вхождения qt
-	elseif chrs$=qt and QTNum=1 then
-		QTNum=0 'следующий char находимся после второго вхождения qt
-	elseif chrs$=ch$ and QTNum=0 then
-		eop=~i
-		~tmp$=trim$(mid$(SrcTxt$,bop,eop-bop))
-'print"~tmp$=";~tmp$
-		if ~tmp$<>"" and ~tmp$<>":" then
-			Oper$(k)=~tmp$
-			OperPos(k)=bop
-			k ++
-		end if
-			bop=eop+1
-	else
-	end if
-next ~i
-eop=~i
-
-~tmp$=trim$(mid$(SrcTxt$,bop,eop-bop))
-if ~tmp$<>"" then
-	Oper$(k)=~tmp$
-	OperPos(k)=bop
-end if
-
-NumOpers=k
-'print"sub GetOperators.NumOpers=";NumOpers
-end sub '
-'-- *********************************************************************'
-         
 '============================================================================
 '[build_inc] pdecl.inc
 '============================================================================
@@ -70513,7 +70520,43 @@ $ENDIF '__WIN32API
 '~inc $include "User32.inc"   ' уже в сборке или заменён выбранной версией
 
 'WinMM.dll Functions
-'~inc $Include "WinMM.Inc"   ' уже в сборке или заменён выбранной версией
+'~inc $Include "WinMM.Inc"   ' сборка: файл - здесь
+'============================================================================
+'[build_inc] WinMM.Inc
+'============================================================================
+'WinMM.DLL Functions
+'FILE ADDED: Release Version 1
+'FILE UPDATED: Release Version 1
+
+'Adapted for RapidQ by Bryn Mosher (bdmnky@hotmail.com)
+'WIN32API RapidQ $Includes
+'Home page - http://home.pacbell.net/brynm/
+'RapidQ - http://www.basicguru.com/abc/rapidq/
+
+
+'MCIGetERrorString()
+
+'~dup 	Declare Function MCIGetErrorString Lib "winmm.dll" Alias_   ' повтор, первое: WIN32API.INC(11818)
+'~dup 	 "mciGetErrorStringA" (dwError As Long, lpstrBuffer As String, uLength As Long) As Long
+
+
+'MCSSendString()
+
+'~dup 	Declare Function MCISendString Lib "winmm.dll" Alias_   ' повтор, первое: WIN32API.INC(11810)
+'~dup 	 "mciSendStringA" (lpstrCommand As String, lpstrReturnString As String,_
+'~dup 	 uReturnLength As Long, hwndCallback As Long) As Long
+
+
+'TimeGetTime()
+	'Gets time since system started
+	'EXAMPLE:
+		'ShowMessage ( "Seconds since boot up: " + Str$(TimeGetTime)
+
+'~dup 	Declare Function timeGetTime Lib "winmm.dll" Alias_   ' повтор, первое: WIN32API.INC(11621)
+'~dup 	 "timeGetTime" As Long
+
+
+'[build_inc] (дальше снова WindowsAPI.inc)
 
 ' >>>>> RESERVED WORDS AND VALUES <<<<<<
 'NOTE: These are only MS created constants. NO USER VALUES!
@@ -70573,40 +70616,5 @@ $ENDIF '__WIN32API
 '	$Include "RapidQ.Inc"
 '	$Include "WindowsAPI.inc"
 '	$Include "NOTA.inc"
-
-'============================================================================
-'[build_inc] WinMM.Inc
-'============================================================================
-'WinMM.DLL Functions
-'FILE ADDED: Release Version 1
-'FILE UPDATED: Release Version 1
-
-'Adapted for RapidQ by Bryn Mosher (bdmnky@hotmail.com)
-'WIN32API RapidQ $Includes
-'Home page - http://home.pacbell.net/brynm/
-'RapidQ - http://www.basicguru.com/abc/rapidq/
-
-
-'MCIGetERrorString()
-
-'~dup 	Declare Function MCIGetErrorString Lib "winmm.dll" Alias_   ' повтор, первое: WIN32API.INC(11818)
-'~dup 	 "mciGetErrorStringA" (dwError As Long, lpstrBuffer As String, uLength As Long) As Long
-
-
-'MCSSendString()
-
-'~dup 	Declare Function MCISendString Lib "winmm.dll" Alias_   ' повтор, первое: WIN32API.INC(11810)
-'~dup 	 "mciSendStringA" (lpstrCommand As String, lpstrReturnString As String,_
-'~dup 	 uReturnLength As Long, hwndCallback As Long) As Long
-
-
-'TimeGetTime()
-	'Gets time since system started
-	'EXAMPLE:
-		'ShowMessage ( "Seconds since boot up: " + Str$(TimeGetTime)
-
-'~dup 	Declare Function timeGetTime Lib "winmm.dll" Alias_   ' повтор, первое: WIN32API.INC(11621)
-'~dup 	 "timeGetTime" As Long
-
 
 $ENDIF ' __RQALLPROC_INC
