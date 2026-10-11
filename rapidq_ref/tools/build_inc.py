@@ -516,6 +516,102 @@ def const_value(text):
     return text.upper()
 
 
+SIMPLE_TYPES = {'BYTE', 'WORD', 'DWORD', 'SHORT', 'INTEGER', 'LONG', 'SINGLE', 'DOUBLE',
+                'STRING', 'ANY', 'VARIANT'}
+
+
+def lib_params(text):
+    """Типы параметров DECLARE ... LIB по порядку ('' - без AS)."""
+    upper = strip_strings(text.upper())
+    m = re.search(r'\bLIB\b.*?\(([^()]*(?:\([^()]*\)[^()]*)*)\)', upper)
+    if not m or not m.group(1).strip():
+        return []
+    result = []
+    for part in split_top(m.group(1)):
+        mm = re.search(r'\bAS\s+(\w+)', part)
+        result.append(mm.group(1) if mm else '')
+    return result
+
+
+def lib_sig_conflict(first, other):
+    """Вызов, написанный под one, не годится для other: другое число
+    параметров или на месте записи (TYPE) - другой тип (QRECT и RECT)."""
+    if len(first) != len(other):
+        return True
+    for t1, t2 in zip(first, other):
+        if t1 != t2 and (t1 not in SIMPLE_TYPES or t2 not in SIMPLE_TYPES) and t1 and t2:
+            return True
+    return False
+
+
+def rename_map(line, mapping):
+    """Слова mapping (верхний регистр -> новое имя) в коде строки, вне
+    кавычек и комментария, не после точки."""
+    pat = re.compile(r'(?<![\w.])(' + '|'.join(re.escape(k) for k in mapping) + r')(?![\w$%&!#])', re.I)
+    out, buf, in_str, idx = [], '', False, 0
+    while idx < len(line):
+        ch = line[idx]
+        if ch == '"':
+            if not in_str:
+                out.append(pat.sub(lambda m: mapping[m.group(1).upper()], buf))
+                buf = ''
+            in_str = not in_str
+            out.append(ch)
+        elif ch == "'" and not in_str:
+            break
+        elif in_str:
+            out.append(ch)
+        else:
+            buf += ch
+        idx += 1
+    out.append(pat.sub(lambda m: mapping[m.group(1).upper()], buf))
+    return ''.join(out) + line[idx:]
+
+
+def lib_signature_renames(order, texts, rq2):
+    """DECLARE ... LIB, у которой то же имя, что у объявленной выше в другом
+    файле, но параметры другие (rapidq2.inc: GetClientRect(hwnd, lpRect AS
+    QRECT), QFormSkin.inc: GetClientRect(hwnd, lpRect As RECT); rc.exe:
+    "Expected object of type QRECT, but got RC_SKIN"): в своём файле -
+    под именем Имя_Файл (ALIAS прежний), и вызовы в этом файле - тоже.
+    Результат - список для отчёта."""
+    first, mapping = {}, collections.defaultdict(dict)
+    for fname, lines, keep in order:
+        for unit in split_units(lines):
+            if unit.key != 'D' or not unit.names or (keep is not None and not keep(unit.first)):
+                continue
+            if not re.search(r'\bLIB\b', unit.text):
+                continue
+            name = unit.names[0]
+            sig = lib_params(unit.text)
+            if name not in first:
+                first[name] = (fname, sig)
+            elif first[name][0] != fname and lib_sig_conflict(first[name][1], sig):
+                real = rq2 if fname.endswith(' (компоненты)') else fname
+                tag = re.sub(r'\W', '', os.path.splitext(real)[0])[:16]
+                mapping[real][name] = name.rstrip('$%&!#') + '_' + tag + \
+                    (name[-1] if name[-1] in '$%&!#' else '')
+    report = []
+    for real, names in mapping.items():
+        lines = texts[real]
+        for num, line in enumerate(lines):
+            lines[num] = rename_map(line, names)
+        # ALIAS - прежнее имя, если его не было
+        units = split_units(lines)
+        for unit in units:
+            if unit.key == 'D' and unit.names and unit.names[0] in [v.upper() for v in names.values()] \
+                    and not re.search(r'\bALIAS\b', unit.text):
+                orig = [k for k, v in names.items() if v.upper() == unit.names[0]][0]
+                for num in range(unit.first, unit.last + 1):
+                    mm = re.search(r'(\bLIB\s*"[^"]*")', lines[num], re.I)
+                    if mm:
+                        lines[num] = lines[num].replace(mm.group(1), mm.group(1) + ' ALIAS "%s"' % orig, 1)
+                        break
+        for orig, new in sorted(names.items()):
+            report.append('%s: DECLARE %s - %s (параметры не те, что у %s)' % (real, orig, new, first[orig][0]))
+    return report
+
+
 def line_keep(take_val):
     """'да, строки 1-228' в плане - из файла берутся только эти строки
     (дальше пример программы). Функция от номера строки с 0 или None."""
@@ -1019,6 +1115,7 @@ def main():
     order += [(f, texts[f], line_keep(take.get(f.lower(), 'да'))) for f in proc_files]
     order += [(rq2 + ' (компоненты)', texts[rq2], lambda n: n in in_comp)]
     order += [(f, texts[f], line_keep(take.get(f.lower(), 'да'))) for f in ordered]
+    lib_renamed = lib_signature_renames(order, texts, rq2)
     builder.local_defines, unresolved_defines = local_type_defines(order)
     for fname, lines, keep in order:
         for unit in split_units(lines):
@@ -1091,6 +1188,11 @@ def main():
                 'Внутренние процедуры с короткими именами (совпадали с переменными '
                 'других файлов: QXLS.INC DIM F AS QFileStream) и опечатки:', '']
         rep += ['- ' + r for r in renamed]
+    if lib_renamed:
+        rep += ['', '## DECLARE ... LIB с другими параметрами - под своим именем', '',
+                'То же имя объявлено выше в другом файле с другими параметрами; в этом '
+                'файле функция и её вызовы переименованы, ALIAS прежний.', '']
+        rep += ['- ' + r for r in lib_renamed]
     if builder.local_defines or unresolved_defines:
         rep += ['', '## $DEFINE имени типом - только для своего файла', '',
                 'Имя ниже по сборке - имя переменной или параметра; в конце файла '

@@ -9210,14 +9210,14 @@ $IFNDEF __WIN32API				   'windows 32 definitions
 '~dup     Declare Function CreatePatternBrush Lib "gdi32" ALIAS "CreatePatternBrush"(ByVal hBitmap As Long) As Long   ' повтор, первое: WIN32API.INC(4390)
 '~dup     Declare Function SelectObject Lib "gdi32" Alias "SelectObject" (ByVal hdc As Long, ByVal hObject As Long) As Long   ' повтор, первое: rapidq2.inc(1464)
 '~dup     Declare Function SetBrushOrgEx Lib "gdi32" ALIAS "SetBrushOrgEx"(ByVal hdc As Long, ByVal nXOrg As Long, ByVal nYOrg As Long, lppt As POINTAPI) As Long   ' повтор, первое: WIN32API.INC(4706)
-'~dup     Declare Function ClientToScreen Lib "user32" Alias "ClientToScreen" (ByVal hwnd As Long, lpPoint As POINTAPI) As Long   ' повтор, первое: rapidq2.inc(1041)
+    Declare Function CLIENTTOSCREEN_QMaxSplitter Lib "user32" Alias "ClientToScreen" (ByVal hwnd As Long, lpPoint As POINTAPI) As Long
 '~dup     Declare Function PatBlt Lib "gdi32" Alias "PatBlt" (ByVal hdc As Long, ByVal x As Long, ByVal y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal dwRop As Long) As Long   ' повтор, первое: rapidq2.inc(1461)
 '~dup     Declare Function DeleteObject Lib "gdi32" Alias "DeleteObject" (ByVal hObject As Long) As Long   ' повтор, первое: rapidq2.inc(1451)
 '~dup     Declare Function ReleaseDC Lib "user32" Alias "ReleaseDC" (ByVal hwnd As Long, ByVal hdc As Long) As Long   ' повтор, первое: rapidq2.inc(1483)
 '~dup     Declare Function GetCursorPos Lib "user32" ALIAS "GetCursorPos"(lpPoint As POINTAPI) As Long   ' повтор, первое: WIN32API.INC(7170)
 '~dup     Declare Function GetClientRect Lib "user32" Alias "GetClientRect" (ByVal hwnd As Long, lpRect As QRECT) As Long   ' повтор, первое: rapidq2.inc(992)
 '~dup     Declare Function ScreenToClient Lib "user32" ALIAS "ScreenToClient"(ByVal hwnd As Long, lpPoint As POINTAPI) As Long   ' повтор, первое: WIN32API.INC(7185)
-'~dup     Declare Function OffsetRect Lib "user32" Alias "OffsetRect" (lpRect As QRECT, ByVal x As Long, ByVal y As Long) As Long   ' повтор, первое: WIN32API.INC(7237)
+    Declare Function OFFSETRECT_QMaxSplitter Lib "user32" Alias "OffsetRect" (lpRect As QRECT, ByVal x As Long, ByVal y As Long) As Long
 '~dup     Declare Function MoveWindow Lib "user32" Alias "MoveWindow" (ByVal hwnd As Long, ByVal x As Long, ByVal y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal bRepaint As Long) As Long   ' повтор, первое: rapidq2.inc(993)
 $ENDIF
 
@@ -9297,7 +9297,7 @@ TYPE QMAXSPLITTER EXTENDS QPANEL
         SUB MoveChild(Where AS POINTAPI)
             ScreenToClient(.Mover, Where)
             GetClientRect(.Mover, This.MoverRect)
-            OffsetRect(This.MoverRect, 1, 1)
+            OFFSETRECT_QMaxSplitter(This.MoverRect, 1, 1)
             IF Where = OldWhere THEN EXIT SUB
             DIM Redraw AS LONG
             SELECT CASE .Align
@@ -9329,7 +9329,7 @@ TYPE QMAXSPLITTER EXTENDS QPANEL
             
             Org.X = 0
             Org.Y = 0
-            ClientToScreen(.Handle, Org)
+            CLIENTTOSCREEN_QMaxSplitter(.Handle, Org)
             IF .Align = 1 OR .Align = 2 THEN
                 PatBlt(hDC, Org.X, Split.Y, .Width, .Height, PATINVERT)
             ELSEIF .Align = 3 OR .Align = 4 THEN
@@ -9346,7 +9346,7 @@ TYPE QMAXSPLITTER EXTENDS QPANEL
                 Moving = 1
                 SplitPos.X = 0
                 SplitPos.Y = 0
-                ClientToScreen(.Handle, SplitPos)
+                CLIENTTOSCREEN_QMaxSplitter(.Handle, SplitPos)
                 .DrawSplitter(SplitPos)
                 OldSplitPos = SplitPos
             END IF
@@ -9360,7 +9360,7 @@ TYPE QMAXSPLITTER EXTENDS QPANEL
                 GetClientRect(.Owner, Rect1) ' inc2026: Rect1 вместо R: глобальная QRECT названа Rect1 (строка 42), её Bottom/Right читаются в строках 158, 162, 216, 220; R нигде не объявлена; в inc/old/QSplitter.inc строка 204 и старой версии везде R
                 OwnerOrg.X = 0
                 OwnerOrg.Y = 0
-                ClientToScreen(.Owner, OwnerOrg)
+                CLIENTTOSCREEN_QMaxSplitter(.Owner, OwnerOrg)
                 IF .Align = 1 OR .Align = 2 THEN
                     IF SplitPos.Y < (OwnerOrg.Y+.MinSize) OR SplitPos.Y > (OwnerOrg.Y-.MinSize) + Rect1.Bottom _
                      OR SplitPos.Y < (OwnerOrg.Y+(.Height/2)) THEN EXIT EVENT
@@ -24237,7 +24237,7 @@ $ENDIF
 '~dup Declare Function ExtractAssociatedIcon Lib "shell32.dll" Alias "ExtractAssociatedIconA" (hInst As Long,ByRef lpIconPath As string ,byref lpiIcon As Long) As Long    ' повтор, первое: WIN32API.INC(14407)
 '~dup Declare Function ExtractIcon Lib "shell32.dll" Alias "ExtractIconA" (hInst As Long,lpszExeFileName As String,nIconIndex As Long) As Long   ' повтор, первое: WIN32API.INC(14408)
 '~dup Declare Function DestroyIcon Lib "user32" Alias "DestroyIcon" (hIcon As Long) As Long   ' повтор, первое: QFormSkin.inc(215)
-'~dup Declare Function DrawIcon Lib "user32" Alias "DrawIconEx" (hdc As Long,xLeft As Long,yTop As Long,hIcon As Long,cxWidth As Long,cyWidth As Long,istepIfAniCur As Long,hbrFlickerFreeDraw As Long,diFlags As Long) As Long   ' повтор, первое: QFormSkin.inc(202)
+Declare Function DRAWICON_QICON Lib "user32" Alias "DrawIconEx" (hdc As Long,xLeft As Long,yTop As Long,hIcon As Long,cxWidth As Long,cyWidth As Long,istepIfAniCur As Long,hbrFlickerFreeDraw As Long,diFlags As Long) As Long
 
 Const DI_MASK_ICO=&H1
 Const DI_IMAGE_ICO=&H2
@@ -24337,7 +24337,7 @@ Private:
       bitmap.pixelformat=2
       bitmap.fillRect(0,0,32,32,&hffffff)
       ' transfert icon dans bitmap
-      DrawIcon(bitmap.handle,0,0,Qicon.handle,32,32,0,0,DI_NORMAL_ICO)
+      DRAWICON_QICON(bitmap.handle,0,0,Qicon.handle,32,32,0,0,DI_NORMAL_ICO)
     else
       bitmap.pixelformat=2
     end if
@@ -24373,7 +24373,7 @@ Private:
       bitmap.pixelformat=3
       bitmap.fillRect(0,0,32,32,&hffffff)
       ' transfert icon dans bitmap
-      DrawIcon(bitmap.handle,0,0,Qicon.handle,32,32,0,0,DI_NORMAL_ICO)
+      DRAWICON_QICON(bitmap.handle,0,0,Qicon.handle,32,32,0,0,DI_NORMAL_ICO)
     else
       bitmap.pixelformat=3
     end if
@@ -27719,7 +27719,7 @@ $IFNDEF __QPROCESS_INC      'don't reload
 
 $IFNDEF __WIN32API      'APIs     
 '~dup     $DEFINE CREATE_SUSPENDED 4&   ' повтор, первое: WIN32API.INC(779)
-'~dup     Declare Function CreateThread Lib "kernel32" Alias "CreateThread" (lpThreadAttributes As long, ByVal dwStackSize As Long, lpStartAddress As Long, lpParameter As long, ByVal dwCreationFlags As Long, lpThreadId As Long) As Long   ' повтор, первое: WIN32API.INC(2235)
+    Declare Function CREATETHREAD_QProcess Lib "kernel32" Alias "CreateThread" (lpThreadAttributes As long, ByVal dwStackSize As Long, lpStartAddress As Long, lpParameter As long, ByVal dwCreationFlags As Long, lpThreadId As Long) As Long
 '~dup     Declare Function ResumeThread Lib "kernel32.dll" Alias "ResumeThread" (hThread As Long) As Long   ' повтор, первое: WIN32API.INC(2000)
 '~dup     Declare Function SuspendThread Lib "kernel32" Alias "SuspendThread" (ByVal hThread As Long) As Long   ' повтор, первое: WIN32API.INC(1999)
 '~dup     Declare Function TerminateThread Lib "kernel32" Alias "TerminateThread" (ByVal hThread As Long, ByVal dwExitCode As Long) As Long   ' повтор, первое: WIN32API.INC(2243)
@@ -27794,7 +27794,7 @@ Type QProcess extends QObject
        if this.hProcess<>0 then TerminateThread(this.hProcess,0)
        PtVar=varptr(this.IdProcess)
        PtSub=CODEPTR(this.Process)
-       this.hProcess=CreateThread(0,0,PtSub,0,0,PtVar)
+       this.hProcess=CREATETHREAD_QProcess(0,0,PtSub,0,0,PtVar)
        SetProcessPriority(this.hProcess,this.Priority) 
     End Sub
 
@@ -27829,7 +27829,7 @@ $IFNDEF __QPROGRESS_INC  'don't reload
 
     $IFNDEF __WIN32API  'APIs
 '~dup         $DEFINE CREATE_SUSPENDED 4&   ' повтор, первое: WIN32API.INC(779)
-'~dup         DECLARE FUNCTION CreateThread LIB "kernel32" ALIAS "CreateThread"(lpThreadAttributes AS LONG , ByVal dwStackSize AS LONG , lpStartAddress AS LONG , lpParameter AS LONG , ByVal dwCreationFlags AS LONG , lpThreadId AS LONG) AS LONG   ' повтор, первое: WIN32API.INC(2235)
+        DECLARE FUNCTION CREATETHREAD_QProgress LIB "kernel32" ALIAS "CreateThread"(lpThreadAttributes AS LONG , ByVal dwStackSize AS LONG , lpStartAddress AS LONG , lpParameter AS LONG , ByVal dwCreationFlags AS LONG , lpThreadId AS LONG) AS LONG
 '~dup         DECLARE FUNCTION ResumeThread LIB "kernel32.dll" ALIAS "ResumeThread"(hThread AS LONG) AS LONG   ' повтор, первое: WIN32API.INC(2000)
 '~dup         DECLARE FUNCTION SuspendThread LIB "kernel32" ALIAS "SuspendThread"(ByVal hThread AS LONG) AS LONG   ' повтор, первое: WIN32API.INC(1999)
 '~dup         DECLARE FUNCTION TerminateThread LIB "kernel32" ALIAS "TerminateThread"(ByVal hThread AS LONG , ByVal dwExitCode AS LONG) AS LONG   ' повтор, первое: WIN32API.INC(2243)
@@ -28044,7 +28044,7 @@ $IFNDEF __QPROGRESS_INC  'don't reload
             '***********************************************
             SUB CreateMyThread
                 .lpThreadAddr = CODEPTR(This.DrawMotions)
-                .hThread = CreateThread(0& , 0& , This.lpThreadAddr , 0& , CREATE_SUSPENDED , VARPTR(This.ThreadID))
+                .hThread = CREATETHREAD_QProgress(0& , 0& , This.lpThreadAddr , 0& , CREATE_SUSPENDED , VARPTR(This.ThreadID))
             END SUB
 
 
@@ -30785,8 +30785,8 @@ $TYPECHECK OFF   ' сборка: вернуть после QTextBtn.inc
 '!!! lpThreadId
 'Points to a 32-bit variable that receives the thread identifier
 
-'~dup Declare Function CreateThread Lib "kernel32" Alias "CreateThread" (lpThreadAttributes As long, dwStackSize As Long,_   ' повтор, первое: WIN32API.INC(2235)
-'~dup lpStartAddress As Long, lpParameter As long, dwCreationFlags As Long, lpThreadId As Long) As Long
+Declare Function CREATETHREAD_QThread Lib "kernel32" Alias "CreateThread" (lpThreadAttributes As long, dwStackSize As Long,_
+lpStartAddress As Long, lpParameter As long, dwCreationFlags As Long, lpThreadId As Long) As Long
 
 
 
@@ -30835,7 +30835,7 @@ Type QThread extends QObject
        if this.hThread<>0 then TerminateThread(this.hThread,0)
        PtVar=varptr(this.IdThread)
        PtSub=CODEPTR(this.Thread)
-       this.hThread=CreateThread(0,0,PtSub,0,0,PtVar)
+       this.hThread=CREATETHREAD_QThread(0,0,PtSub,0,0,PtVar)
        SetThreadPriority(this.hThread,this.Priority) 
     End Sub
 
@@ -33708,8 +33708,8 @@ End Type
 '~dup DECLARE FUNCTION ScreenToClient LIB "user32" ALIAS "ScreenToClient" (hWnd AS long, lpPoint AS POINTAPI) AS long   ' повтор, первое: WIN32API.INC(7185)
 
 '~dup DECLARE FUNCTION UpdateWindow LIB "user32" ALIAS "UpdateWindow" (hWnd AS long) AS integer   ' повтор, первое: WIN32API.INC(7027)
-'~dup DECLARE FUNCTION InvalidateRect LIB "user32" ALIAS "InvalidateRect" (hWnd AS long, rect AS QRECT, _   ' повтор, первое: QFormSkin.inc(161)
-'~dup bErase AS long) AS long
+DECLARE FUNCTION INVALIDATERECT_RapidFRM LIB "user32" ALIAS "InvalidateRect" (hWnd AS long, rect AS QRECT, _
+bErase AS long) AS long
 '~dup DECLARE FUNCTION SetBkColor LIB "gdi32" ALIAS "SetBkColor" (hdc AS long, crColor AS long) AS long   ' повтор, первое: WIN32API.INC(4537)
 '~dup DECLARE FUNCTION DestroyWindow LIB "user32" ALIAS "DestroyWindow" (hWnd AS long) AS long   ' повтор, первое: WIN32API.INC(6723)
 
@@ -35497,7 +35497,7 @@ $IFNDEF __WIN32API
 '~dup Declare Function SetWindowLong Lib "user32" Alias "SetWindowLongA" (ByVal hwnd As Long, ByVal nIndex As Long, ByVal dwNewLong As Long) As Long   ' повтор, первое: rapidq2.inc(1039)
 '~dup Declare Function GetWindowLong Lib "user32" Alias "GetWindowLongA" (ByVal hwnd As Long, ByVal nIndex As Long) As Long   ' повтор, первое: rapidq2.inc(1037)
 '~dup Declare Function SetWindowPos Lib "user32" Alias "SetWindowPos" (ByVal hwnd As Long, ByVal hWndInsertAfter As Long, ByVal x As Long, ByVal y As Long, ByVal cx As Long, ByVal cy As Long, ByVal wFlags As Long) As Long   ' повтор, первое: rapidq2.inc(1029)
-'~dup Declare Function GetWindowRect Lib "user32" Alias "GetWindowRect" (ByVal hwnd As Long, lpRect As RECT) As Long   ' повтор, первое: rapidq2.inc(996)
+Declare Function GETWINDOWRECT_XPThemes Lib "user32" Alias "GetWindowRect" (ByVal hwnd As Long, lpRect As RECT) As Long
 '~dup Declare Function CreateSolidBrush Lib "gdi32" Alias "CreateSolidBrush" (ByVal crColor As Long) As Long   ' повтор, первое: rapidq2.inc(1449)
 '~dup Declare Function DeleteObject Lib "gdi32" Alias "DeleteObject" (ByVal hObject As Long) As Long   ' повтор, первое: rapidq2.inc(1451)
 '~dup Declare Function SelectObject Lib "gdi32" Alias "SelectObject" (ByVal hdc As Long, ByVal hObject As Long) As Long   ' повтор, первое: rapidq2.inc(1464)
@@ -35559,7 +35559,7 @@ TYPE QRichEditUx EXTENDS QRICHEDIT
             SetWindowPos(hWnd,0,0,0,0,0,SWP_FRAMECHANGED OR SWP_NOACTIVATE OR SWP_NOMOVE OR SWP_NOSIZE OR SWP_NOZORDER)
           END IF
           hDC = GetWindowDC(hWnd)
-          GetWindowRect(hWnd, R)
+          GETWINDOWRECT_XPThemes(hWnd, R)
           R.Right  = R.Right  - R.Left
           R.Bottom = R.Bottom - R.Top
           R.Top  = 0
@@ -35631,7 +35631,7 @@ TYPE QScrollBoxUx EXTENDS QSCROLLBOX
             SetWindowPos(hWnd,0,0,0,0,0,SWP_FRAMECHANGED OR SWP_NOACTIVATE OR SWP_NOMOVE OR SWP_NOSIZE OR SWP_NOZORDER)
           END IF
           hDC = GetWindowDC(hWnd)
-          GetWindowRect(hWnd, R)
+          GETWINDOWRECT_XPThemes(hWnd, R)
           R.Right  = R.Right  - R.Left
           R.Bottom = R.Bottom - R.Top
           R.Top  = 0
@@ -35703,7 +35703,7 @@ TYPE QStringGridUx EXTENDS QStringGrid
             SetWindowPos(hWnd,0,0,0,0,0,SWP_FRAMECHANGED OR SWP_NOACTIVATE OR SWP_NOMOVE OR SWP_NOSIZE OR SWP_NOZORDER)
           END IF
           hDC = GetWindowDC(hWnd)
-          GetWindowRect(hWnd, R)
+          GETWINDOWRECT_XPThemes(hWnd, R)
           R.Right  = R.Right  - R.Left
           R.Bottom = R.Bottom - R.Top
           R.Top  = 0
@@ -35775,7 +35775,7 @@ TYPE QPanelUx EXTENDS QPanel
             SetWindowPos(hWnd,0,0,0,0,0,SWP_FRAMECHANGED OR SWP_NOACTIVATE OR SWP_NOMOVE OR SWP_NOSIZE OR SWP_NOZORDER)
           END IF
           hDC = GetWindowDC(hWnd)
-          GetWindowRect(hWnd, R)
+          GETWINDOWRECT_XPThemes(hWnd, R)
           R.Right  = R.Right  - R.Left
           R.Bottom = R.Bottom - R.Top
           R.Top  = 0
@@ -35839,7 +35839,7 @@ TYPE QGroupBoxUx EXTENDS QGROUPBOX
         hTheme = OpenThemeData(hWnd,"B"+CHR$(0)+"U"+CHR$(0)+"T"+CHR$(0)+"T"+CHR$(0)+"O"+CHR$(0)+"N"+CHR$(0)+CHR$(0)+CHR$(0))
         IF hTheme THEN
           hDC = GetWindowDC(hWnd)
-          GetWindowRect(hWnd, BGRect)
+          GETWINDOWRECT_XPThemes(hWnd, BGRect)
           BGRect.Right  = BGRect.Right - BGRect.Left
           BGRect.Bottom = BGRect.Bottom - BGRect.Top
           BGRect.Top  = 0
