@@ -1446,6 +1446,7 @@ type
     FObjSnapHint: string;      // обычная подсказка кнопки снимка
     FRqStaleTick: Cardinal;    // когда UpdateToolbarState проверял снимок
     FIdleSlowTick: Cardinal;   // последняя запись о долгом простое (AppIdle)
+    FPromoted: Boolean;        // пробная сборка уже стала рабочей (OwnPromoteTrial)
     FRqInspMain: string;       // главный .bas файла в инспекторе
     FObjRebuilding: Boolean; // дерево перестраивается - Data узлов недействительны
     FDfmNodes: TList;
@@ -6800,9 +6801,14 @@ begin
   begin
     GAppTitle := 'Редактор кода';
     Age := FileAge(Application.ExeName);
+    // Полный путь запущенного exe: рабочий SyntaxHLClaude.exe или пробный
+    // SyntaxHLClaude_new.exe - по заголовку видно, что именно запущено
     if Age <> -1 then
       GAppTitle := GAppTitle + ' [сборка ' +
-        FormatDateTime('dd.mm.yyyy hh:nn', FileDateToDateTime(Age)) + ']';
+        FormatDateTime('dd.mm.yyyy hh:nn', FileDateToDateTime(Age)) + ', ' +
+        Application.ExeName + ']'
+    else
+      GAppTitle := GAppTitle + ' [' + Application.ExeName + ']';
   end;
   Result := GAppTitle;
 end;
@@ -21304,9 +21310,10 @@ begin
   // Пробная сборка редактора запустилась и закрывается - она рабочая.
   // Перезапуск после Tidy editor.ini - уже рабочим exe
   FRestartExe := Application.ExeName;
-  if OwnIsTrial and FStartupDone then
-    if OwnPromoteTrial then
-      FRestartExe := ExtractFilePath(Application.ExeName) + OwnExeBase + '.exe';
+  if OwnIsTrial and FStartupDone and not FPromoted then
+    FPromoted := OwnPromoteTrial;   // выход не через FormCloseQuery
+  if FPromoted then
+    FRestartExe := ExtractFilePath(Application.ExeName) + OwnExeBase + '.exe';
   ArdFreeAll;
   FreeAndNil(FEnvOverrides);
   FreeAndNil(FRqCompClasses);
@@ -63385,6 +63392,12 @@ begin
   // Выход отменён - перезапуска после Tidy editor.ini тоже не будет
   if not CanClose then
     FTidyRestart := False;
+  // Пробная сборка редактора запустилась и закрывается - она становится
+  // рабочей. Здесь, а не в FormDestroy: главная форма разрушается
+  // последней, и исключение при разрушении другой формы (Form3 и прочих)
+  // обрывало выход раньше - переименования не было.
+  if CanClose and OwnIsTrial and FStartupDone and not FPromoted then
+    FPromoted := OwnPromoteTrial;
 end;
 
 // Отступ новой строки по Enter: пробелы и табуляции в начале строки с

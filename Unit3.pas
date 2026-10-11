@@ -93,6 +93,7 @@ type
     FBusy: Boolean;        // идёт чтение эталона или проверка файлов
     FAbort: Boolean;       // нажат Стоп
     FLastTick: Cardinal;   // последний показ хода (ProgressStep)
+    FInfos: TList;         // TIncFileInfo всех строк lstIncFiles - владелец
     FIniFile: string;
     FSysDir: string;       // общие inc (SysIncPath)
     FDefaultRef: string;   // эталон по умолчанию
@@ -163,6 +164,7 @@ procedure TForm3.FormDestroy(Sender: TObject);
 begin
   FAbort := True;
   ClearInfos;
+  FreeAndNil(FInfos);
   FreeAndNil(FRef);
 end;
 
@@ -285,12 +287,22 @@ begin
   end;
 end;
 
+// Сведения о файлах - в своём списке FInfos, а не только в строках
+// lstIncFiles: при разрушении формы к списку на экране не обращаемся (его
+// окно уже уничтожено, а Items создавали бы его заново - исключение при
+// выходе из программы обрывало разрушение остальных форм)
 procedure TForm3.ClearInfos;
 var
   ItemIdx: Integer;
 begin
-  for ItemIdx := 0 to lstIncFiles.Items.Count - 1 do
-    lstIncFiles.Items.Objects[ItemIdx].Free;
+  if FInfos <> nil then
+  begin
+    for ItemIdx := 0 to FInfos.Count - 1 do
+      TObject(FInfos[ItemIdx]).Free;
+    FInfos.Clear;
+  end;
+  if csDestroying in ComponentState then
+    Exit;
   lstIncFiles.Items.Clear;
   lstErrors.Items.Clear;
   lblErrHead.Caption := '';
@@ -383,6 +395,9 @@ begin
       Inc(Counts[Info.Status]);
       if Info.Errors > 0 then
         Inc(Errors);
+      if FInfos = nil then
+        FInfos := TList.Create;
+      FInfos.Add(Info);
       lstIncFiles.Items.AddObject(ExtractFileName(Files[ItemIdx]), Info);
       lstIncFiles.Checked[lstIncFiles.Items.Count - 1] := True;
     end;
