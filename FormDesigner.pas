@@ -3387,6 +3387,14 @@ procedure TFormDesigner.FreezeForm;
 begin
   if (FFreezeDepth = 0) and (FForm <> nil) and FForm.HandleAllocated then
   begin
+    // Что уже помечено к перерисовке (место, откуда только что ушёл
+    // компонент, - SetBounds в MouseUp), рисуется до заморозки: пометки,
+    // сделанные до WM_SETREDRAW 0, после WM_SETREDRAW 1 Windows не
+    // рисует - родитель оставался со следом компонента, пока по нему не
+    // щёлкнут
+    if FTrace then
+      TraceLine('заморозка формы: сначала - что уже помечено');
+    RedrawWindow(FForm.Handle, nil, 0, RDW_UPDATENOW or RDW_ALLCHILDREN);
     SendMessage(FForm.Handle, WM_SETREDRAW, 0, 0);
     FFreezeRect := Rect(0, 0, 0, 0);
   end;
