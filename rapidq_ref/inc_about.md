@@ -98,6 +98,13 @@
 - **Особые библиотеки** (OpenGL, DAQmx, NI6210, MySQL, ACE32, zlib, cgi,
   Dbase и т.п.) — отмечены в плане «?», решение за автором. QGL.inc не вошёл,
   потому что подключает gl.inc.
+- **Имя класса занято встроенным:** QThread.inc. В rc.exe есть
+  недокументированный встроенный QTHREAD (тест 2026-10-11, research/
+  BuiltinNames.bas: `DIM t AS QTHREAD` без всяких inc собирается; при запуске
+  выходит окно «Can't find library :» с текстом следующей строковой константы,
+  и программа останавливается). `Type QThread extends QObject` даёт «Usertype
+  QTHREAD already used» и в отдельном файле. Чтобы пользоваться QThread.inc,
+  класс в нём надо переименовать.
 - **Ошибки в самом файле**: ftiQuery.inc (FUNCTION внутри FUNCTION),
   RQdate.inc (функция названа ReadVarFromMemory2, а вызывается
   ReadVarFromMemory из rapidq2007.inc; к тому же это обёртка fbDate.dll),
@@ -191,7 +198,7 @@ QRECT». Варианты:
 | SetFileTimeAttrib.inc | sysdir$ | SFTA_sysdir$ | FUNCTION SysDir из Files.inc |
 | QRichEditXt.inc | Type Point | QREXT_Point | SUB Point из QPoint.inc (rc.exe: «Usertype POINT already used») |
 | QLibrary.Inc | Dim Point (в методах) | QLIB_Point | то же |
-| QMaxSplitter.inc | DIM Rect1 | MSPLIT_Rect1 | rc.exe: «Identifier RECT1 already used»; другого Rect1 в сборке нет, причина не найдена, после переименования ошибки нет |
+| QMaxSplitter.inc | DIM Rect1 | MSPLIT_Rect1 | rc.exe: «Identifier RECT1 already used»; другого Rect1 в сборке нет, встроенного тоже (тест: `DIM Rect1 AS LONG` без inc собирается); причина не найдена, после переименования ошибки нет |
 
 Если программа обращалась к этим именам напрямую (например, вызывала
 `FF` из CMD5.inc), с общим файлом нужно новое имя.

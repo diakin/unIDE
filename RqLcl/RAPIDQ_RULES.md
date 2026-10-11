@@ -209,3 +209,7 @@ dim s as string : s="7" : n=s : print "16 "; n    16 0
 ## CopyMode (тест пользователя в RapidQ, 2026-10-11)
 
 `tests/research/CopyModeTest.bas`: CopyMode у QCANVAS и QBITMAP - код растровой операции Windows, как в rapidq2.inc (`cmSrcCopy = &HCC0020`, `cmBlackness = &H42` ...). Номера 0..14 из документации (qbitmap.html: `cmSrcCopy = 10`) рисуют чёрным при любом номере. Прочитанное значение равно записанному (и номер, и код). Документация здесь неверна; rapidq.inc и другие inc с номерами 0..14 (RAPIDQbug.INC, RAPIDQl.INC, rapidq2007.inc, rapidq_ex.inc) - тоже.
+
+## Встроенный QTHREAD
+
+В rc.exe (Rapid-Q Compiler Beta, 1999-2000) есть класс QTHREAD, которого нет в документации и в ComponentAll.data. Тест 2026-10-11 (`RqLcl/tofb/tests/research/BuiltinNames.bas`): `DIM t AS QTHREAD` без $INCLUDE собирается; при запуске - окно "Can't find library :" с текстом следующей строковой константы программы, и программа останавливается. Своё `TYPE QThread EXTENDS QObject` (QThread.inc) - "Usertype QTHREAD already used".

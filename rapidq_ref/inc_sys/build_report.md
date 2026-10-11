@@ -89,7 +89,7 @@
 | QTButton95.inc | нет: нужен $RESOURCE btn_BMP в программе (QTBtnBMP.BMPHandle = btn_BMP при подключении); подключать отдельно |
 | QTButton_AddOns.inc | нет: дополнение к QTButton, нужен ресурс btn_BMP в программе; подключать отдельно |
 | QTextEditTest.inc | взята другая версия: QTEXTEDIT - QTextEdit.inc |
-| QThread.inc | нет: rc.exe - "Usertype QTHREAD already used", другого QThread в сборке нет (похоже, в этой версии RapidQ такой класс уже есть - не проверено) |
+| QThread.inc | нет: в rc.exe уже есть встроенный QTHREAD (не в документации; тест 2026-10-11: DIM t AS QTHREAD собирается, при запуске "Can\'t find library" и программа останавливается) - имя класса занято, файл не собирается и отдельно |
 | QWinIni.inc | взята другая версия: QINI - QIni.inc |
 | QxEdit.inc | взята другая версия: QxEDIT - qEditEx.inc |
 | QXpTheme.INC | нет: подключать отдельно - при запуске пишет .manifest и перезапускает программу |

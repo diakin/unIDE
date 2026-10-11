@@ -139,7 +139,7 @@
 | QTextBtn.inc | 88 | 2010-06-21 | QTextBtn (QLabel) | да |
 | QTextEdit.inc | 225 | inc2026 | QTEXTEDIT (QRICHEDIT) | да |
 | QTextEditTest.inc | 83 | 2005-09-26 | QTEXTEDIT (QRICHEDIT) | да |
-| QThread.inc | 102 | ? | QThread (QObject) | нет: rc.exe - "Usertype QTHREAD already used", другого QThread в сборке нет (похоже, в этой версии RapidQ такой класс уже есть - не проверено) |
+| QThread.inc | 102 | ? | QThread (QObject) | нет: в rc.exe уже есть встроенный QTHREAD (не в документации; тест 2026-10-11: DIM t AS QTHREAD собирается, при запуске "Can\'t find library" и программа останавливается) - имя класса занято, файл не собирается и отдельно |
 | QToolBar.inc | 590 | inc2026 | QToolBar (QObject) | да |
 | QToolBarEX.inc | 291 | 2013-08-11 | QToolBarEX (QPANEL) | да |
 | QTreeviewEx.inc | 226 | inc2026 | QtreeviewEx (Qtreeview) | да |
