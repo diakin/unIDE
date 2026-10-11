@@ -3706,14 +3706,17 @@ DECLARE FUNCTION WaitForSingleObject Lib "kernel32" Alias "WaitForSingleObject" 
 
 'Rusdate$=field$(FileRec.Date,"-",2)+"-"+field$(FileRec.Date,"-",1)+"-"+right$(field$(FileRec.Date,"-",3),2)
 
-DECLARE function GetRusdate as string
-'~body function GetRusdate as string   ' сборка: тело - в конце файла
+function GetRusdate as string
+  result=field$(Date$,"-",2)+"-"+field$(Date$,"-",1)+"-"+right$(field$(Date$,"-",3),2)
+end function
 
-DECLARE function Rusdate as string
-'~body function Rusdate as string   ' сборка: тело - в конце файла
+function Rusdate as string
+  result=field$(Date$,"-",2)+"-"+field$(Date$,"-",1)+"-"+right$(field$(Date$,"-",3),2)
+end function
 
-DECLARE function Rudate as string
-'~body function Rudate as string   ' сборка: тело - в конце файла
+function Rudate as string
+  result=field$(Date$,"-",2)+"-"+field$(Date$,"-",1)+"-"+right$(field$(Date$,"-",3),2)
+end function
 
 '$include "C:\BAS\RAPIDQ\inc\conversion.inc"
 '~inc $include "conversion.inc"   ' сборка: файл - здесь
@@ -12330,17 +12333,20 @@ DECLARE sub nOpenMouseDlg(index%)
 DECLARE sub nOpenKeyboardDlg(index%)
 '~body sub nOpenKeyboardDlg(index%)   ' сборка: тело - в конце файла
 
-DECLARE sub OpenPrintersFolder
-'~body sub OpenPrintersFolder   ' сборка: тело - в конце файла
+sub OpenPrintersFolder
+PID = Shell("rundll32.exe shell32.dll,Control_RunDLL main.cpl @2", 5)
+end sub
 
-DECLARE sub OpenFontsFolder
-'~body sub OpenFontsFolder   ' сборка: тело - в конце файла
+sub OpenFontsFolder
+PID = Shell("rundll32.exe shell32.dll,Control_RunDLL main.cpl @3", 5)
+end sub
 
 DECLARE sub nOpenDisplayDlg(index%)
 '~body sub nOpenDisplayDlg(index%)   ' сборка: тело - в конце файла
 
-DECLARE sub OpenTimeDlg
-'~body sub OpenTimeDlg   ' сборка: тело - в конце файла
+sub OpenTimeDlg
+PID = Shell("rundll32.exe shell32.dll,Control_RunDLL timedate.cpl @0", 5)
+end sub
 
 DECLARE sub nOpenDialingDlg(index%)
 '~body sub nOpenDialingDlg(index%)   ' сборка: тело - в конце файла
@@ -12348,14 +12354,16 @@ DECLARE sub nOpenDialingDlg(index%)
 DECLARE sub nOpenSystemDialog(index%)
 '~body sub nOpenSystemDialog(index%)   ' сборка: тело - в конце файла
 
-DECLARE sub OpenAddNewHardwareDlg
-'~body sub OpenAddNewHardwareDlg   ' сборка: тело - в конце файла
+sub OpenAddNewHardwareDlg
+PID = Shell("rundll32.exe shell32.dll,Control_RunDLL sysdm.cpl @1", 5)
+end sub
 
 DECLARE sub nOpenScannerDlg(index%)
 '~body sub nOpenScannerDlg(index%)   ' сборка: тело - в конце файла
 
-DECLARE sub OpenThemesDlg
-'~body sub OpenThemesDlg   ' сборка: тело - в конце файла
+sub OpenThemesDlg
+PID = Shell("rundll32.exe shell32.dll,Control_RunDLL themes.cpl @0", 5)
+end sub
 
 DECLARE sub nOpenAddRemoveProgramsDlg(index%)
 '~body sub nOpenAddRemoveProgramsDlg(index%)   ' сборка: тело - в конце файла
@@ -12372,8 +12380,9 @@ DECLARE sub nOpenModemDlg(index%)
 DECLARE sub nOpenMMDeviceDlg(index%)
 '~body sub nOpenMMDeviceDlg(index%)   ' сборка: тело - в конце файла
 
-DECLARE sub OpenSoundsDlg
-'~body sub OpenSoundsDlg   ' сборка: тело - в конце файла
+sub OpenSoundsDlg
+PID = Shell("rundll32.exe shell32.dll,Control_RunDLL mmsys.cpl @1", 5)
+end sub
 
 DECLARE sub nOpenGamesDlg(index%)
 '~body sub nOpenGamesDlg(index%)   ' сборка: тело - в конце файла
@@ -12389,8 +12398,9 @@ DECLARE sub nOpenUsersDlg(index%)
 
 ' Only if one has TweakUI98 (or greater?) installed
 ' this one is not configured to accept arguments to display tabs at index%
-DECLARE sub OpenTweakUIDlg
-'~body sub OpenTweakUIDlg   ' сборка: тело - в конце файла
+sub OpenTweakUIDlg
+PID = Shell("rundll32.exe shell32.dll,Control_RunDLL tweakui.cpl @0", 5)
+end sub
   
 '============================================================================
 '[build_inc] conversion1.inc
@@ -14856,8 +14866,11 @@ DECLARE sub dbtCreate( dbtArch as string)
 '~body sub dbtCreate( dbtArch as string)   ' сборка: тело - в конце файла
 
 
-DECLARE sub dbtClose
-'~body sub dbtClose   ' сборка: тело - в конце файла
+sub dbtClose
+ fs.close
+ blockCount = 0
+ __s = ""
+end sub
 
 '*
 sub dbtOpen(dbtArch as string,  mode as integer)
@@ -14872,8 +14885,15 @@ currentRecID = -1
 end sub
 
 '*
-DECLARE sub readRecord
-'~body private sub readRecord   ' сборка: тело - в конце файла
+private sub readRecord
+Eom = 0   'End of record
+__s = ""
+
+while Eom=0
+  __s = __s + fs.readSTR(512)
+  Eom = INSTR(__s, Chr$(&H1A))
+wend
+end sub
 
 '*
 function MemoAppend(text as string) as integer
@@ -22363,8 +22383,33 @@ Declare Function GetVersionEx_mOD Lib "kernel32.dll" Alias "GetVersionExA" _
 
 Dim sStruc_mOD As QMemoryStream
 
-DECLARE SUB GetVersion_mOD
-'~body SUB GetVersion_mOD   ' сборка: тело - в конце файла
+SUB GetVersion_mOD
+	DIM rtn AS LONG
+	DIM OSV AS OSVERSIONINFO_mOD
+
+	WiTH sStruc_mOD
+		OSV.dwOSVersionInfoSize = SizeOf(OSV)
+		.WriteUDT(OSV)
+		rtn = GetVersionEx_mOD(.Pointer)
+		IF rtn <> False THEN
+			.Position = False
+			.ReadUDT(OSV)
+			IF OSV.dwPlatformId = True THEN
+				isXP_mOD = False
+			ELSEIF OSV.dwPlatformId = 2 THEN
+				IF OSV.dwMajorVersion=5 THEN
+					' Windows XP and 2000
+					IF OSV.dwMinorVersion = True THEN
+						isXP_mOD = 2	' Windows XP
+					ELSE
+						isXP_mOD = True	' Windows 2000
+					END IF
+				END IF
+			END IF
+		END IF
+		.Close
+	End WiTH
+END SUB
 Call GetVersion_mOD
 $ENDIF ' __RQGETVERSION2
 ' //
@@ -23719,12 +23764,56 @@ Function CheckIfSYSColor (lColor As Integer) As Integer
 		Result = lColor
 	End If
 End Function
-DECLARE Sub UpdateColors
-'~body Sub UpdateColors   ' сборка: тело - в конце файла
-DECLARE Sub LoadNewColors
-'~body Sub LoadNewColors   ' сборка: тело - в конце файла
-DECLARE Sub LoadDefaultColors
-'~body Sub LoadDefaultColors   ' сборка: тело - в конце файла
+Sub UpdateColors
+	' // Charge les nouvelles couleurs
+	'hHBr(13)	= GetStockObject_mOD(NULL_BRUSH_mOD)
+	'WiTH mnuODCouleurs
+	'	ChangeBrush	(True, GetSysColor_mOD(COLOR_BTNFACE_mOD), 12)
+	'	ChangeBrush	(True, .ItemContSelInactif, 11)
+	'	ChangeBrush	(True, .ItemContSel, 10)
+	'	ChangeBrush	(True, .ItemFondSelInact2, 9)
+	'	ChangeBrush	(True, .ItemFondSelInact1, 8)
+	'	ChangeBrush	(True, .ItemFondInact2, 7)
+	'	ChangeBrush	(True, .ItemFondInact1, 6)
+	'	ChangeBrush	(True, .ItemFondSel2, 5)
+	'	ChangeBrush	(True, .ItemFondSel1, 4)
+	'	ChangeBrush	(True, .ItemFond2, 3)
+	'	ChangeBrush	(True, .ItemFond1, 2)
+	'	ChangeBrush	(2, .MenuCont, 1)
+	'	ChangeBrush	(True, .MenuFond, False)
+	'End WiTH
+	DrawMenuBar_mOD(hMainMenu)
+End Sub
+Sub LoadNewColors
+	' // Charge nos nouvelles couleurs
+	WiTH mnuODMesCouleurs
+		.MainMenuTxt		= CheckIfSYSColor(.MainMenuTxt)
+		.MainMenuTxtSel		= CheckIfSYSColor(.MainMenuTxtSel)
+		.MainMenuTxtInactif	= CheckIfSYSColor(.MainMenuTxtInactif)
+		.MenuFond			= CheckIfSYSColor(.MenuFond)
+		.MenuCont			= CheckIfSYSColor(.MenuCont)
+		.ItemFond1			= CheckIfSYSColor(.ItemFond1)
+		.ItemFond2			= CheckIfSYSColor(.ItemFond2)
+		.ItemFondSel1		= CheckIfSYSColor(.ItemFondSel1)
+		.ItemFondSel2		= CheckIfSYSColor(.ItemFondSel2)
+		.ItemFondInact1		= CheckIfSYSColor(.ItemFondInact1)
+		.ItemFondInact2		= CheckIfSYSColor(.ItemFondInact2)
+		.ItemFondSelInact1	= CheckIfSYSColor(.ItemFondSelInact1)
+		.ItemFondSelInact2	= CheckIfSYSColor(.ItemFondSelInact2)
+		.ItemContSel		= CheckIfSYSColor(.ItemContSel)
+		.ItemContSelInactif	= CheckIfSYSColor(.ItemContSelInactif)
+		.ItemTxt			= CheckIfSYSColor(.ItemTxt)
+		.ItemTxtSel			= CheckIfSYSColor(.ItemTxtSel)
+		.ItemTxtInactif		= CheckIfSYSColor(.ItemTxtInactif)
+	End WiTH
+	mnuODCouleurs = mnuODMesCouleurs
+	Call UpdateColors
+End Sub
+Sub LoadDefaultColors
+	' // Attention ceci va remplacer nos couleurs par les couleurs prйdйfinies
+	mnuODCouleurs = mnuODDefCouleurs
+	Call UpdateColors
+End Sub
 Call LoadDefaultColors
 
 
@@ -63028,15 +63117,6 @@ End Function
 Function Trim$(s as string) as string
   Result=LTRIM$(RTRIM$(s))
 End Function
-function GetRusdate as string
-  result=field$(Date$,"-",2)+"-"+field$(Date$,"-",1)+"-"+right$(field$(Date$,"-",3),2)
-end function
-function Rusdate as string
-  result=field$(Date$,"-",2)+"-"+field$(Date$,"-",1)+"-"+right$(field$(Date$,"-",3),2)
-end function
-function Rudate as string
-  result=field$(Date$,"-",2)+"-"+field$(Date$,"-",1)+"-"+right$(field$(Date$,"-",3),2)
-end function
 $TYPECHECK OFF
 $ESCAPECHARS OFF
 $OPTION WEAKTYPE OFF
@@ -64601,17 +64681,8 @@ if index%>1 then index%=0
 PID = Shell("rundll32.exe shell32.dll,Control_RunDLL _
             main.cpl @1,"+str$(index%), 5)
 end sub
-sub OpenPrintersFolder
-PID = Shell("rundll32.exe shell32.dll,Control_RunDLL main.cpl @2", 5)
-end sub
-sub OpenFontsFolder
-PID = Shell("rundll32.exe shell32.dll,Control_RunDLL main.cpl @3", 5)
-end sub
 sub nOpenDisplayDlg(index%)
 PID = Shell("rundll32.exe shell32.dll,Control_RunDLL desk.cpl @0,"+str$(index%), 5)
-end sub
-sub OpenTimeDlg
-PID = Shell("rundll32.exe shell32.dll,Control_RunDLL timedate.cpl @0", 5)
 end sub
 sub nOpenDialingDlg(index%)
 PID = Shell("rundll32.exe shell32.dll,Control_RunDLL telephon.cpl @0,"+str$(index%), 5)
@@ -64619,14 +64690,8 @@ end sub
 sub nOpenSystemDialog(index%)
 PID = Shell("rundll32.exe shell32.dll,Control_RunDLL sysdm.cpl @0"+str$(index%), 5)
 end sub
-sub OpenAddNewHardwareDlg
-PID = Shell("rundll32.exe shell32.dll,Control_RunDLL sysdm.cpl @1", 5)
-end sub
 sub nOpenScannerDlg(index%)
 PID = Shell("rundll32.exe shell32.dll,Control_RunDLL sticpl.cpl @0", 5)
-end sub
-sub OpenThemesDlg
-PID = Shell("rundll32.exe shell32.dll,Control_RunDLL themes.cpl @0", 5)
 end sub
 sub nOpenAddRemoveProgramsDlg(index%)
 PID = Shell("rundll32.exe shell32.dll,Control_RunDLL appwiz.cpl @0,"+str$(index%), 5)
@@ -64643,9 +64708,6 @@ end sub
 sub nOpenMMDeviceDlg(index%)
 PID = Shell("rundll32.exe shell32.dll,Control_RunDLL mmsys.cpl @0,"+str$(index), 5)
 end sub
-sub OpenSoundsDlg
-PID = Shell("rundll32.exe shell32.dll,Control_RunDLL mmsys.cpl @1", 5)
-end sub
 sub nOpenGamesDlg(index%)
 PID = Shell("rundll32.exe shell32.dll,Control_RunDLL joy.cpl @0,"+str$(index%), 5)
 end sub
@@ -64657,9 +64719,6 @@ PID = Shell("rundll32.exe shell32.dll,Control_RunDLL inetcpl.cpl @0,"+str$(index
 end sub
 sub nOpenUsersDlg(index%)
 PID = Shell("rundll32.exe shell32.dll,Control_RunDLL inetcpl.cpl @1,"+str$(index%), 5)
-end sub
-sub OpenTweakUIDlg
-PID = Shell("rundll32.exe shell32.dll,Control_RunDLL tweakui.cpl @0", 5)
 end sub
 $TYPECHECK OFF
 $ESCAPECHARS OFF
@@ -64849,20 +64908,6 @@ streamEx.size = 512      'Reserve rest
 fs.CopyFrom(streamEx, 0)
 fs.close
 'print "Memo done!!"
-end sub
-sub dbtClose
- fs.close
- blockCount = 0
- __s = ""
-end sub
-private sub readRecord
-Eom = 0   'End of record
-__s = ""
-
-while Eom=0
-  __s = __s + fs.readSTR(512)
-  Eom = INSTR(__s, Chr$(&H1A))
-wend
 end sub
 function Memoget(n as long) as string
 'n is the identifier of requested record ("pointer")
@@ -65654,33 +65699,6 @@ $ESCAPECHARS OFF
 $OPTION WEAKTYPE OFF
 $OPTION VBDLL OFF
 '[build_inc] ODMenuXP.inc (тела)
-SUB GetVersion_mOD
-	DIM rtn AS LONG
-	DIM OSV AS OSVERSIONINFO_mOD
-
-	WiTH sStruc_mOD
-		OSV.dwOSVersionInfoSize = SizeOf(OSV)
-		.WriteUDT(OSV)
-		rtn = GetVersionEx_mOD(.Pointer)
-		IF rtn <> False THEN
-			.Position = False
-			.ReadUDT(OSV)
-			IF OSV.dwPlatformId = True THEN
-				isXP_mOD = False
-			ELSEIF OSV.dwPlatformId = 2 THEN
-				IF OSV.dwMajorVersion=5 THEN
-					' Windows XP and 2000
-					IF OSV.dwMinorVersion = True THEN
-						isXP_mOD = 2	' Windows XP
-					ELSE
-						isXP_mOD = True	' Windows 2000
-					END IF
-				END IF
-			END IF
-		END IF
-		.Close
-	End WiTH
-END SUB
 Sub FixTaskBarMenu (hWnd As Long)
 	SetWindowLong_mOD ( hWnd, GWL_HWNDPARENT_mOD, HWND_DESKTOP_mOD )
 	SetWindowLong_mOD ( Application.Handle, GWL_HWNDPARENT_mOD, hWnd )
@@ -65695,56 +65713,6 @@ Sub DefSysItem ()
 			SetMenuDefaultItem_mOD (pNewSysMenu.Handle, pSysRestore.Command, MF_BYCOMMAND)
 		End If
 	End If
-End Sub
-Sub UpdateColors
-	' // Charge les nouvelles couleurs
-	'hHBr(13)	= GetStockObject_mOD(NULL_BRUSH_mOD)
-	'WiTH mnuODCouleurs
-	'	ChangeBrush	(True, GetSysColor_mOD(COLOR_BTNFACE_mOD), 12)
-	'	ChangeBrush	(True, .ItemContSelInactif, 11)
-	'	ChangeBrush	(True, .ItemContSel, 10)
-	'	ChangeBrush	(True, .ItemFondSelInact2, 9)
-	'	ChangeBrush	(True, .ItemFondSelInact1, 8)
-	'	ChangeBrush	(True, .ItemFondInact2, 7)
-	'	ChangeBrush	(True, .ItemFondInact1, 6)
-	'	ChangeBrush	(True, .ItemFondSel2, 5)
-	'	ChangeBrush	(True, .ItemFondSel1, 4)
-	'	ChangeBrush	(True, .ItemFond2, 3)
-	'	ChangeBrush	(True, .ItemFond1, 2)
-	'	ChangeBrush	(2, .MenuCont, 1)
-	'	ChangeBrush	(True, .MenuFond, False)
-	'End WiTH
-	DrawMenuBar_mOD(hMainMenu)
-End Sub
-Sub LoadNewColors
-	' // Charge nos nouvelles couleurs
-	WiTH mnuODMesCouleurs
-		.MainMenuTxt		= CheckIfSYSColor(.MainMenuTxt)
-		.MainMenuTxtSel		= CheckIfSYSColor(.MainMenuTxtSel)
-		.MainMenuTxtInactif	= CheckIfSYSColor(.MainMenuTxtInactif)
-		.MenuFond			= CheckIfSYSColor(.MenuFond)
-		.MenuCont			= CheckIfSYSColor(.MenuCont)
-		.ItemFond1			= CheckIfSYSColor(.ItemFond1)
-		.ItemFond2			= CheckIfSYSColor(.ItemFond2)
-		.ItemFondSel1		= CheckIfSYSColor(.ItemFondSel1)
-		.ItemFondSel2		= CheckIfSYSColor(.ItemFondSel2)
-		.ItemFondInact1		= CheckIfSYSColor(.ItemFondInact1)
-		.ItemFondInact2		= CheckIfSYSColor(.ItemFondInact2)
-		.ItemFondSelInact1	= CheckIfSYSColor(.ItemFondSelInact1)
-		.ItemFondSelInact2	= CheckIfSYSColor(.ItemFondSelInact2)
-		.ItemContSel		= CheckIfSYSColor(.ItemContSel)
-		.ItemContSelInactif	= CheckIfSYSColor(.ItemContSelInactif)
-		.ItemTxt			= CheckIfSYSColor(.ItemTxt)
-		.ItemTxtSel			= CheckIfSYSColor(.ItemTxtSel)
-		.ItemTxtInactif		= CheckIfSYSColor(.ItemTxtInactif)
-	End WiTH
-	mnuODCouleurs = mnuODMesCouleurs
-	Call UpdateColors
-End Sub
-Sub LoadDefaultColors
-	' // Attention ceci va remplacer nos couleurs par les couleurs prйdйfinies
-	mnuODCouleurs = mnuODDefCouleurs
-	Call UpdateColors
 End Sub
 Sub MakeODMenuBarItem (ParentHnd As Long, mItem As QMenuItem, bmpIndex As Long)
 	If UBound(mnuMain) < mItem.Command Then

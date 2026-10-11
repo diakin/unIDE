@@ -429,7 +429,12 @@ def decls_first(out):
         hdr_end = idx
         while code_part(out[hdr_end]).rstrip().endswith('_') and hdr_end < last:
             hdr_end += 1
-        stay = (m.group(3) is not None or any(not g for _, g in conds) or section in undef_files)
+        # Заголовок без скобок (function GetRusdate as string, rapidq.inc):
+        # после DECLARE такого же вида rc.exe не принимает тело - "Expected
+        # end-of-line but got AS"; такое тело остаётся на месте
+        no_parens = '(' not in split_code_colon(code)
+        stay = (m.group(3) is not None or any(not g for _, g in conds) or section in undef_files or
+                (no_parens and name not in declared))
         if not stay:
             text = strip_strings(' '.join(code_part(l) for l in body)).upper()
             # свои: параметры и DIM/DEFxxx внутри тела
