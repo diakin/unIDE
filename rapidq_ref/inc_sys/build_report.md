@@ -137,6 +137,7 @@
 - keys.inc: 46 строк "define ИМЯ значение" без $ - $define
 - keys.inc: $OPTION INKEY$ TRAPALL закомментирован (действует на всю программу)
 - NI6210.inc: 1 строк CONST без = - с =
+- RichEditApi.inc: 3 строк-комментариев "; ..." - с '
 - CMD5.inc: F, G, H, FF, GG, HH, II -> MD5_...
 
 ## $DEFINE имени типом - только для своего файла

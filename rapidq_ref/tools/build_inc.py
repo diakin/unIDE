@@ -885,6 +885,14 @@ def main():
                 fixed += 1
         if fixed:
             renamed.append('%s: $OPTION INKEY$ TRAPALL закомментирован (действует на всю программу)' % f)
+        # Строка-комментарий ассемблера "; ..." (RichEditApi.inc) - "'"
+        fixed = 0
+        for num, line in enumerate(texts[f]):
+            if line.lstrip().startswith(';'):
+                texts[f][num] = "'" + line
+                fixed += 1
+        if fixed:
+            renamed.append('%s: %d строк-комментариев "; ..." - с \'' % (f, fixed))
         # CONST без = (commctrl32.inc: CONST TB_SETCOLORSCHEME	CCM_SETCOLORSCHEME)
         fixed = 0
         for num, line in enumerate(texts[f]):

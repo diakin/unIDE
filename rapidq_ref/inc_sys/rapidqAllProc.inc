@@ -27377,7 +27377,7 @@ DECLARE sub loadFromfile( filename )
 'const EM_SETCHARFORMAT = WM_USER + 68
 'const EM_FORMATRANGE = WM_USER + 57
 'const SCF_SELECTION = &H0001
-; -------------------------- riched equates -------------------------------
+'; -------------------------- riched equates -------------------------------
 const    ccTextLimitDefault        = &H32767
 
 '~dup const    EM_CANPASTE                 =WM_USER + 50   ' повтор, первое: constants.inc(62)
