@@ -1,6 +1,6 @@
 object Form3: TForm3
-  Left = 262
-  Top = 172
+  Left = 211
+  Top = 214
   Width = 1180
   Height = 760
   Caption = 'INC Manager'
@@ -26,7 +26,7 @@ object Form3: TForm3
     Height = 722
     Align = alRight
     BevelOuter = bvNone
-    BorderWidth = 6
+    BorderWidth = 2
     Caption = ''
     TabOrder = 2
     object Label1: TLabel
@@ -120,6 +120,7 @@ object Form3: TForm3
     end
   end
   object Splitter1: TSplitter
+    Color = clMaroon
     Left = 706
     Top = 0
     Width = 6
@@ -128,17 +129,20 @@ object Form3: TForm3
     MinSize = 300
   end
   object Panel2: TPanel
+    Color = clGreen
     Left = 0
     Top = 0
     Width = 706
     Height = 722
     Align = alClient
     BevelOuter = bvNone
-    BorderWidth = 6
+    BorderWidth = 0
     Caption = ''
     TabOrder = 0
     object Panel1: TPanel
-      Left = 6
+      UseDockManager = False
+      Color = clOlive
+      Left = 1
       Top = 6
       Width = 694
       Height = 330
@@ -147,6 +151,7 @@ object Form3: TForm3
       Caption = ''
       TabOrder = 0
       object lblFolders: TLabel
+        Color = clBtnFace
         Left = 0
         Top = 0
         Width = 694
@@ -271,7 +276,7 @@ object Form3: TForm3
       Caption = ''
       TabOrder = 1
       object lblRef: TLabel
-        Left = 0
+        Left = 3
         Top = 10
         Width = 650
         Height = 13
@@ -291,6 +296,7 @@ object Form3: TForm3
       end
     end
     object lblErrHead: TLabel
+      Color = clBtnFace
       Left = 6
       Top = 370
       Width = 694
