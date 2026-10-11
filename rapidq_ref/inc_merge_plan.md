@@ -74,9 +74,9 @@
 | QDesktop.inc | 75 | 2008-07-09 | QDesktop (QObject) | да |
 | QDigDisplay.inc | 77 | 2008-07-09 | QDigDisplay (QCanvas) | да |
 | QDir.Inc | 732 | inc2026 | QDir (QObject) | да |
-| QDirListView1.inc | 343 | 2009-03-24 | QDirListView (QListView) | да |
+| QDirListView1.inc | 343 | 2009-03-24 | QDirListView (QListView) | нет: $RESOURCE на файлы, которых нет в inc; подключать отдельно |
 | QDrawFocus.inc | 301 | inc2026 | QDrawFocus (QOBJECT) | да |
-| QDrawMenu.inc | 318 | 2008-07-09 | QdrawMenu (QOBJECT) | да |
+| QDrawMenu.inc | 318 | 2008-07-09 | QdrawMenu (QOBJECT) | да, строки 1-228 (дальше пример программы) |
 | QDrive.inc | 108 | 2012-09-09 | QDrive (QObject) | да |
 | QDriveCombobox.inc | 48 | inc2026 | QDriveComboBox (QComboBox) | да |
 | QFTPCLIENT.INC | 581 | ? | QFtpClient (QObject) | да |
@@ -107,7 +107,7 @@
 | QListBoxEx.inc | 35 | 2008-07-09 | QListBoxEx (QListBox) | да |
 | QListviewEx.inc | 332 | 2004-03-17 | Qlistviewex (Qlistview) | да |
 | QMailLabel.inc | 61 | ? | QMailLabel (QLabel) | да |
-| QMarker.inc | 51 | 2005-11-10 | QMarker (QPanel) | да |
+| QMarker.inc | 51 | 2005-11-10 | QMarker (QPanel) | нет: $RESOURCE на файлы, которых нет в inc; подключать отдельно |
 | QMaxSplitter.inc | 264 | inc2026 | QMAXSPLITTER (QPANEL) | да |
 | QMidi.inc | 253 | inc2026 | QMidi (Qobject) | да |
 | QPageSetup.inc | 208 | ? | QPageSetup (QOBJECT) | да |
@@ -121,14 +121,14 @@
 | QRichEditXt.inc | 522 | inc2026 | QRichEdit_xt (QRichEdit) | да |
 | QRun.inc | 209 | inc2026 | QRun (QObject) | да |
 | QSHFileOperation.inc | 249 | inc2026 | QSHFileOperation (QObject) | да |
-| QSavePlus.inc | 282 | 2008-07-10 | QSaveplus (QSaveDialog) | да |
+| QSavePlus.inc | 282 | 2008-07-10 | QSaveplus (QSaveDialog) | да, строки 1-216 (дальше пример программы) |
 | QShutdown.inc | 116 | inc2026 | QShutDown (QOBJECT) | да |
 | QSkin.inc | 69 | 2008-07-09 | QSkin (QForm) | да |
 | QSkinBtn.inc | 115 | 2008-07-09 | QSkinBtn (qimage) | да |
 | QSocketEx.inc | 295 | inc2026 | QSocketEx (QSocket) | да |
 | QSpinEdit.inc | 158 | inc2026 | QSpinButton (QPanel) | да |
 | QSplash.inc | 83 | 2008-07-19 | QSplash (QObject) | да |
-| QSplitter.inc | 349 | 2008-07-09 | QMAXSPLITTER (QPANEL) | да |
+| QSplitter.inc | 349 | 2008-07-09 | QMAXSPLITTER (QPANEL) | да, строки 1-255 (дальше пример программы) |
 | QStatusBarEx.inc | 40 | inc2026 | QStatusBarEx (QSTATUSBAR) | да |
 | QTButton.inc | 720 | 2005-11-10 | QTButton (QButton) | да |
 | QTButton72.inc | 364 | 2005-11-10 | QTButton (QButton) | да |
@@ -163,8 +163,8 @@
 | RichEdPopUpold.inc | 161 | 2005-01-13 | QMAXEDIT (QRICHEDIT) | да |
 | TstRichEd.inc | 16 | 2004-09-23 | TestEDIT (QRICHEDIT) | да |
 | VFW.inc | 1140 | inc2026 | QWebCam (QOBJECT) | да |
-| WebCam.inc | 221 | 2008-07-09 | QWebCam (QOBJECT) | да |
-| XPSkinMetallic_2.11_Res.inc | 1515 | inc2026 | myXPSkinnedForm (QForm) | да |
+| WebCam.inc | 221 | 2008-07-09 | QWebCam (QOBJECT) | нет: при подключении сразу вызывает webcam.dll; подключать отдельно |
+| XPSkinMetallic_2.11_Res.inc | 1515 | inc2026 | myXPSkinnedForm (QForm) | нет: нужны ресурсы Resources2.inc и CONST myMainFormName в программе; подключать отдельно |
 | XPThemes.inc | 479 | 2009-06-15 | QRichEditUx (QRICHEDIT), QScrollBoxUx (QSCROLLBOX), QStringGridUx (QStringGrid), QPanelUx (QPanel), QGroupBoxUx (QGROUPBOX) | да |
 | XP_MANIFEST.INC | 136 | inc2026 | XpGroupBox (QPANEL) | да |
 | apiRe.inc | 167 | 2004-03-17 | QRichEdit_api (QObject) | да |
@@ -182,7 +182,7 @@
 | qgraph.inc | 180 | inc2026 | QLineGraph (qobject) | да |
 | qmaxedit.inc | 91 | 2004-03-17 | QMAXEDIT (QRICHEDIT) | да |
 | qmenu.inc | 182 | inc2026 | QMenu (QOBJECT) | да |
-| qodbc.inc | 380 | 2005-01-05 | qODBC (Qobject) | да |
+| qodbc.inc | 380 | 2005-01-05 | qODBC (Qobject) | да, строки 1-323 (дальше пример программы) |
 | qposic.inc | 176 | 2004-03-17 | Qposic (qpanel) | да |
 | qspintext.inc | 133 | 2004-06-15 | Qspintext (qpanel) | да |
 | qspintextOld.inc | 80 | 2004-04-20 | Qspintext (qpanel) | да |
@@ -200,7 +200,7 @@
 | ACE32.INC | 903 | 2008-07-09 | 439 | 302 | 0 |  | ? |
 | AddMenuItemBitmaps4a.inc | 125 | 2005-11-10 | 7 | 10 | 2 |  | да |
 | AdvAPI32.inc | 16 | 2000-06-27 | 0 | 1 | 0 |  | да |
-| AllProps.inc | 283 | 2005-11-10 | 0 | 0 | 0 |  | да |
+| AllProps.inc | 283 | 2005-11-10 | 0 | 0 | 0 |  | нет: фрагмент программы (объекты и процедуры основной программы) |
 | Api.inc | 116 | 2004-03-17 | 41 | 7 | 0 |  | да |
 | ApiDate.inc | 73 | inc2026 | 0 | 4 | 2 |  | да |
 | CMD5.inc | 818 | 2012-09-11 | 21 | 0 | 16 |  | да |
@@ -219,7 +219,7 @@
 | CallBack_7.Inc | 61 | inc2026 | 2 | 4 | 3 |  | да |
 | CallBack_8.Inc | 61 | inc2026 | 2 | 4 | 3 |  | да |
 | CallBacks.Inc | 56 | inc2026 | 1 | 0 | 0 | CallBack_0.Inc, CallBack_1.Inc, CallBack_2.Inc, CallBack_3.Inc ... | да |
-| CodeSense.inc | 1163 | 2005-11-10 | 32 | 943 | 0 | Win32_constants.inc, CM_Constants.inc, CM_Functions.inc | да |
+| CodeSense.inc | 1163 | 2005-11-10 | 32 | 943 | 0 | Win32_constants.inc, CM_Constants.inc, CM_Functions.inc | нет: $RESOURCE на файлы, которых нет в inc; подключать отдельно |
 | CommCtrl.inc | 1502 | 2008-11-27 | 840 | 1 | 0 |  | да |
 | Common.inc | 38 | 2004-02-23 | 2 | 4 | 1 |  | да |
 | Control.inc | 137 | 2004-03-17 | 0 | 0 | 22 |  | да |
@@ -262,22 +262,22 @@
 | QPoint.inc | 10 | 2005-11-10 | 0 | 0 | 1 |  | да |
 | QPrintDialog.inc | 60 | 2005-11-10 | 18 | 1 | 0 |  | да |
 | QStringGridEx.inc | 44 | 2008-07-09 | 3 | 0 | 1 |  | да |
-| QTButton_AddOns.inc | 1112 | 2005-11-10 | 23 | 13 | 4 |  | да |
+| QTButton_AddOns.inc | 1112 | 2005-11-10 | 23 | 13 | 4 |  | нет: дополнение к QTButton, нужен ресурс btn_BMP в программе; подключать отдельно |
 | QXLS.INC | 771 | ? | 42 | 25 | 25 |  | да |
 | QXpTheme.INC | 38 | 2005-11-10 | 0 | 0 | 0 |  | да |
 | RQDialog.inc | 105 | 2004-03-17 | 3 | 2 | 1 |  | да |
 | RQDxf.inc | 256 | 2004-03-17 | 0 | 9 | 9 |  | ? |
 | RQProcess.inc | 202 | 2008-07-07 | 30 | 14 | 5 |  | да |
 | RQdate.inc | 287 | 2008-01-22 | 11 | 18 | 7 |  | да |
-| RapidFRM_Mods.inc | 75 | 2021-02-28 | 0 | 3 | 3 |  | да |
-| Resources2.inc | 55 | 2005-11-10 | 0 | 0 | 0 |  | да |
+| RapidFRM_Mods.inc | 75 | 2021-02-28 | 0 | 3 | 3 |  | нет: фрагмент программы (объекты и процедуры основной программы) |
+| Resources2.inc | 55 | 2005-11-10 | 0 | 0 | 0 |  | нет: $RESOURCE на файлы, которых нет в inc; подключать отдельно |
 | RichEditApi.inc | 457 | 2004-03-17 | 206 | 0 | 0 |  | да |
 | RqAsmUtils.Inc | 495 | 2008-07-09 | 0 | 1 | 22 |  | да |
 | SetFileTimeAttrib.inc | 243 | 2004-07-04 | 14 | 7 | 1 |  | да |
 | Shell32.inc | 41 | 2000-06-27 | 0 | 3 | 0 |  | да |
 | ShellRedir.Inc | 232 | 2011-02-23 | 5 | 8 | 1 |  | да |
-| Splash.inc | 54 | 2006-02-19 | 0 | 0 | 0 |  | да |
-| SplashForm.inc | 33 | 2005-11-10 | 0 | 1 | 1 |  | да |
+| Splash.inc | 54 | 2006-02-19 | 0 | 0 | 0 |  | нет: фрагмент программы (заставка, CREATE формы и показ) |
+| SplashForm.inc | 33 | 2005-11-10 | 0 | 1 | 1 |  | нет: фрагмент программы (заставка, CREATE формы и показ) |
 | StayOnTop.inc | 30 | 2005-11-10 | 4 | 2 | 1 |  | да |
 | SysUtils.inc | 120 | inc2026 | 1 | 0 | 10 |  | да |
 | TRM_RQDeclares.INC | 121 | 2004-03-17 | 43 | 1 | 0 |  | да |
@@ -308,7 +308,7 @@
 | evaluate.inc | 557 | ? | 0 | 8 | 7 |  | да |
 | fbscancodes.inc | 134 | 2008-04-04 | 117 | 0 | 0 |  | да |
 | fileops.inc | 197 | 2009-06-17 | 1 | 0 | 12 |  | да |
-| ftiQuery.inc | 376 | ? | 10 | 0 | 4 |  | да |
+| ftiQuery.inc | 376 | ? | 10 | 0 | 4 |  | нет: FUNCTION внутри FUNCTION (ftiExtractProgPath вставлена в ftiExtractFileName, строки 110-143) |
 | func_array.inc | 548 | 2022-06-19 | 0 | 0 | 25 |  | да |
 | gl.inc | 1377 | ? | 760 | 421 | 19 |  | ? |
 | glaux.inc | 316 | ? | 120 | 52 | 12 |  | ? |
@@ -333,7 +333,7 @@
 | registryVars.inc | 139 | 2004-10-13 | 6 | 0 | 5 |  | да |
 | rq_math.inc | 481 | 2004-03-17 | 4 | 0 | 45 |  | да |
 | setup.inc | 5 | 2004-03-17 | 0 | 1 | 1 |  | да |
-| stdObjMnu.inc | 245 | 2005-07-22 | 0 | 0 | 0 |  | да |
+| stdObjMnu.inc | 245 | 2005-07-22 | 0 | 0 | 0 |  | нет: фрагмент программы (объекты и процедуры основной программы) |
 | stdObjbar.inc | 351 | 2021-03-13 | 0 | 0 | 0 |  | да |
 | using.inc | 243 | 2004-03-17 | 8 | 1 | 0 |  | да |
 | var.inc | 353 | 2021-04-01 | 1 | 0 | 0 |  | да |

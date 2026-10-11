@@ -1102,8 +1102,12 @@ begin
   end
   else
   begin
-    // Значка нет - имя класса без Q
-    ABtn.Caption := Copy(AClass, 2, MaxInt);
+    // Значка нет - имя класса без Q (QSTRINGLIST - STRINGLIST); класс
+    // не на Q (ComPort из rapidqComponents.inc) - как есть
+    if (AClass <> '') and (AClass[1] in ['Q', 'q']) then
+      ABtn.Caption := Copy(AClass, 2, MaxInt)
+    else
+      ABtn.Caption := AClass;
     FMeter.Canvas.Font := Font;
     BtnWidth := FMeter.Canvas.TextWidth(ABtn.Caption) + 10;
     if BtnWidth < BtnSize then

@@ -1262,6 +1262,8 @@ type
     FRqDsgOwnWrite: Boolean; // текст поменял сам конструктор - не перестраивать
     FDsgMenuRq: Boolean;     // FDsgMenu открыл конструктор RapidQ (RqDsgContext)
     FRqPalPage: Integer;     // первая страница палитры RapidQ
+    FRqPalLast: Integer;     // последняя (с RQ Comp, RQ Comp System)
+    FRqCompClasses: TStringList; // классы страниц RQ Comp (верхний регистр)
     // Режим среды (ApplyLangMode): -1 - ещё не применён, иначе сборщик
     // активной вкладки (bkDelphi, bkRapidQ, bkFreeBasic, bkArduino); для
     // какого файла и проекта считан; места кнопок ряда Project из .dfm
@@ -2235,6 +2237,8 @@ type
     procedure RqDsgChange(const AName: string; AProps: TStrings);
     procedure RqNewForm;
     procedure DsgAddRapidQPages;
+    procedure DsgAddRqCompPages;
+    procedure RqDsgAddCompInclude(ALines: TStrings; ABefore: Integer);
     function  RqPalSelected: string;
     procedure RqDsgPlace(const AParent: string; X, Y, AFormX, AFormY: Integer;
                          var AHandled: Boolean);
@@ -21143,6 +21147,7 @@ begin
       FRestartExe := ExtractFilePath(Application.ExeName) + OwnExeBase + '.exe';
   ArdFreeAll;
   FreeAndNil(FEnvOverrides);
+  FreeAndNil(FRqCompClasses);
   CiFreeAll;
   FreeAndNil(FRqDeclCache);  // панель объявления RapidQ
   FreeAndNil(FRqDeclFiles);
@@ -26786,7 +26791,7 @@ begin
   // Палитра - на страницы RapidQ, если открыта другая
   if (FDsgPalette <> nil) and
      ((FDsgPalette.PageIndex < FRqPalPage) or
-      (FDsgPalette.PageIndex > FRqPalPage + 3)) then
+      (FDsgPalette.PageIndex > FRqPalLast)) then
     FDsgPalette.SetPage(FRqPalPage);
   LogComp('Конструктор RapidQ: форма ' + Root.Name + ' (строка ' +
           IntToStr(Root.CreateLine + 1) + ')');
@@ -50201,7 +50206,7 @@ begin
   begin
     for PageIdx := 0 to FDsgPalette.PageCount - 1 do
       FDsgPalette.SetPageHidden(PageIdx,
-        RqMode <> ((PageIdx >= FRqPalPage) and (PageIdx <= FRqPalPage + 3)));
+        RqMode <> ((PageIdx >= FRqPalPage) and (PageIdx <= FRqPalLast)));
     FDsgPalette.ApplyPages;
   end;
   Dbg('Режим среды: ' + BuildKindName(Kind) + ' (' + FBuildReason + ')',
@@ -50303,6 +50308,7 @@ begin
   for PageIdx := 0 to 3 do
     Pages[PageIdx] := FDsgPalette.AddPage(RqPalPageName[PageIdx]);
   FRqPalPage := Pages[0];
+  FRqPalLast := Pages[3];
   for ClassIdx := 0 to RqPalCount - 1 do
   begin
     RqBtn := TSpeedButton.Create(FDsgPalette);
@@ -50310,6 +50316,199 @@ begin
                             RqPalClass[ClassIdx] + ' (RapidQ)',
                             Pages[RqPalPage[ClassIdx]]);
   end;
+  DsgAddRqCompPages;
+end;
+
+// Компоненты rapidqComponents.inc системной папки inc (SysIncPath,
+// rapidq_ref/inc_about.md) - страницы RQ Comp (визуальные) и RQ Comp
+// System (прочие) сразу после страниц RapidQ. Класс - строка
+// TYPE Имя EXTENDS Базовый (закомментированные повторы сборки
+// начинаются с ' и не попадают). Визуальный или нет - по первому классу
+// палитры RapidQ в цепочке базовых: страницы RQ Standard и RQ Additional -
+// визуальный. Наследники QFORM на форму не ставятся и в палитру не идут,
+// своя версия класса палитры RapidQ (QCOLORDIALOG) - тоже: кнопка есть.
+// Кнопка - имя класса (значков у этих классов нет), подсказка - базовый.
+procedure TForm1.DsgAddRqCompPages;
+const
+  MaxDepth = 30;
+var
+  SysDir, UserDir, Mode, OwnDir, FileName, LineText, CompName, BaseName,
+    CurName: string;
+  Src, Bases, Visual, Other: TStringList;
+  LineIdx, ClassIdx, PalIdx, Depth, PageNum, FormCount, CharPos: Integer;
+  RqBtn: TSpeedButton;
+  IsForm: Boolean;
+
+  // Следующее слово (буквы, цифры, _) строки AText с позиции APos
+  function NextWord(const AText: string; var APos: Integer): string;
+  var
+    StartPos: Integer;
+  begin
+    while (APos <= Length(AText)) and (AText[APos] in [' ', #9]) do
+      Inc(APos);
+    StartPos := APos;
+    while (APos <= Length(AText)) and
+          (AText[APos] in ['A'..'Z', 'a'..'z', '0'..'9', '_']) do
+      Inc(APos);
+    Result := Copy(AText, StartPos, APos - StartPos);
+  end;
+
+  procedure AddPage(AList: TStringList; const APageName: string);
+  var
+    ItemIdx: Integer;
+  begin
+    if AList.Count = 0 then
+      Exit;
+    AList.Sort;
+    PageNum := FDsgPalette.AddPage(APageName);
+    FRqPalLast := PageNum;
+    for ItemIdx := 0 to AList.Count - 1 do
+    begin
+      RqBtn := TSpeedButton.Create(FDsgPalette);
+      FDsgPalette.PlaceRapidQ(RqBtn, AList.Names[ItemIdx], '',
+        AList.Names[ItemIdx] + ' EXTENDS ' + AList.Values[AList.Names[ItemIdx]] +
+        ' (rapidqComponents.inc)', PageNum);
+    end;
+  end;
+
+begin
+  if FRqCompClasses = nil then
+    FRqCompClasses := TStringList.Create;
+  FRqCompClasses.Clear;
+  RapidQIncSettings('', SysDir, UserDir, Mode, OwnDir);
+  if SysDir = '' then
+    Exit;
+  FileName := IncludeTrailingPathDelimiter(SysDir) + 'rapidqComponents.inc';
+  if not FileExists(FileName) then
+    Exit;
+  Src := TStringList.Create;
+  Bases := TStringList.Create;
+  Visual := TStringList.Create;
+  Other := TStringList.Create;
+  try
+    try
+      Src.LoadFromFile(FileName);
+    except
+      Exit;
+    end;
+    // Bases: "ИМЯ=БАЗОВЫЙ" (верхний регистр) и в Objects - номер строки
+    // Src с исходным написанием имени
+    for LineIdx := 0 to Src.Count - 1 do
+    begin
+      LineText := TrimLeft(Src[LineIdx]);
+      if CompareText(Copy(LineText, 1, 5), 'type ') <> 0 then
+        Continue;
+      CharPos := 5;
+      CompName := NextWord(LineText, CharPos);
+      if CompareText(NextWord(LineText, CharPos), 'extends') <> 0 then
+        Continue;
+      BaseName := NextWord(LineText, CharPos);
+      if (CompName = '') or (BaseName = '') or
+         (Bases.IndexOfName(UpperCase(CompName)) >= 0) then
+        Continue;
+      Bases.AddObject(UpperCase(CompName) + '=' + UpperCase(BaseName),
+                      TObject(LineIdx));
+    end;
+    FormCount := 0;
+    for ClassIdx := 0 to Bases.Count - 1 do
+    begin
+      CurName := Bases.Names[ClassIdx];
+      // Своя версия класса палитры RapidQ (QCOLORDIALOG) - кнопка уже есть
+      PalIdx := -1;
+      for LineIdx := 0 to RqPalCount - 1 do
+        if RqPalClass[LineIdx] = CurName then
+          PalIdx := LineIdx;
+      if PalIdx >= 0 then
+        Continue;
+      IsForm := False;
+      for Depth := 1 to MaxDepth do
+      begin
+        if CurName = 'QFORM' then
+        begin
+          IsForm := True;
+          Break;
+        end;
+        for LineIdx := 0 to RqPalCount - 1 do
+          if RqPalClass[LineIdx] = CurName then
+            PalIdx := LineIdx;
+        if PalIdx >= 0 then
+          Break;
+        CurName := Bases.Values[CurName];
+        if CurName = '' then
+          Break;
+      end;
+      if IsForm then
+      begin
+        Inc(FormCount);
+        Continue;
+      end;
+      // Исходное написание имени и базового - из строки TYPE
+      LineText := TrimLeft(Src[Integer(Bases.Objects[ClassIdx])]);
+      CharPos := 5;
+      CompName := NextWord(LineText, CharPos);
+      NextWord(LineText, CharPos);
+      BaseName := NextWord(LineText, CharPos);
+      FRqCompClasses.Add(UpperCase(CompName));
+      if (PalIdx >= 0) and (RqPalPage[PalIdx] <= 1) then
+        Visual.Add(CompName + '=' + BaseName)
+      else
+        Other.Add(CompName + '=' + BaseName);
+    end;
+    AddPage(Visual, 'RQ Comp');
+    AddPage(Other, 'RQ Comp System');
+    Dbg('Палитра RapidQ: из ' + FileName + ' визуальных ' +
+        IntToStr(Visual.Count) + ', прочих ' + IntToStr(Other.Count) +
+        ', наследников QFORM (не в палитре) ' + IntToStr(FormCount), clGray);
+  finally
+    Other.Free;
+    Visual.Free;
+    Bases.Free;
+    Src.Free;
+  end;
+end;
+
+// $INCLUDE "rapidqComponents.inc" в текст программы - поставлен класс со
+// страницы RQ Comp, а файл не подключён: после последней строки $INCLUDE
+// выше ABefore, нет таких - первой строкой. Папка inc проекта не
+// системная - с полным путём системной папки.
+procedure TForm1.RqDsgAddCompInclude(ALines: TStrings; ABefore: Integer);
+var
+  SysDir, UserDir, Mode, OwnDir, IncName, LineText: string;
+  LineIdx, InsLine, LineStart: Integer;
+begin
+  RapidQIncSettings(FCurrentProject, SysDir, UserDir, Mode, OwnDir);
+  if SysDir = '' then
+    Exit;
+  IncName := 'rapidqComponents.inc';
+  if CompareText(ExcludeTrailingPathDelimiter(RapidQIncDir),
+                 ExcludeTrailingPathDelimiter(SysDir)) <> 0 then
+    IncName := IncludeTrailingPathDelimiter(SysDir) + IncName;
+  InsLine := 0;
+  for LineIdx := 0 to ABefore - 1 do
+  begin
+    if LineIdx >= ALines.Count then
+      Break;
+    LineText := LowerCase(TrimLeft(ALines[LineIdx]));
+    if Copy(LineText, 1, 8) = '$include' then
+      InsLine := LineIdx + 1;
+  end;
+  LineStart := SendMessageA(RichEdit1.Handle, EM_LINEINDEX, InsLine, 0);
+  if LineStart < 0 then
+    Exit;
+  Inc(FObjOwnWrite);
+  try
+    EditorFreeze;
+    try
+      RichEdit1.SelStart := LineStart;
+      RichEdit1.SelLength := 0;
+      RichEdit1.SelText := '$INCLUDE "' + IncName + '"' + #13#10;
+    finally
+      EditorThaw;
+    end;
+  finally
+    Dec(FObjOwnWrite);
+  end;
+  LogComp('Конструктор RapidQ: добавлен $INCLUDE "' + IncName + '"');
 end;
 
 // Выбран на палитре компонент RapidQ: его класс, иначе ''
@@ -50570,6 +50769,12 @@ begin
     finally
       Dec(FObjOwnWrite);
     end;
+    // Класс страницы RQ Comp - программе нужен rapidqComponents.inc (выше
+    // блока: строки до InsAt те же, что в Lines)
+    if (FRqCompClasses <> nil) and
+       (FRqCompClasses.IndexOf(UpperCase(AClass)) >= 0) and
+       (Pos('rapidqcomponents.inc', TextLow) = 0) then
+      RqDsgAddCompInclude(Lines, InsAt);
     RichEdit1.Modified := True;
   finally
     for NodeIdx := 0 to Nodes.Count - 1 do

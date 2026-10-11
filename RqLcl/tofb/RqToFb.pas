@@ -337,6 +337,9 @@ type
     // Неявная Имя_Свойство из Имя.Свойство (DottedImplicit): Имя в
     // верхнем регистре; иначе ''
     DotBase: string;
+    // Порядок в первом проходе: Seq - запись создана (первое упоминание),
+    // DeclSeq - объявлена (DIM и т.п.); 0 - ещё нет. EndOfPass1
+    Seq, DeclSeq: Integer;
   end;
 
   TRqProc = class
@@ -467,6 +470,7 @@ type
     FPass: Integer;               // 1 - сбор, 2 - вывод
     FMainFile: string;
     FVars: TStringList;           // 'SCOPE|NAME' -> TRqVar
+    FVarSeq: Integer;             // счётчик TRqVar.Seq / DeclSeq
     FProcs: TStringList;          // NAME -> TRqProc
     FTypes: TStringList;          // имена TYPE
     FTypeDefs: TStringList;       // ИМЯ=файл(строка) первого объявления TYPE
@@ -1651,6 +1655,22 @@ var
     end;
   end;
 
+  // Суффикс ? / ?? / ??? числа (BYTE, WORD, DWORD у RapidQ: QXLS.INC
+  // "IF B2W(2&)<>5?? THEN", CommCtrl.inc "&HFFFF0000???") - у FreeBASIC
+  // такого нет, пропускается: число остаётся без него
+  procedure SkipNumQuestion;
+  var
+    QuestCount: Integer;
+  begin
+    QuestCount := 0;
+    while (Pos1 + 1 <= TextLen) and (AText[Pos1 + 1] = '?') and
+          (QuestCount < 3) do
+    begin
+      Inc(Pos1);
+      Inc(QuestCount);
+    end;
+  end;
+
 begin
   SetLength(AToks, 0);
   Count := 0;
@@ -1768,6 +1788,7 @@ begin
       if (Pos1 + 1 <= TextLen) and (AText[Pos1 + 1] in ['!', '#', '%', '&']) then
         Inc(Pos1);
       Add(tkNumber, Pos0, Pos1);
+      SkipNumQuestion;
     end
     else if (Ch = '&') and (Pos0 < TextLen) and
             (UpCase(AText[Pos0 + 1]) in ['H', 'O', 'B']) then
@@ -1777,6 +1798,7 @@ begin
             (UpCase(AText[Pos1 + 1]) in ['0'..'9', 'A'..'F']) do
         Inc(Pos1);
       Add(tkNumber, Pos0, Pos1);
+      SkipNumQuestion;
     end
     else
     begin
@@ -2213,6 +2235,11 @@ begin
     Result := TRqVar(FVars.Objects[Found]);
     if AExplicit then
     begin
+      if Result.DeclSeq = 0 then
+      begin
+        Inc(FVarSeq);
+        Result.DeclSeq := FVarSeq;
+      end;
       Result.Explicit := True;
       Result.RqType := ARqType;
       Result.IsArray := Result.IsArray or AIsArray;
@@ -2234,6 +2261,10 @@ begin
   Result.IsArray := AIsArray;
   Result.Explicit := AExplicit;
   Result.IsConst := AIsConst;
+  Inc(FVarSeq);
+  Result.Seq := FVarSeq;
+  if AExplicit then
+    Result.DeclSeq := FVarSeq;
   FVars.AddObject(Key, Result);
 end;
 
@@ -4233,7 +4264,7 @@ end;
 procedure TRqFbConv.ProcessIdent(var AToks: TToks; AIdx, ATo: Integer);
 var
   Up: string;
-  PrevIdx, NextIdx, TypeIdx, CloseIdx: Integer;
+  PrevIdx, NextIdx, TypeIdx, CloseIdx, VarFound: Integer;
   VarRec: TRqVar;
   ProcRec: TRqProc;
 begin
@@ -4401,6 +4432,11 @@ begin
   end;
 
   ProcRec := FindProc(Up);
+  // Локальная переменная SUB с именем процедуры модуля (FOR ii при SUB II,
+  // EndOfPass1) - переменная, не вызов
+  if (ProcRec <> nil) and (FCurProc <> nil) and (Up <> FCurProc.Name) and
+     FVars.Find(FCurProc.Name + '|' + Up, VarFound) then
+    ProcRec := nil;
   if ProcRec <> nil then
   begin
     ProcRec.Used := True;
@@ -7167,6 +7203,10 @@ begin
     OpText := ' += '
   else
     OpText := ' -= ';
+  // Пробел в конце оператора остаётся: "IF n<M THEN INC(n) ELSE ..."
+  // (QXLS.INC) иначе давало "n += 1ELSE"
+  if AToks[ATo].Kind = tkSpace then
+    Step := Step + AToks[ATo].Text;
   Rebuild(AToks, AFrom, ATo, Target + OpText + Step);
 end;
 
@@ -8623,7 +8663,12 @@ begin
 end;
 
 // После первого прохода: необъявленная в SUB переменная, которая есть в
-// модуле, - переменная модуля
+// модуле, - переменная модуля. Кроме переменной модуля, объявленной (DIM)
+// ниже по тексту, чем эта SUB её упоминает: в FreeBASIC такая ещё не
+// видна в SUB ("Variable not declared"), переменная остаётся локальной
+// (ApiDate.inc: FOR i в FUNCTION weekday, DIM i другого файла ниже - в
+// общем rapidqAllProc.inc). Неявная переменная модуля объявляется в
+// начале файла - с ней SUB по-прежнему общая.
 procedure TRqFbConv.EndOfPass1;
 var
   VarIdx, Found: Integer;
@@ -8645,7 +8690,9 @@ begin
   begin
     VarRec := TRqVar(FVars.Objects[VarIdx]);
     if (VarRec.Scope <> '') and not VarRec.Explicit and
-       FVars.Find('|' + VarRec.Name, Found) then
+       FVars.Find('|' + VarRec.Name, Found) and
+       not (TRqVar(FVars.Objects[Found]).Explicit and
+            (TRqVar(FVars.Objects[Found]).DeclSeq > VarRec.Seq)) then
     begin
       VarRec.Free;
       FVars.Delete(VarIdx);
@@ -8659,6 +8706,18 @@ begin
       VarRec.Free;
       FVars.Delete(VarIdx);
     end;
+  end;
+  // Локальная переменная или параметр с именем SUB/FUNCTION модуля: в
+  // FreeBASIC - "Duplicated definition" (общий rapidqAllProc.inc: SUB II
+  // из CMD5.inc и FOR ii в функциях eml.inc). Своё имя функции (результат)
+  // не трогается.
+  for VarIdx := 0 to FVars.Count - 1 do
+  begin
+    VarRec := TRqVar(FVars.Objects[VarIdx]);
+    if (VarRec.Scope <> '') and (VarRec.Name <> VarRec.Scope) and
+       not VarRec.IsConst and (FindProc(VarRec.Name) <> nil) and
+       (Copy(VarRec.FbName, Length(VarRec.FbName) - 1, 2) <> '_v') then
+      VarRec.FbName := VarRec.FbName + '_v';
   end;
 end;
 
