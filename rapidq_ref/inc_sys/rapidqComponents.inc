@@ -8641,7 +8641,7 @@ $ENDIF
 $IFNDEF __RQ2WIN32API
 '~dup     Declare Function GetDriveType Lib "kernel32" Alias "GetDriveTypeA" (nDrive As String) As Long   ' повтор, первое: rapidq2.inc(1505)
 $ENDIF
-'~dup     Declare Function GetDiskFreeSpace Lib "kernel32" Alias "GetDiskFreeSpaceA" (root as string,BYREF sectors as long,BYREF bytes as long,BYREF clusters as long,BYREF total as long) as integer   ' повтор, первое: Kernel32.inc(94)
+'~dup     Declare Function GetDiskFreeSpace Lib "kernel32" Alias "GetDiskFreeSpaceA" (root as string,BYREF sectors as long,BYREF bytes as long,BYREF clusters as long,BYREF total as long) as integer   ' повтор, первое: Kernel32.inc, поднято(94)
 $ENDIF
 
 TYPE QDrive EXTENDS QObject
@@ -8829,9 +8829,9 @@ $ENDIF
 '~dup Declare Function WritePrivateProfileString Lib "Kernel32" Alias "WritePrivateProfileStringA" _    ' повтор, первое: WIN32API.INC(2053)
 '~dup (lpApplicationName as string,lpKeyName As String,lpString As String,lpFileName as string) As Long 
 
-'~dup Declare Function GetWindowsDirectory Lib "kernel32.dll" Alias "GetWindowsDirectoryA" (lpBuffer As long,nSize As Long) As Long   ' повтор, первое: Kernel32.inc(213)
+'~dup Declare Function GetWindowsDirectory Lib "kernel32.dll" Alias "GetWindowsDirectoryA" (lpBuffer As long,nSize As Long) As Long   ' повтор, первое: Kernel32.inc, поднято(213)
 '~dup Declare Function GetSystemDirectory Lib "kernel32" Alias "GetSystemDirectoryA" (lpBuffer As long,nSize As Long) As Long   ' повтор, первое: WIN32API.INC(2059)
-'~dup Declare Function GetTempPath Lib "kernel32" Alias "GetTempPathA" (nBufferLength As Long,lpBuffer As Long) As Long   ' повтор, первое: Kernel32.inc(148)
+'~dup Declare Function GetTempPath Lib "kernel32" Alias "GetTempPathA" (nBufferLength As Long,lpBuffer As Long) As Long   ' повтор, первое: Kernel32.inc, поднято(148)
 
 
 TYPE QINI EXTENDS QObject
@@ -8939,7 +8939,7 @@ $IFNDEF __RQSYSUTILS
 $ENDIF
 
 $IFNDEF __WIN32API
-'~dup Declare Function GetWindowsDirectory Lib "kernel32" Alias "GetWindowsDirectoryA" (ByVal lpBuffer As Long, ByVal nSize As Long) As Long   ' повтор, первое: Kernel32.inc(213)
+'~dup Declare Function GetWindowsDirectory Lib "kernel32" Alias "GetWindowsDirectoryA" (ByVal lpBuffer As Long, ByVal nSize As Long) As Long   ' повтор, первое: Kernel32.inc, поднято(213)
 $ENDIF
 
 Type QIniFile Extends QstringList

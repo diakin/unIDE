@@ -582,6 +582,7 @@ class Builder:
         self.const_defs = {}     # CONST: ИМЯ -> (файл, строка, строки, текст) - первое по сборке
         self.hoisted = []        # поднятые CONST и TYPE (hoist_consts, hoist_types)
         self.type_defs = {}      # TYPE-запись: ИМЯ -> (файл, строка, строки, текст)
+        self.decl_defs = {}      # DECLARE: ИМЯ -> (файл, строка, строки, текст)
         self.all_files = all_files   # файлы, которые вошли в сборку (нижний регистр)
         self.sources = {}        # нижний регистр -> (имя, строки, keep) для вставки по $INCLUDE
         self.emitted = set()     # уже выведенные файлы (нижний регистр)
@@ -603,11 +604,41 @@ class Builder:
                 continue
             sfile, sline, sblock, stext = src
             self.hoist_consts(word, stext, sfile, out, stack | {own})
-            for pos, line in enumerate(sblock):
-                note = "   ' сборка: поднято из %s(%d) - нужна выше" % (sfile, sline) if pos == 0 else ''
-                out.append(line + note)
+            # пометка - отдельной строкой: после "_" комментарий нельзя
+            out.append("' сборка: поднято из %s(%d) - нужно выше" % (sfile, sline))
+            out.extend(sblock)
             # другое имя файла: повтор на исходном месте снимается и в своём файле
             self.seen[('C', word)] = (sfile + ', поднято', sline, stext)
+            self.hoisted.append((word, sfile, sline, fname))
+
+    def hoist_declares(self, own, text, fname, out):
+        """DECLARE процедуры, которую код вызывает, а объявлена она ниже по
+        сборке (Copy of NOTA.inc: GetDiskFreeSpace - DECLARE в Kernel32.inc
+        ниже; RapidQ: Expected = but got "(") - сюда, перед кодом."""
+        for word in set(re.findall(r'(?<![\w.])([A-Z_]\w*[\$%&!#]?)', strip_strings(text.upper()))):
+            if word == own or ('D', word) in self.seen or ('P', word) in self.seen:
+                continue
+            src = self.decl_defs.get(word)
+            if not src:
+                continue
+            # только вызов: Имя( или Имя в начале оператора; Имя = ... и DIM
+            # Имя - переменная (conversion.inc: Year=val(...), а DECLARE
+            # Year LIB "fbDate.dll" в RQdate.inc)
+            upper = strip_strings(text.upper())
+            wre = re.escape(word)
+            if re.search(r'(^|:|\bTHEN|\bELSE)\s*' + wre + r'\s*=(?!=)', upper) or \
+                    re.search(r'\b(DIM|DEF\w+|STATIC)\b[^:]*\b' + wre + r'\b', upper) or \
+                    not (re.search(r'(?<![\w.])' + wre + r'\s*\(', upper) or
+                         re.search(r'(^|:|\bTHEN|\bELSE)\s*' + wre + r'\s+[^=\s]', upper)):
+                continue
+            sfile, sline, sblock, stext = src
+            self.hoist_types('', stext, sfile, out, set())
+            # пометка - отдельной строкой: после "_" комментарий нельзя
+            out.append("' сборка: поднято из %s(%d) - нужно выше" % (sfile, sline))
+            out.extend(sblock)
+            self.seen[('D', word)] = (sfile + ', поднято', sline, stext)
+            if re.search(r'\bLIB\b', stext):
+                self.lib_seen.setdefault(word, (sfile + ', поднято', sline))
             self.hoisted.append((word, sfile, sline, fname))
 
     def hoist_types(self, own, text, fname, out, stack):
@@ -622,9 +653,9 @@ class Builder:
                 continue
             sfile, sline, sblock, stext = src
             self.hoist_types(word, stext, sfile, out, stack | {own})
-            for pos, line in enumerate(sblock):
-                note = "   ' сборка: поднято из %s(%d) - нужна выше" % (sfile, sline) if pos == 0 else ''
-                out.append(line + note)
+            # пометка - отдельной строкой: после "_" комментарий нельзя
+            out.append("' сборка: поднято из %s(%d) - нужно выше" % (sfile, sline))
+            out.extend(sblock)
             self.seen[('T', word)] = (sfile + ', поднято', sline, stext)
             self.hoisted.append((word, sfile, sline, fname))
 
@@ -740,6 +771,9 @@ class Builder:
                 continue
             if unit.key in ('C', 'M') and unit.names:
                 self.hoist_consts(unit.names[0], unit.text, name, out, set())
+            if unit.key in ('P', 'V', None):
+                self.hoist_declares(unit.names[0] if unit.key == 'P' and unit.names else '',
+                                    ' : '.join(code_part(l) for l in block), name, out)
             if unit.key in ('T', 'D', 'V', 'C'):
                 self.hoist_types(unit.names[0] if unit.key == 'T' else '', unit.text, name, out, set())
             for line in block:
@@ -962,6 +996,9 @@ def main():
                     not re.search(r'\bEXTENDS\b', unit.text):
                 builder.type_defs.setdefault(unit.names[0], (fname, unit.first + 1,
                                                              lines[unit.first:unit.last + 1], unit.text))
+            if unit.key == 'D' and unit.names and (keep is None or keep(unit.first)):
+                builder.decl_defs.setdefault(unit.names[0], (fname, unit.first + 1,
+                                                             lines[unit.first:unit.last + 1], unit.text))
             if unit.key == 'C' and unit.names and (keep is None or keep(unit.first)):
                 builder.const_defs.setdefault(unit.names[0], (fname, unit.first + 1,
                                                               lines[unit.first:unit.last + 1], unit.text))
@@ -1017,7 +1054,7 @@ def main():
     rep += ['| %s | %s |' % (by_low.get(x, x), why.get(x, '').replace('|', '\\|'))
             for x in sorted(skipped)]
     if builder.hoisted:
-        rep += ['', '## CONST и TYPE подняты выше (нужны раньше своего места)', '']
+        rep += ['', '## CONST, TYPE и DECLARE подняты выше (нужны раньше своего места)', '']
         rep += ['- %s из %s(%d) - для %s' % h for h in builder.hoisted]
     if renamed:
         rep += ['', '## Исправлено в сборке', '',
