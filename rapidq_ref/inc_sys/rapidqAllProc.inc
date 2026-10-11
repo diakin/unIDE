@@ -9243,6 +9243,11 @@ TYPE TV_KEYDOWN
     flags AS LONG
 END TYPE
 
+Type NMHDR   ' сборка: поднято из WIN32API.INC(15032) - нужна выше
+    hwndFrom As Long   'Handle to control sending message'
+    idfrom As Long     'Identifier of control sending message
+    code As Long       'Notification code. This member can be a control-specific notification code, or it can be one of the following common notification values:
+ End Type
 TYPE NMTVKEYDOWN
     hdr   AS NMHDR
     wVKey AS WORD
@@ -10558,6 +10563,7 @@ $DEFINE CBEIF_OVERLAY	&h00000008
 $DEFINE CBEIF_INDENT	&h00000010
 $DEFINE CBEIF_LPARAM	&h00000020
 $DEFINE CBEIF_DI_SETITEM	&h10000000
+CONST CBEN_FIRST	= (-800)   ' сборка: поднято из commctrl32.inc(234) - нужна выше
 CONST CBEN_INSERTITEM =	(CBEN_FIRST - 1)
 CONST CBEN_DELETEITEM =	(CBEN_FIRST - 2)
 CONST CBEN_BEGINEDIT =	(CBEN_FIRST - 4)
@@ -10595,6 +10601,7 @@ $DEFINE DL_MOVECURSOR	3
 '~dup $DEFINE PGS_AUTOSCROLL	&h00000002   ' повтор, первое: CommCtrl.inc(1428)
 '~dup $DEFINE PGS_DRAGNDROP	&h00000004   ' повтор, первое: CommCtrl.inc(1429)
 $DEFINE CMB_MASKED	2
+Public Const SC_SIZE = &HF000   ' сборка: поднято из WIN32API.INC(7327) - нужна выше
 $DEFINE MINSYSCOMMAND	SC_SIZE
 '~dup $DEFINE SBT_OWNERDRAW	&h1000   ' повтор, первое: CommCtrl.inc(1498)
 '~dup $DEFINE SBT_NOBORDERS	256   ' повтор, первое: CommCtrl.inc(1496)
@@ -10676,7 +10683,7 @@ CONST MCN_FIRST	= (-750)
 CONST MCN_LAST	= (-759)
 CONST DTN_FIRST	= (-760)
 CONST DTN_LAST	= (-799)
-CONST CBEN_FIRST	= (-800)
+'~dup CONST CBEN_FIRST	= (-800)   ' повтор, первое: commctrl32.inc, поднято(234)
 CONST CBEN_LAST	= (-830)
 CONST IPN_FIRST	= (-860)
 CONST IPN_LAST	= (-879)
@@ -11836,6 +11843,7 @@ $DEFINE CBEM_SETIMAGELIST	(WM_USER + 2)
 $DEFINE CBEM_GETIMAGELIST	(WM_USER + 3)
 $DEFINE CBEM_GETITEM	(WM_USER + 4)
 $DEFINE CBEM_SETITEM	(WM_USER + 5)
+const CB_DELETESTRING = 324   ' сборка: поднято из Win32_constants.inc(261) - нужна выше
 $DEFINE CBEM_DELETEITEM	CB_DELETESTRING
 $DEFINE CBEM_GETCOMBOCONTROL	(WM_USER + 6)
 $DEFINE CBEM_GETEDITCONTROL	(WM_USER + 7)
@@ -20690,31 +20698,6 @@ Labels(1,0).caption="Импульсов"
 Labels(1,1).caption="Uзп"
 Labels(1,2).caption="Uфп"
       
-'============================================================================
-'[build_inc] LangIniHeader.inc
-'============================================================================
-'!!!---language -----
-dim LangList as QStringList
-dim LangIni as QINI
-dim LangVar$ (128) as string
-
-LangIni.FileName=StartPath$+"lang\lang.ini" '"C:\BAS\RAPIDQ\RQSR_SRC\CurVer\lang\lang.ini" '
-
-LangIniFileName$=LangIni.FileName
-'print"LangIniFileName$=";LangIniFileName$
-
-LangIni.Section="Language" 
-
-LangFileName$=Langini.get("default","english")+".lng"
-'print"LangFileName$=";LangFileName$
-'!!! --- считываем данные из файла языка ---
-
-LangIni.FileName="lang\"+LangFileName$
-LangIni.Section="Language" '!!! -------------
-
-'English$=Langini.get("English","English")
-'Russian$=Langini.get("Russian","Russian")
-
 '============================================================================
 '[build_inc] like.inc
 '============================================================================
@@ -31815,7 +31798,7 @@ const DDL_POSTMSGS = 8192
 
 ' ---------------------------------------> Combobox
 const CB_ADDSTRING = 323
-const CB_DELETESTRING = 324
+'~dup const CB_DELETESTRING = 324   ' повтор, первое: Win32_constants.inc, поднято(261)
 const CB_DIR = 325
 const CB_FINDSTRING = 332
 const CB_FINDSTRINGEXACT = 344
@@ -32034,6 +32017,10 @@ End Type
 
 Public Const SHUTDOWN_NORETRY = &H1
 
+Type FILETIME   ' сборка: поднято из WIN32API.INC(478) - нужна выше
+        dwLowDateTime As Long
+        dwHighDateTime As Long
+End Type
 Type WIN32_FIND_DATA
         dwFileAttributes As Long
         ftCreationTime As FILETIME
@@ -32124,6 +32111,14 @@ Type CONTEXT
         Fill(4) As Long
 End Type
 
+Type EXCEPTION_RECORD   ' сборка: поднято из WIN32API.INC(1557) - нужна выше
+    ExceptionCode As Long
+    ExceptionFlags As Long
+    pExceptionRecord As Long    ' Pointer to an EXCEPTION_RECORD structure
+    ExceptionAddress As Long
+    NumberParameters As Long
+    ExceptionInformation(EXCEPTION_MAXIMUM_PARAMETERS) As Long
+End Type
 Type EXCEPTION_POINTERS
     pExceptionRecord As EXCEPTION_RECORD
     ContextRecord As CONTEXT
@@ -32373,10 +32368,10 @@ Type PROCESS_INFORMATION
         dwThreadId As Long
 End Type
 
-Type FILETIME
-        dwLowDateTime As Long
-        dwHighDateTime As Long
-End Type
+'~dup Type FILETIME   ' повтор, первое: WIN32API.INC, поднято(478)
+'~dup         dwLowDateTime As Long
+'~dup         dwHighDateTime As Long
+'~dup End Type
 
 '~dup Type SYSTEMTIME   ' повтор, первое: ApiDate.inc(12)
 '~dup         wYear As Integer
@@ -33452,14 +33447,14 @@ Public Const RIP_EVENT = 9
 
 Public Const EXCEPTION_MAXIMUM_PARAMETERS = 15
 
-Type EXCEPTION_RECORD
-    ExceptionCode As Long
-    ExceptionFlags As Long
-    pExceptionRecord As Long    ' Pointer to an EXCEPTION_RECORD structure
-    ExceptionAddress As Long
-    NumberParameters As Long
-    ExceptionInformation(EXCEPTION_MAXIMUM_PARAMETERS) As Long
-End Type
+'~dup Type EXCEPTION_RECORD   ' повтор, первое: WIN32API.INC, поднято(1557)
+'~dup     ExceptionCode As Long
+'~dup     ExceptionFlags As Long
+'~dup     pExceptionRecord As Long    ' Pointer to an EXCEPTION_RECORD structure
+'~dup     ExceptionAddress As Long
+'~dup     NumberParameters As Long
+'~dup     ExceptionInformation(EXCEPTION_MAXIMUM_PARAMETERS) As Long
+'~dup End Type
 
 Type EXCEPTION_DEBUG_INFO
         pExceptionRecord As EXCEPTION_RECORD
@@ -39222,7 +39217,7 @@ End Type
 '~dup Public Const MF_END = &H80   ' повтор, первое: ODMenuXP.inc(562)
 
 ' System Menu Command Values
-Public Const SC_SIZE = &HF000
+'~dup Public Const SC_SIZE = &HF000   ' повтор, первое: WIN32API.INC, поднято(7327)
 Public Const SC_MOVE = &HF010
 '~dup Public Const SC_MINIMIZE = &HF020   ' повтор, первое: rapidq2.inc(868)
 Public Const SC_MAXIMIZE = &HF030
@@ -39645,7 +39640,7 @@ Public Const CB_ERRSPACE = (-2)
 '~dup Public Const CB_LIMITTEXT = &H141   ' повтор, первое: Win32_constants.inc(281)
 '~dup Public Const CB_SETEDITSEL = &H142   ' повтор, первое: Win32_constants.inc(286)
 '~dup Public Const CB_ADDSTRING = &H143   ' повтор, первое: Win32_constants.inc(260)
-'~dup Public Const CB_DELETESTRING = &H144   ' повтор, первое: Win32_constants.inc(261)
+'~dup Public Const CB_DELETESTRING = &H144   ' повтор, первое: Win32_constants.inc, поднято(261)
 '~dup Public Const CB_DIR = &H145   ' повтор, первое: Win32_constants.inc(262)
 '~dup Public Const CB_GETCOUNT = &H146   ' повтор, первое: Win32_constants.inc(265)
 '~dup Public Const CB_GETCURSEL = &H147   ' повтор, первое: Win32_constants.inc(266)
@@ -43071,7 +43066,28 @@ Public Const JOY_CAL_READRONLY = &H2000000
 Public Const JOY_CAL_READUONLY = &H4000000
 Public Const JOY_CAL_READVONLY = &H8000000
 
+Type JOYINFO   ' сборка: поднято из WIN32API.INC(11663) - нужна выше
+        wXpos As Integer
+        wYpos As Integer
+        wZpos As Integer
+        wButtons As Integer
+End Type
 Declare Function joyGetPos Lib "winmm.dll" Alias "joyGetPos" (ByVal uJoyID As Long, pji As JOYINFO) As Long
+Type JOYINFOEX   ' сборка: поднято из WIN32API.INC(11202) - нужна выше
+        dwSize As Long                 '  size of structure
+        dwFlags As Long                 '  flags to indicate what to return
+        dwXpos As Long                '  x position
+        dwYpos As Long                '  y position
+        dwZpos As Long                '  z position
+        dwRpos As Long                 '  rudder/4th axis position
+        dwUpos As Long                 '  5th axis position
+        dwVpos As Long                 '  6th axis position
+        dwButtons As Long             '  button states
+        dwButtonNumber As Long        '  current button number pressed
+        dwPOV As Long                 '  point of view state
+        dwReserved1 As Long                 '  reserved for communication between winmm driver
+        dwReserved2 As Long                 '  reserved for future expansion
+End Type
 Declare Function joyGetPosEx Lib "winmm.dll" Alias "joyGetPosEx" (ByVal uJoyID As Long, pji As JOYINFOEX) As Long
 Public Const WAVE_FORMAT_QUERY = &H1
 Public Const SND_PURGE = &H40               '  purge non-static events for task
@@ -43090,6 +43106,15 @@ Declare Function midiStreamClose Lib "winmm.dll" Alias "midiStreamClose" (ByVal 
 
 Declare Function midiStreamProperty Lib "winmm.dll" Alias "midiStreamProperty" (ByVal hms As Long, lppropdata As Byte, ByVal dwProperty As Long) As Long
 Declare Function midiStreamPosition Lib "winmm.dll" Alias "midiStreamPosition" (ByVal hms As Long, lpmmt As MMTIME, ByVal cbmmt As Long) As Long
+Type MIDIHDR   ' сборка: поднято из WIN32API.INC(11528) - нужна выше
+        lpData As String
+        dwBufferLength As Long
+        dwBytesRecorded As Long
+        dwUser As Long
+        dwFlags As Long
+        lpNext As Long
+        Reserved As Long
+End Type
 Declare Function midiStreamOut Lib "winmm.dll" Alias "midiStreamOut" (ByVal hms As Long, pmh As MIDIHDR, ByVal cbmh As Long) As Long
 Declare Function midiStreamPause Lib "winmm.dll" Alias "midiStreamPause" (ByVal hms As Long) As Long
 Declare Function midiStreamRestart Lib "winmm.dll" Alias "midiStreamRestart" (ByVal hms As Long) As Long
@@ -43097,21 +43122,21 @@ Declare Function midiStreamStop Lib "winmm.dll" Alias "midiStreamStop" (ByVal hm
 Declare Function midiConnect Lib "winmm.dll" Alias "midiConnect" (ByVal hmi As Long, ByVal hmo As Long, pReserved As Any) As Long
 Declare Function midiDisconnect Lib "winmm.dll" Alias "midiDisconnect" (ByVal hmi As Long, ByVal hmo As Long, pReserved As Any) As Long
 
-Type JOYINFOEX
-        dwSize As Long                 '  size of structure
-        dwFlags As Long                 '  flags to indicate what to return
-        dwXpos As Long                '  x position
-        dwYpos As Long                '  y position
-        dwZpos As Long                '  z position
-        dwRpos As Long                 '  rudder/4th axis position
-        dwUpos As Long                 '  5th axis position
-        dwVpos As Long                 '  6th axis position
-        dwButtons As Long             '  button states
-        dwButtonNumber As Long        '  current button number pressed
-        dwPOV As Long                 '  point of view state
-        dwReserved1 As Long                 '  reserved for communication between winmm driver
-        dwReserved2 As Long                 '  reserved for future expansion
-End Type
+'~dup Type JOYINFOEX   ' повтор, первое: WIN32API.INC, поднято(11202)
+'~dup         dwSize As Long                 '  size of structure
+'~dup         dwFlags As Long                 '  flags to indicate what to return
+'~dup         dwXpos As Long                '  x position
+'~dup         dwYpos As Long                '  y position
+'~dup         dwZpos As Long                '  z position
+'~dup         dwRpos As Long                 '  rudder/4th axis position
+'~dup         dwUpos As Long                 '  5th axis position
+'~dup         dwVpos As Long                 '  6th axis position
+'~dup         dwButtons As Long             '  button states
+'~dup         dwButtonNumber As Long        '  current button number pressed
+'~dup         dwPOV As Long                 '  point of view state
+'~dup         dwReserved1 As Long                 '  reserved for communication between winmm driver
+'~dup         dwReserved2 As Long                 '  reserved for future expansion
+'~dup End Type
 ' Installable driver support
 
 ' Driver messages
@@ -43423,15 +43448,15 @@ Type MIDIINCAPS
         szPname As String * MAXPNAMELEN
 End Type
 
-Type MIDIHDR
-        lpData As String
-        dwBufferLength As Long
-        dwBytesRecorded As Long
-        dwUser As Long
-        dwFlags As Long
-        lpNext As Long
-        Reserved As Long
-End Type
+'~dup Type MIDIHDR   ' повтор, первое: WIN32API.INC, поднято(11528)
+'~dup         lpData As String
+'~dup         dwBufferLength As Long
+'~dup         dwBytesRecorded As Long
+'~dup         dwUser As Long
+'~dup         dwFlags As Long
+'~dup         lpNext As Long
+'~dup         Reserved As Long
+'~dup End Type
 
 '  flags for dwFlags field of MIDIHDR structure
 Public Const MHDR_DONE = &H1         '  done bit
@@ -43558,12 +43583,12 @@ Type JOYCAPS
         wPeriodMax As Integer
 End Type
 
-Type JOYINFO
-        wXpos As Integer
-        wYpos As Integer
-        wZpos As Integer
-        wButtons As Integer
-End Type
+'~dup Type JOYINFO   ' повтор, первое: WIN32API.INC, поднято(11663)
+'~dup         wXpos As Integer
+'~dup         wYpos As Integer
+'~dup         wZpos As Integer
+'~dup         wButtons As Integer
+'~dup End Type
 
 Declare Function joyGetDevCaps Lib "winmm.dll" Alias "joyGetDevCapsA" (ByVal id As Long, lpCaps As JOYCAPS, ByVal uSize As Long) As Long
 
@@ -46927,11 +46952,11 @@ Public Const OFN_SHAREWARN = 0
 'POINT ENDS
 
 
-Type NMHDR
-    hwndFrom As Long   'Handle to control sending message'
-    idfrom As Long     'Identifier of control sending message
-    code As Long       'Notification code. This member can be a control-specific notification code, or it can be one of the following common notification values:
- End Type
+'~dup Type NMHDR   ' повтор, первое: WIN32API.INC, поднято(15032)
+'~dup     hwndFrom As Long   'Handle to control sending message'
+'~dup     idfrom As Long     'Identifier of control sending message
+'~dup     code As Long       'Notification code. This member can be a control-specific notification code, or it can be one of the following common notification values:
+'~dup  End Type
 
 
 
@@ -48019,7 +48044,7 @@ End Type
 '~dup         dwThreadId As Long
 '~dup End Type
 
-'~dup Type FILETIME   ' повтор, первое: WIN32API.INC(478)
+'~dup Type FILETIME   ' повтор, первое: WIN32API.INC, поднято(478)
 '~dup         dwLowDateTime As Long
 '~dup         dwHighDateTime As Long
 '~dup End Type
@@ -49084,7 +49109,7 @@ End Type
 
 '~dup Public Const EXCEPTION_MAXIMUM_PARAMETERS = 15   ' повтор, первое: WIN32API.INC(1555)
 
-'~dup Type EXCEPTION_RECORD   ' повтор, первое: WIN32API.INC(1557)
+'~dup Type EXCEPTION_RECORD   ' повтор, первое: WIN32API.INC, поднято(1557)
 '~dup     ExceptionCode As Long
 '~dup     ExceptionFlags As Long
 '~dup     pExceptionRecord As Long	' Pointer to an EXCEPTION_RECORD structure
@@ -55129,7 +55154,7 @@ CONST WM_NOTIFYFORMAT     = &H0055
 '~dup Public Const MF_END = &H80   ' повтор, первое: ODMenuXP.inc(562)
 
 ' System Menu Command Values
-'~dup Public Const SC_SIZE = &HF000   ' повтор, первое: WIN32API.INC(7327)
+'~dup Public Const SC_SIZE = &HF000   ' повтор, первое: WIN32API.INC, поднято(7327)
 ''Const SC_SIZE = &HF000''user by arrow'
 ''Const SC_SIZE = &HF001''Adjust Horizental left'
 ''Const SC_SIZE = &HF002''Adjust Horizental right'
@@ -55562,7 +55587,7 @@ Public Const BM_CLICK = &HF5
 '~dup Public Const CB_LIMITTEXT = &H141   ' повтор, первое: Win32_constants.inc(281)
 '~dup Public Const CB_SETEDITSEL = &H142   ' повтор, первое: Win32_constants.inc(286)
 '~dup Public Const CB_ADDSTRING = &H143   ' повтор, первое: Win32_constants.inc(260)
-'~dup Public Const CB_DELETESTRING = &H144   ' повтор, первое: Win32_constants.inc(261)
+'~dup Public Const CB_DELETESTRING = &H144   ' повтор, первое: Win32_constants.inc, поднято(261)
 '~dup Public Const CB_DIR = &H145   ' повтор, первое: Win32_constants.inc(262)
 '~dup Public Const CB_GETCOUNT = &H146   ' повтор, первое: Win32_constants.inc(265)
 '~dup Public Const CB_GETCURSEL = &H147   ' повтор, первое: Win32_constants.inc(266)
@@ -59027,7 +59052,7 @@ Public Const BM_CLICK = &HF5
 '~dup         wPeriodMax As Integer
 '~dup End Type
 
-'~dup Type JOYINFO   ' повтор, первое: WIN32API.INC(11663)
+'~dup Type JOYINFO   ' повтор, первое: WIN32API.INC, поднято(11663)
 '~dup         wXpos As Integer
 '~dup         wYpos As Integer
 '~dup         wZpos As Integer
@@ -59035,7 +59060,7 @@ Public Const BM_CLICK = &HF5
 '~dup End Type
 
 
-'~dup Type JOYINFOEX   ' повтор, первое: WIN32API.INC(11202)
+'~dup Type JOYINFOEX   ' повтор, первое: WIN32API.INC, поднято(11202)
 '~dup         dwSize As Long                 '  size of structure
 '~dup         dwFlags As Long                 '  flags to indicate what to return
 '~dup         dwXpos As Long                '  x position
@@ -59374,7 +59399,7 @@ Public Const BM_CLICK = &HF5
 '~dup         szPname As String * MAXPNAMELEN
 '~dup End Type
 
-'~dup Type MIDIHDR   ' повтор, первое: WIN32API.INC(11528)
+'~dup Type MIDIHDR   ' повтор, первое: WIN32API.INC, поднято(11528)
 '~dup         lpData As String
 '~dup         dwBufferLength As Long
 '~dup         dwBytesRecorded As Long
@@ -62931,7 +62956,7 @@ Public Const VER_NT_SERVER = &H0000003
 
 
 
-'~dup Type NMHDR   ' повтор, первое: WIN32API.INC(15032)
+'~dup Type NMHDR   ' повтор, первое: WIN32API.INC, поднято(15032)
 '~dup     hwndFrom As Long
 '~dup     idfrom As Long
 '~dup     code As Long

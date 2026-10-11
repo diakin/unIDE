@@ -4,9 +4,9 @@
 
 ## Состав
 
-- rapidqAllProc.inc: rapidq2.inc (без разделов компонентов), rapidq.inc, и 109 файлов: AddMenuItemBitmaps4a.inc, AdvAPI32.inc, Api.inc, ApiDate.inc, CallBack_0.Inc, CallBack_1.Inc, CallBack_2.Inc, CallBack_3.Inc, CallBack_4.Inc, CallBack_5.Inc, CallBack_6.Inc, CallBack_7.Inc, CallBack_8.Inc, CallBackAll.Inc, CallBackForwarder.Inc, CallBacks.Inc, CMD5.inc, CommCtrl.inc, commctrl32.inc, Common.inc, constants.inc, Control.inc, conversion.inc, conversion1.inc, conversionOld.inc, ConvertToTruePath.inc, Copy of NOTA.inc, createWind.inc, DBT.INC, debug.inc, debugNoSend.inc, debugWindow.inc, delTags.inc, eMail.Inc, eml.inc, emlOld.inc, evaluate.inc, FBFunctions.inc, fbscancodes.inc, fileops.inc, Files.inc, Files1.inc, Files2.inc, FilesBug.inc, FileUtils.inc, Form.inc, Form1.inc, func_array.inc, GDI32.inc, htmlhelp.inc, Kernel32.inc, keys.inc, LabelGrid.inc, LangIniHeader.inc, like.inc, Math.inc, MDI_API.INC, Memory.inc, menu.inc, microTIMER.inc, Minimize.inc, msgdlg.inc, NewWindow23.inc, NewWndProc.Inc, NOTA.inc, objectToolbox.inc, ODMenuXP.inc, ole.inc, parse.inc, pdecl.inc, printdlg.inc, PRINTERDLL.INC, printrichedit.inc, pulsar.inc, QFiles.inc, QFormLocale.inc, QFormSkin.inc, QFuncLib.inc, QPoint.inc, QPrintDialog.inc, QStringGridEx.inc, QXLS.INC, QXpTheme.INC, registryVars.inc, RichEditApi.inc, rq_math.inc, RqAsmUtils.Inc, RQdate.inc, RQDialog.inc, RQProcess.inc, SetFileTimeAttrib.inc, setup.inc, Shell32.inc, ShellRedir.Inc, StayOnTop.inc, stdObjbar.inc, SysUtils.inc, TestIncPAth.inc, TRM_RQDeclares.INC, User32.inc, using.inc, var.inc, var2008.inc, WFunctions.inc, Win32_constants.inc, WIN32API.INC, WINDOWS.INC, WindowsAPI.inc, WinMM.Inc
+- rapidqAllProc.inc: rapidq2.inc (без разделов компонентов), rapidq.inc, и 108 файлов: AddMenuItemBitmaps4a.inc, AdvAPI32.inc, Api.inc, ApiDate.inc, CallBack_0.Inc, CallBack_1.Inc, CallBack_2.Inc, CallBack_3.Inc, CallBack_4.Inc, CallBack_5.Inc, CallBack_6.Inc, CallBack_7.Inc, CallBack_8.Inc, CallBackAll.Inc, CallBackForwarder.Inc, CallBacks.Inc, CMD5.inc, CommCtrl.inc, commctrl32.inc, Common.inc, constants.inc, Control.inc, conversion.inc, conversion1.inc, conversionOld.inc, ConvertToTruePath.inc, Copy of NOTA.inc, createWind.inc, DBT.INC, debug.inc, debugNoSend.inc, debugWindow.inc, delTags.inc, eMail.Inc, eml.inc, emlOld.inc, evaluate.inc, FBFunctions.inc, fbscancodes.inc, fileops.inc, Files.inc, Files1.inc, Files2.inc, FilesBug.inc, FileUtils.inc, Form.inc, Form1.inc, func_array.inc, GDI32.inc, htmlhelp.inc, Kernel32.inc, keys.inc, LabelGrid.inc, like.inc, Math.inc, MDI_API.INC, Memory.inc, menu.inc, microTIMER.inc, Minimize.inc, msgdlg.inc, NewWindow23.inc, NewWndProc.Inc, NOTA.inc, objectToolbox.inc, ODMenuXP.inc, ole.inc, parse.inc, pdecl.inc, printdlg.inc, PRINTERDLL.INC, printrichedit.inc, pulsar.inc, QFiles.inc, QFormLocale.inc, QFormSkin.inc, QFuncLib.inc, QPoint.inc, QPrintDialog.inc, QStringGridEx.inc, QXLS.INC, QXpTheme.INC, registryVars.inc, RichEditApi.inc, rq_math.inc, RqAsmUtils.Inc, RQdate.inc, RQDialog.inc, RQProcess.inc, SetFileTimeAttrib.inc, setup.inc, Shell32.inc, ShellRedir.Inc, StayOnTop.inc, stdObjbar.inc, SysUtils.inc, TestIncPAth.inc, TRM_RQDeclares.INC, User32.inc, using.inc, var.inc, var2008.inc, WFunctions.inc, Win32_constants.inc, WIN32API.INC, WINDOWS.INC, WindowsAPI.inc, WinMM.Inc
 - rapidqComponents.inc: разделы компонентов rapidq2.inc и 96 файлов: apiRe.inc, odbc.inc, QCoolBarXPv1d.inc, QDataBase.inc, qdrive2024.inc, qEditEx.inc, QIni.inc, QIniFile.inc, QMaxSplitter.inc, QRedEx.Inc, qspintext.inc, QTButton95.inc, QTextEdit.inc, RichEdPopUp.inc, VFW.inc, XP_MANIFEST.INC, COMPORTxp.inc, HiLight.inc, QAnim.inc, QAnimate.inc, QAVI.inc, QBevel.inc, QBrowseDialog.inc, QButtonXP.INC, qcalendar.inc, Qcdaudio.inc, qcgi.inc, QChart.inc, QColorButton.inc, QCursor.inc, qdataBaseSQL.inc, QDesktop.inc, QDigDisplay.inc, QDir.Inc, qdownload.inc, QDrawFocus.inc, QDrawMenu.inc, QFileListView.inc, QFlashLabel.inc, QFlatButton.inc, qfocus.inc, QFTPCLIENT.INC, qgraph.inc, QGridColor.inc, QHead.inc, QHTML.inc, QICMP.INC, QICON.inc, Qid3Tag.inc, QImageBox.inc, QImageDialog.inc, QImageListEx.inc, QInputBox.inc, QLed.inc, QLedScroll.inc, QLibrary.Inc, QLine.inc, QListBoxEx.inc, QMailLabel.inc, qmenu.inc, QMidi.inc, Qmp3.inc, qposic.inc, QPrinterInfo.inc, QProcess.inc, QProgress.inc, QProgressBar.inc, QRichEditXt.inc, QrPanel.inc, QRun.inc, QSavePlus.inc, QSHFileOperation.inc, QShutdown.inc, QSkin.inc, QSkinBtn.inc, QSocketEx.inc, QSpinEdit.inc, QSplash.inc, QStatusBarEx.inc, QtabControlEx.inc, QTextBtn.inc, QThread.inc, QToolBar.inc, QToolBarEX.inc, QTreeviewEx.inc, QVideo.inc, QVolumeInfo.inc, QVuMeter.inc, QWave.inc, QXPButton.inc, RapidFRM.inc, RapidQ_D3D.inc, RC4crypt.inc, RSocket.INC, TstRichEd.inc, XPThemes.inc
-- не вошли: 85 файлов (ниже)
+- не вошли: 86 файлов (ниже)
 
 ## Взята часть файла
 
@@ -42,6 +42,7 @@
 | glu.inc | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
 | glut.inc | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
 | glwgl.inc | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
+| LangIniHeader.inc | нет: фрагмент программы (StartPath$, DIM LangIni AS QINI - класс из компонентов) |
 | MYSQL.INC | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
 | NI6210.inc | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
 | QAbout.inc | взята другая версия: QAbout - rapidq2.inc |
@@ -104,6 +105,18 @@
 | XPSkinMetallic_2.11_Res.inc | нет: нужны ресурсы Resources2.inc и CONST myMainFormName в программе; подключать отдельно |
 | zlib.inc | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
 
+## CONST и TYPE подняты выше (нужны раньше своего места)
+
+- NMHDR из WIN32API.INC(15032) - для CommCtrl.inc
+- CBEN_FIRST из commctrl32.inc(234) - для commctrl32.inc
+- SC_SIZE из WIN32API.INC(7327) - для commctrl32.inc
+- CB_DELETESTRING из Win32_constants.inc(261) - для commctrl32.inc
+- FILETIME из WIN32API.INC(478) - для WIN32API.INC
+- EXCEPTION_RECORD из WIN32API.INC(1557) - для WIN32API.INC
+- JOYINFO из WIN32API.INC(11663) - для WIN32API.INC
+- JOYINFOEX из WIN32API.INC(11202) - для WIN32API.INC
+- MIDIHDR из WIN32API.INC(11528) - для WIN32API.INC
+
 ## Исправлено в сборке
 
 Внутренние процедуры с короткими именами (совпадали с переменными других файлов: QXLS.INC DIM F AS QFileStream) и опечатки:
@@ -133,11 +146,11 @@
 
 ## Убрано как повтор
 
-- CONST: 7432
+- CONST: 7435
 - DECLARE: 2116
 - $DEFINE: 2030
 - SUB/FUNCTION: 241
-- TYPE: 491
+- TYPE: 497
 - DIM/DEFxxx/CREATE: 143
 
 ## Повторы с другим текстом (оставлено первое)

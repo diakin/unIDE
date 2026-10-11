@@ -579,9 +579,54 @@ class Builder:
         self.report_conflict = []  # процедура и DECLARE LIB с одним именем
         self.lib_seen = {}       # имя DECLARE ... LIB -> (файл, строка)
         self.local_defines = {}  # (файл, ИМЯ) -> причина (local_type_defines)
+        self.const_defs = {}     # CONST: ИМЯ -> (файл, строка, строки, текст) - первое по сборке
+        self.hoisted = []        # поднятые CONST и TYPE (hoist_consts, hoist_types)
+        self.type_defs = {}      # TYPE-запись: ИМЯ -> (файл, строка, строки, текст)
         self.all_files = all_files   # файлы, которые вошли в сборку (нижний регистр)
         self.sources = {}        # нижний регистр -> (имя, строки, keep) для вставки по $INCLUDE
         self.emitted = set()     # уже выведенные файлы (нижний регистр)
+
+    def hoist_consts(self, own, text, fname, out, stack):
+        """CONST в выражении text, которая объявлена ниже по сборке, -
+        сюда, перед строкой (commctrl32.inc: CBEN_INSERTITEM = (CBEN_FIRST - 1)
+        раньше CONST CBEN_FIRST = (-800); RapidQ: "CONST variable CBEN_FIRST
+        already defined"). Её место ниже станет повтором."""
+        expr = const_value(text) if text.upper().lstrip().startswith(('CONST', 'PUBLIC', 'PRIVATE')) \
+            else text
+        for word in re.findall(r'(?<![\w.&])([A-Z_]\w*[\$%&!#]?)', strip_strings(expr.upper())):
+            if word == own or word in stack:
+                continue
+            if ('C', word) in self.seen or ('M', word) in self.seen:
+                continue
+            src = self.const_defs.get(word)
+            if not src:
+                continue
+            sfile, sline, sblock, stext = src
+            self.hoist_consts(word, stext, sfile, out, stack | {own})
+            for pos, line in enumerate(sblock):
+                note = "   ' сборка: поднято из %s(%d) - нужна выше" % (sfile, sline) if pos == 0 else ''
+                out.append(line + note)
+            # другое имя файла: повтор на исходном месте снимается и в своём файле
+            self.seen[('C', word)] = (sfile + ', поднято', sline, stext)
+            self.hoisted.append((word, sfile, sline, fname))
+
+    def hoist_types(self, own, text, fname, out, stack):
+        """TYPE (запись), которая нужна в "AS Тип" и объявлена ниже по
+        сборке, - сюда (CommCtrl.inc: hdr AS NMHDR, TYPE NMHDR - в
+        WIN32API.INC ниже). Её место ниже станет повтором."""
+        for word in re.findall(r'\bAS\s+(\w+)', strip_strings(text.upper())):
+            if word == own or word in stack or ('T', word) in self.seen:
+                continue
+            src = self.type_defs.get(word)
+            if not src:
+                continue
+            sfile, sline, sblock, stext = src
+            self.hoist_types(word, stext, sfile, out, stack | {own})
+            for pos, line in enumerate(sblock):
+                note = "   ' сборка: поднято из %s(%d) - нужна выше" % (sfile, sline) if pos == 0 else ''
+                out.append(line + note)
+            self.seen[('T', word)] = (sfile + ', поднято', sline, stext)
+            self.hoisted.append((word, sfile, sline, fname))
 
     def key_kind(self, kind):
         # DECLARE и тело одной процедуры - разные объявления
@@ -693,6 +738,10 @@ class Builder:
                         note = "   ' повтор, первое: %s(%d)" % (dup_of[0], dup_of[1])
                     out.append("'~dup " + line + note)
                 continue
+            if unit.key in ('C', 'M') and unit.names:
+                self.hoist_consts(unit.names[0], unit.text, name, out, set())
+            if unit.key in ('T', 'D', 'V', 'C'):
+                self.hoist_types(unit.names[0] if unit.key == 'T' else '', unit.text, name, out, set())
             for line in block:
                 code = code_part(line)
                 low = code.lower()
@@ -887,6 +936,15 @@ def main():
     order += [(rq2 + ' (компоненты)', texts[rq2], lambda n: n in in_comp)]
     order += [(f, texts[f], line_keep(take.get(f.lower(), 'да'))) for f in ordered]
     builder.local_defines, unresolved_defines = local_type_defines(order)
+    for fname, lines, keep in order:
+        for unit in split_units(lines):
+            if unit.key == 'T' and unit.names and (keep is None or keep(unit.first)) and \
+                    not re.search(r'\bEXTENDS\b', unit.text):
+                builder.type_defs.setdefault(unit.names[0], (fname, unit.first + 1,
+                                                             lines[unit.first:unit.last + 1], unit.text))
+            if unit.key == 'C' and unit.names and (keep is None or keep(unit.first)):
+                builder.const_defs.setdefault(unit.names[0], (fname, unit.first + 1,
+                                                              lines[unit.first:unit.last + 1], unit.text))
 
     head = ["' rapidqAllProc.inc - константы, DECLARE и процедуры RapidQ одним файлом.",
             "' Собран rapidq_ref/tools/build_inc.py из rapidq_ref/incOld по",
@@ -938,6 +996,9 @@ def main():
     rep += ['## Не вошли', '', '| Файл | Почему |', '|---|---|']
     rep += ['| %s | %s |' % (by_low.get(x, x), why.get(x, '').replace('|', '\\|'))
             for x in sorted(skipped)]
+    if builder.hoisted:
+        rep += ['', '## CONST и TYPE подняты выше (нужны раньше своего места)', '']
+        rep += ['- %s из %s(%d) - для %s' % h for h in builder.hoisted]
     if renamed:
         rep += ['', '## Исправлено в сборке', '',
                 'Внутренние процедуры с короткими именами (совпадали с переменными '
