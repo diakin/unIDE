@@ -278,9 +278,27 @@ def decls_first(out):
       - тело содержит имя, которое $DEFINE объявляет ниже по сборке.
     Режимы файла ($TYPECHECK, $ESCAPECHARS, $OPTION EXPLICIT/WEAKTYPE) перед
     телами в конце ставятся заново. Результат: (строки, число перенесённых)."""
+    # 0. строки в блоках, которые RapidQ не читает (brem ... erem, $IFDEF 0)
+    dead = []
+    depth = 0
+    for line in out:
+        code = code_part(line)
+        if depth:
+            if re.match(r'(\$if|brem\b)', code, re.I):
+                depth += 1
+            elif re.match(r'(\$endif|erem)\b', code, re.I):
+                depth -= 1
+            dead.append(True)
+        elif re.match(r'brem\b', code, re.I) or re.match(r'\$ifdef\s+\d+\s*$', code, re.I):
+            depth = 1
+            dead.append(True)
+        else:
+            dead.append(False)
     # 1. имена DECLARE SUB/FUNCTION (не LIB), которые уже есть в тексте
     declared = set()
-    for line in out:
+    for num, line in enumerate(out):
+        if dead[num]:
+            continue
         code = code_part(line)
         m = re.match(r'declare\s+(?:sub|function|subi|functioni)\s+(\w+[\$%&!#]?)', code, re.I)
         if m and not re.search(r'\blib\b', code, re.I):
@@ -288,6 +306,8 @@ def decls_first(out):
     # 2. где объявлены $DEFINE (номер строки, имя)
     define_at = []
     for num, line in enumerate(out):
+        if dead[num]:
+            continue
         m = re.match(r'[\$#]define\s+(\w+)', code_part(line), re.I)
         if m:
             define_at.append((num, m.group(1).upper()))
@@ -296,6 +316,8 @@ def decls_first(out):
     # (FOR x в rapidq.inc и DIM x() другого файла - уже массив)
     in_body = False
     for num, line in enumerate(out):
+        if dead[num]:
+            continue
         code = code_part(line)
         low = code.lower()
         if re.match(r'(?:(?:private|public)\s+)?(sub|function|subi|functioni)\s', low):
@@ -336,6 +358,10 @@ def decls_first(out):
     while idx < count:
         line = out[idx]
         code = code_part(line)
+        if dead[idx]:
+            result.append(line)
+            idx += 1
+            continue
         if line.startswith("'[build_inc] "):
             if not line.startswith("'[build_inc] ("):
                 section = line[13:].strip()
@@ -347,7 +373,7 @@ def decls_first(out):
         if mm:
             key = (mm.group(1) or mm.group(3)).lower()
             modes[key] = line.strip()
-        if re.match(r'\$if', code, re.I):
+        if re.match(r'(\$if|brem\b)', code, re.I):
             guard = False
             m = re.match(r'\$ifndef\s+(\w+)\s*$', code, re.I)
             if m:
@@ -363,7 +389,7 @@ def decls_first(out):
                     guard = bool(re.match(r'\$define\s+' + re.escape(m.group(1)) + r'\b', ncode, re.I))
                     break
             conds.append((line, guard))
-        elif re.match(r'\$endif\b', code, re.I) and conds:
+        elif re.match(r'(\$endif|erem)\b', code, re.I) and conds:
             conds.pop()
         if re.match(r'type\s+\w+.*\bextends\b', code, re.I) or re.match(r'type\s+\w+\s*<', code, re.I):
             in_type = True
@@ -569,10 +595,28 @@ class Builder:
         out.append("'" + '=' * 76)
         typecheck_on = False
         escape_on = False
+        inactive = 0
         for unit in split_units(lines):
             if keep is not None and not keep(unit.first):
                 continue
             block = lines[unit.first:unit.last + 1]
+            # Блок, который RapidQ не читает: brem ... erem (rapidq.inc:
+            # $define brem $ifdef, brem 0 / brem 1 - имя не объявлено) и
+            # $IFDEF число. Как есть, без снятия повторов: объявления в нём
+            # не должны закрывать настоящие ниже (EM_AUTOURLDETECT в
+            # rapidq.inc brem 1 и в RichEditApi.inc)
+            head = code_part(block[0])
+            if inactive:
+                if re.match(r'(\$if|brem\b)', head, re.I):
+                    inactive += 1
+                elif re.match(r'(\$endif|erem)\b', head, re.I):
+                    inactive -= 1
+                out.extend(block)
+                continue
+            if re.match(r'brem\b', head, re.I) or re.match(r'\$ifdef\s+\d+\s*$', head, re.I):
+                inactive = 1
+                out.extend(block)
+                continue
             dup_of = None
             # Имя процедуры одного файла и DECLARE ... LIB с тем же именем
             # другого (Files.inc: FUNCTION LoadString(FileName), WIN32API.INC:
@@ -797,6 +841,27 @@ def main():
             why[low] = take[low]
             continue
         proc_files.append(f)
+    # Файл, который подключает не вошедший (QGL.inc: $INCLUDE <GL\\gl.inc>),
+    # без него не собирается - тоже не входит; по цепочке
+    changed = True
+    while changed:
+        changed = False
+        for f in list(proc_files) + list(ordered):
+            for line in texts[f]:
+                m = re.match(r'\$include\s*["<]([^">]+)[">]', code_part(line), re.I)
+                if not m:
+                    continue
+                target = os.path.basename(m.group(1).replace('\\', '/')).lower()
+                if target in skipped and target not in RQ_SKIP and target not in RQ_MAIN:
+                    low = f.lower()
+                    skipped.add(low)
+                    why[low] = 'подключает не вошедший %s' % by_low.get(target, target)
+                    if f in proc_files:
+                        proc_files.remove(f)
+                    if f in ordered:
+                        ordered.remove(f)
+                    changed = True
+                    break
     for low in RQ_SKIP:
         skipped.add(low)
         why[low] = 'копия rapidq.inc' if low == 'rapidq3.inc' else 'старая версия rapidq.inc'

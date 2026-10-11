@@ -36,7 +36,7 @@
 | qODBC | odbc.inc (324, inc2026)<br>qodbc.inc (380, 2005-01-05) | odbc.inc |
 | QPageSetup | QPageSetup.inc (208, ?)<br>rapidq2.inc (8183, inc2026) | rapidq2.inc |
 | QRedEx | QREDEXTest.INC (613, 2005-09-26)<br>QREDEXTest2.INC (15, 2005-09-26)<br>QRedEx.Inc (573, inc2026) | QRedEx.Inc |
-| QRichEdit_api | API_RichEdid.inc (215, 2004-03-17)<br>apiRe.inc (167, 2004-03-17) | API_RichEdid.inc |
+| QRichEdit_api | API_RichEdid.inc (215, 2004-03-17)<br>apiRe.inc (167, 2004-03-17) | apiRe.inc |
 | Qspintext | qspintext.inc (133, 2004-06-15)<br>qspintextOld.inc (80, 2004-04-20)<br>qspintextev.inc (91, 2004-04-20) | qspintext.inc |
 | QTButton | QTButton.inc (720, 2005-11-10)<br>QTButton72.inc (364, 2005-11-10)<br>QTButton85b.inc (720, 2005-11-10)<br>QTButton94.inc (1251, 2005-11-10)<br>QTButton94b.inc (1443, 2005-11-10)<br>QTButton95.inc (1448, 2005-11-10) | QTButton95.inc |
 | QTEXTEDIT | QTextEdit.inc (225, inc2026)<br>QTextEditTest.inc (83, 2005-09-26) | QTextEdit.inc |
@@ -48,7 +48,7 @@
 
 | Файл | Строк | Дата | Классы (базовый) | Брать |
 |---|---|---|---|---|
-| API_RichEdid.inc | 215 | 2004-03-17 | QRichEdit_api (QObject) | да |
+| API_RichEdid.inc | 215 | 2004-03-17 | QRichEdit_api (QObject) | нет: черновик - внутри TYPE строки "dim Line as ARRAY of STRING" (список свойств), RapidQ такой тип не знает; взят apiRe.inc |
 | COMPORTxp.inc | 556 | ? | MyCom_Port (QObject) | да |
 | ComPort.inc | 572 | ? | Comport (QObject) | да |
 | HiLight.inc | 141 | 2004-03-17 | QREdit (QRichEdit) | да |
@@ -174,7 +174,7 @@
 | qREdit.inc | 218 | ? | QMAXEDIT (QRICHEDIT) | да |
 | qcalendar.inc | 393 | inc2026 | qcalendar (Qpanel) | да |
 | qcgi.inc | 396 | ? | QCGI (QOBJECT) | да |
-| qciccio.inc | 8 | 2005-11-10 | Qciccio (QOBJECT) | да |
+| qciccio.inc | 8 | 2005-11-10 | Qciccio (QOBJECT) | нет: пробный класс (поле AS ciccino - такого типа нет) |
 | qdataBaseSQL.inc | 795 | ? | qDATABASE (QOBJECT), qSQLTABLE (QOBJECT) | да |
 | qdownload.inc | 258 | inc2026 | Qdownload (qobject) | да |
 | qdrive2024.inc | 108 | 2024-03-03 | QDrive (QObject) | да |
@@ -204,9 +204,9 @@
 | Api.inc | 116 | 2004-03-17 | 41 | 7 | 0 |  | да |
 | ApiDate.inc | 73 | inc2026 | 0 | 4 | 2 |  | да |
 | CMD5.inc | 818 | 2012-09-11 | 21 | 0 | 16 |  | да |
-| CM_Constants.inc | 895 | 2004-03-17 | 404 | 0 | 0 |  | да |
-| CM_Functions.inc | 590 | 2004-03-17 | 2 | 5 | 68 |  | да |
-| C_Constants.inc | 869 | 2004-03-17 | 404 | 0 | 0 |  | да |
+| CM_Constants.inc | 895 | 2004-03-17 | 404 | 0 | 0 |  | нет: часть CodeSense (cmcs21.dll), тип Bool - из $Define Bool Integer в CodeSense.inc; подключать CodeSense.inc |
+| CM_Functions.inc | 590 | 2004-03-17 | 2 | 5 | 68 |  | нет: часть CodeSense (cmcs21.dll), тип Bool - из $Define Bool Integer в CodeSense.inc; подключать CodeSense.inc |
+| C_Constants.inc | 869 | 2004-03-17 | 404 | 0 | 0 |  | нет: часть CodeSense (cmcs21.dll), тип Bool - из $Define Bool Integer в CodeSense.inc; подключать CodeSense.inc |
 | CallBackAll.Inc | 54 | 2006-08-18 | 0 | 0 | 0 | CallBack_0.Inc, CallBack_1.Inc, CallBack_2.Inc, CallBack_3.Inc ... | да |
 | CallBackForwarder.Inc | 81 | 2006-08-18 | 1 | 2 | 1 |  | да |
 | CallBack_0.Inc | 60 | inc2026 | 2 | 4 | 3 |  | да |
@@ -238,7 +238,7 @@
 | FilesBug.inc | 27 | 2005-01-15 | 0 | 0 | 1 |  | да |
 | Form.inc | 104 | 2006-07-24 | 15 | 0 | 2 |  | да |
 | Form1.inc | 15 | 2005-11-10 | 0 | 0 | 0 |  | да |
-| Functions.inc | 219 | 2004-03-17 | 0 | 4 | 19 |  | да |
+| Functions.inc | 219 | 2004-03-17 | 0 | 4 | 19 |  | нет: часть CodeSense (cmcs21.dll), тип Bool - из $Define Bool Integer в CodeSense.inc; подключать CodeSense.inc |
 | GDI32.inc | 77 | 2000-06-27 | 0 | 4 | 0 |  | да |
 | Kernel32.inc | 214 | 2000-06-29 | 0 | 27 | 0 |  | да |
 | LabelGrid.inc | 76 | 2005-02-18 | 0 | 0 | 0 |  | да |
@@ -271,7 +271,7 @@
 | RQdate.inc | 287 | 2008-01-22 | 11 | 18 | 7 |  | да |
 | RapidFRM_Mods.inc | 75 | 2021-02-28 | 0 | 3 | 3 |  | нет: фрагмент программы (объекты и процедуры основной программы) |
 | Resources2.inc | 55 | 2005-11-10 | 0 | 0 | 0 |  | нет: $RESOURCE на файлы, которых нет в inc; подключать отдельно |
-| RichEditApi.inc | 457 | 2004-03-17 | 206 | 0 | 0 |  | да |
+| RichEditApi.inc | 457 | 2004-03-17 | 206 | 0 | 0 |  | да, строки 1-226 (дальше структуры, недопереведённые с ассемблера: "AS AS COLORREF", "CHARRANGE <>") |
 | RqAsmUtils.Inc | 495 | 2008-07-09 | 0 | 1 | 22 |  | да |
 | SetFileTimeAttrib.inc | 243 | 2004-07-04 | 14 | 7 | 1 |  | да |
 | Shell32.inc | 41 | 2000-06-27 | 0 | 3 | 0 |  | да |

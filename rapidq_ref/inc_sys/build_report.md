@@ -4,14 +4,15 @@
 
 ## Состав
 
-- rapidqAllProc.inc: rapidq2.inc (без разделов компонентов), rapidq.inc, и 113 файлов: AddMenuItemBitmaps4a.inc, AdvAPI32.inc, Api.inc, ApiDate.inc, C_Constants.inc, CallBack_0.Inc, CallBack_1.Inc, CallBack_2.Inc, CallBack_3.Inc, CallBack_4.Inc, CallBack_5.Inc, CallBack_6.Inc, CallBack_7.Inc, CallBack_8.Inc, CallBackAll.Inc, CallBackForwarder.Inc, CallBacks.Inc, CM_Constants.inc, CM_Functions.inc, CMD5.inc, CommCtrl.inc, commctrl32.inc, Common.inc, constants.inc, Control.inc, conversion.inc, conversion1.inc, conversionOld.inc, ConvertToTruePath.inc, Copy of NOTA.inc, createWind.inc, DBT.INC, debug.inc, debugNoSend.inc, debugWindow.inc, delTags.inc, eMail.Inc, eml.inc, emlOld.inc, evaluate.inc, FBFunctions.inc, fbscancodes.inc, fileops.inc, Files.inc, Files1.inc, Files2.inc, FilesBug.inc, FileUtils.inc, Form.inc, Form1.inc, func_array.inc, Functions.inc, GDI32.inc, htmlhelp.inc, Kernel32.inc, keys.inc, LabelGrid.inc, LangIniHeader.inc, like.inc, Math.inc, MDI_API.INC, Memory.inc, menu.inc, microTIMER.inc, Minimize.inc, msgdlg.inc, NewWindow23.inc, NewWndProc.Inc, NOTA.inc, objectToolbox.inc, ODMenuXP.inc, ole.inc, parse.inc, pdecl.inc, printdlg.inc, PRINTERDLL.INC, printrichedit.inc, pulsar.inc, QFiles.inc, QFormLocale.inc, QFormSkin.inc, QFuncLib.inc, QPoint.inc, QPrintDialog.inc, QStringGridEx.inc, QXLS.INC, QXpTheme.INC, registryVars.inc, RichEditApi.inc, rq_math.inc, RqAsmUtils.Inc, RQdate.inc, RQDialog.inc, RQProcess.inc, SetFileTimeAttrib.inc, setup.inc, Shell32.inc, ShellRedir.Inc, StayOnTop.inc, stdObjbar.inc, SysUtils.inc, TestIncPAth.inc, TRM_RQDeclares.INC, User32.inc, using.inc, var.inc, var2008.inc, WFunctions.inc, Win32_constants.inc, WIN32API.INC, WINDOWS.INC, WindowsAPI.inc, WinMM.Inc
-- rapidqComponents.inc: разделы компонентов rapidq2.inc и 98 файлов: API_RichEdid.inc, odbc.inc, QCoolBarXPv1d.inc, QDataBase.inc, qdrive2024.inc, qEditEx.inc, QIni.inc, QIniFile.inc, QMaxSplitter.inc, QRedEx.Inc, qspintext.inc, QTButton95.inc, QTextEdit.inc, RichEdPopUp.inc, VFW.inc, XP_MANIFEST.INC, COMPORTxp.inc, HiLight.inc, QAnim.inc, QAnimate.inc, QAVI.inc, QBevel.inc, QBrowseDialog.inc, QButtonXP.INC, qcalendar.inc, Qcdaudio.inc, qcgi.inc, QChart.inc, qciccio.inc, QColorButton.inc, QCursor.inc, qdataBaseSQL.inc, QDesktop.inc, QDigDisplay.inc, QDir.Inc, qdownload.inc, QDrawFocus.inc, QDrawMenu.inc, QFileListView.inc, QFlashLabel.inc, QFlatButton.inc, qfocus.inc, QFTPCLIENT.INC, QGL.inc, qgraph.inc, QGridColor.inc, QHead.inc, QHTML.inc, QICMP.INC, QICON.inc, Qid3Tag.inc, QImageBox.inc, QImageDialog.inc, QImageListEx.inc, QInputBox.inc, QLed.inc, QLedScroll.inc, QLibrary.Inc, QLine.inc, QListBoxEx.inc, QMailLabel.inc, qmenu.inc, QMidi.inc, Qmp3.inc, qposic.inc, QPrinterInfo.inc, QProcess.inc, QProgress.inc, QProgressBar.inc, QRichEditXt.inc, QrPanel.inc, QRun.inc, QSavePlus.inc, QSHFileOperation.inc, QShutdown.inc, QSkin.inc, QSkinBtn.inc, QSocketEx.inc, QSpinEdit.inc, QSplash.inc, QStatusBarEx.inc, QtabControlEx.inc, QTextBtn.inc, QThread.inc, QToolBar.inc, QToolBarEX.inc, QTreeviewEx.inc, QVideo.inc, QVolumeInfo.inc, QVuMeter.inc, QWave.inc, QXPButton.inc, RapidFRM.inc, RapidQ_D3D.inc, RC4crypt.inc, RSocket.INC, TstRichEd.inc, XPThemes.inc
-- не вошли: 79 файлов (ниже)
+- rapidqAllProc.inc: rapidq2.inc (без разделов компонентов), rapidq.inc, и 109 файлов: AddMenuItemBitmaps4a.inc, AdvAPI32.inc, Api.inc, ApiDate.inc, CallBack_0.Inc, CallBack_1.Inc, CallBack_2.Inc, CallBack_3.Inc, CallBack_4.Inc, CallBack_5.Inc, CallBack_6.Inc, CallBack_7.Inc, CallBack_8.Inc, CallBackAll.Inc, CallBackForwarder.Inc, CallBacks.Inc, CMD5.inc, CommCtrl.inc, commctrl32.inc, Common.inc, constants.inc, Control.inc, conversion.inc, conversion1.inc, conversionOld.inc, ConvertToTruePath.inc, Copy of NOTA.inc, createWind.inc, DBT.INC, debug.inc, debugNoSend.inc, debugWindow.inc, delTags.inc, eMail.Inc, eml.inc, emlOld.inc, evaluate.inc, FBFunctions.inc, fbscancodes.inc, fileops.inc, Files.inc, Files1.inc, Files2.inc, FilesBug.inc, FileUtils.inc, Form.inc, Form1.inc, func_array.inc, GDI32.inc, htmlhelp.inc, Kernel32.inc, keys.inc, LabelGrid.inc, LangIniHeader.inc, like.inc, Math.inc, MDI_API.INC, Memory.inc, menu.inc, microTIMER.inc, Minimize.inc, msgdlg.inc, NewWindow23.inc, NewWndProc.Inc, NOTA.inc, objectToolbox.inc, ODMenuXP.inc, ole.inc, parse.inc, pdecl.inc, printdlg.inc, PRINTERDLL.INC, printrichedit.inc, pulsar.inc, QFiles.inc, QFormLocale.inc, QFormSkin.inc, QFuncLib.inc, QPoint.inc, QPrintDialog.inc, QStringGridEx.inc, QXLS.INC, QXpTheme.INC, registryVars.inc, RichEditApi.inc, rq_math.inc, RqAsmUtils.Inc, RQdate.inc, RQDialog.inc, RQProcess.inc, SetFileTimeAttrib.inc, setup.inc, Shell32.inc, ShellRedir.Inc, StayOnTop.inc, stdObjbar.inc, SysUtils.inc, TestIncPAth.inc, TRM_RQDeclares.INC, User32.inc, using.inc, var.inc, var2008.inc, WFunctions.inc, Win32_constants.inc, WIN32API.INC, WINDOWS.INC, WindowsAPI.inc, WinMM.Inc
+- rapidqComponents.inc: разделы компонентов rapidq2.inc и 96 файлов: apiRe.inc, odbc.inc, QCoolBarXPv1d.inc, QDataBase.inc, qdrive2024.inc, qEditEx.inc, QIni.inc, QIniFile.inc, QMaxSplitter.inc, QRedEx.Inc, qspintext.inc, QTButton95.inc, QTextEdit.inc, RichEdPopUp.inc, VFW.inc, XP_MANIFEST.INC, COMPORTxp.inc, HiLight.inc, QAnim.inc, QAnimate.inc, QAVI.inc, QBevel.inc, QBrowseDialog.inc, QButtonXP.INC, qcalendar.inc, Qcdaudio.inc, qcgi.inc, QChart.inc, QColorButton.inc, QCursor.inc, qdataBaseSQL.inc, QDesktop.inc, QDigDisplay.inc, QDir.Inc, qdownload.inc, QDrawFocus.inc, QDrawMenu.inc, QFileListView.inc, QFlashLabel.inc, QFlatButton.inc, qfocus.inc, QFTPCLIENT.INC, qgraph.inc, QGridColor.inc, QHead.inc, QHTML.inc, QICMP.INC, QICON.inc, Qid3Tag.inc, QImageBox.inc, QImageDialog.inc, QImageListEx.inc, QInputBox.inc, QLed.inc, QLedScroll.inc, QLibrary.Inc, QLine.inc, QListBoxEx.inc, QMailLabel.inc, qmenu.inc, QMidi.inc, Qmp3.inc, qposic.inc, QPrinterInfo.inc, QProcess.inc, QProgress.inc, QProgressBar.inc, QRichEditXt.inc, QrPanel.inc, QRun.inc, QSavePlus.inc, QSHFileOperation.inc, QShutdown.inc, QSkin.inc, QSkinBtn.inc, QSocketEx.inc, QSpinEdit.inc, QSplash.inc, QStatusBarEx.inc, QtabControlEx.inc, QTextBtn.inc, QThread.inc, QToolBar.inc, QToolBarEX.inc, QTreeviewEx.inc, QVideo.inc, QVolumeInfo.inc, QVuMeter.inc, QWave.inc, QXPButton.inc, RapidFRM.inc, RapidQ_D3D.inc, RC4crypt.inc, RSocket.INC, TstRichEd.inc, XPThemes.inc
+- не вошли: 85 файлов (ниже)
 
 ## Взята часть файла
 
 - QDrawMenu.inc: строки 1-228 (дальше пример программы)
 - QSavePlus.inc: строки 1-216 (дальше пример программы)
+- RichEditApi.inc: строки 1-226 (дальше структуры, недопереведённые с ассемблера: "AS AS COLORREF", "CHARRANGE <>")
 
 ## Не вошли
 
@@ -19,8 +20,11 @@
 |---|---|
 | ACE32.INC | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
 | AllProps.inc | нет: фрагмент программы (объекты и процедуры основной программы) |
-| apiRe.inc | взята другая версия: QRichEdit_api - API_RichEdid.inc |
+| API_RichEdid.inc | нет: черновик - внутри TYPE строки "dim Line as ARRAY of STRING" (список свойств), RapidQ такой тип не знает; взят apiRe.inc |
+| C_Constants.inc | нет: часть CodeSense (cmcs21.dll), тип Bool - из $Define Bool Integer в CodeSense.inc; подключать CodeSense.inc |
 | cgi.inc | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
+| CM_Constants.inc | нет: часть CodeSense (cmcs21.dll), тип Bool - из $Define Bool Integer в CodeSense.inc; подключать CodeSense.inc |
+| CM_Functions.inc | нет: часть CodeSense (cmcs21.dll), тип Bool - из $Define Bool Integer в CodeSense.inc; подключать CodeSense.inc |
 | CodeSense.inc | нет: $RESOURCE на файлы, которых нет в inc; подключать отдельно |
 | ComPort.inc | взята другая версия: Comport - rapidq2.inc |
 | cREdit.inc | взята другая версия: QMAXEDIT - RichEdPopUp.inc |
@@ -30,6 +34,7 @@
 | dbtools.inc | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
 | DxfONE!h.inc | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
 | ftiQuery.inc | нет: FUNCTION внутри FUNCTION (ftiExtractProgPath вставлена в ftiExtractFileName, строки 110-143) |
+| Functions.inc | нет: часть CodeSense (cmcs21.dll), тип Bool - из $Define Bool Integer в CodeSense.inc; подключать CodeSense.inc |
 | gl.inc | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
 | glaux.inc | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
 | glext.inc | в плане «?»: особая библиотека (своя DLL, OpenGL, базы данных), подключать отдельно |
@@ -42,6 +47,7 @@
 | QAbout.inc | взята другая версия: QAbout - rapidq2.inc |
 | QBitmapEx.inc | взята другая версия: QBitmapEx - rapidq2.inc |
 | QCanvasEx.inc | взята другая версия: QCanvasEx - rapidq2.inc |
+| qciccio.inc | нет: пробный класс (поле AS ciccino - такого типа нет) |
 | QColorDialog10.inc | взята другая версия: QColorDialog - rapidq2.inc |
 | QColorDialog11.inc | взята другая версия: QCOLORDIALOG - rapidq2.inc |
 | QCoolBarXP90.inc | взята другая версия: QCoolBarXP - QCoolBarXPv1d.inc |
@@ -55,6 +61,7 @@
 | QFileDialogDoc.inc | взята другая версия: QFILEDIALOG - rapidq2.inc |
 | QFormEx.inc | взята другая версия: QFormEx - rapidq2.inc |
 | QFormMDI.inc | взята другая версия: QFormMDI - rapidq2.inc |
+| QGL.inc | подключает не вошедший gl.inc |
 | QImageEx.inc | взята другая версия: QImageEx - rapidq2.inc |
 | QListviewEx.inc | взята другая версия: Qlistviewex - rapidq2.inc |
 | QMarker.inc | нет: $RESOURCE на файлы, которых нет в inc; подключать отдельно |
@@ -110,7 +117,7 @@
 
 | Файл | Имя | Где ниже |
 |---|---|---|
-| API_RichEdid.inc | HWND | odbc.inc(30): DECLARE FUNCTION SQLDriverConnect LIB "" ALIAS ""(ByVal ldbc |
+| apiRe.inc | HWND | odbc.inc(30): DECLARE FUNCTION SQLDriverConnect LIB "" ALIAS ""(ByVal ldbc |
 | createWind.inc | HWND | Form.inc(46): (ByVal hwnd As Long, lpwndpl As WINDOWPLACEMENT) As Long |
 | keys.inc | CHAR | QFuncLib.inc(72): function RemoveChar$(s as string,char as string) as string |
 
@@ -126,11 +133,11 @@
 
 ## Убрано как повтор
 
-- CONST: 7922
-- DECLARE: 2131
-- $DEFINE: 2031
-- SUB/FUNCTION: 259
-- TYPE: 497
+- CONST: 7432
+- DECLARE: 2116
+- $DEFINE: 2030
+- SUB/FUNCTION: 241
+- TYPE: 491
 - DIM/DEFxxx/CREATE: 143
 
 ## Повторы с другим текстом (оставлено первое)
@@ -143,7 +150,6 @@
 | DECLARE | GETMENUITEMINFO | rapidq2.inc(1604): `DECLARE FUNCTION GETMENUITEMINFO LIB "USER32.DLL" ALIAS "GETMENUITEMINFOA" (BYVA` | Api.inc(105): `DECLARE FUNCTION GETMENUITEMINFO LIB "USER32.DLL" ALIAS "GETMENUITEMINFOA" _ (BY` |
 | DECLARE | SETMENUITEMINFO | rapidq2.inc(1605): `DECLARE FUNCTION SETMENUITEMINFO LIB "USER32.DLL" ALIAS "SETMENUITEMINFOA" (BYVA` | Api.inc(109): `DECLARE FUNCTION SETMENUITEMINFO LIB "USER32.DLL" ALIAS "SETMENUITEMINFOA" _ (BY` |
 | DECLARE | INSERTMENUITEM | rapidq2.inc(1606): `DECLARE FUNCTION INSERTMENUITEM LIB "USER32.DLL" ALIAS "INSERTMENUITEMA" (BYVAL ` | Api.inc(113): `DECLARE FUNCTION INSERTMENUITEM LIB "USER32.DLL" ALIAS "INSERTMENUITEMA" _ (BYVA` |
-| DECLARE | SETFOCUS | rapidq2.inc(1010): `DECLARE FUNCTION SETFOCUS LIB "USER32" ALIAS "SETFOCUS" (HWND AS LONG) AS LONG` | CM_Functions.inc(9): `DECLARE FUNCTION SETFOCUS LIB "USER32" ALIAS "SETFOCUS" (BYVAL HWND AS LONG) AS ` |
 | $DEFINE | TOOLTIPS_CLASS | CommCtrl.inc(1157): `CONST TOOLTIPS_CLASS = "TOOLTIPS_CLASS32"` | commctrl32.inc(80): `TOOLTIPS_CLASSA` |
 | $DEFINE | WC_TABCONTROL | CommCtrl.inc(334): `CONST WC_TABCONTROL = "SYSTABCONTROL32"` | commctrl32.inc(90): `WC_TABCONTROLA` |
 | CONST | PGN_FIRST | CommCtrl.inc(1423): `CONST PGN_FIRST = (-900)` | commctrl32.inc(241): `CONST PGN_FIRST = (-900U)` |
@@ -248,9 +254,6 @@
 | SUB/FUNCTION | IO2RNDINTER1 | Files.inc(1176): `SUB IO2RNDINTER1 (IO$, RNDF$, LOSTP) DIM IO2RNDFILE2 AS QFILESTREAM DIM IO2RNDAR` | Files2.inc(1034): `SUB IO2RNDINTER1 (IO$, RNDF$, LOSTP) DIM IO2RNDFILE2 AS QFILESTREAM DIM IO2RNDAR` |
 | SUB/FUNCTION | IOAVERAGE | Files.inc(1359): `SUB IOAVERAGE (IO$, OUTF$, BPNT AS INTEGER) DIM INPUTLIST AS QSTRINGLIST DIM OUT` | Files2.inc(1203): `SUB IOAVERAGE (IO$, OUTF$, BPNT AS INTEGER) DIM INPUTLIST AS QSTRINGLIST DIM OUT` |
 | SUB/FUNCTION | BROWSEFORFOLDERS | Files.inc(177): `FUNCTION BROWSEFORFOLDERS (INITIALDIR AS STRING, WINCAPT AS STRING) AS STRING DI` | FilesBug.inc(4): `FUNCTION BROWSEFORFOLDERS (INITIALDIR AS STRING, WINCAPT AS STRING) AS STRING DI` |
-| SUB/FUNCTION | CM_SETBORDERSTYLE | CM_Functions.inc(146): `FUNCTION CM_SETBORDERSTYLE(HWND AS LONG, DWSTYLE AS DWORD) AS LONG RESULT = SEND` | Functions.inc(102): `FUNCTION CM_SETBORDERSTYLE(HWND AS LONG, DWSTYLE AS DWORD) AS LONG RESULT = SEND` |
-| SUB/FUNCTION | LOADKEYWORDS | CM_Functions.inc(482): `FUNCTION LOADKEYWORDS (FILENAME AS STRING) AS STRING DIM TEMPSTR AS STRING DIM L` | Functions.inc(128): `FUNCTION LOADKEYWORDS (FILENAME AS STRING) AS STRING DIM TEMPSTR AS STRING DIM L` |
-| SUB/FUNCTION | REGISTERRAPIDQLANGUAGE | CM_Functions.inc(508): `SUB REGISTERRAPIDQLANGUAGE DIM NEWLANGUAGE AS CM_LANGUAGE DIM KEYWORDS AS STRING` | Functions.inc(164): `SUB REGISTERRAPIDQLANGUAGE DIM NEWLANGUAGE AS CM_LANGUAGE DIM KEYWORDS AS STRING` |
 | DECLARE | GETCURRENTPROCESS | rapidq2.inc(1502): `DECLARE FUNCTION GETCURRENTPROCESS LIB "KERNEL32" ALIAS "GETCURRENTPROCESS"() AS` | Kernel32.inc(70): `DECLARE FUNCTION GETCURRENTPROCESS LIB "KERNEL32.DLL" ALIAS_ "GETCURRENTPROCESS"` |
 | DECLARE | GETLASTERROR | rapidq2.inc(1894): `DECLARE FUNCTION GETLASTERROR LIB "KERNEL32" ALIAS "GETLASTERROR" () AS DWORD` | Kernel32.inc(108): `DECLARE FUNCTION GETLASTERROR LIB "KERNEL32.DLL" ALIAS_ "GETLASTERROR" AS LONG` |
 | TYPE | OSVERSIONINFO | rapidq2.inc(2055): `TYPE OSVERSIONINFO DWOSVERSIONINFOSIZE AS LONG DWMAJORVERSION AS LONG DWMINORVER` | Kernel32.inc(188): `TYPE OSVERSIONINFO DWOSVERSIONINFOSIZE AS LONG DWMAJORVERSION AS LONG DWMINORVER` |
@@ -315,47 +318,46 @@
 | SUB/FUNCTION | SETODMENUHOOKENABLED | ODMenuXP.inc(416): `SUB SETODMENUHOOKENABLED(HWND AS LONG, ENABLED AS INTEGER, ALTHOOK AS INTEGER) D` | QFormSkin.inc(265): `SUB SETODMENUHOOKENABLED(HWND AS LONG, ENABLED AS INTEGER) IF SETODMENUHOOKENABL` |
 | SUB/FUNCTION | HEXTODEC | rapidq2.inc(8136): `FUNCTION HEXTODEC(HEX AS STRING)AS LONG RESULT = VAL(CONVBASE$(HEX, 16, 10)) END` | QFuncLib.inc(176): `FUNCTION HEXTODEC(HEX AS STRING)AS LONG DIM BIT AS LONG DIM VALBIT AS INTEGER DI` |
 | DECLARE | PAGESETUPDLG | rapidq2.inc(7261): `DECLARE FUNCTION PAGESETUPDLG LIB "COMDLG32" ALIAS "PAGESETUPDLGA" (PTR AS TPSD)` | QPrintDialog.inc(46): `DECLARE FUNCTION PAGESETUPDLG LIB "COMDLG32" ALIAS "PAGESETUPDLGA" _ (PTR AS TPS` |
-| CONST | EM_CANPASTE | rapidq.inc(778): `CONST EM_CANPASTE = 1074` | RichEditApi.inc(10): `CONST EM_CANPASTE =WM_USER + 50` |
-| CONST | EM_DISPLAYBAND | rapidq.inc(781): `CONST EM_DISPLAYBAND = 1075` | RichEditApi.inc(11): `CONST EM_DISPLAYBAND =WM_USER + 51` |
-| CONST | EM_EXGETSEL | rapidq.inc(783): `CONST EM_EXGETSEL = 1076` | RichEditApi.inc(12): `CONST EM_EXGETSEL =WM_USER + 52` |
-| CONST | EM_EXLIMITTEXT | rapidq.inc(784): `CONST EM_EXLIMITTEXT = 1077` | RichEditApi.inc(13): `CONST EM_EXLIMITTEXT =WM_USER + 53` |
-| CONST | EM_EXLINEFROMCHAR | rapidq.inc(785): `CONST EM_EXLINEFROMCHAR = 1078` | RichEditApi.inc(14): `CONST EM_EXLINEFROMCHAR =WM_USER + 54` |
-| CONST | EM_EXSETSEL | rapidq.inc(786): `CONST EM_EXSETSEL = 1079` | RichEditApi.inc(15): `CONST EM_EXSETSEL =WM_USER + 55` |
-| CONST | EM_FINDTEXT | rapidq.inc(787): `CONST EM_FINDTEXT = 1080` | RichEditApi.inc(16): `CONST EM_FINDTEXT =WM_USER + 56` |
-| CONST | EM_FORMATRANGE | rapidq.inc(791): `CONST EM_FORMATRANGE = 1081` | RichEditApi.inc(17): `CONST EM_FORMATRANGE =WM_USER + 57` |
-| CONST | EM_GETCHARFORMAT | rapidq.inc(792): `CONST EM_GETCHARFORMAT = 1082` | RichEditApi.inc(18): `CONST EM_GETCHARFORMAT =WM_USER + 58` |
-| CONST | EM_GETEVENTMASK | rapidq.inc(793): `CONST EM_GETEVENTMASK = 1083` | RichEditApi.inc(19): `CONST EM_GETEVENTMASK =WM_USER + 59` |
-| CONST | EM_GETOLEINTERFACE | rapidq.inc(804): `CONST EM_GETOLEINTERFACE = 1084` | RichEditApi.inc(20): `CONST EM_GETOLEINTERFACE =WM_USER + 60` |
-| CONST | EM_GETPARAFORMAT | rapidq.inc(805): `CONST EM_GETPARAFORMAT = 1085` | RichEditApi.inc(21): `CONST EM_GETPARAFORMAT =WM_USER + 61` |
-| CONST | EM_GETSELTEXT | rapidq.inc(810): `CONST EM_GETSELTEXT = 1086` | RichEditApi.inc(22): `CONST EM_GETSELTEXT =WM_USER + 62` |
-| CONST | EM_HIDESELECTION | rapidq.inc(816): `CONST EM_HIDESELECTION = 1087` | RichEditApi.inc(23): `CONST EM_HIDESELECTION =WM_USER + 63` |
-| CONST | EM_PASTESPECIAL | rapidq.inc(822): `CONST EM_PASTESPECIAL = 1088` | RichEditApi.inc(24): `CONST EM_PASTESPECIAL =WM_USER + 64` |
-| CONST | EM_REQUESTRESIZE | rapidq.inc(825): `CONST EM_REQUESTRESIZE = 1089` | RichEditApi.inc(25): `CONST EM_REQUESTRESIZE =WM_USER + 65` |
-| CONST | EM_SELECTIONTYPE | rapidq.inc(828): `CONST EM_SELECTIONTYPE = 1090` | RichEditApi.inc(26): `CONST EM_SELECTIONTYPE =WM_USER + 66` |
-| CONST | EM_SETBKGNDCOLOR | rapidq.inc(829): `CONST EM_SETBKGNDCOLOR = 1091` | RichEditApi.inc(27): `CONST EM_SETBKGNDCOLOR =WM_USER + 67` |
-| CONST | EM_SETCHARFORMAT | rapidq.inc(830): `CONST EM_SETCHARFORMAT = 1092` | RichEditApi.inc(28): `CONST EM_SETCHARFORMAT =WM_USER + 68` |
-| CONST | EM_SETEVENTMASK | rapidq.inc(831): `CONST EM_SETEVENTMASK = 1093` | RichEditApi.inc(29): `CONST EM_SETEVENTMASK =WM_USER + 69` |
-| CONST | EM_SETOLECALLBACK | rapidq.inc(838): `CONST EM_SETOLECALLBACK = 1094` | RichEditApi.inc(30): `CONST EM_SETOLECALLBACK =WM_USER + 70` |
-| CONST | EM_SETPARAFORMAT | rapidq.inc(840): `CONST EM_SETPARAFORMAT = 1095` | RichEditApi.inc(31): `CONST EM_SETPARAFORMAT =WM_USER + 71` |
-| CONST | EM_SETTARGETDEVICE | rapidq.inc(848): `CONST EM_SETTARGETDEVICE = 1096` | RichEditApi.inc(32): `CONST EM_SETTARGETDEVICE =WM_USER + 72` |
-| CONST | EM_STREAMIN | rapidq.inc(852): `CONST EM_STREAMIN = 1097` | RichEditApi.inc(33): `CONST EM_STREAMIN =WM_USER + 73` |
-| CONST | EM_STREAMOUT | rapidq.inc(853): `CONST EM_STREAMOUT = 1098` | RichEditApi.inc(34): `CONST EM_STREAMOUT =WM_USER + 74` |
-| CONST | EM_GETTEXTRANGE | rapidq.inc(811): `CONST EM_GETTEXTRANGE = 1099` | RichEditApi.inc(35): `CONST EM_GETTEXTRANGE =WM_USER + 75` |
-| CONST | EM_FINDWORDBREAK | rapidq.inc(789): `CONST EM_FINDWORDBREAK = 1100` | RichEditApi.inc(36): `CONST EM_FINDWORDBREAK =WM_USER + 76` |
-| CONST | EM_SETOPTIONS | rapidq.inc(839): `CONST EM_SETOPTIONS = 1101` | RichEditApi.inc(37): `CONST EM_SETOPTIONS =WM_USER + 77` |
-| CONST | EM_GETOPTIONS | rapidq.inc(803): `CONST EM_GETOPTIONS = 1102` | RichEditApi.inc(38): `CONST EM_GETOPTIONS =WM_USER + 78` |
-| CONST | EM_FINDTEXTEX | rapidq.inc(788): `CONST EM_FINDTEXTEX = 1103` | RichEditApi.inc(39): `CONST EM_FINDTEXTEX =WM_USER + 79` |
-| CONST | EM_GETWORDBREAKPROCEX | rapidq.inc(814): `CONST EM_GETWORDBREAKPROCEX = 1104` | RichEditApi.inc(40): `CONST EM_GETWORDBREAKPROCEX =WM_USER + 80` |
-| CONST | EM_SETWORDBREAKPROCEX | rapidq.inc(850): `CONST EM_SETWORDBREAKPROCEX = 1105` | RichEditApi.inc(41): `CONST EM_SETWORDBREAKPROCEX =WM_USER + 81` |
-| CONST | EM_SETPUNCTUATION | rapidq.inc(842): `CONST EM_SETPUNCTUATION = 1124` | RichEditApi.inc(57): `CONST EM_SETPUNCTUATION =WM_USER + 100` |
-| CONST | EM_GETPUNCTUATION | rapidq.inc(807): `CONST EM_GETPUNCTUATION = 1125` | RichEditApi.inc(58): `CONST EM_GETPUNCTUATION =WM_USER + 101` |
-| CONST | EM_SETWORDWRAPMODE | rapidq.inc(851): `CONST EM_SETWORDWRAPMODE = 1126` | RichEditApi.inc(59): `CONST EM_SETWORDWRAPMODE =WM_USER + 102` |
-| CONST | EM_GETWORDWRAPMODE | rapidq.inc(815): `CONST EM_GETWORDWRAPMODE = 1127` | RichEditApi.inc(60): `CONST EM_GETWORDWRAPMODE =WM_USER + 103` |
-| CONST | EM_SETIMECOLOR | rapidq.inc(833): `CONST EM_SETIMECOLOR = 1128` | RichEditApi.inc(61): `CONST EM_SETIMECOLOR =WM_USER + 104` |
-| CONST | EM_GETIMECOLOR | rapidq.inc(801): `CONST EM_GETIMECOLOR = 1129` | RichEditApi.inc(62): `CONST EM_GETIMECOLOR =WM_USER + 105` |
-| CONST | EM_SETIMEOPTIONS | rapidq.inc(834): `CONST EM_SETIMEOPTIONS = 1130` | RichEditApi.inc(63): `CONST EM_SETIMEOPTIONS =WM_USER + 106` |
-| CONST | EM_GETIMEOPTIONS | rapidq.inc(802): `CONST EM_GETIMEOPTIONS = 1131` | RichEditApi.inc(64): `CONST EM_GETIMEOPTIONS =WM_USER + 107` |
-| TYPE | PARAFORMAT | constants.inc(196): `TYPE PARAFORMAT CBSIZE AS DWORD DWMASK AS DWORD WNUMBERING AS WORD WEFFECTS AS W` | RichEditApi.inc(277): `TYPE PARAFORMAT CBSIZE AS DWORD DWMASK AS DWORD WNUMBERING AS WORD WEFFECTS AS W` |
+| CONST | EM_CANPASTE | constants.inc(62): `CONST EM_CANPASTE = 1074` | RichEditApi.inc(10): `CONST EM_CANPASTE =WM_USER + 50` |
+| CONST | EM_DISPLAYBAND | constants.inc(65): `CONST EM_DISPLAYBAND = 1075` | RichEditApi.inc(11): `CONST EM_DISPLAYBAND =WM_USER + 51` |
+| CONST | EM_EXGETSEL | constants.inc(67): `CONST EM_EXGETSEL = 1076` | RichEditApi.inc(12): `CONST EM_EXGETSEL =WM_USER + 52` |
+| CONST | EM_EXLIMITTEXT | constants.inc(68): `CONST EM_EXLIMITTEXT = 1077` | RichEditApi.inc(13): `CONST EM_EXLIMITTEXT =WM_USER + 53` |
+| CONST | EM_EXLINEFROMCHAR | constants.inc(69): `CONST EM_EXLINEFROMCHAR = 1078` | RichEditApi.inc(14): `CONST EM_EXLINEFROMCHAR =WM_USER + 54` |
+| CONST | EM_EXSETSEL | constants.inc(70): `CONST EM_EXSETSEL = 1079` | RichEditApi.inc(15): `CONST EM_EXSETSEL =WM_USER + 55` |
+| CONST | EM_FINDTEXT | constants.inc(71): `CONST EM_FINDTEXT = 1080` | RichEditApi.inc(16): `CONST EM_FINDTEXT =WM_USER + 56` |
+| CONST | EM_FORMATRANGE | constants.inc(75): `CONST EM_FORMATRANGE = 1081` | RichEditApi.inc(17): `CONST EM_FORMATRANGE =WM_USER + 57` |
+| CONST | EM_GETCHARFORMAT | constants.inc(76): `CONST EM_GETCHARFORMAT = 1082` | RichEditApi.inc(18): `CONST EM_GETCHARFORMAT =WM_USER + 58` |
+| CONST | EM_GETEVENTMASK | constants.inc(77): `CONST EM_GETEVENTMASK = 1083` | RichEditApi.inc(19): `CONST EM_GETEVENTMASK =WM_USER + 59` |
+| CONST | EM_GETOLEINTERFACE | constants.inc(88): `CONST EM_GETOLEINTERFACE = 1084` | RichEditApi.inc(20): `CONST EM_GETOLEINTERFACE =WM_USER + 60` |
+| CONST | EM_GETPARAFORMAT | constants.inc(89): `CONST EM_GETPARAFORMAT = 1085` | RichEditApi.inc(21): `CONST EM_GETPARAFORMAT =WM_USER + 61` |
+| CONST | EM_GETSELTEXT | constants.inc(94): `CONST EM_GETSELTEXT = 1086` | RichEditApi.inc(22): `CONST EM_GETSELTEXT =WM_USER + 62` |
+| CONST | EM_HIDESELECTION | constants.inc(100): `CONST EM_HIDESELECTION = 1087` | RichEditApi.inc(23): `CONST EM_HIDESELECTION =WM_USER + 63` |
+| CONST | EM_PASTESPECIAL | constants.inc(106): `CONST EM_PASTESPECIAL = 1088` | RichEditApi.inc(24): `CONST EM_PASTESPECIAL =WM_USER + 64` |
+| CONST | EM_REQUESTRESIZE | constants.inc(109): `CONST EM_REQUESTRESIZE = 1089` | RichEditApi.inc(25): `CONST EM_REQUESTRESIZE =WM_USER + 65` |
+| CONST | EM_SELECTIONTYPE | constants.inc(112): `CONST EM_SELECTIONTYPE = 1090` | RichEditApi.inc(26): `CONST EM_SELECTIONTYPE =WM_USER + 66` |
+| CONST | EM_SETBKGNDCOLOR | constants.inc(113): `CONST EM_SETBKGNDCOLOR = 1091` | RichEditApi.inc(27): `CONST EM_SETBKGNDCOLOR =WM_USER + 67` |
+| CONST | EM_SETCHARFORMAT | constants.inc(114): `CONST EM_SETCHARFORMAT = 1092` | RichEditApi.inc(28): `CONST EM_SETCHARFORMAT =WM_USER + 68` |
+| CONST | EM_SETEVENTMASK | constants.inc(115): `CONST EM_SETEVENTMASK = 1093` | RichEditApi.inc(29): `CONST EM_SETEVENTMASK =WM_USER + 69` |
+| CONST | EM_SETOLECALLBACK | constants.inc(122): `CONST EM_SETOLECALLBACK = 1094` | RichEditApi.inc(30): `CONST EM_SETOLECALLBACK =WM_USER + 70` |
+| CONST | EM_SETPARAFORMAT | constants.inc(124): `CONST EM_SETPARAFORMAT = 1095` | RichEditApi.inc(31): `CONST EM_SETPARAFORMAT =WM_USER + 71` |
+| CONST | EM_SETTARGETDEVICE | constants.inc(132): `CONST EM_SETTARGETDEVICE = 1096` | RichEditApi.inc(32): `CONST EM_SETTARGETDEVICE =WM_USER + 72` |
+| CONST | EM_STREAMIN | constants.inc(136): `CONST EM_STREAMIN = 1097` | RichEditApi.inc(33): `CONST EM_STREAMIN =WM_USER + 73` |
+| CONST | EM_STREAMOUT | constants.inc(137): `CONST EM_STREAMOUT = 1098` | RichEditApi.inc(34): `CONST EM_STREAMOUT =WM_USER + 74` |
+| CONST | EM_GETTEXTRANGE | constants.inc(95): `CONST EM_GETTEXTRANGE = 1099` | RichEditApi.inc(35): `CONST EM_GETTEXTRANGE =WM_USER + 75` |
+| CONST | EM_FINDWORDBREAK | constants.inc(73): `CONST EM_FINDWORDBREAK = 1100` | RichEditApi.inc(36): `CONST EM_FINDWORDBREAK =WM_USER + 76` |
+| CONST | EM_SETOPTIONS | constants.inc(123): `CONST EM_SETOPTIONS = 1101` | RichEditApi.inc(37): `CONST EM_SETOPTIONS =WM_USER + 77` |
+| CONST | EM_GETOPTIONS | constants.inc(87): `CONST EM_GETOPTIONS = 1102` | RichEditApi.inc(38): `CONST EM_GETOPTIONS =WM_USER + 78` |
+| CONST | EM_FINDTEXTEX | constants.inc(72): `CONST EM_FINDTEXTEX = 1103` | RichEditApi.inc(39): `CONST EM_FINDTEXTEX =WM_USER + 79` |
+| CONST | EM_GETWORDBREAKPROCEX | constants.inc(98): `CONST EM_GETWORDBREAKPROCEX = 1104` | RichEditApi.inc(40): `CONST EM_GETWORDBREAKPROCEX =WM_USER + 80` |
+| CONST | EM_SETWORDBREAKPROCEX | constants.inc(134): `CONST EM_SETWORDBREAKPROCEX = 1105` | RichEditApi.inc(41): `CONST EM_SETWORDBREAKPROCEX =WM_USER + 81` |
+| CONST | EM_SETPUNCTUATION | constants.inc(126): `CONST EM_SETPUNCTUATION = 1124` | RichEditApi.inc(57): `CONST EM_SETPUNCTUATION =WM_USER + 100` |
+| CONST | EM_GETPUNCTUATION | constants.inc(91): `CONST EM_GETPUNCTUATION = 1125` | RichEditApi.inc(58): `CONST EM_GETPUNCTUATION =WM_USER + 101` |
+| CONST | EM_SETWORDWRAPMODE | constants.inc(135): `CONST EM_SETWORDWRAPMODE = 1126` | RichEditApi.inc(59): `CONST EM_SETWORDWRAPMODE =WM_USER + 102` |
+| CONST | EM_GETWORDWRAPMODE | constants.inc(99): `CONST EM_GETWORDWRAPMODE = 1127` | RichEditApi.inc(60): `CONST EM_GETWORDWRAPMODE =WM_USER + 103` |
+| CONST | EM_SETIMECOLOR | constants.inc(117): `CONST EM_SETIMECOLOR = 1128` | RichEditApi.inc(61): `CONST EM_SETIMECOLOR =WM_USER + 104` |
+| CONST | EM_GETIMECOLOR | constants.inc(85): `CONST EM_GETIMECOLOR = 1129` | RichEditApi.inc(62): `CONST EM_GETIMECOLOR =WM_USER + 105` |
+| CONST | EM_SETIMEOPTIONS | constants.inc(118): `CONST EM_SETIMEOPTIONS = 1130` | RichEditApi.inc(63): `CONST EM_SETIMEOPTIONS =WM_USER + 106` |
+| CONST | EM_GETIMEOPTIONS | constants.inc(86): `CONST EM_GETIMEOPTIONS = 1131` | RichEditApi.inc(64): `CONST EM_GETIMEOPTIONS =WM_USER + 107` |
 | SUB/FUNCTION | ACOSH | Math.inc(8): `FUNCTION ACOSH(VALUE AS DOUBLE) AS DOUBLE SELECT CASE VALUE CASE IS < 1 MESSAGEB` | rq_math.inc(32): `FUNCTION ACOSH(VALUE AS DOUBLE) AS DOUBLE SELECT CASE VALUE CASE IS < 1 MESSAGEB` |
 | SUB/FUNCTION | ACOTH | Math.inc(25): `FUNCTION ACOTH(VALUE AS DOUBLE) AS DOUBLE SELECT CASE ABS (VALUE) CASE IS > 1 AC` | rq_math.inc(49): `FUNCTION ACOTH(VALUE AS DOUBLE) AS DOUBLE SELECT CASE ABS (VALUE) CASE IS > 1 AC` |
 | SUB/FUNCTION | ACOSEC | Math.inc(36): `FUNCTION ACOSEC(VALUE AS DOUBLE) AS DOUBLE SELECT CASE ABS (VALUE) CASE IS < 1 M` | rq_math.inc(60): `FUNCTION ACOSEC(VALUE AS DOUBLE) AS DOUBLE SELECT CASE ABS (VALUE) CASE IS < 1 M` |
@@ -983,10 +985,13 @@
 | CONST | RGN_MAX | WIN32API.INC(3033): `PUBLIC CONST RGN_MAX = RGN_COPY` | WindowsAPI.inc(48): `CONST RGN_MAX = 5` |
 | CONST | RGN_MIN | WIN32API.INC(3032): `PUBLIC CONST RGN_MIN = RGN_AND` | WindowsAPI.inc(49): `CONST RGN_MIN = 1` |
 | DECLARE | CHOOSECOLORDLG | WIN32API.INC(15081): `DECLARE FUNCTION CHOOSECOLORDLG LIB "COMDLG32.DLL" ALIAS "CHOOSECOLORA" (PCHOOSE` | rapidq2.inc (компоненты)(1695): `DECLARE FUNCTION CHOOSECOLORDLG LIB "COMDLG32" ALIAS "CHOOSECOLORA" (CC AS CHOOS` |
-| $DEFINE | BOOLEAN | rapidq2.inc(2241): `LONG` | API_RichEdid.inc(10): `INTEGER` |
-| DECLARE | LOADLIBRARY | rapidq2.inc(2261): `DECLARE FUNCTION LOADLIBRARY LIB "KERNEL32" ALIAS "LOADLIBRARYA" (BYVAL LPLIBFIL` | API_RichEdid.inc(13): `DECLARE FUNCTION LOADLIBRARY LIB "KERNEL32" ALIAS "LOADLIBRARYA" _ (LIBFILENAME ` |
-| DECLARE | CREATEWINDOWEX | rapidq2.inc(987): `DECLARE FUNCTION CREATEWINDOWEX LIB "USER32" ALIAS "CREATEWINDOWEXA" (DWEXSTYLE ` | API_RichEdid.inc(18): `DECLARE FUNCTION CREATEWINDOWEX LIB "USER32" ALIAS "CREATEWINDOWEXA" _ (EXSTYLE&` |
-| DECLARE | SETWINDOWTEXT | rapidq2.inc(1013): `DECLARE FUNCTION SETWINDOWTEXT LIB "USER32" ALIAS "SETWINDOWTEXTA" (BYVAL HWND A` | API_RichEdid.inc(39): `DECLARE FUNCTION SETWINDOWTEXT LIB "USER32" ALIAS "SETWINDOWTEXTA" _ (HWND AS IN` |
+| DECLARE | LOADLIBRARY | rapidq2.inc(2261): `DECLARE FUNCTION LOADLIBRARY LIB "KERNEL32" ALIAS "LOADLIBRARYA" (BYVAL LPLIBFIL` | apiRe.inc(13): `DECLARE FUNCTION LOADLIBRARY LIB "KERNEL32" ALIAS "LOADLIBRARYA" _ (LIBFILENAME ` |
+| CONST | WS_TILED | Win32_constants.inc(56): `CONST WS_TILED = 0` | apiRe.inc(46): `PUBLIC CONST WS_TILED = WS_OVERLAPPED` |
+| CONST | WS_ICONIC | Win32_constants.inc(43): `CONST WS_ICONIC = &H20000000` | apiRe.inc(47): `PUBLIC CONST WS_ICONIC = WS_MINIMIZE` |
+| CONST | WS_SIZEBOX | Win32_constants.inc(52): `CONST WS_SIZEBOX = &H40000` | apiRe.inc(48): `PUBLIC CONST WS_SIZEBOX = WS_THICKFRAME` |
+| CONST | WS_TILEDWINDOW | Win32_constants.inc(57): `CONST WS_TILEDWINDOW = &HCF0000` | apiRe.inc(50): `PUBLIC CONST WS_TILEDWINDOW = WS_OVERLAPPEDWINDOW` |
+| CONST | WS_POPUPWINDOW | Win32_constants.inc(51): `CONST WS_POPUPWINDOW = &H80880000` | apiRe.inc(57): `PUBLIC CONST WS_POPUPWINDOW = (WS_POPUP OR WS_BORDER OR WS_SYSMENU)` |
+| CONST | WS_CHILDWINDOW | Win32_constants.inc(36): `CONST WS_CHILDWINDOW = &H40000000` | apiRe.inc(59): `PUBLIC CONST WS_CHILDWINDOW = (WS_CHILD)` |
 | $DEFINE | BOOLEAN | rapidq2.inc(2241): `LONG` | QDataBase.inc(14): `INTEGER` |
 | DECLARE | GETDISKFREESPACE | Kernel32.inc(94): `DECLARE FUNCTION GETDISKFREESPACE LIB "KERNEL32.DLL" ALIAS_ "GETDISKFREESPACEA" ` | qdrive2024.inc(23): `DECLARE FUNCTION GETDISKFREESPACE LIB "KERNEL32" ALIAS "GETDISKFREESPACEA" (ROOT` |
 | DECLARE | SETWINDOWLONG | rapidq2.inc(1039): `DECLARE FUNCTION SETWINDOWLONG LIB "USER32" ALIAS "SETWINDOWLONGA" (HWND AS LONG` | qEditEx.inc(16): `DECLARE FUNCTION SETWINDOWLONG LIB "USER32" ALIAS "SETWINDOWLONGA"(HWND AS LONG,` |
@@ -1042,10 +1047,6 @@
 | $DEFINE | BOOLEAN | rapidq2.inc(2241): `LONG` | QFileListView.inc(14): `INTEGER` |
 | TYPE | SHFILEINFO | WIN32API.INC(14619): `TYPE SHFILEINFO HICON AS LONG IICON AS LONG DWATTRIBUTES AS LONG SZDISPLAYNAME A` | QFileListView.inc(18): `TYPE SHFILEINFO HICON AS LONG IICON AS INTEGER DWATTRIBUTES AS DWORD SZDISPLAYNA` |
 | $DEFINE | BOOLEAN | rapidq2.inc(2241): `LONG` | QFlashLabel.inc(14): `INTEGER` |
-| TYPE | PIXELFORMATDESCRIPTOR | WIN32API.INC(15386): `TYPE PIXELFORMATDESCRIPTOR NSIZE AS INTEGER NVERSION AS INTEGER DWFLAGS AS LONG ` | QGL.inc(18): `TYPE PIXELFORMATDESCRIPTOR NSIZE AS WORD NVERSION AS WORD DWFLAGS AS DWORD IPIXE` |
-| DECLARE | CHOOSEPIXELFORMAT | WIN32API.INC(15415): `DECLARE FUNCTION CHOOSEPIXELFORMAT LIB "GDI32" ALIAS "CHOOSEPIXELFORMAT" (BYVAL ` | QGL.inc(49): `DECLARE FUNCTION CHOOSEPIXELFORMAT LIB "GDI32" ALIAS "CHOOSEPIXELFORMAT" (BYVAL ` |
-| DECLARE | GETDC | rapidq2.inc(1482): `DECLARE FUNCTION GETDC LIB "USER32.DLL" ALIAS "GETDC"(BYVAL HWND AS LONG) AS LON` | QGL.inc(56): `DECLARE FUNCTION GETDC LIB "USER32" ALIAS "GETDC" (BYVAL DW1 AS LONG) AS LONG` |
-| DECLARE | RELEASEDC | rapidq2.inc(1483): `DECLARE FUNCTION RELEASEDC LIB "USER32.DLL" ALIAS "RELEASEDC"(BYVAL HWND AS LONG` | QGL.inc(57): `DECLARE SUB RELEASEDC LIB "USER32" ALIAS "RELEASEDC" (BYVAL DW1 AS LONG, BYVAL D` |
 | $DEFINE | BOOLEAN | rapidq2.inc(2241): `LONG` | QICON.inc(14): `INTEGER` |
 | DECLARE | EXTRACTASSOCIATEDICON | WIN32API.INC(14407): `DECLARE FUNCTION EXTRACTASSOCIATEDICON LIB "SHELL32.DLL" ALIAS "EXTRACTASSOCIATE` | QICON.inc(17): `DECLARE FUNCTION EXTRACTASSOCIATEDICON LIB "SHELL32.DLL" ALIAS "EXTRACTASSOCIATE` |
 | DECLARE | EXTRACTICON | WIN32API.INC(14408): `DECLARE FUNCTION EXTRACTICON LIB "SHELL32.DLL" ALIAS "EXTRACTICONA" (BYVAL HINST` | QICON.inc(18): `DECLARE FUNCTION EXTRACTICON LIB "SHELL32.DLL" ALIAS "EXTRACTICONA" (HINST AS LO` |
