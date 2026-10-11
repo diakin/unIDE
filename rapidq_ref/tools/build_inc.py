@@ -839,6 +839,16 @@ def main():
                 fixed += 1
         if fixed:
             renamed.append('%s: %d строк с числом 880U (суффикс C) - без U' % (f, fixed))
+        # CONST без = (commctrl32.inc: CONST TB_SETCOLORSCHEME	CCM_SETCOLORSCHEME)
+        fixed = 0
+        for num, line in enumerate(texts[f]):
+            code = code_part(line)
+            m = re.match(r'(\s*(?:(?:public|private)\s+)?const\s+\w+[\$%&!#]?)(\s+)(?!as\b)(\S.*)$', code, re.I)
+            if m and '=' not in code and not code.rstrip().endswith('_'):
+                texts[f][num] = line.replace(code, m.group(1) + ' = ' + m.group(3), 1)
+                fixed += 1
+        if fixed:
+            renamed.append('%s: %d строк CONST без = - с =' % (f, fixed))
     for f in files:
         if f.lower() in RENAMES:
             prefix, names = RENAMES[f.lower()]

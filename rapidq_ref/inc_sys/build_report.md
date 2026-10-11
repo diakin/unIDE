@@ -122,7 +122,9 @@
 Внутренние процедуры с короткими именами (совпадали с переменными других файлов: QXLS.INC DIM F AS QFileStream) и опечатки:
 
 - commctrl32.inc: 4 строк с числом 880U (суффикс C) - без U
+- commctrl32.inc: 5 строк CONST без = - с =
 - keys.inc: 46 строк "define ИМЯ значение" без $ - $define
+- NI6210.inc: 1 строк CONST без = - с =
 - CMD5.inc: F, G, H, FF, GG, HH, II -> MD5_...
 
 ## $DEFINE имени типом - только для своего файла
@@ -147,7 +149,7 @@
 
 ## Убрано как повтор
 
-- CONST: 7435
+- CONST: 7440
 - DECLARE: 2116
 - $DEFINE: 2030
 - SUB/FUNCTION: 241
