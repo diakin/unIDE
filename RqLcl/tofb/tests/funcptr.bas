@@ -3,8 +3,8 @@ $APPTYPE CONSOLE
 ' CODEPTR; window subclassing as in RQdebugger (NewWndProc.Inc:
 ' Bind + SetNewWndProc + CallWindowProc),
 ' (CallBack_4.Inc: SetNewCallBack_4 for SetTimer), CODEPTR for EnumChildWindows
-$INCLUDE "../../../rapidq_ref/inc_good/CallBack_4.Inc"
-$INCLUDE "../../../rapidq_ref/inc_good/NewWndProc.Inc"
+$INCLUDE "../../../rapidq_ref/incOld/CallBack_4.Inc"
+$INCLUDE "../../../rapidq_ref/incOld/NewWndProc.Inc"
 DECLARE FUNCTION SendMessage LIB "user32" ALIAS "SendMessageA" (hWnd AS LONG, Msg AS LONG, wParam AS LONG, lParam AS LONG) AS LONG
 DECLARE FUNCTION CallWindowProc LIB "user32" ALIAS "CallWindowProcA" (lpPrevWndFunc AS LONG, hWnd AS LONG, Msg AS LONG, wParam AS LONG, lParam AS LONG) AS LONG
 DECLARE FUNCTION SetWindowLongAPI LIB "user32" ALIAS "SetWindowLongA" (hWnd AS LONG, nIndex AS LONG, dwNewLong AS LONG) AS LONG

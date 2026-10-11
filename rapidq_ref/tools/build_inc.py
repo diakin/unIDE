@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Сборка системных inc RapidQ из rapidq_ref/inc_good по плану
+Сборка системных inc RapidQ из rapidq_ref/incOld по плану
 rapidq_ref/inc_merge_plan.md (см. rapidq_ref/inc_about.md):
 
   inc_sys/rapidqAllProc.inc     - константы, DECLARE, процедуры;
@@ -23,7 +23,7 @@ import collections
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 REF = os.path.dirname(HERE)
-SRC = os.path.join(REF, 'inc_good')
+SRC = os.path.join(REF, 'incOld')
 OUT = os.path.join(REF, 'inc_sys')
 PLAN = os.path.join(REF, 'inc_merge_plan.md')
 
@@ -175,7 +175,7 @@ def split_units(lines):
 # Внутренние процедуры файла с короткими именами, которые в общей сборке
 # совпадают с переменными других файлов и программ (QXLS.INC: DIM F AS
 # QFileStream при FUNCTION F из CMD5.inc). В сборке - с приставкой; снаружи
-# файла их никто не вызывает (проверено поиском по inc_good).
+# файла их никто не вызывает (проверено поиском по incOld).
 RENAMES = {'cmd5.inc': ('MD5_', ['F', 'G', 'H', 'FF', 'GG', 'HH', 'II'])}
 
 
@@ -570,7 +570,7 @@ def main():
     builder.local_defines, unresolved_defines = local_type_defines(order)
 
     head = ["' rapidqAllProc.inc - константы, DECLARE и процедуры RapidQ одним файлом.",
-            "' Собран rapidq_ref/tools/build_inc.py из rapidq_ref/inc_good по",
+            "' Собран rapidq_ref/tools/build_inc.py из rapidq_ref/incOld по",
             "' rapidq_ref/inc_merge_plan.md. Не правьте вручную - правьте исходные",
             "' файлы или план и соберите заново. Повторы - '~dup, с местом первого.",
             "$IFNDEF __RQALLPROC_INC",
@@ -597,7 +597,7 @@ def main():
 
     # Отчёт
     rep = ['# Сборка rapidqAllProc.inc и rapidqComponents.inc', '',
-           'Собрано rapidq_ref/tools/build_inc.py из inc_good по inc_merge_plan.md.', '',
+           'Собрано rapidq_ref/tools/build_inc.py из incOld по inc_merge_plan.md.', '',
            '## Состав', '',
            '- rapidqAllProc.inc: rapidq2.inc (без разделов компонентов), rapidq.inc, '
            'и %d файлов: %s' % (len(proc_files), ', '.join(proc_files)),

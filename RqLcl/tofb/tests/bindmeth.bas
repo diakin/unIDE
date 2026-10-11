@@ -2,7 +2,7 @@ $APPTYPE CONSOLE
 ' BIND This.Method + SetNewCallBack_4 + SetWindowLong inside a TYPE
 ' (rapidq2.inc QFormEx.GrabWindowProc): two objects subclass two windows,
 ' each window's messages go to its own object
-$INCLUDE "../../../rapidq_ref/inc_good/CallBack_4.Inc"
+$INCLUDE "../../../rapidq_ref/incOld/CallBack_4.Inc"
 DECLARE FUNCTION CreateWindowEx LIB "user32" ALIAS "CreateWindowExA" (dwExStyle AS LONG, lpClassName AS STRING, lpWindowName AS STRING, dwStyle AS LONG, x AS LONG, y AS LONG, nWidth AS LONG, nHeight AS LONG, hWndParent AS LONG, hMenu AS LONG, hInstance AS LONG, lpParam AS LONG) AS LONG
 DECLARE FUNCTION SetWindowLong LIB "user32" ALIAS "SetWindowLongA" (hWnd AS LONG, nIndex AS LONG, dwNewLong AS LONG) AS LONG
 DECLARE FUNCTION CallWindowProc LIB "user32" ALIAS "CallWindowProcA" (lpPrevWndFunc AS LONG, hWnd AS LONG, Msg AS LONG, wParam AS LONG, lParam AS LONG) AS LONG

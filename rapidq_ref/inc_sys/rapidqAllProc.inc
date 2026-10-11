@@ -1,5 +1,5 @@
 ' rapidqAllProc.inc - константы, DECLARE и процедуры RapidQ одним файлом.
-' Собран rapidq_ref/tools/build_inc.py из rapidq_ref/inc_good по
+' Собран rapidq_ref/tools/build_inc.py из rapidq_ref/incOld по
 ' rapidq_ref/inc_merge_plan.md. Не правьте вручную - правьте исходные
 ' файлы или план и соберите заново. Повторы - '~dup, с местом первого.
 $IFNDEF __RQALLPROC_INC

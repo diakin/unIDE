@@ -1,6 +1,6 @@
 # Сборка rapidqAllProc.inc и rapidqComponents.inc
 
-Собрано rapidq_ref/tools/build_inc.py из inc_good по inc_merge_plan.md.
+Собрано rapidq_ref/tools/build_inc.py из incOld по inc_merge_plan.md.
 
 ## Состав
 
