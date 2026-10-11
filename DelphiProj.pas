@@ -25,6 +25,10 @@ function DofCompilerParams(const ADpr, ARoot: string;
 // $(DELPHI) и $(BDS) - папка Delphi ARoot
 function ExpandDelphiRoot(const S, ARoot: string): string;
 
+// Повторы имён компонентов в текстовом .dfm - строками "файл(строка)
+// Error: ..." в AErrors. Результат - число повторов.
+function DfmDuplicateNames(const ADfm: string; AErrors: TStrings): Integer;
+
 implementation
 
 // $(DELPHI) в путях. Окно настроек разворачивает макросы при вводе, но
@@ -376,6 +380,137 @@ begin
   if ASearch <> '' then
     S := S + ', Search path ' + ASearch;
   Log(S);
+end;
+
+// Одинаковые имена компонентов в тексте .dfm. dcc32 кладёт .dfm в exe как
+// ресурс и внутрь не смотрит; повтор находит только TReader при создании
+// формы - EComponentError "A component named X already exists". Проверка
+// повторяет правило VCL: имена уникальны среди компонентов одного
+// владельца. Владелец всех объектов формы - сама форма, кроме вложенных
+// фреймов (inline): их компоненты принадлежат фрейму. Имя корневого
+// объекта в счёт не идёт - форма не владеет сама собой.
+// Каждый повтор - строкой в AErrors в формате dcc32
+// "файл(строка) Error: текст". Двоичный .dfm не разбирается. Результат -
+// число повторов.
+function DfmDuplicateNames(const ADfm: string; AErrors: TStrings): Integer;
+var
+  Lines, ScopeNames: TStringList;
+  Scopes: TList;          // TStringList: имя=строка, по владельцам
+  BlockScope: array of Integer;  // область имён детей каждого открытого блока
+  Depth, LineIdx, ColonPos, SpacePos, CurScope, NewScope, PrevIdx: Integer;
+  Line, Low, Word1, CompName: string;
+  Head: string;
+  Stream: TFileStream;
+
+  procedure Push(AScope: Integer);
+  begin
+    if Depth >= Length(BlockScope) then
+      SetLength(BlockScope, Depth + 16);
+    BlockScope[Depth] := AScope;
+    Inc(Depth);
+  end;
+
+begin
+  Result := 0;
+  if not FileExists(ADfm) then
+    Exit;
+  // Двоичный .dfm начинается с 'TPF0' (или с заголовка ресурса $FF)
+  SetLength(Head, 4);
+  Stream := TFileStream.Create(ADfm, fmOpenRead or fmShareDenyNone);
+  try
+    if Stream.Read(Head[1], 4) < 4 then
+      Exit;
+  finally
+    Stream.Free;
+  end;
+  if (Head = 'TPF0') or (Head[1] = #$FF) then
+    Exit;
+
+  Lines := TStringList.Create;
+  Scopes := TList.Create;
+  try
+    Lines.LoadFromFile(ADfm);
+    Depth := 0;
+    for LineIdx := 0 to Lines.Count - 1 do
+    begin
+      Line := Trim(Lines[LineIdx]);
+      if Line = '' then
+        Continue;
+      Low := LowerCase(Line);
+
+      // Конец объекта или элемента коллекции: end, end>, end>)
+      if (Copy(Low, 1, 3) = 'end') and
+         ((Length(Low) = 3) or (Low[4] in ['>', ')', ' '])) then
+      begin
+        if Depth > 0 then
+          Dec(Depth);
+        Continue;
+      end;
+      // Элемент коллекции - блок без имени, дети в той же области
+      if Low = 'item' then
+      begin
+        if Depth > 0 then
+          Push(BlockScope[Depth - 1])
+        else
+          Push(-1);
+        Continue;
+      end;
+
+      SpacePos := Pos(' ', Low);
+      if SpacePos = 0 then
+        Continue;
+      Word1 := Copy(Low, 1, SpacePos - 1);
+      if (Word1 <> 'object') and (Word1 <> 'inherited') and
+         (Word1 <> 'inline') then
+        Continue;
+
+      if Depth = 0 then
+        CurScope := -1                 // корень: имя не учитывается
+      else
+        CurScope := BlockScope[Depth - 1];
+
+      // object Name: TClass [index]; без двоеточия - объект без имени
+      ColonPos := Pos(':', Line);
+      if ColonPos > 0 then
+        CompName := Trim(Copy(Line, SpacePos + 1, ColonPos - SpacePos - 1))
+      else
+        CompName := '';
+
+      if (CurScope >= 0) and (CompName <> '') then
+      begin
+        ScopeNames := TStringList(Scopes[CurScope]);
+        PrevIdx := ScopeNames.IndexOfName(CompName);
+        if PrevIdx >= 0 then
+        begin
+          AErrors.Add(Format('%s(%d) Error: компонент %s уже есть (строка ' +
+                             '%s) - при создании формы будет ' +
+                             'EComponentError "A component named %s ' +
+                             'already exists"',
+                             [ADfm, LineIdx + 1, CompName,
+                              ScopeNames.ValueFromIndex[PrevIdx], CompName]));
+          Inc(Result);
+        end
+        else
+          ScopeNames.Add(CompName + '=' + IntToStr(LineIdx + 1));
+      end;
+
+      // Дети корня и вложенного фрейма - в своей области имён
+      if (Depth = 0) or (Word1 = 'inline') then
+      begin
+        ScopeNames := TStringList.Create;
+        ScopeNames.CaseSensitive := False;
+        NewScope := Scopes.Add(ScopeNames);
+        Push(NewScope);
+      end
+      else
+        Push(CurScope);
+    end;
+  finally
+    for LineIdx := 0 to Scopes.Count - 1 do
+      TStringList(Scopes[LineIdx]).Free;
+    Scopes.Free;
+    Lines.Free;
+  end;
 end;
 
 end.
