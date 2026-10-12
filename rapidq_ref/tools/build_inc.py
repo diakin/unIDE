@@ -1479,12 +1479,39 @@ def active_decl_names(lines):
     return names
 
 
+def commented_decl_name(body):
+    """Имя, если закомментированный текст body - объявление по виду, а не
+    фраза ("Create a buffer for ..."): у CONST есть =, у DIM / DEFxxx /
+    CREATE - AS, у TYPE - одно имя или EXTENDS, у SUB / FUNCTION - скобки
+    или ничего после имени. '' - не объявление."""
+    code = code_part(body)
+    m = DECL_NAME_RE.match(code)
+    if not m:
+        return ''
+    kw = code.split()[0].lower()
+    rest = code[m.end():].strip()
+    if kw == 'const':
+        ok = rest.startswith('=') or re.match(r'as\b', rest, re.I) is not None
+    elif kw in ('dim', 'create') or kw.startswith('def'):
+        ok = re.match(r'(\(.*\)\s*)?(as\b|=|,|$)', rest, re.I) is not None and \
+            (kw.startswith('def') or re.search(r'\bas\b', rest, re.I) is not None)
+    elif kw == 'type':
+        ok = rest == '' or re.match(r'(extends|as)\b', rest, re.I) is not None
+    elif kw in ('sub', 'function', 'subi', 'functioni'):
+        ok = rest == '' or rest.startswith('(') or re.match(r'as\b', rest, re.I) is not None
+    else:   # $DEFINE, DECLARE
+        ok = True
+    return m.group(1).upper() if ok else ''
+
+
 def strip_commented_dups(lines, names):
     """Без строк '~dup и без закомментированных объявлений ('CONST X = 1,
     'DECLARE ..., '$DEFINE ...) имён из names - вместе с продолжениями
-    через _. Подряд больше одной пустой строки после этого - одна.
+    через _. Заголовки-комментарии, под которыми после этого ничего не
+    осталось ('-- Form Styles, а дальше сразу следующий заголовок), - тоже.
+    Подряд больше одной пустой строки - одна.
     Возвращает (оставшиеся, убранные)."""
-    kept, removed = [], []
+    seq, removed = [], []     # None в seq - здесь были убранные строки
     cont = False
     for line in lines:
         text = line.lstrip()
@@ -1492,6 +1519,8 @@ def strip_commented_dups(lines, names):
             # у блока ('~dup TYPE ... END TYPE) место первого - в первой строке
             if "повтор, первое" in text:
                 removed.append(line)
+            if not seq or seq[-1] is not None:
+                seq.append(None)
             cont = False
             continue
         if cont:
@@ -1501,14 +1530,64 @@ def strip_commented_dups(lines, names):
             cont = False
         if text.startswith("'") and not text.startswith("'~"):
             body = text[1:].lstrip()
-            m = DECL_NAME_RE.match(code_part(body))
-            if m and m.group(1).upper() in names:
+            decl_name = commented_decl_name(body)
+            if decl_name and decl_name in names:
                 removed.append(line)
+                if not seq or seq[-1] is not None:
+                    seq.append(None)
                 cont = code_part(body).rstrip().endswith('_')
                 continue
-        if line.strip() == '' and kept and kept[-1].strip() == '':
+        seq.append(line)
+
+    def is_header(item):
+        # комментарий-заголовок: не код, не пометка сборки, не разделитель
+        # файлов и не закомментированное объявление
+        if item is None:
+            return False
+        text = item.lstrip()
+        if not text.startswith("'") or text.startswith("'~") or \
+                text.startswith("'[build_inc]") or text.startswith("'=="):
+            return False
+        return not commented_decl_name(text[1:].lstrip())
+
+    def is_stop(item):
+        # что может идти за пустым заголовком: следующий заголовок,
+        # разделитель файлов сборки или конец
+        if item is None:
+            return False
+        text = item.lstrip()
+        return is_header(item) or text.startswith("'[build_inc]") or \
+            text.startswith("'==")
+
+    changed = True
+    while changed:
+        changed = False
+        idx = 0
+        while idx < len(seq):
+            if not is_header(seq[idx]) or (idx > 0 and is_header(seq[idx - 1])):
+                idx += 1
+                continue
+            last = idx
+            while last + 1 < len(seq) and is_header(seq[last + 1]):
+                last += 1
+            nxt = last + 1
+            gap_removed = False
+            while nxt < len(seq) and (seq[nxt] is None or seq[nxt].strip() == ''):
+                gap_removed = gap_removed or seq[nxt] is None
+                nxt += 1
+            if gap_removed and (nxt >= len(seq) or is_stop(seq[nxt])):
+                removed.extend(seq[idx:last + 1])
+                seq[idx:last + 1] = [None]
+                changed = True
+            idx += 1
+
+    kept = []
+    for item in seq:
+        if item is None:
             continue
-        kept.append(line)
+        if item.strip() == '' and kept and kept[-1].strip() == '':
+            continue
+        kept.append(item)
     return kept, removed
 
 

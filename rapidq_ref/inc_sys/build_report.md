@@ -1255,13 +1255,13 @@
 
 Строки '~dup (повтор объявления из файла выше) и закомментированные в исходных файлах объявления имён, которые в сборке объявлены.
 
-- rapidqAllProc.inc: 11648
-- rapidqComponents.inc: 828
+- rapidqAllProc.inc: 14774
+- rapidqComponents.inc: 969
 - debug.inc: 3
 - debugNoSend.inc: 0
 - debugWindow.inc: 0
 - FBFunctions.inc: 2
-- PRINTERDLL.INC: 138
+- PRINTERDLL.INC: 141
 - pulsar.inc: 0
 - QImageBox.inc: 3
 - QImageDialog.inc: 3

@@ -5048,16 +5048,6 @@ $ENDIF
 $IFNDEF FALSE
 $ENDIF
 
-'$IFNDEF boolean
-''  $DEFINE boolean integer
-'ENDIF
-
-' Window Styles
-
-'
-'   Common Window Styles
-'  /
-
 ' Extended Window Styles
 
 DECLARE FUNCTION CreateRichEdit LIB "USER32" ALIAS "CreateWindowExA" _
@@ -10230,13 +10220,6 @@ $ENDIF
 $IFNDEF __WIN32API       'windows inc loaded?
 $IFNDEF __RQINC2         'RapidQ2.inc loaded?
 
-    'window styles for capture window
-    'extended windows styles
-
-'set windows position
-
-'clipboard formats
-
 'VFW "customized" File Dialogs
 
 $ENDIF		' __RQINC2
@@ -11305,47 +11288,12 @@ END TYPE
 '============================================================================
 '[build_inc] COMPORTxp.inc
 '============================================================================
-'ComPort.cmp  ' inc2026: file renamed from COMPORTxp.CMP to COMPORTxp.inc (header keeps the original name ComPort.cmp)
-'Version 0.9
-'December 13, 2001
-'by Pete Kleinschmidt
-'loosely based on VB code by David M. Hitchner
-'http://www.thescarms.com/vbasic/CommIO.asp
-
-'Win32 Communications User Defined Types
-
-'Structure containing time-out parameters for a communications device
-
-'Device Control Block
-'Structure that defines the control settings for a serial communications device
-
-'Structure containing current Comm Port State
-
-'Win32 File Handling User Defined Types
-
-'Structure that contains the security descriptor for an object
-'not currently used by us
-
-'Structure containing info used in Overlapped (asynchronous) I/O
-'not currently used by us
-
-'DCB Constants
-'Parity
-'StopBits
-
-'PurgeCOM constants
-'dwFlags
 
 'Win32 File Handling Constants
 
 'dwDesired Access Constants
 Const GENERIC_READ_cmp          = &H80000000
 CONST GENERIC_WRITE_cmp         = &H40000000
-'dwShareMode Constants
-'dwCreationDisposition Constants
-'dwFlagsAndAttributes
-
-'Win32 Error Constants
 
 'Error Message Constants
 CONST ERROR_OPEN_PORT                 = "There was an error opening the Comm Port.  "
@@ -11360,15 +11308,6 @@ CONST ERROR_SENDING_DATA              = "Could not send all the data in time spe
 CONST ERROR_GETTING_PORT_STATUS       = "There was an error getting the Comm Ports current status.  " 
 CONST ERROR_READING_PORT              = "There was an error reading data from the Comm Port.  "
 
-'Win32 Function Declarations
-
-'Suspends the execution of the current thread for the specified interval. 
-
-'Win32 Error Messages
-
-'Several Win32 functions set an error code if they fail.  This retrieves them.
-'Note, If a function succeeds, it may not set this code.  If you retrieve it
-'after a function succeeds, it may return an error code for a previous function that failed.
                                                     'See http://msdn.microsoft.com/library/default.asp?url=/library/en-us/debug/errlist_7oz7.asp
                                                     'for what codes mean
 
@@ -11382,37 +11321,6 @@ Declare Function FormatMessage_COMPORTxp Lib "kernel32" Alias "FormatMessageA" _
     nSize AS DWORD, _                               '[IN] specifies the max number of characters that can be stored in the output buffer
     BYREF Arguments As Long) _                      '[IN] Pointer to an array of values that are used as insert values in the formatted message
       AS LONG                                       ''If function succeeds, returns non-zero. If function fails, returns 0. 
-
-'Win32 Communication Functions
-
-' Initializes the communications parameters for a specified
-' communications device.
-
-' Discards all characters from the output or input buffer of a
-' specified communications resource. It can also terminate
-' pending read or write operations on the resource.
-
-' Sets the time-out parameters for all read and write operations on a
-' specified communications device.
-
-'Retrieves current Device Control Block (DCB)
-
-'Sets Device Control Block (DCB)
-
-' Retrieves information about a communications error and reports
-' the current status of a communications device. Clears the
-' device's error flag to enable additional input and output
-' (I/O) operations.
-
-'Win32 File Handling Functions
-
-'Create or open a new Comm device/file
-
-' Writes data to a file 
-' We are not using Overlapped (asynchronous) I/O 
-     
-'Reads data from a file
-'We are not using Overlapped (asynchronous) I/O 
 
 'Internal Declarations
 
@@ -12383,12 +12291,6 @@ $ENDIF          'rapidq2 inc
 
 $IFNDEF __WIN32API         'Windows.inc loaded?
 
-' DIB color table identifiers 
-
-' constants for the biCompression field 
-
-'note* functions that return MMRESULT return 0 on success
-
 'open file flags for AVIFileOpen
 
 $ENDIF          'windows inc
@@ -12736,6 +12638,7 @@ FUNCTION CloseAVIFile() AS LONG
 END FUNCTION
 
     '======================================================
+    '  Create File, open library, set options, & allocate memory
     '======================================================
 
 FUNCTION CreateAVIFile(szFile As STRING, TheWidth AS INTEGER, TheHeight AS INTEGER, Bpp AS INTEGER, fps AS INTEGER) AS LONG
@@ -17517,11 +17420,9 @@ END TYPE
 ' ----------------------
 Const QDIR_RQCR = Chr$(10)      ' avoid using $ESCAPECHARS ON IN COMPONENT
 Const QDIR_BACKSLASH = Chr$(92)
-'
 '    NO ATTRIBUTE SET                      ' "0"  ' zero
 
 ' TYPE DEFINITIONS
-' ----------------
 
 ' -------------------------------------------------------------
 ' API DECLARATIONS
@@ -17537,15 +17438,6 @@ Declare Function QDIR_FileTimeToLocalFileTime Lib "kernel32" Alias "FileTimeToLo
 Declare Function QDIR_FileTimeToSystemTime Lib "kernel32" Alias "FileTimeToSystemTime" _
              (lpFileTime As QDIR_FILETIME, lpSystemTime As QDIR_SYSTEMTIME) As Long
 
-' ------------------------------------------------------------------------------------
-' API, CONSTANTES & TYPES DECLARATIONS FOR ChangeFileDateTime And ChangeFileAttributes
-' ------------------------------------------------------------------------------------
-'
-' cft for Change_File_Time and to prevent double declaration of type ...
-'
-'
-'
-'
 '
 ' -------------------------------------------------------------
 ' Template required for creating an Event ... HTML DOC CHAPTER 10-9
@@ -20179,6 +20071,8 @@ $TYPECHECK OFF
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ' METHODS '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
+' SUB Initialise            - Initialise graphsystem                    '
+' SUB SaveToFile            - save graph to .bmp (can't get this 2 work '
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 
 Type QLineGraph extends qobject
@@ -23770,10 +23664,6 @@ Type RQConst Extends QStringList
    End Constructor
 End Type
 
-'************
-'* QIniFile *
-'************
-
 '------------------------------------------------------
 '$EndIf '<---- End QLibrary definition check
 '------------------------------------------------------    
@@ -25162,7 +25052,6 @@ $IFNDEF __WIN32API      'APIs
     Declare Function GetProcessPriority Lib "kernel32" Alias "GetThreadPriority" (hThread As Long) As Long
     Declare Function SetProcessPriority Lib "kernel32" Alias "SetThreadPriority" (hThread As Long,nPriority As Long) As Long
 
-' 'Declare Function CreateMutex Lib "kernel32" Alias "CreateMutexA" (BYREF lpMutexAttributes As LONG, ByVal bInitialOwner As Long, lpName As String) As Long
 ' 
 ' 
 
@@ -25746,13 +25635,6 @@ $ENDIF
 '============================================================================
 '[build_inc] QRichEditXt.inc
 '============================================================================
-'$Include "constants.inc"
-
-'___________________________________________
-
-'------------- /* Extended edit style masks */
-
-'-------- /* Options for EM_SETLANGOPTIONS and EM_GETLANGOPTIONS */
 
 '!!!======================================================================================================================'
 Type QREXT_Point
@@ -27105,7 +26987,6 @@ TYPE sockaddr_in                    'this is for TCP/IP
     sin_zero        AS STRING * 8   'char    sin_zero[8];
 END TYPE
 
-'this is a dynamically allocated structure, we will implement with QMEMORYSTREAM
 '     fd_count        AS DWORD                            'u_int how many sockets SET?
 '     lpfd_array      AS STRING * 256 * SIZEOF(INTEGER)   'fd_array[FD_SETSIZE] array of SOCKET handles
 ' END TYPE
@@ -30377,8 +30258,6 @@ End Type
 
 '  this is easier to use but less efficent, uses disk I/O 
 'CREATE MainForm AS QFORM
-'    Center
-'
 '        Width = 90
 '        Height = 30
 '        Left = (MainForm.ClientWidth \ 2) - (Button.Width \ 2)
@@ -30399,8 +30278,6 @@ End Type
 '$Resource btn_states As "btn_states.bmp"
 '
 'CREATE MainForm AS QFORM
-'    Center
-'
 '        Width = 90
 '        Height = 30
 '        Left = (MainForm.ClientWidth \ 2) - (Button.Width \ 2)
@@ -30461,10 +30338,6 @@ End Type
 '      OnClick = mRelocateBMP_OnClick
 '    End Create
 '    Create mDisable As QMenuItem
-'      Caption = "Disable"
-'      OnClick = mDisable_OnClick
-'    End Create
-'  End Create
 '    Width   = 88
 '    Height  = 44
 '    Left    = (MainForm.ClientWidth \ 2) - (Button.Width \ 2)
@@ -30693,11 +30566,6 @@ WITH QColorDlg
 END WITH
 END TYPE
 
-'---------------------------------------------------------------------------------------------------------
-' 3. QTABCONTROL - extra funcs for adding/editing TABs when ONLY the handle is
-' available (an unfortunate legacy when creating components at the "local" level).
-'
-' Some of the uMsg constants
 ' Mask values
 
 TYPE TabTCITEMHEADER
@@ -30852,53 +30720,6 @@ $DEFINE Q_D3DWrap       55
 '============================================================================
 '[build_inc] RC4crypt.inc
 '============================================================================
-'
-' RC4crypt.inc
-' (C) 2003-10-04 Martin Wehner
-'
-' Contact:  mailto:martin.wehner@firemail.de
-' Homepage: http://mitglied.lycos.de/maweso/
-'
-' RC4 is a stream cipher symmetric key algorithm. It was
-' developed in 1987 by Ronald Rivest and kept as a trade
-' secret by RSA Data Security. On September 9, 1994, the
-' RC4 algorithm was anonymously posted on the Internet on
-' the Cyperpunks' Anonymous Remailers List.
-' RC4 uses a variable length key from 1 to 256 bytes to
-' initialize a 256-byte state table. The state table is
-' used for subsequent generation of pseudo-random bytes
-' and then to generate a pseudo-random stream which is
-' XORed with the plaintext to give the ciphertext. Each
-' element in the state table is swapped at least once. The
-' RC4 key is often limited to 40 bits, because of export
-' restrictions but it is sometimes used as a 128 bit key.
-' It has the capability of using keys between 1 and 2048
-' bits.
-' Analysis shows that the period of the cipher is
-' overwhelmingly likely to be greater than 10^100. Eight
-' to sixteen machine operations are required per output
-' byte, and the cipher can be expected to run very quickly
-' in software. Independent analysts have scrutinized the
-' algorithm and it is considered secure. RC4 is used in
-' many commercial software packages.
-'
-' The type definition below is an adaptation of the RC4
-' algorithm to RapidQ Basic. If you want to use this
-' component then you must first create an object of type
-' QRC4. After that you must call the procedure Init() to
-' initialize the object with the key. If you now call the
-' and returned by the function.
-' If you want to decode then simply execute the same steps
-' again but call the function Pipe() with the encoded
-' string.
-' This component can process data streams. Encode or
-' decode data streams by calling the function Pipe() for
-' each stream element. You are free with the size of the
-' data packets because (Pipe(s) & Pipe(t)) is always equal
-' to Pipe(s & t).
-'
-' Example:
-'   $INCLUDE "RC4crypt.inc"
 '   rc4.Init(k)   ' Initialize RC4 object with the key
 '   s = rc4.Pipe(s)   ' Encode stream element s
 '   t = rc4.Pipe(t)   ' Encode stream element t
@@ -31513,6 +31334,7 @@ TYPE QGroupBoxUx EXTENDS QGROUPBOX
           BGRect.Bottom = BGRect.Bottom - BGRect.Top
           BGRect.Top  = 0
           BGRect.Left = 0
+          ' Create a suitable font for the caption
           GetThemeSysFont(hTheme, TMT_MENUFONT, LF)
           LF.lfWeight = 0
           hFont = CreateFontIndirect(LF)

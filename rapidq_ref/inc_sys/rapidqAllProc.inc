@@ -1900,8 +1900,6 @@ DECLARE FUNCTION WriteFileAlias2 LIB "kernel32" ALIAS "WriteFile"_
   lpOverlapped AS OVERLAPPED) _            '[IN] Pointer to structure containing info if Comm device/file was opened in Overlapped mode.
  AS LONG                                  'If function succeeds, returns non-zero. If function fails, returns 0.
 
-'Alternative write file, that handles asynchronous writing, so your program can do other things while writing to Comm device
-
 'Reads data from a file
 'We are not using Overlapped (asynchronous) I/O
 $IFNDEF __COMPORT_INC_SA   ' inc2026: объявлено и в ComPort.inc - он подключён раньше
@@ -2362,7 +2360,6 @@ CONST tmAlpha = -1
 'version 1.1 August, 2006  added control flow (atiu66)
 'version 1.1a Nov, 2006  removed constant strings (don't add to all exes)
 '==============================================================================================
-'Error Message Constants  Removed
 
 'Forward Internal Declarations for events
 $IFNDEF __COMPORT_INC_SA   ' inc2026: объявлено и в ComPort.inc - он подключён раньше
@@ -2777,7 +2774,6 @@ $ENDIF ' __RQINC2       'END of RapidQ.inc
 $TypeCheck off
 $ESCAPECHARS off
 
-'$IFNDEF space
 '$ENDIF
 
 '$define  int integer   ' inc2026: убрано - INT(x) превращался в INTEGER(x), а INTEGER(x) в RapidQ возвращает x (INT(2.7) -> 2.7, тест 2026-10-10); объявления "as int" в inc_good и в программах rapidq_ref заменены на "as integer"
@@ -2803,11 +2799,6 @@ $DEFINE tpBottom 1
 $DEFINE tpLeft   2
 $DEFINE tpRight  3
 
-'!!!-- Control Alignments
-
-'!!!-- Text Alignments
-
-'!!!-- BASIC Colors
 '-- BGR
 CONST clLBlue = &HFFaa00  '256clLtBlue
 CONST clLtBlue = &HFFaa00  '256clLtBlue
@@ -2856,15 +2847,6 @@ CONST clBrown=&h008080
 CONST clOrange=&h0080FF
 CONST clOr=&h0080FF
 CONST clO=&h0080FF
-'CONST cl
-
-'!!!-- System colors
-
-'!!!-- Mouse Shift States, True if Shift% AND ss<State>
-
-'!!!-- MessageDlg Message Types
-
-'!!!-- MessageDlg Message Buttons (NOT QBUTTON)
 
 '-- MessageDlg Return Values: See ModalResult of QButton
 
@@ -2912,61 +2894,6 @@ Public Const HKEY_USERS = &H80000003
 Public Const HKEY_PERFORMANCE_DATA = &H80000004
 Public Const HKEY_CURRENT_CONFIG = &H80000005
 Public Const HKEY_DYN_DATA = &H80000006
-
-'!!! ------------------------- QFONT Variables --------------------------
-'-- Font Styles
-
-'-- Font Pitch
-
-'-- Font Character sets
-
-'!!! ------------------------- QFORM Variables --------------------------
-'-- Window States
-
-'-- Form Styles
-
-'-- Border Styles
-
-'-- Keyboard Shift States
-
-'-- Border Icons
-
-'-- Close Actions
-
-'!!! ------------------------- QLABEL Variables -------------------------
-'-- Text Layout
-
-'-- Label Style
-
-'!!! ------------------------- QPANEL Variables -------------------------
-'-- Bevel Style
-
-'-- Bevel Border
-
-'!!! ------------------------- QEDIT Variables --------------------------
-'-- CharCase
-
-'!!! ----------------------- QCOMBOBOX Variables ------------------------
-'-- ComboBox Styles
-
-'!!! ---------------------- QFILESTREAM Variables -----------------------
-'-- File Mode
-
-'-- Offsets
-
-'-- Read/Write Numbers
-
-'!!! ----------------------- QRICHEDIT Variables ------------------------
-'-- Scroll Bars
-
-'!!! ---------------------- MODALRESULT Variables -----------------------
-'-- Default ModalResults
-'CONST MB_YESNO
-
-'!!! ------------------------ QBUTTON Variables -------------------------
-'-- Bitmap Alignment
-
-'-- Button Kind
 
 '!!! ---------------------- QSTRINGGRID Variables -----------------------
 
@@ -3033,9 +2960,6 @@ CONST sbOne5StopBits = 1
 
 '-- Parity
 $ENDIF
-
-'!!! ---------------------- QFONTDIALOG Variables -----------------------
-'-- Font Options
 
 '$ENDIF ' __RQINC
 
@@ -5699,15 +5623,6 @@ $DEFINE VK_Enter    &HD
 $DEFINE VK_PUp    &H21
 $DEFINE VK_PDown    &H22
 
-' VK_A thru VK_Z are the same as their ASCII equivalents: 'A' thru 'Z'
-' VK_0 thru VK_9 are the same as their ASCII equivalents: '0' thru '9'
-
-'
-'   VK_L VK_R - left and right Alt, Ctrl and Shift virtual keys.
-'   Used only as parameters to GetAsyncKeyState() and GetKeyState().
-'   No other API or message will distinguish left and right keys in this way.
-'  /
-
 ' ascii codes are the same as their virtual key codes
 
 '[build_inc] (дальше снова rapidq.inc)
@@ -6430,9 +6345,6 @@ DIM Mem AS QMEMORYSTREAM
 '---------------API Callback functions-----------------------------------
 
 Declare Function WindowProc(hwnd As Long, uMsg As Long, wParam As Long, lParam As Long) As Long
-'------------------------------------------------------------------------
-
-'-------------API Menu Functions-----------------------------------------
 
 '------------------------------------------------------------------------
   
@@ -10481,90 +10393,12 @@ end sub
 '============================================================================
 '[build_inc] conversion1.inc
 '============================================================================
-'--------------------------- Custom functions --------------------------
-
-'-- **************************** **********************************************'
-
-'-- **************************************************************************'
-
-'-- **************************************************************************'
-'
-'-- **************************************************************************'
-
-'-- **************************************************************************'
-
-'-- **************************************************************************'
- 
-'-- **************************************************************************'
-
-'-- **************************************************************************'
-
-'-- **************************************************************************'
-
-'-- **************************************************************************'
-
-'-- **************************************************************************'
-
-' LIKE Function - pattern matching routine for Rapid-Q by William Yu
-' This emulates the VB LIKE operator.
-' Thanks to Thomas Binder for the original C code
-'
-' ?   Any single character.
-' *   Zero or more characters.
-' #   Any single digit (0-9).
-' [charlist]  Any single character in charlist.
-' [!charlist] Any single character not in charlist.
-'
-' A group of one or more characters (charlist) enclosed in brackets ([ ])
-' can be used to match any single character in string and can include almost
-' any character code, including digits.
-'
-' Note:   To match the special characters left bracket ([), question
-' mark (?), number sign (#), and asterisk (*), enclose them in brackets.
-' The right bracket (]) can't be used within a group to match itself, but
-' it can be used outside a group as an individual character.
-'
-' By using a hyphen (-) to separate the upper and lower bounds of the range,
-' charlist can specify a range of characters. For example, [A-Z] results in
-' a match if the corresponding character position in string contains any
-' uppercase letters in the range A-Z. Multiple ranges are included within
-' the brackets without delimiters.
-
-'-- **************************************************************************'
-
-'-- **************************************************************************'
-
-'-- Test code
-'print "Like('24','##')=", Like("24","##")
-
-'?"Like(aBBBa, a*a)=", Like("aBBBa","a*a")
-'?Like("F","[!A-Z]")
-'?Like("a2a","a#a")
-'?Like("aM5b","a[A-GL-P]#[!c-e]")
-'?Like("BAT123khg","B?T*")
-'?Like("CAT123khg","B?T*")
-
-'?Like("Combine(10, 20) = 30", "*(*?,*?)*=*#")
-'-- **************************************************************************'
-
-'-- **************************************************************************'
-
-'-- **************************************************************************'
-
-'-- *********************************************************************'
-
-'NumQT=tally(Oper$, qt)
-'NumRem=tally(Oper$, "'")
-'CharPos=instr(Oper$, getC$)
 
 '*********************************************************************
               
 '============================================================================
 '[build_inc] conversionOld.inc
 '============================================================================
-'$include "C:\BAS\RAPIDQ\RQIDE\testinc.inc"
-
-'--------------------------- Custom functions --------------------------
 
 '*****************************************
 Declare Function MultiByteToWideChar_conversionOld Lib "kernel32" alias "MultiByteToWideChar" _
@@ -10589,92 +10423,6 @@ Declare Function WideCharToMultiByte1_conversionOld Lib "kernel32" alias "WideCh
 ( CodePage As Long,  dwFlags As Long, _
 byref  lpWideCharStr As long,  cchWideChar As Long,byref  lpMultiByteStr As string, _
 cchMultiByte As Long,  lpDefaultChar As long,  lpUsedDefaultChar As Long) As Long
-
-'-- ****************************************'
-
-'-- ****************************************'
-
-'-- *****************************************'
-'
-'-- **************************************************************************'
-
-'-- **************************************************************************'
-
-'-- **************************************************************************'
-
-'-- **************************************************************************'
-
-'-- **************************************************************************'
-
-'-- **************************************************************************'
-
-'-- **************************************************************************'
-
-'-- **************************************************************************'
-
-' LIKE Function - pattern matching routine for Rapid-Q by William Yu
-' This emulates the VB LIKE operator.
-' Thanks to Thomas Binder for the original C code
-'
-' ?   Any single character.
-' *   Zero or more characters.
-' #   Any single digit (0-9).
-' [charlist]  Any single character in charlist.
-' [!charlist] Any single character not in charlist.
-'
-' A group of one or more characters (charlist) enclosed in brackets ([ ])
-' can be used to match any single character in string and can include almost
-' any character code, including digits.
-'
-' Note:   To match the special characters left bracket ([), question
-' mark (?), number sign (#), and asterisk (*), enclose them in brackets.
-' The right bracket (]) can't be used within a group to match itself, but
-' it can be used outside a group as an individual character.
-'
-' By using a hyphen (-) to separate the upper and lower bounds of the range,
-' charlist can specify a range of characters. For example, [A-Z] results in
-' a match if the corresponding character position in string contains any
-' uppercase letters in the range A-Z. Multiple ranges are included within
-' the brackets without delimiters.
-
-'-- **************************************************************************'
-
-'-- **************************************************************************'
-
-'-- Test code
-'print "Like('24','##')=", Like("24","##")
-
-'?"Like(aBBBa, a*a)=", Like("aBBBa","a*a")
-'?Like("F","[!A-Z]")
-'?Like("a2a","a#a")
-'?Like("aM5b","a[A-GL-P]#[!c-e]")
-'?Like("BAT123khg","B?T*")
-'?Like("CAT123khg","B?T*")
-
-'?Like("Combine(10, 20) = 30", "*(*?,*?)*=*#")
-'-- **************************************************************************'
-
-'-- **************************************************************************'
-
-'-- **************************************************************************'
-
-'-- *********************************************************************'
-
-'NumQT=tally(Oper$, qt)
-'NumRem=tally(Oper$, "'")
-'CharPos=instr(Oper$, getC$)
-
-'*****************************************
-
-'*****************************************
-
-'*****************************************
-
-'*****************************************
-
-'*********************************************************************
-
-'*********************************************************************
 
 '*****************************************
 Function QPDecodeOld( Source As String) As String 
@@ -10755,20 +10503,8 @@ print"result=";result
 End Function 
 
 '*****************************************
-' BASE64 encode
-
-'*****************************************
-' BASE64 decode
-
-'-- ************************************************************************'
-
-'*****************************************
 DECLARE Function QPDecode( Source As String) As String
 '~body Function QPDecode( Source As String) As String   ' сборка: тело - в конце файла
-
-'*****************************************
-
-'*****************************************
 
 '*****************************************
 Function QPMSGHeaderDecode( Source As String) As String 
@@ -10847,8 +10583,6 @@ end if
 QPMSGHeaderDecode = result 
 print"result=";result
 End Function 
-
-'*****************************************
 
 '*****************************************
 
@@ -11078,7 +10812,6 @@ DECLARE Function ConvertToTruePath(ByVal sPath As String) As String
 			Dim NOTASys as QRegistry : NOTASys.RootKey = &H80000002
 	'NOTAUser - (RW) - NOTA Current User Registry Key (I know I'm ignoring CONST)
 			Dim NOTAUser as QRegistry : NOTAUser.RootKey = &H80000001
-	'Pi - (R) - Pi of course.
 	'Planck - (R) - Planck's Constant
 			const Planck = 6.62628e-34
 	'SolarDay - (R) - 1 Solar Day in seconds
@@ -11706,8 +11439,6 @@ FUNCTION HtmDecodeEntities(TextRun AS STRING) AS STRING
   HtmDecodeEntities = OutText
 END FUNCTION
 
-'-- ************************************************************************'
-
 '============================================================================
 '[build_inc] eMail.Inc
 '============================================================================
@@ -11854,29 +11585,6 @@ End Function
 '============================================================================
 '[build_inc] emlOld.inc
 '============================================================================
-'*****************************************
-
-'*****************************************
-
-'*****************************************
-
-'*****************************************
-
-'*****************************************
-
-'*****************************************
-
-'*****************************************
-
-'*****************************************
-
-'*****************************************
-
-'*****************************************
-' BASE64 encode
-
-'*****************************************
-' BASE64 decode
 
 '*****************************************
 Function DecodeSubjOld( MSubject As String) As String 
@@ -12200,8 +11908,6 @@ end if
 result=decodedSubj$
 
 End Function 
-
-'*****************************************
 
 '============================================================================
 '[build_inc] evaluate.inc
@@ -12611,42 +12317,22 @@ $IFNDEF __FILEOPS_INC
 $DEFINE __FILEOPS_INC
 
     '===============================================================================
-    '# QUOTE : Returns a quoted string
 
     '===============================================================================
-    '# STRIPPATH : Returns file path (without file name)
 
     '===============================================================================
-    '# STRIPFILENAME : Returns file name (without path)
 
     '===============================================================================
-    '# STRIPFILEEXT : Returns file extension (like ".exe", ".html" etc.)
 
     '===============================================================================
-    '# FILENAMENOEXT : Returns file name without extension
 
     '===============================================================================
-    '# FULLPATHNOEXT : Returns full path without file extension
 
     '===============================================================================
-    '# C_Style : Returns "slashed" path from a "backslashed" one
 
     '===============================================================================
-    '# SYSDIR : Retrieves windows shell directories
-    '-------------------------|
-    'Allowed values for dir  |
-    '----------------------------------------------------------------------------|
-    'Desktop                 | Templates               | AppData                 |
-    'Start Menu              | Programs                | Startup                 |
-    'Fonts                   | SendTo                  | Recent                  |
-    'Favorites               | Cache                   | Cookies                 |
-    'History                 | NetHood                 | Personal                |
-    'PrintHood               | Local AppData           | My Pictures             |
-    'Administrative Tools    |                         |                         |
-    '----------------------------------------------------------------------------|
 
     '===============================================================================
-    '# HOMEDIR : The folder where the application is
 
     '===============================================================================
     '# SAVEFILEAS : Uses Savedialog, returns file name
@@ -12675,7 +12361,6 @@ FUNCTION SaveFileAs (Caption as string, Filter as string, _
 END FUNCTION
 
 '===============================================================================
-'# BROWSEFORFOLDERS : Returns the selected folder
 
 '===============================================================================
 '# BROWSEFORFILE : Uses opendialog, returns file name
@@ -12719,142 +12404,29 @@ $ENDIF
 '[build_inc] Files1.inc
 '============================================================================
 
-'# QUOTE : Returns a quoted string
+'===============================================================================
 
 '===============================================================================
-'# STRIPPATH : Returns file path (without file name)
 
 '===============================================================================
-'# STRIPFILENAME : Returns file name (without path)
 
 '===============================================================================
-'# STRIPFILEEXT : Returns file extension (like ".exe", ".html" etc.)
 
 '===============================================================================
-'# FILENAMENOEXT : Returns file name without extension
 
 '===============================================================================
-'# FULLPATHNOEXT : Returns full path without file extension
 
 '===============================================================================
-'# C_Style : Returns "slashed" path from a "backslashed" one
 
 '===============================================================================
-'# SYSDIR : Retrieves windows shell directories
-
-'-------------------------|
-' Allowed values for dir  |
-'-----------------------------------------------------------------------------|
-' Desktop                 | Templates               | AppData                 |
-' Start Menu              | Programs                | Startup                 |
-' Fonts                   | SendTo                  | Recent                  |
-' Favorites               | Cache                   | Cookies                 |
-' History                 | NetHood                 | Personal                |
-' PrintHood               | Local AppData           | My Pictures             |
-' Administrative Tools    |                         |                         |
-'-----------------------------------------------------------------------------|
 
 '===============================================================================
-'# HOMEDIR : The folder where the application is
 
 '===============================================================================
-'# BROWSEFORFOLDERS : Returns the selected folder
-
-'===============================================================================
-'# BROWSEFORFILE : Returns the selected folder
 
 '_=============================================================================
 
 $ESCAPECHARS ON
-
-'ChangeFileExt:
-'Returns: String
-'Parameters:
-'FileName (String): Name of file with old extention
-'NewExt (String): New extention. This must include the leading ".".
-
-'Information:
-'Author: Taj Morton
-'Email: tmorton at linuxmail dot org.
-'License: Public Domain
-
-'Description:
-'Changes the extention of FileName to NewExt. For example:
-'ChangeFileExt("File.bas", ".inc")
-'returns File.inc. This function does not delete the old string,
-'instead, it simply returns a new one with the extention.
-'You must include the leading "." for it to be added, as it is not
-'done by the function.
-
-'ExtractFileName:
-'Returns: String
-'Parameters:
-'FileName (String): File with full path
-
-'Information:
-'Author: Taj Morton
-'Email: tmorton at linuxmail dot org.
-'License: Public Domain
-
-'Description:
-'ExtractFileName takes a file name with a path and returns only
-'the file name. For example:
-'ExtractFileName("C:\\Program Files\\AFile.bas")
-'returns AFile.bas. You can use either two back-slashes or a single
-'forward slash (/) for folder seperators.
-'Both forward and back-slashes are supported by Windows.
-'The back-slash takes procedure over the forward slash.
-'Note that ExtractFileName does _not_ check the validity of the path passed.
-'You must check yourself.
-
-'ExtractFilePath
-'Returns: String
-'Parameters:
-'FileName (String): File with full path
-
-'Information:
-'Author: Taj Morton
-'Email: tmorton at linuxmail dot org.
-'License: Public Domain
-
-'Description:
-'ExtractFilePath takes string with full path and returns a string
-'with only the path. For example:
-'ExtractFilePath("C:\\Program Files\\AProgram.bas")
-'returns C:\Program Files (the \\'s are for RQ and back-slashes).
-'ExtractFilePath also takes forward-slashes (/). Window's supports
-'these as well. 
-'The back-slash takes procedure over the forward slash.
-'Note that ExtractFilePath does _not_ test the validity
-'of the passed name. You must check it yourself. Even if the name is
-'invalid, the path will be returned. For example, if C:/ProgramErrorFiles/AFile.txt
-'is passed, C:/ProgramErrorFiles will be returned.
-
-'-- *****************************************************'
-
-'ChangeFileName
-'Returns: String
-'Parameters:
-'FileName (String): File with full path
-'NewName (String): Text that will replace old file name
-
-'Information:
-'Author: Taj Morton
-'Email: tmorton at linuxmail dot org.
-'License: Public Domain
-
-'Description:
-'ChangeFileName takes a file name with full path and file and a new name.
-'It replaces the current filename (in FileName) and replaces it with NewName.
-'ChangeFileName does not actually change FileName, instead it returns a new
-'string which contains the new name.
-'Note that ChangeFileName does not check the validity of FileName
-'or the new result. You must do it yourself (if you want). ChangeFileName
-'takes both the back-slash and forward slash to serperate folder and file names.
-'You can use either \\ or /. Both are supported by Windows.
-'The back-slash takes procedure over the forward slash.
-
-'-- *****************************************************'
 
 'ChangeFilePath
 'Returns: String
@@ -12878,190 +12450,34 @@ $ESCAPECHARS ON
 
 '-- *****************************************************'
 $ESCAPECHARS Off
-
-'-- *****************************************************'
-'-- *****************************************************'
-
-'-- *****************************************************'
-
-'-- *****************************************************'
-
-'_==============================================================
-
-'-- *****************************************************'
-
-'-- *****************************************************'
-
-'-- *****************************************************'
-
-'-- ***********************************************************************'
-
-'-- ***********************************************************************'
-
-'*****************************************
-
-'-- ***********************************************************************'
-
-'-- *****************************************************'
-
-'-- ***********************************************************************'
-
-'-- ***********************************************************************'
-
-'-- ***********************************************************************'
-
-'-- ***********************************************************************'
-
-'-- ***********************************************************************'
-
-'***********************************************
-
-'-------------------------------------------------------------------'
-'-- ***********************************************************************'
-
-'-------------------------------------------------------------------'
-'-- ***********************************************************************'
 
 '============================================================================
 '[build_inc] Files2.inc
 '============================================================================
 
-'# QUOTE : Returns a quoted string
+'===============================================================================
 
 '===============================================================================
-'# STRIPPATH : Returns file path (without file name)
 
 '===============================================================================
-'# STRIPFILENAME : Returns file name (without path)
 
 '===============================================================================
-'# STRIPFILEEXT : Returns file extension (like ".exe", ".html" etc.)
 
 '===============================================================================
-'# FILENAMENOEXT : Returns file name without extension
 
 '===============================================================================
-'# FULLPATHNOEXT : Returns full path without file extension
 
 '===============================================================================
-'# C_Style : Returns "slashed" path from a "backslashed" one
 
 '===============================================================================
-'# SYSDIR : Retrieves windows shell directories
-
-'-------------------------|
-' Allowed values for dir  |
-'-----------------------------------------------------------------------------|
-' Desktop                 | Templates               | AppData                 |
-' Start Menu              | Programs                | Startup                 |
-' Fonts                   | SendTo                  | Recent                  |
-' Favorites               | Cache                   | Cookies                 |
-' History                 | NetHood                 | Personal                |
-' PrintHood               | Local AppData           | My Pictures             |
-' Administrative Tools    |                         |                         |
-'-----------------------------------------------------------------------------|
 
 '===============================================================================
-'# HOMEDIR : The folder where the application is
 
 '===============================================================================
-'# BROWSEFORFOLDERS : Returns the selected folder
-
-'===============================================================================
-'# BROWSEFORFILE : Returns the selected folder
 
 '_=============================================================================
 
 $ESCAPECHARS ON
-
-'ChangeFileExt:
-'Returns: String
-'Parameters:
-'FileName (String): Name of file with old extention
-'NewExt (String): New extention. This must include the leading ".".
-
-'Information:
-'Author: Taj Morton
-'Email: tmorton at linuxmail dot org.
-'License: Public Domain
-
-'Description:
-'Changes the extention of FileName to NewExt. For example:
-'ChangeFileExt("File.bas", ".inc")
-'returns File.inc. This function does not delete the old string,
-'instead, it simply returns a new one with the extention.
-'You must include the leading "." for it to be added, as it is not
-'done by the function.
-
-'ExtractFileName:
-'Returns: String
-'Parameters:
-'FileName (String): File with full path
-
-'Information:
-'Author: Taj Morton
-'Email: tmorton at linuxmail dot org.
-'License: Public Domain
-
-'Description:
-'ExtractFileName takes a file name with a path and returns only
-'the file name. For example:
-'ExtractFileName("C:\\Program Files\\AFile.bas")
-'returns AFile.bas. You can use either two back-slashes or a single
-'forward slash (/) for folder seperators.
-'Both forward and back-slashes are supported by Windows.
-'The back-slash takes procedure over the forward slash.
-'Note that ExtractFileName does _not_ check the validity of the path passed.
-'You must check yourself.
-
-'ExtractFilePath
-'Returns: String
-'Parameters:
-'FileName (String): File with full path
-
-'Information:
-'Author: Taj Morton
-'Email: tmorton at linuxmail dot org.
-'License: Public Domain
-
-'Description:
-'ExtractFilePath takes string with full path and returns a string
-'with only the path. For example:
-'ExtractFilePath("C:\\Program Files\\AProgram.bas")
-'returns C:\Program Files (the \\'s are for RQ and back-slashes).
-'ExtractFilePath also takes forward-slashes (/). Window's supports
-'these as well. 
-'The back-slash takes procedure over the forward slash.
-'Note that ExtractFilePath does _not_ test the validity
-'of the passed name. You must check it yourself. Even if the name is
-'invalid, the path will be returned. For example, if C:/ProgramErrorFiles/AFile.txt
-'is passed, C:/ProgramErrorFiles will be returned.
-
-'-- *****************************************************'
-
-'ChangeFileName
-'Returns: String
-'Parameters:
-'FileName (String): File with full path
-'NewName (String): Text that will replace old file name
-
-'Information:
-'Author: Taj Morton
-'Email: tmorton at linuxmail dot org.
-'License: Public Domain
-
-'Description:
-'ChangeFileName takes a file name with full path and file and a new name.
-'It replaces the current filename (in FileName) and replaces it with NewName.
-'ChangeFileName does not actually change FileName, instead it returns a new
-'string which contains the new name.
-'Note that ChangeFileName does not check the validity of FileName
-'or the new result. You must do it yourself (if you want). ChangeFileName
-'takes both the back-slash and forward slash to serperate folder and file names.
-'You can use either \\ or /. Both are supported by Windows.
-'The back-slash takes procedure over the forward slash.
-
-'-- *****************************************************'
 
 'ChangeFilePath
 'Returns: String
@@ -13086,143 +12502,15 @@ $ESCAPECHARS ON
 '-- *****************************************************'
 $ESCAPECHARS Off
 
-'-- *****************************************************'
-'-- *****************************************************'
-
-'-- *****************************************************'
-
-'-- *****************************************************'
-
-'_==============================================================
-
-'-- *****************************************************'
-
-'-- *****************************************************'
-
-'-- *****************************************************'
-
-'-- ***********************************************************************'
-
-'-- ***********************************************************************'
-'-- ***********************************************************************'
-
-'-- ***********************************************************************'
-
-'-- *****************************************************'
-
-'-- ***********************************************************************'
-
-'-- ***********************************************************************'
-
-'-- ***********************************************************************'
-
-'-- ***********************************************************************'
-
-'-- ***********************************************************************'
-
-'***********************************************
-
-'-------------------------------------------------------------------'
-'-- ***********************************************************************'
-
-'-------------------------------------------------------------------'
-'-- ***********************************************************************'
-
 '============================================================================
 '[build_inc] FilesBug.inc
 '============================================================================
 '===============================================================================
-'# BROWSEFORFOLDERS : Returns the selected folder
 
 '============================================================================
 '[build_inc] FileUtils.inc
 '============================================================================
 $ESCAPECHARS ON
-
-'ChangeFileExt:
-'Returns: String
-'Parameters:
-'FileName (String): Name of file with old extention
-'NewExt (String): New extention. This must include the leading ".".
-
-'Information:
-'Author: Taj Morton
-'Email: tmorton at linuxmail dot org.
-'License: Public Domain
-
-'Description:
-'Changes the extention of FileName to NewExt. For example:
-'ChangeFileExt("File.bas", ".inc")
-'returns File.inc. This function does not delete the old string,
-'instead, it simply returns a new one with the extention.
-'You must include the leading "." for it to be added, as it is not
-'done by the function.
-
-'ExtractFileName:
-'Returns: String
-'Parameters:
-'FileName (String): File with full path
-
-'Information:
-'Author: Taj Morton
-'Email: tmorton at linuxmail dot org.
-'License: Public Domain
-
-'Description:
-'ExtractFileName takes a file name with a path and returns only
-'the file name. For example:
-'ExtractFileName("C:\\Program Files\\AFile.bas")
-'returns AFile.bas. You can use either two back-slashes or a single
-'forward slash (/) for folder seperators.
-'Both forward and back-slashes are supported by Windows.
-'The back-slash takes procedure over the forward slash.
-'Note that ExtractFileName does _not_ check the validity of the path passed.
-'You must check yourself.
-
-'ExtractFilePath
-'Returns: String
-'Parameters:
-'FileName (String): File with full path
-
-'Information:
-'Author: Taj Morton
-'Email: tmorton at linuxmail dot org.
-'License: Public Domain
-
-'Description:
-'ExtractFilePath takes string with full path and returns a string
-'with only the path. For example:
-'ExtractFilePath("C:\\Program Files\\AProgram.bas")
-'returns C:\Program Files (the \\'s are for RQ and back-slashes).
-'ExtractFilePath also takes forward-slashes (/). Window's supports
-'these as well. 
-'The back-slash takes procedure over the forward slash.
-'Note that ExtractFilePath does _not_ test the validity
-'of the passed name. You must check it yourself. Even if the name is
-'invalid, the path will be returned. For example, if C:/ProgramErrorFiles/AFile.txt
-'is passed, C:/ProgramErrorFiles will be returned.
-
-'ChangeFileName
-'Returns: String
-'Parameters:
-'FileName (String): File with full path
-'NewName (String): Text that will replace old file name
-
-'Information:
-'Author: Taj Morton
-'Email: tmorton at linuxmail dot org.
-'License: Public Domain
-
-'Description:
-'ChangeFileName takes a file name with full path and file and a new name.
-'It replaces the current filename (in FileName) and replaces it with NewName.
-'ChangeFileName does not actually change FileName, instead it returns a new
-'string which contains the new name.
-'Note that ChangeFileName does not check the validity of FileName
-'or the new result. You must do it yourself (if you want). ChangeFileName
-'takes both the back-slash and forward slash to serperate folder and file names.
-'You can use either \\ or /. Both are supported by Windows.
-'The back-slash takes procedure over the forward slash.
 
 'ChangeFilePath
 'Returns: String
@@ -13814,22 +13102,10 @@ $ENDIF      'HTMLHELP_INC
 	Declare Function DeleteFile Lib "kernel32.dll" Alias_
 	 "DeleteFileA" (lpFileName As String) As Long
 
-'ExitProcess()
-	'Kills current process with uExitCode errorlevel
-	'EXAMPLE:
-		'ExitProcess(23)
-
 'GetCommandLine()
 
 	Declare Function GetCommandLine Lib "kernel32.dll" Alias_
 	 "GetCommandLineA" As String
-
-'GetComputerName()
-	'Gets Computer Name
-	'Pass VarPtr(lpBufferStringVar). Variable will now hold the data.
-	'Wrapper is GetComputerName$ in NOTA.inc
-	'EXAMPLE:
-		'GetComputerName( VarPtr(StringVar$), VarPtr(LengthOfStringVar&) )
 
 'GetConsoleCP()
 
@@ -13840,8 +13116,6 @@ $ENDIF      'HTMLHELP_INC
 
 	Declare Function GetConsoleOutputCP Lib "kernel32.dll" Alias_
 	 "GetConsoleOutputCP" As Long
-
-'GetCurrentProcess()
 
 'GetCurrentProcessID()
 
@@ -13858,14 +13132,10 @@ $ENDIF      'HTMLHELP_INC
 	Declare Function GetCurrentThreadId Lib "kernel32.dll" Alias_
 	 "GetCurrentThreadId" As Long
 
-'GetDiskFreeSpace()
-
 'GetEnvironmentStrings()
 
 	Declare Function GetEnvironmentStrings Lib "kernel32.dll" Alias_
 	 "GetEnvironmentStringsA" As String
-
-'GetLastError()
 
 'GetLogicalDrives()
 
@@ -13891,12 +13161,6 @@ $ENDIF      'HTMLHELP_INC
 
 	Declare Function GetSystemDefaultLCID Lib "kernel32.dll" Alias_
 	 "GetSystemDefaultLCID" As Long
-
-'GetTempPath()
-	'Pass VarPtr(lpBufferStringVar). Variable will now hold the data.
-	'Wrapper is GetTempPath$() in NOTA.inc
-	'EXAMPLE:
-		'GetTempPath( VarPtr(LengthOfStringVar&), VarPtr(StringVar$) )
 
 'GetThreadLocale()
 
@@ -13947,12 +13211,6 @@ $ENDIF      'HTMLHELP_INC
 
 	Declare Function GetVersionEx_Kernel32 Lib "kernel32.dll" Alias_
 	 "GetVersionExA" (lpVersionInformation As long) As Long
-
-'GetWindowsDirectory()
-	'Gets Windows Directory
-	'Pass VarPtr(lpBufferStringVarVar). Variable will now hold the data.
-	'EXAMPLE:
-		'GetWindowsDirectory( VarPtr(StringVar$), VarPtr(LengthOfStringVar&) )
 
 '============================================================================
 '[build_inc] keys.inc
@@ -14021,31 +13279,6 @@ $ESCAPECHARS OFF   ' сборка: вернуть после keys.inc
 '============================================================================
 '[build_inc] like.inc
 '============================================================================
-
-' LIKE Function - pattern matching routine for Rapid-Q by William Yu
-' This emulates the VB LIKE operator.
-' Thanks to Thomas Binder for the original C code
-'
-' ?   Any single character.
-' *   Zero or more characters.
-' #   Any single digit (0-9).
-' [charlist]  Any single character in charlist.
-' [!charlist] Any single character not in charlist.
-'
-' A group of one or more characters (charlist) enclosed in brackets ([ ])
-' can be used to match any single character in string and can include almost
-' any character code, including digits.
-'
-' Note:   To match the special characters left bracket ([), question
-' mark (?), number sign (#), and asterisk (*), enclose them in brackets.
-' The right bracket (]) can't be used within a group to match itself, but
-' it can be used outside a group as an individual character.
-'
-' By using a hyphen (-) to separate the upper and lower bounds of the range,
-' charlist can specify a range of characters. For example, [A-Z] results in
-' a match if the corresponding character position in string contains any
-' uppercase letters in the range A-Z. Multiple ranges are included within
-' the brackets without delimiters.
 
 '-- Test code
 
@@ -14735,7 +13968,6 @@ FUNCTION microTIMER() AS DOUBLE
   RESULT = myResult / myFreq        'result is in relative time
 END FUNCTION
 
-'sample code
 ' a = microTimer      'always call at least once to initialize
 ' a = microTimer      
 ' 'wait for 3.5 milliseconds
@@ -14863,18 +14095,12 @@ Declare Function MDlg Lib "user32" Alias "MessageBoxA" (ByVal hwnd As Long, ByVa
 	Declare Function OpenAppKey as string
 	Declare Function OpenAppSysKey as string
 
-' >>>>> RESERVED WORDS AND VALUES <<<<<<
-	'NAME - (Readable/Writeable) - Description
-
-	'ApeDate$  - (RW) - Formatted Date for NOTA
 	'AppKey - (RW) - The User Hive registry key for OpenAppKey().
 			Dim AppKey as QRegistry : AppKey.RootKey = &H80000001
 	'AppKeyString$ - The default registry path for *AppKey() functions.
 			Dim AppKeyString$ as String : AppKeyString$ = ("Software\\NetWork_of_the_Apes\\Apps\\" + Left$( ProgramName$, (Len(ProgramName$) - 4) ) )
 	'AppSysKey - (RW) - The User Hive registry key for OpenAppKey().
 			Dim AppSysKey as QRegistry : AppSysKey.RootKey = &H80000002
-	'AstronomicalUnit - (R) - 1 Astrononical Unit! The value of the semimajor axis
-    'of the orbit of the Earth.
 	'BPM3DMedia - (n/a) - User Defined Type for my 3D portfolio files
 			Type BPM3DMedia
 				Format as string * 8
@@ -14883,38 +14109,6 @@ Declare Function MDlg Lib "user32" Alias "MessageBoxA" (ByVal hwnd As Long, ByVa
 			End type
 	'HI - (R) - I use it.  Really
 			const Hi = "Hi."
-	'Julian1900  - (R) - 1900 Julian
-	'Julian2000  - (R) - Y2K Julian
-	'NOTA$  - (R) - NOTA String
-	'NOTARegRoot$ - (R) - Root Registry Key
-	'NOTASys - (RW) - NOTA Local Machine Registry Key (I know I'm ignoring CONST)
-	'NOTAUser - (RW) - NOTA Current User Registry Key (I know I'm ignoring CONST)
-	'Pi - (R) - Pi of course.
-	'Planck - (R) - Planck's Constant
-	'SolarDay - (R) - 1 Solar Day in seconds
-	'SpeedOfLight - (R) - Speed of light
-	'TropicalYear - (R) - 1 tropical year in days
-
-' >>> END RESERVED WORDS AND VALUES <<<
-
-'ApeDate()
-	'Returns NOTA Formatted Date
-	'EXAMPLE:
-		'GoodDate$ = ApeDate
-
-'AsciiKrypt()
-	'Encrypts or decrypts a line of text
-	'bpmKryptMode& = "1" set the flag for encrypting the data (scramble them eggs)
-	'bpmKryptMode& = "0" set the flag for decrypting the data (unscramble)
-	'thanks to Scott (SandDune@maine.rr.com) for the tutorial code
-	'EXAMPLE:
-		'AsciiKrypt ("Text to be encrypted", "Password", 1)
-		'AsciiKrypt ("Text to be decrypted", "Password", 0)
-
-	'EXTRA EXAMPLE:
-	'As a strange bonus, this function can be called with the mode bit backwards like this:
-		'AsciiKrypt ("Text to be encrypted", "Password", 0)
-		'AsciiKrypt ("Text to be decrypted", "Password", 1)
 
 'CloseAppKey()
 	'Closes Software\Network_Of_The_apes\[YourAppsName]
@@ -14932,35 +14126,6 @@ Declare Function MDlg Lib "user32" Alias "MessageBoxA" (ByVal hwnd As Long, ByVa
 
 '~body Function CloseAppSysKey   ' сборка: тело - в конце файла
 
-'CloseNOTASys()
-	'Closes HKLM NOTA Registry Key
-	'Returns Value "LastOpened"
-	'EXAMPLE:
-		'TimeOpened$ = CloseNOTASys
-
-'CloseNOTAUser()
-	'Closes HKCU NOTA Registry Key
-	'Returns Value "LastOpened"
-	'EXAMPLE:
-		'TimeOpened$ = CloseNOTAUser
-
-'Die()
-	'Kills the program with exit code 9999
-	'EXAMPLE:
-		'If Exit& = 1 then
-		'	Die
-		'end if
-
-'DivBytes()
-	'converts bytes to KB, MB, GB, TB
-	'EXAMPLE:
-		'DivBytes (36626545, MB)
-
-'DivMiliSecs$()
-	'Converts miliseconds to Days:Hours:Minutes:Seconds format
-	'EXAMPLE:
-		'LegibleTime$ = DivMiliSecs$(2323564)
-
 'GetComputerName$()
 	'Gets Computer Name
 	'Wraps GetComputerName() in kernel32.dll
@@ -14969,22 +14134,6 @@ Declare Function MDlg Lib "user32" Alias "MessageBoxA" (ByVal hwnd As Long, ByVa
 	'EXTRA EXAMPLE:
 	'An interesting usage will use the network path of the name as a folder, thus accesing network resources:
 	'	dim MakeSelection as QOpenDialog
-	'	MakeSelection.Filter = "Plain text files|*.txt|All Files|*.*"
-	'	MakeSelection.InitialDir = ("\\\\" + GetComputerName$)
-	'	if MakeSelection.Execute then
-	'		showmessage MakeSelection.FileName
-	'		else
-	'			ShowMessage "Open file failed."
-	'	end if
-
-'GetFreeDrive()
-	'Returns number of free bytes for drive letter
-	'Only pass drive letter! (ie: 'c' not 'c:\')
-	'It will return 0 if the passed letter is invalid
-	'or the drive doesn't exist.
-	'Wraps GetDiskFreeSpace in Kernel32.dll
-	'EXAMPLE:
-		'GetFreeDrive("C")
 
 'GetLastError$()
 	'Gets the text for the last API error
@@ -14994,40 +14143,6 @@ Declare Function MDlg Lib "user32" Alias "MessageBoxA" (ByVal hwnd As Long, ByVa
 	'The ErrorFile path defaults to the app path, but may be specified. 
 	'EXAMPLE:
 		'dim Error& as long
-		'copyFile("bob","guido",0)
-		'Error& = GetLastError
-		'ShowMessage ( GetLastError$("NT4SP6ErrList.txt", Error&) )
-
-'GetTempPath$()
-	'Gets Temporary folder path
-	'Wraps GetTempPath() in kernel32.dll
-	'EXAMPLE:
-		'? "Temp is ";GetTempPath$
-
-'GetUserName$()
-	'Gets User Name by wrapping GetUserName() in advapi32.inc
-	'EXAMPLE:
-		'User$ = GetUserName$
-
-'GetWindowsDirectory$()
-	'Returns Windows Directory
-	'Wraps GetWindowsDirectory in Kernel32.dll
-	'EXAMPLE:
-		'? GetWindowsDirectory$
-
-'KillIt()
-	'my own, dont ask why
-
-'LogEvent()
-	'Logs an event in the WinNT Event log using RKTool LogEvent.EXE
-	'EXAMPLE:
-		'LogEvent("i", "2323", "Information event 2323")
-
-'MakeMOTD()
-	'Creates a new MOTD text file
-	'Returns MOTD's path and opens the MOTD
-	'EXAMPLE:
-		'WhereIsTheMOTD$ = MakeMOTD
 
 'OpenAppKey()
 	'Opens Software\Network_Of_The_apes\Apps\[YourAppsName]
@@ -15056,25 +14171,6 @@ Declare Function MDlg Lib "user32" Alias "MessageBoxA" (ByVal hwnd As Long, ByVa
 		'CloseAppSysKey
 
 '~body Function OpenAppSysKey   ' сборка: тело - в конце файла
-
-'OpenNOTASys()
-	'Opens HKLM NOTA Registry Key
-	'Returns Value "LastOpened"
-	'EXAMPLE:
-		'WriteTime$ = OpenNOTASys
-		'CloseNOTASys
-
-'OpenNOTAUser()
-	'Opens HKCU NOTA Registry Key
-	'Returns Value "LastOpened"
-	'EXAMPLE:
-		'WriteTime$ = OpenNOTAUser
-		'CloseNOTAUser
-
-'ProgramName$()
-	'Gets the program's name
-	'EXAMPLE
-		'? ProgramName$
 
 '============================================================================
 '[build_inc] objectToolbox.inc
@@ -16103,12 +15199,6 @@ CREATE pNewSysMenu AS QPOPUPMENU
 	END CREATE
 END CREATE
 
-' Ce SUB va кtre appellй chaque fois qu'un йlйment est sйlectionnй, 
-' donc remplissez ce SUB avec vos paramкtres...
-' moCaption   = Le titre du menue propriйtaire, si null considйrez 
-'               que c'est votre fenкtre
-' iCaption    = Le titre de l'йlйment sйlectionnй
-
 '=======================================
 ' Mйthode affiche le texte de menu
 '=======================================
@@ -16326,6 +15416,7 @@ Declare Function SelectObject_mOD Lib "gdi32" Alias "SelectObject" (ByVal hdc As
 Declare Function DeleteObject_mOD Lib "gdi32" Alias "DeleteObject" (ByVal hObject As Long) As Long
 
 Function ChangeFont_mOD(nFace As String, nSize As Integer, nWeight As Integer, nDegrees As Long) As Long
+	'Create a specified font
 	Result = CreateFont_mOD ( _
 				13, False, _
 				nDegrees * 10, _
@@ -17871,8 +16962,6 @@ Function pHookCallWndProc_mOD '( _
 
 End Function
 
-' TEST Menu sytиme
-
 '	WiTH MII
 '		.cbSize = SizeOf (MII)
 '		.fMask = MIIM_STATE Or MIIM_TYPE Or MIIM_SUBMENU Or MIIM_ID
@@ -18101,7 +17190,6 @@ result=Args(i)
 Next i
 end function
 
-' Example:
 ' fill the array full with return values that GetDecl gave
 'x(0)=GetDecl("Declare function SetFocus lib user32 ()")
 '?x(1)
@@ -18444,6 +17532,7 @@ $ENDIF
 $IFNDEF SM_CYSCREEN
 $ENDIF
 
+' Create a block of data (known as a Type).
 ' For use with SHAppBarMessage.
 Type APPBARDATA
   cbSize As Long
@@ -19693,150 +18782,6 @@ const    OLEOP_DOVERB           =1
 ' more natural constants,scientific function,' arithmetical and statistical 
 ' functions (perhaps in own $includes ???)...
 '==============================================================================
-'-------------------------------------------------------------------------------
-'   ACOSH() returns the hyperbolic areacosine of x
-'-------------------------------------------------------------------------------
-'-------------------------------------------------------------------------------
-'   ACOT() returns the arccotangent of x
-'-------------------------------------------------------------------------------
-'-------------------------------------------------------------------------------
-'   ACOTH() returns the hyperbolic areacotangent of x
-'-------------------------------------------------------------------------------
-'-------------------------------------------------------------------------------
-'   ACOSEC() returns the arccosecans of x
-'-------------------------------------------------------------------------------
-'-------------------------------------------------------------------------------
-'   ACOSECH() returns the hyperbolic arccosecans of x
-'-------------------------------------------------------------------------------
-'-------------------------------------------------------------------------------
-'   ADDZ() returns the sum of two complex numbers
-'-------------------------------------------------------------------------------
-'-------------------------------------------------------------------------------
-'   ASINH() returns the hyperbolic areasine of x
-'-------------------------------------------------------------------------------
-'-------------------------------------------------------------------------------
-'   ASEC() returns the arccosecans of x
-'-------------------------------------------------------------------------------
-'-------------------------------------------------------------------------------
-'   ASECH() returns the hyperbolic arccosecans of x
-'-------------------------------------------------------------------------------
-'-------------------------------------------------------------------------------
-'   ATANH() returns the hyperbolic areatangent of x
-'-------------------------------------------------------------------------------
-'--------------------------------------------------------------------------------
-'   CONJZ() returns the conjugated complex number of a complex number
-'--------------------------------------------------------------------------------
-'-------------------------------------------------------------------------------
-'   COSEC() returns the cosecans of x
-'-------------------------------------------------------------------------------
-'-------------------------------------------------------------------------------
-'   COSECH() returns the hyperbolic cosecans of x
-'-------------------------------------------------------------------------------
-'-------------------------------------------------------------------------------
-'   COSH() returns the hyperbolic cosine of x
-'-------------------------------------------------------------------------------
-'--------------------------------------------------------------------------------
-'   COSZ() returns the cosine of a complex number
-'--------------------------------------------------------------------------------
-'--------------------------------------------------------------------------------
-'   COSHZ() sine of a complex number
-'--------------------------------------------------------------------------------
-'-------------------------------------------------------------------------------
-'   COT() returns the cotangent of x
-'-------------------------------------------------------------------------------
-'-------------------------------------------------------------------------------
-'   COTH() returns the hyperbolic cotangent of x
-'-------------------------------------------------------------------------------
-'-------------------------------------------------------------------------------
-'   DEG2RAD() returns radians instead of degrees
-'-------------------------------------------------------------------------------
-'--------------------------------------------------------------------------------
-'   DIVZ() returns the quotient of two complex numbers
-'--------------------------------------------------------------------------------
-'   DIVZ() = Z1 / Z2
-'--------------------------------------------------------------------------------
-'   EVEN() returns "1" (= true) if a number is even, else "0"
-'--------------------------------------------------------------------------------
-'--------------------------------------------------------------------------------
-'    EXPZ() returns the exponential value of a complex number (= e^z)
-'--------------------------------------------------------------------------------
-'-------------------------------------------------------------------------------
-'   FAC() returns the factorial of the integer x
-'-------------------------------------------------------------------------------
-'--------------------------------------------------------------------------------
-'   FIX() truncates the argument to closest integer value towards zero
-'--------------------------------------------------------------------------------
-
-'-------------------------------------------------------------------------------
-'   GCD() returns the greatest common denominator of two integers
-'   based on the Euclidean algorithm
-'-------------------------------------------------------------------------------
-'--------------------------------------------------------------------------------
-'   INVZ() returns the reciprocal value of a complex number
-'--------------------------------------------------------------------------------
-' INVZ(Z) = 1/Z
-'--------------------------------------------------------------------------------
-'     LOGZ() returns the natural logarithm of a complex number
-'--------------------------------------------------------------------------------
-'--------------------------------------------------------------------------------
-'    LOG10() returns the base 10 log of x
-'--------------------------------------------------------------------------------
-'--------------------------------------------------------------------------------
-'     LOG10Z() returns the 10-th logarithm of z (base is 10)
-'--------------------------------------------------------------------------------
-'--------------------------------------------------------------------------------
-'     LOGAZ() returns the a-th logarithm of z (base is a)
-'--------------------------------------------------------------------------------
-'--------------------------------------------------------------------------------
-'    MAGZ() returns the absolute value of a complex number
-'--------------------------------------------------------------------------------
-'--------------------------------------------------------------------------------
-'    MULZ() returns the product of two complex numbers
-'--------------------------------------------------------------------------------
-'--------------------------------------------------------------------------------
-'    NORZ() returns the normal form of a complex value
-'--------------------------------------------------------------------------------
-' Z = x + iy = re + i*im   =   r*e^i*theta
-'--------------------------------------------------------------------------------
-'   ODD() returns "1" (=true) if a number(INTEGER) is odd
-'--------------------------------------------------------------------------------
-'--------------------------------------------------------------------------------
-'   POLZ() returns Z IN the polar coordinate system
-'--------------------------------------------------------------------------------
-' Transformation from    z = x + iy     to     z = r*cos((phi) + r*i*sin(phi)
-'--------------------------------------------------------------------------------
-'    POWZ() returns the power n  of a complex number = (x+iy)^n = z^n
-'--------------------------------------------------------------------------------
-'--------------------------------------------------------------------------------
-'   RAD2DEG() returns degrees instead of radians
-'--------------------------------------------------------------------------------
-'--------------------------------------------------------------------------------
-'   SEC() returns the secans of x
-'--------------------------------------------------------------------------------
-'--------------------------------------------------------------------------------
-'   SECH() returns the hyperbolic secans of x
-'--------------------------------------------------------------------------------
-'--------------------------------------------------------------------------------
-'   SINH() returns the hyperbolic sine of x
-'--------------------------------------------------------------------------------
-'--------------------------------------------------------------------------------
-'   SINZ() sine of a complex number
-'--------------------------------------------------------------------------------
-'--------------------------------------------------------------------------------
-'   SINHZ() sine of a complex number
-'--------------------------------------------------------------------------------
-'--------------------------------------------------------------------------------
-'   SQRZ() returns the square root of acomplex number
-'--------------------------------------------------------------------------------
-'-------------------------------------------------------------------------------
-'   SUBZ() returns the difference of two complex numbers
-'-------------------------------------------------------------------------------
-'--------------------------------------------------------------------------------
-'   TANH() returns the hyperbolic tangent of x
-'--------------------------------------------------------------------------------
-'--------------------------------------------------------------------------------
-'   TANZ() returns the tangent of a complex number
-'--------------------------------------------------------------------------------
 
 '=====================================================================================
 '      >>>>> reserved words  <<<<<<
@@ -19849,7 +18794,6 @@ const    OLEOP_DOVERB           =1
 '============================================================================
 '[build_inc] RqAsmUtils.Inc
 '============================================================================
-'
 '
 ' ============================================================
 ' ----- START ASM CallAddressManyArgs -----
@@ -20348,7 +19292,6 @@ $IFNDEF _RQDIALOGINC
 '
 DIM RQDlog AS OPENFILENAME
 '
-'
 FUNCTION  RQshowdialog(capt$,filter$,fltrindex%,initdir$,savedlog%,nooverwriteprompt%,formhnd&) as STRING
    DEFSTR strcapt, strdrstr, strFile, strFileTitle, strFilter
    DEFLNG rv
@@ -20793,46 +19736,11 @@ Bind ptrShellRedirCallBack To ShellRedirCallBack
 '
 DECLARE Function ShellRedir (CommandLine As String) As String
 '~body Function ShellRedir (CommandLine As String) As String   ' сборка: тело - в конце файла
-' ==================================================================================
-' End ShellRedir.Inc
 
-' ---- DOCUMENTATION ----
-' Example :
-' -------
-' $Include <ShellRedir.Inc> ' On top of your code
-'
-' ...
-'
-' ' You recieve here the output of the shell ' if not
-' ' it may be sent in multiple strings
-' ' In example rchWin.Text = rchWin.Text & text
-' End Sub
-'
-' ...
-'
-' ' Shelling : will only return when finished
-' ShowMessage (sTmp) ' another way to get the Shellredir output string
-' ----------------------------------------------------------------------------
-' Best Demo
-' ---------
-' $Include <ShellRedir.inc>
-'
-' Print Text;
-' End Sub
-'
 ' ShowMessage (sTmp)
 ' '---- EXIT CONSOLE
 ' DefStr sExit
-' Input " CR to QUIT", sExit
-' Application.Terminate
-' End
 
-' -----------------------------------------------------------------------------
-' IDE RAPIDQ CONSOLE the PatheFile.Bas is received as argument(1) of Command Line
-' ------------------
-' $Include "Functions\ShellRedir.Inc"
-' $Escapechars On
-'
 ' Print Text;
 ' End Sub
 '
@@ -20864,9 +19772,6 @@ DECLARE Function ShellRedir (CommandLine As String) As String
 ' Font.Size = 10
 ' Font.Name = "courier"
 ' Create rchText As QRichEdit
-' align = 5
-' End Create
-' End Create
 ' rchText.Text = rchText & Text
 ' End Sub
 ' DefStr sLibDir = "-lc:\\Rapid-Q\\Libs"
@@ -20943,16 +19848,10 @@ End Function
 	Declare Function GetActiveWindow Lib "user32.dll" Alias_
 	 "GetActiveWindow" As Long
 
-'GetCapture()
-
-'GetClassName
-
 'GetCursor()
 
 	Declare Function GetCursor Lib "user32.dll" Alias_
 	 "GetCursor" As Long
-
-'GetDeskTopWindow()
 
 'GetDialogBaseUnits()
 
@@ -20963,8 +19862,6 @@ End Function
 
 	Declare Function GetDoubleClickTime Lib "user32.dll" Alias_
 	 "GetDoubleClickTime" As Long
-
-'GetFocus()
 
 'GetForegroundWindow()
 
@@ -21011,43 +19908,17 @@ End Function
 	Declare Function GetProcessWindowStation Lib "user32.dll" Alias_
 	 "GetProcessWindowStation" As Long
 
-'GetSystemMetrics()
-	'Gets system info.  Index at msdn.microsoft.com
-	'EXAMPLE:
-		'Select Case GetSystemMetrics(SM_CLEANBOOT)
-		'	Case 0
-		'		ShowMessage "Normal system boot."
-		'	Case 1
-		'		ShowMessage "You are in safe mode."
-		'	case 2
-		'		ShowMessage "You are in safe mode with networking."
-		'end select
-
-	' GetSystemMetrics constants
-	'End GetSystemMetrics constants
-
 'GetWindowText()
 
 	Declare Function GetWindowText_User32 Lib "user32.dll" Alias_
 	 "GetWindowTextA" (hWnd As Long, lpString As String,_
 	 nMaxCount As Long) As Long
 
-'GetWindowTextLength()
-
 'RegisterHotKey()
 
 	DECLARE FUNCTION RegisterHotKey LIB "USER32.dll" ALIAS_
 	 "RegisterHotKey" (hWnd AS LONG, ID AS LONG, fsModifiers _
 	 AS LONG, vk AS LONG) AS LONG
-
-'SetForegroundWindow()
-
-'SetWindowPos()
-
-'SetWindowRgn()
-    'Sets the form's Window Rgn
-    'Used with other Rgn functions to control the form's
-    'display shape.
 
 'UnRegisterHotKey()
 
@@ -22125,18 +20996,6 @@ Type COMMPROP
         wcProvChar(1) As Integer
 End Type
 
-'        fCtsHold As Long
-'        fDsrHold As Long
-'        fRlsdHold As Long
-'        fXoffHold As Long
-'        fXoffSent As Long
-'        fEof As Long
-'        fTxim As Long
-'        fReserved As Long
-'        cbInQue As Long
-'        cbOutQue As Long
-'End Type
-
 ' The eight actual COMSTAT bit-sized data fields within the four bytes of fBitFields can be manipulated by bitwise logical And/Or operations.
 ' FieldName     Bit #     Description
 ' ---------     -----     ---------------------------
@@ -22159,35 +21018,6 @@ Public Const RTS_CONTROL_DISABLE = &H0
 Public Const RTS_CONTROL_ENABLE = &H1
 Public Const RTS_CONTROL_HANDSHAKE = &H2
 Public Const RTS_CONTROL_TOGGLE = &H3
-
-'        DCBlength As Long
-'        BaudRate As Long
-'        fBinary As Long
-'        fParity As Long
-'        fOutxCtsFlow As Long
-'        fOutxDsrFlow As Long
-'        fDtrControl As Long
-'        fDsrSensitivity As Long
-'        fTXContinueOnXoff As Long
-'        fOutX As Long
-'        fInX As Long
-'        fErrorChar As Long
-'        fNull As Long
-'        fRtsControl As Long
-'        fAbortOnError As Long
-'        fDummy2 As Long
-'        wReserved As Integer
-'        XonLim As Integer
-'        XoffLim As Integer
-'        ByteSize As Byte
-'        Parity As Byte
-'        StopBits As Byte
-'        XonChar As Byte
-'        XoffChar As Byte
-'        ErrorChar As Byte
-'        EofChar As Byte
-'        EvtChar As Byte
-'End Type
 
 ' The fourteen actual DCB bit-sized data fields within the four bytes of fBitFields can be manipulated by bitwise logical And/Or operations.
 ' FieldName             Bit #     Description
@@ -23896,8 +22726,6 @@ Public Const LCMAP_BYTEREV = &H800       '  byte reversal
 ' Sorting Flags.
 Public Const SORT_STRINGSORT = &H1000      '  use string sort method
 
-' Code Page Default Values.
-
 ' Country Codes.
 
 Public Const CTRY_DEFAULT = 0
@@ -24564,8 +23392,6 @@ Public Const SP_OUTOFMEMORY = (-5)
 
 Public Const PR_JOBSTATUS = &H0
 
-'  Object Definitions for EnumObjects()
-
 '  xform stuff
 Public Const MWT_IDENTITY = 1
 Public Const MWT_LEFTMULTIPLY = 2
@@ -25184,8 +24010,6 @@ Public Const PS_TYPE_MASK = &HF0000
 Public Const AD_COUNTERCLOCKWISE = 1
 Public Const AD_CLOCKWISE = 2
 
-'  Device Parameters for GetDeviceCaps()
-
 '  Printing related DeviceCaps. These replace the appropriate Escapes
 Public Const PHYSICALWIDTH = 110 '  Physical Width in device units
 Public Const PHYSICALHEIGHT = 111 '  Physical Height in device units
@@ -25302,8 +24126,6 @@ Public Const CBM_INIT = &H4           '  initialize bitmap
 Public Const FLOODFILLBORDER = 0
 Public Const FLOODFILLSURFACE = 1
 
-'  size of a device name string
-
 '  size of a form name string
 
 Type DEVMODE_WIN32API
@@ -25337,8 +24159,6 @@ End Type
 
 ' current version of specification
 Public Const DM_SPECVERSION = &H320
-
-' field selection bits
 
 '  orientation selections
 Public Const DMORIENT_PORTRAIT = 1
@@ -27011,8 +25831,6 @@ Public Const SB_BOTTOM = 7
 Public Const SB_RIGHT = 7
 Public Const SB_ENDSCROLL = 8
 
-' ShowWindow() Commands
-
 ' Old ShowWindow() Commands
 Public Const HIDE_WINDOW = 0
 Public Const SHOW_OPENWINDOW = 1
@@ -27033,11 +25851,6 @@ Public Const KF_MENUMODE = &H1000
 Public Const KF_ALTDOWN = &H2000
 Public Const KF_REPEAT = &H4000
 Public Const KF_UP = &H8000
-
-' Virtual Keys, Standard Set
-
-' VK_A thru VK_Z are the same as their ASCII equivalents: 'A' thru 'Z'
-' VK_0 thru VK_9 are the same as their ASCII equivalents: '0' thru '9'
 
 '
 '   VK_L VK_R - left and right Alt, Ctrl and Shift virtual keys.
@@ -27319,15 +26132,9 @@ Public Const WM_HOTKEY = &H312
 Public Const WM_PENWINFIRST = &H380
 Public Const WM_PENWINLAST = &H38F
 
-' NOTE: All Message Numbers below 0x0400 are RESERVED.
-
-' Private Window Messages Start Here:
-
 ' WM_SYNCTASK Commands
 Public Const ST_BEGINSWP = 0
 Public Const ST_ENDSWP = 1
-
-' WM_NCHITTEST and MOUSEHOOKSTRUCT Mouse Position Codes
 
 '  SendMessageTimeout values
 Public Const SMTO_NORMAL = &H0
@@ -27354,8 +26161,6 @@ Public Const SIZEFULLSCREEN = SIZE_MAXIMIZED
 Public Const SIZEZOOMSHOW = SIZE_MAXSHOW
 Public Const SIZEZOOMHIDE = SIZE_MAXHIDE
 
-' WM_WINDOWPOSCHANGING/CHANGED struct pointed to by lParam
-
 ' WM_NCCALCSIZE return flags
 Public Const WVR_ALIGNTOP = &H10
 Public Const WVR_ALIGNLEFT = &H20
@@ -27371,14 +26176,6 @@ Public Const MK_RBUTTON = &H2
 Public Const MK_SHIFT = &H4
 Public Const MK_CONTROL = &H8
 Public Const MK_MBUTTON = &H10
-
-' Window Styles
-
-'
-'   Common Window Styles
-'  /
-
-' Extended Window Styles
 
 ' Class styles
 Public Const CS_VREDRAW = &H1
@@ -27472,10 +26269,6 @@ Public Const ODT_BUTTON = 4
 Public Const ODA_DRAWENTIRE = &H1
 Public Const ODA_SELECT = &H2
 Public Const ODA_FOCUS = &H4
-
-' Owner draw state
-
-' MEASUREITEMSTRUCT for ownerdraw
 
 ' DRAWITEMSTRUCT for ownerdraw
 Type DRAWITEMSTRUCT_WIN32API
@@ -27758,8 +26551,6 @@ Declare Function DeleteMenu Lib "user32" Alias "DeleteMenu" (ByVal hMenu As Long
 Declare Function SetMenuItemBitmaps Lib "user32" Alias "SetMenuItemBitmaps" (ByVal hMenu As Long, ByVal nPosition As Long, ByVal wFlags As Long, ByVal hBitmapUnchecked As Long, ByVal hBitmapChecked As Long) As Long
 Declare Function TrackPopupMenu Lib "user32" Alias "TrackPopupMenu" (ByVal hMenu As Long, ByVal wFlags As Long, ByVal x As Long, ByVal y As Long, ByVal nReserved As Long, ByVal hwnd As Long, lprc As Rect) As Long
 
-' Flags for TrackPopupMenu
-
 ' DrawText() Format Flags
 Public Const DT_TOP = &H0
 Public Const DT_LEFT = &H0
@@ -27920,8 +26711,6 @@ Declare Function GetWindow Lib "user32" Alias "GetWindow" (ByVal hwnd As Long, B
 Declare Function UnhookWindowsHookEx Lib "user32" Alias "UnhookWindowsHookEx" (ByVal hHook As Long) As Long
 Declare Function CallNextHookEx Lib "user32" Alias "CallNextHookEx" (ByVal hHook As Long, ByVal ncode As Long, ByVal wParam As Long, lParam As Any) As Long
 
-' Menu flags for Add/Check/EnableMenuItem()
-
 ' Menu item resource format
 Type MENUITEMTEMPLATEHEADER
         versionNumber As Integer
@@ -28067,10 +26856,6 @@ Public Const IDIGNORE = 5
 Public Const IDYES = 6
 Public Const IDNO = 7
 
-' Control Manager Structures and Definitions
-
-' Edit Control Styles
-
 ' Edit Control Notification Codes
 Public Const EN_SETFOCUS = &H100
 Public Const EN_KILLFOCUS = &H200
@@ -28081,14 +26866,10 @@ Public Const EN_MAXTEXT = &H501
 Public Const EN_HSCROLL = &H601
 Public Const EN_VSCROLL = &H602
 
-'!!! Edit Control Messages
-
 ' EDITWORDBREAKPROC code values
 Public Const WB_LEFT = 0
 Public Const WB_RIGHT = 1
 Public Const WB_ISDELIMITER = 2
-
-' Button Control Styles
 
 ' User Button Notification Codes
 Public Const BN_DISABLE = 4
@@ -28097,8 +26878,6 @@ Public Const BN_DOUBLECLICKED = 5
 ' Button Control Messages
 Public Const BM_GETCHECK = &HF0
 Public Const BM_GETSTATE = &HF2
-
-' Static Control Constants
 
 ' Static Control Mesages
 Public Const STM_SETICON = &H170
@@ -28165,21 +26944,13 @@ Public Const LBN_KILLFOCUS = 5
 ' Listbox messages
 Public Const LB_MSGMAX = &H1A8
 
-' Listbox Styles
-
 '!!! ------------------ Combo Box return Values
 Public Const CB_OKAY = 0
 Public Const CB_ERR = (-1)
 Public Const CB_ERRSPACE = (-2)
 
-' Combo Box Notification Codes
-
-' Combo Box styles
-
 ' Combo Box messages
 Public Const CB_MSGMAX = &H15B
-
-' Scroll Bar Styles
 
 '  Scroll bar messages
 Public Const SBM_SETPOS = &HE0 ' not in win3.1
@@ -28801,8 +27572,6 @@ End Type
 Public Const MAX_MONITORS = 4
 Public Const APPCLASS_MONITOR = &H1&
 Public Const XTYP_MONITOR = (&HF0 Or XCLASS_NOTIFICATION Or XTYPF_NOBLOCK)
-
-' Callback filter flags for use with MONITOR apps - 0 implies no monitor callbacks
 
 ' -----------------------------------------
 ' Win32 API error code definitions
@@ -30071,14 +28840,6 @@ Public Const RPC_E_CANTCALLOUT_ININPUTSYNCCALL = &H8001010D
 Public Const RPC_E_WRONG_THREAD = &H8001010E
 Public Const RPC_E_THREAD_NOT_INIT = &H8001010F
 Public Const RPC_E_UNEXPECTED = &H8001FFFF
-
-' /////////////////////////
-'                        //
-'  Winnet32 Status Codes //
-'                        //
-' /////////////////////////
-
-'   The specified username is invalid.
 
 '   This network connection does not exist.
 Public Const ERROR_NOT_CONNECTED = 2250&
@@ -33803,13 +32564,6 @@ Type CRGB
         bExtra As Byte
 End Type
 
-' -----------------
-' ADVAPI32
-' -----------------
-
-' function prototypes, constants, and type definitions
-' for Windows 32-bit Registry API
-
 ' Registry API prototypes
 
 Declare Function RegCloseKey Lib "advapi32.dll" Alias "RegCloseKey" (ByVal hKey As Long) As Long
@@ -35220,13 +33974,6 @@ Declare Function LogonUser Lib "ADVAPI32.DLL" Alias "LogonUserA" (ByVal lpszUser
 Declare Function ImpersonateLoggedOnUser Lib "kernel32" Alias "ImpersonateLoggedOnUser" (ByVal hToken As Long) As Long
 Declare Function CreateProcessAsUser Lib "kernel32" Alias "CreateProcessAsUserA" (ByVal hToken As Long, ByVal lpApplicationName As String, ByVal lpCommandLine As String, ByVal lpProcessAttributes As SECURITY_ATTRIBUTES, ByVal lpThreadAttributes As SECURITY_ATTRIBUTES, ByVal bInheritHandles As Long, ByVal dwCreationFlags As Long, ByVal lpEnvironment As String, ByVal lpCurrentDirectory As String, ByVal lpStartupInfo As STARTUPINFO, ByVal lpProcessInformation As PROCESS_INFORMATION) As Long
 
-'  Performance counter API's
-
-'  dwPlatformId defines:
-'
-
-'  Power Management APIs
-
 ' *   commdlg.h -- This module defines the 32-Bit Common Dialog APIs      *
 
 Type OPENFILENAME_WIN32API
@@ -35891,984 +34638,24 @@ Type ULARGE_INTEGER ' Large Integer for GetDiskFreeSpaceEx
     highpart As DWORD
 End Type
 
-' ///////////////////////////////////////////////////////////////////////////
-'                                                                          //
-'  Universal well-known SIDs                                               //
-'                                                                          //
-'      Null SID              S-1-0-0                                       //
-'      World                 S-1-1-0                                       //
-'      Local                 S-1-2-0                                       //
-'      Creator Owner ID      S-1-3-0                                       //
-'      Creator Group ID      S-1-3-1                                       //
-'                                                                          //
-'      (Non-unique IDs)      S-1-4                                         //
-'                                                                          //
-' ///////////////////////////////////////////////////////////////////////////
-
-' ///////////////////////////////////////////////////////////////////////////
-'                                                                          //
-'  NT well-known SIDs                                                      //
-'                                                                          //
-'      NT Authority          S-1-5                                         //
-'      Dialup                S-1-5-1                                       //
-'                                                                          //
-'      Network               S-1-5-2                                       //
-'      Batch                 S-1-5-3                                       //
-'      Interactive           S-1-5-4                                       //
-'      Service               S-1-5-6                                       //
-'      AnonymousLogon        S-1-5-7       (aka null logon session)        //
-'                                                                          //
-'      (Logon IDs)           S-1-5-5-X-Y                                   //
-'                                                                          //
-'      (NT non-unique IDs)   S-1-5-0x15-...                                //
-'                                                                          //
-'      (Built-in domain)     s-1-5-0x20                                    //
-'                                                                          //
-' ///////////////////////////////////////////////////////////////////////////
-
-' ///////////////////////////////////////////////////////////////////////////
-'                                                                          //
-'  well-known domain relative sub-authority values (RIDs)...               //
-'                                                                          //
-' ///////////////////////////////////////////////////////////////////////////
-
-'  Allocate the System Luid.  The first 1000 LUIDs are reserved.
-'  Use #999 here0x3E7 = 999)
-
-'  end_ntifs
-
-' //////////////////////////////////////////////////////////////////////
-'                                                                     //
-'                           User and Group related SID attributes     //
-'                                                                     //
-' //////////////////////////////////////////////////////////////////////
-
-'  Group attributes
-
-'  User attributes
-
-'  (None yet defined.)
-
-' ----------------
-'  Kernel Section
-' ----------------
-
-' Define the dwOpenMode values for CreateNamedPipe
-
-' Define the Named Pipe End flags for GetNamedPipeInfo
-
-' Define the dwPipeMode values for CreateNamedPipe
-
-' Define the well known values for CreateNamedPipe nMaxInstances
-
-' Define the Security Quality of Service bits to be passed
-'  into CreateFile
-
-'  Serial provider type.
-
-'  Provider SubTypes
-
-'  Provider capabilities flags.
-
-'  Comm provider settable parameters.
-
-'  Settable baud rates in the provider.
-
-'  Settable Data Bits
-
-'  Settable Stop and Parity bits.
-
-'        fCtsHold As Long
-'        fDsrHold As Long
-'        fRlsdHold As Long
-'        fXoffHold As Long
-'        fXoffSent As Long
-'        fEof As Long
-'        fTxim As Long
-'        fReserved As Long
-'        cbInQue As Long
-'        cbOutQue As Long
-'End Type
-
-' The eight actual COMSTAT bit-sized data fields within the four bytes of fBitFields can be manipulated by bitwise logical And/Or operations.
-' FieldName     Bit #     Description
-' ---------     -----     ---------------------------
-' fCtsHold        1       Tx waiting for CTS signal
-' fDsrHold        2       Tx waiting for DSR signal
-' fRlsdHold       3       Tx waiting for RLSD signal
-' fXoffHold       4       Tx waiting, XOFF char rec'd
-' fXoffSent       5       Tx waiting, XOFF char sent
-' fEof            6       EOF character sent
-' fTxim           7       character waiting for Tx
-' fReserved       8       reserved (25 bits)
-
-'  DTR Control Flow Values.
-
-'  RTS Control Flow Values
-
-'        DCBlength As Long
-'        BaudRate As Long
-'        fBinary As Long
-'        fParity As Long
-'        fOutxCtsFlow As Long
-'        fOutxDsrFlow As Long
-'        fDtrControl As Long
-'        fDsrSensitivity As Long
-'        fTXContinueOnXoff As Long
-'        fOutX As Long
-'        fInX As Long
-'        fErrorChar As Long
-'        fNull As Long
-'        fRtsControl As Long
-'        fAbortOnError As Long
-'        fDummy2 As Long
-'        wReserved As WORD
-'        XonLim As WORD
-'        XoffLim As WORD
-'        ByteSize As Byte
-'        Parity As Byte
-'        StopBits As Byte
-'        XonChar As Byte
-'        XoffChar As Byte
-'        ErrorChar As Byte
-'        EofChar As Byte
-'        EvtChar As Byte
-'End Type
-
-' The fourteen actual DCB bit-sized data fields within the four bytes of fBitFields can be manipulated by bitwise logical And/Or operations.
-' FieldName             Bit #     Description
-' -----------------     -----     ------------------------------
-' fBinary                 1       binary mode, no EOF check
-' fParity                 2       enable parity checking
-' fOutxCtsFlow            3       CTS output flow control
-' fOutxDsrFlow            4       DSR output flow control
-' fDtrControl             5       DTR flow control type (2 bits)
-' fDsrSensitivity         7       DSR sensitivity
-' fTXContinueOnXoff       8       XOFF continues Tx
-' fOutX                   9       XON/XOFF out flow control
-' fInX                   10       XON/XOFF in flow control
-' fErrorChar             11       enable error replacement
-' fNull                  12       enable null stripping
-' fRtsControl            13       RTS flow control (2 bits)
-' fAbortOnError          15       abort reads/writes on error
-' fDummy2                16       reserved
-
-' Global Memory Flags
-
-' Flags returned by GlobalFlags (in addition to GMEM_DISCARDABLE)
-
-' Local Memory Flags
-
-' Flags returned by LocalFlags (in addition to LMEM_DISCARDABLE)
-
-'  dwCreationFlag values
-
-' ++ BUILD Version: 0093     Increment this if a change has global effects
-
-' Copyright (c) 1990-1995  Microsoft Corporation
-
-' Module Name:
-
-'     winnt.h
-
-' Abstract:
-
-'     This module defines the 32-Bit Windows types and constants that are
-'     defined by NT, but exposed through the Win32 API.
-
-' Revision History:
-
-'
-'  Calculate the byte offset of a field in a structure of type type.
-'  *  Language IDs.
-'  *
-'  *  The following two combinations of primary language ID and
-'  *  sublanguage ID have special semantics:
-'  *
-'  *    Primary Language ID   Sublanguage ID      Result
-'  *    -------------------   ---------------     ------------------------
-'  *    LANG_NEUTRAL          SUBLANG_NEUTRAL     Language neutral
-'  *    LANG_NEUTRAL          SUBLANG_DEFAULT     User default language
-'  *    LANG_NEUTRAL          SUBLANG_SYS_DEFAULT System default language
-'  */
-'
-'  *  Primary language IDs.
-'  */
-
-'
-'  *  Sublanguage IDs.
-'  *
-'  *  The name immediately following SUBLANG_ dictates which primary
-'  *  language ID that sublanguage ID can be combined with to form a
-'  *  valid language ID.
-'  */
-
-'
-'  *  Sorting IDs.
-'  *
-'  */
-
-'  The FILE_READ_DATA and FILE_WRITE_DATA constants are also defined in
-'  devioctl.h as FILE_READ_ACCESS and FILE_WRITE_ACCESS. The values for these
-'  constants *MUST* always be in sync.
-'  The values are redefined in devioctl.h because they must be available to
-'  both DOS and NT.
-'
-
-' //////////////////////////////////////////////////////////////////////
-'                                                                     //
-'                              ACCESS MASK                            //
-'                                                                     //
-' //////////////////////////////////////////////////////////////////////
-
-'
-'   Define the access mask as a longword sized structure divided up as
-'   follows:
-
-'       typedef struct _ACCESS_MASK {
-'           WORD   SpecificRights;
-'           Byte  StandardRights;
-'           Byte  AccessSystemAcl : 1;
-'           Byte  Reserved : 3;
-'           Byte  GenericAll : 1;
-'           Byte  GenericExecute : 1;
-'           Byte  GenericWrite : 1;
-'           Byte  GenericRead : 1;
-'       } ACCESS_MASK;
-'       typedef ACCESS_MASK *PACCESS_MASK;
-'
-'   but to make life simple for programmer's we'll allow them to specify
-'   a desired access mask by simply OR'ing together mulitple single rights
-'   and treat an access mask as a DWORD.  For example
-'
-'       DesiredAccess = DELETE  Or  READ_CONTROL
-'
-'   So we'll declare ACCESS_MASK as DWORD
-'
-
-'  begin_ntddk begin_nthal begin_ntifs
-
-' //////////////////////////////////////////////////////////////////////
-'                                                                     //
-'                              ACCESS TYPES                           //
-'                                                                     //
-' //////////////////////////////////////////////////////////////////////
-
-'  begin_ntddk begin_nthal begin_ntifs
-'
-'   The following are masks for the predefined standard access types
-
-'  AccessSystemAcl access type
-
-'  MaximumAllowed access type
-
-'   These are the generic rights.
-
-'   Define the generic mapping array.  This is used to denote the
-'   mapping of each generic access right to a specific access mask.
-
-' //////////////////////////////////////////////////////////////////////
-'                                                                     //
-'                         LUID_AND_ATTRIBUTES                         //
-'                                                                     //
-' //////////////////////////////////////////////////////////////////////
-'
-
-' //////////////////////////////////////////////////////////////////////
-'                                                                     //
-'                          ACL  and  ACE                              //
-'                                                                     //
-' //////////////////////////////////////////////////////////////////////
-
-'
-'   Define an ACL and the ACE format.  The structure of an ACL header
-'   followed by one or more ACEs.  Pictorally the structure of an ACL header
-'   is as follows:
-'
-'   The current AclRevision is defined to be ACL_REVISION.
-'
-'   AclSize is the size, in bytes, allocated for the ACL.  This includes
-'   the ACL header, ACES, and remaining free space in the buffer.
-'
-'   AceCount is the number of ACES in the ACL.
-'
-
-'  begin_ntddk begin_ntifs
-'  This is the *current* ACL revision
-
-'  This is the history of ACL revisions.  Add a new one whenever
-'  ACL_REVISION is updated
-
-' typedef ACL *PACL;
-
-'  end_ntddk
-
-'   The structure of an ACE is a common ace header followed by ace type
-'   specific data.  Pictorally the structure of the common ace header is
-'   as follows:
-
-'   AceType denotes the type of the ace, there are some predefined ace
-'   types
-'
-'   AceSize is the size, in bytes, of ace.
-'
-'   AceFlags are the Ace flags for audit and inheritance, defined Integerly.
-
-'
-'   The following are the predefined ace types that go into the AceType
-'   field of an Ace header.
-
-'   The following are the inherit flags that go into the AceFlags field
-'   of an Ace header.
-
-'   The following are the currently defined ACE flags that go into the
-'   AceFlags field of an ACE header.  Each ACE type has its own set of
-'   AceFlags.
-'
-'   SUCCESSFUL_ACCESS_ACE_FLAG - used only with system audit and alarm ACE
-'   types to indicate that a message is generated for successful accesses.
-'
-'   FAILED_ACCESS_ACE_FLAG - used only with system audit and alarm ACE types
-'   to indicate that a message is generated for failed accesses.
-
-'   SYSTEM_AUDIT and SYSTEM_ALARM AceFlags
-'
-'   These control the signaling of audit and alarms for success or failure.
-
-'
-'   We'll define the structure of the predefined ACE types.  Pictorally
-'   the structure of the predefined ACE's is as follows:
-
-'   Mask is the access mask associated with the ACE.  This is either the
-'   access allowed, access denied, audit, or alarm mask.
-'
-'   Sid is the Sid associated with the ACE.
-'
-'   The following are the four predefined ACE types.
-'   Examine the AceType field in the Header to determine
-'   which structure is appropriate to use for casting.
-
-'   The following declarations are used for setting and querying information
-'   about and ACL.  First are the various information classes available to
-'   the user.
-'
-
-'
-'   This record is returned/sent if the user is requesting/setting the
-'   AclRevisionInformation
-'
-
-'
-'   This record is returned if the user is requesting AclSizeInformation
-'
-
-' //////////////////////////////////////////////////////////////////////
-'                                                                     //
-'                              SECURITY_DESCRIPTOR                    //
-'                                                                     //
-' //////////////////////////////////////////////////////////////////////
-'
-'   Define the Security Descriptor and related data types.
-'   This is an opaque data structure.
-'
-
-'  begin_ntddk begin_ntifs
-'
-'  Current security descriptor revision value
-'
-
-'  end_ntddk
-
-'
-'  Minimum length, in bytes, needed to build a security descriptor
-'  (NOTE: This must manually be kept consistent with the)
-'  (sizeof(SECURITY_DESCRIPTOR)                         )
-'
-
-'
-'   Where:
-'
-'       SE_OWNER_DEFAULTED - This boolean flag, when set, indicates that the
-'           SID pointed to by the Owner field was provided by a
-'           defaulting mechanism rather than explicitly provided by the
-'           original provider of the security descriptor.  This may
-'           affect the treatment of the SID with respect to inheritence
-'           of an owner.
-'
-'       SE_GROUP_DEFAULTED - This boolean flag, when set, indicates that the
-'           SID in the Group field was provided by a defaulting mechanism
-'           rather than explicitly provided by the original provider of
-'           the security descriptor.  This may affect the treatment of
-'           the SID with respect to inheritence of a primary group.
-'
-'       SE_DACL_PRESENT - This boolean flag, when set, indicates that the
-'           security descriptor contains a discretionary ACL.  If this
-'           flag is set and the Dacl field of the SECURITY_DESCRIPTOR is
-'           null, then a null ACL is explicitly being specified.
-'
-'       SE_DACL_DEFAULTED - This boolean flag, when set, indicates that the
-'           ACL pointed to by the Dacl field was provided by a defaulting
-'           mechanism rather than explicitly provided by the original
-'           provider of the security descriptor.  This may affect the
-'           treatment of the ACL with respect to inheritence of an ACL.
-'           This flag is ignored if the DaclPresent flag is not set.
-'
-'       SE_SACL_PRESENT - This boolean flag, when set,  indicates that the
-'           security descriptor contains a system ACL pointed to by the
-'           Sacl field.  If this flag is set and the Sacl field of the
-'           SECURITY_DESCRIPTOR is null, then an empty (but present)
-'           ACL is being specified.
-'
-'       SE_SACL_DEFAULTED - This boolean flag, when set, indicates that the
-'           ACL pointed to by the Sacl field was provided by a defaulting
-'           mechanism rather than explicitly provided by the original
-'           provider of the security descriptor.  This may affect the
-'           treatment of the ACL with respect to inheritence of an ACL.
-'           This flag is ignored if the SaclPresent flag is not set.
-'
-'       SE_SELF_RELATIVE - This boolean flag, when set, indicates that the
-'           security descriptor is in self-relative form.  In this form,
-'           all fields of the security descriptor are contiguous in memory
-'           and all pointer fields are expressed as offsets from the
-'           beginning of the security descriptor.  This form is useful
-'           for treating security descriptors as opaque data structures
-'           for transmission in communication protocol or for storage on
-'           secondary media.
-'
-'
-'
-'  In general, this data structure should be treated opaquely to ensure future
-'  compatibility.
-'
-'
-
-'  Where:
-'
-'      Revision - Contains the revision level of the security
-'          descriptor.  This allows this structure to be passed between
-'          systems or stored on disk even though it is expected to
-'          change in the future.
-'
-'      Control - A set of flags which qualify the meaning of the
-'          security descriptor or individual fields of the security
-'          descriptor.
-'
-'      Owner - is a pointer to an SID representing an object's owner.
-'          If this field is null, then no owner SID is present in the
-'          security descriptor.  If the security descriptor is in
-'          self-relative form, then this field contains an offset to
-'          the SID, rather than a pointer.
-'
-'      Group - is a pointer to an SID representing an object's primary
-'          group.  If this field is null, then no primary group SID is
-'          present in the security descriptor.  If the security descriptor
-'          is in self-relative form, then this field contains an offset to
-'          the SID, rather than a pointer.
-'
-'      Sacl - is a pointer to a system ACL.  This field value is only
-'          valid if the DaclPresent control flag is set.  If the
-'          SaclPresent flag is set and this field is null, then a null
-'          ACL  is specified.  If the security descriptor is in
-'          self-relative form, then this field contains an offset to
-'          the ACL, rather than a pointer.
-'
-'      Dacl - is a pointer to a discretionary ACL.  This field value is
-'          only valid if the DaclPresent control flag is set.  If the
-'          DaclPresent flag is set and this field is null, then a null
-'          ACL (unconditionally granting access) is specified.  If the
-'          security descriptor is in self-relative form, then this field
-'          contains an offset to the ACL, rather than a pointer.
-'
-
-' //////////////////////////////////////////////////////////////////////
-'                                                                     //
-'                Privilege Related Data Structures                    //
-'                                                                     //
-' //////////////////////////////////////////////////////////////////////
-
-'  Privilege attributes
-'
-
-'
-'  Privilege Set Control flags
-'
-
-'
-'   Privilege Set - This is defined for a privilege set of one.
-'                   If more than one privilege is needed, then this structure
-'                   will need to be allocated with more space.
-'
-'   Note: don't change this structure without fixing the INITIAL_PRIVILEGE_SET
-'   structure (defined in se.h)
-'
-
-'//////////////////////////////////////////////////////////////////////
-'                                                                     //
-'                NT Defined Privileges                                //
-'                                                                     //
-' //////////////////////////////////////////////////////////////////////
-
-' //////////////////////////////////////////////////////////////////
-'                                                                 //
-'            Security Quality Of Service                          //
-'                                                                 //
-'                                                                 //
-' //////////////////////////////////////////////////////////////////
-
-'  begin_ntddk begin_nthal begin_ntifs
-'
-'  Impersonation Level
-'
-'  Impersonation level is represented by a pair of bits in Windows.
-'  If a new impersonation level is added or lowest value is changed from
-'  0 to something else, fix the Windows CreateFile call.
-'
-
-'//////////////////////////////////////////////////////////////////////
-'                                                                     //
-'                Registry API Constants                                //
-'                                                                     //
-' //////////////////////////////////////////////////////////////////////
-
-' Reg Create Type Values...
-
-' Reg Data Types...
-
-' Reg Key Security Options
-
-' end winnt.txt
-
-' Debug APIs
-
-' GetDriveType return values
-
-' Comm Baud Rate indices
-
-' Error Flags
-
-' Events
-
-' Escape Functions
-
-'  PURGE function flags.
-
-'  Modem Status Flags
-
-' WaitSoundState() Constants
-
-' Accent Modes
-
-' SetSoundNoise() Sources
-
-' OpenFile() Flags
-
-' OpenFile() Structure
-
-' Loader Routines
-
-' GetTempFileName() Flags
-'
-
-'Priority Classess
-'for threads in your program (like SUB and FUNCTIONS) see the thread.bas example on GUIDANCE site
-
-' priority of your program (all subs and functions)
-'from low to highest priority, rapidq is NORMAL_PRIORITY_CLASS
 'CAUTION!! REALTIME has no mouse,no keyboard, no disk, may lockup the computer use only for hardware I/O
 
 $IFNDEF WSAGetLastError
 $ENDIF
 
-' Predefined Resource Types
-
-' User Profile Routines
-' NOTE: The lpKeyName argument for GetProfileString, WriteProfileString,
-'       GetPrivateProfileString, and WritePrivateProfileString can be either
-'       a string or NULL.  This is why the argument is defined as "As Any".
-'          For example, to pass a string specify   ByVal "wallpaper"
-'          To pass NULL specify                    ByVal 0&
-'       You can also pass NULL for the lpString argument for WriteProfileString
-'       and WritePrivateProfileString
-
-' Security APIs
-
-' 	PrivilegeCount As Long
-'     lpPrivilegeArray AS Long        'pointer to (ANYSIZE_ARRAY) of LUID_AND_ATTRIBUTES
-'     'type LUID_AND_ATTRIBUTES
-'        'pLuid As LUID
-'        'Attributes As Long
-'     'end type
-' End Type
-
-' COMM declarations
-
-' Routines to convert back and forth
-' between system time and file time
-
-' Stream ID type
-
-' Stream IDs
-
-'   Stream Attributes
-
-'  Dual Mode API below this line. Dual Mode Types also included.
-
-'example
-'a$ = SPACE$(255): a& = len(a$)
-'GetComputerName(A$, a&)
-'ShowMessage a$
-
-' Performance counter API's
-
-'  Abnormal termination codes
-
-' Procedure declarations, constant definitions, and macros
-' for the NLS component
-
-' String Length Maximums
-
-' MBCS and Unicode Translation Flags.
-
-' Character Type Flags.
-
-' CType 1 Flag Bits.
-
-' CType 2 Flag Bits.
-
-' CType 3 Flag Bits.
-
-' String Flags.
-
-' Locale Independent Mapping Flags.
-
-' Locale Dependent Mapping Flags.
-
-' Sorting Flags.
-
-' Code Page Default Values.
-
-' Country Codes.
-
-' Locale Types.
-' These types are used for the GetLocaleInfoW NLS API routine.
-
-' LOCALE_NOUSEROVERRIDE is also used in GetTimeFormatW and GetDateFormatW.
-
-' Time Flags for GetTimeFormatW.
-
-' Date Flags for GetDateFormatW.
-
-' Code Page Dependent APIs
-
-' Locale Dependent APIs
-
-' Locale Independent APIs
-
-' *************************************************************************
-' *                                                                         *
-' * winnls.h -- NLS procedure declarations, constant definitions and macros *
-' *                                                                         *
-' * Copyright (c) 1991-1995, Microsoft Corp. All rights reserved.           *
-' *                                                                         *
-' **************************************************************************/
-
-' *  Calendar Types.
-'  *
-'  *  These types are used for the GetALTCalendarInfoW NLS API routine.
-'  */
-
-'
-'  *  Calendar Enumeration Value.
-'  */
-'
-'  *  Calendar ID Values.
-'  */
-
-' *************************************************************************** Typedefs
-' *
-' * Define all types for the NLS component here.
-' \***************************************************************************/
-'
-'  *  CP Info.
-'  */
-
-'
-'  *  Currency format.
-'  */
-
-' The following section contains the public data structures, data types,
-' and procedures exported by the NT console subsystem.
-
-'  ControlKeyState flags
-
-'  ButtonState flags
-
-'  EventFlags
-
-'   EventType flags:
-
-'  Attributes flags:
-
-'  3 is reserved!
-'  4 is reserved!
-
-' Input Mode flags:
-
 ' Output Mode flags:
 
 'Declare Function SetConsoleTitle Lib "kernel32" Alias "SetConsoleTitleA" (ByVal lpConsoleTitle As String) As Long
 
-' -------------
-'  GDI Section
-' -------------
-
-' Binary raster ops
-
-'  Ternary raster operations
-
-' Region Flags
-
-' CombineRgn() Styles
-
-' StretchBlt() Modes
-
-' PolyFill() Modes
-
-' Text Alignment Options
-
-' Metafile Functions
-
-' GDI Escapes
-
-' Spooler Error Codes
-
-'  Object Definitions for EnumObjects()
-
-'  xform stuff
-
-' Bitmap Header Definition  **Note actual name in api is TYPE BITMAP ****
-
-' structures for defining DIBs
-
 '	example code
 '	DIM trash AS BITMAPINFO
-'	trash.bmiHeader_biHeight = 10
-'	Showmessage str$(trash.bmiHeader_biHeight)
-
-' constants for the biCompression field
-
-' Clipboard Metafile Picture Structure
-
-' ntmFlags field flags
-
-' Structure passed to FONTENUMPROC
-' NOTE: NEWTEXTMETRIC is the same as TEXTMETRIC plus 4 new fields
-
-'  tmPitchAndFamily flags
-
-' GDI Logical Objects:
-
-' Logical Brush (or Pattern)
-
-' Logical Pen
-
-' Logical Palette
-
-' Logical Font
-
-' Font Families
-'
-
-' Times Roman, Century Schoolbook, etc.
-
-' Helvetica, Swiss, etc.
-
-' Pica, Elite, Courier, etc.
-
-' Font Weights
-
-'  EnumFonts Masks
-
-' palette entry flags
-
-' Background Modes
-
-'  Graphics Modes
-
-'  PolyDraw and GetPath point types
-
-'  Mapping Modes
-
-'  Min and Max Mapping Mode values
-
-' Coordinate Modes
-
-' Stock Logical Objects
-
-' Brush Styles
-
-'  Hatch Styles
-
-'  Pen Styles
-
-'  Device Parameters for GetDeviceCaps()
-
-'  Printing related DeviceCaps. These replace the appropriate Escapes
-
-'  Device Capability Masks:
-
-'  Device Technologies
-
-'  Curve Capabilities
-
-'  Line Capabilities
-
-'  Polygonal Capabilities
-
-'  Polygonal Capabilities
-
-'  Text Capabilities
-
-'  Raster Capabilities
-
-' DIB color table identifiers
-
-' constants for Get/SetSystemPaletteUse()
-
-' constants for CreateDIBitmap
-
-' ExtFloodFill style flags
-
-'  size of a device name string
-
-'  size of a form name string
 
 'values updated by JohnK
 CONST STRING_SIZE				= 32
 
-' NT & 2000 Declare Function ChangeDisplaySettingsEx Lib "user32" Alias "ChangeDisplaySettingsExA" (lpszDeviceName As long, lpDevMode As long, ByVal hWnd As Long, ByVal dwFlags As Long, lParam As long) As Long
-
-' current version of specification
-
-' field selection bits
-
-'  orientation selections
-
-'  paper selections
-               '  Letter 8 1/2 x 11 in
-
-'  bin selections
-
-'  print qualities
-
-'  color enable/disable for color printers
-
-'  duplex enable
-
-'  TrueType options
-
-'  Collation selections
-
-'  DEVMODE dmDisplayFlags flags
-
-'  GetRegionData/ExtCreateRegion
-
-' GetGlyphOutline constants
-
-' bits defined in wFlags of RASTERIZER_STATUS
-
-'  mode selections for the device mode function
-
-'  device capabilities indices
-
 '  bit fields of the return value (DWORD) for DC_TRUETYPE
 
 '~conflict Declare Function UpdateColors Lib "gdi32" Alias "UpdateColors" (ByVal hdc As Long) As Long   ' сборка: имя занято, первое: ODMenuXP.inc(1518)
-
-'  Flags value for COLORADJUSTMENT
-
-'  IlluminantIndex values
-
-'  Min and max for RedGamma, GreenGamma, BlueGamma
-
-'  Min and max for ReferenceBlack and ReferenceWhite
-
-'  Min and max for Contrast, Brightness, Colorfulness, RedGreenTint
-
-' Enhanced metafile constants
-
-'  Stock object flag used in the object handle
-' index in the enhanced metafile records.
-'  E.g. The object handle index (META_STOCK_OBJECT Or BLACK_BRUSH)
-'  represents the stock object BLACK_BRUSH.
-
-'  Enhanced metafile record types.
-
-' new wingdi
-' *************************************************************************
-' *                                                                         *
-' * wingdi.h -- GDI procedure declarations, constant definitions and macros *
-' *                                                                         *
-' * Copyright (c) 1985-1995, Microsoft Corp. All rights reserved.           *
-' *                                                                         *
-' **************************************************************************/
-
-'  StretchBlt() Modes
-
-'  current version of specification
-
-'  ICM methods
-
-'  ICM Intents
-
-'  Media types
-
-'  Dither types
-
-'  return values for DC_BINADJUST
-
-' --------------
-'  USER Section
-' --------------
-
-' Scroll Bar Constants
-
-' Scroll Bar Commands
-
-' ShowWindow() Commands
-
-' Old ShowWindow() Commands
-
-' Identifiers for the WM_SHOWWINDOW message
-
-' WM_KEYUP/DOWN/CHAR HIWORD(lParam) flags
-
-' Virtual Keys, Standard Set
-
-' VK_A thru VK_Z are the same as their ASCII equivalents: 'A' thru 'Z'
-' VK_0 thru VK_9 are the same as their ASCII equivalents: '0' thru '9'
-
-'
-'   VK_L VK_R - left and right Alt, Ctrl and Shift virtual keys.
-'   Used only as parameters to GetAsyncKeyState() and GetKeyState().
-'   No other API or message will distinguish left and right keys in this way.
-'  /
-
-' SetWindowsHook() codes
-
-' Hook Codes
-
-' CBT Hook Codes
-
-' HCBT_ACTIVATE structure pointed to by lParam
-
-' WH_MSGFILTER Filter Proc Codes
-
-' Message Structure used in Journaling
-
-' Keyboard Layout API
-
-' Size of KeyboardLayoutName (number of characters), including nul terminator
 
 'This is supposed to be the updated call convention instead of keyb_event
 $define INPUT_MOUSE     0
@@ -36885,21 +34672,6 @@ END TYPE
 
 DECLARE FUNCTION SendInput LIB "user32.dll" ALIAS "SendInput" (nInputs AS DWORD, pInputs AS tagINPUT, cbSize AS INTEGER) AS INTEGER
 
-' Desktop-specific access flags
-
-' Windowstation-specific access flags
-
-' Message structure
-
-' Window field offsets for GetWindowLong() and GetWindowWord()
-
-' Class field offsets for GetClassLong() and GetClassWord()
-
-' Window Messages
-
-'
-'  WM_ACTIVATE state values
-
 'added 11/04
 CONST WM_SETTINGCHANGE    = WM_WININICHANGE
 CONST WM_GETOBJECT        = &H003D
@@ -36908,141 +34680,17 @@ CONST WM_HELP             = &H0053
 CONST WM_USERCHANGED      = &H0054
 CONST WM_NOTIFYFORMAT     = &H0055
 
-' notifications passed in low word of lParam on WM_COMMNOTIFY messages
-
-'
-'  wParam for WM_POWER window message and DRV_POWER driver notification
-
-' NOTE: All Message Numbers below 0x0400 are RESERVED.
-
-' Private Window Messages Start Here:
-
-' WM_SYNCTASK Commands
-
-' WM_NCHITTEST and MOUSEHOOKSTRUCT Mouse Position Codes
-
-'  SendMessageTimeout values
-
-' WM_MOUSEACTIVATE Return Codes
-
-' WM_SIZE message wParam values
-
-' Obsolete constant names
-
-' WM_WINDOWPOSCHANGING/CHANGED struct pointed to by lParam
-
-' WM_NCCALCSIZE return flags
-
-' Key State Masks for Mouse Messages
-
-' Window Styles
-
-'
-'   Common Window Styles
-'  /
-
-' Extended Window Styles
-
-' Class styles
-
-' Predefined Clipboard Formats
-
-' "Private" formats don't get GlobalFree()'d
-
-' "GDIOBJ" formats do get DeleteObject()'d
-
-'  Defines for the fVirt field of the Accelerator table structure.
-
-' HCBT_CREATEWND parameters pointed to by lParam
-
-' Owner draw control types
-
-' Owner draw actions
-
-' Owner draw state
-
-' MEASUREITEMSTRUCT for ownerdraw
-
-' DRAWITEMSTRUCT for ownerdraw
-
-' DELETEITEMSTRUCT for ownerdraw
-
-' COMPAREITEMSTRUCT for ownerdraw sorting
-
-' Message Function Templates
-
-' PeekMessage() Options
-
 '****  SendMessage already declared in RapidQ  *****
 'Declare Function PostMessage Lib "user32" Alias "PostMessageA" (ByVal hwnd As Long, ByVal wMsg As Long, ByVal wParam As Long, ByVal lParam As Long) As Long
-
-' Special HWND value for use with PostMessage and SendMessage
-
-' SetWindowPos Flags
-
-' SetWindowPos() hwndInsertAfter values
-
-' Clipboard Manager Functions
-
-' Language dependent Routines
-
-' Keyboard Information Routines
-
-' GetQueueStatus flags
-
-' Windows Functions
-
-' GetSystemMetrics() codes
 
 'GetSystemMetrics()
 	'Gets system info.  Index at msdn.microsoft.com
 	'EXAMPLE:
 		'Const SM_CLEANBOOT = 67
-		'Select Case GetSystemMetrics(SM_CLEANBOOT)
-		'	Case 0
-		'		ShowMessage "Normal system boot."
-		'	Case 1
-		'		ShowMessage "You are in safe mode."
-		'	case 2
-		'		ShowMessage "You are in safe mode with networking."
-		'end select
-
-' Flags for TrackPopupMenu
-
-' DrawText() Format Flags
-
-' EnableScrollBar() flags
 
 ' MessageBox() Flags
 
 'Declare Function MessageBox Lib "user32" Alias "MessageBoxA" (ByVal hwnd As Long, ByVal lpText As String, ByVal lpCaption As String, ByVal wType As Long) As Long
-
-' Color Types
-
-' GetWindow() Constants
-
-' Menu flags for Add/Check/EnableMenuItem()
-
-' Menu item resource format
-
-' System Menu Command Values
-''Const SC_SIZE = &HF000''user by arrow'
-''Const SC_SIZE = &HF001''Adjust Horizental left'
-''Const SC_SIZE = &HF002''Adjust Horizental right'
-''Const SC_SIZE = &HF003''Adjust Vertical top'
-''Const SC_SIZE = &HF004''Adjust left upper corner'
-''Const SC_SIZE = &HF005''Adjust right upper corner'
-''Const SC_SIZE = &HF006''Adjust vertical bottom'
-''Const SC_SIZE = &HF007''Adjust right bottom corner'
-''Const SC_SIZE = &HF008''Adjust left bootom corner'
-
-' Obsolete names
-
-' Resource Loading Routines
-
-' Standard Cursor IDs
-
-' OEM Resource Ordinal Numbers
 
                                 '  language drivers.
 
@@ -37050,1903 +34698,13 @@ CONST WM_NOTIFYFORMAT     = &H0055
 
 '~conflict Declare Function LoadString Lib "user32" Alias "LoadStringA" (ByVal hInstance As Long, ByVal wID As Long, ByVal lpBuffer As String, ByVal nBufferMax As Long) As Long   ' сборка: имя занято, первое: Files.inc(473)
 
-' Dialog Box Command IDs
-
-' Control Manager Structures and Definitions
-
-' Edit Control Styles
-
-' Edit Control Notification Codes
-
-' Edit Control Messages
-
-' EDITWORDBREAKPROC code values
-
-' Button Control Styles
-
-' User Button Notification Codes
-
 ' Button Control Messages
 Public Const BM_CLICK = &HF5
-
-' Static Control Constants
-
-' Static Control Mesages
-
-'  Get/SetWindowWord/Long offsets for use with WC_DIALOG windows
-
-' Dialog Manager Routines
-
-' DlgDirList, DlgDirListComboBox flags values
-
-' Dialog Styles
-
-' Dialog Codes
-
-' Listbox Return Values
-
-' The idStaticPath parameter to DlgDirList can have the following values
-' ORed if the list box should show other details of the files along with
-' the name of the files;
-' all other details also will be returned
-
-' Listbox Notification Codes
-
-' Listbox messages
-
-' Listbox Styles
-
-' Combo Box return Values
-
-' Combo Box Notification Codes
-
-' Combo Box styles
-
-' Combo Box messages
-
-' Scroll Bar Styles
-
-'  Scroll bar messages
-
-' wParam values for WM_MDITILE and WM_MDICASCADE messages.
-
-'  Help engine section.
-
-' Commands to pass WinHelp()
-
-' Parameter for SystemParametersInfo()
-
-' SystemParametersInfo flags
-
-'  DDE window messages
-
-' *****************************************************************************                                                                             *
-' * dde.h -       Dynamic Data Exchange structures and definitions              *
-' *                                                                             *
-' * Copyright (c) 1993-1995, Microsoft Corp.        All rights reserved              *
-' *                                                                             *
-' \*****************************************************************************/
-
-' ----------------------------------------------------------------------------
-'        DDEACK structure
-'
-'         Structure of wStatus (LOWORD(lParam)) in WM_DDE_ACK message
-'        sent in response to a WM_DDE_DATA, WM_DDE_REQUEST, WM_DDE_POKE,
-'        WM_DDE_ADVISE, or WM_DDE_UNADVISE message.
-'
-' ----------------------------------------------------------------------------*/
-
-' ----------------------------------------------------------------------------
-'        DDEADVISE structure
-'
-'         WM_DDE_ADVISE parameter structure for hOptions (LOWORD(lParam))
-'
-' ----------------------------------------------------------------------------*/
-
-' ----------------------------------------------------------------------------
-'        DDEDATA structure
-'
-'        WM_DDE_DATA parameter structure for hData (LOWORD(lParam)).
-'        The actual size of this structure depends on the size of
-'        the Value array.
-'
-' ----------------------------------------------------------------------------*/
-
-' ----------------------------------------------------------------------------
-'         DDEPOKE structure
-'
-'         WM_DDE_POKE parameter structure for hData (LOWORD(lParam)).
-'        The actual size of this structure depends on the size of
-'        the Value array.
-'
-' ----------------------------------------------------------------------------*/
-
-' ----------------------------------------------------------------------------
-' The following typedef's were used in previous versions of the Windows SDK.
-' They are still valid.  The above typedef's define exactly the same structures
-' as those below.  The above typedef names are recommended, however, as they
-' are more meaningful.
-
-' Note that the DDEPOKE structure typedef'ed in earlier versions of DDE.H did
-' not correctly define the bit positions.
-' ----------------------------------------------------------------------------*/
-
-'//
-'// Quality Of Service
-'//
-
-'  conversation states (usState)
-
-'  used in LOWORD(dwData1) of XTYP_ADVREQ callbacks...
-
-'  conversation status bits (fsStatus)
-
-'  DDE constants for wStatus field
-
-'  message filter hook types
-
-'  codepage constants
-
-'  transaction types
-
-'  Timeout constants
-
-'  Transaction ID constants
-
-'  public strings used in DDE
-
-' Callback filter flags for use with standard apps.
-
-' Application command flags
-
-' Application classification flags
-
-' conversation enumeration functions
-
-' conversation control functions
-
-' app server interface functions
-
-' app client interface functions
-
-' data transfer functions
-
-' Callback filter flags for use with MONITOR apps - 0 implies no monitor callbacks
-
-' -----------------------------------------
-' Win32 API error code definitions
-' -----------------------------------------
-' This section contains the error code definitions for the Win32 API functions.
-
-' NO_ERROR
-
-' The configuration registry database operation completed successfully.
-
-'   Incorrect function.
-
-'   The system cannot find the file specified.
-
-'   The system cannot find the path specified.
-
-'   The system cannot open the file.
-
-'   Access is denied.
-
-'   The handle is invalid.
-
-'   The storage control blocks were destroyed.
-
-'   Not enough storage is available to process this command.
-
-'   The storage control block address is invalid.
-
-'   The environment is incorrect.
-
-'   An attempt was made to load a program with an
-'   incorrect format.
-
-'   The access code is invalid.
-
-'   The data is invalid.
-
-'   Not enough storage is available to complete this operation.
-
-'   The system cannot find the drive specified.
-
-'   The directory cannot be removed.
-
-'   The system cannot move the file
-'   to a different disk drive.
-
-'   There are no more files.
-
-'   The media is write protected.
-
-'   The system cannot find the device specified.
-
-'   The device is not ready.
-
-'   The device does not recognize the command.
-
-'   Data error (cyclic redundancy check)
-
-'   The program issued a command but the
-'   command length is incorrect.
-
-'   The drive cannot locate a specific
-'   area or track on the disk.
-
-'   The specified disk or diskette cannot be accessed.
-
-'   The drive cannot find the sector requested.
-
-'   The printer is out of paper.
-
-'   The system cannot write to the specified device.
-
-'   The system cannot read from the specified device.
-
-'   A device attached to the system is not functioning.
-
-'   The process cannot access the file because
-'   it is being used by another process.
-
-'   The process cannot access the file because
-'   another process has locked a portion of the file.
-
-'   The wrong diskette is in the drive.
-'   Insert %2 (Volume Serial Number: %3)
-'   into drive %1.
-
-'   Too many files opened for sharing.
-
-'   Reached end of file.
-
-'   The disk is full.
-
-'   The network request is not supported.
-
-'   The remote computer is not available.
-
-'   A duplicate name exists on the network.
-
-'   The network path was not found.
-
-'   The network is busy.
-
-'   The specified network resource or device is no longer
-'   available.
-
-'   The network BIOS command limit has been reached.
-
-'   A network adapter hardware error occurred.
-
-'   The specified server cannot perform the requested
-'   operation.
-
-'   An unexpected network error occurred.
-
-'   The remote adapter is not compatible.
-
-'   The printer queue is full.
-
-'   Space to store the file waiting to be printed is
-'   not available on the server.
-
-'   Your file waiting to be printed was deleted.
-
-'   The specified network name is no longer available.
-
-'   Network access is denied.
-
-'   The network resource type is not correct.
-
-'   The network name cannot be found.
-
-'   The name limit for the local computer network
-'   adapter card was exceeded.
-
-'   The network BIOS session limit was exceeded.
-
-'   The remote server has been paused or is in the
-'   process of being started.
-
-'   The network request was not accepted.
-
-'   The specified printer or disk device has been paused.
-
-'   The file exists.
-
-'   The directory or file cannot be created.
-
-'   Fail on INT 24
-
-'   Storage to process this request is not available.
-
-'   The local device name is already in use.
-
-'   The specified network password is not correct.
-
-'   The parameter is incorrect.
-
-'   A write fault occurred on the network.
-
-'   The system cannot start another process at
-'   this time.
-
-'   Cannot create another system semaphore.
-
-'   The exclusive semaphore is owned by another process.
-
-'   The semaphore is set and cannot be closed.
-
-'   The semaphore cannot be set again.
-
-'   Cannot request exclusive semaphores at interrupt time.
-
-'   The previous ownership of this semaphore has ended.
-
-'   Insert the diskette for drive %1.
-
-'   Program stopped because alternate diskette was not inserted.
-
-'   The disk is in use or locked by
-'   another process.
-
-'   The pipe has been ended.
-
-'   The system cannot open the
-'   device or file specified.
-
-'   The file name is too long.
-
-'   There is not enough space on the disk.
-
-'   No more internal file identifiers available.
-
-'   The target internal file identifier is incorrect.
-
-'   The IOCTL call made by the application program is
-'   not correct.
-
-'   The verify-on-write switch parameter value is not
-'   correct.
-
-'   The system does not support the command requested.
-
-'   This function is only valid in Windows NT mode.
-
-'   The semaphore timeout period has expired.
-
-'   The data area passed to a system call is too
-'   small.
-
-'   The filename, directory name, or volume label syntax is incorrect.
-
-'   The system call level is not correct.
-
-'   The disk has no volume label.
-
-'   The specified module could not be found.
-
-'   The specified procedure could not be found.
-
-'   There are no child processes to wait for.
-
-'   The %1 application cannot be run in Windows NT mode.
-
-'   Attempt to use a file handle to an open disk partition for an
-'   operation other than raw disk I/O.
-
-'   An attempt was made to move the file pointer before the beginning of the file.
-
-'   The file pointer cannot be set on the specified device or file.
-
-'   A JOIN or SUBST command
-'   cannot be used for a drive that
-'   contains previously joined drives.
-
-'   An attempt was made to use a
-'   JOIN or SUBST command on a drive that has
-'   already been joined.
-
-'   An attempt was made to use a
-'   JOIN or SUBST command on a drive that has
-'   already been substituted.
-
-'   The system tried to delete
-'   the JOIN of a drive that is not joined.
-
-'   The system tried to delete the
-'   substitution of a drive that is not substituted.
-
-'   The system tried to join a drive
-'   to a directory on a joined drive.
-
-'   The system tried to substitute a
-'   drive to a directory on a substituted drive.
-
-'   The system tried to join a drive to
-'   a directory on a substituted drive.
-
-'   The system tried to SUBST a drive
-'   to a directory on a joined drive.
-
-'   The system cannot perform a JOIN or SUBST at this time.
-
-'   The system cannot join or substitute a
-'   drive to or for a directory on the same drive.
-
-'   The directory is not a subdirectory of the root directory.
-
-'   The directory is not empty.
-
-'   The path specified is being used in
-'   a substitute.
-
-'   Not enough resources are available to
-'   process this command.
-
-'   The path specified cannot be used at this time.
-
-'   An attempt was made to join
-'   or substitute a drive for which a directory
-'   on the drive is the target of a previous
-'   substitute.
-
-'   System trace information was not specified in your
-'   CONFIG.SYS file, or tracing is disallowed.
-
-'   The number of specified semaphore events for
-'   DosMuxSemWait is not correct.
-
-'   DosMuxSemWait did not execute; too many semaphores
-'   are already set.
-
-'   The DosMuxSemWait list is not correct.
-
-'   The volume label you entered exceeds the
-'   11 character limit.  The first 11 characters were written
-'   to disk.  Any characters that exceeded the 11 character limit
-'   were automatically deleted.
-
-'   Cannot create another thread.
-
-'   The recipient process has refused the signal.
-
-'   The segment is already discarded and cannot be locked.
-
-'   The segment is already unlocked.
-
-'   The address for the thread ID is not correct.
-
-'   The argument string passed to DosExecPgm is not correct.
-
-'   The specified path is invalid.
-
-'   A signal is already pending.
-
-'   No more threads can be created in the system.
-
-'   Unable to lock a region of a file.
-
-'   The requested resource is in use.
-
-'   A lock request was not outstanding for the supplied cancel region.
-
-'   The file system does not support atomic changes to the lock type.
-
-'   The system detected a segment number that was not correct.
-
-'   The operating system cannot run %1.
-
-'   Cannot create a file when that file already exists.
-
-'   The flag passed is not correct.
-
-'   The specified system semaphore name was not found.
-
-'   The operating system cannot run %1.
-
-'   The operating system cannot run %1.
-
-'   The operating system cannot run %1.
-
-'   Cannot run %1 in Windows NT mode.
-
-'   The operating system cannot run %1.
-
-'   %1 is not a valid Windows NT application.
-
-'   The operating system cannot run %1.
-
-'   The operating system cannot run %1.
-
-'   The operating system cannot run this
-'   application program.
-
-'   The operating system is not presently
-'   configured to run this application.
-
-'   The operating system cannot run %1.
-
-'   The operating system cannot run this
-'   application program.
-
-'   The code segment cannot be greater than or equal to 64KB.
-
-'   The operating system cannot run %1.
-
-'   The operating system cannot run %1.
-
-'   The system could not find the environment
-'   option that was entered.
-
-'   No process in the command subtree has a
-'   signal handler.
-
-'   The filename or extension is too long.
-
-'   The ring 2 stack is in use.
-
-'   The Global filename characters,  or ?, are entered
-'   incorrectly or too many Global filename characters are specified.
-
-'   The signal being posted is not correct.
-
-'   The signal handler cannot be set.
-
-'   The segment is locked and cannot be reallocated.
-
-'   Too many dynamic link modules are attached to this
-'   program or dynamic link module.
-
-'   Can't nest calls to LoadModule.
-
-'   The pipe state is invalid.
-
-'   All pipe instances are busy.
-
-'   The pipe is being closed.
-
-'   No process is on the other end of the pipe.
-
-'   More data is available.
-
-'   The session was cancelled.
-
-'   The specified extended attribute name was invalid.
-
-'   The extended attributes are inconsistent.
-
-'   No more data is available.
-
-'   The Copy API cannot be used.
-
-'   The directory name is invalid.
-
-'   The extended attributes did not fit in the buffer.
-
-'   The extended attribute file on the mounted file system is corrupt.
-
-'   The extended attribute table file is full.
-
-'   The specified extended attribute handle is invalid.
-
-'   The mounted file system does not support extended attributes.
-
-'   Attempt to release mutex not owned by caller.
-
-'   Too many posts were made to a semaphore.
-
-'   The system cannot find message for message number 0x%1
-'   in message file for %2.
-
-'   Attempt to access invalid address.
-
-'   Arithmetic result exceeded 32 bits.
-
-'   There is a process on other end of the pipe.
-
-'   Waiting for a process to open the other end of the pipe.
-
-'   Access to the extended attribute was denied.
-
-'   The I/O operation has been aborted because of either a thread exit
-'   or an application request.
-
-'   Overlapped I/O event is not in a signalled state.
-
-'   Overlapped I/O operation is in progress.
-
-'   Invalid access to memory location.
-
-'   Error performing inpage operation.
-
-'   Recursion too deep, stack overflowed.
-
-'   The window cannot act on the sent message.
-
-'   Cannot complete this function.
-
-'   Invalid flags.
-
-'   The volume does not contain a recognized file system.
-'   Please make sure that all required file system drivers are loaded and that the
-'   volume is not corrupt.
-
-'   The volume for a file has been externally altered such that the
-'   opened file is no longer valid.
-
-'   The requested operation cannot be performed in full-screen mode.
-
-'   An attempt was made to reference a token that does not exist.
-
-'   The configuration registry database is corrupt.
-
-'   The configuration registry key is invalid.
-
-'   The configuration registry key could not be opened.
-
-'   The configuration registry key could not be read.
-
-'   The configuration registry key could not be written.
-
-'   One of the files in the Registry database had to be recovered
-'   by use of a log or alternate copy.  The recovery was successful.
-
-'   The Registry is corrupt. The structure of one of the files that contains
-'   Registry data is corrupt, or the system's image of the file in memory
-'   is corrupt, or the file could not be recovered because the alternate
-'   copy or log was absent or corrupt.
-
-'   An I/O operation initiated by the Registry failed unrecoverably.
-'   The Registry could not read in, or write out, or flush, one of the files
-'   that contain the system's image of the Registry.
-
-'   The system has attempted to load or restore a file into the Registry, but the
-'   specified file is not in a Registry file format.
-
-'   Illegal operation attempted on a Registry key which has been marked for deletion.
-
-'   System could not allocate the required space in a Registry log.
-
-'   Cannot create a symbolic link in a Registry key that already
-'   has subkeys or values.
-
-'   Cannot create a stable subkey under a volatile parent key.
-
-'   A notify change request is being completed and the information
-'   is not being returned in the caller's buffer. The caller now
-'   needs to enumerate the files to find the changes.
-
-'   A stop control has been sent to a service which other running services
-'   are dependent on.
-
-'   The requested control is not valid for this service
-
-'   The service did not respond to the start or control request in a timely
-'   fashion.
-
-'   A thread could not be created for the service.
-
-'   The service database is locked.
-
-'   An instance of the service is already running.
-
-'   The account name is invalid or does not exist.
-
-'   The specified service is disabled and cannot be started.
-
-'   Circular service dependency was specified.
-
-'   The specified service does not exist as an installed service.
-
-'   The service cannot accept control messages at this time.
-
-'   The service has not been started.
-
-'   The service process could not connect to the service controller.
-
-'   An exception occurred in the service when handling the control request.
-
-'   The database specified does not exist.
-
-'   The service has returned a service-specific error code.
-
-'   The process terminated unexpectedly.
-
-'   The dependency service or group failed to start.
-
-'   The service did not start due to a logon failure.
-
-'   After starting, the service hung in a start-pending state.
-
-'   The specified service database lock is invalid.
-
-'   The specified service has been marked for deletion.
-
-'   The specified service already exists.
-
-'   The system is currently running with the last-known-good configuration.
-
-'   The dependency service does not exist or has been marked for
-'   deletion.
-
-'   The current boot has already been accepted for use as the
-'   last-known-good control set.
-
-'   No attempts to start the service have been made since the last boot.
-
-'   The name is already in use as either a service name or a service display
-'   name.
-
-'   The physical end of the tape has been reached.
-
-'   A tape access reached a filemark.
-
-'   Beginning of tape or partition was encountered.
-
-'   A tape access reached the end of a set of files.
-
-'   No more data is on the tape.
-
-'   Tape could not be partitioned.
-
-'   When accessing a new tape of a multivolume partition, the current
-'   blocksize is incorrect.
-
-'   Tape partition information could not be found when loading a tape.
-
-'   Unable to lock the media eject mechanism.
-
-'   Unable to unload the media.
-
-'   Media in drive may have changed.
-
-'   The I/O bus was reset.
-
-'   No media in drive.
-
-'   No mapping for the Unicode character exists in the target multi-byte code page.
-
-'   A dynamic link library (DLL) initialization routine failed.
-
-'   A system shutdown is in progress.
-
-'   Unable to abort the system shutdown because no shutdown was in progress.
-
-'   The request could not be performed because of an I/O device error.
-
-'   No serial device was successfully initialized.  The serial driver will unload.
-
-'   Unable to open a device that was sharing an interrupt request (IRQ)
-'   with other devices. At least one other device that uses that IRQ
-'   was already opened.
-
-'   A serial I/O operation was completed by another write to the serial port.
-'   (The IOCTL_SERIAL_XOFF_COUNTER reached zero.)
-
-'   A serial I/O operation completed because the time-out period expired.
-'   (The IOCTL_SERIAL_XOFF_COUNTER did not reach zero.)
-
-'   No ID address mark was found on the floppy disk.
-
-'   Mismatch between the floppy disk sector ID field and the floppy disk
-'   controller track address.
-
-'   The floppy disk controller reported an error that is not recognized
-'   by the floppy disk driver.
-
-'   The floppy disk controller returned inconsistent results in its registers.
-
-'   While accessing the hard disk, a recalibrate operation failed, even after retries.
-
-'   While accessing the hard disk, a disk operation failed even after retries.
-
-'   While accessing the hard disk, a disk controller reset was needed, but
-'   even that failed.
-
-'   Physical end of tape encountered.
-
-'   Not enough server storage is available to process this command.
-
-'   A potential deadlock condition has been detected.
-
-'   The base address or the file offset specified does not have the proper
-'   alignment.
-
-' NEW for Win32
-
-' /////////////////////////
-'                        //
-'  Winnet32 Status Codes //
-'                        //
-' /////////////////////////
-
-'   The specified username is invalid.
-
-'   This network connection does not exist.
-
-'   This network connection has files open or requests pending.
-
-'   The device is in use by an active process and cannot be disconnected.
-
-'   The specified device name is invalid.
-
-'   The device is not currently connected but it is a remembered connection.
-
-'   An attempt was made to remember a device that had previously been remembered.
-
-'   No network provider accepted the given network path.
-
-'   The specified network provider name is invalid.
-
-'   Unable to open the network connection profile.
-
-'   The network connection profile is corrupt.
-
-'   Cannot enumerate a non-container.
-
-'   An extended error has occurred.
-
-'   The format of the specified group name is invalid.
-
-'   The format of the specified computer name is invalid.
-
-'   The format of the specified event name is invalid.
-
-'   The format of the specified domain name is invalid.
-
-'   The format of the specified service name is invalid.
-
-'   The format of the specified network name is invalid.
-
-'   The format of the specified share name is invalid.
-
-'   The format of the specified password is invalid.
-
-'   The format of the specified message name is invalid.
-
-'   The format of the specified message destination is invalid.
-
-'   The credentials supplied conflict with an existing set of credentials.
-
-'   An attempt was made to establish a session to a Lan Manager server, but there
-'   are already too many sessions established to that server.
-
-'   The workgroup or domain name is already in use by another computer on the
-'   network.
-
-'   The network is not present or not started.
-
-' /////////////////////////
-'                        //
-'  Security Status Codes //
-'                        //
-' /////////////////////////
-
-'   Not all privileges referenced are assigned to the caller.
-
-'   Some mapping between account names and security IDs was not done.
-
-'   No system quota limits are specifically set for this account.
-
-'   No encryption key is available.  A well-known encryption key was returned.
-
-'   The NT password is too complex to be converted to a LAN Manager
-'   password.  The LAN Manager password returned is a NULL string.
-
-'   The revision level is unknown.
-
-'   Indicates two revision levels are incompatible.
-
-'   This security ID may not be assigned as the owner of this object.
-
-'   This security ID may not be assigned as the primary group of an object.
-
-'   An attempt has been made to operate on an impersonation token
-'   by a thread that is not currently impersonating a client.
-
-'   The group may not be disabled.
-
-'   There are currently no logon servers available to service the logon
-'   request.
-
-'    A specified logon session does not exist.  It may already have
-'    been terminated.
-
-'    A specified privilege does not exist.
-
-'    A required privilege is not held by the client.
-
-'   The name provided is not a properly formed account name.
-
-'   The specified user already exists.
-
-'   The specified user does not exist.
-
-'   The specified group already exists.
-
-'   The specified group does not exist.
-
-'   Either the specified user account is already a member of the specified
-'   group, or the specified group cannot be deleted because it contains
-'   a member.
-
-'   The specified user account is not a member of the specified group account.
-
-'   The last remaining administration account cannot be disabled
-'   or deleted.
-
-'   Unable to update the password.  The value provided as the current
-'   password is incorrect.
-
-'   Unable to update the password.  The value provided for the new password
-'   contains values that are not allowed in passwords.
-
-'   Unable to update the password because a password update rule has been
-'   violated.
-
-'   Logon failure: unknown user name or bad password.
-
-'   Logon failure: user account restriction.
-
-'   Logon failure: account logon time restriction violation.
-
-'   Logon failure: user not allowed to log on to this computer.
-
-'   Logon failure: the specified account password has expired.
-
-'   Logon failure: account currently disabled.
-
-'   No mapping between account names and security IDs was done.
-
-'   Too many local user identifiers (LUIDs) were requested at one time.
-
-'   No more local user identifiers (LUIDs) are available.
-
-'   The subauthority part of a security ID is invalid for this particular use.
-
-'   The access control list (ACL) structure is invalid.
-
-'   The security ID structure is invalid.
-
-'   The security descriptor structure is invalid.
-
-'   The inherited access control list (ACL) or access control entry (ACE)
-'   could not be built.
-
-'   The server is currently disabled.
-
-'   The server is currently enabled.
-
-'   The value provided was an invalid value for an identifier authority.
-
-'   No more memory is available for security information updates.
-
-'   The specified attributes are invalid, or incompatible with the
-'   attributes for the group as a whole.
-
-'   Either a required impersonation level was not provided, or the
-'   provided impersonation level is invalid.
-
-'   Cannot open an anonymous level security token.
-
-'   The validation information class requested was invalid.
-
-'   The type of the token is inappropriate for its attempted use.
-
-'   Unable to perform a security operation on an object
-'   which has no associated security.
-
-'   Indicates a Windows NT Advanced Server could not be contacted or that
-'   objects within the domain are protected such that necessary
-'   information could not be retrieved.
-
-'   The security account manager (SAM) or local security
-'   authority (LSA) server was in the wrong state to perform
-'   the security operation.
-
-'   The domain was in the wrong state to perform the security operation.
-
-'   This operation is only allowed for the Primary Domain Controller of the domain.
-
-'   The specified domain did not exist.
-
-'   The specified domain already exists.
-
-'   An attempt was made to exceed the limit on the number of domains per server.
-
-'   Unable to complete the requested operation because of either a
-'   catastrophic media failure or a data structure corruption on the disk.
-
-'   The security account database contains an internal inconsistency.
-
-'   Generic access types were contained in an access mask which should
-'   already be mapped to non-generic types.
-
-'   A security descriptor is not in the right format (absolute or self-relative).
-
-'   The requested action is restricted for use by logon processes
-'   only.  The calling process has not registered as a logon process.
-
-'   Cannot start a new logon session with an ID that is already in use.
-
-'   A specified authentication package is unknown.
-
-'   The logon session is not in a state that is consistent with the
-'   requested operation.
-
-'   The logon session ID is already in use.
-
-'   A logon request contained an invalid logon type value.
-
-'   Unable to impersonate via a named pipe until data has been read
-'   from that pipe.
-
-'   The transaction state of a Registry subtree is incompatible with the
-'   requested operation.
-
-'   An internal security database corruption has been encountered.
-
-'   Cannot perform this operation on built-in accounts.
-
-'   Cannot perform this operation on this built-in special group.
-
-'   Cannot perform this operation on this built-in special user.
-
-'   The user cannot be removed from a group because the group
-'   is currently the user's primary group.
-
-'   The token is already in use as a primary token.
-
-'   The specified local group does not exist.
-
-'   The specified account name is not a member of the local group.
-
-'   The specified account name is already a member of the local group.
-
-'   The specified local group already exists.
-
-'   Logon failure: the user has not been granted the requested
-'   logon type at this computer.
-
-'   The maximum number of secrets that may be stored in a single system has been
-'   exceeded.
-
-'   The length of a secret exceeds the maximum length allowed.
-
-'   The local security authority database contains an internal inconsistency.
-
-'   During a logon attempt, the user's security context accumulated too many
-'   security IDs.
-
-'   Logon failure: the user has not been granted the requested logon type
-'   at this computer.
-
-'   A cross-encrypted password is necessary to change a user password.
-
-'   A new member could not be added to a local group because the member does
-'   not exist.
-
-'   A new member could not be added to a local group because the member has the
-'   wrong account type.
-
-'   Too many security IDs have been specified.
-
-'   A cross-encrypted password is necessary to change this user password.
-
-'   Indicates an ACL contains no inheritable components
-
-'   The file or directory is corrupt and non-readable.
-
-'   The disk structure is corrupt and non-readable.
-
-'   There is no user session key for the specified logon session.
-
-'  End of security error codes
-
-' /////////////////////////
-'                        //
-'  WinUser Error Codes   //
-'                        //
-' /////////////////////////
-
-'   Invalid window handle.
-
-'   Invalid menu handle.
-
-'   Invalid cursor handle.
-
-'   Invalid accelerator table handle.
-
-'   Invalid hook handle.
-
-'   Invalid handle to a multiple-window position structure.
-
-'   Cannot create a top-level child window.
-
-'   Cannot find window class.
-
-'   Invalid window, belongs to other thread.
-
-'   Hot key is already registered.
-
-'   Class already exists.
-
-'   Class does not exist.
-
-'   Class still has open windows.
-
-'   Invalid index.
-
-'   Invalid icon handle.
-
-'   Using private DIALOG window words.
-
-'   The listbox identifier was not found.
-
-'   No wildcards were found.
-
-'   Thread does not have a clipboard open.
-
-'   Hot key is not registered.
-
-'   The window is not a valid dialog window.
-
-'   Control ID not found.
-
-'   Invalid message for a combo box because it does not have an edit control.
-
-'   The window is not a combo box.
-
-'   Height must be less than 256.
-
-'   Invalid device context (DC) handle.
-
-'   Invalid hook procedure type.
-
-'   Invalid hook procedure.
-
-'   Cannot set non-local hook without a module handle.
-
-'   This hook procedure can only be set Globally.
-'
-
-'   The journal hook procedure is already installed.
-
-'   The hook procedure is not installed.
-
-'   Invalid message for single-selection listbox.
-
-'   LB_SETCOUNT sent to non-lazy listbox.
-
-'   This list box does not support tab stops.
-
-'   Cannot destroy object created by another thread.
-
-'   Child windows cannot have menus.
-
-'   The window does not have a system menu.
-
-'   Invalid message box style.
-
-'   Invalid system-wide (SPI_) parameter.
-
-'   Screen already locked.
-
-'   All handles to windows in a multiple-window position structure must
-'   have the same parent.
-
-'   The window is not a child window.
-
-'   Invalid GW_ command.
-
-'   Invalid thread identifier.
-
-'   Cannot process a message from a window that is not a multiple document
-'   interface (MDI) window.
-
-'   Popup menu already active.
-
-'   The window does not have scroll bars.
-
-'   Scroll bar range cannot be greater than 0x7FFF.
-
-'   Cannot show or remove the window in the way specified.
-
-'  End of WinUser error codes
-
-' /////////////////////////
-'                        //
-'  Eventlog Status Codes //
-'                        //
-' /////////////////////////
-
-'   The event log file is corrupt.
-
-'   No event log file could be opened, so the event logging service did not start.
-
-'   The event log file is full.
-
-'   The event log file has changed between reads.
-
-'  End of eventlog error codes
-
-' /////////////////////////
-'                        //
-'    RPC Status Codes    //
-'                        //
-' /////////////////////////
-
-'   The string binding is invalid.
-
-'   The binding handle is not the correct type.
-
-'   The binding handle is invalid.
-
-'   The RPC protocol sequence is not supported.
-
-'   The RPC protocol sequence is invalid.
-
-'   The string universal unique identifier (UUID) is invalid.
-
-'   The endpoint format is invalid.
-
-'   The network address is invalid.
-
-'   No endpoint was found.
-
-'   The timeout value is invalid.
-
-'   The object universal unique identifier (UUID) was not found.
-
-'   The object universal unique identifier (UUID) has already been registered.
-
-'   The type universal unique identifier (UUID) has already been registered.
-
-'   The RPC server is already listening.
-
-'   No protocol sequences have been registered.
-
-'   The RPC server is not listening.
-
-'   The manager type is unknown.
-
-'   The interface is unknown.
-
-'   There are no bindings.
-
-'   There are no protocol sequences.
-
-'   The endpoint cannot be created.
-
-'   Not enough resources are available to complete this operation.
-
-'   The RPC server is unavailable.
-
-'   The RPC server is too busy to complete this operation.
-
-'   The network options are invalid.
-
-'   There is not a remote procedure call active in this thread.
-
-'   The remote procedure call failed.
-
-'   The remote procedure call failed and did not execute.
-
-'   A remote procedure call (RPC) protocol error occurred.
-
-'   The transfer syntax is not supported by the RPC server.
-
-'   The universal unique identifier (UUID) type is not supported.
-
-'   The tag is invalid.
-
-'   The array bounds are invalid.
-
-'   The binding does not contain an entry name.
-
-'   The name syntax is invalid.
-
-'   The name syntax is not supported.
-
-'   No network address is available to use to construct a universal
-'   unique identifier (UUID).
-
-'   The endpoint is a duplicate.
-
-'   The authentication type is unknown.
-
-'   The maximum number of calls is too small.
-
-'   The string is too long.
-
-'   The RPC protocol sequence was not found.
-
-'   The procedure number is out of range.
-
-'   The binding does not contain any authentication information.
-
-'   The authentication service is unknown.
-
-'   The authentication level is unknown.
-
-'   The security context is invalid.
-
-'   The authorization service is unknown.
-
-'   The entry is invalid.
-
-'   The server endpoint cannot perform the operation.
-
-'   There are no more endpoints available from the endpoint mapper.
-
-'   No interfaces have been exported.
-
-'   The entry name is incomplete.
-
-'   The version option is invalid.
-
-'   There are no more members.
-
-'   There is nothing to unexport.
-
-'   The interface was not found.
-
-'   The entry already exists.
-
-'   The entry is not found.
-
-'   The name service is unavailable.
-
-'   The network address family is invalid.
-
-'   The requested operation is not supported.
-
-'   No security context is available to allow impersonation.
-
-'   An internal error occurred in a remote procedure call (RPC).
-
-'   The RPC server attempted an integer division by zero.'
-
-'   An addressing error occurred in the RPC server.
-
-'   A floating-point operation at the RPC server caused a division by zero.
-
-'   A floating-point underflow occurred at the RPC server.
-
-'   A floating-point overflow occurred at the RPC server.
-
-'   The list of RPC servers available for the binding of auto handles
-'   has been exhausted.
-
-'   Unable to open the character translation table file.
-
-'   The file containing the character translation table has fewer than
-'   512 bytes.
-
-'   A null context handle was passed from the client to the host during
-'   a remote procedure call.
-
-'   The context handle changed during a remote procedure call.
-
-'   The binding handles passed to a remote procedure call do not match.
-
-'   The stub is unable to get the remote procedure call handle.
-
-'   A null reference pointer was passed to the stub.
-
-'   The enumeration value is out of range.
-
-'   The byte count is too small.
-
-'   The stub received bad data.
-
-'   The supplied user buffer is not valid for the requested operation.
-
-'   The disk media is not recognized.  It may not be formatted.
-
-'   The workstation does not have a trust secret.
-
-'   The SAM database on the Windows NT Advanced Server does not have a computer
-'   account for this workstation trust relationship.
-
-'   The trust relationship between the primary domain and the trusted
-'   domain failed.
-
-'   The trust relationship between this workstation and the primary
-'   domain failed.
-
-'   The network logon failed.
-
-'   A remote procedure call is already in progress for this thread.
-
-'   An attempt was made to logon, but the network logon service was not started.
-
-'   The user's account has expired.
-
-'   The redirector is in use and cannot be unloaded.
-
-'   The specified printer driver is already installed.
-
-'   The specified port is unknown.
-
-'   The printer driver is unknown.
-
-'   The print processor is unknown.
-'
-
-'   The specified separator file is invalid.
-
-'   The specified priority is invalid.
-
-'   The printer name is invalid.
-
-'   The printer already exists.
-
-'   The printer command is invalid.
-
-'   The specified datatype is invalid.
-
-'   The Environment specified is invalid.
-
-'   There are no more bindings.
-
-'   The account used is an interdomain trust account.  Use your Global user account or local user account to access this server.
-
-'   The account used is a Computer Account.  Use your Global user account or local user account to access this server.
-
-'   The account used is an server trust account.  Use your Global user account or local user account to access this server.
-
-'   The name or security ID (SID) of the domain specified is inconsistent
-'   with the trust information for that domain.
-
-'   The server is in use and cannot be unloaded.
-
-'   The specified image file did not contain a resource section.
-
-'   The specified resource type can not be found in the image file.
-
-'   The specified resource name can not be found in the image file.
-
-'   The specified resource language ID cannot be found in the image file.
-
-'   Not enough quota is available to process this command.
-
-'   The group member was not found.
-
-'   The endpoint mapper database could not be created.
-
-'   The object universal unique identifier (UUID) is the nil UUID.
-
-'   The specified time is invalid.
-
-'   The specified Form name is invalid.
-
-'   The specified Form size is invalid
-
-'   The specified Printer handle is already being waited on
-
-'   The specified Printer has been deleted
-
-'   The state of the Printer is invalid
-
-'   The list of servers for this workgroup is not currently available
-
-' -------------------------
-'  MMSystem Section
-' -------------------------
-
-' This section defines all the support for Multimedia applications
-
-'  general constants
-
-'  values for wType field in MMTIME struct
-
-'  Multimedia Window Messages
-
-' String resource number bases (internal use)
-
-                                    '  alter the MCI_DEVTYPE_... list below
-
-' General error return values
-                                                   '  simultaneously on another
-                                                   '  thread (eg callback)
-
-'  Type codes which go in the high byte of the event DWORD of a stream buffer
-
-'  Type codes 00-7F contain parameters within the low 24 bits
-'  Type codes 80-FF contain a length of their parameter in the low 24
-'  bits, followed by their parameter data in the buffer. The event
-'  DWORD contains the exact byte length; the parm data itself must be
-'  padded to be an even multiple of 4 Byte long.
-'
-
-'
-'  Structures and defines for midiStreamProperty
-'
-
-'  These are intentionally both non-zero so the app cannot accidentally
-'  leave the operation off and happen to appear to work due to default
-'  action.
-
-'  MIDI function prototypes *
-
-' ***************************************************************************
-
-'                             Mixer Support
-
-' **************************************************************************
-
-'
-'   MMRESULT error return values specific to the mixer API
-'
-'
-
-'   MIXERLINE.fdwLine
-
-'   MIXERLINE.dwComponentType
-
-'   component types for destinations and sources
-
-'
-'   MIXERLINE.Target.dwType
-'
-'
-
-'   MIXERCONTROL
-
-'
-'   MIXERCONTROL.fdwControl
-
-'   MIXERCONTROL_CONTROLTYPE_xxx building block defines
-
-'
-'   Commonly used control types for specifying MIXERCONTROL.dwControlType
-'
-'
-'   MIXERLINECONTROLS
-'
-
-'   MIXER_GETCONTROLDETAILSF_LISTTEXT
-
-'   MIXER_GETCONTROLDETAILSF_VALUE
-
-'  constants used with JOYINFOEX
-
-'  constants used with JOYINFOEX structure
-
-'  joystick error return values
-
-'  constants used with JOYINFO structure and MM_JOY messages
-
-'  joystick ID constants
-
-' Installable driver support
-
-' Driver messages
-
-' Supported return values for DRV_CONFIGURE message
-
-'  return values from DriverProc() function
-
-' Driver callback support
-
-'  flags used with waveOutOpen(), waveInOpen(), midiInOpen(), and
-'  midiOutOpen() to specify the type of the dwCallback parameter.
-
-'  manufacturer IDs
-
-'  product IDs
-
-'  flag values for uFlags parameter
-
-                                    '  this range will raise an error
-
-'  waveform audio error return values
-
-'  wave callback messages
-
-'  device ID for wave device mapper
-
-'  flags for dwFlags parameter in waveOutOpen() and waveInOpen()
-
-'  flags for dwFlags field of WAVEHDR
-
-'  flags for dwSupport field of WAVEOUTCAPS
-
-'  defines for dwFormat field of WAVEINCAPS and WAVEOUTCAPS
-
-'  flags for wFormatTag field of WAVEFORMAT
-
-'  MIDI error return values
-
-'  MIDI callback messages
-
-'  device ID for MIDI mapper
-
-'  flags for wFlags parm of midiOutCachePatches(), midiOutCacheDrumPatches()
-
-'  flags for wTechnology field of MIDIOUTCAPS structure
-
-'  flags for dwSupport field of MIDIOUTCAPS
-
-'  flags for dwFlags field of MIDIHDR structure
-
-'  flags for dwFlags parm of midiInOpen()
-
-'  device ID for aux device mapper
-
-'  flags for wTechnology field in AUXCAPS structure
-
-'  flags for dwSupport field in AUXCAPS structure
-
-'  timer error return values
-
-'  flags for wFlags parameter of timeSetEvent() function
-
-'  MMIO error return values
-
-'  MMIO constants
-
-                                        '  file for reading/writing/both
-
-'  constants for dwFlags field of MMIOINFO
-
-'  MMIO_DIRTY is also used in the <dwFlags> field of MMCKINFO structure
-
-'  read/write mode numbers (bit field MMIO_RWMODE)
-
-'  share mode numbers (bit field MMIO_SHAREMODE)
-
-'  flags for other functions
-
-'  message numbers for MMIOPROC I/O procedure functions
-
-'  flags for mmioSeek()
-
-'  other constants
 
 ' MCI functions
 
 Declare Function mciSendCdaudio Lib "winmm.dll" Alias "mciSendStringA" (lpstrCommand As String, lpstrReturnString As long, uReturnLength As Long, hwndCallback As Long) As Long
 Declare Function mciGetErrorCdaudio Lib "winmm.dll" Alias "mciGetErrorStringA" (dwError As Long,Byref lpstrBuffer As String,uLength As Long) As Long
-
-'   MCI error return values
-
-'  All custom device driver errors must be >= this value
-
-'  Message numbers must be in the range between MCI_FIRST and MCI_LAST
-
-'  Messages 0x801 and 0x802 are reserved
-
-'  the next 0x400 message ID's are reserved for custom drivers
-'  all custom MCI command messages must be >= than this value
-
-'  constants for predefined MCI device types
-
-'  return values for 'status mode' command
-
-'  constants used in 'set time format' and 'status time format' commands
-
-'  Flags for wParam of the MM_MCINOTIFY message
-
-'  common flags for dwFlags parameter of MCI command messages
-
-'  flags for dwFlags parameter of MCI_OPEN command message
-
-'  flags for dwFlags parameter of MCI_SEEK command message
-
-'  flags for dwFlags parameter of MCI_STATUS command message
-
-'  flags for dwItem field of the MCI_STATUS_PARMS parameter block
-
-'  flags for dwFlags parameter of MCI_INFO command message
-
-'  flags for dwFlags parameter of MCI_GETDEVCAPS command message
-
-'  flags for dwItem field of the MCI_GETDEVCAPS_PARMS parameter block
-
-'  flags for dwFlags parameter of MCI_SYSINFO command message
-
-'  flags for dwFlags parameter of MCI_SET command message
-
-'  flags for dwAudio field of MCI_SET_PARMS or MCI_SEQ_SET_PARMS
-
-'  flags for dwFlags parameter of MCI_BREAK command message
-
-'  flags for dwFlags parameter of MCI_RECORD command message
-
-'  flags for dwFlags parameter of MCI_SOUND command message
-
-'  flags for dwFlags parameter of MCI_SAVE command message
-
-'  flags for dwFlags parameter of MCI_LOAD command message
-
-'  return ID's for videodisc MCI_GETDEVCAPS command
-
-'  flag for dwReturn field of MCI_STATUS_PARMS
-'  MCI_STATUS command, (dwItem == MCI_VD_STATUS_MEDIA_TYPE)
-
-'  flags for dwFlags parameter of MCI_PLAY command message
-
-'  flag for dwFlags parameter of MCI_SEEK command message
-
-'  flags for dwItem field of MCI_STATUS_PARMS parameter block
-
-'  flags for dwFlags parameter of MCI_GETDEVCAPS command message
-
-'  flags for dwItem field of MCI_GETDEVCAPS_PARMS parameter block
-
-'  flags for the dwFlags parameter of MCI_STEP command message
-
-'  flag for the MCI_ESCAPE command message
-
-'  flags for the dwFlags parameter of MCI_OPEN command message
-
-'  flags for the dwFlags parameter of MCI_SET command message
-
-'  flags for the dwFlags parameter of MCI_STATUS, MCI_SET command messages
-
-'  flags for the dwItem field of MCI_STATUS_PARMS parameter block
-
-'  flags for the dwFlags parameter of MCI_SET command message
-
-'  flags for the dwFlags parameter of MCI_GETDEVCAPS command message
-
-'  flags for the dwReturn field of MCI_STATUS_PARMS parameter block
-'  MCI_STATUS command, (dwItem == MCI_SEQ_STATUS_DIVTYPE)
-
-'  flags for the dwMaster field of MCI_SEQ_SET_PARMS parameter block
-'  MCI_SET command, (dwFlags == MCI_SEQ_SET_MASTER)
-
-'  flags for the dwItem field of MCI_STATUS_PARMS parameter block
-
-'  flags for the dwFlags parameter of MCI_SET command message
-
-'  flags for dwFlags parameter of MCI_OPEN command message
-
-'  flags for dwFlags parameter of MCI_PLAY command message
-
-'  flags for dwFlags parameter of MCI_STEP command message
-
-'  flags for dwItem field of MCI_STATUS_PARMS parameter block
-
-'  flags for the dwFlags parameter of MCI_INFO command message
-
-'  flags for dwItem field of MCI_GETDEVCAPS_PARMS parameter block
-
-'  flags for the MCI_REALIZE command message
-
-'  flags for dwFlags parameter of MCI_WINDOW command message
-
-'  flags for hWnd field of MCI_ANIM_WINDOW_PARMS parameter block
-'  MCI_WINDOW command message, (dwFlags == MCI_ANIM_WINDOW_HWND)
-
-'  flags for dwFlags parameter of MCI_PUT command message
-
-'  flags for dwFlags parameter of MCI_WHERE command message
-
-'  flags for dwFlags parameter of MCI_UPDATE command message
-
-'  flags for dwFlags parameter of MCI_OPEN command message
-
-'  flags for dwFlags parameter of MCI_STATUS command message
-
-'  flags for dwFlags parameter of MCI_INFO command message
-
-'  flags for dwItem field of MCI_GETDEVCAPS_PARMS parameter block
-
-'  flags for dwFlags parameter of MCI_WINDOW command message
-
-'  flags for hWnd parameter of MCI_OVLY_WINDOW_PARMS parameter block
-
-'  flags for dwFlags parameter of MCI_PUT command message
-
-'  flags for dwFlags parameter of MCI_WHERE command message
-
-' ----------------
-' shell association database management functions
-' -----------------
-
-'  error values for ShellExecute() beyond the regular WinExec() codes
-
-' -------------
-' Print APIs
-' -------------
-
-' Access rights for print servers
-
-' Access rights for printers
-
-' Access rights for jobs
-
-'  Windows Network support
-
-'  RESOURCE ENUMERATION
-
-' Status Codes
-
-' This section is provided for backward compatibility.  Use of the ERROR_
-' codes is preferred.  The WN_ error codes may not be available in future
-' releases.
-
-' General
-
-' Connection
-
-' Enumeration
-
-' This section contains the definitions
-' for portable NetBIOS 3.0 support.
-
-' values for name_flags bits.
-
-' Values for state
-
-' Values for transport_id
-
-' NCB Command codes
-
-' NCB Return codes
-                                '  also returned when ASYNCH request accepted
-
-' Legal values for expression in except().
-
-' UI dialog constants and types
-
-' ----Constants--------------------------------------------------------------
-    '  Push buttons
-    '  Checkboxes
-    '  Radio buttons
-    '  Groups, frames, rectangles, and icons
-    '  Static text
-    '  Listboxes
-    '  Combo boxes
-    '  Edit controls
-    '  Scroll bars
-
-' -----------------
-' ADVAPI32
-' -----------------
-
-' function prototypes, constants, and type definitions
-' for Windows 32-bit Registry API
-
-' Registry API prototypes
-
-' Service database names
-
-' Value to indicate no change to an optional parameter
-
-' Service State -- for Enum Requests (Bit Mask)
-
-' Controls
-
-' Service State -- for CurrentState
-
-' Controls Accepted  (Bit Mask)
-
-' Service Control Manager object specific access types
-
-' Service object specific access type
-
-' ++ BUILD Version: 0010    '  Increment this if a change has global effects
-' Copyright (c) 1995  Microsoft Corporation
-' Module Name:
-'     winsvc.h
-' Abstract:
-'     Header file for the Service Control Manager
-' Environment:
-'     User Mode - Win32
-' --*/
-'
-'  Constants
-
-'  Character to designate that a name is a group
-'
 
 '  Prototype for the Service Control Handler Function
 
@@ -38956,272 +34714,6 @@ Declare Function mciGetErrorCdaudio Lib "winmm.dll" Alias "mciGetErrorStringA" (
 
 Declare Function RegisterServiceProcess Lib "kernel32.dll" Alias "RegisterServiceProcess" (ByVal dwProcessID As Long, ByVal dwType As Long) As Long
 
-' Section for Performance Monitor data
-
-' The counter type is the "or" of the following values as described below
-'
-' select one of the following to indicate the counter's data size
-
-' select one of the following values to indicate the counter field usage
-
-' If the PERF_TYPE_NUMBER field was selected, then select one of the
-' following to describe the Number
-'
-' If the PERF_TYPE_COUNTER value was selected then select one of the
-' following to indicate the type of counter
-
-' If the PERF_TYPE_TEXT value was selected, then select one of the
-' following to indicate the type of TEXT data.
-
-' Timer SubTypes
-
-' Any types that have calculations performed can use one or more of
-' the following calculation modification flags listed here
-
-' Select one of the following values to indicate the display suffix (if any)
-
-' Predefined counter types
-
-' 32-bit Counter.  Divide delta by delta time.  Display suffix: "/sec"
-
-' 64-bit Timer.  Divide delta by delta time.  Display suffix: "%"
-
-' Queue Length Space-Time Product. Divide delta by delta time. No Display Suffix.
-
-' 64-bit Counter.  Divide delta by delta time. Display Suffix: "/sec"
-
-' Indicates the counter is not a  counter but rather Unicode text Display as text.
-
-' Indicates the data is a counter  which should not be
-' time averaged on display (such as an error counter on a serial line)
-' Display as is.  No Display Suffix.
-
-' A count which is either 1 or 0 on each sampling interrupt (% busy)
-' Divide delta by delta base. Display Suffix: "%"
-
-' A count which is sampled on each sampling interrupt (queue length)
-' Divide delta by delta time. No Display Suffix.
-
-' A label: no data is associated with this counter (it has 0 length)
-' Do not display.
-
-' 64-bit Timer inverse (e.g., idle is measured, but display busy  As Integer)
-' Display 100 - delta divided by delta time.  Display suffix: "%"
-
-' The divisor for a sample, used with the previous counter to form a
-' sampled %.  You must check for >0 before dividing by this!  This
-' counter will directly follow the  numerator counter.  It should not
-' be displayed to the user.
-
-' A timer which, when divided by an average base, produces a time
-' in seconds which is the average time of some operation.  This
-' timer times total operations, and  the base is the number of opera-
-' tions.  Display Suffix: "sec"
-
-' Used as the denominator in the computation of time or count
-' averages.  Must directly follow the numerator counter.  Not dis-
-' played to the user.
-
-' A bulk count which, when divided (typically) by the number of
-' operations, gives (typically) the number of bytes per operation.
-' No Display Suffix.
-
-' 64-bit Timer in 100 nsec units. Display delta divided by
-' delta time.  Display suffix: "%"
-
-' 64-bit Timer inverse (e.g., idle is measured, but display busy  As Integer)
-' Display 100 - delta divided by delta time.  Display suffix: "%"
-
-' 64-bit Timer.  Divide delta by delta time.  Display suffix: "%"
-' Timer for multiple instances, so result can exceed 100%.
-
-' 64-bit Timer inverse (e.g., idle is measured, but display busy  As Integer)
-' Display 100  _MULTI_BASE - delta divided by delta time.
-' Display suffix: "%" Timer for multiple instances, so result
-' can exceed 100%.  Followed by a counter of type _MULTI_BASE.
-
-' Number of instances to which the preceding _MULTI_..._INV counter
-' applies.  Used as a factor to get the percentage.
-
-' 64-bit Timer in 100 nsec units. Display delta divided by delta time.
-' Display suffix: "%" Timer for multiple instances, so result can exceed 100%.
-
-' 64-bit Timer inverse (e.g., idle is measured, but display busy  As Integer)
-' Display 100  _MULTI_BASE - delta divided by delta time.
-' Display suffix: "%" Timer for multiple instances, so result
-' can exceed 100%.  Followed by a counter of type _MULTI_BASE.
-
-' Indicates the data is a fraction of the following counter  which
-' should not be time averaged on display (such as free space over
-' total space.) Display as is.  Display the quotient as "%".
-
-' Indicates the data is a base for the preceding counter which should
-' not be time averaged on display (such as free space over total space.)
-
-' The data collected in this counter is actually the start time of the
-' item being measured. For display, this data is subtracted from the
-' sample time to yield the elapsed time as the difference between the two.
-' In the definition below, the PerfTime field of the Object contains
-' the sample time as indicated by the PERF_OBJECT_TIMER bit and the
-' difference is scaled by the PerfFreq of the Object to convert the time
-' units into seconds.
-
-' The following counter type can be used with the preceding types to
-' define a range of values to be displayed in a histogram.
-
-' The following are used to determine the level of detail associated
-' with the counter.  The user will be setting the level of detail
-' that should be displayed at any given time.
-
-' public interface to LZEXP?.LIB
-
-'  LZEXPAND error return codes
-
-' ********************************************************************
-'       IMM.H - Input Method Manager definitions
-'
-'       Copyright (c) 1993-1995  Microsoft Corporation
-' ********************************************************************
-
-'  prototype of IMM API
-
-'  the IME related messages
-
-'  wParam for WM_IME_CONTROL
-
-'  wParam for WM_IME_CONTROL to the soft keyboard
-'  dwAction for ImmNotifyIME
-
-'  lParam for WM_IME_SETCONTEXT
-
-'  dwIndex for ImmNotifyIME/NI_COMPOSITIONSTR
-
-'  Windows for Simplified Chinese Edition hot key ID from 0x10 - 0x2F
-
-'  Windows for Japanese Edition hot key ID from 0x30 - 0x4F
-
-'  Windows for Korean Edition hot key ID from 0x50 - 0x6F
-
-'  Windows for Tranditional Chinese Edition hot key ID from 0x70 - 0x8F
-
-'  direct switch hot key ID from 0x100 - 0x11F
-
-'  IME private hot key from 0x200 - 0x21F
-
-'  parameter of ImmGetCompositionString
-
-'  style bit flags for WM_IME_COMPOSITION
-
-'  bits of fdwInit of INPUTCONTEXT
-'  IME property bits
-
-'  IME UICapability bits
-
-'  ImmSetCompositionString Capability bits
-
-'  IME WM_IME_SELECT inheritance Capability bits
-
-'  ID for deIndex of ImmGetGuideLine
-
-'  ID for dwLevel of GUIDELINE Structure
-
-'  ID for dwIndex of GUIDELINE Structure
-
-'  ID for dwIndex of ImmGetProperty
-
-'  dwIndex for ImmSetCompositionString API
-
-'  attribute for COMPOSITIONSTRING Structure
-
-'  bit field for IMC_SETCOMPOSITIONWINDOW, IMC_SETCANDIDATEWINDOW
-
-'  conversion direction for ImmGetConversionList
-
-'  bit field for conversion mode
-
-'  style of candidate
-
-'  wParam of report message WM_IME_NOTIFY
-
-'  error code of ImmGetCompositionString
-
-'  dialog mode of ImmConfigureIME
-
-'  dialog mode of ImmEscape
-
-'  style of word registration
-
-'  type of soft keyboard
-'  for Windows Tranditional Chinese Edition
-'  for Windows Simplified Chinese Edition
-
-' ***********************************************************************
-' *                                                                       *
-' *   mcx.h -- This module defines the 32-Bit Windows MCX APIs            *
-' *                                                                       *
-' *   Copyright (c) 1990-1995, Microsoft Corp. All rights reserved.       *
-' *                                                                       *
-' ************************************************************************/
-
-'  Dial Options
-
-'  SpeakerVolume for MODEMDEVCAPS
-
-'  SpeakerVolume for MODEMSETTINGS
-
-'  SpeakerMode for MODEMDEVCAPS
-
-'  SpeakerMode for MODEMSETTINGS
-
-'  Modem Options
-
-' *****************************************************************************                                                                             *
-' * shellapi.h -  SHELL.DLL functions, types, and definitions                   *
-' *                                                                             *
-' * Copyright (c) 1992-1995, Microsoft Corp.  All rights reserved               *
-' *                                                                             *
-' \*****************************************************************************/
-
-' // AppBar stuff
-
-                                        '  lParam = TRUE/FALSE  Set/Unset
-                                        '  uEdge = what edge
-
-'  these are put in the wparam of callback messages
-
-'  flags for get state
-
-' //  EndAppBar
-
-' // Shell File Operations
-
-                                      '  Must be freed using SHFreeNameMappings
-
-                                '  if this id is set, the strings received by
-                                '  the copyhook are a doubly-null terminated
-                                '  list of strings.  The first is the printer
-                                '  name and the second is the printer port.
-
-'  no POF_ flags currently defined
-
-'  implicit parameters are:
-'       if pFrom or pTo are unqualified names the current directories are
-'       taken from the global current drive/directory settings managed
-'       by Get/SetCurrentDrive/Directory
-'
-'       the global confirmation settings
-
-' // End Shell File Operations
-
-' //  Begin ShellExecuteEx and family
-
-'  ShellExecute() and ShellExecuteEx() error codes
-
-'  regular WinExec() codes
-
-'  Note CLASSKEY overrides CLASSNAME
-'  Note INVOKEIDLIST overrides IDLIST
-
 ' //  End ShellExecuteEx and family
 
 ' // Tray notification definitions
@@ -39229,135 +34721,6 @@ Declare Function RegisterServiceProcess Lib "kernel32.dll" Alias "RegisterServic
 CONST NIM_MESSAGE=1
 CONST NIM_ICON=2
 CONST NIM_TIP=4
-
-' // End Tray Notification Icons
-
-' // Begin SHGetFileInfo
-
-'  * The SHGetFileInfo API provides an easy way to get attributes
-'  * for a file given a pathname.
-'  *
-'  *   PARAMETERS
-'  *
-'  *     pszPath              file name to get info about
-'  *     dwFileAttributes     file attribs, only used with SHGFI_USEFILEATTRIBUTES
-'  *     psfi                 place to return file info
-'  *     cbFileInfo           size of structure
-'  *     uFlags               flags
-'  *
-'  *   RETURN
-'  *     TRUE if things worked
-'  */
-
-'recycle bin
-'
-'SHEmptyRecycleBin()
-	'SHQuerryRecycleBin() should be called first, but this kinda works
-
-'SHQueryRecycleBin()
-	'This hasn't been adapted yet. NT (which I run) uses SIDs to control folder names :(
-
-' // End SHGetFileInfo
-
-' Copyright (C) 1993 - 1995 Microsoft Corporation
-
-' Module Name:
-
-'     winperf.h
-
-' Abstract:
-
-'     Header file for the Performance Monitor data.
-
-'     This file contains the definitions of the data structures returned
-'     by the Configuration Registry in response to a request for
-'     performance data.  This file is used by both the Configuration
-'     Registry and the Performance Monitor to define their interface.
-'     The complete interface is described here, except for the name
-'     of the node to query in the registry.  It is
-
-'                    HKEY_PERFORMANCE_DATA.
-
-'     By querying that node with a subkey of "Global" the caller will
-'     retrieve the structures described here.
-
-'     There is no need to RegOpenKey() the reserved handle HKEY_PERFORMANCE_DATA,
-'     but the caller should RegCloseKey() the handle so that network transports
-'     and drivers can be removed or installed (which cannot happen while
-'     they are open for monitoring.)  Remote requests must first
-'     RegConnectRegistry().
-
-' --*/
-
-'   Data structure definitions.
-
-'   In order for data to be returned through the Configuration Registry
-'   in a system-independent fashion, it must be self-describing.
-
-'   In the following, all offsets are in bytes.
-
-'
-'   Data is returned through the Configuration Registry in a
-'   a data block which begins with a _PERF_DATA_BLOCK structure.
-'
-
-'   The _PERF_DATA_BLOCK structure is followed by NumObjectTypes of
-'   data sections, one for each type of object measured.  Each object
-'   type section begins with a _PERF_OBJECT_TYPE structure.
-
-' *****************************************************************************                                                                             *
-' * winver.h -    Version management functions, types, and definitions          *
-' *                                                                             *
-' *               Include file for VER.DLL.  This library is                    *
-' *               designed to allow version stamping of Windows executable files*
-' *               and of special .VER files for DOS executable files.           *
-' *                                                                             *
-' *               Copyright (c) 1993, Microsoft Corp.  All rights reserved      *
-' *                                                                             *
-' \*****************************************************************************/
-
-'  ----- Symbols -----
-
-'  ----- VS_VERSION.dwFileFlags -----
-
-'  ----- VS_VERSION.dwFileFlags -----
-
-'  ----- VS_VERSION.dwFileOS -----
-
-'  ----- VS_VERSION.dwFileType -----
-
-'  ----- VS_VERSION.dwFileSubtype for VFT_WINDOWS_DRV -----
-
-'  ----- VS_VERSION.dwFileSubtype for VFT_WINDOWS_FONT -----
-
-'  ----- VerFindFile() flags -----
-
-'  ----- VerInstallFile() flags -----
-
-'  ----- Types and structures -----
-
-'  ----- Function prototypes -----
-
-'  Returns size of version info in Bytes
-
-'  Read version info into buffer
-' /* Length of buffer for info *
-' /* Information from GetFileVersionSize *
-' /* Filename of version stamped file *
-
-' ***********************************************************************
-' *                                                                       *
-' *   winbase.h -- This module defines the 32-Bit Windows Base APIs       *
-' *                                                                       *
-' *   Copyright (c) 1990-1995, Microsoft Corp. All rights reserved.       *
-' *                                                                       *
-' ************************************************************************/
-
-'  Define API decoration for direct importing of DLL references.
-
-'  GetBinaryType return values.
-
-'  Logon Support APIs
 
 '  Performance counter API's
 '
@@ -39375,9 +34738,6 @@ Type OSVERSIONINFOEX
         wProductType As BYTE
         wReserved As BYTE
 End Type
-
-'  dwPlatformId defines:
-'
 
 ' wSuiteMask defines:
 '
@@ -39423,14 +34783,6 @@ Public Const VER_NT_WORKSTATION = &H0000001
 Public Const VER_NT_DOMAIN_CONTROLLER = &H0000002
 Public Const VER_NT_SERVER = &H0000003
 
-'  Power Management APIs
-
-' *   commdlg.h -- This module defines the 32-Bit Common Dialog APIs      *
-
-'Flags for CHOOSECOLOR.Flags (see QColorDialog box)
-
-'Error codes from CommDlgExtendedError
-
 '------ AlphaBlending  with microsoft imaging dll -----
 '----
 
@@ -39440,10 +34792,6 @@ Type BLENDFUNCTION
   SourceConstantAlpha As Byte
   AlphaFormat 	As Byte
 End Type
-
-'DrawIconEx conststants
-
-'DrawEdge Constants
 
 ' For diagonal lines, the BF_RECT flags specify the end point of
 ' the vector bounded by the rectangle parameter.
@@ -39493,23 +34841,6 @@ $ENDIF '__WIN32API
 '============================================================================
 '[build_inc] WinMM.Inc
 '============================================================================
-'WinMM.DLL Functions
-'FILE ADDED: Release Version 1
-'FILE UPDATED: Release Version 1
-
-'Adapted for RapidQ by Bryn Mosher (bdmnky@hotmail.com)
-'WIN32API RapidQ $Includes
-'Home page - http://home.pacbell.net/brynm/
-'RapidQ - http://www.basicguru.com/abc/rapidq/
-
-'MCIGetERrorString()
-
-'MCSSendString()
-
-'TimeGetTime()
-	'Gets time since system started
-	'EXAMPLE:
-		'ShowMessage ( "Seconds since boot up: " + Str$(TimeGetTime)
 
 '[build_inc] (дальше снова WindowsAPI.inc)
 
@@ -40365,6 +35696,7 @@ function DownLoadURL (sUrl as string, dFileName as string) as long
   defint sBufferSize=2048
   filetxt$=""
 
+  'Create a buffer for the file we're going to download
   sBuffer = Space$(sBufferSize)+"<<<" ' inc2026: Space$ вместо Space: в RapidQ есть только SPACE$ (indexa.html); в документации только SPACE$
 
   'Create an internet connection
@@ -42640,8 +37972,6 @@ FUNCTION WindowProc '(ByVal hwnd AS Long, ByVal uMsg AS Long,ByVal wParam AS Lon
 			Else
 				WindowProc = CallWindowProc(PrevProc, hwnd, uMsg, wParam, lParam)
 			End If
-			' If we don't catch this the controlbox area
-            ' will show an ugly flicker.
 			'GetWindowRect(hWnd, r_Skin)
 			'dc_Skin = GetWindowDC(hWnd)
             'Select Case HtPlus
