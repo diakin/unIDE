@@ -1247,6 +1247,8 @@
 
 ## Директивы, на которые стоит посмотреть
 
+- pulsar.inc: `Image1_editor.BMP = "test1.bmp"`
+- pulsar.inc: `Image2_editor.BMP = "test2.bmp"`
 - WIN32API.INC: `$UNDEF TRUE, FALSE, ANY, INTEGER`
 - WINDOWS.INC: `$UNDEF BOOLEAN`
 - HiLight.inc: `$APPTYPE GUI`

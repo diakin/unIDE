@@ -25991,9 +25991,9 @@ dim testo_oggetto(1000) as string
 '-------inutilizzati - servono come esempio per la scala
 
 DIM Image1_editor AS Qbitmap
-Image1_editor.BMP = "test1.bmp"
+'~file Image1_editor.BMP = "test1.bmp"   ' сборка: файл грузится при старте программы
 DIM Image2_editor AS Qbitmap
-Image2_editor.BMP = "test2.bmp"
+'~file Image2_editor.BMP = "test2.bmp"   ' сборка: файл грузится при старте программы
 
 dim rect1_editor as qrect
 dim rect2_editor as qrect

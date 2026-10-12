@@ -955,6 +955,17 @@ class Builder:
                 inactive = 1
                 out.extend(block)
                 continue
+            # Загрузка файла на уровне модуля (pulsar.inc: Image1_editor.BMP =
+            # "test1.bmp") выполняется при старте любой программы с этим inc;
+            # файла рядом с программой нет - EFOpenError "Cannot open file"
+            if unit.key not in ('P', 'T') and re.match(
+                    r'[\w.]+\.(bmp|ico|icon)\s*=\s*"|[\w.]+\.loadfromfile\b',
+                    head, re.I):
+                self.report_dir.append((name, head))
+                for pos, line in enumerate(block):
+                    note = "   ' сборка: файл грузится при старте программы" if pos == 0 else ''
+                    out.append("'~file " + line + note)
+                continue
             dup_of = None
             # Имя процедуры одного файла и DECLARE ... LIB с тем же именем
             # другого (Files.inc: FUNCTION LoadString(FileName), WIN32API.INC:
