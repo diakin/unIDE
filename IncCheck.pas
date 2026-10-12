@@ -95,8 +95,16 @@ function IncGuardName(AInfo: TIncFileInfo): string;
 procedure IncCheckFile(AInfo: TIncFileInfo; ARef: TIncRefIndex);
 
 // Защитный $IFNDEF в начало и $ENDIF в конец файла. Прежний текст - в
-// <файл>.bak (если такого ещё нет). False - не поставлен, причина в AError.
-function IncAddGuard(const AFile, AGuard: string; var AError: string): Boolean;
+// <файл>.bak (если такого ещё нет; ABackup = False - без него: файл - свежая
+// копия). False - не поставлен, причина в AError.
+function IncAddGuard(const AFile, AGuard: string; var AError: string;
+                     ABackup: Boolean = True): Boolean;
+
+// Файлы с именем AName (без учёта регистра) в папках ARoots с подпапками -
+// полными путями в AList. Служебные папки Windows пропускаются. AProgress
+// - ход по папкам (nil - без него). False - прервано.
+function IncFindOnDisk(const AName: string; ARoots, AList: TStrings;
+                       AProgress: TIncProgress): Boolean;
 
 // Программы .bas, подключающие файл ($INCLUDE "имя"), в папках AFolders
 // (с подпапками при ASub). Результат - число найденных.
@@ -1109,7 +1117,8 @@ begin
   end;
 end;
 
-function IncAddGuard(const AFile, AGuard: string; var AError: string): Boolean;
+function IncAddGuard(const AFile, AGuard: string; var AError: string;
+                     ABackup: Boolean): Boolean;
 var
   Stream: TFileStream;
   Text, Orig, Eol, Backup: string;
@@ -1159,7 +1168,7 @@ begin
     // Прежний текст - рядом; уже лежащий .bak не трогаем: в нём оригинал
     Backup := AFile + '.bak';
     try
-      if not FileExists(Backup) then
+      if ABackup and not FileExists(Backup) then
       begin
         Stream := TFileStream.Create(Backup, fmCreate);
         try
@@ -1186,6 +1195,67 @@ begin
   finally
     Lines.Free;
   end;
+end;
+
+function IncFindOnDisk(const AName: string; ARoots, AList: TStrings;
+                       AProgress: TIncProgress): Boolean;
+var
+  Cancel: Boolean;
+
+  // Папки, где своих inc не бывает, а файлов - сотни тысяч
+  function SkipDir(const ADirName: string): Boolean;
+  begin
+    Result := (CompareText(ADirName, 'Windows') = 0) or
+              (CompareText(ADirName, '$Recycle.Bin') = 0) or
+              (CompareText(ADirName, 'System Volume Information') = 0) or
+              (CompareText(ADirName, 'RECYCLER') = 0) or
+              (CompareText(ADirName, 'WinSxS') = 0);
+  end;
+
+  procedure Walk(const ADirPath: string);
+  var
+    SR: TSearchRec;
+  begin
+    if Cancel then
+      Exit;
+    if Assigned(AProgress) then
+    begin
+      AProgress('Поиск ' + AName + ': ' + ADirPath, Cancel);
+      if Cancel then
+        Exit;
+    end;
+    if FindFirst(ADirPath + '*', faAnyFile, SR) = 0 then
+    try
+      repeat
+        if (SR.Name = '.') or (SR.Name = '..') then
+          Continue;
+        if (SR.Attr and faDirectory) <> 0 then
+        begin
+          if not SkipDir(SR.Name) then
+            Walk(ADirPath + SR.Name + PathDelim);
+        end
+        else if CompareText(SR.Name, AName) = 0 then
+          AList.Add(ADirPath + SR.Name);
+        if Cancel then
+          Exit;
+      until FindNext(SR) <> 0;
+    finally
+      FindClose(SR);
+    end;
+  end;
+
+var
+  RootIdx: Integer;
+begin
+  Cancel := False;
+  for RootIdx := 0 to ARoots.Count - 1 do
+  begin
+    if DirectoryExists(ARoots[RootIdx]) then
+      Walk(IncludeTrailingPathDelimiter(ARoots[RootIdx]));
+    if Cancel then
+      Break;
+  end;
+  Result := not Cancel;
 end;
 
 function IncFindDemos(const AIncFile: string; AFolders: TStrings;
