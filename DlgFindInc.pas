@@ -65,8 +65,8 @@ type
     FSysDir: string;       // общие inc
     FTargetDir: string;    // куда копировать (папка inc проекта)
     FSearchDir: string;    // где искать, если не на всех дисках
-    // Сначала - текущая папка (главного .bas или открытого файла), Include
-    // user, Include system, папка выше текущей; потом диски или FSearchDir
+    // Сначала - Include user, Include system, текущая папка (главного .bas
+    // или открытого файла), папка выше текущей; потом диски или FSearchDir
     FCurDir: string;
     FUserIncDir: string;
     FFoundWhere: TStringList;   // по найденной копии - где нашлась
@@ -154,14 +154,14 @@ end;
 
 procedure TDlgFindInc.UpdateLabels;
 begin
-  lblFolder.Caption := 'Где искать: текущая папка, Include user, Include ' +
-                       'system, папка выше';
+  lblFolder.Caption := 'Где искать: Include user, Include system, ' +
+                       'текущая папка, папка выше';
   if chkAllDrives.Checked then
     lblFolder.Caption := lblFolder.Caption + ', затем все локальные диски'
   else if FSearchDir <> '' then
     lblFolder.Caption := lblFolder.Caption + ', затем ' + FSearchDir;
-  lblFolder.Hint := 'Текущая: ' + FCurDir + #13#10'Include user: ' +
-                    FUserIncDir + #13#10'Include system: ' + FSysDir;
+  lblFolder.Hint := 'Include user: ' + FUserIncDir + #13#10'Include system: ' +
+                    FSysDir + #13#10'Текущая: ' + FCurDir;
   lblFolder.ShowHint := True;
   btnFolder.Enabled := not chkAllDrives.Checked and not FBusy;
   if FTargetDir = '' then
@@ -266,9 +266,9 @@ begin
   try
     ClearFound;
     // Шаги поиска по порядку: "где|папка"
-    AddStage('текущая папка', FCurDir);
     AddStage('Include user', FUserIncDir);
     AddStage('Include system', FSysDir);
+    AddStage('текущая папка', FCurDir);
     if FCurDir <> '' then
       AddStage('папка выше', ExtractFileDir(FCurDir));
     if chkAllDrives.Checked then

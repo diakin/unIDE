@@ -33553,8 +33553,8 @@ var
   OwnDir: string;
 begin
   IncRefDirs(SysDir, RefDir);
-  // Порядок поиска: папка главного .bas (или открытого файла), Include user,
-  // Include system, папка выше
+  // Порядок поиска: Include user, Include system, папка главного .bas (или
+  // открытого файла), папка выше
   RapidQIncludeDirs(CurDir, IncDir);
   RapidQIncSettings(FCurrentProject, CfgSys, UserDir, Mode, OwnDir);
   TargetDir := ExcludeTrailingPathDelimiter(RapidQIncDir);
