@@ -23619,6 +23619,24 @@ end;
 
 // Список подпрограмм - в таблицу правой панели. Номера строк показываем
 // с единицы, как в статус-баре.
+// Подпись в SubList: слово FUNCTION в начале (в любом регистре) - Fn, чтобы
+// имя помещалось. Сам FSubs[].Name не меняется.
+function SubListCaption(const AName: string): string;
+const
+  FuncWord = 'function';
+var
+  Lead: Integer;
+begin
+  Result := AName;
+  Lead := 1;
+  while (Lead <= Length(AName)) and (AName[Lead] in [' ', #9]) do
+    Inc(Lead);
+  if (CompareText(Copy(AName, Lead, Length(FuncWord)), FuncWord) = 0) and
+     ((Lead + Length(FuncWord) > Length(AName)) or
+      (AName[Lead + Length(FuncWord)] in [' ', #9, '('])) then
+    Result := 'Fn' + Copy(AName, Lead + Length(FuncWord), MaxInt);
+end;
+
 procedure TForm1.FillSubListView;
 var
   K: Integer;
@@ -23640,7 +23658,7 @@ begin
     for K := 0 to High(FSubs) do
     begin
       It := lvSubList.Items.Add;
-      It.Caption := FSubs[K].Name;
+      It.Caption := SubListCaption(FSubs[K].Name);
       It.SubItems.Add(IntToStr(FSubs[K].BeginLine + 1));
       It.SubItems.Add(IntToStr(FSubs[K].EndLine + 1));
       It.Data := Pointer(K);
