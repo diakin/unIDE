@@ -848,6 +848,7 @@ type
     procedure RightPanelCollapse(ACollapse: Boolean);
     procedure RightPanelBtnClick(Sender: TObject);
     procedure RightPanelPlaceButtons;
+    procedure PaletteTabRows(Sender: TObject);
     procedure SplitBarMouseUp(Sender: TObject; Button: TMouseButton;
                               Shift: TShiftState; X, Y: Integer);
     procedure ObjSourceClick(Sender: TObject);
@@ -1525,6 +1526,7 @@ type
     // и её состояние: свёрнута - видны только разделитель и кнопка [];
     // ширина до сворачивания - в FRightPanelWidth (она и пишется в ini)
     FRightBtnMin, FRightBtnRestore: TUiButton;
+    FToolbarBaseHeight: Integer;   // тулбар с одним рядом вкладок палитры
     FRightCollapsed: Boolean;
     FRightStartCollapsed: Boolean;   // из editor.ini, ставится в FormCreate
     FTabsOldProc: TWndMethod;
@@ -21141,6 +21143,10 @@ begin
 
   RegisterDesignClasses;
   FDsgPalette := TDsgPalette.CreatePalette(Self, pnlPaletteIn, DsgDelphiBin);
+  // Вкладки палитры в несколько рядов: тулбар выше на столько, сколько
+  // добавили ряды (PaletteTabRows)
+  FToolbarBaseHeight := FToolbar.Height;
+  FDsgPalette.OnTabRows := PaletteTabRows;
   FDsgPalette.OnSelect := DsgPaletteSelect;
   FDsgPalette.OnGlyphLoaded := DsgPaletteGlyph;
   BuildPaletteButtons;
@@ -21954,6 +21960,13 @@ begin
     FIncTree.OnDblClick := IncludesDblClick;
 
   BuildObjectInspector;
+end;
+
+// Ряды вкладок палитры добавились или убавились - тулбар на ту же разницу
+procedure TForm1.PaletteTabRows(Sender: TObject);
+begin
+  if (FToolbarBaseHeight > 0) and (FDsgPalette <> nil) then
+    FToolbar.Height := FToolbarBaseHeight + FDsgPalette.TabRowsExtra;
 end;
 
 // Кнопки _ и [] - в правом верхнем углу панели, в строке вкладок; у
@@ -63243,6 +63256,10 @@ begin
   UiFontsInit;
 
   // Правая панель была свёрнута при выходе
+  // Ряды вкладок палитры - когда окно уже показано и страницы добавлены
+  if FDsgPalette <> nil then
+    FDsgPalette.CheckTabRows;
+
   if FRightStartCollapsed then
   begin
     FRightStartCollapsed := False;

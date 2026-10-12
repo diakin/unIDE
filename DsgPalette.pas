@@ -85,6 +85,10 @@ type
     FOnSelect: TNotifyEvent;
     FGlyphInfo: TList;        // TDsgGlyphInfo по кнопкам со значком
     FButtonPopup: TPopupMenu; // меню правой кнопки у кнопок компонентов
+    // Вкладки в несколько рядов: на сколько пикселей ряды вкладок выше
+    // одного ряда; меняется - OnTabRows (владелец подгоняет высоту панели)
+    FTabRowsExtra: Integer;
+    FOnTabRows: TNotifyEvent;
     procedure SetButtonPopup(AValue: TPopupMenu);
     function HasGlyphRes(const AName: string): Boolean;
     procedure LoadLibs(const ADelphiBin: string);
@@ -102,7 +106,13 @@ type
     procedure ArrowClick(Sender: TObject);
     procedure CompClick(Sender: TObject);
     procedure SetSelected(AClass: TComponentClass);
+  protected
+    procedure Resize; override;
   public
+    // Пересчитать число рядов вкладок (после смены ширины или страниц)
+    procedure CheckTabRows;
+    property TabRowsExtra: Integer read FTabRowsExtra;
+    property OnTabRows: TNotifyEvent read FOnTabRows write FOnTabRows;
     // AParent - куда встать (заполняет его целиком). ADelphiBin - папка
     // Bin установки Delphi со слэшем, '' - без значков.
     constructor CreatePalette(AOwner: TComponent; AParent: TWinControl;
@@ -240,6 +250,10 @@ begin
   FTabs.Parent := Self;
   FTabs.Align := alClient;
   FTabs.ParentFont := True;
+  // Все вкладки видны сразу, в несколько рядов; ряды на своих местах
+  // (TUiTabControl: в несколько рядов - стиль кнопок, Windows их не
+  // переставляет)
+  FTabs.MultiLine := True;
   SetLength(FPageHidden, DsgPageCount);
   for I := 0 to DsgPageCount - 1 do
   begin
@@ -918,6 +932,44 @@ begin
     TabIdx := 0;
   FTabs.TabIndex := TabIdx;
   ShowPage;
+  CheckTabRows;
+end;
+
+procedure TDsgPalette.Resize;
+begin
+  inherited Resize;
+  CheckTabRows;
+end;
+
+// Ряды вкладок: от низа верхнего ряда до низа нижнего - добавка к одному
+procedure TDsgPalette.CheckTabRows;
+var
+  TabIdx, TopBottom, LowBottom, NewExtra: Integer;
+  TabBox: TRect;
+begin
+  if (FTabs = nil) or not FTabs.HandleAllocated then
+    Exit;
+  TopBottom := MaxInt;
+  LowBottom := 0;
+  for TabIdx := 0 to FTabs.Tabs.Count - 1 do
+  begin
+    TabBox := FTabs.TabRect(TabIdx);
+    if TabBox.Bottom <= TabBox.Top then
+      Continue;
+    if TabBox.Bottom < TopBottom then
+      TopBottom := TabBox.Bottom;
+    if TabBox.Bottom > LowBottom then
+      LowBottom := TabBox.Bottom;
+  end;
+  if TopBottom = MaxInt then
+    NewExtra := 0
+  else
+    NewExtra := LowBottom - TopBottom;
+  if NewExtra = FTabRowsExtra then
+    Exit;
+  FTabRowsExtra := NewExtra;
+  if Assigned(FOnTabRows) then
+    FOnTabRows(Self);
 end;
 
 procedure TDsgPalette.ArrowClick(Sender: TObject);
@@ -999,6 +1051,7 @@ end;
 function TDsgPalette.AddPage(const AName: string): Integer;
 begin
   FTabs.Tabs.Add(AName);
+  CheckTabRows;
   FPageBtns.Add(TList.Create);
   Result := FPageBtns.Count - 1;
   FPageNames.Add(AName);
