@@ -69,7 +69,6 @@ object DlgFindInc: TDlgFindInc
       Height = 17
       Hint = 'Все локальные диски; без галки - папка, выбранная кнопкой "..."'
       Caption = 'Все локальные диски'
-      Checked = True
       TabOrder = 2
       OnClick = chkAllDrivesClick
     end

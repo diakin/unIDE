@@ -86,6 +86,9 @@ type
     // По Alt Windows меняет показ подчёркиваний, и контролы окна пропадают
     // (см. TForm1.WMUpdateUIState) - сообщение дальше не передаём.
     procedure WMUpdateUIState(var Message: TMessage); message $0128;
+  protected
+    // Окно принадлежит окну редактора (Owner) и всегда над ним
+    procedure CreateParams(var Params: TCreateParams); override;
   public
     // Показать окно. AName - имя файла (пусто - без поиска), ARefDir -
     // эталон, ASysDir - общие inc, ATargetDir - папка inc проекта, куда
@@ -107,6 +110,15 @@ const
 procedure TDlgFindInc.WMUpdateUIState(var Message: TMessage);
 begin
   Message.Result := 0;
+end;
+
+procedure TDlgFindInc.CreateParams(var Params: TCreateParams);
+begin
+  inherited CreateParams(Params);
+  // Без владельца немодальное окно Delphi 7 принадлежит скрытому окну
+  // Application и уходит под редактор при щелчке по нему
+  if (Owner is TWinControl) and TWinControl(Owner).HandleAllocated then
+    Params.WndParent := TWinControl(Owner).Handle;
 end;
 
 procedure TDlgFindInc.ShowFind(const AName, ARefDir, ASysDir,
@@ -361,14 +373,16 @@ begin
       FInfos := TList.Create;
     if FFoundWhere = nil then
       FFoundWhere := TStringList.Create;
+    // Остановили поиск или проверку - найденное всё равно в списке, только
+    // непроверенные копии без сравнения с эталоном (серый значок)
     for FileIdx := 0 to Files.Count - 1 do
     begin
-      ProgressStep(Format('Проверка: %d из %d', [FileIdx + 1, Files.Count]),
-                   Cancel);
-      if Cancel then
-        Break;
+      if not Cancel then
+        ProgressStep(Format('Проверка: %d из %d', [FileIdx + 1, Files.Count]),
+                     Cancel);
       Info := TIncFileInfo.Create(Files[FileIdx]);
-      IncCheckFile(Info, FRef);
+      if not Cancel then
+        IncCheckFile(Info, FRef);
       Inc(Counts[Info.Status]);
       FInfos.Add(Info);
       FFoundWhere.Add(Where[FileIdx]);
@@ -401,6 +415,9 @@ begin
                                   'нет в эталоне: %d',
                                   [Counts[isSame], Counts[isChanged],
                                    Counts[isNew]]);
+    if (Files.Count > 0) and (Counts[isUnknown] > 0) then
+      lblStatus.Caption := lblStatus.Caption +
+                           Format(', не проверено: %d', [Counts[isUnknown]]);
     // Остановили - так и написать, и при пустом списке тоже
     if not Done or Cancel then
       lblStatus.Caption := 'Поиск остановлен. ' + lblStatus.Caption;
@@ -490,7 +507,9 @@ begin
             FormatDateTime('dd.mm.yyyy hh:nn', FileDateToDateTime(Age));
   lblHead.Caption := Head;
   lstErrors.Items.Assign(Info.Messages);
-  if lstErrors.Items.Count = 0 then
+  if Info.Status = isUnknown then
+    lstErrors.Items.Add('не проверен: поиск остановлен до проверки')
+  else if lstErrors.Items.Count = 0 then
     lstErrors.Items.Add('замечаний нет');
   // Длинные сообщения - с горизонтальной прокруткой
   TextMax := 0;
