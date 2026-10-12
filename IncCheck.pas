@@ -117,10 +117,15 @@ function IncFindOnDisk(const AName: string; ARoots, AList: TStrings;
                        AOnFound: TIncFound = nil): Boolean;
 
 // То же для нескольких имён сразу: ANames - имена файлов в верхнем регистре,
-// Sorted = True. Найденные - в AList полными путями.
+// Sorted = True; имя с * или ? - маска (QColorDialog*.inc). Найденные - в
+// AList полными путями.
 function IncFindNamesOnDisk(ANames: TStringList; ARoots, AList: TStrings;
                             AProgress: TIncProgress; ASkip: TStrings = nil;
                             AOnFound: TIncFound = nil): Boolean;
+
+// Имя файла подходит под маску с * (любые символы) и ? (один символ), без
+// учёта регистра
+function IncWildMatch(const AMask, AName: string): Boolean;
 
 // Программы .bas, подключающие файл ($INCLUDE "имя"), в папках AFolders
 // (с подпапками при ASub). Результат - число найденных.
@@ -1257,12 +1262,69 @@ begin
   end;
 end;
 
+function IncWildMatch(const AMask, AName: string): Boolean;
+var
+  MaskText, NameText: string;
+  MaskPos, NamePos, StarMask, StarName: Integer;
+begin
+  MaskText := UpperCase(AMask);
+  NameText := UpperCase(AName);
+  MaskPos := 1;
+  NamePos := 1;
+  StarMask := 0;
+  StarName := 0;
+  while NamePos <= Length(NameText) do
+  begin
+    if (MaskPos <= Length(MaskText)) and
+       ((MaskText[MaskPos] = '?') or (MaskText[MaskPos] = NameText[NamePos])) then
+    begin
+      Inc(MaskPos);
+      Inc(NamePos);
+    end
+    else if (MaskPos <= Length(MaskText)) and (MaskText[MaskPos] = '*') then
+    begin
+      StarMask := MaskPos;
+      StarName := NamePos;
+      Inc(MaskPos);
+    end
+    else if StarMask > 0 then
+    begin
+      MaskPos := StarMask + 1;
+      Inc(StarName);
+      NamePos := StarName;
+    end
+    else
+    begin
+      Result := False;
+      Exit;
+    end;
+  end;
+  while (MaskPos <= Length(MaskText)) and (MaskText[MaskPos] = '*') do
+    Inc(MaskPos);
+  Result := MaskPos > Length(MaskText);
+end;
+
 function IncFindNamesOnDisk(ANames: TStringList; ARoots, AList: TStrings;
                             AProgress: TIncProgress; ASkip: TStrings;
                             AOnFound: TIncFound): Boolean;
 var
-  NameIdx: Integer;
+  Masks: TStringList;   // имена с * и ? - сверяются по одному
   Cancel: Boolean;
+
+  function NameWanted(const AFileName: string): Boolean;
+  var
+    MaskIdx, FoundIdx: Integer;
+  begin
+    Result := ANames.Find(UpperCase(AFileName), FoundIdx);
+    if Result then
+      Exit;
+    for MaskIdx := 0 to Masks.Count - 1 do
+      if IncWildMatch(Masks[MaskIdx], AFileName) then
+      begin
+        Result := True;
+        Exit;
+      end;
+  end;
 
   // Папки, где своих inc не бывает, а файлов - сотни тысяч
   function SkipDir(const ADirName: string): Boolean;
@@ -1309,7 +1371,7 @@ var
             else
               OtherDirs.Add(ADirPath + SR.Name + PathDelim);
           end
-          else if ANames.Find(UpperCase(SR.Name), NameIdx) then
+          else if NameWanted(SR.Name) then
           begin
             AList.Add(ADirPath + SR.Name);
             if Assigned(AOnFound) then
@@ -1338,15 +1400,23 @@ var
   end;
 
 var
-  RootIdx: Integer;
+  RootIdx, NameIdx: Integer;
 begin
   Cancel := False;
-  for RootIdx := 0 to ARoots.Count - 1 do
-  begin
-    if DirectoryExists(ARoots[RootIdx]) then
-      Walk(IncludeTrailingPathDelimiter(ARoots[RootIdx]));
-    if Cancel then
-      Break;
+  Masks := TStringList.Create;
+  try
+    for NameIdx := 0 to ANames.Count - 1 do
+      if (Pos('*', ANames[NameIdx]) > 0) or (Pos('?', ANames[NameIdx]) > 0) then
+        Masks.Add(ANames[NameIdx]);
+    for RootIdx := 0 to ARoots.Count - 1 do
+    begin
+      if DirectoryExists(ARoots[RootIdx]) then
+        Walk(IncludeTrailingPathDelimiter(ARoots[RootIdx]));
+      if Cancel then
+        Break;
+    end;
+  finally
+    Masks.Free;
   end;
   Result := not Cancel;
 end;
