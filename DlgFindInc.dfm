@@ -48,7 +48,7 @@ object DlgFindInc: TDlgFindInc
       Top = 8
       Width = 260
       Height = 21
-      Hint = 'Имя inc-файла, например QColorDialog10.inc; Enter - найти'
+      Hint = 'Имя inc-файла или маска с * и ?, например QColorDialog10.inc, QColorDialog*.inc; Enter - найти'
       TabOrder = 0
       OnKeyPress = edNameKeyPress
     end

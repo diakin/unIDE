@@ -291,7 +291,7 @@ begin
   SearchName := ExtractFileName(SearchName);
   if SearchName = '' then
   begin
-    lblStatus.Caption := 'Введите имя файла, например QColorDialog10.inc';
+    lblStatus.Caption := 'Введите имя файла или маску, например QColorDialog10.inc, QColorDialog*.inc';
     Exit;
   end;
   FFindName := SearchName;
