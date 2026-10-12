@@ -220,6 +220,24 @@ begin
   lblHead.Caption := '';
 end;
 
+// Порядок найденных: пути с папкой "*inc*" - первыми, дальше по алфавиту
+function CompareFoundPaths(AList: TStringList; AIdx1, AIdx2: Integer): Integer;
+var
+  InInc1, InInc2: Boolean;
+begin
+  InInc1 := IncPathInIncDir(AList[AIdx1]);
+  InInc2 := IncPathInIncDir(AList[AIdx2]);
+  if InInc1 <> InInc2 then
+  begin
+    if InInc1 then
+      Result := -1
+    else
+      Result := 1;
+  end
+  else
+    Result := AnsiCompareText(AList[AIdx1], AList[AIdx2]);
+end;
+
 // Найти: имя - на дисках или в папке, каждая копия - с эталоном и на
 // ошибки. Идёт поиск - кнопка останавливает его.
 procedure TDlgFindInc.btnFindClick(Sender: TObject);
@@ -323,7 +341,8 @@ begin
       finally
         StageList.Free;
       end;
-      StageFiles.Sort;
+      // Внутри шага: сначала копии из папок с "inc" в имени, потом прочие
+      StageFiles.CustomSort(CompareFoundPaths);
       for FileIdx := 0 to StageFiles.Count - 1 do
         if Files.IndexOf(StageFiles[FileIdx]) < 0 then
         begin

@@ -100,9 +100,15 @@ procedure IncCheckFile(AInfo: TIncFileInfo; ARef: TIncRefIndex);
 function IncAddGuard(const AFile, AGuard: string; var AError: string;
                      ABackup: Boolean = True): Boolean;
 
+// Имя папки содержит "inc" (inc, Include, MyIncs ...)
+function IncDirName(const ADirName: string): Boolean;
+// В пути к файлу есть папка с "inc" в имени
+function IncPathInIncDir(const AFilePath: string): Boolean;
+
 // Файлы с именем AName (без учёта регистра) в папках ARoots с подпапками -
-// полными путями в AList. Служебные папки Windows пропускаются. AProgress
-// - ход по папкам (nil - без него). False - прервано.
+// полными путями в AList. Служебные папки Windows пропускаются. В каждой
+// папке подпапки с "inc" в имени обходятся первыми. AProgress - ход по
+// папкам (nil - без него). False - прервано.
 function IncFindOnDisk(const AName: string; ARoots, AList: TStrings;
                        AProgress: TIncProgress; ASkip: TStrings = nil): Boolean;
 
@@ -1197,6 +1203,41 @@ begin
   end;
 end;
 
+// Имя папки содержит "inc" (inc, Include, MyIncs ...) - там ищем первыми
+function IncDirName(const ADirName: string): Boolean;
+begin
+  Result := Pos('INC', UpperCase(ADirName)) > 0;
+end;
+
+// В пути к файлу есть папка с "inc" в имени
+function IncPathInIncDir(const AFilePath: string): Boolean;
+var
+  Rest, Part: string;
+  SepPos: Integer;
+begin
+  Result := False;
+  Rest := ExtractFilePath(AFilePath);
+  while Rest <> '' do
+  begin
+    SepPos := Pos(PathDelim, Rest);
+    if SepPos = 0 then
+    begin
+      Part := Rest;
+      Rest := '';
+    end
+    else
+    begin
+      Part := Copy(Rest, 1, SepPos - 1);
+      Delete(Rest, 1, SepPos);
+    end;
+    if (Part <> '') and (Pos(':', Part) = 0) and IncDirName(Part) then
+    begin
+      Result := True;
+      Exit;
+    end;
+  end;
+end;
+
 function IncFindOnDisk(const AName: string; ARoots, AList: TStrings;
                        AProgress: TIncProgress; ASkip: TStrings): Boolean;
 var
@@ -1215,6 +1256,8 @@ var
   procedure Walk(const ADirPath: string);
   var
     SR: TSearchRec;
+    IncDirs, OtherDirs: TStringList;
+    DirIdx: Integer;
   begin
     if Cancel then
       Exit;
@@ -1227,23 +1270,45 @@ var
       if Cancel then
         Exit;
     end;
-    if FindFirst(ADirPath + '*', faAnyFile, SR) = 0 then
+    // Сначала файлы этой папки, потом подпапки: с "inc" в имени - первыми
+    IncDirs := TStringList.Create;
+    OtherDirs := TStringList.Create;
     try
-      repeat
-        if (SR.Name = '.') or (SR.Name = '..') then
-          Continue;
-        if (SR.Attr and faDirectory) <> 0 then
-        begin
-          if not SkipDir(SR.Name) then
-            Walk(ADirPath + SR.Name + PathDelim);
-        end
-        else if CompareText(SR.Name, AName) = 0 then
-          AList.Add(ADirPath + SR.Name);
+      if FindFirst(ADirPath + '*', faAnyFile, SR) = 0 then
+      try
+        repeat
+          if (SR.Name = '.') or (SR.Name = '..') then
+            Continue;
+          if (SR.Attr and faDirectory) <> 0 then
+          begin
+            if SkipDir(SR.Name) then
+              Continue;
+            if IncDirName(SR.Name) then
+              IncDirs.Add(ADirPath + SR.Name + PathDelim)
+            else
+              OtherDirs.Add(ADirPath + SR.Name + PathDelim);
+          end
+          else if CompareText(SR.Name, AName) = 0 then
+            AList.Add(ADirPath + SR.Name);
+        until FindNext(SR) <> 0;
+      finally
+        FindClose(SR);
+      end;
+      for DirIdx := 0 to IncDirs.Count - 1 do
+      begin
+        Walk(IncDirs[DirIdx]);
         if Cancel then
           Exit;
-      until FindNext(SR) <> 0;
+      end;
+      for DirIdx := 0 to OtherDirs.Count - 1 do
+      begin
+        Walk(OtherDirs[DirIdx]);
+        if Cancel then
+          Exit;
+      end;
     finally
-      FindClose(SR);
+      IncDirs.Free;
+      OtherDirs.Free;
     end;
   end;
 
