@@ -48,7 +48,11 @@ type
     lblInfo: TLabel;
     lvDeps: TListView;
     lblCands: TLabel;
-    lstCands: TListBox;
+    pnlCands: TPanel;
+    lvCands: TListView;     // копии на диске: путь, размер, создан, изменён
+    splDeps: TSplitter;
+    splCands: TSplitter;
+    memPreview: TMemo;      // текст копии, выделенной в lvCands
     lblNote: TLabel;
     pnlBottom: TPanel;
     lblTarget: TLabel;
@@ -70,7 +74,10 @@ type
     procedure StartTimerTick(Sender: TObject);
     procedure lvDepsSelectItem(Sender: TObject; Item: TListItem;
                                Selected: Boolean);
-    procedure lstCandsClick(Sender: TObject);
+    procedure lvCandsSelectItem(Sender: TObject; Item: TListItem;
+                                Selected: Boolean);
+    procedure UpdateNote;
+    procedure ShowPreview;
     procedure cbTargetChange(Sender: TObject);
     procedure btnSearchClick(Sender: TObject);
     procedure btnCopyClick(Sender: TObject);
@@ -95,12 +102,12 @@ begin
 end;
 
 procedure TRqDepsForm.BuildControls;
-var
-  Col: TListColumn;
 
-  procedure AddCol(const ACaption: string; AWidth: Integer);
+  procedure AddCol(AList: TListView; const ACaption: string; AWidth: Integer);
+  var
+    Col: TListColumn;
   begin
-    Col := lvDeps.Columns.Add;
+    Col := AList.Columns.Add;
     Col.Caption := ACaption;
     Col.Width := AWidth;
   end;
@@ -110,19 +117,19 @@ var
   begin
     Result := TUiButton.Create(Self);
     Result.Parent := pnlBottom;
-    Result.SetBounds(ALeft, 198, AWidth, 25);
+    Result.SetBounds(ALeft, 62, AWidth, 25);
     Result.Caption := ACaption;
     Result.OnClick := AClick;
   end;
 
 begin
   Caption := 'Недостающие файлы программы';
-  Width := 900;
-  Height := 560;
+  Width := 960;
+  Height := 720;
   Position := poScreenCenter;
   BorderIcons := [biSystemMenu, biMaximize];
   Constraints.MinWidth := 700;
-  Constraints.MinHeight := 420;
+  Constraints.MinHeight := 520;
   Font.Name := 'Tahoma';
   Font.Height := -11;
   ShowHint := True;
@@ -135,47 +142,38 @@ begin
   lblInfo.WordWrap := True;
   lblInfo.Layout := tlCenter;
 
-  // Низ окна - одна панель с позициями: копии, пояснение, куда, кнопки
+  // Низ окна: пояснение, куда, кнопки, строка хода
   pnlBottom := TPanel.Create(Self);
   pnlBottom.Parent := Self;
   // Ширина задаётся сразу: от неё отсчитываются якоря akRight внутри
-  pnlBottom.SetBounds(0, ClientHeight - 252, ClientWidth, 252);
+  pnlBottom.SetBounds(0, ClientHeight - 112, ClientWidth, 112);
   pnlBottom.Align := alBottom;
   pnlBottom.BevelOuter := bvNone;
   pnlBottom.Caption := '';
-
-  lblCands := TLabel.Create(Self);
-  lblCands.Parent := pnlBottom;
-  lblCands.SetBounds(8, 6, 400, 13);
-  lblCands.Caption := 'Копии на диске (щелчок - взять эту):';
-
-  lstCands := TListBox.Create(Self);
-  lstCands.Parent := pnlBottom;
-  lstCands.SetBounds(8, 22, ClientWidth - 16, 110);
-  lstCands.Anchors := [akLeft, akTop, akRight];
-  lstCands.OnClick := lstCandsClick;
 
   lblNote := TLabel.Create(Self);
   lblNote.Parent := pnlBottom;
   lblNote.AutoSize := False;
   lblNote.WordWrap := True;
-  lblNote.SetBounds(8, 136, ClientWidth - 16, 28);
+  lblNote.SetBounds(8, 4, ClientWidth - 16, 28);
   lblNote.Anchors := [akLeft, akTop, akRight];
 
   lblTarget := TLabel.Create(Self);
   lblTarget.Parent := pnlBottom;
-  lblTarget.SetBounds(8, 172, 40, 13);
+  lblTarget.SetBounds(8, 38, 40, 13);
   lblTarget.Caption := 'Куда:';
   cbTarget := TComboBox.Create(Self);
   cbTarget.Parent := pnlBottom;
   cbTarget.Style := csDropDownList;
-  cbTarget.SetBounds(50, 168, 560, 21);
+  cbTarget.SetBounds(50, 34, 560, 21);
   cbTarget.OnChange := cbTargetChange;
-  cbTarget.Hint := 'Куда копировать выбранный файл. DLL - всегда в папку ' +
-                   'программы: Windows ищет её рядом с exe, а не в папке -I';
+  cbTarget.Hint := 'Куда копировать выбранный файл. Путь из $INCLUDE ' +
+                   '(Object\QINI.inc) сохраняется: файл ляжет в подпапку. ' +
+                   'DLL - всегда в папку программы: Windows ищет её рядом с ' +
+                   'exe, а не в папке -I';
   chkIgnore := TUiCheckBox.Create(Self);
   chkIgnore.Parent := pnlBottom;
-  chkIgnore.SetBounds(620, 170, 270, 17);
+  chkIgnore.SetBounds(620, 36, 270, 17);
   chkIgnore.Caption := 'Не спрашивать про неотмеченные';
   chkIgnore.Hint := 'Неотмеченные файлы для этой программы больше не ' +
                     'проверяются (editor.ini, [RqDepsIgnore])';
@@ -192,23 +190,76 @@ begin
   lblStatus := TLabel.Create(Self);
   lblStatus.Parent := pnlBottom;
   lblStatus.AutoSize := False;
-  lblStatus.SetBounds(8, 230, ClientWidth - 16, 13);
+  lblStatus.SetBounds(8, 94, ClientWidth - 16, 13);
   lblStatus.Anchors := [akLeft, akTop, akRight];
 
+  // Середина сверху вниз: недостающие | сплиттер | копии | сплиттер |
+  // просмотр. Порядок alTop - по Top, поэтому Top задаётся до Align.
   lvDeps := TListView.Create(Self);
   lvDeps.Parent := Self;
-  lvDeps.Align := alClient;
+  lvDeps.Top := 100;
+  lvDeps.Height := 170;
+  lvDeps.Align := alTop;
   lvDeps.ViewStyle := vsReport;
   lvDeps.Checkboxes := True;
   lvDeps.RowSelect := True;
   lvDeps.ReadOnly := True;
   lvDeps.HideSelection := False;
   lvDeps.OnSelectItem := lvDepsSelectItem;
-  AddCol('Файл', 170);
-  AddCol('Вид', 55);
-  AddCol('Подключён', 170);
-  AddCol('Копий', 50);
-  AddCol('Взять', 420);
+  AddCol(lvDeps, 'Файл', 170);
+  AddCol(lvDeps, 'Вид', 55);
+  AddCol(lvDeps, 'Подключён', 170);
+  AddCol(lvDeps, 'Копий', 50);
+  AddCol(lvDeps, 'Взять', 480);
+
+  splDeps := TSplitter.Create(Self);
+  splDeps.Parent := Self;
+  splDeps.Top := 300;
+  splDeps.Height := 5;
+  splDeps.Align := alTop;
+  splDeps.MinSize := 60;
+
+  pnlCands := TPanel.Create(Self);
+  pnlCands.Parent := Self;
+  pnlCands.Top := 310;
+  pnlCands.Height := 160;
+  pnlCands.Align := alTop;
+  pnlCands.BevelOuter := bvNone;
+  pnlCands.Caption := '';
+
+  lblCands := TLabel.Create(Self);
+  lblCands.Parent := pnlCands;
+  lblCands.Align := alTop;
+  lblCands.Caption := ' Копии на диске (выделенная - берётся, её текст - ниже):';
+
+  lvCands := TListView.Create(Self);
+  lvCands.Parent := pnlCands;
+  lvCands.Align := alClient;
+  lvCands.ViewStyle := vsReport;
+  lvCands.RowSelect := True;
+  lvCands.ReadOnly := True;
+  lvCands.HideSelection := False;
+  lvCands.OnSelectItem := lvCandsSelectItem;
+  AddCol(lvCands, 'Путь', 560);
+  AddCol(lvCands, 'Размер', 80);
+  AddCol(lvCands, 'Создан', 115);
+  AddCol(lvCands, 'Изменён', 115);
+
+  splCands := TSplitter.Create(Self);
+  splCands.Parent := Self;
+  splCands.Top := 480;
+  splCands.Height := 5;
+  splCands.Align := alTop;
+  splCands.MinSize := 60;
+
+  memPreview := TMemo.Create(Self);
+  memPreview.Parent := Self;
+  memPreview.Align := alClient;
+  memPreview.ReadOnly := True;
+  memPreview.WordWrap := False;
+  memPreview.ScrollBars := ssBoth;
+  memPreview.Font.Name := 'Courier New';
+  memPreview.Font.Height := -12;
 
   FStartTimer := TTimer.Create(Self);
   FStartTimer.Interval := 50;
@@ -275,24 +326,85 @@ begin
   ShowSelected;
 end;
 
+// Размер и время файла: создан, изменён (местное время)
+function FileStampText(const AFile: string; var ASize, ACreated,
+                       AWritten: string): Boolean;
+var
+  SR: TSearchRec;
+  LocalTime: TFileTime;
+  SysTime: TSystemTime;
+  FileSize: Int64;
+
+  function TimeText(const AStamp: TFileTime): string;
+  begin
+    Result := '';
+    if FileTimeToLocalFileTime(AStamp, LocalTime) and
+       FileTimeToSystemTime(LocalTime, SysTime) then
+      Result := FormatDateTime('dd.mm.yyyy hh:nn', SystemTimeToDateTime(SysTime));
+  end;
+
+begin
+  ASize := '';
+  ACreated := '';
+  AWritten := '';
+  Result := FindFirst(AFile, faAnyFile, SR) = 0;
+  if not Result then
+    Exit;
+  try
+    FileSize := Int64(SR.FindData.nFileSizeHigh) shl 32 +
+                SR.FindData.nFileSizeLow;
+    ASize := FormatFloat('#,##0', FileSize);
+    ACreated := TimeText(SR.FindData.ftCreationTime);
+    AWritten := TimeText(SR.FindData.ftLastWriteTime);
+  finally
+    FindClose(SR);
+  end;
+end;
+
 procedure TRqDepsForm.ShowSelected;
 var
   Dep: TRqDep;
   CandIdx: Integer;
-  IncText: string;
+  IncText, SizeText, CreatedText, WrittenText: string;
+  Item: TListItem;
 begin
   Dep := SelectedDep;
-  lstCands.Items.Clear;
+  FFilling := True;
+  try
+    lvCands.Items.BeginUpdate;
+    try
+      lvCands.Items.Clear;
+      if Dep <> nil then
+        for CandIdx := 0 to Dep.Candidates.Count - 1 do
+        begin
+          Item := lvCands.Items.Add;
+          Item.Caption := Dep.Candidates[CandIdx];
+          FileStampText(Dep.Candidates[CandIdx], SizeText, CreatedText,
+                        WrittenText);
+          Item.SubItems.Add(SizeText);
+          Item.SubItems.Add(CreatedText);
+          Item.SubItems.Add(WrittenText);
+        end;
+    finally
+      lvCands.Items.EndUpdate;
+    end;
+    if (Dep <> nil) and (Dep.Chosen >= 0) and
+       (Dep.Chosen < lvCands.Items.Count) then
+    begin
+      lvCands.Selected := lvCands.Items[Dep.Chosen];
+      lvCands.Selected.MakeVisible(False);
+    end;
+  finally
+    FFilling := False;
+  end;
   cbTarget.Items.Clear;
   if Dep = nil then
   begin
     lblNote.Caption := '';
     cbTarget.Enabled := False;
+    ShowPreview;
     Exit;
   end;
-  for CandIdx := 0 to Dep.Candidates.Count - 1 do
-    lstCands.Items.Add('[' + Dep.Where[CandIdx] + '] ' + Dep.Candidates[CandIdx]);
-  lstCands.ItemIndex := Dep.Chosen;
   IncText := FScan.IncDir;
   if IncText = '' then
     IncText := '(не задана - папка программы)';
@@ -308,7 +420,19 @@ begin
     cbTarget.ItemIndex := Ord(Dep.Target);
     cbTarget.Enabled := not FBusy;
   end;
-  if Dep.Chosen >= 0 then
+  UpdateNote;
+  ShowPreview;
+end;
+
+// Пояснение под списками: почему взята копия и куда она ляжет
+procedure TRqDepsForm.UpdateNote;
+var
+  Dep: TRqDep;
+begin
+  Dep := SelectedDep;
+  if Dep = nil then
+    lblNote.Caption := ''
+  else if Dep.Chosen >= 0 then
     lblNote.Caption := Dep.ChosenNote + '. Копия ляжет в ' +
                        RqDepTargetPath(Dep, FScan.IncDir, FScan.MainDir)
   else if FBusy then
@@ -318,6 +442,48 @@ begin
                        'inc file, галка "Все локальные диски"';
 end;
 
+// Текст выбранной копии (inc и прочие текстовые; DLL и картинки - нет)
+procedure TRqDepsForm.ShowPreview;
+const
+  PreviewMax = 1048576;
+var
+  Dep: TRqDep;
+  FileName, Ext: string;
+  Stream: TFileStream;
+  Buf: string;
+begin
+  memPreview.Lines.Clear;
+  Dep := SelectedDep;
+  if (Dep = nil) or (lvCands.Selected = nil) then
+    Exit;
+  FileName := lvCands.Selected.Caption;
+  Ext := LowerCase(ExtractFileExt(FileName));
+  if (Dep.Kind = dpkLib) or (Ext = '.bmp') or (Ext = '.ico') or
+     (Ext = '.jpg') or (Ext = '.gif') or (Ext = '.cur') or (Ext = '.wav') then
+  begin
+    memPreview.Lines.Add('(' + FileName + ' - не текст, просмотра нет)');
+    Exit;
+  end;
+  try
+    Stream := TFileStream.Create(FileName, fmOpenRead or fmShareDenyNone);
+    try
+      if Stream.Size > PreviewMax then
+        SetLength(Buf, PreviewMax)
+      else
+        SetLength(Buf, Stream.Size);
+      if Length(Buf) > 0 then
+        Stream.ReadBuffer(Buf[1], Length(Buf));
+    finally
+      Stream.Free;
+    end;
+    memPreview.Text := Buf;
+    memPreview.SelStart := 0;
+  except
+    on E: Exception do
+      memPreview.Lines.Add('Не прочитан: ' + E.Message);
+  end;
+end;
+
 procedure TRqDepsForm.lvDepsSelectItem(Sender: TObject; Item: TListItem;
                                        Selected: Boolean);
 begin
@@ -325,18 +491,27 @@ begin
     ShowSelected;
 end;
 
-procedure TRqDepsForm.lstCandsClick(Sender: TObject);
+// Выделенная копия - та, что берётся
+procedure TRqDepsForm.lvCandsSelectItem(Sender: TObject; Item: TListItem;
+                                        Selected: Boolean);
 var
   Dep: TRqDep;
 begin
-  Dep := SelectedDep;
-  if (Dep = nil) or (lstCands.ItemIndex < 0) or FBusy then
+  if FFilling or not Selected or (Item = nil) then
     Exit;
-  Dep.Chosen := lstCands.ItemIndex;
-  Dep.ChosenNote := 'выбрана вручную';
-  FillRow(lvDeps.Selected);
-  lvDeps.Selected.Checked := True;
-  ShowSelected;
+  Dep := SelectedDep;
+  if Dep <> nil then
+  begin
+    if not FBusy and (Item.Index <> Dep.Chosen) then
+    begin
+      Dep.Chosen := Item.Index;
+      Dep.ChosenNote := 'выбрана вручную';
+      FillRow(lvDeps.Selected);
+      lvDeps.Selected.Checked := True;
+    end;
+    UpdateNote;
+  end;
+  ShowPreview;
 end;
 
 procedure TRqDepsForm.cbTargetChange(Sender: TObject);

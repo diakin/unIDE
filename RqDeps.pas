@@ -644,6 +644,7 @@ var
   ItemIdx, CandIdx: Integer;
   Dep: TRqDep;
   Info: TIncFileInfo;
+  Tail: string;
 begin
   for ItemIdx := 0 to AScan.Count - 1 do
   begin
@@ -668,6 +669,22 @@ begin
           Info.Free;
         end;
       end;
+    // Путь в $INCLUDE (Object\QINI.inc) - сначала копия из такой же подпапки
+    if (Dep.Chosen < 0) and HasPath(Dep.Name) then
+    begin
+      Tail := '\' + UpperCase(StringReplace(Dep.Name, '/', '\', [rfReplaceAll]));
+      for CandIdx := 0 to Dep.Candidates.Count - 1 do
+        if Copy(UpperCase(Dep.Candidates[CandIdx]),
+                Length(Dep.Candidates[CandIdx]) - Length(Tail) + 1,
+                Length(Tail)) = Tail then
+        begin
+          Dep.Chosen := CandIdx;
+          Dep.ChosenNote := 'из папки с тем же путём, что в $INCLUDE';
+          if Dep.Kind = dpkInclude then
+            Dep.ChosenNote := Dep.ChosenNote + ' (с эталоном не совпадает)';
+          Break;
+        end;
+    end;
     if Dep.Chosen < 0 then
     begin
       Dep.Chosen := 0;
