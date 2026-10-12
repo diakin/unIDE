@@ -88,6 +88,13 @@ function RcQueryInformationJobObject(hJob: THandle; JobInfoClass: Integer;
   lpJobInfo: Pointer; cbJobInfoLength: DWORD; lpReturnLength: PDWORD): BOOL;
   stdcall; external kernel32 name 'QueryInformationJobObject';
 
+// В Windows.pas Delphi 7 параметр буфера у ReadConsoleOutputCharacterW -
+// PAnsiChar, а функция пишет UTF-16: своё объявление с PWideChar
+function RcReadConsoleOutputCharacterW(hConsoleOutput: THandle;
+  lpCharacter: PWideChar; nLength: DWORD; dwReadCoord: TCoord;
+  var lpNumberOfCharsRead: DWORD): BOOL;
+  stdcall; external kernel32 name 'ReadConsoleOutputCharacterW';
+
 var
   AttachConsoleFn: TAttachConsole = nil;
   AttachLoaded: Boolean = False;
@@ -293,7 +300,7 @@ begin
       Origin.X := 0;
       Origin.Y := FirstRow;
       ReadCount := 0;
-      if not ReadConsoleOutputCharacterW(ConOut, PWideChar(Chars),
+      if not RcReadConsoleOutputCharacterW(ConOut, PWideChar(Chars),
                                          Length(Chars), Origin, ReadCount) then
         Exit;
       Lines := TStringList.Create;
