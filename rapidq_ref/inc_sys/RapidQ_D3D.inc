@@ -1,7 +1,8 @@
 ' RapidQ_D3D.inc - отдельный inc, не входит в rapidqAllProc.inc /
 ' rapidqComponents.inc: DLL d3drm.dll (Direct3D Retained Mode) - в Windows Vista и новее её нет.
 ' Собран rapidq_ref/tools/build_inc.py из incOld/RapidQ_D3D.inc; повторы объявлений
-' общих файлов - '~dup. Подключать в программе, которой он нужен.
+' общих файлов убраны (build_removed.txt). Подключать в программе,
+' которой он нужен.
 $IFNDEF __SEP_RAPIDQ_D3D_INC
 $DEFINE __SEP_RAPIDQ_D3D_INC
 $INCLUDE "rapidqComponents.inc"
@@ -25,12 +26,9 @@ $INCLUDE "rapidqComponents.inc"
 '
 $TYPECHECK ON
 $IFNDEF False
-'~dup 	$DEFINE False 0   ' повтор, первое: rapidq2.inc(55)
 $ENDIF
 $IFNDEF True
-'~dup 	$DEFINE True 1   ' повтор, первое: rapidq2.inc(58)
 $ENDIF
-
 
 $IFNDEF D3DVALUE
 	$define D3DVALUE	SINGLE	'actual c declaration is float
@@ -44,8 +42,6 @@ $IFNDEF D3DVECTOR
 	END TYPE
 	$define LPD3DVECTOR		LONG		'pointer to structure
 $ENDIF
-
-
 
 ' **** IMPORTANT, if you need all QD3DVECTOR values, use this instead!! *****
 'The real implementation of QD3DVECTOR is a union between DVX &  X, DVY & Y, etc.
@@ -68,7 +64,6 @@ TYPE QD3DORIENTVECTOR
 	DVZ		AS SINGLE
 END TYPE
 
-
 TYPE QD3DRGBA			'different from DirectX D3DRGBA, which return DWORD types
 	R		AS SINGLE
 	G		AS SINGLE
@@ -76,10 +71,7 @@ TYPE QD3DRGBA			'different from DirectX D3DRGBA, which return DWORD types
 	A		AS SINGLE
 END TYPE
 
-
-
 CONST D3DGROUND_ZERO = 0	'Boris added this
-
 
 '-- Wrap Types
 CONST D3DRMWRAP_FLAT = 0			'projects the texture along one direction vector
@@ -93,7 +85,6 @@ CONST D3DRMWRAP_BOX = 5				'tiles the bitmap?
 'Cylindrical 		1* 1/h to cover height of object  
 'Spherical/chrome 	1* 									1* 
 '*Values <> 1 may be used to wrap part of the texture or to tile it but may not be good at the seams.
-
 
 '***********************************************************************************
 '
@@ -127,13 +118,11 @@ CONST D3DRMFILL_SOLID = 128
 CONST D3DRMFILL_MASK = 448
 CONST D3DRMFILL_MAX = 512
 
-
 ' -- D3DRMLIGHTMODE lighting modes
 CONST D3DRMLIGHT_OFF = 0 * D3DRMSHADE_MAX
 CONST D3DRMLIGHT_ON = 1 * D3DRMSHADE_MAX
 CONST D3DRMLIGHT_MASK = 7 * D3DRMSHADE_MAX
 CONST D3DRMLIGHT_MAX = 8 * D3DRMSHADE_MAX
-
 
 '-- Shade quality		use in QD3DMeshBuilder.SetQuality, can use above alone
 CONST D3DRMRENDER_POINTS =		D3DRMSHADE_FLAT		+ D3DRMLIGHT_OFF	+ D3DRMFILL_POINTS
@@ -161,7 +150,6 @@ CONST D3DRMRENDERMODE_DISABLESORTEDALPHAZWRITE = 32
 'This only works in Immediate Mode not in RapidQ's Retained Mode, so we are limited
 ' if you need more rendering options you will HAVE to go OpenGL, or other engine.
 
-
 ' the following constants are not described by rapidQ
 
 ' -- Textures definitions may not work
@@ -183,23 +171,18 @@ CONST D3DRMTEXTURE_MIPLINEAR = 3						'Like D3DRMTEXTURE_LINEAR, but uses the ap
 CONST D3DRMTEXTURE_LINEARMIPNEAREST = 4					'Like D3DRMTEXTURE_MIPNEAREST, but interpolates between the two nearest mipmaps
 CONST D3DRMTEXTURE_LINEARMIPLINEAR = 5					'Like D3DRMTEXTURE_MIPLINEAR, but interpolates between the two nearest mipmaps
 
-
 ' --Shadows
 CONST D3DRMSHADOW_TRUEALPHA  = &H00000001 				'shadow should render without artifacts when true alpha is on
-
 
 ' --fog mode, use for QD3DFrame.FogMode and DXscreen.Fog...--fog color is a DWORD
 CONST D3DRMFOG_LINEAR = 0								'linear between start and end */
 CONST D3DRMFOG_EXPONENTIAL = 1							' density * exp(-distance) */
 CONST D3DRMFOG_EXPONENTIALSQUARED = 2					'* density * exp(-distance*distance) */
 
-
-
 ' --- D3DRMFRAMECONSTRAINT  frame constrain for QD3DFrame.LookAt (F AS QD3DFrame, Constraint AS INTEGER) 
 CONST D3DRMCONSTRAIN_Z = 0
 CONST D3DRMCONSTRAIN_Y = 1
 CONST D3DRMCONSTRAIN_X = 2
-
 
 ' -- Combination types  _D3DRMCOMBINETYPE, use for QD3DFrame.AddScale SUB (CombineType%, X#, Y#, Z#)
 ' Scales a frame's local transformation by (rvX, rvY, rvZ)
@@ -207,9 +190,6 @@ CONST D3DRMCONSTRAIN_X = 2
 CONST D3DRMCOMBINE_REPLACE = 0		'in matrix replaces the frame's current matrix. 
 CONST D3DRMCOMBINE_BEFORE = 1		'in matrix is multiplied with the frame's current matrix and precedes the current matrix in the calculation.
 CONST D3DRMCOMBINE_AFTER = 2		'in matrix is multiplied with the frame's current matrix and follows the current matrix in the calculation.
-
-
-
 
 'textures are obtained by QDXSCREEN.CreateTexture (Tex as QD3DTexture) or QD3DMeshBuilder.SetTexture only?
 'There is a QD3DTexture object that should be the same as IDirect3DRMTexture but RapidQ doesn't support it
@@ -255,10 +235,8 @@ CONST D3DRMCOMBINE_AFTER = 2		'in matrix is multiplied with the frame's current 
 'QDXSCREEN.FONT.STRIKEOUT__
 '
 
-
 '************************************************************************
 'WINDOWS COM API for Direct3D retained mode and substitues if fail
-
 
 Declare Sub D3DRMVectorCrossProduct Lib "d3drm.dll" ALIAS "D3DRMVectorCrossProduct"_
 	(ByRef d As D3DVECTOR, ByRef s1 As D3DVECTOR, ByRef s2 As D3DVECTOR)
@@ -272,7 +250,6 @@ SUB CrossProduct(BYREF Norm AS QD3DVECTOR, BYREF a AS QD3DVECTOR, BYREF b AS QD3
 	Norm.z = a.x * b.y - a.y * b.x 
 END SUB
 
-
 Declare Function D3DRMVectorDotProduct Lib "d3drm.dll" ALIAS "D3DRMVectorDotProduct" _
 	(ByRef s1 As D3DVECTOR, ByRef s2 As D3DVECTOR) AS D3DVALUE
 
@@ -280,8 +257,6 @@ DECLARE FUNCTION VectorDotProduct(BYREF a AS QD3DVECTOR, BYREF b AS QD3DVECTOR) 
 FUNCTION VectorDotProduct(BYREF a AS QD3DVECTOR, BYREF b AS QD3DVECTOR) AS SINGLE
 	VectorDotProduct = a.x * b.x + a.y * b.y + a.z * b.z 
 END FUNCTION
-
-
 
 Declare Function D3DRMVectorNormalize Lib "d3drm.dll" ALIAS "D3DRMVectorNormalize"_
 	(ByRef lpD3DVECTOR As D3DVECTOR ) AS LPD3DVECTOR
@@ -297,7 +272,6 @@ SUB VectorNormalize(BYREF VecIn AS QD3DVECTOR)
 	VecIn.z = VecIn.z / VLength
 END SUB
 
-
 'these are in D3DRM.DLL but will do ok under rapidQ
 
 DECLARE SUB VectorAdd(BYREF VectAdd AS QD3DVECTOR, BYREF a AS QD3DVECTOR, BYREF b AS QD3DVECTOR)
@@ -307,15 +281,12 @@ SUB VectorAdd(BYREF VectAdd AS QD3DVECTOR, BYREF a AS QD3DVECTOR, BYREF b AS QD3
   VectAdd.z = a.z + b.z
 END SUB
 
-
 DECLARE SUB VectorSubtract(BYREF VectSub AS QD3DVECTOR, BYREF a AS QD3DVECTOR, BYREF b AS QD3DVECTOR)
 SUB VectorSubtract(BYREF VectSub AS QD3DVECTOR, BYREF a AS QD3DVECTOR, BYREF b AS QD3DVECTOR)
   VectSub.x = a.x - b.x
   VectSub.y = a.y - b.y
   VectSub.z = a.z - b.z
 END SUB
-
-
 
 '
 '
@@ -378,7 +349,6 @@ TYPE QD3DCamera EXTENDS QOBJECT
 		QD3DCamera.Pos.y = QD3DCamera.Pos.y + (QD3DCamera.Orient.y * Mag)
 	END SUB
 
-
 	SUB ResetView
 		QD3DCamera.Orient.x = 0.0				'These vectors set the orientation of camera axis (-1 to 1)
 		QD3DCamera.Orient.y = 0.0				'point straight down the z-axis
@@ -409,7 +379,6 @@ TYPE QD3DCamera EXTENDS QOBJECT
 		Orient.y = Delta.Y/Radi
 	END SUB
 
-
 	SUB Update (DxScrn AS QDXSCREEN)
 		DxScrn.SetCameraPosition(QD3DCamera.Pos.x, QD3DCamera.Pos.y, QD3DCamera.Pos.z)
 		DxScrn.SetCameraOrientation(QD3DCamera.Orient.x, QD3DCamera.Orient.y, QD3DCamera.Orient.z,_		'orientation axis vector
@@ -423,11 +392,9 @@ TYPE QD3DCamera EXTENDS QOBJECT
 		QD3DCamera.PushMouseY = QD3DCamera.MouseDownY
 	END SUB
 
-
 	SUB RestoreMouse
 		SetCursorPos(QD3DCamera.PushMouseX, QD3DCamera.PushMouseY)	'restore mouse by Win API
 	END SUB
-
 
 	CONSTRUCTOR
 		Pos.x = 0.0					'
@@ -450,17 +417,12 @@ TYPE QD3DCamera EXTENDS QOBJECT
 	END CONSTRUCTOR
 END TYPE
 
-
-
-
-
 '========================================================================================================
 '    QD3DPrimitive component version 1.1
 '  
 ' make simple polygon mesh objects -- can't  extend a QD3DMeshbuilder
 ' 9/2005 JohnK
 '========================================================================================================
-
 
 TYPE QD3DPrimitive EXTENDS QOBJECT		'use for floor, sky box, clouds, boxes, pyramids, whatever
   PRIVATE:								'don't mess with these
@@ -512,7 +474,6 @@ TYPE QD3DPrimitive EXTENDS QOBJECT		'use for floor, sky box, clouds, boxes, pyra
 		END WITH
 	END FUNCTION
 
-
 	SUB LoadTextureFile
 		DIM openDialog 	AS QOPENDIALOG
 
@@ -530,9 +491,6 @@ TYPE QD3DPrimitive EXTENDS QOBJECT		'use for floor, sky box, clouds, boxes, pyra
 		END IF		'no file name
 		QD3DPrimitive.Mesh.loadTexture(QD3DPrimitive.TextureFile)
 	END SUB
-
-
-
 
 	SUB MakeHorizPlane(DXScreen AS QDXSCREEN)	'simple horizontal plane
 		DIM Face	AS QD3DFace
@@ -555,7 +513,6 @@ TYPE QD3DPrimitive EXTENDS QOBJECT		'use for floor, sky box, clouds, boxes, pyra
 		QD3DPrimitive.Visible = True        
 	END SUB
 
-
 	SUB MakeVertZPlane(DXScreen AS QDXSCREEN)		'simple vertical plane down the z-axis (x = 0)
 		DIM Face 	AS QD3DFace
 		DIM	xc		AS SINGLE						'quick draw center
@@ -577,8 +534,6 @@ TYPE QD3DPrimitive EXTENDS QOBJECT		'use for floor, sky box, clouds, boxes, pyra
 		QD3DPrimitive.Visible = True
 	END SUB
 
-
-
 	SUB MakeVertXPlane(DXScreen AS QDXSCREEN)		'simple vertical plane down the x-axis (z = 0)
 		DIM Face 	AS QD3DFace
 		DIM	xc		AS SINGLE						'quick draw center
@@ -599,8 +554,6 @@ TYPE QD3DPrimitive EXTENDS QOBJECT		'use for floor, sky box, clouds, boxes, pyra
 		QD3DPrimitive.Mesh.AddFace(Face)
 		QD3DPrimitive.Visible = True
 	END SUB
-
-
 
 	SUB MakeBox(DXScreen AS QDXSCREEN)			'must pass in DXscreen for COM operation
 		DIM Face 	AS QD3DFace
@@ -651,8 +604,6 @@ TYPE QD3DPrimitive EXTENDS QOBJECT		'use for floor, sky box, clouds, boxes, pyra
 		END WITH
 	END SUB
 
-
-
 	SUB MakePyramid(DXScreen AS QDXSCREEN)	'simple pyramid from center
 		DIM Face 	AS QD3DFace
 
@@ -693,8 +644,6 @@ TYPE QD3DPrimitive EXTENDS QOBJECT		'use for floor, sky box, clouds, boxes, pyra
 		.Visible = True
 		END WITH
 	END SUB
-
-
 
     SUB MakeSphere(DXScreen AS QDXSCREEN, NumFaces AS INTEGER)   'simple sphere from center
         DIM Phi         AS SINGLE
@@ -751,9 +700,6 @@ TYPE QD3DPrimitive EXTENDS QOBJECT		'use for floor, sky box, clouds, boxes, pyra
  		END WITH
     END SUB
 
-
-
-
     SUB MakeCylinder(DXScreen AS QDXSCREEN, NumFaces AS INTEGER)   'simple sphere from center
         DIM Theta       AS SINGLE
         DIM Theta2      AS SINGLE
@@ -792,8 +738,6 @@ TYPE QD3DPrimitive EXTENDS QOBJECT		'use for floor, sky box, clouds, boxes, pyra
  		END WITH
     END SUB
 
-
-
     SUB MakeCone(DXScreen AS QDXSCREEN, NumFaces AS INTEGER)   'simple sphere from center
         DIM Theta       AS SINGLE
         DIM Theta2      AS SINGLE
@@ -830,15 +774,10 @@ TYPE QD3DPrimitive EXTENDS QOBJECT		'use for floor, sky box, clouds, boxes, pyra
  		END WITH
     END SUB
 
-
 	CONSTRUCTOR
 		New()
 	END CONSTRUCTOR
 END TYPE
-
-
-
-
 
 '========================================================================================================
 '    QD3DCloneMesh component version 1.0
@@ -846,8 +785,6 @@ END TYPE
 ' make multiple objects from the same mesh
 ' 10/2004 JohnK
 '========================================================================================================
-
-
 
 CONST MaxD3DClones	= 100						'Multiply up to 100 D3Dframes in the scene
 
@@ -879,7 +816,6 @@ PUBLIC:
 	TexWrapType			AS LONG					'd3drm wrapping type code
 	Color				AS QD3DRGBA				'(0 - 1) color whole mesh, if < 0 then don't modify -- if you set alpha you must set rgb... sorry
 
-
 	PROPERTY SET Set_Visible(VisibleValue AS INTEGER)   'Property Set for Visible property
 		DIM i AS INTEGER
 		This.Visible = VisibleValue
@@ -900,14 +836,11 @@ PUBLIC:
 		END IF
 	END PROPERTY
 
-
 	PROPERTY SET Set_CloneNum(TheCloneNum AS INTEGER)
 		IF TheCloneNum <= MaxD3DClones THEN   ' inc2026: '< =' с пробелом -> документированный оператор '<='
 			This.CloneNum = TheCloneNum		'it needs to be set!
 		END IF
 	END PROPERTY
-
-
 
 	PROPERTY SET Set_RandPos(RandPosValue AS INTEGER)   'Property Set for Visible property
 		DIM i AS INTEGER
@@ -925,7 +858,6 @@ PUBLIC:
 		END IF
 	END PROPERTY
 
-
 	PROPERTY SET Set_RandScale(RandScaleValue AS INTEGER)   'Property Set for Visible property
 		WITH This
 		.RandScale = RandScaleValue
@@ -940,8 +872,6 @@ PUBLIC:
 		END IF
 		END WITH
 	END PROPERTY
-
-
 
 	SUB Init(DXscreen AS QDXSCREEN)
 		DIM i	AS INTEGER
@@ -963,8 +893,6 @@ PUBLIC:
 		NEXT i
 		This.Initialized = True
 	END SUB
-
-
 
 	FUNCTION New()		AS INTEGER
 	DIM i AS INTEGER
@@ -1017,8 +945,6 @@ PUBLIC:
 		New
 	END CONSTRUCTOR
 END TYPE
-
-
 
 $UNDEF null
 $TYPECHECK OFF

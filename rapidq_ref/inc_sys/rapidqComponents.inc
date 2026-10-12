@@ -53,13 +53,11 @@ TYPE QFormEx EXTENDS QFORM
     ' Procedure to get windows messaging "winproc" needs 5 param to match RQ2 masterWndProc
     '============================================
     FUNCTION WindowProc (hwnd AS LONG, uMsg AS LONG, wParam AS LONG, lParam AS LONG, tmp as long) AS LONG
-      'DIM Point AS POINTAPI
       DIM i as integer
       DIM MouseKeys As Long
       DIM MouseRotation As Long
       DIM MouseXpos As Long
       DIM MouseYpos As Long
-
 
       SELECT CASE uMsg
       CASE WM_DROPFILES
@@ -85,7 +83,6 @@ TYPE QFormEx EXTENDS QFORM
         DragFinish(wParam)
       END IF
 
-
     CASE WM_ACTIVATE, WM_KILLFOCUS             ' immediately before it loses the keyboard focus
       i = (wParam AND &HFFFF)                  'save computation
       IF (.OnLostFocus <> 0 ) AND (i = WA_INACTIVE) THEN
@@ -96,13 +93,11 @@ TYPE QFormEx EXTENDS QFORM
       END IF
       QFormEx.WindowProc=CallWindowProc(QFormEx.pOldProc,hwnd,uMsg,wParam,lParam)
 
-
     CASE WM_SYSCOMMAND
       IF .OnMinimise <> 0 THEN
         IF wParam=SC_MINIMIZE THEN CALLFUNC QFormEx.OnMinimise
       END IF
       RESULT = CallWindowProc(QFormEx.pOldProc,hwnd,uMsg,wParam,lParam)
-
 
     CASE WM_TRAYICON
       IF uMsg=WM_TRAYICON THEN
@@ -112,7 +107,6 @@ TYPE QFormEx EXTENDS QFORM
           if .OnTrayDblClick <> 0 then CALLFUNC QFormEx.OnTrayDblClick
         END IF
       END IF
-
 
     CASE WM_MOUSEWHEEL
       IF .OnMouseWheel <> 0 THEN
@@ -145,7 +139,6 @@ TYPE QFormEx EXTENDS QFORM
     end if
   END SUB
 
-
   '=============================================================================
   ' Allow form to minimize onto TaskBar, removed flag var since it was useless
   '=============================================================================
@@ -155,14 +148,11 @@ TYPE QFormEx EXTENDS QFORM
     .GrabWindowProc
   END SUB
 
-
-
   PUBLIC:
 
   SUB RemoveTaskBar()       'just in case you don't want to minimize to task bar
     SetParent(QFormEx.Handle, QFormEx.virtual.handle)
   END SUB
-
 
   '============================================
   ' Form style, only fsNormal and fsStayOnTop supported
@@ -178,7 +168,6 @@ TYPE QFormEx EXTENDS QFORM
   end if
 End Property
 
-
 '============================================
 ' Proprietй Acceptation de dйpose fichier
 '============================================
@@ -186,7 +175,6 @@ PROPERTY SET SetDragEnable(flag as boolean)
 DragAcceptFiles(QFormEx.Handle,flag)
 QFormEx.GrabWindowProc
 END PROPERTY
-
 
 '=============================================
 ' Mйthode AddTrayIcon
@@ -252,7 +240,6 @@ SUB SetTrayIconIndex(TheIndex AS INTEGER)
   END IF
 END SUB
 
-
 '=========================================
 ' overwrite Center Method to fix inherited bug
 '=========================================
@@ -261,11 +248,8 @@ Sub Center
   QFormEx.Top= Screen.Height\2 - QFormEx.Height\2
 End Sub
 
-
-
 ' Makes form client area transparent but not widgets, unless same color as client area
 PROPERTY SET SetTransparentClient(TheValue AS INTEGER)
-
 
 DEFINT TheStyle = GetWindowLong(This.Handle, GWL_EXSTYLE)
 IF TheValue THEN
@@ -277,7 +261,6 @@ END IF
 This.TransparentClient = TheValue
 END PROPERTY
 
-
 ' This fades the entire form (with objects and even form frame) 127 =50%, 0 = transparent, 255 = opaque
 PROPERTY SET SetTransparent(TheValue AS INTEGER)
 IF (TheValue > -1)  AND (TheValue < 256) THEN
@@ -288,8 +271,6 @@ IF (TheValue > -1)  AND (TheValue < 256) THEN
 END IF
 END PROPERTY
 
-
-
 PRIVATE:
 SUB IcoAnimate()
   INC .IconAnimCount
@@ -298,7 +279,6 @@ SUB IcoAnimate()
   .TrayIcon.hIcon = .Virtual.Icon                         'virtual is not shown, so use as temp storage
   IF QFormEx.flagTrayIcon THEN QFormEx.ModifyTrayIcon
 END SUB
-
 
 PUBLIC:
 EVENT OnShow
@@ -898,7 +878,6 @@ Function ChildExist(title as string) as boolean
   end if
 End Function
 
-
 '========================================================
 ' Mйthode active la fenetre fille MDI par index
 '========================================================
@@ -941,7 +920,6 @@ $ENDIF  ' inc2026: __QFORMMDI_INC
 $IFNDEF __QDF_INC
 $DEFINE __QDF_INC
 
-
 CONST sc_rsize=&hF002
 CONST sc_lsize=&hF001
 CONST sc_usize=&hF003
@@ -955,9 +933,7 @@ CONST sc_drsize=&hF008
 DECLARE SUB OnPaint_eventTemplate
 DECLARE SUB OnDock_eventTemplate(Docked AS INTEGER, Alt AS INTEGER)
 $IFNDEF __COMPORT_INC_SA   ' inc2026: объявлено и в ComPort.inc - он подключён раньше
-'~dup DECLARE SUB OnClose_eventTemplate   ' повтор, первое: rapidq2.inc(5271)
 $ENDIF  ' inc2026: __COMPORT_INC_SA
-
 
 TYPE QDFPANEL EXTENDS QPANEL
   'Disable old methods / functions by overriding them and making them private
@@ -1224,8 +1200,6 @@ IF .Docked = 1 THEN
       .Canvas.FillRect(5,5,.Canvas.Width - 5, 23, .ST1_TitleBackground)
     END IF
     .Canvas.TextOut(7,5 + (18 - .Canvas.TextHeight(.Caption)) / 2,.Caption, .TitleColor, -1)
-
-
 
     IF .CanClose = 0 THEN
       .CloseButton.Width = 0
@@ -1529,7 +1503,6 @@ ELSE
       .Canvas.Draw(5, I * 12 + 4,.TempImg.BMP)
     NEXT
   CASE 5
-
 
     .Client.Align = 0
     .Client.Top = 3
@@ -1974,7 +1947,6 @@ Type QBitmapEx EXTENDS QBITMAP
   PenStyle as long
   PenSize as integer
 
-
   '========================================
   ' mйthode dessin d'icones
   '========================================
@@ -2022,7 +1994,6 @@ Type QBitmapEx EXTENDS QBITMAP
     end if
   End Sub
 
-
   '===============================================
   ' mйthode info largeur image du presse papier
   '===============================================
@@ -2060,7 +2031,6 @@ Type QBitmapEx EXTENDS QBITMAP
     result=clipboard.hasformat(CF_BITMAP)
   End Function
 
-
   '===============================================
   ' Return a pointer to the pixel data (Paul Ludgate)
   '===============================================
@@ -2080,8 +2050,6 @@ Type QBitmapEx EXTENDS QBITMAP
     RESULT = QBitmapEx.Info.bmBits
     EXIT_FUNCTION:                             'skip exit function memory leak
   END FUNCTION
-
-
 
   '========================================
   ' mйthode trace un cercle vide
@@ -2214,8 +2182,6 @@ Type QBitmapEx EXTENDS QBITMAP
     StretchBlt(QBitmapEx.handle,x,y+height,Width,-Height,QBitmapEx.handle,x,y,Width,Height,SRCCOPY)
   End Sub
 
-
-
   '==================================================
   'Method to load"Picture files|*.BMP;*.JPG;*.GIF;*.DIB;*.RLE;*.TGA;*.PCX" +
   ' format using jpeg.dll (for jpg or ico) or NviewLib (all others) , modified by johnK
@@ -2256,8 +2222,6 @@ Type QBitmapEx EXTENDS QBITMAP
     END IF
   END SUB
 
-
-
   '==================================================
   ' mйthode sauve le bitmap au format Jpg
   '==================================================
@@ -2278,8 +2242,6 @@ Type QBitmapEx EXTENDS QBITMAP
       '       end if
     END IF
   End Sub
-
-
 
   '***** AlphaBlend upgraded to include AlphaPreMultiplyby Paul Ludgate  3/2005 ********
   'routines for 32 bit bitmaps finely tuned them for ultimate speed
@@ -2310,7 +2272,6 @@ Type QBitmapEx EXTENDS QBITMAP
         &H04C78300, &H31EE7549, &HB80CEBC0, &H000001E7, _
         &H3FB805EB, &HC9000020, &H000010C2 }
 
-
     'make QbitmapEX dimensions since it does not have Width or Height!!
     QBitmapEx.BMP =  BMPDest.BMP    ' this is a shortcut
     IF PercentBlend < 0 THEN
@@ -2320,7 +2281,6 @@ Type QBitmapEx EXTENDS QBITMAP
     END IF
 
     AlphaConst= ROUND(ABS(255 * PercentBlend))
-    ' Type BLENDFUNCTION
     '     BlendOp             As Byte '0-7
     '     BlendFlags          As Byte '8-15
     '     SourceConstantAlpha As Byte
@@ -2368,7 +2328,6 @@ Type QBitmapEx EXTENDS QBITMAP
     END IF
     RESULT = Rtn
   END FUNCTION
-
 
   Constructor
   PenStyle=PS_SOLID
@@ -2744,7 +2703,6 @@ TYPE COMPORT EXTENDS QOBJECT
   '   OnRxChar SUB (InQue AS INTEGER) A character(s) arrives in the input buffer.
   '   OnTxEmpty VOID Output buffer is flushed
 
-
   'PROPERTIES
   Handle            AS LONG
   Port              AS STRING
@@ -2763,7 +2721,6 @@ TYPE COMPORT EXTENDS QOBJECT
   'properties not inherited
   'PendingIO INTEGER R
 
-
   'Default property values
   CONSTRUCTOR
   Port            = "COM1"
@@ -2778,7 +2735,6 @@ TYPE COMPORT EXTENDS QOBJECT
   BytesNotWritten = 0
   Connected       = FALSE
 END CONSTRUCTOR
-
 
 'METHODS
 'not inherited are:
@@ -2839,8 +2795,6 @@ PROPERTY SET GetOutQue(myVoid AS DWORD)  'Read only
 Comport.GetCommStatus
 END PROPERTY
 
-
-
 'Method Open Port
 PUBLIC:
 SUB Open
@@ -2895,7 +2849,6 @@ SUB Open
   udtCommTimeOuts.WriteTotalTimeoutMultiplier = 0
   udtCommTimeOuts.WriteTotalTimeoutConstant = 1000   ' inc2026: было второе WriteTotalTimeoutMultiplier = 1000 (затирало 0 строкой выше); по образцу Read...Multiplier/Constant - Constant
 
-
   lngStatus = SetCommTimeouts(ComPort.Handle,_
                               udtCommTimeOuts)
 
@@ -2948,11 +2901,9 @@ SUB PurgeIn ()  'Clears input buffer and stops all input functions
   PurgeComm(ComPort.Handle, PURGE_RXABORT OR PURGE_RXCLEAR)
 END SUB
 
-
 SUB PurgeOut  'Clears output buffer and stops all output functions
   PurgeComm(ComPort.Handle, PURGE_TXABORT OR PURGE_TXCLEAR)
 END SUB
-
 
 'Method     Close COM Port
 PUBLIC:
@@ -2973,7 +2924,6 @@ SUB Close
     END IF
   END IF
 END SUB
-
 
 'Method Writestring
 PUBLIC:
@@ -3049,8 +2999,6 @@ SUB Write(strData AS QMEMORYSTREAM, Count%, intWait AS INTEGER)
 
 END SUB
 
-
-
 'Method ReadString
 PUBLIC:
 FUNCTION ReadString (dwRdSize AS DWORD, intWait AS INTEGER) AS STRING
@@ -3101,8 +3049,6 @@ Declare Sub QM_OnMouseHover_eventTemplate(Xpos AS LONG, Ypos AS LONG, Descript A
 DIM gRQ2_MeasureItem AS MEASUREITEMSTRUCT       'Unknown why, must have structs declared at global level...
 DIM gRQ2_DrawItem AS DRAWITEMSTRUCT
 
-
-
 TYPE QMenuEx EXTENDS QIMAGELIST
 
   PUBLIC:
@@ -3143,7 +3089,6 @@ TYPE QMenuEx EXTENDS QIMAGELIST
         CALLFUNC(.OnMouseHover, Screen.MouseX, Screen.MouseY, .descp(ID))
       END IF
     END SUB
-
 
     SUB DrawText (clr AS INTEGER)
       DIM S AS STRING
@@ -3256,7 +3201,6 @@ TYPE QMenuEx EXTENDS QIMAGELIST
       NEXT i
     END SUB
 
-
     PUBLIC:
     SUB Init(Form AS QFORM)  'this replaces 'Set'
       IF .flagWinProc = FALSE THEN
@@ -3267,7 +3211,6 @@ TYPE QMenuEx EXTENDS QIMAGELIST
         .flagWinProc = TRUE
       END IF
     END SUB
-
 
     FUNCTION Close () AS LONG
       RESULT = SetWindowLong(QMenuEx.hWnd, GWL_WNDPROC, QMenuEx.pOldProc)
@@ -3284,11 +3227,9 @@ TYPE QMenuEx EXTENDS QIMAGELIST
     END IF
   END PROPERTY
 
-
   SUB Parent(TheMenuParent AS QMENUITEM)
     IF TheMenuParent.Handle <> 0 THEN .MenuParent = TheMenuParent.Handle
   END SUB
-
 
   SUB AddBMPFile(MenuItem AS QMENUITEM, FileName$)
     .image(MenuItem.Command).LoadFromFile(FileName$)
@@ -3303,7 +3244,6 @@ TYPE QMenuEx EXTENDS QIMAGELIST
     .image(.LastMenu).TransparentColor = .TransparentColor
     .LastCount = .Count
   END SUB
-
 
   FUNCTION AddDescription(MenuItem AS QMENUITEM, descripcion AS STRING) AS LONG
     DIM S AS STRING
@@ -3330,7 +3270,6 @@ TYPE QMenuEx EXTENDS QIMAGELIST
     EXIT_FUNCTION:
   END FUNCTION
 
-
   '==============================================
   ' Mйthode ajoute un bitmap a l'item menu
   '==============================================
@@ -3356,7 +3295,6 @@ TYPE QMenuEx EXTENDS QIMAGELIST
     RESULT = 1
     EXIT_FUNCTION:
   END FUNCTION
-
 
   '==============================================
   ' Mйthode supprime un bitmap de l'item menu
@@ -3432,13 +3370,11 @@ TYPE QFILEDIALOG EXTENDS QOBJECT
   NoChangeDir  = 0
 END CONSTRUCTOR
 
-
 FUNCTION Execute() AS LONG
   DIM FndSpace1  AS INTEGER
   DIM FndSpace2  AS INTEGER
   DIM StrLenth  AS INTEGER
   DIM MyHresult  AS LONG   'return result
-
 
   WITH QFILEDIALOG
     .OFN.lStructSize = SIZEOF(QfileDialog.OFN)
@@ -3487,7 +3423,6 @@ FUNCTION Execute() AS LONG
     CASE ELSE
       ShowMessage "Invalid Mode in FileDialog"
     END SELECT
-
 
     IF MyHresult <> 0 THEN        'returns 0 on CANCEL
       '  .tmpFileName = STRING$(.OFN.nMaxFile, 0)  'can't reallocate string memory!
@@ -3874,7 +3809,6 @@ TYPE QDebug EXTENDS QOBJECT  'Begin defining our QDebug object
   Timer1      AS QTIMER
   TestSockets AS INTEGER                      'also use WSAGetLastError
 
-
   PROPERTY SET Set_Visible(VisibleValue AS LONG) 'Property Set for Visible property
   IF VisibleValue = 1 THEN  'If Visible property is set to True
     This.Form.Show  'Then show our Debug window
@@ -3891,7 +3825,6 @@ PROPERTY SET Set_Enabled(EnabledValue AS LONG) '0 =  fixed/read-only, 1 = Debug 
 This.Enabled = EnabledValue
 IF This.Form.Visible THEN EnableWindow(This.Form.Handle , This.Enabled)
 END PROPERTY
-
 
 SUB ReOrder
   IF This.Form.Visible = 0 THEN This.Form.Show  'turn it on
@@ -3970,7 +3903,6 @@ NEXT i
 This.PrintStr(TheWholeStr)
 END SUBI
 
-
 SUB Bug(StringToPrint AS STRING) 'keep compatible with previous release
   This.PrintStr(StringToPrint)
 END SUB
@@ -3994,7 +3926,6 @@ FUNCTION ErrNum() AS DWORD  'get windows last error
   This.PRINT(Rtn)
   RESULT = Rtn
 END FUNCTION
-
 
 FUNCTION Err$ AS STRING  'ripped off from format message
   DIM Buffer AS STRING
@@ -4020,7 +3951,6 @@ SUB Break
   LOOP UNTIL This.BreakButton.Tag = 0
   This.BreakButton.Caption = "Break"
 END SUB
-
 
 EVENT BreakButton.OnClick
 IF This.BreakButton.Tag = 0 THEN
@@ -4055,8 +3985,6 @@ NEXT i
 DOEVENTS
 END EVENT
 
-
-
 FUNCTION CheckMatch(TheAddr AS LONG) AS INTEGER
   DEFINT i , matchs = 0 , n = This.WatchCount
   FOR i = 0 TO n
@@ -4081,7 +4009,6 @@ IF This.CheckMatch(addr) = 0 THEN
 END IF
 END SUBI
 
-
 SUBI WatchString(...)
 DEFLNG addr = ParamVal(1)
 IF This.CheckMatch(addr) = 0 THEN
@@ -4095,7 +4022,6 @@ IF This.CheckMatch(addr) = 0 THEN
   This.ReOrder
 END IF
 END SUBI
-
 
 SUBI WatchSingle(...)
 DEFLNG addr = ParamVal(1)
@@ -4111,7 +4037,6 @@ IF This.CheckMatch(addr) = 0 THEN
   This.ReOrder
 END IF
 END SUBI
-
 
 SUBI WatchDouble(...)
 DEFLNG addr = ParamVal(1)
@@ -4132,8 +4057,6 @@ PROPERTY SET Set_WatchTime(TheNewTime AS INTEGER)
 This.WatchTime = TheNewTime
 This.Timer1.Interval = This.WatchTime
 END PROPERTY
-
-
 
 SUB ClearWatch
   DEFINT x, y
@@ -4200,8 +4123,6 @@ TYPE Qlistviewex EXTENDS Qlistview
   Height         as long  PROPERTY SET Set_Height
   Visible        as long  PROPERTY SET Set_Visible
 
-
-
   PRIVATE:
   lx    as integer 'were Global vars
   ly    as integer 'should keep them
@@ -4255,12 +4176,10 @@ PROPERTY SET Set_Visible(mVisible AS LONG)
 THIS.parentpanel.Visible = mVisible
 END PROPERTY
 
-
 '============================================================
 function FieldsCount as integer
   result = tally(Qlistviewex.csv.item(0), Qlistviewex.Separator) + 1
 end function
-
 
 '============================================================|
 'Clear method is very slow if you use a lot of items,        |
@@ -4290,7 +4209,6 @@ sub load
   qlistviewex.sorttype = 0
   THIS.ly = Qlistviewex.csv.itemcount
 
-
   for THIS.lx = 0 to (THIS.ly - 1)
     with qlistviewex
       field = field$(.CSV.item(.lx), .separator, 1)
@@ -4312,7 +4230,6 @@ sub loadfromcsvfile
   QlistviewEx.csv.loadfromfile(QlistviewEx.csvFile)
   QlistviewEx.load
 end sub
-
 
 '============================================================|
 'Call this function passing a column header caption as       |
@@ -4347,7 +4264,6 @@ sub Sortby (Criterium as string)
     End if
   NEXT THIS.ix
 end sub
-
 
 '============================================================|
 'This sub can exclude unwanted items from list. You'll have  |
@@ -4393,8 +4309,6 @@ sub columnclick (hcapt as qcoolbtn)
   Qlistviewex.sortby (hcapt.caption)
 end sub
 
-
-
 '============================================================|
 'You'll have to call this sub every time you want to update  |
 'QlistviewEx layout (so every time you change column caption,|
@@ -4421,7 +4335,6 @@ sub draw()
   end if
 end sub
 
-
 '============================================================|
 'Use this to add columns, istead of the addcolumns method.   |
 'Just pass columns names in a single string, separated by  a |
@@ -4439,7 +4352,6 @@ sub addcol (coltoadd as string)
   loop until THIS.lx = THIS.ly
   QlistviewEx.draw
 end sub
-
 
 '============================================================|
 ' Update CSV Qstringlist with data contained in Qlistviewex. |
@@ -4464,7 +4376,6 @@ sub updatecsv
     inc(THIS.lx)
   loop until THIS.lx = THIS.ly
 end sub
-
 
 '============================================================|
 sub filter (Column as integer, criterium  as string)
@@ -4492,8 +4403,6 @@ sub filter (Column as integer, criterium  as string)
   loop until THIS.lx = THIS.ly
 end sub
 
-
-
 '============================================================|
 sub SaveToCsvFile
   With QlistviewEx
@@ -4501,7 +4410,6 @@ sub SaveToCsvFile
     .csv.savetofile (.csvfile)
   end with
 end sub
-
 
 '============================================================|
 sub SaveToFileAs
@@ -4512,7 +4420,6 @@ sub SaveToFileAs
     end with
   end if
 end sub
-
 
 '============================================================|
 sub DirectSaveAs
@@ -4553,7 +4460,6 @@ Type QPageSetup EXTENDS QOBJECT
   PSD   AS TPSD
   MyWndProc AS LONG
   BindIndex AS LONG
-
 
   Public :
   Caption         AS STRING
@@ -4713,7 +4619,6 @@ END PROPERTY
 PROPERTY SET SetPageHeight(value as boolean)
 END PROPERTY
 
-
 '===========================================
 ' Mйthode affichage mise en page imprimante
 '===========================================
@@ -4724,7 +4629,6 @@ Function Execute as boolean
   QPageSetup.PSD.lStructSize = SIZEOF(QPageSetup.PSD)
   QPageSetup.PSD.hWndOwner=Application.handle
   QPageSetup.PSD.Flags=PSD_MARGINS+PSD_MINMARGINS
-
 
   if QPageSetup.Caption<>"" then
     QPageSetup.PSD.Flags=QPageSetup.PSD.Flags+PSD_ENABLEPAGESETUPHOOK
@@ -4748,7 +4652,6 @@ Function Execute as boolean
   if QPageSetup.DisableMargins then
     QPageSetup.PSD.Flags=QPageSetup.PSD.Flags+PSD_DISABLEMARGINS
   end if
-
 
   MEMSET(DevM,0,sizeof(DevM))       'Makes Sure Memory's Cleared
   DevM.dmSize = sizeof(DevM)
@@ -4808,7 +4711,6 @@ Function Execute as boolean
     QPageSetup.PSD.hDevMode = UDTPTR(DevM)
   End If
 
-
   'generate the main dialog box
   if PageSetupDlg(QPageSetup.PSD) then
     QPageSetup.Execute=true
@@ -4855,7 +4757,6 @@ TYPE QSYSTEM EXTENDS QOBJECT
   PercentBattery AS INTEGER  'range 0 - 100
   PowerStatus    AS INTEGER PROPERTY SET SetPowerStatus
 
-
   FUNCTION OSName$() AS STRING  'get OS version
     DIM OSV  AS OSVERSIONINFO
 
@@ -4885,8 +4786,6 @@ TYPE QSYSTEM EXTENDS QOBJECT
     EXIT_FUNCTION:          'fix memory leak for exit function
   END FUNCTION
 
-
-
   PROPERTY SET SetPowerStatus(TheStatus AS LONG)
   '  FUNCTION GetPowerStatus() AS INTEGER   'can't return byte
   DIM powr AS SYSTEM_POWER_STATUS
@@ -4912,7 +4811,6 @@ TYPE QSYSTEM EXTENDS QOBJECT
     END IF
   END IF
 END PROPERTY
-
 
 FUNCTION PercentFreeMemory() AS DWORD
   GlobalMemoryStatus(THIS.MemStats)
@@ -4956,7 +4854,6 @@ FUNCTION DiskFreeSpace(RootPathName AS STRING) AS DOUBLE   'returns 8 bytes
     RESULT = dblFreeSpace/1048576 'convert to MB
   End If
 END FUNCTION
-
 
 ' ****  system metrics wrapped up for ya  ****
 
@@ -5009,7 +4906,6 @@ END FUNCTION
 FUNCTION SlowProcessor() AS LONG 'Slow processor flag, in case you need a fast machine
   RESULT = GetSystemMetrics(SM_SLOWMACHINE)
 END FUNCTION
-
 
 '===========================================================================================================
 ' Control panel code adapted from b_j0@yahoo.com, Thanks to Rudy Elyn (email: Rudy@vt4.net)
@@ -5091,7 +4987,6 @@ FUNCTION ShowControlPanel(PanelName AS STRING,index AS INTEGER) AS LONG
   RESULT = PID
 END FUNCTION
 
-
 PRIVATE:
 
 SUB DoShutDown
@@ -5138,7 +5033,6 @@ SUB Reboot
   This.DoShutDown
 END SUB
 
-
 CONSTRUCTOR
 SetPowerStatus(0)
 OSName$
@@ -5149,77 +5043,22 @@ END TYPE
 '[build_inc] apiRe.inc
 '============================================================================
 $IFNDEF TRUE
-'~dup   $DEFINE True 1   ' повтор, первое: rapidq2.inc(58)
 $ENDIF
 
 $IFNDEF FALSE
-'~dup   $DEFINE False 0   ' повтор, первое: rapidq2.inc(55)
 $ENDIF
 
 '$IFNDEF boolean
 ''  $DEFINE boolean integer
 'ENDIF
 
-'~dup DECLARE FUNCTION LoadLibrary LIB "KERNEL32" ALIAS "LoadLibraryA" _   ' повтор, первое: rapidq2.inc(2261)
-'~dup                  (LibFileName AS STRING) AS LONG
-'~dup dim hInst AS LONG   ' повтор, первое: createWind.inc(12)
-'~dup $DEFINE HWND INTEGER   ' повтор, первое: createWind.inc(14)
-
-'const WS_EX_CLIENTEDGE = &H200 ' Just some of the many API constants
-'const WS_CHILD = &H40000000
-'const WS_VISIBLE = &H10000000
-'const WS_BORDER = &H800000
-
 ' Window Styles
-'~dup Public Const WS_OVERLAPPED = &H0&   ' повтор, первое: rapidq2.inc(947)
-'~dup Public Const WS_POPUP = &H80000000   ' повтор, первое: rapidq2.inc(948)
-'~dup Public Const WS_CHILD = &H40000000   ' повтор, первое: rapidq2.inc(949)
-'~dup Public Const WS_MINIMIZE = &H20000000   ' повтор, первое: rapidq2.inc(950)
-'~dup Public Const WS_VISIBLE = &H10000000   ' повтор, первое: rapidq2.inc(951)
-'~dup Public Const WS_DISABLED = &H8000000   ' повтор, первое: rapidq2.inc(952)
-'~dup Public Const WS_CLIPSIBLINGS = &H4000000   ' повтор, первое: rapidq2.inc(953)
-'~dup Public Const WS_CLIPCHILDREN = &H2000000   ' повтор, первое: rapidq2.inc(954)
-'~dup Public Const WS_MAXIMIZE = &H1000000   ' повтор, первое: rapidq2.inc(955)
-'~dup Public Const WS_CAPTION = &HC00000                  '  WS_BORDER Or WS_DLGFRAME   ' повтор, первое: rapidq2.inc(956)
-'~dup Public Const WS_BORDER = &H800000   ' повтор, первое: rapidq2.inc(957)
-'~dup Public Const WS_DLGFRAME = &H400000   ' повтор, первое: rapidq2.inc(958)
-'~dup Public Const WS_VSCROLL = &H200000   ' повтор, первое: rapidq2.inc(959)
-'~dup Public Const WS_HSCROLL = &H100000   ' повтор, первое: rapidq2.inc(960)
-'~dup Public Const WS_SYSMENU = &H80000   ' повтор, первое: rapidq2.inc(961)
-'~dup Public Const WS_THICKFRAME = &H40000   ' повтор, первое: rapidq2.inc(962)
-'~dup Public Const WS_GROUP = &H20000   ' повтор, первое: rapidq2.inc(963)
-'~dup Public Const WS_TABSTOP = &H10000   ' повтор, первое: rapidq2.inc(964)
-
-'~dup Public Const WS_MINIMIZEBOX = &H20000   ' повтор, первое: rapidq2.inc(968)
-'~dup Public Const WS_MAXIMIZEBOX = &H10000   ' повтор, первое: rapidq2.inc(969)
-
-'~dup Public Const WS_TILED = WS_OVERLAPPED   ' повтор, первое: Win32_constants.inc(56)
-'~dup Public Const WS_ICONIC = WS_MINIMIZE   ' повтор, первое: Win32_constants.inc(43)
-'~dup Public Const WS_SIZEBOX = WS_THICKFRAME   ' повтор, первое: Win32_constants.inc(52)
-'~dup Public Const WS_OVERLAPPEDWINDOW = (WS_OVERLAPPED Or WS_CAPTION Or WS_SYSMENU Or WS_THICKFRAME Or WS_MINIMIZEBOX Or WS_MAXIMIZEBOX)   ' повтор, первое: rapidq2.inc(970)
-'~dup Public Const WS_TILEDWINDOW = WS_OVERLAPPEDWINDOW   ' повтор, первое: Win32_constants.inc(57)
 
 '
 '   Common Window Styles
 '  /
 
-
-'~dup Public Const WS_POPUPWINDOW = (WS_POPUP Or WS_BORDER Or WS_SYSMENU)   ' повтор, первое: Win32_constants.inc(51)
-
-'~dup Public Const WS_CHILDWINDOW = (WS_CHILD)   ' повтор, первое: Win32_constants.inc(36)
-
 ' Extended Window Styles
-'~dup Public Const WS_EX_DLGMODALFRAME = &H1&   ' повтор, первое: Win32_constants.inc(9)
-'~dup Public Const WS_EX_NOPARENTNOTIFY = &H4&   ' повтор, первое: Win32_constants.inc(14)
-'~dup Public Const WS_EX_TOPMOST = &H8&   ' повтор, первое: Win32_constants.inc(22)
-'~dup Public Const WS_EX_ACCEPTFILES = &H10&   ' повтор, первое: Win32_constants.inc(4)
-'~dup Public Const WS_EX_TRANSPARENT = &H20&   ' повтор, первое: Win32_constants.inc(23)
-
-
-
-
-'~dup Const SW_HIDE = 0   ' повтор, первое: Form.inc(6)
-'~dup Const SW_SHOW = 5   ' повтор, первое: Form.inc(13)
 
 DECLARE FUNCTION CreateRichEdit LIB "USER32" ALIAS "CreateWindowExA" _
        (ExStyle&, ClassName$, WindowName$, Style&, X&, Y&, _
@@ -5232,7 +5071,6 @@ nHeight As integer,bRepaint As Long) As Long
 Declare Function ShowRichEdit Lib "user32" Alias "ShowWindow" _
  (hwnd As Long,nCmdShow As Long) As Long
 
-
 TYPE QRichEdit_api EXTENDS QObject
 
     PUBLIC:
@@ -5244,7 +5082,6 @@ TYPE QRichEdit_api EXTENDS QObject
       Visible as integer PROPERTY SET SetVisible
       Handle  as integer
 
-    
     PROPERTY SET SetVisible(visible as integer)
       QRichedit_api.visible=visible
       if visible=0 then
@@ -5285,7 +5122,6 @@ TYPE QRichEdit_api EXTENDS QObject
    with QRichEdit_api
        .Parent = parent
 hInst = LoadLibrary("RICHED32.DLL")
-
 
 .Handle = CreateRichEdit(WS_EX_CLIENTEDGE or WS_EX_MDICHILD or WS_EX_NOPARENTNOTIFY or _
 WS_EX_OVERLAPPEDWINDOW or WS_EX_TRANSPARENT _
@@ -5386,7 +5222,6 @@ $UNDEF HWND   ' сборка: ниже это имя переменной, odbc.
       Field.Nullav(100) AS INTEGER
       Field.Data(100) AS STRING
 
-
       SUB ODBCInit
        DIM iStatus AS SHORT
 
@@ -5486,7 +5321,6 @@ $UNDEF HWND   ' сборка: ниже это имя переменной, odbc.
        DIM sSQLState AS STRING * MAX_DATA_BUFFER
        DIM sErrorMsg AS STRING * MAX_DATA_BUFFER
        DIM sMsg AS STRING
-
 
        qODBC.SQLRet=SQLExecDirect(qODBC.glStmt, VARPTR(qODBC.sSQL), LEN(qODBC.sSQL))
        IF qODBC.SQLRet <> SQL_SUCCESS AND qODBC.SQLRet <> SQL_SUCCESS_WITH_INFO THEN
@@ -5682,17 +5516,7 @@ Dim custGrip	As QBitmap
 
 $IFNDEF __RQINC' ==(corrigй! doh!)
 $IFNDEF __RQINCTMP
-'~dup $DEFINE __RQINCTMP   ' повтор, первое: ODMenuXP.inc(3)
-'~dup 	CONST False = 0   ' повтор, первое: rapidq2.inc(82)
-'~dup 	CONST True	= 1   ' повтор, первое: rapidq2.inc(83)
 
-'~dup 	CONST clBtnFace = -2147483633   ' повтор, первое: rapidq2.inc(132)
-'~dup 	CONST clHilight	= -2147483635   ' повтор, первое: rapidq2.inc(130)
-'~dup 	CONST clGrayText = -2147483631   ' повтор, первое: rapidq2.inc(134)
-'~dup 	CONST clBtnText	= -2147483630   ' повтор, первое: rapidq2.inc(135)
-'~dup 	CONST clPurple	= &HFF00FF   ' повтор, первое: rapidq2.inc(113)
-
-'~dup 	CONST pf15bit	= 4   ' повтор, первое: rapidq2.inc(528)
 $ENDIF ' __RQINCTMP
 $ENDIF ' __RQINC
 
@@ -5764,15 +5588,8 @@ Declare Function DrawText_QTBtn Lib "user32" Alias "DrawTextA" ( _
 		ByVal wFormat As Long) As Long
 
 ' Ajoutй 6fйv
-'Declare Function GetDC_QTBtn Lib "user32" _
-'		Alias "GetDC" _
-'		(ByVal hwnd As Long) As Long
 'Declare Function DeleteDC_QTBtn Lib "gdi32" _
 '		Alias "DeleteDC" (ByVal hdc As Long) As Long
-'Declare Function ReleaseDC_QTBtn Lib "user32" _
-'		Alias "ReleaseDC" ( _
-'		ByVal hwnd As Long, _
-'		ByVal hdc As Long) As Long
 Declare Function SetBkMode_QTBtn Lib "gdi32" _
 		Alias "SetBkMode" ( _
 		ByVal hdc As Long, _
@@ -5815,7 +5632,6 @@ Const xpt_TabBtn		= "Tab"
 $ENDIF ' __RQOBJDRAWING
 
 Const xpt_ReBar		= "ReBar" ' Seulement pour coolbarxp
-
 
 $IFNDEF __RQGETVERSION
 $DEFINE __RQGETVERSION
@@ -6045,7 +5861,6 @@ Sub Fast_CBar( _
 		Dim lR As Long
 		Dim m_hDC As Long
 		Dim m_lPartId As Long, m_lStateId As Long
-		'Dim tR As RECT_QTBtn
 
 		' Format unicode ?!?
 		Dim I As Integer
@@ -6143,7 +5958,6 @@ Sub Fast_CBar( _
 		PartID = True
 End Sub
 
-
 Sub XPPart ( _
 			 BtnType As String, _
 			 PartID As Integer, _
@@ -6214,7 +6028,6 @@ Sub XPPart ( _
 End Sub
 ' //==
 
-
 Const AC_SRC_OVER_CBar = &H00
 
 Type BLENDFUNCTION_CBar
@@ -6245,7 +6058,6 @@ Declare Sub RtlMoveMemory_CBar Lib "kernel32.dll" Alias "RtlMoveMemory" ( _
 Dim BF_CBar	As BLENDFUNCTION_CBar, _
 	lBF_CBar	As Long
 
-
 Declare Function GetWindowRect_CBar Lib "user32" Alias "GetWindowRect" ( _ 
         ByVal hwnd As Long, _ 
         ByRef lpRect As RECT_QTBtn ) As Long 
@@ -6254,25 +6066,10 @@ Declare Function PtInRect_CBar Lib "user32" Alias "PtInRect" ( _
         ByRef lpRect As RECT_QTBtn, _ 
         ByVal x As Long, ByVal y As Long ) As Long 
 
-
 ' Gиre les menus popup
-'Const TPM_HORIZONTAL		As Long = &H0&
-'Const TPM_LEFTALIGN			As Long = &H0&
 Const TPM_LEFTBUTTON_CBar			= &H0				'&H0&
-'Const TPM_TOPALIGN			As Long = &H0&
-'Const TPM_RECURSE					= &H1				'&H1&
 Const TPM_RIGHTBUTTON_CBar			= &H2				'&H2&
-'Const TPM_CENTERALIGN		As Long = &H4&
-'Const TPM_RIGHTALIGN		As Long = &H8&
-'Const TPM_VCENTERALIGN		As Long = &H10&
-'Const TPM_BOTTOMALIGN		As Long = &H20&
-'Const TPM_VERTICAL			As Long = &H40&
-'Const TPM_NONOTIFY			As Long = &H80&
 Const TPM_RETURNCMD_CBar	As Long = &H100&
-'Const TPM_HORPOSANIMATION	As Long = &H400&
-'Const TPM_HORNEGANIMATION	As Long = &H800&
-'Const TPM_VERPOSANIMATION	As Long = &H1000&
-'Const TPM_VERNEGANIMATION	As Long = &H2000&
 Const TPM_NOANIMATION_CBar	As Long = &H4000&
 
 Declare Function TrackPopupMenuEx_CBar Lib "user32" Alias "TrackPopupMenuEx" ( _
@@ -6284,12 +6081,8 @@ Declare Function TrackPopupMenuEx_CBar Lib "user32" Alias "TrackPopupMenuEx" ( _
 ' // Fin - Gиre les menus popup
 
 ' Gиre les boоtes de texte et les comboboxes
-'Const HWND_TOPMOST			= -1
-'Const HWND_NOTOPMOST		= -2
 Const SWP_NOSIZE_CBar		= &H1
-'Const SWP_NOMOVE			= &H2
 Const SWP_NOACTIVATE_CBar	= &H10
-'Const SWP_SHOWWINDOW		= &H40
 Const SWP_NOZORDER_CBar		= &H4
 
 Declare Sub SetWindowPos_CBar Lib "user32" Alias "SetWindowPos" ( _
@@ -6302,7 +6095,6 @@ Declare Sub SetWindowPos_CBar Lib "user32" Alias "SetWindowPos" ( _
 
 ' Mйthode pour ajouter une icфne а l'item d'un menu
 ' //Fin
-
 
 'Const HTCLIENT_CBar		= 1
 Const HTCAPTION_CBar		= 2
@@ -6345,7 +6137,6 @@ End Sub
 DECLARE SUB CBarOnMouseEnter_EventTemplate (X As Integer, Y As Integer, Shift As Integer, ItemIndex As Integer, Me As QPanel)
 DECLARE SUB CBarOnMouseLeave_EventTemplate (X As Integer, Y As Integer, Shift As Integer, Me As QPanel)
 DECLARE SUB CBarOnChange_EventTemplate (ItemIndex As Integer, Me As QPanel)
-
 
 Type QCoolBarXP Extends QPanel
    PUBLIC:
@@ -6575,7 +6366,6 @@ Type QCoolBarXP Extends QPanel
 				.LastItemTop	= False
 			End If
 
-
 			If .Orientation Then
 				.BMPCache2.Width	= .FreePanelL.Width
 				.BMPCache2.Height	= .ItemLeft(.ItemCount -True) +.ItemWidth(.ItemCount -True)
@@ -6592,7 +6382,6 @@ Type QCoolBarXP Extends QPanel
 
 			If isXP_QTBtn = False or .DisableXPTheme = True Then _
 				 .BMPCache2.FillRect (False, False, .BMPCache2.Width, .BMPCache2.Height, This.Color)
-
 
 			If .HideGrip = False Then
 
@@ -6972,7 +6761,6 @@ Type QCoolBarXP Extends QPanel
 				.CoolBtnBMPE.Pixel(False, False))
 		End If
 		If .BorderStyle Then
-			'Dim R As RECT_QTBtn
 			If .Orientation Then
 				SetRect_CBar ( R, _
 					False, _
@@ -7067,7 +6855,6 @@ Type QCoolBarXP Extends QPanel
 			'.isPaintReady = False
 		End If
 	END SUBI
-	'SUBI DelItems (...)
 	'END SUBI
 	SUB AsignPopupToItem (Me As QPopupMenu, iIndex As Integer)
 		If .ItemCount = False Then _
@@ -7358,7 +7145,6 @@ Type QCoolBarXP Extends QPanel
 			If .imgLA.Count > False and (iIndex -SepBefore) < .imgLA.Count Then _
 				imgLBK.BMP	= .imgLA.GetBMP(iIndex -sepBefore)
 
-			
 			.CoolBtnBMP.Font.Color = IIf (.ItemEnabled(iIndex), This.Font.Color, clGrayText) ' inc2026: iIndex вместо I: I здесь - счётчик цикла выше, после него I = iIndex + 1; вся ветка про элемент iIndex
 
 			Fast_CBar( xpt_ToolBarBtn, _
@@ -7421,7 +7207,6 @@ Type QCoolBarXP Extends QPanel
 		Static PosX As Integer, PosY As Integer
 		Static isHoverInsCtrl As Integer
 		Dim sepBefore As Integer
-
 
 		GetWindowRect_CBar (This.Handle, R)
 
@@ -7922,15 +7707,12 @@ $TYPECHECK OFF   ' сборка: вернуть после QCoolBarXPv1d.inc
 ' Classe QDataBase version 1.0
 '=======================================================
 $IFNDEF TRUE
-'~dup   $DEFINE True 1   ' повтор, первое: rapidq2.inc(58)
 $ENDIF
 
 $IFNDEF FALSE
-'~dup   $DEFINE False 0   ' повтор, первое: rapidq2.inc(55)
 $ENDIF
 
 $IFNDEF boolean
-'~dup   $DEFINE boolean integer   ' повтор, первое: rapidq2.inc(2241)
 $ENDIF
 
 Type TDbHeader
@@ -8621,22 +8403,14 @@ End Type
 ' GetDriveType return values
 $DEFINE __QDRIVE_INC
 
-
 $IFNDEF __WIN32API				   'windows 32 definitions
 $IFNDEF __QVOLUMEINFO_INC          'shared constants
     Const DRIVE_UNKNOWN As Long = 0
     Const DRIVE_NO_ROOT_DIR As Long = 1
-'~dup     Const DRIVE_REMOVABLE As Long = 2   ' повтор, первое: WIN32API.INC(1623)
-'~dup     Const DRIVE_FIXED As Long = 3   ' повтор, первое: WIN32API.INC(1624)
-'~dup     Const DRIVE_REMOTE As Long = 4   ' повтор, первое: WIN32API.INC(1625)
-'~dup     Const DRIVE_CDROM As Long = 5   ' повтор, первое: WIN32API.INC(1626)
-'~dup     Const DRIVE_RAMDISK As Long = 6   ' повтор, первое: WIN32API.INC(1627)
 $ENDIF
 
 $IFNDEF __RQ2WIN32API
-'~dup     Declare Function GetDriveType Lib "kernel32" Alias "GetDriveTypeA" (nDrive As String) As Long   ' повтор, первое: rapidq2.inc(1505)
 $ENDIF
-'~dup     Declare Function GetDiskFreeSpace Lib "kernel32" Alias "GetDiskFreeSpaceA" (root as string,BYREF sectors as long,BYREF bytes as long,BYREF clusters as long,BYREF total as long) as integer   ' повтор, первое: Kernel32.inc, поднято(94)
 $ENDIF
 
 TYPE QDrive EXTENDS QObject
@@ -8722,7 +8496,6 @@ TYPE QDrive EXTENDS QObject
   END constRUCTOR
 END TYPE  
       
-
 '============================================================================
 '[build_inc] qEditEx.inc
 '============================================================================
@@ -8740,14 +8513,9 @@ END TYPE
 ' Fixed a little bug in WndProc(check for assignment) 
 ' Added Property EnterKey 
 
-'DECLARE FUNCTION CallWindowProc LIB "User32" ALIAS "CallWindowProcA"(lpPrevWndFunc AS LONG, hWnd AS LONG, uMsg AS LONG, wParam AS LONG, lParam AS LONG) AS LONG
-'~dup DECLARE FUNCTION SetWindowLong LIB "User32" ALIAS "SetWindowLongA"(hWnd AS LONG, nIndex AS LONG, dwNewLong AS LONG) AS LONG   ' повтор, первое: rapidq2.inc(1039)
-'~dup DECLARE FUNCTION GetParent LIB "User32" ALIAS "GetParent" (hWnd AS LONG) AS LONG   ' повтор, первое: rapidq2.inc(995)
-
 CONST ekNormal = 0
 CONST ekTab = 1
 
-'~dup DECLARE SUB OnGetFocus_EventTemplate(Sender AS QEDIT)   ' повтор, первое: rapidq2.inc(2413)
 DECLARE SUB OnLoseFocus_EventTemplate(Sender AS QEDIT)
 DECLARE SUB WndProc_EventTemplate(hWnd AS LONG, uMsg AS LONG, wParam AS LONG, lParam AS LONG)
 
@@ -8796,8 +8564,6 @@ END TYPE
 '~define $UNDEF QEDIT   ' сборка: встроенный класс не подменяется
 '~define $DEFINE QEDIT QxEDIT   ' сборка: встроенный класс не подменяется
  
-
-
 '============================================================================
 '[build_inc] QIni.inc
 '============================================================================
@@ -8806,28 +8572,13 @@ END TYPE
 ' Classe QINI
 '=======================================================
 $IFNDEF TRUE
-'~dup   $DEFINE True 1   ' повтор, первое: rapidq2.inc(58)
 $ENDIF
 
 $IFNDEF FALSE
-'~dup   $DEFINE False 0   ' повтор, первое: rapidq2.inc(55)
 $ENDIF
 
 $IFNDEF boolean
-'~dup   $DEFINE boolean integer   ' повтор, первое: rapidq2.inc(2241)
 $ENDIF
-
-'~dup Declare Function GetPrivateProfileString Lib "Kernel32" Alias "GetPrivateProfileStringA" _    ' повтор, первое: WIN32API.INC(2051)
-'~dup (lpApplicationName As String,lpKeyName As String, _ 
-'~dup lpDefault As String,lpReturnedString As long,nSize As Long,lpFileName As String) As Long 
-
-'~dup Declare Function WritePrivateProfileString Lib "Kernel32" Alias "WritePrivateProfileStringA" _    ' повтор, первое: WIN32API.INC(2053)
-'~dup (lpApplicationName as string,lpKeyName As String,lpString As String,lpFileName as string) As Long 
-
-'~dup Declare Function GetWindowsDirectory Lib "kernel32.dll" Alias "GetWindowsDirectoryA" (lpBuffer As long,nSize As Long) As Long   ' повтор, первое: Kernel32.inc, поднято(213)
-'~dup Declare Function GetSystemDirectory Lib "kernel32" Alias "GetSystemDirectoryA" (lpBuffer As long,nSize As Long) As Long   ' повтор, первое: WIN32API.INC(2059)
-'~dup Declare Function GetTempPath Lib "kernel32" Alias "GetTempPathA" (nBufferLength As Long,lpBuffer As Long) As Long   ' повтор, первое: Kernel32.inc, поднято(148)
-
 
 TYPE QINI EXTENDS QObject
   '===========================================
@@ -8923,7 +8674,6 @@ TYPE QINI EXTENDS QObject
   END CONSTRUCTOR
 End TYPE
 
-
 '============================================================================
 '[build_inc] QIniFile.inc
 '============================================================================
@@ -8934,7 +8684,6 @@ $IFNDEF __RQSYSUTILS
 $ENDIF
 
 $IFNDEF __WIN32API
-'~dup Declare Function GetWindowsDirectory Lib "kernel32" Alias "GetWindowsDirectoryA" (ByVal lpBuffer As Long, ByVal nSize As Long) As Long   ' повтор, первое: Kernel32.inc, поднято(213)
 $ENDIF
 
 Type QIniFile Extends QstringList
@@ -8946,7 +8695,6 @@ Type QIniFile Extends QstringList
      
      With This
 
-     
      Public:
      Sub CreateFile(Dir As String)
          .Clear
@@ -9176,8 +8924,6 @@ End Type
 ' P.S. Sorry for the lack of comments, maybe in the
 ' next release...
 
-
-
 DIM Moving      AS LONG
 DIM SplitPos    AS POINTAPI
 DIM OldSplitPos AS POINTAPI
@@ -9187,33 +8933,12 @@ DIM MSPLIT_Rect1           AS QRECT
 DEFWORD PatternPtn(7) = {&H00AA, &H0055, &H00AA, &H0055, &H00AA, &H0055, &H00AA, &H0055}
 DEFWORD SolidPtn(7) = {&H00FF, &H00FF, &H00FF, &H00FF, &H00FF, &H00FF, &H00FF, &H00FF}
 
-'~dup const PATINVERT = &H5A0049   ' повтор, первое: rapidq2.inc(1294)
 const rsNone    = 0
 const rsSolid   = 1
 const rsPattern = 2
 const rsUpdate  = 3
 $IFNDEF __WIN32API				   'windows 32 definitions
-'~dup     TYPE POINTAPI   ' повтор, первое: rapidq2.inc(878)
-'~dup         X AS LONG
-'~dup         Y AS LONG
-'~dup     END TYPE
     
-'~dup     Declare Function GetParent Lib "user32" Alias "GetParent" (ByVal hwnd As Long) As Long   ' повтор, первое: rapidq2.inc(995)
-'~dup     Declare Function ChildWindowFromPoint Lib "user32" ALIAS "ChildWindowFromPoint"(ByVal hWndParent As Long, ByVal X AS LONG, ByVal Y AS LONG) As Long   ' повтор, первое: WIN32API.INC(7189)
-'~dup     Declare Function GetDC Lib "user32" Alias "GetDC" (ByVal hwnd As Long) As Long   ' повтор, первое: rapidq2.inc(1482)
-'~dup     Declare Function CreateBitmap Lib "gdi32" ALIAS "CreateBitmap"(ByVal nWidth As Long, ByVal nHeight As Long, ByVal nPlanes As Long, ByVal nBitCount As Long, ByVal lpBits As LONG) As Long   ' повтор, первое: WIN32API.INC(4361)
-'~dup     Declare Function CreatePatternBrush Lib "gdi32" ALIAS "CreatePatternBrush"(ByVal hBitmap As Long) As Long   ' повтор, первое: WIN32API.INC(4390)
-'~dup     Declare Function SelectObject Lib "gdi32" Alias "SelectObject" (ByVal hdc As Long, ByVal hObject As Long) As Long   ' повтор, первое: rapidq2.inc(1464)
-'~dup     Declare Function SetBrushOrgEx Lib "gdi32" ALIAS "SetBrushOrgEx"(ByVal hdc As Long, ByVal nXOrg As Long, ByVal nYOrg As Long, lppt As POINTAPI) As Long   ' повтор, первое: WIN32API.INC(4706)
-'~dup     Declare Function ClientToScreen Lib "user32" Alias "ClientToScreen" (ByVal hwnd As Long, lpPoint As POINTAPI) As Long   ' повтор, первое: rapidq2.inc(1041)
-'~dup     Declare Function PatBlt Lib "gdi32" Alias "PatBlt" (ByVal hdc As Long, ByVal x As Long, ByVal y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal dwRop As Long) As Long   ' повтор, первое: rapidq2.inc(1461)
-'~dup     Declare Function DeleteObject Lib "gdi32" Alias "DeleteObject" (ByVal hObject As Long) As Long   ' повтор, первое: rapidq2.inc(1451)
-'~dup     Declare Function ReleaseDC Lib "user32" Alias "ReleaseDC" (ByVal hwnd As Long, ByVal hdc As Long) As Long   ' повтор, первое: rapidq2.inc(1483)
-'~dup     Declare Function GetCursorPos Lib "user32" ALIAS "GetCursorPos"(lpPoint As POINTAPI) As Long   ' повтор, первое: WIN32API.INC(7170)
-'~dup     Declare Function GetClientRect Lib "user32" Alias "GetClientRect" (ByVal hwnd As Long, lpRect As QRECT) As Long   ' повтор, первое: rapidq2.inc(992)
-'~dup     Declare Function ScreenToClient Lib "user32" ALIAS "ScreenToClient"(ByVal hwnd As Long, lpPoint As POINTAPI) As Long   ' повтор, первое: WIN32API.INC(7185)
-'~dup     Declare Function OffsetRect Lib "user32" Alias "OffsetRect" (lpRect As QRECT, ByVal x As Long, ByVal y As Long) As Long   ' повтор, первое: WIN32API.INC(7237)
-'~dup     Declare Function MoveWindow Lib "user32" Alias "MoveWindow" (ByVal hwnd As Long, ByVal x As Long, ByVal y As Long, ByVal nWidth As Long, ByVal nHeight As Long, ByVal bRepaint As Long) As Long   ' повтор, первое: rapidq2.inc(993)
 $ENDIF
 
 TYPE QMAXSPLITTER EXTENDS QPANEL
@@ -9404,8 +9129,6 @@ TYPE QMAXSPLITTER EXTENDS QPANEL
         
     END WITH
 END TYPE
-
-  
 
 '============================================================================
 '[build_inc] QRedEx.Inc
@@ -9804,7 +9527,6 @@ Type QRedEx Extends QRichEdit
             If (Key = 13) Then .OnClic_btnFindNext
         End Sub
 
-
         CONSTRUCTOR
             WantTabs = 1
             RichTextSizeLimit = 1048576
@@ -9998,8 +9720,6 @@ End Type
 'Updated 20.04.04  Andrew Shelkovenko diakin@narod.ru
 ' OnChange event added
 
-
-
 DECLARE SUB QspintextOnChange (vl AS long)
 
 type Qspintext extends qpanel
@@ -10093,8 +9813,6 @@ public:
         Qspintext.color=&H0000FF
          end if
 
-
-    
     end event
     
     constructor 
@@ -10119,7 +9837,6 @@ public:
 
     end constructor
 
-
 end type
 '============================================================================
 '[build_inc] QTextEdit.inc
@@ -10129,18 +9846,13 @@ end type
 ' Classe QTextEdit
 '=======================================================
 $IFNDEF TRUE
-'~dup   $DEFINE True 1   ' повтор, первое: rapidq2.inc(58)
 $ENDIF
 
 $IFNDEF FALSE
-'~dup   $DEFINE False 0   ' повтор, первое: rapidq2.inc(55)
 $ENDIF
 
 $IFNDEF boolean
-'~dup   $DEFINE boolean integer   ' повтор, первое: rapidq2.inc(2241)
 $ENDIF
-
-'~dup Declare Function SendMessageA Lib "user32" Alias "SendMessageA" (hwnd As Long, wMsg As Long, wParam As Long, lParam As Long) As Long   ' повтор, первое: Common.inc(14)
 
 TYPE QTEXTEDIT EXTENDS QRICHEDIT
   PRIVATE:
@@ -10359,14 +10071,10 @@ END TYPE
 
 '================== START NEW COMPONENT ============================
 
-'~dup Declare Function SendMessageA Lib "user32" Alias "SendMessageA" (hwnd _   ' повтор, первое: Common.inc(14)
-'~dup As Long, wMsg As Long, wParam As Long, lParam As Long) As Long
-
 Declare Function LINEINDEX as long ' позиция первого символа в строке
 Declare Function LINEFROMCHAR as long  'номер строки содержащей начало выделения
 
 Declare Function LINEFROMPos (chrpos as long) as long  'номер строки содержащей символ в данной позиции
-
 
 Declare Function GoToLineEnd as long 
 Declare Function GoToLineBegin as long 
@@ -10376,7 +10084,6 @@ const rEM_LINEINDEX = 187
 const rEM_LINEFROMCHAR = 201
 
 const rEM_LINELENGTH = 193
-
 
 TYPE QMAXEDIT EXTENDS QRICHEDIT
 
@@ -10422,7 +10129,6 @@ WITH QMAXEDIT
 	result=SendMessageA (.handle,rEM_LINEFROMCHAR,chrpos,0)'.LINEINDEX по заданной позиции курсора
 	end function
 	
-	
 	Function GoToLineEnd as long
 	.selstart=.LINEINDEX+len(.line(.WhereY)) ' установить курсор в конец текущей строки
 	end function
@@ -10430,7 +10136,6 @@ WITH QMAXEDIT
 	Function GoToLineBegin as long  ' установить курсор в начало текущей строки
 	.selstart=.LINEINDEX
 	end function
-	
 	
 	UsePopup AS LONG PROPERTY SET Set_Popup
 	
@@ -10494,7 +10199,6 @@ END TYPE
 
 '================= END NEW COMPONENT ========================
 
-
 'To turn off the popup, set UsePopup = 0
 'To use a different popup, just set Popupmenu = <new popup>
 
@@ -10502,7 +10206,6 @@ END TYPE
 '$UNDEF-$DEFINE Keywords...ain't RapidQ great?
 
 'Psyclops
-
 
 '============================================================================
 '[build_inc] VFW.inc
@@ -10518,151 +10221,27 @@ $IFNDEF __VFW_INC
 
 $IFNDEF TRUE
 
-'~dup 	$DEFINE TRUE 1   ' повтор, первое: rapidq2.inc(58)
 $ENDIF
 
 $IFNDEF FALSE
-'~dup 	$DEFINE FALSE 0   ' повтор, первое: rapidq2.inc(55)
 $ENDIF
-
-
 
 'General WINAPI Declares
 $IFNDEF __WIN32API       'windows inc loaded?
 $IFNDEF __RQINC2         'RapidQ2.inc loaded?
 
-'~dup $DEFINE WM_USER &H400   ' повтор, первое: rapidq2.inc(870)
     'window styles for capture window
-'~dup $DEFINE WS_OVERLAPPED       &H00000000   ' повтор, первое: rapidq2.inc(947)
-'~dup $DEFINE WS_CHILD            &H40000000   ' повтор, первое: rapidq2.inc(949)
-'~dup $DEFINE WS_MINIMIZE         &H20000000   ' повтор, первое: rapidq2.inc(950)
-'~dup $DEFINE WS_VISIBLE          &H10000000   ' повтор, первое: rapidq2.inc(951)
-'~dup $DEFINE WS_DISABLED         &H08000000   ' повтор, первое: rapidq2.inc(952)
-'~dup $DEFINE WS_MAXIMIZE         &H01000000   ' повтор, первое: rapidq2.inc(955)
-'~dup $DEFINE WS_CAPTION          &H00C00000     '/* WS_BORDER | WS_DLGFRAME     ' повтор, первое: rapidq2.inc(956)
-'~dup $DEFINE WS_BORDER           &H00800000   ' повтор, первое: rapidq2.inc(957)
-'~dup $DEFINE WS_DLGFRAME         &H00400000   ' повтор, первое: rapidq2.inc(958)
-'~dup $DEFINE WS_THICKFRAME       &H00040000   ' повтор, первое: rapidq2.inc(962)
     'extended windows styles
-'~dup $DEFINE WS_EX_DLGMODALFRAME     &H00000001   ' повтор, первое: Win32_constants.inc(9)
-'~dup $DEFINE WS_EX_NOPARENTNOTIFY    &H00000004   ' повтор, первое: Win32_constants.inc(14)
-'~dup $DEFINE WS_EX_TOPMOST           &H00000008   ' повтор, первое: Win32_constants.inc(22)
-'~dup $DEFINE WS_EX_TRANSPARENT       &H00000020   ' повтор, первое: Win32_constants.inc(23)
-'~dup $DEFINE WS_EX_TOOLWINDOW        &H00000080   ' повтор, первое: Win32_constants.inc(21)
-'~dup $DEFINE WS_EX_WINDOWEDGE        &H00000100   ' повтор, первое: Win32_constants.inc(24)
-'~dup $DEFINE WS_EX_CLIENTEDGE        &H00000200   ' повтор, первое: createWind.inc(16)
-'~dup $DEFINE WS_EX_STATICEDGE        &H00020000   ' повтор, первое: Win32_constants.inc(20)
-'~dup $DEFINE WS_EX_APPWINDOW         &H00040000   ' повтор, первое: Win32_constants.inc(5)
-
 
 'set windows position
-'~dup $DEFINE SWP_NOSIZE             &H1   ' повтор, первое: rapidq2.inc(791)
-'~dup $DEFINE SWP_NOMOVE	           &H2   ' повтор, первое: rapidq2.inc(792)
-'~dup $DEFINE SWP_NOZORDER 	       &H4   ' повтор, первое: rapidq2.inc(793)
-'~dup $DEFINE SWP_NOACTIVATE 	       &H10   ' повтор, первое: rapidq2.inc(794)
-'~dup $DEFINE SWP_SHOWWINDOW 	       &H40   ' повтор, первое: rapidq2.inc(795)
-'~dup $DEFINE SWP_NOSENDCHANGING	   &H400  'Don't send WM_WINDOWPOSCHANGING    ' повтор, первое: rapidq2.inc(796)
 
 'clipboard formats
-'~dup $DEFINE CF_BITMAP     &H2   ' повтор, первое: rapidq2.inc(910)
-
-
 
 'VFW "customized" File Dialogs
-'~dup TYPE OPENFILENAME   ' повтор, первое: rapidq2.inc(1663)
-'~dup 	lStructSize 	AS DWORD	'Specifies the length, in bytes, of the structure. 
-'~dup 	hwndOwner 		AS LONG		'any valid window handle, or it can be NULL if the dialog box has no owner
-'~dup 	hInstance 		AS LONG		'for OFN_ENABLETEMPLATEHANDLE or ENABLETEMPLATE  flags
-'~dup 	lpstrFilter 	AS LONG		'pointer to string containing pairs of filter strings, ("*.TXT;*.DOC;*.BAK"), no spaces!
-'~dup 	lpstrCustomFilter AS LONG	'null or pointer to a pair of null-terminated filter strings for preserving the filter pattern chosen by the user
-'~dup 	nMaxCustFilter 	AS DWORD	'the size, in bytes of the buffer identified by lpstrCustomFilter
-'~dup 	nFilterIndex 	AS DWORD	'index of the currently selected filter in the File Types 
-'~dup 	lpstrFile 		AS LONG		'Pointer to string of the file name to initialize control,can be multple if OFN_ALLOWMULTISELECT  set, _
-'~dup 								'first char must be NULL if no initialization. Returns drive designator, path, file name, and extension of the selected file. 
-'~dup 	nMaxFile 		AS DWORD	'size in bytes of lpstrFile should be >256 chars
-'~dup 	lpstrFileTitle 	AS LONG		'Pointer to string that receives the file name and extension (without path information) of the selected file. This member can be NULL
-'~dup 	nMaxFileTitle 	AS DWORD	'size in bytes of lpstrFileTitle
-'~dup 	lpstrInitialDir AS LONG		'pointer to string containing directory, different effect on different OS versions!
-'~dup 	lpstrTitle 		AS LONG		'pointer to string containing title
-'~dup 	flags 			AS DWORD	'
-'~dup 	nFileOffset 	AS SHORT	'zero-based offset, number of chars  to the 1st character of the file name in lpstrFile (not path)
-'~dup 	nFileExtension 	AS SHORT	'zero-based offset, number of chars  to the 1st character of the file extension in lpstrFile (not path)
-'~dup 	lpstrDefExt 	AS LONG		'pointer to string to append as filename extension if the user fails to type an extension- only 3 characters are used, should not contain a period (.)
-'~dup 	lCustData 		AS LONG		'AS LPARM
-'~dup 	lpfnHook 		AS LONG		'AS LPOFNHOOKPROC, pointer to callback function
-'~dup 	lpTemplateName 	AS LONG		'pointer to string that names a dialog template resource in the module identified by the hInstance member
-'~dup '#if (_WIN32_WINNT >= 0x0500)
-'~dup '  void *        pvReserved;
-'~dup '  DWORD         dwReserved;
-'~dup '  DWORD         FlagsEx;
-'~dup '#endif // (_WIN32_WINNT >= 0x0500)
-'~dup END TYPE
-
-
-
-'~dup Type TBITMAP   ' повтор, первое: rapidq2.inc(1211)
-'~dup   bmType   As LONG
-'~dup   bmWidth   As LONG
-'~dup   bmHeight   As LONG
-'~dup   bmWidthBytes As LONG
-'~dup   bmPlanes   As WORD
-'~dup   bmBitsPixel  As WORD
-'~dup   bmBits   As LONG
-'~dup End Type
-
-
-'~dup DECLARE FUNCTION SendMessageAPI Lib "user32" Alias "SendMessageA" (ByVal hwnd As Long, ByVal wMsg As Long, ByVal wParam As Long, lParam As Long) As Long   ' повтор, первое: rapidq2.inc(980)
-'~dup DECLARE FUNCTION GetObject Lib "gdi32" Alias "GetObjectA" (hObject As Long,nCount As Long, lpObject AS TBITMAP) As Long   ' повтор, первое: rapidq2.inc(1455)
 
 $ENDIF		' __RQINC2
 
-
-'~dup DECLARE FUNCTION DestroyWindow Lib "user32" Alias "DestroyWindow" (ByVal hwnd As Long) As Long   ' повтор, первое: WIN32API.INC(6723)
-
-
-'~dup Type BITMAPINFOHEADER '40 bytes   ' повтор, первое: WIN32API.INC(3305)
-'~dup     biSize 			AS LONG			'Size of this header
-'~dup     biWidth 		AS LONG			'Width of image (pixels)
-'~dup     biHeight 		AS LONG			'Height of image (pixels)
-'~dup     biPlanes 		As WORD			'Number of color planes
-'~dup     biBitCount 		As WORD			'Pixel bit depth (bits per pixel)
-'~dup     biCompression 	AS LONG			'Compression type
-'~dup     biSizeImage 	AS LONG			'Size of image (can be 0)
-'~dup     biXPelsPerMeter AS LONG			'pixels per meter
-'~dup     biYPelsPerMeter AS LONG			'dimensions
-'~dup     biClrUsed 		AS LONG			'Number of colors (can be 0)
-'~dup     biClrImportant	AS LONG			'minimum number Important colors (can be 0)
-'~dup End Type
-
-
-'~dup Type BITMAPINFO   ' повтор, первое: WIN32API.INC(3325)
-'~dup    'bmiHeader As BITMAPINFOHEADER	'cant nest in RapidQ
-'~dup     bmiHeader_biSize 			As DWORD'Specifies the number of bytes required by the structure.
-'~dup     bmiHeader_biWidth 			As LONG	'Specifies the width of the bitmap, in pixels.
-'~dup     bmiHeader_biHeight 			As LONG	'height, if positive, bitmap is bottom-up DIB (origin = lower left corner). If biHeight is negative,  bitmap is top-down DIB (origin = upper left corner)
-'~dup     bmiHeader_biPlanes 			As WORD	'number of planes, must be set to 1
-'~dup     bmiHeader_biBitCount 		As WORD	'number of bits per pixel, must be 1, 4, 8, 16, 24, or 32
-'~dup     bmiHeader_biCompression 	As DWORD 'type of compression for a compressed bottom-up bitmap (top-down DIBs cannot be compressed)
-'~dup 											'BI_RGB	= An uncompressed format
-'~dup 											'BI_RLE8	= A run-length encoded (RLE) format for bitmaps with 8 bits per pixel.
-'~dup 											'BI_RLE4 = An RLE format for bitmaps with 4 bits per pixel.
-'~dup 											'BI_BITFIELDS =	not compressed and that the color table consists of three doubleword color masks(RGB) respectively, of each pixel, for 16- and 32-bits-per-pixel
-'~dup     bmiHeader_biSizeImage 		As DWORD	'the size, in bytes, of the image, may be set to 0 for BI_RGB bitmaps.
-'~dup     bmiHeader_biXPelsPerMeter 	As LONG		'horizontal resolution, in pixels per meter, of the target device for the bitmap. 
-'~dup     bmiHeader_biYPelsPerMeter 	As LONG
-'~dup     bmiHeader_biClrUsed 		As DWORD	'number of color indices in the color table actually used, if zero, the bitmap uses max of biBitCount
-'~dup     bmiHeader_biClrImportant 	As DWORD	'number of color indices that are considered important for displaying the bitmap
-'~dup 	'bmiColors As RGBQUAD
-'~dup     bmiColors_rgbBlue 			As Byte
-'~dup     bmiColors_rgbGreen 			As Byte
-'~dup     bmiColors_rgbRed 			As Byte
-'~dup     bmiColors_rgbReserved 		As Byte
-'~dup End Type
-
-
 $ENDIF		'__WIN32API
-
-
 
 '------------------------------------------------------------------
 '  Messages which can be sent to an AVICAP window
@@ -10812,7 +10391,6 @@ Type CAPTUREPARMS
     AVStreamMaster As Long                  ' Which stream controls length?
 End Type
                                             
-
 TYPE CAPINFOCHUNK
     fccInfoID As Long                       ' Chunk ID, "ICOP" for copyright
     lpData As Long                          ' pointer to data
@@ -10832,8 +10410,6 @@ TYPE VIDEOHDR
     dwReserved(3) As Long                   ' reserved; do not use
 END TYPE
 
-
-
 TYPE WAVEFORMATEX
 	wFormatTag 	AS WORD
     nChannels 	AS WORD   
@@ -10843,7 +10419,6 @@ TYPE WAVEFORMATEX
     wBitsPerSample AS WORD
     cbSize AS WORD
 END TYPE
-
 
 ' Capture Function Declares
 Declare Function capCreateCaptureWindow Lib "avicap32.dll" Alias "capCreateCaptureWindowA" _
@@ -10863,12 +10438,8 @@ Declare Function capGetDriverDescription Lib "avicap32.dll" Alias "capGetDriverD
                                         ByVal lpszVer As String, _
                                         ByVal cbVer As Long) As Long 'returns C BOOL
 
-
-
 Declare Function GetOpenFileNamePreview Lib "msvfw32.dll" Alias "GetOpenFileNamePreviewA" (filestruct As OPENFILENAME) As Long
 Declare Function GetSaveFileNamePreview Lib "msvfw32.dll" Alias "GetSaveFileNamePreviewA" (filestruct As OPENFILENAME) As Long
-
-
 
 ' ------------------------------------------------------------------
 ' IDs for status and error callbacks
@@ -10939,7 +10510,6 @@ Public Const IDS_CAP_STAT_VIDEOCURRENT As Long = 510   ' "Captured %ld frames (%
 Public Const IDS_CAP_STAT_VIDEOAUDIO As Long = 511     ' "Captured %d.%03d sec.  %ld frames (%ld dropped) (%d.%03d fps).  %ld audio bytes (%d,%03d sps)" 
 Public Const IDS_CAP_STAT_VIDEOONLY As Long = 512      ' "Captured %d.%03d sec.  %ld frames (%ld dropped) (%d.%03d fps)" 
 
-
 'Translations of C- "Message Cracker" Macros to VB (declared in vfw.h)
 ' to disable Callbacks, set lpProc to 0
 Function capSetCallbackOnError(ByVal hCapWnd As Long, ByVal lpProc As Long) As Long' Boolean
@@ -10964,7 +10534,6 @@ End Function
 	'END FUNCTION
 
 	'IF capSetCallbackOnFrame(hCapWnd, CODEPTR(capVideoStreamCallback) = 0 THEN 'flag error
-
 
 Function capSetCallbackOnWaveStream(ByVal hCapWnd As Long, ByVal lpProc As Long) As Long' Boolean
    capSetCallbackOnWaveStream = SendMessageAPI(hCapWnd, WM_CAP_SET_CALLBACK_WAVESTREAM, 0&, lpProc)
@@ -11167,7 +10736,6 @@ Function capCaptureSetSetup(ByVal hCapWnd As Long, capParms As CAPTUREPARMS,  S 
    capCaptureSetSetup = SendMessageAPI(hCapWnd, WM_CAP_SET_SEQUENCE_SETUP, S, capParms)
 End Function
 
-
 Function capSetMCIDeviceName(ByVal hCapWnd As Long, ByVal lpDeviceName As Long) As Long' Boolean
    'DeviceName = DeviceName & Chr$(0) 'null-terminate the string just to be safe
    capSetMCIDeviceName = SendMessageAPI(hCapWnd, WM_CAP_SET_MCI_DEVICE, 0&, lpDeviceName)
@@ -11212,10 +10780,6 @@ Function capPaletteManual(ByVal hCapWnd As Long, ByVal f As Long, ByVal iColors 
    END IF
 End Function
 
-
-
-
-
 '*********************************************************************************
 '*****  
 '*****  
@@ -11223,8 +10787,6 @@ End Function
 '*****        John Kelly , 2/2005
 '*****  
 '*********************************************************************************
-
-
 
 TYPE QWebCam EXTENDS QOBJECT
 
@@ -11268,10 +10830,6 @@ PUBLIC:
 
 WITH THIS
 
-
-
-
-
 FUNCTION GetStatus() AS LONG
 	RESULT = 0
 	IF capGetStatus(.hCapWnd, This.CapStats, SIZEOF(This.CapStats)) THEN
@@ -11297,7 +10855,6 @@ FUNCTION GetStatus() AS LONG
 	END IF
 END FUNCTION
 
-
 FUNCTION GetParameters(MyParams AS CAPTUREPARMS) AS LONG
     RESULT = capCaptureGetSetup(.hCapWnd, MyParams, SizeOf(MyParams))
 END FUNCTION
@@ -11305,8 +10862,6 @@ END FUNCTION
 FUNCTION SetParameters(MyParams AS CAPTUREPARMS) AS LONG
     RESULT = capCaptureSetSetup(.hCapWnd, MyParams, SizeOf(MyParams))
 END FUNCTION
-
-
 
 FUNCTION CamInit(Form AS QFORM) AS LONG			'Create Cap Window, init the web cam
 	DIM rtn AS LONG
@@ -11363,7 +10918,6 @@ FUNCTION CamInit(Form AS QFORM) AS LONG			'Create Cap Window, init the web cam
 	RESULT = rtn
 END FUNCTION
 
-
 SUB SetOnFrame(TheCallBackAddr AS LONG)		'pass in 0 to turn off callback
 	.OnFrame = TheCallBackAddr
 	IF .Init THEN
@@ -11372,7 +10926,6 @@ SUB SetOnFrame(TheCallBackAddr AS LONG)		'pass in 0 to turn off callback
         END IF
 	END IF
 END SUB
-
 
 FUNCTION SetImageSize(TheImageWidth AS LONG, TheImageHeight AS LONG) AS LONG
 	DIM VideoFormat AS BITMAPINFO
@@ -11406,8 +10959,6 @@ FUNCTION SetImageSize(TheImageWidth AS LONG, TheImageHeight AS LONG) AS LONG
 	END IF
 END FUNCTION
 
-
-
 FUNCTION SetImageHeight (TheImageHeight AS LONG) AS LONG
 	DIM VideoFormat AS BITMAPINFO
 	DIM SzbmpInfo AS DWORD: SzbmpInfo = SIZEOF(VideoFormat)
@@ -11433,7 +10984,6 @@ FUNCTION SetImageHeight (TheImageHeight AS LONG) AS LONG
 	END IF
 END FUNCTION
 
-
 FUNCTION SetImageWidth (TheImageWidth AS LONG) AS LONG ' inc2026: было SUB ... AS LONG с RESULT внутри и END SUB (строка 945); стало FUNCTION, как SetImageHeight (строка 902): результат используется в конструкторе, строка 1128
 	DIM VideoFormat AS BITMAPINFO
 	DIM SzbmpInfo AS DWORD: SzbmpInfo = SIZEOF(VideoFormat)
@@ -11452,8 +11002,6 @@ FUNCTION SetImageWidth (TheImageWidth AS LONG) AS LONG ' inc2026: было SUB .
 		END IF
 	END IF
 END FUNCTION ' inc2026: было END SUB, стало END FUNCTION: SetImageWidth - FUNCTION (строка 928)
-
-
 
 SUB SetBitCount (TheBitCount AS WORD)
 	DIM VideoFormat AS BITMAPINFO
@@ -11479,7 +11027,6 @@ SUB SetBitCount (TheBitCount AS WORD)
 		END IF
 	END IF
 END SUB
-
 
 FUNCTION ShowDialogBox(TheBoxNum) AS LONG
 	DIM WasCapturing	AS LONG
@@ -11507,8 +11054,6 @@ FUNCTION ShowDialogBox(TheBoxNum) AS LONG
 	END IF
 END FUNCTION ' inc2026: было END SUB, стало END FUNCTION: блок открыт FUNCTION ShowDialogBox (строка 975)
 
-
-
 SUB SetCapture(TheCaptureFlag AS LONG)
 	.Capture = TheCaptureFlag
 	IF .Init THEN
@@ -11523,7 +11068,6 @@ SUB SetCapture(TheCaptureFlag AS LONG)
 '   .GetParameters:        .Capturing = .CapStats.fCapturingNow
 END SUB
 
-
 SUB SetYield(TheYieldFlag AS LONG)
     .CapParms.fYield = TheYieldFlag
     IF capCaptureSetSetup(.hCapWnd, This.CapParms, sizeof(This.CapParms)) = 0 THEN 
@@ -11532,7 +11076,6 @@ SUB SetYield(TheYieldFlag AS LONG)
         .Yield = TheYieldFlag
     END IF
 END SUB
-
 
 SUB SetPreview(ThePreviewFlag AS LONG)
 	.Preview = ThePreviewFlag
@@ -11545,9 +11088,6 @@ SUB SetPreview(ThePreviewFlag AS LONG)
 	END IF
 END SUB
 
-
-
-
 SUB CleanUp
 	IF .Init THEN 
 		capPreview(.hCapWnd, 0&)
@@ -11558,8 +11098,6 @@ SUB CleanUp
 		.Init = False
 	END IF
 END SUB
-
-
 
 FUNCTION GrabFrameToClipBoard() AS LONG
 	DIM i as integer
@@ -11582,8 +11120,6 @@ FUNCTION GrabFrameToClipBoard() AS LONG
 	RESULT = GetObject(hBitmap,SIZEOF(info),info)
 END FUNCTION
 
-
-
 FUNCTION SaveFrameToFile(TheFileName AS STRING) AS Long
 	DIM TmpStr 	AS STRING
 
@@ -11591,8 +11127,6 @@ FUNCTION SaveFrameToFile(TheFileName AS STRING) AS Long
 	capGrabFrameNoStop(This.hCapWnd)
 	RESULT = capFileSaveDIB(This.hCapWnd, VARPTR(TmpStr))	' need this to send pointer
 END FUNCTION
-
-
 
 SUB ReSize(TheForm AS QFORM)
     Dim retVal As LONG
@@ -11620,7 +11154,6 @@ SUB ReSize(TheForm AS QFORM)
 End Sub
  
 END WITH
-
 
     CONSTRUCTOR
     	CamNum			= 0
@@ -11667,18 +11200,6 @@ $ENDIF      '__VFW_INC
 
 $IFNDEF __WIN32API   'for windows 32 API calls/constants
 $IFNDEF __RQINC2   ' & rapidQ2
-'~dup $DEFINE GWL_STYLE   &HFFFFFFF0      '-16   ' повтор, первое: rapidq2.inc(780)
-'~dup DECLARE FUNCTION SetWindowLong LIB "user32" ALIAS "SetWindowLongA" (hWnd AS LONG,nIndex AS LONG, dwNewLong AS LONG) AS LONG   ' повтор, первое: rapidq2.inc(1039)
-'~dup DECLARE FUNCTION GetWindowLong LIB "USER32" ALIAS "GetWindowLongA" (hwnd AS LONG, type AS LONG) AS LONG   ' повтор, первое: rapidq2.inc(1037)
-'~dup TYPE OSVERSIONINFO     ' повтор, первое: rapidq2.inc(2055)
-'~dup dwOSVersionInfoSize  As Long  
-'~dup dwMajorVersion    As Long  
-'~dup dwMinorVersion    As Long  
-'~dup dwBuildNumber    As Long  
-'~dup dwPlatformId    As Long  
-'~dup szCSDVersion    As String * 128  
-'~dup END TYPE  
-'~dup Declare Function GetVersionEx Lib "kernel32.dll" Alias "GetVersionExA" (lpVersionInformation As OSVERSIONINFO) As Long     ' повтор, первое: rapidq2.inc(2067)
 $ENDIF
 $ENDIF
 
@@ -11698,9 +11219,6 @@ DEFINT opt = fbmNormal
 IF ParamValCount > 1 THEN opt = ParamVal(2)
 SetWindowLong(btnHandle, GWL_STYLE, (GetWindowLong(btnHandle, GWL_STYLE) XOR 11) + opt)
 END SUBI
-
-
-
 
 SUB $XP_MANIFEST
 DIM rtn     AS LONG
@@ -11738,8 +11256,6 @@ IF (OSV.dwMajorVersion >= 5 AND OSV.dwMinorVersion > 0 ) THEN ' inc2026: >= РІ
 	END IF 
 END IF 
 END SUB
-
-
 
 TYPE XpGroupBox EXTENDS QPANEL
 Public:
@@ -11786,8 +11302,6 @@ Canvas.Align  = 5   'alClient
 END CONSTRUCTOR
 END TYPE
 
-
-
 '============================================================================
 '[build_inc] COMPORTxp.inc
 '============================================================================
@@ -11801,99 +11315,26 @@ END TYPE
 'Win32 Communications User Defined Types
 
 'Structure containing time-out parameters for a communications device
-'~dup TYPE COMMTIMEOUTS   ' повтор, первое: rapidq2.inc(1738)
-'~dup         ReadIntervalTimeout AS DWORD
-'~dup         ReadTotalTimeoutMultiplier AS DWORD
-'~dup         ReadTotalTimeoutConstant AS DWORD
-'~dup         WriteTotalTimeoutMultiplier AS DWORD
-'~dup         WriteTotalTimeoutConstant AS DWORD
-'~dup END TYPE
 
 'Device Control Block
 'Structure that defines the control settings for a serial communications device
-'~dup TYPE DCB   ' повтор, первое: rapidq2.inc(1750)
-'~dup         DCBlength AS DWORD        'sizeof DCB
-'~dup         BaudRate AS DWORD         'current baud rate
-'~dup         DCBflags AS DWORD         'fBinary            1 bit binary mode, no EOF check
-'~dup                                   'fParity            1 bit enable parity checking
-'~dup                                   'fOutxCtsFlow       1 bit CTS output flow control (hardware flow control setting)
-'~dup                                   'fOutxDsrFlow       1 bit DSR output flow control (hardware flow control setting)
-'~dup                                   'fDtrControl        2 bit DTR flow control type (hardware flow control setting)
-'~dup                                   'fDsrSensitivity    1 bit DSR sensitivity (hardware flow control setting)
-'~dup                                   'fTXContinueOnXoff  1 bit XOFF continues Tx (software flow control setting)
-'~dup                                   'fOutX              1 bit XON/XOFF out flow control (software flow control setting)
-'~dup                                   'fInX               1 bit XON/XOFF in flow control (software flow control setting)
-'~dup                                   'fErrorChar         1 bit enable error replacement
-'~dup                                   'fNull              1 bit enable null stripping
-'~dup                                   'fRtsControl        2 bit RTS flow control (hardware flow control setting)
-'~dup                                   'fAbortOnError      1 bit abort on error (hardware flow control setting)
-'~dup                                   'fDummy2           17 bit reserved
-'~dup         wReserved AS WORD         'reserved
-'~dup         XonLim AS WORD            'transmit XON threshold (software flow control setting)
-'~dup         XoffLim AS WORD           'transmit XOFF threshold (software flow control setting)
-'~dup         ByteSize AS BYTE          'number of bits/byte, 4-8
-'~dup         Parity AS BYTE            '0-4=no,odd,even,mark,space
-'~dup         StopBits AS BYTE          '0,1,2=1,1.5,2
-'~dup         XonChar AS BYTE           'Tx and Rx XON character (software flow control setting)
-'~dup         XoffChar AS BYTE          'Tx and Rx XOFF character (software flow control setting)
-'~dup         ErrorChar AS BYTE         'error replacement character
-'~dup         EofChar AS BYTE           'end of input character
-'~dup         EvtChar AS BYTE           'received event character
-'~dup         wReserved1 AS WORD        'reserved; do not use
-'~dup END TYPE
 
 'Structure containing current Comm Port State
-'~dup Type COMSTAT   ' повтор, первое: rapidq2.inc(1784)
-'~dup         COMSTATflags AS DWORD     'fCtsHold           1 bit Specifies whether waiting for CTS signal
-'~dup                                   'fDsrHold           1 bit Specifies whether waiting for DSR signal
-'~dup                                   'fRlsHold           1 bit Specifies whether waiting for RLSD signal
-'~dup                                   'fXoffHold          1 bit Specifies whether waiting because XOFF character was received
-'~dup                                   'fXoffSent          1 bit Specifies whether waiting because XOFF character was transmitted
-'~dup                                   'fEof               1 bit Specifies whether EOF char has been received
-'~dup                                   'fTxim              1 bit character queued for transmission because of TransmitCommChar
-'~dup                                   'fReserved         25 bit Reserved
-'~dup         cbInQue As DWORD          'number of bytes received but not yet read
-'~dup         cbOutQue As DWORD         'number of bytes remaining to be transmitted
-'~dup END TYPE
 
 'Win32 File Handling User Defined Types
 
 'Structure that contains the security descriptor for an object
 'not currently used by us
-'~dup TYPE SECURITYATTRIBUTES   ' повтор, первое: rapidq2.inc(1803)
-'~dup         nLength AS DWORD 
-'~dup         lpSecurityDescriptor AS LONG
-'~dup         bInheritHandle AS LONG
-'~dup END TYPE
 
 'Structure containing info used in Overlapped (asynchronous) I/O
 'not currently used by us
-'~dup TYPE OVERLAPPED   ' повтор, первое: rapidq2.inc(1813)
-'~dup         Internal AS LONG
-'~dup         InternalHigh AS LONG
-'~dup         offset AS DWORD
-'~dup         OffsetHigh As DWORD
-'~dup         hEvent AS LONG
-'~dup END TYPE
 
 'DCB Constants
 'Parity
-'~dup CONST NOPARITY              = 0   ' повтор, первое: rapidq2.inc(1825)
-'~dup CONST ODDPARITY             = 1   ' повтор, первое: rapidq2.inc(1826)
-'~dup CONST EVENPARITY            = 2   ' повтор, первое: rapidq2.inc(1827)
-'~dup CONST MARKPARITY            = 3   ' повтор, первое: rapidq2.inc(1828)
-'~dup CONST SPACEPARITY           = 4   ' повтор, первое: rapidq2.inc(1829)
 'StopBits
-'~dup CONST ONESTOPBIT            = 0   ' повтор, первое: rapidq2.inc(1833)
-'~dup CONST ONE5STOPBITS          = 1   ' повтор, первое: rapidq2.inc(1834)
-'~dup CONST TWOSTOPBITS           = 2   ' повтор, первое: rapidq2.inc(1835)
 
 'PurgeCOM constants
 'dwFlags
-'~dup CONST PURGE_RXABORT         = &H2   ' повтор, первое: rapidq2.inc(1841)
-'~dup CONST PURGE_RXCLEAR         = &H8   ' повтор, первое: rapidq2.inc(1842)
-'~dup CONST PURGE_TXABORT         = &H1   ' повтор, первое: rapidq2.inc(1843)
-'~dup CONST PURGE_TXCLEAR         = &H4   ' повтор, первое: rapidq2.inc(1844)
 
 'Win32 File Handling Constants
 
@@ -11901,23 +11342,10 @@ END TYPE
 Const GENERIC_READ_cmp          = &H80000000
 CONST GENERIC_WRITE_cmp         = &H40000000
 'dwShareMode Constants
-'CONST FILE_SHARE_READ       = &H1
-'CONST FILE_SHARE_WRITE      = &H2
 'dwCreationDisposition Constants
-'CONST CREATE_NEW            = 1
-'CONST CREATE_ALWAYS         = 2
-'CONST OPEN_EXISTING         = 3
-'~dup CONST OPEN_ALWAYS           = 4   ' повтор, первое: rapidq2.inc(1862)
-'~dup CONST TRUNCATE_EXISTING     = 5   ' повтор, первое: rapidq2.inc(1863)
 'dwFlagsAndAttributes
-'CONST FILE_ATTRIBUTE_NORMAL = &H80
 
 'Win32 Error Constants
-'~dup CONST FORMAT_MESSAGE_ALLOCATE_BUFFER  = &H100   ' повтор, первое: rapidq2.inc(1870)
-'~dup CONST FORMAT_MESSAGE_FROM_SYSTEM      = &H1000   ' повтор, первое: rapidq2.inc(1871)
-'~dup CONST LANG_NEUTRAL                    = &H0   ' повтор, первое: rapidq2.inc(1872)
-'~dup CONST SUBLANG_DEFAULT                 = &H1   ' повтор, первое: rapidq2.inc(1873)
-'~dup CONST ERROR_BAD_USERNAME              = 2202&   ' повтор, первое: rapidq2.inc(1874)
 
 'Error Message Constants
 CONST ERROR_OPEN_PORT                 = "There was an error opening the Comm Port.  "
@@ -11935,17 +11363,12 @@ CONST ERROR_READING_PORT              = "There was an error reading data from th
 'Win32 Function Declarations
 
 'Suspends the execution of the current thread for the specified interval. 
-'~dup DECLARE SUB Sleep Lib "kernel32" ALIAS "Sleep" _   ' повтор, первое: WIN32API.INC(1867)
-'~dup     (dwMilliseconds AS DWORD)
 
 'Win32 Error Messages
 
 'Several Win32 functions set an error code if they fail.  This retrieves them.
 'Note, If a function succeeds, it may not set this code.  If you retrieve it
 'after a function succeeds, it may return an error code for a previous function that failed.
-'~dup DECLARE FUNCTION GetLastError Lib "kernel32" ALIAS "GetLastError" _   ' повтор, первое: rapidq2.inc(1894)
-'~dup     () _
-'~dup         AS DWORD                                    'Returns last error code value
                                                     'See http://msdn.microsoft.com/library/default.asp?url=/library/en-us/debug/errlist_7oz7.asp
                                                     'for what codes mean
 
@@ -11964,93 +11387,34 @@ Declare Function FormatMessage_COMPORTxp Lib "kernel32" Alias "FormatMessageA" _
 
 ' Initializes the communications parameters for a specified
 ' communications device.
-'~dup DECLARE FUNCTION SetupComm Lib "kernel32" ALIAS "SetupComm"_   ' повтор, первое: rapidq2.inc(1917)
-'~dup     (hFile AS LONG,_                                '[IN] Handle to open Comm device
-'~dup      dwInQueue AS DWORD,_                           '[IN] specifies number of bytes of input buffer
-'~dup      dwOutQueue AS DWORD) _                         '[IN] specifies number of bytes of output buffer
-'~dup         AS LONG                                     'If function succeeds, returns non-zero. If function fails, returns 0. 
 
 ' Discards all characters from the output or input buffer of a
 ' specified communications resource. It can also terminate
 ' pending read or write operations on the resource.
-'~dup DECLARE FUNCTION PurgeComm Lib "kernel32" ALIAS "PurgeComm"_   ' повтор, первое: rapidq2.inc(1928)
-'~dup     (hFile AS LONG, _                               '[IN] Handle to open Comm device
-'~dup      dwFlags AS DWORD) _                            '[IN] Action to perform flag
-'~dup         AS LONG                                     'If function succeeds, returns non-zero. If function fails, returns 0. 
 
 ' Sets the time-out parameters for all read and write operations on a
 ' specified communications device.
-'~dup DECLARE FUNCTION SetCommTimeouts Lib "kernel32" ALIAS "SetCommTimeouts"_   ' повтор, первое: rapidq2.inc(1937)
-'~dup     (hFile AS LONG,_                                '[IN] Handle to open Comm device
-'~dup      lpCommTimeouts AS COMMTIMEOUTS) _              '[IN] Structure containing timeout values
-'~dup         AS LONG                                     'If function succeeds, returns non-zero. If function fails, returns 0. 
 
 'Retrieves current Device Control Block (DCB)
-'~dup DECLARE FUNCTION GetCommState Lib "kernel32" ALIAS "GetCommState" _   ' повтор, первое: rapidq2.inc(1945)
-'~dup     (hFile AS LONG, _                               '[IN] Handle to open Comm device
-'~dup     lpDCB AS DCB) _                                 '[OUT] Pointer to structure containing config info
-'~dup         AS LONG                                     'If function succeeds, returns non-zero. If function fails, returns 0. 
 
 'Sets Device Control Block (DCB)
-'~dup DECLARE FUNCTION SetCommState Lib "kernel32" ALIAS "SetCommState" _   ' повтор, первое: rapidq2.inc(1953)
-'~dup     (hFile AS LONG, _                               '[IN] Handle to open Comm device
-'~dup     lpDCB AS DCB) _                                 '[IN] Pointer to structure containing config info
-'~dup         AS LONG                                     'If function succeeds, returns non-zero. If function fails, returns 0. 
 
 ' Retrieves information about a communications error and reports
 ' the current status of a communications device. Clears the
 ' device's error flag to enable additional input and output
 ' (I/O) operations.
-'~dup DECLARE FUNCTION ClearCommError Lib "kernel32" ALIAS "ClearCommError" _   ' повтор, первое: rapidq2.inc(1964)
-'~dup     (hFile AS LONG,_                                '[IN] Handle to open Comm device
-'~dup      BYREF lpErrors AS DWORD,_                      '[OUT] Pointer to var to be filled with a mask indicating the type of error
-'~dup      lpStat AS COMSTAT) _                           '[OUT] Pointer to structure containing devices status info
-'~dup         AS LONG                                     'If function succeeds, returns non-zero. If function fails, returns 0. 
 
 'Win32 File Handling Functions
 
 'Create or open a new Comm device/file
-'~dup DECLARE FUNCTION CreateFile Lib "kernel32" Alias "CreateFileA"_   ' повтор, первое: rapidq2.inc(1975)
-'~dup     (lpFileName AS STRING, _                        '[IN] String that specifies name of object to create or open
-'~dup     dwDesiredAccess AS DWORD, _                     '[IN] Specifies type of access to object
-'~dup     dwShareMode AS DWORD, _                         '[IN] Specifies how object is to be shared
-'~dup     lpSecurityAttributes AS SECURITYATTRIBUTES, _   '[IN] Pointer to Structure that determines whether object can be inherited by child processes
-'~dup     dwCreationDisposition AS DWORD, _               '[IN] Specifies which action to take on files that exist/do not exist
-'~dup     dwFlagsAndAttributes AS DWORD,_                 '[IN] Specifies the file attributes and flags
-'~dup     hTemplateFile AS LONG) _                        '[IN] handle to template that supplies file attributes
-'~dup         AS LONG                                     'If successful, returns handle to object/file created
 
 ' Writes data to a file 
 ' We are not using Overlapped (asynchronous) I/O 
-'~dup DECLARE FUNCTION WriteFile Lib "kernel32" ALIAS "WriteFile"_   ' повтор, первое: rapidq2.inc(1989)
-'~dup     (hFile AS LONG, _                               '[IN] Handle to open Comm device/file
-'~dup      lpBuffer AS String, _                          '[IN] Pointer to buffer containing the data to be written to Comm device/file
-'~dup      nNumberOfBytesToWrite AS DWORD, _              '[IN] Specifies number of bytes to write to file
-'~dup      BYREF lpNumberOfBytesWritten AS DWORD, _       '[OUT] Pointer to var containing number of bytes written
-'~dup      lpOverlapped AS OVERLAPPED) _                  '[IN] Pointer to structure containing info if Comm device/file was opened in Overlapped mode.
-'~dup         AS LONG                                     'If function succeeds, returns non-zero. If function fails, returns 0. 
      
 'Reads data from a file
 'We are not using Overlapped (asynchronous) I/O 
-'~dup DECLARE FUNCTION ReadFile Lib "kernel32" ALIAS "ReadFile"_   ' повтор, первое: rapidq2.inc(2019)
-'~dup     (hFile AS LONG, _                               '[IN] Handle to open Comm device/file
-'~dup      BYREF lpBuffer AS STRING, _                    '[OUT] Pointer to buffer that receives data from Comm device/file
-'~dup      nNumberOfBytesToRead AS DWORD, _               '[IN] Specifies number of bytes to be read from file
-'~dup      BYREF lpNumberOfBytesRead AS DWORD, _          '[OUT] Specifies number of bytes read from file
-'~dup      lpOverlapped AS OVERLAPPED) _                  '[IN] Pointer to structure containing info if Comm device/file was opened in Overlapped mode.
-'~dup         AS LONG                                     'If function succeeds, returns non-zero. If function fails, returns 0. 
-
-'~dup DECLARE FUNCTION CloseHandle Lib "kernel32" ALIAS "CloseHandle" _   ' повтор, первое: rapidq2.inc(2038)
-'~dup     (hObject AS LONG) _                             '[IN/OUT] Handle to open Comm device/file
-'~dup         AS LONG                                     'If function succeeds, returns non-zero. If function fails, returns 0. 
 
 'Internal Declarations
-'~dup DECLARE SUB OnComError_EventTemplate (strErrorMessage AS STRING)   ' повтор, первое: rapidq2.inc(5269)
-'~dup DECLARE SUB OnOpen_EventTemplate   ' повтор, первое: rapidq2.inc(5270)
-'~dup DECLARE SUB OnClose_EventTemplate   ' повтор, первое: rapidq2.inc(5271)
-'~dup DECLARE SUB OnWriteString_EventTemplate   ' повтор, первое: rapidq2.inc(5272)
-'~dup DECLARE SUB OnReadString_EventTemplate   ' повтор, первое: rapidq2.inc(5273)
-
 
 TYPE MyCom_Port EXTENDS QObject
 
@@ -12193,7 +11557,6 @@ TYPE MyCom_Port EXTENDS QObject
     udtCommTimeOuts.ReadTotalTimeoutConstant    = 1000
     udtCommTimeOuts.WriteTotalTimeoutMultiplier = 0
     udtCommTimeOuts.WriteTotalTimeoutConstant = 1000 ' inc2026: было второе присваивание WriteTotalTimeoutMultiplier = 1000 (строкой выше уже 0), стало WriteTotalTimeoutConstant = 1000: поле WriteTotalTimeoutConstant (строка 16) иначе не задаётся, по образцу ReadTotalTimeoutMultiplier/Constant (строки 399-400)
-
 
     lngStatus = SetCommTimeouts(MyCom_Port.Handle,_
                       udtCommTimeOuts)
@@ -12347,7 +11710,6 @@ TYPE MyCom_Port EXTENDS QObject
 
 END TYPE
 
-
 '============================================================================
 '[build_inc] HiLight.inc
 '============================================================================
@@ -12492,7 +11854,6 @@ END TYPE
 '~define $UNDEF QRICHEDIT   ' сборка: встроенный класс не подменяется
 '~define $DEFINE QRICHEDIT QREdit   ' сборка: встроенный класс не подменяется
 
-  
 $TYPECHECK OFF   ' сборка: вернуть после HiLight.inc
 '============================================================================
 '[build_inc] QAnim.inc
@@ -12502,15 +11863,12 @@ $TYPECHECK OFF   ' сборка: вернуть после HiLight.inc
 ' Classe QAnim Version 1.0
 '=======================================================
 $IFNDEF TRUE
-'~dup   $DEFINE True 1   ' повтор, первое: rapidq2.inc(58)
 $ENDIF
 
 $IFNDEF FALSE
-'~dup   $DEFINE False 0   ' повтор, первое: rapidq2.inc(55)
 $ENDIF
 
 $IFNDEF boolean
-'~dup   $DEFINE boolean integer   ' повтор, первое: rapidq2.inc(2241)
 $ENDIF
 
 Type QAnim Extends QImage
@@ -13014,89 +12372,26 @@ $TYPECHECK ON
 '     heavily modified for  RapidQ
 '=============================================================================
 
-
 'BITMAP for BMP pointer
 $IFNDEF __RQINC2         'RapidQ2.inc loaded?
-'~dup     Type TBITMAP     '24 bytes   ' повтор, первое: rapidq2.inc(1211)
-'~dup       bmType 		AS LONG
-'~dup       bmWidth 		AS LONG
-'~dup       bmHeight 		AS LONG
-'~dup       bmWidthBytes	AS LONG
-'~dup       bmPlanes 		As WORD
-'~dup       bmBitsPixel 	As WORD
-'~dup       bmBits 		AS LONG
-'~dup     End Type
-
-'~dup   DECLARE FUNCTION GetCurrentObject Lib "gdi32" Alias "GetCurrentObject" (hdc AS LONG,uObjectType AS LONG) AS LONG   ' повтор, первое: rapidq2.inc(1456)
-'~dup   DECLARE FUNCTION GetObject Lib "gdi32" Alias "GetObjectA" (hObject AS LONG,nCount AS LONG, lpObject AS TBITMAP) AS LONG   ' повтор, первое: rapidq2.inc(1455)
 
   FUNCTIONI UDTPTR(...) AS LONG
   	RESULT = ParamVal(1)
   END FUNCTION
 
-'~dup   $DEFINE pf8bit  3   ' повтор, первое: rapidq2.inc(527)
-'~dup   $DEFINE pf24bit 6   ' повтор, первое: rapidq2.inc(530)
-'~dup   $DEFINE pf32bit 7   ' повтор, первое: rapidq2.inc(531)
 $ENDIF          'rapidq2 inc
-
-
 
 $IFNDEF __WIN32API         'Windows.inc loaded?
 
-'~dup Type BITMAPINFOHEADER '40 bytes   ' повтор, первое: WIN32API.INC(3305)
-'~dup     biSize 			AS LONG			'Size of this header
-'~dup     biWidth 		AS LONG			'Width of image (pixels)
-'~dup     biHeight 		AS LONG			'Height of image (pixels)
-'~dup     biPlanes 		As WORD			'Number of color planes
-'~dup     biBitCount 		As WORD			'Pixel bit depth (bits per pixel)
-'~dup     biCompression 	AS LONG			'Compression type
-'~dup     biSizeImage 	AS LONG			'Size of image (can be 0)
-'~dup     biXPelsPerMeter AS LONG			'pixels per meter
-'~dup     biYPelsPerMeter AS LONG			'dimensions
-'~dup     biClrUsed 		AS LONG			'Number of colors (can be 0)
-'~dup     biClrImportant	AS LONG			'minimum number Important colors (can be 0)
-'~dup End Type
-
 ' DIB color table identifiers 
-'~dup $DEFINE DIB_RGB_COLORS 0&       ' color table in RGBs    ' повтор, первое: WIN32API.INC(4043)
-'~dup $DEFINE DIB_PAL_COLORS 1&       ' color table in palette indices    ' повтор, первое: WIN32API.INC(4044)
 
 ' constants for the biCompression field 
-'~dup $DEFINE  BI_RGB     0&   ' повтор, первое: WIN32API.INC(3320)
-'~dup $DEFINE  BI_RLE8    1&   ' повтор, первое: WIN32API.INC(3321)
-'~dup $DEFINE  BI_RLE4    2&   ' повтор, первое: WIN32API.INC(3322)
-'~dup $DEFINE  BI_bitfields 3&   ' повтор, первое: WIN32API.INC(3323)
 
-
-'~dup Declare Function mmioStringToFOURCC Lib "winmm.dll" Alias "mmioStringToFOURCCA" (ByVal sz As String, ByVal uFlags AS LONG) AS LONG 'returns fourcc   ' повтор, первое: WIN32API.INC(11785)
 'note* functions that return MMRESULT return 0 on success
-'Declare Function mmioOpen Lib "winmm.dll" Alias "mmioOpenA" (ByVal szFileName As String, ByRef lpmmioinfo As Any, ByVal dwOpenFlags AS LONG) AS LONG   'returns hmmio
-'Declare Function mmioDescend Lib "winmm.dll" ALIAS "(ByVal hmmio AS LONG, ByRef lpck As MMCKINFO, ByRef lpckParent As Any, ByVal wFlags AS LONG) AS LONG   'MMRESULT           );
-'Declare Function mmioRead Lib "winmm.dll" ALIAS "(ByVal hmmio AS LONG, ByVal pBuf AS LONG, ByVal lenBuf AS LONG) AS LONG 'returns num bytes read
-'Declare Function mmioClose Lib "winmm.dll" ALIAS "(ByVal hmmio AS LONG, ByVal wFlags AS LONG) AS LONG   ' MMRESULT
 
 'open file flags for AVIFileOpen
-'~dup $DEFINE OF_READ             &H0   ' повтор, первое: WIN32API.INC(1789)
-'~dup $DEFINE OF_WRITE            &H1   ' повтор, первое: WIN32API.INC(1790)
-'~dup $DEFINE OF_READWRITE        &H00000002   ' повтор, первое: WIN32API.INC(1791)
-'~dup $DEFINE OF_SHARE_COMPAT     &H00000000   ' повтор, первое: WIN32API.INC(1792)
-'~dup $DEFINE OF_SHARE_EXCLUSIVE  &H00000010   ' повтор, первое: WIN32API.INC(1793)
-'~dup $DEFINE OF_SHARE_DENY_WRITE &H20   ' повтор, первое: WIN32API.INC(1794)
-'~dup $DEFINE OF_SHARE_DENY_READ  &H00000030   ' повтор, первое: WIN32API.INC(1795)
-'~dup $DEFINE OF_SHARE_DENY_NONE  &H00000040   ' повтор, первое: WIN32API.INC(1796)
-'~dup $DEFINE OF_PARSE            &H00000100   ' повтор, первое: WIN32API.INC(1797)
-'~dup $DEFINE OF_DELETE           &H00000200   ' повтор, первое: WIN32API.INC(1798)
-'~dup $DEFINE OF_VERIFY           &H00000400   ' повтор, первое: WIN32API.INC(1799)
-'~dup $DEFINE OF_CANCEL           &H00000800   ' повтор, первое: WIN32API.INC(1800)
-'~dup $DEFINE OF_CREATE           &H1000   ' повтор, первое: WIN32API.INC(1801)
-'~dup $DEFINE OF_PROMPT           &H00002000   ' повтор, первое: WIN32API.INC(1802)
-'~dup $DEFINE OF_EXIST            &H00004000   ' повтор, первое: WIN32API.INC(1803)
-'~dup $DEFINE OF_REOPEN           &H00008000   ' повтор, первое: WIN32API.INC(1804)
-
 
 $ENDIF          'windows inc
-
-
 
 ' *************************************************************************
 ' *
@@ -13143,7 +12438,6 @@ Type AVI_FILE_INFO          '108 bytes?
     dwEditCount             AS LONG
     szFileType              As String * 64
 End Type
-
 
 Type AVI_COMPRESS_OPTIONS
     fccType AS LONG            ' stream type, for consistency 
@@ -13222,7 +12516,6 @@ Declare Function AVIStreamGetFrame Lib "avifil32.dll" ALIAS "AVIStreamGetFrame"(
                                                                 ByVal lPos AS LONG) AS LONG 'returns pointer to packed DIB on success (or NULL on error)
 Declare Function AVIStreamGetFrameClose Lib "avifil32.dll" ALIAS "AVIStreamGetFrameClose"(ByVal pGetFrameObj AS LONG) AS LONG ' returns zero on success (error number) after calling this function the GETFRAME object pointer is invalid
 
-                                                            
 Declare Function AVIFileGetStream Lib "avifil32.dll" ALIAS "AVIFileGetStream"(ByVal pfile AS LONG, ByRef ppaviStream AS LONG, ByVal fccType AS LONG, ByVal lParam AS LONG) AS LONG
 Declare Function AVIMakeFileFromStreams Lib "avifil32.dll" ALIAS "AVIMakeFileFromStreams"(ByRef ppfile AS LONG, ByVal nStreams AS LONG, ByVal pAVIStreamArray AS LONG) AS LONG
 
@@ -13256,7 +12549,6 @@ Declare Function AVIClearClipboard Lib "avifil32.dll" ALIAS "AVIClearClipboard"(
 ' Const AVIERR_BASE       AS LONG = &H4000
 'MAKE_SCODE(SEVERITY_ERROR, FACILITY_ITF, 0x4000 + error)
 '#define MAKE_AVIERR(error)  MAKE_SCODE(sev,fac,code) \ ((SCODE) (((unsigned long)(sev)<<31) | ((unsigned long)(fac)<<16) | ((unsigned long)(code))) )
-
 
 $define AVIERR_UNSUPPORTED      &H80044065  'MAKE_AVIERR(101)
 $define AVIERR_BADFORMAT        &H80044066
@@ -13322,7 +12614,6 @@ $DEFINE ICMF_CHOOSE_ALLCOMPRESSORS     &H8     ' don't only show those that
                                                               ' can handle the input format
                                                               ' or input data
 
-
     '===========================================
     '  Read / write  AVI files in RapidQ
     '===========================================
@@ -13360,7 +12651,6 @@ PUBLIC:
     BytesWritten    AS LONG             'amount of memory written in each frame (= bitmap size if completed)
     ShowDialog      AS INTEGER          'show windows compression, options dialog box
     UseCompression  AS INTEGER          'get a compression stream
-
 
     '======================================================
     '  Error handling to shut down library & release memory
@@ -13408,7 +12698,6 @@ FUNCTION CheckAVIError () AS LONG           'error handler, close file streams i
   END IF
 END FUNCTION ' inc2026: было END SUB, стало END FUNCTION: закрывает FUNCTION CheckAVIError (строка 366)
 
-
     '====================================================================
     '  Get pointer to the bitmap data
     '====================================================================
@@ -13426,8 +12715,6 @@ FUNCTION BMPpointer(TheBitmap AS QBITMAP) AS LONG
         RESULT = BInfo.bmBits
     END IF
 END FUNCTION
-
-
 
 PUBLIC:
 
@@ -13448,10 +12735,7 @@ FUNCTION CloseAVIFile() AS LONG
     RESULT = 1
 END FUNCTION
 
-
-
     '======================================================
-    '  Create File, open library, set options, & allocate memory
     '======================================================
 
 FUNCTION CreateAVIFile(szFile As STRING, TheWidth AS INTEGER, TheHeight AS INTEGER, Bpp AS INTEGER, fps AS INTEGER) AS LONG
@@ -13489,7 +12773,6 @@ FUNCTION CreateAVIFile(szFile As STRING, TheWidth AS INTEGER, TheHeight AS INTEG
         IF QAVI.Bottom THEN .Bottom = QAVI.Bottom ELSE .Bottom = TheHeight  
     End With
 
-
 '      create the stream
     QAVI.Retrn = AVIFileCreateStream(QAVI.pAVIfile, QAVI.pAVIStream, QAVI.StreamInfo)
         IF QAVI.CheckAVIError THEN EXIT FUNCTION
@@ -13517,7 +12800,6 @@ FUNCTION CreateAVIFile(szFile As STRING, TheWidth AS INTEGER, TheHeight AS INTEG
         IF QAVI.CheckAVIError THEN EXIT FUNCTION
     ' ----------------------------------------------
 
-
 '   ------------------------------------------------------------------------------------
     'user sets compression options, this part is tricky, work in progress
 '   --------------------------------------------------------------------------------------
@@ -13540,8 +12822,6 @@ FUNCTION CreateAVIFile(szFile As STRING, TheWidth AS INTEGER, TheHeight AS INTEG
             IF QAVI.CheckAVIError THEN EXIT FUNCTION
         IF QAVI.pAVICompress THEN QAVI.UseCompression = 1       'crashes
     END IF
-
-
 
 '   ------------------------------------------------------------------------------------
     'get compression options from the user dialog, API requires a pointer to a UDT pointer
@@ -13573,12 +12853,9 @@ FUNCTION CreateAVIFile(szFile As STRING, TheWidth AS INTEGER, TheHeight AS INTEG
     RESULT = 1
 END FUNCTION ' inc2026: было END SUB, стало END FUNCTION: закрывает FUNCTION CreateAVIFile (строка 453)
 
-
-
     '======================================================
     '  Get info from AVI File, set QAVI properties
     '======================================================
-
 
 FUNCTION GetAVIFileInfo(szFile As STRING) AS LONG
 
@@ -13620,9 +12897,6 @@ FUNCTION GetAVIFileInfo(szFile As STRING) AS LONG
 '     .dwLength, .dwInitialFrames, .dwSuggestedBufferSize, .dwQuality, .dwSampleSize    )
  END FUNCTION ' inc2026: было END SUB, стало END FUNCTION: закрывает FUNCTION GetAVIFileInfo (строка 579)
 
-
-
-
     '======================================================
     '  Get frame from AVI file store in BMP
     '======================================================
@@ -13633,7 +12907,6 @@ FUNCTION AVItoBMP(szFile AS STRING, TheBMP AS QBITMAP, FrameNum AS INTEGER) AS L
     Dim bih          As BITMAPINFOHEADER 'infoheader to pass to GetFrame functions
     DIM BMPPointer   AS LONG
     Dim i            As Long
-
 
     RESULT = 0                      'failed = 0
     WITH QAVI
@@ -13721,7 +12994,6 @@ FUNCTION AVItoBMP(szFile AS STRING, TheBMP AS QBITMAP, FrameNum AS INTEGER) AS L
     RESULT = 1
 END FUNCTION ' inc2026: было END SUB, стало END FUNCTION: закрывает FUNCTION AVItoBMP (строка 626)
 
-
     '======================================================
     '  Sequential store of Bitmap to AVI file 8 and 24 bit/pixel only
     '======================================================
@@ -13753,7 +13025,6 @@ FUNCTION BMPtoAVIFile(TheBmp As QBITMAP) AS LONG        'may need to pass QForm.
     RESULT = 1
 END FUNCTION
 
-
     '======================================================
     '    clear memory for new instance of QAVI
     '======================================================
@@ -13783,16 +13054,12 @@ SUB New()
     END WITH
 END SUB
 
-
 CONSTRUCTOR
     New
 END CONSTRUCTOR
 
 END TYPE        'QAVI
 
-
-
-  
 $TYPECHECK OFF   ' сборка: вернуть после QAVI.inc
 '============================================================================
 '[build_inc] QBevel.inc
@@ -13808,7 +13075,6 @@ $TYPECHECK OFF   ' сборка: вернуть после QAVI.inc
 ' Style. I think you'll find them pretty self-
 ' explanatory...
 
-
 const bsLowered    = 0
 const bsRaised     = 1
 const bsSpacer     = 0
@@ -13818,7 +13084,6 @@ const bsBottomLine = 3
 const bsLeftLine   = 4
 const bsRightLine  = 5
 const bsFrame      = 6   
-
 
 TYPE QBEVEL EXTENDS QPANEL
     
@@ -13917,8 +13182,6 @@ END TYPE
 
 ' Psyclops ·)
 
-
-
 TYPE BROWSEINFO                  ' structure to pass to the API
     hWndOwner      AS LONG       ' remove icon from taskbar
     pIDLRoot       AS LONG       ' first visible folder (0 for Desktop)
@@ -13995,12 +13258,8 @@ TYPE QBROWSEDIALOG EXTENDS QOBJECT
             END IF
         END FUNCTION
     
-
-        
     END WITH
 END TYPE
-
-
 
 '============================================================================
 '[build_inc] QButtonXP.INC
@@ -14012,7 +13271,6 @@ END TYPE
 '*  Note : use with QXPTheme.inc in conjuction to take effects
 '*                
 '************************************************************************************************
-
 
 DECLARE FUNCTION xpBSetWindowLong Lib "user32" Alias "SetWindowLongA" (BYVAL hwnd AS LONG, BYVAL nIndex AS LONG, BYVAL dwNewLong AS LONG) AS LONG
 DECLARE FUNCTION xpBSetFocus Lib "user32" Alias "SetFocus" (BYVAL hwnd AS LONG) AS LONG
@@ -14045,7 +13303,6 @@ CONSTRUCTOR
  Xp =3
  '.SetXP(1)
 END CONSTRUCTOR
-	
 	
 End With
 END TYPE 
@@ -14455,15 +13712,12 @@ END TYPE
 ' Classe QCdaudio
 '=======================================================
 $IFNDEF TRUE
-'~dup   $DEFINE True 1   ' повтор, первое: rapidq2.inc(58)
 $ENDIF
 
 $IFNDEF FALSE
-'~dup   $DEFINE False 0   ' повтор, первое: rapidq2.inc(55)
 $ENDIF
 
 $IFNDEF boolean
-'~dup   $DEFINE boolean integer   ' повтор, первое: rapidq2.inc(2241)
 $ENDIF
 
 const CD_CLOSE=0
@@ -14472,8 +13726,6 @@ const CD_PAUSE=2
 const CD_STOP=3
     Declare Sub event_change(track as integer,time as string) ' inc2026: перенесено из-под $IFNDEF __WIN32API: шаблон события объявлен только здесь, а WINDOWS.INC (где __WIN32API определён) его не объявляет
 $IFNDEF __WIN32API				   'windows 32 definitions
-'~dup     Declare Function mciSendCdaudio Lib "winmm.dll" Alias "mciSendStringA" (lpstrCommand As String, lpstrReturnString As long, uReturnLength As Long, hwndCallback As Long) As Long   ' повтор, первое: WINDOWS.INC(12091)
-'~dup     Declare Function mciGetErrorCdaudio Lib "winmm.dll" Alias "mciGetErrorStringA" (dwError As Long,Byref lpstrBuffer As String,uLength As Long) As Long   ' повтор, первое: WINDOWS.INC(12092)
 $ENDIF
 
 Type Qcdaudio extends Qobject
@@ -14492,7 +13744,6 @@ Type Qcdaudio extends Qobject
   Error as string
   CurrentTrack as Integer PROPERTY SET SetCurrentTrack
   OnChange as EVENT(event_change) 
-
 
   '====================================
   ' proprietй position track
@@ -14934,7 +14185,6 @@ TYPE QCGI EXTENDS QOBJECT
 		pairs(1 TO CGI_MAX_PAIRS, 1 TO 2) AS STRING  'keeps the name/value pair
 		parsed  AS BYTE  'a flag to tell if the query string has been parsed
 
-
 		'Adds a new name/value pair to the collection
 		FUNCTION InsertPair(name AS STRING, value AS STRING) AS INTEGER
 			DEFINT insertIndex = 0
@@ -15253,10 +14503,8 @@ $ENDIF
 
 '----- Compiler Directives
 $IFNDEF TRUE
-'~dup   $DEFINE TRUE 1   ' повтор, первое: rapidq2.inc(58)
 $ENDIF
 $IFNDEF FALSE
-'~dup   $DEFINE FALSE 0   ' повтор, первое: rapidq2.inc(55)
 $ENDIF
 
 '----- Win API Functions
@@ -15381,7 +14629,6 @@ CONST ctHiLo = 5
 CONST ctXY = 6
 CONST ctReal = 7
 
-
 CONST csHisto = 0                       'Bar Chart Style Flags
 CONST csBar = 1
 CONST csStacked = 2
@@ -15459,7 +14706,6 @@ TYPE QCHART EXTENDS QCANVAS
     ChartExists         AS BYTE                 'TRUE or FALSE
     Viewport            AS INTEGER              'Viewport width for Real Time graphs
     Missing             AS DOUBLE               'Value used to test for missing data
-
 
 '------------------------------------------------------------------------------------------
 '------------------------- Private Functions ----------------------------------------------
@@ -17465,7 +16711,6 @@ qcShowSave:
   END SUB
 '-------------------------------------------------------------------------------------------
 
-
 '-------------------------------------------------------------------------------------------
 PUBLIC:
 SUB SaveToFile (FileName AS String)
@@ -17519,14 +16764,12 @@ SUB SaveToFile (FileName AS String)
     Colors(29) = RGB(208,208,208)       '-- Light Grey
     Colors(30) = RGB(255,255,255)       '-- Bright White
 
-
       bgColor =        Colors(30)   'Bright White
       fgColor =        Colors(23)    'Black
       PlotAreaColor =  Colors(4)   'Light Grey
       GridColor =      Colors(25)   'Dark Grey
 
   END CONSTRUCTOR
-
 
 END TYPE'QChart
 '----- End Object Definition ***************************************************************
@@ -17563,7 +16806,6 @@ TYPE QCOLORBUTTON EXTENDS QPANEL
   END EVENT
 END TYPE
 
-
 '============================================================================
 '[build_inc] QCursor.inc
 '============================================================================
@@ -17572,21 +16814,15 @@ END TYPE
 ' Classe QCursor version 1.0
 '=======================================================
 $IFNDEF TRUE
-'~dup   $DEFINE True 1   ' повтор, первое: rapidq2.inc(58)
 $ENDIF
 
 $IFNDEF FALSE
-'~dup   $DEFINE False 0   ' повтор, первое: rapidq2.inc(55)
 $ENDIF
 
 $IFNDEF boolean
-'~dup   $DEFINE boolean integer   ' повтор, первое: rapidq2.inc(2241)
 $ENDIF
 
 $IFNDEF __WIN32API				   'windows 32 definitions
-'~dup     Declare Function LoadCursorFromFile Lib "user32" Alias "LoadCursorFromFileA" (CursorFileName as string) as long   ' повтор, первое: WFunctions.inc(38)
-'~dup     Declare Function SetCursorPos Lib "user32" Alias "SetCursorPos" (x As Long,y As Long) As Long   ' повтор, первое: rapidq2.inc(1065)
-'~dup     Declare Function ShowCursor Lib "user32" Alias "ShowCursor" (bShow As Long) As Long   ' повтор, первое: WIN32API.INC(7167)
 $ENDIF
 Type QCursor Extends QObject
   Private:
@@ -17725,26 +16961,7 @@ End Type
      END FUNCTION
 '************************************************************'
 
-
 ' ODBC Variables and Constants
-'~dup      CONST MAX_DATA_BUFFER = 255   ' повтор, первое: odbc.inc(6)
-'~dup      CONST SQL_SUCCESS = 0   ' повтор, первое: odbc.inc(7)
-'~dup      CONST SQL_SUCCESS_WITH_INFO = 1   ' повтор, первое: odbc.inc(8)
-'~dup      CONST SQL_ERROR = -1   ' повтор, первое: odbc.inc(9)
-'~dup      CONST SQL_NO_DATA_FOUND = 100   ' повтор, первое: odbc.inc(10)
-'~dup      CONST SQL_CLOSE = 0   ' повтор, первое: odbc.inc(11)
-'~dup      CONST SQL_DROP = 1   ' повтор, первое: odbc.inc(12)
-'~dup      CONST SQL_CHAR = 1   ' повтор, первое: odbc.inc(13)
-'~dup      CONST SQL_NUMERIC = 2   ' повтор, первое: odbc.inc(14)
-'~dup      CONST SQL_DECIMAL = 3   ' повтор, первое: odbc.inc(15)
-'~dup      CONST SQL_INTEGER = 4   ' повтор, первое: odbc.inc(16)
-'~dup      CONST SQL_SMALLINT = 5   ' повтор, первое: odbc.inc(17)
-'~dup      CONST SQL_FLOAT = 6   ' повтор, первое: odbc.inc(18)
-'~dup      CONST SQL_REAL = 7   ' повтор, первое: odbc.inc(19)
-'~dup      CONST SQL_DOUBLE = 8   ' повтор, первое: odbc.inc(20)
-'~dup      CONST SQL_VARCHAR = 12   ' повтор, первое: odbc.inc(21)
-'~dup      CONST SQL_DATA_SOURCE_NAME = 6   ' повтор, первое: odbc.inc(22)
-'~dup      CONST SQL_USER_NAME = 8   ' повтор, первое: odbc.inc(23)
      CONST SQL_ATTR_CURSOR_TYPE = 6
      CONST SQL_CURSOR_KEYSET_DRIVEN = 1
      CONST SQL_FETCH_NEXT = 1
@@ -17755,325 +16972,12 @@ End Type
      CONST SQL_FETCH_RELATIVE = 6
      CONST SQL_FETCH_BOOKMARK = 8
 
-
 'ODBC Declarations
-'~dup      DECLARE FUNCTION SQLAllocEnv LIB "odbc32.dll" ALIAS "SQLAllocEnv"(env AS LONG) AS SHORT   ' повтор, первое: odbc.inc(26)
-'~dup      DECLARE FUNCTION SQLFreeEnv LIB "odbc32.dll" ALIAS "SQLFreeEnv"(BYVAL env AS LONG) AS SHORT   ' повтор, первое: odbc.inc(27)
-'~dup      DECLARE FUNCTION SQLAllocConnect LIB "odbc32.dll" ALIAS "SQLAllocConnect"(BYVAL env AS LONG, ldbc AS LONG) AS SHORT   ' повтор, первое: odbc.inc(28)
-'~dup      DECLARE FUNCTION SQLDrivers LIB "odbc32.dll" ALIAS "SQLDrivers"(BYVAL env AS LONG, BYVAL dir AS INTEGER, BYVAL descrip AS LONG, BYVAL bflen AS INTEGER, descriplen AS INTEGER, BYVAL attrib AS LONG, BYVAL bfattrlen AS INTEGER, attriblen AS INTEGER) AS SHORT   ' повтор, первое: odbc.inc(44)
-'~dup      DECLARE FUNCTION SQLDriverConnect LIB "odbc32.dll" ALIAS "SQLDriverConnect"(BYVAL ldbc AS LONG, BYVAL hWnd AS LONG, BYVAL szCSIn AS LONG, BYVAL cbCSIn AS INTEGER, BYVAL szCSOut AS LONG, BYVAL cbCSMax AS INTEGER, cbCSOut AS LONG, BYVAL f AS INTEGER) AS SHORT   ' повтор, первое: odbc.inc(30)
-'~dup      DECLARE FUNCTION SQLAllocStmt LIB "odbc32.dll" ALIAS "SQLAllocStmt"(BYVAL ldbc AS LONG, lStmt AS LONG) AS SHORT   ' повтор, первое: odbc.inc(33)
-'~dup      DECLARE FUNCTION SQLTables LIB "odbc32.dll" ALIAS "SQLTables"(BYVAL lStmt AS LONG, BYVAL q AS LONG, BYVAL cbq AS INTEGER, BYVAL o AS LONG, BYVAL cbo AS INTEGER, BYVAL t AS LONG, BYVAL cbt AS INTEGER, BYVAL tt AS LONG, BYVAL cbtt AS INTEGER) AS SHORT   ' повтор, первое: odbc.inc(35)
-'~dup      DECLARE FUNCTION SQLFetch LIB "odbc32.dll" ALIAS "SQLFetch"(BYVAL lStmt AS LONG) AS SHORT   ' повтор, первое: odbc.inc(39)
      DECLARE FUNCTION SQLFetchScroll LIB "odbc32.dll" ALIAS "SQLFetchScroll"(BYVAL lStmt AS LONG, fOrnt AS SHORT, fOffSet AS INTEGER) AS SHORT
-'~dup      DECLARE FUNCTION SQLGetData LIB "odbc32.dll" ALIAS "SQLGetData"(BYVAL lStmt AS LONG, BYVAL col AS INTEGER, BYVAL wConvType AS INTEGER, BYVAL lpbBuf AS LONG, BYVAL dwbuflen AS LONG, lpcbout AS LONG) AS SHORT   ' повтор, первое: odbc.inc(40)
-'~dup      DECLARE FUNCTION SQLCloseCursor LIB "odbc32.dll" ALIAS "SQLCloseCursor"(BYVAL lStmt AS LONG) AS SHORT   ' повтор, первое: odbc.inc(43)
-'~dup      DECLARE FUNCTION SQLFreeStmt LIB "odbc32.dll" ALIAS "SQLFreeStmt"(BYVAL lStmt AS LONG, BYVAL EndOption AS INTEGER) AS SHORT   ' повтор, первое: odbc.inc(34)
-'~dup      DECLARE FUNCTION SQLDisconnect LIB "odbc32.dll" ALIAS "SQLDisconnect"(BYVAL ldbc AS LONG) AS SHORT   ' повтор, первое: odbc.inc(32)
-'~dup      DECLARE FUNCTION SQLFreeConnect LIB "odbc32.dll" ALIAS "SQLFreeConnect"(BYVAL ldbc AS LONG) AS SHORT   ' повтор, первое: odbc.inc(31)
-'~dup      DECLARE FUNCTION SQLExecDirect LIB "odbc32.dll" ALIAS "SQLExecDirect"(BYVAL lStmt AS LONG, BYVAL sqlString AS LONG, BYVAL sqlstrlen AS LONG) AS SHORT   ' повтор, первое: odbc.inc(36)
-'~dup      DECLARE FUNCTION SQLNumResultCols LIB "odbc32.dll" ALIAS "SQLNumResultCols"(BYVAL lStmt AS LONG, NumCols AS LONG) AS SHORT   ' повтор, первое: odbc.inc(37)
-'~dup      DECLARE FUNCTION SQLDescribeCol LIB "odbc32.dll" ALIAS "SQLDescribeCol"(BYVAL lStmt AS LONG, BYVAL colnum AS INTEGER, BYVAL colname AS LONG, BYVAL Buflen AS INTEGER, colnamelen AS INTEGER, dtype AS INTEGER, dl AS LONG, ds AS INTEGER, n AS INTEGER) AS SHORT   ' повтор, первое: odbc.inc(38)
      DECLARE FUNCTION SQLSetStmtAttr LIB "odbc32.dll" ALIAS "SQLSetStmtAttr"(BYVAL lStmt AS LONG, Attrib AS INTEGER, VlPtr AS INTEGER, sqlstrlen AS INTEGER) AS SHORT
      DECLARE FUNCTION DataTypeStr(DataTypeNum AS INTEGER) AS STRING
 
 '--------------------------------------- BEGIN OBJECT qDATABASE'================
-'~dup      TYPE qDATABASE EXTENDS QOBJECT   ' повтор, первое: QDataBase.inc(31)
-'~dup 
-'~dup PUBLIC:
-'~dup 
-'~dup       DriverStr AS STRING
-'~dup       DataBaseName AS STRING
-'~dup       TableCount AS INTEGER
-'~dup       Table.Name(150) AS STRING
-'~dup       Table.TYPE(150) AS STRING
-'~dup       Table.RecCount(150) AS INTEGER
-'~dup       Table.FieldCount(150) AS INTEGER
-'~dup       Table.FieldName(150,255) AS STRING
-'~dup       Table.FieldType(150,255) AS STRING
-'~dup       Table.FieldSize(150,255) AS INTEGER
-'~dup       Table.DecDigits(150,255) AS INTEGER
-'~dup       Table.NullAV(150,255) AS INTEGER
-'~dup 
-'~dup PRIVATE:
-'~dup       GLENV AS LONG
-'~dup       GLDBC AS LONG
-'~dup       GLSTMT AS LONG
-'~dup '-------------------------------------------------------------------------------'
-'~dup       FUNCTION ODBCInit  AS STRING ' Ok = 0
-'~dup        DIM iStatus AS SHORT
-'~dup        DIM SQLRET AS SHORT
-'~dup        DIM Res AS STRING
-'~dup 
-'~dup        Res = "0"
-'~dup 
-'~dup       '1. Allocate ODBC Environment Handle
-'~dup        SQLRet = SQLAllocEnv(VARPTR(qDATABASE.glEnv))
-'~dup        IF SQLRet <> SQL_SUCCESS THEN
-'~dup         Res = "Error: Unable to initialize ODBC API drivers!"
-'~dup        ELSE
-'~dup         '2. Allocate ODBC Database Handle
-'~dup         SQLRet=SQLAllocConnect(qDATABASE.glEnv, VARPTR(qDATABASE.glDbc))
-'~dup         IF SQLRet<> SQL_SUCCESS THEN
-'~dup          Res = "Error: Could not allocate memory for connection Handle!"
-'~dup           ' Free the Environment
-'~dup          iStatus = SQLFreeEnv(qDATABASE.glEnv)
-'~dup          IF iStatus = SQL_ERROR THEN
-'~dup           Res = "Error Freeing Environment From ODBC Drivers"
-'~dup          END IF
-'~dup         END IF
-'~dup        END IF
-'~dup 
-'~dup        qDATABASE.ODBCInit = Res
-'~dup       END FUNCTION
-'~dup '-------------------------------------------------------------------------------'
-'~dup       SUB CloseODBC
-'~dup        DIM iStatus AS SHORT
-'~dup 
-'~dup        iStatus = SQLFreeConnect(qDATABASE.glDbc)
-'~dup        iStatus = SQLFreeEnv(qDATABASE.glEnv)
-'~dup       END SUB
-'~dup '-------------------------------------------------------------------------------'
-'~dup       FUNCTION Connect (DB_Name AS STRING, DriverNumber AS INTEGER) AS STRING 'Ok = 0
-'~dup        DIM SQLRET AS SHORT
-'~dup        DIM Res AS STRING
-'~dup 
-'~dup        Res = "0"
-'~dup 
-'~dup        qDATABASE.DataBaseName=DB_Name
-'~dup        qDATABASE.DriverStr=UseDriver(DriverNumber, DB_Name)
-'~dup        IF qDATABASE.DriverStr <> "-1" THEN
-'~dup         'Connect using the string - SQLDriverConnect
-'~dup         DIM sResult AS STRING * 256
-'~dup         DIM iSize AS INTEGER
-'~dup 
-'~dup         SQLRet = SQLDriverConnect(qDATABASE.glDbc, 0&, VARPTR(qDATABASE.DriverStr), LEN(qDATABASE.DriverStr), VARPTR(sResult), 255, VARPTR(iSize), 1)
-'~dup         IF SQLRet < 0 THEN
-'~dup          Res = "Error: Could not establish connection to ODBC driver!"
-'~dup         ELSE
-'~dup           '4. Allocate ODBC Statement Handle
-'~dup          SQLRet=SQLAllocStmt(qDATABASE.glDbc, VARPTR(qDATABASE.glStmt))
-'~dup          IF SQLRet<> SQL_SUCCESS THEN
-'~dup           Res = "Error: Could not allocate memory for a statement handle!"
-'~dup          ELSE
-'~dup           SQLSetStmtAttr(qDATABASE.glStmt, SQL_ATTR_CURSOR_TYPE, SQL_CURSOR_KEYSET_DRIVEN, 0)
-'~dup             '4.1 Get tables
-'~dup           DIM tPerform AS LONG
-'~dup           DIM catalog AS STRING * 0
-'~dup           DIM schema AS STRING * 0
-'~dup           DIM tablename AS STRING * 0
-'~dup           DIM tabletype AS STRING * 5
-'~dup           DIM iTable AS INTEGER
-'~dup           DIM tData AS STRING * MAX_DATA_BUFFER
-'~dup           DIM tOutLen AS LONG
-'~dup           DIM NumCols AS INTEGER
-'~dup           DIM IStatus AS INTEGER
-'~dup 
-'~dup           qDATABASE.TableCount=-1
-'~dup 
-'~dup           tabletype="TABLE"
-'~dup           SQLRet=SQLTables(qDATABASE.glStmt, VARPTR(catalog), 0, VARPTR(schema),0, VARPTR(tablename),0, VARPTR(tabletype),5)
-'~dup           IF SQLRet<> SQL_SUCCESS THEN
-'~dup            Res = "Error: Could not get Tables!"
-'~dup           ELSE
-'~dup            tPerform = SQL_SUCCESS
-'~dup            WHILE tPerform = SQL_SUCCESS
-'~dup             tPerform = SQLFetch(qDATABASE.glStmt) ' Get the next row of data
-'~dup             IF tPerform = 65535 OR tPerform = SQL_ERROR THEN
-'~dup              EXIT WHILE
-'~dup             ELSE
-'~dup              IF tPerform = SQL_SUCCESS OR tPerform = SQL_SUCCESS_WITH_INFO THEN
-'~dup               qDATABASE.TableCount++
-'~dup               FOR iTable = 1 TO 3
-'~dup                iStatus = SQLGetData(qDATABASE.glStmt, iTable, 1, VARPTR(tData), MAX_DATA_BUFFER, VARPTR(tOutLen))
-'~dup               NEXT
-'~dup               qDATABASE.Table.Name(qDATABASE.TableCount) = LEFT$(tData, tOutlen) ' tOutlen = -1 if no data or Null data
-'~dup               qDATABASE.Table.TYPE(qDATABASE.TableCount) = "TABLE"
-'~dup              END IF
-'~dup             END IF
-'~dup            WEND
-'~dup               'close cursor of tables query
-'~dup            tPerform = SQLCloseCursor(qDATABASE.glStmt)
-'~dup           END IF
-'~dup 
-'~dup           tabletype="VIEW"
-'~dup           SQLRet=SQLTables(qDATABASE.glStmt, VARPTR(catalog), 0, VARPTR(schema),0, VARPTR(tablename),0, VARPTR(tabletype),5)
-'~dup           IF SQLRet = SQL_SUCCESS THEN
-'~dup            tPerform = SQL_SUCCESS
-'~dup            WHILE tPerform = SQL_SUCCESS
-'~dup             tPerform = SQLFetch(qDATABASE.glStmt) ' Get the next row of data
-'~dup             IF tPerform = 65535 OR tPerform = SQL_ERROR THEN
-'~dup              EXIT WHILE
-'~dup             ELSE
-'~dup              IF tPerform = SQL_SUCCESS OR tPerform = SQL_SUCCESS_WITH_INFO THEN
-'~dup               qDATABASE.TableCount++
-'~dup               FOR iTable = 1 TO 3
-'~dup                iStatus = SQLGetData(qDATABASE.glStmt, iTable, 1, VARPTR(tData), MAX_DATA_BUFFER, VARPTR(tOutLen))
-'~dup               NEXT
-'~dup               qDATABASE.Table.Name(qDATABASE.TableCount) = LEFT$(tData, tOutlen) ' tOutlen = -1 if no data or Null data
-'~dup               qDATABASE.Table.TYPE(qDATABASE.TableCount)  = "VIEW"
-'~dup              END IF
-'~dup             END IF
-'~dup            WEND
-'~dup               'close cursor of tables query
-'~dup            tPerform = SQLCloseCursor(qDATABASE.glStmt)
-'~dup           END IF
-'~dup           qDATABASE.TableCount++
-'~dup          END IF
-'~dup         END IF
-'~dup        ELSE
-'~dup         Res = "Driver Number Error "
-'~dup        END IF
-'~dup        qDATABASE.Connect = Res
-'~dup       END FUNCTION
-'~dup '-------------------------------------------------------------------------------'
-'~dup       SUB CloseDB
-'~dup        DIM iStatus AS SHORT
-'~dup        iStatus = SQLDisconnect(qDATABASE.glDbc)
-'~dup       END SUB
-'~dup '-------------------------------------------------------------------------------'
-'~dup       FUNCTION GetTableInfo AS STRING ' Ok = 0
-'~dup        DIM i AS INTEGER
-'~dup        DIM sSQL AS STRING
-'~dup        DIM SQLRet AS SHORT
-'~dup        DIM bPerform AS LONG
-'~dup        DIM NumCols AS INTEGER
-'~dup        DIM NumRec AS INTEGER
-'~dup        DIM Res AS STRING
-'~dup 
-'~dup        Res = "0"
-'~dup 
-'~dup        FOR i = 0 TO qDATABASE.TableCount - 1
-'~dup         sSQL = "SELECT * FROM [" + qDATABASE.Table.Name(i) + "]"
-'~dup         SQLRet=SQLExecDirect(qDATABASE.glStmt, VARPTR(sSQL), LEN(sSQL))
-'~dup         IF SQLRet <> SQL_SUCCESS AND SQLRet <> SQL_SUCCESS_WITH_INFO THEN
-'~dup          qDATABASE.GetTableInfo = "Error: Table Error"
-'~dup          EXIT FUNCTION
-'~dup         END IF
-'~dup 
-'~dup         bPerform = SQLNumResultCols (qDATABASE.glStmt, VARPTR(NumCols))
-'~dup         IF bPerform <> SQL_SUCCESS THEN
-'~dup          qDATABASE.GetTableInfo = "Error: Could not get columns quantity!"
-'~dup          bPerform = SQLCloseCursor(qDATABASE.glStmt)
-'~dup          EXIT FUNCTION
-'~dup         ELSE
-'~dup          qDATABASE.Table.FieldCount(i) = NumCols
-'~dup         END IF
-'~dup 
-'~dup         NumRec = -1
-'~dup         bPerform = SQL_SUCCESS
-'~dup         WHILE bPerform = SQL_SUCCESS
-'~dup          NumRec++
-'~dup          bPerform = SQLFetch(qDATABASE.glStmt)
-'~dup         WEND
-'~dup         IF NumRec> 0 THEN qDATABASE.Table.RecCount(i) = NumRec ELSE qDATABASE.Table.RecCount(i) = 0
-'~dup 
-'~dup         DIM icolnum AS INTEGER
-'~dup         DIM colname AS STRING * MAX_DATA_BUFFER
-'~dup         DIM colnamelen AS INTEGER
-'~dup         DIM dtype AS INTEGER
-'~dup         DIM colsize AS LONG
-'~dup         DIM decdigits AS INTEGER
-'~dup         DIM nullav AS INTEGER
-'~dup 
-'~dup         FOR icolnum = 1 TO NumCols
-'~dup          bPerform = SQLDescribeCol(qDATABASE.glStmt, icolnum, VARPTR(colname), MAX_DATA_BUFFER, VARPTR(colnamelen), VARPTR(dtype), VARPTR(colsize), VARPTR(decdigits), VARPTR(nullav))
-'~dup          IF bPerform <> SQL_SUCCESS THEN
-'~dup           qDATABASE.GetTableInfo = "Error: Could not get column descriptor!"
-'~dup           bPerform = SQLCloseCursor(qDATABASE.glStmt)
-'~dup           EXIT FUNCTION
-'~dup          END IF
-'~dup          qDATABASE.Table.FieldName(i,icolnum)=LEFT$(colname,colnamelen)
-'~dup          qDATABASE.Table.FieldType(i,icolnum)=DataTypeStr(dtype)
-'~dup          qDATABASE.Table.FieldSize(i,icolnum)=colsize
-'~dup          qDATABASE.Table.DecDigits(i,icolnum)=decdigits
-'~dup          qDATABASE.Table.NullAV(i,icolnum)=nullav
-'~dup         NEXT icolnum
-'~dup 
-'~dup         bPerform = SQLCloseCursor(qDATABASE.glStmt)
-'~dup        NEXT i
-'~dup        bPerform = SQLFreeStmt(qDATABASE.glStmt, SQL_DROP)
-'~dup        qDATABASE.GetTableInfo = Res
-'~dup       END FUNCTION
-'~dup '-------------------------------------------------------------------------------'
-'~dup 
-'~dup PUBLIC:
-'~dup       FUNCTION GetDataBaseInfo(DatabasePath AS STRING, DriverNum AS INTEGER ) AS STRING
-'~dup        DIM Res AS STRING
-'~dup        Res = "0"
-'~dup 
-'~dup        Res = qDATABASE.ODBCInit
-'~dup        IF Res <> "0" THEN
-'~dup         qDATABASE.GetDataBaseInfo = Res
-'~dup         EXIT FUNCTION
-'~dup        END IF
-'~dup 
-'~dup        Res = qDATABASE.Connect (DatabasePath, DriverNum)
-'~dup        IF Res <> "0" THEN
-'~dup         qDATABASE.GetDataBaseInfo = Res
-'~dup         qDATABASE.CloseODBC
-'~dup         EXIT FUNCTION
-'~dup        END IF
-'~dup 
-'~dup        Res = qDATABASE.GetTableInfo
-'~dup        IF Res <> "0" THEN
-'~dup         qDATABASE.GetDataBaseInfo = Res
-'~dup         qDATABASE.CloseDB
-'~dup         qDATABASE.CloseODBC
-'~dup         EXIT FUNCTION
-'~dup        END IF
-'~dup 
-'~dup        qDATABASE.CloseDB
-'~dup        qDATABASE.CloseODBC
-'~dup 
-'~dup        qDATABASE.GetDataBaseInfo = Res
-'~dup       END FUNCTION
-'~dup 
-'~dup       FUNCTION OpenDataBase(DatabasePath AS STRING, DriverNum AS INTEGER ) AS STRING
-'~dup        DIM Res AS STRING
-'~dup 
-'~dup        Res = qDATABASE.ODBCInit
-'~dup        IF Res <> "0" THEN
-'~dup         qDATABASE.OpenDataBase = Res
-'~dup         EXIT FUNCTION
-'~dup        END IF
-'~dup 
-'~dup        Res = qDATABASE.Connect (DatabasePath, DriverNum)
-'~dup        IF Res <> "0" THEN
-'~dup         qDATABASE.OpenDataBase = Res
-'~dup         qDATABASE.CloseODBC
-'~dup         EXIT FUNCTION
-'~dup        END IF
-'~dup 
-'~dup        Res = qDATABASE.GetTableInfo
-'~dup        IF Res <> "0" THEN
-'~dup         qDATABASE.OpenDataBase = Res
-'~dup         qDATABASE.CloseDB
-'~dup         qDATABASE.CloseODBC
-'~dup         EXIT FUNCTION
-'~dup        END IF
-'~dup 
-'~dup        qDATABASE.OpenDataBase = "0"
-'~dup       END FUNCTION
-'~dup 
-'~dup       SUB CloseDataBase
-'~dup        qDATABASE.CloseDB
-'~dup        qDATABASE.CloseODBC
-'~dup       END SUB
-'~dup 
-'~dup       FUNCTION GetSTMT() AS LONG
-'~dup        DIM nSTMT AS LONG
-'~dup        DIM SQLRET AS SHORT
-'~dup 
-'~dup        SQLRet=SQLAllocStmt(qDATABASE.glDbc, VARPTR(nSTMT))
-'~dup        IF SQLRet <> SQL_SUCCESS THEN
-'~dup         nSTMT = -1
-'~dup        ELSE
-'~dup         SQLSetStmtAttr(nSTMT, SQL_ATTR_CURSOR_TYPE, SQL_CURSOR_KEYSET_DRIVEN, 0)
-'~dup        END IF
-'~dup        qDATABASE.GetSTMT = nSTMT
-'~dup       END FUNCTION
-'~dup      END TYPE
 
      FUNCTION DataTypeStr(DataTypeNum AS INTEGER) AS STRING
       SELECT CASE DataTypeNum
@@ -18325,7 +17229,6 @@ PUBLIC:
        DIM decdigits AS INTEGER
        DIM nullav AS INTEGER
 
-
        FOR icolnum = 1 TO NumCols
         bPerform = SQLDescribeCol(qSQLTABLE.glStmt, icolnum, VARPTR(colname), MAX_DATA_BUFFER, VARPTR(colnamelen), VARPTR(dtype), VARPTR(colsize), VARPTR(decdigits), VARPTR(nullav))
         IF bPerform <> SQL_SUCCESS THEN
@@ -18423,7 +17326,6 @@ PUBLIC:
        DIM bPerform AS LONG
        DIM i AS INTEGER
 
-
        bPerform = SQLCloseCursor(qSQLTABLE.glStmt)
        qSQLTABLE.strSQL=""
 
@@ -18444,7 +17346,6 @@ PUBLIC:
      END TYPE
 '--------------------------------------- END OBJECT qSQLTABLE' ====================
 
-
 '============================================================================
 '[build_inc] QDesktop.inc
 '============================================================================
@@ -18456,14 +17357,9 @@ Declare Function SetActiveDesktop Lib "USER32" Alias "SetActiveWindow" (hWnd as 
 Declare Function GetDCDesktop LIB "user32" Alias "GetDC" (hWnd as integer) as integer
 Declare Function ReleaseDCDesktop Lib "user32" Alias "ReleaseDC" (hWnd as integer,hDC as integer) as integer
 Declare Function BitBltDesktop Lib "gdi32" Alias "BitBlt" (hDC as integer,nXDest as integer,nYDest as integer,nWidth as integer,nHeight as integer,hdcSrc as integer,nXSrc as integer,nYSrc as integer,dwRop as integer) as integer
-'~dup Declare Function PaintDesktop Lib "user32" Alias "PaintDesktop" (HDC as integer) as integer   ' повтор, первое: WIN32API.INC(15551)
 Declare Function GetPixelDesktop Lib "gdi32" Alias "GetPixel" (hdc as Long,x as Long,y as Long) as Long
-'~dup Declare Function SystemParametersInfo Lib "user32" Alias "SystemParametersInfoA" (uAction as Long,uParam as Long,lpvParam as Long,fuWinIni as Long) as Long   ' повтор, первое: rapidq2.inc(1485)
 
 ' SystemParametersInfo flags
-'~dup Const SPIF_UPDATEINIFILE=&H1   ' повтор, первое: WIN32API.INC(7956)
-'~dup Const SPIF_SENDWININICHANGE=&H2   ' повтор, первое: WIN32API.INC(7957)
-'~dup Const SPI_SETDESKWALLPAPER=20   ' повтор, первое: WIN32API.INC(7880)
 
 Type QDesktop Extends QObject  
   '===============================================
@@ -18532,8 +17428,6 @@ End Type
 ' 13 April 2001
 ' teliah@optushome.com.au
 
-
-
 TYPE QDigDisplay EXTENDS QCanvas
      PRIVATE :
               DImage AS QIMAGELIST              
@@ -18601,10 +17495,8 @@ TYPE QDigDisplay EXTENDS QCanvas
            QDigDisplay.DrawDisplay
      END EVENT
      
-     
 END TYPE
 
-  
 '============================================================================
 '[build_inc] QDir.Inc
 '============================================================================
@@ -18626,66 +17518,10 @@ END TYPE
 Const QDIR_RQCR = Chr$(10)      ' avoid using $ESCAPECHARS ON IN COMPONENT
 Const QDIR_BACKSLASH = Chr$(92)
 '
-'~dup Const QDIR_MAXWORD = &HFFFF   ' повтор, первое: SetFileTimeAttrib.inc(13)
-'~dup Const QDIR_INVALID_HANDLE_VALUE = -1   ' повтор, первое: SetFileTimeAttrib.inc(14)
-'~dup Const QDIR_FILE_ATTRIBUTE_ARCHIVE = &H20        ' "A"   ' повтор, первое: SetFileTimeAttrib.inc(15)
-'~dup Const QDIR_FILE_ATTRIBUTE_DIRECTORY = &H10      ' "D"   ' повтор, первое: SetFileTimeAttrib.inc(16)
-'~dup Const QDIR_FILE_ATTRIBUTE_HIDDEN = &H2          ' "H"   ' повтор, первое: SetFileTimeAttrib.inc(17)
-'~dup Const QDIR_FILE_ATTRIBUTE_NORMAL = &H80         ' "N"   ' повтор, первое: SetFileTimeAttrib.inc(18)
-'~dup Const QDIR_FILE_ATTRIBUTE_READONLY = &H1        ' "R"   ' повтор, первое: SetFileTimeAttrib.inc(19)
-'~dup Const QDIR_FILE_ATTRIBUTE_SYSTEM = &H4          ' "S"   ' повтор, первое: SetFileTimeAttrib.inc(20)
-'~dup Const QDIR_FILE_ATTRIBUTE_TEMPORARY = &H100     ' "T"   ' повтор, первое: SetFileTimeAttrib.inc(21)
-'~dup Const QDIR_FILE_ATTRIBUTE_COMPRESSED = &H800    ' "C"   ' повтор, первое: SetFileTimeAttrib.inc(22)
 '    NO ATTRIBUTE SET                      ' "0"  ' zero
 
 ' TYPE DEFINITIONS
 ' ----------------
-'~dup Type QDIR_FILETIME   ' повтор, первое: SetFileTimeAttrib.inc(27)
-'~dup     lowDateTime As Long
-'~dup     highDateTime As Long
-'~dup End Type
-
-'~dup Type QDIR_WIN32_FIND_DATA                            '   WIN32 NAMES   ' повтор, первое: SetFileTimeAttrib.inc(32)
-'~dup     attributes As Long                          '   dwFileAttributes As Long
-'~dup                                                 '   ftCreationTime As FILETIME
-'~dup                                                 '   ftLastAccessTime As FILETIME
-'~dup                                                 '   ftLastWriteTime As FILETIME
-'~dup                                                 '   RAPIDQ BUGS WITH NESTED TYPES so REPLACED BY ! No Differences
-'~dup     creationLowDateTime As Long                 '   ftCreationTime.dwLowDateTime As Long
-'~dup     creationHighDateTime As Long                '   ftCreationTime.dwHighDateTime As Long
-'~dup     lastAccessLowDateTime As Long               '   ftLastAccessTime.dwLowDateTime As Long
-'~dup     lastAccessHighDateTime As Long              '   ftLastAccessTime.dwHighDateTime As Long
-'~dup     lastWriteLowDateTime As Long                '   ftLastWriteTime.dwLowDateTime As Long
-'~dup     lastWriteHighDateTime As Long               '   ftLastWriteTime.dwHighDateTime As Long
-'~dup     fileSizeHigh As Long                        '   nFileSizeHigh As Long
-'~dup     fileSizeLow As Long                         '   nFileSizeLow As Long
-'~dup     dwReserved0 As Long
-'~dup     dwReserved1 As Long
-'~dup     cFileName As String * 260
-'~dup     cAlternate As String * 14
-'~dup End Type
-
-'~dup Type QDIR_SYSTEMTIME   ' повтор, первое: SetFileTimeAttrib.inc(52)
-'~dup     year As Short  ' VB integer = RQ Short
-'~dup     month As Short
-'~dup     dayOfWeek As Short
-'~dup     day As Short
-'~dup     hour As Short
-'~dup     minute As Short
-'~dup     second As Short
-'~dup     milliseconds As Short
-'~dup     ' Extended
-'~dup     DateTime As Double            ' The DateTime As A Number
-'~dup     date As String * 10           ' Date as a String  mm/dd/yyyy
-'~dup     dateEU As String * 10         ' EU date Foramt dd/mm/yyyy
-'~dup     dateAlpha As String * 16      ' "ddd" "mmm" DD, yyyy
-'~dup     dateAlphaEU As String * 15    ' "ddd" DD "mmm" yyyy
-'~dup     time As String * 8            ' without ms  HH:MM:SS
-'~dup     timems As String * 12         ' Time As a String  HH:MM:SS.iii
-'~dup     strDayOfWeek As String * 3    ' day of the week as in Day(0 To 6) : "Mon", "Tue", "Wed", ... "Sun"
-'~dup     nWeekDay As String * 1        ' "0", "1", "2", ... "6"
-'~dup     strMonthOfYear As String * 3  ' day of the week as in Months(1 To 12) : "Jan", "Feb", ... "Dec"
-'~dup End Type
 
 ' -------------------------------------------------------------
 ' API DECLARATIONS
@@ -18707,39 +17543,9 @@ Declare Function QDIR_FileTimeToSystemTime Lib "kernel32" Alias "FileTimeToSyste
 '
 ' cft for Change_File_Time and to prevent double declaration of type ...
 '
-'~dup Type T_FILETIMEcft   ' повтор, первое: SetFileTimeAttrib.inc(81)
-'~dup     dwLowDateTime As Long
-'~dup     dwHighDateTime As Long
-'~dup End Type
 '
-'~dup Type T_SYSTEMTIMEcft   ' повтор, первое: SetFileTimeAttrib.inc(86)
-'~dup     wYear As Short  ' VB INTEGER ARE RQ SHORT
-'~dup     wMonth As Short
-'~dup     wDayOfWeek As Short
-'~dup     wDay As Short
-'~dup     wHour As Short
-'~dup     wMinute As Short
-'~dup     wSecond As Short
-'~dup     wMilliseconds As Short
-'~dup End Type
 '
-'~dup Const QDIR_GENERIC_WRITE = &H40000000   ' повтор, первое: SetFileTimeAttrib.inc(97)
-'~dup Const QDIR_OPEN_EXISTING = 3   ' повтор, первое: SetFileTimeAttrib.inc(98)
-'~dup Const QDIR_FILE_SHARE_READ = &H1   ' повтор, первое: SetFileTimeAttrib.inc(99)
-'~dup Const QDIR_FILE_SHARE_WRITE = &H2   ' повтор, первое: SetFileTimeAttrib.inc(100)
 '
-'~dup Declare Function QDIR_SetFileTime Lib "kernel32" Alias "SetFileTime" (ByVal hFile As Long, _   ' повтор, первое: SetFileTimeAttrib.inc(102)
-'~dup                     lpCreationTime As T_FILETIMEcft, lpLastAccessTime As T_FILETIMEcft, _
-'~dup                     lpLastWriteTime As T_FILETIMEcft) As Long
-'~dup Declare Function QDIR_SystemTimeToFileTime Lib "kernel32" Alias "SystemTimeToFileTime" _   ' повтор, первое: SetFileTimeAttrib.inc(106)
-'~dup                     (lpSystemTime As T_SYSTEMTIMEcft, lpFileTime As T_FILETIMEcft) As Long
-'~dup Declare Function QDIR_CreateFile Lib "kernel32" Alias "CreateFileA" (ByRef lpFileName As String, _   ' повтор, первое: SetFileTimeAttrib.inc(109)
-'~dup                     ByVal dwDesiredAccess As Long, ByVal dwShareMode As Long, _
-'~dup                     ByVal lpSecurityAttributes As Long, ByVal dwCreationDisposition As Long, _
-'~dup                     ByVal dwFlagsAndAttributes As Long, ByVal hTemplateFile As Long) As Long
-'~dup Declare Function QDIR_CloseHandle Lib "kernel32" Alias "CloseHandle" (ByVal hObject As Long) As Long   ' повтор, первое: SetFileTimeAttrib.inc(113)
-'~dup Declare Function QDIR_SetFileAttributes Lib "kernel32" Alias "SetFileAttributesA" _   ' повтор, первое: SetFileTimeAttrib.inc(114)
-'~dup                     (ByRef lpFileName As String, ByVal dwFileAttributes As Long) As Long'
 '
 ' -------------------------------------------------------------
 ' Template required for creating an Event ... HTML DOC CHAPTER 10-9
@@ -18868,25 +17674,18 @@ PRIVATE:
                         ' Const QDIR_QDIR_FILE_ATTRIBUTE_ARCHIVE = &H20        ' "A"
                If (Instr(.rejectedAttributes, "A") and (.fileStruct.attributes And QDIR_FILE_ATTRIBUTE_ARCHIVE) > 0) Then _
                                 Result = 0:Exit Function ' False
-                        ' Const QDIR_FILE_ATTRIBUTE_DIRECTORY = &H10      ' "D"
                If (Instr(.rejectedAttributes, "D") and (.fileStruct.attributes And QDIR_FILE_ATTRIBUTE_DIRECTORY) > 0) Then _
                                 Result = 0:Exit Function ' False
-                        ' Const QDIR_FILE_ATTRIBUTE_HIDDEN = &H2          ' "H"
                If (Instr(.rejectedAttributes, "H") and (.fileStruct.attributes And QDIR_FILE_ATTRIBUTE_HIDDEN) > 0) Then _
                                 Result = 0:Exit Function ' False
-                        ' Const QDIR_FILE_ATTRIBUTE_NORMAL = &H80         ' "N"
                If (Instr(.rejectedAttributes, "N") and (.fileStruct.attributes And QDIR_FILE_ATTRIBUTE_NORMAL) > 0) Then _
                                 Result = 0:Exit Function ' False
-                        ' Const QDIR_FILE_ATTRIBUTE_READONLY = &H1        ' "R"
                If (Instr(.rejectedAttributes, "R") and (.fileStruct.attributes And QDIR_FILE_ATTRIBUTE_READONLY) > 0) Then _
                                 Result = 0:Exit Function ' False
-                        ' Const QDIR_FILE_ATTRIBUTE_SYSTEM = &H4          ' "S"
                If (Instr(.rejectedAttributes, "S") and (.fileStruct.attributes And QDIR_FILE_ATTRIBUTE_SYSTEM) > 0) Then _
                                 Result = 0:Exit Function ' False
-                        ' Const QDIR_FILE_ATTRIBUTE_TEMPORARY = &H100     ' "T"
                If (Instr(.rejectedAttributes, "T") and (.fileStruct.attributes And QDIR_FILE_ATTRIBUTE_TEMPORARY) > 0) Then _
                                 Result = 0:Exit Function ' False
-                        ' Const QDIR_FILE_ATTRIBUTE_COMPRESSED = &H800    ' "C"
                If (Instr(.rejectedAttributes, "C") and (.fileStruct.attributes And QDIR_FILE_ATTRIBUTE_COMPRESSED) > 0) Then _
                                 Result = 0:Exit Function ' False
             End If
@@ -19066,14 +17865,6 @@ PRIVATE:
             ' file attributes
             ' ---------------
             .attributes = .fileStruct.Attributes
-            'Const QDIR_FILE_ATTRIBUTE_ARCHIVE = &H20        ' "A"
-            'Const QDIR_FILE_ATTRIBUTE_DIRECTORY = &H10      ' "D"
-            'Const QDIR_FILE_ATTRIBUTE_HIDDEN = &H2          ' "H"
-            'Const QDIR_FILE_ATTRIBUTE_NORMAL = &H80         ' "N"
-            'Const QDIR_FILE_ATTRIBUTE_READONLY = &H1        ' "R"
-            'Const QDIR_FILE_ATTRIBUTE_SYSTEM = &H4          ' "S"
-            'Const QDIR_FILE_ATTRIBUTE_TEMPORARY = &H100     ' "T"
-            'Const QDIR_FILE_ATTRIBUTE_COMPRESSED = &H800    ' "C"
             '  NO ATTRIBUTE SET                         ' "0"
             sTmp = ""
             If .attributes and QDIR_FILE_ATTRIBUTE_ARCHIVE    Then sTmp = sTmp & "A"
@@ -19352,11 +18143,8 @@ file as string                                      '    /Path/File.ext
 server as string                                    '    www.server.dom
 port as integer                                     '    Port: 80
 
-
-
 outdevice as integer                                '    Outdevice:   1 = qdownload.outvar (Default)
                                                     '                 2 = qdownload.filestream
-
 
 statedevice as integer                              '    Statedevice: 1 = qdownload.state (Default)
                                                     '                 2 = qdownload.stategauge
@@ -19372,12 +18160,10 @@ stategauge as qgauge                                '    State as qgauge
 
 speedlbl as qlabel
 
-
 laststringerror as string                           '    Errortext output
 lasterror as integer                                '    Error Number 
 
 size as integer                                     '    Size of File, retreived during download
-
 
 				    	    '    Loop Variable
 
@@ -19388,7 +18174,6 @@ statedevice = 1                                     '    Default for state is qd
 stategauge.height = 20
 stategauge.width = 200
 end constructor
-
 
 'This Function checks for an internet connection, and returns either True or False
 
@@ -19405,7 +18190,6 @@ with qdownload
  END IF 
 end with
 END  FUNCTION
-
 
 'This Function calculates the state in percent of any given process
 
@@ -19464,7 +18248,6 @@ if .outdevice = 2 and .outfile="" then
 exit function
 end if
 
-
 'Now let's connect
 socknum = sock.connect (.server, .port)
 
@@ -19522,7 +18305,6 @@ end select
 exit function
 end if
 
-
 'The Download
 dim i as integer
 dim bf$ as string
@@ -19542,7 +18324,6 @@ do
         sock.close(socknum)
         exit function
      end if
-
 
    dim info$ as string
    info$ = left$(content$,15)
@@ -19573,16 +18354,12 @@ do
 loop until sock.transferred = 0
 sock.close(socknum)
 
-
 'error checking
 if not .size=len(content$) then
 .lasterror = 10
 .laststringerror = "A transmission error has occured, retry"
 exit function
 end if
-
-
-
 
 'Saving to File or to .outvar 
 select case .outdevice
@@ -19600,7 +18377,6 @@ end select
 end with
 end function
 
-
 end type
 
 '============================================================================
@@ -19615,34 +18391,21 @@ end type
 $IFNDEF __QDRAWFOCUS_INC
   $DEFINE __QDRAWFOCUS_INC
 
-
 $IFNDEF TRUE
-'~dup   $DEFINE True 1   ' повтор, первое: rapidq2.inc(58)
 $ENDIF
 
 $IFNDEF FALSE
-'~dup   $DEFINE False 0   ' повтор, первое: rapidq2.inc(55)
 $ENDIF
 
 $IFNDEF boolean
-'~dup   $DEFINE boolean integer   ' повтор, первое: rapidq2.inc(2241)
 $ENDIF
 
 $IFNDEF __WIN32API				   'windows 32 definitions
    $IFNDEF __RQ2WIN32API
 
-'~dup     Type RECT   ' повтор, первое: rapidq2.inc(884)
-'~dup         Left As Long
-'~dup         Top As Long
-'~dup         Right As Long
-'~dup         Bottom As Long
-'~dup     End Type
-'~dup    DECLARE FUNCTION GetDC LIB "user32.dll" ALIAS "GetDC"(ByVal hwnd AS LONG) AS LONG   ' повтор, первое: rapidq2.inc(1482)
    $ENDIF
   'returns !0 on succeed
-'~dup   DECLARE FUNCTION DrawFocusRect Lib "user32.dll" Alias "DrawFocusRect" (hdc As Long, ByRef lpRect As RECT) As Long   ' повтор, первое: WIN32API.INC(7226)
 $ENDIF
-
 
 TYPE QDrawFocus EXTENDS QOBJECT
   '===================================================
@@ -19670,7 +18433,6 @@ TYPE QDrawFocus EXTENDS QOBJECT
     offsetY as short
     rect as RECT            'crashes with QRect , winXP
 
-  
   WITH QDrawFocus
 
   PUBLIC:
@@ -19888,7 +18650,6 @@ TYPE QDrawFocus EXTENDS QOBJECT
     if .ShowCursor then Screen.Cursor=0
   End Sub
 
-
 END WITH
   CONSTRUCTOR
     Border=10
@@ -19903,11 +18664,6 @@ END TYPE
 
 $ENDIF
 
-
-
-
-
-
 '============================================================================
 '[build_inc] QDrawMenu.inc
 '============================================================================
@@ -19917,75 +18673,17 @@ $ENDIF
 ' Classe QDrawMenu Version 1.3
 '=======================================================
 $IFNDEF TRUE
-'~dup   $DEFINE True 1   ' повтор, первое: rapidq2.inc(58)
 $ENDIF
 
 $IFNDEF FALSE
-'~dup   $DEFINE False 0   ' повтор, первое: rapidq2.inc(55)
 $ENDIF
 
 $IFNDEF boolean
-'~dup   $DEFINE boolean integer   ' повтор, первое: rapidq2.inc(2241)
 $ENDIF
-
 
 $IFNDEF __RQINC2
 
-'~dup Const ODT_MENU=1   ' повтор, первое: rapidq2.inc(1513)
-'~dup Const ODS_SELECTED=1   ' повтор, первое: rapidq2.inc(1514)
-'~dup Const ODS_GRAYED=2   ' повтор, первое: rapidq2.inc(1515)
-'~dup Const ODS_DISABLED=4   ' повтор, первое: rapidq2.inc(1516)
-'~dup Const ODS_CHECKED=8   ' повтор, первое: rapidq2.inc(1517)
-'~dup Const WM_DRAWITEM=&H2B   ' повтор, первое: rapidq2.inc(835)
-'~dup Const WM_MEASUREITEM=&H2C   ' повтор, первое: rapidq2.inc(836)
-'~dup Const MF_BYCOMMAND=0   ' повтор, первое: rapidq2.inc(1522)
-'~dup Const MF_BYPOSITION=&H400   ' повтор, первое: rapidq2.inc(1523)
-'~dup Const MF_OWNERDRAW=&H100   ' повтор, первое: rapidq2.inc(1524)
-'~dup Const MF_GRAYED=&H1   ' повтор, первое: rapidq2.inc(1525)
-'~dup Const MF_DISABLED=&H2   ' повтор, первое: rapidq2.inc(1526)
-'~dup Const MF_STRING=0   ' повтор, первое: rapidq2.inc(1527)
-'~dup Const MF_BITMAP=4   ' повтор, первое: rapidq2.inc(1528)
-
-'~dup Const COLOR_MENU=4 'Menu   ' повтор, первое: rapidq2.inc(1531)
-'~dup Const COLOR_MENUTEXT=7 'Window Text   ' повтор, первое: rapidq2.inc(1532)
-'~dup Const COLOR_HIGHLIGHT=13 'Selected item background   ' повтор, первое: rapidq2.inc(1533)
-'~dup Const COLOR_HIGHLIGHTTEXT=14 'Selected menu item   ' повтор, первое: rapidq2.inc(1534)
-'~dup Const COLOR_GRAYTEXT=17 'Grey text, of zero if dithering is used.   ' повтор, первое: rapidq2.inc(1535)
-
-'~dup TYPE TMEASUREITEMSTRUCT   ' повтор, первое: Api.inc(49)
-'~dup     CtlType AS LONG
-'~dup     CtlID AS LONG
-'~dup     itemID AS LONG
-'~dup     itemWidth AS LONG
-'~dup     itemHeight AS LONG
-'~dup     itemData AS DWORD
-'~dup END TYPE
-
-'~dup TYPE TDRAWITEMSTRUCT   ' повтор, первое: Api.inc(58)
-'~dup     CtlType AS LONG
-'~dup     CtlID AS LONG
-'~dup     itemID AS LONG
-'~dup     itemAction AS LONG
-'~dup     itemState AS LONG
-'~dup     hwndItem AS LONG
-'~dup     hDC AS LONG
-'~dup     left AS LONG
-'~dup     top AS LONG
-'~dup     right AS LONG
-'~dup     bottom AS LONG
-'~dup     itemData AS DWORD
-'~dup END TYPE
-
-'~dup Declare Function GetSysColor Lib "user32" Alias "GetSysColor" (nIndex As Long) As Long   ' повтор, первое: rapidq2.inc(1602)
-'~dup DECLARE FUNCTION ModifyMenu LIB "USER32" ALIAS "ModifyMenuA" (hMenu AS LONG,uPosition AS LONG,uFlags AS LONG,uIDNewItem AS LONG,lpNewItem AS LONG) AS LONG   ' повтор, первое: rapidq2.inc(1607)
-
-'~dup DIM MeasureItem AS TMEASUREITEMSTRUCT   ' повтор, первое: Api.inc(87)
-'~dup DIM DrawItem AS TDRAWITEMSTRUCT   ' повтор, первое: Api.inc(88)
-'~dup DIM Mem AS QMEMORYSTREAM   ' повтор, первое: Api.inc(90)
-
 $ENDIF
-
-
 
 Type QdrawMenu extends QOBJECT
   PRIVATE:
@@ -20106,7 +18804,6 @@ Type QdrawMenu extends QOBJECT
       END IF
   END Sub
 
-    
   '==============================================
   ' Mйthode ajoute un bitmap a l'item menu 
   '==============================================
@@ -20138,7 +18835,6 @@ Type QdrawMenu extends QOBJECT
   End Sub
 End Type
       
-
 '============================================================================
 '[build_inc] QFileListView.inc
 '============================================================================
@@ -20147,44 +18843,18 @@ End Type
 ' Classe QFileListView version 1.1
 '=======================================================
 $IFNDEF TRUE
-'~dup   $DEFINE True 1   ' повтор, первое: rapidq2.inc(58)
 $ENDIF
 
 $IFNDEF FALSE
-'~dup   $DEFINE False 0   ' повтор, первое: rapidq2.inc(55)
 $ENDIF
 
 $IFNDEF boolean
-'~dup   $DEFINE boolean integer   ' повтор, первое: rapidq2.inc(2241)
 $ENDIF
 
 $IFNDEF __WIN32API				   'windows 32 definitions
-'~dup Type SHFILEINFO   ' повтор, первое: WIN32API.INC(14619)
-'~dup     hIcon As Long                      '  out: icon
-'~dup     iIcon As integer                   '  out: icon index
-'~dup     dwAttributes As dword              '  out: SFGAO_ flags
-'~dup     szDisplayName As String * 260      '  out: display name (or path)
-'~dup     szTypeName As String * 80          '  out: type name
-'~dup End Type
 
-
-'~dup Const SHGFI_DISPLAYNAME    = &H200   ' повтор, первое: ConvertToTruePath.inc(2)
-'~dup Const SHGFI_TYPENAME       = &H400   ' повтор, первое: WIN32API.INC(14629)
-'~dup Const SHGFI_SYSICONINDEX   = &H4000   ' повтор, первое: WIN32API.INC(14633)
-'~dup Const SHGFI_LARGEICON      = &H0   ' повтор, первое: WIN32API.INC(14636)
-'~dup Const SHGFI_SMALLICON      = &H1   ' повтор, первое: WIN32API.INC(14637)
-'~dup Const SHGFI_ICON           = &H100   ' повтор, первое: WIN32API.INC(14627)
-
-'~dup Const LVM_FIRST            = &H1000   ' повтор, первое: CommCtrl.inc(480)
-'~dup Const LVM_SETIMAGELIST     = (LVM_FIRST + 3)   ' повтор, первое: CommCtrl.inc(491)
 Const LVM_GETBKIMAGEA      = (LVM_FIRST + 69)
-'~dup Const LVM_SETITEMPOSITION  = (LVM_FIRST + 15)   ' повтор, первое: CommCtrl.inc(610)
 Const LVM_SETBKIMAGEA      = (LVM_FIRST + 68)
-'~dup Const LVBKIF_SOURCE_URL    = 2   ' повтор, первое: CommCtrl.inc(794)
-'~dup Const LVBKIF_STYLE_NORMAL  = &H0   ' повтор, первое: CommCtrl.inc(796)
-'~dup Const LVSIL_NORMAL         = 0   ' повтор, первое: CommCtrl.inc(487)
-'~dup Const LVSIL_SMALL          = 1   ' повтор, первое: CommCtrl.inc(488)
-
 
 Declare Function SHGetFileInfoFileListView Lib "shell32.dll" Alias "SHGetFileInfoA" (pszPath As String,dwFileAttributes As Long,psfi As SHFILEINFO,cbFileInfo As Long,uFlags As Long) As Dword
 Declare Function DestroyIconFileListView Lib "user32" Alias "DestroyIcon" (ByVal hIcon As Long) As Long
@@ -20426,15 +19096,12 @@ End Type
 ' Classe QFlashLabel version 1.0
 '=======================================================
 $IFNDEF TRUE
-'~dup   $DEFINE True 1   ' повтор, первое: rapidq2.inc(58)
 $ENDIF
 
 $IFNDEF FALSE
-'~dup   $DEFINE False 0   ' повтор, первое: rapidq2.inc(55)
 $ENDIF
 
 $IFNDEF boolean
-'~dup   $DEFINE boolean integer   ' повтор, первое: rapidq2.inc(2241)
 $ENDIF
 
 Type QFlashLabel extends QLabel
@@ -20671,13 +19338,10 @@ Declare Function RectangleFocus Lib "gdi32" Alias "Rectangle" (hdc As Long,X1 As
 Declare Function GetStockObjectFocus Lib "gdi32" Alias "GetStockObject" (nIndex As Long) As Long
 Declare Function SetROP2focus Lib "gdi32" Alias "SetROP2" (hdc As Long,nDrawMode As long) As Long
 Declare Function GetActiveWindowFocus Lib "user32" Alias "GetActiveWindow" () As Long
-' Declare Function GetWindowRectFocus Lib "user32" Alias "GetWindowRect" (ByVal hwnd As Long, lpRect As RectFocus) As Long
-' Declare Function GetClientRectFocus Lib "user32" Alias "GetClientRect" (ByVal hwnd As Long, lpRect As RectFocus) As Long
  Declare Function GetWindowRectFocus Lib "user32" Alias "GetWindowRect" (ByVal hwnd As Long, lpRect As QRECT) As Long
  Declare Function GetClientRectFocus Lib "user32" Alias "GetClientRect" (ByVal hwnd As Long, lpRect As QRECT) As Long
 
 Declare Function GetCursorPosFocus Lib "user32" Alias "GetCursorPos" (lpPoint As POINTAPIFocus) As Long
-
 
 Declare Sub SizeFocusEvent(width,height)
 TYPE QFocus EXTENDS QCanvas
@@ -20692,14 +19356,11 @@ show as long
   WITH QFocus
  rectangledrag?=1 
 
-
   END WITH
  END EVENT
 
  Event OnMouseMove(x as long,y as long, shift as integer)
  with QFocus
-
-
 
  dim size as integer, lh as long
  dim focuscursor as pointapifocus
@@ -20731,8 +19392,6 @@ dragenable=0
  size=1
  end if
 
-
-
 if rectangledrag?=1 and size=2   then
 dragenable=0
 dim focusreturn as long
@@ -20753,7 +19412,6 @@ callfunc (.onsize,.width,.height)
 if .width<2 then .width=2
 
 end if
-
 
 if rectangledrag?=1 and size=1 then
 'y axis
@@ -20802,7 +19460,6 @@ cursor.y=cursor.y-wrct.top-topadjust
    dim focuspen as long,focushpen as long
    dim focussolidpen as long,focusoldpen as long
 
-      
       if .show=1 then
    focusindex++
    if focusindex=1 then 
@@ -20825,11 +19482,8 @@ end if
 
 if dragenable=1 then
 
-
-
 leftadjust=(wrct.right-crct.right-wrct.left)/2
 topadjust=(wrct.bottom-crct.bottom-wrct.top-leftadjust)
-
 
 with qfocus
 this.left=cursor.x-(this.width*.5)
@@ -20845,7 +19499,6 @@ end if
    this.repaint
   ' this.draw(0,0,focusbitmap)
   focusbitmap.width=this.width :focusbitmap.height=this.height
-
 
 dim hDC as integer
 
@@ -20905,9 +19558,6 @@ end with
 
 end sub
 
-
-
-
  CONSTRUCTOR
   objectfocustimer.enabled=1
   objectfocustimer.interval=1
@@ -20918,8 +19568,6 @@ transparent=1
  END CONSTRUCTOR
 END TYPE
 $typecheck off
-
-
 
 '============================================================================
 '[build_inc] QFTPCLIENT.INC
@@ -21167,7 +19815,6 @@ PRIVATE:
             dbl2exp32 = 4294967296   ' 2^32
             Result = .dwToDbl(dwLow) + (dbl2exp32 * .dwToDbl(dwHigh))
         End Function
-
 
         Function ElementDateTimeFormat (data As SHort) As String  ' "1/1/2001  1:1:1.1" > "01/01/2001 01:01:01.1" 
             If data < 10 Then  Result = "0" & Str$(data):Exit Function
@@ -21436,14 +20083,6 @@ PRIVATE:
                                                  .WIN32_FIND_DATA.lastWriteTimeLow)
         .fileAttributes = .WIN32_FIND_DATA.FileAttributes
         
-        'Const QFTP_FILE_ATTRIBUTE_ARCHIVE = &H20        ' "A"
-        'Const QFTP_FILE_ATTRIBUTE_DIRECTORY = &H10      ' "D"
-        'Const QFTP_FILE_ATTRIBUTE_HIDDEN = &H2          ' "H"
-        'Const QFTP_FILE_ATTRIBUTE_NORMAL = &H80         ' "N"
-        'Const QFTP_FILE_ATTRIBUTE_READONLY = &H1        ' "R"
-        'Const QFTP_FILE_ATTRIBUTE_SYSTEM = &H4          ' "S"
-        'Const QFTP_FILE_ATTRIBUTE_TEMPORARY = &H100     ' "T"
-        'Const QFTP_FILE_ATTRIBUTE_COMPRESSED = &H800    ' "C"
         sTmp = ""
         If .fileAttributes and QFTP_FILE_ATTRIBUTE_ARCHIVE    Then sTmp = sTmp & "A"
         If .fileAttributes and QFTP_FILE_ATTRIBUTE_DIRECTORY  Then sTmp = sTmp & "D"
@@ -21540,14 +20179,7 @@ $TYPECHECK OFF
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 ' METHODS '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-' SUB Initialise            - Initialise graphsystem                    '
-' SUB SaveToFile            - save graph to .bmp (can't get this 2 work '
 '''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''''
-
-
-
-
-
 
 Type QLineGraph extends qobject
     Height as integer
@@ -22064,7 +20696,6 @@ Const htmlDefaultHTML as String  = "<HTML><HEAD><TITLE>QWEBBROWSER Copyright</TI
 Const htmlErrorFrame  as String  = "<HTML><HEAD><TITLE>QWEBBROWSER Error</TITLE></HEAD><BODY BGCOLOR=00FF00 TEXT=FF0000><center><h3>Frame not supported, sorry</H3></BODY></HTML>" 
 Const htmlMaxElements as Integer = 200000
 
-   
 '************************************************************************
 'Control                                                                *
 '************************************************************************
@@ -22115,7 +20746,6 @@ TYPE QHTML EXTENDS QPanel
         ZoomPrinters                    as QComboBox 
         ZoomTimer                       as QTimer
 
-        
         SearchForm                      as QForm
         SearchQEDL                      as QLabel
         SearchQED                       as QEdit
@@ -22190,7 +20820,6 @@ TYPE QHTML EXTENDS QPanel
         ElementsOnLine(1000)                     as integer        ' Elements on same line
         OnLine                                   as Integer        ' Elements number
         
-    
 Public:
         HTMLText                       as STRING PROPERTY SET SetHTMLText
         DocumentTitle                  as String  Property set Set_DocumentTitle
@@ -22199,7 +20828,6 @@ Public:
         OnHover                        as EVENT(htmlOnHover_eventTemplate)
         OnTagClick                     as EVENT(htmlOnTagClick_eventTemplate)
         OnLoadImage                    as EVENT(htmlOnLoadImage_eventTemplate)
-
 
 Private:
     
@@ -22211,7 +20839,6 @@ Private:
             if this.externalPicture.width > 0 then this.IsDrawable = true
 
         end function  
-        
         
         'Extract attributes from a Markup
         Sub ExtractAttributes(HTMLTExt as string)
@@ -23404,7 +22031,6 @@ Private:
             if ( len(this.HoveredTag) * this.OnTagClick ) > 0 then CALLFUNC(this.OnTagClick,this.HoveredTag)
         end event
 
-        
 Public:
 
     'Properties
@@ -23435,7 +22061,6 @@ Public:
         Property Set Set_DefaultFontSize(NewDefaultFontSize As Integer)
             this.DefaultFontSize = NewDefaultFontSize
         End Property ' inc2026: END PROPERTY вместо End Property Set (так в документации, глава 10.8)
-
 
     'Methods and functions
     '=====================
@@ -23506,7 +22131,6 @@ Private:
             Dim i as Integer, JS as integer
             Dim Rect as Qrect
             
-
             Rect.Left   = 20
             Rect.Top    = 20
             Rect.Right  = Printer.PageWidth  - 20 
@@ -23709,7 +22333,6 @@ Public:
             this.ZoomTimer.Enabled = true 'do the real taff
             this.ZoomForm.showmodal
         end sub
-
 
         'Search 
         '------
@@ -24053,7 +22676,6 @@ Public:
     eND CONSTRUCTOR
 END TYPE
 
-
 '============================================================================
 '[build_inc] QICMP.INC
 '============================================================================
@@ -24218,20 +22840,15 @@ END TYPE
 ' Classe QICON Version 1.2
 '=======================================================
 $IFNDEF TRUE
-'~dup   $DEFINE True 1   ' повтор, первое: rapidq2.inc(58)
 $ENDIF
 
 $IFNDEF FALSE
-'~dup   $DEFINE False 0   ' повтор, первое: rapidq2.inc(55)
 $ENDIF
 
 $IFNDEF boolean
-'~dup   $DEFINE boolean integer   ' повтор, первое: rapidq2.inc(2241)
 $ENDIF
 
 Declare Function ExtractAssociatedIcon_QICON Lib "shell32.dll" Alias "ExtractAssociatedIconA" (hInst As Long,ByRef lpIconPath As string ,byref lpiIcon As Long) As Long 
-'~dup Declare Function ExtractIcon Lib "shell32.dll" Alias "ExtractIconA" (hInst As Long,lpszExeFileName As String,nIconIndex As Long) As Long   ' повтор, первое: WIN32API.INC(14408)
-'~dup Declare Function DestroyIcon Lib "user32" Alias "DestroyIcon" (hIcon As Long) As Long   ' повтор, первое: QFormSkin.inc(215)
 Declare Function DrawIcon_QICON Lib "user32" Alias "DrawIconEx" (hdc As Long,xLeft As Long,yTop As Long,hIcon As Long,cxWidth As Long,cyWidth As Long,istepIfAniCur As Long,hbrFlickerFreeDraw As Long,diFlags As Long) As Long
 
 Const DI_MASK_ICO=&H1
@@ -24240,7 +22857,6 @@ Const DI_NORMAL_ICO=DI_IMAGE_ICO Or DI_MASK_ICO
 
 defByte IconHead16(1 to 62)={&h0,&h0,&h01,&h0,&h01,&h0,&h20,&h20,&h10,&h0,&h0,&h0,&h0,&h0,&hE8,&h02,&h0,&h0,&h16,&h0,&h0,&h0,&h28,&h0,&h0,&h0,&h20,&h0,&h0,&h0,&h40,&h0,&h0,&h0,&h01,&h0,&h04,&h0,&h0,&h0,&h0,&h0,&h80,&h02,&h0,&h0,&h0,&h0,&h0,&h0,&h0,&h0,&h0,&h0,&h0,&h0,&h0,&h0,&h0,&h0,&h0,&h0}
 defByte IconHead256(1 to 62)={&h0,&h0,&h01,&h0,&h01,&h0,&h20,&h20,&h0,&h0,&h01,&h0,&h08,&h0,&hA8,&h08,&h0,&h0,&h16,&h0,&h0,&h0,&h28,&h0,&h0,&h0,&h20,&h0,&h0,&h0,&h40,&h0,&h0,&h0,&h01,&h0,&h08,&h0,&h0,&h0,&h0,&h0,&h0,&h0,&h0,&h0,&h0,&h0,&h0,&h0,&h0,&h0,&h0,&h0,&h0,&h0,&h0,&h0,&h0,&h0,&h0,&h0}
-
 
 Type QICON EXTENDS QOBJECT
   Private:
@@ -24259,7 +22875,6 @@ Type QICON EXTENDS QOBJECT
     Associated as boolean
     index as integer PROPERTY SET SetIndex
     
-
   '========================================
   ' proprietй nom fichier icone
   '========================================
@@ -24587,7 +23202,6 @@ end if
 result = fittag
 end function
 
-
 type Qid3tag extends QObject
 filename as string
 Title as string
@@ -24660,7 +23274,6 @@ with genrescb
 end with
 end constructor
 
-
 sub readtags
 if Qid3tag.filename = "" then ' inc2026: было filename без имени типа — необъявленная переменная (всегда ""), стало Qid3tag.filename, как в строках 98 и 122 (chapter10.html)
 showmessage "Please, give me a file name"
@@ -24703,7 +23316,6 @@ tagstream.writebyte(qid3tag.genreid)
 tagstream.close
 end sub
 end type
-
 
 '============================================================================
 '[build_inc] QImageListEx.inc
@@ -24801,8 +23413,6 @@ $ENDIF      ' End of $IFNDEF __QIMGLISTEX
 '============================================================================
 $Typecheck on
 
-'Declare Function Setfocus Lib "user32" Alias "SetFocus"(hwnd As Long) As Long
-
 Type QInputBox extends QObject
 'Description :
 '       Displays a dialog box for user input. Returns the information entered in the dialog box.
@@ -24817,7 +23427,6 @@ Type QInputBox extends QObject
 '      Default Optional String:       Specifies a text that will appear in the text box 
 '                                                    when the dialog box is initially displayed. 
 '                                                    If this argument is omitted, the text box is left empty.
-
 
 'Usage: DIM Nane as QInputBox
 '       retStr = Name.Show([Prompt], [Title], [Default])
@@ -24901,7 +23510,6 @@ Private:
     
 end type  
 
-
 $TYPECHECK OFF   ' сборка: вернуть после QInputBox.inc
 '============================================================================
 '[build_inc] QLed.inc
@@ -24967,7 +23575,6 @@ Type QLed extends QCanvas
      LedColor = LdRed
      End Constructor
 End Type
-
 
 '============================================================================
 '[build_inc] QLedScroll.inc
@@ -25038,13 +23645,9 @@ END TYPE
 '*     QLibrary.Inc - Common Routines & Functions     *
 '******************************************************
 
-
 '******************************************************
 '*       String Functions & Subroutines               *
 '******************************************************
-'~dup Function Trim$ (Datum As String) As String   ' повтор, первое: rapidq.inc(641)
-'~dup    Result = LTrim$(RTrim$(Datum))
-'~dup End Function
 
 FunctionI CatStr$ (...) As String
    Dim I As Byte
@@ -25170,245 +23773,6 @@ End Type
 '************
 '* QIniFile *
 '************
-'~dup Type QIniFile Extends QObject   ' повтор, первое: QIniFile.inc(11)
-'~dup    Public:
-'~dup       Name      As String
-'~dup       Lines     As QStringList
-'~dup       LineCount As Integer
-'~dup       
-'~dup    Sub ClearEnding
-'~dup       Dim LinesIdx As Integer
-'~dup       Dim StrWord As String
-'~dup       
-'~dup       If (QIniFile.Lines.ItemCount-1) => 0 Then
-'~dup          LinesIdx = QIniFile.Lines.ItemCount-1
-'~dup          StrWord  = QIniFile.Lines.Item(LinesIdx)
-'~dup          While Empty$(StrWord) = True
-'~dup             QIniFile.Lines.DelItems LinesIdx
-'~dup             If LinesIdx > 0 Then
-'~dup                Dec LinesIdx
-'~dup                StrWord = QIniFile.Lines.Item(LinesIdx)
-'~dup             Else
-'~dup                StrWord = "*"
-'~dup             End If
-'~dup          Wend
-'~dup       End If
-'~dup    End Sub
-'~dup 
-'~dup    Function AddBrackets$(Datum As String) As String
-'~dup       Datum = Trim$(Datum)
-'~dup       If InStr(Datum,"[") = 0 Then               
-'~dup          Result = "[" + Datum
-'~dup       End If
-'~dup       If InStr(Datum,"]") <> Len(Datum) Then
-'~dup          Result = Result + "]"
-'~dup       End If
-'~dup    End Function
-'~dup          
-'~dup    Function ReadEntry (Section As String, KeyWord As String) As String
-'~dup       Dim StrLength As Integer
-'~dup       Dim QLIB_Point     As Byte
-'~dup       Dim StrLine   As String
-'~dup       Dim StrWord   As String
-'~dup       Dim Bracket   As String
-'~dup       Dim LinesIdx  As Integer
-'~dup       
-'~dup       Section  = QIniFile.AddBrackets$(Section)
-'~dup       QIniFile.Lines.Clear
-'~dup       If FileExists(QIniFile.Name) = True Then
-'~dup          KeyWord = Trim$(KeyWord)
-'~dup          QIniFile.Lines.LoadFromFile(QIniFile.Name)
-'~dup          QIniFile.Lines.AddItems " "
-'~dup          LinesIdx = 0
-'~dup          While LinesIdx < QIniFile.Lines.ItemCount-1
-'~dup             StrWord = Trim$(QIniFile.Lines.Item(LinesIdx))
-'~dup             If Equ$(StrWord,Section,False) Then
-'~dup                Inc LinesIdx
-'~dup                StrLine = Trim$(QIniFile.Lines.Item(LinesIdx))
-'~dup                Bracket = Left$(StrLine,1)
-'~dup                While Bracket <> "[" And LinesIdx < QIniFile.Lines.ItemCount-1
-'~dup                   StrWord    = Trim$(Field$(StrLine,"=",1))
-'~dup                   StrLength  = Len(StrLine)
-'~dup                   If Equ$(StrWord,KeyWord,False) Then
-'~dup                      QLIB_Point    = InStr(StrLine,"=") + 1
-'~dup                      Result   = Mid$(StrLine,QLIB_Point,StrLength - QLIB_Point + 1)
-'~dup                      LinesIdx = QIniFile.Lines.ItemCount 
-'~dup                   Else
-'~dup                      Inc LinesIdx
-'~dup                      StrLine = Trim$(QIniFile.Lines.Item(LinesIdx))
-'~dup                      Bracket = Left$(StrLine,1)
-'~dup                   End If
-'~dup                 Wend
-'~dup             Else
-'~dup                Inc LinesIdx
-'~dup             End If
-'~dup          Wend
-'~dup       End If
-'~dup       QIniFile.ClearEnding
-'~dup       QIniFile.LineCount = QIniFile.Lines.ItemCount
-'~dup    End Function
-'~dup    
-'~dup    Sub ReadSection (Section As String)
-'~dup       Dim StrLength As Integer
-'~dup       Dim QLIB_Point     As Byte
-'~dup       Dim StrLine   As String
-'~dup       Dim StrWord   As String
-'~dup       Dim Bracket   As String
-'~dup       Dim LinesIdx  As Integer
-'~dup       Dim Buffer    As QStringList
-'~dup 
-'~dup       Section = QIniFile.AddBrackets$(Section)
-'~dup       QIniFile.Lines.Clear
-'~dup       If FileExists(QIniFile.Name) Then
-'~dup          Buffer.LoadFromFile(QIniFile.Name)
-'~dup          Buffer.AddItems " "
-'~dup          LinesIdx = 0
-'~dup          While LinesIdx < Buffer.ItemCount-1
-'~dup             StrWord = Left$(Trim$(Buffer.Item(LinesIdx)),Len(Section))
-'~dup             If Equ$(StrWord,Section,False) Then
-'~dup                Inc LinesIdx
-'~dup                StrLine = Buffer.Item(LinesIdx)
-'~dup                Bracket = Left$(StrLine,1)
-'~dup                While Bracket <> "[" And LinesIdx < Buffer.ItemCount-1
-'~dup                   QIniFile.Lines.AddItems StrLine 
-'~dup                   Inc LinesIdx
-'~dup                   StrLine = Buffer.Item(LinesIdx)
-'~dup                   Bracket = Left$(StrLine,1)                      
-'~dup                Wend
-'~dup                LinesIdx = Buffer.ItemCount
-'~dup             Else
-'~dup                Inc LinesIdx
-'~dup             End If
-'~dup          Wend
-'~dup       End If
-'~dup       QIniFile.LineCount = QIniFile.Lines.ItemCount
-'~dup    End Sub
-'~dup    
-'~dup    Sub WriteEntry (Section As String, KeyWord As String, KeyEntry As String) 
-'~dup       Dim StrLength As Integer
-'~dup       Dim StrLine   As String
-'~dup       Dim StrWord   As String
-'~dup       Dim QLIB_Point     As Byte
-'~dup       Dim Bracket   As String
-'~dup       Dim LinesIdx  As Integer
-'~dup       Dim Fin       As Byte
-'~dup 
-'~dup       KeyWord  = Trim$(KeyWord)
-'~dup       KeyEntry = Trim$(KeyEntry)
-'~dup       Section  = QIniFile.AddBrackets$(Section)
-'~dup       QIniFile.Lines.Clear
-'~dup       If FileExists(QIniFile.Name) Then
-'~dup          QIniFile.Lines.LoadFromFile(QIniFile.Name)
-'~dup          QIniFile.Lines.AddItems " "
-'~dup          LinesIdx = 0
-'~dup          While LinesIdx < QIniFile.Lines.ItemCount-1
-'~dup             StrWord = Left$(Trim$(QIniFile.Lines.Item(LinesIdx)),Len(Section))
-'~dup             If Equ$(StrWord,Section,False) Then
-'~dup                Inc LinesIdx
-'~dup                StrLine = Trim$(QIniFile.Lines.Item(LinesIdx))
-'~dup                Bracket = Left$(StrLine,1)
-'~dup                While Bracket <> "[" And LinesIdx < QIniFile.Lines.ItemCount-1
-'~dup                   StrLength = Len(StrLine)
-'~dup                   StrWord   = Trim$(Field$(StrLine,"=",1))
-'~dup                   If Equ$(StrWord,KeyWord,False) Then
-'~dup                      QLIB_Point   = InStr(StrLine,"=") + 1
-'~dup                      StrWord = Mid$(StrLine,QLIB_Point,StrLength - QLIB_Point + 1)
-'~dup                      StrLine = CatStr$(KeyWord," = ",KeyEntry)
-'~dup                      QIniFile.Lines.DelItems(LinesIdx)
-'~dup                      QIniFile.Lines.InsertItem(LinesIdx,StrLine)
-'~dup                      Fin      = True 
-'~dup                      LinesIdx = QIniFile.Lines.ItemCount 
-'~dup                   Else
-'~dup                      Inc LinesIdx
-'~dup                      StrLine = QIniFile.Lines.Item(LinesIdx)
-'~dup                      Bracket = Left$(Trim$(StrLine),1)
-'~dup                   End If
-'~dup                 Wend
-'~dup                 If Fin <> True Then
-'~dup                    QIniFile.ClearEnding
-'~dup                    QIniFile.Lines.AddItems CatStr$(KeyWord,"=",KeyEntry)
-'~dup                    Fin = True
-'~dup                 End If
-'~dup             Else
-'~dup                Inc LinesIdx
-'~dup             End If
-'~dup          Wend
-'~dup       End If
-'~dup       If Fin <> True Then
-'~dup          QIniFile.ClearEnding
-'~dup          QIniFile.Lines.AddItems " "
-'~dup          QIniFile.Lines.AddItems Section
-'~dup          QIniFile.Lines.AddItems CatStr$(KeyWord,"=",KeyEntry)
-'~dup       End If
-'~dup       QIniFile.Lines.SaveToFile(QIniFile.Name)
-'~dup       QIniFile.LineCount = QIniFile.Lines.ItemCount
-'~dup    End Sub
-'~dup    
-'~dup    Sub WriteSection (Section As String,SectionList As QStringList)
-'~dup       Dim StrLength As Integer
-'~dup       Dim QLIB_Point     As Byte
-'~dup       Dim StrLine   As String
-'~dup       Dim StrWord   As String
-'~dup       Dim Bracket   As String
-'~dup       Dim LinesIdx  As Integer
-'~dup       Dim Buffer    As QStringList
-'~dup 
-'~dup       QIniFile.Lines.Clear
-'~dup       QLIB_Point   = False
-'~dup       Section = QIniFile.AddBrackets$(Section)
-'~dup       If FileExists(QIniFile.Name) Then
-'~dup          Buffer.LoadFromFile(QIniFile.Name)
-'~dup          Buffer.AddItems " "
-'~dup          LinesIdx = 0
-'~dup          While LinesIdx < Buffer.ItemCount -1
-'~dup             StrLine = Buffer.Item(LinesIdx)
-'~dup             StrWord = Left$(Trim$(Buffer.Item(LinesIdx)),Len(Section))
-'~dup             If Equ$(StrWord,Section,False) Then
-'~dup                QLIB_Point   = LinesIdx
-'~dup                Inc LinesIdx
-'~dup                StrLine = Buffer.Item(LinesIdx)
-'~dup                Bracket = Left$(StrLine,1)
-'~dup                While Bracket <> "[" AND LinesIdx < Buffer.ItemCount-1
-'~dup                   Inc LinesIdx
-'~dup                   StrLine = Buffer.Item(LinesIdx)
-'~dup                   Bracket = Left$(StrLine,1)                      
-'~dup                Wend
-'~dup             Else
-'~dup                QIniFile.Lines.AddItems StrLine
-'~dup                Inc LinesIdx
-'~dup             End If
-'~dup          Wend
-'~dup       End If
-'~dup       SectionList.InsertItem(0,Section)
-'~dup       If QLIB_Point > False Then
-'~dup          For LinesIdx = 0 To SectionList.Itemcount-1
-'~dup             StrLine = SectionList.Item(LinesIdx)
-'~dup             QIniFile.Lines.InsertItem(QLIB_Point,StrLine)
-'~dup             Inc QLIB_Point
-'~dup          Next LinesIdx
-'~dup       Else
-'~dup          QIniFile.Lines.AddItems " "
-'~dup          QLIB_Point = QIniFile.Lines.ItemCount
-'~dup          QIniFile.Lines.AddList SectionList
-'~dup       End If
-'~dup       QIniFile.ClearEnding
-'~dup       QIniFile.Lines.SaveToFile(QIniFile.Name)
-'~dup       QIniFile.LineCount = QIniFile.Lines.ItemCount
-'~dup    End Sub
-'~dup 
-'~dup    Sub Edit
-'~dup       Dim CurName As String
-'~dup       Dim Editor  As String
-'~dup  
-'~dup       CurName        = QIniFile.Name
-'~dup       QIniFile.Name  = "QLibrary.Ini"
-'~dup       Editor         = QIniFile.ReadEntry("QIniFile","TextEditor")
-'~dup       QIniFile.Name  = CurName
-'~dup       Editor         = CatStr$(Editor," ",QIniFile.Name)
-'~dup       Shell Editor
-'~dup       QIniFile.LineCount = 0
-'~dup    End Sub
-'~dup End Type
 
 '------------------------------------------------------
 '$EndIf '<---- End QLibrary definition check
@@ -25421,7 +23785,6 @@ End Type
 ' Type Objet
 ' Classe QLine version 1.0
 '=======================================================
-'~dup Declare Function DrawLine Lib "user32" Alias "DrawEdge" (hdc As Long,qrc As QRECT,edge As Long,grfFlags As Long) As Long   ' повтор, первое: QChart.inc(141)
         
 Type QLine extends QCanvas    
   PRIVATE:
@@ -25468,11 +23831,9 @@ end type
 ' Classe QListBoxEx version 1.0
 '=======================================================
 $IFNDEF TRUE
-'~dup   $DEFINE True 1   ' повтор, первое: rapidq2.inc(58)
 $ENDIF
 
 $IFNDEF FALSE
-'~dup   $DEFINE False 0   ' повтор, первое: rapidq2.inc(55)
 $ENDIF
 
 Declare Sub OnEnter_eventTemplate
@@ -25562,7 +23923,6 @@ Type QMailLabel extends QLabel
     Initialize
     End Constructor
 End Type
-
 
 '============================================================================
 '[build_inc] qmenu.inc
@@ -25699,7 +24059,6 @@ TYPE QMenu EXTENDS QOBJECT
           END SELECT
        END FUNCTION
        
-       
     PUBLIC:
     
        SUB Set (form AS QFORM)
@@ -25759,15 +24118,12 @@ $TYPECHECK OFF   ' сборка: вернуть после qmenu.inc
 ' Classe QMidi Version 1.2
 '=======================================================
 $IFNDEF TRUE
-'~dup   $DEFINE True 1   ' повтор, первое: rapidq2.inc(58)
 $ENDIF
 
 $IFNDEF FALSE
-'~dup   $DEFINE False 0   ' повтор, первое: rapidq2.inc(55)
 $ENDIF
 
 $IFNDEF boolean
-'~dup   $DEFINE boolean integer   ' повтор, первое: rapidq2.inc(2241)
 $ENDIF
 
 const MD_CLOSE=0
@@ -25778,7 +24134,6 @@ const MD_STOP=3
 Declare Function mciSendMidi Lib "winmm.dll" Alias "mciSendStringA" (lpstrCommand As String, lpstrReturnString As long, uReturnLength As Long, hwndCallback As Long) As Long
 Declare Function mciGetErrorMidi Lib "winmm.dll" Alias "mciGetErrorStringA" (dwError As Long,Byref lpstrBuffer As String,uLength As Long) As Long
 Declare Function MidiSetVolume Lib "Winmm" Alias "waveOutSetVolume" (wDeviceID as short,dwVolume as Long) as Short
-'~dup Declare Sub event_change(position as long)   ' повтор, первое: Qcdaudio.inc(21)
 
 Type QMidi extends Qobject
   '================================
@@ -26026,20 +24381,8 @@ End Type
 
 $typecheck on
 $IFNDEF __WIN32API				   'windows 32 definitions
-'~dup DECLARE Function mciSendString Lib "winmm.dll" Alias "mciSendStringA" _   ' повтор, первое: WIN32API.INC(11810)
-'~dup (ByVal lpstrCommand As String, ByVal lpstrReturnString As String, _
-'~dup ByVal uReturnLength As Long, ByVal hwndCallback As Long) As Long
 $ENDIF
 '________________________________________________________________________
-'~dup function fitlength (FitTag as string, FitLen as integer) as string   ' повтор, первое: Qid3Tag.inc(9)
-'~dup if len(fittag) < fitlen then
-'~dup fittag = fittag + string$( fitlen - len(fittag), chr$(0))
-'~dup elseif len(fittag) > fitlen then
-'~dup fittag = left$(fittag, fitlen)
-'~dup end if
-'~dup result = fittag
-'~dup end function
-
 
 defint mp3x, mp3y, mp3z
 dim mp3h as long
@@ -26072,10 +24415,8 @@ Emphasis as string
 '-----------------  Play/Stop
 alias as string
 
-
 genreslist as qstringlist
 genrescb as qcombobox
-
 
 Function HeaderStart as integer
 dim bb as byte
@@ -26183,7 +24524,6 @@ If Qmp3.layer = "II" then bitseries.additems _
 "32", "48", "56", "64", "80", "96", "112", "128", _
 "160", "192", "224", "256", "320", "384"   ' inc2026: было "320" дважды: в таблице MPEG-1 Layer II 14 значений (32 ... 320, 384), из-за повтора индекс 13 давал 320 вместо 384
 
-
 If Qmp3.layer = "III" or Qmp3.Layer = "???" then
    if Qmp3.version = "Mpeg 2" then
    bitseries.additems _
@@ -26201,8 +24541,6 @@ If Qmp3.layer = "III" or Qmp3.Layer = "???" then
    Qmp3.bitrate = 999
    end if
 end if
-
-
 
 select case field$(binaryheader, "_", 5)
 case "0000"
@@ -26325,7 +24663,6 @@ Qmp3.Emphasis = "CCIT J.17"
 End select
 end function
 
-
 '----------------------------------------------------------|
 ' Returns 1 if file is already tagged, zero otherwise      |
 '----------------------------------------------------------|
@@ -26435,7 +24772,6 @@ wtagstream.position = wtagstream.size - 128   ' inc2026: строки 420-421: �
 wtagstream.writestr("TAG", 3)
 end if
 
-
 wtagstream.position = wtagstream.size - 128 + 3
 wtagstream.writestr(fitlength (Qmp3.title, 30), 30)
 wtagstream.writestr(fitlength (Qmp3.artist, 30), 30)
@@ -26465,7 +24801,6 @@ mp3h = MciSendString ("Open " + chr$(34) + Qmp3.filename +  chr$(34) + _
 mp3h = MciSendstring ("Play " + Qmp3.alias, 0, 0, 0)
 end sub
 end type
-
 
 $TYPECHECK OFF   ' сборка: вернуть после Qmp3.inc
 '============================================================================
@@ -26507,8 +24842,6 @@ OnChange AS EVENT (OnChangePos)
     minh as short
     valueh as short
     
-
-
     sub initial
         with Qposic 
             .sbv.max=.minv * -1
@@ -26526,7 +24859,6 @@ OnChange AS EVENT (OnChangePos)
             .btnAllDn.parent=Qposic
         end with
     end sub
-
 
     event sbh.onchange
         with Qposic
@@ -26551,7 +24883,6 @@ if .supress=0 then CALLFUNC(.OnChange,1)
           Qposic.sbv.position=1
         CALLFUNC (Qposic.OnChange, 1)
     end event
-
 
     event btnUndo.onclick
         CALLFUNC(Qposic.OnChange, 1)
@@ -26646,7 +24977,6 @@ if .supress=0 then CALLFUNC(.OnChange,1)
         bevelouter=1
     end constructor
 
-    
 end type  
 $TYPECHECK OFF   ' сборка: вернуть после qposic.inc
 '============================================================================
@@ -26829,34 +25159,16 @@ $IFNDEF __QPROCESS_INC      'don't reload
     Const ProcessIdle=-15
 
 $IFNDEF __WIN32API      'APIs     
-'~dup     $DEFINE CREATE_SUSPENDED 4&   ' повтор, первое: WIN32API.INC(779)
-'~dup     Declare Function CreateThread Lib "kernel32" Alias "CreateThread" (lpThreadAttributes As long, ByVal dwStackSize As Long, lpStartAddress As Long, lpParameter As long, ByVal dwCreationFlags As Long, lpThreadId As Long) As Long   ' повтор, первое: WIN32API.INC(2235)
-'~dup     Declare Function ResumeThread Lib "kernel32.dll" Alias "ResumeThread" (hThread As Long) As Long   ' повтор, первое: WIN32API.INC(2000)
-'~dup     Declare Function SuspendThread Lib "kernel32" Alias "SuspendThread" (ByVal hThread As Long) As Long   ' повтор, первое: WIN32API.INC(1999)
-'~dup     Declare Function TerminateThread Lib "kernel32" Alias "TerminateThread" (ByVal hThread As Long, ByVal dwExitCode As Long) As Long   ' повтор, первое: WIN32API.INC(2243)
     Declare Function GetProcessPriority Lib "kernel32" Alias "GetThreadPriority" (hThread As Long) As Long
     Declare Function SetProcessPriority Lib "kernel32" Alias "SetThreadPriority" (hThread As Long,nPriority As Long) As Long
 
-' Declare Sub InitializeCriticalSection Lib "kernel32" Alias "InitializeCriticalSection" (lpCriticalSection As CRITICAL_SECTION)
-' Declare Sub EnterCriticalSection Lib "kernel32" Alias "EnterCriticalSection" (lpCriticalSection As CRITICAL_SECTION)
-' Declare Sub LeaveCriticalSection Lib "kernel32" Alias "LeaveCriticalSection" (lpCriticalSection As CRITICAL_SECTION)
-' Declare Sub DeleteCriticalSection Lib "kernel32" Alias "DeleteCriticalSection" (lpCriticalSection As CRITICAL_SECTION)
-
-' Declare Function CreateMutex Lib "kernel32" Alias "CreateMutexA" (lpMutexAttributes As SECURITY_ATTRIBUTES, ByVal bInitialOwner As Long, ByVal lpName As String) As Long
-' Declare Function OpenMutex Lib "kernel32" Alias "OpenMutexA" (ByVal dwDesiredAccess As Long, ByVal bInheritHandle As Long, ByVal lpName As String) As Long
 ' 'Declare Function CreateMutex Lib "kernel32" Alias "CreateMutexA" (BYREF lpMutexAttributes As LONG, ByVal bInitialOwner As Long, lpName As String) As Long
-' Declare Function ReleaseMutex Lib "kernel32" Alias "ReleaseMutex" (ByVal hMutex As Long) As Long
 ' 
 ' 
-' Declare Function WaitForSingleObject Lib "kernel32" Alias "WaitForSingleObject" (ByVal hHandle As Long, ByVal dwMilliseconds As Long) As Long
-' Declare Function WaitForMultipleObjects Lib "kernel32" Alias "WaitForMultipleObjects" (ByVal nCount As Long, lpHandles As Long, ByVal bWaitAll As Long, ByVal dwMilliseconds As Long) As Long
 
 $IFNDEF __RQ2WIN32API
-'~dup     Declare Function SetParent Lib "user32" Alias "SetParent" (ByVal hWndChild As Long, ByVal hWndNewParent As Long) As Long   ' повтор, первое: rapidq2.inc(1011)
-'~dup     Declare Function CloseHandle Lib "kernel32"  Alias "CloseHandle" (ByVal hObject As Long) As Long   ' повтор, первое: rapidq2.inc(2038)
 $ENDIF
 $ENDIF
-
 
 declare sub OnProcess_event
 
@@ -26884,7 +25196,6 @@ Type QProcess extends QObject
         ResumeThread(this.hProcess)
    End Sub
 
-
   Private:
     '==========================================
     ' mйthode appelle process
@@ -26901,7 +25212,6 @@ Type QProcess extends QObject
       dim PtVar as long
       dim PtSub as long
 
-    
        if this.hProcess<>0 then TerminateThread(this.hProcess,0)
        PtVar=varptr(this.IdProcess)
        PtSub=CODEPTR(this.Process)
@@ -26939,32 +25249,21 @@ $IFNDEF __QPROGRESS_INC  'don't reload
     $DEFINE __QPROGRESS_INC
 
     $IFNDEF __WIN32API  'APIs
-'~dup         $DEFINE CREATE_SUSPENDED 4&   ' повтор, первое: WIN32API.INC(779)
-'~dup         DECLARE FUNCTION CreateThread LIB "kernel32" ALIAS "CreateThread"(lpThreadAttributes AS LONG , ByVal dwStackSize AS LONG , lpStartAddress AS LONG , lpParameter AS LONG , ByVal dwCreationFlags AS LONG , lpThreadId AS LONG) AS LONG   ' повтор, первое: WIN32API.INC(2235)
-'~dup         DECLARE FUNCTION ResumeThread LIB "kernel32.dll" ALIAS "ResumeThread"(hThread AS LONG) AS LONG   ' повтор, первое: WIN32API.INC(2000)
-'~dup         DECLARE FUNCTION SuspendThread LIB "kernel32" ALIAS "SuspendThread"(ByVal hThread AS LONG) AS LONG   ' повтор, первое: WIN32API.INC(1999)
-'~dup         DECLARE FUNCTION TerminateThread LIB "kernel32" ALIAS "TerminateThread"(ByVal hThread AS LONG , ByVal dwExitCode AS LONG) AS LONG   ' повтор, первое: WIN32API.INC(2243)
 
         $IFNDEF __RQ2WIN32API
-'~dup             DECLARE FUNCTION SetParent LIB "user32" ALIAS "SetParent"(ByVal hWndChild AS LONG , ByVal hWndNewParent AS LONG) AS LONG   ' повтор, первое: rapidq2.inc(1011)
-'~dup             DECLARE FUNCTION CloseHandle LIB "kernel32" ALIAS "CloseHandle"(ByVal hObject AS LONG) AS LONG   ' повтор, первое: rapidq2.inc(2038)
         $ENDIF
     $ENDIF
 
-
     $IFNDEF TRUE
-'~dup         $DEFINE TRUE 1   ' повтор, первое: rapidq2.inc(58)
     $ENDIF
 
     $IFNDEF FALSE
-'~dup         $DEFINE FALSE 0   ' повтор, первое: rapidq2.inc(55)
     $ENDIF
 
     $DEFINE gkMovingDot 5
     $DEFINE gkMovingRect 6
     $DEFINE gkMovingBlur 7
     $DEFINE gkBarberPole 8
-
 
     TYPE QProgress EXTENDS QIMAGE
         PRIVATE :
@@ -26992,11 +25291,9 @@ $IFNDEF __QPROGRESS_INC  'don't reload
         Width       AS INTEGER PROPERTY SET SetWidth  'etc..
         UseThreading AS INTEGER PROPERTY SET SetMultiThreading
 
-
         WITH THIS
 
             PRIVATE :
-
 
             '***********************************************
             'Create the pretty little graphic or "marquee" for Progress bars without know values
@@ -27041,7 +25338,6 @@ $IFNDEF __QPROGRESS_INC  'don't reload
                             i = i - .ObjSize - j
                             .BitMap.RoundRect(i , 0 , i - .ObjSize , .ObjSize , .ObjSize \ 4 , .ObjSize \ 4 , RGB((r * .2) + (r2 * .8) , (g * .2) + (g2 * .8) , (b * .2) + (b2 * .8)))
 
-
                         CASE gkBarberPole
                             FOR i = 1 TO .BitMap.Width
                                 j = ((i MOD .ObjSize) / .ObjSize) ^2  'set gradient gamma
@@ -27052,7 +25348,6 @@ $IFNDEF __QPROGRESS_INC  'don't reload
                     IF .Caption <> "" THEN .BitMap.TextOut(.Left + .Width \ 2 , 0 , .Caption , .Color , - 1)
                 END IF
             END SUB
-
 
             PUBLIC :
 
@@ -27111,9 +25406,7 @@ $IFNDEF __QPROGRESS_INC  'don't reload
                 .Gauge.Position = TheValue
             END PROPERTY
 
-
             PRIVATE :
-
 
             '***********************************************
             'Timer routine -- called when timer reaches end of interval, stops on .Visible = False command
@@ -27125,7 +25418,6 @@ $IFNDEF __QPROGRESS_INC  'don't reload
                 IF .Increment > 0 THEN .Increment = - 1 * .Offset
                 .Draw(.Increment , 0 , .BitMap.BMP)
             END SUB
-
 
             '***********************************************
             'Threading routine -- continual loop once thread starts
@@ -27149,7 +25441,6 @@ $IFNDEF __QPROGRESS_INC  'don't reload
                 IF (.hThread <> 0) THEN TerminateThread(.hThread , 0&)  : .hThread = 0
             END SUB
 
-
             '***********************************************
             'Create Threading -- cannot use CodePtr (sub..) in any other code!
             '***********************************************
@@ -27157,7 +25448,6 @@ $IFNDEF __QPROGRESS_INC  'don't reload
                 .lpThreadAddr = CODEPTR(This.DrawMotions)
                 .hThread = CreateThread(0& , 0& , This.lpThreadAddr , 0& , CREATE_SUSPENDED , VARPTR(This.ThreadID))
             END SUB
-
 
             '***********************************************
             'Timers /threads off OnClose command
@@ -27171,9 +25461,7 @@ $IFNDEF __QPROGRESS_INC  'don't reload
                 .hThread = 0
             END SUB
 
-
             PUBLIC :
-
 
             '***********************************************
             'Timers get started OnShow by .Visible command
@@ -27197,7 +25485,6 @@ $IFNDEF __QPROGRESS_INC  'don't reload
                 END IF
                 SUPER.Visible = TheState
             END PROPERTY
-
 
             '***********************************************
             CONSTRUCTOR
@@ -27226,7 +25513,6 @@ $IFNDEF __QPROGRESS_INC  'don't reload
 
 $ENDIF
 
-
 '============================================================================
 '[build_inc] QProgressBar.inc
 '============================================================================
@@ -27244,51 +25530,16 @@ $IFNDEF __QPROGRESSBAR_INC         'don't reload
 
     $IFNDEF __WIN32API  'APIs
 
-'~dup         DECLARE FUNCTION UpdateWindow LIB "USER32" ALIAS "UpdateWindow" _   ' повтор, первое: WIN32API.INC(7027)
-'~dup                  (hWnd AS LONG) AS LONG
-
-'~dup         DECLARE FUNCTION DestroyWindow LIB "user32" ALIAS "DestroyWindow" (ByVal hWnd AS LONG) AS LONG   ' повтор, первое: WIN32API.INC(6723)
-
         '-- Window styles
-'~dup         CONST WS_CHILD = &H40000000   ' повтор, первое: rapidq2.inc(949)
-'~dup         CONST WS_VISIBLE = &H10000000   ' повтор, первое: rapidq2.inc(951)
-
 
         $IFNDEF __RQ2WIN32API
-'~dup             DECLARE FUNCTION SetParent LIB "user32" ALIAS "SetParent"(ByVal hWndChild AS LONG , ByVal hWndNewParent AS LONG) AS LONG   ' повтор, первое: rapidq2.inc(1011)
-'~dup             DECLARE FUNCTION CloseHandle LIB "kernel32" ALIAS "CloseHandle"(ByVal hObject AS LONG) AS LONG   ' повтор, первое: rapidq2.inc(2038)
-'~dup             Declare Function CreateWindowEx Lib "user32" Alias "CreateWindowExA"_   ' повтор, первое: rapidq2.inc(987)
-'~dup                     (ByVal dwExStyle As Long, ByVal lpClassName As String, _
-'~dup                     ByVal lpWindowName As String, ByVal dwStyle As Long, _
-'~dup                     ByVal x As Long, ByVal y As Long, ByVal nWidth As Long, ByVal nHeight As Long,_
-'~dup                     ByVal hWndParent As Long, ByVal hMenu As Long, ByVal hInstance As Long, lpParam As Long) As Long
 
-'~dup             DECLARE SUB SetWindowPos Lib "User32"  ALIAS "SetWindowPos"_   ' повтор, первое: rapidq2.inc(1029)
-'~dup                     (ByVal hWnd As Long,_
-'~dup                     ByVal hWndInsertAfter As Long,_
-'~dup                     ByVal X As Long,_
-'~dup                     ByVal Y As Long,_
-'~dup                     ByVal cx As Long, ByVal cy As Long, ByVal wFlags As Long)
-
-'~dup             DECLARE FUNCTION SetWindowLong LIB "user32" ALIAS "SetWindowLongA" (hWnd AS LONG,nIndex AS LONG, dwNewLong AS LONG) AS LONG   ' повтор, первое: rapidq2.inc(1039)
-
-'~dup             CONST GWL_STYLE = - 16   ' повтор, первое: rapidq2.inc(780)
         $ENDIF
     $ENDIF
 
     $DEFINE PBS_OLD 0       'old school specific for QProgressBar
     'These are available only if the version of
     'comctl32.dll is greater than 4.70 (IE3 and later)
-'~dup     $DEFINE PBM_SETRANGE &H0401   ' повтор, первое: commctrl32.inc(686)
-'~dup     $DEFINE PBM_SETPOS &H0402   ' повтор, первое: commctrl32.inc(687)
-'~dup     $DEFINE PBM_DELTAPOS &H0403   ' повтор, первое: commctrl32.inc(688)
-'~dup     $DEFINE PBM_SETSTEP &H0404   ' повтор, первое: commctrl32.inc(689)
-'~dup     $DEFINE PBM_STEPIT &H0405   ' повтор, первое: commctrl32.inc(690)
-'~dup     $DEFINE PBM_SETRANGE32 &H0406   ' повтор, первое: commctrl32.inc(691)
-'~dup     $DEFINE PBM_GETRANGE &H0407   ' повтор, первое: commctrl32.inc(692)
-'~dup     $DEFINE PBM_GETPOS &H0408   ' повтор, первое: commctrl32.inc(693)
-'~dup     $DEFINE PBM_SETBARCOLOR &H0409   ' повтор, первое: commctrl32.inc(694)
-'~dup     $DEFINE PBM_SETBKCOLOR &H2001   ' повтор, первое: commctrl32.inc(695)
     $DEFINE PBM_SETMARQUEE &H040A
     $DEFINE PBM_GETSTEP &H040D
     $DEFINE PBM_GETBKCOLOR &H040E
@@ -27296,9 +25547,6 @@ $IFNDEF __QPROGRESSBAR_INC         'don't reload
     $DEFINE PBM_SETSTATE &H0410
     $DEFINE PBM_GETSTATE &H0411
 
-
-'~dup     $DEFINE PBS_SMOOTH  1  'Smooth will show filled bar otherwise block bar   ' повтор, первое: commctrl32.inc(696)
-'~dup     $DEFINE PBS_VERTICAL 4   ' повтор, первое: commctrl32.inc(697)
     $DEFINE PBS_MARQUEE 8
     $DEFINE PBS_SMOOTHREVERSE 16
 
@@ -27307,22 +25555,10 @@ $IFNDEF __QPROGRESSBAR_INC         'don't reload
     $DEFINE PBST_PAUSED 3
 
     $IFNDEF TRUE
-'~dup         $DEFINE TRUE 1   ' повтор, первое: rapidq2.inc(58)
     $ENDIF
 
     $IFNDEF FALSE
-'~dup         $DEFINE FALSE 0   ' повтор, первое: rapidq2.inc(55)
     $ENDIF
-
-'~dup     $DEFINE SWP_HIDEWINDOW &H0080       'Hides the window.   ' повтор, первое: WIN32API.INC(6754)
-'~dup     $DEFINE SWP_NOACTIVATE &H0010       'Does not activate the window. If this flag is not set, the window is activated and moved to the top of either the topmost or non-topmost group (depending on the setting of the hWndInsertAfter parameter).   ' повтор, первое: rapidq2.inc(794)
-'~dup     $DEFINE SWP_NOOWNERZORDER &H0200    'Does not change the owner window's position in the Z order.   ' повтор, первое: WIN32API.INC(6756)
-'~dup     $DEFINE SWP_NOREDRAW  &H0008        'Does not redraw changes. If this flag is set, no repainting of any kind occurs. This applies to the client area, the nonclient area (including the title bar and scroll bars), and any part of the parent window uncovered as a result of the window being moved. When this flag is set, the application must explicitly invalidate or redraw any parts of the window and parent window that need redrawing.   ' повтор, первое: WIN32API.INC(6750)
-'~dup     $DEFINE SWP_NOSIZE &H0001           'Retains the current size (ignores the cx and cy parameters).   ' повтор, первое: rapidq2.inc(791)
-'~dup     $DEFINE SWP_NOZORDER &H0004         'Retains the current Z order (ignores the hWndInsertAfter parameter)   ' повтор, первое: rapidq2.inc(793)
-'~dup     $DEFINE SWP_SHOWWINDOW &H0040    ' повтор, первое: rapidq2.inc(795)
-
-
 
 TYPE QProgressBar EXTENDS QOBJECT
 
@@ -27354,8 +25590,6 @@ TYPE QProgressBar EXTENDS QOBJECT
                     .Left, .Top, .Width, .Height, .Parent, 0, Application.hInstance, 0) ' inc2026: в строке 122 было .Top, .Left, стало .Left, .Top: у CreateWindowEx сначала x, потом y
     END SUB
 
-
-
     '***********************************************
     'Timers /threads off OnClose command
     '***********************************************
@@ -27369,14 +25603,12 @@ TYPE QProgressBar EXTENDS QOBJECT
         END IF
     END SUB
 
-
     SUB SetRange                    'Set the range of the progress bar.
         'lParam LOWORD= minimum range,  HIWORD = maximum range; minimum range cannot be negative
         'default, min = 0, max = 100 ; max > min, highest range = 0 to 65,535. 
         IF This.Max > &HFFFF THEN This.Max = &HFFFF          '16 bit only
         IF This.Max > This.Min THEN SendMessage(This.Handle, PBM_SETRANGE, 0, This.Min + (This.Max SHL 16))
     END SUB
-
 
     'make a general reformat sub for operations on setting properties
     SUB ReDraw
@@ -27399,7 +25631,6 @@ TYPE QProgressBar EXTENDS QOBJECT
         SetWindowPos(.Handle, 0, .Left, .Top, .Width, .Height, SWP_NOSIZE OR SWP_NOZORDER)
     END SUB
 
-
     '***********************************************
     'Properties Get / Set
     '***********************************************
@@ -27416,7 +25647,6 @@ TYPE QProgressBar EXTENDS QOBJECT
         .ReDraw
     END SUB
 
-
     SUB SetMax(TheValue)
         .Max = TheValue
         .ReDraw
@@ -27427,12 +25657,10 @@ TYPE QProgressBar EXTENDS QOBJECT
         .ReDraw
     END SUB
 
-
     SUB SetPosition(TheValue AS INTEGER)
         .Position =  TheValue
         .ReDraw
     END SUB
-
 
     PROPERTY SET SetBackColor(Clr AS INTEGER)
         .BackColor = Clr
@@ -27449,7 +25677,6 @@ TYPE QProgressBar EXTENDS QOBJECT
         .ReDraw
     END PROPERTY
 
-
     PROPERTY SET SetLeft(Left AS INTEGER)
         .Left = Left
         .ReDraw
@@ -27464,7 +25691,6 @@ TYPE QProgressBar EXTENDS QOBJECT
         .Height = Height
         .ReDraw
     END PROPERTY
-
 
     PROPERTY SET SetKind(value AS INTEGER)
         IF value <> .Kind THEN
@@ -27483,7 +25709,6 @@ TYPE QProgressBar EXTENDS QOBJECT
         .ReDraw
     END PROPERTY
 
-
     PROPERTY SET SetVisible(TheState AS INTEGER)
         IF TheState = False THEN
             .Close                  'destroy
@@ -27493,7 +25718,6 @@ TYPE QProgressBar EXTENDS QOBJECT
             .ReDraw                 'will recreate
         END IF
     END PROPERTY
-
 
     '***********************************************
     CONSTRUCTOR
@@ -27523,158 +25747,12 @@ $ENDIF
 '[build_inc] QRichEditXt.inc
 '============================================================================
 '$Include "constants.inc"
-'~dup const WM_USER = &H400   ' повтор, первое: rapidq2.inc(870)
-
-'~dup const    EM_AUTOURLDETECT            =WM_USER + 91   ' повтор, первое: constants.inc(40)
-
-'~dup const    EM_CONVPOSITION             =WM_USER + 108   ' повтор, первое: constants.inc(42)
-'~dup const    EM_SETLANGOPTIONS           =WM_USER + 120   ' повтор, первое: constants.inc(43)
-'~dup const    EM_GETLANGOPTIONS           =WM_USER + 121   ' повтор, первое: constants.inc(44)
-'~dup const    EM_GETIMECOMPMODE           =WM_USER + 122   ' повтор, первое: constants.inc(45)
-'~dup const    EM_FINDTEXTW                =WM_USER + 123   ' повтор, первое: constants.inc(46)
-'~dup const    EM_FINDTEXTEXW              =WM_USER + 124   ' повтор, первое: constants.inc(47)
-'~dup const    EM_RECONVERSION             =WM_USER + 125   ' повтор, первое: constants.inc(48)
-'~dup const    EM_SETIMEMODEBIAS           =WM_USER + 126     ' повтор, первое: constants.inc(49)
-'~dup const    EM_GETIMEMODEBIAS           =WM_USER + 127   ' повтор, первое: constants.inc(50)
-'~dup const    EM_SETBIDIOPTIONS           =WM_USER + 200   ' повтор, первое: constants.inc(51)
-'~dup const    EM_GETBIDIOPTIONS           =WM_USER + 201   ' повтор, первое: constants.inc(52)
-'~dup const    EM_SETTYPOGRAPHYOPTIONS     =WM_USER + 202   ' повтор, первое: constants.inc(53)
-'~dup const    EM_GETTYPOGRAPHYOPTIONS     =WM_USER + 203   ' повтор, первое: constants.inc(54)
-'~dup const    EM_SETEDITSTYLE             =WM_USER + 204   ' повтор, первое: constants.inc(55)
-'~dup const    EM_GETEDITSTYLE             =WM_USER + 205   ' повтор, первое: constants.inc(56)
-
-
-'~dup const    EM_OUTLINE                  =WM_USER + 220   ' повтор, первое: RichEditApi.inc(81)
-'~dup const    EM_GETSCROLLPOS             =WM_USER + 221   ' повтор, первое: RichEditApi.inc(82)
-'~dup const    EM_SETSCROLLPOS             =WM_USER + 222   ' повтор, первое: RichEditApi.inc(83)
-'~dup const    EM_SETFONTSIZE              =WM_USER + 223   ' повтор, первое: RichEditApi.inc(84)
-'~dup const    EM_GETZOOM                  =WM_USER + 224   ' повтор, первое: RichEditApi.inc(85)
-'~dup const    EM_SETZOOM                  =WM_USER + 225   ' повтор, первое: RichEditApi.inc(86)
-
-
-'~dup const  WM_INPUTLANGCHANGEREQUEST=       &h0050   ' повтор, первое: constants.inc(58)
-'~dup const  WM_INPUTLANGCHANGE  =            &h0051   ' повтор, первое: constants.inc(59)
-
-
-'~dup const EM_CANPASTE = 1074   ' повтор, первое: constants.inc(62)
-'~dup const EM_CANUNDO = 198   ' повтор, первое: constants.inc(63)
-'~dup const EM_CHARFROMPOS = 215   ' повтор, первое: constants.inc(64)
-'~dup const EM_DISPLAYBAND = 1075   ' повтор, первое: constants.inc(65)
-'~dup const EM_EMPTYUNDOBUFFER = 205   ' повтор, первое: constants.inc(66)
-'~dup const EM_EXGETSEL = 1076   ' повтор, первое: constants.inc(67)
-'~dup const EM_EXLIMITTEXT = 1077   ' повтор, первое: constants.inc(68)
-'~dup const EM_EXLINEFROMCHAR = 1078   ' повтор, первое: constants.inc(69)
-'~dup const EM_EXSETSEL = 1079   ' повтор, первое: constants.inc(70)
-'~dup const EM_FINDTEXT = 1080   ' повтор, первое: constants.inc(71)
-'~dup const EM_FINDTEXTEX = 1103   ' повтор, первое: constants.inc(72)
-'~dup const EM_FINDWORDBREAK = 1100   ' повтор, первое: constants.inc(73)
-'~dup const EM_FMTLINES = 200   ' повтор, первое: constants.inc(74)
-'~dup const EM_FORMATRANGE = 1081   ' повтор, первое: constants.inc(75)
-'~dup const EM_GETCHARFORMAT = 1082   ' повтор, первое: constants.inc(76)
-'~dup const EM_GETEVENTMASK = 1083   ' повтор, первое: constants.inc(77)
-'~dup const EM_GETFIRSTVISIBLELINE = 206   ' повтор, первое: constants.inc(78)
-'~dup const EM_GETHANDLE = 189   ' повтор, первое: constants.inc(79)
-'~dup const EM_GETLIMITTEXT = 213   ' повтор, первое: constants.inc(80)
-'~dup const EM_GETLINE = 196   ' повтор, первое: constants.inc(81)
-'~dup const EM_GETLINECOUNT = 186   ' повтор, первое: constants.inc(82)
-'~dup const EM_GETMARGINS = 212   ' повтор, первое: constants.inc(83)
-'~dup const EM_GETMODIFY = 184   ' повтор, первое: constants.inc(84)
-'~dup const EM_GETIMECOLOR = 1129   ' повтор, первое: constants.inc(85)
-'~dup const EM_GETIMEOPTIONS = 1131   ' повтор, первое: constants.inc(86)
-'~dup const EM_GETOPTIONS = 1102   ' повтор, первое: constants.inc(87)
-'~dup const EM_GETOLEINTERFACE = 1084   ' повтор, первое: constants.inc(88)
-'~dup const EM_GETPARAFORMAT = 1085   ' повтор, первое: constants.inc(89)
-'~dup const EM_GETPASSWORDCHAR = 210   ' повтор, первое: constants.inc(90)
-'~dup const EM_GETPUNCTUATION = 1125   ' повтор, первое: constants.inc(91)
-'~dup const EM_GETRECT = 178   ' повтор, первое: constants.inc(92)
-'~dup const EM_GETSEL = 176   ' повтор, первое: constants.inc(93)
-'~dup const EM_GETSELTEXT = 1086   ' повтор, первое: constants.inc(94)
-'~dup const EM_GETTEXTRANGE = 1099   ' повтор, первое: constants.inc(95)
-'~dup const EM_GETTHUMB = 190   ' повтор, первое: constants.inc(96)
-'~dup const EM_GETWORDBREAKPROC = 209   ' повтор, первое: constants.inc(97)
-'~dup const EM_GETWORDBREAKPROCEX = 1104   ' повтор, первое: constants.inc(98)
-'~dup const EM_GETWORDWRAPMODE = 1127   ' повтор, первое: constants.inc(99)
-'~dup const EM_HIDESELECTION = 1087   ' повтор, первое: constants.inc(100)
-'~dup const EM_LIMITTEXT = 197   ' повтор, первое: constants.inc(101)
-'~dup const EM_LINEFROMCHAR = 201   ' повтор, первое: constants.inc(102)
-'~dup const EM_LINEINDEX = 187   ' повтор, первое: constants.inc(103)
-'~dup const EM_LINELENGTH = 193   ' повтор, первое: constants.inc(104)
-'~dup const EM_LINESCROLL = 182   ' повтор, первое: constants.inc(105)
-'~dup const EM_PASTESPECIAL = 1088   ' повтор, первое: constants.inc(106)
-'~dup const EM_POSFROMCHAR = 214   ' повтор, первое: constants.inc(107)
-'~dup const EM_REPLACESEL = 194   ' повтор, первое: constants.inc(108)
-'~dup const EM_REQUESTRESIZE = 1089   ' повтор, первое: constants.inc(109)
-'~dup const EM_SCROLL = 181   ' повтор, первое: constants.inc(110)
-'~dup const EM_SCROLLCARET = 183   ' повтор, первое: constants.inc(111)
-'~dup const EM_SELECTIONTYPE = 1090   ' повтор, первое: constants.inc(112)
-'~dup const EM_SETBKGNDCOLOR = 1091   ' повтор, первое: constants.inc(113)
-'~dup const EM_SETCHARFORMAT = 1092   ' повтор, первое: constants.inc(114)
-'~dup const EM_SETEVENTMASK = 1093   ' повтор, первое: constants.inc(115)
-'~dup const EM_SETHANDLE = 188   ' повтор, первое: constants.inc(116)
-'~dup const EM_SETIMECOLOR = 1128   ' повтор, первое: constants.inc(117)
-'~dup const EM_SETIMEOPTIONS = 1130   ' повтор, первое: constants.inc(118)
-'~dup const EM_SETLIMITTEXT = 197   ' повтор, первое: constants.inc(119)
-'~dup const EM_SETMARGINS = 211   ' повтор, первое: constants.inc(120)
-'~dup const EM_SETMODIFY = 185   ' повтор, первое: constants.inc(121)
-'~dup const EM_SETOLECALLBACK = 1094   ' повтор, первое: constants.inc(122)
-'~dup const EM_SETOPTIONS = 1101   ' повтор, первое: constants.inc(123)
-'~dup const EM_SETPARAFORMAT = 1095   ' повтор, первое: constants.inc(124)
-'~dup const EM_SETPASSWORDCHAR = 204   ' повтор, первое: constants.inc(125)
-'~dup const EM_SETPUNCTUATION = 1124   ' повтор, первое: constants.inc(126)
-'~dup const EM_SETREADONLY = 207   ' повтор, первое: constants.inc(127)
-'~dup const EM_SETRECT = 179   ' повтор, первое: constants.inc(128)
-'~dup const EM_SETRECTNP = 180   ' повтор, первое: constants.inc(129)
-'~dup const EM_SETSEL = 177   ' повтор, первое: constants.inc(130)
-'~dup const EM_SETTABSTOPS = 203   ' повтор, первое: constants.inc(131)
-'~dup const EM_SETTARGETDEVICE = 1096   ' повтор, первое: constants.inc(132)
-'~dup const EM_SETWORDBREAKPROC = 208   ' повтор, первое: constants.inc(133)
-'~dup const EM_SETWORDBREAKPROCEX = 1105   ' повтор, первое: constants.inc(134)
-'~dup const EM_SETWORDWRAPMODE = 1126   ' повтор, первое: constants.inc(135)
-'~dup const EM_STREAMIN = 1097   ' повтор, первое: constants.inc(136)
-'~dup const EM_STREAMOUT = 1098   ' повтор, первое: constants.inc(137)
-'~dup const EM_UNDO = 199   ' повтор, первое: constants.inc(138)
-
-
-
-
-
 
 '___________________________________________
-'~dup const WM_CUT = 768   ' повтор, первое: constants.inc(159)
-'~dup const WM_COPY = 769   ' повтор, первое: constants.inc(160)
-'~dup const WM_COPYDATA = 74   ' повтор, первое: constants.inc(161)
-'~dup const WM_PASTE = 770   ' повтор, первое: constants.inc(162)
-'~dup const WM_CLEAR = 771   ' повтор, первое: constants.inc(163)
-'~dup const WM_CHAR = 258   ' повтор, первое: rapidq2.inc(822)
 
 '------------- /* Extended edit style masks */
-'~dup const	SES_EMULATESYSEDIT		=1   ' повтор, первое: constants.inc(167)
-'~dup const SES_BEEPONMAXTEXT			=2   ' повтор, первое: constants.inc(168)
-'~dup const	SES_EXTENDBACKCOLOR		=4   ' повтор, первое: constants.inc(169)
-'~dup const SES_MAPCPS				=8   ' повтор, первое: constants.inc(170)
-'~dup const SES_EMULATE10				=16   ' повтор, первое: constants.inc(171)
-'~dup const	SES_USECRLF				=32   ' повтор, первое: constants.inc(172)
-'~dup const SES_USEAIMM				=64   ' повтор, первое: constants.inc(173)
-'~dup const SES_NOIME					=128   ' повтор, первое: constants.inc(174)
-
-'~dup const SES_ALLOWBEEPS			=256   ' повтор, первое: constants.inc(176)
-'~dup const SES_UPPERCASE				=512   ' повтор, первое: constants.inc(177)
-'~dup const	SES_LOWERCASE			=1024   ' повтор, первое: constants.inc(178)
-'~dup const SES_NOINPUTSEQUENCECHK	=2048   ' повтор, первое: constants.inc(179)
-'~dup const SES_BIDI					=4096   ' повтор, первое: constants.inc(180)
-'~dup const SES_SCROLLONKILLFOCUS		=8192   ' повтор, первое: constants.inc(181)
-'~dup const	SES_XLTCRCRLFTOCR		=16384   ' повтор, первое: constants.inc(182)
-
 
 '-------- /* Options for EM_SETLANGOPTIONS and EM_GETLANGOPTIONS */
-
-'~dup const IMF_AUTOKEYBOARD		= &h0001   ' повтор, первое: constants.inc(187)
-'~dup const IMF_AUTOFONT			= &h0002   ' повтор, первое: constants.inc(188)
-'~dup const IMF_IMECANCELCOMPLETE	= &h0004	' // high completes comp string when aborting, low cancels.   ' повтор, первое: constants.inc(189)
-'~dup const IMF_IMEALWAYSSENDNOTIFY = &h0008   ' повтор, первое: constants.inc(190)
-'~dup const IMF_AUTOFONTSIZEADJUST	= &h0010   ' повтор, первое: constants.inc(191)
-'~dup const IMF_UIFONTS				= &h0020   ' повтор, первое: constants.inc(192)
-'~dup const IMF_DUALFONT			= &h0080   ' повтор, первое: constants.inc(193)
 
 '!!!======================================================================================================================'
 Type QREXT_Point
@@ -27683,28 +25761,8 @@ Type QREXT_Point
 End Type
 '------------------------ RichEditWndProc ------------------------------
 
-'~dup DECLARE FUNCTION SetWindowLong LIB "user32" ALIAS "SetWindowLongA" (ByVal hWnd AS LONG, ByVal nIndex AS LONG, ByVal dwNewLong AS LONG) AS LONG   ' повтор, первое: rapidq2.inc(1039)
-
-'~dup Declare Function HideCaret Lib "user32" ALIAS "HideCaret" (ByVal hwnd As Long) As Long   ' повтор, первое: WIN32API.INC(7179)
-'~dup Declare Function ShowCaret Lib "user32" ALIAS  "ShowCaret" (ByVal hwnd As Long) As Long   ' повтор, первое: WIN32API.INC(7180)
-
-'~dup Declare Function CallWindowProc Lib "user32" Alias "CallWindowProcA" _   ' повтор, первое: rapidq2.inc(1019)
-'~dup  (ByVal lpPrevWndFunc As Long, ByVal hWnd As Long, ByVal Msg As Long, ByVal wParam As Long, _
-'~dup   ByVal lParam As Long) As Long
-
-'~dup DECLARE FUNCTION SendMessageApi LIB "user32.dll" ALIAS "SendMessageA" (hWnd AS LONG, Msg AS LONG, wParam AS LONG, lParam AS LONG) AS LONG   ' повтор, первое: rapidq2.inc(980)
-
-'~dup Declare Function GetDC Lib "user32" Alias "GetDC"(ByVal hWnd As Long) As Long   ' повтор, первое: rapidq2.inc(1482)
-'~dup Declare Function SetBkMode Lib "gdi32" Alias "SetBkMode" (ByVal hdc As Long, ByVal nBkMode As Long) As Long   ' повтор, первое: rapidq2.inc(1466)
-'~dup Declare Function TextOut Lib "gdi32" Alias "TextOutA" (ByVal hdc As Long, ByVal x As Long, ByVal y As Long, ByVal lpString As String, ByVal nCount As Long) As Long   ' повтор, первое: WIN32API.INC(4682)
-
-'~dup Declare Function SelectObject Lib "gdi32" Alias "SelectObject" (ByVal hdc As Long, ByVal hObject As Long) As Long   ' повтор, первое: rapidq2.inc(1464)
-'~dup Declare Function SetTextColor Lib "gdi32" Alias "SetTextColor" (ByVal hdc As Long, ByVal crColor As Long) As Long   ' повтор, первое: QFormSkin.inc(229)
-
 declare FUNCTION RichEditWndProc_EventTemplate (hWnd AS LONG, uMsg AS LONG, wParam AS LONG, lParam AS LONG) AS LONG
-'~dup declare SUB FormWndProc (hWnd AS LONG, uMsg AS LONG, wParam AS LONG, lParam AS LONG)    ' повтор, первое: createWind.inc(32)
 
-'~dup DIM M AS QMEMORYSTREAM   ' повтор, первое: QXLS.INC(110)
 defint FIRSTVISIBLELINE,LastVISIBLELINE
 
 defint FirstChar
@@ -27712,7 +25770,6 @@ defint FirstChar
 dim VisRect as QRect
 dim VisPoint as QREXT_Point
 dim VisPoint1 as QREXT_Point
-
 
 TYPE QRichEdit_xt EXTENDS QRichEdit
 private:
@@ -27745,13 +25802,10 @@ print "EM_SETSCROLLPOS=" ,EM_SETSCROLLPOS
 print SendMessageApi (.handle, EM_SETSCROLLPOS, 0, .ScrollPoint )
 END PROPERTY SET
 
-
-
 PROPERTY SET Set_AUTOFONT (AUTOFONT  as integer)
 .AUTOFONT=AUTOFONT
 
 END PROPERTY SET
-
 
 PROPERTY SET Set_LIMITTEXT (LIMITTEXT as integer )
 if LIMITTEXT> 65535*32 then LIMITTEXT=65535*32
@@ -27759,8 +25813,6 @@ if LIMITTEXT> 65535*32 then LIMITTEXT=65535*32
 print ".LIMITTEXT=" ,.LIMITTEXT
 
 END PROPERTY SET
-
-
 
 PROPERTY SET Set_AUTOURLDETECT (AUTOURLDETECT as integer )
              .AUTOURLDETECT=AUTOURLDETECT 
@@ -27780,8 +25832,6 @@ END PROPERTY SET
             if .HiLight =1 then
             end if
         END PROPERTY SET
-
-
 
         FUNCTION Proc(hWnd AS LONG, uMsg AS LONG, wParam AS LONG, lParam AS LONG) AS LONG 
             
@@ -28004,7 +26054,6 @@ END SELECT
 noHiLi:                
 IF .WndProc>0 THEN CALLFUNC(.WndProc, hWnd, uMsg, wParam, lParam) '- если есть пользовательская функция, то вызывается и она
             
-
   END IF
         END FUNCTION
 
@@ -28031,7 +26080,6 @@ SendMessageApi .handle, EM_SETLANGOPTIONS, 0, SendMessageApi(.handle, EM_GETLANG
                 .Tmr.Enabled = 0
         END EVENT
 
-    
         CONSTRUCTOR
             SCROLLPOS=1
             LIMITTEXT=65535*32
@@ -28060,16 +26108,11 @@ END TYPE
 'Also RndX and RndY is new things - these 2 controls just how "round" the corners of the QRPANEL is.
 'If you set these 2 high enough, you'll actually be able to make completely round panels.
 
-'~dup Declare Function CreateRoundRectRgn Lib "gdi32"Alias "CreateRoundRectRgn" (X1 As Long, Y1 As Long, X2 As Long, Y2 As Long, X3 As Long, Y3 As Long) As Long   ' повтор, первое: GDI32.inc(72)
-'~dup Declare Function SetWindowRgn Lib "user32" Alias "SetWindowRgn" (hwnd As Long, hRgn As Long, bRedraw As Long) As Long   ' повтор, первое: QFormSkin.inc(159)
-'~dup Declare Function DeleteObject Lib "gdi32" Alias "DeleteObject" (hObject As Long) As Long   ' повтор, первое: rapidq2.inc(1451)
-
 TYPE QrPanel EXTENDS QPanel
 RndX AS Long
 RndY AS Long
 rBorder as byte PROPERTY SET Paint
 'align  as long PROPERTY SET Paint
-
 
 PROPERTY SET paint(flag as byte)
 DIM QpRegion AS Long
@@ -28102,15 +26145,12 @@ END TYPE
 ' Classe QRun Version 1.1
 '=======================================================
 $IFNDEF TRUE
-'~dup   $DEFINE True 1   ' повтор, первое: rapidq2.inc(58)
 $ENDIF
 
 $IFNDEF FALSE
-'~dup   $DEFINE False 0   ' повтор, первое: rapidq2.inc(55)
 $ENDIF
 
 $IFNDEF boolean
-'~dup   $DEFINE boolean integer   ' повтор, первое: rapidq2.inc(2241)
 $ENDIF
 
 '$IFNDEF __WIN32API ' inc2026: перенесено в строку 30 - объявления Run_* (свои имена) нигде больше нет, при определённом __WIN32API методы QRun ссылались на необъявленные функции; под условием остаются только константы SW_
@@ -28129,20 +26169,6 @@ Declare Function Run_SetWindowPos Lib "user32" Alias "SetWindowPos" (hwnd As Lon
 $IFNDEF __WIN32API ' inc2026: перенесено со строки 17 - условие только для констант SW_, объявления Run_* выше нужны всегда
 
 ' ShowWindow() Commands
-'~dup $DEFINE SW_HIDE      0   ' повтор, первое: Form.inc(6)
-'~dup $DEFINE SW_SHOWNORMAL      1   ' повтор, первое: Form.inc(7)
-'~dup $DEFINE SW_NORMAL      1   ' повтор, первое: Form.inc(8)
-'~dup $DEFINE SW_SHOWMINIMIZED      2   ' повтор, первое: Form.inc(9)
-'~dup $DEFINE SW_SHOWMAXIMIZED      3   ' повтор, первое: Form.inc(10)
-'~dup $DEFINE SW_MAXIMIZE      3   ' повтор, первое: Form.inc(11)
-'~dup $DEFINE SW_SHOWNOACTIVATE      4   ' повтор, первое: Form.inc(12)
-'~dup $DEFINE SW_SHOW      5   ' повтор, первое: Form.inc(13)
-'~dup $DEFINE SW_MINIMIZE      6   ' повтор, первое: Form.inc(14)
-'~dup $DEFINE SW_SHOWMINNOACTIVE      7   ' повтор, первое: Form.inc(15)
-'~dup $DEFINE SW_SHOWNA      8   ' повтор, первое: Form.inc(16)
-'~dup $DEFINE SW_RESTORE      9   ' повтор, первое: Form.inc(17)
-'~dup $DEFINE SW_SHOWDEFAULT      10   ' повтор, первое: Form.inc(18)
-'~dup $DEFINE SW_MAX      10   ' повтор, первое: Form.inc(19)
 
 $ENDIF
 
@@ -28334,16 +26360,6 @@ $ESCAPECHARS ON
 '  const
 ' ======================================= '
 const dot = "."  :const Quo$ = chr$(39)
-
-'~dup const false = 0  :const true = 1   ' повтор, первое: rapidq2.inc(82)
-
-'const mtWarning = 0 :const mtConfirmation = 3
-
-'const mbYes = 1  :const mbNo = 2
-'const mbOK = 4  :const mbCancel = 8
-
-'const mrYes = 6  :const mrNo = 7
-'const mrCancel = 2 :const mrOK = 1
 
 Function delMark$( s as string ) As String
 s=replaceSubstr$(s," ","")
@@ -28790,58 +26806,8 @@ $TYPECHECK OFF
 
 $IFNDEF __WIN32API				   'windows 32 constants for sound media
 
-'~dup Type LUID   ' повтор, первое: rapidq2.inc(2174)
-'~dup     LowPart As Long
-'~dup     HighPart As Long
-'~dup End Type
-
-'~dup Type LUID_AND_ATTRIBUTES   ' повтор, первое: rapidq2.inc(2179)
-'~dup     ' pLuid As LUID
-'~dup     LowPart as Long
-'~dup     HightPart as Long
-'~dup     Attributes As Long
-'~dup End Type
-
-'~dup Type TOKEN_PRIVILEGES   ' повтор, первое: rapidq2.inc(2186)
-'~dup     PrivilegeCount As Long
-'~dup     ' Privileges(1) As LUID_AND_ATTRIBUTES
-'~dup     LowPart as long
-'~dup     HighPart as long
-'~dup     Attributes as long
-'~dup End Type
-
 $IFNDEF __RQINC2
-'~dup     Declare Function ExitWindowsEx Lib "user32" Alias "ExitWindowsEx" (uFlags As Long, dwReserved As Long) As Long   ' повтор, первое: rapidq2.inc(1481)
-'~dup     Declare Function GetCurrentProcess Lib "kernel32" Alias "GetCurrentProcess"() As Long   ' повтор, первое: rapidq2.inc(1502)
-'~dup     Const EWX_LOGOFF = 0   ' повтор, первое: rapidq2.inc(1335)
-'~dup     Const EWX_SHUTDOWN = 1   ' повтор, первое: rapidq2.inc(1336)
-'~dup     Const EWX_REBOOT = 2   ' повтор, первое: rapidq2.inc(1337)
-'~dup     Const EWX_FORCE = 4   ' повтор, первое: rapidq2.inc(1338)
 $ENDIF      'RapidQ2 inc
-
-
-'~dup $DEFINE TOKEN_ADJUST_PRIVILEGES &H20   ' повтор, первое: rapidq2.inc(2193)
-'~dup $DEFINE TOKEN_QUERY &H8   ' повтор, первое: rapidq2.inc(2194)
-'~dup $DEFINE SE_PRIVILEGE_ENABLED &H2   ' повтор, первое: rapidq2.inc(2195)
-
-'~dup Declare Function OpenProcessToken Lib "advapi32" Alias "OpenProcessToken" _   ' повтор, первое: rapidq2.inc(2197)
-'~dup     (ProcessHandle As Long, _
-'~dup     DesiredAccess As Long, _
-'~dup     TokenHandle As Long) As Long
-
-'~dup Declare Function LookupPrivilegeValue Lib "advapi32" Alias "LookupPrivilegeValueA" _   ' повтор, первое: rapidq2.inc(2202)
-'~dup     (lpSystemName As String, _
-'~dup     lpName As String, _
-'~dup     lpLuid As LUID) As Long
-
-'~dup Declare Function AdjustTokenPrivileges Lib "advapi32" Alias "AdjustTokenPrivileges" _   ' повтор, первое: rapidq2.inc(2207)
-'~dup     (TokenHandle As Long, _
-'~dup     DisableAllPrivileges As Long, _
-'~dup     NewState As TOKEN_PRIVILEGES, _
-'~dup     BufferLength As Long, _
-'~dup     PreviousState As TOKEN_PRIVILEGES, _
-'~dup     ReturnLength As Long) As Long
-
 
 $ENDIF      'windows.inc
 
@@ -28908,11 +26874,9 @@ END TYPE
 ' Classe QSkin version 1.2
 '=======================================================
 $IFNDEF TRUE
-'~dup   $DEFINE True 1   ' повтор, первое: rapidq2.inc(58)
 $ENDIF
 
 $IFNDEF FALSE
-'~dup   $DEFINE False 0   ' повтор, первое: rapidq2.inc(55)
 $ENDIF
 
 Declare Function SkinReleaseCapture Lib "user32" Alias "ReleaseCapture" () As Long
@@ -28981,15 +26945,12 @@ End Type
 ' Classe QSkinBtn version 1.0
 '=======================================================
 $IFNDEF TRUE
-'~dup   $DEFINE True 1   ' повтор, первое: rapidq2.inc(58)
 $ENDIF
 
 $IFNDEF FALSE
-'~dup   $DEFINE False 0   ' повтор, первое: rapidq2.inc(55)
 $ENDIF
 
 $IFNDEF boolean
-'~dup   $DEFINE boolean integer   ' повтор, первое: rapidq2.inc(2241)
 $ENDIF
 
 Type QSkinBtn extends qimage
@@ -29039,7 +27000,6 @@ Type QSkinBtn extends qimage
     QSkinBtn.mode=value
   End Property
   
-    
   '=========================================
   ' Evenement enfoncement bouton
   '=========================================  
@@ -29125,25 +27085,18 @@ DECLARE FUNCTION gethostbyaddr Lib "wsock32.dll" ALIAS "gethostbyaddr" (addr AS 
 DECLARE FUNCTION gethostbyname Lib "wsock32.dll" ALIAS "gethostbyname" (ByVal name AS string) AS long
 DECLARE FUNCTION shutdown Lib "wsock32.dll" Alias "shutdown"(S As LONG,how As LONG) As LONG
 
-'~dup DECLARE FUNCTION inet_addr Lib "wsock32.dll" ALIAS "inet_addr" (ByVal cp AS string) AS long   ' повтор, первое: QICMP.INC(31)
 DECLARE FUNCTION inet_ntoa Lib "wsock32.dll" ALIAS "inet_ntoa" (inaddr AS long) AS long                                                   
 DECLARE FUNCTION htons Lib "wsock32.dll" ALIAS "htons" (hostshort AS integer) AS integer
 DECLARE FUNCTION ioctlsocket Lib "wsock32.dll" ALIAS "ioctlsocket"(ByVal s As Long, ByVal cmd As Long, argp As Long) As Long
 'select is a reserved BASIC word
 DECLARE FUNCTION SocketSelect Lib "wsock32.dll" Alias "select" (nfds As LONG, readfds As LONG, writefds As LONG, exceptfds As LONG, timeout As LONG) As LONG
 
-
 ' Some extras                                       
 $IFNDEF __RQINC2
-'~dup     DECLARE FUNCTION WSAGetLastError Lib "wsock32.dll" ALIAS "WSAGetLastError"() AS long   ' повтор, первое: rapidq2.inc(1888)
 $ENDIF
 
 $IFNDEF __WIN32API 
-'~dup     DECLARE FUNCTION lstrlen Lib "kernel32.dll" ALIAS "lstrlenA" (ByVal lpString AS long) AS long   ' повтор, первое: WIN32API.INC(2345)
-'~dup     DECLARE FUNCTION lstrcpy Lib "kernel32.dll" ALIAS "lstrcpyA" _   ' повтор, первое: WIN32API.INC(15379)
-'~dup                                        (ByVal lpString1 AS long, ByVal lpString2 AS long) AS long
 $ENDIF
-
 
 TYPE sockaddr_in                    'this is for TCP/IP
     sin_family      AS SHORT
@@ -29153,11 +27106,9 @@ TYPE sockaddr_in                    'this is for TCP/IP
 END TYPE
 
 'this is a dynamically allocated structure, we will implement with QMEMORYSTREAM
-' TYPE fd_set
 '     fd_count        AS DWORD                            'u_int how many sockets SET?
 '     lpfd_array      AS STRING * 256 * SIZEOF(INTEGER)   'fd_array[FD_SETSIZE] array of SOCKET handles
 ' END TYPE
-
 
 $DEFINE FIONBIO  &H8004667E                'needed for block/nonblock
 $DEFINE FD_READ         &H01               ' Define flags for WSAAsyncSelect() call.
@@ -29168,7 +27119,6 @@ $DEFINE FD_CONNECT      &H10
 $DEFINE FD_CLOSE        &H20
 $DEFINE SD_SEND         &H02
 DEFINT SOCKET_ERROR =   -1
-
 
 TYPE QSocketEx Extends QSocket
 Public:
@@ -29183,8 +27133,6 @@ FUNCTION GetPeerName(SockNum AS integer) AS string      ' Override bad Qsocket f
         Result=STR$(buf(4))+"."+STR$(buf(5))+"."+STR$(buf(6))+"."+STR$(buf(7))
     END IF
 END FUNCTION
-
-
 
 FUNCTION NameByAddr(strIP AS string) AS string
     DIM IPval AS long
@@ -29204,8 +27152,6 @@ FUNCTION NameByAddr(strIP AS string) AS string
         END IF
     END IF
 END FUNCTION
-
-
 
 FUNCTION AddrByName(strName AS string) AS string
     DIM lpStruc AS long
@@ -29228,7 +27174,6 @@ FUNCTION AddrByName(strName AS string) AS string
         END IF
     END IF
 END FUNCTION
-
 
 FUNCTION IsConnected(SockNum As LONG, TimeOutSecs As LONG) As LONG
     DEFLNG FD_Set(1) = {1, SockNum}                 'if >1 socket, we would keep adding
@@ -29258,20 +27203,16 @@ FUNCTION IsConnected(SockNum As LONG, TimeOutSecs As LONG) As LONG
 '     RESULT = SocketSelect(0&, 0&, MyFD_Set.Pointer, 0&, lpTimeVal)
 END FUNCTION
 
-
-
 SUB WriteLine(SockNum AS integer, Str As STRING) As LONG            'overwrite old method
     DEFSTR OutStr = Str + CHR$(13) + CHR$(10)                       'some servers require cr lf
     QSocketEx.Write(SockNum, OutStr, LEN(OutStr))
     OutStr = ""                                                     'dealloc
 END SUB
 
-
 FUNCTION WriteEx(SockNum AS integer, Message AS string, NumBytes AS integer) AS long
     QSocketEx.Write(SockNum, Message, NumBytes)                     ' Call the QSocket SUB
     RESULT= WSAGetLastError()                                       ' Returns 0 if OK
 END FUNCTION
-
 
 FUNCTION ShutDown(SockNum AS integer) As LONG
     RESULT = shutdown(SockNum, 2&)
@@ -29291,7 +27232,6 @@ FUNCTION Block(hSocket As LONG) As LONG
     Result = ioctlsocket(hSocket, FIONBIO, VarPtr(arg))
 END FUNCTION
 '
-
 
 '' Reading a couple of pages at the MSDN site before getting bored suggests that
 ' you can't trust this call, and anything returned may or may not be relevant to
@@ -29368,7 +27308,6 @@ END FUNCTION
 
 'Public:
 'FUNCTION RegisterSocket() AS integer                               ' Create/register multiple sockets..
-'DIM i AS integer                                                   ' .. (the S fn in RSocket.inc)..
 '                                                                   ' ..would need to set the parms of..
 '    Result=-1                                                      ' ..each new socket
 '    FOR i=0 TO MAX_SOCKETS-1
@@ -29382,12 +27321,10 @@ END FUNCTION
 '    NEXT i
 'END FUNCTION
 
-
     CONSTRUCTOR
         Tag =0
     END CONSTRUCTOR ' inc2026: добавлен - CONSTRUCTOR не был закрыт, сразу шёл END TYPE (пустая строка после END TYPE занята этой строкой)
 END TYPE
-
 
 $ENDIF
 
@@ -29401,15 +27338,12 @@ $ENDIF
 '======================================================================
 
 $IFNDEF TRUE
-'~dup   $DEFINE True 1   ' повтор, первое: rapidq2.inc(58)
 $ENDIF
 
 $IFNDEF FALSE
-'~dup   $DEFINE False 0   ' повтор, первое: rapidq2.inc(55)
 $ENDIF
 
 $IFNDEF boolean
-'~dup   $DEFINE boolean integer   ' повтор, первое: rapidq2.inc(2241)
 $ENDIF
 
 Defint st3d   = 0
@@ -29551,8 +27485,6 @@ Type QSpinButton extends QPanel
      End Constructor
 End Type
 
-
-
 '============================================================================
 '[build_inc] QSplash.inc
 '============================================================================
@@ -29561,15 +27493,12 @@ End Type
 ' Classe QSplash version 1.2
 '=======================================================
 $IFNDEF TRUE
-'~dup   $DEFINE True 1   ' повтор, первое: rapidq2.inc(58)
 $ENDIF
 
 $IFNDEF FALSE
-'~dup   $DEFINE False 0   ' повтор, первое: rapidq2.inc(55)
 $ENDIF
 
 $IFNDEF boolean
-'~dup   $DEFINE boolean integer   ' повтор, первое: rapidq2.inc(2241)
 $ENDIF
 
 Type QSplash Extends QObject
@@ -29648,11 +27577,9 @@ End Type
 ' Classe QStatusBar version 1.0
 '=======================================================
 $IFNDEF TRUE
-'~dup   $DEFINE True 1   ' повтор, первое: rapidq2.inc(58)
 $ENDIF
 
 $IFNDEF FALSE
-'~dup   $DEFINE False 0   ' повтор, первое: rapidq2.inc(55)
 $ENDIF
 
 Declare Function SetParentStatusBar Lib "user32" Alias "SetParent" (hWndChild As Long,hWndNewParent As Long) As Long
@@ -29766,7 +27693,6 @@ Type QTabControlEx Extends QTabControl
   End Constructor
 End Type
 
-
 '============================================================================
 '[build_inc] QTextBtn.inc
 '============================================================================
@@ -29776,15 +27702,12 @@ $TYPECHECK ON
 ' Classe QTextBtn version 1.0
 '=======================================================
 $IFNDEF TRUE
-'~dup   $DEFINE True 1   ' повтор, первое: rapidq2.inc(58)
 $ENDIF
 
 $IFNDEF FALSE
-'~dup   $DEFINE False 0   ' повтор, первое: rapidq2.inc(55)
 $ENDIF
 
 $IFNDEF boolean
-'~dup   $DEFINE boolean integer   ' повтор, первое: rapidq2.inc(2241)
 $ENDIF
 
 Type QTextBtn extends QLabel
@@ -29823,7 +27746,6 @@ Type QTextBtn extends QLabel
     QTextBtn.mode=value
   End Property
   
-    
   '=========================================
   ' Evenement enfoncement bouton
   '=========================================  
@@ -30475,17 +28397,9 @@ $DEFINE MAXTOOLBTNS     64                                              ' User c
 $ENDIF                                                                  ' ... usage? or >64 button toolbars?
 
 $IFNDEF __RQINC2
-'~dup $DEFINE alNone          0   ' повтор, первое: rapidq2.inc(86)
-'~dup $DEFINE alTop           1   ' повтор, первое: rapidq2.inc(87)
-'~dup $DEFINE alBottom        2   ' повтор, первое: rapidq2.inc(88)
-'~dup $DEFINE alLeft          3   ' повтор, первое: rapidq2.inc(89)
-'~dup $DEFINE alRight         4   ' повтор, первое: rapidq2.inc(90)
-'~dup $DEFINE alClient        5   ' повтор, первое: rapidq2.inc(91)
 $ENDIF
 
 $IFNDEF True
-'~dup $DEFINE False           0   ' повтор, первое: rapidq2.inc(55)
-'~dup $DEFINE True            1   ' повтор, первое: rapidq2.inc(58)
 $ENDIF
 
 DIM ButtonImages AS QImageListEX                                        ' MUST be global!
@@ -30992,39 +28906,24 @@ $IFNDEF __QVIDEO_INC
 $ENDIF
 
 $IFNDEF TRUE
-'~dup   $DEFINE True 1   ' повтор, первое: rapidq2.inc(58)
 $ENDIF
 
 $IFNDEF FALSE
-'~dup   $DEFINE False 0   ' повтор, первое: rapidq2.inc(55)
 $ENDIF
 
 $IFNDEF boolean
-'~dup   $DEFINE boolean integer   ' повтор, первое: rapidq2.inc(2241)
 $ENDIF
-
 
 $IFNDEF __WIN32API       'windows inc loaded?
-'~dup Declare Function mciSendString Lib "winmm.dll" Alias "mciSendStringA" (lpstrCommand As String,lpstrReturnString As long,uReturnLength As Long,hwndCallback As Long) As Long   ' повтор, первое: WIN32API.INC(11810)
-'~dup Declare Function mciGetErrorString Lib "winmm.dll" Alias "mciGetErrorStringA" (dwError As Long,Byref lpstrBuffer As String,uLength As Long) As Long   ' повтор, первое: WIN32API.INC(11818)
-'~dup Declare Function waveOutSetVolume Lib "Winmm" Alias "waveOutSetVolume" (wDeviceID as short,dwVolume as Long) as Short   ' повтор, первое: WIN32API.INC(11428)
 
 $IFNDEF __RQINC2         'RapidQ2.inc loaded?
-'~dup Declare Function ShowWindow Lib "user32" Alias "ShowWindow" (hwnd As Long,nCmdShow As Long) As Long   ' повтор, первое: rapidq2.inc(1017)
-'~dup Declare Function MoveWindow Lib "user32" Alias "MoveWindow" (hwnd As Long,x As integer,y As integer,nWidth As integer,nHeight As integer,bRepaint As Long) As Long   ' повтор, первое: rapidq2.inc(993)
-'~dup Declare Function SetForegroundWindow Lib "user32" Alias "SetForegroundWindow" (hwnd As Long) As Long   ' повтор, первое: rapidq2.inc(1012)
-'~dup Declare Function GetWindowRect Lib "user32" Alias "GetWindowRect" (hwnd As Long,lpRect As QRECT) As Long   ' повтор, первое: rapidq2.inc(996)
 $ENDIF
 $ENDIF
 
-
-
-'~dup Declare Sub event_change(position as long,timePos as long)   ' повтор, первое: Qcdaudio.inc(21)
 const VD_CLOSE=0
 const VD_PLAY=1
 const VD_PAUSE=2
 const VD_STOP=3
-
 
 Type QVideo extends Qobject
   '================================
@@ -31501,16 +29400,8 @@ $DEFINE __QVOLUMEINFO_INC
 $IFNDEF __WIN32API				   'windows 32 definitions
 $IFNDEF __QDRIVE_INC                'shared constants
 
-'~dup     Const DRIVE_UNKNOWN As Long = 0   ' повтор, первое: qdrive2024.inc(11)
-'~dup     Const DRIVE_NO_ROOT_DIR As Long = 1   ' повтор, первое: qdrive2024.inc(12)
-'~dup     Const DRIVE_REMOVABLE As Long = 2   ' повтор, первое: WIN32API.INC(1623)
-'~dup     Const DRIVE_FIXED As Long = 3   ' повтор, первое: WIN32API.INC(1624)
-'~dup     Const DRIVE_REMOTE As Long = 4   ' повтор, первое: WIN32API.INC(1625)
-'~dup     Const DRIVE_CDROM As Long = 5   ' повтор, первое: WIN32API.INC(1626)
-'~dup     Const DRIVE_RAMDISK As Long = 6   ' повтор, первое: WIN32API.INC(1627)
 $ENDIF
 $ENDIF
-
 
 Declare Function GetVolumeInformation_INC Lib "Kernel32" Alias "GetVolumeInformationA" _
     (ByVal lpRootPathName As String,  _
@@ -31531,7 +29422,6 @@ Private Declare Function GetDiskFreeSpace_INC Lib "kernel32" Alias "GetDiskFreeS
 
 Declare Function GetDriveType_INC Lib "kernel32" Alias "GetDriveTypeA" _
     (ByVal nDrive As String) As Long
-
 
 type QVolumeInfo extends QObject
     
@@ -31556,7 +29446,6 @@ type QVolumeInfo extends QObject
         DriveTypeString as string
         DriveTypeUnknown as integer
         
-        
     function GetStringFormat(Bytes as double) as string
         select case bytes
         case is < 1024
@@ -31576,7 +29465,6 @@ type QVolumeInfo extends QObject
             
         end select
     end function
-    
     
     sub SelectDrive(DriveRoot as string)
         'format driveroot
@@ -31661,8 +29549,6 @@ type QVolumeInfo extends QObject
     
 end type
 
-
-
 '============================================================================
 '[build_inc] QVuMeter.inc
 '============================================================================
@@ -31671,15 +29557,12 @@ end type
 ' Classe QVuMeter version 1.0
 '=======================================================
 $IFNDEF TRUE
-'~dup   $DEFINE True 1   ' повтор, первое: rapidq2.inc(58)
 $ENDIF
 
 $IFNDEF FALSE
-'~dup   $DEFINE False 0   ' повтор, первое: rapidq2.inc(55)
 $ENDIF
 
 $IFNDEF boolean
-'~dup   $DEFINE boolean integer   ' повтор, первое: rapidq2.inc(2241)
 $ENDIF
 
 Type QVuMeter Extends QCanvas
@@ -31762,15 +29645,12 @@ End Type
 ' Classe QWave Version 1.2
 '=======================================================
 $IFNDEF TRUE
-'~dup   $DEFINE True 1   ' повтор, первое: rapidq2.inc(58)
 $ENDIF
 
 $IFNDEF FALSE
-'~dup   $DEFINE False 0   ' повтор, первое: rapidq2.inc(55)
 $ENDIF
 
 $IFNDEF boolean
-'~dup   $DEFINE boolean integer   ' повтор, первое: rapidq2.inc(2241)
 $ENDIF
 
 const WV_CLOSE=0
@@ -31790,7 +29670,6 @@ const WV_KHZ44=44100
 Declare Function mciSendWave Lib "winmm.dll" Alias "mciSendStringA" (lpstrCommand As String, lpstrReturnString As long, uReturnLength As Long, hwndCallback As Long) As Long
 Declare Function mciGetErrorWave Lib "winmm.dll" Alias "mciGetErrorStringA" (dwError As Long,Byref lpstrBuffer As String,uLength As Long) As Long
 Declare Function WaveSetVolume Lib "Winmm" Alias "waveOutSetVolume" (wDeviceID as short,dwVolume as Long) as Short
-'~dup Declare Sub event_change(position as long)   ' повтор, первое: Qcdaudio.inc(21)
 
 Type QWave extends Qobject
   '================================
@@ -32277,17 +30156,11 @@ End Type
 ' AFTER you've created the executable. Then go ahead and run the
 ' executable to see that this really does work. :)
 
-
-
-
 $IFNDEF OBJ_BITMAP
-'~dup   $DEFINE OBJ_BITMAP 7   ' повтор, первое: rapidq2.inc(899)
 $ENDIF
 
 $IFNDEF BS_OWNERDRAW
-'~dup   $DEFINE BS_OWNERDRAW &HB   ' повтор, первое: Win32_constants.inc(78)
 $ENDIF
-
 
 $IFNDEF BUTTON_IMAGELIST_ALIGN_LEFT
   $DEFINE BUTTON_IMAGELIST_ALIGN_LEFT 0
@@ -32324,51 +30197,14 @@ $ENDIF
 '    Align         As Long
 'End Type
 
-
 'not in windows.inc...
-'~dup Declare Function ImageList_AddMasked _   ' повтор, первое: commctrl32.inc(1521)
-'~dup         Lib "comctl32" Alias "ImageList_AddMasked" _
-'~dup         (ByVal hImageList As Long, _
-'~dup          ByVal hbmImage As Long, _
-'~dup          ByVal hBmMask As Long) As Long
-
-
 
 $IFNDEF __WIN32API			'for windows 32 API calls/constants
 
-'~dup Declare Function UpdateWindow _   ' повтор, первое: WIN32API.INC(7027)
-'~dup         Lib "user32" Alias "UpdateWindow" _
-'~dup         (ByVal hWnd As Long) As Long
-
-
     $IFNDEF __RQINC2			' & rapidQ2
-
-'~dup     Const GWL_HWNDPARENT = (-8)   ' повтор, первое: rapidq2.inc(777)
-'~dup     Const GWL_STYLE = (-16)   ' повтор, первое: rapidq2.inc(780)
-'~dup     $DEFINE HWND_DESKTOP        0   ' повтор, первое: rapidq2.inc(783)
-
-'~dup     Declare Function GetWindowLong _   ' повтор, первое: rapidq2.inc(1037)
-'~dup             Lib "user32" Alias "GetWindowLongA" _
-'~dup             (ByVal hWnd As Long, ByVal nIndex As Long) As Long
-
-'~dup     Declare Function SetWindowLong _   ' повтор, первое: rapidq2.inc(1039)
-'~dup             Lib "user32" Alias "SetWindowLongA" _
-'~dup             (ByVal hWnd As Long, ByVal nIndex As Long, _
-'~dup              ByVal dwNewLong As Long) As Long
-
-'~dup     Declare Function GetParent _   ' повтор, первое: rapidq2.inc(995)
-'~dup             Lib "user32" Alias "GetParent" _
-'~dup             (ByVal hWnd As Long) As Long
-
-'~dup     Declare Function GetCurrentObject _   ' повтор, первое: rapidq2.inc(1456)
-'~dup             Lib "gdi32" Alias "GetCurrentObject" _
-'~dup             (ByVal hdc As Long, _
-'~dup              ByVal uObjectType As Long) As Long
 
     $ENDIF
 $ENDIF
-
-
 
 TYPE QXPBUTTON EXTENDS QBUTTON
 
@@ -32380,7 +30216,6 @@ TYPE QXPBUTTON EXTENDS QBUTTON
     'The width and height of each Bitmap HAS TO BE the same as the other Bitmaps.
     '(in other words... you can NOT do... 32x32, 24x32, 16x32, 32x32, 16x32, 24x32)
     '$Resource btn_states As "btn_states.bmp"
-
 
 PUBLIC:
     ImageLeft        AS INTEGER      PROPERTY SET    Set_LeftMargin
@@ -32452,7 +30287,6 @@ PUBLIC:
         .ButtonImageList(4) = .ImageBottom
         .ButtonImageList(5) = .ImageAlign
     
-
         'condition the removal of the BS_ONWERDRAW style (so that it's not toggled back on and off)
         If (GetWindowLong(This.Handle, GWL_STYLE) And BS_OWNERDRAW) = BS_OWNERDRAW Then
           SetWindowLong(This.Handle, GWL_STYLE, (GetWindowLong(This.Handle, GWL_STYLE) XOR BS_OWNERDRAW))
@@ -32463,7 +30297,6 @@ PUBLIC:
         This.Visible = True
 
     END SUB
-
 
     Sub UpdateBtnBmp
         .XPStyle
@@ -32537,7 +30370,6 @@ End With
     End Constructor
 End Type
 
-
 '****** test code  #1  *****
 '$INCLUDE <Rapidq2.inc>
 '$INCLUDE <QXPButton.inc>
@@ -32547,7 +30379,6 @@ End Type
 'CREATE MainForm AS QFORM
 '    Center
 '
-'    CREATE Button AS QXPButton
 '        Width = 90
 '        Height = 30
 '        Left = (MainForm.ClientWidth \ 2) - (Button.Width \ 2)
@@ -32560,9 +30391,6 @@ End Type
 '
 'MainForm.ShowModal
 
-
-
-
 ''***  test code #2   *****
 '
 ''  what if the user may not be using windows XP or higher?
@@ -32573,7 +30401,6 @@ End Type
 'CREATE MainForm AS QFORM
 '    Center
 '
-'    CREATE Button AS QXPButton
 '        Width = 90
 '        Height = 30
 '        Left = (MainForm.ClientWidth \ 2) - (Button.Width \ 2)
@@ -32588,8 +30415,6 @@ End Type
 '
 '
 'MainForm.ShowModal
-
-
 
 '/* Start of example code #3  */
 '$Option Explicit
@@ -32640,7 +30465,6 @@ End Type
 '      OnClick = mDisable_OnClick
 '    End Create
 '  End Create
-'  Create Button As QBtnBmpXP
 '    Width   = 88
 '    Height  = 44
 '    Left    = (MainForm.ClientWidth \ 2) - (Button.Width \ 2)
@@ -32690,9 +30514,6 @@ End Type
 
 '/* End of example code */
 
-
-
-
 '============================================================================
 '[build_inc] RapidFRM.inc
 '============================================================================
@@ -32708,23 +30529,12 @@ End Type
 ' 5. RapidFRM component $Defines
 '
 '--------------------------------Additional API Declarations ---------------------------------------------
-'~dup DECLARE FUNCTION GetActiveWindow LIB "user32" ALIAS "GetActiveWindow" () AS long   ' повтор, первое: User32.inc(23)
-'~dup DECLARE FUNCTION WindowFromPoint LIB "user32" ALIAS "WindowFromPoint" (X AS long, Y AS long) AS long   ' повтор, первое: WIN32API.INC(7188)
-'~dup DECLARE FUNCTION ScreenToClient LIB "user32" ALIAS "ScreenToClient" (hWnd AS long, lpPoint AS POINTAPI) AS long   ' повтор, первое: WIN32API.INC(7185)
 
-'~dup DECLARE FUNCTION UpdateWindow LIB "user32" ALIAS "UpdateWindow" (hWnd AS long) AS integer   ' повтор, первое: WIN32API.INC(7027)
 DECLARE FUNCTION InvalidateRect_RapidFRM LIB "user32" ALIAS "InvalidateRect" (hWnd AS long, rect AS QRECT, _
 bErase AS long) AS long
-'~dup DECLARE FUNCTION SetBkColor LIB "gdi32" ALIAS "SetBkColor" (hdc AS long, crColor AS long) AS long   ' повтор, первое: WIN32API.INC(4537)
-'~dup DECLARE FUNCTION DestroyWindow LIB "user32" ALIAS "DestroyWindow" (hWnd AS long) AS long   ' повтор, первое: WIN32API.INC(6723)
 
-
-'~dup DECLARE FUNCTION SetWindowsHookEx LIB "user32" ALIAS "SetWindowsHookExA" (idHook AS long, lpFn AS long, _   ' повтор, первое: WIN32API.INC(15584)
-'~dup hmod AS long, dwThreadId AS dword) AS long
 DECLARE FUNCTION CallNextHookEx_RapidFRM LIB "user32" ALIAS "CallNextHookEx" (hHook AS long, nCode AS long, _
 wParam AS long, lParam AS long) AS long
-'~dup DECLARE FUNCTION UnhookWindowsHookEx LIB "user32" ALIAS "UnhookWindowsHookEx" (hHook AS long) AS long   ' повтор, первое: WIN32API.INC(7274)
-'~dup DECLARE FUNCTION GetCurrentThreadId LIB "kernel32" ALIAS "GetCurrentThreadId" () AS long   ' повтор, первое: Kernel32.inc(88)
 
 '---------------------------------------------------------------------------------------------------------
 ' 1. MouseHook Stuff
@@ -32735,8 +30545,6 @@ wParam AS long, lParam AS long) AS long
 $DEFINE LMOUSE_BTN  1                                           ' Left Mouse Button
 $DEFINE RMOUSE_BTN  2                                           ' Right Mouse Button
 $DEFINE MMOUSE_BTN  4                                           ' Middle Mouse Button
-
-'~dup $DEFINE WH_MOUSE    7                                           ' Hook mouse constant   ' повтор, первое: WIN32API.INC(5989)
 
 DEFLNG hHook                                                    ' Var for hooking/unhooking mouse
 DEFINT gMouseBtns                                               ' My (global) mouse btns
@@ -32779,9 +30587,6 @@ END SUB
 '        required throughout one program)
 '   Focus "captured" until dialog closed - ONE instance only!
 '
-'~dup $DEFINE cdNormal        0                                       ' Default compact style (expandable)   ' повтор, первое: rapidq2.inc (компоненты)(6150)
-'~dup $DEFINE cdFullOpen      1                                       ' Custom color customisable style   ' повтор, первое: rapidq2.inc (компоненты)(6151)
-'~dup $DEFINE cdNoFullOpen    2                                       ' Compact style, no custom color dialog   ' повтор, первое: rapidq2.inc (компоненты)(6152)
 
 $DEFINE CC_HEIGHT       335                                     ' Height of ColorChooser window
 $DEFINE CC_WIDTH_STD    225                                     ' Width of window when in compact style
@@ -32893,19 +30698,7 @@ END TYPE
 ' available (an unfortunate legacy when creating components at the "local" level).
 '
 ' Some of the uMsg constants
-'~dup $DEFINE TCM_SETIMAGELIST &H1303   ' повтор, первое: CommCtrl.inc(362)
-'~dup $DEFINE TCM_GETITEMCOUNT &H1304   ' повтор, первое: CommCtrl.inc(363)
-'~dup $DEFINE TCM_SETITEM &H1306   ' повтор, первое: CommCtrl.inc(395)
-'~dup $DEFINE TCM_INSERTITEM &H1307   ' повтор, первое: CommCtrl.inc(397)
-'~dup $DEFINE TCM_DELETEITEM &H1308   ' повтор, первое: CommCtrl.inc(400)
-'~dup $DEFINE TCM_DELETEALLITEMS &H1309   ' повтор, первое: CommCtrl.inc(401)
-'~dup $DEFINE TCM_GETITEMRECT &H130A   ' повтор, первое: CommCtrl.inc(402)
 ' Mask values
-'~dup $DEFINE TCIF_TEXT &H1   ' повтор, первое: CommCtrl.inc(365)
-'~dup $DEFINE TCIF_IMAGE &H2   ' повтор, первое: CommCtrl.inc(366)
-'~dup $DEFINE TCIF_RTLREADING &H4   ' повтор, первое: CommCtrl.inc(367)
-'~dup $DEFINE TCIF_PARAM &H8   ' повтор, первое: CommCtrl.inc(368)
-'~dup $DEFINE TCIF_STATE &H10   ' повтор, первое: CommCtrl.inc(369)
 
 TYPE TabTCITEMHEADER
 mask AS long
@@ -33094,7 +30887,6 @@ $DEFINE Q_D3DWrap       55
 ' component then you must first create an object of type
 ' QRC4. After that you must call the procedure Init() to
 ' initialize the object with the key. If you now call the
-' function Pipe() with a string then the string is encoded
 ' and returned by the function.
 ' If you want to decode then simply execute the same steps
 ' again but call the function Pipe() with the encoded
@@ -33107,10 +30899,6 @@ $DEFINE Q_D3DWrap       55
 '
 ' Example:
 '   $INCLUDE "RC4crypt.inc"
-'   DEFSTR k = "1234567890"   ' This is the key
-'   DEFSTR s = "abcdefghijklmnopqrstuvwxyz"
-'   DEFSTR t = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-'   DIM rc4 AS QRC4
 '   rc4.Init(k)   ' Initialize RC4 object with the key
 '   s = rc4.Pipe(s)   ' Encode stream element s
 '   t = rc4.Pipe(t)   ' Encode stream element t
@@ -33175,11 +30963,6 @@ Reset
 END constRUCTOR
 END TYPE
 
-
-'DEFSTR k = "1234567890"   ' This is the key
-'DEFSTR s = "abcdefghijklmnopqrstuvwxyz"
-'DEFSTR t = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
-'DIM rc4 AS QRC4
 'rc4.Init(k)   ' Initialize RC4 object with the key
 's = rc4.Pipe(s)   ' Encode stream element s
 't = rc4.Pipe(t)   ' Encode stream element t
@@ -33197,29 +30980,11 @@ Declare Function closesocket Lib "wsock32.dll" Alias "closesocket"_
   (S As LONG) As LONG
 Declare Function connectx Lib "wsock32.dll" Alias "connect" (S As LONG,_
   sockaddr As LONG,namelen As INTEGER) As LONG
-'~dup Declare Function gethostbyaddr Lib "wsock32.dll" Alias "gethostbyaddr"_   ' повтор, первое: QSocketEx.inc(27)
-'~dup   (addr As LONG,length As LONG,protocol As LONG) As LONG
-'~dup Declare Function gethostbyname Lib "wsock32.dll" Alias "gethostbyname"_   ' повтор, первое: QSocketEx.inc(28)
-'~dup   (ByVal name As STRING) As LONG
-'~dup Declare Function getpeernamex Lib "wsock32.dll" Alias "getpeername"_   ' повтор, первое: QSocketEx.inc(26)
-'~dup   (S As LONG,ByVal name As LONG,namelen As LONG) As LONG
-'~dup Declare Function htons Lib "wsock32.dll" Alias "htons" (hostshort As INTEGER)_   ' повтор, первое: QSocketEx.inc(33)
-'~dup   As INTEGER
-'~dup Declare Function inet_addr Lib "wsock32.dll" Alias "inet_addr"_   ' повтор, первое: QICMP.INC(31)
-'~dup   (ByVal cp As STRING) As LONG
-'~dup Declare Function inet_ntoa Lib "wsock32.dll" Alias "inet_ntoa"_   ' повтор, первое: QSocketEx.inc(32)
-'~dup   (inaddr As LONG) As LONG
-'~dup Declare Function ioctlsocket Lib "wsock32.dll" Alias "ioctlsocket"_   ' повтор, первое: QSocketEx.inc(34)
-'~dup   (S As LONG,cmd As LONG,arg As LONG) As LONG
 Declare Function selectx Lib "wsock32.dll" Alias "select" (nfds As LONG,_
   readfds As LONG,writefds As LONG,exceptfds As LONG,_
   timeout As LONG) As LONG
-'~dup Declare Function shutdown Lib "wsock32.dll" Alias "shutdown"_   ' повтор, первое: QSocketEx.inc(29)
-'~dup   (S As LONG,how As LONG) As LONG
 Declare Function socket Lib "wsock32.dll" Alias "socket" (af As LONG,_
   type_specification As LONG,protocol As LONG) As LONG
-'~dup Declare Function WSAGetLastError Lib "wsock32.dll" Alias "WSAGetLastError"_   ' повтор, первое: rapidq2.inc(1888)
-'~dup   () As LONG
 Declare Function send Lib "wsock32.dll" Alias "send" (S As LONG,_
   buf As STRING,len As LONG,flags As LONG) As LONG
 Declare Function recv Lib "wsock32.dll" Alias "recv" (S As LONG,_
@@ -33230,12 +30995,6 @@ DECLARE FUNCTION sendto Lib "wsock32.dll" Alias "sendto" (S As LONG,_
 DECLARE FUNCTION recvfrom Lib "wsock32.dll" Alias "recvfrom" (S As LONG,_
   buf As LONG,Len As LONG,flags As LONG,_
   ptrAddress As LONG,LenAddr As LONG) As LONG
-'~dup Declare Sub CopyMemory Lib "kernel32.dll" Alias "RtlMoveMemory"_   ' повтор, первое: QFormSkin.inc(234)
-'~dup   (hpvDest As LONG,hpvSource As LONG,cbCopy As LONG)
-'~dup Declare Function lstrlen Lib "kernel32.dll" Alias "lstrlenA"_   ' повтор, первое: WIN32API.INC(2345)
-'~dup   (ByVal lpString As LONG) As LONG
-'~dup Declare Function lstrcpy Lib "kernel32.dll" Alias "lstrcpyA"_   ' повтор, первое: WIN32API.INC(15379)
-'~dup   (ByVal lpString1 As LONG,ByVal lpString2 As LONG) As LONG
 
 DIM arg As LONG,num As LONG,ptr1 As LONG,ptr2 As LONG
 DIM bs(15&) As BYTE
@@ -33395,11 +31154,7 @@ END TYPE
 '============================================================================
 '[build_inc] TstRichEd.inc
 '============================================================================
-'~dup const rEM_LINEINDEX = 187   ' повтор, первое: RichEdPopUp.inc(20)
-'~dup Declare Function SendMessageA Lib "user32" Alias "SendMessageA" (hwnd _   ' повтор, первое: Common.inc(14)
-'~dup As Long, wMsg As Long, wParam As Long, lParam As Long) As Long
 
-'~dup Declare Function LINEINDEX as long ' позиция первого символа в строке   ' повтор, первое: RichEdPopUp.inc(10)
 TYPE TestEDIT EXTENDS QRICHEDIT
     WITH TestEDIT
 		Function LINEINDEX as long
@@ -33411,85 +31166,13 @@ END TYPE
 '~define $DEFINE QRICHEDIT QMAXEDIT   ' сборка: встроенный класс не подменяется
 '================= END NEW COMPONENT ========================
   
-
 '============================================================================
 '[build_inc] XPThemes.inc
 '============================================================================
 $DEFINE __XPTHEME
 $IFNDEF __WIN32API
 
-'~dup Const TRANSPARENT        = 1   ' повтор, первое: rapidq2.inc(1208)
-'~dup Const DT_CENTER          = &H1   ' повтор, первое: WIN32API.INC(7009)
-'~dup Const GWL_EXSTYLE        = -20   ' повтор, первое: rapidq2.inc(781)
-'~dup Const GWL_STYLE          = -16   ' повтор, первое: rapidq2.inc(780)
-'~dup Const GWL_WNDPROC        = (-4)   ' повтор, первое: rapidq2.inc(778)
-'~dup Const SWP_FRAMECHANGED   = &H20   ' повтор, первое: WIN32API.INC(6752)
-'~dup Const WM_NCPAINT         = &H85   ' повтор, первое: QFormSkin.inc(17)
-'~dup Const WM_PAINT           = &HF   ' повтор, первое: QFormSkin.inc(11)
-'~dup Const WS_EX_CLIENTEDGE   = &H200   ' повтор, первое: createWind.inc(16)
-'~dup Const WS_BORDER          = &H800000   ' повтор, первое: rapidq2.inc(957)
-'~dup Const SWP_NOSIZE         = &H1   ' повтор, первое: rapidq2.inc(791)
-'~dup Const SWP_NOMOVE         = &H2   ' повтор, первое: rapidq2.inc(792)
-'~dup Const SWP_NOZORDER       = &H4   ' повтор, первое: rapidq2.inc(793)
-'~dup Const SWP_NOREDRAW       = &H8   ' повтор, первое: WIN32API.INC(6750)
-'~dup Const SWP_NOACTIVATE     = &H10   ' повтор, первое: rapidq2.inc(794)
   '
-'~dup Const SWP_SHOWWINDOW     = &H40   ' повтор, первое: rapidq2.inc(795)
-'~dup Const SWP_HIDEWINDOW     = &H80   ' повтор, первое: WIN32API.INC(6754)
-'~dup Const SWP_NOCOPYBITS     = &H100   ' повтор, первое: WIN32API.INC(6755)
-'~dup Const SWP_NOOWNERZORDER  = &H200   ' повтор, первое: WIN32API.INC(6756)
-'~dup Const SWP_NOSENDCHANGING = &H400   ' повтор, первое: rapidq2.inc(796)
-'~dup Const SWP_DRAWFRAME      = SWP_FRAMECHANGED   ' повтор, первое: WIN32API.INC(6758)
-'~dup Const SWP_NOREPOSITION   = SWP_NOOWNERZORDER   ' повтор, первое: WIN32API.INC(6759)
-
-'~dup Type LOGFONT   ' повтор, первое: WIN32API.INC(3518)
-'~dup      lfHeight         As Long
-'~dup      lfWidth          As Long
-'~dup      lfEscapement     As Long
-'~dup      lfOrientation    As Long
-'~dup      lfWeight         As Long
-'~dup      lfItalic         As Byte
-'~dup      lfUnderline      As Byte
-'~dup      lfStrikeOut      As Byte
-'~dup      lfCharSet        As Byte
-'~dup      lfOutPrecision   As Byte
-'~dup      lfClipPrecision  As Byte
-'~dup      lfQuality        As Byte
-'~dup      lfPitchAndFamily As Byte
-'~dup      lfFaceName       As String * 32
-'~dup End Type
-
-'~dup Type RECT   ' повтор, первое: rapidq2.inc(884)
-'~dup     Left   As Long
-'~dup     Top    As Long
-'~dup     Right  As Long
-'~dup     Bottom As Long
-'~dup End Type
-
-'~dup Type SIZE   ' повтор, первое: WIN32API.INC(97)
-'~dup      cx As Long
-'~dup      cy As Long
-'~dup End Type
-
-'~dup Declare Function CreateFontIndirect Lib "gdi32" Alias "CreateFontIndirectA" (lpLogFont As LOGFONT) As Long   ' повтор, первое: WIN32API.INC(4376)
-'~dup Declare Function DrawText Lib "user32" Alias "DrawTextA" (hDC As Long, lpStr As String, nCount As Long, lpRect As RECT, wFormat As Long) As Long   ' повтор, первое: QFormSkin.inc(223)
-'~dup Declare Function ExcludeClipRect Lib "gdi32" Alias "ExcludeClipRect" (hDC As Long, Left As Long, Top As Long, Right As Long, Bottom As Long) As Long   ' повтор, первое: QFormSkin.inc(241)
-'~dup Declare Function FillRect Lib "user32" Alias "FillRect" (hDC As Long, lpRect As RECT, hBrush As Long) As Long   ' повтор, первое: WIN32API.INC(7227)
-'~dup Declare Function FrameRect Lib "user32" Alias "FrameRect" (hDC As Long, lpRect As RECT, hBrush As Long) As Long   ' повтор, первое: WIN32API.INC(7228)
-'~dup Declare Function GetTextExtentPoint32 Lib "gdi32" Alias "GetTextExtentPoint32A" (hDC As Long, lpsz As String, cbString As Long, lpSize As SIZE) As Long   ' повтор, первое: WIN32API.INC(4498)
-'~dup Declare Function GetVersion Lib "kernel32" Alias "GetVersion" () As Long   ' повтор, первое: Kernel32.inc(177)
-'~dup Declare Function GetWindowDC Lib "user32" Alias "GetWindowDC" (hWnd As Long) As Long   ' повтор, первое: QFormSkin.inc(171)
-'~dup Declare Function SetTextColor Lib "gdi32" Alias "SetTextColor" (hDC As Long, crColor As Long) As Long   ' повтор, первое: QFormSkin.inc(229)
-'~dup Declare Function CallWindowProc Lib "user32" Alias "CallWindowProcA" (ByVal lpPrevWndFunc As Long, ByVal hWnd As Long, ByVal Msg As Long, ByVal wParam As Long, ByVal lParam As Long) As Long   ' повтор, первое: rapidq2.inc(1019)
-'~dup Declare Function SetWindowLong Lib "user32" Alias "SetWindowLongA" (ByVal hwnd As Long, ByVal nIndex As Long, ByVal dwNewLong As Long) As Long   ' повтор, первое: rapidq2.inc(1039)
-'~dup Declare Function GetWindowLong Lib "user32" Alias "GetWindowLongA" (ByVal hwnd As Long, ByVal nIndex As Long) As Long   ' повтор, первое: rapidq2.inc(1037)
-'~dup Declare Function SetWindowPos Lib "user32" Alias "SetWindowPos" (ByVal hwnd As Long, ByVal hWndInsertAfter As Long, ByVal x As Long, ByVal y As Long, ByVal cx As Long, ByVal cy As Long, ByVal wFlags As Long) As Long   ' повтор, первое: rapidq2.inc(1029)
-'~dup Declare Function GetWindowRect Lib "user32" Alias "GetWindowRect" (ByVal hwnd As Long, lpRect As RECT) As Long   ' повтор, первое: rapidq2.inc(996)
-'~dup Declare Function CreateSolidBrush Lib "gdi32" Alias "CreateSolidBrush" (ByVal crColor As Long) As Long   ' повтор, первое: rapidq2.inc(1449)
-'~dup Declare Function DeleteObject Lib "gdi32" Alias "DeleteObject" (ByVal hObject As Long) As Long   ' повтор, первое: rapidq2.inc(1451)
-'~dup Declare Function SelectObject Lib "gdi32" Alias "SelectObject" (ByVal hdc As Long, ByVal hObject As Long) As Long   ' повтор, первое: rapidq2.inc(1464)
-'~dup Declare Function GetSysColor Lib "user32" Alias "GetSysColor" (ByVal nIndex As Long) As Long   ' повтор, первое: rapidq2.inc(1602)
-'~dup Declare Function SetBkMode Lib "gdi32" Alias "SetBkMode" (ByVal hdc As Long, ByVal nBkMode As Long) As Long   ' повтор, первое: rapidq2.inc(1466)
 
 $ENDIF
 
@@ -33515,7 +31198,6 @@ Declare Function DrawThemeParentBackground Lib "uxtheme" Alias "DrawThemeParentB
 Declare Function GetThemeInt Lib "uxtheme" Alias "GetThemeInt" (hTheme As Long, iPartId As Long, iStateId As Long, iPropId As Long, piVal As Long) As Long
 Declare Function GetThemeSysFont Lib "uxtheme" Alias "GetThemeSysFont" (hTheme As Long, iFontID As Long, plf As LOGFONT) As Long
 Declare Function OpenThemeData Lib "uxtheme" Alias "OpenThemeData" (hWnd As Long, pszClAssList As String) As Long
-
 
 TYPE QRichEditUx EXTENDS QRICHEDIT
   PRIVATE:
@@ -33831,7 +31513,6 @@ TYPE QGroupBoxUx EXTENDS QGROUPBOX
           BGRect.Bottom = BGRect.Bottom - BGRect.Top
           BGRect.Top  = 0
           BGRect.Left = 0
-          ' Create a suitable font for the caption
           GetThemeSysFont(hTheme, TMT_MENUFONT, LF)
           LF.lfWeight = 0
           hFont = CreateFontIndirect(LF)
@@ -33892,7 +31573,5 @@ TYPE QGroupBoxUx EXTENDS QGROUPBOX
     Subclassed = 0
   END CONSTRUCTOR
 END TYPE
-
-
 
 $ENDIF ' __RQCOMPONENTS_INC

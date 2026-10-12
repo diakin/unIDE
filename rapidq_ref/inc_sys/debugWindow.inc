@@ -1,7 +1,8 @@
 ' debugWindow.inc - отдельный inc, не входит в rapidqAllProc.inc /
 ' rapidqComponents.inc: при запуске создаёт форму отладки ~DebugForm с кнопками.
 ' Собран rapidq_ref/tools/build_inc.py из incOld/debugWindow.inc; повторы объявлений
-' общих файлов - '~dup. Подключать в программе, которой он нужен.
+' общих файлов убраны (build_removed.txt). Подключать в программе,
+' которой он нужен.
 $IFNDEF __SEP_DEBUGWINDOW_INC
 $DEFINE __SEP_DEBUGWINDOW_INC
 $INCLUDE "rapidqComponents.inc"
@@ -64,7 +65,6 @@ dim ModeFlg as byte
     ~WatchDisplay.WordWrap=0
     ~WatchDisplay.color=&h77EEFF
 
-
     ~SrcDisplay.parent=~DebugForm
     ~SrcDisplay.Font.bold=1
     '~WatchDisplay.Align=5
@@ -105,7 +105,6 @@ call ViewStep (Op,OL)
 if ModeFlg=0 then  ~DebugForm.showmodal else  ~DebugForm.show
 
 End Subi '=======================================================================
-
 
 '***************************************
 sub ViewStep (OperPos,OperLength)

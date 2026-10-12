@@ -1,17 +1,14 @@
 ' pulsar.inc - отдельный inc, не входит в rapidqAllProc.inc /
 ' rapidqComponents.inc: при запуске вызывает pulsar.dll (crea_pulsar_db) и грузит test1.bmp / test2.bmp.
 ' Собран rapidq_ref/tools/build_inc.py из incOld/pulsar.inc; повторы объявлений
-' общих файлов - '~dup. Подключать в программе, которой он нужен.
+' общих файлов убраны (build_removed.txt). Подключать в программе,
+' которой он нужен.
 $IFNDEF __SEP_PULSAR_INC
 $DEFINE __SEP_PULSAR_INC
 $INCLUDE "rapidqComponents.inc"
 '============================================================================
 '[build_inc] pulsar.inc
 '============================================================================
-
-
-
-
 
 DECLARE sub crea_pulsar_db
 DECLARE sub inserisci_oggetto_in_pulsar_db
@@ -76,9 +73,6 @@ dim rect2_editor as qrect
         Articolo_UTILITA     	AS STRING * 10 
     END TYPE
 
-
-
-
     DIM DatabaseRecord AS Articoli 
     PulsarPath$="database"
     PulsarFile$="temp_DB" 
@@ -126,7 +120,6 @@ ShowMessage "selezionato item " + str$(Edit_nome.text)
     DatabaseRecord.Articolo_Costo=Edit_prezzo.text
     DatabaseRecord.Articolo_UTILITA=" "
 
-
     	RecordToSave$=DatabaseRecord.Articolo_Nome
 	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Codice
 	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Descrizione
@@ -140,7 +133,6 @@ ShowMessage "selezionato item " + str$(Edit_nome.text)
 	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Peso
 	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_Costo
 	RecordToSave$=RecordToSave$+DatabaseRecord.Articolo_UTILITA
-
 
     RetFunction$=SPACE$(160)
 
@@ -171,7 +163,6 @@ sub visualizza_tutti_da_pulsar_db
 
     IF LEFT$(RetFunction$,5)="ERROR" THEN
 
-
          Msg$="OPERATION IS NOT COMPLETED: "+LTRIM$(RTRIM$(RetFunction$))
          MESSAGEBOX(Msg$, "Pъlsar 3.0 in RapidQ", mbOK)
          END
@@ -192,7 +183,6 @@ sub visualizza_tutti_da_pulsar_db
 
         ELSE
 
-
     DatabaseRecord.Articolo_Nome=LEFT$(RetFunction$,10)
     DatabaseRecord.Articolo_Codice=MID$(RetFunction$,11,10)
     DatabaseRecord.Articolo_Descrizione=MID$(RetFunction$,21,30)
@@ -206,7 +196,6 @@ sub visualizza_tutti_da_pulsar_db
     DatabaseRecord.Articolo_Peso=MID$(RetFunction$,108,4)
     DatabaseRecord.Articolo_Costo=MID$(RetFunction$,112,6)
     DatabaseRecord.Articolo_UTILITA=MID$(RetFunction$,118,10)
-
 
             'show the record
             dim Msg1$ as string

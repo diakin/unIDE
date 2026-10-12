@@ -1,7 +1,8 @@
 ' debug.inc - отдельный inc, не входит в rapidqAllProc.inc /
 ' rapidqComponents.inc: при запуске создаёт окно отладки _DebugFORM.
 ' Собран rapidq_ref/tools/build_inc.py из incOld/debug.inc; повторы объявлений
-' общих файлов - '~dup. Подключать в программе, которой он нужен.
+' общих файлов убраны (build_removed.txt). Подключать в программе,
+' которой он нужен.
 $IFNDEF __SEP_DEBUG_INC
 $DEFINE __SEP_DEBUG_INC
 $INCLUDE "rapidqComponents.inc"
@@ -10,15 +11,8 @@ $INCLUDE "rapidqComponents.inc"
 '============================================================================
 '! --- вставляем процедуру дебаггера ----------'
 '~inc $INCLUDE"RAPIDQ.INC"   ' уже в сборке или заменён выбранной версией
-'~dup CONST WM_COPYDATA = &H4A   ' повтор, первое: constants.inc(161)
-'~dup TYPE COPYDATASTRUCT    ' повтор, первое: WIN32API.INC(6234)
-'~dup 	dwData AS LONG 
-'~dup 	cbData AS LONG 
-'~dup 	lpData AS LONG 
-'~dup END TYPE 
 
 DIM DataStruct AS COPYDATASTRUCT 
-'~dup DECLARE FUNCTION FindWindow LIB "user32" ALIAS "FindWindowA" (ByVal lpClassName AS String, ByVal lpWindowName AS String) AS LONG    ' повтор, первое: User32.inc(17)
 
 DEFSTR strSend, strRecv, AppName 
 DEFInt flgRecv 

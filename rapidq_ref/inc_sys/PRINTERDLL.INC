@@ -1,7 +1,8 @@
-' PRINTERDLL.INC - отдельный inc, не входит в rapidqAllProc.inc /
-' rapidqComponents.inc: своя DLL PrinterDLL.dll.
-' Собран rapidq_ref/tools/build_inc.py из incOld/PRINTERDLL.INC; повторы объявлений
-' общих файлов - '~dup. Подключать в программе, которой он нужен.
+' PRINTERDLL.INC - ��������� inc, �� ������ � rapidqAllProc.inc /
+' rapidqComponents.inc: ���� DLL PrinterDLL.dll.
+' ������ rapidq_ref/tools/build_inc.py �� incOld/PRINTERDLL.INC; ������� ����������
+' ����� ������ ������ (build_removed.txt). ���������� � ���������,
+' ������� �� �����.
 $IFNDEF __SEP_PRINTERDLL_INC
 $DEFINE __SEP_PRINTERDLL_INC
 $INCLUDE "rapidqComponents.inc"
@@ -45,159 +46,20 @@ CONST SET_LOCALLY=0
 CONST SET_GLOBALLY=1
 
 ' Hatch Styles.
-'~dup Const HS_HORIZONTAL=0   '  -----   ' повтор, первое: WIN32API.INC(3858)
-'~dup Const HS_VERTICAL=1     '  |||||   ' повтор, первое: WIN32API.INC(3859)
-'~dup Const HS_FDIAGONAL=2    '  \\\\\   ' повтор, первое: WIN32API.INC(3860)
-'~dup Const HS_BDIAGONAL=3    '  /////   ' повтор, первое: WIN32API.INC(3861)
-'~dup Const HS_CROSS=4        '  +++++   ' повтор, первое: WIN32API.INC(3862)
 
 ' Font Styles/Characteristics.
-'~dup Const FW_DONTCARE = 0   ' повтор, первое: WIN32API.INC(3609)
-'~dup Const FW_THIN = 100   ' повтор, первое: WIN32API.INC(3610)
-'~dup Const FW_EXTRALIGHT = 200   ' повтор, первое: WIN32API.INC(3611)
-'~dup Const FW_LIGHT = 300   ' повтор, первое: WIN32API.INC(3612)
-'~dup Const FW_NORMAL = 400   ' повтор, первое: WIN32API.INC(3613)
-'~dup Const FW_MEDIUM = 500   ' повтор, первое: WIN32API.INC(3614)
-'~dup Const FW_SEMIBOLD = 600   ' повтор, первое: WIN32API.INC(3615)
-'~dup Const FW_BOLD = 700   ' повтор, первое: WIN32API.INC(3616)
-'~dup Const FW_EXTRABOLD = 800   ' повтор, первое: WIN32API.INC(3617)
-'~dup Const FW_HEAVY = 900   ' повтор, первое: WIN32API.INC(3618)
 Const ITALIC_OFF = 0
 Const ITALIC_ON = 1
 Const UNDERLINE_OFF = 0
 Const UNDERLINE_ON = 1
 Const STRIKEOUT_OFF = 0
 Const STRIKEOUT_ON = 1
-'~dup Const OUT_DEFAULT_PRECIS = 0   ' повтор, первое: WIN32API.INC(3559)
-'~dup Const OUT_STRING_PRECIS = 1   ' повтор, первое: WIN32API.INC(3560)
-'~dup Const OUT_CHARACTER_PRECIS = 2   ' повтор, первое: WIN32API.INC(3561)
-'~dup Const OUT_STROKE_PRECIS = 3   ' повтор, первое: WIN32API.INC(3562)
-'~dup Const OUT_TT_PRECIS = 4   ' повтор, первое: WIN32API.INC(3563)
-'~dup Const OUT_DEVICE_PRECIS = 5   ' повтор, первое: WIN32API.INC(3564)
-'~dup Const OUT_RASTER_PRECIS = 6   ' повтор, первое: WIN32API.INC(3565)
-'~dup Const OUT_TT_ONLY_PRECIS = 7   ' повтор, первое: WIN32API.INC(3566)
-'~dup Const OUT_OUTLINE_PRECIS = 8   ' повтор, первое: WIN32API.INC(3567)
-'~dup Const CLIP_DEFAULT_PRECIS = 0   ' повтор, первое: WIN32API.INC(3569)
-'~dup Const CLIP_CHARACTER_PRECIS = 1   ' повтор, первое: WIN32API.INC(3570)
-'~dup Const CLIP_STROKE_PRECIS = 2   ' повтор, первое: WIN32API.INC(3571)
-'~dup Const CLIP_MASK = &HF   ' повтор, первое: WIN32API.INC(3572)
-'~dup Const CLIP_LH_ANGLES = 16   ' повтор, первое: WIN32API.INC(3573)
-'~dup Const CLIP_TT_ALWAYS = 32   ' повтор, первое: WIN32API.INC(3574)
-'~dup Const CLIP_EMBEDDED = 128   ' повтор, первое: WIN32API.INC(3575)
-'~dup Const DEFAULT_QUALITY = 0   ' повтор, первое: WIN32API.INC(3577)
-'~dup Const DRAFT_QUALITY = 1   ' повтор, первое: WIN32API.INC(3578)
-'~dup Const PROOF_QUALITY = 2   ' повтор, первое: WIN32API.INC(3579)
-'~dup Const DEFAULT_PITCH = 0   ' повтор, первое: WIN32API.INC(3581)
-'~dup Const FIXED_PITCH = 1   ' повтор, первое: WIN32API.INC(3582)
-'~dup Const VARIABLE_PITCH = 2   ' повтор, первое: WIN32API.INC(3583)
-'~dup Const ANSI_CHARSET = 0   ' повтор, первое: rapidq2.inc(191)
-'~dup Const DEFAULT_CHARSET = 1   ' повтор, первое: rapidq2.inc(192)
-'~dup Const SYMBOL_CHARSET = 2   ' повтор, первое: rapidq2.inc(193)
-'~dup Const SHIFTJIS_CHARSET = 128   ' повтор, первое: rapidq2.inc(195)
-'~dup Const HANGEUL_CHARSET = 129   ' повтор, первое: rapidq2.inc(196)
-'~dup Const CHINESEBIG5_CHARSET = 136   ' повтор, первое: rapidq2.inc(199)
-'~dup Const OEM_CHARSET = 255   ' повтор, первое: rapidq2.inc(209)
-'~dup Const FF_DONTCARE = 0   ' повтор, первое: WIN32API.INC(3595)
-'~dup Const FF_ROMAN = 16   ' повтор, первое: WIN32API.INC(3596)
-'~dup Const FF_SWISS = 32   ' повтор, первое: WIN32API.INC(3599)
-'~dup Const FF_MODERN = 48   ' повтор, первое: WIN32API.INC(3602)
-'~dup Const FF_SCRIPT = 64   ' повтор, первое: WIN32API.INC(3605)
-'~dup Const FF_DECORATIVE = 80   ' повтор, первое: WIN32API.INC(3606)
 
 ' Border Styles.
-'~dup Const BDR_RAISEDOUTER = &H1   ' повтор, первое: WIN32API.INC(15603)
-'~dup Const BDR_SUNKENOUTER = &H2   ' повтор, первое: WIN32API.INC(15604)
-'~dup Const BDR_RAISEDINNER = &H4   ' повтор, первое: WIN32API.INC(15605)
-'~dup Const BDR_SUNKENINNER = &H8   ' повтор, первое: WIN32API.INC(15606)
-'~dup Const BDR_OUTER = &H3   ' повтор, первое: WIN32API.INC(15608)
-'~dup Const BDR_INNER = &HC   ' повтор, первое: WIN32API.INC(15609)
-'~dup Const BDR_RAISED = &H5   ' повтор, первое: WIN32API.INC(15610)
-'~dup Const BDR_SUNKEN = &HA   ' повтор, первое: WIN32API.INC(15611)
-'~dup Const EDGE_RAISED = (BDR_RAISEDOUTER Or BDR_RAISEDINNER)   ' повтор, первое: WIN32API.INC(15613)
-'~dup Const EDGE_SUNKEN = (BDR_SUNKENOUTER Or BDR_SUNKENINNER)   ' повтор, первое: WIN32API.INC(15614)
-'~dup Const EDGE_ETCHED = (BDR_SUNKENOUTER Or BDR_RAISEDINNER)   ' повтор, первое: WIN32API.INC(15615)
-'~dup Const EDGE_BUMP = (BDR_RAISEDOUTER Or BDR_SUNKENINNER)   ' повтор, первое: WIN32API.INC(15616)
-'~dup Const BF_LEFT = &H1   ' повтор, первое: WIN32API.INC(15618)
-'~dup Const BF_TOP = &H2   ' повтор, первое: WIN32API.INC(15619)
-'~dup Const BF_RIGHT = &H4   ' повтор, первое: WIN32API.INC(15620)
-'~dup Const BF_BOTTOM = &H8   ' повтор, первое: WIN32API.INC(15621)
-'~dup Const BF_TOPLEFT = (BF_TOP Or BF_LEFT)   ' повтор, первое: WIN32API.INC(15623)
-'~dup Const BF_TOPRIGHT = (BF_TOP Or BF_RIGHT)   ' повтор, первое: WIN32API.INC(15624)
-'~dup Const BF_BOTTOMLEFT = (BF_BOTTOM Or BF_LEFT)   ' повтор, первое: WIN32API.INC(15625)
-'~dup Const BF_BOTTOMRIGHT = (BF_BOTTOM Or BF_RIGHT)   ' повтор, первое: WIN32API.INC(15626)
-'~dup Const BF_RECT = (BF_LEFT Or BF_TOP Or BF_RIGHT Or BF_BOTTOM)   ' повтор, первое: WIN32API.INC(15627)
-'~dup Const BF_DIAGONAL = &H10   ' повтор, первое: WIN32API.INC(15629)
-'~dup Const BF_DIAGONAL_ENDTOPRIGHT = (BF_DIAGONAL Or BF_TOP Or BF_RIGHT)   ' повтор, первое: WIN32API.INC(15633)
-'~dup Const BF_DIAGONAL_ENDTOPLEFT = (BF_DIAGONAL Or BF_TOP Or BF_LEFT)   ' повтор, первое: WIN32API.INC(15634)
-'~dup Const BF_DIAGONAL_ENDBOTTOMLEFT = (BF_DIAGONAL Or BF_BOTTOM Or BF_LEFT)   ' повтор, первое: WIN32API.INC(15635)
-'~dup Const BF_DIAGONAL_ENDBOTTOMRIGHT = (BF_DIAGONAL Or BF_BOTTOM Or BF_RIGHT)   ' повтор, первое: WIN32API.INC(15636)
-'~dup Const BF_MIDDLE = &H800    ' Fill in the middle.   ' повтор, первое: WIN32API.INC(15638)
-'~dup Const BF_SOFT = &H1000     ' Use for softer buttons.   ' повтор, первое: WIN32API.INC(15639)
-'~dup Const BF_ADJUST = &H2000   ' Calculate the space left over.   ' повтор, первое: WIN32API.INC(15640)
-'~dup Const BF_FLAT = &H4000     ' For flat rather than 3-D borders.   ' повтор, первое: WIN32API.INC(15641)
-'~dup Const BF_MONO = &H8000     ' For monochrome borders.   ' повтор, первое: WIN32API.INC(15642)
 
 ' MS Defined Styles.
-'~dup Const WHITE_BRUSH = 0   ' повтор, первое: rapidq2.inc(1256)
-'~dup Const BLACK_BRUSH = 4   ' повтор, первое: rapidq2.inc(1260)
-'~dup Const WHITE_PEN = 6   ' повтор, первое: rapidq2.inc(1263)
-'~dup Const BLACK_PEN = 7   ' повтор, первое: rapidq2.inc(1264)
-'~dup Const NULL_PEN = 8   ' повтор, первое: rapidq2.inc(1265)
-'~dup Const OEM_FIXED_FONT = 10   ' повтор, первое: rapidq2.inc(1266)
-'~dup Const ANSI_FIXED_FONT = 11   ' повтор, первое: rapidq2.inc(1267)
-'~dup Const ANSI_VAR_FONT = 12   ' повтор, первое: rapidq2.inc(1268)
-'~dup Const SYSTEM_FONT = 13   ' повтор, первое: rapidq2.inc(1269)
-'~dup Const DEVICE_DEFAULT_FONT = 14   ' повтор, первое: rapidq2.inc(1270)
-'~dup Const DEFAULT_PALETTE = 15   ' повтор, первое: rapidq2.inc(1271)
-'~dup Const SYSTEM_FIXED_FONT = 16   ' повтор, первое: rapidq2.inc(1272)
-'~dup Const CLR_INVALID = &HFFFF   ' повтор, первое: WIN32API.INC(3843)
 
 ' Bitmap Styles.
-'~dup Const RC_NONE = 0   ' повтор, первое: WIN32API.INC(4024)
-'~dup Const RC_BITBLT = 1                  '  Can do standard BLT.   ' повтор, первое: WIN32API.INC(4025)
-'~dup Const RC_BANDING = 2                 '  Device requires banding support   ' повтор, первое: WIN32API.INC(4026)
-'~dup Const RC_SCALING = 4                 '  Device requires scaling support   ' повтор, первое: WIN32API.INC(4027)
-'~dup Const RC_BITMAP64 = 8                '  Device can support >64K bitmap   ' повтор, первое: WIN32API.INC(4028)
-'~dup Const RC_GDI20_OUTPUT = &H10             '  has 2.0 output calls   ' повтор, первое: WIN32API.INC(4029)
-'~dup Const RC_GDI20_STATE = &H20   ' повтор, первое: WIN32API.INC(4030)
-'~dup Const RC_SAVEBITMAP = &H40   ' повтор, первое: WIN32API.INC(4031)
-'~dup Const RC_DI_BITMAP = &H80                '  supports DIB to memory   ' повтор, первое: WIN32API.INC(4032)
-'~dup Const RC_PALETTE = &H100                 '  supports a palette   ' повтор, первое: WIN32API.INC(4033)
-'~dup Const RC_DIBTODEV = &H200                '  supports DIBitsToDevice   ' повтор, первое: WIN32API.INC(4034)
-'~dup Const RC_BIGFONT = &H400                 '  supports >64K fonts   ' повтор, первое: WIN32API.INC(4035)
-'~dup Const RC_STRETCHBLT = &H800              '  supports StretchBlt   ' повтор, первое: WIN32API.INC(4036)
-'~dup Const RC_FLOODFILL = &H1000              '  supports FloodFill   ' повтор, первое: WIN32API.INC(4037)
-'~dup Const RC_STRETCHDIB = &H2000             '  supports StretchDIBits   ' повтор, первое: WIN32API.INC(4038)
-'~dup Const RC_OP_DX_OUTPUT = &H4000   ' повтор, первое: WIN32API.INC(4039)
-'~dup Const RC_DEVBITS = &H8000   ' повтор, первое: WIN32API.INC(4040)
-'~dup Const SRCCOPY = &HCC0020         ' (DWORD) dest = source   ' повтор, первое: rapidq2.inc(1283)
-'~dup Const SRCPAINT = &HEE0086        ' (DWORD) dest = source OR dest   ' повтор, первое: rapidq2.inc(1284)
-'~dup Const SRCAND = &H8800C6          ' (DWORD) dest = source AND dest   ' повтор, первое: rapidq2.inc(1285)
-'~dup Const SRCINVERT = &H660046       ' (DWORD) dest = source XOR dest   ' повтор, первое: rapidq2.inc(1286)
-'~dup Const SRCERASE = &H440328        ' (DWORD) dest = source AND (NOT dest )   ' повтор, первое: rapidq2.inc(1287)
-'~dup Const NOTSRCCOPY = &H330008      ' (DWORD) dest = (NOT source)   ' повтор, первое: rapidq2.inc(1288)
-'~dup Const NOTSRCERASE = &H1100A6     ' (DWORD) dest = (NOT src) AND (NOT dest)   ' повтор, первое: rapidq2.inc(1289)
-'~dup Const MERGECOPY = &HC000CA       ' (DWORD) dest = (source AND pattern)   ' повтор, первое: rapidq2.inc(1290)
-'~dup Const MERGEPAINT = &HBB0226      ' (DWORD) dest = (NOT source) OR dest   ' повтор, первое: rapidq2.inc(1291)
-'~dup Const PATCOPY = &HF00021         ' (DWORD) dest = pattern   ' повтор, первое: rapidq2.inc(1292)
-'~dup Const PATPAINT = &HFB0A09        ' (DWORD) dest = DPSnoo   ' повтор, первое: rapidq2.inc(1293)
-'~dup Const PATINVERT = &H5A0049       ' (DWORD) dest = pattern XOR dest   ' повтор, первое: rapidq2.inc(1294)
-'~dup Const DSTINVERT = &H550009       ' (DWORD) dest = (NOT dest)   ' повтор, первое: rapidq2.inc(1295)
-'~dup Const BLACKNESS = &H42           ' (DWORD) dest = BLACK   ' повтор, первое: rapidq2.inc(1296)
-'~dup Const WHITENESS = &HFF0062       ' (DWORD) dest = WHITE   ' повтор, первое: rapidq2.inc(1297)
-'~dup Const HGDI_ERROR = &HFFFF   ' повтор, первое: WIN32API.INC(3018)
-'~dup Const BLACKONWHITE = 1   ' повтор, первое: WIN32API.INC(3036)
-'~dup Const WHITEONBLACK = 2   ' повтор, первое: WIN32API.INC(3037)
-'~dup Const COLORONCOLOR = 3   ' повтор, первое: WIN32API.INC(3038)
-'~dup Const HALFTONE = 4   ' повтор, первое: WIN32API.INC(3039)
-'~dup Const MAXSTRETCHBLTMODE = 4   ' повтор, первое: WIN32API.INC(3040)
-
-'~dup Declare Sub CopyMemory Lib "kernel32.dll" Alias "RtlMoveMemory" (ByVal dest As LONG, ByVal source As LONG, ByVal numBytes As LONG)   ' повтор, первое: QFormSkin.inc(234)
-'~dup Declare Function GetDesktopWindow Lib "user32.dll" Alias "GetDesktopWindow" () As Long   ' повтор, первое: rapidq2.inc(1475)
-'~dup Declare Function GetDC Lib "user32.dll" Alias "GetDC" (hwnd As Long) As Long   ' повтор, первое: rapidq2.inc(1482)
-'~dup Declare Function GetDeviceCaps Lib "gdi32.dll" Alias "GetDeviceCaps" (hdc As Long, query_flag As Long) As Long   ' повтор, первое: rapidq2.inc(1454)
-'~dup Declare Function ReleaseDC Lib "user32.dll" Alias "ReleaseDC" (hwnd As Long, hdc As Long) As Long   ' повтор, первое: rapidq2.inc(1483)
-'~dup Declare Function ResetDC Lib "gdi32.dll" Alias "ResetDCA" (hdc As Long, initData As long) As Long   ' повтор, первое: WIN32API.INC(4525)
 
 Declare Function Printer_OpenDefault Lib "printerdll.dll" Alias "Printer_OpenDefault" (internalBufSize As Long) As Long
 Declare Function XPrinter_OpenDefault Lib "printerdll.dll" Alias "XPrinter_OpenDefault" (internalBufSize As Long, printerName As String, portName As String, driverName As String, dataType As String, pDevMode As Long, access As Long) As Long

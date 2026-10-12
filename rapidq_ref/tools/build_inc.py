@@ -1320,7 +1320,8 @@ def main():
     head = ["' rapidqAllProc.inc - константы, DECLARE и процедуры RapidQ одним файлом.",
             "' Собран rapidq_ref/tools/build_inc.py из rapidq_ref/incOld по",
             "' rapidq_ref/inc_merge_plan.md. Не правьте вручную - правьте исходные",
-            "' файлы или план и соберите заново. Повторы - '~dup, с местом первого.",
+            "' файлы или план и соберите заново. Повторы убраны - их список и место",
+            "' первого объявления в build_removed.txt.",
             "$IFNDEF __RQALLPROC_INC",
             "$DEFINE __RQALLPROC_INC"]
     out = list(head)
@@ -1334,7 +1335,7 @@ def main():
     out = append_bodies(out, moved)
     print('bodies moved', len(moved))
     out.append("$ENDIF ' __RQALLPROC_INC")
-    write(os.path.join(OUT, 'rapidqAllProc.inc'), out)
+    finals = [('rapidqAllProc.inc', out)]
 
     out = ["' rapidqComponents.inc - компоненты RapidQ (TYPE ... EXTENDS) одним файлом.",
            "' Собран rapidq_ref/tools/build_inc.py; подключает rapidqAllProc.inc.",
@@ -1348,7 +1349,7 @@ def main():
             continue
         builder.emit_file(f, texts[f], keep=line_keep(take.get(f.lower(), 'да')), out=out)
     out.append("$ENDIF ' __RQCOMPONENTS_INC")
-    write(os.path.join(OUT, 'rapidqComponents.inc'), out)
+    finals.append(('rapidqComponents.inc', out))
 
     # Отдельные файлы ("отдельно: ..." в плане): не входят в общие, потому
     # что при запуске программы что-то делают сами (PRINT, окно, загрузка
@@ -1363,13 +1364,30 @@ def main():
         out = ["' %s - отдельный inc, не входит в rapidqAllProc.inc /" % f,
                "' rapidqComponents.inc: %s." % take[f.lower()][len('отдельно'):].lstrip(': '),
                "' Собран rapidq_ref/tools/build_inc.py из incOld/%s; повторы объявлений" % f,
-               "' общих файлов - '~dup. Подключать в программе, которой он нужен.",
+               "' общих файлов убраны (build_removed.txt). Подключать в программе,",
+               "' которой он нужен.",
                "$IFNDEF %s" % guard,
                "$DEFINE %s" % guard,
                '$INCLUDE "rapidqComponents.inc"']
         sep_builder.emit_file(f, texts[f], keep=line_keep(take[f.lower()]), out=out)
         out.append("$ENDIF ' %s" % guard)
-        write(os.path.join(OUT, f), out)
+        finals.append((f, out))
+
+    # Повторы ('~dup) и закомментированные в исходных файлах объявления
+    # имён, которые в сборке объявлены, - не в файлы, а в build_removed.txt
+    common = active_decl_names(finals[0][1]) | active_decl_names(finals[1][1])
+    removed_log = []
+    strip_count = {}
+    for fname, lines in finals:
+        names = common if fname in ('rapidqAllProc.inc', 'rapidqComponents.inc') \
+            else common | active_decl_names(lines)
+        kept, removed = strip_commented_dups(lines, names)
+        strip_count[fname] = len(removed)
+        if removed:
+            removed_log.append('=== %s: %d строк' % (fname, len(removed)))
+            removed_log.extend(removed)
+        write(os.path.join(OUT, fname), kept)
+    write(os.path.join(OUT, 'build_removed.txt'), removed_log)
 
     # Отчёт
     rep = ['# Сборка rapidqAllProc.inc и rapidqComponents.inc', '',
@@ -1431,6 +1449,10 @@ def main():
     rep += ['', '## $INCLUDE файлов, которых нет в сборке (остались как есть)', '']
     for f, inc in builder.report_inc:
         rep.append('- %s: %s' % (f, inc))
+    rep += ['', '## Убрано из файлов (список - build_removed.txt)', '',
+            'Строки \'~dup (повтор объявления из файла выше) и закомментированные в '
+            'исходных файлах объявления имён, которые в сборке объявлены.', '']
+    rep += ['- %s: %d' % (f, n) for f, n in strip_count.items()]
     rep += ['', '## Директивы, на которые стоит посмотреть', '']
     for f, code in builder.report_dir:
         rep.append('- %s: `%s`' % (f, code))
@@ -1438,6 +1460,56 @@ def main():
     print('proc files', len(proc_files), 'comp files', len(ordered), 'skipped', len(skipped))
     print('dups', dict(builder.report_dup), 'diffs', len(builder.report_diff),
           'includes left', len(builder.report_inc))
+
+
+DECL_NAME_RE = re.compile(
+    r'(?:const\s+|\$define\s+|declare\s+(?:sub|function)i?\s+|dim\s+|'
+    r'def(?:int|str|sng|dbl|lng|byte|word|short|bit)\s+|type\s+|create\s+|'
+    r'(?:sub|function)i?\s+)([\w~]+[$%&!#?]*)', re.I)
+
+
+def active_decl_names(lines):
+    """Имена, объявленные действующими строками (не комментариями)."""
+    names = set()
+    for line in lines:
+        code = code_part(line)
+        m = DECL_NAME_RE.match(code)
+        if m:
+            names.add(m.group(1).upper())
+    return names
+
+
+def strip_commented_dups(lines, names):
+    """Без строк '~dup и без закомментированных объявлений ('CONST X = 1,
+    'DECLARE ..., '$DEFINE ...) имён из names - вместе с продолжениями
+    через _. Подряд больше одной пустой строки после этого - одна.
+    Возвращает (оставшиеся, убранные)."""
+    kept, removed = [], []
+    cont = False
+    for line in lines:
+        text = line.lstrip()
+        if text.startswith("'~dup"):
+            # у блока ('~dup TYPE ... END TYPE) место первого - в первой строке
+            if "повтор, первое" in text:
+                removed.append(line)
+            cont = False
+            continue
+        if cont:
+            if text.startswith("'"):
+                cont = code_part(text[1:]).rstrip().endswith('_')
+                continue
+            cont = False
+        if text.startswith("'") and not text.startswith("'~"):
+            body = text[1:].lstrip()
+            m = DECL_NAME_RE.match(code_part(body))
+            if m and m.group(1).upper() in names:
+                removed.append(line)
+                cont = code_part(body).rstrip().endswith('_')
+                continue
+        if line.strip() == '' and kept and kept[-1].strip() == '':
+            continue
+        kept.append(line)
+    return kept, removed
 
 
 def write(path, lines):

@@ -1,7 +1,8 @@
 ' QImageBox.inc - отдельный inc, не входит в rapidqAllProc.inc /
 ' rapidqComponents.inc: своя DLL NVIEWLIB (nviewlib.dll).
 ' Собран rapidq_ref/tools/build_inc.py из incOld/QImageBox.inc; повторы объявлений
-' общих файлов - '~dup. Подключать в программе, которой он нужен.
+' общих файлов убраны (build_removed.txt). Подключать в программе,
+' которой он нужен.
 $IFNDEF __SEP_QIMAGEBOX_INC
 $DEFINE __SEP_QIMAGEBOX_INC
 $INCLUDE "rapidqComponents.inc"
@@ -13,15 +14,12 @@ $INCLUDE "rapidqComponents.inc"
 ' Classe QImageBox version 1.0
 '=======================================================
 $IFNDEF TRUE
-'~dup   $DEFINE True 1   ' повтор, первое: rapidq2.inc(58)
 $ENDIF
 
 $IFNDEF FALSE
-'~dup   $DEFINE False 0   ' повтор, первое: rapidq2.inc(55)
 $ENDIF
 
 $IFNDEF boolean
-'~dup   $DEFINE boolean integer   ' повтор, первое: rapidq2.inc(2241)
 $ENDIF
 
 Type ICONINFO_IMGBOX

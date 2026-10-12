@@ -1,7 +1,8 @@
 ' var2008.inc - отдельный inc, не входит в rapidqAllProc.inc /
 ' rapidqComponents.inc: переменные одной программы (Kpogr, DDelKol!, tipOb$ ...).
 ' Собран rapidq_ref/tools/build_inc.py из incOld/var2008.inc; повторы объявлений
-' общих файлов - '~dup. Подключать в программе, которой он нужен.
+' общих файлов убраны (build_removed.txt). Подключать в программе,
+' которой он нужен.
 $IFNDEF __SEP_VAR2008_INC
 $DEFINE __SEP_VAR2008_INC
 $INCLUDE "rapidqComponents.inc"
@@ -10,23 +11,8 @@ $INCLUDE "rapidqComponents.inc"
 '============================================================================
 ' C:\BAS\RAPIDQ\INC\var2008.inc
 ' ShowWindow() Commands
-'~dup Const SW_HIDE=0   ' повтор, первое: Form.inc(6)
-'~dup Const SW_SHOWNORMAL=1   ' повтор, первое: Form.inc(7)
-'~dup Const SW_NORMAL=1   ' повтор, первое: Form.inc(8)
-'~dup Const SW_SHOWMINIMIZED=2   ' повтор, первое: Form.inc(9)
-'~dup Const SW_SHOWMAXIMIZED=3   ' повтор, первое: Form.inc(10)
-'~dup Const SW_MAXIMIZE=3   ' повтор, первое: Form.inc(11)
-'~dup Const SW_SHOWNOACTIVATE=4   ' повтор, первое: Form.inc(12)
-'~dup Const SW_SHOW=5   ' повтор, первое: Form.inc(13)
-'~dup Const SW_MINIMIZE=6   ' повтор, первое: Form.inc(14)
-'~dup Const SW_SHOWMINNOACTIVE=7   ' повтор, первое: Form.inc(15)
-'~dup Const SW_SHOWNA=8   ' повтор, первое: Form.inc(16)
-'~dup Const SW_RESTORE=9   ' повтор, первое: Form.inc(17)
-'~dup Const SW_SHOWDEFAULT=10   ' повтор, первое: Form.inc(18)
-'~dup Const SW_MAX=10   ' повтор, первое: Form.inc(19)
 
 const Kpogr as integer = 1296000 'число угл секунд в обороте   '
-'defint pnt 
 
 defsng DDelKol!
 defsng ZubStep
@@ -81,7 +67,6 @@ dim NPr as integer   ' Np=5*imax - 5 точек на макс оборотную
 
 dim NumGarm as integer ' число гармоник на графике  '
 
-
 dim StToc as integer 'степень точности
 
 dim kpnt#  as double
@@ -97,7 +82,6 @@ dim Nfltr as integer   '; //  - число точек уcреднения (фи�
 dim PuskModeint as integer   '; //- режим пуска (ручной, по метке, по событию)
 dim MoveModeint as integer   '; //- режим движения
 dim NumCkl as integer ' - число циклов измерения (устаревш.)
-
 
 dim TipDatIn as integer    ' число фаз датчика входного звена
 dim TipDatOut as integer ' число фаз датчика выходного звена
@@ -142,14 +126,11 @@ DIM SredNFr!(1) as single
 DIM fzko!(7) as single 
 DIM fzkoR!(7) as single 
 
-
-
 DIM Ogib1u(1) as single ' значения функции огибающей циклической погрешности при  прямом ходе
 DIM Ogib1d(1) as single ' значения функции огибающей циклической погрешности при  обратном ходе
 
 DIM Ogib2u(1) as single ' значения функции огибающей циклической погрешности при  прямом ходе
 DIM Ogib2d(1) as single ' значения функции огибающей циклической погрешности при  обратном ходе
-
 
 DIM Arg!(1) as single      ' значения аргумента
 DIM Arg2!(1) as single      ' значения аргумента
@@ -158,7 +139,6 @@ DIM Arg2!(1) as single      ' значения аргумента
 
 DIM DeltaFi1(1) as single   ' значения функции погрешности
 DIM DeltaFi2(1) as single   ' значения функции погрешности при обратном ходе
-
 
 DIM DeltaFiRS(1) as single ' значения функции погрешности  передискретизированые
 DIM DeltaFiRS2(1) as single ' значения функции погрешности  передискретизированые при  обратном ходе
@@ -175,20 +155,11 @@ DIM Ogib1dRS(1) as single ' значения функции огибающей �
 DIM Ogib2uRS(1) as single ' значения функции огибающей циклической  передискретизированые погрешности при  прямом ходе
 DIM Ogib2dRS(1) as single ' значения функции огибающей циклической  передискретизированые погрешности при  обратном ходе
 
-
 dim Spectr (1) as single   ' спектр
-
-
-
-'defsng Kin1! '= CLNG(FRazmah!(fDat1$) * 10) / 10 ' fDat$
-'defsng Fpr1! '= CLNG(FRazmah!(FileNakop1$) * 10) / 10  'вел-на накоп. погp. Fpr
-'defsng CikD1! '= CLNG(FRazmah!(CikDis1$) * 10) / 10
 
 'defsng Kin2! '= CLNG(FRazmah!(fDat2$) * 10) / 10 ' fDat$
 'defsng Fpr2! '= CLNG(FRazmah!(FileNakop2$) * 10) / 10  'вел-на накоп. погp. Fpr
 'defsng CikD2! '= CLNG(FRazmah!(CikDis2$) * 10) / 10
-
-'defsng ZazorMax! '= CLNG(fAbsMax!(Zazor$, 1, -1) * 10) / 10
 
 'CikD1! = rondo!((fSred!(Ogib1u$) - fSred!(Ogib1d$)), 1)
 
@@ -256,15 +227,5 @@ defstr fZazor$ '= ArcP1$ + "\zazor.pzm"
 
 defstr Fdiagnoz$ '= ArcP1$ + "\diagnoz"
 defstr FSpectr$  'ArcP1$ + "\spectr.fft" 'скопировать из рабочей директории в архив'
-
-
-
-
-
-
-
-
-
-
 
 $ENDIF ' __SEP_VAR2008_INC

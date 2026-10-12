@@ -1,7 +1,8 @@
 ' debugNoSend.inc - отдельный inc, не входит в rapidqAllProc.inc /
 ' rapidqComponents.inc: при запуске создаёт окно отладки _DebugFORM и таймер; вызывает senddata из debug.inc.
 ' Собран rapidq_ref/tools/build_inc.py из incOld/debugNoSend.inc; повторы объявлений
-' общих файлов - '~dup. Подключать в программе, которой он нужен.
+' общих файлов убраны (build_removed.txt). Подключать в программе,
+' которой он нужен.
 $IFNDEF __SEP_DEBUGNOSEND_INC
 $DEFINE __SEP_DEBUGNOSEND_INC
 $INCLUDE "rapidqComponents.inc"

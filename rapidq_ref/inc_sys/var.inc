@@ -1,7 +1,8 @@
 ' var.inc - отдельный inc, не входит в rapidqAllProc.inc /
 ' rapidqComponents.inc: переменные одной программы (klas, dopusk$, omega!, SubArcPath$ ...).
 ' Собран rapidq_ref/tools/build_inc.py из incOld/var.inc; повторы объявлений
-' общих файлов - '~dup. Подключать в программе, которой он нужен.
+' общих файлов убраны (build_removed.txt). Подключать в программе,
+' которой он нужен.
 $IFNDEF __SEP_VAR_INC
 $DEFINE __SEP_VAR_INC
 $INCLUDE "rapidqComponents.inc"
@@ -19,9 +20,7 @@ DIM SredNFr!(1) as single
 DIM fzko!(7) as single 
 DIM fzkoR!(7) as single 
 
-
 const Kpogr as integer = 1296000 'число угл секунд в обороте   '
-'defint pnt 
 omega!=360 ' r-т для пересчета в градусы
 CrdOrigin=30
 UglR$="-"
@@ -29,8 +28,6 @@ Ugl$="-"
 LostP=0
 
 defstr tipOb$ = "\stan" '========================================================'
-'DIM klas(4) as integer ' класс точности
-'DIM dopusk$(4) as string 'допуск 
 defsng DopNakop!,DopCikl! ' допуск на накопленную и на циклическую
 
 defstr DATAP$,vreM$,stanok$, model$,Invent$,FIO$,koleso$, ZSt$ '!!! ------- архивные параметры --------------
@@ -42,10 +39,8 @@ dim ZDatOut as integer 'число штрихов выходного датчи�
 defint PosOut,PosIn,ZDtOut,ZDtIn
 defsng KoordIn,KoordInPriv,KoordOut ,deltaFiq' - в оборотах
 
-
 DIM Pch!(1, 1) as  single 'передаточное число от вала (1 к 2)
 DIM Pch1!(1) as  single 'передаточное число от вала (i к 1)
-
 
 '!!!-------------------- lpod --------------
 dim LPod as single  'ход  перемещение на котором дожна быть определена функция кинематической погрешности'
@@ -94,7 +89,6 @@ DEFBYTE prohod
 dim NumGarm as integer ' число гармоник на графике  '
 
 dim NPnt as integer                  
-
 
 dim StToc as integer 'степень точности
 dim kpnt#  as double
@@ -185,7 +179,6 @@ DIM Veloc2(1) as single   ' значения функции погрешност
 DIM Veloc3(1) as single   ' значения функции погрешности ОХ
 DIM Veloc4(1) as single   ' значения функции погрешности реверс ОХ
 
-
 DIM Nakop1(1) as single ' значения функции накопленной погрешности при  прямом ходе
 DIM Nakop2(1) as single ' значения функции накопленной погрешности при  обратном ходе
 DIM Nakop3(1) as single ' значения функции накопленной погрешности при  обратном ходе
@@ -239,16 +232,9 @@ DIM Ogib4dRS(1) as single ' значения функции огибающей �
 
 dim Spectr (1) as single   ' спектр
 
-
-'defsng Kin1! '= CLNG(FRazmah!(fDat1$) * 10) / 10 ' fDat$
-'defsng Fpr1! '= CLNG(FRazmah!(FileNakop1$) * 10) / 10  'вел-на накоп. погp. Fpr
-'defsng CikD1! '= CLNG(FRazmah!(CikDis1$) * 10) / 10
-
 'defsng Kin2! '= CLNG(FRazmah!(fDat2$) * 10) / 10 ' fDat$
 'defsng Fpr2! '= CLNG(FRazmah!(FileNakop2$) * 10) / 10  'вел-на накоп. погp. Fpr
 'defsng CikD2! '= CLNG(FRazmah!(CikDis2$) * 10) / 10
-
-'defsng ZazorMax! '= CLNG(fAbsMax!(Zazor$, 1, -1) * 10) / 10
 
 'CikD1! = rondo!((fSred!(Ogib1u$) - fSred!(Ogib1d$)), 1)
 
@@ -288,7 +274,6 @@ defstr  ArcPath$ '- путь текущего  архива
 
 defstr NSObr$ '- направление вращения стола'
 
-
 dim SubArcPath$(12) as string
 SubArcPath$(1)="\Z_NU_M"
 SubArcPath$(2)="\Z_NU_R"
@@ -303,7 +288,6 @@ SubArcPath$(9)="\Y_+45_M"
 SubArcPath$(10)="\Y_+45_r"
 SubArcPath$(11)="\Y_-45_M"
 SubArcPath$(12)="\Y_-45_r"
-
 
 '!!!---файлы -  ----
 

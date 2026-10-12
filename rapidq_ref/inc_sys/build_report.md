@@ -1251,6 +1251,26 @@
 ## $INCLUDE файлов, которых нет в сборке (остались как есть)
 
 
+## Убрано из файлов (список - build_removed.txt)
+
+Строки '~dup (повтор объявления из файла выше) и закомментированные в исходных файлах объявления имён, которые в сборке объявлены.
+
+- rapidqAllProc.inc: 11648
+- rapidqComponents.inc: 828
+- debug.inc: 3
+- debugNoSend.inc: 0
+- debugWindow.inc: 0
+- FBFunctions.inc: 2
+- PRINTERDLL.INC: 138
+- pulsar.inc: 0
+- QImageBox.inc: 3
+- QImageDialog.inc: 3
+- QPrintDialog.inc: 21
+- RapidQ_D3D.inc: 2
+- TRM_RQDeclares.INC: 0
+- var.inc: 7
+- var2008.inc: 19
+
 ## Директивы, на которые стоит посмотреть
 
 - WIN32API.INC: `$UNDEF TRUE, FALSE, ANY, INTEGER`
