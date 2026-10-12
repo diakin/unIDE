@@ -12374,7 +12374,7 @@ END TYPE
 ' demonstrate in this example.
 ' I've decided to incorporate this into a component for easy reuse.
 
-$APPTYPE GUI
+'~app $APPTYPE GUI   ' сборка: задаёт программа, не inc
 $TYPECHECK ON
 '~inc $INCLUDE "RAPIDQ.INC"   ' уже в сборке или заменён выбранной версией
 
