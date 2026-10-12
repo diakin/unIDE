@@ -262,7 +262,8 @@ var
   Lines: TStringList;
 begin
   Result := False;
-  Attach := GetAttachConsole;
+  // Со скобками: без них Delphi присваивает саму функцию GetAttachConsole
+  Attach := GetAttachConsole();
   if not Assigned(Attach) then
     Exit;
   // Своей консоли у среды нет; если вдруг есть - не трогаем
