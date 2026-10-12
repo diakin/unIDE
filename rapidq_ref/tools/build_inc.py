@@ -1093,7 +1093,14 @@ class Builder:
                     escape_on = True
                 elif re.match(r'\$escapechars\s+off\b', low):
                     escape_on = False
-                if re.match(r'\$(apptype|option\s+icon|resource)\b', low):
+                if re.match(r'\$(apptype|option\s+icon)\b', low):
+                    # Тип и иконка exe - настройки программы, а не модуля:
+                    # $APPTYPE GUI из HiLight.inc делал консольную программу
+                    # GUI-программой, и PRINT/CLS давали I/O error 103
+                    out.append("'~app " + line + "   ' сборка: задаёт программа, не inc")
+                    self.report_dir.append((name, code))
+                    continue
+                if re.match(r'\$resource\b', low):
                     self.report_dir.append((name, code))
                 out.append(line)
         # $DEFINE имени типом, которое ниже по сборке - имя переменной
